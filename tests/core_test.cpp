@@ -29,6 +29,7 @@ extern "C"
 #include "mangastore.h"
 #include "mangalocal.h"
 #include "manga_ui_logic.h"
+#include "mangarepo.h"
 #include "netpath.h"
 #include "paged.h"
 #include "pagedecode.h"
@@ -755,6 +756,141 @@ static void testDlQueue()
 	rmdir((root + "/bad/manga").c_str());
 	rmdir((root + "/bad").c_str());
 	rmdir(root.c_str());
+}
+
+// the repository index (design 5.3): reading it, validating its sources, checksums, versions, resolving file URLs
+static void testMangaRepo()
+{
+	static const std::string SHA = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";	// "abc"
+
+	// a valid index in the design's exact format: relative file and icon, api as a number, nsfw as a bool; an
+	// escaped quote in a name reads back whole; one source with an impossible id and one with a broken version
+	// are skipped and named, the rest kept
+	std::string good = R"JSON({
+		"format": 1,
+		"name": "Test repository",
+		"homepage": "https://repos.example.org",
+		"sources": [
+			{ "id": "ember-reader", "name": "Ember Reader", "lang": "en", "version": "1.2.0", "api": 1, "nsfw": false,
+			  "file": "sources/ember-reader.lua", "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+			  "size": 18342, "icon": "icons/ember-reader.png", "description": "One line." },
+			{ "id": "tide.scanner", "name": "Tide \"Scanner\"", "lang": "pt-br", "version": "0.9", "api": "1", "nsfw": true,
+			  "file": "sources/tide.lua", "sha256": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD" },
+			{ "id": "sky-manga", "name": "Sky Manga", "lang": "all", "version": "2",
+			  "file": "https://cdn.example.net/sources/sky.lua", "sha256": "0000000000000000000000000000000000000000000000000000000000000000" },
+			{ "id": "BAD_ID!", "name": "Broken", "lang": "en", "version": "1.0", "file": "sources/broken.lua", "sha256": "9f2c" },
+			{ "id": "late", "name": "Late", "lang": "en", "version": "1.2.x", "file": "sources/late.lua", "sha256": "9f2c" }
+		]
+	})JSON";
+	RepoIndex idx;
+	std::string err;
+	CHECK_EQ(parseRepoIndex(good, idx, err), true);
+	CHECK_EQ(idx.name, std::string("Test repository"));
+	CHECK_EQ(idx.homepage, std::string("https://repos.example.org"));
+	CHECK_EQ(idx.formatVersion, 1);
+	CHECK_EQ(idx.sources.size(), (size_t)3);	// the two broken ones skipped
+	CHECK_EQ(err.find("skipped source 4 (BAD_ID!)") != std::string::npos, true);
+	CHECK_EQ(err.find("skipped source 5 (late)") != std::string::npos, true);
+	CHECK_EQ(idx.sources[0].id, std::string("ember-reader"));
+	CHECK_EQ(idx.sources[0].url, std::string("sources/ember-reader.lua"));	// as the index writes it, relative
+	CHECK_EQ(idx.sources[0].icon, std::string("icons/ember-reader.png"));
+	CHECK_EQ(idx.sources[0].minApp, std::string("1"));	// the api number kept as text
+	CHECK_EQ(idx.sources[0].adult, false);
+	CHECK_EQ(idx.sources[0].sha256, SHA);
+	CHECK_EQ(idx.sources[1].name, std::string("Tide \"Scanner\""));
+	CHECK_EQ(idx.sources[1].adult, true);
+	CHECK_EQ(idx.sources[1].lang, std::string("pt-br"));
+	CHECK_EQ(idx.sources[2].url, std::string("https://cdn.example.net/sources/sky.lua"));
+	CHECK_EQ(idx.sources[2].minApp, std::string(""));	// no api in the index
+	CHECK_EQ(idx.sources[2].icon, std::string(""));
+
+	// an index with a format this build doesn't read is refused whole (design 5.2's rule for a newer script api)
+	CHECK_EQ(parseRepoIndex("{\"format\": 2, \"name\": \"x\", \"sources\": []}", idx, err), false);
+	CHECK_EQ(err.find("format") != std::string::npos, true);
+	// format missing reads as 1
+	CHECK_EQ(parseRepoIndex("{\"name\": \"x\", \"sources\": []}", idx, err), true);
+	CHECK_EQ(idx.formatVersion, 1);
+
+	// malformed JSON false, in every way it can be malformed
+	for (const char* bad : {"", "{", "{\"format\": 1, \"sources\": [", "not json", "{} {}", "true", "[1,2]",
+						 "{\"format\": 1}", "{\"format\": \"x\", \"sources\": []}"})
+		CHECK_EQ(parseRepoIndex(bad, idx, err), false);
+
+	// the caps: 1 MB of input (design 5.3), 2000 sources
+	CHECK_EQ(parseRepoIndex(std::string(1024 * 1024 + 1, 'x'), idx, err), false);
+	std::string many = "{\"format\": 1, \"sources\": [";
+	for (int k = 0; k < 2001; k++)
+	{
+		if (k) many += ",";
+		many += "{\"id\":\"s" + std::to_string(k) + "\",\"name\":\"S\",\"lang\":\"en\",\"version\":\"1\",\"file\":\"s.lua\",\"sha256\":\"" + SHA + "\"}";
+	}
+	CHECK_EQ(parseRepoIndex(many + "]}", idx, err), false);
+	CHECK_EQ(err.find("2000") != std::string::npos, true);
+	// exactly 2000 fits
+	std::string just2000 = "{\"format\": 1, \"sources\": [";
+	for (int k = 0; k < 2000; k++)
+	{
+		if (k) just2000 += ",";
+		just2000 += "{\"id\":\"s" + std::to_string(k) + "\",\"name\":\"S\",\"lang\":\"en\",\"version\":\"1\",\"file\":\"s.lua\",\"sha256\":\"" + SHA + "\"}";
+	}
+	CHECK_EQ(parseRepoIndex(just2000 + "]}", idx, err), true);
+	CHECK_EQ(idx.sources.size(), (size_t)2000);
+
+	// the design's repositories are HTTPS (5.3): an absolute http file is skipped; and an icon with a space in it
+	CHECK_EQ(parseRepoIndex("{\"format\":1,\"sources\":[{\"id\":\"a\",\"name\":\"A\",\"lang\":\"en\",\"version\":\"1\",\"file\":\"http://cdn.example/a.lua\",\"sha256\":\"" + SHA + "\"}]}", idx, err), true);
+	CHECK_EQ(idx.sources.size(), (size_t)0);
+	CHECK_EQ(err.find("not https") != std::string::npos, true);
+
+	// SHA-256 over bytes: the FIPS test vector for "abc" and for the empty string
+	CHECK_EQ(sha256Hex((const uint8_t*)"abc", 3), SHA);
+	CHECK_EQ(sha256Hex((const uint8_t*)"", 0), std::string("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
+	CHECK_EQ(sha256Hex(nullptr, 0), std::string("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
+	CHECK_EQ(sha256Hex(nullptr, 5), std::string(""));	// bytes claimed but none given
+	// the index's digest, upper or lower case
+	CHECK_EQ(sha256Matches(SHA, (const uint8_t*)"abc", 3), true);
+	CHECK_EQ(sha256Matches("BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD", (const uint8_t*)"abc", 3), true);
+	CHECK_EQ(sha256Matches(SHA, (const uint8_t*)"abd", 3), false);
+	CHECK_EQ(sha256Matches("ba7816bf", (const uint8_t*)"abc", 3), false);	// a truncated expected never matches
+
+	// versions compare numerically per part (update.h's rule, shared with the app's own updater)
+	CHECK_EQ(compareVersions("1.10", "1.9"), 1);
+	CHECK_EQ(compareVersions("1.9", "1.10"), -1);
+	CHECK_EQ(compareVersions("1.2.0", "1.2.0"), 0);
+	CHECK_EQ(compareVersions("1.2", "1.2.0"), 0);
+	CHECK_EQ(compareVersions("0.5.10", "0.5.9"), 1);
+	CHECK_EQ(updateAvailable("1.2.0", "1.3.0"), true);	// the index is higher: show Update
+	CHECK_EQ(updateAvailable("1.3.0", "1.3.0"), false);
+	CHECK_EQ(updateAvailable("1.3.0", "1.2.9"), false);
+	CHECK_EQ(updateAvailable("1.9", "1.10"), true);
+
+	// resolving a source's file against the index URL (design 5.3: relative to it)
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "sources/ember.lua"),
+		     std::string("https://repos.example.org/main/sources/ember.lua"));
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "/icons/tide.png"),
+		     std::string("https://repos.example.org/icons/tide.png"));
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "https://cdn.example.net/a.lua"),
+		     std::string("https://cdn.example.net/a.lua"));	// absolute stays
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "../shared/a.lua"),
+		     std::string("https://repos.example.org/shared/a.lua"));
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "./a.lua"),
+		     std::string("https://repos.example.org/main/a.lua"));
+	CHECK_EQ(repoResolve("https://repos.example.org", "a.lua"), std::string("https://repos.example.org/a.lua"));
+	CHECK_EQ(repoResolve("https://h/dir/index.json?v=3", "a.lua"), std::string("https://h/dir/a.lua"));	// the index's query is its own
+	CHECK_EQ(repoResolve("https://h/dir/index.json", "a.lua?x=1"), std::string("https://h/dir/a.lua?x=1"));
+	CHECK_EQ(repoResolve("http://h/x/index.json", "a.lua"), std::string("http://h/x/a.lua"));
+	CHECK_EQ(repoResolve("https://h/index.json", ""), std::string("https://h/index.json"));
+
+	// the shape of a URL this code will hold: http(s), a host, no credentials, no spaces or controls, ≤ 2048
+	for (const char* ok : {"https://repos.example.org/index.json", "http://192.168.1.5/index.json",
+			       "https://h:8443/a?q=1#frag", "HTTPS://UPPER.example/x"})
+		CHECK_EQ(validRepoUrl(ok), true);
+	std::string tooLong = "https://h/" + std::string(2048 - 10, 'a');	// exactly 2048 fits ("https://h/" is 10)
+	CHECK_EQ(validRepoUrl(tooLong), true);
+	tooLong += "a";
+	for (const char* no : {"", "https://", "https:///x", "ftp://host/x", "https://user:pass@host/x",
+			       "https://host name/x", "https:/x", "not-a-url", "https://a\nb"})
+		CHECK_EQ(validRepoUrl(no), false);
+	CHECK_EQ(validRepoUrl(tooLong), false);
 }
 
 // the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
@@ -6192,6 +6328,7 @@ int main()
 	testMangaNames();
 	testPageCache();
 	testDlQueue();
+	testMangaRepo();
 	testMangaUiLogic();
 	testPaged();
 	testMangaStore();
