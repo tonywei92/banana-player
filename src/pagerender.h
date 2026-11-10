@@ -56,5 +56,6 @@ namespace bp
 		int maxTex = 2048;
 		std::deque<Page> pages;
 		size_t bytes = 0;
+		std::vector<unsigned> dead;	// textures to delete at the next draw, in the top window's context
 	};
 }

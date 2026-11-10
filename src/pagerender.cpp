@@ -186,6 +186,8 @@ namespace bp
 		if (!gl) return;
 		for (auto& p : pages) freePage(p);
 		pages.clear();
+		if (!dead.empty()) gl->DeleteTextures((int)dead.size(), dead.data());
+		dead.clear();
 		if (grey) gl->DeleteTextures(1, &grey);
 		if (vbo) gl->DeleteBuffers(1, &vbo);
 		if (vao) gl->DeleteVertexArrays(1, &vao);
@@ -229,7 +231,9 @@ namespace bp
 		for (auto& t : p.tiles)
 			if (t.tex)
 			{
-				gl->DeleteTextures(1, &t.tex);
+				// not now: this can run with the bottom panel's GL context current (its renderer has textures of the
+				// same numbers: the cards' corners went to pieces). Freed at the next draw, with the top's current
+				dead.push_back(t.tex);
 				bytes -= (size_t)p.w * t.h * 4;
 				t.tex = 0;
 			}
@@ -289,6 +293,12 @@ namespace bp
 	bool PageRenderer::draw(const std::vector<Placed>& placed, int w, int h)
 	{
 		if (!gl || !prog) return false;
+		// (draw runs with the top window's context current: what freePage put aside goes here)
+		if (!dead.empty())
+		{
+			gl->DeleteTextures((int)dead.size(), dead.data());
+			dead.clear();
+		}
 		uploadOne();
 		// the screen's: mpv may have left its hidden target bound (what plays under the reader goes on there)
 		gl->BindFramebuffer(0x8D40 /* GL_FRAMEBUFFER */, 0);
