@@ -4,6 +4,7 @@
 #include "comicinfo.h"
 #include "cbz.h"
 #include "dlqueue.h"
+#include "cbzwrite.h"
 #include "browser.h"
 #include "crashlog.h"
 #include "durations.h"
@@ -1111,6 +1112,159 @@ static void testOpds()
 	CHECK_EQ(komgaUrl("https://komga.example//", "api/v1"), std::string("https://komga.example/api/v1"));
 	CHECK_EQ(komgaUrl("https://komga.example/", ""), std::string("https://komga.example"));
 	CHECK_EQ(komgaUrl("", "/api/v1/books"), std::string("/api/v1/books"));
+}
+
+// the CBZ writer: what a download becomes on the card, read back with the reader that will open it
+static void testCbzWrite()
+{
+	const std::string P = std::string(BP_TESTS_DIR) + "/pages/";
+	const std::string jpgP = P + "page.jpg", pngP = P + "page.png";
+	auto file = [](const std::string& path)
+	{
+		std::ifstream f(path, std::ios::binary);
+		return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+	const std::vector<uint8_t> jpg = file(jpgP), png = file(pngP);
+	CHECK_EQ(jpg.empty(), false);
+	CHECK_EQ(png.empty(), false);
+	std::vector<uint8_t> out;
+
+	char tmpl[] = "/tmp/bp-cbzwrite-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	CHECK_EQ(made != nullptr, true);
+	if (!made) return;
+	const std::string D = made;
+
+	ComicInfo c;
+	c.series = "Test Series";
+	c.number = "3";
+	c.volume = 1;
+	c.title = "Chapter Three";
+	c.pageCount = 3;
+	c.rightToLeft = true;
+	c.summary = "A page & a half";
+	c.sourceId = "komga";
+	c.seriesKey = "abc-123";
+	const std::string xml = writeComicInfo(c);
+
+	// a chapter: three pages added with addFile and the metadata with add; a stale .part must not survive
+	const std::string chapter = D + "/ch.cbz";
+	{ std::ofstream stale(chapter + ".part"); stale << "half a download from a crashed run"; }
+	{
+		CbzWriter w;
+		CHECK_EQ(w.addFile("001.jpg", jpgP), false);	// nothing open yet
+		CHECK_EQ(w.error().empty(), false);
+		CHECK_EQ(w.open(chapter), true);
+		CHECK_EQ(w.open(chapter), false);			// one archive at a time
+		CHECK_EQ(w.addFile("001.jpg", jpgP), true);
+		CHECK_EQ(w.addFile("002.png", pngP), true);
+		CHECK_EQ(w.addFile("003.jpg", jpgP), true);
+		CHECK_EQ(w.add("ComicInfo.xml", (const uint8_t*)xml.data(), xml.size()), true);
+		CHECK_EQ(w.add("001.jpg", png.data(), png.size()), false);	// a name already in the archive
+		CHECK_EQ(w.error().empty(), false);
+		CHECK_EQ(w.add("../escape.jpg", png.data(), png.size()), false);	// would leave the folder
+		CHECK_EQ(w.add("/abs.jpg", png.data(), png.size()), false);
+		CHECK_EQ(w.add("a\\b.jpg", png.data(), png.size()), false);
+		CHECK_EQ(w.add("", png.data(), png.size()), false);
+		CHECK_EQ(w.addFile("nope.jpg", D + "/no-such-file"), false);	// a source that isn't there
+		CHECK_EQ(w.error().empty(), false);
+		CHECK_EQ(w.finish(), true);
+		CHECK_EQ(w.add("late.jpg", png.data(), png.size()), false);	// finished: the archive is closed
+	}
+
+	// reads back with the same reader a chapter uses: byte-identical entries, stored not deflated
+	Cbz z;
+	CHECK_EQ(z.open(chapter), true);
+	CHECK_EQ(z.error().empty(), true);
+	CHECK_EQ(z.entries().size(), (size_t)4);
+	CHECK_EQ(z.pages(), (std::vector<std::string>{"001.jpg", "002.png", "003.jpg"}));
+	for (const CbzEntry& e : z.entries())
+	{
+		CHECK_EQ(e.method, (uint32_t)0);
+		CHECK_EQ(e.packed, e.size);	// stored: nothing was compressed away
+	}
+	CHECK_EQ(z.read("001.jpg", out) && out == jpg, true);
+	CHECK_EQ(z.read("002.png", out) && out == png, true);
+	CHECK_EQ(z.read("003.jpg", out) && out == jpg, true);
+	CHECK_EQ(z.read("ComicInfo.xml", out) && std::string(out.begin(), out.end()) == xml, true);
+	ComicInfo c2;
+	CHECK_EQ(parseComicInfo(std::string(out.begin(), out.end()), c2), true);
+	CHECK_EQ(c2.series, std::string("Test Series"));
+	CHECK_EQ(c2.number, std::string("3"));
+	CHECK_EQ(c2.volume, 1);
+	CHECK_EQ(c2.title, std::string("Chapter Three"));
+	CHECK_EQ(c2.pageCount, 3);
+	CHECK_EQ(c2.rightToLeft, true);
+	CHECK_EQ(c2.summary, std::string("A page & a half"));
+	CHECK_EQ(c2.sourceId, std::string("komga"));
+	CHECK_EQ(c2.seriesKey, std::string("abc-123"));
+	z.close();
+	// the .part was renamed into place: no half chapter is left behind
+	{ std::ifstream t(chapter + ".part"); CHECK_EQ(t.good(), false); }
+
+	// a UTF-8 name: bit 11 set on it and not on the ASCII one, and it reads back as it was written
+	{
+		const std::string jp = "\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88 page.jpg";	// "Test page.jpg"
+		CbzWriter w;
+		CHECK_EQ(w.open(D + "/utf.cbz"), true);
+		CHECK_EQ(w.add("001.jpg", jpg.data(), jpg.size()), true);
+		CHECK_EQ(w.add(jp, jpg.data(), jpg.size()), true);
+		CHECK_EQ(w.finish(), true);
+		// the second entry's local header follows the first's (30 bytes + a 7-byte name) and its data, and
+		// the flags sit 6 in from the signature
+		const std::vector<uint8_t> raw = file(D + "/utf.cbz");
+		const size_t second = 30 + 7 + jpg.size();
+		CHECK_EQ(raw[second] == 'P' && raw[second + 1] == 'K' && raw[second + 2] == 3 && raw[second + 3] == 4, true);
+		CHECK_EQ(raw[6] | (raw[7] << 8), 0);
+		CHECK_EQ(raw[second + 6] | (raw[second + 7] << 8), 0x800);
+		CHECK_EQ((int)raw[second + 30], 0xE3);	// the raw UTF-8 name starts here
+		Cbz u;
+		CHECK_EQ(u.open(D + "/utf.cbz"), true);
+		CHECK_EQ(u.entries().size(), (size_t)2);
+		CHECK_EQ(u.pages(), (std::vector<std::string>{"001.jpg", jp}));	// the extension past the Japanese counts
+		CHECK_EQ(u.read(jp, out) && out == jpg, true);
+		CHECK_EQ(u.read("001.jpg", out) && out == jpg, true);
+	}
+
+	// abort() leaves neither the archive nor its .part, and a dropped writer aborts by itself
+	{
+		CbzWriter w;
+		CHECK_EQ(w.open(D + "/aborted.cbz"), true);
+		CHECK_EQ(w.addFile("001.jpg", jpgP), true);
+		w.abort();
+		std::ifstream a(D + "/aborted.cbz"), b(D + "/aborted.cbz.part");
+		CHECK_EQ(a.good(), false);
+		CHECK_EQ(b.good(), false);
+		CHECK_EQ(w.open(D + "/left.cbz"), true);	// reusable after an abort
+		CHECK_EQ(w.add("001.jpg", jpg.data(), jpg.size()), true);
+	}	// w goes out of scope half-written
+	{ std::ifstream b(D + "/left.cbz.part"); CHECK_EQ(b.good(), false); }
+	{ std::ifstream a(D + "/left.cbz"); CHECK_EQ(a.good(), false); }
+
+	// the entry cap: a chapter never has this many, and the reader would refuse them (no ZIP64)
+	{
+		CbzWriter w;
+		CHECK_EQ(w.open(D + "/cap.cbz"), true);
+		for (int k = 0; k < 10000; k++)
+			CHECK_EQ(w.add(std::to_string(k) + ".jpg", nullptr, 0), true);
+		CHECK_EQ(w.add("10000.jpg", nullptr, 0), false);
+		CHECK_EQ(w.error().empty(), false);
+		w.abort();
+	}
+
+	// an empty archive is a valid one: Cbz opens it and finds no pages
+	{
+		CbzWriter w;
+		CHECK_EQ(w.open(D + "/empty.cbz"), true);
+		CHECK_EQ(w.finish(), true);
+		Cbz e;
+		CHECK_EQ(e.open(D + "/empty.cbz"), true);
+		CHECK_EQ(e.entries().empty(), true);
+		CHECK_EQ(e.pages().empty(), true);
+	}
+
+	for (const char* n : {"ch.cbz", "utf.cbz", "cap.cbz", "empty.cbz"}) std::remove((D + "/" + n).c_str());
+	rmdir(D.c_str());
 }
 
 // the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
@@ -6550,6 +6704,7 @@ int main()
 	testDlQueue();
 	testMangaRepo();
 	testOpds();
+	testCbzWrite();
 	testMangaUiLogic();
 	testPaged();
 	testMangaStore();
