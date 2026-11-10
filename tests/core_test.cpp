@@ -17,6 +17,7 @@ extern "C"
 #include "format.h"
 #include "ftplist.h"
 #include "history.h"
+#include "htmldoc.h"
 #include "photo.h"
 #include "picsubs.h"
 #include "png.h"
@@ -512,6 +513,106 @@ static void testMangaServers()
 	rmdir((broken + "/manga").c_str());
 	rmdir(broken.c_str());
 	rmdir(root.c_str());
+}
+
+// bp.html for the source scripts (docs/design/manga.md 5.2): parse a page, find nodes by CSS, read them
+static void testHtmlDoc()
+{
+	HtmlDoc doc;
+	CHECK_EQ(doc.parse(
+		"<!DOCTYPE html><html><head><title>Manga &amp; More</title>"
+		"<style>.hide { display: none }</style></head><body>"
+		"<div id='main' class='page'>"
+		"  <div class='box'><ul class='list'>"
+		"    <li class='item' data-src='a.jpg'><a href='/m/1'><b>One</b> &amp; more</a></li>"
+		"    <li class='item'><a href='/m/2'>Two</a><img src='blank.gif' data-src='b.jpg'></li>"
+		"    <li class='item hide'><a href='/m/3'>Three &lt;4&gt;</a></li>"
+		"  </ul></div>"
+		"  <script>var x = 1 < 2;</script>"
+		"</div></body></html>"), true);
+
+	// by tag, class, id, attribute; script and style are nodes like any other
+	CHECK_EQ(doc.select("li").size(), size_t(3));
+	CHECK_EQ(doc.select(".item").size(), size_t(3));
+	CHECK_EQ(doc.select("li.hide").size(), size_t(1));
+	CHECK_EQ(doc.select("#main").size(), size_t(1));
+	CHECK_EQ(doc.select("[data-src]").size(), size_t(2));
+	CHECK_EQ(doc.select("script").size(), size_t(1));
+	CHECK_EQ(doc.select("style").size(), size_t(1));
+
+	// descendant and child combinators: the li's are inside the div but are no div's children
+	CHECK_EQ(doc.select("div li").size(), size_t(3));
+	CHECK_EQ(doc.select("ul > li").size(), size_t(3));
+	CHECK_EQ(doc.select("div > li").size(), size_t(0));
+	CHECK_EQ(doc.select("li b").size(), size_t(1));
+	// :nth-child; and a comma list finds each node once even when #main matches two of its parts
+	CHECK_EQ(doc.select("li:nth-child(2)").size(), size_t(1));
+	CHECK_EQ(doc.select("img, title").size(), size_t(2));
+	CHECK_EQ(doc.select("#main, .list, #main").size(), size_t(2));
+
+	// text(): the descendants' text joined, entities read, whitespace collapsed and trimmed
+	CHECK_EQ(doc.selectFirst("li.item").text(), std::string("One & more"));
+	CHECK_EQ(doc.selectFirst("b").text(), std::string("One"));
+	CHECK_EQ(doc.selectFirst("li.hide").text(), std::string("Three <4>"));
+	CHECK_EQ(doc.selectFirst("title").text(), std::string("Manga & More"));
+
+	// attr(): present and absent, the name matched as HTML matches it; tag() names the element
+	CHECK_EQ(doc.selectFirst("li.item").attr("data-src"), std::string("a.jpg"));
+	CHECK_EQ(doc.selectFirst("a").attr("href"), std::string("/m/1"));
+	CHECK_EQ(doc.selectFirst("a").attr("title"), std::string(""));
+	CHECK_EQ(doc.selectFirst("img").attr("SRC"), std::string("blank.gif"));
+	CHECK_EQ(doc.selectFirst("img").tag(), std::string("img"));
+
+	// html(): outerHTML back as written (lexbor's serializer uses double quotes and keeps the escape)
+	CHECK_EQ(doc.selectFirst("a").html(), std::string("<a href=\"/m/1\"><b>One</b> &amp; more</a>"));
+	// a void element: attributes in their written order, no closing tag
+	CHECK_EQ(doc.selectFirst("img").html(), std::string("<img src=\"blank.gif\" data-src=\"b.jpg\">"));
+
+	// a node's select searches only inside it, never returning the node itself
+	HtmlNode main = doc.selectFirst("#main");
+	CHECK_EQ(main.valid(), true);
+	CHECK_EQ(main.select("li").size(), size_t(3));
+	CHECK_EQ(main.select("#main").size(), size_t(0));
+	HtmlNode li1 = doc.selectFirst("li.item");
+	CHECK_EQ(li1.select("a").size(), size_t(1));
+	CHECK_EQ(li1.select("img").size(), size_t(0));	// the img lives in the next li
+	CHECK_EQ(li1.selectFirst("b").text(), std::string("One"));
+
+	// a broken selector, and an empty selector, are nothing found, not a crash
+	CHECK_EQ(doc.select("div[[").size(), size_t(0));
+	CHECK_EQ(doc.select("##").size(), size_t(0));
+	CHECK_EQ(doc.select("").size(), size_t(0));
+	CHECK_EQ(doc.selectFirst("###").valid(), false);
+
+	// empty input parses and holds nothing; a default handle answers instead of throwing
+	HtmlDoc empty;
+	CHECK_EQ(empty.parse(""), true);
+	CHECK_EQ(empty.select("div").size(), size_t(0));
+	CHECK_EQ(empty.selectFirst("div").valid(), false);
+	HtmlNode none;
+	CHECK_EQ(none.valid(), false);
+	CHECK_EQ(none.text(), std::string(""));
+	CHECK_EQ(none.attr("href"), std::string(""));
+	CHECK_EQ(none.html(), std::string(""));
+	CHECK_EQ(none.select("div").size(), size_t(0));
+
+	// malformed HTML parses as browsers do: p closes before li, crossed tags are fixed up
+	HtmlDoc bad;
+	CHECK_EQ(bad.parse("<div class='x'><p>text<li>item</div>"), true);
+	CHECK_EQ(bad.select("p").size(), size_t(1));
+	CHECK_EQ(bad.select("li").size(), size_t(1));
+	CHECK_EQ(bad.selectFirst("div.x > li").text(), std::string("item"));
+	CHECK_EQ(bad.parse("<div><span></div><span>"), true);	// the re-parse also drops the old tree, cleanly
+	CHECK_EQ(bad.select("div span").size(), size_t(1));
+
+	// the caps: over 8 MB in is refused whole (the document stays usable), one select returns at most 20000
+	HtmlDoc cap;
+	CHECK_EQ(cap.parse(std::string(8u * 1024u * 1024u + 1, 'x')), false);
+	std::string many;
+	for (int i = 0; i < 20005; i++) many += "<div></div>";
+	CHECK_EQ(cap.parse(many), true);
+	CHECK_EQ(cap.select("div").size(), size_t(20000));
+	CHECK_EQ(cap.selectFirst("div").valid(), true);
 }
 
 // the page cache: a page goes in and comes back, the least recently used goes first over the cap, and the index
@@ -6952,6 +7053,7 @@ int main()
 	testDurations();
 	testMangaNames();
 	testMangaServers();
+	testHtmlDoc();
 	testPageCache();
 	testDlQueue();
 	testMangaRepo();

@@ -32,11 +32,44 @@ if(APPLE AND NOT OPENSSL_ROOT_DIR)
 endif()
 find_package(OpenSSL REQUIRED)
 
+# lexbor: the vendored HTML parser and CSS selectors (third_party/README.md) behind bp.html. Built as its own CMake
+# builds it statically: only the vendored modules, C99, LEXBOR_STATIC, position independent, its warnings not ours.
+enable_language(C)
+file(GLOB_RECURSE LEXBOR_SOURCES CONFIGURE_DEPENDS
+	third_party/lexbor/source/lexbor/core/*.c
+	third_party/lexbor/source/lexbor/css/*.c
+	third_party/lexbor/source/lexbor/dom/*.c
+	third_party/lexbor/source/lexbor/html/*.c
+	third_party/lexbor/source/lexbor/ns/*.c
+	third_party/lexbor/source/lexbor/selectors/*.c
+	third_party/lexbor/source/lexbor/tag/*.c)
+# lexbor picks one port per platform; only posix is ever built here (windows_nt kept for completeness, never tested)
+if(WIN32)
+	file(GLOB_RECURSE LEXBOR_PORT_SOURCES CONFIGURE_DEPENDS third_party/lexbor/source/lexbor/ports/windows_nt/*.c)
+else()
+	file(GLOB_RECURSE LEXBOR_PORT_SOURCES CONFIGURE_DEPENDS third_party/lexbor/source/lexbor/ports/posix/*.c)
+endif()
+list(APPEND LEXBOR_SOURCES ${LEXBOR_PORT_SOURCES})
+add_library(lexbor_static STATIC ${LEXBOR_SOURCES})
+target_include_directories(lexbor_static PUBLIC third_party/lexbor/source)
+set_target_properties(lexbor_static PROPERTIES C_STANDARD 99 C_EXTENSIONS OFF POSITION_INDEPENDENT_CODE ON)
+target_compile_definitions(lexbor_static PRIVATE LEXBOR_STATIC)	# core/def.h: this makes LXB_API plain, no dll machinery
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+	target_compile_definitions(lexbor_static PRIVATE _POSIX_C_SOURCE=199309L)	# from the vendored ports/posix/config.cmake
+endif()
+if(NOT MSVC)
+	target_compile_options(lexbor_static PRIVATE -w)
+endif()
+if(UNIX)
+	target_link_libraries(lexbor_static PRIVATE m)	# ceil() in core/dtoa.c; its config.cmake looks for libm
+endif()
+
 # what doesn't need a window: unit-tested on its own
 add_library(bpcore STATIC src/aspect.cpp src/tracks.cpp src/format.cpp src/substyle.cpp src/settings.cpp src/resume.cpp src/playlist.cpp src/browser.cpp src/history.cpp src/png.cpp src/battery.cpp src/photo.cpp src/update.cpp src/backlight.cpp src/netstore.cpp src/netpath.cpp src/servers.cpp src/secret.cpp src/sidecar.cpp src/ftplist.cpp src/keyboard.cpp src/eq.cpp src/soundfx.cpp src/playlists.cpp
-	src/webauth.cpp src/webpath.cpp src/json.cpp src/webmedia.cpp src/webstate.cpp src/crashlog.cpp src/session.cpp src/durations.cpp src/picsubs.cpp src/manga_names.cpp src/mangastore.cpp src/pagecache.cpp src/strip.cpp src/comicinfo.cpp src/cbz.cpp src/mangalocal.cpp src/manga_ui_logic.cpp src/paged.cpp src/dlqueue.cpp src/mangarepo.cpp src/opds.cpp src/cbzwrite.cpp src/mangaservers.cpp)
+	src/webauth.cpp src/webpath.cpp src/json.cpp src/webmedia.cpp src/webstate.cpp src/crashlog.cpp src/session.cpp src/durations.cpp src/picsubs.cpp src/manga_names.cpp src/mangastore.cpp src/pagecache.cpp src/strip.cpp src/comicinfo.cpp src/cbz.cpp src/mangalocal.cpp src/manga_ui_logic.cpp src/paged.cpp src/dlqueue.cpp src/mangarepo.cpp src/opds.cpp src/cbzwrite.cpp src/mangaservers.cpp src/htmldoc.cpp)
 target_include_directories(bpcore PUBLIC src)
 target_link_libraries(bpcore PUBLIC PkgConfig::MPV PkgConfig::ZLIB OpenSSL::Crypto ${CMAKE_DL_LIBS})
+target_link_libraries(bpcore PRIVATE lexbor_static)	# src/htmldoc.h hides lexbor, so nothing downstream includes it
 if(APPLE)
 	target_link_libraries(bpcore PUBLIC iconv)	# glibc has iconv in libc; macOS has it apart
 endif()
