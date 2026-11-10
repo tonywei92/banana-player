@@ -25,6 +25,7 @@ extern "C"
 #include "keyboard.h"
 #include "manga_names.h"
 #include "netpath.h"
+#include "pagedecode.h"
 #include "secret.h"
 #include "servers.h"
 #include "sidecar.h"
@@ -437,6 +438,113 @@ static void testComicInfo()
 	CHECK_EQ(writeComicInfo(t).find("<Title>A &amp; B &lt; C &gt; D &quot;E&quot;</Title>") != std::string::npos, true);
 	t.title = "x\x01y\tz";
 	CHECK_EQ(writeComicInfo(t).find("<Title>xy\tz</Title>") != std::string::npos, true);
+}
+
+static void testPageDecode()
+{
+	const std::string pages = std::string(BP_TESTS_DIR) + "/pages/";
+	auto readBytes = [](const std::string& path) {
+		std::ifstream in(path, std::ios::binary);
+		return std::vector<uint8_t>((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	};
+
+	// a page's own size, the panel's width and the 2x cap, for each still format the fixtures carry
+	for (const char* name : {"page.jpg", "page.png", "page.webp"})
+	{
+		const std::string path = pages + name;
+		PageImage at60 = decodePageFile(path, 60);
+		CHECK_EQ(at60.ok(), true);
+		CHECK_EQ(at60.srcW, 120);
+		CHECK_EQ(at60.srcH, 180);
+		CHECK_EQ(at60.w, 60);
+		CHECK_EQ(at60.h, 90);
+		CHECK_EQ(at60.rgba.size(), (size_t)60 * 90 * 4);
+
+		PageImage own = decodePageFile(path, 0);
+		CHECK_EQ(own.ok(), true);
+		CHECK_EQ(own.w, 120);
+		CHECK_EQ(own.h, 180);
+
+		PageImage big = decodePageFile(path, 1000);
+		CHECK_EQ(big.ok(), true);
+		CHECK_EQ(big.w, 240);	// never over 2x the image's own width
+		CHECK_EQ(big.h, 360);
+
+		// the format comes from the bytes, not a name: a page out of an archive or a server has none
+		std::vector<uint8_t> bytes = readBytes(path);
+		PageImage fromBytes = decodePage(bytes.data(), bytes.size(), 60);
+		CHECK_EQ(fromBytes.ok(), true);
+		CHECK_EQ(fromBytes.w, 60);
+		CHECK_EQ(fromBytes.h, 90);
+	}
+
+	// a cut PNG has no IEND: the decoder must refuse it rather than hand back half a page
+	std::vector<uint8_t> pngBytes = readBytes(pages + "page.png");
+	PageImage cutPng = decodePage(pngBytes.data(), pngBytes.size() / 2, 0);
+	CHECK_EQ(cutPng.ok(), false);
+	CHECK_EQ(cutPng.error.empty(), false);
+
+	// solid 0x336699 RGB: no alpha in the file, so the decoder gives opaque pixels
+	PageImage wide = decodePageFile(pages + "wide.png", 0);
+	CHECK_EQ(wide.ok(), true);
+	CHECK_EQ(wide.srcW, 64);
+	CHECK_EQ(wide.srcH, 48);
+	CHECK_EQ(wide.w, 64);
+	CHECK_EQ(wide.h, 48);
+	const uint8_t* wp = &wide.rgba[(10 * wide.w + 10) * 4];
+	CHECK_EQ(std::abs((int)wp[0] - 0x33) <= 4, true);
+	CHECK_EQ(std::abs((int)wp[1] - 0x66) <= 4, true);
+	CHECK_EQ(std::abs((int)wp[2] - 0x99) <= 4, true);
+	CHECK_EQ(wp[3], 255);
+
+	// red at half alpha: a paletted PNG's transparency reaches the RGBA buffer
+	PageImage alpha = decodePageFile(pages + "alpha.png", 0);
+	CHECK_EQ(alpha.ok(), true);
+	CHECK_EQ(alpha.w, 40);
+	CHECK_EQ(alpha.h, 60);
+	const uint8_t* ap = &alpha.rgba[(30 * alpha.w + 20) * 4];
+	CHECK_EQ(std::abs((int)ap[0] - 255) <= 4, true);
+	CHECK_EQ(std::abs((int)ap[3] - 128) <= 4, true);
+
+	// maxH caps the height and shrinks the width with the aspect
+	PageImage capped = decodePageFile(pages + "page.jpg", 120, 90);
+	CHECK_EQ(capped.ok(), true);
+	CHECK_EQ(capped.w, 60);
+	CHECK_EQ(capped.h, 90);
+	PageImage cappedOwn = decodePageFile(pages + "page.jpg", 0, 60);
+	CHECK_EQ(cappedOwn.ok(), true);
+	CHECK_EQ(cappedOwn.w, 40);
+	CHECK_EQ(cappedOwn.h, 60);
+
+	// an odd scaled size is rounded to at least one row and still has no stride padding
+	PageImage oddSize = decodePageFile(pages + "wide.png", 33);
+	CHECK_EQ(oddSize.ok(), true);
+	CHECK_EQ(oddSize.w, 33);
+	CHECK_EQ(oddSize.h, 25);
+	CHECK_EQ(oddSize.rgba.size(), (size_t)33 * 25 * 4);
+
+	// no input, no format, a cut file and a file that isn't there: an error, never a crash
+	PageImage empty = decodePage(nullptr, 0, 0);
+	CHECK_EQ(empty.ok(), false);
+	CHECK_EQ(empty.error.empty(), false);
+	const uint8_t junk[] = {0x00, 0x01, 0x02, 0x03};
+	PageImage unknown = decodePage(junk, sizeof junk, 0);
+	CHECK_EQ(unknown.ok(), false);
+	CHECK_EQ(unknown.error.empty(), false);
+	// an AVIF box with no picture in it exercises the container path's clean refusal
+	const uint8_t fakeAvif[] = {0, 0, 0, 20, 'f', 't', 'y', 'p', 'a', 'v', 'i', 'f', 0, 0, 0, 0};
+	PageImage avif = decodePage(fakeAvif, sizeof fakeAvif, 0);
+	CHECK_EQ(avif.ok(), false);
+	CHECK_EQ(avif.error.empty(), false);
+	PageImage broken = decodePageFile(pages + "broken.jpg", 0);
+	CHECK_EQ(broken.ok(), false);
+	CHECK_EQ(broken.error.empty(), false);
+	PageImage truncated = decodePageFile(pages + "truncated.jpg", 0);
+	CHECK_EQ(truncated.ok(), false);
+	CHECK_EQ(truncated.error.empty(), false);
+	PageImage missing = decodePageFile(pages + "missing.jpg", 0);
+	CHECK_EQ(missing.ok(), false);
+	CHECK_EQ(missing.error.empty(), false);
 }
 
 static bool near(double a, double b, double eps = 1e-6)
@@ -4558,6 +4666,8 @@ int main()
 	testDurations();
 	testMangaNames();
 	testComicInfo();
+
+	testPageDecode();
 	testStrip();
 	testLabels();
 	testTrackList();

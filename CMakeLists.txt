@@ -42,8 +42,8 @@ if(APPLE)
 endif()
 
 # libavformat (FFmpeg: libmpv's own dependency) for the file lists' durations; the web dashboard's probe uses it too
-pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil)
-add_library(bpprobe STATIC src/durprobe.cpp)
+pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
+add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp)
 target_link_libraries(bpprobe PUBLIC bpcore PkgConfig::AV)
 
 add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp)
