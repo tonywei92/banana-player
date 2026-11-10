@@ -4,7 +4,8 @@ import { errToast, post } from './api.js';
 import { AppMenu } from './components.js';
 import { Icon } from './icons.js';
 
-/* ================= settings ================= */
+/* ================= extensions ================= */
+// (its own page, as on the handheld: extensions are turned on and off here, not among any settings)
 // the manga reader's switch, in the dashboard's Manage extensions card: it is the handheld's own setting, so the
 // page sends it and the handheld applies it (the other switches there work the same way)
 function setManga(on) {
@@ -16,10 +17,10 @@ function setManga(on) {
 	});
 }
 
-export function Settings() {
+export function Extensions() {
 	const s = useStore(), sn = s.snap, on = !!(sn && sn.mangaOn);
 	return html`<div class="page">
-		<div class="phead"><div class="row"><h1>Settings</h1><${AppMenu} /></div></div>
+		<div class="phead"><div class="row"><h1>Extensions</h1><${AppMenu} /></div></div>
 		<section class="box surface card" aria-label="Manage extensions">
 			<div class="card-head"><h2>Manage extensions</h2></div>
 			<div class="line">

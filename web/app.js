@@ -14,7 +14,7 @@ import { Playlists } from './js/playlists.js';
 import { RECENT_ID } from './js/recent.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
 import { Files, Lightbox, UploadFab } from './js/files.js';
-import { Settings } from './js/settings.js';
+import { Extensions } from './js/extensions.js';
 import { DownScreen } from './js/down.js';
 import { Login, loadExtras, pinFromHash, pingBoot } from './js/login.js';
 import { C, connFail, goDown } from './js/connection.js';
@@ -22,7 +22,7 @@ import { boot, signOut } from './js/session.js';
 import { toast } from './js/toasts.js';
 
 /* ================= shell ================= */
-const NAV = [['playing', 'Playing', 'note', '#/playing'], ['files', 'Files', 'folder', '#/files'], ['playlists', 'Playlists', 'playlist', '#/playlists'], ['settings', 'Settings', 'gear', '#/settings']];
+const NAV = [['playing', 'Playing', 'note', '#/playing'], ['files', 'Files', 'folder', '#/files'], ['playlists', 'Playlists', 'playlist', '#/playlists'], ['extensions', 'Extensions', 'blocks', '#/extensions']];
 async function loadPls() { try { set({ pls: (await get('/api/playlists', null, { quiet: true })).playlists || [] }); } catch (e) {} }
 
 // the handheld plays it behind its browser (its player left, not stopped): the bars say so
@@ -170,7 +170,7 @@ function Shell() {
 		};
 		addEventListener('keydown', key); return () => removeEventListener('keydown', key);
 	}, []);
-	const page = r.page === 'files' ? html`<${Files} />` : r.page === 'playlists' ? html`<${Playlists} />` : r.page === 'settings' ? html`<${Settings} />` : html`<${NowPlaying} />`;
+	const page = r.page === 'files' ? html`<${Files} />` : r.page === 'playlists' ? html`<${Playlists} />` : r.page === 'extensions' ? html`<${Extensions} />` : html`<${NowPlaying} />`;
 	const miniShown = !wide && v.has && r.page !== 'playing' && !s.selecting;
 	const fabShown = r.page !== 'playing' && !s.selecting && !s.pick && (s.upload.items.length > 0 || (r.page === 'files' && !!r.path));
 	const nav = (k, h) => go(k === 'files' ? filesHash(store.lastDir || '') : h);
