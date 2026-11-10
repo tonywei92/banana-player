@@ -238,7 +238,7 @@ namespace bp
 			menuReturnDir = browseDir;
 			menuReturnCursor = cursor;
 			menuReturnScroll = scroll;
-			menuReturnPage = page == Page::Extensions || page == Page::Manga ? page : Page::Browse;
+			menuReturnPage = page == Page::Extensions ? page : Page::Browse;
 		}
 		inMenu = true;
 		showTab(tab, p);
@@ -264,7 +264,7 @@ namespace bp
 		playOnOpen = false;
 		// (over what plays behind the browser: back to the browser)
 		if (playerShown(p)) { page = Page::Main; return; }
-		// Manage extensions or Manga, as they were
+		// Manage extensions, as it was
 		if (menuReturnPage != Page::Browse)
 		{
 			page = menuReturnPage;

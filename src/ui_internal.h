@@ -44,8 +44,9 @@ namespace bp
 		{{Button::Y, "Y"}, {Button::X, "X"}, {Button::Select, "SELECT"}, {Button::Up, "UP/DOWN"}, {Button::Start, "START"}},
 	};
 
-	// the settings' on/off rows (TOGGLE_ROW + their index). The fullscreen tip's is one of the switches (a setting as
-	// any other) though no group lists it: it has a label only because the two arrays go together
+	// the settings' on/off rows (TOGGLE_ROW + their index). The manga reader's are its own page's, which no group of
+	// Settings lists, and the fullscreen tip's is a switch too though nothing shows it: it has a label only because the
+	// two arrays go together
 	inline const char* REMEMBER_LABELS[19] = {"Remember position", "Remember audio track", "Remember subtitles",
 		"Remember last folder", "Keep play history", "Button hotkeys", "Show hidden folders", "Battery percentage",
 		"Keep zoom between photos", "Check automatically", "Same for both screens", "Network files in Recent",
@@ -66,7 +67,6 @@ namespace bp
 		{"Controls & screen", "Brightness, buttons"},
 		{"Updates", "New versions"},
 		{"Web dashboard", ""},	// (its line is its state: drawSettings)
-		{"Extensions", ""}		// (its line is its state too)
 	};
 	inline const char* RECENT = "\x01recent";
 	inline const char* HOMEDIR = "\x01home";	// Home: the Recent strip and the sections' tiles

@@ -114,7 +114,7 @@ namespace bp
 		// the web dashboard (Settings › Web dashboard, quick settings): its server runs from the start while this is
 		// on, across restarts. Not a row of the switches: its page turns it on and off
 		bool webDashboard = false;
-		// the manga reader (Settings › Extensions, Manage extensions): off by default; off, nothing of it shows or runs
+		// the manga reader (Manage extensions): off by default; off, nothing of it shows or runs
 		bool mangaOn = false;
 		// the manga reader's mode for a series that has none of its own: right to left (printed manga), left to right, strip
 		int mangaMode = 0;

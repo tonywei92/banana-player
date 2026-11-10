@@ -81,7 +81,7 @@ namespace bp
 		switch (b)
 		{
 		case Button::A: extToggleManga(p); break;
-		case Button::X: case Button::Right: openExtSettings(p); break;
+		case Button::X: case Button::Right: openExtSettings(); break;
 		case Button::Start: openMainMenu(p, playingTabShown(p) ? TAB_PLAYING : TAB_SETTINGS); break;
 		case Button::B: openExtensionsDrawer(p); break;
 		default: break;
@@ -122,11 +122,10 @@ namespace bp
 		return r.hit(x, y) && extAct(id, p);
 	}
 
-	void Ui::openExtSettings(Player& p)
+	void Ui::openExtSettings()
 	{
-		// through the menu, as Settings always is (its tabs, its "<"); closing it comes back here (menuReturnPage)
-		openMainMenu(p, TAB_SETTINGS);
-		openGroup(GROUP_EXT);
+		// the manga reader's own page (not Banana Player's Settings): B comes back here, as it was
+		openMangaSettings();
 	}
 
 	bool Ui::extAct(int id, Player& p)
@@ -135,7 +134,7 @@ namespace bp
 		if (id == EXT_TILE) openManga(p);
 		else if (id == EXT_MANAGE) openExtensions();
 		else if (id == EXT_ROW || id == EXT_CHIP) extToggleManga(p);
-		else if (id == EXT_GEAR) openExtSettings(p);
+		else if (id == EXT_GEAR) openExtSettings();
 		return false;
 	}
 

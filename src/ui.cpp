@@ -202,6 +202,7 @@ namespace bp
 		// Manage extensions and the manga reader's pages: their own keys (the sheet over the first)
 		if (page == Page::Extensions || page == Page::Manga) return extKey(b, p);
 		if (page == Page::MangaSeries || page == Page::MangaRead) return mangaKey(b, p);
+		if (page == Page::MangaSettings) return mangaSettingsKey(b, p);
 		if (page == Page::Settings)
 		{
 			auto rows = settingRows();
@@ -795,10 +796,13 @@ namespace bp
 		if (homeTouch) return homePointer(pt, x, y, p);
 		if (listTouch)
 		{
-			// a list (the tracks, the browser, the settings): a drag scrolls it, a tap acts as the finger lifts
-			bool set = page == Page::Settings, info = page == Page::Info || page == Page::About;
-			int n = set ? (setGroup < 0 ? GROUPS : (int)settingRows().size()) : info ? (int)infoLines.size() : (int)rows(p).size();
-			int rowH = set ? (setGroup < 0 ? 84 : SET_H) : info ? INFO_H : ROW_H, shown = set ? SET_SHOWN : info ? INFO_SHOWN : ROWS_SHOWN;
+			// a list (the tracks, the browser, the settings, the manga's): a drag scrolls it, a tap acts as the finger
+			// lifts
+			bool set = page == Page::Settings || page == Page::MangaSettings, groups = page == Page::Settings && setGroup < 0;
+			bool info = page == Page::Info || page == Page::About;
+			auto srows = set && !groups ? (page == Page::MangaSettings ? mangaSettingRows() : settingRows()) : std::vector<int>();
+			int n = groups ? GROUPS : set ? (int)srows.size() : info ? (int)infoLines.size() : (int)rows(p).size();
+			int rowH = groups ? 84 : set ? SET_H : info ? INFO_H : ROW_H, shown = set ? SET_SHOWN : info ? INFO_SHOWN : ROWS_SHOWN;
 			if (pt.kind == Pointer::Move && (listScrolled || std::abs(y - touchStartY) > 12))
 			{
 				listScrolled = true;
@@ -814,9 +818,10 @@ namespace bp
 				holdAt = 0;
 				if (listScrolled || info) return false;	// the info page only scrolls
 				// a setting: the left of its value (its arrow) steps back, the rest of the row on
-				if (set && setGroup < 0) openGroup(cursor);
-				else if (set && settingRows()[cursor] == SOUND_ROW) openSound(p, true);	// a page, not a value: either side opens it
-				else if (set) changeSetting(settingRows()[cursor], touchX >= SET_ARROW_X - 12 && touchX < 490 ? -1 : 1, p);
+				int dir = touchX >= SET_ARROW_X - 12 && touchX < 490 ? -1 : 1;
+				if (groups) openGroup(cursor);
+				else if (set && page == Page::Settings && srows[cursor] == SOUND_ROW) openSound(p, true);	// a page, not a value
+				else if (set) changeSetting(srows[cursor], dir, p);
 				else choose(cursor, p);
 			}
 			return false;
@@ -910,12 +915,14 @@ namespace bp
 		if (page == Page::Settings && setGroup >= 0)
 			for (int id : {GROUP_PREV, GROUP_NEXT})
 				if (buttonRect(id).hit(x, y)) { pressedBtn = id; return false; }
-		if (page == Page::Settings)
+		if (page == Page::Settings || page == Page::MangaSettings)
 		{
 			int top = SET_Y, h = SET_H;
-			int n = setGroup < 0 ? GROUPS : (int)settingRows().size();
+			bool groups = page == Page::Settings && setGroup < 0;
+			auto srows = groups ? std::vector<int>() : page == Page::MangaSettings ? mangaSettingRows() : settingRows();
+			int n = groups ? GROUPS : (int)srows.size();
 			int row = scroll + (y - top) / h;
-			if (setGroup < 0)
+			if (groups)
 			{
 				// a tile
 				row = -1;
@@ -1062,8 +1069,9 @@ namespace bp
 			" " + std::to_string(backlight.permille(Backlight::TOP)) + "," + std::to_string(backlight.permille(Backlight::BOTTOM)) : "";
 		upd += page == Page::Settings && setGroup == GROUP_CONTROLS
 			? "|bl" + std::to_string(backlight.permille(Backlight::TOP)) + "," + std::to_string(backlight.permille(Backlight::BOTTOM)) : "";
-		// Extensions: the page cache's Clear (what it holds not being a setting, and the press waiting for its second)
-		if (page == Page::Settings && setGroup == GROUP_EXT && mangaOn)
+		// the manga reader's settings: the page cache's Clear (what it holds not being a setting, and the press waiting
+		// for its second)
+		if (page == Page::MangaSettings)
 			upd += "|mc" + std::to_string(mangaPageCache.size()) + " " + std::to_string(mangaCacheAt != 0);
 		if (updater)
 			upd += "|upd" + std::to_string((int)updater->state()) + " " + std::to_string(updater->progress()) + " " + updater->available() +

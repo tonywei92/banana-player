@@ -281,7 +281,7 @@ namespace bp
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
 		enum class Page { Main, Tracks, Chapters, Settings, Browse, Info, About, Exit, Sound, Web, Playing, UpNext, Manga,
-			Extensions, MangaSeries, MangaRead };
+			Extensions, MangaSeries, MangaRead, MangaSettings };
 		struct Rect { int x, y, w, h; bool hit(int px, int py) const { return px >= x && py >= y && px < x + w && py < y + h; } };
 		struct Row { int64_t id; std::string label; bool selected; std::string note = ""; };
 
@@ -329,7 +329,7 @@ namespace bp
 		// Settings opens on its groups (setGroup -1); A or a tap opens one, B goes back to them
 		// (Web dashboard is a tile like the groups, but its own page: openGroup and stepGroup open Page::Web)
 		enum SetGroup { GROUP_SUBS, GROUP_MUSIC, GROUP_PHOTOS, GROUP_REMEMBER, GROUP_FILES, GROUP_CONTROLS, GROUP_UPDATES, GROUP_WEB,
-			GROUP_EXT, GROUPS };
+			GROUPS };
 		int setGroup = -1;
 		std::vector<int> settingRows() const;	// the open group's rows, by id
 		void openGroup(int g);
@@ -698,7 +698,7 @@ namespace bp
 		bool inMenu = false;
 		int menuTab = TAB_SETTINGS;
 		// the browser's folder before the menu, and its cursor: back to them after
-		Page menuReturnPage = Page::Browse;	// the menu opened over Manage extensions or Manga: back to it
+		Page menuReturnPage = Page::Browse;	// the menu opened over Manage extensions: back to it
 		std::string menuReturnDir;
 		int menuReturnCursor = 0, menuReturnScroll = 0;
 		void openMainMenu(Player& p, int tab = TAB_SETTINGS);
@@ -966,8 +966,8 @@ namespace bp
 		static constexpr int BTN_W = 108, BTN_H = 60, BTN_STEP = 121, ROW1_Y = 228, ROW2_Y = 300;
 		static constexpr int ROW_Y = 84, ROW_H = 48, ROWS_SHOWN = 7;
 		// the settings' rows by id: the subtitle style's, Music display, Visualizer, the switches (REMEMBER), Pan area,
-		// Clear play history, ..., Sound (it opens the Sound page), and the Manga group's (EXT_NOTE is its note, no
-		// value). Shown a group at a time (settingRows), after a list of the groups
+		// Clear play history, ..., Sound (it opens the Sound page). Shown a group at a time (settingRows), after a list of
+		// the groups. The manga reader's rows are its own page's (Page::MangaSettings): EXT_NOTE is its note, no value
 		static constexpr int STYLE_ROW0 = 0, MUSIC_ROW = STYLE_KEYS, VIS_ROW = STYLE_KEYS + 1, TOGGLE_ROW = STYLE_KEYS + 2,
 			TOGGLES = 19, PAN_ROW = TOGGLE_ROW + TOGGLES, DRAG_ROW = PAN_ROW + 1, CLEAR_ROW = DRAG_ROW + 1,
 			CHECK_ROW = CLEAR_ROW + 1, INSTALL_ROW = CHECK_ROW + 1, TOP_LIGHT_ROW = INSTALL_ROW + 1,
@@ -1001,9 +1001,12 @@ namespace bp
 		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + 472, r.y + 3, 48, 48}; }
 		void setBrightness(Backlight::Panel panel, int permille, Player& p);
 		static constexpr int SET_Y = 92, SET_H = 46, SET_SHOWN = 7, HELP_Y = 400;
-		// a settings group's tile (Settings opens on them: two to a row, the last row short with an odd count)
-		Rect groupRect(int g) const { return {16 + g % 2 * 312, 70 + g / 2 * 70, 296, 64}; }
+		// a settings group's tile (Settings opens on them: two to a row)
+		Rect groupRect(int g) const { return {16 + g % 2 * 312, 70 + g / 2 * 86, 296, 78}; }
 		std::string settingHelp(int row) const;	// what a setting does, under its rows
+		// one settings row at y (at: the cursor's): its label, arrows and value, an action's or the note's own look.
+		// Shared by Settings (drawSettings) and the manga reader's own settings page (drawMangaSettings)
+		void drawSettingRow(int row, int y, bool at, const Player& p);
 		static constexpr int64_t STYLE_ROW = -2;	// the subtitle menu's last row: the settings page
 		static constexpr int QUIT_BTN = 10, SCREEN_BTN = 12, INFO_BTN = 13, LOCK_BTN = 14, EXIT_BTN = 15,
 			BACK_ICON = 16,	// "<" at the top left of every page: B
@@ -1070,8 +1073,8 @@ namespace bp
 
 		// ---- extensions (ui_ext.cpp) ----
 		// Home's Extensions drawer (browseDir EXTDIR), Manage extensions (Page::Extensions) and the manga reader's
-		// placeholder page (Page::Manga): the extension that is on, its switch, and the first-time note about
-		// repositories over Manage extensions
+		// page (Page::Manga): the extension that is on, its switch, and the first-time note about repositories over
+		// Manage extensions
 		bool extSheet = false;	// the note, over Manage extensions
 		int extSheetCursor = 0, extCursor = 0, extPressed = -1;	// the sheet's two buttons, the drawer's tile, the touch's button
 		void openExtensions();		// START in the drawer (and its button, with none on)
@@ -1083,7 +1086,7 @@ namespace bp
 		bool extKey(Button b, Player& p);
 		bool extPointer(const Pointer& pt, int x, int y, Player& p);
 		bool extAct(int id, Player& p);
-		void openExtSettings(Player& p);
+		void openExtSettings();	// X or the gear: the manga reader's own settings page (Page::MangaSettings)
 		void drawExtensionsDrawer(const Player& p);	// (the section header is already drawn)
 		void drawExtensions(const Player& p);
 		void drawManga(const Player& p);
@@ -1225,6 +1228,20 @@ namespace bp
 		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;	// the tabs end at 94: History's and Browse's rows below them
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
 		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101;
+
+		// ---- the manga reader's settings (ui_manga_settings.cpp) ----
+		// A page of the app's own, not a group of Banana Player's Settings: START on the app's pages (any tab) or over
+		// the reader opens it, and so does Manage extensions' X / gear. Its rows are the same ids as Settings' (drawn
+		// and stepped as its rows are: drawSettingRow, changeSetting); they scroll as its lists do.
+		// mangaSettingsFrom: the page B goes back to (the reader stays open behind it)
+		Page mangaSettingsFrom = Page::Manga;
+		int mangaSettingsTab = MT_LIBRARY;	// the app's tab it came from (B goes back to it)
+		bool mangaSettingsList = false;		// Browse's series list was open (B goes back to it too)
+		void openMangaSettings();	// from where it is now (mangaSettingsFrom)
+		void closeMangaSettings();
+		bool mangaSettingsKey(Button b, Player& p);
+		void drawMangaSettings(const Player& p);
+		std::vector<int> mangaSettingRows() const;	// the page's rows, by id (the note last)
 
 		// ---- playing behind the browser ----
 		// the player left (B, "<", Back) while a song or video plays on: the browser is the base page; showPlayer ends it

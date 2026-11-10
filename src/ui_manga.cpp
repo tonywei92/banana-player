@@ -395,6 +395,8 @@ namespace bp
 			case Button::R2: mangaChapterStep(1, p); break;
 			// SELECT: fullscreen on / off; B leaves fullscreen first, and only then closes the reader
 			case Button::Select: mangaFullscreen(!readerStatus.fullscreen, p); break;
+			// the reader's own settings, over it: B comes back here, the chapter open behind it
+			case Button::Start: openMangaSettings(); break;
 			case Button::B:
 				if (readerStatus.fullscreen) mangaFullscreen(false, p);
 				else mangaCloseReader();
@@ -409,6 +411,8 @@ namespace bp
 		{
 			const LocalSeries* s = mangaLocalSeries(mangaSeriesId);
 			int n = s ? (int)s->chapters.size() : 0;
+			// the app's settings (it comes back to this series)
+			if (b == Button::Start) { openMangaSettings(); return false; }
 			if (b == Button::B)
 			{
 				// back to where it was opened from: the Library, Browse's list or History
@@ -463,6 +467,8 @@ namespace bp
 			return false;
 		}
 		// Page::Manga
+		// the app's settings (any tab; B comes back to it, and to this tab)
+		if (b == Button::Start) { openMangaSettings(); return false; }
 		if (b == Button::B)
 		{
 			// Browse's "On this handheld": one step back to its rows first
@@ -1013,7 +1019,7 @@ namespace bp
 		{
 			// kept off: where it is turned on, and that the reading itself is still remembered
 			drawEmpty(G_CLOCK, "Reading history is off",
-				"Turn it on in Settings \xC2\xB7 Extensions. Your places and read\nmarks are kept either way.", nullptr);
+				"Turn it on in Manga settings (START). Your places and read\nmarks are kept either way.", nullptr);
 			drawHints({{"B", "Back"}});
 			return;
 		}
