@@ -206,6 +206,10 @@ namespace bp
 			p.pages = int(pages);
 			p.read = read;
 			p.at = at;
+			// the hidden column came last, so a file without it is an older one and its chapters are in the
+			// History; a value we can't read says the same
+			p.hidden = false;
+			if (f.size() > 7) toBool(f[7], p.hidden);
 			if (p.chapterId.empty()) continue;
 			bool known = false;
 			for (auto& o : progress_)
@@ -259,8 +263,10 @@ namespace bp
 			snprintf(buf, sizeof buf, "%d\t%d\t", p.page, p.pages);
 			out += buf;
 			out += p.read ? "1\t" : "0\t";
-			snprintf(buf, sizeof buf, "%lld\n", (long long)p.at);
+			snprintf(buf, sizeof buf, "%lld\t", (long long)p.at);
 			out += buf;
+			// the hidden flag is the last column, so a file without it is an older one
+			out += p.hidden ? "1\n" : "0\n";
 		}
 		return out;
 	}
@@ -346,6 +352,8 @@ namespace bp
 		}
 		// the last page means the chapter is read
 		if (e->pages > 0 && e->page >= e->pages - 1) e->read = true;
+		// the chapter is being read, so it belongs in the History again
+		e->hidden = false;
 		// the series was read now
 		for (auto& s : series_)
 			if (s.id == p.seriesId) s.lastRead = p.at;
@@ -392,7 +400,10 @@ namespace bp
 	std::vector<ChapterProgress> MangaStore::history(int max) const
 	{
 		if (max <= 0) return {};
-		std::vector<ChapterProgress> out = progress_;
+		std::vector<ChapterProgress> out;
+		// a chapter cleared from the History isn't in it, its progress stays
+		for (const auto& p : progress_)
+			if (!p.hidden) out.push_back(p);
 		size_t n = out.size() > size_t(max) ? size_t(max) : out.size();
 		// only the newest `max` are sorted into place: the History page shows a screenful, not every chapter
 		std::partial_sort(out.begin(), out.begin() + long(n), out.end(), progressLess);
@@ -430,7 +441,9 @@ namespace bp
 
 	void MangaStore::clearHistory()
 	{
-		progress_.clear();
+		// only the History list goes: the read marks and the page to resume are the reader's own progress and
+		// stay, so the unread counts and Continue reading keep working
+		for (auto& p : progress_) p.hidden = true;
 		serial_++;
 	}
 

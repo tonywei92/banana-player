@@ -832,6 +832,7 @@ static void testMangaStore()
 		CHECK_EQ(e->pages, 20);
 		CHECK_EQ(e->read, false);
 		CHECK_EQ(e->at, (int64_t)5000);
+		CHECK_EQ(e->hidden, false);
 	}
 	e = st2.progress(last.chapterId);
 	CHECK_EQ(e != nullptr, true);
@@ -847,6 +848,8 @@ static void testMangaStore()
 		std::ifstream g(state + "/manga/progress.tsv");
 		std::getline(g, line);
 		CHECK_EQ(line, std::string("# banana-player manga progress v1"));
+		std::getline(g, line);	// a chapter's line: the hidden column is the last one
+		CHECK_EQ(line.size() > 2 && line.compare(line.size() - 2, 2, "\t0") == 0, true);
 	}
 
 	// continue reading: each series' latest unfinished chapter, newest first
@@ -899,11 +902,44 @@ static void testMangaStore()
 	CHECK_EQ(st.progress(q.chapterId) == nullptr, true);
 	CHECK_EQ(st.library().size(), size_t(2));
 
-	// the history cleared: the library stays
+	// a chapter opened again: it is unfinished, so it is in the Continue reading strip
+	ChapterProgress again;
+	again.seriesId = a.id;
+	again.chapterId = "local:/data/Manga/Ember Lantern/Ch 04";
+	again.chapterTitle = "Chapter 4";
+	again.page = 2;
+	again.pages = 15;
+	again.at = 8000;
+	st.setProgress(again);
+
+	// the history cleared: the History list goes, the reading progress stays
 	st.clearHistory();
 	CHECK_EQ(st.history(50).size(), size_t(0));
-	CHECK_EQ(st.continueReading(10).size(), size_t(0));
 	CHECK_EQ(st.library().size(), size_t(2));
+	// the read mark and the page to resume are still there
+	e = st.progress(p.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e)
+	{
+		CHECK_EQ(e->read, true);
+		CHECK_EQ(e->page, 4);
+		CHECK_EQ(e->pages, 20);
+	}
+	e = st.progress("local:/data/Manga/Ember Lantern/Ch 03");
+	CHECK_EQ(e != nullptr, true);
+	if (e) CHECK_EQ(e->read, false);
+	// so the unread counts are the ones before the clear
+	CHECK_EQ(st.unread(a.id, chapters), 1);
+	// and the Continue reading strip still knows where to pick up
+	std::vector<ChapterProgress> cont2 = st.continueReading(10);
+	CHECK_EQ(cont2.size(), size_t(1));
+	if (!cont2.empty()) CHECK_EQ(cont2[0].chapterId, again.chapterId);
+
+	// a chapter read again is in the History again
+	st.setProgress(again);
+	std::vector<ChapterProgress> hist2 = st.history(50);
+	CHECK_EQ(hist2.size(), size_t(1));	// the chapters cleared before are still out of it
+	if (!hist2.empty()) CHECK_EQ(hist2[0].chapterId, again.chapterId);
 
 	// a broken line in either file is skipped; the rest of the file loads
 	std::string bad = root + "/bad";
@@ -921,10 +957,12 @@ static void testMangaStore()
 	{
 		std::ofstream f(bad + "/manga/progress.tsv");
 		f << "# banana-player manga progress v1\n";
-		f << "local:/A\tlocal:/A/c1\tOne\t3\t10\t0\t700\n";
+		f << "local:/A\tlocal:/A/c1\tOne\t3\t10\t0\t700\n";		// an older file: no hidden column
 		f << "rubbish\n";
 		f << "local:/A\tlocal:/A/c2\tTwo\n";
-		f << "local:/A\tlocal:/A/c3\tThree\t1\t5\t0\t800\tignored\n";
+		f << "local:/A\tlocal:/A/c3\tThree\t1\t5\t0\t800\tignored\n";	// a later version's extra column
+		f << "local:/A\tlocal:/A/c4\tFour\t2\t8\t0\t900\t1\n";		// cleared from the History
+		f << "local:/A\tlocal:/A/c5\tFive\t2\t8\t0\t950\t0\n";
 	}
 	MangaStore broken;
 	CHECK_EQ(broken.load(bad), true);
@@ -947,7 +985,38 @@ static void testMangaStore()
 		CHECK_EQ(bp1->page, 3);
 		CHECK_EQ(bp1->pages, 10);
 		CHECK_EQ(bp1->at, (int64_t)700);
+		CHECK_EQ(bp1->hidden, false);	// a file without the column loads: its chapters are in the History
 	}
+	// the hidden column: a cleared chapter is out of the History, an unreadable value says nothing
+	if (const ChapterProgress* bp3 = broken.progress("local:/A/c3")) CHECK_EQ(bp3->hidden, false);
+	if (const ChapterProgress* bp4 = broken.progress("local:/A/c4"))
+	{
+		CHECK_EQ(bp4->hidden, true);
+		CHECK_EQ(bp4->page, 2);
+	}
+	if (const ChapterProgress* bp5 = broken.progress("local:/A/c5")) CHECK_EQ(bp5->hidden, false);
+	std::vector<ChapterProgress> bhist = broken.history(10);
+	CHECK_EQ(bhist.size(), size_t(3));	// c5, c3 and c1: c4 was cleared
+
+	// a progress.tsv written before the hidden column loads: its chapters are in the History
+	std::string old = root + "/old";
+	mkdir(old.c_str(), 0755);
+	mkdir((old + "/manga").c_str(), 0755);
+	{
+		std::ofstream f(old + "/manga/progress.tsv");
+		f << "# banana-player manga progress v1\n";
+		f << "local:/A\tlocal:/A/c1\tOne\t3\t10\t0\t700\n";
+	}
+	MangaStore older;
+	CHECK_EQ(older.load(old), true);
+	CHECK_EQ(older.progress("local:/A/c1") != nullptr, true);
+	if (const ChapterProgress* o1 = older.progress("local:/A/c1"))
+	{
+		CHECK_EQ(o1->page, 3);
+		CHECK_EQ(o1->read, false);
+		CHECK_EQ(o1->hidden, false);
+	}
+	CHECK_EQ(older.history(10).size(), size_t(1));
 
 	// a folder that isn't there: an empty store, not a failure
 	MangaStore none;
@@ -965,6 +1034,9 @@ static void testMangaStore()
 	unlink((bad + "/manga/progress.tsv").c_str());
 	rmdir((bad + "/manga").c_str());
 	rmdir(bad.c_str());
+	unlink((old + "/manga/progress.tsv").c_str());
+	rmdir((old + "/manga").c_str());
+	rmdir(old.c_str());
 	rmdir(root.c_str());
 }
 

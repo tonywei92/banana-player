@@ -24,6 +24,7 @@ namespace bp
 		std::string seriesId, chapterId, chapterTitle;
 		int page = 0, pages = 0;	// pages: the chapter's length; 0 when it isn't known
 		bool read = false;
+		bool hidden = false;		// cleared from the History; where to resume stays
 		int64_t at = 0;	// when it was last here
 	};
 
@@ -57,11 +58,13 @@ namespace bp
 		// What the Continue reading strip shows: each series in the library's latest unfinished chapter, newest first,
 		// at most max. A chapter that was never opened (a record of it only says it is unread) isn't in it.
 		std::vector<ChapterProgress> continueReading(int max) const;
-		// Every chapter opened, newest first, at most max: the History page.
+		// Every chapter opened, newest first, at most max: the History page. A chapter cleared from the History
+		// isn't in it.
 		std::vector<ChapterProgress> history(int max) const;
 		// Read or unread for the chapters given; a chapter never opened becomes a record of, so it counts as unread.
 		void markRead(const std::string& seriesId, const std::vector<std::string>& chapterIds, bool read);
-		// The reading history: every chapter's progress goes, the library stays.
+		// The reading history: every chapter is hidden from the History, the reading progress stays (the read
+		// marks and the page to resume).
 		void clearHistory();
 		// How many of the chapters given aren't read.
 		int unread(const std::string& seriesId, const std::vector<std::string>& chapterIds) const;
