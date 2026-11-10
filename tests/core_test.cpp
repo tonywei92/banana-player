@@ -27,6 +27,7 @@ extern "C"
 #include "playlists.h"
 #include "keyboard.h"
 #include "manga_names.h"
+#include "mangaservers.h"
 #include "mangastore.h"
 #include "mangalocal.h"
 #include "manga_ui_logic.h"
@@ -65,6 +66,7 @@ extern "C"
 #include <map>
 #include <random>
 #include <set>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -312,6 +314,204 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("Volume"), -1.0);
 	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+// the comic servers the reader reads from: added, changed, removed and kept in a file; the password is sealed, so
+// the file never holds it in plain text
+static void testMangaServers()
+{
+	char tmpl[] = "/tmp/bp-manga-servers-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string state = root + "/state";
+	std::string file = state + "/manga/servers.tsv";
+
+	MangaServerStore st;
+	CHECK_EQ(st.load(state), true);		// nothing there yet: an empty store
+	CHECK_EQ(st.list().size(), size_t(0));
+	CHECK_EQ(MangaServerStore().load(""), false);	// nowhere to keep them
+	int v = st.version();
+
+	// a server added
+	MangaServer k;
+	k.kind = "komga";
+	k.name = "Komga";
+	k.url = "http://komga.local:25600";
+	k.user = "reader";
+	std::string kid = st.add(k);
+	CHECK_EQ(st.version() > v, true);	// every change grows the version
+	CHECK_EQ(kid.size(), (size_t)8);
+	CHECK_EQ(kid.find_first_not_of("0123456789abcdef"), std::string::npos);
+	CHECK_EQ(st.find("nope") == nullptr, true);
+	const MangaServer* found = st.find(kid);
+	CHECK_EQ(found != nullptr, true);
+	if (found)
+	{
+		CHECK_EQ(found->kind, std::string("komga"));
+		CHECK_EQ(found->name, std::string("Komga"));
+		CHECK_EQ(found->url, std::string("http://komga.local:25600"));
+		CHECK_EQ(found->user, std::string("reader"));
+		CHECK_EQ(found->hasPassword(), false);
+	}
+
+	// the password is sealed, never kept in plain text
+	v = st.version();
+	CHECK_EQ(st.setPassword(kid, "s3cret"), true);
+	CHECK_EQ(st.version() > v, true);
+	CHECK_EQ(st.password(kid), std::string("s3cret"));
+	CHECK_EQ(st.find(kid)->hasPassword(), true);
+	CHECK_EQ(st.setPassword("nope", "x"), false);	// no such server
+	CHECK_EQ(st.password("nope"), std::string(""));
+
+	// a second one, and the list is by name
+	MangaServer o;
+	o.kind = "opds";
+	o.name = "Aardvark OPDS";
+	o.url = "https://books.example.org/opds";
+	std::string oid = st.add(o);
+	CHECK_EQ(oid.size(), (size_t)8);
+	CHECK_EQ(st.list().size(), size_t(2));
+	std::vector<MangaServer> ls = st.list();
+	CHECK_EQ(ls[0].name, std::string("Aardvark OPDS"));
+	CHECK_EQ(ls[1].name, std::string("Komga"));
+
+	// changed
+	v = st.version();
+	MangaServer changed = *st.find(oid);
+	changed.name = "Zebra OPDS";
+	CHECK_EQ(st.update(changed), true);
+	CHECK_EQ(st.version() > v, true);
+	CHECK_EQ(st.list()[1].name, std::string("Zebra OPDS"));
+	CHECK_EQ(st.find(oid)->name, std::string("Zebra OPDS"));
+	// a change that knows nothing of the password doesn't throw it away
+	CHECK_EQ(st.password(kid), std::string("s3cret"));
+	CHECK_EQ(st.update(MangaServer()), false);	// no id, nothing to change
+
+	// the kinds and the names we refuse
+	MangaServer bad;
+	bad.kind = "samba";
+	bad.name = "NAS";
+	bad.url = "http://nas.local";
+	CHECK_EQ(st.add(bad), std::string(""));
+	bad.kind = "komga";
+	bad.name = "";
+	CHECK_EQ(st.add(bad), std::string(""));
+	bad.name = std::string(41, 'x');
+	CHECK_EQ(st.add(bad), std::string(""));
+	bad.name = std::string(40, 'x');
+	std::string longName = st.add(bad);
+	CHECK_EQ(longName.size(), (size_t)8);	// 40 characters is a name
+	st.remove(longName);
+	bad.name = "Tab\there";
+	CHECK_EQ(st.add(bad), std::string(""));
+	// the urls we refuse
+	bad.name = "Bad url";
+	for (const char* u : {"ftp://nas.local", "http://", "http://ho st/", "http://nas.local:port/", "/nas",
+			      "nas.local", "http://na s.local"})
+	{
+		bad.url = u;
+		CHECK_EQ(st.add(bad), std::string(""));
+	}
+	bad.url = "http://nas.local/" + std::string(2048 - 17, 'x');
+	std::string longUrl = st.add(bad);
+	CHECK_EQ(longUrl.size(), (size_t)8);	// 2048 characters is a url
+	st.remove(longUrl);
+	bad.url = "http://nas.local/" + std::string(2048 - 16, 'x');
+	CHECK_EQ(st.add(bad), std::string(""));	// one more is too long
+	CHECK_EQ(st.list().size(), size_t(2));	// none of them was kept
+
+	// credentials in a url are taken out of it: they are never kept
+	CHECK_EQ(isMangaServerUrl("http://reader:hunter2@nas.local/"), false);
+	CHECK_EQ(withoutUrlCredentials("http://reader:hunter2@nas.local/x"), std::string("http://nas.local/x"));
+	CHECK_EQ(withoutUrlCredentials("http://nas.local/x"), std::string("http://nas.local/x"));
+	MangaServer c;
+	c.kind = "kavita";
+	c.name = "Kavita";
+	c.url = "http://reader:hunter2@kavita.local:5000/kavita";
+	std::string cid = st.add(c);
+	CHECK_EQ(cid.size(), (size_t)8);
+	const MangaServer* cs = st.find(cid);
+	CHECK_EQ(cs != nullptr, true);
+	if (cs)
+	{
+		CHECK_EQ(cs->url, std::string("http://kavita.local:5000/kavita"));
+		CHECK_EQ(cs->url.find('@'), std::string::npos);
+	}
+
+	// saved and read back
+	CHECK_EQ(st.save(), true);
+	std::string text;
+	{
+		std::ifstream f(file);
+		std::stringstream ss;
+		ss << f.rdbuf();
+		text = ss.str();
+	}
+	CHECK_EQ(text.find("s3cret") == std::string::npos, true);	// never in plain text
+	CHECK_EQ(text.find("hunter2") == std::string::npos, true);	// and never in the url
+	CHECK_EQ(text.find("v1:") != std::string::npos, true);	// the sealed one is there
+	CHECK_EQ(text.find("komga.local:25600") != std::string::npos, true);
+	MangaServerStore st2;
+	CHECK_EQ(st2.load(state), true);
+	CHECK_EQ(st2.list().size(), size_t(3));
+	const MangaServer* back = st2.find(kid);
+	CHECK_EQ(back != nullptr, true);
+	if (back)
+	{
+		CHECK_EQ(back->kind, std::string("komga"));
+		CHECK_EQ(back->name, std::string("Komga"));
+		CHECK_EQ(back->url, std::string("http://komga.local:25600"));
+		CHECK_EQ(back->user, std::string("reader"));
+		CHECK_EQ(back->hasPassword(), true);
+	}
+	CHECK_EQ(st2.password(kid), std::string("s3cret"));	// and it opens again
+	CHECK_EQ(st2.find(cid)->url, std::string("http://kavita.local:5000/kavita"));
+	CHECK_EQ(st2.find(oid)->name, std::string("Zebra OPDS"));
+
+	// a broken line is skipped; the rest of the file loads
+	std::string broken = root + "/broken";
+	mkdir(broken.c_str(), 0755);
+	mkdir((broken + "/manga").c_str(), 0755);
+	{
+		std::ofstream f(broken + "/manga/servers.tsv");
+		f << "# banana-player manga servers v1\n";
+		f << "aaaa1111\tkomga\tKomga\thttp://komga.local:25600\treader\t\n";
+		f << "this line has no fields\n";
+		f << "bbbb2222\tmamba\tWrong kind\thttp://nas.local/\t\t\n";
+		f << "cccc3333\tkomga\t\t\thttp://nas.local/\t\t\n";	// no name
+		f << "dddd4444\tkomga\tWith creds\thttp://u:p@nas.local/\t\t\n";	// credentials in a url
+		f << "eeee5555\topds\tExtra\thttps://books.example.org/opds\t\tcolumns\ta\tlater\n";	// a later version's columns
+	}
+	MangaServerStore st3;
+	CHECK_EQ(st3.load(broken), true);
+	CHECK_EQ(st3.list().size(), size_t(2));
+	CHECK_EQ(st3.find("aaaa1111") != nullptr, true);
+	CHECK_EQ(st3.find("bbbb2222") == nullptr, true);
+	CHECK_EQ(st3.find("cccc3333") == nullptr, true);
+	CHECK_EQ(st3.find("dddd4444") == nullptr, true);
+	CHECK_EQ(st3.find("eeee5555") != nullptr, true);
+
+	// removed
+	v = st.version();
+	st.remove(kid);
+	CHECK_EQ(st.version() > v, true);
+	CHECK_EQ(st.find(kid) == nullptr, true);
+	CHECK_EQ(st.list().size(), size_t(2));
+	MangaServerStore st4;
+	CHECK_EQ(st4.load(state), true);
+	CHECK_EQ(st4.list().size(), size_t(2));	// and it stays gone in the file
+
+	// the folders are gone again
+	unlink(file.c_str());
+	unlink((state + "/manga/servers.key").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+	unlink((broken + "/manga/servers.tsv").c_str());
+	unlink((broken + "/manga/servers.key").c_str());
+	rmdir((broken + "/manga").c_str());
+	rmdir(broken.c_str());
+	rmdir(root.c_str());
 }
 
 // the page cache: a page goes in and comes back, the least recently used goes first over the cap, and the index
@@ -6700,6 +6900,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testMangaServers();
 	testPageCache();
 	testDlQueue();
 	testMangaRepo();
