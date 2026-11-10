@@ -39,6 +39,7 @@ extern "C"
 #include "paged.h"
 #include "pagedecode.h"
 #include "pagecache.h"
+#include "readerfetchplan.h"
 #include "secret.h"
 #include "servers.h"
 #include "sidecar.h"
@@ -316,6 +317,34 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("Volume"), -1.0);
 	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+// The URL chapter's fetches: what goes out now, what is dropped when the reader moves.
+static void testReaderFetchPlan()
+{
+	ReaderFetchPlan::State s;
+	s.wanted = {4, 4, 5, 6, 7, 3};	// the Strip's list can repeat the page in view
+	s.max = 3;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 5, 6}));
+	s.done = {5};	// already in the page cache: no fetch
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 6, 7}));
+	s.inFlight = {4};	// one out: two more fit under three
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{6, 7}));
+	s.failed = {6};	// a dead URL is not asked for again while wanted
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{7, 3}));
+	s.inFlight = {0, 1, 2};	// the room is the cap's, not the wanted list's
+	CHECK_EQ(ReaderFetchPlan::next(s), std::vector<int>{});
+	s = {};
+	s.wanted = {-1, 1, 1, 2};	// a bad index is dropped, a repeat is one request
+	s.max = 5;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{1, 2}));
+
+	// the reader moved: what is in flight for a page no longer wanted at all goes
+	s.wanted = {2, 3};
+	s.inFlight = {1, 2, 5};
+	CHECK_EQ(ReaderFetchPlan::stale(s), (std::vector<int>{1, 5}));
+	s.inFlight = {2, 3};
+	CHECK_EQ(ReaderFetchPlan::stale(s), std::vector<int>{});
 }
 
 // 5.4's public-address rule: what a stranger's script may reach. Both sides of every range's boundary, the
@@ -7629,6 +7658,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testReaderFetchPlan();
 	testPublicAddress();
 	testMangaRemote();
 	testMangaServers();

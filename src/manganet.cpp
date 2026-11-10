@@ -77,6 +77,8 @@ namespace bp
 		for (auto& r : fetcher.take())
 		{
 			if (dl->onFetched(r) || repoMgr->onFetched(r)) continue;
+			// the reader's pages first: an answer it owns is not one the Ui should ever see
+			if (fetchOwner && fetchOwner(r)) continue;
 			fetched.push_back(std::move(r));
 			own++;
 		}

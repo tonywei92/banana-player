@@ -1,9 +1,11 @@
 #include "reader.h"
 #include "manga_names.h"
+#include "readerfetchplan.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <dirent.h>
+#include <sys/stat.h>
 
 namespace bp
 {
@@ -11,6 +13,12 @@ namespace bp
 	{
 		// a zoom's wider decode waits for the presses to rest: a run 100 → 800 % decodes the pages once, at the end
 		constexpr int64_t ZOOM_SETTLE_MS = 300;
+
+		bool fileThere(const std::string& path)
+		{
+			struct stat st;
+			return stat(path.c_str(), &st) == 0 && S_ISREG(st.st_mode);
+		}
 	}
 
 	MangaReader::~MangaReader()
@@ -81,10 +89,7 @@ namespace bp
 	{
 		close();
 		err.clear();
-		viewW = w;
-		viewH = h;
-		zscale = 1;	// a chapter opens at the fit (the photo viewer keeps its zoom; a page of a new chapter is a new view)
-		zoomAt = 0;
+		errPage = -1;
 		archive = isArchive;
 		std::vector<std::string> names;
 		if (archive)
@@ -106,6 +111,32 @@ namespace bp
 		}
 		if (names.empty()) { err = "No pages in this chapter"; return false; }
 		files = std::move(names);
+		return begin(path.substr(path.rfind('/') + 1), page, w, h, m, f);
+	}
+
+	bool MangaReader::open(const std::vector<std::string>& pageUrls, const Headers& pageHeaders, PageCache& cache,
+		const std::string& chapterId, int page, int w, int h, int m, int f)
+	{
+		close();
+		err.clear();
+		errPage = -1;
+		archive = false;	// (close kept the last chapter's: a URL chapter has no archive)
+		if (pageUrls.empty()) { err = "No pages in this chapter"; return false; }
+		urls = pageUrls;
+		headers = pageHeaders;
+		pageCache = &cache;
+		chapterKey = chapterId;
+		files.reserve(urls.size());
+		for (const auto& u : urls) files.push_back(pageCache->pathFor(u));
+		return begin(chapterKey.empty() ? "chapter" : chapterKey, page, w, h, m, f);
+	}
+
+	bool MangaReader::begin(const std::string& label, int page, int w, int h, int m, int f)
+	{
+		viewW = w;
+		viewH = h;
+		zscale = 1;	// a chapter opens at the fit (the photo viewer keeps its zoom; a page of a new chapter is a new view)
+		zoomAt = 0;
 		strip.setView(w, layoutH());
 		strip.setPages((int)files.size(), 1.5);
 		strip.setZoom(1, 0, 0);	// the models outlive a chapter: the last one's zoom goes
@@ -122,7 +153,7 @@ namespace bp
 		paged.goTo(page, 0, false);
 		opened = true;
 		redrawSoon();
-		fprintf(stderr, "reader: opened %s, %zu pages, at page %d\n", path.substr(path.rfind('/') + 1).c_str(), files.size(), page + 1);
+		fprintf(stderr, "reader: opened %s, %zu pages, at page %d\n", label.c_str(), files.size(), page + 1);
 		want();
 		return true;
 	}
@@ -146,6 +177,13 @@ namespace bp
 			cbz.close();
 		}
 		files.clear();
+		urls.clear();
+		headers.clear();
+		pageCache = nullptr;
+		chapterKey.clear();
+		fetching.clear();
+		failed.clear();
+		errPage = -1;
 		opened = fingerDown = false;
 	}
 
@@ -159,22 +197,40 @@ namespace bp
 		return std::max(viewW, (int)(w + 0.5));
 	}
 
+	std::vector<int> MangaReader::wantedPages() const
+	{
+		// the one list want() queues from and pagesToFetch() hands out: the reader's own order (visible pages first,
+		// then the preload ahead and behind)
+		if (!opened) return {};
+		return readMode == MANGA_STRIP ? strip.wanted(preload, 1) : paged.wanted(preload, 1);
+	}
+
 	void MangaReader::want()
 	{
 		if (!opened) return;
 		bool s = readMode == MANGA_STRIP;
-		auto list = s ? strip.wanted(preload, 1) : paged.wanted(preload, 1);
+		auto list = wantedPages();
 		std::set<int> keep(list.begin(), list.end());
 		auto vis = strip.visible();
 		if (!s) vis = {paged.current(), paged.current()};
 		for (int i = vis.first - 2; i <= vis.second + 4; i++) keep.insert(i);
 		pr.keepOnly(keep);
 		for (auto it = kept.begin(); it != kept.end();) it = keep.count(it->first) ? std::next(it) : kept.erase(it);
+		// a failure sticks only while the page is wanted: moving away and back asks for it again
+		for (auto it = failed.begin(); it != failed.end();)
+		{
+			if (std::find(list.begin(), list.end(), *it) != list.end()) { ++it; continue; }
+			if (*it == errPage) { err.clear(); errPage = -1; }	// (the page the error was about has left the view)
+			it = failed.erase(it);
+		}
 		int width = decodeW();
 		std::lock_guard<std::mutex> l(m);
 		jobs.clear();
 		for (int i : list)
 		{
+			// a page of a URL chapter that isn't fetched yet waits: its decode is queued when pageArrived says so
+			if (i < 0 || i >= (int)files.size()) continue;
+			if (remote() && !fileThere(files[i])) continue;
 			// a page the last zoom decoded narrower is asked for again, and goes on showing scaled until it comes
 			auto it = decodedW.find(i);
 			if (pr.has(i) && it != decodedW.end() && it->second >= width) continue;
@@ -183,6 +239,60 @@ namespace bp
 			jobs.push_back({i, files[i], width});
 		}
 		cv.notify_all();
+	}
+
+	std::vector<std::pair<int, std::string>> MangaReader::pagesToFetch(int max)
+	{
+		std::vector<std::pair<int, std::string>> out;
+		if (!opened || urls.empty() || max <= 0) return out;
+		std::vector<int> list = wantedPages();
+		// a page that failed while wanted is not asked for again until it has left the list (want() drops it there)
+		for (auto it = failed.begin(); it != failed.end();)
+		{
+			if (std::find(list.begin(), list.end(), *it) != list.end()) { ++it; continue; }
+			if (*it == errPage) { err.clear(); errPage = -1; }
+			it = failed.erase(it);
+		}
+		ReaderFetchPlan::State st;
+		st.wanted = std::move(list);
+		st.inFlight = fetching;
+		st.failed = failed;
+		// max is how many may be started now: the plan's cap counts what is already out, so the two add up
+		st.max = (int)fetching.size() + max;
+		for (int i : st.wanted)
+			if (i >= 0 && i < (int)files.size() && fileThere(files[i])) st.done.insert(i);
+		for (int i : ReaderFetchPlan::next(st)) out.push_back({i, urls[i]});
+		// these are out now: pagesToFetch won't hand the same one out twice while its request runs
+		for (auto& p : out) fetching.insert(p.first);
+		return out;
+	}
+
+	void MangaReader::pageArrived(int index)
+	{
+		if (!opened || index < 0 || index >= (int)files.size()) return;
+		fetching.erase(index);
+		failed.erase(index);
+		if (index == errPage) { err.clear(); errPage = -1; }
+		want();	// its decode goes in now: the file is there
+		redrawSoon(1);
+	}
+
+	void MangaReader::pageFailed(int index, const std::string& error)
+	{
+		if (!opened) return;
+		fetching.erase(index);
+		if (index >= 0) failed.insert(index);
+		err = "Page " + std::to_string(index + 1) + ": " + (error.empty() ? "couldn't be fetched" : error);
+		errPage = index;
+		fprintf(stderr, "reader: %s\n", err.c_str());
+		want();
+		redrawSoon(1);
+	}
+
+	void MangaReader::pageDropped(int index)
+	{
+		// the reader moved away before the request finished: not a failure, so no error and no failed mark
+		fetching.erase(index);
 	}
 
 	void MangaReader::setPreload(int n)
@@ -395,10 +505,13 @@ namespace bp
 	bool MangaReader::loading() const
 	{
 		if (!opened) return false;
-		if (readMode != MANGA_STRIP) return !pr.has(paged.current());
+		// a page that failed isn't waiting: it shows its grey placeholder and the error (error()); a page still to
+		// be fetched or decoded is
+		if (readMode != MANGA_STRIP)
+			return !pr.has(paged.current()) && !failed.count(paged.current());
 		auto vis = strip.visible();
 		for (int i = vis.first; i >= 0 && i <= vis.second; i++)
-			if (!pr.has(i)) return true;
+			if (!pr.has(i) && !failed.count(i)) return true;
 		return false;
 	}
 

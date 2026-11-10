@@ -186,6 +186,9 @@ namespace bp
 		Updater* updater = nullptr;
 		// the manga reader's network side (main's; started when the reader is first used with it on)
 		class MangaNet* mangaNet = nullptr;
+		// main's URL chapters put their pages in this same cache (the Manga settings' Clear cache empties it), not in
+		// a second PageCache over the same folder
+		PageCache& mangaPageCacheRef() { return mangaPageCache; }
 		bool restartRequested = false;
 		// the saved network connections and the thread that lists their folders (main's)
 		NetStore* netStore = nullptr;

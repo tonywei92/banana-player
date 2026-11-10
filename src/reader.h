@@ -1,8 +1,10 @@
 #pragma once
-// The manga reader on the top panel (docs/design/manga.md section 7): a chapter (a folder of pictures or a CBZ) as one
-// continuous Strip, its pages decoded on two threads and drawn by a PageRenderer in the top window's GL context. Main
-// thread only, but for the decoder's threads, which never touch it: they hand pages back and push `wakeEvent`.
+// The manga reader on the top panel (docs/design/manga.md section 7): a chapter (a folder of pictures, a CBZ, or a
+// source's pages by URL, fetched into the page cache) as one continuous Strip, its pages decoded on two threads and
+// drawn by a PageRenderer in the top window's GL context. Main thread only, but for the decoder's threads, which never
+// touch it: they hand pages back and push `wakeEvent`.
 #include "cbz.h"
+#include "pagecache.h"
 #include "pagedecode.h"
 #include "pagerender.h"
 #include "paged.h"
@@ -31,6 +33,25 @@ namespace bp
 		// when it can't be listed
 		bool open(const std::string& path, bool archive, int page, int viewW, int viewH, int mode = MANGA_STRIP,
 			int fit = MANGA_FIT_PAGE);
+		// A chapter from a source or a server: its pages' URLs, in order, and the headers they need. files[i] is the
+		// page's cache path (the cache's key is the URL), so a page not fetched yet is "waiting": no decode job is
+		// queued for it until its file is there. chapterId is only the chapter's name in the log.
+		using Headers = std::vector<std::pair<std::string, std::string>>;
+		bool open(const std::vector<std::string>& pageUrls, const Headers& headers, PageCache& cache,
+			const std::string& chapterId, int page, int viewW, int viewH, int mode = MANGA_STRIP,
+			int fit = MANGA_FIT_PAGE);
+		bool remote() const { return !urls.empty(); }
+		// the wanted pages (in want()'s order) whose files are missing and are not in flight, at most max; the ones
+		// handed out count as in flight until pageArrived / pageFailed / pageDropped
+		std::vector<std::pair<int, std::string>> pagesToFetch(int max);
+		// main's fetcher, as one finishes: arrival queues its decode at once; a failure shows the grey placeholder,
+		// puts the error in error(), and the page is asked for again the next time it is wanted
+		void pageArrived(int index);
+		void pageFailed(int index, const std::string& error);
+		// a request let go because the reader moved away (not a failure: no error, no retry until wanted again)
+		void pageDropped(int index);
+		std::vector<int> wantedPages() const;
+		const Headers& pageHeaders() const { return headers; }
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
@@ -70,6 +91,8 @@ namespace bp
 		struct Job { int index; std::string path; int width; };
 		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; int width; };
 		void decodeLoop();
+		// files is ready: the models, the page and the first want()
+		bool begin(const std::string& label, int page, int w, int h, int m, int f);
 		void want();
 		void applyFit();
 		void applyZoom();
@@ -87,6 +110,13 @@ namespace bp
 		double zscale = 1;	// the zoom of both models; 1 is the fit
 		int64_t zoomAt = 0;	// when the last Zoom came; the re-decode waits for it to rest (0: none waiting)
 		std::vector<std::string> files;
+		// a URL chapter: files[i] = pageCache->pathFor(urls[i]); fetching and failed are the pages' requests and their
+		// last failure, so a wanted page is asked for once and a dead URL doesn't spin
+		std::vector<std::string> urls;
+		Headers headers;
+		PageCache* pageCache = nullptr;
+		std::string chapterKey;
+		std::set<int> fetching, failed;
 		Cbz cbz;
 		bool archive = false;
 		int viewW = 0, viewH = 0, forceFrames = 0;
@@ -96,6 +126,7 @@ namespace bp
 		std::map<int, Pix> kept;	// the decoded pages near the view, for the bottom panel in fullscreen
 		std::map<int, int> decodedW;	// each page's decoded width: a zoom in decodes it again, wider
 		std::string err;
+		int errPage = -1;	// the page err is about (a URL page that failed); -1 for the chapter's own error
 		bool fingerDown = false;
 		// the decoder: its queue, its results, the chapter it works for (gen: a page of the last chapter is dropped)
 		std::mutex m, cbzLock;

@@ -11,8 +11,10 @@
 #include "mangarepos.h"
 #include "mangaservers.h"
 #include "mangaworker.h"
+#include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace bp
@@ -49,6 +51,9 @@ namespace bp
 		const std::string& downloadsRoot() const { return dlRoot; }
 		// answers nobody in here claimed (the Ui's own fetches: a server's catalogue, a cover by URL)
 		std::vector<MangaFetch::Result> takeFetched();
+		// the reader's page fetches take their own answers by id before they reach takeFetched, so the Ui's own
+		// fetches are unaffected and the reader's answers are never lost to whichever takes first (null: none)
+		void setFetchOwner(std::function<bool(MangaFetch::Result&)> owner) { fetchOwner = std::move(owner); }
 		std::vector<MangaWorker::Result> takeWorker();
 		// grows when anything the Ui shows changed (a queue step, a repository loaded, an answer waiting)
 		uint64_t serial() const;
@@ -66,6 +71,7 @@ namespace bp
 		MangaServerStore serverStore;
 		std::vector<MangaFetch::Result> fetched;
 		std::vector<MangaWorker::Result> workerDone;
+		std::function<bool(MangaFetch::Result&)> fetchOwner;
 		uint64_t own = 0;
 	};
 }

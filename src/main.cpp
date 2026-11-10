@@ -13,6 +13,7 @@
 #include "touch.h"
 #include "reader_proto.h"
 #include "reader.h"
+#include "readerfetch.h"
 #include "manganet.h"
 #include "ui.h"
 #include "ui_glyphs.h"
@@ -628,6 +629,9 @@ int main(int argc, char** argv)
 		unsigned sinkFbo = 0;
 		// the manga reader: its pages on the top panel while a chapter is open (Ui asks for it: takeMangaRead)
 		MangaReader reader;
+		ReaderFetch readerFetch;	// a URL chapter's pages, kept coming while reader is open
+		// MangaNet routes a page's answer to the reader before the Ui can take it (the Ui's own answers are untouched)
+		mangaNet->setFetchOwner([&readerFetch](MangaFetch::Result& r) { return readerFetch.own(r); });
 		bool readerReady = false;
 		const Uint32 evReader = SDL_RegisterEvents(1);	// a page decoded: the loop wakes and takes it
 		auto drainUnder = [&] {
@@ -1327,6 +1331,7 @@ int main(int argc, char** argv)
 				Ui::MangaReadRequest rq;
 				if (ui.takeMangaRead(rq))
 				{
+					readerFetch.end();
 					SDL_GL_MakeCurrent(top, gl);
 #ifdef BP_GLES
 					if (!readerReady) readerReady = reader.init(true, evReader);
@@ -1337,20 +1342,50 @@ int main(int argc, char** argv)
 					SDL_GL_GetDrawableSize(top, &w, &h);
 					ui.readerStatus = {};
 					if (!readerReady) ui.readerStatus.error = "The reader couldn't start";
-					else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode, rq.fit)) ui.readerStatus.error = reader.error();
+					else if (!rq.pageUrls.empty())
+					{
+						// a source's or a server's chapter: the pages come through MangaNet into the Ui's own page
+						// cache (its Clear cache empties the same folder)
+						if (opts.stateDir.empty()) ui.readerStatus.error = "No state folder for the chapter's pages";
+						else if (!mangaNet || !player.settings.mangaOn)
+							ui.readerStatus.error = "The manga reader's network side is off";
+						else
+						{
+							mangaNet->start();
+							PageCache& cache = ui.mangaPageCacheRef();
+							uint64_t limit = mangaCacheBytes(player.settings.mangaCacheSize);
+							if (!cache.open(opts.stateDir + "/manga/cache", limit))
+								ui.readerStatus.error = "The page cache couldn't be opened";
+							else if (!reader.open(rq.pageUrls, rq.pageHeaders, cache, rq.path, rq.page, w, h, rq.mode,
+										 rq.fit))
+								ui.readerStatus.error = reader.error();
+							else
+								readerFetch.begin(mangaNet, &cache, &reader, rq.pageUrls, rq.pageHeaders, limit);
+						}
+					}
+					else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode, rq.fit))
+						ui.readerStatus.error = reader.error();
 				}
 				for (auto& c : ui.readerCmds)
 				{
-					if (c.kind == Ui::ReaderCmd::Close) reader.close();
+					if (c.kind == Ui::ReaderCmd::Close)
+					{
+						readerFetch.end();
+						reader.close();
+					}
 					else reader.command((int)c.kind, c.v, c.ms, c.v2);
 				}
 				ui.readerCmds.clear();
+				// a URL chapter's pages: requests reordered and the free slots filled (the answers themselves come
+				// through MangaNet's fetch owner above)
+				if (reader.isOpen()) readerFetch.pass();
 				if (reader.isOpen())
 				{
 					// the row set while a chapter is open reaches the reader too (the fit comes as its own command)
 					reader.setPreload(player.settings.mangaPreload);
 					ui.readerStatus.open = true;
 					ui.readerStatus.loading = reader.loading();
+					ui.readerStatus.error = reader.error();
 					ui.readerStatus.atEnd = reader.atEnd();
 					ui.readerStatus.page = reader.page();
 					ui.readerStatus.pages = reader.pages();
@@ -1376,6 +1411,7 @@ int main(int argc, char** argv)
 				}
 				else
 				{
+					readerFetch.end();
 					ui.readerStatus.open = false;
 					ui.readerBottom = {};
 				}
@@ -1451,6 +1487,8 @@ int main(int argc, char** argv)
 		ui.web = nullptr;
 #endif
 		durWorker->stop();
+		readerFetch.end();
+		mangaNet->setFetchOwner({});
 		mangaNet->stop();
 		coverWorker->stop();
 		sleepWatch.stop();
