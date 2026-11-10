@@ -116,10 +116,12 @@ if(BP_NET)
 	pkg_check_modules(SMB2 REQUIRED IMPORTED_TARGET libsmb2)
 	# FTP and the manga reader's images through libcurl (BananaOS's own, with OpenSSL: not bundled)
 	pkg_check_modules(CURL REQUIRED IMPORTED_TARGET libcurl)
-	target_sources(banana-player PRIVATE src/net.cpp src/net_smb.cpp src/net_ftp.cpp src/mangafetch.cpp)
-	target_link_libraries(banana-player PRIVATE PkgConfig::SMB2 PkgConfig::CURL)
+	target_sources(banana-player PRIVATE src/net.cpp src/net_smb.cpp src/net_ftp.cpp src/mangafetch.cpp
+		src/mangaworker.cpp)
+	# bpmanga: the Lua source host the worker runs calls in (docs/design/manga.md 5.2, 7)
+	target_link_libraries(banana-player PRIVATE PkgConfig::SMB2 PkgConfig::CURL bpmanga)
 else()
-	target_sources(banana-player PRIVATE src/net_none.cpp src/mangafetch_none.cpp)
+	target_sources(banana-player PRIVATE src/net_none.cpp src/mangafetch_none.cpp src/mangaworker_none.cpp)
 endif()
 # the commit in crash.log's records (empty without git, as in a source tarball)
 execute_process(COMMAND git -c safe.directory=* describe --always --dirty --exclude=*
@@ -194,3 +196,15 @@ add_test(NAME repos COMMAND repos-test)
 add_executable(downloader-test tests/downloader_test.cpp src/mangadownloader.cpp)
 target_link_libraries(downloader-test PRIVATE bpcore PkgConfig::SDL2)
 add_test(NAME downloader COMMAND downloader-test)
+
+# The manga worker (design 7): a real thread over the Lua host, with fixture scripts that need no network. Only built
+# when libcurl is there (the source's HttpFn is a real easy handle); the no-network build's stub has nothing to test.
+pkg_check_modules(WORKER_CURL QUIET IMPORTED_TARGET libcurl)
+if(WORKER_CURL_FOUND)
+	find_package(Threads REQUIRED)
+	add_executable(worker-test tests/worker_test.cpp src/mangaworker.cpp)
+	target_link_libraries(worker-test PRIVATE bpmanga PkgConfig::SDL2 PkgConfig::WORKER_CURL Threads::Threads)
+	add_test(NAME worker COMMAND worker-test)
+	# The harness's shell doesn't run ./build/worker-test directly; this target runs it through cmake.
+	add_custom_target(worker-check COMMAND $<TARGET_FILE:worker-test> DEPENDS worker-test)
+endif()
