@@ -26,6 +26,7 @@ extern "C"
 #include "keyboard.h"
 #include "manga_names.h"
 #include "mangastore.h"
+#include "mangalocal.h"
 #include "netpath.h"
 #include "pagedecode.h"
 #include "secret.h"
@@ -567,6 +568,243 @@ static void testMangaStore()
 	rmdir((bad + "/manga").c_str());
 	rmdir(bad.c_str());
 	rmdir(root.c_str());
+}
+
+// the scanner over a real temporary tree: folders and CBZs the same bytes as tests/pages, so the fixture archives
+// carry their ComicInfo (Series "Test Series", Number 3, Volume 1) into the checks
+static void testMangaLocal()
+{
+	const std::string P = std::string(BP_TESTS_DIR) + "/pages/";
+	auto bytes = [&](const std::string& p)
+	{
+		std::ifstream f(p, std::ios::binary);
+		return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+	const std::vector<uint8_t> jpg = bytes(P + "page.jpg"), cbz = bytes(P + "stored.cbz");
+	auto mk = [&](const std::string& p) { CHECK_EQ(mkdir(p.c_str(), 0755), 0); };
+	auto img = [&](const std::string& p)
+	{
+		std::ofstream w(p, std::ios::binary);
+		w.write((const char*)jpg.data(), (std::streamsize)jpg.size());
+	};
+	auto arc = [&](const std::string& p)
+	{
+		std::ofstream w(p, std::ios::binary);
+		w.write((const char*)cbz.data(), (std::streamsize)cbz.size());
+	};
+
+	char tpl[] = "/tmp/bp-mangalocal-XXXXXX";
+	char* made = mkdtemp(tpl);
+	CHECK_EQ(made != nullptr, true);
+	if (!made) return;
+	const std::string D = made, M = D + "/M";	// M is the one Manga folder being scanned
+
+	mk(M);
+	// a series folder with numbered chapter folders: the order is 1.5, 2, 10, not by name
+	mk(M + "/Chaptered");
+	mk(M + "/Chaptered/Chapter 1.5");
+	mk(M + "/Chaptered/Chapter 2");
+	mk(M + "/Chaptered/Chapter 10");
+	img(M + "/Chaptered/Chapter 1.5/001.jpg");
+	img(M + "/Chaptered/Chapter 2/001.jpg");
+	img(M + "/Chaptered/Chapter 2/002.jpg");
+	img(M + "/Chaptered/Chapter 10/001.jpg");
+	// a series of CBZ chapters: (volume, number) order, and the title every ComicInfo agrees on
+	mk(M + "/Cbz Chapters");
+	arc(M + "/Cbz Chapters/Vol.1 Ch.3.cbz");
+	arc(M + "/Cbz Chapters/Vol.1 Ch.1.cbz");
+	// volume folders: the chapters are one level deeper, the volume comes from the folder that holds them
+	mk(M + "/Volumes");
+	mk(M + "/Volumes/Vol 2");
+	mk(M + "/Volumes/Vol 2/Ch 5");
+	mk(M + "/Volumes/Vol 1");
+	mk(M + "/Volumes/Vol 1/Ch 9");
+	img(M + "/Volumes/Vol 2/Ch 5/001.jpg");
+	img(M + "/Volumes/Vol 1/Ch 9/001.jpg");
+	// a loose folder of images: a one-chapter series named after the folder
+	mk(M + "/Loose Images");
+	img(M + "/Loose Images/001.jpg");
+	img(M + "/Loose Images/002.jpg");
+	img(M + "/Loose Images/003.jpg");
+	// a loose CBZ in root: a one-chapter series; the name's number wins over ComicInfo's
+	arc(M + "/Loose 7.cbz");
+	std::ofstream(M + "/notes.txt") << "x";	// not manga, not a chapter: nothing to see
+	// chapters without numbers read in natural order
+	mk(M + "/NoNumbers");
+	mk(M + "/NoNumbers/Prologue");
+	mk(M + "/NoNumbers/Epilogue");
+	img(M + "/NoNumbers/Prologue/001.jpg");
+	img(M + "/NoNumbers/Epilogue/001.jpg");
+	// an archive the name says nothing about: ComicInfo gives number, volume and the series title
+	mk(M + "/Meta");
+	arc(M + "/Meta/whatever.cbz");
+	// what the scan must leave alone
+	mk(M + "/Empty");
+	mk(M + "/Junk");
+	std::ofstream(M + "/Junk/notes.txt") << "x";
+	mk(M + "/.Hidden");
+	img(M + "/.Hidden/001.jpg");
+	mk(M + "/__MACOSX");
+	img(M + "/__MACOSX/001.jpg");
+
+	// series sorted naturally by title; the three "Test Series" tie on their paths
+	std::vector<LocalSeries> out = scanMangaFolder(M);
+	CHECK_EQ(out.size(), (size_t)7);
+	auto byPath = [&](const std::string& p) -> const LocalSeries*
+	{
+		for (const LocalSeries& s : out)
+			if (s.path == p) return &s;
+		return nullptr;
+	};
+	if (out.size() == 7)
+	{
+		CHECK_EQ(out[0].title, std::string("Chaptered"));
+		CHECK_EQ(out[1].title, std::string("Loose Images"));
+		CHECK_EQ(out[2].title, std::string("NoNumbers"));
+		CHECK_EQ(out[3].title, std::string("Test Series"));
+		CHECK_EQ(out[3].path, M + "/Cbz Chapters");
+		CHECK_EQ(out[4].path, M + "/Loose 7.cbz");
+		CHECK_EQ(out[5].path, M + "/Meta");
+		CHECK_EQ(out[6].title, std::string("Volumes"));
+	}
+
+	if (const LocalSeries* s = byPath(M + "/Chaptered"))
+	{
+		CHECK_EQ(s->title, std::string("Chaptered"));
+		CHECK_EQ(s->cover, M + "/Chaptered/Chapter 1.5/001.jpg");
+		CHECK_EQ(s->chapters.size(), (size_t)3);
+		if (s->chapters.size() == 3)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Chapter 1.5"));
+			CHECK_EQ(s->chapters[0].number, 1.5);
+			CHECK_EQ(s->chapters[0].pages, 1);
+			CHECK_EQ(s->chapters[0].archive, false);
+			CHECK_EQ(s->chapters[1].title, std::string("Chapter 2"));
+			CHECK_EQ(s->chapters[1].number, 2.0);
+			CHECK_EQ(s->chapters[1].pages, 2);
+			CHECK_EQ(s->chapters[2].title, std::string("Chapter 10"));
+			CHECK_EQ(s->chapters[2].number, 10.0);
+			CHECK_EQ(s->chapters[2].path, M + "/Chaptered/Chapter 10");
+		}
+	}
+	if (const LocalSeries* s = byPath(M + "/Cbz Chapters"))
+	{
+		CHECK_EQ(s->title, std::string("Test Series"));	// both chapters' ComicInfo say it
+		CHECK_EQ(s->chapters.size(), (size_t)2);
+		if (s->chapters.size() == 2)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Vol.1 Ch.1"));
+			CHECK_EQ(s->chapters[0].number, 1.0);
+			CHECK_EQ(s->chapters[0].volume, 1.0);
+			CHECK_EQ(s->chapters[0].archive, true);
+			CHECK_EQ(s->chapters[0].pages, 2);	// the fixture's two images, not its ComicInfo.xml
+			CHECK_EQ(s->chapters[1].title, std::string("Vol.1 Ch.3"));
+			CHECK_EQ(s->chapters[1].number, 3.0);
+		}
+		CHECK_EQ(s->cover, M + "/Cbz Chapters/Vol.1 Ch.1.cbz#001.jpg");
+	}
+	if (const LocalSeries* s = byPath(M + "/Volumes"))
+	{
+		CHECK_EQ(s->title, std::string("Volumes"));
+		CHECK_EQ(s->chapters.size(), (size_t)2);
+		if (s->chapters.size() == 2)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Ch 9"));	// Vol 1 first, whatever the numbers say
+			CHECK_EQ(s->chapters[0].volume, 1.0);
+			CHECK_EQ(s->chapters[0].number, 9.0);
+			CHECK_EQ(s->chapters[0].path, M + "/Volumes/Vol 1/Ch 9");
+			CHECK_EQ(s->chapters[1].title, std::string("Ch 5"));
+			CHECK_EQ(s->chapters[1].volume, 2.0);
+			CHECK_EQ(s->chapters[1].number, 5.0);
+		}
+		CHECK_EQ(s->cover, M + "/Volumes/Vol 1/Ch 9/001.jpg");
+	}
+	if (const LocalSeries* s = byPath(M + "/Loose Images"))
+	{
+		CHECK_EQ(s->title, std::string("Loose Images"));
+		CHECK_EQ(s->chapters.size(), (size_t)1);
+		if (s->chapters.size() == 1)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Loose Images"));
+			CHECK_EQ(s->chapters[0].path, M + "/Loose Images");
+			CHECK_EQ(s->chapters[0].number, -1.0);
+			CHECK_EQ(s->chapters[0].pages, 3);
+		}
+		CHECK_EQ(s->cover, M + "/Loose Images/001.jpg");
+	}
+	if (const LocalSeries* s = byPath(M + "/NoNumbers"))
+	{
+		CHECK_EQ(s->chapters.size(), (size_t)2);
+		if (s->chapters.size() == 2)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Epilogue"));	// natural order, no numbers to go on
+			CHECK_EQ(s->chapters[0].number, -1.0);
+			CHECK_EQ(s->chapters[1].title, std::string("Prologue"));
+		}
+	}
+	if (const LocalSeries* s = byPath(M + "/Meta"))
+	{
+		CHECK_EQ(s->title, std::string("Test Series"));	// the ComicInfo of the only chapter
+		CHECK_EQ(s->chapters.size(), (size_t)1);
+		if (s->chapters.size() == 1)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("whatever"));	// the name without the extension
+			CHECK_EQ(s->chapters[0].number, 3.0);	// from ComicInfo: the name carries none
+			CHECK_EQ(s->chapters[0].volume, 1.0);
+			CHECK_EQ(s->chapters[0].pages, 2);
+			CHECK_EQ(s->chapters[0].path, M + "/Meta/whatever.cbz");
+		}
+		CHECK_EQ(s->cover, M + "/Meta/whatever.cbz#001.jpg");
+	}
+	if (const LocalSeries* s = byPath(M + "/Loose 7.cbz"))
+	{
+		CHECK_EQ(s->title, std::string("Test Series"));
+		CHECK_EQ(s->chapters.size(), (size_t)1);
+		if (s->chapters.size() == 1)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Loose 7"));
+			CHECK_EQ(s->chapters[0].number, 7.0);	// the name's number wins over ComicInfo's 3
+			CHECK_EQ(s->chapters[0].archive, true);
+			CHECK_EQ(s->chapters[0].pages, 2);
+		}
+	}
+	CHECK_EQ(byPath(M + "/Empty"), nullptr);
+	CHECK_EQ(byPath(M + "/Junk"), nullptr);
+	CHECK_EQ(byPath(M + "/.Hidden"), nullptr);
+	CHECK_EQ(byPath(M + "/__MACOSX"), nullptr);
+	CHECK_EQ(scanMangaFolder(M + "/gone").size(), (size_t)0);
+	CHECK_EQ(scanMangaFolder(M + "/Chaptered").size(), (size_t)3);	// a chapter folder scanned as a root: the chapters are one level up
+
+	// the places' Manga folders, each existing child folder once, nothing for a place without one
+	mk(D + "/p1");
+	mk(D + "/p1/Manga");
+	img(D + "/p1/Manga/001.jpg");
+	mk(D + "/p2");
+	mk(D + "/p2/manga");
+	mk(D + "/p3");
+	mk(D + "/p4");
+	std::ofstream(D + "/p4/Manga") << "not a folder";	// named Manga, but not a child folder
+	CHECK_EQ(mangaRoots({D + "/p1", D + "/p2", D + "/p3", D + "/p4", D + "/gone"}),
+		(std::vector<std::string>{D + "/p1/Manga", D + "/p2/manga"}));
+	CHECK_EQ(mangaRoots({D + "/p1", D + "/p1/"}), (std::vector<std::string>{D + "/p1/Manga"}));	// no duplicates
+	const std::vector<std::string> none;
+	CHECK_EQ(mangaRoots(none), none);
+
+	for (const std::string& f : {M + "/Loose 7.cbz", M + "/notes.txt", M + "/Chaptered/Chapter 1.5/001.jpg",
+		M + "/Chaptered/Chapter 2/001.jpg", M + "/Chaptered/Chapter 2/002.jpg", M + "/Chaptered/Chapter 10/001.jpg",
+		M + "/Cbz Chapters/Vol.1 Ch.3.cbz", M + "/Cbz Chapters/Vol.1 Ch.1.cbz",
+		M + "/Volumes/Vol 2/Ch 5/001.jpg", M + "/Volumes/Vol 1/Ch 9/001.jpg",
+		M + "/Loose Images/001.jpg", M + "/Loose Images/002.jpg", M + "/Loose Images/003.jpg",
+		M + "/NoNumbers/Prologue/001.jpg", M + "/NoNumbers/Epilogue/001.jpg", M + "/Meta/whatever.cbz",
+		M + "/Junk/notes.txt", M + "/.Hidden/001.jpg", M + "/__MACOSX/001.jpg",
+		D + "/p1/Manga/001.jpg", D + "/p4/Manga"})
+		unlink(f.c_str());
+	for (const std::string& f : {M + "/Chaptered/Chapter 1.5", M + "/Chaptered/Chapter 2", M + "/Chaptered/Chapter 10",
+		M + "/Chaptered", M + "/Cbz Chapters", M + "/Volumes/Vol 2/Ch 5", M + "/Volumes/Vol 2",
+		M + "/Volumes/Vol 1/Ch 9", M + "/Volumes/Vol 1", M + "/Volumes", M + "/Loose Images", M + "/NoNumbers/Prologue",
+		M + "/NoNumbers/Epilogue", M + "/NoNumbers", M + "/Meta", M + "/Empty", M + "/Junk", M + "/.Hidden",
+		M + "/__MACOSX", M, D + "/p1/Manga", D + "/p1", D + "/p2/manga", D + "/p2", D + "/p3", D + "/p4", D})
+		rmdir(f.c_str());
 }
 
 static void testComicInfo()
@@ -5032,6 +5270,7 @@ int main()
 	testDurations();
 	testMangaNames();
 	testMangaStore();
+	testMangaLocal();
 	testComicInfo();
 	testPageDecode();
 	testCbz();
