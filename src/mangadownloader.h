@@ -27,6 +27,7 @@ namespace bp
 		virtual void cancel(uint64_t id) = 0;
 	};
 
+#ifdef BP_MANGA_FETCH
 	// MangaFetch satisfies FetchApi through this: the engine sees a queue and a cancel, never the fetcher's thread.
 	// It lives in the header (and inline) so the downloader's test can link mangadownloader.cpp without libcurl.
 	class MangaFetchApi final : public FetchApi
@@ -43,6 +44,7 @@ namespace bp
 	private:
 		MangaFetch& fetch_;
 	};
+#endif
 
 	class MangaDownloader
 	{
@@ -63,8 +65,12 @@ namespace bp
 		static constexpr int kMaxAttempts = 3;	// one try and two retries, then the chapter fails
 
 		explicit MangaDownloader(FetchApi& fetch, DownloadQueue& queue) : fetch_(&fetch), queue_(queue) {}
+#ifdef BP_MANGA_FETCH
+		// (the player only, which defines BP_MANGA_FETCH: the test has no fetcher to link, and GCC keeps the adapter's
+		// virtual functions, which call it, even unused)
 		MangaDownloader(MangaFetch& fetch, DownloadQueue& queue)
 			: owned_(new MangaFetchApi(fetch)), fetch_(owned_.get()), queue_(queue) {}
+#endif
 		MangaDownloader(const MangaDownloader&) = delete;
 		MangaDownloader& operator=(const MangaDownloader&) = delete;
 
