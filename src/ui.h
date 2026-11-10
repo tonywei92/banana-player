@@ -131,7 +131,16 @@ namespace bp
 		// ---- the manga reader: Ui (bottom panel, the library) and main's reader (top panel) talk only through these ----
 		// a chapter to open on the top panel (Ui sets it and shows Page::MangaRead; main takes it once and opens it).
 		// path: a folder of pictures or a CBZ; page: where to start (0-based); fit: MANGA_FIT_*
-		struct MangaReadRequest { std::string seriesId, seriesTitle, chapterId, chapterTitle, path; bool archive = false; int page = 0, mode = 0, fit = 0; };
+		struct MangaReadRequest
+		{
+			std::string seriesId, seriesTitle, chapterId, chapterTitle, path;
+			bool archive = false;
+			int page = 0, mode = 0, fit = 0;
+			// a chapter from a source or a server: its pages' URLs, in order, and the headers they need (the source's
+			// Referer...); path is then the chapter's id (the cache's key, never opened). Empty: path is a folder or a CBZ
+			std::vector<std::string> pageUrls;
+			std::vector<std::pair<std::string, std::string>> pageHeaders;
+		};
 		bool takeMangaRead(MangaReadRequest& out)
 		{
 			if (mangaRead.path.empty()) return false;
