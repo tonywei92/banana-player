@@ -25,6 +25,7 @@ extern "C"
 #include "playlists.h"
 #include "keyboard.h"
 #include "manga_names.h"
+#include "mangastore.h"
 #include "netpath.h"
 #include "pagedecode.h"
 #include "secret.h"
@@ -302,6 +303,270 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("Volume"), -1.0);
 	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+static void testMangaStore()
+{
+	char tmpl[] = "/tmp/bp-manga-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string state = root + "/state";
+
+	MangaStore st;
+	CHECK_EQ(st.load(state), true);		// no files yet: an empty store
+	CHECK_EQ(st.library().size(), size_t(0));
+	CHECK_EQ(st.history(10).size(), size_t(0));
+	CHECK_EQ(st.continueReading(10).size(), size_t(0));
+
+	uint64_t serial = st.serial();
+	MangaSeries a;
+	a.id = "local:/data/Manga/Ember Lantern";
+	a.title = "Ember Lantern";
+	a.source = "local";
+	a.cover = "/data/Manga/cover.jpg";
+	a.added = 1000;
+	st.putSeries(a);
+	CHECK_EQ(st.serial() > serial, true);	// every change grows the serial
+
+	MangaSeries b;
+	b.id = "local:/data/Manga/Quiet Harbor";
+	b.title = "Quiet Harbor";
+	b.source = "local";
+	b.added = 2000;
+	b.readingMode = "strip";
+	st.putSeries(b);
+
+	// a title with the characters a TSV can't hold
+	MangaSeries c;
+	c.id = "local:/data/Manga/Tab\tName";
+	c.title = "Tab\there\nNew line\\Back";
+	c.source = "local";
+	c.added = 3000;
+	st.putSeries(c);
+
+	// a chapter read to the middle: not read
+	ChapterProgress p;
+	p.seriesId = a.id;
+	p.chapterId = "local:/data/Manga/Ember Lantern/Ch 01";
+	p.chapterTitle = "Chapter 1";
+	p.page = 4;
+	p.pages = 20;
+	p.at = 5000;
+	st.setProgress(p);
+
+	// a chapter read to its last page: read
+	ChapterProgress last;
+	last.seriesId = a.id;
+	last.chapterId = "local:/data/Manga/Ember Lantern/Ch 02";
+	last.chapterTitle = "Chapter 2";
+	last.page = 19;
+	last.pages = 20;
+	last.at = 6000;
+	st.setProgress(last);
+
+	// a chapter of another series
+	ChapterProgress q;
+	q.seriesId = b.id;
+	q.chapterId = "local:/data/Manga/Quiet Harbor/Ch 01";
+	q.chapterTitle = "Chapter 1";
+	q.page = 2;
+	q.pages = 15;
+	q.at = 7000;
+	st.setProgress(q);
+
+	const ChapterProgress* e = st.progress(p.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e)
+	{
+		CHECK_EQ(e->read, false);
+		CHECK_EQ(e->page, 4);
+		CHECK_EQ(e->pages, 20);
+	}
+	e = st.progress(last.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e) CHECK_EQ(e->read, true);
+	// the series was read when its chapter was
+	const MangaSeries* sa = st.series(a.id);
+	CHECK_EQ(sa != nullptr, true);
+	if (sa) CHECK_EQ(sa->lastRead, (int64_t)6000);
+
+	// saved and read back into another store
+	CHECK_EQ(st.save(), true);
+	MangaStore st2;
+	CHECK_EQ(st2.load(state), true);
+	std::vector<MangaSeries> lib = st2.library();
+	CHECK_EQ(lib.size(), size_t(3));
+	if (lib.size() == 3)
+	{
+		CHECK_EQ(lib[0].id, b.id);		// the one read most recently first (7000)
+		CHECK_EQ(lib[0].title, b.title);
+		CHECK_EQ(lib[0].source, b.source);
+		CHECK_EQ(lib[0].cover, std::string(""));
+		CHECK_EQ(lib[0].added, (int64_t)2000);
+		CHECK_EQ(lib[0].lastRead, (int64_t)7000);
+		CHECK_EQ(lib[0].inLibrary, true);
+		CHECK_EQ(lib[0].readingMode, std::string("strip"));
+		CHECK_EQ(lib[1].id, a.id);		// then the one read before it (6000)
+		CHECK_EQ(lib[1].title, a.title);
+		CHECK_EQ(lib[1].source, a.source);
+		CHECK_EQ(lib[1].cover, a.cover);
+		CHECK_EQ(lib[1].added, (int64_t)1000);
+		CHECK_EQ(lib[1].lastRead, (int64_t)6000);
+		CHECK_EQ(lib[1].inLibrary, true);
+		CHECK_EQ(lib[1].readingMode, std::string(""));
+		CHECK_EQ(lib[2].id, c.id);		// then the one never read, by title
+		CHECK_EQ(lib[2].title, c.title);	// the tabs, the newline and the backslash came back
+		CHECK_EQ(lib[2].source, c.source);
+		CHECK_EQ(lib[2].added, (int64_t)3000);
+		CHECK_EQ(lib[2].lastRead, (int64_t)0);
+		CHECK_EQ(lib[2].inLibrary, true);
+	}
+	e = st2.progress(p.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e)
+	{
+		CHECK_EQ(e->seriesId, p.seriesId);
+		CHECK_EQ(e->chapterId, p.chapterId);
+		CHECK_EQ(e->chapterTitle, p.chapterTitle);
+		CHECK_EQ(e->page, 4);
+		CHECK_EQ(e->pages, 20);
+		CHECK_EQ(e->read, false);
+		CHECK_EQ(e->at, (int64_t)5000);
+	}
+	e = st2.progress(last.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e) CHECK_EQ(e->read, true);
+	CHECK_EQ(st2.progress("local:/nothing") == nullptr, true);
+
+	// the files say what they are
+	{
+		std::ifstream f(state + "/manga/library.tsv");
+		std::string line;
+		std::getline(f, line);
+		CHECK_EQ(line, std::string("# banana-player manga library v1"));
+		std::ifstream g(state + "/manga/progress.tsv");
+		std::getline(g, line);
+		CHECK_EQ(line, std::string("# banana-player manga progress v1"));
+	}
+
+	// continue reading: each series' latest unfinished chapter, newest first
+	std::vector<ChapterProgress> cont = st.continueReading(10);
+	CHECK_EQ(cont.size(), size_t(2));
+	if (cont.size() == 2)
+	{
+		CHECK_EQ(cont[0].chapterId, q.chapterId);
+		CHECK_EQ(cont[1].chapterId, p.chapterId);
+	}
+	CHECK_EQ(st.continueReading(1).size(), size_t(1));
+	if (!st.continueReading(1).empty()) CHECK_EQ(st.continueReading(1)[0].chapterId, q.chapterId);
+	CHECK_EQ(st.continueReading(0).size(), size_t(0));
+
+	// the history: every chapter opened, newest first
+	std::vector<ChapterProgress> hist = st.history(10);
+	CHECK_EQ(hist.size(), size_t(3));
+	if (hist.size() == 3)
+	{
+		CHECK_EQ(hist[0].chapterId, q.chapterId);
+		CHECK_EQ(hist[1].chapterId, last.chapterId);
+		CHECK_EQ(hist[2].chapterId, p.chapterId);
+	}
+	CHECK_EQ(st.history(2).size(), size_t(2));
+
+	// marked read and unread
+	std::vector<std::string> chapters = {"local:/data/Manga/Ember Lantern/Ch 01", "local:/data/Manga/Ember Lantern/Ch 03"};
+	CHECK_EQ(st.unread(a.id, chapters), 2);
+	st.markRead(a.id, chapters, true);
+	CHECK_EQ(st.unread(a.id, chapters), 0);
+	e = st.progress("local:/data/Manga/Ember Lantern/Ch 03");
+	CHECK_EQ(e != nullptr, true);
+	if (e) CHECK_EQ(e->read, true);
+	st.markRead(a.id, chapters, false);
+	CHECK_EQ(st.unread(a.id, chapters), 2);
+	// a chapter of another series doesn't answer for this one
+	st.markRead(a.id, {"local:/data/Manga/Ember Lantern/Ch 01"}, true);
+	CHECK_EQ(st.unread(b.id, {"local:/data/Manga/Ember Lantern/Ch 01"}), 1);
+
+	// taking a series out of the library and back
+	st.setInLibrary(a.id, false);
+	CHECK_EQ(st.library().size(), size_t(2));
+	CHECK_EQ(st.series(a.id) != nullptr, true);
+	st.setInLibrary(a.id, true);
+	CHECK_EQ(st.library().size(), size_t(3));
+
+	// a series goes with its chapters' progress
+	st.removeSeries(b.id);
+	CHECK_EQ(st.series(b.id) == nullptr, true);
+	CHECK_EQ(st.progress(q.chapterId) == nullptr, true);
+	CHECK_EQ(st.library().size(), size_t(2));
+
+	// the history cleared: the library stays
+	st.clearHistory();
+	CHECK_EQ(st.history(50).size(), size_t(0));
+	CHECK_EQ(st.continueReading(10).size(), size_t(0));
+	CHECK_EQ(st.library().size(), size_t(2));
+
+	// a broken line in either file is skipped; the rest of the file loads
+	std::string bad = root + "/bad";
+	mkdir(bad.c_str(), 0755);
+	mkdir((bad + "/manga").c_str(), 0755);
+	{
+		std::ofstream f(bad + "/manga/library.tsv");
+		f << "# banana-player manga library v1\n";
+		f << "local:/A\tAlpha\tlocal\t\t10\t20\t1\t\n";
+		f << "this line has no fields\n";
+		f << "local:/B\tBeta\tlocal\t\t30\t40\t0\tstrip\n";
+		f << "local:/C\tToo\tfew\n";
+		f << "local:/D\tDelta\tlocal\t\t50\t60\t1\tltr\tcolumns\ta\tlater\n";	// a later version's extra columns
+	}
+	{
+		std::ofstream f(bad + "/manga/progress.tsv");
+		f << "# banana-player manga progress v1\n";
+		f << "local:/A\tlocal:/A/c1\tOne\t3\t10\t0\t700\n";
+		f << "rubbish\n";
+		f << "local:/A\tlocal:/A/c2\tTwo\n";
+		f << "local:/A\tlocal:/A/c3\tThree\t1\t5\t0\t800\tignored\n";
+	}
+	MangaStore broken;
+	CHECK_EQ(broken.load(bad), true);
+	CHECK_EQ(broken.library().size(), size_t(2));	// B is out of the library
+	CHECK_EQ(broken.series("local:/A") != nullptr, true);
+	CHECK_EQ(broken.series("local:/B") != nullptr, true);
+	CHECK_EQ(broken.series("local:/C") == nullptr, true);
+	CHECK_EQ(broken.series("local:/D") != nullptr, true);
+	if (const MangaSeries* d = broken.series("local:/D"))
+	{
+		CHECK_EQ(d->title, std::string("Delta"));
+		CHECK_EQ(d->readingMode, std::string("ltr"));
+		CHECK_EQ(d->lastRead, (int64_t)60);
+	}
+	CHECK_EQ(broken.progress("local:/A/c1") != nullptr, true);
+	CHECK_EQ(broken.progress("local:/A/c2") == nullptr, true);
+	CHECK_EQ(broken.progress("local:/A/c3") != nullptr, true);
+	if (const ChapterProgress* bp1 = broken.progress("local:/A/c1"))
+	{
+		CHECK_EQ(bp1->page, 3);
+		CHECK_EQ(bp1->pages, 10);
+		CHECK_EQ(bp1->at, (int64_t)700);
+	}
+
+	// a folder that isn't there: an empty store, not a failure
+	MangaStore none;
+	CHECK_EQ(none.load(root + "/nothing"), true);
+	CHECK_EQ(none.library().size(), size_t(0));
+	CHECK_EQ(none.history(10).size(), size_t(0));
+	CHECK_EQ(none.progress(p.chapterId) == nullptr, true);
+
+	// the folders are gone again
+	unlink((state + "/manga/library.tsv").c_str());
+	unlink((state + "/manga/progress.tsv").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+	unlink((bad + "/manga/library.tsv").c_str());
+	unlink((bad + "/manga/progress.tsv").c_str());
+	rmdir((bad + "/manga").c_str());
+	rmdir(bad.c_str());
+	rmdir(root.c_str());
 }
 
 static void testComicInfo()
@@ -4762,6 +5027,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testMangaStore();
 	testComicInfo();
 	testPageDecode();
 	testCbz();
