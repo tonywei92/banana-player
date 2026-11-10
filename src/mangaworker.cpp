@@ -1,5 +1,7 @@
 #include "mangaworker.h"
+#include "webpath.h"
 #include <algorithm>
+#include <arpa/inet.h>
 #include <atomic>
 #include <cctype>
 #include <chrono>
@@ -7,10 +9,14 @@
 #include <curl/curl.h>
 #include <deque>
 #include <fstream>
+#include <ifaddrs.h>
 #include <iterator>
 #include <map>
 #include <mutex>
+#include <netdb.h>
+#include <netinet/in.h>
 #include <stdexcept>
+#include <sys/socket.h>
 #include <thread>
 #include <sys/stat.h>
 
@@ -23,6 +29,7 @@ namespace bp
 		constexpr int kMaxTimeout = 30;
 		constexpr long kConnectMs = 15000;
 		constexpr long kMaxRedirects = 5;
+		constexpr int kMaxRequestsPerCall = 40;	// 5.4; the host counts too, this is the socket's own guard
 		constexpr double kDefaultIdle = 5 * 60;
 		// The 5.4 limits for a call. The host's own defaults are the same; they are set here so the worker's numbers
 		// show up in one place.
@@ -145,15 +152,142 @@ namespace bp
 			return cancel && cancel->load() ? 1 : 0;
 		}
 
+		// One hop of a request (the URL the script gave, then each redirect): the name it asks for and the one
+		// public address curl is allowed to connect to.
+		struct Hop
+		{
+			std::string url, host, port, address;
+		};
+
+		std::string addressOf(const sockaddr* sa)
+		{
+			char buf[INET6_ADDRSTRLEN] = {};
+			if (sa->sa_family == AF_INET)
+			{
+				if (!inet_ntop(AF_INET, &((const sockaddr_in*)sa)->sin_addr, buf, sizeof buf)) return "";
+			}
+			else if (sa->sa_family == AF_INET6)
+			{
+				if (!inet_ntop(AF_INET6, &((const sockaddr_in6*)sa)->sin6_addr, buf, sizeof buf)) return "";
+			}
+			return buf;
+		}
+
+		// Any of the card's own addresses, public or not: a script must not reach the handheld itself (5.4).
+		bool ownAddress(const std::string& ip)
+		{
+			struct ifaddrs* list = nullptr;
+			if (getifaddrs(&list) != 0) return false;
+			bool own = false;
+			for (struct ifaddrs* i = list; i; i = i->ifa_next)
+			{
+				if (!i->ifa_addr) continue;
+				if (addressOf(i->ifa_addr) == ip)
+				{
+					own = true;
+					break;
+				}
+			}
+			freeifaddrs(list);
+			return own;
+		}
+
+		// The canonical form of a literal host ("::1", "127.0.0.1"), or "" when it is a name. Brackets and a zone
+		// are dropped, as publicAddress drops them too.
+		std::string literalAddress(const std::string& hostIn)
+		{
+			std::string h = hostIn;
+			if (h.size() >= 2 && h.front() == '[' && h.back() == ']') h = h.substr(1, h.size() - 2);
+			h = h.substr(0, h.find('%'));
+			in_addr a4;
+			in6_addr a6;
+			char out[INET6_ADDRSTRLEN] = {};
+			if (inet_pton(AF_INET, h.c_str(), &a4) == 1)
+				return inet_ntop(AF_INET, &a4, out, sizeof out) ? out : "";
+			if (inet_pton(AF_INET6, h.c_str(), &a6) == 1)
+				return inet_ntop(AF_INET6, &a6, out, sizeof out) ? out : "";
+			return "";
+		}
+
+		// The host and port of an absolute http(s) URL; "" when the hop may be tried, otherwise the refusal.
+		std::string parseUrl(const std::string& url, std::string& host, std::string& port)
+		{
+			CURLU* u = curl_url();
+			if (!u) return "Blocked: out of memory";
+			std::string scheme, user, pass;
+			bool ok = curl_url_set(u, CURLUPART_URL, url.c_str(), 0) == CURLUE_OK;
+			auto get = [&](CURLUPart part, std::string& out) {
+				char* s = nullptr;
+				if (ok && curl_url_get(u, part, &s, 0) == CURLUE_OK && s)
+				{
+					out = s;
+					curl_free(s);
+				}
+			};
+			if (ok)
+			{
+				get(CURLUPART_SCHEME, scheme);
+				get(CURLUPART_HOST, host);
+				get(CURLUPART_PORT, port);
+				get(CURLUPART_USER, user);
+				get(CURLUPART_PASSWORD, pass);
+			}
+			curl_url_cleanup(u);
+			if (!ok || host.empty()) return "Blocked: not a valid URL";
+			if (!iequals(scheme, "http") && !iequals(scheme, "https")) return "Blocked: only http and https";
+			// Credentials in a URL would end up in a rendered page or a log: the source has headers for auth.
+			if (!user.empty() || !pass.empty()) return "Blocked: a URL may not carry credentials";
+			if (host.size() >= 2 && host.front() == '[' && host.back() == ']') host = host.substr(1, host.size() - 2);
+			if (port.empty()) port = iequals(scheme, "https") ? "443" : "80";
+			return "";
+		}
+
+		// 5.4's rule for one hop: http(s), no credentials, and a host with at least one public address that isn't
+		// the card's own. The address is the one curl is pinned to; a name is never resolved by curl itself.
+		std::string checkHop(const std::string& url, Hop& hop)
+		{
+			hop.url = url;
+			std::string error = parseUrl(url, hop.host, hop.port);
+			if (!error.empty()) return error;
+			std::string literal = literalAddress(hop.host);
+			if (!literal.empty())
+			{
+				if (!publicAddress(literal) || ownAddress(literal))
+					return "Blocked: " + hop.host + " is not a public address";
+				hop.address = literal;
+				return "";
+			}
+			struct addrinfo hints = {};
+			hints.ai_family = AF_UNSPEC;
+			hints.ai_socktype = SOCK_STREAM;
+			struct addrinfo* found = nullptr;
+			if (getaddrinfo(hop.host.c_str(), hop.port.c_str(), &hints, &found) != 0)
+				return "couldn't resolve " + hop.host;
+			std::string address;
+			for (struct addrinfo* a = found; a; a = a->ai_next)
+			{
+				std::string ip = addressOf(a->ai_addr);
+				if (ip.empty() || !publicAddress(ip) || ownAddress(ip)) continue;
+				address = ip;
+				break;
+			}
+			freeaddrinfo(found);
+			if (address.empty()) return "Blocked: " + hop.host + " is not a public address";
+			hop.address = address;
+			return "";
+		}
+
 		struct Easy
 		{
 			CURL* e = nullptr;
 			curl_slist* list = nullptr;
+			curl_slist* resolve = nullptr;	// the pin CURLOPT_RESOLVE points at; curl shares, not copies, the list
 			~Easy()
 			{
 				// the handle goes first: the header list is not owned by curl, but its cleanup must not see it gone
 				if (e) curl_easy_cleanup(e);
 				if (list) curl_slist_free_all(list);
+				if (resolve) curl_slist_free_all(resolve);
 			}
 			// a header line per given pair; empty names are skipped, as the fetcher does
 			bool addHeaders(const std::map<std::string, std::string>& headers)
@@ -177,6 +311,7 @@ namespace bp
 			std::unique_ptr<SourceHost> host;
 			CURLSH* cookies = nullptr;	// owned by the worker, so cookies outlive an idle close
 			std::atomic<bool>* cancel = nullptr;	// the worker's flag for the job running now
+			int requestsThisCall = 0;	// 5.4's 40, reset by the job (and by loading the script's top level)
 			Clock::time_point lastUse;
 
 			~SourceState() = default;
@@ -194,82 +329,124 @@ namespace bp
 		{
 			// A cancelled job must not open another socket: the script may have caught the first failure.
 			if (cancelled()) throw std::runtime_error("the source was cancelled");
+			if (++requestsThisCall > kMaxRequestsPerCall)
+				throw std::runtime_error("more than 40 requests in one call");
 			int timeout = timeoutSeconds <= 0 ? kDefaultTimeout : timeoutSeconds;
 			if (timeout > kMaxTimeout) timeout = kMaxTimeout;
 
-			Easy easy;
-			easy.e = curl_easy_init();
-			if (!easy.e) throw std::runtime_error("couldn't make a request");
-			CURL* e = easy.e;
-			char errbuf[CURL_ERROR_SIZE] = {};
-			Sink sink;
-			curl_easy_setopt(e, CURLOPT_URL, url.c_str());
-			curl_easy_setopt(e, CURLOPT_NOSIGNAL, 1L);
-			curl_easy_setopt(e, CURLOPT_FOLLOWLOCATION, 1L);
-			curl_easy_setopt(e, CURLOPT_MAXREDIRS, kMaxRedirects);
+			std::string currentUrl = url, currentMethod = method, currentBody = body;
+			long redirects = 0;
+			for (;;)
+			{
+				if (cancelled()) throw std::runtime_error("the source was cancelled");
+				Hop hop;
+				// Every hop is checked afresh, redirects included: curl neither resolves nor follows on its own.
+				std::string blocked = checkHop(currentUrl, hop);
+				if (!blocked.empty()) throw std::runtime_error(blocked);
+
+				Easy easy;
+				easy.e = curl_easy_init();
+				if (!easy.e) throw std::runtime_error("couldn't make a request");
+				CURL* e = easy.e;
+				char errbuf[CURL_ERROR_SIZE] = {};
+				Sink sink;
+				curl_easy_setopt(e, CURLOPT_URL, hop.url.c_str());
+				curl_easy_setopt(e, CURLOPT_NOSIGNAL, 1L);
+				curl_easy_setopt(e, CURLOPT_FOLLOWLOCATION, 0L);	// the next hop is resolved and pinned here too
 #if LIBCURL_VERSION_NUM >= 0x075500	// 7.85.0: the string forms of the protocol masks
-			curl_easy_setopt(e, CURLOPT_PROTOCOLS_STR, "http,https");
-			curl_easy_setopt(e, CURLOPT_REDIR_PROTOCOLS_STR, "http,https");
+				curl_easy_setopt(e, CURLOPT_PROTOCOLS_STR, "http,https");
 #else
-			curl_easy_setopt(e, CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
-			curl_easy_setopt(e, CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
+				curl_easy_setopt(e, CURLOPT_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
 #endif
-			curl_easy_setopt(e, CURLOPT_TIMEOUT, (long)timeout);
-			curl_easy_setopt(e, CURLOPT_CONNECTTIMEOUT_MS, std::min(kConnectMs, (long)timeout * 1000));
-			curl_easy_setopt(e, CURLOPT_SSL_VERIFYPEER, 1L);
-			curl_easy_setopt(e, CURLOPT_SSL_VERIFYHOST, 2L);
-			curl_easy_setopt(e, CURLOPT_ACCEPT_ENCODING, "");
-			curl_easy_setopt(e, CURLOPT_TCP_KEEPALIVE, 1L);
-			curl_easy_setopt(e, CURLOPT_WRITEFUNCTION, &onWrite);
-			curl_easy_setopt(e, CURLOPT_WRITEDATA, &sink);
-			curl_easy_setopt(e, CURLOPT_HEADERFUNCTION, &onHeader);
-			curl_easy_setopt(e, CURLOPT_HEADERDATA, &sink);
-			curl_easy_setopt(e, CURLOPT_XFERINFOFUNCTION, &onProgress);
-			curl_easy_setopt(e, CURLOPT_XFERINFODATA, cancel);
-			curl_easy_setopt(e, CURLOPT_NOPROGRESS, 0L);
-			curl_easy_setopt(e, CURLOPT_ERRORBUFFER, errbuf);
-			if (cookies)
-			{
-				curl_easy_setopt(e, CURLOPT_SHARE, cookies);
-				curl_easy_setopt(e, CURLOPT_COOKIEFILE, "");	// the in-memory engine; the share keeps it per source
-			}
-			// The design's User-Agent is the player's version, unless the source brings its own: its headers reach
-			// this list already (the host merges meta.headers with the call's), so only the default is set here.
-			bool ownAgent = false;
-			for (const auto& h : headers)
-				if (iequals(h.first, "User-Agent")) ownAgent = true;
-			if (!ownAgent) curl_easy_setopt(e, CURLOPT_USERAGENT, userAgent.c_str());
-			if (!easy.addHeaders(headers)) throw std::runtime_error("out of memory");
-			if (easy.list) curl_easy_setopt(e, CURLOPT_HTTPHEADER, easy.list);
-			if (method == "POST")
-			{
-				curl_easy_setopt(e, CURLOPT_POST, 1L);
-				curl_easy_setopt(e, CURLOPT_POSTFIELDS, body.data());
-				curl_easy_setopt(e, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)body.size());
-			}
-			else
-			{
-				curl_easy_setopt(e, CURLOPT_HTTPGET, 1L);
-			}
+				// the environment's proxies could otherwise connect somewhere the pin never saw
+				curl_easy_setopt(e, CURLOPT_PROXY, "");
+				curl_easy_setopt(e, CURLOPT_NOPROXY, "*");
+				curl_easy_setopt(e, CURLOPT_TIMEOUT, (long)timeout);
+				curl_easy_setopt(e, CURLOPT_CONNECTTIMEOUT_MS, std::min(kConnectMs, (long)timeout * 1000));
+				curl_easy_setopt(e, CURLOPT_SSL_VERIFYPEER, 1L);
+				curl_easy_setopt(e, CURLOPT_SSL_VERIFYHOST, 2L);
+				curl_easy_setopt(e, CURLOPT_ACCEPT_ENCODING, "");
+				curl_easy_setopt(e, CURLOPT_TCP_KEEPALIVE, 1L);
+				curl_easy_setopt(e, CURLOPT_WRITEFUNCTION, &onWrite);
+				curl_easy_setopt(e, CURLOPT_WRITEDATA, &sink);
+				curl_easy_setopt(e, CURLOPT_HEADERFUNCTION, &onHeader);
+				curl_easy_setopt(e, CURLOPT_HEADERDATA, &sink);
+				curl_easy_setopt(e, CURLOPT_XFERINFOFUNCTION, &onProgress);
+				curl_easy_setopt(e, CURLOPT_XFERINFODATA, cancel);
+				curl_easy_setopt(e, CURLOPT_NOPROGRESS, 0L);
+				curl_easy_setopt(e, CURLOPT_ERRORBUFFER, errbuf);
+				if (cookies)
+				{
+					curl_easy_setopt(e, CURLOPT_SHARE, cookies);
+					curl_easy_setopt(e, CURLOPT_COOKIEFILE, "");	// the in-memory engine; the share keeps it per source
+				}
+				// The design's User-Agent is the player's version, unless the source brings its own: its headers
+				// reach this list already (the host merges meta.headers with the call's), so only the default is
+				// set here.
+				bool ownAgent = false;
+				for (const auto& h : headers)
+					if (iequals(h.first, "User-Agent")) ownAgent = true;
+				if (!ownAgent) curl_easy_setopt(e, CURLOPT_USERAGENT, userAgent.c_str());
+				if (!easy.addHeaders(headers)) throw std::runtime_error("out of memory");
+				if (easy.list) curl_easy_setopt(e, CURLOPT_HTTPHEADER, easy.list);
+				// The name curl is given resolves to this one checked address and nowhere else: a second lookup
+				// (DNS rebinding) never happens. An address literal needs no pin, curl dials it directly.
+				if (literalAddress(hop.host).empty())
+				{
+					std::string pin = hop.host + ":" + hop.port + ":" +
+						(hop.address.find(':') == std::string::npos ? hop.address : "[" + hop.address + "]");
+					easy.resolve = curl_slist_append(easy.resolve, pin.c_str());
+					if (!easy.resolve) throw std::runtime_error("out of memory");
+					curl_easy_setopt(e, CURLOPT_RESOLVE, easy.resolve);
+				}
+				if (currentMethod == "POST")
+				{
+					curl_easy_setopt(e, CURLOPT_POST, 1L);
+					curl_easy_setopt(e, CURLOPT_POSTFIELDS, currentBody.data());
+					curl_easy_setopt(e, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)currentBody.size());
+				}
+				else
+				{
+					curl_easy_setopt(e, CURLOPT_HTTPGET, 1L);
+				}
 
-			CURLcode rc = curl_easy_perform(e);
-			if (rc != CURLE_OK)
-			{
-				if (cancelled() || rc == CURLE_ABORTED_BY_CALLBACK) throw std::runtime_error("the source was cancelled");
-				if (sink.over) throw std::runtime_error("the response is larger than 8 MB");
-				throw std::runtime_error(errbuf[0] ? errbuf : curl_easy_strerror(rc));
-			}
-			// The transfer may have finished just as the job was cancelled: the rest of the call must not run.
-			if (cancelled()) throw std::runtime_error("the source was cancelled");
+				CURLcode rc = curl_easy_perform(e);
+				if (rc != CURLE_OK)
+				{
+					if (cancelled() || rc == CURLE_ABORTED_BY_CALLBACK) throw std::runtime_error("the source was cancelled");
+					if (sink.over) throw std::runtime_error("the response is larger than 8 MB");
+					throw std::runtime_error(errbuf[0] ? errbuf : curl_easy_strerror(rc));
+				}
+				// The transfer may have finished just as the job was cancelled: the rest of the call must not run.
+				if (cancelled()) throw std::runtime_error("the source was cancelled");
 
-			HttpResult r;
-			long status = 0;
-			if (curl_easy_getinfo(e, CURLINFO_RESPONSE_CODE, &status) == CURLE_OK) r.status = (int)status;
-			char* finalUrl = nullptr;
-			if (curl_easy_getinfo(e, CURLINFO_EFFECTIVE_URL, &finalUrl) == CURLE_OK && finalUrl) r.url = finalUrl;
-			r.body.swap(sink.body);
-			r.headers.swap(sink.headers);
-			return r;
+				long status = 0;
+				if (curl_easy_getinfo(e, CURLINFO_RESPONSE_CODE, &status) != CURLE_OK) status = 0;
+				char* next = nullptr;
+				bool isRedirect = status >= 300 && status < 400 && status != 304 &&
+					curl_easy_getinfo(e, CURLINFO_REDIRECT_URL, &next) == CURLE_OK && next && *next;
+				if (isRedirect)
+				{
+					if (++redirects > kMaxRedirects) throw std::runtime_error("too many redirects");
+					// What curl's own following did: 301/302/303 turn a POST into a GET, 307/308 keep it.
+					if (status == 301 || status == 302 || status == 303)
+					{
+						currentMethod = "GET";
+						currentBody.clear();
+					}
+					currentUrl = next;
+					continue;
+				}
+
+				HttpResult r;
+				r.status = (int)status;
+				char* effective = nullptr;
+				if (curl_easy_getinfo(e, CURLINFO_EFFECTIVE_URL, &effective) == CURLE_OK && effective) hop.url = effective;
+				r.url = hop.url;
+				r.body.swap(sink.body);
+				r.headers.swap(sink.headers);
+				return r;
+			}
 		}
 	}
 
@@ -373,6 +550,7 @@ namespace bp
 		});
 		st->host->setPrefsPath(st->prefsPath);
 		st->host->setLimits(kCallSeconds, kCallInstructions, kCallMemory);
+		st->requestsThisCall = 0;	// the script's top level gets its own 40 (5.4)
 		if (!st->host->load(text, st->id, error))
 		{
 			st->host.reset();
@@ -394,6 +572,7 @@ namespace bp
 		{
 			std::shared_ptr<SourceState> st = openSource(job, open, out.error);
 			if (!st) return out;
+			st->requestsThisCall = 0;	// the 40 per call count from this call's first request (5.4)
 			SourceHost& host = *st->host;
 			switch (job.kind)
 			{

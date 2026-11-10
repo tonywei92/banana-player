@@ -195,6 +195,49 @@ namespace bp
 		return false;
 	}
 
+	namespace
+	{
+		bool v4Public(const unsigned char* b)
+		{
+			if (v4Private(b)) return false;
+			if (b[0] == 0) return false;	// 0.0.0.0/8, "this network"
+			if (b[0] == 100 && (b[1] & 0xC0) == 64) return false;	// 100.64.0.0/10, carrier-grade NAT
+			if (b[0] == 192 && b[1] == 0 && (b[2] == 0 || b[2] == 2)) return false;	// 192.0.0.0/24, TEST-NET-1
+			if (b[0] == 198 && (b[1] & 0xFE) == 18) return false;	// 198.18.0.0/15, benchmarking
+			if (b[0] == 198 && b[1] == 51 && b[2] == 100) return false;	// 198.51.100.0/24, TEST-NET-2
+			if (b[0] == 203 && b[1] == 0 && b[2] == 113) return false;	// 203.0.113.0/24, TEST-NET-3
+			if (b[0] >= 224) return false;	// multicast (224/4), reserved (240/4) and 255.255.255.255
+			return true;
+		}
+
+		bool zeroBytes(const unsigned char* b, int n)
+		{
+			for (int i = 0; i < n; i++)
+				if (b[i] != 0) return false;
+			return true;
+		}
+	}
+
+	bool publicAddress(const std::string& ipIn)
+	{
+		std::string ip = ipIn.substr(0, ipIn.find('%'));
+		in_addr a4;
+		if (inet_pton(AF_INET, ip.c_str(), &a4) == 1) return v4Public((const unsigned char*)&a4);
+		in6_addr a6;
+		if (inet_pton(AF_INET6, ip.c_str(), &a6) != 1) return false;
+		const unsigned char* b = a6.s6_addr;
+		if (privateAddress(ip)) return false;	// loopback, link-local, ULA and private mapped forms
+		if (zeroBytes(b, 16)) return false;	// ::
+		if (b[0] == 0xff) return false;	// ff00::/8, multicast
+		if (b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x0d && b[3] == 0xb8) return false;	// 2001:db8::/32
+		if (b[0] == 0x01 && b[1] == 0x00 && zeroBytes(b + 2, 6)) return false;	// 100::/64, discard-only
+		// NAT64, IPv4-mapped and 6to4 reach whatever IPv4 they embed: judge that address, not the wrapper
+		if (b[0] == 0x00 && b[1] == 0x64 && b[2] == 0xff && b[3] == 0x9b && zeroBytes(b + 4, 8)) return v4Public(b + 12);
+		if (zeroBytes(b, 10) && b[10] == 0xff && b[11] == 0xff) return v4Public(b + 12);
+		if (b[0] == 0x20 && b[1] == 0x02) return v4Public(b + 2);
+		return true;
+	}
+
 	bool hostAllowed(const std::string& host)
 	{
 		std::string h = host, port;

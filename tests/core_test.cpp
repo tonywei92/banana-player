@@ -318,6 +318,43 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
 }
 
+// 5.4's public-address rule: what a stranger's script may reach. Both sides of every range's boundary, the
+// wrappers that embed an IPv4, zones and garbage.
+static void testPublicAddress()
+{
+	for (const char* ip : {"1.0.0.0", "8.8.8.8", "1.1.1.1", "9.255.255.255", "11.0.0.1", "100.63.255.255",
+		"100.128.0.0", "126.255.255.255", "128.0.0.1", "172.15.255.255", "172.32.0.1", "192.0.1.0", "192.0.3.0",
+		"192.167.1.1", "192.169.1.1", "198.17.255.255", "198.20.0.0", "198.51.99.255", "198.51.101.0",
+		"203.0.112.255", "203.0.114.0", "223.255.255.255", "2606:4700::1111", "2001:4860:4860::8888",
+		"2001:db7:ffff::1", "2001:db9::1", "100:0:0:1::1", "feff::1", "::2", "::ffff:8.8.8.8", "64:ff9b::808:808",
+		"2002:808:808::1", "8.8.8.8%en0", "2606:4700::1111%wlan0"})
+	{
+		CHECK_EQ(publicAddress(ip), true);
+		if (!publicAddress(ip)) fprintf(stderr, "  not public: %s\n", ip);
+	}
+	for (const char* ip : {"0.0.0.0", "0.0.0.1", "0.255.255.255", "10.0.0.1", "10.255.255.255", "127.0.0.1",
+		"127.255.255.255", "169.254.0.1", "169.254.255.255", "172.16.0.1", "172.31.255.255", "192.168.0.0",
+		"192.168.255.255", "100.64.0.0", "100.127.255.255", "192.0.0.0", "192.0.0.255", "192.0.2.0", "192.0.2.255",
+		"198.18.0.0", "198.19.255.255", "198.51.100.0", "198.51.100.255", "203.0.113.0", "203.0.113.255",
+		"224.0.0.0", "231.0.0.0", "239.255.255.255", "240.0.0.0", "255.255.255.255", "::", "::1", "fe80::1",
+		"fe80::1%wlan0", "febf::1", "fc00::1", "fdff::1", "ff00::", "ff02::1", "ffff::1", "2001:db8::",
+		"2001:db8:ffff:ffff:ffff:ffff:ffff:ffff", "100::", "100::ffff:ffff:ffff:ffff", "64:ff9b::a00:1",
+		"64:ff9b::7f00:1", "64:ff9b::c0a8:105", "::ffff:192.168.1.5", "::ffff:127.0.0.1", "::ffff:10.1.1.1",
+		"::ffff:0.0.0.0", "::ffff:100.64.0.1", "2002:a00:1::", "2002:7f00:1::", "2002:c0a8:105::"})
+	{
+		CHECK_EQ(publicAddress(ip), false);
+		if (publicAddress(ip)) fprintf(stderr, "  public: %s\n", ip);
+	}
+	// not an IP literal at all: a name is resolved first, so it is never "public" by itself
+	for (const char* ip : {"", "localhost", "evil.com", "192.168.1", "192.168.1.256", "192.168.1.1.1",
+		"not an ip", "[::1]", "::1x", " 10.0.0.1", "10.0.0.1 ", "0x7f.0.0.1", "2130706433", "8.8.8.8/32",
+		"1.2.3", "fe80::1%"})
+	{
+		CHECK_EQ(publicAddress(ip), false);
+		if (publicAddress(ip)) fprintf(stderr, "  public garbage: %s\n", ip);
+	}
+}
+
 // the servers' catalogue: the requests a Komga, Kavita or OPDS server is asked with, and the same answers read
 // back into the shapes a source script returns (every body here is canned and invented, the way they are written)
 static void testMangaRemote()
@@ -7469,6 +7506,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testPublicAddress();
 	testMangaRemote();
 	testMangaServers();
 	testHtmlDoc();

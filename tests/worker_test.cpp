@@ -1,6 +1,6 @@
 // The manga worker (docs/design/manga.md 7): one thread, serials, a waiting job replaced by a newer one for the same
-// source and kind, cancelAll, a source's error and the idle close. The fixture scripts need no network; the one that
-// must fail asks for an address nothing listens on (127.0.0.1:9).
+// source and kind, cancelAll, a source's error and the idle close. The fixture scripts need no network; the ones that
+// must fail ask for addresses 5.4 refuses (127.0.0.1:9, localhost, the LAN, [::1], the metadata address).
 #include "mangaworker.h"
 #include <chrono>
 #include <cstdio>
@@ -228,7 +228,7 @@ return {
 }
 )LUA";
 
-	// The one request that must fail: nothing listens on 127.0.0.1:9, so the connection is refused at once.
+	// The one request that must fail: 5.4 refuses loopback before curl opens a socket, so no listener is needed.
 	const char* kOffline = R"LUA(
 return {
   api = 1,
@@ -237,6 +237,50 @@ return {
   lang = "en",
   version = "1.0.0",
   popular = function(page)
+    bp.http.get("http://127.0.0.1:9/", { timeout = 3 })
+    return { items = {}, more = false }
+  end,
+  details = function(manga) return {} end,
+  chapters = function(manga) return {} end,
+  pages = function(chapter) return {} end,
+}
+)LUA";
+
+	// The card itself and the LAN, by name and by literal: all four are refused before any socket is opened.
+	const char* kBlocked = R"LUA(
+local urls = { "http://localhost/", "http://10.0.0.1/", "http://[::1]/", "http://169.254.169.254/" }
+return {
+  api = 1,
+  id = "blocked",
+  name = "Blocked",
+  lang = "en",
+  version = "1.0.0",
+  popular = function(page)
+    for _, u in ipairs(urls) do
+      local ok, err = pcall(function() bp.http.get(u, { timeout = 3 }) end)
+      if ok then error("not blocked: " .. u) end
+      if not string.find(tostring(err), "Blocked") then error("wrong refusal for " .. u .. ": " .. tostring(err)) end
+    end
+    return { items = {}, more = false }
+  end,
+  details = function(manga) return {} end,
+  chapters = function(manga) return {} end,
+  pages = function(chapter) return {} end,
+}
+)LUA";
+
+	// 5.4's 40 per call: the first 40 are caught, the 41st is the one the call must refuse.
+	const char* kTooMany = R"LUA(
+return {
+  api = 1,
+  id = "toomany",
+  name = "Too many",
+  lang = "en",
+  version = "1.0.0",
+  popular = function(page)
+    for i = 1, 40 do
+      pcall(function() bp.http.get("http://127.0.0.1:9/", { timeout = 3 }) end)
+    end
     bp.http.get("http://127.0.0.1:9/", { timeout = 3 })
     return { items = {}, more = false }
   end,
@@ -261,8 +305,10 @@ int main()
 	std::string slowPath = scripts + "/slow.lua";
 	std::string errorPath = scripts + "/erroring.lua";
 	std::string offlinePath = scripts + "/offline.lua";
+	std::string blockedPath = scripts + "/blocked.lua";
+	std::string tooManyPath = scripts + "/toomany.lua";
 	if (!writeFile(cannedPath, kCanned) || !writeFile(slowPath, kSlow) || !writeFile(errorPath, kErroring) ||
-		!writeFile(offlinePath, kOffline))
+		!writeFile(offlinePath, kOffline) || !writeFile(blockedPath, kBlocked) || !writeFile(tooManyPath, kTooMany))
 	{
 		fprintf(stderr, "can't write the fixture scripts\n");
 		return 1;
@@ -399,7 +445,7 @@ int main()
 			CHECK_TRUE(rs[0].error.find("the site said no") != std::string::npos);
 		}
 
-		// 3. A request to an address nothing listens on fails cleanly and quickly.
+		// 3. A request to a refused address fails cleanly and quickly, with the reason 5.4 gives the script.
 		auto t0 = Clock::now();
 		uint64_t offlineSerial = w.submit(job(MangaWorker::Job::Popular, "repo123/offline", offlinePath, 1));
 		rs = waitFor(w, 1, 10000);
@@ -411,8 +457,31 @@ int main()
 			CHECK_TRUE(!rs[0].error.empty());
 			// The host wraps a failed transfer as "bp.http: <reason>", so the page has a line to show (5.4).
 			CHECK_TRUE(rs[0].error.find("bp.http") != std::string::npos);
+			CHECK_TRUE(rs[0].error.find("Blocked") != std::string::npos);
 		}
 		CHECK_TRUE(msSince(t0) < 5000);
+
+		// 3b. The card itself and the LAN: localhost, 10/8, [::1] and the metadata address are all refused.
+		uint64_t blockedSerial = w.submit(job(MangaWorker::Job::Popular, "repo123/blocked", blockedPath, 1));
+		rs = waitFor(w, 1, 10000);
+		CHECK_EQ(rs.size(), (size_t)1);
+		if (rs.size() == 1)
+		{
+			CHECK_EQ(rs[0].serial, blockedSerial);
+			CHECK_TRUE(rs[0].ok);
+			if (!rs[0].ok) fprintf(stderr, "  blocked fixture: %s\n", rs[0].error.c_str());
+		}
+
+		// 3c. 5.4's 40 per call: the 41st request fails the call even though its address is refused too.
+		uint64_t tooManySerial = w.submit(job(MangaWorker::Job::Popular, "repo123/toomany", tooManyPath, 1));
+		rs = waitFor(w, 1, 15000);
+		CHECK_EQ(rs.size(), (size_t)1);
+		if (rs.size() == 1)
+		{
+			CHECK_EQ(rs[0].serial, tooManySerial);
+			CHECK_TRUE(!rs[0].ok);
+			CHECK_TRUE(rs[0].error.find("40") != std::string::npos);
+		}
 
 		w.stop();
 		std::this_thread::sleep_for(std::chrono::milliseconds(200));	// the detached thread leaves in its own time
