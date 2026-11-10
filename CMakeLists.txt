@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(banana-player VERSION 0.6.4 LANGUAGES CXX)
+project(banana-player VERSION 0.6.4 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -40,6 +40,24 @@ target_link_libraries(bpcore PUBLIC PkgConfig::MPV PkgConfig::ZLIB OpenSSL::Cryp
 if(APPLE)
 	target_link_libraries(bpcore PUBLIC iconv)	# glibc has iconv in libc; macOS has it apart
 endif()
+
+# Lua 5.4 for the manga reader's user-added source scripts (docs/design/manga.md 5.2). The vendored tree is the
+# library only (no lua.c/luac.c), warning-free as it came, with the platform Lua's makefile would pick.
+file(GLOB LUA_SRC CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/third_party/lua/src/*.c)
+add_library(lua_static STATIC ${LUA_SRC})
+set_target_properties(lua_static PROPERTIES C_STANDARD 99 C_STANDARD_REQUIRED ON)
+target_include_directories(lua_static PUBLIC third_party/lua/src)
+target_compile_options(lua_static PRIVATE -w)
+if(APPLE)
+	target_compile_definitions(lua_static PUBLIC LUA_USE_MACOSX)
+else()
+	target_compile_definitions(lua_static PUBLIC LUA_USE_POSIX)
+endif()
+
+# the source-script host: no window, no networking of its own
+add_library(bpmanga STATIC src/mangasource.cpp src/mangasource.h)
+target_include_directories(bpmanga PUBLIC src)
+target_link_libraries(bpmanga PUBLIC bpcore PRIVATE lua_static)
 
 # libavformat (FFmpeg: libmpv's own dependency) for the file lists' durations; the web dashboard's probe uses it too
 pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
@@ -119,3 +137,9 @@ add_executable(core-test tests/core_test.cpp)
 target_link_libraries(core-test PRIVATE bpcore bpprobe)
 target_compile_definitions(core-test PRIVATE BP_TESTS_DIR="${CMAKE_SOURCE_DIR}/tests")
 add_test(NAME core COMMAND core-test)
+
+add_executable(manga-test tests/manga_test.cpp)
+target_link_libraries(manga-test PRIVATE bpmanga)
+add_test(NAME manga COMMAND manga-test)
+# The harness's shell doesn't run ./build/manga-test directly; this target runs it through cmake.
+add_custom_target(manga-check COMMAND $<TARGET_FILE:manga-test> DEPENDS manga-test)
