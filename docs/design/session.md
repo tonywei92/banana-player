@@ -236,7 +236,7 @@ New route: `POST /api/intent` (JSON `{origin, seq, basis, type, …}`) → `{ok,
 | I10 | Same `(origin, seq)` twice ⇒ same result, one effect set | rule 1 |
 | I11 | `blocked ⇒ playing && out = Browser && index ≥ 0 && loaded` | `Blocked` only then; cleared after any apply that pauses, reloads or moves the output (§12) |
 | I12 | `ended` (a finished list) `⇒ index < 0`, its index within its queue | set only by `Ended` at the end; cleared after any apply that leaves an item, and by `Stop` (§13) |
-| I13 | `order` (Shuffle's hidden play order) non-empty `⇔ shuffle && index ≥ 0`, and then each place of `queue` once | made by `Open` / `SetShuffle` on, `Ended`/`Step` past a round with Loop all (a new one); cleared by Shuffle off and a stop; `FileGone` renumbers it (§14) |
+| I13 | `order` (Shuffle's hidden play order) non-empty `⇔ shuffle && index ≥ 0`, and then each place of `queue` once | made by `Open` / `SetShuffle` on, `Ended`/`Step` past a round with Loop all (a new one); cleared by Shuffle off and a stop; `FileGone` and `Requeue` renumber it (§14) |
 
 ### Failure modes
 
@@ -566,3 +566,16 @@ an `Open` of that queue from that index, as a pick from the list: Shuffle makes 
   off/on mid-list without a reload, FileGone), and `SetShuffle` / `rnd` in the fuzz (which must turn Shuffle on and off
   while playing and reach a new round). The fuzz's finished-list floor went from runs/20 to runs/40: Shuffle, a lasting
   setting there too, makes a list's end rarer.
+
+## 15. The playing playlist edited (2026-11-10)
+
+- `Requeue {source, queue, index, remap}`: the playlist that plays was edited (files added, removed, moved; the
+  handheld's or a page's edit, through `Ui::plTellPlayer` → `SessionHost::playlistEdited`). `remap` is each old place's
+  new one (-1 gone); the item that plays is kept (put back at its place if it was taken out) and nothing reloads. With
+  Shuffle the hidden order keeps what stayed and plays what was added after the round's rest (I13 holds).
+- Refused when nothing plays, for another list (`source` must equal the session's: a playlist is named by its file's
+  name less `.m3u`, here and in the pages, never by its path), or with a remap that doesn't fit (`bad-remap`).
+- The host follows only while the session's list is the playlist as it was opened (same length); otherwise it logs and
+  leaves it.
+- Tests: a named case (Next reaches a song added after the last, another list's edit and a bad remap refused, Shuffle's
+  order kept with the added one last) and `Requeue` in the fuzz (`fuzzRequeued` must be reached).

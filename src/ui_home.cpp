@@ -181,7 +181,23 @@ namespace bp
 
 	void Ui::homeOpen(Player& p)
 	{
-		if (homeZone == HOME_GRID) { openSection(homeGrid, p); return; }
+		if (homeZone == HOME_GRID)
+		{
+			// Playlists from Home: the list of them, the cursor on the one left open (a playlist reopened from Home read
+			// as a wrong turn; L/R and the markers still go back to it)
+			std::string was = homeGrid == TAB_PLAYLISTS ? tabDir[TAB_PLAYLISTS] : std::string();
+			if (isPlDir(was))
+			{
+				tabDir[TAB_PLAYLISTS] = PLROOT;
+				openSection(homeGrid, p);
+				std::string file = plFileOf(was);
+				for (size_t i = 0; i < browsePaths.size(); i++)
+					if (browsePaths[i] == file) { cursor = (int)i; fitList(); break; }
+				return;
+			}
+			openSection(homeGrid, p);
+			return;
+		}
 		if (homeStrip < (int)recent.size()) { openFile(recent[homeStrip].path, p); return; }
 		// All recent: the list, from its top
 		enterFolder(RECENT, p);

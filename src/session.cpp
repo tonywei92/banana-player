@@ -12,7 +12,7 @@ namespace bp
 	{
 		static const char* NAMES[] = {"Open", "Play", "Pause", "Seek", "SeekBy", "Step", "SetAudio", "SetSub", "SetSpeed",
 			"SetLoop", "SetOutput", "Stop", "PhotoPark", "PhotoResume", "FileGone", "Loaded", "Pos", "Ended", "CantPlay",
-			"Tick", "TabGone", "TabBack", "Slept", "Woke", "Blocked", "SetShuffle"};
+			"Tick", "TabGone", "TabBack", "Slept", "Woke", "Blocked", "SetShuffle", "Requeue"};
 		return NAMES[(int)t];
 	}
 
@@ -562,6 +562,41 @@ namespace bp
 					n.order.clear();
 					for (int k : s.order)
 						if (k >= 0 && k < (int)to.size() && to[k] >= 0) n.order.push_back(to[k]);
+					return "";
+				}
+				case IntentType::Requeue:
+				{
+					// the playlist that plays, edited: Next goes on to what was added after its last song
+					if (s.index < 0) return "nothing";
+					if (!(i.source == s.source)) return "other-list";
+					int size = (int)i.queue.size();
+					if (i.remap.size() != s.queue.size() || i.index < 0 || i.index >= size || i.remap[s.index] != i.index ||
+						i.queue[i.index] != s.queue[s.index])
+						return "bad-remap";
+					std::vector<char> used(size, 0);
+					for (int k = 0; k < (int)i.remap.size(); k++)
+					{
+						int r = i.remap[k];
+						if (r < -1 || r >= size || (r >= 0 && used[r])) return "bad-remap";
+						if (r >= 0)
+						{
+							if (i.queue[r] != s.queue[k]) return "bad-remap";
+							used[r] = 1;
+						}
+					}
+					for (auto& q : i.queue)
+						if (isPhotoFile(q)) return "photo";
+					n.queue = i.queue;
+					n.index = i.index;
+					// the hidden order: the same, less what went, what came after (played last, in the list's order)
+					if (!s.order.empty())
+					{
+						n.order.clear();
+						for (int k : s.order)
+							if (k >= 0 && k < (int)i.remap.size() && i.remap[k] >= 0) n.order.push_back(i.remap[k]);
+						for (int k = 0; k < size; k++)
+							if (!used[k]) n.order.push_back(k);
+					}
 					return "";
 				}
 				case IntentType::Loaded:

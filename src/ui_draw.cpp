@@ -597,7 +597,10 @@ namespace bp
 		// armed (the browser's first page: once more quits) in yellow
 		bool armed = quitArmed && page == Page::Browse && !inMenu;
 		drawBox(b, pressedBtn == BACK_ICON ? PRESSED : armed ? ACCENT : BUTTON, R_BUTTON);
-		drawGlyphMid(G_BACK, b.x + b.w / 2 - 1, b.y + b.h / 2, armed ? ON_ACCENT : TEXT, 3);
+		// adding files to a playlist: a ✕, it cancels (B goes up a folder there)
+		bool cancel = page == Page::Browse && !inMenu && (selMode == SEL_ADD || selMode == SEL_PICK);
+		if (cancel) drawGlyphMid(G_CROSS, b.x + b.w / 2, b.y + b.h / 2, TEXT, 2);
+		else drawGlyphMid(G_BACK, b.x + b.w / 2 - 1, b.y + b.h / 2, armed ? ON_ACCENT : TEXT, 3);
 	}
 
 	void Ui::drawHeader(const std::string& title, const Player& p, int titleRight)

@@ -147,6 +147,12 @@ namespace bp
 
 	void Ui::plTellPlayer(const Playlist& pl, const std::vector<int>& remap, Player& p)
 	{
+		// the session's list first (it plays here or in a page): Next reaches what was added, what went is skipped
+		{
+			std::vector<std::string> paths;
+			for (auto& e : pl.entries) paths.push_back(e.path);
+			SessionHost::get().playlistEdited(pl.file, paths, remap);
+		}
 		// the playlist that plays: its new items, in the order they play (shuffled: that order, less the ones gone,
 		// and the ones added after)
 		if (!p.playing() || p.source().kind != SourceKind::Playlist || p.source().id != pl.file) return;
@@ -479,14 +485,13 @@ namespace bp
 		selSerial++;
 	}
 
-	void Ui::selBack(Player& p, bool button)
+	void Ui::selBack(Player& p, bool now)
 	{
 		removeArmed = false;
 		if (selMode == SEL_EDIT) { selEnd(); return; }
-		// B (and "<") cancels the selection, as Cancel does: going up a folder instead read as B being ignored. Files
-		// ticked ask twice, so one stray press doesn't lose them
-		(void)button;
-		if (selMode == SEL_ADD && !picked.empty() && !(dropArmed && SDL_GetTicks() - dropArmed < QUIT_WINDOW_MS))
+		// X, Cancel, and B at a section's top leave the selection (B elsewhere goes up a folder). Files ticked ask
+		// twice on a key, so one stray press doesn't lose them; a touch (the header's ✕) is meant: at once
+		if (selMode == SEL_ADD && !now && !picked.empty() && !(dropArmed && SDL_GetTicks() - dropArmed < QUIT_WINDOW_MS))
 		{
 			dropArmed = SDL_GetTicks();
 			return;
@@ -521,8 +526,10 @@ namespace bp
 
 	bool Ui::selKey(Button b, Player& p)
 	{
+		bool adding = selMode == SEL_ADD || selMode == SEL_PICK;
 		if (b != Button::X) removeArmed = false;
-		if (b != Button::B) dropArmed = 0;
+		// (adding, X cancels: its second press drops the ticks)
+		if (b != (adding ? Button::X : Button::B)) dropArmed = 0;
 		if (moving)
 		{
 			// the block: a row, a page; A drops it, B puts it back
@@ -542,14 +549,23 @@ namespace bp
 		case Button::Up: case Button::Down: case Button::Left: case Button::Right: case Button::A: return false;
 		case Button::Select: selAll(p); return true;
 		case Button::Y:
+			// adding: Y adds (X cancels, B goes up)
+			if (adding) { selAct(p); return true; }
 			if (selMode == SEL_EDIT && !plSel.empty())
 			{
 				moveFromMenu = false;
 				moveStart(p);
 			}
 			return true;
-		case Button::X: selAct(p); return true;
-		case Button::B: selBack(p, false); return true;
+		case Button::X:
+			if (adding) selBack(p, false);
+			else selAct(p);
+			return true;
+		// adding files: B goes up a folder, as browsing does (the ticks stay); at a section's top it leaves, as X does
+		case Button::B:
+			if (adding && !atFirstPage()) { browseUp(p); return true; }
+			selBack(p, false);
+			return true;
 		case Button::L: case Button::R:
 			// adding: the cards and the network, the playlists' tab left out (and the connection's form, the search:
 			// the connections instead)
@@ -1064,13 +1080,14 @@ namespace bp
 		{
 			int ticked = 0, files = selFolderFiles(ticked);
 			drawBarButton(SEL_ALL, &G_BOX_ON, files && ticked == files ? "None" : "All", "SELECT", TEXT, false, files == 0);
-			drawBarButton(SEL_CANCEL, dropping ? nullptr : &G_CROSS, dropping ? "Again: drop " + many(n) : std::string("Cancel"), "B",
-				dropping ? ACCENT : TEXT, false, false);
-			drawBarButton(SEL_ACT, &G_PLUS, selDest.empty() ? std::string("Add to\xE2\x80\xA6") : "Add " + many(n), "X", TEXT, n > 0, n == 0);
+			// (X cancels; B goes up a folder)
+			drawBarButton(SEL_CANCEL, dropping ? nullptr : &G_CROSS, dropping ? "Again: drop " + many(n) : std::string("Cancel"),
+				"X", dropping ? ACCENT : TEXT, false, false);
+			drawBarButton(SEL_ACT, &G_PLUS, selDest.empty() ? std::string("Add to\xE2\x80\xA6") : "Add " + many(n), "Y", TEXT, n > 0, n == 0);
 			return;
 		}
-		drawBarButton(SEL_CANCEL, &G_CROSS, "Cancel", "B", TEXT, false, false);
-		drawBarButton(SEL_ACT, &G_FOLDER, "Add this folder", "X", TEXT, true, !pickable());
+		drawBarButton(SEL_CANCEL, &G_CROSS, "Cancel", "X", TEXT, false, false);
+		drawBarButton(SEL_ACT, &G_FOLDER, "Add this folder", "Y", TEXT, true, !pickable());
 	}
 
 	void Ui::drawPicker()

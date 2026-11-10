@@ -26,15 +26,17 @@ namespace bp
 		}
 	}
 
-	// SDL names a pad's face buttons by position, Xbox style: its B is the east button, the handheld's A
+	// SDL names a pad's face buttons by position, Xbox style: its B is the east button, the handheld's A, its A the
+	// south one, B. X and Y come under their printed names (the owner's RG DS: the key printed Y sends SDL's Y; the
+	// positional swap made every X hint answer to Y)
 	static Button fromPad(Uint8 b)
 	{
 		switch (b)
 		{
 		case SDL_CONTROLLER_BUTTON_B: return Button::A;
 		case SDL_CONTROLLER_BUTTON_A: return Button::B;
-		case SDL_CONTROLLER_BUTTON_Y: return Button::X;
-		case SDL_CONTROLLER_BUTTON_X: return Button::Y;
+		case SDL_CONTROLLER_BUTTON_X: return Button::X;
+		case SDL_CONTROLLER_BUTTON_Y: return Button::Y;
 		case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: return Button::L;
 		case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: return Button::R;
 		case SDL_CONTROLLER_BUTTON_START: return Button::Start;

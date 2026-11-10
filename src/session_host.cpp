@@ -316,13 +316,18 @@ namespace bp
 	}
 
 	void SessionHost::open(const std::vector<std::string>& paths, int index, int sourceKind, const std::string& title,
-		const std::string& origin, const Output* out, double t, bool live)
+		const std::string& origin, const Output* out, double t, bool live, const std::string& sourceId)
 	{
 		Intent i = make(IntentType::Open, origin);
 		i.queue = paths;
 		i.index = index;
 		i.source.kind = sourceKind;
 		i.source.title = title;
+		// a playlist's: its name as the pages know it (the file's, less ".m3u"; never the path, which is in the state
+		// folder): an edit to it reaches the list that plays (playlistEdited)
+		std::string stem = sourceId.substr(sourceId.rfind('/') + 1);
+		if (stem.size() > 4 && stem.compare(stem.size() - 4, 4, ".m3u") == 0) stem.resize(stem.size() - 4);
+		i.source.id = stem;
 		i.t = t;
 		if (out)
 		{
@@ -386,6 +391,43 @@ namespace bp
 		i.path = path;
 		submit(i, true);
 		return had && s.index < 0;
+	}
+
+	void SessionHost::playlistEdited(const std::string& id, const std::vector<std::string>& paths, const std::vector<int>& remap)
+	{
+		// (the session names a playlist by its file's name less ".m3u", here and in the pages)
+		std::string stem = id.substr(id.rfind('/') + 1);
+		if (stem.size() > 4 && stem.compare(stem.size() - 4, 4, ".m3u") == 0) stem.resize(stem.size() - 4);
+		if (s.index < 0 || s.source.kind != 2 || s.source.id.empty() || s.source.id != stem)
+		{
+			if (s.index >= 0 && s.source.kind == 2) fprintf(stderr, "session: playlist %s edited, another plays (%s)\n", stem.c_str(), s.source.id.c_str());
+			return;
+		}
+		// (the session's list is the playlist as it was opened; one that differs, say a file deleted since: left be)
+		if (remap.size() != s.queue.size())
+		{
+			fprintf(stderr, "session: playlist edited, its list here differs (%zu vs %zu): not followed\n", remap.size(), s.queue.size());
+			return;
+		}
+		Intent i = make(IntentType::Requeue);
+		i.source = s.source;
+		i.queue = paths;
+		i.remap = remap;
+		int at = remap[s.index];
+		if (at < 0)
+		{
+			// the one playing taken out: kept at its place in the new list till another plays
+			at = 0;
+			for (int k = 0; k < s.index; k++)
+				if (remap[k] >= 0) at = std::max(at, remap[k] + 1);
+			i.queue.insert(i.queue.begin() + std::min(at, (int)i.queue.size()), s.queue[s.index]);
+			for (auto& r : i.remap)
+				if (r >= at) r++;
+			i.remap[s.index] = at;
+		}
+		i.index = at;
+		Result r = submit(i, true);
+		if (!r.reject.empty()) fprintf(stderr, "session: playlist edited, Requeue rejected (%s)\n", r.reject.c_str());
 	}
 
 	void SessionHost::seek(double t, bool relative, const std::string& origin)

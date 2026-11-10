@@ -402,7 +402,7 @@ namespace bp
 		void selLeave(Player& p);	// out of it; a playlist's Add files... and Add folder... go back to it
 		bool selKey(Button b, Player& p);	// true: it was the mode's
 		bool selChoose(int row, Player& p);	// A or a tap on a row: true when it was the mode's (a tick)
-		void selBack(Player& p, bool button);
+		void selBack(Player& p, bool now);	// now: no second press asked (the header's ✕)
 		void selAct(Player& p);	// X: Remove, Add, Add this folder
 		void selAll(Player& p);	// SELECT
 		bool selTickable(int row) const;

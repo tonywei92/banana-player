@@ -3358,6 +3358,61 @@ static void testSessionNamed()
 		CHECK_EQ(checkInvariants(f.s), std::string(""));
 	}
 	{
+		// Requeue: a song added to the playlist that plays, its last song playing: Next reaches it, nothing reloads
+		Sim m;
+		Intent op = m.mk(IntentType::Open);
+		op.queue = {"/m/a.mp3", "/m/b.mp3", "/m/c.mp3"};
+		op.index = 2;
+		op.source = {2, "Mix", "/pl/Mix.m3u"};
+		m.go(op);
+		m.loaded();
+		CHECK_EQ(hasNext(m.s), false);
+		uint64_t load = m.s.load;
+		Intent rq = m.mk(IntentType::Requeue);
+		rq.source = op.source;
+		rq.queue = {"/m/a.mp3", "/m/b.mp3", "/m/c.mp3", "/m/d.mp3"};
+		rq.remap = {0, 1, 2};
+		rq.index = 2;
+		CHECK_EQ(m.go(rq).reject, std::string(""));
+		CHECK_EQ(m.s.load, load);
+		CHECK_EQ(hasNext(m.s), true);
+		m.step(1);
+		CHECK_EQ(m.s.queue[m.s.index], std::string("/m/d.mp3"));
+		// another list's edit, or a remap that doesn't fit: refused
+		Intent other = m.mk(IntentType::Requeue);
+		other.source = {2, "Other", "/pl/Other.m3u"};
+		other.queue = rq.queue;
+		other.remap = {0, 1, 2, 3};
+		other.index = 3;
+		CHECK_EQ(m.go(other).reject, std::string("other-list"));
+		Intent bad = m.mk(IntentType::Requeue);
+		bad.source = op.source;
+		bad.queue = {"/m/d.mp3", "/m/a.mp3"};
+		bad.remap = {1, -1, -1, 1};
+		bad.index = 1;
+		CHECK_EQ(m.go(bad).reject, std::string("bad-remap"));
+		// Shuffle: what was kept keeps its hidden order, what was added plays after (I13 holds)
+		Sim sh;
+		{ Intent on = sh.mk(IntentType::SetShuffle); on.on = true; on.rnd = 42; sh.go(on); }
+		Intent o2 = sh.mk(IntentType::Open);
+		o2.queue = {"/m/a.mp3", "/m/b.mp3", "/m/c.mp3", "/m/d.mp3"};
+		o2.index = 1;
+		o2.rnd = 5;
+		o2.source = op.source;
+		sh.go(o2);
+		std::vector<int> was = sh.s.order;
+		Intent r2 = sh.mk(IntentType::Requeue);
+		r2.source = op.source;
+		r2.queue = {"/m/b.mp3", "/m/c.mp3", "/m/d.mp3", "/m/e.mp3"};	// a removed, e added
+		r2.remap = {-1, 0, 1, 2};
+		r2.index = 0;
+		CHECK_EQ(sh.go(r2).reject, std::string(""));
+		CHECK_EQ(sh.s.order.size(), (size_t)4);
+		CHECK_EQ(sh.s.order[0], 0);	// (b, playing, first as before)
+		CHECK_EQ(sh.s.order.back(), 3);	// (e, added: last)
+		CHECK_EQ(checkInvariants(sh.s), std::string(""));
+	}
+	{
 		// handheld Stop with the browser as output stops the page; the next pick goes to the browser (pref)
 		Sim m;
 		m.open(5, 0, "tabA");
@@ -3628,6 +3683,7 @@ static void testSessionNamed()
 // renderers for the output, random intents of every kind; I1–I10 after every apply, liveness once it all settles
 static int fuzzEnded = 0;	// sessions the fuzz left with a finished list (it must get there to test it)
 static int fuzzShuffled = 0, fuzzUnshuffled = 0, fuzzRounds = 0;	// Shuffle turned on / off while playing; new rounds
+static int fuzzRequeued = 0;	// playlist edits taken while an item played (shuffled or not)
 static bool fuzzSession(uint32_t seed, int steps)
 {
 	std::mt19937 rng(seed);
@@ -3655,6 +3711,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 		}
 		if (!bad.empty() && why.empty()) why = bad + " (" + intentName(i.type) + " from " + i.origin + ", step " + std::to_string(at) + ")";
 		if (s.ended.index < 0 && r.s.ended.index >= 0) fuzzEnded++;
+		if (i.type == IntentType::Requeue && r.reject.empty() && !r.dup) fuzzRequeued++;
 		if (i.type == IntentType::SetShuffle && r.reject.empty() && !r.dup && s.index >= 0)
 			(r.s.shuffle ? fuzzShuffled : fuzzUnshuffled) += s.shuffle != r.s.shuffle;
 		// a shuffled round that went on past its end (Loop all: a new round)
@@ -3671,7 +3728,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 		static const IntentType KINDS[] = {IntentType::Open, IntentType::Play, IntentType::Pause, IntentType::Seek,
 			IntentType::SeekBy, IntentType::Step, IntentType::Step, IntentType::Step, IntentType::SetAudio, IntentType::SetSub,
 			IntentType::SetSpeed, IntentType::SetLoop, IntentType::SetOutput, IntentType::SetOutput, IntentType::Stop,
-			IntentType::PhotoPark, IntentType::PhotoResume, IntentType::FileGone, IntentType::SetShuffle};
+			IntentType::PhotoPark, IntentType::PhotoResume, IntentType::FileGone, IntentType::SetShuffle, IntentType::Requeue};
 		i.type = KINDS[pick((int)(sizeof KINDS / sizeof KINDS[0]))];
 		switch (i.type)
 		{
@@ -3710,6 +3767,22 @@ static bool fuzzSession(uint32_t seed, int steps)
 		case IntentType::PhotoPark: if (pick(2)) { i.hasT = true; i.t = pick(300); } break;
 		case IntentType::SetShuffle: i.on = pick(3) == 0; i.rnd = rr(); break;
 		case IntentType::FileGone: i.path = pick(6) ? FILES[pick(7)] : "/m"; break;
+		case IntentType::Requeue:
+		{
+			// the list as a playlist edit leaves it: some gone (never the one playing), some added at the end
+			i.source = pick(8) ? s.source : SessionSource{2, "x", "/pl/x.m3u"};
+			if (s.index < 0) break;
+			for (int k = 0; k < (int)s.queue.size(); k++)
+			{
+				if (k != s.index && pick(4) == 0) { i.remap.push_back(-1); continue; }
+				if (k == s.index) i.index = (int)i.queue.size();
+				i.remap.push_back((int)i.queue.size());
+				i.queue.push_back(s.queue[k]);
+			}
+			for (int k = pick(3); k > 0; k--) i.queue.push_back(FILES[pick(7)]);
+			if (pick(10) == 0 && !i.remap.empty()) i.remap[0] = (int)i.queue.size();	// (a bad one, now and then)
+			break;
+		}
 		default: break;
 		}
 		return i;
@@ -3866,6 +3939,7 @@ static void testSessionFuzz()
 	CHECK_EQ(fuzzEnded > runs / 40, true);
 	CHECK_EQ(fuzzShuffled > runs / 20 && fuzzUnshuffled > runs / 40, true);
 	CHECK_EQ(fuzzRounds > 0, true);
+	CHECK_EQ(fuzzRequeued > 0, true);
 }
 
 // picture subtitles for the browser: the cue timing rules, the window a request may ask for, the paletted PNG

@@ -25,7 +25,8 @@ Constraints from BananaOS (github.com/JorreFog/BananaLinux) that this repo can't
   `sub-fonts-dir`/`osd-fonts-dir`, `osd-font=Inter`).
 - Decoding is software only (kernel has no `CONFIG_MEDIA_SUPPORT`; JorreFog/BananaLinux#208, text in
   `docs/bananalinux-hw-decoding-request.md`). The SoC is an RK3568, not RK3566.
-- Nintendo layout: A is the east button, `SDL_CONTROLLER_BUTTON_B`. The RG DS Plus has one stick, the left, which clicks
+- Nintendo layout: A is the east button, `SDL_CONTROLLER_BUTTON_B` (B is SDL's A); X and Y arrive under their printed
+  names (`SDL_CONTROLLER_BUTTON_X` is X), not swapped by position. The RG DS Plus has one stick, the left, which clicks
   (L3, `SDL_CONTROLLER_BUTTON_LEFTSTICK`). F is SDL's `GUIDE`; `main.cpp` turns both trigger axes into `L2`/`R2` unless F
   is held (F + L2 screenshot, F + START quits). Back key = B as `SDLK_AC_BACK` (unconfirmed); each press logs `input: ...`.
 - The RK3568's Mali-G52 may take no texture over 8192 (unverified), hence photos ≤ 4096 px.

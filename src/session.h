@@ -139,7 +139,7 @@ namespace bp
 	enum class IntentType
 	{
 		Open, Play, Pause, Seek, SeekBy, Step, SetAudio, SetSub, SetSpeed, SetLoop, SetOutput, Stop, PhotoPark,
-		PhotoResume, FileGone, Loaded, Pos, Ended, CantPlay, Tick, TabGone, TabBack, Slept, Woke, Blocked, SetShuffle
+		PhotoResume, FileGone, Loaded, Pos, Ended, CantPlay, Tick, TabGone, TabBack, Slept, Woke, Blocked, SetShuffle, Requeue
 	};
 	const char* intentName(IntentType t);
 
@@ -176,6 +176,10 @@ namespace bp
 		bool playing = false;	// Pos
 		// Blocked: t (with hasT) is where the refused element stands
 		std::string reason;	// CantPlay: "format", "net", "timeout", "error"
+		// Requeue (the playing playlist edited: files added, removed, moved): queue, the new list (the item that plays
+		// in it, at index, kept even if it was taken out); remap, each old place's new one (-1: gone); source, the
+		// list's (it must be the one playing). Nothing reloads
+		std::vector<int> remap;
 	};
 
 	struct Effect

@@ -72,7 +72,7 @@ namespace bp
 		// a pick (handheld or web) as Open; sourceKind 0 folder, 1 network, 2 playlist. out: given when the picker says
 		// where (the page's Play here / Play in this browser); else the session's pref decides
 		void open(const std::vector<std::string>& paths, int index, int sourceKind, const std::string& title,
-			const std::string& origin, const Output* out, double t, bool live = false);
+			const std::string& origin, const Output* out, double t, bool live = false, const std::string& sourceId = "");
 		// Shuffle on or off (the handheld's mode key, a page's Shuffle, a Shuffle play): the setting (it lasts, as
 		// Loop: every list from now) and the session's (what plays plays on; Next follows a hidden random order)
 		void setShuffle(bool on, const std::string& origin = "hh");
@@ -94,6 +94,9 @@ namespace bp
 		// the executor's word to main that what plays here stops (HhUnload): 0 no, 1 a Stop, 2 the end of the list
 		int takeUnload() { int u = unload; unload = 0; return u; }
 		bool fileGone(const std::string& path);	// true: it was the session's item (stopped)
+		// the playlist (its file) edited: paths, its items now; remap, each old place's new one (-1 gone). The
+		// session's list follows when that playlist plays (Next reaches what was added)
+		void playlistEdited(const std::string& id, const std::vector<std::string>& paths, const std::vector<int>& remap);
 		void seek(double t, bool relative, const std::string& origin);
 		void woke();
 		// each pass of main's loop: the handheld's reports (as the output), its picks once it can take them, Tick, the

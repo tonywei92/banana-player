@@ -920,9 +920,10 @@ int main(int argc, char** argv)
 			// a pick (here, or on the web): it opens here as today, and the session's Open says where it plays: the
 			// selected output (pref), a browser tab that can play it, else here with "This one plays on the handheld".
 			// Held paused here for a page at once (it never sounds); the page loads it from the session
-			auto routed = [&](const std::vector<std::string>& list, int index, int kind, const std::string& title, const std::string& pick) {
+			auto routed = [&](const std::vector<std::string>& list, int index, int kind, const std::string& title, const std::string& pick,
+				const std::string& id = "") {
 				if (isPhotoFile(pick)) return;
-				shadow.open(list, index, kind, title, "hh", nullptr, 0, true);
+				shadow.open(list, index, kind, title, "hh", nullptr, 0, true, id);
 				if (shadow.pageIsOutput() && shadow.file() == player.currentPath()) player.holdPaused();
 			};
 			// a video picked in the browser: it and the videos beside it
@@ -966,7 +967,7 @@ int main(int argc, char** argv)
 				if (pr.source.kind == SourceKind::Playlist) player.openPlaylist(pr.paths, pr.index, pr.source);
 				else player.open(pr.paths, pr.index, pr.names);
 				routed(pr.paths, pr.index, pr.source.kind == SourceKind::Playlist ? 2 : pr.source.kind == SourceKind::NetFolder ? 1 : 0,
-					pr.source.title, pick);
+					pr.source.title, pick, pr.source.kind == SourceKind::Playlist ? pr.source.id : std::string());
 				if (pr.stay) ui.playBehind();
 				else ui.showPlayer();
 			}
