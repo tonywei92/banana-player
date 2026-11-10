@@ -2108,6 +2108,173 @@ static void testPaged()
 	CHECK_EQ(v2.step(850), false);
 	CHECK_EQ(near(v2.vscroll(), 0), true);
 
+	// Fit Fill on a portrait page in a landscape view: it covers the view and crops top and bottom, so Right
+	// still walks down the page and there is nothing to pan across
+	Paged fp;
+	fp.setView(400, 300);
+	fp.setPages(3, 1.5);	// Fill draws it 400 x 600: 300 cropped at the bottom
+	fp.setFit(Paged::FitFill);
+	pl = fp.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(find(pl, 0).w, 400), true);
+	CHECK_EQ(near(find(pl, 0).h, 600), true);
+	CHECK_EQ(near(find(pl, 0).x, 0), true);
+	CHECK_EQ(near(find(pl, 0).y, 0), true);	// top aligned: it is the bottom that crops
+	CHECK_EQ(fp.vscroll(), 0.0);
+	CHECK_EQ(fp.hscroll(), 0.0);
+	fp.forward(0);	// a screenful (270) of the page's 300 of overflow
+	CHECK_EQ(fp.step(180), false);
+	CHECK_EQ(near(fp.vscroll(), 270), true);
+	CHECK_EQ(near(find(fp.placements(), 0).y, -270), true);
+	fp.forward(200);	// the part screenful to the page's bottom
+	CHECK_EQ(fp.step(380), false);
+	CHECK_EQ(near(fp.vscroll(), 300), true);
+	CHECK_EQ(fp.atEnd(), false);	// a whole page still to go before the chapter's
+	fp.forward(400);	// at the page's end: the next one, opened at its top
+	CHECK_EQ(fp.step(580), false);
+	CHECK_EQ(fp.current(), 1);
+	CHECK_EQ(near(fp.vscroll(), 0), true);
+
+	// Fit Fill on a landscape spread in a portrait-ish view: it covers the view and crops the sides, and ltr
+	// pans from the page's left edge after the vertical
+	Paged wf;
+	wf.setView(400, 600);
+	wf.setPages(3, 0.6);	// Fill draws it 1000 x 600: a page full tall, 600 over sideways
+	wf.setFit(Paged::FitFill);
+	pl = wf.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(find(pl, 0).w, 1000), true);
+	CHECK_EQ(near(find(pl, 0).h, 600), true);
+	CHECK_EQ(near(find(pl, 0).y, 0), true);
+	CHECK_EQ(near(find(pl, 0).x, 0), true);	// the pan starts at the page's left edge, not centred
+	wf.forward(0);	// nothing below to scroll: Right crosses a screen width, 360
+	CHECK_EQ(wf.current(), 0);	// a step across never turns the page
+	CHECK_EQ(wf.step(180), false);
+	CHECK_EQ(near(wf.vscroll(), 0), true);
+	CHECK_EQ(near(wf.hscroll(), 360), true);
+	CHECK_EQ(near(find(wf.placements(), 0).x, -360), true);
+	wf.forward(200);	// the last column ends flush at the page's right edge
+	CHECK_EQ(wf.step(380), false);
+	CHECK_EQ(near(wf.hscroll(), 600), true);
+	CHECK_EQ(near(find(wf.placements(), 0).x, -600), true);
+	CHECK_EQ(wf.atEnd(), false);
+	wf.forward(400);	// the page's end: the next one, opened at its top and start edge
+	CHECK_EQ(wf.step(580), false);
+	CHECK_EQ(wf.current(), 1);
+	CHECK_EQ(wf.hscroll(), 0.0);
+	CHECK_EQ(near(find(wf.placements(), 1).x, 0), true);
+	wf.back(600);	// Left back over the turn opens the previous page at its last column
+	CHECK_EQ(wf.step(780), false);
+	CHECK_EQ(wf.current(), 0);
+	CHECK_EQ(near(wf.hscroll(), 600), true);
+	wf.back(800);	// and back reverses forward: column by column…
+	CHECK_EQ(wf.step(980), false);
+	CHECK_EQ(near(wf.hscroll(), 240), true);
+	wf.back(1000);	// …to the start edge
+	CHECK_EQ(wf.step(1180), false);
+	CHECK_EQ(near(wf.hscroll(), 0), true);
+	wf.back(1200);	// at its start on the first page: nothing
+	CHECK_EQ(wf.moving(), false);
+	CHECK_EQ(wf.current(), 0);
+
+	// rtl reads the spread the other way: the pan starts at the right edge and steps leftwards
+	Paged wr;
+	wr.setView(400, 600);
+	wr.setPages(3, 0.6);
+	wr.setFit(Paged::FitFill);
+	wr.setRtl(true);
+	CHECK_EQ(near(find(wr.placements(), 0).x, -600), true);	// right edge flush: hscroll 0 is the reading start
+	wr.forward(0);
+	CHECK_EQ(wr.step(180), false);
+	CHECK_EQ(near(wr.hscroll(), 360), true);	// forward along the reading order: the page slides right
+	CHECK_EQ(near(find(wr.placements(), 0).x, -240), true);
+	wr.forward(200);
+	CHECK_EQ(wr.step(380), false);
+	CHECK_EQ(near(wr.hscroll(), 600), true);	// the page's end: its left edge flush
+	CHECK_EQ(near(find(wr.placements(), 0).x, 0), true);
+	wr.forward(400);	// the next page, opened at its right edge again
+	CHECK_EQ(wr.step(580), false);
+	CHECK_EQ(wr.current(), 1);
+	CHECK_EQ(near(wr.hscroll(), 0), true);
+	CHECK_EQ(near(find(wr.placements(), 1).x, -600), true);
+	wr.back(600);	// back over the turn: the previous page at its end, the left column in rtl
+	CHECK_EQ(wr.step(780), false);
+	CHECK_EQ(wr.current(), 0);
+	CHECK_EQ(near(wr.hscroll(), 600), true);
+	CHECK_EQ(near(find(wr.placements(), 0).x, 0), true);
+	wr.back(800);
+	CHECK_EQ(wr.step(980), false);
+	CHECK_EQ(near(wr.hscroll(), 240), true);
+	CHECK_EQ(near(find(wr.placements(), 0).x, -360), true);
+	wr.back(1000);
+	CHECK_EQ(wr.step(1180), false);
+	CHECK_EQ(near(wr.hscroll(), 0), true);
+	wr.back(1200);	// at the chapter's start: nothing
+	CHECK_EQ(wr.moving(), false);
+	CHECK_EQ(wr.current(), 0);
+
+	// a drag pans inside a wide page first and only carries the row once the pan hits its edge, as photo
+	// viewers do
+	Paged wd;
+	wd.setView(400, 600);
+	wd.setPages(3, 0.6);	// the same 1000 x 600 spreads, their centres 1000 apart
+	wd.setFit(Paged::FitFill);
+	wd.goTo(1, 0, false);
+	CHECK_EQ(near(find(wd.placements(), 1).x, 0), true);
+	wd.touchDown(10);
+	wd.drag(100, 0, 20);	// at its start edge the pan has nothing left to take: the whole drag moves the row
+	CHECK_EQ(wd.hscroll(), 0.0);
+	CHECK_EQ(near(find(wd.placements(), 1).x, 100), true);	// the page slides right…
+	CHECK_EQ(near(find(wd.placements(), 0).x, -900), true);	// …and page 0 follows at its edge, seam kept
+	CHECK_EQ(wd.current(), 1);
+	wd.release(20);	// a lone sample: no flick, the row snaps back
+	CHECK_EQ(wd.moving(), true);
+	CHECK_EQ(wd.step(240), false);
+	CHECK_EQ(near(find(wd.placements(), 1).x, 0), true);
+	wd.touchDown(300);
+	wd.drag(-500, 0, 320);	// panning inside the page: the row stays put
+	CHECK_EQ(near(wd.hscroll(), 500), true);
+	CHECK_EQ(near(find(wd.placements(), 1).x, -500), true);
+	CHECK_EQ(wd.current(), 1);
+	wd.drag(-300, 0, 420);	// 100 of this pans on to the far edge, the other 200 carry the row over
+	CHECK_EQ(near(wd.hscroll(), 600), true);
+	CHECK_EQ(wd.current(), 1);	// nowhere near page 2's centre yet
+	CHECK_EQ(near(find(wd.placements(), 1).x, -800), true);
+	CHECK_EQ(near(find(wd.placements(), 2).x, 200), true);	// the next page waits at the panned one's edge
+	wd.drag(0, 0, 430);	// the finger rests: no velocity to release
+	wd.release(430);	// slow and only 200 carried over: page 1's centre is still nearer, its pan stays at the end
+	CHECK_EQ(wd.step(650), false);
+	CHECK_EQ(wd.current(), 1);
+	CHECK_EQ(near(wd.hscroll(), 600), true);
+	CHECK_EQ(near(find(wd.placements(), 1).x, -600), true);	// its right edge flush with the view
+
+	// setFit cycles the three fits with the current page kept, and drops the offsets a new fit can't hold
+	Paged sw;
+	sw.setView(400, 600);
+	sw.setPages(3, 1.5);
+	sw.setPageSize(1, 800, 600);	// a spread, page 1: aspect 0.75
+	sw.goTo(1, 0, false);
+	sw.setFit(Paged::FitFill);	// covers the view: drawn 800 x 600, 400 to pan
+	CHECK_EQ(sw.current(), 1);
+	CHECK_EQ(near(find(sw.placements(), 1).w, 800), true);
+	sw.forward(0);
+	CHECK_EQ(sw.step(180), false);
+	CHECK_EQ(near(sw.hscroll(), 360), true);
+	sw.setFit(Paged::FitPage);	// the spread fits: its pan is gone, the page sits centred on its place
+	CHECK_EQ(sw.current(), 1);
+	CHECK_EQ(sw.hscroll(), 0.0);
+	CHECK_EQ(near(find(sw.placements(), 1).w, 400), true);
+	CHECK_EQ(near(find(sw.placements(), 1).x, 0), true);
+	CHECK_EQ(near(find(sw.placements(), 1).y, 150), true);
+	sw.setFit(Paged::FitWidth);	// 400 wide too: shorter than the view, so centred down as Page's is
+	CHECK_EQ(sw.current(), 1);
+	CHECK_EQ(near(find(sw.placements(), 1).w, 400), true);
+	sw.setFit(Paged::FitFill);	// Fill again: the spread is back and page 1 opens at its start edge
+	CHECK_EQ(sw.current(), 1);
+	CHECK_EQ(near(find(sw.placements(), 1).w, 800), true);
+	CHECK_EQ(sw.hscroll(), 0.0);
+	CHECK_EQ(near(find(sw.placements(), 1).x, 0), true);
+
 	// goTo: animated glides the row with current() crossing to the target, plain jumps
 	Paged g;
 	g.setView(400, 600);
