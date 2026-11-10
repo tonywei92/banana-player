@@ -35,6 +35,7 @@ namespace bp
 		case EQ_NAME: return "Preset name";
 		case PL_NAME: return "Playlist name";
 		case SRC_URL_FIELD: return "Repository URL";
+		case MANGA_SEARCH_FIELD: return "Search";
 		default: return "";
 		}
 	}
@@ -255,6 +256,15 @@ namespace bp
 			if (keep) { plNameSubmit = true; return; }
 			plNameNote.clear();
 			plNameThenAdd = false;
+		}
+		if (kbField == MANGA_SEARCH_FIELD)
+		{
+			// Done runs the source's search at once; B (a cancelled one) keeps the query that was there
+			kbOpen = false;
+			kbPressed = -1;
+			if (keep) mangaSourceSearch(kbEdit.text);
+			else browseVersion++;
+			return;
 		}
 		kbOpen = false;
 		kbPressed = -1;

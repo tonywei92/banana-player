@@ -20,6 +20,7 @@
 #include "discovery.h"
 #include "mangalocal.h"
 #include "mangarepos.h"
+#include "mangasource.h"
 #include "mangastore.h"
 #include "pagecache.h"
 #include "coverworker.h"
@@ -36,6 +37,8 @@ namespace bp
 
 	// the on-screen keyboard's field for a repository's URL (Ui's Sources tab; the form's are in ui_internal.h)
 	inline constexpr int SRC_URL_FIELD = 62;
+	// the on-screen keyboard's field for a source's search (apart from the form's, a preset's and a playlist's)
+	inline constexpr int MANGA_SEARCH_FIELD = 63;	// (62: the repository URL)
 
 	// The bottom panel: what is playing and where, the transport (previous, -5 s, play, +10 s, next), the choices
 	// (audio, subtitles, aspect, speed, settings) and their pages. Laid out on 640x480 (the RG DS's panel) and scaled
@@ -1330,6 +1333,114 @@ namespace bp
 			int step = mstModal == MSM_DETAILS ? 50 : 52;
 			return {b.x + 16, top + i * step, b.w - 32, step - 6};
 		}
+		// ---- browsing a source (ui_manga_browse.cpp) ----
+		// Browse lists the installed sources after On this handheld; A opens one, with Popular · Latest · Search
+		// (L/R) and a cover grid. A source's page is a view of Page::Manga and its series page is Page::MangaSeries
+		// (the id says whose: "src:<full source id>:<key>"), because a Page of their own would need its keys, taps
+		// and drawing dispatched in ui.cpp, ui_draw.cpp and ui_ext.cpp.
+		struct MangaSrcRow { std::string id, name, lang, file; bool adult = false; };
+		std::vector<MangaSrcRow> mangaSrcRows;	// every installed source, as repos() last listed them
+		uint64_t mangaSrcRowsSerial = 0;		// repos()'s serial when they were read
+		bool mangaSrcRowsOn = false;			// they were read at least once (a source list can be empty)
+		int mangaView = 0;						// 0 the app's tabs, 1 a source's page
+		std::string mangaSrcId, mangaSrcName, mangaSrcFile;	// the source open: full id, name, its script
+		std::string mangaSrcQuery;
+		int mangaSrcTab = 0;					// the source's tabs, in their order: Popular, Latest, Search
+		bool mangaSrcHasLatest = true;			// a source without latest() loses its tab once the first ask says so
+		std::vector<MangaItem> mangaSrcItems;
+		int mangaSrcCursor = 0, mangaSrcScroll = 0, mangaSrcPage = 0;
+		bool mangaSrcMore = false, mangaSrcLoading = false;
+		std::string mangaSrcError;				// the source's one-line message, while it shows
+		int mangaSrcFailed = 0;					// what A asks again after an error: 0 none, 1 a list, 2 details, 3 a chapter
+		// the jobs in flight: each answer is dropped unless its serial is still the one here (the page or tab changed)
+		uint64_t mangaSrcListSerial = 0, mangaSrcDetailsSerial = 0, mangaSrcChaptersSerial = 0, mangaSrcPagesSerial = 0,
+			mangaSrcImageSerial = 0;
+		std::vector<MangaPage> mangaSrcPages;	// a chapter's pages while its {key} ones are resolved by image()
+		int mangaSrcImageAt = 0;
+		std::vector<std::string> mangaSrcUrls;
+		std::vector<std::pair<std::string, std::string>> mangaSrcHeaders;
+		// the chapter a Pages job is for; the read request is filled from these once its pages are known
+		int mangaSrcPendAt = -1;
+		std::vector<MangaChapter> mangaSrcPendChapters;
+		std::string mangaSrcPendSeriesId, mangaSrcPendSeriesTitle;
+		int mangaSrcPendPage = 0, mangaSrcPendMode = 0, mangaSrcPendFit = 0, mangaSrcPendHinge = 36;
+		bool mangaSrcPendFull = false;
+		// the source series shown (Page::MangaSeries): the item as the source gave it, its details and its chapters
+		std::string mangaSrcKey, mangaSrcItemJson, mangaSrcCover, mangaSrcTitle;
+		MangaDetails mangaSrcInfo;
+		bool mangaSrcInfoOn = false;
+		std::vector<MangaChapter> mangaSrcChapters;		// oldest first, as the card's series page lists them
+		bool mangaSrcChaptersOn = false;
+		std::vector<MangaChapter> mangaReadSrcChapters;	// the reading chapter's series, for the chapter buttons
+		// a source's ids: the series' and a chapter's are "src:<full source id>:<key>" (docs/design/manga.md 6)
+		static bool isSourceId(const std::string& id) { return id.rfind("src:", 0) == 0; }
+		static std::string sourceItemId(const std::string& sourceId, const std::string& key)
+		{
+			return "src:" + sourceId + ":" + key;
+		}
+		// the two parts of "src:<source>:<key>"; full is "" when the id is malformed
+		static void splitSourceId(const std::string& id, std::string& full, std::string& key)
+		{
+			full.clear();
+			key.clear();
+			if (!isSourceId(id)) return;
+			size_t colon = id.find(':', 4);
+			if (colon == std::string::npos) { full = id.substr(4); return; }
+			full = id.substr(4, colon - 4);
+			key = id.substr(colon + 1);
+		}
+		int mbrowseScroll = 0;							// Browse's rows (On this handheld and the sources)
+		bool mangaFullSeenPending = false;				// the first fullscreen's flag waits for a key (no Player in a draw)
+		void mangaBrowseReset(Player& p);				// the app opened or left: the source's jobs dropped
+		void mangaBrowsePoll(const Player& p);			// the worker's answers (the pages' draws and keys call it)
+		void mangaBrowseRepos(const Player& p);			// the installed sources, read again when repos() changed
+		int mangaBrowseCount(const Player& p) const;	// On this handheld, then the sources the setting shows
+		const MangaSrcRow* mangaBrowseSourceAt(int i, const Player& p) const;
+		const MangaSrcRow* mangaSrcRowFor(const std::string& fullId) const;
+		bool mangaBrowseKey(Button b, Player& p);
+		bool mangaBrowsePointer(const Pointer& pt, int x, int y, Player& p);
+		void mangaBrowseChoose(int i, Player& p);
+		void drawMangaBrowseRows(const Player& p);
+		void mangaOpenSource(const MangaSrcRow& row, Player& p);
+		void mangaSourceBack(Player& p);
+		bool mangaSourceKey(Button b, Player& p);
+		bool mangaSourcePointer(const Pointer& pt, int x, int y, Player& p);
+		void drawMangaSource(const Player& p);
+		void mangaSourceTabStep(int dir, Player& p);
+		void mangaSourceTabSet(int tab, Player& p);		// (the Search tab asks for the query)
+		void mangaSourceLoad(int page);					// the tab's list: Popular / Latest / Search page 1, 2, …
+		void mangaSourceSearch(const std::string& query);	// the keyboard's Done
+		void mangaSourceRetry(Player& p);				// A after the source's error
+		void mangaSourceOpenSeriesAt(int i, Player& p);
+		void mangaOpenSourceSeries(const std::string& id, int from, const std::string& itemJson,
+			const std::string& cover, const std::string& title, Player& p);
+		bool mangaSourceSeriesOn() const;
+		bool mangaSourceSeriesKey(Button b, Player& p);
+		bool mangaSourceSeriesPointer(const Pointer& pt, int x, int y, Player& p);
+		void drawMangaSourceSeries(const Player& p);
+		void mangaSourceSeriesLoad(Player& p);
+		void mangaSourceSeriesChoose(int i, Player& p);
+		void mangaSourceSeriesResume(Player& p);
+		void mangaSourceSeriesInLibrary(Player& p);
+		void mangaSourceChapterOpen(const std::vector<MangaChapter>& chapters, int i, int page,
+			const std::string& seriesId, const std::string& seriesTitle, Player& p);
+		void mangaSourcePagesAsk(Player& p);			// the chapter's Pages job
+		void mangaSourceImageAsk();					// the next page's Image job, while one has no url
+		void mangaSourceCancel();						// the source's jobs dropped (its page or series left)
+		void mangaSourceChapterReady(const Player& p);	// its pages are known: the read request, the reader page
+		void mangaSourceChapterStep(int dir, Player& p);
+		int mangaReadChapterTotal() const;
+		std::string mangaNetSignature() const;			// this part of the page for signature()
+		Rect mangaSrcTabRect(int i) const { return {60 + i * 120, 64, 116, 30}; }
+		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 186, MG_SRC_SER_TOP = 194, MG_SRC_SER_ROWS = 4,
+			MG_SRC_STATUS_Y = 410;
+		Rect mangaSrcCoverRect(int i) const
+		{
+			int row = i / MG_COLS, col = i % MG_COLS;
+			return {16 + col * 124, MG_SRC_TOP + (row - mangaSrcScroll) * MG_SRC_STEP, MG_COVER_W, MG_COVER_H};
+		}
+		Rect mangaSrcResumeRect() const { return {16, 144, 220, 40}; }
+		Rect mangaSrcHeartRect() const { return {556, 144, 68, 40}; }
 
 		// ---- the manga reader's settings (ui_manga_settings.cpp) ----
 		// A page of the app's own, not a group of Banana Player's Settings: START on the app's pages (any tab) or over

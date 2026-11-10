@@ -1173,6 +1173,8 @@ namespace bp
 				photo += std::string(sb) + mstModalId + "|" + mstPendingUrl + "|mt" +
 					std::to_string((long long)time(nullptr) / 60);	// (the repositories' "2 h ago")
 			}
+			// Browse's sources and the source series' details, chapters and jobs (ui_manga_browse.cpp)
+			photo += mangaNetSignature();
 			if (page == Page::MangaRead)
 			{
 				char rb[160];
