@@ -1163,6 +1163,13 @@ namespace bp
 				{
 					photo += "|full" + std::to_string(readerBottom.gen) + " " + std::to_string(mfTex.size()) + " " +
 						std::to_string(mfWaiting) + " " + std::to_string(readerBottom.pages.size()) + (SDL_GetTicks() < mfTagUntil ? "T" : "");
+					// the controls over the pages and the first open's toast: how long they still show, in 100 ms
+					// steps, so each hides by itself (no finger, no other change to draw for)
+					Uint32 now = SDL_GetTicks();
+					photo += "|fc" +
+						std::to_string(mangaCtrlUntil && now < mangaCtrlUntil ? (int)((mangaCtrlUntil - now + 99) / 100) : 0) + " " +
+						std::to_string(mangaToastUntil && now < mangaToastUntil ? (int)((mangaToastUntil - now + 99) / 100) : 0) + " " +
+						std::to_string(mangaCtrlPressed);
 					for (auto& b : readerBottom.boxes)
 						photo += " " + std::to_string(b.page) + ":" + std::to_string((int)std::lround(b.x * 4096)) + "," + std::to_string((int)std::lround(b.y * 4096));
 				}

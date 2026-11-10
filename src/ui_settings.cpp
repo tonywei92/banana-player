@@ -36,8 +36,8 @@ namespace bp
 		// (the reader's options only while it's on)
 		case GROUP_EXT:
 			return mangaOn
-				? std::vector<int>{T + 12, MANGA_MODE_ROW, MANGA_FIT_ROW, T + 13, MANGA_PRELOAD_ROW, MANGA_CACHE_ROW,
-					MANGA_CLEAR_ROW, T + 14, T + 15, T + 16, EXT_NOTE}
+				? std::vector<int>{T + 12, MANGA_MODE_ROW, MANGA_FIT_ROW, MANGA_HINGE_ROW, T + 18, T + 13, MANGA_PRELOAD_ROW,
+					MANGA_CACHE_ROW, MANGA_CLEAR_ROW, T + 14, T + 15, T + 16, EXT_NOTE}
 				: std::vector<int>{T + 12, EXT_NOTE};
 		case GROUP_FILES: return {T + 3, T + 6, T + 4, T + 11, CLEAR_ROW};
 		case GROUP_CONTROLS:
@@ -75,6 +75,8 @@ namespace bp
 		if (row >= STYLE_ROW0 && row < STYLE_ROW0 + STYLE_KEYS) return "How plain subtitles (SRT, VTT...) look. Styled ones (ASS) keep theirs.";
 		if (row == MANGA_MODE_ROW) return "How a series opens until you pick one for it (X while reading).";
 		if (row == MANGA_FIT_ROW) return "Width: a page as wide as the screen, read down with RIGHT a screenful at a time.";
+		if (row == MANGA_HINGE_ROW)
+			return "The strip skipped under the hinge in fullscreen, so pictures line up across the gap. Measure on your handheld.";
 		if (row == MANGA_PRELOAD_ROW) return "More: smoother on a slow server, more data.";
 		if (row == MANGA_CACHE_ROW) return "Pages kept on the card to read again without downloading. Covers: 50 MB more.";
 		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
@@ -107,6 +109,7 @@ namespace bp
 		case 13: return "Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book).";
 		case 14: return "Sources a repository marks as adult.";
 		case 15: return "Off clears it.";
+		case 18: return "A chapter opens on both screens. SELECT or B leaves.";
 		default: return "";
 		}
 	}
@@ -188,6 +191,15 @@ namespace bp
 			s.mangaFit = ((s.mangaFit + dir) % MANGA_FITS + MANGA_FITS) % MANGA_FITS;
 			// a chapter open on the top panel takes it at once, as X takes the mode
 			if (readerStatus.open) readerCmds.push_back({ReaderCmd::Fit, (double)s.mangaFit, (int64_t)SDL_GetTicks()});
+		}
+		else if (row == MANGA_HINGE_ROW)
+		{
+			// 0 to 80 in steps of 4 (a value a file kept from before may sit off the step: it snaps onto one)
+			int h = std::clamp(s.mangaHinge + dir * 4, 0, 80);
+			s.mangaHinge = h - h % 4;
+			// both panels are one view while reading fullscreen: the reader relayouts now, not at the next open
+			if (readerStatus.open && readerStatus.fullscreen)
+				readerCmds.push_back({ReaderCmd::Fullscreen, 1.0, (int64_t)SDL_GetTicks(), (double)s.mangaHinge});
 		}
 		else if (row == MANGA_PRELOAD_ROW) s.mangaPreload = stepMangaPreload(s.mangaPreload, dir);
 		else if (row == MANGA_CACHE_ROW)
@@ -349,6 +361,11 @@ namespace bp
 				static const char* FITS[MANGA_FITS] = {"Page", "Width", "Fill"};
 				label = "Page fit";
 				value = FITS[p.settings.mangaFit];
+			}
+			else if (row == MANGA_HINGE_ROW)
+			{
+				label = "Hinge gap";
+				value = std::to_string(p.settings.mangaHinge) + " px";
 			}
 			else if (row == MANGA_PRELOAD_ROW)
 			{

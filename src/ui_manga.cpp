@@ -65,6 +65,9 @@ namespace bp
 		mangaPressed = -1;
 		mangaTouch = mangaSlider = false;
 		mangaSliderPage = -1;
+		mangaCtrlUntil = mangaToastUntil = 0;
+		mangaTap = false;
+		mangaCtrlPressed = -1;
 		mangaScan();
 		// the History kept off while the app wasn't open is cleared here too: its list is empty either way
 		mangaHistOn = p.settings.mangaHistory;
@@ -239,7 +242,6 @@ namespace bp
 
 	void Ui::mangaOpenChapter(const LocalSeries& s, int i, int page0, Player& p)
 	{
-		(void)p;
 		if (i < 0 || i >= (int)s.chapters.size()) return;
 		// the chapter open so far is saved before the next one replaces it in readerStatus
 		if (page == Page::MangaRead)
@@ -259,7 +261,10 @@ namespace bp
 		mangaProgPages = readerStatus.pages;
 		mangaReadLive = false;	// (main hasn't opened it yet: its open false isn't a close)
 		mangaSliderPage = -1;
+		mangaCtrlUntil = 0;
 		page = Page::MangaRead;
+		// Open fullscreen: the command SELECT sends, right after the chapter (main applies both in one pass)
+		if (p.settings.mangaOpenFull) mangaFullscreen(true, p);
 	}
 
 	void Ui::mangaChapterStep(int dir, Player& p)
@@ -587,30 +592,53 @@ namespace bp
 		if (page == Page::MangaRead)
 		{
 			// the drag area and the slider follow the finger; the buttons act as it lifts
+			Uint32 now = SDL_GetTicks();
+			bool full = readerStatus.fullscreen;
+			// the slider's page for the finger's x (the reading page's and, in fullscreen, the sheet's)
+			auto seekHere = [&]() {
+				if (readerStatus.pages > 1)
+				{
+					Rect tr = mangaSliderRect();
+					mangaSeek((int)std::lround(std::clamp((x - tr.x) / (double)tr.w, 0.0, 1.0) * (readerStatus.pages - 1)));
+				}
+			};
 			if (pt.kind == Pointer::Down)
 			{
 				mangaPressed = -1;
 				mangaTouch = mangaSlider = false;
 				mangaSliderPage = -1;
+				mangaTap = false;
+				mangaCtrlPressed = -1;
+				// fullscreen's controls up: the sheet takes the finger (any touch there shows it 4 s more), and the
+				// pages outside it only wait to become a drag or, lifted, a tap
+				if (full && mangaCtrlUntil && now < mangaCtrlUntil && mangaSheetRect().hit(x, y))
+				{
+					mangaCtrlUntil = now + MG_CTRL_MS;
+					if (mangaSliderRect().hit(x, y)) { mangaSlider = true; seekHere(); }
+					else
+						for (int i = 0; i < 4; i++)
+							if (mangaCtrlBtnRect(i).hit(x, y)) mangaCtrlPressed = i;
+					return false;
+				}
 				if (buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
 				// fullscreen: the whole panel is the page, the finger drags it anywhere
-				if (mangaAreaRect().hit(x, y) || readerStatus.fullscreen)
+				if (mangaAreaRect().hit(x, y) || full)
 				{
 					mangaTouch = true;
 					mangaTouchY = pt.y;
 					mangaTouchX = pt.x;
-					readerCmds.push_back({ReaderCmd::TouchDown, 0, (int64_t)SDL_GetTicks()});
+					// down and up, close by and soon, is a tap: fullscreen's controls show
+					mangaTap = full;
+					mangaTapX = x;
+					mangaTapY = y;
+					mangaTapAt = now;
+					readerCmds.push_back({ReaderCmd::TouchDown, 0, (int64_t)now});
 					return false;
 				}
 				if (mangaSliderRect().hit(x, y))
 				{
 					mangaSlider = true;
-					int pages = readerStatus.pages;
-					if (pages > 1)
-					{
-						Rect tr = mangaSliderRect();
-						mangaSeek((int)std::lround(std::clamp((x - tr.x) / (double)tr.w, 0.0, 1.0) * (pages - 1)));
-					}
+					seekHere();
 					return false;
 				}
 				const LocalSeries* s = mangaLocalSeries(mangaReadSeriesId);
@@ -627,30 +655,50 @@ namespace bp
 					double dy = pt.y - mangaTouchY, dx = pt.x - mangaTouchX;
 					mangaTouchY = pt.y;
 					mangaTouchX = pt.x;
+					// fullscreen: a finger within 12 units may still be a tap, and a tap doesn't scroll; past them it
+					// is a drag, and the controls over the pages go at once
+					if (mangaTap && (std::abs(x - mangaTapX) > MG_TAP_UNITS || std::abs(y - mangaTapY) > MG_TAP_UNITS))
+					{
+						mangaTap = false;
+						mangaCtrlUntil = 0;
+					}
 					// (both: the strip goes by dy, the paged modes by dx)
-					if (dy != 0 || dx != 0) readerCmds.push_back({ReaderCmd::Drag, dy, (int64_t)SDL_GetTicks(), dx});
+					if (!mangaTap && (dy != 0 || dx != 0)) readerCmds.push_back({ReaderCmd::Drag, dy, (int64_t)now, dx});
 				}
-				else if (mangaSlider && readerStatus.pages > 1)
+				else if (mangaSlider)
 				{
-					Rect tr = mangaSliderRect();
-					mangaSeek((int)std::lround(std::clamp((x - tr.x) / (double)tr.w, 0.0, 1.0) * (readerStatus.pages - 1)));
+					if (full) mangaCtrlUntil = now + MG_CTRL_MS;
+					seekHere();
+				}
+				return false;
+			}
+			if (mangaCtrlPressed >= 0)
+			{
+				// the sheet's button: it acts as the key on it does (B leaves fullscreen first, as always)
+				int i = mangaCtrlPressed;
+				mangaCtrlPressed = -1;
+				if (mangaCtrlBtnRect(i).hit(x, y))
+				{
+					mangaCtrlUntil = now + MG_CTRL_MS;
+					static const Button KEYS[4] = {Button::L2, Button::R2, Button::Select, Button::B};
+					mangaKey(KEYS[i], p);
 				}
 				return false;
 			}
 			if (mangaTouch)
 			{
 				mangaTouch = false;
-				readerCmds.push_back({ReaderCmd::Release, 0, (int64_t)SDL_GetTicks()});
+				readerCmds.push_back({ReaderCmd::Release, 0, (int64_t)now});
+				// a tap (no drag, soon enough and close by) shows fullscreen's controls
+				if (mangaTap && now - mangaTapAt <= MG_TAP_MS) mangaCtrlUntil = now + MG_CTRL_MS;
+				mangaTap = false;
 				return false;
 			}
 			if (mangaSlider)
 			{
 				mangaSlider = false;
-				if (readerStatus.pages > 1)
-				{
-					Rect tr = mangaSliderRect();
-					mangaSeek((int)std::lround(std::clamp((x - tr.x) / (double)tr.w, 0.0, 1.0) * (readerStatus.pages - 1)));
-				}
+				seekHere();
+				if (full) mangaCtrlUntil = now + MG_CTRL_MS;
 				return false;
 			}
 			if (mangaPressed >= 0)
@@ -1117,7 +1165,9 @@ namespace bp
 			return;
 		}
 		if (readerStatus.fullscreen && readerBottom.on) { drawMangaFull(); return; }
-		if (!mfTex.empty()) mfFree();	// (out of fullscreen: this panel's copies of the pages go)
+		// out of fullscreen: this panel's copies of the pages, its controls and the first open's toast go
+		mangaCtrlUntil = mangaToastUntil = 0;
+		if (!mfTex.empty()) mfFree();
 		drawBackIcon();
 		drawTextMid(mangaReadChapterTitle, 1, TEXT, 72, 24, 540);
 		drawTextMid(mangaTitle(mangaReadSeriesId), 0, DIM, 72, 50, 540);
@@ -1186,8 +1236,18 @@ namespace bp
 
 	void Ui::mangaFullscreen(bool on, Player& p)
 	{
-		readerCmds.push_back({ReaderCmd::Fullscreen, on ? 1.0 : 0.0, (int64_t)SDL_GetTicks(), (double)p.settings.mangaHinge});
-		mfTagUntil = on ? SDL_GetTicks() + 2500 : 0;
+		Uint32 now = SDL_GetTicks();
+		readerCmds.push_back({ReaderCmd::Fullscreen, on ? 1.0 : 0.0, (int64_t)now, (double)p.settings.mangaHinge});
+		mfTagUntil = on ? now + 2500 : 0;
+		if (!on) mangaCtrlUntil = 0;
+		// the first fullscreen ever says how to leave it, here in the panel's middle; remembered so it says it once
+		if (on && !p.settings.mangaFullSeen)
+		{
+			Settings s = p.settings;
+			s.mangaFullSeen = true;
+			p.setSettings(s);
+			mangaToastUntil = now + MG_TOAST_MS;
+		}
 	}
 
 	void Ui::mfFree()
@@ -1203,6 +1263,8 @@ namespace bp
 		// the pages under the hinge: main gives each page's box (fractions of the panel) and its pixels; they become
 		// this renderer's textures, one page a frame at most so a turn never stalls the panel
 		Uint32 now = SDL_GetTicks();
+		if (mangaCtrlUntil && now >= mangaCtrlUntil) mangaCtrlUntil = 0;	// the timer's end: the controls go
+		if (mangaToastUntil && now >= mangaToastUntil) mangaToastUntil = 0;
 		if (readerBottom.gen != mfGen) { mfFree(); mfGen = readerBottom.gen; }
 		// a new page: its number shows a moment
 		if (readerStatus.page != mfLastPage) { mfLastPage = readerStatus.page; mfTagUntil = now + 1500; }
@@ -1272,5 +1334,42 @@ namespace bp
 			fillRound({W - tw - 12, H - 36, tw, 26}, SURFACE, R_CHIP);
 			drawTextMid(tag, 0, TEXT, W - 12 - tw / 2, H - 23, 0, 2);
 		}
+		// the controls, while they show (over the tag), then the first open's toast over both
+		if (now < mangaCtrlUntil) drawMangaControls();
+		if (now < mangaToastUntil) drawMangaToast();
+	}
+
+	void Ui::drawMangaControls()
+	{
+		// a sheet at the panel's foot: the series and its page, the page slider, the four keys (its top corners round)
+		Rect sheet = mangaSheetRect();
+		fillRound(sheet, SURFACE, R_DIALOG, ROUND_TL | ROUND_TR);
+		drawTextMid(mangaTitle(mangaReadSeriesId), 0, DIM, 20, 318, 380);
+		int pages = readerStatus.pages;
+		drawTextMid(pages > 0 ? "Page " + std::to_string(readerStatus.page + 1) + " of " + std::to_string(pages) : "Page", 0, TEXT,
+			W - 20, 318, 220, 1);
+		// the slider as the reading page draws it: a drag here is a Seek
+		Rect tr = mangaSliderRect(), bar{tr.x, tr.y + 8, tr.w, 10};
+		int w = pages > 1 ? (int)std::lround(bar.w * (readerStatus.page / (double)(pages - 1))) : 0;
+		drawLevel(bar, w, TRACK, ACCENT);
+		fillRound({bar.x + w - 5, bar.y - 4, 10, 18}, KNOB, R_KNOB);
+		static const char* LABELS[4] = {"< Chapter", "Chapter >", "Leave fullscreen", "Close"};
+		static const char* KEYS[4] = {"L2", "R2", "SELECT", "B"};
+		for (int i = 0; i < 4; i++)
+		{
+			Rect b = mangaCtrlBtnRect(i);
+			drawBox(b, mangaCtrlPressed == i ? PRESSED : BUTTON, R_BUTTON);
+			drawButton(b, nullptr, LABELS[i], KEYS[i], false, 0);
+		}
+		drawTextMid("Hides in 4 s \xC2\xB7 drag to hide now", 0, DIM, W / 2, 460);
+	}
+
+	void Ui::drawMangaToast()
+	{
+		// how to leave fullscreen, the first time it opens: a box in the panel's middle for 2 s
+		const char* text = "Fullscreen \xC2\xB7 SELECT or B to leave";
+		int tw = (int)std::lround(textWidth(text, 0) / sx) + 32;
+		fillRound({W / 2 - tw / 2, H / 2 - 22, tw, 44}, SURFACE, R_BUTTON);
+		drawTextMid(text, 0, TEXT, W / 2, H / 2, 0, 2);
 	}
 }

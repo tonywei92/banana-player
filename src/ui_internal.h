@@ -44,16 +44,18 @@ namespace bp
 		{{Button::Y, "Y"}, {Button::X, "X"}, {Button::Select, "SELECT"}, {Button::Up, "UP/DOWN"}, {Button::Start, "START"}},
 	};
 
-	// the settings' on/off rows (TOGGLE_ROW + their index)
-	inline const char* REMEMBER_LABELS[17] = {"Remember position", "Remember audio track", "Remember subtitles",
+	// the settings' on/off rows (TOGGLE_ROW + their index). The fullscreen tip's is one of the switches (a setting as
+	// any other) though no group lists it: it has a label only because the two arrays go together
+	inline const char* REMEMBER_LABELS[19] = {"Remember position", "Remember audio track", "Remember subtitles",
 		"Remember last folder", "Keep play history", "Button hotkeys", "Show hidden folders", "Battery percentage",
 		"Keep zoom between photos", "Check automatically", "Same for both screens", "Network files in Recent",
-		"Manga reader", "Swap Left/Right", "Adult sources", "Reading history", "In Recent on Home"};
-	inline bool Settings::*const REMEMBER[17] = {&Settings::rememberPosition, &Settings::rememberAudio, &Settings::rememberSubs,
+		"Manga reader", "Swap Left/Right", "Adult sources", "Reading history", "In Recent on Home", "Fullscreen tip seen",
+		"Open fullscreen"};
+	inline bool Settings::*const REMEMBER[19] = {&Settings::rememberPosition, &Settings::rememberAudio, &Settings::rememberSubs,
 		&Settings::rememberFolder, &Settings::keepHistory, &Settings::buttonHotkeys, &Settings::showHiddenFolders,
 		&Settings::batteryPercent, &Settings::keepPhotoZoom, &Settings::checkUpdates, &Settings::sameBrightness,
 		&Settings::keepNetHistory, &Settings::mangaOn, &Settings::mangaSwapLR, &Settings::mangaAdult, &Settings::mangaHistory,
-		&Settings::mangaRecent};
+		&Settings::mangaRecent, &Settings::mangaFullSeen, &Settings::mangaOpenFull};
 	struct GroupName { const char* name; const char* about; };
 	inline const GroupName GROUP_NAMES[] = {
 		{"Subtitles", "Font, size, colour"},

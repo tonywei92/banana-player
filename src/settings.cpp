@@ -28,6 +28,8 @@ namespace bp
 		{"manga-adult", &Settings::mangaAdult},
 		{"manga-history", &Settings::mangaHistory},
 		{"manga-recent", &Settings::mangaRecent},
+		{"manga-full-seen", &Settings::mangaFullSeen},
+		{"manga-open-full", &Settings::mangaOpenFull},
 	};
 
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};

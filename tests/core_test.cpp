@@ -3542,6 +3542,18 @@ static void testSettings()
 	CHECK_EQ(parseSettings("manga-hinge = 20\n").mangaHinge, 20);
 	CHECK_EQ(parseSettings("manga-hinge = 999\n").mangaHinge, 36);
 	CHECK_EQ(parseSettings(serializeSettings(parseSettings("manga-hinge = 12\n"))).mangaHinge, 12);
+	// fullscreen: the first open's tip seen, and a chapter opening on both panels
+	CHECK_EQ(d.mangaFullSeen, false);
+	CHECK_EQ(parseSettings("manga-full-seen = yes\n").mangaFullSeen, true);
+	CHECK_EQ(d.mangaOpenFull, false);
+	CHECK_EQ(parseSettings("manga-open-full = yes\n").mangaOpenFull, true);
+	Settings fs;
+	fs.mangaFullSeen = true;
+	fs.mangaOpenFull = true;
+	CHECK_EQ(serializeSettings(fs).find("manga-full-seen = yes\n") != std::string::npos, true);
+	CHECK_EQ(serializeSettings(fs).find("manga-open-full = yes\n") != std::string::npos, true);
+	CHECK_EQ(parseSettings(serializeSettings(fs)).mangaFullSeen, true);
+	CHECK_EQ(parseSettings(serializeSettings(fs)).mangaOpenFull, true);
 	CHECK_EQ(parseSettings("manga-mode = sideways\n").mangaMode, MANGA_RTL);
 	// the Manga group's other rows: fit, swap, preload, cache, adult sources, history, Recent
 	CHECK_EQ(d.mangaFit, MANGA_FIT_PAGE);

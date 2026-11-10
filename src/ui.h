@@ -969,12 +969,12 @@ namespace bp
 		// Clear play history, ..., Sound (it opens the Sound page), and the Manga group's (EXT_NOTE is its note, no
 		// value). Shown a group at a time (settingRows), after a list of the groups
 		static constexpr int STYLE_ROW0 = 0, MUSIC_ROW = STYLE_KEYS, VIS_ROW = STYLE_KEYS + 1, TOGGLE_ROW = STYLE_KEYS + 2,
-			TOGGLES = 17, PAN_ROW = TOGGLE_ROW + TOGGLES, DRAG_ROW = PAN_ROW + 1, CLEAR_ROW = DRAG_ROW + 1,
+			TOGGLES = 19, PAN_ROW = TOGGLE_ROW + TOGGLES, DRAG_ROW = PAN_ROW + 1, CLEAR_ROW = DRAG_ROW + 1,
 			CHECK_ROW = CLEAR_ROW + 1, INSTALL_ROW = CHECK_ROW + 1, TOP_LIGHT_ROW = INSTALL_ROW + 1,
 			BOTTOM_LIGHT_ROW = TOP_LIGHT_ROW + 1, SOUND_ROW = BOTTOM_LIGHT_ROW + 1, CLOCK_ROW = SOUND_ROW + 1,
 			SCREEN_OFF_ROW = CLOCK_ROW + 1, EXT_NOTE = SCREEN_OFF_ROW + 1, MANGA_MODE_ROW = EXT_NOTE + 1,
-			MANGA_FIT_ROW = MANGA_MODE_ROW + 1, MANGA_PRELOAD_ROW = MANGA_FIT_ROW + 1, MANGA_CACHE_ROW = MANGA_PRELOAD_ROW + 1,
-			MANGA_CLEAR_ROW = MANGA_CACHE_ROW + 1;
+			MANGA_FIT_ROW = MANGA_MODE_ROW + 1, MANGA_HINGE_ROW = MANGA_FIT_ROW + 1, MANGA_PRELOAD_ROW = MANGA_HINGE_ROW + 1,
+			MANGA_CACHE_ROW = MANGA_PRELOAD_ROW + 1, MANGA_CLEAR_ROW = MANGA_CACHE_ROW + 1;
 		// the panels' backlights (BananaOS's own levels: changed here as its menu changes them)
 		Backlight backlight;
 		bool sameBrightness = true;	// the setting's, kept here for settingRows (no Player there)
@@ -1148,11 +1148,31 @@ namespace bp
 		Uint32 mfTagUntil = 0;
 		int mfLastPage = -1;
 		void drawMangaFull();
+		void drawMangaControls();
+		void drawMangaToast();
 		void mangaFullscreen(bool on, Player& p);	// SELECT, and B while fullscreen
 		void mfFree();
 		int mangaModeFor(const std::string& seriesId, const Player& p) const;	// the series' own, else the setting's
 		void mangaCycleMode(Player& p);	// X while reading
 		int mangaSliderPage = -1;
+		// fullscreen's controls over the pages: a tap shows them 4 s (a drag or the 4 s hides them), and the finger that
+		// may still be a tap; the sheet's button under it (and its slider, which is the reading page's)
+		Uint32 mangaCtrlUntil = 0;	// when they hide (0: hidden)
+		bool mangaTap = false;
+		int mangaTapX = 0, mangaTapY = 0;
+		Uint32 mangaTapAt = 0;
+		int mangaCtrlPressed = -1;
+		// the first fullscreen ever: a toast in the panel's middle for 2 s (mangaFullSeen remembers it)
+		Uint32 mangaToastUntil = 0;
+		static constexpr Uint32 MG_TAP_MS = 250, MG_CTRL_MS = 4000, MG_TOAST_MS = 2000;
+		static constexpr int MG_TAP_UNITS = 12;	// a finger that moves less (640x480 units) may still be a tap
+		Rect mangaSheetRect() const { return {0, 300, W, H - 300}; }
+		Rect mangaCtrlBtnRect(int i) const
+		{
+			// four to a row across the panel's 608: the long one ("Leave fullscreen") takes a little more
+			static const int X[4] = {16, 164, 312, 488}, WIDTH[4] = {140, 140, 168, 136};
+			return {X[i], 392, WIDTH[i], 44};
+		}
 		void mangaOpen(Player& p);		// openManga: the store loaded, the card scanned, the tabs reset
 		void mangaScan();				// each Manga folder read and its series put in the store
 		void mangaCache() const;
