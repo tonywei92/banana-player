@@ -26,7 +26,12 @@
       "grep *": "allow",
       "git status*": "allow",
       "git diff*": "allow",
-      "git log*": "allow"
+      "git log*": "allow",
+      "sed -n *": "allow",
+      "unzip -l *": "allow",
+      "od *": "allow",
+      "xxd *": "allow",
+      "file *": "allow"
     }
   }
 }
