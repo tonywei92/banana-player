@@ -232,6 +232,7 @@ namespace bp
 			s.clients = ws.clients();
 			s.playlistSerial = u.playlistSerial();
 			s.showHiddenFolders = p.settings.showHiddenFolders;
+			s.mangaOn = p.settings.mangaOn;
 			return s;
 		}
 
@@ -631,9 +632,10 @@ namespace bp
 		});
 
 		// key=showHiddenFolders value=0|1: the handheld's Settings toggle (saved to settings.conf)
+		// key=manga-reader value=0|1: the manga reader's switch (the dashboard's Manage extensions card)
 		s.Post("/api/setting", [w](const httplib::Request& req, httplib::Response& res) {
 			std::string key = value(req, "key"), v = value(req, "value");
-			if (key != "showHiddenFolders")
+			if (key != "showHiddenFolders" && key != "manga-reader")
 			{
 				WebServer::fail(res, 400, "Unknown setting");
 				return;
@@ -645,7 +647,18 @@ namespace bp
 			}
 			bool on = v == "1";
 			int status = 200;
-			std::string body = w->call([on](Player& p, Ui& u) {
+			std::string body = w->call([key, on](Player& p, Ui& u) {
+				// the manga reader: its switch only (the handheld applies it: its places come and go)
+				if (key == "manga-reader")
+				{
+					if (p.settings.mangaOn != on)
+					{
+						Settings st = p.settings;
+						st.mangaOn = on;
+						p.setSettings(st);
+					}
+					return std::string("{\"mangaOn\":") + (on ? "true" : "false") + "}";
+				}
 				if (p.settings.showHiddenFolders != on)
 				{
 					Settings st = p.settings;
