@@ -24,6 +24,7 @@ namespace bp
 
 	void Ui::setStateDir(const std::string& stateDir)
 	{
+		stateDirPath = stateDir;	// the manga reader's store is kept here too (mangaOpen)
 		if (stateDir.empty()) plStore.reset();
 		else plStore = std::make_unique<PlaylistStore>(stateDir + "/playlists");
 	}

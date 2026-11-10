@@ -549,8 +549,11 @@ namespace bp
 	bool Ui::miniBarShown(const Player& p) const
 	{
 		// on Home and the lists; not while selecting (its bar owns the bottom), typing, or on the connection pages;
-		// the extensions' pages (Manage extensions, the reader) have it too: it controls what plays
-		if (page == Page::Extensions || page == Page::Manga) return !inMenu && !kbOpen && nowPlayable(p);
+		// the extensions' pages (Manage extensions, the reader) have it too: it controls what plays; the reader's
+		// page doesn't (main's pages are on top: the bottom panel is its controls)
+		if (page == Page::MangaRead) return false;
+		if (page == Page::Extensions || page == Page::Manga || page == Page::MangaSeries)
+			return !inMenu && !kbOpen && nowPlayable(p);
 		return page == Page::Browse && !inMenu && selMode == SEL_NONE && !kbOpen && browseDir != FORMDIR && browseDir != FINDNET &&
 			!addPending.serial && nowPlayable(p);
 	}

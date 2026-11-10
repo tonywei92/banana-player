@@ -27,6 +27,7 @@ extern "C"
 #include "manga_names.h"
 #include "mangastore.h"
 #include "mangalocal.h"
+#include "manga_ui_logic.h"
 #include "netpath.h"
 #include "pagedecode.h"
 #include "secret.h"
@@ -59,6 +60,7 @@ extern "C"
 #include <random>
 #include <set>
 #include <string>
+#include <tuple>
 #include <vector>
 
 using namespace bp;
@@ -304,6 +306,69 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("Volume"), -1.0);
 	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+// the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
+static void testMangaUiLogic()
+{
+	// a title's cover is its own and always the same; the top is dark and the bottom mid
+	MangaCoverColors a = mangaCoverColors("Ember Lantern"), b = mangaCoverColors("Ember Lantern");
+	CHECK_EQ(a.topR, b.topR);
+	CHECK_EQ(a.topG, b.topG);
+	CHECK_EQ(a.topB, b.topB);
+	CHECK_EQ(a.bottomR, b.bottomR);
+	CHECK_EQ(a.bottomG, b.bottomG);
+	CHECK_EQ(a.bottomB, b.bottomB);
+	std::set<std::tuple<int, int, int>> tops;
+	for (int i = 0; i < 40; i++)
+	{
+		MangaCoverColors c = mangaCoverColors("Series " + std::to_string(i));
+		tops.insert({c.topR, c.topG, c.topB});
+		CHECK_EQ(c.topR + c.topG + c.topB < c.bottomR + c.bottomG + c.bottomB, true);
+	}
+	CHECK_EQ(tops.size() > 1, true);	// not every title the same book
+
+	// Resume: the first started-but-unread chapter at its page, else the first unread, else the first
+	std::vector<MangaChapterMark> m(3);
+	CHECK_EQ(mangaResume({}).chapter, -1);
+
+	m[0].read = true;
+	m[1].read = true;
+	m[2].read = true;
+	CHECK_EQ(mangaResume(m).chapter, 0);
+	CHECK_EQ(mangaResume(m).page, 0);
+
+	m[2].read = false;
+	CHECK_EQ(mangaResume(m).chapter, 2);
+	CHECK_EQ(mangaResume(m).page, 0);
+
+	m[2].page = 6;
+	m[2].started = true;
+	m[1].read = false;
+	// the started one wins over the earlier unread one (a chapter merely unread isn't where you left off)
+	CHECK_EQ(mangaResume(m).chapter, 2);
+	CHECK_EQ(mangaResume(m).page, 6);
+
+	m[1].started = true;
+	m[1].page = 4;
+	CHECK_EQ(mangaResume(m).chapter, 1);
+	CHECK_EQ(mangaResume(m).page, 4);
+
+	// how old a History row reads
+	const int64_t t = 2000000000;	// (big enough that a year before it is still a time)
+	CHECK_EQ(mangaAgo(0, t), std::string(""));
+	CHECK_EQ(mangaAgo(t + 60, t), std::string(""));
+	CHECK_EQ(mangaAgo(t, t), std::string("now"));
+	CHECK_EQ(mangaAgo(t - 59, t), std::string("now"));
+	CHECK_EQ(mangaAgo(t - 60, t), std::string("1 min ago"));
+	CHECK_EQ(mangaAgo(t - 120, t), std::string("2 min ago"));
+	CHECK_EQ(mangaAgo(t - 3600, t), std::string("1 h ago"));
+	CHECK_EQ(mangaAgo(t - 86400, t), std::string("1 day ago"));
+	CHECK_EQ(mangaAgo(t - 2 * 86400, t), std::string("2 days ago"));
+	CHECK_EQ(mangaAgo(t - 7 * 86400, t), std::string("1 week ago"));
+	CHECK_EQ(mangaAgo(t - 30 * 86400, t), std::string("1 month ago"));
+	CHECK_EQ(mangaAgo(t - 365 * 86400, t), std::string("1 year ago"));
+	CHECK_EQ(mangaAgo(t - 2 * 365 * 86400, t), std::string("2 years ago"));
 }
 
 static void testMangaStore()
@@ -5269,6 +5334,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testMangaUiLogic();
 	testMangaStore();
 	testMangaLocal();
 	testComicInfo();

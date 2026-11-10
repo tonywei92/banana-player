@@ -5,11 +5,12 @@ namespace bp
 {
 	// ---- the Extensions drawer, Manage extensions and the manga reader's page ----
 
-	void Ui::openManga()
+	void Ui::openManga(Player& p)
 	{
 		page = Page::Manga;
 		cursor = scroll = 0;
 		extPressed = pressedBtn = -1;
+		mangaOpen(p);	// the store loaded, the card scanned, on Library
 	}
 
 	void Ui::openExtensions()
@@ -49,9 +50,8 @@ namespace bp
 
 	void Ui::extSheetChoose(int i, Player& p)
 	{
-		(void)p;
 		extSheet = false;
-		if (i == 0) openManga();
+		if (i == 0) openManga(p);
 	}
 
 	bool Ui::extDrawerKey(Button b, Player& p)
@@ -59,7 +59,7 @@ namespace bp
 		if (b == Button::Start) { openExtensions(); return true; }
 		if (b != Button::A) return false;
 		// what's on (the manga reader); with none on, its button's page
-		if (p.settings.mangaOn) openManga();
+		if (p.settings.mangaOn) openManga(p);
 		else openExtensions();
 		return true;
 	}
@@ -75,12 +75,7 @@ namespace bp
 			return false;
 		}
 		// the reader is an app of its own: B at its top goes back to the drawer
-		if (page == Page::Manga)
-		{
-			if (b == Button::Select && nowPlayable(p)) { goNowPlaying(p); return false; }
-			if (b == Button::B) openExtensionsDrawer(p);
-			return false;
-		}
+		if (page == Page::Manga) return mangaKey(b, p);
 		// (the mini bar shown here says SELECT goes to what plays)
 		if (b == Button::Select && nowPlayable(p)) { goNowPlaying(p); return false; }
 		switch (b)
@@ -105,7 +100,7 @@ namespace bp
 					if (extSheetBtn(i).hit(x, y)) extPressed = EXT_OPEN + i;
 				return false;
 			}
-			if (page == Page::Manga) return false;
+			if (page == Page::Manga) return mangaPointer(pt, x, y, p);
 			if (page == Page::Browse)
 			{
 				if (!p.settings.mangaOn) { if (extManageRect().hit(x, y)) extPressed = EXT_MANAGE; return false; }
@@ -137,7 +132,7 @@ namespace bp
 	bool Ui::extAct(int id, Player& p)
 	{
 		if (id == EXT_OPEN || id == EXT_DONE) { extSheetChoose(id - EXT_OPEN, p); return false; }
-		if (id == EXT_TILE) openManga();
+		if (id == EXT_TILE) openManga(p);
 		else if (id == EXT_MANAGE) openExtensions();
 		else if (id == EXT_ROW || id == EXT_CHIP) extToggleManga(p);
 		else if (id == EXT_GEAR) openExtSettings(p);
@@ -225,13 +220,5 @@ namespace bp
 			drawTextMid(i ? "Done" : "Open Manga", 1, at ? ON_ACCENT : TEXT, b.x + b.w / 2, b.y + b.h / 2, b.w - 16, 2);
 		}
 		drawHints({{"A", "Choose"}, {"LEFT/RIGHT", "Move"}, {"B", "Done"}});
-	}
-
-	void Ui::drawManga(const Player& p)
-	{
-		// (the reader's pages come next: for now, what it is)
-		drawHeader("Manga", p);
-		drawEmpty(G_BOOK, "Manga reader", "Your library, sources and downloads come next.", nullptr);
-		drawHints({{"B", "Back"}});
 	}
 }

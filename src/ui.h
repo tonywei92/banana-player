@@ -18,6 +18,8 @@
 #include "keyboard.h"
 #include "playlists.h"
 #include "discovery.h"
+#include "mangalocal.h"
+#include "mangastore.h"
 #include <functional>
 #include <map>
 #include <memory>
@@ -262,7 +264,7 @@ namespace bp
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
 		enum class Page { Main, Tracks, Chapters, Settings, Browse, Info, About, Exit, Sound, Web, Playing, UpNext, Manga,
-			Extensions };
+			Extensions, MangaSeries, MangaRead };
 		struct Rect { int x, y, w, h; bool hit(int px, int py) const { return px >= x && py >= y && px < x + w && py < y + h; } };
 		struct Row { int64_t id; std::string label; bool selected; std::string note = ""; };
 
@@ -1054,7 +1056,7 @@ namespace bp
 		bool extSheet = false;	// the note, over Manage extensions
 		int extSheetCursor = 0, extCursor = 0, extPressed = -1;	// the sheet's two buttons, the drawer's tile, the touch's button
 		void openExtensions();		// START in the drawer (and its button, with none on)
-		void openManga();
+		void openManga(Player& p);	// the app: its store loaded and the card scanned (ui_manga.cpp)
 		void openExtensionsDrawer(Player& p);	// B in either page: back to the drawer (the Browse page on it)
 		void extToggleManga(Player& p);	// A on the row or the chip: on / off (the first time, the sheet)
 		void extSheetChoose(int i, Player& p);	// Open Manga, Done
@@ -1078,6 +1080,87 @@ namespace bp
 		Rect extSheetBox() const { return {60, 90, 520, 300}; }
 		Rect extSheetBtn(int i) const { return {i ? 328 : 92, 310, 220, 50}; }
 		static constexpr int EXT_DRAWER_TILES = 1;	// (what's on: the manga reader, so far)
+
+		// ---- the manga reader (ui_manga.cpp) ----
+		// Page::Manga's five tabs (Library, History, Browse, Sources, Downloads), each its own cursor and scroll;
+		// Page::MangaSeries; and Page::MangaRead, the bottom panel while main's reader shows pages on top. The store
+		// is <state>/manga (setStateDir keeps the path), loaded and scanned the first time the app opens.
+		enum MangaTab { MT_LIBRARY, MT_HISTORY, MT_BROWSE, MT_SOURCES, MT_DOWNLOADS, MANGA_TABS };
+		int mangaTab = MT_LIBRARY;
+		std::unique_ptr<MangaStore> mangaStore;
+		std::vector<LocalSeries> mangaLocal;	// On this handheld: each Manga folder's series, in reading order
+		std::unordered_map<std::string, size_t> mangaLocalById;
+		std::string stateDirPath;	// (setStateDir's) the manga store's own folder is under it
+		bool mangaDirty = false;	// the store changed and wasn't written yet (mangaTick writes it once a second)
+		Uint32 mangaSavedAt = 0;
+		// the Library and History lists made again when the store changes: the library, its unread counts, the
+		// Continue reading cards, the last chapters opened
+		mutable uint64_t mangaCacheSerial = 0;
+		mutable int mangaCacheCount = -1;
+		mutable bool mangaCacheValid = false;
+		mutable std::vector<MangaSeries> mangaLib;
+		mutable std::vector<int> mangaLibUnread;
+		mutable std::vector<ChapterProgress> mangaCards, mangaHistory;
+		int mlibZone = 0, mlibCard = 0, mlibGrid = 0, mlibScroll = 0;	// 0 the cards, 1 the cover grid
+		int mhisCursor = 0, mhisScroll = 0;
+		int mbrowseCursor = 0, mListCursor = 0, mListScroll = 0;
+		bool mBrowseList = false;	// Browse's "On this handheld": the series list open
+		std::string mangaSeriesId;	// the series shown (Page::MangaSeries)
+		int mangaSeriesFrom = 0;	// 0 Library, 1 Browse's list, 2 History (B goes back there)
+		int mserCursor = -1, mserScroll = 0;	// -1 the Resume button, else a chapter
+		Uint32 mangaClearAt = 0;	// History's Clear pressed once: again within 2 s clears it
+		int mangaPressed = -1;		// the card, cover, row or button under the finger
+		// Page::MangaRead: the chapter open, what was last recorded, and the finger on it
+		std::string mangaReadSeriesId, mangaReadChapterId, mangaReadChapterTitle;
+		bool mangaReadLive = false;	// main has had this request open (a close before that isn't main's)
+		int mangaProgPage = -1, mangaProgPages = -1;
+		bool mangaTouch = false, mangaSlider = false;
+		double mangaTouchY = 0;
+		int mangaSliderPage = -1;
+		void mangaOpen(Player& p);		// openManga: the store loaded, the card scanned, the tabs reset
+		void mangaScan();				// each Manga folder read and its series put in the store
+		void mangaCache() const;
+		void mangaSave();				// the store written now (the reader's: once a second, and on closing)
+		void mangaTick();				// the reader's page recorded, the store written when a second has passed
+		void mangaRecordProgress();		// the reader's place into the store
+		void mangaCloseReader();		// B: Close pushed, progress saved, the series page
+		void openMangaSeries(const std::string& id, int from, Player& p);
+		void mangaOpenChapter(const LocalSeries& s, int i, int page, Player& p);
+		void mangaChapterStep(int dir, Player& p);	// the chapter before (-1) or after (+1), at page 0
+		void mangaSeek(int page);		// the slider: a Seek command
+		const LocalSeries* mangaLocalSeries(const std::string& id) const;
+		std::string mangaTitle(const std::string& id) const;
+		int mangaReadChapterIndex() const;
+		void mangaChoose(int tab, int i, Player& p);	// A on what a tab's cursor is on
+		void mangaSeriesChoose(int i, Player& p);		// A on a chapter
+		void mangaSeriesResume(Player& p);				// A on Resume
+		bool mangaKey(Button b, Player& p);
+		bool mangaPointer(const Pointer& pt, int x, int y, Player& p);
+		void drawMangaTabs();
+		void drawMangaLibrary(const Player& p);
+		void drawMangaHistory(const Player& p);
+		void drawMangaBrowse(const Player& p);
+		void drawMangaSeries(const Player& p);
+		void drawMangaRead(const Player& p);
+		void drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell);
+		Rect mangaTabRect(int i) const { return {60 + i * 104, 64, 100, 30}; }
+		Rect mangaCardRect(int i) const { return {16 + i * 206, 120, 196, 62}; }
+		static constexpr int MG_COLS = 5;	// the grid's covers 112 wide, 124 apart
+		Rect mangaCoverRect(int i) const
+		{
+			int row = i / MG_COLS, col = i % MG_COLS;
+			return {16 + col * 124, 212 + (row - mlibScroll) * 186, 112, 150};
+		}
+		Rect mangaResumeRect() const { return {16, 84, 220, 44}; }
+		Rect mangaHeartRect() const { return {556, 84, 68, 44}; }
+		Rect mangaAreaRect() const { return {16, 70, 608, 260}; }
+		Rect mangaSliderRect() const { return {40, 352, 560, 22}; }
+		Rect mangaPrevRect() const { return {16, 404, 296, 40}; }
+		Rect mangaNextRect() const { return {328, 404, 296, 40}; }
+		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
+		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;	// the tabs end at 94: History's and Browse's rows below them
+		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
+		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101;
 
 		// ---- playing behind the browser ----
 		// the player left (B, "<", Back) while a song or video plays on: the browser is the base page; showPlayer ends it

@@ -197,8 +197,9 @@ namespace bp
 		if (page == Page::Sound) return soundKey(b, p);
 		if (page == Page::Web) return webKey(b, p);
 		if (page == Page::Playing) return playingKey(b, p);
-		// Manage extensions and the manga reader's page: their own keys (the sheet over the first)
+		// Manage extensions and the manga reader's pages: their own keys (the sheet over the first)
 		if (page == Page::Extensions || page == Page::Manga) return extKey(b, p);
+		if (page == Page::MangaSeries || page == Page::MangaRead) return mangaKey(b, p);
 		if (page == Page::Settings)
 		{
 			auto rows = settingRows();
@@ -459,6 +460,8 @@ namespace bp
 		}
 		// a playlist's edits, written once they've stopped for a second
 		if (plDirty && SDL_GetTicks() - plDirtyAt >= 1000) plFlush(p);
+		// the manga reader's page: the place recorded, the store written once a second while reading
+		if (page == Page::MangaRead) mangaTick();
 		// the web's equalizer: what mpv keeps, and settings.conf, once its sliders stop for a second
 		if (eqWebDirtyAt && SDL_GetTicks() - eqWebDirtyAt >= 1000)
 		{
@@ -842,6 +845,8 @@ namespace bp
 			Rect r = id >= PHOTO_BTN && id < PHOTO_BTN + PHOTO_BTNS ? photoBtn(id - PHOTO_BTN, p) : buttonRect(id);
 			return r.hit(x, y) && act(id, p);
 		}
+		// the reader's page: its drag area and slider take the finger's moves too (the mini bar isn't there)
+		if (page == Page::MangaRead) return mangaPointer(pt, x, y, p);
 		if (pt.kind != Pointer::Down) return false;
 		if (inMenu && y < 60)
 		{
@@ -890,6 +895,7 @@ namespace bp
 		// the extensions' pages, and the drawer: their own taps (the mini bar's, the header's and "<" taken above)
 		if (page == Page::Extensions || page == Page::Manga || (page == Page::Browse && !inMenu && browseDir == EXTDIR))
 			return extPointer(pt, x, y, p);
+		if (page == Page::MangaSeries) return mangaPointer(pt, x, y, p);
 		if (page == Page::Info || page == Page::About)
 		{
 			if (y < INFO_Y) return false;
@@ -1130,6 +1136,25 @@ namespace bp
 		if (page == Page::Extensions || page == Page::Manga || browseDir == EXTDIR)
 			photo += "|ext" + std::to_string(mangaOn) + std::to_string(extCursor) + std::to_string(extSheet) +
 				std::to_string(extSheetCursor) + " " + std::to_string(extPressed);
+		// Manga: the tab, each page's cursors and scrolls, the store and the card's scan, the finger's article, the
+		// History's Clear armed; the reader's page when it shows (its status is main's answer)
+		if (page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead)
+		{
+			char mb[200];
+			snprintf(mb, sizeof mb, "|mg%d %d,%d,%d,%d %d,%d %d,%d,%d,%d %d,%d %llu %d %d %d",
+				mangaTab, mlibZone, mlibCard, mlibGrid, mlibScroll, mhisCursor, mhisScroll, mbrowseCursor, mListCursor,
+				mListScroll, (int)mBrowseList, mserCursor, mserScroll, (unsigned long long)(mangaStore ? mangaStore->serial() : 0),
+				(int)mangaLocal.size(), mangaPressed, mangaClearAt != 0);
+			photo += std::string(mb) + "|" + mangaSeriesId;
+			if (page == Page::MangaRead)
+			{
+				char rb[140];
+				snprintf(rb, sizeof rb, "|rs%d%d%d%d %d %d %d%d%d", (int)readerStatus.open, (int)readerStatus.loading,
+					(int)readerStatus.atEnd, (int)mangaReadLive, readerStatus.page, readerStatus.pages, (int)mangaDirty,
+					(int)mangaTouch, (int)mangaSlider);
+				photo += std::string(rb) + readerStatus.error + "|" + mangaReadChapterId;
+			}
+		}
 		return buf + photo + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string((int)kbShift) + (kbSymbols ? "s" : "") + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");
 	}

@@ -647,7 +647,8 @@ int main(int argc, char** argv)
 			using ReadPixels = void (*)(int, int, int, int, unsigned, unsigned, void*);
 			auto readPixels = (ReadPixels)SDL_GL_GetProcAddress("glReadPixels");
 			if (!readPixels) return nullptr;
-			renderTop(w, h);	// a video, a photo, or the icon with nothing playing
+			if (reader.isOpen()) reader.draw(w, h);	// a manga chapter's pages
+			else renderTop(w, h);	// a video, a photo, or the icon with nothing playing
 			std::vector<unsigned char> rgba((size_t)w * h * 4);
 			readPixels(0, 0, w, h, 0x1908 /* GL_RGBA */, 0x1401 /* GL_UNSIGNED_BYTE */, rgba.data());
 			SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ABGR8888);

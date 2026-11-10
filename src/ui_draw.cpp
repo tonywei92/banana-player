@@ -436,6 +436,8 @@ namespace bp
 		else if (page == Page::UpNext) drawUpNext(p);
 		else if (page == Page::Extensions) drawExtensions(p);
 		else if (page == Page::Manga) drawManga(p);
+		else if (page == Page::MangaSeries) drawMangaSeries(p);
+		else if (page == Page::MangaRead) drawMangaRead(p);
 		else if (page != Page::Main) drawTracks(p);
 		else drawMain(p);
 		if (miniUp) drawMiniBar(p);
