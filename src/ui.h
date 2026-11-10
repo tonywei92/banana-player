@@ -124,6 +124,33 @@ namespace bp
 			playRequest = {};
 			return true;
 		}
+		// ---- the manga reader: Ui (bottom panel, the library) and main's reader (top panel) talk only through these ----
+		// a chapter to open on the top panel (Ui sets it and shows Page::MangaRead; main takes it once and opens it).
+		// path: a folder of pictures or a CBZ; page: where to start (0-based)
+		struct MangaReadRequest { std::string seriesId, seriesTitle, chapterId, chapterTitle, path; bool archive = false; int page = 0; };
+		bool takeMangaRead(MangaReadRequest& out)
+		{
+			if (mangaRead.path.empty()) return false;
+			out = std::move(mangaRead);
+			mangaRead = {};
+			return true;
+		}
+		// what the bottom panel asks of the reader, in order (main applies them each pass): Close; Step (v: screens, + down);
+		// Page (v: +1 / -1, a whole page); Seek (v: the page index); TouchDown / Drag (v: the finger's dy as a fraction of
+		// the panel's height, + down: the panels are the same size, so main scales it to the top panel) / Release, each
+		// with the time in ms
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release } kind = Close; double v = 0; int64_t ms = 0; };
+		std::vector<ReaderCmd> readerCmds;
+		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
+		struct ReaderStatus
+		{
+			bool open = false, loading = false, atEnd = false;	// atEnd: the strip's bottom reached (the next chapter's card)
+			int page = 0, pages = 0;	// the page under the view's middle (0-based), the chapter's page count
+			std::string error;	// the chapter couldn't be opened ("" while fine)
+		};
+		ReaderStatus readerStatus;
+		// the reader closed itself (an error, or main stopped it): the bottom panel leaves its page
+		bool readerOpen() const { return readerStatus.open; }
 		// started with no file: the video's Quit closes it (back to the browser)
 		bool browserMode = false;
 		// Settings' Quit Banana Player: out of the player, from the browser or a video
@@ -362,6 +389,7 @@ namespace bp
 		// Playlists (browseDir PLROOT, the list; PLDIR + its file, a playlist's items). The store is null with no state
 		// folder. plCur: the playlist open (its items are browseRows, in its order; PL_ITEM rows)
 		std::unique_ptr<PlaylistStore> plStore;
+		MangaReadRequest mangaRead;	// (takeMangaRead)
 		Playlist plCur;
 		bool plLoaded = false;	// plCur read (false: the file couldn't be)
 		PlayRequest playRequest;
