@@ -146,7 +146,13 @@ BPB=/cache/bp-build
 # -g: the copy kept in dist/symbols/ maps crash.log's frames to lines (the bundle's own is stripped)
 cmake -S /src -B $BPB -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-g -DBP_GLES=ON -DBP_NET=ON -DBP_WEB=ON -DBP_TOOLS=OFF \
 	-DCMAKE_INSTALL_RPATH='$ORIGIN/../lib' -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON >/dev/null
-cmake --build $BPB -j$JOBS 2>&1 | grep -E "error|warning" || true
+# a failed compile stops here: before, the grep hid it and the last good binary went into the bundle unnoticed
+if ! cmake --build $BPB -j$JOBS > $BPB/build.log 2>&1; then
+	grep -E "error|FAILED" $BPB/build.log | head -40
+	echo "build failed: the bundle is not made" >&2
+	exit 1
+fi
+grep -E "warning" $BPB/build.log || true
 $BPB/core-test
 
 echo "== bundle"
