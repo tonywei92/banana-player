@@ -7,6 +7,12 @@
 
 namespace bp
 {
+	namespace
+	{
+		// a zoom's wider decode waits for the presses to rest: a run 100 → 800 % decodes the pages once, at the end
+		constexpr int64_t ZOOM_SETTLE_MS = 300;
+	}
+
 	MangaReader::~MangaReader()
 	{
 		{
@@ -63,7 +69,7 @@ namespace bp
 			{
 				std::lock_guard<std::mutex> l(m);
 				busySet.erase(j.index);
-				done.push_back({j.index, std::move(img), took, g});
+				done.push_back({j.index, std::move(img), took, g, j.width});
 			}
 			SDL_Event e{};
 			e.type = wake;
@@ -77,6 +83,8 @@ namespace bp
 		err.clear();
 		viewW = w;
 		viewH = h;
+		zscale = 1;	// a chapter opens at the fit (the photo viewer keeps its zoom; a page of a new chapter is a new view)
+		zoomAt = 0;
 		archive = isArchive;
 		std::vector<std::string> names;
 		if (archive)
@@ -100,11 +108,13 @@ namespace bp
 		files = std::move(names);
 		strip.setView(w, layoutH());
 		strip.setPages((int)files.size(), 1.5);
+		strip.setZoom(1, 0, 0);	// the models outlive a chapter: the last one's zoom goes
 		page = std::clamp(page, 0, (int)files.size() - 1);
 		// (placeholders are all the same height until pages come: their tops are exact for the first page wanted)
 		strip.scrollTo(strip.pageTop(page));
 		paged.setView(w, layoutH());
 		paged.setPages((int)files.size(), 1.5);
+		paged.setZoom(1, 0, 0);
 		fit = f >= 0 && f < MANGA_FITS ? f : MANGA_FIT_PAGE;
 		applyFit();
 		readMode = m >= 0 && m < MANGA_MODES ? m : MANGA_STRIP;
@@ -127,6 +137,9 @@ namespace bp
 		}
 		pr.keepOnly({});
 		kept.clear();
+		decodedW.clear();
+		zscale = 1;
+		zoomAt = 0;
 		if (archive)
 		{
 			std::lock_guard<std::mutex> l(cbzLock);
@@ -134,6 +147,16 @@ namespace bp
 		}
 		files.clear();
 		opened = fingerDown = false;
+	}
+
+	int MangaReader::decodeW() const
+	{
+		// a zoomed page is drawn wider than the view, so it is decoded at that width (a 2048 px cap keeps the
+		// textures within the panels' limit; decodePage adds its own 2x of the image's own width)
+		if (!(zscale > 1.0001)) return viewW;
+		double w = zscale * viewW;
+		if (w > 2048) w = 2048;
+		return std::max(viewW, (int)(w + 0.5));
 	}
 
 	void MangaReader::want()
@@ -147,13 +170,17 @@ namespace bp
 		for (int i = vis.first - 2; i <= vis.second + 4; i++) keep.insert(i);
 		pr.keepOnly(keep);
 		for (auto it = kept.begin(); it != kept.end();) it = keep.count(it->first) ? std::next(it) : kept.erase(it);
+		int width = decodeW();
 		std::lock_guard<std::mutex> l(m);
 		jobs.clear();
 		for (int i : list)
 		{
-			if (pr.has(i) || busySet.count(i)) continue;
+			// a page the last zoom decoded narrower is asked for again, and goes on showing scaled until it comes
+			auto it = decodedW.find(i);
+			if (pr.has(i) && it != decodedW.end() && it->second >= width) continue;
+			if (busySet.count(i)) continue;
 			if (std::any_of(done.begin(), done.end(), [&](const Done& d) { return d.index == i; })) continue;
-			jobs.push_back({i, files[i], viewW});
+			jobs.push_back({i, files[i], width});
 		}
 		cv.notify_all();
 	}
@@ -174,7 +201,8 @@ namespace bp
 			auto vis = strip.visible();
 			double off = strip.offset();
 			for (int i = vis.first; i >= 0 && i <= vis.second; i++)
-				out.push_back({i, 0, (float)(strip.pageTop(i) - off), (float)viewW, (float)strip.pageHeight(i)});
+				out.push_back({i, (float)-strip.pan(), (float)(strip.pageTop(i) - off), (float)strip.pageWidth(),
+					(float)strip.pageHeight(i)});
 			return out;
 		}
 		// at rest only the page read: its neighbours would peek in at the 4:3 panel's sides (they slide in on a swipe)
@@ -229,10 +257,30 @@ namespace bp
 		paged.setFit(fit == MANGA_FIT_PAGE ? Paged::FitPage : fit == MANGA_FIT_FILL ? Paged::FitFill : Paged::FitWidth);
 	}
 
+	void MangaReader::applyZoom()
+	{
+		// the focus is the view's middle: the whole tall view in fullscreen, as the fit is there too
+		if (readMode == MANGA_STRIP) strip.setZoom(zscale, viewW * 0.5, layoutH() * 0.5);
+		else paged.setZoom(zscale, viewW * 0.5, layoutH() * 0.5);
+	}
+
 	void MangaReader::command(int kind, double v, int64_t ms, double v2)
 	{
 		if (!opened) return;
 		if (kind == Fullscreen) { setFullscreen(v > 0, (int)v2); return; }
+		if (kind == Zoom)
+		{
+			// the drawn view zooms at once; a wider page is decoded only once the presses rest (frame's 300 ms),
+			// so a run through the steps decodes once
+			double z = std::clamp(v, 1.0, 8.0);
+			if (z == zscale) return;
+			zscale = z;
+			applyZoom();
+			zoomAt = ms;
+			fprintf(stderr, "reader: zoom %d%%\n", zoomPct());
+			redrawSoon(2);
+			return;
+		}
 		if (kind == Fit)
 		{
 			// the page under the view kept, as a mode change keeps it
@@ -250,6 +298,7 @@ namespace bp
 			int cur = page(), m = (int)v;
 			if (m < 0 || m >= MANGA_MODES || m == readMode) return;
 			readMode = m;
+			applyZoom();	// the model taking over reads at the zoom already set
 			strip.scrollTo(strip.pageTop(cur));
 			paged.setRtl(m == MANGA_RTL);
 			paged.goTo(cur, ms, false);
@@ -286,7 +335,7 @@ namespace bp
 		}
 		case Seek: strip.scrollTo(strip.pageTop(std::clamp((int)v, 0, (int)files.size() - 1))); break;
 		case TouchDown: strip.touchDown(ms); fingerDown = true; break;
-		case Drag: if (fingerDown) strip.drag(v * viewH, ms); break;
+		case Drag: if (fingerDown) strip.drag(v * viewH, ms, v2 * viewW); break;
 		case Release: if (fingerDown) strip.release(ms); fingerDown = false; break;
 		default: break;
 		}
@@ -310,6 +359,17 @@ namespace bp
 					continue;
 				}
 				fprintf(stderr, "timing: page %d decoded in %u ms (%dx%d)\n", d.index + 1, d.ms, d.img.w, d.img.h);
+				auto was = decodedW.find(d.index);
+				if (pr.has(d.index) && (was == decodedW.end() || d.width > was->second))
+				{
+					// a wider decode of a page on screen: the old one is let go here, its textures freed at the
+					// next draw (the GL context is only current then), and the new one goes up in its place
+					std::set<int> keep;
+					for (auto& w : decodedW)
+						if (w.first != d.index && pr.has(w.first)) keep.insert(w.first);
+					pr.keepOnly(keep);
+				}
+				decodedW[d.index] = std::max(d.width, d.img.w);
 				strip.setPageSize(d.index, d.img.w, d.img.h);
 				paged.setPageSize(d.index, d.img.w, d.img.h);
 				// (a copy for the bottom panel: the renderer drops its own once the page is on the GPU)
@@ -319,6 +379,12 @@ namespace bp
 			}
 		}
 		bool moving = readMode == MANGA_STRIP ? strip.step(now) : paged.step(now);
+		// the zoom rests: the pages in view are wanted again at its width (want reads the width itself)
+		if (zoomAt && now - zoomAt >= ZOOM_SETTLE_MS)
+		{
+			zoomAt = 0;
+			want();
+		}
 		if (any || moving) want();
 		bool need = any || moving || uploads || forceFrames > 0;
 		return need;

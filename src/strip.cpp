@@ -19,6 +19,7 @@ namespace bp
 		// heights are kept as aspects, so a panel of another width rescales every page rather than cropping it
 		rebuild();
 		off = clampOff(off);
+		panX = clampPan(panX);
 	}
 
 	void Strip::setPages(int count, double placeholderAspect)
@@ -28,9 +29,27 @@ namespace bp
 		aspect.assign(count > 0 ? (size_t)count : 0, a);
 		rebuild();
 		off = 0;
+		panX = 0;
 		stop();
 		drags.clear();
 		dir = 0;
+	}
+
+	void Strip::setZoom(double z, double fx, double fy)
+	{
+		double to = z;
+		if (!(to >= 1)) to = 1;	// also catches a NaN
+		if (to > 8) to = 8;
+		if (to == zscale) return;
+		double k = to / zscale;
+		// the content under the focus keeps its place: the column's y at the view's fy is off + fy and its x at the
+		// view's fx is panX + fx, and both scale with the pages
+		zscale = to;
+		rebuild();
+		off = clampOff((off + fy) * k - fy);
+		panX = clampPan((panX + fx) * k - fx);
+		stop();
+		drags.clear();
 	}
 
 	void Strip::setPageSize(int index, int w, int h)
@@ -69,7 +88,7 @@ namespace bp
 	double Strip::pageHeight(int i) const
 	{
 		if (i < 0 || i >= pageCount()) return 0;
-		return aspect[i] * viewW;
+		return aspect[i] * viewW * zscale;
 	}
 
 	double Strip::totalHeight() const
@@ -156,11 +175,12 @@ namespace bp
 		drags.clear();
 	}
 
-	void Strip::drag(double dy, int64_t ms)
+	void Strip::drag(double dy, int64_t ms, double dx)
 	{
 		stop();
 		double was = off;
 		off = clampOff(off - dy);	// fingers move the content, so a downward drag walks up the column
+		panX = clampPan(panX - dx);	// and a rightward one reveals what is left of the zoomed column
 		if (off != was) dir = off > was ? 1 : -1;
 		drags.push_back({ms, off});
 		// 200 ms is twice the release's window: pruning here can never starve the estimate, and a gesture's samples
@@ -285,7 +305,7 @@ namespace bp
 	void Strip::rebuild()
 	{
 		top.assign(aspect.size() + 1, 0);
-		for (size_t i = 0; i < aspect.size(); i++) top[i + 1] = top[i] + aspect[i] * viewW;
+		for (size_t i = 0; i < aspect.size(); i++) top[i + 1] = top[i] + aspect[i] * viewW * zscale;
 	}
 
 	double Strip::maxOffset() const
@@ -299,6 +319,19 @@ namespace bp
 		if (!(y > 0)) return 0;	// also catches a NaN no layout should ever make
 		double max = maxOffset();
 		return y < max ? y : max;
+	}
+
+	double Strip::maxPan() const
+	{
+		double m = pageWidth() - viewW;
+		return m > 0 ? m : 0;
+	}
+
+	double Strip::clampPan(double x) const
+	{
+		if (!(x > 0)) return 0;
+		double max = maxPan();
+		return x < max ? x : max;
 	}
 
 	int Strip::indexAt(double y) const

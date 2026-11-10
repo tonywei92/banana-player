@@ -2384,6 +2384,94 @@ static void testPaged()
 	CHECK_EQ(near(find(c2.placements(), 1).h, 500), true);
 	CHECK_EQ(near(find(c2.placements(), 1).y, 50), true);	// centred again
 
+	// zoom: the page grows past the view both ways, the content under the focus keeps its place, Right walks
+	// through it in reading order before it turns, and a drag pans inside before it carries the row
+	Paged pz;
+	pz.setView(400, 600);
+	pz.setPages(3, 1.5);	// at the fit 400 x 600
+	pz.goTo(1, 0, false);
+	pz.setZoom(2, 200, 300);
+	CHECK_EQ(near(pz.zoom(), 2), true);
+	CHECK_EQ(pz.current(), 1);
+	CHECK_EQ(near(pz.hscroll(), 200), true);	// (0 + 200) * 2 - 200
+	CHECK_EQ(near(pz.vscroll(), 300), true);	// (0 + 300) * 2 - 300
+	pl = pz.placements();
+	CHECK_EQ(near(find(pl, 1).w, 800), true);
+	CHECK_EQ(near(find(pl, 1).h, 1200), true);
+	CHECK_EQ(near(find(pl, 1).x, -200), true);
+	CHECK_EQ(near(find(pl, 1).y, -300), true);
+	pz.forward(0);	// one screenful down the page first
+	CHECK_EQ(pz.step(180), false);
+	CHECK_EQ(near(pz.vscroll(), 600), true);	// its bottom: 540 would pass it
+	CHECK_EQ(pz.current(), 1);
+	pz.forward(200);	// then across, one screen width, back at the top
+	CHECK_EQ(pz.step(380), false);
+	CHECK_EQ(near(pz.hscroll(), 400), true);
+	CHECK_EQ(pz.vscroll(), 0.0);
+	CHECK_EQ(pz.current(), 1);
+	pz.forward(400);	// the second column: a plain screenful again
+	CHECK_EQ(pz.step(580), false);
+	CHECK_EQ(near(pz.vscroll(), 540), true);
+	pz.forward(600);	// the part screenful to the page's bottom
+	CHECK_EQ(pz.step(780), false);
+	CHECK_EQ(near(pz.vscroll(), 600), true);
+	pz.forward(800);	// at the page's end: the next one, at its top and start edge
+	CHECK_EQ(pz.step(980), false);
+	CHECK_EQ(pz.current(), 2);
+	CHECK_EQ(pz.vscroll(), 0.0);
+	CHECK_EQ(pz.hscroll(), 0.0);
+	pz.back(1000);	// Left back over the turn opens the previous page at its end
+	CHECK_EQ(pz.step(1180), false);
+	CHECK_EQ(pz.current(), 1);
+	CHECK_EQ(near(pz.vscroll(), 600), true);
+	CHECK_EQ(near(pz.hscroll(), 400), true);
+	// a finger pans inside the zoomed page first, and only past its edge moves the row (as Fill does)
+	Paged pd;
+	pd.setView(400, 600);
+	pd.setPages(3, 1.5);
+	pd.goTo(1, 0, false);
+	pd.setZoom(2, 200, 300);	// h 200, v 300
+	pd.touchDown(0);
+	pd.drag(-100, 0, 10);	// a finger left: across the page toward its end
+	CHECK_EQ(near(pd.hscroll(), 300), true);
+	CHECK_EQ(pd.current(), 1);
+	pd.drag(-500, 0, 20);	// 100 to the page's edge, the other 400 carry the row on
+	CHECK_EQ(near(pd.hscroll(), 400), true);
+	CHECK_EQ(pd.current(), 1);	// not yet page 2's centre
+	pd.drag(0, -100, 30);	// and down inside it: the row's vertical is the page's pan
+	CHECK_EQ(near(pd.vscroll(), 400), true);
+	pd.release(400);	// it rests: no flick
+	CHECK_EQ(pd.step(620), false);
+	CHECK_EQ(pd.current(), 1);
+	// right to left zooms about the centre the same way: h still runs with the reading order, from the right edge
+	Paged rz;
+	rz.setView(400, 600);
+	rz.setPages(3, 1.5);
+	rz.setRtl(true);
+	rz.goTo(1, 0, false);
+	rz.setZoom(2, 200, 300);
+	CHECK_EQ(rz.current(), 1);
+	CHECK_EQ(near(rz.hscroll(), 200), true);
+	pl = rz.placements();
+	CHECK_EQ(near(find(pl, 1).x, -200), true);	// the same page position, mirrored about the row
+	CHECK_EQ(near(find(pl, 1).w, 800), true);
+	// and back to the fit: what was under the middle is again, the page whole
+	Paged pz1;
+	pz1.setView(400, 600);
+	pz1.setPages(3, 1.5);
+	pz1.goTo(1, 0, false);
+	pz1.setZoom(2, 200, 300);
+	pz1.setZoom(1, 200, 300);
+	CHECK_EQ(near(pz1.zoom(), 1), true);
+	CHECK_EQ(pz1.current(), 1);
+	CHECK_EQ(pz1.hscroll(), 0.0);
+	CHECK_EQ(pz1.vscroll(), 0.0);
+	pl = pz1.placements();
+	CHECK_EQ(near(find(pl, 1).w, 400), true);
+	CHECK_EQ(near(find(pl, 1).h, 600), true);
+	pz1.setZoom(0.2, 200, 300);	// under the fit is no zoom at all
+	CHECK_EQ(near(pz1.zoom(), 1), true);
+
 	// no pages: the whole surface is inert
 	Paged e;
 	e.setView(400, 600);
@@ -3615,6 +3703,40 @@ static void testStrip()
 	a.animateTo(99999, 0, 0);
 	CHECK_EQ(near(a.offset(), 3600), true);
 	CHECK_EQ(a.moving(), false);
+
+	// zoom: the column widens past the view, the content under the focus keeps its place, vertical drags still
+	// scroll it and horizontal ones pan it across
+	Strip z;
+	z.setView(400, 600);
+	z.setPages(3);	// 600 each: tops 0, 600, 1200
+	CHECK_EQ(near(z.pageWidth(), 400), true);
+	CHECK_EQ(z.pan(), 0.0);
+	z.scrollTo(600);
+	z.setZoom(2, 200, 300);
+	CHECK_EQ(near(z.zoom(), 2), true);
+	CHECK_EQ(near(z.pageWidth(), 800), true);
+	CHECK_EQ(near(z.pageHeight(0), 1200), true);
+	CHECK_EQ(near(z.offset(), 1500), true);	// (600 + 300) * 2 - 300
+	CHECK_EQ(near(z.pan(), 200), true);		// (0 + 200) * 2 - 200
+	z.drag(-100, 10);	// a finger up still walks down the column
+	CHECK_EQ(near(z.offset(), 1600), true);
+	z.drag(0, 20, 100);	// a finger right reveals what is left of it
+	CHECK_EQ(near(z.pan(), 100), true);
+	z.drag(0, 30, 1000);	// clamped at the view's left edge…
+	CHECK_EQ(near(z.pan(), 0), true);
+	z.drag(0, 40, -1000);	// …and at the page's far edge
+	CHECK_EQ(near(z.pan(), 400), true);
+	z.drag(0, 50, 400);	// back to its left edge
+	CHECK_EQ(z.pan(), 0.0);
+	// back to the fit: the column's middle is where it was, and there is nothing left to pan
+	z.scrollTo(1500);
+	z.setZoom(1, 200, 300);
+	CHECK_EQ(near(z.zoom(), 1), true);
+	CHECK_EQ(near(z.pageWidth(), 400), true);
+	CHECK_EQ(near(z.offset(), 600), true);	// (1500 + 300) / 2 - 300
+	CHECK_EQ(z.pan(), 0.0);
+	z.setZoom(20, 200, 300);	// 800 % is the furthest the reader goes
+	CHECK_EQ(near(z.zoom(), 8), true);
 }
 
 static void testLabels()

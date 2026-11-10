@@ -1334,6 +1334,7 @@ int main(int argc, char** argv)
 					ui.readerStatus.page = reader.page();
 					ui.readerStatus.pages = reader.pages();
 					ui.readerStatus.mode = reader.mode();
+					ui.readerStatus.zoomPct = reader.zoomPct();
 					ui.readerStatus.fullscreen = reader.fullscreen();
 					// fullscreen: the bottom panel's share of the view, as fractions of the panel, and the pixels it needs
 					Ui::ReaderBottom rb;

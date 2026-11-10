@@ -67,6 +67,45 @@ namespace bp
 		relayout();
 	}
 
+	void Paged::setZoom(double z, double fx, double fy)
+	{
+		double to = z;
+		if (!(to >= 1)) to = 1;	// also catches a NaN
+		if (to > 8) to = 8;
+		if (to == zscale) return;
+		int c = nearest(off);
+		if (c < 0)
+		{
+			zscale = to;
+			rebuild();
+			return;
+		}
+		double wasW = wide[c], wasH = pageHeight(c), oldH = h, oldV = v;
+		zscale = to;
+		rebuild();
+		// off runs with the centres, so it moves with the page shown; the page stays the one read
+		off = center[c];
+		// the content under the focus keeps its place. Across, the reading-order offset runs from the start edge
+		// (the left for ltr, the right for rtl, as h itself does); down, a page shorter than the view is centred,
+		// a taller one top-aligned
+		double kx = rtl ? viewW - fx : fx;
+		double newW = wide[c], newH = pageHeight(c);
+		if (wasW > 0) h = clampD((oldH + kx) * newW / wasW - kx, 0, hMax(c));
+		double topY = wasH <= viewH ? (viewH - wasH) * 0.5 : -oldV;
+		double fracY = wasH > 0 ? (fy - topY) / wasH : 0;
+		v = newH <= viewH ? 0 : clampD(fracY * newH - fy, 0, vMax(c));
+		vbase[c] = v;
+		hbase[c] = h;
+		stopAnim();
+		drags.clear();
+		// a neighbour's remembered place may no longer fit too
+		for (size_t i = 0; i < vbase.size(); i++)
+		{
+			vbase[i] = clampD(vbase[i], 0, vMax((int)i));
+			hbase[i] = clampD(hbase[i], 0, hMax((int)i));
+		}
+	}
+
 	int Paged::pageCount() const
 	{
 		return (int)aspect.size();
@@ -90,6 +129,7 @@ namespace bp
 			if (fit == FitWidth) wide[i] = viewW;
 			else if (fit == FitFill) wide[i] = std::max((double)viewW, (double)viewH / aspect[i]);
 			else wide[i] = std::min((double)viewW, (double)viewH / aspect[i]);
+			wide[i] *= zscale;
 			// pages touch as printed: page i+1's centre sits half of each neighbour's width further along
 			if (i > 0) center[i] = center[i - 1] + (wide[i - 1] + wide[i]) * 0.5;
 		}

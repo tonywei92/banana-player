@@ -30,6 +30,10 @@ namespace bp
 		// right to left: the row reads the other way, page i+1 to the left of page i; the page shown stays where it is
 		void setRtl(bool rtl);
 		void setFit(Fit f);
+		// 1 draws every page at its fit; more draws it larger than the view on both axes (as far as its shape lets
+		// it) and pans inside it, the content under (fx, fy) keeping its place
+		void setZoom(double z, double fx, double fy);
+		double zoom() const { return zscale; }
 
 		int pageCount() const;
 		// the page being shown at rest, or the one whose centre the view's middle is nearest while the row moves;
@@ -110,6 +114,7 @@ namespace bp
 		int viewW = 0, viewH = 0;
 		Fit fit = FitPage;
 		bool rtl = false;
+		double zscale = 1;	// the fit is 1; pages are drawn z times their fitted size
 		std::vector<double> aspect;	// each page's height / width
 		std::vector<double> wide;	// each page drawn, in view pixels
 		std::vector<double> center;	// page i's centre along the row, page 0's at 0; runs with reading order

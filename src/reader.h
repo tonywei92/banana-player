@@ -34,8 +34,9 @@ namespace bp
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
+		// Zoom: v the new factor (1 = the fit); the pages are decoded again at that width once it rests
 		void command(int kind, double v, int64_t ms, double v2 = 0);
 		// the pages decoded ahead of the one read (the Preload setting): applied at once, the queue made again
 		void setPreload(int n);
@@ -59,17 +60,22 @@ namespace bp
 		// a decoded page's pixels (RGBA, straight alpha) for the bottom panel's own textures; null when not decoded
 		std::shared_ptr<const std::vector<uint8_t>> pixels(int page, int& w, int& h) const;
 		uint64_t chapterGen() const { return gen; }
+		// 1 while the fit is shown, as the Zoom steps leave it (100 % … 800 %)
+		double zoom() const { return zscale; }
+		int zoomPct() const { return (int)(zscale * 100 + 0.5); }	// (z is always one of the steps, 100 … 800)
 		// a few frames more (KMSDRM drops the first after a start or a wake)
 		void redrawSoon(int n = 5) { forceFrames = std::max(forceFrames, n); }
 
 	private:
 		struct Job { int index; std::string path; int width; };
-		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; };
+		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; int width; };
 		void decodeLoop();
 		void want();
 		void applyFit();
+		void applyZoom();
 		void setFullscreen(bool on, int hinge480);
 		int layoutH() const { return full ? viewH * 2 + gapPx : viewH; }
+		int decodeW() const;	// the width wanted now: z times the view's, up to 2048 (decodePage's 2x cap still applies)
 		std::vector<Box> boxes() const;	// every page in view now, in view pixels (y from the top panel's top)
 
 		PageRenderer pr;
@@ -78,6 +84,8 @@ namespace bp
 		Paged paged;	// the two paged modes (right to left, left to right); both models follow every page's size
 		int readMode = MANGA_STRIP;
 		int fit = MANGA_FIT_PAGE, preload = MANGA_PRELOAD_DEFAULT;
+		double zscale = 1;	// the zoom of both models; 1 is the fit
+		int64_t zoomAt = 0;	// when the last Zoom came; the re-decode waits for it to rest (0: none waiting)
 		std::vector<std::string> files;
 		Cbz cbz;
 		bool archive = false;
@@ -86,6 +94,7 @@ namespace bp
 		int gapPx = 0;
 		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Pix> kept;	// the decoded pages near the view, for the bottom panel in fullscreen
+		std::map<int, int> decodedW;	// each page's decoded width: a zoom in decodes it again, wider
 		std::string err;
 		bool fingerDown = false;
 		// the decoder: its queue, its results, the chapter it works for (gen: a page of the last chapter is dropped)

@@ -145,7 +145,9 @@ namespace bp
 		// with the time in ms (Drag's v2: the finger's dx, as a fraction of the panel's width, + right); Mode (v: MANGA_RTL,
 		// MANGA_LTR, MANGA_STRIP: the page under the view kept); Fit (v: MANGA_FIT_*: the page under the view kept)
 		// Fullscreen (v: 1 on, 0 off; v2: the hinge gap in 480-line units: both panels are one tall view, the gap skipped)
-		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; };
+		// Zoom (v: the factor, 1 = the fit, 1.5 … 8: the content under the view's middle stays there, and the pages in
+		// view are decoded again at that width once the presses rest)
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; };
 		std::vector<ReaderCmd> readerCmds;
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus
@@ -153,6 +155,7 @@ namespace bp
 			bool open = false, loading = false, atEnd = false;	// atEnd: the strip's bottom reached (the next chapter's card)
 			int page = 0, pages = 0;	// the page under the view's middle (0-based), the chapter's page count
 			int mode = 0;	// the mode it reads in (MANGA_*)
+			int zoomPct = 100;	// the zoom (1 = the fit, 100 % … 800 %)
 			bool fullscreen = false;	// both panels show the pages
 			std::string error;	// the chapter couldn't be opened ("" while fine)
 		};
@@ -1165,6 +1168,25 @@ namespace bp
 		int mangaTapX = 0, mangaTapY = 0;
 		Uint32 mangaTapAt = 0;
 		int mangaCtrlPressed = -1;
+		// START while reading: the Reading menu, a compact sheet over the page (over the lower part of the fullscreen
+		// view): its cursor, and its keys (UP/DOWN move, LEFT/RIGHT change, A toggles / opens the last row, B or
+		// START close). Reading goes on behind it
+		bool mangaMenu = false;
+		int mangaMenuCursor = 0;
+		// the zoom the keys last asked for: key repeats polled in one pass must walk the ladder, not resend a step
+		int mangaZoomAsked = 100;
+		static constexpr int MGM_ROWS = 7, MGM_ROW_H = 34, MGM_TOP = 198;
+		Rect mangaMenuRect() const { return {0, 166, W, H - 166}; }
+		Rect mangaMenuRowRect(int i) const { return {16, MGM_TOP + i * MGM_ROW_H, 608, MGM_ROW_H - 4}; }
+		void mangaOpenReadingMenu();
+		bool mangaMenuKey(Button b, Player& p);
+		void mangaMenuStep(int dir, Player& p);
+		void mangaMenuAct(Player& p);
+		void drawMangaReadingMenu(const Player& p);
+		void mangaZoomStep(int dir);	// UP/DOWN, and the Zoom row: one of the photo viewer's steps
+		void mangaZoomToggle();			// A: 200 % or back to the fit
+		void mangaSetMode(int m, Player& p);	// this series' reading mode (X and the menu)
+		void mangaZoomTo(double z);
 		// the first fullscreen ever: a toast in the panel's middle for 2 s (mangaFullSeen remembers it)
 		Uint32 mangaToastUntil = 0;
 		static constexpr Uint32 MG_TAP_MS = 250, MG_CTRL_MS = 4000, MG_TOAST_MS = 2000;

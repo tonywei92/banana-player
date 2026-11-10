@@ -21,6 +21,13 @@ namespace bp
 		// page starts above the view's top, the offset moves by the height change
 		void setPageSize(int index, int w, int h);
 
+		// 1 fits the view's width; more draws the column wider than the view, panned across by pan(). The content
+		// under (fx, fy) stays under it, so a zoom around the view's middle reads as one there
+		void setZoom(double z, double fx, double fy);
+		double zoom() const { return zscale; }
+		double pageWidth() const { return viewW * zscale; }	// drawn width: the view's while z == 1
+		double pan() const { return panX; }					// the column's left edge left of the view's
+
 		int pageCount() const;
 		double pageTop(int i) const;
 		double pageHeight(int i) const;
@@ -39,9 +46,10 @@ namespace bp
 		// motion (down if there was none), then `behind` on the other side; no duplicates
 		std::vector<int> wanted(int ahead, int behind) const;
 
-		// touch: a drag follows the finger (dy > 0 is a finger moving down, so the offset falls, as on a phone)
+		// touch: a drag follows the finger (dy > 0 is a finger moving down, so the offset falls, as on a phone);
+		// dx pans the column across a zoom wider than the view (a finger moving right reveals what is to its left)
 		void touchDown(int64_t ms);
-		void drag(double dy, int64_t ms);
+		void drag(double dy, int64_t ms, double dx = 0);
 		void release(int64_t ms);	// starts a fling from the last 100 ms of drags
 
 		// a D-pad screenful step: ease-out cubic from here to y
@@ -64,6 +72,8 @@ namespace bp
 		void rebuild();
 		double maxOffset() const;
 		double clampOff(double y) const;
+		double maxPan() const;
+		double clampPan(double x) const;
 		int indexAt(double y) const;
 		void stop();
 		void shiftMotion(double delta);
@@ -72,6 +82,8 @@ namespace bp
 		std::vector<double> aspect;	// each page's height / width
 		std::vector<double> top;	// page i's top; top[n] is the total height
 		double off = 0;
+		double zscale = 1;	// the fit is 1; pages are drawn z times the view's width
+		double panX = 0;	// the column panned across: its left edge left of the view's
 		int dir = 0;	// 1 the last motion went down the column (toward later pages), -1 up, 0 none yet
 
 		bool fling = false;
