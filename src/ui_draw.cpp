@@ -330,9 +330,11 @@ namespace bp
 	{
 		sameBrightness = p.settings.sameBrightness;
 		mangaOn = p.settings.mangaOn;
+		mangaHistOn = p.settings.mangaHistory;
 		if (quitArmed && SDL_GetTicks() - quitArmed >= QUIT_WINDOW_MS) quitArmed = 0;
 		// before the signature: "Again to clear" goes back to how it was when the second tap would no longer clear
 		if (clearArmed && SDL_GetTicks() - clearArmed >= QUIT_WINDOW_MS) clearArmed = 0;
+		if (mangaCacheAt && SDL_GetTicks() - mangaCacheAt >= QUIT_WINDOW_MS) mangaCacheAt = 0;
 		if (!batteryAt || SDL_GetTicks() - batteryAt >= 10000) readPower();
 		// the lock held long enough: released (the finger still down presses nothing)
 		if (touchLocked && lockHoldAt && SDL_GetTicks() - lockHoldAt >= UNLOCK_HOLD_MS)

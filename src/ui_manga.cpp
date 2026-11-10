@@ -55,7 +55,6 @@ namespace bp
 
 	void Ui::mangaOpen(Player& p)
 	{
-		(void)p;
 		mangaTab = MT_LIBRARY;	// the app opens on the library, as the mock has it
 		mangaSeriesId.clear();
 		mBrowseList = false;
@@ -67,6 +66,17 @@ namespace bp
 		mangaTouch = mangaSlider = false;
 		mangaSliderPage = -1;
 		mangaScan();
+		// the History kept off while the app wasn't open is cleared here too: its list is empty either way
+		mangaHistOn = p.settings.mangaHistory;
+		if (mangaStore && !mangaHistOn && !mangaStore->history(1).empty())
+		{
+			mangaStore->clearHistory();
+			mangaSave();
+		}
+		// the page cache: its cap from the setting, its oldest pages going over a smaller one at once (nothing puts a
+		// page in it yet: it is the network sources' to fill)
+		if (!stateDirPath.empty())
+			mangaPageCache.open(stateDirPath + "/manga/cache", mangaCacheBytes(p.settings.mangaCacheSize));
 		// a new open wants its own covers: what waited for the last one is dropped, and a cover that failed (a file
 		// fixed meanwhile) is tried once more. The ones that arrived stay: a cache of textures is worth keeping
 		if (coverWorker) coverWorker->cancel();
@@ -191,6 +201,8 @@ namespace bp
 		cp.read = readerStatus.page >= readerStatus.pages - 1;
 		cp.at = (int64_t)time(nullptr);
 		mangaStore->setProgress(cp);
+		// with the History off the place is still kept: only the list stays empty, this entry hidden along with the rest
+		if (!mangaHistOn) mangaStore->clearHistory();
 		mangaProgPage = cp.page;
 		mangaProgPages = cp.pages;
 		mangaDirty = true;
@@ -240,7 +252,8 @@ namespace bp
 		mangaReadSeriesId = mangaSeriesId;
 		mangaReadChapterId = c.path;
 		mangaReadChapterTitle = c.title;
-		mangaRead = {mangaSeriesId, s.title, c.path, c.title, c.path, c.archive, std::max(0, page0), mangaModeFor(mangaSeriesId, p)};
+		mangaRead = {mangaSeriesId, s.title, c.path, c.title, c.path, c.archive, std::max(0, page0), mangaModeFor(mangaSeriesId, p),
+			p.settings.mangaFit};
 		// the status still holds the chapter before: its numbers aren't this chapter's, so only a change records
 		mangaProgPage = readerStatus.page;
 		mangaProgPages = readerStatus.pages;
@@ -358,16 +371,18 @@ namespace bp
 		if (page == Page::MangaRead)
 		{
 			Uint32 now = SDL_GetTicks();
-			switch (b)
+			// RIGHT is forward unless Swap Left/Right is on (to match a right-to-left book); UP/DOWN never change
+			bool flip = p.settings.mangaSwapLR;
+			bool fwd = b == (flip ? Button::Left : Button::Right), back = b == (flip ? Button::Right : Button::Left);
+			if (b == Button::Up || back) readerCmds.push_back({ReaderCmd::Step, -1, (int64_t)now});
+			else if (b == Button::Down || fwd)
 			{
-			case Button::Up:
-			case Button::Left: readerCmds.push_back({ReaderCmd::Step, -1, (int64_t)now}); break;
-			case Button::Down:
-			case Button::Right:
 				// forward at the end leaves for the next chapter; before it, the reader steps on
 				if (readerStatus.atEnd) mangaChapterStep(1, p);
 				else readerCmds.push_back({ReaderCmd::Step, 1, (int64_t)now});
-				break;
+			}
+			else switch (b)
+			{
 			case Button::L: readerCmds.push_back({ReaderCmd::Page, -1, (int64_t)now}); break;
 			case Button::R: readerCmds.push_back({ReaderCmd::Page, 1, (int64_t)now}); break;
 			case Button::X: mangaCycleMode(p); break;
@@ -503,6 +518,8 @@ namespace bp
 		case MT_HISTORY:
 		{
 			mangaCache();
+			// off: the list is empty by design (the History tab says so), so nothing there is chosen or cleared
+			if (!p.settings.mangaHistory) break;
 			int n = (int)mangaHistory.size();
 			if (b == Button::X)
 			{
@@ -936,9 +953,16 @@ namespace bp
 
 	void Ui::drawMangaHistory(const Player& p)
 	{
-		(void)p;
 		mangaCache();
 		if (mangaClearAt && SDL_GetTicks() - mangaClearAt >= QUIT_WINDOW_MS) mangaClearAt = 0;
+		if (!p.settings.mangaHistory)
+		{
+			// kept off: where it is turned on, and that the reading itself is still remembered
+			drawEmpty(G_CLOCK, "Reading history is off",
+				"Turn it on in Settings \xC2\xB7 Extensions. Your places and read\nmarks are kept either way.", nullptr);
+			drawHints({{"B", "Back"}});
+			return;
+		}
 		int n = (int)mangaHistory.size();
 		if (n == 0)
 		{
@@ -1115,8 +1139,8 @@ namespace bp
 		int ci = s ? chapterIndexOf(*s, mangaReadChapterId) : -1;
 		bool prev = s && ci > 0, next = s && ci >= 0 && ci + 1 < (int)s->chapters.size();
 		if (readerStatus.atEnd)
-			drawTextMid(next ? "End of chapter \xC2\xB7 R2 or RIGHT for the next" : "You\xE2\x80\x99re caught up", 0,
-				next ? ACCENT : DIM, W / 2, 384, 560, 2);
+			drawTextMid(next ? std::string("End of chapter \xC2\xB7 R2 or ") + (p.settings.mangaSwapLR ? "LEFT" : "RIGHT") + " for the next"
+				: "You\xE2\x80\x99re caught up", 0, next ? ACCENT : DIM, W / 2, 384, 560, 2);
 		Rect pb = mangaPrevRect(), nb = mangaNextRect();
 		drawBox(pb, mangaPressed == MG_PREV ? PRESSED : BUTTON, R_BUTTON);
 		drawButton(pb, &G_PREV, "Prev chapter", nullptr, !prev, 0);	// (L2/R2: in the hints)

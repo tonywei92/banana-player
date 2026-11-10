@@ -20,6 +20,7 @@
 #include "discovery.h"
 #include "mangalocal.h"
 #include "mangastore.h"
+#include "pagecache.h"
 #include "coverworker.h"
 #include <functional>
 #include <map>
@@ -129,8 +130,8 @@ namespace bp
 		}
 		// ---- the manga reader: Ui (bottom panel, the library) and main's reader (top panel) talk only through these ----
 		// a chapter to open on the top panel (Ui sets it and shows Page::MangaRead; main takes it once and opens it).
-		// path: a folder of pictures or a CBZ; page: where to start (0-based)
-		struct MangaReadRequest { std::string seriesId, seriesTitle, chapterId, chapterTitle, path; bool archive = false; int page = 0, mode = 0; };
+		// path: a folder of pictures or a CBZ; page: where to start (0-based); fit: MANGA_FIT_*
+		struct MangaReadRequest { std::string seriesId, seriesTitle, chapterId, chapterTitle, path; bool archive = false; int page = 0, mode = 0, fit = 0; };
 		bool takeMangaRead(MangaReadRequest& out)
 		{
 			if (mangaRead.path.empty()) return false;
@@ -142,8 +143,8 @@ namespace bp
 		// Page (v: +1 / -1, a whole page); Seek (v: the page index); TouchDown / Drag (v: the finger's dy as a fraction of
 		// the panel's height, + down: the panels are the same size, so main scales it to the top panel) / Release, each
 		// with the time in ms (Drag's v2: the finger's dx, as a fraction of the panel's width, + right); Mode (v: MANGA_RTL,
-		// MANGA_LTR, MANGA_STRIP: the page under the view kept)
-		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; };
+		// MANGA_LTR, MANGA_STRIP: the page under the view kept); Fit (v: MANGA_FIT_*: the page under the view kept)
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; };
 		std::vector<ReaderCmd> readerCmds;
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus
@@ -956,13 +957,15 @@ namespace bp
 		static constexpr int BTN_W = 108, BTN_H = 60, BTN_STEP = 121, ROW1_Y = 228, ROW2_Y = 300;
 		static constexpr int ROW_Y = 84, ROW_H = 48, ROWS_SHOWN = 7;
 		// the settings' rows by id: the subtitle style's, Music display, Visualizer, the switches (REMEMBER), Pan area,
-		// Clear play history, ..., Sound (it opens the Sound page). Shown a group at a time (settingRows), after a list
-		// of the groups
+		// Clear play history, ..., Sound (it opens the Sound page), and the Manga group's (EXT_NOTE is its note, no
+		// value). Shown a group at a time (settingRows), after a list of the groups
 		static constexpr int STYLE_ROW0 = 0, MUSIC_ROW = STYLE_KEYS, VIS_ROW = STYLE_KEYS + 1, TOGGLE_ROW = STYLE_KEYS + 2,
-			TOGGLES = 13, PAN_ROW = TOGGLE_ROW + TOGGLES, DRAG_ROW = PAN_ROW + 1, CLEAR_ROW = DRAG_ROW + 1,
+			TOGGLES = 17, PAN_ROW = TOGGLE_ROW + TOGGLES, DRAG_ROW = PAN_ROW + 1, CLEAR_ROW = DRAG_ROW + 1,
 			CHECK_ROW = CLEAR_ROW + 1, INSTALL_ROW = CHECK_ROW + 1, TOP_LIGHT_ROW = INSTALL_ROW + 1,
 			BOTTOM_LIGHT_ROW = TOP_LIGHT_ROW + 1, SOUND_ROW = BOTTOM_LIGHT_ROW + 1, CLOCK_ROW = SOUND_ROW + 1,
-			SCREEN_OFF_ROW = CLOCK_ROW + 1, EXT_NOTE = SCREEN_OFF_ROW + 1, MANGA_MODE_ROW = EXT_NOTE + 1;	// (a note, no value: the repositories' line)
+			SCREEN_OFF_ROW = CLOCK_ROW + 1, EXT_NOTE = SCREEN_OFF_ROW + 1, MANGA_MODE_ROW = EXT_NOTE + 1,
+			MANGA_FIT_ROW = MANGA_MODE_ROW + 1, MANGA_PRELOAD_ROW = MANGA_FIT_ROW + 1, MANGA_CACHE_ROW = MANGA_PRELOAD_ROW + 1,
+			MANGA_CLEAR_ROW = MANGA_CACHE_ROW + 1;
 		// the panels' backlights (BananaOS's own levels: changed here as its menu changes them)
 		Backlight backlight;
 		bool sameBrightness = true;	// the setting's, kept here for settingRows (no Player there)
@@ -1116,6 +1119,10 @@ namespace bp
 		int mangaSeriesFrom = 0;	// 0 Library, 1 Browse's list, 2 History (B goes back there)
 		int mserCursor = -1, mserScroll = 0;	// -1 the Resume button, else a chapter
 		Uint32 mangaClearAt = 0;	// History's Clear pressed once: again within 2 s clears it
+		// the page cache (the setting's cap), opened when the app does: the network sources put their pages in it
+		PageCache mangaPageCache;
+		Uint32 mangaCacheAt = 0;	// Clear cache pressed once: again within 2 s empties it
+		bool mangaHistOn = true;	// the setting, kept here for the reader's records (mangaRecordProgress has no Player)
 		int mangaPressed = -1;		// the card, cover, row or button under the finger
 		// Page::MangaRead: the chapter open, what was last recorded, and the finger on it
 		std::string mangaReadSeriesId, mangaReadChapterId, mangaReadChapterTitle;

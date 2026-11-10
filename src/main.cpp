@@ -1316,7 +1316,7 @@ int main(int argc, char** argv)
 					SDL_GL_GetDrawableSize(top, &w, &h);
 					ui.readerStatus = {};
 					if (!readerReady) ui.readerStatus.error = "The reader couldn't start";
-					else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode)) ui.readerStatus.error = reader.error();
+					else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode, rq.fit)) ui.readerStatus.error = reader.error();
 				}
 				for (auto& c : ui.readerCmds)
 				{
@@ -1326,6 +1326,8 @@ int main(int argc, char** argv)
 				ui.readerCmds.clear();
 				if (reader.isOpen())
 				{
+					// the row set while a chapter is open reaches the reader too (the fit comes as its own command)
+					reader.setPreload(player.settings.mangaPreload);
 					ui.readerStatus.open = true;
 					ui.readerStatus.loading = reader.loading();
 					ui.readerStatus.atEnd = reader.atEnd();

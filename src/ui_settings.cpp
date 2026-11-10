@@ -34,7 +34,11 @@ namespace bp
 		case GROUP_PHOTOS: return {T + 8, PAN_ROW, DRAG_ROW};
 		case GROUP_REMEMBER: return {T + 0, T + 1, T + 2};
 		// (the reader's options only while it's on)
-		case GROUP_EXT: return mangaOn ? std::vector<int>{T + 12, MANGA_MODE_ROW, EXT_NOTE} : std::vector<int>{T + 12, EXT_NOTE};
+		case GROUP_EXT:
+			return mangaOn
+				? std::vector<int>{T + 12, MANGA_MODE_ROW, MANGA_FIT_ROW, T + 13, MANGA_PRELOAD_ROW, MANGA_CACHE_ROW,
+					MANGA_CLEAR_ROW, T + 14, T + 15, T + 16, EXT_NOTE}
+				: std::vector<int>{T + 12, EXT_NOTE};
 		case GROUP_FILES: return {T + 3, T + 6, T + 4, T + 11, CLEAR_ROW};
 		case GROUP_CONTROLS:
 		{
@@ -70,6 +74,10 @@ namespace bp
 		const int T = TOGGLE_ROW;
 		if (row >= STYLE_ROW0 && row < STYLE_ROW0 + STYLE_KEYS) return "How plain subtitles (SRT, VTT...) look. Styled ones (ASS) keep theirs.";
 		if (row == MANGA_MODE_ROW) return "How a series opens until you pick one for it (X while reading).";
+		if (row == MANGA_FIT_ROW) return "Width: a page as wide as the screen, read down with RIGHT a screenful at a time.";
+		if (row == MANGA_PRELOAD_ROW) return "More: smoother on a slow server, more data.";
+		if (row == MANGA_CACHE_ROW) return "Pages kept on the card to read again without downloading. Covers: 50 MB more.";
+		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
 		if (row == MUSIC_ROW) return "What the top screen shows while a song plays (SELECT while playing).";
 		if (row == VIS_ROW) return "How the music is drawn: Peaks, Peaks Banana or Circle (SELECT while playing).";
 		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
@@ -96,6 +104,9 @@ namespace bp
 		case 10: return "One brightness for both screens. Off: each its own.";
 		case 11: return "Files played from a network folder go in Recent too. Off: they're left out, and the ones there now go.";
 		case 12: return "Read comics and manga from your files, your servers and sources you add. Off: none of it shows or runs.";
+		case 13: return "Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book).";
+		case 14: return "Sources a repository marks as adult.";
+		case 15: return "Off clears it.";
 		default: return "";
 		}
 	}
@@ -137,6 +148,18 @@ namespace bp
 	void Ui::changeSetting(int row, int dir, Player& p)
 	{
 		if (row == CLEAR_ROW) { clearHistory(p); return; }
+		// the cache's Clear asked twice, as the history's is
+		if (row == MANGA_CLEAR_ROW)
+		{
+			Uint32 now = SDL_GetTicks();
+			if (mangaCacheAt && now - mangaCacheAt < QUIT_WINDOW_MS)
+			{
+				mangaPageCache.clear();
+				mangaCacheAt = 0;
+			}
+			else mangaCacheAt = now;
+			return;
+		}
 		// the manga reader's switch: its first time on shows the note over Manage extensions
 		if (row == TOGGLE_ROW + 12) { extToggleManga(p); return; }
 		// a note, not a value: nothing to change (and no switch beyond the last REMEMBER row)
@@ -160,6 +183,30 @@ namespace bp
 		if (row - STYLE_ROW0 < STYLE_KEYS) stepStyle(s.style, (StyleKey)(row - STYLE_ROW0), dir);
 		else if (row == MUSIC_ROW) s.musicShow = ((s.musicShow + dir) % SHOWS + SHOWS) % SHOWS;
 		else if (row == MANGA_MODE_ROW) s.mangaMode = ((s.mangaMode + dir) % MANGA_MODES + MANGA_MODES) % MANGA_MODES;
+		else if (row == MANGA_FIT_ROW)
+		{
+			s.mangaFit = ((s.mangaFit + dir) % MANGA_FITS + MANGA_FITS) % MANGA_FITS;
+			// a chapter open on the top panel takes it at once, as X takes the mode
+			if (readerStatus.open) readerCmds.push_back({ReaderCmd::Fit, (double)s.mangaFit, (int64_t)SDL_GetTicks()});
+		}
+		else if (row == MANGA_PRELOAD_ROW) s.mangaPreload = stepMangaPreload(s.mangaPreload, dir);
+		else if (row == MANGA_CACHE_ROW)
+		{
+			s.mangaCacheSize = ((s.mangaCacheSize + dir) % MANGA_CACHES + MANGA_CACHES) % MANGA_CACHES;
+			// over a smaller cap the cache gives its oldest pages up at once
+			mangaPageCache.setLimit(mangaCacheBytes(s.mangaCacheSize));
+		}
+		else if (row == TOGGLE_ROW + 15)
+		{
+			s.mangaHistory = !s.mangaHistory;
+			mangaHistOn = s.mangaHistory;
+			// off: the list goes; the places and the read marks stay (progress isn't history)
+			if (!s.mangaHistory && mangaStore)
+			{
+				mangaStore->clearHistory();
+				mangaSave();
+			}
+		}
 		else if (row == VIS_ROW) s.visualizer = stepVisualizer(s.visualizer, dir);
 		else if (row == CLOCK_ROW) s.clock = ((s.clock + dir) % CLOCKS + CLOCKS) % CLOCKS;
 		// (not round: Never at one end, 5 minutes at the other)
@@ -277,6 +324,15 @@ namespace bp
 					clearArmed ? ACCENT : at ? DIM_ON : DIM, 608, mid, 0, 1);
 				continue;
 			}
+			if (row == MANGA_CLEAR_ROW)
+			{
+				// the cache's Clear: an action too (its size from the cache itself)
+				uint64_t size = mangaPageCache.size();
+				drawTextMid("Clear cache", 1, at ? ACCENT : TEXT, 32, mid, 320);
+				drawTextMid(mangaCacheAt ? "Press again to clear" : size ? "Clear \xC2\xB7 " + formatBytes((long long)size) : "Empty", 1,
+					mangaCacheAt ? ACCENT : at ? DIM_ON : DIM, 608, mid, 0, 1);
+				continue;
+			}
 			if (k >= 0 && k < STYLE_KEYS)
 			{
 				label = subStyleSettings()[k].label;
@@ -287,6 +343,28 @@ namespace bp
 				static const char* NAMES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
 				label = "Reading mode";
 				value = NAMES[p.settings.mangaMode];
+			}
+			else if (row == MANGA_FIT_ROW)
+			{
+				static const char* FITS[MANGA_FITS] = {"Page", "Width", "Fill"};
+				label = "Page fit";
+				value = FITS[p.settings.mangaFit];
+			}
+			else if (row == MANGA_PRELOAD_ROW)
+			{
+				label = "Preload";
+				value = std::to_string(p.settings.mangaPreload) + (p.settings.mangaPreload == 1 ? " page" : " pages");
+			}
+			else if (row == MANGA_CACHE_ROW)
+			{
+				static const char* SIZES[MANGA_CACHES] = {"100 MB", "300 MB", "1 GB"};
+				label = "Page cache";
+				value = SIZES[p.settings.mangaCacheSize];
+			}
+			else if (row == TOGGLE_ROW + 14)
+			{
+				label = REMEMBER_LABELS[row - TOGGLE_ROW];
+				value = p.settings.mangaAdult ? "Shown" : "Hidden";
 			}
 			else if (row == MUSIC_ROW)
 			{
@@ -361,9 +439,10 @@ namespace bp
 		auto lines = wrapText(help, 0, 592, 2);
 		for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, helpInk, 24, HELP_Y + (int)i * 22, 592);
 		bool action = cursor < (int)rows.size() && (rows[cursor] == CHECK_ROW || rows[cursor] == INSTALL_ROW || rows[cursor] == CLEAR_ROW ||
-			rows[cursor] == SOUND_ROW);
+			rows[cursor] == SOUND_ROW || rows[cursor] == MANGA_CLEAR_ROW);
 		if (action)
-			drawHints({{"A", rows[cursor] == CLEAR_ROW ? "Clear" : rows[cursor] == CHECK_ROW ? "Check" : rows[cursor] == SOUND_ROW ? "Open" : "Update"},
+			drawHints({{"A", rows[cursor] == CLEAR_ROW || rows[cursor] == MANGA_CLEAR_ROW ? "Clear"
+				: rows[cursor] == CHECK_ROW ? "Check" : rows[cursor] == SOUND_ROW ? "Open" : "Update"},
 				{"UP/DOWN", "Choose"}, {"Y/X", "Group"}, {"B", "Back"}});
 		else drawHints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"Y/X", "Group"}, {"B", "Back"}});
 	}

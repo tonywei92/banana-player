@@ -2,11 +2,23 @@
 #include "eq.h"
 #include "soundfx.h"
 #include "substyle.h"
+#include <cstdint>
 #include <string>
 
 namespace bp
 {
 	constexpr int MANGA_RTL = 0, MANGA_LTR = 1, MANGA_STRIP = 2, MANGA_MODES = 3;
+	// how the paged modes fit a page to the screen: Page keeps it whole, Width makes it as wide as the screen (read
+	// down a screenful at a time), Fill covers the screen and crops what overflows; the Strip always fits width
+	constexpr int MANGA_FIT_PAGE = 0, MANGA_FIT_WIDTH = 1, MANGA_FIT_FILL = 2, MANGA_FITS = 3;
+	// the pages decoded ahead of the one read (Preload), smallest first, and the one a new setting starts on
+	constexpr int MANGA_PRELOADS[] = {2, 3, 6};
+	constexpr int MANGA_PRELOAD_COUNT = 3, MANGA_PRELOAD_DEFAULT = 3;
+	// the next one up (dir 1) or down (-1), round: a value that isn't one of them starts from the first
+	int stepMangaPreload(int v, int dir);
+	// the page cache's cap as its row offers it (100 MB, 300 MB, 1 GB), the default, and the bytes of one
+	constexpr int MANGA_CACHES = 3, MANGA_CACHE_DEFAULT = 1;
+	uint64_t mangaCacheBytes(int v);
 	// Music on the top panel: its album art (embedded, or cover.jpg beside it), a visualizer drawn from the sound by
 	// FFmpeg's filters, or the art with the visualizer over its lower part; a song with no art shows the visualizer
 	// whatever this says. The title, artist and album over either.
@@ -106,6 +118,20 @@ namespace bp
 		bool mangaOn = false;
 		// the manga reader's mode for a series that has none of its own: right to left (printed manga), left to right, strip
 		int mangaMode = 0;
+		// the paged modes' fit (MANGA_FIT_*): Page, Width, Fill; the Strip always fits width
+		int mangaFit = MANGA_FIT_PAGE;
+		// Off: RIGHT is forward on the reader's page. On: LEFT is (to match a right-to-left book)
+		bool mangaSwapLR = false;
+		// pages decoded ahead of the one read: 2, 3 or 6
+		int mangaPreload = MANGA_PRELOAD_DEFAULT;
+		// the page cache's cap, as the row offers it (MANGA_CACHES, 0 is 100 MB)
+		int mangaCacheSize = MANGA_CACHE_DEFAULT;
+		// adult sources a repository marks as adult: shown in the lists (hidden by default)
+		bool mangaAdult = false;
+		// the History list (the reading progress, read marks and places, is kept either way); off clears it
+		bool mangaHistory = true;
+		// manga in Home's Recent (the card comes later)
+		bool mangaRecent = true;
 		// its first-time note about repositories has been shown: it isn't again when the reader is turned on
 		bool mangaIntroShown = false;
 	};

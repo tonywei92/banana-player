@@ -26,14 +26,18 @@ namespace bp
 		~MangaReader();
 		// once, with the top window's context current; false where GL can't (then it never opens)
 		bool init(bool gles, Uint32 wakeEvent);
-		// a chapter at a page (0-based); false (error() says why) when it can't be listed
-		bool open(const std::string& path, bool archive, int page, int viewW, int viewH, int mode = MANGA_STRIP);
+		// a chapter at a page (0-based); fit: MANGA_FIT_* (the Strip always fits width); false (error() says why)
+		// when it can't be listed
+		bool open(const std::string& path, bool archive, int page, int viewW, int viewH, int mode = MANGA_STRIP,
+			int fit = MANGA_FIT_PAGE);
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
 		void command(int kind, double v, int64_t ms, double v2 = 0);
+		// the pages decoded ahead of the one read (the Preload setting): applied at once, the queue made again
+		void setPreload(int n);
 		// a pass of main's loop: decoded pages taken in, the motion advanced; true when the top panel needs a frame
 		bool frame(int64_t now);
 		// the frame, into the bound framebuffer
@@ -54,12 +58,14 @@ namespace bp
 		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; };
 		void decodeLoop();
 		void want();
+		void applyFit();
 
 		PageRenderer pr;
 		bool ready = false, opened = false, uploads = false;
 		Strip strip;
 		Paged paged;	// the two paged modes (right to left, left to right); both models follow every page's size
 		int readMode = MANGA_STRIP;
+		int fit = MANGA_FIT_PAGE, preload = MANGA_PRELOAD_DEFAULT;
 		std::vector<std::string> files;
 		Cbz cbz;
 		bool archive = false;

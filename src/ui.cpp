@@ -1062,6 +1062,9 @@ namespace bp
 			" " + std::to_string(backlight.permille(Backlight::TOP)) + "," + std::to_string(backlight.permille(Backlight::BOTTOM)) : "";
 		upd += page == Page::Settings && setGroup == GROUP_CONTROLS
 			? "|bl" + std::to_string(backlight.permille(Backlight::TOP)) + "," + std::to_string(backlight.permille(Backlight::BOTTOM)) : "";
+		// Extensions: the page cache's Clear (what it holds not being a setting, and the press waiting for its second)
+		if (page == Page::Settings && setGroup == GROUP_EXT && mangaOn)
+			upd += "|mc" + std::to_string(mangaPageCache.size()) + " " + std::to_string(mangaCacheAt != 0);
 		if (updater)
 			upd += "|upd" + std::to_string((int)updater->state()) + " " + std::to_string(updater->progress()) + " " + updater->available() +
 				" " + std::to_string(popupShown(p)) + std::to_string(popupCursor) + std::to_string(pressedBtn);

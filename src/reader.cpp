@@ -70,7 +70,7 @@ namespace bp
 		}
 	}
 
-	bool MangaReader::open(const std::string& path, bool isArchive, int page, int w, int h, int m)
+	bool MangaReader::open(const std::string& path, bool isArchive, int page, int w, int h, int m, int f)
 	{
 		close();
 		err.clear();
@@ -104,7 +104,8 @@ namespace bp
 		strip.scrollTo(strip.pageTop(page));
 		paged.setView(w, h);
 		paged.setPages((int)files.size(), 1.5);
-		paged.setFit(Paged::FitPage);
+		fit = f >= 0 && f < MANGA_FITS ? f : MANGA_FIT_PAGE;
+		applyFit();
 		readMode = m >= 0 && m < MANGA_MODES ? m : MANGA_STRIP;
 		paged.setRtl(readMode == MANGA_RTL);
 		paged.goTo(page, 0, false);
@@ -137,7 +138,7 @@ namespace bp
 	{
 		if (!opened) return;
 		bool s = readMode == MANGA_STRIP;
-		auto list = s ? strip.wanted(3, 1) : paged.wanted(3, 1);
+		auto list = s ? strip.wanted(preload, 1) : paged.wanted(preload, 1);
 		std::set<int> keep(list.begin(), list.end());
 		auto vis = strip.visible();
 		if (!s) vis = {paged.current(), paged.current()};
@@ -154,9 +155,36 @@ namespace bp
 		cv.notify_all();
 	}
 
+	void MangaReader::setPreload(int n)
+	{
+		// the row offers 2, 3 and 6; anything else is left alone
+		if (n < 1 || n == preload) return;
+		preload = n;
+		want();
+	}
+
+	void MangaReader::applyFit()
+	{
+		// Fill covers the screen and crops; a page both taller and wider than the view would need a sideways pan the
+		// paged row hasn't (it lays pages out side by side and scrolls them down), so it reads as Width there. The
+		// Strip is always as wide as the screen.
+		paged.setFit(fit == MANGA_FIT_PAGE ? Paged::FitPage : Paged::FitWidth);
+	}
+
 	void MangaReader::command(int kind, double v, int64_t ms, double v2)
 	{
 		if (!opened) return;
+		if (kind == Fit)
+		{
+			// the page under the view kept, as a mode change keeps it
+			int f = (int)v;
+			if (f < 0 || f >= MANGA_FITS || f == fit) return;
+			fit = f;
+			applyFit();
+			want();
+			redrawSoon(2);
+			return;
+		}
 		if (kind == Mode)
 		{
 			// the same page in the other mode, at rest
