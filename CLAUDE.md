@@ -61,12 +61,14 @@ tools/make-sprite.py                                 # web/sprite.svg from the G
   destructor; the Updater and `WebServer` are never destroyed.
 - **Session:** keep `apply()` pure (randomness and time come in on the intent); add an invariant + a named test for
   new state. One output (`pref`), moved only by an explicit choice. Shuffle and Loop are lasting settings; a list's
-  order is never shown shuffled. Leaving the player is not stopping; Stop stops everywhere.
+  order is never shown shuffled. Leaving the player is not stopping; Stop stops everywhere. An edit to the playing
+  playlist reaches the session's list through `plTellPlayer` → `SessionHost::playlistEdited` (`Requeue`).
 - **Browser output:** a file the browser can't play is asked about when picked (Play on handheld / Cancel) and
   skipped when reached by Next/Previous/an end. The page's clock under a Direct Stream is `bPos()`, never `currentTime`.
 - **Web security:** private addresses only, IP-literal Host, `X-BP` + Origin on non-GET, session cookie on `/api/*`,
   paths through `resolveVirtual`, the deny list (state dir, `/data/home`, `/data/banana`, `/data/store`). Server
-  threads reach the player only through `WebServer::call`.
+  threads reach the player only through `WebServer::call`. The session names a playlist by its file's name less
+  `.m3u`, never its path (the state dir).
 - **Playlists:** Liked is built in (only the heart adds to it). **Network:** `bpnet://<server-id>/<path>`, never
   credentials; passwords sealed by `secret.*`.
 - **Fonts:** SDL_ttf has no fallback (`Ui::runs()`); libass uses only the bundle's fonts.
