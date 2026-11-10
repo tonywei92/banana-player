@@ -1,0 +1,71 @@
+#pragma once
+// The manga reader's network side in one place (docs/design/manga.md section 7): the fetcher, the source worker, the
+// repositories, the download queue and its engine, the saved servers. Main owns it and drives it from its loop (wake
+// events, pump); the bottom panel (Ui) reaches it through a pointer, on the main thread only. Nothing of it starts
+// until the reader is first used with the extension on (off: nothing runs, no threads), and it is never destroyed
+// (its threads never hold up quitting: stop()).
+#include "dlqueue.h"
+#include "fetchapi.h"
+#include "mangadownloader.h"
+#include "mangafetch.h"
+#include "mangarepos.h"
+#include "mangaservers.h"
+#include "mangaworker.h"
+#include <memory>
+#include <string>
+#include <vector>
+
+namespace bp
+{
+	class MangaNet
+	{
+	public:
+		// the events main registered for the fetcher's and the worker's answers; the state folder; the card places
+		// (the Files roots) to put the downloads' Manga folder in
+		void configure(Uint32 fetchEvent, Uint32 workerEvent, const std::string& stateDir, const std::vector<std::string>& places);
+		// threads and stores, the first time (idempotent)
+		void start();
+		bool started() const { return running; }
+		// the extension turned off: everything asked of it goes (the threads stay, asleep)
+		void off();
+		// quitting: the threads leave without waiting for servers
+		void stop();
+
+		// main's loop: the fetcher's answers routed (the downloader's, the repositories', the rest kept for the Ui)
+		void onFetchEvent();
+		// the worker's answers kept for the Ui
+		void onWorkerEvent();
+		// every pass: the downloads move on
+		void pump(int64_t nowMs);
+
+		// for the Ui
+		MangaFetch& fetch() { return fetcher; }
+		FetchApi& fetchApi() { return *api; }
+		MangaWorker& worker() { return work; }
+		MangaRepos& repos() { return *repoMgr; }
+		DownloadQueue& queue() { return dlq; }
+		MangaDownloader& downloader() { return *dl; }
+		MangaServerStore& servers() { return serverStore; }
+		const std::string& downloadsRoot() const { return dlRoot; }
+		// answers nobody in here claimed (the Ui's own fetches: a server's catalogue, a cover by URL)
+		std::vector<MangaFetch::Result> takeFetched();
+		std::vector<MangaWorker::Result> takeWorker();
+		// grows when anything the Ui shows changed (a queue step, a repository loaded, an answer waiting)
+		uint64_t serial() const;
+
+	private:
+		bool running = false;
+		Uint32 evFetch = 0, evWorker = 0;
+		std::string state, dlRoot;
+		MangaFetch fetcher;
+		std::unique_ptr<FetchApi> api;
+		MangaWorker work;
+		std::unique_ptr<MangaRepos> repoMgr;
+		DownloadQueue dlq;
+		std::unique_ptr<MangaDownloader> dl;
+		MangaServerStore serverStore;
+		std::vector<MangaFetch::Result> fetched;
+		std::vector<MangaWorker::Result> workerDone;
+		uint64_t own = 0;
+	};
+}

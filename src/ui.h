@@ -175,6 +175,8 @@ namespace bp
 		bool quitRequested = false;
 		// the built-in updater (main's), and "Restart now": out with Updater::RESTART_CODE (launch.sh starts again)
 		Updater* updater = nullptr;
+		// the manga reader's network side (main's; started when the reader is first used with it on)
+		class MangaNet* mangaNet = nullptr;
 		bool restartRequested = false;
 		// the saved network connections and the thread that lists their folders (main's)
 		NetStore* netStore = nullptr;

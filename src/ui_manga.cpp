@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "manganet.h"
 #include "ui_internal.h"
 #include "manga_ui_logic.h"
 #include <algorithm>
@@ -60,6 +61,8 @@ namespace bp
 
 	void Ui::mangaOpen(Player& p)
 	{
+		// the network side's threads and stores, the first time the app is used with the reader on
+		if (mangaNet && p.settings.mangaOn) mangaNet->start();
 		mangaTab = MT_LIBRARY;	// the app opens on the library, as the mock has it
 		mangaSeriesId.clear();
 		mBrowseList = false;

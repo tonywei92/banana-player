@@ -13,6 +13,7 @@
 #include "touch.h"
 #include "reader_proto.h"
 #include "reader.h"
+#include "manganet.h"
 #include "ui.h"
 #include "ui_glyphs.h"
 #include "session_host.h"
@@ -387,6 +388,16 @@ int main(int argc, char** argv)
 			updater.init(pkg, BP_VERSION);
 			ui.updater = &updater;
 		}
+		// the manga reader's network side: configured now, started the first time the reader is used with it on; never
+		// destroyed (its threads leave on stop() without waiting for servers)
+		static MangaNet* mangaNet = new MangaNet();
+		const Uint32 evMangaFetch = SDL_RegisterEvents(1), evMangaWorker = SDL_RegisterEvents(1);
+		{
+			std::vector<std::string> places;
+			for (auto& r : browseRoots()) places.push_back(r.path);
+			mangaNet->configure(evMangaFetch, evMangaWorker, opts.stateDir, places);
+		}
+		ui.mangaNet = mangaNet;
 		// the thread that lists the network folders (its answers come as evNet)
 		NetWorker netWorker([](NetListing* l) {
 			SDL_Event ev{};
@@ -824,6 +835,8 @@ int main(int argc, char** argv)
 				}
 				else if (e.type == evNet) ui.netListed((NetListing*)e.user.data1, player);
 				else if (e.type == evDur) ui.durationsReady(player);
+				else if (e.type == evMangaFetch) mangaNet->onFetchEvent();
+				else if (e.type == evMangaWorker) mangaNet->onWorkerEvent();
 				else if (e.type == evCover)
 				{
 					// a cover arrived: into a texture on this thread, and the grid redraws (its serial is in signature)
@@ -1300,6 +1313,14 @@ int main(int argc, char** argv)
 				refreshedAt = now;
 				topDark = false;	// the black of no video drawn again too
 			}
+			// the manga reader's downloads move on (nothing while its network side hasn't started)
+			mangaNet->pump(now);
+			// the reader turned off (Manage extensions, or the dashboard): everything asked of its network side goes
+			{
+				static bool mangaWasOn = false;
+				if (mangaWasOn && !player.settings.mangaOn) mangaNet->off();
+				mangaWasOn = player.settings.mangaOn;
+			}
 			// the manga reader: a chapter asked for, the bottom panel's commands, what it shows told back
 			if (haveUi)
 			{
@@ -1430,6 +1451,7 @@ int main(int argc, char** argv)
 		ui.web = nullptr;
 #endif
 		durWorker->stop();
+		mangaNet->stop();
 		coverWorker->stop();
 		sleepWatch.stop();
 		levelWatch.stop();

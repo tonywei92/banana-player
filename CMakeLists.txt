@@ -103,7 +103,7 @@ pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil l
 add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp)
 target_link_libraries(bpprobe PUBLIC bpcore PkgConfig::AV)
 
-add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/ui_manga.cpp src/mangarepos.cpp src/mangadownloader.cpp src/ui_manga_settings.cpp)
+add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/manganet.cpp src/ui_manga.cpp src/mangarepos.cpp src/mangadownloader.cpp src/ui_manga_settings.cpp)
 target_link_libraries(banana-player PRIVATE bpcore bpprobe PkgConfig::SDL2 PkgConfig::SDL2_TTF)
 # SMB through libsmb2 (bundled on the handheld; on a Mac, built into .cache/mac/libsmb2). Without it the browser's
 # Network tab says no server can be reached
