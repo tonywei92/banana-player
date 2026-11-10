@@ -29,6 +29,7 @@ extern "C"
 #include "mangalocal.h"
 #include "manga_ui_logic.h"
 #include "netpath.h"
+#include "paged.h"
 #include "pagedecode.h"
 #include "secret.h"
 #include "servers.h"
@@ -369,6 +370,338 @@ static void testMangaUiLogic()
 	CHECK_EQ(mangaAgo(t - 30 * 86400, t), std::string("1 month ago"));
 	CHECK_EQ(mangaAgo(t - 365 * 86400, t), std::string("1 year ago"));
 	CHECK_EQ(mangaAgo(t - 2 * 365 * 86400, t), std::string("2 years ago"));
+}
+
+// the paged modes: rows of centred pages, drag and snap, and Right/Left through tall pages
+static void testPaged()
+{
+	// the file's own near(): the global one is declared past this point
+	auto near = [](double a, double b, double eps = 1e-6) { return std::fabs(a - b) <= eps; };
+	auto find = [](const std::vector<Paged::Placement>& v, int page)
+	{
+		for (auto& q : v) if (q.page == page) return q;
+		return Paged::Placement{page, 0, 0, 0, 0};	// w == 0: the page isn't in the view
+	};
+
+	// layout: the placeholder 1.5 fills this 4:3 view at fit Page, and at rest only that page is in the view
+	Paged p;
+	p.setView(400, 600);
+	p.setPages(4);
+	CHECK_EQ(p.pageCount(), 4);
+	CHECK_EQ(p.current(), 0);
+	CHECK_EQ(p.moving(), false);
+	auto pl = p.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(pl[0].x, 0), true);
+	CHECK_EQ(near(pl[0].y, 0), true);
+	CHECK_EQ(near(pl[0].w, 400), true);
+	CHECK_EQ(near(pl[0].h, 600), true);
+	CHECK_EQ(p.vscroll(), 0.0);
+
+	// a page smaller than the view is centred: x when fit Page narrows it, y when it is short
+	Paged narrow;
+	narrow.setView(400, 600);
+	narrow.setPages(2, 3.0);	// drawn 200 x 600: the equal neighbour touches the view's edge, so two are in it
+	pl = narrow.placements();
+	CHECK_EQ(pl.size(), (size_t)2);
+	CHECK_EQ(near(find(pl, 0).x, 100), true);
+	CHECK_EQ(near(find(pl, 0).w, 200), true);
+	CHECK_EQ(near(find(pl, 0).y, 0), true);
+	Paged low;
+	low.setView(400, 600);
+	low.setPages(2, 0.5);	// drawn 400 x 200
+	pl = low.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(find(pl, 0).y, 200), true);
+	CHECK_EQ(near(find(pl, 0).h, 200), true);
+
+	// an ltr drag moves the row 1:1 (a finger right walks back along the row), x goes negative, current is the
+	// page the row's middle is nearest to
+	p.goTo(1, 0, false);
+	CHECK_EQ(p.current(), 1);
+	p.touchDown(0);
+	p.drag(150, 0, 50);
+	pl = p.placements();
+	CHECK_EQ(pl.size(), (size_t)2);
+	CHECK_EQ(near(find(pl, 0).x, -250), true);
+	CHECK_EQ(near(find(pl, 1).x, 150), true);
+	CHECK_EQ(p.current(), 1);	// 150 of the 400 back: nearer page 1's centre than page 0's
+	// a short slow release snaps back over 220 ms with an ease-out cubic
+	p.release(200);
+	CHECK_EQ(p.moving(), true);
+	CHECK_EQ(p.step(310), true);	// half way: 0.875 of 150 px travelled
+	CHECK_EQ(near(find(p.placements(), 1).x, 18.75), true);
+	CHECK_EQ(p.step(420), false);
+	CHECK_EQ(p.current(), 1);
+	CHECK_EQ(near(find(p.placements(), 1).x, 0), true);
+	// a slow drag is enough once the row is past the middle
+	p.touchDown(500);
+	p.drag(250, 0, 800);	// 150 along the row: page 0's centre is the nearer one
+	p.release(1100);	// the finger rested: no velocity in the last 100 ms, and none is needed
+	CHECK_EQ(p.moving(), true);
+	CHECK_EQ(p.step(1320), false);
+	CHECK_EQ(p.current(), 0);
+
+	// a fast flick turns however short the drag, in each direction; 400 px/s is not over 400
+	Paged f;
+	f.setView(400, 600);
+	f.setPages(5);
+	f.goTo(2, 0, false);	// the row's middle 800 along, page 2's centre
+	f.touchDown(0);
+	f.drag(-80, 0, 20);	// a finger left: ltr forward, 800 px/s over the last 20 ms
+	f.drag(-80, 0, 40);
+	CHECK_EQ(near(find(f.placements(), 2).x, 0), false);	// the row is 160 px on, page 3 peeking in
+	f.release(40);
+	CHECK_EQ(f.moving(), true);
+	CHECK_EQ(f.step(260), false);	// the snap's 220 ms
+	CHECK_EQ(f.current(), 3);
+	CHECK_EQ(near(find(f.placements(), 3).x, 0), true);
+	f.touchDown(300);
+	f.drag(80, 0, 320);	// and the way back
+	f.drag(80, 0, 340);
+	f.release(340);
+	CHECK_EQ(f.moving(), true);
+	CHECK_EQ(f.step(560), false);
+	CHECK_EQ(f.current(), 2);
+	f.touchDown(600);
+	f.drag(8, 0, 620);	// exactly 400 px/s: no flick, and the drag is nowhere near half a page
+	f.drag(8, 0, 640);
+	f.release(640);
+	CHECK_EQ(f.moving(), true);	// it still glides back to the nearest page
+	CHECK_EQ(f.step(860), false);
+	CHECK_EQ(f.current(), 2);
+	// a row held at an end stops its samples moving there, so no flick turns past the first page or the last
+	f.goTo(0, 900, false);
+	f.touchDown(1000);
+	f.drag(150, 0, 1020);	// ltr back at the chapter's start: the row cannot go before page 0
+	f.drag(150, 0, 1040);
+	f.release(1040);
+	CHECK_EQ(f.moving(), false);
+	CHECK_EQ(f.current(), 0);
+	f.goTo(4, 1100, false);
+	f.touchDown(1200);
+	f.drag(-150, 0, 1220);	// ltr forward at the chapter's end
+	f.drag(-150, 0, 1240);
+	f.release(1240);
+	CHECK_EQ(f.moving(), false);
+	CHECK_EQ(f.current(), 4);
+	CHECK_EQ(f.atEnd(), true);
+	f.forward(1300);	// nothing left: at rest, no animation
+	CHECK_EQ(f.moving(), false);
+
+	// right to left: the row runs the other way about the centred page; a finger right is toward the next page
+	Paged r;
+	r.setView(400, 600);
+	r.setPages(4);
+	r.setRtl(true);
+	r.goTo(1, 0, false);
+	CHECK_EQ(r.placements().size(), (size_t)1);	// the shown page is centred either way
+	CHECK_EQ(near(find(r.placements(), 1).x, 0), true);
+	r.touchDown(0);
+	r.drag(150, 0, 50);	// next page 2 enters from the left as the row slides right
+	pl = r.placements();
+	CHECK_EQ(pl.size(), (size_t)2);
+	CHECK_EQ(near(find(pl, 1).x, 150), true);
+	CHECK_EQ(near(find(pl, 2).x, -250), true);
+	CHECK_EQ(r.current(), 1);
+	r.release(200);	// short and slow: back to 1
+	CHECK_EQ(r.moving(), true);
+	CHECK_EQ(r.step(420), false);
+	CHECK_EQ(r.current(), 1);
+	r.touchDown(500);
+	r.drag(80, 0, 520);	// a right flick: forward, one page
+	r.drag(80, 0, 540);
+	r.release(540);
+	CHECK_EQ(r.moving(), true);
+	CHECK_EQ(r.step(760), false);
+	CHECK_EQ(r.current(), 2);
+	CHECK_EQ(near(find(r.placements(), 2).x, 0), true);
+	r.touchDown(800);
+	r.drag(-80, 0, 820);	// and back with a left one
+	r.drag(-80, 0, 840);
+	r.release(840);
+	CHECK_EQ(r.step(1060), false);
+	CHECK_EQ(r.current(), 1);
+	r.goTo(0, 1100, false);
+	r.touchDown(1200);
+	r.drag(-150, 0, 1220);	// rtl back at the chapter's start: nothing turns past it
+	r.drag(-150, 0, 1240);
+	r.release(1240);
+	CHECK_EQ(r.moving(), false);
+	CHECK_EQ(r.current(), 0);
+	// a page that fits the view has nothing to pan: a vertical drag does nothing
+	r.touchDown(1300);
+	r.drag(0, -100, 1320);
+	CHECK_EQ(r.vscroll(), 0.0);
+	r.release(1340);
+	CHECK_EQ(r.moving(), false);
+
+	// a tall page at fit Width scrolls inside before it turns, and Right opens the next page at the top
+	Paged t;
+	t.setView(400, 600);
+	t.setPages(3, 1.5);
+	t.setFit(Paged::FitWidth);
+	t.setPageSize(1, 400, 900);	// page 1: 300 px over the view's bottom
+	t.goTo(1, 0, false);
+	pl = t.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(find(pl, 1).h, 900), true);
+	CHECK_EQ(near(find(pl, 1).y, 0), true);
+	CHECK_EQ(t.vscroll(), 0.0);
+	t.forward(0);	// one screenful (540), which here is the rest of the page
+	CHECK_EQ(t.moving(), true);
+	CHECK_EQ(t.step(180), false);	// the D-pad step slides for 180 ms
+	CHECK_EQ(t.current(), 1);	// a screenful never turns the page
+	CHECK_EQ(near(t.vscroll(), 300), true);
+	CHECK_EQ(near(find(t.placements(), 1).y, -300), true);	// its bottom at the view's
+	t.forward(200);	// at its end: the next page, opened at the top
+	CHECK_EQ(t.step(380), false);
+	CHECK_EQ(t.current(), 2);
+	CHECK_EQ(t.vscroll(), 0.0);
+	CHECK_EQ(t.atEnd(), true);	// the last page, all of it shown
+	t.forward(400);
+	CHECK_EQ(t.moving(), false);
+	t.back(500);	// Left back over the turn opens the previous page at its end
+	CHECK_EQ(t.step(680), false);
+	CHECK_EQ(t.current(), 1);
+	CHECK_EQ(near(t.vscroll(), 300), true);
+	t.nextPage(700);	// R skips the rest of a tall page and goes straight on
+	CHECK_EQ(t.step(880), false);
+	CHECK_EQ(t.current(), 2);
+	CHECK_EQ(t.vscroll(), 0.0);
+	t.back(900);	// and Left lands there from the next page's top
+	t.step(1080);
+	CHECK_EQ(near(t.vscroll(), 300), true);
+	t.back(1200);	// a screenful up inside it
+	CHECK_EQ(t.step(1380), false);
+	CHECK_EQ(near(t.vscroll(), 0), true);
+	CHECK_EQ(t.current(), 1);
+	t.back(1500);	// at its top: the previous page
+	CHECK_EQ(t.step(1680), false);
+	CHECK_EQ(t.current(), 0);
+	t.prevPage(1700);	// L at the chapter's start: nothing
+	CHECK_EQ(t.moving(), false);
+	CHECK_EQ(t.current(), 0);
+
+	// a vertical drag snaps the scroll to a screenful's bounds, a fast one goes one further
+	Paged v2;
+	v2.setView(400, 600);
+	v2.setPages(3, 1.5);
+	v2.setFit(Paged::FitWidth);
+	v2.setPageSize(1, 400, 900);	// bounds: 0 and the bottom at 300
+	v2.goTo(1, 0, false);
+	v2.touchDown(0);
+	v2.drag(0, -100, 20);	// a finger up scrolls down the page
+	v2.drag(0, -100, 40);
+	v2.release(40);	// 5000 px/s: one bound further, which is the page's bottom
+	CHECK_EQ(v2.moving(), true);
+	CHECK_EQ(v2.step(260), false);
+	CHECK_EQ(near(v2.vscroll(), 300), true);
+	CHECK_EQ(v2.current(), 1);
+	CHECK_EQ(v2.atEnd(), false);	// only inside the page: page 2 is still to read
+	v2.touchDown(300);
+	v2.drag(0, 100, 320);	// 200 along: the bottom is the nearer bound
+	v2.release(340);	// a lone sample: no velocity, and the axis is moot: the bounds say 300
+	CHECK_EQ(v2.step(560), false);
+	CHECK_EQ(near(v2.vscroll(), 300), true);
+	v2.touchDown(600);
+	v2.drag(0, 150, 620);	// 150: an equal share, which keeps the page's top (nearest never hops ahead)
+	v2.drag(0, 0, 630);
+	v2.release(630);
+	CHECK_EQ(v2.step(850), false);
+	CHECK_EQ(near(v2.vscroll(), 0), true);
+
+	// goTo: animated glides the row with current() crossing to the target, plain jumps
+	Paged g;
+	g.setView(400, 600);
+	g.setPages(5);
+	g.goTo(2, 0, true);
+	CHECK_EQ(g.moving(), true);
+	CHECK_EQ(g.step(60), true);	// 0.704 of the way: still nearer page 1
+	CHECK_EQ(g.current(), 1);
+	CHECK_EQ(g.step(90), true);	// past the middle of the row's travel
+	CHECK_EQ(g.current(), 2);
+	CHECK_EQ(g.step(180), false);
+	CHECK_EQ(near(find(g.placements(), 2).x, 0), true);
+	g.goTo(0, 300, false);	// no animation, straight to the page
+	CHECK_EQ(g.moving(), false);
+	CHECK_EQ(g.current(), 0);
+	// a touch stops a slide where it is and the release snaps from there (as in Strip)
+	g.goTo(3, 1000, true);
+	CHECK_EQ(g.step(1090), true);	// 0.875 of the 0→1200 glide: 1050
+	g.touchDown(1100);
+	CHECK_EQ(g.moving(), false);
+	CHECK_EQ(g.step(1200), false);
+	CHECK_EQ(g.current(), 3);	// the middle is nearer page 3's centre already
+	g.release(1250);
+	CHECK_EQ(g.moving(), true);
+	CHECK_EQ(g.step(1470), false);
+	CHECK_EQ(near(find(g.placements(), 3).x, 0), true);
+
+	// wanted: the current page, then up to ahead in reading order, then up to behind; rtl reads the same numbers
+	CHECK_EQ(g.wanted(2, 1), std::vector<int>({3, 4, 2}));
+	g.goTo(1, 1500, false);
+	CHECK_EQ(g.wanted(3, 3), std::vector<int>({1, 2, 3, 4, 0}));
+	g.setRtl(true);
+	CHECK_EQ(g.wanted(2, 1), std::vector<int>({1, 2, 3, 0}));
+	CHECK_EQ(g.wanted(-2, -2), std::vector<int>({1}));
+	std::vector<int> all = g.wanted(99, 99);
+	CHECK_EQ(all.size(), (size_t)5);
+	std::set<int> once(all.begin(), all.end());
+	CHECK_EQ(once.size(), (size_t)5);
+
+	// a real page size redraws the row without moving the page being shown
+	Paged q;
+	q.setView(400, 600);
+	q.setPages(4, 1.5);
+	q.goTo(2, 0, false);
+	q.setPageSize(2, 400, 1200);	// now 200 x 600 at fit Page: its own centre stays, its neighbours slide
+	CHECK_EQ(q.current(), 2);
+	CHECK_EQ(q.moving(), false);
+	pl = q.placements();
+	CHECK_EQ(near(find(pl, 2).x, 100), true);	// centred at the new, narrower width
+	CHECK_EQ(near(find(pl, 2).w, 200), true);
+	CHECK_EQ(near(find(pl, 2).h, 600), true);
+	q.setPageSize(1, 400, 1200);	// a neighbour narrows too: the shown page does not budge
+	CHECK_EQ(q.current(), 2);
+	CHECK_EQ(near(find(q.placements(), 2).x, 100), true);
+	q.setPageSize(2, 0, 500);	// bad sizes are ignored, as in Strip
+	CHECK_EQ(near(find(q.placements(), 2).w, 200), true);
+	// and a tall page that turns short mid-read keeps no scroll below the view
+	Paged c2;
+	c2.setView(400, 600);
+	c2.setPages(3, 1.5);
+	c2.setFit(Paged::FitWidth);
+	c2.setPageSize(1, 400, 1200);	// 600 px over: one whole screenful and 60
+	c2.goTo(1, 0, false);
+	c2.forward(0);
+	CHECK_EQ(c2.step(180), false);
+	CHECK_EQ(near(c2.vscroll(), 540), true);	// a full screenful, a part one would not be enough to stop on
+	c2.setPageSize(1, 400, 500);	// suddenly it fits
+	CHECK_EQ(c2.current(), 1);
+	CHECK_EQ(near(c2.vscroll(), 0), true);
+	CHECK_EQ(near(find(c2.placements(), 1).h, 500), true);
+	CHECK_EQ(near(find(c2.placements(), 1).y, 50), true);	// centred again
+
+	// no pages: the whole surface is inert
+	Paged e;
+	e.setView(400, 600);
+	CHECK_EQ(e.pageCount(), 0);
+	CHECK_EQ(e.current(), -1);
+	CHECK_EQ(e.placements().size(), (size_t)0);
+	CHECK_EQ(e.atEnd(), false);
+	CHECK_EQ(e.wanted(3, 2).size(), (size_t)0);
+	e.goTo(0, 0, true);
+	e.forward(0);
+	e.back(0);
+	e.touchDown(0);
+	e.drag(50, 50, 10);
+	e.release(20);
+	CHECK_EQ(e.moving(), false);
+	CHECK_EQ(e.step(100), false);
+	e.setPages(2, 0);	// a nonsense aspect falls back to the comic's page
+	CHECK_EQ(near(find(e.placements(), 0).h, 600), true);
+	CHECK_EQ(e.current(), 0);
 }
 
 static void testMangaStore()
@@ -5335,6 +5668,7 @@ int main()
 	testDurations();
 	testMangaNames();
 	testMangaUiLogic();
+	testPaged();
 	testMangaStore();
 	testMangaLocal();
 	testComicInfo();
