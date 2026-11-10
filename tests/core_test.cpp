@@ -1,6 +1,7 @@
 // The parts without a window: aspect modes, track labels, mpv's track-list, times.
 #include "aspect.h"
 #include "battery.h"
+#include "comicinfo.h"
 #include "browser.h"
 #include "crashlog.h"
 #include "durations.h"
@@ -299,6 +300,143 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("Volume"), -1.0);
 	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+static void testComicInfo()
+{
+	ComicInfo c;
+	// a typical file, as the downloads write it
+	CHECK_EQ(parseComicInfo(R"(<?xml version="1.0"?>
+<ComicInfo>
+  <Series>Yotsuba</Series>
+  <Number>3</Number>
+  <Volume>1</Volume>
+  <Title>Chapter Three</Title>
+  <PageCount>2</PageCount>
+  <Manga>YesAndRightToLeft</Manga>
+</ComicInfo>
+)", c), true);
+	CHECK_EQ(c.series, std::string("Yotsuba"));
+	CHECK_EQ(c.number, std::string("3"));
+	CHECK_EQ(c.volume, 1);
+	CHECK_EQ(c.title, std::string("Chapter Three"));
+	CHECK_EQ(c.pageCount, 2);
+	CHECK_EQ(c.rightToLeft, true);
+	CHECK_EQ(c.summary, std::string(""));
+	CHECK_EQ(c.sourceId, std::string(""));
+
+	// entities, decimal and hex references (a multi-byte one, and an astral one), and the bad references
+	CHECK_EQ(parseComicInfo(R"(<ComicInfo><Title>Tom &amp; Jerry &lt;3 &gt; &quot;q&quot; &apos;a&apos; &#65;&#x3042;&#x1F600;</Title>)"
+	                        R"(<Summary>a&#0;b&#xD800;c&bogus;d&#;e</Summary><Writer>AT&T</Writer></ComicInfo>)", c), true);
+	CHECK_EQ(c.title, std::string("Tom & Jerry <3 > \"q\" 'a' A\xE3\x81\x82\xF0\x9F\x98\x80"));
+	CHECK_EQ(c.summary, std::string("abc&bogus;d&#;e"));	// NUL and a surrogate dropped; not references stay as written
+	CHECK_EQ(c.writer, std::string("AT&T"));
+
+	// CDATA is literal, and trimmed like text
+	CHECK_EQ(parseComicInfo(R"(<ComicInfo><Summary>
+  <![CDATA[a <b> & "c" &amp;]]>
+</Summary></ComicInfo>)", c), true);
+	CHECK_EQ(c.summary, std::string("a <b> & \"c\" &amp;"));
+
+	// self-closing elements are empty; unknown elements are skipped with their children, which can't override a field
+	CHECK_EQ(parseComicInfo(R"(<ComicInfo><Series>S</Series><Summary/><Title>top</Title>)"
+	                        R"(<Pages><Page Image="0"/><Title>nested</Title></Pages><Writer>W</Writer></ComicInfo>)", c), true);
+	CHECK_EQ(c.series, std::string("S"));
+	CHECK_EQ(c.summary, std::string(""));
+	CHECK_EQ(c.title, std::string("top"));
+	CHECK_EQ(c.writer, std::string("W"));
+
+	// the declaration, comments and attributes (a '>' inside a quoted value) are not content
+	CHECK_EQ(parseComicInfo(R"(<?xml version="1.0" encoding="utf-8"?>
+<!-- made by a tool, <Series>not this</Series> -->
+<ComicInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:note='x > y'>
+<Series lang="en">Real</Series></ComicInfo>)", c), true);
+	CHECK_EQ(c.series, std::string("Real"));
+
+	// Manga: only YesAndRightToLeft turns the reading direction
+	for (const char* v : {"Yes", "No", "Unknown"}) {
+		CHECK_EQ(parseComicInfo(std::string("<ComicInfo><Manga>") + v + "</Manga></ComicInfo>", c), true);
+		CHECK_EQ(c.rightToLeft, false);
+	}
+	CHECK_EQ(parseComicInfo("<ComicInfo><Manga> YesAndRightToLeft </Manga></ComicInfo>", c), true);
+	CHECK_EQ(c.rightToLeft, true);
+
+	// numbers that aren't whole stay unset
+	CHECK_EQ(parseComicInfo("<ComicInfo><Volume>two</Volume><PageCount>1.5</PageCount></ComicInfo>", c), true);
+	CHECK_EQ(c.volume, -1);
+	CHECK_EQ(c.pageCount, -1);
+	CHECK_EQ(parseComicInfo("<ComicInfo><Volume> 03 </Volume><PageCount/></ComicInfo>", c), true);
+	CHECK_EQ(c.volume, 3);
+	CHECK_EQ(c.pageCount, -1);
+
+	// the Banana Player fields
+	CHECK_EQ(parseComicInfo("<ComicInfo><BPSource>mangadex</BPSource><BPSeriesKey>abc-123</BPSeriesKey></ComicInfo>", c), true);
+	CHECK_EQ(c.sourceId, std::string("mangadex"));
+	CHECK_EQ(c.seriesKey, std::string("abc-123"));
+
+	// no ComicInfo element: false, and the struct is left as it was
+	c = ComicInfo();
+	c.series = "keep";
+	CHECK_EQ(parseComicInfo("<Foo><Series>x</Series></Foo>", c), false);
+	CHECK_EQ(parseComicInfo("", c), false);
+	CHECK_EQ(c.series, std::string("keep"));
+
+	// malformed and truncated input: false, and no crash or hang
+	for (const char* bad : {"<ComicInfo><Series>x</Series>", "<ComicInfo><Series>x", "<ComicInfo", "<", "<ComicInfo>a < b</ComicInfo>",
+	                        "<ComicInfo><!-- open", "<ComicInfo><![CDATA[ open", "<ComicInfo><?pi", "<ComicInfo></ComicInfo",
+	                        "<ComicInfo><Series>x</Other></ComicInfo>", "<ComicInfo><Series a=></Series></ComicInfo>",
+	                        "<ComicInfo><Series a=\"x></Series></ComicInfo>", "<ComicInfo/ >"}) {
+		CHECK_EQ(parseComicInfo(bad, c), false);
+	}
+	std::string deep;
+	for (int i = 0; i < 300; i++) deep += "<x>";
+	CHECK_EQ(parseComicInfo(deep + "<ComicInfo></ComicInfo>", c), false);
+	// the 1 MB cap refuses rather than reads
+	CHECK_EQ(parseComicInfo("<ComicInfo>" + std::string((1 << 20) + 1, ' ') + "</ComicInfo>", c), false);
+
+	// the round trip: a filled struct comes back as it was, an empty one as a default
+	ComicInfo f;
+	f.series = "Yotsuba & friends";
+	f.title = "Tom \"T\" <x>";
+	f.number = "10.5";
+	f.summary = "line one\nline two";
+	f.writer = "A. B";
+	f.web = "https://example.com/?a=1&b=2";
+	f.volume = 2;
+	f.pageCount = 20;
+	f.rightToLeft = true;
+	f.sourceId = "mangadex";
+	f.seriesKey = "abc-123";
+	ComicInfo g;
+	CHECK_EQ(parseComicInfo(writeComicInfo(f), g), true);
+	CHECK_EQ(g.series, f.series);
+	CHECK_EQ(g.title, f.title);
+	CHECK_EQ(g.number, f.number);
+	CHECK_EQ(g.summary, f.summary);
+	CHECK_EQ(g.writer, f.writer);
+	CHECK_EQ(g.web, f.web);
+	CHECK_EQ(g.volume, f.volume);
+	CHECK_EQ(g.pageCount, f.pageCount);
+	CHECK_EQ(g.rightToLeft, f.rightToLeft);
+	CHECK_EQ(g.sourceId, f.sourceId);
+	CHECK_EQ(g.seriesKey, f.seriesKey);
+
+	ComicInfo e;
+	std::string ex = writeComicInfo(e);
+	CHECK_EQ(ex.find("<Series>"), std::string::npos);
+	CHECK_EQ(ex.find("<Manga>"), std::string::npos);
+	CHECK_EQ(parseComicInfo(ex, g), true);
+	CHECK_EQ(g.series, std::string(""));
+	CHECK_EQ(g.volume, -1);
+	CHECK_EQ(g.pageCount, -1);
+	CHECK_EQ(g.rightToLeft, false);
+
+	// escaping: & < > " in a title; control characters dropped, tab kept
+	ComicInfo t;
+	t.title = "A & B < C > D \"E\"";
+	CHECK_EQ(writeComicInfo(t).find("<Title>A &amp; B &lt; C &gt; D &quot;E&quot;</Title>") != std::string::npos, true);
+	t.title = "x\x01y\tz";
+	CHECK_EQ(writeComicInfo(t).find("<Title>xy\tz</Title>") != std::string::npos, true);
 }
 
 static bool near(double a, double b, double eps = 1e-6)
@@ -4419,6 +4557,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testComicInfo();
 	testStrip();
 	testLabels();
 	testTrackList();
