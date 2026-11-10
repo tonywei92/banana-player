@@ -31,6 +31,7 @@ extern "C"
 #include "resume.h"
 #include "session.h"
 #include "settings.h"
+#include "strip.h"
 #include "tracks.h"
 #include "json.h"
 #include "webauth.h"
@@ -298,6 +299,305 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("Volume"), -1.0);
 	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+static bool near(double a, double b, double eps = 1e-6)
+{
+	return std::fabs(a - b) <= eps;
+}
+
+static void testStrip()
+{
+	// layout: pages at the view's width, no gap, placeholders 1.5 x the width
+	Strip s;
+	s.setView(400, 600);
+	s.setPages(3);
+	CHECK_EQ(s.pageCount(), 3);
+	CHECK_EQ(near(s.pageHeight(0), 600), true);
+	CHECK_EQ(near(s.pageTop(0), 0), true);
+	CHECK_EQ(near(s.pageTop(1), 600), true);
+	CHECK_EQ(near(s.pageTop(2), 1200), true);
+	CHECK_EQ(near(s.totalHeight(), 1800), true);
+	CHECK_EQ(near(s.offset(), 0), true);
+	CHECK_EQ(near(s.screenful(), 540), true);
+
+	// a real size below the view changes nothing on screen
+	s.setPageSize(2, 400, 800);	// page 2: 800 high, +200
+	CHECK_EQ(near(s.pageHeight(2), 800), true);
+	CHECK_EQ(near(s.offset(), 0), true);
+	CHECK_EQ(near(s.totalHeight(), 2000), true);
+	// a page at the view's top isn't above it: the top stays put as well
+	s.setPageSize(0, 400, 400);	// page 0: 400 high, -200
+	CHECK_EQ(near(s.pageHeight(0), 400), true);
+	CHECK_EQ(near(s.offset(), 0), true);
+	CHECK_EQ(near(s.pageTop(1), 400), true);
+	CHECK_EQ(near(s.totalHeight(), 1800), true);
+
+	// a page above the view moves the offset by its height change, so what is on screen keeps its place
+	Strip above;
+	above.setView(400, 600);
+	above.setPages(3);	// 600 each: tops 0, 600, 1200
+	above.scrollTo(900);	// 300 px into page 1
+	CHECK_EQ(near(above.offset(), 900), true);
+	above.setPageSize(0, 400, 400);	// page 0 shrinks by 200
+	CHECK_EQ(near(above.offset(), 700), true);
+	CHECK_EQ(near(above.pageTop(1), 400), true);
+	CHECK_EQ(near(above.offset() - above.pageTop(1), 300), true);	// still 300 px into page 1
+	above.setPageSize(0, 400, 800);	// grows back by 400
+	CHECK_EQ(near(above.offset(), 1100), true);
+	CHECK_EQ(near(above.offset() - above.pageTop(1), 300), true);
+
+	// bad input is ignored: an index out of range, a zero width or height
+	above.setPageSize(-1, 400, 400);
+	above.setPageSize(3, 400, 400);
+	above.setPageSize(1, 0, 400);
+	above.setPageSize(1, 400, 0);
+	CHECK_EQ(near(above.pageHeight(1), 600), true);
+	CHECK_EQ(near(above.offset(), 1100), true);
+
+	// clamping at both ends, and a column no taller than the view
+	s.scrollTo(100000);
+	CHECK_EQ(near(s.offset(), s.totalHeight() - 600), true);
+	s.scrollBy(500);
+	CHECK_EQ(near(s.offset(), 1200), true);
+	s.scrollTo(-50);
+	CHECK_EQ(near(s.offset(), 0), true);
+	s.scrollBy(-500);
+	CHECK_EQ(near(s.offset(), 0), true);
+
+	Strip shortOne;
+	shortOne.setView(400, 600);
+	shortOne.setPages(1);	// 600: exactly the view, so it can't scroll
+	shortOne.scrollTo(300);
+	CHECK_EQ(near(shortOne.offset(), 0), true);
+	CHECK_EQ(near(shortOne.totalHeight(), 600), true);
+	shortOne.setPages(0);
+	CHECK_EQ(shortOne.pageCount(), 0);
+	CHECK_EQ(shortOne.offset(), 0.0);
+
+	// visible and currentPage at the boundaries: a page occupying exactly one view
+	Strip v;
+	v.setView(400, 400);
+	v.setPages(4, 1.0);	// 400 each: tops 0, 400, 800, 1200; total 1600
+	CHECK_EQ(v.visible().first, 0);
+	CHECK_EQ(v.visible().second, 0);
+	CHECK_EQ(v.currentPage(), 0);
+	v.scrollTo(400);
+	CHECK_EQ(v.visible().first, 1);
+	CHECK_EQ(v.visible().second, 1);
+	CHECK_EQ(v.currentPage(), 1);
+	// the middle exactly on a page's top belongs to the page below it
+	v.scrollTo(200);	// view [200, 600): pages 0 and 1, middle 400
+	CHECK_EQ(v.visible().first, 0);
+	CHECK_EQ(v.visible().second, 1);
+	CHECK_EQ(v.currentPage(), 1);
+	v.scrollTo(1200);	// the end: page 2's bottom is the view's top
+	CHECK_EQ(v.visible().first, 3);
+	CHECK_EQ(v.visible().second, 3);
+	CHECK_EQ(v.currentPage(), 3);
+	v.setPages(1, 1.0);
+	CHECK_EQ(v.visible().first, 0);
+	CHECK_EQ(v.visible().second, 0);
+	CHECK_EQ(v.currentPage(), 0);
+	v.setPages(0);
+	CHECK_EQ(v.visible().first, -1);
+	CHECK_EQ(v.visible().second, -1);
+	CHECK_EQ(v.currentPage(), -1);
+	CHECK_EQ(v.wanted(2, 2).size(), (size_t)0);
+
+	// wanted: visible first (top to bottom), then ahead in the direction of motion, then behind
+	Strip w;
+	w.setView(400, 400);
+	w.setPages(10, 1.0);	// 400 each: total 4000, max offset 3600
+	std::vector<int> ids = w.wanted(3, 2);	// no motion yet: ahead is down, and the list's start runs out
+	CHECK_EQ(ids.size(), (size_t)4);
+	for (int i = 0; i < 4; i++) CHECK_EQ(ids[i], i);
+	w.scrollTo(2000);	// page 5, alone in the view, moving down
+	CHECK_EQ(w.currentPage(), 5);
+	ids = w.wanted(2, 2);
+	CHECK_EQ(ids.size(), (size_t)5);
+	CHECK_EQ(ids[0], 5);
+	CHECK_EQ(ids[1], 6);
+	CHECK_EQ(ids[2], 7);
+	CHECK_EQ(ids[3], 4);
+	CHECK_EQ(ids[4], 3);
+
+	// moving up: ahead is the pages before the visible ones, behind the pages after
+	w.scrollBy(-10);	// 1990: view [1990, 2390) holds pages 4 and 5
+	CHECK_EQ(w.visible().first, 4);
+	CHECK_EQ(w.visible().second, 5);
+	ids = w.wanted(2, 2);
+	CHECK_EQ(ids.size(), (size_t)6);
+	CHECK_EQ(ids[0], 4);
+	CHECK_EQ(ids[1], 5);
+	CHECK_EQ(ids[2], 3);
+	CHECK_EQ(ids[3], 2);
+	CHECK_EQ(ids[4], 6);
+	CHECK_EQ(ids[5], 7);
+
+	// at the end and at the start there is nothing ahead on that side
+	w.scrollTo(3600);
+	ids = w.wanted(3, 2);
+	CHECK_EQ(ids.size(), (size_t)3);
+	CHECK_EQ(ids[0], 9);
+	CHECK_EQ(ids[1], 8);
+	CHECK_EQ(ids[2], 7);
+	w.scrollTo(0);	// moving up, so ahead is up the column
+	ids = w.wanted(3, 2);
+	CHECK_EQ(ids.size(), (size_t)3);
+	CHECK_EQ(ids[0], 0);
+	CHECK_EQ(ids[1], 1);
+	CHECK_EQ(ids[2], 2);
+	// bounds far past both ends still list each page once
+	w.scrollTo(2000);
+	ids = w.wanted(99, 99);
+	CHECK_EQ(ids.size(), (size_t)10);
+	std::set<int> once(ids.begin(), ids.end());
+	CHECK_EQ(once.size(), (size_t)10);
+
+	// drag follows the finger 1:1 (dy > 0 is a finger moving down, so the offset falls), clamped
+	Strip d;
+	d.setView(400, 400);
+	d.setPages(10, 1.0);
+	d.scrollTo(1000);
+	d.touchDown(0);
+	d.drag(25, 10);
+	CHECK_EQ(near(d.offset(), 975), true);
+	d.drag(-25, 20);
+	CHECK_EQ(near(d.offset(), 1000), true);
+	d.release(30);	// the last drag went the other way, so that is the way it flings
+	CHECK_EQ(d.moving(), true);
+	CHECK_EQ(d.step(40), true);
+	CHECK_EQ(d.offset() > 1000, true);
+
+	// a drag past an end is clamped and leaves nothing to fling
+	d.scrollTo(0);
+	d.touchDown(0);
+	d.drag(300, 10);
+	d.drag(300, 20);
+	CHECK_EQ(near(d.offset(), 0), true);
+	d.release(30);
+	CHECK_EQ(d.moving(), false);
+	d.scrollTo(3600);	// the far end
+	d.touchDown(0);
+	d.drag(-300, 10);
+	d.drag(-300, 20);
+	CHECK_EQ(near(d.offset(), 3600), true);
+	d.release(30);
+	CHECK_EQ(d.moving(), false);
+
+	// the fling's velocity comes from the last 100 ms: 100 px in 40 ms is 2500 px/s
+	Strip f;
+	f.setView(400, 1000);
+	f.setPages(20, 2.5);	// 1000 high in a 400 wide view: total 20000, max offset 19000
+	f.scrollTo(5000);
+	f.touchDown(0);
+	f.drag(-50, 20);
+	f.drag(-50, 40);
+	CHECK_EQ(near(f.offset(), 5100), true);
+	f.release(50);
+	CHECK_EQ(f.moving(), true);
+	CHECK_EQ(f.step(375), true);	// 325 ms on: v0 * tau * (1 - e^-1)
+	CHECK_EQ(near(f.offset(), 5100 + 2500 * 0.325 * (1 - std::exp(-1.0)), 1e-3), true);
+	f.step(10000);
+	CHECK_EQ(f.moving(), false);
+
+	// a release after the finger rested for more than 100 ms has no velocity to fling with
+	Strip hold;
+	hold.setView(400, 400);
+	hold.setPages(10, 1.0);
+	hold.scrollTo(1000);
+	hold.touchDown(0);
+	hold.drag(-30, 20);
+	hold.drag(-30, 40);
+	hold.release(300);
+	CHECK_EQ(hold.moving(), false);
+	CHECK_EQ(near(hold.offset(), 1060), true);
+	hold.step(400);
+	CHECK_EQ(near(hold.offset(), 1060), true);
+
+	// the velocity is capped at 6000 px/s (this flick would be 15000)
+	Strip capStrip;
+	capStrip.setView(400, 1000);
+	capStrip.setPages(40, 2.5);
+	capStrip.scrollTo(10000);
+	capStrip.touchDown(0);
+	capStrip.drag(-150, 10);
+	capStrip.drag(-150, 20);
+	capStrip.release(30);
+	capStrip.step(355);	// 325 ms on
+	CHECK_EQ(near(capStrip.offset(), 10300 + 6000 * 0.325 * (1 - std::exp(-1.0)), 1e-3), true);
+
+	// the same fling stepped every 5 ms and every 50 ms ends on the same pixel
+	Strip fast, slow;
+	for (Strip* p : {&fast, &slow})
+	{
+		p->setView(400, 1000);
+		p->setPages(20, 2.5);
+		p->scrollTo(5000);
+		p->touchDown(0);
+		p->drag(-50, 20);
+		p->drag(-50, 40);
+		p->release(50);
+	}
+	int64_t t = 50;
+	while (fast.step(t += 5)) {}
+	int64_t u = 50;
+	while (slow.step(u += 50)) {}
+	CHECK_EQ(fast.moving(), false);
+	CHECK_EQ(slow.moving(), false);
+	CHECK_EQ(near(fast.offset(), slow.offset(), 1.0), true);
+	// its whole travel: v0 * tau * (1 - 20 / v0), the speed it stops at
+	CHECK_EQ(near(fast.offset(), 5100 + 2500 * 0.325 * (1 - 20.0 / 2500), 1e-3), true);
+
+	// a fling into an end stops exactly on it, with its velocity gone
+	Strip edge;
+	edge.setView(400, 1000);
+	edge.setPages(20, 2.5);
+	edge.scrollTo(18500);
+	edge.touchDown(0);
+	edge.drag(-150, 10);	// 18650
+	edge.drag(-150, 20);	// 18800, 15000 px/s capped to 6000
+	edge.release(30);
+	CHECK_EQ(edge.moving(), true);
+	CHECK_EQ(edge.step(130), false);	// 100 ms on: ~516 px would pass the end
+	CHECK_EQ(edge.moving(), false);
+	CHECK_EQ(near(edge.offset(), 19000), true);
+	CHECK_EQ(edge.step(500), false);	// nothing left to advance
+	CHECK_EQ(near(edge.offset(), 19000), true);
+
+	// animateTo: an ease-out cubic over the duration, exactly on target at its end
+	Strip a;
+	a.setView(400, 400);
+	a.setPages(10, 1.0);
+	a.scrollTo(1000);
+	a.animateTo(1400, 0);
+	CHECK_EQ(a.moving(), true);
+	CHECK_EQ(a.step(0), true);
+	CHECK_EQ(near(a.offset(), 1000), true);
+	CHECK_EQ(a.step(90), true);	// half way: 1 - (1 - 0.5)^3 = 0.875
+	CHECK_EQ(near(a.offset(), 1350), true);
+	CHECK_EQ(a.step(180), false);
+	CHECK_EQ(near(a.offset(), 1400), true);
+	CHECK_EQ(a.moving(), false);
+	CHECK_EQ(a.step(200), false);
+	CHECK_EQ(near(a.offset(), 1400), true);
+
+	// touchDown stops an animation where it is
+	a.scrollTo(1000);
+	a.animateTo(1800, 500);
+	CHECK_EQ(a.step(590), true);
+	double stoppedAt = a.offset();
+	a.touchDown(600);
+	CHECK_EQ(a.moving(), false);
+	CHECK_EQ(a.step(700), false);
+	CHECK_EQ(near(a.offset(), stoppedAt), true);
+
+	// a zero duration and an out-of-range target: straight to the clamped end, not moving
+	a.scrollTo(1000);
+	a.animateTo(99999, 0, 0);
+	CHECK_EQ(near(a.offset(), 3600), true);
+	CHECK_EQ(a.moving(), false);
 }
 
 static void testLabels()
@@ -4119,6 +4419,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testStrip();
 	testLabels();
 	testTrackList();
 	if (failures) fprintf(stderr, "%d failed\n", failures);
