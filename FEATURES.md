@@ -14,6 +14,7 @@ Everything Banana Player does, button by button. For installing it, see the [REA
 - [Settings](#settings)
 - [Quick settings](#quick-settings)
 - [Web dashboard](#web-dashboard)
+- [Extensions](#extensions)
 - [Updates](#updates)
 - [More](#more)
 
@@ -41,7 +42,8 @@ Open Banana Player and the bottom screen shows **Home**:
   the whole list. On the touch screen tap a card to play it, swipe the strip, or hold a card for its menu. With nothing
   played yet the strip is a single line and the tiles grow.
 - Four tiles, two by two: **Files** (your cards: **Videos**, the `videos` folder in `roms`, then **This card** and
-  **Second card**), **Playlists**, **Network** and **Extensions** (coming in a later version). Each says what's in it.
+  **Second card**), **Playlists**, **Network** and **Extensions** (**None on**, or **1 on · Manga reader**). Each says
+  what's in it.
 
 Move with the D-pad: **UP/DOWN** between the strip and the tiles (back to the card or the column you left),
 **LEFT/RIGHT** along them. **X** on Home: **Clear Recent** (press twice), **Show hidden folders**, **Settings**. **B**
@@ -430,7 +432,7 @@ All three are remembered.
 
 ## Settings
 
-Settings opens on eight tiles (seven groups, and the [Web dashboard](#web-dashboard)), two to a row: move with the D-pad (**UP/DOWN** a row, **LEFT/RIGHT** a tile),
+Settings opens on nine tiles (eight groups, and the [Web dashboard](#web-dashboard)), two to a row: move with the D-pad (**UP/DOWN** a row, **LEFT/RIGHT** a tile),
 open one with **A** or a tap, and **B** goes back to them. In a group, **Y** goes to the group before it and **X** to
 the one after (or tap the names either side of its title), and the line above the bottom says what the setting under the
 cursor does. **Subtitle style...** at the end of the Subtitles list opens the Subtitles group; **B** there
@@ -461,6 +463,7 @@ goes back to the list.
 | | Check for updates | | Looks now, and shows what it found |
 | | Update to … | | Downloads the new version (shown when there's one), then **Restart now** |
 | **Web dashboard** | Turn on or off, New PIN | Off | Control the player and manage files and playlists from a phone or computer on your Wi-Fi. See [Web dashboard](#web-dashboard) |
+| **Extensions** | Manga reader | Off | The extensions that are on, and their own settings. See [Extensions](#extensions) |
 
 ## Web dashboard
 
@@ -677,14 +680,121 @@ Not yet: network folders in the browser, a grid of photo thumbnails, and saving 
 
 ## Extensions
 
-Home's fourth tile, **Extensions**, opens the extensions that are on, as tiles. Nothing is on at first: the drawer
-says so, and **START** (or its **Manage extensions** button) opens **Manage extensions**, which lists each extension
-with what it does and an **On/Off** switch (**A**). **X** (or the gear) opens its settings, under **Settings ›
+Home's fourth tile, **Extensions**, opens the drawer: the extensions that are on, as tiles. Nothing is on at first: the
+drawer says so, and **START** (or its **Manage extensions** button) opens **Manage extensions**, which lists each
+extension with what it does and an **On/Off** switch (**A**). **X** (or the gear) opens its settings, under **Settings ›
 Extensions**. Turning one off hides it and stops it; nothing is deleted.
 
-- **Manga reader** (being built): comics and manga from your files, your servers and sources you add. The first time
-  it's turned on, a sheet says where to find it and that repositories are added by you: Banana Player doesn't provide
-  or check their content.
+- **Manga reader**: comics and manga from the files on your cards. The first time it's turned on, a sheet says where
+  to find it and that repositories are added by you: Banana Player doesn't provide or check their content.
+
+### The drawer and Manage extensions
+
+- With the reader on, the drawer shows **1 on** and a tile for it: **Manga reader**, *Comics and manga*. **A** opens
+  it. With none on, the drawer says **No extensions are on** and explains that an extension adds to Banana Player and
+  that nothing of it shows or runs until you turn it on.
+- **Manage extensions** lists the reader with its mark, what it does and an **On/Off** switch. **A** turns it on or off;
+  **X** (or the gear) opens its settings.
+- The first time the reader is turned on, a sheet comes over **Manage extensions**: it says the reader reads from your
+  files and servers, and from sources in repositories you add, and that repositories are added by you: Banana Player
+  doesn't provide or check their content. **Open Manga** opens the reader, **Done** closes the sheet.
+
+### The Manga reader
+
+The reader is an app of its own. It opens on **Library** and has five tabs, stepped with **L/R**: **Library**,
+**History**, **Browse**, **Sources** and **Downloads**. **B** goes back — out of Browse's list of series first, then
+to the drawer. Music keeps playing while you read: the pages take the top screen, and the mini bar is on the app's
+other pages (**SELECT** there goes to what plays). **Sources** and **Downloads** say they come next: there are no
+sources to install and nothing to download yet.
+
+**Where series come from.** Each of your cards may have a **Manga** folder (or `manga`, or `MANGA`); the reader reads it
+each time you open the app:
+
+- a folder of pictures is a chapter;
+- a folder of chapters (folders of pictures, or `.cbz` files) is a series;
+- a `.cbz` file (or a `.zip` renamed to one) is a chapter, and one lying in the Manga folder itself is a series of a
+  single chapter;
+- one level of volume folders is read as well: a **Vol 1** folder holds the chapters of that volume, and they carry its
+  number;
+- `ComicInfo.xml` inside an archive gives the series' title and the chapter's number and volume;
+- the chapters are listed in reading order (by volume and number where the names carry them, otherwise by name);
+- a series' cover is its first chapter's first page: the real cover is decoded in the background, and a plain coloured
+  one stands in until it arrives.
+
+**Library.** *Continue reading* along the top: up to three cards with the cover, the series, the chapter and the page
+you were on, and a bar of how far you got. **A** opens that chapter where you left it. Below, the series as covers,
+five to a row, each with the number of chapters you haven't read. **A** opens the series. With nothing in it yet:
+*Your library is empty* — put CBZ files or folders of pictures in a Manga folder on your card, or add series from
+Browse.
+
+**History.** Every chapter you've opened, newest first: the series, the chapter, the page and when. **A** continues
+where you were. **X** clears the list (press **X** again to confirm). With the reading history off in the settings the
+list stays empty, but your places and your read marks are kept either way.
+
+**Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
+chapters it has, and **A** on one opens the series. Network folders and your servers are listed as coming next.
+
+**A series.** Its title, how many chapters it has and how many you haven't read. **Resume** opens the chapter you were
+in, or the first unread one, or the first. The heart (**Y**) takes the series out of your library and puts it back;
+every series found on your card is in the library to start with. The chapters are listed under: the one **Resume** would
+open has a dot beside it, a chapter you've read is dimmed and ticked, and one you started shows the page you were on.
+**X** marks the chapter under the cursor read or unread. **B** goes back to where you came from.
+
+**Reading.** A chapter opens on the top screen; the bottom screen holds the controls: the chapter and the series, the
+page number, the slider, the two chapter buttons and the mode. The big area says *Swipe here to turn the page* (or *Drag
+here to scroll* in **Strip**), and *Loading…* shows beside the page number while a page is decoded.
+
+| Button | What it does |
+|---|---|
+| **RIGHT** / **LEFT** | Forward / back: a screenful down the page, then the next page; back goes a screenful up it, then to the page before. With **Swap Left/Right** on, **LEFT** is forward |
+| **UP** / **DOWN** | The same step as **LEFT** and **RIGHT**, up and down, never swapped |
+| **L / R** | Previous / next page, straight to it |
+| **X** | The reading mode: Right to left → Left to right → Strip (kept for that series) |
+| **L2 / R2** | Previous / next chapter |
+| **SELECT** | Fullscreen on both screens (below) |
+| **B** | Close the reader; your place is kept |
+
+- The **page fit** is a setting (below): **Page** (the whole page on the screen), **Width** (as wide as the screen, read
+  down a screenful at a time) or **Fill** (the page covers the screen; in the two paged modes it reads as **Width** for
+  now). It applies at once to the chapter you're reading.
+- At the end of a chapter the screen says **End of chapter · R2 or RIGHT for the next** (**LEFT** with **Swap
+  Left/Right** on), and the forward key (or **R2**) opens the next one. The last chapter says **You're caught up**.
+- **By touch**: drag in the big area on the bottom screen to turn the page — it follows your finger and snaps to a page
+  when you let go, and in **Strip** it scrolls — the slider jumps to a page, and the two buttons go to the chapter before
+  or after. In fullscreen the whole bottom screen is the page, and the finger drags it anywhere.
+- Your place is kept on the card, in the player's own folder (`home/.config/banana-player`): the page of every chapter
+  you've opened, and when.
+
+**Fullscreen (both screens).** **SELECT** while reading turns it on and off. The two panels become one tall view and
+the gap under the hinge is skipped, so the art lines up across the fold; the bottom panel draws its share of the pages
+from the pages the reader has already decoded. The gap's size is a setting in the player's own settings file: **36** of
+the panel's 480 lines by default. **B** leaves fullscreen first, and only then closes the reader. The page number
+shows for a moment after the page changes.
+
+### Settings › Extensions › Manga
+
+The reader's own rows are under **Settings › Extensions**. They show while the reader is on; with it off only its
+switch and the note are there.
+
+| Setting | Values | Default | |
+|---|---|---|---|
+| **Manga reader** | Off / On | Off | Read comics and manga from your files, your servers and sources you add. Off: none of it shows or runs. |
+| **Reading mode** | Right to left / Left to right / Strip | Right to left | How a series opens until you pick one for it (X while reading). |
+| **Page fit** | Page / Width / Fill | Page | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. |
+| **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
+| **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
+| **Page cache** | 100 MB / 300 MB / 1 GB | 300 MB | Pages kept on the card to read again without downloading. Covers: 50 MB more. |
+| **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |
+| **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |
+| **Reading history** | On / Off | On | Off clears it. |
+| **In Recent on Home** | On / Off | On | |
+| Repositories | | | Repositories are added by you. Banana Player doesn't provide or check their content. |
+
+The page cache, **Adult sources** and **In Recent on Home** belong to the parts that aren't here yet, so the cache is
+empty and the last two change nothing for now.
+
+**Coming next:** network folders and servers (Komga, Kavita, OPDS) as sources, sources from repositories, and
+downloads. None of that is in this version yet.
 
 ## Updates
 

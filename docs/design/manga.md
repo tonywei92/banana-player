@@ -1,8 +1,49 @@
-# Manga reader: design proposal (not built yet)
+# Manga reader: design and status
 
-Status: **proposal for the owner's approval** (2026-11-10, branch `manga-reader`). Nothing here is implemented. The mock
-of the screens is a separate `mock.html` handed over with this proposal (not in the repo): both panels of each screen,
-captioned with the buttons.
+Status: **built in part** (branch `manga-reader`, 2026-11-11). This document is the whole plan; what the code does
+today is below, area by area, and what is not built yet follows it. The mock of the screens is a separate `mock.html`
+handed over with the proposal (not in the repo): both panels of each screen, captioned with the buttons.
+
+**Built**
+
+- **Extensions**: the drawer (Home's fourth tile), **Manage extensions**, the first-time sheet, and **Settings ›
+  Extensions** with the reader's own rows.
+- **On this handheld**: the cards' `Manga` folders read as series and chapters — folders of pictures, `.cbz` and `.zip`
+  archives, one level of volume folders, `ComicInfo.xml` for the series' title and the chapter's number — in reading
+  order.
+- **The Manga app**: **Library** (**Continue reading**, covers, unread counts), **History**, **Browse › On this
+  handheld**, the series page (**Resume**, the **In library** heart, read and unread) and the reading page (the page
+  number, the slider, the chapter buttons, the drag area).
+- **The reader**: its own renderer on the top panel, the three modes (**Right to left**, **Left to right**, **Strip**),
+  the page fit, the D-pad, **L/R**, **L2/R2**, the touch drag and flick, and the place kept per chapter.
+- **Fullscreen on both panels**: one tall view over the two panels, the hinge's gap skipped so the art lines up (see
+  [Fullscreen](#13-fullscreen-both-screens)).
+- **The music keeps playing** while reading: the reader takes the top panel and mpv's frames go to a small offscreen
+  target.
+- **The store** (bpcore, with tests): the library, the reading progress and the history in the state folder. Beside it,
+  ready for the parts below: the CBZ reader and writer, ComicInfo, the page cache, the download queue, the repositories'
+  index and the OPDS and Komga parsers.
+
+**Not built yet**
+
+- Network folders and servers (Komga, Kavita, OPDS) as sources: the parsers and the saved connections are in bpcore,
+  but no source reaches the reader, and **Browse** lists them as coming next.
+- Sources from repositories: the index's format and its checksums are in bpcore and Lua is vendored, but no script is
+  loaded and **Sources** is empty.
+- Downloads: the queue and the CBZ writer are in bpcore, but nothing is fetched and **Downloads** is empty.
+- The reader's own extras from section 4: **A** to zoom, **Y** for the pages grid, **L3** to turn the page, **START**
+  for the reader's menu, the double-tap and the pinch.
+- The page cache is empty (only the network sources fill it), and **Adult sources** and **In Recent on Home** change
+  nothing yet.
+- The web dashboard's Manga pages, and reading in the browser.
+
+**Decisions since the proposal** (the owner's answers, 2026-11-10; section 12 has them in full)
+
+- One **Strip** mode, not a Vertical and a Webtoon.
+- Downloads need the network and always run while it is there, resuming where they stopped if they were interrupted (no
+  charging option).
+- The mini bar shows on every page but the player, and **B** in the player minimizes back to it. As built, the reader's
+  own pages carry it; the reading page has the reader's controls there instead.
 
 An optional extension built into Banana Player: a comic and manga reader in the spirit of Mihon (library, sources,
 source repositories, chapters, reading progress and history, reading modes), shaped for two 4:3 panels, the buttons and
@@ -448,3 +489,28 @@ Strip are in v1 (Strip after the smoothness prototype); adult sources hidden by 
 Answered 2026-11-10: (1) downloads need the network and always run while it's there, resuming where they stopped
 if interrupted (no charging option); (2) one Strip mode instead of Vertical and Webtoon; (3) the mini bar on every page
 but the player, and B in the player minimizes back to it.
+
+## 13. Fullscreen (both screens)
+
+Approved and built (2026-11-11). The reader's pages take **both** panels at once, so a page taller than one panel (or a
+double-page spread printed sideways) is read without turning.
+
+- **SELECT** turns fullscreen on and off while a chapter is open.
+- **B** leaves fullscreen first; only a second **B** closes the reader (the place is kept either way).
+- **One tall view.** The two panels and the gap between them are one view of the page: the top panel shows its first
+  panel-height, the bottom panel the rest. The page is laid out once, so nothing is drawn twice and nothing is scaled.
+- **The hinge's gap is skipped.** The gap under the hinge would cut the art in two; the view leaves it out, so the page
+  carries on across the fold and the lines up. Its size is a setting — **36** of the panel's 480 lines by default
+  (measured on the handheld), in the player's settings file (`manga-hinge`).
+- **The paged modes spread across both panels.** A page in Right to left or Left to right is fitted to the whole tall
+  view, so it runs from the top panel into the bottom one; the Strip's column is one tall column the same way.
+- **The bottom panel draws its own share** of the pages, from the pages the reader has already decoded and kept, so the
+  two panels show one continuous picture.
+- **The controls overlay on a tap.** In fullscreen the bottom panel is all page; a tap puts the reader's controls (the
+  page number, the slider, the chapter buttons) back over it, and a tap again takes them away.
+- **The first-time toast.** The first time fullscreen opens, a toast says what it is and that **B** leaves it.
+- **Open fullscreen** is offered on the reading page, so fullscreen can be reached without the key.
+
+Built today: **SELECT**, **B** leaving fullscreen first, the one tall view, the skipped hinge gap and its setting, the
+paged modes across both panels, the bottom panel's own share of the pages, and the page tag (the page number, shown for
+a moment after a change). Still to come: the controls overlay on a tap, the first-time toast and **Open fullscreen**.
