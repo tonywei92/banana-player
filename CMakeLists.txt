@@ -7,6 +7,12 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
 
+option(BP_SANITIZE "Build every target with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+if(BP_SANITIZE)
+	add_compile_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+	add_link_options(-fsanitize=address,undefined -fno-omit-frame-pointer)
+endif()
+
 # The handheld has OpenGL ES 2 (Mesa Panfrost) through SDL2's KMSDRM; a desktop has desktop GL.
 if(APPLE)
 	set(BP_GLES_DEFAULT OFF)
@@ -176,3 +182,6 @@ target_link_libraries(manga-test PRIVATE bpmanga)
 add_test(NAME manga COMMAND manga-test)
 # The harness's shell doesn't run ./build/manga-test directly; this target runs it through cmake.
 add_custom_target(manga-check COMMAND $<TARGET_FILE:manga-test> DEPENDS manga-test)
+add_executable(fuzz-test tests/fuzz_test.cpp)
+target_link_libraries(fuzz-test PRIVATE bpcore bpprobe)
+target_compile_definitions(fuzz-test PRIVATE BP_FUZZ_DIR="${CMAKE_SOURCE_DIR}/tests/pages")
