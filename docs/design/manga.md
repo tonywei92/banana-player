@@ -6,8 +6,8 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 
 **Built**
 
-- **Extensions**: the drawer (Home's fourth tile), **Manage extensions**, the first-time sheet, and **Settings ›
-  Extensions** with the reader's own rows.
+- **Extensions**: the drawer (Home's fourth tile), **Manage extensions**, the first-time sheet, and the reader's own
+  **Manga settings** page (a page of the Manga app's, not a group of Banana Player's Settings).
 - **On this handheld**: the cards' `Manga` folders read as series and chapters — folders of pictures, `.cbz` and `.zip`
   archives, one level of volume folders, `ComicInfo.xml` for the series' title and the chapter's number — in reading
   order.
@@ -15,7 +15,9 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
   handheld**, the series page (**Resume**, the **In library** heart, read and unread) and the reading page (the page
   number, the slider, the chapter buttons, the drag area).
 - **The reader**: its own renderer on the top panel, the three modes (**Right to left**, **Left to right**, **Strip**),
-  the page fit, the D-pad, **L/R**, **L2/R2**, the touch drag and flick, and the place kept per chapter.
+  the page fit (Page, Width, and a real **Fill** in the paged modes), the zoom (**UP/DOWN** through 100–800 %, **A** at
+  200 %), the D-pad (**LEFT/RIGHT** a screenful, then the page), **L/R**, **L2/R2**, the **Reading menu** on **START**,
+  the touch drag and flick, and the place kept per chapter.
 - **Fullscreen on both panels**: one tall view over the two panels, the hinge's gap skipped so the art lines up (see
   [Fullscreen](#13-fullscreen-both-screens)).
 - **The music keeps playing** while reading: the reader takes the top panel and mpv's frames go to a small offscreen
@@ -31,8 +33,8 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 - Sources from repositories: the index's format and its checksums are in bpcore and Lua is vendored, but no script is
   loaded and **Sources** is empty.
 - Downloads: the queue and the CBZ writer are in bpcore, but nothing is fetched and **Downloads** is empty.
-- The reader's own extras from section 4: **A** to zoom, **Y** for the pages grid, **L3** to turn the page, **START**
-  for the reader's menu, the double-tap and the pinch.
+- The reader's own extras from section 4: **Y** for the pages grid, **L3** to turn the page, the double-tap and the
+  pinch.
 - The page cache is empty (only the network sources fill it), and **Adult sources** and **In Recent on Home** change
   nothing yet.
 - The web dashboard's Manga pages, and reading in the browser.
@@ -47,9 +49,9 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 
 An optional extension built into Banana Player: a comic and manga reader in the spirit of Mihon (library, sources,
 source repositories, chapters, reading progress and history, reading modes), shaped for two 4:3 panels, the buttons and
-the RK3568. **Off by default.** Off means it isn't in the Extensions drawer, no Settings rows beyond its switch, no threads, no
-Lua state, no network, no files written; the extension's code is in the binary but nothing of it is constructed (as
-`WebServer` while the dashboard is off).
+the RK3568. **Off by default.** Off means it isn't in the Extensions drawer, none of it shows or runs (its own settings
+page is still there, from **Manage extensions**), no threads, no Lua state, no network, no files written; the
+extension's code is in the binary but nothing of it is constructed (as `WebServer` while the dashboard is off).
 
 ## 1. Decisions in this proposal (each can be overruled)
 
@@ -79,7 +81,7 @@ Lua state, no network, no files written; the extension's code is in the binary b
 ## 2. User flows
 
 - **Turn it on:** Home › Extensions (the drawer, empty: "No extensions are on") › START: Manage extensions › Manga
-  reader: A turns it On (or Settings › Extensions, or the dashboard). The first time, a sheet with the neutral note about
+  reader: A turns it On (or on the web dashboard). The first time, a sheet with the neutral note about
   repositories and **Open Manga** / **Done**. Manga reader is then a tile in the drawer; it opens on Library (empty: "Add
   series from Browse, or put CBZ files or folders of pictures in a Manga folder").
 - **Read what's on the card:** Manga › Browse › *On this handheld* lists series found under the Files places' `Manga`
@@ -106,12 +108,12 @@ Lua state, no network, no files written; the extension's code is in the binary b
 Layout follows today's pages: `drawHeader` (back, title, clock), rows with `drawFocus`, `drawBox` tiles and cards,
 `drawHints` footer. The Extensions section's top is the drawer (`EXTDIR`, today's placeholder page). Inside the Manga
 reader the five pages are tabs under the header (Library · History · Browse · Sources · Downloads), stepped with **L/R** (the reader is an app, not a section, so L/R are
-free there; X stays Options, as everywhere in the browser).
+free there; X is the page's own action, and **START** opens **Manga settings**).
 
 | Page | Bottom panel | Top panel |
 |---|---|---|
 | **Extensions** (drawer) | a grid of icon tiles, one per extension that is on (`drawBox`, 14 radius, glyph + name + a second line: "3 unread"); empty: "No extensions are on" + "START: Manage extensions" | the focused extension: name, one line on what it does |
-| **Manage extensions** (START in the drawer) | every extension: icon, name, one-line description, On/Off; A toggles, X or Right: its settings | the focused extension's description |
+| **Manage extensions** (START in the drawer) | every extension: icon, name, one-line description, On/Off; A toggles, X or Right: its own settings page (for the reader: **Manga settings**) | the focused extension's description |
 
 
 | **Library** | *Continue reading* strip (3 cards: cover, title, "Ch. 12 · p. 14/38", progress line), then a 5-wide cover grid with unread badges | the focused series: cover, title, author, status, synopsis, "12 of 48 read" |
@@ -121,18 +123,20 @@ free there; X stays Options, as everywhere in the browser).
 | **Series** | cover, title, status line, Resume (A), In library heart, Download, chapter list (unread dot, read dimmed with a check, "p. 14/38" on the started one, a download mark: queued, progress, on the card), X: Options (mark read/unread, from here down, refresh, sort, delete download) | cover large, synopsis, genres |
 | **Download** (sheet from the series page) | This chapter · Next 5 unread · All unread (37) · Choose chapters… (the list in select mode) | how much it will take, room left |
 | **Downloads** | a storage line (downloads' size, the card's free space); the queue (series, chapter, pages done, pause / resume); then what's on the card by series (chapters, size), X: delete | the focused series |
-| **Reader** | a touch surface showing the pages under the finger (drag and flick there; in strip modes a map of the chapter with the window on it), Back/Forward, Prev/Next chapter, Zoom −/+, Mode, Pages; a page slider "14 / 38" (drag to jump); chapter title | the pages, drawn by the reader's renderer |
+| **Reader** | a touch surface showing the pages under the finger (drag and flick there; in strip modes a map of the chapter with the window on it), Back/Forward, Prev/Next chapter; the mode and the zoom are the keys' and the Reading menu's (the panel's Zoom −/+ and Pages buttons come later); a page slider "14 / 38" (drag to jump); chapter title | the pages, drawn by the reader's renderer |
 | **Pages** (Y in the reader) | the chapter's thumbnails, 6 wide | the page under the cursor |
+| **Manga settings** (START on any Manga page, the gear in Manage extensions, the Reading menu's last row) | the reader's own rows, drawn as Settings draws a group's, the note last | — |
 
-Settings gets one tile for all extensions, **Extensions** (section 9), not one per extension.
+Banana Player's Settings keeps no Extensions tile: the reader's rows are on its own page, **Manga settings** (section 9).
 
 ## 4. Controls
 
-Every page keeps the browser's grammar: D-pad/stick move, A open, B back (B at the Manga reader's top goes back to the
-drawer, B in the drawer goes Home), X Options, START Menu (in the drawer: Manage extensions), L/R the reader's pages
+Every page keeps the browser's grammar: D-pad move, A open, B back (B at the Manga reader's top goes back to the
+drawer, B in the drawer goes Home), X the page's own action, START the page's own menu (in the drawer: Manage
+extensions; on a Manga page: Manga settings), L/R the reader's pages
 (Library · History · Browse · Sources · Downloads; inside a source, Popular · Latest · Search), touch everywhere (tap = A, the back icon = B, drag lists). The reader:
 
-**D-pad Left/Right do all the moving** (owner's decision). One press is one step; held, it repeats.
+**D-pad Left/Right do all the moving** (owner's decision); Up/Down zoom. One press is one step; held, it repeats.
 
 - **Right = forward.** When the page is bigger than the screen at the current fit or zoom (Fit width, zoomed in, a tall
   page), Right first moves one screenful on through the page (down, then across for a wide one, in reading order); at the
@@ -143,25 +147,30 @@ drawer, B in the drawer goes Home), X Options, START Menu (in the drawer: Manage
 - **Right is forward whatever the reading direction** by default. **Swap Left/Right** (a Manga setting, Off) makes Left
   forward, for those who want it to match a right-to-left book. Either way the page-turn slide follows the reading
   direction (right to left: the new page comes in from the left).
+- **Scrolling is the finger's alone:** Up/Down zoom, they never scroll. The pan is a drag on the bottom panel's page.
 
 | Input | Paged (Right to left, Left to right) | Strip |
 |---|---|---|
 | **D-pad Right / Left** | forward / back by a screenful, then by a page (above) | a screenful down / up |
-| **R / L** | next / previous page, straight to it (skips the rest of a tall or zoomed page) | a screenful down / up |
-| **D-pad Up / Down** | pan within a zoomed or taller-than-screen page (a small step; held, smooth) | scroll smoothly |
-| **Stick** | pan, any direction | scroll smoothly |
-| **A** | zoom to 2× at the centre / back to the fit | fit width / 2× |
-| **B** | close the reader (progress saved) to the series page | same |
-| **X** | reading mode, cycled with a card on top (RTL → LTR → Strip), kept for this series | same |
+| **R / L** | next / previous page, straight to it (skips the rest of a tall or zoomed page) | the next / previous page, straight to it |
+| **D-pad Up / Down** | zoom in / out, in steps: 100, 150, 200, 300, 400, 600, 800 % | the same |
+| **Stick** | not read: the page pans with the finger | the same |
+| **A** | zoom to 200 % at the centre / back to the fit | the same |
+| **B** | leave fullscreen first, then close the reader (progress saved) to the series page | same |
+| **X** | reading mode, cycled (RTL → LTR → Strip), kept for this series | same |
 | **Y** | Pages (thumbnail grid) | same |
-| **L2 / R2** | previous / next chapter (top card with its name) | same |
-| **SELECT** | fit: Page / Width / Fill | — |
+| **L2 / R2** | previous / next chapter | same |
+| **SELECT** | fullscreen on both screens (section 13) | the same |
 | **L3** | turn 90° (as photos; for double-page spreads printed sideways) | — |
-| **START** | Menu (Playing tab becomes Reading: mode, fit, zoom steps, brightness, mark chapter read) | same |
+| **START** | the Reading menu: Fullscreen, Reading mode, Page fit, Zoom, Hinge gap (fullscreen only), Swap Left/Right, All Manga settings… | same |
 | **Drag (bottom)** | the page follows the finger sideways, its neighbour sliding in; let go: it snaps to a page (a quick flick turns even a short drag; a slow one past half). A zoomed or oversize page pans first, then the drag carries over to the next | the strip follows the finger 1:1; a flick glides on and slows by friction; no seam between pages or into the next chapter |
-| **Other touch** | slider to jump; buttons (Zoom −/+ among them); double-tap: 2× / the fit; **pinch** to zoom only if the touchscreen reports two fingers (to verify on the hardware: `BottomTouch` reads one slot today) | the same; tap the map to jump |
+| **Other touch** | slider to jump; the chapter buttons (in fullscreen the controls sheet: the slider, the chapters, Leave fullscreen, Close); double-tap: 2× / the fit; **pinch** to zoom only if the touchscreen reports two fingers (to verify on the hardware: `BottomTouch` reads one slot today) | the same; tap the map to jump |
 
-Zoom steps other than A's 2× are the bottom panel's Zoom −/+ buttons (Up/Down now pan). At a chapter's end, forward
+The Reading menu is a compact sheet over the page (over the lower part of the fullscreen view): **UP/DOWN** choose a row,
+**LEFT/RIGHT** change it where you stand, **A** acts on it, and **B** or **START** closes it — reading goes on exactly
+where it was. Its last row opens the reader's own **Manga settings** page.
+
+The zoom steps are the photo viewer's (100 … 800 %); **A** goes to 200 % or back to the fit. At a chapter's end, forward
 shows the end card first ("End of chapter 12 · RIGHT: chapter 13"), so a held Right never skips a chapter unseen.
 
 ## 5. Sources
@@ -400,44 +409,51 @@ its own tests (sandbox escapes, limits, a fixture source against a local HTTP se
 
 ## 9. Turning it on and off, and its settings
 
-**Where:** **Manage extensions** (START in Home's Extensions drawer), and the same switches and options under a new
-Settings tile, **Extensions** (one tile for every extension to come, not one per extension). It lists each extension with a line on what it does and an **On/Off** switch
-(**Manga reader · Off** to start). Turning one on shows its settings right under it (the Manga group below) and its
-places appear at once (its tile in the drawer, the dashboard's Manga item); turning it off hides them again and stops its
-threads. Nothing is deleted by turning it off: the library, history and installed sources wait for it to come back.
+**Where:** **Manage extensions** (START in Home's Extensions drawer) is where an extension is turned on and off: it lists
+each extension with a line on what it does and an **On/Off** switch (**Manga reader · Off** to start), and **A** toggles
+it. Turning one on shows its places at once (its tile in the drawer, the dashboard's Manga item); turning it off hides
+them again and stops its threads. Nothing is deleted by turning it off: the library, history and installed sources wait
+for it to come back.
+
+The extension's own settings are **not** in Banana Player's Settings (which has no Extensions tile): they are a page of
+their own, **Manga settings**, inside the Manga app. **START** opens it on any Manga page (the five tabs and a series
+page), the gear (**X**) in **Manage extensions** opens it too, and the Reading menu's last row opens it while you read.
 
 - **Manage extensions** rows: icon, name, one line on what it does, **On/Off**. A toggles; X ("Settings") or Right opens
-  that extension's own group (the Manga group below). Off: it leaves the drawer and stops; nothing is deleted.
+  that extension's own settings page (the Manga settings page below). Off: it leaves the drawer and stops; nothing is
+  deleted.
 - **Home:** the 4th tile is always **Extensions** and opens the drawer (section 1); its second line counts what is on
   ("1 on", or "None on · START to manage").
 - **Web dashboard:** a **Manage extensions** card with the same switches (it sends the setting; the handheld applies
   it). Off, the dashboard shows no Manga item at all.
 - **First time on:** a one-time sheet with the neutral note about repositories and two buttons, **Open Manga** and **Done**.
 
-### The Manga group (shown under Extensions while Manga is on)
+### The Manga settings page (the reader's own rows)
 
 | Row | Values | Help line |
 |---|---|---|
-| Manga reader | **Off** / On | Read comics and manga from your files, your servers and sources you add. Off: none of it shows or runs. |
-| Reading mode | **Right to left** / Left to right / Strip | How a new series opens; X in the reader changes it for that series. |
-| Page fit | **Page** / Width / Fill | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. |
+| Reading mode | **Right to left** / Left to right / Strip | How a series opens until you pick one for it (X in the reader changes it for that series). |
+| Page fit | **Page** / Width / Fill | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. Fill: the page covers the screen, cropped either way, panned in reading order. |
 | Swap Left/Right | **Off** / On | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
+| Hinge gap | **36** px (0 to 80, in steps of 4) | The strip skipped under the hinge in fullscreen, so pictures line up across the gap. |
+| Open fullscreen | **Off** / On | A chapter opens on both screens. SELECT or B leaves. |
 | Preload | 2 / **3** / 6 pages | More: smoother on a slow server, more data. |
 | Page cache | 100 MB / **300 MB** / 1 GB | Pages kept on the card to read again without downloading. Covers: 50 MB more. |
-| Clear cache | (button: "Clear · 214 MB") | |
-| Downloads folder | the Files place's `Manga` folder (or another, picked in the browser) | Where downloaded chapters go, as CBZ files you can also copy. |
-| Downloads | (line: "1.2 GB · 18.4 GB free on the card") | Separate from the page cache; delete on the Downloads page. |
+| Clear cache | (button: "Clear · 214 MB") | Empties the pages kept on the card. Press A twice. |
 | Adult sources | **Hidden** / Shown | Sources a repository marks as adult. |
 | Reading history | **On** / Off | Off clears it. |
 | In Recent on Home | **On** / Off | |
 | Repositories (note, no value) | | Repositories are added by you. Banana Player doesn't provide or check their content. |
 
-Each switch goes into `Settings` + `REMEMBER` in `settings.cpp`, the row ids in `ui.h`, and `settingRows()` /
+The reader's own on/off switch is not among these rows: it is in **Manage extensions** (A on its row), or on the web
+dashboard.
+
+Each switch goes into `Settings` + `REMEMBER` in `settings.cpp`, the row ids in `ui.h`, and `mangaSettingRows()` /
 `settingHelp()`, per the rules.
 
 ## 10. v1 and later
 
-**v1:** Home's Extensions drawer, Manage extensions (and Settings › Extensions, the dashboard's card), the first-time
+**v1:** Home's Extensions drawer, Manage extensions (and the reader's own **Manga settings** page, the dashboard's card), the first-time
 sheet; Library, History, Browse, Sources, Series, Reader, Pages; On this handheld
 (folders, CBZ/CB7/CBR), network folders, Komga, OPDS (+ PSE; covers Kavita); Lua sources and repositories (install,
 update, remove); the reader's own page renderer (paged Right to left / Left to right with swipe and snap; Strip, one
@@ -481,7 +497,8 @@ PDF. Not planned: Book mode (owner's decision).
 
 ## 12. Open questions for the owner
 
-Answered: Home's 4th tile is the Extensions drawer (section 1); Settings gets one Extensions tile (section 9); Home's
+Answered: Home's 4th tile is the Extensions drawer (section 1); the reader's settings are a page of their own inside
+the Manga app, **Manga settings** (section 9), not a group of Banana Player's Settings; Home's
 Recent shows manga cards that open at the page; the reader has its own renderer and music plays on; downloads and
 Strip are in v1 (Strip after the smoothness prototype); adult sources hidden by default; SHA-256 only for v1
 (signing later); Komga progress sync later; no Book mode; L/R step the app's pages and A zooms.
@@ -500,8 +517,9 @@ double-page spread printed sideways) is read without turning.
 - **One tall view.** The two panels and the gap between them are one view of the page: the top panel shows its first
   panel-height, the bottom panel the rest. The page is laid out once, so nothing is drawn twice and nothing is scaled.
 - **The hinge's gap is skipped.** The gap under the hinge would cut the art in two; the view leaves it out, so the page
-  carries on across the fold and the lines up. Its size is a setting — **36** of the panel's 480 lines by default
-  (measured on the handheld), in the player's settings file (`manga-hinge`).
+  carries on across the fold and the lines up. Its size is a setting of its own, **Hinge gap** in **Manga settings**:
+  **36** of the panel's 480 lines by default (measured on the handheld), 0 to 80 in steps of 4 (in the player's settings
+  file: `manga-hinge`).
 - **The paged modes spread across both panels.** A page in Right to left or Left to right is fitted to the whole tall
   view, so it runs from the top panel into the bottom one; the Strip's column is one tall column the same way.
 - **The bottom panel draws its own share** of the pages, from the pages the reader has already decoded and kept, so the
@@ -509,8 +527,10 @@ double-page spread printed sideways) is read without turning.
 - **The controls overlay on a tap.** In fullscreen the bottom panel is all page; a tap puts the reader's controls (the
   page number, the slider, the chapter buttons) back over it, and a tap again takes them away.
 - **The first-time toast.** The first time fullscreen opens, a toast says what it is and that **B** leaves it.
-- **Open fullscreen** is offered on the reading page, so fullscreen can be reached without the key.
+- **Open fullscreen** is a setting of its own, **Open fullscreen** in **Manga settings**: with it on a chapter opens on
+  both screens, so fullscreen is reached without the key (SELECT still turns it on and off).
 
-Built today: **SELECT**, **B** leaving fullscreen first, the one tall view, the skipped hinge gap and its setting, the
-paged modes across both panels, the bottom panel's own share of the pages, and the page tag (the page number, shown for
-a moment after a change). Still to come: the controls overlay on a tap, the first-time toast and **Open fullscreen**.
+Built today: **SELECT**, **B** leaving fullscreen first, the one tall view, the skipped hinge gap and its setting
+(**Hinge gap** in Manga settings), the paged modes across both panels, the bottom panel's own share of the pages, and the
+page tag (the page number, shown for a moment after a change). The controls overlay on a tap and the first-time toast
+are built too, and **Open fullscreen** is a setting rather than a button.
