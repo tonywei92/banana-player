@@ -83,8 +83,18 @@ namespace bp
 		touchLocked = false;	// the lock is the video's
 		if (bgPlay) landFlashUntil = SDL_GetTicks() + 900;	// the mini bar's edge lit a moment: it's still playing
 		dropTouch();
+		// played from a playlist's page: back to the list of playlists, the cursor on that one (the owner's rule: Back
+		// leaves the playlist; List on the player opens it, toSource above)
+		if (page == Page::Browse && !inMenu && isPlDir(browseDir))
+		{
+			std::string file = plFileOf(browseDir);
+			enterFolder(PLROOT, p);
+			for (size_t i = 0; i < browsePaths.size(); i++)
+				if (browsePaths[i] == file) { cursor = (int)i; break; }
+			fitList();
+		}
 		// back in the folder of what played: the cursor on it (the photo last viewed, the song or video Next moved on to)
-		if (page == Page::Browse && !inMenu && !lastPlayed.empty())
+		else if (page == Page::Browse && !inMenu && !lastPlayed.empty())
 			for (size_t i = 0; i < browsePaths.size(); i++)
 				if (browsePaths[i] == lastPlayed)
 				{

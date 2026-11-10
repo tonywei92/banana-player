@@ -75,7 +75,8 @@ its folder on that file.
 Leaving the player doesn't stop what plays. **B** (or **Back**, or **<**) on the playing screen takes you to the list,
 and the song or video goes on: a video keeps playing full size on the top screen, a song keeps its visualizer or art.
 Paused stays paused. You land back **where you were before you opened the player**: the same page, folder, cursor
-and scroll (Home, a folder, a playlist, All recent, START's menu…). Started with a file, or after **Show in folder**,
+and scroll (Home, a folder, All recent, START's menu…); from a playlist's page, the list of playlists, the cursor on
+that playlist. Started with a file, or after **Show in folder**,
 you land in the folder (or playlist) it plays from, the cursor on it. The same goes for **Stop** and for the end of
 the list while the playing screen was up.
 
@@ -230,8 +231,9 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 
 **List** (**Y**) on a playlist's song opens that playlist's own page (its order, its edits), the cursor on the song,
 what plays going on behind; the first time a playlist's song opens, the List key glows a soft yellow twice to say so.
-**B** from the player always goes back to where you opened it from (a folder, a playlist, Home, Settings…); back in
-the folder of what played (or the photo last viewed), the cursor is on it.
+**B** from the player goes back to where you opened it from (a folder, Home, Settings…), and from a playlist's page to
+the list of playlists, the cursor on that playlist; back in the folder of what played (or the photo last viewed), the
+cursor is on it.
 
 Otherwise **Up next** (**Y**, or the **List** key) lists what plays from (a folder, a playlist, Recent's folder, a selection
 from the web) in its own order: Shuffle never reorders it. The one playing is marked **Now** (**Paused**, or **Browser**

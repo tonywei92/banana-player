@@ -976,7 +976,8 @@ namespace bp
 			ICON_TYPE, ICON_TEST, ICON_SAVE, ICON_PLAYLIST, ICON_LIKED, ICON_NEW };
 		RowIcon rowIcon(int row) const;
 		void drawRowIcon(RowIcon icon, int x, int y, SDL_Color c);
-		bool backIconShown(const Player&) const { return true; }	// every page has it
+		// every page has it but Home (nowhere to go back to; B twice there still quits, START has Quit)
+		bool backIconShown(const Player&) const { return !(page == Page::Browse && !inMenu && atHome()); }
 		static constexpr Uint32 UNLOCK_HOLD_MS = 1000;	// buttonRect's ids beside the grid's 0..9
 		static constexpr int SET_ARROW_X = 372;	// a settings row's left arrow: a tap left of the value's middle steps back
 

@@ -605,12 +605,15 @@ namespace bp
 
 	void Ui::drawHeader(const std::string& title, const Player& p, int titleRight)
 	{
-		drawBackIcon();
-		int room = 616 - 72 - (battery.percent >= 0 ? BATTERY_W : 0) - (webIndicatorShown(p) ? 26 : 0);
+		// (Home has no "<": its title takes the place, lined up with the page's 16-unit margin)
+		bool back = backIconShown(p);
+		if (back) drawBackIcon();
+		int x = back ? 72 : 16;
+		int room = 616 - x - (battery.percent >= 0 ? BATTERY_W : 0) - (webIndicatorShown(p) ? 26 : 0);
 		// the clock's room too (none over a photo: its title as it always was)
-		if (!clockText(p).empty() || markW(p)) room = std::min(room, statusLeft(p) - 12 - 72);
-		if (titleRight) room = std::min(room, titleRight - 12 - 72);
-		drawTextMid(title, 2, TEXT, 72, 32, room);
+		if (!clockText(p).empty() || markW(p)) room = std::min(room, statusLeft(p) - 12 - x);
+		if (titleRight) room = std::min(room, titleRight - 12 - x);
+		drawTextMid(title, 2, TEXT, x, 32, room);
 		drawBattery(616, 24, p);
 	}
 
