@@ -170,19 +170,6 @@ namespace bp
 		}
 	}
 
-#ifdef BP_MANGA_FETCH
-	// The player defines BP_MANGA_FETCH (CMakeLists.txt): repos-test compiles this file without a MangaFetch to
-	// link and never constructs the adapter.
-	uint64_t MangaFetchApi::get(const std::string& url, const Headers& headers, int64_t maxBytes)
-	{
-		return fetch_.get(url, headers, maxBytes);
-	}
-
-	void MangaFetchApi::cancel(uint64_t id)
-	{
-		fetch_.cancel(id);
-	}
-#endif
 
 	MangaRepos::MangaRepos(FetchApi& fetch, Validator validator) : fetch_(fetch), validator_(std::move(validator))
 	{

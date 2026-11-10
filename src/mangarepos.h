@@ -6,7 +6,7 @@
 // injected: a validator is handed the script text, the id the index claims, and returns why it was refused.
 // The fetcher is a tiny interface too, with MangaFetchApi as the player's adapter, so a test can serve its own bytes.
 #pragma once
-#include "mangafetch.h"	// MangaFetch::Result, which onFetched takes
+#include "fetchapi.h"	// FetchApi, MangaFetch::Result (onFetched takes it)
 #include "mangarepo.h"
 #include <cstdint>
 #include <functional>
@@ -17,33 +17,6 @@
 
 namespace bp
 {
-	// What the manager needs from a fetcher: a GET and a way to forget it. MangaFetch's own get() fits, and the test
-	// fake implements these two without a thread or a socket.
-	class FetchApi
-	{
-	public:
-		using Headers = std::vector<std::pair<std::string, std::string>>;
-		virtual ~FetchApi() = default;
-		// 0: it has stopped and will never answer
-		virtual uint64_t get(const std::string& url, const Headers& headers = {},
-			int64_t maxBytes = 64 * 1024 * 1024) = 0;
-		virtual void cancel(uint64_t id) = 0;
-	};
-
-	// The player's fetcher. Its methods live in mangarepos.cpp under BP_MANGA_FETCH (the player defines it): the test
-	// target compiles the manager without a MangaFetch to link to.
-	class MangaFetchApi : public FetchApi
-	{
-	public:
-		explicit MangaFetchApi(MangaFetch& fetch) : fetch_(fetch) {}
-		uint64_t get(const std::string& url, const Headers& headers = {},
-			int64_t maxBytes = 64 * 1024 * 1024) override;
-		void cancel(uint64_t id) override;
-
-	private:
-		MangaFetch& fetch_;
-	};
-
 	class MangaRepos
 	{
 	public:

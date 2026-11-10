@@ -4,7 +4,7 @@
 // pass and hands every fetch answer to onFetched() before the Ui sees it, so the fetcher's thread does the waiting and
 // a slow server never stalls a panel. A restart resumes at the first page missing from the work folder.
 #include "dlqueue.h"
-#include "mangafetch.h"
+#include "fetchapi.h"
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -14,38 +14,6 @@
 
 namespace bp
 {
-	// What the engine asks of a fetcher: the two calls one download makes. Tests hand it a fake that writes canned
-	// pages, so no thread and no server are involved (the no-network build's stub could never produce a page).
-	class FetchApi
-	{
-	public:
-		// the same shape MangaFetch uses, so the adapter below passes them through untouched
-		using Headers = std::vector<std::pair<std::string, std::string>>;
-		virtual ~FetchApi() = default;
-		virtual uint64_t get(const std::string& url, const Headers& headers, int64_t maxBytes,
-			const std::string& toFile) = 0;
-		virtual void cancel(uint64_t id) = 0;
-	};
-
-#ifdef BP_MANGA_FETCH
-	// MangaFetch satisfies FetchApi through this: the engine sees a queue and a cancel, never the fetcher's thread.
-	// It lives in the header (and inline) so the downloader's test can link mangadownloader.cpp without libcurl.
-	class MangaFetchApi final : public FetchApi
-	{
-	public:
-		explicit MangaFetchApi(MangaFetch& fetch) : fetch_(fetch) {}
-		uint64_t get(const std::string& url, const Headers& headers, int64_t maxBytes,
-			const std::string& toFile) override
-		{
-			return fetch_.get(url, headers, maxBytes, toFile);
-		}
-		void cancel(uint64_t id) override { fetch_.cancel(id); }
-
-	private:
-		MangaFetch& fetch_;
-	};
-#endif
-
 	class MangaDownloader
 	{
 	public:

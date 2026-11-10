@@ -72,7 +72,12 @@ namespace
 		std::map<std::string, std::string> bodies;	// url -> the bytes a 200 carries
 		std::set<std::string> fail;					// urls whose request fails (no signal, offline)
 
-		uint64_t get(const std::string& url, const Headers& headers, int64_t maxBytes) override
+		uint64_t get(const std::string& url, const Headers& headers, int64_t maxBytes, const std::string& toFile) override
+		{
+			(void)toFile;
+			return get3(url, headers, maxBytes);
+		}
+		uint64_t get3(const std::string& url, const Headers& headers, int64_t maxBytes)
 		{
 			Req q;
 			q.id = next_++;
