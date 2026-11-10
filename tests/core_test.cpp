@@ -32,6 +32,7 @@ extern "C"
 #include "mangastore.h"
 #include "mangalocal.h"
 #include "manga_ui_logic.h"
+#include "mangaremote.h"
 #include "mangarepo.h"
 #include "netpath.h"
 #include "opds.h"
@@ -315,6 +316,243 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("Volume"), -1.0);
 	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+// the servers' catalogue: the requests a Komga, Kavita or OPDS server is asked with, and the same answers read
+// back into the shapes a source script returns (every body here is canned and invented, the way they are written)
+static void testMangaRemote()
+{
+	MangaServer k;
+	k.kind = "komga";
+	k.name = "Home Komga";
+	k.url = "http://komga.lan:25600/";	// trailing slash and all: joining is the model's job
+	k.user = "reader";
+	auto hdr = [](const RemoteRequest& r, const std::string& n)
+	{
+		for (const std::pair<std::string, std::string>& h : r.headers)
+			if (h.first == n) return h.second;
+		return std::string();
+	};
+
+	// Basic auth as RFC 7617 writes it, base64 over "user:password"; no user, no header — and never a header for
+	// Kavita, whose OPDS url carries the api key in its path
+	CHECK_EQ(remoteAuth(k, "s3cret", "http://komga.lan:25600/api/v1/libraries").headers.size(), (size_t)2);
+	CHECK_EQ(hdr(remoteAuth(k, "s3cret", "u"), "Authorization"), std::string("Basic cmVhZGVyOnMzY3JldA=="));
+	CHECK_EQ(hdr(remoteAuth(k, "s3cret", "u"), "Accept"), std::string("application/json"));
+	MangaServer guest = k;
+	guest.user = "";
+	RemoteRequest g = remoteAuth(guest, "pw", "u");
+	CHECK_EQ(g.headers.size(), (size_t)1);
+	CHECK_EQ(hdr(g, "Authorization"), std::string(""));
+	MangaServer kav;
+	kav.kind = "kavita";
+	kav.name = "Kavita";
+	kav.url = "https://kavita.lan:5000/api/Opds/9c3f0a61be/";
+	kav.user = "tony";
+	RemoteRequest ka = remoteAuth(kav, "ignored", kav.url);
+	CHECK_EQ(ka.headers.size(), (size_t)1);	// the key is in the url, so the password is never sent
+	CHECK_EQ(hdr(ka, "Accept"), std::string("application/atom+xml"));
+
+	// every Komga request the model builds
+	CHECK_EQ(remoteKomgaLibraries(k, "s3cret").url, std::string("http://komga.lan:25600/api/v1/libraries"));
+	CHECK_EQ(remoteKomgaSeries(k, "", "manga", 2).url, std::string(
+		"http://komga.lan:25600/api/v1/series?library_id=manga&page=2&size=40&sort=metadata.titleSort"));
+	// the search text is escaped: a "&" in a query is the server's separator, not part of the text
+	CHECK_EQ(remoteKomgaSearch(k, "", "Night & Day 10", 0).url, std::string(
+		"http://komga.lan:25600/api/v1/series?search=Night%20%26%20Day%2010&page=0&size=40"));
+	CHECK_EQ(remoteKomgaBooks(k, "", "s7", 1).url, std::string(
+		"http://komga.lan:25600/api/v1/series/s7/books?page=1&size=100&sort=metadata.numberSort"));
+	RemoteRequest pg = remoteKomgaPage(k, "s3cret", "b7", 1);	// Komga's own page numbers start at 1
+	CHECK_EQ(pg.url, std::string("http://komga.lan:25600/api/v1/books/b7/pages/1"));
+	CHECK_EQ(hdr(pg, "Accept"), std::string("image/*"));	// a page is a picture whatever the api answers with
+	CHECK_EQ(hdr(pg, "Authorization"), std::string("Basic cmVhZGVyOnMzY3JldA=="));
+	CHECK_EQ(remoteKomgaPage(k, "", "b7", 0).url, std::string(""));	// below the first page is not a request
+	CHECK_EQ(remoteKomgaSeriesCover(k, "", "s7").url, std::string("http://komga.lan:25600/api/v1/series/s7/thumbnail"));
+	CHECK_EQ(hdr(remoteKomgaSeriesCover(k, "", "s7"), "Accept"), std::string("image/*"));
+	CHECK_EQ(remoteKomgaBookCover(k, "", "b7").url, std::string("http://komga.lan:25600/api/v1/books/b7/thumbnail"));
+	// the same server's OPDS face hangs under its url; the other kinds are stored as their OPDS url
+	RemoteRequest ks = remoteOpdsStart(k, "");
+	CHECK_EQ(ks.url, std::string("http://komga.lan:25600/opds/v1.2"));
+	CHECK_EQ(hdr(ks, "Accept"), std::string("application/atom+xml"));
+	RemoteRequest os = remoteOpdsStart(kav, "");
+	CHECK_EQ(os.url, kav.url);
+
+	// the libraries answer, which is a bare array, into folders — and the paged shape through the same door
+	const std::string libs = R"([
+		{"id":"lib-manga","name":"Manga","mediaType":"MANGA"},
+		{"id":"lib-comics","name":"Comics","mediaType":"COMICS"}
+	])";
+	RemoteList folders;
+	CHECK_EQ(remoteKomgaLibraryList(libs, folders), true);
+	CHECK_EQ(folders.items.size(), (size_t)2);
+	CHECK_EQ(folders.items[0].key, std::string("lib-manga"));
+	CHECK_EQ(folders.items[0].title, std::string("Manga"));
+	CHECK_EQ(folders.items[0].folder, true);
+	CHECK_EQ(folders.items[0].cover, std::string(""));	// Komga offers no library thumbnails
+	CHECK_EQ(folders.more, false);
+	CHECK_EQ(remoteKomgaLibraryList(R"({"content":[{"id":"l","name":"One"}],"totalPages":1})", folders), true);
+	CHECK_EQ(folders.items.size(), (size_t)1);
+	CHECK_EQ(remoteKomgaLibraryList("nonsense", folders), false);
+
+	// a page of series: keys, thumbnail urls, and whether a page follows
+	const std::string series = R"({
+		"content":[
+			{"id":"SERIES1","name":"Paper Lanterns","booksCount":12,"deleted":false,
+			 "metadata":{"title":"Paper Lanterns","titleSort":"paper lanterns","status":"ONGOING"}},
+			{"id":"SERIES2","name":"","metadata":{"title":"Quiet Hours"}}
+		],
+		"page":0,"size":40,"totalElements":61,"totalPages":3
+	})";
+	RemoteList list;
+	CHECK_EQ(remoteKomgaSeriesList(k.url, series, 0, list), true);
+	CHECK_EQ(list.items.size(), (size_t)2);
+	CHECK_EQ(list.items[0].key, std::string("SERIES1"));
+	CHECK_EQ(list.items[1].title, std::string("Quiet Hours"));	// a nameless item shows its metadata title
+	CHECK_EQ(list.items[0].cover, std::string("http://komga.lan:25600/api/v1/series/SERIES1/thumbnail"));
+	CHECK_EQ(list.items[0].folder, false);
+	CHECK_EQ(list.more, true);		// three pages, and this was the first of them
+	CHECK_EQ(list.next, std::string(""));	// Komga pages by number: the caller asks for page 1
+	CHECK_EQ(remoteKomgaSeriesList(k.url, series, 2, list), true);
+	CHECK_EQ(list.more, false);		// the last page, fetched
+	CHECK_EQ(remoteKomgaSeriesList(k.url, R"({"nope":1})", 0, list), false);
+	CHECK_EQ(remoteKomgaSeriesList(k.url, "[]", 0, list), false);	// not one of Komga's paged answers
+
+	// a page of books: chapters keyed by their ids, numbered, with the page count the media reports —
+	// an object in older Komga's answers, an array of files in newer ones
+	const std::string books = R"({
+		"content":[
+			{"id":"BOOK1","seriesId":"SERIES1","name":"Chapter 1 - First Light","number":1,"numberSort":1,
+			 "media":{"size":1024,"pages":24,"mediaType":"IMAGE"}},
+			{"id":"BOOK2","name":"Story Bridge","number":10.5,"numberSort":10.5,"media":[{"pagesCount":31}]},
+			{"id":"BOOK3","name":"Chapter 7.5","metadata":{"number":"7.5"}}
+		],
+		"totalPages":2
+	})";
+	std::vector<RemoteChapter> chapters;
+	bool more = false;
+	CHECK_EQ(remoteKomgaChapterList(books, 0, chapters, more), true);
+	CHECK_EQ(chapters.size(), (size_t)3);
+	CHECK_EQ(chapters[0].key, std::string("BOOK1"));
+	CHECK_EQ(chapters[0].name, std::string("Chapter 1 - First Light"));
+	CHECK_EQ(chapters[0].number, 1.0);
+	CHECK_EQ(chapters[0].pages, 24);
+	CHECK_EQ(chapters[1].number, 10.5);
+	CHECK_EQ(chapters[1].pages, 31);
+	CHECK_EQ(chapters[2].number, 7.5);	// no sort value from the server: the number the name carries
+	CHECK_EQ(chapters[2].pages, -1);	// and no media at all: unknown, not zero
+	CHECK_EQ(more, true);
+	CHECK_EQ(remoteKomgaChapterList(books, 1, chapters, more), true);
+	CHECK_EQ(more, false);
+
+	// an OPDS navigation feed: folders whose keys are absolute, whatever shape the hrefs came in, and the
+	// feed's own next link
+	const std::string nav = R"NAV(<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:opds:root</id>
+  <title>The Lantern Shelf</title>
+  <link rel="search" type="application/opensearchdescription+xml" href="/opds/search.xml"/>
+  <link rel="next" type="application/atom+xml;profile=opds-catalog" href="/opds/shelves?page=2"/>
+  <entry>
+    <id>urn:shelf:comics</id>
+    <title>Comics</title>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=navigation" href="opds/shelf/comics"/>
+    <link rel="http://opds-spec.org/image" type="image/jpeg" href="opds/covers/comics.jpg"/>
+  </entry>
+  <entry>
+    <id>urn:shelf:manga</id>
+    <title>Manga</title>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=navigation" href="/opds/shelf/manga"/>
+  </entry>
+  <entry>
+    <id>urn:about</id>
+    <title>An entry that opens nothing</title>
+  </entry>
+</feed>
+)NAV";
+	RemoteList shelves;
+	CHECK_EQ(remoteOpdsList("https://books.lan/opds", nav, shelves), true);
+	CHECK_EQ(shelves.items.size(), (size_t)2);	// the entry with neither a way down nor a way to read is dropped
+	CHECK_EQ(shelves.items[0].folder, true);
+	CHECK_EQ(shelves.items[0].key, std::string("https://books.lan/opds/shelf/comics"));
+	CHECK_EQ(shelves.items[0].cover, std::string("https://books.lan/opds/covers/comics.jpg"));
+	CHECK_EQ(shelves.items[1].key, std::string("https://books.lan/opds/shelf/manga"));
+	CHECK_EQ(shelves.items[1].cover, std::string(""));
+	CHECK_EQ(shelves.more, true);
+	CHECK_EQ(shelves.next, std::string("https://books.lan/opds/shelves?page=2"));
+	CHECK_EQ(remoteOpdsList("https://books.lan/opds", "<html>the server's error page</html>", shelves), false);
+
+	// an acquisition feed: a PSE chapter streams its pages, a plain one hands a whole CBZ, a shelf isn't one
+	const std::string acq = R"ACQ(<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <id>urn:series:paperlanterns</id>
+  <entry>
+    <id>urn:chapter:1</id>
+    <title>Chapter 1</title>
+    <link rel="http://opds-spec.org/acquisition" type="application/vnd.comicbook+zip" href="/files/ch1.cbz"/>
+    <link rel="http://vaemendis.net/opds-pse/stream" type="image/jpeg"
+          href="/opds/series/7/ch/1/{pageNumber}?width={maxWidth}" pse:count="3"/>
+  </entry>
+  <entry>
+    <id>urn:chapter:2</id>
+    <title>Chapter 2 - The Night Market</title>
+    <link rel="http://opds-spec.org/acquisition" type="application/vnd.comicbook+zip" href="files/ch2.cbz"/>
+  </entry>
+  <entry>
+    <id>urn:series:other</id>
+    <title>Another series</title>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="/opds/series/9"/>
+  </entry>
+</feed>
+)ACQ";
+	std::vector<RemoteChapter> ops;
+	CHECK_EQ(remoteOpdsChapters("https://books.lan/opds/series/7", acq, ops), true);
+	CHECK_EQ(ops.size(), (size_t)2);	// the shelf was skipped
+	CHECK_EQ(ops[0].name, std::string("Chapter 1"));
+	CHECK_EQ(ops[0].number, 1.0);
+	CHECK_EQ(ops[0].pages, 3);	// the stream's own count
+	CHECK_EQ(ops[0].key, std::string("https://books.lan/opds/series/7/ch/1/{pageNumber}?width={maxWidth}"));
+	CHECK_EQ(ops[0].url, std::string("https://books.lan/files/ch1.cbz"));	// the file it can also be downloaded as
+	std::vector<std::string> pageUrls = remoteOpdsPageUrls(ops[0], 1024);
+	CHECK_EQ(pageUrls.size(), (size_t)3);	// PSE numbers its pages from 0
+	CHECK_EQ(pageUrls[0], std::string("https://books.lan/opds/series/7/ch/1/0?width=1024"));
+	CHECK_EQ(pageUrls[2], std::string("https://books.lan/opds/series/7/ch/1/2?width=1024"));
+	CHECK_EQ(ops[1].url, std::string("https://books.lan/opds/series/files/ch2.cbz"));	// relative: resolved in the feed's own folder
+	CHECK_EQ(ops[1].pages, -1);	// no stream: a whole file to download
+	CHECK_EQ(remoteOpdsPageUrls(ops[1], 1024).size(), (size_t)0);
+	CHECK_EQ(ops[1].number, 2.0);	// OPDS carries no number: the name is all there is
+	// the same feed read as a list: chapters become items, and the shelf a folder
+	RemoteList mixed;
+	CHECK_EQ(remoteOpdsList("https://books.lan/opds/series/7", acq, mixed), true);
+	CHECK_EQ(mixed.items.size(), (size_t)3);
+	CHECK_EQ(mixed.items[0].folder, false);
+	CHECK_EQ(mixed.items[0].key, std::string("https://books.lan/files/ch1.cbz"));
+	CHECK_EQ(mixed.items[2].folder, true);
+	CHECK_EQ(mixed.items[2].key, std::string("https://books.lan/opds/series/9"));
+
+	// search: the OpenSearch description behind the feed's search link carries the query template, escaped
+	// entities and all, and a parameter separator of "&" means a query with a "&" must not smuggle one in
+	const std::string desc = R"OSC(<?xml version="1.0" encoding="utf-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Lantern search</ShortName>
+  <Url type="application/opensearchdescription+xml" rel="self" template="https://books.lan/opds/search.xml"/>
+  <Url type="application/atom+xml" template="/opds/search?query={searchTerms}&amp;size=20"/>
+</OpenSearchDescription>
+)OSC";
+	MangaServer op;
+	op.kind = "opds";
+	op.name = "Shelf OPDS";
+	op.url = "https://books.lan/opds";
+	op.user = "tony";
+	RemoteRequest sq = remoteOpdsSearch(op, "hunter2", "https://books.lan/opds/search.xml", desc, "Night & Day");
+	CHECK_EQ(sq.url, std::string("https://books.lan/opds/search?query=Night%20%26%20Day&size=20"));
+	CHECK_EQ(hdr(sq, "Authorization"), std::string("Basic dG9ueTpodW50ZXIy"));
+	CHECK_EQ(hdr(sq, "Accept"), std::string("application/atom+xml"));	// a feed of results, even from Kavita
+	const std::string descPct =
+		"<OpenSearchDescription><Url template=\"s?q=%7BsearchTerms%7D\"/></OpenSearchDescription>";
+	CHECK_EQ(remoteOpdsSearch(op, "", "http://h/opds/search.xml", descPct, "a b").url,
+	         std::string("http://h/opds/s?q=a%20b"));
+	// a description that holds no query template is no search: the request asks for nothing
+	CHECK_EQ(remoteOpdsSearch(op, "", "http://h/s.xml", "<OpenSearchDescription/>", "x").url, std::string(""));
 }
 
 // the comic servers the reader reads from: added, changed, removed and kept in a file; the password is sealed, so
@@ -7064,6 +7302,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testMangaRemote();
 	testMangaServers();
 	testHtmlDoc();
 	testPageCache();
