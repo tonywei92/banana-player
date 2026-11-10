@@ -23,10 +23,13 @@ Lua state, no network, no files written; the extension's code is in the binary b
    calls them source scripts.
 3. **The reader has its own page renderer on the top panel** (owner's decision): GL textures drawn in the existing top
    window and context while the reader is open; mpv isn't used for pages. It reuses `PhotoView`'s zoom and fit
-   geometry (`photo.cpp`, bpcore) and scrolls like a phone: Vertical and Webtoon are one continuous strip that follows
-   the finger 1:1 and glides on with inertia; Right to left and Left to right are a horizontal swipe that snaps to a
-   page. **Music keeps playing** while reading (mpv plays it; the top panel shows the reader instead of the
-   visualizer; the mini bar and Now playing still control it). Section 7.
+   geometry (`photo.cpp`, bpcore) and scrolls like a phone: **Strip** (one mode for vertical comics and webtoons, the
+   owner's decision) is one continuous column of pages, no gap, that follows the finger 1:1 and glides on with inertia;
+   Right to left and Left to right are a horizontal swipe that snaps to a page. **Music keeps playing** while reading
+   (mpv plays it; the top panel shows the reader instead of the visualizer). Section 7.
+   **The mini bar shows on every bottom-panel page, the reader's included, except the player itself** (owner's
+   decision): it controls what plays, and a tap on it opens the player; **B** in the player minimizes it back to the
+   mini bar, on the page it was opened from (the reader at its page).
 4. **No sources and no repositories ship.** Built-in sources are only the user's own: files on the card, network folders,
    Komga / Kavita / OPDS servers. Repositories are typed in by the user.
 5. **Reading is local to the handheld in v1.** The web dashboard manages repositories, sources and the library; reading in
@@ -93,14 +96,14 @@ drawer, B in the drawer goes Home), X Options, START Menu (in the drawer: Manage
 - **Right = forward.** When the page is bigger than the screen at the current fit or zoom (Fit width, zoomed in, a tall
   page), Right first moves one screenful on through the page (down, then across for a wide one, in reading order); at the
   page's end it turns to the next page, and past a chapter's last page it shows the end card, then the next chapter.
-  In Vertical and Webtoon it is one screenful down. Every step is animated (a 180 ms ease-out slide, not a jump).
+  In Strip it is one screenful down. Every step is animated (a 180 ms ease-out slide, not a jump).
 - **Left = back:** a screenful up (back through the page), and at the page's top the previous page (opened at its end, so
   Left reads backwards smoothly).
 - **Right is forward whatever the reading direction** by default. **Swap Left/Right** (a Manga setting, Off) makes Left
   forward, for those who want it to match a right-to-left book. Either way the page-turn slide follows the reading
   direction (right to left: the new page comes in from the left).
 
-| Input | Paged (Right to left, Left to right) | Strip (Vertical, Webtoon) |
+| Input | Paged (Right to left, Left to right) | Strip |
 |---|---|---|
 | **D-pad Right / Left** | forward / back by a screenful, then by a page (above) | a screenful down / up |
 | **R / L** | next / previous page, straight to it (skips the rest of a tall or zoomed page) | a screenful down / up |
@@ -108,7 +111,7 @@ drawer, B in the drawer goes Home), X Options, START Menu (in the drawer: Manage
 | **Stick** | pan, any direction | scroll smoothly |
 | **A** | zoom to 2× at the centre / back to the fit | fit width / 2× |
 | **B** | close the reader (progress saved) to the series page | same |
-| **X** | reading mode, cycled with a card on top (RTL → LTR → Vertical → Webtoon), kept for this series | same |
+| **X** | reading mode, cycled with a card on top (RTL → LTR → Strip), kept for this series | same |
 | **Y** | Pages (thumbnail grid) | same |
 | **L2 / R2** | previous / next chapter (top card with its name) | same |
 | **SELECT** | fit: Page / Width / Fill | — |
@@ -327,8 +330,10 @@ its own tests (sandbox escapes, limits, a fixture source against a local HTTP se
   temporary folder and are zipped (stored, not deflated: images are compressed already) into
   `<downloads folder>/<Series>/<Chapter>.cbz` with a `ComicInfo.xml` (series, number, title, the source and its
   series key), then renamed in place, so a half chapter never looks whole. The queue is kept in
-  `manga/downloads-queue.tsv` and resumes after a restart. Pause/resume per item and for all; an "Only while charging"
-  option. The reader prefers a downloaded chapter over the network. Downloaded files also show under On this handheld,
+  `manga/downloads-queue.tsv`. Downloads need the network and run whenever it's there (no charging or Wi-Fi-only
+  option, owner's decision); one interrupted (the Wi-Fi gone, sleep, a quit, a server error) resumes by itself where
+  it stopped, from the next page not yet written, when the network is back or on the next start. Pause/resume per item
+  and for all. The reader prefers a downloaded chapter over the network. Downloaded files also show under On this handheld,
   linked to their series (by ComicInfo) rather than listed twice.
 - **Covers on the bottom panel:** decoded and scaled to the tile size on the worker, turned into SDL textures on the main
   thread (≤ 80 kept, least recently drawn freed). Generated gradient covers (as the dashboard's `GenCover`) until the
@@ -373,14 +378,13 @@ threads. Nothing is deleted by turning it off: the library, history and installe
 | Row | Values | Help line |
 |---|---|---|
 | Manga reader | **Off** / On | Read comics and manga from your files, your servers and sources you add. Off: none of it shows or runs. |
-| Reading mode | **Right to left** / Left to right / Vertical / Webtoon | How a new series opens; X in the reader changes it for that series. |
+| Reading mode | **Right to left** / Left to right / Strip | How a new series opens; X in the reader changes it for that series. |
 | Page fit | **Page** / Width / Fill | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. |
 | Swap Left/Right | **Off** / On | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
 | Preload | 2 / **3** / 6 pages | More: smoother on a slow server, more data. |
 | Page cache | 100 MB / **300 MB** / 1 GB | Pages kept on the card to read again without downloading. Covers: 50 MB more. |
 | Clear cache | (button: "Clear · 214 MB") | |
 | Downloads folder | the Files place's `Manga` folder (or another, picked in the browser) | Where downloaded chapters go, as CBZ files you can also copy. |
-| Download | **Always** / Only while charging | The handheld's only network is Wi-Fi, so there is no Wi-Fi-only switch. |
 | Downloads | (line: "1.2 GB · 18.4 GB free on the card") | Separate from the page cache; delete on the Downloads page. |
 | Adult sources | **Hidden** / Shown | Sources a repository marks as adult. |
 | Reading history | **On** / Off | Off clears it. |
@@ -395,8 +399,8 @@ Each switch goes into `Settings` + `REMEMBER` in `settings.cpp`, the row ids in 
 **v1:** Home's Extensions drawer, Manage extensions (and Settings › Extensions, the dashboard's card), the first-time
 sheet; Library, History, Browse, Sources, Series, Reader, Pages; On this handheld
 (folders, CBZ/CB7/CBR), network folders, Komga, OPDS (+ PSE; covers Kavita); Lua sources and repositories (install,
-update, remove); the reader's own page renderer (paged Right to left / Left to right with swipe and snap; Vertical and Webtoon as one
-continuous strip with drag and inertia), music playing on while reading; downloads (queue, CBZ on the card, offline
+update, remove); the reader's own page renderer (paged Right to left / Left to right with swipe and snap; Strip, one
+continuous column with drag and inertia), music playing on while reading; downloads (queue, CBZ on the card, offline
 reading, Downloads page); progress, history, Continue reading, a Recent card on Home; page and cover cache; dashboard
 pages for library, sources and repositories, downloads; FEATURES.md, a note in `docs/notes/`.
 
@@ -438,10 +442,9 @@ PDF. Not planned: Book mode (owner's decision).
 
 Answered: Home's 4th tile is the Extensions drawer (section 1); Settings gets one Extensions tile (section 9); Home's
 Recent shows manga cards that open at the page; the reader has its own renderer and music plays on; downloads and
-Webtoon are in v1 (Webtoon after the smoothness prototype); adult sources hidden by default; SHA-256 only for v1
+Strip are in v1 (Strip after the smoothness prototype); adult sources hidden by default; SHA-256 only for v1
 (signing later); Komga progress sync later; no Book mode; L/R step the app's pages and A zooms.
 
-1. The handheld has only Wi-Fi, so the download option is "Only while charging" instead of Wi-Fi only: fine?
-2. Vertical vs Webtoon, now both strips: Vertical keeps a thin gap between pages at the chosen fit; Webtoon is full width
-   with no gap. Keep both, or one strip mode with a "gap" setting?
-3. While reading, should the bottom panel show the mini bar for what plays (as in the browser), or only START › Playing?
+Answered 2026-11-10: (1) downloads need the network and always run while it's there, resuming where they stopped
+if interrupted (no charging option); (2) one Strip mode instead of Vertical and Webtoon; (3) the mini bar on every page
+but the player, and B in the player minimizes back to it.
