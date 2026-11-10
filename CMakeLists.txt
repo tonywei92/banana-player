@@ -103,7 +103,7 @@ pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil l
 add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp)
 target_link_libraries(bpprobe PUBLIC bpcore PkgConfig::AV)
 
-add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/ui_manga.cpp src/mangarepos.cpp)
+add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/ui_manga.cpp src/mangarepos.cpp src/mangadownloader.cpp)
 target_link_libraries(banana-player PRIVATE bpcore bpprobe PkgConfig::SDL2 PkgConfig::SDL2_TTF)
 # SMB through libsmb2 (bundled on the handheld; on a Mac, built into .cache/mac/libsmb2). Without it the browser's
 # Network tab says no server can be reached
@@ -190,3 +190,7 @@ target_compile_definitions(fuzz-test PRIVATE BP_FUZZ_DIR="${CMAKE_SOURCE_DIR}/te
 add_executable(repos-test tests/repos_test.cpp src/mangarepos.cpp)
 target_link_libraries(repos-test PRIVATE bpcore PkgConfig::SDL2)
 add_test(NAME repos COMMAND repos-test)
+# The download engine with a fake fetcher (canned pages, no thread and no server); SDL is only for mangafetch.h
+add_executable(downloader-test tests/downloader_test.cpp src/mangadownloader.cpp)
+target_link_libraries(downloader-test PRIVATE bpcore PkgConfig::SDL2)
+add_test(NAME downloader COMMAND downloader-test)
