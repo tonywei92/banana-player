@@ -469,6 +469,29 @@ library update checks on start (once a day) with a "new chapters" badge; read-pr
 repository signing; pinch zoom if the touchscreen can't report two fingers today; reading in the browser; categories;
 PDF. Not planned: Book mode (owner's decision).
 
+### Backlog: a browser check (Cloudflare) on the handheld
+
+Parked by the owner (2026-11-11), to revisit. Some sites put a Cloudflare check (a full-page "checking your browser",
+or a Turnstile tick box) in front of their pages; a source script can't pass it, and Banana Player never solves or
+skips one automatically. A person ticking it in a real browser engine on the handheld is the honest way (an app on
+another platform does exactly this with its system web view).
+
+- **Engine:** WPE WebKit (built for devices without a window system). Debian 12 (the bundle's build image) ships
+  libwpewebkit-1.1 2.38.6, WPEBackend-fdo 1.14 and libwpe 1.14 for arm64, so a first version can bundle Debian's
+  libraries; 2.38 has known security fixes missing, so a real version should build a current WPE from source.
+- **Shape:** a separate helper process (`bp-check`), started only when a source meets a check and closed as soon as the
+  cookie is there: the site off-screen (WPEBackend-fdo's shared-memory export, no GPU interop), its frames shown on
+  the top panel, the bottom panel's touches sent back; navigation limited to the site's own domain and Cloudflare's
+  challenge host; it hands back the cookies (`cf_clearance`) and its User-Agent, which the source's requests then use.
+- **Costs:** the bundle grows from about 42 MB to about 150 MB (WebKit, GStreamer, ICU, libsoup…); a few hundred MB of
+  RAM while it's open; a heavy cross-build to maintain.
+- **The open question first:** Cloudflare may still challenge requests whose TLS fingerprint isn't the browser's
+  (curl's isn't WebKit's). Test before building: pass the check in a desktop browser, then request the page with curl
+  using that cookie and User-Agent from the same network. If curl is refused, the source's requests should go through
+  libsoup (WebKit's own network library, bundled anyway) rather than curl.
+- **Until then:** detect the challenge page and say so plainly in the source ("This site asks for a browser check,
+  which Banana Player can't show"); servers (Komga, Kavita, OPDS) never challenge.
+
 ## 11. Risks
 
 - **The renderer is new code on the top panel:** it shares the GL context with mpv's render API, so GL state must be
