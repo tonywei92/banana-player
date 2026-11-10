@@ -299,7 +299,8 @@ To quit, use **Quit Banana Player** in quick settings (**F**), or **F + START** 
 ## Network folders
 
 Play videos, music and photos straight from a computer or a NAS on your Wi-Fi, over **SMB** (Windows file sharing,
-most NAS boxes, Samba) or **FTP** (and FTPS). Nothing is copied to the card.
+most NAS boxes, Samba), **FTP** (and FTPS) or **DLNA** (the media server of Plex, Jellyfin, a NAS or a Windows PC;
+turn it on in the server, for Plex under Settings › DLNA). Nothing is copied to the card.
 
 - With no connections yet, the Network section offers **Add connection** (tap it, or **A**).
 - **Find on the network** (X in Network) lists the computers sharing files nearby (Windows, Mac, Linux, NAS):
@@ -308,6 +309,9 @@ most NAS boxes, Samba) or **FTP** (and FTPS). Nothing is copied to the card.
 - **Add connection** (X) for one it can't find, or for FTP: the type, the server's address or name, and optionally the
   port, the share or folder to start in, and how to sign in (an account, or as a guest / anonymous for FTP). **Name**
   is optional: left empty, it's named after the server ("Media on MY-PC"). **Test connection** tries it before you save.
+- **DLNA:** choose the type DLNA and type the server's address or name; the player finds its media server by itself
+  (no sign-in is needed). Folders are the server's own folders (Movies, Music...), and a file plays like any other. If
+  the server isn't found, put its description address (`http://host:port/DeviceDescription.xml`) in Server.
 - Passwords are saved encrypted with a key that only this handheld has.
 - **Y** on a connection: edit it, test it, or delete it.
 

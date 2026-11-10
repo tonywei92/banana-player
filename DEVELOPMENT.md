@@ -181,7 +181,22 @@ then after 1, 2, 4 s) for 20 s, then `Gone`. Sockets are shut down before curl's
 on a dead server. FTPS (`ftps` set) is explicit TLS and doesn't verify the certificate (NAS certificates are their
 own). Not covered: FTPS against a real server, MLSD against a real server (the test one, vsftpd, has none).
 
-`bp-net` (built with `BP_TOOLS` and `BP_NET`) tries a backend from a shell, with `ftp://host:port` for FTP:
+### DLNA backend
+
+`net_dlna.cpp` makes a DLNA/UPnP media server (Plex, Jellyfin, a NAS...) a network folder. The server is found by SSDP
+(an M-SEARCH sent to the host's port 1900 and to the multicast group; a description URL in the Server field skips
+that) and its ContentDirectory service is browsed with SOAP `Browse` (`BrowseDirectChildren`, DIDL-Lite answers,
+read by a small XML reader in the file). DLNA names things by object id and the player's paths are names, so a path
+is walked from container "0" by title: two entries of one title get " (2)", and a title with no extension gets one from
+the file's MIME type (the browser tells media by extension). A file is an item's HTTP `<res>`, read with Range requests
+in 1 MiB blocks, with one retry on a dropped connection. A folder is asked for in one request (Plex takes seconds to
+build a list whatever its length), and the listings are shared by every backend of the process for ten minutes, so
+mpv's backend finds the file picked in the browser without listing its folder again. When a kept listing leads to a missing object (Plex renumbers its ids when the library is refreshed) the kept listings are dropped and the walk is made again, once. There is no sign-in. Tested on
+Plex; `tools/mock-dlna.py` is a stand-in (it can renumber a container, drop HEAD, leave out `res@size`). Not covered: Jellyfin, minidlna, Windows
+Media Player, transcoded `<res>`, UPnP servers on IPv6 only.
+
+`bp-net` (built with `BP_TOOLS` and `BP_NET`) tries a backend from a shell, with `ftp://host:port` for FTP and
+`dlna://host[:port]` (or `dlna://http://host:port/description.xml`) for DLNA:
 
 ```sh
 build/bp-net ls ftp://127.0.0.1:2121 tony banana /Media/Movies

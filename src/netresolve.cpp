@@ -10,6 +10,7 @@ namespace bp
 	std::string hostAddress(const std::string& host)
 	{
 		in_addr a;
+		if (host.find("://") != std::string::npos) return host;	// a URL (DLNA's description address): curl resolves its host, and asking for the whole URL by name only waited out the timeout
 		if (host.empty() || inet_pton(AF_INET, host.c_str(), &a) == 1) return host;
 		static std::mutex lock;
 		static std::map<std::string, std::pair<std::string, std::chrono::steady_clock::time_point>> known;

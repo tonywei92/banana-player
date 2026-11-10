@@ -5,7 +5,7 @@
 
 namespace bp
 {
-	enum class NetType { Smb, Ftp };
+	enum class NetType { Smb, Ftp, Dlna };
 
 	struct NetServer
 	{

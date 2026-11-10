@@ -3,8 +3,8 @@
 
 namespace bp
 {
-	int defaultPort(NetType t) { return t == NetType::Ftp ? 21 : 445; }
-	const char* netTypeLabel(NetType t) { return t == NetType::Ftp ? "FTP" : "SMB"; }
+	int defaultPort(NetType t) { return t == NetType::Ftp ? 21 : t == NetType::Dlna ? 0 : 445; }
+	const char* netTypeLabel(NetType t) { return t == NetType::Ftp ? "FTP" : t == NetType::Dlna ? "DLNA" : "SMB"; }
 
 	std::string automaticServerName(const NetServer& s)
 	{
@@ -65,7 +65,7 @@ namespace bp
 		{
 			out += "[server " + s.id + "]\n";
 			out += "name = " + esc(s.name) + "\n";
-			out += std::string("type = ") + (s.type == NetType::Ftp ? "ftp" : "smb") + "\n";
+			out += std::string("type = ") + (s.type == NetType::Ftp ? "ftp" : s.type == NetType::Dlna ? "dlna" : "smb") + "\n";
 			out += "host = " + esc(s.host) + "\n";
 			out += "port = " + std::to_string(s.port) + "\n";
 			out += std::string("guest = ") + (s.guest ? "1" : "0") + "\n";
@@ -105,7 +105,7 @@ namespace bp
 			if (!in || eq == std::string::npos) continue;
 			std::string k = trim(line.substr(0, eq)), v = unesc(trim(line.substr(eq + 1)));
 			if (k == "name") cur.name = v;
-			else if (k == "type") cur.type = v == "ftp" ? NetType::Ftp : NetType::Smb;
+			else if (k == "type") cur.type = v == "ftp" ? NetType::Ftp : v == "dlna" ? NetType::Dlna : NetType::Smb;
 			else if (k == "host") cur.host = v;
 			else if (k == "port") cur.port = atoi(v.c_str());
 			else if (k == "guest") cur.guest = v == "1";

@@ -274,7 +274,7 @@ namespace bp
 			std::stable_sort(list.begin(), list.end(), [](const NetServer& a, const NetServer& b) { return a.lastUsed > b.lastUsed; });
 			for (auto& sv : list)
 			{
-				std::string start = "/" + sv.share + (sv.share.empty() || sv.folder.empty() ? "" : "/" + sv.folder);
+				std::string start = sv.type == NetType::Dlna ? std::string("/") : "/" + sv.share + (sv.share.empty() || sv.folder.empty() ? "" : "/" + sv.folder);	// (a DLNA server has no share: one saved with a stale one still opens at its root)
 				add(4, serverName(sv), makeNetPath(sv.id, start), std::string(netTypeLabel(sv.type)) + "  " + sv.host);
 			}
 			if (browseRows.empty()) add(-1, "No connections yet", "", "");

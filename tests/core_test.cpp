@@ -1188,6 +1188,19 @@ static void testNet()
 		CHECK_EQ(got[2].name, std::string("C"));
 	}
 	CHECK_EQ(parseServers("").size(), (size_t)0);
+	// a DLNA media server: no port of its own, its type survives the file
+	CHECK_EQ(defaultPort(NetType::Dlna), 0);
+	CHECK_EQ(std::string(netTypeLabel(NetType::Dlna)), std::string("DLNA"));
+	NetServer d;
+	d.id = "dddd4444"; d.host = "http://10.0.0.5:32469/DeviceDescription.xml"; d.type = NetType::Dlna;
+	auto dgot = parseServers(serializeServers({d}));
+	CHECK_EQ(dgot.size(), (size_t)1);
+	if (dgot.size() == 1)
+	{
+		CHECK_EQ(dgot[0].type == NetType::Dlna, true);
+		CHECK_EQ(dgot[0].host, d.host);
+		CHECK_EQ(dgot[0].port, 0);
+	}
 
 	// secret
 	std::string raw;

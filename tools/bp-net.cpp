@@ -12,7 +12,9 @@
 //   bp-net cancel-cat <host[:port]> <user|-guest> <password|-> <path> <wait-ms> <ms>  (the file opened, wait-ms to
 //            stall the server, then a read of it all with cancel() from another thread after ms)
 //
-// <host> is an SMB server, or ftp://host[:port] / ftps://host[:port] for an FTP one (paths are the server's own).
+// <host> is an SMB server, or ftp://host[:port] / ftps://host[:port] for an FTP one (paths are the server's own), or
+// dlna://host[:port] for a DLNA media server (paths are folder and file titles; a description URL works as the host
+// too: dlna://http://host:8200/rootDesc.xml).
 //
 // Exit status 0 when the call succeeded. Builds without CMake: see DEVELOPMENT.md.
 #include "net.h"
@@ -75,7 +77,8 @@ int main(int argc, char** argv)
 	std::string cmd = argv[1], host = argv[2], user = argv[3], pass = argv[4], path = argv[5];
 	NetServer s;
 	s.type = NetType::Smb;
-	if (host.compare(0, 6, "ftp://") == 0) { s.type = NetType::Ftp; host = host.substr(6); }
+	if (host.compare(0, 7, "dlna://") == 0) { s.type = NetType::Dlna; host = host.substr(7); }
+	else if (host.compare(0, 6, "ftp://") == 0) { s.type = NetType::Ftp; host = host.substr(6); }
 	else if (host.compare(0, 7, "ftps://") == 0) { s.type = NetType::Ftp; s.ftps = true; host = host.substr(7); }
 	size_t colon = host.rfind(':');
 	if (colon != std::string::npos && host.find(']') == std::string::npos && host.find(':') == colon)

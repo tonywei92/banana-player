@@ -188,7 +188,7 @@ Moved out of `CLAUDE.md`, which keeps the one-line rules and the map; the reason
 - **Network folders** (SMB, FTP; `BP_NET`, on when libsmb2 is found): a place is `bpnet://<server-id>/<path>`
   (`netpath.*`), never with credentials. `NetStore` keeps `servers.conf` (passwords sealed by `secret.*`: AES-GCM, a
   key file plus the SoC serial). `net.h` is the backend interface (`net_smb.cpp` libsmb2, async calls only, never the
-  sync wrappers; `net_ftp.cpp` libcurl multi; `netwait.h` their cancel), one backend per thread. The browser lists
+  sync wrappers; `net_ftp.cpp` libcurl multi; `net_dlna.cpp` DLNA/UPnP (SSDP, SOAP Browse, HTTP Range; paths are titles walked from the root); `netwait.h` their cancel), one backend per thread. The browser lists
   through `NetWorker` (its thread, answers as `evNet`, a serial per request; Test connection too); mpv reads files
   through `NetStreams` (`mpv_stream_cb`, a backend per file; a failed read is EOF to mpv, so the failure is kept and
   `Player` turns it into an error). Per file: `cache=yes` and `sub-files`/`cover-art-files` from the folder's
