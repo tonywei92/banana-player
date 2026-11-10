@@ -31,6 +31,7 @@ extern "C"
 #include "netpath.h"
 #include "paged.h"
 #include "pagedecode.h"
+#include "pagecache.h"
 #include "secret.h"
 #include "servers.h"
 #include "sidecar.h"
@@ -307,6 +308,195 @@ static void testMangaNames()
 	CHECK_EQ(volumeNumber("Volume"), -1.0);
 	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
 	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+// the page cache: a page goes in and comes back, the least recently used goes first over the cap, and the index
+// survives a restart
+static void testPageCache()
+{
+	char tmpl[] = "/tmp/bp-pagecache-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string dir = root + "/state/manga/cache";
+	const uint8_t five[5] = {1, 2, 3, 4, 5};
+	std::vector<uint8_t> ten(10, 0x5A);
+
+	{
+		// the cache folder is made when it isn't there
+		PageCache c;
+		CHECK_EQ(c.open(dir, 1000), true);
+		CHECK_EQ(c.count(), size_t(0));
+		CHECK_EQ(c.size(), (uint64_t)0);
+
+		// a page goes in and comes back
+		CHECK_EQ(c.put("https://example.com/one.jpg", five, sizeof five), true);
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get("https://example.com/one.jpg", out), true);
+		std::vector<uint8_t> want(five, five + sizeof five);
+		CHECK_EQ(out == want, true);
+		CHECK_EQ(c.count(), size_t(1));
+		CHECK_EQ(c.size(), (uint64_t)sizeof five);
+		CHECK_EQ(c.has("https://example.com/one.jpg"), true);
+		CHECK_EQ(c.has("https://example.com/two.jpg"), false);
+		CHECK_EQ(c.get("https://example.com/two.jpg", out), false);
+
+		// the path is the same every time and stays inside the folder: the name is the key's hash
+		std::string p = c.pathFor("https://example.com/one.jpg");
+		CHECK_EQ(p, c.pathFor("https://example.com/one.jpg"));
+		CHECK_EQ(p.find(dir + "/") == 0, true);
+		CHECK_EQ(p.find("..") == std::string::npos, true);
+		CHECK_EQ(p.substr(dir.size() + 1, 2).size(), size_t(2));	// the fan-out folder
+		CHECK_EQ(p[dir.size() + 3], '/');
+		CHECK_EQ(p.substr(p.find_last_of('/') + 1).size(), size_t(20));	// 16 hex characters and ".bin"
+		CHECK_EQ(access(p.c_str(), F_OK), 0);
+	}
+
+	{
+		// the least recently used page goes first, and a page that is asked for is safe for a while
+		PageCache c;
+		CHECK_EQ(c.open(root + "/lru", 30), true);
+		CHECK_EQ(c.put("a", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("b", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("c", ten.data(), ten.size()), true);
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get("a", out), true);	// a is used now
+		CHECK_EQ(c.has("b"), true);		// b is used now too: c is the oldest
+		CHECK_EQ(c.put("d", ten.data(), ten.size()), true);
+		CHECK_EQ(c.count(), size_t(3));
+		CHECK_EQ(c.size(), (uint64_t)30);
+		CHECK_EQ(c.has("c"), false);
+		CHECK_EQ(c.has("a"), true);
+		CHECK_EQ(c.has("b"), true);
+		CHECK_EQ(c.has("d"), true);
+	}
+
+	{
+		// the cap holds over many pages
+		PageCache c;
+		CHECK_EQ(c.open(root + "/many", 1000), true);
+		std::vector<uint8_t> page(100, 0x33);
+		for (int i = 0; i < 50; i++)
+		{
+			std::string key = "page-" + std::to_string(i);
+			CHECK_EQ(c.put(key, page.data(), page.size()), true);
+		}
+		CHECK_EQ(c.size(), (uint64_t)1000);
+		CHECK_EQ(c.count(), size_t(10));
+		CHECK_EQ(c.has("page-0"), false);	// the oldest went
+		CHECK_EQ(c.has("page-49"), true);
+
+		// a smaller cap gives the oldest pages up at once
+		c.setLimit(300);
+		CHECK_EQ(c.size(), (uint64_t)300);
+		CHECK_EQ(c.count(), size_t(3));
+
+		// a page bigger than the whole cap is refused: it would never fit
+		std::vector<uint8_t> big(400, 0x44);
+		CHECK_EQ(c.put("big", big.data(), big.size()), false);
+		CHECK_EQ(c.has("big"), false);
+		CHECK_EQ(c.size(), (uint64_t)300);
+		CHECK_EQ(c.count(), size_t(3));
+
+		// the cache empties
+		c.clear();
+		CHECK_EQ(c.count(), size_t(0));
+		CHECK_EQ(c.size(), (uint64_t)0);
+		CHECK_EQ(c.has("page-49"), false);
+		CHECK_EQ(access(c.pathFor("page-49").c_str(), F_OK), -1);
+	}
+
+	{
+		// another cache keeps its pages
+		PageCache c;
+		CHECK_EQ(c.open(root + "/keep", 1000), true);
+		CHECK_EQ(c.put("one", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("two", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("three", ten.data(), ten.size()), true);
+	}
+	{
+		PageCache c;
+		CHECK_EQ(c.open(root + "/keep", 1000), true);
+		CHECK_EQ(c.count(), size_t(3));
+		CHECK_EQ(c.size(), (uint64_t)30);
+		CHECK_EQ(access(c.pathFor("one").c_str(), F_OK), 0);
+		CHECK_EQ(access(c.pathFor("three").c_str(), F_OK), 0);
+	}
+	{
+		// the index is where it should be, with a line per page
+		std::ifstream in((root + "/keep/index.tsv").c_str());
+		std::string line;
+		int lines = 0;
+		while (std::getline(in, line))
+			if (!line.empty() && line[0] != '#') lines++;
+		CHECK_EQ(lines, 3);
+	}
+
+	{
+		// the order the pages were used in comes back with the index
+		PageCache c;
+		CHECK_EQ(c.open(root + "/order", 1000), true);
+		CHECK_EQ(c.put("one", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("two", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("three", ten.data(), ten.size()), true);
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get("two", out), true);	// two is used now: one is the oldest
+		CHECK_EQ(c.save(), true);
+	}
+	{
+		PageCache c;
+		CHECK_EQ(c.open(root + "/order", 20), true);
+		CHECK_EQ(c.count(), size_t(2));
+		CHECK_EQ(c.has("one"), false);	// the oldest page went first again
+		CHECK_EQ(c.has("two"), true);
+		CHECK_EQ(c.has("three"), true);
+	}
+
+	{
+		// a page whose file is gone is dropped when the cache opens again
+		PageCache c;
+		CHECK_EQ(c.open(root + "/gone", 1000), true);
+		CHECK_EQ(c.put("a", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("b", ten.data(), ten.size()), true);
+		CHECK_EQ(c.save(), true);
+		unlink(c.pathFor("a").c_str());
+	}
+	{
+		PageCache c;
+		CHECK_EQ(c.open(root + "/gone", 1000), true);
+		CHECK_EQ(c.count(), size_t(1));
+		CHECK_EQ(c.size(), (uint64_t)10);
+		CHECK_EQ(c.has("a"), false);
+		CHECK_EQ(c.has("b"), true);
+	}
+
+	{
+		// a damaged index is rebuilt from the files
+		PageCache c;
+		CHECK_EQ(c.open(root + "/corrupt", 1000), true);
+		CHECK_EQ(c.put("x", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("y", five, sizeof five), true);
+		CHECK_EQ(c.save(), true);
+	}
+	{
+		FILE* f = fopen((root + "/corrupt/index.tsv").c_str(), "wb");
+		if (f)
+		{
+			fputs("this is not an index\n", f);
+			fclose(f);
+		}
+		PageCache c;
+		CHECK_EQ(c.open(root + "/corrupt", 1000), true);
+		CHECK_EQ(c.count(), size_t(2));	// the pages are counted all the same
+		CHECK_EQ(c.size(), (uint64_t)(ten.size() + sizeof five));
+		CHECK_EQ(c.has("x"), true);		// the name is the key's hash: the page is found anyway
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get("y", out), true);
+		CHECK_EQ(out.size(), sizeof five);
+	}
+
+	std::string cmd = "rm -rf '" + root + "'";
+	if (system(cmd.c_str()) != 0) fprintf(stderr, "could not remove %s\n", root.c_str());
 }
 
 // the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
@@ -5742,6 +5932,7 @@ int main()
 	testTime();
 	testDurations();
 	testMangaNames();
+	testPageCache();
 	testMangaUiLogic();
 	testPaged();
 	testMangaStore();
