@@ -225,10 +225,8 @@ namespace bp
 
 	void MangaReader::applyFit()
 	{
-		// Fill covers the screen and crops; a page both taller and wider than the view would need a sideways pan the
-		// paged row hasn't (it lays pages out side by side and scrolls them down), so it reads as Width there. The
-		// Strip is always as wide as the screen.
-		paged.setFit(fit == MANGA_FIT_PAGE ? Paged::FitPage : Paged::FitWidth);
+		// (the Strip is always as wide as the screen; the paged modes fit as set, Fill panning a cropped page)
+		paged.setFit(fit == MANGA_FIT_PAGE ? Paged::FitPage : fit == MANGA_FIT_FILL ? Paged::FitFill : Paged::FitWidth);
 	}
 
 	void MangaReader::command(int kind, double v, int64_t ms, double v2)
