@@ -2,6 +2,7 @@
 #include "aspect.h"
 #include "battery.h"
 #include "comicinfo.h"
+#include "cbz.h"
 #include "browser.h"
 #include "crashlog.h"
 #include "durations.h"
@@ -545,6 +546,102 @@ static void testPageDecode()
 	PageImage missing = decodePageFile(pages + "missing.jpg", 0);
 	CHECK_EQ(missing.ok(), false);
 	CHECK_EQ(missing.error.empty(), false);
+}
+
+static void testCbz()
+{
+	const std::string P = std::string(BP_TESTS_DIR) + "/pages/";
+	auto file = [](const std::string& path)
+	{
+		std::ifstream f(path, std::ios::binary);
+		return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+	const std::vector<uint8_t> jpg = file(P + "page.jpg"), png = file(P + "page.png");
+	std::vector<uint8_t> out;
+
+	// the same three files, stored and deflated: pages() carries the two images in order, not the xml
+	for (const char* a : {"stored.cbz", "deflated.cbz"})
+	{
+		Cbz z;
+		CHECK_EQ(z.open(P + a), true);
+		CHECK_EQ(z.isOpen(), true);
+		CHECK_EQ(z.entries().size(), (size_t)3);
+		CHECK_EQ(z.pages(), (std::vector<std::string>{"001.jpg", "002.png"}));
+		CHECK_EQ(z.read("001.jpg", out) && out == jpg, true);
+		CHECK_EQ(z.read("002.png", out) && out == png, true);
+		CHECK_EQ(z.read("ComicInfo.xml", out)
+			&& std::string(out.begin(), out.end()).find("<Series>Test Series</Series>") != std::string::npos, true);
+		CHECK_EQ(z.read("003.jpg", out), false);	// a name that isn't in the archive
+		CHECK_EQ(z.error().empty(), false);
+		z.close();
+		CHECK_EQ(z.isOpen(), false);
+		CHECK_EQ(z.read("001.jpg", out), false);	// closed: nothing to read
+	}
+
+	// what the directory promises about each entry
+	Cbz s;
+	CHECK_EQ(s.open(P + "stored.cbz"), true);
+	CHECK_EQ(s.entries()[0].name, std::string("001.jpg"));
+	CHECK_EQ(s.entries()[0].method, (uint32_t)0);
+	CHECK_EQ(s.entries()[0].packed, s.entries()[0].size);	// stored: nothing was compressed away
+	CHECK_EQ(s.entries()[0].size, (uint64_t)jpg.size());
+	Cbz d;
+	CHECK_EQ(d.open(P + "deflated.cbz"), true);
+	CHECK_EQ(d.entries()[0].method, (uint32_t)8);
+	CHECK_EQ(d.entries()[0].size, (uint64_t)jpg.size());
+	CHECK_EQ(d.entries()[0].packed < d.entries()[0].size, true);	// deflated: it really is smaller
+
+	// the folder archive: its directory entry isn't listed, and the pages under it read in order
+	Cbz n;
+	CHECK_EQ(n.open(P + "nested.cbz"), true);
+	CHECK_EQ(n.entries().size(), (size_t)3);
+	CHECK_EQ(n.pages(), (std::vector<std::string>{"sub/002.png", "sub/010.jpg"}));
+	CHECK_EQ(n.read("sub/010.jpg", out) && out == jpg, true);
+	CHECK_EQ(n.read("sub/002.png", out) && out == png, true);
+	CHECK_EQ(n.read("sub/", out), false);
+
+	// not a zip at all, and a file that isn't there: open() says no with a reason
+	Cbz z;
+	CHECK_EQ(z.open(P + "page.jpg"), false);
+	CHECK_EQ(z.error().empty(), false);
+	CHECK_EQ(z.open(P + "gone.cbz"), false);
+	CHECK_EQ(z.error().empty(), false);
+	CHECK_EQ(z.isOpen(), false);
+
+	// damaged copies, written into one temporary file the test removes again
+	char tmpl[] = "/tmp/bp-cbz-test-XXXXXX";
+	int tf = mkstemp(tmpl);
+	CHECK_EQ(tf >= 0, true);
+	::close(tf);
+	const std::string tmp = tmpl;
+	auto write = [&](const std::vector<uint8_t>& v)
+	{
+		std::ofstream w(tmp, std::ios::binary | std::ios::trunc);
+		w.write((const char*)v.data(), (std::streamsize)v.size());
+		CHECK_EQ(w.good(), true);
+	};
+	write({});	// empty: too short for even the end record
+	CHECK_EQ(z.open(tmp), false);
+	CHECK_EQ(z.error().empty(), false);
+	const std::vector<uint8_t> deflated = file(P + "deflated.cbz");
+	write(std::vector<uint8_t>(deflated.begin(), deflated.begin() + deflated.size() / 2));
+	CHECK_EQ(z.open(tmp), false);	// cut in half: its central directory is gone
+
+	// flip bytes in the middle of 001.jpg's compressed data: the archive still opens (the directory is intact),
+	// reading that page fails on the CRC or the stream, and the rest of the archive still reads
+	std::vector<uint8_t> broken = deflated;
+	const CbzEntry& e0 = d.entries()[0];
+	size_t lo = (size_t)e0.localOffset;	// the local header's own name and extra lengths, not the record's
+	auto le16 = [&](size_t at) { return (size_t)broken[at] | ((size_t)broken[at + 1] << 8); };
+	size_t data = lo + 30 + le16(lo + 26) + le16(lo + 28);
+	for (size_t k = 0; k < 8; k++) broken[data + (size_t)(e0.packed / 2) + k] ^= 0xff;
+	write(broken);
+	d.close();
+	CHECK_EQ(d.open(tmp), true);
+	CHECK_EQ(d.read("001.jpg", out), false);
+	CHECK_EQ(d.error().empty(), false);
+	CHECK_EQ(d.read("002.png", out) && out == png, true);
+	std::remove(tmp.c_str());
 }
 
 static bool near(double a, double b, double eps = 1e-6)
@@ -4666,8 +4763,8 @@ int main()
 	testDurations();
 	testMangaNames();
 	testComicInfo();
-
 	testPageDecode();
+	testCbz();
 	testStrip();
 	testLabels();
 	testTrackList();
