@@ -11,6 +11,7 @@
 #include "sleepwatch.h"
 #include "levelwatch.h"
 #include "touch.h"
+#include "reader_proto.h"
 #include "ui.h"
 #include "ui_glyphs.h"
 #include "session_host.h"
@@ -120,6 +121,7 @@ static void usage()
 		"  --aspect MODE         fit (default), fill or stretch\n"
 		"  --lang LIST           preferred audio and subtitle languages (default: eng,en)\n"
 		"  --state-dir DIR       where the settings and resume positions are kept\n"
+		"  --manga FOLDER        test: the manga reader's strip prototype on a folder of pages (B quits)\n"
 		"  --font TTF            the bottom panel's font\n"
 		"  -v                    mpv's verbose log\n"
 		"  --press LIST          test run: once the file is open, do these 0.8 s apart and print the state after\n"
@@ -143,6 +145,7 @@ int main(int argc, char** argv)
 	bool scripted = false;
 	AspectMode aspect = AspectMode::Fit;
 	int windowed = -1;	// -1: decide by the video driver
+	std::string mangaDir;	// --manga: the strip prototype instead of the player
 	for (int i = 1; i < argc; i++)
 	{
 		std::string a = argv[i];
@@ -155,6 +158,7 @@ int main(int argc, char** argv)
 		else if (a == "--aspect") { if (!parseAspect(value(), aspect)) { usage(); return 2; } }
 		else if (a == "--lang") opts.lang = value();
 		else if (a == "--state-dir") opts.stateDir = value();
+		else if (a == "--manga") mangaDir = value();
 		else if (a == "--font") font = value();
 		else if (a == "-v") opts.verbose = true;
 		else if (a == "--press")
@@ -197,6 +201,16 @@ int main(int argc, char** argv)
 	// a file named "verbose" in the state folder (home/.config/banana-player on the card): mpv's verbose log, for a
 	// problem seen only on the handheld (it can't be given -v from the Ports shelf)
 	if (!opts.stateDir.empty() && exists(opts.stateDir + "/verbose")) opts.verbose = true;
+	// the strip prototype from the Ports shelf (which passes no options): a manga-proto file in the state folder
+	// names the folder or CBZ to open (the test only; removed after it)
+	if (mangaDir.empty() && !opts.stateDir.empty())
+		if (FILE* f = fopen((opts.stateDir + "/manga-proto").c_str(), "r"))
+		{
+			char line[1024] = {0};
+			if (fgets(line, sizeof line, f)) mangaDir = line;
+			fclose(f);
+			while (!mangaDir.empty() && (mangaDir.back() == '\n' || mangaDir.back() == '\r' || mangaDir.back() == ' ')) mangaDir.pop_back();
+		}
 	if (font.empty()) font = findFont();
 	// the subtitle fonts are the bottom panel's font's neighbours
 	if (!font.empty() && font.rfind('/') != std::string::npos) opts.fontsDir = font.substr(0, font.rfind('/'));
@@ -285,6 +299,29 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	SDL_GL_SetSwapInterval(1);
+	// --manga: the manga reader's strip prototype, alone (no player, no bottom panel's controls): its own loop
+	if (!mangaDir.empty())
+	{
+#ifdef BP_GLES
+		const bool gles = true;
+#else
+		const bool gles = false;
+#endif
+		BottomTouch touch;
+		touch.start(getenv("BP_TOUCH") ? getenv("BP_TOUCH") : "fe5e0000.i2c", [](Pointer pt) {
+			SDL_Event ev{};
+			ev.type = evTouch;
+			ev.user.data1 = new Pointer(pt);
+			SDL_PushEvent(&ev);
+		});
+		int r = runStripProto(top, gl, gles, mangaDir, evTouch);
+		touch.stop();
+		SDL_GL_DeleteContext(gl);
+		if (bottom) SDL_DestroyWindow(bottom);
+		SDL_DestroyWindow(top);
+		SDL_Quit();
+		return r;
+	}
 
 	// the saved network connections (before the player: mpv opens their files) and mpv's way to their files, which
 	// outlives the player (mpv calls it till it's gone)
