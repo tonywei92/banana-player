@@ -3,6 +3,9 @@
 
 namespace bp
 {
+	// six rows: a seventh would run under the help line (Settings' groups never have seven)
+	static constexpr int MSET_SHOWN = 6;
+
 	// ---- the manga reader's settings: a page of the app's own, not a group of Banana Player's Settings ----
 
 	std::vector<int> Ui::mangaSettingRows() const
@@ -52,7 +55,7 @@ namespace bp
 		default: break;
 		}
 		if (cursor < scroll) scroll = cursor;
-		if (cursor >= scroll + SET_SHOWN) scroll = cursor - SET_SHOWN + 1;
+		if (cursor >= scroll + MSET_SHOWN) scroll = cursor - MSET_SHOWN + 1;
 		return false;
 	}
 
@@ -62,9 +65,9 @@ namespace bp
 		auto rows = mangaSettingRows();
 		int n = (int)rows.size();
 		if (cursor >= n) cursor = n - 1;
-		if (scroll > n - SET_SHOWN) scroll = std::max(0, n - SET_SHOWN);
+		if (scroll > n - MSET_SHOWN) scroll = std::max(0, n - MSET_SHOWN);
 		// the rows as Settings draws its group's: the note last
-		for (int i = scroll; i < n && i < scroll + SET_SHOWN; i++)
+		for (int i = scroll; i < n && i < scroll + MSET_SHOWN; i++)
 			drawSettingRow(rows[i], SET_Y + (i - scroll) * SET_H, i == cursor, p);
 		// what the row under the cursor does, in a line or two above the footer
 		std::string help = cursor >= 0 && cursor < n ? settingHelp(rows[cursor]) : "";
