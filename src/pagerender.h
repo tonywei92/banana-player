@@ -3,6 +3,7 @@
 // the top window's own context (the one mpv draws with), placed by a Strip. Main thread only; it loads its GL calls
 // at runtime as main.cpp does (no GL headers), and leaves the context as mpv expects it after each draw.
 #include "strip.h"
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <set>
