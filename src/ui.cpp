@@ -465,6 +465,8 @@ namespace bp
 		if (plDirty && SDL_GetTicks() - plDirtyAt >= 1000) plFlush(p);
 		// the manga reader's page: the place recorded, the store written once a second while reading
 		if (page == Page::MangaRead) mangaTick();
+		// the Sources tab: the repositories' events become toasts, and what was typed in is added
+		else if (page == Page::Manga && mangaTab == MT_SOURCES) mangaSourcesTick(p);
 		// the web's equalizer: what mpv keeps, and settings.conf, once its sliders stop for a second
 		if (eqWebDirtyAt && SDL_GetTicks() - eqWebDirtyAt >= 1000)
 		{
@@ -1159,6 +1161,18 @@ namespace bp
 				mListScroll, (int)mBrowseList, mserCursor, mserScroll, (unsigned long long)(mangaStore ? mangaStore->serial() : 0),
 				(int)mangaLocal.size(), mangaPressed, mangaClearAt != 0, coverTex.size(), (unsigned long long)coverSerial);
 			photo += std::string(mb) + "|" + mangaSeriesId;
+			// Sources: the sub-list and each list's place, a sheet, the sources installing, the manager's own changes
+			// (repos().serial(): an index loaded, a source installed) and what waits to be added
+			if (page == Page::Manga)
+			{
+				char sb[240];
+				snprintf(sb, sizeof sb, "|ms%d %d,%d %d,%d %d,%d %d %d %d %llu %llu %zu %d", mstTab, mstCursor[0],
+					mstScroll[0], mstCursor[1], mstScroll[1], mstCursor[2], mstScroll[2], mstModal, mstModalCursor,
+					(int)mstUninstallArmed, (unsigned long long)mangaReposSerial(), (unsigned long long)mstLocal,
+					mstInstalling.size(), (int)mstAdding.size());
+				photo += std::string(sb) + mstModalId + "|" + mstPendingUrl + "|mt" +
+					std::to_string((long long)time(nullptr) / 60);	// (the repositories' "2 h ago")
+			}
 			if (page == Page::MangaRead)
 			{
 				char rb[160];

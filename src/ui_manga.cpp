@@ -426,6 +426,8 @@ namespace bp
 			}
 			return false;
 		}
+		// the Sources tab's sheet (a source's details or options, a repository's Refresh / Remove) takes the keys first
+		if (page == Page::Manga && mangaTab == MT_SOURCES && mangaSourcesModal()) { mangaSourcesKey(b, p); return false; }
 		// (the mini bar shown on the app's other pages says SELECT goes to what plays)
 		if (b == Button::Select && nowPlayable(p)) { goNowPlaying(p); return false; }
 		if (page == Page::MangaSeries)
@@ -503,6 +505,7 @@ namespace bp
 			mangaClearAt = 0;
 			mBrowseList = false;
 			mangaPressed = -1;
+			if (mangaTab == MT_SOURCES) mangaSourcesOpen(p);
 			return false;
 		}
 		switch (mangaTab)
@@ -607,7 +610,10 @@ namespace bp
 			if (b == Button::A) mangaChoose(MT_BROWSE, 0, p);
 			break;
 		}
-		default: break;	// Sources and Downloads: nothing to choose yet
+		case MT_SOURCES:
+			mangaSourcesKey(b, p);
+			break;
+		default: break;	// Downloads: nothing to choose yet
 		}
 		return false;
 	}
@@ -757,12 +763,15 @@ namespace bp
 		mangaPressed = -1;
 		if (page == Page::Manga)
 		{
+			// a sheet over the tab takes the finger (a tap on a tab under it chooses nothing)
+			if (mangaTab == MT_SOURCES && mangaSourcesModal()) return mangaSourcesPointer(pt, x, y, p);
 			for (int i = 0; i < MANGA_TABS; i++)
 				if (mangaTabRect(i).hit(x, y))
 				{
 					mangaTab = i;
 					mangaClearAt = 0;
 					mBrowseList = false;
+					if (i == MT_SOURCES) mangaSourcesOpen(p);
 					return false;
 				}
 			if (mangaTab == MT_LIBRARY)
@@ -822,6 +831,7 @@ namespace bp
 				}
 				else if (Rect{16, MG_ROW_TOP, 608, ROW_H - 4}.hit(x, y)) mangaChoose(MT_BROWSE, 0, p);
 			}
+			else if (mangaTab == MT_SOURCES) return mangaSourcesPointer(pt, x, y, p);
 			return false;
 		}
 		// Page::MangaSeries: Resume, the heart, a chapter
@@ -971,12 +981,7 @@ namespace bp
 		case MT_LIBRARY: drawMangaLibrary(p); break;
 		case MT_HISTORY: drawMangaHistory(p); break;
 		case MT_BROWSE: drawMangaBrowse(p); break;
-		case MT_SOURCES:
-			// what the design says, in the empty page's look: repositories are the user's own
-			drawEmpty(G_BLOCKS, "Sources come next",
-				"Repositories are added by you. Banana Player doesn\xE2\x80\x99t\nprovide or check their content.", nullptr);
-			drawHints({{"B", "Back"}});
-			break;
+		case MT_SOURCES: drawMangaSources(p); break;
 		case MT_DOWNLOADS:
 			drawEmpty(G_DOWNLOAD, "Downloads come next", "", nullptr);
 			drawHints({{"B", "Back"}});

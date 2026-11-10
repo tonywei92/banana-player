@@ -19,6 +19,7 @@
 #include "playlists.h"
 #include "discovery.h"
 #include "mangalocal.h"
+#include "mangarepos.h"
 #include "mangastore.h"
 #include "pagecache.h"
 #include "coverworker.h"
@@ -32,6 +33,9 @@ namespace bp
 {
 	class WebServer;
 	class DurationWorker;
+
+	// the on-screen keyboard's field for a repository's URL (Ui's Sources tab; the form's are in ui_internal.h)
+	inline constexpr int SRC_URL_FIELD = 62;
 
 	// The bottom panel: what is playing and where, the transport (previous, -5 s, play, +10 s, next), the choices
 	// (audio, subtitles, aspect, speed, settings) and their pages. Laid out on 640x480 (the RG DS's panel) and scaled
@@ -1264,6 +1268,68 @@ namespace bp
 		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;	// the tabs end at 94: History's and Browse's rows below them
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
 		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101;
+
+		// ---- the manga reader's Sources tab (ui_manga_sources.cpp) ----
+		// Installed / Available / Repositories, three sub-lists under the app's tabs: LEFT/RIGHT step them, UP/DOWN the
+		// list. The repositories are the user's own URL indexes (design 5.3); MangaNet owns them and the events their
+		// fetches leave (mangaSourcesTick turns them into toasts). None of it runs while the tab is closed.
+		enum MangaSourcesTab { MST_INSTALLED, MST_AVAILABLE, MST_REPOSITORIES, MANGA_SOURCES_TABS };
+		int mstTab = MST_INSTALLED;
+		int mstCursor[MANGA_SOURCES_TABS] = {}, mstScroll[MANGA_SOURCES_TABS] = {};
+		std::set<std::string> mstInstalling;		// full ids on their way (Installing… on the row), and Updating…
+		std::map<std::string, std::string> mstInstallName;	// full id -> its name, for the answer's toast
+		std::map<std::string, std::string> mstRepoError;		// repository URL -> its last failure
+		std::set<std::string> mstAdding;			// typed in: its first index loaded says Added
+		std::string mstPendingUrl;					// typed on the keyboard; mangaSourcesTick adds it
+		Uint32 mstInstallAt = 0;					// when the first download started (a lost answer doesn't stick)
+		// a row's sheet (A: details, X: options), a repository's (A: Refresh / Remove) and Remove's question
+		enum MangaSourceModal { MSM_NONE, MSM_DETAILS, MSM_OPTIONS, MSM_REPO, MSM_REMOVE };
+		int mstModal = MSM_NONE, mstModalCursor = 0;
+		std::string mstModalId;						// a source's full id, or a repository's URL
+		bool mstUninstallArmed = false;				// Uninstall pressed once: again within 2 s removes it
+		Uint32 mstUninstallAt = 0;
+		uint64_t mstLocal = 0;						// the page's own changes (an event taken, a row acted on)
+		uint64_t mangaReposSerial() const;			// repos().serial(): signature() follows it (ui.cpp has no MangaNet)
+		void mangaSourcesOpen(Player& p);			// the tab opened: the network side started, the indexes refreshed
+		void mangaSourcesTick(Player& p);			// the manager's events into toasts, a typed URL added
+		bool mangaSourcesKey(Button b, Player& p);
+		bool mangaSourcesPointer(const Pointer& pt, int x, int y, Player& p);
+		bool mangaSourcesModal() const { return mstModal != MSM_NONE; }
+		bool mangaSourcesModalKey(Button b, Player& p);
+		void mangaSourcesModalAct(Player& p);
+		void mangaSourcesCloseModal();
+		void mangaSourcesAct(Player& p);				// A (or a tap) on the tab's cursor's row
+		void mangaSourcesInstall(const std::string& fullId, const std::string& repo, const std::string& id,
+			const std::string& name, Player& p);
+		void mangaSourcesUpdate(const std::string& fullId, const std::string& repo, const std::string& id,
+			const std::string& name, Player& p);
+		void mangaSourcesUninstall(const std::string& fullId, const std::string& name, Player& p);
+		void mangaSourcesAddOpen(Player& p);			// Add repository…: the keyboard on https://
+		void mangaSourcesUrlTyped(const std::string& url);	// the keyboard's answer (ui_forms.cpp's kbClose)
+		std::vector<MangaRepos::InstalledSource> mangaSourcesInstalled() const;
+		std::vector<MangaRepos::AvailableSource> mangaSourcesAvailable(const Player& p) const;
+		std::vector<MangaRepos::RepoInfo> mangaSourcesRepos() const;
+		int mangaSourcesRows(const Player& p) const;	// the tab's rows (Repositories: the Add row last)
+		int mangaSourcesModalRows() const;
+		std::string elideMiddle(const std::string& s, int size, int maxW) const;	// a URL: "...repository/index.json"
+		void drawMangaSources(const Player& p);
+		void drawMangaSourceModal(const Player& p);
+		static constexpr int MS_ROW_TOP = 134, MS_ROWS = 5, MS_ROW_H = 48;
+		Rect mangaSourcesSegRect(int i) const { return {16 + i * 204, 98, 200, 26}; }
+		Rect mangaSourcesRowRect(int i) const { return {16, MS_ROW_TOP + i * MS_ROW_H, 608, MS_ROW_H - 4}; }
+		Rect mangaSourcesModalBox() const
+		{
+			int rows = mangaSourcesModalRows();
+			int h = mstModal == MSM_DETAILS ? 150 + rows * 50 : mstModal == MSM_REMOVE ? 130 + rows * 52 : 110 + rows * 52;
+			return {112, (436 - h) / 2, 416, h};
+		}
+		Rect mangaSourcesModalRowRect(int i) const
+		{
+			Rect b = mangaSourcesModalBox();
+			int top = mstModal == MSM_DETAILS ? b.y + 132 : mstModal == MSM_REMOVE ? b.y + 110 : b.y + 90;
+			int step = mstModal == MSM_DETAILS ? 50 : 52;
+			return {b.x + 16, top + i * step, b.w - 32, step - 6};
+		}
 
 		// ---- the manga reader's settings (ui_manga_settings.cpp) ----
 		// A page of the app's own, not a group of Banana Player's Settings: START on the app's pages (any tab) or over

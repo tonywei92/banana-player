@@ -34,6 +34,7 @@ namespace bp
 		case FORM_PASS: return "Password";
 		case EQ_NAME: return "Preset name";
 		case PL_NAME: return "Playlist name";
+		case SRC_URL_FIELD: return "Repository URL";
 		default: return "";
 		}
 	}
@@ -276,6 +277,8 @@ namespace bp
 		case FORM_FOLDER: form.folder = trimmed(t); break;
 		case FORM_USER: form.user = trimmed(t); break;
 		case FORM_PASS: formPassword = t; formPasswordTyped = true; break;	// (spaces kept: they can be a password's)
+		// the Sources tab's repository URL: added by the next tick, which has the Player for the answer's toast
+		case SRC_URL_FIELD: mangaSourcesUrlTyped(trimmed(t)); return;
 		default: break;
 		}
 		formNote.clear();
