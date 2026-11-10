@@ -1118,9 +1118,10 @@ namespace bp
 		std::string prefsPath;
 		std::map<std::string, std::string> prefs;
 		bool prefsLoaded = false;
-		double wallSeconds = 20.0;
+		// the design's limits (docs/design/manga.md 5.4): 30 s a call, 32 MB a source
+		double wallSeconds = 30.0;
 		uint64_t instructionBudget = 200000000;
-		size_t memoryCap = 64u * 1024u * 1024u;
+		size_t memoryCap = 32u * 1024u * 1024u;
 		MemCtx mem;
 		bool dirty = false;
 		int requestsThisCall = 0;
