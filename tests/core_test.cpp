@@ -3,6 +3,7 @@
 #include "battery.h"
 #include "comicinfo.h"
 #include "cbz.h"
+#include "dlqueue.h"
 #include "browser.h"
 #include "crashlog.h"
 #include "durations.h"
@@ -497,6 +498,263 @@ static void testPageCache()
 
 	std::string cmd = "rm -rf '" + root + "'";
 	if (system(cmd.c_str()) != 0) fprintf(stderr, "could not remove %s\n", root.c_str());
+}
+
+// the downloads queue: the order, pause per item and for all, the card's low space, and the TSV that lets a quit resume
+// at the next page not written
+static void testDlQueue()
+{
+	char tmpl[] = "/tmp/bp-dlq-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string state = root + "/state";
+
+	auto mk = [](const std::string& series, const std::string& chapter, int pages) {
+		DlItem it;
+		it.seriesId = series;
+		it.chapterId = chapter;
+		it.id = series + "\n" + chapter;	// the key the queue and the page use
+		it.seriesTitle = "Series " + series;
+		it.chapterTitle = "Chapter " + chapter;
+		it.source = "komga/shelf";
+		it.added = 1000;
+		it.target = "/data/Manga/" + series + "/" + chapter + ".cbz";
+		for (int i = 0; i < pages; i++)
+			it.pageUrls.push_back("https://example.org/" + series + "/" + chapter + "/" + std::to_string(i + 1) + ".jpg");
+		return it;
+	};
+
+	DownloadQueue q;
+	CHECK_EQ(q.load(state), true);	// no file yet: an empty queue
+	CHECK_EQ(q.items().size(), size_t(0));
+	CHECK_EQ(q.next() == nullptr, true);
+	CHECK_EQ(q.pendingPages(), 0);
+	CHECK_EQ(DownloadQueue().load(""), false);	// nowhere to read from
+	uint64_t serial = q.serial();
+
+	DlItem a = mk("s1", "c1", 3), b = mk("s1", "c2", 2), c = mk("s2", "c1", 4);
+	q.add(a);
+	CHECK_EQ(q.serial() > serial, true);	// every change grows the serial
+	serial = q.serial();
+	q.add(b);
+	q.add(c);
+	CHECK_EQ(q.items().size(), size_t(3));
+	CHECK_EQ(q.serial() > serial, true);
+
+	// the key the two ids make when the caller leaves it out
+	DlItem noid = mk("s3", "c9", 1);
+	noid.id.clear();
+	q.add(noid);
+	CHECK_EQ(q.items().size(), size_t(4));
+	CHECK_EQ(q.items()[3].id, std::string("s3\nc9"));
+	q.remove("s3\nc9");
+	CHECK_EQ(q.items().size(), size_t(3));
+
+	// a duplicate id is one item, whatever else it carries
+	DlItem dup = a;
+	dup.chapterTitle = "Chapter 1 (again)";
+	serial = q.serial();
+	q.add(dup);
+	CHECK_EQ(q.items().size(), size_t(3));
+	CHECK_EQ(q.items()[0].chapterTitle, a.chapterTitle);
+	CHECK_EQ(q.serial(), serial);	// nothing changed, so nothing redraws
+
+	// the first waiting one, in the order they were added
+	CHECK_EQ(q.next() != nullptr, true);
+	if (q.next()) CHECK_EQ(q.next()->id, a.id);
+
+	// pausing one takes it out of the running without touching the others
+	q.pause(b.id);
+	CHECK_EQ(q.items()[1].state, DlItem::Paused);
+	CHECK_EQ(q.next() && q.next()->id == a.id, true);
+
+	q.started(a.id);
+	CHECK_EQ(q.items()[0].state, DlItem::Running);
+	CHECK_EQ(q.next() && q.next()->id == c.id, true);	// A running, B paused
+
+	// all paused: nothing starts; resuming all gives the queue back, and B stays paused on its own
+	q.pauseAll();
+	CHECK_EQ(q.allPaused(), true);
+	CHECK_EQ(q.next() == nullptr, true);
+	q.resumeAll();
+	CHECK_EQ(q.allPaused(), false);
+	CHECK_EQ(q.next() && q.next()->id == c.id, true);
+	CHECK_EQ(q.items()[1].state, DlItem::Paused);
+	// resuming one chapter while all are paused means downloads running again
+	q.pauseAll();
+	q.resume(b.id);
+	CHECK_EQ(q.allPaused(), false);
+	CHECK_EQ(q.next() && q.next()->id == b.id, true);
+
+	// the card under 500 MB: nothing starts, the one running keeps going
+	serial = q.serial();
+	q.setLowSpace(true);
+	CHECK_EQ(q.next() == nullptr, true);
+	CHECK_EQ(q.serial() > serial, true);
+	q.pageDone(a.id, 100);
+	CHECK_EQ(q.items()[0].done, 1);
+	CHECK_EQ(q.items()[0].bytes, (uint64_t)100);
+	CHECK_EQ(q.pendingPages(), 2 + 2 + 4);	// A's other two, B's two, C's four
+	q.setLowSpace(false);
+	CHECK_EQ(q.next() != nullptr, true);
+
+	// pages counted in order; a failure keeps them, and a retry resumes at the next one
+	q.pageDone(a.id, 50);
+	CHECK_EQ(q.items()[0].done, 2);
+	CHECK_EQ(q.items()[0].bytes, (uint64_t)150);
+	q.pageDone(b.id, 10);
+	q.failed(b.id, "network gone");
+	CHECK_EQ(q.items()[1].state, DlItem::Failed);
+	CHECK_EQ(q.items()[1].done, 1);
+	CHECK_EQ(q.items()[1].error, std::string("network gone"));
+	CHECK_EQ(q.next() && q.next()->id == c.id, true);	// a failed one doesn't run by itself
+	q.retry(b.id);
+	CHECK_EQ(q.items()[1].state, DlItem::Waiting);
+	CHECK_EQ(q.items()[1].done, 1);	// where it stopped
+	CHECK_EQ(q.items()[1].error, std::string(""));
+	CHECK_EQ(q.next() && q.next()->id == b.id, true);
+	CHECK_EQ(q.pendingPages(), 1 + 1 + 4);
+
+	// finished: out of the queue's work, still in memory for the page until clearDone()
+	q.finished(a.id);
+	CHECK_EQ(q.items()[0].state, DlItem::Done);
+	CHECK_EQ(q.items().size(), size_t(3));
+	CHECK_EQ(q.pendingPages(), 1 + 4);
+	CHECK_EQ(q.next() && q.next()->id == b.id, true);
+
+	// a chapter under way when the player quits comes back waiting
+	q.started(c.id);
+	CHECK_EQ(q.items()[2].state, DlItem::Running);
+	CHECK_EQ(q.save(), true);
+
+	// the file: the header, the two unfinished chapters, and no Done one
+	{
+		std::ifstream f(state + "/manga/downloads-queue.tsv");
+		std::string line;
+		std::getline(f, line);
+		CHECK_EQ(line, std::string("# banana-player manga downloads-queue v1"));
+		std::string rest, l;
+		while (std::getline(f, l)) rest += l + "\n";
+		CHECK_EQ(rest.find(a.target) == std::string::npos, true);
+		CHECK_EQ(rest.find(b.target) != std::string::npos, true);
+	}
+
+	// saved and read back: every field, in the queue's order, Running as Waiting
+	DownloadQueue q2;
+	CHECK_EQ(q2.load(state), true);
+	std::vector<DlItem> its = q2.items();
+	CHECK_EQ(its.size(), size_t(2));
+	if (its.size() == 2)
+	{
+		CHECK_EQ(its[0].id, b.id);
+		CHECK_EQ(its[0].seriesId, b.seriesId);
+		CHECK_EQ(its[0].seriesTitle, b.seriesTitle);
+		CHECK_EQ(its[0].chapterId, b.chapterId);
+		CHECK_EQ(its[0].chapterTitle, b.chapterTitle);
+		CHECK_EQ(its[0].source, b.source);
+		CHECK_EQ(its[0].pageUrls, b.pageUrls);
+		CHECK_EQ(its[0].done, 1);
+		CHECK_EQ(its[0].bytes, (uint64_t)10);
+		CHECK_EQ(its[0].added, b.added);
+		CHECK_EQ(its[0].state, DlItem::Waiting);
+		CHECK_EQ(its[0].target, b.target);
+		CHECK_EQ(its[1].id, c.id);
+		CHECK_EQ(its[1].state, DlItem::Waiting);	// was Running: a quit mid-chapter resumes
+		CHECK_EQ(its[1].done, 0);
+		CHECK_EQ(its[1].pageUrls, c.pageUrls);
+	}
+	CHECK_EQ(q2.next() && q2.next()->id == b.id, true);
+
+	// every field through the file, with tabs and newlines in titles, errors and URLs
+	DownloadQueue q3;
+	CHECK_EQ(q3.load(root + "/odd"), true);
+	DlItem odd;
+	odd.seriesId = "odd\t1";
+	odd.chapterId = "ch\n2";
+	odd.id = odd.seriesId + "\n" + odd.chapterId;
+	odd.seriesTitle = "Tab\there\nNew line\\Back";
+	odd.chapterTitle = "Ch\t2\naway";
+	odd.source = "src\twith\ttabs";
+	odd.pageUrls = {"https://example.org/a\tb.jpg", "https://example.org/c\nd.jpg", "https://example.org/e\\f.jpg"};
+	odd.done = 1;
+	odd.state = DlItem::Failed;
+	odd.error = "gone\taway\nand back";
+	odd.added = 1234567890123LL;
+	odd.bytes = 9876543210ULL;
+	odd.target = "/data/Manga/odd\ttarget\n.cbz";
+	q3.add(odd);
+	q3.failed(odd.id, odd.error);	// add() starts clean; the error comes from the worker's report
+	CHECK_EQ(q3.save(), true);
+	DownloadQueue q4;
+	CHECK_EQ(q4.load(root + "/odd"), true);
+	std::vector<DlItem> oddBack = q4.items();
+	CHECK_EQ(oddBack.size(), size_t(1));
+	if (oddBack.size() == 1)
+	{
+		const DlItem& r = oddBack[0];
+		CHECK_EQ(r.id, odd.id);
+		CHECK_EQ(r.seriesId, odd.seriesId);
+		CHECK_EQ(r.seriesTitle, odd.seriesTitle);
+		CHECK_EQ(r.chapterId, odd.chapterId);
+		CHECK_EQ(r.chapterTitle, odd.chapterTitle);
+		CHECK_EQ(r.source, odd.source);
+		CHECK_EQ(r.pageUrls, odd.pageUrls);	// each one back as it went in, the tab and the newline too
+		CHECK_EQ(r.done, 1);
+		CHECK_EQ(r.state, DlItem::Failed);
+		CHECK_EQ(r.error, odd.error);
+		CHECK_EQ(r.added, odd.added);
+		CHECK_EQ(r.bytes, odd.bytes);
+		CHECK_EQ(r.target, odd.target);
+	}
+	// a retry after the load resumes at the page it stopped on
+	q4.retry(odd.id);
+	CHECK_EQ(q4.items()[0].state, DlItem::Waiting);
+	CHECK_EQ(q4.items()[0].done, 1);
+
+	// a broken line in the file is skipped; the rest of the queue loads
+	{
+		mkdir((root + "/bad").c_str(), 0755);
+		mkdir((root + "/bad/manga").c_str(), 0755);
+		std::ofstream f(root + "/bad/manga/downloads-queue.tsv");
+		f << "# banana-player manga downloads-queue v1\n";
+		f << "g1\ts\tGood\ts\tOne\tsrc\twaiting\t0\t0\t100\t\tt1\thttps://x/1.jpg\n";
+		f << "this line has no tabs at all\n";
+		f << "g2\ts\tGood\ts\tTwo\tsrc\trunning\t1\t5\t200\t\t\thttps://x/2.jpg\n";
+		f << "g3\ts\tGood\ts\tThree\tsrc\tsleeping\t0\t0\t300\t\t\thttps://x/3.jpg\n";	// no such state
+		f << "g4\ts\tGood\ts\tFour\tsrc\twaiting\t9\t0\t400\t\t\thttps://x/4.jpg\n";	// done past its pages
+		f << "g5\ts\tGood\ts\tFive\tsrc\twaiting\t0\tx\t500\t\t\thttps://x/5.jpg\n";	// bytes that aren't a number
+		f << "g6\ts\tGood\ts\tSix\n";	// too few columns
+	}
+	DownloadQueue qb;
+	CHECK_EQ(qb.load(root + "/bad"), true);
+	CHECK_EQ(qb.items().size(), size_t(2));
+	if (qb.items().size() == 2)
+	{
+		CHECK_EQ(qb.items()[0].id, std::string("g1"));
+		CHECK_EQ(qb.items()[1].id, std::string("g2"));
+		CHECK_EQ(qb.items()[1].state, DlItem::Waiting);	// running in the file
+		CHECK_EQ(qb.items()[1].done, 1);
+		CHECK_EQ(qb.items()[1].pageUrls.size(), size_t(1));
+	}
+
+	// Done items leave memory only when the page says so
+	serial = q.serial();
+	q.clearDone();
+	CHECK_EQ(q.items().size(), size_t(2));
+	CHECK_EQ(q.serial() > serial, true);
+	CHECK_EQ(q.items()[0].id, b.id);
+
+	unlink((state + "/manga/downloads-queue.tsv").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+	unlink((root + "/odd/manga/downloads-queue.tsv").c_str());
+	rmdir((root + "/odd/manga").c_str());
+	rmdir((root + "/odd").c_str());
+	unlink((root + "/bad/manga/downloads-queue.tsv").c_str());
+	rmdir((root + "/bad/manga").c_str());
+	rmdir((root + "/bad").c_str());
+	rmdir(root.c_str());
 }
 
 // the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
@@ -5933,6 +6191,7 @@ int main()
 	testDurations();
 	testMangaNames();
 	testPageCache();
+	testDlQueue();
 	testMangaUiLogic();
 	testPaged();
 	testMangaStore();
