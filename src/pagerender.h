@@ -41,6 +41,9 @@ namespace bp
 			std::vector<uint8_t> rgba;	// until every tile is up
 			std::vector<Tile> tiles;
 			size_t uploaded = 0;	// tiles up so far
+			// a sharper copy of a page already shown (a zoom): it goes up while the old one is still drawn, and
+			// takes its place only once all of it is on the GPU (no grey frame between)
+			bool incoming = false;
 		};
 		Page* find(int index);
 		const Page* find(int index) const;

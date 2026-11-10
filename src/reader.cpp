@@ -360,15 +360,8 @@ namespace bp
 				}
 				fprintf(stderr, "timing: page %d decoded in %u ms (%dx%d)\n", d.index + 1, d.ms, d.img.w, d.img.h);
 				auto was = decodedW.find(d.index);
-				if (pr.has(d.index) && (was == decodedW.end() || d.width > was->second))
-				{
-					// a wider decode of a page on screen: the old one is let go here, its textures freed at the
-					// next draw (the GL context is only current then), and the new one goes up in its place
-					std::set<int> keep;
-					for (auto& w : decodedW)
-						if (w.first != d.index && pr.has(w.first)) keep.insert(w.first);
-					pr.keepOnly(keep);
-				}
+				// (a wider decode of a page on screen goes up beside the old one, which stays drawn till it's all there)
+				(void)was;
 				decodedW[d.index] = std::max(d.width, d.img.w);
 				strip.setPageSize(d.index, d.img.w, d.img.h);
 				paged.setPageSize(d.index, d.img.w, d.img.h);

@@ -200,14 +200,14 @@ namespace bp
 	PageRenderer::Page* PageRenderer::find(int index)
 	{
 		for (auto& p : pages)
-			if (p.index == index) return &p;
+			if (p.index == index && !p.incoming) return &p;
 		return nullptr;
 	}
 
 	const PageRenderer::Page* PageRenderer::find(int index) const
 	{
 		for (auto& p : pages)
-			if (p.index == index) return &p;
+			if (p.index == index && !p.incoming) return &p;
 		return nullptr;
 	}
 
@@ -215,8 +215,13 @@ namespace bp
 
 	void PageRenderer::addPage(int index, int w, int h, std::vector<uint8_t>&& rgba)
 	{
-		if (w <= 0 || h <= 0 || rgba.size() < (size_t)w * h * 4 || find(index)) return;
+		if (w <= 0 || h <= 0 || rgba.size() < (size_t)w * h * 4) return;
+		// a page shown already: this one waits beside it (a sharper one still on its way is replaced by this one)
+		bool replacing = find(index) != nullptr;
+		for (auto it = pages.begin(); it != pages.end(); ++it)
+			if (it->index == index && it->incoming) { freePage(*it); pages.erase(it); break; }
 		Page p;
+		p.incoming = replacing;
 		p.index = index;
 		p.w = w;
 		p.h = h;
@@ -300,6 +305,16 @@ namespace bp
 			dead.clear();
 		}
 		uploadOne();
+		// a sharper page all up: it takes the old one's place now, in one frame
+		for (auto it = pages.begin(); it != pages.end();)
+		{
+			if (!it->incoming || it->uploaded < it->tiles.size()) { ++it; continue; }
+			int index = it->index;
+			it->incoming = false;
+			for (auto old = pages.begin(); old != pages.end(); ++old)
+				if (old->index == index && &*old != &*it) { freePage(*old); pages.erase(old); break; }
+			it = pages.begin();	// (the erase moved things: start over, nothing incoming is left complete twice)
+		}
 		// the screen's: mpv may have left its hidden target bound (what plays under the reader goes on there)
 		gl->BindFramebuffer(0x8D40 /* GL_FRAMEBUFFER */, 0);
 		gl->Viewport(0, 0, w, h);
