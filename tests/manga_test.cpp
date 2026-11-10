@@ -634,6 +634,158 @@ static void testFilterLimits()
 	CHECK_TRUE(json.find(std::string(61, 'N')) == std::string::npos);
 }
 
+static const char* kHtml = R"LUA(
+local listPage = '<html><head><title>Popular</title></head><body><ul id="list">'
+  .. '<li class="item"><a href="/m/1" data-id="1"><img data-src="https://example.org/1.jpg"><span class="t">First</span></a></li>'
+  .. '<li class="item"><a href="/m/2" data-id="2"><img data-src="https://example.org/2.jpg"><span class="t">Second</span></a></li>'
+  .. '<li class="item"><a href="/m/3"><span class="t">Third &amp; more</span></a></li>'
+  .. '</ul></body></html>'
+
+local function try(f)
+  local ok, e = pcall(f)
+  if ok then return "NO ERROR" end
+  return tostring(e)
+end
+
+return {
+  api = 1, id = "html", name = "Html",
+  popular = function(page)
+    if page == 1 then	-- a list page read the way a source reads one
+      local doc = bp.html.parse(listPage)
+      local items = {}
+      for _, li in ipairs(doc:select("li.item")) do
+        local a = li:selectFirst("a")
+        local img = li:selectFirst("img")
+        items[#items + 1] = {
+          key = a:attr("href"),
+          title = li:selectFirst("span.t"):text(),
+          cover = img and img:attr("data-src") or "",
+        }
+      end
+      return { items = items, more = false }
+    elseif page == 2 then	-- text / attr / html / tag / nested select, exact strings
+      local doc = bp.html.parse(listPage)
+      local li = doc:selectFirst("li.item")
+      local a = li:selectFirst("a")
+      local parts = {
+        a:tag(), a:attr("href"), tostring(a:attr("nothing")),
+        tostring(#li:select("a")), a:selectFirst("img"):attr("data-src"),
+        doc:selectFirst("title"):text(), li:selectFirst("span"):html(),
+      }
+      return { items = { { key = table.concat(parts, ";"), title = "", cover = "" } }, more = false }
+    elseif page == 3 then	-- the document's Lua name dies every round; the elements must still read
+      local keep = {}
+      for i = 1, 16 do
+        local doc = bp.html.parse(listPage)
+        keep[i] = doc:selectFirst("a")
+        local junk = string.rep("g", 100000)	-- churn, so dead documents really do get collected
+        if junk == nil then return { items = {}, more = false } end
+      end
+      local n = 0
+      for i = 1, 16 do
+        if keep[i]:attr("href") == "/m/1" and keep[i]:text() == "First" and keep[i]:tag() == "a" then
+          n = n + 1
+        end
+      end
+      return { items = { { key = n .. "|" .. keep[8]:html(), title = "", cover = "" } }, more = false }
+    elseif page == 4 then	-- every wrong argument type says so, and nothing crashes
+      local doc = bp.html.parse('<p class="c">y</p>')
+      local el = doc:selectFirst("p")
+      local parts = {
+        try(function() return bp.html.parse() end),
+        try(function() return bp.html.parse({}) end),
+        try(function() return doc:select() end),
+        try(function() return doc:select({}) end),
+        try(function() return el.attr(el) end),
+        try(function() return el:select(el) end),
+        try(function() return el.text(doc) end),
+        try(function() return doc.selectFirst(el, "p") end),
+      }
+      return { items = { { key = table.concat(parts, "\n"), title = "", cover = "" } }, more = false }
+    elseif page == 5 then	-- a runaway page is refused whole
+      local ok, e = pcall(bp.html.parse, string.rep("x", 8 * 1024 * 1024 + 1))
+      return { items = { { key = ok and "NO ERROR" or tostring(e), title = "", cover = "" } }, more = false }
+    elseif page == 6 then	-- select honours HtmlDoc's cap and comes back with it, not more
+      local doc = bp.html.parse(string.rep('<div class="c"></div>', 20001))
+      return { items = { { key = tostring(#doc:select("div.c")), title = "", cover = "" } }, more = false }
+    end
+    return { items = {}, more = false }
+  end,
+  details = function() return {} end,
+  chapters = function() return {} end,
+  pages = function() return {} end,
+}
+)LUA";
+
+static void testHtml()
+{
+	SourceHost h;
+	std::string err;
+	CHECK_TRUE(h.load(kHtml, "html", err));
+	MangaList list;
+
+	CHECK_TRUE(h.popular(1, list, err));
+	CHECK_EQ(list.items.size(), size_t(3));
+	CHECK_EQ(list.items[0].key, std::string("/m/1"));
+	CHECK_EQ(list.items[0].title, std::string("First"));
+	CHECK_EQ(list.items[0].cover, std::string("https://example.org/1.jpg"));
+	CHECK_EQ(list.items[1].key, std::string("/m/2"));
+	CHECK_EQ(list.items[2].key, std::string("/m/3"));
+	CHECK_EQ(list.items[2].title, std::string("Third & more"));	// the entity came back resolved
+	CHECK_EQ(list.items[2].cover, std::string(""));	// an item without an img
+
+	CHECK_TRUE(h.popular(2, list, err));
+	CHECK_EQ(list.items[0].key, std::string(
+		"a;/m/1;nil;1;https://example.org/1.jpg;Popular;<span class=\"t\">First</span>"));
+
+	CHECK_TRUE(h.popular(3, list, err));	// every element still reads its document
+	CHECK_EQ(list.items.size(), size_t(1));
+	CHECK_TRUE(list.items[0].key.compare(0, 3, "16|") == 0);
+	CHECK_TRUE(list.items[0].key.find("href=\"/m/1\"") != std::string::npos);
+
+	CHECK_TRUE(h.popular(4, list, err));
+	const std::string& errs = list.items[0].key;
+	CHECK_TRUE(errs.find("NO ERROR") == std::string::npos);
+	CHECK_TRUE(errs.find("string expected") != std::string::npos);
+	CHECK_TRUE(errs.find("no value") != std::string::npos);
+	CHECK_TRUE(errs.find("element expected") != std::string::npos);
+	CHECK_TRUE(errs.find("bp.html.doc expected") != std::string::npos);
+
+	CHECK_TRUE(h.popular(5, list, err));
+	CHECK_TRUE(list.items[0].key.find("larger than 8 MB") != std::string::npos);
+
+	CHECK_TRUE(h.popular(6, list, err));
+	CHECK_EQ(list.items[0].key, std::string("20000"));
+}
+
+static const char* kHtmlMemory = R"LUA(
+local page = string.rep("<p>x</p>", 100000)   -- 700 KB; every document is charged a few MB against the cap
+local keep = {}
+
+return {
+  api = 1, id = "html-memory", name = "Html Memory",
+  popular = function(n)
+    for i = 1, 100 do keep[i] = bp.html.parse(page) end
+    return { items = { { key = tostring(#keep), title = "", cover = "" } }, more = false }
+  end,
+  details = function() return {} end,
+  chapters = function() return {} end,
+  pages = function() return {} end,
+}
+)LUA";
+
+static void testHtmlMemory()
+{
+	SourceHost h;
+	h.setLimits(20.0, 0, 12u * 1024u * 1024u);
+	std::string err;
+	CHECK_TRUE(h.load(kHtmlMemory, "html-memory", err));
+	MangaList list;
+	// the documents are kept, so their charged trees pile up until the next parse would cross the cap
+	CHECK_TRUE(!h.popular(1, list, err));
+	CHECK_TRUE(err.find("memory") != std::string::npos);
+}
+
 int main()
 {
 	testCalls();
@@ -645,6 +797,8 @@ int main()
 	testUrl();
 	testDate();
 	testFilterLimits();
+	testHtml();
+	testHtmlMemory();
 	if (failures) fprintf(stderr, "%d failed\n", failures);
 	else printf("manga: all passed\n");
 	return failures != 0;

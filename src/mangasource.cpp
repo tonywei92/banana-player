@@ -1,4 +1,5 @@
 #include "mangasource.h"
+#include "htmldoc.h"	// bp.html's document; lexbor stays behind it (src/htmldoc.h), so this host needs nothing else
 extern "C"
 {
 #include "lua.h"
@@ -16,6 +17,8 @@ extern "C"
 #include <ctime>
 #include <fstream>
 #include <iterator>
+#include <memory>
+#include <new>
 #include <set>
 #include <sstream>
 #include <utility>
@@ -1102,6 +1105,8 @@ namespace bp
 	static int bpLogFn(lua_State* L);
 	static int bpTimeFn(lua_State* L);
 	static int bpDateFn(lua_State* L);
+	static void htmlInstall(lua_State* L);
+	static int bpHtmlParse(lua_State* L);
 	static int bpCollectFn(lua_State* L);
 	static int coCreate(lua_State* L);
 	static int coWrap(lua_State* L);
@@ -1308,8 +1313,12 @@ namespace bp
 		lua_pushcfunction(L, bpDateFn);
 		lua_setfield(L, -2, "date");
 
-		// bp.html will be registered here, built from a C++ HtmlDoc (design 5.2). It is deliberately absent now:
-		// lexbor is not linked into this library yet.
+		lua_newtable(L);	// bp.html (design 5.2): parse hands back a document, documents and elements elements
+		htmlInstall(L);		// the two metatables, so an element can hold its document open past the doc variable
+		lua_pushlightuserdata(L, &mem);	// parse charges the tree against this ledger: it is not Lua's allocator's
+		lua_pushcclosure(L, bpHtmlParse, 1);
+		lua_setfield(L, -2, "parse");
+		lua_setfield(L, -2, "html");
 		lua_setglobal(L, "bp");
 	}
 
@@ -2092,6 +2101,215 @@ namespace bp
 			return 1;
 		}
 		return luaL_error(L, "collectgarbage(%s) isn't available in a source", opt);
+	}
+
+	// ---- bp.html ----
+	//
+	// A document is an HtmlDoc behind a shared_ptr that the document userdata and every element userdata of it
+	// hold, so an element stays readable for as long as the element itself is referenced, whatever happened to
+	// the document's Lua variable, and the tree is freed when the last of them is collected — including when
+	// that is during lua_close, which runs before Impl's members die, so MemCtx is still there to be released
+	// into. HtmlDoc allocates outside Lua's allocator, so parse charges the tree against the state's ledger by
+	// hand (input size times 4: a lexbor tree costs several times its text) and the deleter above gives it back.
+	// Nothing raises a Lua error while a document is owned by a local C++ object: luaL_error longjmps, which
+	// runs no destructors, so parse hands the document over to the shared_ptr or deletes it before it errors.
+
+	static const char* const kHtmlDocMt = "bp.html.doc";
+	static const char* const kHtmlElMt = "bp.html.element";
+
+	struct HtmlDocUd
+	{
+		std::shared_ptr<HtmlDoc> doc;
+	};
+
+	struct HtmlElUd
+	{
+		std::shared_ptr<HtmlDoc> doc;	// what keeps the node's tree alive under it
+		HtmlNode node;
+	};
+
+	static int htmlDocGc(lua_State* L)
+	{
+		static_cast<HtmlDocUd*>(lua_touserdata(L, 1))->~HtmlDocUd();
+		return 0;
+	}
+
+	static int htmlElGc(lua_State* L)
+	{
+		static_cast<HtmlElUd*>(lua_touserdata(L, 1))->~HtmlElUd();
+		return 0;
+	}
+
+	// wrong types come back from luaL_check* as a Lua error naming what was wanted, never a crash
+	static HtmlDocUd* checkHtmlDoc(lua_State* L, int idx)
+	{
+		return static_cast<HtmlDocUd*>(luaL_checkudata(L, idx, kHtmlDocMt));
+	}
+
+	static HtmlElUd* checkHtmlEl(lua_State* L, int idx)
+	{
+		return static_cast<HtmlElUd*>(luaL_checkudata(L, idx, kHtmlElMt));
+	}
+
+	// nil when there is no node, so selectFirst has the found-or-nil shape of the design's table
+	static void pushHtmlElement(lua_State* L, const std::shared_ptr<HtmlDoc>& doc, const HtmlNode& node)
+	{
+		if (!node.valid())
+		{
+			lua_pushnil(L);
+			return;
+		}
+		void* p = lua_newuserdatauv(L, sizeof(HtmlElUd), 0);
+		new (p) HtmlElUd{doc, node};
+		luaL_setmetatable(L, kHtmlElMt);
+	}
+
+	static void pushHtmlElements(lua_State* L, const std::shared_ptr<HtmlDoc>& doc,
+		const std::vector<HtmlNode>& nodes)
+	{
+		lua_createtable(L, (int)nodes.size(), 0);
+		for (size_t i = 0; i < nodes.size(); i++)
+		{
+			if (!nodes[i].valid()) continue;	// keep the array free of holes, whatever select handed back
+			pushHtmlElement(L, doc, nodes[i]);
+			lua_rawseti(L, -2, (lua_Integer)i + 1);
+		}
+	}
+
+	static int htmlDocSelect(lua_State* L)
+	{
+		HtmlDocUd* d = checkHtmlDoc(L, 1);
+		size_t n = 0;
+		const char* c = luaL_checklstring(L, 2, &n);
+		std::vector<HtmlNode> nodes = d->doc->select(std::string(c, n));	// HtmlDoc caps the list at 20000
+		pushHtmlElements(L, d->doc, nodes);
+		return 1;
+	}
+
+	static int htmlDocSelectFirst(lua_State* L)
+	{
+		HtmlDocUd* d = checkHtmlDoc(L, 1);
+		size_t n = 0;
+		const char* c = luaL_checklstring(L, 2, &n);
+		pushHtmlElement(L, d->doc, d->doc->selectFirst(std::string(c, n)));
+		return 1;
+	}
+
+	static int htmlElText(lua_State* L)
+	{
+		std::string s = checkHtmlEl(L, 1)->node.text();
+		lua_pushlstring(L, s.data(), s.size());
+		return 1;
+	}
+
+	static int htmlElAttr(lua_State* L)
+	{
+		HtmlElUd* e = checkHtmlEl(L, 1);
+		size_t n = 0;
+		const char* a = luaL_checklstring(L, 2, &n);
+		// HtmlNode::attr reports an absent attribute as "" and cannot tell it from an empty one; 5.2 wants absent
+		// to be nil, and an empty attribute is of no use to a source, so both come back nil.
+		std::string v = e->node.attr(std::string(a, n));
+		if (v.empty()) lua_pushnil(L);
+		else lua_pushlstring(L, v.data(), v.size());
+		return 1;
+	}
+
+	static int htmlElHtml(lua_State* L)
+	{
+		std::string s = checkHtmlEl(L, 1)->node.html();
+		lua_pushlstring(L, s.data(), s.size());
+		return 1;
+	}
+
+	static int htmlElTag(lua_State* L)
+	{
+		std::string s = checkHtmlEl(L, 1)->node.tag();
+		lua_pushlstring(L, s.data(), s.size());
+		return 1;
+	}
+
+	static int htmlElSelect(lua_State* L)
+	{
+		HtmlElUd* e = checkHtmlEl(L, 1);
+		size_t n = 0;
+		const char* c = luaL_checklstring(L, 2, &n);
+		std::vector<HtmlNode> nodes = e->node.select(std::string(c, n));
+		pushHtmlElements(L, e->doc, nodes);	// the children share the element's document, and keep it alive
+		return 1;
+	}
+
+	static int htmlElSelectFirst(lua_State* L)
+	{
+		HtmlElUd* e = checkHtmlEl(L, 1);
+		size_t n = 0;
+		const char* c = luaL_checklstring(L, 2, &n);
+		pushHtmlElement(L, e->doc, e->node.selectFirst(std::string(c, n)));
+		return 1;
+	}
+
+	static int bpHtmlParse(lua_State* L)
+	{
+		MemCtx* m = static_cast<MemCtx*>(lua_touserdata(L, lua_upvalueindex(1)));
+		size_t n = 0;
+		const char* s = luaL_checklstring(L, 1, &n);
+		// the same refusal as bp.http's response and HtmlDoc::parse's own, said before copying the page about
+		if (n > kMaxResponse) return luaL_error(L, "bp.html: the page is larger than 8 MB");
+		size_t charge = n * 4;
+		if (m->used > m->cap || charge > m->cap - m->used)	// the same shape as cappedAlloc's test
+			return luaL_error(L, "bp.html: parsing this page would push the source over its memory limit");
+		HtmlDoc* doc = new HtmlDoc();
+		if (!doc->parse(std::string(s, n)))
+		{
+			delete doc;	// given back before the longjmp, which would not run any destructor for us
+			return luaL_error(L, "bp.html: the page could not be parsed");
+		}
+		m->used += charge;
+		std::shared_ptr<HtmlDoc> owned(doc, [m, charge](HtmlDoc* d) {
+			delete d;
+			m->used -= charge;
+		});
+		void* p = lua_newuserdatauv(L, sizeof(HtmlDocUd), 0);
+		new (p) HtmlDocUd{std::move(owned)};
+		luaL_setmetatable(L, kHtmlDocMt);
+		return 1;
+	}
+
+	// one metatable: __gc frees the struct's C++ members, __index is the method table (setfuncs fills the table on
+	// top of the stack, so the methods get their own table rather than living on the metatable itself)
+	static void htmlMeta(lua_State* L, const luaL_Reg* methods, lua_CFunction gc, const char* name)
+	{
+		if (!luaL_newmetatable(L, name))
+		{
+			lua_pop(L, 1);
+			return;
+		}
+		lua_pushcfunction(L, gc);
+		lua_setfield(L, -2, "__gc");
+		lua_newtable(L);
+		luaL_setfuncs(L, methods, 0);
+		lua_setfield(L, -2, "__index");
+		lua_pop(L, 1);
+	}
+
+	static void htmlInstall(lua_State* L)
+	{
+		static const luaL_Reg docMethods[] = {
+			{"select", htmlDocSelect},
+			{"selectFirst", htmlDocSelectFirst},
+			{nullptr, nullptr}
+		};
+		static const luaL_Reg elMethods[] = {
+			{"text", htmlElText},
+			{"attr", htmlElAttr},
+			{"html", htmlElHtml},
+			{"tag", htmlElTag},
+			{"select", htmlElSelect},
+			{"selectFirst", htmlElSelectFirst},
+			{nullptr, nullptr}
+		};
+		htmlMeta(L, docMethods, htmlDocGc, kHtmlDocMt);
+		htmlMeta(L, elMethods, htmlElGc, kHtmlElMt);
 	}
 
 	// The stock wrappers, with our hook attached to the new thread: a count hook is per thread and would otherwise
