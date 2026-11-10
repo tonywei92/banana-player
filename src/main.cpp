@@ -12,6 +12,7 @@
 #include "levelwatch.h"
 #include "touch.h"
 #include "reader_proto.h"
+#include "reader.h"
 #include "ui.h"
 #include "ui_glyphs.h"
 #include "session_host.h"
@@ -604,8 +605,12 @@ int main(int argc, char** argv)
 		// be taken (else its picture queue stalls, 200 ms a frame). They're drawn into a tiny target of their own, never
 		// shown, so the photo isn't drawn again 30 times a second. A video's picture is off meanwhile (hideVideo)
 		unsigned sinkFbo = 0;
+		// the manga reader: its pages on the top panel while a chapter is open (Ui asks for it: takeMangaRead)
+		MangaReader reader;
+		bool readerReady = false;
+		const Uint32 evReader = SDL_RegisterEvents(1);	// a page decoded: the loop wakes and takes it
 		auto drainUnder = [&] {
-			if (!photos.playing() || !player.playing() || !player.frameDue()) return;
+			if ((!photos.playing() && !reader.isOpen()) || !player.playing() || !player.frameDue()) return;
 			SDL_GL_MakeCurrent(top, gl);
 			if (!sinkFbo)
 			{
@@ -716,7 +721,7 @@ int main(int argc, char** argv)
 			}
 			if (crashTest && SDL_GetTicks() >= crashAt) bp::crashlog::testCrash(crashTest);
 			SDL_Event e;
-			bool got = SDL_WaitEventTimeout(&e, ui.animating() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250);
+			bool got = SDL_WaitEventTimeout(&e, reader.isOpen() && reader.busy() ? 1 : ui.animating() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250);
 			while (got)
 			{
 				// every button in the log (home/.config/banana-player/log.txt on the card), mapped or not: what the
@@ -1278,10 +1283,58 @@ int main(int argc, char** argv)
 				refreshedAt = now;
 				topDark = false;	// the black of no video drawn again too
 			}
+			// the manga reader: a chapter asked for, the bottom panel's commands, what it shows told back
+			if (haveUi)
+			{
+				Ui::MangaReadRequest rq;
+				if (ui.takeMangaRead(rq))
+				{
+					SDL_GL_MakeCurrent(top, gl);
+#ifdef BP_GLES
+					if (!readerReady) readerReady = reader.init(true, evReader);
+#else
+					if (!readerReady) readerReady = reader.init(false, evReader);
+#endif
+					int w, h;
+					SDL_GL_GetDrawableSize(top, &w, &h);
+					ui.readerStatus = {};
+					if (!readerReady) ui.readerStatus.error = "The reader couldn't start";
+					else if (!reader.open(rq.path, rq.archive, rq.page, w, h)) ui.readerStatus.error = reader.error();
+				}
+				for (auto& c : ui.readerCmds)
+				{
+					if (c.kind == Ui::ReaderCmd::Close) reader.close();
+					else reader.command((int)c.kind, c.v, c.ms);
+				}
+				ui.readerCmds.clear();
+				if (reader.isOpen())
+				{
+					ui.readerStatus.open = true;
+					ui.readerStatus.loading = reader.loading();
+					ui.readerStatus.atEnd = reader.atEnd();
+					ui.readerStatus.page = reader.page();
+					ui.readerStatus.pages = reader.pages();
+				}
+				else ui.readerStatus.open = false;
+				if (woke) reader.redrawSoon();
+			}
 			// with nothing playing the top panel is drawn on a change only, and mpv may not have the level card yet
 			// when it's asked to show: drawn again and again while the card is up
 			drainUnder();
-			if (renderPending.exchange(false) || refresh || (!shown().playing() && (!topDark || levelUntil)))
+			if (reader.isOpen())
+			{
+				// the pages, not mpv's picture (what plays goes on under them: drainUnder)
+				renderPending = false;
+				if (reader.frame(now) || refresh)
+				{
+					SDL_GL_MakeCurrent(top, gl);
+					int w, h;
+					SDL_GL_GetDrawableSize(top, &w, &h);
+					reader.draw(w, h);
+					SDL_GL_SwapWindow(top);
+				}
+			}
+			else if (renderPending.exchange(false) || refresh || (!shown().playing() && (!topDark || levelUntil)))
 			{
 				SDL_GL_MakeCurrent(top, gl);
 				int w, h;

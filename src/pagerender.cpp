@@ -57,6 +57,7 @@ namespace bp
 		F(void, Clear, unsigned)
 		F(void, Disable, unsigned)
 		F(void, GetIntegerv, unsigned, int*)
+		F(void, BindFramebuffer, unsigned, unsigned)
 		// core profile only: a vertex array object must be bound to draw
 		F(void, GenVertexArrays, int, unsigned*)
 		F(void, BindVertexArray, unsigned)
@@ -113,6 +114,7 @@ namespace bp
 		load(gl->Clear, "glClear");
 		load(gl->Disable, "glDisable");
 		load(gl->GetIntegerv, "glGetIntegerv");
+		load(gl->BindFramebuffer, "glBindFramebuffer");
 		load(gl->GenVertexArrays, "glGenVertexArrays", !gles);
 		load(gl->BindVertexArray, "glBindVertexArray", !gles);
 		load(gl->DeleteVertexArrays, "glDeleteVertexArrays", !gles);
@@ -278,6 +280,8 @@ namespace bp
 	{
 		if (!gl || !prog) return false;
 		uploadOne();
+		// the screen's: mpv may have left its hidden target bound (what plays under the reader goes on there)
+		gl->BindFramebuffer(0x8D40 /* GL_FRAMEBUFFER */, 0);
 		gl->Viewport(0, 0, w, h);
 		gl->ClearColor(0, 0, 0, 1);
 		gl->Clear(COLOR_BUFFER_BIT);
