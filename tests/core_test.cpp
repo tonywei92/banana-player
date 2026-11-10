@@ -31,6 +31,7 @@ extern "C"
 #include "manga_ui_logic.h"
 #include "mangarepo.h"
 #include "netpath.h"
+#include "opds.h"
 #include "paged.h"
 #include "pagedecode.h"
 #include "pagecache.h"
@@ -891,6 +892,225 @@ static void testMangaRepo()
 			       "https://host name/x", "https:/x", "not-a-url", "https://a\nb"})
 		CHECK_EQ(validRepoUrl(no), false);
 	CHECK_EQ(validRepoUrl(tooLong), false);
+}
+
+// the pure server readers: OPDS 1.2 Atom feeds and Komga's REST list answers (docs/design/manga.md 5.1)
+static void testOpds()
+{
+	// a Kavita-style navigation feed: prefixed Atom (the prefixes must not matter), a comment, entities, CDATA, an
+	// escaped-html summary, and the paging links
+	const std::string nav = R"NAV(<?xml version="1.0" encoding="utf-8"?>
+<!-- served by Kavita -->
+<k:feed xmlns:k="http://www.w3.org/2005/Atom" xmlns:thr="http://purl.org/syndicate/threading">
+  <k:id>urn:kavita:opds:libraries</k:id>
+  <k:title>The &amp; Catalog</k:title>
+  <k:link rel="self" type="application/atom+xml" href="https://srv.example:5000/api/opds/my-library"/>
+  <k:link rel="start" type="application/atom+xml;profile=opds-catalog" href="/api/opds"/>
+  <k:link rel="search" type="application/opensearchdescription+xml" href="/api/opds/searchdescription.xml"/>
+  <k:link rel="next" type="application/atom+xml;profile=opds-catalog" href="/api/opds/my-library?page=2"/>
+  <k:link rel="up" type="application/atom+xml;profile=opds-catalog" href="/api/opds"/>
+  <k:entry>
+    <k:id>urn:kavita:series:11</k:id>
+    <k:title>Golden &amp; Silver &#x2014; Vol. 1</k:title>
+    <k:author><k:name>Sun &amp; Moon Studio</k:name></k:author>
+    <k:updated>2026-11-02T08:00:00Z</k:updated>
+    <k:summary>&lt;p&gt;Two &lt;b&gt;siblings&lt;/b&gt;   and a   lantern.&lt;/p&gt;</k:summary>
+    <k:link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="/api/opds/series/11" thr:count="42"/>
+    <k:link rel="http://opds-spec.org/image" type="image/jpeg" href="/api/opds/series/11/cover"/>
+  </k:entry>
+  <k:entry>
+    <k:id>urn:kavita:series:12</k:id>
+    <k:title><![CDATA[Quiet Hours & Night Shifts]]></k:title>
+    <k:content type="html">&lt;div&gt;&lt;p&gt;A   tale &amp; a tail.&lt;/p&gt;&lt;/div&gt;</k:content>
+    <k:link rel="http://opds-spec.org/image/thumbnail" type="image/jpeg" href="covers/12.jpg"/>
+  </k:entry>
+</k:feed>
+)NAV";
+	OpdsFeed feed;
+	CHECK_EQ(parseOpds(nav, feed), true);
+	CHECK_EQ(feed.id, std::string("urn:kavita:opds:libraries"));
+	CHECK_EQ(feed.title, std::string("The & Catalog"));
+	CHECK_EQ(feed.start, std::string("/api/opds"));
+	CHECK_EQ(feed.search, std::string("/api/opds/searchdescription.xml"));
+	CHECK_EQ(feed.next, std::string("/api/opds/my-library?page=2"));
+	CHECK_EQ(feed.up, std::string("/api/opds"));
+	CHECK_EQ(feed.entries.size(), (size_t)2);
+	const OpdsEntry& e = feed.entries[0];
+	CHECK_EQ(e.id, std::string("urn:kavita:series:11"));
+	CHECK_EQ(e.title, std::string("Golden & Silver \xE2\x80\x94 Vol. 1"));
+	CHECK_EQ(e.author, std::string("Sun & Moon Studio"));
+	CHECK_EQ(e.updated, std::string("2026-11-02T08:00:00Z"));
+	CHECK_EQ(e.summary, std::string("Two siblings and a lantern."));	// tags stripped, entities decoded, spaces closed up
+	CHECK_EQ(e.links.size(), (size_t)2);
+	CHECK_EQ(e.links[0].count, 42);	// thr:count
+	CHECK_EQ(e.links[1].count, -1);
+	CHECK_EQ(e.nav(), std::string("/api/opds/series/11"));
+	CHECK_EQ(e.cover(), std::string("/api/opds/series/11/cover"));
+	CHECK_EQ(e.thumbnail(), std::string(""));
+	CHECK_EQ(e.acquisition(), std::string(""));
+	CHECK_EQ(e.pse(), std::string(""));
+	const OpdsEntry& e2 = feed.entries[1];
+	CHECK_EQ(e2.title, std::string("Quiet Hours & Night Shifts"));	// CDATA is literal
+	CHECK_EQ(e2.summary, std::string("A tale & a tail."));	// from <content type="html">
+	CHECK_EQ(e2.thumbnail(), std::string("covers/12.jpg"));
+	// every href resolves against the feed's own URL
+	CHECK_EQ(opdsResolve("https://srv.example:5000/api/opds/my-library", e2.thumbnail()),
+	         std::string("https://srv.example:5000/api/opds/covers/12.jpg"));
+	CHECK_EQ(opdsResolve("https://srv.example:5000/api/opds/my-library", feed.next),
+	         std::string("https://srv.example:5000/api/opds/my-library?page=2"));
+
+	// an acquisition feed with the Page Streaming Extension, written with a default namespace and a different prefix
+	// for PSE: what Komga answers for a series' books
+	const std::string acq = R"ACQ(<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:p="http://vaemendis.net/opds-pse/ns">
+  <id>urn:komga:series:7:books</id>
+  <title>Books of Paper Lanterns</title>
+  <link rel="start" type="application/atom+xml;profile=opds-catalog" href="/opds"/>
+  <entry>
+    <id>urn:komga:book:21</id>
+    <title>Chapter One</title>
+    <link rel="item" type="application/atom+xml" href="books/21"/>
+    <link rel="http://opds-spec.org/acquisition" type="application/pdf" href="/files/21.pdf"/>
+    <link rel="http://opds-spec.org/acquisition/cbz" type="application/vnd.comicbook+zip" href="/files/21.cbz"/>
+    <link rel="http://vaemendis.net/opds-pse/stream" type="image/jpeg"
+          href="/api/series/7/books/21/page/{pageNumber}?width={maxWidth}" p:count="37"/>
+  </entry>
+  <entry>
+    <id>urn:komga:book:22</id>
+    <title>Chapter Two</title>
+    <link rel="http://opds-spec.org/acquisition" type="application/zip" href="/files/22.zip"/>
+    <link rel="http://opds-spec.org/image" type="image/png" href="img/22.png"/>
+  </entry>
+</feed>
+)ACQ";
+	OpdsFeed shop;
+	CHECK_EQ(parseOpds(acq, shop), true);
+	CHECK_EQ(shop.start, std::string("/opds"));
+	CHECK_EQ(shop.entries.size(), (size_t)2);
+	const OpdsEntry& b = shop.entries[0];
+	CHECK_EQ(b.nav(), std::string("books/21"));
+	// a comic on a shelf is a zip: the cbz beats the pdf that came first
+	CHECK_EQ(b.acquisition(), std::string("/files/21.cbz"));
+	CHECK_EQ(b.pse(), std::string("/api/series/7/books/21/page/{pageNumber}?width={maxWidth}"));
+	int pseCount = -1;
+	for (const OpdsLink& l : b.links)
+		if (l.rel == "http://vaemendis.net/opds-pse/stream") pseCount = l.count;
+	CHECK_EQ(pseCount, 37);	// p:count, matched by namespace URI not prefix
+	CHECK_EQ(shop.entries[1].acquisition(), std::string("/files/22.zip"));
+	CHECK_EQ(shop.entries[1].cover(), std::string("img/22.png"));
+	CHECK_EQ(shop.entries[1].pse(), std::string(""));
+	std::string pageUrl = opdsResolve("https://komga.example/opds/v1/series/7", b.pse());
+	CHECK_EQ(pageUrl, std::string("https://komga.example/api/series/7/books/21/page/{pageNumber}?width={maxWidth}"));
+	CHECK_EQ(opdsPseUrl(pageUrl, 12, 900),
+	         std::string("https://komga.example/api/series/7/books/21/page/12?width=900"));
+	CHECK_EQ(opdsPseUrl("/s/21/%7BpageNumber%7D?w=%7BmaxWidth%7D", 3, 640), std::string("/s/21/3?w=640"));
+
+	// opdsResolve, one case per shape a server actually writes
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "http://cdn.x/a.jpg"), std::string("http://cdn.x/a.jpg"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "sub/x"), std::string("http://h:80/opds/sub/x"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "../x"), std::string("http://h:80/x"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "a/../b"), std::string("http://h:80/opds/b"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "/api/x"), std::string("http://h:80/api/x"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library?a=1&b=2", "?c=3"), std::string("http://h:80/opds/library?c=3"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/", "x"), std::string("http://h:80/opds/x"));
+	CHECK_EQ(opdsResolve("http://h:80", "x"), std::string("http://h:80/x"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "//cdn.x/y"), std::string("http://cdn.x/y"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", ""), std::string("http://h:80/opds/library"));
+
+	// not a feed, in every way a body can fail to be one
+	OpdsFeed no;
+	CHECK_EQ(parseOpds("", no), false);
+	CHECK_EQ(parseOpds("no xml at all", no), false);
+	CHECK_EQ(parseOpds("<rss><channel><title>RSS, not Atom</title></channel></rss>", no), false);
+	CHECK_EQ(parseOpds(R"(<ComicInfo><Series>S</Series></ComicInfo>)", no), false);
+	// truncated input answers false at every cut, and crashes at none (stop short of the feed's own close)
+	for (size_t cut = 4; cut + 12 < nav.size(); cut += 37)
+	{
+		OpdsFeed part;
+		CHECK_EQ(parseOpds(nav.substr(0, cut), part), false);
+	}
+	// an empty feed is still a feed
+	OpdsFeed tiny;
+	CHECK_EQ(parseOpds(R"(<feed xmlns="http://www.w3.org/2005/Atom" xmlns:t="http://www.w3.org/2005/Atom"/>)", tiny),
+	         true);
+	CHECK_EQ(tiny.entries.size(), (size_t)0);
+	// over 8 MB is refused rather than cut short
+	CHECK_EQ(parseOpds(std::string((8u << 20) + 1, 'x'), no), false);
+	// and a runaway feed is capped at 10 000 entries
+	std::string many = R"(<feed xmlns="http://www.w3.org/2005/Atom">)";
+	for (int i = 0; i < 10001; i++) many += "<entry><id>x</id></entry>";
+	many += "</feed>";
+	OpdsFeed capped;
+	CHECK_EQ(parseOpds(many, capped), true);
+	CHECK_EQ(capped.entries.size(), (size_t)10000);
+
+	// Komga REST: a page of series, with its extra fields (booksCount, flags) unknown but harmless
+	std::vector<KomgaItem> items;
+	int totalPages = -1;
+	const std::string kgSeries = R"JSON({"content":[
+	  {"id":"01HXYZ","name":"Paper Lanterns","numberSort":1.0,"booksCount":12,
+	   "metadata":{"title":"Paper Lanterns","status":"ONGOING","authors":[{"name":"Sun & Moon Studio"}]}},
+	  {"id":"01JABC","metadata":{"title":"Quiet Hours"}}
+	],"page":0,"pageSize":2,"totalPages":3,"totalElements":5,"empty":false,"first":true,"last":false,"filtered":false})JSON";
+	CHECK_EQ(parseKomgaPage(kgSeries, items, totalPages), true);
+	CHECK_EQ(totalPages, 3);
+	CHECK_EQ(items.size(), (size_t)2);
+	CHECK_EQ(items[0].id, std::string("01HXYZ"));
+	CHECK_EQ(items[0].name, std::string("Paper Lanterns"));
+	CHECK_EQ(items[0].number, std::string(""));
+	CHECK_EQ(items[0].numberSort, 1.0);
+	CHECK_EQ(items[0].pages, -1);
+	CHECK_EQ(items[1].name, std::string("Quiet Hours"));	// no name on the item: the metadata title stands in
+
+	// a page of books: metadata.number/numberSort, the media's page count (object form in old Komga, array in new),
+	// JSON string escapes incl. a surrogate pair
+	items.clear();
+	const std::string kgBooks = R"JSON({"content":[
+	  {"id":"01BOOK1","name":"Book One","metadata":{"number":"1","numberSort":1.5},
+	   "media":{"pagesCount":24,"size":1000000,"format":"CBZ"}},
+	  {"id":"01BOOK2","name":"Ch\u00e9ri \uD83D\uDE00 Two","metadata":{"number":"1.5","summary":"a \"quoted\" tale"},
+	   "media":[{"pages":38,"width":800,"height":1200,"biTDepth":8,"colorType":"COLOR"}]}
+	],"page":0,"pageSize":20,"totalPages":1,"totalElements":2,"empty":false})JSON";
+	CHECK_EQ(parseKomgaPage(kgBooks, items, totalPages), true);
+	CHECK_EQ(totalPages, 1);
+	CHECK_EQ(items.size(), (size_t)2);
+	CHECK_EQ(items[0].number, std::string("1"));
+	CHECK_EQ(items[0].numberSort, 1.5);
+	CHECK_EQ(items[0].pages, 24);
+	CHECK_EQ(items[1].number, std::string("1.5"));
+	CHECK_EQ(items[1].numberSort, -1.0);
+	CHECK_EQ(items[1].pages, 38);
+	CHECK_EQ(items[1].name, std::string("Ch\xC3\xA9ri \xF0\x9F\x98\x80 Two"));
+
+	// malformed JSON is false without a crash; items untouched
+	std::vector<KomgaItem> keep;
+	int t2 = 0;
+	CHECK_EQ(parseKomgaPage("{", keep, t2), false);
+	CHECK_EQ(parseKomgaPage("not json", keep, t2), false);
+	CHECK_EQ(parseKomgaPage("[1,2]", keep, t2), false);	// not an object
+	CHECK_EQ(parseKomgaPage("{}", keep, t2), false);	// no content array
+	CHECK_EQ(parseKomgaPage(R"({"content":"oops"})", keep, t2), false);
+	CHECK_EQ(parseKomgaPage(R"({"content":[{"id":)", keep, t2), false);
+	CHECK_EQ(parseKomgaPage(R"({"content":[{"broken]")", keep, t2), false);
+	CHECK_EQ(parseKomgaPage(std::string("{\"content\":[[") + std::string(400, '[') + std::string(400, ']') + "]]}", keep, t2),
+	         false);	// nested deeper than the reader trusts
+	CHECK_EQ(parseKomgaPage(std::string((8u << 20) + 1, 'x'), keep, t2), false);
+	CHECK_EQ(keep.size(), (size_t)0);
+	// the cap is shared with feeds
+	std::string manyKg = "{\"content\":[";
+	for (int i = 0; i < 10001; i++) manyKg += i ? ",{\"id\":\"x\"}" : "{\"id\":\"x\"}";
+	manyKg += "],\"totalPages\":1}";
+	std::vector<KomgaItem> manyItems;
+	CHECK_EQ(parseKomgaPage(manyKg, manyItems, t2), true);
+	CHECK_EQ(manyItems.size(), (size_t)10000);
+
+	// joined without doubling or dropping the slash, however the user typed the server's address
+	CHECK_EQ(komgaUrl("https://komga.example", "/api/v1/series"), std::string("https://komga.example/api/v1/series"));
+	CHECK_EQ(komgaUrl("https://komga.example/", "/api/v1/series"), std::string("https://komga.example/api/v1/series"));
+	CHECK_EQ(komgaUrl("https://komga.example/", "api/v1/series"), std::string("https://komga.example/api/v1/series"));
+	CHECK_EQ(komgaUrl("https://komga.example//", "api/v1"), std::string("https://komga.example/api/v1"));
+	CHECK_EQ(komgaUrl("https://komga.example/", ""), std::string("https://komga.example"));
+	CHECK_EQ(komgaUrl("", "/api/v1/books"), std::string("/api/v1/books"));
 }
 
 // the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
@@ -6329,6 +6549,7 @@ int main()
 	testPageCache();
 	testDlQueue();
 	testMangaRepo();
+	testOpds();
 	testMangaUiLogic();
 	testPaged();
 	testMangaStore();
