@@ -24,6 +24,9 @@ namespace bp
 		void keepOnly(const std::set<int>& keep);
 		// one frame of the strip into the bound framebuffer (w x h pixels); true while tiles still wait to go up
 		bool draw(const Strip& strip, int w, int h);
+		// the same for any layout: each page's rectangle in view pixels (the paged modes)
+		struct Placed { int page; float x, y, w, h; };
+		bool draw(const std::vector<Placed>& placed, int w, int h);
 		size_t textureBytes() const { return bytes; }
 
 	private:

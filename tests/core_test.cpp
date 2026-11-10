@@ -2205,6 +2205,9 @@ static void testSettings()
 	CHECK_EQ(parseSettings("keep-history = no\n").keepHistory, false);
 	CHECK_EQ(d.keepNetHistory, true);	// network files in Recent: on by default
 	CHECK_EQ(parseSettings("keep-network-history = no\n").keepNetHistory, false);
+	CHECK_EQ(d.mangaMode, MANGA_RTL);	// the manga reader: right to left, as printed manga
+	CHECK_EQ(parseSettings("manga-mode = strip\n").mangaMode, MANGA_STRIP);
+	CHECK_EQ(parseSettings("manga-mode = sideways\n").mangaMode, MANGA_RTL);
 	CHECK_EQ(parseSettings(serializeSettings(d)).keepNetHistory, true);
 	CHECK_EQ(parseSettings("remember-folder = yes\n").rememberFolder, true);
 	// the clock: 24-hour unless set; its three values kept; anything else the default

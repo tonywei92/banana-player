@@ -1152,7 +1152,7 @@ namespace bp
 				snprintf(rb, sizeof rb, "|rs%d%d%d%d %d %d %d%d%d", (int)readerStatus.open, (int)readerStatus.loading,
 					(int)readerStatus.atEnd, (int)mangaReadLive, readerStatus.page, readerStatus.pages, (int)mangaDirty,
 					(int)mangaTouch, (int)mangaSlider);
-				photo += std::string(rb) + readerStatus.error + "|" + mangaReadChapterId;
+				photo += std::string(rb) + readerStatus.error + "|" + mangaReadChapterId + "|m" + std::to_string(readerStatus.mode);
 			}
 		}
 		return buf + photo + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd

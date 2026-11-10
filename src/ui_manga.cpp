@@ -210,7 +210,7 @@ namespace bp
 		mangaReadSeriesId = mangaSeriesId;
 		mangaReadChapterId = c.path;
 		mangaReadChapterTitle = c.title;
-		mangaRead = {mangaSeriesId, s.title, c.path, c.title, c.path, c.archive, std::max(0, page0)};
+		mangaRead = {mangaSeriesId, s.title, c.path, c.title, c.path, c.archive, std::max(0, page0), mangaModeFor(mangaSeriesId, p)};
 		// the status still holds the chapter before: its numbers aren't this chapter's, so only a change records
 		mangaProgPage = readerStatus.page;
 		mangaProgPages = readerStatus.pages;
@@ -340,6 +340,7 @@ namespace bp
 				break;
 			case Button::L: readerCmds.push_back({ReaderCmd::Page, -1, (int64_t)now}); break;
 			case Button::R: readerCmds.push_back({ReaderCmd::Page, 1, (int64_t)now}); break;
+			case Button::X: mangaCycleMode(p); break;
 			case Button::L2: mangaChapterStep(-1, p); break;
 			case Button::R2: mangaChapterStep(1, p); break;
 			case Button::B: mangaCloseReader(); break;
@@ -544,6 +545,7 @@ namespace bp
 				{
 					mangaTouch = true;
 					mangaTouchY = pt.y;
+					mangaTouchX = pt.x;
 					readerCmds.push_back({ReaderCmd::TouchDown, 0, (int64_t)SDL_GetTicks()});
 					return false;
 				}
@@ -569,9 +571,11 @@ namespace bp
 				if (mangaTouch)
 				{
 					// the finger's own y is already 0..1: its step goes as it is
-					double dy = pt.y - mangaTouchY;
+					double dy = pt.y - mangaTouchY, dx = pt.x - mangaTouchX;
 					mangaTouchY = pt.y;
-					if (dy != 0) readerCmds.push_back({ReaderCmd::Drag, dy, (int64_t)SDL_GetTicks()});
+					mangaTouchX = pt.x;
+					// (both: the strip goes by dy, the paged modes by dx)
+					if (dy != 0 || dx != 0) readerCmds.push_back({ReaderCmd::Drag, dy, (int64_t)SDL_GetTicks(), dx});
 				}
 				else if (mangaSlider && readerStatus.pages > 1)
 				{
@@ -987,7 +991,10 @@ namespace bp
 		drawTextMid(mangaTitle(mangaReadSeriesId), 0, DIM, 72, 50, 540);
 		// the big surface: it shows the pages' place and takes the finger's drag
 		drawBox(mangaAreaRect(), SURFACE, R_TILE);
-		drawTextMid("Drag here to scroll", 0, DIM, W / 2, 200, 0, 2);
+		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
+		int m = readerStatus.mode >= 0 && readerStatus.mode < MANGA_MODES ? readerStatus.mode : 0;
+		drawTextMid(m == MANGA_STRIP ? "Drag here to scroll" : "Swipe here to turn the page", 0, DIM, W / 2, 190, 0, 2);
+		drawTextMid(std::string(MODES[m]) + " \xC2\xB7 X to change", 0, DIM_ON, W / 2, 216, 0, 2);
 		int pages = readerStatus.pages;
 		if (!readerStatus.error.empty())
 			drawTextMid(readerStatus.error, 1, DANGER, W / 2, 340, 560, 2);
@@ -1015,6 +1022,33 @@ namespace bp
 		drawButton(pb, &G_PREV, "Prev chapter", nullptr, !prev, 0);	// (L2/R2: in the hints)
 		drawBox(nb, mangaPressed == MG_NEXT ? PRESSED : BUTTON, R_BUTTON);
 		drawButton(nb, &G_NEXT, "Next chapter", nullptr, !next, 0);
-		drawHints({{"D-PAD", "Step"}, {"L/R", "Page"}, {"L2/R2", "Chapter"}, {"B", "Close"}});
+		drawHints({{"D-PAD", "Step"}, {"L/R", "Page"}, {"X", "Mode"}, {"L2/R2", "Chapter"}, {"B", "Close"}});
+	}
+
+	int Ui::mangaModeFor(const std::string& seriesId, const Player& p) const
+	{
+		const MangaSeries* ms = mangaStore ? mangaStore->series(seriesId) : nullptr;
+		if (ms && ms->readingMode == "rtl") return MANGA_RTL;
+		if (ms && ms->readingMode == "ltr") return MANGA_LTR;
+		if (ms && ms->readingMode == "strip") return MANGA_STRIP;
+		int m = p.settings.mangaMode;
+		return m >= 0 && m < MANGA_MODES ? m : MANGA_RTL;
+	}
+
+	void Ui::mangaCycleMode(Player& p)
+	{
+		// right to left, left to right, strip, round; kept for this series (the setting stays for the others)
+		(void)p;
+		int m = (readerStatus.mode + 1) % MANGA_MODES;
+		readerCmds.push_back({ReaderCmd::Mode, (double)m, (int64_t)SDL_GetTicks()});
+		if (mangaStore)
+			if (const MangaSeries* ms = mangaStore->series(mangaReadSeriesId))
+			{
+				MangaSeries s = *ms;
+				static const char* IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
+				s.readingMode = IDS[m];
+				mangaStore->putSeries(s);
+				mangaSave();
+			}
 	}
 }

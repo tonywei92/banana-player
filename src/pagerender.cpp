@@ -278,6 +278,16 @@ namespace bp
 
 	bool PageRenderer::draw(const Strip& strip, int w, int h)
 	{
+		std::vector<Placed> placed;
+		auto vis = strip.visible();
+		double off = strip.offset();
+		for (int i = vis.first; i >= 0 && i <= vis.second; i++)
+			placed.push_back({i, 0, (float)(strip.pageTop(i) - off), (float)w, (float)strip.pageHeight(i)});
+		return draw(placed, w, h);
+	}
+
+	bool PageRenderer::draw(const std::vector<Placed>& placed, int w, int h)
+	{
 		if (!gl || !prog) return false;
 		uploadOne();
 		// the screen's: mpv may have left its hidden target bound (what plays under the reader goes on there)
@@ -295,28 +305,25 @@ namespace bp
 		gl->VertexAttribPointer(aUv, 2, FLOAT, 0, 16, (const void*)8);
 		gl->ActiveTexture(TEXTURE0);
 		gl->Uniform4f(uTint, 1, 1, 1, 1);
-		auto vis = strip.visible();
-		double off = strip.offset();
 		bool pending = false;
-		for (int i = vis.first; i >= 0 && i <= vis.second; i++)
+		for (auto& pl : placed)
 		{
-			float top = (float)(strip.pageTop(i) - off), ph = (float)strip.pageHeight(i);
-			const Page* p = find(i);
+			const Page* p = find(pl.page);
 			if (!p || p->uploaded < p->tiles.size())
 			{
-				// not here yet (or not all up): its place, grey, so nothing below it moves when it comes
+				// not here yet (or not all up): its place, grey, so nothing around it moves when it comes
 				gl->BindTexture(TEXTURE_2D, grey);
-				quad(0, top, (float)w, top + ph, 0, 1, w, h);
+				quad(pl.x, pl.y, pl.x + pl.w, pl.y + pl.h, 0, 1, w, h);
 				pending = pending || p;
 				continue;
 			}
 			for (auto& t : p->tiles)
 			{
-				// the tile's rows, scaled to the page's height on screen (decoded at the panel's width, so ~1:1)
-				float y0 = top + ph * t.y / p->h, y1 = top + ph * (t.y + t.h) / p->h;
-				if (y1 < 0 || y0 > h) continue;
+				// the tile's rows, scaled to the page's height on screen
+				float y0 = pl.y + pl.h * t.y / p->h, y1 = pl.y + pl.h * (t.y + t.h) / p->h;
+				if (y1 < 0 || y0 > h || pl.x + pl.w < 0 || pl.x > w) continue;
 				gl->BindTexture(TEXTURE_2D, t.tex);
-				quad(0, y0, (float)w, y1, 0, 1, w, h);
+				quad(pl.x, y0, pl.x + pl.w, y1, 0, 1, w, h);
 			}
 		}
 		// mpv draws next in this context: what it might rely on goes back to nothing bound

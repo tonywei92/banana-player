@@ -33,7 +33,8 @@ namespace bp
 		case GROUP_MUSIC: return {MUSIC_ROW, VIS_ROW, SOUND_ROW};
 		case GROUP_PHOTOS: return {T + 8, PAN_ROW, DRAG_ROW};
 		case GROUP_REMEMBER: return {T + 0, T + 1, T + 2};
-		case GROUP_EXT: return {T + 12, EXT_NOTE};
+		// (the reader's options only while it's on)
+		case GROUP_EXT: return mangaOn ? std::vector<int>{T + 12, MANGA_MODE_ROW, EXT_NOTE} : std::vector<int>{T + 12, EXT_NOTE};
 		case GROUP_FILES: return {T + 3, T + 6, T + 4, T + 11, CLEAR_ROW};
 		case GROUP_CONTROLS:
 		{
@@ -68,6 +69,7 @@ namespace bp
 	{
 		const int T = TOGGLE_ROW;
 		if (row >= STYLE_ROW0 && row < STYLE_ROW0 + STYLE_KEYS) return "How plain subtitles (SRT, VTT...) look. Styled ones (ASS) keep theirs.";
+		if (row == MANGA_MODE_ROW) return "How a series opens until you pick one for it (X while reading).";
 		if (row == MUSIC_ROW) return "What the top screen shows while a song plays (SELECT while playing).";
 		if (row == VIS_ROW) return "How the music is drawn: Peaks, Peaks Banana or Circle (SELECT while playing).";
 		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
@@ -157,6 +159,7 @@ namespace bp
 		Settings s = p.settings;
 		if (row - STYLE_ROW0 < STYLE_KEYS) stepStyle(s.style, (StyleKey)(row - STYLE_ROW0), dir);
 		else if (row == MUSIC_ROW) s.musicShow = ((s.musicShow + dir) % SHOWS + SHOWS) % SHOWS;
+		else if (row == MANGA_MODE_ROW) s.mangaMode = ((s.mangaMode + dir) % MANGA_MODES + MANGA_MODES) % MANGA_MODES;
 		else if (row == VIS_ROW) s.visualizer = stepVisualizer(s.visualizer, dir);
 		else if (row == CLOCK_ROW) s.clock = ((s.clock + dir) % CLOCKS + CLOCKS) % CLOCKS;
 		// (not round: Never at one end, 5 minutes at the other)
@@ -278,6 +281,12 @@ namespace bp
 			{
 				label = subStyleSettings()[k].label;
 				value = styleValueLabel(p.settings.style, (StyleKey)k);
+			}
+			else if (row == MANGA_MODE_ROW)
+			{
+				static const char* NAMES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
+				label = "Reading mode";
+				value = NAMES[p.settings.mangaMode];
 			}
 			else if (row == MUSIC_ROW)
 			{

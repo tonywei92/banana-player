@@ -70,7 +70,7 @@ namespace bp
 		}
 	}
 
-	bool MangaReader::open(const std::string& path, bool isArchive, int page, int w, int h)
+	bool MangaReader::open(const std::string& path, bool isArchive, int page, int w, int h, int m)
 	{
 		close();
 		err.clear();
@@ -102,6 +102,12 @@ namespace bp
 		page = std::clamp(page, 0, (int)files.size() - 1);
 		// (placeholders are all the same height until pages come: their tops are exact for the first page wanted)
 		strip.scrollTo(strip.pageTop(page));
+		paged.setView(w, h);
+		paged.setPages((int)files.size(), 1.5);
+		paged.setFit(Paged::FitPage);
+		readMode = m >= 0 && m < MANGA_MODES ? m : MANGA_STRIP;
+		paged.setRtl(readMode == MANGA_RTL);
+		paged.goTo(page, 0, false);
 		opened = true;
 		redrawSoon();
 		fprintf(stderr, "reader: opened %s, %zu pages, at page %d\n", path.substr(path.rfind('/') + 1).c_str(), files.size(), page + 1);
@@ -130,9 +136,11 @@ namespace bp
 	void MangaReader::want()
 	{
 		if (!opened) return;
-		auto list = strip.wanted(3, 1);
+		bool s = readMode == MANGA_STRIP;
+		auto list = s ? strip.wanted(3, 1) : paged.wanted(3, 1);
 		std::set<int> keep(list.begin(), list.end());
 		auto vis = strip.visible();
+		if (!s) vis = {paged.current(), paged.current()};
 		for (int i = vis.first - 2; i <= vis.second + 4; i++) keep.insert(i);
 		pr.keepOnly(keep);
 		std::lock_guard<std::mutex> l(m);
@@ -146,9 +154,37 @@ namespace bp
 		cv.notify_all();
 	}
 
-	void MangaReader::command(int kind, double v, int64_t ms)
+	void MangaReader::command(int kind, double v, int64_t ms, double v2)
 	{
 		if (!opened) return;
+		if (kind == Mode)
+		{
+			// the same page in the other mode, at rest
+			int cur = page(), m = (int)v;
+			if (m < 0 || m >= MANGA_MODES || m == readMode) return;
+			readMode = m;
+			strip.scrollTo(strip.pageTop(cur));
+			paged.setRtl(m == MANGA_RTL);
+			paged.goTo(cur, ms, false);
+			want();
+			redrawSoon(2);
+			return;
+		}
+		if (readMode != MANGA_STRIP)
+		{
+			switch (kind)
+			{
+			case Step: if (v > 0) paged.forward(ms); else paged.back(ms); break;
+			case Page: if (v > 0) paged.nextPage(ms); else paged.prevPage(ms); break;
+			case Seek: paged.goTo(std::clamp((int)v, 0, (int)files.size() - 1), ms, false); break;
+			case TouchDown: paged.touchDown(ms); fingerDown = true; break;
+			case Drag: if (fingerDown) paged.drag(v2 * viewW, v * viewH, ms); break;
+			case Release: if (fingerDown) paged.release(ms); fingerDown = false; break;
+			default: break;
+			}
+			redrawSoon(1);
+			return;
+		}
 		switch (kind)
 		{
 		case Step: strip.animateTo(strip.offset() + v * strip.screenful(), ms); break;
@@ -188,11 +224,12 @@ namespace bp
 				}
 				fprintf(stderr, "timing: page %d decoded in %u ms (%dx%d)\n", d.index + 1, d.ms, d.img.w, d.img.h);
 				strip.setPageSize(d.index, d.img.w, d.img.h);
+				paged.setPageSize(d.index, d.img.w, d.img.h);
 				pr.addPage(d.index, d.img.w, d.img.h, std::move(d.img.rgba));
 				any = true;
 			}
 		}
-		bool moving = strip.step(now);
+		bool moving = readMode == MANGA_STRIP ? strip.step(now) : paged.step(now);
 		if (any || moving) want();
 		bool need = any || moving || uploads || forceFrames > 0;
 		return need;
@@ -201,13 +238,23 @@ namespace bp
 	void MangaReader::draw(int w, int h)
 	{
 		if (!opened) return;
-		uploads = pr.draw(strip, w, h);
+		if (readMode == MANGA_STRIP) uploads = pr.draw(strip, w, h);
+		else
+		{
+			std::vector<PageRenderer::Placed> placed;
+			// at rest only the page read: its neighbours would peek in at the 4:3 panel's sides (they slide in on a swipe)
+			bool rest = !paged.moving() && !fingerDown;
+			for (auto& p : paged.placements())
+				if (!rest || p.page == paged.current()) placed.push_back({p.page, (float)p.x, (float)p.y, (float)p.w, (float)p.h});
+			uploads = pr.draw(placed, w, h);
+		}
 		if (forceFrames > 0) forceFrames--;
 	}
 
 	bool MangaReader::loading() const
 	{
 		if (!opened) return false;
+		if (readMode != MANGA_STRIP) return !pr.has(paged.current());
 		auto vis = strip.visible();
 		for (int i = vis.first; i >= 0 && i <= vis.second; i++)
 			if (!pr.has(i)) return true;
@@ -216,6 +263,8 @@ namespace bp
 
 	bool MangaReader::atEnd() const
 	{
-		return opened && strip.offset() >= strip.totalHeight() - strip.screenful() / 0.9 - 1;
+		if (!opened) return false;
+		if (readMode != MANGA_STRIP) return paged.atEnd();
+		return strip.offset() >= strip.totalHeight() - strip.screenful() / 0.9 - 1;
 	}
 }

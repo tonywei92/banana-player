@@ -6,6 +6,7 @@
 
 namespace bp
 {
+	constexpr int MANGA_RTL = 0, MANGA_LTR = 1, MANGA_STRIP = 2, MANGA_MODES = 3;
 	// Music on the top panel: its album art (embedded, or cover.jpg beside it), a visualizer drawn from the sound by
 	// FFmpeg's filters, or the art with the visualizer over its lower part; a song with no art shows the visualizer
 	// whatever this says. The title, artist and album over either.
@@ -103,6 +104,8 @@ namespace bp
 		bool webDashboard = false;
 		// the manga reader (Settings › Extensions, Manage extensions): off by default; off, nothing of it shows or runs
 		bool mangaOn = false;
+		// the manga reader's mode for a series that has none of its own: right to left (printed manga), left to right, strip
+		int mangaMode = 0;
 		// its first-time note about repositories has been shown: it isn't again when the reader is turned on
 		bool mangaIntroShown = false;
 	};

@@ -1300,12 +1300,12 @@ int main(int argc, char** argv)
 					SDL_GL_GetDrawableSize(top, &w, &h);
 					ui.readerStatus = {};
 					if (!readerReady) ui.readerStatus.error = "The reader couldn't start";
-					else if (!reader.open(rq.path, rq.archive, rq.page, w, h)) ui.readerStatus.error = reader.error();
+					else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode)) ui.readerStatus.error = reader.error();
 				}
 				for (auto& c : ui.readerCmds)
 				{
 					if (c.kind == Ui::ReaderCmd::Close) reader.close();
-					else reader.command((int)c.kind, c.v, c.ms);
+					else reader.command((int)c.kind, c.v, c.ms, c.v2);
 				}
 				ui.readerCmds.clear();
 				if (reader.isOpen())
@@ -1315,6 +1315,7 @@ int main(int argc, char** argv)
 					ui.readerStatus.atEnd = reader.atEnd();
 					ui.readerStatus.page = reader.page();
 					ui.readerStatus.pages = reader.pages();
+					ui.readerStatus.mode = reader.mode();
 				}
 				else ui.readerStatus.open = false;
 				if (woke) reader.redrawSoon();
