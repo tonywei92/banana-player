@@ -103,7 +103,7 @@ pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil l
 add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp)
 target_link_libraries(bpprobe PUBLIC bpcore PkgConfig::AV)
 
-add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/ui_manga.cpp)
+add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/ui_manga.cpp src/mangarepos.cpp)
 target_link_libraries(banana-player PRIVATE bpcore bpprobe PkgConfig::SDL2 PkgConfig::SDL2_TTF)
 # SMB through libsmb2 (bundled on the handheld; on a Mac, built into .cache/mac/libsmb2). Without it the browser's
 # Network tab says no server can be reached
@@ -127,7 +127,8 @@ execute_process(COMMAND git -c safe.directory=* describe --always --dirty --excl
 target_compile_definitions(banana-player PRIVATE
 	BP_VERSION="${PROJECT_VERSION}"
 	BP_COMMIT="${BP_COMMIT}"
-	BP_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets")
+	BP_ASSETS_DIR="${CMAKE_SOURCE_DIR}/assets"
+	BP_MANGA_FETCH=1)	# mangarepos.cpp's adapter for MangaFetch; repos-test has no fetcher to link
 if(BP_GLES)
 	target_compile_definitions(banana-player PRIVATE BP_GLES=1)
 endif()
@@ -185,3 +186,7 @@ add_custom_target(manga-check COMMAND $<TARGET_FILE:manga-test> DEPENDS manga-te
 add_executable(fuzz-test tests/fuzz_test.cpp)
 target_link_libraries(fuzz-test PRIVATE bpcore bpprobe)
 target_compile_definitions(fuzz-test PRIVATE BP_FUZZ_DIR="${CMAKE_SOURCE_DIR}/tests/pages")
+# the repository manager, driven by a fake fetcher: no thread, no socket, no Lua host (design 5.3)
+add_executable(repos-test tests/repos_test.cpp src/mangarepos.cpp)
+target_link_libraries(repos-test PRIVATE bpcore PkgConfig::SDL2)
+add_test(NAME repos COMMAND repos-test)
