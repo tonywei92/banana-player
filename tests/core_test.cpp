@@ -3437,6 +3437,10 @@ static void testSettings()
 	CHECK_EQ(parseSettings("keep-network-history = no\n").keepNetHistory, false);
 	CHECK_EQ(d.mangaMode, MANGA_RTL);	// the manga reader: right to left, as printed manga
 	CHECK_EQ(parseSettings("manga-mode = strip\n").mangaMode, MANGA_STRIP);
+	CHECK_EQ(d.mangaHinge, 36);
+	CHECK_EQ(parseSettings("manga-hinge = 20\n").mangaHinge, 20);
+	CHECK_EQ(parseSettings("manga-hinge = 999\n").mangaHinge, 36);
+	CHECK_EQ(parseSettings(serializeSettings(parseSettings("manga-hinge = 12\n"))).mangaHinge, 12);
 	CHECK_EQ(parseSettings("manga-mode = sideways\n").mangaMode, MANGA_RTL);
 	// the Manga group's other rows: fit, swap, preload, cache, adult sources, history, Recent
 	CHECK_EQ(d.mangaFit, MANGA_FIT_PAGE);

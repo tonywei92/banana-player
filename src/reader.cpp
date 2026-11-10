@@ -1,6 +1,7 @@
 #include "reader.h"
 #include "manga_names.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <dirent.h>
 
@@ -97,12 +98,12 @@ namespace bp
 		}
 		if (names.empty()) { err = "No pages in this chapter"; return false; }
 		files = std::move(names);
-		strip.setView(w, h);
+		strip.setView(w, layoutH());
 		strip.setPages((int)files.size(), 1.5);
 		page = std::clamp(page, 0, (int)files.size() - 1);
 		// (placeholders are all the same height until pages come: their tops are exact for the first page wanted)
 		strip.scrollTo(strip.pageTop(page));
-		paged.setView(w, h);
+		paged.setView(w, layoutH());
 		paged.setPages((int)files.size(), 1.5);
 		fit = f >= 0 && f < MANGA_FITS ? f : MANGA_FIT_PAGE;
 		applyFit();
@@ -125,6 +126,7 @@ namespace bp
 			gen++;	// what a thread is decoding now is dropped when it comes back
 		}
 		pr.keepOnly({});
+		kept.clear();
 		if (archive)
 		{
 			std::lock_guard<std::mutex> l(cbzLock);
@@ -144,6 +146,7 @@ namespace bp
 		if (!s) vis = {paged.current(), paged.current()};
 		for (int i = vis.first - 2; i <= vis.second + 4; i++) keep.insert(i);
 		pr.keepOnly(keep);
+		for (auto it = kept.begin(); it != kept.end();) it = keep.count(it->first) ? std::next(it) : kept.erase(it);
 		std::lock_guard<std::mutex> l(m);
 		jobs.clear();
 		for (int i : list)
@@ -163,6 +166,63 @@ namespace bp
 		want();
 	}
 
+	std::vector<MangaReader::Box> MangaReader::boxes() const
+	{
+		std::vector<Box> out;
+		if (readMode == MANGA_STRIP)
+		{
+			auto vis = strip.visible();
+			double off = strip.offset();
+			for (int i = vis.first; i >= 0 && i <= vis.second; i++)
+				out.push_back({i, 0, (float)(strip.pageTop(i) - off), (float)viewW, (float)strip.pageHeight(i)});
+			return out;
+		}
+		// at rest only the page read: its neighbours would peek in at the 4:3 panel's sides (they slide in on a swipe)
+		bool rest = !paged.moving() && !fingerDown;
+		for (auto& p : paged.placements())
+			if (!rest || p.page == paged.current()) out.push_back({p.page, (float)p.x, (float)p.y, (float)p.w, (float)p.h});
+		return out;
+	}
+
+	std::vector<MangaReader::Box> MangaReader::bottomBoxes() const
+	{
+		// the view below the top panel and the hinge, in the bottom panel's own pixels
+		std::vector<Box> out;
+		if (!opened || !full) return out;
+		float shift = (float)(viewH + gapPx);
+		for (auto b : boxes())
+		{
+			b.y -= shift;
+			if (b.y + b.h > 0 && b.y < viewH) out.push_back(b);
+		}
+		return out;
+	}
+
+	std::shared_ptr<const std::vector<uint8_t>> MangaReader::pixels(int page, int& w, int& h) const
+	{
+		auto it = kept.find(page);
+		if (it == kept.end()) return nullptr;
+		w = it->second.w;
+		h = it->second.h;
+		return it->second.rgba;
+	}
+
+	void MangaReader::setFullscreen(bool on, int hinge480)
+	{
+		int gap = viewH > 0 ? (int)std::lround(std::clamp(hinge480, 0, 120) * viewH / 480.0) : 0;
+		if (on == full && gap == gapPx) return;
+		// the page read stays: the strip keeps its place (only its end moves), the paged row opens it again
+		int cur = page();
+		full = on;
+		gapPx = gap;
+		strip.setView(viewW, layoutH());
+		paged.setView(viewW, layoutH());
+		if (readMode != MANGA_STRIP) paged.goTo(cur, 0, false);
+		fprintf(stderr, "reader: fullscreen %s (hinge %d px)\n", on ? "on" : "off", gapPx);
+		want();
+		redrawSoon(3);
+	}
+
 	void MangaReader::applyFit()
 	{
 		// Fill covers the screen and crops; a page both taller and wider than the view would need a sideways pan the
@@ -174,6 +234,7 @@ namespace bp
 	void MangaReader::command(int kind, double v, int64_t ms, double v2)
 	{
 		if (!opened) return;
+		if (kind == Fullscreen) { setFullscreen(v > 0, (int)v2); return; }
 		if (kind == Fit)
 		{
 			// the page under the view kept, as a mode change keeps it
@@ -253,6 +314,8 @@ namespace bp
 				fprintf(stderr, "timing: page %d decoded in %u ms (%dx%d)\n", d.index + 1, d.ms, d.img.w, d.img.h);
 				strip.setPageSize(d.index, d.img.w, d.img.h);
 				paged.setPageSize(d.index, d.img.w, d.img.h);
+				// (a copy for the bottom panel: the renderer drops its own once the page is on the GPU)
+				kept[d.index] = {d.img.w, d.img.h, std::make_shared<const std::vector<uint8_t>>(d.img.rgba)};
 				pr.addPage(d.index, d.img.w, d.img.h, std::move(d.img.rgba));
 				any = true;
 			}
@@ -266,16 +329,9 @@ namespace bp
 	void MangaReader::draw(int w, int h)
 	{
 		if (!opened) return;
-		if (readMode == MANGA_STRIP) uploads = pr.draw(strip, w, h);
-		else
-		{
-			std::vector<PageRenderer::Placed> placed;
-			// at rest only the page read: its neighbours would peek in at the 4:3 panel's sides (they slide in on a swipe)
-			bool rest = !paged.moving() && !fingerDown;
-			for (auto& p : paged.placements())
-				if (!rest || p.page == paged.current()) placed.push_back({p.page, (float)p.x, (float)p.y, (float)p.w, (float)p.h});
-			uploads = pr.draw(placed, w, h);
-		}
+		std::vector<PageRenderer::Placed> placed;
+		for (auto& b : boxes()) placed.push_back({b.page, b.x, b.y, b.w, b.h});
+		uploads = pr.draw(placed, w, h);
 		if (forceFrames > 0) forceFrames--;
 	}
 

@@ -1334,8 +1334,29 @@ int main(int argc, char** argv)
 					ui.readerStatus.page = reader.page();
 					ui.readerStatus.pages = reader.pages();
 					ui.readerStatus.mode = reader.mode();
+					ui.readerStatus.fullscreen = reader.fullscreen();
+					// fullscreen: the bottom panel's share of the view, as fractions of the panel, and the pixels it needs
+					Ui::ReaderBottom rb;
+					rb.on = reader.fullscreen();
+					rb.gen = reader.chapterGen();
+					if (rb.on)
+					{
+						int w, h;
+						SDL_GL_GetDrawableSize(top, &w, &h);
+						for (auto& b : reader.bottomBoxes())
+						{
+							rb.boxes.push_back({b.page, b.x / w, b.y / h, b.w / w, b.h / h});
+							int pw = 0, ph = 0;
+							if (auto px = reader.pixels(b.page, pw, ph)) rb.pages.push_back({b.page, pw, ph, px});
+						}
+					}
+					ui.readerBottom = std::move(rb);
 				}
-				else ui.readerStatus.open = false;
+				else
+				{
+					ui.readerStatus.open = false;
+					ui.readerBottom = {};
+				}
 				if (woke) reader.redrawSoon();
 			}
 			// with nothing playing the top panel is drawn on a change only, and mpv may not have the level card yet

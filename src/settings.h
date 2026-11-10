@@ -124,6 +124,8 @@ namespace bp
 		bool mangaSwapLR = false;
 		// pages decoded ahead of the one read: 2, 3 or 6
 		int mangaPreload = MANGA_PRELOAD_DEFAULT;
+		// fullscreen: the strip skipped under the hinge between the panels, in 480-line units (measured on the handheld)
+		int mangaHinge = 36;
 		// the page cache's cap, as the row offers it (MANGA_CACHES, 0 is 100 MB)
 		int mangaCacheSize = MANGA_CACHE_DEFAULT;
 		// adult sources a repository marks as adult: shown in the lists (hidden by default)

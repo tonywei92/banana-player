@@ -335,6 +335,7 @@ namespace bp
 		out += std::string("manga-mode = ") + MANGA_MODE_IDS[s.mangaMode] + "\n";
 		out += std::string("manga-fit = ") + MANGA_FIT_IDS[s.mangaFit] + "\n";
 		out += "manga-preload = " + std::to_string(s.mangaPreload) + "\n";
+		out += "manga-hinge = " + std::to_string(s.mangaHinge) + "\n";
 		out += std::string("manga-cache = ") + MANGA_CACHE_IDS[s.mangaCacheSize] + "\n";
 		for (auto& r : REMEMBER) out += std::string(r.key) + " = " + (s.*r.field ? "yes" : "no") + "\n";
 		out += std::string("clock = ") + CLOCK_IDS[s.clock] + "\n";
@@ -390,6 +391,8 @@ namespace bp
 				if (key == "manga-preload" && value == std::to_string(MANGA_PRELOADS[v])) s.mangaPreload = MANGA_PRELOADS[v];
 			for (int v = 0; v < MANGA_CACHES; v++)
 				if (key == "manga-cache" && value == MANGA_CACHE_IDS[v]) s.mangaCacheSize = v;
+			// (0 to 120: a gap no panel pair has more of)
+			if (key == "manga-hinge") { int g = atoi(value.c_str()); if (g >= 0 && g <= 120 && !value.empty()) s.mangaHinge = g; }
 			if (key == "pan-area" && (value == "left" || value == "right")) s.panRight = value == "right";
 			if (key == "pan-drag" && (value == "photo" || value == "box")) s.dragBox = value == "box";
 			if (key == "eq" && (value == "on" || value == "off")) s.eqOn = value == "on";

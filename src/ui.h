@@ -144,7 +144,8 @@ namespace bp
 		// the panel's height, + down: the panels are the same size, so main scales it to the top panel) / Release, each
 		// with the time in ms (Drag's v2: the finger's dx, as a fraction of the panel's width, + right); Mode (v: MANGA_RTL,
 		// MANGA_LTR, MANGA_STRIP: the page under the view kept); Fit (v: MANGA_FIT_*: the page under the view kept)
-		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; };
+		// Fullscreen (v: 1 on, 0 off; v2: the hinge gap in 480-line units: both panels are one tall view, the gap skipped)
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; };
 		std::vector<ReaderCmd> readerCmds;
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus
@@ -152,9 +153,17 @@ namespace bp
 			bool open = false, loading = false, atEnd = false;	// atEnd: the strip's bottom reached (the next chapter's card)
 			int page = 0, pages = 0;	// the page under the view's middle (0-based), the chapter's page count
 			int mode = 0;	// the mode it reads in (MANGA_*)
+			bool fullscreen = false;	// both panels show the pages
 			std::string error;	// the chapter couldn't be opened ("" while fine)
 		};
 		ReaderStatus readerStatus;
+		// fullscreen: what the bottom panel shows of the view (main sets it each pass): each page's box as fractions
+		// of the panel (x, y, w, h; y may run past 0..1), and the pages' pixels (RGBA, straight alpha) for those boxes;
+		// gen changes with the chapter (the bottom panel's textures of the last one go)
+		struct ReaderBox { int page; float x, y, w, h; };
+		struct ReaderPix { int page = -1, w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
+		struct ReaderBottom { bool on = false; uint64_t gen = 0; std::vector<ReaderBox> boxes; std::vector<ReaderPix> pages; };
+		ReaderBottom readerBottom;
 		// the reader closed itself (an error, or main stopped it): the bottom panel leaves its page
 		bool readerOpen() const { return readerStatus.open; }
 		// started with no file: the video's Quit closes it (back to the browser)
@@ -1130,6 +1139,17 @@ namespace bp
 		int mangaProgPage = -1, mangaProgPages = -1;
 		bool mangaTouch = false, mangaSlider = false;
 		double mangaTouchY = 0, mangaTouchX = 0;
+		// fullscreen reading: the pages' textures on this panel (a page in slices of at most 2048 rows), the chapter
+		// they belong to, how many still wait to be made, when the page tag fades
+		struct FullTex { int w = 0, h = 0; std::vector<SDL_Texture*> tiles; Uint32 used = 0; };
+		std::map<int, FullTex> mfTex;
+		uint64_t mfGen = 0;
+		int mfWaiting = 0;
+		Uint32 mfTagUntil = 0;
+		int mfLastPage = -1;
+		void drawMangaFull();
+		void mangaFullscreen(bool on, Player& p);	// SELECT, and B while fullscreen
+		void mfFree();
 		int mangaModeFor(const std::string& seriesId, const Player& p) const;	// the series' own, else the setting's
 		void mangaCycleMode(Player& p);	// X while reading
 		int mangaSliderPage = -1;

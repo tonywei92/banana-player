@@ -11,6 +11,7 @@
 #include <SDL.h>
 #include <condition_variable>
 #include <deque>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -33,7 +34,7 @@ namespace bp
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
 		void command(int kind, double v, int64_t ms, double v2 = 0);
 		// the pages decoded ahead of the one read (the Preload setting): applied at once, the queue made again
@@ -50,6 +51,14 @@ namespace bp
 		bool loading() const;
 		bool atEnd() const;
 		const std::string& error() const { return err; }
+		// fullscreen: the view is both panels' height and the hinge's gap; the top panel shows its first panel-height,
+		// the bottom panel the rest (bottomBoxes, in the bottom panel's pixels, which match the top's)
+		bool fullscreen() const { return full; }
+		struct Box { int page; float x, y, w, h; };
+		std::vector<Box> bottomBoxes() const;
+		// a decoded page's pixels (RGBA, straight alpha) for the bottom panel's own textures; null when not decoded
+		std::shared_ptr<const std::vector<uint8_t>> pixels(int page, int& w, int& h) const;
+		uint64_t chapterGen() const { return gen; }
 		// a few frames more (KMSDRM drops the first after a start or a wake)
 		void redrawSoon(int n = 5) { forceFrames = std::max(forceFrames, n); }
 
@@ -59,6 +68,9 @@ namespace bp
 		void decodeLoop();
 		void want();
 		void applyFit();
+		void setFullscreen(bool on, int hinge480);
+		int layoutH() const { return full ? viewH * 2 + gapPx : viewH; }
+		std::vector<Box> boxes() const;	// every page in view now, in view pixels (y from the top panel's top)
 
 		PageRenderer pr;
 		bool ready = false, opened = false, uploads = false;
@@ -70,6 +82,10 @@ namespace bp
 		Cbz cbz;
 		bool archive = false;
 		int viewW = 0, viewH = 0, forceFrames = 0;
+		bool full = false;	// (kept across chapters while the reader is open)
+		int gapPx = 0;
+		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
+		std::map<int, Pix> kept;	// the decoded pages near the view, for the bottom panel in fullscreen
 		std::string err;
 		bool fingerDown = false;
 		// the decoder: its queue, its results, the chapter it works for (gen: a page of the last chapter is dropped)

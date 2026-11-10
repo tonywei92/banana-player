@@ -388,7 +388,12 @@ namespace bp
 			case Button::X: mangaCycleMode(p); break;
 			case Button::L2: mangaChapterStep(-1, p); break;
 			case Button::R2: mangaChapterStep(1, p); break;
-			case Button::B: mangaCloseReader(); break;
+			// SELECT: fullscreen on / off; B leaves fullscreen first, and only then closes the reader
+			case Button::Select: mangaFullscreen(!readerStatus.fullscreen, p); break;
+			case Button::B:
+				if (readerStatus.fullscreen) mangaFullscreen(false, p);
+				else mangaCloseReader();
+				break;
 			default: break;
 			}
 			return false;
@@ -588,7 +593,8 @@ namespace bp
 				mangaTouch = mangaSlider = false;
 				mangaSliderPage = -1;
 				if (buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
-				if (mangaAreaRect().hit(x, y))
+				// fullscreen: the whole panel is the page, the finger drags it anywhere
+				if (mangaAreaRect().hit(x, y) || readerStatus.fullscreen)
 				{
 					mangaTouch = true;
 					mangaTouchY = pt.y;
@@ -1110,6 +1116,8 @@ namespace bp
 			drawMangaSeries(p);
 			return;
 		}
+		if (readerStatus.fullscreen && readerBottom.on) { drawMangaFull(); return; }
+		if (!mfTex.empty()) mfFree();	// (out of fullscreen: this panel's copies of the pages go)
 		drawBackIcon();
 		drawTextMid(mangaReadChapterTitle, 1, TEXT, 72, 24, 540);
 		drawTextMid(mangaTitle(mangaReadSeriesId), 0, DIM, 72, 50, 540);
@@ -1174,5 +1182,95 @@ namespace bp
 				mangaStore->putSeries(s);
 				mangaSave();
 			}
+	}
+
+	void Ui::mangaFullscreen(bool on, Player& p)
+	{
+		readerCmds.push_back({ReaderCmd::Fullscreen, on ? 1.0 : 0.0, (int64_t)SDL_GetTicks(), (double)p.settings.mangaHinge});
+		mfTagUntil = on ? SDL_GetTicks() + 2500 : 0;
+	}
+
+	void Ui::mfFree()
+	{
+		for (auto& t : mfTex)
+			for (SDL_Texture* x : t.second.tiles) SDL_DestroyTexture(x);
+		mfTex.clear();
+		mfWaiting = 0;
+	}
+
+	void Ui::drawMangaFull()
+	{
+		// the pages under the hinge: main gives each page's box (fractions of the panel) and its pixels; they become
+		// this renderer's textures, one page a frame at most so a turn never stalls the panel
+		Uint32 now = SDL_GetTicks();
+		if (readerBottom.gen != mfGen) { mfFree(); mfGen = readerBottom.gen; }
+		// a new page: its number shows a moment
+		if (readerStatus.page != mfLastPage) { mfLastPage = readerStatus.page; mfTagUntil = now + 1500; }
+		SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+		SDL_RenderClear(ren);
+		int pw = (int)std::lround(W * sx), ph = (int)std::lround(H * sy);
+		bool made = false;
+		int waiting = 0;
+		for (auto& b : readerBottom.boxes)
+		{
+			SDL_Rect r{(int)std::lround(b.x * pw), (int)std::lround(b.y * ph), (int)std::lround(b.w * pw), (int)std::lround(b.h * ph)};
+			auto it = mfTex.find(b.page);
+			if (it == mfTex.end() && !made)
+			{
+				for (auto& px : readerBottom.pages)
+				{
+					if (px.page != b.page || !px.rgba || px.w <= 0 || px.h <= 0) continue;
+					FullTex ft;
+					ft.w = px.w;
+					ft.h = px.h;
+					for (int y = 0; y < px.h; y += 2048)
+					{
+						int th = std::min(2048, px.h - y);
+						SDL_Texture* t = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, px.w, th);
+						if (!t) break;
+						SDL_UpdateTexture(t, nullptr, px.rgba->data() + (size_t)y * px.w * 4, px.w * 4);
+						ft.tiles.push_back(t);
+					}
+					it = mfTex.emplace(b.page, std::move(ft)).first;
+					made = true;
+					break;
+				}
+			}
+			if (it == mfTex.end())
+			{
+				// not decoded yet, or its turn to be made comes next frame: its place, dark
+				SDL_SetRenderDrawColor(ren, 40, 40, 44, 255);
+				SDL_RenderFillRect(ren, &r);
+				waiting++;
+				continue;
+			}
+			FullTex& ft = it->second;
+			ft.used = now;
+			for (size_t k = 0; k < ft.tiles.size(); k++)
+			{
+				int y0 = (int)k * 2048, th = std::min(2048, ft.h - y0);
+				SDL_Rect d{r.x, r.y + (int)std::lround((double)r.h * y0 / ft.h), r.w, (int)std::lround((double)r.h * th / ft.h) + 1};
+				if (d.y + d.h < 0 || d.y > ph) continue;
+				SDL_RenderCopy(ren, ft.tiles[k], nullptr, &d);
+			}
+		}
+		mfWaiting = waiting;
+		// at most 8 pages kept here: the ones not drawn longest go
+		while (mfTex.size() > 8)
+		{
+			auto old = mfTex.begin();
+			for (auto i = mfTex.begin(); i != mfTex.end(); ++i)
+				if (i->second.used < old->second.used) old = i;
+			for (SDL_Texture* x : old->second.tiles) SDL_DestroyTexture(x);
+			mfTex.erase(old);
+		}
+		// a thin page tag for a moment after a change
+		if (now < mfTagUntil && readerStatus.pages > 0)
+		{
+			std::string tag = std::to_string(readerStatus.page + 1) + " / " + std::to_string(readerStatus.pages);
+			int tw = (int)std::lround(textWidth(tag, 0) / sx) + 16;
+			fillRound({W - tw - 12, H - 36, tw, 26}, SURFACE, R_CHIP);
+			drawTextMid(tag, 0, TEXT, W - 12 - tw / 2, H - 23, 0, 2);
+		}
 	}
 }
