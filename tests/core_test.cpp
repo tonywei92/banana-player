@@ -22,6 +22,7 @@ extern "C"
 #include "playlist.h"
 #include "playlists.h"
 #include "keyboard.h"
+#include "manga_names.h"
 #include "netpath.h"
 #include "secret.h"
 #include "servers.h"
@@ -239,6 +240,64 @@ static void testDurations()
 	CHECK_EQ(probeDuration(D), -1.0);	// a folder
 	rmdir(dir);
 	av_log_set_level(level);
+}
+
+static void testMangaNames()
+{
+	// pages: the picture kinds whatever their case, and nothing else
+	for (const char* n : {"1.jpg", "2.JPEG", "3.png", "4.WebP", "5.gif", "6.avif", "7.BMP", "ch1/10.jpg"})
+		CHECK_EQ(isPageImage(n), true);
+	for (const char* n : {"", "1.txt", "page", "page.jpg.txt", "ch1/", ".1.jpg", "ch1/.1.jpg", "ch1/__MACOSX/1.jpg",
+			    "__MACOSX/1.jpg"})
+		CHECK_EQ(isPageImage(n), false);
+
+	// a chapter's pages in the browser's natural order (naturalLess, tested with the browser): 2 before 10
+	std::vector<std::string> pages = {"page10.jpg", "page2.jpg", "Page1.jpg", "ch1/10.jpg", "ch1/2.jpg"};
+	sortPages(pages);
+	CHECK_EQ(pages[0], std::string("ch1/2.jpg"));
+	CHECK_EQ(pages[1], std::string("ch1/10.jpg"));
+	CHECK_EQ(pages[2], std::string("Page1.jpg"));
+	CHECK_EQ(pages[3], std::string("page2.jpg"));
+	CHECK_EQ(pages[4], std::string("page10.jpg"));
+
+	// the chapter markers, mixed case and all
+	CHECK_EQ(chapterNumber("Chapter 12"), 12.0);
+	CHECK_EQ(chapterNumber("CHAPTER 12"), 12.0);
+	CHECK_EQ(chapterNumber("Ch.12"), 12.0);
+	CHECK_EQ(chapterNumber("ch 12.5"), 12.5);
+	CHECK_EQ(chapterNumber("c012"), 12.0);
+	CHECK_EQ(chapterNumber("#12"), 12.0);
+	CHECK_EQ(chapterNumber("Ep 3"), 3.0);
+	CHECK_EQ(chapterNumber("EP 3"), 3.0);
+	CHECK_EQ(chapterNumber("Chapter 007"), 7.0);
+	CHECK_EQ(chapterNumber("Vol.2 Ch.10.5 - The Title"), 10.5);
+	// no marker: the last number, but a volume's is not a chapter's
+	CHECK_EQ(chapterNumber("Series Name 045.cbz"), 45.0);
+	CHECK_EQ(chapterNumber("Series 2 Name 045"), 45.0);
+	CHECK_EQ(chapterNumber("Series 10.5"), 10.5);
+	CHECK_EQ(chapterNumber("Vol 3"), -1.0);
+	CHECK_EQ(chapterNumber("Volume 02"), -1.0);
+	CHECK_EQ(chapterNumber("Vol.2"), -1.0);
+	CHECK_EQ(chapterNumber("Series v1.2"), -1.0);
+	CHECK_EQ(chapterNumber("Series - 012 (v2)"), 12.0);	// past the volume to the chapter
+	// none at all
+	CHECK_EQ(chapterNumber(""), -1.0);
+	CHECK_EQ(chapterNumber("no digits here"), -1.0);
+	CHECK_EQ(chapterNumber("Chapter"), -1.0);
+
+	// volumes: the word or a directly attached v
+	CHECK_EQ(volumeNumber("Vol.2"), 2.0);
+	CHECK_EQ(volumeNumber("Vol 2"), 2.0);
+	CHECK_EQ(volumeNumber("Volume 02"), 2.0);
+	CHECK_EQ(volumeNumber("v2"), 2.0);
+	CHECK_EQ(volumeNumber("Series v2"), 2.0);
+	CHECK_EQ(volumeNumber("VOL 07"), 7.0);
+	CHECK_EQ(volumeNumber("Vol.2 Ch.10.5 - The Title"), 2.0);
+	CHECK_EQ(volumeNumber(""), -1.0);
+	CHECK_EQ(volumeNumber("Chapter 12"), -1.0);
+	CHECK_EQ(volumeNumber("Volume"), -1.0);
+	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
+	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
 }
 
 static void testLabels()
@@ -4059,6 +4118,7 @@ int main()
 	testAspect();
 	testTime();
 	testDurations();
+	testMangaNames();
 	testLabels();
 	testTrackList();
 	if (failures) fprintf(stderr, "%d failed\n", failures);
