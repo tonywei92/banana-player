@@ -78,6 +78,8 @@ namespace bp
 	{
 		if (photoTex) SDL_DestroyTexture(photoTex);
 		for (auto& c : cache) SDL_DestroyTexture(c.second);
+		for (auto& c : coverTex)
+			if (c.second.tex) SDL_DestroyTexture(c.second.tex);
 		for (auto* t : corners)
 			if (t) SDL_DestroyTexture(t);
 		for (auto* f : fonts)
@@ -1141,10 +1143,10 @@ namespace bp
 		if (page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead)
 		{
 			char mb[200];
-			snprintf(mb, sizeof mb, "|mg%d %d,%d,%d,%d %d,%d %d,%d,%d,%d %d,%d %llu %d %d %d",
+			snprintf(mb, sizeof mb, "|mg%d %d,%d,%d,%d %d,%d %d,%d,%d,%d %d,%d %llu %d %d %d %zu %llu",
 				mangaTab, mlibZone, mlibCard, mlibGrid, mlibScroll, mhisCursor, mhisScroll, mbrowseCursor, mListCursor,
 				mListScroll, (int)mBrowseList, mserCursor, mserScroll, (unsigned long long)(mangaStore ? mangaStore->serial() : 0),
-				(int)mangaLocal.size(), mangaPressed, mangaClearAt != 0);
+				(int)mangaLocal.size(), mangaPressed, mangaClearAt != 0, coverTex.size(), (unsigned long long)coverSerial);
 			photo += std::string(mb) + "|" + mangaSeriesId;
 			if (page == Page::MangaRead)
 			{

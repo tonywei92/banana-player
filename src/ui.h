@@ -20,6 +20,7 @@
 #include "discovery.h"
 #include "mangalocal.h"
 #include "mangastore.h"
+#include "coverworker.h"
 #include <functional>
 #include <map>
 #include <memory>
@@ -171,6 +172,10 @@ namespace bp
 		// its answers (main forwards its event): into the rows' notes
 		DurationWorker* durWorker = nullptr;
 		void durationsReady(Player& p);
+		// the manga library's covers, decoded on main's own worker (null: the generated ones only); main forwards its
+		// event, and the answers become textures here, on the main thread
+		CoverWorker* coverWorker = nullptr;
+		void coversReady(std::vector<CoverWorker::Result> results);
 		// the on-screen keyboard is up: its caret blinks (the loop wakes often enough to draw it)
 		bool typing() const { return kbOpen; }
 		// Find on the network: discovery runs here, its hosts sent to hostFound (on the main thread: main forwards them)
@@ -1146,14 +1151,22 @@ namespace bp
 		void drawMangaBrowse(const Player& p);
 		void drawMangaSeries(const Player& p);
 		void drawMangaRead(const Player& p);
-		void drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell);
+		void drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell, const std::string& seriesId);
+		// the series' real cover once it arrived, null until then (and for one that couldn't be read): the first draw
+		// asks the worker once. Keyed by the series id
+		SDL_Texture* coverOf(const std::string& seriesId);
+		struct CoverTex { SDL_Texture* tex = nullptr; uint64_t drawnAt = 0; };
+		std::unordered_map<std::string, CoverTex> coverTex;	// at most COVER_KEEP, least recently drawn freed
+		std::set<std::string> coverAsked, coverFailed;		// (a failed one is left alone until the app reopens)
+		uint64_t coverDrawn = 0, coverSerial = 0;	// the LRU's order and what signature() follows
+		static constexpr size_t COVER_KEEP = 80;
 		Rect mangaTabRect(int i) const { return {60 + i * 104, 64, 100, 30}; }
 		Rect mangaCardRect(int i) const { return {16 + i * 206, 120, 196, 62}; }
-		static constexpr int MG_COLS = 5;	// the grid's covers 112 wide, 124 apart
+		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the grid's covers 124 apart
 		Rect mangaCoverRect(int i) const
 		{
 			int row = i / MG_COLS, col = i % MG_COLS;
-			return {16 + col * 124, 212 + (row - mlibScroll) * 186, 112, 150};
+			return {16 + col * 124, 212 + (row - mlibScroll) * 186, MG_COVER_W, MG_COVER_H};
 		}
 		Rect mangaResumeRect() const { return {16, 84, 220, 44}; }
 		Rect mangaHeartRect() const { return {556, 84, 68, 44}; }

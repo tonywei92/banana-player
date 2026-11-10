@@ -26,6 +26,31 @@ namespace bp
 			if (pages <= 0) return "p. " + std::to_string(page + 1);
 			return "p. " + std::to_string(page + 1) + "/" + std::to_string(pages);
 		}
+
+		// The tile's rounded corners in the cover's own alpha, at upload (the panel's pixels): the generated cover is
+		// rounded by fillRound, and the real one is copied over whatever fill the tile sits on (a page's or a card's),
+		// so squaring its corners would draw the wrong colour there. Only the four corner squares are touched.
+		void roundCover(std::vector<uint8_t>& rgba, int w, int h)
+		{
+			int R = std::max(0, (int)std::lround(R_TILE * std::min(sx, sy)));
+			R = std::min({R, w / 2, h / 2});
+			for (int cy = 0; cy < 2; cy++)
+				for (int cx = 0; cx < 2; cx++)
+					for (int y = 0; y < R; y++)
+						for (int x = 0; x < R; x++)
+						{
+							int in = 0;
+							for (int j = 0; j < 4; j++)
+								for (int i = 0; i < 4; i++)
+								{
+									float dx = R - (x + (i + 0.5f) / 4), dy = R - (y + (j + 0.5f) / 4);
+									in += dx * dx + dy * dy <= (float)R * R;
+								}
+							int px = cx ? w - 1 - x : x, py = cy ? h - 1 - y : y;
+							uint8_t* p = rgba.data() + ((size_t)py * (size_t)w + (size_t)px) * 4;
+							p[3] = (uint8_t)(p[3] * in / 16);
+						}
+		}
 	}
 
 	void Ui::mangaOpen(Player& p)
@@ -42,6 +67,11 @@ namespace bp
 		mangaTouch = mangaSlider = false;
 		mangaSliderPage = -1;
 		mangaScan();
+		// a new open wants its own covers: what waited for the last one is dropped, and a cover that failed (a file
+		// fixed meanwhile) is tried once more. The ones that arrived stay: a cache of textures is worth keeping
+		if (coverWorker) coverWorker->cancel();
+		coverAsked.clear();
+		coverFailed.clear();
 	}
 
 	void Ui::mangaScan()
@@ -714,9 +744,71 @@ namespace bp
 
 	// ---- the drawing ----
 
-	void Ui::drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell)
+	SDL_Texture* Ui::coverOf(const std::string& seriesId)
 	{
-		MangaCoverColors c = mangaCoverColors(title);
+		if (seriesId.empty()) return nullptr;
+		auto it = coverTex.find(seriesId);
+		if (it != coverTex.end())
+		{
+			// drawn now: the last to go when the cache is full
+			it->second.drawnAt = ++coverDrawn;
+			return it->second.tex;
+		}
+		if (!coverWorker || coverAsked.count(seriesId) || coverFailed.count(seriesId)) return nullptr;
+		const LocalSeries* s = mangaLocalSeries(seriesId);
+		// nothing to read is nothing to ask: the generated cover is the answer
+		if (!s || s->cover.empty())
+		{
+			coverFailed.insert(seriesId);
+			return nullptr;
+		}
+		coverWorker->want(seriesId, s->cover, std::max(1, (int)std::lround(MG_COVER_W * sx)),
+			std::max(1, (int)std::lround(MG_COVER_H * sy)));
+		coverAsked.insert(seriesId);
+		return nullptr;
+	}
+
+	void Ui::coversReady(std::vector<CoverWorker::Result> results)
+	{
+		for (auto& r : results)
+		{
+			coverAsked.erase(r.key);
+			SDL_Texture* t = nullptr;
+			if (r.ok)
+			{
+				roundCover(r.rgba, r.w, r.h);
+				t = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, r.w, r.h);
+				if (t)
+				{
+					SDL_UpdateTexture(t, nullptr, r.rgba.data(), r.w * 4);
+					SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);	// (its corners are transparent)
+				}
+			}
+			if (!t)
+			{
+				// the generated one stays, and stays for good: asking a broken file again each frame helps no one
+				coverFailed.insert(r.key);
+				coverSerial++;
+				continue;
+			}
+			auto it = coverTex.find(r.key);
+			if (it != coverTex.end() && it->second.tex) SDL_DestroyTexture(it->second.tex);
+			coverTex[r.key] = {t, ++coverDrawn};
+			coverSerial++;
+		}
+		// the design's cap: the covers drawn longest ago go first (what is on screen was drawn this frame)
+		while (coverTex.size() > COVER_KEEP)
+		{
+			auto oldest = coverTex.end();
+			for (auto i = coverTex.begin(); i != coverTex.end(); ++i)
+				if (oldest == coverTex.end() || i->second.drawnAt < oldest->second.drawnAt) oldest = i;
+			if (oldest->second.tex) SDL_DestroyTexture(oldest->second.tex);
+			coverTex.erase(oldest);
+		}
+	}
+
+	void Ui::drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell, const std::string& seriesId)
+	{
 		Rect in = r;
 		int rad = R_TILE;
 		if (focus)
@@ -726,7 +818,15 @@ namespace bp
 			in = {r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE};
 			rad = R_TILE - theme::EDGE;
 		}
+		if (SDL_Texture* tex = coverOf(seriesId))
+		{
+			// the real page over the tile's place, its own corners rounded at upload: the ACCENT edge still shows
+			SDL_Rect d = devRect(in);
+			SDL_RenderCopy(ren, tex, nullptr, &d);
+			return;
+		}
 		// a vertical gradient of bands, each drawn as part of the rounded box, so its corners stay round
+		MangaCoverColors c = mangaCoverColors(title);
 		const int step = 8;
 		for (int y = 0; y < in.h; y += step)
 		{
@@ -785,7 +885,7 @@ namespace bp
 			drawBox(r, mangaPressed == MG_CARD + i ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
 			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
 			std::string title = mangaTitle(cp.seriesId);
-			drawMangaCover({r.x + 6, r.y + 4, 40, 54}, title, false, 2);
+			drawMangaCover({r.x + 6, r.y + 4, 40, 54}, title, false, 2, cp.seriesId);
 			drawTextMid(title, 0, ink, r.x + 54, r.y + 18, r.w - 62);
 			// ("Ch." only before a bare title: "Chapter 1" says it already)
 			bool says = cp.chapterTitle.rfind("Ch", 0) == 0 || cp.chapterTitle.rfind("ch", 0) == 0;
@@ -817,7 +917,7 @@ namespace bp
 			Rect r = mangaCoverRect(i);
 			if (r.y >= 416) break;
 			bool at = mlibZone == 1 && mlibGrid == i;
-			drawMangaCover(r, mangaLib[i].title, at, 4);
+			drawMangaCover(r, mangaLib[i].title, at, 4, mangaLib[i].id);
 			drawTextMid(mangaLib[i].title, 0, at ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h + 13, r.w, 2);
 			int unread = i < (int)mangaLibUnread.size() ? mangaLibUnread[i] : 0;
 			if (unread > 0)

@@ -20,6 +20,7 @@
 #include "netstore.h"
 #include "networker.h"
 #include "durworker.h"
+#include "coverworker.h"
 #include "netstream.h"
 #include "netpath.h"
 #ifdef BP_WEB
@@ -53,7 +54,7 @@ namespace bp
 }
 #endif
 
-static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur;
+static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur, evCover;
 #ifdef BP_WEB
 // the dashboard's server for the sleep watch's thread (made on the main thread, never destroyed)
 static std::atomic<bp::WebServer*> webForWatch{nullptr};
@@ -222,7 +223,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "SDL: %s\n", SDL_GetError());
 		return 1;
 	}
-	evMpv = SDL_RegisterEvents(8);
+	evMpv = SDL_RegisterEvents(9);
 	evRender = evMpv + 1;
 	evTouch = evMpv + 2;
 	evLevel = evMpv + 3;
@@ -230,6 +231,7 @@ int main(int argc, char** argv)
 	evFound = evMpv + 5;
 	evWeb = evMpv + 6;	// the web dashboard's calls and news (WebCall)
 	evDur = evMpv + 7;	// the file rows' durations: some are ready (DurationWorker::take)
+	evCover = evMpv + 8;	// the manga library's covers: some are decoded (CoverWorker::take)
 
 	// On the handheld (SDL's KMSDRM) each panel is a display and each window fills one; elsewhere, two windows
 	if (windowed < 0) windowed = strcmp(SDL_GetCurrentVideoDriver(), "KMSDRM") != 0;
@@ -401,6 +403,14 @@ int main(int argc, char** argv)
 			SDL_PushEvent(&ev);
 		});
 		ui.durWorker = durWorker;
+		// the manga library's covers (evCover when some are decoded); never destroyed, its thread may be inside
+		// libavcodec at exit
+		CoverWorker* coverWorker = new CoverWorker([] {
+			SDL_Event ev{};
+			ev.type = evCover;
+			SDL_PushEvent(&ev);
+		});
+		ui.coverWorker = coverWorker;
 		ui.setStateDir(opts.stateDir);
 		// Find on the network: the servers that answer, on the main thread as evFound
 		Discovery discovery;
@@ -814,6 +824,12 @@ int main(int argc, char** argv)
 				}
 				else if (e.type == evNet) ui.netListed((NetListing*)e.user.data1, player);
 				else if (e.type == evDur) ui.durationsReady(player);
+				else if (e.type == evCover)
+				{
+					// a cover arrived: into a texture on this thread, and the grid redraws (its serial is in signature)
+					if (haveUi) ui.coversReady(coverWorker->take());
+					else coverWorker->take();	// (nothing draws them: dropped)
+				}
 				else if (e.type == evFound)
 				{
 					std::unique_ptr<FoundHost> h((FoundHost*)e.user.data1);
@@ -1390,6 +1406,7 @@ int main(int argc, char** argv)
 		ui.web = nullptr;
 #endif
 		durWorker->stop();
+		coverWorker->stop();
 		sleepWatch.stop();
 		levelWatch.stop();
 		bottomTouch.stop();
