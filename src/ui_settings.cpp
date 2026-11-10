@@ -33,6 +33,7 @@ namespace bp
 		case GROUP_MUSIC: return {MUSIC_ROW, VIS_ROW, SOUND_ROW};
 		case GROUP_PHOTOS: return {T + 8, PAN_ROW, DRAG_ROW};
 		case GROUP_REMEMBER: return {T + 0, T + 1, T + 2};
+		case GROUP_EXT: return {T + 12, EXT_NOTE};
 		case GROUP_FILES: return {T + 3, T + 6, T + 4, T + 11, CLEAR_ROW};
 		case GROUP_CONTROLS:
 		{
@@ -92,6 +93,7 @@ namespace bp
 		case 9: return "Looks for a new version a few seconds after the start (Wi-Fi needed).";
 		case 10: return "One brightness for both screens. Off: each its own.";
 		case 11: return "Files played from a network folder go in Recent too. Off: they're left out, and the ones there now go.";
+		case 12: return "Read comics and manga from your files, your servers and sources you add. Off: none of it shows or runs.";
 		default: return "";
 		}
 	}
@@ -133,6 +135,10 @@ namespace bp
 	void Ui::changeSetting(int row, int dir, Player& p)
 	{
 		if (row == CLEAR_ROW) { clearHistory(p); return; }
+		// the manga reader's switch: its first time on shows the note over Manage extensions
+		if (row == TOGGLE_ROW + 12) { extToggleManga(p); return; }
+		// a note, not a value: nothing to change (and no switch beyond the last REMEMBER row)
+		if (row == EXT_NOTE) return;
 		if (row == CHECK_ROW) { if (updater) updater->check(); return; }
 		if (row == TOP_LIGHT_ROW || row == BOTTOM_LIGHT_ROW)
 		{
@@ -166,14 +172,16 @@ namespace bp
 		if (setGroup < 0)
 		{
 			// the groups as tiles, two to a row: a mark, a name, what's in it
-			static const Glyph* MARKS[GROUPS] = {&G_CC, &G_NOTE, &G_PICTURE, &G_BOOKMARK, &G_FOLDER, &G_SUN, &G_DOWNLOAD, &G_WEB};
+			static const Glyph* MARKS[GROUPS] = {&G_CC, &G_NOTE, &G_PICTURE, &G_BOOKMARK, &G_FOLDER, &G_SUN, &G_DOWNLOAD, &G_WEB,
+				&G_BLOCKS};
 			for (int g = 0; g < GROUPS; g++)
 			{
 				Rect t = groupRect(g);
 				bool at = g == cursor;
 				drawBox(t, pressedBtn == 400 + g ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
 				drawGlyphMid(*MARKS[g], t.x + 34, t.y + t.h / 2, at ? ACCENT : TEXT, 3);
-				drawTextMid(GROUP_NAMES[g].name, 1, at ? ACCENT : TEXT, t.x + 66, t.y + 27, t.w - 76);
+				// (the lines' places by the tile's middle: they stay centred as the tile's height changes)
+				drawTextMid(GROUP_NAMES[g].name, 1, at ? ACCENT : TEXT, t.x + 66, t.y + t.h / 2 - 12, t.w - 76);
 				std::string about = GROUP_NAMES[g].about;
 				if (g == GROUP_WEB)
 				{
@@ -181,13 +189,15 @@ namespace bp
 					about = !p.settings.webDashboard ? "Off" : n == 0 ? "On \xC2\xB7 No browser yet"
 						: "On \xC2\xB7 " + std::to_string(n) + (n == 1 ? " browser" : " browsers");
 				}
-				drawTextMid(about, 0, at ? DIM_ON : DIM, t.x + 66, t.y + 52, t.w - 76);
+				else if (g == GROUP_EXT) about = p.settings.mangaOn ? "Manga reader: On" : "Manga reader: Off";
+				drawTextMid(about, 0, at ? DIM_ON : DIM, t.x + 66, t.y + t.h / 2 + 13, t.w - 76);
 			}
 			drawHints({{"D-PAD", "Move"}, {"A", "Open"}, {"B", "Close"}, {"L/R", "Tabs"}});
 			return;
 		}
 		// the group in the middle, the ones before and after it either side: a tap (or X / Y) away
-		static const char* SHORT[GROUPS] = {"Subtitles", "Music", "Photos", "Remember", "Files", "Controls", "Updates", "Web"};
+		static const char* SHORT[GROUPS] = {"Subtitles", "Music", "Photos", "Remember", "Files", "Controls", "Updates", "Web",
+			"Extensions"};
 		drawTextMid(GROUP_NAMES[setGroup].name, 1, ACCENT, W / 2, 73, 248, 2);
 		for (int k = 0; k < 2; k++)
 		{
@@ -216,8 +226,19 @@ namespace bp
 			int y = SET_Y + (i - scroll) * SET_H;
 			bool at = i == cursor;
 			int mid = y + (SET_H - 4) / 2;
-			if (at) drawFocus({16, y, 608, SET_H - 4});
+			if (at && row != EXT_NOTE) drawFocus({16, y, 608, SET_H - 4});
 			std::string label, value;
+			if (row == EXT_NOTE)
+			{
+				// a note, not a value: an info box, its lines wrapped (A does nothing there)
+				drawBox({16, y, 608, SET_H - 4}, SURFACE, R_BUTTON, at);
+				drawGlyphMid(G_INFO, 42, mid, at ? DIM_ON : DIM);
+				auto lines = wrapText("Repositories are added by you. Banana Player doesn\xE2\x80\x99t provide or check their content.",
+					0, 540, 2);
+				for (size_t k = 0; k < lines.size(); k++)
+					drawTextMid(lines[k], 0, at ? DIM_ON : DIM, 66, mid + (k == 0 ? (lines.size() > 1 ? -11 : 0) : 11), 540);
+				continue;
+			}
 			int k = row - STYLE_ROW0;	// a style row's key
 			if (row == CHECK_ROW || row == INSTALL_ROW)
 			{

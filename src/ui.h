@@ -234,7 +234,8 @@ namespace bp
 		friend struct WebPlayerGlue;
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
-		enum class Page { Main, Tracks, Chapters, Settings, Browse, Info, About, Exit, Sound, Web, Playing, UpNext };
+		enum class Page { Main, Tracks, Chapters, Settings, Browse, Info, About, Exit, Sound, Web, Playing, UpNext, Manga,
+			Extensions };
 		struct Rect { int x, y, w, h; bool hit(int px, int py) const { return px >= x && py >= y && px < x + w && py < y + h; } };
 		struct Row { int64_t id; std::string label; bool selected; std::string note = ""; };
 
@@ -281,7 +282,8 @@ namespace bp
 		void changeSetting(int row, int dir, Player& p);
 		// Settings opens on its groups (setGroup -1); A or a tap opens one, B goes back to them
 		// (Web dashboard is a tile like the groups, but its own page: openGroup and stepGroup open Page::Web)
-		enum SetGroup { GROUP_SUBS, GROUP_MUSIC, GROUP_PHOTOS, GROUP_REMEMBER, GROUP_FILES, GROUP_CONTROLS, GROUP_UPDATES, GROUP_WEB, GROUPS };
+		enum SetGroup { GROUP_SUBS, GROUP_MUSIC, GROUP_PHOTOS, GROUP_REMEMBER, GROUP_FILES, GROUP_CONTROLS, GROUP_UPDATES, GROUP_WEB,
+			GROUP_EXT, GROUPS };
 		int setGroup = -1;
 		std::vector<int> settingRows() const;	// the open group's rows, by id
 		void openGroup(int g);
@@ -347,6 +349,7 @@ namespace bp
 		bool homePointer(const Pointer& pt, int x, int y, Player& p);
 		void drawHome(const Player& p);
 		bool showHidden = false;	// the setting, kept here for drawBrowseMenu (no Player there)
+		bool mangaOn = false;		// the manga reader's switch, kept here for tileSub (no Player there)
 		// a recent file played (as All recent's rows play one), from its start, shown in its folder (Files or Network)
 		void openFile(const std::string& path, Player& p);
 		void showInFolder(const std::string& path, Player& p);
@@ -648,6 +651,7 @@ namespace bp
 		bool inMenu = false;
 		int menuTab = TAB_SETTINGS;
 		// the browser's folder before the menu, and its cursor: back to them after
+		Page menuReturnPage = Page::Browse;	// the menu opened over Manage extensions or Manga: back to it
 		std::string menuReturnDir;
 		int menuReturnCursor = 0, menuReturnScroll = 0;
 		void openMainMenu(Player& p, int tab = TAB_SETTINGS);
@@ -918,10 +922,10 @@ namespace bp
 		// Clear play history, ..., Sound (it opens the Sound page). Shown a group at a time (settingRows), after a list
 		// of the groups
 		static constexpr int STYLE_ROW0 = 0, MUSIC_ROW = STYLE_KEYS, VIS_ROW = STYLE_KEYS + 1, TOGGLE_ROW = STYLE_KEYS + 2,
-			TOGGLES = 12, PAN_ROW = TOGGLE_ROW + TOGGLES, DRAG_ROW = PAN_ROW + 1, CLEAR_ROW = DRAG_ROW + 1,
+			TOGGLES = 13, PAN_ROW = TOGGLE_ROW + TOGGLES, DRAG_ROW = PAN_ROW + 1, CLEAR_ROW = DRAG_ROW + 1,
 			CHECK_ROW = CLEAR_ROW + 1, INSTALL_ROW = CHECK_ROW + 1, TOP_LIGHT_ROW = INSTALL_ROW + 1,
 			BOTTOM_LIGHT_ROW = TOP_LIGHT_ROW + 1, SOUND_ROW = BOTTOM_LIGHT_ROW + 1, CLOCK_ROW = SOUND_ROW + 1,
-			SCREEN_OFF_ROW = CLOCK_ROW + 1;
+			SCREEN_OFF_ROW = CLOCK_ROW + 1, EXT_NOTE = SCREEN_OFF_ROW + 1;	// (a note, no value: the repositories' line)
 		// the panels' backlights (BananaOS's own levels: changed here as its menu changes them)
 		Backlight backlight;
 		bool sameBrightness = true;	// the setting's, kept here for settingRows (no Player there)
@@ -948,8 +952,8 @@ namespace bp
 		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + 472, r.y + 3, 48, 48}; }
 		void setBrightness(Backlight::Panel panel, int permille, Player& p);
 		static constexpr int SET_Y = 92, SET_H = 46, SET_SHOWN = 7, HELP_Y = 400;
-		// a settings group's tile (Settings opens on them: two to a row)
-		Rect groupRect(int g) const { return {16 + g % 2 * 312, 70 + g / 2 * 86, 296, 78}; }
+		// a settings group's tile (Settings opens on them: two to a row, the last row short with an odd count)
+		Rect groupRect(int g) const { return {16 + g % 2 * 312, 70 + g / 2 * 70, 296, 64}; }
 		std::string settingHelp(int row) const;	// what a setting does, under its rows
 		static constexpr int64_t STYLE_ROW = -2;	// the subtitle menu's last row: the settings page
 		static constexpr int QUIT_BTN = 10, SCREEN_BTN = 12, INFO_BTN = 13, LOCK_BTN = 14, EXIT_BTN = 15,
@@ -1014,6 +1018,38 @@ namespace bp
 		std::string webSig(const Player& p) const;	// for signature()
 		int levelMs = 0;
 		bool stopRequest = false;
+
+		// ---- extensions (ui_ext.cpp) ----
+		// Home's Extensions drawer (browseDir EXTDIR), Manage extensions (Page::Extensions) and the manga reader's
+		// placeholder page (Page::Manga): the extension that is on, its switch, and the first-time note about
+		// repositories over Manage extensions
+		bool extSheet = false;	// the note, over Manage extensions
+		int extSheetCursor = 0, extCursor = 0, extPressed = -1;	// the sheet's two buttons, the drawer's tile, the touch's button
+		void openExtensions();		// START in the drawer (and its button, with none on)
+		void openManga();
+		void openExtensionsDrawer(Player& p);	// B in either page: back to the drawer (the Browse page on it)
+		void extToggleManga(Player& p);	// A on the row or the chip: on / off (the first time, the sheet)
+		void extSheetChoose(int i, Player& p);	// Open Manga, Done
+		bool extDrawerKey(Button b, Player& p);
+		bool extKey(Button b, Player& p);
+		bool extPointer(const Pointer& pt, int x, int y, Player& p);
+		bool extAct(int id, Player& p);
+		void openExtSettings(Player& p);
+		void drawExtensionsDrawer(const Player& p);	// (the section header is already drawn)
+		void drawExtensions(const Player& p);
+		void drawManga(const Player& p);
+		void drawExtSheet(const Player& p);
+		// the touch ids: apart from the grid's, the buttons' and the pages'
+		static constexpr int EXT_TILE = 560, EXT_MANAGE = 561, EXT_ROW = 562, EXT_CHIP = 563, EXT_GEAR = 564, EXT_OPEN = 565,
+			EXT_DONE = 566;
+		Rect extTileRect(int i) const { return {16 + i * 200, 88, 188, 150}; }	// (one to a row: several fit)
+		Rect extManageRect() const { return {190, 304, 260, 48}; }
+		Rect extRowRect() const { return {16, 88, 608, 70}; }
+		Rect extChipRect() const { return {464, 104, 64, 36}; }
+		Rect extGearRect() const { return {536, 104, 76, 36}; }
+		Rect extSheetBox() const { return {60, 90, 520, 300}; }
+		Rect extSheetBtn(int i) const { return {i ? 328 : 92, 310, 220, 50}; }
+		static constexpr int EXT_DRAWER_TILES = 1;	// (what's on: the manga reader, so far)
 
 		// ---- playing behind the browser ----
 		// the player left (B, "<", Back) while a song or video plays on: the browser is the base page; showPlayer ends it

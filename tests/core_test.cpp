@@ -1440,6 +1440,10 @@ static void testSettings()
 	CHECK_EQ(parseSettings("button-hotkeys = no\n").buttonHotkeys, false);
 	CHECK_EQ(d.showHiddenFolders, false);
 	CHECK_EQ(parseSettings("show-hidden-folders = yes\n").showHiddenFolders, true);
+	CHECK_EQ(d.mangaOn, false);	// the manga reader: off by default
+	Settings mg;
+	mg.mangaOn = true;
+	CHECK_EQ(parseSettings(serializeSettings(mg)).mangaOn, true);
 	CHECK_EQ(d.musicShow, (int)SHOW_ART);
 	CHECK_EQ(d.visualizer, (int)VIS_PEAKS);
 	CHECK_EQ(d.loop, (int)LOOP_OFF);

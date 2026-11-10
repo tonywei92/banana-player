@@ -675,6 +675,17 @@ Changes show up live on both sides: what you do on the handheld appears in the b
 
 Not yet: network folders in the browser, a grid of photo thumbnails, and saving equalizer presets from the browser.
 
+## Extensions
+
+Home's fourth tile, **Extensions**, opens the extensions that are on, as tiles. Nothing is on at first: the drawer
+says so, and **START** (or its **Manage extensions** button) opens **Manage extensions**, which lists each extension
+with what it does and an **On/Off** switch (**A**). **X** (or the gear) opens its settings, under **Settings ›
+Extensions**. Turning one off hides it and stops it; nothing is deleted.
+
+- **Manga reader** (being built): comics and manga from your files, your servers and sources you add. The first time
+  it's turned on, a sheet says where to find it and that repositories are added by you: Banana Player doesn't provide
+  or check their content.
+
 ## Updates
 
 Banana Player updates itself when it's installed on the Ports shelf (from 0.2.3 on; Wi-Fi needed):

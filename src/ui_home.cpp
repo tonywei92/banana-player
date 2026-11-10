@@ -120,7 +120,8 @@ namespace bp
 	std::string Ui::tileSub(int g) const
 	{
 		// made again when what they say changes: the playlists, the connections, the places
-		int key = (plStore ? plStore->serial() : -1) * 7919 + (netStore ? netStore->version() : -1) * 31 + (int)roots.size();
+		int key = (plStore ? plStore->serial() : -1) * 7919 + (netStore ? netStore->version() : -1) * 31 + (int)roots.size() +
+			(mangaOn ? 1 : 0) * 1000003;
 		if (key != tileSubsKey)
 		{
 			tileSubsKey = key;
@@ -155,7 +156,7 @@ namespace bp
 			parts.clear();
 			for (auto& sv : list) parts.push_back(serverName(sv));
 			tileSubs[TAB_NETWORK] = parts.empty() ? "No connections yet" : join(parts);
-			tileSubs[TAB_EXT] = "Coming soon";
+			tileSubs[TAB_EXT] = mangaOn ? "1 on \xC2\xB7 Manga reader" : "None on";
 		}
 		return g >= 0 && g < BROWSE_TABS ? tileSubs[g] : "";
 	}
@@ -547,7 +548,9 @@ namespace bp
 
 	bool Ui::miniBarShown(const Player& p) const
 	{
-		// on Home and the lists; not while selecting (its bar owns the bottom), typing, or on the connection pages
+		// on Home and the lists; not while selecting (its bar owns the bottom), typing, or on the connection pages;
+		// the extensions' pages (Manage extensions, the reader) have it too: it controls what plays
+		if (page == Page::Extensions || page == Page::Manga) return !inMenu && !kbOpen && nowPlayable(p);
 		return page == Page::Browse && !inMenu && selMode == SEL_NONE && !kbOpen && browseDir != FORMDIR && browseDir != FINDNET &&
 			!addPending.serial && nowPlayable(p);
 	}

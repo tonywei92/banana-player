@@ -91,6 +91,7 @@ namespace bp
 	bool Ui::press(Button b, Player& p)
 	{
 		sameBrightness = p.settings.sameBrightness;
+		mangaOn = p.settings.mangaOn;
 		webInputAt = SDL_GetTicks();
 		// dark (Screen off, or off by itself): over what plays, the playback keys work blind and leave it dark (play
 		// and pause, seek, next and previous, chapters, speed, like: issue #3, watching with the bottom screen off);
@@ -196,6 +197,8 @@ namespace bp
 		if (page == Page::Sound) return soundKey(b, p);
 		if (page == Page::Web) return webKey(b, p);
 		if (page == Page::Playing) return playingKey(b, p);
+		// Manage extensions and the manga reader's page: their own keys (the sheet over the first)
+		if (page == Page::Extensions || page == Page::Manga) return extKey(b, p);
 		if (page == Page::Settings)
 		{
 			auto rows = settingRows();
@@ -328,6 +331,8 @@ namespace bp
 			if (browseDir != RECENT && t >= 0 && t < BROWSE_TABS) openSection(t, p);
 			return false;
 		}
+		// the Extensions drawer: A opens what's on (or Manage extensions with none on), START Manage extensions
+		if (page == Page::Browse && !inMenu && browseDir == EXTDIR && extDrawerKey(b, p)) return false;
 		if (page == Page::Browse && b == Button::B)
 		{
 			// a section's top: Home, on its tile (All recent: on its card)
@@ -589,6 +594,7 @@ namespace bp
 		if (id == SEL_CANCEL) { selBack(p, false); return false; }
 		if (id == MOVE_CANCEL || id == MOVE_DONE) { moveEnd(id == MOVE_DONE, p); return false; }
 		if (id == BUSY_CANCEL) { cancelAdd(p); return false; }
+		if (id >= EXT_TILE && id <= EXT_DONE) return extAct(id, p);
 		if (id == LIKE_BTN) { likeNow(p); return false; }
 		if (id == ADD_BTN)
 		{
@@ -645,6 +651,7 @@ namespace bp
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
 		webInputAt = SDL_GetTicks();
+		mangaOn = p.settings.mangaOn;
 		if (kbOpen && panel.on())
 		{
 			kbPointer(pt, x, y);
@@ -880,6 +887,9 @@ namespace bp
 			}
 			return false;
 		}
+		// the extensions' pages, and the drawer: their own taps (the mini bar's, the header's and "<" taken above)
+		if (page == Page::Extensions || page == Page::Manga || (page == Page::Browse && !inMenu && browseDir == EXTDIR))
+			return extPointer(pt, x, y, p);
 		if (page == Page::Info || page == Page::About)
 		{
 			if (y < INFO_Y) return false;
@@ -1115,6 +1125,11 @@ namespace bp
 				recent.size(), netStore ? netStore->version() : -1);
 			photo += hb;
 		}
+		// Extensions: the drawer's tile and the note's focus, the switch (its lines and rows say it), a finger's button
+		// down on them (mangaOn is in the settings too: a change redraws anywhere)
+		if (page == Page::Extensions || page == Page::Manga || browseDir == EXTDIR)
+			photo += "|ext" + std::to_string(mangaOn) + std::to_string(extCursor) + std::to_string(extSheet) +
+				std::to_string(extSheetCursor) + " " + std::to_string(extPressed);
 		return buf + photo + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string((int)kbShift) + (kbSymbols ? "s" : "") + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");
 	}

@@ -22,6 +22,8 @@ namespace bp
 		{"check-updates", &Settings::checkUpdates},
 		{"same-brightness", &Settings::sameBrightness},
 		{"shuffle", &Settings::shuffle},	// (no row: the play mode, as loop)
+		{"manga-reader", &Settings::mangaOn},
+		{"manga-intro-shown", &Settings::mangaIntroShown},
 	};
 
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};

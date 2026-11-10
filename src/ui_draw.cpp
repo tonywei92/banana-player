@@ -329,6 +329,7 @@ namespace bp
 	void Ui::draw(const Player& p, bool force)
 	{
 		sameBrightness = p.settings.sameBrightness;
+		mangaOn = p.settings.mangaOn;
 		if (quitArmed && SDL_GetTicks() - quitArmed >= QUIT_WINDOW_MS) quitArmed = 0;
 		// before the signature: "Again to clear" goes back to how it was when the second tap would no longer clear
 		if (clearArmed && SDL_GetTicks() - clearArmed >= QUIT_WINDOW_MS) clearArmed = 0;
@@ -433,6 +434,8 @@ namespace bp
 		else if (page == Page::Sound) drawSound(p);
 		else if (page == Page::Playing) drawPlaying(p);
 		else if (page == Page::UpNext) drawUpNext(p);
+		else if (page == Page::Extensions) drawExtensions(p);
+		else if (page == Page::Manga) drawManga(p);
 		else if (page != Page::Main) drawTracks(p);
 		else drawMain(p);
 		if (miniUp) drawMiniBar(p);
