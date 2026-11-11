@@ -155,7 +155,8 @@ namespace bp
 
 	int Ui::mangaBrowseCount(const Player& p) const
 	{
-		int n = 1 + mangaNetFoldersCount() + mangaBrowseServerCount();	// On this handheld, the network connections, the servers
+		// On this handheld, the network connections, the servers, Manage sources
+		int n = 2 + mangaNetFoldersCount() + mangaBrowseServerCount();
 		if (mangaSrcRows.empty()) n++;	// the Add sources row: A opens the Sources page
 		for (const auto& r : mangaSrcRows)
 			if (!r.adult || p.settings.mangaAdult) n++;
@@ -213,7 +214,14 @@ namespace bp
 			}
 			return;
 		}
-		// no source installed: the row after the servers is Add repository (A opens the Sources page on its
+		// Manage sources: the Sources page on Available (the sources to install, the installed ones on top)
+		if (i == nets + servers + 1)
+		{
+			openMangaSources(p);
+			mstTab = MST_AVAILABLE;
+			return;
+		}
+		// no source installed: the row after Manage sources is Add repository (A opens the Sources page on its
 		// Repositories, where one is added: the way to a first source)
 		if (mangaSrcRows.empty())
 		{
@@ -364,7 +372,7 @@ namespace bp
 		int nets = (int)netServers.size();
 		std::vector<MangaServer> servers;
 		if (mangaNet && mangaNet->started()) servers = mangaNet->servers().list();
-		int srcStart = nets + (int)servers.size() + 1;
+		int manageAt = nets + (int)servers.size() + 1, srcStart = manageAt + 1;
 		for (int i = mbrowseScroll; i < n && i < mbrowseScroll + MG_ROWS; i++)
 		{
 			int y = rowY(i), mid = y + (ROW_H - 4) / 2;
@@ -401,6 +409,12 @@ namespace bp
 				fillRound({562 - tw, mid - 10, tw, 20}, TRACK, R_CHIP);
 				drawTextMid(kind, 0, at ? ACCENT : DIM_ON, 562 - tw / 2, mid, tw - 6, 2);
 				drawGlyphMid(G_PENCIL, 600, mid, at ? ACCENT : DIM);
+				continue;
+			}
+			if (i == manageAt)
+			{
+				drawGlyphMid(G_GEAR, 44, mid, ic);
+				drawTextMid("Manage sources", 1, at ? ACCENT : TEXT, 68, mid, 434);
 				continue;
 			}
 			if (mangaSrcRows.empty() && i == srcStart)
