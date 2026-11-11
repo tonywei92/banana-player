@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "manganet.h"
 #include "manga_ui_logic.h"
+#include "mangaseriescache.h"
 #include "ui_internal.h"
 #include <algorithm>
 #include <cctype>
@@ -831,21 +832,38 @@ namespace bp
 			if (r.serial && r.serial == mangaSrcDetailsSerial)
 			{
 				mangaSrcDetailsSerial = 0;
-				if (!r.ok) mangaSrcError = r.error.empty() ? "The source didn\xE2\x80\x99t answer" : r.error;
+				if (!r.ok)
+				{
+					// a page with a cached list keeps it (mangaSourceSeriesFetched toasts at the end); one without
+					// shows the source's line as it always has
+					if (!mangaSrcHadList && !mangaSrcChaptersOn)
+					{
+						mangaSrcError = r.error.empty() ? "The source didn\xE2\x80\x99t answer" : r.error;
+						mangaSrcFailed = FAIL_SERIES;
+					}
+				}
 				else
 				{
 					mangaSrcInfo = r.details;
 					mangaSrcInfoOn = true;
+					mangaSrcFetchDetailsOk = true;
 					if (mangaSrcTitle.empty() && !r.details.title.empty()) mangaSrcTitle = r.details.title;
 				}
-				if (!r.ok) mangaSrcFailed = FAIL_SERIES;
 				mangaSrcLoading = mangaSrcDetailsSerial != 0 || mangaSrcChaptersSerial != 0;
+				if (!mangaSrcLoading) mangaSourceSeriesFetched();
 				continue;
 			}
 			if (r.serial && r.serial == mangaSrcChaptersSerial)
 			{
 				mangaSrcChaptersSerial = 0;
-				if (!r.ok) mangaSrcError = r.error.empty() ? "The source didn\xE2\x80\x99t answer" : r.error;
+				if (!r.ok)
+				{
+					if (!mangaSrcHadList && !mangaSrcChaptersOn)
+					{
+						mangaSrcError = r.error.empty() ? "The source didn\xE2\x80\x99t answer" : r.error;
+						mangaSrcFailed = FAIL_SERIES;
+					}
+				}
 				else
 				{
 					// the source gives them newest first; the card's series page lists oldest first, and this is
@@ -854,10 +872,11 @@ namespace bp
 					for (auto i = r.chapters.rbegin(); i != r.chapters.rend(); ++i)
 						if (!i->key.empty()) mangaSrcChapters.push_back(*i);
 					mangaSrcChaptersOn = true;
+					mangaSrcFetchChaptersOk = true;
 					if (mserCursor >= (int)mangaSrcChapters.size()) mserCursor = (int)mangaSrcChapters.size() - 1;
 				}
-				if (!r.ok) mangaSrcFailed = FAIL_SERIES;
 				mangaSrcLoading = mangaSrcDetailsSerial != 0 || mangaSrcChaptersSerial != 0;
+				if (!mangaSrcLoading) mangaSourceSeriesFetched();
 				continue;
 			}
 			if (r.serial && r.serial == mangaSrcPagesSerial)
@@ -1197,7 +1216,6 @@ namespace bp
 		std::string full, key;
 		splitSourceId(id, full, key);
 		if (mangaNet) mangaNet->start();
-		if (MangaJava::isSourceId(full)) mangaJavaNeedHost();
 		mangaBrowseRepos(p);
 		mangaSourceCancel();
 		mangaSrcId = full;
@@ -1252,19 +1270,31 @@ namespace bp
 			mangaStore->putSeries(m);
 			mangaSave();
 		}
-		mangaSourceSeriesLoad(p);
+		// the card's copy first (design 6): the page opens with its details and chapters at once, and nothing is asked
+		// of the source; only Refresh (L2) does that (a Java source's host starts then, not for a kept list)
+		mangaSrcFetchedAt = 0;
+		mangaSrcRefreshing = mangaSrcHadList = false;
+		mangaSrcFetchDetailsOk = mangaSrcFetchChaptersOk = false;
+		if (!mangaSourceSeriesCacheLoad()) mangaSourceSeriesLoad(p);
 	}
 
-	void Ui::mangaSourceSeriesLoad(Player& p)
+	void Ui::mangaSourceSeriesLoad(Player& p, bool refresh)
 	{
-		if (MangaJava::isSourceId(mangaSrcId)) { mangaJavaSeriesLoad(p); return; }
+		if (MangaJava::isSourceId(mangaSrcId)) { mangaJavaSeriesLoad(p, refresh); return; }
 		(void)p;
-		mangaSrcInfo = MangaDetails{};
-		mangaSrcInfoOn = false;
-		mangaSrcChapters.clear();
-		mangaSrcChaptersOn = false;
+		// a refresh keeps the list on screen; the first load (no cache) starts from nothing, as it always has
+		mangaSrcRefreshing = refresh;
+		mangaSrcHadList = mangaSrcChaptersOn;
+		mangaSrcFetchDetailsOk = mangaSrcFetchChaptersOk = false;
 		mangaSrcError.clear();
 		mangaSrcFailed = FAIL_SERIES;
+		if (!refresh)
+		{
+			mangaSrcInfo = MangaDetails{};
+			mangaSrcInfoOn = false;
+			mangaSrcChapters.clear();
+			mangaSrcChaptersOn = false;
+		}
 		if (mangaNet && mangaNet->started())
 		{
 			if (mangaSrcDetailsSerial) mangaNet->worker().cancel(mangaSrcDetailsSerial);
@@ -1273,14 +1303,12 @@ namespace bp
 		mangaSrcDetailsSerial = mangaSrcChaptersSerial = 0;
 		if (!mangaNet || !mangaNet->started())
 		{
-			mangaSrcLoading = false;
-			mangaSrcError = "Couldn\xE2\x80\x99t ask the source";
+			mangaSourceSeriesFail("Couldn\xE2\x80\x99t ask the source");
 			return;
 		}
 		if (mangaSrcFile.empty())
 		{
-			mangaSrcLoading = false;
-			mangaSrcError = "Source not installed";
+			mangaSourceSeriesFail("Source not installed");
 			return;
 		}
 		MangaWorker::Job job;
@@ -1292,7 +1320,82 @@ namespace bp
 		job.kind = MangaWorker::Job::Chapters;
 		mangaSrcChaptersSerial = mangaNet->worker().submit(job);
 		mangaSrcLoading = mangaSrcDetailsSerial != 0 || mangaSrcChaptersSerial != 0;
-		if (!mangaSrcDetailsSerial && !mangaSrcChaptersSerial) mangaSrcError = "Couldn\xE2\x80\x99t ask the source";
+		if (!mangaSrcDetailsSerial && !mangaSrcChaptersSerial) mangaSourceSeriesFail("Couldn\xE2\x80\x99t ask the source");
+	}
+
+	void Ui::mangaSourceSeriesRefresh(Player& p)
+	{
+		// one check at a time; the page's line says "Checking for new chapters…" while it runs
+		if (mangaSrcRefreshing) return;
+		mangaSourceSeriesLoad(p, true);
+	}
+
+	void Ui::mangaSourceSeriesFail(const std::string& why)
+	{
+		// before any job: a page with a cached list keeps it and says so in a toast; one without shows today's line
+		mangaSrcLoading = false;
+		if (mangaSrcHadList || mangaSrcChaptersOn)
+		{
+			if (mangaSrcRefreshing) mangaNotes.push_back("Couldn\xE2\x80\x99t check for new chapters");
+			else if (!why.empty()) mangaNotes.push_back(why);
+		}
+		else
+		{
+			mangaSrcError = why;
+			mangaSrcFailed = FAIL_SERIES;
+		}
+		mangaSrcRefreshing = false;
+	}
+
+	void Ui::mangaSourceSeriesFetched()
+	{
+		// both halves are in (the Lua jobs, or the Java query's one answer): a good fetch replaces the card's copy,
+		// a failed one keeps what shows and says so in a short toast rather than wiping the list
+		if (mangaSrcDetailsSerial || mangaSrcChaptersSerial) return;
+		mangaSrcLoading = false;
+		if (mangaSrcFetchDetailsOk && mangaSrcFetchChaptersOk)
+		{
+			mangaSrcFetchedAt = (int64_t)time(nullptr);
+			mangaSourceSeriesCacheSave();
+			mangaSrcError.clear();
+			mangaSrcFailed = FAIL_NONE;
+		}
+		else if (mangaSrcHadList || mangaSrcChaptersOn)
+		{
+			mangaNotes.push_back(mangaSrcRefreshing ? "Couldn\xE2\x80\x99t check for new chapters"
+				: "Couldn\xE2\x80\x99t refresh this series");
+			mangaSrcError.clear();
+			mangaSrcFailed = FAIL_NONE;
+		}
+		mangaSrcRefreshing = false;
+	}
+
+	bool Ui::mangaSourceSeriesCacheLoad()
+	{
+		MangaSeriesCache c;
+		if (!mangaSeriesCacheRead(stateDirPath, mangaSeriesId, c) || !c.chaptersOn) return false;
+		mangaSrcInfo = std::move(c.details);
+		mangaSrcInfoOn = c.detailsOn;
+		mangaSrcChapters = std::move(c.chapters);
+		mangaSrcChaptersOn = true;
+		mangaSrcFetchedAt = c.fetchedAt;
+		mangaSrcLoading = false;
+		mangaSrcError.clear();
+		mangaSrcFailed = FAIL_NONE;
+		if (mangaSrcTitle.empty() && !mangaSrcInfo.title.empty()) mangaSrcTitle = mangaSrcInfo.title;
+		return true;
+	}
+
+	void Ui::mangaSourceSeriesCacheSave()
+	{
+		if (stateDirPath.empty() || mangaSeriesId.empty()) return;
+		MangaSeriesCache c;
+		c.details = mangaSrcInfo;
+		c.chapters = mangaSrcChapters;
+		c.fetchedAt = mangaSrcFetchedAt;
+		c.detailsOn = mangaSrcInfoOn;
+		c.chaptersOn = mangaSrcChaptersOn;
+		mangaSeriesCacheWrite(stateDirPath, mangaSeriesId, c);
 	}
 
 	void Ui::mangaSourceSeriesChoose(int i, Player& p)
@@ -1359,6 +1462,8 @@ namespace bp
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetKey(b, p);
 		if (b == Button::Start) { openMangaSettings(); return false; }
 		if (b == Button::R2) { mangaDlSheetOpen(p); return false; }
+		// L2 checks the source again (it is free on this page: the reader's L2 steps chapters, not this page)
+		if (b == Button::L2) { mangaSourceSeriesRefresh(p); return false; }
 		if (b == Button::B)
 		{
 			// back to where it was opened: the source's grid, the Library or History (a chapter still coming goes)
@@ -1414,6 +1519,11 @@ namespace bp
 		if (mangaDlButtonRect().hit(x, y))
 		{
 			mangaDlSheetOpen(p);
+			return false;
+		}
+		if (mangaSrcRefreshRect().hit(x, y))
+		{
+			mangaSourceSeriesRefresh(p);
 			return false;
 		}
 		if (mangaSrcResumeRect().hit(x, y))
@@ -1486,7 +1596,7 @@ namespace bp
 		std::string line;
 		bool bad = !mangaSrcError.empty();
 		if (bad) line = mangaSrcError;
-		else if (mangaSrcLoading && n == 0) line = "Loading\xE2\x80\xA6";
+		else if (mangaSrcLoading && n == 0 && !mangaSrcRefreshing) line = "Loading\xE2\x80\xA6";
 		else
 		{
 			if (mangaSrcInfoOn && !mangaSrcInfo.author.empty()) line = mangaSrcInfo.author;
@@ -1499,33 +1609,52 @@ namespace bp
 			std::vector<std::string> lines = wrapText(mangaSrcInfo.description, 0, 592, 2);
 			for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, DIM_ON, 16, 104 + (int)i * 18, 592);
 		}
+		// the cached list's age, one line under the meta: only when it is more than a day old (a fresh one adds
+		// nothing, and nothing refreshes by itself); a running Refresh says what it is doing instead
+		int64_t now = (int64_t)time(nullptr);
+		if (mangaSrcRefreshing) drawTextMid("Checking for new chapters\xE2\x80\xA6", 0, DIM, W / 2, 140, 592, 2);
+		else if (mangaCheckedStale(mangaSrcFetchedAt, now))
+		{
+			// "Chapters checked 3 days ago · " in grey, its key in yellow
+			std::string stem = "Chapters checked " + mangaCheckedAgo(mangaSrcFetchedAt, now) + " ago \xC2\xB7 ";
+			const std::string key = "L2 Refresh";
+			int w1 = (int)std::lround(textWidth(stem, 0) / sx), w2 = (int)std::lround(textWidth(key, 0) / sx);
+			int x = W / 2 - (w1 + w2) / 2;
+			drawTextMid(stem, 0, DIM, x, 140);
+			drawTextMid(key, 0, ACCENT, x + w1, 140);
+		}
 		// Resume: the first started-but-unread chapter, else the first unread, else the first
 		MangaResumePoint resume = mserSumResume;
+		// one row of four: each a single line of glyph + label, the keys only in the hints under it (nothing in the
+		// buttons: Resume with no key, Download's R2 on a second line and the heart's Y under it read as three kinds)
 		Rect rb = mangaSrcResumeRect();
 		bool onResume = mserCursor < 0;
 		drawBox(rb, mangaPressed == MG_RESUME ? PRESSED : onResume ? BUTTON : SURFACE, R_BUTTON, onResume);
-		drawButton(rb, &G_PLAY, n ? "Resume" : "No chapters", nullptr, n == 0, 1);
-		Rect hb = mangaSrcHeartRect();
-		bool inLib = ms && ms->inLibrary;
-		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : BUTTON, R_BUTTON);
-		drawGlyphMid(inLib ? G_HEART : G_HEART_O, hb.x + hb.w / 2, hb.y + 12, inLib ? ACCENT : DIM, 2);
-		drawTextMid("Y", 0, ACCENT, hb.x + hb.w / 2, hb.y + 31, 0, 2);
+		drawButton(rb, &G_PLAY, "Resume", nullptr, n == 0, 1);
 		// Download: the sheet of This chapter / Next 5 unread / All unread / Choose chapters
 		Rect db = mangaDlButtonRect();
 		drawBox(db, BUTTON, R_BUTTON);
-		drawButton(db, &G_DOWNLOAD, "Download", "R2", n == 0, 0);
+		drawButton(db, &G_DOWNLOAD, "Download", nullptr, n == 0, 1);
+		// Refresh (L2): ask the source again and replace the card's copy on success
+		Rect fb = mangaSrcRefreshRect();
+		drawBox(fb, BUTTON, R_BUTTON);
+		drawButton(fb, &G_REFRESH, "Refresh", nullptr, mangaSrcRefreshing, 1);
+		Rect hb = mangaSrcHeartRect();
+		bool inLib = ms && ms->inLibrary;
+		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : BUTTON, R_BUTTON);
+		drawButton(hb, inLib ? &G_HEART : &G_HEART_O, "Library", nullptr, false, 1, inLib);
 		if (n == 0)
 		{
 			if (!mangaSrcError.empty())
 			{
 				drawTextMid(mangaSrcError, 1, DANGER, W / 2, 208, 560, 2);
-				drawHints({{"A", "Try again"}, {"B", "Back"}});
+				drawHints({{"A", "Try again"}, {"L2", "Refresh"}, {"B", "Back"}});
 			}
 			else
 			{
-				// (a running job says "Loading…" on the details line above)
+				// (a running job says "Loading…" or "Checking for new chapters…" above)
 				if (!mangaSrcLoading) drawTextMid("No chapters", 0, DIM, W / 2, 208, 0, 2);
-				drawHints({{"B", "Back"}});
+				drawHints({{"L2", "Refresh"}, {"B", "Back"}});
 			}
 			return;
 		}
@@ -1551,7 +1680,9 @@ namespace bp
 		}
 		drawScrollBar(MG_SRC_SER_TOP, MG_SRC_SER_ROWS * ROW_H - 4, mserScroll, MG_SRC_SER_ROWS, n);
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
-		drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"Y", "In library"}, {"R2", "Download"}, {"B", "Back"}});
+		// X still marks a chapter read, but six hints don't fit this panel's line: its action stays (the row's marks
+		// show read and unread), and the four buttons carry the rest
+		drawHints({{"A", "Read"}, {"Y", "In library"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) drawMangaDlSheet(p);
 	}
 
@@ -1566,6 +1697,10 @@ namespace bp
 			(int)mangaSrcLoading, (int)mangaSrcInfoOn, (int)mangaSrcChaptersOn, (int)mangaSrcPendFull);
 		std::string s = buf;
 		s += "|" + mangaSrcId + "|" + mangaSrcQuery + "|" + mangaSrcError + "|" + mangaSrcKey + "|" + mangaSrcTitle;
+		// the cached list's age line (the day count moves at each 24 h) and a running Refresh's "Checking…"
+		s += "|cs" + std::to_string((int)mangaSrcRefreshing) + std::to_string((int)mangaSrcChaptersOn) +
+			" " + std::to_string((long long)mangaSrcFetchedAt) + " " +
+			std::to_string(mangaSrcFetchedAt > 0 ? ((long long)time(nullptr) - mangaSrcFetchedAt) / 86400 : -1LL);
 		s += "|mf" + std::to_string((unsigned long long)mangaFilterLocal);
 		// the lists' own ends: page 2 appended after page 1 changes the count, but a page's items replaced with as
 		// many others (a search for another word, a retry) would not show otherwise

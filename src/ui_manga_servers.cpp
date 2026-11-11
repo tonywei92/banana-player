@@ -834,7 +834,7 @@ namespace bp
 	{
 		mangaServersPoll();
 		if (pt.kind != Pointer::Down) return false;
-		if (mangaSrcResumeRect().hit(x, y))
+		if (mangaServerResumeRect().hit(x, y))
 		{
 			mserCursor = -1;
 			mangaServerSeriesResume(p);
@@ -882,7 +882,7 @@ namespace bp
 			marks.push_back(m);
 		}
 		MangaResumePoint resume = mangaResume(marks);
-		Rect rb = mangaSrcResumeRect();
+		Rect rb = mangaServerResumeRect();
 		bool onResume = mserCursor < 0;
 		drawBox(rb, mangaPressed == MG_RESUME ? PRESSED : onResume ? BUTTON : SURFACE, R_BUTTON, onResume);
 		drawButton(rb, &G_PLAY, n ? "Resume" : "No chapters", nullptr, n == 0, 1);

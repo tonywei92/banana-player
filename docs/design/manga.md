@@ -169,7 +169,7 @@ free there; X is the page's own action, and **START** opens **Manga settings**).
 | **History** | rows: cover thumb, series, chapter, page, when; X: remove, clear | the focused series, as above |
 | **Browse** | sources list (On this handheld, network folders, servers, installed sources; language chip, last used); then Popular / Latest / Search tabs and a cover grid that loads 2 rows ahead | the focused result's details (fetched once it rests 400 ms) |
 | **Sources** | Installed / Available / Repositories, stepped with Left/Right (the list only uses Up/Down; X stays Options) | the focused source: repository, version, language, what it was checked against |
-| **Series** | cover, title, status line, Resume (A), In library heart, Download, chapter list (unread dot, read dimmed with a check, "p. 14/38" on the started one, a download mark: queued, progress, on the card), X: Options (mark read/unread, from here down, refresh, sort, delete download) | cover large, synopsis, genres |
+| **Series** | cover, title, status line, Resume (A), Download (R2), Refresh (L2), In library heart (Y), chapter list (unread dot, read dimmed with a check, "p. 14/38" on the started one, a download mark: queued, progress, on the card), X: Options (mark read/unread, from here down, refresh, sort, delete download) | cover large, synopsis, genres |
 | **Download** (sheet from the series page) | This chapter · Next 5 unread · All unread (37) · Choose chapters… (the list in select mode) | how much it will take, room left |
 | **Downloads** | a storage line (downloads' size, the card's free space); the queue (series, chapter, pages done, pause / resume); then what's on the card by series (chapters, size), X: delete | the focused series |
 | **Reader** | a touch surface showing the pages under the finger (drag and flick there; in strip modes a map of the chapter with the window on it), Back/Forward, Prev/Next chapter; the mode and the zoom are the keys' and the Reading menu's; a page slider "14 / 38" (drag to jump); chapter title; the **Now playing** mini bar along the bottom | the pages, drawn by the reader's renderer |
@@ -380,7 +380,7 @@ All under `<state>/manga/` (the state dir is on the card), created only when the
 | File | Holds |
 |---|---|
 | `library.tsv` | the library: source id, series key, title, cover URL, added, last opened, unread count, the series' own reading mode (or empty) |
-| `series/<hash>.json` | the last details and chapter list fetched for a series (shown at once, refreshed in the background on open) |
+| `series/<hash>.json` | the last details and chapter list fetched for a series (shown at once on open, with when it was checked; **L2** refreshes it — never automatically) |
 | `progress.tsv` | per chapter: source, series key, chapter key, page, pages, read (0/1), time. Append and compact, as `resume.tsv` |
 | `history.tsv` | the last 100 chapters opened (series, chapter, page, time); Keep reading history: Off clears it |
 | `repos.json` | repositories: URL, name, ETag, last fetched, the last index |

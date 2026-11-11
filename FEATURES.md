@@ -785,9 +785,17 @@ own headers while the tile is on screen, kept in a cache on the card; a plain co
 lists (**A** cycles off → include → exclude), text fields and groups as rows, each showing its current value, with
 **Reset** back to the defaults and **Apply** to run the search again from page 1 — the values stay with that source
 while the app runs. **A** opens a series, **B** goes back to Browse's rows, and an error under the grid
-offers **A: Try again**. A source's series page is laid out like a card series': **Resume**, the heart (**Y**) to
-keep it in your library — a source's series starts outside it — the chapters with their read marks, **X** to mark one
-read or unread, **A** to read it.
+offers **A: Try again**. A source's series page is laid out like a card series': **Resume** (**A**), **Download**
+(**R2**), **Refresh** (**L2**) and the heart (**Y**) in one row of buttons, then the chapters with their read marks,
+**X** to mark one read or unread, **A** to read it. **Resume** keeps the series' own place, and the heart keeps it in
+your library — a source's series starts outside it.
+
+**A source series on the card.** The details and the chapter list are kept when they're fetched, under
+`manga/series/` in the state folder, named by the series' hashed id (never its address). Opening the series shows them
+at once and asks the source nothing; **L2 Refresh** is the only thing that asks again, and it replaces the kept list
+when the answer comes. A check that fails keeps the list on screen and says so in a short note. Once the list is more
+than a day old, one line under the title says **Chapters checked 3 days ago · L2 Refresh** (a fresh one adds nothing,
+and nothing is ever asked by itself); while a check runs the line reads **Checking for new chapters…**.
 
 **Sources.** Three lists, stepped with **LEFT/RIGHT** (**L/R** still step the app's pages): **Installed**, **Available**
 and **Repositories**. **Y** checks the repositories again, and the top screen says how it went: **Installed …**,

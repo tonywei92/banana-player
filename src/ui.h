@@ -1235,6 +1235,7 @@ namespace bp
 		std::string stateDirPath;	// (setStateDir's) the manga store's own folder is under it
 		bool mangaDirty = false;	// the store changed and wasn't written yet (mangaTick writes it once a second)
 		Uint32 mangaSavedAt = 0;
+		std::vector<std::string> mangaNotes;	// toasts made where no Player was at hand (mangaNotesTick shows them)
 		// the Library and History lists made again when the store changes: the library, its unread counts, the
 		// Continue reading cards, the last chapters opened
 		mutable uint64_t mangaCacheSerial = 0;
@@ -1490,7 +1491,6 @@ namespace bp
 		uint64_t mstJavaLocal = 0;					// the Java rows' own changes, for signature()
 		std::map<std::string, std::string> mstJavaBusy;	// package -> Installing… / Updating… / Removing…
 		std::map<std::string, Uint32> mstJavaBusyAt;	// when each started (a lost answer doesn't stick)
-		std::vector<std::string> mangaJavaNotes;	// toasts made where no Player was at hand
 		// a Java extension's sheet (A/X on an installed row) or a Java repository's (A on its row)
 		enum MangaJavaModal { MJM_NONE, MJM_DETAILS, MJM_REPO };
 		int mstJavaModal = MJM_NONE, mstJavaModalCursor = 0;
@@ -1509,7 +1509,7 @@ namespace bp
 		void mangaJavaAddRepo(const std::string& url, Player& p);
 		void mangaJavaRefresh();						// fetchExtensions (Y, and the first Contacts with a store)
 		void mangaJavaPoll(const Player& p);				// the manager's events and the host's answers
-		void mangaJavaNotesTick(Player& p);			// the queued toasts, one at a time
+		void mangaNotesTick(Player& p);				// the queued toasts, one at a time
 		int mangaJavaInstalledRows(const Player& p) const;
 		int mangaJavaAvailableRows(const Player& p) const;
 		int mangaJavaRepoRows() const;
@@ -1529,7 +1529,7 @@ namespace bp
 		// a Java source's page (ui_manga_browse.cpp's hooks)
 		void mangaJavaSourceOpened(const MangaSrcRow& row, Player& p);
 		void mangaJavaListLoad(int page);
-		void mangaJavaSeriesLoad(Player& p);
+		void mangaJavaSeriesLoad(Player& p, bool refresh = false);
 		void mangaJavaPagesAsk(Player& p);
 		void mangaJavaFiltersAsk();
 		std::string mangaJavaFiltersJson() const;
@@ -1636,6 +1636,12 @@ namespace bp
 		bool mangaSrcInfoOn = false;
 		std::vector<MangaChapter> mangaSrcChapters;		// oldest first, as the card's series page lists them
 		bool mangaSrcChaptersOn = false;
+		// the page's cached list (design 6): opened from <state>/manga/series/<hash>.json, so its details and chapters
+		// show at once and only Refresh asks the source. fetchedAt: when the list on screen was fetched (0: no cache).
+		// hadList: the fetch began with a list on screen, so a failure keeps it and says so in a toast instead.
+		int64_t mangaSrcFetchedAt = 0;
+		bool mangaSrcRefreshing = false, mangaSrcHadList = false;
+		bool mangaSrcFetchDetailsOk = false, mangaSrcFetchChaptersOk = false;	// this fetch's two halves
 		std::vector<MangaChapter> mangaReadSrcChapters;	// the reading chapter's series, for the chapter buttons
 		// a source's ids: the series' and a chapter's are "src:<full source id>:<key>" (docs/design/manga.md 6)
 		static bool isSourceId(const std::string& id) { return id.rfind("src:", 0) == 0; }
@@ -1703,7 +1709,12 @@ namespace bp
 		bool mangaSourceSeriesKey(Button b, Player& p);
 		bool mangaSourceSeriesPointer(const Pointer& pt, int x, int y, Player& p);
 		void drawMangaSourceSeries(const Player& p);
-		void mangaSourceSeriesLoad(Player& p);
+		void mangaSourceSeriesLoad(Player& p, bool refresh = false);
+		void mangaSourceSeriesRefresh(Player& p);		// L2: ask the source again; a failure keeps what shows
+		void mangaSourceSeriesFetched();				// both halves are in: save, or keep the list and toast
+		void mangaSourceSeriesFail(const std::string& why);	// before the jobs: what shows stays
+		bool mangaSourceSeriesCacheLoad();				// the card's copy into the page; false: none to show
+		void mangaSourceSeriesCacheSave();
 		void mangaSourceSeriesChoose(int i, Player& p);
 		void mangaSourceSeriesResume(Player& p);
 		void mangaSourceSeriesInLibrary(Player& p);
@@ -1781,15 +1792,18 @@ namespace bp
 		Rect mangaFilterRowRect(int i) const { return {64, MF_ROW_TOP + i * MF_ROW_H, 512, MF_ROW_H - 4}; }
 		Rect mangaSrcTabRect(int i) const { return {60 + i * 120, 64, 116, 30}; }
 		// two whole rows of covers with their titles, down to the hint bar (186 apart left a black band under them)
-		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 172, MG_SRC_SER_TOP = 194, MG_SRC_SER_ROWS = 4,
+		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 172, MG_SRC_SER_TOP = 200, MG_SRC_SER_ROWS = 4,
 			MG_SRC_STATUS_Y = 410;
 		Rect mangaSrcCoverRect(int i) const
 		{
 			int row = i / MG_COLS, col = i % MG_COLS;
 			return {16 + col * 124, MG_SRC_TOP + (row - mangaSrcScroll) * MG_SRC_STEP, MG_COVER_W, MG_COVER_H};
 		}
-		Rect mangaSrcResumeRect() const { return {16, 144, 220, 48}; }
-		Rect mangaSrcHeartRect() const { return {556, 144, 68, 48}; }
+		// a source series page's one buttons row, 48 high and single-line glyph + label each (the keys are in the
+		// hints): Resume (A), Download (R2), Refresh (L2), In library (Y); 608 wide with the page's margins
+		Rect mangaSrcResumeRect() const { return {16, 150, 146, 48}; }
+		Rect mangaSrcHeartRect() const { return {478, 150, 146, 48}; }
+		Rect mangaSrcRefreshRect() const { return {324, 150, 146, 48}; }
 
 		// ---- the saved servers (ui_manga_servers.cpp) ----
 		// Browse › Y opens the Add server form: kind, name, address, user, password; Test, Save. A server's
@@ -1875,6 +1889,9 @@ namespace bp
 		void drawMangaServerModal(const Player& p);
 		std::string mangaServersSignature() const;
 		static constexpr int MGSRV_TOP = 104, MGSRV_STEP = 186, MGSRV_STATUS_Y = 410;
+		// a server's series page keeps its own Resume button: the cards' pages and a source's row differ (the source's
+		// shares its row with Download, Refresh and the heart)
+		Rect mangaServerResumeRect() const { return {16, 144, 220, 48}; }
 		static constexpr int MGSRV_FORM_ROWS = 7;	// Kind, Name, Address, User, Password, Test, Save
 		static constexpr int MGSRV_GRID_ROWS_SHOWN = 2, MGSRV_CLIP_TOP = 96, MGSRV_CLIP_BOTTOM = 398;
 		Rect mangaSrvCoverRect(int i) const
@@ -1985,7 +2002,7 @@ namespace bp
 		void mangaDlWorker(MangaWorker::Result& r);	// its answers (the rest of mangaBrowsePoll's are the browse page's)
 		std::vector<int> mangaDlUnreadFrom(int from, int limit) const;	// unread source chapters, in list order
 		// the Download sheet
-		Rect mangaDlButtonRect() const { return {244, 144, 204, 40}; }
+		Rect mangaDlButtonRect() const { return {170, 150, 146, 48}; }
 		Rect mangaDlSheetBox() const { return mdlSheet == MDLS_CHOOSE ? Rect{16, 62, 608, 366} : Rect{100, 96, 440, 260}; }
 		Rect mangaDlSheetRowRect(int i) const;
 		void mangaDlSheetOpen(Player& p);

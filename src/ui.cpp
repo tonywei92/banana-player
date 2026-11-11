@@ -480,7 +480,7 @@ namespace bp
 		{
 			mangaBrowsePoll(p);
 			mangaDlAskPump();
-			mangaJavaNotesTick(p);
+			mangaNotesTick(p);
 		}
 		// the web's equalizer: what mpv keeps, and settings.conf, once its sliders stop for a second
 		if (eqWebDirtyAt && SDL_GetTicks() - eqWebDirtyAt >= 1000)

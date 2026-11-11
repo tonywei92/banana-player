@@ -38,6 +38,7 @@ extern "C"
 #include "mangafilters.h"
 #include "mangaremote.h"
 #include "mangarepo.h"
+#include "mangaseriescache.h"
 #include "netpath.h"
 #include "opds.h"
 #include "paged.h"
@@ -2508,6 +2509,111 @@ static void testMangaUiLogic()
 	// the item table a source series opened from the Library gets back: its key and title, escaped
 	CHECK_EQ(mangaSourceItemJson("abc/12", "A \"quoted\" title"), std::string("{\"key\":\"abc/12\",\"title\":\"A \\\"quoted\\\" title\"}"));
 	CHECK_EQ(mangaSourceItemJson("a\\b", "Tab\there"), std::string("{\"key\":\"a\\\\b\",\"title\":\"Tab\\u0009here\"}"));
+}
+
+// a source series' page's cache (design 6): the file's name, its JSON round trip and how old a check reads
+static void testMangaSeriesCache()
+{
+	// the name is the digest of the series id, never the id or its URL (a URL has '/' and ':' and can be long)
+	const std::string id = "src:repo-hash/source:https://site.example/manga/one?x=1";
+	std::string p1 = mangaSeriesCachePath("/state", id);
+	CHECK_EQ(p1.rfind("/state/manga/series/", 0), size_t(0));
+	CHECK_EQ(p1.compare(p1.size() - 5, 5, ".json"), 0);
+	std::string name = p1.substr(p1.rfind('/') + 1);
+	CHECK_EQ(name.size(), size_t(64 + 5));
+	CHECK_EQ(name.find(':'), std::string::npos);
+	CHECK_EQ(name.find("https"), std::string::npos);
+	CHECK_EQ(p1, mangaSeriesCachePath("/state", id));
+	CHECK_EQ(p1 == mangaSeriesCachePath("/state", id + "2"), false);
+	CHECK_EQ(mangaSeriesCachePath("", id), std::string());
+	CHECK_EQ(mangaSeriesCachePath("/state", ""), std::string());
+
+	// a round trip through the file
+	char tmpl[] = "/tmp/bp-manga-series-cache-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string state = made;
+
+	MangaSeriesCache c;
+	c.fetchedAt = 1760000000;
+	c.detailsOn = c.chaptersOn = true;
+	c.details.title = "Ember \"Lantern\"";
+	c.details.author = "Ann";
+	c.details.artist = "Bo";
+	c.details.description = "Line one\nline two \xE2\x80\x94 \xC3\xBCn\xC3\xAF" "code";
+	c.details.status = "ongoing";
+	c.details.cover = "https://site.example/c.jpg";
+	c.details.genres = {"Action", "Slice of Life"};
+	MangaChapter a;
+	a.key = "/c/9";
+	a.name = "Chapter 9";
+	a.group = "Group";
+	a.number = 9.5;
+	a.date = 1731200000;
+	a.json = "{\"key\":\"/c/9\",\"title\":\"Chapter \\\"9\\\"\"}";
+	c.chapters.push_back(a);
+	MangaChapter b;
+	b.key = "12";
+	b.name = "Chapter 10";
+	b.number = 10;
+	b.json = "12";
+	c.chapters.push_back(b);
+
+	CHECK_EQ(mangaSeriesCacheWrite(state, id, c), true);
+	std::string path = mangaSeriesCachePath(state, id);
+	std::ifstream cacheFile(path, std::ios::binary);
+	std::string text((std::istreambuf_iterator<char>(cacheFile)), std::istreambuf_iterator<char>());
+	cacheFile.close();
+	CHECK_EQ(text.empty(), false);
+	MangaSeriesCache back;
+	CHECK_EQ(mangaSeriesCacheRead(state, id, back), true);
+	CHECK_EQ(back.fetchedAt, c.fetchedAt);
+	CHECK_EQ(back.detailsOn, true);
+	CHECK_EQ(back.chaptersOn, true);
+	CHECK_EQ(back.details.title, c.details.title);
+	CHECK_EQ(back.details.author, c.details.author);
+	CHECK_EQ(back.details.artist, c.details.artist);
+	CHECK_EQ(back.details.description, c.details.description);
+	CHECK_EQ(back.details.status, c.details.status);
+	CHECK_EQ(back.details.cover, c.details.cover);
+	CHECK_EQ(back.details.genres.size(), size_t(2));
+	CHECK_EQ(back.details.genres[1], std::string("Slice of Life"));
+	CHECK_EQ(back.chapters.size(), size_t(2));
+	CHECK_EQ(back.chapters[0].key, a.key);
+	CHECK_EQ(back.chapters[0].name, a.name);
+	CHECK_EQ(back.chapters[0].group, a.group);
+	CHECK_EQ(back.chapters[0].number, 9.5);
+	CHECK_EQ(back.chapters[0].date, a.date);
+	CHECK_EQ(back.chapters[0].json, a.json);
+	CHECK_EQ(back.chapters[1].key, b.key);
+	CHECK_EQ(back.chapters[1].json, b.json);
+
+	// a missing series is no cache; damaged or other-format text isn't one either (no error to show)
+	MangaSeriesCache none;
+	CHECK_EQ(mangaSeriesCacheRead(state, id + "x", none), false);
+	CHECK_EQ(mangaSeriesCacheParse(text.substr(0, text.size() / 2), none), false);
+	CHECK_EQ(mangaSeriesCacheParse(text + "{}", none), false);
+	CHECK_EQ(mangaSeriesCacheParse("{\"format\":2}", none), false);
+	CHECK_EQ(mangaSeriesCacheWrite("", id, c), false);	// nowhere to keep it
+
+	// how old a check reads, and what counts as stale (more than a day: the page offers L2 Refresh)
+	const int64_t t = 2000000000;
+	CHECK_EQ(mangaCheckedAgo(0, t), std::string(""));
+	CHECK_EQ(mangaCheckedAgo(t, t), std::string("today"));
+	CHECK_EQ(mangaCheckedAgo(t - 86399, t), std::string("today"));
+	CHECK_EQ(mangaCheckedAgo(t - 86400, t), std::string("1 day"));
+	CHECK_EQ(mangaCheckedAgo(t - 2 * 86400, t), std::string("2 days"));
+	CHECK_EQ(mangaCheckedAgo(t - 400 * 86400, t), std::string("400 days"));
+	CHECK_EQ(mangaCheckedAgo(t + 3600, t), std::string("today"));	// a clock behind the file's stamp
+	CHECK_EQ(mangaCheckedStale(0, t), false);
+	CHECK_EQ(mangaCheckedStale(t, t), false);
+	CHECK_EQ(mangaCheckedStale(t - 86399, t), false);
+	CHECK_EQ(mangaCheckedStale(t - 86400, t), true);
+
+	unlink(path.c_str());
+	rmdir((state + "/manga/series").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
 }
 
 // the source filters a sheet holds (5.2.1): parsing the source's definitions, defaults, the object search() gets
@@ -8908,6 +9014,7 @@ int main()
 	testOpds();
 	testCbzWrite();
 	testMangaUiLogic();
+	testMangaSeriesCache();
 	testMangaFilters();
 	testPaged();
 	testMangaStore();
