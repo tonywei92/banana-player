@@ -1288,8 +1288,9 @@ namespace bp
 		mutable int extNoticeState = -1;
 		Uint32 videoBlockedAt = 0;
 		Uint32 engineStopAt = 0;
-		// the manga extension's icon (manga_icon.h), made once
+		// the manga extension's picture (assets/icons/manga.png), decoded at the size drawn
 		SDL_Texture* mangaIconTex = nullptr;
+		int mangaIconPx = 0;	// the size it was decoded at
 		void drawMangaIcon(Rect r);
 		// a short line in the notice at the top of the panel, gone by itself (the manga engine's other notices' place)
 		std::string noticeText;

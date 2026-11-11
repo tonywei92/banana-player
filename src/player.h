@@ -198,6 +198,8 @@ namespace bp
 		// the top panel's pixels (main sets it): the idle icon is drawn in whole pixels at that size
 		void setTopSize(int w, int h) { topW = w; topH = h; }
 		int topW = 0, topH = 0;
+		int idleIconPx = 0, idleIconH = 0;	// the idle picture decoded at this width, written to idleIconFile
+		std::string idleIconFile;
 		// the top panel while a web page plays the music instead: the paused picture dimmed, and why (a paused
 		// visualizer looks frozen otherwise). where: the page's name ("Chrome on Mac"); waiting: it was refused the
 		// sound without a tap there (Play on from here), and B plays here instead; glyph: drawn over the title (G_LAPTOP)

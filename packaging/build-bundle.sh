@@ -162,6 +162,7 @@ B="$OUT/BananaPlayer"
 rm -rf "$OUT" && mkdir -p "$B/bin" "$B/lib" "$B/share/banana-player"
 cp $BPB/banana-player "$B/bin/"
 cp -r /src/assets/fonts "$B/share/banana-player/"
+cp -r /src/assets/icons "$B/share/banana-player/"	# (the player's own pictures: the app's on the top screen, the manga reader's)
 # fontconfig's view of the fonts: the player's folder only (the launcher sets FONTCONFIG_FILE), its cache in
 # $XDG_CACHE_HOME (run-port: /data/home/.cache)
 cat > "$B/share/banana-player/fonts.conf" <<'CONF'

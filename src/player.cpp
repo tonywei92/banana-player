@@ -1,8 +1,7 @@
 #include "player.h"
 #include "format.h"
 #include "logo.h"
-#include "app_icon.h"
-#include <map>
+#include "pagedecode.h"
 #include "netpath.h"
 #include "netstore.h"
 #include "netstream.h"
@@ -1520,55 +1519,54 @@ namespace bp
 		{
 			const char* cmd[] = {"osd-overlay", "3", "none", "", nullptr};
 			mpv_command_async(mpv, 0, cmd);
-			const char* cmd7[] = {"osd-overlay", "7", "none", "", nullptr};
-			mpv_command_async(mpv, 0, cmd7);
+			const char* rm[] = {"overlay-remove", "0", nullptr};
+			mpv_command_async(mpv, 0, rm);
 			return;
 		}
 		// the icon as ASS drawings, a run of pixels a rectangle, one event a colour; on a 960x720 canvas
 		const int px = 6, x0 = 480 - 16 * px, y0 = 110;
 		std::string ev;
-		if (APP_ICON_EXPERIMENT)
+		// the app's picture (assets/icons/app.png beside the fonts) as an mpv image overlay at the panel's own pixels,
+		// decoded once at that size (smooth, as drawn); the generated logo when it can't be read
+		bool picture = false;
 		{
-			// the full-colour icon (app_icon.h) in its own overlay at the panel's own pixels, each icon pixel a whole
-			// number of them (about the logo's 192 units of 720), so no pixel comes out wider than its neighbours;
-			// each colour rounded a little, so a few dozen runs of colours, not one per pixel
-			const int n = APP_ICON_SIZE;
 			const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
-			const int q = std::max(1, (int)std::lround(192.0 * ph / 720 / n));
-			const int ix = pw / 2 - n * q / 2, iy = (int)std::lround(110.0 * ph / 720);
-			std::string iev;
-			std::map<uint32_t, std::string> paths;
-			auto colourAt = [&](int x, int y) -> int64_t {
-				const unsigned char* c = APP_ICON_RGBA + (y * n + x) * 4;
-				if (c[3] < 128) return -1;
-				return (int64_t)(((c[0] & 0xF0) | 8) << 16 | ((c[1] & 0xF0) | 8) << 8 | ((c[2] & 0xF0) | 8));
-			};
-			for (int y = 0; y < n; y++)
-				for (int x = 0; x < n;)
-				{
-					int64_t c = colourAt(x, y);
-					if (c < 0) { x++; continue; }
-					int e = x;
-					while (e < n && colourAt(e, y) == c) e++;
-					char r[96];
-					// (whole panel pixels: rows meet exactly, no hairline and no overlap)
-					snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * q, y * q, e * q, y * q, e * q, (y + 1) * q, x * q, (y + 1) * q);
-					paths[(uint32_t)c] += r;
-					x = e;
-				}
-			for (auto& kv : paths)
+			const int size = (int)std::lround(240.0 * ph / 720), ix = pw / 2 - size / 2, iy = (int)std::lround(84.0 * ph / 720);
+			if (idleIconPx != size && !opts.fontsDir.empty())
 			{
-				char head[128];
-				// (ASS colours are &HBBGGRR&)
-				snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c&H%02X%02X%02X&\\p1}", ix, iy,
-					kv.first & 0xFF, (kv.first >> 8) & 0xFF, (kv.first >> 16) & 0xFF);
-				iev += head + kv.second + "{\\p0}\n";
+				PageImage img = decodePageFile(opts.fontsDir + "/../icons/app.png", size);
+				if (img.ok() && img.w == size)
+				{
+					// mpv's overlay-add takes premultiplied BGRA from a file it maps: written once, kept while shown
+					std::vector<uint8_t> bgra((size_t)img.w * img.h * 4);
+					for (size_t p = 0; p < (size_t)img.w * img.h; p++)
+					{
+						const uint8_t* c = img.rgba.data() + p * 4;
+						uint8_t a = c[3];
+						bgra[p * 4 + 0] = (uint8_t)(c[2] * a / 255);
+						bgra[p * 4 + 1] = (uint8_t)(c[1] * a / 255);
+						bgra[p * 4 + 2] = (uint8_t)(c[0] * a / 255);
+						bgra[p * 4 + 3] = a;
+					}
+					idleIconFile = (opts.stateDir.empty() ? std::string("/tmp") : opts.stateDir) + "/.idle-icon.bgra";
+					if (FILE* f = fopen(idleIconFile.c_str(), "wb"))
+					{
+						bool ok = fwrite(bgra.data(), 1, bgra.size(), f) == bgra.size();
+						if (fclose(f) == 0 && ok) { idleIconPx = size; idleIconH = img.h; }
+					}
+				}
 			}
-			std::string rw = std::to_string(pw), rh = std::to_string(ph);
-			const char* icmd[] = {"osd-overlay", "7", "ass-events", iev.c_str(), rw.c_str(), rh.c_str(), "0", "no", "no", nullptr};
-			mpv_command_async(mpv, 0, icmd);
+			if (idleIconPx == size)
+			{
+				std::string xs = std::to_string(ix), ys = std::to_string(iy), ws = std::to_string(size), hs = std::to_string(idleIconH),
+					st = std::to_string(size * 4);
+				const char* add[] = {"overlay-add", "0", xs.c_str(), ys.c_str(), idleIconFile.c_str(), "0", "bgra", ws.c_str(), hs.c_str(),
+					st.c_str(), nullptr};
+				mpv_command_async(mpv, 0, add);
+				picture = true;
+			}
 		}
-		else
+		if (!picture)
 		{
 			const struct { char c; std::string colour; } inks[] = {{'.', ass(TOP_SQUARE)}, {'Y', ass(TOP_TITLE)}, {'W', ass(TEXT)}};
 			for (auto& ink : inks)

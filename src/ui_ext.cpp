@@ -1,5 +1,5 @@
 #include "ui.h"
-#include "manga_icon.h"
+#include "pagedecode.h"
 #include "ui_internal.h"
 
 namespace bp
@@ -217,21 +217,28 @@ namespace bp
 
 	void Ui::drawMangaIcon(Rect r)
 	{
-		if (!mangaIconTex)
-		{
-			mangaIconTex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, MANGA_ICON_SIZE, MANGA_ICON_SIZE);
-			if (!mangaIconTex) return;
-			SDL_UpdateTexture(mangaIconTex, nullptr, MANGA_ICON_RGBA, MANGA_ICON_SIZE * 4);
-			SDL_SetTextureBlendMode(mangaIconTex, SDL_BLENDMODE_BLEND);
-#if SDL_VERSION_ATLEAST(2, 0, 12)
-			SDL_SetTextureScaleMode(mangaIconTex, SDL_ScaleModeNearest);	// pixel art: no blur
-#endif
-		}
-		// a whole number of screen pixels per icon pixel (no uneven pixels, as a game not at integer scale would
-		// show), the largest that fits, centred in the place given
+		// the manga reader's picture (assets/icons/manga.png beside the fonts), decoded at the size it's drawn (smooth,
+		// as drawn; again when a place of another size asks)
 		SDL_Rect d = devRect(r);
-		int k = std::max(1, std::min(d.w, d.h) / MANGA_ICON_SIZE), s = k * MANGA_ICON_SIZE;
+		int s = std::min(d.w, d.h);
+		if (s != mangaIconPx)
+		{
+			if (mangaIconTex) SDL_DestroyTexture(mangaIconTex);
+			mangaIconTex = nullptr;
+			mangaIconPx = s;
+			PageImage img = decodePageFile(fontsDir + "/../icons/manga.png", s);
+			if (img.ok())
+			{
+				mangaIconTex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, img.w, img.h);
+				if (mangaIconTex)
+				{
+					SDL_UpdateTexture(mangaIconTex, nullptr, img.rgba.data(), img.w * 4);
+					SDL_SetTextureBlendMode(mangaIconTex, SDL_BLENDMODE_BLEND);
+				}
+			}
+		}
 		SDL_Rect c{d.x + (d.w - s) / 2, d.y + (d.h - s) / 2, s, s};
-		SDL_RenderCopy(ren, mangaIconTex, nullptr, &c);
+		if (mangaIconTex) SDL_RenderCopy(ren, mangaIconTex, nullptr, &c);
+		else drawGlyphMid(G_BOOK, r.x + r.w / 2, r.y + r.h / 2, ACCENT, 3);	// (no picture: the book, as before)
 	}
 }
