@@ -6,8 +6,9 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 
 **Built**
 
-- **Extensions**: the drawer (Home's fourth tile), **Manage extensions**, the first-time sheet, and the reader's own
-  **Manga settings** page (a page of the Manga app's, not a group of Banana Player's Settings).
+- **Extensions**: the drawer (Home's fourth tile), **Manage extensions**, the first-time sheet, the web dashboard's
+  own **Extensions** page (the reader's switch, repositories note), and the reader's own **Manga settings** page (a
+  page of the Manga app's, not a group of Banana Player's Settings).
 - **On this handheld**: the cards' `Manga` folders read as series and chapters — folders of pictures, `.cbz` and `.zip`
   archives, one level of volume folders, `ComicInfo.xml` for the series' title and the chapter's number — in reading
   order.
@@ -16,6 +17,19 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
   number, the slider, the chapter buttons, the drag area).
 - **Home's Recent**: the reader's last chapter as a card among the files (cover, series, chapter and page, a bar),
   where it was last read; **A** opens it at the page left. **In Recent on Home** off: no card.
+- **Sources from repositories**: the **Sources** page's three lists (**Installed**, **Available**, **Repositories**,
+  stepped with LEFT/RIGHT), **Add repository** by URL, install / update / uninstall with the repository manager's
+  checks, removing a repository with or without its sources, results as notes, adult sources hidden unless shown; the
+  repository manager, the Lua source worker and the sandbox behind it, and a test repository in
+  `tools/manga-test-repo` (public-domain comic strips) to try it with.
+- **Browsing a source**: installed sources under *On this handheld* in **Browse**, a source's **Popular / Latest /
+  Search** grid loading as it scrolls, its series' details and chapters through the worker (**Resume**, **In
+  library**, read and unread), and a chapter read from its page URLs with the source's headers — pages fetched into
+  the page cache three at a time, progress kept as for local chapters. A source behind a browser check (Cloudflare,
+  DDoS-Guard) says so plainly, in the worker's answers and the reader's page fetches.
+- **The Pages grid** (**Y** in the reader, or the Reading menu's **Pages** row): the chapter's thumbnails six wide,
+  made as pages decode (placeholders until then), page numbers in their cells, the cursor moving the reader to its
+  page, **A** jumps there, **B** or **Y** closes, touch taps and drags.
 - **The reader**: its own renderer on the top panel, the three modes (**Right to left**, **Left to right**, **Strip**),
   the page fit (Page, Width, and a real **Fill** in the paged modes), the zoom (**UP/DOWN** through 100–800 %, **A** at
   200 %), the D-pad (**LEFT/RIGHT** a screenful, then the page), **L/R**, **L2/R2**, the **Reading menu** on **START**,
@@ -47,6 +61,25 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
   pinch.
 - The page cache is empty (only the network sources fill it), and **Adult sources** change nothing yet.
 - The web dashboard's Manga pages, and reading in the browser.
+- **The web dashboard** (section 8): the **Manga** pages — **Library**, **Sources** with repositories, **Downloads**
+  — behind a Manga item shown only while the reader is on, their API through `WebServer::call`, 404 while off,
+  changes announced as a manga event.
+- **The store** (bpcore, with tests): the library, the reading progress and the history in the state folder, the page
+  cache and the repositories' index in use. Beside it, ready for what isn't built yet: the CBZ reader and writer,
+  ComicInfo, and the OPDS and Komga parsers.
+
+**Not built yet**
+
+- Network folders and servers (Komga, Kavita, OPDS) as sources: the parsers and the saved connections are in bpcore,
+  but no source reaches the reader, and **Browse** lists them as coming next.
+- Downloads: the queue, the engine and the dashboard's page are built, but nothing yet adds a chapter to a download —
+  the app's **Downloads** tab still says it comes next, and the dashboard refuses with *Start downloads on the
+  handheld for now*.
+- Passing a browser check: it is detected and reported, not passed (the helper is parked in section 10's backlog).
+- The reader's own extras from section 4: **L3** to turn the page, the double-tap and the pinch (**Y**'s pages grid is
+  built).
+- **In Recent on Home** changes nothing yet.
+- Reading in the browser (the dashboard manages only).
 
 **Decisions since the proposal** (the owner's answers, 2026-11-10; section 12 has them in full)
 
