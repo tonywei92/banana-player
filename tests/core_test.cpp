@@ -3523,10 +3523,10 @@ static void testMangaStore()
 	if (e) CHECK_EQ(e->read, false);
 	// so the unread counts are the ones before the clear
 	CHECK_EQ(st.unread(a.id, chapters), 1);
-	// and the Continue reading strip still knows where to pick up
+	// and the Continue reading strip goes with the History (the owner's call: a clear clears what was being read);
+	// the place itself stays, so opening the chapter again resumes there
 	std::vector<ChapterProgress> cont2 = st.continueReading(10);
-	CHECK_EQ(cont2.size(), size_t(1));
-	if (!cont2.empty()) CHECK_EQ(cont2[0].chapterId, again.chapterId);
+	CHECK_EQ(cont2.size(), size_t(0));
 
 	// a chapter read again is in the History again
 	st.setProgress(again);

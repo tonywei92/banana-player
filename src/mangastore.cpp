@@ -392,7 +392,8 @@ namespace bp
 		std::unordered_map<std::string, const ChapterProgress*> best;
 		for (const auto& p : progress_)
 		{
-			if (p.read || !started(p)) continue;
+			// (a row cleared from the History leaves Continue reading too: its place still opens the chapter there)
+			if (p.read || p.hidden || !started(p)) continue;
 			auto it = best.find(p.seriesId);
 			if (it == best.end())
 			{
