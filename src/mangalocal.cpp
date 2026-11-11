@@ -161,6 +161,7 @@ namespace bp
 					if (c.number < 0) c.number = numberFromText(ci.number);
 					if (c.volume < 0 && ci.volume >= 0) c.volume = ci.volume;
 					c.ciSeries = ci.series;
+					c.ciSeriesKey = ci.seriesKey;
 				}
 				break;
 			}

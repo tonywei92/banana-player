@@ -21,6 +21,7 @@ namespace bp
 		double number = -1;
 		double volume = -1;
 		int pages = -1;
+		std::string ciSeriesKey;	// a download's: the source series it came from ("src:…", from its ComicInfo)
 	};
 
 	// one series: its chapters in reading order. cover: the first chapter's first page — a path for a folder chapter,

@@ -291,6 +291,15 @@ namespace bp
 			mangaOpenSourceSeries(id, from, "", "", "", p);
 			return;
 		}
+		// a folder of downloads: the source's series it came from, so every chapter shows (the downloaded ones marked
+		// and opened from the card), not only those downloaded
+		if (const LocalSeries* s = mangaLocalSeries(id))
+			for (const LocalChapter& c : s->chapters)
+				if (isSourceId(c.ciSeriesKey))
+				{
+					mangaOpenSourceSeries(c.ciSeriesKey, from, "", "", "", p);
+					return;
+				}
 		mangaSeriesId = id;
 		mangaSeriesFrom = from;
 		mserCursor = -1;
