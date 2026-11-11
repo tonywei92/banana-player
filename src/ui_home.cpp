@@ -551,11 +551,22 @@ namespace bp
 
 	void Ui::drawQuitDialog()
 	{
-		// as the Sound page's Delete question: the dimmed page, the rows, its own hints
-		drawDialog(QUIT_BOX, "Quit Banana Player?");
-		drawDialogRow(quitRow(0), &G_POWER, "Quit", quitCursor == 0, pressedBtn == DLG_ROW, TEXT);
-		drawDialogRow(quitRow(1), &G_CROSS, "Cancel", quitCursor == 1, pressedBtn == DLG_ROW + 1, DIM);
-		drawHints({{"A", "Choose"}, {"B", "Cancel"}});
+		// the same sheet as Quick settings (F): its panel and title, Quit as its red button, Cancel a row as its rows
+		drawDialog(QUIT_BOX, "");
+		drawTextMid("Quit Banana Player?", 1, ACCENT, QUIT_BOX.x + 24, QUIT_BOX.y + 28);
+		Rect q = quitRow(0);
+		bool down = pressedBtn == DLG_ROW, at = quitCursor == 0;
+		drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);
+		SDL_Color ink = down ? TEXT : ON_ACCENT;	// black on the red, as Quick settings' Quit
+		int tw = (int)std::lround(textWidth("Quit", 1) / sx), gw = glyphW(G_POWER), x = q.x + q.w / 2 - (tw + gw + 12) / 2;
+		drawGlyphMid(G_POWER, x + gw / 2, q.y + q.h / 2, ink);
+		drawTextMid("Quit", 1, ink, x + gw + 12, q.y + q.h / 2);
+		Rect c = quitRow(1);
+		at = quitCursor == 1;
+		if (pressedBtn == DLG_ROW + 1) drawBox(c, PRESSED, R_BUTTON);
+		else if (at) drawFocus(c);
+		drawTextMid("Cancel", 1, at ? ACCENT : TEXT, c.x + c.w / 2, c.y + c.h / 2, 0, 2);
+		drawHints({{"UP/DOWN", "Choose"}, {"A", "OK"}, {"B", "Cancel"}});
 	}
 
 	Ui::Rect Ui::pipRect(int k, const Player& p) const

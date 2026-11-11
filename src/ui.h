@@ -496,8 +496,9 @@ namespace bp
 		// B on Home with nothing playing asks first; the dialog is Home's, over the page (drawHome)
 		bool quitOpen = false;
 		int quitCursor = 1;	// Cancel first
-		static constexpr Rect QUIT_BOX{112, 116, 416, 204};
-		Rect quitRow(int i) const { return {128, 196 + i * 52, 384, 46}; }
+		// laid out as Quick settings (F) is: its panel, its rows, its red Quit button
+		static constexpr Rect QUIT_BOX{40, 119, 560, 198};
+		Rect quitRow(int i) const { return {56, QUIT_BOX.y + 56 + i * 62, 528, 54}; }
 		void drawQuitDialog();
 		void drawHome(const Player& p);
 		bool showHidden = false;	// the setting, kept here for drawBrowseMenu (no Player there)
