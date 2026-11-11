@@ -733,7 +733,15 @@ where you were. **X** clears the list (press **X** again to confirm). With the r
 settings** the list stays empty, but your places and your read marks are kept either way.
 
 **Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
-chapters it has, and **A** on one opens the series. Network folders and your servers are listed as coming next.
+chapters it has, and **A** on one opens the series. Below it are your saved servers and **Add server…**; network folders
+are listed as coming next.
+
+**Servers.** **Add server…** opens a form: **Kind** (Komga, Kavita or OPDS, LEFT/RIGHT), **Name**, **Address**, **User**
+and **Password**, then **Test** and **Save**. A password is sealed on Save and never shown again; a typed address loses
+any `user:password@` part before it is kept. **A** on a saved server opens its libraries (Komga) or its OPDS catalogue,
+a cover grid; **A** on a series opens its chapters and **A** on one reads it, pages coming from the server with its
+sign-in header. **X** on a server row opens **Edit** and **Delete** (Delete asks twice). Kavita is read through its OPDS
+address, which carries the API key in the path as Kavita writes it.
 
 **A series.** Its title, how many chapters it has and how many you haven't read. **Resume** opens the chapter you were
 in, or the first unread one, or the first. The heart (**Y**) takes the series out of your library and puts it back;
@@ -807,8 +815,7 @@ The reader itself is turned on and off in **Manage extensions** (or on the web d
 The page cache, **Adult sources** and **In Recent on Home** belong to the parts that aren't here yet, so the cache is
 empty and the last two change nothing for now.
 
-**Coming next:** network folders and servers (Komga, Kavita, OPDS) as sources, sources from repositories, and
-downloads. None of that is in this version yet.
+**Coming next:** network folders, sources from repositories, and downloads. None of that is in this version yet.
 
 ## Updates
 

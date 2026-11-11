@@ -203,6 +203,8 @@ namespace bp
 
 	int Ui::mangaReadChapterIndex() const
 	{
+		// a saved server's chapters are the series page's own list
+		if (isServerId(mangaReadSeriesId)) return mangaServerChapterIndex();
 		if (isSourceId(mangaReadSeriesId))
 		{
 			// the source's chapters are the list the chapter was opened with: their ids are "src:<source>:<key>"
@@ -219,6 +221,7 @@ namespace bp
 
 	int Ui::mangaReadChapterTotal() const
 	{
+		if (isServerId(mangaReadSeriesId)) return mangaSrvSeriesId == mangaReadSeriesId ? (int)mangaSrvChapters.size() : 0;
 		if (isSourceId(mangaReadSeriesId)) return (int)mangaReadSrcChapters.size();
 		const LocalSeries* s = mangaLocalSeries(mangaReadSeriesId);
 		return s ? (int)s->chapters.size() : 0;
@@ -315,6 +318,12 @@ namespace bp
 
 	void Ui::mangaChapterStep(int dir, Player& p)
 	{
+		// a saved server's chapter steps through its series page's list
+		if (isServerId(mangaReadSeriesId))
+		{
+			mangaServerChapterStep(dir, p);
+			return;
+		}
 		// a source's chapter steps through the list it was opened with (its series page holds the same ones)
 		if (isSourceId(mangaReadSeriesId))
 		{
@@ -383,6 +392,8 @@ namespace bp
 				// a Continue reading card: the chapter at the page it was left
 				if (i < 0 || i >= (int)mangaCards.size()) return;
 				const ChapterProgress& cp = mangaCards[i];
+				// a server's series (not in the library, so not here) and a source's open their series page
+				if (isServerId(cp.seriesId)) { mangaServerSeriesOpenFromId(cp.seriesId, p); return; }
 				// a source's chapter is opened from its series page (Resume goes on at the page left)
 				if (isSourceId(cp.seriesId)) { openMangaSeries(cp.seriesId, 0, p); return; }
 				const LocalSeries* s = mangaLocalSeries(cp.seriesId);
@@ -400,6 +411,8 @@ namespace bp
 		{
 			if (i < 0 || i >= (int)mangaHistory.size()) return;
 			const ChapterProgress& cp = mangaHistory[i];
+			// the history keeps a server's series too: its series page, fetched from the server again
+			if (isServerId(cp.seriesId)) { mangaServerSeriesOpenFromId(cp.seriesId, p); return; }
 			// the history keeps a source series too: its page, which resumes at the page left
 			if (isSourceId(cp.seriesId)) { openMangaSeries(cp.seriesId, 2, p); return; }
 			const LocalSeries* s = mangaLocalSeries(cp.seriesId);
@@ -489,6 +502,8 @@ namespace bp
 		if (b == Button::Select && nowPlayable(p)) { goNowPlaying(p); return false; }
 		if (page == Page::MangaSeries)
 		{
+			// a server's series page: its own keys (A a chapter, B the catalogue it came from)
+			if (isServerId(mangaSeriesId)) return mangaServerSeriesKey(b, p);
 			// a source's series page: its own keys (Y the library, A a chapter, B back to the source)
 			if (mangaSourceSeriesOn()) return mangaSourceSeriesKey(b, p);
 			const LocalSeries* s = mangaLocalSeries(mangaSeriesId);
@@ -553,6 +568,8 @@ namespace bp
 		if (b == Button::Start) { openMangaSettings(); return false; }
 		// a source's page has its own keys: its tabs, the grid, Search, and B back to Browse's rows
 		if (mangaView == 1) return mangaSourceKey(b, p);
+		// a saved server's pages (ui_manga_servers.cpp): its catalogue, its form, and B back
+		if (mangaView >= 2) return mangaServersKey(b, p);
 		if (b == Button::B)
 		{
 			// Browse's "On this handheld": one step back to its rows first
@@ -813,6 +830,8 @@ namespace bp
 			if (mangaTab == MT_SOURCES && mangaSourcesModal()) return mangaSourcesPointer(pt, x, y, p);
 			// a source's page: its tabs, its grid and Search (ui_manga_browse.cpp)
 			if (mangaView == 1) return mangaSourcePointer(pt, x, y, p);
+			// a saved server's catalogue or form (ui_manga_servers.cpp)
+			if (mangaView >= 2) return mangaServersPointer(pt, x, y, p);
 			for (int i = 0; i < MANGA_TABS; i++)
 				if (mangaTabRect(i).hit(x, y))
 				{
@@ -884,6 +903,7 @@ namespace bp
 			return false;
 		}
 		// Page::MangaSeries, a source's: Resume, the heart, a chapter (ui_manga_browse.cpp)
+		if (isServerId(mangaSeriesId)) return mangaServerSeriesPointer(pt, x, y, p);
 		if (mangaSourceSeriesOn()) return mangaSourceSeriesPointer(pt, x, y, p);
 		// Page::MangaSeries: Resume, the heart, a chapter
 		if (mangaResumeRect().hit(x, y))
@@ -1030,6 +1050,12 @@ namespace bp
 		if (mangaView == 1)
 		{
 			drawMangaSource(p);
+			return;
+		}
+		// a saved server's catalogue or its form (its series page is Page::MangaSeries)
+		if (mangaView >= 2)
+		{
+			drawMangaServers(p);
 			return;
 		}
 		drawHeader("Manga", p);
@@ -1182,6 +1208,12 @@ namespace bp
 	{
 		// a source's series page, then its details and chapters (ui_manga_browse.cpp)
 		mangaBrowsePoll(p);
+		// a saved server's series page (ui_manga_servers.cpp)
+		if (isServerId(mangaSeriesId))
+		{
+			drawMangaServerSeries(p);
+			return;
+		}
 		if (mangaSourceSeriesOn())
 		{
 			drawMangaSourceSeries(p);

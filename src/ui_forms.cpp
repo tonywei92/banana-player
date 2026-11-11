@@ -36,6 +36,10 @@ namespace bp
 		case PL_NAME: return "Playlist name";
 		case SRC_URL_FIELD: return "Repository URL";
 		case MANGA_SEARCH_FIELD: return "Search";
+		case MGSRV_NAME_FIELD: return "Server name";
+		case MGSRV_URL_FIELD: return "Server address";
+		case MGSRV_USER_FIELD: return "User";
+		case MGSRV_PASS_FIELD: return "Password";
 		default: return "";
 		}
 	}
@@ -289,6 +293,11 @@ namespace bp
 		case FORM_PASS: formPassword = t; formPasswordTyped = true; break;	// (spaces kept: they can be a password's)
 		// the Sources tab's repository URL: added by the next tick, which has the Player for the answer's toast
 		case SRC_URL_FIELD: mangaSourcesUrlTyped(trimmed(t)); return;
+		// a saved server's form (ui_manga_servers.cpp): the page's own, never a plain password kept anywhere else
+		case MGSRV_NAME_FIELD:
+		case MGSRV_URL_FIELD:
+		case MGSRV_USER_FIELD:
+		case MGSRV_PASS_FIELD: mangaServerFieldTyped(kbField, t); return;
 		default: break;
 		}
 		formNote.clear();

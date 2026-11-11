@@ -25,11 +25,16 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 - **The store** (bpcore, with tests): the library, the reading progress and the history in the state folder. Beside it,
   ready for the parts below: the CBZ reader and writer, ComicInfo, the page cache, the download queue, the repositories'
   index and the OPDS and Komga parsers.
+- **Saved servers** (Komga, Kavita, OPDS): **Browse** lists them after On this handheld with **Add server…**, a form
+  (kind, name, address, user, password; **Test**, **Save**; the password sealed by `secret.*` as the network folders'
+  are), **X** on a row for **Edit** / **Delete** (twice), then the server's libraries or OPDS catalogue, its series as a
+  cover grid, a series page with chapters, and reading a chapter through `MangaReadRequest` with its page URLs and the
+  server's auth header.
 
 **Not built yet**
 
-- Network folders and servers (Komga, Kavita, OPDS) as sources: the parsers and the saved connections are in bpcore,
-  but no source reaches the reader, and **Browse** lists them as coming next.
+- Network folders as sources: the parsers are in bpcore, but no network folder reaches the reader, and **Browse**
+  lists it as coming next.
 - Sources from repositories: the index's format and its checksums are in bpcore and Lua is vendored, but no script is
   loaded and **Sources** is empty.
 - Downloads: the queue and the CBZ writer are in bpcore, but nothing is fetched and **Downloads** is empty.

@@ -19,6 +19,7 @@
 #include "playlists.h"
 #include "discovery.h"
 #include "mangalocal.h"
+#include "mangaremote.h"
 #include "mangarepos.h"
 #include "mangasource.h"
 #include "mangastore.h"
@@ -39,6 +40,9 @@ namespace bp
 	inline constexpr int SRC_URL_FIELD = 62;
 	// the on-screen keyboard's field for a source's search (apart from the form's, a preset's and a playlist's)
 	inline constexpr int MANGA_SEARCH_FIELD = 63;	// (62: the repository URL)
+	// the saved servers' form (ui_manga_servers.cpp): its four typed fields. 62 and 63 are the tabs' own.
+	inline constexpr int MGSRV_NAME_FIELD = 64, MGSRV_URL_FIELD = 65, MGSRV_USER_FIELD = 66,
+		MGSRV_PASS_FIELD = 67;
 
 	// The bottom panel: what is playing and where, the transport (previous, -5 s, play, +10 s, next), the choices
 	// (audio, subtitles, aspect, speed, settings) and their pages. Laid out on 640x480 (the RG DS's panel) and scaled
@@ -1374,15 +1378,15 @@ namespace bp
 			return {b.x + 16, top + i * step, b.w - 32, step - 6};
 		}
 		// ---- browsing a source (ui_manga_browse.cpp) ----
-		// Browse lists the installed sources after On this handheld; A opens one, with Popular · Latest · Search
-		// (L/R) and a cover grid. A source's page is a view of Page::Manga and its series page is Page::MangaSeries
-		// (the id says whose: "src:<full source id>:<key>"), because a Page of their own would need its keys, taps
-		// and drawing dispatched in ui.cpp, ui_draw.cpp and ui_ext.cpp.
+		// Browse lists the saved servers and the installed sources after On this handheld; A opens one, with
+		// Popular · Latest · Search (L/R) and a cover grid. A source's page is a view of Page::Manga and its series
+		// page is Page::MangaSeries (the id says whose: "src:<full source id>:<key>"), because a Page of their own
+		// would need its keys, taps and drawing dispatched in ui.cpp, ui_draw.cpp and ui_ext.cpp.
 		struct MangaSrcRow { std::string id, name, lang, file; bool adult = false; };
 		std::vector<MangaSrcRow> mangaSrcRows;	// every installed source, as repos() last listed them
 		uint64_t mangaSrcRowsSerial = 0;		// repos()'s serial when they were read
 		bool mangaSrcRowsOn = false;			// they were read at least once (a source list can be empty)
-		int mangaView = 0;						// 0 the app's tabs, 1 a source's page
+		int mangaView = 0;						// 0 the app's tabs, 1 a source's page, 2+ a saved server's pages
 		std::string mangaSrcId, mangaSrcName, mangaSrcFile;	// the source open: full id, name, its script
 		std::string mangaSrcQuery;
 		int mangaSrcTab = 0;					// the source's tabs, in their order: Popular, Latest, Search
@@ -1418,6 +1422,23 @@ namespace bp
 		{
 			return "src:" + sourceId + ":" + key;
 		}
+		// saved servers' ids are "srv:<server id>:<key>" as sources' are "src:" (a server's key is a Komga id, an
+		// OPDS feed url or a chapter's url): they never collide with a local series or an installed source's
+		static bool isServerId(const std::string& id) { return id.rfind("srv:", 0) == 0; }
+		static std::string serverItemId(const std::string& serverId, const std::string& key)
+		{
+			return "srv:" + serverId + ":" + key;
+		}
+		static void splitServerId(const std::string& id, std::string& server, std::string& key)
+		{
+			server.clear();
+			key.clear();
+			if (!isServerId(id)) return;
+			size_t colon = id.find(':', 4);
+			if (colon == std::string::npos) { server = id.substr(4); return; }
+			server = id.substr(4, colon - 4);
+			key = id.substr(colon + 1);
+		}
 		// the two parts of "src:<source>:<key>"; full is "" when the id is malformed
 		static void splitSourceId(const std::string& id, std::string& full, std::string& key)
 		{
@@ -1434,8 +1455,10 @@ namespace bp
 		void mangaBrowseReset(Player& p);				// the app opened or left: the source's jobs dropped
 		void mangaBrowsePoll(const Player& p);			// the worker's answers (the pages' draws and keys call it)
 		void mangaBrowseRepos(const Player& p);			// the installed sources, read again when repos() changed
-		int mangaBrowseCount(const Player& p) const;	// On this handheld, then the sources the setting shows
-		const MangaSrcRow* mangaBrowseSourceAt(int i, const Player& p) const;
+		int mangaBrowseCount(const Player& p) const;	// On this handheld, the servers, Add server, the sources
+		const MangaSrcRow* mangaBrowseSourceAt(int i, const Player& p) const;	// i: the sources the setting shows
+		int mangaBrowseServerCount() const;				// the saved servers, as Browse lists them
+		int mangaBrowseSourceStart() const { return mangaBrowseServerCount() + 2; }	// past them and Add server…
 		const MangaSrcRow* mangaSrcRowFor(const std::string& fullId) const;
 		bool mangaBrowseKey(Button b, Player& p);
 		bool mangaBrowsePointer(const Pointer& pt, int x, int y, Player& p);
@@ -1481,6 +1504,101 @@ namespace bp
 		}
 		Rect mangaSrcResumeRect() const { return {16, 144, 220, 40}; }
 		Rect mangaSrcHeartRect() const { return {556, 144, 68, 40}; }
+
+		// ---- the saved servers (ui_manga_servers.cpp) ----
+		// Browse › Add server… opens a form of its own (kind, name, address, user, password; Test, Save); a server's
+		// libraries or catalogue, then its series, are a cover grid here, and a series is Page::MangaSeries with an
+		// id "srv:<server id>:<key>" so the reader and the History find their way back. The catalogue and the series
+		// page are views of Page::Manga (mangaView 2 and up), as a source's page is.
+		static constexpr int MGSRV_NONE = 0, MGSRV_CATALOGUE = 1, MGSRV_SERIES = 2, MGSRV_FORM = 3;
+		static constexpr int MGSRV_LOAD_LIBRARIES = 1, MGSRV_LOAD_SERIES = 2, MGSRV_LOAD_FEED = 3;
+		static constexpr int MGSRV_FROM_LIST = 0, MGSRV_FROM_FOLDER = 1, MGSRV_FROM_HISTORY = 2;
+		int mangaSrvView = MGSRV_NONE;				// what the server's own page shows (mangaView is 2 while it does)
+		std::string mangaSrvId, mangaSrvName, mangaSrvKind;	// the server open
+		std::string mangaSrvRootUrl;				// an OPDS server's start feed (Kavita's key is in it)
+		std::string mangaSrvHere;					// the heading: the server, or the folder open
+		std::vector<std::string> mangaSrvPath;		// the folders opened: Komga library ids, OPDS feed urls
+		std::vector<RemoteItem> mangaSrvItems;		// the libraries, series or feed entries in view
+		int mangaSrvCursor = 0, mangaSrvScroll = 0, mangaSrvPage = 0;
+		bool mangaSrvMore = false, mangaSrvLoading = false, mangaSrvAppend = false;
+		std::string mangaSrvNext;					// a feed's own next link, when it names one
+		std::string mangaSrvError;
+		int mangaSrvLoad = 0;						// what the request in flight is: MGSRV_LOAD_*
+		std::string mangaSrvLoadUrl;				// the url asked for (a feed's relative links resolve on it)
+		uint64_t mangaSrvFetchSerial = 0;
+		// a server's series: its chapters as the server gave them (oldest first for Komga, the feed's order for OPDS)
+		std::string mangaSrvSeriesId, mangaSrvSeriesKey, mangaSrvSeriesTitle;
+		std::vector<RemoteChapter> mangaSrvChapters;
+		bool mangaSrvChaptersOn = false;
+		int mangaSrvSerCursor = 0, mangaSrvSerScroll = 0, mangaSrvSerPage = 0, mangaSrvSeriesFrom = MGSRV_FROM_LIST;
+		bool mangaSrvSerMore = false, mangaSrvSerLoading = false, mangaSrvSerAppend = false;
+		std::string mangaSrvSerError;
+		uint64_t mangaSrvSerSerial = 0;
+		// the form (Add server, Edit): the four typed fields, the kind and what Test answered
+		std::string mangaSrvFormId;					// "" adding; else the server edited
+		std::string mangaSrvFormKind = "komga", mangaSrvFormName, mangaSrvFormUrl = "https://", mangaSrvFormUser,
+			mangaSrvFormPassword;
+		bool mangaSrvFormPasswordTyped = false;		// a new password typed: it is sealed on Save, never shown again
+		int mangaSrvFormCursor = 0;
+		std::string mangaSrvFormNote, mangaSrvTestText;
+		uint64_t mangaSrvTestSerial = 0;
+		// X on a server row: Edit / Delete, the delete asked twice (as the other clears)
+		bool mangaSrvMenu = false;
+		std::string mangaSrvMenuId;
+		int mangaSrvMenuCursor = 0;
+		bool mangaSrvDeleteArmed = false;
+		Uint32 mangaSrvDeleteAt = 0;
+		uint64_t mangaSrvLocal = 0;					// the pages' own changes (a field typed, a row acted on)
+		void mangaServersReset();					// the app opened or left: every job dropped and the pages closed
+		void mangaServersPoll();					// the fetcher's answers (the draws and keys call it)
+		bool mangaServersKey(Button b, Player& p);
+		bool mangaServersPointer(const Pointer& pt, int x, int y, Player& p);
+		void drawMangaServers(const Player& p);
+		void mangaServerOpen(const std::string& id, Player& p);
+		void mangaServerBack(Player& p);
+		void mangaServerListLoad(int load);			// the libraries, a library's series or a feed
+		void mangaServerFeedLoad(const std::string& url);	// a feed's next page, or a folder just opened
+		void mangaServerMore();						// the next page of what shows
+		void mangaServerReload();					// A after the server's error: the same list again
+		void mangaServerItemOpen(int i, Player& p);
+		void mangaServerSeriesOpen(const std::string& key, const std::string& title, int from);
+		void mangaServerSeriesOpenFromId(const std::string& id, Player& p);	// the History's way in
+		void mangaServerSeriesLoad();
+		void mangaServerSeriesReload();				// A after the chapters' error
+		void mangaServerSeriesMore();
+		void mangaServerSeriesBack(Player& p);
+		bool mangaServerSeriesKey(Button b, Player& p);
+		bool mangaServerSeriesPointer(const Pointer& pt, int x, int y, Player& p);
+		void drawMangaServerSeries(const Player& p);
+		void mangaServerSeriesChoose(int i, Player& p);
+		void mangaServerSeriesResume(Player& p);
+		void mangaServerChapterOpen(int i, Player& p);
+		void mangaServerChapterStep(int dir, Player& p);
+		int mangaServerChapterIndex() const;
+		void mangaServerAddOpen(Player& p);
+		void mangaServerEditOpen(const std::string& id, Player& p);
+		bool mangaServerFormKey(Button b, Player& p);
+		void drawMangaServerForm(const Player& p);
+		void mangaServerFormChoose(Player& p);
+		void mangaServerFormSave(Player& p);
+		void mangaServerTest();
+		void mangaServerFieldTyped(int field, const std::string& text);	// ui_forms.cpp's kbClose
+		void mangaServerCancel();
+		void mangaServerModalOpen(int row, Player& p);
+		bool mangaServerModalKey(Button b, Player& p);
+		void drawMangaServerModal(const Player& p);
+		std::string mangaServersSignature() const;
+		static constexpr int MGSRV_TOP = 104, MGSRV_STEP = 186, MGSRV_STATUS_Y = 410;
+		static constexpr int MGSRV_FORM_ROWS = 7;	// Kind, Name, Address, User, Password, Test, Save
+		static constexpr int MGSRV_GRID_ROWS_SHOWN = 2, MGSRV_CLIP_TOP = 96, MGSRV_CLIP_BOTTOM = 398;
+		Rect mangaSrvCoverRect(int i) const
+		{
+			int row = i / MG_COLS, col = i % MG_COLS;
+			return {16 + col * 124, MGSRV_TOP + (row - mangaSrvScroll) * MGSRV_STEP, MG_COVER_W, MG_COVER_H};
+		}
+		Rect mangaSrvFormRowRect(int i) const { return {16, 74 + i * 40, 608, 36}; }
+		Rect mangaServerModalBox() const { return {112, 150, 416, 170}; }
+		Rect mangaServerModalRowRect(int i) const { return {128, 214 + i * 48, 384, 40}; }
 
 		// ---- the manga reader's settings (ui_manga_settings.cpp) ----
 		// A page of the app's own, not a group of Banana Player's Settings: START on the app's pages (any tab) or over

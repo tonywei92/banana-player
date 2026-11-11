@@ -91,6 +91,8 @@ namespace bp
 		mangaSrcPendAt = -1;
 		mangaSrcPendChapters.clear();
 		mbrowseScroll = 0;
+		// the saved servers' own pages and jobs (ui_manga_servers.cpp)
+		mangaServersReset();
 		// the installed sources are read again: the list may have changed while the app was away
 		mangaSrcRowsSerial = 0;
 		mangaSrcRowsOn = false;
@@ -121,9 +123,16 @@ namespace bp
 			mangaSrcRows.push_back({s.fullId, s.name.empty() ? s.id : s.name, s.lang, s.file, s.adult});
 	}
 
+	int Ui::mangaBrowseServerCount() const
+	{
+		// the saved servers, by name (MangaNet loads the store when it starts; nothing is listed without it)
+		if (!mangaNet || !mangaNet->started()) return 0;
+		return (int)mangaNet->servers().list().size();
+	}
+
 	int Ui::mangaBrowseCount(const Player& p) const
 	{
-		int n = 1;	// On this handheld
+		int n = 1 + mangaBrowseServerCount() + 1;	// On this handheld, the servers, Add server…
 		for (const auto& r : mangaSrcRows)
 			if (!r.adult || p.settings.mangaAdult) n++;
 		return n;
@@ -131,8 +140,8 @@ namespace bp
 
 	const Ui::MangaSrcRow* Ui::mangaBrowseSourceAt(int i, const Player& p) const
 	{
-		if (i <= 0) return nullptr;
-		int k = 1;
+		if (i < 0) return nullptr;
+		int k = 0;
 		for (const auto& r : mangaSrcRows)
 		{
 			if (r.adult && !p.settings.mangaAdult) continue;
@@ -158,11 +167,25 @@ namespace bp
 			mListCursor = mListScroll = 0;
 			return;
 		}
-		if (const MangaSrcRow* r = mangaBrowseSourceAt(i, p)) mangaOpenSource(*r, p);
+		int servers = mangaBrowseServerCount();
+		if (i <= servers)
+		{
+			// a saved server: its libraries or catalogue
+			if (mangaNet && mangaNet->started())
+			{
+				std::vector<MangaServer> list = mangaNet->servers().list();
+				if (i - 1 < (int)list.size()) mangaServerOpen(list[i - 1].id, p);
+			}
+			return;
+		}
+		if (i == servers + 1) { mangaServerAddOpen(p); return; }
+		if (const MangaSrcRow* r = mangaBrowseSourceAt(i - mangaBrowseSourceStart(), p)) mangaOpenSource(*r, p);
 	}
 
 	bool Ui::mangaBrowseKey(Button b, Player& p)
 	{
+		// the server row's Edit / Delete sheet takes the keys first (B closes it)
+		if (mangaSrvMenu) return mangaServerModalKey(b, p);
 		if (mBrowseList)
 		{
 			int n = (int)mangaLocal.size();
@@ -183,6 +206,12 @@ namespace bp
 		mangaBrowseRepos(p);
 		int n = mangaBrowseCount(p);
 		if (b == Button::A) { mangaBrowseChoose(mbrowseCursor, p); return false; }
+		if (b == Button::X && mbrowseCursor > 0 && mbrowseCursor <= mangaBrowseServerCount())
+		{
+			// X on a server: Edit / Delete (as the Sources tab's Options)
+			mangaServerModalOpen(mbrowseCursor, p);
+			return false;
+		}
 		if (!n) return false;
 		switch (b)
 		{
@@ -199,6 +228,27 @@ namespace bp
 
 	bool Ui::mangaBrowsePointer(const Pointer& pt, int x, int y, Player& p)
 	{
+		if (pt.kind != Pointer::Down) return false;
+		if (mangaSrvMenu)
+		{
+			if (mangaServerModalBox().hit(x, y))
+			{
+				for (int i = 0; i < 2; i++)
+					if (mangaServerModalRowRect(i).hit(x, y))
+					{
+						mangaSrvMenuCursor = i;
+						mangaServerModalKey(Button::A, p);
+						return false;
+					}
+			}
+			else
+			{
+				mangaSrvMenu = false;
+				mangaSrvDeleteArmed = false;
+				mangaSrvLocal++;
+			}
+			return false;
+		}
 		if (mBrowseList)
 		{
 			int n = (int)mangaLocal.size();
@@ -221,7 +271,9 @@ namespace bp
 			if (i >= 0 && i < n)
 			{
 				mbrowseCursor = i;
-				mangaBrowseChoose(i, p);
+				// the pencil at a server row's end is its X (Edit / Delete); anywhere else on it opens the server
+				if (i > 0 && i <= mangaBrowseServerCount() && x >= 570) mangaServerModalOpen(i, p);
+				else mangaBrowseChoose(i, p);
 			}
 		}
 		return false;
@@ -237,6 +289,9 @@ namespace bp
 		if (mbrowseCursor >= mbrowseScroll + MG_ROWS) mbrowseScroll = mbrowseCursor - MG_ROWS + 1;
 		auto rowY = [&](int i) { return MG_ROW_TOP + (i - mbrowseScroll) * ROW_H; };
 		auto inView = [&](int y) { return y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H; };
+		std::vector<MangaServer> servers;
+		if (mangaNet && mangaNet->started()) servers = mangaNet->servers().list();
+		int addAt = (int)servers.size() + 1, srcStart = addAt + 1;
 		for (int i = mbrowseScroll; i < n && i < mbrowseScroll + MG_ROWS; i++)
 		{
 			int y = rowY(i), mid = y + (ROW_H - 4) / 2;
@@ -249,7 +304,27 @@ namespace bp
 				drawTextMid(count == 1 ? "1 series" : std::to_string(count) + " series", 0, at ? DIM_ON : DIM, 608, mid, 160, 1);
 				continue;
 			}
-			const MangaSrcRow* r = mangaBrowseSourceAt(i, p);
+			if (i <= (int)servers.size())
+			{
+				// a saved server: its name, what kind it is, and the pencil its X (or a tap there) opens
+				const MangaServer& s = servers[i - 1];
+				drawTextMid(s.name, 1, at ? ACCENT : TEXT, 32, mid, 450);
+				std::string kind = s.kind;
+				for (char& c : kind) c = (char)std::toupper((unsigned char)c);
+				int tw = (int)std::lround(textWidth(kind, 0) / sx) + 14;
+				fillRound({562 - tw, mid - 10, tw, 20}, TRACK, R_CHIP);
+				drawTextMid(kind, 0, at ? ACCENT : DIM_ON, 562 - tw / 2, mid, tw - 6, 2);
+				drawGlyphMid(G_PENCIL, 600, mid, at ? ACCENT : DIM);
+				continue;
+			}
+			if (i == addAt)
+			{
+				// Add server…: the row after the saved ones
+				drawGlyphMid(G_PLUS, 42, mid, at ? ACCENT : DIM);
+				drawTextMid("Add server\xE2\x80\xA6", 1, at ? ACCENT : TEXT, 62, mid, 470);
+				continue;
+			}
+			const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p);
 			if (!r) continue;
 			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 32, mid, 470);
 			// its language, a chip at the row's end (as a cover's unread count is)
@@ -262,14 +337,15 @@ namespace bp
 				drawTextMid(lang, 0, at ? ACCENT : DIM_ON, 608 - tw / 2, mid, tw - 6, 2);
 			}
 		}
-		// nothing installed: where a source comes from, dimmed (nothing to choose there)
-		int sources = n - 1, noteAt = sources == 0 ? 1 : -1, soon = sources == 0 ? 2 : n;
-		if (noteAt >= 0 && inView(rowY(noteAt))) drawTextMid("Add sources in Sources", 1, DIM, 32, rowY(noteAt) + (ROW_H - 4) / 2, 576);
-		static const char* SOON[2] = {"Network folders \xC2\xB7 coming next",
-			"Your servers (Komga, Kavita, OPDS) \xC2\xB7 coming next"};
-		for (int i = 0; i < 2; i++)
-			if (inView(rowY(soon + i))) drawTextMid(SOON[i], 1, DIM, 32, rowY(soon + i) + (ROW_H - 4) / 2, 576);
-		drawHints({{"A", "Open"}, {"B", "Back"}});
+		// the network folders, still to come: not a row to choose
+		if (inView(rowY(n))) drawTextMid("Network folders \xC2\xB7 coming next", 1, DIM, 32, rowY(n) + (ROW_H - 4) / 2, 576);
+		// the sources come from the Sources tab, where a repository is added
+		if (mangaSrcRows.empty() && inView(rowY(n + 1)))
+			drawTextMid("Add sources in Sources", 1, DIM, 32, rowY(n + 1) + (ROW_H - 4) / 2, 576);
+		bool onServer = mbrowseCursor > 0 && mbrowseCursor <= (int)servers.size();
+		if (onServer) drawHints({{"A", "Open"}, {"X", "Edit"}, {"B", "Back"}});
+		else drawHints({{"A", "Open"}, {"B", "Back"}});
+		if (mangaSrvMenu) drawMangaServerModal(p);
 	}
 
 	// ---- a source's page: Popular · Latest · Search, a cover grid, Search ----
@@ -1204,6 +1280,8 @@ namespace bp
 		if (mangaSrcInfoOn)
 			s += "|" + mangaSrcInfo.title + mangaSrcInfo.author + mangaSrcInfo.status +
 				std::to_string(mangaSrcInfo.description.size());
+		// the saved servers: Browse's rows, their own pages and the form (ui_manga_servers.cpp)
+		s += mangaServersSignature();
 		if (mangaNet) s += "|mn" + std::to_string((unsigned long long)mangaNet->serial()) + std::to_string((int)mangaNet->started());
 		return s;
 	}
