@@ -596,6 +596,9 @@ namespace bp
 			{
 				d->stopReq = true;
 				fprintf(stderr, "javaext: %s stopping (extension off or quitting)\n", clockStamp().c_str());
+				// the signal now, not only by the watcher: quitting, the player may be gone before the watcher wakes
+				// (it can be inside a start poll), and the server would live on with its 400 MB (a kill doesn't wait)
+				if (kill(-d->pid, SIGTERM) != 0) kill(d->pid, SIGTERM);
 			}
 			d->cv.notify_all();
 		}
