@@ -325,6 +325,39 @@ namespace bp
 		}
 	}
 
+	std::string Ui::extNoticeText() const
+	{
+		if (!mangaNet || !mangaNet->started()) return "";
+		int st = (int)mangaNet->javaExt().state();
+		Uint32 now = SDL_GetTicks();
+		if (st != extNoticeState)
+		{
+			extNoticeState = st;
+			extNoticeAt = now;
+		}
+		Uint32 secs = (now - extNoticeAt) / 1000;
+		switch ((JavaExtHost::State)st)
+		{
+		case JavaExtHost::State::Starting: return "Starting extensions\xE2\x80\xA6 " + std::to_string(secs) + " s";
+		case JavaExtHost::State::Running: return secs < 2 ? "Extensions ready" : "";
+		case JavaExtHost::State::Failed: return secs < 4 ? "Extensions didn\xE2\x80\x99t start" : "";
+		default: return "";
+		}
+	}
+
+	void Ui::drawExtNotice()
+	{
+		std::string t = extNoticeText();
+		if (t.empty()) return;
+		bool failed = extNoticeState == (int)JavaExtHost::State::Failed;
+		bool ready = extNoticeState == (int)JavaExtHost::State::Running;
+		int tw = (int)std::lround(textWidth(t, 0) / sx);
+		Rect r{W / 2 - (tw + 40) / 2, 8, tw + 40, 30};
+		drawBox(r, SURFACE, R_CHIP, failed ? DANGER : ready ? ACCENT : DIM);
+		fillRound({r.x + 12, r.y + 11, 8, 8}, failed ? DANGER : ACCENT, 4);
+		drawTextMid(t, 0, failed ? DANGER : TEXT, r.x + 28, r.y + r.h / 2, tw + 4);
+	}
+
 	void Ui::mangaJavaNotesTick(Player& p)
 	{
 		if (mangaJavaNotes.empty()) return;

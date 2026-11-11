@@ -1262,6 +1262,12 @@ namespace bp
 		// a source's chapter picked from its series page: the reader page shows at once, "Loading chapter…" until its
 		// page list comes (then the request goes to main), or why it didn't (A tries again, B goes back)
 		bool mangaReadWaiting = false;
+		// the extensions starting (about 25 s on the handheld), on every page: a pill at the top, its seconds counting,
+		// then "Extensions ready" a moment. Its text is in signature(), so it redraws as the seconds change
+		mutable int extNoticeState = -1;
+		mutable Uint32 extNoticeAt = 0;
+		std::string extNoticeText() const;
+		void drawExtNotice();
 		void drawMangaReadWaiting();
 		void mangaReadWaitCancel();
 		int mangaProgPage = -1, mangaProgPages = -1;
@@ -1594,7 +1600,7 @@ namespace bp
 		int mangaSrcDragY = -1, mangaSrcDragScroll = 0, mangaSrcDragTap = -1;
 		bool mangaSrcDragMoved = false;
 		void mangaSourceMaybeMore();	// near the grid's end (cursor or scroll): its next page asked for
-		Rect mangaSrcStatusRect() const { return {404, 64, 220, 30}; }	// right of the tabs: Loading…, an error (tap: Try again)
+		Rect mangaSrcStatusRect() const { return {436, 64, 188, 30}; }	// right of the tabs: Loading…, an error (tap: Try again)
 		bool mangaSrcMore = false, mangaSrcLoading = false;
 		std::string mangaSrcError;				// the source's one-line message, while it shows
 		int mangaSrcFailed = 0;					// what A asks again after an error: 0 none, 1 a list, 2 details, 3 a chapter

@@ -704,11 +704,9 @@ namespace bp
 		Rect st = mangaSrcStatusRect();
 		int sx1 = st.x + st.w, smid = st.y + st.h / 2;
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, sx1, smid, st.w, 1);
-		else if (!javaStatus.empty())
-		{
-			bool failed = mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed;
-			drawTextMid(javaStatus, 0, failed ? DANGER : ACCENT, sx1, smid, st.w, 1);
-		}
+		// (starting is the notice at the top, on every page; only a failure stays said here)
+		else if (!javaStatus.empty() && mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed)
+			drawTextMid(javaStatus, 0, DANGER, sx1, smid, st.w, 1);
 		else if (mangaSrcLoading) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, sx1, smid, st.w, 1);
 		else if (mangaSrcTab == SRC_SEARCH && !mangaSrcQuery.empty())
 			drawTextMid("Search: " + mangaSrcQuery, 0, DIM, sx1, smid, st.w, 1);

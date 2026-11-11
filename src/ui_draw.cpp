@@ -451,6 +451,7 @@ namespace bp
 		if (playOnOpen && inMenu && page == Page::Playing) drawPlayOn(p);
 		if (addPending.serial && page == Page::Browse) drawBusy();
 		if (popupShown(p)) drawUpdatePopup();
+		drawExtNotice();
 		if (quickOpen) drawQuick(p);
 		if (kbOpen) drawKeyboard();
 	}
