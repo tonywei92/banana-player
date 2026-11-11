@@ -1645,6 +1645,7 @@ namespace bp
 		bool mangaSrcDragMoved = false;
 		void mangaSourceMaybeMore();
 		// a series page's chapter rows shown: five down to the hint bar, four while the mini bar takes the foot
+		bool mangaSourceEngineReady() const;	// an extension's series: the manga engine answering (Resume waits for it)
 		int mserRows() const { return miniUp ? 4 : 5; }
 		// the grid's foot: down to the hint bar, or above the mini bar while it shows (a touch there is the bar's)
 		int mangaSrcClipBottom() const { return miniUp ? 418 : 448; }	// near the grid's end (cursor or scroll): its next page asked for

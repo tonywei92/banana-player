@@ -1431,6 +1431,13 @@ namespace bp
 
 	void Ui::mangaSourceSeriesChoose(int i, Player& p)
 	{
+		// (an extension's chapter, as its Resume, waits for the manga engine; a downloaded one reads from the card)
+		if (!mangaSourceEngineReady() && i >= 0 && i < (int)mangaSrcChapters.size() &&
+			mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]).kind != MangaDlMark::OnCard)
+		{
+			p.osd("The manga engine is still loading", 1500);
+			return;
+		}
 		if (i < 0 || i >= (int)mangaSrcChapters.size()) return;
 		std::string chapterId = sourceItemId(mangaSrcId, mangaSrcChapters[i].key);
 		// its saved page, unless it was read to its end (then the start again), as the card's chapters do
@@ -1441,8 +1448,22 @@ namespace bp
 		mangaSourceChapterOpen(mangaSrcChapters, i, page0, mangaSeriesId, mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title, p);
 	}
 
+	bool Ui::mangaSourceEngineReady() const
+	{
+		// a series from an extension reads through the manga engine: Resume waits until it answers
+		std::string full, key;
+		splitSourceId(mangaSeriesId, full, key);
+		if (!MangaJava::isSourceId(full)) return true;
+		return mangaNet && mangaNet->started() && mangaNet->javaExt().state() == JavaExtHost::State::Running;
+	}
+
 	void Ui::mangaSourceSeriesResume(Player& p)
 	{
+		if (!mangaSourceEngineReady())
+		{
+			p.osd("The manga engine is still loading", 1500);
+			return;
+		}
 		if (mangaSrcChapters.empty()) return;
 		std::vector<MangaChapterMark> marks;
 		marks.reserve(mangaSrcChapters.size());
@@ -1717,7 +1738,7 @@ namespace bp
 		auto lit = [&](int i) { return onRow && mserBtn == i; };
 		Rect rb = mangaSrcResumeRect();
 		drawBox(rb, mangaPressed == MG_RESUME ? PRESSED : lit(0) ? BUTTON : SURFACE, R_BUTTON, lit(0));
-		drawButton(rb, &G_PLAY, "Resume", nullptr, n == 0, 1);
+		drawButton(rb, &G_PLAY, "Resume", nullptr, n == 0 || !mangaSourceEngineReady(), 1);
 		// Download: the sheet of This chapter / Next 5 unread / All unread / Choose chapters
 		Rect db = mangaDlButtonRect();
 		drawBox(db, lit(1) ? BUTTON : SURFACE, R_BUTTON, lit(1));
@@ -1779,6 +1800,7 @@ namespace bp
 			static const char* ROW[4] = {"Resume", "Download", "Refresh", "Library"};
 			drawHints({{"A", ROW[std::clamp(mserBtn, 0, 3)]}, {"LEFT/RIGHT", "Buttons"}, {"DOWN", "Chapters"}, {"B", "Back"}});
 		}
+		else if (!mangaSourceEngineReady()) drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
 		else drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) drawMangaDlSheet(p);
 	}
