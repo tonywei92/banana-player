@@ -3468,6 +3468,40 @@ static void testMangaStore()
 	}
 	CHECK_EQ(st.history(2).size(), size_t(2));
 
+	// the history as series rows: one per series, its newest chapter, newest first
+	std::vector<ChapterProgress> bySeries = st.historyBySeries(10);
+	CHECK_EQ(bySeries.size(), size_t(2));
+	if (bySeries.size() == 2)
+	{
+		CHECK_EQ(bySeries[0].chapterId, q.chapterId);		// Quiet Harbor's one chapter, the newest (7000)
+		CHECK_EQ(bySeries[1].chapterId, last.chapterId);	// Ember Lantern's newest (6000), not p (5000)
+	}
+	CHECK_EQ(st.historyBySeries(1).size(), size_t(1));
+	if (!st.historyBySeries(1).empty()) CHECK_EQ(st.historyBySeries(1)[0].chapterId, q.chapterId);
+	CHECK_EQ(st.historyBySeries(0).size(), size_t(0));
+
+	// a newer chapter takes its series' row rather than adding one
+	ChapterProgress newer;
+	newer.seriesId = a.id;
+	newer.chapterId = "local:/data/Manga/Ember Lantern/Ch 05";
+	newer.chapterTitle = "Chapter 5";
+	newer.page = 1;
+	newer.pages = 10;
+	newer.at = 9000;
+	st.setProgress(newer);
+	bySeries = st.historyBySeries(10);
+	CHECK_EQ(bySeries.size(), size_t(2));
+	if (bySeries.size() == 2)
+	{
+		CHECK_EQ(bySeries[0].chapterId, newer.chapterId);
+		CHECK_EQ(bySeries[1].chapterId, q.chapterId);
+	}
+	// a hidden chapter leaves the row to the series' next newest one; all hidden: no series row
+	st.clearHistorySince(9000);
+	bySeries = st.historyBySeries(10);
+	CHECK_EQ(bySeries.size(), size_t(2));
+	if (bySeries.size() == 2) CHECK_EQ(bySeries[1].chapterId, last.chapterId);
+
 	// marked read and unread
 	std::vector<std::string> chapters = {"local:/data/Manga/Ember Lantern/Ch 01", "local:/data/Manga/Ember Lantern/Ch 03"};
 	CHECK_EQ(st.unread(a.id, chapters), 2);
@@ -3508,6 +3542,7 @@ static void testMangaStore()
 	// the history cleared: the History list goes, the reading progress stays
 	st.clearHistory();
 	CHECK_EQ(st.history(50).size(), size_t(0));
+	CHECK_EQ(st.historyBySeries(50).size(), size_t(0));	// (its rows go with it)
 	CHECK_EQ(st.library().size(), size_t(2));
 	// the read mark and the page to resume are still there
 	e = st.progress(p.chapterId);

@@ -489,7 +489,9 @@ namespace bp
 			return false;
 		}
 		int q = mangaDlQueueCount(), c = (int)mdlCard.size();
-		int total = q + 1 + c;
+		// the queue, then Pause all (only while something is queued), then the card's series: with nothing queued
+		// the first card row is 0, not an undrawn Pause all
+		int off = q + (q > 0 ? 1 : 0), total = off + c;
 		if (mdlCursor >= total) mdlCursor = std::max(0, total - 1);
 		if (b == Button::A)
 		{
@@ -511,9 +513,9 @@ namespace bp
 				}
 				return false;
 			}
-			if (mdlCursor == q)
+			if (q > 0 && mdlCursor == q)
 			{
-				if (q == 0 || !mangaNet || !mangaNet->started()) return false;	// (no Pause all with nothing queued)
+				if (!mangaNet || !mangaNet->started()) return false;
 				if (mangaNet->queue().allPaused())
 				{
 					mangaNet->queue().resumeAll();
@@ -527,7 +529,7 @@ namespace bp
 				mangaNet->queue().save();
 				return false;
 			}
-			int at = mdlCursor - q - 1;
+			int at = mdlCursor - off;
 			if (at >= 0 && at < c)
 			{
 				mdlCardAt = at;
@@ -559,15 +561,15 @@ namespace bp
 				}
 				return false;
 			}
-			if (mdlCursor == q)
+			if (q > 0 && mdlCursor == q)
 			{
-				if (q == 0 || !mangaNet || !mangaNet->started()) return false;	// (no Pause all with nothing queued)
+				if (!mangaNet || !mangaNet->started()) return false;
 				if (mangaNet->queue().allPaused()) mangaNet->queue().resumeAll();
 				else mangaNet->downloader().pauseAll();
 				mangaNet->queue().save();
 				return false;
 			}
-			int at = mdlCursor - q - 1;
+			int at = mdlCursor - off;
 			if (at >= 0 && at < c)
 			{
 				const MangaDlCardSeries& s = mdlCard[at];
@@ -582,7 +584,8 @@ namespace bp
 					mdlDeletePath.clear();
 					mdlDeleteAt = 0;
 					mangaDlEnsureCard(true);
-					int after = mangaDlQueueCount() + 1 + (int)mdlCard.size();
+					int afterQ = mangaDlQueueCount();
+					int after = afterQ + (afterQ > 0 ? 1 : 0) + (int)mdlCard.size();
 					if (mdlCursor >= after) mdlCursor = std::max(0, after - 1);
 					if (!mdlCard.empty() && mdlCardScroll >= (int)mdlCard.size()) mdlCardScroll = (int)mdlCard.size() - 1;
 					if (mdlCard.empty()) mdlCardScroll = 0;
@@ -597,12 +600,14 @@ namespace bp
 			return false;
 		}
 		if (total <= 0) return false;
+		// LEFT/RIGHT jump a page of whatever is listed: the queue's three rows, or the card's rows as many as fit
+		int pageStep = q > 0 ? (MDL_QSHOWN - 1) : std::max(1, mdlCardRows() - 1);
 		switch (b)
 		{
 		case Button::Up: mdlCursor = (mdlCursor + total - 1) % total; break;
 		case Button::Down: mdlCursor = (mdlCursor + 1) % total; break;
-		case Button::Left: mdlCursor = std::max(0, mdlCursor - (MDL_QSHOWN - 1)); break;
-		case Button::Right: mdlCursor = std::min(total - 1, mdlCursor + (MDL_QSHOWN - 1)); break;
+		case Button::Left: mdlCursor = std::max(0, mdlCursor - pageStep); break;
+		case Button::Right: mdlCursor = std::min(total - 1, mdlCursor + pageStep); break;
 		default: break;
 		}
 		if (mdlCursor < q)
@@ -610,11 +615,12 @@ namespace bp
 			if (mdlCursor < mdlScroll) mdlScroll = mdlCursor;
 			if (mdlCursor >= mdlScroll + MDL_QSHOWN) mdlScroll = mdlCursor - MDL_QSHOWN + 1;
 		}
-		else if (mdlCursor > q)
+		else if (mdlCursor >= off)
 		{
-			int at = mdlCursor - q - 1;
+			// the card's rows moved up with the empty queue: their window follows them there
+			int at = mdlCursor - off, rows = mdlCardRows();
 			if (at < mdlCardScroll) mdlCardScroll = at;
-			if (at >= mdlCardScroll + MDL_CSHOWN) mdlCardScroll = at - MDL_CSHOWN + 1;
+			if (at >= mdlCardScroll + rows) mdlCardScroll = at - rows + 1;
 		}
 		return false;
 	}
@@ -639,6 +645,7 @@ namespace bp
 			return false;
 		}
 		int q = mangaDlQueueCount(), c = (int)mdlCard.size();
+		int off = q + (q > 0 ? 1 : 0);
 		for (int i = mdlScroll; i < q && i < mdlScroll + MDL_QSHOWN; i++)
 		{
 			Rect r{16, MDL_TOP + (i - mdlScroll) * MDL_QROW, 608, MDL_QROW - 4};
@@ -647,17 +654,19 @@ namespace bp
 			mangaDownloadsKey(Button::A, p);
 			return false;
 		}
-		if (Rect{16, MDL_ALL_Y, 608, 32}.hit(x, y))
+		if (q > 0 && Rect{16, MDL_ALL_Y, 608, 32}.hit(x, y))
 		{
 			mdlCursor = q;
 			mangaDownloadsKey(Button::A, p);
 			return false;
 		}
-		for (int i = mdlCardScroll; i < c && i < mdlCardScroll + MDL_CSHOWN; i++)
+		// the card's rows: right under the summary line when nothing is queued, their number following the room
+		int top = mdlCardTop(), shown = mdlCardRows();
+		for (int i = mdlCardScroll; i < c && i < mdlCardScroll + shown; i++)
 		{
-			Rect r{16, MDL_CARD_TOP + (i - mdlCardScroll) * MDL_CROW, 608, MDL_CROW - 4};
+			Rect r{16, top + (i - mdlCardScroll) * MDL_CROW, 608, MDL_CROW - 4};
 			if (!r.hit(x, y)) continue;
-			mdlCursor = q + 1 + i;
+			mdlCursor = off + i;
 			mangaDownloadsKey(Button::A, p);
 			return false;
 		}
@@ -1192,19 +1201,21 @@ namespace bp
 			drawHints({{"B", "Back"}});
 			return;
 		}
-		int total = q + 1 + c;
+		// the queue's slot, then Pause all (only while something is queued), then the card's series
+		int off = q + (q > 0 ? 1 : 0), total = off + c;
 		if (mdlCursor >= total) mdlCursor = total - 1;
 		if (mdlCursor < 0) mdlCursor = 0;
-		// nothing queued: no Pause all to be on (the cursor goes to the card's first series)
-		if (q == 0 && mdlCursor == 0 && c > 0) mdlCursor = 1;
-		// a chapter that finished leaves the window where it is valid
+		// a chapter that finished leaves the window where it is valid; with nothing queued the card's rows take
+		// the room the queue had, so their window is that many rows deep
+		int cardRows = mdlCardRows(), cardTop = mdlCardTop();
 		if (mdlScroll > std::max(0, q - MDL_QSHOWN)) mdlScroll = std::max(0, q - MDL_QSHOWN);
-		if (mdlCardScroll > std::max(0, c - MDL_CSHOWN)) mdlCardScroll = std::max(0, c - MDL_CSHOWN);
-		// a page list that failed says so where the queue's label would be
-		if (!mdlNote.empty()) drawTextMid(elideLeft(mdlNote, 0, 592), 0, DANGER, 16, 122, 592);
+		if (mdlCardScroll > std::max(0, c - cardRows)) mdlCardScroll = std::max(0, c - cardRows);
+		// a page list that failed says so where the queue's label would be; with nothing queued that line says so
+		if (!mdlNote.empty()) drawTextMid(elideLeft(mdlNote, 0, 592), 0, DANGER, 16, MDL_NOTE_Y, 592);
+		else if (q == 0) drawTextMid("Nothing queued", 0, DIM, 16, MDL_NOTE_Y);
 		else
-			drawTextMid("Queue" + (q ? " \xC2\xB7 " + std::to_string(q) + (q == 1 ? " chapter" : " chapters") : ""),
-				0, DIM, 16, 122);
+			drawTextMid("Queue \xC2\xB7 " + std::to_string(q) + (q == 1 ? " chapter" : " chapters"),
+				0, DIM, 16, MDL_NOTE_Y);
 		// the queue: series, chapter, pages done of total, a progress line
 		auto items = mangaNet && mangaNet->started() ? mangaNet->queue().items() : std::vector<DlItem>();
 		int shown = 0;
@@ -1230,7 +1241,6 @@ namespace bp
 			drawLevel({32, r.y + r.h - 8, 560, 3}, w, TRACK, it.state == DlItem::Failed ? DANGER : at ? ACCENT : DIM);
 			shown++;
 		}
-		if (q == 0) drawTextMid("Nothing queued", 0, DIM, 32, MDL_TOP + 12, 0);
 		drawScrollBar(MDL_TOP, MDL_QSHOWN * MDL_QROW - 4, mdlScroll, MDL_QSHOWN, q);
 		// Pause all / Resume all, while anything is queued (after the last finishes there's nothing to pause)
 		bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
@@ -1243,13 +1253,13 @@ namespace bp
 			drawTextMid(paused ? "Resume all" : "Pause all", 1, onAll ? ACCENT : TEXT, 62, all.y + all.h / 2, 400);
 			drawTextMid(paused ? "all paused" : "one at a time", 0, onAll ? DIM_ON : DIM, 608, all.y + all.h / 2, 0, 1);
 		}
-		// what is on the card, by series
-		drawTextMid("On the card" + (c ? " \xC2\xB7 " + std::to_string(c) + (c == 1 ? " series" : " series") : ""),
-			0, DIM, 16, 354);
-		for (int i = mdlCardScroll; i < c && i < mdlCardScroll + MDL_CSHOWN; i++)
+		// what is on the card, by series: right under the summary when nothing is queued, as many rows as fit
+		drawTextMid("On the card" + (c ? " \xC2\xB7 " + std::to_string(c) + " series" : ""),
+			0, DIM, 16, q > 0 ? 354 : MDL_CARD_LABEL_C);
+		for (int i = mdlCardScroll; i < c && i < mdlCardScroll + cardRows; i++)
 		{
-			Rect r{16, MDL_CARD_TOP + (i - mdlCardScroll) * MDL_CROW, 608, MDL_CROW - 4};
-			bool at = mdlCursor == q + 1 + i;
+			Rect r{16, cardTop + (i - mdlCardScroll) * MDL_CROW, 608, MDL_CROW - 4};
+			bool at = mdlCursor == off + i;
 			if (at) drawFocus(r);
 			int mid = r.y + r.h / 2;
 			const MangaDlCardSeries& s = mdlCard[i];
@@ -1259,11 +1269,11 @@ namespace bp
 			drawTextMid(std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " +
 				formatBytes((long long)s.bytes), 0, at ? DIM_ON : DIM, 608, mid, 180, 1);
 		}
-		drawScrollBar(MDL_CARD_TOP, MDL_CSHOWN * MDL_CROW - 4, mdlCardScroll, MDL_CSHOWN, c);
+		drawScrollBar(cardTop, cardRows * MDL_CROW - 4, mdlCardScroll, cardRows, c);
 		if (mdlDeleteAt && mdlDeletePath.find('/') != std::string::npos)
 			drawFooterText("Press X again to delete it", ACCENT);
 		else if (mdlCursor < q) drawHints({{"X", "Pause / resume"}, {"B", "Back"}});
-		else if (mdlCursor == q) drawHints(q > 0 ? std::vector<Hint>{{"A", paused ? "Resume all" : "Pause all"}, {"B", "Back"}} : std::vector<Hint>{{"B", "Back"}});
+		else if (q > 0 && mdlCursor == q) drawHints({{"A", paused ? "Resume all" : "Pause all"}, {"B", "Back"}});
 		else drawHints({{"A", "Chapters"}, {"X", "Delete"}, {"B", "Back"}});
 	}
 
@@ -1311,6 +1321,7 @@ namespace bp
 			mdlCard.size(), (int)mdlAskOn, mdlDeleteAt != 0, mdlCardOn, (int)mdlCardStamp);
 		std::string s = buf;
 		s += "|" + mdlDeletePath + "|" + mdlNote;
+		s += "|q" + std::to_string(mangaDlQueueCount());	// (the collapsed queue's room follows it)
 		s += "|a" + mdlAsk.chapterId + " " + std::to_string((unsigned long long)mdlPagesSerial) + " " +
 			std::to_string((unsigned long long)mdlImageSerial);
 		for (int i : mdlChosen) s += "," + std::to_string(i);

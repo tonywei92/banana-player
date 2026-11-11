@@ -33,6 +33,16 @@ namespace bp
 			return "p. " + std::to_string(page + 1) + "/" + std::to_string(pages);
 		}
 
+		// "Chapter 12" as "Ch. 12", and a bare title gets its "Ch. ": the History row keeps the chapter's line short
+		// ("Ch." only before a bare title: "Chapter 1" says it already)
+		std::string chapterShort(const std::string& title)
+		{
+			std::string ch = title;
+			if (ch.rfind("Chapter ", 0) == 0) ch = "Ch. " + ch.substr(8);
+			bool says = ch.rfind("Ch", 0) == 0 || ch.rfind("ch", 0) == 0;
+			return (says ? "" : "Ch. ") + ch;
+		}
+
 		// The tile's rounded corners in the cover's own alpha, at upload (the panel's pixels): the generated cover is
 		// rounded by fillRound, and the real one is copied over whatever fill the tile sits on (a page's or a card's),
 		// so squaring its corners would draw the wrong colour there. Only the four corner squares are touched.
@@ -66,7 +76,7 @@ namespace bp
 		mangaTab = MT_LIBRARY;	// the app opens on the library, as the mock has it
 		mangaSeriesId.clear();
 		mBrowseList = false;
-		mlibZone = mlibCard = mlibGrid = mlibScroll = 0;
+		mlibGrid = mlibScroll = 0;
 		mhisCursor = mhisScroll = 0;
 		mbrowseCursor = mListCursor = mListScroll = 0;
 		mangaClearAt = 0;
@@ -175,7 +185,6 @@ namespace bp
 		mangaCacheCount = (int)mangaLocal.size();
 		mangaLib.clear();
 		mangaLibUnread.clear();
-		mangaCards.clear();
 		mangaHistory.clear();
 		if (!mangaStore) return;
 		mangaLib = mangaStore->library();
@@ -192,8 +201,7 @@ namespace bp
 			for (auto& c : l->chapters) ids.push_back(c.path);
 			mangaLibUnread.push_back(mangaStore->unread(s.id, ids));
 		}
-		mangaCards = mangaStore->continueReading(3);
-		mangaHistory = mangaStore->history(50);
+		mangaHistory = mangaStore->historyBySeries(50);
 	}
 
 	const LocalSeries* Ui::mangaLocalSeries(const std::string& id) const
@@ -407,23 +415,7 @@ namespace bp
 		mangaCache();
 		if (tab == MT_LIBRARY)
 		{
-			if (mlibZone == 0)
-			{
-				// a Continue reading card: the chapter at the page it was left
-				if (i < 0 || i >= (int)mangaCards.size()) return;
-				const ChapterProgress& cp = mangaCards[i];
-				// a server's series (not in the library, so not here) and a source's open their series page
-				if (isServerId(cp.seriesId)) { mangaServerSeriesOpenFromId(cp.seriesId, p); return; }
-				// a source's chapter is opened from its series page (Resume goes on at the page left)
-				if (isSourceId(cp.seriesId)) { openMangaSeries(cp.seriesId, 0, p); return; }
-				const LocalSeries* s = mangaLocalSeries(cp.seriesId);
-				int ci = s ? chapterIndexOf(*s, cp.chapterId) : -1;
-				if (!s || ci < 0) return;
-				mangaSeriesFrom = 0;
-				mangaSeriesId = cp.seriesId;
-				mangaOpenChapter(*s, ci, cp.page, p);
-				return;
-			}
+			// the cover grid: a series page (the Continue reading cards are gone)
 			if (i >= 0 && i < (int)mangaLib.size()) openMangaSeries(mangaLib[i].id, 0, p);
 			return;
 		}
@@ -630,40 +622,19 @@ namespace bp
 		case MT_LIBRARY:
 		{
 			mangaCache();
-			int n = (int)mangaLib.size(), cards = std::min(3, (int)mangaCards.size());
-			if (n && mlibGrid >= n) mlibGrid = n - 1;
-			if (mlibCard >= cards) mlibCard = std::max(0, cards - 1);
-			// nothing started yet: there are no cards to be on, the grid has the focus
-			if (mlibZone == 0 && cards == 0) mlibZone = 1;
-			if (b == Button::A)
-			{
-				if (mlibZone == 0) mangaChoose(MT_LIBRARY, mlibCard, p);
-				else if (n) mangaChoose(MT_LIBRARY, mlibGrid, p);
-				break;
-			}
-			if (mlibZone == 0)
-			{
-				switch (b)
-				{
-				case Button::Left: if (mlibCard > 0) mlibCard--; break;
-				case Button::Right: if (mlibCard + 1 < cards) mlibCard++; break;
-				// down to the grid, in the card's column
-				case Button::Down:
-					if (n) { mlibZone = 1; mlibGrid = std::min(mlibCard, n - 1); mlibScroll = mlibGrid / MG_COLS; }
-					break;
-				default: break;
-				}
-				break;
-			}
+			// the cover grid only (the Continue reading cards are gone): A opens the series
+			int n = (int)mangaLib.size();
+			if (mlibGrid >= n) mlibGrid = std::max(0, n - 1);
+			if (!n) break;
+			if (b == Button::A) { mangaChoose(MT_LIBRARY, mlibGrid, p); break; }
 			int row = mlibGrid / MG_COLS, col = mlibGrid % MG_COLS, rows = (n + MG_COLS - 1) / MG_COLS;
 			switch (b)
 			{
 			case Button::Left: if (col > 0) mlibGrid--; break;
 			case Button::Right: if (col + 1 < MG_COLS && mlibGrid + 1 < n) mlibGrid++; break;
-			// up from the grid's first row reaches the cards
+			// up at the grid's first row does nothing: nothing sits above it any more
 			case Button::Up:
 				if (row > 0) { mlibGrid -= MG_COLS; mlibScroll = mlibGrid / MG_COLS; }
-				else if (cards) { mlibZone = 0; mlibCard = std::min(col, cards - 1); }
 				break;
 			case Button::Down:
 				if (row + 1 < rows) { mlibGrid += MG_COLS; mlibScroll = mlibGrid / MG_COLS; }
@@ -935,22 +906,13 @@ namespace bp
 			if (mangaTab == MT_LIBRARY)
 			{
 				mangaCache();
-				int n = (int)mangaLib.size(), cards = std::min(3, (int)mangaCards.size());
-				for (int i = 0; i < cards; i++)
-					if (mangaCardRect(i).hit(x, y))
-					{
-						mlibZone = 0;
-						mlibCard = i;
-						mangaChoose(MT_LIBRARY, i, p);
-						return false;
-					}
+				int n = (int)mangaLib.size();
 				for (int i = mlibScroll * MG_COLS; i < n; i++)
 				{
 					Rect r = mangaCoverRect(i);
-					if (r.y >= 416) break;
+					if (r.y >= MG_LIB_BOTTOM) break;
 					if (r.hit(x, y))
 					{
-						mlibZone = 1;
 						mlibGrid = i;
 						mlibScroll = i / MG_COLS;
 						mangaChoose(MT_LIBRARY, i, p);
@@ -1291,33 +1253,11 @@ namespace bp
 	{
 		(void)p;
 		mangaCache();
-		drawTextMid("Continue reading", 0, DIM, 16, 108);
-		int cards = std::min(3, (int)mangaCards.size());
-		for (int i = 0; i < cards; i++)
-		{
-			const ChapterProgress& cp = mangaCards[i];
-			Rect r = mangaCardRect(i);
-			bool at = mlibZone == 0 && mlibCard == i;
-			drawBox(r, mangaPressed == MG_CARD + i ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
-			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-			std::string title = mangaTitle(cp.seriesId);
-			drawMangaCover({r.x + 12, r.y + 6, 36, 54}, title, false, 2, cp.seriesId, mangaSeriesCoverUrl(cp.seriesId));
-			drawTextMid(title, 0, ink, r.x + 56, r.y + 18, r.w - 64);
-			// ("Ch." only before a bare title: "Chapter 1" says it already)
-			// ("Chapter 12" shortened to "Ch. 12": the card is a third of the panel, and the page must show whole)
-			std::string ch = cp.chapterTitle;
-			if (ch.rfind("Chapter ", 0) == 0) ch = "Ch. " + ch.substr(8);
-			bool says = ch.rfind("Ch", 0) == 0 || ch.rfind("ch", 0) == 0;
-			drawTextMid((says ? "" : "Ch. ") + ch + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, r.x + 56, r.y + 34, r.w - 64);
-			double frac = cp.pages > 0 ? std::clamp((cp.page + 1) / (double)cp.pages, 0.0, 1.0) : 0;
-			int w = (int)std::lround((r.w - 64) * frac);
-			drawLevel({r.x + 56, r.y + 50, r.w - 64, 4}, w, TRACK, at ? ACCENT : DIM);
-		}
-		drawTextMid("Library \xC2\xB7 " + std::to_string(mangaLib.size()) + " series", 0, DIM, 16, 200);
+		// the label on the line under the tabs, then the cover grid right below it (no Continue reading strip)
+		drawTextMid("Library \xC2\xB7 " + std::to_string(mangaLib.size()) + " series", 0, DIM, 16, MG_LIB_TOP - 14);
 		int n = (int)mangaLib.size();
 		if (n == 0)
 		{
-			mlibZone = 0;
 			drawEmpty(G_BOOK, "Your library is empty",
 				"Put CBZ files or folders of pictures in a Manga folder on your card, or add series from Browse.", nullptr);
 			drawHints({{"B", "Back"}});
@@ -1326,16 +1266,15 @@ namespace bp
 		int rows = (n + MG_COLS - 1) / MG_COLS;
 		if (mlibGrid >= n) mlibGrid = n - 1;
 		if (mlibScroll >= rows) mlibScroll = rows - 1;
-		if (mlibCard >= cards) mlibCard = std::max(0, cards - 1);
-		if (mlibZone == 0 && cards == 0) mlibZone = 1;	// (no cards: the grid has the focus, as the keys go)
 		// the grid, a row at a time: the next row peeks under this one, cut at the mini bar
-		SDL_Rect clip{0, (int)std::lround(206 * sy), (int)std::lround(W * sx), (int)std::lround((416 - 206) * sy)};
+		SDL_Rect clip{0, (int)std::lround(MG_LIB_TOP * sy), (int)std::lround(W * sx),
+			(int)std::lround((MG_LIB_BOTTOM - MG_LIB_TOP) * sy)};
 		SDL_RenderSetClipRect(ren, &clip);
 		for (int i = mlibScroll * MG_COLS; i < n; i++)
 		{
 			Rect r = mangaCoverRect(i);
-			if (r.y >= 416) break;
-			bool at = mlibZone == 1 && mlibGrid == i;
+			if (r.y >= MG_LIB_BOTTOM) break;
+			bool at = mlibGrid == i;
 			drawMangaCover(r, mangaLib[i].title, at, 4, mangaLib[i].id, mangaSeriesCoverUrl(mangaLib[i].id));
 			drawTextMid(mangaLib[i].title, 0, at ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h + 13, r.w, 2);
 			int unread = i < (int)mangaLibUnread.size() ? mangaLibUnread[i] : 0;
@@ -1349,8 +1288,9 @@ namespace bp
 			}
 		}
 		SDL_RenderSetClipRect(ren, nullptr);
-		drawScrollBar(218, 198, mlibScroll, 2, rows);
-		drawHints({{"D-PAD", "Move"}, {"A", mlibZone == 0 ? "Continue" : "Open"}, {"B", "Back"}});
+		drawScrollBar(MG_LIB_TOP, MG_LIB_BOTTOM - MG_LIB_TOP, mlibScroll,
+			std::max(1, (MG_LIB_BOTTOM - MG_LIB_TOP) / 186), rows);
+		drawHints({{"D-PAD", "Move"}, {"A", "Open"}, {"B", "Back"}});
 	}
 
 	bool Ui::mangaHisMenuKey(Button b, Player& p)
@@ -1423,7 +1363,7 @@ namespace bp
 		int n = (int)mangaHistory.size();
 		if (n == 0)
 		{
-			drawEmpty(G_CLOCK, "Nothing read yet", "Chapters you open show up here.", nullptr);
+			drawEmpty(G_CLOCK, "Nothing read yet", "Series you read show up here.", nullptr);
 			drawHints({{"B", "Back"}});
 			return;
 		}
@@ -1435,10 +1375,14 @@ namespace bp
 			bool at = i == mhisCursor;
 			if (at) drawFocus({16, y, 608, MG_HIST_ROW_H - 4});
 			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-			// its cover, small, as the Library's card shows it
-			drawMangaCover({28, mid - 23, 32, 46}, mangaTitle(cp.seriesId), false, 1, cp.seriesId, mangaSeriesCoverUrl(cp.seriesId));
-			drawTextMid(mangaTitle(cp.seriesId), 1, ink, 72, mid - 10, 422);
-			drawTextMid(cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, 72, mid + 10, 422);
+			// one row a series: its cover, its title, and the chapter it was last at
+			std::string title = mangaTitle(cp.seriesId);
+			drawMangaCover({28, mid - 23, 32, 46}, title, false, 1, cp.seriesId, mangaSeriesCoverUrl(cp.seriesId));
+			drawTextMid(title, 1, ink, 72, mid - 10, 422);
+			drawTextMid(chapterShort(cp.chapterTitle) + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, 72, mid + 10, 422);
+			// how far into that chapter, a thin bar under the text (ACCENT always: it is the place read)
+			double frac = cp.pages > 0 ? std::clamp((cp.page + 1) / (double)cp.pages, 0.0, 1.0) : 0;
+			drawLevel({72, y + MG_HIST_ROW_H - 8, 422, 3}, (int)std::lround(422 * frac), TRACK, ACCENT);
 			drawTextMid(mangaAgo(cp.at, (int64_t)time(nullptr)), 0, soft, 604, mid, 120, 1);
 		}
 		drawScrollBar(MG_ROW_TOP, MG_HIST_ROWS * MG_HIST_ROW_H - 4, mhisScroll, MG_HIST_ROWS, n);

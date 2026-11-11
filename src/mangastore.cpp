@@ -427,6 +427,27 @@ namespace bp
 		return out;
 	}
 
+	std::vector<ChapterProgress> MangaStore::historyBySeries(int max) const
+	{
+		if (max <= 0) return {};
+		// one row per series: its newest chapter that isn't hidden. A chapter cleared from the History leaves the
+		// row to the series' next newest one, and a series with every chapter cleared leaves the page
+		std::unordered_map<std::string, const ChapterProgress*> best;
+		for (const auto& p : progress_)
+		{
+			if (p.hidden) continue;
+			auto it = best.find(p.seriesId);
+			if (it == best.end()) best.emplace(p.seriesId, &p);
+			else if (progressLess(p, *it->second)) it->second = &p;
+		}
+		std::vector<ChapterProgress> out;
+		out.reserve(best.size());
+		for (const auto& kv : best) out.push_back(*kv.second);
+		std::sort(out.begin(), out.end(), progressLess);
+		if (out.size() > size_t(max)) out.resize(size_t(max));
+		return out;
+	}
+
 	void MangaStore::markRead(const std::string& seriesId, const std::vector<std::string>& chapterIds, bool read)
 	{
 		for (const auto& id : chapterIds)

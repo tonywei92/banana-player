@@ -62,6 +62,9 @@ namespace bp
 		// Every chapter opened, newest first, at most max: the History page. A chapter cleared from the History
 		// isn't in it.
 		std::vector<ChapterProgress> history(int max) const;
+		// The History page read as series: each series' newest chapter that isn't cleared from the History, the
+		// series themselves newest first, at most max. (The page lists one row per series, not per chapter.)
+		std::vector<ChapterProgress> historyBySeries(int max) const;
 		// Read or unread for the chapters given; a chapter never opened becomes a record of, so it counts as unread.
 		void markRead(const std::string& seriesId, const std::vector<std::string>& chapterIds, bool read);
 		// The reading history: every chapter is hidden from the History, the reading progress stays (the read
