@@ -23,6 +23,7 @@
 #include "mangarepos.h"
 #include "mangasource.h"
 #include "mangastore.h"
+#include "mangaworker.h"
 #include "pagecache.h"
 #include "coverworker.h"
 #include <functional>
@@ -1599,6 +1600,106 @@ namespace bp
 		Rect mangaSrvFormRowRect(int i) const { return {16, 74 + i * 40, 608, 36}; }
 		Rect mangaServerModalBox() const { return {112, 150, 416, 170}; }
 		Rect mangaServerModalRowRect(int i) const { return {128, 214 + i * 48, 384, 40}; }
+		// ---- the manga reader's Downloads (ui_manga_downloads.cpp) ----
+		// Page::Manga's Downloads tab: the queue, then what the downloads put on the card; and the Download sheet a
+		// source's series page opens (R2, or its button): This chapter / Next 5 unread / All unread / Choose chapters.
+		// A selected chapter's page list is asked of the source's worker first (Pages, then Image while a page has
+		// only a key), so the downloader never takes an item without pages. Only archives carrying our ComicInfo
+		// (BPSource / BPSeriesKey) count as downloads: the same Manga folder also holds the card's own series.
+		struct MangaDlCardChapter
+		{
+			std::string title, path;	// the .cbz, its title as ComicInfo has it (else its name)
+			std::string sourceId, seriesKey;	// what the download wrote (ComicInfo BPSource / BPSeriesKey)
+			int pages = 0;
+			uint64_t bytes = 0;
+			double number = -1;	// ComicInfo's Number, when it is one
+		};
+		struct MangaDlCardSeries
+		{
+			std::string name, path;	// the folder's name and path
+			std::vector<MangaDlCardChapter> chapters;
+			uint64_t bytes = 0;
+		};
+		// a chapter's download state, as a series page's rows and the Choose list mark it
+		struct MangaDlMark
+		{
+			enum Kind { None, Queued, Running, Paused, Failed, OnCard } kind = None;
+			int done = 0, total = 0;
+		};
+		// one chapter waiting for its page list: the worker asks the source, then the queue gets the item
+		struct MangaDlAsk
+		{
+			std::string sourceId, scriptPath, seriesId, seriesTitle, chapterId, chapterTitle, chapterJson;
+		};
+		enum MangaDlSheet { MDLS_NONE, MDLS_MENU, MDLS_CHOOSE };
+		mutable std::vector<MangaDlCardSeries> mdlCard;	// the card's downloads, scanned when the page or tab needs them
+		uint64_t mdlCardStamp = 0;	// what the last scan found, so an unchanged card doesn't redraw every frame
+		Uint32 mdlScanAt = 0;		// the scan is slow enough to be worth throttling
+		bool mdlCardOn = false;
+		uint64_t mdlLocal = 0;		// the tab's own changes (a scan, a delete), for signature()
+		int mdlCursor = 0, mdlScroll = 0;	// the queue, then Pause all, then the card's series
+		bool mdlCardOpen = false;	// A on a card series: its chapters
+		int mdlCardAt = -1;			// the card series open (its index; the queue's length may change under it)
+		int mdlCardCursor = 0, mdlCardScroll = 0;
+		std::string mdlDeletePath;	// X once: the series folder or chapter armed; again within 2 s deletes
+		Uint32 mdlDeleteAt = 0;
+		std::string mdlNote;		// a page list that didn't come, or what the card couldn't do
+		Uint32 mdlNoteUntil = 0;
+		// the Download sheet over a source's series page
+		int mdlSheet = MDLS_NONE, mdlSheetCursor = 0;
+		int mdlChooseCursor = 0, mdlChooseScroll = 0;
+		std::set<int> mdlChosen;	// chapter indices ticked in Choose chapters
+		std::vector<MangaDlAsk> mdlAsks;	// chapters waiting for their page list, in the order they were picked
+		MangaDlAsk mdlAsk;			// the one in the worker now
+		bool mdlAskOn = false;
+		uint64_t mdlPagesSerial = 0, mdlImageSerial = 0;
+		std::vector<MangaPage> mdlAskPages;
+		std::vector<std::string> mdlAskUrls;
+		int mdlAskImageAt = 0;
+		void mangaDownloadsOpen(Player& p);		// the tab opened: its lists read, finished queue items cleared
+		void mangaDownloadsReset();				// the app opened: an ask the last session left waits for the worker again
+		void mangaDownloadsTick(Player& p);		// the armed delete and the note time out; a lost worker answer resumes
+		bool mangaDownloadsKey(Button b, Player& p);
+		bool mangaDownloadsPointer(const Pointer& pt, int x, int y, Player& p);
+		bool mangaDownloadsBack();	// B: out of a card series' chapters (true when it went somewhere)
+		void drawMangaDownloads(const Player& p);
+		void drawMangaDlCardSeries(const Player& p);
+		void mangaDlEnsureCard(bool force = false);	// the downloads folder read (at most every 1.5 s)
+		uint64_t mangaDlCardBytes() const;
+		uint64_t mangaDlFreeBytes() const;			// statvfs of the downloads folder, or its nearest parent
+		int mangaDlQueueCount() const;				// items still waiting, running, paused or failed
+		const MangaDlCardChapter* mangaDlCardFor(const std::string& sourceId, const std::string& seriesId,
+			const MangaChapter& c) const;
+		MangaDlMark mangaDlMarkFor(const std::string& sourceId, const std::string& seriesId, const MangaChapter& c) const;
+		void drawMangaDlMark(const MangaDlMark& m, int right, int cy, bool at);
+		void mangaDlOpenCbz(const std::string& seriesId, const std::string& seriesTitle, const std::string& chapterId,
+			const std::string& chapterTitle, const std::string& path, int page0, Player& p);
+		bool mangaDlOpenSourceChapter(const std::vector<MangaChapter>& chapters, int i, int page0,
+			const std::string& seriesId, const std::string& seriesTitle, Player& p);	// true: it was on the card
+		void mangaDlOpenCardAt(int seriesIndex, int chapterIndex, Player& p);
+		bool mangaDlBlocked(const std::string& sourceId, const std::string& seriesId, const MangaChapter& c) const;
+		void mangaDlEnqueueChapter(const std::string& sourceId, const std::string& scriptPath, const std::string& seriesId,
+			const std::string& seriesTitle, const MangaChapter& c);
+		void mangaDlAskPump();		// the next chapter's Pages job
+		bool mangaDlImageAsk();		// the next page's Image job, while one has only a key
+		void mangaDlYieldToSource();	// a chapter being read needs the worker first: the ask waits its turn
+		void mangaDlAskFinish(bool queued, const std::string& note);	// the chapter's page list is done (or didn't come)
+		void mangaDlWorker(MangaWorker::Result& r);	// its answers (the rest of mangaBrowsePoll's are the browse page's)
+		std::vector<int> mangaDlUnreadFrom(int from, int limit) const;	// unread source chapters, in list order
+		// the Download sheet
+		Rect mangaDlButtonRect() const { return {244, 144, 204, 40}; }
+		Rect mangaDlSheetBox() const { return mdlSheet == MDLS_CHOOSE ? Rect{16, 62, 608, 366} : Rect{100, 96, 440, 260}; }
+		Rect mangaDlSheetRowRect(int i) const;
+		void mangaDlSheetOpen(Player& p);
+		void mangaDlSheetClose();
+		bool mangaDlSheetKey(Button b, Player& p);
+		bool mangaDlSheetPointer(const Pointer& pt, int x, int y, Player& p);
+		void mangaDlSheetAct(Player& p);
+		void drawMangaDlSheet(const Player& p);
+		std::string mangaDlSignature() const;		// this part of the page for signature()
+		// the Downloads tab's rows: the queue (up to 3), Pause all, then the card's series (up to 2)
+		static constexpr int MDL_TOP = 138, MDL_QROW = 48, MDL_QSHOWN = 3, MDL_ALL_Y = 286, MDL_CARD_TOP = 340,
+			MDL_CROW = 38, MDL_CSHOWN = 2;
 
 		// ---- the manga reader's settings (ui_manga_settings.cpp) ----
 		// A page of the app's own, not a group of Banana Player's Settings: START on the app's pages (any tab) or over

@@ -705,8 +705,7 @@ The reader is an app of its own. It opens on **Library** and has five tabs, step
 **History**, **Browse**, **Sources** and **Downloads**. **B** goes back — out of Browse's list of series first, then
 to the drawer. **START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page
 too); **B** there comes back where you were. Music keeps playing while you read: the pages take the top screen, and the
-mini bar is on the app's other pages (**SELECT** there goes to what plays). **Sources** and **Downloads** say they come
-next: there are no sources to install and nothing to download yet.
+mini bar is on the app's other pages (**SELECT** there goes to what plays). **Sources** says it comes next.
 
 **Where series come from.** Each of your cards may have a **Manga** folder (or `manga`, or `MANGA`); the reader reads it
 each time you open the app:
@@ -748,6 +747,20 @@ in, or the first unread one, or the first. The heart (**Y**) takes the series ou
 every series found on your card is in the library to start with. The chapters are listed under: the one **Resume** would
 open has a dot beside it, a chapter you've read is dimmed and ticked, and one you started shows the page you were on.
 **X** marks the chapter under the cursor read or unread. **B** goes back to where you came from.
+
+**Downloading a chapter.** A source's series page has **Download** (**R2**, or the button): **This chapter**, **Next 5
+unread**, **All unread** or **Choose chapters…** (the whole list, ticked with **A** and downloaded with **Y**). The sheet
+says how much the pick will take where the page counts are known, and the room the card has left. Each picked chapter's
+page list is asked of the source first; it then waits in the queue, one chapter at a time and two pages at once. A
+chapter already here or queued is not picked twice, and a chapter on the card opens straight from its `.cbz`, with no
+network. The chapter list marks each one: **Queued**, its pages done (**12/40**), **Paused**, **Failed**, or **On
+card**.
+
+**Downloads.** The storage line says what the downloads take and the card's free space. Below it, the queue: each
+chapter's series, chapter and pages done of total over a progress line, **X** pauses or resumes the one under the
+cursor, and a **Pause all / Resume all** row stops or starts the queue. Then what is on the card by series, with its
+chapters and size; **A** lists a series' chapters (and **A** on one reads it), **X** deletes a chapter or a series after
+a second press. Downloads need the network and resume where they stopped after a pause, a lost connection or a quit.
 
 **Reading.** A chapter opens on the top screen; the bottom screen holds the controls: the chapter and the series, the
 page number, the slider, the two chapter buttons and the mode. The big area says *Swipe here to turn the page* (or *Drag

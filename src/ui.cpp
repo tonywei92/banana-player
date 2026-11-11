@@ -467,6 +467,8 @@ namespace bp
 		if (page == Page::MangaRead) mangaTick();
 		// the Sources tab: the repositories' events become toasts, and what was typed in is added
 		else if (page == Page::Manga && mangaTab == MT_SOURCES) mangaSourcesTick(p);
+		// the Downloads tab: an armed delete goes, a lost worker answer waits for the reader to be on again
+		else if (page == Page::Manga && mangaTab == MT_DOWNLOADS) mangaDownloadsTick(p);
 		// the web's equalizer: what mpv keeps, and settings.conf, once its sliders stop for a second
 		if (eqWebDirtyAt && SDL_GetTicks() - eqWebDirtyAt >= 1000)
 		{
@@ -1175,6 +1177,8 @@ namespace bp
 			}
 			// Browse's sources and the source series' details, chapters and jobs (ui_manga_browse.cpp)
 			photo += mangaNetSignature();
+			// Downloads: the tab's lists and the Download sheet (ui_manga_downloads.cpp)
+			photo += mangaDlSignature();
 			if (page == Page::MangaRead)
 			{
 				char rb[160];

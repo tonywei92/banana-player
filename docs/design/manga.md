@@ -30,6 +30,10 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
   are), **X** on a row for **Edit** / **Delete** (twice), then the server's libraries or OPDS catalogue, its series as a
   cover grid, a series page with chapters, and reading a chapter through `MangaReadRequest` with its page URLs and the
   server's auth header.
+- **Downloads**: the series page's **Download** sheet (this chapter, the next 5 unread, all unread, chosen chapters),
+  the **Downloads** tab (the queue with pause/resume, and what is on the card by series, with delete), the chapter
+  download marks, and reading a downloaded chapter from its CBZ with no network. The queue and the CBZ writer are
+  bpcore; the sheet asks the source's worker for each chapter's page list before the downloader takes it.
 
 **Not built yet**
 
@@ -37,7 +41,6 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
   lists it as coming next.
 - Sources from repositories: the index's format and its checksums are in bpcore and Lua is vendored, but no script is
   loaded and **Sources** is empty.
-- Downloads: the queue and the CBZ writer are in bpcore, but nothing is fetched and **Downloads** is empty.
 - The reader's own extras from section 4: **Y** for the pages grid, **L3** to turn the page, the double-tap and the
   pinch.
 - The page cache is empty (only the network sources fill it), and **Adult sources** and **In Recent on Home** change

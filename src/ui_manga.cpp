@@ -99,6 +99,8 @@ namespace bp
 		coverFailed.clear();
 		// a source's page and its jobs don't outlive the app being opened (the worker answers are dropped)
 		mangaBrowseReset(p);
+		// the Downloads sheet's page lists wait for the worker again; a queued chapter is the queue's, not this
+		mangaDownloadsReset();
 	}
 
 	void Ui::mangaScan()
@@ -572,8 +574,9 @@ namespace bp
 		if (mangaView >= 2) return mangaServersKey(b, p);
 		if (b == Button::B)
 		{
-			// Browse's "On this handheld": one step back to its rows first
+			// Browse's "On this handheld": one step back to its rows first; a card series' chapters: its series
 			if (mangaTab == MT_BROWSE && mBrowseList) mBrowseList = false;
+			else if (mangaTab == MT_DOWNLOADS && mangaDownloadsBack()) { }
 			else openExtensionsDrawer(p);
 			return false;
 		}
@@ -584,6 +587,7 @@ namespace bp
 			mBrowseList = false;
 			mangaPressed = -1;
 			if (mangaTab == MT_SOURCES) mangaSourcesOpen(p);
+			if (mangaTab == MT_DOWNLOADS) mangaDownloadsOpen(p);
 			return false;
 		}
 		switch (mangaTab)
@@ -673,7 +677,9 @@ namespace bp
 		case MT_SOURCES:
 			mangaSourcesKey(b, p);
 			break;
-		default: break;	// Downloads: nothing to choose yet
+		case MT_DOWNLOADS:
+			mangaDownloadsKey(b, p);
+			break;
 		}
 		return false;
 	}
@@ -839,6 +845,7 @@ namespace bp
 					mangaClearAt = 0;
 					mBrowseList = false;
 					if (i == MT_SOURCES) mangaSourcesOpen(p);
+					if (i == MT_DOWNLOADS) mangaDownloadsOpen(p);
 					return false;
 				}
 			if (mangaTab == MT_LIBRARY)
@@ -899,6 +906,7 @@ namespace bp
 				else if (Rect{16, MG_ROW_TOP, 608, ROW_H - 4}.hit(x, y)) mangaChoose(MT_BROWSE, 0, p);
 			}
 			else if (mangaTab == MT_SOURCES) return mangaSourcesPointer(pt, x, y, p);
+			else if (mangaTab == MT_DOWNLOADS) return mangaDownloadsPointer(pt, x, y, p);
 				return mangaBrowsePointer(pt, x, y, p);
 			return false;
 		}
@@ -1066,10 +1074,7 @@ namespace bp
 		case MT_HISTORY: drawMangaHistory(p); break;
 		case MT_BROWSE: drawMangaBrowse(p); break;
 		case MT_SOURCES: drawMangaSources(p); break;
-		case MT_DOWNLOADS:
-			drawEmpty(G_DOWNLOAD, "Downloads come next", "", nullptr);
-			drawHints({{"B", "Back"}});
-			break;
+		case MT_DOWNLOADS: drawMangaDownloads(p); break;
 		}
 	}
 

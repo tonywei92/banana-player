@@ -753,7 +753,9 @@ namespace bp
 				}
 				continue;
 			}
-			// an answer nothing here asked for (a page or a tab moved on): dropped
+			// an answer nothing here asked for: a Downloads sheet chapter's page list (ui_manga_downloads.cpp), or
+			// one for a page that moved on (dropped)
+			mangaDlWorker(r);
 		}
 	}
 
@@ -763,6 +765,8 @@ namespace bp
 		const std::string& seriesId, const std::string& seriesTitle, Player& p)
 	{
 		if (i < 0 || i >= (int)chapters.size()) return;
+		// a downloaded chapter opens from its CBZ: no page list asked, no network (ui_manga_downloads.cpp)
+		if (mangaDlOpenSourceChapter(chapters, i, page0, seriesId, seriesTitle, p)) return;
 		mangaSrcPendChapters = chapters;
 		mangaSrcPendAt = i;
 		mangaSrcPendSeriesId = seriesId;
@@ -791,6 +795,8 @@ namespace bp
 		}
 		mangaSrcPagesSerial = mangaSrcImageSerial = 0;
 		if (mangaSrcPendAt < 0 || mangaSrcPendAt >= (int)mangaSrcPendChapters.size()) return;
+		// a download page list waiting on the same source gives the worker to the chapter about to be read
+		mangaDlYieldToSource();
 		if (!mangaNet || !mangaNet->started())
 		{
 			mangaSrcLoading = false;
@@ -824,6 +830,8 @@ namespace bp
 	void Ui::mangaSourceImageAsk()
 	{
 		if (!mangaNet || !mangaNet->started() || mangaSrcImageAt < 0 || mangaSrcImageAt >= (int)mangaSrcPages.size()) return;
+		// as a chapter's page list does: the reader's own Image job first, the download's ask again after it
+		mangaDlYieldToSource();
 		std::string full, key;
 		splitSourceId(mangaSrcPendSeriesId, full, key);
 		const MangaSrcRow* row = mangaSrcRowFor(full);
@@ -1095,7 +1103,10 @@ namespace bp
 
 	bool Ui::mangaSourceSeriesKey(Button b, Player& p)
 	{
+		// the Download sheet takes the keys while it shows
+		if (mdlSheet != MDLS_NONE) return mangaDlSheetKey(b, p);
 		if (b == Button::Start) { openMangaSettings(); return false; }
+		if (b == Button::R2) { mangaDlSheetOpen(p); return false; }
 		if (b == Button::B)
 		{
 			// back to where it was opened: the source's grid, the Library or History (a chapter still coming goes)
@@ -1145,6 +1156,12 @@ namespace bp
 	bool Ui::mangaSourceSeriesPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (pt.kind != Pointer::Down) return false;
+		if (mdlSheet != MDLS_NONE) return mangaDlSheetPointer(pt, x, y, p);
+		if (mangaDlButtonRect().hit(x, y))
+		{
+			mangaDlSheetOpen(p);
+			return false;
+		}
 		if (mangaSrcResumeRect().hit(x, y))
 		{
 			mserCursor = -1;
@@ -1171,6 +1188,10 @@ namespace bp
 
 	void Ui::drawMangaSourceSeries(const Player& p)
 	{
+		// the downloads' marks and the Download sheet need the card's own list (read at most every 1.5 s), and a
+		// page list left waiting (the app reopened) goes on
+		mangaDlEnsureCard();
+		mangaDlAskPump();
 		std::string title = mangaSrcInfoOn && !mangaSrcInfo.title.empty() ? mangaSrcInfo.title : mangaSrcTitle;
 		drawHeader(title.empty() ? "Series" : title, p);
 		const MangaSeries* ms = mangaStore ? mangaStore->series(mangaSeriesId) : nullptr;
@@ -1224,6 +1245,10 @@ namespace bp
 		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : BUTTON, R_BUTTON);
 		drawGlyphMid(inLib ? G_HEART : G_HEART_O, hb.x + hb.w / 2, hb.y + 13, inLib ? ACCENT : DIM, 2);
 		drawTextMid("Y", 0, ACCENT, hb.x + hb.w / 2, hb.y + 30, 0, 2);
+		// Download: the sheet of This chapter / Next 5 unread / All unread / Choose chapters
+		Rect db = mangaDlButtonRect();
+		drawBox(db, BUTTON, R_BUTTON);
+		drawButton(db, &G_DOWNLOAD, "Download", "R2", n == 0, 0);
 		if (n == 0)
 		{
 			if (!mangaSrcError.empty())
@@ -1250,14 +1275,19 @@ namespace bp
 			if (resume.chapter == i) fillRound({28, mid - 4, 8, 8}, ACCENT, 4);
 			const ChapterProgress* pr = mangaStore ? mangaStore->progress(sourceItemId(mangaSrcId, c.key)) : nullptr;
 			bool read = pr && pr->read;
-			drawTextMid(chapterName(c), 1, read ? DIM : at ? ACCENT : TEXT, 48, mid, 470);
-			if (read) drawGlyphMid(G_CHECK, 596, mid, DIM);
-			else if (pr && (pr->pages > 0 || pr->page > 0))
+			// a download mark (queued, progress, on the card) takes the row's right: the page line makes room for it
+			MangaDlMark dm = mangaDlMarkFor(mangaSrcId, mangaSeriesId, c);
+			bool marked = dm.kind != MangaDlMark::None;
+			drawTextMid(chapterName(c), 1, read ? DIM : at ? ACCENT : TEXT, 48, mid, marked ? 420 : 470);
+			if (read) drawGlyphMid(G_CHECK, marked ? 490 : 596, mid, DIM);
+			else if (!marked && pr && (pr->pages > 0 || pr->page > 0))
 				drawTextMid(pageLine(pr->page, pr->pages), 0, at ? DIM_ON : DIM, 608, mid, 150, 1);
+			if (marked) drawMangaDlMark(dm, 608, mid, at);
 		}
 		drawScrollBar(MG_SRC_SER_TOP, MG_SRC_SER_ROWS * ROW_H - 4, mserScroll, MG_SRC_SER_ROWS, n);
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
-		drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"Y", "In library"}, {"B", "Back"}});
+		drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"Y", "In library"}, {"R2", "Download"}, {"B", "Back"}});
+		if (mdlSheet != MDLS_NONE) drawMangaDlSheet(p);
 	}
 
 	// ---- signature() ----
