@@ -2231,7 +2231,7 @@ namespace bp
 		static constexpr Uint32 LIST_PULSE_MS = 1400;
 		bool markAnim = false;	// drawBattery drew the playing mark moving
 		int markW(const Player& p) const;	// its room in the header (0 none)
-		// Incognito mode (Quick settings' Enter incognito mode): nothing played goes in Recent (Player::incognito) and
+		// Incognito mode (Quick settings' Incognito mode): nothing played goes in Recent (Player::incognito) and
 		// reading adds nothing to the manga History (places, read marks, resume points, the library and downloads go
 		// on as ever). Never saved: off at every start. Its mark sits left of the clock while it's on
 		bool incognito = false;

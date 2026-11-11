@@ -491,7 +491,7 @@ namespace bp
 				fillRound(box, at ? ACCENT : TEXT, R_FIELD);
 				fillRound({box.x + 2, box.y + 2, box.w - 4, box.h - 4}, at ? BUTTON : SURFACE, R_FIELD - 2);
 				if (incognito) drawGlyphMid(G_CHECK, box.x + box.w / 2, box.y + box.h / 2, ACCENT);
-				drawTextMid("Enter incognito mode", 1, at ? ACCENT : TEXT, r.x + 56, mid, 300);
+				drawTextMid("Incognito mode", 1, at ? ACCENT : TEXT, r.x + 56, mid, 300);
 				drawGlyphMid(G_INCOGNITO, r.x + r.w - 24, mid, incognito ? ACCENT : (at ? DIM_ON : DIM));
 				continue;
 			}

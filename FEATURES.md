@@ -990,7 +990,7 @@ Press the **Menu/Function** button (F), anywhere, for a panel on the bottom scre
   **Bottom** each get their own.
 - **Web dashboard** (a tick box): on or off. While it's on, **Settings** (Right, then A, or a tap) opens its page: the
   QR code, the address, the PIN and **New PIN**. See [Web dashboard](#web-dashboard).
-- **Enter incognito mode** (a tick box): while it's on, nothing you play goes into Recent and nothing you read
+- **Incognito mode** (a tick box): while it's on, nothing you play goes into Recent and nothing you read
   goes into the manga History; where you stopped a film, your reading places and read marks, playlists, Liked and
   downloads all work as usual. A hat-and-glasses mark sits beside the clock while it's on. It's never saved: off again
   whenever Banana Player starts.
