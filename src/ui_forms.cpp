@@ -36,6 +36,7 @@ namespace bp
 		case PL_NAME: return "Playlist name";
 		case SRC_URL_FIELD: return "Repository URL";
 		case MANGA_SEARCH_FIELD: return "Search";
+		case MANGA_FILTER_FIELD: return "Filter";
 		case MGSRV_NAME_FIELD: return "Server name";
 		case MGSRV_URL_FIELD: return "Server address";
 		case MGSRV_USER_FIELD: return "User";
@@ -267,6 +268,15 @@ namespace bp
 			kbOpen = false;
 			kbPressed = -1;
 			if (keep) mangaSourceSearch(kbEdit.text);
+			else browseVersion++;
+			return;
+		}
+		if (kbField == MANGA_FILTER_FIELD)
+		{
+			// Done writes the text filter and the sheet is under it again; B keeps the value that was there
+			kbOpen = false;
+			kbPressed = -1;
+			if (keep) mangaFilterTextTyped(kbEdit.text);
 			else browseVersion++;
 			return;
 		}

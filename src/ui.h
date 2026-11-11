@@ -18,6 +18,7 @@
 #include "keyboard.h"
 #include "playlists.h"
 #include "discovery.h"
+#include "mangafilters.h"
 #include "mangalocal.h"
 #include "mangaremote.h"
 #include "mangarepos.h"
@@ -45,6 +46,8 @@ namespace bp
 	// the saved servers' form (ui_manga_servers.cpp): its four typed fields. 62 and 63 are the tabs' own.
 	inline constexpr int MGSRV_NAME_FIELD = 64, MGSRV_URL_FIELD = 65, MGSRV_USER_FIELD = 66,
 		MGSRV_PASS_FIELD = 67;
+	// a source filter's text value (ui_manga_filters.cpp); 60-67 are the other fields
+	inline constexpr int MANGA_FILTER_FIELD = 68;
 
 	// The bottom panel: what is playing and where, the transport (previous, -5 s, play, +10 s, next), the choices
 	// (audio, subtitles, aspect, speed, settings) and their pages. Laid out on 640x480 (the RG DS's panel) and scaled
@@ -55,6 +58,23 @@ namespace bp
 		static constexpr int W = 640, H = 480;
 		// a small picture: rows of cells, '#' drawn (ui.cpp's G_*)
 		struct Glyph { const char* const* rows; int h; };
+
+		// A source's filter sheet (ui_manga_filters.cpp): the definitions filters() gave, the values Apply sends,
+		// and where the sheet is. Kept per source while the app runs (5.2.1), not written to the state dir.
+		struct MangaFilterSession
+		{
+			bool known = false, loading = false;
+			std::string error;
+			uint64_t serial = 0;		// the Filters job in flight (another serial's answer is stale)
+			std::vector<MangaFilter> defs;
+			std::vector<MangaFilterValue> values;
+			bool open = false;			// the sheet is up
+			std::vector<int> path;		// group indices from the top, for the level shown
+			int cursor = 0, scroll = 0;
+			int checkAt = -1;			// the filter whose multi/tri option list is open (-1: the rows)
+			int checkCursor = 0, checkScroll = 0;
+			int textAt = -1;			// the text filter the keyboard is editing
+		};
 
 		// fontsDir: assets/fonts, the panel's font and the subtitle preview's
 		bool init(SDL_Window* window, const std::string& fontsDir);
@@ -1438,6 +1458,8 @@ namespace bp
 		// the source's own headers (its Referer and the like) for cover image fetches: filled from the worker's
 		// answer for the first list, the same for every cover this source page asks for
 		std::vector<std::pair<std::string, std::string>> mangaSrcCoverHeaders;
+		// a source's grid's tabs, in the order they show (Latest only while the source has latest())
+		static constexpr int SRC_POPULAR = 0, SRC_LATEST = 1, SRC_SEARCH = 2;
 		int mangaSrcTab = 0;					// the source's tabs, in their order: Popular, Latest, Search
 		bool mangaSrcHasLatest = true;			// a source without latest() loses its tab once the first ask says so
 		std::vector<MangaItem> mangaSrcItems;
@@ -1543,6 +1565,26 @@ namespace bp
 		void mangaSourceChapterStep(int dir, Player& p);
 		int mangaReadChapterTotal() const;
 		std::string mangaNetSignature() const;			// this part of the page for signature()
+		// ---- a source's filters (ui_manga_filters.cpp) ----
+		// filters() is asked once a run per source; SELECT opens its sheet, Apply runs search("", 1, values) on the
+		// Search tab. A source with none (or one whose list failed) shows no hint and no sheet.
+		std::map<std::string, MangaFilterSession> mangaFilters;	// full source id -> its values and sheet
+		uint64_t mangaFilterLocal = 0;							// any filter change (signature() follows it)
+		void mangaFilterAsk();									// its filters(), once a run
+		bool mangaFilterAvailable() const;						// it declared some: SELECT opens the sheet
+		bool mangaFilterShown() const;							// the sheet takes the keys and taps
+		MangaFilterSession* mangaFilterSession();
+		const MangaFilterSession* mangaFilterSession() const;
+		void mangaFilterShow(Player& p);
+		void mangaFilterClose();
+		bool mangaFilterKey(Button b, Player& p);
+		bool mangaFilterPointer(const Pointer& pt, int x, int y, Player& p);
+		void drawMangaFilters(const Player& p);
+		std::string mangaSourceFiltersJson() const;				// what a Search job sends ("{}" without filters)
+		void mangaFilterTextTyped(const std::string& text);		// the keyboard's Done
+		static constexpr int MF_ROW_TOP = 118, MF_ROWS = 8, MF_ROW_H = 36;
+		Rect mangaFilterBox() const { return {48, 64, 544, 372}; }
+		Rect mangaFilterRowRect(int i) const { return {64, MF_ROW_TOP + i * MF_ROW_H, 512, MF_ROW_H - 4}; }
 		Rect mangaSrcTabRect(int i) const { return {60 + i * 120, 64, 116, 30}; }
 		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 186, MG_SRC_SER_TOP = 194, MG_SRC_SER_ROWS = 4,
 			MG_SRC_STATUS_Y = 410;

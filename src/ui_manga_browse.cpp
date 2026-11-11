@@ -18,8 +18,6 @@ namespace bp
 
 	namespace
 	{
-		// a source's tabs, in the order they show (Latest only while the source has latest())
-		constexpr int SRC_POPULAR = 0, SRC_LATEST = 1, SRC_SEARCH = 2;
 		// what A asks again after an error
 		constexpr int FAIL_NONE = 0, FAIL_LIST = 1, FAIL_SERIES = 2, FAIL_PAGES = 3;
 		// the grid: two rows of the Library's covers in view under the tabs (its rows are 186 apart); cut above the
@@ -98,6 +96,20 @@ namespace bp
 		mangaSrcRowsSerial = 0;
 		mangaSrcRowsOn = false;
 		mangaSrcRows.clear();
+		// a filter sheet closes with the page; the values and definitions stay for this run (5.2.1), but a job that
+		// belonged to a worker that stopped is forgotten so opening the source asks again
+		for (auto& kv : mangaFilters)
+		{
+			kv.second.open = false;
+			kv.second.path.clear();
+			kv.second.cursor = kv.second.scroll = 0;
+			kv.second.checkAt = -1;
+			kv.second.checkCursor = kv.second.checkScroll = 0;
+			kv.second.textAt = -1;
+			kv.second.serial = 0;
+			kv.second.loading = false;
+		}
+		mangaFilterLocal++;
 	}
 
 	void Ui::mangaBrowseRepos(const Player& p)
@@ -369,6 +381,8 @@ namespace bp
 		mangaSrcError.clear();
 		mangaSrcFailed = FAIL_NONE;
 		mangaView = 1;
+		// a source's own filters (5.2.1): asked once a run, kept for the sheet and the Search jobs
+		mangaFilterAsk();
 		mangaSourceLoad(1);
 	}
 
@@ -446,7 +460,7 @@ namespace bp
 		if (job.kind == MangaWorker::Job::Search)
 		{
 			job.query = mangaSrcQuery;
-			job.json = "{}";
+			job.json = mangaSourceFiltersJson();
 		}
 		mangaSrcPage = page;
 		mangaSrcLoading = true;
@@ -487,6 +501,15 @@ namespace bp
 
 	bool Ui::mangaSourceKey(Button b, Player& p)
 	{
+		// the filter sheet takes every key while it shows
+		if (mangaFilterShown()) return mangaFilterKey(b, p);
+		// X, the page's own action: 5.2.1 named Y, but Y is the grid's Search, and SELECT goes to Now Playing
+		// whenever something plays (music usually does while reading)
+		if (b == Button::X && mangaFilterAvailable())
+		{
+			mangaFilterShow(p);
+			return false;
+		}
 		if (b == Button::B) { mangaSourceBack(p); return false; }
 		// Y, and the Search tab, ask for the query; Done is the keyboard's START
 		if (b == Button::Y)
@@ -529,6 +552,7 @@ namespace bp
 
 	bool Ui::mangaSourcePointer(const Pointer& pt, int x, int y, Player& p)
 	{
+		if (mangaFilterShown()) return mangaFilterPointer(pt, x, y, p);
 		if (pt.kind != Pointer::Down) return false;
 		// the tabs: a tap on one steps straight to it (Search asks for the query)
 		int slots[3], count = 0;
@@ -609,8 +633,15 @@ namespace bp
 				: "Nothing here yet";
 			drawTextMid(line, 1, DIM, W / 2, 210, 0, 2);
 		}
-		if (!mangaSrcError.empty()) drawHints({{"A", "Try again"}, {"L/R", "Tabs"}, {"B", "Back"}});
+		if (!mangaSrcError.empty())
+		{
+			if (mangaFilterAvailable()) drawHints({{"A", "Try again"}, {"X", "Filters"}, {"L/R", "Tabs"}, {"B", "Back"}});
+			else drawHints({{"A", "Try again"}, {"L/R", "Tabs"}, {"B", "Back"}});
+		}
+		else if (mangaFilterAvailable())
+			drawHints({{"A", "Open"}, {"Y", "Search"}, {"X", "Filters"}, {"L/R", "Tabs"}, {"B", "Back"}});
 		else drawHints({{"A", "Open"}, {"Y", "Search"}, {"L/R", "Tabs"}, {"B", "Back"}});
+		if (mangaFilterShown()) drawMangaFilters(p);
 	}
 
 	void Ui::mangaSourceOpenSeriesAt(int i, Player& p)
@@ -627,6 +658,39 @@ namespace bp
 		if (!mangaNet || !mangaNet->started()) return;
 		for (auto& r : mangaNet->takeWorker())
 		{
+			// a source's filters (5.2.1): kept under the source the answer names, and dropped when that source's later
+			// ask replaced it (a stale serial, as the grid's own jobs are)
+			if (r.kind == MangaWorker::Job::Filters && r.serial)
+			{
+				auto it = mangaFilters.find(r.sourceId);
+				if (it != mangaFilters.end() && it->second.serial == r.serial)
+				{
+					MangaFilterSession& f = it->second;
+					f.serial = 0;
+					f.loading = false;
+					if (!r.ok) f.error = r.error.empty() ? "The source didn\xE2\x80\x99t answer" : r.error;
+					else
+					{
+						std::vector<MangaFilter> defs;
+						std::string error;
+						if (!mangaFiltersParse(r.filtersJson, defs, error))
+						{
+							f.error = error;
+							f.known = false;
+						}
+						else
+						{
+							f.error.clear();
+							f.defs = std::move(defs);
+							f.known = true;
+							mangaFilterFit(f.defs, f.values);
+							if (f.defs.empty()) f.open = false;
+						}
+					}
+					mangaFilterLocal++;
+				}
+				continue;
+			}
 			if (r.serial && r.serial == mangaSrcListSerial)
 			{
 				mangaSrcListSerial = 0;
@@ -1125,6 +1189,8 @@ namespace bp
 			page = Page::Manga;
 			mangaTab = mangaSeriesFrom == 2 ? MT_HISTORY : mangaSeriesFrom == 3 ? MT_BROWSE : MT_LIBRARY;
 			mangaView = mangaSeriesFrom == 3 ? 1 : 0;
+			// back on the grid: its filters are still the run's, or are asked for now if the first ask was lost
+			if (mangaView == 1) mangaFilterAsk();
 			return false;
 		}
 		if (b == Button::Y) { mangaSourceSeriesInLibrary(p); return false; }
@@ -1312,6 +1378,7 @@ namespace bp
 			(int)mangaSrcLoading, (int)mangaSrcInfoOn, (int)mangaSrcChaptersOn, (int)mangaSrcPendFull);
 		std::string s = buf;
 		s += "|" + mangaSrcId + "|" + mangaSrcQuery + "|" + mangaSrcError + "|" + mangaSrcKey + "|" + mangaSrcTitle;
+		s += "|mf" + std::to_string((unsigned long long)mangaFilterLocal);
 		// the lists' own ends: page 2 appended after page 1 changes the count, but a page's items replaced with as
 		// many others (a search for another word, a retry) would not show otherwise
 		if (!mangaSrcItems.empty())

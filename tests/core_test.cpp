@@ -33,6 +33,7 @@ extern "C"
 #include "mangastore.h"
 #include "mangalocal.h"
 #include "manga_ui_logic.h"
+#include "mangafilters.h"
 #include "mangaremote.h"
 #include "mangarepo.h"
 #include "netpath.h"
@@ -2226,6 +2227,100 @@ static void testMangaUiLogic()
 	CHECK_EQ(mangaAgo(t - 30 * 86400, t), std::string("1 month ago"));
 	CHECK_EQ(mangaAgo(t - 365 * 86400, t), std::string("1 year ago"));
 	CHECK_EQ(mangaAgo(t - 2 * 365 * 86400, t), std::string("2 years ago"));
+}
+
+// the source filters a sheet holds (5.2.1): parsing the source's definitions, defaults, the object search() gets
+static void testMangaFilters()
+{
+	const std::string json =
+		"[{\"id\":\"sort\",\"type\":\"sort\",\"name\":\"Sort\",\"options\":[{\"id\":\"popular\",\"name\":\"Popular\"},"
+		"{\"id\":\"latest\",\"name\":\"Latest\"}],\"default\":{\"by\":\"latest\",\"asc\":true}},"
+		"{\"id\":\"status\",\"type\":\"select\",\"name\":\"Status\",\"options\":[{\"id\":\"any\",\"name\":\"Any\"},"
+		"{\"id\":\"ongoing\",\"name\":\"Ongoing\"}],\"default\":\"ongoing\"},"
+		"{\"id\":\"only\",\"type\":\"check\",\"name\":\"Only with chapters\",\"default\":true},"
+		"{\"id\":\"types\",\"type\":\"multi\",\"name\":\"Type\",\"options\":[{\"id\":\"manga\",\"name\":\"Manga\"},"
+		"{\"id\":\"manhwa\",\"name\":\"Manhwa\"}],\"default\":[\"manga\"]},"
+		"{\"id\":\"genres\",\"type\":\"tri\",\"name\":\"Genres\",\"options\":[{\"id\":\"action\",\"name\":\"Action\"},"
+		"{\"id\":\"romance\",\"name\":\"Romance\"}],\"default\":{\"include\":[\"romance\"]}},"
+		"{\"id\":\"author\",\"type\":\"text\",\"name\":\"Author\",\"default\":\"Ann\"},"
+		"{\"id\":\"plain\",\"type\":\"sort\",\"name\":\"Plain\",\"options\":[{\"id\":\"name\",\"name\":\"Name\"},"
+		"{\"id\":\"date\",\"name\":\"Date\"}]},"
+		"{\"id\":\"tags\",\"type\":\"group\",\"name\":\"Tags\",\"filters\":[{\"id\":\"theme\",\"type\":\"tri\","
+		"\"name\":\"Themes\",\"options\":[{\"id\":\"isekai\",\"name\":\"Isekai\"}]}]}]";
+
+	std::vector<MangaFilter> defs;
+	std::string error;
+	CHECK_EQ(mangaFiltersParse(json, defs, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(defs.size(), (size_t)8);
+	CHECK_EQ(defs[0].name, std::string("Sort"));
+	CHECK_EQ(defs[7].children.size(), (size_t)1);
+
+	std::vector<MangaFilterValue> vals = mangaFilterDefaults(defs);
+	CHECK_EQ(vals[0].sortBy, std::string("latest"));
+	CHECK_EQ(vals[0].sortAsc, true);
+	CHECK_EQ(vals[1].select, std::string("ongoing"));
+	CHECK_EQ(vals[2].check, true);
+	CHECK_EQ(vals[3].multi.size(), (size_t)2);
+	CHECK_EQ(vals[3].multi[0], 1);
+	CHECK_EQ(vals[3].multi[1], 0);
+	CHECK_EQ(vals[4].tri[0], 0);
+	CHECK_EQ(vals[4].tri[1], 1);
+	CHECK_EQ(vals[5].text, std::string("Ann"));
+	// a sort that declares no direction starts descending, and takes its first option
+	CHECK_EQ(vals[6].sortBy, std::string("name"));
+	CHECK_EQ(vals[6].sortAsc, false);
+	CHECK_EQ(vals[7].children.size(), (size_t)1);
+	CHECK_EQ(vals[7].children[0].tri.size(), (size_t)1);
+
+	// the chosen values become exactly the object 5.2.1 gives search(): ids, {by, asc}, bools, include/exclude
+	vals[0].sortBy = "popular";
+	vals[0].sortAsc = false;
+	vals[1].select = "any";
+	vals[2].check = false;
+	vals[3].multi[0] = 0;
+	vals[3].multi[1] = 1;
+	vals[4].tri[0] = 1;
+	vals[4].tri[1] = 2;
+	vals[5].text = " Bob ";
+	vals[7].children[0].tri[0] = 1;
+	CHECK_EQ(mangaFilterValuesJson(defs, vals),
+		std::string("{\"sort\":{\"by\":\"popular\",\"asc\":false},\"status\":\"any\",\"only\":false,"
+			"\"types\":[\"manhwa\"],\"genres\":{\"include\":[\"action\"],\"exclude\":[\"romance\"]},"
+			"\"author\":\"Bob\",\"plain\":{\"by\":\"name\",\"asc\":false},"
+			"\"tags\":{\"theme\":{\"include\":[\"isekai\"],\"exclude\":[]}}}"));
+
+	// a row's summary: the option's name, On/Off, the ticks, and a group's children counted
+	CHECK_EQ(mangaFilterSummary(defs[0], vals[0]), std::string("Popular"));
+	CHECK_EQ(mangaFilterSummary(defs[1], vals[1]), std::string("Any"));
+	CHECK_EQ(mangaFilterSummary(defs[2], vals[2]), std::string("Off"));
+	CHECK_EQ(mangaFilterSummary(defs[3], vals[3]), std::string("\xE2\x9C\x93" "1"));
+	CHECK_EQ(mangaFilterSummary(defs[4], vals[4]), std::string("\xE2\x9C\x93" "1 \xE2\x9C\x97" "1"));
+	CHECK_EQ(mangaFilterSummary(defs[5], vals[5]), std::string("Bob"));
+	CHECK_EQ(mangaFilterSummary(defs[7], vals[7]), std::string("\xE2\x9C\x93" "1"));
+
+	// a filter or option the source no longer lists falls back to its default; the list lengths fit again
+	vals[1].select = "gone";
+	vals[0].sortBy = "gone";
+	vals[3].multi.resize(1, 0);
+	vals[4].tri.resize(3, 0);
+	mangaFilterFit(defs, vals);
+	CHECK_EQ(vals[1].select, std::string("ongoing"));
+	CHECK_EQ(vals[0].sortBy, std::string("latest"));
+	CHECK_EQ(vals[3].multi.size(), (size_t)2);
+	CHECK_EQ(vals[4].tri.size(), (size_t)2);
+
+	// a malformed list is an error; unknown or empty definitions are dropped quietly
+	std::vector<MangaFilter> bad;
+	CHECK_EQ(mangaFiltersParse("not json", bad, error), false);
+	CHECK_EQ(error.empty(), false);
+	std::vector<MangaFilter> odd;
+	CHECK_EQ(mangaFiltersParse("[{\"id\":\"x\",\"type\":\"nope\"},{\"id\":\"\",\"type\":\"text\"},"
+		"{\"type\":\"text\"},{\"id\":\"y\",\"type\":\"text\"}]", odd, error), true);
+	CHECK_EQ(odd.size(), (size_t)1);
+	CHECK_EQ(odd[0].id, std::string("y"));
+	CHECK_EQ(mangaFiltersParse("[]", odd, error), true);
+	CHECK_EQ(odd.size(), (size_t)0);
 }
 
 // the paged modes: rows of centred pages, drag and snap, and Right/Left through tall pages
@@ -7977,6 +8072,7 @@ int main()
 	testOpds();
 	testCbzWrite();
 	testMangaUiLogic();
+	testMangaFilters();
 	testPaged();
 	testMangaStore();
 	testMangaLocal();
