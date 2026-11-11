@@ -1587,7 +1587,11 @@ namespace bp
 		bool mangaSourcesModal() const { return mstModal != MSM_NONE || mstJavaModal != MJM_NONE || mstAvMenu != 0; }
 		// Available's X: a menu (Refresh, Languages) and the language list (a tick on each kept; Settings::mangaLangs)
 		int mstAvMenu = 0, mstAvCursor = 0, mstAvScroll = 0;
-		bool mstInstalledOnly = false;	// Filter › Installed only: Available lists only what is installed
+		bool mstInstalledOnly = false;
+		// the extensions' order Available was opened with (an install doesn't move its row until Available is opened
+		// again: entering Sources, L1/R1 onto it, the Filter menu)
+		std::unordered_map<std::string, int> mstAvOrder;
+		void mangaAvFreeze(const Player& p);	// Filter › Installed only: Available lists only what is installed
 		void drawAdultChip(int x, int cy);	// "18+" after a source's version	// 0 none, 1 the menu, 2 the languages
 		std::vector<std::string> mstAvLangs;	// the languages the repositories offer, when the list was opened
 		static constexpr int MST_AV_SHOWN = 6;

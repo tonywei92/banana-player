@@ -77,6 +77,7 @@ namespace bp
 		page = Page::MangaSources;
 		mangaTab = MT_BROWSE;
 		mangaSourcesOpen(p);
+		mangaAvFreeze(p);
 	}
 
 	bool Ui::mangaSourcesPageKey(Button b, Player& p)
@@ -280,6 +281,7 @@ namespace bp
 		{
 			int was = mstTab;
 			mstTab = b == Button::R ? MST_REPOSITORIES : MST_AVAILABLE;
+			if (mstTab == MST_AVAILABLE && was != MST_AVAILABLE) mangaAvFreeze(p);
 			if (mstTab != was) mstLocal++;
 			return false;
 		}
@@ -499,6 +501,7 @@ namespace bp
 		for (int i = 0; i < 2; i++)
 			if (mangaSourcesSegRect(i).hit(x, y))
 			{
+				if (i == 0 && mstTab != MST_AVAILABLE) mangaAvFreeze(p);
 				mstTab = i == 0 ? MST_AVAILABLE : MST_REPOSITORIES;
 				mstModal = MSM_NONE;
 				mstJavaModal = MJM_NONE;
@@ -593,6 +596,8 @@ namespace bp
 		}
 		else if (mstTab == MST_AVAILABLE)
 		{
+			// (a list that came after Available was opened: its order is kept from its first showing)
+			if (mstAvOrder.empty() && mangaJavaAvailableRows(p) > 0) mangaAvFreeze(p);
 			// installed Lua sources, the extensions (installed on top), then the Lua sources to install
 			auto inst = mangaSourcesInstalled();
 			auto list = mangaSourcesAvailable(p);
@@ -894,6 +899,7 @@ namespace bp
 				// Installed only: a switch, the menu stays
 				mstInstalledOnly = !mstInstalledOnly;
 				mstCursor[MST_AVAILABLE] = mstScroll[MST_AVAILABLE] = 0;
+				mangaAvFreeze(p);
 				mstLocal++;
 				return;
 			}
@@ -947,6 +953,7 @@ namespace bp
 		p.setSettings(s);
 		// the Available list changed under its cursor: back to its top
 		mstCursor[MST_AVAILABLE] = mstScroll[MST_AVAILABLE] = 0;
+		mangaAvFreeze(p);
 		mstLocal++;
 	}
 
