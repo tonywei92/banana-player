@@ -162,6 +162,9 @@ namespace bp
 				m.readingMode = old->readingMode;
 			}
 			else m.added = now;
+			// a folder of downloads isn't in the Library by being on the card: its series is, when the heart says so
+			for (const LocalChapter& c : s.chapters)
+				if (isSourceId(c.ciSeriesKey)) { m.inLibrary = false; break; }
 			mangaStore->putSeries(m);
 		}
 		fprintf(stderr, "manga: scanned %d series in %u ms\n", (int)mangaLocal.size(), (unsigned)(SDL_GetTicks() - t0));

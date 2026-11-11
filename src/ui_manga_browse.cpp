@@ -1611,14 +1611,10 @@ namespace bp
 
 	bool Ui::mangaSourceSeriesInLib() const
 	{
-		// the series or its downloads folder: one series, in the Library if either is (the folder shows there)
+		// the series itself (its downloads folder is never in the Library by being on the card)
 		if (!mangaStore) return false;
 		const MangaSeries* ms = mangaStore->series(mangaSeriesId);
-		if (ms && ms->inLibrary) return true;
-		std::string dl = mangaSourceDownloadsId(mangaSeriesId);
-		if (dl.empty()) return false;
-		const MangaSeries* ls = mangaStore->series(dl);
-		return !ls || ls->inLibrary;	// (a folder the store hasn't recorded shows in the Library)
+		return ms && ms->inLibrary;
 	}
 
 	void Ui::mangaSourceSeriesInLibrary(Player& p)
@@ -1626,9 +1622,6 @@ namespace bp
 		(void)p;
 		if (!mangaStore) return;
 		bool now = !mangaSourceSeriesInLib();
-		// its downloads folder follows: off, the folder leaves the Library too (its chapters stay on the card)
-		std::string dl = mangaSourceDownloadsId(mangaSeriesId);
-		if (!dl.empty() && mangaStore->series(dl)) mangaStore->setInLibrary(dl, now);
 		if (mangaStore->series(mangaSeriesId))
 		{
 			mangaStore->setInLibrary(mangaSeriesId, now);
