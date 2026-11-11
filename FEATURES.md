@@ -924,7 +924,7 @@ read. **B** goes back where you came from.
 | **Hinge gap** | 0 to 80 px | 36 px | The strip skipped under the hinge in fullscreen, so pictures line up across the gap. |
 | **Open fullscreen** | On / Off | Off | A chapter opens on both screens. SELECT or B leaves. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
-| **Page cache** | 100 MB / 300 MB / 1 GB | 300 MB | Pages kept on the card to read again without downloading. Covers: 50 MB more. |
+| **Page cache** | 100 MB / 300 MB / 1 GB | 1 GB | Pages kept on the card to read again without downloading; past the cap the least recently read go first. Covers: 50 MB more. |
 | **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |
 | **Extension support** | Not installed / Downloading / Installed · 344 MB / Running / Failed | Not installed | Needed for repositories whose address ends in index.pb or index.min.json: about 234 MB on the card, about 400 MB of memory while one of their sources is open. A installs; A twice removes. |
 | **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |

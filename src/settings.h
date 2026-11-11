@@ -17,7 +17,7 @@ namespace bp
 	// the next one up (dir 1) or down (-1), round: a value that isn't one of them starts from the first
 	int stepMangaPreload(int v, int dir);
 	// the page cache's cap as its row offers it (100 MB, 300 MB, 1 GB), the default, and the bytes of one
-	constexpr int MANGA_CACHES = 3, MANGA_CACHE_DEFAULT = 1;
+	constexpr int MANGA_CACHES = 3, MANGA_CACHE_DEFAULT = 2;	// 1 GB: the least recently read pages go past it
 	uint64_t mangaCacheBytes(int v);
 	// Music on the top panel: its album art (embedded, or cover.jpg beside it), a visualizer drawn from the sound by
 	// FFmpeg's filters, or the art with the visualizer over its lower part; a song with no art shows the visualizer
