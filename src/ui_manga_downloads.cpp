@@ -460,6 +460,7 @@ namespace bp
 						mdlDeletePath.clear();
 						mdlDeleteAt = 0;
 						mangaDlEnsureCard(true);
+						mangaScan();	// On this handheld reads the card's scan: it shows the files as they are now
 						if (mdlCardAt >= (int)mdlCard.size()) mdlCardAt = (int)mdlCard.size() - 1;
 						if (mdlCardAt < 0) mdlCardOpen = false;
 						else if (mdlCardCursor >= (int)mdlCard[mdlCardAt].chapters.size())
@@ -584,6 +585,7 @@ namespace bp
 					mdlDeletePath.clear();
 					mdlDeleteAt = 0;
 					mangaDlEnsureCard(true);
+					mangaScan();	// (as for a chapter)
 					int afterQ = mangaDlQueueCount();
 					int after = afterQ + (afterQ > 0 ? 1 : 0) + (int)mdlCard.size();
 					if (mdlCursor >= after) mdlCursor = std::max(0, after - 1);
