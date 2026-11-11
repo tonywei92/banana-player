@@ -1567,7 +1567,10 @@ namespace bp
 	bool Ui::mangaSourceSeriesCacheLoad()
 	{
 		MangaSeriesCache c;
-		if (!mangaSeriesCacheRead(stateDirPath, mangaSeriesId, c) || !c.chaptersOn) return false;
+		// a copy with no chapters is no copy: a site's browser check (Cloudflare) can come back as a good answer with an
+		// empty list, and kept, it showed the empty list at every open and the source was never asked again (nor its
+		// error shown)
+		if (!mangaSeriesCacheRead(stateDirPath, mangaSeriesId, c) || !c.chaptersOn || c.chapters.empty()) return false;
 		mangaSrcInfo = std::move(c.details);
 		mangaSrcInfoOn = c.detailsOn;
 		mangaSrcChapters = std::move(c.chapters);
@@ -1582,7 +1585,8 @@ namespace bp
 
 	void Ui::mangaSourceSeriesCacheSave()
 	{
-		if (stateDirPath.empty() || mangaSeriesId.empty()) return;
+		// (an empty chapter list isn't kept: see mangaSourceSeriesCacheLoad)
+		if (stateDirPath.empty() || mangaSeriesId.empty() || mangaSrcChapters.empty()) return;
 		MangaSeriesCache c;
 		c.details = mangaSrcInfo;
 		c.chapters = mangaSrcChapters;
