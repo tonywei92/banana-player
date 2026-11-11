@@ -1057,7 +1057,7 @@ namespace bp
 
 		static constexpr Rect BAR{24, 150, 592, 24};
 		static constexpr int BTN_W = 108, BTN_H = 60, BTN_STEP = 121, ROW1_Y = 228, ROW2_Y = 300;
-		static constexpr int ROW_Y = 84, ROW_H = 58, ROWS_SHOWN = 7;
+		static constexpr int ROW_Y = 84, ROW_H = 48, ROWS_SHOWN = 7;	// 7 rows end at 420, above the hints (and the mini bar)
 		// the settings' rows by id: the subtitle style's, Music display, Visualizer, the switches (REMEMBER), Pan area,
 		// Clear play history, ..., Sound (it opens the Sound page). Shown a group at a time (settingRows), after a list of
 		// the groups. The manga reader's rows are its own page's (Page::MangaSettings): EXT_NOTE is its note, no value
@@ -1390,7 +1390,9 @@ namespace bp
 		Rect mangaFullRect() const { return {224, 404, 192, 40}; }	// the Fullscreen button: what SELECT does
 		Rect mangaNextRect() const { return {416, 404, 192, 40}; }
 		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
-		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;	// the tabs end at 86: History's and Browse's rows below them
+		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;
+		// History's rows hold two lines (series, then chapter and page): taller, so fewer
+		static constexpr int MG_HIST_ROW_H = 58, MG_HIST_ROWS = 5;	// the tabs end at 86: History's and Browse's rows below them
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
 		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101,
 			MG_FULL = 3102;

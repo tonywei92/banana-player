@@ -683,7 +683,7 @@ namespace bp
 			default: break;
 			}
 			if (mhisCursor < mhisScroll) mhisScroll = mhisCursor;
-			if (mhisCursor >= mhisScroll + MG_ROWS) mhisScroll = mhisCursor - MG_ROWS + 1;
+			if (mhisCursor >= mhisScroll + MG_HIST_ROWS) mhisScroll = mhisCursor - MG_HIST_ROWS + 1;
 			break;
 		}
 		case MT_BROWSE:
@@ -930,9 +930,9 @@ namespace bp
 			{
 				mangaCache();
 				int n = (int)mangaHistory.size();
-				if (y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
+				if (y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_HIST_ROWS * MG_HIST_ROW_H)
 				{
-					int i = mhisScroll + (y - MG_ROW_TOP) / ROW_H;
+					int i = mhisScroll + (y - MG_ROW_TOP) / MG_HIST_ROW_H;
 					if (i >= 0 && i < n)
 					{
 						mhisCursor = i;
@@ -1316,18 +1316,18 @@ namespace bp
 			return;
 		}
 		if (mhisCursor >= n) mhisCursor = n - 1;
-		for (int i = mhisScroll; i < n && i < mhisScroll + MG_ROWS; i++)
+		for (int i = mhisScroll; i < n && i < mhisScroll + MG_HIST_ROWS; i++)
 		{
 			const ChapterProgress& cp = mangaHistory[i];
-			int y = MG_ROW_TOP + (i - mhisScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
+			int y = MG_ROW_TOP + (i - mhisScroll) * MG_HIST_ROW_H, mid = y + (MG_HIST_ROW_H - 4) / 2;
 			bool at = i == mhisCursor;
-			if (at) drawFocus({16, y, 608, ROW_H - 4});
+			if (at) drawFocus({16, y, 608, MG_HIST_ROW_H - 4});
 			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
 			drawTextMid(mangaTitle(cp.seriesId), 1, ink, 32, mid - 10, 462);
 			drawTextMid(cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, 32, mid + 10, 462);
 			drawTextMid(mangaAgo(cp.at, (int64_t)time(nullptr)), 0, soft, 604, mid, 120, 1);
 		}
-		drawScrollBar(MG_ROW_TOP, MG_ROWS * ROW_H - 4, mhisScroll, MG_ROWS, n);
+		drawScrollBar(MG_ROW_TOP, MG_HIST_ROWS * MG_HIST_ROW_H - 4, mhisScroll, MG_HIST_ROWS, n);
 		if (mangaClearAt) drawFooterText("Press X again to clear history", ACCENT);
 		else drawHints({{"A", "Continue"}, {"X", "Clear history"}, {"B", "Back"}});
 	}
