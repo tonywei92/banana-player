@@ -896,7 +896,8 @@ namespace bp
 		// the reader's page: its drag area and slider take the finger's moves too (the mini bar's taken above)
 		if (page == Page::MangaRead) return mangaPointer(pt, x, y, p);
 		// a manga source's grid scrolls with the finger: its moves and lift go to it (its down comes below)
-		if (page == Page::Manga && mangaView == 1 && pt.kind != Pointer::Down) return mangaPointer(pt, x, y, p);
+		if (((page == Page::Manga && mangaView == 1) || (page == Page::MangaSeries && mangaSourceSeriesOn())) && pt.kind != Pointer::Down)
+			return mangaPointer(pt, x, y, p);
 		// the extensions' pages, and the drawer: their own taps. A tile or a row acts as the finger lifts (as Home's
 		// do), so the lift is taken before the down-only pages below; the down is taken after the header and mini bar.
 		if (pt.kind == Pointer::Up &&

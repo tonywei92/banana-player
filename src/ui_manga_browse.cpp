@@ -1557,6 +1557,37 @@ namespace bp
 
 	bool Ui::mangaSourceSeriesPointer(const Pointer& pt, int x, int y, Player& p)
 	{
+		int n = (int)mangaSrcChapters.size();
+		// the chapter list follows a finger: a drag scrolls it by rows, a tap without one reads the row it went down on
+		if (pt.kind == Pointer::Move && mserDragY >= 0)
+		{
+			int dy = y - mserDragY;
+			if (std::abs(dy) > 12) mserDragMoved = true;
+			if (mserDragMoved)
+			{
+				int s = std::clamp(mserDragScroll - (int)std::lround(dy / (double)ROW_H), 0, std::max(0, n - MG_SRC_SER_ROWS));
+				if (s != mserScroll)
+				{
+					mserScroll = s;
+					// the cursor stays among the rows shown (the keys go on from there)
+					if (mserCursor >= 0) mserCursor = std::clamp(mserCursor, s, std::min(n - 1, s + MG_SRC_SER_ROWS - 1));
+				}
+			}
+			return false;
+		}
+		if (pt.kind == Pointer::Up && mserDragY >= 0)
+		{
+			int tap = mserDragTap;
+			bool moved = mserDragMoved;
+			mserDragY = mserDragTap = -1;
+			mserDragMoved = false;
+			if (!moved && tap >= 0 && tap < n)
+			{
+				mserCursor = tap;
+				mangaSourceSeriesChoose(tap, p);
+			}
+			return false;
+		}
 		if (pt.kind != Pointer::Down) return false;
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetPointer(pt, x, y, p);
 		if (mangaDlButtonRect().hit(x, y))
@@ -1580,15 +1611,14 @@ namespace bp
 			mangaSourceSeriesInLibrary(p);
 			return false;
 		}
-		int n = (int)mangaSrcChapters.size();
 		if (n && y >= MG_SRC_SER_TOP && y < MG_SRC_SER_TOP + MG_SRC_SER_ROWS * ROW_H)
 		{
+			// opened as the finger lifts, if it didn't drag
 			int i = mserScroll + (y - MG_SRC_SER_TOP) / ROW_H;
-			if (i >= 0 && i < n)
-			{
-				mserCursor = i;
-				mangaSourceSeriesChoose(i, p);
-			}
+			mserDragY = y;
+			mserDragScroll = mserScroll;
+			mserDragMoved = false;
+			mserDragTap = i >= 0 && i < n ? i : -1;
 		}
 		return false;
 	}
