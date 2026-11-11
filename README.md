@@ -20,14 +20,14 @@ photos with a finger, and reads manga across both screens. When a new version is
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/img/screen-browser.png?v=0.7.0" alt="The file list on the bottom screen, the Banana Player logo on the top"><br><sub><b>Your files.</b> Icons, sizes, and where you left off in each film</sub></td>
-    <td align="center" width="33%"><img src="docs/img/screen-playing.png?v=0.7.0" alt="A film playing on the top screen, the controls on the bottom"><br><sub><b>Watching.</b> Seek, skip, chapters, speed, subtitles and audio tracks, by button or by touch</sub></td>
-    <td align="center" width="33%"><img src="docs/img/screen-music.png?v=0.7.0" alt="A song with its album art inside the Circle visualizer"><br><sub><b>Music.</b> Album art, a visualizer, or both (here: Circle)</sub></td>
+    <td align="center" width="33%"><img src="docs/img/screen-browser.png?v=0.7.1" alt="The file list on the bottom screen, the Banana Player logo on the top"><br><sub><b>Your files.</b> Icons, sizes, and where you left off in each film</sub></td>
+    <td align="center" width="33%"><img src="docs/img/screen-playing.png?v=0.7.1" alt="A film playing on the top screen, the controls on the bottom"><br><sub><b>Watching.</b> Seek, skip, chapters, speed, subtitles and audio tracks, by button or by touch</sub></td>
+    <td align="center" width="33%"><img src="docs/img/screen-music.png?v=0.7.1" alt="A song with its album art inside the Circle visualizer"><br><sub><b>Music.</b> Album art, a visualizer, or both (here: Circle)</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/img/screen-sound.png?v=0.7.0" alt="The equalizer on the bottom screen, ten bands set to the Rock preset, under a song with the Circle visualizer"><br><sub><b>Sound.</b> A 10-band equalizer with presets, and room effects like Concert hall</sub></td>
-    <td align="center"><img src="docs/img/screen-photo.png?v=0.7.0" alt="A photo zoomed in on the top screen, the pan area and its buttons on the bottom"><br><sub><b>Photos.</b> Zoom in and drag the box to look around</sub></td>
-    <td align="center"><img src="docs/img/screen-settings.png?v=0.7.0" alt="Settings › Subtitles, with a subtitle preview"><br><sub><b>Settings</b> as tiles, with a help line for each and a live subtitle preview</sub></td>
+    <td align="center"><img src="docs/img/screen-sound.png?v=0.7.1" alt="The equalizer on the bottom screen, ten bands set to the Rock preset, under a song with the Circle visualizer"><br><sub><b>Sound.</b> A 10-band equalizer with presets, and room effects like Concert hall</sub></td>
+    <td align="center"><img src="docs/img/screen-photo.png?v=0.7.1" alt="A photo zoomed in on the top screen, the pan area and its buttons on the bottom"><br><sub><b>Photos.</b> Zoom in and drag the box to look around</sub></td>
+    <td align="center"><img src="docs/img/screen-settings.png?v=0.7.1" alt="Settings › Subtitles, with a subtitle preview"><br><sub><b>Settings</b> as tiles, with a help line for each and a live subtitle preview</sub></td>
   </tr>
 </table>
 
@@ -53,10 +53,10 @@ Videos play on the handheld's CPU. The various 1080p videos we tested play well;
 ## Install
 
 > [!TIP]
-> **Latest: [Banana Player 0.7.0](https://github.com/tonywei92/banana-player/releases/tag/v0.7.0)**, for BananaOS on the
+> **Latest: [Banana Player 0.7.1](https://github.com/tonywei92/banana-player/releases/tag/v0.7.1)**, for BananaOS on the
 > Anbernic RG DS and RG DS Plus.
 
-1. **Download** `BananaPlayer-0.7.0-aarch64.zip` from [the release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.0).
+1. **Download** `BananaPlayer-0.7.1-aarch64.zip` from [the release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.1).
 2. **Unzip it into `roms/ports`** on your SD card. You should end up with `Banana Player.sh`, a `BananaPlayer` folder
    and a `media` folder there. (On a Mac, if the zip opens into a folder of its own, move those three out of it.)
 3. **Play:** put the card back in, open the **Ports** shelf and choose **Banana Player**.
