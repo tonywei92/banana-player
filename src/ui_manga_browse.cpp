@@ -1600,16 +1600,42 @@ namespace bp
 				mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title, p);
 	}
 
+	std::string Ui::mangaSourceDownloadsId(const std::string& sourceSeriesId) const
+	{
+		// the card's folder of this series' downloads (its chapters' ComicInfo name it), as the Library knows it
+		for (const LocalSeries& s : mangaLocal)
+			for (const LocalChapter& c : s.chapters)
+				if (c.ciSeriesKey == sourceSeriesId) return "local:" + s.path;
+		return "";
+	}
+
+	bool Ui::mangaSourceSeriesInLib() const
+	{
+		// the series or its downloads folder: one series, in the Library if either is (the folder shows there)
+		if (!mangaStore) return false;
+		const MangaSeries* ms = mangaStore->series(mangaSeriesId);
+		if (ms && ms->inLibrary) return true;
+		std::string dl = mangaSourceDownloadsId(mangaSeriesId);
+		if (dl.empty()) return false;
+		const MangaSeries* ls = mangaStore->series(dl);
+		return !ls || ls->inLibrary;	// (a folder the store hasn't recorded shows in the Library)
+	}
+
 	void Ui::mangaSourceSeriesInLibrary(Player& p)
 	{
 		(void)p;
 		if (!mangaStore) return;
-		if (const MangaSeries* ms = mangaStore->series(mangaSeriesId))
+		bool now = !mangaSourceSeriesInLib();
+		// its downloads folder follows: off, the folder leaves the Library too (its chapters stay on the card)
+		std::string dl = mangaSourceDownloadsId(mangaSeriesId);
+		if (!dl.empty() && mangaStore->series(dl)) mangaStore->setInLibrary(dl, now);
+		if (mangaStore->series(mangaSeriesId))
 		{
-			mangaStore->setInLibrary(mangaSeriesId, !ms->inLibrary);
+			mangaStore->setInLibrary(mangaSeriesId, now);
 			mangaSave();
 			return;
 		}
+		if (!now) { mangaSave(); return; }
 		// the full source id is the series' source, its cover the URL the source gave (no cover is fetched by the
 		// Library yet: a source series keeps its generated one)
 		MangaSeries m;
@@ -1863,7 +1889,7 @@ namespace bp
 		drawBox(fb, lit(2) ? BUTTON : SURFACE, R_BUTTON, lit(2));
 		drawButton(fb, &G_REFRESH, "Refresh", nullptr, mangaSrcRefreshing, 1);
 		Rect hb = mangaSrcHeartRect();
-		bool inLib = ms && ms->inLibrary;
+		bool inLib = mangaSourceSeriesInLib();
 		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : lit(3) ? BUTTON : SURFACE, R_BUTTON, lit(3));
 		drawButton(hb, inLib ? &G_HEART : &G_HEART_O, "Library", nullptr, false, 1, inLib);
 		if (n == 0)
