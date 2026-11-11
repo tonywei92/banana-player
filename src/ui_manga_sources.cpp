@@ -775,7 +775,7 @@ namespace bp
 	{
 		std::string langName(const std::string& code)
 		{
-			static const std::pair<const char*, const char*> NAMES[] = {{"all", "Every language"}, {"en", "English"},
+			static const std::pair<const char*, const char*> NAMES[] = {{"all", "Multi-language"}, {"en", "English"},
 				{"id", "Indonesian"}, {"ja", "Japanese"}, {"ko", "Korean"}, {"zh", "Chinese"}, {"zh-Hans", "Chinese (simplified)"},
 				{"zh-Hant", "Chinese (traditional)"}, {"es", "Spanish"}, {"es-419", "Spanish (Latin America)"}, {"pt", "Portuguese"},
 				{"pt-BR", "Portuguese (Brazil)"}, {"fr", "French"}, {"de", "German"}, {"it", "Italian"}, {"ru", "Russian"},
@@ -807,9 +807,11 @@ namespace bp
 
 	bool Ui::mangaLangShown(const Player& p, const std::string& lang) const
 	{
-		if (p.settings.mangaLangs.empty() || lang.empty() || lang == "all" || lang == "multi") return true;
+		// (with a choice made it is the whole rule: a multi-language source is "all", a choice of its own)
+		if (p.settings.mangaLangs.empty() || lang.empty()) return true;
+		std::string l0 = lang == "multi" ? "all" : lang;
 		for (const auto& l : splitLangs(p.settings.mangaLangs))
-			if (l == lang) return true;
+			if (l == l0) return true;
 		return false;
 	}
 
@@ -864,7 +866,7 @@ namespace bp
 				// the languages on offer now: the Lua repositories' and the extensions', each once, sorted
 				std::vector<std::string> langs;
 				auto add = [&](const std::string& l) {
-					if (!l.empty() && l != "all" && l != "multi" && std::find(langs.begin(), langs.end(), l) == langs.end())
+					if (!l.empty() && l != "multi" && std::find(langs.begin(), langs.end(), l) == langs.end())
 						langs.push_back(l);
 				};
 				if (mangaNet && mangaNet->started())

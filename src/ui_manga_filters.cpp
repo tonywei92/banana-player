@@ -451,7 +451,7 @@ namespace bp
 			}
 			if (row.kind == MFRowKind::Apply)
 			{
-				drawDialogRow(mangaFilterRowRect(i - scroll), &G_CHECK, "Apply", at, false, TEXT, "Page 1",
+				drawDialogRow(mangaFilterRowRect(i - scroll), &G_CHECK, "Apply", at, false, TEXT, "",
 					SDL_Color{0, 0, 0, 0});
 				continue;
 			}
