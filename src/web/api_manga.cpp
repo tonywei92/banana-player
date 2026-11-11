@@ -118,6 +118,11 @@ namespace bp
 						j.obj().key("url").str(r.url).key("name").str(r.name).key("count").num((int64_t)r.sourceCount)
 							.key("lastFetched").num(r.lastFetched).key("haveIndex").boolean(r.haveIndex).end();
 					}
+				// the extensions' repositories (index.pb / index.min.json): queued ones wait for the manga engine
+				if (u.mangaNet)
+					for (auto& r : u.mangaNet->javaSources().repos())
+						j.obj().key("url").str(r.url).key("name").str(r.name).key("java").boolean(true)
+							.key("queued").boolean(r.queued).end();
 				j.end();
 				// installed sources
 				j.key("installed").arr();
@@ -165,20 +170,18 @@ namespace bp
 				// a Keiyoushi-style index (index.pb / index.min.json) is a Java repository: Suwayomi takes it
 				if (MangaJava::isRepoUrl(url))
 				{
+					// without the engine it's kept, and sent to it once it runs
 					auto st = u.mangaNet->javaExt().state();
-					if (st == JavaExtHost::State::NotInstalled || st == JavaExtHost::State::Downloading)
-					{
-						WebCall::setStatus(409);
-						return error("Install Extension support first (Manga settings on the handheld)");
-					}
-					u.mangaNet->javaExt().want();
+					bool engine = st != JavaExtHost::State::NotInstalled && st != JavaExtHost::State::Downloading;
+					if (engine) u.mangaNet->javaExt().want();
 					if (!u.mangaNet->javaSources().addRepo(url, err))
 					{
 						WebCall::setStatus(400);
 						return error(err);
 					}
+					u.mangaNet->javaSources().save();
 					mangaNotify(*w, u);
-					return std::string("{\"ok\":true,\"java\":true}");
+					return std::string(engine ? "{\"ok\":true,\"java\":true}" : "{\"ok\":true,\"java\":true,\"queued\":true}");
 				}
 				if (!u.mangaNet->repos().addRepo(url, err))
 				{
@@ -202,6 +205,18 @@ namespace bp
 			std::string body = w->call([w, url, alsoSources](Player& p, Ui& u) {
 				if (!mangaReady(p, u)) return error("Manga is off");
 				if (!u.mangaNet) { WebCall::setStatus(503); return error("Manga isn't running"); }
+				if (MangaJava::isRepoUrl(url))
+				{
+					std::string err;
+					if (!u.mangaNet->javaSources().removeRepo(url, err))
+					{
+						WebCall::setStatus(404);
+						return error(err);
+					}
+					u.mangaNet->javaSources().save();
+					mangaNotify(*w, u);
+					return std::string("{\"ok\":true}");
+				}
 				if (!u.mangaNet->repos().removeRepo(url, alsoSources))
 				{
 					WebCall::setStatus(404);

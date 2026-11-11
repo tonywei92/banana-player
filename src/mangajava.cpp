@@ -125,7 +125,8 @@ namespace bp
 				Repo r;
 				r.url = f[0];
 				r.name = f[1];
-				r.added = true;
+				r.queued = f.size() >= 3 && f[2] == "queued";
+				r.added = !r.queued;
 				repos_.push_back(std::move(r));
 			}
 		}
@@ -170,7 +171,7 @@ namespace bp
 		};
 		std::string repos;
 		for (const Repo& r : repos_)
-			if (r.added) repos += field(r.url) + "\t" + field(r.name) + "\n";
+			if (r.added || r.queued) repos += field(r.url) + "\t" + field(r.name) + (r.queued ? "\tqueued" : "") + "\n";
 		std::string sources;
 		for (const Source& s : sources_)
 			sources += field(s.id) + "\t" + field(s.name) + "\t" + field(s.lang) + "\t" + field(s.displayName) + "\t" +
@@ -232,14 +233,25 @@ namespace bp
 		Repo r;
 		r.url = url;
 		r.name = repoNameFromUrl(url);
+		// no engine to ask (not installed, or not up): kept, and sent once it runs; the engine's answer then keeps it
+		// or takes it away with its reason, as for one added while it runs
+		if (!submitRequest(Kind::AddStore, suwayomiAddExtensionStore(url), url, "")) r.queued = true;
 		repos_.push_back(r);
-		if (!submitRequest(Kind::AddStore, suwayomiAddExtensionStore(url), url, ""))
-		{
-			repos_.pop_back();
-			error = "couldn't reach the extensions";
-			return false;
-		}
+		serial_++;
 		return true;
+	}
+
+	bool MangaJava::hasQueued() const
+	{
+		for (const Repo& r : repos_)
+			if (r.queued) return true;
+		return false;
+	}
+
+	void MangaJava::sendQueued()
+	{
+		for (Repo& r : repos_)
+			if (r.queued && submitRequest(Kind::AddStore, suwayomiAddExtensionStore(r.url), r.url, "")) r.queued = false;
 	}
 
 	bool MangaJava::removeRepo(const std::string& url, std::string& error)
@@ -250,6 +262,13 @@ namespace bp
 		{
 			error = "no such repository";
 			return false;
+		}
+		// one the engine never had: nothing to tell it
+		if (it->queued || !it->added)
+		{
+			repos_.erase(it);
+			serial_++;
+			return true;
 		}
 		if (!submitRequest(Kind::RemoveStore, suwayomiRemoveExtensionStore(url), url, ""))
 		{

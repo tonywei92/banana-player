@@ -134,20 +134,18 @@ namespace bp
 	void Ui::mangaJavaAddRepo(const std::string& url, Player& p)
 	{
 		if (!mangaNet || !mangaNet->started()) { p.osd("Repositories need a state folder", 2500); return; }
-		if (!mangaJavaInstalled())
-		{
-			p.osd(JAVA_MISSING, 3500);
-			return;
-		}
-		mangaJavaNeedHost();
+		// without the engine it's kept, and sent to the engine once it runs
+		bool engine = mangaJavaInstalled();
+		if (engine) mangaJavaNeedHost();
 		std::string error;
 		if (!mangaNet->javaSources().addRepo(url, error))
 		{
 			p.osd("Repository not added: " + error, 3000);
 			return;
 		}
+		mangaNet->javaSources().save();
 		mstJavaLocal++;
-		p.osd("Adding repository\xE2\x80\xA6", 1500);
+		p.osd(engine ? "Adding repository\xE2\x80\xA6" : "Added. Its sources come with the manga engine", 3000);
 	}
 
 	void Ui::mangaJavaRefresh()
@@ -342,6 +340,13 @@ namespace bp
 			mstJavaUninstallArmed = false;
 			mstJavaLocal++;
 		}
+		// repositories added while the engine wasn't there: sent as soon as it answers
+		if (mgr.hasQueued() && mangaNet->javaExt().state() == JavaExtHost::State::Running)
+		{
+			mgr.sendQueued();
+			mgr.save();
+			mstJavaLocal++;
+		}
 		// A Java repository's extensions are asked once the host is answering (and again after Y), not every tick
 		if (mangaJavaInstalled() && mgr.hasRepos() && !mgr.extensionsKnown() &&
 			mangaNet->javaExt().state() == JavaExtHost::State::Running)
@@ -472,6 +477,7 @@ namespace bp
 			const MangaJava::Repo& rp = repos[local];
 			drawTextMid(rp.name.empty() ? rp.url : rp.name, 1, ink, 32, mid - 10, 450);
 			drawTextMid(elideMiddle(rp.url, 0, 380), 0, soft, 32, mid + 10, 0);
+			if (rp.queued) drawTextMid("Waits for the engine", 0, soft, 608, mid, 0, 1);
 			return;
 		}
 		const SuwayomiExt* e = nullptr;

@@ -149,7 +149,12 @@ function Sources() {
 	const addRepo = async () => {
 		const u = url.trim();
 		if (!u) return;
-		try { await post('/api/manga/repo', { url: u }); setUrl(''); load(); } catch (e) { toast(e.message); }
+		try {
+			const r = await post('/api/manga/repo', { url: u });
+			setUrl('');
+			toast(r && r.queued ? 'Added. Its sources come once the manga engine is installed on the handheld.' : 'Repository added');
+			load();
+		} catch (e) { toast(e.message); }
 	};
 	const removeRepo = async (u, name) => {
 		if (!await ask('Remove ' + (name || 'this repository') + '?', 'Its installed sources stay. Remove them too from their entries.',
@@ -183,7 +188,7 @@ function Sources() {
 				<div class="mrepo-list">${repos.map(r => html`<div class="mrepo-row" key=${r.url}>
 					<div class="grow">
 						<div class="ell" style="font-weight:600">${r.name || r.url}</div>
-						<div class="dim" style="font-size:13px">${r.sourceCount || 0} sources${r.lastFetched ? ' · fetched ' + new Date(r.lastFetched * 1000).toLocaleDateString() : ''}</div>
+						<div class="dim" style="font-size:13px">${r.java ? (r.queued ? 'Waits for the manga engine' : 'Extensions') : (r.count || 0) + ' sources' + (r.lastFetched ? ' · fetched ' + new Date(r.lastFetched * 1000).toLocaleDateString() : '')}</div>
 					</div>
 					<button class="ib sm" aria-label="Refresh" title="Refresh" onClick=${refresh}><${Icon} n="refresh" k=${1} /></button>
 					<button class="ib sm" aria-label=${'Remove ' + (r.name || r.url)} title="Remove" onClick=${() => removeRepo(r.url, r.name)}><${Icon} n="trash" k=${1} /></button>

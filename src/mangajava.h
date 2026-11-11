@@ -24,7 +24,8 @@ namespace bp
 		struct Repo
 		{
 			std::string url, name;
-			bool added = false;		// the store answered: only these are written
+			bool added = false;		// the store answered
+			bool queued = false;	// added while the engine wasn't there: sent when it runs (sendQueued), kept meanwhile
 			std::string error;
 		};
 		struct Source
@@ -62,6 +63,9 @@ namespace bp
 		const std::vector<SuwayomiExt>& extensions() const { return extensions_; }
 		bool extensionsKnown() const { return extensionsKnown_; }
 		bool hasRepos() const { return !repos_.empty(); }
+		bool hasQueued() const;
+		// the repositories added while the engine wasn't there, sent now (the engine is answering)
+		void sendQueued();
 		// the source a Browse row is for (nullptr: it isn't installed any more)
 		const Source* source(const std::string& fullId) const;
 		const SuwayomiExt* extension(const std::string& pkgName) const;
