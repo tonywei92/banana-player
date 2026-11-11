@@ -222,6 +222,7 @@ namespace bp
 		// Manage extensions and the manga reader's pages: their own keys (the sheet over the first)
 		if (page == Page::Extensions || page == Page::Manga) return extKey(b, p);
 		if (page == Page::MangaSeries || page == Page::MangaRead) return mangaKey(b, p);
+		if (page == Page::MangaSources && mengSheet) return mangaEngineKey(b, p);
 		if (page == Page::MangaSources) return mangaSourcesPageKey(b, p);
 		if (page == Page::MangaSettings) return mangaSettingsKey(b, p);
 		if (page == Page::Settings)

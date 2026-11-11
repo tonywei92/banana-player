@@ -891,7 +891,7 @@ namespace bp
 		// the tabs, a card, a cover, a row: a tap acts on the spot, as the browser's tabs do
 		if (pt.kind != Pointer::Down) return false;
 		mangaPressed = -1;
-		if (page == Page::Manga && mengSheet)
+		if ((page == Page::Manga || page == Page::MangaSources) && mengSheet)
 		{
 			if (mengBusy)
 			{
@@ -1313,6 +1313,21 @@ namespace bp
 		// the sheet stays: its progress, then it closes by itself when the engine is on the card
 		mengBusy = true;
 		mengCursor = 1;
+	}
+
+	bool Ui::mangaEngineMissing() const
+	{
+		if (!mangaNet || !mangaNet->started()) return false;
+		const JavaExtHost& h = mangaNet->javaExt();
+		auto st = h.state();
+		return st == JavaExtHost::State::NotInstalled || (st == JavaExtHost::State::Failed && h.installedBytes() == 0);
+	}
+
+	void Ui::mangaEngineOffer()
+	{
+		mengSheet = true;
+		mengBusy = false;
+		mengCursor = 0;
 	}
 
 	std::string Ui::mangaEngineSignature() const

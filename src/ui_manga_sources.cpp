@@ -104,7 +104,8 @@ namespace bp
 		{
 		case MST_INSTALLED: return (int)mangaSourcesInstalled().size() + mangaJavaInstalledRows(p);
 		case MST_AVAILABLE: return (int)mangaSourcesInstalled().size() + mangaJavaAvailableRows(p) + (int)mangaSourcesAvailable(p).size();
-		default: return (int)mangaSourcesRepos().size() + mangaJavaRepoRows() + 2;	// (+ Add repository…, the dashboard)
+		// (+ Add repository…, the dashboard, and Download manga engine while it isn't there)
+		default: return (int)mangaSourcesRepos().size() + mangaJavaRepoRows() + 2 + (mangaEngineMissing() ? 1 : 0);
 		}
 	}
 
@@ -383,6 +384,7 @@ namespace bp
 		// a repository's long address is easier typed on a phone or a computer: the Web dashboard's page (its address
 		// and PIN, or its switch), and B comes back here
 		if (cur == lua + java + 1) { openWeb(); return; }
+		if (cur == lua + java + 2) { if (mangaEngineMissing()) mangaEngineOffer(); return; }
 		if (cur < 0 || cur >= lua) return;
 		mstModal = MSM_REPO;
 		mstModalCursor = 0;
@@ -709,7 +711,21 @@ namespace bp
 				fillRound({608 - cw, mid - 10, cw, 20}, ACCENT, R_CHIP);
 				drawTextMid("Recommended", 0, ON_ACCENT, 608 - cw / 2, mid, cw - 6, 2);
 			}
-			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total + 2);
+			// the engine, while it isn't on the card: an index.pb repository's sources need it (the offer again)
+			bool engineRow = mangaEngineMissing();
+			i = total + 2 - sc;
+			if (engineRow && i >= 0 && i < MS_ROWS)
+			{
+				Rect r = mangaSourcesRowRect(i);
+				bool at = cur == total + 2;
+				if (at) drawFocus(r);
+				int mid = r.y + r.h / 2;
+				drawGlyphMid(G_DOWNLOAD, 42, mid, at ? ACCENT : DIM);
+				drawTextMid("Download manga engine", 1, at ? ACCENT : TEXT, 62, mid - 10, 400);
+				drawTextMid("Needed for index.pb repositories", 0, at ? DIM_ON : DIM, 62, mid + 10, 400);
+				drawTextMid("234 MB", 0, at ? DIM_ON : DIM, 608, mid, 0, 1);
+			}
+			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total + 2 + (engineRow ? 1 : 0));
 		}
 
 		if (!javaStatus.empty()) drawTextMid(javaStatus, 0, DANGER, W / 2, 378, 560, 2);
@@ -728,6 +744,7 @@ namespace bp
 		if (mstModal != MSM_NONE) drawMangaSourceModal(p);
 		if (mstJavaModal != MJM_NONE) drawMangaJavaModal(p);
 		if (mstAvMenu) drawMangaAvMenu(p);
+		if (mengSheet) drawMangaEngineSheet();
 	}
 
 	void Ui::drawMangaSourceModal(const Player& p)

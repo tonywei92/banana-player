@@ -1933,6 +1933,8 @@ namespace bp
 		bool mangaEngineKey(Button b, Player& p);
 		void mangaEngineChoose(int i, Player& p);
 		void mangaEngineWatch(Player& p);
+		bool mangaEngineMissing() const;	// not on the card and not downloading: the offer and its row show
+		void mangaEngineOffer();			// the offer, again (the Repositories row)
 		std::string mangaEngineSignature() const;	// while downloading: its state and MB so far	// the download done (the sheet closes) or failed (back to its offer)
 		void drawMangaEngineSheet();
 		enum { MLS_NONE, MLS_HELP, MLS_MENU };
