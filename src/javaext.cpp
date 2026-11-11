@@ -988,8 +988,27 @@ namespace bp
 		std::string bd = bundleDir();
 		if (!bd.empty() && isFile(bd + "/java/bp-dns.jar")) cp += ":" + bd + "/java/bp-dns.jar";
 
-		std::vector<std::string> args = {java, "-Xmx256m", "-XX:+UseSerialGC", "-XX:TieredStopAtLevel=1",
-			"-Djava.awt.headless=true",
+		// The runtime's own options. An OpenJ9 runtime (IBM Semeru: lib/default/libj9gc29.so, which HotSpot hasn't) uses
+		// less memory for the same server; its class cache on the card makes later starts quicker. Trying it out on
+		// the handheld (2026-11-12): the engine at idle 290-300 MB where HotSpot holds 366-374 MB
+		auto parent = [](const std::string& path) { size_t at = path.rfind('/'); return at == std::string::npos ? std::string(".") : path.substr(0, at); };
+		const bool openj9 = isFile(parent(parent(java)) + "/lib/default/libj9gc29.so");
+		std::vector<std::string> args = {java, "-Xmx256m"};
+		if (openj9)
+		{
+			// -Xquickstart: lighter early compiling (it started in 37 s and answered its first requests slowly; the
+			// server mostly waits on the network); -Xms8m: the heap starts small and grows as it's used
+			args.push_back("-Xquickstart");
+			args.push_back("-Xms8m");
+			args.push_back("-Xshareclasses:name=bp,cacheDir=" + javaDir + "/classcache");
+			args.push_back("-Xtune:virtualized");
+		}
+		else
+		{
+			args.push_back("-XX:+UseSerialGC");
+			args.push_back("-XX:TieredStopAtLevel=1");
+		}
+		std::vector<std::string> rest = {"-Djava.awt.headless=true",
 			"-Dsuwayomi.tachidesk.config.server.rootDir=" + javaDir + "/data",
 			"-Dsuwayomi.tachidesk.config.server.ip=127.0.0.1",
 			"-Dsuwayomi.tachidesk.config.server.port=" + std::to_string(p),
@@ -997,6 +1016,8 @@ namespace bp
 			"-Dsuwayomi.tachidesk.config.server.initialOpenInBrowserEnabled=false",
 			"-Dsuwayomi.tachidesk.config.server.systemTrayEnabled=false",
 			"-cp", cp, "suwayomi.tachidesk.MainKt"};
+		args.insert(args.end(), rest.begin(), rest.end());
+		fprintf(stderr, "javaext: runtime %s\n", openj9 ? "OpenJ9" : "HotSpot");
 		// Secure DNS: bp-dns.jar's resolver asks Cloudflare over HTTPS for every name the extensions look up (read at
 		// start: a change of the setting reaches the next start)
 		if (secureDns.load() && cp.find("bp-dns.jar") != std::string::npos)
