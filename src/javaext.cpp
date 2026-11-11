@@ -1114,6 +1114,9 @@ namespace bp
 		// one line per request: a list that never fills is pinned to an unanswered or failed call
 		fprintf(stderr, "javaext: %s graphql #%llu -> %d, %zu bytes%s%s\n", clockStamp().c_str(),
 			(unsigned long long)serial, status, body.size(), error.empty() ? "" : ": ", error.c_str());
+		// an answer that is GraphQL's errors: its first lines in the log (the screen shows only the start of one)
+		if (body.size() < 4096 && body.find("\"errors\"") != std::string::npos)
+			fprintf(stderr, "javaext: graphql #%llu errors: %.600s\n", (unsigned long long)serial, body.c_str());
 		{
 			std::lock_guard<std::mutex> g(gqlLock);
 			bool wasActive = gqlActive == serial;

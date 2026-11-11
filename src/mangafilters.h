@@ -27,6 +27,9 @@ namespace bp
 		std::string sortBy;
 		bool sortAsc = false;
 		std::vector<std::string> multiDefault, includeDefault, excludeDefault;
+		// the filter's place in its source's own list (headers and separators counted), where that differs from
+		// its place here; -1: the same
+		int position = -1;
 	};
 
 	// The chosen values, in the same shape as the definitions. select/sort keep an option id (not an index, so a

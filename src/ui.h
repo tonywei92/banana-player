@@ -1298,7 +1298,7 @@ namespace bp
 		std::string mangaErrFor, mangaErrText;
 		Rect mangaErrBox() const { return {96, 120, 448, 220}; }
 		Rect mangaErrOk() const { return {240, 280, 160, 44}; }
-		void mangaErrCheck(const std::string& error);
+		void mangaErrCheck(const std::string& error, bool anyError = false);	// anyError: not only a browser check
 		void drawMangaErr();	// a video outside the reader asked the manga engine to stop (once)
 		void mangaVideoGuard(Player& p);	// (ui_manga_java.cpp)	// a video stopped because the extensions run: the notice says so a moment
 		mutable Uint32 extNoticeAt = 0;

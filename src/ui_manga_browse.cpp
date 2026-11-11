@@ -791,9 +791,9 @@ namespace bp
 		std::string javaStatus = mangaJavaStatusLine();
 		Rect st = mangaSrcStatusRect();
 		int sx1 = st.x + st.w, smid = st.y + st.h / 2;
-		if (!mangaSrcError.empty() && !browserCheckText(mangaSrcError)) drawTextMid(mangaSrcError, 0, DANGER, sx1, smid, st.w, 1);
-		// (starting is the notice at the top, on every page; only a failure stays said here)
-		else if (!javaStatus.empty() && mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed)
+		// (a source's error is the dialog's, not a line here; starting is the notice at the top, on every page; only
+		// the engine's failure stays said here)
+		if (!javaStatus.empty() && mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed)
 			drawTextMid(javaStatus, 0, DANGER, sx1, smid, st.w, 1);
 		else if (mangaSrcLoading && n > 0) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, sx1, smid, st.w, 1);
 		else if (mangaSrcTab == SRC_SEARCH && !mangaSrcQuery.empty())
@@ -826,13 +826,25 @@ namespace bp
 
 	// ---- the worker's answers ----
 
-	void Ui::mangaErrCheck(const std::string& error)
+	void Ui::mangaErrCheck(const std::string& error, bool anyError)
 	{
 		// (each error once: the same one again, from the source or the reader, isn't asked about twice)
 		if (error.empty() || error == mangaErrFor) return;
 		mangaErrFor = error;
 		bool ddos = false;
-		if (!browserCheckText(error, &ddos)) return;
+		if (!browserCheckText(error, &ddos))
+		{
+			if (!anyError) return;
+			// any other error of a source's: said in the dialog, never as a line beside the tabs
+			// (the first line only, without the engine's "Exception while fetching data (…) :" before it)
+			std::string e = error.substr(0, error.find_first_of("\r\n"));
+			size_t c = e.find(") : ");
+			if (e.compare(0, 9, "Exception") == 0 && c != std::string::npos) e = e.substr(c + 4);
+			mangaErrText = "The source didn\xE2\x80\x99t answer: " + e;
+			mangaErrOpen = true;
+			fprintf(stderr, "manga: source error (%s)\n", error.c_str());
+			return;
+		}
 		std::string l;
 		for (char c : error) l += (char)std::tolower((unsigned char)c);
 		size_t h = l.find("http error ");
@@ -862,8 +874,8 @@ namespace bp
 	{
 		// a source's error that is a browser check: the dialog (once per error). On a grid that has covers it is
 		// no error of the grid's: A opens the series picked, not Try again
-		mangaErrCheck(mangaSrcError);
-		if (page == Page::Manga && mangaView == 1 && !mangaSrcItems.empty() && browserCheckText(mangaSrcError))
+		mangaErrCheck(mangaSrcError, true);
+		if (page == Page::Manga && mangaView == 1 && !mangaSrcItems.empty() && !mangaSrcError.empty())
 		{
 			mangaSrcError.clear();
 			mangaSrcFailed = FAIL_NONE;

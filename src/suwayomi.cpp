@@ -328,14 +328,15 @@ namespace bp
 			{
 				const MangaFilter& d = defs[i];
 				const MangaFilterValue& v = vals[i];
+				int pos = d.position >= 0 ? d.position : (int)i;	// the source's own place, headers counted
 				if (d.type == "group")
 				{
-					path.push_back((int)i);
+					path.push_back(pos);
 					collectFilterLeaves(d.children, v.children, path, out);
 					path.pop_back();
 					continue;
 				}
-				path.push_back((int)i);
+				path.push_back(pos);
 				FilterLeaf leaf;
 				leaf.path = path;
 				leaf.def = &d;
@@ -694,10 +695,13 @@ namespace bp
 			const JVal* kids = f.find("filters");
 			if (kids && kids->kind == JVal::ARR)
 			{
+				int at = -1;
 				for (const JVal& c : kids->elems)
 				{
+					at++;
 					if (c.kind != JVal::OBJ) continue;
 					MangaFilter child;
+					child.position = at;
 					if (convertSuwayomiFilter(c, child)) out.children.push_back(std::move(child));
 				}
 			}
@@ -726,10 +730,14 @@ namespace bp
 		const JVal* filters = src->find("filters");
 		if (!filters || filters->kind != JVal::ARR) { error = "no filters list"; return false; }
 		out.clear();
+		// (the source counts its headers and separators: each filter keeps its own place for the search's positions)
+		int at = -1;
 		for (const JVal& f : filters->elems)
 		{
+			at++;
 			if (f.kind != JVal::OBJ) continue;
 			MangaFilter m;
+			m.position = at;
 			if (!convertSuwayomiFilter(f, m)) continue;	// a header or separator is dropped quietly
 			out.push_back(std::move(m));
 		}
