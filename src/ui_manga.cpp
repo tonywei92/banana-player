@@ -1240,13 +1240,16 @@ namespace bp
 			drawMangaCover({r.x + 12, r.y + 6, 36, 54}, title, false, 2, cp.seriesId);
 			drawTextMid(title, 0, ink, r.x + 56, r.y + 18, r.w - 64);
 			// ("Ch." only before a bare title: "Chapter 1" says it already)
-			bool says = cp.chapterTitle.rfind("Ch", 0) == 0 || cp.chapterTitle.rfind("ch", 0) == 0;
-			drawTextMid((says ? "" : "Ch. ") + cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, r.x + 56, r.y + 36, r.w - 64);
+			// ("Chapter 12" shortened to "Ch. 12": the card is a third of the panel, and the page must show whole)
+			std::string ch = cp.chapterTitle;
+			if (ch.rfind("Chapter ", 0) == 0) ch = "Ch. " + ch.substr(8);
+			bool says = ch.rfind("Ch", 0) == 0 || ch.rfind("ch", 0) == 0;
+			drawTextMid((says ? "" : "Ch. ") + ch + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, r.x + 56, r.y + 34, r.w - 64);
 			double frac = cp.pages > 0 ? std::clamp((cp.page + 1) / (double)cp.pages, 0.0, 1.0) : 0;
 			int w = (int)std::lround((r.w - 64) * frac);
-			drawLevel({r.x + 56, r.y + 54, r.w - 64, 4}, w, TRACK, at ? ACCENT : DIM);
+			drawLevel({r.x + 56, r.y + 50, r.w - 64, 4}, w, TRACK, at ? ACCENT : DIM);
 		}
-		drawTextMid("Library \xC2\xB7 " + std::to_string(mangaLib.size()) + " series", 0, DIM, 16, 194);
+		drawTextMid("Library \xC2\xB7 " + std::to_string(mangaLib.size()) + " series", 0, DIM, 16, 200);
 		int n = (int)mangaLib.size();
 		if (n == 0)
 		{

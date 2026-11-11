@@ -1372,8 +1372,8 @@ namespace bp
 		void mangaCoverCancelOffScreen();	// cancel fetches for URLs that scrolled away
 		void mangaCoverCancelAll();			// the page left: every in-flight cover fetch goes
 		bool mangaCoverOnFetched(MangaFetch::Result& r);	// true if the result was one of ours (a cover fetch)
-		Rect mangaTabRect(int i) const { return {24 + i * 120, 56, 112, 30}; }
-		Rect mangaCardRect(int i) const { return {12 + i * 208, 120, 200, 66}; }
+		Rect mangaTabRect(int i) const { return {24 + i * 120, 60, 112, 30}; }	// 60: clear of the header's back icon
+		Rect mangaCardRect(int i) const { return {12 + i * 208, 118, 200, 64}; }
 		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the grid's covers 124 apart
 		Rect mangaCoverRect(int i) const
 		{
@@ -1452,7 +1452,7 @@ namespace bp
 		void drawMangaSources(const Player& p);
 		void drawMangaSourceModal(const Player& p);
 		static constexpr int MS_ROW_TOP = 134, MS_ROWS = 4, MS_ROW_H = 58;
-		Rect mangaSourcesSegRect(int i) const { return {16 + i * 204, 96, 200, 26}; }
+		Rect mangaSourcesSegRect(int i) const { return {16 + i * 204, 100, 200, 26}; }	// 10 below the tabs
 		Rect mangaSourcesRowRect(int i) const { return {16, MS_ROW_TOP + i * MS_ROW_H, 608, MS_ROW_H - 4}; }
 		Rect mangaSourcesModalBox() const
 		{
