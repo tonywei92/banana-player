@@ -192,7 +192,10 @@ cp /src/packaging/launch.sh "$B/launch.sh"
 # Secure DNS for the Java extensions (java/bp-dns, built from source by its build.sh, small): the add-on loads it
 mkdir -p "$B/java" && cp /src/packaging/java/bp-dns.jar "$B/java/"
 echo "$VERSION" > "$B/VERSION"
-python3 /src/packaging/icon/make-icon.py "$B/share/banana-player/icon.png" 16
+# the tile's picture: an experiment's PNG when there is one (packaging/icon/app-icon-experiment.png: delete it to go
+# back), else the generated pixel art
+if [ -f /src/packaging/icon/app-icon-experiment.png ]; then cp /src/packaging/icon/app-icon-experiment.png "$B/share/banana-player/icon.png"
+else python3 /src/packaging/icon/make-icon.py "$B/share/banana-player/icon.png" 16; fi
 
 # what the player loads that BananaOS doesn't have: libmpv and everything it needs, minus the system's own
 SYSTEM='^(linux-vdso|ld-linux|libc\.|libm\.|libdl\.|libpthread\.|librt\.|libresolv\.|libstdc\+\+|libgcc_s|libSDL2|libasound|libfreetype|libz\.|libpng|libdrm|libEGL|libGLES|libGL\.|libgbm|libGLdispatch|libGLX|libX|libxcb|libwayland|libbz2|libbrotli|libcrypto|libssl|libcurl)'
