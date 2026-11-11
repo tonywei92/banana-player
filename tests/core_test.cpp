@@ -3327,7 +3327,7 @@ static void testPaged()
 
 static void testMangaStore()
 {
-	// Anonymous mode: the place is kept, the History doesn't move (a new chapter hidden, a known one keeps its time)
+	// Incognito mode: the place is kept, the History doesn't move (a new chapter hidden, a known one keeps its time)
 	{
 		MangaStore a;
 		MangaSeries sr;
@@ -7288,7 +7288,7 @@ static void testWeb()
 			"\"paused\":false,\"position\":1.5,\"positionAt\":42,\"duration\":0,\"speed\":1,\"volume\":0,"
 			"\"eq\":{\"on\":false,\"preset\":\"\",\"gains\":[-3,0,0,0,0,0,0,0,0,0]},\"fx\":\"\",\"loop\":\"one\","
 			"\"shuffled\":false,\"shuffleMode\":false,\"chapters\":[{\"title\":\"A\",\"start\":0}],\"chapter\":0,\"tracks\":null,"
-			"\"clients\":1,\"session\":{\"boot\":0,\"v\":0},\"playlistSerial\":0,\"liked\":false,\"showHiddenFolders\":false,\"mangaOn\":false}"));
+			"\"clients\":1,\"session\":{\"boot\":0,\"v\":0},\"playlistSerial\":0,\"liked\":false,\"showHiddenFolders\":false,\"mangaOn\":false,\"incognito\":false}"));
 
 		// the handheld's screen (its player left, or back to it) is news: the dashboard says "in the background"
 		{

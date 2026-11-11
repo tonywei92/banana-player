@@ -1090,7 +1090,7 @@ namespace bp
 			SCREEN_OFF_ROW = CLOCK_ROW + 1, EXT_NOTE = SCREEN_OFF_ROW + 1, MANGA_MODE_ROW = EXT_NOTE + 1,
 			MANGA_FIT_ROW = MANGA_MODE_ROW + 1, MANGA_HINGE_ROW = MANGA_FIT_ROW + 1, MANGA_PRELOAD_ROW = MANGA_HINGE_ROW + 1,
 			MANGA_CACHE_ROW = MANGA_PRELOAD_ROW + 1, MANGA_CLEAR_ROW = MANGA_CACHE_ROW + 1,
-			MANGA_JAVA_ROW = MANGA_CLEAR_ROW + 1, MANGA_ANON_ROW = MANGA_JAVA_ROW + 1,
+			MANGA_JAVA_ROW = MANGA_CLEAR_ROW + 1,
 			// Secure DNS is one of the REMEMBER switches (the last), so its id is that switch's: changeSetting's
 			// generic branch toggles it by that index
 			MANGA_DNS_ROW = TOGGLE_ROW + 19;
@@ -1101,7 +1101,7 @@ namespace bp
 		int volumePct = -1;	// as read when the quick settings opened, then as set there
 		bool quickOpen = false, quickDrag = false;
 		int quickCursor = 0, quickDragRow = -1;
-		enum QuickRow { Q_VOLUME, Q_BRIGHT, Q_BOTTOM, Q_SAME, Q_WEB, Q_QUIT };
+		enum QuickRow { Q_VOLUME, Q_BRIGHT, Q_BOTTOM, Q_SAME, Q_WEB, Q_INCOGNITO, Q_QUIT };
 		int quickSub = 0;	// Web dashboard's row: 0 its switch, 1 New PIN (LEFT/RIGHT)
 		std::vector<int> quickRows() const;
 		bool quickKey(Button b, Player& p);
@@ -1111,13 +1111,19 @@ namespace bp
 		void quickChoose(int row, Player& p);
 		void drawQuick(const Player& p);
 		// rows 62 apart, closer (56) when that many don't fit above the footer
-		int quickStep() const { return 74 + (int)quickRows().size() * 62 <= 436 ? 62 : 56; }
+		// the rows' spacing: roomy while they fit above the hints, closer as rows come (seven at most: both panels'
+		// brightness apart, the dashboard, incognito mode and quit)
+		int quickStep() const
+		{
+			int n = (int)quickRows().size();
+			return 74 + n * 62 <= 436 ? 62 : 74 + n * 56 <= 436 ? 56 : (436 - 74) / n;
+		}
 		Rect quickPanel() const { int h = 74 + (int)quickRows().size() * quickStep(); return {40, (436 - h) / 2, 560, h}; }
-		Rect quickRowRect(int i) const { return {56, quickPanel().y + 56 + i * quickStep(), 528, 54}; }
-		Rect quickPinBtn(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 164, r.y + 3, 160, 48}; }
-		Rect quickMinus(int i) const { Rect r = quickRowRect(i); return {r.x + 236, r.y + 3, 48, 48}; }
-		Rect quickBar(int i) const { Rect r = quickRowRect(i); return {r.x + 296, r.y + 17, 164, 20}; }
-		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + 472, r.y + 3, 48, 48}; }
+		Rect quickRowRect(int i) const { return {56, quickPanel().y + 56 + i * quickStep(), 528, std::min(54, quickStep() - 2)}; }
+		Rect quickPinBtn(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 164, r.y + (r.h - 48) / 2, 160, 48}; }
+		Rect quickMinus(int i) const { Rect r = quickRowRect(i); return {r.x + 236, r.y + (r.h - 48) / 2, 48, 48}; }
+		Rect quickBar(int i) const { Rect r = quickRowRect(i); return {r.x + 296, r.y + r.h / 2 - 10, 164, 20}; }
+		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + 472, r.y + (r.h - 48) / 2, 48, 48}; }
 		void setBrightness(Backlight::Panel panel, int permille, Player& p);
 		static constexpr int SET_Y = 92, SET_H = 46, SET_SHOWN = 7, HELP_Y = 400;
 		// a settings group's tile (Settings opens on them: two to a row)
@@ -2222,10 +2228,11 @@ namespace bp
 		static constexpr Uint32 LIST_PULSE_MS = 1400;
 		bool markAnim = false;	// drawBattery drew the playing mark moving
 		int markW(const Player& p) const;	// its room in the header (0 none)
-		// Manga settings' Anonymous mode: reading adds nothing to the History (places, read marks, the library and
-		// downloads go on as ever). Never saved: off at every start. Its mark sits left of the clock while it's on
-		bool mangaAnon = false;
-		int anonW() const { return mangaAnon ? 18 + 10 : 0; }
+		// Incognito mode (Quick settings' Enter incognito mode): nothing played goes in Recent (Player::incognito) and
+		// reading adds nothing to the manga History (places, read marks, resume points, the library and downloads go
+		// on as ever). Never saved: off at every start. Its mark sits left of the clock while it's on
+		bool incognito = false;
+		int incognitoW() const { return incognito ? 18 + 10 : 0; }
 		bool markLive(const Player& p) const;	// it moves: what plays plays (a page's: as the page does)
 		void drawMark(int right, int cy, const Player& p);
 		std::string homeListedFor;	// what played as Home's Recent was listed (it's listed again when that changes)

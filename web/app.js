@@ -4,7 +4,7 @@ import { B, S, SUBS, browserPlay, browserStop, continueHere, ctl, el, hereNow, s
 import { applySnap, closeSSE, openSSE } from './js/events.js';
 import { fetchT, get, post } from './js/api.js';
 import { Q_DESK, Q_WIDE, notify, set, store, useStore } from './js/store.js';
-import { Art, Modal, Seek, Storage, coverUrl, useHeld, useLater, useMedia, useTick } from './js/components.js';
+import { Art, IncognitoMark, Modal, Seek, Storage, coverUrl, useHeld, useLater, useMedia, useTick } from './js/components.js';
 import { depth, filesHash, go } from './js/router.js';
 import { LikeBtn, addToPlaylist, likable, loadLikes, newPlaylistDialog, plUsed } from './js/plshared.js';
 import { Icon, dimsCache } from './js/icons.js';
@@ -121,11 +121,11 @@ function Side({ nav }) {
 		<nav aria-label="Main" style="display:contents">${navItems.map(([k, l, ic, h]) => html`<button class="nav" aria-current=${r.page === k ? 'page' : undefined} onClick=${() => nav(k, h)}><${Icon} n=${ic} k=${2} />${l}</button>`)}</nav>
 		<${SidePls} />
 		<div class="box surface hhcard" role="group" aria-label="Your handheld">
-			<div class="hrow"><span class=${'cdot' + (conn ? '' : ' off')}></span><span class="hname">${conn ? 'Handheld' : 'Reconnecting…'}</span><span class="grow"></span>${bat != null && html`<span class="num dim" style="font-size:13px">${bat}%</span>`}</div>
+			<div class="hrow"><span class=${'cdot' + (conn ? '' : ' off')}></span><span class="hname">${conn ? 'Handheld' : 'Reconnecting…'}</span><span class="grow"></span><${IncognitoMark} />${bat != null && html`<span class="num dim" style="font-size:13px">${bat}%</span>`}</div>
 			${root && root.free != null && html`<${Storage} free=${root.free} total=${root.total} />`}
 			<button class="btn sm" onClick=${signOut}>Sign out</button>
 			<div class="lnote"><${Icon} n="lock" k=${1} />Not encrypted: home Wi-Fi only</div></div>
-		<div class="hh-mini"><span class=${'cdot' + (conn ? '' : ' off')} title=${conn ? 'Handheld connected' : 'Reconnecting…'}></span>${bat != null && html`<span class="num">${bat}%</span>`}
+		<div class="hh-mini"><span class=${'cdot' + (conn ? '' : ' off')} title=${conn ? 'Handheld connected' : 'Reconnecting…'}></span><${IncognitoMark} />${bat != null && html`<span class="num">${bat}%</span>`}
 			<button class="ib" aria-label="Sign out" title="Sign out" onClick=${signOut}><${Icon} n="power" k=${2} /></button></div>
 	</aside>`;
 }

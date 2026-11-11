@@ -234,6 +234,9 @@ namespace bp
 		bool paused = false, loaded = false;
 		bool finished = false;	// the file played to its end (the caller moves on, then clears it)
 		bool quit = false;		// mpv itself is going away
+		// Incognito mode (the Ui sets it from Quick settings, never saved): what plays stays out of Recent; where
+		// a film stopped is still kept
+		bool incognito = false;
 		AspectMode aspect = AspectMode::Fit;
 		Settings settings;
 		std::string title, error;

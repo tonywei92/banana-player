@@ -1180,7 +1180,7 @@ namespace bp
 		}
 		// the clock: its minute
 		if (!clockText(p).empty()) photo += "|clk" + std::to_string((long long)time(nullptr) / 60);
-		if (mangaAnon) photo += "|anon";	// its mark beside the clock, its row in Manga settings
+		if (incognito) photo += "|incognito";	// its mark beside the clock, its row in Manga settings
 		// behind the browser: the mini bar (what it shows, its press, its flash), the rows' chip, the header's mark (its
 		// frame while it moves), what was stopped for a photo
 		{

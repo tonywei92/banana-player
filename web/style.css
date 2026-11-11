@@ -1003,3 +1003,7 @@ input[type=range] { touch-action: pan-y; }
 .mchap { display: flex; align-items: center; gap: var(--s3); padding: 8px var(--s3); cursor: pointer; }
 .mchap input[type="checkbox"] { width: 20px; height: 20px; flex: none; accent-color: var(--yellow); }
 .mchap input[type="checkbox"]:disabled { opacity: .4; }
+
+/* incognito mode's mark (the handheld's Quick settings): the accent, beside the battery and the handheld button */
+.incog { display: inline-flex; align-items: center; color: var(--yellow); margin: 0 6px; }
+.hdr-end { display: inline-flex; align-items: center; }

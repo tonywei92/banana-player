@@ -220,7 +220,7 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **B** (or **Back**) | Back to the list: it keeps playing (see [Playing while you browse](#playing-while-you-browse)) |
 | **F + L2** | Screenshot of both screens (saved in the card's `screenshots` folder) |
 | **F + START** | Quit Banana Player at once (anywhere; your place is kept) |
-| **Menu/Function** (F) | Quick settings: volume, brightness, Same brightness for both screens, Web dashboard, Quit |
+| **Menu/Function** (F) | Quick settings: volume, brightness, Same brightness for both screens, Web dashboard, incognito mode, Quit |
 
 **By touch:**
 - **Progress bar:** touch it to jump there. Hold and drag to scrub, and the picture follows your finger.
@@ -953,7 +953,6 @@ them while you read. **B** goes back where you came from.
 | **Extension support** | Not installed / Downloading / Installed · 344 MB / Running / Failed | Not installed | Needed for repositories whose address ends in index.pb or index.min.json: about 234 MB on the card, about 400 MB of memory while one of their sources is open. A installs; A twice removes. |
 | **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |
 | **Reading history** | On / Off | On | Off clears it. |
-| **Anonymous mode** | On / Off | Off | While it's on, reading adds nothing to the History (your places, read marks, library and downloads work as ever), and a hat-and-glasses mark sits beside the clock. Never saved: off again whenever Banana Player starts. |
 | **Secure DNS** | Off / Cloudflare (1.1.1.1) | Off | Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them. |
 | Repositories | | | Repositories are added by you. Banana Player doesn't provide or check their content. |
 
@@ -991,6 +990,10 @@ Press the **Menu/Function** button (F), anywhere, for a panel on the bottom scre
   **Bottom** each get their own.
 - **Web dashboard** (a tick box): on or off. While it's on, **Settings** (Right, then A, or a tap) opens its page: the
   QR code, the address, the PIN and **New PIN**. See [Web dashboard](#web-dashboard).
+- **Enter incognito mode** (a tick box): while it's on, nothing you play goes into Recent and nothing you read
+  goes into the manga History; where you stopped a film, your reading places and read marks, playlists, Liked and
+  downloads all work as usual. A hat-and-glasses mark sits beside the clock while it's on. It's never saved: off again
+  whenever Banana Player starts.
 - **Quit Banana Player.**
 
 **F** again, **B** or a tap outside the panel closes it. (F with another button, like F + L2 or F + volume, does that

@@ -525,7 +525,7 @@ namespace bp
 		std::string c = clockText(p);
 		if (!c.empty()) left -= (left == 616 ? 0 : 10) + (int)std::lround(textWidth(c, 0) / sx);
 		left -= markW(p);
-		left -= anonW();
+		left -= incognitoW();
 		return left;
 	}
 
@@ -572,8 +572,8 @@ namespace bp
 				drawMark(cr, y + 8, p);
 				cr -= 18 + 10;
 			}
-			// Anonymous mode, while it's on (Manga settings)
-			if (anonW() && cr - 18 >= minX) drawGlyphMid(G_INCOGNITO, cr - 9, y + 8, ACCENT);
+			// Incognito mode, while it's on (Quick settings)
+			if (incognitoW() && cr - 18 >= minX) drawGlyphMid(G_INCOGNITO, cr - 9, y + 8, ACCENT);
 		};
 		if (battery.percent < 0)
 		{

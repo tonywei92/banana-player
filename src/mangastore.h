@@ -54,7 +54,7 @@ namespace bp
 
 		// The chapter's place, added or changed. A chapter read to its last page counts as read, and the series'
 		// lastRead moves to p.at.
-		// history false (Anonymous mode): the place and the read mark are kept as ever, but the History doesn't move:
+		// history false (Incognito mode): the place and the read mark are kept as ever, but the History doesn't move:
 		// a chapter new to the store starts hidden from it, one already there keeps its time and its row, and the
 		// series' last read stays as it was
 		void setProgress(const ChapterProgress& p, bool history = true);

@@ -576,7 +576,7 @@ namespace bp
 		applyPhotoView();	// a video's: none
 
 		// photos aren't kept in Recent: fifty of them would push every video out
-		if (settings.keepHistory && !isPhoto && (settings.keepNetHistory || !isNet))
+		if (settings.keepHistory && !incognito && !isPhoto && (settings.keepNetHistory || !isNet))
 		{
 			played.add(path);
 			recentSer++;

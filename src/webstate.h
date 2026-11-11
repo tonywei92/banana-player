@@ -55,6 +55,7 @@ namespace bp
 		bool liked = false;	// what plays is in the Liked playlist
 		bool showHiddenFolders = false;	// the setting: folders with a ".hidden" file are listed
 		bool mangaOn = false;	// the setting: the manga reader is on (the dashboard's Manage extensions card)
+		bool incognito = false;	// incognito mode (the handheld's Quick settings): the page shows its mark, can't switch it
 	};
 
 	// The JSON a page gets in `event: state`. Keys: path, title, artist, album, kind, source {kind, title, id, index,

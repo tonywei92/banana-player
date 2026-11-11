@@ -233,6 +233,7 @@ namespace bp
 			s.playlistSerial = u.playlistSerial();
 			s.showHiddenFolders = p.settings.showHiddenFolders;
 			s.mangaOn = p.settings.mangaOn;
+			s.incognito = p.incognito;
 			return s;
 		}
 

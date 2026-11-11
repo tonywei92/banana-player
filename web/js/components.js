@@ -166,10 +166,18 @@ function appMenu() {
 	const bits = [store.reconnecting ? 'Reconnecting…' : 'Connected', sn && sn.battery >= 0 ? 'battery ' + sn.battery + '%' : '', r && r.free != null ? fmtSize(r.free) + ' free' : ''].filter(Boolean).join(' · ');
 	openSheet('Your handheld', 'card', [{ label: 'Sign out', icon: 'power', fn: signOut }], { sub: bits });
 }
+// incognito mode's mark while the handheld is in it (switched on the handheld only, in its Quick settings)
+export function IncognitoMark() {
+	if (!(store.snap && store.snap.incognito)) return null;
+	const t = 'Incognito mode is on: nothing played or read goes into the history. Switch it in the handheld\u2019s Quick settings (F).';
+	return html`<span class="incog" role="img" aria-label="Incognito mode is on" title=${t}><${Icon} n="incognito" k=${2} /></span>`;
+}
+
 export function AppMenu() {
 	const wide = useMedia(Q_WIDE);
 	if (wide) return null;
-	return html`<button class="ib" aria-label="Your handheld" aria-haspopup="dialog" onClick=${appMenu}><${Icon} n="card" k=${2} /></button>`;
+	// (the mark and the button together at the header's end: the header spreads its children apart)
+	return html`<span class="hdr-end"><${IncognitoMark} /><button class="ib" aria-label="Your handheld" aria-haspopup="dialog" onClick=${appMenu}><${Icon} n="card" k=${2} /></button></span>`;
 }
 
 /* the handheld, drawn small: two panels, the bottom one showing the QR (sign-in) or dark (the down screen) */

@@ -291,6 +291,7 @@ namespace bp
 #ifdef BP_WEB
 		r.push_back(Q_WEB);
 #endif
+		r.push_back(Q_INCOGNITO);
 		r.push_back(Q_QUIT);
 		return r;
 	}
@@ -367,6 +368,13 @@ namespace bp
 			// its Settings button: the Web dashboard page (the QR code, the PIN, New PIN), the quick settings put away
 			if (quickSub == 1 && p.settings.webDashboard) { quickOpen = false; openWeb(); }
 			else webTurn(!p.settings.webDashboard, p);
+		}
+		else if (row == Q_INCOGNITO)
+		{
+			// the Ui's and the player's, never a setting saved: off at every start
+			incognito = !incognito;
+			p.incognito = incognito;
+			fprintf(stderr, "incognito mode %s\n", incognito ? "on" : "off");
 		}
 		else if (row == Q_QUIT) quitRequested = true;
 	}
@@ -474,6 +482,17 @@ namespace bp
 				fillRound({box.x + 2, box.y + 2, box.w - 4, box.h - 4}, at ? BUTTON : SURFACE, R_FIELD - 2);
 				if (p.settings.sameBrightness) drawGlyphMid(G_CHECK, box.x + box.w / 2, box.y + box.h / 2, ACCENT);
 				drawTextMid("Same brightness for both screens", 1, at ? ACCENT : TEXT, r.x + 56, mid, r.w - 66);
+				continue;
+			}
+			if (row == Q_INCOGNITO)
+			{
+				// a tick box, and what it keeps out of the history
+				Rect box{r.x + 16, mid - 13, 26, 26};
+				fillRound(box, at ? ACCENT : TEXT, R_FIELD);
+				fillRound({box.x + 2, box.y + 2, box.w - 4, box.h - 4}, at ? BUTTON : SURFACE, R_FIELD - 2);
+				if (incognito) drawGlyphMid(G_CHECK, box.x + box.w / 2, box.y + box.h / 2, ACCENT);
+				drawTextMid("Enter incognito mode", 1, at ? ACCENT : TEXT, r.x + 56, mid, 300);
+				drawGlyphMid(G_INCOGNITO, r.x + r.w - 24, mid, incognito ? ACCENT : (at ? DIM_ON : DIM));
 				continue;
 			}
 			if (row == Q_WEB)
