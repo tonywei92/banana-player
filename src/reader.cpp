@@ -594,7 +594,7 @@ namespace bp
 
 	void MangaReader::setFullscreen(bool on, int hinge480)
 	{
-		int gap = viewH > 0 ? (int)std::lround(std::clamp(hinge480, 0, 120) * viewH / 480.0) : 0;
+		int gap = viewH > 0 ? (int)std::lround(std::clamp(hinge480, 0, 200) * viewH / 480.0) : 0;
 		if (on == full && gap == gapPx) return;
 		// the page read stays: the strip keeps its place (only its end moves), the paged row opens it again
 		int cur = page();

@@ -191,8 +191,8 @@ namespace bp
 		}
 		else if (row == MANGA_HINGE_ROW)
 		{
-			// 0 to 80 in steps of 4 (a value a file kept from before may sit off the step: it snaps onto one)
-			int h = std::clamp(s.mangaHinge + dir * 4, 0, 80);
+			// 0 to 200 in steps of 4 (a value a file kept from before may sit off the step: it snaps onto one)
+			int h = std::clamp(s.mangaHinge + dir * 4, 0, 200);
 			s.mangaHinge = h - h % 4;
 			// both panels are one view while reading fullscreen: the reader relayouts now, not at the next open
 			if (readerStatus.open && readerStatus.fullscreen)

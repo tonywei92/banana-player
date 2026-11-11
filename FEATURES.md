@@ -935,7 +935,7 @@ them while you read. **B** goes back where you came from.
 | **Reading mode** | Right to left / Left to right / Strip | Strip | How a series opens until you pick one for it (X while reading). |
 | **Page fit** | Page / Width / Fill | Page | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. Fill: the page covers the screen, cropped either way, panned in reading order. |
 | **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
-| **Hinge gap** | 0 to 80 px | 36 px | The strip skipped under the hinge in fullscreen, so pictures line up across the gap. |
+| **Hinge gap** | 0 to 200 px | 36 px | The strip skipped under the hinge in fullscreen, so pictures line up across the gap. |
 | **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT or B leaves. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 1 GB | Pages kept on the card to read again without downloading; past the cap the least recently read go first. Covers: 50 MB more. |

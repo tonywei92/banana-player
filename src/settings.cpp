@@ -396,7 +396,7 @@ namespace bp
 			for (int v = 0; v < MANGA_CACHES; v++)
 				if (key == "manga-cache" && value == MANGA_CACHE_IDS[v]) s.mangaCacheSize = v;
 			// (0 to 120: a gap no panel pair has more of)
-			if (key == "manga-hinge") { int g = atoi(value.c_str()); if (g >= 0 && g <= 120 && !value.empty()) s.mangaHinge = g; }
+			if (key == "manga-hinge") { int g = atoi(value.c_str()); if (g >= 0 && g <= 200 && !value.empty()) s.mangaHinge = g; }
 			if (key == "pan-area" && (value == "left" || value == "right")) s.panRight = value == "right";
 			if (key == "pan-drag" && (value == "photo" || value == "box")) s.dragBox = value == "box";
 			if (key == "eq" && (value == "on" || value == "off")) s.eqOn = value == "on";
