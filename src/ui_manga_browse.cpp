@@ -23,7 +23,7 @@ namespace bp
 		// the grid: two rows of the Library's covers in view under the tabs (its rows are 186 apart); cut above the
 		// status line, which is above the mini bar's place
 		constexpr int SRC_ROWS_SHOWN = 2;
-		constexpr int SRC_CLIP_TOP = 96, SRC_CLIP_BOTTOM = 448;
+		constexpr int SRC_CLIP_TOP = 96;
 
 		std::string pageLine(int page, int pages)
 		{
@@ -577,8 +577,10 @@ namespace bp
 	{
 		int n = (int)mangaSrcItems.size(), rows = (n + MG_COLS - 1) / MG_COLS;
 		int lastRow = std::max(mangaSrcCursor / MG_COLS, mangaSrcScroll + SRC_ROWS_SHOWN - 1);
-		// two rows before the end, the next page is asked for (the worker's "more"); one at a time
-		if (mangaSrcMore && !mangaSrcLoading && rows > 0 && lastRow >= rows - 2) mangaSourceLoad(mangaSrcPage + 1);
+		// the first three pages at once (a source's page is often only a row or two), then two rows before the end;
+		// one at a time. Not after a failure (A or a tap tries again)
+		if (!mangaSrcMore || mangaSrcLoading || !mangaSrcError.empty() || rows == 0) return;
+		if (mangaSrcPage < 3 || lastRow >= rows - 2) mangaSourceLoad(mangaSrcPage + 1);
 	}
 
 	bool Ui::mangaSourcePointer(const Pointer& pt, int x, int y, Player& p)
@@ -590,7 +592,11 @@ namespace bp
 			if (pt.kind == Pointer::Move && mangaSrcDragY >= 0)
 			{
 				int dy = y - mangaSrcDragY;
-				if (std::abs(dy) > 12) mangaSrcDragMoved = true;
+				if (std::abs(dy) > 12 && !mangaSrcDragMoved)
+				{
+					mangaSrcDragMoved = true;
+					fprintf(stderr, "manga: grid drag from y %d (scroll %d of %d rows)\n", mangaSrcDragY, mangaSrcScroll, rows);
+				}
 				if (mangaSrcDragMoved && rows > 0)
 				{
 					int s = std::clamp(mangaSrcDragScroll - (int)std::lround(dy / (double)MG_SRC_STEP), 0,
@@ -643,9 +649,9 @@ namespace bp
 		for (int i = mangaSrcScroll * MG_COLS; i < n; i++)
 		{
 			Rect r = mangaSrcCoverRect(i);
-			if (r.y >= SRC_CLIP_BOTTOM) break;
+			if (r.y >= mangaSrcClipBottom()) break;
 			// (the part cut at the grid's foot isn't on screen, so a tap there isn't on it)
-			if (y < SRC_CLIP_BOTTOM && r.hit(x, y))
+			if (y < mangaSrcClipBottom() && r.hit(x, y))
 			{
 				// opened as the finger lifts, if it didn't drag
 				mangaSrcDragTap = i;
@@ -653,7 +659,7 @@ namespace bp
 			}
 		}
 		// anywhere on the grid: a drag may start here
-		if (y >= SRC_CLIP_TOP && y < SRC_CLIP_BOTTOM)
+		if (y >= SRC_CLIP_TOP && y < mangaSrcClipBottom())
 		{
 			mangaSrcDragY = y;
 			mangaSrcDragScroll = mangaSrcScroll;
@@ -684,12 +690,12 @@ namespace bp
 		// covers are fetched only while their card is on screen and cancelled when it scrolls away
 		mangaCoverOnScreen.clear();
 		SDL_Rect clip{0, (int)std::lround(SRC_CLIP_TOP * sy), (int)std::lround(W * sx),
-			(int)std::lround((SRC_CLIP_BOTTOM - SRC_CLIP_TOP) * sy)};
+			(int)std::lround((mangaSrcClipBottom() - SRC_CLIP_TOP) * sy)};
 		SDL_RenderSetClipRect(ren, &clip);
 		for (int i = mangaSrcScroll * MG_COLS; i < n; i++)
 		{
 			Rect r = mangaSrcCoverRect(i);
-			if (r.y >= SRC_CLIP_BOTTOM) break;
+			if (r.y >= mangaSrcClipBottom()) break;
 			bool at = i == mangaSrcCursor;
 			drawMangaCover(r, mangaSrcItems[i].title, at, 4, "", mangaSrcItems[i].cover, &mangaSrcCoverHeaders);
 			drawTextMid(mangaSrcItems[i].title, 0, at ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h + 13, r.w, 2);
@@ -697,7 +703,16 @@ namespace bp
 		SDL_RenderSetClipRect(ren, nullptr);
 		// anything still in flight but no longer on screen: the card scrolled away, its fetch goes
 		mangaCoverCancelOffScreen();
-		if (rows > 1) drawScrollBar(MG_SRC_TOP, SRC_CLIP_BOTTOM - MG_SRC_TOP - 4, mangaSrcScroll, SRC_ROWS_SHOWN, rows);
+		// a next page of the grid on its way: a notice over the grid's foot (the first page's is the status line)
+		if (mangaSrcLoading && mangaSrcPage > 1 && mangaSrcError.empty())
+		{
+			std::string t = "Loading more\xE2\x80\xA6";
+			int tw = (int)std::lround(textWidth(t, 0) / sx) + 32;
+			Rect r{W / 2 - tw / 2, mangaSrcClipBottom() - 40, tw, 30};
+			drawBox(r, SURFACE, R_CHIP, ACCENT);
+			drawTextMid(t, 0, TEXT, W / 2, r.y + r.h / 2, 0, 2);
+		}
+		if (rows > 1) drawScrollBar(MG_SRC_TOP, mangaSrcClipBottom() - MG_SRC_TOP - 4, mangaSrcScroll, SRC_ROWS_SHOWN, rows);
 		// the state under the grid: the source's error, a job running, or the query the Search tab ran
 		// (beside the tabs, right-aligned: the grid has the panel down to the hint bar)
 		std::string javaStatus = mangaJavaStatusLine();
@@ -739,6 +754,8 @@ namespace bp
 	void Ui::mangaBrowsePoll(const Player& p)
 	{
 		if (!mangaNet || !mangaNet->started()) return;
+		// a source's grid fills itself: its first pages, and the next near its end (the answer of the last landed)
+		if (page == Page::Manga && mangaView == 1) mangaSourceMaybeMore();
 		for (auto& r : mangaNet->takeWorker())
 		{
 			// a source's filters (5.2.1): kept under the source the answer names, and dropped when that source's later

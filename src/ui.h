@@ -1610,7 +1610,9 @@ namespace bp
 		// a finger on the grid: where it went down, the scroll then, whether it has moved (a drag, not a tap)
 		int mangaSrcDragY = -1, mangaSrcDragScroll = 0, mangaSrcDragTap = -1;
 		bool mangaSrcDragMoved = false;
-		void mangaSourceMaybeMore();	// near the grid's end (cursor or scroll): its next page asked for
+		void mangaSourceMaybeMore();
+		// the grid's foot: down to the hint bar, or above the mini bar while it shows (a touch there is the bar's)
+		int mangaSrcClipBottom() const { return miniUp ? 418 : 448; }	// near the grid's end (cursor or scroll): its next page asked for
 		Rect mangaSrcStatusRect() const { return {436, 64, 188, 30}; }	// right of the tabs: Loading…, an error (tap: Try again)
 		bool mangaSrcMore = false, mangaSrcLoading = false;
 		std::string mangaSrcError;				// the source's one-line message, while it shows
