@@ -156,8 +156,9 @@ extension's code is in the binary but nothing of it is constructed (as `WebServe
 
 Layout follows today's pages: `drawHeader` (back, title, clock), rows with `drawFocus`, `drawBox` tiles and cards,
 `drawHints` footer. The Extensions section's top is the drawer (`EXTDIR`, today's placeholder page). Inside the Manga
-reader the five pages are tabs under the header (Library · History · Browse · Sources · Downloads), stepped with **L/R** (the reader is an app, not a section, so L/R are
-free there; X is the page's own action, and **START** opens **Manga settings**).
+reader the four pages are tabs under the header (Library · History · Browse · Downloads), stepped with **L/R** (the
+reader is an app, not a section, so L/R are free there; X is the page's own action, and **START** opens **Manga
+settings**). **Sources** is a page of its own, opened with **X** on Browse (its lists otherwise take L/R).
 
 | Page | Bottom panel | Top panel |
 |---|---|---|
@@ -168,7 +169,7 @@ free there; X is the page's own action, and **START** opens **Manga settings**).
 | **Library** | *Continue reading* strip (3 cards: cover, title, "Ch. 12 · p. 14/38", progress line), then a 5-wide cover grid with unread badges | the focused series: cover, title, author, status, synopsis, "12 of 48 read" |
 | **History** | rows: cover thumb, series, chapter, page, when; X: remove, clear | the focused series, as above |
 | **Browse** | sources list (On this handheld, network folders, servers, installed sources; language chip, last used); then Popular / Latest / Search tabs and a cover grid that loads 2 rows ahead | the focused result's details (fetched once it rests 400 ms) |
-| **Sources** | Installed / Available / Repositories, stepped with Left/Right (the list only uses Up/Down; X stays Options) | the focused source: repository, version, language, what it was checked against |
+| **Sources** | its own page (**X** on Browse); Installed / Available / Repositories, stepped with Left/Right (the list only uses Up/Down; X stays Options) | the focused source: repository, version, language, what it was checked against |
 | **Series** | cover, title, status line, Resume (A), Download (R2), Refresh (L2), In library heart (Y), chapter list (unread dot, read dimmed with a check, "p. 14/38" on the started one, a download mark: queued, progress, on the card), X: Options (mark read/unread, from here down, refresh, sort, delete download) | cover large, synopsis, genres |
 | **Download** (sheet from the series page) | This chapter · Next 5 unread · All unread (37) · Choose chapters… (the list in select mode) | how much it will take, room left |
 | **Downloads** | a storage line (downloads' size, the card's free space); the queue (series, chapter, pages done, pause / resume); then what's on the card by series (chapters, size), X: delete | the focused series |
@@ -182,8 +183,9 @@ Banana Player's Settings keeps no Extensions tile: the reader's rows are on its 
 
 Every page keeps the browser's grammar: D-pad move, A open, B back (B at the Manga reader's top goes back to the
 drawer, B in the drawer goes Home), X the page's own action, START the page's own menu (in the drawer: Manage
-extensions; on a Manga page: Manga settings), L/R the reader's pages
-(Library · History · Browse · Sources · Downloads; inside a source, Popular · Latest · Search), touch everywhere (tap = A, the back icon = B, drag lists). The reader:
+extensions; on a Manga page: Manga settings), L/R the reader's tabs
+(Library · History · Browse · Downloads; inside a source, Popular · Latest · Search), touch everywhere (tap = A, the back
+icon = B, drag lists). The reader:
 
 **D-pad Left/Right do all the moving** (owner's decision); Up/Down zoom. One press is one step; held, it repeats.
 
@@ -468,8 +470,9 @@ them again and stops its threads. Nothing is deleted by turning it off: the libr
 for it to come back.
 
 The extension's own settings are **not** in Banana Player's Settings (which has no Extensions tile): they are a page of
-their own, **Manga settings**, inside the Manga app. **START** opens it on any Manga page (the five tabs and a series
-page), the gear (**X**) in **Manage extensions** opens it too, and the Reading menu's last row opens it while you read.
+their own, **Manga settings**, inside the Manga app. **START** opens it on any Manga page (the four tabs, the Sources
+page and a series page), the gear (**X**) in **Manage extensions** opens it too, and the Reading menu's last row opens it
+while you read.
 
 - **Manage extensions** rows: icon, name, one line on what it does, **On/Off**. A toggles; X ("Settings") or Right opens
   that extension's own settings page (the Manga settings page below). Off: it leaves the drawer and stops; nothing is

@@ -9,7 +9,7 @@
 
 namespace bp
 {
-	// ---- the manga reader's Sources tab: installed sources, what the repositories offer, and the repositories ----
+	// ---- the manga reader's Sources page: installed sources, what the repositories offer, and the repositories ----
 
 	namespace
 	{
@@ -65,6 +65,32 @@ namespace bp
 		// a Java repository's extensions are asked as soon as there is a host to ask (a use: it starts it)
 		if (mangaJavaInstalled() && mangaNet->javaSources().hasRepos() && !mangaNet->javaSources().extensionsKnown())
 			mangaJavaRefresh();
+	}
+
+	void Ui::openMangaSources(Player& p)
+	{
+		// X on Browse: a page of its own, so its lists keep their place while Browse is browsed again
+		page = Page::MangaSources;
+		mangaTab = MT_BROWSE;
+		mangaSourcesOpen(p);
+	}
+
+	bool Ui::mangaSourcesPageKey(Button b, Player& p)
+	{
+		// a sheet takes the keys first (B closes it, as it always has)
+		if (mangaSourcesModal()) return mangaSourcesKey(b, p);
+		if (b == Button::B)
+		{
+			// back to Browse, as a series page returns to the tab it came from
+			page = Page::Manga;
+			mangaTab = MT_BROWSE;
+			return false;
+		}
+		// the app's settings (it comes back to this page)
+		if (b == Button::Start) { openMangaSettings(); return false; }
+		// (the mini bar shown here says SELECT goes to what plays)
+		if (b == Button::Select && nowPlayable(p)) { goNowPlaying(p); return false; }
+		return mangaSourcesKey(b, p);
 	}
 
 	int Ui::mangaSourcesRows(const Player& p) const
@@ -470,6 +496,13 @@ namespace bp
 
 	// ---- the drawing ----
 
+	void Ui::drawMangaSourcesPage(const Player& p)
+	{
+		// the page has its own header (and so its "<", which is B): the segments start under it, as the tab's did
+		drawHeader("Sources", p);
+		drawMangaSources(p);
+	}
+
 	void Ui::drawMangaSources(const Player& p)
 	{
 		for (int i = 0; i < MANGA_SOURCES_TABS; i++)
@@ -488,7 +521,8 @@ namespace bp
 		if (cur < sc) sc = cur;
 		if (cur >= sc + MS_ROWS) sc = cur - MS_ROWS + 1;
 
-		std::string javaStatus = mangaJavaStatusLine();
+		// (starting and downloading are the notice at the top of every page now; a failure stays said here)
+		std::string javaStatus = mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed ? mangaJavaStatusLine() : "";
 		if (mstTab == MST_INSTALLED)
 		{
 			auto list = mangaSourcesInstalled();
@@ -593,7 +627,7 @@ namespace bp
 			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total + 1);
 		}
 
-		if (!javaStatus.empty()) drawTextMid(javaStatus, 0, ACCENT, W / 2, 378, 560, 2);
+		if (!javaStatus.empty()) drawTextMid(javaStatus, 0, DANGER, W / 2, 378, 560, 2);
 
 		// the note at the foot of every sub-list (design 9's Repositories row)
 		auto lines = wrapText(NOTE, 0, 552, 2);

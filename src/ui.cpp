@@ -216,6 +216,7 @@ namespace bp
 		// Manage extensions and the manga reader's pages: their own keys (the sheet over the first)
 		if (page == Page::Extensions || page == Page::Manga) return extKey(b, p);
 		if (page == Page::MangaSeries || page == Page::MangaRead) return mangaKey(b, p);
+		if (page == Page::MangaSources) return mangaSourcesPageKey(b, p);
 		if (page == Page::MangaSettings) return mangaSettingsKey(b, p);
 		if (page == Page::Settings)
 		{
@@ -470,8 +471,8 @@ namespace bp
 		if (plDirty && SDL_GetTicks() - plDirtyAt >= 1000) plFlush(p);
 		// the manga reader's page: the place recorded, the store written once a second while reading
 		if (page == Page::MangaRead) mangaTick();
-		// the Sources tab: the repositories' events become toasts, and what was typed in is added
-		else if (page == Page::Manga && mangaTab == MT_SOURCES) mangaSourcesTick(p);
+		// the Sources page: the repositories' events become toasts, and what was typed in is added
+		else if (page == Page::MangaSources) mangaSourcesTick(p);
 		// the Downloads tab: an armed delete goes, a lost worker answer waits for the reader to be on again
 		else if (page == Page::Manga && mangaTab == MT_DOWNLOADS) mangaDownloadsTick(p);
 		// the dashboard starts downloads and asks for a series' chapters: their worker answers are taken here too,
@@ -932,6 +933,7 @@ namespace bp
 		if (page == Page::Extensions || page == Page::Manga || (page == Page::Browse && !inMenu && browseDir == EXTDIR))
 			return extPointer(pt, x, y, p);
 		if (page == Page::MangaSeries) return mangaPointer(pt, x, y, p);
+		if (page == Page::MangaSources) return mangaPointer(pt, x, y, p);
 		if (page == Page::Info || page == Page::About)
 		{
 			if (y < INFO_Y) return false;
@@ -1192,7 +1194,7 @@ namespace bp
 				std::to_string(extSheetCursor) + " " + std::to_string(extPressed);
 		// Manga: the tab, each page's cursors and scrolls, the store and the card's scan, the finger's article, the
 		// History's Clear armed; the reader's page when it shows (its status is main's answer)
-		if (page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead)
+		if (page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead || page == Page::MangaSources)
 		{
 			char mb[200];
 			snprintf(mb, sizeof mb, "|mg%d %d,%d,%d,%d %d,%d %d,%d,%d,%d %d,%d %llu %d %d %d %zu %llu",
@@ -1202,7 +1204,7 @@ namespace bp
 			photo += std::string(mb) + "|" + mangaSeriesId;
 			// Sources: the sub-list and each list's place, a sheet, the sources installing, the manager's own changes
 			// (repos().serial(): an index loaded, a source installed) and what waits to be added
-			if (page == Page::Manga)
+			if (page == Page::Manga || page == Page::MangaSources)
 			{
 				char sb[240];
 				snprintf(sb, sizeof sb, "|ms%d %d,%d %d,%d %d,%d %d %d %d %llu %llu %zu %d", mstTab, mstCursor[0],
