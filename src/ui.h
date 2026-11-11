@@ -20,6 +20,7 @@
 #include "discovery.h"
 #include "mangafilters.h"
 #include "mangalocal.h"
+#include "manganetfolders.h"
 #include "mangaremote.h"
 #include "mangarepos.h"
 #include "mangasource.h"
@@ -1557,7 +1558,7 @@ namespace bp
 		int mangaBrowseCount(const Player& p) const;	// On this handheld, the servers, Add server, the sources
 		const MangaSrcRow* mangaBrowseSourceAt(int i, const Player& p) const;	// i: the sources the setting shows
 		int mangaBrowseServerCount() const;				// the saved servers, as Browse lists them
-		int mangaBrowseSourceStart() const { return mangaBrowseServerCount() + 2; }	// past them and Add server…
+		int mangaBrowseSourceStart() const { return mangaNetFoldersCount() + mangaBrowseServerCount() + 2; }	// past them and Add server…
 		const MangaSrcRow* mangaSrcRowFor(const std::string& fullId) const;
 		bool mangaBrowseKey(Button b, Player& p);
 		bool mangaBrowsePointer(const Pointer& pt, int x, int y, Player& p);
@@ -1593,6 +1594,49 @@ namespace bp
 		void mangaSourceChapterStep(int dir, Player& p);
 		int mangaReadChapterTotal() const;
 		std::string mangaNetSignature() const;			// this part of the page for signature()
+		// ---- the network folders (ui_manga_netfolders.cpp) ----
+		// Browse lists the saved connections; A on one lists its folders through the worker. A folder laid out as a
+		// series (chapter folders of pictures, or CBZ/ZIP archives) opens as its series page; reading a chapter copies
+		// it into the page cache's own folder first, then opens that with MangaReadRequest. The series and the
+		// progress are keyed by their bpnet:// paths, never by a credential.
+		enum MangaNetView { MNF_OFF, MNF_DIRS, MNF_SERIES };
+		struct MangaNetRow
+		{
+			std::string name, path;
+			bool dir = false;
+			bool archive = false;
+		};
+		int mangaNetView = MNF_OFF;
+		int mangaNetCursor = 0, mangaNetScroll = 0;
+		std::string mangaNetServerId, mangaNetStart, mangaNetDir;
+		std::string mangaNetBackDir;	// the folder a series was opened from (B returns there; "" the connection's own)
+		std::vector<MangaNetRow> mangaNetRows;
+		std::string mangaNetError;
+		bool mangaNetLoading = false;
+		uint64_t mangaNetSerial = 0;			// the listing or scan in flight
+		std::vector<NetMangaChapter> mangaNetChapters;
+		std::string mangaNetSeriesPath, mangaNetSeriesTitle;
+		uint64_t mangaNetFetchSerial = 0;		// a chapter's copy in flight
+		int mangaNetPendAt = -1, mangaNetPendPage = 0, mangaNetPendMode = 0, mangaNetPendFit = 0, mangaNetPendHinge = 36;
+		bool mangaNetPendFull = false;
+		std::vector<NetServer> mangaNetFoldersServers() const;	// the saved connections, most recently used first
+		int mangaNetFoldersCount() const;
+		void mangaNetFoldersReset(Player& p);
+		void mangaNetFoldersOpen(const std::string& serverId, Player& p);
+		void mangaNetFoldersLeave();
+		void mangaNetList(const std::string& dir);
+		void mangaNetScan(const std::string& path);
+		void mangaNetSeriesOpen(const NetMangaSeries& s);
+		void mangaNetChapterOpen(int i, int page0, Player& p);
+		void mangaNetFetchStart(const NetMangaChapter& c);
+		void mangaNetChapterReady(const std::string& localPath, const Player& p);
+		std::string mangaNetCachePath(const NetMangaChapter& c) const;
+		bool mangaNetCached(const std::string& localPath, bool archive) const;
+		void mangaNetCancel();
+		bool mangaNetFoldersKey(Button b, Player& p);
+		bool mangaNetFoldersPointer(const Pointer& pt, int x, int y, Player& p);
+		void drawMangaNetFolders(const Player& p);
+		bool mangaNetFoldersResult(MangaWorker::Result& r, const Player& p);
 		// ---- a source's filters (ui_manga_filters.cpp) ----
 		// filters() is asked once a run per source; SELECT opens its sheet, Apply runs search("", 1, values) on the
 		// Search tab. A source with none (or one whose list failed) shows no hint and no sheet.

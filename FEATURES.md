@@ -750,9 +750,16 @@ where you were. **X** clears the list (press **X** again to confirm). With the r
 settings** the list stays empty, but your places and your read marks are kept either way.
 
 **Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
-chapters it has, and **A** on one opens the series. Under it come your saved servers and **Add server…** (below), then
-the sources you've installed, each with its language. Two dim lines follow, neither one a row to choose: **Network
-folders · coming next**, and — with no sources yet — **Add sources in Sources**.
+chapters it has, and **A** on one opens the series. Under it come your saved network connections (from the Files
+browser's **Network**), each with its kind and host, then your saved servers and **Add server…** (below), then the
+sources you've installed, each with its language. With no sources yet, a dim line says **Add sources in Sources**.
+
+**Network folders.** **A** on a saved connection lists its folders through the worker (nothing waits on the main
+panel); **A** on a folder that is laid out like a Manga folder on the card — chapter folders of pictures, `.cbz`/`.zip`
+archives, or pictures directly — opens it as a series page with its chapters. **A** on a chapter copies it into the page
+cache's own folder first, then opens it in the reader; **B** steps back to the folder. Series and progress are kept by
+their `bpnet://` path, never by the connection's password. A folder of series folders is browsed, not opened as a
+series, and an archive in a folder opens as a one-chapter series.
 
 **Servers.** **Add server…** opens a form: **Kind** (Komga, Kavita or OPDS, LEFT/RIGHT), **Name**, **Address**, **User**
 and **Password** — **API key** instead of Password for Kavita — then **Test** and **Save**. A password is sealed on Save
@@ -903,8 +910,7 @@ The page cache holds the pages of chapters read from a source (**Clear cache** s
 sources** hides what a repository marks adult until you show it, and **In Recent on Home** places the reader's last
 chapter in Home's Recent strip.
 
-**Coming next:** network folders as sources (Browse lists them as coming next), pinch zoom (the screen reads one
-finger), and reading a manga in the browser.
+**Coming next:** pinch zoom (the screen reads one finger), and reading a manga in the browser.
 
 ## Updates
 

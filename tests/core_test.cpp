@@ -32,6 +32,7 @@ extern "C"
 #include "mangaservers.h"
 #include "mangastore.h"
 #include "mangalocal.h"
+#include "manganetfolders.h"
 #include "manga_ui_logic.h"
 #include "mangafilters.h"
 #include "mangaremote.h"
@@ -3485,6 +3486,95 @@ static void testMangaLocal()
 		M + "/NoNumbers/Epilogue", M + "/NoNumbers", M + "/Meta", M + "/Empty", M + "/Junk", M + "/.Hidden",
 		M + "/__MACOSX", M, D + "/p1/Manga", D + "/p1", D + "/p2/manga", D + "/p2", D + "/p3", D + "/p4", D})
 		rmdir(f.c_str());
+}
+
+static void testMangaNetFolders()
+{
+	using Entry = NetEntry;
+	auto dir = [](const std::string& name) { Entry e; e.name = name; e.dir = true; return e; };
+	auto file = [](const std::string& name) { Entry e; e.name = name; e.dir = false; return e; };
+	const std::string S = "bpnet://abcd/Share/Manga/Series";
+	const std::string E = "bpnet://abcd/Share/Manga/Empty";
+
+	// a series folder: chapter folders, archives, and its own pictures (ignored while there are chapters)
+	std::vector<NetEntry> own = {
+		dir("Chapter 10"), dir("Chapter 2"), dir("Chapter 1"), dir("Empty"),
+		file("Vol.1 Ch.3.cbz"), file("whatever.zip"), file("notes.txt"), file(".hidden.jpg"), file("__MACOSX"),
+		file("cover.jpg"),
+	};
+	NetMangaListing listing = netMangaListing(own);
+	CHECK_EQ(listing.dirs, (std::vector<std::string>{"Chapter 1", "Chapter 2", "Chapter 10", "Empty"}));
+	CHECK_EQ(listing.archives, (std::vector<std::string>{"Vol.1 Ch.3.cbz", "whatever.zip"}));
+	CHECK_EQ(listing.images, (std::vector<std::string>{"cover.jpg"}));
+
+	std::map<std::string, std::vector<NetEntry>> sub;
+	sub[netJoin(S, "Chapter 1")] = {file("001.jpg")};
+	sub[netJoin(S, "Chapter 2")] = {file("002.jpg"), file("001.jpg")};
+	sub[netJoin(S, "Chapter 10")] = {file("010.jpg")};
+	sub[netJoin(S, "Empty")] = {};
+	NetMangaSeries series = netMangaSeriesFrom(S, "Series", own, sub);
+	CHECK_EQ(series.title, std::string("Series"));
+	CHECK_EQ(series.path, S);
+	CHECK_EQ(series.chapters.size(), (size_t)5);
+	if (series.chapters.size() == 5)
+	{
+		// no number on "whatever", so the order is natural, as the card's scan orders it
+		CHECK_EQ(series.chapters[0].title, std::string("Chapter 1"));
+		CHECK_EQ(series.chapters[0].path, netJoin(S, "Chapter 1"));
+		CHECK_EQ(series.chapters[0].archive, false);
+		CHECK_EQ(series.chapters[0].pages, 1);
+		CHECK_EQ(series.chapters[1].title, std::string("Chapter 2"));
+		CHECK_EQ(series.chapters[1].pages, 2);
+		CHECK_EQ(series.chapters[2].title, std::string("Chapter 10"));
+		CHECK_EQ(series.chapters[3].title, std::string("Vol.1 Ch.3"));
+		CHECK_EQ(series.chapters[3].archive, true);
+		CHECK_EQ(series.chapters[3].pages, -1);
+		CHECK_EQ(series.chapters[4].title, std::string("whatever"));
+	}
+
+	// a folder of pictures alone: a one-chapter series named after the folder
+	NetMangaSeries one = netMangaSeriesFrom(E, "Loose", {file("003.jpg"), file("001.jpg"), file("002.jpg")}, {});
+	CHECK_EQ(one.chapters.size(), (size_t)1);
+	if (one.chapters.size() == 1)
+	{
+		CHECK_EQ(one.chapters[0].title, std::string("Loose"));
+		CHECK_EQ(one.chapters[0].path, E);
+		CHECK_EQ(one.chapters[0].archive, false);
+		CHECK_EQ(one.chapters[0].pages, 3);
+	}
+
+	// nothing to read: no pictures, no archive, and a child folder we couldn't list or that holds no pictures
+	CHECK_EQ(netMangaSeriesFrom(E, "Empty", {file("notes.txt")}, {}).chapters.size(), (size_t)0);
+	CHECK_EQ(netMangaSeriesFrom(E, "Empty", {dir("Volume 1")}, {}).chapters.size(), (size_t)0);
+	std::map<std::string, std::vector<NetEntry>> deep;
+	deep[netJoin(E, "Volume 1")] = {dir("Chapter 1")};
+	// the design's network series is direct: a volume folder's children are not taken as chapters here
+	CHECK_EQ(netMangaSeriesFrom(E, "Empty", {dir("Volume 1")}, deep).chapters.size(), (size_t)0);
+
+	// an archive folder: its chapters by name, the archive's pages unknown until it is fetched
+	NetMangaSeries arcs = netMangaSeriesFrom(E, "Archives", {file("Ch 2.cbz"), file("Ch 10.zip"), file("Ch 1.cbz")}, {});
+	CHECK_EQ(arcs.chapters.size(), (size_t)3);
+	if (arcs.chapters.size() == 3)
+	{
+		CHECK_EQ(arcs.chapters[0].title, std::string("Ch 1"));
+		CHECK_EQ(arcs.chapters[1].title, std::string("Ch 2"));
+		CHECK_EQ(arcs.chapters[2].title, std::string("Ch 10"));
+		CHECK_EQ(arcs.chapters[2].archive, true);
+	}
+
+	// a numbered order (all chapters carry a number) goes by volume then number, as the card's scan does
+	std::vector<NetEntry> numbered = {dir("Chapter 10"), dir("Chapter 2"), file("Vol.1 Ch.3.cbz"), file("Vol.2 Ch.1.cbz")};
+	std::map<std::string, std::vector<NetEntry>> nsub;
+	for (const std::string& d : {"Chapter 10", "Chapter 2"}) nsub[netJoin(E, d)] = {file("001.jpg")};
+	NetMangaSeries ns = netMangaSeriesFrom(E, "Numbered", numbered, nsub);
+	CHECK_EQ(ns.chapters.size(), (size_t)4);
+	if (ns.chapters.size() == 4)
+	{
+		CHECK_EQ(ns.chapters[0].title, std::string("Chapter 2"));
+		CHECK_EQ(ns.chapters[1].title, std::string("Chapter 10"));
+		CHECK_EQ(ns.chapters[2].title, std::string("Vol.1 Ch.3"));
+		CHECK_EQ(ns.chapters[3].title, std::string("Vol.2 Ch.1"));
+	}
 }
 
 static void testComicInfo()
@@ -8080,6 +8170,7 @@ int main()
 	testPaged();
 	testMangaStore();
 	testMangaLocal();
+	testMangaNetFolders();
 	testComicInfo();
 	testPageDecode();
 	testCbz();

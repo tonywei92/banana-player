@@ -7,7 +7,9 @@
 // per source, which one thread gives for free. Turning the reader off cancels everything and leaves the thread asleep.
 // As the Updater and MangaFetch, stop() doesn't wait: a slow server must never hold up a quit.
 #pragma once
+#include "manganetfolders.h"
 #include "mangasource.h"
+#include "net.h"
 #include <SDL.h>
 #include <cstdint>
 #include <memory>
@@ -25,7 +27,7 @@ namespace bp
 		// or the page item, or (Search) the filter values. page and query are Popular/Latest/Search's.
 		struct Job
 		{
-			enum Kind { Popular, Latest, Search, Filters, Details, Chapters, Pages, Image };
+			enum Kind { Popular, Latest, Search, Filters, Details, Chapters, Pages, Image, NetList, NetScan, NetFetch };
 			Kind kind = Popular;
 			std::string sourceId, scriptPath;
 			int page = 1;
@@ -33,6 +35,13 @@ namespace bp
 			// a newer job for the same source and kind replaces the waiting one (a fast scroll's pages); false: this
 			// one waits its turn and isn't replaced, so two pages asking for a source's chapters at once both get them
 			bool replace = true;
+			// The network folder jobs (design 5.1): NetList lists netPath, NetScan lists it and reads its child
+			// folders to lay it out as a series, NetFetch copies a chapter to netDest (a local folder for a folder
+			// chapter, a file for an archive). The server and its opened password are the caller's (the Ui); neither
+			// is ever kept in a path or in a store.
+			NetServer netServer;
+			std::string netPassword, netPath, netDest;
+			bool netArchive = false;
 		};
 
 		// The host's own structs, so nothing of a Lua state outlives its call (5.4).
@@ -50,6 +59,10 @@ namespace bp
 			std::string filtersJson;
 			std::string imageUrl;
 			std::vector<std::pair<std::string, std::string>> imageHeaders;
+			// network folder jobs: a listing, the folder laid out as a series, and the local copy fetched
+			std::vector<NetEntry> netEntries;
+			NetMangaSeries netSeries;
+			std::string netFile;
 			// the source's own headers (its Referer and the like) for image fetches, filled for Popular, Latest,
 			// Search and Details results so the Ui can fetch cover images with them
 			std::vector<std::pair<std::string, std::string>> sourceHeaders;
