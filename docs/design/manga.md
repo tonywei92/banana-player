@@ -488,6 +488,7 @@ page), the gear (**X**) in **Manage extensions** opens it too, and the Reading m
 | Clear cache | (button: "Clear · 214 MB") | Empties the pages kept on the card. Press A twice. |
 | Adult sources | **Hidden** / Shown | Sources a repository marks as adult. |
 | Reading history | **On** / Off | Off clears it. |
+| Secure DNS | **Off** / Cloudflare (1.1.1.1) | Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them. |
 | Repositories (note, no value) | | Repositories are added by you. Banana Player doesn't provide or check their content. |
 
 The reader's own on/off switch is not among these rows: it is in **Manage extensions** (A on its row), or on the web

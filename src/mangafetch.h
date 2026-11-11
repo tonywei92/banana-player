@@ -40,6 +40,9 @@ namespace bp
 		// Starts the thread and names the event it pushes (coalesced). Call once, before get(); the thread waits
 		// asleep until a request comes.
 		void start(Uint32 wakeEvent);
+		// Secure DNS (Manga settings): every request resolves through Cloudflare over HTTPS instead of the system's
+		// resolver. Safe from the main thread while the fetcher runs; off is the system's lookup, as before.
+		void setSecureDns(bool on);
 		// Queues a GET and returns its id (0: the fetcher has stopped). headers go as given; maxBytes <= 0 means no
 		// limit. With toFile the body is written to toFile + ".part" and renamed in place when whole; without it the
 		// body comes back in Result.

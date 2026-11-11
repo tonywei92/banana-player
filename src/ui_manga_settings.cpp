@@ -12,7 +12,7 @@ namespace bp
 	{
 		const int T = TOGGLE_ROW;
 		return {MANGA_MODE_ROW, MANGA_FIT_ROW, T + 13, MANGA_HINGE_ROW, T + 18, MANGA_PRELOAD_ROW, MANGA_CACHE_ROW,
-			MANGA_CLEAR_ROW, T + 14, T + 15, EXT_NOTE};	// (T + 16, In Recent on Home: kept in settings.conf, not shown: the reader stays off Home)
+			MANGA_CLEAR_ROW, T + 14, T + 15, MANGA_DNS_ROW, EXT_NOTE};	// (T + 16, In Recent on Home: kept in settings.conf, not shown: the reader stays off Home)
 	}
 
 	void Ui::openMangaSettings()

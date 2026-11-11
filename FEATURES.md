@@ -914,6 +914,7 @@ read. **B** goes back where you came from.
 | **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |
 | **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |
 | **Reading history** | On / Off | On | Off clears it. |
+| **Secure DNS** | Off / Cloudflare (1.1.1.1) | Off | Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them. |
 | Repositories | | | Repositories are added by you. Banana Player doesn't provide or check their content. |
 
 The reader itself is turned on and off in **Manage extensions** (or on the web dashboard): **A** on its row.

@@ -74,6 +74,7 @@ namespace bp
 		if (row == MANGA_PRELOAD_ROW) return "More: smoother on a slow server, more data.";
 		if (row == MANGA_CACHE_ROW) return "Pages kept on the card to read again without downloading. Covers: 50 MB more.";
 		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
+		if (row == MANGA_DNS_ROW) return "Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them.";
 		if (row == MUSIC_ROW) return "What the top screen shows while a song plays (SELECT while playing).";
 		if (row == VIS_ROW) return "How the music is drawn: Peaks, Peaks Banana or Circle (SELECT while playing).";
 		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
@@ -319,6 +320,11 @@ namespace bp
 		{
 			label = REMEMBER_LABELS[row - TOGGLE_ROW];
 			value = p.settings.mangaAdult ? "Shown" : "Hidden";
+		}
+		else if (row == MANGA_DNS_ROW)
+		{
+			label = REMEMBER_LABELS[row - TOGGLE_ROW];
+			value = p.settings.mangaSecureDns ? "Cloudflare (1.1.1.1)" : "Off";
 		}
 		else if (row == MUSIC_ROW)
 		{

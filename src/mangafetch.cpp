@@ -1,5 +1,6 @@
 #include "mangafetch.h"
 #include <algorithm>
+#include <atomic>
 #include <cctype>
 #include <condition_variable>
 #include <cstdio>
@@ -156,6 +157,19 @@ namespace bp
 			curl_easy_setopt(e, CURLOPT_LOW_SPEED_TIME, kLowSpeedSecs);
 			curl_easy_setopt(e, CURLOPT_SSL_VERIFYPEER, 1L);
 			curl_easy_setopt(e, CURLOPT_SSL_VERIFYHOST, 2L);
+			// Secure DNS: Cloudflare's resolver over HTTPS, at its IP literal so the lookup itself needs no name
+			// (its certificate covers 1.1.1.1, and curl's DoH checks it as any other). Off: the system's lookup.
+#if LIBCURL_VERSION_NUM >= 0x073E00	// 7.62.0: CURLOPT_DOH_URL
+			if (secureDns.load())
+			{
+				CURLcode doh = curl_easy_setopt(e, CURLOPT_DOH_URL, "https://1.1.1.1/dns-query");
+				// A libcurl built without a threaded resolver (or c-ares) has the option but not the means: the
+				// request then goes as it did, and one line in the log says why.
+				static std::atomic<bool> said{false};
+				if (doh != CURLE_OK && !said.exchange(true))
+					fprintf(stderr, "manga: this libcurl can't use DNS over HTTPS; the system's lookup is used\n");
+			}
+#endif
 			curl_easy_setopt(e, CURLOPT_USERAGENT, userAgent.c_str());
 			// no cookie jar: nothing is stored, and every request starts clean (as a reader wants)
 			curl_easy_setopt(e, CURLOPT_ACCEPT_ENCODING, "");
@@ -463,6 +477,7 @@ namespace bp
 		std::vector<Result> results;
 		std::set<uint64_t> cancelWanted;
 		std::string userAgent;
+		std::atomic<bool> secureDns{false};	// set from the main thread, read by prepare() on the worker
 		CURLM* multi = nullptr;
 		std::thread thread;
 		Uint32 wakeEvent = 0;
@@ -500,6 +515,11 @@ namespace bp
 		// detached, as the other workers: a quit must not join a thread that may be in a write callback
 		d->thread = std::thread([d] { d->run(); });
 		d->thread.detach();
+	}
+
+	void MangaFetch::setSecureDns(bool on)
+	{
+		impl->secureDns = on;
 	}
 
 	uint64_t MangaFetch::get(const std::string& url, const Headers& headers, int64_t maxBytes, const std::string& toFile)

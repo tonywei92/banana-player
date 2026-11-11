@@ -138,6 +138,8 @@ namespace bp
 		bool mangaHistory = true;
 		// manga in Home's Recent (the card comes later)
 		bool mangaRecent = true;
+		// sites are looked up through Cloudflare over HTTPS (Secure DNS): past a network whose own DNS blocks them
+		bool mangaSecureDns = false;
 		// its first-time note about repositories has been shown: it isn't again when the reader is turned on
 		bool mangaIntroShown = false;
 	};
