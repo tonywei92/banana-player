@@ -38,6 +38,7 @@ del() { local p=$1; shift; req DELETE "$p" "$@"; }
 get() { local p=$1; shift; req GET "$p" "$@"; }
 raw() { CODE=$(curl -s -o "$T/body" -w '%{http_code}' "$@"); }   # no cookie, no X-BP
 status_is() { [ "$CODE" = "$2" ]; check "$1 (status $CODE, want $2: $(head -c 120 "$T/body"))" $?; }
+status_not() { [ "$CODE" != "$2" ] && [ -n "$CODE" ] && [ "$CODE" != "000" ]; check "$1 (status $CODE, not $2)" $?; }
 status_in() { local n=$1; shift; local c; for c in "$@"; do [ "$CODE" = "$c" ] && { ok; return; }; done; bad "$n (status $CODE: $(head -c 120 "$T/body"))"; }
 jq_is() { jq -e "$2" "$T/body" >/dev/null 2>&1; check "$1 ($2 on $(head -c 160 "$T/body"))" $?; }
 state() { curl -s -b "$JAR" "$BASE/api/state"; }
@@ -255,9 +256,10 @@ raw -b "$JAR" -X POST -d "chapters[]=1" "$BASE/api/manga/download"; status_is "m
 raw -b "$JAR" -X POST -H 'X-BP: 1' -H 'Origin: http://evil.example' -d "chapters[]=1" "$BASE/api/manga/download"; status_is "manga download with a foreign Origin" 403
 raw -b "$JAR" -X POST -d "url=$MURL" "$BASE/api/manga/repo"; status_is "manga repo without X-BP" 403
 raw -b "$JAR" -X POST -H 'X-BP: 1' -H 'Origin: http://evil.example' -d "url=$MURL" "$BASE/api/manga/repo"; status_is "manga repo with a foreign Origin" 403
-# ours gets through the gate: downloads start on the handheld for now, which is a plain 501 (not a 404, not a hang)
-raw -b "$JAR" -X POST -H 'X-BP: 1' -H "Origin: $BASE" -d "chapters[]=1" "$BASE/api/manga/download"; status_is "manga download with our own Origin" 501
-jq_is "manga download: the 501 says to start it on the handheld" '.error | test("handheld")'
+# ours gets through the gate: a download without its series is a plain 400 (not a 404, not a hang)
+raw -b "$JAR" -X POST -H 'X-BP: 1' -H "Origin: $BASE" -d "chapters[]=1" "$BASE/api/manga/download"; status_is "manga download with our own Origin" 400
+# a series nobody has: answered, not queued and not a crash
+raw -b "$JAR" -X POST -H 'X-BP: 1' -H "Origin: $BASE" -d "series=nope&chapters[]=1" "$BASE/api/manga/download"; status_not "manga download of an unknown series" 500
 # a repository the player can't reach: its index is fetched in the background, so the add answers at once (200, the
 # fetch failing on its own) rather than waiting on the network — a clean error is fine too; neither may stall or crash.
 # The test repository goes again, so the player is left as it was found
