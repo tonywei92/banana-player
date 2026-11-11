@@ -484,6 +484,7 @@ namespace bp
 			int64_t base = 0;	// bytes of the files already whole
 			int64_t resume = 0;	// bytes the .part held before this transfer
 			int64_t lastWake = 0;
+			int64_t loggedMb = -1;	// (the last 16 MB step logged)
 			FILE* fp = nullptr;
 			bool cancelled = false;
 		};
@@ -517,6 +518,13 @@ namespace bp
 			}
 			int64_t value = c->base + c->resume + (int64_t)dlnow;
 			d->done = d->total > 0 ? std::clamp<int64_t>(value, 0, d->total) : std::max<int64_t>(0, value);
+			// in the log every 16 MB: whether the count moves during a transfer (the sheet's bar was seen to jump)
+			if ((value >> 24) != c->loggedMb)
+			{
+				c->loggedMb = value >> 24;
+				fprintf(stderr, "javaext: %s %lld of %lld MB\n", clockStamp().c_str(), (long long)(value / 1000000),
+					(long long)(d->total / 1000000));
+			}
 			d->serial_++;
 			int64_t now = sdlNow();
 			if (now - c->lastWake >= 250)
