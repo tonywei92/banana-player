@@ -7,7 +7,9 @@
 #
 # The library (root 0) needs "Music/Yellow Album/01 Sunny Peel.mp3" and "02 Split Decision.mp3". All it creates goes
 # under one scratch folder in root 0, removed at the end. The wrong-PIN lockout runs last: it locks this machine out
-# for a minute. Exit status 1 when anything failed.
+# for a minute. The manga section switches the reader on through /api/setting (what its Manage extensions card sends)
+# and off again, so the player needs --state-dir: its network side only starts with one. Exit status 1 when anything
+# failed.
 set -u
 BASE=${1:-http://127.0.0.1:8080}
 PIN=${2:-ACDE}
@@ -32,6 +34,7 @@ req() {
 	CODE=$(curl -s -o "$T/body" -w '%{http_code}' -X "$m" -b "$JAR" -H 'X-BP: 1' "$@" "$BASE$p")
 }
 post() { local p=$1; shift; req POST "$p" "$@"; }
+del() { local p=$1; shift; req DELETE "$p" "$@"; }
 get() { local p=$1; shift; req GET "$p" "$@"; }
 raw() { CODE=$(curl -s -o "$T/body" -w '%{http_code}' "$@"); }   # no cookie, no X-BP
 status_is() { [ "$CODE" = "$2" ]; check "$1 (status $CODE, want $2: $(head -c 120 "$T/body"))" $?; }
@@ -213,6 +216,66 @@ post /api/recent/remove --data-urlencode "p=$SONG2"; status_is "remove one not t
 raw -X POST -b "$JAR" "$BASE/api/recent/clear"; status_is "clear without X-BP" 403
 post /api/recent/clear; status_is "clear recent" 200
 get /api/recent; jq_is "recent empty after clear" '.items | length == 0'
+
+echo "== manga off: every route it adds is 404"
+# an index nothing can fetch: nothing listens on port 9
+MURL=http://127.0.0.1:9/index.json
+# each route with the params its own first check wants, so a 404 is the extension's and not a missing parameter
+get /api/manga/state; status_is "manga state, off" 404
+jq_is "manga state, off: the extension's own 404" '.error == "Manga is off"'
+get /api/manga/library; status_is "manga library, off" 404
+get /api/manga/downloads; status_is "manga downloads, off" 404
+get "/api/manga/cover?k=none"; status_is "manga cover, off" 404
+post /api/manga/repo --data-urlencode "url=$MURL"; status_is "manga add a repository, off" 404
+del /api/manga/repo --data-urlencode "url=$MURL"; status_is "manga remove a repository, off" 404
+post /api/manga/repo/refresh; status_is "manga refresh repositories, off" 404
+post /api/manga/install -d id=none/none; status_is "manga install a source, off" 404
+post /api/manga/update -d id=none/none; status_is "manga update a source, off" 404
+post /api/manga/uninstall -d id=none/none; status_is "manga uninstall a source, off" 404
+del /api/manga/library -d id=none; status_is "manga remove from the library, off" 404
+post /api/manga/read -d seriesId=none --data-urlencode "chapters[]=1"; status_is "manga read marks, off" 404
+post /api/manga/download -d series=none --data-urlencode "chapters[]=1"; status_is "manga download, off" 404
+del /api/manga/download -d id=none; status_is "manga delete a download, off" 404
+post /api/manga/download/pause; status_is "manga pause downloads, off" 404
+
+echo "== manga on: what Manage extensions sends (POST /api/setting key=manga-reader)"
+get /api/state; jq_is "the reader starts off (the 404s above)" '.mangaOn == false'
+post /api/setting -d key=manga-reader -d value=1; status_is "switch the manga reader on" 200
+jq_is "the switch answers on" '.mangaOn == true'
+get /api/state; jq_is "the snapshot carries the switch" '.mangaOn == true'
+get /api/manga/state; status_is "manga state" 200
+jq_is "manga state: on, its four lists" '.on == true and (.library | type) == "array" and (.repos | type) == "array" and (.installed | type) == "array" and (.available | type) == "array"'
+jq_is "manga state: the adult filter and the downloads' summary" '(.showAdult | type) == "boolean" and (.dl | type) == "object" and (.dl.done | type) == "number" and (.dl.total | type) == "number" and (.dl.low | type) == "boolean"'
+get /api/manga/library; status_is "manga library" 200
+jq_is "manga library: items and a serial" '(.items | type) == "array" and (.serial | type) == "number"'
+get /api/manga/downloads; status_is "manga downloads" 200
+jq_is "manga downloads: items, the queue's status, a serial" '(.items | type) == "array" and (.status | type) == "object" and (.status.total | type) == "number" and (.allPaused == false) and (.serial | type) == "number"'
+# the gate is the same for the manga POSTs as for every other one: X-BP, and an Origin only ours
+raw -b "$JAR" -X POST -d "chapters[]=1" "$BASE/api/manga/download"; status_is "manga download without X-BP" 403
+raw -b "$JAR" -X POST -H 'X-BP: 1' -H 'Origin: http://evil.example' -d "chapters[]=1" "$BASE/api/manga/download"; status_is "manga download with a foreign Origin" 403
+raw -b "$JAR" -X POST -d "url=$MURL" "$BASE/api/manga/repo"; status_is "manga repo without X-BP" 403
+raw -b "$JAR" -X POST -H 'X-BP: 1' -H 'Origin: http://evil.example' -d "url=$MURL" "$BASE/api/manga/repo"; status_is "manga repo with a foreign Origin" 403
+# ours gets through the gate: downloads start on the handheld for now, which is a plain 501 (not a 404, not a hang)
+raw -b "$JAR" -X POST -H 'X-BP: 1' -H "Origin: $BASE" -d "chapters[]=1" "$BASE/api/manga/download"; status_is "manga download with our own Origin" 501
+jq_is "manga download: the 501 says to start it on the handheld" '.error | test("handheld")'
+# a repository the player can't reach: its index is fetched in the background, so the add answers at once (200, the
+# fetch failing on its own) rather than waiting on the network — a clean error is fine too; neither may stall or crash.
+# The test repository goes again, so the player is left as it was found
+post /api/manga/repo --data-urlencode "url=$MURL"; status_in "manga repo: an unreachable URL is answered" 200 400 503
+if [ "$CODE" = 200 ]; then
+	jq_is "manga repo: taken, no wait on the network" '.ok == true'
+	get /api/manga/state; jq_is "manga repo: in the state, its index still to come" ".repos[] | select(.url == \"$MURL\") | .haveIndex == false"
+fi
+del /api/manga/repo --data-urlencode "url=$MURL"; status_in "manga repo: the test repository gone again" 200 404
+get /api/manga/state; jq_is "manga repo: nothing left behind" ".repos | map(.url) | index(\"$MURL\") == null"
+post /api/manga/repo --data-urlencode "url=not-a-url"; status_is "manga repo: a URL that can't be used is an error" 400
+jq_is "manga repo: the error says why" '.error == "not a URL"'
+get /api/manga/state; status_is "manga: the player still answers after both" 200
+
+echo "== manga off again: the switch put back"
+post /api/setting -d key=manga-reader -d value=0; status_is "switch the manga reader off" 200
+jq_is "the switch answers off" '.mangaOn == false'
+get /api/manga/state; status_is "manga state is 404 again" 404
 
 echo "== cleanup"
 get /api/playlist --get --data-urlencode "id=$ID2"; status_is "open renamed playlist" 200
