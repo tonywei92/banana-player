@@ -624,8 +624,9 @@ int main(int argc, char** argv)
 		// the top panel's frame: the photo while one is up, else what plays, or the icon with nothing playing
 		auto renderTop = [&](int w, int h) { return shown().render(w, h); };
 		// What plays under a photo: a song's graph makes frames still (it carries the sound), and mpv waits for each to
-		// be taken (else its picture queue stalls, 200 ms a frame). They're drawn into a tiny target of their own, never
-		// shown, so the photo isn't drawn again 30 times a second. A video's picture is off meanwhile (hideVideo)
+		// be taken (else its picture queue stalls, 200 ms a frame). They're taken by a tiny target of their own with
+		// rendering skipped (nothing drawn, no GL time), so the photo or the comic isn't drawn again 30 times a second
+		// and the bottom panel keeps the GPU. A video decodes on meanwhile (hideVideo), its frames taken the same way
 		unsigned sinkFbo = 0;
 		// the manga reader: its pages on the top panel while a chapter is open (Ui asks for it: takeMangaRead)
 		MangaReader reader;
@@ -660,7 +661,7 @@ int main(int argc, char** argv)
 				fbTex(0x8D40, 0x8CE0 /* GL_COLOR_ATTACHMENT0 */, 0x0DE1, tex, 0);
 				bindFb(0x8D40, 0);
 			}
-			player.render(16, 16, sinkFbo);
+			player.render(16, 16, sinkFbo, true);	// unseen: taken, not drawn (MPV_RENDER_PARAM_SKIP_RENDERING)
 			player.reportSwap();
 		};
 

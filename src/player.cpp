@@ -868,13 +868,17 @@ namespace bp
 		return rc && (mpv_render_context_update(rc) & MPV_RENDER_UPDATE_FRAME);
 	}
 
-	int Player::render(int w, int h, unsigned target)
+	int Player::render(int w, int h, unsigned target, bool skip)
 	{
 		mpv_opengl_fbo fbo{(int)target, w, h, 0};
 		int flip = 1;
+		// skip: the frame is taken (mpv's queue moves on, its timing kept) but nothing is drawn: no scaling, no
+		// shaders, no GL work stealing time from the bottom panel's drawing
+		int skipping = skip ? 1 : 0;
 		mpv_render_param params[] = {
 			{MPV_RENDER_PARAM_OPENGL_FBO, &fbo},
 			{MPV_RENDER_PARAM_FLIP_Y, &flip},
+			{MPV_RENDER_PARAM_SKIP_RENDERING, &skipping},
 			{MPV_RENDER_PARAM_INVALID, nullptr},
 		};
 		return mpv_render_context_render(rc, params);

@@ -114,7 +114,7 @@ namespace bp
 		bool frameDue();
 		// mpv's result: < 0 when it couldn't draw (in the log, the first few times: a black top panel's cause)
 		// fbo: the target (0 the window's; main's small one for what plays under a photo)
-		int render(int w, int h, unsigned fbo = 0);
+		int render(int w, int h, unsigned fbo = 0, bool skip = false);	// skip: take the frame, draw nothing
 		void reportSwap();
 
 		// a photo is up over what plays (on the photo viewer's own mpv): a video's picture is neither decoded nor drawn
