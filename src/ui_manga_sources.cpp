@@ -754,7 +754,7 @@ namespace bp
 				drawGlyphMid(G_DOWNLOAD, 42, mid, at ? ACCENT : DIM);
 				drawTextMid("Download manga engine", 1, at ? ACCENT : TEXT, 62, mid - 10, 400);
 				drawTextMid("Needed for index.pb repositories", 0, at ? DIM_ON : DIM, 62, mid + 10, 400);
-				drawTextMid("234 MB", 0, at ? DIM_ON : DIM, 608, mid, 0, 1);
+				drawTextMid("241 MB", 0, at ? DIM_ON : DIM, 608, mid, 0, 1);
 			}
 			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total + 2 + (engineRow ? 1 : 0));
 		}

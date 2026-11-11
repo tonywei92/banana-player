@@ -393,7 +393,11 @@ namespace bp
 			if (in && !engineInManga) engineEntryWant = true;
 			if (!in) engineEntryWant = false;
 			engineInManga = in;
-			if (engineEntryWant && mangaNet && mangaNet->started() && mangaJavaInstalled())
+			// (held while the lighter runtime is offered or downloading: the old one would start for nothing, 25 s and
+			// its memory, to be replaced; the new one goes in when it's whole and the engine starts on it)
+			bool upgrading = mangaNet && mangaNet->started() &&
+				((mengSheet && mengUpgrade) || mangaNet->javaExt().upgrade() == JavaExtHost::Upgrade::Downloading);
+			if (engineEntryWant && !upgrading && mangaNet && mangaNet->started() && mangaJavaInstalled())
 			{
 				JavaExtHost& h = mangaNet->javaExt();
 				auto st = h.state();

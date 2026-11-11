@@ -75,7 +75,7 @@ namespace bp
 
 	std::string Ui::mangaJavaValue() const
 	{
-		if (!mangaNet) return "Not installed \xC2\xB7 234 MB";
+		if (!mangaNet) return "Not installed \xC2\xB7 241 MB";
 		JavaExtHost& h = mangaNet->javaExt();
 		switch (h.state())
 		{

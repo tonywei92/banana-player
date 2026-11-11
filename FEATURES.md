@@ -950,7 +950,7 @@ them while you read. **B** goes back where you came from.
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 1 GB | Pages kept on the card to read again without downloading; past the cap the least recently read go first. Covers: 50 MB more. |
 | **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |
-| **Extension support** | Not installed / Downloading / Installed · 344 MB / Running / Failed | Not installed | Needed for repositories whose address ends in index.pb or index.min.json: about 234 MB on the card, about 400 MB of memory while one of their sources is open. A installs; A twice removes. |
+| **Extension support** | Not installed / Downloading / Installed · 344 MB / Running / Failed | Not installed | Needed for repositories whose address ends in index.pb or index.min.json: a 241 MB download, about 300 MB of memory while one of their sources is open. A installs; A twice removes. |
 | **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |
 | **Reading history** | On / Off | On | Off clears it. |
 | **Secure DNS** | Off / Cloudflare (1.1.1.1) | Off | Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them. |

@@ -1963,7 +1963,8 @@ namespace bp
 		// entering Manga without the manga engine: Download it / Not now (asked again at the next entry)
 		bool mengSheet = false;
 		int mengCursor = 0;
-		bool mengBusy = false;	// Download chosen: the sheet stays with its progress until it's done; Cancel only
+		bool mengBusy = false;
+		bool mengUpgrade = false;	// the sheet offers the lighter runtime (an install on HotSpot), not the engine itself	// Download chosen: the sheet stays with its progress until it's done; Cancel only
 		Rect mangaEngineBox() const { return {64, 88, 512, 300}; }
 		Rect mangaEngineRow(int i) const { return {80, 268 + i * 48, 480, 40}; }
 		bool mangaEngineKey(Button b, Player& p);

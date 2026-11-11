@@ -42,6 +42,9 @@ namespace bp
 		constexpr const char* JRE_DIR = "runtime";
 		constexpr const char* JRE_OLD_DIR = "jre";	// 0.6.4 test builds: moved to JRE_DIR at configure
 		constexpr const char* JRE_STAGE = "runtime.tmp";
+		constexpr const char* JRE_NEXT = "runtime.next";	// an upgrade's new runtime, put in place at the next start
+		constexpr const char* JRE_GONE = "runtime.old";		// the replaced one, deleted in the background
+
 		constexpr const char* SERVER_LOG = "server.log";
 		// the running server's pid, while it runs: a player that crashed (or was killed) never stopped it, and the next
 		// start ends it (leftoverStop)
@@ -136,6 +139,9 @@ namespace bp
 			if (slash != std::string::npos && slash > 0 && !ensureDir(path.substr(0, slash))) return false;
 			return mkdir(path.c_str(), 0755) == 0 || errno == EEXIST;
 		}
+
+		// OpenJ9's own garbage collector library: HotSpot (Temurin) has none
+		bool openj9At(const std::string& runtimeDir) { return isFile(runtimeDir + "/lib/default/libj9gc29.so"); }
 
 		bool removeTree(const std::string& path)
 		{
@@ -322,6 +328,11 @@ namespace bp
 		uint64_t procGen = 0;
 		bool stopReq = false, idleStop = false, removing = false;
 		int64_t lastWant = 0;
+		// the runtime upgrade (HotSpot to OpenJ9): its own job number, so its failure never fails the engine
+		bool oldRt = false;
+		uint64_t upJob = 0;
+		JavaExtHost::Upgrade up = JavaExtHost::Upgrade::None;
+		std::string upErr;
 		std::condition_variable cv;
 
 		// the GraphQL channel: its own mutex (the request thread must not hold the state lock while curl runs)
@@ -396,9 +407,54 @@ namespace bp
 		{
 			std::lock_guard<std::mutex> g(lock);
 			if (j != job) return;
+			if (j == upJob)
+			{
+				// the upgrade's: said on its own, the engine as it was
+				up = JavaExtHost::Upgrade::Failed;
+				upErr = why;
+				serial_++;
+				pushWake();
+				fprintf(stderr, "javaext: runtime upgrade failed: %s\n", why.c_str());
+				return;
+			}
 			set(JavaExtHost::State::Failed, why);
 			pushWake();
 		}
+
+		// caller holds lock: an install from before 0.7.4 (HotSpot), with no new runtime waiting already. One stat or
+		// three, at configure and after an install or an upgrade; the answer is kept in oldRt
+		bool runtimeOldNow() const
+		{
+#ifdef __linux__
+			if (javaDir.empty()) return false;
+			std::string rt = javaDir + "/" + JRE_DIR;
+			return isFile(rt + "/bin/java") && !openj9At(rt) && !isFile(javaDir + "/" + JRE_NEXT + "/bin/java");
+#else
+			return false;	// (the desktop runs BP_JAVA's runtime)
+#endif
+		}
+
+		// caller holds lock, the engine not running: an upgrade's runtime takes the old one's place (renames only;
+		// the old one is deleted on a thread of its own: a card takes seconds over its thousands of files)
+		void swapInNewRuntime()
+		{
+			std::string next = javaDir + "/" + JRE_NEXT, rt = javaDir + "/" + JRE_DIR, gone = javaDir + "/" + JRE_GONE;
+			if (!isFile(next + "/bin/java")) return;
+			if (isDir(gone)) return;	// (the last one still being deleted: next time)
+			if (rename(rt.c_str(), gone.c_str()) != 0) return;
+			if (rename(next.c_str(), rt.c_str()) != 0)
+			{
+				rename(gone.c_str(), rt.c_str());
+				return;
+			}
+			fprintf(stderr, "javaext: %s the new runtime (OpenJ9) in place\n", clockStamp().c_str());
+			up = JavaExtHost::Upgrade::None;
+			oldRt = false;
+			serial_++;
+			std::thread([gone] { removeTree(gone); }).detach();
+		}
+
+		void upgradeStep(uint64_t j);
 
 		void startLocked(const std::string& javaBin);
 		void watch(pid_t child, int p, uint64_t gen);
@@ -476,6 +532,11 @@ namespace bp
 			if (isFile(oldDir + "/bin/java") && !isFile(newDir + "/bin/java") && rename(oldDir.c_str(), newDir.c_str()) == 0)
 				fprintf(stderr, "javaext: moved the runtime from %s to %s\n", JRE_OLD_DIR, JRE_DIR);
 			leftoverStop(d->javaDir);
+			// a replaced runtime whose deletion a quit cut short: finished in the background
+			std::string gone = d->javaDir + "/" + JRE_GONE;
+			if (isDir(gone)) std::thread([gone] { removeTree(gone); }).detach();
+			d->oldRt = d->runtimeOldNow();
+			if (d->oldRt) fprintf(stderr, "javaext: the runtime is HotSpot: the lighter OpenJ9 one can replace it\n");
 		}
 		if (d->cardInstalled(nullptr))
 		{
@@ -556,6 +617,97 @@ namespace bp
 		}).detach();
 	}
 
+	bool JavaExtHost::runtimeOld() const
+	{
+		std::lock_guard<std::mutex> g(impl->lock);
+		return impl->oldRt;
+	}
+
+	JavaExtHost::Upgrade JavaExtHost::upgrade() const
+	{
+		std::lock_guard<std::mutex> g(impl->lock);
+		return impl->up;
+	}
+
+	std::string JavaExtHost::upgradeError() const
+	{
+		std::lock_guard<std::mutex> g(impl->lock);
+		return impl->upErr;
+	}
+
+	void JavaExtHost::upgradeRuntime()
+	{
+		auto d = impl;
+		std::lock_guard<std::mutex> g(d->lock);
+		if (!d->oldRt || d->up == Upgrade::Downloading || d->up == Upgrade::Ready || d->removing ||
+			d->st == State::Downloading)
+			return;
+		uint64_t j = ++d->job;
+		d->upJob = j;
+		d->up = Upgrade::Downloading;
+		d->upErr.clear();
+		d->total = JavaExtPins::JRE_BYTES;
+		d->done = 0;
+		d->serial_++;
+		d->pushWake();
+		fprintf(stderr, "javaext: %s runtime upgrade started (%lld B)\n", clockStamp().c_str(), (long long)d->total);
+		auto self = d;
+		std::thread([self, j] {
+			std::lock_guard<std::mutex> gate(self->gate);
+			self->upgradeStep(j);
+		}).detach();
+	}
+
+	void JavaExtHost::cancelUpgrade()
+	{
+		auto d = impl;
+		std::lock_guard<std::mutex> g(d->lock);
+		if (d->up != Upgrade::Downloading) return;
+		++d->job;	// the transfer sees it isn't current and stops (its .part kept: a later try goes on from it)
+		d->up = Upgrade::None;
+		d->total = JavaExtPins::JRE_BYTES + JavaExtPins::SERVER_BYTES;
+		d->serial_++;
+		d->pushWake();
+		fprintf(stderr, "javaext: runtime upgrade cancelled\n");
+	}
+
+	void JavaExtHost::Impl::upgradeStep(uint64_t j)
+	{
+		// the new runtime downloaded and unpacked beside the old one (the engine may be running on it meanwhile)
+		int64_t base = 0;
+		Fetch r = fetchFile(j, JavaExtPins::JRE_URL, JavaExtPins::JRE_SHA256, JavaExtPins::JRE_BYTES,
+			javaDir + "/" + JRE_TAR, base);
+		if (r != Fetch::Ok) return;
+		std::string stage = javaDir + "/" + JRE_STAGE, next = javaDir + "/" + JRE_NEXT, why;
+		removeTree(stage);
+		removeTree(next);
+		bool ok = extractTarGz(javaDir + "/" + JRE_TAR, stage, why);
+		if (ok)
+		{
+			auto entries = listDir(stage);
+			ok = entries.size() == 1 && isDir(stage + "/" + entries[0]) &&
+				rename((stage + "/" + entries[0]).c_str(), next.c_str()) == 0 && isFile(next + "/bin/java") && openj9At(next);
+		}
+		removeTree(stage);
+		unlink((javaDir + "/" + JRE_TAR).c_str());
+		if (!ok)
+		{
+			removeTree(next);
+			failJob(j, why.empty() ? "The download is incomplete" : "The download couldn't be unpacked: " + why);
+			return;
+		}
+		std::lock_guard<std::mutex> g(lock);
+		if (j != job) { removeTree(next); return; }
+		up = JavaExtHost::Upgrade::Ready;
+		oldRt = false;
+		total = JavaExtPins::JRE_BYTES + JavaExtPins::SERVER_BYTES;
+		serial_++;
+		pushWake();
+		fprintf(stderr, "javaext: %s runtime upgrade ready: in place at the engine's next start\n", clockStamp().c_str());
+		// not running: in place now
+		if (pid < 0) swapInNewRuntime();
+	}
+
 	void JavaExtHost::cancelInstall()
 	{
 		auto d = impl;
@@ -605,6 +757,9 @@ namespace bp
 			return;
 		}
 		std::string java;
+#ifdef __linux__
+		d->swapInNewRuntime();	// (an upgrade downloaded while it ran: its new runtime goes in before it starts)
+#endif
 		if (!d->cardInstalled(&java)) return;
 		d->startLocked(java);
 	}
@@ -933,6 +1088,7 @@ namespace bp
 		if (j != job) return;
 		installed = bytes;
 		done = total;
+		oldRt = runtimeOldNow();
 		set(State::Installed, "");
 		pushWake();
 		fprintf(stderr, "javaext: %s installed (%lld MB)\n", clockStamp().c_str(),
@@ -992,7 +1148,7 @@ namespace bp
 		// less memory for the same server; its class cache on the card makes later starts quicker. Trying it out on
 		// the handheld (2026-11-12): the engine at idle 290-300 MB where HotSpot holds 366-374 MB
 		auto parent = [](const std::string& path) { size_t at = path.rfind('/'); return at == std::string::npos ? std::string(".") : path.substr(0, at); };
-		const bool openj9 = isFile(parent(parent(java)) + "/lib/default/libj9gc29.so");
+		const bool openj9 = openj9At(parent(parent(java)));
 		std::vector<std::string> args = {java, "-Xmx256m"};
 		if (openj9)
 		{

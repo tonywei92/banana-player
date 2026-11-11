@@ -21,13 +21,14 @@ namespace bp
 	// What the add-on downloads, pinned: a different file is refused (its SHA-256 checked before it's unpacked or run)
 	struct JavaExtPins
 	{
-		// Eclipse Temurin 21 JRE for Linux aarch64 (51 MB .tar.gz; its legal/ folder is symlinks: skipped, the card
-		// is exFAT)
+		// IBM Semeru 21 (OpenJ9) JRE for Linux aarch64 (58 MB .tar.gz; its legal/ folder is symlinks: skipped, the card
+		// is exFAT). OpenJ9, not HotSpot: the server holds about 300 MB on it where HotSpot held about 370 MB, the
+		// difference between the engine living through a chapter being read and the kernel killing it (2026-11-12)
 		static constexpr const char* JRE_URL =
-			"https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.13%2B9/"
-			"OpenJDK21U-jre_aarch64_linux_hotspot_21.0.13_9.tar.gz";
-		static constexpr const char* JRE_SHA256 = "b1734db7ade49c3f6acc6ae06233b8c2dd90e3e2f00f67000ae1c972aaa64d8c";
-		static constexpr int64_t JRE_BYTES = 51266660;
+			"https://github.com/ibmruntimes/semeru21-binaries/releases/download/jdk-21.0.13.0/"
+			"ibm-semeru-open-jre_aarch64_linux_21.0.13.0.tar.gz";
+		static constexpr const char* JRE_SHA256 = "8086556c0022df57428d32c1b62d5c03a105bd3ff37d5a866444ac2603e68105";
+		static constexpr int64_t JRE_BYTES = 57797374;
 		// Suwayomi-Server v2.4.2366 (183 MB)
 		static constexpr const char* SERVER_URL =
 			"https://github.com/Suwayomi/Suwayomi-Server/releases/download/v2.4.2366/Suwayomi-Server-v2.4.2366.jar";
@@ -62,6 +63,17 @@ namespace bp
 		void progress(int64_t& done, int64_t& total) const;
 		// how much the add-on takes on the card once installed (0: not installed)
 		int64_t installedBytes() const;
+
+		// An install from before 0.7.4 runs the server on HotSpot (Temurin): the lighter OpenJ9 runtime replaces it.
+		// runtimeOld(): such an install (one stat when the folder is looked at, kept). upgradeRuntime() downloads the
+		// new runtime beside the old one while the engine may run; it takes the old one's place at the engine's next
+		// start (the old one deleted in the background). upgrade(): its progress (progress() gives the bytes)
+		bool runtimeOld() const;
+		enum class Upgrade { None, Downloading, Ready, Failed };
+		Upgrade upgrade() const;
+		std::string upgradeError() const;
+		void upgradeRuntime();
+		void cancelUpgrade();
 
 		// Install: both files downloaded (resumable, checked), the runtime unpacked; Remove: everything deleted
 		// (stopping it first). Both return at once; state() follows.

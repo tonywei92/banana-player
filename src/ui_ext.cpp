@@ -21,6 +21,10 @@ namespace bp
 			JavaExtHost& h = mangaNet->javaExt();
 			auto st = h.state();
 			mengSheet = st == JavaExtHost::State::NotInstalled || (st == JavaExtHost::State::Failed && h.installedBytes() == 0);
+			// an install on the old runtime (HotSpot): the lighter one offered the same way, each entry till it's taken
+			auto up = h.upgrade();
+			mengUpgrade = !mengSheet && h.runtimeOld() && (up == JavaExtHost::Upgrade::None || up == JavaExtHost::Upgrade::Failed);
+			if (mengUpgrade) mengSheet = true;
 			mengCursor = 0;
 		}
 	}
