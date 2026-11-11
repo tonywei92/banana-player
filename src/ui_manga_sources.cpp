@@ -597,7 +597,17 @@ namespace bp
 			auto inst = mangaSourcesInstalled();
 			auto list = mangaSourcesAvailable(p);
 			int li = (int)inst.size(), jv = mangaJavaAvailableRows(p), total = li + jv + (int)list.size();
-			if (total == 0 && javaStatus.empty())
+			// the extensions' list on its way (the engine starting, or the list asked): the loading mark, in the middle
+			// when there's nothing to show yet, else a line at the foot over the last list kept
+			bool listLoading = false;
+			if (mangaNet && mangaNet->started() && mangaJavaInstalled() && mangaNet->javaSources().hasRepos())
+			{
+				auto st = mangaNet->javaExt().state();
+				listLoading = mangaNet->javaSources().refreshPending() || st == JavaExtHost::State::Starting ||
+					(!mangaNet->javaSources().extensionsKnown() && st != JavaExtHost::State::Failed);
+			}
+			if (total == 0 && listLoading) drawLoader(W / 2, 270, "Loading sources\xE2\x80\xA6");
+			else if (total == 0 && javaStatus.empty())
 				drawEmpty(G_DOWNLOAD, "Nothing to install", "Add a repository first", nullptr);
 			for (int k = sc; k < total && k < sc + MS_ROWS; k++)
 			{
@@ -624,6 +634,24 @@ namespace bp
 				else drawTextMid(elideLeft(a.repoName, 0, 150), 0, soft, 608, mid, 0, 1);
 			}
 			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total);
+			if (total > 0 && listLoading)
+			{
+				std::string t = "Checking for updates\xE2\x80\xA6";
+				int tw = (int)std::lround(textWidth(t, 0) / sx) + 56;
+				Rect r{W / 2 - tw / 2, MS_ROW_TOP + MS_ROWS * MS_ROW_H - 38, tw, 30};
+				drawBox(r, SURFACE, R_CHIP, ACCENT);
+				// a small ring at its left, the same mark as the loading one
+				loaderShown = true;
+				int step = (int)(SDL_GetTicks() / 110 % 8);
+				for (int k = 0; k < 8; k++)
+				{
+					int age = ((step - k) % 8 + 8) % 8;
+					double a = k * 3.14159265 / 4;
+					int dx = r.x + 20 + (int)std::lround(8 * std::sin(a)), dy = r.y + 15 + (int)std::lround(-8 * std::cos(a));
+					fillRound({dx - 2, dy - 2, 4, 4}, age == 0 ? ACCENT : age < 3 ? TEXT : DIM, 2);
+				}
+				drawTextMid(t, 0, TEXT, r.x + 36, r.y + r.h / 2, tw - 40);
+			}
 		}
 		else
 		{

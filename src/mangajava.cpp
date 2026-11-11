@@ -1,6 +1,7 @@
 // The Java extensions' repositories, extensions and sources (see mangajava.h). Pure: every answer is a string the
 // host took from Suwayomi, and every request body comes from suwayomi.*.
 #include "mangajava.h"
+#include <iterator>
 #include "mangarepo.h"	// validRepoUrl
 #include <algorithm>
 #include <cerrno>
@@ -102,6 +103,17 @@ namespace bp
 		pending_.clear();
 		events_.clear();
 		if (dir().empty()) return false;
+		// the last list the engine gave, shown until it gives a new one (extensionsKnown_ stays false: it is asked again)
+		{
+			std::ifstream in(dir() + "/extensions.json", std::ios::binary);
+			if (in)
+			{
+				std::string body((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+				std::vector<SuwayomiExt> cached;
+				std::string err;
+				if (suwayomiParseExtensions(body, cached, err)) extensions_ = std::move(cached);
+			}
+		}
 		{
 			std::ifstream in(repoFile());
 			std::string line;
@@ -410,6 +422,16 @@ namespace bp
 			}
 			extensions_ = std::move(out);
 			extensionsKnown_ = true;
+			// kept on the card: the next start lists them before the manga engine is up (installing still waits for it)
+			{
+				std::string path = dir() + "/extensions.json", tmp = path + ".tmp";
+				if (FILE* f = fopen(tmp.c_str(), "wb"))
+				{
+					bool ok = fwrite(body.data(), 1, body.size(), f) == body.size();
+					if (fclose(f) != 0) ok = false;
+					if (!ok || rename(tmp.c_str(), path.c_str()) != 0) unlink(tmp.c_str());
+				}
+			}
 			// an adult extension's sources are all adult, even when the source nodes don't repeat the flag
 			for (Source& s : sources_)
 				if (const SuwayomiExt* e = extension(s.pkgName))
