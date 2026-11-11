@@ -474,6 +474,7 @@ namespace bp
 		if (addPending.serial && page == Page::Browse) drawBusy();
 		if (popupShown(p)) drawUpdatePopup();
 		drawExtNotice();
+		if (mangaErrOpen) drawMangaErr();
 		if (quickOpen) drawQuick(p);
 		if (kbOpen) drawKeyboard();
 	}

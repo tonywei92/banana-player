@@ -92,6 +92,12 @@ namespace bp
 
 	bool Ui::press(Button b, Player& p)
 	{
+		// the browser-check dialog takes the keys while it shows: A or B closes it
+		if (mangaErrOpen)
+		{
+			if (b == Button::A || b == Button::B) mangaErrOpen = false;
+			return false;
+		}
 		sameBrightness = p.settings.sameBrightness;
 		mangaOn = p.settings.mangaOn;
 		webInputAt = SDL_GetTicks();
@@ -678,6 +684,12 @@ namespace bp
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
 		webInputAt = SDL_GetTicks();
+		if (mangaErrOpen)
+		{
+			// OK, or a tap anywhere: closed
+			if (pt.kind == Pointer::Up) mangaErrOpen = false;
+			return false;
+		}
 		mangaOn = p.settings.mangaOn;
 		if (kbOpen && panel.on())
 		{
@@ -1249,7 +1261,7 @@ namespace bp
 				}
 			}
 		}
-		return buf + photo + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
+		return buf + photo + "|me" + std::to_string((int)mangaErrOpen) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string((int)kbShift) + (kbSymbols ? "s" : "") + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");
 	}
 }

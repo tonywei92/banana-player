@@ -1567,6 +1567,7 @@ namespace bp
 	{
 		// a source's next chapter, while this one reads on the top panel: its pages arrive here
 		mangaBrowsePoll(p);
+		mangaErrCheck(readerStatus.error);	// a page behind a browser check: the same dialog
 		if (mangaReadWaiting && page == Page::MangaRead)
 		{
 			drawMangaReadWaiting();

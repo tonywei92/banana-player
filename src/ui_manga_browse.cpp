@@ -764,8 +764,40 @@ namespace bp
 
 	// ---- the worker's answers ----
 
+	void Ui::mangaErrCheck(const std::string& error)
+	{
+		// (each error once: the same one again, from the source or the reader, isn't asked about twice)
+		if (error.empty() || error == mangaErrFor) return;
+		mangaErrFor = error;
+		std::string l;
+		for (char c : error) l += (char)std::tolower((unsigned char)c);
+		bool ddos = l.find("ddos-guard") != std::string::npos;
+		bool check = ddos || l.find("cloudflare") != std::string::npos || l.find("browser check") != std::string::npos ||
+			l.find("cf_clearance") != std::string::npos || l.find("just a moment") != std::string::npos ||
+			l.find("cf-mitigated") != std::string::npos;
+		if (!check) return;
+		mangaErrText = std::string("This source is behind a ") + (ddos ? "DDoS-Guard" : "Cloudflare") +
+			" check that Banana Player can\xE2\x80\x99t pass. Try another source, or try again later.";
+		mangaErrOpen = true;
+		fprintf(stderr, "manga: a browser check (%s)\n", error.c_str());
+	}
+
+	void Ui::drawMangaErr()
+	{
+		Rect b = mangaErrBox();
+		drawDialog(b, "Can\xE2\x80\x99t open this");
+		std::vector<std::string> lines = wrapText(mangaErrText, 0, b.w - 48, 4);
+		for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, TEXT, W / 2, b.y + 78 + (int)i * 22, b.w - 40, 2);
+		Rect ok = mangaErrOk();
+		drawBox(ok, ACCENT, R_BUTTON);
+		drawTextMid("OK", 1, ON_ACCENT, ok.x + ok.w / 2, ok.y + ok.h / 2, ok.w - 16, 2);
+		drawHints({{"A", "OK"}});
+	}
+
 	void Ui::mangaBrowsePoll(const Player& p)
 	{
+		// a source's error that is a browser check: the dialog (once per error)
+		mangaErrCheck(mangaSrcError);
 		if (!mangaNet || !mangaNet->started()) return;
 		// a source's grid fills itself: its first pages, and the next near its end (the answer of the last landed)
 		if (page == Page::Manga && mangaView == 1) mangaSourceMaybeMore();

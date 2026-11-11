@@ -1287,7 +1287,15 @@ namespace bp
 		// then "Extensions ready" a moment. Its text is in signature(), so it redraws as the seconds change
 		mutable int extNoticeState = -1;
 		Uint32 videoBlockedAt = 0;
-		Uint32 engineStopAt = 0;	// a video outside the reader asked the manga engine to stop (once)
+		Uint32 engineStopAt = 0;
+		// a manga source that stands behind a browser check (Cloudflare, DDoS-Guard): a dialog says so, OK closes it.
+		// Opened once per error (mangaErrFor), over any page
+		bool mangaErrOpen = false;
+		std::string mangaErrFor, mangaErrText;
+		Rect mangaErrBox() const { return {96, 120, 448, 220}; }
+		Rect mangaErrOk() const { return {240, 280, 160, 44}; }
+		void mangaErrCheck(const std::string& error);
+		void drawMangaErr();	// a video outside the reader asked the manga engine to stop (once)
 		void mangaVideoGuard(Player& p);	// (ui_manga_java.cpp)	// a video stopped because the extensions run: the notice says so a moment
 		mutable Uint32 extNoticeAt = 0;
 		std::string extNoticeText() const;
