@@ -1,4 +1,5 @@
 #include "manga_ui_logic.h"
+#include <cstdio>
 
 namespace bp
 {
@@ -60,6 +61,21 @@ namespace bp
 			}
 		out.chapter = 0;
 		return out;
+	}
+
+	std::string mangaSourceItemJson(const std::string& key, const std::string& title)
+	{
+		auto esc = [](const std::string& s) {
+			std::string out;
+			for (char c : s)
+			{
+				if (c == '"' || c == '\\') { out += '\\'; out += c; }
+				else if ((unsigned char)c < 0x20) { char b[8]; snprintf(b, sizeof b, "\\u%04x", c); out += b; }
+				else out += c;
+			}
+			return out;
+		};
+		return "{\"key\":\"" + esc(key) + "\",\"title\":\"" + esc(title) + "\"}";
 	}
 
 	std::string mangaAgo(int64_t at, int64_t now)

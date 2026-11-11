@@ -443,10 +443,13 @@ its own tests (sandbox escapes, limits, a fixture source against a local HTTP se
   hidden unless the setting says Shown).
 - API, behind the existing gate: `GET /api/manga/state`, `POST /api/manga/repo` (`{url}`), `DELETE /api/manga/repo`,
   `POST /api/manga/install|update|uninstall` (`{id}`), `GET /api/manga/library`, `DELETE /api/manga/library`,
-  `GET /api/manga/cover?s=&k=` (from the cover cache only: the dashboard never makes the handheld fetch on its behalf
-  beyond covers already wanted). All go through `WebServer::call`; changes are announced on SSE as a `manga` notify.
+  `GET /api/manga/chapters?s=` (a local series from the scan; a source series from its worker, 202 with a retry while
+  it comes), `GET /api/manga/cover?s=&k=` (from the cover cache only: the dashboard never makes the handheld fetch on
+  its behalf beyond covers already wanted). All go through `WebServer::call`; changes are announced on SSE as a
+  `manga` notify.
 - **Downloads** (a third page): the queue with progress, pause/resume, and what's on the card by series with Delete;
-  `GET /api/manga/downloads`, `POST /api/manga/download` (`{series, chapters}`), `DELETE /api/manga/download`.
+  `GET /api/manga/downloads`, `POST /api/manga/download` (`{series, chapters}`: each chapter's page list is asked of
+  the source first, as the handheld's Download sheet does), `DELETE /api/manga/download`.
 - Later: reading in the browser (`/api/manga/page` serving cached pages to a page-turning view).
 
 ## 9. Turning it on and off, and its settings

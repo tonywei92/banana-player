@@ -36,4 +36,8 @@ namespace bp
 
 	// "now", "12 min ago", "3 h ago", "2 days ago", "5 weeks ago", "10 months ago", "2 years ago"; "" for no time
 	std::string mangaAgo(int64_t at, int64_t now);
+
+	// the item table a source's details()/chapters() get back when the series opened from the Library keeps no copy
+	// of it: its key and title, escaped as JSON (the source still needs those fields to answer)
+	std::string mangaSourceItemJson(const std::string& key, const std::string& title);
 }

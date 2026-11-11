@@ -50,30 +50,85 @@ function Library() {
 	</div>`)}</div>`;
 }
 
-// one series' chapters: the chapter list, with mark read / unread per chapter
+// one series' chapters as the reader knows them: read marks, places, each chapter's download state, and the
+// dashboard's own downloads (their page lists are asked of the source first, as on the handheld)
 function SeriesView({ id, data, onBack }) {
 	const s = useStore();
-	const [chapters, setChapters] = useState([]), [err, setErr] = useState('');
+	const [r, setR] = useState(null), [err, setErr] = useState(''), [picked, setPicked] = useState(() => new Set());
+	const slow = useLater(!r && !err, 300);
 	const series = data && data.library ? data.library.find(x => x.id === id) : null;
 	const load = useCallback(() => {
-		get('/api/manga/library').then(r => {
-			const found = (r.items || []).find(x => x.id === id);
-			if (!found) { setErr('That series is no longer in the library'); return; }
-			setErr('');
-		}).catch(e => setErr(errMsg(e)));
+		get('/api/manga/chapters', { s: id }).then(x => { setR(x); setErr(''); }).catch(e => setErr(errMsg(e)));
 	}, [id]);
-	useEffect(() => { load(); }, [s.mangaTick]);
-	if (err) return html`<div class="crumbs"><nav><button onClick=${onBack}><${Icon} n="left" k=${1} />Library</button></nav></div><p class="note">${err}</p>`;
-	return html`<div>
-		<div class="crumbs"><nav><button onClick=${onBack}><${Icon} n="left" k=${1} />Library</button></nav></div>
-		<div class="mser-head" style="display:flex;gap:12px;align-items:center;margin:8px 0 16px">
-			<div class="grow">
-				<div class="kicker">Series</div>
-				<h2 style="font-size:20px;margin:4px 0">${series ? series.title : id}</h2>
-				${series && series.source ? html`<div class="dim">${series.source}</div>` : null}
-			</div>
+	useEffect(() => { load(); }, [s.mangaTick, load]);
+	// 202: the source is being asked (the handheld's worker), so the page asks again shortly
+	useEffect(() => {
+		if (!r || !r.pending) return;
+		const t = setTimeout(load, (r.retry || 500));
+		return () => clearTimeout(t);
+	}, [r, load]);
+	const back = html`<div class="crumbs"><nav><button onClick=${onBack}><${Icon} n="left" k=${1} />Library</button></nav></div>`;
+	if (err) return html`${back}<p class="note">${err}</p>`;
+	if (!r) return slow ? html`<${Skeleton} />` : null;
+	const info = r.series || {};
+	const title = info.title || (series && series.title) || id;
+	const head = html`<div class="mser-head" style="display:flex;gap:12px;align-items:center;margin:8px 0 16px">
+		<div class="grow">
+			<div class="kicker">Series</div>
+			<h2 style="font-size:20px;margin:4px 0">${title}</h2>
+			${info.source && info.source !== 'local' ? html`<div class="dim">${info.source}</div>` : null}
 		</div>
-		<p class="note">Chapter details are shown on the handheld. Use the dashboard to mark chapters read or remove the series.</p>
+	</div>`;
+	if (r.pending) return html`${back}${head}<p class="note">Asking the source for its chapters…</p>`;
+	const items = r.items || [];
+	const local = !!info.local;
+	const unread = items.filter(c => !c.read && (c.download || {}).state !== 'onCard');
+	const toggle = (cid) => setPicked(p => {
+		const n = new Set(p);
+		if (n.has(cid)) n.delete(cid); else n.add(cid);
+		return n;
+	});
+	const queue = async (ids) => {
+		if (!ids.length) return;
+		try {
+			const out = await post('/api/manga/download', { series: id, chapters: ids });
+			const n = out && out.added ? out.added : 0;
+			toast(n ? n + (n === 1 ? ' chapter queued' : ' chapters queued') : 'Nothing to download: already here or queued');
+			setPicked(new Set());
+			load();
+		} catch (e) { toast(e.message); }
+	};
+	const downloadSelected = () => queue(items.filter(c => picked.has(c.id)).map(c => c.id));
+	const downloadUnread = () => queue(unread.map(c => c.id));
+	return html`<div>
+		${back}
+		${head}
+		<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+			<button class="btn sm primary" disabled=${local || !picked.size} onClick=${downloadSelected}>Download selected${picked.size ? ' (' + picked.size + ')' : ''}</button>
+			<button class="btn sm" disabled=${local || !unread.length} onClick=${downloadUnread}>Download all unread${unread.length ? ' (' + unread.length + ')' : ''}</button>
+		</div>
+		${local ? html`<p class="note">These chapters are already on the handheld.</p>` : null}
+		${items.length === 0 ? html`<p class="note">No chapters.</p>` : html`<div class="mchap-list">
+			${items.map(c => {
+				const d = c.download || {};
+				const done = d.done || 0, total = d.total || 0;
+				const onCard = d.state === 'onCard';
+				const prog = c.pages > 0 ? 'p. ' + (Math.min(c.page, c.pages - 1) + 1) + '/' + c.pages : c.page > 0 ? 'p. ' + (c.page + 1) : '';
+				const label = d.state === 'queued' ? 'Queued' : d.state === 'running' ? (total ? done + '/' + total : 'Downloading…')
+					: d.state === 'paused' ? 'Paused' : d.state === 'failed' ? 'Failed' : onCard ? 'On card' : '';
+				return html`<label class="mchap box surface" key=${c.id}>
+					<input type="checkbox" checked=${picked.has(c.id)} disabled=${local || onCard} onChange=${() => toggle(c.id)} aria-label=${'Select ' + (c.title || 'chapter')} />
+					<span class="grow">
+						<span class="ell" style="display:block;font-weight:600">${c.title || (c.number > 0 ? 'Chapter ' + c.number : 'Chapter')}</span>
+						<span class="dim" style="display:block;font-size:13px">
+							${c.number > 0 ? '#' + c.number + ' · ' : ''}${c.read ? 'Read' : 'Unread'}${prog ? ' · ' + prog : ''}
+						</span>
+						${d.state === 'running' && total > 0 && html`<span class="mdl-prog" style="display:block;height:3px;background:var(--track);border-radius:2px;margin-top:4px"><i style=${'width:' + Math.min(100, done * 100 / total) + '%;display:block;height:100%;background:var(--yellow);border-radius:2px'}></i></span>`}
+					</span>
+					${label ? html`<span class=${'chip' + (onCard ? ' y' : d.state === 'failed' ? ' red' : '')}>${label}</span>` : null}
+				</label>`;
+			})}
+		</div>`}
 	</div>`;
 }
 
@@ -187,7 +242,7 @@ function Downloads() {
 	const resumeAll = async () => {
 		try { await post('/api/manga/download/pause', { resume: '1' }); load(); } catch (e) { toast(e.message); }
 	};
-	if (!items.length) return html`<${Empty} icon="download" title="No downloads" sub="Queue chapters from a series page on the handheld." />`;
+	if (!items.length) return html`<${Empty} icon="download" title="No downloads" sub="Queue chapters from a series page." />`;
 	// group by series
 	const bySeries = new Map();
 	for (const it of items)

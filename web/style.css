@@ -998,3 +998,8 @@ input[type=range] { touch-action: pan-y; }
 .msrc-row { display: flex; gap: var(--s2); align-items: center; padding: var(--s2) var(--s3); }
 /* downloads: the progress bar under each chapter */
 .mdl-prog { overflow: hidden; }
+/* a series' chapters on the dashboard: a tick, the title and place, the download state */
+.mchap-list { display: flex; flex-direction: column; gap: 6px; }
+.mchap { display: flex; align-items: center; gap: var(--s3); padding: 8px var(--s3); cursor: pointer; }
+.mchap input[type="checkbox"] { width: 20px; height: 20px; flex: none; accent-color: var(--yellow); }
+.mchap input[type="checkbox"]:disabled { opacity: .4; }

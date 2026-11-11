@@ -755,10 +755,11 @@ namespace bp
 		p.serial = serial;
 		p.job = job;
 		// A newer job for the same source and kind replaces the waiting one where it stood, so a fast scroll doesn't
-		// queue ten Popular pages and a slow source doesn't lose its turn to them.
+		// queue ten Popular pages and a slow source doesn't lose its turn to them. A job that says replace=false (the
+		// web dashboard's chapter list, which may be asked beside the handheld's page) is never replaced: it waits.
 		for (auto it = d->queue.begin(); it != d->queue.end(); ++it)
 		{
-			if (it->job.sourceId == job.sourceId && it->job.kind == job.kind)
+			if (job.replace && it->job.replace && it->job.sourceId == job.sourceId && it->job.kind == job.kind)
 			{
 				*it = std::move(p);
 				d->cv.notify_one();

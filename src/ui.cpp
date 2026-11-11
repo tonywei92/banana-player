@@ -470,6 +470,13 @@ namespace bp
 		else if (page == Page::Manga && mangaTab == MT_SOURCES) mangaSourcesTick(p);
 		// the Downloads tab: an armed delete goes, a lost worker answer waits for the reader to be on again
 		else if (page == Page::Manga && mangaTab == MT_DOWNLOADS) mangaDownloadsTick(p);
+		// the dashboard starts downloads and asks for a series' chapters: their worker answers are taken here too,
+		// since no manga page may be drawn on the handheld while the browser is the one using the reader
+		if (p.settings.mangaOn && mangaNet)
+		{
+			mangaBrowsePoll(p);
+			mangaDlAskPump();
+		}
 		// the web's equalizer: what mpv keeps, and settings.conf, once its sliders stop for a second
 		if (eqWebDirtyAt && SDL_GetTicks() - eqWebDirtyAt >= 1000)
 		{

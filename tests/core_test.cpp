@@ -2227,6 +2227,10 @@ static void testMangaUiLogic()
 	CHECK_EQ(mangaAgo(t - 30 * 86400, t), std::string("1 month ago"));
 	CHECK_EQ(mangaAgo(t - 365 * 86400, t), std::string("1 year ago"));
 	CHECK_EQ(mangaAgo(t - 2 * 365 * 86400, t), std::string("2 years ago"));
+
+	// the item table a source series opened from the Library gets back: its key and title, escaped
+	CHECK_EQ(mangaSourceItemJson("abc/12", "A \"quoted\" title"), std::string("{\"key\":\"abc/12\",\"title\":\"A \\\"quoted\\\" title\"}"));
+	CHECK_EQ(mangaSourceItemJson("a\\b", "Tab\there"), std::string("{\"key\":\"a\\\\b\",\"title\":\"Tab\\u0009here\"}"));
 }
 
 // the source filters a sheet holds (5.2.1): parsing the source's definitions, defaults, the object search() gets

@@ -30,6 +30,9 @@ namespace bp
 			std::string sourceId, scriptPath;
 			int page = 1;
 			std::string query, json;
+			// a newer job for the same source and kind replaces the waiting one (a fast scroll's pages); false: this
+			// one waits its turn and isn't replaced, so two pages asking for a source's chapters at once both get them
+			bool replace = true;
 		};
 
 		// The host's own structs, so nothing of a Lua state outlives its call (5.4).

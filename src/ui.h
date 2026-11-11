@@ -181,6 +181,33 @@ namespace bp
 			mangaRead = {};
 			return true;
 		}
+		// the dashboard's series view (design 8): a chapter with what the reader knows of it. download is "", or the
+		// mark the handheld's series page gives it ("queued", "running", "paused", "failed", "onCard")
+		struct MangaWebChapter
+		{
+			std::string id, title, download;
+			double number = -1;
+			bool read = false;
+			int page = 0, pages = 0, done = 0, total = 0;
+		};
+		struct MangaWebSeries
+		{
+			std::string id, title, source, error;
+			bool local = false, pending = false;
+			std::vector<MangaWebChapter> items;
+		};
+		// GET /api/manga/chapters: true with the list; false with pending (its source is being asked; try again) or
+		// error. A local series comes from the card's scan, a source series from its worker as the handheld asks it.
+		bool mangaWebChapters(const std::string& seriesId, MangaWebSeries& out);
+		// POST /api/manga/download: the chapters queued as the Download sheet queues them (their page lists asked of
+		// the source first); added counts the new asks. False (with error) when they can't be queued.
+		bool mangaWebDownload(const std::string& seriesId, const std::vector<std::string>& chapterIds, int& added,
+			std::string& error);
+		// the Download sheet's queueing, shared with the dashboard: each chapter waits for its source's page list
+		// before it becomes a queue item. added: how many new asks (already queued or on the card: none).
+		int mangaDlQueueChapters(const std::string& sourceId, const std::string& scriptPath,
+			const std::string& seriesId, const std::string& seriesTitle,
+			const std::vector<MangaChapter>& chapters);
 		// what the bottom panel asks of the reader, in order (main applies them each pass): Close; Step (v: screens, + down);
 		// Page (v: +1 / -1, a whole page); Seek (v: the page index); TouchDown / Drag (v: the finger's dy as a fraction of
 		// the panel's height, + down: the panels are the same size, so main scales it to the top panel) / Release, each
@@ -1184,6 +1211,7 @@ namespace bp
 		std::unique_ptr<MangaStore> mangaStore;
 		std::vector<LocalSeries> mangaLocal;	// On this handheld: each Manga folder's series, in reading order
 		std::unordered_map<std::string, size_t> mangaLocalById;
+		bool mangaScanned = false;	// the card was read at least once (the dashboard's local series can ask for it first)
 		std::string stateDirPath;	// (setStateDir's) the manga store's own folder is under it
 		bool mangaDirty = false;	// the store changed and wasn't written yet (mangaTick writes it once a second)
 		Uint32 mangaSavedAt = 0;
@@ -1690,6 +1718,19 @@ namespace bp
 		Rect mangaSrvFormRowRect(int i) const { return {16, 74 + i * 40, 608, 36}; }
 		Rect mangaServerModalBox() const { return {112, 150, 416, 170}; }
 		Rect mangaServerModalRowRect(int i) const { return {128, 214 + i * 48, 384, 40}; }
+		// ---- the dashboard's chapters for a source series (api_manga.cpp, ui_manga_web.cpp) ----
+		// The worker's answer is kept by series: the page polls while it comes (202), then reads it at once. The
+		// read marks and download states are filled in on every read, since the queue moves underneath the list.
+		struct MangaWebChaptersState
+		{
+			std::vector<MangaChapter> chapters;
+			std::string full, key, itemJson, title, source, error;
+			uint64_t serial = 0;
+			Uint32 askedAt = 0;
+			bool have = false;
+		};
+		std::map<std::string, MangaWebChaptersState> mangaWebCache;
+		bool mangaWebWorker(MangaWorker::Result& r);	// true: the answer was one of the dashboard's lists
 		// ---- the manga reader's Downloads (ui_manga_downloads.cpp) ----
 		// Page::Manga's Downloads tab: the queue, then what the downloads put on the card; and the Download sheet a
 		// source's series page opens (R2, or its button): This chapter / Next 5 unread / All unread / Choose chapters.

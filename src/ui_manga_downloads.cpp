@@ -735,6 +735,20 @@ namespace bp
 		mangaDlAskPump();
 	}
 
+	int Ui::mangaDlQueueChapters(const std::string& sourceId, const std::string& scriptPath, const std::string& seriesId,
+		const std::string& seriesTitle, const std::vector<MangaChapter>& chapters)
+	{
+		// both the Download sheet and the dashboard queue here: one ask per chapter, its page list first
+		int added = 0;
+		for (const auto& c : chapters)
+		{
+			int before = (int)mdlAsks.size() + (mdlAskOn ? 1 : 0);
+			mangaDlEnqueueChapter(sourceId, scriptPath, seriesId, seriesTitle, c);
+			if ((int)mdlAsks.size() + (mdlAskOn ? 1 : 0) > before) added++;
+		}
+		return added;
+	}
+
 	void Ui::mangaDlAskPump()
 	{
 		if (mdlAskOn || mdlAsks.empty()) return;
@@ -896,14 +910,14 @@ namespace bp
 			return;
 		}
 		int added = 0;
-		for (int i : picks)
-			if (i >= 0 && i < (int)mangaSrcChapters.size())
-			{
-				int before = (int)mdlAsks.size() + (mdlAskOn ? 1 : 0);
-				mangaDlEnqueueChapter(mangaSrcId, mangaSrcFile, mangaSeriesId,
-					mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title, mangaSrcChapters[i]);
-				if ((int)mdlAsks.size() + (mdlAskOn ? 1 : 0) > before) added++;
-			}
+		std::string title = mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title;
+		if (!picks.empty())
+		{
+			std::vector<MangaChapter> chosen;
+			for (int i : picks)
+				if (i >= 0 && i < (int)mangaSrcChapters.size()) chosen.push_back(mangaSrcChapters[i]);
+			added = mangaDlQueueChapters(mangaSrcId, mangaSrcFile, mangaSeriesId, title, chosen);
+		}
 		mangaDlSheetClose();
 		if (added) p.osd(added == 1 ? "Download queued" : std::to_string(added) + " chapters queued", 1800);
 		else p.osd("Nothing to download: already here or queued", 2200);
@@ -927,14 +941,10 @@ namespace bp
 			if (b == Button::Y)
 			{
 				std::string title = mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title;
-				int added = 0;
+				std::vector<MangaChapter> chosen;
 				for (int i : mdlChosen)
-					if (i >= 0 && i < n)
-					{
-						int before = (int)mdlAsks.size() + (mdlAskOn ? 1 : 0);
-						mangaDlEnqueueChapter(mangaSrcId, mangaSrcFile, mangaSeriesId, title, mangaSrcChapters[i]);
-						if ((int)mdlAsks.size() + (mdlAskOn ? 1 : 0) > before) added++;
-					}
+					if (i >= 0 && i < n) chosen.push_back(mangaSrcChapters[i]);
+				int added = mangaDlQueueChapters(mangaSrcId, mangaSrcFile, mangaSeriesId, title, chosen);
 				mangaDlSheetClose();
 				if (added) p.osd(added == 1 ? "Download queued" : std::to_string(added) + " chapters queued", 1800);
 				else p.osd("Nothing to download: already here or queued", 2200);

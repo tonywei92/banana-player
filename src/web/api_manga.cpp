@@ -78,6 +78,15 @@ namespace bp
 			j.obj().key("seriesId").str(p.seriesId).key("chapterId").str(p.chapterId).key("title").str(p.chapterTitle)
 				.key("page").num(p.page).key("pages").num(p.pages).key("read").boolean(p.read).key("at").num(p.at).end();
 		}
+
+		// the JSON for one chapter the dashboard's series view shows
+		void writeWebChapter(JsonWriter& j, const Ui::MangaWebChapter& c)
+		{
+			j.obj().key("id").str(c.id).key("number").num(c.number).key("title").str(c.title)
+				.key("read").boolean(c.read).key("page").num(c.page).key("pages").num(c.pages);
+			j.key("download").obj().key("state").str(c.download).key("done").num(c.done).key("total").num(c.total).end();
+			j.end();
+		}
 	}
 
 	// the manga route handlers; called from server.cpp's routes()
@@ -335,6 +344,42 @@ namespace bp
 		// cover URL (the same key the reader uses when it fetches and caches a cover). The cover cache's pathFor()
 		// hashes the key into a file name; the file's bytes, when there, are served as the cover image. A cache miss
 		// is 404: the dashboard waits for the reader to fetch it when its card shows on the handheld
+		// GET /api/manga/chapters?s=<series id>: a local series from the card's scan, a source series from its
+		// worker (202 with a retry while the answer comes, as the handheld's series page asks it)
+		s.Get("/api/manga/chapters", [w](const httplib::Request& req, httplib::Response& res) {
+			std::string sid = value(req, "s");
+			if (sid.empty()) { WebServer::fail(res, 400, "No series id"); return; }
+			int status = 200;
+			std::string body = w->call([sid](Player& p, Ui& u) {
+				if (!mangaReady(p, u)) return error("Manga is off");
+				Ui::MangaWebSeries s;
+				if (!u.mangaWebChapters(sid, s))
+				{
+					if (s.pending)
+					{
+						WebCall::setStatus(202);
+						JsonWriter j;
+						j.obj().key("pending").boolean(true).key("retry").num(500).end();
+						return j.end().out();
+					}
+					WebCall::setStatus(404);
+					return error(s.error.empty() ? "No such series" : s.error);
+				}
+				JsonWriter j;
+				j.obj().key("series").obj().key("id").str(s.id).key("title").str(s.title).key("source").str(s.source)
+					.key("local").boolean(s.local).end();
+				j.key("items").arr();
+				for (const auto& c : s.items) writeWebChapter(j, c);
+				j.end();
+				return j.end().out();
+			}, 2000, status);
+			if (status == 202) res.set_header("Retry-After", "1");
+			answer(res, body, status);
+		});
+
+		// a cover from the cache only: the dashboard never makes the handheld fetch one on its behalf. The cover is
+		// looked up in the page cache by a key the manga store recorded (series' cover URL); the cache's pathFor()
+		// hashes the key into a file name, so the same key always lands in the same place
 		s.Get("/api/manga/cover", [w](const httplib::Request& req, httplib::Response& res) {
 			std::string key = req.get_param_value("s");	// the cover URL (the source's or the server's)
 			if (key.empty()) key = req.get_param_value("k");	// (the dashboard's older name)
@@ -404,7 +449,8 @@ namespace bp
 			answer(res, body, status);
 		});
 
-		// enqueue downloads (series, chapters[]); the worker fetches pages and builds the CBZ
+		// enqueue downloads (series, chapters[]); the source's worker is asked for each chapter's page list first,
+		// exactly as the handheld's Download sheet does, then the downloader takes the queue items
 		s.Post("/api/manga/download", [w](const httplib::Request& req, httplib::Response& res) {
 			std::string series = value(req, "series");
 			std::vector<std::string> chapters;
@@ -415,31 +461,27 @@ namespace bp
 				n = req.get_param_value_count("chapters");
 				for (size_t i = 0; i < n; i++) chapters.push_back(req.get_param_value("chapters", i));
 			}
-			if (chapters.empty()) { WebServer::fail(res, 400, "No chapters"); return; }
+			if (series.empty() || chapters.empty()) { WebServer::fail(res, 400, "No series or chapters"); return; }
 			int status = 200;
 			std::string body = w->call([w, series, chapters](Player& p, Ui& u) {
 				if (!mangaReady(p, u)) return error("Manga is off");
-				// a queued chapter needs its page list, which only the source's worker gives (the handheld's series
-				// page asks for it): until the dashboard can ask too, downloads start on the handheld
-				WebCall::setStatus(501);
-				return error("Start downloads on the handheld for now");
-				// each chapter becomes a DlItem; the downloader picks them up on the next pump
-				for (auto& cid : chapters)
+				if (!u.mangaNet) { WebCall::setStatus(503); return error("Manga isn't running"); }
+				int added = 0;
+				std::string why;
+				if (!u.mangaWebDownload(series, chapters, added, why))
 				{
-					DlItem it;
-					it.seriesId = series;
-					it.chapterId = cid;
-					it.id = series + "\n" + cid;
-					// the series title is looked up from the store
-					if (u.mangaStorePublic())
-						if (const MangaSeries* ms = u.mangaStorePublic()->series(series))
-							it.seriesTitle = ms->title;
-					u.mangaNet->queue().add(std::move(it));
+					WebCall::setStatus(400);
+					return error(why);
 				}
-				u.mangaNet->queue().save();
-				u.mangaNet->queue().resumeAll();	// one ask also lifts an all-pause
+				if (added > 0)
+				{
+					u.mangaNet->queue().save();
+					u.mangaNet->queue().resumeAll();	// one ask also lifts an all-pause
+				}
 				mangaNotify(*w, u);
-				return std::string("{\"ok\":true}");
+				JsonWriter j;
+				j.obj().key("ok").boolean(true).key("added").num(added).end();
+				return j.end().out();
 			}, 2000, status);
 			answer(res, body, status);
 		});

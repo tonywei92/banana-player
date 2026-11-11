@@ -43,22 +43,6 @@ namespace bp
 			return "Chapter";
 		}
 
-		// the item table a source's details()/chapters() get back (5.2): the one it gave Browse, or (a series opened
-		// from the Library, which keeps no copy) its key and title, which is all such a call can need
-		std::string itemJson(const std::string& key, const std::string& title)
-		{
-			auto esc = [](const std::string& s) {
-				std::string out;
-				for (char c : s)
-				{
-					if (c == '"' || c == '\\') { out += '\\'; out += c; }
-					else if ((unsigned char)c < 0x20) { char b[8]; snprintf(b, sizeof b, "\\u%04x", c); out += b; }
-					else out += c;
-				}
-				return out;
-			};
-			return "{\"key\":\"" + esc(key) + "\",\"title\":\"" + esc(title) + "\"}";
-		}
 	}
 
 	// ---- Browse's rows ----
@@ -824,6 +808,8 @@ namespace bp
 				}
 				continue;
 			}
+			// the dashboard's series view asked for a chapter list: its own cache takes that answer
+			if (mangaWebWorker(r)) continue;
 			// an answer nothing here asked for: a Downloads sheet chapter's page list (ui_manga_downloads.cpp), or
 			// one for a page that moved on (dropped)
 			mangaDlWorker(r);
@@ -1039,7 +1025,7 @@ namespace bp
 			}
 		mangaSrcTitle = name.empty() ? key : name;
 		mangaSrcCover = cov;
-		mangaSrcItemJson = json.empty() ? itemJson(key, mangaSrcTitle) : json;
+		mangaSrcItemJson = json.empty() ? mangaSourceItemJson(key, mangaSrcTitle) : json;
 		mangaSrcInfo = MangaDetails{};
 		mangaSrcInfoOn = false;
 		mangaSrcChapters.clear();

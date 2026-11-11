@@ -133,6 +133,7 @@ namespace bp
 		mangaLocalById.clear();
 		for (size_t i = 0; i < mangaLocal.size(); i++)
 			mangaLocalById["local:" + mangaLocal[i].path] = i;
+		mangaScanned = true;
 		int64_t now = (int64_t)time(nullptr);
 		for (auto& s : mangaLocal)
 		{
