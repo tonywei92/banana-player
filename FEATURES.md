@@ -677,16 +677,17 @@ button resumes the latest), and right under Liked in a computer's sidebar.
 
 **Manga** appears in the nav only while the reader is on, with three pages:
 
-- **Library**: your series as cards. Opening one says the chapter details are on the handheld; the bin takes it out
-  of your library (the files stay where they are).
+- **Library**: your series as cards. Opening one lists its chapters — read or unread, the page you were on, and its
+  download state (**Queued**, its pages done, **Paused**, **On card**) — tick the ones you want and press **Download
+  selected**, or take every unread one with **Download all unread**; a series from your card says its chapters are
+  already on the handheld. The bin takes it out of your library (the files stay where they are).
 - **Sources**: a **Repositories** card — paste an address and **Add**, each one with **Refresh** and **Remove** (its
   installed sources stay), and the handheld's note under the card — then **Installed** (**Update** when there's one,
   the bin to uninstall, which asks first) and **Available** (**Install**). Adult sources are left out unless **Adult
   sources** is **Shown**.
 - **Downloads**: the queue — each chapter with its pages done, pause or resume one, delete one, **Pause all** /
-  **Resume all**, and a **Low on card space** note when the card is nearly full. Starting a download is on the
-  handheld for now (the page says so): with none queued it reads **Queue chapters from a series page on the
-  handheld**.
+  **Resume all**, and a **Low on card space** note when the card is nearly full. Downloads are started here too, from
+  a series' chapter list in **Library**; with none queued the page reads **Queue chapters from a series page**.
 
 Changes show up live on both sides: what you do on the handheld appears in the browser, and the other way round.
 
@@ -700,9 +701,9 @@ extension with what it does and an **On/Off** switch (**A**). **X** (or the gear
 page: for the reader, **Manga settings**, a page of the Manga app's (not one of Banana Player's Settings). Turning one
 off hides it and stops it; nothing is deleted.
 
-- **Manga reader**: comics and manga from the files on your cards, and from sources you install from repositories. The
-  first time it's turned on, a sheet says where to find it and that repositories are added by you: Banana Player
-  doesn't provide or check their content.
+- **Manga reader**: comics and manga from the files on your cards, from your servers (Komga, Kavita, OPDS), and from
+  sources you install from repositories. The first time it's turned on, a sheet says where to find it and that
+  repositories are added by you: Banana Player doesn't provide or check their content.
 
 ### The drawer and Manage extensions
 
@@ -721,9 +722,8 @@ The reader is an app of its own. It opens on **Library** and has five tabs, step
 **History**, **Browse**, **Sources** and **Downloads**. **B** goes back — out of Browse's list of series first, then
 to the drawer. **START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page
 too); **B** there comes back where you were. Music keeps playing while you read: the pages take the top screen, and the
-mini bar is on the app's other pages (**SELECT** there goes to what plays). **Sources** says it comes next.
 mini bar is on the app's other pages (**SELECT** there goes to what plays). **Sources** installs sources from
-repositories you add (below); the app's own **Downloads** tab still says it comes next.
+repositories you add (below), and **Downloads** is the queue and what's on the card (below).
 
 **Where series come from.** Each of your cards may have a **Manga** folder (or `manga`, or `MANGA`); the reader reads it
 each time you open the app:
@@ -750,22 +750,28 @@ where you were. **X** clears the list (press **X** again to confirm). With the r
 settings** the list stays empty, but your places and your read marks are kept either way.
 
 **Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
-chapters it has, and **A** on one opens the series. Below it are your saved servers and **Add server…**; network folders
-are listed as coming next.
+chapters it has, and **A** on one opens the series. Under it come your saved servers and **Add server…** (below), then
+the sources you've installed, each with its language. Two dim lines follow, neither one a row to choose: **Network
+folders · coming next**, and — with no sources yet — **Add sources in Sources**.
 
 **Servers.** **Add server…** opens a form: **Kind** (Komga, Kavita or OPDS, LEFT/RIGHT), **Name**, **Address**, **User**
-and **Password**, then **Test** and **Save**. A password is sealed on Save and never shown again; a typed address loses
-any `user:password@` part before it is kept. **A** on a saved server opens its libraries (Komga) or its OPDS catalogue,
-a cover grid; **A** on a series opens its chapters and **A** on one reads it, pages coming from the server with its
-sign-in header. **X** on a server row opens **Edit** and **Delete** (Delete asks twice). Kavita is read through its OPDS
-address, which carries the API key in the path as Kavita writes it.
-chapters it has, and **A** on one opens the series. Under it come the sources you've installed, each with its
-language; with none yet, the row under it says **Add sources in Sources**. Last come two rows that say they're coming
-next: network folders, and your servers (Komga, Kavita, OPDS).
+and **Password** — **API key** instead of Password for Kavita — then **Test** and **Save**. A password is sealed on Save
+and never shown again; a typed address loses any `user:password@` part before it is kept. **A** on a saved server opens
+its libraries (Komga) or its OPDS catalogue, a cover grid whose covers arrive as you scroll to them; **A** on a series
+opens its chapters and **A** on one reads it, pages coming from the server with its sign-in header. **X** on a server
+row opens **Edit** and **Delete** (Delete asks twice). Kavita is read through its OPDS address, which carries the API
+key in the path as Kavita writes it; the key is sealed like a password — split out of the address into the **API key**
+field (the kept address has `{key}` where the key was), put back only in the request being sent, and replaced by
+`{key}` in every answer before it's read, so no list, link or page address holds it.
 
 **A source.** **A** on one opens it: **Popular**, **Latest** (when the source has one) and **Search** as tabs, stepped
 with **L/R** or a tap (**Y**, or the Search tab, asks for the words on the keyboard), and the results as a grid that
-fills in as you move down it. **A** opens a series, **B** goes back to Browse's rows, and an error under the grid
+fills in as you move down it, each tile showing the series' real cover once it has come in (fetched with the source's
+own headers while the tile is on screen, kept in a cache on the card; a plain coloured one stands in until it arrives).
+**X** opens the **Filters** sheet, where the source has filters: its own sorts, selects, checks, include / exclude
+lists (**A** cycles off → include → exclude), text fields and groups as rows, each showing its current value, with
+**Reset** back to the defaults and **Apply** to run the search again from page 1 — the values stay with that source
+while the app runs. **A** opens a series, **B** goes back to Browse's rows, and an error under the grid
 offers **A: Try again**. A source's series page is laid out like a card series': **Resume**, the heart (**Y**) to
 keep it in your library — a source's series starts outside it — the chapters with their read marks, **X** to mark one
 read or unread, **A** to read it.
@@ -829,6 +835,7 @@ here to scroll* in **Strip**), and *Loading…* shows beside the page number whi
 | **L2 / R2** | Previous / next chapter |
 | **START** | The Reading menu (below) |
 | **SELECT** | Fullscreen on both screens (below) |
+| **L3** (press the stick) | Turn the page a quarter turn: 90° clockwise each press, in the paged modes (kept for the chapter; **Strip** ignores it) |
 | **B** | Leave fullscreen, then close the reader; your place is kept |
 
 - The **page fit** is a setting (below): **Page** (the whole page on the screen), **Width** (as wide as the screen, read
@@ -840,7 +847,7 @@ here to scroll* in **Strip**), and *Loading…* shows beside the page number whi
   area on the bottom screen to turn the page — it follows your finger and snaps to a page when you let go (a quick
   flick turns the page even from a short drag), and in **Strip** it scrolls — the slider jumps to a page, and the two
   buttons go to the chapter before or after. In fullscreen the whole bottom screen is the page, and the finger drags it
-  anywhere.
+  anywhere. A double-tap on the page zooms to 200 % at that spot, and a double-tap again goes back to the fit.
 - Your place is kept on the card, in the player's own folder (`home/.config/banana-player`): the page of every chapter
   you've opened, and when.
 
@@ -892,16 +899,12 @@ read. **B** goes back where you came from.
 
 The reader itself is turned on and off in **Manage extensions** (or on the web dashboard): **A** on its row.
 
-The page cache and **Adult sources** belong to the parts that aren't here yet, so the cache is empty and the last one
-changes nothing for now. **In Recent on Home** places the reader's last chapter in Home's Recent strip.
-
-**Coming next:** network folders, sources from repositories, and downloads. None of that is in this version yet.
 The page cache holds the pages of chapters read from a source (**Clear cache** says how much it holds), **Adult
-sources** hides what a repository marks adult until you show it, and **In Recent on Home** still changes nothing for
-now.
+sources** hides what a repository marks adult until you show it, and **In Recent on Home** places the reader's last
+chapter in Home's Recent strip.
 
-**Coming next:** network folders and servers (Komga, Kavita, OPDS) as sources, and downloads — neither is in this
-version yet. Sources from repositories are here.
+**Coming next:** network folders as sources (Browse lists them as coming next), pinch zoom (the screen reads one
+finger), and reading a manga in the browser.
 
 ## Updates
 

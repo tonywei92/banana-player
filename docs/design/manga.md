@@ -27,59 +27,54 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
   library**, read and unread), and a chapter read from its page URLs with the source's headers — pages fetched into
   the page cache three at a time, progress kept as for local chapters. A source behind a browser check (Cloudflare,
   DDoS-Guard) says so plainly, in the worker's answers and the reader's page fetches.
+- **The filter sheet** (**X** on a source's grid, where the source declares filters; the design's **Y** is Search):
+  the source's own filters as rows — a sort with its **Direction**, selects, checks, include / exclude checklists
+  (**A** cycles off → include → exclude), text fields on the keyboard, groups — each row showing its current value,
+  with **Reset** and **Apply** (**Apply** runs the search again from page 1), the values kept per source while the app
+  runs.
 - **The Pages grid** (**Y** in the reader, or the Reading menu's **Pages** row): the chapter's thumbnails six wide,
   made as pages decode (placeholders until then), page numbers in their cells, the cursor moving the reader to its
   page, **A** jumps there, **B** or **Y** closes, touch taps and drags.
 - **The reader**: its own renderer on the top panel, the three modes (**Right to left**, **Left to right**, **Strip**),
   the page fit (Page, Width, and a real **Fill** in the paged modes), the zoom (**UP/DOWN** through 100–800 %, **A** at
   200 %), the D-pad (**LEFT/RIGHT** a screenful, then the page), **L/R**, **L2/R2**, the **Reading menu** on **START**,
-  the touch drag and flick, and the place kept per chapter.
+  the touch drag and flick, a double-tap zooming to 200 % at the finger or back to the fit, **L3** turning the page 90°
+  in the paged modes (kept for the chapter), and the place kept per chapter.
 - **Fullscreen on both panels**: one tall view over the two panels, the hinge's gap skipped so the art lines up (see
   [Fullscreen](#13-fullscreen-both-screens)).
 - **The music keeps playing** while reading: the reader takes the top panel and mpv's frames go to a small offscreen
   target.
-- **The store** (bpcore, with tests): the library, the reading progress and the history in the state folder. Beside it,
-  ready for the parts below: the CBZ reader and writer, ComicInfo, the page cache, the download queue, the repositories'
+- **Real covers for sources and servers**: a cover fetched only while its tile is on screen (a fetch cancelled when it
+  scrolls away), with the source's or server's headers, kept in a cover cache on the card (the oldest go first) and
+  decoded off the main thread; the dashboard's cover endpoint serves from that cache only, and a plain coloured cover
+  stands in until the real one arrives.
+- **The store** (bpcore, with tests): the library, the reading progress and the history in the state folder, and
+  behind the parts above: the CBZ reader and writer, ComicInfo, the page cache, the download queue, the repositories'
   index and the OPDS and Komga parsers.
 - **Saved servers** (Komga, Kavita, OPDS): **Browse** lists them after On this handheld with **Add server…**, a form
-  (kind, name, address, user, password; **Test**, **Save**; the password sealed by `secret.*` as the network folders'
-  are), **X** on a row for **Edit** / **Delete** (twice), then the server's libraries or OPDS catalogue, its series as a
-  cover grid, a series page with chapters, and reading a chapter through `MangaReadRequest` with its page URLs and the
-  server's auth header.
-- **Downloads**: the series page's **Download** sheet (this chapter, the next 5 unread, all unread, chosen chapters),
-  the **Downloads** tab (the queue with pause/resume, and what is on the card by series, with delete), the chapter
-  download marks, and reading a downloaded chapter from its CBZ with no network. The queue and the CBZ writer are
-  bpcore; the sheet asks the source's worker for each chapter's page list before the downloader takes it.
+  (kind, name, address, user, password — **API key** instead of password for Kavita — **Test**, **Save**; the secret
+  sealed by `secret.*` as the network folders' are), **X** on a row for **Edit** / **Delete** (twice), then the
+  server's libraries or OPDS catalogue, its series as a cover grid, a series page with chapters, and reading a chapter
+  through `MangaReadRequest` with its page URLs and the server's auth header. Kavita's API key is split out of a
+  pasted address into that field and left as `{key}` in the stored address, put back only in the request being sent and
+  replaced by `{key}` in every answer before it is read, so no id, link or page URL holds it.
+- **Downloads**: the source's series page's **Download** sheet (this chapter, the next 5 unread, all unread, chosen
+  chapters), the **Downloads** tab (the queue with pause/resume, and what is on the card by series, with delete), the
+  chapter download marks, and reading a downloaded chapter from its CBZ with no network. The queue and the CBZ writer
+  are bpcore; the sheet asks the source's worker for each chapter's page list before the downloader takes it. The
+  dashboard starts them too: a series' chapters listed with their read marks, places and download state, ticked and
+  queued with **Download selected** / **Download all unread**, asked of the source the same way.
+- **The web dashboard's Manga pages**: **Library**, **Sources** and **Downloads** behind a **Manga** item shown only
+  while the reader is on, their API through `WebServer::call`, 404 while off, changes announced as a manga event.
 
 **Not built yet**
 
 - Network folders as sources: the parsers are in bpcore, but no network folder reaches the reader, and **Browse**
   lists it as coming next.
-- Sources from repositories: the index's format and its checksums are in bpcore and Lua is vendored, but no script is
-  loaded and **Sources** is empty.
-- The reader's own extras from section 4: **Y** for the pages grid, **L3** to turn the page, the double-tap and the
-  pinch.
-- The page cache is empty (only the network sources fill it), and **Adult sources** change nothing yet.
-- The web dashboard's Manga pages, and reading in the browser.
-- **The web dashboard** (section 8): the **Manga** pages — **Library**, **Sources** with repositories, **Downloads**
-  — behind a Manga item shown only while the reader is on, their API through `WebServer::call`, 404 while off,
-  changes announced as a manga event.
-- **The store** (bpcore, with tests): the library, the reading progress and the history in the state folder, the page
-  cache and the repositories' index in use. Beside it, ready for what isn't built yet: the CBZ reader and writer,
-  ComicInfo, and the OPDS and Komga parsers.
-
-**Not built yet**
-
-- Network folders and servers (Komga, Kavita, OPDS) as sources: the parsers and the saved connections are in bpcore,
-  but no source reaches the reader, and **Browse** lists them as coming next.
-- Downloads: the queue, the engine and the dashboard's page are built, but nothing yet adds a chapter to a download —
-  the app's **Downloads** tab still says it comes next, and the dashboard refuses with *Start downloads on the
-  handheld for now*.
 - Passing a browser check: it is detected and reported, not passed (the helper is parked in section 10's backlog).
-- The reader's own extras from section 4: **L3** to turn the page, the double-tap and the pinch (**Y**'s pages grid is
-  built).
-- **In Recent on Home** changes nothing yet.
+- Pinch zoom: the touchscreen reads only its first slot, so the reader's zoom is the keys', **A** and the double-tap.
 - Reading in the browser (the dashboard manages only).
+- Typing to narrow a long filter list: the filter sheet's checklists are scrolled and ticked, not typed into.
 
 **Decisions since the proposal** (the owner's answers, 2026-11-10; section 12 has them in full)
 
