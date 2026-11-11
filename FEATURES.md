@@ -819,7 +819,7 @@ it couldn't. With nothing yet they say where to start: *No sources yet* (add a r
 **Tachiyomi / Mihon repositories.** An address ending in `index.pb` or `index.min.json` is a Java repository (like
 Keiyoushi's `https://github.com/keiyoushi/extensions/raw/repo/index.pb`), not a Lua one. It needs the optional
 **Extension support** download (Manga settings; inside, a Java runtime and Suwayomi, never named on screen): without
-it the address is refused in one line and nothing is kept. Adding one starts it (*Loading manga engine… about 25 s*)
+it the repository is kept as waiting (*Waits for the engine*) and sent to it once it runs. With it, adding one starts it (*Loading manga engine… about 25 s*)
 and registers the store with Suwayomi; it is listed with the Lua repositories under the store's own name, with no
 badge (the screen never says Java, jar or Suwayomi). Removing it removes the store. Its
 extensions show under **Available** beside the Lua ones (name, language, version; adult ones hidden
@@ -827,7 +827,7 @@ while **Adult sources** is Hidden), **A** installs one, and **Installed** lists 
 reports a newer one and **Uninstall** (asked twice). A Java source appears in **Browse** as one row per source and
 language — same Popular / Latest / Search grid, covers, filters sheet, series page and reading page as a Lua source.
 Its series and reading progress are kept under `java:<source id>` with the Suwayomi manga id, so the Library and
-History open them again through the host. While the extensions start, a notice at the top of every page counts the seconds (then *Extensions ready*). No video plays in the manga reader or while the extensions run (the handheld's memory can't hold both): entering the reader, or the extensions starting, stops a video as Stop would, with a notice; music and photos go on. The runtime is started as Manga is entered, wanted on every use, and stops after five idle minutes (it then stays stopped, also while Manga is open, until the next use or the next entry); the
+History open them again through the host. While the extensions start, a notice at the top of every page counts the seconds (then *Extensions ready*). No video plays in the manga reader or while the extensions run (the handheld's memory can't hold both): entering the reader, or the extensions starting, stops a video as Stop would, with a notice; music and photos go on. The runtime is started as Manga is entered and kept running while any Manga page is open (a chapter read from the card included, so its 25 s start isn't paid again on the way back to a source); it stops five minutes after Manga is left, at once when a video plays outside Manga, and when Banana Player quits; the
 hosted pages are read from `127.0.0.1` through the same page cache as any other chapter.
 
 - **Repositories**: each one you've added, with when it was last checked (or *Not checked yet*). **A** on one offers

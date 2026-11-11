@@ -1297,6 +1297,7 @@ namespace bp
 		// the engine is asked for once per entry into the Manga pages (mangaVideoGuard): in them now, and the wish
 		// still to be made (it waits while a stop is ending or the engine is still downloading)
 		bool engineInManga = false, engineEntryWant = false;
+		Uint32 engineUseAt = 0;	// the last time a Manga page counted as the engine's use (every 30 s while one shows)
 		// the manga extension's picture (assets/icons/manga.png), decoded at the size drawn
 		SDL_Texture* mangaIconTex = nullptr;
 		int mangaIconPx = 0;	// the size it was decoded at

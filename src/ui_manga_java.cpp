@@ -403,6 +403,23 @@ namespace bp
 				{
 					h.want();	// (up already: entering is use, its idle time starts again)
 					engineEntryWant = false;
+					engineUseAt = SDL_GetTicks();
+				}
+			}
+			// While a Manga page shows, the engine is in use even when nothing asks it (a chapter read from the card):
+			// its 25 s start isn't paid again on the way back to a source. Its idle time (5 minutes) runs once Manga
+			// is left. Only while it's up and no stop is on its way: a stopped engine isn't brought back here (an idle
+			// stop can't happen in Manga now, and a video's stop must hold)
+			if (in && !engineEntryWant && mangaNet && mangaNet->started())
+			{
+				JavaExtHost& h = mangaNet->javaExt();
+				auto st = h.state();
+				Uint32 now = SDL_GetTicks();
+				if ((st == JavaExtHost::State::Starting || st == JavaExtHost::State::Running) && !h.stopping() &&
+					now - engineUseAt >= 30000)
+				{
+					h.want();
+					engineUseAt = now;
 				}
 			}
 		}
