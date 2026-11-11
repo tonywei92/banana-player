@@ -108,7 +108,7 @@ namespace bp
 		// a page still loading shows a turning ring: main wakes this often to draw its next step
 		static constexpr int SPIN_MS = 110;
 		// decoded pages kept around the view, in bytes of pixels (the textures take as much again)
-		static constexpr size_t DECODED_BUDGET = 64u << 20;
+		static constexpr size_t DECODED_BUDGET = 32u << 20;
 		bool spinning() const { return opened && pr.spun(); }
 
 	private:

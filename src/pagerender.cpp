@@ -224,9 +224,9 @@ namespace bp
 
 	bool PageRenderer::has(int index) const { return find(index) != nullptr; }
 
-	void PageRenderer::addPage(int index, int w, int h, std::vector<uint8_t>&& rgba)
+	void PageRenderer::addPage(int index, int w, int h, std::shared_ptr<const std::vector<uint8_t>> rgba)
 	{
-		if (w <= 0 || h <= 0 || rgba.size() < (size_t)w * h * 4) return;
+		if (w <= 0 || h <= 0 || !rgba || rgba->size() < (size_t)w * h * 4) return;
 		// a page shown already: this one waits beside it (a sharper one still on its way is replaced by this one)
 		bool replacing = find(index) != nullptr;
 		for (auto it = pages.begin(); it != pages.end(); ++it)
@@ -276,12 +276,13 @@ namespace bp
 			gl->GenTextures(1, &t.tex);
 			gl->BindTexture(TEXTURE_2D, t.tex);
 			gl->PixelStorei(UNPACK_ALIGNMENT, 1);
-			gl->TexImage2D(TEXTURE_2D, 0, RGBA, p.w, t.h, 0, RGBA, UNSIGNED_BYTE, p.rgba.data() + (size_t)t.y * p.w * 4);
+			gl->TexImage2D(TEXTURE_2D, 0, RGBA, p.w, t.h, 0, RGBA, UNSIGNED_BYTE, p.rgba->data() + (size_t)t.y * p.w * 4);
 			if (gl->GetError() == 0x0505 /* GL_OUT_OF_MEMORY */)
 			{
 				// The GPU's memory is the system's (Panfrost): with the extensions' server running it can run out.
 				// Give back every page not on screen and try once more; after that the page waits for a Retry
 				// (the reader's Try again) instead of staying grey with nothing said.
+				ooms++;
 				gl->PixelStorei(UNPACK_ALIGNMENT, 4);
 				gl->BindTexture(TEXTURE_2D, 0);
 				gl->DeleteTextures(1, &t.tex);
@@ -315,7 +316,7 @@ namespace bp
 			gl->TexParameteri(TEXTURE_2D, WRAP_T, CLAMP_TO_EDGE);
 			gl->PixelStorei(UNPACK_ALIGNMENT, 4);	// (GL's default, as mpv expects it)
 			bytes += (size_t)p.w * t.h * 4;
-			if (++p.uploaded == p.tiles.size()) std::vector<uint8_t>().swap(p.rgba);	// all up: the copy goes
+			if (++p.uploaded == p.tiles.size()) p.rgba.reset();	// all up: the renderer lets go of the pixels
 			return;
 		}
 	}

@@ -265,7 +265,7 @@ namespace bp
 					fprintf(stderr, "timing: page %d decoded in %u ms (%dx%d from %dx%d)\n", d.index + 1, d.ms, d.img.w, d.img.h,
 						d.img.srcW, d.img.srcH);
 					strip.setPageSize(d.index, d.img.w, d.img.h);
-					pr.addPage(d.index, d.img.w, d.img.h, std::move(d.img.rgba));
+					pr.addPage(d.index, d.img.w, d.img.h, std::make_shared<const std::vector<uint8_t>>(std::move(d.img.rgba)));
 					dirty = true;
 				}
 			}

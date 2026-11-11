@@ -1243,6 +1243,8 @@ namespace bp
 		mutable int mangaCacheCount = -1;
 		mutable bool mangaCacheValid = false;
 		mutable std::vector<MangaSeries> mangaLib;
+		static std::string mangaCoverKey(const std::string& url);	// a cover's cache key (the extensions' without their port)
+		std::string mangaSeriesCoverUrl(const std::string& seriesId) const;	// a saved series' cover by URL ("" for a local one)
 		mutable std::vector<int> mangaLibUnread;
 		mutable std::vector<ChapterProgress> mangaCards, mangaHistory;
 		int mlibZone = 0, mlibCard = 0, mlibGrid = 0, mlibScroll = 0;	// 0 the cards, 1 the cover grid

@@ -1045,31 +1045,49 @@ namespace bp
 		const std::vector<std::pair<std::string, std::string>>& headers)
 	{
 		if (coverUrl.empty()) return nullptr;
+		// the extensions' covers are on 127.0.0.1 at a port chosen at each start: they are known (and cached) by
+		// their path, and fetched at today's port, so a saved series' cover shows after a restart too
+		const std::string key = mangaCoverKey(coverUrl);
 		// the texture cache is shared with the local covers: a URL key never collides with a series id (those are
 		// paths, "src:…" or "srv:…"; a URL starts with http)
-		auto it = coverTex.find(coverUrl);
+		auto it = coverTex.find(key);
 		if (it != coverTex.end())
 		{
 			it->second.drawnAt = ++coverDrawn;
 			return it->second.tex;
 		}
-		if (coverFailed.count(coverUrl) || !coverWorker) return nullptr;
+		if (coverFailed.count(key) || !coverWorker) return nullptr;
 		// the cover cache is the disk side: a hit here means no fetch, only a decode
-		if (mangaCoverCache.has(coverUrl))
+		if (mangaCoverCache.has(key))
 		{
-			if (coverUrlAsked.count(coverUrl)) return nullptr;	// already being decoded
-			coverWorker->want(coverUrl, mangaCoverCache.pathFor(coverUrl), w, h);
-			coverUrlAsked.insert(coverUrl);
+			if (coverUrlAsked.count(key)) return nullptr;	// already being decoded
+			coverWorker->want(key, mangaCoverCache.pathFor(key), w, h);
+			coverUrlAsked.insert(key);
 			return nullptr;
 		}
 		// not cached: a fetch is in flight or needs starting. the draw loop records this URL as on-screen; anything
 		// left over at the end of the frame is cancelled (the card scrolled away)
-		if (mangaCoverFetches.count(coverUrl)) return nullptr;	// fetching already
+		if (mangaCoverFetches.count(key)) return nullptr;	// fetching already
 		if (!mangaNet || !mangaNet->started()) return nullptr;
-		uint64_t id = mangaNet->fetchApi().get(coverUrl, headers, 4 * 1024 * 1024);
-		if (id) mangaCoverFetches[coverUrl] = id;
-		else coverFailed.insert(coverUrl);	// the fetcher stopped: nothing will come
+		std::string fetchUrl = coverUrl;
+		if (key != coverUrl)
+		{
+			std::string base = mangaNet->javaExt().baseUrl();
+			if (base.empty()) return nullptr;	// not running: no fetch (it isn't started for a cover)
+			fetchUrl = base + key.substr(std::string("javahost").size());
+		}
+		uint64_t id = mangaNet->fetchApi().get(fetchUrl, headers, 4 * 1024 * 1024);
+		if (id) mangaCoverFetches[key] = id;
+		else coverFailed.insert(key);	// the fetcher stopped: nothing will come
 		return nullptr;
+	}
+
+	std::string Ui::mangaCoverKey(const std::string& url)
+	{
+		static const std::string local = "http://127.0.0.1:";
+		if (url.compare(0, local.size(), local) != 0) return url;
+		size_t slash = url.find('/', local.size());
+		return slash == std::string::npos ? url : "javahost" + url.substr(slash);
 	}
 
 	void Ui::mangaCoverCancelOffScreen()
@@ -1180,7 +1198,7 @@ namespace bp
 		// is. the generated cover stays until the picture arrives (and for any that fail)
 		if (!coverUrl.empty())
 		{
-			mangaCoverOnScreen.insert(coverUrl);
+			mangaCoverOnScreen.insert(mangaCoverKey(coverUrl));
 			int pw = std::max(1, (int)std::lround(in.w * sx));
 			int ph = std::max(1, (int)std::lround(in.h * sy));
 			const std::vector<std::pair<std::string, std::string>> empty;
@@ -1834,7 +1852,7 @@ namespace bp
 		}
 		mfWaiting = waiting;
 		// at most 8 pages kept here: the ones not drawn longest go
-		while (mfTex.size() > 8)
+		while (mfTex.size() > 4)	// (each a page's textures on the GPU: the memory is the system's)
 		{
 			auto old = mfTex.begin();
 			for (auto i = mfTex.begin(); i != mfTex.end(); ++i)

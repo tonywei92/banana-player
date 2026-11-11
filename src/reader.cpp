@@ -327,7 +327,8 @@ namespace bp
 			for (int i : rest)
 			{
 				size_t b = bytesOf(i);
-				if (used + b > DECODED_BUDGET) break;
+				// the GPU ran out before: the budget halves (twice at most) so it settles where it fits
+				if (used + b > (DECODED_BUDGET >> std::min(pr.oomCount(), 2))) break;
 				trimmed.insert(i);
 				used += b;
 			}
@@ -530,8 +531,7 @@ namespace bp
 			kept[idx] = {pw, ph, displayPixels};
 			// the renderer's old textures for this page are replaced by the new ones (addPage handles the swap:
 			// the old tiles stay drawn until the new ones are all on the GPU, so no grey frame)
-			std::vector<uint8_t> upload(displayPixels->begin(), displayPixels->end());
-			pr.addPage(idx, pw, ph, std::move(upload));
+			pr.addPage(idx, pw, ph, displayPixels);
 		}
 		want();
 	}
@@ -748,8 +748,7 @@ namespace bp
 					thumbs[d.index] = {tw, th, std::move(buf)};
 				}
 				// the renderer gets a copy it can move into its textures (the shared pixel buffer stays in kept/orig)
-				std::vector<uint8_t> upload(displayPixels->begin(), displayPixels->end());
-				pr.addPage(d.index, pw, ph, std::move(upload));
+				pr.addPage(d.index, pw, ph, displayPixels);
 				any = true;
 			}
 		}
