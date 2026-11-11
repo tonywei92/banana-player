@@ -82,17 +82,22 @@ that playlist. Started with a file, or after **Show in folder**,
 you land in the folder (or playlist) it plays from, the cursor on it. The same goes for **Stop** and for the end of
 the list while the playing screen was up.
 
-- **The mini bar**, along the bottom of Home and every list (Files, Playlists, Network, All recent): the play / pause
-  mark, the title, `0:14 / 1:00` (· paused), and a line showing how far it has got. Tap the bar to go back to the
-  playing screen; tap the mark on its left to play or pause and stay where you are; hold the bar for its menu:
-  **Now playing**, **Play** / **Pause**, **Like**, **Add to playlist…**, **Show in folder**, **Stop**. It's hidden
-  while you select files, type, fill in a connection, and on Settings and Info.
+- **The mini bar**, along the bottom of every page but the player itself: Home, every list (Files, Playlists, Network,
+  All recent), Settings and its groups, Sound, the web dashboard, Manage extensions, the manga reader's pages, the
+  photo viewer, and the player's START menu's Settings tab. The comic reader and the photo viewer are pages of their
+  own, not the player: over a photo the bar shows and controls what plays underneath (a song or a video), not the
+  photo. The bar: the play / pause mark, the title, `0:14 / 1:00` (· paused), and a line showing how far it has got.
+  Tap the bar to go back to the playing screen; tap the mark on its left to play or pause and stay where you are; hold
+  the bar for its menu: **Now playing**, **Play** / **Pause**, **Like**, **Add to playlist…**, **Show in folder**,
+  **Stop**. It's hidden while you select files, type, fill in a connection, with a popup menu or a sheet over the
+  page, and on the player's own screens (the playing screen, Tracks, Chapters, Up next, Info) and START's Playing,
+  About and Exit tabs; Settings and its groups, Sound and the web dashboard have it.
 - **The header** shows three small yellow bars left of the clock while something plays behind the list (dim and still
   when it's paused).
 - **The playing file's row** carries a chip: **Playing**, **Paused** or **In browser** (the web dashboard plays it). Its card on Home says **Now** with its time and bar running. **A** on that row or card goes back to it,
   never from its start.
-- **Back to the playing screen:** **SELECT** on any list or on Home, a tap on the mini bar, **START** › **Playing** ›
-  **Now playing**, **A** on its row or card, or **B** on Home.
+- **Back to the playing screen:** **SELECT** on any page with the bar (or on Home), a tap on the mini bar, **START** ›
+  **Playing** › **Now playing**, **A** on its row or card, or **B** on Home.
 - **L3** (press the stick) likes or unlikes what plays, from the lists too.
 - **Stop** ends it: **Stop** at the bottom right of the playing screen, **START** › **Playing** › **Stop**, or the mini
   bar's menu. The place is kept (its card on Home resumes it). Reaching the end of the folder or playlist stops too:
@@ -281,7 +286,7 @@ See [Photos](#photos) for the touch screen.
 | **SELECT** | Back to what plays (the playing screen); in select mode, Select all |
 | **L3** (press the stick) | Like / Unlike what plays |
 | **START** | Menu (on its **Playing** tab while something plays) |
-| **Mini bar** (touch screen) | Tap: the playing screen · its play mark: play / pause · hold: its menu |
+| **Mini bar** (touch screen) | On every page but the player: tap it for the playing screen · its play mark: play / pause · hold: its menu |
 
 ### The menu (START)
 
@@ -720,8 +725,8 @@ The reader is an app of its own. It opens on **Library** and has five tabs, step
 **History**, **Browse**, **Sources** and **Downloads**. **B** goes back — out of Browse's list of series first, then
 to the drawer. **START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page
 too); **B** there comes back where you were. Music keeps playing while you read: the pages take the top screen, and the
-mini bar is on the app's other pages (**SELECT** there goes to what plays). **Sources** installs sources from
-repositories you add (below), and **Downloads** is the queue and what's on the card (below).
+mini bar is on the app's pages, the reading page included (**SELECT** there goes to what plays). **Sources** installs
+sources from repositories you add (below), and **Downloads** is the queue and what's on the card (below).
 
 **Where series come from.** Each of your cards may have a **Manga** folder (or `manga`, or `MANGA`); the reader reads it
 each time you open the app:
@@ -853,9 +858,11 @@ here to scroll* in **Strip**), and *Loading…* shows beside the page number whi
 - **Scrolling is the finger's alone**: the D-pad's **UP/DOWN** zoom, they never scroll. **By touch**: drag in the big
   area on the bottom screen to turn the page — it follows your finger and snaps to a page when you let go (a quick
   flick turns the page even from a short drag), and in **Strip** it scrolls — the slider jumps to a page, and the
-  buttons go to the chapter before or after, or turn fullscreen on (the middle one, as **SELECT** does). In fullscreen
-  the whole bottom screen is the page, and the finger drags it anywhere. A double-tap on the page zooms to 200 % at that
-  spot, and a double-tap again goes back to the fit.
+  buttons go to the chapter before or after, or turn fullscreen on (the middle one, as **SELECT** does). The row is
+  three buttons of one size with equal margins and gaps, above the **Now playing** mini bar when something plays. In
+  fullscreen the whole bottom screen is the page, and the finger drags it anywhere; the controls bar has the mini bar
+  along its foot too, and a tap anywhere on the page — including the top-left corner — shows it. A double-tap on the
+  page zooms to 200 % at that spot, and a double-tap again goes back to the fit.
 - Your place is kept on the card, in the player's own folder (`home/.config/banana-player`): the page of every chapter
   you've opened, and when.
 
@@ -878,8 +885,9 @@ the gap under the hinge is skipped, so the art lines up across the fold; the bot
 from the pages the reader has already decoded. The gap's size is a setting of its own, **Hinge gap** in **Manga
 settings**: **36** of the panel's 480 lines by default. **B** leaves fullscreen first, and only then closes the reader.
 The page number shows for a moment after the page changes. A tap puts the controls bar over the lower part of the
-view; while it shows, a tap anywhere outside the bar puts it away again and does nothing else (no page turn, no drag),
-and a tap on the bar's own controls works as it says.
+view; the **Now playing** mini bar sits along its foot while something plays (the same bar as everywhere else), and
+while the bar shows, a tap anywhere outside it puts it away again and does nothing else (no page turn, no drag), and a
+tap on the bar's own controls works as it says.
 
 **The Pages grid.** **Y** while reading (or the Reading menu's **Pages**) opens the chapter's thumbnails, six to a
 row, each with its page number in its cell, on the page you're reading. Pages not decoded yet show their number alone

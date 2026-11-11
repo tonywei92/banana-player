@@ -80,7 +80,9 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 - Downloads need the network and always run while it is there, resuming where they stopped if they were interrupted (no
   charging option).
 - The mini bar shows on every page but the player, and **B** in the player minimizes back to it. As built, the reader's
-  own pages carry it; the reading page has the reader's controls there instead.
+  own pages carry it; the reading page has the reader's controls above it (2026-11-11: the reading page and the photo
+  viewer are pages of their own, not the player, so the bar is there too; over a photo it shows and controls main's
+  player).
 
 An optional extension built into Banana Player: a comic and manga reader in the spirit of Mihon (library, sources,
 source repositories, chapters, reading progress and history, reading modes), shaped for two 4:3 panels, the buttons and
@@ -108,6 +110,12 @@ extension's code is in the binary but nothing of it is constructed (as `WebServe
    **The mini bar shows on every bottom-panel page, the reader's included, except the player itself** (owner's
    decision): it controls what plays, and a tap on it opens the player; **B** in the player minimizes it back to the
    mini bar, on the page it was opened from (the reader at its page).
+   **Built 2026-11-11 (owner's rule):** the bar is on every page but the song or video player's own (its page, its
+   tracks and chapters, its queue, its Info; not while typing, selecting, or with a menu or sheet over the page). The
+   comic reader and the photo viewer are pages of their own, not the player, so it shows on both: over a photo it
+   controls **main's player** (the photo viewer is a second Player), and its tap closes the photo and opens the player
+   of what plays. Every page that now has it leaves it room at the panel's bottom (420–480 units: the bar, then
+   the hints line under it).
 4. **No sources and no repositories ship.** Built-in sources are only the user's own: files on the card, network folders,
    Komga / Kavita / OPDS servers. Repositories are typed in by the user.
 5. **Reading is local to the handheld in v1.** The web dashboard manages repositories, sources and the library; reading in
@@ -158,7 +166,7 @@ free there; X is the page's own action, and **START** opens **Manga settings**).
 | **Series** | cover, title, status line, Resume (A), In library heart, Download, chapter list (unread dot, read dimmed with a check, "p. 14/38" on the started one, a download mark: queued, progress, on the card), X: Options (mark read/unread, from here down, refresh, sort, delete download) | cover large, synopsis, genres |
 | **Download** (sheet from the series page) | This chapter · Next 5 unread · All unread (37) · Choose chapters… (the list in select mode) | how much it will take, room left |
 | **Downloads** | a storage line (downloads' size, the card's free space); the queue (series, chapter, pages done, pause / resume); then what's on the card by series (chapters, size), X: delete | the focused series |
-| **Reader** | a touch surface showing the pages under the finger (drag and flick there; in strip modes a map of the chapter with the window on it), Back/Forward, Prev/Next chapter; the mode and the zoom are the keys' and the Reading menu's (the panel's Zoom −/+ and Pages buttons come later); a page slider "14 / 38" (drag to jump); chapter title | the pages, drawn by the reader's renderer |
+| **Reader** | a touch surface showing the pages under the finger (drag and flick there; in strip modes a map of the chapter with the window on it), Back/Forward, Prev/Next chapter; the mode and the zoom are the keys' and the Reading menu's; a page slider "14 / 38" (drag to jump); chapter title; the **Now playing** mini bar along the bottom | the pages, drawn by the reader's renderer |
 | **Pages** (Y in the reader) | the chapter's thumbnails, 6 wide | the page under the cursor |
 | **Manga settings** (START on any Manga page, the gear in Manage extensions, the Reading menu's last row) | the reader's own rows, drawn as Settings draws a group's, the note last | — |
 
@@ -199,7 +207,7 @@ extensions; on a Manga page: Manga settings), L/R the reader's pages
 | **L3** | turn 90° (as photos; for double-page spreads printed sideways) | — |
 | **START** | the Reading menu: Fullscreen, Reading mode, Page fit, Zoom, Hinge gap (fullscreen only), Swap Left/Right, All Manga settings… | same |
 | **Drag (bottom)** | the page follows the finger sideways, its neighbour sliding in; let go: it snaps to a page (a quick flick turns even a short drag; a slow one past half). A zoomed or oversize page pans first, then the drag carries over to the next | the strip follows the finger 1:1; a flick glides on and slows by friction; no seam between pages or into the next chapter |
-| **Other touch** | slider to jump; the chapter buttons (in fullscreen the controls sheet: the slider, the chapters, Leave fullscreen, Close); the reading page's **Fullscreen** button between Prev chapter and Next chapter does what SELECT does (one tap into fullscreen); once fullscreen's controls show, a tap anywhere outside the bar puts them away again and does nothing else; double-tap: 2× / the fit; **pinch** to zoom only if the touchscreen reports two fingers (to verify on the hardware: `BottomTouch` reads one slot today) | the same; tap the map to jump |
+| **Other touch** | slider to jump; the chapter buttons (in fullscreen the controls sheet: the slider, the chapters, Leave fullscreen, Close, and the mini bar along its foot); the reading page's **Fullscreen** button between Prev chapter and Next chapter does what SELECT does (one tap into fullscreen); the mini bar (**Now playing**) above that row, and along the fullscreen sheet's foot, on every page but the player's own; once fullscreen's controls show, a tap anywhere outside the sheet (the mini bar included in it) puts them away and does nothing else; double-tap: 2× / the fit; **pinch** to zoom only if the touchscreen reports two fingers (to verify on the hardware: `BottomTouch` reads one slot today) | the same; tap the map to jump |
 
 The Reading menu is a compact sheet over the page (over the lower part of the fullscreen view): **UP/DOWN** choose a row,
 **LEFT/RIGHT** change it where you stand, **A** acts on it, and **B** or **START** closes it — reading goes on exactly
@@ -584,13 +592,18 @@ double-page spread printed sideways) is read without turning.
   view, so it runs from the top panel into the bottom one; the Strip's column is one tall column the same way.
 - **The bottom panel draws its own share** of the pages, from the pages the reader has already decoded and kept, so the
   two panels show one continuous picture.
-- **The controls overlay on a tap.** In fullscreen the bottom panel is all page; a tap puts the reader's controls (the
-  page number, the slider, the chapter buttons) back over it, and a tap on the bar's own controls works on them. Once
-  the controls show, a tap anywhere outside the bar puts them away again, and that tap does nothing else: no page turn,
-  no drag.
+- **The controls overlay on a tap.** In fullscreen the bottom panel is all page; a tap anywhere (the top-left corner
+  too: there is no "<" there) puts the reader's controls (the page number, the slider, the chapter buttons) back over
+  it, and a tap on the bar's own controls works on them. Once the controls show, a tap anywhere outside the bar puts
+  them away again, and that tap does nothing else: no page turn, no drag.
 - **A bar of their own.** Not in fullscreen, the reading page's chapter row is **Prev chapter · Fullscreen · Next
-  chapter**, three buttons of one size, 16 apart; **Fullscreen** does what SELECT does. (There is no fullscreen glyph in
-  `ui_glyphs.h`, so its label is text, as its neighbours'.)
+  chapter**, three buttons of one size, evenly spaced: equal margins and gaps (16, 208 apart across the 608, the last
+  ending 16 from the right edge); **Fullscreen** does what SELECT does. (There is no fullscreen glyph in
+  `ui_glyphs.h`, so its label is text, as its neighbours'.) Above the row, when a song or video plays, the **Now
+  playing** mini bar takes the panel's bottom and the page area, the slider and the row move up to leave it room.
+- **The mini bar in the sheet.** The fullscreen controls sheet carries the same mini bar along its foot (the same
+  640×480 box and look): the sheet's page number, slider and buttons move up for it, and its "Hides in 4 s" line sits
+  under it, as the hints do on the pages.
 - **The first-time toast.** The first time fullscreen opens, a toast says what it is and that **B** leaves it.
 - **Open fullscreen** is a setting of its own, **Open fullscreen** in **Manga settings**: with it on a chapter opens on
   both screens, so fullscreen is reached without the key (SELECT still turns it on and off).
@@ -598,5 +611,5 @@ double-page spread printed sideways) is read without turning.
 Built today: **SELECT**, the reading page's **Fullscreen** button, **B** leaving fullscreen first, the one tall view,
 the skipped hinge gap and its setting (**Hinge gap** in Manga settings), the paged modes across both panels, the bottom
 panel's own share of the pages, and the page tag (the page number, shown for a moment after a change). The controls
-overlay on a tap (a tap outside the bar puts it away) and the first-time toast are built too, and **Open fullscreen** is
-a setting rather than a button.
+overlay on a tap (a tap outside the bar puts it away) with the **Now playing** mini bar along its foot, the reading
+page's own mini bar, and the first-time toast are built too, and **Open fullscreen** is a setting rather than a button.

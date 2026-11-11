@@ -130,6 +130,13 @@ namespace bp
 		bool playerShown(const Player& p) const { return p.playing() && !bgPlay; }
 		// the player's own Stop (Main's Stop, START › Playing › Stop, the mini bar's menu), once: main stops what plays
 		bool takeStopPressed() { bool r = stopPressed; stopPressed = false; return r; }
+		// the mini bar's tap over a photo: the photo closes and the player of what plays takes the screen (once; main
+		// does it: only it can close the photo viewer)
+		bool takePlayerOverPhoto() { bool r = playerOverPhoto; playerOverPhoto = false; return r; }
+		// the player the mini bar works on: main's (songs and videos), set by main, also while a photo is shown. The
+		// photo viewer is a Player of its own and a page of its own: the bar never plays the photo, only what goes
+		// on under it. Without main's (a test, a caller that has none) it is the player it is given
+		Player* mainPlayer = nullptr;
 		// what plays stopped (any Stop, the end of the list): a page playing the file has nothing held here any more
 		// (the page plays on: not told)
 		void stopped() { playHoldAt = 0; }
@@ -1316,9 +1323,10 @@ namespace bp
 		Rect mangaSheetRect() const { return {0, 300, W, H - 300}; }
 		Rect mangaCtrlBtnRect(int i) const
 		{
-			// four to a row across the panel's 608: the long one ("Leave fullscreen") takes a little more
+			// four to a row across the panel's 608: the long one ("Leave fullscreen") takes a little more; above the
+			// mini bar while it shows in the sheet
 			static const int X[4] = {16, 164, 312, 488}, WIDTH[4] = {140, 140, 168, 136};
-			return {X[i], 392, WIDTH[i], 44};
+			return {X[i], miniUp ? 374 : 392, WIDTH[i], 44};
 		}
 		void mangaOpen(Player& p);		// openManga: the store loaded, the card scanned, the tabs reset
 		void mangaScan();				// each Manga folder read and its series put in the store
@@ -1383,12 +1391,15 @@ namespace bp
 		}
 		Rect mangaResumeRect() const { return {16, 84, 220, 52}; }
 		Rect mangaHeartRect() const { return {556, 84, 68, 52}; }
-		Rect mangaAreaRect() const { return {16, 70, 608, 260}; }
-		Rect mangaSliderRect() const { return {40, 352, 560, 22}; }
-		// the chapter row: three buttons of the same size, 16 apart across the panel's 608
-		Rect mangaPrevRect() const { return {16, 404, 192, 40}; }
-		Rect mangaFullRect() const { return {224, 404, 192, 40}; }	// the Fullscreen button: what SELECT does
-		Rect mangaNextRect() const { return {416, 404, 192, 40}; }
+		// the reading page's own pieces sit above the mini bar when it shows (it takes the panel's bottom): the page
+		// area, the slider and the chapter row all move up, the hints keep to the line under the bar
+		Rect mangaAreaRect() const { return {16, 70, 608, miniUp ? 222 : 260}; }	// (222: the page line below keeps 8 clear of it)
+		Rect mangaSliderRect() const { return {40, miniUp ? 330 : 352, 560, 22}; }
+		// the chapter row: three buttons of one size, equal margins and gaps across the panel's 608 (16, 208 wide
+		// pieces, 16 apart: the last one ends at 624, 16 from the right edge)
+		Rect mangaPrevRect() const { return {16, miniUp ? 372 : 404, 192, 40}; }
+		Rect mangaFullRect() const { return {224, miniUp ? 372 : 404, 192, 40}; }	// the Fullscreen button: what SELECT does
+		Rect mangaNextRect() const { return {432, miniUp ? 372 : 404, 192, 40}; }
 		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
 		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;
 		// History's rows hold two lines (series, then chapter and page): taller, so fewer
@@ -1892,6 +1903,7 @@ namespace bp
 		// the player left (B, "<", Back) while a song or video plays on: the browser is the base page; showPlayer ends it
 		bool bgPlay = false;
 		bool stopPressed = false;	// the player's own Stop (takeStopPressed)
+		bool playerOverPhoto = false;	// the mini bar's tap over a photo (takePlayerOverPhoto)
 		// the player shown (showPlayer) and not left since; back: where it was opened from (backFromPlayer)
 		bool onPlayer = true;
 		struct PlayerBack
@@ -1908,8 +1920,16 @@ namespace bp
 		// back to what plays (SELECT on a browse page, the bar, Now playing, B at Home): the player. False: nothing plays
 		bool goNowPlaying(Player& p);
 		bool nowPlayable(const Player& p) const { return p.playing() && !p.playingPhoto(); }
-		// the mini bar (Now playing) along the bottom of Home and the browser's pages: a tap the player, its play mark
-		// play / pause (a page playing the file: the page's, held: here), a hold its menu
+		// the player the mini bar works on: main's (see mainPlayer above); without it, p
+		Player& barPlayer(Player& p) const { return mainPlayer ? *mainPlayer : p; }
+		const Player& barPlayer(const Player& p) const { return mainPlayer ? *mainPlayer : p; }
+		// the mini bar (Now playing) along the bottom of every page but the player's own (the song or video player
+		// page, its tracks, its queue, its Info): a tap the player, its play mark play / pause (a page playing the
+		// file: the page's, held: here), a hold its menu. The comic reader and the photo viewer are pages of their
+		// own, not the player: it shows there too
+		// SELECT here goes back to what plays (the bar's right end names it), but where SELECT is the page's own key
+		// (a photo's Fit/Fill, Sound's On/Off, the reader's fullscreen) the bar doesn't name it
+		bool selectToPlayer() const { return page != Page::Main && page != Page::Sound && page != Page::MangaRead; }
 		static constexpr Rect MINI_BOX{16, 422, 608, 34};
 		static constexpr int MINI_PP = 560, MINI_BAR = 561;
 		bool miniBarShown(const Player& p) const;

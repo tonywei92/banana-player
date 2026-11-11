@@ -541,40 +541,61 @@ namespace bp
 
 	bool Ui::goNowPlaying(Player& p)
 	{
-		if (!p.playing() || p.playingPhoto()) return false;
+		// the bar is main's player's, also over a photo: a tap there closes the photo and opens the player, once (main
+		// does it: only it can close the photo viewer)
+		const Player& bp = barPlayer(p);
+		if (!bp.playing() || bp.playingPhoto()) return false;
+		if (p.playingPhoto()) { playerOverPhoto = true; return false; }
 		showPlayer();
 		return true;
 	}
 
 	bool Ui::miniBarShown(const Player& p) const
 	{
-		// on Home and the lists; not while selecting (its bar owns the bottom), typing, or on the connection pages;
-		// the extensions' pages (Manage extensions, the reader, the manga's settings) have it too: it controls what
-		// plays; the reader's page doesn't (main's pages are on top: the bottom panel is its controls)
-		if (page == Page::MangaRead) return false;
-		if (page == Page::Extensions || page == Page::Manga || page == Page::MangaSeries || page == Page::MangaSettings)
-			return !inMenu && !kbOpen && nowPlayable(p);
-		return page == Page::Browse && !inMenu && selMode == SEL_NONE && !kbOpen && browseDir != FORMDIR && browseDir != FINDNET &&
-			!addPending.serial && nowPlayable(p);
+		// the owner's rule: on every page but the player's own (the song or video player page, its tracks and chapters,
+		// its queue, its Info); the comic reader and the photo viewer are pages of their own, not the player, so it
+		// shows there too. Still not while typing, selecting, or in START's menu: Settings is a page with room for it
+		const Player& bp = barPlayer(p);
+		if (!bp.playing() || bp.playingPhoto()) return false;
+		if (kbOpen || selMode != SEL_NONE) return false;
+		if (inMenu && page != Page::Settings) return false;
+		if (page == Page::Tracks || page == Page::Chapters || page == Page::Info || page == Page::UpNext) return false;
+		// over a photo this is the photo viewer's page (drawPhoto), not the player's
+		if (page == Page::Main) return p.playingPhoto();
+		if (page == Page::Browse)
+			return browseDir != FORMDIR && browseDir != FINDNET && !addPending.serial;
+		// the Sound page's dialogs (Options, presets, Delete) reach the panel's bottom
+		if (page == Page::Sound) return eqDialog == EQD_NONE;
+		if (page == Page::MangaRead)
+		{
+			// the pages grid and the Reading menu are sheets over the reader (the menu is a menu, as today); in
+			// fullscreen the bottom panel is all page: the bar comes with the controls sheet, inside it
+			if (mangaPages || mangaMenu) return false;
+			if (readerStatus.fullscreen && readerBottom.on && !(mangaCtrlUntil && SDL_GetTicks() < mangaCtrlUntil)) return false;
+		}
+		return true;
 	}
 
 	void Ui::miniToggle(Player& p)
 	{
-		if (!p.playing() || p.playingPhoto()) return;
+		// the bar's play mark: main's player, never the photo
+		Player& bp = barPlayer(p);
+		if (!bp.playing() || bp.playingPhoto()) return;
 		// a page plays it: the page's play / pause (as A on the player)
-		if (pageDrives(p)) { toggleBrowser(p); return; }
-		if (!p.error.empty()) return;
-		if (pageIsOut()) { takeOver(p); return; }
-		SessionHost::get().play(p.paused);
-		p.togglePause();
+		if (pageDrives(bp)) { toggleBrowser(bp); return; }
+		if (!bp.error.empty()) return;
+		if (pageIsOut()) { takeOver(bp); return; }
+		SessionHost::get().play(bp.paused);
+		bp.togglePause();
 	}
 
 	void Ui::openNowMenu(const Player& p)
 	{
-		bool live = p.playing() && !p.playingPhoto();
+		const Player& bp = barPlayer(p);
+		bool live = bp.playing() && !bp.playingPhoto();
 		std::vector<int> items = {CTX_NP_NOW, CTX_NP_PLAY};
-		if (live && likeable(p)) items.push_back(CTX_NP_LIKE);
-		if (live && plStore && PlaylistStore::likable(p.currentPath())) items.push_back(CTX_NP_ADD);
+		if (live && likeable(bp)) items.push_back(CTX_NP_LIKE);
+		if (live && plStore && PlaylistStore::likable(bp.currentPath())) items.push_back(CTX_NP_ADD);
 		items.push_back(CTX_NP_SHOW);
 		items.push_back(CTX_NP_STOP);
 		ctxRecent.clear();
@@ -586,7 +607,7 @@ namespace bp
 		ctxArmed = false;
 		ctxPath.clear();
 		ctxFolder.clear();
-		ctxTitle = live ? (!p.title.empty() ? p.title : entryTitle(p.currentPath())) : "";
+		ctxTitle = live ? (!bp.title.empty() ? bp.title : entryTitle(bp.currentPath())) : "";
 		ctxNote.clear();
 		ctxPlFile.clear();
 		ctxPlItem = -1;
@@ -634,21 +655,23 @@ namespace bp
 
 	void Ui::drawMiniBar(const Player& p)
 	{
+		// main's player, also over a photo (the bar says what plays under it, and its mark works on that)
+		const Player& bp = barPlayer(p);
 		Rect b = MINI_BOX;
 		int mid = b.y + b.h / 2;
-		bool live = p.playing() && !p.playingPhoto();
-		bool held = live && pageDrives(p);
-		bool err = live && !p.error.empty();
+		bool live = bp.playing() && !bp.playingPhoto();
+		bool held = live && pageDrives(bp);
+		bool err = live && !bp.error.empty();
 		bool flash = landFlashUntil != 0;
 		drawBox(b, pressedBtn == MINI_BAR ? PRESSED : SURFACE, R_BUTTON, flash);
 		// how far into it, along its foot (dim: stopped for a photo)
-		double pos = live ? shownPosition(p) : 0, dur = live ? p.duration : 0;
+		double pos = live ? shownPosition(bp) : 0, dur = live ? bp.duration : 0;
 		double frac = dur > 0 && pos >= 0 ? std::clamp(pos / dur, 0.0, 1.0) : 0;
 		int fw = (int)std::lround(b.w * frac);
 		Rect in = flash ? Rect{b.x + theme::EDGE, b.y + theme::EDGE, b.w - 2 * theme::EDGE, b.h - 2 * theme::EDGE} : b;
 		if (fw > 0 && !err) fillRoundBand(in, flash ? R_BUTTON - theme::EDGE : R_BUTTON, in.y + in.h - 3, in.y + in.h, live ? ACCENT : DIM, b.x + fw);
 		// its play mark, a zone of its own (held while a page plays the file: filling, as Main's Play does)
-		bool playingNow = held ? pagePlaying() : live && !p.paused && !err;
+		bool playingNow = held ? pagePlaying() : live && !bp.paused && !err;
 		if (pressedBtn == MINI_PP || (playHoldMini && playHoldAt)) fillRound({b.x + 4, b.y + 4, 36, b.h - 8}, PRESSED, 8);
 		if (playHoldMini && playHoldAt)
 		{
@@ -657,7 +680,7 @@ namespace bp
 		}
 		drawGlyphMid(playingNow ? G_PAUSE : G_PLAY, b.x + 22, mid, err ? DIM : ACCENT);
 		fill({b.x + 44, b.y + 7, 2, b.h - 14}, RULE);
-		bool audio = live && p.playingAudio();
+		bool audio = live && bp.playingAudio();
 		drawGlyphMid(audio ? G_NOTE : G_FILM, b.x + 62, mid, DIM);
 		// the right end: SELECT Now playing, a chevron
 		drawGlyphMid(G_RIGHT, b.x + b.w - 14, mid, DIM);
@@ -666,20 +689,20 @@ namespace bp
 		int vw = (int)std::lround(textWidth(verb, 0) / sx);
 		drawTextMid(verb, 0, DIM, xr, mid, 0, 1);
 		int keyX = xr - vw;
-		if (p.settings.buttonHotkeys)
+		if (bp.settings.buttonHotkeys && selectToPlayer())
 		{
 			drawTextMid("SELECT", 0, ACCENT, keyX, mid, 0, 1);
 			keyX -= (int)std::lround(textWidth("SELECT", 0) / sx);
 		}
 		// the title, then how it stands (dim; yellow for a page's; red for an error)
-		std::string title = live ? (!p.title.empty() ? p.title : entryTitle(p.currentPath())) : "";
+		std::string title = live ? (!bp.title.empty() ? bp.title : entryTitle(bp.currentPath())) : "";
 		std::string sub;
 		SDL_Color subInk = DIM;
 		if (err) { sub = "Couldn't read"; subInk = DANGER; }
 		else if (held) { sub = (SessionHost::get().pageWaits() ? "Waiting for " : pagePlaying() ? "Playing in " : "Paused in ") + pageName(); subInk = ACCENT; }
 		else if (!live) sub = "stopped at " + formatTime(pos);
-		else if (p.loading()) sub = "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.');
-		else sub = formatTime(pos) + " / " + formatTime(dur) + (p.paused ? " \xC2\xB7 paused" : "");
+		else if (bp.loading()) sub = "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.');
+		else sub = formatTime(pos) + " / " + formatTime(dur) + (bp.paused ? " \xC2\xB7 paused" : "");
 		int x0 = b.x + 78, room = keyX - 14 - x0;
 		int sw = std::min(room / 2, (int)std::lround(textWidth(sub, 0) / sx));
 		int tmax = std::max(40, room - sw - 12);

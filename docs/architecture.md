@@ -59,7 +59,9 @@ Moved out of `CLAUDE.md`, which keeps the one-line rules and the map; the reason
   video's sound goes on with its picture off (`Player::hideVideo`: `vid=no` mid-file, and `vid=no` as each video's
   `loadfile` option while hidden; back with `vid=auto`, mpv's track switch seeks the new decoder to the clock), a page's
   item stays held. The top panel draws `photos` while a photo is up (`shown()`), and the bottom panel's `Ui` gets
-  `photos` as its `Player&` then (main's `shown()`: press, pointer, tick, draw). A song's graph still makes frames under
+  `photos` as its `Player&` then (main's `shown()`: press, pointer, tick, draw). The mini bar is the exception: `Ui`'s
+  `mainPlayer` (set by main) is the player it shows and works on, so over a photo the bar still offers what plays under
+  it (a tap on it closes the photo and opens the player). A song's graph still makes frames under
   the photo and mpv waits for each to be taken (else 200 ms stalls): `drainUnder()` renders them into a 16×16 FBO of
   its own, so the photo isn't drawn again per frame. The settings are the player's, copied into `photos` as a photo opens
   and kept in step each pass (a change over the photo, from START's menu, is `setSettings` on the player). Closing it
