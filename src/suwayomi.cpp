@@ -364,9 +364,9 @@ namespace bp
 			else if (d.type == "tri")
 			{
 				// a tri state filter has no option list; the sheet's single tri value maps straight
-				// onto Suwayomi's triState (0 off, 1 include, 2 exclude)
+				// onto Suwayomi's triState, an enum by name (a number is refused: "No value found for name '0'")
 				int tri = v.tri.empty() ? 0 : triToSuwayomi(v.tri[0]);
-				w.key("triState").num(tri);
+				w.key("triState").str(tri == 1 ? "INCLUDE" : tri == 2 ? "EXCLUDE" : "IGNORE");
 			}
 			else if (d.type == "text")
 			{

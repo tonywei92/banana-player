@@ -8748,7 +8748,7 @@ static void testSuwayomi()
 	mdVals[5].sortAsc = false;
 	std::string mdInputs = suwayomiFilterInputsJson(mdDefs, mdVals);
 	// a group child is the group's position with a nested groupChange; its own position is inside the group
-	CHECK_EQ(mdInputs.find("\"position\":8,\"groupChange\":{\"position\":0,\"triState\":2}") != std::string::npos, true);
+	CHECK_EQ(mdInputs.find("\"position\":8,\"groupChange\":{\"position\":0,\"triState\":\"EXCLUDE\"}") != std::string::npos, true);
 	CHECK_EQ(mdInputs.find("\"position\":5,\"sortState\":{\"index\":5,\"ascending\":false}") != std::string::npos, true);
 	// a group inside a group nests one groupChange further
 	MangaFilter outer;
@@ -8767,7 +8767,7 @@ static void testSuwayomi()
 	std::vector<MangaFilterValue> nestedVals = mangaFilterDefaults(nestedDefs);
 	nestedVals[0].children[0].children[0].tri[0] = 1;
 	std::string nestedInputs = suwayomiFilterInputsJson(nestedDefs, nestedVals);
-	CHECK_EQ(nestedInputs.find("\"position\":0,\"groupChange\":{\"position\":0,\"groupChange\":{\"position\":0,\"triState\":1}}") != std::string::npos, true);
+	CHECK_EQ(nestedInputs.find("\"position\":0,\"groupChange\":{\"position\":0,\"groupChange\":{\"position\":0,\"triState\":\"INCLUDE\"}}") != std::string::npos, true);
 
 	// filtered-group.json: a search with the group changes above applied; the page still says there is more
 	std::string groupJson = read(F + "filtered-group.json");
