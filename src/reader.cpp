@@ -108,7 +108,8 @@ namespace bp
 			{
 				std::lock_guard<std::mutex> l(m);
 				busySet.erase(j.index);
-				done.push_back({j.index, std::move(img), took, g, j.width});
+				// a page of a chapter closed meanwhile is dropped here: nothing would take it until the next open
+				if (g == gen) done.push_back({j.index, std::move(img), took, g, j.width});
 			}
 			SDL_Event e{};
 			e.type = wake;
@@ -209,6 +210,7 @@ namespace bp
 			gen++;	// what a thread is decoding now is dropped when it comes back
 		}
 		pr.keepOnly({});
+		pr.flushDead();	// (the textures now, not at a next draw that a closed reader never makes)
 		kept.clear();
 		orig.clear();
 		thumbs.clear();
@@ -731,7 +733,7 @@ namespace bp
 				(void)was;
 				decodedW[d.index] = std::max(d.width, d.img.w);
 				// the original pixels, unrotated: kept for when the turn changes (applyRotation re-makes kept from these)
-				orig[d.index] = {d.img.w, d.img.h, std::make_shared<const std::vector<uint8_t>>(d.img.rgba)};
+				orig[d.index] = {d.img.w, d.img.h, std::make_shared<const std::vector<uint8_t>>(std::move(d.img.rgba))};
 				// the page turn (L3): paged modes only; the Strip always shows the page unturned. When the angle is 90
 				// or 270, the page's apparent width and height swap; the fit and zoom work on the turned dimensions.
 				int pw = d.img.w, ph = d.img.h;
@@ -748,7 +750,10 @@ namespace bp
 				// the thumb is made from the turned pixels, so it matches what the reader shows
 				{
 					int tw = 96;
-					int th = std::max(1, (int)((double)ph * tw / pw + 0.5));
+					// (a long manhwa page keeps its top, at most twice as tall as wide: a thumb is kept for the whole
+					// chapter, and a 1:10 page's full one was 370 KB)
+					int thFull = std::max(1, (int)((double)ph * tw / pw + 0.5));
+					int th = std::min(thFull, 2 * tw);
 					auto buf = std::make_shared<std::vector<uint8_t>>(tw * th * 4);
 					const uint8_t* src = displayPixels->data();
 					uint8_t* dst = buf->data();
@@ -756,7 +761,7 @@ namespace bp
 						for (int tx = 0; tx < tw; tx++)
 						{
 							int sx = tx * pw / tw;
-							int sy = ty * ph / th;
+							int sy = (int)((int64_t)ty * ph / thFull);
 							const uint8_t* s = src + ((size_t)sy * pw + sx) * 4;
 							uint8_t* t = dst + ((size_t)ty * tw + tx) * 4;
 							t[0] = s[0]; t[1] = s[1]; t[2] = s[2]; t[3] = s[3];

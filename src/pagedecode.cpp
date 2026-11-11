@@ -111,7 +111,12 @@ namespace bp
 		};
 		struct IoFree
 		{
-			void operator()(AVIOContext* p) const { avio_context_free(&p); }
+			// (the context doesn't own its buffer: FFmpeg wants it freed first, else every AVIF decode leaked the file's size)
+			void operator()(AVIOContext* p) const
+			{
+				if (p) av_freep(&p->buffer);
+				avio_context_free(&p);
+			}
 		};
 
 		using UniqueCodec = std::unique_ptr<AVCodecContext, CodecCtxFree>;

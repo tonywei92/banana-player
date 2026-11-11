@@ -25,6 +25,8 @@ namespace bp
 		bool has(int index) const;
 		// the textures outside keep (the pages near the view) freed, the farthest first
 		void keepOnly(const std::set<int>& keep);
+		// the textures put aside deleted now (the top window's context current)
+		void flushDead();
 		// one frame of the strip into the bound framebuffer (w x h pixels); true while tiles still wait to go up
 		bool draw(const Strip& strip, int w, int h);
 		// the same for any layout: each page's rectangle in view pixels (the paged modes)

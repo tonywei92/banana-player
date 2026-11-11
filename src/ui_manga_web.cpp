@@ -85,6 +85,8 @@ namespace bp
 			return false;
 		}
 
+		// (a few series' lists kept for the dashboard, not every series it ever showed)
+		if (mangaWebCache.size() > 16 && !mangaWebCache.count(seriesId)) mangaWebCache.clear();
 		MangaWebChaptersState& st = mangaWebCache[seriesId];
 		st.full = full;
 		st.key = key;

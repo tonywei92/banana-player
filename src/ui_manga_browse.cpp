@@ -1117,6 +1117,7 @@ namespace bp
 			mangaSrcPendFull = readerStatus.fullscreen;
 			readerCmds.push_back({ReaderCmd::Close, 0, (int64_t)SDL_GetTicks()});
 			mpFree();
+			mfFree();
 			mangaZoomAsked = 100;
 			mangaProgPage = mangaProgPages = -1;
 			page = Page::MangaSeries;	// (so the block below takes it as an open from the series page)

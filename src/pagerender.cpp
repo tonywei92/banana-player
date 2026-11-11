@@ -255,6 +255,13 @@ namespace bp
 			}
 	}
 
+	void PageRenderer::flushDead()
+	{
+		if (!gl || dead.empty()) return;
+		gl->DeleteTextures((int)dead.size(), dead.data());
+		dead.clear();
+	}
+
 	void PageRenderer::keepOnly(const std::set<int>& keep)
 	{
 		for (auto it = pages.begin(); it != pages.end();)

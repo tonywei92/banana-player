@@ -1402,6 +1402,7 @@ int main(int argc, char** argv)
 					if (c.kind == Ui::ReaderCmd::Close)
 					{
 						readerFetch.end();
+						SDL_GL_MakeCurrent(top, gl);	// (close frees the pages' textures in this context)
 						reader.close();
 					}
 					else reader.command((int)c.kind, c.v, c.ms, c.v2, c.v3);

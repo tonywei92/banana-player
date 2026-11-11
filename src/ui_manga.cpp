@@ -286,6 +286,7 @@ namespace bp
 		mangaMenu = false;
 		mangaPages = false;
 		mpFree();
+		mfFree();	// (fullscreen's bottom-panel pages too: closed from fullscreen, nothing else would free them)
 		mangaZoomAsked = 100;
 		mangaReadLive = false;
 		mangaProgPage = mangaProgPages = -1;
