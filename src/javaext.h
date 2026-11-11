@@ -61,6 +61,10 @@ namespace bp
 		std::string error() const;
 		// while Downloading: bytes done and the total of both files
 		void progress(int64_t& done, int64_t& total) const;
+		// while Downloading (an install or the runtime upgrade): what it's doing now. Between the two downloads the
+		// runtime is unpacked, thousands of small files written with no bytes coming: said, not a bar standing still
+		enum class Step { Runtime, Unpacking, Server };
+		Step step() const;
 		// how much the add-on takes on the card once installed (0: not installed)
 		int64_t installedBytes() const;
 

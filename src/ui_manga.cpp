@@ -1361,7 +1361,8 @@ namespace bp
 		// the download's progress, a step per MB, and its state (done, failed)
 		int64_t d = 0, t = 0;
 		mangaNet->javaExt().progress(d, t);
-		return "," + std::to_string((int)mangaNet->javaExt().state()) + "," + std::to_string((int)mangaNet->javaExt().upgrade()) +
+		return "," + std::to_string((int)mangaNet->javaExt().state()) + "," + std::to_string((int)mangaNet->javaExt().step()) +
+			"," + std::to_string((int)mangaNet->javaExt().upgrade()) +
 			"," + std::to_string(d >> 20);
 	}
 
@@ -1411,13 +1412,22 @@ namespace bp
 			if (total <= 0) total = mengUpgrade ? 58000000 : 241000000;
 			drawDialog(b, mengUpgrade ? "Downloading the lighter engine" : "Downloading the manga engine");
 			double f = std::clamp((double)done / (double)total, 0.0, 1.0);
-			bool unpacking = done >= total;
-			char line[96];
-			if (unpacking) snprintf(line, sizeof line, "Unpacking\xE2\x80\xA6");
-			else snprintf(line, sizeof line, "%d %%  \xC2\xB7  %lld of %lld MB", (int)(f * 100), (long long)(done / 1000000),
-				(long long)(total / 1000000));	// (MB as the offer counts them: 241, 58)
-			drawTextMid(line, 1, TEXT, b.x + b.w / 2, b.y + 100, b.w - 64, 2);
-			drawLevel({b.x + 32, b.y + 132, b.w - 64, 8}, (int)std::lround((b.w - 64) * f), TRACK, ACCENT);
+			// what it's doing: the runtime, then (an install) the server; between them the runtime is unpacked, no
+			// bytes coming, so a ring says it's working where the bar would stand still
+			auto step = h.step();
+			if (step == JavaExtHost::Step::Unpacking)
+			{
+				drawLoader(b.x + b.w / 2, b.y + 118, "Unpacking the runtime\xE2\x80\xA6");
+			}
+			else
+			{
+				char line[96];
+				snprintf(line, sizeof line, "%s  \xC2\xB7  %lld of %lld MB",
+					step == JavaExtHost::Step::Server ? "Downloading the server" : "Downloading the runtime",
+					(long long)(done / 1000000), (long long)(total / 1000000));	// (MB as the offer counts them: 241, 58)
+				drawTextMid(line, 1, TEXT, b.x + b.w / 2, b.y + 100, b.w - 64, 2);
+				drawLevel({b.x + 32, b.y + 132, b.w - 64, 8}, (int)std::lround((b.w - 64) * f), TRACK, ACCENT);
+			}
 			drawTextMid("Keep Banana Player open until it's done.", 0, DIM, b.x + b.w / 2, b.y + 172, b.w - 64, 2);
 			drawDialogRow(mangaEngineRow(1), &G_CROSS, "Cancel", true, false, DANGER, "", {0, 0, 0, 0});
 			drawHints({{"A", "Cancel"}});

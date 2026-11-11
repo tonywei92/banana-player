@@ -330,6 +330,7 @@ namespace bp
 		int64_t lastWant = 0;
 		// the runtime upgrade (HotSpot to OpenJ9): its own job number, so its failure never fails the engine
 		bool oldRt = false;
+		JavaExtHost::Step step = JavaExtHost::Step::Runtime;
 		uint64_t upJob = 0;
 		JavaExtHost::Upgrade up = JavaExtHost::Upgrade::None;
 		std::string upErr;
@@ -452,6 +453,17 @@ namespace bp
 			oldRt = false;
 			serial_++;
 			std::thread([gone] { removeTree(gone); }).detach();
+		}
+
+		// the step an install is at, for the sheet, and its time in the log (where a slow install spends it)
+		void setStep(JavaExtHost::Step to)
+		{
+			static const char* NAMES[] = {"downloading the runtime", "unpacking the runtime", "downloading the server"};
+			std::lock_guard<std::mutex> g(lock);
+			step = to;
+			serial_++;
+			pushWake();
+			fprintf(stderr, "javaext: %s %s\n", clockStamp().c_str(), NAMES[(int)to]);
 		}
 
 		void upgradeStep(uint64_t j);
@@ -617,6 +629,12 @@ namespace bp
 		}).detach();
 	}
 
+	JavaExtHost::Step JavaExtHost::step() const
+	{
+		std::lock_guard<std::mutex> g(impl->lock);
+		return impl->step;
+	}
+
 	bool JavaExtHost::runtimeOld() const
 	{
 		std::lock_guard<std::mutex> g(impl->lock);
@@ -675,9 +693,11 @@ namespace bp
 	{
 		// the new runtime downloaded and unpacked beside the old one (the engine may be running on it meanwhile)
 		int64_t base = 0;
+		setStep(JavaExtHost::Step::Runtime);
 		Fetch r = fetchFile(j, JavaExtPins::JRE_URL, JavaExtPins::JRE_SHA256, JavaExtPins::JRE_BYTES,
 			javaDir + "/" + JRE_TAR, base);
 		if (r != Fetch::Ok) return;
+		setStep(JavaExtHost::Step::Unpacking);
 		std::string stage = javaDir + "/" + JRE_STAGE, next = javaDir + "/" + JRE_NEXT, why;
 		removeTree(stage);
 		removeTree(next);
@@ -1034,9 +1054,11 @@ namespace bp
 		int64_t base = 0;
 		if (getJre)
 		{
+			setStep(JavaExtHost::Step::Runtime);
 			Fetch r = fetchFile(j, JavaExtPins::JRE_URL, JavaExtPins::JRE_SHA256, JavaExtPins::JRE_BYTES,
 				javaDir + "/" + JRE_TAR, base);
 			if (r != Fetch::Ok) return;
+			setStep(JavaExtHost::Step::Unpacking);
 			// the archive's one top folder is the runtime: unpack into a stage, then put that folder in place
 			std::string stage = javaDir + "/" + JRE_STAGE, dest = javaDir + "/" + JRE_DIR;
 			removeTree(stage);
@@ -1074,6 +1096,7 @@ namespace bp
 			removeTree(javaDir + "/" + JRE_STAGE);
 		}
 		if (!current(j)) return;
+		setStep(JavaExtHost::Step::Server);
 		Fetch r = fetchFile(j, JavaExtPins::SERVER_URL, JavaExtPins::SERVER_SHA256, JavaExtPins::SERVER_BYTES,
 			javaDir + "/" + SERVER_JAR, base);
 		if (r != Fetch::Ok) return;
