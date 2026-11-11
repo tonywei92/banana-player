@@ -21,6 +21,17 @@ namespace bp
 	{
 		// what A asks again after an error
 		constexpr int FAIL_NONE = 0, FAIL_LIST = 1, FAIL_SERIES = 2, FAIL_PAGES = 3;
+		// an error that is a site's browser check (said by the dialog, never as a line on the page)
+		bool browserCheckText(const std::string& error, bool* ddos = nullptr)
+		{
+			std::string l;
+			for (char c : error) l += (char)std::tolower((unsigned char)c);
+			bool d = l.find("ddos-guard") != std::string::npos;
+			if (ddos) *ddos = d;
+			return d || l.find("cloudflare") != std::string::npos || l.find("browser check") != std::string::npos ||
+				l.find("cf_clearance") != std::string::npos || l.find("just a moment") != std::string::npos ||
+				l.find("cf-mitigated") != std::string::npos;
+		}
 		// the grid: two rows of the Library's covers in view under the tabs (its rows are 186 apart); cut above the
 		// status line, which is above the mini bar's place
 		constexpr int SRC_ROWS_SHOWN = 2;
@@ -729,7 +740,7 @@ namespace bp
 		std::string javaStatus = mangaJavaStatusLine();
 		Rect st = mangaSrcStatusRect();
 		int sx1 = st.x + st.w, smid = st.y + st.h / 2;
-		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, sx1, smid, st.w, 1);
+		if (!mangaSrcError.empty() && !browserCheckText(mangaSrcError)) drawTextMid(mangaSrcError, 0, DANGER, sx1, smid, st.w, 1);
 		// (starting is the notice at the top, on every page; only a failure stays said here)
 		else if (!javaStatus.empty() && mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed)
 			drawTextMid(javaStatus, 0, DANGER, sx1, smid, st.w, 1);
@@ -769,13 +780,8 @@ namespace bp
 		// (each error once: the same one again, from the source or the reader, isn't asked about twice)
 		if (error.empty() || error == mangaErrFor) return;
 		mangaErrFor = error;
-		std::string l;
-		for (char c : error) l += (char)std::tolower((unsigned char)c);
-		bool ddos = l.find("ddos-guard") != std::string::npos;
-		bool check = ddos || l.find("cloudflare") != std::string::npos || l.find("browser check") != std::string::npos ||
-			l.find("cf_clearance") != std::string::npos || l.find("just a moment") != std::string::npos ||
-			l.find("cf-mitigated") != std::string::npos;
-		if (!check) return;
+		bool ddos = false;
+		if (!browserCheckText(error, &ddos)) return;
 		mangaErrText = std::string("This source is behind a ") + (ddos ? "DDoS-Guard" : "Cloudflare") +
 			" check that Banana Player can\xE2\x80\x99t pass. Try another source, or try again later.";
 		mangaErrOpen = true;
@@ -796,8 +802,14 @@ namespace bp
 
 	void Ui::mangaBrowsePoll(const Player& p)
 	{
-		// a source's error that is a browser check: the dialog (once per error)
+		// a source's error that is a browser check: the dialog (once per error). On a grid that has covers it is
+		// no error of the grid's: A opens the series picked, not Try again
 		mangaErrCheck(mangaSrcError);
+		if (page == Page::Manga && mangaView == 1 && !mangaSrcItems.empty() && browserCheckText(mangaSrcError))
+		{
+			mangaSrcError.clear();
+			mangaSrcFailed = FAIL_NONE;
+		}
 		if (!mangaNet || !mangaNet->started()) return;
 		// a source's grid fills itself: its first pages, and the next near its end (the answer of the last landed)
 		if (page == Page::Manga && mangaView == 1) mangaSourceMaybeMore();
@@ -1787,7 +1799,7 @@ namespace bp
 		{
 			if (!mangaSrcError.empty())
 			{
-				drawTextMid(mangaSrcError, 1, DANGER, W / 2, 208, 560, 2);
+				drawTextMid(browserCheckText(mangaSrcError) ? "This source is behind a browser check" : mangaSrcError, 1, DANGER, W / 2, 208, 560, 2);
 				drawHints({{"A", "Try again"}, {"L2", "Refresh"}, {"B", "Back"}});
 			}
 			else
