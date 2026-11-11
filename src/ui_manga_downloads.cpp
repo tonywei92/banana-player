@@ -510,7 +510,7 @@ namespace bp
 			}
 			if (mdlCursor == q)
 			{
-				if (!mangaNet || !mangaNet->started()) return false;
+				if (q == 0 || !mangaNet || !mangaNet->started()) return false;	// (no Pause all with nothing queued)
 				if (mangaNet->queue().allPaused())
 				{
 					mangaNet->queue().resumeAll();
@@ -558,7 +558,7 @@ namespace bp
 			}
 			if (mdlCursor == q)
 			{
-				if (!mangaNet || !mangaNet->started()) return false;
+				if (q == 0 || !mangaNet || !mangaNet->started()) return false;	// (no Pause all with nothing queued)
 				if (mangaNet->queue().allPaused()) mangaNet->queue().resumeAll();
 				else mangaNet->downloader().pauseAll();
 				mangaNet->queue().save();
@@ -1192,6 +1192,8 @@ namespace bp
 		int total = q + 1 + c;
 		if (mdlCursor >= total) mdlCursor = total - 1;
 		if (mdlCursor < 0) mdlCursor = 0;
+		// nothing queued: no Pause all to be on (the cursor goes to the card's first series)
+		if (q == 0 && mdlCursor == 0 && c > 0) mdlCursor = 1;
 		// a chapter that finished leaves the window where it is valid
 		if (mdlScroll > std::max(0, q - MDL_QSHOWN)) mdlScroll = std::max(0, q - MDL_QSHOWN);
 		if (mdlCardScroll > std::max(0, c - MDL_CSHOWN)) mdlCardScroll = std::max(0, c - MDL_CSHOWN);
@@ -1227,14 +1229,17 @@ namespace bp
 		}
 		if (q == 0) drawTextMid("Nothing queued", 0, DIM, 32, MDL_TOP + 12, 0);
 		drawScrollBar(MDL_TOP, MDL_QSHOWN * MDL_QROW - 4, mdlScroll, MDL_QSHOWN, q);
-		// Pause all / Resume all
-		Rect all{16, MDL_ALL_Y, 608, 32};
-		bool onAll = mdlCursor == q;
-		if (onAll) drawFocus(all);
+		// Pause all / Resume all, while anything is queued (after the last finishes there's nothing to pause)
 		bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
-		drawGlyphMid(paused ? G_PLAY : G_PAUSE, 40, all.y + all.h / 2, onAll ? ACCENT : DIM);
-		drawTextMid(paused ? "Resume all" : "Pause all", 1, onAll ? ACCENT : TEXT, 62, all.y + all.h / 2, 400);
-		drawTextMid(paused ? "all paused" : "one at a time", 0, onAll ? DIM_ON : DIM, 608, all.y + all.h / 2, 0, 1);
+		if (q > 0)
+		{
+			Rect all{16, MDL_ALL_Y, 608, 32};
+			bool onAll = mdlCursor == q;
+			if (onAll) drawFocus(all);
+			drawGlyphMid(paused ? G_PLAY : G_PAUSE, 40, all.y + all.h / 2, onAll ? ACCENT : DIM);
+			drawTextMid(paused ? "Resume all" : "Pause all", 1, onAll ? ACCENT : TEXT, 62, all.y + all.h / 2, 400);
+			drawTextMid(paused ? "all paused" : "one at a time", 0, onAll ? DIM_ON : DIM, 608, all.y + all.h / 2, 0, 1);
+		}
 		// what is on the card, by series
 		drawTextMid("On the card" + (c ? " \xC2\xB7 " + std::to_string(c) + (c == 1 ? " series" : " series") : ""),
 			0, DIM, 16, 354);
@@ -1255,7 +1260,7 @@ namespace bp
 		if (mdlDeleteAt && mdlDeletePath.find('/') != std::string::npos)
 			drawFooterText("Press X again to delete it", ACCENT);
 		else if (mdlCursor < q) drawHints({{"X", "Pause / resume"}, {"B", "Back"}});
-		else if (mdlCursor == q) drawHints({{"A", paused ? "Resume all" : "Pause all"}, {"B", "Back"}});
+		else if (mdlCursor == q) drawHints(q > 0 ? std::vector<Hint>{{"A", paused ? "Resume all" : "Pause all"}, {"B", "Back"}} : std::vector<Hint>{{"B", "Back"}});
 		else drawHints({{"A", "Chapters"}, {"X", "Delete"}, {"B", "Back"}});
 	}
 
