@@ -695,12 +695,24 @@ namespace bp
 		Result out;
 		out.kind = job.kind;
 		out.sourceId = job.sourceId;
+		const char* what = job.kind == Job::NetList ? "list" : job.kind == Job::NetScan ? "scan" : "fetch";
+		// (the path is a bpnet:// one: the server's id, never its address or a credential)
+		fprintf(stderr, "manga: network folder %s %s\n", what, job.netPath.c_str());
+		Uint32 t0 = SDL_GetTicks();
 		std::unique_ptr<NetBackend> backend = makeBackend(job.netServer, job.netPassword);
 		if (!backend)
 		{
 			out.error = "No network in this build";
 			return out;
 		}
+		struct Done
+		{
+			const char* what;
+			const Result& r;
+			Uint32 t0;
+			~Done() { fprintf(stderr, "manga: network folder %s %s in %u ms%s%s\n", what, r.ok ? "done" : "failed",
+				SDL_GetTicks() - t0, r.ok ? "" : ": ", r.ok ? "" : r.error.c_str()); }
+		} done{what, out, t0};
 		NetBusyGuard busy(netBusy, m, backend.get());
 		NetPath np;
 		if (!parseNetPath(job.netPath, np))

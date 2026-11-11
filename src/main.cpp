@@ -3,6 +3,7 @@
 //   banana-player [--press A,X,Down,...] [--windowed] [--aspect fit|fill|stretch] [--lang eng,en] [--state-dir DIR] [--font TTF] [-v] FILE
 
 #include "crashlog.h"
+#include <csignal>
 #include "format.h"
 #include "input.h"
 #include "player.h"
@@ -195,6 +196,10 @@ int main(int argc, char** argv)
 	}
 	// a crash's record in <state>/crash.log, kept across runs (log.txt keeps two)
 	bp::crashlog::install(opts.stateDir, BP_VERSION, BP_COMMIT);
+	// a socket the other end closed: its write fails (EPIPE) instead of the signal ending the player silently.
+	// libsmb2 writes with write(), not send(MSG_NOSIGNAL), so a server dropping a manga folder listing's
+	// connection killed the process with no crash.log line (SIGPIPE isn't a crash signal)
+	signal(SIGPIPE, SIG_IGN);
 	// no file, or a folder: the browser picks them (in that folder)
 	std::string startFolder;
 	{
