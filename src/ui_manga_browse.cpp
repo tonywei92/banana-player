@@ -874,12 +874,32 @@ namespace bp
 
 	// ---- the worker's answers ----
 
-	void Ui::mangaErrCheck(const std::string& error, bool anyError)
+	void Ui::mangaErrCheck(const std::string& error, bool anyError, int asker)
 	{
-		// (each error once: the same one again, from the source or the reader, isn't asked about twice)
-		if (error.empty() || error == mangaErrFor) return;
-		mangaErrFor = error;
+		// each error once while it stands (the checks run every pass); once it's gone, the same one coming back (the
+		// source opened again) is said again: kept for good, a reopened source's Cloudflare error never showed
+		std::string& shown = mangaErrFor[asker == 1 ? 1 : 0];
+		if (error.empty())
+		{
+			shown.clear();
+			return;
+		}
+		if (error == shown) return;
+		shown = error;
 		bool ddos = false;
+		std::string low;
+		for (char c : error) low += (char)std::tolower((unsigned char)c);
+		// an extension that needs the engine's built-in web browser (its Chromium, CEF, for a site's own scripts):
+		// the handheld can't run one (no X11, and 1 GB), so it fails loading libjawt. Said plainly, not as Java's text
+		if (low.find("cefmanager") != std::string::npos || low.find("libjawt") != std::string::npos ||
+			low.find("kcef") != std::string::npos)
+		{
+			mangaErrText = "This source needs a web browser to open its pages, and the handheld can\xE2\x80\x99t run one. "
+				"Try another source.";
+			mangaErrOpen = true;
+			fprintf(stderr, "manga: a source that needs a browser engine (%s)\n", error.substr(0, error.find_first_of("\r\n")).c_str());
+			return;
+		}
 		if (!browserCheckText(error, &ddos))
 		{
 			if (!anyError) return;
@@ -927,6 +947,9 @@ namespace bp
 		{
 			mangaSrcError.clear();
 			mangaSrcFailed = FAIL_NONE;
+			// and no more pages asked by themselves: the next would fail the same way, again and again (with its
+			// dialog each time now that a cleared error can be said again). Reopening the source asks afresh
+			mangaSrcMore = false;
 		}
 		if (!mangaNet || !mangaNet->started()) return;
 		// a source's grid fills itself: its first pages, and the next near its end (the answer of the last landed)
