@@ -898,6 +898,9 @@ namespace bp
 			}
 			return false;
 		}
+		// a source's grid follows the finger (a drag scrolls it), so it gets every move, not only the touch
+		if (page == Page::Manga && mangaView == 1 && !(mangaTab == MT_SOURCES && mangaSourcesModal()))
+			return mangaSourcePointer(pt, x, y, p);
 		// the tabs, a card, a cover, a row: a tap acts on the spot, as the browser's tabs do
 		if (pt.kind != Pointer::Down) return false;
 		mangaPressed = -1;

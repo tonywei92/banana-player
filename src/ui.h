@@ -1590,6 +1590,11 @@ namespace bp
 		bool mangaSrcHasLatest = true;			// a source without latest() loses its tab once the first ask says so
 		std::vector<MangaItem> mangaSrcItems;
 		int mangaSrcCursor = 0, mangaSrcScroll = 0, mangaSrcPage = 0;
+		// a finger on the grid: where it went down, the scroll then, whether it has moved (a drag, not a tap)
+		int mangaSrcDragY = -1, mangaSrcDragScroll = 0, mangaSrcDragTap = -1;
+		bool mangaSrcDragMoved = false;
+		void mangaSourceMaybeMore();	// near the grid's end (cursor or scroll): its next page asked for
+		Rect mangaSrcStatusRect() const { return {404, 64, 220, 30}; }	// right of the tabs: Loading…, an error (tap: Try again)
 		bool mangaSrcMore = false, mangaSrcLoading = false;
 		std::string mangaSrcError;				// the source's one-line message, while it shows
 		int mangaSrcFailed = 0;					// what A asks again after an error: 0 none, 1 a list, 2 details, 3 a chapter
@@ -1756,7 +1761,8 @@ namespace bp
 		Rect mangaFilterBox() const { return {48, 64, 544, 372}; }
 		Rect mangaFilterRowRect(int i) const { return {64, MF_ROW_TOP + i * MF_ROW_H, 512, MF_ROW_H - 4}; }
 		Rect mangaSrcTabRect(int i) const { return {60 + i * 120, 64, 116, 30}; }
-		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 186, MG_SRC_SER_TOP = 194, MG_SRC_SER_ROWS = 4,
+		// two whole rows of covers with their titles, down to the hint bar (186 apart left a black band under them)
+		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 172, MG_SRC_SER_TOP = 194, MG_SRC_SER_ROWS = 4,
 			MG_SRC_STATUS_Y = 410;
 		Rect mangaSrcCoverRect(int i) const
 		{

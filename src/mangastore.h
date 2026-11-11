@@ -4,6 +4,7 @@
 // window, no threads and no clock of its own: the reader's pages read it and the shell saves it.
 #include <cstdint>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace bp
@@ -82,6 +83,9 @@ namespace bp
 		std::string dir_;	// the state folder; the files are in <dir>/manga
 		std::vector<MangaSeries> series_;
 		std::vector<ChapterProgress> progress_;
+		// chapterId -> its place in progress_, rebuilt after any add or removal (the vector's order changes then)
+		mutable std::unordered_map<std::string, size_t> progIdx_;
+		mutable bool progIdxDirty_ = true;
 		uint64_t serial_ = 0;
 	};
 }

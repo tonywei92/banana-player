@@ -23,7 +23,7 @@ namespace bp
 		// the grid: two rows of the Library's covers in view under the tabs (its rows are 186 apart); cut above the
 		// status line, which is above the mini bar's place
 		constexpr int SRC_ROWS_SHOWN = 2;
-		constexpr int SRC_CLIP_TOP = 96, SRC_CLIP_BOTTOM = 398;
+		constexpr int SRC_CLIP_TOP = 96, SRC_CLIP_BOTTOM = 448;
 
 		std::string pageLine(int page, int pages)
 		{
@@ -569,15 +569,62 @@ namespace bp
 		default: break;
 		}
 		mangaSrcScroll = std::max(0, mangaSrcCursor / MG_COLS - (SRC_ROWS_SHOWN - 1));
-		// two rows before the end, the next page is asked for (the worker's "more"); one at a time
-		if (mangaSrcMore && !mangaSrcLoading && rows > 0 && mangaSrcCursor / MG_COLS >= rows - 2) mangaSourceLoad(mangaSrcPage + 1);
+		mangaSourceMaybeMore();
 		return false;
+	}
+
+	void Ui::mangaSourceMaybeMore()
+	{
+		int n = (int)mangaSrcItems.size(), rows = (n + MG_COLS - 1) / MG_COLS;
+		int lastRow = std::max(mangaSrcCursor / MG_COLS, mangaSrcScroll + SRC_ROWS_SHOWN - 1);
+		// two rows before the end, the next page is asked for (the worker's "more"); one at a time
+		if (mangaSrcMore && !mangaSrcLoading && rows > 0 && lastRow >= rows - 2) mangaSourceLoad(mangaSrcPage + 1);
 	}
 
 	bool Ui::mangaSourcePointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (mangaFilterShown()) return mangaFilterPointer(pt, x, y, p);
+		// the grid follows a finger: a drag scrolls it by rows, a tap without one opens the cover it went down on
+		{
+			int n = (int)mangaSrcItems.size(), rows = (n + MG_COLS - 1) / MG_COLS;
+			if (pt.kind == Pointer::Move && mangaSrcDragY >= 0)
+			{
+				int dy = y - mangaSrcDragY;
+				if (std::abs(dy) > 12) mangaSrcDragMoved = true;
+				if (mangaSrcDragMoved && rows > 0)
+				{
+					int s = std::clamp(mangaSrcDragScroll - (int)std::lround(dy / (double)MG_SRC_STEP), 0,
+						std::max(0, rows - SRC_ROWS_SHOWN));
+					if (s != mangaSrcScroll)
+					{
+						mangaSrcScroll = s;
+						// the cursor stays on screen (the draw would otherwise scroll back to it)
+						int row = mangaSrcCursor / MG_COLS, col = mangaSrcCursor % MG_COLS;
+						if (row < s) row = s;
+						if (row > s + SRC_ROWS_SHOWN - 1) row = s + SRC_ROWS_SHOWN - 1;
+						mangaSrcCursor = std::min(n - 1, row * MG_COLS + col);
+						mangaSourceMaybeMore();
+					}
+				}
+				return false;
+			}
+			if (pt.kind == Pointer::Up && mangaSrcDragY >= 0)
+			{
+				int tap = mangaSrcDragTap;
+				bool moved = mangaSrcDragMoved;
+				mangaSrcDragY = mangaSrcDragTap = -1;
+				mangaSrcDragMoved = false;
+				if (!moved && tap >= 0 && tap < n)
+				{
+					mangaSrcCursor = tap;
+					mangaSourceOpenSeriesAt(tap, p);
+				}
+				return false;
+			}
+		}
 		if (pt.kind != Pointer::Down) return false;
+		// the status beside the tabs: an error there is a Try again
+		if (!mangaSrcError.empty() && mangaSrcStatusRect().hit(x, y)) { mangaSourceRetry(p); return false; }
 		// the tabs: a tap on one steps straight to it (Search asks for the query)
 		int slots[3], count = 0;
 		slots[count++] = SRC_POPULAR;
@@ -600,13 +647,18 @@ namespace bp
 			// (the part cut at the grid's foot isn't on screen, so a tap there isn't on it)
 			if (y < SRC_CLIP_BOTTOM && r.hit(x, y))
 			{
-				mangaSrcCursor = i;
-				mangaSourceOpenSeriesAt(i, p);
-				return false;
+				// opened as the finger lifts, if it didn't drag
+				mangaSrcDragTap = i;
+				break;
 			}
 		}
-		// the status line: Try again, as A does
-		if (!mangaSrcError.empty() && y >= MG_SRC_STATUS_Y - 12 && y < MG_SRC_STATUS_Y + 12) mangaSourceRetry(p);
+		// anywhere on the grid: a drag may start here
+		if (y >= SRC_CLIP_TOP && y < SRC_CLIP_BOTTOM)
+		{
+			mangaSrcDragY = y;
+			mangaSrcDragScroll = mangaSrcScroll;
+			mangaSrcDragMoved = false;
+		}
 		return false;
 	}
 
@@ -647,16 +699,19 @@ namespace bp
 		mangaCoverCancelOffScreen();
 		if (rows > 1) drawScrollBar(MG_SRC_TOP, SRC_CLIP_BOTTOM - MG_SRC_TOP - 4, mangaSrcScroll, SRC_ROWS_SHOWN, rows);
 		// the state under the grid: the source's error, a job running, or the query the Search tab ran
+		// (beside the tabs, right-aligned: the grid has the panel down to the hint bar)
 		std::string javaStatus = mangaJavaStatusLine();
-		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 1, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
+		Rect st = mangaSrcStatusRect();
+		int sx1 = st.x + st.w, smid = st.y + st.h / 2;
+		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, sx1, smid, st.w, 1);
 		else if (!javaStatus.empty())
 		{
 			bool failed = mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed;
-			drawTextMid(javaStatus, 0, failed ? DANGER : ACCENT, W / 2, MG_SRC_STATUS_Y, 560, 2);
+			drawTextMid(javaStatus, 0, failed ? DANGER : ACCENT, sx1, smid, st.w, 1);
 		}
-		else if (mangaSrcLoading) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, W / 2, MG_SRC_STATUS_Y, 0, 2);
+		else if (mangaSrcLoading) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, sx1, smid, st.w, 1);
 		else if (mangaSrcTab == SRC_SEARCH && !mangaSrcQuery.empty())
-			drawTextMid("Search: " + mangaSrcQuery, 0, DIM, W / 2, MG_SRC_STATUS_Y, 560, 2);
+			drawTextMid("Search: " + mangaSrcQuery, 0, DIM, sx1, smid, st.w, 1);
 		if (n == 0 && mangaSrcError.empty() && !mangaSrcLoading && javaStatus.empty())
 		{
 			std::string line = mangaSrcTab == SRC_SEARCH ? (mangaSrcQuery.empty() ? "Y: search this source" : "No results")

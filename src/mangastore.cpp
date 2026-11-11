@@ -139,6 +139,7 @@ namespace bp
 	{
 		series_.clear();
 		progress_.clear();
+		progIdxDirty_ = true;
 		dir_ = dir;
 		if (dir.empty()) return false;
 		std::string text;
@@ -219,7 +220,11 @@ namespace bp
 					known = true;
 					break;
 				}
-			if (!known) progress_.push_back(p);
+			if (!known)
+			{
+				progress_.push_back(p);
+				progIdxDirty_ = true;
+			}
 		}
 		trimProgress();
 	}
@@ -321,6 +326,7 @@ namespace bp
 		progress_.erase(std::remove_if(progress_.begin(), progress_.end(),
 						   [&](const ChapterProgress& p) { return p.seriesId == id; }),
 			progress_.end());
+		progIdxDirty_ = true;
 		serial_++;
 	}
 
@@ -336,6 +342,7 @@ namespace bp
 		if (!e)
 		{
 			progress_.push_back(p);
+			progIdxDirty_ = true;
 			e = &progress_.back();
 		}
 		else
@@ -363,9 +370,17 @@ namespace bp
 
 	const ChapterProgress* MangaStore::progress(const std::string& chapterId) const
 	{
-		for (const auto& p : progress_)
-			if (p.chapterId == chapterId) return &p;
-		return nullptr;
+		// by an index: a series page asks once per chapter on every redraw, and walking every chapter ever opened for
+		// each of 1000 made the list lag on the handheld
+		if (progIdxDirty_)
+		{
+			progIdx_.clear();
+			progIdx_.reserve(progress_.size());
+			for (size_t i = 0; i < progress_.size(); i++) progIdx_.emplace(progress_[i].chapterId, i);
+			progIdxDirty_ = false;
+		}
+		auto it = progIdx_.find(chapterId);
+		return it == progIdx_.end() ? nullptr : &progress_[it->second];
 	}
 
 	std::vector<ChapterProgress> MangaStore::continueReading(int max) const
@@ -431,6 +446,7 @@ namespace bp
 				p.chapterId = id;
 				p.read = read;
 				progress_.push_back(p);
+				progIdxDirty_ = true;
 				continue;
 			}
 			e->read = read;
@@ -483,6 +499,7 @@ namespace bp
 			for (size_t i = 1; i < progress_.size(); i++)
 				if (progress_[i].at < progress_[old].at) old = i;
 			progress_.erase(progress_.begin() + long(old));
+			progIdxDirty_ = true;
 		}
 	}
 }

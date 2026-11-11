@@ -34,15 +34,20 @@ namespace bp
 
 		// the top of the page, where a cover puts its title, at the tile's aspect: a whole page is much taller, and the
 		// bottom of a chapter's first page is not part of a cover
-		CoverWorker::Result cropped(const std::string& key, const PageImage& img, int h)
+		// The tile filled, never stretched: a picture wider than the tile's shape (decoded at the tile's width it
+		// would be too short) was decoded wider by the caller, and its middle columns are kept; a taller one keeps
+		// its top rows.
+		CoverWorker::Result cropped(const std::string& key, const PageImage& img, int w, int h)
 		{
 			CoverWorker::Result r;
 			r.key = key;
 			if (!img.ok()) return r;
-			r.w = img.w;
+			r.w = std::min(img.w, w);
 			r.h = std::min(img.h, h);
+			int x0 = (img.w - r.w) / 2;
 			r.rgba.resize((size_t)r.w * (size_t)r.h * 4);
-			std::memcpy(r.rgba.data(), img.rgba.data(), r.rgba.size());
+			for (int y = 0; y < r.h; y++)
+				std::memcpy(r.rgba.data() + (size_t)y * r.w * 4, img.rgba.data() + ((size_t)y * img.w + x0) * 4, (size_t)r.w * 4);
 			r.ok = true;
 			return r;
 		}
@@ -100,7 +105,18 @@ namespace bp
 				it = std::move(items.back());
 				items.pop_back();
 			}
-			Result r = cropped(it.key, coverPage(it.source, it.w), it.h);
+			PageImage img = coverPage(it.source, it.w);
+			// too short for the tile at its width: decoded again as wide as it must be to cover the tile's height
+			if (img.ok() && img.h < it.h && img.h > 0)
+			{
+				int wider = (int)(((int64_t)it.w * it.h + img.h - 1) / img.h);
+				if (wider > it.w && wider <= 4 * it.w)
+				{
+					PageImage again = coverPage(it.source, wider);
+					if (again.ok()) img = std::move(again);
+				}
+			}
+			Result r = cropped(it.key, img, it.w, it.h);
 			bool signal = false;
 			{
 				std::lock_guard<std::mutex> g(m);
