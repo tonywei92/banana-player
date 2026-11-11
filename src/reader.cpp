@@ -19,6 +19,36 @@ namespace bp
 			struct stat st;
 			return stat(path.c_str(), &st) == 0 && S_ISREG(st.st_mode);
 		}
+
+		// rotate an RGBA buffer (w x h) by angle degrees clockwise (0, 90, 180, 270).
+		// 90/270 swap width and height; 180 keeps them. the pixels are copied once (a 2000x3000 page is ~24 MB:
+		// a fraction of a frame on the A55s, done once per turn, not per frame)
+		std::shared_ptr<const std::vector<uint8_t>> rotateRgba(
+			const std::shared_ptr<const std::vector<uint8_t>>& src, int w, int h, int angle)
+		{
+			if (!src || w <= 0 || h <= 0 || src->size() < (size_t)w * h * 4) return src;
+			if (angle == 0) return src;
+			int rw = w, rh = h;
+			if (angle == 90 || angle == 270) { rw = h; rh = w; }
+			auto dst = std::make_shared<std::vector<uint8_t>>(rw * rh * 4);
+			const uint8_t* s = src->data();
+			uint8_t* d = dst->data();
+			for (int y = 0; y < h; y++)
+				for (int x = 0; x < w; x++)
+				{
+					int dx = 0, dy = 0;
+					switch (angle)
+					{
+					case 90:  dx = h - 1 - y; dy = x; break;
+					case 180: dx = w - 1 - x; dy = h - 1 - y; break;
+					case 270: dx = y; dy = w - 1 - x; break;
+					}
+					const uint8_t* sp = s + ((size_t)y * w + x) * 4;
+					uint8_t* dp = d + ((size_t)dy * rw + dx) * 4;
+					dp[0] = sp[0]; dp[1] = sp[1]; dp[2] = sp[2]; dp[3] = sp[3];
+				}
+			return dst;
+		}
 	}
 
 	MangaReader::~MangaReader()
@@ -137,6 +167,7 @@ namespace bp
 		viewH = h;
 		zscale = 1;	// a chapter opens at the fit (the photo viewer keeps its zoom; a page of a new chapter is a new view)
 		zoomAt = 0;
+		angle = 0;	// a chapter opens unturned; the turn is per chapter (docs/design/manga.md section 4)
 		strip.setView(w, layoutH());
 		strip.setPages((int)files.size(), 1.5);
 		strip.setZoom(1, 0, 0);	// the models outlive a chapter: the last one's zoom goes
@@ -168,10 +199,12 @@ namespace bp
 		}
 		pr.keepOnly({});
 		kept.clear();
+		orig.clear();
 		thumbs.clear();
 		decodedW.clear();
 		zscale = 1;
 		zoomAt = 0;
+		angle = 0;
 		if (archive)
 		{
 			std::lock_guard<std::mutex> l(cbzLock);
@@ -384,7 +417,35 @@ namespace bp
 		else paged.setZoom(zscale, viewW * 0.5, layoutH() * 0.5);
 	}
 
-	void MangaReader::command(int kind, double v, int64_t ms, double v2)
+	void MangaReader::applyRotation()
+	{
+		// each decoded page is re-turned from its original pixels and re-uploaded. the paged model gets the turned
+		// dimensions so the fit and the zoom place the page as if it were that shape. the Strip is left alone
+		// (its page sizes are the originals; it ignores the turn)
+		for (auto& kv : orig)
+		{
+			int idx = kv.first;
+			const Pix& o = kv.second;
+			int pw = o.w, ph = o.h;
+			if (angle == 90 || angle == 270) std::swap(pw, ph);
+			paged.setPageSize(idx, pw, ph);
+			auto displayPixels = angle != 0 ? rotatePixels(o.rgba, o.w, o.h, angle) : o.rgba;
+			kept[idx] = {pw, ph, displayPixels};
+			// the renderer's old textures for this page are replaced by the new ones (addPage handles the swap:
+			// the old tiles stay drawn until the new ones are all on the GPU, so no grey frame)
+			std::vector<uint8_t> upload(displayPixels->begin(), displayPixels->end());
+			pr.addPage(idx, pw, ph, std::move(upload));
+		}
+		want();
+	}
+
+	std::shared_ptr<const std::vector<uint8_t>> MangaReader::rotatePixels(
+		const std::shared_ptr<const std::vector<uint8_t>>& src, int w, int h, int angle)
+	{
+		return rotateRgba(src, w, h, angle);
+	}
+
+	void MangaReader::command(int kind, double v, int64_t ms, double v2, double v3)
 	{
 		if (!opened) return;
 		if (kind == Fullscreen) { setFullscreen(v > 0, (int)v2); return; }
@@ -399,6 +460,32 @@ namespace bp
 			zoomAt = ms;
 			fprintf(stderr, "reader: zoom %d%%\n", zoomPct());
 			redrawSoon(2);
+			return;
+		}
+		if (kind == ZoomPoint)
+		{
+			// a double-tap on the page area: zoom to the factor at the tapped point, or back to the fit
+			// (as A does at the centre, but here the finger's position is the focus)
+			double z = std::clamp(v, 1.0, 8.0);
+			if (z == zscale && z != 1.0) { z = 1.0; }	// already there: back to the fit
+			zscale = z;
+			double fx = std::clamp(v2, 0.0, 1.0) * viewW;
+			double fy = std::clamp(v3, 0.0, 1.0) * layoutH();
+			if (readMode == MANGA_STRIP) strip.setZoom(zscale, fx, fy);
+			else paged.setZoom(zscale, fx, fy);
+			zoomAt = ms;
+			fprintf(stderr, "reader: zoom %d%% at %.0f,%.0f\n", zoomPct(), fx, fy);
+			redrawSoon(2);
+			return;
+		}
+		if (kind == Rotate)
+		{
+			// the page turn: paged modes only; each press 90° clockwise. the fit and zoom work on the turned page
+			if (readMode == MANGA_STRIP) return;
+			angle = (angle + 90) % 360;
+			applyRotation();
+			fprintf(stderr, "reader: turned %d°\n", angle);
+			redrawSoon(3);
 			return;
 		}
 		if (kind == Fit)
@@ -483,30 +570,42 @@ namespace bp
 				// (a wider decode of a page on screen goes up beside the old one, which stays drawn till it's all there)
 				(void)was;
 				decodedW[d.index] = std::max(d.width, d.img.w);
-				strip.setPageSize(d.index, d.img.w, d.img.h);
-				paged.setPageSize(d.index, d.img.w, d.img.h);
+				// the original pixels, unrotated: kept for when the turn changes (applyRotation re-makes kept from these)
+				orig[d.index] = {d.img.w, d.img.h, std::make_shared<const std::vector<uint8_t>>(d.img.rgba)};
+				// the page turn (L3): paged modes only; the Strip always shows the page unturned. When the angle is 90
+				// or 270, the page's apparent width and height swap; the fit and zoom work on the turned dimensions.
+				int pw = d.img.w, ph = d.img.h;
+				bool turned = readMode != MANGA_STRIP && angle != 0;
+				if (turned && (angle == 90 || angle == 270)) std::swap(pw, ph);
+				std::shared_ptr<const std::vector<uint8_t>> displayPixels = turned
+					? rotatePixels(orig[d.index].rgba, d.img.w, d.img.h, angle) : orig[d.index].rgba;
+				strip.setPageSize(d.index, d.img.w, d.img.h);	// Strip: always the original dimensions
+				paged.setPageSize(d.index, pw, ph);	// Paged: the turned dimensions (same as original when unturned)
 				// (a copy for the bottom panel: the renderer drops its own once the page is on the GPU)
-				kept[d.index] = {d.img.w, d.img.h, std::make_shared<const std::vector<uint8_t>>(d.img.rgba)};
+				kept[d.index] = {pw, ph, displayPixels};
 				// a thumbnail for the pages grid: 96 px wide, aspect kept, nearest-neighbour (small enough that
-				// the blockiness doesn't show on the 4:3 panel; a 1400×2000 source is 13 K iterations)
+				// the blockiness doesn't show on the 4:3 panel; a 1400×2000 source is 13 K iterations).
+				// the thumb is made from the turned pixels, so it matches what the reader shows
 				{
 					int tw = 96;
-					int th = std::max(1, (int)((double)d.img.h * tw / d.img.w + 0.5));
+					int th = std::max(1, (int)((double)ph * tw / pw + 0.5));
 					auto buf = std::make_shared<std::vector<uint8_t>>(tw * th * 4);
-					const uint8_t* src = d.img.rgba.data();
+					const uint8_t* src = displayPixels->data();
 					uint8_t* dst = buf->data();
 					for (int ty = 0; ty < th; ty++)
 						for (int tx = 0; tx < tw; tx++)
 						{
-							int sx = tx * d.img.w / tw;
-							int sy = ty * d.img.h / th;
-							const uint8_t* s = src + ((size_t)sy * d.img.w + sx) * 4;
+							int sx = tx * pw / tw;
+							int sy = ty * ph / th;
+							const uint8_t* s = src + ((size_t)sy * pw + sx) * 4;
 							uint8_t* t = dst + ((size_t)ty * tw + tx) * 4;
 							t[0] = s[0]; t[1] = s[1]; t[2] = s[2]; t[3] = s[3];
 						}
 					thumbs[d.index] = {tw, th, std::move(buf)};
 				}
-				pr.addPage(d.index, d.img.w, d.img.h, std::move(d.img.rgba));
+				// the renderer gets a copy it can move into its textures (the shared pixel buffer stays in kept/orig)
+				std::vector<uint8_t> upload(displayPixels->begin(), displayPixels->end());
+				pr.addPage(d.index, pw, ph, std::move(upload));
 				any = true;
 			}
 		}

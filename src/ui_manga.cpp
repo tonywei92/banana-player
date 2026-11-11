@@ -75,6 +75,7 @@ namespace bp
 		mangaSliderPage = -1;
 		mangaCtrlUntil = mangaToastUntil = 0;
 		mangaTap = false;
+		mangaLastTapAt = 0;
 		mangaCtrlPressed = -1;
 		mangaMenu = false;
 		mangaMenuCursor = 0;
@@ -490,6 +491,9 @@ namespace bp
 			// START: the Reading menu over the page (over the fullscreen view's lower part), not the settings page
 			case Button::Start: mangaOpenReadingMenu(); break;
 			case Button::Y: mangaPagesOpen(p); break;
+			// L3: turn the page 90° clockwise (paged modes only; the Strip ignores it, as the design says).
+			// each press cycles 0 → 90 → 180 → 270 → 0, kept per chapter, back to 0 on another chapter
+			case Button::L3: readerCmds.push_back({ReaderCmd::Rotate, 0, (int64_t)now}); break;
 			case Button::B:
 				if (readerStatus.fullscreen) mangaFullscreen(false, p);
 				else mangaCloseReader();
@@ -726,6 +730,7 @@ namespace bp
 				mangaTouch = mangaSlider = false;
 				mangaSliderPage = -1;
 				mangaTap = false;
+				mangaLastTapAt = 0;
 				mangaCtrlPressed = -1;
 				// fullscreen's controls up: the sheet takes the finger (any touch there shows it 4 s more), and the
 				// pages outside it only wait to become a drag or, lifted, a tap
@@ -745,8 +750,9 @@ namespace bp
 					mangaTouch = true;
 					mangaTouchY = pt.y;
 					mangaTouchX = pt.x;
-					// down and up, close by and soon, is a tap: fullscreen's controls show
-					mangaTap = full;
+					// down and up, close by and soon, is a tap: a second one is a double-tap (zoom at the finger);
+					// fullscreen's controls show on a single tap too
+					mangaTap = true;
 					mangaTapX = x;
 					mangaTapY = y;
 					mangaTapAt = now;
@@ -806,8 +812,26 @@ namespace bp
 			{
 				mangaTouch = false;
 				readerCmds.push_back({ReaderCmd::Release, 0, (int64_t)now});
-				// a tap (no drag, soon enough and close by) shows fullscreen's controls
-				if (mangaTap && now - mangaTapAt <= MG_TAP_MS) mangaCtrlUntil = now + MG_CTRL_MS;
+				// a tap (no drag, soon enough and close by): a second one soon is a double-tap, which zooms to 200 %
+				// at the tapped point / back to the fit (as A does, but at the finger); alone, fullscreen's controls show
+				if (mangaTap && now - mangaTapAt <= MG_TAP_MS)
+				{
+					if (now - mangaLastTapAt <= 300 && std::abs(mangaTapX - mangaLastTapX) <= 20 &&
+						std::abs(mangaTapY - mangaLastTapY) <= 20)
+					{
+						double z = mangaZoomAsked >= 200 ? 1.0 : 2.0;
+						readerCmds.push_back({ReaderCmd::ZoomPoint, z, (int64_t)now,
+							mangaTapX / (double)Ui::W, mangaTapY / (double)Ui::H});
+						mangaLastTapAt = 0;
+					}
+					else
+					{
+						mangaLastTapAt = now;
+						mangaLastTapX = mangaTapX;
+						mangaLastTapY = mangaTapY;
+					}
+					if (full) mangaCtrlUntil = now + MG_CTRL_MS;
+				}
 				mangaTap = false;
 				return false;
 			}

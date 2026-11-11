@@ -1182,10 +1182,10 @@ namespace bp
 			if (page == Page::MangaRead)
 			{
 				char rb[160];
-				snprintf(rb, sizeof rb, "|rs%d%d%d%d %d %d %d%d%d z%d %d%d%d", (int)readerStatus.open, (int)readerStatus.loading,
+				snprintf(rb, sizeof rb, "|rs%d%d%d%d %d %d %d%d%d z%d %d%d%d r%d", (int)readerStatus.open, (int)readerStatus.loading,
 					(int)readerStatus.atEnd, (int)mangaReadLive, readerStatus.page, readerStatus.pages, (int)mangaDirty,
 					(int)mangaTouch, (int)mangaSlider, readerStatus.zoomPct, (int)mangaMenu, mangaMenuCursor,
-					(int)mangaPages);
+					(int)mangaPages, readerStatus.rotation);
 				photo += std::string(rb) + readerStatus.error + "|" + mangaReadChapterId + "|m" + std::to_string(readerStatus.mode);
 				// the pages grid: the cursor, the scroll, the textures made, the thumbnails arrived
 				if (mangaPages)

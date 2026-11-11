@@ -55,10 +55,12 @@ namespace bp
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
 		// Zoom: v the new factor (1 = the fit); the pages are decoded again at that width once it rests
-		void command(int kind, double v, int64_t ms, double v2 = 0);
+		// Rotate: paged modes only; each press turns 90° clockwise
+		// ZoomPoint: v the factor, v2/v3 the tap point as fractions of the view (0..1)
+		void command(int kind, double v, int64_t ms, double v2 = 0, double v3 = 0);
 		// the pages decoded ahead of the one read (the Preload setting): applied at once, the queue made again
 		void setPreload(int n);
 		// a pass of main's loop: decoded pages taken in, the motion advanced; true when the top panel needs a frame
@@ -73,6 +75,8 @@ namespace bp
 		bool loading() const;
 		bool atEnd() const;
 		const std::string& error() const { return err; }
+		// the page turn in degrees (0, 90, 180, 270); paged modes only (Strip always 0)
+		int rotation() const { return readMode != MANGA_STRIP ? angle : 0; }
 		// fullscreen: the view is both panels' height and the hinge's gap; the top panel shows its first panel-height,
 		// the bottom panel the rest (bottomBoxes, in the bottom panel's pixels, which match the top's)
 		bool fullscreen() const { return full; }
@@ -104,6 +108,11 @@ namespace bp
 		int layoutH() const { return full ? viewH * 2 + gapPx : viewH; }
 		int decodeW() const;	// the width wanted now: z times the view's, up to 2048 (decodePage's 2x cap still applies)
 		std::vector<Box> boxes() const;	// every page in view now, in view pixels (y from the top panel's top)
+		// the page turn (L3): each press 90° clockwise; paged modes only; the fit and zoom work on the turned page
+		void applyRotation();
+		// rotate an RGBA buffer (w x h) by angle degrees clockwise; the returned buffer is (rw x rh), swapped if 90/270
+		static std::shared_ptr<const std::vector<uint8_t>> rotatePixels(
+			const std::shared_ptr<const std::vector<uint8_t>>& src, int w, int h, int angle);
 
 		PageRenderer pr;
 		bool ready = false, opened = false, uploads = false;
@@ -113,6 +122,7 @@ namespace bp
 		int fit = MANGA_FIT_PAGE, preload = MANGA_PRELOAD_DEFAULT;
 		double zscale = 1;	// the zoom of both models; 1 is the fit
 		int64_t zoomAt = 0;	// when the last Zoom came; the re-decode waits for it to rest (0: none waiting)
+		int angle = 0;	// the page turn in degrees (0, 90, 180, 270); paged modes only; back to 0 on a new chapter
 		std::vector<std::string> files;
 		// a URL chapter: files[i] = pageCache->pathFor(urls[i]); fetching and failed are the pages' requests and their
 		// last failure, so a wanted page is asked for once and a dead URL doesn't spin
@@ -128,6 +138,7 @@ namespace bp
 		int gapPx = 0;
 		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Pix> kept;	// the decoded pages near the view, for the bottom panel in fullscreen
+		std::map<int, Pix> orig;	// the same pages unrotated: when the turn changes, kept is re-made from these
 		// thumbnails for the pages grid: ~96 px wide, one per decoded page, kept for the whole chapter
 		struct Thumb { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Thumb> thumbs;

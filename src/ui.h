@@ -168,7 +168,11 @@ namespace bp
 		// Fullscreen (v: 1 on, 0 off; v2: the hinge gap in 480-line units: both panels are one tall view, the gap skipped)
 		// Zoom (v: the factor, 1 = the fit, 1.5 … 8: the content under the view's middle stays there, and the pages in
 		// view are decoded again at that width once the presses rest)
-		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; };
+		// Rotate (paged modes only: each press turns the page 90° clockwise, 0 → 90 → 180 → 270 → 0; Strip ignores it;
+		// kept per chapter, back to 0 on another chapter; the fit and zoom work on the turned page)
+		// ZoomPoint (v: the factor; v2, v3: the tap point as fractions of the view width and height: zoom to that point
+		// / back to the fit, as a double-tap on the page area does)
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
 		std::vector<ReaderCmd> readerCmds;
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus
@@ -178,6 +182,7 @@ namespace bp
 			int mode = 0;	// the mode it reads in (MANGA_*)
 			int zoomPct = 100;	// the zoom (1 = the fit, 100 % … 800 %)
 			bool fullscreen = false;	// both panels show the pages
+			int rotation = 0;	// the page turn in degrees (0, 90, 180, 270; paged modes only, 0 in Strip)
 			std::string error;	// the chapter couldn't be opened ("" while fine)
 		};
 		ReaderStatus readerStatus;
@@ -1202,6 +1207,10 @@ namespace bp
 		int mangaTapX = 0, mangaTapY = 0;
 		Uint32 mangaTapAt = 0;
 		int mangaCtrlPressed = -1;
+		// double-tap on the page area: zoom to 200 % at the tapped point / back to the fit, as A does (but at the
+		// finger). the first tap is recorded; a second tap within 300 ms and 20 units sends a ZoomPoint command
+		Uint32 mangaLastTapAt = 0;
+		int mangaLastTapX = 0, mangaLastTapY = 0;
 		// START while reading: the Reading menu, a compact sheet over the page (over the lower part of the fullscreen
 		// view): its cursor, and its keys (UP/DOWN move, LEFT/RIGHT change, A toggles / opens the last row, B or
 		// START close). Reading goes on behind it

@@ -1373,7 +1373,7 @@ int main(int argc, char** argv)
 						readerFetch.end();
 						reader.close();
 					}
-					else reader.command((int)c.kind, c.v, c.ms, c.v2);
+					else reader.command((int)c.kind, c.v, c.ms, c.v2, c.v3);
 				}
 				ui.readerCmds.clear();
 				// a URL chapter's pages: requests reordered and the free slots filled (the answers themselves come
@@ -1392,6 +1392,7 @@ int main(int argc, char** argv)
 					ui.readerStatus.mode = reader.mode();
 					ui.readerStatus.zoomPct = reader.zoomPct();
 					ui.readerStatus.fullscreen = reader.fullscreen();
+					ui.readerStatus.rotation = reader.rotation();
 					// fullscreen: the bottom panel's share of the view, as fractions of the panel, and the pixels it needs
 					Ui::ReaderBottom rb;
 					rb.on = reader.fullscreen();
