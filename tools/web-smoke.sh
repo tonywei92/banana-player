@@ -107,7 +107,8 @@ req PUT "/api/upload?dir=0/$D&name=a.mp3" --data-binary @"$T/a.mp3"; status_is "
 req PUT "/api/upload?dir=0/$D&name=a.mp3" --data-binary @"$T/a.mp3"; status_is "upload again: name taken" 409
 req PUT "/api/upload?dir=0/$D&name=a.mp3&overwrite=1" --data-binary @"$T/b.mp3"; status_is "upload with overwrite" 200
 get /api/file --get --data-urlencode "p=0/$D/a.mp3"; [ "$(cat "$T/body")" = "hello-two" ]; check "overwritten content" $?
-req PUT "/api/upload?dir=0/$D&name=notes.exe" --data-binary @"$T/a.mp3"; status_is "upload a disallowed type" 415
+req PUT "/api/upload?dir=0/$D&name=notes.exe" --data-binary @"$T/a.mp3"; status_is "upload any kind of file" 200
+req PUT "/api/upload?dir=0/$D&name=.hidden" --data-binary @"$T/a.mp3"; status_is "upload a dot-name refused" 400
 req PUT "/api/upload?dir=0/$D&name=..%2Fx.mp3" --data-binary @"$T/a.mp3"; status_is "upload a name with /" 400
 req PUT "/api/upload?dir=0/$D&name=c.mp3&rel=Album%20X/CD%201" --data-binary @"$T/a.mp3"; status_is "upload into a rel folder" 200
 get /api/ls --get --data-urlencode "p=0/$D/Album X/CD 1"; status_is "rel folder exists" 200; jq_is "rel upload is there" '.items[0].name == "c.mp3"'
@@ -117,7 +118,7 @@ post /api/mkdir --data-urlencode "p=0/$D" --data-urlencode "name=Sub"; status_is
 post /api/mkdir --data-urlencode "p=0/$D" --data-urlencode "name=Sub"; status_is "mkdir existing" 409
 post /api/mkdir --data-urlencode "p=0/$D" --data-urlencode "name=a/b"; status_is "mkdir with /" 400
 post /api/rename --data-urlencode "p=0/$D/a.mp3" --data-urlencode "name=renamed.mp3"; status_is "rename" 200
-post /api/rename --data-urlencode "p=0/$D/renamed.mp3" --data-urlencode "name=bad.exe"; status_in "rename to a disallowed type" 400 415
+post /api/rename --data-urlencode "p=0/$D/renamed.mp3" --data-urlencode "name=bad.exe"; status_is "rename to any kind of name" 200
 post /api/move --data-urlencode "p[]=0/$D/renamed.mp3" --data-urlencode "to=0/$D/Sub"; status_is "move" 200
 get /api/ls --get --data-urlencode "p=0/$D/Sub"; jq_is "moved file is in Sub" '.items[0].name == "renamed.mp3"'
 post /api/move --data-urlencode "p[]=0/$D/Sub" --data-urlencode "to=0/$D/Sub"; [ "$CODE" -ge 400 ]; check "move a folder into itself ($CODE)" $?

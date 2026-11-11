@@ -6912,15 +6912,6 @@ static void testWeb()
 	CHECK_EQ(validName(std::string("a\0b", 3)), false);
 	CHECK_EQ(validName("a\x7f"), false);
 	CHECK_EQ(validName("a\x1f"), false);
-	CHECK_EQ(allowedFileType("a.mp3"), true);
-	CHECK_EQ(allowedFileType("A.MKV"), true);
-	CHECK_EQ(allowedFileType("a.jpg"), true);
-	CHECK_EQ(allowedFileType("cover.PNG"), true);
-	for (const char* e : {"srt", "ass", "ssa", "vtt", "sub", "idx", "lrc", "SRT"})
-		CHECK_EQ(allowedFileType(std::string("x.") + e), true);
-	for (const char* n : {"x.exe", "x.sh", "x.txt", "x.m3u", "x", "x.", ".mp3x", "a.mp3.exe", "x.html", "x.zip"})
-		CHECK_EQ(allowedFileType(n), false);
-
 	// addresses
 	for (const char* ip : {"127.0.0.1", "127.255.255.255", "10.0.0.1", "10.255.255.255", "172.16.0.1", "172.31.255.255",
 		"192.168.0.1", "192.168.255.255", "169.254.1.1", "::1", "fe80::1", "fe80::abcd%wlan0", "febf::1", "fc00::1",

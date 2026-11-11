@@ -637,8 +637,11 @@ handheld, carries on at 1:27"):
 - Songs and videos on the card show their length before their size (`3:34 · 3.5 MB · Nov 10, 2026`), asked of the
   handheld for the rows as they scroll into view (none for the formats and files the handheld's list shows none for).
 - On a computer, **Filter this folder** narrows the list as you type (**/** goes there).
-- Uploads and new names are limited to music, video, photo and subtitle files, and images for covers. A folder can be
-  deleted from the page only if everything in it is one of those.
+- Any kind of file can be uploaded and named (a book, a PDF, a note, a file with no extension); only a name starting
+  with a dot is refused (those are the player's own). The page lists every file, so you can see and delete what you
+  put there, but Play, Like and Add to playlist are offered only for songs and videos (photos open in the viewer).
+  What isn't music, video or a photo never reaches Up next or a playlist: a folder plays and adds only its media, and
+  Add to playlist on a file that isn't one says so.
 
 **Playlists** are the same playlists as the handheld's Playlists section:
 
