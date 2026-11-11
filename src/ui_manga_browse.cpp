@@ -1272,6 +1272,7 @@ namespace bp
 		mangaSeriesId = id;
 		mangaSeriesFrom = from;
 		mserCursor = -1;
+		mserBtn = 0;
 		mserScroll = 0;
 		page = Page::MangaSeries;
 		// the store is the only place a source series' title and cover live: History and the Library read them from
@@ -1504,10 +1505,22 @@ namespace bp
 			return false;
 		}
 		// (In library is its button alone: touched, not a key)
+		// the button row (cursor -1): LEFT/RIGHT go along it, A presses the one lit
+		if (mserCursor < 0 && (b == Button::Left || b == Button::Right))
+		{
+			mserBtn = std::clamp(mserBtn + (b == Button::Right ? 1 : -1), 0, 3);
+			return false;
+		}
 		if (b == Button::A)
 		{
 			if (!mangaSrcError.empty() && !mangaSrcChaptersOn) mangaSourceRetry(p);
-			else if (mserCursor < 0) mangaSourceSeriesResume(p);
+			else if (mserCursor < 0)
+			{
+				if (mserBtn == 1) mangaDlSheetOpen(p);
+				else if (mserBtn == 2) mangaSourceSeriesRefresh(p);
+				else if (mserBtn == 3) mangaSourceSeriesInLibrary(p);
+				else mangaSourceSeriesResume(p);
+			}
 			else mangaSourceSeriesChoose(mserCursor, p);
 			return false;
 		}
@@ -1667,21 +1680,23 @@ namespace bp
 		MangaResumePoint resume = mserSumResume;
 		// one row of four: each a single line of glyph + label, the keys only in the hints under it (nothing in the
 		// buttons: Resume with no key, Download's R2 on a second line and the heart's Y under it read as three kinds)
+		// (the row is one stop for UP/DOWN; LEFT/RIGHT light each button in turn, mserBtn)
+		bool onRow = mserCursor < 0;
+		auto lit = [&](int i) { return onRow && mserBtn == i; };
 		Rect rb = mangaSrcResumeRect();
-		bool onResume = mserCursor < 0;
-		drawBox(rb, mangaPressed == MG_RESUME ? PRESSED : onResume ? BUTTON : SURFACE, R_BUTTON, onResume);
+		drawBox(rb, mangaPressed == MG_RESUME ? PRESSED : lit(0) ? BUTTON : SURFACE, R_BUTTON, lit(0));
 		drawButton(rb, &G_PLAY, "Resume", nullptr, n == 0, 1);
 		// Download: the sheet of This chapter / Next 5 unread / All unread / Choose chapters
 		Rect db = mangaDlButtonRect();
-		drawBox(db, BUTTON, R_BUTTON);
+		drawBox(db, lit(1) ? BUTTON : SURFACE, R_BUTTON, lit(1));
 		drawButton(db, &G_DOWNLOAD, "Download", nullptr, n == 0, 1);
 		// Refresh (L2): ask the source again and replace the card's copy on success
 		Rect fb = mangaSrcRefreshRect();
-		drawBox(fb, BUTTON, R_BUTTON);
+		drawBox(fb, lit(2) ? BUTTON : SURFACE, R_BUTTON, lit(2));
 		drawButton(fb, &G_REFRESH, "Refresh", nullptr, mangaSrcRefreshing, 1);
 		Rect hb = mangaSrcHeartRect();
 		bool inLib = ms && ms->inLibrary;
-		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : BUTTON, R_BUTTON);
+		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : lit(3) ? BUTTON : SURFACE, R_BUTTON, lit(3));
 		drawButton(hb, inLib ? &G_HEART : &G_HEART_O, "Library", nullptr, false, 1, inLib);
 		if (n == 0)
 		{
@@ -1722,7 +1737,12 @@ namespace bp
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
 		// X still marks a chapter read, but six hints don't fit this panel's line: its action stays (the row's marks
 		// show read and unread), and the four buttons carry the rest
-		drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
+		if (mserCursor < 0)
+		{
+			static const char* ROW[4] = {"Resume", "Download", "Refresh", "Library"};
+			drawHints({{"A", ROW[std::clamp(mserBtn, 0, 3)]}, {"LEFT/RIGHT", "Buttons"}, {"DOWN", "Chapters"}, {"B", "Back"}});
+		}
+		else drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) drawMangaDlSheet(p);
 	}
 
@@ -1741,7 +1761,7 @@ namespace bp
 		s += "|cs" + std::to_string((int)mangaSrcRefreshing) + std::to_string((int)mangaSrcChaptersOn) +
 			" " + std::to_string((long long)mangaSrcFetchedAt) + " " +
 			std::to_string(mangaSrcFetchedAt > 0 ? ((long long)time(nullptr) - mangaSrcFetchedAt) / 86400 : -1LL);
-		s += "|mf" + std::to_string((unsigned long long)mangaFilterLocal);
+		s += "|mf" + std::to_string((unsigned long long)mangaFilterLocal) + "|sb" + std::to_string(mserBtn);
 		// the lists' own ends: page 2 appended after page 1 changes the count, but a page's items replaced with as
 		// many others (a search for another word, a retry) would not show otherwise
 		if (!mangaSrcItems.empty())
