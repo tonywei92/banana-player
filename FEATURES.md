@@ -47,7 +47,8 @@ Open Banana Player and the bottom screen shows **Home**:
 
 Move with the D-pad: **UP/DOWN** between the strip and the tiles (back to the card or the column you left),
 **LEFT/RIGHT** along them. **X** on Home: **Clear Recent** (press twice), **Show hidden folders**, **Settings**. **B**
-twice quits (while something plays, **B** does nothing on Home and **SELECT** goes to it), **START** opens the menu.
+asks to quit: **Quit Banana Player?** with **Quit** and **Cancel**, **Cancel** first; **B** or a tap outside cancels
+(while something plays, **B** does nothing on Home and **SELECT** goes to it), **START** opens the menu.
 
 Inside a section the header reads its name with four markers beside it, the open one lit: **L/R** go to the section
 before or after, or tap a marker. Each section opens where you left it (its top if that folder or playlist is gone),
@@ -233,8 +234,8 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 - **Lists:** tap to choose, drag to scroll.
 - **Back to the list:** tap **<** (top left): it keeps playing. **Stop** (bottom right, in red) stops it, one tap.
 - **Lock**, **Info** and **Screen off** are along the bottom, beside Stop.
-- **<** is at the top left of every page and does what **B** does: in the file list it goes up a folder (on Home with
-  nothing playing: tap twice to quit), on a page or in the menu it goes back.
+- **<** is at the top left of every page and does what **B** does: in the file list it goes up a folder, on a page or
+  in the menu it goes back. Home has none: **B** there asks to quit.
 
 **List** (**Y**) on a playlist's song opens that playlist's own page (its order, its edits), the cursor on the song,
 what plays going on behind; the first time a playlist's song opens, the List key glows a soft yellow twice to say so.

@@ -206,12 +206,28 @@ namespace bp
 
 	bool Ui::homeKey(Button b, Player& p)
 	{
+		if (quitOpen)
+		{
+			// its own question: UP/DOWN the rows, A chooses, B (or START, as the Sound page's dialogs) backs out
+			switch (b)
+			{
+			case Button::Up: case Button::Down: quitCursor = (quitCursor + 1) % 2; break;
+			case Button::A:
+				// choosing Quit is the second B press of before: never while something plays
+				if (quitCursor == 0) return !nowPlayable(p);
+				quitOpen = false;
+				break;
+			case Button::B: case Button::Start: quitOpen = false; break;
+			default: break;
+			}
+			return false;
+		}
 		if (b == Button::B)
 		{
-			// something playing: B stays on Home (SELECT goes to it) and never quits while it plays; else twice leaves
+			// something playing: B stays on Home (SELECT goes to it) and never quits while it plays; else it asks first
 			if (nowPlayable(p)) return false;
-			if (quitArmed && SDL_GetTicks() - quitArmed < QUIT_WINDOW_MS) return true;
-			quitArmed = SDL_GetTicks();
+			quitOpen = true;
+			quitCursor = 1;	// Cancel: a pocket's B and a tap are safer there
 			return false;
 		}
 		if (b == Button::Start) { openMainMenu(p, playingTabShown(p) ? TAB_PLAYING : TAB_SETTINGS); return false; }
@@ -249,6 +265,34 @@ namespace bp
 
 	bool Ui::homePointer(const Pointer& pt, int x, int y, Player& p)
 	{
+		if (quitOpen)
+		{
+			// its rows act as the finger lifts; anywhere else cancels as it lands (its lift presses nothing)
+			if (pt.kind == Pointer::Down)
+			{
+				pressedBtn = -1;
+				if (!QUIT_BOX.hit(x, y))
+				{
+					quitOpen = false;
+					swallowTouch = true;
+					return false;
+				}
+				for (int i = 0; i < 2; i++)
+					if (quitRow(i).hit(x, y)) pressedBtn = DLG_ROW + i;
+			}
+			else if (pt.kind == Pointer::Up && pressedBtn >= DLG_ROW)
+			{
+				int i = pressedBtn - DLG_ROW;
+				pressedBtn = -1;
+				if (i < 2 && quitRow(i).hit(x, y))
+				{
+					quitCursor = i;
+					if (i == 0) return !nowPlayable(p);
+					quitOpen = false;
+				}
+			}
+			return false;
+		}
 		bool has = !recent.empty();
 		auto cardAt = [&](int px, int py) {
 			if (!has || py < CARD_Y || py >= CARD_Y + CARD_H) return -1;
@@ -380,7 +424,6 @@ namespace bp
 		ctxNote.clear();
 		ctxPlFile.clear();
 		ctxPlItem = -1;
-		quitArmed = 0;
 	}
 
 	void Ui::openHomeOptions()
@@ -398,7 +441,6 @@ namespace bp
 		ctxNote.clear();
 		ctxPlFile.clear();
 		ctxPlItem = -1;
-		quitArmed = 0;
 	}
 
 	void Ui::drawHome(const Player& p)
@@ -494,8 +536,7 @@ namespace bp
 				drawTextMid(tileSub(g), 0, soft, t.x + t.w / 2, t.y + 138, t.w - 20, 2);
 			}
 		}
-		if (quitArmed) { drawFooterText("Press B again to quit", ACCENT); return; }
-		// (something playing: the mini bar says SELECT goes to it, and B does nothing here; else B twice quits)
+		// (something playing: the mini bar says SELECT goes to it, and B does nothing here; else B asks to quit)
 		bool playing = nowPlayable(p);
 		std::vector<Hint> h;
 		if (homeZone == HOME_STRIP && has && homeStrip < (int)recent.size())
@@ -505,6 +546,16 @@ namespace bp
 		if (!playing) h.push_back({"B", "Quit"});
 		h.push_back({"START", "Menu"});
 		drawHints(h);
+		if (quitOpen) drawQuitDialog();
+	}
+
+	void Ui::drawQuitDialog()
+	{
+		// as the Sound page's Delete question: the dimmed page, the rows, its own hints
+		drawDialog(QUIT_BOX, "Quit Banana Player?");
+		drawDialogRow(quitRow(0), &G_POWER, "Quit", quitCursor == 0, pressedBtn == DLG_ROW, TEXT);
+		drawDialogRow(quitRow(1), &G_CROSS, "Cancel", quitCursor == 1, pressedBtn == DLG_ROW + 1, DIM);
+		drawHints({{"A", "Choose"}, {"B", "Cancel"}});
 	}
 
 	Ui::Rect Ui::pipRect(int k, const Player& p) const
@@ -611,7 +662,6 @@ namespace bp
 		ctxNote.clear();
 		ctxPlFile.clear();
 		ctxPlItem = -1;
-		quitArmed = 0;
 	}
 
 	void Ui::setChip(const Player& p)

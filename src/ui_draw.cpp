@@ -331,7 +331,6 @@ namespace bp
 		sameBrightness = p.settings.sameBrightness;
 		mangaOn = p.settings.mangaOn;
 		mangaHistOn = p.settings.mangaHistory;
-		if (quitArmed && SDL_GetTicks() - quitArmed >= QUIT_WINDOW_MS) quitArmed = 0;
 		// before the signature: "Again to clear" goes back to how it was when the second tap would no longer clear
 		if (clearArmed && SDL_GetTicks() - clearArmed >= QUIT_WINDOW_MS) clearArmed = 0;
 		if (mangaCacheAt && SDL_GetTicks() - mangaCacheAt >= QUIT_WINDOW_MS) mangaCacheAt = 0;
@@ -602,13 +601,11 @@ namespace bp
 	void Ui::drawBackIcon()
 	{
 		Rect b = buttonRect(BACK_ICON);
-		// armed (the browser's first page: once more quits) in yellow
-		bool armed = quitArmed && page == Page::Browse && !inMenu;
-		drawBox(b, pressedBtn == BACK_ICON ? PRESSED : armed ? ACCENT : BUTTON, R_BUTTON);
+		drawBox(b, pressedBtn == BACK_ICON ? PRESSED : BUTTON, R_BUTTON);
 		// adding files to a playlist: a ✕, it cancels (B goes up a folder there)
 		bool cancel = page == Page::Browse && !inMenu && (selMode == SEL_ADD || selMode == SEL_PICK);
 		if (cancel) drawGlyphMid(G_CROSS, b.x + b.w / 2, b.y + b.h / 2, TEXT, 2);
-		else drawGlyphMid(G_BACK, b.x + b.w / 2 - 1, b.y + b.h / 2, armed ? ON_ACCENT : TEXT, 3);
+		else drawGlyphMid(G_BACK, b.x + b.w / 2 - 1, b.y + b.h / 2, TEXT, 3);
 	}
 
 	void Ui::drawHeader(const std::string& title, const Player& p, int titleRight)

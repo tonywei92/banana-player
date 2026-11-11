@@ -172,7 +172,6 @@ namespace bp
 			}
 			return false;
 		}
-		if (b != Button::B) quitArmed = 0;
 		if (inMenu)
 		{
 			if (b == Button::L || b == Button::R)
@@ -707,6 +706,8 @@ namespace bp
 		if (playOnOpen) return playOnPointer(pt, x, y, p);
 		displayOpen = displayOpen && displayShown(p);
 		if (displayOpen) return displayPointer(pt, x, y, p);
+		// Home's quit dialog takes every finger: a row chooses as it lifts, outside it cancels
+		if (page == Page::Browse && !inMenu && atHome() && quitOpen && !popupShown(p)) return homePointer(pt, x, y, p);
 		// the header's web dashboard mark: its page, as the finger lifts on it
 		if (webIndDown || (pt.kind == Pointer::Down && webInd.w && webInd.hit(x, y) && !ctxOpen && !pickerOpen && !popupShown(p)))
 		{
@@ -919,9 +920,6 @@ namespace bp
 			return false;
 		}
 
-		bool quitTap = (page == Page::Main && buttonRect(QUIT_BTN).hit(x, y)) ||
-			(backIconShown(p) && buttonRect(BACK_ICON).hit(x, y));
-		if (!quitTap) quitArmed = 0;
 		// "<": B (up a folder; twice, out of what plays or, from the first page, out of the player)
 		if (backIconShown(p) && buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
 		if (emptyAction() && buttonRect(EMPTY_BTN).hit(x, y)) { pressedBtn = EMPTY_BTN; return false; }
@@ -1075,9 +1073,9 @@ namespace bp
 		const Track* a = p.selected(TrackType::Audio);
 		const Track* s = p.selected(TrackType::Sub);
 		char buf[256];
-		snprintf(buf, sizeof buf, "%d %d %d %d %ld %ld %d %d %lld %lld %zu %d %d %d %.2f %d %d %d %d|", (int)page, cursor, scroll,
+		snprintf(buf, sizeof buf, "%d %d %d %d %ld %ld %d %d %lld %lld %zu %d %d %.2f %d %d %d %d|", (int)page, cursor, scroll,
 			p.paused + setGroup * 2 + 2, (long)std::floor(shownPosition(p)) * 2 + (predicting(p) && pagePlaying()), (long)p.duration, (int)p.aspect, p.loaded, a ? (long long)a->id : 0LL,
-			s ? (long long)s->id : 0LL, p.tracks.size(), dragging, (int)(dragFraction * 1000), quitArmed != 0, p.speed,
+			s ? (long long)s->id : 0LL, p.tracks.size(), dragging, (int)(dragFraction * 1000), p.speed,
 			p.index(), p.count(), pressedBtn + touchLocked * 100 + (lockHoldAt != 0) * 1000, listTouch * 1000 + browseVersion + (clearArmed != 0) * 100000 + (int)p.history().items().size() * 1000000);
 		std::string photo = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "");
 		if (touchLocked && lockHoldAt) photo += "|hold" + std::to_string((SDL_GetTicks() - lockHoldAt) / 100);
@@ -1178,6 +1176,8 @@ namespace bp
 			snprintf(hb, sizeof hb, "|home%d %d %d %ld %d %zu %d", homeZone, homeStrip, homeGrid, std::lround(stripOff), homePress,
 				recent.size(), netStore ? netStore->version() : -1);
 			photo += hb;
+			// B's quit dialog over it, and the row it has the focus on
+			photo += std::string("|quit") + std::to_string(quitOpen) + std::to_string(quitCursor);
 		}
 		// Extensions: the drawer's tile and the note's focus, the switch (its lines and rows say it), a finger's button
 		// down on them (mangaOn is in the settings too: a change redraws anywhere)

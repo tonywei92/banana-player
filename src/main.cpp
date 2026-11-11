@@ -608,7 +608,7 @@ int main(int argc, char** argv)
 		};
 		// B, "<" or Back on the player (a press() or pointer() that says leave): the screen only, what plays goes on
 		// behind the browser, back where the player was opened from (Ui::backFromPlayer). A photo (and a file that
-		// didn't open) closes instead. With nothing playing (B twice at Home), out
+		// didn't open) closes instead. With nothing playing (Quit in B's dialog at Home), out
 		auto leave = [&] {
 			if (photos.playing())
 			{

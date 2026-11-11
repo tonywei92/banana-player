@@ -483,7 +483,7 @@ namespace bp
 		// the tiles' lines, made again when the playlists or the connections change
 		mutable std::string tileSubs[BROWSE_TABS];
 		mutable int tileSubsKey = -1;
-		bool homeKey(Button b, Player& p);	// true: B twice, leave
+		bool homeKey(Button b, Player& p);	// true: Quit chosen in B's dialog, leave
 		void goHome(int zone, int idx, Player& p);	// back to Home, the focus there
 		void homeOpen(Player& p);	// A: the card's file, All recent, a tile's section
 		// a finger on Home: on a card (a tap plays, a hold opens its menu, a drag scrolls the strip) or a tile
@@ -493,6 +493,12 @@ namespace bp
 		Uint32 homeHoldAt = 0;
 		static constexpr int HOME_TILE = 1000;
 		bool homePointer(const Pointer& pt, int x, int y, Player& p);
+		// B on Home with nothing playing asks first; the dialog is Home's, over the page (drawHome)
+		bool quitOpen = false;
+		int quitCursor = 1;	// Cancel first
+		static constexpr Rect QUIT_BOX{112, 116, 416, 204};
+		Rect quitRow(int i) const { return {128, 196 + i * 52, 384, 46}; }
+		void drawQuitDialog();
 		void drawHome(const Player& p);
 		bool showHidden = false;	// the setting, kept here for drawBrowseMenu (no Player there)
 		bool mangaOn = false;		// the manga reader's switch, kept here for tileSub (no Player there)
@@ -1040,7 +1046,6 @@ namespace bp
 
 		Page page = Page::Main;
 		int cursor = 0, scroll = 0;
-		Uint32 quitArmed = 0;		// B pressed once: a second press within 2 s leaves
 		bool dragging = false;
 		double dragFraction = 0, scrubbed = -1;
 		Uint32 scrubAt = 0;
@@ -1132,7 +1137,7 @@ namespace bp
 			ICON_TYPE, ICON_TEST, ICON_SAVE, ICON_PLAYLIST, ICON_LIKED, ICON_NEW };
 		RowIcon rowIcon(int row) const;
 		void drawRowIcon(RowIcon icon, int x, int y, SDL_Color c);
-		// every page has it but Home (nowhere to go back to; B twice there still quits, START has Quit)
+		// every page has it but Home (nowhere to go back to; B there asks to quit, START has Quit)
 		bool backIconShown(const Player&) const { return !(page == Page::Browse && !inMenu && atHome()); }
 		static constexpr Uint32 UNLOCK_HOLD_MS = 1000;	// buttonRect's ids beside the grid's 0..9
 		static constexpr int SET_ARROW_X = 372;	// a settings row's left arrow: a tap left of the value's middle steps back
