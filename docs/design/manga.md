@@ -14,6 +14,8 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 - **The Manga app**: **Library** (**Continue reading**, covers, unread counts), **History**, **Browse › On this
   handheld**, the series page (**Resume**, the **In library** heart, read and unread) and the reading page (the page
   number, the slider, the chapter buttons, the drag area).
+- **Home's Recent**: the reader's last chapter as a card among the files (cover, series, chapter and page, a bar),
+  where it was last read; **A** opens it at the page left. **In Recent on Home** off: no card.
 - **The reader**: its own renderer on the top panel, the three modes (**Right to left**, **Left to right**, **Strip**),
   the page fit (Page, Width, and a real **Fill** in the paged modes), the zoom (**UP/DOWN** through 100–800 %, **A** at
   200 %), the D-pad (**LEFT/RIGHT** a screenful, then the page), **L/R**, **L2/R2**, the **Reading menu** on **START**,
@@ -43,8 +45,7 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
   loaded and **Sources** is empty.
 - The reader's own extras from section 4: **Y** for the pages grid, **L3** to turn the page, the double-tap and the
   pinch.
-- The page cache is empty (only the network sources fill it), and **Adult sources** and **In Recent on Home** change
-  nothing yet.
+- The page cache is empty (only the network sources fill it), and **Adult sources** change nothing yet.
 - The web dashboard's Manga pages, and reading in the browser.
 
 **Decisions since the proposal** (the owner's answers, 2026-11-10; section 12 has them in full)

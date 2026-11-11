@@ -38,9 +38,11 @@ Open Banana Player and the bottom screen shows **Home**:
 - **Recent**, along the top: a card for each of the last 30 things you played, newest first, with how far you got
   (`0:27 / 0:52`, or `Played · 3:12`), a bar, and a network mark for a file on a server. **A** plays it (from where you
   left off), **Y** opens its menu: **Resume from…** (or **Play**), **Play from the start**, **Show in folder** (opens
-  Files or Network on that file), **Add to playlist…**, **Remove from Recent**. The last card, **All recent**, opens
-  the whole list. On the touch screen tap a card to play it, swipe the strip, or hold a card for its menu. With nothing
-  played yet the strip is a single line and the tiles grow.
+  Files or Network on that file), **Add to playlist…**, **Remove from Recent**. With the manga reader on and **In
+  Recent on Home**, its last chapter joins the strip by when it was read (cover, series, `Ch. 12 · p. 14/38`, a bar);
+  **A** opens it where you left it. The last card, **All recent**, opens the whole list of files. On the touch screen tap
+  a card to play it, swipe the strip, or hold a card for its menu. With nothing played yet the strip is a single line
+  and the tiles grow.
 - Four tiles, two by two: **Files** (your cards: **Videos**, the `videos` folder in `roms`, then **This card** and
   **Second card**), **Playlists**, **Network** and **Extensions** (**None on**, or **1 on · Manga reader**). Each says
   what's in it.
@@ -825,8 +827,8 @@ read. **B** goes back where you came from.
 
 The reader itself is turned on and off in **Manage extensions** (or on the web dashboard): **A** on its row.
 
-The page cache, **Adult sources** and **In Recent on Home** belong to the parts that aren't here yet, so the cache is
-empty and the last two change nothing for now.
+The page cache and **Adult sources** belong to the parts that aren't here yet, so the cache is empty and the last one
+changes nothing for now. **In Recent on Home** places the reader's last chapter in Home's Recent strip.
 
 **Coming next:** network folders, sources from repositories, and downloads. None of that is in this version yet.
 

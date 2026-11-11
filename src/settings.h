@@ -136,7 +136,7 @@ namespace bp
 		bool mangaAdult = false;
 		// the History list (the reading progress, read marks and places, is kept either way); off clears it
 		bool mangaHistory = true;
-		// manga in Home's Recent (the card comes later)
+		// the reader's last chapter as a card in Home's Recent (the extension's switch comes first)
 		bool mangaRecent = true;
 		// its first-time note about repositories has been shown: it isn't again when the reader is turned on
 		bool mangaIntroShown = false;

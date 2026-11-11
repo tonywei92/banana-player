@@ -213,7 +213,7 @@ namespace bp
 			// the Recent strip listed again, the focus kept on the file it was on (gone: the card that took its place)
 			std::string was = homeStrip < (int)recent.size() ? recent[homeStrip].path : "";
 			int wasAt = homeStrip;
-			listRecent(p);
+			listRecent(p, true);
 			if (homeFresh)
 			{
 				homeFresh = false;
@@ -300,8 +300,9 @@ namespace bp
 		else if (dir == RECENT && !p.settings.keepHistory) add(-1, "Play history is off (Settings)", "", "");
 		else if (dir == RECENT)
 		{
-			// All recent: the history (a file taken away or on a card taken out left out); X clears it
-			listRecent(p);
+			// All recent: the history (a file taken away or on a card taken out left out); X clears it. Manga's card
+			// is Home's only: this list is the files played
+			listRecent(p, false);
 			for (auto& it : recent) add(2, baseName(it.path), it.path, it.net ? fileNote(at(it.path), -1) : localNote(it.path));
 		}
 		else
@@ -547,7 +548,7 @@ namespace bp
 				std::string l = std::string(x + CARD_W > 0 && x < W ? "shown  " : "hidden ") + (at ? "> " : "  ") + "card ";
 				if (i < (int)recent.size())
 					l += recent[i].name + "  | " + recent[i].sub + (recent[i].net ? " [net]" : "") + " \xC2\xB7 " + recent[i].where;
-				else l += "All recent  | " + std::to_string(recent.size()) + " played";
+				else l += "All recent  | " + std::to_string(recentPlayed()) + " played";
 				out.push_back(l);
 			}
 			for (int g = 0; g < BROWSE_TABS; g++)

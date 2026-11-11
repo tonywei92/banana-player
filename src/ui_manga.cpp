@@ -405,6 +405,7 @@ namespace bp
 				mangaSeriesFrom = 0;
 				mangaSeriesId = cp.seriesId;
 				mangaOpenChapter(*s, ci, cp.page, p);
+				mangaContinue(mangaCards[i], p);
 				return;
 			}
 			if (i >= 0 && i < (int)mangaLib.size()) openMangaSeries(mangaLib[i].id, 0, p);
@@ -436,6 +437,59 @@ namespace bp
 			}
 			mangaBrowseChoose(i, p);
 		}
+	}
+
+	void Ui::mangaContinue(const ChapterProgress& cp, Player& p)
+	{
+		// a source's chapter is opened from its series page (Resume goes on at the page left)
+		if (isSourceId(cp.seriesId)) { openMangaSeries(cp.seriesId, 0, p); return; }
+		const LocalSeries* s = mangaLocalSeries(cp.seriesId);
+		int ci = s ? chapterIndexOf(*s, cp.chapterId) : -1;
+		if (!s || ci < 0) return;
+		mangaSeriesFrom = 0;
+		mangaSeriesId = cp.seriesId;
+		mangaOpenChapter(*s, ci, cp.page, p);
+	}
+
+	bool Ui::mangaRecentCard(Player& p, RecentItem& out)
+	{
+		// Nothing is read or written for Home while the reader is off or its card is off: listRecent asks only then
+		if (!p.settings.mangaOn || !p.settings.mangaRecent) return false;
+		// the store Home needs is the app's own: loaded and the card scanned the first time it is asked for
+		if (!mangaStore) mangaScan();
+		if (!mangaStore) return false;
+		// the chapter opened last (a mark read or unread alone is no reading: it has no time and no page)
+		std::vector<ChapterProgress> last = mangaStore->history(1);
+		if (last.empty()) return false;
+		const ChapterProgress& cp = last[0];
+		if (cp.at <= 0 && cp.pages <= 0 && cp.page <= 0) return false;
+		out = RecentItem();
+		out.manga = true;
+		out.seriesId = cp.seriesId;
+		out.chapterId = cp.chapterId;
+		out.page = cp.page;
+		out.pages = cp.pages;
+		out.path = "\x01manga:" + cp.seriesId + ":" + cp.chapterId;
+		out.name = mangaTitle(cp.seriesId);
+		if (out.name.empty()) out.name = "Manga";
+		bool says = cp.chapterTitle.rfind("Ch", 0) == 0 || cp.chapterTitle.rfind("ch", 0) == 0;
+		out.sub = (says ? "" : "Ch. ") + cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages);
+		out.frac = cp.pages > 0 ? std::clamp((cp.page + 1) / (double)cp.pages, 0.0, 1.0) : 0;
+		out.used = cp.at;
+		out.where = "Manga";
+		out.kind = &G_BOOK;
+		return true;
+	}
+
+	void Ui::mangaOpenRecent(const RecentItem& it, Player& p)
+	{
+		if (!it.manga) return;
+		ChapterProgress cp;
+		cp.seriesId = it.seriesId;
+		cp.chapterId = it.chapterId;
+		cp.page = it.page;
+		cp.pages = it.pages;
+		mangaContinue(cp, p);
 	}
 
 	// ---- the keys ----

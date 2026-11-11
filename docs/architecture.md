@@ -81,7 +81,8 @@ Moved out of `CLAUDE.md`, which keeps the one-line rules and the map; the reason
 - **`Ui`** is the whole bottom panel (its definitions are split over `src/ui*.cpp` by area: see "Where things live" below): pages (Main, Tracks (SELECT on a video; tabs Chapters, Subtitles, Audio, Picture (Fit/Fill/Stretch): `tracksTabs()`; the Chapters tab is `Page::Chapters`), Up next (`Page::UpNext`: the Session's queue, `upNextList`; a row is a `PlayRequest` of that list), Settings, Browse, Info, About, Exit, Sound (Equalizer & Effects tabs)), START's tabbed
   menu (`inMenu`: Playing (`Page::Playing`, while a song or video plays: Like, Add to playlist…; `menuTabs`), Settings, About; no Quit: quick settings and F + START quit), the Options menu (X), Lock, Screen off. The browser's first page is **Home**
   (`browseDir` `HOMEDIR`, `drawHome`, `homeKey`, `homePointer`): the Recent strip (`recent`, built by `listRecent` from the
-  history and resume.tsv's positions and `#duration` lines; cards `CARD_W` wide, `STRIDE` apart, the focused one kept in
+  history and resume.tsv's positions and `#duration` lines, and — while the manga reader and In Recent on Home are on —
+  its last chapter as a card, ordered with the files by `history.tsv`'s `#time` lines; cards `CARD_W` wide, `STRIDE` apart, the focused one kept in
   the second slot by `stripTarget`; `setStrip` eases `stripOff` over 120 ms, stepped in `tick()` while `stripT0` is set,
   which is what `animating()` reports) over the four sections' tiles (`homeZone`/`homeStrip`/`homeGrid`, `homeCol` for
   coming back down). The sections are `browseTab` (Files `""`, Playlists `PLROOT`, Network `NETROOT`, Extensions `EXTDIR`,
