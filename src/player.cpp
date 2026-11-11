@@ -475,7 +475,8 @@ namespace bp
 			size_t slash = path.rfind('/');
 			std::string dir = slash == std::string::npos ? "." : path.substr(0, slash);
 			bool cover = isNet ? !coverFileFor(namesIn(netParent(path))).empty() : folderHasCover(path), guessArt = cover || (dir == lastArtDir && lastArt);
-			if (settings.musicShow == SHOW_VIS) graph = graphFor(settings.visualizer, false);
+			if (topCovered && (settings.musicShow == SHOW_VIS || settings.musicShow == SHOW_BOTH)) graph = blankGraph();
+			else if (settings.musicShow == SHOW_VIS) graph = graphFor(settings.visualizer, false);
 			else if (settings.musicShow == SHOW_NONE) graph = blankGraph();
 			else if (settings.musicShow == SHOW_BOTH) graph = graphFor(settings.visualizer, cover);
 			else graph = guessArt ? "" : blankGraph();
@@ -1951,8 +1952,20 @@ namespace bp
 	{
 		// the art's choices need art: a song with none shows its title alone (Album art: no visualizer the person
 		// didn't pick) or the visualizer (Art + visualizer); None is none either way
-		if (settings.musicShow == SHOW_NONE || hasCover(tracks)) return settings.musicShow;
-		return settings.musicShow == SHOW_ART ? SHOW_NONE : SHOW_VIS;
+		int show = settings.musicShow == SHOW_NONE || hasCover(tracks) ? settings.musicShow
+			: settings.musicShow == SHOW_ART ? SHOW_NONE : SHOW_VIS;
+		// the manga reader over the top panel: a visualizer nobody sees would still make its 30 frames a second
+		// (mpv's sound waits on the graph) on the cores the reader decodes on; the bare graph meanwhile
+		if (topCovered && (show == SHOW_VIS || show == SHOW_BOTH)) return SHOW_NONE;
+		return show;
+	}
+
+	void Player::setTopCovered(bool on)
+	{
+		if (on == topCovered) return;
+		topCovered = on;
+		fprintf(stderr, "music: top panel %s\n", on ? "covered: the visualizer rests" : "shown again: the visualizer back");
+		if (isAudio && loaded) applyAudioDisplay();
 	}
 
 	std::string Player::graphFor(int vis, bool overCover)

@@ -1408,6 +1408,8 @@ int main(int argc, char** argv)
 					else reader.command((int)c.kind, c.v, c.ms, c.v2, c.v3);
 				}
 				ui.readerCmds.clear();
+				// a song's visualizer rests while the pages cover the top panel (nobody sees it; its frames cost CPU)
+				player.setTopCovered(reader.isOpen());
 				// a URL chapter's pages: requests reordered and the free slots filled (the answers themselves come
 				// through MangaNet's fetch owner above)
 				if (reader.isOpen()) reader.tick(now);

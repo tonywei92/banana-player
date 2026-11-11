@@ -76,6 +76,8 @@ namespace bp
 		// at a file's end: the next one, or (Loop all) the first again; false when that's all
 		bool advance();
 		bool playingAudio() const { return isAudio && !playlist.empty(); }
+		// the manga reader is over the top panel: a song's visualizer rests (the bare graph) until it's gone
+		void setTopCovered(bool on);
 		bool playingPhoto() const { return isPhoto && !playlist.empty(); }
 		int index() const { return current; }
 		int count() const { return (int)playlist.size() - (ghost >= 0 ? 1 : 0); }
@@ -364,6 +366,7 @@ namespace bp
 		int shownMusic() const;	// MusicShow as it comes out for this file (its art or none)
 		void updateOverlay();
 		bool isAudio = false, isPhoto = false;
+		bool topCovered = false;	// setTopCovered
 		bool hidingVideo = false;	// hideVideo(true): a video's picture off (each video's loadfile says vid=no)
 		bool vidOff = false;		// the vid property itself is "no" (a song opened next needs it back first)
 		// photos: the size mpv shows (before any turn), the turn mpv makes of the file's own (rotation metadata) and
