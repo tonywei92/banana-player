@@ -133,6 +133,20 @@ namespace bp
 		}
 		displayOpen = displayOpen && displayShown(p);	// (the song gone under it: closed)
 		if (displayOpen) return displayKey(b, p);
+		// a menu (the Options one, a row's hold, the mini bar's) takes the buttons first, on whatever page it is over
+		// (the mini bar's opens on pages whose own keys would otherwise eat them)
+		if (ctxOpen)
+		{
+			switch (b)
+			{
+			case Button::Up: ctxCursor = (ctxCursor + (int)ctxItems.size() - 1) % (int)ctxItems.size(); ctxArmed = false; break;
+			case Button::Down: ctxCursor = (ctxCursor + 1) % (int)ctxItems.size(); ctxArmed = false; break;
+			case Button::A: chooseBrowseMenu(ctxCursor, p); break;
+			case Button::B: case Button::X: case Button::Y: ctxOpen = false; break;
+			default: break;
+			}
+			return false;
+		}
 		// a page the output waits for a tap there to start the sound (the top panel says so): B plays here instead
 		if (b == Button::B && !inMenu && (page == Page::Main || page == Page::Browse) && SessionHost::get().pageWaits() &&
 			!ctxOpen && !pickerOpen && !popupShown(p) && selMode == SEL_NONE && !addPending.serial)
@@ -233,6 +247,8 @@ namespace bp
 				else if (rows[cursor] == SOUND_ROW) { openSound(p, true); return false; }
 				else changeSetting(rows[cursor], 1, p);
 				break;
+			// the mini bar's right end says SELECT: back to what plays (Settings has no SELECT of its own)
+			case Button::Select: if (nowPlayable(barPlayer(p))) goNowPlaying(p); break;
 			case Button::B:
 				if (setGroup >= 0) { cursor = setGroup; setGroup = -1; }
 				else page = home(p);
@@ -273,18 +289,6 @@ namespace bp
 			case Button::Down: popupCursor = (popupCursor + 1) % n; break;
 			case Button::A: choosePopup(popupCursor, p); break;
 			case Button::B: choosePopup(n > 1 ? 1 : 0, p); break;	// Later (or Hide, OK)
-			default: break;
-			}
-			return false;
-		}
-		if (page == Page::Browse && ctxOpen)
-		{
-			switch (b)
-			{
-			case Button::Up: ctxCursor = (ctxCursor + (int)ctxItems.size() - 1) % (int)ctxItems.size(); ctxArmed = false; break;
-			case Button::Down: ctxCursor = (ctxCursor + 1) % (int)ctxItems.size(); ctxArmed = false; break;
-			case Button::A: chooseBrowseMenu(ctxCursor, p); break;
-			case Button::B: case Button::X: case Button::Y: ctxOpen = false; break;
 			default: break;
 			}
 			return false;
@@ -484,16 +488,16 @@ namespace bp
 		}
 		// A or the Play button held while a page plays the file: here instead, once, as the hold reaches its length (not
 		// as it lets go). Gone off the player (B, the menu), or the page gone: nothing
-		// (the mini bar's play mark holds the same way, over the browser)
-		bool holdHere = (page == Page::Main && !inMenu) || (playHoldMini && page == Page::Browse && miniBarShown(p));
-		if (playHoldAt && (!holdHere || !pageDrives(p))) playHoldAt = 0;
+		// (the mini bar's play mark holds the same way, on any page that has the bar: what it plays is main's player)
+		bool holdHere = (page == Page::Main && !inMenu) || (playHoldMini && miniBarShown(p));
+		if (playHoldAt && (!holdHere || !pageDrives(barPlayer(p)))) playHoldAt = 0;
 		if (!playHoldAt) playHoldMini = false;
 		if (playHoldAt && SDL_GetTicks() - playHoldAt >= PLAY_HOLD_MS)
 		{
 			playHoldAt = 0;
 			playHoldMini = false;
 			if (playHoldTouch) { pressedBtn = -1; swallowTouch = true; }	// the finger's lift presses nothing
-			takeOver(p);
+			takeOver(barPlayer(p));
 		}
 		// a finger held on the mini bar: its menu (the lift that follows chooses nothing)
 		if (miniHoldAt && (pressedBtn == MINI_BAR || pressedBtn == MINI_PP) && SDL_GetTicks() - miniHoldAt >= 600)
@@ -714,6 +718,26 @@ namespace bp
 			}
 			return false;
 		}
+		if (ctxOpen)
+		{
+			// the folder's menu: a row tapped (as the finger lifts), anywhere else closes it
+			if (pt.kind == Pointer::Down)
+			{
+				pressedBtn = -1;
+				for (int i = 0; i < (int)ctxItems.size(); i++)
+					if (ctxRow(i).hit(x, y)) pressedBtn = 100 + i;
+				if (pressedBtn < 0) ctxOpen = false;
+			}
+			else if (pt.kind == Pointer::Up && pressedBtn >= 100)
+			{
+				int item = pressedBtn - 100;
+				pressedBtn = -1;
+				if (item != ctxCursor) ctxArmed = false;
+				ctxCursor = item;
+				if (ctxRow(item).hit(x, y)) chooseBrowseMenu(item, p);
+			}
+			return false;
+		}
 		if (page == Page::Sound) return soundPointer(pt, x, y, p);
 		if (page == Page::Web) return webPointer(pt, x, y, p);
 		// locked, over a video: Screen off goes through; a hold on the lock (draw() times it) releases it; nothing else
@@ -745,26 +769,6 @@ namespace bp
 				int item = pressedBtn - 200;
 				pressedBtn = -1;
 				if (item < n && popupRow(item).hit(x, y)) choosePopup(item, p);
-			}
-			return false;
-		}
-		if (ctxOpen)
-		{
-			// the folder's menu: a row tapped (as the finger lifts), anywhere else closes it
-			if (pt.kind == Pointer::Down)
-			{
-				pressedBtn = -1;
-				for (int i = 0; i < (int)ctxItems.size(); i++)
-					if (ctxRow(i).hit(x, y)) pressedBtn = 100 + i;
-				if (pressedBtn < 0) ctxOpen = false;
-			}
-			else if (pt.kind == Pointer::Up && pressedBtn >= 100)
-			{
-				int item = pressedBtn - 100;
-				pressedBtn = -1;
-				if (item != ctxCursor) ctxArmed = false;
-				ctxCursor = item;
-				if (ctxRow(item).hit(x, y)) chooseBrowseMenu(item, p);
 			}
 			return false;
 		}
@@ -853,7 +857,7 @@ namespace bp
 				bool on = playHoldAt != 0;
 				playHoldAt = 0;
 				playHoldMini = false;
-				if (on && buttonRect(id).hit(x, y) && pageDrives(p)) toggleBrowser(p);
+				if (on && buttonRect(id).hit(x, y) && pageDrives(barPlayer(p))) toggleBrowser(barPlayer(p));
 				return false;
 			}
 			if (id == PLAY_GRID && page == Page::Main && !inMenu && ((playHoldTouch && playHoldAt) || pageDrives(p)))
@@ -866,7 +870,25 @@ namespace bp
 			Rect r = id >= PHOTO_BTN && id < PHOTO_BTN + PHOTO_BTNS ? photoBtn(id - PHOTO_BTN, p) : buttonRect(id);
 			return r.hit(x, y) && act(id, p);
 		}
-		// the reader's page: its drag area and slider take the finger's moves too (the mini bar isn't there)
+		// the mini bar: acts as the finger lifts (a hold: its menu, tick()); its play mark while a page plays the file
+		// holds as Main's Play does (here instead). Its down is taken here for every page, the reader's included
+		if (pt.kind == Pointer::Down && miniBarShown(p) && MINI_BOX.hit(x, y))
+		{
+			Player& bp = barPlayer(p);
+			pressedBtn = x < MINI_BOX.x + 44 ? MINI_PP : MINI_BAR;
+			miniHoldAt = SDL_GetTicks();
+			// in fullscreen the bar is the controls sheet's: a touch on it shows the sheet 4 s more
+			if (page == Page::MangaRead && readerStatus.fullscreen) mangaCtrlUntil = SDL_GetTicks() + MG_CTRL_MS;
+			if (pressedBtn == MINI_PP && pageDrives(bp))
+			{
+				miniHoldAt = 0;
+				playHoldAt = SDL_GetTicks();
+				playHoldTouch = true;
+				playHoldMini = true;
+			}
+			return false;
+		}
+		// the reader's page: its drag area and slider take the finger's moves too (the mini bar's taken above)
 		if (page == Page::MangaRead) return mangaPointer(pt, x, y, p);
 		// the extensions' pages, and the drawer: their own taps. A tile or a row acts as the finger lifts (as Home's
 		// do), so the lift is taken before the down-only pages below; the down is taken after the header and mini bar.
@@ -903,21 +925,6 @@ namespace bp
 		// "<": B (up a folder; twice, out of what plays or, from the first page, out of the player)
 		if (backIconShown(p) && buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
 		if (emptyAction() && buttonRect(EMPTY_BTN).hit(x, y)) { pressedBtn = EMPTY_BTN; return false; }
-		// the mini bar: acts as the finger lifts (a hold: its menu, tick()); its play mark while a page plays the file
-		// holds as Main's Play does (here instead)
-		if (miniBarShown(p) && MINI_BOX.hit(x, y))
-		{
-			pressedBtn = x < MINI_BOX.x + 44 ? MINI_PP : MINI_BAR;
-			miniHoldAt = SDL_GetTicks();
-			if (pressedBtn == MINI_PP && pageDrives(p))
-			{
-				miniHoldAt = 0;
-				playHoldAt = SDL_GetTicks();
-				playHoldTouch = true;
-				playHoldMini = true;
-			}
-			return false;
-		}
 		// the extensions' pages, and the drawer: their own taps (the mini bar's, the header's and "<" taken above)
 		if (page == Page::Extensions || page == Page::Manga || (page == Page::Browse && !inMenu && browseDir == EXTDIR))
 			return extPointer(pt, x, y, p);
@@ -1154,6 +1161,15 @@ namespace bp
 			snprintf(bb, sizeof bb, "|bg%d %d %d %d %d %d %d %d %.0f", bgPlay, miniBarShown(p), chipKind, landFlashUntil != 0 ? 1 : listPulseAt ? 2 + (int)((SDL_GetTicks() - listPulseAt) / 33) : 0, playHoldMini,
 				markW(p), markW(p) && markLive(p) && panel.on() ? (int)(SDL_GetTicks() / 166) : -1, p.loading(), 0.0);
 			photo += bb + chipPath + "|" + p.currentPath();
+		}
+		// the mini bar over a photo: it shows main's player, whose title, place and state are not the photo viewer's
+		if (miniBarShown(p) && &barPlayer(p) != &p)
+		{
+			const Player& bp = barPlayer(p);
+			char nb[240];
+			snprintf(nb, sizeof nb, "|np%d %d %d %ld %ld %d %d", bp.paused, (int)bp.loading(), bp.error.empty() ? 0 : 1,
+				(long)std::floor(shownPosition(bp)), (long)bp.duration, (int)bp.playingAudio(), (int)bp.playing());
+			photo += std::string(nb) + bp.title + "|" + bp.currentPath();
 		}
 		// Home: the focus, the strip's scroll, a finger on a card or a tile, the tiles' lines (the connections)
 		if (atHome())

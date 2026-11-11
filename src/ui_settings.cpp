@@ -442,7 +442,9 @@ namespace bp
 				: "Downloads from GitHub, checked before anything changes";
 			helpInk = updater->state() == Updater::State::Failed ? ACCENT : DIM;
 		}
-		auto lines = wrapText(help, 0, 592, 2);
+		// what the row under the cursor does, in a line or two above the footer (one line while the mini bar is there:
+		// its second would be under it)
+		auto lines = wrapText(help, 0, 592, miniUp ? 1 : 2);
 		for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, helpInk, 24, HELP_Y + (int)i * 22, 592);
 		bool action = cursor < (int)rows.size() && (rows[cursor] == CHECK_ROW || rows[cursor] == INSTALL_ROW || rows[cursor] == CLEAR_ROW ||
 			rows[cursor] == SOUND_ROW);

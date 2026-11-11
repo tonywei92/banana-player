@@ -369,6 +369,9 @@ int main(int argc, char** argv)
 		auto shown = [&]() -> Player& { return photos.playing() ? photos : player; };
 
 		Ui ui;
+		// the mini bar's player: main's (songs and videos), also while a photo is shown (the photo viewer is its own
+		// Player, and a page of its own)
+		ui.mainPlayer = &player;
 		bool haveUi = bottom && ui.init(bottom, opts.fontsDir);
 		// the built-in updater: for the installed package (bin/ beside VERSION), not a build on a computer
 		// (BP_PACKAGE_DIR stands in for one in tests)
@@ -956,6 +959,15 @@ int main(int argc, char** argv)
 			// photo) stops here alone. The web's Stop of a photo, or of a file deleted under it, likewise
 			if (ui.takeStopPressed() && !shadow.stop("hh").reject.empty()) stopPlaying(StopWhy::Handheld);
 			if (ui.takeStopRequest()) stopPlaying(StopWhy::Web);
+			// the mini bar tapped over a photo: the photo closes and the player of what plays takes the screen (the top
+			// panel shows it again; the bottom panel is its player page)
+			if (ui.takePlayerOverPhoto())
+			{
+				photoOverPlayer = false;
+				closePhoto(false);
+				ui.showPlayer();
+				renderPending = true;
+			}
 			if (int ms = ui.takeLevelShown())
 			{
 				levelUntil = SDL_GetTicks() + ms;

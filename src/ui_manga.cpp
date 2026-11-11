@@ -739,7 +739,7 @@ namespace bp
 				mangaSliderPage = -1;
 				mangaTap = false;
 				mangaTapDismiss = false;
-				mangaLastTapAt = 0;
+				// (mangaLastTapAt is the last tap's: not cleared here, or a double-tap could never see its first)
 				mangaCtrlPressed = -1;
 				// fullscreen's controls up: the sheet takes the finger (any touch there shows it 4 s more), and the
 				// pages outside it only wait to become a drag or, lifted, a tap that puts the bar away
@@ -758,7 +758,9 @@ namespace bp
 					// goes on to pan the page and hides the bar as it always did)
 					mangaTapDismiss = true;
 				}
-				if (!mangaTapDismiss && buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
+				// in fullscreen the panel is all page (the "<" isn't drawn): a tap anywhere shows the controls,
+				// including where that icon would be
+				if (!full && !mangaTapDismiss && buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
 				// fullscreen: the whole panel is the page, the finger drags it anywhere
 				if (mangaAreaRect().hit(x, y) || full)
 				{
@@ -1490,13 +1492,13 @@ namespace bp
 		drawTextMid(std::string(MODES[m]) + " \xC2\xB7 X to change", 0, DIM_ON, W / 2, 216, 0, 2);
 		int pages = readerStatus.pages;
 		if (!readerStatus.error.empty())
-			drawTextMid(readerStatus.error, 1, DANGER, W / 2, 340, 560, 2);
+			drawTextMid(readerStatus.error, 1, DANGER, W / 2, miniUp ? 310 : 340, 560, 2);
 		else
 		{
 			drawTextMid(pages > 0 ? "Page " + std::to_string(readerStatus.page + 1) + " / " + std::to_string(pages) : "Page",
-				1, TEXT, W / 2, 340, 380, 2);
+				1, TEXT, W / 2, miniUp ? 310 : 340, 380, 2);
 			if (readerStatus.loading)
-				drawTextMid("Loading" + std::string(SDL_GetTicks() / 400 % 4, '.'), 0, DIM, W / 2 + 150, 342, 0, 2);
+				drawTextMid("Loading" + std::string(SDL_GetTicks() / 400 % 4, '.'), 0, DIM, W / 2 + 150, miniUp ? 312 : 342, 0, 2);
 		}
 		// the slider: the ACCENT fill to the page, its knob; a Drag there is a Seek
 		Rect tr = mangaSliderRect(), bar{tr.x, tr.y + 8, tr.w, 10};
@@ -1508,7 +1510,7 @@ namespace bp
 		bool prev = ci > 0, next = ci >= 0 && ci + 1 < mangaReadChapterTotal();
 		if (readerStatus.atEnd)
 			drawTextMid(next ? std::string("End of chapter \xC2\xB7 R2 or ") + (p.settings.mangaSwapLR ? "LEFT" : "RIGHT") + " for the next"
-				: "You\xE2\x80\x99re caught up", 0, next ? ACCENT : DIM, W / 2, 384, 560, 2);
+				: "You\xE2\x80\x99re caught up", 0, next ? ACCENT : DIM, W / 2, miniUp ? 360 : 384, 560, 2);
 		Rect pb = mangaPrevRect(), fb = mangaFullRect(), nb = mangaNextRect();
 		drawBox(pb, mangaPressed == MG_PREV ? PRESSED : BUTTON, R_BUTTON);
 		drawButton(pb, &G_PREV, "Prev chapter", nullptr, !prev, 0);	// (L2/R2: in the hints)
@@ -1517,7 +1519,9 @@ namespace bp
 		drawButton(fb, nullptr, "Fullscreen", nullptr, false, 0);
 		drawBox(nb, mangaPressed == MG_NEXT ? PRESSED : BUTTON, R_BUTTON);
 		drawButton(nb, &G_NEXT, "Next chapter", nullptr, !next, 0);
-		drawHints({{"UP/DOWN", "Zoom"}, {"LEFT/RIGHT", "Step"}, {"L/R", "Page"}, {"START", "Menu"}, {"SELECT", "Fullscreen"}, {"B", "Close"}});
+		// what the keys do: the useful ones, one line (the Reading menu, START, lists the rest); the fullscreen
+		// button is on the row above, so SELECT needn't be named
+		drawHints({{"UP/DOWN", "Zoom"}, {"L/R", "Page"}, {"START", "Menu"}, {"B", "Close"}});
 		if (mangaMenu) drawMangaReadingMenu(p);
 	}
 
@@ -1829,7 +1833,7 @@ namespace bp
 			drawBox(b, mangaCtrlPressed == i ? PRESSED : BUTTON, R_BUTTON);
 			drawButton(b, nullptr, LABELS[i], KEYS[i], false, 0);
 		}
-		drawTextMid("Hides in 4 s \xC2\xB7 drag to hide now", 0, DIM, W / 2, 460);
+		drawTextMid("Hides in 4 s \xC2\xB7 drag to hide now", 0, DIM, W / 2, miniUp ? 468 : 460);
 	}
 
 	void Ui::drawMangaToast()

@@ -446,7 +446,7 @@ namespace bp
 		if (miniUp) drawMiniBar(p);
 		if (displayShown(p)) drawDisplay(p);
 		if (inMenu) drawTabs(p);
-		if (ctxOpen && page == Page::Browse) drawBrowseMenu(p);
+		if (ctxOpen) drawBrowseMenu(p);	// (the mini bar's hold menu opens on pages of its own too)
 		if (pickerOpen) drawPicker();
 		if (playOnOpen && inMenu && page == Page::Playing) drawPlayOn(p);
 		if (addPending.serial && page == Page::Browse) drawBusy();

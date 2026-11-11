@@ -238,7 +238,7 @@ namespace bp
 		if (id == EQ_PREV) return {160, 70, 56, 52};
 		if (id == EQ_NEXT) return {568, 70, 56, 52};
 		if (id == EQ_NAME_ZONE) return {216, 70, 352, 52};
-		if (id == EQ_RESET || id == EQ_SAVE || id == EQ_OPTIONS) return {16 + (id - EQ_RESET) * 206, 400, 196, 32};
+		if (id == EQ_RESET || id == EQ_SAVE || id == EQ_OPTIONS) return {16 + (id - EQ_RESET) * 206, miniUp ? 386 : 400, 196, 32};
 		if (id >= FX_ROW && id < FX_ROW + SOUNDFX_COUNT) return {16, ROW_Y + (id - FX_ROW) * ROW_H, 608, ROW_H - 4};
 		// the select mode's bar: three buttons (Edit, Add), two (Pick, Move)
 		if (id == SEL_ALL) return {24, 428, 184, 44};
@@ -248,13 +248,13 @@ namespace bp
 		if (id == MOVE_CANCEL) return {24, 428, 288, 44};
 		if (id == MOVE_DONE) return {328, 428, 288, 44};
 		if (id == BUSY_CANCEL) return {152, 224, 336, 46};
-		if (id == WEB_NEWPIN) return {296, 384, 152, 52};
-		if (id == WEB_OFF) return {464, 384, 152, 52};
+		if (id == WEB_NEWPIN) return {296, miniUp ? 368 : 384, 152, 52};
+		if (id == WEB_OFF) return {464, miniUp ? 368 : 384, 152, 52};
 		if (id >= PLAY_ROW && id < PLAY_ROW + 7) return playingRowRect(id - PLAY_ROW);
 		if (id == MINI_PP) return {MINI_BOX.x, MINI_BOX.y, 44, MINI_BOX.h};
 		if (id == MINI_BAR) return {MINI_BOX.x + 44, MINI_BOX.y, MINI_BOX.w - 44, MINI_BOX.h};
 		if (id >= PHOTO_BTN) return {0, 0, 0, 0};	// photoBtn's: they move with the pan area
-		if (id == QUIT_BTN) return {468, 428, 148, 44};
+		if (id == QUIT_BTN) return {468, miniUp ? 376 : 428, 148, 44};	// (a photo's Close: above the mini bar too)
 		if (id == EMPTY_BTN) return {200, 300, 240, 52};
 		if (id == GROUP_PREV) return {16, 58, 172, 30};
 		if (id == GROUP_NEXT) return {452, 58, 172, 30};
@@ -311,13 +311,14 @@ namespace bp
 		else if (p.thumbPending()) drawText("Loading" + std::string(SDL_GetTicks() / 400 % 4, '.'), 1, DIM, pan.x + pan.w / 2, pan.y + pan.h / 2 - 12, 0, 2);
 		else drawText("No preview", 1, DIM, pan.x + pan.w / 2, pan.y + pan.h / 2 - 12, 0, 2);
 
-		// under the pan area: the zoom and the size; how to use it
+		// under the pan area: the zoom and the size; how to use it (a little higher while the mini bar shows, so the
+		// Close button and this line keep clear of it)
 		std::string zoom = "Zoom " + std::to_string((int)std::lround(v.zoom * 100)) + "%";
 		if (p.photoWidth() > 0) zoom += "   " + std::to_string(p.photoWidth()) + " x " + std::to_string(p.photoHeight());
-		drawText(zoom, 0, TEXT, pan.x, pan.y + pan.h + 10, pan.w);
+		drawText(zoom, 0, TEXT, pan.x, pan.y + pan.h + (miniUp ? 4 : 10), pan.w);
 		drawText(maxPan(sc.x) > 0 || maxPan(sc.y) > 0 ? (p.settings.dragBox ? "Drag the box · double-tap: zoom out" : "Drag to move · double-tap: zoom out")
 			: "Double-tap: zoom in",
-			0, DIM, pan.x, pan.y + pan.h + 36, pan.w);
+			0, DIM, pan.x, pan.y + pan.h + (miniUp ? 24 : 36), pan.w);
 
 		bool hints = p.settings.buttonHotkeys;
 		struct { const char* label; const char* hint; bool off; } btns[PHOTO_BTNS] = {
@@ -345,8 +346,8 @@ namespace bp
 		}
 
 		drawLeave(p);
-		// along the bottom, beside it: what A does here
-		if (hints) drawTextMid("A", 0, ACCENT, 24, 450), drawTextMid("Zoom to 2x, or the whole photo", 0, DIM, 24 + (int)std::lround(textWidth("A", 0) / sx) + 7, 450, 400);
+		// along the bottom, beside it: what A does here (above the mini bar while it shows)
+		if (hints) drawTextMid("A", 0, ACCENT, 24, miniUp ? 396 : 450), drawTextMid("Zoom to 2x, or the whole photo", 0, DIM, 24 + (int)std::lround(textWidth("A", 0) / sx) + 7, miniUp ? 396 : 450, 400);
 	}
 
 	bool Ui::chapterLineShown(const Player& p) const
