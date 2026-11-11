@@ -330,14 +330,17 @@ namespace bp
 		// no video while the manga extensions run: the handheld's 1 GB can't hold both (the extensions' server takes
 		// about 400 MB). A video playing when they start, or started while they run, is stopped as the player's own
 		// Stop would (everywhere), and the notice at the top says why. Music and photos go on.
-		if (mangaNet && mangaNet->started() && p.playing() && !p.playingAudio() && !p.playingPhoto() && !p.loading())
+		// and none in the manga reader at all (entering it stops one), extensions or not
+		if (p.playing() && !p.playingAudio() && !p.playingPhoto() && !p.loading())
 		{
-			auto st = mangaNet->javaExt().state();
-			if (st == JavaExtHost::State::Starting || st == JavaExtHost::State::Running)
+			bool inManga = page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead ||
+				page == Page::MangaSettings || page == Page::MangaSources;
+			auto st = mangaNet && mangaNet->started() ? mangaNet->javaExt().state() : JavaExtHost::State::NotInstalled;
+			if (inManga || st == JavaExtHost::State::Starting || st == JavaExtHost::State::Running)
 			{
 				stopPressed = true;
 				videoBlockedAt = SDL_GetTicks();
-				fprintf(stderr, "manga: a video stopped (the extensions are running)\n");
+				fprintf(stderr, "manga: a video stopped (%s)\n", inManga ? "the manga reader" : "the extensions are running");
 			}
 		}
 	}
@@ -345,7 +348,7 @@ namespace bp
 	std::string Ui::extNoticeText() const
 	{
 		if (videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000)
-			return "Video stopped: no video while manga extensions run";
+			return "Video stopped: no video in the manga reader";
 		if (!mangaNet || !mangaNet->started()) return "";
 		int st = (int)mangaNet->javaExt().state();
 		Uint32 now = SDL_GetTicks();
