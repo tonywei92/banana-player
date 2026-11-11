@@ -193,6 +193,8 @@ namespace bp
 		Updater* updater = nullptr;
 		// the manga reader's network side (main's; started when the reader is first used with it on)
 		class MangaNet* mangaNet = nullptr;
+		// the manga reader's library and progress store (public for the web dashboard's manga routes)
+		class MangaStore* mangaStorePublic() const { return mangaStore.get(); }
 		// main's URL chapters put their pages in this same cache (the Manga settings' Clear cache empties it), not in
 		// a second PageCache over the same folder
 		PageCache& mangaPageCacheRef() { return mangaPageCache; }

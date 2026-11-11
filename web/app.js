@@ -15,6 +15,7 @@ import { RECENT_ID } from './js/recent.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
 import { Files, Lightbox, UploadFab } from './js/files.js';
 import { Extensions } from './js/extensions.js';
+import { Manga } from './js/manga.js';
 import { DownScreen } from './js/down.js';
 import { Login, loadExtras, pinFromHash, pingBoot } from './js/login.js';
 import { C, connFail, goDown } from './js/connection.js';
@@ -23,6 +24,12 @@ import { toast } from './js/toasts.js';
 
 /* ================= shell ================= */
 const NAV = [['playing', 'Playing', 'note', '#/playing'], ['files', 'Files', 'folder', '#/files'], ['playlists', 'Playlists', 'playlist', '#/playlists'], ['extensions', 'Extensions', 'blocks', '#/extensions']];
+// the Manga item is shown only while the reader is on (the handheld's setting)
+function navWithManga(mangaOn) {
+	const out = NAV.slice();
+	if (mangaOn) out.push(['manga', 'Manga', 'bookmark', '#/manga']);
+	return out;
+}
 async function loadPls() { try { set({ pls: (await get('/api/playlists', null, { quiet: true })).playlists || [] }); } catch (e) {} }
 
 // the handheld plays it behind its browser (its player left, not stopped): the bars say so
@@ -109,9 +116,10 @@ function SidePls() {
 function Side({ nav }) {
 	const s = store, r = s.route, sn = s.snap, root = s.roots && s.roots[0];
 	const bat = sn && sn.battery >= 0 ? sn.battery : null, conn = !s.reconnecting;
+	const navItems = navWithManga(!!(sn && sn.mangaOn));
 	return html`<aside class="side" aria-label="Sections">
 		<div class="logo"><img class="logo32" src="/logo.svg" width="32" height="32" alt="" /><b>Banana Player</b></div>
-		<nav aria-label="Main" style="display:contents">${NAV.map(([k, l, ic, h]) => html`<button class="nav" aria-current=${r.page === k ? 'page' : undefined} onClick=${() => nav(k, h)}><${Icon} n=${ic} k=${2} />${l}</button>`)}</nav>
+		<nav aria-label="Main" style="display:contents">${navItems.map(([k, l, ic, h]) => html`<button class="nav" aria-current=${r.page === k ? 'page' : undefined} onClick=${() => nav(k, h)}><${Icon} n=${ic} k=${2} />${l}</button>`)}</nav>
 		<${SidePls} />
 		<div class="box surface hhcard" role="group" aria-label="Your handheld">
 			<div class="hrow"><span class=${'cdot' + (conn ? '' : ' off')}></span><span class="hname">${conn ? 'Handheld' : 'Reconnecting…'}</span><span class="grow"></span>${bat != null && html`<span class="num dim" style="font-size:13px">${bat}%</span>`}</div>
@@ -170,7 +178,7 @@ function Shell() {
 		};
 		addEventListener('keydown', key); return () => removeEventListener('keydown', key);
 	}, []);
-	const page = r.page === 'files' ? html`<${Files} />` : r.page === 'playlists' ? html`<${Playlists} />` : r.page === 'extensions' ? html`<${Extensions} />` : html`<${NowPlaying} />`;
+	const page = r.page === 'files' ? html`<${Files} />` : r.page === 'playlists' ? html`<${Playlists} />` : r.page === 'extensions' ? html`<${Extensions} />` : r.page === 'manga' ? html`<${Manga} />` : html`<${NowPlaying} />`;
 	const miniShown = !wide && v.has && r.page !== 'playing' && !s.selecting;
 	const fabShown = r.page !== 'playing' && !s.selecting && !s.pick && (s.upload.items.length > 0 || (r.page === 'files' && !!r.path));
 	const nav = (k, h) => go(k === 'files' ? filesHash(store.lastDir || '') : h);
@@ -183,7 +191,7 @@ function Shell() {
 			<${Toasts} />
 		</div>
 		${!wide && html`<${MiniPlayer} />`}
-		<nav class="tabs" aria-label="Main">${NAV.map(([k, l, ic, h]) => html`<button aria-current=${r.page === k ? 'page' : undefined} onClick=${() => nav(k, h)}><${Icon} n=${ic} k=${2} />${l}</button>`)}</nav>
+		<nav class="tabs" aria-label="Main">${navWithManga(!!(s.snap && s.snap.mangaOn)).map(([k, l, ic, h]) => html`<button aria-current=${r.page === k ? 'page' : undefined} onClick=${() => nav(k, h)}><${Icon} n=${ic} k=${2} />${l}</button>`)}</nav>
 		${wide && html`<${PlayerBar} />`}
 		<input type="file" multiple hidden id="up-files" onChange=${upIn} />
 		<input type="file" hidden webkitdirectory id="up-dir" onChange=${upIn} />

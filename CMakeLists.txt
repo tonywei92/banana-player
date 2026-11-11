@@ -151,7 +151,7 @@ if(BP_WEB)
 		VERBATIM)
 	target_sources(banana-player PRIVATE
 		third_party/httplib/httplib.cc third_party/qrcodegen/qrcodegen.cpp
-		src/web/server.cpp src/web/netif.cpp src/web/api_files.cpp src/web/api_player.cpp src/web/api_playlists.cpp
+		src/web/server.cpp src/web/netif.cpp src/web/api_files.cpp src/web/api_player.cpp src/web/api_playlists.cpp src/web/api_manga.cpp
 		src/web/probe.cpp src/web/subs.cpp src/web/picsubs.cpp src/web/remux.cpp ${CMAKE_BINARY_DIR}/web_assets.cpp)
 	target_include_directories(banana-player PRIVATE third_party/httplib third_party/qrcodegen)
 	# both split files of httplib read these: the keep-alive check every second, and form bodies up to 256 KB

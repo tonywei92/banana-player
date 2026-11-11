@@ -210,6 +210,7 @@ namespace bp
 	void registerFileRoutes(WebServer& ws);		// api_files.cpp (B2)
 	void registerPlayerRoutes(WebServer& ws);	// api_player.cpp (B3)
 	void registerPlaylistRoutes(WebServer& ws);	// api_playlists.cpp (B3)
+	void registerMangaRoutes(WebServer& ws);	// api_manga.cpp (section 8)
 
 	// any server thread (api_player.cpp): the handheld stops if it plays real, or a file inside it (a folder), as the
 	// web's Stop does (back to the browser); false if it didn't (it plays something else, or nothing). Waits for the
