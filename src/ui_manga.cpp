@@ -1896,7 +1896,7 @@ namespace bp
 		}
 		mfWaiting = waiting;
 		// at most 8 pages kept here: the ones not drawn longest go
-		while (mfTex.size() > 4)	// (each a page's textures on the GPU: the memory is the system's)
+		while (mfTex.size() > 2)	// (each a page's textures on the GPU, a long page's tens of MB: the memory is the system's)
 		{
 			auto old = mfTex.begin();
 			for (auto i = mfTex.begin(); i != mfTex.end(); ++i)

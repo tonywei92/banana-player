@@ -394,7 +394,7 @@ namespace bp
 			return true;
 		}
 
-		PageImage scaled(const AVFrame* f, int targetW, int maxH)
+		PageImage scaled(const AVFrame* f, int targetW, int maxH, long long maxPixels)
 		{
 			PageImage out;
 			out.srcW = f->width;
@@ -414,6 +414,13 @@ namespace bp
 			if (targetW > 0) scale = std::min(2.0, double(targetW) / double(out.srcW));
 			// a cap is measured on the height the width's scale gives: both sides then fall together, keeping the aspect
 			if (maxH > 0 && double(out.srcH) * scale > double(maxH)) scale = double(maxH) / double(out.srcH);
+			if (maxPixels > 0)
+			{
+				// no wider than the image (the GPU enlarges it on screen just as well), and within the pixel cap
+				scale = std::min(scale, 1.0);
+				double px = double(out.srcW) * out.srcH * scale * scale;
+				if (px > double(maxPixels)) scale *= std::sqrt(double(maxPixels) / px);
+			}
 			const int w = std::max(1, (int)std::lround(double(out.srcW) * scale));
 			const int h = std::max(1, (int)std::lround(double(out.srcH) * scale));
 			if (w > kMaxSide || h > kMaxSide || (long long)w * h > kMaxPixels)
@@ -481,7 +488,7 @@ namespace bp
 		}
 	}
 
-	PageImage decodePage(const uint8_t* data, size_t size, int targetW, int maxH)
+	PageImage decodePage(const uint8_t* data, size_t size, int targetW, int maxH, long long maxPixels)
 	{
 		if (!data || size == 0) return fail("empty image");
 		const Kind kind = kindOf(data, size);
@@ -510,10 +517,10 @@ namespace bp
 			decoded = decodeStill(cc.get(), data, size, frame.get(), error);
 		}
 		if (!decoded) return fail(error.c_str());
-		return scaled(frame.get(), targetW, maxH);
+		return scaled(frame.get(), targetW, maxH, maxPixels);
 	}
 
-	PageImage decodePageFile(const std::string& path, int targetW, int maxH)
+	PageImage decodePageFile(const std::string& path, int targetW, int maxH, long long maxPixels)
 	{
 		std::ifstream in(path, std::ios::binary | std::ios::ate);
 		if (!in) return fail("can't open the file");
@@ -532,6 +539,6 @@ namespace bp
 		}
 		in.seekg(0);
 		if (!in.read((char*)bytes.data(), (std::streamsize)bytes.size())) return fail("can't read the file");
-		return decodePage(bytes.data(), bytes.size(), targetW, maxH);
+		return decodePage(bytes.data(), bytes.size(), targetW, maxH, maxPixels);
 	}
 }

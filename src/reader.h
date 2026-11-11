@@ -110,6 +110,8 @@ namespace bp
 		static constexpr int SPIN_MS = 110;
 		// decoded pages kept around the view, in bytes of pixels (the textures take as much again)
 		static constexpr size_t DECODED_BUDGET = 32u << 20;
+		// one page decoded at most this many pixels (32 MB of RGBA), never enlarged past its own width
+		static constexpr long long PAGE_MAX_PIXELS = 8LL * 1000 * 1000;
 		bool spinning() const { return opened && pr.spun(); }
 
 	private:

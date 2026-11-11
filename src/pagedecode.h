@@ -26,8 +26,10 @@ namespace bp
 	// targetW wide with the aspect kept (height rounded, at least 1). targetW <= 0 means the image's own size; the width
 	// never grows past 2x the image's own. maxH > 0 caps the height, and the width then shrinks to keep the aspect.
 	// Failure is never a crash: ok() is false and error says why.
-	PageImage decodePage(const uint8_t* data, size_t size, int targetW, int maxH = 0);
+	// maxPixels > 0 (the reader's pages): never wider than the image itself, and at most that many pixels (a longer
+	// page decoded a little narrower: a 1:11 manhwa page at 1024 wide was 45 MB)
+	PageImage decodePage(const uint8_t* data, size_t size, int targetW, int maxH = 0, long long maxPixels = 0);
 
 	// The same for a file on the card; a file over 64 MB is refused instead of read.
-	PageImage decodePageFile(const std::string& path, int targetW, int maxH = 0);
+	PageImage decodePageFile(const std::string& path, int targetW, int maxH = 0, long long maxPixels = 0);
 }

@@ -101,9 +101,9 @@ namespace bp
 					got = cbz.read(j.path, bytes);
 					if (!got) img.error = cbz.error();
 				}
-				if (got) img = decodePage(bytes.data(), bytes.size(), j.width);
+				if (got) img = decodePage(bytes.data(), bytes.size(), j.width, 0, PAGE_MAX_PIXELS);
 			}
-			else img = decodePageFile(j.path, j.width);
+			else img = decodePageFile(j.path, j.width, 0, PAGE_MAX_PIXELS);
 			Uint32 took = SDL_GetTicks() - t0;
 			{
 				std::lock_guard<std::mutex> l(m);
