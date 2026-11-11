@@ -1198,12 +1198,12 @@ namespace bp
 			std::string state = it.state == DlItem::Paused ? "Paused"
 				: it.state == DlItem::Failed ? (it.error.empty() ? "Failed" : it.error)
 				: it.state == DlItem::Running ? "Downloading" : "Queued";
-			drawTextMid(title, 1, at ? ACCENT : TEXT, 32, mid - 9, 520);
+			drawTextMid(title, 1, at ? ACCENT : TEXT, 32, mid - 10, 520);
 			drawTextMid(it.chapterTitle + " \xC2\xB7 " + std::to_string(it.done) + "/" + std::to_string(totalPages) +
 				" pages \xC2\xB7 " + state, 0, it.state == DlItem::Failed ? DANGER : at ? DIM_ON : DIM,
-				32, mid + 9, 556);
+				32, mid + 10, 556);
 			int w = totalPages > 0 ? (int)std::lround(560.0 * it.done / totalPages) : 0;
-			drawLevel({32, r.y + r.h - 4, 560, 3}, w, TRACK, it.state == DlItem::Failed ? DANGER : at ? ACCENT : DIM);
+			drawLevel({32, r.y + r.h - 8, 560, 3}, w, TRACK, it.state == DlItem::Failed ? DANGER : at ? ACCENT : DIM);
 			shown++;
 		}
 		if (q == 0) drawTextMid("Nothing queued", 0, DIM, 32, MDL_TOP + 12, 0);
@@ -1218,7 +1218,7 @@ namespace bp
 		drawTextMid(paused ? "all paused" : "one at a time", 0, onAll ? DIM_ON : DIM, 608, all.y + all.h / 2, 0, 1);
 		// what is on the card, by series
 		drawTextMid("On the card" + (c ? " \xC2\xB7 " + std::to_string(c) + (c == 1 ? " series" : " series") : ""),
-			0, DIM, 16, 324);
+			0, DIM, 16, 354);
 		for (int i = mdlCardScroll; i < c && i < mdlCardScroll + MDL_CSHOWN; i++)
 		{
 			Rect r{16, MDL_CARD_TOP + (i - mdlCardScroll) * MDL_CROW, 608, MDL_CROW - 4};

@@ -458,7 +458,7 @@ namespace bp
 			Rect r = mangaSourcesSegRect(i);
 			bool at = i == mstTab;
 			drawBox(r, at ? ACCENT : SURFACE, R_CHIP);
-			drawTextMid(MST_NAMES[i], 0, at ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 8, 2);
+			drawTextMid(MST_NAMES[i], 0, at ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
 		}
 		int n = mangaSourcesRows(p);
 		int& cur = mstCursor[mstTab], &sc = mstScroll[mstTab];
@@ -482,16 +482,16 @@ namespace bp
 				if (at) drawFocus(r);
 				int mid = r.y + r.h / 2;
 				SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-				drawTextMid(sourceName(s), 1, ink, 32, mid - 9, 450);
+				drawTextMid(sourceName(s), 1, ink, 32, mid - 10, 450);
 				int x = 32;
 				if (!s.lang.empty())
 				{
 					int cw = (int)std::lround(textWidth(s.lang, 0) / sx) + 14;
-					fillRound({x, mid + 4, cw, 18}, TRACK, R_CHIP);
-					drawTextMid(s.lang, 0, at ? DIM_ON : TEXT, x + cw / 2, mid + 13, cw - 6, 2);
+					fillRound({x, mid + 3, cw, 18}, TRACK, R_CHIP);
+					drawTextMid(s.lang, 0, at ? DIM_ON : TEXT, x + cw / 2, mid + 12, cw - 6, 2);
 					x += cw + 8;
 				}
-				drawTextMid(s.version.empty() ? "version unknown" : s.version, 0, soft, x, mid + 13, 240);
+				drawTextMid(s.version.empty() ? "version unknown" : s.version, 0, soft, x, mid + 12, 240);
 				if (mstInstalling.count(s.fullId)) drawTextMid("Updating\xE2\x80\xA6", 0, ACCENT, 608, mid, 0, 1);
 				else if (s.updateAvailable)
 				{
@@ -516,16 +516,16 @@ namespace bp
 				if (at) drawFocus(r);
 				int mid = r.y + r.h / 2;
 				SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-				drawTextMid(a.name.empty() ? a.id : a.name, 1, ink, 32, mid - 9, 450);
+				drawTextMid(a.name.empty() ? a.id : a.name, 1, ink, 32, mid - 10, 450);
 				int x = 32;
 				if (!a.lang.empty())
 				{
 					int cw = (int)std::lround(textWidth(a.lang, 0) / sx) + 14;
-					fillRound({x, mid + 4, cw, 18}, TRACK, R_CHIP);
-					drawTextMid(a.lang, 0, at ? DIM_ON : TEXT, x + cw / 2, mid + 13, cw - 6, 2);
+					fillRound({x, mid + 3, cw, 18}, TRACK, R_CHIP);
+					drawTextMid(a.lang, 0, at ? DIM_ON : TEXT, x + cw / 2, mid + 12, cw - 6, 2);
 					x += cw + 8;
 				}
-				drawTextMid(a.version.empty() ? "version unknown" : a.version, 0, soft, x, mid + 13, 240);
+				drawTextMid(a.version.empty() ? "version unknown" : a.version, 0, soft, x, mid + 12, 240);
 				if (mstInstalling.count(a.fullId)) drawTextMid("Installing\xE2\x80\xA6", 0, ACCENT, 608, mid, 0, 1);
 				else drawTextMid(elideLeft(a.repoName, 0, 150), 0, soft, 608, mid, 0, 1);
 			}
@@ -542,8 +542,8 @@ namespace bp
 				if (at) drawFocus(r);
 				int mid = r.y + r.h / 2;
 				SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-				drawTextMid(rp.name.empty() ? rp.url : rp.name, 1, ink, 32, mid - 9, 470);
-				drawTextMid(elideMiddle(rp.url, 0, 380), 0, soft, 32, mid + 12, 0);
+				drawTextMid(rp.name.empty() ? rp.url : rp.name, 1, ink, 32, mid - 10, 470);
+				drawTextMid(elideMiddle(rp.url, 0, 380), 0, soft, 32, mid + 10, 0);
 				auto it = mstRepoError.find(rp.url);
 				if (it != mstRepoError.end()) drawTextMid(elideLeft(it->second, 0, 180), 0, DANGER, 608, mid, 0, 1);
 				else if (rp.lastFetched > 0)

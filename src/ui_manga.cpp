@@ -1227,7 +1227,7 @@ namespace bp
 	{
 		(void)p;
 		mangaCache();
-		drawTextMid("Continue reading", 0, DIM, 16, 102);
+		drawTextMid("Continue reading", 0, DIM, 16, 108);
 		int cards = std::min(3, (int)mangaCards.size());
 		for (int i = 0; i < cards; i++)
 		{
@@ -1237,14 +1237,14 @@ namespace bp
 			drawBox(r, mangaPressed == MG_CARD + i ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
 			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
 			std::string title = mangaTitle(cp.seriesId);
-			drawMangaCover({r.x + 6, r.y + 4, 40, 54}, title, false, 2, cp.seriesId);
-			drawTextMid(title, 0, ink, r.x + 54, r.y + 18, r.w - 62);
+			drawMangaCover({r.x + 12, r.y + 6, 36, 54}, title, false, 2, cp.seriesId);
+			drawTextMid(title, 0, ink, r.x + 56, r.y + 18, r.w - 64);
 			// ("Ch." only before a bare title: "Chapter 1" says it already)
 			bool says = cp.chapterTitle.rfind("Ch", 0) == 0 || cp.chapterTitle.rfind("ch", 0) == 0;
-			drawTextMid((says ? "" : "Ch. ") + cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, r.x + 54, r.y + 36, r.w - 62);
+			drawTextMid((says ? "" : "Ch. ") + cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, r.x + 56, r.y + 36, r.w - 64);
 			double frac = cp.pages > 0 ? std::clamp((cp.page + 1) / (double)cp.pages, 0.0, 1.0) : 0;
-			int w = (int)std::lround((r.w - 62) * frac);
-			drawLevel({r.x + 54, r.y + 50, r.w - 62, 4}, w, TRACK, at ? ACCENT : DIM);
+			int w = (int)std::lround((r.w - 64) * frac);
+			drawLevel({r.x + 56, r.y + 54, r.w - 64, 4}, w, TRACK, at ? ACCENT : DIM);
 		}
 		drawTextMid("Library \xC2\xB7 " + std::to_string(mangaLib.size()) + " series", 0, DIM, 16, 194);
 		int n = (int)mangaLib.size();
@@ -1262,7 +1262,7 @@ namespace bp
 		if (mlibCard >= cards) mlibCard = std::max(0, cards - 1);
 		if (mlibZone == 0 && cards == 0) mlibZone = 1;	// (no cards: the grid has the focus, as the keys go)
 		// the grid, a row at a time: the next row peeks under this one, cut at the mini bar
-		SDL_Rect clip{0, (int)std::lround(200 * sy), (int)std::lround(W * sx), (int)std::lround((416 - 200) * sy)};
+		SDL_Rect clip{0, (int)std::lround(206 * sy), (int)std::lround(W * sx), (int)std::lround((416 - 206) * sy)};
 		SDL_RenderSetClipRect(ren, &clip);
 		for (int i = mlibScroll * MG_COLS; i < n; i++)
 		{
@@ -1282,7 +1282,7 @@ namespace bp
 			}
 		}
 		SDL_RenderSetClipRect(ren, nullptr);
-		drawScrollBar(212, 204, mlibScroll, 2, rows);
+		drawScrollBar(218, 198, mlibScroll, 2, rows);
 		drawHints({{"D-PAD", "Move"}, {"A", mlibZone == 0 ? "Continue" : "Open"}, {"B", "Back"}});
 	}
 
@@ -1313,9 +1313,9 @@ namespace bp
 			bool at = i == mhisCursor;
 			if (at) drawFocus({16, y, 608, ROW_H - 4});
 			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-			drawTextMid(mangaTitle(cp.seriesId), 1, ink, 32, mid - 9, 470);
-			drawTextMid(cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, 32, mid + 11, 470);
-			drawTextMid(mangaAgo(cp.at, (int64_t)time(nullptr)), 0, soft, 608, mid, 120, 1);
+			drawTextMid(mangaTitle(cp.seriesId), 1, ink, 32, mid - 10, 462);
+			drawTextMid(cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, 32, mid + 10, 462);
+			drawTextMid(mangaAgo(cp.at, (int64_t)time(nullptr)), 0, soft, 604, mid, 120, 1);
 		}
 		drawScrollBar(MG_ROW_TOP, MG_ROWS * ROW_H - 4, mhisScroll, MG_ROWS, n);
 		if (mangaClearAt) drawFooterText("Press X again to clear history", ACCENT);
@@ -1409,8 +1409,8 @@ namespace bp
 		Rect hb = mangaHeartRect();
 		bool inLib = ms && ms->inLibrary;
 		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : BUTTON, R_BUTTON);
-		drawGlyphMid(inLib ? G_HEART : G_HEART_O, hb.x + hb.w / 2, hb.y + 16, inLib ? ACCENT : DIM, 2);
-		drawTextMid("Y", 0, ACCENT, hb.x + hb.w / 2, hb.y + 36, 0, 2);
+		drawGlyphMid(inLib ? G_HEART : G_HEART_O, hb.x + hb.w / 2, hb.y + 14, inLib ? ACCENT : DIM, 2);
+		drawTextMid("Y", 0, ACCENT, hb.x + hb.w / 2, hb.y + 35, 0, 2);
 		if (n == 0) { drawHints({{"B", "Back"}}); return; }
 		if (mserCursor >= n) mserCursor = n - 1;
 		for (int i = mserScroll; i < n && i < mserScroll + MG_SER_ROWS; i++)

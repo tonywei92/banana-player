@@ -628,7 +628,7 @@ namespace bp
 	void Ui::drawTab(Rect r, const char* name, bool active, int size)
 	{
 		drawBox(r, active ? ACCENT : BUTTON, R_BUTTON);
-		drawTextMid(name, size, active ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 8, 2);
+		drawTextMid(name, size, active ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
 	}
 
 	void Ui::drawHints(const std::vector<Hint>& hints)

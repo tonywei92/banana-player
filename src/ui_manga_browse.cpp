@@ -1299,8 +1299,8 @@ namespace bp
 		Rect hb = mangaSrcHeartRect();
 		bool inLib = ms && ms->inLibrary;
 		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : BUTTON, R_BUTTON);
-		drawGlyphMid(inLib ? G_HEART : G_HEART_O, hb.x + hb.w / 2, hb.y + 13, inLib ? ACCENT : DIM, 2);
-		drawTextMid("Y", 0, ACCENT, hb.x + hb.w / 2, hb.y + 30, 0, 2);
+		drawGlyphMid(inLib ? G_HEART : G_HEART_O, hb.x + hb.w / 2, hb.y + 12, inLib ? ACCENT : DIM, 2);
+		drawTextMid("Y", 0, ACCENT, hb.x + hb.w / 2, hb.y + 31, 0, 2);
 		// Download: the sheet of This chapter / Next 5 unread / All unread / Choose chapters
 		Rect db = mangaDlButtonRect();
 		drawBox(db, BUTTON, R_BUTTON);

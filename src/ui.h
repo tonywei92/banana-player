@@ -1056,7 +1056,7 @@ namespace bp
 
 		static constexpr Rect BAR{24, 150, 592, 24};
 		static constexpr int BTN_W = 108, BTN_H = 60, BTN_STEP = 121, ROW1_Y = 228, ROW2_Y = 300;
-		static constexpr int ROW_Y = 84, ROW_H = 48, ROWS_SHOWN = 7;
+		static constexpr int ROW_Y = 84, ROW_H = 58, ROWS_SHOWN = 7;
 		// the settings' rows by id: the subtitle style's, Music display, Visualizer, the switches (REMEMBER), Pan area,
 		// Clear play history, ..., Sound (it opens the Sound page). Shown a group at a time (settingRows), after a list of
 		// the groups. The manga reader's rows are its own page's (Page::MangaSettings): EXT_NOTE is its note, no value
@@ -1372,16 +1372,16 @@ namespace bp
 		void mangaCoverCancelOffScreen();	// cancel fetches for URLs that scrolled away
 		void mangaCoverCancelAll();			// the page left: every in-flight cover fetch goes
 		bool mangaCoverOnFetched(MangaFetch::Result& r);	// true if the result was one of ours (a cover fetch)
-		Rect mangaTabRect(int i) const { return {60 + i * 104, 64, 100, 30}; }
-		Rect mangaCardRect(int i) const { return {16 + i * 206, 120, 196, 62}; }
+		Rect mangaTabRect(int i) const { return {24 + i * 120, 56, 112, 30}; }
+		Rect mangaCardRect(int i) const { return {12 + i * 208, 120, 200, 66}; }
 		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the grid's covers 124 apart
 		Rect mangaCoverRect(int i) const
 		{
 			int row = i / MG_COLS, col = i % MG_COLS;
-			return {16 + col * 124, 212 + (row - mlibScroll) * 186, MG_COVER_W, MG_COVER_H};
+			return {16 + col * 124, 218 + (row - mlibScroll) * 186, MG_COVER_W, MG_COVER_H};
 		}
-		Rect mangaResumeRect() const { return {16, 84, 220, 44}; }
-		Rect mangaHeartRect() const { return {556, 84, 68, 44}; }
+		Rect mangaResumeRect() const { return {16, 84, 220, 52}; }
+		Rect mangaHeartRect() const { return {556, 84, 68, 52}; }
 		Rect mangaAreaRect() const { return {16, 70, 608, 260}; }
 		Rect mangaSliderRect() const { return {40, 352, 560, 22}; }
 		// the chapter row: three buttons of the same size, 16 apart across the panel's 608
@@ -1389,7 +1389,7 @@ namespace bp
 		Rect mangaFullRect() const { return {224, 404, 192, 40}; }	// the Fullscreen button: what SELECT does
 		Rect mangaNextRect() const { return {416, 404, 192, 40}; }
 		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
-		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;	// the tabs end at 94: History's and Browse's rows below them
+		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;	// the tabs end at 86: History's and Browse's rows below them
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
 		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101,
 			MG_FULL = 3102;
@@ -1451,8 +1451,8 @@ namespace bp
 		std::string elideMiddle(const std::string& s, int size, int maxW) const;	// a URL: "...repository/index.json"
 		void drawMangaSources(const Player& p);
 		void drawMangaSourceModal(const Player& p);
-		static constexpr int MS_ROW_TOP = 134, MS_ROWS = 5, MS_ROW_H = 48;
-		Rect mangaSourcesSegRect(int i) const { return {16 + i * 204, 98, 200, 26}; }
+		static constexpr int MS_ROW_TOP = 134, MS_ROWS = 4, MS_ROW_H = 58;
+		Rect mangaSourcesSegRect(int i) const { return {16 + i * 204, 96, 200, 26}; }
 		Rect mangaSourcesRowRect(int i) const { return {16, MS_ROW_TOP + i * MS_ROW_H, 608, MS_ROW_H - 4}; }
 		Rect mangaSourcesModalBox() const
 		{
@@ -1617,8 +1617,8 @@ namespace bp
 			int row = i / MG_COLS, col = i % MG_COLS;
 			return {16 + col * 124, MG_SRC_TOP + (row - mangaSrcScroll) * MG_SRC_STEP, MG_COVER_W, MG_COVER_H};
 		}
-		Rect mangaSrcResumeRect() const { return {16, 144, 220, 40}; }
-		Rect mangaSrcHeartRect() const { return {556, 144, 68, 40}; }
+		Rect mangaSrcResumeRect() const { return {16, 144, 220, 48}; }
+		Rect mangaSrcHeartRect() const { return {556, 144, 68, 48}; }
 
 		// ---- the saved servers (ui_manga_servers.cpp) ----
 		// Browse › Y opens the Add server form: kind, name, address, user, password; Test, Save. A server's
@@ -1825,7 +1825,7 @@ namespace bp
 		void drawMangaDlSheet(const Player& p);
 		std::string mangaDlSignature() const;		// this part of the page for signature()
 		// the Downloads tab's rows: the queue (up to 3), Pause all, then the card's series (up to 2)
-		static constexpr int MDL_TOP = 138, MDL_QROW = 48, MDL_QSHOWN = 3, MDL_ALL_Y = 286, MDL_CARD_TOP = 340,
+		static constexpr int MDL_TOP = 138, MDL_QROW = 58, MDL_QSHOWN = 3, MDL_ALL_Y = 316, MDL_CARD_TOP = 368,
 			MDL_CROW = 38, MDL_CSHOWN = 2;
 
 		// ---- the manga reader's settings (ui_manga_settings.cpp) ----
