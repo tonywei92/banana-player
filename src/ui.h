@@ -1216,7 +1216,7 @@ namespace bp
 		Rect extTileRect(int i) const { return {16 + i * 200, 88, 188, 150}; }	// (one to a row: several fit)
 		Rect extManageRect() const { return {190, 304, 260, 48}; }
 		Rect extRowRect() const { return {16, 88, 608, 70}; }
-		Rect extChipRect() const { return {464, 104, 64, 36}; }
+		Rect extChipRect() const { return {548, 104, 64, 36}; }
 		Rect extGearRect() const { return {536, 104, 76, 36}; }
 		Rect extSheetBox() const { return {60, 90, 520, 300}; }
 		Rect extSheetBtn(int i) const { return {i ? 328 : 92, 310, 220, 50}; }
@@ -1644,6 +1644,8 @@ namespace bp
 		int mangaSrcDragY = -1, mangaSrcDragScroll = 0, mangaSrcDragTap = -1;
 		bool mangaSrcDragMoved = false;
 		void mangaSourceMaybeMore();
+		// a series page's chapter rows shown: five down to the hint bar, four while the mini bar takes the foot
+		int mserRows() const { return miniUp ? 4 : 5; }
 		// the grid's foot: down to the hint bar, or above the mini bar while it shows (a touch there is the bar's)
 		int mangaSrcClipBottom() const { return miniUp ? 418 : 448; }	// near the grid's end (cursor or scroll): its next page asked for
 		Rect mangaSrcStatusRect() const { return {436, 64, 188, 30}; }	// right of the tabs: Loading…, an error (tap: Try again)
@@ -1825,7 +1827,7 @@ namespace bp
 		Rect mangaFilterRowRect(int i) const { return {64, MF_ROW_TOP + i * MF_ROW_H, 512, MF_ROW_H - 4}; }
 		Rect mangaSrcTabRect(int i) const { return {60 + i * 120, 64, 116, 30}; }
 		// two whole rows of covers with their titles, down to the hint bar (186 apart left a black band under them)
-		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 172, MG_SRC_SER_TOP = 200, MG_SRC_SER_ROWS = 4,
+		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 172, MG_SRC_SER_TOP = 200,
 			MG_SRC_STATUS_Y = 410;
 		Rect mangaSrcCoverRect(int i) const
 		{

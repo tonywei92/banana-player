@@ -81,7 +81,6 @@ namespace bp
 		switch (b)
 		{
 		case Button::A: extToggleManga(p); break;
-		case Button::X: case Button::Right: openExtSettings(); break;
 		case Button::Start: openMainMenu(p, playingTabShown(p) ? TAB_PLAYING : TAB_SETTINGS); break;
 		case Button::B: openExtensionsDrawer(p); break;
 		default: break;
@@ -110,7 +109,6 @@ namespace bp
 			}
 			if (extRowRect().hit(x, y)) extPressed = EXT_ROW;
 			if (extChipRect().hit(x, y)) extPressed = EXT_CHIP;
-			if (extGearRect().hit(x, y)) extPressed = EXT_GEAR;
 			return false;
 		}
 		if (pt.kind != Pointer::Up || extPressed < 0) return false;
@@ -186,17 +184,14 @@ namespace bp
 		Rect chip = extChipRect();
 		fillRound(chip, on ? ACCENT : BUTTON, R_CHIP);
 		drawTextMid(on ? "On" : "Off", 0, on ? ON_ACCENT : TEXT, chip.x + chip.w / 2, chip.y + chip.h / 2, chip.w - 8, 2);
-		Rect gear = extGearRect();
-		drawBox(gear, extPressed == EXT_GEAR ? PRESSED : BUTTON, R_BUTTON);
-		drawGlyphMid(G_GEAR, gear.x + 16, gear.y + gear.h / 2, TEXT, 2);
-		drawTextMid("X", 0, ACCENT, gear.x + gear.w - 12, gear.y + gear.h / 2, 0, 1);
+		// (on and off only: the extension's settings are its own, START inside it)
 		drawTextMid("More extensions come with later versions.", 0, DIM, W / 2, 190, 560, 2);
 		if (extSheet)
 		{
 			drawExtSheet(p);
 			return;
 		}
-		drawHints({{"A", "On / Off"}, {"X", "Settings"}, {"B", "Back"}});
+		drawHints({{"A", "On / Off"}, {"B", "Back"}});
 	}
 
 	void Ui::drawExtSheet(const Player& p)

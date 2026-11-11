@@ -815,15 +815,15 @@ namespace bp
 		{
 		case Button::Up: cur = (cur + total - 1) % total; break;
 		case Button::Down: cur = (cur + 1) % total; break;
-		case Button::Left: cur = std::max(0, cur - MG_SRC_SER_ROWS); break;
-		case Button::Right: cur = std::min(total - 1, cur + MG_SRC_SER_ROWS); break;
+		case Button::Left: cur = std::max(0, cur - mserRows()); break;
+		case Button::Right: cur = std::min(total - 1, cur + mserRows()); break;
 		default: break;
 		}
 		mserCursor = cur - 1;
 		if (mserCursor >= 0)
 		{
 			if (mserCursor < mserScroll) mserScroll = mserCursor;
-			if (mserCursor >= mserScroll + MG_SRC_SER_ROWS) mserScroll = mserCursor - MG_SRC_SER_ROWS + 1;
+			if (mserCursor >= mserScroll + mserRows()) mserScroll = mserCursor - mserRows() + 1;
 		}
 		// the last rows of a long chapter list ask for the book page after it
 		if (mangaSrvSerMore && !mangaSrvSerLoading && mserCursor >= n - 2) mangaServerSeriesMore();
@@ -841,7 +841,7 @@ namespace bp
 			return false;
 		}
 		int n = (int)mangaSrvChapters.size();
-		if (n && y >= MG_SRC_SER_TOP && y < MG_SRC_SER_TOP + MG_SRC_SER_ROWS * ROW_H)
+		if (n && y >= MG_SRC_SER_TOP && y < MG_SRC_SER_TOP + mserRows() * ROW_H)
 		{
 			int i = mserScroll + (y - MG_SRC_SER_TOP) / ROW_H;
 			if (i >= 0 && i < n)
@@ -901,7 +901,7 @@ namespace bp
 			return;
 		}
 		if (mserCursor >= n) mserCursor = n - 1;
-		for (int i = mserScroll; i < n && i < mserScroll + MG_SRC_SER_ROWS; i++)
+		for (int i = mserScroll; i < n && i < mserScroll + mserRows(); i++)
 		{
 			const RemoteChapter& c = mangaSrvChapters[i];
 			int y = MG_SRC_SER_TOP + (i - mserScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
@@ -916,7 +916,7 @@ namespace bp
 				drawTextMid(progressLine(pr->page, pr->pages), 0, at ? DIM_ON : DIM, 608, mid, 150, 1);
 			else if (c.pages > 0) drawTextMid(std::to_string(c.pages) + " pages", 0, at ? DIM_ON : DIM, 608, mid, 150, 1);
 		}
-		drawScrollBar(MG_SRC_SER_TOP, MG_SRC_SER_ROWS * ROW_H - 4, mserScroll, MG_SRC_SER_ROWS, n);
+		drawScrollBar(MG_SRC_SER_TOP, mserRows() * ROW_H - 4, mserScroll, mserRows(), n);
 		drawHints({{"A", "Read"}, {"B", "Back"}});
 	}
 

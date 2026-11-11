@@ -1542,15 +1542,15 @@ namespace bp
 		{
 		case Button::Up: cur = (cur + total - 1) % total; break;
 		case Button::Down: cur = (cur + 1) % total; break;
-		case Button::Left: cur = std::max(0, cur - MG_SRC_SER_ROWS); break;
-		case Button::Right: cur = std::min(total - 1, cur + MG_SRC_SER_ROWS); break;
+		case Button::Left: cur = std::max(0, cur - mserRows()); break;
+		case Button::Right: cur = std::min(total - 1, cur + mserRows()); break;
 		default: break;
 		}
 		mserCursor = cur - 1;
 		if (mserCursor >= 0)
 		{
 			if (mserCursor < mserScroll) mserScroll = mserCursor;
-			if (mserCursor >= mserScroll + MG_SRC_SER_ROWS) mserScroll = mserCursor - MG_SRC_SER_ROWS + 1;
+			if (mserCursor >= mserScroll + mserRows()) mserScroll = mserCursor - mserRows() + 1;
 		}
 		return false;
 	}
@@ -1565,12 +1565,12 @@ namespace bp
 			if (std::abs(dy) > 12) mserDragMoved = true;
 			if (mserDragMoved)
 			{
-				int s = std::clamp(mserDragScroll - (int)std::lround(dy / (double)ROW_H), 0, std::max(0, n - MG_SRC_SER_ROWS));
+				int s = std::clamp(mserDragScroll - (int)std::lround(dy / (double)ROW_H), 0, std::max(0, n - mserRows()));
 				if (s != mserScroll)
 				{
 					mserScroll = s;
 					// the cursor stays among the rows shown (the keys go on from there)
-					if (mserCursor >= 0) mserCursor = std::clamp(mserCursor, s, std::min(n - 1, s + MG_SRC_SER_ROWS - 1));
+					if (mserCursor >= 0) mserCursor = std::clamp(mserCursor, s, std::min(n - 1, s + mserRows() - 1));
 				}
 			}
 			return false;
@@ -1611,7 +1611,7 @@ namespace bp
 			mangaSourceSeriesInLibrary(p);
 			return false;
 		}
-		if (n && y >= MG_SRC_SER_TOP && y < MG_SRC_SER_TOP + MG_SRC_SER_ROWS * ROW_H)
+		if (n && y >= MG_SRC_SER_TOP && y < MG_SRC_SER_TOP + mserRows() * ROW_H)
 		{
 			// opened as the finger lifts, if it didn't drag
 			int i = mserScroll + (y - MG_SRC_SER_TOP) / ROW_H;
@@ -1669,7 +1669,7 @@ namespace bp
 				if (sourceItemId(mangaSrcId, mangaSrcChapters[i].key) == mserFocusChapter)
 				{
 					mserCursor = i;
-					mserScroll = std::max(0, std::min(i - 1, n - MG_SRC_SER_ROWS));
+					mserScroll = std::max(0, std::min(i - 1, n - mserRows()));
 					break;
 				}
 			mserFocusChapter.clear();
@@ -1747,7 +1747,7 @@ namespace bp
 			return;
 		}
 		if (mserCursor >= n) mserCursor = n - 1;
-		for (int i = mserScroll; i < n && i < mserScroll + MG_SRC_SER_ROWS; i++)
+		for (int i = mserScroll; i < n && i < mserScroll + mserRows(); i++)
 		{
 			const MangaChapter& c = mangaSrcChapters[i];
 			int y = MG_SRC_SER_TOP + (i - mserScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
@@ -1770,7 +1770,7 @@ namespace bp
 				drawTextMid(pageLine(pr->page, pr->pages), 0, at ? DIM_ON : DIM, right, mid, 150, 1);
 			if (marked) drawMangaDlMark(dm, 608, mid, at);
 		}
-		drawScrollBar(MG_SRC_SER_TOP, MG_SRC_SER_ROWS * ROW_H - 4, mserScroll, MG_SRC_SER_ROWS, n);
+		drawScrollBar(MG_SRC_SER_TOP, mserRows() * ROW_H - 4, mserScroll, mserRows(), n);
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
 		// X still marks a chapter read, but six hints don't fit this panel's line: its action stays (the row's marks
 		// show read and unread), and the four buttons carry the rest
