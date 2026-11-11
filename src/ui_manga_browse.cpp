@@ -324,30 +324,42 @@ namespace bp
 		{
 			int n = (int)mangaLocal.size();
 			if (mlocSheet != MLS_NONE) return mangaLocalSheetPointer(x, y, p);
-			if (y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
+			// the series follow a finger: a drag scrolls them, a tap (lifted where it went down) opens one
+			if (n && y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
 			{
 				int i = mListScroll + (y - MG_ROW_TOP) / ROW_H;
-				if (i >= 0 && i < n)
-				{
+				mangaListBegin(x, y, mListScroll, ROW_H, i < n ? i : -1, [this](int want) {
+					int n = (int)mangaLocal.size();
+					mListScroll = std::clamp(want, 0, std::max(0, n - MG_ROWS));
+					mListCursor = std::clamp(mListCursor, mListScroll, std::max(mListScroll, std::min(n - 1, mListScroll + MG_ROWS - 1)));
+					return mListScroll;
+				}, [this, &p](int i) {
+					if (i >= (int)mangaLocal.size()) return;
 					mListCursor = i;
 					mangaChoose(MT_BROWSE, i, p);
-				}
+				});
 			}
 			return false;
 		}
 		mangaBrowseRepos(p);
 		int n = mangaBrowseCount(p);
-		int nets = mangaNetFoldersCount();
-		if (y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
+		if (n && y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
 		{
+			// the rows follow a finger as On this handheld's do (the draw keeps the scroll on the cursor: it moves too)
 			int i = mbrowseScroll + (y - MG_ROW_TOP) / ROW_H;
-			if (i >= 0 && i < n)
-			{
+			mangaListBegin(x, y, mbrowseScroll, ROW_H, i < n ? i : -1, [this, &p](int want) {
+				int n = mangaBrowseCount(p);
+				mbrowseScroll = std::clamp(want, 0, std::max(0, n - MG_ROWS));
+				mbrowseCursor = std::clamp(mbrowseCursor, mbrowseScroll, std::max(mbrowseScroll, std::min(n - 1, mbrowseScroll + MG_ROWS - 1)));
+				return mbrowseScroll;
+			}, [this, &p, x](int i) {
+				if (i >= mangaBrowseCount(p)) return;
+				int nets = mangaNetFoldersCount();
 				mbrowseCursor = i;
 				// the pencil at a server row's end is its X (Edit / Delete); anywhere else on it opens the server
 				if (i > nets && i <= nets + mangaBrowseServerCount() && x >= 570) mangaServerModalOpen(i - nets, p);
 				else mangaBrowseChoose(i, p);
-			}
+			});
 		}
 		return false;
 	}

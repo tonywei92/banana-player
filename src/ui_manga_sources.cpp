@@ -533,14 +533,25 @@ namespace bp
 				mstLocal++;
 				return false;
 			}
-		int n = mangaSourcesRows(p), &cur = mstCursor[mstTab], &sc = mstScroll[mstTab];
+		// the rows follow a finger: a drag scrolls them, a tap (lifted where it went down) acts as A on its row. The
+		// draw keeps the scroll on the cursor, so the cursor moves with the rows shown
+		int n = mangaSourcesRows(p), sc = mstScroll[mstTab];
+		if (!n || y < MS_ROW_TOP || y >= MS_ROW_TOP + MS_ROWS * MS_ROW_H) return false;
+		int hit = -1;
 		for (int i = sc; i < n && i < sc + MS_ROWS; i++)
-			if (mangaSourcesRowRect(i - sc).hit(x, y))
-			{
-				cur = i;
-				mangaSourcesAct(p);
-				return false;
-			}
+			if (mangaSourcesRowRect(i - sc).hit(x, y)) hit = i;
+		int tab = mstTab;
+		mangaListBegin(x, y, sc, MS_ROW_H, hit, [this, &p, tab](int want) {
+			if (mstTab != tab) return want;
+			int n = mangaSourcesRows(p), &cur = mstCursor[tab], &sc = mstScroll[tab];
+			sc = std::clamp(want, 0, std::max(0, n - MS_ROWS));
+			cur = std::clamp(cur, sc, std::max(sc, std::min(n - 1, sc + MS_ROWS - 1)));
+			return sc;
+		}, [this, &p, tab](int i) {
+			if (mstTab != tab || i >= mangaSourcesRows(p)) return;
+			mstCursor[tab] = i;
+			mangaSourcesAct(p);
+		});
 		return false;
 	}
 

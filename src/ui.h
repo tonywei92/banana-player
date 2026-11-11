@@ -1387,6 +1387,7 @@ namespace bp
 		Uint32 mangaToastUntil = 0;
 		static constexpr Uint32 MG_TAP_MS = 250, MG_CTRL_MS = 4000, MG_TOAST_MS = 2000;
 		static constexpr int MG_TAP_UNITS = 12;	// a finger that moves less (640x480 units) may still be a tap
+		static constexpr int MG_LIST_SLOP = 14;	// the app's lists: a finger that moves more is a drag (mangaListPointer)
 		Rect mangaSheetRect() const { return {0, 300, W, H - 300}; }
 		Rect mangaCtrlBtnRect(int i) const
 		{
@@ -1414,6 +1415,24 @@ namespace bp
 		void mangaSeriesResume(Player& p);				// A on Resume
 		bool mangaKey(Button b, Player& p);
 		bool mangaPointer(const Pointer& pt, int x, int y, Player& p);
+		// a finger on one of the app's lists or grids (Library, History, Browse, Downloads, Sources, a server's, a
+		// network folder's, a series' chapters): it goes down on a row (mangaListBegin); past a small slop it's a
+		// drag that scrolls the list a row per row's height (scrollTo asks the list for a first row and answers the
+		// one it took, the list keeping its cursor among its rows shown); lifted without one, on the spot it went
+		// down, it's a tap on that row (tap). Ui::pointer sends it the moves and the lift while it's on
+		struct MangaListDrag
+		{
+			bool on = false, moved = false;
+			int downX = 0, downY = 0;	// where the finger went down (640x480)
+			int fromY = 0, fromScroll = 0;	// the finger's place and the list's first row the scroll counts from
+			int rowH = 1, item = -1;	// the list's row height; the row under the finger (-1: none, only a drag)
+			std::function<int(int)> scrollTo;
+			std::function<void(int)> tap;
+		};
+		MangaListDrag mlist;
+		void mangaListBegin(int x, int y, int scroll, int rowH, int item, std::function<int(int)> scrollTo,
+			std::function<void(int)> tap);
+		bool mangaListPointer(const Pointer& pt, int x, int y);
 		void drawMangaTabs();
 		void drawMangaLibrary(const Player& p);
 		void drawMangaHistory(const Player& p);
@@ -1850,6 +1869,7 @@ namespace bp
 		void mangaNetCancel();
 		bool mangaNetFoldersKey(Button b, Player& p);
 		bool mangaNetFoldersPointer(const Pointer& pt, int x, int y, Player& p);
+		void mangaNetFoldersTap(int i, Player& p);	// a tap on row i: what A does there
 		void drawMangaNetFolders(const Player& p);
 		bool mangaNetFoldersResult(MangaWorker::Result& r, const Player& p);
 		// ---- a source's filters (ui_manga_filters.cpp) ----

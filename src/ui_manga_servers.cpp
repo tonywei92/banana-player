@@ -583,16 +583,34 @@ namespace bp
 			return false;
 		}
 		int n = (int)mangaSrvItems.size();
-		for (int i = mangaSrvScroll * MG_COLS; i < n; i++)
+		// the grid follows a finger: a drag scrolls it by rows (the cursor kept on a row shown, its column kept; the
+		// next page asked near the end, as the D-pad asks it), a tap (lifted where it went down) opens the cover
+		if (n && y >= MGSRV_CLIP_TOP && y < MGSRV_CLIP_BOTTOM)
 		{
-			Rect r = mangaSrvCoverRect(i);
-			if (r.y >= MGSRV_CLIP_BOTTOM) break;
-			if (y < MGSRV_CLIP_BOTTOM && r.hit(x, y))
+			int hit = -1;
+			for (int i = mangaSrvScroll * MG_COLS; i < n; i++)
 			{
+				Rect r = mangaSrvCoverRect(i);
+				if (r.y >= MGSRV_CLIP_BOTTOM) break;
+				if (r.hit(x, y)) hit = i;
+			}
+			mangaListBegin(x, y, mangaSrvScroll, MGSRV_STEP, hit, [this](int want) {
+				int n = (int)mangaSrvItems.size(), rows = (n + MG_COLS - 1) / MG_COLS;
+				mangaSrvScroll = std::clamp(want, 0, std::max(0, rows - MGSRV_GRID_ROWS_SHOWN));
+				if (n)
+				{
+					int row = std::clamp(mangaSrvCursor / MG_COLS, mangaSrvScroll, mangaSrvScroll + MGSRV_GRID_ROWS_SHOWN - 1);
+					mangaSrvCursor = std::min(n - 1, row * MG_COLS + mangaSrvCursor % MG_COLS);
+				}
+				if (mangaSrvMore && !mangaSrvLoading && rows > 0 && mangaSrvScroll + MGSRV_GRID_ROWS_SHOWN >= rows - 1)
+					mangaServerMore();
+				return mangaSrvScroll;
+			}, [this, &p](int i) {
+				if (i >= (int)mangaSrvItems.size()) return;
 				mangaSrvCursor = i;
 				mangaServerItemOpen(i, p);
-				return false;
-			}
+			});
+			return false;
 		}
 		// the status line: Try again, as A does
 		if (!mangaSrvError.empty() && y >= MGSRV_STATUS_Y - 12 && y < MGSRV_STATUS_Y + 12) mangaServerReload();
@@ -857,12 +875,20 @@ namespace bp
 		int n = (int)mangaSrvChapters.size();
 		if (n && y >= MG_SRC_SER_TOP && y < MG_SRC_SER_TOP + mserRows() * ROW_H)
 		{
+			// the chapters follow a finger: a drag scrolls them (the next book page asked near the end, as the
+			// D-pad asks it), a tap (lifted where it went down) reads the row
 			int i = mserScroll + (y - MG_SRC_SER_TOP) / ROW_H;
-			if (i >= 0 && i < n)
-			{
+			mangaListBegin(x, y, mserScroll, ROW_H, i < n ? i : -1, [this](int want) {
+				int n = (int)mangaSrvChapters.size();
+				mserScroll = std::clamp(want, 0, std::max(0, n - mserRows()));
+				if (mserCursor >= 0) mserCursor = std::clamp(mserCursor, mserScroll, std::max(mserScroll, std::min(n - 1, mserScroll + mserRows() - 1)));
+				if (mangaSrvSerMore && !mangaSrvSerLoading && mserScroll + mserRows() >= n - 2) mangaServerSeriesMore();
+				return mserScroll;
+			}, [this, &p](int i) {
+				if (i >= (int)mangaSrvChapters.size()) return;
 				mserCursor = i;
 				mangaServerSeriesChoose(i, p);
-			}
+			});
 		}
 		return false;
 	}

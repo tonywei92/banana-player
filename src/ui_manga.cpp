@@ -926,58 +926,56 @@ namespace bp
 					if (i == MT_DOWNLOADS) mangaDownloadsOpen(p);
 					return false;
 				}
+			// the lists below follow a finger: a drag scrolls them, a tap (lifted where it went down) opens the row
 			if (mangaTab == MT_LIBRARY)
 			{
 				mangaCache();
 				int n = (int)mangaLib.size();
+				if (!n || y < MG_LIB_TOP || y >= MG_LIB_BOTTOM) return false;
+				int hit = -1;
 				for (int i = mlibScroll * MG_COLS; i < n; i++)
 				{
 					Rect r = mangaCoverRect(i);
 					if (r.y >= MG_LIB_BOTTOM) break;
-					if (r.hit(x, y))
-					{
-						mlibGrid = i;
-						mlibScroll = i / MG_COLS;
-						mangaChoose(MT_LIBRARY, i, p);
-						return false;
-					}
+					if (r.hit(x, y)) hit = i;
 				}
+				// the grid shows a row and the next one's top: the D-pad keeps its cursor on the first row shown,
+				// and so does the finger (same column)
+				mangaListBegin(x, y, mlibScroll, 186, hit, [this](int want) {
+					int n = (int)mangaLib.size(), rows = (n + MG_COLS - 1) / MG_COLS;
+					mlibScroll = std::clamp(want, 0, std::max(0, rows - 1));
+					if (n) mlibGrid = std::min(n - 1, mlibScroll * MG_COLS + mlibGrid % MG_COLS);
+					return mlibScroll;
+				}, [this, &p](int i) {
+					if (i >= (int)mangaLib.size()) return;
+					mlibGrid = i;
+					mlibScroll = i / MG_COLS;
+					mangaChoose(MT_LIBRARY, i, p);
+				});
+				return false;
 			}
-			else if (mangaTab == MT_HISTORY)
+			if (mangaTab == MT_HISTORY)
 			{
 				mangaCache();
 				int n = (int)mangaHistory.size();
-				if (y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_HIST_ROWS * MG_HIST_ROW_H)
-				{
-					int i = mhisScroll + (y - MG_ROW_TOP) / MG_HIST_ROW_H;
-					if (i >= 0 && i < n)
-					{
-						mhisCursor = i;
-						mangaChoose(MT_HISTORY, i, p);
-					}
-				}
+				if (!n || !p.settings.mangaHistory || y < MG_ROW_TOP || y >= MG_ROW_TOP + MG_HIST_ROWS * MG_HIST_ROW_H)
+					return false;
+				int i = mhisScroll + (y - MG_ROW_TOP) / MG_HIST_ROW_H;
+				mangaListBegin(x, y, mhisScroll, MG_HIST_ROW_H, i < n ? i : -1, [this](int want) {
+					int n = (int)mangaHistory.size();
+					mhisScroll = std::clamp(want, 0, std::max(0, n - MG_HIST_ROWS));
+					mhisCursor = std::clamp(mhisCursor, mhisScroll, std::max(mhisScroll, std::min(n - 1, mhisScroll + MG_HIST_ROWS - 1)));
+					return mhisScroll;
+				}, [this, &p](int i) {
+					if (i >= (int)mangaHistory.size()) return;
+					mhisCursor = i;
+					mangaChoose(MT_HISTORY, i, p);
+				});
+				return false;
 			}
-			else if (mangaTab == MT_BROWSE)
-			{
-				// a network folder's page owns the rows' area (ui_manga_netfolders.cpp)
-				if (mangaNetView != MNF_OFF) return mangaNetFoldersPointer(pt, x, y, p);
-				if (mBrowseList)
-				{
-					int n = (int)mangaLocal.size();
-					if (y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
-					{
-						int i = mListScroll + (y - MG_ROW_TOP) / ROW_H;
-						if (i >= 0 && i < n)
-						{
-							mListCursor = i;
-							mangaChoose(MT_BROWSE, i, p);
-						}
-					}
-				}
-				else if (Rect{16, MG_ROW_TOP, 608, ROW_H - 4}.hit(x, y)) mangaChoose(MT_BROWSE, 0, p);
-			}
-			else if (mangaTab == MT_DOWNLOADS) return mangaDownloadsPointer(pt, x, y, p);
-				return mangaBrowsePointer(pt, x, y, p);
+			// Browse's rows, On this handheld and a network folder's page (ui_manga_browse.cpp)
+			if (mangaTab == MT_BROWSE) return mangaBrowsePointer(pt, x, y, p);
+			if (mangaTab == MT_DOWNLOADS) return mangaDownloadsPointer(pt, x, y, p);
 			return false;
 		}
 		// Page::MangaSeries, a source's: Resume, the heart, a chapter (ui_manga_browse.cpp)
@@ -1005,12 +1003,20 @@ namespace bp
 		int n = s ? (int)s->chapters.size() : 0;
 		if (n && y >= MG_SER_TOP && y < MG_SER_TOP + MG_SER_ROWS * ROW_H)
 		{
+			// the chapters follow a finger: a drag scrolls them (the cursor, unless on Resume, stays among them)
 			int i = mserScroll + (y - MG_SER_TOP) / ROW_H;
-			if (i >= 0 && i < n)
-			{
+			mangaListBegin(x, y, mserScroll, ROW_H, i < n ? i : -1, [this](int want) {
+				const LocalSeries* s = mangaLocalSeries(mangaSeriesId);
+				int n = s ? (int)s->chapters.size() : 0;
+				mserScroll = std::clamp(want, 0, std::max(0, n - MG_SER_ROWS));
+				if (mserCursor >= 0) mserCursor = std::clamp(mserCursor, mserScroll, std::max(mserScroll, std::min(n - 1, mserScroll + MG_SER_ROWS - 1)));
+				return mserScroll;
+			}, [this, &p](int i) {
+				const LocalSeries* s = mangaLocalSeries(mangaSeriesId);
+				if (!s || i >= (int)s->chapters.size()) return;
 				mserCursor = i;
 				mangaSeriesChoose(i, p);
-			}
+			});
 		}
 		return false;
 	}
@@ -2257,6 +2263,53 @@ namespace bp
 				mangaPagesClose(p);
 			}
 			return false;
+		}
+		return false;
+	}
+
+	void Ui::mangaListBegin(int x, int y, int scroll, int rowH, int item, std::function<int(int)> scrollTo,
+		std::function<void(int)> tap)
+	{
+		mlist = MangaListDrag();
+		mlist.on = true;
+		mlist.downX = x;
+		mlist.downY = mlist.fromY = y;
+		mlist.fromScroll = scroll;
+		mlist.rowH = std::max(1, rowH);
+		mlist.item = item;
+		mlist.scrollTo = std::move(scrollTo);
+		mlist.tap = std::move(tap);
+	}
+
+	bool Ui::mangaListPointer(const Pointer& pt, int x, int y)
+	{
+		if (!mlist.on) return false;
+		if (pt.kind == Pointer::Move)
+		{
+			// past the slop (as the pages grid's, about 0.03 of the panel) it's a drag, and the lift is no tap
+			if (!mlist.moved && std::abs(y - mlist.downY) > MG_LIST_SLOP) mlist.moved = true;
+			// a finger that slid sideways off its cover changed its mind: no tap (and no scroll: the lists go up and down)
+			if (!mlist.moved && std::abs(x - mlist.downX) > MG_LIST_SLOP) mlist.item = -1;
+			if (!mlist.moved || !mlist.scrollTo) return false;
+			// counted from where the finger went down, so a slow drag loses nothing to rounding move by move
+			int want = mlist.fromScroll + (int)std::lround((mlist.fromY - y) / (double)mlist.rowH);
+			int took = mlist.scrollTo(want);
+			// stopped at an end: the count starts again here, so the way back moves the list at once
+			if (took != want)
+			{
+				mlist.fromScroll = took;
+				mlist.fromY = y;
+			}
+			return false;
+		}
+		if (pt.kind == Pointer::Up)
+		{
+			// (moved out first: the tap may open a page that starts another list's finger)
+			MangaListDrag d = std::move(mlist);
+			mlist = MangaListDrag();
+			if (!d.moved && d.item >= 0 && d.tap && std::abs(x - d.downX) <= MG_LIST_SLOP &&
+				std::abs(y - d.downY) <= MG_LIST_SLOP)
+				d.tap(d.item);
 		}
 		return false;
 	}

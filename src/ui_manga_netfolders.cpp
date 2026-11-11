@@ -572,24 +572,37 @@ namespace bp
 	{
 		if (pt.kind != Pointer::Down) return false;
 		if (y < MNF_ROW_TOP || y >= MNF_ROW_TOP + MNF_ROWS * ROW_H) return false;
+		// the rows follow a finger: a drag scrolls them (the draw keeps the scroll on the cursor, so the cursor moves
+		// with the rows shown), a tap (lifted where it went down) is what A does on the row
+		int n = mangaNetView == MNF_SERIES ? (int)mangaNetChapters.size() : (int)mangaNetRows.size();
+		int i = mangaNetScroll + (y - MNF_ROW_TOP) / ROW_H;
+		mangaListBegin(x, y, mangaNetScroll, ROW_H, i < n ? i : -1, [this](int want) {
+			int n = mangaNetView == MNF_SERIES ? (int)mangaNetChapters.size() : (int)mangaNetRows.size();
+			mangaNetScroll = std::clamp(want, 0, std::max(0, n - MNF_ROWS));
+			mangaNetCursor = std::clamp(mangaNetCursor, mangaNetScroll, std::max(mangaNetScroll, std::min(n - 1, mangaNetScroll + MNF_ROWS - 1)));
+			return mangaNetScroll;
+		}, [this, &p](int i) { mangaNetFoldersTap(i, p); });
+		return false;
+	}
+
+	void Ui::mangaNetFoldersTap(int i, Player& p)
+	{
 		if (mangaNetView == MNF_SERIES)
 		{
-			int i = mangaNetScroll + (y - MNF_ROW_TOP) / ROW_H;
-			if (i < 0 || i >= (int)mangaNetChapters.size() || mangaNetLoading) return false;
+			if (i < 0 || i >= (int)mangaNetChapters.size() || mangaNetLoading) return;
 			mangaNetCursor = i;
 			int page0 = 0;
 			if (mangaStore)
 				if (const ChapterProgress* pr = mangaStore->progress(mangaNetChapters[i].path))
 					if (!pr->read) page0 = pr->page;
 			mangaNetChapterOpen(i, page0, p);
-			return false;
+			return;
 		}
-		int i = mangaNetScroll + (y - MNF_ROW_TOP) / ROW_H;
-		if (i < 0 || i >= (int)mangaNetRows.size()) return false;
+		if (i < 0 || i >= (int)mangaNetRows.size()) return;
 		mangaNetCursor = i;
 		// what a tap on the row does is what A does (a folder scans, an archive opens as a one-chapter series)
 		const MangaNetRow row = mangaNetRows[i];
-		if (mangaNetLoading) return false;
+		if (mangaNetLoading) return;
 		mangaNetBackDir = mangaNetDir;
 		if (row.dir) mangaNetScan(row.path);
 		else if (row.archive)
@@ -607,7 +620,6 @@ namespace bp
 			s.chapters.push_back(c);
 			mangaNetSeriesOpen(s);
 		}
-		return false;
 	}
 
 	void Ui::drawMangaNetFolders(const Player& p)

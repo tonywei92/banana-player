@@ -733,6 +733,11 @@ app's pages, the reading page included (**SELECT** there goes to what plays). **
 with **X** on Browse (below), where sources are installed from repositories you add; **Downloads** is the queue and what's
 on the card (below).
 
+**On the touch screen** every list and grid in the app scrolls with a finger: drag it up or down (Library's covers,
+History, Browse and its *On this handheld*, Downloads' queue, its series on the card and their chapters, Sources, a
+server's catalogue, a network folder, a series' chapters). A tap without a drag does what **A** does on that row or
+cover, as the finger lifts.
+
 **Where series come from.** Each of your cards may have a **Manga** folder (or `manga`, or `MANGA`); the reader reads it
 each time you open the app:
 

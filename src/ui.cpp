@@ -686,6 +686,8 @@ namespace bp
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
 		webInputAt = SDL_GetTicks();
+		// a list's finger whose lift never came (a dialog took it): a new touch starts afresh
+		if (pt.kind == Pointer::Down) mlist = MangaListDrag();
 		if (mangaErrOpen)
 		{
 			// OK, or a tap anywhere: closed
@@ -863,6 +865,9 @@ namespace bp
 			}
 			return false;
 		}
+		// a finger that went down on one of the manga app's lists: its moves scroll the list and its lift is the tap
+		// (the down came through mangaPointer, after the sheets, the header and the mini bar had their turn)
+		if (mlist.on && pt.kind != Pointer::Down) return mangaListPointer(pt, x, y);
 		if (pressedBtn >= 0)
 		{
 			if (pt.kind != Pointer::Up) return false;

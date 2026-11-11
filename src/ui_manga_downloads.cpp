@@ -631,29 +631,44 @@ namespace bp
 	{
 		if (pt.kind != Pointer::Down) return false;
 		mangaDlEnsureCard();
+		// each list follows a finger: a drag scrolls the one it went down on, a tap (lifted where it went down) is A
+		// on the row, as before. The cursor stays among the rows shown, as the D-pad keeps it
 		if (mdlCardOpen)
 		{
 			if (mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size()) { mdlCardOpen = false; mdlCardAt = -1; return false; }
-			const MangaDlCardSeries& s = mdlCard[mdlCardAt];
-			int n = (int)s.chapters.size();
-			for (int i = mdlCardScroll; i < n && i < mdlCardScroll + 6; i++)
-			{
-				Rect r{16, 138 + (i - mdlCardScroll) * 44, 608, 40};
-				if (!r.hit(x, y)) continue;
+			int n = (int)mdlCard[mdlCardAt].chapters.size();
+			if (!n || y < 138 || y >= 138 + 6 * 44) return false;
+			int i = mdlCardScroll + (y - 138) / 44;
+			// (the row's gap is no tap, as before)
+			if (i < n && (y - 138) % 44 >= 40) i = -1;
+			mangaListBegin(x, y, mdlCardScroll, 44, i < n ? i : -1, [this](int want) {
+				int n = mdlCardOpen && mdlCardAt >= 0 && mdlCardAt < (int)mdlCard.size() ? (int)mdlCard[mdlCardAt].chapters.size() : 0;
+				mdlCardScroll = std::clamp(want, 0, std::max(0, n - 6));
+				mdlCardCursor = std::clamp(mdlCardCursor, mdlCardScroll, std::max(mdlCardScroll, std::min(n - 1, mdlCardScroll + 5)));
+				return mdlCardScroll;
+			}, [this, &p](int i) {
+				if (!mdlCardOpen || mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size()) return;
+				if (i >= (int)mdlCard[mdlCardAt].chapters.size()) return;
 				mdlCardCursor = i;
 				mangaDlOpenCardAt(mdlCardAt, i, p);
-				return false;
-			}
+			});
 			return false;
 		}
 		int q = mangaDlQueueCount(), c = (int)mdlCard.size();
-		int off = q + (q > 0 ? 1 : 0);
-		for (int i = mdlScroll; i < q && i < mdlScroll + MDL_QSHOWN; i++)
+		if (q > 0 && y >= MDL_TOP && y < MDL_TOP + MDL_QSHOWN * MDL_QROW)
 		{
-			Rect r{16, MDL_TOP + (i - mdlScroll) * MDL_QROW, 608, MDL_QROW - 4};
-			if (!r.hit(x, y)) continue;
-			mdlCursor = i;
-			mangaDownloadsKey(Button::A, p);
+			int i = mdlScroll + (y - MDL_TOP) / MDL_QROW;
+			if (i < q && (y - MDL_TOP) % MDL_QROW >= MDL_QROW - 4) i = -1;
+			mangaListBegin(x, y, mdlScroll, MDL_QROW, i < q ? i : -1, [this](int want) {
+				int q = mangaDlQueueCount();
+				mdlScroll = std::clamp(want, 0, std::max(0, q - MDL_QSHOWN));
+				if (mdlCursor < q) mdlCursor = std::clamp(mdlCursor, mdlScroll, std::max(mdlScroll, std::min(q - 1, mdlScroll + MDL_QSHOWN - 1)));
+				return mdlScroll;
+			}, [this, &p](int i) {
+				if (i >= mangaDlQueueCount()) return;
+				mdlCursor = i;
+				mangaDownloadsKey(Button::A, p);
+			});
 			return false;
 		}
 		if (q > 0 && Rect{16, MDL_ALL_Y, 608, 32}.hit(x, y))
@@ -664,13 +679,22 @@ namespace bp
 		}
 		// the card's rows: right under the summary line when nothing is queued, their number following the room
 		int top = mdlCardTop(), shown = mdlCardRows();
-		for (int i = mdlCardScroll; i < c && i < mdlCardScroll + shown; i++)
+		if (c > 0 && y >= top && y < top + shown * MDL_CROW)
 		{
-			Rect r{16, top + (i - mdlCardScroll) * MDL_CROW, 608, MDL_CROW - 4};
-			if (!r.hit(x, y)) continue;
-			mdlCursor = off + i;
-			mangaDownloadsKey(Button::A, p);
-			return false;
+			int i = mdlCardScroll + (y - top) / MDL_CROW;
+			if (i < c && (y - top) % MDL_CROW >= MDL_CROW - 4) i = -1;
+			mangaListBegin(x, y, mdlCardScroll, MDL_CROW, i < c ? i : -1, [this](int want) {
+				int q = mangaDlQueueCount(), c = (int)mdlCard.size(), off = q + (q > 0 ? 1 : 0), rows = mdlCardRows();
+				mdlCardScroll = std::clamp(want, 0, std::max(0, c - rows));
+				if (mdlCursor >= off && c > 0)
+					mdlCursor = off + std::clamp(mdlCursor - off, mdlCardScroll, std::max(mdlCardScroll, std::min(c - 1, mdlCardScroll + rows - 1)));
+				return mdlCardScroll;
+			}, [this, &p](int i) {
+				int q = mangaDlQueueCount();
+				if (i >= (int)mdlCard.size()) return;
+				mdlCursor = q + (q > 0 ? 1 : 0) + i;
+				mangaDownloadsKey(Button::A, p);
+			});
 		}
 		return false;
 	}
