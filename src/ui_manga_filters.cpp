@@ -13,12 +13,14 @@ namespace bp
 
 	namespace
 	{
-		enum class MFRowKind { Filter, Direction, Reset, Apply };
+		enum class MFRowKind { Refresh, Filter, Direction, Reset, Apply };
 		struct MFRow { int index = -1; MFRowKind kind = MFRowKind::Filter; };
 
-		std::vector<MFRow> filterRows(const std::vector<MangaFilter>& defs)
+		std::vector<MFRow> filterRows(const std::vector<MangaFilter>& defs, bool top)
 		{
 			std::vector<MFRow> rows;
+			// at the sheet's top: Refresh, the tab asked again (its kept grid dropped)
+			if (top) rows.push_back({-1, MFRowKind::Refresh});
 			for (int i = 0; i < (int)defs.size(); i++)
 			{
 				rows.push_back({i, MFRowKind::Filter});
@@ -215,7 +217,7 @@ namespace bp
 			return false;
 		}
 
-		std::vector<MFRow> rows = filterRows(*defs);
+		std::vector<MFRow> rows = filterRows(*defs, f->path.empty());
 		int n = (int)rows.size();
 		keepInView(f->cursor, f->scroll, n, MF_ROWS);
 		if (b == Button::B)
@@ -246,6 +248,18 @@ namespace bp
 				f->values = mangaFilterDefaults(f->defs);
 				mangaFilterLocal++;
 			}
+			return false;
+		}
+		if (row.kind == MFRowKind::Refresh)
+		{
+			if (b != Button::A) return false;
+			mangaFilterClose();
+			mangaSrcTabCache.erase(mangaSrcId + "|" + std::to_string(mangaSrcTab));
+			mangaSrcItems.clear();
+			mangaSrcCursor = mangaSrcScroll = mangaSrcPage = 0;
+			mangaSrcMore = false;
+			mangaSrcError.clear();
+			mangaSourceLoad(1);
 			return false;
 		}
 		if (row.kind == MFRowKind::Apply)
@@ -344,7 +358,7 @@ namespace bp
 				}
 			return false;
 		}
-		std::vector<MFRow> rows = filterRows(*defs);
+		std::vector<MFRow> rows = filterRows(*defs, f->path.empty());
 		int n = (int)rows.size();
 		int scroll = f->scroll;
 		keepInView(f->cursor, scroll, n, MF_ROWS);
@@ -435,7 +449,7 @@ namespace bp
 			return;
 		}
 
-		std::vector<MFRow> rows = filterRows(*defs);
+		std::vector<MFRow> rows = filterRows(*defs, f->path.empty());
 		int n = (int)rows.size();
 		int cursor = f->cursor, scroll = f->scroll;
 		keepInView(cursor, scroll, n, MF_ROWS);
@@ -445,7 +459,7 @@ namespace bp
 			bool at = i == cursor;
 			if (row.kind == MFRowKind::Reset)
 			{
-				drawDialogRow(mangaFilterRowRect(i - scroll), &G_REFRESH, "Reset", at, false, TEXT, "Defaults",
+				drawDialogRow(mangaFilterRowRect(i - scroll), &G_CROSS, "Reset", at, false, TEXT, "Defaults",
 					SDL_Color{0, 0, 0, 0});
 				continue;
 			}
@@ -453,6 +467,13 @@ namespace bp
 			{
 				drawDialogRow(mangaFilterRowRect(i - scroll), &G_CHECK, "Apply", at, false, TEXT, "",
 					SDL_Color{0, 0, 0, 0});
+				continue;
+			}
+			if (row.kind == MFRowKind::Refresh)
+			{
+				static const char* TABS[3] = {"Popular", "Latest", "Search"};
+				drawDialogRow(mangaFilterRowRect(i - scroll), &G_REFRESH, "Refresh", at, false, TEXT,
+					TABS[std::clamp(mangaSrcTab, 0, 2)], SDL_Color{0, 0, 0, 0});
 				continue;
 			}
 			const MangaFilter& d = (*defs)[row.index];
