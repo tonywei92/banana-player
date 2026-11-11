@@ -521,11 +521,14 @@ namespace bp
 				seekPath.clear();
 			}
 		}
-		// Screen off after (Settings): a song or video playing (not a photo: it's looked at and panned here), nothing
-		// touched or pressed for that long, nothing open that waits for an answer: the bottom panel dark, as its Screen
-		// off button does (a touch or a page's button brings it back). Paused, it stays: someone is about to act
+		// Screen off after (Settings): a song or video playing, nothing touched or pressed for that long, nothing open
+		// that waits for an answer: the bottom panel dark, as its Screen off button does (a touch or a page's button
+		// brings it back). Paused, it stays: someone is about to act. Never while a picture is looked at, whatever
+		// plays meanwhile: a photo (panned here) or a comic in the manga reader (its pages are dragged here, and a
+		// reader reads longer than any timeout without touching)
 		int offSecs = screenOffSeconds(p.settings.screenOffAfter);
-		if (offSecs > 0 && panel.on() && p.playing() && !p.playingPhoto() && !p.paused && !p.loading() && p.error.empty() &&
+		bool viewing = p.playingPhoto() || readerStatus.open;
+		if (offSecs > 0 && panel.on() && p.playing() && !viewing && !p.paused && !p.loading() && p.error.empty() &&
 			!kbOpen && !quickOpen && !popupShown(p) && !dragging && SDL_GetTicks() - webInputAt >= (Uint32)offSecs * 1000)
 			panel.set(false);
 		if (page == Page::Web)
