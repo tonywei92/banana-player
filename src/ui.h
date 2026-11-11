@@ -1648,6 +1648,14 @@ namespace bp
 		void mangaSourceMaybeMore();
 		// a series page's chapter rows shown: five down to the hint bar, four while the mini bar takes the foot
 		bool mangaSourceEngineReady() const;	// an extension's series: the manga engine answering (Resume waits for it)
+		// History's X: Clear last hour / today / last 24 hours / all (the places to resume stay)
+		bool mhisMenu = false;
+		int mhisMenuCursor = 0;
+		Rect mhisMenuBox() const { return {112, 96, 416, 70 + 4 * 44}; }
+		Rect mhisMenuRow(int i) const { return {128, 152 + i * 44, 384, 40}; }
+		bool mangaHisMenuKey(Button b, Player& p);
+		void mangaHisMenuAct(Player& p);
+		void drawMangaHisMenu();
 		int mserRows() const { return miniUp ? 4 : 5; }
 		// the grid's foot: down to the hint bar, or above the mini bar while it shows (a touch there is the bar's)
 		int mangaSrcClipBottom() const { return miniUp ? 418 : 448; }	// near the grid's end (cursor or scroll): its next page asked for

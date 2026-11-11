@@ -1820,7 +1820,7 @@ namespace bp
 		s += "|cs" + std::to_string((int)mangaSrcRefreshing) + std::to_string((int)mangaSrcChaptersOn) +
 			" " + std::to_string((long long)mangaSrcFetchedAt) + " " +
 			std::to_string(mangaSrcFetchedAt > 0 ? ((long long)time(nullptr) - mangaSrcFetchedAt) / 86400 : -1LL);
-		s += "|mf" + std::to_string((unsigned long long)mangaFilterLocal) + "|sb" + std::to_string(mserBtn);
+		s += "|mf" + std::to_string((unsigned long long)mangaFilterLocal) + "|sb" + std::to_string(mserBtn) + "|hm" + std::to_string((int)mhisMenu) + std::to_string(mhisMenuCursor);
 		// the lists' own ends: page 2 appended after page 1 changes the count, but a page's items replaced with as
 		// many others (a search for another word, a retry) would not show otherwise
 		if (!mangaSrcItems.empty())

@@ -465,6 +465,7 @@ namespace bp
 
 	bool Ui::mangaKey(Button b, Player& p)
 	{
+		if (page == Page::Manga && mhisMenu) return mangaHisMenuKey(b, p);
 		// the worker's answers first: a source's list, a series' details, a chapter's pages (this page's or the
 		// reading page's next one)
 		mangaBrowsePoll(p);
@@ -679,15 +680,9 @@ namespace bp
 			int n = (int)mangaHistory.size();
 			if (b == Button::X)
 			{
-				// Clear is asked twice, as the browser's clears are
-				Uint32 now = SDL_GetTicks();
-				if (mangaClearAt && now - mangaClearAt < QUIT_WINDOW_MS)
-				{
-					if (mangaStore) { mangaStore->clearHistory(); mangaSave(); }
-					mangaClearAt = 0;
-					mhisCursor = mhisScroll = 0;
-				}
-				else mangaClearAt = now;
+				// what to clear: a menu (the last hour, today, the last 24 hours, all)
+				mhisMenu = true;
+				mhisMenuCursor = 0;
 				break;
 			}
 			if (b == Button::A) { mangaChoose(MT_HISTORY, mhisCursor, p); break; }
@@ -914,6 +909,13 @@ namespace bp
 		// the tabs, a card, a cover, a row: a tap acts on the spot, as the browser's tabs do
 		if (pt.kind != Pointer::Down) return false;
 		mangaPressed = -1;
+		if (page == Page::Manga && mhisMenu)
+		{
+			if (!mhisMenuBox().hit(x, y)) { mhisMenu = false; return false; }
+			for (int i = 0; i < 4; i++)
+				if (mhisMenuRow(i).hit(x, y)) { mhisMenuCursor = i; mangaHisMenuAct(p); }
+			return false;
+		}
 		if (page == Page::MangaSources) return mangaSourcesPointer(pt, x, y, p);
 		if (page == Page::Manga)
 		{
@@ -1351,6 +1353,61 @@ namespace bp
 		drawHints({{"D-PAD", "Move"}, {"A", mlibZone == 0 ? "Continue" : "Open"}, {"B", "Back"}});
 	}
 
+	bool Ui::mangaHisMenuKey(Button b, Player& p)
+	{
+		switch (b)
+		{
+		case Button::Up: mhisMenuCursor = (mhisMenuCursor + 3) % 4; break;
+		case Button::Down: mhisMenuCursor = (mhisMenuCursor + 1) % 4; break;
+		case Button::A: mangaHisMenuAct(p); break;
+		case Button::B: case Button::X: mhisMenu = false; break;
+		default: break;
+		}
+		return false;
+	}
+
+	void Ui::mangaHisMenuAct(Player& p)
+	{
+		mhisMenu = false;
+		if (!mangaStore) return;
+		int64_t now = (int64_t)time(nullptr);
+		static const char* SAID[4] = {"Cleared the last hour", "Cleared today", "Cleared the last 24 hours", "History cleared"};
+		if (mhisMenuCursor == 3) mangaStore->clearHistory();
+		else
+		{
+			int64_t since = now - 3600;
+			if (mhisMenuCursor == 2) since = now - 24 * 3600;
+			else if (mhisMenuCursor == 1)
+			{
+				// today: from this morning's midnight, the handheld's own clock
+				time_t t = (time_t)now;
+				struct tm lt;
+				localtime_r(&t, &lt);
+				lt.tm_hour = lt.tm_min = lt.tm_sec = 0;
+				since = (int64_t)mktime(&lt);
+			}
+			mangaStore->clearHistorySince(since);
+		}
+		mangaSave();
+		mhisCursor = mhisScroll = 0;
+		p.osd(SAID[std::clamp(mhisMenuCursor, 0, 3)], 1500);
+	}
+
+	void Ui::drawMangaHisMenu()
+	{
+		Rect b = mhisMenuBox();
+		drawDialog(b, "Clear history");
+		static const char* ROWS[4] = {"Last hour", "Today", "Last 24 hours", "All"};
+		for (int i = 0; i < 4; i++)
+		{
+			Rect r = mhisMenuRow(i);
+			bool at = i == mhisMenuCursor;
+			if (at) drawFocus(r);
+			drawTextMid(ROWS[i], 1, at ? ACCENT : i == 3 ? DANGER : TEXT, r.x + 12, r.y + r.h / 2, r.w - 24);
+		}
+		drawHints({{"A", "Clear"}, {"B", "Close"}});
+	}
+
 	void Ui::drawMangaHistory(const Player& p)
 	{
 		mangaCache();
@@ -1386,7 +1443,8 @@ namespace bp
 		}
 		drawScrollBar(MG_ROW_TOP, MG_HIST_ROWS * MG_HIST_ROW_H - 4, mhisScroll, MG_HIST_ROWS, n);
 		if (mangaClearAt) drawFooterText("Press X again to clear history", ACCENT);
-		else drawHints({{"A", "Continue"}, {"X", "Clear history"}, {"B", "Back"}});
+		else drawHints({{"A", "Continue"}, {"X", "Clear\xE2\x80\xA6"}, {"B", "Back"}});
+		if (mhisMenu) drawMangaHisMenu();
 	}
 
 	void Ui::drawMangaBrowse(const Player& p)

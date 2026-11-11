@@ -67,6 +67,8 @@ namespace bp
 		// The reading history: every chapter is hidden from the History, the reading progress stays (the read
 		// marks and the page to resume).
 		void clearHistory();
+		// the History rows read at or after this time (seconds since the epoch) leave the list; the places stay
+		void clearHistorySince(int64_t since);
 		// How many of the chapters given aren't read.
 		int unread(const std::string& seriesId, const std::vector<std::string>& chapterIds) const;
 
