@@ -4998,7 +4998,7 @@ static void testSettings()
 	CHECK_EQ(parseSettings("keep-history = no\n").keepHistory, false);
 	CHECK_EQ(d.keepNetHistory, true);	// network files in Recent: on by default
 	CHECK_EQ(parseSettings("keep-network-history = no\n").keepNetHistory, false);
-	CHECK_EQ(d.mangaMode, MANGA_RTL);	// the manga reader: right to left, as printed manga
+	CHECK_EQ(d.mangaMode, MANGA_STRIP);	// the manga reader: a strip read down (the owner's default)
 	CHECK_EQ(parseSettings("manga-mode = strip\n").mangaMode, MANGA_STRIP);
 	CHECK_EQ(d.mangaHinge, 36);
 	CHECK_EQ(parseSettings("manga-hinge = 20\n").mangaHinge, 20);
@@ -5007,8 +5007,8 @@ static void testSettings()
 	// fullscreen: the first open's tip seen, and a chapter opening on both panels
 	CHECK_EQ(d.mangaFullSeen, false);
 	CHECK_EQ(parseSettings("manga-full-seen = yes\n").mangaFullSeen, true);
-	CHECK_EQ(d.mangaOpenFull, false);
-	CHECK_EQ(parseSettings("manga-open-full = yes\n").mangaOpenFull, true);
+	CHECK_EQ(d.mangaOpenFull, true);
+	CHECK_EQ(parseSettings("manga-open-full = no\n").mangaOpenFull, false);
 	Settings fs;
 	fs.mangaFullSeen = true;
 	fs.mangaOpenFull = true;
@@ -5016,7 +5016,7 @@ static void testSettings()
 	CHECK_EQ(serializeSettings(fs).find("manga-open-full = yes\n") != std::string::npos, true);
 	CHECK_EQ(parseSettings(serializeSettings(fs)).mangaFullSeen, true);
 	CHECK_EQ(parseSettings(serializeSettings(fs)).mangaOpenFull, true);
-	CHECK_EQ(parseSettings("manga-mode = sideways\n").mangaMode, MANGA_RTL);
+	CHECK_EQ(parseSettings("manga-mode = sideways\n").mangaMode, MANGA_STRIP);
 	// the Manga group's other rows: fit, swap, preload, cache, adult sources, history, Recent
 	CHECK_EQ(d.mangaFit, MANGA_FIT_PAGE);
 	CHECK_EQ(parseSettings("manga-fit = width\n").mangaFit, MANGA_FIT_WIDTH);

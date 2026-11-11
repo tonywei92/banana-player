@@ -117,7 +117,7 @@ namespace bp
 		// the manga reader (Manage extensions): off by default; off, nothing of it shows or runs
 		bool mangaOn = false;
 		// the manga reader's mode for a series that has none of its own: right to left (printed manga), left to right, strip
-		int mangaMode = 0;
+		int mangaMode = MANGA_STRIP;	// a new reader reads down a strip (webtoons and most sources' chapters)
 		// the paged modes' fit (MANGA_FIT_*): Page, Width, Fill; the Strip always fits width
 		int mangaFit = MANGA_FIT_PAGE;
 		// Off: RIGHT is forward on the reader's page. On: LEFT is (to match a right-to-left book)
@@ -129,7 +129,7 @@ namespace bp
 		// fullscreen's first open has shown its toast (a hint to leave it): shown once, ever
 		bool mangaFullSeen = false;
 		// a chapter opens on both panels (fullscreen) rather than on this one's page alone
-		bool mangaOpenFull = false;
+		bool mangaOpenFull = true;	// a chapter opens over both panels
 		// the page cache's cap, as the row offers it (MANGA_CACHES, 0 is 100 MB)
 		int mangaCacheSize = MANGA_CACHE_DEFAULT;
 		// adult sources a repository marks as adult: shown in the lists (hidden by default)
