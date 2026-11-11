@@ -235,7 +235,16 @@ namespace bp
 		std::string dir = dir_ + "/manga";
 		mkdir(dir_.c_str(), 0755);
 		mkdir(dir.c_str(), 0755);
-		bool ok = writeFileAtomic(dir + "/library.tsv", serializeLibrary());
+		// the series (names, covers, the Library) on the card for good when they change: a reset mid-chapter kept the
+		// progress but not the series it belonged to, whose name came back as its key. Written only when it changed,
+		// so the sync isn't paid at every page's progress
+		bool ok = true;
+		std::string lib = serializeLibrary();
+		if (lib != savedLibrary_)
+		{
+			ok = writeFileDurable(dir + "/library.tsv", lib);
+			if (ok) savedLibrary_ = lib;
+		}
 		ok = writeFileAtomic(dir + "/progress.tsv", serializeProgress()) && ok;
 		return ok;
 	}

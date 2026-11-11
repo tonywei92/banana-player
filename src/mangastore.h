@@ -90,6 +90,7 @@ namespace bp
 		std::string dir_;	// the state folder; the files are in <dir>/manga
 		std::vector<MangaSeries> series_;
 		std::vector<ChapterProgress> progress_;
+		mutable std::string savedLibrary_;	// library.tsv as last written (save() skips it when unchanged)
 		// chapterId -> its place in progress_, rebuilt after any add or removal (the vector's order changes then)
 		mutable std::unordered_map<std::string, size_t> progIdx_;
 		mutable bool progIdxDirty_ = true;
