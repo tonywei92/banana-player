@@ -52,6 +52,7 @@ extern "C"
 #include "session.h"
 #include "settings.h"
 #include "strip.h"
+#include "tarx.h"
 #include "tracks.h"
 #include "json.h"
 #include "suwayomi.h"
@@ -65,6 +66,7 @@ extern "C"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 #include <fstream>
 #include <iterator>
 #include <sys/stat.h>
@@ -8577,9 +8579,137 @@ static void testSuwayomi()
 	CHECK_EQ(error, std::string("no extensions"));
 }
 
+// the Java runtime's archive: a .tar.gz unpacked with only the rules the pinned one needs (docs/design/manga.md 6)
+static void tarField(char* dst, size_t n, const std::string& s)
+{
+	size_t len = std::min(n, s.size());
+	memcpy(dst, s.data(), len);
+}
+
+static std::string tarHeader(const std::string& name, unsigned mode, uint64_t size, char type,
+	const std::string& link = "", const std::string& prefix = "")
+{
+	char h[512];
+	memset(h, 0, sizeof h);
+	tarField(h, 100, name);
+	snprintf(h + 100, 8, "%07o", mode & 07777);
+	snprintf(h + 108, 8, "%07o", 0);
+	snprintf(h + 116, 8, "%07o", 0);
+	snprintf(h + 124, 12, "%011llo", (unsigned long long)size);
+	snprintf(h + 136, 12, "%011o", 0);
+	h[156] = type;
+	tarField(h + 157, 100, link);
+	memcpy(h + 257, "ustar", 6);
+	h[262] = '0';
+	h[263] = '0';
+	tarField(h + 265, 32, "root");
+	tarField(h + 297, 32, "root");
+	tarField(h + 345, 155, prefix);
+	memset(h + 148, ' ', 8);
+	unsigned sum = 0;
+	for (size_t i = 0; i < sizeof h; i++) sum += (unsigned char)h[i];
+	snprintf(h + 148, 8, "%06o", sum);
+	h[154] = '\0';
+	h[155] = ' ';
+	return std::string(h, sizeof h);
+}
+
+static void tarAdd(std::string& tar, const std::string& name, char type, const std::string& data,
+	unsigned mode = 0644, const std::string& link = "", const std::string& prefix = "")
+{
+	tar += tarHeader(name, mode, data.size(), type, link, prefix);
+	if (!data.empty())
+	{
+		tar += data;
+		tar.append((512 - data.size() % 512) % 512, '\0');
+	}
+}
+
+static bool gzWriteFile(const std::string& path, const std::string& data)
+{
+	gzFile g = gzopen(path.c_str(), "wb");
+	if (!g) return false;
+	bool ok = data.empty() || gzwrite(g, data.data(), (unsigned)data.size()) == (int)data.size();
+	return gzclose(g) == Z_OK && ok;
+}
+
+static std::string readWhole(const std::string& path)
+{
+	std::ifstream in(path, std::ios::binary);
+	return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
+static void testTarX()
+{
+	char tmpl[] = "/tmp/bp-tarx-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made, dest = root + "/out";
+
+	std::string tar;
+	tarAdd(tar, "top", '5', "", 0755);
+	tarAdd(tar, "hello.txt", '0', "hello\n", 0644, "", "top");	// ustar's prefix field
+	tarAdd(tar, "run.sh", '0', "#!/bin/sh\n", 0755, "", "top");
+	// a name over 100 characters comes in a GNU long-name entry before its own header
+	std::string longName = "top/" + std::string(120, 'a') + ".txt";
+	std::string longData = longName;
+	longData.push_back('\0');
+	tarAdd(tar, "././@LongLink", 'L', longData);
+	tarAdd(tar, "short", '0', "long", 0644);
+	// symlinks and hard links are skipped, never made: the card is exFAT
+	tarAdd(tar, "link", '2', "", 0777, "hello.txt", "top");
+	tarAdd(tar, "hard", '1', "", 0644, "hello.txt", "top");
+	tar.append(1024, '\0');
+	std::string archive = root + "/a.tar.gz", why;
+	CHECK_EQ(gzWriteFile(archive, tar), true);
+	CHECK_EQ(extractTarGz(archive, dest, why), true);
+	CHECK_EQ(why.empty(), true);
+	CHECK_EQ(readWhole(dest + "/top/hello.txt"), std::string("hello\n"));
+	CHECK_EQ(readWhole(dest + "/top/run.sh"), std::string("#!/bin/sh\n"));
+	CHECK_EQ(readWhole(dest + "/" + longName), std::string("long"));
+	struct stat st;
+	CHECK_EQ(stat((dest + "/top/run.sh").c_str(), &st), 0);
+	CHECK_EQ((st.st_mode & 0111) != 0, true);	// the archive's executable bit
+	CHECK_EQ(stat((dest + "/top/hello.txt").c_str(), &st), 0);
+	CHECK_EQ((st.st_mode & 0111) == 0, true);
+	CHECK_EQ(access((dest + "/top/link").c_str(), F_OK), -1);
+	CHECK_EQ(access((dest + "/top/hard").c_str(), F_OK), -1);
+
+	// a path that climbs out is refused, not clipped, and nothing lands beside the folder
+	std::string evilTar;
+	tarAdd(evilTar, "../escape.txt", '0', "evil", 0644);
+	evilTar.append(1024, '\0');
+	std::string evilArchive = root + "/evil.tar.gz", evilDest = root + "/evil";
+	CHECK_EQ(gzWriteFile(evilArchive, evilTar), true);
+	CHECK_EQ(extractTarGz(evilArchive, evilDest, why), false);
+	CHECK_EQ(why.empty(), false);
+	CHECK_EQ(access((root + "/escape.txt").c_str(), F_OK), -1);
+
+	// an absolute path is not under the folder either
+	std::string absTar;
+	tarAdd(absTar, "/abs.txt", '0', "abs", 0644);
+	absTar.append(1024, '\0');
+	std::string absArchive = root + "/abs.tar.gz", absDest = root + "/abs";
+	CHECK_EQ(gzWriteFile(absArchive, absTar), true);
+	CHECK_EQ(extractTarGz(absArchive, absDest, why), false);
+
+	unlink((dest + "/top/hello.txt").c_str());
+	unlink((dest + "/top/run.sh").c_str());
+	unlink((dest + "/" + longName).c_str());
+	rmdir((dest + "/top").c_str());
+	rmdir(dest.c_str());
+	rmdir(evilDest.c_str());
+	rmdir(absDest.c_str());
+	unlink(archive.c_str());
+	unlink(evilArchive.c_str());
+	unlink(absArchive.c_str());
+	rmdir(root.c_str());
+}
+
 int main()
 {
 	testPicSubs();
+	testTarX();
 	testSessionNamed();
 	testMatchVectors();
 	testSessionFuzz();

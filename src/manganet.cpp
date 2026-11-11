@@ -18,6 +18,8 @@ namespace bp
 		evFetch = fetchEvent;
 		evWorker = workerEvent;
 		state = stateDir;
+		// the Java add-on's own state and wake event (its download and process threads never touch the Ui)
+		javaHost.configure(workerEvent, stateDir);
 		// the downloads' folder: an existing Manga folder on a card first (what's read from there already), else one
 		// on the main card (the handheld's /data, not the videos folder), else the first place
 		dlRoot.clear();
@@ -53,6 +55,8 @@ namespace bp
 
 	void MangaNet::off()
 	{
+		// the Java runtime is the reader's too, but it can be installed and starting with the rest still asleep
+		javaHost.stop();
 		if (!running) return;
 		dl->pauseAll();
 		dlq.save();
@@ -65,6 +69,7 @@ namespace bp
 
 	void MangaNet::stop()
 	{
+		javaHost.stop();
 		if (!running) return;
 		dlq.save();
 		fetcher.stop();
@@ -93,6 +98,8 @@ namespace bp
 
 	void MangaNet::pump(int64_t nowMs)
 	{
+		// the Java process' idle stop is watched even when the rest of the reader's network side never started
+		javaHost.pump(nowMs);
 		if (running) dl->pump(nowMs);
 	}
 
@@ -113,6 +120,6 @@ namespace bp
 	uint64_t MangaNet::serial() const
 	{
 		if (!running) return 0;
-		return own + dlq.serial() + dl->serial() + repoMgr->serial();
+		return own + dlq.serial() + dl->serial() + repoMgr->serial() + javaHost.serial();
 	}
 }

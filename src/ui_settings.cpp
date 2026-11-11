@@ -2,6 +2,7 @@
 #include "format.h"
 #include "playlist.h"
 #include "netpath.h"
+#include "manganet.h"
 #include "theme.h"
 #include <algorithm>
 #include <cmath>
@@ -75,6 +76,8 @@ namespace bp
 		if (row == MANGA_CACHE_ROW) return "Pages kept on the card to read again without downloading. Covers: 50 MB more.";
 		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
 		if (row == MANGA_DNS_ROW) return "Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them.";
+		if (row == MANGA_JAVA_ROW)
+			return "Tachiyomi and Mihon extensions (.jar), run by Suwayomi on Java. Uses about 400 MB of memory while a Java source is open.";
 		if (row == MUSIC_ROW) return "What the top screen shows while a song plays (SELECT while playing).";
 		if (row == VIS_ROW) return "How the music is drawn: Peaks, Peaks Banana or Circle (SELECT while playing).";
 		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
@@ -160,6 +163,7 @@ namespace bp
 		}
 		// a note, not a value: nothing to change (and no switch beyond the last REMEMBER row)
 		if (row == EXT_NOTE) return;
+		if (row == MANGA_JAVA_ROW) { mangaJavaAct(); return; }
 		if (row == CHECK_ROW) { if (updater) updater->check(); return; }
 		if (row == TOP_LIGHT_ROW || row == BOTTOM_LIGHT_ROW)
 		{
@@ -281,6 +285,13 @@ namespace bp
 			drawTextMid("Clear cache", 1, at ? ACCENT : TEXT, 32, mid, 320);
 			drawTextMid(mangaCacheAt ? "Press again to clear" : size ? "Clear \xC2\xB7 " + formatBytes((long long)size) : "Empty", 1,
 				mangaCacheAt ? ACCENT : at ? DIM_ON : DIM, 608, mid, 0, 1);
+			return;
+		}
+		if (row == MANGA_JAVA_ROW)
+		{
+			// an action with the host's state as its value (installed size, download progress, why it failed)
+			drawTextMid("Java extensions", 1, at ? ACCENT : TEXT, 32, mid, 250);
+			drawTextMid(mangaJavaValue(), 1, at ? ACCENT : TEXT, 608, mid, 330, 1);
 			return;
 		}
 		if (k >= 0 && k < STYLE_KEYS)

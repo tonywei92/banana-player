@@ -1081,6 +1081,7 @@ namespace bp
 			SCREEN_OFF_ROW = CLOCK_ROW + 1, EXT_NOTE = SCREEN_OFF_ROW + 1, MANGA_MODE_ROW = EXT_NOTE + 1,
 			MANGA_FIT_ROW = MANGA_MODE_ROW + 1, MANGA_HINGE_ROW = MANGA_FIT_ROW + 1, MANGA_PRELOAD_ROW = MANGA_HINGE_ROW + 1,
 			MANGA_CACHE_ROW = MANGA_PRELOAD_ROW + 1, MANGA_CLEAR_ROW = MANGA_CACHE_ROW + 1,
+			MANGA_JAVA_ROW = MANGA_CLEAR_ROW + 1,
 			// Secure DNS is one of the REMEMBER switches (the last), so its id is that switch's: changeSetting's
 			// generic branch toggles it by that index
 			MANGA_DNS_ROW = TOGGLE_ROW + 19;
@@ -1248,6 +1249,7 @@ namespace bp
 		PageCache mangaCoverCache;
 		static constexpr uint64_t MANGA_COVER_CACHE_LIMIT = 50ull * 1024 * 1024;
 		Uint32 mangaCacheAt = 0;	// Clear cache pressed once: again within 2 s empties it
+		Uint32 mangaJavaAt = 0;		// Java extensions' Remove pressed once: again within 2 s removes it
 		bool mangaHistOn = true;	// the setting, kept here for the reader's records (mangaRecordProgress has no Player)
 		int mangaPressed = -1;		// the card, cover, row or button under the finger
 		// Page::MangaRead: the chapter open, what was last recorded, and the finger on it
@@ -1450,6 +1452,9 @@ namespace bp
 		Uint32 mstUninstallAt = 0;
 		uint64_t mstLocal = 0;						// the page's own changes (an event taken, a row acted on)
 		uint64_t mangaReposSerial() const;			// repos().serial(): signature() follows it (ui.cpp has no MangaNet)
+		uint64_t mangaJavaSerial() const;			// javaExt().serial(): the Java row's state and progress
+		std::string mangaJavaValue() const;			// the Java row's right side (the host's state)
+		void mangaJavaAct();						// A: Install, Cancel, Remove (twice), Try again
 		void mangaSourcesOpen(Player& p);			// the tab opened: the network side started, the indexes refreshed
 		void mangaSourcesTick(Player& p);			// the manager's events into toasts, a typed URL added
 		bool mangaSourcesKey(Button b, Player& p);

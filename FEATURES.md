@@ -912,6 +912,7 @@ read. **B** goes back where you came from.
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 300 MB | Pages kept on the card to read again without downloading. Covers: 50 MB more. |
 | **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |
+| **Java extensions** | Not installed / Downloading / Installed · 344 MB / Running / Failed | Not installed | Tachiyomi and Mihon extensions (.jar), run by Suwayomi on Java. Uses about 400 MB of memory while a Java source is open. A installs; A twice removes. |
 | **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |
 | **Reading history** | On / Off | On | Off clears it. |
 | **Secure DNS** | Off / Cloudflare (1.1.1.1) | Off | Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them. |

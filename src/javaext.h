@@ -12,6 +12,7 @@
 #include <SDL.h>
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 namespace bp
@@ -36,6 +37,10 @@ namespace bp
 	class JavaExtHost
 	{
 	public:
+		JavaExtHost();
+		~JavaExtHost();	// never waits on the process: its watcher holds the host's state (MangaNet is never destroyed)
+		JavaExtHost(const JavaExtHost&) = delete;
+		JavaExtHost& operator=(const JavaExtHost&) = delete;
 		enum class State
 		{
 			NotInstalled,	// nothing on the card
@@ -71,9 +76,15 @@ namespace bp
 		// on by the main thread)
 		void stop();
 
+		// Secure DNS (Manga settings): the Java side resolves through Cloudflare over HTTPS from its next start on
+		void setSecureDns(bool on);
 		// "http://127.0.0.1:<port>" while Running, else ""; the port is chosen free at each start
 		std::string baseUrl() const;
 		// grows when anything the Ui shows changed (state, progress)
 		uint64_t serial() const;
+
+	private:
+		struct Impl;
+		std::shared_ptr<Impl> impl;	// the threads hold it too: a quit never frees state under them
 	};
 }
