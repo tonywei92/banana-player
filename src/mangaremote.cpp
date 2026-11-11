@@ -137,12 +137,32 @@ namespace bp
 		}
 	}
 
+	std::string remoteWithKey(const MangaServer& s, const std::string& password, const std::string& url)
+	{
+		// Kavita's stored url names its api key only by the placeholder (see mangaservers.h): the key itself goes in
+		// here, at request time, and nowhere else
+		if (s.kind != "kavita" || password.empty()) return url;
+		std::string out = url;
+		subAll(out, "{key}", password);
+		return out;
+	}
+
+	std::string remoteWithoutKey(const MangaServer& s, const std::string& password, const std::string& text)
+	{
+		// Kavita answers with its own address in every href, key and all: the key becomes {key} before anything
+		// reads the body, so what is kept (ids, hrefs, page urls) never holds the secret
+		if (s.kind != "kavita" || password.empty()) return text;
+		std::string out = text;
+		subAll(out, password, "{key}");
+		return out;
+	}
+
 	RemoteRequest remoteAuth(const MangaServer& s, const std::string& password, const std::string& url)
 	{
 		RemoteRequest r;
-		r.url = url;
-		// Kavita's api key rides in the path of the OPDS url it is stored with (see the header), so sending it
-		// again as a header would only put a secret on the wire twice; the other kinds use the user, when set
+		r.url = remoteWithKey(s, password, url);
+		// Kavita's api key is in the request url (see above), so sending it again as a header would only put a secret
+		// on the wire twice; the other kinds use the user, when set
 		if (s.kind != "kavita" && !s.user.empty())
 			r.headers.emplace_back("Authorization", "Basic " + base64Encode(s.user + ":" + password));
 		r.headers.emplace_back("Accept", s.kind == "komga" ? "application/json" : "application/atom+xml");

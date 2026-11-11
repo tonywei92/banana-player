@@ -2,7 +2,8 @@
 // requests a Komga, Kavita or OPDS server is asked with, and turns their answers into the shapes a source script
 // returns (5.2) — lists of {key, title, cover} with "more", chapters, page URLs — so the Ui reads a server exactly
 // as it reads a script. Pure: no network, no threads, no SDL; the caller fetches with MangaFetch and hands the
-// bodies here. A key out of a list feeds back into the builders that ask about it: a Komga id, or an absolute URL.
+// bodies here. A key out of a list feeds back into the builders that ask about it: a Komga id, or an absolute URL
+// (a Kavita one with {key} where the server's api key was, so no list, id or page url ever holds the key itself).
 #pragma once
 #include <string>
 #include <utility>
@@ -48,11 +49,19 @@ namespace bp
 
 	// The request for url as this server needs it. A user set means a Basic header (RFC 7617: "Authorization:
 	// Basic base64(user:password)") for Komga and plain OPDS servers. Kavita is the exception worth stating: its
-	// OPDS URL carries the api key as a path segment, so the key is already in the URL the store holds and the
-	// password argument is never sent as a header for that kind. Every request gets the Accept its kind answers
+	// stored OPDS url holds {key} where Kavita's api key was, so remoteWithKey puts the key back into the request
+	// url and the password is never sent as a header for that kind. Every request gets the Accept its kind answers
 	// with — JSON from Komga's REST API, Atom feeds everywhere else; the builders below replace it where an
 	// endpoint answers with something else (a page, a thumbnail).
 	RemoteRequest remoteAuth(const MangaServer& s, const std::string& password, const std::string& url);
+
+	// A url as a request goes to it: for Kavita the stored url's {key} is filled with the opened key, every other
+	// kind's url is already the one to ask. Only a request ever holds the result; nothing stored or logged does.
+	std::string remoteWithKey(const MangaServer& s, const std::string& password, const std::string& url);
+	// A Kavita answer with the key taken out: Kavita repeats its own address (key and all) in every feed, so the key
+	// becomes {key} before anything reads it, and the ids, hrefs and page urls that are kept carry the placeholder.
+	// Any other kind's text, and a Kavita one with no key to hide, comes back as it came.
+	std::string remoteWithoutKey(const MangaServer& s, const std::string& password, const std::string& text);
 
 	// ---- Komga, REST API v1 ----
 	// `page` is Komga's own 0-based page number; the list converters take the same number to decide `more`.
@@ -84,7 +93,7 @@ namespace bp
 
 	// ---- OPDS 1.2 (Kavita, Komga's /opds/v1.2, Calibre) ----
 	// the catalogue's start: Komga is rooted under its api url at /opds/v1.2; the other kinds store the OPDS url
-	// itself (Kavita's carries the api key, which is why nothing is sent as a header for that kind)
+	// itself (Kavita's is stored with {key} where its api key was, put back only in the request)
 	RemoteRequest remoteOpdsStart(const MangaServer& s, const std::string& password);
 	// a feed into a list: navigation entries become folders whose key is the absolute URL they lead to; acquisition
 	// entries become chapter-like items keyed by their file (or their stream url, where a server offers no file —

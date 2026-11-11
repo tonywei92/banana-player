@@ -16,9 +16,10 @@ namespace bp
 	// The parsers and the request builders are bpcore's (mangaremote.h, opds.h); this file only fetches through
 	// MangaNet and shows what came back. Each answer carries a serial: one whose serial is no longer the one here (a
 	// page moved on, another list was asked for) is dropped, as Browse does with the worker's answers. A typed
-	// password is never sent in a url, shown on screen after Save or written to a message: MangaServerStore seals it
-	// (Kavita's OPDS address carries Kavita's API key in its path by Kavita's own design, so that key is part of the
-	// address the user typed, not something this file adds).
+	// password is never sent in a url, shown on screen after Save or written to a message: MangaServerStore seals it.
+	// Kavita's api key is kept the same way — the store holds its address with {key} where Kavita prints the key, the
+	// key goes back only into a request, and every answer's body (and the url it came from) has the key put back to
+	// {key} before it is read, so no id, href or page url kept anywhere carries it.
 
 	namespace
 	{
@@ -77,6 +78,38 @@ namespace bp
 			if (r.status == 404) return "Nothing answered at that address";
 			if (r.status == 0) return "The server didn\u2019t answer";
 			return "The server answered HTTP " + std::to_string(r.status);
+		}
+
+		// The server a form describes, with a Kavita address read the way the store reads it: {key} in the url and the
+		// key it carried handed back. Test and Save then ask about exactly what would be kept.
+		MangaServer mangaFormServer(const std::string& kind, const std::string& name, const std::string& url,
+			const std::string& user, std::string& urlKey)
+		{
+			MangaServer s;
+			s.kind = kind;
+			s.name = name;
+			s.url = url;
+			s.user = user;
+			urlKey.clear();
+			if (kind == "kavita")
+			{
+				std::string stored, key;
+				if (readKavitaUrl(s.url, stored, key))
+				{
+					s.url = stored;
+					urlKey = key;
+				}
+			}
+			return s;
+		}
+
+		// the key a Kavita form asks with: the typed one, else the one its address carried, else the saved one
+		std::string mangaFormKavitaKey(const MangaServerStore& store, const std::string& formId, bool typed,
+			const std::string& typedKey, const std::string& urlKey)
+		{
+			if (typed) return typedKey;
+			if (!urlKey.empty()) return urlKey;
+			return formId.empty() ? std::string() : store.password(formId);
 		}
 	}
 
@@ -152,9 +185,15 @@ namespace bp
 				mangaSrvTestSerial = 0;
 				mangaSrvLocal++;
 				if (!answerOk(r)) { mangaSrvTestText = answerError(r); continue; }
-				std::string body = bodyOf(r);
+				std::string urlKey;
+				MangaServer fs = mangaFormServer(mangaSrvFormKind, trimmed(mangaSrvFormName), mangaSrvFormUrl,
+					trimmed(mangaSrvFormUser), urlKey);
+				std::string key = mangaFormKavitaKey(store, mangaSrvFormId, mangaSrvFormPasswordTyped, mangaSrvFormPassword,
+					urlKey);
+				std::string body = remoteWithoutKey(fs, key, bodyOf(r));
 				RemoteList list;
 				std::string base = r.finalUrl.empty() ? mangaSrvLoadUrl : r.finalUrl;
+				base = remoteWithoutKey(fs, key, base);
 				bool parsed = mangaSrvFormKind == "komga" ? remoteKomgaLibraryList(body, list)
 					: remoteOpdsList(base, body, list);
 				if (!parsed) mangaSrvTestText = "The server answered, but not like a catalogue";
@@ -175,17 +214,22 @@ namespace bp
 					mangaSrvAppend = false;
 					continue;
 				}
+				const MangaServer* sv = store.find(mangaSrvId);
+				std::string pw = store.password(mangaSrvId);
 				std::string body = bodyOf(r);
 				std::string base = r.finalUrl.empty() ? mangaSrvLoadUrl : r.finalUrl;
+				if (sv)
+				{
+					// a Kavita answer repeats the key it was asked with, in its body and in the url it came from
+					body = remoteWithoutKey(*sv, pw, body);
+					base = remoteWithoutKey(*sv, pw, base);
+				}
 				RemoteList list;
 				bool parsed = false;
 				if (mangaSrvLoad == MGSRV_LOAD_LIBRARIES) parsed = remoteKomgaLibraryList(body, list);
 				else if (mangaSrvLoad == MGSRV_LOAD_SERIES)
-				{
 					// covers are absolute urls off the server's own url, as stored
-					const MangaServer* sv = store.find(mangaSrvId);
 					parsed = remoteKomgaSeriesList(sv ? sv->url : "", body, mangaSrvPage, list);
-				}
 				else parsed = remoteOpdsList(base, body, list);
 				if (!parsed)
 				{
@@ -233,8 +277,15 @@ namespace bp
 					mangaSrvSerAppend = false;
 					continue;
 				}
+				const MangaServer* sv = store.find(mangaSrvId);
+				std::string pw = store.password(mangaSrvId);
 				std::string body = bodyOf(r);
 				std::string base = r.finalUrl.empty() ? mangaSrvSeriesKey : r.finalUrl;
+				if (sv)
+				{
+					body = remoteWithoutKey(*sv, pw, body);
+					base = remoteWithoutKey(*sv, pw, base);
+				}
 				std::vector<RemoteChapter> chapters;
 				bool more = false, parsed = false;
 				if (mangaSrvKind == "komga")
@@ -295,11 +346,10 @@ namespace bp
 		if (s->kind == "komga") mangaServerListLoad(MGSRV_LOAD_LIBRARIES);
 		else
 		{
-			// the OPDS start is the server's own url (a Komga server's is under /opds/v1.2); Kavita's api key is
-			// already a path segment of it, so it never goes in a header or a message
-			RemoteRequest rq = remoteOpdsStart(*s, mangaNet->servers().password(id));
-			mangaSrvRootUrl = rq.url;
-			mangaServerFeedLoad(rq.url);
+			// the OPDS start is the server's own url (a Komga server's is under /opds/v1.2). Kavita's is kept with
+			// {key} where its api key was: it stays that way here, and only the request gets the key
+			mangaSrvRootUrl = s->url;
+			mangaServerFeedLoad(mangaSrvRootUrl);
 		}
 	}
 
@@ -369,7 +419,8 @@ namespace bp
 		RemoteRequest rq = remoteAuth(*s, mangaNet->servers().password(mangaSrvId), url);
 		if (mangaSrvFetchSerial) mangaNet->fetchApi().cancel(mangaSrvFetchSerial);
 		mangaSrvLoad = MGSRV_LOAD_FEED;
-		mangaSrvLoadUrl = rq.url;
+		// the url as kept (a Kavita one with {key}), not the request's own copy: the key never rests here
+		mangaSrvLoadUrl = url;
 		mangaSrvLoading = true;
 		mangaSrvFetchSerial = mangaNet->fetchApi().get(rq.url, rq.headers, 8 * 1024 * 1024);
 		if (!mangaSrvFetchSerial)
@@ -918,9 +969,11 @@ namespace bp
 		else
 		{
 			// OPDS PSE: the template becomes one URL a page, and the auth header goes with them (the feed's Accept
-			// is for an image here, not for a feed)
+			// is for an image here, not for a feed). A Kavita chapter's urls hold {key}: the key goes back into
+			// each one only here, as the header goes with the other kinds' pages.
 			urls = remoteOpdsPageUrls(c, W);
 			if (urls.empty()) { mangaSrvSerError = "This chapter is a whole file: reading it here isn\xE2\x80\x99t supported yet"; return; }
+			for (std::string& u : urls) u = remoteWithKey(*s, pw, u);
 			headers = remoteAuth(*s, pw, urls.front()).headers;
 			bool accept = false;
 			for (auto& h : headers)
@@ -1074,8 +1127,21 @@ namespace bp
 		switch (field)
 		{
 		case MGSRV_NAME_FIELD: mangaSrvFormName = trimmed(text); break;
-		// a credential typed into an address is taken out at once: it is never kept, shown again or sent in a url
-		case MGSRV_URL_FIELD: mangaSrvFormUrl = withoutUrlCredentials(trimmed(text)); break;
+		// a credential typed into an address is taken out at once: it is never kept, shown again or sent in a url.
+		// Kavita's api key rides in its address the same way: it moves to the API key field, and {key} stays behind
+		case MGSRV_URL_FIELD:
+			mangaSrvFormUrl = withoutUrlCredentials(trimmed(text));
+			if (mangaSrvFormKind == "kavita")
+			{
+				std::string stored, key;
+				if (readKavitaUrl(mangaSrvFormUrl, stored, key) && !key.empty())
+				{
+					mangaSrvFormUrl = stored;
+					mangaSrvFormPassword = key;
+					mangaSrvFormPasswordTyped = true;
+				}
+			}
+			break;
 		case MGSRV_USER_FIELD: mangaSrvFormUser = trimmed(text); break;
 		case MGSRV_PASS_FIELD: mangaSrvFormPassword = text; mangaSrvFormPasswordTyped = true; break;
 		default: return;
@@ -1092,16 +1158,14 @@ namespace bp
 	{
 		mangaSrvTestText.clear();
 		if (!mangaNet || !mangaNet->started()) { mangaSrvTestText = "The reader\xE2\x80\x99s network side is off"; return; }
-		MangaServer s;
-		s.kind = mangaSrvFormKind;
-		s.name = trimmed(mangaSrvFormName);
-		s.url = withoutUrlCredentials(trimmed(mangaSrvFormUrl));	// a credential never rides in a url
-		s.user = trimmed(mangaSrvFormUser);
+		std::string urlKey;
+		MangaServer s = mangaFormServer(mangaSrvFormKind, trimmed(mangaSrvFormName),
+			withoutUrlCredentials(trimmed(mangaSrvFormUrl)), trimmed(mangaSrvFormUser), urlKey);
 		if (!isMangaServerKind(s.kind)) { mangaSrvTestText = "Choose a kind"; return; }
 		if (!isMangaServerUrl(s.url)) { mangaSrvTestText = "Type an http:// or https:// address"; return; }
-		// a typed password is the one tried; an unchanged one is the store's own, opened only here
-		std::string pw = mangaSrvFormPasswordTyped ? mangaSrvFormPassword
-			: !mangaSrvFormId.empty() ? mangaNet->servers().password(mangaSrvFormId) : std::string();
+		// a typed password (Kavita's api key) is the one tried; then the address's own key, then the store's
+		std::string pw = mangaFormKavitaKey(mangaNet->servers(), mangaSrvFormId, mangaSrvFormPasswordTyped,
+			mangaSrvFormPassword, urlKey);
 		RemoteRequest rq = s.kind == "komga" ? remoteKomgaLibraries(s, pw) : remoteOpdsStart(s, pw);
 		if (mangaSrvTestSerial) mangaNet->fetchApi().cancel(mangaSrvTestSerial);
 		mangaSrvTestSerial = mangaNet->fetchApi().get(rq.url, rq.headers, 4 * 1024 * 1024);
@@ -1119,11 +1183,12 @@ namespace bp
 			return;
 		}
 		MangaServerStore& store = mangaNet->servers();
-		MangaServer s;
-		s.kind = mangaSrvFormKind;
-		s.name = trimmed(mangaSrvFormName);
-		s.url = withoutUrlCredentials(trimmed(mangaSrvFormUrl));
-		s.user = trimmed(mangaSrvFormUser);
+		std::string url = withoutUrlCredentials(trimmed(mangaSrvFormUrl));
+		std::string urlKey;
+		MangaServer s = mangaFormServer(mangaSrvFormKind, trimmed(mangaSrvFormName), url,
+			trimmed(mangaSrvFormUser), urlKey);
+		// the store takes a Kavita key out of the address itself and seals it: the address is handed over as typed
+		s.url = url;
 		if (!isMangaServerKind(s.kind)) { mangaSrvFormNote = "Choose a kind"; mangaSrvLocal++; return; }
 		if (s.name.empty()) { mangaSrvFormNote = "Type a name"; mangaSrvFormCursor = SRV_FORM_NAME; mangaSrvLocal++; return; }
 		if (s.name.size() > 40) { mangaSrvFormNote = "A name of up to 40 characters"; mangaSrvLocal++; return; }
@@ -1146,7 +1211,8 @@ namespace bp
 			s.id = id;
 			if (!store.update(s)) { mangaSrvFormNote = "The server wasn\xE2\x80\x99t saved"; mangaSrvLocal++; return; }
 		}
-		if (mangaSrvFormPasswordTyped)
+		// an empty field with a key still in the address keeps that key: the address still names one
+		if (mangaSrvFormPasswordTyped && !(mangaSrvFormPassword.empty() && s.kind == "kavita" && !urlKey.empty()))
 		{
 			// the store seals it with secret.*; a plain one never reaches the file
 			if (!store.setPassword(id, mangaSrvFormPassword) && !mangaSrvFormPassword.empty())
@@ -1193,7 +1259,9 @@ namespace bp
 		values[SRV_FORM_PASS] = pass;
 		values[SRV_FORM_TEST] = test;
 		values[SRV_FORM_SAVE] = "Save";
-		static const char* LABELS[MGSRV_FORM_ROWS] = {"Kind", "Name", "Address", "User", "Password", "Test", "Save"};
+		// Kavita's secret is its api key: the field says so, and the note under the rows too
+		const char* LABELS[MGSRV_FORM_ROWS] = {"Kind", "Name", "Address", "User",
+			mangaSrvFormKind == "kavita" ? "API key" : "Password", "Test", "Save"};
 		for (int i = 0; i < MGSRV_FORM_ROWS; i++)
 		{
 			Rect r = mangaSrvFormRowRect(i);
@@ -1211,7 +1279,9 @@ namespace bp
 				592, mid, 420, 1);
 		}
 		if (!mangaSrvFormNote.empty()) drawTextMid(mangaSrvFormNote, 0, DANGER, W / 2, 362, 592, 2);
-		else drawTextMid("A password is sealed on Save and never shown again.", 0, DIM, W / 2, 362, 592, 2);
+		else drawTextMid(mangaSrvFormKind == "kavita"
+			? "The API key is sealed on Save and never shown again."
+			: "A password is sealed on Save and never shown again.", 0, DIM, W / 2, 362, 592, 2);
 		drawHints({{"A", "Change"}, {"LEFT/RIGHT", "Kind"}, {"B", "Back"}});
 	}
 

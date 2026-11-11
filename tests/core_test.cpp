@@ -859,6 +859,169 @@ static void testMangaServers()
 	rmdir(root.c_str());
 }
 
+// Kavita's api key: it lives sealed and nowhere else. An address holding it is split into {key} and the sealed
+// password (and an old saved one is migrated on load), requests put it back only when they are built, and every
+// answer has it turned back into {key} before anything reads it, so ids, hrefs and page urls never carry it
+static void testMangaKavitaKey()
+{
+	char tmpl[] = "/tmp/bp-manga-kavita-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made, state = root + "/state", file = state + "/manga/servers.tsv";
+	auto readFile = [](const std::string& path)
+	{
+		std::ifstream f(path);
+		std::stringstream ss;
+		ss << f.rdbuf();
+		return ss.str();
+	};
+
+	MangaServerStore st;
+	CHECK_EQ(st.load(state), true);
+
+	// an address as Kavita prints it (its own "Opds" spelling): the key comes out and {key} takes its place
+	const std::string key = "9c3f0a61be";
+	MangaServer k;
+	k.kind = "kavita";
+	k.name = "Kavita";
+	k.url = "https://kavita.lan:5000/api/Opds/" + key + "/";
+	std::string kid = st.add(k);
+	CHECK_EQ(kid.size(), (size_t)8);
+	const MangaServer* saved = st.find(kid);
+	CHECK_EQ(saved != nullptr, true);
+	if (saved)
+	{
+		CHECK_EQ(saved->url, std::string("https://kavita.lan:5000/api/Opds/{key}/"));
+		CHECK_EQ(saved->url.find(key), std::string::npos);
+		CHECK_EQ(saved->hasPassword(), true);
+	}
+	CHECK_EQ(st.password(kid), key);	// and it opens again as the sealed password
+	std::string text = readFile(file);
+	CHECK_EQ(text.find(key) == std::string::npos, true);	// never in plain text, never in the url
+	CHECK_EQ(text.find("{key}") != std::string::npos, true);
+	CHECK_EQ(text.find("v1:") != std::string::npos, true);
+
+	// a key typed in the form's API key field, with an address that has none: Kavita's OPDS path is where it goes
+	MangaServer t;
+	t.kind = "kavita";
+	t.name = "Typed key";
+	t.url = "https://kavita.lan:5000";
+	std::string tid = st.add(t);
+	CHECK_EQ(tid.size(), (size_t)8);
+	CHECK_EQ(st.find(tid)->url, std::string("https://kavita.lan:5000/api/opds/{key}"));
+	CHECK_EQ(st.setPassword(tid, "typedkey123"), true);
+	CHECK_EQ(st.password(tid), std::string("typedkey123"));
+	// the endpoint without a key takes one too; any other address is left alone
+	MangaServer e;
+	e.kind = "kavita";
+	e.name = "Endpoint";
+	e.url = "https://kavita.lan:5000/api/opds/";
+	std::string eid = st.add(e);
+	CHECK_EQ(st.find(eid)->url, std::string("https://kavita.lan:5000/api/opds/{key}"));
+	MangaServer other;
+	other.kind = "kavita";
+	other.name = "Elsewhere";
+	other.url = "https://kavita.lan:5000/kavita";
+	std::string oid = st.add(other);
+	CHECK_EQ(st.find(oid)->url, std::string("https://kavita.lan:5000/kavita"));
+
+	// requests: {key} becomes the opened key, only in the url, and never a header
+	MangaServer req = *st.find(kid);
+	std::string pw = st.password(kid);
+	RemoteRequest rq = remoteAuth(req, pw, req.url);
+	CHECK_EQ(rq.url, std::string("https://kavita.lan:5000/api/Opds/" + key + "/"));
+	CHECK_EQ(rq.headers.size(), (size_t)1);
+	CHECK_EQ(remoteOpdsStart(req, pw).url, rq.url);
+	CHECK_EQ(remoteWithKey(req, pw, "https://h/api/opds/{key}/x"), std::string("https://h/api/opds/" + key + "/x"));
+	MangaServer komga = req;
+	komga.kind = "komga";
+	CHECK_EQ(remoteWithKey(komga, pw, "https://h/{key}"), std::string("https://h/{key}"));	// another kind's url
+	CHECK_EQ(remoteWithKey(req, "", "https://h/{key}"), std::string("https://h/{key}"));	// nothing to put in
+
+	// every Kavita answer repeats the address, key and all: the key is {key} before a parser reads the body
+	const std::string nav = R"NAV(<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:kavita:opds:9c3f0a61be</id>
+  <link rel="next" href="https://kavita.lan:5000/api/Opds/9c3f0a61be/libraries?page=2"/>
+  <entry>
+    <id>urn:kavita:series:11</id>
+    <title>Paper Lanterns</title>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=navigation"
+          href="https://kavita.lan:5000/api/Opds/9c3f0a61be/series/11"/>
+    <link rel="http://opds-spec.org/image" type="image/jpeg"
+          href="https://kavita.lan:5000/api/Opds/9c3f0a61be/series/11/cover.jpg"/>
+  </entry>
+</feed>)NAV";
+	std::string clean = remoteWithoutKey(req, pw, nav);
+	CHECK_EQ(clean.find(key), std::string::npos);
+	CHECK_EQ(clean.find("{key}") != std::string::npos, true);
+	RemoteList list;
+	CHECK_EQ(remoteOpdsList("https://kavita.lan:5000/api/Opds/{key}/", clean, list), true);
+	CHECK_EQ(list.items.size(), (size_t)1);
+	CHECK_EQ(list.items[0].key, std::string("https://kavita.lan:5000/api/Opds/{key}/series/11"));
+	CHECK_EQ(list.items[0].cover, std::string("https://kavita.lan:5000/api/Opds/{key}/series/11/cover.jpg"));
+	CHECK_EQ(list.next, std::string("https://kavita.lan:5000/api/Opds/{key}/libraries?page=2"));
+
+	// a chapter's stream template keeps {key} too; the reader's page urls get the key back only when the request is
+	// built (ui_manga_servers.cpp's chapter open does what remoteWithKey does here)
+	const std::string acq = R"ACQ(<feed xmlns="http://www.w3.org/2005/Atom" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <entry>
+    <id>urn:kavita:chapter:1</id>
+    <title>Chapter 1</title>
+    <link rel="http://vaemendis.net/opds-pse/stream" type="image/jpeg"
+          href="https://kavita.lan:5000/api/Opds/9c3f0a61be/series/11/ch/1/{pageNumber}?width={maxWidth}" pse:count="2"/>
+  </entry>
+</feed>)ACQ";
+	std::vector<RemoteChapter> chapters;
+	CHECK_EQ(remoteOpdsChapters("https://kavita.lan:5000/api/Opds/{key}/series/11",
+		remoteWithoutKey(req, pw, acq), chapters), true);
+	CHECK_EQ(chapters.size(), (size_t)1);
+	CHECK_EQ(chapters[0].key, std::string(
+		"https://kavita.lan:5000/api/Opds/{key}/series/11/ch/1/{pageNumber}?width={maxWidth}"));
+	std::vector<std::string> pages = remoteOpdsPageUrls(chapters[0], 640);
+	CHECK_EQ(pages.size(), (size_t)2);
+	CHECK_EQ(pages[0], std::string("https://kavita.lan:5000/api/Opds/{key}/series/11/ch/1/0?width=640"));
+	CHECK_EQ(pages[0].find(key), std::string::npos);
+	CHECK_EQ(remoteWithKey(req, pw, pages[0]),
+		std::string("https://kavita.lan:5000/api/Opds/" + key + "/series/11/ch/1/0?width=640"));
+	// the key never reaches a body that isn't Kavita's, and a body with no key to hide comes back as it came
+	CHECK_EQ(remoteWithoutKey(komga, pw, nav), nav);
+	CHECK_EQ(remoteWithoutKey(req, "", nav), nav);
+
+	// an old saved server whose url still holds the key is migrated when the store loads: sealed, and written back
+	std::string old = root + "/old";
+	mkdir(old.c_str(), 0755);
+	mkdir((old + "/manga").c_str(), 0755);
+	{
+		std::ofstream f(old + "/manga/servers.tsv");
+		f << "# banana-player manga servers v1\n";
+		f << "aaaa1111\tkavita\tOld Kavita\thttps://kavita.lan:5000/api/opds/0ldk3y/\t\t\n";
+	}
+	MangaServerStore migrated;
+	CHECK_EQ(migrated.load(old), true);
+	const MangaServer* m = migrated.find("aaaa1111");
+	CHECK_EQ(m != nullptr, true);
+	if (m)
+	{
+		CHECK_EQ(m->url, std::string("https://kavita.lan:5000/api/opds/{key}/"));
+		CHECK_EQ(m->url.find("0ldk3y"), std::string::npos);
+	}
+	CHECK_EQ(migrated.password("aaaa1111"), std::string("0ldk3y"));
+	std::string back = readFile(old + "/manga/servers.tsv");
+	CHECK_EQ(back.find("0ldk3y") == std::string::npos, true);
+	CHECK_EQ(back.find("{key}") != std::string::npos, true);
+	CHECK_EQ(back.find("v1:") != std::string::npos, true);
+
+	unlink(file.c_str());
+	unlink((state + "/manga/servers.key").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+	unlink((old + "/manga/servers.tsv").c_str());
+	unlink((old + "/manga/servers.key").c_str());
+	rmdir((old + "/manga").c_str());
+	rmdir(old.c_str());
+	rmdir(root.c_str());
+}
+
 // bp.html for the source scripts (docs/design/manga.md 5.2): parse a page, find nodes by CSS, read them
 static void testHtmlDoc()
 {
@@ -7703,6 +7866,7 @@ int main()
 	testPublicAddress();
 	testMangaRemote();
 	testMangaServers();
+	testMangaKavitaKey();
 	testHtmlDoc();
 	testPageCache();
 	testDlQueue();

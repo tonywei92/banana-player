@@ -158,9 +158,11 @@ namespace bp
 		}
 
 		// The servers we keep: a known kind, a name of 1..40 characters and a url we can reach. The name is trimmed
-		// and the url loses its credentials: a plain password is never kept anywhere.
-		bool prepare(MangaServer& s)
+		// and the url loses its credentials: a plain password is never kept anywhere. A Kavita address's api key is
+		// taken out of the url here and handed back for sealing: it never stays in the address.
+		bool prepare(MangaServer& s, std::string& urlKey)
 		{
+			urlKey.clear();
 			s.kind = lowerAscii(trim(s.kind));
 			if (!isMangaServerKind(s.kind)) return false;
 			s.name = trim(s.name);
@@ -170,7 +172,17 @@ namespace bp
 				if (c < ' ' || c == 127) return false;	// it goes into a header later on
 			s.url = trim(s.url);
 			s.url = withoutUrlCredentials(s.url);
-			return isMangaServerUrl(s.url);
+			if (!isMangaServerUrl(s.url)) return false;
+			if (s.kind == "kavita")
+			{
+				std::string stored, key;
+				if (readKavitaUrl(s.url, stored, key) && isMangaServerUrl(stored))
+				{
+					s.url = stored;
+					urlKey = key;
+				}
+			}
+			return true;
 		}
 
 		// A sealed password is only ours when it opens with our key: plain text must never reach the file.
@@ -248,6 +260,58 @@ namespace bp
 		return url.substr(0, start) + host + (end == std::string::npos ? "" : url.substr(end));
 	}
 
+	namespace
+	{
+		// Kavita's own OPDS path, in the spelling Kavita writes it in ("/api/Opds"): the segment the key follows.
+		const char* const KAVITA_OPDS = "/api/opds/";
+
+		// Kavita prints its OPDS address as …/api/opds/<key>: the key runs to the path's end or to the tail after
+		// it. Matched without case, since Kavita itself writes "Opds".
+		bool splitKavitaApiKey(const std::string& url, std::string& storedUrl, std::string& key)
+		{
+			storedUrl = url;
+			key.clear();
+			size_t at = lowerAscii(url).find(KAVITA_OPDS);
+			if (at == std::string::npos) return false;
+			size_t start = at + std::string(KAVITA_OPDS).size();
+			size_t end = url.find_first_of("/?#", start);
+			if (end == std::string::npos) end = url.size();
+			std::string k = url.substr(start, end - start);
+			if (k.empty() || k == "{key}") return false;	// no key, or already the placeholder
+			key = k;
+			storedUrl = url.substr(0, start) + "{key}" + url.substr(end);
+			return true;
+		}
+
+		// An address that names Kavita's OPDS endpoint (or only the server) and no key yet: {key} goes where the key
+		// belongs, so one typed in the form has a place to go. Any other address is left as it is.
+		std::string kavitaOpdsUrl(const std::string& url)
+		{
+			size_t scheme = url.find("://");
+			if (scheme == std::string::npos) return url;
+			size_t start = scheme + 3;
+			size_t authEnd = url.find_first_of("/?#", start);
+			std::string base = url.substr(0, authEnd == std::string::npos ? url.size() : authEnd);
+			if (authEnd == std::string::npos) return base + KAVITA_OPDS + "{key}";
+			size_t pathEnd = url.find_first_of("?#", authEnd);
+			std::string path = url.substr(authEnd, pathEnd == std::string::npos ? std::string::npos : pathEnd - authEnd);
+			std::string tail = pathEnd == std::string::npos ? "" : url.substr(pathEnd);
+			std::string lower = lowerAscii(path);
+			if (lower == "/api/opds" || lower == "/api/opds/" || lower == "/" || lower.empty())
+				return base + KAVITA_OPDS + "{key}" + tail;
+			return url;
+		}
+	}
+
+	bool readKavitaUrl(const std::string& url, std::string& storedUrl, std::string& key)
+	{
+		if (splitKavitaApiKey(url, storedUrl, key)) return true;
+		std::string opds = kavitaOpdsUrl(url);
+		if (opds == url) return false;
+		storedUrl = opds;
+		return true;
+	}
+
 	bool MangaServerStore::load(const std::string& stateDir)
 	{
 		dir_ = stateDir;
@@ -262,6 +326,26 @@ namespace bp
 		if (loadOrCreateKey(manga + "/servers.key", fileKey)) key_ = deriveKey(fileKey, deviceSerial());
 		std::string text;
 		if (readWhole(manga + "/servers.tsv", text)) parse(text);
+		// an address saved while Kavita's key was still in it is migrated here: the key is sealed and the file
+		// written back, so a plain key never stays on the card
+		bool migrated = false;
+		for (MangaServer& s : servers_)
+		{
+			if (s.kind != "kavita") continue;
+			std::string stored, urlKey;
+			readKavitaUrl(s.url, stored, urlKey);
+			if (!urlKey.empty())
+			{
+				if (key_.empty()) continue;	// without a key it can't be sealed, and it must not stay in the url
+				std::string sealed = sealSecret(urlKey, key_);
+				if (sealed.empty()) continue;
+				s.sealedPassword = sealed;
+			}
+			if (stored == s.url) continue;
+			s.url = stored;
+			migrated = true;
+		}
+		if (migrated) save();
 		changes_++;	// what the reader shows is different now
 		return true;
 	}
@@ -277,7 +361,16 @@ namespace bp
 
 	std::string MangaServerStore::add(MangaServer s)
 	{
-		if (!prepare(s)) return "";
+		std::string urlKey;
+		if (!prepare(s, urlKey)) return "";
+		// a key out of a Kavita address is sealed like a typed one: it never stays in the url in plain text
+		if (!urlKey.empty())
+		{
+			if (key_.empty()) return "";
+			std::string sealed = sealSecret(urlKey, key_);
+			if (sealed.empty()) return "";
+			s.sealedPassword = sealed;
+		}
 		if (s.id.empty()) s.id = newServerId();
 		for (auto& o : servers_)
 			if (o.id == s.id) return "";	// the id is taken: update() changes that one
@@ -291,13 +384,20 @@ namespace bp
 
 	bool MangaServerStore::update(MangaServer s)
 	{
-		if (!prepare(s)) return false;
+		std::string urlKey;
+		if (!prepare(s, urlKey)) return false;
 		auto it = std::find_if(servers_.begin(), servers_.end(), [&](const MangaServer& o) { return o.id == s.id; });
 		if (it == servers_.end()) return false;
 		// the password stays unless a new sealed one comes with it, so an update that knows nothing of it doesn't
-		// throw it away
+		// throw it away; a key out of the address is the newest one and replaces it
 		std::string sealed = it->sealedPassword;
-		if (!s.sealedPassword.empty() && opensWith(s.sealedPassword, key_)) sealed = s.sealedPassword;
+		if (!urlKey.empty())
+		{
+			if (key_.empty()) return false;
+			sealed = sealSecret(urlKey, key_);
+			if (sealed.empty()) return false;
+		}
+		else if (!s.sealedPassword.empty() && opensWith(s.sealedPassword, key_)) sealed = s.sealedPassword;
 		s.sealedPassword = sealed;
 		*it = s;
 		changes_++;
