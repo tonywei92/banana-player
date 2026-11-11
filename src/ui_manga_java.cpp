@@ -396,6 +396,7 @@ namespace bp
 	{
 		if (videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000)
 			return "Video stopped: no video in the manga reader";
+		if (noticeUntil && SDL_GetTicks() < noticeUntil) return noticeText;
 		if (!mangaNet || !mangaNet->started()) return "";
 		int st = (int)mangaNet->javaExt().state();
 		Uint32 now = SDL_GetTicks();

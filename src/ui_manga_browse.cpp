@@ -1467,7 +1467,7 @@ namespace bp
 		if (!mangaSourceEngineReady() && i >= 0 && i < (int)mangaSrcChapters.size() &&
 			mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]).kind != MangaDlMark::OnCard)
 		{
-			p.osd("The manga engine is still loading", 1500);
+			mangaNotice("The manga engine is still loading\xE2\x80\xA6", 2000);
 			return;
 		}
 		if (i < 0 || i >= (int)mangaSrcChapters.size()) return;
@@ -1493,7 +1493,7 @@ namespace bp
 	{
 		if (!mangaSourceEngineReady())
 		{
-			p.osd("The manga engine is still loading", 1500);
+			mangaNotice("The manga engine is still loading\xE2\x80\xA6", 2000);
 			return;
 		}
 		if (mangaSrcChapters.empty()) return;

@@ -1288,6 +1288,10 @@ namespace bp
 		mutable int extNoticeState = -1;
 		Uint32 videoBlockedAt = 0;
 		Uint32 engineStopAt = 0;
+		// a short line in the notice at the top of the panel, gone by itself (the manga engine's other notices' place)
+		std::string noticeText;
+		Uint32 noticeUntil = 0;
+		void mangaNotice(const std::string& text, Uint32 ms) { noticeText = text; noticeUntil = SDL_GetTicks() + ms; }
 		// a manga source that stands behind a browser check (Cloudflare, DDoS-Guard): a dialog says so, OK closes it.
 		// Opened once per error (mangaErrFor), over any page
 		bool mangaErrOpen = false;
