@@ -1182,6 +1182,24 @@ namespace bp
 			mangaSrcPendPage, mangaSrcPendMode, mangaSrcPendFit};
 		mangaRead.pageUrls = mangaSrcUrls;
 		mangaRead.pageHeaders = mangaSrcHeaders;
+		// in History at once: the chapter as opened (its length is the list's), not only after a page turns
+		if (mangaStore)
+		{
+			const ChapterProgress* old = mangaStore->progress(chapterId);
+			ChapterProgress cp = old ? *old : ChapterProgress{};
+			cp.seriesId = mangaSrcPendSeriesId;
+			cp.chapterId = chapterId;
+			cp.chapterTitle = mangaReadChapterTitle;
+			if (!old)
+			{
+				cp.page = mangaSrcPendPage;
+				cp.pages = (int)mangaSrcUrls.size();
+			}
+			cp.hidden = !mangaHistOn;
+			cp.at = (int64_t)time(nullptr);
+			mangaStore->setProgress(cp);
+			mangaSave();
+		}
 		// the status still holds the chapter before: only a change records
 		mangaProgPage = readerStatus.page;
 		mangaProgPages = readerStatus.pages;
@@ -1485,7 +1503,7 @@ namespace bp
 			if (mangaView == 1) mangaFilterAsk();
 			return false;
 		}
-		if (b == Button::Y) { mangaSourceSeriesInLibrary(p); return false; }
+		// (In library is its button alone: touched, not a key)
 		if (b == Button::A)
 		{
 			if (!mangaSrcError.empty() && !mangaSrcChaptersOn) mangaSourceRetry(p);
@@ -1692,7 +1710,7 @@ namespace bp
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
 		// X still marks a chapter read, but six hints don't fit this panel's line: its action stays (the row's marks
 		// show read and unread), and the four buttons carry the rest
-		drawHints({{"A", "Read"}, {"Y", "In library"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
+		drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) drawMangaDlSheet(p);
 	}
 

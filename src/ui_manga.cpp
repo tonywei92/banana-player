@@ -1082,6 +1082,14 @@ namespace bp
 		return nullptr;
 	}
 
+	std::string Ui::mangaSeriesCoverUrl(const std::string& seriesId) const
+	{
+		// a source's or a server's series keeps its cover's URL in the store; a local one's is read from the card
+		const MangaSeries* s = mangaStore ? mangaStore->series(seriesId) : nullptr;
+		if (!s || s->cover.compare(0, 4, "http") != 0) return "";
+		return s->cover;
+	}
+
 	std::string Ui::mangaCoverKey(const std::string& url)
 	{
 		static const std::string local = "http://127.0.0.1:";
@@ -1199,8 +1207,9 @@ namespace bp
 		if (!coverUrl.empty())
 		{
 			mangaCoverOnScreen.insert(mangaCoverKey(coverUrl));
-			int pw = std::max(1, (int)std::lround(in.w * sx));
-			int ph = std::max(1, (int)std::lround(in.h * sy));
+			// (always the grid's size: one texture per cover, drawn smaller in History and the cards)
+			int pw = std::max(1, (int)std::lround(MG_COVER_W * sx));
+			int ph = std::max(1, (int)std::lround(MG_COVER_H * sy));
 			const std::vector<std::pair<std::string, std::string>> empty;
 			SDL_Texture* tex = coverOfUrl(coverUrl, pw, ph, coverHeaders ? *coverHeaders : empty);
 			if (tex)
@@ -1274,7 +1283,7 @@ namespace bp
 			drawBox(r, mangaPressed == MG_CARD + i ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
 			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
 			std::string title = mangaTitle(cp.seriesId);
-			drawMangaCover({r.x + 12, r.y + 6, 36, 54}, title, false, 2, cp.seriesId);
+			drawMangaCover({r.x + 12, r.y + 6, 36, 54}, title, false, 2, cp.seriesId, mangaSeriesCoverUrl(cp.seriesId));
 			drawTextMid(title, 0, ink, r.x + 56, r.y + 18, r.w - 64);
 			// ("Ch." only before a bare title: "Chapter 1" says it already)
 			// ("Chapter 12" shortened to "Ch. 12": the card is a third of the panel, and the page must show whole)
@@ -1309,7 +1318,7 @@ namespace bp
 			Rect r = mangaCoverRect(i);
 			if (r.y >= 416) break;
 			bool at = mlibZone == 1 && mlibGrid == i;
-			drawMangaCover(r, mangaLib[i].title, at, 4, mangaLib[i].id);
+			drawMangaCover(r, mangaLib[i].title, at, 4, mangaLib[i].id, mangaSeriesCoverUrl(mangaLib[i].id));
 			drawTextMid(mangaLib[i].title, 0, at ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h + 13, r.w, 2);
 			int unread = i < (int)mangaLibUnread.size() ? mangaLibUnread[i] : 0;
 			if (unread > 0)
@@ -1353,8 +1362,10 @@ namespace bp
 			bool at = i == mhisCursor;
 			if (at) drawFocus({16, y, 608, MG_HIST_ROW_H - 4});
 			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-			drawTextMid(mangaTitle(cp.seriesId), 1, ink, 32, mid - 10, 462);
-			drawTextMid(cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, 32, mid + 10, 462);
+			// its cover, small, as the Library's card shows it
+			drawMangaCover({28, mid - 23, 32, 46}, mangaTitle(cp.seriesId), false, 1, cp.seriesId, mangaSeriesCoverUrl(cp.seriesId));
+			drawTextMid(mangaTitle(cp.seriesId), 1, ink, 72, mid - 10, 422);
+			drawTextMid(cp.chapterTitle + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, 72, mid + 10, 422);
 			drawTextMid(mangaAgo(cp.at, (int64_t)time(nullptr)), 0, soft, 604, mid, 120, 1);
 		}
 		drawScrollBar(MG_ROW_TOP, MG_HIST_ROWS * MG_HIST_ROW_H - 4, mhisScroll, MG_HIST_ROWS, n);
