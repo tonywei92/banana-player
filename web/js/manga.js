@@ -10,15 +10,14 @@ import { ask, toast } from './toasts.js';
 // three pages under the Manga item: Library, Sources and Downloads. All data comes from /api/manga/*;
 // the SSE "manga" event bumps mangaTick, which triggers a reload. The reader must be on (mangaOn in the snapshot)
 // or every endpoint answers 404.
+// For now the page is the repository manager alone (a repository's address is long to type on the handheld); the
+// library, the sources and the downloads are the handheld's. Library, Sources' lists and Downloads stay below,
+// unused, to come back. Any #/manga/... route lands here.
 export function Manga() {
-	const sub = store.route.sub || 'library';
 	return html`<div class="page">
-		<div class="phead"><div class="row"><h1>Manga</h1><${AppMenu} /></div>
-			<div class="seg tabs2" role="tablist" aria-label="Manga">
-				${[['library', 'Library'], ['sources', 'Sources'], ['downloads', 'Downloads']].map(([k, l]) =>
-					html`<button role="tab" aria-selected=${sub === k} onClick=${() => go('#/manga/' + k)}>${l}</button>`)}
-			</div></div>
-		${sub === 'sources' ? html`<${Sources} />` : sub === 'downloads' ? html`<${Downloads} />` : html`<${Library} />`}
+		<div class="phead"><div class="row"><h1>Manga repositories</h1><${AppMenu} /></div></div>
+		<${Sources} reposOnly=${true} />
+		<p class="note">Browse, read and download on the handheld (Manga in Extensions).</p>
 	</div>`;
 }
 
@@ -134,7 +133,7 @@ function SeriesView({ id, data, onBack }) {
 
 // repositories card on top, then installed sources first, available below. Repositories: paste a URL, Add,
 // each one's name, count, last fetched, Refresh, Remove. The neutral note.
-function Sources() {
+function Sources({ reposOnly } = {}) {
 	const s = useStore();
 	const [data, setData] = useState(null), [err, setErr] = useState(''), [url, setUrl] = useState('');
 	const slow = useLater(!data && !err, 300);
@@ -179,7 +178,7 @@ function Sources() {
 		<section class="box surface card" aria-label="Repositories" style="margin-bottom:16px">
 			<div class="card-head"><h2>Repositories</h2></div>
 			<div class="mrepo-add" style="display:flex;gap:8px;margin-bottom:8px">
-				<input class="field grow" type="url" placeholder="Paste a repository URL (…/index.pb works too)" value=${url} onInput=${e => setUrl(e.target.value)}
+				<input class="field grow" type="url" placeholder="Paste a repository URL" value=${url} onInput=${e => setUrl(e.target.value)}
 					onKeyDown=${e => { if (e.key === 'Enter') addRepo(); }} aria-label="Repository URL" />
 				<button class="btn primary" disabled=${!url.trim()} onClick=${addRepo}>Add</button>
 			</div>
@@ -195,7 +194,7 @@ function Sources() {
 				</div>`)}</div>`}
 			<p class="note" style="margin-top:8px;margin-bottom:0">Repositories are added by you. Banana Player doesn't provide or check their content.</p>
 		</section>
-		${installed.length > 0 && html`<section style="margin-bottom:16px">
+		${!reposOnly && installed.length > 0 && html`<section style="margin-bottom:16px">
 			<div class="band" style="margin-bottom:8px"><span class="kicker">Installed</span><span class="rule"></span></div>
 			<div class="msrc-list">${installed.map(src => html`<div class="msrc-row box surface" key=${src.id}>
 				<div class="grow">
@@ -206,7 +205,7 @@ function Sources() {
 				<button class="ib sm" aria-label=${'Uninstall ' + src.name} title="Uninstall" onClick=${() => uninstall(src.id, src.name)}><${Icon} n="trash" k=${1} /></button>
 			</div>`)}</div>
 		</section>`}
-		${available.length > 0 && html`<section>
+		${!reposOnly && available.length > 0 && html`<section>
 			<div class="band" style="margin-bottom:8px"><span class="kicker">Available</span><span class="rule"></span></div>
 			<div class="msrc-list">${available.filter(a => showAdult || !a.adult).map(a => html`<div class="msrc-row box surface" key=${a.id}>
 				<div class="grow">
