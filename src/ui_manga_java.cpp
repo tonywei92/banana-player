@@ -35,9 +35,12 @@ namespace bp
 		std::vector<const SuwayomiExt*> javaAvailableExtensions(const MangaJava& mgr, bool adult)
 		{
 			std::vector<const SuwayomiExt*> out;
+			// the installed ones too, on top: those with an update first, then the rest installed, then what isn't
 			for (const SuwayomiExt& e : mgr.extensions())
-				if (!e.isInstalled && !e.isObsolete && (adult || !e.isNsfw)) out.push_back(&e);
-			std::sort(out.begin(), out.end(), [](const SuwayomiExt* a, const SuwayomiExt* b) {
+				if (e.isInstalled || (!e.isObsolete && (adult || !e.isNsfw))) out.push_back(&e);
+			auto rank = [](const SuwayomiExt* e) { return e->isInstalled ? (e->hasUpdate ? 0 : 1) : 2; };
+			std::sort(out.begin(), out.end(), [&](const SuwayomiExt* a, const SuwayomiExt* b) {
+				if (rank(a) != rank(b)) return rank(a) < rank(b);
 				if (a->name != b->name) return a->name < b->name;
 				return a->lang < b->lang;
 			});
@@ -184,6 +187,21 @@ namespace bp
 		if (local < 0 || local >= (int)list.size()) return;
 		const std::string pkg = list[local]->pkgName;
 		std::string error;
+		// installed already: A updates it when there's a newer one (the row's Update chip), else says so
+		if (list[local]->isInstalled)
+		{
+			if (mstJavaBusy.count(pkg)) return;
+			if (!list[local]->hasUpdate) { p.osd("Installed \xC2\xB7 up to date", 1500); return; }
+			if (!mangaNet->javaSources().update(pkg, error))
+			{
+				p.osd(error.empty() ? "The extension couldn't be updated" : error, 3000);
+				return;
+			}
+			mstJavaBusy[pkg] = "Updating\xE2\x80\xA6";
+			mstJavaBusyAt[pkg] = SDL_GetTicks();
+			mstJavaLocal++;
+			return;
+		}
 		if (!mangaNet->javaSources().install(pkg, error))
 		{
 			p.osd(error.empty() ? "The extension couldn't be installed" : error, 3000);
@@ -433,11 +451,18 @@ namespace bp
 		auto busy = mstJavaBusy.find(e->pkgName);
 		if (busy != mstJavaBusy.end())
 			drawTextMid(busy->second, 0, ACCENT, 520, mid, 0, 1);
-		else if (tab == MST_INSTALLED && e->hasUpdate)
+		else if (e->isInstalled && e->hasUpdate)
 		{
 			int w = (int)std::lround(textWidth("Update", 0) / sx) + 16;
-			fillRound({520 - w, mid - 10, w, 20}, ACCENT, R_CHIP);
-			drawTextMid("Update", 0, ON_ACCENT, 520 - w / 2, mid, w - 6, 2);
+			fillRound({608 - w, mid - 10, w, 20}, ACCENT, R_CHIP);
+			drawTextMid("Update", 0, ON_ACCENT, 608 - w / 2, mid, w - 6, 2);
+		}
+		else if (tab == MST_AVAILABLE && e->isInstalled)
+		{
+			// (Available lists the installed on top: marked, so A's "up to date" isn't a surprise)
+			int w = (int)std::lround(textWidth("Installed", 0) / sx) + 16;
+			fillRound({608 - w, mid - 10, w, 20}, TRACK, R_CHIP);
+			drawTextMid("Installed", 0, at ? DIM_ON : DIM, 608 - w / 2, mid, w - 6, 2);
 		}
 	}
 
