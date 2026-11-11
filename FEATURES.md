@@ -843,9 +843,10 @@ here to scroll* in **Strip**), and *Loading…* shows beside the page number whi
   Left/Right** on), and the forward key (or **R2**) opens the next one. The last chapter says **You're caught up**.
 - **Scrolling is the finger's alone**: the D-pad's **UP/DOWN** zoom, they never scroll. **By touch**: drag in the big
   area on the bottom screen to turn the page — it follows your finger and snaps to a page when you let go (a quick
-  flick turns the page even from a short drag), and in **Strip** it scrolls — the slider jumps to a page, and the two
-  buttons go to the chapter before or after. In fullscreen the whole bottom screen is the page, and the finger drags it
-  anywhere. A double-tap on the page zooms to 200 % at that spot, and a double-tap again goes back to the fit.
+  flick turns the page even from a short drag), and in **Strip** it scrolls — the slider jumps to a page, and the
+  buttons go to the chapter before or after, or turn fullscreen on (the middle one, as **SELECT** does). In fullscreen
+  the whole bottom screen is the page, and the finger drags it anywhere. A double-tap on the page zooms to 200 % at that
+  spot, and a double-tap again goes back to the fit.
 - Your place is kept on the card, in the player's own folder (`home/.config/banana-player`): the page of every chapter
   you've opened, and when.
 
@@ -862,11 +863,14 @@ settings…**. **UP/DOWN** choose a row, **LEFT/RIGHT** change it where you stan
 **START** closes the menu: reading goes on exactly where it was. The last row opens **Manga settings**, and **Pages**
 opens the grid below.
 
-**Fullscreen (both screens).** **SELECT** while reading turns it on and off. The two panels become one tall view and
+**Fullscreen (both screens).** **SELECT** while reading turns it on and off, and so does the **Fullscreen** button
+between **Prev chapter** and **Next chapter** on the reading page. The two panels become one tall view and
 the gap under the hinge is skipped, so the art lines up across the fold; the bottom panel draws its share of the pages
 from the pages the reader has already decoded. The gap's size is a setting of its own, **Hinge gap** in **Manga
 settings**: **36** of the panel's 480 lines by default. **B** leaves fullscreen first, and only then closes the reader.
-The page number shows for a moment after the page changes.
+The page number shows for a moment after the page changes. A tap puts the controls bar over the lower part of the
+view; while it shows, a tap anywhere outside the bar puts it away again and does nothing else (no page turn, no drag),
+and a tap on the bar's own controls works as it says.
 
 **The Pages grid.** **Y** while reading (or the Reading menu's **Pages**) opens the chapter's thumbnails, six to a
 row, each with its page number in its cell, on the page you're reading. Pages not decoded yet show their number alone

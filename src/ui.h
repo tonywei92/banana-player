@@ -1261,6 +1261,9 @@ namespace bp
 		bool mangaTap = false;
 		int mangaTapX = 0, mangaTapY = 0;
 		Uint32 mangaTapAt = 0;
+		// the finger came down outside the bar while it showed: lifted as a tap, it puts the bar away and does
+		// nothing else; moved, it drags the page and hides the bar as any drag does
+		bool mangaTapDismiss = false;
 		int mangaCtrlPressed = -1;
 		// double-tap on the page area: zoom to 200 % at the tapped point / back to the fit, as A does (but at the
 		// finger). the first tap is recorded; a second tap within 300 ms and 20 units sends a ZoomPoint command
@@ -1381,12 +1384,15 @@ namespace bp
 		Rect mangaHeartRect() const { return {556, 84, 68, 44}; }
 		Rect mangaAreaRect() const { return {16, 70, 608, 260}; }
 		Rect mangaSliderRect() const { return {40, 352, 560, 22}; }
-		Rect mangaPrevRect() const { return {16, 404, 296, 40}; }
-		Rect mangaNextRect() const { return {328, 404, 296, 40}; }
+		// the chapter row: three buttons of the same size, 16 apart across the panel's 608
+		Rect mangaPrevRect() const { return {16, 404, 192, 40}; }
+		Rect mangaFullRect() const { return {224, 404, 192, 40}; }	// the Fullscreen button: what SELECT does
+		Rect mangaNextRect() const { return {416, 404, 192, 40}; }
 		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
 		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;	// the tabs end at 94: History's and Browse's rows below them
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
-		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101;
+		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101,
+			MG_FULL = 3102;
 		// the pages grid: 6 columns of 96 px wide thumbnails, 6 px gap, centred in the 640-wide panel;
 		// each row is 130 px (thumb + page number), the grid starts below the header and ends above the hints
 		static constexpr int MPG_COLS = 6, MPG_THUMB_W = 96, MPG_GAP = 6, MPG_ROW_H = 130;

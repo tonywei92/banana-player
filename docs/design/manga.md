@@ -199,7 +199,7 @@ extensions; on a Manga page: Manga settings), L/R the reader's pages
 | **L3** | turn 90° (as photos; for double-page spreads printed sideways) | — |
 | **START** | the Reading menu: Fullscreen, Reading mode, Page fit, Zoom, Hinge gap (fullscreen only), Swap Left/Right, All Manga settings… | same |
 | **Drag (bottom)** | the page follows the finger sideways, its neighbour sliding in; let go: it snaps to a page (a quick flick turns even a short drag; a slow one past half). A zoomed or oversize page pans first, then the drag carries over to the next | the strip follows the finger 1:1; a flick glides on and slows by friction; no seam between pages or into the next chapter |
-| **Other touch** | slider to jump; the chapter buttons (in fullscreen the controls sheet: the slider, the chapters, Leave fullscreen, Close); double-tap: 2× / the fit; **pinch** to zoom only if the touchscreen reports two fingers (to verify on the hardware: `BottomTouch` reads one slot today) | the same; tap the map to jump |
+| **Other touch** | slider to jump; the chapter buttons (in fullscreen the controls sheet: the slider, the chapters, Leave fullscreen, Close); the reading page's **Fullscreen** button between Prev chapter and Next chapter does what SELECT does (one tap into fullscreen); once fullscreen's controls show, a tap anywhere outside the bar puts them away again and does nothing else; double-tap: 2× / the fit; **pinch** to zoom only if the touchscreen reports two fingers (to verify on the hardware: `BottomTouch` reads one slot today) | the same; tap the map to jump |
 
 The Reading menu is a compact sheet over the page (over the lower part of the fullscreen view): **UP/DOWN** choose a row,
 **LEFT/RIGHT** change it where you stand, **A** acts on it, and **B** or **START** closes it — reading goes on exactly
@@ -585,12 +585,18 @@ double-page spread printed sideways) is read without turning.
 - **The bottom panel draws its own share** of the pages, from the pages the reader has already decoded and kept, so the
   two panels show one continuous picture.
 - **The controls overlay on a tap.** In fullscreen the bottom panel is all page; a tap puts the reader's controls (the
-  page number, the slider, the chapter buttons) back over it, and a tap again takes them away.
+  page number, the slider, the chapter buttons) back over it, and a tap on the bar's own controls works on them. Once
+  the controls show, a tap anywhere outside the bar puts them away again, and that tap does nothing else: no page turn,
+  no drag.
+- **A bar of their own.** Not in fullscreen, the reading page's chapter row is **Prev chapter · Fullscreen · Next
+  chapter**, three buttons of one size, 16 apart; **Fullscreen** does what SELECT does. (There is no fullscreen glyph in
+  `ui_glyphs.h`, so its label is text, as its neighbours'.)
 - **The first-time toast.** The first time fullscreen opens, a toast says what it is and that **B** leaves it.
 - **Open fullscreen** is a setting of its own, **Open fullscreen** in **Manga settings**: with it on a chapter opens on
   both screens, so fullscreen is reached without the key (SELECT still turns it on and off).
 
-Built today: **SELECT**, **B** leaving fullscreen first, the one tall view, the skipped hinge gap and its setting
-(**Hinge gap** in Manga settings), the paged modes across both panels, the bottom panel's own share of the pages, and the
-page tag (the page number, shown for a moment after a change). The controls overlay on a tap and the first-time toast
-are built too, and **Open fullscreen** is a setting rather than a button.
+Built today: **SELECT**, the reading page's **Fullscreen** button, **B** leaving fullscreen first, the one tall view,
+the skipped hinge gap and its setting (**Hinge gap** in Manga settings), the paged modes across both panels, the bottom
+panel's own share of the pages, and the page tag (the page number, shown for a moment after a change). The controls
+overlay on a tap (a tap outside the bar puts it away) and the first-time toast are built too, and **Open fullscreen** is
+a setting rather than a button.

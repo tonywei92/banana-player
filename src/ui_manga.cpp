@@ -75,6 +75,7 @@ namespace bp
 		mangaSliderPage = -1;
 		mangaCtrlUntil = mangaToastUntil = 0;
 		mangaTap = false;
+		mangaTapDismiss = false;
 		mangaLastTapAt = 0;
 		mangaCtrlPressed = -1;
 		mangaMenu = false;
@@ -737,20 +738,27 @@ namespace bp
 				mangaTouch = mangaSlider = false;
 				mangaSliderPage = -1;
 				mangaTap = false;
+				mangaTapDismiss = false;
 				mangaLastTapAt = 0;
 				mangaCtrlPressed = -1;
 				// fullscreen's controls up: the sheet takes the finger (any touch there shows it 4 s more), and the
-				// pages outside it only wait to become a drag or, lifted, a tap
-				if (full && mangaCtrlUntil && now < mangaCtrlUntil && mangaSheetRect().hit(x, y))
+				// pages outside it only wait to become a drag or, lifted, a tap that puts the bar away
+				if (full && mangaCtrlUntil && now < mangaCtrlUntil)
 				{
-					mangaCtrlUntil = now + MG_CTRL_MS;
-					if (mangaSliderRect().hit(x, y)) { mangaSlider = true; seekHere(); }
-					else
-						for (int i = 0; i < 4; i++)
-							if (mangaCtrlBtnRect(i).hit(x, y)) mangaCtrlPressed = i;
-					return false;
+					if (mangaSheetRect().hit(x, y))
+					{
+						mangaCtrlUntil = now + MG_CTRL_MS;
+						if (mangaSliderRect().hit(x, y)) { mangaSlider = true; seekHere(); }
+						else
+							for (int i = 0; i < 4; i++)
+								if (mangaCtrlBtnRect(i).hit(x, y)) mangaCtrlPressed = i;
+						return false;
+					}
+					// outside the bar: the release decides, once the finger is known not to have dragged (a drag
+					// goes on to pan the page and hides the bar as it always did)
+					mangaTapDismiss = true;
 				}
-				if (buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
+				if (!mangaTapDismiss && buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
 				// fullscreen: the whole panel is the page, the finger drags it anywhere
 				if (mangaAreaRect().hit(x, y) || full)
 				{
@@ -775,6 +783,7 @@ namespace bp
 				int ci = mangaReadChapterIndex();
 				if (ci > 0 && mangaPrevRect().hit(x, y)) mangaPressed = MG_PREV;
 				else if (ci >= 0 && ci + 1 < mangaReadChapterTotal() && mangaNextRect().hit(x, y)) mangaPressed = MG_NEXT;
+				else if (mangaFullRect().hit(x, y)) mangaPressed = MG_FULL;
 				return false;
 			}
 			if (pt.kind == Pointer::Move)
@@ -790,6 +799,7 @@ namespace bp
 					if (mangaTap && (std::abs(x - mangaTapX) > MG_TAP_UNITS || std::abs(y - mangaTapY) > MG_TAP_UNITS))
 					{
 						mangaTap = false;
+						mangaTapDismiss = false;
 						mangaCtrlUntil = 0;
 					}
 					// (both: the strip goes by dy, the paged modes by dx)
@@ -823,23 +833,29 @@ namespace bp
 				// at the tapped point / back to the fit (as A does, but at the finger); alone, fullscreen's controls show
 				if (mangaTap && now - mangaTapAt <= MG_TAP_MS)
 				{
-					if (now - mangaLastTapAt <= 300 && std::abs(mangaTapX - mangaLastTapX) <= 20 &&
-						std::abs(mangaTapY - mangaLastTapY) <= 20)
-					{
-						double z = mangaZoomAsked >= 200 ? 1.0 : 2.0;
-						readerCmds.push_back({ReaderCmd::ZoomPoint, z, (int64_t)now,
-							mangaTapX / (double)Ui::W, mangaTapY / (double)Ui::H});
-						mangaLastTapAt = 0;
-					}
+					// the bar was up and this tap was outside it: it goes, and the tap does nothing else
+					if (mangaTapDismiss) mangaCtrlUntil = 0;
 					else
 					{
-						mangaLastTapAt = now;
-						mangaLastTapX = mangaTapX;
-						mangaLastTapY = mangaTapY;
+						if (now - mangaLastTapAt <= 300 && std::abs(mangaTapX - mangaLastTapX) <= 20 &&
+							std::abs(mangaTapY - mangaLastTapY) <= 20)
+						{
+							double z = mangaZoomAsked >= 200 ? 1.0 : 2.0;
+							readerCmds.push_back({ReaderCmd::ZoomPoint, z, (int64_t)now,
+								mangaTapX / (double)Ui::W, mangaTapY / (double)Ui::H});
+							mangaLastTapAt = 0;
+						}
+						else
+						{
+							mangaLastTapAt = now;
+							mangaLastTapX = mangaTapX;
+							mangaLastTapY = mangaTapY;
+						}
+						if (full) mangaCtrlUntil = now + MG_CTRL_MS;
 					}
-					if (full) mangaCtrlUntil = now + MG_CTRL_MS;
 				}
 				mangaTap = false;
+				mangaTapDismiss = false;
 				return false;
 			}
 			if (mangaSlider)
@@ -855,6 +871,7 @@ namespace bp
 				mangaPressed = -1;
 				if (id == MG_PREV && mangaPrevRect().hit(x, y)) mangaChapterStep(-1, p);
 				else if (id == MG_NEXT && mangaNextRect().hit(x, y)) mangaChapterStep(1, p);
+				else if (id == MG_FULL && mangaFullRect().hit(x, y)) mangaFullscreen(!readerStatus.fullscreen, p);
 			}
 			return false;
 		}
@@ -1492,9 +1509,12 @@ namespace bp
 		if (readerStatus.atEnd)
 			drawTextMid(next ? std::string("End of chapter \xC2\xB7 R2 or ") + (p.settings.mangaSwapLR ? "LEFT" : "RIGHT") + " for the next"
 				: "You\xE2\x80\x99re caught up", 0, next ? ACCENT : DIM, W / 2, 384, 560, 2);
-		Rect pb = mangaPrevRect(), nb = mangaNextRect();
+		Rect pb = mangaPrevRect(), fb = mangaFullRect(), nb = mangaNextRect();
 		drawBox(pb, mangaPressed == MG_PREV ? PRESSED : BUTTON, R_BUTTON);
 		drawButton(pb, &G_PREV, "Prev chapter", nullptr, !prev, 0);	// (L2/R2: in the hints)
+		// between them, as big as they are: fullscreen, exactly as SELECT turns it on
+		drawBox(fb, mangaPressed == MG_FULL ? PRESSED : BUTTON, R_BUTTON);
+		drawButton(fb, nullptr, "Fullscreen", nullptr, false, 0);
 		drawBox(nb, mangaPressed == MG_NEXT ? PRESSED : BUTTON, R_BUTTON);
 		drawButton(nb, &G_NEXT, "Next chapter", nullptr, !next, 0);
 		drawHints({{"UP/DOWN", "Zoom"}, {"LEFT/RIGHT", "Step"}, {"L/R", "Page"}, {"START", "Menu"}, {"SELECT", "Fullscreen"}, {"B", "Close"}});
