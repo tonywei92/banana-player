@@ -1,6 +1,8 @@
 #include "player.h"
 #include "format.h"
 #include "logo.h"
+#include "app_icon.h"
+#include <map>
 #include "netpath.h"
 #include "netstore.h"
 #include "netstream.h"
@@ -1523,24 +1525,60 @@ namespace bp
 		// the icon as ASS drawings, a run of pixels a rectangle, one event a colour; on a 960x720 canvas
 		const int px = 6, x0 = 480 - 16 * px, y0 = 110;
 		std::string ev;
-		const struct { char c; std::string colour; } inks[] = {{'.', ass(TOP_SQUARE)}, {'Y', ass(TOP_TITLE)}, {'W', ass(TEXT)}};
-		for (auto& ink : inks)
+		if (APP_ICON_EXPERIMENT)
 		{
-			std::string path;
-			for (int y = 0; y < 32; y++)
-				for (int x = 0; x < 32;)
+			// the full-colour icon (app_icon.h), 48 cells of 4 units (the same 192 as the logo's): each colour rounded
+			// a little, so a few dozen runs of colours, not one per pixel
+			const int q = 4, n = APP_ICON_SIZE;
+			std::map<uint32_t, std::string> paths;
+			auto colourAt = [&](int x, int y) -> int64_t {
+				const unsigned char* c = APP_ICON_RGBA + (y * n + x) * 4;
+				if (c[3] < 128) return -1;
+				return (int64_t)(((c[0] & 0xF0) | 8) << 16 | ((c[1] & 0xF0) | 8) << 8 | ((c[2] & 0xF0) | 8));
+			};
+			for (int y = 0; y < n; y++)
+				for (int x = 0; x < n;)
 				{
-					if (LOGO[y][x] != ink.c) { x++; continue; }
+					int64_t c = colourAt(x, y);
+					if (c < 0) { x++; continue; }
 					int e = x;
-					while (e < 32 && LOGO[y][e] == ink.c) e++;
+					while (e < n && colourAt(e, y) == c) e++;
 					char r[96];
-					snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * px, y * px, e * px, y * px, e * px, (y + 1) * px, x * px, (y + 1) * px);
-					path += r;
+					// (one unit taller than its row: the next row covers it, and no hairline shows between them)
+					snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * q, y * q, e * q, y * q, e * q, (y + 1) * q + 1, x * q, (y + 1) * q + 1);
+					paths[(uint32_t)c] += r;
 					x = e;
 				}
-			char head[128];
-			snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c%s\\p1}", x0, y0, ink.colour.c_str());
-			ev += head + path + "{\\p0}\n";
+			for (auto& kv : paths)
+			{
+				char head[128];
+				// (ASS colours are &HBBGGRR&)
+				snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c&H%02X%02X%02X&\\p1}", 480 - n * q / 2, y0,
+					kv.first & 0xFF, (kv.first >> 8) & 0xFF, (kv.first >> 16) & 0xFF);
+				ev += head + kv.second + "{\\p0}\n";
+			}
+		}
+		else
+		{
+			const struct { char c; std::string colour; } inks[] = {{'.', ass(TOP_SQUARE)}, {'Y', ass(TOP_TITLE)}, {'W', ass(TEXT)}};
+			for (auto& ink : inks)
+			{
+				std::string path;
+				for (int y = 0; y < 32; y++)
+					for (int x = 0; x < 32;)
+					{
+						if (LOGO[y][x] != ink.c) { x++; continue; }
+						int e = x;
+						while (e < 32 && LOGO[y][e] == ink.c) e++;
+						char r[96];
+						snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * px, y * px, e * px, y * px, e * px, (y + 1) * px, x * px, (y + 1) * px);
+						path += r;
+						x = e;
+					}
+				char head[128];
+				snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c%s\\p1}", x0, y0, ink.colour.c_str());
+				ev += head + path + "{\\p0}\n";
+			}
 		}
 		ev += "{\\an8\\pos(480,330)\\bord0\\shad0\\fnPixelify Sans\\fs72\\1c" + ass(TOP_TITLE) + "}Banana Player\n";
 		ev += "{\\an8\\pos(480,420)\\bord0\\shad0\\fnInter\\fs30\\1c" + ass(TOP_SUB) + "}Pick a video or a song on the bottom screen";
