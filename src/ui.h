@@ -1478,7 +1478,7 @@ namespace bp
 		uint64_t mangaJavaManagerSerial() const;	// javaSources().serial(): the rows follow it (a source installed)
 		bool mangaJavaInstalled() const;				// the add-on is on the card (Installed / Starting / Running)
 		void mangaJavaNeedHost();					// want(), when the add-on is there
-		std::string mangaJavaStatusLine() const;		// "Starting Java… about 25 s", or a failure
+		std::string mangaJavaStatusLine() const;		// "Starting extensions… about 25 s", or a failure
 		void mangaJavaAddRepo(const std::string& url, Player& p);
 		void mangaJavaRefresh();						// fetchExtensions (Y, and the first Contacts with a store)
 		void mangaJavaPoll(const Player& p);				// the manager's events and the host's answers
@@ -1491,7 +1491,6 @@ namespace bp
 		void mangaJavaAvailableAct(int local, Player& p);	// A: install
 		void mangaJavaRepoAct(int local, Player& p);		// A: the repository's sheet
 		void drawMangaJavaRow(int tab, int local, const Rect& r, bool at, bool focus, const Player& p);
-		void drawMangaJavaBadge(int right, int mid, bool at);	// its "Java" chip; returns nothing (known width)
 		bool mangaJavaModalKey(Button b, Player& p);
 		void mangaJavaModalAct(Player& p);
 		void mangaJavaModalClose();

@@ -356,16 +356,9 @@ namespace bp
 			}
 			const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p);
 			if (!r) continue;
-			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 32, mid, r->java ? 430 : 470);
-			// its language, a chip at the row's end (as a cover's unread count is); a Java source's badge
-			// sits outside it
+			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 32, mid, 470);
+			// its language, a chip at the row's end (as a cover's unread count is)
 			int right = 608;
-			if (r->java)
-			{
-				int jw = (int)std::lround(textWidth("Java", 0) / sx) + 14;
-				drawMangaJavaBadge(right, mid, at);
-				right -= jw + 8;
-			}
 			std::string lang = r->lang;
 			for (char& c : lang) c = (char)std::toupper((unsigned char)c);
 			if (!lang.empty())

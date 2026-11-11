@@ -224,7 +224,7 @@ namespace bp
 		if (!submitRequest(Kind::AddStore, suwayomiAddExtensionStore(url), url, ""))
 		{
 			repos_.pop_back();
-			error = "couldn't reach the Java extensions";
+			error = "couldn't reach the extensions";
 			return false;
 		}
 		return true;
@@ -236,12 +236,12 @@ namespace bp
 		auto it = std::find_if(repos_.begin(), repos_.end(), [&](const Repo& r) { return r.url == url; });
 		if (it == repos_.end())
 		{
-			error = "not a Java repository";
+			error = "no such repository";
 			return false;
 		}
 		if (!submitRequest(Kind::RemoveStore, suwayomiRemoveExtensionStore(url), url, ""))
 		{
-			error = "couldn't reach the Java extensions";
+			error = "couldn't reach the extensions";
 			return false;
 		}
 		repos_.erase(it);
@@ -253,7 +253,7 @@ namespace bp
 	{
 		if (refreshPending()) return;
 		if (!submitRequest(Kind::FetchExtensions, suwayomiFetchExtensions(), "", ""))
-			addEvent(Event::ExtensionsFailed, "", "", "Couldn't reach the Java extensions");
+			addEvent(Event::ExtensionsFailed, "", "", "Couldn't reach the extensions");
 	}
 
 	bool MangaJava::refreshPending() const
@@ -270,7 +270,7 @@ namespace bp
 		if (busy(pkgName)) { error = "already being changed"; return false; }
 		if (!submitRequest(Kind::Install, suwayomiInstallExtension(pkgName), "", pkgName))
 		{
-			error = "couldn't reach the Java extensions";
+			error = "couldn't reach the extensions";
 			return false;
 		}
 		return true;
@@ -283,7 +283,7 @@ namespace bp
 		if (busy(pkgName)) { error = "already being changed"; return false; }
 		if (!submitRequest(Kind::Update, suwayomiUpdateExtension(pkgName), "", pkgName))
 		{
-			error = "couldn't reach the Java extensions";
+			error = "couldn't reach the extensions";
 			return false;
 		}
 		return true;
@@ -296,7 +296,7 @@ namespace bp
 		if (busy(pkgName)) { error = "already being changed"; return false; }
 		if (!submitRequest(Kind::Uninstall, suwayomiUninstallExtension(pkgName), "", pkgName))
 		{
-			error = "couldn't reach the Java extensions";
+			error = "couldn't reach the extensions";
 			return false;
 		}
 		return true;

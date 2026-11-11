@@ -796,10 +796,11 @@ repository, then install from **Available**) and *Nothing to install* (add a rep
 
 **Tachiyomi / Mihon repositories.** An address ending in `index.pb` or `index.min.json` is a Java repository (like
 Keiyoushi's `https://github.com/keiyoushi/extensions/raw/repo/index.pb`), not a Lua one. It needs the optional
-**Java extensions** add-on (Manga settings): without it the address is refused in one line and nothing is kept.
-Adding one starts the Java runtime (*Starting Java… about 25 s*) and registers the store with Suwayomi; it is listed
-with the Lua repositories with a **Java** badge and the store's own name. Removing it removes the store. Its
-extensions show under **Available** beside the Lua ones (name, language, version, **Java** badge; adult ones hidden
+**Extension support** download (Manga settings; inside, a Java runtime and Suwayomi, never named on screen): without
+it the address is refused in one line and nothing is kept. Adding one starts it (*Starting extensions… about 25 s*)
+and registers the store with Suwayomi; it is listed with the Lua repositories under the store's own name, with no
+badge (the screen never says Java, jar or Suwayomi). Removing it removes the store. Its
+extensions show under **Available** beside the Lua ones (name, language, version; adult ones hidden
 while **Adult sources** is Hidden), **A** installs one, and **Installed** lists them with **Update** when Suwayomi
 reports a newer one and **Uninstall** (asked twice). A Java source appears in **Browse** as one row per source and
 language — same Popular / Latest / Search grid, covers, filters sheet, series page and reading page as a Lua source.
@@ -925,7 +926,7 @@ read. **B** goes back where you came from.
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 300 MB | Pages kept on the card to read again without downloading. Covers: 50 MB more. |
 | **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |
-| **Java extensions** | Not installed / Downloading / Installed · 344 MB / Running / Failed | Not installed | Tachiyomi and Mihon extensions (.jar), run by Suwayomi on Java. Uses about 400 MB of memory while a Java source is open. A installs; A twice removes. |
+| **Extension support** | Not installed / Downloading / Installed · 344 MB / Running / Failed | Not installed | Needed for repositories whose address ends in index.pb or index.min.json: about 234 MB on the card, about 400 MB of memory while one of their sources is open. A installs; A twice removes. |
 | **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |
 | **Reading history** | On / Off | On | Off clears it. |
 | **Secure DNS** | Off / Cloudflare (1.1.1.1) | Off | Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them. |

@@ -772,7 +772,7 @@ namespace bp
 					mdlLocal++;
 					return;
 				}
-				mdlNote = "Couldn\xE2\x80\x99t ask the Java source for a chapter\xE2\x80\x99s pages";
+				mdlNote = "Couldn\xE2\x80\x99t ask the source for a chapter\xE2\x80\x99s pages";
 				mdlNoteUntil = SDL_GetTicks() + 4000;
 				mdlAsk = MangaDlAsk{};
 				continue;

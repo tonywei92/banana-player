@@ -18,7 +18,7 @@ namespace bp
 		// what A asks again after an error (ui_manga_browse.cpp's own constants aren't in this file's scope)
 		constexpr int FAIL_NONE = 0, FAIL_LIST = 1, FAIL_SERIES = 2, FAIL_PAGES = 3;
 		const char* const JAVA_MISSING =
-			"Java extensions aren\xE2\x80\x99t installed: Manga settings \xE2\x80\xBA Java extensions";
+			"Extension support isn\xE2\x80\x99t installed: Manga settings \xE2\x80\xBA Extension support";
 
 		std::vector<const SuwayomiExt*> javaInstalledExtensions(const MangaJava& mgr)
 		{
@@ -101,10 +101,10 @@ namespace bp
 		JavaExtHost& h = mangaNet->javaExt();
 		switch (h.state())
 		{
-		case JavaExtHost::State::Starting: return "Starting Java\xE2\x80\xA6 about 25 s";
-		case JavaExtHost::State::Downloading: return "Java extensions are downloading";
+		case JavaExtHost::State::Starting: return "Starting extensions\xE2\x80\xA6 about 25 s";
+		case JavaExtHost::State::Downloading: return "Extension support is downloading";
 		case JavaExtHost::State::Failed:
-			return h.error().empty() ? "Java failed" : "Java: " + h.error();
+			return h.error().empty() ? "Extensions failed to start" : "Extensions: " + h.error();
 		default: return "";
 		}
 	}
@@ -265,11 +265,11 @@ namespace bp
 					mangaJavaRefresh();	// its extensions can show under Available now
 					break;
 				case MangaJava::Event::RepoFailed:
-					mangaJavaNotes.push_back(e.message.empty() ? "A Java repository wasn't added" : e.message);
+					mangaJavaNotes.push_back(e.message.empty() ? "The repository wasn't added" : e.message);
 					break;
 				case MangaJava::Event::ExtensionsLoaded: break;	// the lists redraw on the manager's serial
 				case MangaJava::Event::ExtensionsFailed:
-					mangaJavaNotes.push_back(e.message.empty() ? "The Java extensions didn't come" : e.message);
+					mangaJavaNotes.push_back(e.message.empty() ? "The extension list didn't load" : e.message);
 					break;
 				case MangaJava::Event::Installed:
 					mangaJavaNotes.push_back("Installed " + (e.message.empty() ? e.pkg : e.message));
@@ -281,7 +281,7 @@ namespace bp
 					mangaJavaNotes.push_back("Removed " + (e.message.empty() ? e.pkg : e.message));
 					break;
 				case MangaJava::Event::ActionFailed:
-					mangaJavaNotes.push_back(e.message.empty() ? "The Java extension didn't answer" : e.message);
+					mangaJavaNotes.push_back(e.message.empty() ? "The extension didn't answer" : e.message);
 					break;
 				}
 			}
@@ -334,13 +334,6 @@ namespace bp
 
 	// ---- drawing the Java rows ----
 
-	void Ui::drawMangaJavaBadge(int right, int mid, bool at)
-	{
-		int w = (int)std::lround(textWidth("Java", 0) / sx) + 14;
-		fillRound({right - w, mid - 9, w, 18}, at ? ACCENT : TRACK, R_CHIP);
-		drawTextMid("Java", 0, at ? ON_ACCENT : DIM_ON, right - w / 2, mid, w - 6, 2);
-	}
-
 	void Ui::drawMangaJavaRow(int tab, int local, const Rect& r, bool at, bool focus, const Player& p)
 	{
 		if (focus && at) drawFocus(r);
@@ -354,7 +347,6 @@ namespace bp
 			const MangaJava::Repo& rp = repos[local];
 			drawTextMid(rp.name.empty() ? rp.url : rp.name, 1, ink, 32, mid - 10, 450);
 			drawTextMid(elideMiddle(rp.url, 0, 380), 0, soft, 32, mid + 10, 0);
-			drawMangaJavaBadge(608, mid, at);
 			return;
 		}
 		const SuwayomiExt* e = nullptr;
@@ -390,7 +382,6 @@ namespace bp
 			fillRound({520 - w, mid - 10, w, 20}, ACCENT, R_CHIP);
 			drawTextMid("Update", 0, ON_ACCENT, 520 - w / 2, mid, w - 6, 2);
 		}
-		drawMangaJavaBadge(608, mid, at);
 	}
 
 	int Ui::mangaJavaModalRows() const
@@ -442,7 +433,7 @@ namespace bp
 			if (mstJavaModalCursor == 0)
 			{
 				mangaJavaRefresh();
-				p.osd("Checking Java extensions\xE2\x80\xA6", 1200);
+				p.osd("Checking extensions\xE2\x80\xA6", 1200);
 				mangaJavaModalClose();
 				return;
 			}
@@ -450,8 +441,8 @@ namespace bp
 			if (mstJavaUninstallArmed && SDL_GetTicks() - mstJavaUninstallAt < QUIT_WINDOW_MS)
 			{
 				std::string error;
-				if (mgr.removeRepo(mstJavaModalId, error)) p.osd("Removed the Java repository", 2500);
-				else p.osd(error.empty() ? "Couldn't remove the Java repository" : error, 3000);
+				if (mgr.removeRepo(mstJavaModalId, error)) p.osd("Removed the repository", 2500);
+				else p.osd(error.empty() ? "Couldn't remove the repository" : error, 3000);
 				mgr.save();
 				mangaJavaModalClose();
 				return;
@@ -633,14 +624,14 @@ namespace bp
 		if (!mangaJavaInstalled())
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Java extensions aren\xE2\x80\x99t installed";
+			mangaSrcError = "Extension support isn\xE2\x80\x99t installed";
 			return;
 		}
 		std::string sid = MangaJava::suwayomiSourceId(mangaSrcId);
 		if (sid.empty())
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Not a Java source";
+			mangaSrcError = "This source isn\xE2\x80\x99t available";
 			return;
 		}
 		mangaJavaNeedHost();
@@ -656,7 +647,7 @@ namespace bp
 		if (!mangaJavaListSerial)
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Couldn\xE2\x80\x99t ask the Java source";
+			mangaSrcError = "Couldn\xE2\x80\x99t ask the source";
 		}
 		mstJavaLocal++;
 	}
@@ -679,7 +670,7 @@ namespace bp
 		std::string error;
 		if (!suwayomiParseSourceManga(base, r.body, list, more, error))
 		{
-			mangaSrcError = error.empty() ? "The Java source didn\xE2\x80\x99t answer" : error;
+			mangaSrcError = error.empty() ? "The source didn\xE2\x80\x99t answer" : error;
 			mangaSrcFailed = FAIL_LIST;
 			return true;
 		}
@@ -715,14 +706,14 @@ namespace bp
 		if (!mangaNet || !mangaNet->started() || !mangaJavaInstalled())
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Couldn\xE2\x80\x99t ask the Java source";
+			mangaSrcError = "Couldn\xE2\x80\x99t ask the source";
 			return;
 		}
 		int mangaId = std::atoi(mangaSrcKey.c_str());
 		if (mangaId <= 0)
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Not a Java series";
+			mangaSrcError = "This series isn\xE2\x80\x99t available";
 			return;
 		}
 		mangaJavaNeedHost();
@@ -732,7 +723,7 @@ namespace bp
 		if (!mangaJavaSeriesSerial)
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Couldn\xE2\x80\x99t ask the Java source";
+			mangaSrcError = "Couldn\xE2\x80\x99t ask the source";
 		}
 		mstJavaLocal++;
 	}
@@ -755,7 +746,7 @@ namespace bp
 		std::string error;
 		if (!suwayomiParseMangaAndChapters(base, r.body, manga, chapters, error))
 		{
-			mangaSrcError = error.empty() ? "The Java source didn\xE2\x80\x99t answer" : error;
+			mangaSrcError = error.empty() ? "The source didn\xE2\x80\x99t answer" : error;
 			mangaSrcFailed = FAIL_SERIES;
 			return true;
 		}
@@ -790,14 +781,14 @@ namespace bp
 		if (!mangaNet || !mangaNet->started() || !mangaJavaInstalled())
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Java extensions aren\xE2\x80\x99t installed";
+			mangaSrcError = "Extension support isn\xE2\x80\x99t installed";
 			return;
 		}
 		int chapterId = std::atoi(mangaSrcPendChapters[mangaSrcPendAt].key.c_str());
 		if (chapterId <= 0)
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Not a Java chapter";
+			mangaSrcError = "This chapter isn\xE2\x80\x99t available";
 			return;
 		}
 		mangaJavaNeedHost();
@@ -808,7 +799,7 @@ namespace bp
 		if (!mangaJavaPagesSerial)
 		{
 			mangaSrcLoading = false;
-			mangaSrcError = "Couldn\xE2\x80\x99t ask the Java source";
+			mangaSrcError = "Couldn\xE2\x80\x99t ask the source";
 		}
 		mstJavaLocal++;
 	}
@@ -857,7 +848,7 @@ namespace bp
 		mangaJavaNeedHost();
 		f.javaSerial = mangaNet->javaExt().graphql(suwayomiFetchSourceFilters(MangaJava::suwayomiSourceId(mangaSrcId)));
 		f.loading = f.javaSerial != 0;
-		if (!f.javaSerial) f.error = "Couldn\xE2\x80\x99t ask the Java source";
+		if (!f.javaSerial) f.error = "Couldn\xE2\x80\x99t ask the source";
 		mangaFilterLocal++;
 	}
 

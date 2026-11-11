@@ -665,7 +665,7 @@ namespace bp
 		static const bool curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
 		if (!curlReady)
 		{
-			failJob(j, "libcurl couldn't start");
+			failJob(j, "Couldn't start the download");
 			return Fetch::Failed;
 		}
 		std::string part = finalPath + ".part";
@@ -705,7 +705,7 @@ namespace bp
 			FILE* fp = fopen(part.c_str(), resume ? "ab" : "wb");
 			if (!fp)
 			{
-				failJob(j, "Couldn't write " + part);
+				failJob(j, "Couldn't write to the card");
 				return Fetch::Failed;
 			}
 			FetchCtx ctx;
@@ -777,12 +777,12 @@ namespace bp
 			if (sha256File(part) != wantSha)
 			{
 				unlink(part.c_str());
-				failJob(j, "The download isn't the pinned file (its SHA-256 doesn't match)");
+				failJob(j, "The download is damaged: try again");
 				return Fetch::Failed;
 			}
 			if (rename(part.c_str(), finalPath.c_str()) != 0)
 			{
-				failJob(j, "Couldn't save " + finalPath);
+				failJob(j, "Couldn't write to the card");
 				return Fetch::Failed;
 			}
 			doneBase += expected;
@@ -798,7 +798,7 @@ namespace bp
 		if (!current(j)) return;
 		if (!ensureDir(javaDir))
 		{
-			failJob(j, "Couldn't make " + javaDir);
+			failJob(j, "Couldn't write to the card");
 			return;
 		}
 		bool needJre = true;
@@ -833,7 +833,7 @@ namespace bp
 			if (!extractTarGz(javaDir + "/" + JRE_TAR, stage, why))
 			{
 				removeTree(stage);
-				failJob(j, "The Java runtime couldn't be unpacked: " + why);
+				failJob(j, "The download couldn't be unpacked: " + why);
 				return;
 			}
 			auto entries = listDir(stage);
@@ -848,7 +848,7 @@ namespace bp
 			{
 				removeTree(stage);
 				removeTree(dest);
-				failJob(j, "The Java runtime has no bin/java");
+				failJob(j, "The download is incomplete");
 				return;
 			}
 			removeTree(stage);
@@ -869,7 +869,7 @@ namespace bp
 		int64_t bytes = treeSize(javaDir);
 		if (!writeMarker(javaDir, bytes))
 		{
-			failJob(j, "Couldn't write the installed marker");
+			failJob(j, "Couldn't write to the card");
 			return;
 		}
 		std::lock_guard<std::mutex> g(lock);
@@ -908,21 +908,21 @@ namespace bp
 	{
 		if (!ensureDir(javaDir))
 		{
-			set(State::Failed, "Couldn't make " + javaDir);
+			set(State::Failed, "Couldn't write to the card");
 			pushWake();
 			return;
 		}
 		std::string jar = javaDir + "/" + SERVER_JAR;
 		if (!isFile(jar))
 		{
-			set(State::Failed, "The Java extensions' server jar is missing");
+			set(State::Failed, "Some required files are missing: install again");
 			pushWake();
 			return;
 		}
 		int p = freePort();
 		if (p <= 0)
 		{
-			set(State::Failed, "No free port on 127.0.0.1");
+			set(State::Failed, "Couldn't start: no free port");
 			pushWake();
 			return;
 		}
@@ -963,7 +963,7 @@ namespace bp
 		posix_spawnattr_destroy(&attr);
 		if (rc != 0)
 		{
-			set(State::Failed, std::string("Couldn't start Java: ") + strerror(rc));
+			set(State::Failed, std::string("Couldn't start: ") + strerror(rc));
 			pushWake();
 			return;
 		}
@@ -1049,7 +1049,12 @@ namespace bp
 		port = 0;
 		stopReq = idleStop = false;
 		if (stopped) set(removing ? State::NotInstalled : State::Installed, "");
-		else set(State::Failed, last.empty() ? "the Java process ended" : last);
+		else
+		{
+			// the server's own last line is for log.txt; the screen says it plainly
+			if (!last.empty()) fprintf(stderr, "javaext: %s ended: %s\n", clockStamp().c_str(), last.c_str());
+			set(State::Failed, "it stopped unexpectedly");
+		}
 		pushWake();
 		cv.notify_all();
 	}
@@ -1130,14 +1135,14 @@ namespace bp
 				{
 					std::lock_guard<std::mutex> g(lock);
 					if (st == State::Running && port > 0) base = "http://127.0.0.1:" + std::to_string(port);
-					else if (st == State::NotInstalled) why = "the Java extensions aren't installed";
-					else if (st == State::Downloading) why = "the Java extensions are still downloading";
-					else if (st == State::Failed) why = err.empty() ? "the Java extensions failed to start" : err;
+					else if (st == State::NotInstalled) why = "extension support isn't installed";
+					else if (st == State::Downloading) why = "extension support is still downloading";
+					else if (st == State::Failed) why = err.empty() ? "extensions failed to start" : err;
 				}
 				if (!base.empty() || !why.empty()) break;
 				if (std::chrono::steady_clock::now() >= deadline)
 				{
-					why = "Java didn't start";
+					why = "extensions didn't start";
 					break;
 				}
 				std::unique_lock<std::mutex> lk(gqlLock);
@@ -1215,7 +1220,7 @@ namespace bp
 			}
 			if (code != 200)
 			{
-				gqlFinish(job.serial, (int)code, "", "Suwayomi answered " + std::to_string(code));
+				gqlFinish(job.serial, (int)code, "", "the extensions answered " + std::to_string(code));
 				continue;
 			}
 			gqlFinish(job.serial, (int)code, std::move(out), "");

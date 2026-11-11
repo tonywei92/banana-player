@@ -169,7 +169,7 @@ namespace bp
 					if (st == JavaExtHost::State::NotInstalled || st == JavaExtHost::State::Downloading)
 					{
 						WebCall::setStatus(409);
-						return error("Install Java extensions first (Manga settings on the handheld)");
+						return error("Install Extension support first (Manga settings on the handheld)");
 					}
 					u.mangaNet->javaExt().want();
 					if (!u.mangaNet->javaSources().addRepo(url, err))

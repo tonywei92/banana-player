@@ -77,7 +77,7 @@ namespace bp
 		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
 		if (row == MANGA_DNS_ROW) return "Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them.";
 		if (row == MANGA_JAVA_ROW)
-			return "Tachiyomi and Mihon extensions (.jar), run by Suwayomi on Java. Uses about 400 MB of memory while a Java source is open.";
+			return "Needed for repositories whose address ends in index.pb or index.min.json: about 234 MB on the card, and about 400 MB of memory while one of their sources is open.";
 		if (row == MUSIC_ROW) return "What the top screen shows while a song plays (SELECT while playing).";
 		if (row == VIS_ROW) return "How the music is drawn: Peaks, Peaks Banana or Circle (SELECT while playing).";
 		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
@@ -290,7 +290,7 @@ namespace bp
 		if (row == MANGA_JAVA_ROW)
 		{
 			// an action with the host's state as its value (installed size, download progress, why it failed)
-			drawTextMid("Java extensions", 1, at ? ACCENT : TEXT, 32, mid, 250);
+			drawTextMid("Extension support", 1, at ? ACCENT : TEXT, 32, mid, 250);
 			drawTextMid(mangaJavaValue(), 1, at ? ACCENT : TEXT, 608, mid, 330, 1);
 			return;
 		}
