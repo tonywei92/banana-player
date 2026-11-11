@@ -104,7 +104,7 @@ namespace bp
 		{
 		case MST_INSTALLED: return (int)mangaSourcesInstalled().size() + mangaJavaInstalledRows(p);
 		case MST_AVAILABLE: return (int)mangaSourcesInstalled().size() + mangaJavaAvailableRows(p) + (int)mangaSourcesAvailable(p).size();
-		default: return (int)mangaSourcesRepos().size() + mangaJavaRepoRows() + 1;	// (+ Add repository…)
+		default: return (int)mangaSourcesRepos().size() + mangaJavaRepoRows() + 2;	// (+ Add repository…, the dashboard)
 		}
 	}
 
@@ -380,6 +380,9 @@ namespace bp
 		int lua = (int)list.size(), java = mangaJavaRepoRows();
 		if (cur >= lua && cur < lua + java) { mangaJavaRepoAct(cur - lua, p); return; }
 		if (cur == lua + java) { mangaSourcesAddOpen(p); return; }
+		// a repository's long address is easier typed on a phone or a computer: the Web dashboard's page (its address
+		// and PIN, or its switch), and B comes back here
+		if (cur == lua + java + 1) { openWeb(); return; }
 		if (cur < 0 || cur >= lua) return;
 		mstModal = MSM_REPO;
 		mstModalCursor = 0;
@@ -691,7 +694,22 @@ namespace bp
 				drawGlyphMid(G_PLUS, 42, mid, at ? ACCENT : DIM);
 				drawTextMid("Add repository\xE2\x80\xA6", 1, at ? ACCENT : TEXT, 62, mid, 0);
 			}
-			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total + 1);
+			// and the recommended way: the dashboard, where the address is pasted on a phone or a computer
+			i = total + 1 - sc;
+			if (i >= 0 && i < MS_ROWS)
+			{
+				Rect r = mangaSourcesRowRect(i);
+				bool at = cur == total + 1;
+				if (at) drawFocus(r);
+				int mid = r.y + r.h / 2;
+				drawGlyphMid(G_WEB, 42, mid, at ? ACCENT : DIM);
+				drawTextMid("Add from the web dashboard", 1, at ? ACCENT : TEXT, 62, mid - 10, 400);
+				drawTextMid("Paste it on your phone or computer", 0, at ? DIM_ON : DIM, 62, mid + 10, 400);
+				int cw = (int)std::lround(textWidth("Recommended", 0) / sx) + 16;
+				fillRound({608 - cw, mid - 10, cw, 20}, ACCENT, R_CHIP);
+				drawTextMid("Recommended", 0, ON_ACCENT, 608 - cw / 2, mid, cw - 6, 2);
+			}
+			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total + 2);
 		}
 
 		if (!javaStatus.empty()) drawTextMid(javaStatus, 0, DANGER, W / 2, 378, 560, 2);
