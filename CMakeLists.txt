@@ -72,7 +72,7 @@ endif()
 
 # what doesn't need a window: unit-tested on its own
 add_library(bpcore STATIC src/aspect.cpp src/tracks.cpp src/challenge.cpp src/format.cpp src/substyle.cpp src/settings.cpp src/resume.cpp src/playlist.cpp src/browser.cpp src/history.cpp src/png.cpp src/battery.cpp src/photo.cpp src/update.cpp src/backlight.cpp src/netstore.cpp src/netpath.cpp src/servers.cpp src/secret.cpp src/sidecar.cpp src/ftplist.cpp src/keyboard.cpp src/eq.cpp src/soundfx.cpp src/playlists.cpp
-	src/webauth.cpp src/webpath.cpp src/json.cpp src/webmedia.cpp src/webstate.cpp src/crashlog.cpp src/session.cpp src/durations.cpp src/picsubs.cpp src/manga_names.cpp src/mangafilters.cpp src/mangastore.cpp src/pagecache.cpp src/strip.cpp src/comicinfo.cpp src/cbz.cpp src/mangalocal.cpp src/manganetfolders.cpp src/manga_ui_logic.cpp src/paged.cpp src/dlqueue.cpp src/mangarepo.cpp src/opds.cpp src/cbzwrite.cpp src/mangaservers.cpp src/htmldoc.cpp src/mangaremote.cpp src/readerfetchplan.cpp src/suwayomi.cpp src/mangajava.cpp src/doh.cpp src/tarx.cpp src/mangaseriescache.cpp src/imagesize.cpp)
+	src/webauth.cpp src/webpath.cpp src/json.cpp src/webmedia.cpp src/webstate.cpp src/crashlog.cpp src/session.cpp src/durations.cpp src/picsubs.cpp src/manga_names.cpp src/mangafilters.cpp src/mangastore.cpp src/pagecache.cpp src/strip.cpp src/comicinfo.cpp src/cbz.cpp src/mangalocal.cpp src/manganetfolders.cpp src/manga_ui_logic.cpp src/paged.cpp src/dlqueue.cpp src/mangarepo.cpp src/opds.cpp src/cbzwrite.cpp src/mangaservers.cpp src/htmldoc.cpp src/mangaremote.cpp src/readerfetchplan.cpp src/suwayomi.cpp src/mangajava.cpp src/doh.cpp src/tarx.cpp src/mangaseriescache.cpp src/imagesize.cpp src/bands.cpp)
 target_include_directories(bpcore PUBLIC src)
 target_link_libraries(bpcore PUBLIC PkgConfig::MPV PkgConfig::ZLIB OpenSSL::Crypto ${CMAKE_DL_LIBS})
 target_link_libraries(bpcore PRIVATE lexbor_static)	# src/htmldoc.h hides lexbor, so nothing downstream includes it
@@ -102,6 +102,13 @@ target_link_libraries(bpmanga PUBLIC bpcore PRIVATE lua_static)
 pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
 add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp)
 target_link_libraries(bpprobe PUBLIC bpcore PkgConfig::AV)
+# libjpeg (libjpeg-turbo's jpeg_skip_scanlines) and libpng: a long strip page's bands, decoded without the whole
+# picture in memory (pagedecode.cpp's decodeBand); FFmpeg's decoders only give whole frames
+pkg_check_modules(JPEG REQUIRED IMPORTED_TARGET libjpeg)
+pkg_check_modules(PNG REQUIRED IMPORTED_TARGET libpng)
+target_link_libraries(bpprobe PRIVATE PkgConfig::JPEG PkgConfig::PNG)
+# (included as <libpng16/png.h>: src/png.h, this project's own PNG writer, would answer <png.h>)
+target_include_directories(bpprobe PRIVATE ${PNG_INCLUDEDIR}/..)
 
 add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/readerfetch.cpp src/manganet.cpp src/javaext.cpp src/ui_manga.cpp src/mangarepos.cpp src/mangadownloader.cpp src/ui_manga_settings.cpp src/ui_manga_sources.cpp src/ui_manga_browse.cpp src/ui_manga_filters.cpp src/ui_manga_java.cpp src/ui_manga_servers.cpp src/ui_manga_downloads.cpp src/ui_manga_netfolders.cpp src/ui_manga_web.cpp)
 # libcurl: the Java add-on's downloads (BananaOS's own, with OpenSSL: not bundled), and the network folders' FTP and

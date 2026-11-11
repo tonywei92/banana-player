@@ -86,30 +86,48 @@ namespace bp
 				if (quit) return;
 				j = jobs.front();
 				jobs.pop_front();
-				busySet.insert(j.index);
+				busySet.insert(bandKey(j.index, j.band));
 				g = gen;
 			}
 			Uint32 t0 = SDL_GetTicks();
 			PageImage img;
+			std::vector<uint8_t> bytes;
+			bool got;
 			if (archive)
 			{
-				std::vector<uint8_t> bytes;
-				bool got;
-				{
-					// one open archive for both threads: a read at a time (its position is shared)
-					std::lock_guard<std::mutex> l(cbzLock);
-					got = cbz.read(j.path, bytes);
-					if (!got) img.error = cbz.error();
-				}
-				if (got) img = decodePage(bytes.data(), bytes.size(), j.width, 0, PAGE_MAX_PIXELS);
+				// one open archive for both threads: a read at a time (its position is shared)
+				std::lock_guard<std::mutex> l(cbzLock);
+				got = cbz.read(j.path, bytes);
+				if (!got) img.error = cbz.error();
 			}
-			else img = decodePageFile(j.path, j.width, 0, PAGE_MAX_PIXELS);
+			else got = readPageFile(j.path, bytes, img.error);
+			int band = -1;
+			if (got)
+			{
+				// a long page of the Strip: only a band of it (its first when its length is found here, from its bytes)
+				int y0 = j.y0, rows = j.rows;
+				bool tryBand = j.band >= 0;
+				int sw = 0, sh = 0;
+				if (!tryBand && j.mayBand && imageSize(bytes.data(), bytes.size(), sw, sh) && bandedPage(sw, sh))
+				{
+					tryBand = true;
+					y0 = 0;
+					rows = BandLayout{sw, sh}.rows(0);
+				}
+				if (tryBand)
+				{
+					img = decodeBand(bytes.data(), bytes.size(), j.width, y0, rows);
+					if (img.ok()) band = std::max(0, j.band);
+				}
+				// (a format with no band decoder, or a band that failed: the page whole, within its pixel cap, as before)
+				if (band < 0) img = decodePage(bytes.data(), bytes.size(), j.width, 0, PAGE_MAX_PIXELS);
+			}
 			Uint32 took = SDL_GetTicks() - t0;
 			{
 				std::lock_guard<std::mutex> l(m);
-				busySet.erase(j.index);
+				busySet.erase(bandKey(j.index, j.band));
 				// a page of a chapter closed meanwhile is dropped here: nothing would take it until the next open
-				if (g == gen) done.push_back({j.index, std::move(img), took, g, j.width});
+				if (g == gen) done.push_back({j.index, std::move(img), took, g, j.width, band});
 			}
 			SDL_Event e{};
 			e.type = wake;
@@ -215,6 +233,8 @@ namespace bp
 		orig.clear();
 		thumbs.clear();
 		decodedW.clear();
+		bands.clear();
+		noBand.clear();
 		zscale = 1;
 		zoomAt = 0;
 		angle = 0;
@@ -271,7 +291,7 @@ namespace bp
 		if (failed.count(planTarget) > 0) return true;
 		// fetched and decoded: the preload's fetches start only then (or after the grace), not while the page
 		// asked for is still coming in or still being decoded
-		return fileThere(files[planTarget]) && pr.has(planTarget);
+		return fileThere(files[planTarget]) && pageIn(planTarget);
 	}
 
 	const char* MangaReader::modeName() const
@@ -299,7 +319,7 @@ namespace bp
 		if (!opened || seeks.pending()) return;	// a drag: the plan follows the view once the seeks rest
 		bool s = readMode == MANGA_STRIP;
 		auto list = liveWanted();
-		bool targetIn = planTarget >= 0 && (pr.has(planTarget) || failed.count(planTarget) > 0);
+		bool targetIn = planTarget >= 0 && (pageIn(planTarget) || failed.count(planTarget) > 0);
 		auto ordered = ReaderFetchPlan::ordered(list, planTarget, targetIn, planAt, (int64_t)SDL_GetTicks());
 		// the target alone while it is not in: no neighbour's decode may get ahead of it
 		bool gated = planTarget >= 0 && !targetIn && ordered.size() == 1 && ordered[0] == planTarget;
@@ -313,6 +333,19 @@ namespace bp
 		// (its pixels and its textures share the system's RAM), and the extensions' server may hold 400 MB of it.
 		{
 			auto bytesOf = [&](int i) -> size_t {
+				// a long page counts only the bands it would hold now (none when it is far from the view)
+				auto bl = bands.find(i);
+				if (bl != bands.end())
+				{
+					size_t n = 0;
+					for (int b : bandsWanted(i))
+					{
+						int bw = 0, bh = 0;
+						bandSize(bl->second, b, decodeW(), bw, bh);
+						n += (size_t)bw * bh * 4;
+					}
+					return n;
+				}
 				auto it = orig.find(i);
 				if (it != orig.end()) return (size_t)it->second.w * it->second.h * 4;
 				size_t w = (size_t)std::max(1, decodeW());
@@ -342,13 +375,23 @@ namespace bp
 			if (planTarget >= 0) trimmed.insert(planTarget);
 			keep.swap(trimmed);
 		}
-		pr.keepOnly(keep);
-		wantKeep = gated ? std::set<int>{planTarget} : keep;
+		// what is held is named by key: a page's index, or each band of a long page that is near the view (the rest
+		// of that page is neither pixels nor textures)
+		std::set<int> keys;
+		for (int i : keep)
+		{
+			if (!bands.count(i)) { keys.insert(i); continue; }
+			for (int b : bandsWanted(i)) keys.insert(bandKey(i, b));
+		}
+		pr.keepOnly(keys);
+		wantKeep.clear();
+		for (int k : keys)
+			if (!gated || keyPage(k) == planTarget) wantKeep.insert(k);
 		fetchWanted = list;	// (the plan orders the target itself, so a gate never hides its neighbours from stale())
-		for (auto it = kept.begin(); it != kept.end();) it = keep.count(it->first) ? std::next(it) : kept.erase(it);
+		for (auto it = kept.begin(); it != kept.end();) it = keys.count(it->first) ? std::next(it) : kept.erase(it);
 		// (the unrotated copies too: kept for the whole chapter before, every page read stayed in memory)
-		for (auto it = orig.begin(); it != orig.end();) it = keep.count(it->first) ? std::next(it) : orig.erase(it);
-		for (auto it = decodedW.begin(); it != decodedW.end();) it = keep.count(it->first) ? std::next(it) : decodedW.erase(it);
+		for (auto it = orig.begin(); it != orig.end();) it = keys.count(it->first) ? std::next(it) : orig.erase(it);
+		for (auto it = decodedW.begin(); it != decodedW.end();) it = keys.count(it->first) ? std::next(it) : decodedW.erase(it);
 		// a failure sticks only while the page is wanted: moving away and back asks for it again
 		for (auto it = failed.begin(); it != failed.end();)
 		{
@@ -365,12 +408,27 @@ namespace bp
 			if (i < 0 || i >= (int)files.size()) continue;
 			if (!keep.count(i)) continue;	// over the budget: fetched to the card, not decoded
 			if (remote() && !fileThere(files[i])) continue;
-			// a page the last zoom decoded narrower is asked for again, and goes on showing scaled until it comes
-			auto it = decodedW.find(i);
-			if (pr.has(i) && it != decodedW.end() && it->second >= width) continue;
-			if (busySet.count(i)) continue;
-			if (std::any_of(done.begin(), done.end(), [&](const Done& d) { return d.index == i; })) continue;
-			jobs.push_back({i, files[i], width});
+			auto bl = bands.find(i);
+			if (bl == bands.end())
+			{
+				// a page the last zoom decoded narrower is asked for again, and goes on showing scaled until it comes
+				auto it = decodedW.find(i);
+				if (pr.has(i) && it != decodedW.end() && it->second >= width) continue;
+				if (busySet.count(i)) continue;
+				if (std::any_of(done.begin(), done.end(), [&](const Done& d) { return d.index == i; })) continue;
+				jobs.push_back({i, files[i], width, -1, 0, 0, s && !noBand.count(i)});
+				continue;
+			}
+			// a long page: a job for each band near the view that isn't there (the ones in view first)
+			for (int b : bandsWanted(i))
+			{
+				int k = bandKey(i, b);
+				auto it = decodedW.find(k);
+				if (pr.has(k) && it != decodedW.end() && it->second >= width) continue;
+				if (busySet.count(k)) continue;
+				if (std::any_of(done.begin(), done.end(), [&](const Done& d) { return d.index == i && d.band == b; })) continue;
+				jobs.push_back({i, files[i], width, b, bl->second.top(b), bl->second.rows(b), true});
+			}
 		}
 		cv.notify_all();
 	}
@@ -421,7 +479,7 @@ namespace bp
 	{
 		// a page on the card says its size in its first bytes: the strip's place for it is right at once, so a long
 		// page is one tall place (not three 1.5:1 guesses on screen, each wanting decoding with the memory that takes)
-		if (index < 0 || index >= (int)files.size() || pr.has(index)) return;
+		if (index < 0 || index >= (int)files.size() || pr.has(index) || bands.count(index)) return;
 		int w = 0, h = 0;
 		if (!imageSizeFile(files[index], w, h)) return;
 		strip.setPageSize(index, w, h);
@@ -461,8 +519,20 @@ namespace bp
 			auto vis = strip.visible();
 			double off = strip.offset();
 			for (int i = vis.first; i >= 0 && i <= vis.second; i++)
-				out.push_back({i, (float)-strip.pan(), (float)(strip.pageTop(i) - off), (float)strip.pageWidth(),
-					(float)strip.pageHeight(i)});
+			{
+				float x = (float)-strip.pan(), w = (float)strip.pageWidth();
+				double y = strip.pageTop(i) - off, h = strip.pageHeight(i);
+				auto bl = bands.find(i);
+				if (bl == bands.end()) { out.push_back({i, x, (float)y, w, (float)h}); continue; }
+				// a long page: its bands in view, each at its rows' share of the page's place (one band's foot is the
+				// next one's top: no gap)
+				const BandLayout& l = bl->second;
+				for (int b : bandsWanted(i, false))
+				{
+					double y0 = y + h * l.top(b) / l.srcH, y1 = y + h * (l.top(b) + l.rows(b)) / l.srcH;
+					out.push_back({bandKey(i, b), x, (float)y0, w, (float)(y1 - y0)});
+				}
+			}
 			return out;
 		}
 		// at rest only the page read: its neighbours would peek in at the 4:3 panel's sides (they slide in on a swipe)
@@ -470,6 +540,24 @@ namespace bp
 		for (auto& p : paged.placements())
 			if (!rest || p.page == paged.current()) out.push_back({p.page, (float)p.x, (float)p.y, (float)p.w, (float)p.h});
 		return out;
+	}
+
+	std::vector<int> MangaReader::bandsWanted(int page, bool margins) const
+	{
+		auto it = bands.find(page);
+		if (it == bands.end()) return {};
+		// a screen above and two below: a step down (0.9 of a screen) lands on bands already decoded, and one back up too
+		double H = layoutH();
+		return bandsNeeded(it->second, strip.pageTop(page) - strip.offset(), strip.pageHeight(page), H, margins ? H : 0,
+			margins ? 2 * H : 0);
+	}
+
+	bool MangaReader::pageIn(int page) const
+	{
+		if (!bands.count(page)) return pr.has(page);
+		for (int b : bandsWanted(page, false))
+			if (!pr.has(bandKey(page, b))) return false;
+		return true;
 	}
 
 	std::vector<MangaReader::Box> MangaReader::bottomBoxes() const
@@ -580,7 +668,7 @@ namespace bp
 		{
 			// Try again: the pages in view that failed are asked for again, and pages the GPU had no room for go up again
 			for (auto& b : boxes())
-				if (failed.erase(b.page) && b.page == errPage) { err.clear(); errPage = -1; }
+				if (failed.erase(keyPage(b.page)) && keyPage(b.page) == errPage) { err.clear(); errPage = -1; }
 			pr.unstall();
 			fprintf(stderr, "reader: try again\n");
 			want();
@@ -643,6 +731,9 @@ namespace bp
 			int cur = page(), m = (int)v;
 			if (m < 0 || m >= MANGA_MODES || m == readMode) return;
 			readMode = m;
+			// the paged modes show a page whole: the Strip's bands go (want() frees them), and are found again on the way back
+			bands.clear();
+			noBand.clear();
 			applyZoom();	// the model taking over reads at the zoom already set
 			strip.scrollTo(strip.pageTop(cur));
 			paged.setRtl(m == MANGA_RTL);
@@ -704,6 +795,30 @@ namespace bp
 		commitJump(planPage < 0 ? to : planPage, to, n, now);
 	}
 
+	void MangaReader::makeThumb(int page, const std::vector<uint8_t>& rgba, int pw, int ph)
+	{
+		// a thumbnail for the pages grid: 96 px wide, aspect kept, nearest-neighbour (small enough that
+		// the blockiness doesn't show on the 4:3 panel; a 1400×2000 source is 13 K iterations)
+		int tw = 96;
+		// (a long manhwa page keeps its top, at most twice as tall as wide: a thumb is kept for the whole
+		// chapter, and a 1:10 page's full one was 370 KB)
+		int thFull = std::max(1, (int)((double)ph * tw / pw + 0.5));
+		int th = std::min(thFull, 2 * tw);
+		auto buf = std::make_shared<std::vector<uint8_t>>(tw * th * 4);
+		const uint8_t* src = rgba.data();
+		uint8_t* dst = buf->data();
+		for (int ty = 0; ty < th; ty++)
+			for (int tx = 0; tx < tw; tx++)
+			{
+				int sx = tx * pw / tw;
+				int sy = (int)((int64_t)ty * ph / thFull);
+				const uint8_t* s = src + ((size_t)sy * pw + sx) * 4;
+				uint8_t* t = dst + ((size_t)ty * tw + tx) * 4;
+				t[0] = s[0]; t[1] = s[1]; t[2] = s[2]; t[3] = s[3];
+			}
+		thumbs[page] = {tw, th, std::move(buf)};
+	}
+
 	bool MangaReader::frame(int64_t now)
 	{
 		if (!opened) return false;
@@ -716,8 +831,18 @@ namespace bp
 				Done d = std::move(done.front());
 				done.pop_front();
 				if (d.gen != gen) continue;
+				int key = bandKey(d.index, d.band);
+				bool known = bands.count(d.index) > 0;
+				// (a band that comes back after the Strip was left: the paged mode's whole-page decode is on its way)
+				bool welcome = d.band < 0 || readMode == MANGA_STRIP;
+				// a first band found by the thread is named by its page in wantKeep (its bands weren't known then); a
+				// whole page that came instead of a band (the band couldn't be decoded) by any of its bands
+				if (welcome && d.band >= 0 && !known) welcome = wantKeep.count(d.index) > 0;
+				else if (welcome && d.band < 0 && known)
+					welcome = std::any_of(wantKeep.begin(), wantKeep.end(), [&](int k) { return keyPage(k) == d.index; });
+				else if (welcome) welcome = wantKeep.count(key) > 0;
 				// a page of the view the reader left (or a preload page a jump made unwanted): never uploaded
-				if (!wantKeep.count(d.index))
+				if (!welcome)
 				{
 					fprintf(stderr, "reader: page %d decode dropped after %u ms (no longer wanted)\n", d.index + 1, d.ms);
 					continue;
@@ -726,6 +851,32 @@ namespace bp
 				{
 					fprintf(stderr, "reader: page %d: %s\n", d.index + 1, d.img.error.c_str());
 					continue;
+				}
+				if (d.band >= 0)
+				{
+					// a band of a long page: its pixels and textures under its key; the page's place its real height.
+					// (the first one tells the page's size: want() then asks for the others near the view, and drops
+					// this one if the view is elsewhere on the page)
+					fprintf(stderr, "timing: page %d band %d decoded in %u ms (%dx%d)\n", d.index + 1, d.band, d.ms, d.img.w,
+						d.img.h);
+					if (!known) bands[d.index] = {d.img.srcW, d.img.srcH};
+					decodedW[key] = std::max(d.width, d.img.w);
+					strip.setPageSize(d.index, d.img.srcW, d.img.srcH);
+					paged.setPageSize(d.index, d.img.srcW, d.img.srcH);
+					// the grid's thumbnail is the page's top, which the first band has
+					if (d.band == 0) makeThumb(d.index, d.img.rgba, d.img.w, d.img.h);
+					int bw = d.img.w, bh = d.img.h;
+					auto px = std::make_shared<const std::vector<uint8_t>>(std::move(d.img.rgba));
+					kept[key] = {bw, bh, px};	// (for the bottom panel in fullscreen, as a page's)
+					pr.addPage(key, bw, bh, px);
+					any = true;
+					continue;
+				}
+				if (known)
+				{
+					// its band couldn't be decoded and the whole page could: it is a page like any other from here
+					bands.erase(d.index);
+					noBand.insert(d.index);
 				}
 				fprintf(stderr, "timing: page %d decoded in %u ms (%dx%d)\n", d.index + 1, d.ms, d.img.w, d.img.h);
 				auto was = decodedW.find(d.index);
@@ -745,29 +896,8 @@ namespace bp
 				paged.setPageSize(d.index, pw, ph);	// Paged: the turned dimensions (same as original when unturned)
 				// (a copy for the bottom panel: the renderer drops its own once the page is on the GPU)
 				kept[d.index] = {pw, ph, displayPixels};
-				// a thumbnail for the pages grid: 96 px wide, aspect kept, nearest-neighbour (small enough that
-				// the blockiness doesn't show on the 4:3 panel; a 1400×2000 source is 13 K iterations).
 				// the thumb is made from the turned pixels, so it matches what the reader shows
-				{
-					int tw = 96;
-					// (a long manhwa page keeps its top, at most twice as tall as wide: a thumb is kept for the whole
-					// chapter, and a 1:10 page's full one was 370 KB)
-					int thFull = std::max(1, (int)((double)ph * tw / pw + 0.5));
-					int th = std::min(thFull, 2 * tw);
-					auto buf = std::make_shared<std::vector<uint8_t>>(tw * th * 4);
-					const uint8_t* src = displayPixels->data();
-					uint8_t* dst = buf->data();
-					for (int ty = 0; ty < th; ty++)
-						for (int tx = 0; tx < tw; tx++)
-						{
-							int sx = tx * pw / tw;
-							int sy = (int)((int64_t)ty * ph / thFull);
-							const uint8_t* s = src + ((size_t)sy * pw + sx) * 4;
-							uint8_t* t = dst + ((size_t)ty * tw + tx) * 4;
-							t[0] = s[0]; t[1] = s[1]; t[2] = s[2]; t[3] = s[3];
-						}
-					thumbs[d.index] = {tw, th, std::move(buf)};
-				}
+				makeThumb(d.index, *displayPixels, pw, ph);
 				// the renderer gets a copy it can move into its textures (the shared pixel buffer stays in kept/orig)
 				pr.addPage(d.index, pw, ph, displayPixels);
 				any = true;
@@ -796,7 +926,8 @@ namespace bp
 	{
 		if (!opened) return;
 		std::vector<PageRenderer::Placed> placed;
-		for (auto& b : boxes()) placed.push_back({b.page, b.x, b.y, b.w, b.h, !pr.has(b.page) && !failed.count(b.page)});
+		for (auto& b : boxes())
+			placed.push_back({b.page, b.x, b.y, b.w, b.h, !pr.has(b.page) && !failed.count(keyPage(b.page))});
 		pr.setSpinStep((int)(spinNow / SPIN_MS));
 		uploads = pr.draw(placed, w, h);
 		if (forceFrames > 0) forceFrames--;
@@ -811,7 +942,7 @@ namespace bp
 			return !pr.has(paged.current()) && !failed.count(paged.current());
 		auto vis = strip.visible();
 		for (int i = vis.first; i >= 0 && i <= vis.second; i++)
-			if (!pr.has(i) && !failed.count(i)) return true;
+			if (!pageIn(i) && !failed.count(i)) return true;
 		return false;
 	}
 
@@ -819,7 +950,7 @@ namespace bp
 	{
 		if (!opened) return false;
 		for (auto& b : boxes())
-			if (failed.count(b.page) || pr.stalled(b.page)) return true;
+			if (failed.count(keyPage(b.page)) || pr.stalled(b.page)) return true;
 		return false;
 	}
 

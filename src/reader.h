@@ -3,6 +3,7 @@
 // source's pages by URL, fetched into the page cache) as one continuous Strip, its pages decoded on two threads and
 // drawn by a PageRenderer in the top window's GL context. Main thread only, but for the decoder's threads, which never
 // touch it: they hand pages back and push `wakeEvent`.
+#include "bands.h"
 #include "cbz.h"
 #include "pagecache.h"
 #include "pagedecode.h"
@@ -92,9 +93,11 @@ namespace bp
 		// fullscreen: the view is both panels' height and the hinge's gap; the top panel shows its first panel-height,
 		// the bottom panel the rest (bottomBoxes, in the bottom panel's pixels, which match the top's)
 		bool fullscreen() const { return full; }
+		// page: a page's index, or a band's key (bands.h) for a long strip page drawn as its bands
 		struct Box { int page; float x, y, w, h; };
 		std::vector<Box> bottomBoxes() const;
-		// a decoded page's pixels (RGBA, straight alpha) for the bottom panel's own textures; null when not decoded
+		// a decoded page's (or band's: a Box's page) pixels (RGBA, straight alpha) for the bottom panel's own textures;
+		// null when not decoded
 		std::shared_ptr<const std::vector<uint8_t>> pixels(int page, int& w, int& h) const;
 		// the pages grid's thumbnails (docs/design/manga.md section 3): ~96 px wide RGBA, made as each page decodes;
 		// null for a page not decoded yet (the Ui draws a numbered placeholder). kept for the whole chapter so a
@@ -115,8 +118,10 @@ namespace bp
 		bool spinning() const { return opened && pr.spun(); }
 
 	private:
-		struct Job { int index; std::string path; int width; };
-		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; int width; };
+		// band >= 0: that band of a long page (the image's rows y0 .. y0 + rows). band -1: the whole page, or, with
+		// mayBand (the Strip), band 0 when the thread finds the page long (its size isn't known before its bytes are read)
+		struct Job { int index; std::string path; int width; int band = -1; int y0 = 0, rows = 0; bool mayBand = false; };
+		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; int width; int band; };
 		void decodeLoop();
 		// files is ready: the models, the page and the first want()
 		bool begin(const std::string& label, int page, int w, int h, int m, int f);
@@ -131,7 +136,13 @@ namespace bp
 		void setFullscreen(bool on, int hinge480);
 		int layoutH() const { return full ? viewH * 2 + gapPx : viewH; }
 		int decodeW() const;	// the width wanted now: z times the view's, up to 2048 (decodePage's 2x cap still applies)
-		std::vector<Box> boxes() const;	// every page in view now, in view pixels (y from the top panel's top)
+		std::vector<Box> boxes() const;	// every page (or band) in view now, in view pixels (y from the top panel's top)
+		// a long page's bands to have decoded now: the ones in view, and with margins the ones a screen above and two
+		// below (the order to decode them in); empty for a page that isn't banded
+		std::vector<int> bandsWanted(int page, bool margins = true) const;
+		// the page's textures are there: for a banded page, those of its bands in view
+		bool pageIn(int page) const;
+		void makeThumb(int page, const std::vector<uint8_t>& rgba, int pw, int ph);
 		// the page turn (L3): each press 90° clockwise; paged modes only; the fit and zoom work on the turned page
 		void applyRotation();
 		// rotate an RGBA buffer (w x h) by angle degrees clockwise; the returned buffer is (rw x rh), swapped if 90/270
@@ -154,7 +165,7 @@ namespace bp
 		int planTarget = -1;	// the page a jump waits on before its neighbours may start
 		int64_t planAt = 0;		// when that jump committed (the target's grace runs from here)
 		SeekRun seeks;
-		std::set<int> wantKeep;	// the pages a decode result is still welcome for (want() sets it)
+		std::set<int> wantKeep;	// the pages and bands (keys) a decode result is still welcome for (want() sets it)
 		// a URL chapter: files[i] = pageCache->pathFor(urls[i]); fetching and failed are the pages' requests and their
 		// last failure, so a wanted page is asked for once and a dead URL doesn't spin
 		std::vector<std::string> urls;
@@ -176,6 +187,12 @@ namespace bp
 		struct Thumb { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Thumb> thumbs;
 		std::map<int, int> decodedW;	// each page's decoded width: a zoom in decodes it again, wider
+		// The Strip's long pages (bands.h): found when a page's first band comes back. Their pixels, textures and
+		// decoded widths are per band, under bandKey(page, band) in kept, decodedW, wantKeep, busySet and the renderer.
+		// noBand: a page whose band couldn't be decoded (its whole-page decode took over). Both forgotten on a
+		// mode change: the paged modes show whole pages.
+		std::map<int, BandLayout> bands;
+		std::set<int> noBand;
 		std::string err;
 		int errPage = -1;	// the page err is about (a URL page that failed); -1 for the chapter's own error
 		bool fingerDown = false;

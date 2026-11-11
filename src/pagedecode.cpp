@@ -6,6 +6,10 @@
 #include <fstream>
 #include <memory>
 #include <new>
+#include <csetjmp>
+#include <cstdio>
+#include <jpeglib.h>
+#include <libpng16/png.h>	// (by its folder: "png.h" is this project's own writer)
 
 extern "C"
 {
@@ -520,25 +524,226 @@ namespace bp
 		return scaled(frame.get(), targetW, maxH, maxPixels);
 	}
 
-	PageImage decodePageFile(const std::string& path, int targetW, int maxH, long long maxPixels)
+	bool readPageFile(const std::string& path, std::vector<uint8_t>& bytes, std::string& error)
 	{
+		auto no = [&](const char* why) { error = why; return false; };
 		std::ifstream in(path, std::ios::binary | std::ios::ate);
-		if (!in) return fail("can't open the file");
+		if (!in) return no("can't open the file");
 		std::streamoff n = in.tellg();
-		if (n <= 0) return fail(n == 0 ? "empty image" : "can't read the file");
-		if ((unsigned long long)n > (unsigned long long)kMaxFile) return fail("file too large");
-
-		std::vector<uint8_t> bytes;
+		if (n <= 0) return no(n == 0 ? "empty image" : "can't read the file");
+		if ((unsigned long long)n > (unsigned long long)kMaxFile) return no("file too large");
 		try
 		{
 			bytes.resize((size_t)n);
 		}
 		catch (const std::bad_alloc&)
 		{
-			return fail("out of memory");
+			return no("out of memory");
 		}
 		in.seekg(0);
-		if (!in.read((char*)bytes.data(), (std::streamsize)bytes.size())) return fail("can't read the file");
+		if (!in.read((char*)bytes.data(), (std::streamsize)bytes.size())) return no("can't read the file");
+		return true;
+	}
+
+	PageImage decodePageFile(const std::string& path, int targetW, int maxH, long long maxPixels)
+	{
+		std::vector<uint8_t> bytes;
+		std::string error;
+		if (!readPageFile(path, bytes, error)) return fail(error.c_str());
 		return decodePage(bytes.data(), bytes.size(), targetW, maxH, maxPixels);
+	}
+
+	namespace
+	{
+		// (libjpeg and libpng report an error by a longjmp: nothing with a destructor is made between the setjmp and
+		// the calls that can jump; the rows go into the caller's vector)
+		struct JpegErr
+		{
+			jpeg_error_mgr pub;
+			jmp_buf jump;
+		};
+
+		void jpegFail(j_common_ptr c) { longjmp(((JpegErr*)c->err)->jump, 1); }
+		void jpegQuiet(j_common_ptr) {}
+
+		// rows y0 .. y0 + n of a JPEG as RGBA: the rows above are skipped (their coefficients read, not turned into
+		// pixels), the ones below never read
+		bool jpegRows(const uint8_t* data, size_t size, int y0, int rows, std::vector<uint8_t>& px, int& sw, int& sh,
+			int& got, const char*& error)
+		{
+			jpeg_decompress_struct c;
+			JpegErr e;
+			c.err = jpeg_std_error(&e.pub);
+			e.pub.error_exit = jpegFail;
+			e.pub.output_message = jpegQuiet;
+			if (setjmp(e.jump))
+			{
+				jpeg_destroy_decompress(&c);
+				error = "corrupt image";
+				return false;
+			}
+			jpeg_create_decompress(&c);
+			jpeg_mem_src(&c, data, (unsigned long)size);
+			jpeg_read_header(&c, TRUE);
+			c.out_color_space = JCS_EXT_RGBA;	// (alpha comes as 255; a CMYK picture can't go this way and errors)
+			jpeg_start_decompress(&c);
+			sw = (int)c.output_width;
+			sh = (int)c.output_height;
+			got = std::min(rows, sh - y0);
+			if (sw <= 0 || sw > kMaxSide || got <= 0)
+			{
+				jpeg_destroy_decompress(&c);
+				error = "image too large";
+				return false;
+			}
+			try
+			{
+				px.resize((size_t)sw * got * 4);
+			}
+			catch (const std::bad_alloc&)
+			{
+				jpeg_destroy_decompress(&c);
+				error = "out of memory";
+				return false;
+			}
+			if (y0 > 0) jpeg_skip_scanlines(&c, (JDIMENSION)y0);
+			while ((int)c.output_scanline < y0 + got)
+			{
+				JSAMPROW row = px.data() + (size_t)(c.output_scanline - y0) * sw * 4;
+				jpeg_read_scanlines(&c, &row, 1);
+			}
+			// a warning is damaged data (a cut file's rows come grey): the whole-page path says so properly
+			bool bad = e.pub.num_warnings > 0;
+			jpeg_destroy_decompress(&c);	// (not finish: that would read the rows below the band)
+			if (bad) error = "corrupt image";
+			return !bad;
+		}
+
+		struct PngSource
+		{
+			const uint8_t* data;
+			size_t size, pos;
+		};
+
+		void pngRead(png_structp p, png_bytep out, png_size_t n)
+		{
+			auto* s = (PngSource*)png_get_io_ptr(p);
+			if (n > s->size - s->pos) png_error(p, "cut");
+			std::memcpy(out, s->data + s->pos, n);
+			s->pos += n;
+		}
+		void pngFail(png_structp p, png_const_charp) { longjmp(png_jmpbuf(p), 1); }
+		void pngQuiet(png_structp, png_const_charp) {}
+
+		// the same for a PNG: its rows come in order, so the ones above the band pass through `scratch` (one row)
+		bool pngRows(const uint8_t* data, size_t size, int y0, int rows, std::vector<uint8_t>& px,
+			std::vector<uint8_t>& scratch, int& sw, int& sh, int& got, const char*& error)
+		{
+			PngSource src{data, size, 0};
+			png_structp p = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, pngFail, pngQuiet);
+			if (!p) { error = "out of memory"; return false; }
+			png_infop info = png_create_info_struct(p);
+			if (!info || setjmp(png_jmpbuf(p)))
+			{
+				png_destroy_read_struct(&p, &info, nullptr);
+				error = "corrupt image";
+				return false;
+			}
+			png_set_read_fn(p, &src, pngRead);
+			png_read_info(p, info);
+			sw = (int)png_get_image_width(p, info);
+			sh = (int)png_get_image_height(p, info);
+			got = std::min(rows, sh - y0);
+			// (an interlaced picture's rows don't come in order: libpng would need all of it)
+			bool can = png_get_interlace_type(p, info) == PNG_INTERLACE_NONE && sw > 0 && sw <= kMaxSide && got > 0;
+			if (can)
+			{
+				// every kind of PNG to 8-bit RGBA
+				png_set_expand(p);
+				png_set_strip_16(p);
+				png_set_gray_to_rgb(p);
+				png_set_add_alpha(p, 0xFF, PNG_FILLER_AFTER);
+				png_read_update_info(p, info);
+				can = png_get_rowbytes(p, info) == (size_t)sw * 4;
+			}
+			if (can)
+			{
+				try
+				{
+					px.resize((size_t)sw * got * 4);
+					scratch.resize((size_t)sw * 4);
+				}
+				catch (const std::bad_alloc&)
+				{
+					can = false;
+				}
+			}
+			if (!can)
+			{
+				png_destroy_read_struct(&p, &info, nullptr);
+				error = "not a banded picture";
+				return false;
+			}
+			for (int y = 0; y < y0 + got; y++)
+				png_read_row(p, y < y0 ? scratch.data() : px.data() + (size_t)(y - y0) * sw * 4, nullptr);
+			png_destroy_read_struct(&p, &info, nullptr);
+			return true;
+		}
+	}
+
+	PageImage decodeBand(const uint8_t* data, size_t size, int targetW, int y0, int rows)
+	{
+		if (!data || size == 0) return fail("empty image");
+		if (y0 < 0 || rows <= 0) return fail("no such band");
+		const Kind kind = kindOf(data, size);
+		std::vector<uint8_t> px, scratch;
+		int sw = 0, sh = 0, got = 0;
+		const char* error = nullptr;
+		bool ok = false;
+		if (kind == Kind::Jpeg)
+		{
+			if (!jpegEnded(data, size)) return fail("truncated image");
+			ok = jpegRows(data, size, y0, rows, px, sw, sh, got, error);
+		}
+		else if (kind == Kind::Png) ok = pngRows(data, size, y0, rows, px, scratch, sw, sh, got, error);
+		else return fail("not a banded picture");
+		if (!ok) return fail(error ? error : "corrupt image");
+
+		PageImage out;
+		out.srcW = sw;
+		out.srcH = sh;
+		double scale = targetW > 0 ? std::min(1.0, double(targetW) / sw) : 1.0;
+		const int w = std::max(1, (int)std::lround(sw * scale)), h = std::max(1, (int)std::lround(got * scale));
+		if (w == sw && h == got)
+		{
+			out.rgba = std::move(px);
+			out.w = w;
+			out.h = h;
+			return out;
+		}
+		// the band alone through the scaler (its edge rows repeat at the cut: under a pixel's difference at a seam)
+		UniqueSws sws(sws_getContext(sw, got, AV_PIX_FMT_RGBA, w, h, AV_PIX_FMT_RGBA, SWS_AREA, nullptr, nullptr, nullptr));
+		if (!sws) return fail("unsupported pixel format");
+		try
+		{
+			out.rgba.assign((size_t)w * (size_t)h * 4, 255);
+		}
+		catch (const std::bad_alloc&)
+		{
+			return fail("out of memory");
+		}
+		const uint8_t* s[4] = {px.data(), nullptr, nullptr, nullptr};
+		int sStride[4] = {sw * 4, 0, 0, 0};
+		uint8_t* d[4] = {out.rgba.data(), nullptr, nullptr, nullptr};
+		int dStride[4] = {w * 4, 0, 0, 0};
+		if (sws_scale(sws.get(), s, sStride, 0, got, d, dStride) != h)
+		{
+			out.rgba.clear();
+			out.error = "scaling failed";
+			return out;
+		}
+		out.w = w;
+		out.h = h;
+		return out;
 	}
 }

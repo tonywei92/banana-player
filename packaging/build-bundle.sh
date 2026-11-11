@@ -14,7 +14,8 @@
 # dist/BananaPlayer-<version>-aarch64.zip with both; dist/symbols/banana-player-<version>, the player unstripped (for crash.log).
 #
 # Bundled, built from source with only what playing needs: FFmpeg (decoders and demuxers), libplacebo, libass and
-# libmpv, and the few libraries they pull in; libsmb2 (network folders over SMB). Taken from BananaOS instead (not
+# libmpv, and the few libraries they pull in; libsmb2 (network folders over SMB); Debian's libjpeg-turbo (libjpeg.so.62:
+# the manga reader's long pages, decoded a band at a time). Taken from BananaOS instead (not
 # bundled): glibc, libstdc++, SDL2, SDL2_ttf, Mesa (EGL/GLES), libdrm, ALSA, FreeType, zlib, libpng, OpenSSL's
 # libcrypto (saved passwords) and libcurl (FTP): its SDL carries BananaOS's own patches (SDL_KMSDRM_FIRST picks the
 # top panel), its Mesa drives the Mali GPU, and its libcurl and OpenSSL get its security updates.
@@ -38,7 +39,8 @@ RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
 	build-essential pkg-config cmake meson ninja-build nasm git ca-certificates curl xz-utils zip patchelf file \
 	python3 python3-jinja2 python3-pip \
 	libdav1d-dev libfreetype-dev libfribidi-dev libharfbuzz-dev libfontconfig-dev zlib1g-dev libasound2-dev \
-	libsdl2-dev libsdl2-ttf-dev libegl-dev libgles-dev libdrm-dev libssl-dev libcurl4-openssl-dev >/dev/null \
+	libsdl2-dev libsdl2-ttf-dev libegl-dev libgles-dev libdrm-dev libssl-dev libcurl4-openssl-dev \
+	libjpeg62-turbo-dev libpng-dev >/dev/null \
 	&& rm -rf /var/lib/apt/lists/*
 # mpv wants Meson 1.3 or newer; Debian 12 has 1.0
 RUN pip3 install -q --break-system-packages 'meson>=1.3' 2>&1 | grep -v "^WARNING" || true

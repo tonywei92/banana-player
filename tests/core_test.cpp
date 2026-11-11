@@ -58,6 +58,7 @@ extern "C"
 #include "json.h"
 #include "suwayomi.h"
 #include "imagesize.h"
+#include "bands.h"
 #include "mangajava.h"
 #include "webauth.h"
 #include "webmedia.h"
@@ -4130,6 +4131,128 @@ static void testComicInfo()
 	CHECK_EQ(writeComicInfo(t).find("<Title>A &amp; B &lt; C &gt; D &quot;E&quot;</Title>") != std::string::npos, true);
 	t.title = "x\x01y\tz";
 	CHECK_EQ(writeComicInfo(t).find("<Title>xy\tz</Title>") != std::string::npos, true);
+}
+
+static void testBands()
+{
+	// the layout: bands of the image's own rows, a short tail joined to the last
+	BandLayout l{720, 20000};
+	CHECK_EQ(l.count(), 10);
+	CHECK_EQ(l.top(3), 3 * 2048);
+	CHECK_EQ(l.rows(0), 2048);
+	CHECK_EQ(l.rows(9), 20000 - 9 * 2048);
+	int sum = 0;
+	for (int b = 0; b < l.count(); b++) sum += l.rows(b);
+	CHECK_EQ(sum, 20000);
+	CHECK_EQ((BandLayout{720, 4096 + 100}.count()), 2);	// 100 rows are no band of their own
+	CHECK_EQ((BandLayout{720, 4096 + 100}.rows(1)), 2148);
+	CHECK_EQ((BandLayout{720, 4096 + 1024}.count()), 3);
+	CHECK_EQ((BandLayout{720, 1000}.count()), 1);
+	// which pages: over twice as tall as wide, and two bands at least
+	CHECK_EQ(bandedPage(720, 20000), true);
+	CHECK_EQ(bandedPage(720, 1440), false);
+	CHECK_EQ(bandedPage(720, 3000), false);	// tall, but one band: the whole page is as cheap
+	CHECK_EQ(bandedPage(720, 3072), true);
+	CHECK_EQ(bandedPage(2000, 3072), false);
+	CHECK_EQ(bandedPage(0, 0), false);
+	// a band's decoded size: scaled to the decode width, never over the image's own
+	int w = 0, h = 0;
+	bandSize(l, 0, 640, w, h);
+	CHECK_EQ(w, 640);
+	CHECK_EQ(h, 1820);
+	bandSize(l, 0, 2048, w, h);
+	CHECK_EQ(w, 720);
+	CHECK_EQ(h, 2048);
+	// the bands a view needs: the page drawn 640 wide is 17778 tall, a band 1820.4; the view 480 tall
+	double ph = 20000 * 640.0 / 720;
+	// at the page's top: band 0 in view, band 1 not within two screens below
+	CHECK_EQ(bandsNeeded(l, 0, ph, 480, 480, 960) == (std::vector<int>{0}), true);
+	// 1000 px down: band 0 still in view; band 1 starts 820 px under the view's top, within the margin
+	CHECK_EQ(bandsNeeded(l, -1000, ph, 480, 480, 960) == (std::vector<int>{0, 1}), true);
+	// across a seam: both in view, top to bottom, and nothing else
+	CHECK_EQ(bandsNeeded(l, -1700, ph, 480, 0, 0) == (std::vector<int>{0, 1}), true);
+	// just past it: the band above is within a screen, after the one in view
+	CHECK_EQ(bandsNeeded(l, -1900, ph, 480, 480, 960) == (std::vector<int>{1, 0}), true);
+	CHECK_EQ(bandsNeeded(l, -1900, ph, 480, 0, 0) == (std::vector<int>{1}), true);
+	// in view, then under (nearest first), then over
+	CHECK_EQ(bandsNeeded(l, -3600, ph, 480, 5000, 5000) == (std::vector<int>{1, 2, 3, 4, 0}), true);
+	// a page far under or over the view needs none
+	CHECK_EQ(bandsNeeded(l, 5000, ph, 480, 480, 960).empty(), true);
+	CHECK_EQ(bandsNeeded(l, -ph - 600, ph, 480, 480, 960).empty(), true);
+	// the page after, its top a screen under the view: its first band is ready before it is reached
+	CHECK_EQ(bandsNeeded(l, 900, ph, 480, 480, 960) == (std::vector<int>{0}), true);
+	// keys: a whole page is its index; a band's key gives both back
+	CHECK_EQ(bandKey(7, -1), 7);
+	CHECK_EQ(keyPage(7), 7);
+	CHECK_EQ(keyBand(7), -1);
+	int k = bandKey(1234, 31);
+	CHECK_EQ(k != 1234, true);
+	CHECK_EQ(keyPage(k), 1234);
+	CHECK_EQ(keyBand(k), 31);
+
+	// a band decoded alone is the whole decode's rows: a 64 x 5000 PNG, each row its own colour
+	{
+		const int W = 64, H = 5000;
+		std::vector<unsigned char> px((size_t)W * H * 4);
+		for (int y = 0; y < H; y++)
+			for (int x = 0; x < W; x++)
+			{
+				unsigned char* p = &px[((size_t)y * W + x) * 4];
+				p[0] = (unsigned char)(y & 255); p[1] = (unsigned char)(y >> 8); p[2] = (unsigned char)x; p[3] = 255;
+			}
+		std::string path = "/tmp/bp-test-band.png";
+		CHECK_EQ(savePng(path, W, H, px.data()), true);
+		std::vector<uint8_t> bytes;
+		std::string err;
+		CHECK_EQ(readPageFile(path, bytes, err), true);
+		BandLayout pl{W, H};
+		CHECK_EQ(pl.count(), 2);
+		PageImage b1 = decodeBand(bytes.data(), bytes.size(), 0, pl.top(1), pl.rows(1));
+		CHECK_EQ(b1.ok(), true);
+		CHECK_EQ(b1.srcW, W);
+		CHECK_EQ(b1.srcH, H);
+		CHECK_EQ(b1.w, W);
+		CHECK_EQ(b1.h, H - 2048);
+		CHECK_EQ(b1.ok() && std::memcmp(b1.rgba.data(), &px[(size_t)2048 * W * 4], b1.rgba.size()) == 0, true);
+		// rows past the end are cut; a band outside the picture is an error
+		PageImage tail = decodeBand(bytes.data(), bytes.size(), 0, 4990, 2048);
+		CHECK_EQ(tail.ok(), true);
+		CHECK_EQ(tail.h, 10);
+		CHECK_EQ(decodeBand(bytes.data(), bytes.size(), 0, 5000, 10).ok(), false);
+		// scaled to the decode width
+		PageImage half = decodeBand(bytes.data(), bytes.size(), 32, 0, 2048);
+		CHECK_EQ(half.ok(), true);
+		CHECK_EQ(half.w, 32);
+		CHECK_EQ(half.h, 1024);
+		// a cut file fails (the reader then tries the page whole)
+		CHECK_EQ(decodeBand(bytes.data(), bytes.size() / 2, 0, 2048, 2048).ok(), false);
+		remove(path.c_str());
+	}
+	// a JPEG's band against the whole decode (two decoders: equal within a few levels)
+	{
+		const std::string path = std::string(BP_TESTS_DIR) + "/pages/page.jpg";
+		std::vector<uint8_t> bytes;
+		std::string err;
+		CHECK_EQ(readPageFile(path, bytes, err), true);
+		PageImage whole = decodePage(bytes.data(), bytes.size(), 0);
+		PageImage band = decodeBand(bytes.data(), bytes.size(), 0, 50, 70);
+		CHECK_EQ(band.ok(), true);
+		CHECK_EQ(band.w, 120);
+		CHECK_EQ(band.h, 70);
+		CHECK_EQ(band.srcH, 180);
+		long long diff = 0;
+		if (band.ok() && whole.ok())
+			for (size_t i = 0; i < band.rgba.size(); i++)
+				diff += std::abs((int)band.rgba[i] - (int)whole.rgba[(size_t)50 * 120 * 4 + i]);
+		CHECK_EQ(band.ok() && diff / (long long)band.rgba.size() < 4, true);
+		// no band decoder for the other formats, nor for a damaged file
+		std::vector<uint8_t> webp;
+		CHECK_EQ(readPageFile(std::string(BP_TESTS_DIR) + "/pages/page.webp", webp, err), true);
+		CHECK_EQ(decodeBand(webp.data(), webp.size(), 0, 0, 100).ok(), false);
+		std::vector<uint8_t> cut;
+		CHECK_EQ(readPageFile(std::string(BP_TESTS_DIR) + "/pages/truncated.jpg", cut, err), true);
+		CHECK_EQ(decodeBand(cut.data(), cut.size(), 0, 0, 100).ok(), false);
+	}
 }
 
 static void testPageDecode()
@@ -9086,6 +9209,7 @@ int main()
 	testMangaNetFolders();
 	testComicInfo();
 	testPageDecode();
+	testBands();
 	testCbz();
 	testStrip();
 	testLabels();

@@ -32,4 +32,13 @@ namespace bp
 
 	// The same for a file on the card; a file over 64 MB is refused instead of read.
 	PageImage decodePageFile(const std::string& path, int targetW, int maxH = 0, long long maxPixels = 0);
+
+	// A band of a long page (bands.h): the image's own rows y0 .. y0 + rows (cut at its end), scaled to targetW wide
+	// (never wider than the image), without the whole picture ever in memory: a JPEG's rows before the band are
+	// skipped (libjpeg-turbo), a PNG's are read and let go. srcW/srcH are the whole image's. Not ok() for any other
+	// format, an interlaced PNG, a CMYK JPEG or a damaged file: the caller then decodes the page whole.
+	PageImage decodeBand(const uint8_t* data, size_t size, int targetW, int y0, int rows);
+
+	// a page's file whole (64 MB at most); false with a few words in error
+	bool readPageFile(const std::string& path, std::vector<uint8_t>& bytes, std::string& error);
 }

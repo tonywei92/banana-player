@@ -417,6 +417,13 @@ its own tests (sandbox escapes, limits, a fixture source against a local HTTP se
   AVIF if the bundle's FFmpeg has a decoder for it) to RGBA, scaled once to what the panel needs (the fit at the
   panel's real pixels; the current page again at 2× when zoomed), a few pages ahead in reading order (Preload) and one
   behind. Results are handed to the main thread as `evManga` with the buffer.
+- **Long strip pages (bands, `bands.h`):** in the Strip, a JPEG or PNG more than twice as tall as wide (and 3072 rows
+  or more) is never decoded whole. It is cut into bands of 2048 of the image's own rows; only the bands in view, one
+  screen above and two below are decoded (libjpeg-turbo skipping the rows above, libpng reading them and letting
+  them go; `decodeBand`) and held as pixels and textures under `bandKey(page, band)`; the rest of the page is its
+  grey place. The first band comes back from the page's ordinary job (the thread finds the page long from its bytes)
+  and gives the page's size and its grid thumbnail. WebP, AVIF, GIF, an interlaced PNG, a CMYK JPEG or a band that
+  fails are decoded whole as before (8 Mpx cap, 16384 px a side). The paged modes always decode whole pages.
 - **Textures:** uploads happen on the main thread at most one tile per frame (so a turn never stutters), tiles at most
   2048 px tall (and never over `GL_MAX_TEXTURE_SIZE`): a 20 000 px webtoon page is ten tiles. Only nearby pages stay
   resident (current −1 … +3, the strip's window ± 2 screens), under a budget (96 MB of textures, 64 MB of decoded
