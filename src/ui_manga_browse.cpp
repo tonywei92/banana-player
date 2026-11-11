@@ -1617,6 +1617,18 @@ namespace bp
 			mserSumResume = mangaResume(marks);
 		}
 		int unread = mserSumUnread;
+		// opened from History: the cursor on that chapter, once the list is in
+		if (!mserFocusChapter.empty() && n > 0)
+		{
+			for (int i = 0; i < n; i++)
+				if (sourceItemId(mangaSrcId, mangaSrcChapters[i].key) == mserFocusChapter)
+				{
+					mserCursor = i;
+					mserScroll = std::max(0, std::min(i - 1, n - MG_SRC_SER_ROWS));
+					break;
+				}
+			mserFocusChapter.clear();
+		}
 		drawTextMid(std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " + std::to_string(unread) + " unread",
 			0, DIM, 16, 68);
 		// the details the Library's series card would put on the top panel: here they are on this page (the reader

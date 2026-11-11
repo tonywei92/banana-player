@@ -1273,6 +1273,7 @@ namespace bp
 		bool mangaReadWaiting = false;
 		// the source series page's unread count and Resume point, and what they were made from (drawMangaSourceSeries)
 		std::string mserSumKey;
+		std::string mserFocusChapter;	// a chapter the series page puts its cursor on once its list shows (from History)
 		int mserSumUnread = 0;
 		MangaResumePoint mserSumResume;
 		// the extensions starting (about 25 s on the handheld), on every page: a pill at the top, its seconds counting,

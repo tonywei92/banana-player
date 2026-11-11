@@ -425,7 +425,13 @@ namespace bp
 			// the history keeps a server's series too: its series page, fetched from the server again
 			if (isServerId(cp.seriesId)) { mangaServerSeriesOpenFromId(cp.seriesId, p); return; }
 			// the history keeps a source series too: its page, which resumes at the page left
-			if (isSourceId(cp.seriesId)) { openMangaSeries(cp.seriesId, 2, p); return; }
+			if (isSourceId(cp.seriesId))
+			{
+				openMangaSeries(cp.seriesId, 2, p);
+				// the series page opens on the chapter the History row was (once its list is there)
+				mserFocusChapter = cp.chapterId;
+				return;
+			}
 			const LocalSeries* s = mangaLocalSeries(cp.seriesId);
 			int ci = s ? chapterIndexOf(*s, cp.chapterId) : -1;
 			if (!s || ci < 0) return;
