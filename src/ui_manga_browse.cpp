@@ -28,9 +28,12 @@ namespace bp
 			for (char c : error) l += (char)std::tolower((unsigned char)c);
 			bool d = l.find("ddos-guard") != std::string::npos;
 			if (ddos) *ddos = d;
+			// (a site's refusal by status is one too: 403, 428 and 503 are what a check answers; 429, too many asks)
 			return d || l.find("cloudflare") != std::string::npos || l.find("browser check") != std::string::npos ||
 				l.find("cf_clearance") != std::string::npos || l.find("just a moment") != std::string::npos ||
-				l.find("cf-mitigated") != std::string::npos;
+				l.find("cf-mitigated") != std::string::npos || l.find("http error 403") != std::string::npos ||
+				l.find("http error 428") != std::string::npos || l.find("http error 429") != std::string::npos ||
+				l.find("http error 503") != std::string::npos;
 		}
 		// the grid: two rows of the Library's covers in view under the tabs (its rows are 186 apart); cut above the
 		// status line, which is above the mini bar's place
@@ -804,8 +807,15 @@ namespace bp
 		mangaErrFor = error;
 		bool ddos = false;
 		if (!browserCheckText(error, &ddos)) return;
-		mangaErrText = std::string("This source is behind a ") + (ddos ? "DDoS-Guard" : "Cloudflare") +
-			" check that Banana Player can\xE2\x80\x99t pass. Try another source, or try again later.";
+		std::string l;
+		for (char c : error) l += (char)std::tolower((unsigned char)c);
+		size_t h = l.find("http error ");
+		if (!ddos && l.find("cloudflare") == std::string::npos && h != std::string::npos)
+			mangaErrText = "The site refused (HTTP " + error.substr(h + 11, 3) +
+				"). It may be behind a browser check Banana Player can\xE2\x80\x99t pass, or busy: try another source, or later.";
+		else
+			mangaErrText = std::string("This source is behind a ") + (ddos ? "DDoS-Guard" : "Cloudflare") +
+				" check that Banana Player can\xE2\x80\x99t pass. Try another source, or try again later.";
 		mangaErrOpen = true;
 		fprintf(stderr, "manga: a browser check (%s)\n", error.c_str());
 	}
