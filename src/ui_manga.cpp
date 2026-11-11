@@ -476,7 +476,7 @@ namespace bp
 		{
 			if (b == Button::B) mangaReadWaitCancel();
 			else if (b == Button::A && !mangaSrcLoading && !mangaSrcError.empty()) mangaSourceRetry(p);
-			return true;
+			return false;	// (true would be "leave": with a song playing, main went to the file browser)
 		}
 		if (page == Page::MangaRead)
 		{
