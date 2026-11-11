@@ -229,7 +229,8 @@ chmod +x "$OUT/Banana Player.sh" "$B/launch.sh" "$B/bin/banana-player"
 if [ "$QUICK" = 1 ]; then du -sh "$B"; echo "done (quick): dist/ports/BananaPlayer"; exit 0; fi
 # the shelf's picture: BananaOS looks for media/box/<entry's name>.png beside the entries
 mkdir -p "$OUT/media/box"
-python3 /src/packaging/icon/make-icon.py "$OUT/media/box/Banana Player.png" 16
+if [ -f /src/packaging/icon/app-icon-experiment.png ]; then cp /src/packaging/icon/app-icon-experiment.png "$OUT/media/box/Banana Player.png"
+else python3 /src/packaging/icon/make-icon.py "$OUT/media/box/Banana Player.png" 16; fi
 
 echo "bundled libraries:"; ls "$B/lib" | sed 's/^/  /'
 du -sh "$B"
