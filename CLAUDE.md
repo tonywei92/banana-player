@@ -59,6 +59,8 @@ tools/make-sprite.py                                 # web/sprite.svg from the G
 - **Settings:** a new one goes in `Settings` + the `REMEMBER` table, kept in step with `ui_internal.h` and the row ids.
 - **Threads:** background threads never touch `Player`/`Ui`; they push SDL user events. Never block on a server in a
   destructor; the Updater and `WebServer` are never destroyed.
+- **Memory:** glibc's mmap threshold stays pinned (`mallopt` in `main`): a big buffer freed goes back to the system.
+  Memory is judged on glibc (`tools/leak-loop`, Linux), not by the Mac's allocator.
 - **Session:** keep `apply()` pure (randomness and time come in on the intent); add an invariant + a named test for
   new state. One output (`pref`), moved only by an explicit choice. Shuffle and Loop are lasting settings; a list's
   order is never shown shuffled. Leaving the player is not stopping; Stop stops everywhere. An edit to the playing

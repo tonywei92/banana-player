@@ -1288,6 +1288,9 @@ namespace bp
 		mutable int extNoticeState = -1;
 		Uint32 videoBlockedAt = 0;
 		Uint32 engineStopAt = 0;
+		// the engine is asked for once per entry into the Manga pages (mangaVideoGuard): in them now, and the wish
+		// still to be made (it waits while a stop is ending or the engine is still downloading)
+		bool engineInManga = false, engineEntryWant = false;
 		// the manga extension's picture (assets/icons/manga.png), decoded at the size drawn
 		SDL_Texture* mangaIconTex = nullptr;
 		int mangaIconPx = 0;	// the size it was decoded at

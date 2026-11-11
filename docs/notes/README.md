@@ -7,6 +7,7 @@ Write the way the rest of the repo does: plain and precise, with the why. Say wh
 
 ## Index
 
+- [2026-11-11 reader memory](2026-11-11-reader-memory.md): the player and the manga reader, back and forth: no leak; glibc kept the freed pages (mmap threshold pinned); the engine restarted every five minutes inside Manga.
 - [2026-11-10 picture subtitles](2026-11-10-picture-subs.md): PGS/VobSub/DVB in the browser player; `/api/picsubs` windows, costs, test media.
 - [2026-11-10 play on](2026-11-10-play-on.md): the handheld picks where it plays; page names, the refused `play()` (`Blocked`) and how to test it headless.
 - [2026-11-11 session migration](2026-11-11-session-migration.md): steps b–f of the one playback Session; the Stop-then-pick bug and what the owner will notice.
