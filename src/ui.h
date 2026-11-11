@@ -1090,7 +1090,7 @@ namespace bp
 			SCREEN_OFF_ROW = CLOCK_ROW + 1, EXT_NOTE = SCREEN_OFF_ROW + 1, MANGA_MODE_ROW = EXT_NOTE + 1,
 			MANGA_FIT_ROW = MANGA_MODE_ROW + 1, MANGA_HINGE_ROW = MANGA_FIT_ROW + 1, MANGA_PRELOAD_ROW = MANGA_HINGE_ROW + 1,
 			MANGA_CACHE_ROW = MANGA_PRELOAD_ROW + 1, MANGA_CLEAR_ROW = MANGA_CACHE_ROW + 1,
-			MANGA_JAVA_ROW = MANGA_CLEAR_ROW + 1,
+			MANGA_JAVA_ROW = MANGA_CLEAR_ROW + 1, MANGA_ANON_ROW = MANGA_JAVA_ROW + 1,
 			// Secure DNS is one of the REMEMBER switches (the last), so its id is that switch's: changeSetting's
 			// generic branch toggles it by that index
 			MANGA_DNS_ROW = TOGGLE_ROW + 19;
@@ -2222,6 +2222,10 @@ namespace bp
 		static constexpr Uint32 LIST_PULSE_MS = 1400;
 		bool markAnim = false;	// drawBattery drew the playing mark moving
 		int markW(const Player& p) const;	// its room in the header (0 none)
+		// Manga settings' Anonymous mode: reading adds nothing to the History (places, read marks, the library and
+		// downloads go on as ever). Never saved: off at every start. Its mark sits left of the clock while it's on
+		bool mangaAnon = false;
+		int anonW() const { return mangaAnon ? 18 + 10 : 0; }
 		bool markLive(const Player& p) const;	// it moves: what plays plays (a page's: as the page does)
 		void drawMark(int right, int cy, const Player& p);
 		std::string homeListedFor;	// what played as Home's Recent was listed (it's listed again when that changes)

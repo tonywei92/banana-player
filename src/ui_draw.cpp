@@ -525,6 +525,7 @@ namespace bp
 		std::string c = clockText(p);
 		if (!c.empty()) left -= (left == 616 ? 0 : 10) + (int)std::lround(textWidth(c, 0) / sx);
 		left -= markW(p);
+		left -= anonW();
 		return left;
 	}
 
@@ -566,7 +567,13 @@ namespace bp
 				drawTextMid(c, 0, touchLocked && page == Page::Main ? DIM : TEXT, cr, y + 8, 0, 1);
 				cr -= (int)std::lround(textWidth(c, 0) / sx) + 10;
 			}
-			if (markW(p) && cr - 18 >= minX) drawMark(cr, y + 8, p);
+			if (markW(p) && cr - 18 >= minX)
+			{
+				drawMark(cr, y + 8, p);
+				cr -= 18 + 10;
+			}
+			// Anonymous mode, while it's on (Manga settings)
+			if (anonW() && cr - 18 >= minX) drawGlyphMid(G_INCOGNITO, cr - 9, y + 8, ACCENT);
 		};
 		if (battery.percent < 0)
 		{

@@ -3327,6 +3327,37 @@ static void testPaged()
 
 static void testMangaStore()
 {
+	// Anonymous mode: the place is kept, the History doesn't move (a new chapter hidden, a known one keeps its time)
+	{
+		MangaStore a;
+		MangaSeries sr;
+		sr.id = "local:/anon";
+		sr.title = "Anon";
+		a.putSeries(sr);
+		ChapterProgress seen;
+		seen.seriesId = sr.id;
+		seen.chapterId = "anon-1";
+		seen.page = 2;
+		seen.pages = 10;
+		seen.at = 1000;
+		a.setProgress(seen);
+		ChapterProgress quiet = seen;
+		quiet.page = 5;
+		quiet.at = 2000;
+		a.setProgress(quiet, false);
+		CHECK_EQ(a.progress("anon-1")->page, 5);
+		CHECK_EQ(a.progress("anon-1")->at, (int64_t)1000);
+		CHECK_EQ(a.series(sr.id)->lastRead, (int64_t)1000);
+		ChapterProgress fresh = seen;
+		fresh.chapterId = "anon-2";
+		fresh.page = 1;
+		fresh.at = 3000;
+		a.setProgress(fresh, false);
+		CHECK_EQ(a.progress("anon-2")->page, 1);
+		CHECK_EQ(a.progress("anon-2")->hidden, true);
+		CHECK_EQ(a.history(10).size(), (size_t)1);
+		CHECK_EQ(a.history(10)[0].chapterId, std::string("anon-1"));
+	}
 	char tmpl[] = "/tmp/bp-manga-XXXXXX";
 	char* made = mkdtemp(tmpl);
 	if (!made) { failures++; return; }

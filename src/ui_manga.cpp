@@ -262,7 +262,7 @@ namespace bp
 		cp.pages = readerStatus.pages;
 		cp.read = readerStatus.page >= readerStatus.pages - 1;
 		cp.at = (int64_t)time(nullptr);
-		mangaStore->setProgress(cp);
+		mangaStore->setProgress(cp, !mangaAnon);
 		// with the History off the place is still kept: only the list stays empty, this entry hidden along with the rest
 		if (!mangaHistOn) mangaStore->clearHistory();
 		mangaProgPage = cp.page;

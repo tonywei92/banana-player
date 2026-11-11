@@ -953,6 +953,7 @@ them while you read. **B** goes back where you came from.
 | **Extension support** | Not installed / Downloading / Installed · 344 MB / Running / Failed | Not installed | Needed for repositories whose address ends in index.pb or index.min.json: about 234 MB on the card, about 400 MB of memory while one of their sources is open. A installs; A twice removes. |
 | **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |
 | **Reading history** | On / Off | On | Off clears it. |
+| **Anonymous mode** | On / Off | Off | While it's on, reading adds nothing to the History (your places, read marks, library and downloads work as ever), and a hat-and-glasses mark sits beside the clock. Never saved: off again whenever Banana Player starts. |
 | **Secure DNS** | Off / Cloudflare (1.1.1.1) | Off | Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them. |
 | Repositories | | | Repositories are added by you. Banana Player doesn't provide or check their content. |
 

@@ -1360,9 +1360,9 @@ namespace bp
 				cp.page = mangaSrcPendPage;
 				cp.pages = (int)mangaSrcUrls.size();
 			}
-			cp.hidden = !mangaHistOn;
+			cp.hidden = !mangaHistOn || mangaAnon;
 			cp.at = (int64_t)time(nullptr);
-			mangaStore->setProgress(cp);
+			mangaStore->setProgress(cp, !mangaAnon);
 			mangaSave();
 		}
 		// the status still holds the chapter before: only a change records

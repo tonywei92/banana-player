@@ -54,7 +54,10 @@ namespace bp
 
 		// The chapter's place, added or changed. A chapter read to its last page counts as read, and the series'
 		// lastRead moves to p.at.
-		void setProgress(const ChapterProgress& p);
+		// history false (Anonymous mode): the place and the read mark are kept as ever, but the History doesn't move:
+		// a chapter new to the store starts hidden from it, one already there keeps its time and its row, and the
+		// series' last read stays as it was
+		void setProgress(const ChapterProgress& p, bool history = true);
 		const ChapterProgress* progress(const std::string& chapterId) const;	// null when there is none
 		// What the Continue reading strip shows: each series in the library's latest unfinished chapter, newest first,
 		// at most max. A chapter that was never opened (a record of it only says it is unread) isn't in it.

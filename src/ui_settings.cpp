@@ -75,6 +75,7 @@ namespace bp
 		if (row == MANGA_PRELOAD_ROW) return "More: smoother on a slow server, more data.";
 		if (row == MANGA_CACHE_ROW) return "Pages kept on the card to read again without downloading. Covers: 50 MB more.";
 		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
+		if (row == MANGA_ANON_ROW) return "On: reading adds nothing to the History. Off again when Banana Player starts.";
 		if (row == MANGA_DNS_ROW) return "Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them.";
 		if (row == MANGA_JAVA_ROW)
 			return "Needed for repositories whose address ends in index.pb or index.min.json: about 234 MB on the card, and about 400 MB of memory while one of their sources is open.";
@@ -205,6 +206,13 @@ namespace bp
 			// over a smaller cap the cache gives its oldest pages up at once
 			mangaPageCache.setLimit(mangaCacheBytes(s.mangaCacheSize));
 		}
+		else if (row == MANGA_ANON_ROW)
+		{
+			// the Ui's own, never a setting saved: off at every start
+			mangaAnon = !mangaAnon;
+			fprintf(stderr, "manga: anonymous mode %s\n", mangaAnon ? "on" : "off");
+			return;
+		}
 		else if (row == TOGGLE_ROW + 15)
 		{
 			s.mangaHistory = !s.mangaHistory;
@@ -310,6 +318,11 @@ namespace bp
 			static const char* FITS[MANGA_FITS] = {"Page", "Width", "Fill"};
 			label = "Page fit";
 			value = FITS[p.settings.mangaFit];
+		}
+		else if (row == MANGA_ANON_ROW)
+		{
+			label = "Anonymous mode";
+			value = mangaAnon ? "On" : "Off";
 		}
 		else if (row == MANGA_HINGE_ROW)
 		{

@@ -339,7 +339,7 @@ namespace bp
 		serial_++;
 	}
 
-	void MangaStore::setProgress(const ChapterProgress& p)
+	void MangaStore::setProgress(const ChapterProgress& p, bool history)
 	{
 		ChapterProgress* e = nullptr;
 		for (auto& o : progress_)
@@ -353,6 +353,7 @@ namespace bp
 			progress_.push_back(p);
 			progIdxDirty_ = true;
 			e = &progress_.back();
+			if (!history) e->hidden = true;
 		}
 		else
 		{
@@ -364,15 +365,18 @@ namespace bp
 			// them yet shouldn't throw away what is known
 			if (p.pages > 0) e->pages = p.pages;
 			if (!p.chapterTitle.empty()) e->chapterTitle = p.chapterTitle;
-			e->at = p.at;
+			if (history) e->at = p.at;
 		}
 		// the last page means the chapter is read
 		if (e->pages > 0 && e->page >= e->pages - 1) e->read = true;
-		// the chapter is being read, so it belongs in the History again
-		e->hidden = false;
-		// the series was read now
-		for (auto& s : series_)
-			if (s.id == p.seriesId) s.lastRead = p.at;
+		if (history)
+		{
+			// the chapter is being read, so it belongs in the History again
+			e->hidden = false;
+			// the series was read now
+			for (auto& s : series_)
+				if (s.id == p.seriesId) s.lastRead = p.at;
+		}
 		trimProgress();
 		serial_++;
 	}
