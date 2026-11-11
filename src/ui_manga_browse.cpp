@@ -1600,6 +1600,25 @@ namespace bp
 				mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title, p);
 	}
 
+	std::string Ui::mangaSourceLabel(const std::string& seriesId) const
+	{
+		// where a series comes from, by name: an extension's or a Lua source's, a server's, or the card
+		if (seriesId.compare(0, 6, "local:") == 0) return "On this handheld";
+		if (isServerId(seriesId)) return "Server";
+		if (!isSourceId(seriesId)) return "";
+		std::string full, key;
+		splitSourceId(seriesId, full, key);
+		for (const MangaSrcRow& r : mangaSrcRows)
+			if (r.id == full) return r.name;
+		if (mangaNet && mangaNet->started())
+		{
+			if (const MangaJava::Source* s = mangaNet->javaSources().source(full)) return s->name.empty() ? s->title() : s->name;
+			for (const auto& s : mangaNet->repos().installed())
+				if (s.fullId == full) return s.name.empty() ? s.id : s.name;
+		}
+		return "";
+	}
+
 	std::string Ui::mangaSourceDownloadsId(const std::string& sourceSeriesId) const
 	{
 		// the card's folder of this series' downloads (its chapters' ComicInfo name it), as the Library knows it
@@ -1829,7 +1848,8 @@ namespace bp
 				}
 			mserFocusChapter.clear();
 		}
-		drawTextMid(std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " + std::to_string(unread) + " unread",
+		std::string from = mangaSourceLabel(mangaSeriesId);
+		drawTextMid((from.empty() ? "" : from + " \xC2\xB7 ") + std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " + std::to_string(unread) + " unread",
 			0, DIM, 16, 68);
 		// the details the Library's series card would put on the top panel: here they are on this page (the reader
 		// holds the top panel, and the app has no card of its own). A failure or a running job says so on that line

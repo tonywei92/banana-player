@@ -1685,7 +1685,8 @@ namespace bp
 		bool mangaHisMenuKey(Button b, Player& p);
 		void mangaHisMenuAct(Player& p);
 		void drawMangaHisMenu();
-		std::string mangaSourceDownloadsId(const std::string& sourceSeriesId) const;	// "local:<folder>" or ""
+		std::string mangaSourceDownloadsId(const std::string& sourceSeriesId) const;
+		std::string mangaSourceLabel(const std::string& seriesId) const;	// its source by name ("" unknown)	// "local:<folder>" or ""
 		bool mangaSourceSeriesInLib() const;	// the series or its downloads folder in the Library
 		int mserRows() const { return miniUp ? 4 : 5; }
 		// the grid's foot: down to the hint bar, or above the mini bar while it shows (a touch there is the bar's)

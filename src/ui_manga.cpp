@@ -1388,7 +1388,11 @@ namespace bp
 			std::string title = mangaTitle(cp.seriesId);
 			drawMangaCover({28, mid - 23, 32, 46}, title, false, 1, cp.seriesId, mangaSeriesCoverUrl(cp.seriesId));
 			drawTextMid(title, 1, ink, 72, mid - 10, 422);
-			drawTextMid(chapterShort(cp.chapterTitle) + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages), 0, soft, 72, mid + 10, 422);
+			{
+				std::string from = mangaSourceLabel(cp.seriesId);
+				drawTextMid((from.empty() ? "" : from + " \xC2\xB7 ") + chapterShort(cp.chapterTitle) + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages),
+					0, soft, 72, mid + 10, 422);
+			}
 			// how far into that chapter, a thin bar under the text (ACCENT always: it is the place read)
 			double frac = cp.pages > 0 ? std::clamp((cp.page + 1) / (double)cp.pages, 0.0, 1.0) : 0;
 			drawLevel({72, y + MG_HIST_ROW_H - 13, 422, 3}, (int)std::lround(422 * frac), TRACK, ACCENT);
