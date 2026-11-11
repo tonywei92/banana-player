@@ -263,7 +263,10 @@ namespace bp
 		case MangaDlMark::Queued: text = "Queued"; break;
 		case MangaDlMark::Paused: text = "Paused"; break;
 		case MangaDlMark::Failed: text = "Failed"; ink = DANGER; break;
-		case MangaDlMark::OnCard: text = "On card"; ink = ACCENT; break;
+		case MangaDlMark::OnCard:
+			// an icon, not words: the row's reading progress keeps its place beside it
+			drawGlyphMid(G_DOWNLOAD, right - 10, cy, at ? ACCENT : DIM, 1);
+			return;
 		default: return;
 		}
 		drawTextMid(text, 0, ink, right, cy, 104, 1);

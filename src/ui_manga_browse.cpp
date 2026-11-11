@@ -1728,12 +1728,16 @@ namespace bp
 			const ChapterProgress* pr = mangaStore ? mangaStore->progress(sourceItemId(mangaSrcId, c.key)) : nullptr;
 			bool read = pr && pr->read;
 			// a download mark (queued, progress, on the card) takes the row's right: the page line makes room for it
+			// (on the card: a small icon at the very right, the reading progress still beside it)
 			MangaDlMark dm = mangaDlMarkFor(mangaSrcId, mangaSeriesId, c);
-			bool marked = dm.kind != MangaDlMark::None;
-			drawTextMid(chapterName(c), 1, read ? DIM : at ? ACCENT : TEXT, 48, mid, marked ? 420 : 470);
-			if (read) drawGlyphMid(G_CHECK, marked ? 490 : 596, mid, DIM);
+			bool onCard = dm.kind == MangaDlMark::OnCard;
+			bool marked = dm.kind != MangaDlMark::None && !onCard;
+			int right = onCard ? 580 : 608;
+			drawTextMid(chapterName(c), 1, read ? DIM : at ? ACCENT : TEXT, 48, mid, marked ? 420 : onCard ? 440 : 470);
+			if (onCard) drawMangaDlMark(dm, 608, mid, at);
+			if (read) drawGlyphMid(G_CHECK, marked ? 490 : right - 12, mid, DIM);
 			else if (!marked && pr && (pr->pages > 0 || pr->page > 0))
-				drawTextMid(pageLine(pr->page, pr->pages), 0, at ? DIM_ON : DIM, 608, mid, 150, 1);
+				drawTextMid(pageLine(pr->page, pr->pages), 0, at ? DIM_ON : DIM, right, mid, 150, 1);
 			if (marked) drawMangaDlMark(dm, 608, mid, at);
 		}
 		drawScrollBar(MG_SRC_SER_TOP, MG_SRC_SER_ROWS * ROW_H - 4, mserScroll, MG_SRC_SER_ROWS, n);
