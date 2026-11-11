@@ -2,6 +2,7 @@
 // source and kind, cancelAll, a source's error and the idle close. The fixture scripts need no network; the ones that
 // must fail ask for addresses 5.4 refuses (127.0.0.1:9, localhost, the LAN, [::1], the metadata address).
 #include "mangaworker.h"
+#include "mangarepo.h"
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -588,6 +589,57 @@ int main()
 		auto t0 = Clock::now();
 		CHECK_TRUE(!MangaWorker::validateScript("local x = 0 while true do x = x + 1 end", "loop", error));
 		CHECK_TRUE(msSince(t0) < 3000);
+	}
+
+	// 8. Validate the test repository's Wikimedia Commons Lua source (no network in tests).
+	{
+		std::string repoDir = "tools/manga-test-repo";
+		std::string scriptPath = repoDir + "/wikimedia-commons.lua";
+		std::string scriptText;
+		if (!readFile(scriptPath, scriptText))
+		{
+			repoDir = "../tools/manga-test-repo";
+			scriptPath = repoDir + "/wikimedia-commons.lua";
+			CHECK_TRUE(readFile(scriptPath, scriptText));
+		}
+		CHECK_TRUE(!scriptText.empty());
+		CHECK_TRUE(scriptText.size() <= 256 * 1024);
+
+		std::string actualSha = sha256Hex((const uint8_t*)scriptText.data(), scriptText.size());
+		printf("wikimedia-commons.lua: size=%zu sha256=%s\n", scriptText.size(), actualSha.c_str());
+
+		std::string error;
+		CHECK_TRUE(MangaWorker::validateScript(scriptText, "wikimedia-commons", error));
+		if (!error.empty()) fprintf(stderr, "validateScript error: %s\n", error.c_str());
+		CHECK_TRUE(error.empty());
+
+		// Wrong id is refused
+		CHECK_TRUE(!MangaWorker::validateScript(scriptText, "wrong-id", error));
+		CHECK_TRUE(!error.empty());
+
+		// If index.json exists, verify it parses and matches the script's actual size and sha256
+		std::string indexPath = repoDir + "/index.json";
+		std::string indexText;
+		if (readFile(indexPath, indexText))
+		{
+			RepoIndex repo;
+			CHECK_TRUE(parseRepoIndex(indexText, repo, error));
+			CHECK_TRUE(error.empty());
+			CHECK_EQ(repo.formatVersion, 1);
+			CHECK_TRUE(repo.sources.size() >= 1u);
+			bool found = false;
+			for (const auto& s : repo.sources)
+			{
+				if (s.id == "wikimedia-commons")
+				{
+					found = true;
+					CHECK_EQ(s.name, "Public domain comics (Wikimedia Commons)");
+					CHECK_EQ(s.lang, "en");
+					CHECK_EQ(s.sha256, actualSha);
+				}
+			}
+			CHECK_TRUE(found);
+		}
 	}
 
 	if (failures)
