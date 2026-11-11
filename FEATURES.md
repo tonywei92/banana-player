@@ -744,14 +744,15 @@ each time you open the app:
 - a series' cover is its first chapter's first page: the real cover is decoded in the background, and a plain coloured
   one stands in until it arrives.
 
-**Library.** *Continue reading* along the top: up to three cards with the cover, the series, the chapter and the page
-you were on, and a bar of how far you got. **A** opens that chapter where you left it. Below, the series as covers,
-five to a row, each with the number of chapters you haven't read. **A** opens the series. With nothing in it yet:
+**Library.** The series as covers, five to a row, starting right under the tabs: each cover carries the number of
+chapters you haven't read. **A** opens the series. With nothing in it yet:
 *Your library is empty* — put CBZ files or folders of pictures in a Manga folder on your card, or add series from
 Browse.
 
-**History.** Every chapter you've opened, newest first: the series, the chapter, the page and when. **A** continues
-where you were. **X** clears the list (press **X** again to confirm). With the reading history off in **Manga
+**History.** The series you've read, newest first, one row each: the cover, the series, the chapter you were last at
+with its page (*Ch. 12 · p. 14/38*), a bar of how far into that chapter you got, and when. **A** continues at that
+chapter's page (a source's series opens its page on that chapter). **X** clears the list (press **X** again to
+confirm); the rows are rebuilt from what is left. With the reading history off in **Manga
 settings** the list stays empty, but your places and your read marks are kept either way.
 
 **Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
@@ -853,11 +854,13 @@ chapter already here or queued is not picked twice, and a chapter on the card op
 network. The chapter list marks each one: **Queued**, its pages done (**12/40**), **Paused**, **Failed**, or **On
 card**.
 
-**Downloads.** The storage line says what the downloads take and the card's free space. Below it, the queue: each
-chapter's series, chapter and pages done of total over a progress line, **X** pauses or resumes the one under the
-cursor, and a **Pause all / Resume all** row stops or starts the queue. Then what is on the card by series, with its
-chapters and size; **A** lists a series' chapters (and **A** on one reads it), **X** deletes a chapter or a series after
-a second press. Downloads need the network and resume where they stopped after a pause, a lost connection or a quit.
+**Downloads.** The storage line says what the downloads take and the card's free space. While something is queued, the
+queue comes next: each chapter's series, chapter and pages done of total over a progress line, **X** pauses or resumes
+the one under the cursor, and a **Pause all / Resume all** row stops or starts the queue. With nothing queued that room
+collapses to one dim **Nothing queued** line, and **On the card · N series** and its rows rise right under it, as many
+series as fit above the hints line. What is on the card is listed by series, with its chapters and size; **A** lists a
+series' chapters (and **A** on one reads it), **X** deletes a chapter or a series after a second press. Downloads need
+the network and resume where they stopped after a pause, a lost connection or a quit.
 
 **Reading.** A chapter opens on the top screen; the bottom screen holds the controls: the chapter and the series, the
 page number, the slider, the two chapter buttons and the mode. The big area says *Swipe here to turn the page* (or *Drag

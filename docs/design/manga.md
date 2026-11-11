@@ -12,7 +12,7 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 - **On this handheld**: the cards' `Manga` folders read as series and chapters — folders of pictures, `.cbz` and `.zip`
   archives, one level of volume folders, `ComicInfo.xml` for the series' title and the chapter's number — in reading
   order.
-- **The Manga app**: **Library** (**Continue reading**, covers, unread counts), **History**, **Browse › On this
+- **The Manga app**: **Library** (covers, unread counts), **History** (one row per series), **Browse › On this
   handheld**, the series page (**Resume**, the **In library** heart, read and unread) and the reading page (the page
   number, the slider, the chapter buttons, the drag area).
 - **Sources from repositories**: the **Sources** page's three lists (**Installed**, **Available**, **Repositories**,
@@ -146,7 +146,7 @@ extension's code is in the binary but nothing of it is constructed (as `WebServe
 - **Read offline:** a series page › **Download** (this chapter, the next 5 unread, all unread, or chosen chapters) →
   a queue on the app's **Downloads** page (progress, pause / resume) → each chapter saved as a CBZ under the Manga
   downloads folder on the card → read with no network; delete per chapter or series.
-- **Come back:** Library's *Continue reading* strip → the chapter at the page left.
+- **Come back:** History's top row (the series last read) → the chapter at the page left.
   Finishing a chapter's last page and pressing on opens the next chapter (a top-panel card says "Chapter 13 · The Night
   Market"); the last chapter ends on a "You're caught up" card.
 - **Update / remove a source:** Sources › Installed shows *Update* when the repository has a newer version; Remove
@@ -166,13 +166,13 @@ settings**). **Sources** is a page of its own, opened with **X** on Browse (its 
 | **Manage extensions** (START in the drawer) | every extension: icon, name, one-line description, On/Off; A toggles, X or Right: its own settings page (for the reader: **Manga settings**) | the focused extension's description |
 
 
-| **Library** | *Continue reading* strip (3 cards: cover, title, "Ch. 12 · p. 14/38", progress line), then a 5-wide cover grid with unread badges | the focused series: cover, title, author, status, synopsis, "12 of 48 read" |
-| **History** | rows: cover thumb, series, chapter, page, when; X: remove, clear | the focused series, as above |
+| **Library** | a 5-wide cover grid right under the tabs (label "Library · N series"), unread badges; no Continue reading strip | the focused series: cover, title, author, status, synopsis, "12 of 48 read" |
+| **History** | one row per series: cover thumb, series, "Ch. 12 · p. 14/38", a page bar, when; X: clear | the focused series, as above |
 | **Browse** | sources list (On this handheld, network folders, servers, installed sources; language chip, last used); then Popular / Latest / Search tabs and a cover grid that loads 2 rows ahead | the focused result's details (fetched once it rests 400 ms) |
 | **Sources** | its own page (**X** on Browse); Installed / Available / Repositories, stepped with Left/Right (the list only uses Up/Down; X stays Options) | the focused source: repository, version, language, what it was checked against |
 | **Series** | cover, title, status line, Resume (A), Download (R2), Refresh (L2), Library heart (touch), chapter list (unread dot, read dimmed with a check, "p. 14/38" on the started one, a download mark: queued, progress, on the card), X: Options (mark read/unread, from here down, refresh, sort, delete download) | cover large, synopsis, genres |
 | **Download** (sheet from the series page) | This chapter · Next 5 unread · All unread (37) · Choose chapters… (the list in select mode) | how much it will take, room left |
-| **Downloads** | a storage line (downloads' size, the card's free space); the queue (series, chapter, pages done, pause / resume); then what's on the card by series (chapters, size), X: delete | the focused series |
+| **Downloads** | a storage line (downloads' size, the card's free space); the queue (series, chapter, pages done, pause / resume), or one dim "Nothing queued" line with the card's series lifted under it; then what's on the card by series (chapters, size), X: delete | the focused series |
 | **Reader** | a touch surface showing the pages under the finger (drag and flick there; in strip modes a map of the chapter with the window on it), Back/Forward, Prev/Next chapter; the mode and the zoom are the keys' and the Reading menu's; a page slider "14 / 38" (drag to jump); chapter title; the **Now playing** mini bar along the bottom | the pages, drawn by the reader's renderer |
 | **Pages** (Y in the reader) | the chapter's thumbnails, 6 wide | the page under the cursor |
 | **Manga settings** (START on any Manga page, the gear in Manage extensions, the Reading menu's last row) | the reader's own rows, drawn as Settings draws a group's, the note last | — |
@@ -514,7 +514,7 @@ sheet; Library, History, Browse, Sources, Series, Reader, Pages; On this handhel
 (folders, CBZ/CB7/CBR), network folders, Komga, OPDS (+ PSE; covers Kavita); Lua sources and repositories (install,
 update, remove); the reader's own page renderer (paged Right to left / Left to right with swipe and snap; Strip, one
 continuous column with drag and inertia), music playing on while reading; downloads (queue, CBZ on the card, offline
-reading, Downloads page); progress, history, Continue reading (in the reader, not on Home: the owner's call, 2026-11-11); page and cover cache; dashboard
+reading, Downloads page); progress, history (in the reader, not on Home: the owner's call, 2026-11-11); page and cover cache; dashboard
 pages for library, sources and repositories, downloads; FEATURES.md, a note in `docs/notes/`.
 
 Prototype first, on the handheld: the strip renderer's smoothness (drag, flick, decode keeping up) before the rest is

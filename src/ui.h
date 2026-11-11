@@ -1238,7 +1238,7 @@ namespace bp
 		Uint32 mangaSavedAt = 0;
 		std::vector<std::string> mangaNotes;	// toasts made where no Player was at hand (mangaNotesTick shows them)
 		// the Library and History lists made again when the store changes: the library, its unread counts, the
-		// Continue reading cards, the last chapters opened
+		// History's series rows
 		mutable uint64_t mangaCacheSerial = 0;
 		mutable int mangaCacheCount = -1;
 		mutable bool mangaCacheValid = false;
@@ -1246,8 +1246,8 @@ namespace bp
 		static std::string mangaCoverKey(const std::string& url);	// a cover's cache key (the extensions' without their port)
 		std::string mangaSeriesCoverUrl(const std::string& seriesId) const;	// a saved series' cover by URL ("" for a local one)
 		mutable std::vector<int> mangaLibUnread;
-		mutable std::vector<ChapterProgress> mangaCards, mangaHistory;
-		int mlibZone = 0, mlibCard = 0, mlibGrid = 0, mlibScroll = 0;	// 0 the cards, 1 the cover grid
+		mutable std::vector<ChapterProgress> mangaHistory;	// one row per series (historyBySeries)
+		int mlibGrid = 0, mlibScroll = 0;
 		int mhisCursor = 0, mhisScroll = 0;
 		int mbrowseCursor = 0, mListCursor = 0, mListScroll = 0;
 		bool mBrowseList = false;	// Browse's "On this handheld": the series list open
@@ -1441,12 +1441,14 @@ namespace bp
 		bool mangaCoverOnFetched(MangaFetch::Result& r);	// true if the result was one of ours (a cover fetch)
 		// four tabs evenly across the room under the header's back icon: 24 each side, 8 between
 		Rect mangaTabRect(int i) const { return {24 + i * 150, 60, 142, 30}; }
-		Rect mangaCardRect(int i) const { return {12 + i * 208, 118, 200, 64}; }
 		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the grid's covers 124 apart
+		// the grid starts right under the tabs (their row ends at 90), its label on the line above it: with the
+		// Continue reading strip gone, a row more of covers shows
+		static constexpr int MG_LIB_TOP = 118, MG_LIB_BOTTOM = 416;
 		Rect mangaCoverRect(int i) const
 		{
 			int row = i / MG_COLS, col = i % MG_COLS;
-			return {16 + col * 124, 218 + (row - mlibScroll) * 186, MG_COVER_W, MG_COVER_H};
+			return {16 + col * 124, MG_LIB_TOP + (row - mlibScroll) * 186, MG_COVER_W, MG_COVER_H};
 		}
 		Rect mangaResumeRect() const { return {16, 84, 220, 52}; }
 		Rect mangaHeartRect() const { return {556, 84, 68, 52}; }
@@ -1468,8 +1470,7 @@ namespace bp
 		// History's rows hold two lines (series, then chapter and page): taller, so fewer
 		static constexpr int MG_HIST_ROW_H = 58, MG_HIST_ROWS = 5;	// the tabs end at 86: History's and Browse's rows below them
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
-		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101,
-			MG_FULL = 3102;
+		static constexpr int MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101, MG_FULL = 3102;
 		// the pages grid: 6 columns of 96 px wide thumbnails, 6 px gap, centred in the 640-wide panel;
 		// each row is 130 px (thumb + page number), the grid starts below the header and ends above the hints
 		static constexpr int MPG_COLS = 6, MPG_THUMB_W = 96, MPG_GAP = 6, MPG_ROW_H = 130;
@@ -2066,9 +2067,18 @@ namespace bp
 		void mangaDlSheetAct(Player& p);
 		void drawMangaDlSheet(const Player& p);
 		std::string mangaDlSignature() const;		// this part of the page for signature()
-		// the Downloads tab's rows: the queue (up to 3), Pause all, then the card's series (up to 2)
+		// the Downloads tab's rows: the queue (up to 3), Pause all, then the card's series (up to 2). With nothing
+		// queued the queue's room goes to the card: one dim line, then the series from MDL_CARD_TOP_C down to the
+		// hint line, as many as fit
 		static constexpr int MDL_TOP = 138, MDL_QROW = 58, MDL_QSHOWN = 3, MDL_ALL_Y = 316, MDL_CARD_TOP = 368,
 			MDL_CROW = 38, MDL_CSHOWN = 2;
+		static constexpr int MDL_NOTE_Y = 122, MDL_CARD_LABEL_C = 142, MDL_CARD_TOP_C = 156;
+		int mdlCardRows() const
+		{
+			if (mangaDlQueueCount() > 0) return MDL_CSHOWN;
+			return std::max(1, (footY() - 16 - MDL_CARD_TOP_C) / MDL_CROW);
+		}
+		int mdlCardTop() const { return mangaDlQueueCount() > 0 ? MDL_CARD_TOP : MDL_CARD_TOP_C; }
 
 		// ---- the manga reader's settings (ui_manga_settings.cpp) ----
 		// A page of the app's own, not a group of Banana Player's Settings: START on the app's pages (any tab) or over
