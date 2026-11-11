@@ -1924,6 +1924,14 @@ namespace bp
 		bool mangaSrvMenu = false;
 		std::string mangaSrvMenuId;
 		// On this handheld's list: Y, where to put manga (MLS_HELP); X, a series' Open / Delete, the delete asked twice
+		// entering Manga without the manga engine: Download it / Not now (asked again at the next entry)
+		bool mengSheet = false;
+		int mengCursor = 0;
+		Rect mangaEngineBox() const { return {64, 88, 512, 300}; }
+		Rect mangaEngineRow(int i) const { return {80, 268 + i * 48, 480, 40}; }
+		bool mangaEngineKey(Button b, Player& p);
+		void mangaEngineChoose(int i, Player& p);
+		void drawMangaEngineSheet();
 		enum { MLS_NONE, MLS_HELP, MLS_MENU };
 		int mlocSheet = MLS_NONE, mlocCursor = 0;
 		bool mlocDeleteArmed = false;

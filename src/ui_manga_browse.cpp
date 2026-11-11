@@ -189,6 +189,8 @@ namespace bp
 			// On this handheld: its series, as it was
 			mBrowseList = true;
 			mListCursor = mListScroll = 0;
+			mlocSheet = MLS_NONE;
+			mlocDeleteArmed = false;
 			return;
 		}
 		int nets = mangaNetFoldersCount();

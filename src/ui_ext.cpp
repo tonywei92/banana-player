@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "manganet.h"
 #include "pagedecode.h"
 #include "ui_internal.h"
 
@@ -12,6 +13,16 @@ namespace bp
 		cursor = scroll = 0;
 		extPressed = pressedBtn = -1;
 		mangaOpen(p);	// the store loaded, the card scanned, on Library
+		// most sources need the manga engine: offered at each entry while it isn't on the card (Not now is for this
+		// time only). A failed download with nothing kept counts as not there
+		mengSheet = false;
+		if (mangaNet && mangaNet->started())
+		{
+			JavaExtHost& h = mangaNet->javaExt();
+			auto st = h.state();
+			mengSheet = st == JavaExtHost::State::NotInstalled || (st == JavaExtHost::State::Failed && h.installedBytes() == 0);
+			mengCursor = 0;
+		}
 	}
 
 	void Ui::openExtensions()

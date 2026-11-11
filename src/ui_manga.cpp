@@ -80,6 +80,7 @@ namespace bp
 		mhisCursor = mhisScroll = 0;
 		mbrowseCursor = mListCursor = mListScroll = 0;
 		mangaClearAt = 0;
+		mlocSheet = MLS_NONE;
 		mangaPressed = -1;
 		mangaTouch = mangaSlider = false;
 		mangaSliderPage = -1;
@@ -462,6 +463,11 @@ namespace bp
 
 	bool Ui::mangaKey(Button b, Player& p)
 	{
+		if (page == Page::Manga && mengSheet) return mangaEngineKey(b, p);
+		// On this handheld's help or series menu takes every key, B too (B below would leave the list under it,
+		// and the next A on On this handheld found the menu still open)
+		if (page == Page::Manga && mangaTab == MT_BROWSE && mBrowseList && mangaView == 0 && mlocSheet != MLS_NONE)
+			return mangaLocalSheetKey(b, p);
 		if (page == Page::Manga && mhisMenu) return mangaHisMenuKey(b, p);
 		// the worker's answers first: a source's list, a series' details, a chapter's pages (this page's or the
 		// reading page's next one)
@@ -885,6 +891,13 @@ namespace bp
 		// the tabs, a card, a cover, a row: a tap acts on the spot, as the browser's tabs do
 		if (pt.kind != Pointer::Down) return false;
 		mangaPressed = -1;
+		if (page == Page::Manga && mengSheet)
+		{
+			for (int i = 0; i < 2; i++)
+				if (mangaEngineRow(i).hit(x, y)) { mengCursor = i; mangaEngineChoose(i, p); return false; }
+			if (!mangaEngineBox().hit(x, y)) mengSheet = false;
+			return false;
+		}
 		if (page == Page::Manga && mhisMenu)
 		{
 			if (!mhisMenuBox().hit(x, y)) { mhisMenu = false; return false; }
@@ -1252,6 +1265,48 @@ namespace bp
 		case MT_BROWSE: drawMangaBrowse(p); break;
 		case MT_DOWNLOADS: drawMangaDownloads(p); break;
 		}
+		if (mengSheet) drawMangaEngineSheet();
+	}
+
+	// ---- entering without the manga engine: Download / Not now ----
+
+	bool Ui::mangaEngineKey(Button b, Player& p)
+	{
+		switch (b)
+		{
+		case Button::Up: case Button::Down: mengCursor = 1 - mengCursor; break;
+		case Button::A: mangaEngineChoose(mengCursor, p); break;
+		case Button::B: mengSheet = false; break;
+		default: break;
+		}
+		return false;
+	}
+
+	void Ui::mangaEngineChoose(int i, Player& p)
+	{
+		mengSheet = false;
+		if (i != 0 || !mangaNet) return;
+		JavaExtHost& h = mangaNet->javaExt();
+		// (its progress is the notice at the top of every Manga page; Manga settings can cancel it)
+		auto st = h.state();
+		if (st == JavaExtHost::State::NotInstalled || st == JavaExtHost::State::Failed) h.install();
+		fprintf(stderr, "manga: the engine's download asked for on entering\n");
+		p.osd("Downloading the manga engine\xE2\x80\xA6", 2000);
+	}
+
+	void Ui::drawMangaEngineSheet()
+	{
+		Rect b = mangaEngineBox();
+		drawDialog(b, "Get the manga engine?");
+		static const char* TEXT_ = "Most online sources need it: a one-time download, kept on the card. It runs only while "
+			"you use them.";
+		auto lines = wrapText(TEXT_, 0, b.w - 64, 3);
+		for (size_t i = 0; i < lines.size(); i++)
+			drawTextMid(lines[i], 0, TEXT, b.x + 32, b.y + 84 + (int)i * 26, b.w - 64);
+		drawTextMid("Manga on your card works without it.", 0, DIM, b.x + 32, b.y + 84 + (int)lines.size() * 26 + 8, b.w - 64);
+		drawDialogRow(mangaEngineRow(0), &G_DOWNLOAD, "Download", mengCursor == 0, false, TEXT, "234 MB", DIM);
+		drawDialogRow(mangaEngineRow(1), nullptr, "Not now", mengCursor == 1, false, TEXT, "", {0, 0, 0, 0});
+		drawHints({{"A", "Choose"}, {"B", "Not now"}});
 	}
 
 	void Ui::drawMangaLibrary(const Player& p)
