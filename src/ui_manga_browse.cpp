@@ -348,10 +348,13 @@ namespace bp
 			int y = rowY(i), mid = y + (ROW_H - 4) / 2;
 			bool at = i == mbrowseCursor;
 			if (at) drawFocus({16, y, 608, ROW_H - 4});
+			// each row's kind at its left: the card, a network folder, a server, a source
+			SDL_Color ic = at ? ACCENT : DIM;
 			if (i == 0)
 			{
 				int count = (int)mangaLocal.size();
-				drawTextMid("On this handheld", 1, at ? ACCENT : TEXT, 32, mid, 470);
+				drawGlyphMid(G_CARD, 44, mid, ic);
+				drawTextMid("On this handheld", 1, at ? ACCENT : TEXT, 68, mid, 434);
 				drawTextMid(count == 1 ? "1 series" : std::to_string(count) + " series", 0, at ? DIM_ON : DIM, 608, mid, 160, 1);
 				continue;
 			}
@@ -359,7 +362,8 @@ namespace bp
 			{
 				// a saved network connection: its name and what kind it is (SMB · host, FTP · host)
 				const NetServer& s = netServers[i - 1];
-				drawTextMid(serverName(s), 1, at ? ACCENT : TEXT, 32, mid, 430);
+				drawGlyphMid(G_NETWORK, 44, mid, ic);
+				drawTextMid(serverName(s), 1, at ? ACCENT : TEXT, 68, mid, 394);
 				drawTextMid(std::string(netTypeLabel(s.type)) + "  " + s.host, 0, at ? DIM_ON : DIM, 608, mid, 180, 1);
 				continue;
 			}
@@ -367,7 +371,8 @@ namespace bp
 			{
 				// a saved server: its name, what kind it is, and the pencil its X (or a tap there) opens
 				const MangaServer& s = servers[i - nets - 1];
-				drawTextMid(s.name, 1, at ? ACCENT : TEXT, 32, mid, 450);
+				drawGlyphMid(G_LAPTOP, 44, mid, ic);
+				drawTextMid(s.name, 1, at ? ACCENT : TEXT, 68, mid, 414);
 				std::string kind = s.kind;
 				for (char& c : kind) c = (char)std::toupper((unsigned char)c);
 				int tw = (int)std::lround(textWidth(kind, 0) / sx) + 14;
@@ -379,12 +384,14 @@ namespace bp
 			if (mangaSrcRows.empty() && i == srcStart)
 			{
 				// no source installed: the row after the servers says where they come from, and A (or a tap) opens it
-				drawTextMid("Add sources in Sources (X on Browse)", 1, at ? ACCENT : TEXT, 32, mid, 576);
+				drawGlyphMid(G_PLUS, 44, mid, ic);
+				drawTextMid("Add sources in Sources (X on Browse)", 1, at ? ACCENT : TEXT, 68, mid, 540);
 				continue;
 			}
 			const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p);
 			if (!r) continue;
-			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 32, mid, 470);
+			drawGlyphMid(G_BLOCKS, 44, mid, ic);
+			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 68, mid, 434);
 			// its language, a chip at the row's end (as a cover's unread count is)
 			int right = 608;
 			std::string lang = r->lang;
@@ -398,7 +405,10 @@ namespace bp
 		}
 		// no saved connection: where they would be (the Files browser's Network adds one)
 		if (nets == 0 && inView(rowY(n)))
-			drawTextMid("Network folders \xC2\xB7 none saved", 1, DIM, 32, rowY(n) + (ROW_H - 4) / 2, 576);
+		{
+			drawGlyphMid(G_NETWORK, 44, rowY(n) + (ROW_H - 4) / 2, DIM);
+			drawTextMid("Network folders \xC2\xB7 none saved", 1, DIM, 68, rowY(n) + (ROW_H - 4) / 2, 540);
+		}
 		bool onServer = mbrowseCursor > nets && mbrowseCursor <= nets + (int)servers.size();
 		if (onServer) drawHints({{"A", "Open"}, {"X", "Edit"}, {"Y", "Add server"}, {"B", "Back"}});
 		else drawHints({{"A", "Open"}, {"X", "Sources"}, {"Y", "Add server"}, {"B", "Back"}});
@@ -414,10 +424,13 @@ namespace bp
 
 	void Ui::mangaSrcTabSave()
 	{
-		if (mangaSrcItems.empty() || mangaSrcLoading || !mangaSrcError.empty()) return;
+		if (mangaSrcItems.empty() || !mangaSrcError.empty()) return;
 		if (mangaSrcTabCache.size() > 12) mangaSrcTabCache.clear();
+		// a page still coming is kept as not come: back on the tab, it is asked for again (mangaSourceMaybeMore)
+		int page = mangaSrcLoading ? std::max(1, mangaSrcPage - 1) : mangaSrcPage;
+		bool more = mangaSrcLoading ? true : mangaSrcMore;
 		mangaSrcTabCache[mangaSrcId + "|" + std::to_string(mangaSrcTab)] =
-			{mangaSrcItems, mangaSrcPage, mangaSrcCursor, mangaSrcScroll, mangaSrcMore, mangaSrcQuery, mangaSrcFiltersNow()};
+			{mangaSrcItems, page, mangaSrcCursor, mangaSrcScroll, more, mangaSrcQuery, mangaSrcFiltersNow()};
 	}
 
 	bool Ui::mangaSrcTabRestore(int tab)

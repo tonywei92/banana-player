@@ -883,7 +883,7 @@ namespace bp
 		if (page == Page::Manga && mhisMenu)
 		{
 			if (!mhisMenuBox().hit(x, y)) { mhisMenu = false; return false; }
-			for (int i = 0; i < 4; i++)
+			for (int i = 0; i < MHIS_MENU_ROWS; i++)
 				if (mhisMenuRow(i).hit(x, y)) { mhisMenuCursor = i; mangaHisMenuAct(p); }
 			return false;
 		}
@@ -1297,8 +1297,8 @@ namespace bp
 	{
 		switch (b)
 		{
-		case Button::Up: mhisMenuCursor = (mhisMenuCursor + 3) % 4; break;
-		case Button::Down: mhisMenuCursor = (mhisMenuCursor + 1) % 4; break;
+		case Button::Up: mhisMenuCursor = (mhisMenuCursor + MHIS_MENU_ROWS - 1) % MHIS_MENU_ROWS; break;
+		case Button::Down: mhisMenuCursor = (mhisMenuCursor + 1) % MHIS_MENU_ROWS; break;
 		case Button::A: mangaHisMenuAct(p); break;
 		case Button::B: case Button::X: mhisMenu = false; break;
 		default: break;
@@ -1311,13 +1311,18 @@ namespace bp
 		mhisMenu = false;
 		if (!mangaStore) return;
 		int64_t now = (int64_t)time(nullptr);
-		static const char* SAID[4] = {"Cleared the last hour", "Cleared today", "Cleared the last 24 hours", "History cleared"};
-		if (mhisMenuCursor == 3) mangaStore->clearHistory();
+		static const char* SAID[5] = {"Removed from History", "Cleared the last hour", "Cleared today", "Cleared the last 24 hours", "History cleared"};
+		if (mhisMenuCursor == 0)
+		{
+			// the series the cursor was on
+			if (mhisCursor >= 0 && mhisCursor < (int)mangaHistory.size()) mangaStore->clearHistorySeries(mangaHistory[mhisCursor].seriesId);
+		}
+		else if (mhisMenuCursor == 4) mangaStore->clearHistory();
 		else
 		{
 			int64_t since = now - 3600;
-			if (mhisMenuCursor == 2) since = now - 24 * 3600;
-			else if (mhisMenuCursor == 1)
+			if (mhisMenuCursor == 3) since = now - 24 * 3600;
+			else if (mhisMenuCursor == 2)
 			{
 				// today: from this morning's midnight, the handheld's own clock
 				time_t t = (time_t)now;
@@ -1329,21 +1334,21 @@ namespace bp
 			mangaStore->clearHistorySince(since);
 		}
 		mangaSave();
-		mhisCursor = mhisScroll = 0;
-		p.osd(SAID[std::clamp(mhisMenuCursor, 0, 3)], 1500);
+		if (mhisMenuCursor != 0) mhisCursor = mhisScroll = 0;	// (one series gone: the cursor stays where it was)
+		mangaNotice(SAID[std::clamp(mhisMenuCursor, 0, 4)], 1500);
 	}
 
 	void Ui::drawMangaHisMenu()
 	{
 		Rect b = mhisMenuBox();
 		drawDialog(b, "Clear history");
-		static const char* ROWS[4] = {"Last hour", "Today", "Last 24 hours", "All"};
-		for (int i = 0; i < 4; i++)
+		static const char* ROWS[MHIS_MENU_ROWS] = {"Selected item", "Last hour", "Today", "Last 24 hours", "All"};
+		for (int i = 0; i < MHIS_MENU_ROWS; i++)
 		{
 			Rect r = mhisMenuRow(i);
 			bool at = i == mhisMenuCursor;
 			if (at) drawFocus(r);
-			drawTextMid(ROWS[i], 1, at ? ACCENT : i == 3 ? DANGER : TEXT, r.x + 12, r.y + r.h / 2, r.w - 24);
+			drawTextMid(ROWS[i], 1, at ? ACCENT : i == MHIS_MENU_ROWS - 1 ? DANGER : TEXT, r.x + 12, r.y + r.h / 2, r.w - 24);
 		}
 		drawHints({{"A", "Clear"}, {"B", "Close"}});
 	}

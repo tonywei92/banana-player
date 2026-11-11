@@ -72,6 +72,8 @@ namespace bp
 		void clearHistory();
 		// the History rows read at or after this time (seconds since the epoch) leave the list; the places stay
 		void clearHistorySince(int64_t since);
+		// one series' rows leave the list (History's Selected item); its places stay
+		void clearHistorySeries(const std::string& seriesId);
 		// How many of the chapters given aren't read.
 		int unread(const std::string& seriesId, const std::vector<std::string>& chapterIds) const;
 

@@ -485,6 +485,13 @@ namespace bp
 		serial_++;
 	}
 
+	void MangaStore::clearHistorySeries(const std::string& seriesId)
+	{
+		for (auto& p : progress_)
+			if (p.seriesId == seriesId) p.hidden = true;
+		serial_++;
+	}
+
 	void MangaStore::clearHistorySince(int64_t since)
 	{
 		for (auto& p : progress_)

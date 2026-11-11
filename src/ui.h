@@ -1671,8 +1671,9 @@ namespace bp
 		// History's X: Clear last hour / today / last 24 hours / all (the places to resume stay)
 		bool mhisMenu = false;
 		int mhisMenuCursor = 0;
-		Rect mhisMenuBox() const { return {112, 96, 416, 70 + 4 * 44}; }
-		Rect mhisMenuRow(int i) const { return {128, 152 + i * 44, 384, 40}; }
+		static constexpr int MHIS_MENU_ROWS = 5;	// Selected item, Last hour, Today, Last 24 hours, All
+		Rect mhisMenuBox() const { return {112, 80, 416, 70 + MHIS_MENU_ROWS * 44}; }
+		Rect mhisMenuRow(int i) const { return {128, 136 + i * 44, 384, 40}; }
 		bool mangaHisMenuKey(Button b, Player& p);
 		void mangaHisMenuAct(Player& p);
 		void drawMangaHisMenu();
