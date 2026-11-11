@@ -20,6 +20,7 @@ namespace bp
 		constexpr long kLowSpeedBytes = 1024;	// under this for 30 s: the server went away, not a slow page
 		constexpr long kLowSpeedSecs = 30;
 		constexpr long kMaxRedirects = 5;
+		constexpr size_t kBodyProbe = 4096;	// enough of the body for a browser check's markers, never the whole page
 
 		// "https://user@host:8443/a?b" -> "host", so one server's two slots are shared by every scheme, port and path
 		// of it (the host is what the cap is about, not the URL)
@@ -44,6 +45,14 @@ namespace bp
 			std::transform(host.begin(), host.end(), host.begin(), [](unsigned char c) { return (char)std::tolower(c); });
 			return host;
 		}
+
+		std::string trim(const std::string& s)
+		{
+			size_t a = 0, b = s.size();
+			while (a < b && (s[a] == ' ' || s[a] == '\t')) a++;
+			while (b > a && (s[b - 1] == ' ' || s[b - 1] == '\t' || s[b - 1] == '\r')) b--;
+			return s.substr(a, b - a);
+		}
 	}
 
 	struct MangaFetch::Impl
@@ -53,6 +62,8 @@ namespace bp
 			uint64_t id = 0;
 			std::string url, host, toFile, part;
 			Headers headers;
+			Headers responseHeaders;	// the answer's headers, kept for a browser check's own
+			std::string bodyHead;		// its first bytes: a toFile body is not kept in memory
 			int64_t maxBytes = 0, received = 0;
 			std::vector<uint8_t> body;
 			FILE* fp = nullptr;
@@ -73,6 +84,9 @@ namespace bp
 				r->over = true;
 				return 0;
 			}
+			// The head is kept even when the body goes straight to a file: a challenge's page is all markers.
+			if (r->bodyHead.size() < kBodyProbe)
+				r->bodyHead.append(data, std::min(n, kBodyProbe - r->bodyHead.size()));
 			if (r->fp)
 			{
 				if (fwrite(data, 1, n, r->fp) != n)
@@ -87,6 +101,23 @@ namespace bp
 				r->body.insert(r->body.end(), p, p + n);
 			}
 			r->received += (int64_t)n;
+			return n;
+		}
+
+		// The answer's headers, in the order they came; a redirect chain's earlier hops come too, and a lookup takes
+		// the last value, so the final answer wins.
+		static size_t onHeader(char* data, size_t size, size_t nmemb, void* user)
+		{
+			Request* r = (Request*)user;
+			size_t n = size * nmemb;
+			std::string line(data, n);
+			size_t colon = line.find(':');
+			if (colon != std::string::npos)
+			{
+				std::string name = trim(line.substr(0, colon));
+				std::string value = trim(line.substr(colon + 1));
+				if (!name.empty()) r->responseHeaders.emplace_back(name, value);
+			}
 			return n;
 		}
 
@@ -132,6 +163,8 @@ namespace bp
 			curl_easy_setopt(e, CURLOPT_BUFFERSIZE, 256L * 1024);
 			curl_easy_setopt(e, CURLOPT_WRITEFUNCTION, &Impl::onWrite);
 			curl_easy_setopt(e, CURLOPT_WRITEDATA, &r);
+			curl_easy_setopt(e, CURLOPT_HEADERFUNCTION, &Impl::onHeader);
+			curl_easy_setopt(e, CURLOPT_HEADERDATA, &r);
 			curl_easy_setopt(e, CURLOPT_ERRORBUFFER, r.errbuf);
 			if (!r.headers.empty())
 			{
@@ -189,6 +222,8 @@ namespace bp
 				if (curl_easy_getinfo(r->easy, CURLINFO_CONTENT_TYPE, &text) == CURLE_OK && text) out.contentType = text;
 				if (curl_easy_getinfo(r->easy, CURLINFO_EFFECTIVE_URL, &text) == CURLE_OK && text) out.finalUrl = text;
 			}
+			out.headers = std::move(r->responseHeaders);
+			out.bodyStart = std::move(r->bodyHead);
 			if (r->fp)
 			{
 				if (fclose(r->fp) != 0 && r->error.empty()) r->error = "couldn't write " + r->part;

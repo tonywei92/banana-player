@@ -6,6 +6,7 @@
 #include "dlqueue.h"
 #include "cbzwrite.h"
 #include "browser.h"
+#include "challenge.h"
 #include "crashlog.h"
 #include "durations.h"
 #include "durprobe.h"
@@ -345,6 +346,45 @@ static void testReaderFetchPlan()
 	CHECK_EQ(ReaderFetchPlan::stale(s), (std::vector<int>{1, 5}));
 	s.inFlight = {2, 3};
 	CHECK_EQ(ReaderFetchPlan::stale(s), std::vector<int>{});
+}
+
+// The browser check (design 10's backlog): a source or a page behind Cloudflare's or DDoS-Guard's challenge must say
+// so plainly, while an ordinary refusal (a plain 403, nginx's 503, an image) must not be mistaken for one.
+static void testBrowserCheck()
+{
+	// Cloudflare's own header is enough, whatever the case of its name or value.
+	CHECK_EQ(detectBrowserCheck(403, {{"cf-mitigated", "challenge"}}, ""), BrowserCheck::Cloudflare);
+	CHECK_EQ(detectBrowserCheck(503, {{"CF-Mitigated", " Challenge "}}, ""), BrowserCheck::Cloudflare);
+	// Or the markers in the page, beside Cloudflare's own server header.
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "cloudflare"}},
+		"<!DOCTYPE html><title>Just a moment...</title>"), BrowserCheck::Cloudflare);
+	CHECK_EQ(detectBrowserCheck(200, {{"server", "cloudflare"}}, "<script>window._cf_chl_opt={}</script>"),
+		BrowserCheck::Cloudflare);
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "cloudflare"}},
+		"<script src=\"/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1\"></script>"),
+		BrowserCheck::Cloudflare);
+	// An ordinary Cloudflare-served answer is not a check, header or not.
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "cloudflare"}, {"content-type", "text/html"}},
+		"<html><body>Forbidden</body></html>"), BrowserCheck::None);
+	CHECK_EQ(detectBrowserCheck(200, {{"server", "cloudflare"}, {"content-type", "image/jpeg"}},
+		std::string("\xff\xd8\xff\xe0\x00\x10JFIF", 10)), BrowserCheck::None);
+	// DDoS-Guard's block page names its own server; its page text is the fallback when a hop hides it.
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "ddos-guard"}}, ""), BrowserCheck::DdosGuard);
+	CHECK_EQ(detectBrowserCheck(503, {{"Server", "DDoS-Guard"}}, ""), BrowserCheck::DdosGuard);
+	CHECK_EQ(detectBrowserCheck(403, {}, "<title>DDoS-Guard</title>"), BrowserCheck::DdosGuard);
+	// Ordinary failures are none of these: a plain 403, a 503 from nginx, a PNG.
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "nginx"}}, "<html><body>403 Forbidden</body></html>"),
+		BrowserCheck::None);
+	CHECK_EQ(detectBrowserCheck(503, {{"server", "nginx"}, {"content-type", "text/html"}},
+		"<html><head><title>503 Service Temporarily Unavailable</title></head></html>"), BrowserCheck::None);
+	CHECK_EQ(detectBrowserCheck(200, {{"content-type", "image/png"}}, std::string("\x89PNG\r\n\x1a\n", 8)),
+		BrowserCheck::None);
+	// The line both the worker and the reader show; None has no line.
+	CHECK_EQ(std::string(browserCheckMessage(BrowserCheck::Cloudflare)),
+		std::string("This source asks for a browser check (Cloudflare). Banana Player can't pass it yet."));
+	CHECK_EQ(std::string(browserCheckMessage(BrowserCheck::DdosGuard)),
+		std::string("This source asks for a browser check (DDoS-Guard). Banana Player can't pass it yet."));
+	CHECK_EQ(std::string(browserCheckMessage(BrowserCheck::None)).empty(), true);
 }
 
 // 5.4's public-address rule: what a stranger's script may reach. Both sides of every range's boundary, the
@@ -7659,6 +7699,7 @@ int main()
 	testDurations();
 	testMangaNames();
 	testReaderFetchPlan();
+	testBrowserCheck();
 	testPublicAddress();
 	testMangaRemote();
 	testMangaServers();

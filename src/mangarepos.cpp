@@ -146,9 +146,9 @@ namespace bp
 			return true;
 		}
 
-		// MangaFetch::Result carries no response headers, so the etag stored for If-None-Match is our own strong
-		// entity tag over the index bytes. A server that echoes those tags gives design 5.3's 304; one that doesn't
-		// simply sends the index again, which is only wasted bytes, never a wrong cache.
+		// The etag stored for If-None-Match is our own strong entity tag over the index bytes. A server that echoes
+		// those tags gives design 5.3's 304; one that doesn't simply sends the index again, which is only wasted
+		// bytes, never a wrong cache.
 		std::string indexEtag(const std::string& body)
 		{
 			std::string h = sha256Hex((const uint8_t*)body.data(), body.size());

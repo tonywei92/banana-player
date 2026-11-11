@@ -25,6 +25,8 @@ namespace bp
 			int status = 0;				// the last HTTP answer (0 when there was none)
 			std::string error;			// why it failed; empty when the answer was whole
 			std::string contentType;
+			Headers headers;			// the answer's own headers, as they came (redirect hops included)
+			std::string bodyStart;		// its first bytes: enough for a browser check's own markers
 			std::string finalUrl;		// after redirects
 			std::vector<uint8_t> body;	// empty when toFile was given, or when the request failed
 			std::string file;			// toFile, once renamed in place; empty otherwise

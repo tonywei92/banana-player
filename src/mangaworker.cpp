@@ -1,4 +1,5 @@
 #include "mangaworker.h"
+#include "challenge.h"
 #include "webpath.h"
 #include <algorithm>
 #include <arpa/inet.h>
@@ -16,6 +17,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdexcept>
+#include <string_view>
 #include <sys/socket.h>
 #include <thread>
 #include <sys/stat.h>
@@ -437,6 +439,13 @@ namespace bp
 					currentUrl = next;
 					continue;
 				}
+
+				// A site's browser check is not an answer the script can use: end the call with the sentence the user
+				// needs, instead of handing back a 403/503 that reads as a vague failure (the design's backlog).
+				HttpHeaders answerHeaders(sink.headers.begin(), sink.headers.end());
+				BrowserCheck check = detectBrowserCheck((int)status, answerHeaders,
+					std::string_view(sink.body).substr(0, 4096));
+				if (check != BrowserCheck::None) throw std::runtime_error(browserCheckMessage(check));
 
 				HttpResult r;
 				r.status = (int)status;

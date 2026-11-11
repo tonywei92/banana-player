@@ -1,4 +1,5 @@
 #include "readerfetch.h"
+#include "challenge.h"
 #include "manganet.h"
 #include "readerfetchplan.h"
 #include <cerrno>
@@ -87,7 +88,14 @@ namespace bp
 			cache->setLimit(limit);
 			reader->pageArrived(index);
 		}
-		else reader->pageFailed(index, r.error.empty() ? "the file couldn't be cached" : r.error);
+		else
+		{
+			// A challenge page's "HTTP 403" says nothing useful: name the check the source is behind instead.
+			std::string error = r.error.empty() ? "the file couldn't be cached" : r.error;
+			BrowserCheck check = detectBrowserCheck(r.status, r.headers, r.bodyStart);
+			if (check != BrowserCheck::None) error = browserCheckMessage(check);
+			reader->pageFailed(index, error);
+		}
 		return true;
 	}
 
