@@ -174,10 +174,11 @@ function Sources() {
 		<section class="box surface card" aria-label="Repositories" style="margin-bottom:16px">
 			<div class="card-head"><h2>Repositories</h2></div>
 			<div class="mrepo-add" style="display:flex;gap:8px;margin-bottom:8px">
-				<input class="field grow" type="url" placeholder="Paste a repository URL" value=${url} onInput=${e => setUrl(e.target.value)}
+				<input class="field grow" type="url" placeholder="Paste a repository URL (…/index.pb works too)" value=${url} onInput=${e => setUrl(e.target.value)}
 					onKeyDown=${e => { if (e.key === 'Enter') addRepo(); }} aria-label="Repository URL" />
 				<button class="btn primary" disabled=${!url.trim()} onClick=${addRepo}>Add</button>
 			</div>
+			<p class="note" style="margin:0 0 8px">Any repository URL, including ones ending in <code>index.pb</code> or <code>index.min.json</code> (extensions).</p>
 			${repos.length === 0 ? html`<p class="note" style="margin:0">No repositories yet. Paste a URL above to add one.</p>` : html`
 				<div class="mrepo-list">${repos.map(r => html`<div class="mrepo-row" key=${r.url}>
 					<div class="grow">

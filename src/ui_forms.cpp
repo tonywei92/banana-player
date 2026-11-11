@@ -424,6 +424,9 @@ namespace bp
 		if (!after.empty()) drawTextMid(after, 1, TEXT, caretX + 5, 124, std::max(0, 580 - (caretX + 5 - 32)));
 		if (kbField == EQ_NAME && !eqNameNote.empty()) drawTextMid(eqNameNote, 0, ACCENT, 24, 176, 592);
 		if (kbField == PL_NAME && !plNameNote.empty()) drawTextMid(plNameNote, 0, ACCENT, 24, 176, 592);
+		// both kinds of repository take a plain address: a Lua one's, or an extensions' index (index.pb, index.min.json)
+		if (kbField == SRC_URL_FIELD)
+			drawTextMid("Any repository URL, including ones ending in index.pb or index.min.json", 0, DIM, 24, 176, 592);
 		drawHints({{"A", "Type"}, {"B", "Delete"}, {"X", "Space"}, {"Y", "Shift"}, {"L/R", "Move"}, {"START", "Done"}});
 		auto keys = kbKeys();
 		for (int i = 0; i < (int)keys.size(); i++)

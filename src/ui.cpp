@@ -1214,7 +1214,8 @@ namespace bp
 				mangaTab, mlibGrid, mlibScroll, mhisCursor, mhisScroll, mbrowseCursor, mListCursor,
 				mListScroll, (int)mBrowseList, mserCursor, mserScroll, (unsigned long long)(mangaStore ? mangaStore->serial() : 0),
 				(int)mangaLocal.size(), mangaPressed, mangaClearAt != 0, coverTex.size(), (unsigned long long)coverSerial);
-			photo += std::string(mb) + "|" + mangaSeriesId;
+			photo += std::string(mb) + "|" + mangaSeriesId + "|ml" + std::to_string(mlocSheet) + std::to_string(mlocCursor) +
+				std::to_string((int)mlocDeleteArmed);
 			// Sources: the sub-list and each list's place, a sheet, the sources installing, the manager's own changes
 			// (repos().serial(): an index loaded, a source installed) and what waits to be added
 			if (page == Page::Manga || page == Page::MangaSources)

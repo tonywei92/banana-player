@@ -1,12 +1,14 @@
 #include "ui.h"
 #include "manganet.h"
 #include "manga_ui_logic.h"
+#include "mangalocal.h"
 #include "mangaseriescache.h"
 #include "ui_internal.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <ftw.h>
 #include <ctime>
 
 namespace bp
@@ -229,8 +231,19 @@ namespace bp
 		if (mBrowseList)
 		{
 			int n = (int)mangaLocal.size();
-			// X opens the Sources page here too (the lists it holds, repositories added)
-			if (b == Button::X) { openMangaSources(p); return false; }
+			if (mlocSheet != MLS_NONE) return mangaLocalSheetKey(b, p);
+			// Y: where to put manga for it to show here; X: the series' Open / Delete
+			if (b == Button::Y) { mlocSheet = MLS_HELP; return false; }
+			if (b == Button::X)
+			{
+				if (n > 0)
+				{
+					mlocSheet = MLS_MENU;
+					mlocCursor = 0;
+					mlocDeleteArmed = false;
+				}
+				return false;
+			}
 			if (b == Button::A) { mangaChoose(MT_BROWSE, mListCursor, p); return false; }
 			if (!n) return false;
 			switch (b)
@@ -300,6 +313,7 @@ namespace bp
 		if (mBrowseList)
 		{
 			int n = (int)mangaLocal.size();
+			if (mlocSheet != MLS_NONE) return mangaLocalSheetPointer(x, y, p);
 			if (y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
 			{
 				int i = mListScroll + (y - MG_ROW_TOP) / ROW_H;
@@ -2032,5 +2046,157 @@ namespace bp
 			for (const auto& kv : mstJavaBusy) s += "|jb" + kv.first + kv.second;
 		}
 		return s;
+	}
+}
+
+namespace bp
+{
+	// ---- On this handheld: Y's help, X's Open / Delete ----
+
+	std::string Ui::mangaLocalFolder() const
+	{
+		std::vector<std::string> places;
+		for (auto& r : roots) places.push_back(r.path);
+		auto found = mangaRoots(places);
+		if (!found.empty()) return found.front();
+		if (mangaNet && !mangaNet->downloadsRoot().empty()) return mangaNet->downloadsRoot();
+		return "/data/Manga";
+	}
+
+	bool Ui::mangaLocalSheetKey(Button b, Player& p)
+	{
+		if (mlocSheet == MLS_HELP)
+		{
+			// any of A, B, Y closes it (it says, it asks nothing)
+			if (b == Button::A || b == Button::B || b == Button::Y) mlocSheet = MLS_NONE;
+			return false;
+		}
+		if (b == Button::B || b == Button::X)
+		{
+			mlocSheet = MLS_NONE;
+			mlocDeleteArmed = false;
+			return false;
+		}
+		if (b == Button::Up || b == Button::Down)
+		{
+			mlocCursor = 1 - mlocCursor;
+			mlocDeleteArmed = false;
+			return false;
+		}
+		if (b != Button::A) return false;
+		if (mlocCursor == 0)
+		{
+			mlocSheet = MLS_NONE;
+			mangaChoose(MT_BROWSE, mListCursor, p);
+			return false;
+		}
+		// Delete: A again within the window takes the files off the card
+		Uint32 now = SDL_GetTicks();
+		if (!mlocDeleteArmed || now - mlocDeleteAt >= QUIT_WINDOW_MS)
+		{
+			mlocDeleteArmed = true;
+			mlocDeleteAt = now;
+			return false;
+		}
+		mangaLocalDeleteNow(p);
+		return false;
+	}
+
+	bool Ui::mangaLocalSheetPointer(int x, int y, Player& p)
+	{
+		if (mlocSheet == MLS_HELP)
+		{
+			mlocSheet = MLS_NONE;
+			return false;
+		}
+		if (!mangaServerModalBox().hit(x, y))
+		{
+			mlocSheet = MLS_NONE;
+			mlocDeleteArmed = false;
+			return false;
+		}
+		for (int i = 0; i < 2; i++)
+			if (mangaServerModalRowRect(i).hit(x, y))
+			{
+				if (mlocCursor != i) mlocDeleteArmed = false;
+				mlocCursor = i;
+				mangaLocalSheetKey(Button::A, p);
+			}
+		return false;
+	}
+
+	void Ui::mangaLocalDeleteNow(Player& p)
+	{
+		mlocSheet = MLS_NONE;
+		mlocDeleteArmed = false;
+		if (mListCursor < 0 || mListCursor >= (int)mangaLocal.size()) return;
+		const LocalSeries s = mangaLocal[mListCursor];
+		// only ever a series inside one of the card's Manga folders, never such a folder itself
+		std::vector<std::string> places;
+		for (auto& r : roots) places.push_back(r.path);
+		bool inside = false;
+		for (auto& root : mangaRoots(places))
+			if (s.path.size() > root.size() + 1 && s.path.compare(0, root.size() + 1, root + "/") == 0) inside = true;
+		if (!inside || s.path.find("/../") != std::string::npos)
+		{
+			fprintf(stderr, "manga: not deleting %s (outside the Manga folders)\n", s.path.c_str());
+			p.osd("Couldn't delete " + s.title, 2500);
+			return;
+		}
+		Uint32 t0 = SDL_GetTicks();
+		// deepest first, links not followed (a link is removed, never what it points to)
+		int failed = 0;
+		static int* failedAt;
+		failedAt = &failed;
+		nftw(s.path.c_str(), [](const char* f, const struct stat*, int, struct FTW*) {
+			if (::remove(f) != 0) (*failedAt)++;
+			return 0;
+		}, 16, FTW_DEPTH | FTW_PHYS);
+		fprintf(stderr, "manga: deleted %s (%d chapters) in %u ms, %d left\n", s.path.c_str(), (int)s.chapters.size(),
+			(unsigned)(SDL_GetTicks() - t0), failed);
+		if (mangaStore)
+		{
+			mangaStore->removeSeries("local:" + s.path);
+			mangaSave();
+		}
+		mangaScan();
+		if (mListCursor >= (int)mangaLocal.size()) mListCursor = std::max(0, (int)mangaLocal.size() - 1);
+		if (mListScroll > mListCursor) mListScroll = mListCursor;
+		p.osd(failed ? "Some files of " + s.title + " couldn't be deleted" : "Deleted " + s.title, 2500);
+	}
+
+	void Ui::drawMangaLocalSheet(const Player& p)
+	{
+		(void)p;
+		if (mlocSheet == MLS_HELP)
+		{
+			Rect b = mangaLocalHelpBox();
+			drawDialog(b, "Adding manga");
+			int x = b.x + 32, w = b.w - 64, y = b.y + 72;
+			drawTextMid("Copy manga into this folder:", 0, TEXT, x, y, w);
+			drawTextMid(elideMiddle(mangaLocalFolder(), 1, w), 1, ACCENT, x, y + 30, w);
+			drawTextMid("or into a Manga folder at the top of a memory card.", 0, TEXT, x, y + 60, w);
+			const char* rest[] = {
+				"Each series is a folder. Its chapters are .cbz files,",
+				"or folders of pictures (Chapter 1, Chapter 2...).",
+				"Copy them with the web dashboard's Files (Upload),",
+				"or with the card in a computer."};
+			for (int i = 0; i < 4; i++) drawTextMid(rest[i], 0, DIM, x, y + 104 + i * 26, w);
+			drawGlyphMid(G_INFO, x + 8, y + 224, DIM);
+			drawTextMid("Downloaded chapters are kept there too.", 0, DIM, x + 24, y + 224, w - 24);
+			drawHints({{"A", "OK"}});
+			return;
+		}
+		if (mListCursor < 0 || mListCursor >= (int)mangaLocal.size()) return;
+		const LocalSeries& s = mangaLocal[mListCursor];
+		Rect box = mangaServerModalBox();
+		// its name as the title (a line under it would sit on the first row); how much a delete takes, on its row
+		drawDialog(box, s.title);
+		std::string count = std::to_string(s.chapters.size()) + (s.chapters.size() == 1 ? " chapter" : " chapters");
+		drawDialogRow(mangaServerModalRowRect(0), &G_PLAY, "Open", mlocCursor == 0, false, TEXT, "", {0, 0, 0, 0});
+		drawDialogRow(mangaServerModalRowRect(1), &G_TRASH, "Delete", mlocCursor == 1, false, DANGER,
+			mlocDeleteArmed ? "Press again" : count, mlocDeleteArmed ? ACCENT : DIM);
+		if (mlocDeleteArmed) drawFooterText("Press A again to delete its files", ACCENT);
+		else drawHints({{"A", "Choose"}, {"B", "Close"}});
 	}
 }

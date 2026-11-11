@@ -1413,9 +1413,9 @@ namespace bp
 		{
 			if (n == 0)
 			{
-				drawEmpty(G_FOLDER, "No series found",
-					"Put CBZ files or folders of pictures in a Manga folder on your card.", nullptr);
-				drawHints({{"B", "Back"}});
+				drawEmpty(G_FOLDER, "No series found", "Copy manga into " + mangaLocalFolder() + ". Y shows how.", nullptr);
+				drawHints({{"Y", "How to add"}, {"B", "Back"}});
+				if (mlocSheet == MLS_HELP) drawMangaLocalSheet(p);
 				return;
 			}
 			if (mListCursor >= n) mListCursor = n - 1;
@@ -1430,7 +1430,8 @@ namespace bp
 					0, at ? DIM_ON : DIM, 608, mid, 160, 1);
 			}
 			drawScrollBar(MG_ROW_TOP, MG_ROWS * ROW_H - 4, mListScroll, MG_ROWS, n);
-			drawHints({{"A", "Open"}, {"X", "Sources"}, {"B", "Back"}});
+			drawHints({{"A", "Open"}, {"X", "Options"}, {"Y", "How to add"}, {"B", "Back"}});
+			if (mlocSheet != MLS_NONE) drawMangaLocalSheet(p);
 			return;
 		}
 		// On this handheld, then the installed sources (and, still to come, the network's own)

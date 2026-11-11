@@ -1923,6 +1923,17 @@ namespace bp
 		// X on a server row: Edit / Delete, the delete asked twice (as the other clears)
 		bool mangaSrvMenu = false;
 		std::string mangaSrvMenuId;
+		// On this handheld's list: Y, where to put manga (MLS_HELP); X, a series' Open / Delete, the delete asked twice
+		enum { MLS_NONE, MLS_HELP, MLS_MENU };
+		int mlocSheet = MLS_NONE, mlocCursor = 0;
+		bool mlocDeleteArmed = false;
+		Uint32 mlocDeleteAt = 0;
+		Rect mangaLocalHelpBox() const { return {48, 64, 544, 316}; }
+		bool mangaLocalSheetKey(Button b, Player& p);
+		bool mangaLocalSheetPointer(int x, int y, Player& p);
+		void drawMangaLocalSheet(const Player& p);
+		std::string mangaLocalFolder() const;	// the Manga folder to name: the first on the card, else the downloads'
+		void mangaLocalDeleteNow(Player& p);
 		int mangaSrvMenuCursor = 0;
 		bool mangaSrvDeleteArmed = false;
 		Uint32 mangaSrvDeleteAt = 0;

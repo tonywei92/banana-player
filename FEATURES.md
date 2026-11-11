@@ -756,7 +756,9 @@ confirm); the rows are rebuilt from what is left. With the reading history off i
 settings** the list stays empty, but your places and your read marks are kept either way.
 
 **Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
-chapters it has, and **A** on one opens the series. Under it come your saved network connections (from the Files
+chapters it has, and **A** on one opens the series. In that list **Y** shows where to copy manga (the card's Manga
+folder, named in full) and how to lay it out, and **X** on a series offers **Open** / **Delete** (its files taken off the
+card; **A** twice). Under it come your saved network connections (from the Files
 browser's **Network**), each with its kind and host, then your saved servers (**X** on one for **Edit** / **Delete**),
 then the sources you've installed, each with its language. **X** opens **Sources** (**X** on a server row is still
 **Edit** / **Delete**); **Y** adds a server (below). With no sources yet, a row says **Add sources in Sources (X on
