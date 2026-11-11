@@ -324,6 +324,26 @@ namespace bp
 				}
 				else if (cur >= (int)list.size()) mangaJavaInstalledAct(cur - (int)list.size(), p);
 			}
+			// Repositories: X on a repository is its Remove (the sheet, on Remove: a second A does it); the rows
+			// after the repositories (Add repository…, the dashboard, the engine) have no X
+			if (mstTab == MST_REPOSITORIES)
+			{
+				auto list = mangaSourcesRepos();
+				int lua = (int)list.size(), java = mangaJavaRepoRows();
+				if (cur >= 0 && cur < lua)
+				{
+					mstModal = MSM_REPO;
+					mstModalCursor = 1;
+					mstModalId = list[cur].url;
+					mstUninstallArmed = false;
+					mstLocal++;
+				}
+				else if (cur >= lua && cur < lua + java)
+				{
+					mangaJavaRepoAct(cur - lua, p);
+					mstJavaModalCursor = 1;
+				}
+			}
 			break;
 		default: break;
 		}
@@ -739,6 +759,8 @@ namespace bp
 			drawHints({{"A", "Details"}, {"X", "Options"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 		else if (mstTab == MST_AVAILABLE)
 			drawHints({{"A", "Install"}, {"X", "Filter"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+		else if (mstCursor[MST_REPOSITORIES] < (int)mangaSourcesRepos().size() + mangaJavaRepoRows())
+			drawHints({{"A", "Options"}, {"X", "Remove"}, {"L/R", "List"}, {"B", "Back"}});
 		else drawHints({{"A", "Open"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 
 		if (mstModal != MSM_NONE) drawMangaSourceModal(p);
