@@ -309,7 +309,8 @@ namespace bp
 			for (const LocalChapter& c : s->chapters)
 				if (isSourceId(c.ciSeriesKey))
 				{
-					mangaOpenSourceSeries(c.ciSeriesKey, from, "", "", "", p);
+					// (the folder's name is the series' title until the source's details come)
+					mangaOpenSourceSeries(c.ciSeriesKey, from, "", "", s->title, p);
 					return;
 				}
 		mangaSeriesId = id;

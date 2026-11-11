@@ -1848,6 +1848,21 @@ namespace bp
 				}
 			mserFocusChapter.clear();
 		}
+		// the source's details came: a title saved as the series' key (opened before its name was known) or a missing
+		// cover takes theirs, so History and the Library say its name
+		if (mangaStore && mangaSrcInfoOn && !mangaSrcInfo.title.empty())
+			if (const MangaSeries* ms0 = mangaStore->series(mangaSeriesId))
+				if (ms0->title.empty() || ms0->title == mangaSrcKey || (ms0->cover.empty() && !mangaSrcInfo.cover.empty()))
+				{
+					MangaSeries fixed = *ms0;
+					if (fixed.title.empty() || fixed.title == mangaSrcKey) fixed.title = mangaSrcInfo.title;
+					if (fixed.cover.empty()) fixed.cover = mangaSrcInfo.cover;
+					if (fixed.title != ms0->title || fixed.cover != ms0->cover)
+					{
+						mangaStore->putSeries(fixed);
+						mangaSave();
+					}
+				}
 		std::string from = mangaSourceLabel(mangaSeriesId);
 		drawTextMid((from.empty() ? "" : from + " \xC2\xB7 ") + std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " + std::to_string(unread) + " unread",
 			0, DIM, 16, 68);
