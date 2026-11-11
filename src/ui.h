@@ -42,7 +42,7 @@ namespace bp
 	class WebServer;
 	class DurationWorker;
 
-	// the on-screen keyboard's field for a repository's URL (Ui's Sources tab; the form's are in ui_internal.h)
+	// the on-screen keyboard's field for a repository's URL (Ui's Sources page; the form's are in ui_internal.h)
 	inline constexpr int SRC_URL_FIELD = 62;
 	// the on-screen keyboard's field for a source's search (apart from the form's, a preset's and a playlist's)
 	inline constexpr int MANGA_SEARCH_FIELD = 63;	// (62: the repository URL)
@@ -384,7 +384,7 @@ namespace bp
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
 		enum class Page { Main, Tracks, Chapters, Settings, Browse, Info, About, Exit, Sound, Web, Playing, UpNext, Manga,
-			Extensions, MangaSeries, MangaRead, MangaSettings };
+			Extensions, MangaSeries, MangaRead, MangaSettings, MangaSources };
 		struct Rect { int x, y, w, h; bool hit(int px, int py) const { return px >= x && py >= y && px < x + w && py < y + h; } };
 		struct Row { int64_t id; std::string label; bool selected; std::string note = ""; };
 
@@ -1217,10 +1217,11 @@ namespace bp
 		static constexpr int EXT_DRAWER_TILES = 1;	// (what's on: the manga reader, so far)
 
 		// ---- the manga reader (ui_manga.cpp) ----
-		// Page::Manga's five tabs (Library, History, Browse, Sources, Downloads), each its own cursor and scroll;
-		// Page::MangaSeries; and Page::MangaRead, the bottom panel while main's reader shows pages on top. The store
-		// is <state>/manga (setStateDir keeps the path), loaded and scanned the first time the app opens.
-		enum MangaTab { MT_LIBRARY, MT_HISTORY, MT_BROWSE, MT_SOURCES, MT_DOWNLOADS, MANGA_TABS };
+		// Page::Manga's four tabs (Library, History, Browse, Downloads), each its own cursor and scroll;
+		// Page::MangaSeries; and Page::MangaRead, the bottom panel while main's reader shows pages on top. Sources is a
+		// page of its own (Page::MangaSources), opened with X on Browse. The store is <state>/manga (setStateDir keeps
+		// the path), loaded and scanned the first time the app opens.
+		enum MangaTab { MT_LIBRARY, MT_HISTORY, MT_BROWSE, MT_DOWNLOADS, MANGA_TABS };
 		int mangaTab = MT_LIBRARY;
 		std::unique_ptr<MangaStore> mangaStore;
 		std::vector<LocalSeries> mangaLocal;	// On this handheld: each Manga folder's series, in reading order
@@ -1400,7 +1401,8 @@ namespace bp
 		void mangaCoverCancelOffScreen();	// cancel fetches for URLs that scrolled away
 		void mangaCoverCancelAll();			// the page left: every in-flight cover fetch goes
 		bool mangaCoverOnFetched(MangaFetch::Result& r);	// true if the result was one of ours (a cover fetch)
-		Rect mangaTabRect(int i) const { return {24 + i * 120, 60, 112, 30}; }	// 60: clear of the header's back icon
+		// four tabs evenly across the room under the header's back icon: 24 each side, 8 between
+		Rect mangaTabRect(int i) const { return {24 + i * 150, 60, 142, 30}; }
 		Rect mangaCardRect(int i) const { return {12 + i * 208, 118, 200, 64}; }
 		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the grid's covers 124 apart
 		Rect mangaCoverRect(int i) const
@@ -1439,10 +1441,11 @@ namespace bp
 		}
 		static constexpr int MPG_THUMB = 4000;	// touch id base for the thumbnails (mangaPointer)
 
-		// ---- the manga reader's Sources tab (ui_manga_sources.cpp) ----
-		// Installed / Available / Repositories, three sub-lists under the app's tabs: LEFT/RIGHT step them, UP/DOWN the
-		// list. The repositories are the user's own URL indexes (design 5.3); MangaNet owns them and the events their
-		// fetches leave (mangaSourcesTick turns them into toasts). None of it runs while the tab is closed.
+		// ---- the manga reader's Sources page (ui_manga_sources.cpp) ----
+		// Installed / Available / Repositories, three sub-lists of a page of its own (X on Browse): LEFT/RIGHT step
+		// them, UP/DOWN the list. The repositories are the user's own URL indexes (design 5.3); MangaNet owns them and
+		// the events their fetches leave (mangaSourcesTick turns them into toasts). None of it runs while the page is
+		// closed.
 		enum MangaSourcesTab { MST_INSTALLED, MST_AVAILABLE, MST_REPOSITORIES, MANGA_SOURCES_TABS };
 		int mstTab = MST_INSTALLED;
 		int mstCursor[MANGA_SOURCES_TABS] = {}, mstScroll[MANGA_SOURCES_TABS] = {};
@@ -1523,7 +1526,9 @@ namespace bp
 		uint64_t mangaJavaSerial() const;			// javaExt().serial(): the Java row's state and progress
 		std::string mangaJavaValue() const;			// the Java row's right side (the host's state)
 		void mangaJavaAct();						// A: Install, Cancel, Remove (twice), Try again
-		void mangaSourcesOpen(Player& p);			// the tab opened: the network side started, the indexes refreshed
+		void mangaSourcesOpen(Player& p);			// the page opened: the network side started, the indexes refreshed
+		void openMangaSources(Player& p);			// X on Browse: the Sources page
+		bool mangaSourcesPageKey(Button b, Player& p);	// its keys, B back to Browse
 		void mangaSourcesTick(Player& p);			// the manager's events into toasts, a typed URL added
 		bool mangaSourcesKey(Button b, Player& p);
 		bool mangaSourcesPointer(const Pointer& pt, int x, int y, Player& p);
@@ -1546,6 +1551,7 @@ namespace bp
 		int mangaSourcesModalRows() const;
 		std::string elideMiddle(const std::string& s, int size, int maxW) const;	// a URL: "...repository/index.json"
 		void drawMangaSources(const Player& p);
+		void drawMangaSourcesPage(const Player& p);	// its header ("Sources"), then the page
 		void drawMangaSourceModal(const Player& p);
 		static constexpr int MS_ROW_TOP = 134, MS_ROWS = 4, MS_ROW_H = 58;
 		Rect mangaSourcesSegRect(int i) const { return {16 + i * 204, 100, 200, 26}; }	// 10 below the tabs

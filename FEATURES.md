@@ -722,12 +722,13 @@ off hides it and stops it; nothing is deleted.
 
 ### The Manga reader
 
-The reader is an app of its own. It opens on **Library** and has five tabs, stepped with **L/R**: **Library**,
-**History**, **Browse**, **Sources** and **Downloads**. **B** goes back — out of Browse's list of series first, then
-to the drawer. **START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page
-too); **B** there comes back where you were. Music keeps playing while you read: the pages take the top screen, and the
-mini bar is on the app's pages, the reading page included (**SELECT** there goes to what plays). **Sources** installs
-sources from repositories you add (below), and **Downloads** is the queue and what's on the card (below).
+The reader is an app of its own. It opens on **Library** and has four tabs, stepped with **L/R**: **Library**,
+**History**, **Browse** and **Downloads**. **B** goes back — out of Browse's list of series first, then to the drawer.
+**START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page too); **B** there
+comes back where you were. Music keeps playing while you read: the pages take the top screen, and the mini bar is on the
+app's pages, the reading page included (**SELECT** there goes to what plays). **Sources** is a page of its own, opened
+with **X** on Browse (below), where sources are installed from repositories you add; **Downloads** is the queue and what's
+on the card (below).
 
 **Where series come from.** Each of your cards may have a **Manga** folder (or `manga`, or `MANGA`); the reader reads it
 each time you open the app:
@@ -756,8 +757,9 @@ settings** the list stays empty, but your places and your read marks are kept ei
 **Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
 chapters it has, and **A** on one opens the series. Under it come your saved network connections (from the Files
 browser's **Network**), each with its kind and host, then your saved servers (**X** on one for **Edit** / **Delete**),
-then the sources you've installed, each with its language. **Y** adds a server (below). With no sources yet, a dim line
-says **Add sources in Sources**.
+then the sources you've installed, each with its language. **X** opens **Sources** (**X** on a server row is still
+**Edit** / **Delete**); **Y** adds a server (below). With no sources yet, a row says **Add sources in Sources (X on
+Browse)**: **A** or a tap opens it.
 
 **Network folders.** **A** on a saved connection lists its folders through the worker (nothing waits on the main
 panel); **A** on a folder that is laid out like a Manga folder on the card — chapter folders of pictures, `.cbz`/`.zip`
@@ -789,10 +791,11 @@ offers **A: Try again**. A source's series page is laid out like a card series':
 keep it in your library — a source's series starts outside it — the chapters with their read marks, **X** to mark one
 read or unread, **A** to read it.
 
-**Sources.** Three lists, stepped with **LEFT/RIGHT** (**L/R** still step the app's pages): **Installed**, **Available**
-and **Repositories**. **Y** checks the repositories again, and the top screen says how it went: **Installed …**,
-**Updated …**, **Removed …**, or why it couldn't. With nothing yet they say where to start: *No sources yet* (add a
-repository, then install from **Available**) and *Nothing to install* (add a repository first).
+**Sources.** **X** on Browse opens its own page (its header says **Sources**; **B** goes back to Browse). Three lists,
+stepped with **LEFT/RIGHT** (**L/R** still step the app's tabs): **Installed**, **Available** and **Repositories**. **Y**
+checks the repositories again, and the top screen says how it went: **Installed …**, **Updated …**, **Removed …**, or why
+it couldn't. With nothing yet they say where to start: *No sources yet* (add a repository, then install from
+**Available**) and *Nothing to install* (add a repository first).
 
 **Tachiyomi / Mihon repositories.** An address ending in `index.pb` or `index.min.json` is a Java repository (like
 Keiyoushi's `https://github.com/keiyoushi/extensions/raw/repo/index.pb`), not a Lua one. It needs the optional
@@ -912,9 +915,9 @@ the grid, **B** or **Y** closes it; on the touch screen, tap a thumbnail to jump
 ### Manga settings
 
 The reader's own settings are a page of their own, **Manga settings**, inside the Manga app: they are not in Banana
-Player's Settings, which has no Extensions group. **START** opens them on any Manga page (the five tabs and a series
-page), the gear (**X**) in **Manage extensions** opens them too, and the Reading menu's last row opens them while you
-read. **B** goes back where you came from.
+Player's Settings, which has no Extensions group. **START** opens them on any Manga page (the four tabs, the Sources
+page and a series page), the gear (**X**) in **Manage extensions** opens them too, and the Reading menu's last row opens
+them while you read. **B** goes back where you came from.
 
 | Setting | Values | Default | |
 |---|---|---|---|

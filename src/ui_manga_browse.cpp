@@ -139,6 +139,7 @@ namespace bp
 	int Ui::mangaBrowseCount(const Player& p) const
 	{
 		int n = 1 + mangaNetFoldersCount() + mangaBrowseServerCount();	// On this handheld, the network connections, the servers
+		if (mangaSrcRows.empty()) n++;	// the Add sources row: A opens the Sources page
 		for (const auto& r : mangaSrcRows)
 			if (!r.adult || p.settings.mangaAdult) n++;
 		return n;
@@ -193,6 +194,8 @@ namespace bp
 			}
 			return;
 		}
+		// no source installed: the row after the servers is Add sources (A opens the Sources page)
+		if (mangaSrcRows.empty()) { openMangaSources(p); return; }
 		if (const MangaSrcRow* r = mangaBrowseSourceAt(i - mangaBrowseSourceStart(), p)) mangaOpenSource(*r, p);
 	}
 
@@ -205,6 +208,8 @@ namespace bp
 		if (mBrowseList)
 		{
 			int n = (int)mangaLocal.size();
+			// X opens the Sources page here too (the lists it holds, repositories added)
+			if (b == Button::X) { openMangaSources(p); return false; }
 			if (b == Button::A) { mangaChoose(MT_BROWSE, mListCursor, p); return false; }
 			if (!n) return false;
 			switch (b)
@@ -223,10 +228,12 @@ namespace bp
 		int n = mangaBrowseCount(p);
 		int nets = mangaNetFoldersCount();
 		if (b == Button::A) { mangaBrowseChoose(mbrowseCursor, p); return false; }
-		if (b == Button::X && mbrowseCursor > nets && mbrowseCursor <= nets + mangaBrowseServerCount())
+		if (b == Button::X)
 		{
-			// X on a server: Edit / Delete (as the Sources tab's Options)
-			mangaServerModalOpen(mbrowseCursor - nets, p);
+			// X on a server: Edit / Delete (as the Sources page's Options); anywhere else, the Sources page
+			if (mbrowseCursor > nets && mbrowseCursor <= nets + mangaBrowseServerCount())
+				mangaServerModalOpen(mbrowseCursor - nets, p);
+			else openMangaSources(p);
 			return false;
 		}
 		if (b == Button::Y) { mangaServerAddOpen(p); return false; }
@@ -354,6 +361,12 @@ namespace bp
 				drawGlyphMid(G_PENCIL, 600, mid, at ? ACCENT : DIM);
 				continue;
 			}
+			if (mangaSrcRows.empty() && i == srcStart)
+			{
+				// no source installed: the row after the servers says where they come from, and A (or a tap) opens it
+				drawTextMid("Add sources in Sources (X on Browse)", 1, at ? ACCENT : TEXT, 32, mid, 576);
+				continue;
+			}
 			const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p);
 			if (!r) continue;
 			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 32, mid, 470);
@@ -371,12 +384,9 @@ namespace bp
 		// no saved connection: where they would be (the Files browser's Network adds one)
 		if (nets == 0 && inView(rowY(n)))
 			drawTextMid("Network folders \xC2\xB7 none saved", 1, DIM, 32, rowY(n) + (ROW_H - 4) / 2, 576);
-		// the sources come from the Sources tab, where a repository is added
-		if (mangaSrcRows.empty() && inView(rowY(n + 1)))
-			drawTextMid("Add sources in Sources", 1, DIM, 32, rowY(n + 1) + (ROW_H - 4) / 2, 576);
 		bool onServer = mbrowseCursor > nets && mbrowseCursor <= nets + (int)servers.size();
 		if (onServer) drawHints({{"A", "Open"}, {"X", "Edit"}, {"Y", "Add server"}, {"B", "Back"}});
-		else drawHints({{"A", "Open"}, {"Y", "Add server"}, {"B", "Back"}});
+		else drawHints({{"A", "Open"}, {"X", "Sources"}, {"Y", "Add server"}, {"B", "Back"}});
 		if (mangaSrvMenu) drawMangaServerModal(p);
 	}
 
