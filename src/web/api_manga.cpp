@@ -6,6 +6,7 @@
 #include "json.h"
 #include "mangastore.h"
 #include "manganet.h"
+#include "mangajava.h"
 #include "mangarepos.h"
 #include "dlqueue.h"
 #include "mangadownloader.h"
@@ -161,6 +162,24 @@ namespace bp
 				if (!mangaReady(p, u)) return error("Manga is off");
 				if (!u.mangaNet) { WebCall::setStatus(503); return error("Manga isn't running"); }
 				std::string err;
+				// a Keiyoushi-style index (index.pb / index.min.json) is a Java repository: Suwayomi takes it
+				if (MangaJava::isRepoUrl(url))
+				{
+					auto st = u.mangaNet->javaExt().state();
+					if (st == JavaExtHost::State::NotInstalled || st == JavaExtHost::State::Downloading)
+					{
+						WebCall::setStatus(409);
+						return error("Install Java extensions first (Manga settings on the handheld)");
+					}
+					u.mangaNet->javaExt().want();
+					if (!u.mangaNet->javaSources().addRepo(url, err))
+					{
+						WebCall::setStatus(400);
+						return error(err);
+					}
+					mangaNotify(*w, u);
+					return std::string("{\"ok\":true,\"java\":true}");
+				}
 				if (!u.mangaNet->repos().addRepo(url, err))
 				{
 					WebCall::setStatus(400);

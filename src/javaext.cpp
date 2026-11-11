@@ -283,6 +283,15 @@ namespace bp
 		int64_t lastWant = 0;
 		std::condition_variable cv;
 
+		// the GraphQL channel: its own mutex (the request thread must not hold the state lock while curl runs)
+		struct GqlJob { uint64_t serial = 0; std::string body; };
+		std::mutex gqlLock;
+		std::condition_variable gqlCv;
+		std::vector<GqlJob> gqlQueue;
+		std::vector<JavaExtHost::GraphQlResult> gqlDone;
+		uint64_t gqlNext = 1, gqlActive = 0;
+		bool gqlActiveCancelled = false, gqlThreadStarted = false, gqlWakePending = false;
+
 		// caller holds lock
 		void set(JavaExtHost::State s, const std::string& why)
 		{
@@ -354,6 +363,8 @@ namespace bp
 		void watch(pid_t child, int p, uint64_t gen);
 		void installStep(uint64_t j);
 		void removeStep();
+		void gqlLoop();
+		void gqlFinish(uint64_t serial, int status, std::string body, std::string error);
 		Fetch fetchFile(uint64_t j, const char* url, const char* wantSha, int64_t expected,
 			const std::string& finalPath, int64_t& doneBase);
 
@@ -367,6 +378,17 @@ namespace bp
 			FILE* fp = nullptr;
 			bool cancelled = false;
 		};
+
+		struct GqlCtx
+		{
+			Impl* host = nullptr;
+			uint64_t serial = 0;
+			std::string* body = nullptr;
+			bool over = false;
+		};
+
+		static size_t gqlWrite(char* data, size_t size, size_t n, void* p);
+		static int gqlProgress(void* p, curl_off_t, curl_off_t, curl_off_t, curl_off_t);
 
 		static size_t onWrite(char* data, size_t size, size_t n, void* p)
 		{
@@ -556,14 +578,72 @@ namespace bp
 	void JavaExtHost::stop()
 	{
 		auto d = impl;
-		std::lock_guard<std::mutex> g(d->lock);
-		d->idleStop = false;
-		if (d->pid >= 0 && !d->stopReq)
 		{
-			d->stopReq = true;
-			fprintf(stderr, "javaext: %s stopping (extension off or quitting)\n", clockStamp().c_str());
+			std::lock_guard<std::mutex> g(d->lock);
+			d->idleStop = false;
+			if (d->pid >= 0 && !d->stopReq)
+			{
+				d->stopReq = true;
+				fprintf(stderr, "javaext: %s stopping (extension off or quitting)\n", clockStamp().c_str());
+			}
+			d->cv.notify_all();
 		}
-		d->cv.notify_all();
+		// a request in flight would only fail against the port that is going away; drop it and anything queued
+		std::lock_guard<std::mutex> g(d->gqlLock);
+		d->gqlActiveCancelled = true;
+		d->gqlQueue.clear();
+		d->gqlCv.notify_all();
+	}
+
+	uint64_t JavaExtHost::graphql(const std::string& requestBody)
+	{
+		auto d = impl;
+		{
+			std::lock_guard<std::mutex> g(d->lock);
+			if (!d->cardInstalled(nullptr)) return 0;
+		}
+		want();	// every request is use
+		std::lock_guard<std::mutex> g(d->gqlLock);
+		if (!d->gqlThreadStarted)
+		{
+			d->gqlThreadStarted = true;
+			auto self = d;
+			std::thread([self] { self->gqlLoop(); }).detach();
+		}
+		uint64_t serial = d->gqlNext++;
+		d->gqlQueue.push_back({serial, requestBody});
+		d->gqlCv.notify_all();
+		return serial;
+	}
+
+	void JavaExtHost::cancelGraphQl(uint64_t serial)
+	{
+		auto d = impl;
+		std::lock_guard<std::mutex> g(d->gqlLock);
+		for (auto it = d->gqlQueue.begin(); it != d->gqlQueue.end(); ++it)
+			if (it->serial == serial)
+			{
+				d->gqlQueue.erase(it);
+				return;
+			}
+		// an answer finished but not taken yet is still the caller's to forget
+		for (auto it = d->gqlDone.begin(); it != d->gqlDone.end(); ++it)
+			if (it->serial == serial)
+			{
+				d->gqlDone.erase(it);
+				return;
+			}
+		if (d->gqlActive == serial) d->gqlActiveCancelled = true;
+	}
+
+	std::vector<JavaExtHost::GraphQlResult> JavaExtHost::takeGraphQl()
+	{
+		auto d = impl;
+		std::lock_guard<std::mutex> g(d->gqlLock);
+		d->gqlWakePending = false;
+		std::vector<GraphQlResult> out;
+		out.swap(d->gqlDone);
+		return out;
 	}
 
 	std::string JavaExtHost::baseUrl() const
@@ -972,6 +1052,174 @@ namespace bp
 		else set(State::Failed, last.empty() ? "the Java process ended" : last);
 		pushWake();
 		cv.notify_all();
+	}
+
+	size_t JavaExtHost::Impl::gqlWrite(char* data, size_t size, size_t n, void* p)
+	{
+		GqlCtx* c = (GqlCtx*)p;
+		size_t bytes = size * n;
+		// an extension list is large; anything past this isn't an answer this reader can use
+		if (!c->body || c->body->size() + bytes > (32u << 20))
+		{
+			c->over = true;
+			return 0;
+		}
+		c->body->append(data, bytes);
+		return bytes;
+	}
+
+	int JavaExtHost::Impl::gqlProgress(void* p, curl_off_t, curl_off_t, curl_off_t, curl_off_t)
+	{
+		GqlCtx* c = (GqlCtx*)p;
+		std::lock_guard<std::mutex> g(c->host->gqlLock);
+		if (c->host->gqlActive != c->serial || c->host->gqlActiveCancelled) return 1;
+		return 0;
+	}
+
+	void JavaExtHost::Impl::gqlFinish(uint64_t serial, int status, std::string body, std::string error)
+	{
+		bool signal = false;
+		// one line per request: a list that never fills is pinned to an unanswered or failed call
+		fprintf(stderr, "javaext: %s graphql #%llu -> %d, %zu bytes%s%s\n", clockStamp().c_str(),
+			(unsigned long long)serial, status, body.size(), error.empty() ? "" : ": ", error.c_str());
+		{
+			std::lock_guard<std::mutex> g(gqlLock);
+			bool wasActive = gqlActive == serial;
+			bool cancelled = wasActive && gqlActiveCancelled;
+			if (wasActive) gqlActive = 0;
+			if (wasActive) gqlActiveCancelled = false;
+			if (!cancelled)
+			{
+				JavaExtHost::GraphQlResult r;
+				r.serial = serial;
+				r.status = status;
+				r.body = std::move(body);
+				r.error = std::move(error);
+				gqlDone.push_back(std::move(r));
+				if (!gqlWakePending)
+				{
+					gqlWakePending = true;
+					signal = true;
+				}
+			}
+		}
+		if (signal) pushWake();
+	}
+
+	void JavaExtHost::Impl::gqlLoop()
+	{
+		while (true)
+		{
+			GqlJob job;
+			{
+				std::unique_lock<std::mutex> lk(gqlLock);
+				gqlCv.wait(lk, [this] { return !gqlQueue.empty(); });
+				job = std::move(gqlQueue.front());
+				gqlQueue.erase(gqlQueue.begin());
+				gqlActive = job.serial;
+				gqlActiveCancelled = false;
+			}
+
+			// The UI may ask the moment a Java source opens, while the server is still Starting: wait for it (the
+			// idle stop never starts while a request is waiting, since graphql() called want()).
+			std::string base, why;
+			bool cancelled = false;
+			auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(120);
+			while (true)
+			{
+				{
+					std::lock_guard<std::mutex> g(lock);
+					if (st == State::Running && port > 0) base = "http://127.0.0.1:" + std::to_string(port);
+					else if (st == State::NotInstalled) why = "the Java extensions aren't installed";
+					else if (st == State::Downloading) why = "the Java extensions are still downloading";
+					else if (st == State::Failed) why = err.empty() ? "the Java extensions failed to start" : err;
+				}
+				if (!base.empty() || !why.empty()) break;
+				if (std::chrono::steady_clock::now() >= deadline)
+				{
+					why = "Java didn't start";
+					break;
+				}
+				std::unique_lock<std::mutex> lk(gqlLock);
+				if (gqlActive != job.serial || gqlActiveCancelled) { cancelled = true; break; }
+				gqlCv.wait_for(lk, std::chrono::milliseconds(100));
+			}
+			if (cancelled)
+			{
+				gqlFinish(job.serial, 0, "", "");
+				continue;
+			}
+			if (base.empty())
+			{
+				gqlFinish(job.serial, 0, "", why);
+				continue;
+			}
+
+			static const bool curlReady = curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK;
+			if (!curlReady)
+			{
+				gqlFinish(job.serial, 0, "", "libcurl couldn't start");
+				continue;
+			}
+			CURL* e = curl_easy_init();
+			if (!e)
+			{
+				gqlFinish(job.serial, 0, "", "Couldn't make a request");
+				continue;
+			}
+			std::string out;
+			GqlCtx ctx;
+			ctx.host = this;
+			ctx.serial = job.serial;
+			ctx.body = &out;
+			std::string url = base + "/api/graphql";
+			struct curl_slist* headers = nullptr;
+			headers = curl_slist_append(headers, "Content-Type: application/json");
+			headers = curl_slist_append(headers, "Accept: application/json");
+			char errbuf[CURL_ERROR_SIZE] = {};
+			curl_easy_setopt(e, CURLOPT_URL, url.c_str());
+			curl_easy_setopt(e, CURLOPT_POST, 1L);
+			curl_easy_setopt(e, CURLOPT_POSTFIELDS, job.body.data());
+			curl_easy_setopt(e, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)job.body.size());
+			curl_easy_setopt(e, CURLOPT_HTTPHEADER, headers);
+			curl_easy_setopt(e, CURLOPT_NOSIGNAL, 1L);
+			curl_easy_setopt(e, CURLOPT_CONNECTTIMEOUT, 5L);
+			curl_easy_setopt(e, CURLOPT_TIMEOUT, 120L);
+			curl_easy_setopt(e, CURLOPT_FOLLOWLOCATION, 0L);
+#if LIBCURL_VERSION_NUM >= 0x075500
+			curl_easy_setopt(e, CURLOPT_PROTOCOLS_STR, "http");
+#else
+			curl_easy_setopt(e, CURLOPT_PROTOCOLS, (long)CURLPROTO_HTTP);
+#endif
+			curl_easy_setopt(e, CURLOPT_WRITEFUNCTION, &Impl::gqlWrite);
+			curl_easy_setopt(e, CURLOPT_WRITEDATA, &ctx);
+			curl_easy_setopt(e, CURLOPT_XFERINFOFUNCTION, &Impl::gqlProgress);
+			curl_easy_setopt(e, CURLOPT_XFERINFODATA, &ctx);
+			curl_easy_setopt(e, CURLOPT_NOPROGRESS, 0L);
+			curl_easy_setopt(e, CURLOPT_ERRORBUFFER, errbuf);
+			CURLcode rc = curl_easy_perform(e);
+			long code = 0;
+			curl_easy_getinfo(e, CURLINFO_RESPONSE_CODE, &code);
+			curl_easy_cleanup(e);
+			curl_slist_free_all(headers);
+			if (ctx.over)
+			{
+				gqlFinish(job.serial, (int)code, "", "the answer is over 32 MB");
+				continue;
+			}
+			if (rc != CURLE_OK)
+			{
+				// an abort caused by cancelGraphQl() is dropped by gqlFinish, not reported as a failure
+				gqlFinish(job.serial, (int)code, "", errbuf[0] ? errbuf : curl_easy_strerror(rc));
+				continue;
+			}
+			if (code != 200)
+			{
+				gqlFinish(job.serial, (int)code, "", "Suwayomi answered " + std::to_string(code));
+				continue;
+			}
+			gqlFinish(job.serial, (int)code, std::move(out), "");
+		}
 	}
 
 	void JavaExtHost::setSecureDns(bool on)

@@ -94,6 +94,7 @@ namespace bp
 	{
 		// once a run per source: a source without filters() answers "[]" and is remembered as such
 		if (mangaSrcId.empty()) return;
+		if (MangaJava::isSourceId(mangaSrcId)) { mangaJavaFiltersAsk(); return; }
 		MangaFilterSession& f = mangaFilters[mangaSrcId];
 		if (f.known || f.loading || f.serial) return;
 		if (!mangaNet || !mangaNet->started()) return;
@@ -121,6 +122,7 @@ namespace bp
 
 	std::string Ui::mangaSourceFiltersJson() const
 	{
+		if (MangaJava::isSourceId(mangaSrcId)) return mangaJavaFiltersJson();
 		const MangaFilterSession* f = mangaFilterSession();
 		if (!f || !f->known || f->defs.empty()) return "{}";
 		return mangaFilterValuesJson(f->defs, f->values);

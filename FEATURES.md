@@ -794,6 +794,19 @@ and **Repositories**. **Y** checks the repositories again, and the top screen sa
 **Updated …**, **Removed …**, or why it couldn't. With nothing yet they say where to start: *No sources yet* (add a
 repository, then install from **Available**) and *Nothing to install* (add a repository first).
 
+**Tachiyomi / Mihon repositories.** An address ending in `index.pb` or `index.min.json` is a Java repository (like
+Keiyoushi's `https://github.com/keiyoushi/extensions/raw/repo/index.pb`), not a Lua one. It needs the optional
+**Java extensions** add-on (Manga settings): without it the address is refused in one line and nothing is kept.
+Adding one starts the Java runtime (*Starting Java… about 25 s*) and registers the store with Suwayomi; it is listed
+with the Lua repositories with a **Java** badge and the store's own name. Removing it removes the store. Its
+extensions show under **Available** beside the Lua ones (name, language, version, **Java** badge; adult ones hidden
+while **Adult sources** is Hidden), **A** installs one, and **Installed** lists them with **Update** when Suwayomi
+reports a newer one and **Uninstall** (asked twice). A Java source appears in **Browse** as one row per source and
+language — same Popular / Latest / Search grid, covers, filters sheet, series page and reading page as a Lua source.
+Its series and reading progress are kept under `java:<source id>` with the Suwayomi manga id, so the Library and
+History open them again through the host. The runtime is wanted on every use and stops after five idle minutes; the
+hosted pages are read from `127.0.0.1` through the same page cache as any other chapter.
+
 - **Repositories**: each one you've added, with when it was last checked (or *Not checked yet*). **A** on one offers
   **Refresh** and **Remove**, and removing asks **Remove its sources too?** (**Yes** takes its sources with it, **No**
   leaves them installed, **Cancel** goes back). The last row, **Add repository…**, types the address on the keyboard

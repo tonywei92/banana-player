@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace bp
 {
@@ -75,6 +76,22 @@ namespace bp
 		// the extension turned off, or quitting: the process ended now (SIGTERM, then SIGKILL after 3 s, never waited
 		// on by the main thread)
 		void stop();
+
+		// ---- the GraphQL channel (one request at a time, its own thread and easy handles) ----
+		// A POST to <baseUrl>/api/graphql with Content-Type application/json, on 127.0.0.1 only. The serial is
+		// returned at once (0: the add-on isn't installed); the answer comes to takeGraphQl() on the main thread,
+		// and each answer pushes the wake event configure() named. Using it counts as want(): a call while the
+		// server is Starting waits for it, so the caller can ask as soon as a Java source is opened.
+		struct GraphQlResult
+		{
+			uint64_t serial = 0;
+			int status = 0;
+			std::string body, error;	// error: a transport failure, or a non-200 answer
+		};
+		uint64_t graphql(const std::string& requestBody);
+		// Forget a request: a queued one is dropped, a running one aborted; a cancelled answer is never returned.
+		void cancelGraphQl(uint64_t serial);
+		std::vector<GraphQlResult> takeGraphQl();
 
 		// Secure DNS (Manga settings): the Java side resolves through Cloudflare over HTTPS from its next start on
 		void setSecureDns(bool on);

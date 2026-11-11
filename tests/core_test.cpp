@@ -56,6 +56,7 @@ extern "C"
 #include "tracks.h"
 #include "json.h"
 #include "suwayomi.h"
+#include "mangajava.h"
 #include "webauth.h"
 #include "webmedia.h"
 #include "webpath.h"
@@ -8423,7 +8424,18 @@ static void testSuwayomi()
 	CHECK_EQ(pop.find("POPULAR") != std::string::npos, true);
 	CHECK_EQ(pop.find("1998944621602463790") != std::string::npos, true);
 	std::string lat = suwayomiFetchSourceMangaLatest("1998944621602463790", 1);
-	CHECK_EQ(lat.find("LATEST_UPDATES") != std::string::npos, true);
+	CHECK_EQ(lat.find("type: LATEST") != std::string::npos, true);
+	// what Suwayomi v2.4's schema requires, checked against a live server: these are mutations, an extension is
+	// changed by id + patch, a chapter's pages by chapterId, the enum is LATEST, the filters a union (name per type)
+	CHECK_EQ(suwayomiFetchExtensions().find("mutation { fetchExtensions(input: {})") != std::string::npos, true);
+	CHECK_EQ(inst.find("patch: {install: true}") != std::string::npos, true);
+	CHECK_EQ(upd.find("patch: {update: true}") != std::string::npos, true);
+	CHECK_EQ(unin.find("patch: {uninstall: true}") != std::string::npos, true);
+	CHECK_EQ(pop.rfind("{\"query\":\"mutation", 0) == 0, true);
+	CHECK_EQ(lat.find("LATEST_UPDATES") == std::string::npos, true);
+	CHECK_EQ(suwayomiFetchChapterPages(6).find("chapterId: $id") != std::string::npos, true);
+	CHECK_EQ(suwayomiFetchMangaAndChapters(1).find("fetchManga: true, fetchChapters: true") != std::string::npos, true);
+	CHECK_EQ(suwayomiFetchSourceFilters("1").find("filters { __typename name") == std::string::npos, true);
 	// a search body carries the query text, escaped; a "&" in the query is not the JSON separator
 	std::string srch = suwayomiFetchSourceMangaSearch("1998944621602463790", "one & piece", 1, "[]");
 	CHECK_EQ(srch.find("SEARCH") != std::string::npos, true);
@@ -8574,9 +8586,144 @@ static void testSuwayomi()
 	CHECK_EQ(pages[0], std::string("http://127.0.0.1:4567/api/v1/manga/1/chapter/6/page/0"));
 	CHECK_EQ(pages[16], std::string("http://127.0.0.1:4567/api/v1/manga/1/chapter/6/page/16"));
 
+	// filters-mangadex.json: groups, and a tri state child. A Suwayomi tri state is one filter with its own
+	// value, not a list: it becomes a one-option tri row, and its default comes from triDefault.
+	std::string mdFiltJson = read(F + "filters-mangadex.json");
+	std::vector<MangaFilter> mdDefs;
+	CHECK_EQ(suwayomiParseFilters(mdFiltJson, mdDefs, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(mdDefs.size(), (size_t)12);
+	CHECK_EQ(mdDefs[8].type, std::string("group"));
+	CHECK_EQ(mdDefs[8].name, std::string("Content"));
+	CHECK_EQ(mdDefs[8].children.size(), (size_t)2);
+	CHECK_EQ(mdDefs[8].children[0].type, std::string("tri"));
+	CHECK_EQ(mdDefs[8].children[0].name, std::string("Gore"));
+	CHECK_EQ(mdDefs[8].children[0].options.size(), (size_t)1);
+	std::vector<MangaFilterValue> mdVals = mangaFilterDefaults(mdDefs);
+	CHECK_EQ(mdVals[8].children[0].tri.size(), (size_t)1);
+	CHECK_EQ(mdVals[8].children[0].tri[0], 0);	// triDefault IGNORE
+	mdVals[8].children[0].tri[0] = 2;			// exclude
+	mdVals[5].sortBy = mdDefs[5].options[5].id;	// Relevance, as the fixture's sortDefault says
+	mdVals[5].sortAsc = false;
+	std::string mdInputs = suwayomiFilterInputsJson(mdDefs, mdVals);
+	// a group child is the group's position with a nested groupChange; its own position is inside the group
+	CHECK_EQ(mdInputs.find("\"position\":8,\"groupChange\":{\"position\":0,\"triState\":2}") != std::string::npos, true);
+	CHECK_EQ(mdInputs.find("\"position\":5,\"sortState\":{\"index\":5,\"ascending\":false}") != std::string::npos, true);
+	// a group inside a group nests one groupChange further
+	MangaFilter outer;
+	outer.id = "outer";
+	outer.type = "group";
+	MangaFilter inner;
+	inner.id = "inner";
+	inner.type = "group";
+	MangaFilter leaf;
+	leaf.id = "leaf";
+	leaf.type = "tri";
+	leaf.options.push_back({"tri", "Leaf"});
+	inner.children.push_back(leaf);
+	outer.children.push_back(inner);
+	std::vector<MangaFilter> nestedDefs{outer};
+	std::vector<MangaFilterValue> nestedVals = mangaFilterDefaults(nestedDefs);
+	nestedVals[0].children[0].children[0].tri[0] = 1;
+	std::string nestedInputs = suwayomiFilterInputsJson(nestedDefs, nestedVals);
+	CHECK_EQ(nestedInputs.find("\"position\":0,\"groupChange\":{\"position\":0,\"groupChange\":{\"position\":0,\"triState\":1}}") != std::string::npos, true);
+
+	// filtered-group.json: a search with the group changes above applied; the page still says there is more
+	std::string groupJson = read(F + "filtered-group.json");
+	std::vector<SuwayomiManga> groupMangas;
+	bool groupMore = false;
+	CHECK_EQ(suwayomiParseSourceManga("http://127.0.0.1:4567", groupJson, groupMangas, groupMore, error), true);
+	CHECK_EQ(groupMore, true);
+	CHECK_EQ(groupMangas.size(), (size_t)20);
+	CHECK_EQ(groupMangas[0].id, 323);
+
 	// a GraphQL error in a body that otherwise looks right is caught before the data is read
 	CHECK_EQ(suwayomiParseExtensions("{\"errors\":[{\"message\":\"no extensions\"}]}", exts, error), false);
 	CHECK_EQ(error, std::string("no extensions"));
+}
+
+// the Java extensions' store: a repository URL, the store's answer, an install's sources, and their persistence
+static void testMangaJava()
+{
+	const std::string F = std::string(BP_TESTS_DIR) + "/fixtures/suwayomi/";
+	auto read = [](const std::string& path) -> std::string
+	{
+		std::ifstream f(path);
+		return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+	// a Tachiyomi index is index.pb or index.min.json; a Lua repository's index.json is not one
+	CHECK_EQ(MangaJava::isRepoUrl("https://github.com/keiyoushi/extensions/raw/repo/index.pb"), true);
+	CHECK_EQ(MangaJava::isRepoUrl("https://example.org/mihon/index.min.json"), true);
+	CHECK_EQ(MangaJava::isRepoUrl("https://example.org/repo/index.json"), false);
+	CHECK_EQ(MangaJava::isRepoUrl("not a url"), false);
+	CHECK_EQ(MangaJava::sourceId("123"), std::string("java:123"));
+	CHECK_EQ(MangaJava::suwayomiSourceId("java:123"), std::string("123"));
+
+	char tmpl[] = "/tmp/bp-mangajava-XXXXXX";
+	char* dir = mkdtemp(tmpl);
+	CHECK_EQ(dir != nullptr, true);
+	if (!dir) return;
+
+	MangaJava m;
+	std::vector<std::string> bodies;
+	uint64_t next = 1, last = 0;
+	m.setSubmit([&](const std::string& body) { bodies.push_back(body); last = next++; return last; });
+	CHECK_EQ(m.load(dir), true);
+	std::string error;
+	const std::string url = "https://github.com/keiyoushi/extensions/raw/repo/index.pb";
+	CHECK_EQ(m.addRepo(url, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(bodies.size(), (size_t)1);
+	CHECK_EQ(bodies[0].find("addExtensionStore") != std::string::npos, true);
+	CHECK_EQ(m.repos().size(), (size_t)1);
+	CHECK_EQ(m.repos()[0].added, false);	// not written until the store answers
+	CHECK_EQ(m.onAnswer(last, read(F + "add-store.json"), ""), true);	CHECK_EQ(m.repos()[0].name, std::string("Keiyoushi"));
+	CHECK_EQ(m.repos()[0].added, true);
+	{
+		auto ev = m.takeEvents();
+		CHECK_EQ(ev.size(), (size_t)1);
+		CHECK_EQ(ev[0].kind == MangaJava::Event::RepoAdded, true);
+		CHECK_EQ(ev[0].message, std::string("Keiyoushi"));
+	}
+
+	// install: the answer's sources become this package's sources (all nine language rows)
+	const std::string pkg = "eu.kanade.tachiyomi.extension.all.mangaplus";
+	CHECK_EQ(m.install(pkg, error), true);
+	CHECK_EQ(m.busy(pkg), true);
+	CHECK_EQ(m.onAnswer(last, read(F + "install.json"), ""), true);
+	CHECK_EQ(m.busy(pkg), false);
+	CHECK_EQ(m.sources().size(), (size_t)9);
+	CHECK_EQ(m.source("java:1998944621602463790") != nullptr, true);
+	CHECK_EQ(m.source("java:1998944621602463790")->lang, std::string("en"));
+	CHECK_EQ(m.source("java:1998944621602463790")->pkgName, pkg);
+	CHECK_EQ(m.source("java:1998944621602463790")->title(), std::string("MANGA Plus by SHUEISHA (EN)"));
+	CHECK_EQ(m.extension(pkg) != nullptr, true);
+	CHECK_EQ(m.extension(pkg)->isInstalled, true);
+	{
+		auto ev = m.takeEvents();
+		CHECK_EQ(ev.size(), (size_t)1);
+		CHECK_EQ(ev[0].kind == MangaJava::Event::Installed, true);
+	}
+
+	// save and load: the store's name and the sources stay (the extensions list itself is asked again)
+	CHECK_EQ(m.save(), true);
+	MangaJava m2;
+	m2.setSubmit([&](const std::string&) { last = ++next; return last; });
+	CHECK_EQ(m2.load(dir), true);
+	CHECK_EQ(m2.repos().size(), (size_t)1);
+	CHECK_EQ(m2.repos()[0].name, std::string("Keiyoushi"));
+	CHECK_EQ(m2.sources().size(), (size_t)9);
+
+	// uninstall: the answer need not carry a source list; its package's sources go
+	CHECK_EQ(m2.uninstall(pkg, error), true);
+	CHECK_EQ(m2.onAnswer(last, "{\"data\":{\"updateExtension\":{\"extension\":{\"pkgName\":\"" + pkg +
+		"\",\"isInstalled\":false}}}}", ""), true);
+	CHECK_EQ(m2.sources().empty(), true);
+
+	// remove: removeExtensionStore is sent, and the row goes at once
+	CHECK_EQ(m2.removeRepo(url, error), true);
+	CHECK_EQ(m2.repos().empty(), true);
+	CHECK_EQ(bodies.size(), (size_t)2);	// the add store and the install; m2's submit is its own
 }
 
 // the Java runtime's archive: a .tar.gz unpacked with only the rules the pinned one needs (docs/design/manga.md 6)
@@ -8773,6 +8920,7 @@ int main()
 	testLabels();
 	testTrackList();
 	testSuwayomi();
+	testMangaJava();
 	if (failures) fprintf(stderr, "%d failed\n", failures);
 	else printf("core: all passed\n");
 	return failures != 0;

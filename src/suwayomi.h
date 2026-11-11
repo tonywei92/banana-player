@@ -111,7 +111,9 @@ namespace bp
 	// first message. false (and error empty) when the body has no errors at that path
 	bool suwayomiCheckErrors(const std::string& json, std::string& error);
 
-	bool suwayomiParseAddExtensionStore(const std::string& json, std::string& error);
+	// `name`, when given, is the store's own name ("Keiyoushi" in add-store.json); it stays untouched when the
+	// answer carries none
+	bool suwayomiParseAddExtensionStore(const std::string& json, std::string& error, std::string* name = nullptr);
 	bool suwayomiParseRemoveExtensionStore(const std::string& json, std::string& error);
 
 	bool suwayomiParseExtensions(const std::string& json, std::vector<SuwayomiExt>& out, std::string& error);

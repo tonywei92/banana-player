@@ -2,6 +2,7 @@
 #include "battery.h"
 #include "browser.h"
 #include "input.h"
+#include "javaext.h"
 #include "panel.h"
 #include "player.h"
 #include "touch.h"
@@ -19,6 +20,7 @@
 #include "playlists.h"
 #include "discovery.h"
 #include "mangafilters.h"
+#include "mangajava.h"
 #include "mangalocal.h"
 #include "manganetfolders.h"
 #include "mangaremote.h"
@@ -67,6 +69,7 @@ namespace bp
 			bool known = false, loading = false;
 			std::string error;
 			uint64_t serial = 0;		// the Filters job in flight (another serial's answer is stale)
+			uint64_t javaSerial = 0;	// the Java host's filter request (a separate serial space from the worker's)
 			std::vector<MangaFilter> defs;
 			std::vector<MangaFilterValue> values;
 			bool open = false;			// the sheet is up
@@ -1451,6 +1454,67 @@ namespace bp
 		bool mstUninstallArmed = false;				// Uninstall pressed once: again within 2 s removes it
 		Uint32 mstUninstallAt = 0;
 		uint64_t mstLocal = 0;						// the page's own changes (an event taken, a row acted on)
+		// ---- Java extensions in Sources and Browse (ui_manga_java.cpp) ----
+		// A Java repository's extensions are listed after the Lua ones with a Java badge; a Java source is a Browse
+		// row "java:<source id>" and its series "src:java:<source id>:<manga id>". Its requests go to the host's
+		// GraphQL channel, never to the Lua worker.
+		struct MangaSrcRow;	// (defined below, with the other source rows)
+		struct MangaDlAsk;	// (defined below, with the Download sheet)
+		uint64_t mstJavaLocal = 0;					// the Java rows' own changes, for signature()
+		std::map<std::string, std::string> mstJavaBusy;	// package -> Installing… / Updating… / Removing…
+		std::map<std::string, Uint32> mstJavaBusyAt;	// when each started (a lost answer doesn't stick)
+		std::vector<std::string> mangaJavaNotes;	// toasts made where no Player was at hand
+		// a Java extension's sheet (A/X on an installed row) or a Java repository's (A on its row)
+		enum MangaJavaModal { MJM_NONE, MJM_DETAILS, MJM_REPO };
+		int mstJavaModal = MJM_NONE, mstJavaModalCursor = 0;
+		std::string mstJavaModalId;					// a package name, or a repository URL
+		bool mstJavaUninstallArmed = false;
+		Uint32 mstJavaUninstallAt = 0;
+		uint64_t mangaJavaListSerial = 0, mangaJavaSeriesSerial = 0, mangaJavaPagesSerial = 0;
+		std::string mangaJavaBase;					// the host URL a request was built on (its port can change)
+		Uint32 mangaJavaExtAt = 0;					// the last automatic fetchExtensions (not every tick)
+		Uint32 mangaJavaDlAt = 0;					// the last scan of the download queue for Java work
+		Uint32 mangaJavaKeepAt = 0;					// the last want() that kept an open Java page alive
+		uint64_t mangaJavaManagerSerial() const;	// javaSources().serial(): the rows follow it (a source installed)
+		bool mangaJavaInstalled() const;				// the add-on is on the card (Installed / Starting / Running)
+		void mangaJavaNeedHost();					// want(), when the add-on is there
+		std::string mangaJavaStatusLine() const;		// "Starting Java… about 25 s", or a failure
+		void mangaJavaAddRepo(const std::string& url, Player& p);
+		void mangaJavaRefresh();						// fetchExtensions (Y, and the first Contacts with a store)
+		void mangaJavaPoll(const Player& p);				// the manager's events and the host's answers
+		void mangaJavaNotesTick(Player& p);			// the queued toasts, one at a time
+		int mangaJavaInstalledRows(const Player& p) const;
+		int mangaJavaAvailableRows(const Player& p) const;
+		int mangaJavaRepoRows() const;
+		const MangaJava::Source* mangaJavaSourceFor(const std::string& fullId) const;
+		void mangaJavaInstalledAct(int local, Player& p);	// A/X on an installed extension
+		void mangaJavaAvailableAct(int local, Player& p);	// A: install
+		void mangaJavaRepoAct(int local, Player& p);		// A: the repository's sheet
+		void drawMangaJavaRow(int tab, int local, const Rect& r, bool at, bool focus, const Player& p);
+		void drawMangaJavaBadge(int right, int mid, bool at);	// its "Java" chip; returns nothing (known width)
+		bool mangaJavaModalKey(Button b, Player& p);
+		void mangaJavaModalAct(Player& p);
+		void mangaJavaModalClose();
+		bool mangaJavaModalPointer(const Pointer& pt, int x, int y, Player& p);
+		void drawMangaJavaModal(const Player& p);
+		int mangaJavaModalRows() const;
+		Rect mangaJavaModalBox() const;
+		Rect mangaJavaModalRowRect(int i) const;
+		// a Java source's page (ui_manga_browse.cpp's hooks)
+		void mangaJavaSourceOpened(const MangaSrcRow& row, Player& p);
+		void mangaJavaListLoad(int page);
+		void mangaJavaSeriesLoad(Player& p);
+		void mangaJavaPagesAsk(Player& p);
+		void mangaJavaFiltersAsk();
+		std::string mangaJavaFiltersJson() const;
+		bool mangaJavaFilterAnswer(const JavaExtHost::GraphQlResult& r);
+		bool mangaJavaListAnswer(const JavaExtHost::GraphQlResult& r);
+		bool mangaJavaSeriesAnswer(const JavaExtHost::GraphQlResult& r);
+		bool mangaJavaPagesAnswer(const JavaExtHost::GraphQlResult& r, const Player& p);
+		uint64_t mangaJavaDlSubmit(const MangaDlAsk& a);	// a chapter's page list for the Download sheet
+		bool mangaJavaDlAnswer(const JavaExtHost::GraphQlResult& r);
+		void mangaJavaCancel();						// the source's Java requests dropped (its page or series left)
+		void mangaJavaCancelList();					// just the list in flight
 		uint64_t mangaReposSerial() const;			// repos().serial(): signature() follows it (ui.cpp has no MangaNet)
 		uint64_t mangaJavaSerial() const;			// javaExt().serial(): the Java row's state and progress
 		std::string mangaJavaValue() const;			// the Java row's right side (the host's state)
@@ -1459,7 +1523,7 @@ namespace bp
 		void mangaSourcesTick(Player& p);			// the manager's events into toasts, a typed URL added
 		bool mangaSourcesKey(Button b, Player& p);
 		bool mangaSourcesPointer(const Pointer& pt, int x, int y, Player& p);
-		bool mangaSourcesModal() const { return mstModal != MSM_NONE; }
+		bool mangaSourcesModal() const { return mstModal != MSM_NONE || mstJavaModal != MJM_NONE; }
 		bool mangaSourcesModalKey(Button b, Player& p);
 		void mangaSourcesModalAct(Player& p);
 		void mangaSourcesCloseModal();
@@ -1500,9 +1564,10 @@ namespace bp
 		// Popular · Latest · Search (L/R) and a cover grid. A source's page is a view of Page::Manga and its series
 		// page is Page::MangaSeries (the id says whose: "src:<full source id>:<key>"), because a Page of their own
 		// would need its keys, taps and drawing dispatched in ui.cpp, ui_draw.cpp and ui_ext.cpp.
-		struct MangaSrcRow { std::string id, name, lang, file; bool adult = false; };
+		struct MangaSrcRow { std::string id, name, lang, file; bool adult = false, java = false; };
 		std::vector<MangaSrcRow> mangaSrcRows;	// every installed source, as repos() last listed them
 		uint64_t mangaSrcRowsSerial = 0;		// repos()'s serial when they were read
+		uint64_t mangaJavaRowsSerial = 0;		// javaSources()'s serial when the Java rows were read
 		bool mangaSrcRowsOn = false;			// they were read at least once (a source list can be empty)
 		int mangaView = 0;						// 0 the app's tabs, 1 a source's page, 2+ a saved server's pages
 		std::string mangaSrcId, mangaSrcName, mangaSrcFile;	// the source open: full id, name, its script
@@ -1562,13 +1627,14 @@ namespace bp
 			server = id.substr(4, colon - 4);
 			key = id.substr(colon + 1);
 		}
-		// the two parts of "src:<source>:<key>"; full is "" when the id is malformed
+		// the two parts of "src:<source>:<key>"; full is "" when the id is malformed. A Java source's full id has
+		// a colon of its own ("java:<source id>"), so its series split after it, not at the first colon.
 		static void splitSourceId(const std::string& id, std::string& full, std::string& key)
 		{
 			full.clear();
 			key.clear();
 			if (!isSourceId(id)) return;
-			size_t colon = id.find(':', 4);
+			size_t colon = id.compare(4, 5, "java:") == 0 ? id.find(':', 9) : id.find(':', 4);
 			if (colon == std::string::npos) { full = id.substr(4); return; }
 			full = id.substr(4, colon - 4);
 			key = id.substr(colon + 1);

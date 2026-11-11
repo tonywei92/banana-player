@@ -53,6 +53,7 @@ namespace bp
 		(void)p;
 		mstModal = MSM_NONE;
 		mstModalId.clear();
+		mstJavaModal = MJM_NONE;
 		mstUninstallArmed = false;
 		mstLocal++;
 		// the network side is idempotent: the first open of the app starts it, this only asks again
@@ -61,15 +62,18 @@ namespace bp
 		if (!mangaNet->started()) return;
 		// at most hourly by the manager's own rule; Refresh (Y) forces it
 		mangaNet->repos().refresh(false);
+		// a Java repository's extensions are asked as soon as there is a host to ask (a use: it starts it)
+		if (mangaJavaInstalled() && mangaNet->javaSources().hasRepos() && !mangaNet->javaSources().extensionsKnown())
+			mangaJavaRefresh();
 	}
 
 	int Ui::mangaSourcesRows(const Player& p) const
 	{
 		switch (mstTab)
 		{
-		case MST_INSTALLED: return (int)mangaSourcesInstalled().size();
-		case MST_AVAILABLE: return (int)mangaSourcesAvailable(p).size();
-		default: return (int)mangaSourcesRepos().size() + 1;	// (+ Add repository…)
+		case MST_INSTALLED: return (int)mangaSourcesInstalled().size() + mangaJavaInstalledRows(p);
+		case MST_AVAILABLE: return (int)mangaSourcesAvailable(p).size() + mangaJavaAvailableRows(p);
+		default: return (int)mangaSourcesRepos().size() + mangaJavaRepoRows() + 1;	// (+ Add repository…)
 		}
 	}
 
@@ -169,6 +173,7 @@ namespace bp
 			mstPendingUrl.clear();
 			mstLocal++;
 			if (!mangaNet || !mangaNet->started()) p.osd("Repositories need a state folder", 2500);
+			else if (MangaJava::isRepoUrl(url)) mangaJavaAddRepo(url, p);
 			else
 			{
 				std::string error;
@@ -183,6 +188,7 @@ namespace bp
 			}
 		}
 		if (!mangaNet || !mangaNet->started()) return;
+		mangaJavaPoll(p);
 		MangaRepos& repos = mangaNet->repos();
 		std::vector<MangaRepos::Event> events = repos.takeEvents();
 		for (auto& e : events)
@@ -236,6 +242,7 @@ namespace bp
 
 	bool Ui::mangaSourcesKey(Button b, Player& p)
 	{
+		if (mstJavaModal != MJM_NONE) return mangaJavaModalKey(b, p);
 		if (mstModal != MSM_NONE) return mangaSourcesModalKey(b, p);
 		// LEFT/RIGHT step the sub-lists here (the app's pages are L/R), the cursor of each kept
 		if (b == Button::Left || b == Button::Right)
@@ -253,6 +260,7 @@ namespace bp
 			if (mangaNet && mangaNet->started())
 			{
 				mangaNet->repos().refresh(true);
+				mangaJavaRefresh();
 				p.osd("Checking repositories\xE2\x80\xA6", 1200);
 			}
 			else p.osd("Repositories need a state folder", 2500);
@@ -276,6 +284,7 @@ namespace bp
 					mstUninstallArmed = false;
 					mstLocal++;
 				}
+				else if (cur >= (int)list.size()) mangaJavaInstalledAct(cur - (int)list.size(), p);
 			}
 			break;
 		default: break;
@@ -295,26 +304,34 @@ namespace bp
 		if (mstTab == MST_INSTALLED)
 		{
 			auto list = mangaSourcesInstalled();
-			if (cur < 0 || cur >= (int)list.size()) return;
-			mstModal = MSM_DETAILS;
-			mstModalCursor = 0;
-			mstModalId = list[cur].fullId;
-			mstUninstallArmed = false;
-			mstLocal++;
+			if (cur >= 0 && cur < (int)list.size())
+			{
+				mstModal = MSM_DETAILS;
+				mstModalCursor = 0;
+				mstModalId = list[cur].fullId;
+				mstUninstallArmed = false;
+				mstLocal++;
+			}
+			else if (cur >= (int)list.size()) mangaJavaInstalledAct(cur - (int)list.size(), p);
 			return;
 		}
 		if (mstTab == MST_AVAILABLE)
 		{
 			auto list = mangaSourcesAvailable(p);
-			if (cur < 0 || cur >= (int)list.size()) return;
-			const MangaRepos::AvailableSource& a = list[cur];
-			if (mstInstalling.count(a.fullId)) return;
-			mangaSourcesInstall(a.fullId, a.repo, a.id, a.name, p);
+			if (cur >= 0 && cur < (int)list.size())
+			{
+				const MangaRepos::AvailableSource& a = list[cur];
+				if (mstInstalling.count(a.fullId)) return;
+				mangaSourcesInstall(a.fullId, a.repo, a.id, a.name, p);
+			}
+			else if (cur >= (int)list.size()) mangaJavaAvailableAct(cur - (int)list.size(), p);
 			return;
 		}
 		auto list = mangaSourcesRepos();
-		if (cur == (int)list.size()) { mangaSourcesAddOpen(p); return; }
-		if (cur < 0 || cur >= (int)list.size()) return;
+		int lua = (int)list.size(), java = mangaJavaRepoRows();
+		if (cur >= lua && cur < lua + java) { mangaJavaRepoAct(cur - lua, p); return; }
+		if (cur == lua + java) { mangaSourcesAddOpen(p); return; }
+		if (cur < 0 || cur >= lua) return;
 		mstModal = MSM_REPO;
 		mstModalCursor = 0;
 		mstModalId = list[cur].url;
@@ -416,6 +433,7 @@ namespace bp
 	bool Ui::mangaSourcesPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (pt.kind != Pointer::Down) return false;
+		if (mstJavaModal != MJM_NONE) return mangaJavaModalPointer(pt, x, y, p);
 		if (mstModal != MSM_NONE)
 		{
 			int n = mangaSourcesModalRows();
@@ -435,6 +453,7 @@ namespace bp
 			{
 				mstTab = i;
 				mstModal = MSM_NONE;
+				mstJavaModal = MJM_NONE;
 				mstLocal++;
 				return false;
 			}
@@ -469,12 +488,14 @@ namespace bp
 		if (cur < sc) sc = cur;
 		if (cur >= sc + MS_ROWS) sc = cur - MS_ROWS + 1;
 
+		std::string javaStatus = mangaJavaStatusLine();
 		if (mstTab == MST_INSTALLED)
 		{
 			auto list = mangaSourcesInstalled();
-			if (list.empty())
+			int lua = (int)list.size(), java = mangaJavaInstalledRows(p);
+			if (lua + java == 0 && javaStatus.empty())
 				drawEmpty(G_BLOCKS, "No sources yet", "Add a repository, then install from Available", nullptr);
-			for (int i = sc; i < (int)list.size() && i < sc + MS_ROWS; i++)
+			for (int i = sc; i < lua && i < sc + MS_ROWS; i++)
 			{
 				const MangaRepos::InstalledSource& s = list[i];
 				Rect r = mangaSourcesRowRect(i - sc);
@@ -501,14 +522,17 @@ namespace bp
 					drawTextMid("Update", 0, ON_ACCENT, 608 - w / 2, mid, w - 6, 2);
 				}
 			}
-			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, (int)list.size());
+			for (int i = std::max(sc, lua); i < lua + java && i < sc + MS_ROWS; i++)
+				drawMangaJavaRow(MST_INSTALLED, i - lua, mangaSourcesRowRect(i - sc), i == cur, true, p);
+			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, lua + java);
 		}
 		else if (mstTab == MST_AVAILABLE)
 		{
 			auto list = mangaSourcesAvailable(p);
-			if (list.empty())
+			int lua = (int)list.size(), java = mangaJavaAvailableRows(p);
+			if (lua + java == 0 && javaStatus.empty())
 				drawEmpty(G_DOWNLOAD, "Nothing to install", "Add a repository first", nullptr);
-			for (int i = sc; i < (int)list.size() && i < sc + MS_ROWS; i++)
+			for (int i = sc; i < lua && i < sc + MS_ROWS; i++)
 			{
 				const MangaRepos::AvailableSource& a = list[i];
 				Rect r = mangaSourcesRowRect(i - sc);
@@ -529,12 +553,15 @@ namespace bp
 				if (mstInstalling.count(a.fullId)) drawTextMid("Installing\xE2\x80\xA6", 0, ACCENT, 608, mid, 0, 1);
 				else drawTextMid(elideLeft(a.repoName, 0, 150), 0, soft, 608, mid, 0, 1);
 			}
-			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, (int)list.size());
+			for (int i = std::max(sc, lua); i < lua + java && i < sc + MS_ROWS; i++)
+				drawMangaJavaRow(MST_AVAILABLE, i - lua, mangaSourcesRowRect(i - sc), i == cur, true, p);
+			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, lua + java);
 		}
 		else
 		{
 			auto list = mangaSourcesRepos();
-			for (int i = sc; i < (int)list.size() && i < sc + MS_ROWS; i++)
+			int lua = (int)list.size(), java = mangaJavaRepoRows(), total = lua + java;
+			for (int i = sc; i < lua && i < sc + MS_ROWS; i++)
 			{
 				const MangaRepos::RepoInfo& rp = list[i];
 				Rect r = mangaSourcesRowRect(i - sc);
@@ -550,19 +577,23 @@ namespace bp
 					drawTextMid(mangaAgo(rp.lastFetched, (int64_t)time(nullptr)), 0, soft, 608, mid, 0, 1);
 				else drawTextMid("Not checked yet", 0, soft, 608, mid, 0, 1);
 			}
+			for (int i = std::max(sc, lua); i < total && i < sc + MS_ROWS; i++)
+				drawMangaJavaRow(MST_REPOSITORIES, i - lua, mangaSourcesRowRect(i - sc), i == cur, true, p);
 			// the last row, Add repository…
-			int i = (int)list.size() - sc;
+			int i = total - sc;
 			if (i >= 0 && i < MS_ROWS)
 			{
 				Rect r = mangaSourcesRowRect(i);
-				bool at = cur == (int)list.size();
+				bool at = cur == total;
 				if (at) drawFocus(r);
 				int mid = r.y + r.h / 2;
 				drawGlyphMid(G_PLUS, 42, mid, at ? ACCENT : DIM);
 				drawTextMid("Add repository\xE2\x80\xA6", 1, at ? ACCENT : TEXT, 62, mid, 0);
 			}
-			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, (int)list.size() + 1);
+			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total + 1);
 		}
+
+		if (!javaStatus.empty()) drawTextMid(javaStatus, 0, ACCENT, W / 2, 378, 560, 2);
 
 		// the note at the foot of every sub-list (design 9's Repositories row)
 		auto lines = wrapText(NOTE, 0, 552, 2);
@@ -576,6 +607,7 @@ namespace bp
 		else drawHints({{"A", "Open"}, {"LEFT/RIGHT", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 
 		if (mstModal != MSM_NONE) drawMangaSourceModal(p);
+		if (mstJavaModal != MJM_NONE) drawMangaJavaModal(p);
 	}
 
 	void Ui::drawMangaSourceModal(const Player& p)
