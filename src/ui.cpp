@@ -1094,9 +1094,10 @@ namespace bp
 		upd += page == Page::Settings && setGroup == GROUP_CONTROLS
 			? "|bl" + std::to_string(backlight.permille(Backlight::TOP)) + "," + std::to_string(backlight.permille(Backlight::BOTTOM)) : "";
 		// the manga reader's settings: the page cache's Clear (what it holds not being a setting, and the press waiting
-		// for its second)
+		// for its second), and the Java extensions' host state and progress
 		if (page == Page::MangaSettings)
-			upd += "|mc" + std::to_string(mangaPageCache.size()) + " " + std::to_string(mangaCacheAt != 0);
+			upd += "|mc" + std::to_string(mangaPageCache.size()) + " " + std::to_string(mangaCacheAt != 0) +
+				"|mj" + std::to_string(mangaJavaSerial()) + " " + std::to_string(mangaJavaAt != 0);
 		if (updater)
 			upd += "|upd" + std::to_string((int)updater->state()) + " " + std::to_string(updater->progress()) + " " + updater->available() +
 				" " + std::to_string(popupShown(p)) + std::to_string(popupCursor) + std::to_string(pressedBtn);

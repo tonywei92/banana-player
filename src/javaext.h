@@ -12,6 +12,7 @@
 #include <SDL.h>
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 namespace bp
@@ -36,6 +37,10 @@ namespace bp
 	class JavaExtHost
 	{
 	public:
+		JavaExtHost();
+		~JavaExtHost();	// never waits on the process: its watcher holds the host's state (MangaNet is never destroyed)
+		JavaExtHost(const JavaExtHost&) = delete;
+		JavaExtHost& operator=(const JavaExtHost&) = delete;
 		enum class State
 		{
 			NotInstalled,	// nothing on the card
@@ -75,5 +80,9 @@ namespace bp
 		std::string baseUrl() const;
 		// grows when anything the Ui shows changed (state, progress)
 		uint64_t serial() const;
+
+	private:
+		struct Impl;
+		std::shared_ptr<Impl> impl;	// the threads hold it too: a quit never frees state under them
 	};
 }

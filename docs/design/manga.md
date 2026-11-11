@@ -486,6 +486,7 @@ page), the gear (**X**) in **Manage extensions** opens it too, and the Reading m
 | Preload | 2 / **3** / 6 pages | More: smoother on a slow server, more data. |
 | Page cache | 100 MB / **300 MB** / 1 GB | Pages kept on the card to read again without downloading. Covers: 50 MB more. |
 | Clear cache | (button: "Clear · 214 MB") | Empties the pages kept on the card. Press A twice. |
+| Java extensions | **Not installed** / **Downloading 41 %** / **Installed · 344 MB** / **Running** / **Failed: why** | Tachiyomi and Mihon extensions (.jar), run by Suwayomi on Java. Uses about 400 MB of memory while a Java source is open. A installs (or cancels); A twice removes. |
 | Adult sources | **Hidden** / Shown | Sources a repository marks as adult. |
 | Reading history | **On** / Off | Off clears it. |
 | Repositories (note, no value) | | Repositories are added by you. Banana Player doesn't provide or check their content. |

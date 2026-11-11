@@ -6,6 +6,7 @@
 // (its threads never hold up quitting: stop()).
 #include "dlqueue.h"
 #include "fetchapi.h"
+#include "javaext.h"
 #include "mangadownloader.h"
 #include "mangafetch.h"
 #include "mangarepos.h"
@@ -48,6 +49,8 @@ namespace bp
 		DownloadQueue& queue() { return dlq; }
 		MangaDownloader& downloader() { return *dl; }
 		MangaServerStore& servers() { return serverStore; }
+		// the Java extensions' runtime and server: installed from Manga settings, started while a Java source is in use
+		JavaExtHost& javaExt() { return javaHost; }
 		const std::string& downloadsRoot() const { return dlRoot; }
 		// answers nobody in here claimed (the Ui's own fetches: a server's catalogue, a cover by URL)
 		std::vector<MangaFetch::Result> takeFetched();
@@ -69,6 +72,7 @@ namespace bp
 		DownloadQueue dlq;
 		std::unique_ptr<MangaDownloader> dl;
 		MangaServerStore serverStore;
+		JavaExtHost javaHost;
 		std::vector<MangaFetch::Result> fetched;
 		std::vector<MangaWorker::Result> workerDone;
 		std::function<bool(MangaFetch::Result&)> fetchOwner;
