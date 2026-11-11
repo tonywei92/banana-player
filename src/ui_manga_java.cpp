@@ -105,10 +105,10 @@ namespace bp
 		JavaExtHost& h = mangaNet->javaExt();
 		switch (h.state())
 		{
-		case JavaExtHost::State::Starting: return "Starting extensions\xE2\x80\xA6 about 25 s";
+		case JavaExtHost::State::Starting: return "Loading manga engine\xE2\x80\xA6 about 25 s";
 		case JavaExtHost::State::Downloading: return "Extension support is downloading";
 		case JavaExtHost::State::Failed:
-			return h.error().empty() ? "Extensions failed to start" : "Extensions: " + h.error();
+			return h.error().empty() ? "The manga engine didn\xE2\x80\x99t start" : "Manga engine: " + h.error();
 		default: return "";
 		}
 	}
@@ -346,20 +346,39 @@ namespace bp
 
 	void Ui::mangaVideoGuard(Player& p)
 	{
-		// no video while the manga extensions run: the handheld's 1 GB can't hold both (the extensions' server takes
-		// about 400 MB). A video playing when they start, or started while they run, is stopped as the player's own
-		// Stop would (everywhere), and the notice at the top says why. Music and photos go on.
-		// and none in the manga reader at all (entering it stops one), extensions or not
+		// The handheld's 1 GB can't hold a video and the manga engine (its server takes about 400 MB). In the manga
+		// reader a video is stopped (as Stop, everywhere, with the notice); outside it a video wins and the engine
+		// is stopped. Music and photos go on either way.
+		// entering the manga reader starts the engine (if installed): it is ready by the time a source is opened
+		if (mangaNet && mangaNet->started() && mangaJavaInstalled() &&
+			(page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead || page == Page::MangaSettings ||
+				page == Page::MangaSources))
+		{
+			auto st = mangaNet->javaExt().state();
+			if (st == JavaExtHost::State::Installed) mangaNet->javaExt().want();
+		}
 		if (p.playing() && !p.playingAudio() && !p.playingPhoto() && !p.loading())
 		{
 			bool inManga = page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead ||
 				page == Page::MangaSettings || page == Page::MangaSources;
 			auto st = mangaNet && mangaNet->started() ? mangaNet->javaExt().state() : JavaExtHost::State::NotInstalled;
-			if (inManga || st == JavaExtHost::State::Starting || st == JavaExtHost::State::Running)
+			// outside the manga reader a video wins: the engine (loading or loaded) is stopped, and entering the
+			// reader again loads it again, the same way every time
+			// (asked once: it goes on saying Running until the process has gone, a moment)
+			if (!inManga && (st == JavaExtHost::State::Starting || st == JavaExtHost::State::Running))
+			{
+				if (!engineStopAt || SDL_GetTicks() - engineStopAt > 5000)
+				{
+					engineStopAt = SDL_GetTicks();
+					mangaNet->javaExt().stop();
+					fprintf(stderr, "manga: the engine stopped (a video plays)\n");
+				}
+			}
+			else if (inManga)
 			{
 				stopPressed = true;
 				videoBlockedAt = SDL_GetTicks();
-				fprintf(stderr, "manga: a video stopped (%s)\n", inManga ? "the manga reader" : "the extensions are running");
+				fprintf(stderr, "manga: a video stopped (the manga reader)\n");
 			}
 		}
 	}
@@ -379,9 +398,9 @@ namespace bp
 		Uint32 secs = (now - extNoticeAt) / 1000;
 		switch ((JavaExtHost::State)st)
 		{
-		case JavaExtHost::State::Starting: return "Starting extensions\xE2\x80\xA6 " + std::to_string(secs) + " s";
-		case JavaExtHost::State::Running: return secs < 2 ? "Extensions ready" : "";
-		case JavaExtHost::State::Failed: return secs < 4 ? "Extensions didn\xE2\x80\x99t start" : "";
+		case JavaExtHost::State::Starting: return "Loading manga engine\xE2\x80\xA6 " + std::to_string(secs) + " s";
+		case JavaExtHost::State::Running: return secs < 2 ? "Manga engine ready" : "";
+		case JavaExtHost::State::Failed: return secs < 4 ? "Manga engine didn\xE2\x80\x99t start" : "";
 		default: return "";
 		}
 	}

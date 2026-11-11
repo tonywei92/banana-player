@@ -1074,7 +1074,7 @@ namespace bp
 		else if (timedOut)
 		{
 			if (!last.empty()) fprintf(stderr, "javaext: %s last line: %s\n", clockStamp().c_str(), last.c_str());
-			set(State::Failed, "extensions didn't start");
+			set(State::Failed, "it didn't start");
 		}
 		else
 		{
@@ -1164,12 +1164,12 @@ namespace bp
 					if (st == State::Running && port > 0) base = "http://127.0.0.1:" + std::to_string(port);
 					else if (st == State::NotInstalled) why = "extension support isn't installed";
 					else if (st == State::Downloading) why = "extension support is still downloading";
-					else if (st == State::Failed) why = err.empty() ? "extensions failed to start" : err;
+					else if (st == State::Failed) why = err.empty() ? "the manga engine didn't start" : err;
 				}
 				if (!base.empty() || !why.empty()) break;
 				if (std::chrono::steady_clock::now() >= deadline)
 				{
-					why = "extensions didn't start";
+					why = "the manga engine didn't start";
 					break;
 				}
 				std::unique_lock<std::mutex> lk(gqlLock);

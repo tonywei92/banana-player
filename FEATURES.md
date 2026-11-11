@@ -808,7 +808,7 @@ it couldn't. With nothing yet they say where to start: *No sources yet* (add a r
 **Tachiyomi / Mihon repositories.** An address ending in `index.pb` or `index.min.json` is a Java repository (like
 Keiyoushi's `https://github.com/keiyoushi/extensions/raw/repo/index.pb`), not a Lua one. It needs the optional
 **Extension support** download (Manga settings; inside, a Java runtime and Suwayomi, never named on screen): without
-it the address is refused in one line and nothing is kept. Adding one starts it (*Starting extensions… about 25 s*)
+it the address is refused in one line and nothing is kept. Adding one starts it (*Loading manga engine… about 25 s*)
 and registers the store with Suwayomi; it is listed with the Lua repositories under the store's own name, with no
 badge (the screen never says Java, jar or Suwayomi). Removing it removes the store. Its
 extensions show under **Available** beside the Lua ones (name, language, version; adult ones hidden
