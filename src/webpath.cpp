@@ -156,17 +156,6 @@ namespace bp
 		return !blank;
 	}
 
-	bool allowedFileType(const std::string& name)
-	{
-		if (isMediaFile(name) || isPhotoFile(name)) return true;
-		size_t dot = name.rfind('.');
-		if (dot == std::string::npos) return false;
-		std::string e = lower(name.substr(dot + 1));
-		for (const char* s : {"srt", "ass", "ssa", "vtt", "sub", "idx", "lrc"})
-			if (e == s) return true;
-		return false;
-	}
-
 	namespace
 	{
 		bool v4Private(const unsigned char* b)

@@ -471,8 +471,6 @@ class H(http.server.BaseHTTPRequestHandler):
 		if n is None: return self.err(411, "Length required")
 		n = int(n); d = real(one("dir")); name = one("name"); rel = one("rel")
 		if not d: return self.err(400, "Bad folder")
-		if kind_of(name) == "other" and not name.endswith((".lrc", ".vtt", ".ass", ".webp", ".gif", ".m4a")): 
-			self.rfile.read(n); return self.err(415, "That kind of file can't be uploaded here", code="type")
 		td = os.path.join(d, rel) if rel else d; os.makedirs(td, exist_ok=True); t = os.path.join(td, name)
 		if os.path.exists(t) and one("overwrite") != "1": self.rfile.read(n); return self.err(409, "Already there", code="exists")
 		left = n

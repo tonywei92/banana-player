@@ -329,8 +329,8 @@ namespace bp
 			return err;
 		}
 
-		// A folder may go only when everything in it is an allowed type (or a hidden player file); `bad` names the first
-		// thing that isn't
+		// A folder may go only when it holds no hidden folder (a folder the player keeps out of sight); `bad` names the
+		// first one
 		bool deletable(const std::string& dir, std::string& bad)
 		{
 			DIR* d = opendir(dir.c_str());
@@ -355,12 +355,6 @@ namespace bp
 						ok = false;
 						break;
 					}
-				}
-				else if (n[0] != '.' && !allowedFileType(n))
-				{
-					bad = n;
-					ok = false;
-					break;
 				}
 			}
 			closedir(d);
@@ -854,7 +848,6 @@ namespace bp
 			std::string name = req.get_param_value("name"), rel = req.get_param_value("rel");
 			bool overwrite = req.get_param_value("overwrite") == "1";
 			if (!validName(name) || name[0] == '.') return failClose(res, 400, "That name can't be used", "name");
-			if (!allowedFileType(name)) return failClose(res, 415, "This kind of file can't be uploaded", "type");
 			std::vector<std::string> parts;
 			for (size_t i = 0; i < rel.size();)
 			{
@@ -1021,7 +1014,6 @@ namespace bp
 			struct stat st;
 			if (lstat(real.c_str(), &st) != 0) return WebServer::fail(res, 404, "not found");
 			bool dir = S_ISDIR(st.st_mode);
-			if (!dir && !allowedFileType(name)) return failCode(res, 415, "This kind of file isn't allowed", "type");
 			PlayingGuard pg(ws);
 			if (int b = pg.busy(real, dir)) return failCode(res, b, b == 409 ? "That file is playing on the handheld" : "Busy, try again", b == 409 ? "playing" : "");
 			std::string target = dirName(real) + "/" + name;
@@ -1164,7 +1156,7 @@ namespace bp
 					std::string bad;
 					if (!deletable(real, bad))
 					{
-						failed.push_back({vp, "has a file that isn't media: " + bad, 409});
+						failed.push_back({vp, "has a hidden folder: " + bad, 409});
 						continue;
 					}
 					removeTree(real);

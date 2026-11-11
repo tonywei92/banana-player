@@ -1,5 +1,5 @@
 import { html } from '../vendor/htm-preact-standalone.module.js';
-import { baseName, dirName, fmtSize, joinPath, kindOfName, plural, stem } from './util.js';
+import { baseName, dirName, fmtSize, joinPath, plural, stem } from './util.js';
 import { ask, toast } from './toasts.js';
 import { errMsg, get } from './api.js';
 import { notify, set, store } from './store.js';
@@ -8,7 +8,8 @@ import { filesHash, go } from './router.js';
 
 /* ================= uploads ================= */
 const UP_MAX = 2, SPACE_MARGIN = 64 * 1024 * 1024;
-const uploadable = n => !n.startsWith('.') && (kindOfName(n) !== 'other');
+// any kind of file goes up; a name with a dot in front is the player's own (the handheld refuses it too)
+const uploadable = n => !n.startsWith('.');
 let upSeq = 0;
 
 export async function entriesFromDrop(dt) {
@@ -38,7 +39,7 @@ export function dirLabel(dir) { const n = baseName(dir); return n && dir.include
 export async function startUpload(entries, dir) {
 	if (!entries.length) return;
 	const ok = entries.filter(e => uploadable(e.file.name));
-	if (ok.length < entries.length) toast('Skipped ' + plural(entries.length - ok.length, 'file', 'files') + ' that ' + (entries.length - ok.length === 1 ? "isn't" : "aren't") + ' music, video, a photo or subtitles');
+	if (ok.length < entries.length) toast('Skipped ' + plural(entries.length - ok.length, 'file', 'files') + ' with a name starting with a dot');
 	if (!ok.length) return;
 	let list = ok, free = null;
 	try { free = (await get('/api/ls', { p: dir })).free; } catch (e) { if (e.status !== 404) return toast(errMsg(e)); }

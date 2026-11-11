@@ -23,8 +23,6 @@ namespace bp
 
 	// 1-255 bytes; none of / \ < > : " | ? * or control characters; not blank; not "." or ".."
 	bool validName(const std::string& name);
-	// media (audio, video, photos: playlist.h, photo.h), subtitles (srt ass ssa vtt sub idx lrc); photos cover covers too
-	bool allowedFileType(const std::string& name);
 
 	// loopback, RFC 1918, link-local, unique local (fc00::/7), and IPv4-mapped IPv6 of those; a zone ("%wlan0") is ignored
 	bool privateAddress(const std::string& ip);
