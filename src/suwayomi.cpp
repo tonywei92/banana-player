@@ -867,11 +867,28 @@ namespace bp
 		std::vector<FilterLeaf> leaves;
 		std::vector<int> path;
 		collectFilterLeaves(defs, values, path, leaves);
+		// only what differs from the source's own defaults: the engine starts from those anyway, and a full list
+		// trips some sources (Asura Scans: "Expected group change at position 3" once anything else is changed)
+		const std::vector<MangaFilterValue> defaults = mangaFilterDefaults(defs);
+		std::vector<FilterLeaf> defLeaves;
+		path.clear();
+		collectFilterLeaves(defs, defaults, path, defLeaves);
+		auto same = [](const MangaFilter& d, const MangaFilterValue& a, const MangaFilterValue& b) {
+			if (d.type == "select") return a.select == b.select;
+			if (d.type == "sort") return a.sortBy == b.sortBy && a.sortAsc == b.sortAsc;
+			if (d.type == "check") return a.check == b.check;
+			if (d.type == "text") return a.text == b.text;
+			if (d.type == "multi") return a.multi == b.multi;
+			if (d.type == "tri") return a.tri == b.tri;
+			return false;
+		};
 		JsonWriter w;
 		w.arr();
-		for (const FilterLeaf& leaf : leaves)
+		for (size_t li = 0; li < leaves.size(); li++)
 		{
+			const FilterLeaf& leaf = leaves[li];
 			if (leaf.path.empty() || !leaf.def || !leaf.val) continue;
+			if (li < defLeaves.size() && defLeaves[li].val && same(*leaf.def, *leaf.val, *defLeaves[li].val)) continue;
 			w.obj();
 			w.key("position").num(leaf.path[0]);
 			// every group crossed is one nested groupChange; its innermost position names the filter changed

@@ -8749,7 +8749,10 @@ static void testSuwayomi()
 	std::string mdInputs = suwayomiFilterInputsJson(mdDefs, mdVals);
 	// a group child is the group's position with a nested groupChange; its own position is inside the group
 	CHECK_EQ(mdInputs.find("\"position\":8,\"groupChange\":{\"position\":0,\"triState\":\"EXCLUDE\"}") != std::string::npos, true);
-	CHECK_EQ(mdInputs.find("\"position\":5,\"sortState\":{\"index\":5,\"ascending\":false}") != std::string::npos, true);
+	// the sort left at the source's own default isn't sent (only what differs is: the engine starts from the defaults)
+	CHECK_EQ(mdInputs.find("\"position\":5,") == std::string::npos, true);
+	mdVals[5].sortAsc = true;
+	CHECK_EQ(suwayomiFilterInputsJson(mdDefs, mdVals).find("\"position\":5,\"sortState\":{\"index\":5,\"ascending\":true}") != std::string::npos, true);
 	// a group inside a group nests one groupChange further
 	MangaFilter outer;
 	outer.id = "outer";
