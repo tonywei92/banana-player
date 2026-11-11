@@ -35,8 +35,13 @@ namespace bp
 		constexpr const char* MARKER = "installed";
 		constexpr const char* SERVER_JAR = "server.jar";
 		constexpr const char* JRE_TAR = "jre.tar.gz";
-		constexpr const char* JRE_DIR = "jre";
-		constexpr const char* JRE_STAGE = "jre.tmp";
+		// never "jre": Suwayomi's class scanner (ClassGraph) takes a java.home ending in /jre to mean its parent is
+		// the JDK too, and skips every jar under it — server.jar included, so the server dies at start
+		// ("configured packages do not contain any valid classes"). Found on the handheld; the Mac's system Java
+		// lives elsewhere and never showed it.
+		constexpr const char* JRE_DIR = "runtime";
+		constexpr const char* JRE_OLD_DIR = "jre";	// 0.6.4 test builds: moved to JRE_DIR at configure
+		constexpr const char* JRE_STAGE = "runtime.tmp";
 		constexpr const char* SERVER_LOG = "server.log";
 
 		int64_t sdlNow()
@@ -429,6 +434,12 @@ namespace bp
 		d->wake = wakeEvent;
 		d->javaDir = stateDir.empty() ? "" : stateDir + "/manga/java";
 		d->total = JavaExtPins::JRE_BYTES + JavaExtPins::SERVER_BYTES;
+		if (!d->javaDir.empty())
+		{
+			std::string oldDir = d->javaDir + "/" + JRE_OLD_DIR, newDir = d->javaDir + "/" + JRE_DIR;
+			if (isFile(oldDir + "/bin/java") && !isFile(newDir + "/bin/java") && rename(oldDir.c_str(), newDir.c_str()) == 0)
+				fprintf(stderr, "javaext: moved the runtime from %s to %s\n", JRE_OLD_DIR, JRE_DIR);
+		}
 		if (d->cardInstalled(nullptr))
 		{
 			int64_t bytes = 0;
@@ -988,6 +999,10 @@ namespace bp
 		bool termSent = false, killed = false;
 		clock::time_point termAt;
 		clock::time_point nextPoll = clock::now();
+		// a server that's up but never answers (it failed inside, as with the scanner above) is ended after this,
+		// so a request waiting on it fails instead of the screen saying "Starting" for good
+		const clock::time_point startDeadline = clock::now() + std::chrono::seconds(150);
+		bool timedOut = false;
 		while (true)
 		{
 			bool stopNow = false;
@@ -1019,7 +1034,14 @@ namespace bp
 					std::lock_guard<std::mutex> g(lock);
 					starting = gen == procGen && st == State::Starting;
 				}
-				if (starting && clock::now() >= nextPoll)
+				if (starting && clock::now() >= startDeadline)
+				{
+					timedOut = termSent = true;
+					termAt = clock::now();
+					if (kill(-child, SIGTERM) != 0) kill(child, SIGTERM);
+					fprintf(stderr, "javaext: %s no answer in 150 s: SIGTERM to pid %ld\n", clockStamp().c_str(), (long)child);
+				}
+				else if (starting && clock::now() >= nextPoll)
 				{
 					nextPoll = clock::now() + std::chrono::milliseconds(500);
 					if (httpStatus("http://127.0.0.1:" + std::to_string(p) + "/api/v1/settings/about") == 200)
@@ -1049,6 +1071,11 @@ namespace bp
 		port = 0;
 		stopReq = idleStop = false;
 		if (stopped) set(removing ? State::NotInstalled : State::Installed, "");
+		else if (timedOut)
+		{
+			if (!last.empty()) fprintf(stderr, "javaext: %s last line: %s\n", clockStamp().c_str(), last.c_str());
+			set(State::Failed, "extensions didn't start");
+		}
 		else
 		{
 			// the server's own last line is for log.txt; the screen says it plainly
