@@ -189,6 +189,8 @@ cp /src/assets/fonts/licenses/Inter-LICENSE.txt "$L/Inter-LICENSE.txt"
 # the launcher (the Store's menu.launch, and what the Ports shelf's script runs), the version the Store reads
 # (package.version_file) and the tile's picture (menu.media.image)
 cp /src/packaging/launch.sh "$B/launch.sh"
+# Secure DNS for the Java extensions (java/bp-dns, built from source by its build.sh, small): the add-on loads it
+mkdir -p "$B/java" && cp /src/packaging/java/bp-dns.jar "$B/java/"
 echo "$VERSION" > "$B/VERSION"
 python3 /src/packaging/icon/make-icon.py "$B/share/banana-player/icon.png" 16
 
