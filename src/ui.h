@@ -1570,7 +1570,9 @@ namespace bp
 		bool mangaSourcesPointer(const Pointer& pt, int x, int y, Player& p);
 		bool mangaSourcesModal() const { return mstModal != MSM_NONE || mstJavaModal != MJM_NONE || mstAvMenu != 0; }
 		// Available's X: a menu (Refresh, Languages) and the language list (a tick on each kept; Settings::mangaLangs)
-		int mstAvMenu = 0, mstAvCursor = 0, mstAvScroll = 0;	// 0 none, 1 the menu, 2 the languages
+		int mstAvMenu = 0, mstAvCursor = 0, mstAvScroll = 0;
+		bool mstInstalledOnly = false;	// Filter › Installed only: Available lists only what is installed
+		void drawAdultChip(int x, int cy);	// "18+" after a source's version	// 0 none, 1 the menu, 2 the languages
 		std::vector<std::string> mstAvLangs;	// the languages the repositories offer, when the list was opened
 		static constexpr int MST_AV_SHOWN = 6;
 		bool mangaLangShown(const Player& p, const std::string& lang) const;

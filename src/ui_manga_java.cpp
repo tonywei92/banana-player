@@ -159,7 +159,7 @@ namespace bp
 	int Ui::mangaJavaAvailableRows(const Player& p) const
 	{
 		if (!mangaNet || !mangaNet->started()) return 0;
-		return (int)javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return mangaLangShown(p, l); }).size();
+		return (int)javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); }).size();
 	}
 
 	int Ui::mangaJavaRepoRows() const
@@ -184,7 +184,7 @@ namespace bp
 	void Ui::mangaJavaAvailableAct(int local, Player& p)
 	{
 		if (!mangaNet || !mangaNet->started()) return;
-		auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return mangaLangShown(p, l); });
+		auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); });
 		if (local < 0 || local >= (int)list.size()) return;
 		const std::string pkg = list[local]->pkgName;
 		std::string error;
@@ -463,7 +463,7 @@ namespace bp
 		}
 		else
 		{
-			auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return mangaLangShown(p, l); });
+			auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); });
 			if (local < 0 || local >= (int)list.size()) return;
 			e = list[local];
 		}
@@ -477,6 +477,7 @@ namespace bp
 			x += cw + 8;
 		}
 		drawTextMid(javaExtVersion(*e), 0, soft, x, mid + 12, 200);
+		if (e->isNsfw) drawAdultChip(x + std::min(200, (int)std::lround(textWidth(javaExtVersion(*e), 0) / sx)) + 8, mid + 12);
 		auto busy = mstJavaBusy.find(e->pkgName);
 		if (busy != mstJavaBusy.end())
 			drawTextMid(busy->second, 0, ACCENT, 520, mid, 0, 1);

@@ -39,6 +39,7 @@ namespace bp
 		if (!p.settings.mangaAdult)
 			all.erase(std::remove_if(all.begin(), all.end(), [](const MangaRepos::AvailableSource& a) { return a.adult; }),
 				all.end());
+		if (mstInstalledOnly) return {};
 		// and the languages Available keeps (X › Languages)
 		all.erase(std::remove_if(all.begin(), all.end(), [&](const MangaRepos::AvailableSource& a) { return !mangaLangShown(p, a.lang); }),
 			all.end());
@@ -541,6 +542,7 @@ namespace bp
 			x += cw + 8;
 		}
 		drawTextMid(s.version.empty() ? "version unknown" : s.version, 0, soft, x, mid + 12, 240);
+		if (s.adult) drawAdultChip(x + std::min(240, (int)std::lround(textWidth(s.version.empty() ? "version unknown" : s.version, 0) / sx)) + 8, mid + 12);
 		if (mstInstalling.count(s.fullId)) drawTextMid("Updating\xE2\x80\xA6", 0, ACCENT, 608, mid, 0, 1);
 		else if (s.updateAvailable)
 		{
@@ -617,6 +619,7 @@ namespace bp
 					x += cw + 8;
 				}
 				drawTextMid(a.version.empty() ? "version unknown" : a.version, 0, soft, x, mid + 12, 240);
+				if (a.adult) drawAdultChip(x + std::min(240, (int)std::lround(textWidth(a.version.empty() ? "version unknown" : a.version, 0) / sx)) + 8, mid + 12);
 				if (mstInstalling.count(a.fullId)) drawTextMid("Installing\xE2\x80\xA6", 0, ACCENT, 608, mid, 0, 1);
 				else drawTextMid(elideLeft(a.repoName, 0, 150), 0, soft, 608, mid, 0, 1);
 			}
@@ -668,7 +671,7 @@ namespace bp
 		if (mstTab == MST_INSTALLED)
 			drawHints({{"A", "Details"}, {"X", "Options"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 		else if (mstTab == MST_AVAILABLE)
-			drawHints({{"A", "Install"}, {"X", "Menu"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+			drawHints({{"A", "Install"}, {"X", "Filter"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 		else drawHints({{"A", "Open"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 
 		if (mstModal != MSM_NONE) drawMangaSourceModal(p);
@@ -805,6 +808,14 @@ namespace bp
 		}
 	}
 
+	void Ui::drawAdultChip(int x, int cy)
+	{
+		// a source marked adult (shown only with Adult sources on): said so, plainly
+		int w = (int)std::lround(textWidth("18+", 0) / sx) + 14;
+		fillRound({x, cy - 9, w, 18}, DANGER, R_CHIP);
+		drawTextMid("18+", 0, TEXT, x + w / 2, cy, w - 6, 2);
+	}
+
 	bool Ui::mangaLangShown(const Player& p, const std::string& lang) const
 	{
 		// (with a choice made it is the whole rule: a multi-language source is "all", a choice of its own)
@@ -835,7 +846,7 @@ namespace bp
 
 	Ui::Rect Ui::mangaAvBox() const
 	{
-		int rows = mstAvMenu == 1 ? 2 : std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
+		int rows = mstAvMenu == 1 ? 3 : std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
 		int h = 70 + rows * 44;
 		return {112, (436 - h) / 2, 416, h};
 	}
@@ -850,6 +861,14 @@ namespace bp
 	{
 		if (mstAvMenu == 1)
 		{
+			if (mstAvCursor == 2)
+			{
+				// Installed only: a switch, the menu stays
+				mstInstalledOnly = !mstInstalledOnly;
+				mstCursor[MST_AVAILABLE] = mstScroll[MST_AVAILABLE] = 0;
+				mstLocal++;
+				return;
+			}
 			if (mstAvCursor == 0)
 			{
 				// as Y does
@@ -905,7 +924,7 @@ namespace bp
 
 	bool Ui::mangaAvMenuKey(Button b, Player& p)
 	{
-		int n = mstAvMenu == 1 ? 2 : (int)mstAvLangs.size() + 1;
+		int n = mstAvMenu == 1 ? 3 : (int)mstAvLangs.size() + 1;
 		switch (b)
 		{
 		case Button::Up: mstAvCursor = (mstAvCursor + n - 1) % n; break;
@@ -931,7 +950,7 @@ namespace bp
 	bool Ui::mangaAvMenuPointer(int x, int y, Player& p)
 	{
 		if (!mangaAvBox().hit(x, y)) { mstAvMenu = 0; mstLocal++; return false; }
-		int shown = mstAvMenu == 1 ? 2 : std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
+		int shown = mstAvMenu == 1 ? 3 : std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
 		for (int i = 0; i < shown; i++)
 			if (mangaAvRow(i).hit(x, y))
 			{
@@ -945,17 +964,18 @@ namespace bp
 	void Ui::drawMangaAvMenu(const Player& p)
 	{
 		Rect b = mangaAvBox();
-		drawDialog(b, mstAvMenu == 1 ? "Available" : "Languages");
+		drawDialog(b, mstAvMenu == 1 ? "Filter" : "Languages");
 		if (mstAvMenu == 1)
 		{
-			const char* LABELS[2] = {"Refresh", "Languages"};
-			for (int i = 0; i < 2; i++)
+			const char* LABELS[3] = {"Refresh", "Languages", "Installed only"};
+			for (int i = 0; i < 3; i++)
 			{
 				Rect r = mangaAvRow(i);
 				bool at = i == mstAvCursor;
 				if (at) drawFocus(r);
-				drawTextMid(LABELS[i], 1, at ? ACCENT : TEXT, r.x + 12, r.y + r.h / 2, 200);
-				if (i == 1) drawTextMid(mangaLangsSummary(p), 0, at ? DIM_ON : DIM, r.x + r.w - 12, r.y + r.h / 2, 180, 1);
+				drawTextMid(LABELS[i], 1, at ? ACCENT : TEXT, r.x + 12, r.y + r.h / 2, 220);
+				if (i == 1) drawTextMid(mangaLangsSummary(p), 0, at ? DIM_ON : DIM, r.x + r.w - 12, r.y + r.h / 2, 160, 1);
+				if (i == 2) drawTextMid(mstInstalledOnly ? "On" : "Off", 0, mstInstalledOnly ? ACCENT : at ? DIM_ON : DIM, r.x + r.w - 12, r.y + r.h / 2, 0, 1);
 			}
 			drawHints({{"A", "Choose"}, {"B", "Close"}});
 			return;
