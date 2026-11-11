@@ -893,6 +893,11 @@ namespace bp
 		mangaPressed = -1;
 		if (page == Page::Manga && mengSheet)
 		{
+			if (mengBusy)
+			{
+				if (mangaEngineRow(1).hit(x, y)) mangaEngineChoose(1, p);
+				return false;
+			}
 			for (int i = 0; i < 2; i++)
 				if (mangaEngineRow(i).hit(x, y)) { mengCursor = i; mangaEngineChoose(i, p); return false; }
 			if (!mangaEngineBox().hit(x, y)) mengSheet = false;
@@ -1272,6 +1277,12 @@ namespace bp
 
 	bool Ui::mangaEngineKey(Button b, Player& p)
 	{
+		if (mengBusy)
+		{
+			// downloading: nothing closes it but Cancel (A on it, or B)
+			if (b == Button::A || b == Button::B) mangaEngineChoose(1, p);
+			return false;
+		}
 		switch (b)
 		{
 		case Button::Up: case Button::Down: mengCursor = 1 - mengCursor; break;
@@ -1284,26 +1295,90 @@ namespace bp
 
 	void Ui::mangaEngineChoose(int i, Player& p)
 	{
-		mengSheet = false;
-		if (i != 0 || !mangaNet) return;
+		if (!mangaNet) { mengSheet = mengBusy = false; return; }
 		JavaExtHost& h = mangaNet->javaExt();
-		// (its progress is the notice at the top of every Manga page; Manga settings can cancel it)
+		if (mengBusy)
+		{
+			// Cancel: the download stops (what came so far is kept, a later Download goes on from there)
+			if (h.state() == JavaExtHost::State::Downloading) h.cancelInstall();
+			fprintf(stderr, "manga: the engine's download cancelled from its sheet\n");
+			mengSheet = mengBusy = false;
+			p.osd("Download cancelled", 1500);
+			return;
+		}
+		if (i != 0) { mengSheet = false; return; }
 		auto st = h.state();
 		if (st == JavaExtHost::State::NotInstalled || st == JavaExtHost::State::Failed) h.install();
 		fprintf(stderr, "manga: the engine's download asked for on entering\n");
-		p.osd("Downloading the manga engine\xE2\x80\xA6", 2000);
+		// the sheet stays: its progress, then it closes by itself when the engine is on the card
+		mengBusy = true;
+		mengCursor = 1;
+	}
+
+	std::string Ui::mangaEngineSignature() const
+	{
+		if (!mengBusy || !mangaNet) return "";
+		// the download's progress, a step per MB, and its state (done, failed)
+		int64_t d = 0, t = 0;
+		mangaNet->javaExt().progress(d, t);
+		return "," + std::to_string((int)mangaNet->javaExt().state()) + "," + std::to_string(d >> 20);
+	}
+
+	void Ui::mangaEngineWatch(Player& p)
+	{
+		if (!mengBusy || !mangaNet) return;
+		JavaExtHost& h = mangaNet->javaExt();
+		auto st = h.state();
+		if (st == JavaExtHost::State::Downloading) return;
+		if (st == JavaExtHost::State::Failed)
+		{
+			// the sheet goes back to its offer, the reason under it (Download tries again)
+			mengBusy = false;
+			mengCursor = 0;
+			return;
+		}
+		if (st == JavaExtHost::State::NotInstalled) return;	// (the install's thread hasn't said Downloading yet)
+		// Installed (or already starting): done
+		mengSheet = mengBusy = false;
+		p.osd("Manga engine ready", 2000);
+		h.want();	// on its way up for the sources
 	}
 
 	void Ui::drawMangaEngineSheet()
 	{
 		Rect b = mangaEngineBox();
+		if (mengBusy && mangaNet)
+		{
+			JavaExtHost& h = mangaNet->javaExt();
+			int64_t done = 0, total = 0;
+			h.progress(done, total);
+			if (total <= 0) total = 234000000;
+			drawDialog(b, "Downloading the manga engine");
+			double f = std::clamp((double)done / (double)total, 0.0, 1.0);
+			bool unpacking = done >= total;
+			char line[96];
+			if (unpacking) snprintf(line, sizeof line, "Unpacking\xE2\x80\xA6");
+			else snprintf(line, sizeof line, "%d %%  \xC2\xB7  %lld of %lld MB", (int)(f * 100), (long long)(done / 1000000),
+				(long long)(total / 1000000));	// (MB as the offer counts them: 234)
+			drawTextMid(line, 1, TEXT, b.x + b.w / 2, b.y + 100, b.w - 64, 2);
+			drawLevel({b.x + 32, b.y + 132, b.w - 64, 8}, (int)std::lround((b.w - 64) * f), TRACK, ACCENT);
+			drawTextMid("Keep Banana Player open until it's done.", 0, DIM, b.x + b.w / 2, b.y + 172, b.w - 64, 2);
+			drawDialogRow(mangaEngineRow(1), &G_CROSS, "Cancel", true, false, DANGER, "", {0, 0, 0, 0});
+			drawHints({{"A", "Cancel"}});
+			return;
+		}
 		drawDialog(b, "Get the manga engine?");
 		static const char* TEXT_ = "Most online sources need it: a one-time download, kept on the card. It runs only while "
 			"you use them.";
 		auto lines = wrapText(TEXT_, 0, b.w - 64, 3);
 		for (size_t i = 0; i < lines.size(); i++)
 			drawTextMid(lines[i], 0, TEXT, b.x + 32, b.y + 84 + (int)i * 26, b.w - 64);
-		drawTextMid("Manga on your card works without it.", 0, DIM, b.x + 32, b.y + 84 + (int)lines.size() * 26 + 8, b.w - 64);
+		// a download that failed says why, in place of the note
+		std::string err = mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed ? mangaNet->javaExt().error() : "";
+		if (!err.empty())
+			drawTextMid(err, 0, DANGER, b.x + 32, b.y + 84 + (int)lines.size() * 26 + 8, b.w - 64);
+		else
+			drawTextMid("Manga on your card works without it.", 0, DIM, b.x + 32, b.y + 84 + (int)lines.size() * 26 + 8, b.w - 64);
 		drawDialogRow(mangaEngineRow(0), &G_DOWNLOAD, "Download", mengCursor == 0, false, TEXT, "234 MB", DIM);
 		drawDialogRow(mangaEngineRow(1), nullptr, "Not now", mengCursor == 1, false, TEXT, "", {0, 0, 0, 0});
 		drawHints({{"A", "Choose"}, {"B", "Not now"}});
