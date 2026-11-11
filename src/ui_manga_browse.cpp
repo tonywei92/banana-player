@@ -74,6 +74,8 @@ namespace bp
 		mangaSrcPendChapters.clear();
 		mangaSrcCoverHeaders.clear();
 		mbrowseScroll = 0;
+		// the saved network connections and their folder pages (ui_manga_netfolders.cpp)
+		mangaNetFoldersReset(p);
 		// the saved servers' own pages and jobs (ui_manga_servers.cpp)
 		mangaServersReset();
 		// the installed sources are read again: the list may have changed while the app was away
@@ -129,7 +131,7 @@ namespace bp
 
 	int Ui::mangaBrowseCount(const Player& p) const
 	{
-		int n = 1 + mangaBrowseServerCount();	// On this handheld, then the servers
+		int n = 1 + mangaNetFoldersCount() + mangaBrowseServerCount();	// On this handheld, the network connections, the servers
 		for (const auto& r : mangaSrcRows)
 			if (!r.adult || p.settings.mangaAdult) n++;
 		return n;
@@ -164,14 +166,23 @@ namespace bp
 			mListCursor = mListScroll = 0;
 			return;
 		}
+		int nets = mangaNetFoldersCount();
+		if (i <= nets)
+		{
+			// a saved network connection: its folders, through the worker
+			std::vector<NetServer> list = mangaNetFoldersServers();
+			if (i - 1 < (int)list.size()) mangaNetFoldersOpen(list[i - 1].id, p);
+			return;
+		}
 		int servers = mangaBrowseServerCount();
-		if (i <= servers)
+		if (i <= nets + servers)
 		{
 			// a saved server: its libraries or catalogue
 			if (mangaNet && mangaNet->started())
 			{
 				std::vector<MangaServer> list = mangaNet->servers().list();
-				if (i - 1 < (int)list.size()) mangaServerOpen(list[i - 1].id, p);
+				int at = i - nets - 1;
+				if (at >= 0 && at < (int)list.size()) mangaServerOpen(list[at].id, p);
 			}
 			return;
 		}
@@ -180,6 +191,8 @@ namespace bp
 
 	bool Ui::mangaBrowseKey(Button b, Player& p)
 	{
+		// a network folder's page (its connections and a folder's series) takes the keys while it shows
+		if (mangaNetView != MNF_OFF) return mangaNetFoldersKey(b, p);
 		// the server row's Edit / Delete sheet takes the keys first (B closes it)
 		if (mangaSrvMenu) return mangaServerModalKey(b, p);
 		if (mBrowseList)
@@ -201,11 +214,12 @@ namespace bp
 		}
 		mangaBrowseRepos(p);
 		int n = mangaBrowseCount(p);
+		int nets = mangaNetFoldersCount();
 		if (b == Button::A) { mangaBrowseChoose(mbrowseCursor, p); return false; }
-		if (b == Button::X && mbrowseCursor > 0 && mbrowseCursor <= mangaBrowseServerCount())
+		if (b == Button::X && mbrowseCursor > nets && mbrowseCursor <= nets + mangaBrowseServerCount())
 		{
 			// X on a server: Edit / Delete (as the Sources tab's Options)
-			mangaServerModalOpen(mbrowseCursor, p);
+			mangaServerModalOpen(mbrowseCursor - nets, p);
 			return false;
 		}
 		if (b == Button::Y) { mangaServerAddOpen(p); return false; }
@@ -226,6 +240,8 @@ namespace bp
 	bool Ui::mangaBrowsePointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (pt.kind != Pointer::Down) return false;
+		// a network folder's page is the whole list while it shows
+		if (mangaNetView != MNF_OFF) return mangaNetFoldersPointer(pt, x, y, p);
 		if (mangaSrvMenu)
 		{
 			if (mangaServerModalBox().hit(x, y))
@@ -262,6 +278,7 @@ namespace bp
 		}
 		mangaBrowseRepos(p);
 		int n = mangaBrowseCount(p);
+		int nets = mangaNetFoldersCount();
 		if (y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
 		{
 			int i = mbrowseScroll + (y - MG_ROW_TOP) / ROW_H;
@@ -269,7 +286,7 @@ namespace bp
 			{
 				mbrowseCursor = i;
 				// the pencil at a server row's end is its X (Edit / Delete); anywhere else on it opens the server
-				if (i > 0 && i <= mangaBrowseServerCount() && x >= 570) mangaServerModalOpen(i, p);
+				if (i > nets && i <= nets + mangaBrowseServerCount() && x >= 570) mangaServerModalOpen(i - nets, p);
 				else mangaBrowseChoose(i, p);
 			}
 		}
@@ -278,6 +295,12 @@ namespace bp
 
 	void Ui::drawMangaBrowseRows(const Player& p)
 	{
+		// a network folder's own page (its folders, or a folder read as a series) draws in its place
+		if (mangaNetView != MNF_OFF)
+		{
+			drawMangaNetFolders(p);
+			return;
+		}
 		mangaBrowseRepos(p);
 		int n = mangaBrowseCount(p);
 		if (mbrowseCursor >= n) mbrowseCursor = n - 1;
@@ -286,9 +309,11 @@ namespace bp
 		if (mbrowseCursor >= mbrowseScroll + MG_ROWS) mbrowseScroll = mbrowseCursor - MG_ROWS + 1;
 		auto rowY = [&](int i) { return MG_ROW_TOP + (i - mbrowseScroll) * ROW_H; };
 		auto inView = [&](int y) { return y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H; };
+		std::vector<NetServer> netServers = mangaNetFoldersServers();
+		int nets = (int)netServers.size();
 		std::vector<MangaServer> servers;
 		if (mangaNet && mangaNet->started()) servers = mangaNet->servers().list();
-		int srcStart = (int)servers.size() + 1;
+		int srcStart = nets + (int)servers.size() + 1;
 		for (int i = mbrowseScroll; i < n && i < mbrowseScroll + MG_ROWS; i++)
 		{
 			int y = rowY(i), mid = y + (ROW_H - 4) / 2;
@@ -301,10 +326,18 @@ namespace bp
 				drawTextMid(count == 1 ? "1 series" : std::to_string(count) + " series", 0, at ? DIM_ON : DIM, 608, mid, 160, 1);
 				continue;
 			}
-			if (i <= (int)servers.size())
+			if (i <= nets)
+			{
+				// a saved network connection: its name and what kind it is (SMB · host, FTP · host)
+				const NetServer& s = netServers[i - 1];
+				drawTextMid(serverName(s), 1, at ? ACCENT : TEXT, 32, mid, 430);
+				drawTextMid(std::string(netTypeLabel(s.type)) + "  " + s.host, 0, at ? DIM_ON : DIM, 608, mid, 180, 1);
+				continue;
+			}
+			if (i <= nets + (int)servers.size())
 			{
 				// a saved server: its name, what kind it is, and the pencil its X (or a tap there) opens
-				const MangaServer& s = servers[i - 1];
+				const MangaServer& s = servers[i - nets - 1];
 				drawTextMid(s.name, 1, at ? ACCENT : TEXT, 32, mid, 450);
 				std::string kind = s.kind;
 				for (char& c : kind) c = (char)std::toupper((unsigned char)c);
@@ -327,12 +360,13 @@ namespace bp
 				drawTextMid(lang, 0, at ? ACCENT : DIM_ON, 608 - tw / 2, mid, tw - 6, 2);
 			}
 		}
-		// the network folders, still to come: not a row to choose
-		if (inView(rowY(n))) drawTextMid("Network folders \xC2\xB7 coming next", 1, DIM, 32, rowY(n) + (ROW_H - 4) / 2, 576);
+		// no saved connection: where they would be (the Files browser's Network adds one)
+		if (nets == 0 && inView(rowY(n)))
+			drawTextMid("Network folders \xC2\xB7 none saved", 1, DIM, 32, rowY(n) + (ROW_H - 4) / 2, 576);
 		// the sources come from the Sources tab, where a repository is added
 		if (mangaSrcRows.empty() && inView(rowY(n + 1)))
 			drawTextMid("Add sources in Sources", 1, DIM, 32, rowY(n + 1) + (ROW_H - 4) / 2, 576);
-		bool onServer = mbrowseCursor > 0 && mbrowseCursor <= (int)servers.size();
+		bool onServer = mbrowseCursor > nets && mbrowseCursor <= nets + (int)servers.size();
 		if (onServer) drawHints({{"A", "Open"}, {"X", "Edit"}, {"Y", "Add server"}, {"B", "Back"}});
 		else drawHints({{"A", "Open"}, {"Y", "Add server"}, {"B", "Back"}});
 		if (mangaSrvMenu) drawMangaServerModal(p);
@@ -801,6 +835,8 @@ namespace bp
 				}
 				continue;
 			}
+			// the network folders' listings and a chapter's copy (ui_manga_netfolders.cpp)
+			if (mangaNetFoldersResult(r, p)) continue;
 			// the dashboard's series view asked for a chapter list: its own cache takes that answer
 			if (mangaWebWorker(r)) continue;
 			// an answer nothing here asked for: a Downloads sheet chapter's page list (ui_manga_downloads.cpp), or
@@ -1369,6 +1405,17 @@ namespace bp
 				std::to_string(mangaSrcInfo.description.size());
 		// the saved servers: Browse's rows, their own pages and the form (ui_manga_servers.cpp)
 		s += mangaServersSignature();
+		// the network folders' page and series (ui_manga_netfolders.cpp)
+		{
+			char nf[160];
+			snprintf(nf, sizeof nf, "|nf%d %d %d %zu %zu %d %d %llu %llu", mangaNetView, mangaNetCursor, mangaNetScroll,
+				mangaNetRows.size(), mangaNetChapters.size(), (int)mangaNetLoading, mangaNetPendAt,
+				(unsigned long long)mangaNetSerial, (unsigned long long)mangaNetFetchSerial);
+			s += nf;
+			s += "|" + mangaNetServerId + "|" + mangaNetDir + "|" + mangaNetSeriesPath + "|" + mangaNetError;
+			if (!mangaNetRows.empty()) s += "|nr" + mangaNetRows.front().name + mangaNetRows.back().name;
+			if (!mangaNetChapters.empty()) s += "|nc" + mangaNetChapters.front().path + mangaNetChapters.back().path;
+		}
 		if (mangaNet) s += "|mn" + std::to_string((unsigned long long)mangaNet->serial()) + std::to_string((int)mangaNet->started());
 		return s;
 	}

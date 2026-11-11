@@ -1,5 +1,7 @@
 #include "mangaworker.h"
 #include "challenge.h"
+#include "netpath.h"
+#include "netstore.h"
 #include "webpath.h"
 #include <algorithm>
 #include <arpa/inet.h>
@@ -7,8 +9,10 @@
 #include <cctype>
 #include <chrono>
 #include <condition_variable>
+#include <cstdio>
 #include <curl/curl.h>
 #include <deque>
+#include <dirent.h>
 #include <fstream>
 #include <ifaddrs.h>
 #include <iterator>
@@ -19,8 +23,9 @@
 #include <stdexcept>
 #include <string_view>
 #include <sys/socket.h>
-#include <thread>
 #include <sys/stat.h>
+#include <thread>
+#include <unistd.h>
 
 namespace bp
 {
@@ -58,6 +63,118 @@ namespace bp
 			struct stat st;
 			return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 		}
+
+		// A remote chapter's copy is made beside its place and renamed when whole, so a stopped fetch never looks
+		// like a chapter: the same half-written rule the page cache keeps.
+		void removeTree(const std::string& path)
+		{
+			struct stat st;
+			if (lstat(path.c_str(), &st) != 0) return;
+			if (!S_ISDIR(st.st_mode))
+			{
+				unlink(path.c_str());
+				return;
+			}
+			if (DIR* d = opendir(path.c_str()))
+			{
+				std::vector<std::string> subs;
+				while (dirent* e = readdir(d))
+				{
+					std::string name = e->d_name;
+					if (name == "." || name == "..") continue;
+					subs.push_back(path + "/" + name);
+				}
+				closedir(d);
+				for (const std::string& sub : subs) removeTree(sub);
+			}
+			rmdir(path.c_str());
+		}
+
+		struct NetCopy
+		{
+			bool ok = false;
+			bool tooBig = false;
+			std::string error;
+			int64_t bytes = 0;
+		};
+
+		// One remote file into path, from start to end. abort is checked between chunks (a cancel from another
+		// thread reaches the backend's own cancel call too). A chapter over the cap isn't copied at all.
+		NetCopy copyNetFile(NetFile& file, const std::string& path, const std::atomic<bool>& abort)
+		{
+			NetCopy out;
+			constexpr int64_t kMaxBytes = 4ll * 1024 * 1024 * 1024;
+			int64_t known = file.size();
+			if (known > kMaxBytes)
+			{
+				out.tooBig = true;
+				out.error = "the file is too big";
+				return out;
+			}
+			FILE* f = fopen(path.c_str(), "wb");
+			if (!f)
+			{
+				out.error = "can't write the chapter";
+				return out;
+			}
+			std::vector<char> buf(256 * 1024);
+			int64_t off = 0;
+			while (!abort.load())
+			{
+				int64_t n = file.read(buf.data(), (int64_t)buf.size(), off);
+				if (n < 0)
+				{
+					out.error = file.lastResult().detail.empty() ? "the server stopped" : file.lastResult().detail;
+					break;
+				}
+				if (n == 0)
+				{
+					out.ok = true;
+					break;
+				}
+				if (off + n > kMaxBytes)
+				{
+					out.tooBig = true;
+					out.error = "the file is too big";
+					break;
+				}
+				if (fwrite(buf.data(), 1, (size_t)n, f) != (size_t)n)
+				{
+					out.error = "the card is full";
+					break;
+				}
+				off += n;
+			}
+			if (!out.ok && out.error.empty()) out.error = "cancelled";
+			if (fclose(f) != 0 && out.ok)
+			{
+				out.ok = false;
+				out.error = "the card is full";
+			}
+			out.bytes = off;
+			return out;
+		}
+
+		bool safeName(const std::string& name)
+		{
+			return !name.empty() && name != "." && name != ".." && name.find('/') == std::string::npos &&
+				name.find('\\') == std::string::npos;
+		}
+
+		// The backend a job is inside now, so cancel() can end its call from the Ui's thread. Clearing it under the
+		// worker's mutex is what keeps a cancel from calling into a backend the job has just freed: cancel() holds
+		// that same mutex while it calls it.
+		struct NetBusyGuard
+		{
+			std::atomic<NetBackend*>& slot;
+			std::mutex& lock;
+			NetBusyGuard(std::atomic<NetBackend*>& s, std::mutex& m, NetBackend* p) : slot(s), lock(m) { slot = p; }
+			~NetBusyGuard()
+			{
+				std::lock_guard<std::mutex> g(lock);
+				slot = nullptr;
+			}
+		};
 
 		bool readWhole(const std::string& path, std::string& out)
 		{
@@ -478,6 +595,7 @@ namespace bp
 		double idleSeconds = kDefaultIdle;
 		std::atomic<bool> abortCurrent{false};
 		std::atomic<int> openCount{0};
+		std::atomic<NetBackend*> netBusy{nullptr};	// the backend in a network folder call now, for cancel()
 		std::thread thread;
 		bool started = false, stopping = false, eventPending = false, dropCurrent = false;
 
@@ -489,6 +607,7 @@ namespace bp
 
 		void run();
 		Result runJob(const Job& job, std::map<std::string, std::shared_ptr<SourceState>>& open);
+		Result runNetJob(const Job& job);
 		std::shared_ptr<SourceState> openSource(const Job& job,
 			std::map<std::string, std::shared_ptr<SourceState>>& open, std::string& error);
 		CURLSH* jarFor(const std::string& fullId);
@@ -571,12 +690,180 @@ namespace bp
 		return st;
 	}
 
+	MangaWorker::Result MangaWorker::Impl::runNetJob(const Job& job)
+	{
+		Result out;
+		out.kind = job.kind;
+		out.sourceId = job.sourceId;
+		std::unique_ptr<NetBackend> backend = makeBackend(job.netServer, job.netPassword);
+		if (!backend)
+		{
+			out.error = "No network in this build";
+			return out;
+		}
+		NetBusyGuard busy(netBusy, m, backend.get());
+		NetPath np;
+		if (!parseNetPath(job.netPath, np))
+		{
+			out.error = "Not a network folder";
+			return out;
+		}
+		auto failed = [&](const NetResult& r) {
+			out.ok = false;
+			out.error = r.error == NetError::Cancelled && abortCurrent.load() ? "cancelled"
+				: netErrorText(r.error, job.netServer.host);
+		};
+		if (job.kind == Job::NetList || job.kind == Job::NetScan)
+		{
+			std::vector<NetEntry> entries;
+			NetResult r = backend->list(np.path, entries);
+			if (!r.ok())
+			{
+				failed(r);
+				return out;
+			}
+			out.ok = true;
+			out.netEntries = entries;
+			if (job.kind == Job::NetList) return out;
+			// The child folders, one level: a child with pictures is a chapter; one without is not read further
+			// (the design's series folder is direct, so a folder of series stays a folder to browse).
+			NetMangaListing own = netMangaListing(entries);
+			std::map<std::string, std::vector<NetEntry>> sub;
+			size_t wanted = 0;
+			for (const std::string& d : own.dirs)
+			{
+				if (abortCurrent.load()) break;
+				if (++wanted > 2000) break;	// a readable list, not a whole share
+				std::string path = netJoin(job.netPath, d);
+				NetPath child;
+				if (!parseNetPath(path, child)) continue;
+				std::vector<NetEntry> listed;
+				NetResult cr = backend->list(child.path, listed);
+				if (cr.ok()) sub[path] = std::move(listed);
+			}
+			std::string title = netBaseName(job.netPath);
+			out.netSeries = netMangaSeriesFrom(job.netPath, title.empty() ? "Network folder" : title, entries, sub);
+			return out;
+		}
+		// NetFetch: a chapter into a local folder (its pictures) or a file (an archive)
+		if (job.netDest.empty())
+		{
+			out.error = "No place for the chapter";
+			return out;
+		}
+		std::string parent = job.netDest;
+		size_t slash = parent.rfind('/');
+		if (slash != std::string::npos && slash > 0) parent = parent.substr(0, slash);
+		if (!mkdirP(parent))
+		{
+			out.error = "Can't write on the card";
+			return out;
+		}
+		if (job.netArchive)
+		{
+			std::string temp = job.netDest + ".part";
+			NetResult openResult;
+			std::unique_ptr<NetFile> file = backend->open(np.path, openResult);
+			if (!file)
+			{
+				failed(openResult);
+				return out;
+			}
+			NetCopy copy = copyNetFile(*file, temp, abortCurrent);
+			if (!copy.ok)
+			{
+				unlink(temp.c_str());
+				out.error = copy.error;
+				return out;
+			}
+			if (rename(temp.c_str(), job.netDest.c_str()) != 0)
+			{
+				unlink(temp.c_str());
+				out.error = "Can't keep the chapter";
+				return out;
+			}
+			out.ok = true;
+			out.netFile = job.netDest;
+			return out;
+		}
+		// a folder chapter: its pictures, in the reading order the listing gives
+		std::vector<NetEntry> entries;
+		NetResult r = backend->list(np.path, entries);
+		if (!r.ok())
+		{
+			failed(r);
+			return out;
+		}
+		NetMangaListing listing = netMangaListing(entries);
+		if (listing.images.empty())
+		{
+			out.error = "This chapter has no pages";
+			return out;
+		}
+		std::string temp = job.netDest + ".part";
+		removeTree(temp);
+		if (!mkdirP(temp))
+		{
+			out.error = "Can't write on the card";
+			return out;
+		}
+		for (const std::string& name : listing.images)
+		{
+			if (abortCurrent.load())
+			{
+				out.error = "cancelled";
+				break;
+			}
+			if (!safeName(name))
+			{
+				out.error = "A page has a name we can't keep";
+				break;
+			}
+			std::string pagePath = job.netPath;
+			NetPath page;
+			if (!parseNetPath(netJoin(pagePath, name), page))
+			{
+				out.error = "A page has a name we can't keep";
+				break;
+			}
+			NetResult openResult;
+			std::unique_ptr<NetFile> file = backend->open(page.path, openResult);
+			if (!file)
+			{
+				failed(openResult);
+				break;
+			}
+			NetCopy copy = copyNetFile(*file, temp + "/" + name, abortCurrent);
+			if (!copy.ok)
+			{
+				out.error = copy.error;
+				break;
+			}
+		}
+		if (!out.error.empty())
+		{
+			removeTree(temp);
+			return out;
+		}
+		removeTree(job.netDest);
+		if (rename(temp.c_str(), job.netDest.c_str()) != 0)
+		{
+			removeTree(temp);
+			out.error = "Can't keep the chapter";
+			return out;
+		}
+		out.ok = true;
+		out.netFile = job.netDest;
+		return out;
+	}
+
 	MangaWorker::Result MangaWorker::Impl::runJob(const Job& job,
 		std::map<std::string, std::shared_ptr<SourceState>>& open)
 	{
 		Result out;
 		out.kind = job.kind;
 		out.sourceId = job.sourceId;
+		if (job.kind == Job::NetList || job.kind == Job::NetScan || job.kind == Job::NetFetch) return runNetJob(job);
 		try
 		{
 			std::shared_ptr<SourceState> st = openSource(job, open, out.error);
@@ -603,6 +890,8 @@ namespace bp
 				}
 				break;
 			}
+			case Job::NetList: case Job::NetScan: case Job::NetFetch:
+				break;	// (runJob hands these to runNetJob before a source is opened)
 			}
 			// A call happened, so the 5 minutes count from here even when it failed: the state itself is still good.
 			st->lastUse = Clock::now();
@@ -797,6 +1086,8 @@ namespace bp
 		{
 			d->abortCurrent = true;
 			d->dropCurrent = true;
+			// a network folder call waits on a server, not on curl: the backend's own cancel is the one that ends it
+			if (NetBackend* backend = d->netBusy.load()) backend->cancel();
 			d->cv.notify_one();
 		}
 	}
@@ -809,6 +1100,7 @@ namespace bp
 		d->results.clear();
 		d->dropCurrent = true;
 		d->abortCurrent = true;
+		if (NetBackend* backend = d->netBusy.load()) backend->cancel();
 		d->cv.notify_one();
 	}
 
@@ -830,6 +1122,7 @@ namespace bp
 		d->queue.clear();
 		d->abortCurrent = true;
 		d->dropCurrent = true;
+		if (NetBackend* backend = d->netBusy.load()) backend->cancel();
 		d->cv.notify_all();
 	}
 

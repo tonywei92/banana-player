@@ -516,6 +516,8 @@ namespace bp
 		if (b == Button::Select && nowPlayable(p)) { goNowPlaying(p); return false; }
 		if (page == Page::MangaSeries)
 		{
+			// a network folder read as a series (ui_manga_netfolders.cpp)
+			if (mangaNetView == MNF_SERIES) return mangaNetFoldersKey(b, p);
 			// a server's series page: its own keys (A a chapter, B the catalogue it came from)
 			if (isServerId(mangaSeriesId)) return mangaServerSeriesKey(b, p);
 			// a source's series page: its own keys (Y the library, A a chapter, B back to the source)
@@ -586,6 +588,8 @@ namespace bp
 		if (mangaView >= 2) return mangaServersKey(b, p);
 		if (b == Button::B)
 		{
+			// a network folder's page (or a folder read as a series) steps back inside Browse first
+			if (mangaTab == MT_BROWSE && mangaNetView != MNF_OFF) { mangaNetFoldersKey(b, p); return false; }
 			// Browse's "On this handheld": one step back to its rows first; a card series' chapters: its series
 			if (mangaTab == MT_BROWSE && mBrowseList) mBrowseList = false;
 			else if (mangaTab == MT_DOWNLOADS && mangaDownloadsBack()) { }
@@ -938,6 +942,8 @@ namespace bp
 			}
 			else if (mangaTab == MT_BROWSE)
 			{
+				// a network folder's page owns the rows' area (ui_manga_netfolders.cpp)
+				if (mangaNetView != MNF_OFF) return mangaNetFoldersPointer(pt, x, y, p);
 				if (mBrowseList)
 				{
 					int n = (int)mangaLocal.size();
@@ -959,6 +965,7 @@ namespace bp
 			return false;
 		}
 		// Page::MangaSeries, a source's: Resume, the heart, a chapter (ui_manga_browse.cpp)
+		if (mangaNetView == MNF_SERIES) return mangaNetFoldersPointer(pt, x, y, p);
 		if (isServerId(mangaSeriesId)) return mangaServerSeriesPointer(pt, x, y, p);
 		if (mangaSourceSeriesOn()) return mangaSourceSeriesPointer(pt, x, y, p);
 		// Page::MangaSeries: Resume, the heart, a chapter
@@ -1359,6 +1366,12 @@ namespace bp
 
 	void Ui::drawMangaSeries(const Player& p)
 	{
+		// a network folder read as a series (ui_manga_netfolders.cpp): its own header, chapters and hints
+		if (mangaNetView == MNF_SERIES)
+		{
+			drawMangaNetFolders(p);
+			return;
+		}
 		// a source's series page, then its details and chapters (ui_manga_browse.cpp)
 		mangaBrowsePoll(p);
 		// a saved server's series page (ui_manga_servers.cpp)
