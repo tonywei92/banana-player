@@ -21,6 +21,7 @@
 #include "discovery.h"
 #include "mangafilters.h"
 #include "mangajava.h"
+#include "manga_ui_logic.h"
 #include "mangalocal.h"
 #include "manganetfolders.h"
 #include "mangaremote.h"
@@ -1047,6 +1048,10 @@ namespace bp
 		std::vector<std::pair<TTF_Font*, std::string>> shapeRuns(const std::string& s, int size) const;
 		int textWidth(const std::string& s, int size) const;
 		std::unordered_map<std::string, SDL_Texture*> cache;
+		// measured widths and shortened ("...") strings, by size and text: a long line is shortened once, not
+		// re-measured a character at a time on every redraw (the handheld's cores made lists lag)
+		mutable std::unordered_map<std::string, int> widthCache;
+		std::unordered_map<std::string, std::string> elideCache;
 		std::string drawn, fontsDir;
 
 		Page page = Page::Main;
@@ -1262,6 +1267,10 @@ namespace bp
 		// a source's chapter picked from its series page: the reader page shows at once, "Loading chapter…" until its
 		// page list comes (then the request goes to main), or why it didn't (A tries again, B goes back)
 		bool mangaReadWaiting = false;
+		// the source series page's unread count and Resume point, and what they were made from (drawMangaSourceSeries)
+		std::string mserSumKey;
+		int mserSumUnread = 0;
+		MangaResumePoint mserSumResume;
 		// the extensions starting (about 25 s on the handheld), on every page: a pill at the top, its seconds counting,
 		// then "Extensions ready" a moment. Its text is in signature(), so it redraws as the seconds change
 		mutable int extNoticeState = -1;

@@ -85,6 +85,9 @@ namespace bp
 
 	int Ui::textWidth(const std::string& s, int size) const
 	{
+		std::string k = std::to_string(size) + "|" + s;
+		auto it = widthCache.find(k);
+		if (it != widthCache.end()) return it->second;
 		int total = 0;
 		for (auto& r : runs(s, size))
 		{
@@ -92,6 +95,8 @@ namespace bp
 			TTF_SizeUTF8(r.first, r.second.c_str(), &w, nullptr);
 			total += w;
 		}
+		if (widthCache.size() > 4096) widthCache.clear();
+		widthCache.emplace(std::move(k), total);
 		return total;
 	}
 
@@ -160,17 +165,32 @@ namespace bp
 		std::string str = s;
 		if (maxW > 0)
 		{
-			int w = 0, limit = (int)(maxW * sx);
-			w = textWidth(str, size);
-			bool cut = false;
-			while (w > limit && !str.empty())
+			int limit = (int)(maxW * sx);
+			std::string k = std::to_string(size) + " " + std::to_string(limit) + "|" + s;
+			auto hit = elideCache.find(k);
+			if (hit != elideCache.end()) str = hit->second;
+			else
 			{
-				// drop one UTF-8 character
-				do str.pop_back(); while (!str.empty() && ((unsigned char)str.back() & 0xC0) == 0x80);
-				cut = true;
-				w = textWidth(str + "...", size);
+				if (textWidth(str, size) > limit)
+				{
+					// the longest UTF-8 prefix whose "..." fits: a binary search over character starts (a long
+					// line measured ~10 times, not once per character dropped)
+					std::vector<size_t> starts;
+					for (size_t i = 0; i < s.size(); i++)
+						if (((unsigned char)s[i] & 0xC0) != 0x80) starts.push_back(i);
+					size_t lo = 0, hi = starts.size();	// prefixes of starts[0..n) chars: lo fits, hi doesn't
+					while (hi - lo > 1)
+					{
+						size_t mid = (lo + hi) / 2;
+						if (textWidth(s.substr(0, starts[mid]) + "...", size) <= limit) lo = mid;
+						else hi = mid;
+					}
+					str = s.substr(0, lo < starts.size() ? starts[lo] : s.size()) + "...";
+					if (lo == 0) str = "...";
+				}
+				if (elideCache.size() > 2048) elideCache.clear();
+				elideCache.emplace(std::move(k), str);
 			}
-			if (cut) str += "...";
 		}
 		SDL_Texture* t = text(str, size, c);
 		if (!t) return;
@@ -812,15 +832,27 @@ namespace bp
 		int limit = (int)(maxW * sx);
 		while (!rest.empty() && (int)lines.size() < maxLines)
 		{
-			if (textWidth(rest, size) <= limit || (int)lines.size() == maxLines - 1) { lines.push_back(rest); break; }
-			size_t fit = 0;
-			for (size_t i = 1; i <= rest.size(); i++)
+			// the last line: what fits of it is all that's drawn ("..." after), so a long rest is cut first
+			if ((int)lines.size() == maxLines - 1)
 			{
-				if (i < rest.size() && ((unsigned char)rest[i] & 0xC0) == 0x80) continue;
-				if (textWidth(rest.substr(0, i), size) > limit) break;
-				fit = i;
+				lines.push_back(rest.size() > 400 ? rest.substr(0, 400) : rest);
+				break;
 			}
-			if (fit == 0) fit = 1;
+			if (textWidth(rest, size) <= limit) { lines.push_back(rest); break; }
+			// the longest prefix that fits, by a binary search over character starts (measuring every prefix of a
+			// long description, on every redraw, took a quarter of a second on the handheld)
+			std::vector<size_t> ends;	// byte length of each prefix of 1, 2, ... characters
+			for (size_t i = 1; i <= rest.size(); i++)
+				if (i == rest.size() || ((unsigned char)rest[i] & 0xC0) != 0x80) ends.push_back(i);
+			size_t lo = 0, hi = ends.size();	// prefixes of lo characters fit (0 trivially), of hi don't
+			while (hi - lo > 1)
+			{
+				size_t mid = (lo + hi) / 2;
+				if (textWidth(rest.substr(0, ends[mid - 1]), size) <= limit) lo = mid;
+				else hi = mid;
+			}
+			size_t fit = lo ? ends[lo - 1] : 0;
+			if (fit == 0) fit = ends.empty() ? rest.size() : ends[0];
 			size_t brk = rest.find_last_of(' ', fit);
 			if (brk != std::string::npos && brk > fit / 2) fit = brk + 1;
 			std::string line = rest.substr(0, fit);

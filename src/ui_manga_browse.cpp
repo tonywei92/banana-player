@@ -946,6 +946,19 @@ namespace bp
 		mangaSrcImageAt = 0;
 		// from the series page: into the reader page now, its pages loading there (a next chapter picked while
 		// reading keeps the one open until the new one is ready)
+		// the next or previous chapter while reading: the one open closes (its progress kept) and the page waits the
+		// same way, so a step is never a silent pause on the old chapter; fullscreen stays as it was
+		if (page == Page::MangaRead)
+		{
+			mangaRecordProgress();
+			mangaSave();
+			mangaSrcPendFull = readerStatus.fullscreen;
+			readerCmds.push_back({ReaderCmd::Close, 0, (int64_t)SDL_GetTicks()});
+			mpFree();
+			mangaZoomAsked = 100;
+			mangaProgPage = mangaProgPages = -1;
+			page = Page::MangaSeries;	// (so the block below takes it as an open from the series page)
+		}
 		if (page != Page::MangaRead)
 		{
 			mangaReadWaiting = true;
@@ -1420,10 +1433,35 @@ namespace bp
 		drawHeader(title.empty() ? "Series" : title, p);
 		const MangaSeries* ms = mangaStore ? mangaStore->series(mangaSeriesId) : nullptr;
 		int n = (int)mangaSrcChapters.size();
-		std::vector<std::string> ids;
-		ids.reserve(n);
-		for (const auto& c : mangaSrcChapters) ids.push_back(sourceItemId(mangaSrcId, c.key));
-		int unread = mangaStore ? mangaStore->unread(mangaSeriesId, ids) : 0;
+		// the count and Resume walk every chapter (and the store): made again only when either changed, not on every
+		// cursor move (a long list lagged on the handheld)
+		std::string sumKey = mangaSrcId + "|" + mangaSeriesId + "|" + std::to_string(n) + "|" +
+			std::to_string((unsigned long long)(mangaStore ? mangaStore->serial() : 0)) +
+			(n ? "|" + mangaSrcChapters.front().key + "|" + mangaSrcChapters.back().key : std::string());
+		if (sumKey != mserSumKey)
+		{
+			mserSumKey = sumKey;
+			std::vector<std::string> ids;
+			ids.reserve(n);
+			for (const auto& c : mangaSrcChapters) ids.push_back(sourceItemId(mangaSrcId, c.key));
+			mserSumUnread = mangaStore ? mangaStore->unread(mangaSeriesId, ids) : 0;
+			std::vector<MangaChapterMark> marks;
+			marks.reserve(n);
+			for (const auto& id : ids)
+			{
+				MangaChapterMark m;
+				if (mangaStore)
+					if (const ChapterProgress* pr = mangaStore->progress(id))
+					{
+						m.read = pr->read;
+						m.started = pr->pages > 0 || pr->page > 0;
+						m.page = pr->page;
+					}
+				marks.push_back(m);
+			}
+			mserSumResume = mangaResume(marks);
+		}
+		int unread = mserSumUnread;
 		drawTextMid(std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " + std::to_string(unread) + " unread",
 			0, DIM, 16, 68);
 		// the details the Library's series card would put on the top panel: here they are on this page (the reader
@@ -1445,21 +1483,7 @@ namespace bp
 			for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, DIM_ON, 16, 104 + (int)i * 18, 592);
 		}
 		// Resume: the first started-but-unread chapter, else the first unread, else the first
-		std::vector<MangaChapterMark> marks;
-		marks.reserve(n);
-		for (const auto& c : mangaSrcChapters)
-		{
-			MangaChapterMark m;
-			if (mangaStore)
-				if (const ChapterProgress* pr = mangaStore->progress(sourceItemId(mangaSrcId, c.key)))
-				{
-					m.read = pr->read;
-					m.started = pr->pages > 0 || pr->page > 0;
-					m.page = pr->page;
-				}
-			marks.push_back(m);
-		}
-		MangaResumePoint resume = mangaResume(marks);
+		MangaResumePoint resume = mserSumResume;
 		Rect rb = mangaSrcResumeRect();
 		bool onResume = mserCursor < 0;
 		drawBox(rb, mangaPressed == MG_RESUME ? PRESSED : onResume ? BUTTON : SURFACE, R_BUTTON, onResume);

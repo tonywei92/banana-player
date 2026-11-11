@@ -102,7 +102,7 @@ namespace bp
 	void Ui::mangaDlEnsureCard(bool force)
 	{
 		Uint32 now = SDL_GetTicks();
-		if (!force && mdlCardOn && now - mdlScanAt < 1500) return;
+		if (!force && mdlCardOn && now - mdlScanAt < 5000) return;	// (a folder walk on the card: not every redraw)
 		mdlCardOn = true;
 		mdlScanAt = now;
 		std::vector<MangaDlCardSeries> found;
