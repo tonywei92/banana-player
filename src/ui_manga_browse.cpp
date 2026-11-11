@@ -407,6 +407,36 @@ namespace bp
 
 	// ---- a source's page: Popular · Latest · Search, a cover grid, Search ----
 
+	std::string Ui::mangaSrcFiltersNow() const
+	{
+		return MangaJava::isSourceId(mangaSrcId) ? mangaJavaFiltersJson() : mangaSourceFiltersJson();
+	}
+
+	void Ui::mangaSrcTabSave()
+	{
+		if (mangaSrcItems.empty() || mangaSrcLoading || !mangaSrcError.empty()) return;
+		if (mangaSrcTabCache.size() > 12) mangaSrcTabCache.clear();
+		mangaSrcTabCache[mangaSrcId + "|" + std::to_string(mangaSrcTab)] =
+			{mangaSrcItems, mangaSrcPage, mangaSrcCursor, mangaSrcScroll, mangaSrcMore, mangaSrcQuery, mangaSrcFiltersNow()};
+	}
+
+	bool Ui::mangaSrcTabRestore(int tab)
+	{
+		// a tab as it was left: Popular and Latest as they were, Search while its words and filters are the same
+		auto it = mangaSrcTabCache.find(mangaSrcId + "|" + std::to_string(tab));
+		if (it == mangaSrcTabCache.end()) return false;
+		if (tab == SRC_SEARCH && (it->second.query != mangaSrcQuery || it->second.filters != mangaSrcFiltersNow())) return false;
+		mangaSrcTab = tab;
+		mangaSrcItems = it->second.items;
+		mangaSrcPage = it->second.page;
+		mangaSrcCursor = it->second.cursor;
+		mangaSrcScroll = it->second.scroll;
+		mangaSrcMore = it->second.more;
+		mangaSrcError.clear();
+		mangaSrcLoading = false;
+		return true;
+	}
+
 	void Ui::mangaOpenSource(const MangaSrcRow& row, Player& p)
 	{
 		(void)p;
@@ -430,12 +460,14 @@ namespace bp
 		if (MangaJava::isSourceId(row.id)) mangaJavaSourceOpened(row, p);
 		// a source's own filters (5.2.1): asked once a run, kept for the sheet and the Search jobs
 		mangaFilterAsk();
-		mangaSourceLoad(1);
+		// opened again: its Popular as it was left (no ask), else asked
+		if (!mangaSrcTabRestore(SRC_POPULAR)) mangaSourceLoad(1);
 	}
 
 	void Ui::mangaSourceBack(Player& p)
 	{
 		(void)p;
+		mangaSrcTabSave();	// (kept: opened again, the tab is as it was)
 		mangaSourceCancel();
 		mangaView = 0;
 		mangaSrcError.clear();
@@ -457,27 +489,8 @@ namespace bp
 		}
 		if (MangaJava::isSourceId(mangaSrcId)) mangaJavaCancelList();
 		// the tab left is kept as it is; the tab chosen comes back as it was left, if it was
-		if (!mangaSrcItems.empty() && !mangaSrcLoading && mangaSrcError.empty())
-		{
-			if (mangaSrcTabCache.size() > 12) mangaSrcTabCache.clear();
-			mangaSrcTabCache[mangaSrcId + "|" + std::to_string(mangaSrcTab)] =
-				{mangaSrcItems, mangaSrcPage, mangaSrcCursor, mangaSrcScroll, mangaSrcMore, mangaSrcQuery};
-		}
-		{
-			auto it = mangaSrcTabCache.find(mangaSrcId + "|" + std::to_string(tab));
-			if (it != mangaSrcTabCache.end() && (tab != SRC_SEARCH || it->second.query == mangaSrcQuery))
-			{
-				mangaSrcTab = tab;
-				mangaSrcItems = it->second.items;
-				mangaSrcPage = it->second.page;
-				mangaSrcCursor = it->second.cursor;
-				mangaSrcScroll = it->second.scroll;
-				mangaSrcMore = it->second.more;
-				mangaSrcError.clear();
-				mangaSrcLoading = false;
-				return;
-			}
-		}
+		mangaSrcTabSave();
+		if (mangaSrcTabRestore(tab)) return;
 		mangaSrcTab = tab;
 		mangaSrcItems.clear();
 		mangaSrcCursor = mangaSrcScroll = mangaSrcPage = 0;

@@ -1656,7 +1656,10 @@ namespace bp
 		std::vector<MangaItem> mangaSrcItems;
 		// each tab's grid as it was left (source and tab; Search with its query): switching back shows it again, no
 		// ask. A few sources' worth, then forgotten
-		struct SrcTabState { std::vector<MangaItem> items; int page = 0, cursor = 0, scroll = 0; bool more = false; std::string query; };
+		struct SrcTabState { std::vector<MangaItem> items; int page = 0, cursor = 0, scroll = 0; bool more = false; std::string query, filters; };
+		void mangaSrcTabSave();
+		bool mangaSrcTabRestore(int tab);
+		std::string mangaSrcFiltersNow() const;
 		std::map<std::string, SrcTabState> mangaSrcTabCache;
 		int mangaSrcCursor = 0, mangaSrcScroll = 0, mangaSrcPage = 0;
 		// a finger on the grid: where it went down, the scroll then, whether it has moved (a drag, not a tap)
