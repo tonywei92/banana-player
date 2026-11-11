@@ -32,6 +32,9 @@ namespace bp
 		// the ring's step (the caller's clock: one step a frame it asks for), and whether the last draw showed one
 		void setSpinStep(int s) { spinStep = s; }
 		bool spun() const { return spunLast; }
+		// a page whose textures didn't fit in the GPU's memory (drawn grey); unstall: every such page tries again
+		bool stalled(int index) const;
+		void unstall();
 
 	private:
 		struct Tile
@@ -48,6 +51,9 @@ namespace bp
 			// a sharper copy of a page already shown (a zoom): it goes up while the old one is still drawn, and
 			// takes its place only once all of it is on the GPU (no grey frame between)
 			bool incoming = false;
+			// its upload ran the GPU out of memory (after one try with the off-screen pages freed): waits for unstall()
+			bool stalled = false;
+			int oomTries = 0;
 		};
 		Page* find(int index);
 		const Page* find(int index) const;
@@ -60,6 +66,7 @@ namespace bp
 		bool gles = false;
 		unsigned prog = 0, vbo = 0, vao = 0, grey = 0, white = 0;
 		int spinStep = 0;
+		std::set<int> onScreen;	// the pages the last draw placed (an out-of-memory upload frees the rest)
 		bool spunLast = false;
 		int aPos = -1, aUv = -1, uTint = -1;
 		int maxTex = 2048;

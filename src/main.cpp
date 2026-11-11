@@ -1413,6 +1413,7 @@ int main(int argc, char** argv)
 					ui.readerStatus.open = true;
 					ui.readerStatus.loading = reader.loading();
 					ui.readerStatus.error = reader.error();
+					ui.readerStatus.failedHere = reader.failedInView();
 					ui.readerStatus.atEnd = reader.atEnd();
 					ui.readerStatus.page = reader.page();
 					ui.readerStatus.pages = reader.pages();

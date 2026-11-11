@@ -60,7 +60,7 @@ namespace bp
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
 		// Zoom: v the new factor (1 = the fit); the pages are decoded again at that width once it rests
 		// Rotate: paged modes only; each press turns 90° clockwise
@@ -84,6 +84,8 @@ namespace bp
 		bool loading() const;
 		bool atEnd() const;
 		const std::string& error() const { return err; }
+		// a page in view couldn't be fetched, decoded or put on the GPU: the Ui offers Try again (the Retry command)
+		bool failedInView() const;
 		// the page turn in degrees (0, 90, 180, 270); paged modes only (Strip always 0)
 		int rotation() const { return readMode != MANGA_STRIP ? angle : 0; }
 		// fullscreen: the view is both panels' height and the hinge's gap; the top panel shows its first panel-height,
@@ -105,6 +107,8 @@ namespace bp
 		void redrawSoon(int n = 5) { forceFrames = std::max(forceFrames, n); }
 		// a page still loading shows a turning ring: main wakes this often to draw its next step
 		static constexpr int SPIN_MS = 110;
+		// decoded pages kept around the view, in bytes of pixels (the textures take as much again)
+		static constexpr size_t DECODED_BUDGET = 64u << 20;
 		bool spinning() const { return opened && pr.spun(); }
 
 	private:

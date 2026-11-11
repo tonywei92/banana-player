@@ -300,10 +300,47 @@ namespace bp
 		auto vis = strip.visible();
 		if (!s) vis = {paged.current(), paged.current()};
 		for (int i = vis.first - 2; i <= vis.second + 4; i++) keep.insert(i);
+		// Like a recycler view: what's on screen is always decoded; around it, the nearest pages (ahead first) only
+		// while they fit in DECODED_BUDGET. The rest stay as files in the page cache (fetchWanted still fetches
+		// them) and are decoded again when the view comes back. Each decoded page is in memory twice on this GPU
+		// (its pixels and its textures share the system's RAM), and the extensions' server may hold 400 MB of it.
+		{
+			auto bytesOf = [&](int i) -> size_t {
+				auto it = orig.find(i);
+				if (it != orig.end()) return (size_t)it->second.w * it->second.h * 4;
+				size_t w = (size_t)std::max(1, decodeW());
+				return w * w * 6;	// not decoded yet: a page 1.5 times as tall as wide
+			};
+			std::set<int> trimmed;
+			size_t used = 0;
+			for (int i = vis.first; i <= vis.second; i++)
+				if (keep.count(i)) { trimmed.insert(i); used += bytesOf(i); }
+			std::vector<int> rest;
+			for (int i : keep)
+				if (!trimmed.count(i)) rest.push_back(i);
+			int ahead0 = vis.second, behind0 = vis.first;
+			std::stable_sort(rest.begin(), rest.end(), [&](int a, int b) {
+				// distance from the view, a page ahead counting as nearer than one behind at the same distance
+				auto d = [&](int i) { return i > ahead0 ? 2 * (i - ahead0) - 1 : 2 * (behind0 - i); };
+				return d(a) < d(b);
+			});
+			for (int i : rest)
+			{
+				size_t b = bytesOf(i);
+				if (used + b > DECODED_BUDGET) break;
+				trimmed.insert(i);
+				used += b;
+			}
+			if (planTarget >= 0) trimmed.insert(planTarget);
+			keep.swap(trimmed);
+		}
 		pr.keepOnly(keep);
 		wantKeep = gated ? std::set<int>{planTarget} : keep;
 		fetchWanted = list;	// (the plan orders the target itself, so a gate never hides its neighbours from stale())
 		for (auto it = kept.begin(); it != kept.end();) it = keep.count(it->first) ? std::next(it) : kept.erase(it);
+		// (the unrotated copies too: kept for the whole chapter before, every page read stayed in memory)
+		for (auto it = orig.begin(); it != orig.end();) it = keep.count(it->first) ? std::next(it) : orig.erase(it);
+		for (auto it = decodedW.begin(); it != decodedW.end();) it = keep.count(it->first) ? std::next(it) : decodedW.erase(it);
 		// a failure sticks only while the page is wanted: moving away and back asks for it again
 		for (auto it = failed.begin(); it != failed.end();)
 		{
@@ -318,6 +355,7 @@ namespace bp
 		{
 			// a page of a URL chapter that isn't fetched yet waits: its decode is queued when pageArrived says so
 			if (i < 0 || i >= (int)files.size()) continue;
+			if (!keep.count(i)) continue;	// over the budget: fetched to the card, not decoded
 			if (remote() && !fileThere(files[i])) continue;
 			// a page the last zoom decoded narrower is asked for again, and goes on showing scaled until it comes
 			auto it = decodedW.find(i);
@@ -520,6 +558,17 @@ namespace bp
 			return;
 		}
 		if (kind == Fullscreen) { setFullscreen(v > 0, (int)v2); return; }
+		if (kind == Retry)
+		{
+			// Try again: the pages in view that failed are asked for again, and pages the GPU had no room for go up again
+			for (auto& b : boxes())
+				if (failed.erase(b.page) && b.page == errPage) { err.clear(); errPage = -1; }
+			pr.unstall();
+			fprintf(stderr, "reader: try again\n");
+			want();
+			redrawSoon(2);
+			return;
+		}
 		if (kind == Zoom)
 		{
 			// the drawn view zooms at once; a wider page is decoded only once the presses rest (frame's 300 ms),
@@ -743,6 +792,14 @@ namespace bp
 		auto vis = strip.visible();
 		for (int i = vis.first; i >= 0 && i <= vis.second; i++)
 			if (!pr.has(i) && !failed.count(i)) return true;
+		return false;
+	}
+
+	bool MangaReader::failedInView() const
+	{
+		if (!opened) return false;
+		for (auto& b : boxes())
+			if (failed.count(b.page) || pr.stalled(b.page)) return true;
 		return false;
 	}
 

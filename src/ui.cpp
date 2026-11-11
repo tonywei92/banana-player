@@ -1220,7 +1220,7 @@ namespace bp
 					(int)mangaTouch, (int)mangaSlider, readerStatus.zoomPct, (int)mangaMenu, mangaMenuCursor,
 					(int)mangaPages, readerStatus.rotation);
 				photo += std::string(rb) + readerStatus.error + "|" + mangaReadChapterId + "|m" + std::to_string(readerStatus.mode) +
-					"|w" + std::to_string((int)mangaReadWaiting) + std::to_string((int)mangaSrcLoading) + mangaSrcError;
+					"|w" + std::to_string((int)readerStatus.failedHere) + std::to_string((int)mangaReadWaiting) + std::to_string((int)mangaSrcLoading) + mangaSrcError;
 				// the pages grid: the cursor, the scroll, the textures made, the thumbnails arrived
 				if (mangaPages)
 					photo += "|pg" + std::to_string(mangaPagesCursor) + "," + std::to_string(mangaPagesScroll) + " " +

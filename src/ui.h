@@ -231,7 +231,7 @@ namespace bp
 		// kept per chapter, back to 0 on another chapter; the fit and zoom work on the turned page)
 		// ZoomPoint (v: the factor; v2, v3: the tap point as fractions of the view width and height: zoom to that point
 		// / back to the fit, as a double-tap on the page area does)
-		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
 		std::vector<ReaderCmd> readerCmds;
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus
@@ -243,6 +243,7 @@ namespace bp
 			bool fullscreen = false;	// both panels show the pages
 			int rotation = 0;	// the page turn in degrees (0, 90, 180, 270; paged modes only, 0 in Strip)
 			std::string error;	// the chapter couldn't be opened ("" while fine)
+			bool failedHere = false;	// a page in view failed (fetch, decode or no GPU memory): Try again shows
 		};
 		ReaderStatus readerStatus;
 		// fullscreen: what the bottom panel shows of the view (main sets it each pass): each page's box as fractions
@@ -1412,6 +1413,10 @@ namespace bp
 		Rect mangaHeartRect() const { return {556, 84, 68, 52}; }
 		// the reading page's own pieces sit above the mini bar when it shows (it takes the panel's bottom): the page
 		// area, the slider and the chapter row all move up, the hints keep to the line under the bar
+		// Try again, in the middle of the page area (or of the panel in fullscreen), while a page in view failed
+		Rect mangaRetryRect(bool full) const { return full ? Rect{200, 216, 240, 48} : Rect{200, 176, 240, 48}; }
+		void mangaRetry() { readerCmds.push_back({ReaderCmd::Retry, 0, (int64_t)SDL_GetTicks()}); }
+		void drawMangaRetry(bool full);
 		Rect mangaAreaRect() const { return {16, 70, 608, miniUp ? 222 : 260}; }	// (222: the page line below keeps 8 clear of it)
 		Rect mangaSliderRect() const { return {40, miniUp ? 330 : 352, 560, 22}; }
 		// the chapter row: three buttons of one size, equal margins and gaps across the panel's 608 (16, 208 wide

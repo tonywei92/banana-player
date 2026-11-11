@@ -58,6 +58,7 @@ namespace bp
 		F(void, Clear, unsigned)
 		F(void, Disable, unsigned)
 		F(void, GetIntegerv, unsigned, int*)
+		F(unsigned, GetError)
 		F(void, BindFramebuffer, unsigned, unsigned)
 		// core profile only: a vertex array object must be bound to draw
 		F(void, GenVertexArrays, int, unsigned*)
@@ -80,6 +81,7 @@ namespace bp
 			}
 		};
 		load(gl->GenTextures, "glGenTextures");
+		load(gl->GetError, "glGetError");
 		load(gl->DeleteTextures, "glDeleteTextures");
 		load(gl->BindTexture, "glBindTexture");
 		load(gl->TexImage2D, "glTexImage2D");
@@ -268,12 +270,45 @@ namespace bp
 		// the first page with a tile still down; one tile per frame keeps a frame under its 16 ms
 		for (auto& p : pages)
 		{
-			if (p.uploaded >= p.tiles.size()) continue;
+			if (p.uploaded >= p.tiles.size() || p.stalled) continue;
 			Tile& t = p.tiles[p.uploaded];
+			while (gl->GetError() != 0) {}	// (an error left by mpv or an earlier call isn't this upload's)
 			gl->GenTextures(1, &t.tex);
 			gl->BindTexture(TEXTURE_2D, t.tex);
 			gl->PixelStorei(UNPACK_ALIGNMENT, 1);
 			gl->TexImage2D(TEXTURE_2D, 0, RGBA, p.w, t.h, 0, RGBA, UNSIGNED_BYTE, p.rgba.data() + (size_t)t.y * p.w * 4);
+			if (gl->GetError() == 0x0505 /* GL_OUT_OF_MEMORY */)
+			{
+				// The GPU's memory is the system's (Panfrost): with the extensions' server running it can run out.
+				// Give back every page not on screen and try once more; after that the page waits for a Retry
+				// (the reader's Try again) instead of staying grey with nothing said.
+				gl->PixelStorei(UNPACK_ALIGNMENT, 4);
+				gl->BindTexture(TEXTURE_2D, 0);
+				gl->DeleteTextures(1, &t.tex);
+				t.tex = 0;
+				size_t freed = 0;
+				int index = p.index;
+				for (auto it = pages.begin(); it != pages.end();)
+				{
+					if (it->index == index || onScreen.count(it->index)) { ++it; continue; }
+					freed += it->uploaded;
+					freePage(*it);
+					it = pages.erase(it);
+				}
+				Page* q = find(index);
+				if (!q) return;
+				if (freed > 0 && q->oomTries == 0)
+				{
+					q->oomTries++;
+					fprintf(stderr, "reader: GPU out of memory at page %d (%zu MB of textures): freed %zu tiles, trying again\n",
+						index + 1, bytes >> 20, freed);
+					return;
+				}
+				q->stalled = true;
+				fprintf(stderr, "reader: GPU out of memory at page %d (%zu MB of textures): waiting for Try again\n", index + 1,
+					bytes >> 20);
+				return;
+			}
 			gl->TexParameteri(TEXTURE_2D, MIN_FILTER, LINEAR);
 			gl->TexParameteri(TEXTURE_2D, MAG_FILTER, LINEAR);
 			gl->TexParameteri(TEXTURE_2D, WRAP_S, CLAMP_TO_EDGE);
@@ -341,6 +376,8 @@ namespace bp
 		gl->Uniform4f(uTint, 1, 1, 1, 1);
 		bool pending = false;
 		spunLast = false;
+		onScreen.clear();
+		for (auto& pl : placed) onScreen.insert(pl.page);
 		for (auto& pl : placed)
 		{
 			const Page* p = find(pl.page);
@@ -349,7 +386,7 @@ namespace bp
 				// not here yet (or not all up): its place, grey, so nothing around it moves when it comes
 				gl->BindTexture(TEXTURE_2D, grey);
 				quad(pl.x, pl.y, pl.x + pl.w, pl.y + pl.h, 0, 1, w, h);
-				pending = pending || p;
+				pending = pending || (p && !p->stalled);
 				if (pl.spin)
 				{
 					// a ring of 8 dots in the middle of the place's part on screen, the brightest one going round
@@ -393,7 +430,22 @@ namespace bp
 		if (vao) gl->BindVertexArray(0);
 		gl->UseProgram(0);
 		for (auto& p : pages)
-			if (p.uploaded < p.tiles.size()) pending = true;
+			if (p.uploaded < p.tiles.size() && !p.stalled) pending = true;
 		return pending;
+	}
+
+	bool PageRenderer::stalled(int index) const
+	{
+		const Page* p = find(index);
+		return p && p->stalled;
+	}
+
+	void PageRenderer::unstall()
+	{
+		for (auto& p : pages)
+		{
+			p.stalled = false;
+			p.oomTries = 0;
+		}
 	}
 }

@@ -496,7 +496,7 @@ namespace bp
 			{
 			case Button::L: readerCmds.push_back({ReaderCmd::Page, -1, (int64_t)now}); break;
 			case Button::R: readerCmds.push_back({ReaderCmd::Page, 1, (int64_t)now}); break;
-			case Button::A: mangaZoomToggle(); break;
+			case Button::A: if (readerStatus.failedHere) mangaRetry(); else mangaZoomToggle(); break;
 			case Button::X: mangaCycleMode(p); break;
 			case Button::L2: mangaChapterStep(-1, p); break;
 			case Button::R2: mangaChapterStep(1, p); break;
@@ -756,6 +756,12 @@ namespace bp
 				mangaTapDismiss = false;
 				// (mangaLastTapAt is the last tap's: not cleared here, or a double-tap could never see its first)
 				mangaCtrlPressed = -1;
+				// a page that failed: its Try again, in the middle, before anything under it takes the finger
+				if (readerStatus.failedHere && mangaRetryRect(full).hit(x, y))
+				{
+					mangaRetry();
+					return false;
+				}
 				// fullscreen's controls up: the sheet takes the finger (any touch there shows it 4 s more), and the
 				// pages outside it only wait to become a drag or, lifted, a tap that puts the bar away
 				if (full && mangaCtrlUntil && now < mangaCtrlUntil)
@@ -1521,8 +1527,12 @@ namespace bp
 		drawBox(mangaAreaRect(), SURFACE, R_TILE);
 		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
 		int m = readerStatus.mode >= 0 && readerStatus.mode < MANGA_MODES ? readerStatus.mode : 0;
-		drawTextMid(m == MANGA_STRIP ? "Drag here to scroll" : "Swipe here to turn the page", 0, DIM, W / 2, 190, 0, 2);
-		drawTextMid(std::string(MODES[m]) + " \xC2\xB7 X to change", 0, DIM_ON, W / 2, 216, 0, 2);
+		if (readerStatus.failedHere) drawMangaRetry(false);
+		else
+		{
+			drawTextMid(m == MANGA_STRIP ? "Drag here to scroll" : "Swipe here to turn the page", 0, DIM, W / 2, 190, 0, 2);
+			drawTextMid(std::string(MODES[m]) + " \xC2\xB7 X to change", 0, DIM_ON, W / 2, 216, 0, 2);
+		}
 		int pages = readerStatus.pages;
 		if (!readerStatus.error.empty())
 			drawTextMid(readerStatus.error, 1, DANGER, W / 2, miniUp ? 310 : 340, 560, 2);
@@ -1763,6 +1773,14 @@ namespace bp
 		mfWaiting = 0;
 	}
 
+	void Ui::drawMangaRetry(bool full)
+	{
+		Rect r = mangaRetryRect(full);
+		fillRound(r, ACCENT, R_TILE);
+		drawTextMid("Try again", 1, ON_ACCENT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
+		drawTextMid("A page didn\xE2\x80\x99t load \xC2\xB7 A", 0, full ? TEXT : DIM, W / 2, r.y + r.h + 18, 0, 2);
+	}
+
 	void Ui::drawMangaFull()
 	{
 		// the pages under the hinge: main gives each page's box (fractions of the panel) and its pixels; they become
@@ -1839,6 +1857,7 @@ namespace bp
 			fillRound({W - tw - 12, H - 36, tw, 26}, SURFACE, R_CHIP);
 			drawTextMid(tag, 0, TEXT, W - 12 - tw / 2, H - 23, 0, 2);
 		}
+		if (readerStatus.failedHere) drawMangaRetry(true);
 		// the controls, while they show (over the tag), then the first open's toast over both
 		if (now < mangaCtrlUntil) drawMangaControls();
 		if (now < mangaToastUntil) drawMangaToast();
