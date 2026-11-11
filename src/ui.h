@@ -1429,6 +1429,9 @@ namespace bp
 		// into a texture on the main thread. Fetched only when the card is on screen; cancelled when it scrolls away.
 		// A cover already in the cache is used with no fetch. headers: the source's image headers, or the server's
 		// auth header via remoteAuth. coverKey is the texture-cache key (the URL; unique per image)
+		// while a server's grid draws: its covers' addresses as a request needs them (Kavita's {key} filled in); the
+		// cover's own address, its cache key, keeps the placeholder. Empty the rest of the time
+		std::function<std::string(const std::string&)> coverFetchUrl;
 		SDL_Texture* coverOfUrl(const std::string& coverUrl, int w, int h,
 			const std::vector<std::pair<std::string, std::string>>& headers);
 		struct CoverTex { SDL_Texture* tex = nullptr; uint64_t drawnAt = 0; };

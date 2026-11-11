@@ -1079,6 +1079,7 @@ namespace bp
 			if (base.empty()) return nullptr;	// not running: no fetch (it isn't started for a cover)
 			fetchUrl = base + key.substr(std::string("javahost").size());
 		}
+		if (coverFetchUrl) fetchUrl = coverFetchUrl(fetchUrl);
 		uint64_t id = mangaNet->fetchApi().get(fetchUrl, headers, 4 * 1024 * 1024);
 		if (id) mangaCoverFetches[key] = id;
 		else coverFailed.insert(key);	// the fetcher stopped: nothing will come
@@ -1095,10 +1096,13 @@ namespace bp
 
 	std::string Ui::mangaCoverKey(const std::string& url)
 	{
-		static const std::string local = "http://127.0.0.1:";
+		// only the manga engine's own covers (/api/v1/manga/<id>/thumbnail): a comic server the user runs on the
+		// handheld itself is on 127.0.0.1 too, at a port that stays, and its covers are fetched where they are
+		static const std::string local = "http://127.0.0.1:", engine = "/api/v1/manga/";
 		if (url.compare(0, local.size(), local) != 0) return url;
 		size_t slash = url.find('/', local.size());
-		return slash == std::string::npos ? url : "javahost" + url.substr(slash);
+		if (slash == std::string::npos || url.compare(slash, engine.size(), engine) != 0) return url;
+		return "javahost" + url.substr(slash);
 	}
 
 	void Ui::mangaCoverCancelOffScreen()
@@ -1142,7 +1146,13 @@ namespace bp
 				coverUrlAsked.insert(url);
 			}
 		}
-		else coverFailed.insert(url);
+		else
+		{
+			coverFailed.insert(url);
+			// in the log: why a cover stayed generated (the address without its query: a server's key can sit there)
+			fprintf(stderr, "manga: cover failed (%s, status %d, %zu bytes) %s\n", r.error.empty() ? "answered" : r.error.c_str(),
+				r.status, r.body.size(), url.substr(0, url.find('?')).c_str());
+		}
 		return true;
 	}
 

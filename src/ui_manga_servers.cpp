@@ -620,7 +620,20 @@ namespace bp
 		if (mangaNet && mangaNet->started())
 		{
 			const MangaServer* sv = mangaNet->servers().find(mangaSrvId);
-			if (sv) srvCoverHeaders = remoteAuth(*sv, mangaNet->servers().password(mangaSrvId), "").headers;
+			if (sv)
+			{
+				std::string pw = mangaNet->servers().password(mangaSrvId);
+				srvCoverHeaders = remoteAuth(*sv, pw, "").headers;
+				// a cover is a picture: the API's Accept (Komga's JSON) made its thumbnail answer 406
+				for (auto& h : srvCoverHeaders)
+					if (h.first == "Accept") h.second = "image/*";
+				// Kavita's cover addresses carry {key} where its api key goes (put in only for the request)
+				if (sv->kind == "kavita")
+				{
+					MangaServer copy = *sv;
+					coverFetchUrl = [copy, pw](const std::string& u) { return remoteWithKey(copy, pw, u); };
+				}
+			}
 		}
 		SDL_RenderSetClipRect(ren, &clip);
 		mangaCoverOnScreen.clear();
@@ -635,6 +648,7 @@ namespace bp
 		}
 		SDL_RenderSetClipRect(ren, nullptr);
 		mangaCoverCancelOffScreen();
+		coverFetchUrl = nullptr;
 		if (rows > 1) drawScrollBar(MGSRV_TOP, MGSRV_CLIP_BOTTOM - MGSRV_TOP - 4, mangaSrvScroll, MGSRV_GRID_ROWS_SHOWN, rows);
 		if (!mangaSrvError.empty()) drawTextMid(mangaSrvError, 1, DANGER, W / 2, MGSRV_STATUS_Y, 560, 2);
 		else if (mangaSrvLoading) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, W / 2, MGSRV_STATUS_Y, 0, 2);

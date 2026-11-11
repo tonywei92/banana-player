@@ -2197,6 +2197,32 @@ static void testOpds()
 	CHECK_EQ(opdsResolve("http://h:80/opds/library", "//cdn.x/y"), std::string("http://cdn.x/y"));
 	CHECK_EQ(opdsResolve("http://h:80/opds/library", ""), std::string("http://h:80/opds/library"));
 
+	// Kavita's reading-state marks before an entry's title go (the font has no glyph for them); a title of marks stays
+	{
+		OpdsFeed k;
+		CHECK_EQ(parseOpds("<feed xmlns=\"http://www.w3.org/2005/Atom\"><id>f</id><title>F</title>"
+			"<entry><id>1</id><title>\xE2\x97\x91 Saga - Chapter 1</title></entry>"
+			"<entry><id>2</id><title>\xE2\xAD\x98 Saga - Chapter 2</title></entry>"
+			"<entry><id>3</id><title>\xE2\xAC\xA4  Saga - Chapter 3</title></entry>"
+			"<entry><id>4</id><title>\xE2\x97\x91</title></entry>"
+			"<entry><id>5</id><title>Plain \xE2\x97\x91 inside</title></entry></feed>", k), true);
+		CHECK_EQ(k.entries.size(), (size_t)5);
+		CHECK_EQ(k.entries[0].title, std::string("Saga - Chapter 1"));
+		CHECK_EQ(k.entries[1].title, std::string("Saga - Chapter 2"));
+		CHECK_EQ(k.entries[2].title, std::string("Saga - Chapter 3"));
+		CHECK_EQ(k.entries[3].title, std::string("\xE2\x97\x91"));
+		CHECK_EQ(k.entries[4].title, std::string("Plain \xE2\x97\x91 inside"));
+		// an id given twice (Kavita's Continue Reading copy first): the later one stays, in its place
+		OpdsFeed d;
+		CHECK_EQ(parseOpds("<feed xmlns=\"http://www.w3.org/2005/Atom\"><id>f</id><title>F</title>"
+			"<entry><id>2</id><title>Continue Reading from: Ch 1</title></entry>"
+			"<entry><id>2</id><title>Ch 1</title></entry><entry><id>1</id><title>Ch 2</title></entry>"
+			"<entry><title>no id</title></entry><entry><title>no id</title></entry></feed>", d), true);
+		CHECK_EQ(d.entries.size(), (size_t)4);
+		CHECK_EQ(d.entries[0].title, std::string("Ch 1"));
+		CHECK_EQ(d.entries[1].title, std::string("Ch 2"));
+	}
+
 	// not a feed, in every way a body can fail to be one
 	OpdsFeed no;
 	CHECK_EQ(parseOpds("", no), false);
@@ -2218,7 +2244,7 @@ static void testOpds()
 	CHECK_EQ(parseOpds(std::string((8u << 20) + 1, 'x'), no), false);
 	// and a runaway feed is capped at 10 000 entries
 	std::string many = R"(<feed xmlns="http://www.w3.org/2005/Atom">)";
-	for (int i = 0; i < 10001; i++) many += "<entry><id>x</id></entry>";
+	for (int i = 0; i < 10001; i++) many += "<entry><id>x" + std::to_string(i) + "</id></entry>";
 	many += "</feed>";
 	OpdsFeed capped;
 	CHECK_EQ(parseOpds(many, capped), true);

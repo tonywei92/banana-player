@@ -1,4 +1,6 @@
 #include "opds.h"
+#include <algorithm>
+#include <set>
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
@@ -7,6 +9,26 @@ namespace bp
 {
 	namespace
 	{
+		// Kavita marks each entry's reading state at the start of its title (U+2B58 unread, U+25D1 started, U+2B24 read);
+		// the pixel font has none of them and drew a box. A geometric-shapes mark (U+25A0-U+25FF, U+2B24, U+2B58) and the
+		// spaces after it go when text follows; a title that is only marks stays as it is
+		std::string withoutStateMark(const std::string& t)
+		{
+			size_t at = 0;
+			bool any = false;
+			while (at + 3 <= t.size())
+			{
+				unsigned char a = t[at], b = t[at + 1], c = t[at + 2];
+				bool shape = a == 0xE2 && ((b == 0x96 && c >= 0xA0) || b == 0x97);	// U+25A0-U+25FF
+				bool other = a == 0xE2 && ((b == 0xAC && c == 0xA4) || (b == 0xAD && c == 0x98));	// U+2B24, U+2B58
+				if (!shape && !other) break;
+				at += 3;
+				any = true;
+				while (at < t.size() && t[at] == ' ') at++;
+			}
+			return any && at < t.size() ? t.substr(at) : t;
+		}
+
 		// The same bounds the manga sources keep everywhere else: 8 MB is more than any real feed or list answer, and
 		// the entry cap keeps a broken or hostile server from filling the handheld's memory on one response.
 		const size_t kMaxInput = 8u << 20;
@@ -589,7 +611,7 @@ namespace bp
 					else if (prole == R_ENTRY && cur)
 					{
 						if (f.local == "id" && cur->id.empty()) cur->id = v;
-						else if (f.local == "title" && cur->title.empty()) cur->title = v;
+						else if (f.local == "title" && cur->title.empty()) cur->title = withoutStateMark(v);
 						else if (f.local == "updated" && cur->updated.empty()) cur->updated = v;
 					}
 					break;
@@ -761,6 +783,20 @@ namespace bp
 			if (feed.search.empty() && iequals(l.rel, "search")) feed.search = l.href;
 			if (feed.start.empty() && iequals(l.rel, "start")) feed.start = l.href;
 			if (feed.up.empty() && iequals(l.rel, "up")) feed.up = l.href;
+		}
+		// an entry id given twice is the same entry: Kavita puts a "Continue Reading from: …" copy of the chapter
+		// being read before the chapters, under that chapter's own id. The last of each id stays, in its place
+		{
+			std::set<std::string> later;
+			std::vector<OpdsEntry> kept;
+			for (size_t i = feed.entries.size(); i-- > 0;)
+			{
+				const std::string& id = feed.entries[i].id;
+				if (!id.empty() && !later.insert(id).second) continue;
+				kept.push_back(std::move(feed.entries[i]));
+			}
+			std::reverse(kept.begin(), kept.end());
+			feed.entries = std::move(kept);
 		}
 		out = std::move(feed);
 		return true;
