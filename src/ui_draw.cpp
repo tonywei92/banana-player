@@ -399,7 +399,7 @@ namespace bp
 			homeTouch = false;
 			homePress = -1;
 			swallowTouch = true;
-			if (i >= 0 && i < (int)recent.size() && !recent[i].manga)
+			if (i >= 0 && i < (int)recent.size())
 			{
 				homeZone = HOME_STRIP;
 				setStrip(i);

@@ -15,8 +15,6 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 - **The Manga app**: **Library** (**Continue reading**, covers, unread counts), **History**, **Browse › On this
   handheld**, the series page (**Resume**, the **In library** heart, read and unread) and the reading page (the page
   number, the slider, the chapter buttons, the drag area).
-- **Home's Recent**: the reader's last chapter as a card among the files (cover, series, chapter and page, a bar),
-  where it was last read; **A** opens it at the page left. **In Recent on Home** off: no card.
 - **Sources from repositories**: the **Sources** page's three lists (**Installed**, **Available**, **Repositories**,
   stepped with LEFT/RIGHT), **Add repository** by URL, install / update / uninstall with the repository manager's
   checks, removing a repository with or without its sources, results as notes, adult sources hidden unless shown; the
@@ -134,7 +132,7 @@ extension's code is in the binary but nothing of it is constructed (as `WebServe
 - **Read offline:** a series page › **Download** (this chapter, the next 5 unread, all unread, or chosen chapters) →
   a queue on the app's **Downloads** page (progress, pause / resume) → each chapter saved as a CBZ under the Manga
   downloads folder on the card → read with no network; delete per chapter or series.
-- **Come back:** Library's *Continue reading* strip (and a card in Home's Recent) → the chapter at the page left.
+- **Come back:** Library's *Continue reading* strip → the chapter at the page left.
   Finishing a chapter's last page and pressing on opens the next chapter (a top-panel card says "Chapter 13 · The Night
   Market"); the last chapter ends on a "You're caught up" card.
 - **Update / remove a source:** Sources › Installed shows *Update* when the repository has a newer version; Remove
@@ -482,7 +480,6 @@ page), the gear (**X**) in **Manage extensions** opens it too, and the Reading m
 | Clear cache | (button: "Clear · 214 MB") | Empties the pages kept on the card. Press A twice. |
 | Adult sources | **Hidden** / Shown | Sources a repository marks as adult. |
 | Reading history | **On** / Off | Off clears it. |
-| In Recent on Home | **On** / Off | |
 | Repositories (note, no value) | | Repositories are added by you. Banana Player doesn't provide or check their content. |
 
 The reader's own on/off switch is not among these rows: it is in **Manage extensions** (A on its row), or on the web
@@ -498,7 +495,7 @@ sheet; Library, History, Browse, Sources, Series, Reader, Pages; On this handhel
 (folders, CBZ/CB7/CBR), network folders, Komga, OPDS (+ PSE; covers Kavita); Lua sources and repositories (install,
 update, remove); the reader's own page renderer (paged Right to left / Left to right with swipe and snap; Strip, one
 continuous column with drag and inertia), music playing on while reading; downloads (queue, CBZ on the card, offline
-reading, Downloads page); progress, history, Continue reading, a Recent card on Home; page and cover cache; dashboard
+reading, Downloads page); progress, history, Continue reading (in the reader, not on Home: the owner's call, 2026-11-11); page and cover cache; dashboard
 pages for library, sources and repositories, downloads; FEATURES.md, a note in `docs/notes/`.
 
 Prototype first, on the handheld: the strip renderer's smoothness (drag, flick, decode keeping up) before the rest is

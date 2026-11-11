@@ -342,8 +342,7 @@ namespace bp
 			// a section's top: Home, on its tile (All recent: on its card)
 			if (atFirstPage())
 			{
-				// (the last card: All recent. -1, as the manga card is Home's alone and changes the count)
-				if (browseDir == RECENT) goHome(HOME_STRIP, -1, p);
+				if (browseDir == RECENT) goHome(HOME_STRIP, (int)recent.size(), p);
 				else goHome(HOME_GRID, browseTab, p);
 				return false;
 			}
@@ -1155,9 +1154,6 @@ namespace bp
 			snprintf(hb, sizeof hb, "|home%d %d %d %ld %d %zu %d", homeZone, homeStrip, homeGrid, std::lround(stripOff), homePress,
 				recent.size(), netStore ? netStore->version() : -1);
 			photo += hb;
-			// the manga card's cover arriving (and the store it came from), only while the reader and its card are on
-			if (p.settings.mangaOn && p.settings.mangaRecent)
-				photo += "|mh" + std::to_string(coverSerial) + " " + std::to_string(mangaStore ? mangaStore->serial() : 0);
 		}
 		// Extensions: the drawer's tile and the note's focus, the switch (its lines and rows say it), a finger's button
 		// down on them (mangaOn is in the settings too: a change redraws anywhere)

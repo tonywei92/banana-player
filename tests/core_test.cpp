@@ -4771,18 +4771,6 @@ static void testHistory()
 		CHECK_EQ(m.items()[0], std::string("/card/c.mkv"));
 		CHECK_EQ(m.items()[1], std::string("/card/a.mkv"));
 	}
-	// when each was last played, read back with the paths (Home orders its cards with them)
-	int64_t when = h.timeOf("/v/39");
-	CHECK_EQ(when > 0, true);
-	CHECK_EQ(h.timeOf("/v/not-there"), (int64_t)0);
-	PlayHistory times;
-	times.parse(h.serialize());
-	CHECK_EQ(times.timeOf("/v/39"), when);
-	// a file kept before times were has none, and still lists
-	PlayHistory old;
-	old.parse("# banana-player: the videos played\n/v/old.mkv\n");
-	CHECK_EQ(old.timeOf("/v/old.mkv"), (int64_t)0);
-	CHECK_EQ(old.items().size(), (size_t)1);
 	PlayHistory back;
 	back.parse(h.serialize() + "/v/39\n");	// a repeat in the file is read once
 	CHECK_EQ(back.items() == h.items(), true);

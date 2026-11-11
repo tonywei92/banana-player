@@ -22,62 +22,48 @@ namespace bp
 {
 	// ---- Home: the Recent strip and the sections' tiles; a section's header ----
 
-	void Ui::listRecent(Player& p, bool withManga)
+	void Ui::listRecent(Player& p)
 	{
 		recent.clear();
-		if (p.settings.keepHistory)
+		if (!p.settings.keepHistory) return;
+		for (auto& path : p.history().items())
 		{
-			for (auto& path : p.history().items())
-			{
-				// a file still there (on a card taken out: not), or a network one whose connection is still saved
-				// (whether the file is there is only known by asking its server: when it's opened)
-				bool net = isNetPath(path);
-				NetPath np;
-				const NetServer* sv = net && netStore && parseNetPath(path, np) ? netStore->find(np.server) : nullptr;
-				if (net ? !sv : !exists(path) || (!p.settings.showHiddenFolders && insideHiddenFolder(path))) continue;
-				RecentItem it;
-				it.path = path;
-				it.net = net;
-				it.used = p.history().timeOf(path);
-				// its name without the extension, as a card's title
-				it.name = baseName(path);
-				size_t dot = it.name.rfind('.');
-				if (dot != std::string::npos && dot > 0) it.name.erase(dot);
-				it.kind = isAudioFile(path) ? &G_NOTE : isPhotoFile(path) ? &G_PICTURE : &G_FILM;
-				// how far into it: where it was left (a song always starts at its start: played), of how long it is
-				RecentProgress rp = recentProgress(p.resumeStore().find(path), isAudioFile(path));
-				double len = rp.duration, pos = rp.position;
-				if (!rp.played)
-				{
-					it.at = formatTime(pos);
-					it.sub = len > 0 ? it.at + " / " + formatTime(len) : "at " + it.at;
-					it.frac = rp.frac;
-				}
-				else
-				{
-					it.sub = len > 0 ? "Played \xC2\xB7 " + formatTime(len) : "Played";
-					it.frac = 1;
-				}
-				// where it is: the server, or the place on the cards ("Videos", "This card")
-				if (sv) it.where = serverName(*sv);
-				else
-				{
-					std::string w = whereOf(parentFolder(path));
-					it.where = w.substr(0, w.find(" / "));
-				}
-				recent.push_back(it);
-			}
-		}
-		// the manga reader's card, when its switch and In Recent on Home are both on: it waits where it was last
-		// used among the files, which the history keeps the time of
-		if (withManga && p.settings.mangaOn && p.settings.mangaRecent)
-		{
+			// a file still there (on a card taken out: not), or a network one whose connection is still saved (whether
+			// the file is there is only known by asking its server: when it's opened)
+			bool net = isNetPath(path);
+			NetPath np;
+			const NetServer* sv = net && netStore && parseNetPath(path, np) ? netStore->find(np.server) : nullptr;
+			if (net ? !sv : !exists(path) || (!p.settings.showHiddenFolders && insideHiddenFolder(path))) continue;
 			RecentItem it;
-			if (mangaRecentCard(p, it))
+			it.path = path;
+			it.net = net;
+			// its name without the extension, as a card's title
+			it.name = baseName(path);
+			size_t dot = it.name.rfind('.');
+			if (dot != std::string::npos && dot > 0) it.name.erase(dot);
+			it.kind = isAudioFile(path) ? &G_NOTE : isPhotoFile(path) ? &G_PICTURE : &G_FILM;
+			// how far into it: where it was left (a song always starts at its start: played), of how long it is
+			RecentProgress rp = recentProgress(p.resumeStore().find(path), isAudioFile(path));
+			double len = rp.duration, pos = rp.position;
+			if (!rp.played)
 			{
-				recent.push_back(it);
-				std::stable_sort(recent.begin(), recent.end(), [](const RecentItem& a, const RecentItem& b) { return a.used > b.used; });
+				it.at = formatTime(pos);
+				it.sub = len > 0 ? it.at + " / " + formatTime(len) : "at " + it.at;
+				it.frac = rp.frac;
 			}
+			else
+			{
+				it.sub = len > 0 ? "Played \xC2\xB7 " + formatTime(len) : "Played";
+				it.frac = 1;
+			}
+			// where it is: the server, or the place on the cards ("Videos", "This card")
+			if (sv) it.where = serverName(*sv);
+			else
+			{
+				std::string w = whereOf(parentFolder(path));
+				it.where = w.substr(0, w.find(" / "));
+			}
+			recent.push_back(it);
 		}
 	}
 
@@ -191,8 +177,7 @@ namespace bp
 			return;
 		}
 		homeZone = HOME_STRIP;
-		// -1: the last card, All recent (the manga card isn't in that list)
-		setStrip(idx < 0 ? stripCount() - 1 : idx, false);
+		setStrip(idx, false);
 	}
 
 	void Ui::homeOpen(Player& p)
@@ -214,12 +199,7 @@ namespace bp
 			openSection(homeGrid, p);
 			return;
 		}
-		if (homeStrip < (int)recent.size())
-		{
-			if (recent[homeStrip].manga) mangaOpenRecent(recent[homeStrip], p);
-			else openFile(recent[homeStrip].path, p);
-			return;
-		}
+		if (homeStrip < (int)recent.size()) { openFile(recent[homeStrip].path, p); return; }
 		// All recent: the list, from its top
 		enterFolder(RECENT, p);
 	}
@@ -246,8 +226,7 @@ namespace bp
 			// down to the column left last
 			case Button::Down: homeZone = HOME_GRID; homeGrid = homeCol; break;
 			case Button::A: homeOpen(p); break;
-			// (the manga card has no file's menu: Y is its chapter's A)
-			case Button::Y: if (homeStrip < (int)recent.size() && !recent[homeStrip].manga) openRecentMenu(recent[homeStrip].path); break;
+			case Button::Y: if (homeStrip < (int)recent.size()) openRecentMenu(recent[homeStrip].path); break;
 			default: break;
 			}
 			return false;
@@ -445,57 +424,43 @@ namespace bp
 				SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
 				if (i < (int)recent.size())
 				{
+					// the name on up to two lines; under it, what kind, how far, and a network mark; a bar along the foot
 					const RecentItem& it = recent[i];
-					int chip = 0;
+					// what plays (or was stopped for a photo): a chip top right, its time and bar live
+					int chip = chipKind && it.path == chipPath ? chipKind : 0;
+					std::string sub = it.sub;
 					double frac = it.frac;
-					bool litBar = it.manga ? it.pages > 0 : !it.at.empty();
-					if (it.manga)
+					bool lit = !it.at.empty();
+					if (chip && p.playing() && p.duration > 0)
 					{
-						// the chapter last read: the series' cover (the Library's), its title, the chapter and page
-						drawMangaCover({x + 12, CARD_Y + 12, 40, 54}, it.name, false, 2, it.seriesId);
-						int tx = x + 60, tw = CARD_W - 72;
-						auto lines = wrapText(it.name, 1, tw, 2);
-						int ty = CARD_Y + (lines.size() == 1 ? 22 : 14);
-						for (size_t k = 0; k < lines.size(); k++) drawTextMid(lines[k], 1, ink, tx, ty + (int)k * 22, tw);
-						drawTextMid(it.sub, 0, soft, tx, CARD_Y + 78, tw);
+						double pos = std::max(0.0, shownPosition(p));
+						sub = formatTime(pos) + " / " + formatTime(p.duration);
+						frac = std::clamp(pos / p.duration, 0.0, 1.0);
+						lit = true;
 					}
-					else
-					{
-						// the name on up to two lines; under it, what kind, how far, and a network mark; a bar along the foot
-						// what plays (or was stopped for a photo): a chip top right, its time and bar live
-						chip = chipKind && it.path == chipPath ? chipKind : 0;
-						std::string sub = it.sub;
-						if (chip && p.playing() && p.duration > 0)
-						{
-							double pos = std::max(0.0, shownPosition(p));
-							sub = formatTime(pos) + " / " + formatTime(p.duration);
-							frac = std::clamp(pos / p.duration, 0.0, 1.0);
-							litBar = true;
-						}
-						int chipW = chip ? drawChip(x + CARD_W - 8, CARD_Y + 19, chip, true) + 8 : 0;
-						auto lines = wrapText(it.name, 1, CARD_W - 28 - chipW, 2);
-						for (size_t k = 0; k < lines.size(); k++)
-							drawTextMid(lines[k], 1, ink, x + 14, CARD_Y + (lines.size() == 1 ? 34 : 24) + (int)k * 26, CARD_W - 28 - (k ? 0 : chipW));
-						drawGlyphMid(*it.kind, x + 25, CARD_Y + 78, soft);
-						// a liked one: a small heart, left of the network mark
-						bool liked = plStore && plStore->isLiked(it.path);
-						drawTextMid(sub, 0, soft, x + 44, CARD_Y + 78, CARD_W - 58 - (it.net ? 30 : 0) - (liked ? 22 : 0));
-						int mx = x + CARD_W - 22;
-						if (it.net) { drawGlyphMid(G_NETWORK, mx - 3, CARD_Y + 78, soft); mx -= 30; }
-						if (liked) drawGlyphMid(G_HEART_S, mx, CARD_Y + 78, ACCENT);
-					}
+					int chipW = chip ? drawChip(x + CARD_W - 8, CARD_Y + 19, chip, true) + 8 : 0;
+					auto lines = wrapText(it.name, 1, CARD_W - 28 - chipW, 2);
+					for (size_t k = 0; k < lines.size(); k++)
+						drawTextMid(lines[k], 1, ink, x + 14, CARD_Y + (lines.size() == 1 ? 34 : 24) + (int)k * 26, CARD_W - 28 - (k ? 0 : chipW));
+					drawGlyphMid(*it.kind, x + 25, CARD_Y + 78, soft);
+					// a liked one: a small heart, left of the network mark
+					bool liked = plStore && plStore->isLiked(it.path);
+					drawTextMid(sub, 0, soft, x + 44, CARD_Y + 78, CARD_W - 58 - (it.net ? 30 : 0) - (liked ? 22 : 0));
+					int mx = x + CARD_W - 22;
+					if (it.net) { drawGlyphMid(G_NETWORK, mx - 3, CARD_Y + 78, soft); mx -= 30; }
+					if (liked) drawGlyphMid(G_HEART_S, mx, CARD_Y + 78, ACCENT);
 					// along the card's foot, in its corners: over its edge, or inside the cursor's yellow one
 					int w = (int)std::lround(CARD_W * frac);
 					Rect in = at ? Rect{x + theme::EDGE, CARD_Y + theme::EDGE, CARD_W - 2 * theme::EDGE, CARD_H - 2 * theme::EDGE} : r;
 					if (w > 0)
-						fillRoundBand(in, at ? R_TILE - theme::EDGE : R_TILE, CARD_Y + CARD_H - 4, in.y + in.h, litBar && chip != 4 ? ACCENT : DIM, x + w);
+						fillRoundBand(in, at ? R_TILE - theme::EDGE : R_TILE, CARD_Y + CARD_H - 4, in.y + in.h, lit && chip != 4 ? ACCENT : DIM, x + w);
 				}
 				else
 				{
 					// the last: the whole list
 					drawGlyphMid(G_CLOCK, x + CARD_W / 2, CARD_Y + 30, at ? ACCENT : DIM, 3);
 					drawTextMid("All recent", 1, ink, x + CARD_W / 2, CARD_Y + 66, CARD_W - 20, 2);
-					drawTextMid(std::to_string(recentPlayed()) + " played", 0, soft, x + CARD_W / 2, CARD_Y + 88, CARD_W - 20, 2);
+					drawTextMid(std::to_string(recent.size()) + " played", 0, soft, x + CARD_W / 2, CARD_Y + 88, CARD_W - 20, 2);
 				}
 			}
 			SDL_RenderSetClipRect(ren, nullptr);
@@ -534,10 +499,7 @@ namespace bp
 		bool playing = nowPlayable(p);
 		std::vector<Hint> h;
 		if (homeZone == HOME_STRIP && has && homeStrip < (int)recent.size())
-		{
-			if (recent[homeStrip].manga) h = {{"A", "Continue"}, {"X", "Options"}};
-			else h = {{"A", chipKind && recent[homeStrip].path == chipPath ? "Go to it" : "Play"}, {"Y", "Menu"}, {"X", "Options"}};
-		}
+			h = {{"A", chipKind && recent[homeStrip].path == chipPath ? "Go to it" : "Play"}, {"Y", "Menu"}, {"X", "Options"}};
 		else if (homeZone == HOME_STRIP && has) h = {{"A", "Open"}, {"X", "Options"}};
 		else h = {{"D-PAD", "Move"}, {"A", "Open"}, {"X", "Options"}};
 		if (!playing) h.push_back({"B", "Quit"});

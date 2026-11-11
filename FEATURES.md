@@ -38,11 +38,9 @@ Open Banana Player and the bottom screen shows **Home**:
 - **Recent**, along the top: a card for each of the last 30 things you played, newest first, with how far you got
   (`0:27 / 0:52`, or `Played · 3:12`), a bar, and a network mark for a file on a server. **A** plays it (from where you
   left off), **Y** opens its menu: **Resume from…** (or **Play**), **Play from the start**, **Show in folder** (opens
-  Files or Network on that file), **Add to playlist…**, **Remove from Recent**. With the manga reader on and **In
-  Recent on Home**, its last chapter joins the strip by when it was read (cover, series, `Ch. 12 · p. 14/38`, a bar);
-  **A** opens it where you left it. The last card, **All recent**, opens the whole list of files. On the touch screen tap
-  a card to play it, swipe the strip, or hold a card for its menu. With nothing played yet the strip is a single line
-  and the tiles grow.
+  Files or Network on that file), **Add to playlist…**, **Remove from Recent**. The last card, **All recent**, opens
+  the whole list. On the touch screen tap a card to play it, swipe the strip, or hold a card for its menu. With nothing
+  played yet the strip is a single line and the tiles grow.
 - Four tiles, two by two: **Files** (your cards: **Videos**, the `videos` folder in `roms`, then **This card** and
   **Second card**), **Playlists**, **Network** and **Extensions** (**None on**, or **1 on · Manga reader**). Each says
   what's in it.
@@ -894,14 +892,12 @@ read. **B** goes back where you came from.
 | **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |
 | **Adult sources** | Hidden / Shown | Hidden | Sources a repository marks as adult. |
 | **Reading history** | On / Off | On | Off clears it. |
-| **In Recent on Home** | On / Off | On | |
 | Repositories | | | Repositories are added by you. Banana Player doesn't provide or check their content. |
 
 The reader itself is turned on and off in **Manage extensions** (or on the web dashboard): **A** on its row.
 
-The page cache holds the pages of chapters read from a source (**Clear cache** says how much it holds), **Adult
-sources** hides what a repository marks adult until you show it, and **In Recent on Home** places the reader's last
-chapter in Home's Recent strip.
+The page cache holds the pages of chapters read from a source (**Clear cache** says how much it holds), and **Adult
+sources** hides what a repository marks adult until you show it.
 
 **Coming next:** network folders as sources (Browse lists them as coming next), pinch zoom (the screen reads one
 finger), and reading a manga in the browser.

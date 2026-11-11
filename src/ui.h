@@ -454,16 +454,9 @@ namespace bp
 			const Glyph* kind;
 			double frac;	// the bar: how far into it (played through: 1)
 			bool net;
-			// Home's manga card: the chapter last read, from the reader's store (listRecent adds it when both its
-			// switches are on). path is a marker of its own, so the focus stays on it as on a file's card
-			bool manga = false;
-			std::string seriesId, chapterId;
-			int page = 0, pages = 0;
-			int64_t used = 0;	// when it was last used (manga: its progress): Home's strip is ordered by it
 		};
 		std::vector<RecentItem> recent;	// as listed with Home (or All recent)
-		void listRecent(Player& p, bool withManga);
-		int recentPlayed() const { int n = 0; for (auto& r : recent) if (!r.manga) n++; return n; }
+		void listRecent(Player& p);
 		// the history changed from elsewhere (the web): Home or All recent listed again, the focus kept
 		void recentEdited(Player& p);
 		enum HomeZone { HOME_STRIP, HOME_GRID };
@@ -1338,9 +1331,6 @@ namespace bp
 		std::string mangaTitle(const std::string& id) const;
 		int mangaReadChapterIndex() const;
 		void mangaChoose(int tab, int i, Player& p);	// A on what a tab's cursor is on
-		bool mangaRecentCard(Player& p, RecentItem& out);	// Home's card: the chapter last read
-		void mangaContinue(const ChapterProgress& cp, Player& p);	// that chapter at the page it was left
-		void mangaOpenRecent(const RecentItem& it, Player& p);	// A on Home's manga card
 		void mangaSeriesChoose(int i, Player& p);		// A on a chapter
 		void mangaSeriesResume(Player& p);				// A on Resume
 		bool mangaKey(Button b, Player& p);
