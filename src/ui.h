@@ -1204,8 +1204,8 @@ namespace bp
 		int mangaMenuCursor = 0;
 		// the zoom the keys last asked for: key repeats polled in one pass must walk the ladder, not resend a step
 		int mangaZoomAsked = 100;
-		static constexpr int MGM_ROWS = 8, MGM_ROW_H = 34, MGM_TOP = 198;
-		Rect mangaMenuRect() const { return {0, 166, W, H - 166}; }
+		static constexpr int MGM_ROWS = 8, MGM_ROW_H = 34, MGM_TOP = 164;	// 8 rows end above the help line (452)
+		Rect mangaMenuRect() const { return {0, 132, W, H - 132}; }
 		Rect mangaMenuRowRect(int i) const { return {16, MGM_TOP + i * MGM_ROW_H, 608, MGM_ROW_H - 4}; }
 		void mangaOpenReadingMenu();
 		bool mangaMenuKey(Button b, Player& p);

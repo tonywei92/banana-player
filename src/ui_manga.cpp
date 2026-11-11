@@ -1463,8 +1463,8 @@ namespace bp
 		// a compact sheet over the page: its title and how to leave it, then a row per thing read with
 		Rect sheet = mangaMenuRect();
 		fillRound(sheet, SURFACE, R_DIALOG, ROUND_TL | ROUND_TR);
-		drawTextMid("Reading", 1, TEXT, 24, 184, 300);
-		drawTextMid("START \xC2\xB7 B Close", 0, DIM, W - 24, 184, 300, 1);
+		drawTextMid("Reading", 1, TEXT, 24, 150, 300);
+		drawTextMid("START \xC2\xB7 B Close", 0, DIM, W - 24, 150, 300, 1);
 		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
 		static const char* FITS[MANGA_FITS] = {"Page", "Width", "Fill"};
 		int mode = readerStatus.mode >= 0 && readerStatus.mode < MANGA_MODES ? readerStatus.mode : 0;
@@ -1836,7 +1836,7 @@ namespace bp
 			if (it != mpTex.end() && it->second.tex)
 			{
 				// the thumbnail drawn inside the box, aspect kept (centred)
-				int bw = r.w - 4, bh = r.h - 16;	// 16: room for the page number below
+				int bw = r.w - 4, bh = r.h - 24;	// 24: room for the page number below
 				int sw = it->second.w, sh = it->second.h;
 				int dw = bw, dh = bh;
 				if (sw > 0 && sh > 0)
@@ -1854,10 +1854,11 @@ namespace bp
 			{
 				// not decoded yet: a numbered placeholder
 				std::string num = std::to_string(i + 1);
-				drawTextMid(num, 0, DIM, r.x + r.w / 2, r.y + r.h / 2 - 6, 0, 2);
+				drawTextMid(num, 0, at ? ACCENT : DIM, r.x + r.w / 2, r.y + r.h / 2, 0, 2);
+				continue;	// the number is the placeholder: none again underneath
 			}
-			// the page number under the thumbnail (always shown, focused or not)
-			drawTextMid(std::to_string(i + 1), 0, at ? ACCENT : DIM, r.x + r.w / 2, r.y + r.h - 4, 0, 2);
+			// the page number under the thumbnail, inside the box's bottom strip (the 24 kept for it above)
+			drawTextMid(std::to_string(i + 1), 0, at ? ACCENT : DIM, r.x + r.w / 2, r.y + r.h - 11, 0, 2);
 		}
 		SDL_RenderSetClipRect(ren, nullptr);
 		// the scrollbar
