@@ -177,6 +177,8 @@ namespace bp
 	bool Ui::webKey(Button b, Player& p)
 	{
 		int v = webView(p);
+		// the mini bar's right end says SELECT: back to what plays (the page has no SELECT of its own)
+		if (b == Button::Select && nowPlayable(barPlayer(p))) { goNowPlaying(p); return false; }
 		if (b == Button::B)
 		{
 			closeWeb();
@@ -321,10 +323,11 @@ namespace bp
 		if (n) drawTextMid(std::to_string(n) + (n == 1 ? " browser connected" : " browsers connected"), 1, TEXT, 324, 292, 300);
 		else drawTextMid("No browser connected yet", 0, DIM, 324, 292, 300);
 
-		// New PIN pressed once: what the second press does, where the note is
+		// New PIN pressed once: what the second press does, where the note is (up a line while the mini bar is there)
 		auto note = wrapText(pinArmed ? "A new PIN signs out every browser" : "Your phone needs the same Wi-Fi", 0, 248, 2);
+		int noteY = miniUp && note.size() > 1 ? 390 : 410;
 		for (size_t i = 0; i < note.size(); i++)
-			drawTextMid(note[i], 0, pinArmed ? ACCENT : DIM, 148, 410 - (int)(note.size() - 1) * 11 + (int)i * 22, 248, 2);
+			drawTextMid(note[i], 0, pinArmed ? ACCENT : DIM, 148, noteY - (int)(note.size() - 1) * 11 + (int)i * 22, 248, 2);
 		Rect np = buttonRect(WEB_NEWPIN), off = buttonRect(WEB_OFF);
 		bool npDown = pressedBtn == WEB_NEWPIN;
 		drawBox(np, npDown ? PRESSED : pinArmed ? DANGER : BUTTON, R_BUTTON);

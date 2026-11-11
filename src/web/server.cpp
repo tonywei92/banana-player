@@ -829,6 +829,7 @@ namespace bp
 		registerFileRoutes(*this);
 		registerPlayerRoutes(*this);
 		registerPlaylistRoutes(*this);
+		registerMangaRoutes(*this);
 		s.set_error_handler([](const httplib::Request&, httplib::Response& res) {
 			// a status without a body (a route's own 404, a 405): JSON like every other answer
 			if (res.body.empty() && res.status >= 400) fail(res, res.status, httplib::status_message(res.status));

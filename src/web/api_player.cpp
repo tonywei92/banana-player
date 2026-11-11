@@ -232,6 +232,7 @@ namespace bp
 			s.clients = ws.clients();
 			s.playlistSerial = u.playlistSerial();
 			s.showHiddenFolders = p.settings.showHiddenFolders;
+			s.mangaOn = p.settings.mangaOn;
 			return s;
 		}
 
@@ -630,7 +631,8 @@ namespace bp
 			answer(res, body, status);
 		});
 
-		// key=showHiddenFolders value=0|1: the handheld's Settings toggle (saved to settings.conf)
+		// key=showHiddenFolders value=0|1: the handheld's Settings toggle (saved to settings.conf). Extensions aren't
+		// switched from here: Manage extensions is the handheld's alone
 		s.Post("/api/setting", [w](const httplib::Request& req, httplib::Response& res) {
 			std::string key = value(req, "key"), v = value(req, "value");
 			if (key != "showHiddenFolders")

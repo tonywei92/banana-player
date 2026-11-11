@@ -14,7 +14,8 @@
 # dist/BananaPlayer-<version>-aarch64.zip with both; dist/symbols/banana-player-<version>, the player unstripped (for crash.log).
 #
 # Bundled, built from source with only what playing needs: FFmpeg (decoders and demuxers), libplacebo, libass and
-# libmpv, and the few libraries they pull in; libsmb2 (network folders over SMB). Taken from BananaOS instead (not
+# libmpv, and the few libraries they pull in; libsmb2 (network folders over SMB); Debian's libjpeg-turbo (libjpeg.so.62:
+# the manga reader's long pages, decoded a band at a time). Taken from BananaOS instead (not
 # bundled): glibc, libstdc++, SDL2, SDL2_ttf, Mesa (EGL/GLES), libdrm, ALSA, FreeType, zlib, libpng, OpenSSL's
 # libcrypto (saved passwords) and libcurl (FTP): its SDL carries BananaOS's own patches (SDL_KMSDRM_FIRST picks the
 # top panel), its Mesa drives the Mali GPU, and its libcurl and OpenSSL get its security updates.
@@ -38,7 +39,8 @@ RUN apt-get update -qq && apt-get install -y -qq --no-install-recommends \
 	build-essential pkg-config cmake meson ninja-build nasm git ca-certificates curl xz-utils zip patchelf file \
 	python3 python3-jinja2 python3-pip \
 	libdav1d-dev libfreetype-dev libfribidi-dev libharfbuzz-dev libfontconfig-dev zlib1g-dev libasound2-dev \
-	libsdl2-dev libsdl2-ttf-dev libegl-dev libgles-dev libdrm-dev libssl-dev libcurl4-openssl-dev >/dev/null \
+	libsdl2-dev libsdl2-ttf-dev libegl-dev libgles-dev libdrm-dev libssl-dev libcurl4-openssl-dev \
+	libjpeg62-turbo-dev libpng-dev >/dev/null \
 	&& rm -rf /var/lib/apt/lists/*
 # mpv wants Meson 1.3 or newer; Debian 12 has 1.0
 RUN pip3 install -q --break-system-packages 'meson>=1.3' 2>&1 | grep -v "^WARNING" || true
@@ -162,6 +164,7 @@ B="$OUT/BananaPlayer"
 rm -rf "$OUT" && mkdir -p "$B/bin" "$B/lib" "$B/share/banana-player"
 cp $BPB/banana-player "$B/bin/"
 cp -r /src/assets/fonts "$B/share/banana-player/"
+cp -r /src/assets/icons "$B/share/banana-player/"	# (the player's own pictures: the app's on the top screen, the manga reader's)
 # fontconfig's view of the fonts: the player's folder only (the launcher sets FONTCONFIG_FILE), its cache in
 # $XDG_CACHE_HOME (run-port: /data/home/.cache)
 cat > "$B/share/banana-player/fonts.conf" <<'CONF'
@@ -186,11 +189,21 @@ cp /src/web/vendor/jassub/LICENSE.txt "$L/jassub-LICENSE.txt"
 cp /src/web/vendor/jassub/COPYRIGHT.txt "$L/jassub-COPYRIGHT.txt"
 cp /src/assets/fonts/licenses/PixelifySans-OFL.txt "$L/Pixelify-Sans-OFL.txt"
 cp /src/assets/fonts/licenses/Inter-LICENSE.txt "$L/Inter-LICENSE.txt"
+# the manga reader's: Lua and lexbor (compiled in), libjpeg-turbo (bundled, Debian's: its copyright file holds the
+# IJG and BSD licences)
+cp /src/third_party/lua/LICENSE "$L/Lua-LICENSE.txt"
+cp /src/third_party/lexbor/LICENSE "$L/lexbor-LICENSE.txt"
+cp /usr/share/doc/libjpeg62-turbo/copyright "$L/libjpeg-turbo-COPYRIGHT.txt"
 # the launcher (the Store's menu.launch, and what the Ports shelf's script runs), the version the Store reads
 # (package.version_file) and the tile's picture (menu.media.image)
 cp /src/packaging/launch.sh "$B/launch.sh"
+# Secure DNS for the Java extensions (java/bp-dns, built from source by its build.sh, small): the add-on loads it
+mkdir -p "$B/java" && cp /src/packaging/java/bp-dns.jar "$B/java/"
 echo "$VERSION" > "$B/VERSION"
-python3 /src/packaging/icon/make-icon.py "$B/share/banana-player/icon.png" 16
+# the tile's picture: an experiment's PNG when there is one (packaging/icon/app-icon-experiment.png: delete it to go
+# back), else the generated pixel art
+if [ -f /src/packaging/icon/app-icon-experiment.png ]; then cp /src/packaging/icon/app-icon-experiment.png "$B/share/banana-player/icon.png"
+else python3 /src/packaging/icon/make-icon.py "$B/share/banana-player/icon.png" 16; fi
 
 # what the player loads that BananaOS doesn't have: libmpv and everything it needs, minus the system's own
 SYSTEM='^(linux-vdso|ld-linux|libc\.|libm\.|libdl\.|libpthread\.|librt\.|libresolv\.|libstdc\+\+|libgcc_s|libSDL2|libasound|libfreetype|libz\.|libpng|libdrm|libEGL|libGLES|libGL\.|libgbm|libGLdispatch|libGLX|libX|libxcb|libwayland|libbz2|libbrotli|libcrypto|libssl|libcurl)'
@@ -224,7 +237,8 @@ chmod +x "$OUT/Banana Player.sh" "$B/launch.sh" "$B/bin/banana-player"
 if [ "$QUICK" = 1 ]; then du -sh "$B"; echo "done (quick): dist/ports/BananaPlayer"; exit 0; fi
 # the shelf's picture: BananaOS looks for media/box/<entry's name>.png beside the entries
 mkdir -p "$OUT/media/box"
-python3 /src/packaging/icon/make-icon.py "$OUT/media/box/Banana Player.png" 16
+if [ -f /src/packaging/icon/app-icon-experiment.png ]; then cp /src/packaging/icon/app-icon-experiment.png "$OUT/media/box/Banana Player.png"
+else python3 /src/packaging/icon/make-icon.py "$OUT/media/box/Banana Player.png" 16; fi
 
 echo "bundled libraries:"; ls "$B/lib" | sed 's/^/  /'
 du -sh "$B"

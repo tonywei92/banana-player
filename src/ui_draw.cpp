@@ -85,6 +85,9 @@ namespace bp
 
 	int Ui::textWidth(const std::string& s, int size) const
 	{
+		std::string k = std::to_string(size) + "|" + s;
+		auto it = widthCache.find(k);
+		if (it != widthCache.end()) return it->second;
 		int total = 0;
 		for (auto& r : runs(s, size))
 		{
@@ -92,6 +95,8 @@ namespace bp
 			TTF_SizeUTF8(r.first, r.second.c_str(), &w, nullptr);
 			total += w;
 		}
+		if (widthCache.size() > 4096) widthCache.clear();
+		widthCache.emplace(std::move(k), total);
 		return total;
 	}
 
@@ -160,17 +165,32 @@ namespace bp
 		std::string str = s;
 		if (maxW > 0)
 		{
-			int w = 0, limit = (int)(maxW * sx);
-			w = textWidth(str, size);
-			bool cut = false;
-			while (w > limit && !str.empty())
+			int limit = (int)(maxW * sx);
+			std::string k = std::to_string(size) + " " + std::to_string(limit) + "|" + s;
+			auto hit = elideCache.find(k);
+			if (hit != elideCache.end()) str = hit->second;
+			else
 			{
-				// drop one UTF-8 character
-				do str.pop_back(); while (!str.empty() && ((unsigned char)str.back() & 0xC0) == 0x80);
-				cut = true;
-				w = textWidth(str + "...", size);
+				if (textWidth(str, size) > limit)
+				{
+					// the longest UTF-8 prefix whose "..." fits: a binary search over character starts (a long
+					// line measured ~10 times, not once per character dropped)
+					std::vector<size_t> starts;
+					for (size_t i = 0; i < s.size(); i++)
+						if (((unsigned char)s[i] & 0xC0) != 0x80) starts.push_back(i);
+					size_t lo = 0, hi = starts.size();	// prefixes of starts[0..n) chars: lo fits, hi doesn't
+					while (hi - lo > 1)
+					{
+						size_t mid = (lo + hi) / 2;
+						if (textWidth(s.substr(0, starts[mid]) + "...", size) <= limit) lo = mid;
+						else hi = mid;
+					}
+					str = s.substr(0, lo < starts.size() ? starts[lo] : s.size()) + "...";
+					if (lo == 0) str = "...";
+				}
+				if (elideCache.size() > 2048) elideCache.clear();
+				elideCache.emplace(std::move(k), str);
 			}
-			if (cut) str += "...";
 		}
 		SDL_Texture* t = text(str, size, c);
 		if (!t) return;
@@ -329,9 +349,12 @@ namespace bp
 	void Ui::draw(const Player& p, bool force)
 	{
 		sameBrightness = p.settings.sameBrightness;
-		if (quitArmed && SDL_GetTicks() - quitArmed >= QUIT_WINDOW_MS) quitArmed = 0;
+		mangaOn = p.settings.mangaOn;
+		mangaHistOn = p.settings.mangaHistory;
 		// before the signature: "Again to clear" goes back to how it was when the second tap would no longer clear
 		if (clearArmed && SDL_GetTicks() - clearArmed >= QUIT_WINDOW_MS) clearArmed = 0;
+		if (mangaCacheAt && SDL_GetTicks() - mangaCacheAt >= QUIT_WINDOW_MS) mangaCacheAt = 0;
+		if (mangaJavaAt && SDL_GetTicks() - mangaJavaAt >= QUIT_WINDOW_MS) mangaJavaAt = 0;
 		if (!batteryAt || SDL_GetTicks() - batteryAt >= 10000) readPower();
 		// the lock held long enough: released (the finger still down presses nothing)
 		if (touchLocked && lockHoldAt && SDL_GetTicks() - lockHoldAt >= UNLOCK_HOLD_MS)
@@ -425,6 +448,7 @@ namespace bp
 		miniUp = miniBarShown(p);
 		setChip(p);
 		markAnim = false;
+		loaderShown = false;
 		if (page == Page::Info || page == Page::About) drawInfo(p);
 		else if (page == Page::Web) drawWeb(p);
 		else if (page == Page::Exit) drawExit(p);
@@ -433,18 +457,41 @@ namespace bp
 		else if (page == Page::Sound) drawSound(p);
 		else if (page == Page::Playing) drawPlaying(p);
 		else if (page == Page::UpNext) drawUpNext(p);
+		else if (page == Page::Extensions) drawExtensions(p);
+		else if (page == Page::Manga) drawManga(p);
+		else if (page == Page::MangaSeries) drawMangaSeries(p);
+		else if (page == Page::MangaRead) drawMangaRead(p);
+		else if (page == Page::MangaSettings) drawMangaSettings(p);
+		else if (page == Page::MangaSources) drawMangaSourcesPage(p);
 		else if (page != Page::Main) drawTracks(p);
 		else drawMain(p);
 		if (miniUp) drawMiniBar(p);
 		if (displayShown(p)) drawDisplay(p);
 		if (inMenu) drawTabs(p);
-		if (ctxOpen && page == Page::Browse) drawBrowseMenu(p);
+		if (ctxOpen) drawBrowseMenu(p);	// (the mini bar's hold menu opens on pages of its own too)
 		if (pickerOpen) drawPicker();
 		if (playOnOpen && inMenu && page == Page::Playing) drawPlayOn(p);
 		if (addPending.serial && page == Page::Browse) drawBusy();
 		if (popupShown(p)) drawUpdatePopup();
+		drawExtNotice();
+		if (mangaErrOpen) drawMangaErr();
 		if (quickOpen) drawQuick(p);
 		if (kbOpen) drawKeyboard();
+	}
+
+	void Ui::drawLoader(int cx, int cy, const std::string& text)
+	{
+		loaderShown = true;
+		int step = (int)(SDL_GetTicks() / 110 % 8);
+		for (int k = 0; k < 8; k++)
+		{
+			int age = ((step - k) % 8 + 8) % 8;	// 0: the head
+			double a = k * 3.14159265 / 4;
+			int dx = cx + (int)std::lround(16 * std::sin(a)), dy = cy - 14 + (int)std::lround(-16 * std::cos(a));
+			SDL_Color c = age == 0 ? ACCENT : age < 3 ? TEXT : DIM;
+			fillRound({dx - 3, dy - 3, 6, 6}, c, 3);
+		}
+		if (!text.empty()) drawTextMid(text, 0, DIM, cx, cy + 22, 560, 2);
 	}
 
 	void Ui::readPower()
@@ -594,13 +641,11 @@ namespace bp
 	void Ui::drawBackIcon()
 	{
 		Rect b = buttonRect(BACK_ICON);
-		// armed (the browser's first page: once more quits) in yellow
-		bool armed = quitArmed && page == Page::Browse && !inMenu;
-		drawBox(b, pressedBtn == BACK_ICON ? PRESSED : armed ? ACCENT : BUTTON, R_BUTTON);
+		drawBox(b, pressedBtn == BACK_ICON ? PRESSED : BUTTON, R_BUTTON);
 		// adding files to a playlist: a ✕, it cancels (B goes up a folder there)
 		bool cancel = page == Page::Browse && !inMenu && (selMode == SEL_ADD || selMode == SEL_PICK);
 		if (cancel) drawGlyphMid(G_CROSS, b.x + b.w / 2, b.y + b.h / 2, TEXT, 2);
-		else drawGlyphMid(G_BACK, b.x + b.w / 2 - 1, b.y + b.h / 2, armed ? ON_ACCENT : TEXT, 3);
+		else drawGlyphMid(G_BACK, b.x + b.w / 2 - 1, b.y + b.h / 2, TEXT, 3);
 	}
 
 	void Ui::drawHeader(const std::string& title, const Player& p, int titleRight)
@@ -620,7 +665,7 @@ namespace bp
 	void Ui::drawTab(Rect r, const char* name, bool active, int size)
 	{
 		drawBox(r, active ? ACCENT : BUTTON, R_BUTTON);
-		drawTextMid(name, size, active ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 8, 2);
+		drawTextMid(name, size, active ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
 	}
 
 	void Ui::drawHints(const std::vector<Hint>& hints)
@@ -805,15 +850,27 @@ namespace bp
 		int limit = (int)(maxW * sx);
 		while (!rest.empty() && (int)lines.size() < maxLines)
 		{
-			if (textWidth(rest, size) <= limit || (int)lines.size() == maxLines - 1) { lines.push_back(rest); break; }
-			size_t fit = 0;
-			for (size_t i = 1; i <= rest.size(); i++)
+			// the last line: what fits of it is all that's drawn ("..." after), so a long rest is cut first
+			if ((int)lines.size() == maxLines - 1)
 			{
-				if (i < rest.size() && ((unsigned char)rest[i] & 0xC0) == 0x80) continue;
-				if (textWidth(rest.substr(0, i), size) > limit) break;
-				fit = i;
+				lines.push_back(rest.size() > 400 ? rest.substr(0, 400) : rest);
+				break;
 			}
-			if (fit == 0) fit = 1;
+			if (textWidth(rest, size) <= limit) { lines.push_back(rest); break; }
+			// the longest prefix that fits, by a binary search over character starts (measuring every prefix of a
+			// long description, on every redraw, took a quarter of a second on the handheld)
+			std::vector<size_t> ends;	// byte length of each prefix of 1, 2, ... characters
+			for (size_t i = 1; i <= rest.size(); i++)
+				if (i == rest.size() || ((unsigned char)rest[i] & 0xC0) != 0x80) ends.push_back(i);
+			size_t lo = 0, hi = ends.size();	// prefixes of lo characters fit (0 trivially), of hi don't
+			while (hi - lo > 1)
+			{
+				size_t mid = (lo + hi) / 2;
+				if (textWidth(rest.substr(0, ends[mid - 1]), size) <= limit) lo = mid;
+				else hi = mid;
+			}
+			size_t fit = lo ? ends[lo - 1] : 0;
+			if (fit == 0) fit = ends.empty() ? rest.size() : ends[0];
 			size_t brk = rest.find_last_of(' ', fit);
 			if (brk != std::string::npos && brk > fit / 2) fit = brk + 1;
 			std::string line = rest.substr(0, fit);

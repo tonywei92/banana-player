@@ -238,6 +238,7 @@ namespace bp
 			menuReturnDir = browseDir;
 			menuReturnCursor = cursor;
 			menuReturnScroll = scroll;
+			menuReturnPage = page == Page::Extensions ? page : Page::Browse;
 		}
 		inMenu = true;
 		showTab(tab, p);
@@ -263,6 +264,15 @@ namespace bp
 		playOnOpen = false;
 		// (over what plays behind the browser: back to the browser)
 		if (playerShown(p)) { page = Page::Main; return; }
+		// Manage extensions, as it was
+		if (menuReturnPage != Page::Browse)
+		{
+			page = menuReturnPage;
+			menuReturnPage = Page::Browse;
+			cursor = menuReturnCursor;
+			scroll = menuReturnScroll;
+			return;
+		}
 		// the browser, back in its folder (and on its row), listed again (a setting can change what it lists)
 		page = Page::Browse;
 		cursor = menuReturnCursor;
@@ -672,13 +682,14 @@ namespace bp
 				: it == CTX_PL_RENAME ? &G_PENCIL : it == CTX_PL_DEDUP || it == CTX_PL_REMOVE ? &G_MINUS : it == CTX_PL_SHOW ? &G_FOLDER
 				: it == CTX_PL_ADD_FILES ? &G_PLUS : it == CTX_PL_ADD_FOLDER ? &G_FOLDER : it == CTX_PL_SELECT || it == CTX_SELECT_FILES ? &G_BOX_ON
 				: it == CTX_PL_MOVE ? &G_MOVE : it == CTX_ADD_TO ? &G_PLAYLIST : it == CTX_WEB ? &G_WEB : &G_CROSS;
-			// the mini bar's: what plays (or was stopped for a photo)
+			// the mini bar's: what plays (or was stopped for a photo); main's player, also over a photo
 			if (it >= CTX_NP_NOW)
 			{
-				bool live = p.playing() && !p.playingPhoto();
-				bool on = live && (pageDrives(p) ? pagePlaying() : !p.paused);
-				bool liked = live && likedNow(p);
-				std::string where = p.currentPath();
+				const Player& np = barPlayer(p);
+				bool live = np.playing() && !np.playingPhoto();
+				bool on = live && (pageDrives(np) ? pagePlaying() : !np.paused);
+				bool liked = live && likedNow(np);
+				std::string where = np.currentPath();
 				where = isNetPath(where) ? netBaseName(netParent(where)) : baseName(parentFolder(where));
 				std::string npLabel = it == CTX_NP_NOW ? "Now playing" : it == CTX_NP_PLAY ? (on ? "Pause" : "Play")
 					: it == CTX_NP_LIKE ? (liked ? "Unlike" : "Like") : it == CTX_NP_ADD ? "Add to playlist\xE2\x80\xA6"
@@ -686,7 +697,7 @@ namespace bp
 				const Glyph* ng = it == CTX_NP_NOW ? &G_RIGHT : it == CTX_NP_PLAY ? (on ? &G_PAUSE : &G_PLAY)
 					: it == CTX_NP_LIKE ? (liked ? &G_HEART_O : &G_HEART) : it == CTX_NP_ADD ? &G_PL_ADD
 					: it == CTX_NP_SHOW ? &G_FOLDER : &G_STOP;
-				std::string npNote = it == CTX_NP_SHOW ? where : it == CTX_NP_NOW && p.settings.buttonHotkeys ? "SELECT" : "";
+				std::string npNote = it == CTX_NP_SHOW ? where : it == CTX_NP_NOW && np.settings.buttonHotkeys ? "SELECT" : "";
 				drawDialogRow(ctxRow(i), ng, npLabel, i == ctxCursor, pressedBtn == 100 + i,
 					it == CTX_NP_STOP ? DANGER : it == CTX_NP_NOW ? ACCENT : TEXT, npNote, noteInk);
 				continue;

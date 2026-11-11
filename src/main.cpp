@@ -3,6 +3,7 @@
 //   banana-player [--press A,X,Down,...] [--windowed] [--aspect fit|fill|stretch] [--lang eng,en] [--state-dir DIR] [--font TTF] [-v] FILE
 
 #include "crashlog.h"
+#include <csignal>
 #include "format.h"
 #include "input.h"
 #include "player.h"
@@ -11,6 +12,10 @@
 #include "sleepwatch.h"
 #include "levelwatch.h"
 #include "touch.h"
+#include "reader_proto.h"
+#include "reader.h"
+#include "readerfetch.h"
+#include "manganet.h"
 #include "ui.h"
 #include "ui_glyphs.h"
 #include "session_host.h"
@@ -18,6 +23,7 @@
 #include "netstore.h"
 #include "networker.h"
 #include "durworker.h"
+#include "coverworker.h"
 #include "netstream.h"
 #include "netpath.h"
 #ifdef BP_WEB
@@ -51,7 +57,7 @@ namespace bp
 }
 #endif
 
-static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur;
+static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur, evCover;
 #ifdef BP_WEB
 // the dashboard's server for the sleep watch's thread (made on the main thread, never destroyed)
 static std::atomic<bp::WebServer*> webForWatch{nullptr};
@@ -120,6 +126,7 @@ static void usage()
 		"  --aspect MODE         fit (default), fill or stretch\n"
 		"  --lang LIST           preferred audio and subtitle languages (default: eng,en)\n"
 		"  --state-dir DIR       where the settings and resume positions are kept\n"
+		"  --manga FOLDER        test: the manga reader's strip prototype on a folder of pages (B quits)\n"
 		"  --font TTF            the bottom panel's font\n"
 		"  -v                    mpv's verbose log\n"
 		"  --press LIST          test run: once the file is open, do these 0.8 s apart and print the state after\n"
@@ -143,6 +150,7 @@ int main(int argc, char** argv)
 	bool scripted = false;
 	AspectMode aspect = AspectMode::Fit;
 	int windowed = -1;	// -1: decide by the video driver
+	std::string mangaDir;	// --manga: the strip prototype instead of the player
 	for (int i = 1; i < argc; i++)
 	{
 		std::string a = argv[i];
@@ -155,6 +163,7 @@ int main(int argc, char** argv)
 		else if (a == "--aspect") { if (!parseAspect(value(), aspect)) { usage(); return 2; } }
 		else if (a == "--lang") opts.lang = value();
 		else if (a == "--state-dir") opts.stateDir = value();
+		else if (a == "--manga") mangaDir = value();
 		else if (a == "--font") font = value();
 		else if (a == "-v") opts.verbose = true;
 		else if (a == "--press")
@@ -187,6 +196,10 @@ int main(int argc, char** argv)
 	}
 	// a crash's record in <state>/crash.log, kept across runs (log.txt keeps two)
 	bp::crashlog::install(opts.stateDir, BP_VERSION, BP_COMMIT);
+	// a socket the other end closed: its write fails (EPIPE) instead of the signal ending the player silently.
+	// libsmb2 writes with write(), not send(MSG_NOSIGNAL), so a server dropping a manga folder listing's
+	// connection killed the process with no crash.log line (SIGPIPE isn't a crash signal)
+	signal(SIGPIPE, SIG_IGN);
 	// no file, or a folder: the browser picks them (in that folder)
 	std::string startFolder;
 	{
@@ -197,6 +210,16 @@ int main(int argc, char** argv)
 	// a file named "verbose" in the state folder (home/.config/banana-player on the card): mpv's verbose log, for a
 	// problem seen only on the handheld (it can't be given -v from the Ports shelf)
 	if (!opts.stateDir.empty() && exists(opts.stateDir + "/verbose")) opts.verbose = true;
+	// the strip prototype from the Ports shelf (which passes no options): a manga-proto file in the state folder
+	// names the folder or CBZ to open (the test only; removed after it)
+	if (mangaDir.empty() && !opts.stateDir.empty())
+		if (FILE* f = fopen((opts.stateDir + "/manga-proto").c_str(), "r"))
+		{
+			char line[1024] = {0};
+			if (fgets(line, sizeof line, f)) mangaDir = line;
+			fclose(f);
+			while (!mangaDir.empty() && (mangaDir.back() == '\n' || mangaDir.back() == '\r' || mangaDir.back() == ' ')) mangaDir.pop_back();
+		}
 	if (font.empty()) font = findFont();
 	// the subtitle fonts are the bottom panel's font's neighbours
 	if (!font.empty() && font.rfind('/') != std::string::npos) opts.fontsDir = font.substr(0, font.rfind('/'));
@@ -207,7 +230,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "SDL: %s\n", SDL_GetError());
 		return 1;
 	}
-	evMpv = SDL_RegisterEvents(8);
+	evMpv = SDL_RegisterEvents(9);
 	evRender = evMpv + 1;
 	evTouch = evMpv + 2;
 	evLevel = evMpv + 3;
@@ -215,6 +238,7 @@ int main(int argc, char** argv)
 	evFound = evMpv + 5;
 	evWeb = evMpv + 6;	// the web dashboard's calls and news (WebCall)
 	evDur = evMpv + 7;	// the file rows' durations: some are ready (DurationWorker::take)
+	evCover = evMpv + 8;	// the manga library's covers: some are decoded (CoverWorker::take)
 
 	// On the handheld (SDL's KMSDRM) each panel is a display and each window fills one; elsewhere, two windows
 	if (windowed < 0) windowed = strcmp(SDL_GetCurrentVideoDriver(), "KMSDRM") != 0;
@@ -285,6 +309,29 @@ int main(int argc, char** argv)
 		return 1;
 	}
 	SDL_GL_SetSwapInterval(1);
+	// --manga: the manga reader's strip prototype, alone (no player, no bottom panel's controls): its own loop
+	if (!mangaDir.empty())
+	{
+#ifdef BP_GLES
+		const bool gles = true;
+#else
+		const bool gles = false;
+#endif
+		BottomTouch touch;
+		touch.start(getenv("BP_TOUCH") ? getenv("BP_TOUCH") : "fe5e0000.i2c", [](Pointer pt) {
+			SDL_Event ev{};
+			ev.type = evTouch;
+			ev.user.data1 = new Pointer(pt);
+			SDL_PushEvent(&ev);
+		});
+		int r = runStripProto(top, gl, gles, mangaDir, evTouch);
+		touch.stop();
+		SDL_GL_DeleteContext(gl);
+		if (bottom) SDL_DestroyWindow(bottom);
+		SDL_DestroyWindow(top);
+		SDL_Quit();
+		return r;
+	}
 
 	// the saved network connections (before the player: mpv opens their files) and mpv's way to their files, which
 	// outlives the player (mpv calls it till it's gone)
@@ -327,6 +374,9 @@ int main(int argc, char** argv)
 		auto shown = [&]() -> Player& { return photos.playing() ? photos : player; };
 
 		Ui ui;
+		// the mini bar's player: main's (songs and videos), also while a photo is shown (the photo viewer is its own
+		// Player, and a page of its own)
+		ui.mainPlayer = &player;
 		bool haveUi = bottom && ui.init(bottom, opts.fontsDir);
 		// the built-in updater: for the installed package (bin/ beside VERSION), not a build on a computer
 		// (BP_PACKAGE_DIR stands in for one in tests)
@@ -347,6 +397,18 @@ int main(int argc, char** argv)
 			updater.init(pkg, BP_VERSION);
 			ui.updater = &updater;
 		}
+		// the manga reader's network side: configured now, started the first time the reader is used with it on; never
+		// destroyed (its threads leave on stop() without waiting for servers)
+		static MangaNet* mangaNet = new MangaNet();
+		const Uint32 evMangaFetch = SDL_RegisterEvents(1), evMangaWorker = SDL_RegisterEvents(1);
+		{
+			std::vector<std::string> places;
+			for (auto& r : browseRoots()) places.push_back(r.path);
+			mangaNet->configure(evMangaFetch, evMangaWorker, opts.stateDir, places);
+		}
+		// the reader's Secure DNS setting reaches the threads as a flag, never by their reading the Ui's state
+		mangaNet->setSecureDns(player.settings.mangaSecureDns);
+		ui.mangaNet = mangaNet;
 		// the thread that lists the network folders (its answers come as evNet)
 		NetWorker netWorker([](NetListing* l) {
 			SDL_Event ev{};
@@ -363,6 +425,14 @@ int main(int argc, char** argv)
 			SDL_PushEvent(&ev);
 		});
 		ui.durWorker = durWorker;
+		// the manga library's covers (evCover when some are decoded); never destroyed, its thread may be inside
+		// libavcodec at exit
+		CoverWorker* coverWorker = new CoverWorker([] {
+			SDL_Event ev{};
+			ev.type = evCover;
+			SDL_PushEvent(&ev);
+		});
+		ui.coverWorker = coverWorker;
 		ui.setStateDir(opts.stateDir);
 		// Find on the network: the servers that answer, on the main thread as evFound
 		Discovery discovery;
@@ -468,6 +538,11 @@ int main(int argc, char** argv)
 		if (browserMode)
 		{
 			ui.startBrowser(player, startFolder);
+			{
+				int tw = 0, th = 0;
+				SDL_GL_GetDrawableSize(top, &tw, &th);
+				player.setTopSize(tw, th);	// (the idle icon in whole panel pixels)
+			}
 			player.showIdle(true);
 			player.wakeOutput();
 		}
@@ -540,7 +615,7 @@ int main(int argc, char** argv)
 		};
 		// B, "<" or Back on the player (a press() or pointer() that says leave): the screen only, what plays goes on
 		// behind the browser, back where the player was opened from (Ui::backFromPlayer). A photo (and a file that
-		// didn't open) closes instead. With nothing playing (B twice at Home), out
+		// didn't open) closes instead. With nothing playing (Quit in B's dialog at Home), out
 		auto leave = [&] {
 			if (photos.playing())
 			{
@@ -564,11 +639,19 @@ int main(int argc, char** argv)
 		// the top panel's frame: the photo while one is up, else what plays, or the icon with nothing playing
 		auto renderTop = [&](int w, int h) { return shown().render(w, h); };
 		// What plays under a photo: a song's graph makes frames still (it carries the sound), and mpv waits for each to
-		// be taken (else its picture queue stalls, 200 ms a frame). They're drawn into a tiny target of their own, never
-		// shown, so the photo isn't drawn again 30 times a second. A video's picture is off meanwhile (hideVideo)
+		// be taken (else its picture queue stalls, 200 ms a frame). They're taken by a tiny target of their own with
+		// rendering skipped (nothing drawn, no GL time), so the photo or the comic isn't drawn again 30 times a second
+		// and the bottom panel keeps the GPU. A video decodes on meanwhile (hideVideo), its frames taken the same way
 		unsigned sinkFbo = 0;
+		// the manga reader: its pages on the top panel while a chapter is open (Ui asks for it: takeMangaRead)
+		MangaReader reader;
+		ReaderFetch readerFetch;	// a URL chapter's pages, kept coming while reader is open
+		// MangaNet routes a page's answer to the reader before the Ui can take it (the Ui's own answers are untouched)
+		mangaNet->setFetchOwner([&readerFetch](MangaFetch::Result& r) { return readerFetch.own(r); });
+		bool readerReady = false;
+		const Uint32 evReader = SDL_RegisterEvents(1);	// a page decoded: the loop wakes and takes it
 		auto drainUnder = [&] {
-			if (!photos.playing() || !player.playing() || !player.frameDue()) return;
+			if ((!photos.playing() && !reader.isOpen()) || !player.playing() || !player.frameDue()) return;
 			SDL_GL_MakeCurrent(top, gl);
 			if (!sinkFbo)
 			{
@@ -593,7 +676,7 @@ int main(int argc, char** argv)
 				fbTex(0x8D40, 0x8CE0 /* GL_COLOR_ATTACHMENT0 */, 0x0DE1, tex, 0);
 				bindFb(0x8D40, 0);
 			}
-			player.render(16, 16, sinkFbo);
+			player.render(16, 16, sinkFbo, true);	// unseen: taken, not drawn (MPV_RENDER_PARAM_SKIP_RENDERING)
 			player.reportSwap();
 		};
 
@@ -605,7 +688,8 @@ int main(int argc, char** argv)
 			using ReadPixels = void (*)(int, int, int, int, unsigned, unsigned, void*);
 			auto readPixels = (ReadPixels)SDL_GL_GetProcAddress("glReadPixels");
 			if (!readPixels) return nullptr;
-			renderTop(w, h);	// a video, a photo, or the icon with nothing playing
+			if (reader.isOpen()) reader.draw(w, h);	// a manga chapter's pages
+			else renderTop(w, h);	// a video, a photo, or the icon with nothing playing
 			std::vector<unsigned char> rgba((size_t)w * h * 4);
 			readPixels(0, 0, w, h, 0x1908 /* GL_RGBA */, 0x1401 /* GL_UNSIGNED_BYTE */, rgba.data());
 			SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ABGR8888);
@@ -679,7 +763,7 @@ int main(int argc, char** argv)
 			}
 			if (crashTest && SDL_GetTicks() >= crashAt) bp::crashlog::testCrash(crashTest);
 			SDL_Event e;
-			bool got = SDL_WaitEventTimeout(&e, ui.animating() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250);
+			bool got = SDL_WaitEventTimeout(&e, reader.isOpen() && reader.busy() ? 1 : reader.isOpen() && reader.seekPending() ? 16 : reader.spinning() ? MangaReader::SPIN_MS / 2 : ui.animating() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250);
 			while (got)
 			{
 				// every button in the log (home/.config/banana-player/log.txt on the card), mapped or not: what the
@@ -771,6 +855,14 @@ int main(int argc, char** argv)
 				}
 				else if (e.type == evNet) ui.netListed((NetListing*)e.user.data1, player);
 				else if (e.type == evDur) ui.durationsReady(player);
+				else if (e.type == evMangaFetch) mangaNet->onFetchEvent();
+				else if (e.type == evMangaWorker) mangaNet->onWorkerEvent();
+				else if (e.type == evCover)
+				{
+					// a cover arrived: into a texture on this thread, and the grid redraws (its serial is in signature)
+					if (haveUi) ui.coversReady(coverWorker->take());
+					else coverWorker->take();	// (nothing draws them: dropped)
+				}
 				else if (e.type == evFound)
 				{
 					std::unique_ptr<FoundHost> h((FoundHost*)e.user.data1);
@@ -880,6 +972,15 @@ int main(int argc, char** argv)
 			// photo) stops here alone. The web's Stop of a photo, or of a file deleted under it, likewise
 			if (ui.takeStopPressed() && !shadow.stop("hh").reject.empty()) stopPlaying(StopWhy::Handheld);
 			if (ui.takeStopRequest()) stopPlaying(StopWhy::Web);
+			// the mini bar tapped over a photo: the photo closes and the player of what plays takes the screen (the top
+			// panel shows it again; the bottom panel is its player page)
+			if (ui.takePlayerOverPhoto())
+			{
+				photoOverPlayer = false;
+				closePhoto(false);
+				ui.showPlayer();
+				renderPending = true;
+			}
 			if (int ms = ui.takeLevelShown())
 			{
 				levelUntil = SDL_GetTicks() + ms;
@@ -1241,10 +1342,149 @@ int main(int argc, char** argv)
 				refreshedAt = now;
 				topDark = false;	// the black of no video drawn again too
 			}
+			// the manga reader's downloads move on (nothing while its network side hasn't started)
+			mangaNet->pump(now);
+			// Secure DNS changed (Manga settings): the next request and lookup take it
+			{
+				static bool mangaDnsOn = false;
+				if (mangaDnsOn != player.settings.mangaSecureDns) mangaNet->setSecureDns(player.settings.mangaSecureDns);
+				mangaDnsOn = player.settings.mangaSecureDns;
+			}
+			// the reader turned off (Manage extensions, or the dashboard): everything asked of its network side goes
+			{
+				static bool mangaWasOn = false;
+				if (mangaWasOn && !player.settings.mangaOn) mangaNet->off();
+				mangaWasOn = player.settings.mangaOn;
+			}
+			// the manga reader: a chapter asked for, the bottom panel's commands, what it shows told back
+			if (haveUi)
+			{
+				Ui::MangaReadRequest rq;
+				if (ui.takeMangaRead(rq))
+				{
+					readerFetch.end();
+					SDL_GL_MakeCurrent(top, gl);
+#ifdef BP_GLES
+					if (!readerReady) readerReady = reader.init(true, evReader);
+#else
+					if (!readerReady) readerReady = reader.init(false, evReader);
+#endif
+					int w, h;
+					SDL_GL_GetDrawableSize(top, &w, &h);
+					ui.readerStatus = {};
+					if (!readerReady) ui.readerStatus.error = "The reader couldn't start";
+					else if (!rq.pageUrls.empty())
+					{
+						// a source's or a server's chapter: the pages come through MangaNet into the Ui's own page
+						// cache (its Clear cache empties the same folder)
+						if (opts.stateDir.empty()) ui.readerStatus.error = "No state folder for the chapter's pages";
+						else if (!mangaNet || !player.settings.mangaOn)
+							ui.readerStatus.error = "The manga reader's network side is off";
+						else
+						{
+							mangaNet->start();
+							PageCache& cache = ui.mangaPageCacheRef();
+							uint64_t limit = mangaCacheBytes(player.settings.mangaCacheSize);
+							if (!cache.open(opts.stateDir + "/manga/cache", limit))
+								ui.readerStatus.error = "The page cache couldn't be opened";
+							else if (!reader.open(rq.pageUrls, rq.pageHeaders, cache, rq.path, rq.page, w, h, rq.mode,
+										 rq.fit))
+								ui.readerStatus.error = reader.error();
+							else
+								readerFetch.begin(mangaNet, &cache, &reader, rq.pageUrls, rq.pageHeaders, limit);
+						}
+					}
+					else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode, rq.fit))
+						ui.readerStatus.error = reader.error();
+				}
+				for (auto& c : ui.readerCmds)
+				{
+					if (c.kind == Ui::ReaderCmd::Close)
+					{
+						readerFetch.end();
+						SDL_GL_MakeCurrent(top, gl);	// (close frees the pages' textures in this context)
+						reader.close();
+					}
+					else reader.command((int)c.kind, c.v, c.ms, c.v2, c.v3);
+				}
+				ui.readerCmds.clear();
+				// a song's visualizer rests while the pages cover the top panel (nobody sees it; its frames cost CPU)
+				player.setTopCovered(reader.isOpen());
+				// a URL chapter's pages: requests reordered and the free slots filled (the answers themselves come
+				// through MangaNet's fetch owner above)
+				if (reader.isOpen()) reader.tick(now);
+				if (reader.isOpen()) readerFetch.pass();
+				if (reader.isOpen())
+				{
+					// the row set while a chapter is open reaches the reader too (the fit comes as its own command)
+					reader.setPreload(player.settings.mangaPreload);
+					ui.readerStatus.open = true;
+					ui.readerStatus.loading = reader.loading();
+					ui.readerStatus.error = reader.error();
+					ui.readerStatus.failedHere = reader.failedInView();
+					ui.readerStatus.atEnd = reader.atEnd();
+					ui.readerStatus.page = reader.page();
+					ui.readerStatus.pages = reader.pages();
+					ui.readerStatus.mode = reader.mode();
+					ui.readerStatus.zoomPct = reader.zoomPct();
+					ui.readerStatus.fullscreen = reader.fullscreen();
+					ui.readerStatus.rotation = reader.rotation();
+					// fullscreen: the bottom panel's share of the view, as fractions of the panel, and the pixels it needs
+					Ui::ReaderBottom rb;
+					rb.on = reader.fullscreen();
+					rb.gen = reader.chapterGen();
+					if (rb.on)
+					{
+						int w, h;
+						SDL_GL_GetDrawableSize(top, &w, &h);
+						for (auto& b : reader.bottomBoxes())
+						{
+							rb.boxes.push_back({b.page, b.x / w, b.y / h, b.w / w, b.h / h});
+							int pw = 0, ph = 0;
+							if (auto px = reader.pixels(b.page, pw, ph)) rb.pages.push_back({b.page, pw, ph, px});
+						}
+					}
+					ui.readerBottom = std::move(rb);
+					// the pages grid's thumbnails: every page the reader has decoded, ~96 px wide RGBA.
+					// always filled while the reader is open (the Ui only uses them when the grid shows);
+					// shared_ptr copies are cheap, and absent pages are placeholders in the grid
+					Ui::ReaderThumbs rt;
+					rt.on = true;
+					rt.gen = reader.chapterGen();
+					for (int pi = 0; pi < reader.pages(); pi++)
+					{
+						int tw = 0, th = 0;
+						if (auto tp = reader.thumbPixels(pi, tw, th))
+							rt.pages.push_back({pi, tw, th, tp});
+					}
+					ui.readerThumbs = std::move(rt);
+				}
+				else
+				{
+					readerFetch.end();
+					ui.readerStatus.open = false;
+					ui.readerBottom = {};
+					ui.readerThumbs = {};
+				}
+				if (woke) reader.redrawSoon();
+			}
 			// with nothing playing the top panel is drawn on a change only, and mpv may not have the level card yet
 			// when it's asked to show: drawn again and again while the card is up
 			drainUnder();
-			if (renderPending.exchange(false) || refresh || (!shown().playing() && (!topDark || levelUntil)))
+			if (reader.isOpen())
+			{
+				// the pages, not mpv's picture (what plays goes on under them: drainUnder)
+				renderPending = false;
+				if (reader.frame(now) || refresh)
+				{
+					SDL_GL_MakeCurrent(top, gl);
+					int w, h;
+					SDL_GL_GetDrawableSize(top, &w, &h);
+					reader.draw(w, h);
+					SDL_GL_SwapWindow(top);
+				}
+			}
+			else if (renderPending.exchange(false) || refresh || (!shown().playing() && (!topDark || levelUntil)))
 			{
 				SDL_GL_MakeCurrent(top, gl);
 				int w, h;
@@ -1298,6 +1538,10 @@ int main(int argc, char** argv)
 		ui.web = nullptr;
 #endif
 		durWorker->stop();
+		readerFetch.end();
+		mangaNet->setFetchOwner({});
+		mangaNet->stop();
+		coverWorker->stop();
 		sleepWatch.stop();
 		levelWatch.stop();
 		bottomTouch.stop();

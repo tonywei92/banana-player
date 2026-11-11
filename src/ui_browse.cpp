@@ -236,7 +236,8 @@ namespace bp
 			stripOff = stripTarget(homeStrip);
 			stripT0 = 0;
 		}
-		else if (dir == EXTDIR) add(-1, "Extensions are on the way", "", "");
+		// the drawer draws itself (ui_ext.cpp): its one row only keeps the list's counts sane
+		else if (dir == EXTDIR) add(-1, mangaOn ? "1 on" : "None on", "", "");
 		else if (dir == PLROOT)
 		{
 			// the saved playlists, by name
@@ -772,13 +773,20 @@ namespace bp
 				p.forgetPosition(path);
 				openFile(path, p);
 				break;
-			// the mini bar's
+			// the mini bar's: main's player (over a photo the photo viewer's p is not what they act on)
 			case CTX_NP_NOW: goNowPlaying(p); break;
 			case CTX_NP_PLAY: miniToggle(p); break;
-			case CTX_NP_LIKE: likeNow(p); break;
-			case CTX_NP_ADD: if (p.playing() && !p.playingPhoto()) openAddOne(p.currentPath(), p.title, p.loaded ? p.duration : -1, p); break;
-			case CTX_NP_SHOW: if (p.playing() && !p.playingPhoto()) showInFolder(p.currentPath(), p); break;
-			case CTX_NP_STOP: if (p.playing() && !p.playingPhoto()) stopPressed = true; break;
+			case CTX_NP_LIKE: likeNow(barPlayer(p)); break;
+			case CTX_NP_ADD:
+				if (Player& bp = barPlayer(p); bp.playing() && !bp.playingPhoto())
+					openAddOne(bp.currentPath(), bp.title, bp.loaded ? bp.duration : -1, p);
+				break;
+			case CTX_NP_SHOW:
+				if (Player& bp = barPlayer(p); bp.playing() && !bp.playingPhoto()) showInFolder(bp.currentPath(), p);
+				break;
+			case CTX_NP_STOP:
+				if (Player& bp = barPlayer(p); bp.playing() && !bp.playingPhoto()) stopPressed = true;
+				break;
 			case CTX_R_PLAY: openFile(path, p); break;
 			case CTX_R_SHOW: showInFolder(path, p); break;
 			case CTX_R_ADD:
@@ -1029,9 +1037,8 @@ namespace bp
 			else drawSectionHeader(p);
 			if (browseDir == EXTDIR)
 			{
-				drawEmpty(G_BLOCKS, "Extensions are on the way", "Add-ons for browsing online video sources and saving\n"
-					"videos to your card to watch later. Not in this version yet.", nullptr);
-				drawHints({{"B", "Home"}, {"L/R", "Sections"}, {"START", "Menu"}});
+				// the drawer: what's on, or none (its own drawing, ui_ext.cpp)
+				drawExtensionsDrawer(p);
 				return;
 			}
 			// where it is, its end kept; the folder it's in brighter. A playlist: how many items, on the right. A

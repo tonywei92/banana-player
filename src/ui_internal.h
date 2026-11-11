@@ -44,14 +44,19 @@ namespace bp
 		{{Button::Y, "Y"}, {Button::X, "X"}, {Button::Select, "SELECT"}, {Button::Up, "UP/DOWN"}, {Button::Start, "START"}},
 	};
 
-	// the settings' on/off rows (TOGGLE_ROW + their index)
-	inline const char* REMEMBER_LABELS[12] = {"Remember position", "Remember audio track", "Remember subtitles",
+	// the settings' on/off rows (TOGGLE_ROW + their index). The manga reader's are its own page's, which no group of
+	// Settings lists, and the fullscreen tip's is a switch too though nothing shows it: it has a label only because the
+	// two arrays go together
+	inline const char* REMEMBER_LABELS[20] = {"Remember position", "Remember audio track", "Remember subtitles",
 		"Remember last folder", "Keep play history", "Button hotkeys", "Show hidden folders", "Battery percentage",
-		"Keep zoom between photos", "Check automatically", "Same for both screens", "Network files in Recent"};
-	inline bool Settings::*const REMEMBER[12] = {&Settings::rememberPosition, &Settings::rememberAudio, &Settings::rememberSubs,
+		"Keep zoom between photos", "Check automatically", "Same for both screens", "Network files in Recent",
+		"Manga reader", "Swap Left/Right", "Adult sources", "Reading history", "In Recent on Home", "Fullscreen tip seen",
+		"Open fullscreen", "Secure DNS"};
+	inline bool Settings::*const REMEMBER[20] = {&Settings::rememberPosition, &Settings::rememberAudio, &Settings::rememberSubs,
 		&Settings::rememberFolder, &Settings::keepHistory, &Settings::buttonHotkeys, &Settings::showHiddenFolders,
 		&Settings::batteryPercent, &Settings::keepPhotoZoom, &Settings::checkUpdates, &Settings::sameBrightness,
-		&Settings::keepNetHistory};
+		&Settings::keepNetHistory, &Settings::mangaOn, &Settings::mangaSwapLR, &Settings::mangaAdult, &Settings::mangaHistory,
+		&Settings::mangaRecent, &Settings::mangaFullSeen, &Settings::mangaOpenFull, &Settings::mangaSecureDns};
 	struct GroupName { const char* name; const char* about; };
 	inline const GroupName GROUP_NAMES[] = {
 		{"Subtitles", "Font, size, colour"},
@@ -65,7 +70,7 @@ namespace bp
 	};
 	inline const char* RECENT = "\x01recent";
 	inline const char* HOMEDIR = "\x01home";	// Home: the Recent strip and the sections' tiles
-	inline const char* EXTDIR = "\x01" "ext";	// the Extensions section (a placeholder)
+	inline const char* EXTDIR = "\x01" "ext";	// the Extensions section: the extensions' drawer
 	inline const char* SECTION_NAMES[] = {"Files", "Playlists", "Network", "Extensions"};
 	inline const Ui::Glyph* const SECTION_GLYPHS[] = {&G_CARD, &G_PLAYLIST, &G_NETWORK, &G_BLOCKS};
 	inline const char* NETROOT = "\x01net";	// the Network tab's first page: the saved connections

@@ -78,6 +78,8 @@ namespace bp
 	{
 		if (photoTex) SDL_DestroyTexture(photoTex);
 		for (auto& c : cache) SDL_DestroyTexture(c.second);
+		for (auto& c : coverTex)
+			if (c.second.tex) SDL_DestroyTexture(c.second.tex);
 		for (auto* t : corners)
 			if (t) SDL_DestroyTexture(t);
 		for (auto* f : fonts)
@@ -90,7 +92,14 @@ namespace bp
 
 	bool Ui::press(Button b, Player& p)
 	{
+		// the browser-check dialog takes the keys while it shows: A or B closes it
+		if (mangaErrOpen)
+		{
+			if (b == Button::A || b == Button::B) mangaErrOpen = false;
+			return false;
+		}
 		sameBrightness = p.settings.sameBrightness;
+		mangaOn = p.settings.mangaOn;
 		webInputAt = SDL_GetTicks();
 		// dark (Screen off, or off by itself): over what plays, the playback keys work blind and leave it dark (play
 		// and pause, seek, next and previous, chapters, speed, like: issue #3, watching with the bottom screen off);
@@ -130,6 +139,20 @@ namespace bp
 		}
 		displayOpen = displayOpen && displayShown(p);	// (the song gone under it: closed)
 		if (displayOpen) return displayKey(b, p);
+		// a menu (the Options one, a row's hold, the mini bar's) takes the buttons first, on whatever page it is over
+		// (the mini bar's opens on pages whose own keys would otherwise eat them)
+		if (ctxOpen)
+		{
+			switch (b)
+			{
+			case Button::Up: ctxCursor = (ctxCursor + (int)ctxItems.size() - 1) % (int)ctxItems.size(); ctxArmed = false; break;
+			case Button::Down: ctxCursor = (ctxCursor + 1) % (int)ctxItems.size(); ctxArmed = false; break;
+			case Button::A: chooseBrowseMenu(ctxCursor, p); break;
+			case Button::B: case Button::X: case Button::Y: ctxOpen = false; break;
+			default: break;
+			}
+			return false;
+		}
 		// a page the output waits for a tap there to start the sound (the top panel says so): B plays here instead
 		if (b == Button::B && !inMenu && (page == Page::Main || page == Page::Browse) && SessionHost::get().pageWaits() &&
 			!ctxOpen && !pickerOpen && !popupShown(p) && selMode == SEL_NONE && !addPending.serial)
@@ -143,7 +166,8 @@ namespace bp
 		// L2/R2: the chapter before or after, over what plays and its two pages (the Chapters page's mark follows).
 		// Not in START's menu, not over a photo (its keys are its own), and nothing with Button hotkeys off: they
 		// have no touch button to stand for
-		if (b == Button::L2 || b == Button::R2)
+		// (the manga pages have their own: the reader's chapter before or after, the series page's Download)
+		if ((b == Button::L2 || b == Button::R2) && page != Page::Manga && page != Page::MangaSeries && page != Page::MangaRead)
 		{
 			if (p.settings.buttonHotkeys && !inMenu && p.playing() && !p.playingPhoto() && p.error.empty() &&
 				(page == Page::Main || page == Page::Tracks || page == Page::Chapters))
@@ -155,7 +179,6 @@ namespace bp
 			}
 			return false;
 		}
-		if (b != Button::B) quitArmed = 0;
 		if (inMenu)
 		{
 			if (b == Button::L || b == Button::R)
@@ -196,6 +219,12 @@ namespace bp
 		if (page == Page::Sound) return soundKey(b, p);
 		if (page == Page::Web) return webKey(b, p);
 		if (page == Page::Playing) return playingKey(b, p);
+		// Manage extensions and the manga reader's pages: their own keys (the sheet over the first)
+		if (page == Page::Extensions || page == Page::Manga) return extKey(b, p);
+		if (page == Page::MangaSeries || page == Page::MangaRead) return mangaKey(b, p);
+		if (page == Page::MangaSources && mengSheet) return mangaEngineKey(b, p);
+		if (page == Page::MangaSources) return mangaSourcesPageKey(b, p);
+		if (page == Page::MangaSettings) return mangaSettingsKey(b, p);
 		if (page == Page::Settings)
 		{
 			auto rows = settingRows();
@@ -226,6 +255,8 @@ namespace bp
 				else if (rows[cursor] == SOUND_ROW) { openSound(p, true); return false; }
 				else changeSetting(rows[cursor], 1, p);
 				break;
+			// the mini bar's right end says SELECT: back to what plays (Settings has no SELECT of its own)
+			case Button::Select: if (nowPlayable(barPlayer(p))) goNowPlaying(p); break;
 			case Button::B:
 				if (setGroup >= 0) { cursor = setGroup; setGroup = -1; }
 				else page = home(p);
@@ -266,18 +297,6 @@ namespace bp
 			case Button::Down: popupCursor = (popupCursor + 1) % n; break;
 			case Button::A: choosePopup(popupCursor, p); break;
 			case Button::B: choosePopup(n > 1 ? 1 : 0, p); break;	// Later (or Hide, OK)
-			default: break;
-			}
-			return false;
-		}
-		if (page == Page::Browse && ctxOpen)
-		{
-			switch (b)
-			{
-			case Button::Up: ctxCursor = (ctxCursor + (int)ctxItems.size() - 1) % (int)ctxItems.size(); ctxArmed = false; break;
-			case Button::Down: ctxCursor = (ctxCursor + 1) % (int)ctxItems.size(); ctxArmed = false; break;
-			case Button::A: chooseBrowseMenu(ctxCursor, p); break;
-			case Button::B: case Button::X: case Button::Y: ctxOpen = false; break;
 			default: break;
 			}
 			return false;
@@ -328,6 +347,8 @@ namespace bp
 			if (browseDir != RECENT && t >= 0 && t < BROWSE_TABS) openSection(t, p);
 			return false;
 		}
+		// the Extensions drawer: A opens what's on (or Manage extensions with none on), START Manage extensions
+		if (page == Page::Browse && !inMenu && browseDir == EXTDIR && extDrawerKey(b, p)) return false;
 		if (page == Page::Browse && b == Button::B)
 		{
 			// a section's top: Home, on its tile (All recent: on its card)
@@ -442,6 +463,8 @@ namespace bp
 
 	void Ui::tick(Player& p)
 	{
+		mangaVideoGuard(p);
+		mangaEngineWatch(p);	// the engine's download sheet: closed when done
 		// the rows' durations: none probed while a file opens; the rows on screen first
 		if (durWorker)
 		{
@@ -454,6 +477,20 @@ namespace bp
 		}
 		// a playlist's edits, written once they've stopped for a second
 		if (plDirty && SDL_GetTicks() - plDirtyAt >= 1000) plFlush(p);
+		// the manga reader's page: the place recorded, the store written once a second while reading
+		if (page == Page::MangaRead) mangaTick();
+		// the Sources page: the repositories' events become toasts, and what was typed in is added
+		else if (page == Page::MangaSources) mangaSourcesTick(p);
+		// the Downloads tab: an armed delete goes, a lost worker answer waits for the reader to be on again
+		else if (page == Page::Manga && mangaTab == MT_DOWNLOADS) mangaDownloadsTick(p);
+		// the dashboard starts downloads and asks for a series' chapters: their worker answers are taken here too,
+		// since no manga page may be drawn on the handheld while the browser is the one using the reader
+		if (p.settings.mangaOn && mangaNet)
+		{
+			mangaBrowsePoll(p);
+			mangaDlAskPump();
+			mangaNotesTick(p);
+		}
 		// the web's equalizer: what mpv keeps, and settings.conf, once its sliders stop for a second
 		if (eqWebDirtyAt && SDL_GetTicks() - eqWebDirtyAt >= 1000)
 		{
@@ -462,16 +499,16 @@ namespace bp
 		}
 		// A or the Play button held while a page plays the file: here instead, once, as the hold reaches its length (not
 		// as it lets go). Gone off the player (B, the menu), or the page gone: nothing
-		// (the mini bar's play mark holds the same way, over the browser)
-		bool holdHere = (page == Page::Main && !inMenu) || (playHoldMini && page == Page::Browse && miniBarShown(p));
-		if (playHoldAt && (!holdHere || !pageDrives(p))) playHoldAt = 0;
+		// (the mini bar's play mark holds the same way, on any page that has the bar: what it plays is main's player)
+		bool holdHere = (page == Page::Main && !inMenu) || (playHoldMini && miniBarShown(p));
+		if (playHoldAt && (!holdHere || !pageDrives(barPlayer(p)))) playHoldAt = 0;
 		if (!playHoldAt) playHoldMini = false;
 		if (playHoldAt && SDL_GetTicks() - playHoldAt >= PLAY_HOLD_MS)
 		{
 			playHoldAt = 0;
 			playHoldMini = false;
 			if (playHoldTouch) { pressedBtn = -1; swallowTouch = true; }	// the finger's lift presses nothing
-			takeOver(p);
+			takeOver(barPlayer(p));
 		}
 		// a finger held on the mini bar: its menu (the lift that follows chooses nothing)
 		if (miniHoldAt && (pressedBtn == MINI_BAR || pressedBtn == MINI_PP) && SDL_GetTicks() - miniHoldAt >= 600)
@@ -499,11 +536,14 @@ namespace bp
 				seekPath.clear();
 			}
 		}
-		// Screen off after (Settings): a song or video playing (not a photo: it's looked at and panned here), nothing
-		// touched or pressed for that long, nothing open that waits for an answer: the bottom panel dark, as its Screen
-		// off button does (a touch or a page's button brings it back). Paused, it stays: someone is about to act
+		// Screen off after (Settings): a song or video playing, nothing touched or pressed for that long, nothing open
+		// that waits for an answer: the bottom panel dark, as its Screen off button does (a touch or a page's button
+		// brings it back). Paused, it stays: someone is about to act. Never while a picture is looked at, whatever
+		// plays meanwhile: a photo (panned here) or a comic in the manga reader (its pages are dragged here, and a
+		// reader reads longer than any timeout without touching)
 		int offSecs = screenOffSeconds(p.settings.screenOffAfter);
-		if (offSecs > 0 && panel.on() && p.playing() && !p.playingPhoto() && !p.paused && !p.loading() && p.error.empty() &&
+		bool viewing = p.playingPhoto() || readerStatus.open;
+		if (offSecs > 0 && panel.on() && p.playing() && !viewing && !p.paused && !p.loading() && p.error.empty() &&
 			!kbOpen && !quickOpen && !popupShown(p) && !dragging && SDL_GetTicks() - webInputAt >= (Uint32)offSecs * 1000)
 			panel.set(false);
 		if (page == Page::Web)
@@ -589,6 +629,7 @@ namespace bp
 		if (id == SEL_CANCEL) { selBack(p, false); return false; }
 		if (id == MOVE_CANCEL || id == MOVE_DONE) { moveEnd(id == MOVE_DONE, p); return false; }
 		if (id == BUSY_CANCEL) { cancelAdd(p); return false; }
+		if (id >= EXT_TILE && id <= EXT_DONE) return extAct(id, p);
 		if (id == LIKE_BTN) { likeNow(p); return false; }
 		if (id == ADD_BTN)
 		{
@@ -645,6 +686,13 @@ namespace bp
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
 		webInputAt = SDL_GetTicks();
+		if (mangaErrOpen)
+		{
+			// OK, or a tap anywhere: closed
+			if (pt.kind == Pointer::Up) mangaErrOpen = false;
+			return false;
+		}
+		mangaOn = p.settings.mangaOn;
 		if (kbOpen && panel.on())
 		{
 			kbPointer(pt, x, y);
@@ -676,6 +724,8 @@ namespace bp
 		if (playOnOpen) return playOnPointer(pt, x, y, p);
 		displayOpen = displayOpen && displayShown(p);
 		if (displayOpen) return displayPointer(pt, x, y, p);
+		// Home's quit dialog takes every finger: a row chooses as it lifts, outside it cancels
+		if (page == Page::Browse && !inMenu && atHome() && quitOpen && !popupShown(p)) return homePointer(pt, x, y, p);
 		// the header's web dashboard mark: its page, as the finger lifts on it
 		if (webIndDown || (pt.kind == Pointer::Down && webInd.w && webInd.hit(x, y) && !ctxOpen && !pickerOpen && !popupShown(p)))
 		{
@@ -684,6 +734,26 @@ namespace bp
 			{
 				webIndDown = false;
 				if (webInd.hit(x, y) && page != Page::Web) openWeb();
+			}
+			return false;
+		}
+		if (ctxOpen)
+		{
+			// the folder's menu: a row tapped (as the finger lifts), anywhere else closes it
+			if (pt.kind == Pointer::Down)
+			{
+				pressedBtn = -1;
+				for (int i = 0; i < (int)ctxItems.size(); i++)
+					if (ctxRow(i).hit(x, y)) pressedBtn = 100 + i;
+				if (pressedBtn < 0) ctxOpen = false;
+			}
+			else if (pt.kind == Pointer::Up && pressedBtn >= 100)
+			{
+				int item = pressedBtn - 100;
+				pressedBtn = -1;
+				if (item != ctxCursor) ctxArmed = false;
+				ctxCursor = item;
+				if (ctxRow(item).hit(x, y)) chooseBrowseMenu(item, p);
 			}
 			return false;
 		}
@@ -718,26 +788,6 @@ namespace bp
 				int item = pressedBtn - 200;
 				pressedBtn = -1;
 				if (item < n && popupRow(item).hit(x, y)) choosePopup(item, p);
-			}
-			return false;
-		}
-		if (ctxOpen)
-		{
-			// the folder's menu: a row tapped (as the finger lifts), anywhere else closes it
-			if (pt.kind == Pointer::Down)
-			{
-				pressedBtn = -1;
-				for (int i = 0; i < (int)ctxItems.size(); i++)
-					if (ctxRow(i).hit(x, y)) pressedBtn = 100 + i;
-				if (pressedBtn < 0) ctxOpen = false;
-			}
-			else if (pt.kind == Pointer::Up && pressedBtn >= 100)
-			{
-				int item = pressedBtn - 100;
-				pressedBtn = -1;
-				if (item != ctxCursor) ctxArmed = false;
-				ctxCursor = item;
-				if (ctxRow(item).hit(x, y)) chooseBrowseMenu(item, p);
 			}
 			return false;
 		}
@@ -783,10 +833,13 @@ namespace bp
 		if (homeTouch) return homePointer(pt, x, y, p);
 		if (listTouch)
 		{
-			// a list (the tracks, the browser, the settings): a drag scrolls it, a tap acts as the finger lifts
-			bool set = page == Page::Settings, info = page == Page::Info || page == Page::About;
-			int n = set ? (setGroup < 0 ? GROUPS : (int)settingRows().size()) : info ? (int)infoLines.size() : (int)rows(p).size();
-			int rowH = set ? (setGroup < 0 ? 84 : SET_H) : info ? INFO_H : ROW_H, shown = set ? SET_SHOWN : info ? INFO_SHOWN : ROWS_SHOWN;
+			// a list (the tracks, the browser, the settings, the manga's): a drag scrolls it, a tap acts as the finger
+			// lifts
+			bool set = page == Page::Settings || page == Page::MangaSettings, groups = page == Page::Settings && setGroup < 0;
+			bool info = page == Page::Info || page == Page::About;
+			auto srows = set && !groups ? (page == Page::MangaSettings ? mangaSettingRows() : settingRows()) : std::vector<int>();
+			int n = groups ? GROUPS : set ? (int)srows.size() : info ? (int)infoLines.size() : (int)rows(p).size();
+			int rowH = groups ? 84 : set ? SET_H : info ? INFO_H : ROW_H, shown = set ? SET_SHOWN : info ? INFO_SHOWN : ROWS_SHOWN;
 			if (pt.kind == Pointer::Move && (listScrolled || std::abs(y - touchStartY) > 12))
 			{
 				listScrolled = true;
@@ -802,9 +855,10 @@ namespace bp
 				holdAt = 0;
 				if (listScrolled || info) return false;	// the info page only scrolls
 				// a setting: the left of its value (its arrow) steps back, the rest of the row on
-				if (set && setGroup < 0) openGroup(cursor);
-				else if (set && settingRows()[cursor] == SOUND_ROW) openSound(p, true);	// a page, not a value: either side opens it
-				else if (set) changeSetting(settingRows()[cursor], touchX >= SET_ARROW_X - 12 && touchX < 490 ? -1 : 1, p);
+				int dir = touchX >= SET_ARROW_X - 12 && touchX < 490 ? -1 : 1;
+				if (groups) openGroup(cursor);
+				else if (set && page == Page::Settings && srows[cursor] == SOUND_ROW) openSound(p, true);	// a page, not a value
+				else if (set) changeSetting(srows[cursor], dir, p);
 				else choose(cursor, p);
 			}
 			return false;
@@ -822,7 +876,7 @@ namespace bp
 				bool on = playHoldAt != 0;
 				playHoldAt = 0;
 				playHoldMini = false;
-				if (on && buttonRect(id).hit(x, y) && pageDrives(p)) toggleBrowser(p);
+				if (on && buttonRect(id).hit(x, y) && pageDrives(barPlayer(p))) toggleBrowser(barPlayer(p));
 				return false;
 			}
 			if (id == PLAY_GRID && page == Page::Main && !inMenu && ((playHoldTouch && playHoldAt) || pageDrives(p)))
@@ -835,6 +889,34 @@ namespace bp
 			Rect r = id >= PHOTO_BTN && id < PHOTO_BTN + PHOTO_BTNS ? photoBtn(id - PHOTO_BTN, p) : buttonRect(id);
 			return r.hit(x, y) && act(id, p);
 		}
+		// the mini bar: acts as the finger lifts (a hold: its menu, tick()); its play mark while a page plays the file
+		// holds as Main's Play does (here instead). Its down is taken here for every page, the reader's included
+		if (pt.kind == Pointer::Down && miniBarShown(p) && MINI_BOX.hit(x, y))
+		{
+			Player& bp = barPlayer(p);
+			pressedBtn = x < MINI_BOX.x + 44 ? MINI_PP : MINI_BAR;
+			miniHoldAt = SDL_GetTicks();
+			// in fullscreen the bar is the controls sheet's: a touch on it shows the sheet 4 s more
+			if (page == Page::MangaRead && readerStatus.fullscreen) mangaCtrlUntil = SDL_GetTicks() + MG_CTRL_MS;
+			if (pressedBtn == MINI_PP && pageDrives(bp))
+			{
+				miniHoldAt = 0;
+				playHoldAt = SDL_GetTicks();
+				playHoldTouch = true;
+				playHoldMini = true;
+			}
+			return false;
+		}
+		// the reader's page: its drag area and slider take the finger's moves too (the mini bar's taken above)
+		if (page == Page::MangaRead) return mangaPointer(pt, x, y, p);
+		// a manga source's grid scrolls with the finger: its moves and lift go to it (its down comes below)
+		if (((page == Page::Manga && mangaView == 1) || (page == Page::MangaSeries && mangaSourceSeriesOn())) && pt.kind != Pointer::Down)
+			return mangaPointer(pt, x, y, p);
+		// the extensions' pages, and the drawer: their own taps. A tile or a row acts as the finger lifts (as Home's
+		// do), so the lift is taken before the down-only pages below; the down is taken after the header and mini bar.
+		if (pt.kind == Pointer::Up &&
+			(page == Page::Extensions || page == Page::Manga || (page == Page::Browse && !inMenu && browseDir == EXTDIR)))
+			return extPointer(pt, x, y, p);
 		if (pt.kind != Pointer::Down) return false;
 		if (inMenu && y < 60)
 		{
@@ -859,27 +941,14 @@ namespace bp
 			return false;
 		}
 
-		bool quitTap = (page == Page::Main && buttonRect(QUIT_BTN).hit(x, y)) ||
-			(backIconShown(p) && buttonRect(BACK_ICON).hit(x, y));
-		if (!quitTap) quitArmed = 0;
 		// "<": B (up a folder; twice, out of what plays or, from the first page, out of the player)
 		if (backIconShown(p) && buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
 		if (emptyAction() && buttonRect(EMPTY_BTN).hit(x, y)) { pressedBtn = EMPTY_BTN; return false; }
-		// the mini bar: acts as the finger lifts (a hold: its menu, tick()); its play mark while a page plays the file
-		// holds as Main's Play does (here instead)
-		if (miniBarShown(p) && MINI_BOX.hit(x, y))
-		{
-			pressedBtn = x < MINI_BOX.x + 44 ? MINI_PP : MINI_BAR;
-			miniHoldAt = SDL_GetTicks();
-			if (pressedBtn == MINI_PP && pageDrives(p))
-			{
-				miniHoldAt = 0;
-				playHoldAt = SDL_GetTicks();
-				playHoldTouch = true;
-				playHoldMini = true;
-			}
-			return false;
-		}
+		// the extensions' pages, and the drawer: their own taps (the mini bar's, the header's and "<" taken above)
+		if (page == Page::Extensions || page == Page::Manga || (page == Page::Browse && !inMenu && browseDir == EXTDIR))
+			return extPointer(pt, x, y, p);
+		if (page == Page::MangaSeries) return mangaPointer(pt, x, y, p);
+		if (page == Page::MangaSources) return mangaPointer(pt, x, y, p);
 		if (page == Page::Info || page == Page::About)
 		{
 			if (y < INFO_Y) return false;
@@ -892,12 +961,14 @@ namespace bp
 		if (page == Page::Settings && setGroup >= 0)
 			for (int id : {GROUP_PREV, GROUP_NEXT})
 				if (buttonRect(id).hit(x, y)) { pressedBtn = id; return false; }
-		if (page == Page::Settings)
+		if (page == Page::Settings || page == Page::MangaSettings)
 		{
 			int top = SET_Y, h = SET_H;
-			int n = setGroup < 0 ? GROUPS : (int)settingRows().size();
+			bool groups = page == Page::Settings && setGroup < 0;
+			auto srows = groups ? std::vector<int>() : page == Page::MangaSettings ? mangaSettingRows() : settingRows();
+			int n = groups ? GROUPS : (int)srows.size();
 			int row = scroll + (y - top) / h;
-			if (setGroup < 0)
+			if (groups)
 			{
 				// a tile
 				row = -1;
@@ -1024,9 +1095,9 @@ namespace bp
 		const Track* a = p.selected(TrackType::Audio);
 		const Track* s = p.selected(TrackType::Sub);
 		char buf[256];
-		snprintf(buf, sizeof buf, "%d %d %d %d %ld %ld %d %d %lld %lld %zu %d %d %d %.2f %d %d %d %d|", (int)page, cursor, scroll,
+		snprintf(buf, sizeof buf, "%d %d %d %d %ld %ld %d %d %lld %lld %zu %d %d %.2f %d %d %d %d|", (int)page, cursor, scroll,
 			p.paused + setGroup * 2 + 2, (long)std::floor(shownPosition(p)) * 2 + (predicting(p) && pagePlaying()), (long)p.duration, (int)p.aspect, p.loaded, a ? (long long)a->id : 0LL,
-			s ? (long long)s->id : 0LL, p.tracks.size(), dragging, (int)(dragFraction * 1000), quitArmed != 0, p.speed,
+			s ? (long long)s->id : 0LL, p.tracks.size(), dragging, (int)(dragFraction * 1000), p.speed,
 			p.index(), p.count(), pressedBtn + touchLocked * 100 + (lockHoldAt != 0) * 1000, listTouch * 1000 + browseVersion + (clearArmed != 0) * 100000 + (int)p.history().items().size() * 1000000);
 		std::string photo = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "");
 		if (touchLocked && lockHoldAt) photo += "|hold" + std::to_string((SDL_GetTicks() - lockHoldAt) / 100);
@@ -1044,6 +1115,11 @@ namespace bp
 			" " + std::to_string(backlight.permille(Backlight::TOP)) + "," + std::to_string(backlight.permille(Backlight::BOTTOM)) : "";
 		upd += page == Page::Settings && setGroup == GROUP_CONTROLS
 			? "|bl" + std::to_string(backlight.permille(Backlight::TOP)) + "," + std::to_string(backlight.permille(Backlight::BOTTOM)) : "";
+		// the manga reader's settings: the page cache's Clear (what it holds not being a setting, and the press waiting
+		// for its second), and the Java extensions' host state and progress
+		if (page == Page::MangaSettings)
+			upd += "|mc" + std::to_string(mangaPageCache.size()) + " " + std::to_string(mangaCacheAt != 0) +
+				"|mj" + std::to_string(mangaJavaSerial()) + " " + std::to_string(mangaJavaAt != 0);
 		if (updater)
 			upd += "|upd" + std::to_string((int)updater->state()) + " " + std::to_string(updater->progress()) + " " + updater->available() +
 				" " + std::to_string(popupShown(p)) + std::to_string(popupCursor) + std::to_string(pressedBtn);
@@ -1107,6 +1183,15 @@ namespace bp
 				markW(p), markW(p) && markLive(p) && panel.on() ? (int)(SDL_GetTicks() / 166) : -1, p.loading(), 0.0);
 			photo += bb + chipPath + "|" + p.currentPath();
 		}
+		// the mini bar over a photo: it shows main's player, whose title, place and state are not the photo viewer's
+		if (miniBarShown(p) && &barPlayer(p) != &p)
+		{
+			const Player& bp = barPlayer(p);
+			char nb[240];
+			snprintf(nb, sizeof nb, "|np%d %d %d %ld %ld %d %d", bp.paused, (int)bp.loading(), bp.error.empty() ? 0 : 1,
+				(long)std::floor(shownPosition(bp)), (long)bp.duration, (int)bp.playingAudio(), (int)bp.playing());
+			photo += std::string(nb) + bp.title + "|" + bp.currentPath();
+		}
 		// Home: the focus, the strip's scroll, a finger on a card or a tile, the tiles' lines (the connections)
 		if (atHome())
 		{
@@ -1114,8 +1199,72 @@ namespace bp
 			snprintf(hb, sizeof hb, "|home%d %d %d %ld %d %zu %d", homeZone, homeStrip, homeGrid, std::lround(stripOff), homePress,
 				recent.size(), netStore ? netStore->version() : -1);
 			photo += hb;
+			// B's quit dialog over it, and the row it has the focus on
+			photo += std::string("|quit") + std::to_string(quitOpen) + std::to_string(quitCursor);
 		}
-		return buf + photo + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
+		// Extensions: the drawer's tile and the note's focus, the switch (its lines and rows say it), a finger's button
+		// down on them (mangaOn is in the settings too: a change redraws anywhere)
+		if (page == Page::Extensions || page == Page::Manga || browseDir == EXTDIR)
+			photo += "|ext" + std::to_string(mangaOn) + std::to_string(extCursor) + std::to_string(extSheet) +
+				std::to_string(extSheetCursor) + " " + std::to_string(extPressed);
+		// Manga: the tab, each page's cursors and scrolls, the store and the card's scan, the finger's article, the
+		// History's Clear armed; the reader's page when it shows (its status is main's answer)
+		if (page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead || page == Page::MangaSources)
+		{
+			char mb[200];
+			snprintf(mb, sizeof mb, "|mg%d %d,%d %d,%d,%d,%d %d,%d %d,%d %llu %d %d %d %zu %llu",
+				mangaTab, mlibGrid, mlibScroll, mhisCursor, mhisScroll, mbrowseCursor, mListCursor,
+				mListScroll, (int)mBrowseList, mserCursor, mserScroll, (unsigned long long)(mangaStore ? mangaStore->serial() : 0),
+				(int)mangaLocal.size(), mangaPressed, mangaClearAt != 0, coverTex.size(), (unsigned long long)coverSerial);
+			photo += std::string(mb) + "|" + mangaSeriesId + "|ml" + std::to_string(mlocSheet) + std::to_string(mlocCursor) +
+				std::to_string((int)mlocDeleteArmed) + "|me" + std::to_string((int)mengSheet) + std::to_string(mengCursor) + std::to_string((int)mengBusy) + mangaEngineSignature();
+			// Sources: the sub-list and each list's place, a sheet, the sources installing, the manager's own changes
+			// (repos().serial(): an index loaded, a source installed) and what waits to be added
+			if (page == Page::Manga || page == Page::MangaSources)
+			{
+				char sb[240];
+				snprintf(sb, sizeof sb, "|ms%d %d,%d %d,%d %d,%d %d %d %d %llu %llu %zu %d", mstTab, mstCursor[0],
+					mstScroll[0], mstCursor[1], mstScroll[1], mstCursor[2], mstScroll[2], mstModal, mstModalCursor,
+					(int)mstUninstallArmed, (unsigned long long)mangaReposSerial(), (unsigned long long)mstLocal,
+					mstInstalling.size(), (int)mstAdding.size());
+				photo += std::string(sb) + mstModalId + "|" + mstPendingUrl + "|mt" +
+					std::to_string((long long)time(nullptr) / 60);	// (the repositories' "2 h ago")
+			}
+			// Browse's sources and the source series' details, chapters and jobs (ui_manga_browse.cpp)
+			photo += mangaNetSignature();
+			// Downloads: the tab's lists and the Download sheet (ui_manga_downloads.cpp)
+			photo += mangaDlSignature();
+			if (page == Page::MangaRead)
+			{
+				char rb[160];
+				snprintf(rb, sizeof rb, "|rs%d%d%d%d %d %d %d%d%d z%d %d%d%d r%d", (int)readerStatus.open, (int)readerStatus.loading,
+					(int)readerStatus.atEnd, (int)mangaReadLive, readerStatus.page, readerStatus.pages, (int)mangaDirty,
+					(int)mangaTouch, (int)mangaSlider, readerStatus.zoomPct, (int)mangaMenu, mangaMenuCursor,
+					(int)mangaPages, readerStatus.rotation);
+				photo += std::string(rb) + readerStatus.error + "|" + mangaReadChapterId + "|m" + std::to_string(readerStatus.mode) +
+					"|w" + std::to_string((int)readerStatus.failedHere) + std::to_string((int)mangaReadWaiting) + std::to_string((int)mangaSrcLoading) + mangaSrcError;
+				// the pages grid: the cursor, the scroll, the textures made, the thumbnails arrived
+				if (mangaPages)
+					photo += "|pg" + std::to_string(mangaPagesCursor) + "," + std::to_string(mangaPagesScroll) + " " +
+						std::to_string(mpTex.size()) + "," + std::to_string(readerThumbs.pages.size());
+				// fullscreen: where the pages are on this panel, which have their textures, the tag
+				if (readerStatus.fullscreen)
+				{
+					photo += "|full" + std::to_string(readerBottom.gen) + " " + std::to_string(mfTex.size()) + " " +
+						std::to_string(mfWaiting) + " " + std::to_string(readerBottom.pages.size()) + (SDL_GetTicks() < mfTagUntil ? "T" : "");
+					// the controls over the pages and the first open's toast: how long they still show, in 100 ms
+					// steps, so each hides by itself (no finger, no other change to draw for)
+					Uint32 now = SDL_GetTicks();
+					photo += "|fc" +
+						std::to_string(mangaCtrlUntil && now < mangaCtrlUntil ? (int)((mangaCtrlUntil - now + 99) / 100) : 0) + " " +
+						std::to_string(mangaToastUntil && now < mangaToastUntil ? (int)((mangaToastUntil - now + 99) / 100) : 0) + " " +
+						std::to_string(mangaCtrlPressed);
+					for (auto& b : readerBottom.boxes)
+						photo += " " + std::to_string(b.page) + ":" + std::to_string((int)std::lround(b.x * 4096)) + "," + std::to_string((int)std::lround(b.y * 4096));
+				}
+			}
+		}
+		return buf + photo + "|me" + std::to_string((int)mangaErrOpen) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string((int)kbShift) + (kbSymbols ? "s" : "") + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");
 	}
 }

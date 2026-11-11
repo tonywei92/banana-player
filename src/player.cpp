@@ -1,6 +1,7 @@
 #include "player.h"
 #include "format.h"
 #include "logo.h"
+#include "pagedecode.h"
 #include "netpath.h"
 #include "netstore.h"
 #include "netstream.h"
@@ -474,7 +475,8 @@ namespace bp
 			size_t slash = path.rfind('/');
 			std::string dir = slash == std::string::npos ? "." : path.substr(0, slash);
 			bool cover = isNet ? !coverFileFor(namesIn(netParent(path))).empty() : folderHasCover(path), guessArt = cover || (dir == lastArtDir && lastArt);
-			if (settings.musicShow == SHOW_VIS) graph = graphFor(settings.visualizer, false);
+			if (topCovered && (settings.musicShow == SHOW_VIS || settings.musicShow == SHOW_BOTH)) graph = blankGraph();
+			else if (settings.musicShow == SHOW_VIS) graph = graphFor(settings.visualizer, false);
 			else if (settings.musicShow == SHOW_NONE) graph = blankGraph();
 			else if (settings.musicShow == SHOW_BOTH) graph = graphFor(settings.visualizer, cover);
 			else graph = guessArt ? "" : blankGraph();
@@ -868,13 +870,17 @@ namespace bp
 		return rc && (mpv_render_context_update(rc) & MPV_RENDER_UPDATE_FRAME);
 	}
 
-	int Player::render(int w, int h, unsigned target)
+	int Player::render(int w, int h, unsigned target, bool skip)
 	{
 		mpv_opengl_fbo fbo{(int)target, w, h, 0};
 		int flip = 1;
+		// skip: the frame is taken (mpv's queue moves on, its timing kept) but nothing is drawn: no scaling, no
+		// shaders, no GL work stealing time from the bottom panel's drawing
+		int skipping = skip ? 1 : 0;
 		mpv_render_param params[] = {
 			{MPV_RENDER_PARAM_OPENGL_FBO, &fbo},
 			{MPV_RENDER_PARAM_FLIP_Y, &flip},
+			{MPV_RENDER_PARAM_SKIP_RENDERING, &skipping},
 			{MPV_RENDER_PARAM_INVALID, nullptr},
 		};
 		return mpv_render_context_render(rc, params);
@@ -1514,29 +1520,74 @@ namespace bp
 		{
 			const char* cmd[] = {"osd-overlay", "3", "none", "", nullptr};
 			mpv_command_async(mpv, 0, cmd);
+			const char* rm[] = {"overlay-remove", "0", nullptr};
+			mpv_command_async(mpv, 0, rm);
 			return;
 		}
 		// the icon as ASS drawings, a run of pixels a rectangle, one event a colour; on a 960x720 canvas
 		const int px = 6, x0 = 480 - 16 * px, y0 = 110;
 		std::string ev;
-		const struct { char c; std::string colour; } inks[] = {{'.', ass(TOP_SQUARE)}, {'Y', ass(TOP_TITLE)}, {'W', ass(TEXT)}};
-		for (auto& ink : inks)
+		// the app's picture (assets/icons/app.png beside the fonts) as an mpv image overlay at the panel's own pixels,
+		// decoded once at that size (smooth, as drawn); the generated logo when it can't be read
+		bool picture = false;
 		{
-			std::string path;
-			for (int y = 0; y < 32; y++)
-				for (int x = 0; x < 32;)
+			const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
+			const int size = (int)std::lround(240.0 * ph / 720), ix = pw / 2 - size / 2, iy = (int)std::lround(84.0 * ph / 720);
+			if (idleIconPx != size && !opts.fontsDir.empty())
+			{
+				PageImage img = decodePageFile(opts.fontsDir + "/../icons/app.png", size);
+				if (img.ok() && img.w == size)
 				{
-					if (LOGO[y][x] != ink.c) { x++; continue; }
-					int e = x;
-					while (e < 32 && LOGO[y][e] == ink.c) e++;
-					char r[96];
-					snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * px, y * px, e * px, y * px, e * px, (y + 1) * px, x * px, (y + 1) * px);
-					path += r;
-					x = e;
+					// mpv's overlay-add takes premultiplied BGRA from a file it maps: written once, kept while shown
+					std::vector<uint8_t> bgra((size_t)img.w * img.h * 4);
+					for (size_t p = 0; p < (size_t)img.w * img.h; p++)
+					{
+						const uint8_t* c = img.rgba.data() + p * 4;
+						uint8_t a = c[3];
+						bgra[p * 4 + 0] = (uint8_t)(c[2] * a / 255);
+						bgra[p * 4 + 1] = (uint8_t)(c[1] * a / 255);
+						bgra[p * 4 + 2] = (uint8_t)(c[0] * a / 255);
+						bgra[p * 4 + 3] = a;
+					}
+					idleIconFile = (opts.stateDir.empty() ? std::string("/tmp") : opts.stateDir) + "/.idle-icon.bgra";
+					if (FILE* f = fopen(idleIconFile.c_str(), "wb"))
+					{
+						bool ok = fwrite(bgra.data(), 1, bgra.size(), f) == bgra.size();
+						if (fclose(f) == 0 && ok) { idleIconPx = size; idleIconH = img.h; }
+					}
 				}
-			char head[128];
-			snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c%s\\p1}", x0, y0, ink.colour.c_str());
-			ev += head + path + "{\\p0}\n";
+			}
+			if (idleIconPx == size)
+			{
+				std::string xs = std::to_string(ix), ys = std::to_string(iy), ws = std::to_string(size), hs = std::to_string(idleIconH),
+					st = std::to_string(size * 4);
+				const char* add[] = {"overlay-add", "0", xs.c_str(), ys.c_str(), idleIconFile.c_str(), "0", "bgra", ws.c_str(), hs.c_str(),
+					st.c_str(), nullptr};
+				mpv_command_async(mpv, 0, add);
+				picture = true;
+			}
+		}
+		if (!picture)
+		{
+			const struct { char c; std::string colour; } inks[] = {{'.', ass(TOP_SQUARE)}, {'Y', ass(TOP_TITLE)}, {'W', ass(TEXT)}};
+			for (auto& ink : inks)
+			{
+				std::string path;
+				for (int y = 0; y < 32; y++)
+					for (int x = 0; x < 32;)
+					{
+						if (LOGO[y][x] != ink.c) { x++; continue; }
+						int e = x;
+						while (e < 32 && LOGO[y][e] == ink.c) e++;
+						char r[96];
+						snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * px, y * px, e * px, y * px, e * px, (y + 1) * px, x * px, (y + 1) * px);
+						path += r;
+						x = e;
+					}
+				char head[128];
+				snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c%s\\p1}", x0, y0, ink.colour.c_str());
+				ev += head + path + "{\\p0}\n";
+			}
 		}
 		ev += "{\\an8\\pos(480,330)\\bord0\\shad0\\fnPixelify Sans\\fs72\\1c" + ass(TOP_TITLE) + "}Banana Player\n";
 		ev += "{\\an8\\pos(480,420)\\bord0\\shad0\\fnInter\\fs30\\1c" + ass(TOP_SUB) + "}Pick a video or a song on the bottom screen";
@@ -1901,8 +1952,20 @@ namespace bp
 	{
 		// the art's choices need art: a song with none shows its title alone (Album art: no visualizer the person
 		// didn't pick) or the visualizer (Art + visualizer); None is none either way
-		if (settings.musicShow == SHOW_NONE || hasCover(tracks)) return settings.musicShow;
-		return settings.musicShow == SHOW_ART ? SHOW_NONE : SHOW_VIS;
+		int show = settings.musicShow == SHOW_NONE || hasCover(tracks) ? settings.musicShow
+			: settings.musicShow == SHOW_ART ? SHOW_NONE : SHOW_VIS;
+		// the manga reader over the top panel: a visualizer nobody sees would still make its 30 frames a second
+		// (mpv's sound waits on the graph) on the cores the reader decodes on; the bare graph meanwhile
+		if (topCovered && (show == SHOW_VIS || show == SHOW_BOTH)) return SHOW_NONE;
+		return show;
+	}
+
+	void Player::setTopCovered(bool on)
+	{
+		if (on == topCovered) return;
+		topCovered = on;
+		fprintf(stderr, "music: top panel %s\n", on ? "covered: the visualizer rests" : "shown again: the visualizer back");
+		if (isAudio && loaded) applyAudioDisplay();
 	}
 
 	std::string Player::graphFor(int vis, bool overCover)

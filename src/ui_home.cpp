@@ -120,7 +120,8 @@ namespace bp
 	std::string Ui::tileSub(int g) const
 	{
 		// made again when what they say changes: the playlists, the connections, the places
-		int key = (plStore ? plStore->serial() : -1) * 7919 + (netStore ? netStore->version() : -1) * 31 + (int)roots.size();
+		int key = (plStore ? plStore->serial() : -1) * 7919 + (netStore ? netStore->version() : -1) * 31 + (int)roots.size() +
+			(mangaOn ? 1 : 0) * 1000003;
 		if (key != tileSubsKey)
 		{
 			tileSubsKey = key;
@@ -155,7 +156,7 @@ namespace bp
 			parts.clear();
 			for (auto& sv : list) parts.push_back(serverName(sv));
 			tileSubs[TAB_NETWORK] = parts.empty() ? "No connections yet" : join(parts);
-			tileSubs[TAB_EXT] = "Coming soon";
+			tileSubs[TAB_EXT] = mangaOn ? "1 on \xC2\xB7 Manga reader" : "None on";
 		}
 		return g >= 0 && g < BROWSE_TABS ? tileSubs[g] : "";
 	}
@@ -205,12 +206,28 @@ namespace bp
 
 	bool Ui::homeKey(Button b, Player& p)
 	{
+		if (quitOpen)
+		{
+			// its own question: UP/DOWN the rows, A chooses, B (or START, as the Sound page's dialogs) backs out
+			switch (b)
+			{
+			case Button::Up: case Button::Down: quitCursor = (quitCursor + 1) % 2; break;
+			case Button::A:
+				// choosing Quit is the second B press of before: never while something plays
+				if (quitCursor == 0) return !nowPlayable(p);
+				quitOpen = false;
+				break;
+			case Button::B: case Button::Start: quitOpen = false; break;
+			default: break;
+			}
+			return false;
+		}
 		if (b == Button::B)
 		{
-			// something playing: B stays on Home (SELECT goes to it) and never quits while it plays; else twice leaves
+			// something playing: B stays on Home (SELECT goes to it) and never quits while it plays; else it asks first
 			if (nowPlayable(p)) return false;
-			if (quitArmed && SDL_GetTicks() - quitArmed < QUIT_WINDOW_MS) return true;
-			quitArmed = SDL_GetTicks();
+			quitOpen = true;
+			quitCursor = 1;	// Cancel: a pocket's B and a tap are safer there
 			return false;
 		}
 		if (b == Button::Start) { openMainMenu(p, playingTabShown(p) ? TAB_PLAYING : TAB_SETTINGS); return false; }
@@ -248,6 +265,34 @@ namespace bp
 
 	bool Ui::homePointer(const Pointer& pt, int x, int y, Player& p)
 	{
+		if (quitOpen)
+		{
+			// its rows act as the finger lifts; anywhere else cancels as it lands (its lift presses nothing)
+			if (pt.kind == Pointer::Down)
+			{
+				pressedBtn = -1;
+				if (!QUIT_BOX.hit(x, y))
+				{
+					quitOpen = false;
+					swallowTouch = true;
+					return false;
+				}
+				for (int i = 0; i < 2; i++)
+					if (quitRow(i).hit(x, y)) pressedBtn = DLG_ROW + i;
+			}
+			else if (pt.kind == Pointer::Up && pressedBtn >= DLG_ROW)
+			{
+				int i = pressedBtn - DLG_ROW;
+				pressedBtn = -1;
+				if (i < 2 && quitRow(i).hit(x, y))
+				{
+					quitCursor = i;
+					if (i == 0) return !nowPlayable(p);
+					quitOpen = false;
+				}
+			}
+			return false;
+		}
 		bool has = !recent.empty();
 		auto cardAt = [&](int px, int py) {
 			if (!has || py < CARD_Y || py >= CARD_Y + CARD_H) return -1;
@@ -379,7 +424,6 @@ namespace bp
 		ctxNote.clear();
 		ctxPlFile.clear();
 		ctxPlItem = -1;
-		quitArmed = 0;
 	}
 
 	void Ui::openHomeOptions()
@@ -397,7 +441,6 @@ namespace bp
 		ctxNote.clear();
 		ctxPlFile.clear();
 		ctxPlItem = -1;
-		quitArmed = 0;
 	}
 
 	void Ui::drawHome(const Player& p)
@@ -493,8 +536,7 @@ namespace bp
 				drawTextMid(tileSub(g), 0, soft, t.x + t.w / 2, t.y + 138, t.w - 20, 2);
 			}
 		}
-		if (quitArmed) { drawFooterText("Press B again to quit", ACCENT); return; }
-		// (something playing: the mini bar says SELECT goes to it, and B does nothing here; else B twice quits)
+		// (something playing: the mini bar says SELECT goes to it, and B does nothing here; else B asks to quit)
 		bool playing = nowPlayable(p);
 		std::vector<Hint> h;
 		if (homeZone == HOME_STRIP && has && homeStrip < (int)recent.size())
@@ -504,6 +546,27 @@ namespace bp
 		if (!playing) h.push_back({"B", "Quit"});
 		h.push_back({"START", "Menu"});
 		drawHints(h);
+		if (quitOpen) drawQuitDialog();
+	}
+
+	void Ui::drawQuitDialog()
+	{
+		// the same sheet as Quick settings (F): its panel and title, Quit as its red button, Cancel a row as its rows
+		drawDialog(QUIT_BOX, "");
+		drawTextMid("Quit Banana Player?", 1, ACCENT, QUIT_BOX.x + 24, QUIT_BOX.y + 28);
+		Rect q = quitRow(0);
+		bool down = pressedBtn == DLG_ROW, at = quitCursor == 0;
+		drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);
+		SDL_Color ink = down ? TEXT : ON_ACCENT;	// black on the red, as Quick settings' Quit
+		int tw = (int)std::lround(textWidth("Quit", 1) / sx), gw = glyphW(G_POWER), x = q.x + q.w / 2 - (tw + gw + 12) / 2;
+		drawGlyphMid(G_POWER, x + gw / 2, q.y + q.h / 2, ink);
+		drawTextMid("Quit", 1, ink, x + gw + 12, q.y + q.h / 2);
+		Rect c = quitRow(1);
+		at = quitCursor == 1;
+		if (pressedBtn == DLG_ROW + 1) drawBox(c, PRESSED, R_BUTTON);
+		else if (at) drawFocus(c);
+		drawTextMid("Cancel", 1, at ? ACCENT : TEXT, c.x + c.w / 2, c.y + c.h / 2, 0, 2);
+		drawHints({{"UP/DOWN", "Choose"}, {"A", "OK"}, {"B", "Cancel"}});
 	}
 
 	Ui::Rect Ui::pipRect(int k, const Player& p) const
@@ -540,35 +603,61 @@ namespace bp
 
 	bool Ui::goNowPlaying(Player& p)
 	{
-		if (!p.playing() || p.playingPhoto()) return false;
+		// the bar is main's player's, also over a photo: a tap there closes the photo and opens the player, once (main
+		// does it: only it can close the photo viewer)
+		const Player& bp = barPlayer(p);
+		if (!bp.playing() || bp.playingPhoto()) return false;
+		if (p.playingPhoto()) { playerOverPhoto = true; return false; }
 		showPlayer();
 		return true;
 	}
 
 	bool Ui::miniBarShown(const Player& p) const
 	{
-		// on Home and the lists; not while selecting (its bar owns the bottom), typing, or on the connection pages
-		return page == Page::Browse && !inMenu && selMode == SEL_NONE && !kbOpen && browseDir != FORMDIR && browseDir != FINDNET &&
-			!addPending.serial && nowPlayable(p);
+		// the owner's rule: on every page but the player's own (the song or video player page, its tracks and chapters,
+		// its queue, its Info); the comic reader and the photo viewer are pages of their own, not the player, so it
+		// shows there too. Still not while typing, selecting, or in START's menu: Settings is a page with room for it
+		const Player& bp = barPlayer(p);
+		if (!bp.playing() || bp.playingPhoto()) return false;
+		if (kbOpen || selMode != SEL_NONE) return false;
+		if (inMenu && page != Page::Settings) return false;
+		if (page == Page::Tracks || page == Page::Chapters || page == Page::Info || page == Page::UpNext) return false;
+		// over a photo this is the photo viewer's page (drawPhoto), not the player's
+		if (page == Page::Main) return p.playingPhoto();
+		if (page == Page::Browse)
+			return browseDir != FORMDIR && browseDir != FINDNET && !addPending.serial;
+		// the Sound page's dialogs (Options, presets, Delete) reach the panel's bottom
+		if (page == Page::Sound) return eqDialog == EQD_NONE;
+		if (page == Page::MangaRead)
+		{
+			// the pages grid and the Reading menu are sheets over the reader (the menu is a menu, as today); in
+			// fullscreen the bottom panel is all page: the bar comes with the controls sheet, inside it
+			if (mangaPages || mangaMenu) return false;
+			if (readerStatus.fullscreen && readerBottom.on && !(mangaCtrlUntil && SDL_GetTicks() < mangaCtrlUntil)) return false;
+		}
+		return true;
 	}
 
 	void Ui::miniToggle(Player& p)
 	{
-		if (!p.playing() || p.playingPhoto()) return;
+		// the bar's play mark: main's player, never the photo
+		Player& bp = barPlayer(p);
+		if (!bp.playing() || bp.playingPhoto()) return;
 		// a page plays it: the page's play / pause (as A on the player)
-		if (pageDrives(p)) { toggleBrowser(p); return; }
-		if (!p.error.empty()) return;
-		if (pageIsOut()) { takeOver(p); return; }
-		SessionHost::get().play(p.paused);
-		p.togglePause();
+		if (pageDrives(bp)) { toggleBrowser(bp); return; }
+		if (!bp.error.empty()) return;
+		if (pageIsOut()) { takeOver(bp); return; }
+		SessionHost::get().play(bp.paused);
+		bp.togglePause();
 	}
 
 	void Ui::openNowMenu(const Player& p)
 	{
-		bool live = p.playing() && !p.playingPhoto();
+		const Player& bp = barPlayer(p);
+		bool live = bp.playing() && !bp.playingPhoto();
 		std::vector<int> items = {CTX_NP_NOW, CTX_NP_PLAY};
-		if (live && likeable(p)) items.push_back(CTX_NP_LIKE);
-		if (live && plStore && PlaylistStore::likable(p.currentPath())) items.push_back(CTX_NP_ADD);
+		if (live && likeable(bp)) items.push_back(CTX_NP_LIKE);
+		if (live && plStore && PlaylistStore::likable(bp.currentPath())) items.push_back(CTX_NP_ADD);
 		items.push_back(CTX_NP_SHOW);
 		items.push_back(CTX_NP_STOP);
 		ctxRecent.clear();
@@ -580,11 +669,10 @@ namespace bp
 		ctxArmed = false;
 		ctxPath.clear();
 		ctxFolder.clear();
-		ctxTitle = live ? (!p.title.empty() ? p.title : entryTitle(p.currentPath())) : "";
+		ctxTitle = live ? (!bp.title.empty() ? bp.title : entryTitle(bp.currentPath())) : "";
 		ctxNote.clear();
 		ctxPlFile.clear();
 		ctxPlItem = -1;
-		quitArmed = 0;
 	}
 
 	void Ui::setChip(const Player& p)
@@ -628,21 +716,23 @@ namespace bp
 
 	void Ui::drawMiniBar(const Player& p)
 	{
+		// main's player, also over a photo (the bar says what plays under it, and its mark works on that)
+		const Player& bp = barPlayer(p);
 		Rect b = MINI_BOX;
 		int mid = b.y + b.h / 2;
-		bool live = p.playing() && !p.playingPhoto();
-		bool held = live && pageDrives(p);
-		bool err = live && !p.error.empty();
+		bool live = bp.playing() && !bp.playingPhoto();
+		bool held = live && pageDrives(bp);
+		bool err = live && !bp.error.empty();
 		bool flash = landFlashUntil != 0;
 		drawBox(b, pressedBtn == MINI_BAR ? PRESSED : SURFACE, R_BUTTON, flash);
 		// how far into it, along its foot (dim: stopped for a photo)
-		double pos = live ? shownPosition(p) : 0, dur = live ? p.duration : 0;
+		double pos = live ? shownPosition(bp) : 0, dur = live ? bp.duration : 0;
 		double frac = dur > 0 && pos >= 0 ? std::clamp(pos / dur, 0.0, 1.0) : 0;
 		int fw = (int)std::lround(b.w * frac);
 		Rect in = flash ? Rect{b.x + theme::EDGE, b.y + theme::EDGE, b.w - 2 * theme::EDGE, b.h - 2 * theme::EDGE} : b;
 		if (fw > 0 && !err) fillRoundBand(in, flash ? R_BUTTON - theme::EDGE : R_BUTTON, in.y + in.h - 3, in.y + in.h, live ? ACCENT : DIM, b.x + fw);
 		// its play mark, a zone of its own (held while a page plays the file: filling, as Main's Play does)
-		bool playingNow = held ? pagePlaying() : live && !p.paused && !err;
+		bool playingNow = held ? pagePlaying() : live && !bp.paused && !err;
 		if (pressedBtn == MINI_PP || (playHoldMini && playHoldAt)) fillRound({b.x + 4, b.y + 4, 36, b.h - 8}, PRESSED, 8);
 		if (playHoldMini && playHoldAt)
 		{
@@ -651,7 +741,7 @@ namespace bp
 		}
 		drawGlyphMid(playingNow ? G_PAUSE : G_PLAY, b.x + 22, mid, err ? DIM : ACCENT);
 		fill({b.x + 44, b.y + 7, 2, b.h - 14}, RULE);
-		bool audio = live && p.playingAudio();
+		bool audio = live && bp.playingAudio();
 		drawGlyphMid(audio ? G_NOTE : G_FILM, b.x + 62, mid, DIM);
 		// the right end: SELECT Now playing, a chevron
 		drawGlyphMid(G_RIGHT, b.x + b.w - 14, mid, DIM);
@@ -660,20 +750,20 @@ namespace bp
 		int vw = (int)std::lround(textWidth(verb, 0) / sx);
 		drawTextMid(verb, 0, DIM, xr, mid, 0, 1);
 		int keyX = xr - vw;
-		if (p.settings.buttonHotkeys)
+		if (bp.settings.buttonHotkeys && selectToPlayer())
 		{
 			drawTextMid("SELECT", 0, ACCENT, keyX, mid, 0, 1);
 			keyX -= (int)std::lround(textWidth("SELECT", 0) / sx);
 		}
 		// the title, then how it stands (dim; yellow for a page's; red for an error)
-		std::string title = live ? (!p.title.empty() ? p.title : entryTitle(p.currentPath())) : "";
+		std::string title = live ? (!bp.title.empty() ? bp.title : entryTitle(bp.currentPath())) : "";
 		std::string sub;
 		SDL_Color subInk = DIM;
 		if (err) { sub = "Couldn't read"; subInk = DANGER; }
 		else if (held) { sub = (SessionHost::get().pageWaits() ? "Waiting for " : pagePlaying() ? "Playing in " : "Paused in ") + pageName(); subInk = ACCENT; }
 		else if (!live) sub = "stopped at " + formatTime(pos);
-		else if (p.loading()) sub = "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.');
-		else sub = formatTime(pos) + " / " + formatTime(dur) + (p.paused ? " \xC2\xB7 paused" : "");
+		else if (bp.loading()) sub = "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.');
+		else sub = formatTime(pos) + " / " + formatTime(dur) + (bp.paused ? " \xC2\xB7 paused" : "");
 		int x0 = b.x + 78, room = keyX - 14 - x0;
 		int sw = std::min(room / 2, (int)std::lround(textWidth(sub, 0) / sx));
 		int tmax = std::max(40, room - sw - 12);

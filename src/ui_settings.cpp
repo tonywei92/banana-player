@@ -2,6 +2,7 @@
 #include "format.h"
 #include "playlist.h"
 #include "netpath.h"
+#include "manganet.h"
 #include "theme.h"
 #include <algorithm>
 #include <cmath>
@@ -67,6 +68,16 @@ namespace bp
 	{
 		const int T = TOGGLE_ROW;
 		if (row >= STYLE_ROW0 && row < STYLE_ROW0 + STYLE_KEYS) return "How plain subtitles (SRT, VTT...) look. Styled ones (ASS) keep theirs.";
+		if (row == MANGA_MODE_ROW) return "How a series opens until you pick one for it (X while reading).";
+		if (row == MANGA_FIT_ROW) return "Width: a page as wide as the screen, read down with RIGHT a screenful at a time.";
+		if (row == MANGA_HINGE_ROW)
+			return "The strip skipped under the hinge in fullscreen, so pictures line up across the gap. Measure on your handheld.";
+		if (row == MANGA_PRELOAD_ROW) return "More: smoother on a slow server, more data.";
+		if (row == MANGA_CACHE_ROW) return "Pages kept on the card to read again without downloading. Covers: 50 MB more.";
+		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
+		if (row == MANGA_DNS_ROW) return "Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them.";
+		if (row == MANGA_JAVA_ROW)
+			return "Needed for repositories whose address ends in index.pb or index.min.json: about 234 MB on the card, and about 400 MB of memory while one of their sources is open.";
 		if (row == MUSIC_ROW) return "What the top screen shows while a song plays (SELECT while playing).";
 		if (row == VIS_ROW) return "How the music is drawn: Peaks, Peaks Banana or Circle (SELECT while playing).";
 		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
@@ -92,6 +103,11 @@ namespace bp
 		case 9: return "Looks for a new version a few seconds after the start (Wi-Fi needed).";
 		case 10: return "One brightness for both screens. Off: each its own.";
 		case 11: return "Files played from a network folder go in Recent too. Off: they're left out, and the ones there now go.";
+		case 13: return "Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book).";
+		case 14: return "Sources a repository marks as adult.";
+		case 15: return "Off clears it.";
+		case 16: return "Chapters you open show in Home's Recent. Off: they're left out.";
+		case 18: return "A chapter opens on both screens. SELECT or B leaves.";
 		default: return "";
 		}
 	}
@@ -133,6 +149,21 @@ namespace bp
 	void Ui::changeSetting(int row, int dir, Player& p)
 	{
 		if (row == CLEAR_ROW) { clearHistory(p); return; }
+		// the cache's Clear asked twice, as the history's is
+		if (row == MANGA_CLEAR_ROW)
+		{
+			Uint32 now = SDL_GetTicks();
+			if (mangaCacheAt && now - mangaCacheAt < QUIT_WINDOW_MS)
+			{
+				mangaPageCache.clear();
+				mangaCacheAt = 0;
+			}
+			else mangaCacheAt = now;
+			return;
+		}
+		// a note, not a value: nothing to change (and no switch beyond the last REMEMBER row)
+		if (row == EXT_NOTE) return;
+		if (row == MANGA_JAVA_ROW) { mangaJavaAct(); return; }
 		if (row == CHECK_ROW) { if (updater) updater->check(); return; }
 		if (row == TOP_LIGHT_ROW || row == BOTTOM_LIGHT_ROW)
 		{
@@ -151,6 +182,40 @@ namespace bp
 		Settings s = p.settings;
 		if (row - STYLE_ROW0 < STYLE_KEYS) stepStyle(s.style, (StyleKey)(row - STYLE_ROW0), dir);
 		else if (row == MUSIC_ROW) s.musicShow = ((s.musicShow + dir) % SHOWS + SHOWS) % SHOWS;
+		else if (row == MANGA_MODE_ROW) s.mangaMode = ((s.mangaMode + dir) % MANGA_MODES + MANGA_MODES) % MANGA_MODES;
+		else if (row == MANGA_FIT_ROW)
+		{
+			s.mangaFit = ((s.mangaFit + dir) % MANGA_FITS + MANGA_FITS) % MANGA_FITS;
+			// a chapter open on the top panel takes it at once, as X takes the mode
+			if (readerStatus.open) readerCmds.push_back({ReaderCmd::Fit, (double)s.mangaFit, (int64_t)SDL_GetTicks()});
+		}
+		else if (row == MANGA_HINGE_ROW)
+		{
+			// 0 to 200 in steps of 4 (a value a file kept from before may sit off the step: it snaps onto one)
+			int h = std::clamp(s.mangaHinge + dir * 4, 0, 200);
+			s.mangaHinge = h - h % 4;
+			// both panels are one view while reading fullscreen: the reader relayouts now, not at the next open
+			if (readerStatus.open && readerStatus.fullscreen)
+				readerCmds.push_back({ReaderCmd::Fullscreen, 1.0, (int64_t)SDL_GetTicks(), (double)s.mangaHinge});
+		}
+		else if (row == MANGA_PRELOAD_ROW) s.mangaPreload = stepMangaPreload(s.mangaPreload, dir);
+		else if (row == MANGA_CACHE_ROW)
+		{
+			s.mangaCacheSize = ((s.mangaCacheSize + dir) % MANGA_CACHES + MANGA_CACHES) % MANGA_CACHES;
+			// over a smaller cap the cache gives its oldest pages up at once
+			mangaPageCache.setLimit(mangaCacheBytes(s.mangaCacheSize));
+		}
+		else if (row == TOGGLE_ROW + 15)
+		{
+			s.mangaHistory = !s.mangaHistory;
+			mangaHistOn = s.mangaHistory;
+			// off: the list goes; the places and the read marks stay (progress isn't history)
+			if (!s.mangaHistory && mangaStore)
+			{
+				mangaStore->clearHistory();
+				mangaSave();
+			}
+		}
 		else if (row == VIS_ROW) s.visualizer = stepVisualizer(s.visualizer, dir);
 		else if (row == CLOCK_ROW) s.clock = ((s.clock + dir) % CLOCKS + CLOCKS) % CLOCKS;
 		// (not round: Never at one end, 5 minutes at the other)
@@ -159,6 +224,165 @@ namespace bp
 		else if (row == DRAG_ROW) s.dragBox = !s.dragBox;
 		else s.*REMEMBER[row - TOGGLE_ROW] = !(s.*REMEMBER[row - TOGGLE_ROW]);
 		p.setSettings(s);
+	}
+
+	// a settings row: its label on the left, the arrows and the value; an action's or the repositories' note's own look
+	void Ui::drawSettingRow(int row, int y, bool at, const Player& p)
+	{
+		int mid = y + (SET_H - 4) / 2;
+		if (at && row != EXT_NOTE) drawFocus({16, y, 608, SET_H - 4});
+		std::string label, value;
+		if (row == EXT_NOTE)
+		{
+			// a note, not a value: an info box, its lines wrapped (A does nothing there)
+			drawBox({16, y, 608, SET_H - 4}, SURFACE, R_BUTTON, at);
+			drawGlyphMid(G_INFO, 42, mid, at ? DIM_ON : DIM);
+			auto lines = wrapText("Repositories are added by you. Banana Player doesn\xE2\x80\x99t provide or check their content.",
+				0, 540, 2);
+			for (size_t k = 0; k < lines.size(); k++)
+				drawTextMid(lines[k], 0, at ? DIM_ON : DIM, 66, mid + (k == 0 ? (lines.size() > 1 ? -11 : 0) : 11), 540);
+			return;
+		}
+		int k = row - STYLE_ROW0;	// a style row's key
+		if (row == CHECK_ROW || row == INSTALL_ROW)
+		{
+			// actions with a state: no arrows
+			std::string label = "Check for updates", value = updateStatus();
+			if (row == INSTALL_ROW)
+			{
+				label = "Update to " + updater->available();
+				int pct = updater->progress();
+				value = updater->state() == Updater::State::Ready ? "Restart now"
+					: updater->state() == Updater::State::Downloading ? (pct >= 0 ? std::to_string(pct) + "%" : "Downloading")
+					: updater->state() == Updater::State::Failed ? "Try again" : "Download";
+			}
+			drawTextMid(label, 1, at ? ACCENT : TEXT, 32, mid, 320);
+			drawTextMid(value, 1, at ? ACCENT : DIM_ON, 608, mid, 260, 1);
+			return;
+		}
+		if (row == SOUND_ROW)
+		{
+			// a page of its own: what it's set to, and a chevron (no arrows: nothing to step)
+			drawTextMid("Sound", 1, at ? ACCENT : TEXT, 32, mid, 320);
+			drawTextMid(soundSummary(p.settings), 1, at ? ACCENT : p.settings.eqOn || p.settings.soundFx != SoundFx::None ? TEXT : DIM,
+				584, mid, 240, 1);
+			drawGlyphMid(G_RIGHT, 604, mid, at ? ACCENT : DIM);
+			return;
+		}
+		if (row == CLEAR_ROW)
+		{
+			// an action, not a value: no arrows
+			size_t n = p.history().items().size();
+			drawTextMid("Clear play history", 1, at ? ACCENT : TEXT, 32, mid, 320);
+			drawTextMid(clearArmed ? "Press again to clear" : n ? std::to_string(n) + (n == 1 ? " file" : " files") : "Empty", 1,
+				clearArmed ? ACCENT : at ? DIM_ON : DIM, 608, mid, 0, 1);
+			return;
+		}
+		if (row == MANGA_CLEAR_ROW)
+		{
+			// the cache's Clear: an action too (its size from the cache itself)
+			uint64_t size = mangaPageCache.size();
+			drawTextMid("Clear cache", 1, at ? ACCENT : TEXT, 32, mid, 320);
+			drawTextMid(mangaCacheAt ? "Press again to clear" : size ? "Clear \xC2\xB7 " + formatBytes((long long)size) : "Empty", 1,
+				mangaCacheAt ? ACCENT : at ? DIM_ON : DIM, 608, mid, 0, 1);
+			return;
+		}
+		if (row == MANGA_JAVA_ROW)
+		{
+			// an action with the host's state as its value (installed size, download progress, why it failed)
+			drawTextMid("Extension support", 1, at ? ACCENT : TEXT, 32, mid, 250);
+			drawTextMid(mangaJavaValue(), 1, at ? ACCENT : TEXT, 608, mid, 330, 1);
+			return;
+		}
+		if (k >= 0 && k < STYLE_KEYS)
+		{
+			label = subStyleSettings()[k].label;
+			value = styleValueLabel(p.settings.style, (StyleKey)k);
+		}
+		else if (row == MANGA_MODE_ROW)
+		{
+			static const char* NAMES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
+			label = "Reading mode";
+			value = NAMES[p.settings.mangaMode];
+		}
+		else if (row == MANGA_FIT_ROW)
+		{
+			static const char* FITS[MANGA_FITS] = {"Page", "Width", "Fill"};
+			label = "Page fit";
+			value = FITS[p.settings.mangaFit];
+		}
+		else if (row == MANGA_HINGE_ROW)
+		{
+			label = "Hinge gap";
+			value = std::to_string(p.settings.mangaHinge) + " px";
+		}
+		else if (row == MANGA_PRELOAD_ROW)
+		{
+			label = "Preload";
+			value = std::to_string(p.settings.mangaPreload) + (p.settings.mangaPreload == 1 ? " page" : " pages");
+		}
+		else if (row == MANGA_CACHE_ROW)
+		{
+			static const char* SIZES[MANGA_CACHES] = {"100 MB", "300 MB", "1 GB"};
+			label = "Page cache";
+			value = SIZES[p.settings.mangaCacheSize];
+		}
+		else if (row == TOGGLE_ROW + 14)
+		{
+			label = REMEMBER_LABELS[row - TOGGLE_ROW];
+			value = p.settings.mangaAdult ? "Shown" : "Hidden";
+		}
+		else if (row == MANGA_DNS_ROW)
+		{
+			label = REMEMBER_LABELS[row - TOGGLE_ROW];
+			value = p.settings.mangaSecureDns ? "Cloudflare (1.1.1.1)" : "Off";
+		}
+		else if (row == MUSIC_ROW)
+		{
+			label = "Music display";
+			value = musicShowLabel(p.settings.musicShow);
+		}
+		else if (row == VIS_ROW)
+		{
+			label = "Visualizer";
+			value = visualizerLabel(p.settings.visualizer);
+		}
+		else if (row == TOP_LIGHT_ROW || row == BOTTOM_LIGHT_ROW)
+		{
+			label = row == BOTTOM_LIGHT_ROW ? "Bottom brightness" : sameBrightness ? "Brightness" : "Top brightness";
+			int pm = backlight.permille(row == TOP_LIGHT_ROW ? Backlight::TOP : Backlight::BOTTOM);
+			value = pm < 0 ? "-" : std::to_string((pm + 5) / 10) + "%";
+		}
+		else if (row == CLOCK_ROW)
+		{
+			label = "Clock";
+			value = p.settings.clock == CLOCK_12 ? "12-hour" : p.settings.clock == CLOCK_OFF ? "Off" : "24-hour";
+		}
+		else if (row == SCREEN_OFF_ROW)
+		{
+			label = "Screen off after";
+			value = screenOffLabel(p.settings.screenOffAfter);
+		}
+		else if (row == PAN_ROW)
+		{
+			label = "Pan area";
+			value = p.settings.panRight ? "Right" : "Left";
+		}
+		else if (row == DRAG_ROW)
+		{
+			label = "Drag moves";
+			value = p.settings.dragBox ? "The box" : "The photo";
+		}
+		else
+		{
+			label = REMEMBER_LABELS[row - TOGGLE_ROW];
+			value = p.settings.*REMEMBER[row - TOGGLE_ROW] ? "On" : "Off";
+		}
+		drawTextMid(label, 1, at ? ACCENT : TEXT, 32, mid, 330);
+		// arrows on every row: they are where a finger steps back and on
+		drawTextMid("<", 1, at ? ACCENT : DIM, SET_ARROW_X, mid);
+		drawTextMid(value, 1, at ? ACCENT : TEXT, 490, mid, 196, 2);
+		drawTextMid(">", 1, at ? ACCENT : DIM, 608, mid, 0, 1);
 	}
 
 	void Ui::drawSettings(const Player& p)
@@ -211,100 +435,7 @@ namespace bp
 		}
 		auto rows = settingRows();
 		for (int i = scroll; i < (int)rows.size() && i < scroll + SET_SHOWN; i++)
-		{
-			int row = rows[i];
-			int y = SET_Y + (i - scroll) * SET_H;
-			bool at = i == cursor;
-			int mid = y + (SET_H - 4) / 2;
-			if (at) drawFocus({16, y, 608, SET_H - 4});
-			std::string label, value;
-			int k = row - STYLE_ROW0;	// a style row's key
-			if (row == CHECK_ROW || row == INSTALL_ROW)
-			{
-				// actions with a state: no arrows
-				std::string label = "Check for updates", value = updateStatus();
-				if (row == INSTALL_ROW)
-				{
-					label = "Update to " + updater->available();
-					int pct = updater->progress();
-					value = updater->state() == Updater::State::Ready ? "Restart now"
-						: updater->state() == Updater::State::Downloading ? (pct >= 0 ? std::to_string(pct) + "%" : "Downloading")
-						: updater->state() == Updater::State::Failed ? "Try again" : "Download";
-				}
-				drawTextMid(label, 1, at ? ACCENT : TEXT, 32, mid, 320);
-				drawTextMid(value, 1, at ? ACCENT : DIM_ON, 608, mid, 260, 1);
-				continue;
-			}
-			if (row == SOUND_ROW)
-			{
-				// a page of its own: what it's set to, and a chevron (no arrows: nothing to step)
-				drawTextMid("Sound", 1, at ? ACCENT : TEXT, 32, mid, 320);
-				drawTextMid(soundSummary(p.settings), 1, at ? ACCENT : p.settings.eqOn || p.settings.soundFx != SoundFx::None ? TEXT : DIM,
-					584, mid, 240, 1);
-				drawGlyphMid(G_RIGHT, 604, mid, at ? ACCENT : DIM);
-				continue;
-			}
-			if (row == CLEAR_ROW)
-			{
-				// an action, not a value: no arrows
-				size_t n = p.history().items().size();
-				drawTextMid("Clear play history", 1, at ? ACCENT : TEXT, 32, mid, 320);
-				drawTextMid(clearArmed ? "Press again to clear" : n ? std::to_string(n) + (n == 1 ? " file" : " files") : "Empty", 1,
-					clearArmed ? ACCENT : at ? DIM_ON : DIM, 608, mid, 0, 1);
-				continue;
-			}
-			if (k >= 0 && k < STYLE_KEYS)
-			{
-				label = subStyleSettings()[k].label;
-				value = styleValueLabel(p.settings.style, (StyleKey)k);
-			}
-			else if (row == MUSIC_ROW)
-			{
-				label = "Music display";
-				value = musicShowLabel(p.settings.musicShow);
-			}
-			else if (row == VIS_ROW)
-			{
-				label = "Visualizer";
-				value = visualizerLabel(p.settings.visualizer);
-			}
-			else if (row == TOP_LIGHT_ROW || row == BOTTOM_LIGHT_ROW)
-			{
-				label = row == BOTTOM_LIGHT_ROW ? "Bottom brightness" : sameBrightness ? "Brightness" : "Top brightness";
-				int pm = backlight.permille(row == TOP_LIGHT_ROW ? Backlight::TOP : Backlight::BOTTOM);
-				value = pm < 0 ? "-" : std::to_string((pm + 5) / 10) + "%";
-			}
-			else if (row == CLOCK_ROW)
-			{
-				label = "Clock";
-				value = p.settings.clock == CLOCK_12 ? "12-hour" : p.settings.clock == CLOCK_OFF ? "Off" : "24-hour";
-			}
-			else if (row == SCREEN_OFF_ROW)
-			{
-				label = "Screen off after";
-				value = screenOffLabel(p.settings.screenOffAfter);
-			}
-			else if (row == PAN_ROW)
-			{
-				label = "Pan area";
-				value = p.settings.panRight ? "Right" : "Left";
-			}
-			else if (row == DRAG_ROW)
-			{
-				label = "Drag moves";
-				value = p.settings.dragBox ? "The box" : "The photo";
-			}
-			else
-			{
-				label = REMEMBER_LABELS[row - TOGGLE_ROW];
-				value = p.settings.*REMEMBER[row - TOGGLE_ROW] ? "On" : "Off";
-			}
-			drawTextMid(label, 1, at ? ACCENT : TEXT, 32, mid, 330);
-			// arrows on every row: they are where a finger steps back and on
-			drawTextMid("<", 1, at ? ACCENT : DIM, SET_ARROW_X, mid);
-			drawTextMid(value, 1, at ? ACCENT : TEXT, 490, mid, 196, 2);
-			drawTextMid(">", 1, at ? ACCENT : DIM, 608, mid, 0, 1);
-		}
+			drawSettingRow(rows[i], SET_Y + (i - scroll) * SET_H, i == cursor, p);
 		// what the row under the cursor does, in a line or two above the footer
 		std::string help = cursor >= 0 && cursor < (int)rows.size() ? settingHelp(rows[cursor]) : "";
 		SDL_Color helpInk = DIM;
@@ -328,12 +459,15 @@ namespace bp
 				: "Downloads from GitHub, checked before anything changes";
 			helpInk = updater->state() == Updater::State::Failed ? ACCENT : DIM;
 		}
-		auto lines = wrapText(help, 0, 592, 2);
+		// what the row under the cursor does, in a line or two above the footer (one line while the mini bar is there:
+		// its second would be under it)
+		auto lines = wrapText(help, 0, 592, miniUp ? 1 : 2);
 		for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, helpInk, 24, HELP_Y + (int)i * 22, 592);
 		bool action = cursor < (int)rows.size() && (rows[cursor] == CHECK_ROW || rows[cursor] == INSTALL_ROW || rows[cursor] == CLEAR_ROW ||
 			rows[cursor] == SOUND_ROW);
 		if (action)
-			drawHints({{"A", rows[cursor] == CLEAR_ROW ? "Clear" : rows[cursor] == CHECK_ROW ? "Check" : rows[cursor] == SOUND_ROW ? "Open" : "Update"},
+			drawHints({{"A", rows[cursor] == CLEAR_ROW ? "Clear"
+				: rows[cursor] == CHECK_ROW ? "Check" : rows[cursor] == SOUND_ROW ? "Open" : "Update"},
 				{"UP/DOWN", "Choose"}, {"Y/X", "Group"}, {"B", "Back"}});
 		else drawHints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"Y/X", "Group"}, {"B", "Back"}});
 	}

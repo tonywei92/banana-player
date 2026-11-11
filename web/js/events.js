@@ -29,6 +29,8 @@ export function openSSE() {
 	on('ping', () => {});
 	on('fs', d => set({ fsTick: store.fsTick + 1, fsDir: d.dir }));
 	on('playlists', () => set({ plTick: store.plTick + 1, plExternal: true }));
+	// the manga reader's state changed (library, repos, queue): the Manga pages reload
+	on('manga', () => set({ mangaTick: (store.mangaTick || 0) + 1 }));
 	// the handheld's history changed (played, removed, cleared, here or there): Recent loads again
 	on('recent', () => set({ recentTick: (store.recentTick || 0) + 1 }));
 	on('bye', d => {

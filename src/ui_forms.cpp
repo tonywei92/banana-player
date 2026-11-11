@@ -34,6 +34,13 @@ namespace bp
 		case FORM_PASS: return "Password";
 		case EQ_NAME: return "Preset name";
 		case PL_NAME: return "Playlist name";
+		case SRC_URL_FIELD: return "Repository URL";
+		case MANGA_SEARCH_FIELD: return "Search";
+		case MANGA_FILTER_FIELD: return "Filter";
+		case MGSRV_NAME_FIELD: return "Server name";
+		case MGSRV_URL_FIELD: return "Server address";
+		case MGSRV_USER_FIELD: return "User";
+		case MGSRV_PASS_FIELD: return "Password";
 		default: return "";
 		}
 	}
@@ -255,6 +262,24 @@ namespace bp
 			plNameNote.clear();
 			plNameThenAdd = false;
 		}
+		if (kbField == MANGA_SEARCH_FIELD)
+		{
+			// Done runs the source's search at once; B (a cancelled one) keeps the query that was there
+			kbOpen = false;
+			kbPressed = -1;
+			if (keep) mangaSourceSearch(kbEdit.text);
+			else browseVersion++;
+			return;
+		}
+		if (kbField == MANGA_FILTER_FIELD)
+		{
+			// Done writes the text filter and the sheet is under it again; B keeps the value that was there
+			kbOpen = false;
+			kbPressed = -1;
+			if (keep) mangaFilterTextTyped(kbEdit.text);
+			else browseVersion++;
+			return;
+		}
 		kbOpen = false;
 		kbPressed = -1;
 		if (!keep) { browseVersion++; return; }
@@ -276,6 +301,13 @@ namespace bp
 		case FORM_FOLDER: form.folder = trimmed(t); break;
 		case FORM_USER: form.user = trimmed(t); break;
 		case FORM_PASS: formPassword = t; formPasswordTyped = true; break;	// (spaces kept: they can be a password's)
+		// the Sources page's repository URL: added by the next tick, which has the Player for the answer's toast
+		case SRC_URL_FIELD: mangaSourcesUrlTyped(trimmed(t)); return;
+		// a saved server's form (ui_manga_servers.cpp): the page's own, never a plain password kept anywhere else
+		case MGSRV_NAME_FIELD:
+		case MGSRV_URL_FIELD:
+		case MGSRV_USER_FIELD:
+		case MGSRV_PASS_FIELD: mangaServerFieldTyped(kbField, t); return;
 		default: break;
 		}
 		formNote.clear();
@@ -392,6 +424,9 @@ namespace bp
 		if (!after.empty()) drawTextMid(after, 1, TEXT, caretX + 5, 124, std::max(0, 580 - (caretX + 5 - 32)));
 		if (kbField == EQ_NAME && !eqNameNote.empty()) drawTextMid(eqNameNote, 0, ACCENT, 24, 176, 592);
 		if (kbField == PL_NAME && !plNameNote.empty()) drawTextMid(plNameNote, 0, ACCENT, 24, 176, 592);
+		// both kinds of repository take a plain address: a Lua one's, or an extensions' index (index.pb, index.min.json)
+		if (kbField == SRC_URL_FIELD)
+			drawTextMid("Any repository URL, including ones ending in index.pb or index.min.json", 0, DIM, 24, 176, 592);
 		drawHints({{"A", "Type"}, {"B", "Delete"}, {"X", "Space"}, {"Y", "Shift"}, {"L/R", "Move"}, {"START", "Done"}});
 		auto keys = kbKeys();
 		for (int i = 0; i < (int)keys.size(); i++)

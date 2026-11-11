@@ -53,6 +53,7 @@ namespace bp
 	std::vector<PlaylistEntry> folderEntries(const std::string& dir, const std::vector<std::string>& names, int& skippedPhotos);
 
 	bool writeFileAtomic(const std::string& path, const std::string& text);	// tmp + rename; false on failure
+	bool writeFileDurable(const std::string& path, const std::string& text);	// the same, synced to the card (fsync)
 
 	class PlaylistStore
 	{

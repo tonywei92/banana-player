@@ -76,6 +76,8 @@ namespace bp
 		// at a file's end: the next one, or (Loop all) the first again; false when that's all
 		bool advance();
 		bool playingAudio() const { return isAudio && !playlist.empty(); }
+		// the manga reader is over the top panel: a song's visualizer rests (the bare graph) until it's gone
+		void setTopCovered(bool on);
 		bool playingPhoto() const { return isPhoto && !playlist.empty(); }
 		int index() const { return current; }
 		int count() const { return (int)playlist.size() - (ghost >= 0 ? 1 : 0); }
@@ -114,7 +116,7 @@ namespace bp
 		bool frameDue();
 		// mpv's result: < 0 when it couldn't draw (in the log, the first few times: a black top panel's cause)
 		// fbo: the target (0 the window's; main's small one for what plays under a photo)
-		int render(int w, int h, unsigned fbo = 0);
+		int render(int w, int h, unsigned fbo = 0, bool skip = false);	// skip: take the frame, draw nothing
 		void reportSwap();
 
 		// a photo is up over what plays (on the photo viewer's own mpv): a video's picture is neither decoded nor drawn
@@ -195,6 +197,11 @@ namespace bp
 		int takeCardShown() { int ms = cardMs; cardMs = 0; return ms; }
 		// the top panel with nothing playing: the icon, the name, where to pick something
 		void showIdle(bool on);
+		// the top panel's pixels (main sets it): the idle icon is drawn in whole pixels at that size
+		void setTopSize(int w, int h) { topW = w; topH = h; }
+		int topW = 0, topH = 0;
+		int idleIconPx = 0, idleIconH = 0;	// the idle picture decoded at this width, written to idleIconFile
+		std::string idleIconFile;
 		// the top panel while a web page plays the music instead: the paused picture dimmed, and why (a paused
 		// visualizer looks frozen otherwise). where: the page's name ("Chrome on Mac"); waiting: it was refused the
 		// sound without a tap there (Play on from here), and B plays here instead; glyph: drawn over the title (G_LAPTOP)
@@ -359,6 +366,7 @@ namespace bp
 		int shownMusic() const;	// MusicShow as it comes out for this file (its art or none)
 		void updateOverlay();
 		bool isAudio = false, isPhoto = false;
+		bool topCovered = false;	// setTopCovered
 		bool hidingVideo = false;	// hideVideo(true): a video's picture off (each video's loadfile says vid=no)
 		bool vidOff = false;		// the vid property itself is "no" (a song opened next needs it back first)
 		// photos: the size mpv shows (before any turn), the turn mpv makes of the file's own (rotation metadata) and

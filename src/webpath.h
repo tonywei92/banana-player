@@ -28,6 +28,10 @@ namespace bp
 
 	// loopback, RFC 1918, link-local, unique local (fc00::/7), and IPv4-mapped IPv6 of those; a zone ("%wlan0") is ignored
 	bool privateAddress(const std::string& ip);
+	// Something a stranger's script may reach (design 5.4): false for everything privateAddress refuses, plus the
+	// reserved, documentation, benchmarking, carrier-grade NAT, multicast and broadcast ranges, mapped/6to4 forms
+	// whose IPv4 isn't public, and anything that isn't an IP literal. A zone ("%wlan0") is ignored.
+	bool publicAddress(const std::string& ip);
 	// An IP literal ("192.168.1.2", "192.168.1.2:8080", "[::1]:8080") or "localhost" (any case), with an optional
 	// port. A name is refused, so a rebinding page can't reach the player.
 	bool hostAllowed(const std::string& hostHeader);

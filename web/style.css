@@ -979,3 +979,27 @@ input[type=range] { touch-action: pan-y; }
 .rprog { position: absolute; left: 4px; right: 4px; bottom: 4px; height: 3px; border-radius: 2px; background: rgba(0, 0, 0, .55); overflow: hidden; }
 .rprog i { display: block; height: 100%; background: var(--yellow); border-radius: 2px; }
 .dur.y { color: var(--yellow); }
+
+/* ================= manga (section 8: the dashboard's Library, Sources and Downloads) ================= */
+.manga-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s3); }
+.mcard { display: flex; align-items:flex-start; gap: var(--s2); padding: var(--s2); }
+.mcard-btn { display: flex; gap: var(--s2); align-items: flex-start; flex: 1; min-width: 0; cursor: pointer; text-align: left; color: inherit; background: none; border: 0; padding: 0; font: inherit; }
+.mcard-btn:active { opacity: .8; }
+.mc-cover { width: 60px; height: 80px; border-radius: 6px; overflow: hidden; flex: none; background: var(--track); display: grid; place-items: center; }
+.mc-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mc-gen { font: 400 22px/1 var(--pixel); color: var(--dim); text-transform: uppercase; }
+.mc-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mc-title { font: 600 15px/1.25 var(--text); }
+.mc-sub { font: 400 13px/1.2 var(--text); color: var(--dim); }
+/* repositories and sources cards reuse .card and .line from the Extensions page */
+.mrepo-list { display: flex; flex-direction: column; gap: var(--s2); }
+.mrepo-row { display: flex; gap: var(--s2); align-items: center; }
+.msrc-list { display: flex; flex-direction: column; gap: var(--s2); }
+.msrc-row { display: flex; gap: var(--s2); align-items: center; padding: var(--s2) var(--s3); }
+/* downloads: the progress bar under each chapter */
+.mdl-prog { overflow: hidden; }
+/* a series' chapters on the dashboard: a tick, the title and place, the download state */
+.mchap-list { display: flex; flex-direction: column; gap: 6px; }
+.mchap { display: flex; align-items: center; gap: var(--s3); padding: 8px var(--s3); cursor: pointer; }
+.mchap input[type="checkbox"] { width: 20px; height: 20px; flex: none; accent-color: var(--yellow); }
+.mchap input[type="checkbox"]:disabled { opacity: .4; }

@@ -1,7 +1,13 @@
 // The parts without a window: aspect modes, track labels, mpv's track-list, times.
 #include "aspect.h"
 #include "battery.h"
+#include "comicinfo.h"
+#include "cbz.h"
+#include "dlqueue.h"
+#include "doh.h"
+#include "cbzwrite.h"
 #include "browser.h"
+#include "challenge.h"
 #include "crashlog.h"
 #include "durations.h"
 #include "durprobe.h"
@@ -13,6 +19,7 @@ extern "C"
 #include "format.h"
 #include "ftplist.h"
 #include "history.h"
+#include "htmldoc.h"
 #include "photo.h"
 #include "picsubs.h"
 #include "png.h"
@@ -22,7 +29,22 @@ extern "C"
 #include "playlist.h"
 #include "playlists.h"
 #include "keyboard.h"
+#include "manga_names.h"
+#include "mangaservers.h"
+#include "mangastore.h"
+#include "mangalocal.h"
+#include "manganetfolders.h"
+#include "manga_ui_logic.h"
+#include "mangafilters.h"
+#include "mangaremote.h"
+#include "mangarepo.h"
+#include "mangaseriescache.h"
 #include "netpath.h"
+#include "opds.h"
+#include "paged.h"
+#include "pagedecode.h"
+#include "pagecache.h"
+#include "readerfetchplan.h"
 #include "secret.h"
 #include "servers.h"
 #include "sidecar.h"
@@ -30,8 +52,14 @@ extern "C"
 #include "resume.h"
 #include "session.h"
 #include "settings.h"
+#include "strip.h"
+#include "tarx.h"
 #include "tracks.h"
 #include "json.h"
+#include "suwayomi.h"
+#include "imagesize.h"
+#include "bands.h"
+#include "mangajava.h"
 #include "webauth.h"
 #include "webmedia.h"
 #include "webpath.h"
@@ -42,6 +70,7 @@ extern "C"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 #include <fstream>
 #include <iterator>
 #include <sys/stat.h>
@@ -51,7 +80,9 @@ extern "C"
 #include <map>
 #include <random>
 #include <set>
+#include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 using namespace bp;
@@ -239,6 +270,4525 @@ static void testDurations()
 	CHECK_EQ(probeDuration(D), -1.0);	// a folder
 	rmdir(dir);
 	av_log_set_level(level);
+}
+
+static void testMangaNames()
+{
+	// pages: the picture kinds whatever their case, and nothing else
+	for (const char* n : {"1.jpg", "2.JPEG", "3.png", "4.WebP", "5.gif", "6.avif", "7.BMP", "ch1/10.jpg"})
+		CHECK_EQ(isPageImage(n), true);
+	for (const char* n : {"", "1.txt", "page", "page.jpg.txt", "ch1/", ".1.jpg", "ch1/.1.jpg", "ch1/__MACOSX/1.jpg",
+			    "__MACOSX/1.jpg"})
+		CHECK_EQ(isPageImage(n), false);
+
+	// a chapter's pages in the browser's natural order (naturalLess, tested with the browser): 2 before 10
+	std::vector<std::string> pages = {"page10.jpg", "page2.jpg", "Page1.jpg", "ch1/10.jpg", "ch1/2.jpg"};
+	sortPages(pages);
+	CHECK_EQ(pages[0], std::string("ch1/2.jpg"));
+	CHECK_EQ(pages[1], std::string("ch1/10.jpg"));
+	CHECK_EQ(pages[2], std::string("Page1.jpg"));
+	CHECK_EQ(pages[3], std::string("page2.jpg"));
+	CHECK_EQ(pages[4], std::string("page10.jpg"));
+
+	// the chapter markers, mixed case and all
+	CHECK_EQ(chapterNumber("Chapter 12"), 12.0);
+	CHECK_EQ(chapterNumber("CHAPTER 12"), 12.0);
+	CHECK_EQ(chapterNumber("Ch.12"), 12.0);
+	CHECK_EQ(chapterNumber("ch 12.5"), 12.5);
+	CHECK_EQ(chapterNumber("c012"), 12.0);
+	CHECK_EQ(chapterNumber("#12"), 12.0);
+	CHECK_EQ(chapterNumber("Ep 3"), 3.0);
+	CHECK_EQ(chapterNumber("EP 3"), 3.0);
+	CHECK_EQ(chapterNumber("Chapter 007"), 7.0);
+	CHECK_EQ(chapterNumber("Vol.2 Ch.10.5 - The Title"), 10.5);
+	// no marker: the last number, but a volume's is not a chapter's
+	CHECK_EQ(chapterNumber("Series Name 045.cbz"), 45.0);
+	CHECK_EQ(chapterNumber("Series 2 Name 045"), 45.0);
+	CHECK_EQ(chapterNumber("Series 10.5"), 10.5);
+	CHECK_EQ(chapterNumber("Vol 3"), -1.0);
+	CHECK_EQ(chapterNumber("Volume 02"), -1.0);
+	CHECK_EQ(chapterNumber("Vol.2"), -1.0);
+	CHECK_EQ(chapterNumber("Series v1.2"), -1.0);
+	CHECK_EQ(chapterNumber("Series - 012 (v2)"), 12.0);	// past the volume to the chapter
+	// none at all
+	CHECK_EQ(chapterNumber(""), -1.0);
+	CHECK_EQ(chapterNumber("no digits here"), -1.0);
+	CHECK_EQ(chapterNumber("Chapter"), -1.0);
+
+	// volumes: the word or a directly attached v
+	CHECK_EQ(volumeNumber("Vol.2"), 2.0);
+	CHECK_EQ(volumeNumber("Vol 2"), 2.0);
+	CHECK_EQ(volumeNumber("Volume 02"), 2.0);
+	CHECK_EQ(volumeNumber("v2"), 2.0);
+	CHECK_EQ(volumeNumber("Series v2"), 2.0);
+	CHECK_EQ(volumeNumber("VOL 07"), 7.0);
+	CHECK_EQ(volumeNumber("Vol.2 Ch.10.5 - The Title"), 2.0);
+	CHECK_EQ(volumeNumber(""), -1.0);
+	CHECK_EQ(volumeNumber("Chapter 12"), -1.0);
+	CHECK_EQ(volumeNumber("Volume"), -1.0);
+	CHECK_EQ(volumeNumber("Volt 3"), -1.0);
+	CHECK_EQ(volumeNumber("nav2"), -1.0);	// "v" must start a word
+}
+
+// The URL chapter's fetches: what goes out now, what is dropped when the reader moves.
+static void testReaderFetchPlan()
+{
+	ReaderFetchPlan::State s;
+	s.wanted = {4, 4, 5, 6, 7, 3};	// the Strip's list can repeat the page in view
+	s.max = 3;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 5, 6}));
+	s.done = {5};	// already in the page cache: no fetch
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 6, 7}));
+	s.inFlight = {4};	// one out: two more fit under three
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{6, 7}));
+	s.failed = {6};	// a dead URL is not asked for again while wanted
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{7, 3}));
+	s.inFlight = {0, 1, 2};	// the room is the cap's, not the wanted list's
+	CHECK_EQ(ReaderFetchPlan::next(s), std::vector<int>{});
+	s = {};
+	s.wanted = {-1, 1, 1, 2};	// a bad index is dropped, a repeat is one request
+	s.max = 5;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{1, 2}));
+
+	// the reader moved: what is in flight for a page no longer wanted at all goes
+	s.wanted = {2, 3};
+	s.inFlight = {1, 2, 5};
+	CHECK_EQ(ReaderFetchPlan::stale(s), (std::vector<int>{1, 5}));
+	s.inFlight = {2, 3};
+	CHECK_EQ(ReaderFetchPlan::stale(s), std::vector<int>{});
+
+	// a jump's target goes alone: a neighbour already out is dropped while the target is not in
+	s = {};
+	s.wanted = {4, 5, 6};
+	s.inFlight = {3, 4, 5, 7};
+	s.target = 5;
+	s.targetAt = 1000;
+	s.now = 1100;
+	CHECK_EQ(ReaderFetchPlan::stale(s), (std::vector<int>{3, 4, 7}));
+	s.targetIn = true;
+	CHECK_EQ(ReaderFetchPlan::stale(s), (std::vector<int>{3, 7}));
+}
+
+// The Seek rule: a tap goes at once, a drag's seeks coalesce, and the run's last page goes once they rest.
+static void testSeekRun()
+{
+	SeekRun r;
+	// the first Seek of a run: a tap on the slider, the grid's A
+	CHECK_EQ(r.seek(30, 1000) == SeekRun::Now::Commit, true);
+	CHECK_EQ(r.seeks(), 1);
+	CHECK_EQ(r.pending(), false);
+	CHECK_EQ(r.due(1000), false);
+	// more within the settle window: a drag, its target the last page passed over
+	CHECK_EQ(r.seek(4, 1040) == SeekRun::Now::Hold, true);
+	CHECK_EQ(r.seek(9, 1080) == SeekRun::Now::Hold, true);
+	CHECK_EQ(r.pending(), true);
+	CHECK_EQ(r.target(), 9);
+	CHECK_EQ(r.seeks(), 3);
+	// 150 ms after the last one, not before
+	CHECK_EQ(r.due(1229), false);
+	CHECK_EQ(r.due(1230), true);
+	r.commit();
+	CHECK_EQ(r.pending(), false);
+	CHECK_EQ(r.target(), -1);
+	CHECK_EQ(r.due(2000), false);
+	// a seek after the rest is a new run, at once
+	CHECK_EQ(r.seek(12, 2000) == SeekRun::Now::Commit, true);
+	CHECK_EQ(r.due(2001), false);
+	// a run whose target is never committed: the next seek past the window is the newest target, at once
+	CHECK_EQ(r.seek(14, 2100) == SeekRun::Now::Hold, true);
+	CHECK_EQ(r.seek(20, 2300) == SeekRun::Now::Commit, true);
+	CHECK_EQ(r.seeks(), 1);
+	// reset (a chapter closed): no run, so the next seek is a tap
+	r.reset();
+	CHECK_EQ(r.pending(), false);
+	CHECK_EQ(r.seek(2, 1) == SeekRun::Now::Commit, true);
+}
+
+// After a jump the target goes first, alone, until it is in (or 2 s), then the preload around it.
+static void testReaderFetchTargetFirst()
+{
+	std::vector<int> w = {4, 5, 6};
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 5, false, 1000, 1100), std::vector<int>{5});
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 5, false, 1000, 2999), std::vector<int>{5});
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 5, false, 1000, 3000), w);
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 5, true, 1000, 1100), w);	// in: the preload may go
+	CHECK_EQ(ReaderFetchPlan::ordered(w, -1, false, 1000, 1100), w);	// no jump
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 9, false, 1000, 1100), w);	// not in the list: nothing to wait for
+
+	ReaderFetchPlan::State s;
+	s.wanted = {4, 5, 6};
+	s.max = 3;
+	s.target = 5;
+	s.targetAt = 1000;
+	s.now = 1100;
+	// the target alone: the neighbours do not take the free slots
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{5}));
+	// its request out: still no neighbour starts
+	s.inFlight = {5};
+	CHECK_EQ(ReaderFetchPlan::next(s), std::vector<int>{});
+	// in the cache: the preload follows
+	s.inFlight = {};
+	s.done = {5};
+	s.targetIn = true;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 6}));
+	// a failed target is not waited on: the preload can start after it
+	s.done = {};
+	s.failed = {5};
+	s.targetIn = true;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 6}));
+	// 2 s without it: the preload starts anyway
+	s = {};
+	s.wanted = {4, 5, 6};
+	s.max = 3;
+	s.target = 5;
+	s.targetAt = 1000;
+	s.now = 3000;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 5, 6}));
+}
+
+// The browser check (design 10's backlog): a source or a page behind Cloudflare's or DDoS-Guard's challenge must say
+// so plainly, while an ordinary refusal (a plain 403, nginx's 503, an image) must not be mistaken for one.
+static void testBrowserCheck()
+{
+	// Cloudflare's own header is enough, whatever the case of its name or value.
+	CHECK_EQ(detectBrowserCheck(403, {{"cf-mitigated", "challenge"}}, ""), BrowserCheck::Cloudflare);
+	CHECK_EQ(detectBrowserCheck(503, {{"CF-Mitigated", " Challenge "}}, ""), BrowserCheck::Cloudflare);
+	// Or the markers in the page, beside Cloudflare's own server header.
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "cloudflare"}},
+		"<!DOCTYPE html><title>Just a moment...</title>"), BrowserCheck::Cloudflare);
+	CHECK_EQ(detectBrowserCheck(200, {{"server", "cloudflare"}}, "<script>window._cf_chl_opt={}</script>"),
+		BrowserCheck::Cloudflare);
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "cloudflare"}},
+		"<script src=\"/cdn-cgi/challenge-platform/h/b/orchestrate/chl_page/v1\"></script>"),
+		BrowserCheck::Cloudflare);
+	// An ordinary Cloudflare-served answer is not a check, header or not.
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "cloudflare"}, {"content-type", "text/html"}},
+		"<html><body>Forbidden</body></html>"), BrowserCheck::None);
+	CHECK_EQ(detectBrowserCheck(200, {{"server", "cloudflare"}, {"content-type", "image/jpeg"}},
+		std::string("\xff\xd8\xff\xe0\x00\x10JFIF", 10)), BrowserCheck::None);
+	// DDoS-Guard's block page names its own server; its page text is the fallback when a hop hides it.
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "ddos-guard"}}, ""), BrowserCheck::DdosGuard);
+	CHECK_EQ(detectBrowserCheck(503, {{"Server", "DDoS-Guard"}}, ""), BrowserCheck::DdosGuard);
+	CHECK_EQ(detectBrowserCheck(403, {}, "<title>DDoS-Guard</title>"), BrowserCheck::DdosGuard);
+	// Ordinary failures are none of these: a plain 403, a 503 from nginx, a PNG.
+	CHECK_EQ(detectBrowserCheck(403, {{"server", "nginx"}}, "<html><body>403 Forbidden</body></html>"),
+		BrowserCheck::None);
+	CHECK_EQ(detectBrowserCheck(503, {{"server", "nginx"}, {"content-type", "text/html"}},
+		"<html><head><title>503 Service Temporarily Unavailable</title></head></html>"), BrowserCheck::None);
+	CHECK_EQ(detectBrowserCheck(200, {{"content-type", "image/png"}}, std::string("\x89PNG\r\n\x1a\n", 8)),
+		BrowserCheck::None);
+	// The line both the worker and the reader show; None has no line.
+	CHECK_EQ(std::string(browserCheckMessage(BrowserCheck::Cloudflare)),
+		std::string("This source asks for a browser check (Cloudflare). Banana Player can't pass it yet."));
+	CHECK_EQ(std::string(browserCheckMessage(BrowserCheck::DdosGuard)),
+		std::string("This source asks for a browser check (DDoS-Guard). Banana Player can't pass it yet."));
+	CHECK_EQ(std::string(browserCheckMessage(BrowserCheck::None)).empty(), true);
+}
+
+// 5.4's public-address rule: what a stranger's script may reach. Both sides of every range's boundary, the
+// wrappers that embed an IPv4, zones and garbage.
+static void testPublicAddress()
+{
+	for (const char* ip : {"1.0.0.0", "8.8.8.8", "1.1.1.1", "9.255.255.255", "11.0.0.1", "100.63.255.255",
+		"100.128.0.0", "126.255.255.255", "128.0.0.1", "172.15.255.255", "172.32.0.1", "192.0.1.0", "192.0.3.0",
+		"192.167.1.1", "192.169.1.1", "198.17.255.255", "198.20.0.0", "198.51.99.255", "198.51.101.0",
+		"203.0.112.255", "203.0.114.0", "223.255.255.255", "2606:4700::1111", "2001:4860:4860::8888",
+		"2001:db7:ffff::1", "2001:db9::1", "100:0:0:1::1", "feff::1", "::2", "::ffff:8.8.8.8", "64:ff9b::808:808",
+		"2002:808:808::1", "8.8.8.8%en0", "2606:4700::1111%wlan0"})
+	{
+		CHECK_EQ(publicAddress(ip), true);
+		if (!publicAddress(ip)) fprintf(stderr, "  not public: %s\n", ip);
+	}
+	for (const char* ip : {"0.0.0.0", "0.0.0.1", "0.255.255.255", "10.0.0.1", "10.255.255.255", "127.0.0.1",
+		"127.255.255.255", "169.254.0.1", "169.254.255.255", "172.16.0.1", "172.31.255.255", "192.168.0.0",
+		"192.168.255.255", "100.64.0.0", "100.127.255.255", "192.0.0.0", "192.0.0.255", "192.0.2.0", "192.0.2.255",
+		"198.18.0.0", "198.19.255.255", "198.51.100.0", "198.51.100.255", "203.0.113.0", "203.0.113.255",
+		"224.0.0.0", "231.0.0.0", "239.255.255.255", "240.0.0.0", "255.255.255.255", "::", "::1", "fe80::1",
+		"fe80::1%wlan0", "febf::1", "fc00::1", "fdff::1", "ff00::", "ff02::1", "ffff::1", "2001:db8::",
+		"2001:db8:ffff:ffff:ffff:ffff:ffff:ffff", "100::", "100::ffff:ffff:ffff:ffff", "64:ff9b::a00:1",
+		"64:ff9b::7f00:1", "64:ff9b::c0a8:105", "::ffff:192.168.1.5", "::ffff:127.0.0.1", "::ffff:10.1.1.1",
+		"::ffff:0.0.0.0", "::ffff:100.64.0.1", "2002:a00:1::", "2002:7f00:1::", "2002:c0a8:105::"})
+	{
+		CHECK_EQ(publicAddress(ip), false);
+		if (publicAddress(ip)) fprintf(stderr, "  public: %s\n", ip);
+	}
+	// not an IP literal at all: a name is resolved first, so it is never "public" by itself
+	for (const char* ip : {"", "localhost", "evil.com", "192.168.1", "192.168.1.256", "192.168.1.1.1",
+		"not an ip", "[::1]", "::1x", " 10.0.0.1", "10.0.0.1 ", "0x7f.0.0.1", "2130706433", "8.8.8.8/32",
+		"1.2.3", "fe80::1%"})
+	{
+		CHECK_EQ(publicAddress(ip), false);
+		if (publicAddress(ip)) fprintf(stderr, "  public garbage: %s\n", ip);
+	}
+}
+
+// the wire form of a Secure DNS packet, written by hand as the answers arrive
+static void dohPut16(std::string& s, uint16_t v) { s.push_back((char)(v >> 8)); s.push_back((char)v); }
+static void dohPut32(std::string& s, uint32_t v)
+{
+	s.push_back((char)(v >> 24)); s.push_back((char)(v >> 16)); s.push_back((char)(v >> 8)); s.push_back((char)v);
+}
+static void dohPutName(std::string& s, const std::string& name)
+{
+	size_t start = 0;
+	for (;;)
+	{
+		size_t dot = name.find('.', start);
+		std::string label = name.substr(start, dot == std::string::npos ? std::string::npos : dot - start);
+		s.push_back((char)label.size());
+		s += label;
+		if (dot == std::string::npos) break;
+		start = dot + 1;
+	}
+	s.push_back('\0');
+}
+static void dohPutPtr(std::string& s, size_t off)
+{
+	s.push_back((char)(0xC0 | (off >> 8)));
+	s.push_back((char)off);
+}
+
+// Secure DNS (Manga settings): the RFC 8484 query — a header asking one question, the name's labels, type and class
+static void testDohQuery()
+{
+	std::vector<uint8_t> q = dohQuery("api.mangadex.org", DOH_TYPE_A, 0x1234);
+	CHECK_EQ(q.size(), (size_t)34);
+	CHECK_EQ((int)q[0], 0x12);
+	CHECK_EQ((int)q[1], 0x34);
+	CHECK_EQ((int)q[2], 0x01);	// recursion desired
+	CHECK_EQ((int)q[3], 0x00);
+	CHECK_EQ((int)q[4], 0);
+	CHECK_EQ((int)q[5], 1);		// one question
+	CHECK_EQ((int)q[12], 3);
+	CHECK_EQ(std::string((const char*)&q[13], 3), std::string("api"));
+	CHECK_EQ((int)q[16], 8);
+	CHECK_EQ(std::string((const char*)&q[17], 8), std::string("mangadex"));
+	CHECK_EQ((int)q[25], 3);
+	CHECK_EQ(std::string((const char*)&q[26], 3), std::string("org"));
+	CHECK_EQ((int)q[29], 0);	// the root
+	CHECK_EQ((int)q[30], 0);
+	CHECK_EQ((int)q[31], 1);	// type A
+	CHECK_EQ((int)q[32], 0);
+	CHECK_EQ((int)q[33], 1);	// class IN
+	CHECK_EQ(dohQuery("api.mangadex.org.", DOH_TYPE_A, 0x1234), q);	// the root's dot changes nothing
+	CHECK_EQ(dohQuery(std::string(64, 'a'), DOH_TYPE_A, 1).empty(), true);
+	CHECK_EQ(dohQuery("", DOH_TYPE_A, 1).empty(), true);
+	CHECK_EQ(dohQuery("a..b", DOH_TYPE_A, 1).empty(), true);
+}
+
+// an answer with a CNAME chain: www.example.com -> edge.example.net -> cdn.example.org, whose A and AAAA records
+// answer, the owners given as compression pointers (what Cloudflare sends)
+static void testDohParseCname()
+{
+	std::string p;
+	dohPut16(p, 0x4321);
+	dohPut16(p, 0x8180);	// a response, recursion available
+	dohPut16(p, 1);
+	dohPut16(p, 4);		// two CNAMEs and an address of each family
+	dohPut16(p, 0);
+	dohPut16(p, 0);
+	size_t qoff = p.size();
+	dohPutName(p, "www.example.com");
+	dohPut16(p, DOH_TYPE_A);
+	dohPut16(p, 1);
+	std::string edge;
+	dohPutName(edge, "edge.example.net");
+	std::string cdn;
+	dohPutName(cdn, "cdn.example.org");
+	dohPutPtr(p, qoff); dohPut16(p, 5); dohPut16(p, 1); dohPut32(p, 120); dohPut16(p, (uint16_t)edge.size());
+	size_t eoff = p.size();
+	p += edge;
+	dohPutPtr(p, eoff); dohPut16(p, 5); dohPut16(p, 1); dohPut32(p, 60); dohPut16(p, (uint16_t)cdn.size());
+	size_t coff = p.size();
+	p += cdn;
+	dohPutPtr(p, coff); dohPut16(p, DOH_TYPE_A); dohPut16(p, 1); dohPut32(p, 30); dohPut16(p, 4);
+	p += std::string("\x5d\xb8\xd8\x22", 4);	// 93.184.216.34
+	dohPutPtr(p, coff); dohPut16(p, DOH_TYPE_AAAA); dohPut16(p, 1); dohPut32(p, 45); dohPut16(p, 16);
+	p += std::string("\x20\x01\x0d\xb8", 4) + std::string(11, '\0') + std::string(1, '\x01');
+
+	DohAnswer a = parseDohAnswer(p, 0x4321, "www.example.com", DOH_TYPE_A);
+	CHECK_EQ(a.status, DohAnswer::Ok);
+	CHECK_EQ(a.addresses.size(), (size_t)1);
+	CHECK_EQ(a.addresses.empty() ? std::string() : a.addresses[0], std::string("93.184.216.34"));
+	CHECK_EQ(a.ttl, (uint32_t)30);	// the shortest link of the chain
+	// the question says A, so a parser told AAAA refuses it: the query and the answer must be the same question
+	CHECK_EQ(parseDohAnswer(p, 0x4321, "www.example.com", DOH_TYPE_AAAA).status, DohAnswer::Malformed);
+	// asked as AAAA, the same chain answers with the other address
+	std::string p6 = p;
+	p6[qoff + 17] = 0;	// (the question's name is 17 bytes: www(4) example(8) com(4) root(1))
+	p6[qoff + 18] = 28;
+	DohAnswer v6 = parseDohAnswer(p6, 0x4321, "www.example.com", DOH_TYPE_AAAA);
+	CHECK_EQ(v6.status, DohAnswer::Ok);
+	CHECK_EQ(v6.addresses.size(), (size_t)1);
+	CHECK_EQ(v6.addresses.empty() ? std::string() : v6.addresses[0], std::string("2001:db8::1"));
+	CHECK_EQ(v6.ttl, (uint32_t)45);
+}
+
+// NOERROR with no address: the name exists but has none of that kind (NODATA, not a failure)
+static void testDohParseNoRecords()
+{
+	std::string p;
+	dohPut16(p, 0x0102); dohPut16(p, 0x8180); dohPut16(p, 1); dohPut16(p, 0); dohPut16(p, 0); dohPut16(p, 0);
+	dohPutName(p, "example.com"); dohPut16(p, DOH_TYPE_A); dohPut16(p, 1);
+	DohAnswer a = parseDohAnswer(p, 0x0102, "example.com", DOH_TYPE_A);
+	CHECK_EQ(a.status, DohAnswer::NoRecords);
+	CHECK_EQ(a.addresses.size(), (size_t)0);
+	CHECK_EQ(a.error.empty(), true);
+}
+
+// NXDOMAIN: the name isn't there at all
+static void testDohParseNxdomain()
+{
+	std::string p;
+	dohPut16(p, 0x1111); dohPut16(p, 0x8183); dohPut16(p, 1); dohPut16(p, 0); dohPut16(p, 0); dohPut16(p, 0);
+	dohPutName(p, "gone.example"); dohPut16(p, DOH_TYPE_A); dohPut16(p, 1);
+	DohAnswer a = parseDohAnswer(p, 0x1111, "gone.example", DOH_TYPE_A);
+	CHECK_EQ(a.status, DohAnswer::NameError);
+}
+
+// a cut answer: the truncation bit (what a resolver sets when its packet didn't fit); then a packet shorter than its
+// own header, one answering another query, and an A record whose length isn't 4
+static void testDohParseTruncated()
+{
+	std::string p;
+	dohPut16(p, 0x2222); dohPut16(p, 0x8380); dohPut16(p, 1); dohPut16(p, 0); dohPut16(p, 0); dohPut16(p, 0);
+	CHECK_EQ(parseDohAnswer(p, 0x2222, "example.com", DOH_TYPE_A).status, DohAnswer::Truncated);
+	std::string shortPacket("\x22\x22\x83", 3);
+	CHECK_EQ(parseDohAnswer(shortPacket, 0x2222, "example.com", DOH_TYPE_A).status, DohAnswer::Malformed);
+	std::string p2;
+	dohPut16(p2, 0x2222); dohPut16(p2, 0x8180); dohPut16(p2, 1); dohPut16(p2, 0); dohPut16(p2, 0); dohPut16(p2, 0);
+	dohPutName(p2, "example.com"); dohPut16(p2, DOH_TYPE_A); dohPut16(p2, 1);
+	CHECK_EQ(parseDohAnswer(p2, 0x3333, "example.com", DOH_TYPE_A).status, DohAnswer::Malformed);
+	std::string p3;
+	dohPut16(p3, 0x4444); dohPut16(p3, 0x8180); dohPut16(p3, 1); dohPut16(p3, 1); dohPut16(p3, 0); dohPut16(p3, 0);
+	size_t qoff = p3.size();
+	dohPutName(p3, "bad.example"); dohPut16(p3, DOH_TYPE_A); dohPut16(p3, 1);
+	dohPutPtr(p3, qoff); dohPut16(p3, DOH_TYPE_A); dohPut16(p3, 1); dohPut32(p3, 10); dohPut16(p3, 5);
+	p3 += std::string("\x01\x02\x03\x04\x05", 5);
+	CHECK_EQ(parseDohAnswer(p3, 0x4444, "bad.example", DOH_TYPE_A).status, DohAnswer::Malformed);
+}
+
+// the cache: names lowercased, the TTL capped, a zero TTL not kept, and an entry gone at its expiry
+static void testDohWantedFor()
+{
+	// public names go through DoH; literals and names only the local network knows keep the system's lookup
+	CHECK_EQ(dohWantedFor("https://api.mangadex.org/manga"), true);
+	CHECK_EQ(dohWantedFor("https://user:pw@komga.example.com:25600/api"), true);
+	CHECK_EQ(dohWantedFor("http://192.168.1.20:25600/api"), false);
+	CHECK_EQ(dohWantedFor("http://[fd00::2]:8080/"), false);
+	CHECK_EQ(dohWantedFor("http://nas.local:25600/"), false);
+	CHECK_EQ(dohWantedFor("http://NAS.LAN/opds"), false);
+	CHECK_EQ(dohWantedFor("http://nas/opds"), false);
+	CHECK_EQ(dohWantedFor("http://kavita.home.arpa/api"), false);
+}
+
+static void testDohCache()
+{
+	DohCache c;
+	std::vector<std::string> out;
+	c.put("Example.COM", DOH_TYPE_A, {"1.2.3.4"}, 120, 100.0);
+	CHECK_EQ(c.size(), (size_t)1);
+	CHECK_EQ(c.get("example.com", DOH_TYPE_A, 100.5, out), true);
+	CHECK_EQ(out.size(), (size_t)1);
+	CHECK_EQ(out.empty() ? std::string() : out[0], std::string("1.2.3.4"));
+	out.clear();
+	CHECK_EQ(c.get("example.com", DOH_TYPE_A, 220.1, out), false);
+	c.put("example.com", DOH_TYPE_AAAA, {"2606:4700::1111"}, 9000, 0.0);
+	CHECK_EQ(c.get("example.com", DOH_TYPE_AAAA, 299.0, out), true);
+	out.clear();
+	CHECK_EQ(c.get("example.com", DOH_TYPE_AAAA, 301.0, out), false);	// kMaxTtl, not the answer's 9000
+	c.put("zero.example", DOH_TYPE_A, {"1.2.3.5"}, 0, 0.0);
+	CHECK_EQ(c.get("zero.example", DOH_TYPE_A, 0.0, out), false);
+	c.put("empty.example", DOH_TYPE_A, {}, 120, 0.0);
+	CHECK_EQ(c.size(), (size_t)2);
+	c.clear();
+	CHECK_EQ(c.size(), (size_t)0);
+}
+
+// the servers' catalogue: the requests a Komga, Kavita or OPDS server is asked with, and the same answers read
+// back into the shapes a source script returns (every body here is canned and invented, the way they are written)
+static void testMangaRemote()
+{
+	MangaServer k;
+	k.kind = "komga";
+	k.name = "Home Komga";
+	k.url = "http://komga.lan:25600/";	// trailing slash and all: joining is the model's job
+	k.user = "reader";
+	auto hdr = [](const RemoteRequest& r, const std::string& n)
+	{
+		for (const std::pair<std::string, std::string>& h : r.headers)
+			if (h.first == n) return h.second;
+		return std::string();
+	};
+
+	// Basic auth as RFC 7617 writes it, base64 over "user:password"; no user, no header — and never a header for
+	// Kavita, whose OPDS url carries the api key in its path
+	CHECK_EQ(remoteAuth(k, "s3cret", "http://komga.lan:25600/api/v1/libraries").headers.size(), (size_t)2);
+	CHECK_EQ(hdr(remoteAuth(k, "s3cret", "u"), "Authorization"), std::string("Basic cmVhZGVyOnMzY3JldA=="));
+	CHECK_EQ(hdr(remoteAuth(k, "s3cret", "u"), "Accept"), std::string("application/json"));
+	MangaServer guest = k;
+	guest.user = "";
+	RemoteRequest g = remoteAuth(guest, "pw", "u");
+	CHECK_EQ(g.headers.size(), (size_t)1);
+	CHECK_EQ(hdr(g, "Authorization"), std::string(""));
+	MangaServer kav;
+	kav.kind = "kavita";
+	kav.name = "Kavita";
+	kav.url = "https://kavita.lan:5000/api/Opds/9c3f0a61be/";
+	kav.user = "tony";
+	RemoteRequest ka = remoteAuth(kav, "ignored", kav.url);
+	CHECK_EQ(ka.headers.size(), (size_t)1);	// the key is in the url, so the password is never sent
+	CHECK_EQ(hdr(ka, "Accept"), std::string("application/atom+xml"));
+
+	// every Komga request the model builds
+	CHECK_EQ(remoteKomgaLibraries(k, "s3cret").url, std::string("http://komga.lan:25600/api/v1/libraries"));
+	CHECK_EQ(remoteKomgaSeries(k, "", "manga", 2).url, std::string(
+		"http://komga.lan:25600/api/v1/series?library_id=manga&page=2&size=40&sort=metadata.titleSort"));
+	// the search text is escaped: a "&" in a query is the server's separator, not part of the text
+	CHECK_EQ(remoteKomgaSearch(k, "", "Night & Day 10", 0).url, std::string(
+		"http://komga.lan:25600/api/v1/series?search=Night%20%26%20Day%2010&page=0&size=40"));
+	CHECK_EQ(remoteKomgaBooks(k, "", "s7", 1).url, std::string(
+		"http://komga.lan:25600/api/v1/series/s7/books?page=1&size=100&sort=metadata.numberSort"));
+	RemoteRequest pg = remoteKomgaPage(k, "s3cret", "b7", 1);	// Komga's own page numbers start at 1
+	CHECK_EQ(pg.url, std::string("http://komga.lan:25600/api/v1/books/b7/pages/1"));
+	CHECK_EQ(hdr(pg, "Accept"), std::string("image/*"));	// a page is a picture whatever the api answers with
+	CHECK_EQ(hdr(pg, "Authorization"), std::string("Basic cmVhZGVyOnMzY3JldA=="));
+	CHECK_EQ(remoteKomgaPage(k, "", "b7", 0).url, std::string(""));	// below the first page is not a request
+	CHECK_EQ(remoteKomgaSeriesCover(k, "", "s7").url, std::string("http://komga.lan:25600/api/v1/series/s7/thumbnail"));
+	CHECK_EQ(hdr(remoteKomgaSeriesCover(k, "", "s7"), "Accept"), std::string("image/*"));
+	CHECK_EQ(remoteKomgaBookCover(k, "", "b7").url, std::string("http://komga.lan:25600/api/v1/books/b7/thumbnail"));
+	// the same server's OPDS face hangs under its url; the other kinds are stored as their OPDS url
+	RemoteRequest ks = remoteOpdsStart(k, "");
+	CHECK_EQ(ks.url, std::string("http://komga.lan:25600/opds/v1.2"));
+	CHECK_EQ(hdr(ks, "Accept"), std::string("application/atom+xml"));
+	RemoteRequest os = remoteOpdsStart(kav, "");
+	CHECK_EQ(os.url, kav.url);
+
+	// the libraries answer, which is a bare array, into folders — and the paged shape through the same door
+	const std::string libs = R"([
+		{"id":"lib-manga","name":"Manga","mediaType":"MANGA"},
+		{"id":"lib-comics","name":"Comics","mediaType":"COMICS"}
+	])";
+	RemoteList folders;
+	CHECK_EQ(remoteKomgaLibraryList(libs, folders), true);
+	CHECK_EQ(folders.items.size(), (size_t)2);
+	CHECK_EQ(folders.items[0].key, std::string("lib-manga"));
+	CHECK_EQ(folders.items[0].title, std::string("Manga"));
+	CHECK_EQ(folders.items[0].folder, true);
+	CHECK_EQ(folders.items[0].cover, std::string(""));	// Komga offers no library thumbnails
+	CHECK_EQ(folders.more, false);
+	CHECK_EQ(remoteKomgaLibraryList(R"({"content":[{"id":"l","name":"One"}],"totalPages":1})", folders), true);
+	CHECK_EQ(folders.items.size(), (size_t)1);
+	CHECK_EQ(remoteKomgaLibraryList("nonsense", folders), false);
+
+	// a page of series: keys, thumbnail urls, and whether a page follows
+	const std::string series = R"({
+		"content":[
+			{"id":"SERIES1","name":"Paper Lanterns","booksCount":12,"deleted":false,
+			 "metadata":{"title":"Paper Lanterns","titleSort":"paper lanterns","status":"ONGOING"}},
+			{"id":"SERIES2","name":"","metadata":{"title":"Quiet Hours"}}
+		],
+		"page":0,"size":40,"totalElements":61,"totalPages":3
+	})";
+	RemoteList list;
+	CHECK_EQ(remoteKomgaSeriesList(k.url, series, 0, list), true);
+	CHECK_EQ(list.items.size(), (size_t)2);
+	CHECK_EQ(list.items[0].key, std::string("SERIES1"));
+	CHECK_EQ(list.items[1].title, std::string("Quiet Hours"));	// a nameless item shows its metadata title
+	CHECK_EQ(list.items[0].cover, std::string("http://komga.lan:25600/api/v1/series/SERIES1/thumbnail"));
+	CHECK_EQ(list.items[0].folder, false);
+	CHECK_EQ(list.more, true);		// three pages, and this was the first of them
+	CHECK_EQ(list.next, std::string(""));	// Komga pages by number: the caller asks for page 1
+	CHECK_EQ(remoteKomgaSeriesList(k.url, series, 2, list), true);
+	CHECK_EQ(list.more, false);		// the last page, fetched
+	CHECK_EQ(remoteKomgaSeriesList(k.url, R"({"nope":1})", 0, list), false);
+	CHECK_EQ(remoteKomgaSeriesList(k.url, "[]", 0, list), false);	// not one of Komga's paged answers
+
+	// a page of books: chapters keyed by their ids, numbered, with the page count the media reports —
+	// an object in older Komga's answers, an array of files in newer ones
+	const std::string books = R"({
+		"content":[
+			{"id":"BOOK1","seriesId":"SERIES1","name":"Chapter 1 - First Light","number":1,"numberSort":1,
+			 "media":{"size":1024,"pages":24,"mediaType":"IMAGE"}},
+			{"id":"BOOK2","name":"Story Bridge","number":10.5,"numberSort":10.5,"media":[{"pagesCount":31}]},
+			{"id":"BOOK3","name":"Chapter 7.5","metadata":{"number":"7.5"}}
+		],
+		"totalPages":2
+	})";
+	std::vector<RemoteChapter> chapters;
+	bool more = false;
+	CHECK_EQ(remoteKomgaChapterList(books, 0, chapters, more), true);
+	CHECK_EQ(chapters.size(), (size_t)3);
+	CHECK_EQ(chapters[0].key, std::string("BOOK1"));
+	CHECK_EQ(chapters[0].name, std::string("Chapter 1 - First Light"));
+	CHECK_EQ(chapters[0].number, 1.0);
+	CHECK_EQ(chapters[0].pages, 24);
+	CHECK_EQ(chapters[1].number, 10.5);
+	CHECK_EQ(chapters[1].pages, 31);
+	CHECK_EQ(chapters[2].number, 7.5);	// no sort value from the server: the number the name carries
+	CHECK_EQ(chapters[2].pages, -1);	// and no media at all: unknown, not zero
+	CHECK_EQ(more, true);
+	CHECK_EQ(remoteKomgaChapterList(books, 1, chapters, more), true);
+	CHECK_EQ(more, false);
+
+	// an OPDS navigation feed: folders whose keys are absolute, whatever shape the hrefs came in, and the
+	// feed's own next link
+	const std::string nav = R"NAV(<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:opds:root</id>
+  <title>The Lantern Shelf</title>
+  <link rel="search" type="application/opensearchdescription+xml" href="/opds/search.xml"/>
+  <link rel="next" type="application/atom+xml;profile=opds-catalog" href="/opds/shelves?page=2"/>
+  <entry>
+    <id>urn:shelf:comics</id>
+    <title>Comics</title>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=navigation" href="opds/shelf/comics"/>
+    <link rel="http://opds-spec.org/image" type="image/jpeg" href="opds/covers/comics.jpg"/>
+  </entry>
+  <entry>
+    <id>urn:shelf:manga</id>
+    <title>Manga</title>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=navigation" href="/opds/shelf/manga"/>
+  </entry>
+  <entry>
+    <id>urn:about</id>
+    <title>An entry that opens nothing</title>
+  </entry>
+</feed>
+)NAV";
+	RemoteList shelves;
+	CHECK_EQ(remoteOpdsList("https://books.lan/opds", nav, shelves), true);
+	CHECK_EQ(shelves.items.size(), (size_t)2);	// the entry with neither a way down nor a way to read is dropped
+	CHECK_EQ(shelves.items[0].folder, true);
+	CHECK_EQ(shelves.items[0].key, std::string("https://books.lan/opds/shelf/comics"));
+	CHECK_EQ(shelves.items[0].cover, std::string("https://books.lan/opds/covers/comics.jpg"));
+	CHECK_EQ(shelves.items[1].key, std::string("https://books.lan/opds/shelf/manga"));
+	CHECK_EQ(shelves.items[1].cover, std::string(""));
+	CHECK_EQ(shelves.more, true);
+	CHECK_EQ(shelves.next, std::string("https://books.lan/opds/shelves?page=2"));
+	CHECK_EQ(remoteOpdsList("https://books.lan/opds", "<html>the server's error page</html>", shelves), false);
+
+	// an acquisition feed: a PSE chapter streams its pages, a plain one hands a whole CBZ, a shelf isn't one
+	const std::string acq = R"ACQ(<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <id>urn:series:paperlanterns</id>
+  <entry>
+    <id>urn:chapter:1</id>
+    <title>Chapter 1</title>
+    <link rel="http://opds-spec.org/acquisition" type="application/vnd.comicbook+zip" href="/files/ch1.cbz"/>
+    <link rel="http://vaemendis.net/opds-pse/stream" type="image/jpeg"
+          href="/opds/series/7/ch/1/{pageNumber}?width={maxWidth}" pse:count="3"/>
+  </entry>
+  <entry>
+    <id>urn:chapter:2</id>
+    <title>Chapter 2 - The Night Market</title>
+    <link rel="http://opds-spec.org/acquisition" type="application/vnd.comicbook+zip" href="files/ch2.cbz"/>
+  </entry>
+  <entry>
+    <id>urn:series:other</id>
+    <title>Another series</title>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="/opds/series/9"/>
+  </entry>
+</feed>
+)ACQ";
+	std::vector<RemoteChapter> ops;
+	CHECK_EQ(remoteOpdsChapters("https://books.lan/opds/series/7", acq, ops), true);
+	CHECK_EQ(ops.size(), (size_t)2);	// the shelf was skipped
+	CHECK_EQ(ops[0].name, std::string("Chapter 1"));
+	CHECK_EQ(ops[0].number, 1.0);
+	CHECK_EQ(ops[0].pages, 3);	// the stream's own count
+	CHECK_EQ(ops[0].key, std::string("https://books.lan/opds/series/7/ch/1/{pageNumber}?width={maxWidth}"));
+	CHECK_EQ(ops[0].url, std::string("https://books.lan/files/ch1.cbz"));	// the file it can also be downloaded as
+	std::vector<std::string> pageUrls = remoteOpdsPageUrls(ops[0], 1024);
+	CHECK_EQ(pageUrls.size(), (size_t)3);	// PSE numbers its pages from 0
+	CHECK_EQ(pageUrls[0], std::string("https://books.lan/opds/series/7/ch/1/0?width=1024"));
+	CHECK_EQ(pageUrls[2], std::string("https://books.lan/opds/series/7/ch/1/2?width=1024"));
+	CHECK_EQ(ops[1].url, std::string("https://books.lan/opds/series/files/ch2.cbz"));	// relative: resolved in the feed's own folder
+	CHECK_EQ(ops[1].pages, -1);	// no stream: a whole file to download
+	CHECK_EQ(remoteOpdsPageUrls(ops[1], 1024).size(), (size_t)0);
+	CHECK_EQ(ops[1].number, 2.0);	// OPDS carries no number: the name is all there is
+	// the same feed read as a list: chapters become items, and the shelf a folder
+	RemoteList mixed;
+	CHECK_EQ(remoteOpdsList("https://books.lan/opds/series/7", acq, mixed), true);
+	CHECK_EQ(mixed.items.size(), (size_t)3);
+	CHECK_EQ(mixed.items[0].folder, false);
+	CHECK_EQ(mixed.items[0].key, std::string("https://books.lan/files/ch1.cbz"));
+	CHECK_EQ(mixed.items[2].folder, true);
+	CHECK_EQ(mixed.items[2].key, std::string("https://books.lan/opds/series/9"));
+
+	// search: the OpenSearch description behind the feed's search link carries the query template, escaped
+	// entities and all, and a parameter separator of "&" means a query with a "&" must not smuggle one in
+	const std::string desc = R"OSC(<?xml version="1.0" encoding="utf-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>Lantern search</ShortName>
+  <Url type="application/opensearchdescription+xml" rel="self" template="https://books.lan/opds/search.xml"/>
+  <Url type="application/atom+xml" template="/opds/search?query={searchTerms}&amp;size=20"/>
+</OpenSearchDescription>
+)OSC";
+	MangaServer op;
+	op.kind = "opds";
+	op.name = "Shelf OPDS";
+	op.url = "https://books.lan/opds";
+	op.user = "tony";
+	RemoteRequest sq = remoteOpdsSearch(op, "hunter2", "https://books.lan/opds/search.xml", desc, "Night & Day");
+	CHECK_EQ(sq.url, std::string("https://books.lan/opds/search?query=Night%20%26%20Day&size=20"));
+	CHECK_EQ(hdr(sq, "Authorization"), std::string("Basic dG9ueTpodW50ZXIy"));
+	CHECK_EQ(hdr(sq, "Accept"), std::string("application/atom+xml"));	// a feed of results, even from Kavita
+	const std::string descPct =
+		"<OpenSearchDescription><Url template=\"s?q=%7BsearchTerms%7D\"/></OpenSearchDescription>";
+	CHECK_EQ(remoteOpdsSearch(op, "", "http://h/opds/search.xml", descPct, "a b").url,
+	         std::string("http://h/opds/s?q=a%20b"));
+	// a description that holds no query template is no search: the request asks for nothing
+	CHECK_EQ(remoteOpdsSearch(op, "", "http://h/s.xml", "<OpenSearchDescription/>", "x").url, std::string(""));
+}
+
+// the comic servers the reader reads from: added, changed, removed and kept in a file; the password is sealed, so
+// the file never holds it in plain text
+static void testMangaServers()
+{
+	char tmpl[] = "/tmp/bp-manga-servers-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string state = root + "/state";
+	std::string file = state + "/manga/servers.tsv";
+
+	MangaServerStore st;
+	CHECK_EQ(st.load(state), true);		// nothing there yet: an empty store
+	CHECK_EQ(st.list().size(), size_t(0));
+	CHECK_EQ(MangaServerStore().load(""), false);	// nowhere to keep them
+	int v = st.version();
+
+	// a server added
+	MangaServer k;
+	k.kind = "komga";
+	k.name = "Komga";
+	k.url = "http://komga.local:25600";
+	k.user = "reader";
+	std::string kid = st.add(k);
+	CHECK_EQ(st.version() > v, true);	// every change grows the version
+	CHECK_EQ(kid.size(), (size_t)8);
+	CHECK_EQ(kid.find_first_not_of("0123456789abcdef"), std::string::npos);
+	CHECK_EQ(st.find("nope") == nullptr, true);
+	const MangaServer* found = st.find(kid);
+	CHECK_EQ(found != nullptr, true);
+	if (found)
+	{
+		CHECK_EQ(found->kind, std::string("komga"));
+		CHECK_EQ(found->name, std::string("Komga"));
+		CHECK_EQ(found->url, std::string("http://komga.local:25600"));
+		CHECK_EQ(found->user, std::string("reader"));
+		CHECK_EQ(found->hasPassword(), false);
+	}
+
+	// the password is sealed, never kept in plain text
+	v = st.version();
+	CHECK_EQ(st.setPassword(kid, "s3cret"), true);
+	CHECK_EQ(st.version() > v, true);
+	CHECK_EQ(st.password(kid), std::string("s3cret"));
+	CHECK_EQ(st.find(kid)->hasPassword(), true);
+	CHECK_EQ(st.setPassword("nope", "x"), false);	// no such server
+	CHECK_EQ(st.password("nope"), std::string(""));
+
+	// a second one, and the list is by name
+	MangaServer o;
+	o.kind = "opds";
+	o.name = "Aardvark OPDS";
+	o.url = "https://books.example.org/opds";
+	std::string oid = st.add(o);
+	CHECK_EQ(oid.size(), (size_t)8);
+	CHECK_EQ(st.list().size(), size_t(2));
+	std::vector<MangaServer> ls = st.list();
+	CHECK_EQ(ls[0].name, std::string("Aardvark OPDS"));
+	CHECK_EQ(ls[1].name, std::string("Komga"));
+
+	// changed
+	v = st.version();
+	MangaServer changed = *st.find(oid);
+	changed.name = "Zebra OPDS";
+	CHECK_EQ(st.update(changed), true);
+	CHECK_EQ(st.version() > v, true);
+	CHECK_EQ(st.list()[1].name, std::string("Zebra OPDS"));
+	CHECK_EQ(st.find(oid)->name, std::string("Zebra OPDS"));
+	// a change that knows nothing of the password doesn't throw it away
+	CHECK_EQ(st.password(kid), std::string("s3cret"));
+	CHECK_EQ(st.update(MangaServer()), false);	// no id, nothing to change
+
+	// the kinds and the names we refuse
+	MangaServer bad;
+	bad.kind = "samba";
+	bad.name = "NAS";
+	bad.url = "http://nas.local";
+	CHECK_EQ(st.add(bad), std::string(""));
+	bad.kind = "komga";
+	bad.name = "";
+	CHECK_EQ(st.add(bad), std::string(""));
+	bad.name = std::string(41, 'x');
+	CHECK_EQ(st.add(bad), std::string(""));
+	bad.name = std::string(40, 'x');
+	std::string longName = st.add(bad);
+	CHECK_EQ(longName.size(), (size_t)8);	// 40 characters is a name
+	st.remove(longName);
+	bad.name = "Tab\there";
+	CHECK_EQ(st.add(bad), std::string(""));
+	// the urls we refuse
+	bad.name = "Bad url";
+	for (const char* u : {"ftp://nas.local", "http://", "http://ho st/", "http://nas.local:port/", "/nas",
+			      "nas.local", "http://na s.local"})
+	{
+		bad.url = u;
+		CHECK_EQ(st.add(bad), std::string(""));
+	}
+	bad.url = "http://nas.local/" + std::string(2048 - 17, 'x');
+	std::string longUrl = st.add(bad);
+	CHECK_EQ(longUrl.size(), (size_t)8);	// 2048 characters is a url
+	st.remove(longUrl);
+	bad.url = "http://nas.local/" + std::string(2048 - 16, 'x');
+	CHECK_EQ(st.add(bad), std::string(""));	// one more is too long
+	CHECK_EQ(st.list().size(), size_t(2));	// none of them was kept
+
+	// credentials in a url are taken out of it: they are never kept
+	CHECK_EQ(isMangaServerUrl("http://reader:hunter2@nas.local/"), false);
+	CHECK_EQ(withoutUrlCredentials("http://reader:hunter2@nas.local/x"), std::string("http://nas.local/x"));
+	CHECK_EQ(withoutUrlCredentials("http://nas.local/x"), std::string("http://nas.local/x"));
+	MangaServer c;
+	c.kind = "kavita";
+	c.name = "Kavita";
+	c.url = "http://reader:hunter2@kavita.local:5000/kavita";
+	std::string cid = st.add(c);
+	CHECK_EQ(cid.size(), (size_t)8);
+	const MangaServer* cs = st.find(cid);
+	CHECK_EQ(cs != nullptr, true);
+	if (cs)
+	{
+		CHECK_EQ(cs->url, std::string("http://kavita.local:5000/kavita"));
+		CHECK_EQ(cs->url.find('@'), std::string::npos);
+	}
+
+	// saved and read back
+	CHECK_EQ(st.save(), true);
+	std::string text;
+	{
+		std::ifstream f(file);
+		std::stringstream ss;
+		ss << f.rdbuf();
+		text = ss.str();
+	}
+	CHECK_EQ(text.find("s3cret") == std::string::npos, true);	// never in plain text
+	CHECK_EQ(text.find("hunter2") == std::string::npos, true);	// and never in the url
+	CHECK_EQ(text.find("v1:") != std::string::npos, true);	// the sealed one is there
+	CHECK_EQ(text.find("komga.local:25600") != std::string::npos, true);
+	MangaServerStore st2;
+	CHECK_EQ(st2.load(state), true);
+	CHECK_EQ(st2.list().size(), size_t(3));
+	const MangaServer* back = st2.find(kid);
+	CHECK_EQ(back != nullptr, true);
+	if (back)
+	{
+		CHECK_EQ(back->kind, std::string("komga"));
+		CHECK_EQ(back->name, std::string("Komga"));
+		CHECK_EQ(back->url, std::string("http://komga.local:25600"));
+		CHECK_EQ(back->user, std::string("reader"));
+		CHECK_EQ(back->hasPassword(), true);
+	}
+	CHECK_EQ(st2.password(kid), std::string("s3cret"));	// and it opens again
+	CHECK_EQ(st2.find(cid)->url, std::string("http://kavita.local:5000/kavita"));
+	CHECK_EQ(st2.find(oid)->name, std::string("Zebra OPDS"));
+
+	// a broken line is skipped; the rest of the file loads
+	std::string broken = root + "/broken";
+	mkdir(broken.c_str(), 0755);
+	mkdir((broken + "/manga").c_str(), 0755);
+	{
+		std::ofstream f(broken + "/manga/servers.tsv");
+		f << "# banana-player manga servers v1\n";
+		f << "aaaa1111\tkomga\tKomga\thttp://komga.local:25600\treader\t\n";
+		f << "this line has no fields\n";
+		f << "bbbb2222\tmamba\tWrong kind\thttp://nas.local/\t\t\n";
+		f << "cccc3333\tkomga\t\t\thttp://nas.local/\t\t\n";	// no name
+		f << "dddd4444\tkomga\tWith creds\thttp://u:p@nas.local/\t\t\n";	// credentials in a url
+		f << "eeee5555\topds\tExtra\thttps://books.example.org/opds\t\tcolumns\ta\tlater\n";	// a later version's columns
+	}
+	MangaServerStore st3;
+	CHECK_EQ(st3.load(broken), true);
+	CHECK_EQ(st3.list().size(), size_t(2));
+	CHECK_EQ(st3.find("aaaa1111") != nullptr, true);
+	CHECK_EQ(st3.find("bbbb2222") == nullptr, true);
+	CHECK_EQ(st3.find("cccc3333") == nullptr, true);
+	CHECK_EQ(st3.find("dddd4444") == nullptr, true);
+	CHECK_EQ(st3.find("eeee5555") != nullptr, true);
+
+	// removed
+	v = st.version();
+	st.remove(kid);
+	CHECK_EQ(st.version() > v, true);
+	CHECK_EQ(st.find(kid) == nullptr, true);
+	CHECK_EQ(st.list().size(), size_t(2));
+	MangaServerStore st4;
+	CHECK_EQ(st4.load(state), true);
+	CHECK_EQ(st4.list().size(), size_t(2));	// and it stays gone in the file
+
+	// the folders are gone again
+	unlink(file.c_str());
+	unlink((state + "/manga/servers.key").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+	unlink((broken + "/manga/servers.tsv").c_str());
+	unlink((broken + "/manga/servers.key").c_str());
+	rmdir((broken + "/manga").c_str());
+	rmdir(broken.c_str());
+	rmdir(root.c_str());
+}
+
+// Kavita's api key: it lives sealed and nowhere else. An address holding it is split into {key} and the sealed
+// password (and an old saved one is migrated on load), requests put it back only when they are built, and every
+// answer has it turned back into {key} before anything reads it, so ids, hrefs and page urls never carry it
+static void testMangaKavitaKey()
+{
+	char tmpl[] = "/tmp/bp-manga-kavita-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made, state = root + "/state", file = state + "/manga/servers.tsv";
+	auto readFile = [](const std::string& path)
+	{
+		std::ifstream f(path);
+		std::stringstream ss;
+		ss << f.rdbuf();
+		return ss.str();
+	};
+
+	MangaServerStore st;
+	CHECK_EQ(st.load(state), true);
+
+	// an address as Kavita prints it (its own "Opds" spelling): the key comes out and {key} takes its place
+	const std::string key = "9c3f0a61be";
+	MangaServer k;
+	k.kind = "kavita";
+	k.name = "Kavita";
+	k.url = "https://kavita.lan:5000/api/Opds/" + key + "/";
+	std::string kid = st.add(k);
+	CHECK_EQ(kid.size(), (size_t)8);
+	const MangaServer* saved = st.find(kid);
+	CHECK_EQ(saved != nullptr, true);
+	if (saved)
+	{
+		CHECK_EQ(saved->url, std::string("https://kavita.lan:5000/api/Opds/{key}/"));
+		CHECK_EQ(saved->url.find(key), std::string::npos);
+		CHECK_EQ(saved->hasPassword(), true);
+	}
+	CHECK_EQ(st.password(kid), key);	// and it opens again as the sealed password
+	std::string text = readFile(file);
+	CHECK_EQ(text.find(key) == std::string::npos, true);	// never in plain text, never in the url
+	CHECK_EQ(text.find("{key}") != std::string::npos, true);
+	CHECK_EQ(text.find("v1:") != std::string::npos, true);
+
+	// a key typed in the form's API key field, with an address that has none: Kavita's OPDS path is where it goes
+	MangaServer t;
+	t.kind = "kavita";
+	t.name = "Typed key";
+	t.url = "https://kavita.lan:5000";
+	std::string tid = st.add(t);
+	CHECK_EQ(tid.size(), (size_t)8);
+	CHECK_EQ(st.find(tid)->url, std::string("https://kavita.lan:5000/api/opds/{key}"));
+	CHECK_EQ(st.setPassword(tid, "typedkey123"), true);
+	CHECK_EQ(st.password(tid), std::string("typedkey123"));
+	// the endpoint without a key takes one too; any other address is left alone
+	MangaServer e;
+	e.kind = "kavita";
+	e.name = "Endpoint";
+	e.url = "https://kavita.lan:5000/api/opds/";
+	std::string eid = st.add(e);
+	CHECK_EQ(st.find(eid)->url, std::string("https://kavita.lan:5000/api/opds/{key}"));
+	MangaServer other;
+	other.kind = "kavita";
+	other.name = "Elsewhere";
+	other.url = "https://kavita.lan:5000/kavita";
+	std::string oid = st.add(other);
+	CHECK_EQ(st.find(oid)->url, std::string("https://kavita.lan:5000/kavita"));
+
+	// requests: {key} becomes the opened key, only in the url, and never a header
+	MangaServer req = *st.find(kid);
+	std::string pw = st.password(kid);
+	RemoteRequest rq = remoteAuth(req, pw, req.url);
+	CHECK_EQ(rq.url, std::string("https://kavita.lan:5000/api/Opds/" + key + "/"));
+	CHECK_EQ(rq.headers.size(), (size_t)1);
+	CHECK_EQ(remoteOpdsStart(req, pw).url, rq.url);
+	CHECK_EQ(remoteWithKey(req, pw, "https://h/api/opds/{key}/x"), std::string("https://h/api/opds/" + key + "/x"));
+	MangaServer komga = req;
+	komga.kind = "komga";
+	CHECK_EQ(remoteWithKey(komga, pw, "https://h/{key}"), std::string("https://h/{key}"));	// another kind's url
+	CHECK_EQ(remoteWithKey(req, "", "https://h/{key}"), std::string("https://h/{key}"));	// nothing to put in
+
+	// every Kavita answer repeats the address, key and all: the key is {key} before a parser reads the body
+	const std::string nav = R"NAV(<feed xmlns="http://www.w3.org/2005/Atom">
+  <id>urn:kavita:opds:9c3f0a61be</id>
+  <link rel="next" href="https://kavita.lan:5000/api/Opds/9c3f0a61be/libraries?page=2"/>
+  <entry>
+    <id>urn:kavita:series:11</id>
+    <title>Paper Lanterns</title>
+    <link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=navigation"
+          href="https://kavita.lan:5000/api/Opds/9c3f0a61be/series/11"/>
+    <link rel="http://opds-spec.org/image" type="image/jpeg"
+          href="https://kavita.lan:5000/api/Opds/9c3f0a61be/series/11/cover.jpg"/>
+  </entry>
+</feed>)NAV";
+	std::string clean = remoteWithoutKey(req, pw, nav);
+	CHECK_EQ(clean.find(key), std::string::npos);
+	CHECK_EQ(clean.find("{key}") != std::string::npos, true);
+	RemoteList list;
+	CHECK_EQ(remoteOpdsList("https://kavita.lan:5000/api/Opds/{key}/", clean, list), true);
+	CHECK_EQ(list.items.size(), (size_t)1);
+	CHECK_EQ(list.items[0].key, std::string("https://kavita.lan:5000/api/Opds/{key}/series/11"));
+	CHECK_EQ(list.items[0].cover, std::string("https://kavita.lan:5000/api/Opds/{key}/series/11/cover.jpg"));
+	CHECK_EQ(list.next, std::string("https://kavita.lan:5000/api/Opds/{key}/libraries?page=2"));
+
+	// a chapter's stream template keeps {key} too; the reader's page urls get the key back only when the request is
+	// built (ui_manga_servers.cpp's chapter open does what remoteWithKey does here)
+	const std::string acq = R"ACQ(<feed xmlns="http://www.w3.org/2005/Atom" xmlns:pse="http://vaemendis.net/opds-pse/ns">
+  <entry>
+    <id>urn:kavita:chapter:1</id>
+    <title>Chapter 1</title>
+    <link rel="http://vaemendis.net/opds-pse/stream" type="image/jpeg"
+          href="https://kavita.lan:5000/api/Opds/9c3f0a61be/series/11/ch/1/{pageNumber}?width={maxWidth}" pse:count="2"/>
+  </entry>
+</feed>)ACQ";
+	std::vector<RemoteChapter> chapters;
+	CHECK_EQ(remoteOpdsChapters("https://kavita.lan:5000/api/Opds/{key}/series/11",
+		remoteWithoutKey(req, pw, acq), chapters), true);
+	CHECK_EQ(chapters.size(), (size_t)1);
+	CHECK_EQ(chapters[0].key, std::string(
+		"https://kavita.lan:5000/api/Opds/{key}/series/11/ch/1/{pageNumber}?width={maxWidth}"));
+	std::vector<std::string> pages = remoteOpdsPageUrls(chapters[0], 640);
+	CHECK_EQ(pages.size(), (size_t)2);
+	CHECK_EQ(pages[0], std::string("https://kavita.lan:5000/api/Opds/{key}/series/11/ch/1/0?width=640"));
+	CHECK_EQ(pages[0].find(key), std::string::npos);
+	CHECK_EQ(remoteWithKey(req, pw, pages[0]),
+		std::string("https://kavita.lan:5000/api/Opds/" + key + "/series/11/ch/1/0?width=640"));
+	// the key never reaches a body that isn't Kavita's, and a body with no key to hide comes back as it came
+	CHECK_EQ(remoteWithoutKey(komga, pw, nav), nav);
+	CHECK_EQ(remoteWithoutKey(req, "", nav), nav);
+
+	// an old saved server whose url still holds the key is migrated when the store loads: sealed, and written back
+	std::string old = root + "/old";
+	mkdir(old.c_str(), 0755);
+	mkdir((old + "/manga").c_str(), 0755);
+	{
+		std::ofstream f(old + "/manga/servers.tsv");
+		f << "# banana-player manga servers v1\n";
+		f << "aaaa1111\tkavita\tOld Kavita\thttps://kavita.lan:5000/api/opds/0ldk3y/\t\t\n";
+	}
+	MangaServerStore migrated;
+	CHECK_EQ(migrated.load(old), true);
+	const MangaServer* m = migrated.find("aaaa1111");
+	CHECK_EQ(m != nullptr, true);
+	if (m)
+	{
+		CHECK_EQ(m->url, std::string("https://kavita.lan:5000/api/opds/{key}/"));
+		CHECK_EQ(m->url.find("0ldk3y"), std::string::npos);
+	}
+	CHECK_EQ(migrated.password("aaaa1111"), std::string("0ldk3y"));
+	std::string back = readFile(old + "/manga/servers.tsv");
+	CHECK_EQ(back.find("0ldk3y") == std::string::npos, true);
+	CHECK_EQ(back.find("{key}") != std::string::npos, true);
+	CHECK_EQ(back.find("v1:") != std::string::npos, true);
+
+	unlink(file.c_str());
+	unlink((state + "/manga/servers.key").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+	unlink((old + "/manga/servers.tsv").c_str());
+	unlink((old + "/manga/servers.key").c_str());
+	rmdir((old + "/manga").c_str());
+	rmdir(old.c_str());
+	rmdir(root.c_str());
+}
+
+// bp.html for the source scripts (docs/design/manga.md 5.2): parse a page, find nodes by CSS, read them
+static void testHtmlDoc()
+{
+	HtmlDoc doc;
+	CHECK_EQ(doc.parse(
+		"<!DOCTYPE html><html><head><title>Manga &amp; More</title>"
+		"<style>.hide { display: none }</style></head><body>"
+		"<div id='main' class='page'>"
+		"  <div class='box'><ul class='list'>"
+		"    <li class='item' data-src='a.jpg'><a href='/m/1'><b>One</b> &amp; more</a></li>"
+		"    <li class='item'><a href='/m/2'>Two</a><img src='blank.gif' data-src='b.jpg'></li>"
+		"    <li class='item hide'><a href='/m/3'>Three &lt;4&gt;</a></li>"
+		"  </ul></div>"
+		"  <script>var x = 1 < 2;</script>"
+		"</div></body></html>"), true);
+
+	// by tag, class, id, attribute; script and style are nodes like any other
+	CHECK_EQ(doc.select("li").size(), size_t(3));
+	CHECK_EQ(doc.select(".item").size(), size_t(3));
+	CHECK_EQ(doc.select("li.hide").size(), size_t(1));
+	CHECK_EQ(doc.select("#main").size(), size_t(1));
+	CHECK_EQ(doc.select("[data-src]").size(), size_t(2));
+	CHECK_EQ(doc.select("script").size(), size_t(1));
+	CHECK_EQ(doc.select("style").size(), size_t(1));
+
+	// descendant and child combinators: the li's are inside the div but are no div's children
+	CHECK_EQ(doc.select("div li").size(), size_t(3));
+	CHECK_EQ(doc.select("ul > li").size(), size_t(3));
+	CHECK_EQ(doc.select("div > li").size(), size_t(0));
+	CHECK_EQ(doc.select("li b").size(), size_t(1));
+	// :nth-child; and a comma list finds each node once even when #main matches two of its parts
+	CHECK_EQ(doc.select("li:nth-child(2)").size(), size_t(1));
+	CHECK_EQ(doc.select("img, title").size(), size_t(2));
+	CHECK_EQ(doc.select("#main, .list, #main").size(), size_t(2));
+
+	// text(): the descendants' text joined, entities read, whitespace collapsed and trimmed
+	CHECK_EQ(doc.selectFirst("li.item").text(), std::string("One & more"));
+	CHECK_EQ(doc.selectFirst("b").text(), std::string("One"));
+	CHECK_EQ(doc.selectFirst("li.hide").text(), std::string("Three <4>"));
+	CHECK_EQ(doc.selectFirst("title").text(), std::string("Manga & More"));
+
+	// attr(): present and absent, the name matched as HTML matches it; tag() names the element
+	CHECK_EQ(doc.selectFirst("li.item").attr("data-src"), std::string("a.jpg"));
+	CHECK_EQ(doc.selectFirst("a").attr("href"), std::string("/m/1"));
+	CHECK_EQ(doc.selectFirst("a").attr("title"), std::string(""));
+	CHECK_EQ(doc.selectFirst("img").attr("SRC"), std::string("blank.gif"));
+	CHECK_EQ(doc.selectFirst("img").tag(), std::string("img"));
+
+	// html(): outerHTML back as written (lexbor's serializer uses double quotes and keeps the escape)
+	CHECK_EQ(doc.selectFirst("a").html(), std::string("<a href=\"/m/1\"><b>One</b> &amp; more</a>"));
+	// a void element: attributes in their written order, no closing tag
+	CHECK_EQ(doc.selectFirst("img").html(), std::string("<img src=\"blank.gif\" data-src=\"b.jpg\">"));
+
+	// a node's select searches only inside it, never returning the node itself
+	HtmlNode main = doc.selectFirst("#main");
+	CHECK_EQ(main.valid(), true);
+	CHECK_EQ(main.select("li").size(), size_t(3));
+	CHECK_EQ(main.select("#main").size(), size_t(0));
+	HtmlNode li1 = doc.selectFirst("li.item");
+	CHECK_EQ(li1.select("a").size(), size_t(1));
+	CHECK_EQ(li1.select("img").size(), size_t(0));	// the img lives in the next li
+	CHECK_EQ(li1.selectFirst("b").text(), std::string("One"));
+
+	// a broken selector, and an empty selector, are nothing found, not a crash
+	CHECK_EQ(doc.select("div[[").size(), size_t(0));
+	CHECK_EQ(doc.select("##").size(), size_t(0));
+	CHECK_EQ(doc.select("").size(), size_t(0));
+	CHECK_EQ(doc.selectFirst("###").valid(), false);
+
+	// empty input parses and holds nothing; a default handle answers instead of throwing
+	HtmlDoc empty;
+	CHECK_EQ(empty.parse(""), true);
+	CHECK_EQ(empty.select("div").size(), size_t(0));
+	CHECK_EQ(empty.selectFirst("div").valid(), false);
+	HtmlNode none;
+	CHECK_EQ(none.valid(), false);
+	CHECK_EQ(none.text(), std::string(""));
+	CHECK_EQ(none.attr("href"), std::string(""));
+	CHECK_EQ(none.html(), std::string(""));
+	CHECK_EQ(none.select("div").size(), size_t(0));
+
+	// malformed HTML parses as browsers do: p closes before li, crossed tags are fixed up
+	HtmlDoc bad;
+	CHECK_EQ(bad.parse("<div class='x'><p>text<li>item</div>"), true);
+	CHECK_EQ(bad.select("p").size(), size_t(1));
+	CHECK_EQ(bad.select("li").size(), size_t(1));
+	CHECK_EQ(bad.selectFirst("div.x > li").text(), std::string("item"));
+	CHECK_EQ(bad.parse("<div><span></div><span>"), true);	// the re-parse also drops the old tree, cleanly
+	CHECK_EQ(bad.select("div span").size(), size_t(1));
+
+	// the caps: over 8 MB in is refused whole (the document stays usable), one select returns at most 20000
+	HtmlDoc cap;
+	CHECK_EQ(cap.parse(std::string(8u * 1024u * 1024u + 1, 'x')), false);
+	std::string many;
+	for (int i = 0; i < 20005; i++) many += "<div></div>";
+	CHECK_EQ(cap.parse(many), true);
+	CHECK_EQ(cap.select("div").size(), size_t(20000));
+	CHECK_EQ(cap.selectFirst("div").valid(), true);
+}
+
+// the page cache: a page goes in and comes back, the least recently used goes first over the cap, and the index
+// survives a restart
+static void testPageCache()
+{
+	char tmpl[] = "/tmp/bp-pagecache-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string dir = root + "/state/manga/cache";
+	const uint8_t five[5] = {1, 2, 3, 4, 5};
+	std::vector<uint8_t> ten(10, 0x5A);
+
+	{
+		// the cache folder is made when it isn't there
+		PageCache c;
+		CHECK_EQ(c.open(dir, 1000), true);
+		CHECK_EQ(c.count(), size_t(0));
+		CHECK_EQ(c.size(), (uint64_t)0);
+
+		// a page goes in and comes back
+		CHECK_EQ(c.put("https://example.com/one.jpg", five, sizeof five), true);
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get("https://example.com/one.jpg", out), true);
+		std::vector<uint8_t> want(five, five + sizeof five);
+		CHECK_EQ(out == want, true);
+		CHECK_EQ(c.count(), size_t(1));
+		CHECK_EQ(c.size(), (uint64_t)sizeof five);
+		CHECK_EQ(c.has("https://example.com/one.jpg"), true);
+		CHECK_EQ(c.has("https://example.com/two.jpg"), false);
+		CHECK_EQ(c.get("https://example.com/two.jpg", out), false);
+
+		// the path is the same every time and stays inside the folder: the name is the key's hash
+		std::string p = c.pathFor("https://example.com/one.jpg");
+		CHECK_EQ(p, c.pathFor("https://example.com/one.jpg"));
+		CHECK_EQ(p.find(dir + "/") == 0, true);
+		CHECK_EQ(p.find("..") == std::string::npos, true);
+		CHECK_EQ(p.substr(dir.size() + 1, 2).size(), size_t(2));	// the fan-out folder
+		CHECK_EQ(p[dir.size() + 3], '/');
+		CHECK_EQ(p.substr(p.find_last_of('/') + 1).size(), size_t(20));	// 16 hex characters and ".bin"
+		CHECK_EQ(access(p.c_str(), F_OK), 0);
+
+		// the index holds no key: a page's URL can carry a credential (Kavita's API key), so only its digest is kept
+		const uint8_t one[] = {1};
+		CHECK_EQ(c.put("https://kavita.example/api/opds/SECRETKEY123/page/1", one, sizeof one), true);
+		CHECK_EQ(c.save(), true);
+		std::vector<uint8_t> idx;
+		FILE* f = fopen((dir + "/index.tsv").c_str(), "rb");
+		CHECK_EQ(f != nullptr, true);
+		if (f)
+		{
+			char buf[4096];
+			size_t n;
+			while ((n = fread(buf, 1, sizeof buf, f)) > 0) idx.insert(idx.end(), buf, buf + n);
+			fclose(f);
+		}
+		std::string idxText(idx.begin(), idx.end());
+		CHECK_EQ(idxText.find("SECRETKEY123"), std::string::npos);
+		CHECK_EQ(idxText.find("example.com"), std::string::npos);
+		CHECK_EQ(c.has("https://kavita.example/api/opds/SECRETKEY123/page/1"), true);
+	}
+
+	{
+		// the least recently used page goes first, and a page that is asked for is safe for a while
+		PageCache c;
+		CHECK_EQ(c.open(root + "/lru", 30), true);
+		CHECK_EQ(c.put("a", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("b", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("c", ten.data(), ten.size()), true);
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get("a", out), true);	// a is used now
+		CHECK_EQ(c.has("b"), true);		// b is used now too: c is the oldest
+		CHECK_EQ(c.put("d", ten.data(), ten.size()), true);
+		CHECK_EQ(c.count(), size_t(3));
+		CHECK_EQ(c.size(), (uint64_t)30);
+		CHECK_EQ(c.has("c"), false);
+		CHECK_EQ(c.has("a"), true);
+		CHECK_EQ(c.has("b"), true);
+		CHECK_EQ(c.has("d"), true);
+	}
+
+	{
+		// the cap holds over many pages
+		PageCache c;
+		CHECK_EQ(c.open(root + "/many", 1000), true);
+		std::vector<uint8_t> page(100, 0x33);
+		for (int i = 0; i < 50; i++)
+		{
+			std::string key = "page-" + std::to_string(i);
+			CHECK_EQ(c.put(key, page.data(), page.size()), true);
+		}
+		CHECK_EQ(c.size(), (uint64_t)1000);
+		CHECK_EQ(c.count(), size_t(10));
+		CHECK_EQ(c.has("page-0"), false);	// the oldest went
+		CHECK_EQ(c.has("page-49"), true);
+
+		// a smaller cap gives the oldest pages up at once
+		c.setLimit(300);
+		CHECK_EQ(c.size(), (uint64_t)300);
+		CHECK_EQ(c.count(), size_t(3));
+
+		// a page bigger than the whole cap is refused: it would never fit
+		std::vector<uint8_t> big(400, 0x44);
+		CHECK_EQ(c.put("big", big.data(), big.size()), false);
+		CHECK_EQ(c.has("big"), false);
+		CHECK_EQ(c.size(), (uint64_t)300);
+		CHECK_EQ(c.count(), size_t(3));
+
+		// the cache empties
+		c.clear();
+		CHECK_EQ(c.count(), size_t(0));
+		CHECK_EQ(c.size(), (uint64_t)0);
+		CHECK_EQ(c.has("page-49"), false);
+		CHECK_EQ(access(c.pathFor("page-49").c_str(), F_OK), -1);
+	}
+
+	{
+		// another cache keeps its pages
+		PageCache c;
+		CHECK_EQ(c.open(root + "/keep", 1000), true);
+		CHECK_EQ(c.put("one", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("two", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("three", ten.data(), ten.size()), true);
+	}
+	{
+		PageCache c;
+		CHECK_EQ(c.open(root + "/keep", 1000), true);
+		CHECK_EQ(c.count(), size_t(3));
+		CHECK_EQ(c.size(), (uint64_t)30);
+		CHECK_EQ(access(c.pathFor("one").c_str(), F_OK), 0);
+		CHECK_EQ(access(c.pathFor("three").c_str(), F_OK), 0);
+	}
+	{
+		// the index is where it should be, with a line per page
+		std::ifstream in((root + "/keep/index.tsv").c_str());
+		std::string line;
+		int lines = 0;
+		while (std::getline(in, line))
+			if (!line.empty() && line[0] != '#') lines++;
+		CHECK_EQ(lines, 3);
+	}
+
+	{
+		// the order the pages were used in comes back with the index
+		PageCache c;
+		CHECK_EQ(c.open(root + "/order", 1000), true);
+		CHECK_EQ(c.put("one", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("two", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("three", ten.data(), ten.size()), true);
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get("two", out), true);	// two is used now: one is the oldest
+		CHECK_EQ(c.save(), true);
+	}
+	{
+		PageCache c;
+		CHECK_EQ(c.open(root + "/order", 20), true);
+		CHECK_EQ(c.count(), size_t(2));
+		CHECK_EQ(c.has("one"), false);	// the oldest page went first again
+		CHECK_EQ(c.has("two"), true);
+		CHECK_EQ(c.has("three"), true);
+	}
+
+	{
+		// a page whose file is gone is dropped when the cache opens again
+		PageCache c;
+		CHECK_EQ(c.open(root + "/gone", 1000), true);
+		CHECK_EQ(c.put("a", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("b", ten.data(), ten.size()), true);
+		CHECK_EQ(c.save(), true);
+		unlink(c.pathFor("a").c_str());
+	}
+	{
+		PageCache c;
+		CHECK_EQ(c.open(root + "/gone", 1000), true);
+		CHECK_EQ(c.count(), size_t(1));
+		CHECK_EQ(c.size(), (uint64_t)10);
+		CHECK_EQ(c.has("a"), false);
+		CHECK_EQ(c.has("b"), true);
+	}
+
+	{
+		// a damaged index is rebuilt from the files
+		PageCache c;
+		CHECK_EQ(c.open(root + "/corrupt", 1000), true);
+		CHECK_EQ(c.put("x", ten.data(), ten.size()), true);
+		CHECK_EQ(c.put("y", five, sizeof five), true);
+		CHECK_EQ(c.save(), true);
+	}
+	{
+		FILE* f = fopen((root + "/corrupt/index.tsv").c_str(), "wb");
+		if (f)
+		{
+			fputs("this is not an index\n", f);
+			fclose(f);
+		}
+		PageCache c;
+		CHECK_EQ(c.open(root + "/corrupt", 1000), true);
+		CHECK_EQ(c.count(), size_t(2));	// the pages are counted all the same
+		CHECK_EQ(c.size(), (uint64_t)(ten.size() + sizeof five));
+		CHECK_EQ(c.has("x"), true);		// the name is the key's hash: the page is found anyway
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get("y", out), true);
+		CHECK_EQ(out.size(), sizeof five);
+	}
+
+	std::string cmd = "rm -rf '" + root + "'";
+	if (system(cmd.c_str()) != 0) fprintf(stderr, "could not remove %s\n", root.c_str());
+}
+
+// the cover cache: the same PageCache the reader's pages use, opened at <state>/manga/cache/covers with a 50 MB cap.
+// the pure parts are PageCache's own (key from URL via fnv1a, LRU eviction); this test names the cover-cache-specific
+// contract: a URL is the key, two different URLs land in different files, and a cap that fits only a few covers
+// gives the oldest up
+static void testCoverCache()
+{
+	char tmpl[] = "/tmp/bp-covercache-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string dir = root + "/covers";
+	// two covers the reader might fetch: one small, one larger
+	std::vector<uint8_t> small(1024, 0xAA);
+	std::vector<uint8_t> large(100 * 1024, 0xBB);
+	const uint64_t cap = 250 * 1024;	// 250 KB: fits two large, not three
+
+	{
+		PageCache c;
+		CHECK_EQ(c.open(dir, cap), true);
+
+		// a URL as key: the same URL gives the same path every time (fnv1a over the bytes)
+		std::string url1 = "https://cdn.example.org/covers/series-42.jpg?v=3";
+		std::string url2 = "https://cdn.example.org/covers/series-99.png";
+		CHECK_EQ(c.pathFor(url1), c.pathFor(url1));
+		CHECK_EQ(c.pathFor(url1) != c.pathFor(url2), true);
+		CHECK_EQ(c.pathFor(url1).find(dir + "/") == 0, true);
+		CHECK_EQ(c.pathFor(url1).find("..") == std::string::npos, true);
+
+		// roundtrip: bytes in, bytes back, exactly
+		CHECK_EQ(c.put(url1, small.data(), small.size()), true);
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get(url1, out), true);
+		CHECK_EQ(out == small, true);
+		CHECK_EQ(c.has(url1), true);
+		CHECK_EQ(c.has(url2), false);
+		CHECK_EQ(c.count(), size_t(1));
+		CHECK_EQ(c.size(), (uint64_t)small.size());
+
+		// the cap holds: three large covers over a 250 KB cap gives the oldest up
+		CHECK_EQ(c.put("https://a/1", large.data(), large.size()), true);
+		CHECK_EQ(c.put("https://a/2", large.data(), large.size()), true);
+		CHECK_EQ(c.count(), size_t(3));		// the small one, then the two large
+		CHECK_EQ(c.put("https://a/3", large.data(), large.size()), true);
+		CHECK_EQ(c.size() <= cap, true);
+		CHECK_EQ(c.has(url1), false);	// the small one from before is the oldest: gone
+		CHECK_EQ(c.has("https://a/1"), false);	// the first large is the next oldest: gone too
+		CHECK_EQ(c.has("https://a/2"), true);
+		CHECK_EQ(c.has("https://a/3"), true);
+
+		// a cover bigger than the whole cap is refused (it would empty the cache for itself)
+		std::vector<uint8_t> huge(cap + 1, 0xCC);
+		CHECK_EQ(c.put("https://huge/x", huge.data(), huge.size()), false);
+		CHECK_EQ(c.has("https://huge/x"), false);
+
+		// the order survives a restart through save/open (the index on disk)
+		CHECK_EQ(c.get("https://a/2", out), true);	// 2 is used now: 3 is the oldest
+		CHECK_EQ(c.save(), true);
+	}
+	{
+		// reopen with a smaller cap: only one large cover fits, so the oldest (3) is evicted
+		PageCache c;
+		CHECK_EQ(c.open(dir, 150 * 1024), true);
+		CHECK_EQ(c.count(), size_t(1));
+		CHECK_EQ(c.has("https://a/3"), false);	// the oldest went at the smaller cap
+		CHECK_EQ(c.has("https://a/2"), true);	// the one just used survives
+	}
+
+	std::string cmd = "rm -rf '" + root + "'";
+	if (system(cmd.c_str()) != 0) fprintf(stderr, "could not remove %s\n", root.c_str());
+}
+
+// the downloads queue: the order, pause per item and for all, the card's low space, and the TSV that lets a quit resume
+// at the next page not written
+static void testDlQueue()
+{
+	char tmpl[] = "/tmp/bp-dlq-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string state = root + "/state";
+
+	auto mk = [](const std::string& series, const std::string& chapter, int pages) {
+		DlItem it;
+		it.seriesId = series;
+		it.chapterId = chapter;
+		it.id = series + "\n" + chapter;	// the key the queue and the page use
+		it.seriesTitle = "Series " + series;
+		it.chapterTitle = "Chapter " + chapter;
+		it.source = "komga/shelf";
+		it.added = 1000;
+		it.target = "/data/Manga/" + series + "/" + chapter + ".cbz";
+		for (int i = 0; i < pages; i++)
+			it.pageUrls.push_back("https://example.org/" + series + "/" + chapter + "/" + std::to_string(i + 1) + ".jpg");
+		return it;
+	};
+
+	DownloadQueue q;
+	CHECK_EQ(q.load(state), true);	// no file yet: an empty queue
+	CHECK_EQ(q.items().size(), size_t(0));
+	CHECK_EQ(q.next() == nullptr, true);
+	CHECK_EQ(q.pendingPages(), 0);
+	CHECK_EQ(DownloadQueue().load(""), false);	// nowhere to read from
+	uint64_t serial = q.serial();
+
+	DlItem a = mk("s1", "c1", 3), b = mk("s1", "c2", 2), c = mk("s2", "c1", 4);
+	q.add(a);
+	CHECK_EQ(q.serial() > serial, true);	// every change grows the serial
+	serial = q.serial();
+	q.add(b);
+	q.add(c);
+	CHECK_EQ(q.items().size(), size_t(3));
+	CHECK_EQ(q.serial() > serial, true);
+
+	// the key the two ids make when the caller leaves it out
+	DlItem noid = mk("s3", "c9", 1);
+	noid.id.clear();
+	q.add(noid);
+	CHECK_EQ(q.items().size(), size_t(4));
+	CHECK_EQ(q.items()[3].id, std::string("s3\nc9"));
+	q.remove("s3\nc9");
+	CHECK_EQ(q.items().size(), size_t(3));
+
+	// a duplicate id is one item, whatever else it carries
+	DlItem dup = a;
+	dup.chapterTitle = "Chapter 1 (again)";
+	serial = q.serial();
+	q.add(dup);
+	CHECK_EQ(q.items().size(), size_t(3));
+	CHECK_EQ(q.items()[0].chapterTitle, a.chapterTitle);
+	CHECK_EQ(q.serial(), serial);	// nothing changed, so nothing redraws
+
+	// the first waiting one, in the order they were added
+	CHECK_EQ(q.next() != nullptr, true);
+	if (q.next()) CHECK_EQ(q.next()->id, a.id);
+
+	// pausing one takes it out of the running without touching the others
+	q.pause(b.id);
+	CHECK_EQ(q.items()[1].state, DlItem::Paused);
+	CHECK_EQ(q.next() && q.next()->id == a.id, true);
+
+	q.started(a.id);
+	CHECK_EQ(q.items()[0].state, DlItem::Running);
+	CHECK_EQ(q.next() && q.next()->id == c.id, true);	// A running, B paused
+
+	// all paused: nothing starts; resuming all gives the queue back, and B stays paused on its own
+	q.pauseAll();
+	CHECK_EQ(q.allPaused(), true);
+	CHECK_EQ(q.next() == nullptr, true);
+	q.resumeAll();
+	CHECK_EQ(q.allPaused(), false);
+	CHECK_EQ(q.next() && q.next()->id == c.id, true);
+	CHECK_EQ(q.items()[1].state, DlItem::Paused);
+	// resuming one chapter while all are paused means downloads running again
+	q.pauseAll();
+	q.resume(b.id);
+	CHECK_EQ(q.allPaused(), false);
+	CHECK_EQ(q.next() && q.next()->id == b.id, true);
+
+	// the card under 500 MB: nothing starts, the one running keeps going
+	serial = q.serial();
+	q.setLowSpace(true);
+	CHECK_EQ(q.next() == nullptr, true);
+	CHECK_EQ(q.serial() > serial, true);
+	q.pageDone(a.id, 100);
+	CHECK_EQ(q.items()[0].done, 1);
+	CHECK_EQ(q.items()[0].bytes, (uint64_t)100);
+	CHECK_EQ(q.pendingPages(), 2 + 2 + 4);	// A's other two, B's two, C's four
+	q.setLowSpace(false);
+	CHECK_EQ(q.next() != nullptr, true);
+
+	// pages counted in order; a failure keeps them, and a retry resumes at the next one
+	q.pageDone(a.id, 50);
+	CHECK_EQ(q.items()[0].done, 2);
+	CHECK_EQ(q.items()[0].bytes, (uint64_t)150);
+	q.pageDone(b.id, 10);
+	q.failed(b.id, "network gone");
+	CHECK_EQ(q.items()[1].state, DlItem::Failed);
+	CHECK_EQ(q.items()[1].done, 1);
+	CHECK_EQ(q.items()[1].error, std::string("network gone"));
+	CHECK_EQ(q.next() && q.next()->id == c.id, true);	// a failed one doesn't run by itself
+	q.retry(b.id);
+	CHECK_EQ(q.items()[1].state, DlItem::Waiting);
+	CHECK_EQ(q.items()[1].done, 1);	// where it stopped
+	CHECK_EQ(q.items()[1].error, std::string(""));
+	CHECK_EQ(q.next() && q.next()->id == b.id, true);
+	CHECK_EQ(q.pendingPages(), 1 + 1 + 4);
+
+	// finished: out of the queue's work, still in memory for the page until clearDone()
+	q.finished(a.id);
+	CHECK_EQ(q.items()[0].state, DlItem::Done);
+	CHECK_EQ(q.items().size(), size_t(3));
+	CHECK_EQ(q.pendingPages(), 1 + 4);
+	CHECK_EQ(q.next() && q.next()->id == b.id, true);
+
+	// a chapter under way when the player quits comes back waiting
+	q.started(c.id);
+	CHECK_EQ(q.items()[2].state, DlItem::Running);
+	CHECK_EQ(q.save(), true);
+
+	// the file: the header, the two unfinished chapters, and no Done one
+	{
+		std::ifstream f(state + "/manga/downloads-queue.tsv");
+		std::string line;
+		std::getline(f, line);
+		CHECK_EQ(line, std::string("# banana-player manga downloads-queue v1"));
+		std::string rest, l;
+		while (std::getline(f, l)) rest += l + "\n";
+		CHECK_EQ(rest.find(a.target) == std::string::npos, true);
+		CHECK_EQ(rest.find(b.target) != std::string::npos, true);
+	}
+
+	// saved and read back: every field, in the queue's order, Running as Waiting
+	DownloadQueue q2;
+	CHECK_EQ(q2.load(state), true);
+	std::vector<DlItem> its = q2.items();
+	CHECK_EQ(its.size(), size_t(2));
+	if (its.size() == 2)
+	{
+		CHECK_EQ(its[0].id, b.id);
+		CHECK_EQ(its[0].seriesId, b.seriesId);
+		CHECK_EQ(its[0].seriesTitle, b.seriesTitle);
+		CHECK_EQ(its[0].chapterId, b.chapterId);
+		CHECK_EQ(its[0].chapterTitle, b.chapterTitle);
+		CHECK_EQ(its[0].source, b.source);
+		CHECK_EQ(its[0].pageUrls, b.pageUrls);
+		CHECK_EQ(its[0].done, 1);
+		CHECK_EQ(its[0].bytes, (uint64_t)10);
+		CHECK_EQ(its[0].added, b.added);
+		CHECK_EQ(its[0].state, DlItem::Waiting);
+		CHECK_EQ(its[0].target, b.target);
+		CHECK_EQ(its[1].id, c.id);
+		CHECK_EQ(its[1].state, DlItem::Waiting);	// was Running: a quit mid-chapter resumes
+		CHECK_EQ(its[1].done, 0);
+		CHECK_EQ(its[1].pageUrls, c.pageUrls);
+	}
+	CHECK_EQ(q2.next() && q2.next()->id == b.id, true);
+
+	// every field through the file, with tabs and newlines in titles, errors and URLs
+	DownloadQueue q3;
+	CHECK_EQ(q3.load(root + "/odd"), true);
+	DlItem odd;
+	odd.seriesId = "odd\t1";
+	odd.chapterId = "ch\n2";
+	odd.id = odd.seriesId + "\n" + odd.chapterId;
+	odd.seriesTitle = "Tab\there\nNew line\\Back";
+	odd.chapterTitle = "Ch\t2\naway";
+	odd.source = "src\twith\ttabs";
+	odd.pageUrls = {"https://example.org/a\tb.jpg", "https://example.org/c\nd.jpg", "https://example.org/e\\f.jpg"};
+	odd.done = 1;
+	odd.state = DlItem::Failed;
+	odd.error = "gone\taway\nand back";
+	odd.added = 1234567890123LL;
+	odd.bytes = 9876543210ULL;
+	odd.target = "/data/Manga/odd\ttarget\n.cbz";
+	q3.add(odd);
+	q3.failed(odd.id, odd.error);	// add() starts clean; the error comes from the worker's report
+	CHECK_EQ(q3.save(), true);
+	DownloadQueue q4;
+	CHECK_EQ(q4.load(root + "/odd"), true);
+	std::vector<DlItem> oddBack = q4.items();
+	CHECK_EQ(oddBack.size(), size_t(1));
+	if (oddBack.size() == 1)
+	{
+		const DlItem& r = oddBack[0];
+		CHECK_EQ(r.id, odd.id);
+		CHECK_EQ(r.seriesId, odd.seriesId);
+		CHECK_EQ(r.seriesTitle, odd.seriesTitle);
+		CHECK_EQ(r.chapterId, odd.chapterId);
+		CHECK_EQ(r.chapterTitle, odd.chapterTitle);
+		CHECK_EQ(r.source, odd.source);
+		CHECK_EQ(r.pageUrls, odd.pageUrls);	// each one back as it went in, the tab and the newline too
+		CHECK_EQ(r.done, 1);
+		CHECK_EQ(r.state, DlItem::Failed);
+		CHECK_EQ(r.error, odd.error);
+		CHECK_EQ(r.added, odd.added);
+		CHECK_EQ(r.bytes, odd.bytes);
+		CHECK_EQ(r.target, odd.target);
+	}
+	// a retry after the load resumes at the page it stopped on
+	q4.retry(odd.id);
+	CHECK_EQ(q4.items()[0].state, DlItem::Waiting);
+	CHECK_EQ(q4.items()[0].done, 1);
+
+	// a broken line in the file is skipped; the rest of the queue loads
+	{
+		mkdir((root + "/bad").c_str(), 0755);
+		mkdir((root + "/bad/manga").c_str(), 0755);
+		std::ofstream f(root + "/bad/manga/downloads-queue.tsv");
+		f << "# banana-player manga downloads-queue v1\n";
+		f << "g1\ts\tGood\ts\tOne\tsrc\twaiting\t0\t0\t100\t\tt1\thttps://x/1.jpg\n";
+		f << "this line has no tabs at all\n";
+		f << "g2\ts\tGood\ts\tTwo\tsrc\trunning\t1\t5\t200\t\t\thttps://x/2.jpg\n";
+		f << "g3\ts\tGood\ts\tThree\tsrc\tsleeping\t0\t0\t300\t\t\thttps://x/3.jpg\n";	// no such state
+		f << "g4\ts\tGood\ts\tFour\tsrc\twaiting\t9\t0\t400\t\t\thttps://x/4.jpg\n";	// done past its pages
+		f << "g5\ts\tGood\ts\tFive\tsrc\twaiting\t0\tx\t500\t\t\thttps://x/5.jpg\n";	// bytes that aren't a number
+		f << "g6\ts\tGood\ts\tSix\n";	// too few columns
+	}
+	DownloadQueue qb;
+	CHECK_EQ(qb.load(root + "/bad"), true);
+	CHECK_EQ(qb.items().size(), size_t(2));
+	if (qb.items().size() == 2)
+	{
+		CHECK_EQ(qb.items()[0].id, std::string("g1"));
+		CHECK_EQ(qb.items()[1].id, std::string("g2"));
+		CHECK_EQ(qb.items()[1].state, DlItem::Waiting);	// running in the file
+		CHECK_EQ(qb.items()[1].done, 1);
+		CHECK_EQ(qb.items()[1].pageUrls.size(), size_t(1));
+	}
+
+	// Done items leave memory only when the page says so
+	serial = q.serial();
+	q.clearDone();
+	CHECK_EQ(q.items().size(), size_t(2));
+	CHECK_EQ(q.serial() > serial, true);
+	CHECK_EQ(q.items()[0].id, b.id);
+
+	unlink((state + "/manga/downloads-queue.tsv").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+	unlink((root + "/odd/manga/downloads-queue.tsv").c_str());
+	rmdir((root + "/odd/manga").c_str());
+	rmdir((root + "/odd").c_str());
+	unlink((root + "/bad/manga/downloads-queue.tsv").c_str());
+	rmdir((root + "/bad/manga").c_str());
+	rmdir((root + "/bad").c_str());
+	rmdir(root.c_str());
+}
+
+// the repository index (design 5.3): reading it, validating its sources, checksums, versions, resolving file URLs
+static void testMangaRepo()
+{
+	static const std::string SHA = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";	// "abc"
+
+	// a valid index in the design's exact format: relative file and icon, api as a number, nsfw as a bool; an
+	// escaped quote in a name reads back whole; one source with an impossible id and one with a broken version
+	// are skipped and named, the rest kept
+	std::string good = R"JSON({
+		"format": 1,
+		"name": "Test repository",
+		"homepage": "https://repos.example.org",
+		"sources": [
+			{ "id": "ember-reader", "name": "Ember Reader", "lang": "en", "version": "1.2.0", "api": 1, "nsfw": false,
+			  "file": "sources/ember-reader.lua", "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+			  "size": 18342, "icon": "icons/ember-reader.png", "description": "One line." },
+			{ "id": "tide.scanner", "name": "Tide \"Scanner\"", "lang": "pt-br", "version": "0.9", "api": "1", "nsfw": true,
+			  "file": "sources/tide.lua", "sha256": "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD" },
+			{ "id": "sky-manga", "name": "Sky Manga", "lang": "all", "version": "2",
+			  "file": "https://cdn.example.net/sources/sky.lua", "sha256": "0000000000000000000000000000000000000000000000000000000000000000" },
+			{ "id": "BAD_ID!", "name": "Broken", "lang": "en", "version": "1.0", "file": "sources/broken.lua", "sha256": "9f2c" },
+			{ "id": "late", "name": "Late", "lang": "en", "version": "1.2.x", "file": "sources/late.lua", "sha256": "9f2c" }
+		]
+	})JSON";
+	RepoIndex idx;
+	std::string err;
+	CHECK_EQ(parseRepoIndex(good, idx, err), true);
+	CHECK_EQ(idx.name, std::string("Test repository"));
+	CHECK_EQ(idx.homepage, std::string("https://repos.example.org"));
+	CHECK_EQ(idx.formatVersion, 1);
+	CHECK_EQ(idx.sources.size(), (size_t)3);	// the two broken ones skipped
+	CHECK_EQ(err.find("skipped source 4 (BAD_ID!)") != std::string::npos, true);
+	CHECK_EQ(err.find("skipped source 5 (late)") != std::string::npos, true);
+	CHECK_EQ(idx.sources[0].id, std::string("ember-reader"));
+	CHECK_EQ(idx.sources[0].url, std::string("sources/ember-reader.lua"));	// as the index writes it, relative
+	CHECK_EQ(idx.sources[0].icon, std::string("icons/ember-reader.png"));
+	CHECK_EQ(idx.sources[0].minApp, std::string("1"));	// the api number kept as text
+	CHECK_EQ(idx.sources[0].adult, false);
+	CHECK_EQ(idx.sources[0].sha256, SHA);
+	CHECK_EQ(idx.sources[1].name, std::string("Tide \"Scanner\""));
+	CHECK_EQ(idx.sources[1].adult, true);
+	CHECK_EQ(idx.sources[1].lang, std::string("pt-br"));
+	CHECK_EQ(idx.sources[2].url, std::string("https://cdn.example.net/sources/sky.lua"));
+	CHECK_EQ(idx.sources[2].minApp, std::string(""));	// no api in the index
+	CHECK_EQ(idx.sources[2].icon, std::string(""));
+
+	// an index with a format this build doesn't read is refused whole (design 5.2's rule for a newer script api)
+	CHECK_EQ(parseRepoIndex("{\"format\": 2, \"name\": \"x\", \"sources\": []}", idx, err), false);
+	CHECK_EQ(err.find("format") != std::string::npos, true);
+	// format missing reads as 1
+	CHECK_EQ(parseRepoIndex("{\"name\": \"x\", \"sources\": []}", idx, err), true);
+	CHECK_EQ(idx.formatVersion, 1);
+
+	// malformed JSON false, in every way it can be malformed
+	for (const char* bad : {"", "{", "{\"format\": 1, \"sources\": [", "not json", "{} {}", "true", "[1,2]",
+						 "{\"format\": 1}", "{\"format\": \"x\", \"sources\": []}"})
+		CHECK_EQ(parseRepoIndex(bad, idx, err), false);
+
+	// the caps: 1 MB of input (design 5.3), 2000 sources
+	CHECK_EQ(parseRepoIndex(std::string(1024 * 1024 + 1, 'x'), idx, err), false);
+	std::string many = "{\"format\": 1, \"sources\": [";
+	for (int k = 0; k < 2001; k++)
+	{
+		if (k) many += ",";
+		many += "{\"id\":\"s" + std::to_string(k) + "\",\"name\":\"S\",\"lang\":\"en\",\"version\":\"1\",\"file\":\"s.lua\",\"sha256\":\"" + SHA + "\"}";
+	}
+	CHECK_EQ(parseRepoIndex(many + "]}", idx, err), false);
+	CHECK_EQ(err.find("2000") != std::string::npos, true);
+	// exactly 2000 fits
+	std::string just2000 = "{\"format\": 1, \"sources\": [";
+	for (int k = 0; k < 2000; k++)
+	{
+		if (k) just2000 += ",";
+		just2000 += "{\"id\":\"s" + std::to_string(k) + "\",\"name\":\"S\",\"lang\":\"en\",\"version\":\"1\",\"file\":\"s.lua\",\"sha256\":\"" + SHA + "\"}";
+	}
+	CHECK_EQ(parseRepoIndex(just2000 + "]}", idx, err), true);
+	CHECK_EQ(idx.sources.size(), (size_t)2000);
+
+	// the design's repositories are HTTPS (5.3): an absolute http file is skipped; and an icon with a space in it
+	CHECK_EQ(parseRepoIndex("{\"format\":1,\"sources\":[{\"id\":\"a\",\"name\":\"A\",\"lang\":\"en\",\"version\":\"1\",\"file\":\"http://cdn.example/a.lua\",\"sha256\":\"" + SHA + "\"}]}", idx, err), true);
+	CHECK_EQ(idx.sources.size(), (size_t)0);
+	CHECK_EQ(err.find("not https") != std::string::npos, true);
+
+	// SHA-256 over bytes: the FIPS test vector for "abc" and for the empty string
+	CHECK_EQ(sha256Hex((const uint8_t*)"abc", 3), SHA);
+	CHECK_EQ(sha256Hex((const uint8_t*)"", 0), std::string("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
+	CHECK_EQ(sha256Hex(nullptr, 0), std::string("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"));
+	CHECK_EQ(sha256Hex(nullptr, 5), std::string(""));	// bytes claimed but none given
+	// the index's digest, upper or lower case
+	CHECK_EQ(sha256Matches(SHA, (const uint8_t*)"abc", 3), true);
+	CHECK_EQ(sha256Matches("BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD", (const uint8_t*)"abc", 3), true);
+	CHECK_EQ(sha256Matches(SHA, (const uint8_t*)"abd", 3), false);
+	CHECK_EQ(sha256Matches("ba7816bf", (const uint8_t*)"abc", 3), false);	// a truncated expected never matches
+
+	// versions compare numerically per part (update.h's rule, shared with the app's own updater)
+	CHECK_EQ(compareVersions("1.10", "1.9"), 1);
+	CHECK_EQ(compareVersions("1.9", "1.10"), -1);
+	CHECK_EQ(compareVersions("1.2.0", "1.2.0"), 0);
+	CHECK_EQ(compareVersions("1.2", "1.2.0"), 0);
+	CHECK_EQ(compareVersions("0.5.10", "0.5.9"), 1);
+	CHECK_EQ(updateAvailable("1.2.0", "1.3.0"), true);	// the index is higher: show Update
+	CHECK_EQ(updateAvailable("1.3.0", "1.3.0"), false);
+	CHECK_EQ(updateAvailable("1.3.0", "1.2.9"), false);
+	CHECK_EQ(updateAvailable("1.9", "1.10"), true);
+
+	// resolving a source's file against the index URL (design 5.3: relative to it)
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "sources/ember.lua"),
+		     std::string("https://repos.example.org/main/sources/ember.lua"));
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "/icons/tide.png"),
+		     std::string("https://repos.example.org/icons/tide.png"));
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "https://cdn.example.net/a.lua"),
+		     std::string("https://cdn.example.net/a.lua"));	// absolute stays
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "../shared/a.lua"),
+		     std::string("https://repos.example.org/shared/a.lua"));
+	CHECK_EQ(repoResolve("https://repos.example.org/main/index.json", "./a.lua"),
+		     std::string("https://repos.example.org/main/a.lua"));
+	CHECK_EQ(repoResolve("https://repos.example.org", "a.lua"), std::string("https://repos.example.org/a.lua"));
+	CHECK_EQ(repoResolve("https://h/dir/index.json?v=3", "a.lua"), std::string("https://h/dir/a.lua"));	// the index's query is its own
+	CHECK_EQ(repoResolve("https://h/dir/index.json", "a.lua?x=1"), std::string("https://h/dir/a.lua?x=1"));
+	CHECK_EQ(repoResolve("http://h/x/index.json", "a.lua"), std::string("http://h/x/a.lua"));
+	CHECK_EQ(repoResolve("https://h/index.json", ""), std::string("https://h/index.json"));
+
+	// the shape of a URL this code will hold: http(s), a host, no credentials, no spaces or controls, ≤ 2048
+	for (const char* ok : {"https://repos.example.org/index.json", "http://192.168.1.5/index.json",
+			       "https://h:8443/a?q=1#frag", "HTTPS://UPPER.example/x"})
+		CHECK_EQ(validRepoUrl(ok), true);
+	std::string tooLong = "https://h/" + std::string(2048 - 10, 'a');	// exactly 2048 fits ("https://h/" is 10)
+	CHECK_EQ(validRepoUrl(tooLong), true);
+	tooLong += "a";
+	for (const char* no : {"", "https://", "https:///x", "ftp://host/x", "https://user:pass@host/x",
+			       "https://host name/x", "https:/x", "not-a-url", "https://a\nb"})
+		CHECK_EQ(validRepoUrl(no), false);
+	CHECK_EQ(validRepoUrl(tooLong), false);
+}
+
+// the pure server readers: OPDS 1.2 Atom feeds and Komga's REST list answers (docs/design/manga.md 5.1)
+static void testOpds()
+{
+	// a Kavita-style navigation feed: prefixed Atom (the prefixes must not matter), a comment, entities, CDATA, an
+	// escaped-html summary, and the paging links
+	const std::string nav = R"NAV(<?xml version="1.0" encoding="utf-8"?>
+<!-- served by Kavita -->
+<k:feed xmlns:k="http://www.w3.org/2005/Atom" xmlns:thr="http://purl.org/syndicate/threading">
+  <k:id>urn:kavita:opds:libraries</k:id>
+  <k:title>The &amp; Catalog</k:title>
+  <k:link rel="self" type="application/atom+xml" href="https://srv.example:5000/api/opds/my-library"/>
+  <k:link rel="start" type="application/atom+xml;profile=opds-catalog" href="/api/opds"/>
+  <k:link rel="search" type="application/opensearchdescription+xml" href="/api/opds/searchdescription.xml"/>
+  <k:link rel="next" type="application/atom+xml;profile=opds-catalog" href="/api/opds/my-library?page=2"/>
+  <k:link rel="up" type="application/atom+xml;profile=opds-catalog" href="/api/opds"/>
+  <k:entry>
+    <k:id>urn:kavita:series:11</k:id>
+    <k:title>Golden &amp; Silver &#x2014; Vol. 1</k:title>
+    <k:author><k:name>Sun &amp; Moon Studio</k:name></k:author>
+    <k:updated>2026-11-02T08:00:00Z</k:updated>
+    <k:summary>&lt;p&gt;Two &lt;b&gt;siblings&lt;/b&gt;   and a   lantern.&lt;/p&gt;</k:summary>
+    <k:link rel="subsection" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="/api/opds/series/11" thr:count="42"/>
+    <k:link rel="http://opds-spec.org/image" type="image/jpeg" href="/api/opds/series/11/cover"/>
+  </k:entry>
+  <k:entry>
+    <k:id>urn:kavita:series:12</k:id>
+    <k:title><![CDATA[Quiet Hours & Night Shifts]]></k:title>
+    <k:content type="html">&lt;div&gt;&lt;p&gt;A   tale &amp; a tail.&lt;/p&gt;&lt;/div&gt;</k:content>
+    <k:link rel="http://opds-spec.org/image/thumbnail" type="image/jpeg" href="covers/12.jpg"/>
+  </k:entry>
+</k:feed>
+)NAV";
+	OpdsFeed feed;
+	CHECK_EQ(parseOpds(nav, feed), true);
+	CHECK_EQ(feed.id, std::string("urn:kavita:opds:libraries"));
+	CHECK_EQ(feed.title, std::string("The & Catalog"));
+	CHECK_EQ(feed.start, std::string("/api/opds"));
+	CHECK_EQ(feed.search, std::string("/api/opds/searchdescription.xml"));
+	CHECK_EQ(feed.next, std::string("/api/opds/my-library?page=2"));
+	CHECK_EQ(feed.up, std::string("/api/opds"));
+	CHECK_EQ(feed.entries.size(), (size_t)2);
+	const OpdsEntry& e = feed.entries[0];
+	CHECK_EQ(e.id, std::string("urn:kavita:series:11"));
+	CHECK_EQ(e.title, std::string("Golden & Silver \xE2\x80\x94 Vol. 1"));
+	CHECK_EQ(e.author, std::string("Sun & Moon Studio"));
+	CHECK_EQ(e.updated, std::string("2026-11-02T08:00:00Z"));
+	CHECK_EQ(e.summary, std::string("Two siblings and a lantern."));	// tags stripped, entities decoded, spaces closed up
+	CHECK_EQ(e.links.size(), (size_t)2);
+	CHECK_EQ(e.links[0].count, 42);	// thr:count
+	CHECK_EQ(e.links[1].count, -1);
+	CHECK_EQ(e.nav(), std::string("/api/opds/series/11"));
+	CHECK_EQ(e.cover(), std::string("/api/opds/series/11/cover"));
+	CHECK_EQ(e.thumbnail(), std::string(""));
+	CHECK_EQ(e.acquisition(), std::string(""));
+	CHECK_EQ(e.pse(), std::string(""));
+	const OpdsEntry& e2 = feed.entries[1];
+	CHECK_EQ(e2.title, std::string("Quiet Hours & Night Shifts"));	// CDATA is literal
+	CHECK_EQ(e2.summary, std::string("A tale & a tail."));	// from <content type="html">
+	CHECK_EQ(e2.thumbnail(), std::string("covers/12.jpg"));
+	// every href resolves against the feed's own URL
+	CHECK_EQ(opdsResolve("https://srv.example:5000/api/opds/my-library", e2.thumbnail()),
+	         std::string("https://srv.example:5000/api/opds/covers/12.jpg"));
+	CHECK_EQ(opdsResolve("https://srv.example:5000/api/opds/my-library", feed.next),
+	         std::string("https://srv.example:5000/api/opds/my-library?page=2"));
+
+	// an acquisition feed with the Page Streaming Extension, written with a default namespace and a different prefix
+	// for PSE: what Komga answers for a series' books
+	const std::string acq = R"ACQ(<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:p="http://vaemendis.net/opds-pse/ns">
+  <id>urn:komga:series:7:books</id>
+  <title>Books of Paper Lanterns</title>
+  <link rel="start" type="application/atom+xml;profile=opds-catalog" href="/opds"/>
+  <entry>
+    <id>urn:komga:book:21</id>
+    <title>Chapter One</title>
+    <link rel="item" type="application/atom+xml" href="books/21"/>
+    <link rel="http://opds-spec.org/acquisition" type="application/pdf" href="/files/21.pdf"/>
+    <link rel="http://opds-spec.org/acquisition/cbz" type="application/vnd.comicbook+zip" href="/files/21.cbz"/>
+    <link rel="http://vaemendis.net/opds-pse/stream" type="image/jpeg"
+          href="/api/series/7/books/21/page/{pageNumber}?width={maxWidth}" p:count="37"/>
+  </entry>
+  <entry>
+    <id>urn:komga:book:22</id>
+    <title>Chapter Two</title>
+    <link rel="http://opds-spec.org/acquisition" type="application/zip" href="/files/22.zip"/>
+    <link rel="http://opds-spec.org/image" type="image/png" href="img/22.png"/>
+  </entry>
+</feed>
+)ACQ";
+	OpdsFeed shop;
+	CHECK_EQ(parseOpds(acq, shop), true);
+	CHECK_EQ(shop.start, std::string("/opds"));
+	CHECK_EQ(shop.entries.size(), (size_t)2);
+	const OpdsEntry& b = shop.entries[0];
+	CHECK_EQ(b.nav(), std::string("books/21"));
+	// a comic on a shelf is a zip: the cbz beats the pdf that came first
+	CHECK_EQ(b.acquisition(), std::string("/files/21.cbz"));
+	CHECK_EQ(b.pse(), std::string("/api/series/7/books/21/page/{pageNumber}?width={maxWidth}"));
+	int pseCount = -1;
+	for (const OpdsLink& l : b.links)
+		if (l.rel == "http://vaemendis.net/opds-pse/stream") pseCount = l.count;
+	CHECK_EQ(pseCount, 37);	// p:count, matched by namespace URI not prefix
+	CHECK_EQ(shop.entries[1].acquisition(), std::string("/files/22.zip"));
+	CHECK_EQ(shop.entries[1].cover(), std::string("img/22.png"));
+	CHECK_EQ(shop.entries[1].pse(), std::string(""));
+	std::string pageUrl = opdsResolve("https://komga.example/opds/v1/series/7", b.pse());
+	CHECK_EQ(pageUrl, std::string("https://komga.example/api/series/7/books/21/page/{pageNumber}?width={maxWidth}"));
+	CHECK_EQ(opdsPseUrl(pageUrl, 12, 900),
+	         std::string("https://komga.example/api/series/7/books/21/page/12?width=900"));
+	CHECK_EQ(opdsPseUrl("/s/21/%7BpageNumber%7D?w=%7BmaxWidth%7D", 3, 640), std::string("/s/21/3?w=640"));
+
+	// opdsResolve, one case per shape a server actually writes
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "http://cdn.x/a.jpg"), std::string("http://cdn.x/a.jpg"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "sub/x"), std::string("http://h:80/opds/sub/x"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "../x"), std::string("http://h:80/x"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "a/../b"), std::string("http://h:80/opds/b"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "/api/x"), std::string("http://h:80/api/x"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library?a=1&b=2", "?c=3"), std::string("http://h:80/opds/library?c=3"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/", "x"), std::string("http://h:80/opds/x"));
+	CHECK_EQ(opdsResolve("http://h:80", "x"), std::string("http://h:80/x"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", "//cdn.x/y"), std::string("http://cdn.x/y"));
+	CHECK_EQ(opdsResolve("http://h:80/opds/library", ""), std::string("http://h:80/opds/library"));
+
+	// not a feed, in every way a body can fail to be one
+	OpdsFeed no;
+	CHECK_EQ(parseOpds("", no), false);
+	CHECK_EQ(parseOpds("no xml at all", no), false);
+	CHECK_EQ(parseOpds("<rss><channel><title>RSS, not Atom</title></channel></rss>", no), false);
+	CHECK_EQ(parseOpds(R"(<ComicInfo><Series>S</Series></ComicInfo>)", no), false);
+	// truncated input answers false at every cut, and crashes at none (stop short of the feed's own close)
+	for (size_t cut = 4; cut + 12 < nav.size(); cut += 37)
+	{
+		OpdsFeed part;
+		CHECK_EQ(parseOpds(nav.substr(0, cut), part), false);
+	}
+	// an empty feed is still a feed
+	OpdsFeed tiny;
+	CHECK_EQ(parseOpds(R"(<feed xmlns="http://www.w3.org/2005/Atom" xmlns:t="http://www.w3.org/2005/Atom"/>)", tiny),
+	         true);
+	CHECK_EQ(tiny.entries.size(), (size_t)0);
+	// over 8 MB is refused rather than cut short
+	CHECK_EQ(parseOpds(std::string((8u << 20) + 1, 'x'), no), false);
+	// and a runaway feed is capped at 10 000 entries
+	std::string many = R"(<feed xmlns="http://www.w3.org/2005/Atom">)";
+	for (int i = 0; i < 10001; i++) many += "<entry><id>x</id></entry>";
+	many += "</feed>";
+	OpdsFeed capped;
+	CHECK_EQ(parseOpds(many, capped), true);
+	CHECK_EQ(capped.entries.size(), (size_t)10000);
+
+	// Komga REST: a page of series, with its extra fields (booksCount, flags) unknown but harmless
+	std::vector<KomgaItem> items;
+	int totalPages = -1;
+	const std::string kgSeries = R"JSON({"content":[
+	  {"id":"01HXYZ","name":"Paper Lanterns","numberSort":1.0,"booksCount":12,
+	   "metadata":{"title":"Paper Lanterns","status":"ONGOING","authors":[{"name":"Sun & Moon Studio"}]}},
+	  {"id":"01JABC","metadata":{"title":"Quiet Hours"}}
+	],"page":0,"pageSize":2,"totalPages":3,"totalElements":5,"empty":false,"first":true,"last":false,"filtered":false})JSON";
+	CHECK_EQ(parseKomgaPage(kgSeries, items, totalPages), true);
+	CHECK_EQ(totalPages, 3);
+	CHECK_EQ(items.size(), (size_t)2);
+	CHECK_EQ(items[0].id, std::string("01HXYZ"));
+	CHECK_EQ(items[0].name, std::string("Paper Lanterns"));
+	CHECK_EQ(items[0].number, std::string(""));
+	CHECK_EQ(items[0].numberSort, 1.0);
+	CHECK_EQ(items[0].pages, -1);
+	CHECK_EQ(items[1].name, std::string("Quiet Hours"));	// no name on the item: the metadata title stands in
+
+	// a page of books: metadata.number/numberSort, the media's page count (object form in old Komga, array in new),
+	// JSON string escapes incl. a surrogate pair
+	items.clear();
+	const std::string kgBooks = R"JSON({"content":[
+	  {"id":"01BOOK1","name":"Book One","metadata":{"number":"1","numberSort":1.5},
+	   "media":{"pagesCount":24,"size":1000000,"format":"CBZ"}},
+	  {"id":"01BOOK2","name":"Ch\u00e9ri \uD83D\uDE00 Two","metadata":{"number":"1.5","summary":"a \"quoted\" tale"},
+	   "media":[{"pages":38,"width":800,"height":1200,"biTDepth":8,"colorType":"COLOR"}]}
+	],"page":0,"pageSize":20,"totalPages":1,"totalElements":2,"empty":false})JSON";
+	CHECK_EQ(parseKomgaPage(kgBooks, items, totalPages), true);
+	CHECK_EQ(totalPages, 1);
+	CHECK_EQ(items.size(), (size_t)2);
+	CHECK_EQ(items[0].number, std::string("1"));
+	CHECK_EQ(items[0].numberSort, 1.5);
+	CHECK_EQ(items[0].pages, 24);
+	CHECK_EQ(items[1].number, std::string("1.5"));
+	CHECK_EQ(items[1].numberSort, -1.0);
+	CHECK_EQ(items[1].pages, 38);
+	CHECK_EQ(items[1].name, std::string("Ch\xC3\xA9ri \xF0\x9F\x98\x80 Two"));
+
+	// malformed JSON is false without a crash; items untouched
+	std::vector<KomgaItem> keep;
+	int t2 = 0;
+	CHECK_EQ(parseKomgaPage("{", keep, t2), false);
+	CHECK_EQ(parseKomgaPage("not json", keep, t2), false);
+	CHECK_EQ(parseKomgaPage("[1,2]", keep, t2), false);	// not an object
+	CHECK_EQ(parseKomgaPage("{}", keep, t2), false);	// no content array
+	CHECK_EQ(parseKomgaPage(R"({"content":"oops"})", keep, t2), false);
+	CHECK_EQ(parseKomgaPage(R"({"content":[{"id":)", keep, t2), false);
+	CHECK_EQ(parseKomgaPage(R"({"content":[{"broken]")", keep, t2), false);
+	CHECK_EQ(parseKomgaPage(std::string("{\"content\":[[") + std::string(400, '[') + std::string(400, ']') + "]]}", keep, t2),
+	         false);	// nested deeper than the reader trusts
+	CHECK_EQ(parseKomgaPage(std::string((8u << 20) + 1, 'x'), keep, t2), false);
+	CHECK_EQ(keep.size(), (size_t)0);
+	// the cap is shared with feeds
+	std::string manyKg = "{\"content\":[";
+	for (int i = 0; i < 10001; i++) manyKg += i ? ",{\"id\":\"x\"}" : "{\"id\":\"x\"}";
+	manyKg += "],\"totalPages\":1}";
+	std::vector<KomgaItem> manyItems;
+	CHECK_EQ(parseKomgaPage(manyKg, manyItems, t2), true);
+	CHECK_EQ(manyItems.size(), (size_t)10000);
+
+	// joined without doubling or dropping the slash, however the user typed the server's address
+	CHECK_EQ(komgaUrl("https://komga.example", "/api/v1/series"), std::string("https://komga.example/api/v1/series"));
+	CHECK_EQ(komgaUrl("https://komga.example/", "/api/v1/series"), std::string("https://komga.example/api/v1/series"));
+	CHECK_EQ(komgaUrl("https://komga.example/", "api/v1/series"), std::string("https://komga.example/api/v1/series"));
+	CHECK_EQ(komgaUrl("https://komga.example//", "api/v1"), std::string("https://komga.example/api/v1"));
+	CHECK_EQ(komgaUrl("https://komga.example/", ""), std::string("https://komga.example"));
+	CHECK_EQ(komgaUrl("", "/api/v1/books"), std::string("/api/v1/books"));
+}
+
+// the CBZ writer: what a download becomes on the card, read back with the reader that will open it
+static void testCbzWrite()
+{
+	const std::string P = std::string(BP_TESTS_DIR) + "/pages/";
+	const std::string jpgP = P + "page.jpg", pngP = P + "page.png";
+	auto file = [](const std::string& path)
+	{
+		std::ifstream f(path, std::ios::binary);
+		return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+	const std::vector<uint8_t> jpg = file(jpgP), png = file(pngP);
+	CHECK_EQ(jpg.empty(), false);
+	CHECK_EQ(png.empty(), false);
+	std::vector<uint8_t> out;
+
+	char tmpl[] = "/tmp/bp-cbzwrite-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	CHECK_EQ(made != nullptr, true);
+	if (!made) return;
+	const std::string D = made;
+
+	ComicInfo c;
+	c.series = "Test Series";
+	c.number = "3";
+	c.volume = 1;
+	c.title = "Chapter Three";
+	c.pageCount = 3;
+	c.rightToLeft = true;
+	c.summary = "A page & a half";
+	c.sourceId = "komga";
+	c.seriesKey = "abc-123";
+	const std::string xml = writeComicInfo(c);
+
+	// a chapter: three pages added with addFile and the metadata with add; a stale .part must not survive
+	const std::string chapter = D + "/ch.cbz";
+	{ std::ofstream stale(chapter + ".part"); stale << "half a download from a crashed run"; }
+	{
+		CbzWriter w;
+		CHECK_EQ(w.addFile("001.jpg", jpgP), false);	// nothing open yet
+		CHECK_EQ(w.error().empty(), false);
+		CHECK_EQ(w.open(chapter), true);
+		CHECK_EQ(w.open(chapter), false);			// one archive at a time
+		CHECK_EQ(w.addFile("001.jpg", jpgP), true);
+		CHECK_EQ(w.addFile("002.png", pngP), true);
+		CHECK_EQ(w.addFile("003.jpg", jpgP), true);
+		CHECK_EQ(w.add("ComicInfo.xml", (const uint8_t*)xml.data(), xml.size()), true);
+		CHECK_EQ(w.add("001.jpg", png.data(), png.size()), false);	// a name already in the archive
+		CHECK_EQ(w.error().empty(), false);
+		CHECK_EQ(w.add("../escape.jpg", png.data(), png.size()), false);	// would leave the folder
+		CHECK_EQ(w.add("/abs.jpg", png.data(), png.size()), false);
+		CHECK_EQ(w.add("a\\b.jpg", png.data(), png.size()), false);
+		CHECK_EQ(w.add("", png.data(), png.size()), false);
+		CHECK_EQ(w.addFile("nope.jpg", D + "/no-such-file"), false);	// a source that isn't there
+		CHECK_EQ(w.error().empty(), false);
+		CHECK_EQ(w.finish(), true);
+		CHECK_EQ(w.add("late.jpg", png.data(), png.size()), false);	// finished: the archive is closed
+	}
+
+	// reads back with the same reader a chapter uses: byte-identical entries, stored not deflated
+	Cbz z;
+	CHECK_EQ(z.open(chapter), true);
+	CHECK_EQ(z.error().empty(), true);
+	CHECK_EQ(z.entries().size(), (size_t)4);
+	CHECK_EQ(z.pages(), (std::vector<std::string>{"001.jpg", "002.png", "003.jpg"}));
+	for (const CbzEntry& e : z.entries())
+	{
+		CHECK_EQ(e.method, (uint32_t)0);
+		CHECK_EQ(e.packed, e.size);	// stored: nothing was compressed away
+	}
+	CHECK_EQ(z.read("001.jpg", out) && out == jpg, true);
+	CHECK_EQ(z.read("002.png", out) && out == png, true);
+	CHECK_EQ(z.read("003.jpg", out) && out == jpg, true);
+	CHECK_EQ(z.read("ComicInfo.xml", out) && std::string(out.begin(), out.end()) == xml, true);
+	ComicInfo c2;
+	CHECK_EQ(parseComicInfo(std::string(out.begin(), out.end()), c2), true);
+	CHECK_EQ(c2.series, std::string("Test Series"));
+	CHECK_EQ(c2.number, std::string("3"));
+	CHECK_EQ(c2.volume, 1);
+	CHECK_EQ(c2.title, std::string("Chapter Three"));
+	CHECK_EQ(c2.pageCount, 3);
+	CHECK_EQ(c2.rightToLeft, true);
+	CHECK_EQ(c2.summary, std::string("A page & a half"));
+	CHECK_EQ(c2.sourceId, std::string("komga"));
+	CHECK_EQ(c2.seriesKey, std::string("abc-123"));
+	z.close();
+	// the .part was renamed into place: no half chapter is left behind
+	{ std::ifstream t(chapter + ".part"); CHECK_EQ(t.good(), false); }
+
+	// a UTF-8 name: bit 11 set on it and not on the ASCII one, and it reads back as it was written
+	{
+		const std::string jp = "\xE3\x83\x86\xE3\x82\xB9\xE3\x83\x88 page.jpg";	// "Test page.jpg"
+		CbzWriter w;
+		CHECK_EQ(w.open(D + "/utf.cbz"), true);
+		CHECK_EQ(w.add("001.jpg", jpg.data(), jpg.size()), true);
+		CHECK_EQ(w.add(jp, jpg.data(), jpg.size()), true);
+		CHECK_EQ(w.finish(), true);
+		// the second entry's local header follows the first's (30 bytes + a 7-byte name) and its data, and
+		// the flags sit 6 in from the signature
+		const std::vector<uint8_t> raw = file(D + "/utf.cbz");
+		const size_t second = 30 + 7 + jpg.size();
+		CHECK_EQ(raw[second] == 'P' && raw[second + 1] == 'K' && raw[second + 2] == 3 && raw[second + 3] == 4, true);
+		CHECK_EQ(raw[6] | (raw[7] << 8), 0);
+		CHECK_EQ(raw[second + 6] | (raw[second + 7] << 8), 0x800);
+		CHECK_EQ((int)raw[second + 30], 0xE3);	// the raw UTF-8 name starts here
+		Cbz u;
+		CHECK_EQ(u.open(D + "/utf.cbz"), true);
+		CHECK_EQ(u.entries().size(), (size_t)2);
+		CHECK_EQ(u.pages(), (std::vector<std::string>{"001.jpg", jp}));	// the extension past the Japanese counts
+		CHECK_EQ(u.read(jp, out) && out == jpg, true);
+		CHECK_EQ(u.read("001.jpg", out) && out == jpg, true);
+	}
+
+	// abort() leaves neither the archive nor its .part, and a dropped writer aborts by itself
+	{
+		CbzWriter w;
+		CHECK_EQ(w.open(D + "/aborted.cbz"), true);
+		CHECK_EQ(w.addFile("001.jpg", jpgP), true);
+		w.abort();
+		std::ifstream a(D + "/aborted.cbz"), b(D + "/aborted.cbz.part");
+		CHECK_EQ(a.good(), false);
+		CHECK_EQ(b.good(), false);
+		CHECK_EQ(w.open(D + "/left.cbz"), true);	// reusable after an abort
+		CHECK_EQ(w.add("001.jpg", jpg.data(), jpg.size()), true);
+	}	// w goes out of scope half-written
+	{ std::ifstream b(D + "/left.cbz.part"); CHECK_EQ(b.good(), false); }
+	{ std::ifstream a(D + "/left.cbz"); CHECK_EQ(a.good(), false); }
+
+	// the entry cap: a chapter never has this many, and the reader would refuse them (no ZIP64)
+	{
+		CbzWriter w;
+		CHECK_EQ(w.open(D + "/cap.cbz"), true);
+		for (int k = 0; k < 10000; k++)
+			CHECK_EQ(w.add(std::to_string(k) + ".jpg", nullptr, 0), true);
+		CHECK_EQ(w.add("10000.jpg", nullptr, 0), false);
+		CHECK_EQ(w.error().empty(), false);
+		w.abort();
+	}
+
+	// an empty archive is a valid one: Cbz opens it and finds no pages
+	{
+		CbzWriter w;
+		CHECK_EQ(w.open(D + "/empty.cbz"), true);
+		CHECK_EQ(w.finish(), true);
+		Cbz e;
+		CHECK_EQ(e.open(D + "/empty.cbz"), true);
+		CHECK_EQ(e.entries().empty(), true);
+		CHECK_EQ(e.pages().empty(), true);
+	}
+
+	for (const char* n : {"ch.cbz", "utf.cbz", "cap.cbz", "empty.cbz"}) std::remove((D + "/" + n).c_str());
+	rmdir(D.c_str());
+}
+
+// the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
+static void testMangaUiLogic()
+{
+	// a title's cover is its own and always the same; the top is dark and the bottom mid
+	MangaCoverColors a = mangaCoverColors("Ember Lantern"), b = mangaCoverColors("Ember Lantern");
+	CHECK_EQ(a.topR, b.topR);
+	CHECK_EQ(a.topG, b.topG);
+	CHECK_EQ(a.topB, b.topB);
+	CHECK_EQ(a.bottomR, b.bottomR);
+	CHECK_EQ(a.bottomG, b.bottomG);
+	CHECK_EQ(a.bottomB, b.bottomB);
+	std::set<std::tuple<int, int, int>> tops;
+	for (int i = 0; i < 40; i++)
+	{
+		MangaCoverColors c = mangaCoverColors("Series " + std::to_string(i));
+		tops.insert({c.topR, c.topG, c.topB});
+		CHECK_EQ(c.topR + c.topG + c.topB < c.bottomR + c.bottomG + c.bottomB, true);
+	}
+	CHECK_EQ(tops.size() > 1, true);	// not every title the same book
+
+	// Resume: the first started-but-unread chapter at its page, else the first unread, else the first
+	std::vector<MangaChapterMark> m(3);
+	CHECK_EQ(mangaResume({}).chapter, -1);
+
+	m[0].read = true;
+	m[1].read = true;
+	m[2].read = true;
+	CHECK_EQ(mangaResume(m).chapter, 0);
+	CHECK_EQ(mangaResume(m).page, 0);
+
+	m[2].read = false;
+	CHECK_EQ(mangaResume(m).chapter, 2);
+	CHECK_EQ(mangaResume(m).page, 0);
+
+	m[2].page = 6;
+	m[2].started = true;
+	m[1].read = false;
+	// the started one wins over the earlier unread one (a chapter merely unread isn't where you left off)
+	CHECK_EQ(mangaResume(m).chapter, 2);
+	CHECK_EQ(mangaResume(m).page, 6);
+
+	m[1].started = true;
+	m[1].page = 4;
+	CHECK_EQ(mangaResume(m).chapter, 1);
+	CHECK_EQ(mangaResume(m).page, 4);
+
+	// how old a History row reads
+	const int64_t t = 2000000000;	// (big enough that a year before it is still a time)
+	CHECK_EQ(mangaAgo(0, t), std::string(""));
+	CHECK_EQ(mangaAgo(t + 60, t), std::string(""));
+	CHECK_EQ(mangaAgo(t, t), std::string("now"));
+	CHECK_EQ(mangaAgo(t - 59, t), std::string("now"));
+	CHECK_EQ(mangaAgo(t - 60, t), std::string("1 min ago"));
+	CHECK_EQ(mangaAgo(t - 120, t), std::string("2 min ago"));
+	CHECK_EQ(mangaAgo(t - 3600, t), std::string("1 h ago"));
+	CHECK_EQ(mangaAgo(t - 86400, t), std::string("1 day ago"));
+	CHECK_EQ(mangaAgo(t - 2 * 86400, t), std::string("2 days ago"));
+	CHECK_EQ(mangaAgo(t - 7 * 86400, t), std::string("1 week ago"));
+	CHECK_EQ(mangaAgo(t - 30 * 86400, t), std::string("1 month ago"));
+	CHECK_EQ(mangaAgo(t - 365 * 86400, t), std::string("1 year ago"));
+	CHECK_EQ(mangaAgo(t - 2 * 365 * 86400, t), std::string("2 years ago"));
+
+	// the item table a source series opened from the Library gets back: its key and title, escaped
+	CHECK_EQ(mangaSourceItemJson("abc/12", "A \"quoted\" title"), std::string("{\"key\":\"abc/12\",\"title\":\"A \\\"quoted\\\" title\"}"));
+	CHECK_EQ(mangaSourceItemJson("a\\b", "Tab\there"), std::string("{\"key\":\"a\\\\b\",\"title\":\"Tab\\u0009here\"}"));
+}
+
+// a source series' page's cache (design 6): the file's name, its JSON round trip and how old a check reads
+static void testMangaSeriesCache()
+{
+	// the name is the digest of the series id, never the id or its URL (a URL has '/' and ':' and can be long)
+	const std::string id = "src:repo-hash/source:https://site.example/manga/one?x=1";
+	std::string p1 = mangaSeriesCachePath("/state", id);
+	CHECK_EQ(p1.rfind("/state/manga/series/", 0), size_t(0));
+	CHECK_EQ(p1.compare(p1.size() - 5, 5, ".json"), 0);
+	std::string name = p1.substr(p1.rfind('/') + 1);
+	CHECK_EQ(name.size(), size_t(64 + 5));
+	CHECK_EQ(name.find(':'), std::string::npos);
+	CHECK_EQ(name.find("https"), std::string::npos);
+	CHECK_EQ(p1, mangaSeriesCachePath("/state", id));
+	CHECK_EQ(p1 == mangaSeriesCachePath("/state", id + "2"), false);
+	CHECK_EQ(mangaSeriesCachePath("", id), std::string());
+	CHECK_EQ(mangaSeriesCachePath("/state", ""), std::string());
+
+	// a round trip through the file
+	char tmpl[] = "/tmp/bp-manga-series-cache-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string state = made;
+
+	MangaSeriesCache c;
+	c.fetchedAt = 1760000000;
+	c.detailsOn = c.chaptersOn = true;
+	c.details.title = "Ember \"Lantern\"";
+	c.details.author = "Ann";
+	c.details.artist = "Bo";
+	c.details.description = "Line one\nline two \xE2\x80\x94 \xC3\xBCn\xC3\xAF" "code";
+	c.details.status = "ongoing";
+	c.details.cover = "https://site.example/c.jpg";
+	c.details.genres = {"Action", "Slice of Life"};
+	MangaChapter a;
+	a.key = "/c/9";
+	a.name = "Chapter 9";
+	a.group = "Group";
+	a.number = 9.5;
+	a.date = 1731200000;
+	a.json = "{\"key\":\"/c/9\",\"title\":\"Chapter \\\"9\\\"\"}";
+	c.chapters.push_back(a);
+	MangaChapter b;
+	b.key = "12";
+	b.name = "Chapter 10";
+	b.number = 10;
+	b.json = "12";
+	c.chapters.push_back(b);
+
+	CHECK_EQ(mangaSeriesCacheWrite(state, id, c), true);
+	std::string path = mangaSeriesCachePath(state, id);
+	std::ifstream cacheFile(path, std::ios::binary);
+	std::string text((std::istreambuf_iterator<char>(cacheFile)), std::istreambuf_iterator<char>());
+	cacheFile.close();
+	CHECK_EQ(text.empty(), false);
+	MangaSeriesCache back;
+	CHECK_EQ(mangaSeriesCacheRead(state, id, back), true);
+	CHECK_EQ(back.fetchedAt, c.fetchedAt);
+	CHECK_EQ(back.detailsOn, true);
+	CHECK_EQ(back.chaptersOn, true);
+	CHECK_EQ(back.details.title, c.details.title);
+	CHECK_EQ(back.details.author, c.details.author);
+	CHECK_EQ(back.details.artist, c.details.artist);
+	CHECK_EQ(back.details.description, c.details.description);
+	CHECK_EQ(back.details.status, c.details.status);
+	CHECK_EQ(back.details.cover, c.details.cover);
+	CHECK_EQ(back.details.genres.size(), size_t(2));
+	CHECK_EQ(back.details.genres[1], std::string("Slice of Life"));
+	CHECK_EQ(back.chapters.size(), size_t(2));
+	CHECK_EQ(back.chapters[0].key, a.key);
+	CHECK_EQ(back.chapters[0].name, a.name);
+	CHECK_EQ(back.chapters[0].group, a.group);
+	CHECK_EQ(back.chapters[0].number, 9.5);
+	CHECK_EQ(back.chapters[0].date, a.date);
+	CHECK_EQ(back.chapters[0].json, a.json);
+	CHECK_EQ(back.chapters[1].key, b.key);
+	CHECK_EQ(back.chapters[1].json, b.json);
+
+	// a missing series is no cache; damaged or other-format text isn't one either (no error to show)
+	MangaSeriesCache none;
+	CHECK_EQ(mangaSeriesCacheRead(state, id + "x", none), false);
+	CHECK_EQ(mangaSeriesCacheParse(text.substr(0, text.size() / 2), none), false);
+	CHECK_EQ(mangaSeriesCacheParse(text + "{}", none), false);
+	CHECK_EQ(mangaSeriesCacheParse("{\"format\":2}", none), false);
+	CHECK_EQ(mangaSeriesCacheWrite("", id, c), false);	// nowhere to keep it
+
+	// how old a check reads, and what counts as stale (more than a day: the page offers L2 Refresh)
+	const int64_t t = 2000000000;
+	CHECK_EQ(mangaCheckedAgo(0, t), std::string(""));
+	CHECK_EQ(mangaCheckedAgo(t, t), std::string("today"));
+	CHECK_EQ(mangaCheckedAgo(t - 86399, t), std::string("today"));
+	CHECK_EQ(mangaCheckedAgo(t - 86400, t), std::string("1 day"));
+	CHECK_EQ(mangaCheckedAgo(t - 2 * 86400, t), std::string("2 days"));
+	CHECK_EQ(mangaCheckedAgo(t - 400 * 86400, t), std::string("400 days"));
+	CHECK_EQ(mangaCheckedAgo(t + 3600, t), std::string("today"));	// a clock behind the file's stamp
+	CHECK_EQ(mangaCheckedStale(0, t), false);
+	CHECK_EQ(mangaCheckedStale(t, t), false);
+	CHECK_EQ(mangaCheckedStale(t - 86399, t), false);
+	CHECK_EQ(mangaCheckedStale(t - 86400, t), true);
+
+	unlink(path.c_str());
+	rmdir((state + "/manga/series").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+}
+
+// the source filters a sheet holds (5.2.1): parsing the source's definitions, defaults, the object search() gets
+static void testMangaFilters()
+{
+	const std::string json =
+		"[{\"id\":\"sort\",\"type\":\"sort\",\"name\":\"Sort\",\"options\":[{\"id\":\"popular\",\"name\":\"Popular\"},"
+		"{\"id\":\"latest\",\"name\":\"Latest\"}],\"default\":{\"by\":\"latest\",\"asc\":true}},"
+		"{\"id\":\"status\",\"type\":\"select\",\"name\":\"Status\",\"options\":[{\"id\":\"any\",\"name\":\"Any\"},"
+		"{\"id\":\"ongoing\",\"name\":\"Ongoing\"}],\"default\":\"ongoing\"},"
+		"{\"id\":\"only\",\"type\":\"check\",\"name\":\"Only with chapters\",\"default\":true},"
+		"{\"id\":\"types\",\"type\":\"multi\",\"name\":\"Type\",\"options\":[{\"id\":\"manga\",\"name\":\"Manga\"},"
+		"{\"id\":\"manhwa\",\"name\":\"Manhwa\"}],\"default\":[\"manga\"]},"
+		"{\"id\":\"genres\",\"type\":\"tri\",\"name\":\"Genres\",\"options\":[{\"id\":\"action\",\"name\":\"Action\"},"
+		"{\"id\":\"romance\",\"name\":\"Romance\"}],\"default\":{\"include\":[\"romance\"]}},"
+		"{\"id\":\"author\",\"type\":\"text\",\"name\":\"Author\",\"default\":\"Ann\"},"
+		"{\"id\":\"plain\",\"type\":\"sort\",\"name\":\"Plain\",\"options\":[{\"id\":\"name\",\"name\":\"Name\"},"
+		"{\"id\":\"date\",\"name\":\"Date\"}]},"
+		"{\"id\":\"tags\",\"type\":\"group\",\"name\":\"Tags\",\"filters\":[{\"id\":\"theme\",\"type\":\"tri\","
+		"\"name\":\"Themes\",\"options\":[{\"id\":\"isekai\",\"name\":\"Isekai\"}]}]}]";
+
+	std::vector<MangaFilter> defs;
+	std::string error;
+	CHECK_EQ(mangaFiltersParse(json, defs, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(defs.size(), (size_t)8);
+	CHECK_EQ(defs[0].name, std::string("Sort"));
+	CHECK_EQ(defs[7].children.size(), (size_t)1);
+
+	std::vector<MangaFilterValue> vals = mangaFilterDefaults(defs);
+	CHECK_EQ(vals[0].sortBy, std::string("latest"));
+	CHECK_EQ(vals[0].sortAsc, true);
+	CHECK_EQ(vals[1].select, std::string("ongoing"));
+	CHECK_EQ(vals[2].check, true);
+	CHECK_EQ(vals[3].multi.size(), (size_t)2);
+	CHECK_EQ(vals[3].multi[0], 1);
+	CHECK_EQ(vals[3].multi[1], 0);
+	CHECK_EQ(vals[4].tri[0], 0);
+	CHECK_EQ(vals[4].tri[1], 1);
+	CHECK_EQ(vals[5].text, std::string("Ann"));
+	// a sort that declares no direction starts descending, and takes its first option
+	CHECK_EQ(vals[6].sortBy, std::string("name"));
+	CHECK_EQ(vals[6].sortAsc, false);
+	CHECK_EQ(vals[7].children.size(), (size_t)1);
+	CHECK_EQ(vals[7].children[0].tri.size(), (size_t)1);
+
+	// the chosen values become exactly the object 5.2.1 gives search(): ids, {by, asc}, bools, include/exclude
+	vals[0].sortBy = "popular";
+	vals[0].sortAsc = false;
+	vals[1].select = "any";
+	vals[2].check = false;
+	vals[3].multi[0] = 0;
+	vals[3].multi[1] = 1;
+	vals[4].tri[0] = 1;
+	vals[4].tri[1] = 2;
+	vals[5].text = " Bob ";
+	vals[7].children[0].tri[0] = 1;
+	CHECK_EQ(mangaFilterValuesJson(defs, vals),
+		std::string("{\"sort\":{\"by\":\"popular\",\"asc\":false},\"status\":\"any\",\"only\":false,"
+			"\"types\":[\"manhwa\"],\"genres\":{\"include\":[\"action\"],\"exclude\":[\"romance\"]},"
+			"\"author\":\"Bob\",\"plain\":{\"by\":\"name\",\"asc\":false},"
+			"\"tags\":{\"theme\":{\"include\":[\"isekai\"],\"exclude\":[]}}}"));
+
+	// a row's summary: the option's name, On/Off, the ticks, and a group's children counted
+	CHECK_EQ(mangaFilterSummary(defs[0], vals[0]), std::string("Popular"));
+	CHECK_EQ(mangaFilterSummary(defs[1], vals[1]), std::string("Any"));
+	CHECK_EQ(mangaFilterSummary(defs[2], vals[2]), std::string("Off"));
+	CHECK_EQ(mangaFilterSummary(defs[3], vals[3]), std::string("\xE2\x9C\x93" "1"));
+	CHECK_EQ(mangaFilterSummary(defs[4], vals[4]), std::string("\xE2\x9C\x93" "1 \xE2\x9C\x97" "1"));
+	CHECK_EQ(mangaFilterSummary(defs[5], vals[5]), std::string("Bob"));
+	CHECK_EQ(mangaFilterSummary(defs[7], vals[7]), std::string("\xE2\x9C\x93" "1"));
+
+	// a filter or option the source no longer lists falls back to its default; the list lengths fit again
+	vals[1].select = "gone";
+	vals[0].sortBy = "gone";
+	vals[3].multi.resize(1, 0);
+	vals[4].tri.resize(3, 0);
+	mangaFilterFit(defs, vals);
+	CHECK_EQ(vals[1].select, std::string("ongoing"));
+	CHECK_EQ(vals[0].sortBy, std::string("latest"));
+	CHECK_EQ(vals[3].multi.size(), (size_t)2);
+	CHECK_EQ(vals[4].tri.size(), (size_t)2);
+
+	// a malformed list is an error; unknown or empty definitions are dropped quietly
+	std::vector<MangaFilter> bad;
+	CHECK_EQ(mangaFiltersParse("not json", bad, error), false);
+	CHECK_EQ(error.empty(), false);
+	std::vector<MangaFilter> odd;
+	CHECK_EQ(mangaFiltersParse("[{\"id\":\"x\",\"type\":\"nope\"},{\"id\":\"\",\"type\":\"text\"},"
+		"{\"type\":\"text\"},{\"id\":\"y\",\"type\":\"text\"}]", odd, error), true);
+	CHECK_EQ(odd.size(), (size_t)1);
+	CHECK_EQ(odd[0].id, std::string("y"));
+	CHECK_EQ(mangaFiltersParse("[]", odd, error), true);
+	CHECK_EQ(odd.size(), (size_t)0);
+}
+
+// the paged modes: rows of centred pages, drag and snap, and Right/Left through tall pages
+static void testPaged()
+{
+	// the file's own near(): the global one is declared past this point
+	auto near = [](double a, double b, double eps = 1e-6) { return std::fabs(a - b) <= eps; };
+	auto find = [](const std::vector<Paged::Placement>& v, int page)
+	{
+		for (auto& q : v) if (q.page == page) return q;
+		return Paged::Placement{page, 0, 0, 0, 0};	// w == 0: the page isn't in the view
+	};
+
+	// layout: the placeholder 1.5 fills this 4:3 view at fit Page, and at rest only that page is in the view
+	Paged p;
+	p.setView(400, 600);
+	p.setPages(4);
+	CHECK_EQ(p.pageCount(), 4);
+	CHECK_EQ(p.current(), 0);
+	CHECK_EQ(p.moving(), false);
+	auto pl = p.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(pl[0].x, 0), true);
+	CHECK_EQ(near(pl[0].y, 0), true);
+	CHECK_EQ(near(pl[0].w, 400), true);
+	CHECK_EQ(near(pl[0].h, 600), true);
+	CHECK_EQ(p.vscroll(), 0.0);
+
+	// a page smaller than the view is centred: x when fit Page narrows it, y when it is short
+	Paged narrow;
+	narrow.setView(400, 600);
+	narrow.setPages(2, 3.0);	// drawn 200 x 600: the equal neighbour touches the view's edge, so two are in it
+	pl = narrow.placements();
+	CHECK_EQ(pl.size(), (size_t)2);
+	CHECK_EQ(near(find(pl, 0).x, 100), true);
+	CHECK_EQ(near(find(pl, 0).w, 200), true);
+	CHECK_EQ(near(find(pl, 0).y, 0), true);
+	Paged low;
+	low.setView(400, 600);
+	low.setPages(2, 0.5);	// drawn 400 x 200
+	pl = low.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(find(pl, 0).y, 200), true);
+	CHECK_EQ(near(find(pl, 0).h, 200), true);
+
+	// an ltr drag moves the row 1:1 (a finger right walks back along the row), x goes negative, current is the
+	// page the row's middle is nearest to
+	p.goTo(1, 0, false);
+	CHECK_EQ(p.current(), 1);
+	p.touchDown(0);
+	p.drag(150, 0, 50);
+	pl = p.placements();
+	CHECK_EQ(pl.size(), (size_t)2);
+	CHECK_EQ(near(find(pl, 0).x, -250), true);
+	CHECK_EQ(near(find(pl, 1).x, 150), true);
+	CHECK_EQ(p.current(), 1);	// 150 of the 400 back: nearer page 1's centre than page 0's
+	// a short slow release snaps back over 220 ms with an ease-out cubic
+	p.release(200);
+	CHECK_EQ(p.moving(), true);
+	CHECK_EQ(p.step(310), true);	// half way: 0.875 of 150 px travelled
+	CHECK_EQ(near(find(p.placements(), 1).x, 18.75), true);
+	CHECK_EQ(p.step(420), false);
+	CHECK_EQ(p.current(), 1);
+	CHECK_EQ(near(find(p.placements(), 1).x, 0), true);
+	// a slow drag is enough once the row is past the middle
+	p.touchDown(500);
+	p.drag(250, 0, 800);	// 150 along the row: page 0's centre is the nearer one
+	p.release(1100);	// the finger rested: no velocity in the last 100 ms, and none is needed
+	CHECK_EQ(p.moving(), true);
+	CHECK_EQ(p.step(1320), false);
+	CHECK_EQ(p.current(), 0);
+
+	// a fast flick turns however short the drag, in each direction; 400 px/s is not over 400
+	Paged f;
+	f.setView(400, 600);
+	f.setPages(5);
+	f.goTo(2, 0, false);	// the row's middle 800 along, page 2's centre
+	f.touchDown(0);
+	f.drag(-80, 0, 20);	// a finger left: ltr forward, 800 px/s over the last 20 ms
+	f.drag(-80, 0, 40);
+	CHECK_EQ(near(find(f.placements(), 2).x, 0), false);	// the row is 160 px on, page 3 peeking in
+	f.release(40);
+	CHECK_EQ(f.moving(), true);
+	CHECK_EQ(f.step(260), false);	// the snap's 220 ms
+	CHECK_EQ(f.current(), 3);
+	CHECK_EQ(near(find(f.placements(), 3).x, 0), true);
+	f.touchDown(300);
+	f.drag(80, 0, 320);	// and the way back
+	f.drag(80, 0, 340);
+	f.release(340);
+	CHECK_EQ(f.moving(), true);
+	CHECK_EQ(f.step(560), false);
+	CHECK_EQ(f.current(), 2);
+	f.touchDown(600);
+	f.drag(8, 0, 620);	// exactly 400 px/s: no flick, and the drag is nowhere near half a page
+	f.drag(8, 0, 640);
+	f.release(640);
+	CHECK_EQ(f.moving(), true);	// it still glides back to the nearest page
+	CHECK_EQ(f.step(860), false);
+	CHECK_EQ(f.current(), 2);
+	// a row held at an end stops its samples moving there, so no flick turns past the first page or the last
+	f.goTo(0, 900, false);
+	f.touchDown(1000);
+	f.drag(150, 0, 1020);	// ltr back at the chapter's start: the row cannot go before page 0
+	f.drag(150, 0, 1040);
+	f.release(1040);
+	CHECK_EQ(f.moving(), false);
+	CHECK_EQ(f.current(), 0);
+	f.goTo(4, 1100, false);
+	f.touchDown(1200);
+	f.drag(-150, 0, 1220);	// ltr forward at the chapter's end
+	f.drag(-150, 0, 1240);
+	f.release(1240);
+	CHECK_EQ(f.moving(), false);
+	CHECK_EQ(f.current(), 4);
+	CHECK_EQ(f.atEnd(), true);
+	f.forward(1300);	// nothing left: at rest, no animation
+	CHECK_EQ(f.moving(), false);
+
+	// right to left: the row runs the other way about the centred page; a finger right is toward the next page
+	Paged r;
+	r.setView(400, 600);
+	r.setPages(4);
+	r.setRtl(true);
+	r.goTo(1, 0, false);
+	CHECK_EQ(r.placements().size(), (size_t)1);	// the shown page is centred either way
+	CHECK_EQ(near(find(r.placements(), 1).x, 0), true);
+	r.touchDown(0);
+	r.drag(150, 0, 50);	// next page 2 enters from the left as the row slides right
+	pl = r.placements();
+	CHECK_EQ(pl.size(), (size_t)2);
+	CHECK_EQ(near(find(pl, 1).x, 150), true);
+	CHECK_EQ(near(find(pl, 2).x, -250), true);
+	CHECK_EQ(r.current(), 1);
+	r.release(200);	// short and slow: back to 1
+	CHECK_EQ(r.moving(), true);
+	CHECK_EQ(r.step(420), false);
+	CHECK_EQ(r.current(), 1);
+	r.touchDown(500);
+	r.drag(80, 0, 520);	// a right flick: forward, one page
+	r.drag(80, 0, 540);
+	r.release(540);
+	CHECK_EQ(r.moving(), true);
+	CHECK_EQ(r.step(760), false);
+	CHECK_EQ(r.current(), 2);
+	CHECK_EQ(near(find(r.placements(), 2).x, 0), true);
+	r.touchDown(800);
+	r.drag(-80, 0, 820);	// and back with a left one
+	r.drag(-80, 0, 840);
+	r.release(840);
+	CHECK_EQ(r.step(1060), false);
+	CHECK_EQ(r.current(), 1);
+	r.goTo(0, 1100, false);
+	r.touchDown(1200);
+	r.drag(-150, 0, 1220);	// rtl back at the chapter's start: nothing turns past it
+	r.drag(-150, 0, 1240);
+	r.release(1240);
+	CHECK_EQ(r.moving(), false);
+	CHECK_EQ(r.current(), 0);
+	// a page that fits the view has nothing to pan: a vertical drag does nothing
+	r.touchDown(1300);
+	r.drag(0, -100, 1320);
+	CHECK_EQ(r.vscroll(), 0.0);
+	r.release(1340);
+	CHECK_EQ(r.moving(), false);
+
+	// a tall page at fit Width scrolls inside before it turns, and Right opens the next page at the top
+	Paged t;
+	t.setView(400, 600);
+	t.setPages(3, 1.5);
+	t.setFit(Paged::FitWidth);
+	t.setPageSize(1, 400, 900);	// page 1: 300 px over the view's bottom
+	t.goTo(1, 0, false);
+	pl = t.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(find(pl, 1).h, 900), true);
+	CHECK_EQ(near(find(pl, 1).y, 0), true);
+	CHECK_EQ(t.vscroll(), 0.0);
+	t.forward(0);	// one screenful (540), which here is the rest of the page
+	CHECK_EQ(t.moving(), true);
+	CHECK_EQ(t.step(180), false);	// the D-pad step slides for 180 ms
+	CHECK_EQ(t.current(), 1);	// a screenful never turns the page
+	CHECK_EQ(near(t.vscroll(), 300), true);
+	CHECK_EQ(near(find(t.placements(), 1).y, -300), true);	// its bottom at the view's
+	t.forward(200);	// at its end: the next page, opened at the top
+	CHECK_EQ(t.step(380), false);
+	CHECK_EQ(t.current(), 2);
+	CHECK_EQ(t.vscroll(), 0.0);
+	CHECK_EQ(t.atEnd(), true);	// the last page, all of it shown
+	t.forward(400);
+	CHECK_EQ(t.moving(), false);
+	t.back(500);	// Left back over the turn opens the previous page at its end
+	CHECK_EQ(t.step(680), false);
+	CHECK_EQ(t.current(), 1);
+	CHECK_EQ(near(t.vscroll(), 300), true);
+	t.nextPage(700);	// R skips the rest of a tall page and goes straight on
+	CHECK_EQ(t.step(880), false);
+	CHECK_EQ(t.current(), 2);
+	CHECK_EQ(t.vscroll(), 0.0);
+	t.back(900);	// and Left lands there from the next page's top
+	t.step(1080);
+	CHECK_EQ(near(t.vscroll(), 300), true);
+	t.back(1200);	// a screenful up inside it
+	CHECK_EQ(t.step(1380), false);
+	CHECK_EQ(near(t.vscroll(), 0), true);
+	CHECK_EQ(t.current(), 1);
+	t.back(1500);	// at its top: the previous page
+	CHECK_EQ(t.step(1680), false);
+	CHECK_EQ(t.current(), 0);
+	t.prevPage(1700);	// L at the chapter's start: nothing
+	CHECK_EQ(t.moving(), false);
+	CHECK_EQ(t.current(), 0);
+
+	// a vertical drag snaps the scroll to a screenful's bounds, a fast one goes one further
+	Paged v2;
+	v2.setView(400, 600);
+	v2.setPages(3, 1.5);
+	v2.setFit(Paged::FitWidth);
+	v2.setPageSize(1, 400, 900);	// bounds: 0 and the bottom at 300
+	v2.goTo(1, 0, false);
+	v2.touchDown(0);
+	v2.drag(0, -100, 20);	// a finger up scrolls down the page
+	v2.drag(0, -100, 40);
+	v2.release(40);	// 5000 px/s: one bound further, which is the page's bottom
+	CHECK_EQ(v2.moving(), true);
+	CHECK_EQ(v2.step(260), false);
+	CHECK_EQ(near(v2.vscroll(), 300), true);
+	CHECK_EQ(v2.current(), 1);
+	CHECK_EQ(v2.atEnd(), false);	// only inside the page: page 2 is still to read
+	v2.touchDown(300);
+	v2.drag(0, 100, 320);	// 200 along: the bottom is the nearer bound
+	v2.release(340);	// a lone sample: no velocity, and the axis is moot: the bounds say 300
+	CHECK_EQ(v2.step(560), false);
+	CHECK_EQ(near(v2.vscroll(), 300), true);
+	v2.touchDown(600);
+	v2.drag(0, 150, 620);	// 150: an equal share, which keeps the page's top (nearest never hops ahead)
+	v2.drag(0, 0, 630);
+	v2.release(630);
+	CHECK_EQ(v2.step(850), false);
+	CHECK_EQ(near(v2.vscroll(), 0), true);
+
+	// Fit Fill on a portrait page in a landscape view: it covers the view and crops top and bottom, so Right
+	// still walks down the page and there is nothing to pan across
+	Paged fp;
+	fp.setView(400, 300);
+	fp.setPages(3, 1.5);	// Fill draws it 400 x 600: 300 cropped at the bottom
+	fp.setFit(Paged::FitFill);
+	pl = fp.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(find(pl, 0).w, 400), true);
+	CHECK_EQ(near(find(pl, 0).h, 600), true);
+	CHECK_EQ(near(find(pl, 0).x, 0), true);
+	CHECK_EQ(near(find(pl, 0).y, 0), true);	// top aligned: it is the bottom that crops
+	CHECK_EQ(fp.vscroll(), 0.0);
+	CHECK_EQ(fp.hscroll(), 0.0);
+	fp.forward(0);	// a screenful (270) of the page's 300 of overflow
+	CHECK_EQ(fp.step(180), false);
+	CHECK_EQ(near(fp.vscroll(), 270), true);
+	CHECK_EQ(near(find(fp.placements(), 0).y, -270), true);
+	fp.forward(200);	// the part screenful to the page's bottom
+	CHECK_EQ(fp.step(380), false);
+	CHECK_EQ(near(fp.vscroll(), 300), true);
+	CHECK_EQ(fp.atEnd(), false);	// a whole page still to go before the chapter's
+	fp.forward(400);	// at the page's end: the next one, opened at its top
+	CHECK_EQ(fp.step(580), false);
+	CHECK_EQ(fp.current(), 1);
+	CHECK_EQ(near(fp.vscroll(), 0), true);
+
+	// Fit Fill on a landscape spread in a portrait-ish view: it covers the view and crops the sides, and ltr
+	// pans from the page's left edge after the vertical
+	Paged wf;
+	wf.setView(400, 600);
+	wf.setPages(3, 0.6);	// Fill draws it 1000 x 600: a page full tall, 600 over sideways
+	wf.setFit(Paged::FitFill);
+	pl = wf.placements();
+	CHECK_EQ(pl.size(), (size_t)1);
+	CHECK_EQ(near(find(pl, 0).w, 1000), true);
+	CHECK_EQ(near(find(pl, 0).h, 600), true);
+	CHECK_EQ(near(find(pl, 0).y, 0), true);
+	CHECK_EQ(near(find(pl, 0).x, 0), true);	// the pan starts at the page's left edge, not centred
+	wf.forward(0);	// nothing below to scroll: Right crosses a screen width, 360
+	CHECK_EQ(wf.current(), 0);	// a step across never turns the page
+	CHECK_EQ(wf.step(180), false);
+	CHECK_EQ(near(wf.vscroll(), 0), true);
+	CHECK_EQ(near(wf.hscroll(), 360), true);
+	CHECK_EQ(near(find(wf.placements(), 0).x, -360), true);
+	wf.forward(200);	// the last column ends flush at the page's right edge
+	CHECK_EQ(wf.step(380), false);
+	CHECK_EQ(near(wf.hscroll(), 600), true);
+	CHECK_EQ(near(find(wf.placements(), 0).x, -600), true);
+	CHECK_EQ(wf.atEnd(), false);
+	wf.forward(400);	// the page's end: the next one, opened at its top and start edge
+	CHECK_EQ(wf.step(580), false);
+	CHECK_EQ(wf.current(), 1);
+	CHECK_EQ(wf.hscroll(), 0.0);
+	CHECK_EQ(near(find(wf.placements(), 1).x, 0), true);
+	wf.back(600);	// Left back over the turn opens the previous page at its last column
+	CHECK_EQ(wf.step(780), false);
+	CHECK_EQ(wf.current(), 0);
+	CHECK_EQ(near(wf.hscroll(), 600), true);
+	wf.back(800);	// and back reverses forward: column by column…
+	CHECK_EQ(wf.step(980), false);
+	CHECK_EQ(near(wf.hscroll(), 240), true);
+	wf.back(1000);	// …to the start edge
+	CHECK_EQ(wf.step(1180), false);
+	CHECK_EQ(near(wf.hscroll(), 0), true);
+	wf.back(1200);	// at its start on the first page: nothing
+	CHECK_EQ(wf.moving(), false);
+	CHECK_EQ(wf.current(), 0);
+
+	// rtl reads the spread the other way: the pan starts at the right edge and steps leftwards
+	Paged wr;
+	wr.setView(400, 600);
+	wr.setPages(3, 0.6);
+	wr.setFit(Paged::FitFill);
+	wr.setRtl(true);
+	CHECK_EQ(near(find(wr.placements(), 0).x, -600), true);	// right edge flush: hscroll 0 is the reading start
+	wr.forward(0);
+	CHECK_EQ(wr.step(180), false);
+	CHECK_EQ(near(wr.hscroll(), 360), true);	// forward along the reading order: the page slides right
+	CHECK_EQ(near(find(wr.placements(), 0).x, -240), true);
+	wr.forward(200);
+	CHECK_EQ(wr.step(380), false);
+	CHECK_EQ(near(wr.hscroll(), 600), true);	// the page's end: its left edge flush
+	CHECK_EQ(near(find(wr.placements(), 0).x, 0), true);
+	wr.forward(400);	// the next page, opened at its right edge again
+	CHECK_EQ(wr.step(580), false);
+	CHECK_EQ(wr.current(), 1);
+	CHECK_EQ(near(wr.hscroll(), 0), true);
+	CHECK_EQ(near(find(wr.placements(), 1).x, -600), true);
+	wr.back(600);	// back over the turn: the previous page at its end, the left column in rtl
+	CHECK_EQ(wr.step(780), false);
+	CHECK_EQ(wr.current(), 0);
+	CHECK_EQ(near(wr.hscroll(), 600), true);
+	CHECK_EQ(near(find(wr.placements(), 0).x, 0), true);
+	wr.back(800);
+	CHECK_EQ(wr.step(980), false);
+	CHECK_EQ(near(wr.hscroll(), 240), true);
+	CHECK_EQ(near(find(wr.placements(), 0).x, -360), true);
+	wr.back(1000);
+	CHECK_EQ(wr.step(1180), false);
+	CHECK_EQ(near(wr.hscroll(), 0), true);
+	wr.back(1200);	// at the chapter's start: nothing
+	CHECK_EQ(wr.moving(), false);
+	CHECK_EQ(wr.current(), 0);
+
+	// a drag pans inside a wide page first and only carries the row once the pan hits its edge, as photo
+	// viewers do
+	Paged wd;
+	wd.setView(400, 600);
+	wd.setPages(3, 0.6);	// the same 1000 x 600 spreads, their centres 1000 apart
+	wd.setFit(Paged::FitFill);
+	wd.goTo(1, 0, false);
+	CHECK_EQ(near(find(wd.placements(), 1).x, 0), true);
+	wd.touchDown(10);
+	wd.drag(100, 0, 20);	// at its start edge the pan has nothing left to take: the whole drag moves the row
+	CHECK_EQ(wd.hscroll(), 0.0);
+	CHECK_EQ(near(find(wd.placements(), 1).x, 100), true);	// the page slides right…
+	CHECK_EQ(near(find(wd.placements(), 0).x, -900), true);	// …and page 0 follows at its edge, seam kept
+	CHECK_EQ(wd.current(), 1);
+	wd.release(20);	// a lone sample: no flick, the row snaps back
+	CHECK_EQ(wd.moving(), true);
+	CHECK_EQ(wd.step(240), false);
+	CHECK_EQ(near(find(wd.placements(), 1).x, 0), true);
+	wd.touchDown(300);
+	wd.drag(-500, 0, 320);	// panning inside the page: the row stays put
+	CHECK_EQ(near(wd.hscroll(), 500), true);
+	CHECK_EQ(near(find(wd.placements(), 1).x, -500), true);
+	CHECK_EQ(wd.current(), 1);
+	wd.drag(-300, 0, 420);	// 100 of this pans on to the far edge, the other 200 carry the row over
+	CHECK_EQ(near(wd.hscroll(), 600), true);
+	CHECK_EQ(wd.current(), 1);	// nowhere near page 2's centre yet
+	CHECK_EQ(near(find(wd.placements(), 1).x, -800), true);
+	CHECK_EQ(near(find(wd.placements(), 2).x, 200), true);	// the next page waits at the panned one's edge
+	wd.drag(0, 0, 430);	// the finger rests: no velocity to release
+	wd.release(430);	// slow and only 200 carried over: page 1's centre is still nearer, its pan stays at the end
+	CHECK_EQ(wd.step(650), false);
+	CHECK_EQ(wd.current(), 1);
+	CHECK_EQ(near(wd.hscroll(), 600), true);
+	CHECK_EQ(near(find(wd.placements(), 1).x, -600), true);	// its right edge flush with the view
+
+	// setFit cycles the three fits with the current page kept, and drops the offsets a new fit can't hold
+	Paged sw;
+	sw.setView(400, 600);
+	sw.setPages(3, 1.5);
+	sw.setPageSize(1, 800, 600);	// a spread, page 1: aspect 0.75
+	sw.goTo(1, 0, false);
+	sw.setFit(Paged::FitFill);	// covers the view: drawn 800 x 600, 400 to pan
+	CHECK_EQ(sw.current(), 1);
+	CHECK_EQ(near(find(sw.placements(), 1).w, 800), true);
+	sw.forward(0);
+	CHECK_EQ(sw.step(180), false);
+	CHECK_EQ(near(sw.hscroll(), 360), true);
+	sw.setFit(Paged::FitPage);	// the spread fits: its pan is gone, the page sits centred on its place
+	CHECK_EQ(sw.current(), 1);
+	CHECK_EQ(sw.hscroll(), 0.0);
+	CHECK_EQ(near(find(sw.placements(), 1).w, 400), true);
+	CHECK_EQ(near(find(sw.placements(), 1).x, 0), true);
+	CHECK_EQ(near(find(sw.placements(), 1).y, 150), true);
+	sw.setFit(Paged::FitWidth);	// 400 wide too: shorter than the view, so centred down as Page's is
+	CHECK_EQ(sw.current(), 1);
+	CHECK_EQ(near(find(sw.placements(), 1).w, 400), true);
+	sw.setFit(Paged::FitFill);	// Fill again: the spread is back and page 1 opens at its start edge
+	CHECK_EQ(sw.current(), 1);
+	CHECK_EQ(near(find(sw.placements(), 1).w, 800), true);
+	CHECK_EQ(sw.hscroll(), 0.0);
+	CHECK_EQ(near(find(sw.placements(), 1).x, 0), true);
+
+	// goTo: animated glides the row with current() crossing to the target, plain jumps
+	Paged g;
+	g.setView(400, 600);
+	g.setPages(5);
+	g.goTo(2, 0, true);
+	CHECK_EQ(g.moving(), true);
+	CHECK_EQ(g.step(60), true);	// 0.704 of the way: still nearer page 1
+	CHECK_EQ(g.current(), 1);
+	CHECK_EQ(g.step(90), true);	// past the middle of the row's travel
+	CHECK_EQ(g.current(), 2);
+	CHECK_EQ(g.step(180), false);
+	CHECK_EQ(near(find(g.placements(), 2).x, 0), true);
+	g.goTo(0, 300, false);	// no animation, straight to the page
+	CHECK_EQ(g.moving(), false);
+	CHECK_EQ(g.current(), 0);
+	// a touch stops a slide where it is and the release snaps from there (as in Strip)
+	g.goTo(3, 1000, true);
+	CHECK_EQ(g.step(1090), true);	// 0.875 of the 0→1200 glide: 1050
+	g.touchDown(1100);
+	CHECK_EQ(g.moving(), false);
+	CHECK_EQ(g.step(1200), false);
+	CHECK_EQ(g.current(), 3);	// the middle is nearer page 3's centre already
+	g.release(1250);
+	CHECK_EQ(g.moving(), true);
+	CHECK_EQ(g.step(1470), false);
+	CHECK_EQ(near(find(g.placements(), 3).x, 0), true);
+
+	// wanted: the current page, then up to ahead in reading order, then up to behind; rtl reads the same numbers
+	CHECK_EQ(g.wanted(2, 1), std::vector<int>({3, 4, 2}));
+	g.goTo(1, 1500, false);
+	CHECK_EQ(g.wanted(3, 3), std::vector<int>({1, 2, 3, 4, 0}));
+	g.setRtl(true);
+	CHECK_EQ(g.wanted(2, 1), std::vector<int>({1, 2, 3, 0}));
+	CHECK_EQ(g.wanted(-2, -2), std::vector<int>({1}));
+	std::vector<int> all = g.wanted(99, 99);
+	CHECK_EQ(all.size(), (size_t)5);
+	std::set<int> once(all.begin(), all.end());
+	CHECK_EQ(once.size(), (size_t)5);
+
+	// a real page size redraws the row without moving the page being shown
+	Paged q;
+	q.setView(400, 600);
+	q.setPages(4, 1.5);
+	q.goTo(2, 0, false);
+	q.setPageSize(2, 400, 1200);	// now 200 x 600 at fit Page: its own centre stays, its neighbours slide
+	CHECK_EQ(q.current(), 2);
+	CHECK_EQ(q.moving(), false);
+	pl = q.placements();
+	CHECK_EQ(near(find(pl, 2).x, 100), true);	// centred at the new, narrower width
+	CHECK_EQ(near(find(pl, 2).w, 200), true);
+	CHECK_EQ(near(find(pl, 2).h, 600), true);
+	q.setPageSize(1, 400, 1200);	// a neighbour narrows too: the shown page does not budge
+	CHECK_EQ(q.current(), 2);
+	CHECK_EQ(near(find(q.placements(), 2).x, 100), true);
+	q.setPageSize(2, 0, 500);	// bad sizes are ignored, as in Strip
+	CHECK_EQ(near(find(q.placements(), 2).w, 200), true);
+	// and a tall page that turns short mid-read keeps no scroll below the view
+	Paged c2;
+	c2.setView(400, 600);
+	c2.setPages(3, 1.5);
+	c2.setFit(Paged::FitWidth);
+	c2.setPageSize(1, 400, 1200);	// 600 px over: one whole screenful and 60
+	c2.goTo(1, 0, false);
+	c2.forward(0);
+	CHECK_EQ(c2.step(180), false);
+	CHECK_EQ(near(c2.vscroll(), 540), true);	// a full screenful, a part one would not be enough to stop on
+	c2.setPageSize(1, 400, 500);	// suddenly it fits
+	CHECK_EQ(c2.current(), 1);
+	CHECK_EQ(near(c2.vscroll(), 0), true);
+	CHECK_EQ(near(find(c2.placements(), 1).h, 500), true);
+	CHECK_EQ(near(find(c2.placements(), 1).y, 50), true);	// centred again
+
+	// zoom: the page grows past the view both ways, the content under the focus keeps its place, Right walks
+	// through it in reading order before it turns, and a drag pans inside before it carries the row
+	Paged pz;
+	pz.setView(400, 600);
+	pz.setPages(3, 1.5);	// at the fit 400 x 600
+	pz.goTo(1, 0, false);
+	pz.setZoom(2, 200, 300);
+	CHECK_EQ(near(pz.zoom(), 2), true);
+	CHECK_EQ(pz.current(), 1);
+	CHECK_EQ(near(pz.hscroll(), 200), true);	// (0 + 200) * 2 - 200
+	CHECK_EQ(near(pz.vscroll(), 300), true);	// (0 + 300) * 2 - 300
+	pl = pz.placements();
+	CHECK_EQ(near(find(pl, 1).w, 800), true);
+	CHECK_EQ(near(find(pl, 1).h, 1200), true);
+	CHECK_EQ(near(find(pl, 1).x, -200), true);
+	CHECK_EQ(near(find(pl, 1).y, -300), true);
+	pz.forward(0);	// one screenful down the page first
+	CHECK_EQ(pz.step(180), false);
+	CHECK_EQ(near(pz.vscroll(), 600), true);	// its bottom: 540 would pass it
+	CHECK_EQ(pz.current(), 1);
+	pz.forward(200);	// then across, one screen width, back at the top
+	CHECK_EQ(pz.step(380), false);
+	CHECK_EQ(near(pz.hscroll(), 400), true);
+	CHECK_EQ(pz.vscroll(), 0.0);
+	CHECK_EQ(pz.current(), 1);
+	pz.forward(400);	// the second column: a plain screenful again
+	CHECK_EQ(pz.step(580), false);
+	CHECK_EQ(near(pz.vscroll(), 540), true);
+	pz.forward(600);	// the part screenful to the page's bottom
+	CHECK_EQ(pz.step(780), false);
+	CHECK_EQ(near(pz.vscroll(), 600), true);
+	pz.forward(800);	// at the page's end: the next one, at its top and start edge
+	CHECK_EQ(pz.step(980), false);
+	CHECK_EQ(pz.current(), 2);
+	CHECK_EQ(pz.vscroll(), 0.0);
+	CHECK_EQ(pz.hscroll(), 0.0);
+	pz.back(1000);	// Left back over the turn opens the previous page at its end
+	CHECK_EQ(pz.step(1180), false);
+	CHECK_EQ(pz.current(), 1);
+	CHECK_EQ(near(pz.vscroll(), 600), true);
+	CHECK_EQ(near(pz.hscroll(), 400), true);
+	// a finger pans inside the zoomed page first, and only past its edge moves the row (as Fill does)
+	Paged pd;
+	pd.setView(400, 600);
+	pd.setPages(3, 1.5);
+	pd.goTo(1, 0, false);
+	pd.setZoom(2, 200, 300);	// h 200, v 300
+	pd.touchDown(0);
+	pd.drag(-100, 0, 10);	// a finger left: across the page toward its end
+	CHECK_EQ(near(pd.hscroll(), 300), true);
+	CHECK_EQ(pd.current(), 1);
+	pd.drag(-500, 0, 20);	// 100 to the page's edge, the other 400 carry the row on
+	CHECK_EQ(near(pd.hscroll(), 400), true);
+	CHECK_EQ(pd.current(), 1);	// not yet page 2's centre
+	pd.drag(0, -100, 30);	// and down inside it: the row's vertical is the page's pan
+	CHECK_EQ(near(pd.vscroll(), 400), true);
+	pd.release(400);	// it rests: no flick
+	CHECK_EQ(pd.step(620), false);
+	CHECK_EQ(pd.current(), 1);
+	// right to left zooms about the centre the same way: h still runs with the reading order, from the right edge
+	Paged rz;
+	rz.setView(400, 600);
+	rz.setPages(3, 1.5);
+	rz.setRtl(true);
+	rz.goTo(1, 0, false);
+	rz.setZoom(2, 200, 300);
+	CHECK_EQ(rz.current(), 1);
+	CHECK_EQ(near(rz.hscroll(), 200), true);
+	pl = rz.placements();
+	CHECK_EQ(near(find(pl, 1).x, -200), true);	// the same page position, mirrored about the row
+	CHECK_EQ(near(find(pl, 1).w, 800), true);
+	// and back to the fit: what was under the middle is again, the page whole
+	Paged pz1;
+	pz1.setView(400, 600);
+	pz1.setPages(3, 1.5);
+	pz1.goTo(1, 0, false);
+	pz1.setZoom(2, 200, 300);
+	pz1.setZoom(1, 200, 300);
+	CHECK_EQ(near(pz1.zoom(), 1), true);
+	CHECK_EQ(pz1.current(), 1);
+	CHECK_EQ(pz1.hscroll(), 0.0);
+	CHECK_EQ(pz1.vscroll(), 0.0);
+	pl = pz1.placements();
+	CHECK_EQ(near(find(pl, 1).w, 400), true);
+	CHECK_EQ(near(find(pl, 1).h, 600), true);
+	pz1.setZoom(0.2, 200, 300);	// under the fit is no zoom at all
+	CHECK_EQ(near(pz1.zoom(), 1), true);
+
+	// no pages: the whole surface is inert
+	Paged e;
+	e.setView(400, 600);
+	CHECK_EQ(e.pageCount(), 0);
+	CHECK_EQ(e.current(), -1);
+	CHECK_EQ(e.placements().size(), (size_t)0);
+	CHECK_EQ(e.atEnd(), false);
+	CHECK_EQ(e.wanted(3, 2).size(), (size_t)0);
+	e.goTo(0, 0, true);
+	e.forward(0);
+	e.back(0);
+	e.touchDown(0);
+	e.drag(50, 50, 10);
+	e.release(20);
+	CHECK_EQ(e.moving(), false);
+	CHECK_EQ(e.step(100), false);
+	e.setPages(2, 0);	// a nonsense aspect falls back to the comic's page
+	CHECK_EQ(near(find(e.placements(), 0).h, 600), true);
+	CHECK_EQ(e.current(), 0);
+}
+
+static void testMangaStore()
+{
+	char tmpl[] = "/tmp/bp-manga-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string state = root + "/state";
+
+	MangaStore st;
+	CHECK_EQ(st.load(state), true);		// no files yet: an empty store
+	CHECK_EQ(st.library().size(), size_t(0));
+	CHECK_EQ(st.history(10).size(), size_t(0));
+	CHECK_EQ(st.continueReading(10).size(), size_t(0));
+
+	uint64_t serial = st.serial();
+	MangaSeries a;
+	a.id = "local:/data/Manga/Ember Lantern";
+	a.title = "Ember Lantern";
+	a.source = "local";
+	a.cover = "/data/Manga/cover.jpg";
+	a.added = 1000;
+	st.putSeries(a);
+	CHECK_EQ(st.serial() > serial, true);	// every change grows the serial
+
+	MangaSeries b;
+	b.id = "local:/data/Manga/Quiet Harbor";
+	b.title = "Quiet Harbor";
+	b.source = "local";
+	b.added = 2000;
+	b.readingMode = "strip";
+	st.putSeries(b);
+
+	// a title with the characters a TSV can't hold
+	MangaSeries c;
+	c.id = "local:/data/Manga/Tab\tName";
+	c.title = "Tab\there\nNew line\\Back";
+	c.source = "local";
+	c.added = 3000;
+	st.putSeries(c);
+
+	// a chapter read to the middle: not read
+	ChapterProgress p;
+	p.seriesId = a.id;
+	p.chapterId = "local:/data/Manga/Ember Lantern/Ch 01";
+	p.chapterTitle = "Chapter 1";
+	p.page = 4;
+	p.pages = 20;
+	p.at = 5000;
+	st.setProgress(p);
+
+	// a chapter read to its last page: read
+	ChapterProgress last;
+	last.seriesId = a.id;
+	last.chapterId = "local:/data/Manga/Ember Lantern/Ch 02";
+	last.chapterTitle = "Chapter 2";
+	last.page = 19;
+	last.pages = 20;
+	last.at = 6000;
+	st.setProgress(last);
+
+	// a chapter of another series
+	ChapterProgress q;
+	q.seriesId = b.id;
+	q.chapterId = "local:/data/Manga/Quiet Harbor/Ch 01";
+	q.chapterTitle = "Chapter 1";
+	q.page = 2;
+	q.pages = 15;
+	q.at = 7000;
+	st.setProgress(q);
+
+	const ChapterProgress* e = st.progress(p.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e)
+	{
+		CHECK_EQ(e->read, false);
+		CHECK_EQ(e->page, 4);
+		CHECK_EQ(e->pages, 20);
+	}
+	e = st.progress(last.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e) CHECK_EQ(e->read, true);
+	// the series was read when its chapter was
+	const MangaSeries* sa = st.series(a.id);
+	CHECK_EQ(sa != nullptr, true);
+	if (sa) CHECK_EQ(sa->lastRead, (int64_t)6000);
+
+	// saved and read back into another store
+	CHECK_EQ(st.save(), true);
+	MangaStore st2;
+	CHECK_EQ(st2.load(state), true);
+	std::vector<MangaSeries> lib = st2.library();
+	CHECK_EQ(lib.size(), size_t(3));
+	if (lib.size() == 3)
+	{
+		CHECK_EQ(lib[0].id, b.id);		// the one read most recently first (7000)
+		CHECK_EQ(lib[0].title, b.title);
+		CHECK_EQ(lib[0].source, b.source);
+		CHECK_EQ(lib[0].cover, std::string(""));
+		CHECK_EQ(lib[0].added, (int64_t)2000);
+		CHECK_EQ(lib[0].lastRead, (int64_t)7000);
+		CHECK_EQ(lib[0].inLibrary, true);
+		CHECK_EQ(lib[0].readingMode, std::string("strip"));
+		CHECK_EQ(lib[1].id, a.id);		// then the one read before it (6000)
+		CHECK_EQ(lib[1].title, a.title);
+		CHECK_EQ(lib[1].source, a.source);
+		CHECK_EQ(lib[1].cover, a.cover);
+		CHECK_EQ(lib[1].added, (int64_t)1000);
+		CHECK_EQ(lib[1].lastRead, (int64_t)6000);
+		CHECK_EQ(lib[1].inLibrary, true);
+		CHECK_EQ(lib[1].readingMode, std::string(""));
+		CHECK_EQ(lib[2].id, c.id);		// then the one never read, by title
+		CHECK_EQ(lib[2].title, c.title);	// the tabs, the newline and the backslash came back
+		CHECK_EQ(lib[2].source, c.source);
+		CHECK_EQ(lib[2].added, (int64_t)3000);
+		CHECK_EQ(lib[2].lastRead, (int64_t)0);
+		CHECK_EQ(lib[2].inLibrary, true);
+	}
+	e = st2.progress(p.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e)
+	{
+		CHECK_EQ(e->seriesId, p.seriesId);
+		CHECK_EQ(e->chapterId, p.chapterId);
+		CHECK_EQ(e->chapterTitle, p.chapterTitle);
+		CHECK_EQ(e->page, 4);
+		CHECK_EQ(e->pages, 20);
+		CHECK_EQ(e->read, false);
+		CHECK_EQ(e->at, (int64_t)5000);
+		CHECK_EQ(e->hidden, false);
+	}
+	e = st2.progress(last.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e) CHECK_EQ(e->read, true);
+	CHECK_EQ(st2.progress("local:/nothing") == nullptr, true);
+
+	// the files say what they are
+	{
+		std::ifstream f(state + "/manga/library.tsv");
+		std::string line;
+		std::getline(f, line);
+		CHECK_EQ(line, std::string("# banana-player manga library v1"));
+		std::ifstream g(state + "/manga/progress.tsv");
+		std::getline(g, line);
+		CHECK_EQ(line, std::string("# banana-player manga progress v1"));
+		std::getline(g, line);	// a chapter's line: the hidden column is the last one
+		CHECK_EQ(line.size() > 2 && line.compare(line.size() - 2, 2, "\t0") == 0, true);
+	}
+
+	// continue reading: each series' latest unfinished chapter, newest first
+	std::vector<ChapterProgress> cont = st.continueReading(10);
+	CHECK_EQ(cont.size(), size_t(2));
+	if (cont.size() == 2)
+	{
+		CHECK_EQ(cont[0].chapterId, q.chapterId);
+		CHECK_EQ(cont[1].chapterId, p.chapterId);
+	}
+	CHECK_EQ(st.continueReading(1).size(), size_t(1));
+	if (!st.continueReading(1).empty()) CHECK_EQ(st.continueReading(1)[0].chapterId, q.chapterId);
+	CHECK_EQ(st.continueReading(0).size(), size_t(0));
+
+	// the history: every chapter opened, newest first
+	std::vector<ChapterProgress> hist = st.history(10);
+	CHECK_EQ(hist.size(), size_t(3));
+	if (hist.size() == 3)
+	{
+		CHECK_EQ(hist[0].chapterId, q.chapterId);
+		CHECK_EQ(hist[1].chapterId, last.chapterId);
+		CHECK_EQ(hist[2].chapterId, p.chapterId);
+	}
+	CHECK_EQ(st.history(2).size(), size_t(2));
+
+	// the history as series rows: one per series, its newest chapter, newest first
+	std::vector<ChapterProgress> bySeries = st.historyBySeries(10);
+	CHECK_EQ(bySeries.size(), size_t(2));
+	if (bySeries.size() == 2)
+	{
+		CHECK_EQ(bySeries[0].chapterId, q.chapterId);		// Quiet Harbor's one chapter, the newest (7000)
+		CHECK_EQ(bySeries[1].chapterId, last.chapterId);	// Ember Lantern's newest (6000), not p (5000)
+	}
+	CHECK_EQ(st.historyBySeries(1).size(), size_t(1));
+	if (!st.historyBySeries(1).empty()) CHECK_EQ(st.historyBySeries(1)[0].chapterId, q.chapterId);
+	CHECK_EQ(st.historyBySeries(0).size(), size_t(0));
+
+	// a newer chapter takes its series' row rather than adding one
+	ChapterProgress newer;
+	newer.seriesId = a.id;
+	newer.chapterId = "local:/data/Manga/Ember Lantern/Ch 05";
+	newer.chapterTitle = "Chapter 5";
+	newer.page = 1;
+	newer.pages = 10;
+	newer.at = 9000;
+	st.setProgress(newer);
+	bySeries = st.historyBySeries(10);
+	CHECK_EQ(bySeries.size(), size_t(2));
+	if (bySeries.size() == 2)
+	{
+		CHECK_EQ(bySeries[0].chapterId, newer.chapterId);
+		CHECK_EQ(bySeries[1].chapterId, q.chapterId);
+	}
+	// a hidden chapter leaves the row to the series' next newest one; all hidden: no series row
+	st.clearHistorySince(9000);
+	bySeries = st.historyBySeries(10);
+	CHECK_EQ(bySeries.size(), size_t(2));
+	if (bySeries.size() == 2) CHECK_EQ(bySeries[1].chapterId, last.chapterId);
+
+	// marked read and unread
+	std::vector<std::string> chapters = {"local:/data/Manga/Ember Lantern/Ch 01", "local:/data/Manga/Ember Lantern/Ch 03"};
+	CHECK_EQ(st.unread(a.id, chapters), 2);
+	st.markRead(a.id, chapters, true);
+	CHECK_EQ(st.unread(a.id, chapters), 0);
+	e = st.progress("local:/data/Manga/Ember Lantern/Ch 03");
+	CHECK_EQ(e != nullptr, true);
+	if (e) CHECK_EQ(e->read, true);
+	st.markRead(a.id, chapters, false);
+	CHECK_EQ(st.unread(a.id, chapters), 2);
+	// a chapter of another series doesn't answer for this one
+	st.markRead(a.id, {"local:/data/Manga/Ember Lantern/Ch 01"}, true);
+	CHECK_EQ(st.unread(b.id, {"local:/data/Manga/Ember Lantern/Ch 01"}), 1);
+
+	// taking a series out of the library and back
+	st.setInLibrary(a.id, false);
+	CHECK_EQ(st.library().size(), size_t(2));
+	CHECK_EQ(st.series(a.id) != nullptr, true);
+	st.setInLibrary(a.id, true);
+	CHECK_EQ(st.library().size(), size_t(3));
+
+	// a series goes with its chapters' progress
+	st.removeSeries(b.id);
+	CHECK_EQ(st.series(b.id) == nullptr, true);
+	CHECK_EQ(st.progress(q.chapterId) == nullptr, true);
+	CHECK_EQ(st.library().size(), size_t(2));
+
+	// a chapter opened again: it is unfinished, so it is in the Continue reading strip
+	ChapterProgress again;
+	again.seriesId = a.id;
+	again.chapterId = "local:/data/Manga/Ember Lantern/Ch 04";
+	again.chapterTitle = "Chapter 4";
+	again.page = 2;
+	again.pages = 15;
+	again.at = 8000;
+	st.setProgress(again);
+
+	// the history cleared: the History list goes, the reading progress stays
+	st.clearHistory();
+	CHECK_EQ(st.history(50).size(), size_t(0));
+	CHECK_EQ(st.historyBySeries(50).size(), size_t(0));	// (its rows go with it)
+	CHECK_EQ(st.library().size(), size_t(2));
+	// the read mark and the page to resume are still there
+	e = st.progress(p.chapterId);
+	CHECK_EQ(e != nullptr, true);
+	if (e)
+	{
+		CHECK_EQ(e->read, true);
+		CHECK_EQ(e->page, 4);
+		CHECK_EQ(e->pages, 20);
+	}
+	e = st.progress("local:/data/Manga/Ember Lantern/Ch 03");
+	CHECK_EQ(e != nullptr, true);
+	if (e) CHECK_EQ(e->read, false);
+	// so the unread counts are the ones before the clear
+	CHECK_EQ(st.unread(a.id, chapters), 1);
+	// and the Continue reading strip goes with the History (the owner's call: a clear clears what was being read);
+	// the place itself stays, so opening the chapter again resumes there
+	std::vector<ChapterProgress> cont2 = st.continueReading(10);
+	CHECK_EQ(cont2.size(), size_t(0));
+
+	// a chapter read again is in the History again
+	st.setProgress(again);
+	std::vector<ChapterProgress> hist2 = st.history(50);
+	CHECK_EQ(hist2.size(), size_t(1));	// the chapters cleared before are still out of it
+	if (!hist2.empty()) CHECK_EQ(hist2[0].chapterId, again.chapterId);
+
+	// a broken line in either file is skipped; the rest of the file loads
+	std::string bad = root + "/bad";
+	mkdir(bad.c_str(), 0755);
+	mkdir((bad + "/manga").c_str(), 0755);
+	{
+		std::ofstream f(bad + "/manga/library.tsv");
+		f << "# banana-player manga library v1\n";
+		f << "local:/A\tAlpha\tlocal\t\t10\t20\t1\t\n";
+		f << "this line has no fields\n";
+		f << "local:/B\tBeta\tlocal\t\t30\t40\t0\tstrip\n";
+		f << "local:/C\tToo\tfew\n";
+		f << "local:/D\tDelta\tlocal\t\t50\t60\t1\tltr\tcolumns\ta\tlater\n";	// a later version's extra columns
+	}
+	{
+		std::ofstream f(bad + "/manga/progress.tsv");
+		f << "# banana-player manga progress v1\n";
+		f << "local:/A\tlocal:/A/c1\tOne\t3\t10\t0\t700\n";		// an older file: no hidden column
+		f << "rubbish\n";
+		f << "local:/A\tlocal:/A/c2\tTwo\n";
+		f << "local:/A\tlocal:/A/c3\tThree\t1\t5\t0\t800\tignored\n";	// a later version's extra column
+		f << "local:/A\tlocal:/A/c4\tFour\t2\t8\t0\t900\t1\n";		// cleared from the History
+		f << "local:/A\tlocal:/A/c5\tFive\t2\t8\t0\t950\t0\n";
+	}
+	MangaStore broken;
+	CHECK_EQ(broken.load(bad), true);
+	CHECK_EQ(broken.library().size(), size_t(2));	// B is out of the library
+	CHECK_EQ(broken.series("local:/A") != nullptr, true);
+	CHECK_EQ(broken.series("local:/B") != nullptr, true);
+	CHECK_EQ(broken.series("local:/C") == nullptr, true);
+	CHECK_EQ(broken.series("local:/D") != nullptr, true);
+	if (const MangaSeries* d = broken.series("local:/D"))
+	{
+		CHECK_EQ(d->title, std::string("Delta"));
+		CHECK_EQ(d->readingMode, std::string("ltr"));
+		CHECK_EQ(d->lastRead, (int64_t)60);
+	}
+	CHECK_EQ(broken.progress("local:/A/c1") != nullptr, true);
+	CHECK_EQ(broken.progress("local:/A/c2") == nullptr, true);
+	CHECK_EQ(broken.progress("local:/A/c3") != nullptr, true);
+	if (const ChapterProgress* bp1 = broken.progress("local:/A/c1"))
+	{
+		CHECK_EQ(bp1->page, 3);
+		CHECK_EQ(bp1->pages, 10);
+		CHECK_EQ(bp1->at, (int64_t)700);
+		CHECK_EQ(bp1->hidden, false);	// a file without the column loads: its chapters are in the History
+	}
+	// the hidden column: a cleared chapter is out of the History, an unreadable value says nothing
+	if (const ChapterProgress* bp3 = broken.progress("local:/A/c3")) CHECK_EQ(bp3->hidden, false);
+	if (const ChapterProgress* bp4 = broken.progress("local:/A/c4"))
+	{
+		CHECK_EQ(bp4->hidden, true);
+		CHECK_EQ(bp4->page, 2);
+	}
+	if (const ChapterProgress* bp5 = broken.progress("local:/A/c5")) CHECK_EQ(bp5->hidden, false);
+	std::vector<ChapterProgress> bhist = broken.history(10);
+	CHECK_EQ(bhist.size(), size_t(3));	// c5, c3 and c1: c4 was cleared
+
+	// a progress.tsv written before the hidden column loads: its chapters are in the History
+	std::string old = root + "/old";
+	mkdir(old.c_str(), 0755);
+	mkdir((old + "/manga").c_str(), 0755);
+	{
+		std::ofstream f(old + "/manga/progress.tsv");
+		f << "# banana-player manga progress v1\n";
+		f << "local:/A\tlocal:/A/c1\tOne\t3\t10\t0\t700\n";
+	}
+	MangaStore older;
+	CHECK_EQ(older.load(old), true);
+	CHECK_EQ(older.progress("local:/A/c1") != nullptr, true);
+	if (const ChapterProgress* o1 = older.progress("local:/A/c1"))
+	{
+		CHECK_EQ(o1->page, 3);
+		CHECK_EQ(o1->read, false);
+		CHECK_EQ(o1->hidden, false);
+	}
+	CHECK_EQ(older.history(10).size(), size_t(1));
+
+	// a folder that isn't there: an empty store, not a failure
+	MangaStore none;
+	CHECK_EQ(none.load(root + "/nothing"), true);
+	CHECK_EQ(none.library().size(), size_t(0));
+	CHECK_EQ(none.history(10).size(), size_t(0));
+	CHECK_EQ(none.progress(p.chapterId) == nullptr, true);
+
+	// the folders are gone again
+	unlink((state + "/manga/library.tsv").c_str());
+	unlink((state + "/manga/progress.tsv").c_str());
+	rmdir((state + "/manga").c_str());
+	rmdir(state.c_str());
+	unlink((bad + "/manga/library.tsv").c_str());
+	unlink((bad + "/manga/progress.tsv").c_str());
+	rmdir((bad + "/manga").c_str());
+	rmdir(bad.c_str());
+	unlink((old + "/manga/progress.tsv").c_str());
+	rmdir((old + "/manga").c_str());
+	rmdir(old.c_str());
+	rmdir(root.c_str());
+}
+
+// the scanner over a real temporary tree: folders and CBZs the same bytes as tests/pages, so the fixture archives
+// carry their ComicInfo (Series "Test Series", Number 3, Volume 1) into the checks
+static void testMangaLocal()
+{
+	const std::string P = std::string(BP_TESTS_DIR) + "/pages/";
+	auto bytes = [&](const std::string& p)
+	{
+		std::ifstream f(p, std::ios::binary);
+		return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+	const std::vector<uint8_t> jpg = bytes(P + "page.jpg"), cbz = bytes(P + "stored.cbz");
+	auto mk = [&](const std::string& p) { CHECK_EQ(mkdir(p.c_str(), 0755), 0); };
+	auto img = [&](const std::string& p)
+	{
+		std::ofstream w(p, std::ios::binary);
+		w.write((const char*)jpg.data(), (std::streamsize)jpg.size());
+	};
+	auto arc = [&](const std::string& p)
+	{
+		std::ofstream w(p, std::ios::binary);
+		w.write((const char*)cbz.data(), (std::streamsize)cbz.size());
+	};
+
+	char tpl[] = "/tmp/bp-mangalocal-XXXXXX";
+	char* made = mkdtemp(tpl);
+	CHECK_EQ(made != nullptr, true);
+	if (!made) return;
+	const std::string D = made, M = D + "/M";	// M is the one Manga folder being scanned
+
+	mk(M);
+	// a series folder with numbered chapter folders: the order is 1.5, 2, 10, not by name
+	mk(M + "/Chaptered");
+	mk(M + "/Chaptered/Chapter 1.5");
+	mk(M + "/Chaptered/Chapter 2");
+	mk(M + "/Chaptered/Chapter 10");
+	img(M + "/Chaptered/Chapter 1.5/001.jpg");
+	img(M + "/Chaptered/Chapter 2/001.jpg");
+	img(M + "/Chaptered/Chapter 2/002.jpg");
+	img(M + "/Chaptered/Chapter 10/001.jpg");
+	// a series of CBZ chapters: (volume, number) order, and the title every ComicInfo agrees on
+	mk(M + "/Cbz Chapters");
+	arc(M + "/Cbz Chapters/Vol.1 Ch.3.cbz");
+	arc(M + "/Cbz Chapters/Vol.1 Ch.1.cbz");
+	// volume folders: the chapters are one level deeper, the volume comes from the folder that holds them
+	mk(M + "/Volumes");
+	mk(M + "/Volumes/Vol 2");
+	mk(M + "/Volumes/Vol 2/Ch 5");
+	mk(M + "/Volumes/Vol 1");
+	mk(M + "/Volumes/Vol 1/Ch 9");
+	img(M + "/Volumes/Vol 2/Ch 5/001.jpg");
+	img(M + "/Volumes/Vol 1/Ch 9/001.jpg");
+	// a loose folder of images: a one-chapter series named after the folder
+	mk(M + "/Loose Images");
+	img(M + "/Loose Images/001.jpg");
+	img(M + "/Loose Images/002.jpg");
+	img(M + "/Loose Images/003.jpg");
+	// a loose CBZ in root: a one-chapter series; the name's number wins over ComicInfo's
+	arc(M + "/Loose 7.cbz");
+	std::ofstream(M + "/notes.txt") << "x";	// not manga, not a chapter: nothing to see
+	// chapters without numbers read in natural order
+	mk(M + "/NoNumbers");
+	mk(M + "/NoNumbers/Prologue");
+	mk(M + "/NoNumbers/Epilogue");
+	img(M + "/NoNumbers/Prologue/001.jpg");
+	img(M + "/NoNumbers/Epilogue/001.jpg");
+	// an archive the name says nothing about: ComicInfo gives number, volume and the series title
+	mk(M + "/Meta");
+	arc(M + "/Meta/whatever.cbz");
+	// what the scan must leave alone
+	mk(M + "/Empty");
+	mk(M + "/Junk");
+	std::ofstream(M + "/Junk/notes.txt") << "x";
+	mk(M + "/.Hidden");
+	img(M + "/.Hidden/001.jpg");
+	mk(M + "/__MACOSX");
+	img(M + "/__MACOSX/001.jpg");
+
+	// series sorted naturally by title; the three "Test Series" tie on their paths
+	std::vector<LocalSeries> out = scanMangaFolder(M);
+	CHECK_EQ(out.size(), (size_t)7);
+	auto byPath = [&](const std::string& p) -> const LocalSeries*
+	{
+		for (const LocalSeries& s : out)
+			if (s.path == p) return &s;
+		return nullptr;
+	};
+	if (out.size() == 7)
+	{
+		CHECK_EQ(out[0].title, std::string("Chaptered"));
+		CHECK_EQ(out[1].title, std::string("Loose Images"));
+		CHECK_EQ(out[2].title, std::string("NoNumbers"));
+		CHECK_EQ(out[3].title, std::string("Test Series"));
+		CHECK_EQ(out[3].path, M + "/Cbz Chapters");
+		CHECK_EQ(out[4].path, M + "/Loose 7.cbz");
+		CHECK_EQ(out[5].path, M + "/Meta");
+		CHECK_EQ(out[6].title, std::string("Volumes"));
+	}
+
+	if (const LocalSeries* s = byPath(M + "/Chaptered"))
+	{
+		CHECK_EQ(s->title, std::string("Chaptered"));
+		CHECK_EQ(s->cover, M + "/Chaptered/Chapter 1.5/001.jpg");
+		CHECK_EQ(s->chapters.size(), (size_t)3);
+		if (s->chapters.size() == 3)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Chapter 1.5"));
+			CHECK_EQ(s->chapters[0].number, 1.5);
+			CHECK_EQ(s->chapters[0].pages, 1);
+			CHECK_EQ(s->chapters[0].archive, false);
+			CHECK_EQ(s->chapters[1].title, std::string("Chapter 2"));
+			CHECK_EQ(s->chapters[1].number, 2.0);
+			CHECK_EQ(s->chapters[1].pages, 2);
+			CHECK_EQ(s->chapters[2].title, std::string("Chapter 10"));
+			CHECK_EQ(s->chapters[2].number, 10.0);
+			CHECK_EQ(s->chapters[2].path, M + "/Chaptered/Chapter 10");
+		}
+	}
+	if (const LocalSeries* s = byPath(M + "/Cbz Chapters"))
+	{
+		CHECK_EQ(s->title, std::string("Test Series"));	// both chapters' ComicInfo say it
+		CHECK_EQ(s->chapters.size(), (size_t)2);
+		if (s->chapters.size() == 2)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Vol.1 Ch.1"));
+			CHECK_EQ(s->chapters[0].number, 1.0);
+			CHECK_EQ(s->chapters[0].volume, 1.0);
+			CHECK_EQ(s->chapters[0].archive, true);
+			CHECK_EQ(s->chapters[0].pages, 2);	// the fixture's two images, not its ComicInfo.xml
+			CHECK_EQ(s->chapters[1].title, std::string("Vol.1 Ch.3"));
+			CHECK_EQ(s->chapters[1].number, 3.0);
+		}
+		CHECK_EQ(s->cover, M + "/Cbz Chapters/Vol.1 Ch.1.cbz#001.jpg");
+	}
+	if (const LocalSeries* s = byPath(M + "/Volumes"))
+	{
+		CHECK_EQ(s->title, std::string("Volumes"));
+		CHECK_EQ(s->chapters.size(), (size_t)2);
+		if (s->chapters.size() == 2)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Ch 9"));	// Vol 1 first, whatever the numbers say
+			CHECK_EQ(s->chapters[0].volume, 1.0);
+			CHECK_EQ(s->chapters[0].number, 9.0);
+			CHECK_EQ(s->chapters[0].path, M + "/Volumes/Vol 1/Ch 9");
+			CHECK_EQ(s->chapters[1].title, std::string("Ch 5"));
+			CHECK_EQ(s->chapters[1].volume, 2.0);
+			CHECK_EQ(s->chapters[1].number, 5.0);
+		}
+		CHECK_EQ(s->cover, M + "/Volumes/Vol 1/Ch 9/001.jpg");
+	}
+	if (const LocalSeries* s = byPath(M + "/Loose Images"))
+	{
+		CHECK_EQ(s->title, std::string("Loose Images"));
+		CHECK_EQ(s->chapters.size(), (size_t)1);
+		if (s->chapters.size() == 1)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Loose Images"));
+			CHECK_EQ(s->chapters[0].path, M + "/Loose Images");
+			CHECK_EQ(s->chapters[0].number, -1.0);
+			CHECK_EQ(s->chapters[0].pages, 3);
+		}
+		CHECK_EQ(s->cover, M + "/Loose Images/001.jpg");
+	}
+	if (const LocalSeries* s = byPath(M + "/NoNumbers"))
+	{
+		CHECK_EQ(s->chapters.size(), (size_t)2);
+		if (s->chapters.size() == 2)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Epilogue"));	// natural order, no numbers to go on
+			CHECK_EQ(s->chapters[0].number, -1.0);
+			CHECK_EQ(s->chapters[1].title, std::string("Prologue"));
+		}
+	}
+	if (const LocalSeries* s = byPath(M + "/Meta"))
+	{
+		CHECK_EQ(s->title, std::string("Test Series"));	// the ComicInfo of the only chapter
+		CHECK_EQ(s->chapters.size(), (size_t)1);
+		if (s->chapters.size() == 1)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("whatever"));	// the name without the extension
+			CHECK_EQ(s->chapters[0].number, 3.0);	// from ComicInfo: the name carries none
+			CHECK_EQ(s->chapters[0].volume, 1.0);
+			CHECK_EQ(s->chapters[0].pages, 2);
+			CHECK_EQ(s->chapters[0].path, M + "/Meta/whatever.cbz");
+		}
+		CHECK_EQ(s->cover, M + "/Meta/whatever.cbz#001.jpg");
+	}
+	if (const LocalSeries* s = byPath(M + "/Loose 7.cbz"))
+	{
+		CHECK_EQ(s->title, std::string("Test Series"));
+		CHECK_EQ(s->chapters.size(), (size_t)1);
+		if (s->chapters.size() == 1)
+		{
+			CHECK_EQ(s->chapters[0].title, std::string("Loose 7"));
+			CHECK_EQ(s->chapters[0].number, 7.0);	// the name's number wins over ComicInfo's 3
+			CHECK_EQ(s->chapters[0].archive, true);
+			CHECK_EQ(s->chapters[0].pages, 2);
+		}
+	}
+	CHECK_EQ(byPath(M + "/Empty"), nullptr);
+	CHECK_EQ(byPath(M + "/Junk"), nullptr);
+	CHECK_EQ(byPath(M + "/.Hidden"), nullptr);
+	CHECK_EQ(byPath(M + "/__MACOSX"), nullptr);
+	CHECK_EQ(scanMangaFolder(M + "/gone").size(), (size_t)0);
+	CHECK_EQ(scanMangaFolder(M + "/Chaptered").size(), (size_t)3);	// a chapter folder scanned as a root: the chapters are one level up
+
+	// the places' Manga folders, each existing child folder once, nothing for a place without one
+	mk(D + "/p1");
+	mk(D + "/p1/Manga");
+	img(D + "/p1/Manga/001.jpg");
+	mk(D + "/p2");
+	mk(D + "/p2/manga");
+	mk(D + "/p3");
+	mk(D + "/p4");
+	std::ofstream(D + "/p4/Manga") << "not a folder";	// named Manga, but not a child folder
+	CHECK_EQ(mangaRoots({D + "/p1", D + "/p2", D + "/p3", D + "/p4", D + "/gone"}),
+		(std::vector<std::string>{D + "/p1/Manga", D + "/p2/manga"}));
+	CHECK_EQ(mangaRoots({D + "/p1", D + "/p1/"}), (std::vector<std::string>{D + "/p1/Manga"}));	// no duplicates
+	const std::vector<std::string> none;
+	CHECK_EQ(mangaRoots(none), none);
+
+	for (const std::string& f : {M + "/Loose 7.cbz", M + "/notes.txt", M + "/Chaptered/Chapter 1.5/001.jpg",
+		M + "/Chaptered/Chapter 2/001.jpg", M + "/Chaptered/Chapter 2/002.jpg", M + "/Chaptered/Chapter 10/001.jpg",
+		M + "/Cbz Chapters/Vol.1 Ch.3.cbz", M + "/Cbz Chapters/Vol.1 Ch.1.cbz",
+		M + "/Volumes/Vol 2/Ch 5/001.jpg", M + "/Volumes/Vol 1/Ch 9/001.jpg",
+		M + "/Loose Images/001.jpg", M + "/Loose Images/002.jpg", M + "/Loose Images/003.jpg",
+		M + "/NoNumbers/Prologue/001.jpg", M + "/NoNumbers/Epilogue/001.jpg", M + "/Meta/whatever.cbz",
+		M + "/Junk/notes.txt", M + "/.Hidden/001.jpg", M + "/__MACOSX/001.jpg",
+		D + "/p1/Manga/001.jpg", D + "/p4/Manga"})
+		unlink(f.c_str());
+	for (const std::string& f : {M + "/Chaptered/Chapter 1.5", M + "/Chaptered/Chapter 2", M + "/Chaptered/Chapter 10",
+		M + "/Chaptered", M + "/Cbz Chapters", M + "/Volumes/Vol 2/Ch 5", M + "/Volumes/Vol 2",
+		M + "/Volumes/Vol 1/Ch 9", M + "/Volumes/Vol 1", M + "/Volumes", M + "/Loose Images", M + "/NoNumbers/Prologue",
+		M + "/NoNumbers/Epilogue", M + "/NoNumbers", M + "/Meta", M + "/Empty", M + "/Junk", M + "/.Hidden",
+		M + "/__MACOSX", M, D + "/p1/Manga", D + "/p1", D + "/p2/manga", D + "/p2", D + "/p3", D + "/p4", D})
+		rmdir(f.c_str());
+}
+
+static void testMangaNetFolders()
+{
+	using Entry = NetEntry;
+	auto dir = [](const std::string& name) { Entry e; e.name = name; e.dir = true; return e; };
+	auto file = [](const std::string& name) { Entry e; e.name = name; e.dir = false; return e; };
+	const std::string S = "bpnet://abcd/Share/Manga/Series";
+	const std::string E = "bpnet://abcd/Share/Manga/Empty";
+
+	// a series folder: chapter folders, archives, and its own pictures (ignored while there are chapters)
+	std::vector<NetEntry> own = {
+		dir("Chapter 10"), dir("Chapter 2"), dir("Chapter 1"), dir("Empty"),
+		file("Vol.1 Ch.3.cbz"), file("whatever.zip"), file("notes.txt"), file(".hidden.jpg"), file("__MACOSX"),
+		file("cover.jpg"),
+	};
+	NetMangaListing listing = netMangaListing(own);
+	CHECK_EQ(listing.dirs, (std::vector<std::string>{"Chapter 1", "Chapter 2", "Chapter 10", "Empty"}));
+	CHECK_EQ(listing.archives, (std::vector<std::string>{"Vol.1 Ch.3.cbz", "whatever.zip"}));
+	CHECK_EQ(listing.images, (std::vector<std::string>{"cover.jpg"}));
+
+	std::map<std::string, std::vector<NetEntry>> sub;
+	sub[netJoin(S, "Chapter 1")] = {file("001.jpg")};
+	sub[netJoin(S, "Chapter 2")] = {file("002.jpg"), file("001.jpg")};
+	sub[netJoin(S, "Chapter 10")] = {file("010.jpg")};
+	sub[netJoin(S, "Empty")] = {};
+	NetMangaSeries series = netMangaSeriesFrom(S, "Series", own, sub);
+	CHECK_EQ(series.title, std::string("Series"));
+	CHECK_EQ(series.path, S);
+	CHECK_EQ(series.chapters.size(), (size_t)5);
+	if (series.chapters.size() == 5)
+	{
+		// no number on "whatever", so the order is natural, as the card's scan orders it
+		CHECK_EQ(series.chapters[0].title, std::string("Chapter 1"));
+		CHECK_EQ(series.chapters[0].path, netJoin(S, "Chapter 1"));
+		CHECK_EQ(series.chapters[0].archive, false);
+		CHECK_EQ(series.chapters[0].pages, 1);
+		CHECK_EQ(series.chapters[1].title, std::string("Chapter 2"));
+		CHECK_EQ(series.chapters[1].pages, 2);
+		CHECK_EQ(series.chapters[2].title, std::string("Chapter 10"));
+		CHECK_EQ(series.chapters[3].title, std::string("Vol.1 Ch.3"));
+		CHECK_EQ(series.chapters[3].archive, true);
+		CHECK_EQ(series.chapters[3].pages, -1);
+		CHECK_EQ(series.chapters[4].title, std::string("whatever"));
+	}
+
+	// a folder of pictures alone: a one-chapter series named after the folder
+	NetMangaSeries one = netMangaSeriesFrom(E, "Loose", {file("003.jpg"), file("001.jpg"), file("002.jpg")}, {});
+	CHECK_EQ(one.chapters.size(), (size_t)1);
+	if (one.chapters.size() == 1)
+	{
+		CHECK_EQ(one.chapters[0].title, std::string("Loose"));
+		CHECK_EQ(one.chapters[0].path, E);
+		CHECK_EQ(one.chapters[0].archive, false);
+		CHECK_EQ(one.chapters[0].pages, 3);
+	}
+
+	// nothing to read: no pictures, no archive, and a child folder we couldn't list or that holds no pictures
+	CHECK_EQ(netMangaSeriesFrom(E, "Empty", {file("notes.txt")}, {}).chapters.size(), (size_t)0);
+	CHECK_EQ(netMangaSeriesFrom(E, "Empty", {dir("Volume 1")}, {}).chapters.size(), (size_t)0);
+	std::map<std::string, std::vector<NetEntry>> deep;
+	deep[netJoin(E, "Volume 1")] = {dir("Chapter 1")};
+	// the design's network series is direct: a volume folder's children are not taken as chapters here
+	CHECK_EQ(netMangaSeriesFrom(E, "Empty", {dir("Volume 1")}, deep).chapters.size(), (size_t)0);
+
+	// an archive folder: its chapters by name, the archive's pages unknown until it is fetched
+	NetMangaSeries arcs = netMangaSeriesFrom(E, "Archives", {file("Ch 2.cbz"), file("Ch 10.zip"), file("Ch 1.cbz")}, {});
+	CHECK_EQ(arcs.chapters.size(), (size_t)3);
+	if (arcs.chapters.size() == 3)
+	{
+		CHECK_EQ(arcs.chapters[0].title, std::string("Ch 1"));
+		CHECK_EQ(arcs.chapters[1].title, std::string("Ch 2"));
+		CHECK_EQ(arcs.chapters[2].title, std::string("Ch 10"));
+		CHECK_EQ(arcs.chapters[2].archive, true);
+	}
+
+	// a numbered order (all chapters carry a number) goes by volume then number, as the card's scan does
+	std::vector<NetEntry> numbered = {dir("Chapter 10"), dir("Chapter 2"), file("Vol.1 Ch.3.cbz"), file("Vol.2 Ch.1.cbz")};
+	std::map<std::string, std::vector<NetEntry>> nsub;
+	for (const std::string& d : {"Chapter 10", "Chapter 2"}) nsub[netJoin(E, d)] = {file("001.jpg")};
+	NetMangaSeries ns = netMangaSeriesFrom(E, "Numbered", numbered, nsub);
+	CHECK_EQ(ns.chapters.size(), (size_t)4);
+	if (ns.chapters.size() == 4)
+	{
+		CHECK_EQ(ns.chapters[0].title, std::string("Chapter 2"));
+		CHECK_EQ(ns.chapters[1].title, std::string("Chapter 10"));
+		CHECK_EQ(ns.chapters[2].title, std::string("Vol.1 Ch.3"));
+		CHECK_EQ(ns.chapters[3].title, std::string("Vol.2 Ch.1"));
+	}
+}
+
+static void testComicInfo()
+{
+	ComicInfo c;
+	// a typical file, as the downloads write it
+	CHECK_EQ(parseComicInfo(R"(<?xml version="1.0"?>
+<ComicInfo>
+  <Series>Yotsuba</Series>
+  <Number>3</Number>
+  <Volume>1</Volume>
+  <Title>Chapter Three</Title>
+  <PageCount>2</PageCount>
+  <Manga>YesAndRightToLeft</Manga>
+</ComicInfo>
+)", c), true);
+	CHECK_EQ(c.series, std::string("Yotsuba"));
+	CHECK_EQ(c.number, std::string("3"));
+	CHECK_EQ(c.volume, 1);
+	CHECK_EQ(c.title, std::string("Chapter Three"));
+	CHECK_EQ(c.pageCount, 2);
+	CHECK_EQ(c.rightToLeft, true);
+	CHECK_EQ(c.summary, std::string(""));
+	CHECK_EQ(c.sourceId, std::string(""));
+
+	// entities, decimal and hex references (a multi-byte one, and an astral one), and the bad references
+	CHECK_EQ(parseComicInfo(R"(<ComicInfo><Title>Tom &amp; Jerry &lt;3 &gt; &quot;q&quot; &apos;a&apos; &#65;&#x3042;&#x1F600;</Title>)"
+	                        R"(<Summary>a&#0;b&#xD800;c&bogus;d&#;e</Summary><Writer>AT&T</Writer></ComicInfo>)", c), true);
+	CHECK_EQ(c.title, std::string("Tom & Jerry <3 > \"q\" 'a' A\xE3\x81\x82\xF0\x9F\x98\x80"));
+	CHECK_EQ(c.summary, std::string("abc&bogus;d&#;e"));	// NUL and a surrogate dropped; not references stay as written
+	CHECK_EQ(c.writer, std::string("AT&T"));
+
+	// CDATA is literal, and trimmed like text
+	CHECK_EQ(parseComicInfo(R"(<ComicInfo><Summary>
+  <![CDATA[a <b> & "c" &amp;]]>
+</Summary></ComicInfo>)", c), true);
+	CHECK_EQ(c.summary, std::string("a <b> & \"c\" &amp;"));
+
+	// self-closing elements are empty; unknown elements are skipped with their children, which can't override a field
+	CHECK_EQ(parseComicInfo(R"(<ComicInfo><Series>S</Series><Summary/><Title>top</Title>)"
+	                        R"(<Pages><Page Image="0"/><Title>nested</Title></Pages><Writer>W</Writer></ComicInfo>)", c), true);
+	CHECK_EQ(c.series, std::string("S"));
+	CHECK_EQ(c.summary, std::string(""));
+	CHECK_EQ(c.title, std::string("top"));
+	CHECK_EQ(c.writer, std::string("W"));
+
+	// the declaration, comments and attributes (a '>' inside a quoted value) are not content
+	CHECK_EQ(parseComicInfo(R"(<?xml version="1.0" encoding="utf-8"?>
+<!-- made by a tool, <Series>not this</Series> -->
+<ComicInfo xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:note='x > y'>
+<Series lang="en">Real</Series></ComicInfo>)", c), true);
+	CHECK_EQ(c.series, std::string("Real"));
+
+	// Manga: only YesAndRightToLeft turns the reading direction
+	for (const char* v : {"Yes", "No", "Unknown"}) {
+		CHECK_EQ(parseComicInfo(std::string("<ComicInfo><Manga>") + v + "</Manga></ComicInfo>", c), true);
+		CHECK_EQ(c.rightToLeft, false);
+	}
+	CHECK_EQ(parseComicInfo("<ComicInfo><Manga> YesAndRightToLeft </Manga></ComicInfo>", c), true);
+	CHECK_EQ(c.rightToLeft, true);
+
+	// numbers that aren't whole stay unset
+	CHECK_EQ(parseComicInfo("<ComicInfo><Volume>two</Volume><PageCount>1.5</PageCount></ComicInfo>", c), true);
+	CHECK_EQ(c.volume, -1);
+	CHECK_EQ(c.pageCount, -1);
+	CHECK_EQ(parseComicInfo("<ComicInfo><Volume> 03 </Volume><PageCount/></ComicInfo>", c), true);
+	CHECK_EQ(c.volume, 3);
+	CHECK_EQ(c.pageCount, -1);
+
+	// the Banana Player fields
+	CHECK_EQ(parseComicInfo("<ComicInfo><BPSource>mangadex</BPSource><BPSeriesKey>abc-123</BPSeriesKey></ComicInfo>", c), true);
+	CHECK_EQ(c.sourceId, std::string("mangadex"));
+	CHECK_EQ(c.seriesKey, std::string("abc-123"));
+
+	// no ComicInfo element: false, and the struct is left as it was
+	c = ComicInfo();
+	c.series = "keep";
+	CHECK_EQ(parseComicInfo("<Foo><Series>x</Series></Foo>", c), false);
+	CHECK_EQ(parseComicInfo("", c), false);
+	CHECK_EQ(c.series, std::string("keep"));
+
+	// malformed and truncated input: false, and no crash or hang
+	for (const char* bad : {"<ComicInfo><Series>x</Series>", "<ComicInfo><Series>x", "<ComicInfo", "<", "<ComicInfo>a < b</ComicInfo>",
+	                        "<ComicInfo><!-- open", "<ComicInfo><![CDATA[ open", "<ComicInfo><?pi", "<ComicInfo></ComicInfo",
+	                        "<ComicInfo><Series>x</Other></ComicInfo>", "<ComicInfo><Series a=></Series></ComicInfo>",
+	                        "<ComicInfo><Series a=\"x></Series></ComicInfo>", "<ComicInfo/ >"}) {
+		CHECK_EQ(parseComicInfo(bad, c), false);
+	}
+	std::string deep;
+	for (int i = 0; i < 300; i++) deep += "<x>";
+	CHECK_EQ(parseComicInfo(deep + "<ComicInfo></ComicInfo>", c), false);
+	// the 1 MB cap refuses rather than reads
+	CHECK_EQ(parseComicInfo("<ComicInfo>" + std::string((1 << 20) + 1, ' ') + "</ComicInfo>", c), false);
+
+	// the round trip: a filled struct comes back as it was, an empty one as a default
+	ComicInfo f;
+	f.series = "Yotsuba & friends";
+	f.title = "Tom \"T\" <x>";
+	f.number = "10.5";
+	f.summary = "line one\nline two";
+	f.writer = "A. B";
+	f.web = "https://example.com/?a=1&b=2";
+	f.volume = 2;
+	f.pageCount = 20;
+	f.rightToLeft = true;
+	f.sourceId = "mangadex";
+	f.seriesKey = "abc-123";
+	ComicInfo g;
+	CHECK_EQ(parseComicInfo(writeComicInfo(f), g), true);
+	CHECK_EQ(g.series, f.series);
+	CHECK_EQ(g.title, f.title);
+	CHECK_EQ(g.number, f.number);
+	CHECK_EQ(g.summary, f.summary);
+	CHECK_EQ(g.writer, f.writer);
+	CHECK_EQ(g.web, f.web);
+	CHECK_EQ(g.volume, f.volume);
+	CHECK_EQ(g.pageCount, f.pageCount);
+	CHECK_EQ(g.rightToLeft, f.rightToLeft);
+	CHECK_EQ(g.sourceId, f.sourceId);
+	CHECK_EQ(g.seriesKey, f.seriesKey);
+
+	ComicInfo e;
+	std::string ex = writeComicInfo(e);
+	CHECK_EQ(ex.find("<Series>"), std::string::npos);
+	CHECK_EQ(ex.find("<Manga>"), std::string::npos);
+	CHECK_EQ(parseComicInfo(ex, g), true);
+	CHECK_EQ(g.series, std::string(""));
+	CHECK_EQ(g.volume, -1);
+	CHECK_EQ(g.pageCount, -1);
+	CHECK_EQ(g.rightToLeft, false);
+
+	// escaping: & < > " in a title; control characters dropped, tab kept
+	ComicInfo t;
+	t.title = "A & B < C > D \"E\"";
+	CHECK_EQ(writeComicInfo(t).find("<Title>A &amp; B &lt; C &gt; D &quot;E&quot;</Title>") != std::string::npos, true);
+	t.title = "x\x01y\tz";
+	CHECK_EQ(writeComicInfo(t).find("<Title>xy\tz</Title>") != std::string::npos, true);
+}
+
+static void testBands()
+{
+	// the layout: bands of the image's own rows, a short tail joined to the last
+	BandLayout l{720, 20000};
+	CHECK_EQ(l.count(), 10);
+	CHECK_EQ(l.top(3), 3 * 2048);
+	CHECK_EQ(l.rows(0), 2048);
+	CHECK_EQ(l.rows(9), 20000 - 9 * 2048);
+	int sum = 0;
+	for (int b = 0; b < l.count(); b++) sum += l.rows(b);
+	CHECK_EQ(sum, 20000);
+	CHECK_EQ((BandLayout{720, 4096 + 100}.count()), 2);	// 100 rows are no band of their own
+	CHECK_EQ((BandLayout{720, 4096 + 100}.rows(1)), 2148);
+	CHECK_EQ((BandLayout{720, 4096 + 1024}.count()), 3);
+	CHECK_EQ((BandLayout{720, 1000}.count()), 1);
+	// which pages: over twice as tall as wide, and two bands at least
+	CHECK_EQ(bandedPage(720, 20000), true);
+	CHECK_EQ(bandedPage(720, 1440), false);
+	CHECK_EQ(bandedPage(720, 3000), false);	// tall, but one band: the whole page is as cheap
+	CHECK_EQ(bandedPage(720, 3072), true);
+	CHECK_EQ(bandedPage(2000, 3072), false);
+	CHECK_EQ(bandedPage(0, 0), false);
+	// a band's decoded size: scaled to the decode width, never over the image's own
+	int w = 0, h = 0;
+	bandSize(l, 0, 640, w, h);
+	CHECK_EQ(w, 640);
+	CHECK_EQ(h, 1820);
+	bandSize(l, 0, 2048, w, h);
+	CHECK_EQ(w, 720);
+	CHECK_EQ(h, 2048);
+	// the bands a view needs: the page drawn 640 wide is 17778 tall, a band 1820.4; the view 480 tall
+	double ph = 20000 * 640.0 / 720;
+	// at the page's top: band 0 in view, band 1 not within two screens below
+	CHECK_EQ(bandsNeeded(l, 0, ph, 480, 480, 960) == (std::vector<int>{0}), true);
+	// 1000 px down: band 0 still in view; band 1 starts 820 px under the view's top, within the margin
+	CHECK_EQ(bandsNeeded(l, -1000, ph, 480, 480, 960) == (std::vector<int>{0, 1}), true);
+	// across a seam: both in view, top to bottom, and nothing else
+	CHECK_EQ(bandsNeeded(l, -1700, ph, 480, 0, 0) == (std::vector<int>{0, 1}), true);
+	// just past it: the band above is within a screen, after the one in view
+	CHECK_EQ(bandsNeeded(l, -1900, ph, 480, 480, 960) == (std::vector<int>{1, 0}), true);
+	CHECK_EQ(bandsNeeded(l, -1900, ph, 480, 0, 0) == (std::vector<int>{1}), true);
+	// in view, then under (nearest first), then over
+	CHECK_EQ(bandsNeeded(l, -3600, ph, 480, 5000, 5000) == (std::vector<int>{1, 2, 3, 4, 0}), true);
+	// a page far under or over the view needs none
+	CHECK_EQ(bandsNeeded(l, 5000, ph, 480, 480, 960).empty(), true);
+	CHECK_EQ(bandsNeeded(l, -ph - 600, ph, 480, 480, 960).empty(), true);
+	// the page after, its top a screen under the view: its first band is ready before it is reached
+	CHECK_EQ(bandsNeeded(l, 900, ph, 480, 480, 960) == (std::vector<int>{0}), true);
+	// keys: a whole page is its index; a band's key gives both back
+	CHECK_EQ(bandKey(7, -1), 7);
+	CHECK_EQ(keyPage(7), 7);
+	CHECK_EQ(keyBand(7), -1);
+	int k = bandKey(1234, 31);
+	CHECK_EQ(k != 1234, true);
+	CHECK_EQ(keyPage(k), 1234);
+	CHECK_EQ(keyBand(k), 31);
+
+	// a band decoded alone is the whole decode's rows: a 64 x 5000 PNG, each row its own colour
+	{
+		const int W = 64, H = 5000;
+		std::vector<unsigned char> px((size_t)W * H * 4);
+		for (int y = 0; y < H; y++)
+			for (int x = 0; x < W; x++)
+			{
+				unsigned char* p = &px[((size_t)y * W + x) * 4];
+				p[0] = (unsigned char)(y & 255); p[1] = (unsigned char)(y >> 8); p[2] = (unsigned char)x; p[3] = 255;
+			}
+		std::string path = "/tmp/bp-test-band.png";
+		CHECK_EQ(savePng(path, W, H, px.data()), true);
+		std::vector<uint8_t> bytes;
+		std::string err;
+		CHECK_EQ(readPageFile(path, bytes, err), true);
+		BandLayout pl{W, H};
+		CHECK_EQ(pl.count(), 2);
+		PageImage b1 = decodeBand(bytes.data(), bytes.size(), 0, pl.top(1), pl.rows(1));
+		CHECK_EQ(b1.ok(), true);
+		CHECK_EQ(b1.srcW, W);
+		CHECK_EQ(b1.srcH, H);
+		CHECK_EQ(b1.w, W);
+		CHECK_EQ(b1.h, H - 2048);
+		CHECK_EQ(b1.ok() && std::memcmp(b1.rgba.data(), &px[(size_t)2048 * W * 4], b1.rgba.size()) == 0, true);
+		// rows past the end are cut; a band outside the picture is an error
+		PageImage tail = decodeBand(bytes.data(), bytes.size(), 0, 4990, 2048);
+		CHECK_EQ(tail.ok(), true);
+		CHECK_EQ(tail.h, 10);
+		CHECK_EQ(decodeBand(bytes.data(), bytes.size(), 0, 5000, 10).ok(), false);
+		// scaled to the decode width
+		PageImage half = decodeBand(bytes.data(), bytes.size(), 32, 0, 2048);
+		CHECK_EQ(half.ok(), true);
+		CHECK_EQ(half.w, 32);
+		CHECK_EQ(half.h, 1024);
+		// a cut file fails (the reader then tries the page whole)
+		CHECK_EQ(decodeBand(bytes.data(), bytes.size() / 2, 0, 2048, 2048).ok(), false);
+		remove(path.c_str());
+	}
+	// a JPEG's band against the whole decode (two decoders: equal within a few levels)
+	{
+		const std::string path = std::string(BP_TESTS_DIR) + "/pages/page.jpg";
+		std::vector<uint8_t> bytes;
+		std::string err;
+		CHECK_EQ(readPageFile(path, bytes, err), true);
+		PageImage whole = decodePage(bytes.data(), bytes.size(), 0);
+		PageImage band = decodeBand(bytes.data(), bytes.size(), 0, 50, 70);
+		CHECK_EQ(band.ok(), true);
+		CHECK_EQ(band.w, 120);
+		CHECK_EQ(band.h, 70);
+		CHECK_EQ(band.srcH, 180);
+		long long diff = 0;
+		if (band.ok() && whole.ok())
+			for (size_t i = 0; i < band.rgba.size(); i++)
+				diff += std::abs((int)band.rgba[i] - (int)whole.rgba[(size_t)50 * 120 * 4 + i]);
+		CHECK_EQ(band.ok() && diff / (long long)band.rgba.size() < 4, true);
+		// no band decoder for the other formats, nor for a damaged file
+		std::vector<uint8_t> webp;
+		CHECK_EQ(readPageFile(std::string(BP_TESTS_DIR) + "/pages/page.webp", webp, err), true);
+		CHECK_EQ(decodeBand(webp.data(), webp.size(), 0, 0, 100).ok(), false);
+		std::vector<uint8_t> cut;
+		CHECK_EQ(readPageFile(std::string(BP_TESTS_DIR) + "/pages/truncated.jpg", cut, err), true);
+		CHECK_EQ(decodeBand(cut.data(), cut.size(), 0, 0, 100).ok(), false);
+	}
+}
+
+static void testPageDecode()
+{
+	const std::string pages = std::string(BP_TESTS_DIR) + "/pages/";
+	auto readBytes = [](const std::string& path) {
+		std::ifstream in(path, std::ios::binary);
+		return std::vector<uint8_t>((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	};
+
+	// a page's own size, the panel's width and the 2x cap, for each still format the fixtures carry
+	for (const char* name : {"page.jpg", "page.png", "page.webp"})
+	{
+		const std::string path = pages + name;
+		PageImage at60 = decodePageFile(path, 60);
+		CHECK_EQ(at60.ok(), true);
+		CHECK_EQ(at60.srcW, 120);
+		CHECK_EQ(at60.srcH, 180);
+		CHECK_EQ(at60.w, 60);
+		CHECK_EQ(at60.h, 90);
+		CHECK_EQ(at60.rgba.size(), (size_t)60 * 90 * 4);
+
+		PageImage own = decodePageFile(path, 0);
+		CHECK_EQ(own.ok(), true);
+		CHECK_EQ(own.w, 120);
+		CHECK_EQ(own.h, 180);
+
+		PageImage big = decodePageFile(path, 1000);
+		CHECK_EQ(big.ok(), true);
+		CHECK_EQ(big.w, 240);	// never over 2x the image's own width
+		CHECK_EQ(big.h, 360);
+
+		// the format comes from the bytes, not a name: a page out of an archive or a server has none
+		std::vector<uint8_t> bytes = readBytes(path);
+		PageImage fromBytes = decodePage(bytes.data(), bytes.size(), 60);
+		CHECK_EQ(fromBytes.ok(), true);
+		CHECK_EQ(fromBytes.w, 60);
+		CHECK_EQ(fromBytes.h, 90);
+	}
+
+	// a cut PNG has no IEND: the decoder must refuse it rather than hand back half a page
+	std::vector<uint8_t> pngBytes = readBytes(pages + "page.png");
+	PageImage cutPng = decodePage(pngBytes.data(), pngBytes.size() / 2, 0);
+	CHECK_EQ(cutPng.ok(), false);
+	CHECK_EQ(cutPng.error.empty(), false);
+
+	// solid 0x336699 RGB: no alpha in the file, so the decoder gives opaque pixels
+	PageImage wide = decodePageFile(pages + "wide.png", 0);
+	CHECK_EQ(wide.ok(), true);
+	CHECK_EQ(wide.srcW, 64);
+	CHECK_EQ(wide.srcH, 48);
+	CHECK_EQ(wide.w, 64);
+	CHECK_EQ(wide.h, 48);
+	const uint8_t* wp = &wide.rgba[(10 * wide.w + 10) * 4];
+	CHECK_EQ(std::abs((int)wp[0] - 0x33) <= 4, true);
+	CHECK_EQ(std::abs((int)wp[1] - 0x66) <= 4, true);
+	CHECK_EQ(std::abs((int)wp[2] - 0x99) <= 4, true);
+	CHECK_EQ(wp[3], 255);
+
+	// red at half alpha: a paletted PNG's transparency reaches the RGBA buffer
+	PageImage alpha = decodePageFile(pages + "alpha.png", 0);
+	CHECK_EQ(alpha.ok(), true);
+	CHECK_EQ(alpha.w, 40);
+	CHECK_EQ(alpha.h, 60);
+	const uint8_t* ap = &alpha.rgba[(30 * alpha.w + 20) * 4];
+	CHECK_EQ(std::abs((int)ap[0] - 255) <= 4, true);
+	CHECK_EQ(std::abs((int)ap[3] - 128) <= 4, true);
+
+	// maxH caps the height and shrinks the width with the aspect
+	PageImage capped = decodePageFile(pages + "page.jpg", 120, 90);
+	CHECK_EQ(capped.ok(), true);
+	CHECK_EQ(capped.w, 60);
+	CHECK_EQ(capped.h, 90);
+	PageImage cappedOwn = decodePageFile(pages + "page.jpg", 0, 60);
+	CHECK_EQ(cappedOwn.ok(), true);
+	CHECK_EQ(cappedOwn.w, 40);
+	CHECK_EQ(cappedOwn.h, 60);
+
+	// an odd scaled size is rounded to at least one row and still has no stride padding
+	PageImage oddSize = decodePageFile(pages + "wide.png", 33);
+	CHECK_EQ(oddSize.ok(), true);
+	CHECK_EQ(oddSize.w, 33);
+	CHECK_EQ(oddSize.h, 25);
+	CHECK_EQ(oddSize.rgba.size(), (size_t)33 * 25 * 4);
+
+	// no input, no format, a cut file and a file that isn't there: an error, never a crash
+	PageImage empty = decodePage(nullptr, 0, 0);
+	CHECK_EQ(empty.ok(), false);
+	CHECK_EQ(empty.error.empty(), false);
+	const uint8_t junk[] = {0x00, 0x01, 0x02, 0x03};
+	PageImage unknown = decodePage(junk, sizeof junk, 0);
+	CHECK_EQ(unknown.ok(), false);
+	CHECK_EQ(unknown.error.empty(), false);
+	// an AVIF box with no picture in it exercises the container path's clean refusal
+	const uint8_t fakeAvif[] = {0, 0, 0, 20, 'f', 't', 'y', 'p', 'a', 'v', 'i', 'f', 0, 0, 0, 0};
+	PageImage avif = decodePage(fakeAvif, sizeof fakeAvif, 0);
+	CHECK_EQ(avif.ok(), false);
+	CHECK_EQ(avif.error.empty(), false);
+	PageImage broken = decodePageFile(pages + "broken.jpg", 0);
+	CHECK_EQ(broken.ok(), false);
+	CHECK_EQ(broken.error.empty(), false);
+	PageImage truncated = decodePageFile(pages + "truncated.jpg", 0);
+	CHECK_EQ(truncated.ok(), false);
+	CHECK_EQ(truncated.error.empty(), false);
+	PageImage missing = decodePageFile(pages + "missing.jpg", 0);
+	CHECK_EQ(missing.ok(), false);
+	CHECK_EQ(missing.error.empty(), false);
+}
+
+static void testCbz()
+{
+	const std::string P = std::string(BP_TESTS_DIR) + "/pages/";
+	auto file = [](const std::string& path)
+	{
+		std::ifstream f(path, std::ios::binary);
+		return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+	const std::vector<uint8_t> jpg = file(P + "page.jpg"), png = file(P + "page.png");
+	std::vector<uint8_t> out;
+
+	// the same three files, stored and deflated: pages() carries the two images in order, not the xml
+	for (const char* a : {"stored.cbz", "deflated.cbz"})
+	{
+		Cbz z;
+		CHECK_EQ(z.open(P + a), true);
+		CHECK_EQ(z.isOpen(), true);
+		CHECK_EQ(z.entries().size(), (size_t)3);
+		CHECK_EQ(z.pages(), (std::vector<std::string>{"001.jpg", "002.png"}));
+		CHECK_EQ(z.read("001.jpg", out) && out == jpg, true);
+		CHECK_EQ(z.read("002.png", out) && out == png, true);
+		CHECK_EQ(z.read("ComicInfo.xml", out)
+			&& std::string(out.begin(), out.end()).find("<Series>Test Series</Series>") != std::string::npos, true);
+		CHECK_EQ(z.read("003.jpg", out), false);	// a name that isn't in the archive
+		CHECK_EQ(z.error().empty(), false);
+		z.close();
+		CHECK_EQ(z.isOpen(), false);
+		CHECK_EQ(z.read("001.jpg", out), false);	// closed: nothing to read
+	}
+
+	// what the directory promises about each entry
+	Cbz s;
+	CHECK_EQ(s.open(P + "stored.cbz"), true);
+	CHECK_EQ(s.entries()[0].name, std::string("001.jpg"));
+	CHECK_EQ(s.entries()[0].method, (uint32_t)0);
+	CHECK_EQ(s.entries()[0].packed, s.entries()[0].size);	// stored: nothing was compressed away
+	CHECK_EQ(s.entries()[0].size, (uint64_t)jpg.size());
+	Cbz d;
+	CHECK_EQ(d.open(P + "deflated.cbz"), true);
+	CHECK_EQ(d.entries()[0].method, (uint32_t)8);
+	CHECK_EQ(d.entries()[0].size, (uint64_t)jpg.size());
+	CHECK_EQ(d.entries()[0].packed < d.entries()[0].size, true);	// deflated: it really is smaller
+
+	// the folder archive: its directory entry isn't listed, and the pages under it read in order
+	Cbz n;
+	CHECK_EQ(n.open(P + "nested.cbz"), true);
+	CHECK_EQ(n.entries().size(), (size_t)3);
+	CHECK_EQ(n.pages(), (std::vector<std::string>{"sub/002.png", "sub/010.jpg"}));
+	CHECK_EQ(n.read("sub/010.jpg", out) && out == jpg, true);
+	CHECK_EQ(n.read("sub/002.png", out) && out == png, true);
+	CHECK_EQ(n.read("sub/", out), false);
+
+	// not a zip at all, and a file that isn't there: open() says no with a reason
+	Cbz z;
+	CHECK_EQ(z.open(P + "page.jpg"), false);
+	CHECK_EQ(z.error().empty(), false);
+	CHECK_EQ(z.open(P + "gone.cbz"), false);
+	CHECK_EQ(z.error().empty(), false);
+	CHECK_EQ(z.isOpen(), false);
+
+	// damaged copies, written into one temporary file the test removes again
+	char tmpl[] = "/tmp/bp-cbz-test-XXXXXX";
+	int tf = mkstemp(tmpl);
+	CHECK_EQ(tf >= 0, true);
+	::close(tf);
+	const std::string tmp = tmpl;
+	auto write = [&](const std::vector<uint8_t>& v)
+	{
+		std::ofstream w(tmp, std::ios::binary | std::ios::trunc);
+		w.write((const char*)v.data(), (std::streamsize)v.size());
+		CHECK_EQ(w.good(), true);
+	};
+	write({});	// empty: too short for even the end record
+	CHECK_EQ(z.open(tmp), false);
+	CHECK_EQ(z.error().empty(), false);
+	const std::vector<uint8_t> deflated = file(P + "deflated.cbz");
+	write(std::vector<uint8_t>(deflated.begin(), deflated.begin() + deflated.size() / 2));
+	CHECK_EQ(z.open(tmp), false);	// cut in half: its central directory is gone
+
+	// flip bytes in the middle of 001.jpg's compressed data: the archive still opens (the directory is intact),
+	// reading that page fails on the CRC or the stream, and the rest of the archive still reads
+	std::vector<uint8_t> broken = deflated;
+	const CbzEntry& e0 = d.entries()[0];
+	size_t lo = (size_t)e0.localOffset;	// the local header's own name and extra lengths, not the record's
+	auto le16 = [&](size_t at) { return (size_t)broken[at] | ((size_t)broken[at + 1] << 8); };
+	size_t data = lo + 30 + le16(lo + 26) + le16(lo + 28);
+	for (size_t k = 0; k < 8; k++) broken[data + (size_t)(e0.packed / 2) + k] ^= 0xff;
+	write(broken);
+	d.close();
+	CHECK_EQ(d.open(tmp), true);
+	CHECK_EQ(d.read("001.jpg", out), false);
+	CHECK_EQ(d.error().empty(), false);
+	CHECK_EQ(d.read("002.png", out) && out == png, true);
+	std::remove(tmp.c_str());
+}
+
+static bool near(double a, double b, double eps = 1e-6)
+{
+	return std::fabs(a - b) <= eps;
+}
+
+static void testStrip()
+{
+	// layout: pages at the view's width, no gap, placeholders 1.5 x the width
+	Strip s;
+	s.setView(400, 600);
+	s.setPages(3);
+	CHECK_EQ(s.pageCount(), 3);
+	CHECK_EQ(near(s.pageHeight(0), 600), true);
+	CHECK_EQ(near(s.pageTop(0), 0), true);
+	CHECK_EQ(near(s.pageTop(1), 600), true);
+	CHECK_EQ(near(s.pageTop(2), 1200), true);
+	CHECK_EQ(near(s.totalHeight(), 1800), true);
+	CHECK_EQ(near(s.offset(), 0), true);
+	CHECK_EQ(near(s.screenful(), 540), true);
+
+	// a real size below the view changes nothing on screen
+	s.setPageSize(2, 400, 800);	// page 2: 800 high, +200
+	CHECK_EQ(near(s.pageHeight(2), 800), true);
+	CHECK_EQ(near(s.offset(), 0), true);
+	CHECK_EQ(near(s.totalHeight(), 2000), true);
+	// a page at the view's top isn't above it: the top stays put as well
+	s.setPageSize(0, 400, 400);	// page 0: 400 high, -200
+	CHECK_EQ(near(s.pageHeight(0), 400), true);
+	CHECK_EQ(near(s.offset(), 0), true);
+	CHECK_EQ(near(s.pageTop(1), 400), true);
+	CHECK_EQ(near(s.totalHeight(), 1800), true);
+
+	// a page above the view moves the offset by its height change, so what is on screen keeps its place
+	Strip above;
+	above.setView(400, 600);
+	above.setPages(3);	// 600 each: tops 0, 600, 1200
+	above.scrollTo(900);	// 300 px into page 1
+	CHECK_EQ(near(above.offset(), 900), true);
+	above.setPageSize(0, 400, 400);	// page 0 shrinks by 200
+	CHECK_EQ(near(above.offset(), 700), true);
+	CHECK_EQ(near(above.pageTop(1), 400), true);
+	CHECK_EQ(near(above.offset() - above.pageTop(1), 300), true);	// still 300 px into page 1
+	above.setPageSize(0, 400, 800);	// grows back by 400
+	CHECK_EQ(near(above.offset(), 1100), true);
+	CHECK_EQ(near(above.offset() - above.pageTop(1), 300), true);
+
+	// bad input is ignored: an index out of range, a zero width or height
+	above.setPageSize(-1, 400, 400);
+	above.setPageSize(3, 400, 400);
+	above.setPageSize(1, 0, 400);
+	above.setPageSize(1, 400, 0);
+	CHECK_EQ(near(above.pageHeight(1), 600), true);
+	CHECK_EQ(near(above.offset(), 1100), true);
+
+	// clamping at both ends, and a column no taller than the view
+	s.scrollTo(100000);
+	CHECK_EQ(near(s.offset(), s.totalHeight() - 600), true);
+	s.scrollBy(500);
+	CHECK_EQ(near(s.offset(), 1200), true);
+	s.scrollTo(-50);
+	CHECK_EQ(near(s.offset(), 0), true);
+	s.scrollBy(-500);
+	CHECK_EQ(near(s.offset(), 0), true);
+
+	Strip shortOne;
+	shortOne.setView(400, 600);
+	shortOne.setPages(1);	// 600: exactly the view, so it can't scroll
+	shortOne.scrollTo(300);
+	CHECK_EQ(near(shortOne.offset(), 0), true);
+	CHECK_EQ(near(shortOne.totalHeight(), 600), true);
+	shortOne.setPages(0);
+	CHECK_EQ(shortOne.pageCount(), 0);
+	CHECK_EQ(shortOne.offset(), 0.0);
+
+	// visible and currentPage at the boundaries: a page occupying exactly one view
+	Strip v;
+	v.setView(400, 400);
+	v.setPages(4, 1.0);	// 400 each: tops 0, 400, 800, 1200; total 1600
+	CHECK_EQ(v.visible().first, 0);
+	CHECK_EQ(v.visible().second, 0);
+	CHECK_EQ(v.currentPage(), 0);
+	v.scrollTo(400);
+	CHECK_EQ(v.visible().first, 1);
+	CHECK_EQ(v.visible().second, 1);
+	CHECK_EQ(v.currentPage(), 1);
+	// the middle exactly on a page's top belongs to the page below it
+	v.scrollTo(200);	// view [200, 600): pages 0 and 1, middle 400
+	CHECK_EQ(v.visible().first, 0);
+	CHECK_EQ(v.visible().second, 1);
+	CHECK_EQ(v.currentPage(), 1);
+	v.scrollTo(1200);	// the end: page 2's bottom is the view's top
+	CHECK_EQ(v.visible().first, 3);
+	CHECK_EQ(v.visible().second, 3);
+	CHECK_EQ(v.currentPage(), 3);
+	v.setPages(1, 1.0);
+	CHECK_EQ(v.visible().first, 0);
+	CHECK_EQ(v.visible().second, 0);
+	CHECK_EQ(v.currentPage(), 0);
+	v.setPages(0);
+	CHECK_EQ(v.visible().first, -1);
+	CHECK_EQ(v.visible().second, -1);
+	CHECK_EQ(v.currentPage(), -1);
+	CHECK_EQ(v.wanted(2, 2).size(), (size_t)0);
+
+	// wanted: visible first (top to bottom), then ahead in the direction of motion, then behind
+	Strip w;
+	w.setView(400, 400);
+	w.setPages(10, 1.0);	// 400 each: total 4000, max offset 3600
+	std::vector<int> ids = w.wanted(3, 2);	// no motion yet: ahead is down, and the list's start runs out
+	CHECK_EQ(ids.size(), (size_t)4);
+	for (int i = 0; i < 4; i++) CHECK_EQ(ids[i], i);
+	w.scrollTo(2000);	// page 5, alone in the view, moving down
+	CHECK_EQ(w.currentPage(), 5);
+	ids = w.wanted(2, 2);
+	CHECK_EQ(ids.size(), (size_t)5);
+	CHECK_EQ(ids[0], 5);
+	CHECK_EQ(ids[1], 6);
+	CHECK_EQ(ids[2], 7);
+	CHECK_EQ(ids[3], 4);
+	CHECK_EQ(ids[4], 3);
+
+	// moving up: ahead is the pages before the visible ones, behind the pages after
+	w.scrollBy(-10);	// 1990: view [1990, 2390) holds pages 4 and 5
+	CHECK_EQ(w.visible().first, 4);
+	CHECK_EQ(w.visible().second, 5);
+	ids = w.wanted(2, 2);
+	CHECK_EQ(ids.size(), (size_t)6);
+	CHECK_EQ(ids[0], 4);
+	CHECK_EQ(ids[1], 5);
+	CHECK_EQ(ids[2], 3);
+	CHECK_EQ(ids[3], 2);
+	CHECK_EQ(ids[4], 6);
+	CHECK_EQ(ids[5], 7);
+
+	// at the end and at the start there is nothing ahead on that side
+	w.scrollTo(3600);
+	ids = w.wanted(3, 2);
+	CHECK_EQ(ids.size(), (size_t)3);
+	CHECK_EQ(ids[0], 9);
+	CHECK_EQ(ids[1], 8);
+	CHECK_EQ(ids[2], 7);
+	w.scrollTo(0);	// moving up, so ahead is up the column
+	ids = w.wanted(3, 2);
+	CHECK_EQ(ids.size(), (size_t)3);
+	CHECK_EQ(ids[0], 0);
+	CHECK_EQ(ids[1], 1);
+	CHECK_EQ(ids[2], 2);
+	// bounds far past both ends still list each page once
+	w.scrollTo(2000);
+	ids = w.wanted(99, 99);
+	CHECK_EQ(ids.size(), (size_t)10);
+	std::set<int> once(ids.begin(), ids.end());
+	CHECK_EQ(once.size(), (size_t)10);
+
+	// drag follows the finger 1:1 (dy > 0 is a finger moving down, so the offset falls), clamped
+	Strip d;
+	d.setView(400, 400);
+	d.setPages(10, 1.0);
+	d.scrollTo(1000);
+	d.touchDown(0);
+	d.drag(25, 10);
+	CHECK_EQ(near(d.offset(), 975), true);
+	d.drag(-25, 20);
+	CHECK_EQ(near(d.offset(), 1000), true);
+	d.release(30);	// the last drag went the other way, so that is the way it flings
+	CHECK_EQ(d.moving(), true);
+	CHECK_EQ(d.step(40), true);
+	CHECK_EQ(d.offset() > 1000, true);
+
+	// a drag past an end is clamped and leaves nothing to fling
+	d.scrollTo(0);
+	d.touchDown(0);
+	d.drag(300, 10);
+	d.drag(300, 20);
+	CHECK_EQ(near(d.offset(), 0), true);
+	d.release(30);
+	CHECK_EQ(d.moving(), false);
+	d.scrollTo(3600);	// the far end
+	d.touchDown(0);
+	d.drag(-300, 10);
+	d.drag(-300, 20);
+	CHECK_EQ(near(d.offset(), 3600), true);
+	d.release(30);
+	CHECK_EQ(d.moving(), false);
+
+	// the fling's velocity comes from the last 100 ms: 100 px in 40 ms is 2500 px/s
+	Strip f;
+	f.setView(400, 1000);
+	f.setPages(20, 2.5);	// 1000 high in a 400 wide view: total 20000, max offset 19000
+	f.scrollTo(5000);
+	f.touchDown(0);
+	f.drag(-50, 20);
+	f.drag(-50, 40);
+	CHECK_EQ(near(f.offset(), 5100), true);
+	f.release(50);
+	CHECK_EQ(f.moving(), true);
+	CHECK_EQ(f.step(375), true);	// 325 ms on: v0 * tau * (1 - e^-1)
+	CHECK_EQ(near(f.offset(), 5100 + 2500 * 0.325 * (1 - std::exp(-1.0)), 1e-3), true);
+	f.step(10000);
+	CHECK_EQ(f.moving(), false);
+
+	// a release after the finger rested for more than 100 ms has no velocity to fling with
+	Strip hold;
+	hold.setView(400, 400);
+	hold.setPages(10, 1.0);
+	hold.scrollTo(1000);
+	hold.touchDown(0);
+	hold.drag(-30, 20);
+	hold.drag(-30, 40);
+	hold.release(300);
+	CHECK_EQ(hold.moving(), false);
+	CHECK_EQ(near(hold.offset(), 1060), true);
+	hold.step(400);
+	CHECK_EQ(near(hold.offset(), 1060), true);
+
+	// the velocity is capped at 6000 px/s (this flick would be 15000)
+	Strip capStrip;
+	capStrip.setView(400, 1000);
+	capStrip.setPages(40, 2.5);
+	capStrip.scrollTo(10000);
+	capStrip.touchDown(0);
+	capStrip.drag(-150, 10);
+	capStrip.drag(-150, 20);
+	capStrip.release(30);
+	capStrip.step(355);	// 325 ms on
+	CHECK_EQ(near(capStrip.offset(), 10300 + 6000 * 0.325 * (1 - std::exp(-1.0)), 1e-3), true);
+
+	// the same fling stepped every 5 ms and every 50 ms ends on the same pixel
+	Strip fast, slow;
+	for (Strip* p : {&fast, &slow})
+	{
+		p->setView(400, 1000);
+		p->setPages(20, 2.5);
+		p->scrollTo(5000);
+		p->touchDown(0);
+		p->drag(-50, 20);
+		p->drag(-50, 40);
+		p->release(50);
+	}
+	int64_t t = 50;
+	while (fast.step(t += 5)) {}
+	int64_t u = 50;
+	while (slow.step(u += 50)) {}
+	CHECK_EQ(fast.moving(), false);
+	CHECK_EQ(slow.moving(), false);
+	CHECK_EQ(near(fast.offset(), slow.offset(), 1.0), true);
+	// its whole travel: v0 * tau * (1 - 20 / v0), the speed it stops at
+	CHECK_EQ(near(fast.offset(), 5100 + 2500 * 0.325 * (1 - 20.0 / 2500), 1e-3), true);
+
+	// a fling into an end stops exactly on it, with its velocity gone
+	Strip edge;
+	edge.setView(400, 1000);
+	edge.setPages(20, 2.5);
+	edge.scrollTo(18500);
+	edge.touchDown(0);
+	edge.drag(-150, 10);	// 18650
+	edge.drag(-150, 20);	// 18800, 15000 px/s capped to 6000
+	edge.release(30);
+	CHECK_EQ(edge.moving(), true);
+	CHECK_EQ(edge.step(130), false);	// 100 ms on: ~516 px would pass the end
+	CHECK_EQ(edge.moving(), false);
+	CHECK_EQ(near(edge.offset(), 19000), true);
+	CHECK_EQ(edge.step(500), false);	// nothing left to advance
+	CHECK_EQ(near(edge.offset(), 19000), true);
+
+	// animateTo: an ease-out cubic over the duration, exactly on target at its end
+	Strip a;
+	a.setView(400, 400);
+	a.setPages(10, 1.0);
+	a.scrollTo(1000);
+	a.animateTo(1400, 0);
+	CHECK_EQ(a.moving(), true);
+	CHECK_EQ(a.step(0), true);
+	CHECK_EQ(near(a.offset(), 1000), true);
+	CHECK_EQ(a.step(90), true);	// half way: 1 - (1 - 0.5)^3 = 0.875
+	CHECK_EQ(near(a.offset(), 1350), true);
+	CHECK_EQ(a.step(180), false);
+	CHECK_EQ(near(a.offset(), 1400), true);
+	CHECK_EQ(a.moving(), false);
+	CHECK_EQ(a.step(200), false);
+	CHECK_EQ(near(a.offset(), 1400), true);
+
+	// touchDown stops an animation where it is
+	a.scrollTo(1000);
+	a.animateTo(1800, 500);
+	CHECK_EQ(a.step(590), true);
+	double stoppedAt = a.offset();
+	a.touchDown(600);
+	CHECK_EQ(a.moving(), false);
+	CHECK_EQ(a.step(700), false);
+	CHECK_EQ(near(a.offset(), stoppedAt), true);
+
+	// a zero duration and an out-of-range target: straight to the clamped end, not moving
+	a.scrollTo(1000);
+	a.animateTo(99999, 0, 0);
+	CHECK_EQ(near(a.offset(), 3600), true);
+	CHECK_EQ(a.moving(), false);
+
+	// zoom: the column widens past the view, the content under the focus keeps its place, vertical drags still
+	// scroll it and horizontal ones pan it across
+	Strip z;
+	z.setView(400, 600);
+	z.setPages(3);	// 600 each: tops 0, 600, 1200
+	CHECK_EQ(near(z.pageWidth(), 400), true);
+	CHECK_EQ(z.pan(), 0.0);
+	z.scrollTo(600);
+	z.setZoom(2, 200, 300);
+	CHECK_EQ(near(z.zoom(), 2), true);
+	CHECK_EQ(near(z.pageWidth(), 800), true);
+	CHECK_EQ(near(z.pageHeight(0), 1200), true);
+	CHECK_EQ(near(z.offset(), 1500), true);	// (600 + 300) * 2 - 300
+	CHECK_EQ(near(z.pan(), 200), true);		// (0 + 200) * 2 - 200
+	z.drag(-100, 10);	// a finger up still walks down the column
+	CHECK_EQ(near(z.offset(), 1600), true);
+	z.drag(0, 20, 100);	// a finger right reveals what is left of it
+	CHECK_EQ(near(z.pan(), 100), true);
+	z.drag(0, 30, 1000);	// clamped at the view's left edge…
+	CHECK_EQ(near(z.pan(), 0), true);
+	z.drag(0, 40, -1000);	// …and at the page's far edge
+	CHECK_EQ(near(z.pan(), 400), true);
+	z.drag(0, 50, 400);	// back to its left edge
+	CHECK_EQ(z.pan(), 0.0);
+	// back to the fit: the column's middle is where it was, and there is nothing left to pan
+	z.scrollTo(1500);
+	z.setZoom(1, 200, 300);
+	CHECK_EQ(near(z.zoom(), 1), true);
+	CHECK_EQ(near(z.pageWidth(), 400), true);
+	CHECK_EQ(near(z.offset(), 600), true);	// (1500 + 300) / 2 - 300
+	CHECK_EQ(z.pan(), 0.0);
+	z.setZoom(20, 200, 300);	// 800 % is the furthest the reader goes
+	CHECK_EQ(near(z.zoom(), 8), true);
 }
 
 static void testLabels()
@@ -473,6 +5023,15 @@ static void testSettings()
 	CHECK_EQ(parseSettings("button-hotkeys = no\n").buttonHotkeys, false);
 	CHECK_EQ(d.showHiddenFolders, false);
 	CHECK_EQ(parseSettings("show-hidden-folders = yes\n").showHiddenFolders, true);
+	CHECK_EQ(d.mangaOn, false);	// the manga reader: off by default
+	Settings mg;
+	mg.mangaOn = true;
+	CHECK_EQ(parseSettings(serializeSettings(mg)).mangaOn, true);
+	CHECK_EQ(d.mangaSecureDns, false);	// Secure DNS: the system's lookup until it's turned on
+	Settings dns;
+	dns.mangaSecureDns = true;
+	CHECK_EQ(parseSettings(serializeSettings(dns)).mangaSecureDns, true);
+	CHECK_EQ(parseSettings("manga-secure-dns = maybe\n").mangaSecureDns, false);
 	CHECK_EQ(d.musicShow, (int)SHOW_ART);
 	CHECK_EQ(d.visualizer, (int)VIS_PEAKS);
 	CHECK_EQ(d.loop, (int)LOOP_OFF);
@@ -598,6 +5157,72 @@ static void testSettings()
 	CHECK_EQ(parseSettings("keep-history = no\n").keepHistory, false);
 	CHECK_EQ(d.keepNetHistory, true);	// network files in Recent: on by default
 	CHECK_EQ(parseSettings("keep-network-history = no\n").keepNetHistory, false);
+	CHECK_EQ(d.mangaMode, MANGA_STRIP);	// the manga reader: a strip read down (the owner's default)
+	CHECK_EQ(parseSettings("manga-mode = strip\n").mangaMode, MANGA_STRIP);
+	CHECK_EQ(d.mangaHinge, 36);
+	CHECK_EQ(parseSettings("manga-hinge = 20\n").mangaHinge, 20);
+	CHECK_EQ(parseSettings("manga-hinge = 999\n").mangaHinge, 36);
+	CHECK_EQ(parseSettings(serializeSettings(parseSettings("manga-hinge = 12\n"))).mangaHinge, 12);
+	// fullscreen: the first open's tip seen, and a chapter opening on both panels
+	CHECK_EQ(d.mangaFullSeen, false);
+	CHECK_EQ(parseSettings("manga-full-seen = yes\n").mangaFullSeen, true);
+	CHECK_EQ(d.mangaOpenFull, true);
+	CHECK_EQ(parseSettings("manga-open-full = no\n").mangaOpenFull, false);
+	Settings fs;
+	fs.mangaFullSeen = true;
+	fs.mangaOpenFull = true;
+	CHECK_EQ(serializeSettings(fs).find("manga-full-seen = yes\n") != std::string::npos, true);
+	CHECK_EQ(serializeSettings(fs).find("manga-open-full = yes\n") != std::string::npos, true);
+	CHECK_EQ(parseSettings(serializeSettings(fs)).mangaFullSeen, true);
+	CHECK_EQ(parseSettings(serializeSettings(fs)).mangaOpenFull, true);
+	CHECK_EQ(parseSettings("manga-mode = sideways\n").mangaMode, MANGA_STRIP);
+	// the Manga group's other rows: fit, swap, preload, cache, adult sources, history, Recent
+	CHECK_EQ(d.mangaFit, MANGA_FIT_PAGE);
+	CHECK_EQ(parseSettings("manga-fit = width\n").mangaFit, MANGA_FIT_WIDTH);
+	CHECK_EQ(parseSettings("manga-fit = fill\n").mangaFit, MANGA_FIT_FILL);
+	CHECK_EQ(parseSettings("manga-fit = sideways\n").mangaFit, MANGA_FIT_PAGE);
+	Settings mf;
+	mf.mangaFit = MANGA_FIT_FILL;
+	CHECK_EQ(parseSettings(serializeSettings(mf)).mangaFit, MANGA_FIT_FILL);
+	CHECK_EQ(d.mangaSwapLR, false);
+	CHECK_EQ(parseSettings("manga-swap-lr = yes\n").mangaSwapLR, true);
+	Settings sw;
+	sw.mangaSwapLR = true;
+	CHECK_EQ(parseSettings(serializeSettings(sw)).mangaSwapLR, true);
+	CHECK_EQ(d.mangaPreload, MANGA_PRELOAD_DEFAULT);
+	CHECK_EQ(d.mangaPreload, 3);
+	CHECK_EQ(parseSettings("manga-preload = 2\n").mangaPreload, 2);
+	CHECK_EQ(parseSettings("manga-preload = 6\n").mangaPreload, 6);
+	CHECK_EQ(parseSettings("manga-preload = 5\n").mangaPreload, MANGA_PRELOAD_DEFAULT);
+	Settings pl6;
+	pl6.mangaPreload = 6;
+	CHECK_EQ(parseSettings(serializeSettings(pl6)).mangaPreload, 6);
+	CHECK_EQ(stepMangaPreload(2, 1), 3);
+	CHECK_EQ(stepMangaPreload(3, 1), 6);
+	CHECK_EQ(stepMangaPreload(6, 1), 2);
+	CHECK_EQ(stepMangaPreload(2, -1), 6);
+	CHECK_EQ(d.mangaCacheSize, MANGA_CACHE_DEFAULT);
+	CHECK_EQ(parseSettings("manga-cache = 100m\n").mangaCacheSize, 0);
+	CHECK_EQ(parseSettings("manga-cache = 1g\n").mangaCacheSize, 2);
+	CHECK_EQ(parseSettings("manga-cache = 2g\n").mangaCacheSize, MANGA_CACHE_DEFAULT);
+	Settings mc;
+	mc.mangaCacheSize = 2;
+	CHECK_EQ(parseSettings(serializeSettings(mc)).mangaCacheSize, 2);
+	CHECK_EQ(mangaCacheBytes(0), (uint64_t)100 * 1024 * 1024);
+	CHECK_EQ(mangaCacheBytes(1), (uint64_t)300 * 1024 * 1024);
+	CHECK_EQ(mangaCacheBytes(2), (uint64_t)1024 * 1024 * 1024);
+	CHECK_EQ(d.mangaAdult, false);
+	CHECK_EQ(parseSettings("manga-adult = yes\n").mangaAdult, true);
+	CHECK_EQ(d.mangaHistory, true);
+	CHECK_EQ(parseSettings("manga-history = no\n").mangaHistory, false);
+	Settings mh;
+	mh.mangaHistory = false;
+	CHECK_EQ(parseSettings(serializeSettings(mh)).mangaHistory, false);
+	CHECK_EQ(d.mangaRecent, true);
+	CHECK_EQ(parseSettings("manga-recent = no\n").mangaRecent, false);
+	Settings mr;
+	mr.mangaRecent = false;
+	CHECK_EQ(parseSettings(serializeSettings(mr)).mangaRecent, false);
 	CHECK_EQ(parseSettings(serializeSettings(d)).keepNetHistory, true);
 	CHECK_EQ(parseSettings("remember-folder = yes\n").rememberFolder, true);
 	// the clock: 24-hour unless set; its three values kept; anything else the default
@@ -2593,6 +7218,7 @@ static void testWeb()
 		CHECK_EQ(differs([](WebSnapshot& s) { s.clients = 2; }), true);
 		CHECK_EQ(differs([](WebSnapshot& s) { s.playlistSerial = 3; }), true);
 		CHECK_EQ(differs([](WebSnapshot& s) { s.showHiddenFolders = true; }), true);
+		CHECK_EQ(differs([](WebSnapshot& s) { s.mangaOn = true; }), true);
 
 		WebSnapshot j;
 		j.path = "0/M\"x\\.mp3";
@@ -2614,7 +7240,7 @@ static void testWeb()
 			"\"paused\":false,\"position\":1.5,\"positionAt\":42,\"duration\":0,\"speed\":1,\"volume\":0,"
 			"\"eq\":{\"on\":false,\"preset\":\"\",\"gains\":[-3,0,0,0,0,0,0,0,0,0]},\"fx\":\"\",\"loop\":\"one\","
 			"\"shuffled\":false,\"shuffleMode\":false,\"chapters\":[{\"title\":\"A\",\"start\":0}],\"chapter\":0,\"tracks\":null,"
-			"\"clients\":1,\"session\":{\"boot\":0,\"v\":0},\"playlistSerial\":0,\"liked\":false,\"showHiddenFolders\":false}"));
+			"\"clients\":1,\"session\":{\"boot\":0,\"v\":0},\"playlistSerial\":0,\"liked\":false,\"showHiddenFolders\":false,\"mangaOn\":false}"));
 
 		// the handheld's screen (its player left, or back to it) is news: the dashboard says "in the background"
 		{
@@ -4029,9 +8655,501 @@ static void testPicSubs()
 	}
 }
 
+// the Suwayomi GraphQL client: every request body is built and every recorded answer (from tests/fixtures/suwayomi/)
+// is parsed, with the same small JSON reader the rest of bpcore uses.
+static void testSuwayomi()
+{
+	const std::string F = std::string(BP_TESTS_DIR) + "/fixtures/suwayomi/";
+	// a fixture is read into a string; the file is always there (a missing one is a test failure, not a skip)
+	auto read = [](const std::string& path) -> std::string
+	{
+		std::ifstream f(path);
+		return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+
+	// ---- request bodies: each is a JSON string the caller POSTs to /api/graphql ----
+
+	// addExtensionStore: the index url is a variable; the query names the mutation, and the variable is
+	// escaped (a url with quotes or backslashes would otherwise break the body)
+	std::string add = suwayomiAddExtensionStore("https://github.com/keiyoushi/extensions/raw/repo/index.pb");
+	CHECK_EQ(add.find("\"addExtensionStore\"") != std::string::npos || add.find("addExtensionStore") != std::string::npos, true);
+	CHECK_EQ(add.find("keiyoushi") != std::string::npos, true);
+	std::string remove = suwayomiRemoveExtensionStore("https://github.com/keiyoushi/extensions/raw/repo/index.pb");
+	CHECK_EQ(remove.find("removeExtensionStore") != std::string::npos, true);
+	// install / update / uninstall: the same mutation name, different isInstalled flags in the body
+	std::string inst = suwayomiInstallExtension("eu.kanade.tachiyomi.extension.all.mangaplus");
+	CHECK_EQ(inst.find("eu.kanade.tachiyomi.extension.all.mangaplus") != std::string::npos, true);
+	CHECK_EQ(inst.find("isInstalled") != std::string::npos, true);
+	std::string upd = suwayomiUpdateExtension("eu.kanade.tachiyomi.extension.all.mangaplus");
+	CHECK_EQ(upd.find("updateExtension") != std::string::npos, true);
+	std::string unin = suwayomiUninstallExtension("eu.kanade.tachiyomi.extension.all.mangaplus");
+	CHECK_EQ(unin.find("isInstalled") != std::string::npos, true);
+	// the catalogue queries: popular / latest / search, with the source id and page sent as variables
+	std::string pop = suwayomiFetchSourceMangaPopular("1998944621602463790", 1);
+	CHECK_EQ(pop.find("POPULAR") != std::string::npos, true);
+	CHECK_EQ(pop.find("1998944621602463790") != std::string::npos, true);
+	std::string lat = suwayomiFetchSourceMangaLatest("1998944621602463790", 1);
+	CHECK_EQ(lat.find("type: LATEST") != std::string::npos, true);
+	// what Suwayomi v2.4's schema requires, checked against a live server: these are mutations, an extension is
+	// changed by id + patch, a chapter's pages by chapterId, the enum is LATEST, the filters a union (name per type)
+	CHECK_EQ(suwayomiFetchExtensions().find("mutation { fetchExtensions(input: {})") != std::string::npos, true);
+	CHECK_EQ(inst.find("patch: {install: true}") != std::string::npos, true);
+	CHECK_EQ(upd.find("patch: {update: true}") != std::string::npos, true);
+	CHECK_EQ(unin.find("patch: {uninstall: true}") != std::string::npos, true);
+	CHECK_EQ(pop.rfind("{\"query\":\"mutation", 0) == 0, true);
+	CHECK_EQ(lat.find("LATEST_UPDATES") == std::string::npos, true);
+	CHECK_EQ(suwayomiFetchChapterPages(6).find("chapterId: $id") != std::string::npos, true);
+	CHECK_EQ(suwayomiFetchMangaAndChapters(1).find("fetchManga: true, fetchChapters: true") != std::string::npos, true);
+	CHECK_EQ(suwayomiFetchSourceFilters("1").find("filters { __typename name") == std::string::npos, true);
+	// a search body carries the query text, escaped; a "&" in the query is not the JSON separator
+	std::string srch = suwayomiFetchSourceMangaSearch("1998944621602463790", "one & piece", 1, "[]");
+	CHECK_EQ(srch.find("SEARCH") != std::string::npos, true);
+	CHECK_EQ(srch.find("one ") != std::string::npos, true);
+	// the source id in the request is a string, never a number (the 64-bit overflow rule)
+	CHECK_EQ(pop.find("\"1998944621602463790\"") != std::string::npos, true);
+
+	// ---- parsers: each fixture is a real Suwayomi v2.4.2366 answer ----
+
+	std::string error;
+
+	// the GraphQL error check: a body with errors is caught; a good body is not flagged
+	CHECK_EQ(suwayomiCheckErrors("{\"errors\":[{\"message\":\"not found\"}]}", error), true);
+	CHECK_EQ(error, std::string("not found"));
+	CHECK_EQ(suwayomiCheckErrors("{\"data\":{\"hello\":\"world\"}}", error), false);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(suwayomiCheckErrors("not json", error), false);
+
+	// add-store.json: the store was created; the parser sees a data.addExtensionStore path and nothing else
+	std::string addStore = read(F + "add-store.json");
+	CHECK_EQ(suwayomiParseAddExtensionStore(addStore, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(suwayomiParseAddExtensionStore("{}", error), false);
+	CHECK_EQ(suwayomiParseAddExtensionStore("{\"errors\":[{\"message\":\"store exists\"}]}", error), false);
+	CHECK_EQ(error, std::string("store exists"));
+
+	// extensions.json: the full extension list
+	std::string extsJson = read(F + "extensions.json");
+	std::vector<SuwayomiExt> exts;
+	CHECK_EQ(suwayomiParseExtensions(extsJson, exts, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(exts.empty(), false);
+	// the MANGA Plus extension is in the list (the fixture has it)
+	bool foundMp = false;
+	for (const SuwayomiExt& e : exts)
+		if (e.pkgName == "eu.kanade.tachiyomi.extension.all.mangaplus")
+		{
+			foundMp = true;
+			CHECK_EQ(e.name, std::string("MANGA Plus by SHUEISHA"));
+			CHECK_EQ(e.lang, std::string("all"));
+			CHECK_EQ(e.versionName, std::string("1.6.68"));
+			CHECK_EQ(e.versionCode, (int64_t)106068);
+			CHECK_EQ(e.isNsfw, false);
+			CHECK_EQ(e.isInstalled, false);
+			CHECK_EQ(e.iconUrl, std::string("/api/v1/extension/icon/eu.kanade.tachiyomi.extension.all.mangaplus"));
+		}
+	CHECK_EQ(foundMp, true);
+	// a malformed answer isn't usable
+	CHECK_EQ(suwayomiParseExtensions("not json", exts, error), false);
+
+	// install.json: the sources an install returns; ids are strings (the 64-bit overflow rule)
+	std::string instJson = read(F + "install.json");
+	std::vector<SuwayomiSource> sources;
+	CHECK_EQ(suwayomiParseInstallResult(instJson, sources, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(sources.size(), (size_t)9);
+	// the first source (MANGA Plus EN) carries the id as a string; the int 1998944621602463790 overflows a double,
+	// so it must come out as the exact text the server wrote
+	CHECK_EQ(sources[0].id, std::string("1998944621602463790"));
+	CHECK_EQ(sources[0].name, std::string("MANGA Plus by SHUEISHA"));
+	CHECK_EQ(sources[0].lang, std::string("en"));
+	CHECK_EQ(sources[0].displayName, std::string("MANGA Plus by SHUEISHA (EN)"));
+	CHECK_EQ(sources[0].supportsLatest, true);
+	CHECK_EQ(sources[0].isNsfw, false);
+	// the last one (DE): different id, same name, different lang
+	CHECK_EQ(sources[8].lang, std::string("de"));
+	CHECK_EQ(sources[8].id, std::string("1893513843840146580"));
+
+	// filters-mangaplus.json: the source's filter definitions, onto the MangaFilter structs the sheet uses
+	std::string filtJson = read(F + "filters-mangaplus.json");
+	std::vector<MangaFilter> defs;
+	CHECK_EQ(suwayomiParseFilters(filtJson, defs, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(defs.size(), (size_t)2);	// Status and Genre, both SelectFilter
+	CHECK_EQ(defs[0].type, std::string("select"));
+	CHECK_EQ(defs[0].name, std::string("Status"));
+	CHECK_EQ(defs[0].options.size(), (size_t)3);	// Serializing, Completed, One-shot
+	CHECK_EQ(defs[0].options[0].name, std::string("Serializing"));
+	CHECK_EQ(defs[0].options[1].name, std::string("Completed"));
+	// the default is index 0, which maps to the first option's id
+	CHECK_EQ(defs[0].textDefault, std::string("Serializing"));
+	CHECK_EQ(defs[1].name, std::string("Genre"));
+	CHECK_EQ(defs[1].options.size(), (size_t)16);
+	CHECK_EQ(defs[1].options[1].name, std::string("Battle / Action"));
+
+	// the reverse: the sheet's chosen values onto the Suwayomi filter input list
+	std::vector<MangaFilterValue> vals = mangaFilterDefaults(defs);
+	vals[0].select = "Completed";	// index 1
+	vals[1].select = "Romance";	// index 5 (All=0, Battle/Action=1, Comedy=2, Sport=3, Mystery=4, Romance=5)
+	std::string inputs = suwayomiFilterInputsJson(defs, vals);
+	// the input is a JSON array; each entry has a position and the right state field for its type
+	CHECK_EQ(inputs.find("\"position\":0") != std::string::npos, true);
+	CHECK_EQ(inputs.find("\"selectState\":1") != std::string::npos, true);	// Status = Completed = index 1
+	CHECK_EQ(inputs.find("\"position\":1") != std::string::npos, true);
+	CHECK_EQ(inputs.find("\"selectState\":5") != std::string::npos, true);	// Genre = Romance = index 5 (All Battle Comedy Sport Mystery Romance)
+
+	// popular.json: one page of a source's popular catalogue
+	std::string popJson = read(F + "popular.json");
+	std::vector<SuwayomiManga> mangas;
+	bool hasMore = true;
+	CHECK_EQ(suwayomiParseSourceManga("http://127.0.0.1:4567", popJson, mangas, hasMore, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(mangas.empty(), false);
+	CHECK_EQ(hasMore, false);	// the fixture says hasNextPage:false
+	CHECK_EQ(mangas[0].id, 1);
+	CHECK_EQ(mangas[0].title, std::string("One Piece"));
+	// the thumbnail url is made absolute against the base url the caller gave
+	CHECK_EQ(mangas[0].thumbnailUrl, std::string("http://127.0.0.1:4567/api/v1/manga/1/thumbnail"));
+
+	// search.json: same shape, different results
+	std::string srchJson = read(F + "search.json");
+	std::vector<SuwayomiManga> srchMangas;
+	CHECK_EQ(suwayomiParseSourceManga("http://127.0.0.1:4567", srchJson, srchMangas, hasMore, error), true);
+	CHECK_EQ(srchMangas.empty(), false);
+	// the search results include One Piece and a few titles that contain the search term
+	bool foundOp = false;
+	for (const SuwayomiManga& m : srchMangas)
+		if (m.title == "One Piece") foundOp = true;
+	CHECK_EQ(foundOp, true);
+
+	// manga-chapters.json: a manga's details and its chapters, ordered for the series page
+	std::string mcJson = read(F + "manga-chapters.json");
+	SuwayomiMangaDetails manga;
+	std::vector<SuwayomiChapter> chapters;
+	CHECK_EQ(suwayomiParseMangaAndChapters("http://127.0.0.1:4567", mcJson, manga, chapters, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(manga.id, 1);
+	CHECK_EQ(manga.title, std::string("One Piece"));
+	CHECK_EQ(manga.author, std::string("Eiichiro Oda"));
+	CHECK_EQ(manga.status, std::string("ONGOING"));
+	CHECK_EQ(manga.thumbnailUrl, std::string("http://127.0.0.1:4567/api/v1/manga/1/thumbnail"));
+	CHECK_EQ(manga.realUrl, std::string("https://mangaplus.shueisha.co.jp/titles/100020"));
+	CHECK_EQ(manga.genre.size() >= (size_t)2, true);
+	CHECK_EQ(chapters.empty(), false);
+	// chapters are ordered by sourceOrder ascending (the first one in the fixture has sourceOrder:1)
+	CHECK_EQ(chapters[0].id, 1);
+	CHECK_EQ(chapters[0].name.find("Romance Dawn") != std::string::npos, true);
+	CHECK_EQ(chapters[0].chapterNumber, 1.0);
+	CHECK_EQ(chapters[0].scanlator, std::string("MANGA Plus"));
+	CHECK_EQ(chapters[0].isRead, false);
+
+	// pages.json: the page paths, each made absolute
+	std::string pgJson = read(F + "pages.json");
+	std::vector<std::string> pages;
+	CHECK_EQ(suwayomiParsePages("http://127.0.0.1:4567", pgJson, pages, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(pages.size(), (size_t)17);
+	CHECK_EQ(pages[0], std::string("http://127.0.0.1:4567/api/v1/manga/1/chapter/6/page/0"));
+	CHECK_EQ(pages[16], std::string("http://127.0.0.1:4567/api/v1/manga/1/chapter/6/page/16"));
+
+	// filters-mangadex.json: groups, and a tri state child. A Suwayomi tri state is one filter with its own
+	// value, not a list: it becomes a one-option tri row, and its default comes from triDefault.
+	std::string mdFiltJson = read(F + "filters-mangadex.json");
+	std::vector<MangaFilter> mdDefs;
+	CHECK_EQ(suwayomiParseFilters(mdFiltJson, mdDefs, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(mdDefs.size(), (size_t)12);
+	CHECK_EQ(mdDefs[8].type, std::string("group"));
+	CHECK_EQ(mdDefs[8].name, std::string("Content"));
+	CHECK_EQ(mdDefs[8].children.size(), (size_t)2);
+	CHECK_EQ(mdDefs[8].children[0].type, std::string("tri"));
+	CHECK_EQ(mdDefs[8].children[0].name, std::string("Gore"));
+	CHECK_EQ(mdDefs[8].children[0].options.size(), (size_t)1);
+	std::vector<MangaFilterValue> mdVals = mangaFilterDefaults(mdDefs);
+	CHECK_EQ(mdVals[8].children[0].tri.size(), (size_t)1);
+	CHECK_EQ(mdVals[8].children[0].tri[0], 0);	// triDefault IGNORE
+	mdVals[8].children[0].tri[0] = 2;			// exclude
+	mdVals[5].sortBy = mdDefs[5].options[5].id;	// Relevance, as the fixture's sortDefault says
+	mdVals[5].sortAsc = false;
+	std::string mdInputs = suwayomiFilterInputsJson(mdDefs, mdVals);
+	// a group child is the group's position with a nested groupChange; its own position is inside the group
+	CHECK_EQ(mdInputs.find("\"position\":8,\"groupChange\":{\"position\":0,\"triState\":\"EXCLUDE\"}") != std::string::npos, true);
+	// the sort left at the source's own default isn't sent (only what differs is: the engine starts from the defaults)
+	CHECK_EQ(mdInputs.find("\"position\":5,") == std::string::npos, true);
+	mdVals[5].sortAsc = true;
+	CHECK_EQ(suwayomiFilterInputsJson(mdDefs, mdVals).find("\"position\":5,\"sortState\":{\"index\":5,\"ascending\":true}") != std::string::npos, true);
+	// a group inside a group nests one groupChange further
+	MangaFilter outer;
+	outer.id = "outer";
+	outer.type = "group";
+	MangaFilter inner;
+	inner.id = "inner";
+	inner.type = "group";
+	MangaFilter leaf;
+	leaf.id = "leaf";
+	leaf.type = "tri";
+	leaf.options.push_back({"tri", "Leaf"});
+	inner.children.push_back(leaf);
+	outer.children.push_back(inner);
+	std::vector<MangaFilter> nestedDefs{outer};
+	std::vector<MangaFilterValue> nestedVals = mangaFilterDefaults(nestedDefs);
+	nestedVals[0].children[0].children[0].tri[0] = 1;
+	std::string nestedInputs = suwayomiFilterInputsJson(nestedDefs, nestedVals);
+	CHECK_EQ(nestedInputs.find("\"position\":0,\"groupChange\":{\"position\":0,\"groupChange\":{\"position\":0,\"triState\":\"INCLUDE\"}}") != std::string::npos, true);
+
+	// filtered-group.json: a search with the group changes above applied; the page still says there is more
+	std::string groupJson = read(F + "filtered-group.json");
+	std::vector<SuwayomiManga> groupMangas;
+	bool groupMore = false;
+	CHECK_EQ(suwayomiParseSourceManga("http://127.0.0.1:4567", groupJson, groupMangas, groupMore, error), true);
+	CHECK_EQ(groupMore, true);
+	CHECK_EQ(groupMangas.size(), (size_t)20);
+	CHECK_EQ(groupMangas[0].id, 323);
+
+	// a GraphQL error in a body that otherwise looks right is caught before the data is read
+	CHECK_EQ(suwayomiParseExtensions("{\"errors\":[{\"message\":\"no extensions\"}]}", exts, error), false);
+	CHECK_EQ(error, std::string("no extensions"));
+}
+
+// the Java extensions' store: a repository URL, the store's answer, an install's sources, and their persistence
+static void testMangaJava()
+{
+	const std::string F = std::string(BP_TESTS_DIR) + "/fixtures/suwayomi/";
+	auto read = [](const std::string& path) -> std::string
+	{
+		std::ifstream f(path);
+		return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+	// a Tachiyomi index is index.pb or index.min.json; a Lua repository's index.json is not one
+	CHECK_EQ(MangaJava::isRepoUrl("https://github.com/keiyoushi/extensions/raw/repo/index.pb"), true);
+	CHECK_EQ(MangaJava::isRepoUrl("https://example.org/mihon/index.min.json"), true);
+	CHECK_EQ(MangaJava::isRepoUrl("https://example.org/repo/index.json"), false);
+	CHECK_EQ(MangaJava::isRepoUrl("not a url"), false);
+	CHECK_EQ(MangaJava::sourceId("123"), std::string("java:123"));
+	CHECK_EQ(MangaJava::suwayomiSourceId("java:123"), std::string("123"));
+
+	char tmpl[] = "/tmp/bp-mangajava-XXXXXX";
+	char* dir = mkdtemp(tmpl);
+	CHECK_EQ(dir != nullptr, true);
+	if (!dir) return;
+
+	MangaJava m;
+	std::vector<std::string> bodies;
+	uint64_t next = 1, last = 0;
+	m.setSubmit([&](const std::string& body) { bodies.push_back(body); last = next++; return last; });
+	CHECK_EQ(m.load(dir), true);
+	std::string error;
+	const std::string url = "https://github.com/keiyoushi/extensions/raw/repo/index.pb";
+	CHECK_EQ(m.addRepo(url, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(bodies.size(), (size_t)1);
+	CHECK_EQ(bodies[0].find("addExtensionStore") != std::string::npos, true);
+	CHECK_EQ(m.repos().size(), (size_t)1);
+	CHECK_EQ(m.repos()[0].added, false);	// not written until the store answers
+	CHECK_EQ(m.onAnswer(last, read(F + "add-store.json"), ""), true);	CHECK_EQ(m.repos()[0].name, std::string("Keiyoushi"));
+	CHECK_EQ(m.repos()[0].added, true);
+	{
+		auto ev = m.takeEvents();
+		CHECK_EQ(ev.size(), (size_t)1);
+		CHECK_EQ(ev[0].kind == MangaJava::Event::RepoAdded, true);
+		CHECK_EQ(ev[0].message, std::string("Keiyoushi"));
+	}
+
+	// install: the answer's sources become this package's sources (all nine language rows)
+	const std::string pkg = "eu.kanade.tachiyomi.extension.all.mangaplus";
+	CHECK_EQ(m.install(pkg, error), true);
+	CHECK_EQ(m.busy(pkg), true);
+	CHECK_EQ(m.onAnswer(last, read(F + "install.json"), ""), true);
+	CHECK_EQ(m.busy(pkg), false);
+	CHECK_EQ(m.sources().size(), (size_t)9);
+	CHECK_EQ(m.source("java:1998944621602463790") != nullptr, true);
+	CHECK_EQ(m.source("java:1998944621602463790")->lang, std::string("en"));
+	CHECK_EQ(m.source("java:1998944621602463790")->pkgName, pkg);
+	CHECK_EQ(m.source("java:1998944621602463790")->title(), std::string("MANGA Plus by SHUEISHA (EN)"));
+	CHECK_EQ(m.extension(pkg) != nullptr, true);
+	CHECK_EQ(m.extension(pkg)->isInstalled, true);
+	{
+		auto ev = m.takeEvents();
+		CHECK_EQ(ev.size(), (size_t)1);
+		CHECK_EQ(ev[0].kind == MangaJava::Event::Installed, true);
+	}
+
+	// save and load: the store's name and the sources stay (the extensions list itself is asked again)
+	CHECK_EQ(m.save(), true);
+	MangaJava m2;
+	m2.setSubmit([&](const std::string&) { last = ++next; return last; });
+	CHECK_EQ(m2.load(dir), true);
+	CHECK_EQ(m2.repos().size(), (size_t)1);
+	CHECK_EQ(m2.repos()[0].name, std::string("Keiyoushi"));
+	CHECK_EQ(m2.sources().size(), (size_t)9);
+
+	// uninstall: the answer need not carry a source list; its package's sources go
+	CHECK_EQ(m2.uninstall(pkg, error), true);
+	CHECK_EQ(m2.onAnswer(last, "{\"data\":{\"updateExtension\":{\"extension\":{\"pkgName\":\"" + pkg +
+		"\",\"isInstalled\":false}}}}", ""), true);
+	CHECK_EQ(m2.sources().empty(), true);
+
+	// remove: removeExtensionStore is sent, and the row goes at once
+	CHECK_EQ(m2.removeRepo(url, error), true);
+	CHECK_EQ(m2.repos().empty(), true);
+	CHECK_EQ(bodies.size(), (size_t)2);	// the add store and the install; m2's submit is its own
+}
+
+// the Java runtime's archive: a .tar.gz unpacked with only the rules the pinned one needs (docs/design/manga.md 6)
+static void tarField(char* dst, size_t n, const std::string& s)
+{
+	size_t len = std::min(n, s.size());
+	memcpy(dst, s.data(), len);
+}
+
+static std::string tarHeader(const std::string& name, unsigned mode, uint64_t size, char type,
+	const std::string& link = "", const std::string& prefix = "")
+{
+	char h[512];
+	memset(h, 0, sizeof h);
+	tarField(h, 100, name);
+	snprintf(h + 100, 8, "%07o", mode & 07777);
+	snprintf(h + 108, 8, "%07o", 0);
+	snprintf(h + 116, 8, "%07o", 0);
+	snprintf(h + 124, 12, "%011llo", (unsigned long long)size);
+	snprintf(h + 136, 12, "%011o", 0);
+	h[156] = type;
+	tarField(h + 157, 100, link);
+	memcpy(h + 257, "ustar", 6);
+	h[262] = '0';
+	h[263] = '0';
+	tarField(h + 265, 32, "root");
+	tarField(h + 297, 32, "root");
+	tarField(h + 345, 155, prefix);
+	memset(h + 148, ' ', 8);
+	unsigned sum = 0;
+	for (size_t i = 0; i < sizeof h; i++) sum += (unsigned char)h[i];
+	snprintf(h + 148, 8, "%06o", sum);
+	h[154] = '\0';
+	h[155] = ' ';
+	return std::string(h, sizeof h);
+}
+
+static void tarAdd(std::string& tar, const std::string& name, char type, const std::string& data,
+	unsigned mode = 0644, const std::string& link = "", const std::string& prefix = "")
+{
+	tar += tarHeader(name, mode, data.size(), type, link, prefix);
+	if (!data.empty())
+	{
+		tar += data;
+		tar.append((512 - data.size() % 512) % 512, '\0');
+	}
+}
+
+static bool gzWriteFile(const std::string& path, const std::string& data)
+{
+	gzFile g = gzopen(path.c_str(), "wb");
+	if (!g) return false;
+	bool ok = data.empty() || gzwrite(g, data.data(), (unsigned)data.size()) == (int)data.size();
+	return gzclose(g) == Z_OK && ok;
+}
+
+static std::string readWhole(const std::string& path)
+{
+	std::ifstream in(path, std::ios::binary);
+	return std::string(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+}
+
+static void testTarX()
+{
+	char tmpl[] = "/tmp/bp-tarx-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made, dest = root + "/out";
+
+	std::string tar;
+	tarAdd(tar, "top", '5', "", 0755);
+	tarAdd(tar, "hello.txt", '0', "hello\n", 0644, "", "top");	// ustar's prefix field
+	tarAdd(tar, "run.sh", '0', "#!/bin/sh\n", 0755, "", "top");
+	// a name over 100 characters comes in a GNU long-name entry before its own header
+	std::string longName = "top/" + std::string(120, 'a') + ".txt";
+	std::string longData = longName;
+	longData.push_back('\0');
+	tarAdd(tar, "././@LongLink", 'L', longData);
+	tarAdd(tar, "short", '0', "long", 0644);
+	// symlinks and hard links are skipped, never made: the card is exFAT
+	tarAdd(tar, "link", '2', "", 0777, "hello.txt", "top");
+	tarAdd(tar, "hard", '1', "", 0644, "hello.txt", "top");
+	tar.append(1024, '\0');
+	std::string archive = root + "/a.tar.gz", why;
+	CHECK_EQ(gzWriteFile(archive, tar), true);
+	CHECK_EQ(extractTarGz(archive, dest, why), true);
+	CHECK_EQ(why.empty(), true);
+	CHECK_EQ(readWhole(dest + "/top/hello.txt"), std::string("hello\n"));
+	CHECK_EQ(readWhole(dest + "/top/run.sh"), std::string("#!/bin/sh\n"));
+	CHECK_EQ(readWhole(dest + "/" + longName), std::string("long"));
+	struct stat st;
+	CHECK_EQ(stat((dest + "/top/run.sh").c_str(), &st), 0);
+	CHECK_EQ((st.st_mode & 0111) != 0, true);	// the archive's executable bit
+	CHECK_EQ(stat((dest + "/top/hello.txt").c_str(), &st), 0);
+	CHECK_EQ((st.st_mode & 0111) == 0, true);
+	CHECK_EQ(access((dest + "/top/link").c_str(), F_OK), -1);
+	CHECK_EQ(access((dest + "/top/hard").c_str(), F_OK), -1);
+
+	// a path that climbs out is refused, not clipped, and nothing lands beside the folder
+	std::string evilTar;
+	tarAdd(evilTar, "../escape.txt", '0', "evil", 0644);
+	evilTar.append(1024, '\0');
+	std::string evilArchive = root + "/evil.tar.gz", evilDest = root + "/evil";
+	CHECK_EQ(gzWriteFile(evilArchive, evilTar), true);
+	CHECK_EQ(extractTarGz(evilArchive, evilDest, why), false);
+	CHECK_EQ(why.empty(), false);
+	CHECK_EQ(access((root + "/escape.txt").c_str(), F_OK), -1);
+
+	// an absolute path is not under the folder either
+	std::string absTar;
+	tarAdd(absTar, "/abs.txt", '0', "abs", 0644);
+	absTar.append(1024, '\0');
+	std::string absArchive = root + "/abs.tar.gz", absDest = root + "/abs";
+	CHECK_EQ(gzWriteFile(absArchive, absTar), true);
+	CHECK_EQ(extractTarGz(absArchive, absDest, why), false);
+
+	unlink((dest + "/top/hello.txt").c_str());
+	unlink((dest + "/top/run.sh").c_str());
+	unlink((dest + "/" + longName).c_str());
+	rmdir((dest + "/top").c_str());
+	rmdir(dest.c_str());
+	rmdir(evilDest.c_str());
+	rmdir(absDest.c_str());
+	unlink(archive.c_str());
+	unlink(evilArchive.c_str());
+	unlink(absArchive.c_str());
+	rmdir(root.c_str());
+}
+
+// an image's size from its header (the reader's strip sizes a long page's place before decoding it)
+static void testImageSize()
+{
+	for (const char* ext : {"jpg", "png", "gif"})
+	{
+		int w = 0, h = 0;
+		std::string path = std::string(BP_TESTS_DIR) + "/fixtures/imagesize/tall." + ext;
+		CHECK_EQ(imageSizeFile(path, w, h), true);
+		CHECK_EQ(w, 720);
+		CHECK_EQ(h, 9000);
+	}
+	int w = 0, h = 0;
+	// a WebP's extended header (VP8X): width-1 and height-1 as 24-bit little-endian numbers
+	uint8_t webp[30] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P', 'V', 'P', '8', 'X', 10, 0, 0, 0, 0, 0, 0, 0};
+	webp[24] = (719) & 0xff; webp[25] = (719 >> 8) & 0xff; webp[26] = 0;
+	webp[27] = (8999) & 0xff; webp[28] = (8999 >> 8) & 0xff; webp[29] = 0;
+	CHECK_EQ(imageSize(webp, sizeof webp, w, h), true);
+	CHECK_EQ(w, 720);
+	CHECK_EQ(h, 9000);
+	const uint8_t junk[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
+	CHECK_EQ(imageSize(junk, sizeof junk, w, h), false);
+	CHECK_EQ(imageSizeFile("/nonexistent/x.jpg", w, h), false);
+}
+
 int main()
 {
+	testImageSize();
 	testPicSubs();
+	testTarX();
 	testSessionNamed();
 	testMatchVectors();
 	testSessionFuzz();
@@ -4059,8 +9177,45 @@ int main()
 	testAspect();
 	testTime();
 	testDurations();
+	testMangaNames();
+	testReaderFetchPlan();
+	testSeekRun();
+	testReaderFetchTargetFirst();
+	testBrowserCheck();
+	testPublicAddress();
+	testDohQuery();
+	testDohParseCname();
+	testDohParseNoRecords();
+	testDohParseNxdomain();
+	testDohParseTruncated();
+	testDohCache();
+	testDohWantedFor();
+	testMangaRemote();
+	testMangaServers();
+	testMangaKavitaKey();
+	testHtmlDoc();
+	testPageCache();
+	testCoverCache();
+	testDlQueue();
+	testMangaRepo();
+	testOpds();
+	testCbzWrite();
+	testMangaUiLogic();
+	testMangaSeriesCache();
+	testMangaFilters();
+	testPaged();
+	testMangaStore();
+	testMangaLocal();
+	testMangaNetFolders();
+	testComicInfo();
+	testPageDecode();
+	testBands();
+	testCbz();
+	testStrip();
 	testLabels();
 	testTrackList();
+	testSuwayomi();
+	testMangaJava();
 	if (failures) fprintf(stderr, "%d failed\n", failures);
 	else printf("core: all passed\n");
 	return failures != 0;

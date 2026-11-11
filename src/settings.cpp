@@ -22,6 +22,15 @@ namespace bp
 		{"check-updates", &Settings::checkUpdates},
 		{"same-brightness", &Settings::sameBrightness},
 		{"shuffle", &Settings::shuffle},	// (no row: the play mode, as loop)
+		{"manga-reader", &Settings::mangaOn},
+		{"manga-intro-shown", &Settings::mangaIntroShown},
+		{"manga-swap-lr", &Settings::mangaSwapLR},
+		{"manga-adult", &Settings::mangaAdult},
+		{"manga-history", &Settings::mangaHistory},
+		{"manga-recent", &Settings::mangaRecent},
+		{"manga-full-seen", &Settings::mangaFullSeen},
+		{"manga-open-full", &Settings::mangaOpenFull},
+		{"manga-secure-dns", &Settings::mangaSecureDns},
 	};
 
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};
@@ -29,8 +38,27 @@ namespace bp
 	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow"};
 	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana"};
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
+	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
+	static const char* MANGA_FIT_IDS[MANGA_FITS] = {"page", "width", "fill"};
+	static const char* MANGA_CACHE_IDS[MANGA_CACHES] = {"100m", "300m", "1g"};
+	static const long long MANGA_CACHE_MB[MANGA_CACHES] = {100, 300, 1024};
 	static const char* CLOCK_IDS[CLOCKS] = {"24h", "12h", "off"};
 	static const char* SCREEN_OFF_IDS[SCREEN_OFFS] = {"never", "15s", "30s", "1m", "2m", "5m"};
+
+	int stepMangaPreload(int v, int dir)
+	{
+		int i = 0;
+		for (int k = 0; k < MANGA_PRELOAD_COUNT; k++)
+			if (MANGA_PRELOADS[k] == v) i = k;
+		i = (i + (dir < 0 ? -1 : 1) + MANGA_PRELOAD_COUNT) % MANGA_PRELOAD_COUNT;
+		return MANGA_PRELOADS[i];
+	}
+
+	uint64_t mangaCacheBytes(int v)
+	{
+		int k = v >= 0 && v < MANGA_CACHES ? v : MANGA_CACHE_DEFAULT;
+		return (uint64_t)MANGA_CACHE_MB[k] * 1024 * 1024;
+	}
 
 	int screenOffSeconds(int v)
 	{
@@ -307,6 +335,11 @@ namespace bp
 		out += std::string("music-show = ") + SHOW_IDS[s.musicShow] + "\n";
 		out += std::string("visualizer = ") + VIS_IDS[s.visualizer] + "\n";
 		out += std::string("loop = ") + LOOP_IDS[s.loop] + "\n";
+		out += std::string("manga-mode = ") + MANGA_MODE_IDS[s.mangaMode] + "\n";
+		out += std::string("manga-fit = ") + MANGA_FIT_IDS[s.mangaFit] + "\n";
+		out += "manga-preload = " + std::to_string(s.mangaPreload) + "\n";
+		out += "manga-hinge = " + std::to_string(s.mangaHinge) + "\n";
+		out += std::string("manga-cache = ") + MANGA_CACHE_IDS[s.mangaCacheSize] + "\n";
 		for (auto& r : REMEMBER) out += std::string(r.key) + " = " + (s.*r.field ? "yes" : "no") + "\n";
 		out += std::string("clock = ") + CLOCK_IDS[s.clock] + "\n";
 		out += std::string("screen-off = ") + SCREEN_OFF_IDS[s.screenOffAfter] + "\n";
@@ -314,6 +347,7 @@ namespace bp
 		out += std::string("pan-drag = ") + (s.dragBox ? "box" : "photo") + "\n";
 		out += std::string("eq = ") + (s.eqOn ? "on" : "off") + "\n";
 		out += "eq-preset = " + s.eqPreset + "\n";
+		out += "manga-langs = " + s.mangaLangs + "\n";
 		out += "eq-origin = " + s.eqOrigin + "\n";
 		out += "eq-gains = " + formatEqGains(s.eqGains) + "\n";
 		out += std::string("sound-effect = ") + soundFxKey(s.soundFx) + "\n";
@@ -353,10 +387,21 @@ namespace bp
 				if (key == "clock" && value == CLOCK_IDS[v]) s.clock = v;
 			for (int v = 0; v < SCREEN_OFFS; v++)
 				if (key == "screen-off" && value == SCREEN_OFF_IDS[v]) s.screenOffAfter = v;
+			for (int v = 0; v < MANGA_MODES; v++)
+				if (key == "manga-mode" && value == MANGA_MODE_IDS[v]) s.mangaMode = v;
+			for (int v = 0; v < MANGA_FITS; v++)
+				if (key == "manga-fit" && value == MANGA_FIT_IDS[v]) s.mangaFit = v;
+			for (int v = 0; v < MANGA_PRELOAD_COUNT; v++)
+				if (key == "manga-preload" && value == std::to_string(MANGA_PRELOADS[v])) s.mangaPreload = MANGA_PRELOADS[v];
+			for (int v = 0; v < MANGA_CACHES; v++)
+				if (key == "manga-cache" && value == MANGA_CACHE_IDS[v]) s.mangaCacheSize = v;
+			// (0 to 120: a gap no panel pair has more of)
+			if (key == "manga-hinge") { int g = atoi(value.c_str()); if (g >= 0 && g <= 200 && !value.empty()) s.mangaHinge = g; }
 			if (key == "pan-area" && (value == "left" || value == "right")) s.panRight = value == "right";
 			if (key == "pan-drag" && (value == "photo" || value == "box")) s.dragBox = value == "box";
 			if (key == "eq" && (value == "on" || value == "off")) s.eqOn = value == "on";
 			if (key == "eq-preset") s.eqPreset = value;
+			if (key == "manga-langs") s.mangaLangs = value;
 			if (key == "eq-origin") s.eqOrigin = value;
 			if (key == "eq-gains") parseEqGains(value, s.eqGains);
 			if (key == "sound-effect") s.soundFx = soundFxFromKey(value);

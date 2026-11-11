@@ -756,12 +756,13 @@ namespace bp
 		if (custom)
 			drawTextMid(st.eqOrigin.empty() ? std::string("Unsaved") : "Unsaved \xC2\xB7 from " + st.eqOrigin, 0, ACCENT, 392, 110, 340, 2);
 		else drawTextMid(eqIsUser(p, st.eqPreset) ? "Yours" : "Built-in", 0, DIM_ON, 392, 110, 340, 2);
-		// the scale, and the band the cursor is on lit behind it
+		// the scale, and the band the cursor is on lit behind it (the box's foot comes up for the mini bar)
 		int fx = 88 + 56 * eqBand;
-		fillRound({fx - 27, 134, 54, 263}, SURFACE, R_BUTTON);
-		fillRoundBand({fx - 27, 134, 54, 263}, R_BUTTON, 394, 397, ACCENT);
+		int scaleH = miniUp ? 232 : 263;	// 134 … 397 (over the bar: 134 … 366, its −12 knob inside)
+		fillRound({fx - 27, 134, 54, scaleH}, SURFACE, R_BUTTON);
+		fillRoundBand({fx - 27, 134, 54, scaleH}, R_BUTTON, 134 + scaleH - 3, 134 + scaleH, ACCENT);
 		drawTextMid("dB", 0, DIM, 54, 148, 0, 1);
-		drawTextMid("Hz", 0, DIM, 54, 382, 0, 1);
+		drawTextMid("Hz", 0, DIM, 54, miniUp ? 374 : 382, 0, 1);
 		static const struct { const char* label; int y; } SCALE[] = {{"+12", 168}, {"+6", 216}, {"0", 264}, {"-6", 312}, {"-12", 360}};
 		for (auto& m : SCALE)
 		{
@@ -783,7 +784,7 @@ namespace bp
 			fillRound({cx - 16, ky - 6, 32, 12}, !on ? DIM : focus ? ACCENT : KNOB, R_KNOB);
 			fill({cx - 10, ky - 1, 20, 2}, BG);
 			drawTextMid(gainText(g), 0, focus ? ACCENT : std::fabs(g) >= 0.05 ? TEXT : DIM, cx, 148, 0, 2);
-			drawTextMid(FREQS[i], 0, focus ? ACCENT : DIM, cx, 382, 0, 2);
+			drawTextMid(FREQS[i], 0, focus ? ACCENT : DIM, cx, miniUp ? 374 : 382, 0, 2);
 		}
 		// Reset (touch, or Options), Save, Options: each its key on its right
 		auto action = [&](int id, const Glyph& g, const std::string& label, const char* key, bool dim) {
@@ -816,7 +817,8 @@ namespace bp
 			drawTextMid(soundFxName((SoundFx)i), 1, at ? ACCENT : TEXT, 66, mid, 270);
 			drawTextMid(FX_ABOUT[i], 0, at ? DIM_ON : DIM, 608, mid, 260, 1);
 		}
-		if (!p.playingAudio()) drawTextMid("Plays on music, not videos", 0, DIM, W / 2, 436, 0, 2);
+		// (no room for the note under the bar: the rows reach the bar's top)
+		if (!p.playingAudio() && !miniUp) drawTextMid("Plays on music, not videos", 0, DIM, W / 2, 436, 0, 2);
 		drawHints({{"A", "Choose"}, {"L", "Equalizer"}, {"B", "Back"}});
 	}
 
