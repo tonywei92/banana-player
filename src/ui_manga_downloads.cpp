@@ -1155,7 +1155,7 @@ namespace bp
 		if (q == 0 && c == 0)
 		{
 			drawEmpty(G_DOWNLOAD, "Nothing downloaded yet",
-				"Pick Download on a source\xE2\x80\x99s series page (R2); its chapters come here and open with no network.",
+				"R2 on a source\xE2\x80\x99s series page downloads it to read offline.",
 				nullptr);
 			drawHints({{"B", "Back"}});
 			return;
