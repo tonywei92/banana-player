@@ -261,27 +261,27 @@ namespace bp
 				switch (e.kind)
 				{
 				case MangaJava::Event::RepoAdded:
-					mangaJavaNotes.push_back("Added " + (e.message.empty() ? e.url : e.message));
+					mangaNotes.push_back("Added " + (e.message.empty() ? e.url : e.message));
 					mangaJavaRefresh();	// its extensions can show under Available now
 					break;
 				case MangaJava::Event::RepoFailed:
-					mangaJavaNotes.push_back(e.message.empty() ? "The repository wasn't added" : e.message);
+					mangaNotes.push_back(e.message.empty() ? "The repository wasn't added" : e.message);
 					break;
 				case MangaJava::Event::ExtensionsLoaded: break;	// the lists redraw on the manager's serial
 				case MangaJava::Event::ExtensionsFailed:
-					mangaJavaNotes.push_back(e.message.empty() ? "The extension list didn't load" : e.message);
+					mangaNotes.push_back(e.message.empty() ? "The extension list didn't load" : e.message);
 					break;
 				case MangaJava::Event::Installed:
-					mangaJavaNotes.push_back("Installed " + (e.message.empty() ? e.pkg : e.message));
+					mangaNotes.push_back("Installed " + (e.message.empty() ? e.pkg : e.message));
 					break;
 				case MangaJava::Event::Updated:
-					mangaJavaNotes.push_back("Updated " + (e.message.empty() ? e.pkg : e.message));
+					mangaNotes.push_back("Updated " + (e.message.empty() ? e.pkg : e.message));
 					break;
 				case MangaJava::Event::Uninstalled:
-					mangaJavaNotes.push_back("Removed " + (e.message.empty() ? e.pkg : e.message));
+					mangaNotes.push_back("Removed " + (e.message.empty() ? e.pkg : e.message));
 					break;
 				case MangaJava::Event::ActionFailed:
-					mangaJavaNotes.push_back(e.message.empty() ? "The extension didn't answer" : e.message);
+					mangaNotes.push_back(e.message.empty() ? "The extension didn't answer" : e.message);
 					break;
 				}
 			}
@@ -325,11 +325,12 @@ namespace bp
 		}
 	}
 
-	void Ui::mangaJavaNotesTick(Player& p)
+	void Ui::mangaNotesTick(Player& p)
 	{
-		if (mangaJavaNotes.empty()) return;
-		p.osd(mangaJavaNotes.front(), 2600);
-		mangaJavaNotes.erase(mangaJavaNotes.begin());
+		// answers come back where only a const Player is at hand (a draw), so the note waits here for a frame
+		if (mangaNotes.empty()) return;
+		p.osd(mangaNotes.front(), 2600);
+		mangaNotes.erase(mangaNotes.begin());
 	}
 
 	// ---- drawing the Java rows ----
@@ -691,40 +692,41 @@ namespace bp
 		return true;
 	}
 
-	void Ui::mangaJavaSeriesLoad(Player& p)
+	void Ui::mangaJavaSeriesLoad(Player& p, bool refresh)
 	{
 		(void)p;
-		mangaSrcInfo = MangaDetails{};
-		mangaSrcInfoOn = false;
-		mangaSrcChapters.clear();
-		mangaSrcChaptersOn = false;
+		// a refresh keeps the list on screen (the card's copy is the only thing asked again); a first load starts blank
+		mangaSrcRefreshing = refresh;
+		mangaSrcHadList = mangaSrcChaptersOn;
+		mangaSrcFetchDetailsOk = mangaSrcFetchChaptersOk = false;
 		mangaSrcError.clear();
 		mangaSrcFailed = FAIL_SERIES;
+		if (!refresh)
+		{
+			mangaSrcInfo = MangaDetails{};
+			mangaSrcInfoOn = false;
+			mangaSrcChapters.clear();
+			mangaSrcChaptersOn = false;
+		}
 		if (mangaNet && mangaNet->started() && mangaJavaSeriesSerial)
 			mangaNet->javaExt().cancelGraphQl(mangaJavaSeriesSerial);
 		mangaJavaSeriesSerial = 0;
 		if (!mangaNet || !mangaNet->started() || !mangaJavaInstalled())
 		{
-			mangaSrcLoading = false;
-			mangaSrcError = "Couldn\xE2\x80\x99t ask the source";
+			mangaSourceSeriesFail("Couldn\xE2\x80\x99t ask the source");
 			return;
 		}
 		int mangaId = std::atoi(mangaSrcKey.c_str());
 		if (mangaId <= 0)
 		{
-			mangaSrcLoading = false;
-			mangaSrcError = "This series isn\xE2\x80\x99t available";
+			mangaSourceSeriesFail("This series isn\xE2\x80\x99t available");
 			return;
 		}
 		mangaJavaNeedHost();
 		mangaJavaBase = mangaNet->javaExt().baseUrl();
 		mangaSrcLoading = true;
 		mangaJavaSeriesSerial = mangaNet->javaExt().graphql(suwayomiFetchMangaAndChapters(mangaId));
-		if (!mangaJavaSeriesSerial)
-		{
-			mangaSrcLoading = false;
-			mangaSrcError = "Couldn\xE2\x80\x99t ask the source";
-		}
+		if (!mangaJavaSeriesSerial) mangaSourceSeriesFail("Couldn\xE2\x80\x99t ask the source");
 		mstJavaLocal++;
 	}
 
@@ -735,8 +737,14 @@ namespace bp
 		mangaSrcLoading = false;
 		if (!r.error.empty())
 		{
-			mangaSrcError = r.error;
-			mangaSrcFailed = FAIL_SERIES;
+			// the cached list on the page stays; the toast at the end says the check didn't come
+			if (!mangaSrcHadList && !mangaSrcChaptersOn)
+			{
+				mangaSrcError = r.error;
+				mangaSrcFailed = FAIL_SERIES;
+			}
+			mangaSourceSeriesFetched();
+			mstJavaLocal++;
 			return true;
 		}
 		std::string base = mangaJavaBase;
@@ -746,8 +754,13 @@ namespace bp
 		std::string error;
 		if (!suwayomiParseMangaAndChapters(base, r.body, manga, chapters, error))
 		{
-			mangaSrcError = error.empty() ? "The source didn\xE2\x80\x99t answer" : error;
-			mangaSrcFailed = FAIL_SERIES;
+			if (!mangaSrcHadList && !mangaSrcChaptersOn)
+			{
+				mangaSrcError = error.empty() ? "The source didn\xE2\x80\x99t answer" : error;
+				mangaSrcFailed = FAIL_SERIES;
+			}
+			mangaSourceSeriesFetched();
+			mstJavaLocal++;
 			return true;
 		}
 		mangaSrcInfo.title = manga.title;
@@ -763,8 +776,11 @@ namespace bp
 		mangaSrcChapters.reserve(chapters.size());
 		for (const SuwayomiChapter& c : chapters) mangaSrcChapters.push_back(javaChapter(c));
 		mangaSrcChaptersOn = true;
+		// the one query is the fetch's both halves
+		mangaSrcFetchDetailsOk = mangaSrcFetchChaptersOk = true;
 		mangaSrcError.clear();
 		if (mserCursor >= (int)mangaSrcChapters.size()) mserCursor = (int)mangaSrcChapters.size() - 1;
+		mangaSourceSeriesFetched();
 		mstJavaLocal++;
 		return true;
 	}

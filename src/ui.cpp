@@ -157,6 +157,10 @@ namespace bp
 		// Button hotkeys off: the buttons do nothing over a playing video (touch does it all); the pages opened from
 		// there by touch still take them
 		if (page == Page::Main && !p.settings.buttonHotkeys) return false;
+		// the manga reader's series and reading pages take L2/R2 themselves (a chapter's pages in the reader, the
+		// source series page's Refresh); the global chapter jump below is the player's own pages'
+		if ((b == Button::L2 || b == Button::R2) && (page == Page::MangaSeries || page == Page::MangaRead))
+			return mangaKey(b, p);
 		// L2/R2: the chapter before or after, over what plays and its two pages (the Chapters page's mark follows).
 		// Not in START's menu, not over a photo (its keys are its own), and nothing with Button hotkeys off: they
 		// have no touch button to stand for
@@ -478,7 +482,7 @@ namespace bp
 		{
 			mangaBrowsePoll(p);
 			mangaDlAskPump();
-			mangaJavaNotesTick(p);
+			mangaNotesTick(p);
 		}
 		// the web's equalizer: what mpv keeps, and settings.conf, once its sliders stop for a second
 		if (eqWebDirtyAt && SDL_GetTicks() - eqWebDirtyAt >= 1000)
