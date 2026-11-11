@@ -47,6 +47,9 @@ namespace bp
 			std::string filtersJson;
 			std::string imageUrl;
 			std::vector<std::pair<std::string, std::string>> imageHeaders;
+			// the source's own headers (its Referer and the like) for image fetches, filled for Popular, Latest,
+			// Search and Details results so the Ui can fetch cover images with them
+			std::vector<std::pair<std::string, std::string>> sourceHeaders;
 		};
 
 		MangaWorker();

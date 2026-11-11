@@ -606,6 +606,10 @@ namespace bp
 			}
 			// A call happened, so the 5 minutes count from here even when it failed: the state itself is still good.
 			st->lastUse = Clock::now();
+			// the source's own headers for the Ui's image fetches (covers): the same for every call to this source,
+			// so the Ui keeps them after the first list and uses them for every cover it asks for
+			for (const auto& h : host.meta().headers)
+				out.sourceHeaders.emplace_back(h.first, h.second);
 		}
 		catch (const std::exception& e)
 		{

@@ -90,6 +90,7 @@ namespace bp
 		mangaReadSrcChapters.clear();
 		mangaSrcPendAt = -1;
 		mangaSrcPendChapters.clear();
+		mangaSrcCoverHeaders.clear();
 		mbrowseScroll = 0;
 		// the saved servers' own pages and jobs (ui_manga_servers.cpp)
 		mangaServersReset();
@@ -579,8 +580,9 @@ namespace bp
 		if (mangaSrcScroll > rows - 1) mangaSrcScroll = std::max(0, rows - 1);
 		if (mangaSrcCursor / MG_COLS < mangaSrcScroll) mangaSrcScroll = mangaSrcCursor / MG_COLS;
 		if (mangaSrcCursor / MG_COLS >= mangaSrcScroll + SRC_ROWS_SHOWN) mangaSrcScroll = mangaSrcCursor / MG_COLS - SRC_ROWS_SHOWN + 1;
-		// the grid, as the Library's: each cover a generated one until a real cover can be fetched (the Library's
-		// are files on the card; a source's URL is a later job), its title under it
+		// the grid, as the Library's: each cover a generated one until the real one arrives, its title under it.
+		// covers are fetched only while their card is on screen and cancelled when it scrolls away
+		mangaCoverOnScreen.clear();
 		SDL_Rect clip{0, (int)std::lround(SRC_CLIP_TOP * sy), (int)std::lround(W * sx),
 			(int)std::lround((SRC_CLIP_BOTTOM - SRC_CLIP_TOP) * sy)};
 		SDL_RenderSetClipRect(ren, &clip);
@@ -589,10 +591,12 @@ namespace bp
 			Rect r = mangaSrcCoverRect(i);
 			if (r.y >= SRC_CLIP_BOTTOM) break;
 			bool at = i == mangaSrcCursor;
-			drawMangaCover(r, mangaSrcItems[i].title, at, 4, "");
+			drawMangaCover(r, mangaSrcItems[i].title, at, 4, "", mangaSrcItems[i].cover, &mangaSrcCoverHeaders);
 			drawTextMid(mangaSrcItems[i].title, 0, at ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h + 13, r.w, 2);
 		}
 		SDL_RenderSetClipRect(ren, nullptr);
+		// anything still in flight but no longer on screen: the card scrolled away, its fetch goes
+		mangaCoverCancelOffScreen();
 		if (rows > 1) drawScrollBar(MG_SRC_TOP, SRC_CLIP_BOTTOM - MG_SRC_TOP - 4, mangaSrcScroll, SRC_ROWS_SHOWN, rows);
 		// the state under the grid: the source's error, a job running, or the query the Search tab ran
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 1, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
@@ -650,6 +654,9 @@ namespace bp
 				{
 					mangaSrcItems = items;
 					mangaSrcCursor = mangaSrcScroll = 0;
+					// the source's own headers for cover fetches (its Referer and the like): the same for every
+					// call to this source, kept from the first list and used for every cover this page asks for
+					mangaSrcCoverHeaders = r.sourceHeaders;
 				}
 				else mangaSrcItems.insert(mangaSrcItems.end(), items.begin(), items.end());
 				mangaSrcMore = r.list.more;
@@ -757,6 +764,9 @@ namespace bp
 			// one for a page that moved on (dropped)
 			mangaDlWorker(r);
 		}
+		// the fetcher's answers (covers, a server's catalogue) have one reader, the servers' poll, which hands covers
+		// to mangaCoverOnFetched: a second loop here would take, and drop, the answers a server page waits for
+		mangaServersPoll();
 	}
 
 	// ---- a chapter: its pages, then the reader ----
@@ -862,6 +872,7 @@ namespace bp
 		}
 		mangaSrcListSerial = mangaSrcDetailsSerial = mangaSrcChaptersSerial = mangaSrcPagesSerial = mangaSrcImageSerial = 0;
 		mangaSrcLoading = false;
+		mangaCoverCancelAll();
 	}
 
 	void Ui::mangaSourceChapterReady(const Player& p)

@@ -331,23 +331,37 @@ namespace bp
 			answer(res, body, status);
 		});
 
-		// a cover from the cache only: the dashboard never makes the handheld fetch one on its behalf. The cover is
-		// looked up in the page cache by a key the manga store recorded (series' cover URL); the cache's pathFor()
-		// hashes the key into a file name, so the same key always lands in the same place
+		// a cover from the cache only: the dashboard never makes the handheld fetch one on its behalf. The key is the
+		// cover URL (the same key the reader uses when it fetches and caches a cover). The cover cache's pathFor()
+		// hashes the key into a file name; the file's bytes, when there, are served as the cover image. A cache miss
+		// is 404: the dashboard waits for the reader to fetch it when its card shows on the handheld
 		s.Get("/api/manga/cover", [w](const httplib::Request& req, httplib::Response& res) {
-			std::string source = req.get_param_value("s");
-			std::string key = req.get_param_value("k");
+			std::string key = req.get_param_value("s");	// the cover URL (the source's or the server's)
+			if (key.empty()) key = req.get_param_value("k");	// (the dashboard's older name)
 			if (key.empty()) { WebServer::fail(res, 400, "No cover key"); return; }
 			int status = 200;
-			std::string body = w->call([w, source, key, &res](Player& p, Ui& u) {
+			std::string body = w->call([w, key, &res](Player& p, Ui& u) {
 				if (!mangaReady(p, u)) return error("Manga is off");
-				// covers the reader fetched are in the page cache; the key is the cover URL
-				// (the reader stores them under the cache folder; we serve from there only)
-				// For now: 404 when the cache doesn't have it (the reader will fetch it when its page shows)
-				WebCall::setStatus(404);
-				return error("Cover not cached");
+				PageCache& cc = u.mangaCoverCacheRef();
+				std::vector<uint8_t> bytes;
+				if (!cc.has(key) || !cc.get(key, bytes))
+				{
+					WebCall::setStatus(404);
+					return error("Cover not cached");
+				}
+				// the content type: a JPEG, PNG or WebP, guessed from the file's own magic bytes so the browser
+				// draws it without the reader telling it (the cache holds the bytes as the server sent them)
+				const char* ct = "image/jpeg";
+				if (bytes.size() >= 8 && bytes[0] == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G')
+					ct = "image/png";
+				else if (bytes.size() >= 12 && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+					&& bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P')
+					ct = "image/webp";
+				res.set_header("Content-Type", ct);
+				res.set_content(std::string(bytes.begin(), bytes.end()), ct);
+				return std::string();	// set_content already wrote the body; the empty string is ignored
 			}, 2000, status);
-			answer(res, body, status);
+			if (status != 200) answer(res, body, status);
 		});
 
 		// the download queue

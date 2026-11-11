@@ -92,12 +92,18 @@ namespace bp
 		// the page cache: its cap from the setting, its oldest pages going over a smaller one at once (nothing puts a
 		// page in it yet: it is the network sources' to fill)
 		if (!stateDirPath.empty())
+		{
 			mangaPageCache.open(stateDirPath + "/manga/cache", mangaCacheBytes(p.settings.mangaCacheSize));
+			// the cover cache: 50 MB fixed, the oldest covers going first (docs/design/manga.md section 6)
+			mangaCoverCache.open(stateDirPath + "/manga/cache/covers", MANGA_COVER_CACHE_LIMIT);
+		}
 		// a new open wants its own covers: what waited for the last one is dropped, and a cover that failed (a file
 		// fixed meanwhile) is tried once more. The ones that arrived stay: a cache of textures is worth keeping
 		if (coverWorker) coverWorker->cancel();
 		coverAsked.clear();
 		coverFailed.clear();
+		coverUrlAsked.clear();
+		mangaCoverCancelAll();
 		// a source's page and its jobs don't outlive the app being opened (the worker answers are dropped)
 		mangaBrowseReset(p);
 		// the Downloads sheet's page lists wait for the worker again; a queued chapter is the queue's, not this
@@ -1048,11 +1054,91 @@ namespace bp
 		return nullptr;
 	}
 
+	// a cover by its URL: the cover cache holds the bytes (keyed by URL), the worker decodes them to the tile's
+	// pixels. A card on screen asks once; a card that scrolls away cancels its fetch. A cover already in the cache
+	// is decoded straight from there, with no network
+	SDL_Texture* Ui::coverOfUrl(const std::string& coverUrl, int w, int h,
+		const std::vector<std::pair<std::string, std::string>>& headers)
+	{
+		if (coverUrl.empty()) return nullptr;
+		// the texture cache is shared with the local covers: a URL key never collides with a series id (those are
+		// paths, "src:…" or "srv:…"; a URL starts with http)
+		auto it = coverTex.find(coverUrl);
+		if (it != coverTex.end())
+		{
+			it->second.drawnAt = ++coverDrawn;
+			return it->second.tex;
+		}
+		if (coverFailed.count(coverUrl) || !coverWorker) return nullptr;
+		// the cover cache is the disk side: a hit here means no fetch, only a decode
+		if (mangaCoverCache.has(coverUrl))
+		{
+			if (coverUrlAsked.count(coverUrl)) return nullptr;	// already being decoded
+			coverWorker->want(coverUrl, mangaCoverCache.pathFor(coverUrl), w, h);
+			coverUrlAsked.insert(coverUrl);
+			return nullptr;
+		}
+		// not cached: a fetch is in flight or needs starting. the draw loop records this URL as on-screen; anything
+		// left over at the end of the frame is cancelled (the card scrolled away)
+		if (mangaCoverFetches.count(coverUrl)) return nullptr;	// fetching already
+		if (!mangaNet || !mangaNet->started()) return nullptr;
+		uint64_t id = mangaNet->fetchApi().get(coverUrl, headers, 4 * 1024 * 1024);
+		if (id) mangaCoverFetches[coverUrl] = id;
+		else coverFailed.insert(coverUrl);	// the fetcher stopped: nothing will come
+		return nullptr;
+	}
+
+	void Ui::mangaCoverCancelOffScreen()
+	{
+		if (!mangaNet || !mangaNet->started()) { mangaCoverFetches.clear(); return; }
+		for (auto it = mangaCoverFetches.begin(); it != mangaCoverFetches.end(); )
+		{
+			if (mangaCoverOnScreen.count(it->first)) { ++it; continue; }
+			mangaNet->fetchApi().cancel(it->second);
+			it = mangaCoverFetches.erase(it);
+		}
+	}
+
+	void Ui::mangaCoverCancelAll()
+	{
+		if (mangaNet && mangaNet->started())
+			for (auto& kv : mangaCoverFetches) mangaNet->fetchApi().cancel(kv.second);
+		mangaCoverFetches.clear();
+		mangaCoverOnScreen.clear();
+		coverUrlAsked.clear();
+	}
+
+	// one fetch answer: if its id matches a cover we asked for, put its bytes in the cover cache and hand the
+	// cache file to the worker for decode. Returns true if it was one of ours (the caller skips its own handling)
+	bool Ui::mangaCoverOnFetched(MangaFetch::Result& r)
+	{
+		if (mangaCoverFetches.empty()) return false;
+		std::string url;
+		for (auto& kv : mangaCoverFetches)
+			if (kv.second == r.id) { url = kv.first; break; }
+		if (url.empty()) return false;
+		mangaCoverFetches.erase(url);
+		bool ok = r.error.empty() && r.status >= 200 && r.status < 300 && !r.body.empty();
+		if (ok && mangaCoverCache.put(url, r.body.data(), r.body.size()))
+		{
+			if (coverWorker && !coverUrlAsked.count(url))
+			{
+				int pw = std::max(1, (int)std::lround(MG_COVER_W * sx));
+				int ph = std::max(1, (int)std::lround(MG_COVER_H * sy));
+				coverWorker->want(url, mangaCoverCache.pathFor(url), pw, ph);
+				coverUrlAsked.insert(url);
+			}
+		}
+		else coverFailed.insert(url);
+		return true;
+	}
+
 	void Ui::coversReady(std::vector<CoverWorker::Result> results)
 	{
 		for (auto& r : results)
 		{
 			coverAsked.erase(r.key);
+			coverUrlAsked.erase(r.key);	// a URL cover the worker just decoded: the next draw can ask again if scrolled back
 			SDL_Texture* t = nullptr;
 			if (r.ok)
 			{
@@ -1087,7 +1173,8 @@ namespace bp
 		}
 	}
 
-	void Ui::drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell, const std::string& seriesId)
+	void Ui::drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell, const std::string& seriesId,
+		const std::string& coverUrl, const std::vector<std::pair<std::string, std::string>>* coverHeaders)
 	{
 		Rect in = r;
 		int rad = R_TILE;
@@ -1104,6 +1191,22 @@ namespace bp
 			SDL_Rect d = devRect(in);
 			SDL_RenderCopy(ren, tex, nullptr, &d);
 			return;
+		}
+		// a source's or a server's cover: fetched through the cover cache and decoded by the worker as a local one
+		// is. the generated cover stays until the picture arrives (and for any that fail)
+		if (!coverUrl.empty())
+		{
+			mangaCoverOnScreen.insert(coverUrl);
+			int pw = std::max(1, (int)std::lround(in.w * sx));
+			int ph = std::max(1, (int)std::lround(in.h * sy));
+			const std::vector<std::pair<std::string, std::string>> empty;
+			SDL_Texture* tex = coverOfUrl(coverUrl, pw, ph, coverHeaders ? *coverHeaders : empty);
+			if (tex)
+			{
+				SDL_Rect d = devRect(in);
+				SDL_RenderCopy(ren, tex, nullptr, &d);
+				return;
+			}
 		}
 		// a vertical gradient of bands, each drawn as part of the rounded box, so its corners stay round
 		MangaCoverColors c = mangaCoverColors(title);

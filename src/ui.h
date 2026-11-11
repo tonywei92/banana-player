@@ -24,6 +24,7 @@
 #include "mangasource.h"
 #include "mangastore.h"
 #include "mangaworker.h"
+#include "mangafetch.h"
 #include "pagecache.h"
 #include "coverworker.h"
 #include <functional>
@@ -214,6 +215,8 @@ namespace bp
 		// main's URL chapters put their pages in this same cache (the Manga settings' Clear cache empties it), not in
 		// a second PageCache over the same folder
 		PageCache& mangaPageCacheRef() { return mangaPageCache; }
+		// the cover cache (the web dashboard's GET /api/manga/cover serves from it; the reader fills it)
+		PageCache& mangaCoverCacheRef() { return mangaCoverCache; }
 		bool restartRequested = false;
 		// the saved network connections and the thread that lists their folders (main's)
 		NetStore* netStore = nullptr;
@@ -1180,8 +1183,12 @@ namespace bp
 		int mangaSeriesFrom = 0;	// 0 Library, 1 Browse's list, 2 History (B goes back there)
 		int mserCursor = -1, mserScroll = 0;	// -1 the Resume button, else a chapter
 		Uint32 mangaClearAt = 0;	// History's Clear pressed once: again within 2 s clears it
-		// the page cache (the setting's cap), opened when the app does: the network sources put their pages in it
+	// the page cache (the setting's cap), opened when the app does: the network sources put their pages in it
 		PageCache mangaPageCache;
+		// the cover cache (50 MB fixed; docs/design/manga.md section 6): the cover images the reader fetched, keyed
+		// by their URL, so a cover already downloaded isn't asked for again and the web dashboard can serve one
+		PageCache mangaCoverCache;
+		static constexpr uint64_t MANGA_COVER_CACHE_LIMIT = 50ull * 1024 * 1024;
 		Uint32 mangaCacheAt = 0;	// Clear cache pressed once: again within 2 s empties it
 		bool mangaHistOn = true;	// the setting, kept here for the reader's records (mangaRecordProgress has no Player)
 		int mangaPressed = -1;		// the card, cover, row or button under the finger
@@ -1296,15 +1303,34 @@ namespace bp
 		void drawMangaBrowse(const Player& p);
 		void drawMangaSeries(const Player& p);
 		void drawMangaRead(const Player& p);
-		void drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell, const std::string& seriesId);
+		void drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell, const std::string& seriesId,
+			const std::string& coverUrl = "",
+			const std::vector<std::pair<std::string, std::string>>* coverHeaders = nullptr);
 		// the series' real cover once it arrived, null until then (and for one that couldn't be read): the first draw
 		// asks the worker once. Keyed by the series id
 		SDL_Texture* coverOf(const std::string& seriesId);
+		// a cover by its URL (a source's or a server's): the bytes in the cover cache, decoded by the worker, turned
+		// into a texture on the main thread. Fetched only when the card is on screen; cancelled when it scrolls away.
+		// A cover already in the cache is used with no fetch. headers: the source's image headers, or the server's
+		// auth header via remoteAuth. coverKey is the texture-cache key (the URL; unique per image)
+		SDL_Texture* coverOfUrl(const std::string& coverUrl, int w, int h,
+			const std::vector<std::pair<std::string, std::string>>& headers);
 		struct CoverTex { SDL_Texture* tex = nullptr; uint64_t drawnAt = 0; };
 		std::unordered_map<std::string, CoverTex> coverTex;	// at most COVER_KEEP, least recently drawn freed
 		std::set<std::string> coverAsked, coverFailed;		// (a failed one is left alone until the app reopens)
 		uint64_t coverDrawn = 0, coverSerial = 0;	// the LRU's order and what signature() follows
 		static constexpr size_t COVER_KEEP = 80;
+		// the cover fetches in flight: URL → fetch serial. A card scrolling away cancels its fetch; an answer that
+		// arrives is put in the cover cache and handed to the worker for decode
+		std::unordered_map<std::string, uint64_t> mangaCoverFetches;
+		// the fetches the worker is decoding (asked but no result yet): so a draw doesn't ask twice
+		std::set<std::string> coverUrlAsked;
+		// cover URLs on screen this frame: anything in mangaCoverFetches but not here is cancelled at the end of the
+		// draw (a card scrolled away)
+		std::set<std::string> mangaCoverOnScreen;
+		void mangaCoverCancelOffScreen();	// cancel fetches for URLs that scrolled away
+		void mangaCoverCancelAll();			// the page left: every in-flight cover fetch goes
+		bool mangaCoverOnFetched(MangaFetch::Result& r);	// true if the result was one of ours (a cover fetch)
 		Rect mangaTabRect(int i) const { return {60 + i * 104, 64, 100, 30}; }
 		Rect mangaCardRect(int i) const { return {16 + i * 206, 120, 196, 62}; }
 		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the grid's covers 124 apart
@@ -1409,6 +1435,9 @@ namespace bp
 		int mangaView = 0;						// 0 the app's tabs, 1 a source's page, 2+ a saved server's pages
 		std::string mangaSrcId, mangaSrcName, mangaSrcFile;	// the source open: full id, name, its script
 		std::string mangaSrcQuery;
+		// the source's own headers (its Referer and the like) for cover image fetches: filled from the worker's
+		// answer for the first list, the same for every cover this source page asks for
+		std::vector<std::pair<std::string, std::string>> mangaSrcCoverHeaders;
 		int mangaSrcTab = 0;					// the source's tabs, in their order: Popular, Latest, Search
 		bool mangaSrcHasLatest = true;			// a source without latest() loses its tab once the first ask says so
 		std::vector<MangaItem> mangaSrcItems;

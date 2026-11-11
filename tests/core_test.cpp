@@ -1330,6 +1330,77 @@ static void testPageCache()
 	if (system(cmd.c_str()) != 0) fprintf(stderr, "could not remove %s\n", root.c_str());
 }
 
+// the cover cache: the same PageCache the reader's pages use, opened at <state>/manga/cache/covers with a 50 MB cap.
+// the pure parts are PageCache's own (key from URL via fnv1a, LRU eviction); this test names the cover-cache-specific
+// contract: a URL is the key, two different URLs land in different files, and a cap that fits only a few covers
+// gives the oldest up
+static void testCoverCache()
+{
+	char tmpl[] = "/tmp/bp-covercache-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string root = made;
+	std::string dir = root + "/covers";
+	// two covers the reader might fetch: one small, one larger
+	std::vector<uint8_t> small(1024, 0xAA);
+	std::vector<uint8_t> large(100 * 1024, 0xBB);
+	const uint64_t cap = 250 * 1024;	// 250 KB: fits two large, not three
+
+	{
+		PageCache c;
+		CHECK_EQ(c.open(dir, cap), true);
+
+		// a URL as key: the same URL gives the same path every time (fnv1a over the bytes)
+		std::string url1 = "https://cdn.example.org/covers/series-42.jpg?v=3";
+		std::string url2 = "https://cdn.example.org/covers/series-99.png";
+		CHECK_EQ(c.pathFor(url1), c.pathFor(url1));
+		CHECK_EQ(c.pathFor(url1) != c.pathFor(url2), true);
+		CHECK_EQ(c.pathFor(url1).find(dir + "/") == 0, true);
+		CHECK_EQ(c.pathFor(url1).find("..") == std::string::npos, true);
+
+		// roundtrip: bytes in, bytes back, exactly
+		CHECK_EQ(c.put(url1, small.data(), small.size()), true);
+		std::vector<uint8_t> out;
+		CHECK_EQ(c.get(url1, out), true);
+		CHECK_EQ(out == small, true);
+		CHECK_EQ(c.has(url1), true);
+		CHECK_EQ(c.has(url2), false);
+		CHECK_EQ(c.count(), size_t(1));
+		CHECK_EQ(c.size(), (uint64_t)small.size());
+
+		// the cap holds: three large covers over a 250 KB cap gives the oldest up
+		CHECK_EQ(c.put("https://a/1", large.data(), large.size()), true);
+		CHECK_EQ(c.put("https://a/2", large.data(), large.size()), true);
+		CHECK_EQ(c.count(), size_t(3));		// the small one, then the two large
+		CHECK_EQ(c.put("https://a/3", large.data(), large.size()), true);
+		CHECK_EQ(c.size() <= cap, true);
+		CHECK_EQ(c.has(url1), false);	// the small one from before is the oldest: gone
+		CHECK_EQ(c.has("https://a/1"), false);	// the first large is the next oldest: gone too
+		CHECK_EQ(c.has("https://a/2"), true);
+		CHECK_EQ(c.has("https://a/3"), true);
+
+		// a cover bigger than the whole cap is refused (it would empty the cache for itself)
+		std::vector<uint8_t> huge(cap + 1, 0xCC);
+		CHECK_EQ(c.put("https://huge/x", huge.data(), huge.size()), false);
+		CHECK_EQ(c.has("https://huge/x"), false);
+
+		// the order survives a restart through save/open (the index on disk)
+		CHECK_EQ(c.get("https://a/2", out), true);	// 2 is used now: 3 is the oldest
+		CHECK_EQ(c.save(), true);
+	}
+	{
+		// reopen with a smaller cap: only one large cover fits, so the oldest (3) is evicted
+		PageCache c;
+		CHECK_EQ(c.open(dir, 150 * 1024), true);
+		CHECK_EQ(c.count(), size_t(1));
+		CHECK_EQ(c.has("https://a/3"), false);	// the oldest went at the smaller cap
+		CHECK_EQ(c.has("https://a/2"), true);	// the one just used survives
+	}
+
+	std::string cmd = "rm -rf '" + root + "'";
+	if (system(cmd.c_str()) != 0) fprintf(stderr, "could not remove %s\n", root.c_str());
+}
+
 // the downloads queue: the order, pause per item and for all, the card's low space, and the TSV that lets a quit resume
 // at the next page not written
 static void testDlQueue()
@@ -7900,6 +7971,7 @@ int main()
 	testMangaKavitaKey();
 	testHtmlDoc();
 	testPageCache();
+	testCoverCache();
 	testDlQueue();
 	testMangaRepo();
 	testOpds();

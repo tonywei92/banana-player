@@ -169,6 +169,7 @@ namespace bp
 		}
 		mangaSrvFetchSerial = mangaSrvSerSerial = mangaSrvTestSerial = 0;
 		mangaSrvLoading = mangaSrvSerLoading = false;
+		mangaCoverCancelAll();
 	}
 
 	// ---- the answers ----
@@ -311,6 +312,9 @@ namespace bp
 					mangaSrvSerCursor = std::max(0, (int)mangaSrvChapters.size() - 1);
 				continue;
 			}
+			// a cover fetch answer: the grid asked for it; if it is one of ours, it is processed and the loop
+			// moves on (the catalogue handlers above don't see it)
+			if (mangaCoverOnFetched(r)) continue;
 			// an answer nothing here asks for any more (the page, the server or the list moved on): dropped
 		}
 	}
@@ -611,17 +615,26 @@ namespace bp
 			mangaSrvScroll = mangaSrvCursor / MG_COLS - MGSRV_GRID_ROWS_SHOWN + 1;
 		SDL_Rect clip{0, (int)std::lround(MGSRV_CLIP_TOP * sy), (int)std::lround(W * sx),
 			(int)std::lround((MGSRV_CLIP_BOTTOM - MGSRV_CLIP_TOP) * sy)};
+		// server cover headers: the server's auth (Basic or Kavita's API key in the URL) for every cover on this page
+		std::vector<std::pair<std::string, std::string>> srvCoverHeaders;
+		if (mangaNet && mangaNet->started())
+		{
+			const MangaServer* sv = mangaNet->servers().find(mangaSrvId);
+			if (sv) srvCoverHeaders = remoteAuth(*sv, mangaNet->servers().password(mangaSrvId), "").headers;
+		}
 		SDL_RenderSetClipRect(ren, &clip);
+		mangaCoverOnScreen.clear();
 		for (int i = mangaSrvScroll * MG_COLS; i < n; i++)
 		{
 			Rect r = mangaSrvCoverRect(i);
 			if (r.y >= MGSRV_CLIP_BOTTOM) break;
 			bool at = i == mangaSrvCursor;
-			// a generated cover until real ones are fetched: a grid never waits on a server
-			drawMangaCover(r, mangaSrvItems[i].title, at, 4, "");
+			// a generated cover until the real one arrives; the grid never waits on a server
+			drawMangaCover(r, mangaSrvItems[i].title, at, 4, "", mangaSrvItems[i].cover, &srvCoverHeaders);
 			drawTextMid(mangaSrvItems[i].title, 0, at ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h + 13, r.w, 2);
 		}
 		SDL_RenderSetClipRect(ren, nullptr);
+		mangaCoverCancelOffScreen();
 		if (rows > 1) drawScrollBar(MGSRV_TOP, MGSRV_CLIP_BOTTOM - MGSRV_TOP - 4, mangaSrvScroll, MGSRV_GRID_ROWS_SHOWN, rows);
 		if (!mangaSrvError.empty()) drawTextMid(mangaSrvError, 1, DANGER, W / 2, MGSRV_STATUS_Y, 560, 2);
 		else if (mangaSrvLoading) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, W / 2, MGSRV_STATUS_Y, 0, 2);
