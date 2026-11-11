@@ -325,8 +325,27 @@ namespace bp
 		}
 	}
 
+	void Ui::mangaVideoGuard(Player& p)
+	{
+		// no video while the manga extensions run: the handheld's 1 GB can't hold both (the extensions' server takes
+		// about 400 MB). A video playing when they start, or started while they run, is stopped as the player's own
+		// Stop would (everywhere), and the notice at the top says why. Music and photos go on.
+		if (mangaNet && mangaNet->started() && p.playing() && !p.playingAudio() && !p.playingPhoto() && !p.loading())
+		{
+			auto st = mangaNet->javaExt().state();
+			if (st == JavaExtHost::State::Starting || st == JavaExtHost::State::Running)
+			{
+				stopPressed = true;
+				videoBlockedAt = SDL_GetTicks();
+				fprintf(stderr, "manga: a video stopped (the extensions are running)\n");
+			}
+		}
+	}
+
 	std::string Ui::extNoticeText() const
 	{
+		if (videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000)
+			return "Video stopped: no video while manga extensions run";
 		if (!mangaNet || !mangaNet->started()) return "";
 		int st = (int)mangaNet->javaExt().state();
 		Uint32 now = SDL_GetTicks();
@@ -349,7 +368,8 @@ namespace bp
 	{
 		std::string t = extNoticeText();
 		if (t.empty()) return;
-		bool failed = extNoticeState == (int)JavaExtHost::State::Failed;
+		bool failed = extNoticeState == (int)JavaExtHost::State::Failed ||
+			(videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000);
 		bool ready = extNoticeState == (int)JavaExtHost::State::Running;
 		int tw = (int)std::lround(textWidth(t, 0) / sx);
 		Rect r{W / 2 - (tw + 40) / 2, 8, tw + 40, 30};

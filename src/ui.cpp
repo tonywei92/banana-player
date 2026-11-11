@@ -160,7 +160,8 @@ namespace bp
 		// L2/R2: the chapter before or after, over what plays and its two pages (the Chapters page's mark follows).
 		// Not in START's menu, not over a photo (its keys are its own), and nothing with Button hotkeys off: they
 		// have no touch button to stand for
-		if (b == Button::L2 || b == Button::R2)
+		// (the manga pages have their own: the reader's chapter before or after, the series page's Download)
+		if ((b == Button::L2 || b == Button::R2) && page != Page::Manga && page != Page::MangaSeries && page != Page::MangaRead)
 		{
 			if (p.settings.buttonHotkeys && !inMenu && p.playing() && !p.playingPhoto() && p.error.empty() &&
 				(page == Page::Main || page == Page::Tracks || page == Page::Chapters))
@@ -454,6 +455,7 @@ namespace bp
 
 	void Ui::tick(Player& p)
 	{
+		mangaVideoGuard(p);
 		// the rows' durations: none probed while a file opens; the rows on screen first
 		if (durWorker)
 		{

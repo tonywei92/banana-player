@@ -1274,6 +1274,8 @@ namespace bp
 		// the extensions starting (about 25 s on the handheld), on every page: a pill at the top, its seconds counting,
 		// then "Extensions ready" a moment. Its text is in signature(), so it redraws as the seconds change
 		mutable int extNoticeState = -1;
+		Uint32 videoBlockedAt = 0;
+		void mangaVideoGuard(Player& p);	// (ui_manga_java.cpp)	// a video stopped because the extensions run: the notice says so a moment
 		mutable Uint32 extNoticeAt = 0;
 		std::string extNoticeText() const;
 		void drawExtNotice();
