@@ -538,6 +538,11 @@ int main(int argc, char** argv)
 		if (browserMode)
 		{
 			ui.startBrowser(player, startFolder);
+			{
+				int tw = 0, th = 0;
+				SDL_GL_GetDrawableSize(top, &tw, &th);
+				player.setTopSize(tw, th);	// (the idle icon in whole panel pixels)
+			}
 			player.showIdle(true);
 			player.wakeOutput();
 		}

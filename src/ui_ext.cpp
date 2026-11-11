@@ -227,7 +227,11 @@ namespace bp
 			SDL_SetTextureScaleMode(mangaIconTex, SDL_ScaleModeNearest);	// pixel art: no blur
 #endif
 		}
+		// a whole number of screen pixels per icon pixel (no uneven pixels, as a game not at integer scale would
+		// show), the largest that fits, centred in the place given
 		SDL_Rect d = devRect(r);
-		SDL_RenderCopy(ren, mangaIconTex, nullptr, &d);
+		int k = std::max(1, std::min(d.w, d.h) / MANGA_ICON_SIZE), s = k * MANGA_ICON_SIZE;
+		SDL_Rect c{d.x + (d.w - s) / 2, d.y + (d.h - s) / 2, s, s};
+		SDL_RenderCopy(ren, mangaIconTex, nullptr, &c);
 	}
 }

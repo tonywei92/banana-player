@@ -1520,6 +1520,8 @@ namespace bp
 		{
 			const char* cmd[] = {"osd-overlay", "3", "none", "", nullptr};
 			mpv_command_async(mpv, 0, cmd);
+			const char* cmd7[] = {"osd-overlay", "7", "none", "", nullptr};
+			mpv_command_async(mpv, 0, cmd7);
 			return;
 		}
 		// the icon as ASS drawings, a run of pixels a rectangle, one event a colour; on a 960x720 canvas
@@ -1527,9 +1529,14 @@ namespace bp
 		std::string ev;
 		if (APP_ICON_EXPERIMENT)
 		{
-			// the full-colour icon (app_icon.h), 48 cells of 4 units (the same 192 as the logo's): each colour rounded
-			// a little, so a few dozen runs of colours, not one per pixel
-			const int q = 4, n = APP_ICON_SIZE;
+			// the full-colour icon (app_icon.h) in its own overlay at the panel's own pixels, each icon pixel a whole
+			// number of them (about the logo's 192 units of 720), so no pixel comes out wider than its neighbours;
+			// each colour rounded a little, so a few dozen runs of colours, not one per pixel
+			const int n = APP_ICON_SIZE;
+			const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
+			const int q = std::max(1, (int)std::lround(192.0 * ph / 720 / n));
+			const int ix = pw / 2 - n * q / 2, iy = (int)std::lround(110.0 * ph / 720);
+			std::string iev;
 			std::map<uint32_t, std::string> paths;
 			auto colourAt = [&](int x, int y) -> int64_t {
 				const unsigned char* c = APP_ICON_RGBA + (y * n + x) * 4;
@@ -1544,8 +1551,8 @@ namespace bp
 					int e = x;
 					while (e < n && colourAt(e, y) == c) e++;
 					char r[96];
-					// (one unit taller than its row: the next row covers it, and no hairline shows between them)
-					snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * q, y * q, e * q, y * q, e * q, (y + 1) * q + 1, x * q, (y + 1) * q + 1);
+					// (whole panel pixels: rows meet exactly, no hairline and no overlap)
+					snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * q, y * q, e * q, y * q, e * q, (y + 1) * q, x * q, (y + 1) * q);
 					paths[(uint32_t)c] += r;
 					x = e;
 				}
@@ -1553,10 +1560,13 @@ namespace bp
 			{
 				char head[128];
 				// (ASS colours are &HBBGGRR&)
-				snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c&H%02X%02X%02X&\\p1}", 480 - n * q / 2, y0,
+				snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c&H%02X%02X%02X&\\p1}", ix, iy,
 					kv.first & 0xFF, (kv.first >> 8) & 0xFF, (kv.first >> 16) & 0xFF);
-				ev += head + kv.second + "{\\p0}\n";
+				iev += head + kv.second + "{\\p0}\n";
 			}
+			std::string rw = std::to_string(pw), rh = std::to_string(ph);
+			const char* icmd[] = {"osd-overlay", "7", "ass-events", iev.c_str(), rw.c_str(), rh.c_str(), "0", "no", "no", nullptr};
+			mpv_command_async(mpv, 0, icmd);
 		}
 		else
 		{
