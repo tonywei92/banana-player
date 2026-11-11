@@ -101,7 +101,7 @@ namespace bp
 		switch (mstTab)
 		{
 		case MST_INSTALLED: return (int)mangaSourcesInstalled().size() + mangaJavaInstalledRows(p);
-		case MST_AVAILABLE: return (int)mangaSourcesAvailable(p).size() + mangaJavaAvailableRows(p);
+		case MST_AVAILABLE: return (int)mangaSourcesInstalled().size() + mangaJavaAvailableRows(p) + (int)mangaSourcesAvailable(p).size();
 		default: return (int)mangaSourcesRepos().size() + mangaJavaRepoRows() + 1;	// (+ Add repository…)
 		}
 	}
@@ -274,11 +274,11 @@ namespace bp
 		if (mstAvMenu) return mangaAvMenuKey(b, p);
 		if (mstJavaModal != MJM_NONE) return mangaJavaModalKey(b, p);
 		if (mstModal != MSM_NONE) return mangaSourcesModalKey(b, p);
-		// LEFT/RIGHT step the sub-lists here (the app's pages are L/R), the cursor of each kept
-		if (b == Button::Left || b == Button::Right)
+		// L1/R1 step between Available and Repositories (the cursor of each kept); LEFT/RIGHT go a page up or down
+		if (b == Button::L || b == Button::R)
 		{
 			int was = mstTab;
-			mstTab = std::clamp(mstTab + (b == Button::Right ? 1 : -1), 0, (int)MANGA_SOURCES_TABS - 1);
+			mstTab = b == Button::R ? MST_REPOSITORIES : MST_AVAILABLE;
 			if (mstTab != was) mstLocal++;
 			return false;
 		}
@@ -300,6 +300,8 @@ namespace bp
 		{
 		case Button::Up: if (n > 0) cur = (cur + n - 1) % n; break;
 		case Button::Down: if (n > 0) cur = (cur + 1) % n; break;
+		case Button::Left: if (n > 0) cur = std::max(0, cur - MS_ROWS); break;
+		case Button::Right: if (n > 0) cur = std::min(n - 1, cur + MS_ROWS); break;
 		case Button::A: mangaSourcesAct(p); break;
 		case Button::X:
 			// Available: its menu (Refresh, Languages)
@@ -349,14 +351,26 @@ namespace bp
 		}
 		if (mstTab == MST_AVAILABLE)
 		{
+			// the rows: the installed Lua sources (their details: Update, Uninstall), the extensions (installed on
+			// top), then the Lua sources to install
+			auto inst = mangaSourcesInstalled();
 			auto list = mangaSourcesAvailable(p);
-			if (cur >= 0 && cur < (int)list.size())
+			int li = (int)inst.size(), jv = mangaJavaAvailableRows(p);
+			if (cur >= 0 && cur < li)
 			{
-				const MangaRepos::AvailableSource& a = list[cur];
+				mstModal = MSM_DETAILS;
+				mstModalCursor = 0;
+				mstModalId = inst[cur].fullId;
+				mstUninstallArmed = false;
+				mstLocal++;
+			}
+			else if (cur >= li && cur < li + jv) mangaJavaAvailableAct(cur - li, p);
+			else if (cur >= li + jv && cur - li - jv < (int)list.size())
+			{
+				const MangaRepos::AvailableSource& a = list[cur - li - jv];
 				if (mstInstalling.count(a.fullId)) return;
 				mangaSourcesInstall(a.fullId, a.repo, a.id, a.name, p);
 			}
-			else if (cur >= (int)list.size()) mangaJavaAvailableAct(cur - (int)list.size(), p);
 			return;
 		}
 		auto list = mangaSourcesRepos();
@@ -481,10 +495,10 @@ namespace bp
 			if (!mangaSourcesModalBox().hit(x, y)) mangaSourcesCloseModal();
 			return false;
 		}
-		for (int i = 0; i < MANGA_SOURCES_TABS; i++)
+		for (int i = 0; i < 2; i++)
 			if (mangaSourcesSegRect(i).hit(x, y))
 			{
-				mstTab = i;
+				mstTab = i == 0 ? MST_AVAILABLE : MST_REPOSITORIES;
 				mstModal = MSM_NONE;
 				mstJavaModal = MJM_NONE;
 				mstLocal++;
@@ -510,15 +524,46 @@ namespace bp
 		drawMangaSources(p);
 	}
 
+
+	// an installed Lua source's row: name, language, version, its Update chip (Available lists these on top)
+	void Ui::drawMangaLuaInstalledRow(const MangaRepos::InstalledSource& s, Rect r, bool at)
+	{
+		if (at) drawFocus(r);
+		int mid = r.y + r.h / 2;
+		SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
+		drawTextMid(sourceName(s), 1, ink, 32, mid - 10, 450);
+		int x = 32;
+		if (!s.lang.empty())
+		{
+			int cw = (int)std::lround(textWidth(s.lang, 0) / sx) + 14;
+			fillRound({x, mid + 3, cw, 18}, TRACK, R_CHIP);
+			drawTextMid(s.lang, 0, at ? DIM_ON : TEXT, x + cw / 2, mid + 12, cw - 6, 2);
+			x += cw + 8;
+		}
+		drawTextMid(s.version.empty() ? "version unknown" : s.version, 0, soft, x, mid + 12, 240);
+		if (mstInstalling.count(s.fullId)) drawTextMid("Updating\xE2\x80\xA6", 0, ACCENT, 608, mid, 0, 1);
+		else if (s.updateAvailable)
+		{
+			// the design's Update mark: a chip on the row's right
+			int w = (int)std::lround(textWidth("Update", 0) / sx) + 16;
+			fillRound({608 - w, mid - 10, w, 20}, ACCENT, R_CHIP);
+			drawTextMid("Update", 0, ON_ACCENT, 608 - w / 2, mid, w - 6, 2);
+		}
+	}
+
 	void Ui::drawMangaSources(const Player& p)
 	{
-		for (int i = 0; i < MANGA_SOURCES_TABS; i++)
+		if (mstTab == MST_INSTALLED) mstTab = MST_AVAILABLE;
+		for (int i = 0; i < 2; i++)
 		{
+			int tab = i == 0 ? MST_AVAILABLE : MST_REPOSITORIES;
 			Rect r = mangaSourcesSegRect(i);
-			bool at = i == mstTab;
+			bool at = tab == mstTab;
 			drawBox(r, at ? ACCENT : SURFACE, R_CHIP);
-			drawTextMid(MST_NAMES[i], 0, at ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
+			drawTextMid(MST_NAMES[tab], 0, at ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
 		}
+		drawTextMid("L", 0, ACCENT, 8, mangaSourcesSegRect(0).y + 13, 0, 2);
+		drawTextMid("R", 0, ACCENT, 632, mangaSourcesSegRect(1).y + 13, 0, 2);
 		int n = mangaSourcesRows(p);
 		int& cur = mstCursor[mstTab], &sc = mstScroll[mstTab];
 		if (n > 0 && cur >= n) cur = n - 1;
@@ -538,30 +583,7 @@ namespace bp
 				drawEmpty(G_BLOCKS, "No sources yet", "Add a repository, then install from Available", nullptr);
 			for (int i = sc; i < lua && i < sc + MS_ROWS; i++)
 			{
-				const MangaRepos::InstalledSource& s = list[i];
-				Rect r = mangaSourcesRowRect(i - sc);
-				bool at = i == cur;
-				if (at) drawFocus(r);
-				int mid = r.y + r.h / 2;
-				SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-				drawTextMid(sourceName(s), 1, ink, 32, mid - 10, 450);
-				int x = 32;
-				if (!s.lang.empty())
-				{
-					int cw = (int)std::lround(textWidth(s.lang, 0) / sx) + 14;
-					fillRound({x, mid + 3, cw, 18}, TRACK, R_CHIP);
-					drawTextMid(s.lang, 0, at ? DIM_ON : TEXT, x + cw / 2, mid + 12, cw - 6, 2);
-					x += cw + 8;
-				}
-				drawTextMid(s.version.empty() ? "version unknown" : s.version, 0, soft, x, mid + 12, 240);
-				if (mstInstalling.count(s.fullId)) drawTextMid("Updating\xE2\x80\xA6", 0, ACCENT, 608, mid, 0, 1);
-				else if (s.updateAvailable)
-				{
-					// the design's Update mark: a chip on the row's right
-					int w = (int)std::lround(textWidth("Update", 0) / sx) + 16;
-					fillRound({608 - w, mid - 10, w, 20}, ACCENT, R_CHIP);
-					drawTextMid("Update", 0, ON_ACCENT, 608 - w / 2, mid, w - 6, 2);
-				}
+				drawMangaLuaInstalledRow(list[i], mangaSourcesRowRect(i - sc), i == cur);
 			}
 			for (int i = std::max(sc, lua); i < lua + java && i < sc + MS_ROWS; i++)
 				drawMangaJavaRow(MST_INSTALLED, i - lua, mangaSourcesRowRect(i - sc), i == cur, true, p);
@@ -569,15 +591,19 @@ namespace bp
 		}
 		else if (mstTab == MST_AVAILABLE)
 		{
+			// installed Lua sources, the extensions (installed on top), then the Lua sources to install
+			auto inst = mangaSourcesInstalled();
 			auto list = mangaSourcesAvailable(p);
-			int lua = (int)list.size(), java = mangaJavaAvailableRows(p);
-			if (lua + java == 0 && javaStatus.empty())
+			int li = (int)inst.size(), jv = mangaJavaAvailableRows(p), total = li + jv + (int)list.size();
+			if (total == 0 && javaStatus.empty())
 				drawEmpty(G_DOWNLOAD, "Nothing to install", "Add a repository first", nullptr);
-			for (int i = sc; i < lua && i < sc + MS_ROWS; i++)
+			for (int k = sc; k < total && k < sc + MS_ROWS; k++)
 			{
-				const MangaRepos::AvailableSource& a = list[i];
-				Rect r = mangaSourcesRowRect(i - sc);
-				bool at = i == cur;
+				if (k < li) { drawMangaLuaInstalledRow(inst[k], mangaSourcesRowRect(k - sc), k == cur); continue; }
+				if (k < li + jv) { drawMangaJavaRow(MST_AVAILABLE, k - li, mangaSourcesRowRect(k - sc), k == cur, true, p); continue; }
+				const MangaRepos::AvailableSource& a = list[k - li - jv];
+				Rect r = mangaSourcesRowRect(k - sc);
+				bool at = k == cur;
 				if (at) drawFocus(r);
 				int mid = r.y + r.h / 2;
 				SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
@@ -594,9 +620,7 @@ namespace bp
 				if (mstInstalling.count(a.fullId)) drawTextMid("Installing\xE2\x80\xA6", 0, ACCENT, 608, mid, 0, 1);
 				else drawTextMid(elideLeft(a.repoName, 0, 150), 0, soft, 608, mid, 0, 1);
 			}
-			for (int i = std::max(sc, lua); i < lua + java && i < sc + MS_ROWS; i++)
-				drawMangaJavaRow(MST_AVAILABLE, i - lua, mangaSourcesRowRect(i - sc), i == cur, true, p);
-			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, lua + java);
+			drawScrollBar(MS_ROW_TOP, MS_ROWS * MS_ROW_H - 4, sc, MS_ROWS, total);
 		}
 		else
 		{
@@ -642,10 +666,10 @@ namespace bp
 		for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, DIM, 40, 396 + (int)i * 20, 552);
 
 		if (mstTab == MST_INSTALLED)
-			drawHints({{"A", "Details"}, {"X", "Options"}, {"LEFT/RIGHT", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+			drawHints({{"A", "Details"}, {"X", "Options"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 		else if (mstTab == MST_AVAILABLE)
-			drawHints({{"A", "Install"}, {"X", "Menu"}, {"LEFT/RIGHT", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
-		else drawHints({{"A", "Open"}, {"LEFT/RIGHT", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+			drawHints({{"A", "Install"}, {"X", "Menu"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+		else drawHints({{"A", "Open"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 
 		if (mstModal != MSM_NONE) drawMangaSourceModal(p);
 		if (mstJavaModal != MJM_NONE) drawMangaJavaModal(p);

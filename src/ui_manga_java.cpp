@@ -192,7 +192,16 @@ namespace bp
 		if (list[local]->isInstalled)
 		{
 			if (mstJavaBusy.count(pkg)) return;
-			if (!list[local]->hasUpdate) { p.osd("Installed \xC2\xB7 up to date", 1500); return; }
+			// up to date: its details (Uninstall there), as the Installed list used to open
+			if (!list[local]->hasUpdate)
+			{
+				mstJavaModal = MJM_DETAILS;
+				mstJavaModalCursor = 0;
+				mstJavaModalId = pkg;
+				mstJavaUninstallArmed = false;
+				mstJavaLocal++;
+				return;
+			}
 			if (!mangaNet->javaSources().update(pkg, error))
 			{
 				p.osd(error.empty() ? "The extension couldn't be updated" : error, 3000);

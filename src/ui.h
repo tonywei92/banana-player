@@ -1481,7 +1481,10 @@ namespace bp
 		// the events their fetches leave (mangaSourcesTick turns them into toasts). None of it runs while the page is
 		// closed.
 		enum MangaSourcesTab { MST_INSTALLED, MST_AVAILABLE, MST_REPOSITORIES, MANGA_SOURCES_TABS };
-		int mstTab = MST_INSTALLED;
+		// (Installed is no tab of its own now: Available lists the installed on top; the segments are Available and
+		// Repositories, L1/R1 between them)
+		int mstTab = MST_AVAILABLE;
+		void drawMangaLuaInstalledRow(const MangaRepos::InstalledSource& s, Rect r, bool at);
 		int mstCursor[MANGA_SOURCES_TABS] = {}, mstScroll[MANGA_SOURCES_TABS] = {};
 		std::set<std::string> mstInstalling;		// full ids on their way (Installing… on the row), and Updating…
 		std::map<std::string, std::string> mstInstallName;	// full id -> its name, for the answer's toast
@@ -1600,7 +1603,7 @@ namespace bp
 		void drawMangaSourcesPage(const Player& p);	// its header ("Sources"), then the page
 		void drawMangaSourceModal(const Player& p);
 		static constexpr int MS_ROW_TOP = 102, MS_ROWS = 4, MS_ROW_H = 58;
-		Rect mangaSourcesSegRect(int i) const { return {16 + i * 204, 68, 200, 26}; }	// under the header (a page of its own)
+		Rect mangaSourcesSegRect(int i) const { return {16 + i * 306, 68, 302, 26}; }	// i: 0 Available, 1 Repositories	// under the header (a page of its own)
 		Rect mangaSourcesRowRect(int i) const { return {16, MS_ROW_TOP + i * MS_ROW_H, 608, MS_ROW_H - 4}; }
 		Rect mangaSourcesModalBox() const
 		{
