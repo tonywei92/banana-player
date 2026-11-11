@@ -43,6 +43,42 @@ namespace bp
 		constexpr const char* JRE_OLD_DIR = "jre";	// 0.6.4 test builds: moved to JRE_DIR at configure
 		constexpr const char* JRE_STAGE = "runtime.tmp";
 		constexpr const char* SERVER_LOG = "server.log";
+		// the running server's pid, while it runs: a player that crashed (or was killed) never stopped it, and the next
+		// start ends it (leftoverStop)
+		constexpr const char* PID_FILE = "server.pid";
+
+		// A server left running by a player that didn't get to stop it: its pid from PID_FILE, ended only when that
+		// process is still ours (its command line names our folder, so a pid the system gave to something else since
+		// is left alone). SIGTERM now, SIGKILL 3 s later from a thread of its own (the start never waits on it).
+		// /proc is Linux's: elsewhere (the desktop) the file is only removed.
+		void leftoverStop(const std::string& javaDir)
+		{
+			std::string file = javaDir + "/" + PID_FILE;
+			FILE* f = fopen(file.c_str(), "r");
+			if (!f) return;
+			long pid = 0;
+			if (fscanf(f, "%ld", &pid) != 1) pid = 0;
+			fclose(f);
+			unlink(file.c_str());
+	#ifdef __linux__
+			if (pid <= 1) return;
+			auto ours = [javaDir](long p) {
+				std::ifstream in("/proc/" + std::to_string(p) + "/cmdline", std::ios::binary);
+				std::string cmd((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+				return !cmd.empty() && cmd.find(javaDir + "/") != std::string::npos;
+			};
+			if (!ours(pid)) return;
+			fprintf(stderr, "javaext: a server left running by the last run (pid %ld): stopping it\n", pid);
+			if (kill(-(pid_t)pid, SIGTERM) != 0) kill((pid_t)pid, SIGTERM);
+			std::thread([pid, ours] {
+				std::this_thread::sleep_for(std::chrono::seconds(3));
+				if (ours(pid) && (kill(-(pid_t)pid, SIGKILL) == 0 || kill((pid_t)pid, SIGKILL) == 0))
+					fprintf(stderr, "javaext: the last run's server (pid %ld) didn't stop: SIGKILL\n", pid);
+			}).detach();
+	#else
+			(void)pid;
+	#endif
+		}
 
 		int64_t sdlNow()
 		{
@@ -439,6 +475,7 @@ namespace bp
 			std::string oldDir = d->javaDir + "/" + JRE_OLD_DIR, newDir = d->javaDir + "/" + JRE_DIR;
 			if (isFile(oldDir + "/bin/java") && !isFile(newDir + "/bin/java") && rename(oldDir.c_str(), newDir.c_str()) == 0)
 				fprintf(stderr, "javaext: moved the runtime from %s to %s\n", JRE_OLD_DIR, JRE_DIR);
+			leftoverStop(d->javaDir);
 		}
 		if (d->cardInstalled(nullptr))
 		{
@@ -985,6 +1022,12 @@ namespace bp
 		pid = child;
 		port = p;
 		++procGen;
+		// its pid on the card while it runs, for the next start to end it if this player never gets to (a crash)
+		if (FILE* pf = fopen((javaDir + "/" + PID_FILE).c_str(), "w"))
+		{
+			fprintf(pf, "%ld\n", (long)child);
+			fclose(pf);
+		}
 		stopReq = idleStop = false;
 		lastWant = sdlNow();
 		set(State::Starting, "");
@@ -1066,6 +1109,7 @@ namespace bp
 			}
 		}
 
+		unlink((javaDir + "/" + PID_FILE).c_str());	// it ended: nothing for the next start to stop
 		std::string last = lastLogLine(javaDir + "/" + SERVER_LOG);
 		std::lock_guard<std::mutex> g(lock);
 		if (gen != procGen) return;

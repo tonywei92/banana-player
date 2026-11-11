@@ -2184,56 +2184,78 @@ namespace bp
 	{
 		int pages = readerStatus.pages;
 		if (pages <= 0) { mangaPagesClose(p); return false; }
-		if (pt.kind == Pointer::Down)
-		{
-			mangaPagesTouch = false;
-			mangaPagesPressed = -1;
-			// the back icon: same as B (close the grid)
-			if (buttonRect(BACK_ICON).hit(x, y)) { mangaPagesClose(p); return false; }
-			// a tap on a thumbnail: jump to it and close
+		int rows = (pages + MPG_COLS - 1) / MPG_COLS;
+		int shown = std::max(1, (H - MPG_TOP - 44) / MPG_ROW_H);
+		// the thumbnail under a point, -1 for none
+		auto thumbAt = [&](int px, int py) {
 			for (int i = mangaPagesScroll * MPG_COLS; i < pages; i++)
 			{
 				Rect r = mangaPageRect(i);
 				if (r.y >= H - 44) break;	// below the hints
-				if (r.hit(x, y))
-				{
-					mangaSeek(i);
-					mangaPagesClose(p);
-					return false;
-				}
+				if (r.hit(px, py)) return i;
 			}
-			// elsewhere on the grid: a drag starts
+			return -1;
+		};
+		if (pt.kind == Pointer::Down)
+		{
+			mangaPagesTouch = false;
+			mangaPagesMoved = false;
+			mangaPagesPressed = -1;
+			// the back icon: same as B (close the grid)
+			if (buttonRect(BACK_ICON).hit(x, y)) { mangaPagesClose(p); return false; }
+			// anywhere on the grid, a thumbnail too: a drag or a tap, told apart when the finger lifts (a thumbnail
+			// opening on the touch left nothing to start a drag from: the grid is all thumbnails)
 			if (y >= MPG_TOP && y < H - 44)
 			{
 				mangaPagesTouch = true;
-				mangaPagesTouchY = pt.y;
+				mangaPagesTouchY = mangaPagesTouchStartY = pt.y;
+				mangaPagesPressed = thumbAt(x, y);
 			}
 			return false;
 		}
 		if (pt.kind == Pointer::Move && mangaPagesTouch)
 		{
-			// the list follows the finger: dy in 0..1 units, scaled to rows
-			double dy = pt.y - mangaPagesTouchY;
-			mangaPagesTouchY = pt.y;
-			int rows = (pages + MPG_COLS - 1) / MPG_COLS;
-			int shown = (H - MPG_TOP - 44) / MPG_ROW_H;
-			// one panel height of drag = one screenful of rows; dy is in panel fractions
-			int shift = (int)std::lround(-dy * shown);
+			// past a small slop it's a drag (pt.y is in panel heights: 0.03 is about 14 px)
+			if (!mangaPagesMoved && std::fabs(pt.y - mangaPagesTouchStartY) > 0.03)
+			{
+				mangaPagesMoved = true;
+				mangaPagesPressed = -1;
+			}
+			if (!mangaPagesMoved) return false;
+			// the grid follows the finger, a row per row's height of drag (pt.y is in panel heights). What's under a
+			// whole row stays owed (the finger's place moves on only by the rows taken), so a slow drag scrolls too;
+			// the small epsilon keeps a drag of exactly one row from rounding down to none
+			const double rowH = (double)MPG_ROW_H / H;
+			double owed = -(pt.y - mangaPagesTouchY) / rowH;
+			int shift = (int)(owed + (owed > 0 ? 1e-6 : -1e-6));
 			if (shift != 0)
 			{
+				int was = mangaPagesScroll;
 				mangaPagesScroll = std::clamp(mangaPagesScroll + shift, 0, std::max(0, rows - shown));
-				// the cursor follows if it was left behind
-				if (mangaPagesCursor < mangaPagesScroll * MPG_COLS)
-					mangaPagesCursor = std::clamp(mangaPagesScroll * MPG_COLS, 0, pages - 1);
-				if (mangaPagesCursor >= (mangaPagesScroll + shown) * MPG_COLS)
-					mangaPagesCursor = std::clamp((mangaPagesScroll + shown - 1) * MPG_COLS + MPG_COLS - 1, 0, pages - 1);
-				mangaSeek(mangaPagesCursor);
+				mangaPagesTouchY -= shift * rowH;
+				if (mangaPagesScroll != was)
+				{
+					// the cursor follows if it was left behind
+					if (mangaPagesCursor < mangaPagesScroll * MPG_COLS)
+						mangaPagesCursor = std::clamp(mangaPagesScroll * MPG_COLS, 0, pages - 1);
+					if (mangaPagesCursor >= (mangaPagesScroll + shown) * MPG_COLS)
+						mangaPagesCursor = std::clamp((mangaPagesScroll + shown - 1) * MPG_COLS + MPG_COLS - 1, 0, pages - 1);
+					mangaSeek(mangaPagesCursor);
+				}
 			}
 			return false;
 		}
-		if (mangaPagesTouch)
+		if (pt.kind == Pointer::Up && mangaPagesTouch)
 		{
 			mangaPagesTouch = false;
+			// a tap (no drag) that lifts on the thumbnail it touched: that page, and the grid closes
+			int i = mangaPagesPressed;
+			mangaPagesPressed = -1;
+			if (!mangaPagesMoved && i >= 0 && thumbAt(x, y) == i)
+			{
+				mangaSeek(i);
+				mangaPagesClose(p);
+			}
 			return false;
 		}
 		return false;

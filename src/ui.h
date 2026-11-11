@@ -1365,7 +1365,8 @@ namespace bp
 		int mangaPagesCursor = 0;	// the page under the cursor (0-based)
 		int mangaPagesScroll = 0;	// the first row shown
 		bool mangaPagesTouch = false;
-		double mangaPagesTouchY = 0;
+		double mangaPagesTouchY = 0, mangaPagesTouchStartY = 0;	// the finger's last place the scroll took, and where it went down
+		bool mangaPagesMoved = false;	// the finger moved far enough to be a drag: lifting it then doesn't open a page
 		int mangaPagesPressed = -1;	// the thumbnail under the finger (-1: none)
 		// the grid's own textures: one SDL_Texture per decoded page, made a few per frame so a turn never stalls
 		struct ThumbTex { SDL_Texture* tex = nullptr; int w = 0, h = 0; Uint32 used = 0; };
