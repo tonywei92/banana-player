@@ -347,6 +347,94 @@ static void testReaderFetchPlan()
 	CHECK_EQ(ReaderFetchPlan::stale(s), (std::vector<int>{1, 5}));
 	s.inFlight = {2, 3};
 	CHECK_EQ(ReaderFetchPlan::stale(s), std::vector<int>{});
+
+	// a jump's target goes alone: a neighbour already out is dropped while the target is not in
+	s = {};
+	s.wanted = {4, 5, 6};
+	s.inFlight = {3, 4, 5, 7};
+	s.target = 5;
+	s.targetAt = 1000;
+	s.now = 1100;
+	CHECK_EQ(ReaderFetchPlan::stale(s), (std::vector<int>{3, 4, 7}));
+	s.targetIn = true;
+	CHECK_EQ(ReaderFetchPlan::stale(s), (std::vector<int>{3, 7}));
+}
+
+// The Seek rule: a tap goes at once, a drag's seeks coalesce, and the run's last page goes once they rest.
+static void testSeekRun()
+{
+	SeekRun r;
+	// the first Seek of a run: a tap on the slider, the grid's A
+	CHECK_EQ(r.seek(30, 1000) == SeekRun::Now::Commit, true);
+	CHECK_EQ(r.seeks(), 1);
+	CHECK_EQ(r.pending(), false);
+	CHECK_EQ(r.due(1000), false);
+	// more within the settle window: a drag, its target the last page passed over
+	CHECK_EQ(r.seek(4, 1040) == SeekRun::Now::Hold, true);
+	CHECK_EQ(r.seek(9, 1080) == SeekRun::Now::Hold, true);
+	CHECK_EQ(r.pending(), true);
+	CHECK_EQ(r.target(), 9);
+	CHECK_EQ(r.seeks(), 3);
+	// 150 ms after the last one, not before
+	CHECK_EQ(r.due(1229), false);
+	CHECK_EQ(r.due(1230), true);
+	r.commit();
+	CHECK_EQ(r.pending(), false);
+	CHECK_EQ(r.target(), -1);
+	CHECK_EQ(r.due(2000), false);
+	// a seek after the rest is a new run, at once
+	CHECK_EQ(r.seek(12, 2000) == SeekRun::Now::Commit, true);
+	CHECK_EQ(r.due(2001), false);
+	// a run whose target is never committed: the next seek past the window is the newest target, at once
+	CHECK_EQ(r.seek(14, 2100) == SeekRun::Now::Hold, true);
+	CHECK_EQ(r.seek(20, 2300) == SeekRun::Now::Commit, true);
+	CHECK_EQ(r.seeks(), 1);
+	// reset (a chapter closed): no run, so the next seek is a tap
+	r.reset();
+	CHECK_EQ(r.pending(), false);
+	CHECK_EQ(r.seek(2, 1) == SeekRun::Now::Commit, true);
+}
+
+// After a jump the target goes first, alone, until it is in (or 2 s), then the preload around it.
+static void testReaderFetchTargetFirst()
+{
+	std::vector<int> w = {4, 5, 6};
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 5, false, 1000, 1100), std::vector<int>{5});
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 5, false, 1000, 2999), std::vector<int>{5});
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 5, false, 1000, 3000), w);
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 5, true, 1000, 1100), w);	// in: the preload may go
+	CHECK_EQ(ReaderFetchPlan::ordered(w, -1, false, 1000, 1100), w);	// no jump
+	CHECK_EQ(ReaderFetchPlan::ordered(w, 9, false, 1000, 1100), w);	// not in the list: nothing to wait for
+
+	ReaderFetchPlan::State s;
+	s.wanted = {4, 5, 6};
+	s.max = 3;
+	s.target = 5;
+	s.targetAt = 1000;
+	s.now = 1100;
+	// the target alone: the neighbours do not take the free slots
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{5}));
+	// its request out: still no neighbour starts
+	s.inFlight = {5};
+	CHECK_EQ(ReaderFetchPlan::next(s), std::vector<int>{});
+	// in the cache: the preload follows
+	s.inFlight = {};
+	s.done = {5};
+	s.targetIn = true;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 6}));
+	// a failed target is not waited on: the preload can start after it
+	s.done = {};
+	s.failed = {5};
+	s.targetIn = true;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 6}));
+	// 2 s without it: the preload starts anyway
+	s = {};
+	s.wanted = {4, 5, 6};
+	s.max = 3;
+	s.target = 5;
+	s.targetAt = 1000;
+	s.now = 3000;
+	CHECK_EQ(ReaderFetchPlan::next(s), (std::vector<int>{4, 5, 6}));
 }
 
 // The browser check (design 10's backlog): a source or a page behind Cloudflare's or DDoS-Guard's challenge must say
@@ -8051,6 +8139,8 @@ int main()
 	testDurations();
 	testMangaNames();
 	testReaderFetchPlan();
+	testSeekRun();
+	testReaderFetchTargetFirst();
 	testBrowserCheck();
 	testPublicAddress();
 	testMangaRemote();

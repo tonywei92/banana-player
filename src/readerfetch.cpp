@@ -38,6 +38,12 @@ namespace bp
 			}
 			return true;
 		}
+
+		uint64_t fileSize(const std::string& path)
+		{
+			struct stat st;
+			return stat(path.c_str(), &st) == 0 && S_ISREG(st.st_mode) ? (uint64_t)st.st_size : 0;
+		}
 	}
 
 	void ReaderFetch::begin(MangaNet* n, PageCache* pc, MangaReader* r, const std::vector<std::string>& pageUrls,
@@ -55,9 +61,14 @@ namespace bp
 	void ReaderFetch::end()
 	{
 		if (net)
-			for (auto& p : inFlight) net->fetch().cancel(p.second);
+			while (!inFlight.empty())
+			{
+				auto it = inFlight.begin();
+				cancelOne(it->first, it->second, "reader closed");
+			}
 		inFlight.clear();
 		byId.clear();
+		started.clear();
 		urls.clear();
 		headers.clear();
 		limit = 0;
@@ -69,21 +80,61 @@ namespace bp
 	void ReaderFetch::pass()
 	{
 		if (!net || !cache || !reader || !reader->isOpen() || !reader->remote()) return;
+		// every pass, not only when a slot frees: the view may have moved away from what is out (and a cancelled
+		// answer that still arrives is then thrown away by own())
 		reorder();
 		fill();
 	}
 
+	void ReaderFetch::cancelOne(int index, uint64_t id, const char* why)
+	{
+		if (net) net->fetch().cancel(id);
+		auto st = started.find(id);
+		uint64_t ms = st == started.end() ? 0 : (uint64_t)(SDL_GetTicks() - (Uint32)st->second);
+		started.erase(id);
+		uint64_t bytes = 0;
+		if (cache && index >= 0 && index < (int)urls.size())
+			bytes = fileSize(cache->pathFor(urls[index]) + ".part");
+		byId.erase(id);
+		inFlight.erase(index);
+		// remembered so an answer still on its way is claimed and thrown away; a bound keeps a very long reading
+		// session's cancels from growing a set nothing else ever clears
+		if (dropped.size() >= 256) dropped.erase(dropped.begin());
+		dropped[id] = index;
+		// the reader's own in-flight mark goes too, or pagesToFetch would think the page is still out
+		if (reader) reader->pageDropped(index);
+		fprintf(stderr, "reader: page %d fetch cancelled after %llu ms, %llu bytes (%s)\n", index + 1,
+			(unsigned long long)ms, (unsigned long long)bytes, why);
+	}
+
 	bool ReaderFetch::own(MangaFetch::Result& r)
 	{
+		// a request cancelled while this answer was on its way: claim it so it is never decoded or shown
+		auto droppedIt = dropped.find(r.id);
+		if (droppedIt != dropped.end())
+		{
+			int index = droppedIt->second;
+			dropped.erase(droppedIt);
+			fprintf(stderr, "reader: page %d fetch answer after cancel, dropped\n", index + 1);
+			return true;
+		}
 		auto it = byId.find(r.id);
 		if (it == byId.end()) return false;
 		int index = it->second;
 		byId.erase(it);
 		inFlight.erase(index);
+		auto st = started.find(r.id);
+		uint64_t ms = st == started.end() ? 0 : (uint64_t)(SDL_GetTicks() - (Uint32)st->second);
+		started.erase(r.id);
 		bool here = r.error.empty() && !r.file.empty() && index >= 0 && index < (int)urls.size() &&
 			cache->has(urls[index]);
+		uint64_t bytes = 0;
+		if (index >= 0 && index < (int)urls.size())
+			bytes = cache->has(urls[index]) ? fileSize(cache->pathFor(urls[index])) : r.body.size();
 		if (here)
 		{
+			fprintf(stderr, "reader: page %d fetch done in %llu ms, %llu bytes\n", index + 1,
+				(unsigned long long)ms, (unsigned long long)bytes);
 			// the fetcher wrote past PageCache, so the cap is applied here (the oldest pages go)
 			cache->setLimit(limit);
 			reader->pageArrived(index);
@@ -94,6 +145,8 @@ namespace bp
 			std::string error = r.error.empty() ? "the file couldn't be cached" : r.error;
 			BrowserCheck check = detectBrowserCheck(r.status, r.headers, r.bodyStart);
 			if (check != BrowserCheck::None) error = browserCheckMessage(check);
+			fprintf(stderr, "reader: page %d fetch done in %llu ms, %llu bytes (failed: %s)\n", index + 1,
+				(unsigned long long)ms, (unsigned long long)bytes, error.c_str());
 			reader->pageFailed(index, error);
 		}
 		return true;
@@ -105,14 +158,16 @@ namespace bp
 		ReaderFetchPlan::State st;
 		st.wanted = reader->wantedPages();
 		for (auto& p : inFlight) st.inFlight.insert(p.first);
+		st.target = reader->jumpTarget();
+		st.targetAt = reader->jumpAt();
+		st.now = (int64_t)SDL_GetTicks();
+		st.targetIn = reader->jumpTargetIn();
+		std::set<int> wanted(st.wanted.begin(), st.wanted.end());
 		for (int index : ReaderFetchPlan::stale(st))
 		{
 			auto it = inFlight.find(index);
 			if (it == inFlight.end()) continue;
-			net->fetch().cancel(it->second);
-			byId.erase(it->second);
-			inFlight.erase(it);
-			reader->pageDropped(index);
+			cancelOne(index, it->second, wanted.count(index) ? "jump target first" : "no longer wanted");
 		}
 	}
 
@@ -137,6 +192,8 @@ namespace bp
 			}
 			inFlight[index] = id;
 			byId[id] = index;
+			started[id] = (uint64_t)SDL_GetTicks();
+			fprintf(stderr, "reader: page %d fetch start\n", index + 1);
 		}
 	}
 }

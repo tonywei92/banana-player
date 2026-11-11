@@ -8,6 +8,7 @@
 #include "pagedecode.h"
 #include "pagerender.h"
 #include "paged.h"
+#include "readerfetchplan.h"
 #include "settings.h"
 #include "strip.h"
 #include <SDL.h>
@@ -51,6 +52,10 @@ namespace bp
 		// a request let go because the reader moved away (not a failure: no error, no retry until wanted again)
 		void pageDropped(int index);
 		std::vector<int> wantedPages() const;
+		// the fetcher's plan follows a jump through these: the target, when it committed, and whether it is in
+		int jumpTarget() const { return planTarget; }
+		int64_t jumpAt() const { return planAt; }
+		bool jumpTargetIn() const;
 		const Headers& pageHeaders() const { return headers; }
 		void close();
 		bool isOpen() const { return opened; }
@@ -63,6 +68,10 @@ namespace bp
 		void command(int kind, double v, int64_t ms, double v2 = 0, double v3 = 0);
 		// the pages decoded ahead of the one read (the Preload setting): applied at once, the queue made again
 		void setPreload(int n);
+		// each pass, before the fetcher: a rest of Seeks (a slider or grid drag) commits its target then
+		void tick(int64_t now);
+		// a Seek run is held (a drag): main keeps its loop short so the rest is noticed at once
+		bool seekPending() const { return seeks.pending(); }
 		// a pass of main's loop: decoded pages taken in, the motion advanced; true when the top panel needs a frame
 		bool frame(int64_t now);
 		// the frame, into the bound framebuffer
@@ -102,6 +111,11 @@ namespace bp
 		// files is ready: the models, the page and the first want()
 		bool begin(const std::string& label, int page, int w, int h, int m, int f);
 		void want();
+		// the reader's live order (visible pages first, then the preload), from which want() queues
+		std::vector<int> liveWanted() const;
+		// a jump's target: from -> to, its preload held until it is in (or the grace)
+		void commitJump(int from, int to, int seeksCount, int64_t now);
+		const char* modeName() const;
 		void applyFit();
 		void applyZoom();
 		void setFullscreen(bool on, int hinge480);
@@ -124,6 +138,13 @@ namespace bp
 		int64_t zoomAt = 0;	// when the last Zoom came; the re-decode waits for it to rest (0: none waiting)
 		int angle = 0;	// the page turn in degrees (0, 90, 180, 270); paged modes only; back to 0 on a new chapter
 		std::vector<std::string> files;
+		// the fetch plan follows the view only once a Seek run has settled; the jump's target goes first, alone
+		std::vector<int> fetchWanted;
+		int planPage = -1;		// the page the last jump committed (the next log's "from")
+		int planTarget = -1;	// the page a jump waits on before its neighbours may start
+		int64_t planAt = 0;		// when that jump committed (the target's grace runs from here)
+		SeekRun seeks;
+		std::set<int> wantKeep;	// the pages a decode result is still welcome for (want() sets it)
 		// a URL chapter: files[i] = pageCache->pathFor(urls[i]); fetching and failed are the pages' requests and their
 		// last failure, so a wanted page is asked for once and a dead URL doesn't spin
 		std::vector<std::string> urls;

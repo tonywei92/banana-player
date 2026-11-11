@@ -182,6 +182,12 @@ namespace bp
 		readMode = m >= 0 && m < MANGA_MODES ? m : MANGA_STRIP;
 		paged.setRtl(readMode == MANGA_RTL);
 		paged.goTo(page, 0, false);
+		planPage = page;
+		planTarget = -1;
+		planAt = 0;
+		seeks.reset();
+		wantKeep.clear();
+		fetchWanted.clear();
 		opened = true;
 		redrawSoon();
 		fprintf(stderr, "reader: opened %s, %zu pages, at page %d\n", label.c_str(), files.size(), page + 1);
@@ -215,6 +221,12 @@ namespace bp
 		headers.clear();
 		pageCache = nullptr;
 		chapterKey.clear();
+		fetchWanted.clear();
+		planPage = -1;
+		planTarget = -1;
+		planAt = 0;
+		seeks.reset();
+		wantKeep.clear();
 		fetching.clear();
 		failed.clear();
 		errPage = -1;
@@ -231,24 +243,66 @@ namespace bp
 		return std::max(viewW, (int)(w + 0.5));
 	}
 
-	std::vector<int> MangaReader::wantedPages() const
+	std::vector<int> MangaReader::liveWanted() const
 	{
-		// the one list want() queues from and pagesToFetch() hands out: the reader's own order (visible pages first,
-		// then the preload ahead and behind)
+		// the one list want() queues from: the reader's own order (visible pages first, then the preload ahead and
+		// behind). (wantedPages() is the fetch plan's list, which follows the view only once a Seek run settles)
 		if (!opened) return {};
 		return readMode == MANGA_STRIP ? strip.wanted(preload, 1) : paged.wanted(preload, 1);
 	}
 
+	std::vector<int> MangaReader::wantedPages() const
+	{
+		return fetchWanted;
+	}
+
+	bool MangaReader::jumpTargetIn() const
+	{
+		// a target that can't be waited on (failed), or one this chapter needn't fetch, never holds its preload
+		if (planTarget < 0 || planTarget >= (int)files.size()) return true;
+		if (!remote()) return true;	// (a local chapter's target-first is want()'s decode gate)
+		if (failed.count(planTarget) > 0) return true;
+		// fetched and decoded: the preload's fetches start only then (or after the grace), not while the page
+		// asked for is still coming in or still being decoded
+		return fileThere(files[planTarget]) && pr.has(planTarget);
+	}
+
+	const char* MangaReader::modeName() const
+	{
+		return readMode == MANGA_STRIP ? "strip" : readMode == MANGA_RTL ? "rtl" : "ltr";
+	}
+
+	void MangaReader::commitJump(int from, int to, int seeksCount, int64_t now)
+	{
+		// the view has already moved: from here on the fetcher and the decoder follow it. the target goes first,
+		// alone, until it is in (ReaderFetchPlan's grace) so the page asked for is never behind its preload
+		planPage = to;
+		planTarget = to;
+		planAt = now;
+		if (from < 0) from = to;
+		if (seeksCount > 1)
+			fprintf(stderr, "reader: jump %d -> %d (%s, %d seeks)\n", from + 1, to + 1, modeName(), seeksCount);
+		else
+			fprintf(stderr, "reader: jump %d -> %d (%s)\n", from + 1, to + 1, modeName());
+		want();
+	}
+
 	void MangaReader::want()
 	{
-		if (!opened) return;
+		if (!opened || seeks.pending()) return;	// a drag: the plan follows the view once the seeks rest
 		bool s = readMode == MANGA_STRIP;
-		auto list = wantedPages();
+		auto list = liveWanted();
+		bool targetIn = planTarget >= 0 && (pr.has(planTarget) || failed.count(planTarget) > 0);
+		auto ordered = ReaderFetchPlan::ordered(list, planTarget, targetIn, planAt, (int64_t)SDL_GetTicks());
+		// the target alone while it is not in: no neighbour's decode may get ahead of it
+		bool gated = planTarget >= 0 && !targetIn && ordered.size() == 1 && ordered[0] == planTarget;
 		std::set<int> keep(list.begin(), list.end());
 		auto vis = strip.visible();
 		if (!s) vis = {paged.current(), paged.current()};
 		for (int i = vis.first - 2; i <= vis.second + 4; i++) keep.insert(i);
 		pr.keepOnly(keep);
+		wantKeep = gated ? std::set<int>{planTarget} : keep;
+		fetchWanted = list;	// (the plan orders the target itself, so a gate never hides its neighbours from stale())
 		for (auto it = kept.begin(); it != kept.end();) it = keep.count(it->first) ? std::next(it) : kept.erase(it);
 		// a failure sticks only while the page is wanted: moving away and back asks for it again
 		for (auto it = failed.begin(); it != failed.end();)
@@ -260,7 +314,7 @@ namespace bp
 		int width = decodeW();
 		std::lock_guard<std::mutex> l(m);
 		jobs.clear();
-		for (int i : list)
+		for (int i : ordered)
 		{
 			// a page of a URL chapter that isn't fetched yet waits: its decode is queued when pageArrived says so
 			if (i < 0 || i >= (int)files.size()) continue;
@@ -279,6 +333,7 @@ namespace bp
 	{
 		std::vector<std::pair<int, std::string>> out;
 		if (!opened || urls.empty() || max <= 0) return out;
+		if (seeks.pending()) return out;	// a drag: no request starts for a page it is only passing over
 		std::vector<int> list = wantedPages();
 		// a page that failed while wanted is not asked for again until it has left the list (want() drops it there)
 		for (auto it = failed.begin(); it != failed.end();)
@@ -295,6 +350,10 @@ namespace bp
 		st.max = (int)fetching.size() + max;
 		for (int i : st.wanted)
 			if (i >= 0 && i < (int)files.size() && fileThere(files[i])) st.done.insert(i);
+		st.target = planTarget;
+		st.targetAt = planAt;
+		st.now = (int64_t)SDL_GetTicks();
+		st.targetIn = jumpTargetIn();
 		for (int i : ReaderFetchPlan::next(st)) out.push_back({i, urls[i]});
 		// these are out now: pagesToFetch won't hand the same one out twice while its request runs
 		for (auto& p : out) fetching.insert(p.first);
@@ -448,6 +507,18 @@ namespace bp
 	void MangaReader::command(int kind, double v, int64_t ms, double v2, double v3)
 	{
 		if (!opened) return;
+		if (kind == Seek)
+		{
+			// the view moves now (a placeholder until the page comes); want() and the fetcher follow only when a
+			// slider or grid drag rests, so the pages passed over are never fetched or decoded
+			int to = std::clamp((int)v, 0, (int)files.size() - 1);
+			if (readMode == MANGA_STRIP) strip.scrollTo(strip.pageTop(to));
+			else paged.goTo(to, ms, false);
+			if (seeks.seek(to, ms) == SeekRun::Now::Commit)
+				commitJump(planPage < 0 ? to : planPage, to, 1, ms);
+			redrawSoon(1);
+			return;
+		}
 		if (kind == Fullscreen) { setFullscreen(v > 0, (int)v2); return; }
 		if (kind == Zoom)
 		{
@@ -509,22 +580,28 @@ namespace bp
 			strip.scrollTo(strip.pageTop(cur));
 			paged.setRtl(m == MANGA_RTL);
 			paged.goTo(cur, ms, false);
+			planPage = cur;
 			want();
 			redrawSoon(2);
 			return;
 		}
+		// a step or a page turn is not a jump: its page starts its own preload at once
+		if (kind == Step || kind == Page) { planTarget = -1; planAt = 0; }
 		if (readMode != MANGA_STRIP)
 		{
 			switch (kind)
 			{
 			case Step: if (v > 0) paged.forward(ms); else paged.back(ms); break;
 			case Page: if (v > 0) paged.nextPage(ms); else paged.prevPage(ms); break;
-			case Seek: paged.goTo(std::clamp((int)v, 0, (int)files.size() - 1), ms, false); break;
 			case TouchDown: paged.touchDown(ms); fingerDown = true; break;
-			case Drag: if (fingerDown) paged.drag(v2 * viewW, v * viewH, ms); break;
+			case Drag:
+				// a finger's own movement is not a jump: its preload is not held behind an old target
+				if (fingerDown) { planTarget = -1; planAt = 0; paged.drag(v2 * viewW, v * viewH, ms); }
+				break;
 			case Release: if (fingerDown) paged.release(ms); fingerDown = false; break;
 			default: break;
 			}
+			if (kind == Step || kind == Page) planPage = page();
 			redrawSoon(1);
 			return;
 		}
@@ -540,18 +617,30 @@ namespace bp
 			strip.animateTo(strip.pageTop(to), ms, 220);
 			break;
 		}
-		case Seek: strip.scrollTo(strip.pageTop(std::clamp((int)v, 0, (int)files.size() - 1))); break;
 		case TouchDown: strip.touchDown(ms); fingerDown = true; break;
-		case Drag: if (fingerDown) strip.drag(v * viewH, ms, v2 * viewW); break;
+		case Drag:
+			if (fingerDown) { planTarget = -1; planAt = 0; strip.drag(v * viewH, ms, v2 * viewW); }
+			break;
 		case Release: if (fingerDown) strip.release(ms); fingerDown = false; break;
 		default: break;
 		}
+		if (kind == Step || kind == Page) planPage = page();
 		redrawSoon(1);
+	}
+
+	void MangaReader::tick(int64_t now)
+	{
+		if (!opened || !seeks.due(now)) return;
+		// the run rested: its last target is the one asked for. commit before want(), which must see the run gone
+		int to = seeks.target(), n = seeks.seeks();
+		seeks.commit();
+		commitJump(planPage < 0 ? to : planPage, to, n, now);
 	}
 
 	bool MangaReader::frame(int64_t now)
 	{
 		if (!opened) return false;
+		tick(now);
 		bool any = false;
 		{
 			std::lock_guard<std::mutex> l(m);
@@ -560,6 +649,12 @@ namespace bp
 				Done d = std::move(done.front());
 				done.pop_front();
 				if (d.gen != gen) continue;
+				// a page of the view the reader left (or a preload page a jump made unwanted): never uploaded
+				if (!wantKeep.count(d.index))
+				{
+					fprintf(stderr, "reader: page %d decode dropped after %u ms (no longer wanted)\n", d.index + 1, d.ms);
+					continue;
+				}
 				if (!d.img.ok())
 				{
 					fprintf(stderr, "reader: page %d: %s\n", d.index + 1, d.img.error.c_str());

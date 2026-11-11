@@ -32,6 +32,9 @@ namespace bp
 	private:
 		void reorder();
 		void fill();
+		// drop one request: cancel it on the fetch thread, log it, and remember its id so an answer that still
+		// arrives is claimed and thrown away instead of reaching the Ui or the decoder
+		void cancelOne(int index, uint64_t id, const char* why);
 
 		static constexpr int MAX_IN_FLIGHT = 3;
 		MangaNet* net = nullptr;
@@ -42,5 +45,7 @@ namespace bp
 		uint64_t limit = 0;
 		std::map<uint64_t, int> byId;	// a request's id -> its page
 		std::map<int, uint64_t> inFlight;	// a page -> its request's id
+		std::map<uint64_t, uint64_t> started;	// a request's id -> when it went out (the log's ms)
+		std::map<uint64_t, int> dropped;	// ids cancelled: an answer that still comes is dropped, not decoded
 	};
 }
