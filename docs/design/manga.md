@@ -49,7 +49,7 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
 - **The store** (bpcore, with tests): the library, the reading progress and the history in the state folder, and
   behind the parts above: the CBZ reader and writer, ComicInfo, the page cache, the download queue, the repositories'
   index and the OPDS and Komga parsers.
-- **Saved servers** (Komga, Kavita, OPDS): **Browse** lists them after On this handheld with **Add server…**, a form
+- **Saved servers** (Komga, Kavita, OPDS): **Browse** lists them after On this handheld; **Y** opens **Add server…**, a form
   (kind, name, address, user, password — **API key** instead of password for Kavita — **Test**, **Save**; the secret
   sealed by `secret.*` as the network folders' are), **X** on a row for **Edit** / **Delete** (twice), then the
   server's libraries or OPDS catalogue, its series as a cover grid, a series page with chapters, and reading a chapter
@@ -122,7 +122,7 @@ extension's code is in the binary but nothing of it is constructed (as `WebServe
 - **Read what's on the card:** Manga › Browse › *On this handheld* lists series found under the Files places' `Manga`
   folders (and any folder the user opens from Files with X › *Open as manga*). A folder of images is a chapter; a folder
   of chapters (folders or CBZ/CBR/CB7) is a series. A tapped archive from Files opens straight in the reader.
-- **Read from my server:** Browse › *Add server* opens the connection form (the network one, new kinds Komga, Kavita,
+- **Read from my server:** Browse with **Y** (*Add server*) opens the connection form (the network one, new kinds Komga, Kavita,
   OPDS) → the server's libraries and series → a series page → Resume / a chapter → reader.
 - **Add a repository:** Manga › Sources › Repositories › *Add repository* → the on-screen keyboard (or paste in the web
   dashboard) → the index is fetched and checked → its sources show under *Available* with Install. Install downloads the

@@ -11,7 +11,7 @@
 
 namespace bp
 {
-	// ---- the saved servers: Browse › Add server…, a server's libraries or catalogue, a series and its chapters ----
+	// ---- the saved servers: Browse › Y (Add server), a server's libraries or catalogue, a series and its chapters ----
 	//
 	// The parsers and the request builders are bpcore's (mangaremote.h, opds.h); this file only fetches through
 	// MangaNet and shows what came back. Each answer carries a serial: one whose serial is no longer the one here (a

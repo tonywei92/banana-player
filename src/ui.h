@@ -1550,10 +1550,10 @@ namespace bp
 		void mangaBrowseReset(Player& p);				// the app opened or left: the source's jobs dropped
 		void mangaBrowsePoll(const Player& p);			// the worker's answers (the pages' draws and keys call it)
 		void mangaBrowseRepos(const Player& p);			// the installed sources, read again when repos() changed
-		int mangaBrowseCount(const Player& p) const;	// On this handheld, the servers, Add server, the sources
+		int mangaBrowseCount(const Player& p) const;	// On this handheld, the servers, the sources
 		const MangaSrcRow* mangaBrowseSourceAt(int i, const Player& p) const;	// i: the sources the setting shows
 		int mangaBrowseServerCount() const;				// the saved servers, as Browse lists them
-		int mangaBrowseSourceStart() const { return mangaBrowseServerCount() + 2; }	// past them and Add server…
+		int mangaBrowseSourceStart() const { return mangaBrowseServerCount() + 1; }	// past the servers
 		const MangaSrcRow* mangaSrcRowFor(const std::string& fullId) const;
 		bool mangaBrowseKey(Button b, Player& p);
 		bool mangaBrowsePointer(const Pointer& pt, int x, int y, Player& p);
@@ -1621,7 +1621,7 @@ namespace bp
 		Rect mangaSrcHeartRect() const { return {556, 144, 68, 40}; }
 
 		// ---- the saved servers (ui_manga_servers.cpp) ----
-		// Browse › Add server… opens a form of its own (kind, name, address, user, password; Test, Save); a server's
+		// Browse › Y opens the Add server form: kind, name, address, user, password; Test, Save. A server's
 		// libraries or catalogue, then its series, are a cover grid here, and a series is Page::MangaSeries with an
 		// id "srv:<server id>:<key>" so the reader and the History find their way back. The catalogue and the series
 		// page are views of Page::Manga (mangaView 2 and up), as a source's page is.

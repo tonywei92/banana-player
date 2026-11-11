@@ -748,13 +748,15 @@ where you were. **X** clears the list (press **X** again to confirm). With the r
 settings** the list stays empty, but your places and your read marks are kept either way.
 
 **Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
-chapters it has, and **A** on one opens the series. Under it come your saved servers and **Add server…** (below), then
-the sources you've installed, each with its language. Two dim lines follow, neither one a row to choose: **Network
-folders · coming next**, and — with no sources yet — **Add sources in Sources**.
+chapters it has, and **A** on one opens the series. Under it come your saved servers (**X** on one for **Edit** /
+**Delete**), then the sources you've installed, each with its language. **Y** adds a server (below). Two dim lines
+follow, neither one a row to choose: **Network folders · coming next**, and — with no sources yet — **Add sources in
+Sources**.
 
-**Servers.** **Add server…** opens a form: **Kind** (Komga, Kavita or OPDS, LEFT/RIGHT), **Name**, **Address**, **User**
-and **Password** — **API key** instead of Password for Kavita — then **Test** and **Save**. A password is sealed on Save
-and never shown again; a typed address loses any `user:password@` part before it is kept. **A** on a saved server opens
+**Servers.** **Y** on Browse opens the Add server form: **Kind** (Komga, Kavita or OPDS, LEFT/RIGHT), **Name**,
+**Address**, **User** and **Password** — **API key** instead of Password for Kavita — then **Test** and **Save**. A
+password is sealed on Save and never shown again; a typed address loses any `user:password@` part before it is kept.
+**A** on a saved server opens
 its libraries (Komga) or its OPDS catalogue, a cover grid whose covers arrive as you scroll to them; **A** on a series
 opens its chapters and **A** on one reads it, pages coming from the server with its sign-in header. **X** on a server
 row opens **Edit** and **Delete** (Delete asks twice). Kavita is read through its OPDS address, which carries the API

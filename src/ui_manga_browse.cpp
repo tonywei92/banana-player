@@ -129,7 +129,7 @@ namespace bp
 
 	int Ui::mangaBrowseCount(const Player& p) const
 	{
-		int n = 1 + mangaBrowseServerCount() + 1;	// On this handheld, the servers, Add server…
+		int n = 1 + mangaBrowseServerCount();	// On this handheld, then the servers
 		for (const auto& r : mangaSrcRows)
 			if (!r.adult || p.settings.mangaAdult) n++;
 		return n;
@@ -175,7 +175,6 @@ namespace bp
 			}
 			return;
 		}
-		if (i == servers + 1) { mangaServerAddOpen(p); return; }
 		if (const MangaSrcRow* r = mangaBrowseSourceAt(i - mangaBrowseSourceStart(), p)) mangaOpenSource(*r, p);
 	}
 
@@ -209,6 +208,7 @@ namespace bp
 			mangaServerModalOpen(mbrowseCursor, p);
 			return false;
 		}
+		if (b == Button::Y) { mangaServerAddOpen(p); return false; }
 		if (!n) return false;
 		switch (b)
 		{
@@ -288,7 +288,7 @@ namespace bp
 		auto inView = [&](int y) { return y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H; };
 		std::vector<MangaServer> servers;
 		if (mangaNet && mangaNet->started()) servers = mangaNet->servers().list();
-		int addAt = (int)servers.size() + 1, srcStart = addAt + 1;
+		int srcStart = (int)servers.size() + 1;
 		for (int i = mbrowseScroll; i < n && i < mbrowseScroll + MG_ROWS; i++)
 		{
 			int y = rowY(i), mid = y + (ROW_H - 4) / 2;
@@ -314,13 +314,6 @@ namespace bp
 				drawGlyphMid(G_PENCIL, 600, mid, at ? ACCENT : DIM);
 				continue;
 			}
-			if (i == addAt)
-			{
-				// Add server…: the row after the saved ones
-				drawGlyphMid(G_PLUS, 42, mid, at ? ACCENT : DIM);
-				drawTextMid("Add server\xE2\x80\xA6", 1, at ? ACCENT : TEXT, 62, mid, 470);
-				continue;
-			}
 			const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p);
 			if (!r) continue;
 			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 32, mid, 470);
@@ -340,8 +333,8 @@ namespace bp
 		if (mangaSrcRows.empty() && inView(rowY(n + 1)))
 			drawTextMid("Add sources in Sources", 1, DIM, 32, rowY(n + 1) + (ROW_H - 4) / 2, 576);
 		bool onServer = mbrowseCursor > 0 && mbrowseCursor <= (int)servers.size();
-		if (onServer) drawHints({{"A", "Open"}, {"X", "Edit"}, {"B", "Back"}});
-		else drawHints({{"A", "Open"}, {"B", "Back"}});
+		if (onServer) drawHints({{"A", "Open"}, {"X", "Edit"}, {"Y", "Add server"}, {"B", "Back"}});
+		else drawHints({{"A", "Open"}, {"Y", "Add server"}, {"B", "Back"}});
 		if (mangaSrvMenu) drawMangaServerModal(p);
 	}
 
