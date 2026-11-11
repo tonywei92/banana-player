@@ -3,6 +3,7 @@
 // POSTs the request bodies and hands the response bodies here, as mangaremote does for Komga.
 #include "suwayomi.h"
 #include "json.h"
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
