@@ -51,6 +51,8 @@ namespace bp
 			uint64_t lastUse = 0;
 		};
 
+		static std::string storedKey(const std::string& key);
+		std::string pathForStored(const std::string& storedKey) const;
 		void loadIndex();
 		void scanFiles();
 		void addFile(const std::string& path, uint64_t bytes, uint64_t lastUse);

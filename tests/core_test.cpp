@@ -1162,6 +1162,25 @@ static void testPageCache()
 		CHECK_EQ(p[dir.size() + 3], '/');
 		CHECK_EQ(p.substr(p.find_last_of('/') + 1).size(), size_t(20));	// 16 hex characters and ".bin"
 		CHECK_EQ(access(p.c_str(), F_OK), 0);
+
+		// the index holds no key: a page's URL can carry a credential (Kavita's API key), so only its digest is kept
+		const uint8_t one[] = {1};
+		CHECK_EQ(c.put("https://kavita.example/api/opds/SECRETKEY123/page/1", one, sizeof one), true);
+		CHECK_EQ(c.save(), true);
+		std::vector<uint8_t> idx;
+		FILE* f = fopen((dir + "/index.tsv").c_str(), "rb");
+		CHECK_EQ(f != nullptr, true);
+		if (f)
+		{
+			char buf[4096];
+			size_t n;
+			while ((n = fread(buf, 1, sizeof buf, f)) > 0) idx.insert(idx.end(), buf, buf + n);
+			fclose(f);
+		}
+		std::string idxText(idx.begin(), idx.end());
+		CHECK_EQ(idxText.find("SECRETKEY123"), std::string::npos);
+		CHECK_EQ(idxText.find("example.com"), std::string::npos);
+		CHECK_EQ(c.has("https://kavita.example/api/opds/SECRETKEY123/page/1"), true);
 	}
 
 	{

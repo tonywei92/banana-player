@@ -1,4 +1,5 @@
 #include "pagecache.h"
+#include "update.h"
 #include <algorithm>
 #include <cerrno>
 #include <cstdio>
@@ -248,7 +249,19 @@ namespace bp
 		evictToLimit();
 	}
 
+	// What the cache knows a page by: the SHA-256 of its key, never the key. A key is a page's URL, and a server's
+	// URL can carry a credential (Kavita's API key is a path segment), so neither the index nor a file name holds it.
+	std::string PageCache::storedKey(const std::string& key)
+	{
+		return sha256Hex(key);
+	}
+
 	std::string PageCache::pathFor(const std::string& key) const
+	{
+		return pathForStored(storedKey(key));
+	}
+
+	std::string PageCache::pathForStored(const std::string& key) const
 	{
 		// The name is the key's hash and nothing else, so a key can hold any character at all and the path stays
 		// inside the folder.
@@ -256,10 +269,11 @@ namespace bp
 		return dir_ + "/" + hex.substr(0, 2) + "/" + hex + ".bin";
 	}
 
-	bool PageCache::has(const std::string& key)
+	bool PageCache::has(const std::string& rawKey)
 	{
+		const std::string key = rawKey.empty() ? std::string() : storedKey(rawKey);
 		if (dir_.empty() || key.empty()) return false;
-		std::string path = pathFor(key);
+		std::string path = pathForStored(key);
 		struct stat st;
 		if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode))
 		{
@@ -296,13 +310,14 @@ namespace bp
 		return true;
 	}
 
-	bool PageCache::put(const std::string& key, const uint8_t* data, size_t n)
+	bool PageCache::put(const std::string& rawKey, const uint8_t* data, size_t n)
 	{
+		const std::string key = rawKey.empty() ? std::string() : storedKey(rawKey);
 		if (dir_.empty() || key.empty()) return false;
 		if (n && !data) return false;
 		// A page bigger than the whole cap would never fit: it is refused instead of emptying the cache for it.
 		if ((uint64_t)n > limit_) return false;
-		std::string path = pathFor(key);
+		std::string path = pathForStored(key);
 		size_t slash = path.find_last_of('/');
 		if (!makeDirs(path.substr(0, slash))) return false;
 		if (!writeFile(path, data, n)) return false;
@@ -327,11 +342,12 @@ namespace bp
 		return true;
 	}
 
-	bool PageCache::get(const std::string& key, std::vector<uint8_t>& out)
+	bool PageCache::get(const std::string& rawKey, std::vector<uint8_t>& out)
 	{
+		const std::string key = rawKey.empty() ? std::string() : storedKey(rawKey);
 		out.clear();
 		if (dir_.empty() || key.empty()) return false;
-		std::string path = pathFor(key);
+		std::string path = pathForStored(key);
 		std::vector<uint8_t> data;
 		if (!readFile(path, data))
 		{
@@ -432,7 +448,7 @@ namespace bp
 			if (key.empty()) continue;
 			uint64_t bytes = 0, lastUse = 0;
 			if (!toUInt(f[1], bytes)) continue;
-			std::string path = pathFor(key);
+			std::string path = pathForStored(key);
 			struct stat st;
 			if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) continue;	// the page is gone: it is dropped
 			Entry e;
