@@ -268,6 +268,11 @@ CLAUDE.md now keeps one line per rule; this is the full text it had, kept here w
 - **Threads:** background threads (`SleepWatch`, `BottomTouch`, `LevelWatch`, mpv callbacks, web server, `NetWorker`)
   never touch `Player`/`Ui`: they push SDL user events (`evMpv`, `evRender`, `evTouch`, `evLevel`, `evNet`, `evWeb`).
   Never block on a server in a destructor. The Updater and `WebServer` are never destroyed.
+- **Memory** (added 2026-11-11, `docs/notes/2026-11-11-reader-memory.md`): `main` pins glibc's mmap threshold at
+  256 KB (`mallopt(M_MMAP_THRESHOLD)`). Left dynamic it rises to the largest block freed (a decoded manga page, up
+  to 32 MB), after which pages and frames come out of the heaps and stay with the process when freed: 100 MB after
+  ordinary chapters, 240 MB after long ones, on Linux. A leak hunt is run on glibc (`tools/leak-loop`: the arm64
+  container under Xvfb), since the Mac's allocator behaves differently; the Mac gives the blocks in use.
 - **Playlists:** Liked (`.liked.m3u`) is built in: only the heart adds to it; every other edit path refuses it
   (`isBuiltinFile`). Edits are debounced 1 s and flushed on leaving and quit. Photos have their own playlist, no
   history, no resume; they play through mpv (scaled to 4096 px at most).

@@ -383,13 +383,28 @@ namespace bp
 		// The handheld's 1 GB can't hold a video and the manga engine (its server takes about 400 MB). In the manga
 		// reader a video is stopped (as Stop, everywhere, with the notice); outside it a video wins and the engine
 		// is stopped. Music and photos go on either way.
-		// entering the manga reader starts the engine (if installed): it is ready by the time a source is opened
-		if (mangaNet && mangaNet->started() && mangaJavaInstalled() &&
-			(page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead || page == Page::MangaSettings ||
-				page == Page::MangaSources))
+		// entering the manga reader starts the engine (if installed): it is ready by the time a source is opened.
+		// Asked once per entry, not for as long as a Manga page shows: asked every pass, the idle stop (five minutes
+		// with no request) was undone the moment it happened, so the engine started again every five minutes under a
+		// chapter read from the card and its 400 MB never came back. After an idle stop the next use starts it (graphql)
 		{
-			auto st = mangaNet->javaExt().state();
-			if (st == JavaExtHost::State::Installed) mangaNet->javaExt().want();
+			bool in = page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead ||
+				page == Page::MangaSettings || page == Page::MangaSources;
+			if (in && !engineInManga) engineEntryWant = true;
+			if (!in) engineEntryWant = false;
+			engineInManga = in;
+			if (engineEntryWant && mangaNet && mangaNet->started() && mangaJavaInstalled())
+			{
+				JavaExtHost& h = mangaNet->javaExt();
+				auto st = h.state();
+				bool up = st == JavaExtHost::State::Starting || st == JavaExtHost::State::Running;
+				// (an engine a video has just stopped says Running a moment more: the wish waits till it is Installed)
+				if (st == JavaExtHost::State::Installed || (up && !h.stopping()))
+				{
+					h.want();	// (up already: entering is use, its idle time starts again)
+					engineEntryWant = false;
+				}
+			}
 		}
 		if (p.playing() && !p.playingAudio() && !p.playingPhoto() && !p.loading())
 		{

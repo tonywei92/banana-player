@@ -55,6 +55,8 @@ namespace bp
 		// the wake event main registered; the state folder (the add-on lives in <state>/manga/java)
 		void configure(Uint32 wakeEvent, const std::string& stateDir);
 		State state() const;
+		// a stop is on its way (asked for, or the idle one): state() says Starting or Running until the process has gone
+		bool stopping() const;
 		std::string error() const;
 		// while Downloading: bytes done and the total of both files
 		void progress(int64_t& done, int64_t& total) const;

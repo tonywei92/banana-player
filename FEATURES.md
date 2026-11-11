@@ -827,7 +827,7 @@ while **Adult sources** is Hidden), **A** installs one, and **Installed** lists 
 reports a newer one and **Uninstall** (asked twice). A Java source appears in **Browse** as one row per source and
 language — same Popular / Latest / Search grid, covers, filters sheet, series page and reading page as a Lua source.
 Its series and reading progress are kept under `java:<source id>` with the Suwayomi manga id, so the Library and
-History open them again through the host. While the extensions start, a notice at the top of every page counts the seconds (then *Extensions ready*). No video plays in the manga reader or while the extensions run (the handheld's memory can't hold both): entering the reader, or the extensions starting, stops a video as Stop would, with a notice; music and photos go on. The runtime is wanted on every use and stops after five idle minutes; the
+History open them again through the host. While the extensions start, a notice at the top of every page counts the seconds (then *Extensions ready*). No video plays in the manga reader or while the extensions run (the handheld's memory can't hold both): entering the reader, or the extensions starting, stops a video as Stop would, with a notice; music and photos go on. The runtime is started as Manga is entered, wanted on every use, and stops after five idle minutes (it then stays stopped, also while Manga is open, until the next use or the next entry); the
 hosted pages are read from `127.0.0.1` through the same page cache as any other chapter.
 
 - **Repositories**: each one you've added, with when it was last checked (or *Not checked yet*). **A** on one offers

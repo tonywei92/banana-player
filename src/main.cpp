@@ -45,6 +45,9 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <vector>
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
 
 using namespace bp;
 
@@ -142,6 +145,14 @@ static void usage()
 
 int main(int argc, char** argv)
 {
+#ifdef __GLIBC__
+	// glibc raises its mmap threshold to the largest block freed so far (up to 32 MB): after the manga reader's first
+	// page (2 to 32 MB of RGBA) every later page and frame came out of the heaps (the two decode threads' arenas
+	// too), which give memory back only from their top, so what the reader freed stayed with the process: 100 MB
+	// after ordinary chapters, 240 MB after long ones, measured on Linux (docs/notes/2026-11-11-reader-memory.md).
+	// Pinned, a block of 256 KB or more is a map of its own, gone when freed
+	mallopt(M_MMAP_THRESHOLD, 256 << 10);
+#endif
 	PlayerOptions opts;
 	opts.lang = "eng,en";
 	opts.stateDir = defaultStateDir();

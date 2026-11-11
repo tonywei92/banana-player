@@ -497,6 +497,12 @@ namespace bp
 		return impl->st;
 	}
 
+	bool JavaExtHost::stopping() const
+	{
+		std::lock_guard<std::mutex> g(impl->lock);
+		return impl->pid >= 0 && (impl->stopReq || impl->idleStop);
+	}
+
 	std::string JavaExtHost::error() const
 	{
 		std::lock_guard<std::mutex> g(impl->lock);
