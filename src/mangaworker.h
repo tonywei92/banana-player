@@ -76,6 +76,9 @@ namespace bp
 		// Starts the thread, which sleeps until a job comes. stateDir is the player's --state-dir: prefs live in
 		// <stateDir>/manga/prefs/<repo-hash>-<id>.json (5.4). wakeEvent 0 means the worker pushes no events.
 		void start(Uint32 wakeEvent, const std::string& stateDir);
+		// Secure DNS (Manga settings): a script's host lookups ask Cloudflare over HTTPS instead of getaddrinfo. The
+		// same public-address checks and pinning apply to what it answers. Safe from the main thread while running.
+		void setSecureDns(bool on);
 		// Queues a job and returns its serial (0 when the worker has stopped). A job still waiting for the same
 		// source and kind is replaced by this one, so a fast scroll doesn't queue ten Popular pages.
 		uint64_t submit(const Job& job);

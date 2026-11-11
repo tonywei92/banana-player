@@ -29,6 +29,9 @@ namespace bp
 		impl->wakeEvent = wakeEvent;
 	}
 
+	// (nothing fetches: the setting has nowhere to reach)
+	void MangaFetch::setSecureDns(bool) {}
+
 	uint64_t MangaFetch::get(const std::string&, const Headers&, int64_t, const std::string&)
 	{
 		Uint32 wake = 0;

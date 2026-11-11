@@ -4,6 +4,7 @@
 #include "comicinfo.h"
 #include "cbz.h"
 #include "dlqueue.h"
+#include "doh.h"
 #include "cbzwrite.h"
 #include "browser.h"
 #include "challenge.h"
@@ -513,6 +514,189 @@ static void testPublicAddress()
 		CHECK_EQ(publicAddress(ip), false);
 		if (publicAddress(ip)) fprintf(stderr, "  public garbage: %s\n", ip);
 	}
+}
+
+// the wire form of a Secure DNS packet, written by hand as the answers arrive
+static void dohPut16(std::string& s, uint16_t v) { s.push_back((char)(v >> 8)); s.push_back((char)v); }
+static void dohPut32(std::string& s, uint32_t v)
+{
+	s.push_back((char)(v >> 24)); s.push_back((char)(v >> 16)); s.push_back((char)(v >> 8)); s.push_back((char)v);
+}
+static void dohPutName(std::string& s, const std::string& name)
+{
+	size_t start = 0;
+	for (;;)
+	{
+		size_t dot = name.find('.', start);
+		std::string label = name.substr(start, dot == std::string::npos ? std::string::npos : dot - start);
+		s.push_back((char)label.size());
+		s += label;
+		if (dot == std::string::npos) break;
+		start = dot + 1;
+	}
+	s.push_back('\0');
+}
+static void dohPutPtr(std::string& s, size_t off)
+{
+	s.push_back((char)(0xC0 | (off >> 8)));
+	s.push_back((char)off);
+}
+
+// Secure DNS (Manga settings): the RFC 8484 query — a header asking one question, the name's labels, type and class
+static void testDohQuery()
+{
+	std::vector<uint8_t> q = dohQuery("api.mangadex.org", DOH_TYPE_A, 0x1234);
+	CHECK_EQ(q.size(), (size_t)34);
+	CHECK_EQ((int)q[0], 0x12);
+	CHECK_EQ((int)q[1], 0x34);
+	CHECK_EQ((int)q[2], 0x01);	// recursion desired
+	CHECK_EQ((int)q[3], 0x00);
+	CHECK_EQ((int)q[4], 0);
+	CHECK_EQ((int)q[5], 1);		// one question
+	CHECK_EQ((int)q[12], 3);
+	CHECK_EQ(std::string((const char*)&q[13], 3), std::string("api"));
+	CHECK_EQ((int)q[16], 8);
+	CHECK_EQ(std::string((const char*)&q[17], 8), std::string("mangadex"));
+	CHECK_EQ((int)q[25], 3);
+	CHECK_EQ(std::string((const char*)&q[26], 3), std::string("org"));
+	CHECK_EQ((int)q[29], 0);	// the root
+	CHECK_EQ((int)q[30], 0);
+	CHECK_EQ((int)q[31], 1);	// type A
+	CHECK_EQ((int)q[32], 0);
+	CHECK_EQ((int)q[33], 1);	// class IN
+	CHECK_EQ(dohQuery("api.mangadex.org.", DOH_TYPE_A, 0x1234), q);	// the root's dot changes nothing
+	CHECK_EQ(dohQuery(std::string(64, 'a'), DOH_TYPE_A, 1).empty(), true);
+	CHECK_EQ(dohQuery("", DOH_TYPE_A, 1).empty(), true);
+	CHECK_EQ(dohQuery("a..b", DOH_TYPE_A, 1).empty(), true);
+}
+
+// an answer with a CNAME chain: www.example.com -> edge.example.net -> cdn.example.org, whose A and AAAA records
+// answer, the owners given as compression pointers (what Cloudflare sends)
+static void testDohParseCname()
+{
+	std::string p;
+	dohPut16(p, 0x4321);
+	dohPut16(p, 0x8180);	// a response, recursion available
+	dohPut16(p, 1);
+	dohPut16(p, 4);		// two CNAMEs and an address of each family
+	dohPut16(p, 0);
+	dohPut16(p, 0);
+	size_t qoff = p.size();
+	dohPutName(p, "www.example.com");
+	dohPut16(p, DOH_TYPE_A);
+	dohPut16(p, 1);
+	std::string edge;
+	dohPutName(edge, "edge.example.net");
+	std::string cdn;
+	dohPutName(cdn, "cdn.example.org");
+	dohPutPtr(p, qoff); dohPut16(p, 5); dohPut16(p, 1); dohPut32(p, 120); dohPut16(p, (uint16_t)edge.size());
+	size_t eoff = p.size();
+	p += edge;
+	dohPutPtr(p, eoff); dohPut16(p, 5); dohPut16(p, 1); dohPut32(p, 60); dohPut16(p, (uint16_t)cdn.size());
+	size_t coff = p.size();
+	p += cdn;
+	dohPutPtr(p, coff); dohPut16(p, DOH_TYPE_A); dohPut16(p, 1); dohPut32(p, 30); dohPut16(p, 4);
+	p += std::string("\x5d\xb8\xd8\x22", 4);	// 93.184.216.34
+	dohPutPtr(p, coff); dohPut16(p, DOH_TYPE_AAAA); dohPut16(p, 1); dohPut32(p, 45); dohPut16(p, 16);
+	p += std::string("\x20\x01\x0d\xb8", 4) + std::string(11, '\0') + std::string(1, '\x01');
+
+	DohAnswer a = parseDohAnswer(p, 0x4321, "www.example.com", DOH_TYPE_A);
+	CHECK_EQ(a.status, DohAnswer::Ok);
+	CHECK_EQ(a.addresses.size(), (size_t)1);
+	CHECK_EQ(a.addresses.empty() ? std::string() : a.addresses[0], std::string("93.184.216.34"));
+	CHECK_EQ(a.ttl, (uint32_t)30);	// the shortest link of the chain
+	// the question says A, so a parser told AAAA refuses it: the query and the answer must be the same question
+	CHECK_EQ(parseDohAnswer(p, 0x4321, "www.example.com", DOH_TYPE_AAAA).status, DohAnswer::Malformed);
+	// asked as AAAA, the same chain answers with the other address
+	std::string p6 = p;
+	p6[qoff + 17] = 0;	// (the question's name is 17 bytes: www(4) example(8) com(4) root(1))
+	p6[qoff + 18] = 28;
+	DohAnswer v6 = parseDohAnswer(p6, 0x4321, "www.example.com", DOH_TYPE_AAAA);
+	CHECK_EQ(v6.status, DohAnswer::Ok);
+	CHECK_EQ(v6.addresses.size(), (size_t)1);
+	CHECK_EQ(v6.addresses.empty() ? std::string() : v6.addresses[0], std::string("2001:db8::1"));
+	CHECK_EQ(v6.ttl, (uint32_t)45);
+}
+
+// NOERROR with no address: the name exists but has none of that kind (NODATA, not a failure)
+static void testDohParseNoRecords()
+{
+	std::string p;
+	dohPut16(p, 0x0102); dohPut16(p, 0x8180); dohPut16(p, 1); dohPut16(p, 0); dohPut16(p, 0); dohPut16(p, 0);
+	dohPutName(p, "example.com"); dohPut16(p, DOH_TYPE_A); dohPut16(p, 1);
+	DohAnswer a = parseDohAnswer(p, 0x0102, "example.com", DOH_TYPE_A);
+	CHECK_EQ(a.status, DohAnswer::NoRecords);
+	CHECK_EQ(a.addresses.size(), (size_t)0);
+	CHECK_EQ(a.error.empty(), true);
+}
+
+// NXDOMAIN: the name isn't there at all
+static void testDohParseNxdomain()
+{
+	std::string p;
+	dohPut16(p, 0x1111); dohPut16(p, 0x8183); dohPut16(p, 1); dohPut16(p, 0); dohPut16(p, 0); dohPut16(p, 0);
+	dohPutName(p, "gone.example"); dohPut16(p, DOH_TYPE_A); dohPut16(p, 1);
+	DohAnswer a = parseDohAnswer(p, 0x1111, "gone.example", DOH_TYPE_A);
+	CHECK_EQ(a.status, DohAnswer::NameError);
+}
+
+// a cut answer: the truncation bit (what a resolver sets when its packet didn't fit); then a packet shorter than its
+// own header, one answering another query, and an A record whose length isn't 4
+static void testDohParseTruncated()
+{
+	std::string p;
+	dohPut16(p, 0x2222); dohPut16(p, 0x8380); dohPut16(p, 1); dohPut16(p, 0); dohPut16(p, 0); dohPut16(p, 0);
+	CHECK_EQ(parseDohAnswer(p, 0x2222, "example.com", DOH_TYPE_A).status, DohAnswer::Truncated);
+	std::string shortPacket("\x22\x22\x83", 3);
+	CHECK_EQ(parseDohAnswer(shortPacket, 0x2222, "example.com", DOH_TYPE_A).status, DohAnswer::Malformed);
+	std::string p2;
+	dohPut16(p2, 0x2222); dohPut16(p2, 0x8180); dohPut16(p2, 1); dohPut16(p2, 0); dohPut16(p2, 0); dohPut16(p2, 0);
+	dohPutName(p2, "example.com"); dohPut16(p2, DOH_TYPE_A); dohPut16(p2, 1);
+	CHECK_EQ(parseDohAnswer(p2, 0x3333, "example.com", DOH_TYPE_A).status, DohAnswer::Malformed);
+	std::string p3;
+	dohPut16(p3, 0x4444); dohPut16(p3, 0x8180); dohPut16(p3, 1); dohPut16(p3, 1); dohPut16(p3, 0); dohPut16(p3, 0);
+	size_t qoff = p3.size();
+	dohPutName(p3, "bad.example"); dohPut16(p3, DOH_TYPE_A); dohPut16(p3, 1);
+	dohPutPtr(p3, qoff); dohPut16(p3, DOH_TYPE_A); dohPut16(p3, 1); dohPut32(p3, 10); dohPut16(p3, 5);
+	p3 += std::string("\x01\x02\x03\x04\x05", 5);
+	CHECK_EQ(parseDohAnswer(p3, 0x4444, "bad.example", DOH_TYPE_A).status, DohAnswer::Malformed);
+}
+
+// the cache: names lowercased, the TTL capped, a zero TTL not kept, and an entry gone at its expiry
+static void testDohWantedFor()
+{
+	// public names go through DoH; literals and names only the local network knows keep the system's lookup
+	CHECK_EQ(dohWantedFor("https://api.mangadex.org/manga"), true);
+	CHECK_EQ(dohWantedFor("https://user:pw@komga.example.com:25600/api"), true);
+	CHECK_EQ(dohWantedFor("http://192.168.1.20:25600/api"), false);
+	CHECK_EQ(dohWantedFor("http://[fd00::2]:8080/"), false);
+	CHECK_EQ(dohWantedFor("http://nas.local:25600/"), false);
+	CHECK_EQ(dohWantedFor("http://NAS.LAN/opds"), false);
+	CHECK_EQ(dohWantedFor("http://nas/opds"), false);
+	CHECK_EQ(dohWantedFor("http://kavita.home.arpa/api"), false);
+}
+
+static void testDohCache()
+{
+	DohCache c;
+	std::vector<std::string> out;
+	c.put("Example.COM", DOH_TYPE_A, {"1.2.3.4"}, 120, 100.0);
+	CHECK_EQ(c.size(), (size_t)1);
+	CHECK_EQ(c.get("example.com", DOH_TYPE_A, 100.5, out), true);
+	CHECK_EQ(out.size(), (size_t)1);
+	CHECK_EQ(out.empty() ? std::string() : out[0], std::string("1.2.3.4"));
+	out.clear();
+	CHECK_EQ(c.get("example.com", DOH_TYPE_A, 220.1, out), false);
+	c.put("example.com", DOH_TYPE_AAAA, {"2606:4700::1111"}, 9000, 0.0);
+	CHECK_EQ(c.get("example.com", DOH_TYPE_AAAA, 299.0, out), true);
+	out.clear();
+	CHECK_EQ(c.get("example.com", DOH_TYPE_AAAA, 301.0, out), false);	// kMaxTtl, not the answer's 9000
+	c.put("zero.example", DOH_TYPE_A, {"1.2.3.5"}, 0, 0.0);
+	CHECK_EQ(c.get("zero.example", DOH_TYPE_A, 0.0, out), false);
+	c.put("empty.example", DOH_TYPE_A, {}, 120, 0.0);
+	CHECK_EQ(c.size(), (size_t)2);
+	c.clear();
+	CHECK_EQ(c.size(), (size_t)0);
 }
 
 // the servers' catalogue: the requests a Komga, Kavita or OPDS server is asked with, and the same answers read
@@ -4575,6 +4759,11 @@ static void testSettings()
 	Settings mg;
 	mg.mangaOn = true;
 	CHECK_EQ(parseSettings(serializeSettings(mg)).mangaOn, true);
+	CHECK_EQ(d.mangaSecureDns, false);	// Secure DNS: the system's lookup until it's turned on
+	Settings dns;
+	dns.mangaSecureDns = true;
+	CHECK_EQ(parseSettings(serializeSettings(dns)).mangaSecureDns, true);
+	CHECK_EQ(parseSettings("manga-secure-dns = maybe\n").mangaSecureDns, false);
 	CHECK_EQ(d.musicShow, (int)SHOW_ART);
 	CHECK_EQ(d.visualizer, (int)VIS_PEAKS);
 	CHECK_EQ(d.loop, (int)LOOP_OFF);
@@ -8424,6 +8613,13 @@ int main()
 	testReaderFetchTargetFirst();
 	testBrowserCheck();
 	testPublicAddress();
+	testDohQuery();
+	testDohParseCname();
+	testDohParseNoRecords();
+	testDohParseNxdomain();
+	testDohParseTruncated();
+	testDohCache();
+	testDohWantedFor();
 	testMangaRemote();
 	testMangaServers();
 	testMangaKavitaKey();

@@ -30,6 +30,7 @@ namespace bp
 		{"manga-recent", &Settings::mangaRecent},
 		{"manga-full-seen", &Settings::mangaFullSeen},
 		{"manga-open-full", &Settings::mangaOpenFull},
+		{"manga-secure-dns", &Settings::mangaSecureDns},
 	};
 
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};

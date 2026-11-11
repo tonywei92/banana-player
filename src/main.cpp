@@ -406,6 +406,8 @@ int main(int argc, char** argv)
 			for (auto& r : browseRoots()) places.push_back(r.path);
 			mangaNet->configure(evMangaFetch, evMangaWorker, opts.stateDir, places);
 		}
+		// the reader's Secure DNS setting reaches the threads as a flag, never by their reading the Ui's state
+		mangaNet->setSecureDns(player.settings.mangaSecureDns);
 		ui.mangaNet = mangaNet;
 		// the thread that lists the network folders (its answers come as evNet)
 		NetWorker netWorker([](NetListing* l) {
@@ -1337,6 +1339,12 @@ int main(int argc, char** argv)
 			}
 			// the manga reader's downloads move on (nothing while its network side hasn't started)
 			mangaNet->pump(now);
+			// Secure DNS changed (Manga settings): the next request and lookup take it
+			{
+				static bool mangaDnsOn = false;
+				if (mangaDnsOn != player.settings.mangaSecureDns) mangaNet->setSecureDns(player.settings.mangaSecureDns);
+				mangaDnsOn = player.settings.mangaSecureDns;
+			}
 			// the reader turned off (Manage extensions, or the dashboard): everything asked of its network side goes
 			{
 				static bool mangaWasOn = false;

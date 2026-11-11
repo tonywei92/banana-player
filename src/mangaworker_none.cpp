@@ -34,6 +34,9 @@ namespace bp
 		impl->stateDir = stateDir;
 	}
 
+	// (no script can run here, so no lookup is made)
+	void MangaWorker::setSecureDns(bool) {}
+
 	uint64_t MangaWorker::submit(const Job& job)
 	{
 		Uint32 wake = 0;

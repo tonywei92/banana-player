@@ -1,5 +1,6 @@
 #include "mangaworker.h"
 #include "challenge.h"
+#include "doh.h"
 #include "netpath.h"
 #include "netstore.h"
 #include "webpath.h"
@@ -271,6 +272,137 @@ namespace bp
 			return cancel && cancel->load() ? 1 : 0;
 		}
 
+		// Secure DNS (design 9): Cloudflare's DNS over HTTPS, reached at its IP literal (its certificate covers
+		// 1.1.1.1) so the lookup itself never goes through the resolver that is blocking these sites.
+		constexpr long kDohTimeoutMs = 4000, kDohConnectMs = 2500;
+
+		struct DohClient
+		{
+			DohCache cache;
+			std::atomic<uint16_t> ids{1};
+		};
+
+		struct DohFetch
+		{
+			bool ok = false;
+			std::vector<std::string> addresses;
+			uint32_t ttl = 0;
+			std::string error;
+		};
+
+		// One query through Cloudflare; the answer itself is read by bpcore's parser.
+		DohFetch dohPost(DohClient& doh, const std::string& host, uint16_t type)
+		{
+			DohFetch out;
+			uint16_t id = doh.ids.fetch_add(1);
+			std::vector<uint8_t> query = dohQuery(host, type, id);
+			if (query.empty())
+			{
+				out.error = "the name can't be one in a DNS query";
+				return out;
+			}
+			CURL* e = curl_easy_init();
+			if (!e)
+			{
+				out.error = "couldn't make a request";
+				return out;
+			}
+			Sink sink;
+			char errbuf[CURL_ERROR_SIZE] = {};
+			curl_slist* headers = nullptr;
+			headers = curl_slist_append(headers, "Content-Type: application/dns-message");
+			headers = curl_slist_append(headers, "Accept: application/dns-message");
+			curl_easy_setopt(e, CURLOPT_URL, "https://1.1.1.1/dns-query");
+			curl_easy_setopt(e, CURLOPT_NOSIGNAL, 1L);
+#if LIBCURL_VERSION_NUM >= 0x075500	// 7.85.0: the string forms of the protocol masks
+			curl_easy_setopt(e, CURLOPT_PROTOCOLS_STR, "https");
+#else
+			curl_easy_setopt(e, CURLOPT_PROTOCOLS, (long)CURLPROTO_HTTPS);
+#endif
+			// The lookup must not be caught by a proxy that would resolve a name of its own: it goes to the literal.
+			curl_easy_setopt(e, CURLOPT_PROXY, "");
+			curl_easy_setopt(e, CURLOPT_NOPROXY, "*");
+			curl_easy_setopt(e, CURLOPT_TIMEOUT_MS, kDohTimeoutMs);
+			curl_easy_setopt(e, CURLOPT_CONNECTTIMEOUT_MS, kDohConnectMs);
+			curl_easy_setopt(e, CURLOPT_SSL_VERIFYPEER, 1L);
+			curl_easy_setopt(e, CURLOPT_SSL_VERIFYHOST, 2L);
+			curl_easy_setopt(e, CURLOPT_POST, 1L);
+			curl_easy_setopt(e, CURLOPT_POSTFIELDS, (const char*)query.data());
+			curl_easy_setopt(e, CURLOPT_POSTFIELDSIZE_LARGE, (curl_off_t)query.size());
+			if (headers) curl_easy_setopt(e, CURLOPT_HTTPHEADER, headers);
+			curl_easy_setopt(e, CURLOPT_WRITEFUNCTION, &onWrite);
+			curl_easy_setopt(e, CURLOPT_WRITEDATA, &sink);
+			curl_easy_setopt(e, CURLOPT_ERRORBUFFER, errbuf);
+			CURLcode rc = curl_easy_perform(e);
+			long status = 0;
+			curl_easy_getinfo(e, CURLINFO_RESPONSE_CODE, &status);
+			curl_easy_cleanup(e);
+			if (headers) curl_slist_free_all(headers);
+			if (rc != CURLE_OK)
+			{
+				out.error = errbuf[0] ? errbuf : curl_easy_strerror(rc);
+				return out;
+			}
+			if (status != 200)
+			{
+				out.error = "HTTP " + std::to_string(status);
+				return out;
+			}
+			DohAnswer answer = parseDohAnswer(sink.body, id, host, type);
+			if (answer.status == DohAnswer::Malformed || answer.status == DohAnswer::Truncated ||
+				answer.status == DohAnswer::NameError)
+			{
+				out.error = answer.error.empty() ? "the answer can't be read" : answer.error;
+				return out;
+			}
+			// NoRecords is a good answer: the name exists but has no address of this kind.
+			out.ok = true;
+			out.addresses = std::move(answer.addresses);
+			out.ttl = answer.ttl;
+			return out;
+		}
+
+		struct DohResult
+		{
+			bool ok = false;
+			std::string error;
+			std::vector<std::string> addresses;
+		};
+
+		// Both families, the cache first. One address of either is a good lookup; the caller then applies the same
+		// public-address and own-address checks that the system's answer went through.
+		DohResult dohResolve(DohClient& doh, const std::string& host)
+		{
+			DohResult out;
+			double now = std::chrono::duration<double>(Clock::now().time_since_epoch()).count();
+			std::string error;
+			for (uint16_t type : {DOH_TYPE_A, DOH_TYPE_AAAA})
+			{
+				std::vector<std::string> cached;
+				if (doh.cache.get(host, type, now, cached))
+				{
+					out.addresses.insert(out.addresses.end(), cached.begin(), cached.end());
+					continue;
+				}
+				DohFetch found = dohPost(doh, host, type);
+				if (!found.ok)
+				{
+					if (error.empty()) error = found.error;
+					continue;
+				}
+				if (found.addresses.empty()) continue;
+				doh.cache.put(host, type, found.addresses, found.ttl, now);
+				out.addresses.insert(out.addresses.end(), found.addresses.begin(), found.addresses.end());
+			}
+			if (!out.addresses.empty())
+			{
+				out.ok = true;
+				return out;
+			}
+			out.error = error.empty() ? "no addresses" : error;
+			return out;
+		}
+
 		// One hop of a request (the URL the script gave, then each redirect): the name it asks for and the one
 		// public address curl is allowed to connect to.
 		struct Hop
@@ -363,7 +495,7 @@ namespace bp
 
 		// 5.4's rule for one hop: http(s), no credentials, and a host with at least one public address that isn't
 		// the card's own. The address is the one curl is pinned to; a name is never resolved by curl itself.
-		std::string checkHop(const std::string& url, Hop& hop)
+		std::string checkHop(const std::string& url, Hop& hop, DohClient* doh)
 		{
 			hop.url = url;
 			std::string error = parseUrl(url, hop.host, hop.port);
@@ -375,6 +507,25 @@ namespace bp
 					return "Blocked: " + hop.host + " is not a public address";
 				hop.address = literal;
 				return "";
+			}
+			// Secure DNS: the name is asked of Cloudflare, not the resolver this network supplies, and the answer
+			// is then held to the same rule as any other (a private address is refused below, not connected to).
+			if (doh)
+			{
+				DohResult found = dohResolve(*doh, hop.host);
+				if (!found.ok)
+				{
+					fprintf(stderr, "manga: DNS over HTTPS lookup of %s failed: %s\n", hop.host.c_str(),
+						found.error.c_str());
+					return "couldn't resolve " + hop.host;
+				}
+				for (const std::string& ip : found.addresses)
+				{
+					if (ip.empty() || !publicAddress(ip) || ownAddress(ip)) continue;
+					hop.address = ip;
+					return "";
+				}
+				return "Blocked: " + hop.host + " is not a public address";
 			}
 			struct addrinfo hints = {};
 			hints.ai_family = AF_UNSPEC;
@@ -430,6 +581,8 @@ namespace bp
 			std::unique_ptr<SourceHost> host;
 			CURLSH* cookies = nullptr;	// owned by the worker, so cookies outlive an idle close
 			std::atomic<bool>* cancel = nullptr;	// the worker's flag for the job running now
+			DohClient* doh = nullptr;			// the worker's lookup and its cache (Secure DNS)
+			std::atomic<bool>* secureDns = nullptr;	// the Manga setting, read here so a change reaches the next hop
 			int requestsThisCall = 0;	// 5.4's 40, reset by the job (and by loading the script's top level)
 			Clock::time_point lastUse;
 
@@ -460,7 +613,8 @@ namespace bp
 				if (cancelled()) throw std::runtime_error("the source was cancelled");
 				Hop hop;
 				// Every hop is checked afresh, redirects included: curl neither resolves nor follows on its own.
-				std::string blocked = checkHop(currentUrl, hop);
+				bool useDoh = doh && secureDns && secureDns->load();
+				std::string blocked = checkHop(currentUrl, hop, useDoh ? doh : nullptr);
 				if (!blocked.empty()) throw std::runtime_error(blocked);
 
 				Easy easy;
@@ -593,6 +747,8 @@ namespace bp
 		Uint32 wakeEvent = 0;
 		uint64_t nextSerial = 1, runningSerial = 0;
 		double idleSeconds = kDefaultIdle;
+		std::atomic<bool> secureDns{false};	// the Manga setting; the thread reads it at each hop
+		DohClient doh;				// Secure DNS's answers and cache, on the thread only
 		std::atomic<bool> abortCurrent{false};
 		std::atomic<int> openCount{0};
 		std::atomic<NetBackend*> netBusy{nullptr};	// the backend in a network folder call now, for cancel()
@@ -668,6 +824,8 @@ namespace bp
 		st->userAgent = userAgent;
 		st->cookies = jarFor(job.sourceId);
 		st->cancel = &abortCurrent;
+		st->doh = &doh;
+		st->secureDns = &secureDns;
 		st->host.reset(new SourceHost());
 		// The host owns the lambda and the state owns the host: a raw pointer is the lifetime, not a cycle of owners.
 		SourceState* raw = st.get();
@@ -1150,6 +1308,13 @@ namespace bp
 		});
 		host.setLimits(kCheckSeconds, kCheckInstructions, kCallMemory);
 		return host.load(text, expectedId, error);
+	}
+
+	void MangaWorker::setSecureDns(bool on)
+	{
+		std::shared_ptr<Impl> d = impl;
+		std::lock_guard<std::mutex> g(d->m);
+		d->secureDns = on;
 	}
 
 	void MangaWorker::setIdleSeconds(double seconds)

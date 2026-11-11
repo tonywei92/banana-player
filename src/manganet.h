@@ -28,6 +28,13 @@ namespace bp
 		// threads and stores, the first time (idempotent)
 		void start();
 		bool started() const { return running; }
+		// Secure DNS (Manga settings): the fetcher's requests and the source worker's host lookups go through
+		// Cloudflare over HTTPS. Off is the system's lookup; safe to call while the threads run.
+		void setSecureDns(bool on)
+		{
+			fetcher.setSecureDns(on);
+			work.setSecureDns(on);
+		}
 		// the extension turned off: everything asked of it goes (the threads stay, asleep)
 		void off();
 		// quitting: the threads leave without waiting for servers
