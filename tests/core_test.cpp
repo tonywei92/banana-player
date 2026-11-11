@@ -53,6 +53,7 @@ extern "C"
 #include "strip.h"
 #include "tracks.h"
 #include "json.h"
+#include "suwayomi.h"
 #include "webauth.h"
 #include "webmedia.h"
 #include "webpath.h"
@@ -8197,6 +8198,196 @@ static void testPicSubs()
 	}
 }
 
+// the Suwayomi GraphQL client: every request body is built and every recorded answer (from tests/fixtures/suwayomi/)
+// is parsed, with the same small JSON reader the rest of bpcore uses.
+static void testSuwayomi()
+{
+	const std::string F = std::string(BP_TESTS_DIR) + "/fixtures/suwayomi/";
+	// a fixture is read into a string; the file is always there (a missing one is a test failure, not a skip)
+	auto read = [](const std::string& path) -> std::string
+	{
+		std::ifstream f(path);
+		return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+	};
+
+	// ---- request bodies: each is a JSON string the caller POSTs to /api/graphql ----
+
+	// addExtensionStore: the index url is a variable; the query names the mutation, and the variable is
+	// escaped (a url with quotes or backslashes would otherwise break the body)
+	std::string add = suwayomiAddExtensionStore("https://github.com/keiyoushi/extensions/raw/repo/index.pb");
+	CHECK_EQ(add.find("\"addExtensionStore\"") != std::string::npos || add.find("addExtensionStore") != std::string::npos, true);
+	CHECK_EQ(add.find("keiyoushi") != std::string::npos, true);
+	std::string remove = suwayomiRemoveExtensionStore("https://github.com/keiyoushi/extensions/raw/repo/index.pb");
+	CHECK_EQ(remove.find("removeExtensionStore") != std::string::npos, true);
+	// install / update / uninstall: the same mutation name, different isInstalled flags in the body
+	std::string inst = suwayomiInstallExtension("eu.kanade.tachiyomi.extension.all.mangaplus");
+	CHECK_EQ(inst.find("eu.kanade.tachiyomi.extension.all.mangaplus") != std::string::npos, true);
+	CHECK_EQ(inst.find("isInstalled") != std::string::npos, true);
+	std::string upd = suwayomiUpdateExtension("eu.kanade.tachiyomi.extension.all.mangaplus");
+	CHECK_EQ(upd.find("updateExtension") != std::string::npos, true);
+	std::string unin = suwayomiUninstallExtension("eu.kanade.tachiyomi.extension.all.mangaplus");
+	CHECK_EQ(unin.find("isInstalled") != std::string::npos, true);
+	// the catalogue queries: popular / latest / search, with the source id and page sent as variables
+	std::string pop = suwayomiFetchSourceMangaPopular("1998944621602463790", 1);
+	CHECK_EQ(pop.find("POPULAR") != std::string::npos, true);
+	CHECK_EQ(pop.find("1998944621602463790") != std::string::npos, true);
+	std::string lat = suwayomiFetchSourceMangaLatest("1998944621602463790", 1);
+	CHECK_EQ(lat.find("LATEST_UPDATES") != std::string::npos, true);
+	// a search body carries the query text, escaped; a "&" in the query is not the JSON separator
+	std::string srch = suwayomiFetchSourceMangaSearch("1998944621602463790", "one & piece", 1, "[]");
+	CHECK_EQ(srch.find("SEARCH") != std::string::npos, true);
+	CHECK_EQ(srch.find("one ") != std::string::npos, true);
+	// the source id in the request is a string, never a number (the 64-bit overflow rule)
+	CHECK_EQ(pop.find("\"1998944621602463790\"") != std::string::npos, true);
+
+	// ---- parsers: each fixture is a real Suwayomi v2.4.2366 answer ----
+
+	std::string error;
+
+	// the GraphQL error check: a body with errors is caught; a good body is not flagged
+	CHECK_EQ(suwayomiCheckErrors("{\"errors\":[{\"message\":\"not found\"}]}", error), true);
+	CHECK_EQ(error, std::string("not found"));
+	CHECK_EQ(suwayomiCheckErrors("{\"data\":{\"hello\":\"world\"}}", error), false);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(suwayomiCheckErrors("not json", error), false);
+
+	// add-store.json: the store was created; the parser sees a data.addExtensionStore path and nothing else
+	std::string addStore = read(F + "add-store.json");
+	CHECK_EQ(suwayomiParseAddExtensionStore(addStore, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(suwayomiParseAddExtensionStore("{}", error), false);
+	CHECK_EQ(suwayomiParseAddExtensionStore("{\"errors\":[{\"message\":\"store exists\"}]}", error), false);
+	CHECK_EQ(error, std::string("store exists"));
+
+	// extensions.json: the full extension list
+	std::string extsJson = read(F + "extensions.json");
+	std::vector<SuwayomiExt> exts;
+	CHECK_EQ(suwayomiParseExtensions(extsJson, exts, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(exts.empty(), false);
+	// the MANGA Plus extension is in the list (the fixture has it)
+	bool foundMp = false;
+	for (const SuwayomiExt& e : exts)
+		if (e.pkgName == "eu.kanade.tachiyomi.extension.all.mangaplus")
+		{
+			foundMp = true;
+			CHECK_EQ(e.name, std::string("MANGA Plus by SHUEISHA"));
+			CHECK_EQ(e.lang, std::string("all"));
+			CHECK_EQ(e.versionName, std::string("1.6.68"));
+			CHECK_EQ(e.versionCode, (int64_t)106068);
+			CHECK_EQ(e.isNsfw, false);
+			CHECK_EQ(e.isInstalled, false);
+			CHECK_EQ(e.iconUrl, std::string("/api/v1/extension/icon/eu.kanade.tachiyomi.extension.all.mangaplus"));
+		}
+	CHECK_EQ(foundMp, true);
+	// a malformed answer isn't usable
+	CHECK_EQ(suwayomiParseExtensions("not json", exts, error), false);
+
+	// install.json: the sources an install returns; ids are strings (the 64-bit overflow rule)
+	std::string instJson = read(F + "install.json");
+	std::vector<SuwayomiSource> sources;
+	CHECK_EQ(suwayomiParseInstallResult(instJson, sources, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(sources.size(), (size_t)9);
+	// the first source (MANGA Plus EN) carries the id as a string; the int 1998944621602463790 overflows a double,
+	// so it must come out as the exact text the server wrote
+	CHECK_EQ(sources[0].id, std::string("1998944621602463790"));
+	CHECK_EQ(sources[0].name, std::string("MANGA Plus by SHUEISHA"));
+	CHECK_EQ(sources[0].lang, std::string("en"));
+	CHECK_EQ(sources[0].displayName, std::string("MANGA Plus by SHUEISHA (EN)"));
+	CHECK_EQ(sources[0].supportsLatest, true);
+	CHECK_EQ(sources[0].isNsfw, false);
+	// the last one (DE): different id, same name, different lang
+	CHECK_EQ(sources[8].lang, std::string("de"));
+	CHECK_EQ(sources[8].id, std::string("1893513843840146580"));
+
+	// filters-mangaplus.json: the source's filter definitions, onto the MangaFilter structs the sheet uses
+	std::string filtJson = read(F + "filters-mangaplus.json");
+	std::vector<MangaFilter> defs;
+	CHECK_EQ(suwayomiParseFilters(filtJson, defs, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(defs.size(), (size_t)2);	// Status and Genre, both SelectFilter
+	CHECK_EQ(defs[0].type, std::string("select"));
+	CHECK_EQ(defs[0].name, std::string("Status"));
+	CHECK_EQ(defs[0].options.size(), (size_t)3);	// Serializing, Completed, One-shot
+	CHECK_EQ(defs[0].options[0].name, std::string("Serializing"));
+	CHECK_EQ(defs[0].options[1].name, std::string("Completed"));
+	// the default is index 0, which maps to the first option's id
+	CHECK_EQ(defs[0].textDefault, std::string("Serializing"));
+	CHECK_EQ(defs[1].name, std::string("Genre"));
+	CHECK_EQ(defs[1].options.size(), (size_t)16);
+	CHECK_EQ(defs[1].options[1].name, std::string("Battle / Action"));
+
+	// the reverse: the sheet's chosen values onto the Suwayomi filter input list
+	std::vector<MangaFilterValue> vals = mangaFilterDefaults(defs);
+	vals[0].select = "Completed";	// index 1
+	vals[1].select = "Romance";	// index 5 (All=0, Battle/Action=1, Comedy=2, Sport=3, Mystery=4, Romance=5)
+	std::string inputs = suwayomiFilterInputsJson(defs, vals);
+	// the input is a JSON array; each entry has a position and the right state field for its type
+	CHECK_EQ(inputs.find("\"position\":0") != std::string::npos, true);
+	CHECK_EQ(inputs.find("\"selectState\":1") != std::string::npos, true);	// Status = Completed = index 1
+	CHECK_EQ(inputs.find("\"position\":1") != std::string::npos, true);
+	CHECK_EQ(inputs.find("\"selectState\":5") != std::string::npos, true);	// Genre = Romance = index 5 (All Battle Comedy Sport Mystery Romance)
+
+	// popular.json: one page of a source's popular catalogue
+	std::string popJson = read(F + "popular.json");
+	std::vector<SuwayomiManga> mangas;
+	bool hasMore = true;
+	CHECK_EQ(suwayomiParseSourceManga("http://127.0.0.1:4567", popJson, mangas, hasMore, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(mangas.empty(), false);
+	CHECK_EQ(hasMore, false);	// the fixture says hasNextPage:false
+	CHECK_EQ(mangas[0].id, 1);
+	CHECK_EQ(mangas[0].title, std::string("One Piece"));
+	// the thumbnail url is made absolute against the base url the caller gave
+	CHECK_EQ(mangas[0].thumbnailUrl, std::string("http://127.0.0.1:4567/api/v1/manga/1/thumbnail"));
+
+	// search.json: same shape, different results
+	std::string srchJson = read(F + "search.json");
+	std::vector<SuwayomiManga> srchMangas;
+	CHECK_EQ(suwayomiParseSourceManga("http://127.0.0.1:4567", srchJson, srchMangas, hasMore, error), true);
+	CHECK_EQ(srchMangas.empty(), false);
+	// the search results include One Piece and a few titles that contain the search term
+	bool foundOp = false;
+	for (const SuwayomiManga& m : srchMangas)
+		if (m.title == "One Piece") foundOp = true;
+	CHECK_EQ(foundOp, true);
+
+	// manga-chapters.json: a manga's details and its chapters, ordered for the series page
+	std::string mcJson = read(F + "manga-chapters.json");
+	SuwayomiMangaDetails manga;
+	std::vector<SuwayomiChapter> chapters;
+	CHECK_EQ(suwayomiParseMangaAndChapters("http://127.0.0.1:4567", mcJson, manga, chapters, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(manga.id, 1);
+	CHECK_EQ(manga.title, std::string("One Piece"));
+	CHECK_EQ(manga.author, std::string("Eiichiro Oda"));
+	CHECK_EQ(manga.status, std::string("ONGOING"));
+	CHECK_EQ(manga.thumbnailUrl, std::string("http://127.0.0.1:4567/api/v1/manga/1/thumbnail"));
+	CHECK_EQ(manga.realUrl, std::string("https://mangaplus.shueisha.co.jp/titles/100020"));
+	CHECK_EQ(manga.genre.size() >= (size_t)2, true);
+	CHECK_EQ(chapters.empty(), false);
+	// chapters are ordered by sourceOrder ascending (the first one in the fixture has sourceOrder:1)
+	CHECK_EQ(chapters[0].id, 1);
+	CHECK_EQ(chapters[0].name.find("Romance Dawn") != std::string::npos, true);
+	CHECK_EQ(chapters[0].chapterNumber, 1.0);
+	CHECK_EQ(chapters[0].scanlator, std::string("MANGA Plus"));
+	CHECK_EQ(chapters[0].isRead, false);
+
+	// pages.json: the page paths, each made absolute
+	std::string pgJson = read(F + "pages.json");
+	std::vector<std::string> pages;
+	CHECK_EQ(suwayomiParsePages("http://127.0.0.1:4567", pgJson, pages, error), true);
+	CHECK_EQ(error, std::string(""));
+	CHECK_EQ(pages.size(), (size_t)17);
+	CHECK_EQ(pages[0], std::string("http://127.0.0.1:4567/api/v1/manga/1/chapter/6/page/0"));
+	CHECK_EQ(pages[16], std::string("http://127.0.0.1:4567/api/v1/manga/1/chapter/6/page/16"));
+
+	// a GraphQL error in a body that otherwise looks right is caught before the data is read
+	CHECK_EQ(suwayomiParseExtensions("{\"errors\":[{\"message\":\"no extensions\"}]}", exts, error), false);
+	CHECK_EQ(error, std::string("no extensions"));
+}
+
 int main()
 {
 	testPicSubs();
@@ -8255,6 +8446,7 @@ int main()
 	testStrip();
 	testLabels();
 	testTrackList();
+	testSuwayomi();
 	if (failures) fprintf(stderr, "%d failed\n", failures);
 	else printf("core: all passed\n");
 	return failures != 0;
