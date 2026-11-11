@@ -57,6 +57,7 @@ extern "C"
 #include "tracks.h"
 #include "json.h"
 #include "suwayomi.h"
+#include "imagesize.h"
 #include "mangajava.h"
 #include "webauth.h"
 #include "webmedia.h"
@@ -8997,8 +8998,33 @@ static void testTarX()
 	rmdir(root.c_str());
 }
 
+// an image's size from its header (the reader's strip sizes a long page's place before decoding it)
+static void testImageSize()
+{
+	for (const char* ext : {"jpg", "png", "gif"})
+	{
+		int w = 0, h = 0;
+		std::string path = std::string(BP_TESTS_DIR) + "/fixtures/imagesize/tall." + ext;
+		CHECK_EQ(imageSizeFile(path, w, h), true);
+		CHECK_EQ(w, 720);
+		CHECK_EQ(h, 9000);
+	}
+	int w = 0, h = 0;
+	// a WebP's extended header (VP8X): width-1 and height-1 as 24-bit little-endian numbers
+	uint8_t webp[30] = {'R', 'I', 'F', 'F', 0, 0, 0, 0, 'W', 'E', 'B', 'P', 'V', 'P', '8', 'X', 10, 0, 0, 0, 0, 0, 0, 0};
+	webp[24] = (719) & 0xff; webp[25] = (719 >> 8) & 0xff; webp[26] = 0;
+	webp[27] = (8999) & 0xff; webp[28] = (8999 >> 8) & 0xff; webp[29] = 0;
+	CHECK_EQ(imageSize(webp, sizeof webp, w, h), true);
+	CHECK_EQ(w, 720);
+	CHECK_EQ(h, 9000);
+	const uint8_t junk[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30};
+	CHECK_EQ(imageSize(junk, sizeof junk, w, h), false);
+	CHECK_EQ(imageSizeFile("/nonexistent/x.jpg", w, h), false);
+}
+
 int main()
 {
+	testImageSize();
 	testPicSubs();
 	testTarX();
 	testSessionNamed();

@@ -1,6 +1,7 @@
 #include "reader.h"
 #include "manga_names.h"
 #include "readerfetchplan.h"
+#include "imagesize.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -171,6 +172,10 @@ namespace bp
 		strip.setView(w, layoutH());
 		strip.setPages((int)files.size(), 1.5);
 		strip.setZoom(1, 0, 0);	// the models outlive a chapter: the last one's zoom goes
+		// a chapter's pages already on the card (read before, or downloaded): their real heights from the start
+		if (remote())
+			for (int i = 0; i < (int)files.size(); i++)
+				if (fileThere(files[i])) sizeFromFile(i);
 		page = std::clamp(page, 0, (int)files.size() - 1);
 		// (placeholders are all the same height until pages come: their tops are exact for the first page wanted)
 		strip.scrollTo(strip.pageTop(page));
@@ -405,8 +410,19 @@ namespace bp
 		fetching.erase(index);
 		failed.erase(index);
 		if (index == errPage) { err.clear(); errPage = -1; }
+		sizeFromFile(index);	// its place its real height now, before it's decoded
 		want();	// its decode goes in now: the file is there
 		redrawSoon(1);
+	}
+
+	void MangaReader::sizeFromFile(int index)
+	{
+		// a page on the card says its size in its first bytes: the strip's place for it is right at once, so a long
+		// page is one tall place (not three 1.5:1 guesses on screen, each wanting decoding with the memory that takes)
+		if (index < 0 || index >= (int)files.size() || pr.has(index)) return;
+		int w = 0, h = 0;
+		if (!imageSizeFile(files[index], w, h)) return;
+		strip.setPageSize(index, w, h);
 	}
 
 	void MangaReader::pageFailed(int index, const std::string& error)

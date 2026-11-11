@@ -86,6 +86,7 @@ namespace bp
 		const std::string& error() const { return err; }
 		// a page in view couldn't be fetched, decoded or put on the GPU: the Ui offers Try again (the Retry command)
 		bool failedInView() const;
+		void sizeFromFile(int index);	// a page on the card: its strip place sized from its file's header
 		// the page turn in degrees (0, 90, 180, 270); paged modes only (Strip always 0)
 		int rotation() const { return readMode != MANGA_STRIP ? angle : 0; }
 		// fullscreen: the view is both panels' height and the hinge's gap; the top panel shows its first panel-height,
