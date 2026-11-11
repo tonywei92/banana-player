@@ -1408,12 +1408,26 @@ int main(int argc, char** argv)
 						}
 					}
 					ui.readerBottom = std::move(rb);
+					// the pages grid's thumbnails: every page the reader has decoded, ~96 px wide RGBA.
+					// always filled while the reader is open (the Ui only uses them when the grid shows);
+					// shared_ptr copies are cheap, and absent pages are placeholders in the grid
+					Ui::ReaderThumbs rt;
+					rt.on = true;
+					rt.gen = reader.chapterGen();
+					for (int pi = 0; pi < reader.pages(); pi++)
+					{
+						int tw = 0, th = 0;
+						if (auto tp = reader.thumbPixels(pi, tw, th))
+							rt.pages.push_back({pi, tw, th, tp});
+					}
+					ui.readerThumbs = std::move(rt);
 				}
 				else
 				{
 					readerFetch.end();
 					ui.readerStatus.open = false;
 					ui.readerBottom = {};
+					ui.readerThumbs = {};
 				}
 				if (woke) reader.redrawSoon();
 			}

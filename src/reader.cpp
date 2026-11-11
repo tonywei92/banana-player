@@ -168,6 +168,7 @@ namespace bp
 		}
 		pr.keepOnly({});
 		kept.clear();
+		thumbs.clear();
 		decodedW.clear();
 		zscale = 1;
 		zoomAt = 0;
@@ -345,6 +346,15 @@ namespace bp
 		return it->second.rgba;
 	}
 
+	std::shared_ptr<const std::vector<uint8_t>> MangaReader::thumbPixels(int page, int& w, int& h) const
+	{
+		auto it = thumbs.find(page);
+		if (it == thumbs.end()) return nullptr;
+		w = it->second.w;
+		h = it->second.h;
+		return it->second.rgba;
+	}
+
 	void MangaReader::setFullscreen(bool on, int hinge480)
 	{
 		int gap = viewH > 0 ? (int)std::lround(std::clamp(hinge480, 0, 120) * viewH / 480.0) : 0;
@@ -477,6 +487,25 @@ namespace bp
 				paged.setPageSize(d.index, d.img.w, d.img.h);
 				// (a copy for the bottom panel: the renderer drops its own once the page is on the GPU)
 				kept[d.index] = {d.img.w, d.img.h, std::make_shared<const std::vector<uint8_t>>(d.img.rgba)};
+				// a thumbnail for the pages grid: 96 px wide, aspect kept, nearest-neighbour (small enough that
+				// the blockiness doesn't show on the 4:3 panel; a 1400×2000 source is 13 K iterations)
+				{
+					int tw = 96;
+					int th = std::max(1, (int)((double)d.img.h * tw / d.img.w + 0.5));
+					auto buf = std::make_shared<std::vector<uint8_t>>(tw * th * 4);
+					const uint8_t* src = d.img.rgba.data();
+					uint8_t* dst = buf->data();
+					for (int ty = 0; ty < th; ty++)
+						for (int tx = 0; tx < tw; tx++)
+						{
+							int sx = tx * d.img.w / tw;
+							int sy = ty * d.img.h / th;
+							const uint8_t* s = src + ((size_t)sy * d.img.w + sx) * 4;
+							uint8_t* t = dst + ((size_t)ty * tw + tx) * 4;
+							t[0] = s[0]; t[1] = s[1]; t[2] = s[2]; t[3] = s[3];
+						}
+					thumbs[d.index] = {tw, th, std::move(buf)};
+				}
 				pr.addPage(d.index, d.img.w, d.img.h, std::move(d.img.rgba));
 				any = true;
 			}

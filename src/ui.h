@@ -183,6 +183,12 @@ namespace bp
 		struct ReaderPix { int page = -1, w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		struct ReaderBottom { bool on = false; uint64_t gen = 0; std::vector<ReaderBox> boxes; std::vector<ReaderPix> pages; };
 		ReaderBottom readerBottom;
+		// the pages grid's thumbnails (docs/design/manga.md section 3): one per decoded page, ~96 px wide RGBA,
+		// made by the reader as each page decodes; pages not decoded yet are absent (the Ui draws a numbered
+		// placeholder). gen changes with the chapter: the Ui's textures of the last one go
+		struct ReaderThumb { int page = -1, w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
+		struct ReaderThumbs { bool on = false; uint64_t gen = 0; std::vector<ReaderThumb> pages; };
+		ReaderThumbs readerThumbs;
 		// the reader closed itself (an error, or main stopped it): the bottom panel leaves its page
 		bool readerOpen() const { return readerStatus.open; }
 		// started with no file: the video's Quit closes it (back to the browser)
@@ -1198,7 +1204,7 @@ namespace bp
 		int mangaMenuCursor = 0;
 		// the zoom the keys last asked for: key repeats polled in one pass must walk the ladder, not resend a step
 		int mangaZoomAsked = 100;
-		static constexpr int MGM_ROWS = 7, MGM_ROW_H = 34, MGM_TOP = 198;
+		static constexpr int MGM_ROWS = 8, MGM_ROW_H = 34, MGM_TOP = 198;
 		Rect mangaMenuRect() const { return {0, 166, W, H - 166}; }
 		Rect mangaMenuRowRect(int i) const { return {16, MGM_TOP + i * MGM_ROW_H, 608, MGM_ROW_H - 4}; }
 		void mangaOpenReadingMenu();
@@ -1206,6 +1212,26 @@ namespace bp
 		void mangaMenuStep(int dir, Player& p);
 		void mangaMenuAct(Player& p);
 		void drawMangaReadingMenu(const Player& p);
+		// the pages grid (Y in the reader): the chapter's thumbnails 6 wide, the D-pad moves the cursor, A jumps
+		// and closes, B or Y closes; the top panel keeps showing the reader, moved to the page under the cursor
+		// (a Seek as the slider sends). the thumbnails are made by the reader as each page decodes
+		bool mangaPages = false;	// the grid is open
+		int mangaPagesCursor = 0;	// the page under the cursor (0-based)
+		int mangaPagesScroll = 0;	// the first row shown
+		bool mangaPagesTouch = false;
+		double mangaPagesTouchY = 0;
+		int mangaPagesPressed = -1;	// the thumbnail under the finger (-1: none)
+		// the grid's own textures: one SDL_Texture per decoded page, made a few per frame so a turn never stalls
+		struct ThumbTex { SDL_Texture* tex = nullptr; int w = 0, h = 0; Uint32 used = 0; };
+		std::map<int, ThumbTex> mpTex;
+		uint64_t mpGen = 0;
+		int mpMade = 0;	// how many were made this frame (at most a few)
+		void drawMangaPages(const Player& p);
+		void mangaPagesOpen(Player& p);
+		void mangaPagesClose(Player& p);
+		bool mangaPagesKey(Button b, Player& p);
+		bool mangaPagesPointer(const Pointer& pt, int x, int y, Player& p);
+		void mpFree();
 		void mangaZoomStep(int dir);	// UP/DOWN, and the Zoom row: one of the photo viewer's steps
 		void mangaZoomToggle();			// A: 200 % or back to the fit
 		void mangaSetMode(int m, Player& p);	// this series' reading mode (X and the menu)
@@ -1273,6 +1299,18 @@ namespace bp
 		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;	// the tabs end at 94: History's and Browse's rows below them
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
 		static constexpr int MG_CARD = 3010, MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101;
+		// the pages grid: 6 columns of 96 px wide thumbnails, 6 px gap, centred in the 640-wide panel;
+		// each row is 130 px (thumb + page number), the grid starts below the header and ends above the hints
+		static constexpr int MPG_COLS = 6, MPG_THUMB_W = 96, MPG_GAP = 6, MPG_ROW_H = 130;
+		static constexpr int MPG_LEFT = (W - (MPG_COLS * MPG_THUMB_W + (MPG_COLS - 1) * MPG_GAP)) / 2;
+		static constexpr int MPG_TOP = 72;
+		Rect mangaPageRect(int i) const	// i: 0-based page index; the rect in the 640x480 panel
+		{
+			int row = i / MPG_COLS, col = i % MPG_COLS;
+			return {MPG_LEFT + col * (MPG_THUMB_W + MPG_GAP), MPG_TOP + (row - mangaPagesScroll) * MPG_ROW_H,
+				MPG_THUMB_W, MPG_ROW_H - MPG_GAP};
+		}
+		static constexpr int MPG_THUMB = 4000;	// touch id base for the thumbnails (mangaPointer)
 
 		// ---- the manga reader's Sources tab (ui_manga_sources.cpp) ----
 		// Installed / Available / Repositories, three sub-lists under the app's tabs: LEFT/RIGHT step them, UP/DOWN the

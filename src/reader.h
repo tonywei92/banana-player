@@ -80,6 +80,10 @@ namespace bp
 		std::vector<Box> bottomBoxes() const;
 		// a decoded page's pixels (RGBA, straight alpha) for the bottom panel's own textures; null when not decoded
 		std::shared_ptr<const std::vector<uint8_t>> pixels(int page, int& w, int& h) const;
+		// the pages grid's thumbnails (docs/design/manga.md section 3): ~96 px wide RGBA, made as each page decodes;
+		// null for a page not decoded yet (the Ui draws a numbered placeholder). kept for the whole chapter so a
+		// 200-page chapter's ~10 MB of thumbs stay bounded and don't need to be remade
+		std::shared_ptr<const std::vector<uint8_t>> thumbPixels(int page, int& w, int& h) const;
 		uint64_t chapterGen() const { return gen; }
 		// 1 while the fit is shown, as the Zoom steps leave it (100 % … 800 %)
 		double zoom() const { return zscale; }
@@ -124,6 +128,9 @@ namespace bp
 		int gapPx = 0;
 		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Pix> kept;	// the decoded pages near the view, for the bottom panel in fullscreen
+		// thumbnails for the pages grid: ~96 px wide, one per decoded page, kept for the whole chapter
+		struct Thumb { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
+		std::map<int, Thumb> thumbs;
 		std::map<int, int> decodedW;	// each page's decoded width: a zoom in decodes it again, wider
 		std::string err;
 		int errPage = -1;	// the page err is about (a URL page that failed); -1 for the chapter's own error

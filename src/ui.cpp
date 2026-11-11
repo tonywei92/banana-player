@@ -1178,10 +1178,15 @@ namespace bp
 			if (page == Page::MangaRead)
 			{
 				char rb[160];
-				snprintf(rb, sizeof rb, "|rs%d%d%d%d %d %d %d%d%d z%d %d%d", (int)readerStatus.open, (int)readerStatus.loading,
+				snprintf(rb, sizeof rb, "|rs%d%d%d%d %d %d %d%d%d z%d %d%d%d", (int)readerStatus.open, (int)readerStatus.loading,
 					(int)readerStatus.atEnd, (int)mangaReadLive, readerStatus.page, readerStatus.pages, (int)mangaDirty,
-					(int)mangaTouch, (int)mangaSlider, readerStatus.zoomPct, (int)mangaMenu, mangaMenuCursor);
+					(int)mangaTouch, (int)mangaSlider, readerStatus.zoomPct, (int)mangaMenu, mangaMenuCursor,
+					(int)mangaPages);
 				photo += std::string(rb) + readerStatus.error + "|" + mangaReadChapterId + "|m" + std::to_string(readerStatus.mode);
+				// the pages grid: the cursor, the scroll, the textures made, the thumbnails arrived
+				if (mangaPages)
+					photo += "|pg" + std::to_string(mangaPagesCursor) + "," + std::to_string(mangaPagesScroll) + " " +
+						std::to_string(mpTex.size()) + "," + std::to_string(readerThumbs.pages.size());
 				// fullscreen: where the pages are on this panel, which have their textures, the tag
 				if (readerStatus.fullscreen)
 				{
