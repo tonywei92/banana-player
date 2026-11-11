@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "manga_icon.h"
 #include "ui_internal.h"
 
 namespace bp
@@ -160,8 +161,7 @@ namespace bp
 			bool at = extCursor == i;
 			drawBox(t, extPressed == EXT_TILE ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
 			// (the name at the small size, as the mock has it: the large one doesn't fit a tile)
-			fillRound({t.x + t.w / 2 - 42, 104, 84, 72}, TRACK, R_TILE);
-			drawGlyphMid(G_BOOK, t.x + t.w / 2, 104 + 36, ACCENT, 5);
+			drawMangaIcon({t.x + t.w / 2 - 38, 102, 76, 76});
 			drawTextMid("Manga reader", 0, at ? ACCENT : TEXT, t.x + t.w / 2, 196, t.w - 16, 2);
 			drawTextMid("Comics and manga", 0, at ? DIM_ON : DIM, t.x + t.w / 2, 218, t.w - 16, 2);
 		}
@@ -176,8 +176,7 @@ namespace bp
 		// the extension's row: its mark, its name and what it does, its switch, its settings
 		Rect row = extRowRect();
 		drawFocus(row);
-		fillRound({30, 100, 46, 46}, TRACK, R_TILE);
-		drawGlyphMid(G_BOOK, 30 + 23, 100 + 23, ACCENT, 2);
+		drawMangaIcon({30, 100, 46, 46});
 		drawTextMid("Manga reader", 1, ACCENT, 92, 110, 360);
 		drawTextMid("Comics and manga from files and servers", 0, DIM, 92, 136, 360);
 		bool on = p.settings.mangaOn;
@@ -200,7 +199,7 @@ namespace bp
 		// over the page, dimmed: the note about repositories, once, the first time the reader is turned on
 		fill({0, 0, W, H}, {0, 0, 0, 170});
 		drawBox(extSheetBox(), SURFACE, R_DIALOG);
-		drawGlyphMid(G_BOOK, 92 + glyphW(G_BOOK, 3) / 2, 128, ACCENT, 3);
+		drawMangaIcon({88, 108, 40, 40});
 		drawTextMid("Manga reader is on", 1, TEXT, 136, 128, 420);
 		drawTextMid("It reads from your files and servers, and from", 0, TEXT, 92, 174, 456);
 		drawTextMid("sources in repositories you add.", 0, TEXT, 92, 196, 456);
@@ -214,5 +213,21 @@ namespace bp
 			drawTextMid(i ? "Done" : "Open Manga", 1, at ? ON_ACCENT : TEXT, b.x + b.w / 2, b.y + b.h / 2, b.w - 16, 2);
 		}
 		drawHints({{"A", "Choose"}, {"LEFT/RIGHT", "Move"}, {"B", "Done"}});
+	}
+
+	void Ui::drawMangaIcon(Rect r)
+	{
+		if (!mangaIconTex)
+		{
+			mangaIconTex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, MANGA_ICON_SIZE, MANGA_ICON_SIZE);
+			if (!mangaIconTex) return;
+			SDL_UpdateTexture(mangaIconTex, nullptr, MANGA_ICON_RGBA, MANGA_ICON_SIZE * 4);
+			SDL_SetTextureBlendMode(mangaIconTex, SDL_BLENDMODE_BLEND);
+#if SDL_VERSION_ATLEAST(2, 0, 12)
+			SDL_SetTextureScaleMode(mangaIconTex, SDL_ScaleModeNearest);	// pixel art: no blur
+#endif
+		}
+		SDL_Rect d = devRect(r);
+		SDL_RenderCopy(ren, mangaIconTex, nullptr, &d);
 	}
 }
