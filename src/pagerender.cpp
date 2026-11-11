@@ -1,5 +1,6 @@
 #include "pagerender.h"
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <type_traits>
 
@@ -176,6 +177,13 @@ namespace bp
 		gl->TexImage2D(TEXTURE_2D, 0, RGBA, 1, 1, 0, RGBA, UNSIGNED_BYTE, px);
 		gl->TexParameteri(TEXTURE_2D, MIN_FILTER, LINEAR);
 		gl->TexParameteri(TEXTURE_2D, MAG_FILTER, LINEAR);
+		// the loading ring's dots: white, coloured by the tint
+		unsigned char wpx[4] = {255, 255, 255, 255};
+		gl->GenTextures(1, &white);
+		gl->BindTexture(TEXTURE_2D, white);
+		gl->TexImage2D(TEXTURE_2D, 0, RGBA, 1, 1, 0, RGBA, UNSIGNED_BYTE, wpx);
+		gl->TexParameteri(TEXTURE_2D, MIN_FILTER, LINEAR);
+		gl->TexParameteri(TEXTURE_2D, MAG_FILTER, LINEAR);
 		gl->BindTexture(TEXTURE_2D, 0);
 		fprintf(stderr, "reader: GL ready (%s, textures up to %d px)\n", gles ? "GLES 2" : "GL 3.2 core", maxTex);
 		return true;
@@ -189,10 +197,11 @@ namespace bp
 		if (!dead.empty()) gl->DeleteTextures((int)dead.size(), dead.data());
 		dead.clear();
 		if (grey) gl->DeleteTextures(1, &grey);
+		if (white) gl->DeleteTextures(1, &white);
 		if (vbo) gl->DeleteBuffers(1, &vbo);
 		if (vao) gl->DeleteVertexArrays(1, &vao);
 		if (prog) gl->DeleteProgram(prog);
-		grey = vbo = vao = prog = 0;
+		grey = white = vbo = vao = prog = 0;
 		delete gl;
 		gl = nullptr;
 	}
@@ -331,6 +340,7 @@ namespace bp
 		gl->ActiveTexture(TEXTURE0);
 		gl->Uniform4f(uTint, 1, 1, 1, 1);
 		bool pending = false;
+		spunLast = false;
 		for (auto& pl : placed)
 		{
 			const Page* p = find(pl.page);
@@ -340,6 +350,30 @@ namespace bp
 				gl->BindTexture(TEXTURE_2D, grey);
 				quad(pl.x, pl.y, pl.x + pl.w, pl.y + pl.h, 0, 1, w, h);
 				pending = pending || p;
+				if (pl.spin)
+				{
+					// a ring of 8 dots in the middle of the place's part on screen, the brightest one going round
+					float vx0 = std::max(pl.x, 0.f), vx1 = std::min(pl.x + pl.w, (float)w);
+					float vy0 = std::max(pl.y, 0.f), vy1 = std::min(pl.y + pl.h, (float)h);
+					float s = (float)std::min(w, h);
+					float ring = s * 0.045f, dot = std::max(3.f, s * 0.011f);
+					if (vx1 - vx0 > 2 * (ring + dot) && vy1 - vy0 > 2 * (ring + dot))
+					{
+						float cx = (vx0 + vx1) / 2, cy = (vy0 + vy1) / 2;
+						gl->BindTexture(TEXTURE_2D, white);
+						for (int k = 0; k < 8; k++)
+						{
+							int age = ((spinStep - k) % 8 + 8) % 8;	// 0: the head
+							float lum = 0.85f - age * 0.08f;
+							float a = (float)(k * 3.14159265 / 4);
+							float dx = cx + ring * std::sin(a), dy = cy - ring * std::cos(a);
+							gl->Uniform4f(uTint, lum, lum, lum * 0.95f, 1);
+							quad(dx - dot, dy - dot, dx + dot, dy + dot, 0, 1, w, h);
+						}
+						gl->Uniform4f(uTint, 1, 1, 1, 1);
+						spunLast = true;
+					}
+				}
 				continue;
 			}
 			for (auto& t : p->tiles)

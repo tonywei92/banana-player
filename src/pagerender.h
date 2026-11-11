@@ -25,9 +25,13 @@ namespace bp
 		// one frame of the strip into the bound framebuffer (w x h pixels); true while tiles still wait to go up
 		bool draw(const Strip& strip, int w, int h);
 		// the same for any layout: each page's rectangle in view pixels (the paged modes)
-		struct Placed { int page; float x, y, w, h; };
+		// spin: a page still on its way (not one that failed): its grey place shows a ring of dots turning
+		struct Placed { int page; float x, y, w, h; bool spin = false; };
 		bool draw(const std::vector<Placed>& placed, int w, int h);
 		size_t textureBytes() const { return bytes; }
+		// the ring's step (the caller's clock: one step a frame it asks for), and whether the last draw showed one
+		void setSpinStep(int s) { spinStep = s; }
+		bool spun() const { return spunLast; }
 
 	private:
 		struct Tile
@@ -54,7 +58,9 @@ namespace bp
 		struct Gl;
 		Gl* gl = nullptr;
 		bool gles = false;
-		unsigned prog = 0, vbo = 0, vao = 0, grey = 0;
+		unsigned prog = 0, vbo = 0, vao = 0, grey = 0, white = 0;
+		int spinStep = 0;
+		bool spunLast = false;
 		int aPos = -1, aUv = -1, uTint = -1;
 		int maxTex = 2048;
 		std::deque<Page> pages;

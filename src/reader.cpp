@@ -713,6 +713,13 @@ namespace bp
 		}
 		if (any || moving) want();
 		bool need = any || moving || uploads || forceFrames > 0;
+		spinNow = now;
+		// a loading ring on screen turns: a frame each step
+		if (pr.spun() && (int)(now / SPIN_MS) != lastSpin)
+		{
+			lastSpin = (int)(now / SPIN_MS);
+			need = true;
+		}
 		return need;
 	}
 
@@ -720,7 +727,8 @@ namespace bp
 	{
 		if (!opened) return;
 		std::vector<PageRenderer::Placed> placed;
-		for (auto& b : boxes()) placed.push_back({b.page, b.x, b.y, b.w, b.h});
+		for (auto& b : boxes()) placed.push_back({b.page, b.x, b.y, b.w, b.h, !pr.has(b.page) && !failed.count(b.page)});
+		pr.setSpinStep((int)(spinNow / SPIN_MS));
 		uploads = pr.draw(placed, w, h);
 		if (forceFrames > 0) forceFrames--;
 	}

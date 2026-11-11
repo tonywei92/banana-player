@@ -466,6 +466,12 @@ namespace bp
 			}
 		}
 		// the reader: its own controls (the mini bar isn't on this page)
+		if (page == Page::MangaRead && mangaReadWaiting)
+		{
+			if (b == Button::B) mangaReadWaitCancel();
+			else if (b == Button::A && !mangaSrcLoading && !mangaSrcError.empty()) mangaSourceRetry(p);
+			return true;
+		}
 		if (page == Page::MangaRead)
 		{
 			Uint32 now = SDL_GetTicks();
@@ -706,6 +712,11 @@ namespace bp
 	{
 		// a source's answers land here too (a tap may be what asks for the next page)
 		mangaBrowsePoll(p);
+		if (page == Page::MangaRead && mangaReadWaiting)
+		{
+			if (pt.kind == Pointer::Down && buttonRect(BACK_ICON).hit(x, y)) mangaReadWaitCancel();
+			return false;
+		}
 		if (page == Page::MangaRead)
 		{
 			// the pages grid takes the finger while it shows: a tap on a thumbnail jumps, a drag scrolls
@@ -1454,6 +1465,12 @@ namespace bp
 	{
 		// a source's next chapter, while this one reads on the top panel: its pages arrive here
 		mangaBrowsePoll(p);
+		if (mangaReadWaiting && page == Page::MangaRead)
+		{
+			drawMangaReadWaiting();
+			return;
+		}
+		if (page != Page::MangaRead) { drawMangaSeries(p); return; }
 		// main closed the reader (an error, or it stopped): back to the series page. Not before it has opened the
 		// request (open false then isn't a close)
 		if (readerStatus.open) mangaReadLive = true;

@@ -891,7 +891,56 @@ namespace bp
 		mangaSrcUrls.clear();
 		mangaSrcHeaders.clear();
 		mangaSrcImageAt = 0;
+		// from the series page: into the reader page now, its pages loading there (a next chapter picked while
+		// reading keeps the one open until the new one is ready)
+		if (page != Page::MangaRead)
+		{
+			mangaReadWaiting = true;
+			mangaReadSeriesId = seriesId;
+			mangaReadChapterTitle = chapterName(chapters[i]);
+			mangaMenu = mangaPages = false;
+			mangaReadLive = false;
+			page = Page::MangaRead;
+		}
 		mangaSourcePagesAsk(p);
+	}
+
+	void Ui::mangaReadWaitCancel()
+	{
+		// only the chapter's page list goes: the series page keeps what it had
+		if (mangaNet && mangaNet->started())
+		{
+			if (mangaSrcPagesSerial) mangaNet->worker().cancel(mangaSrcPagesSerial);
+			if (mangaSrcImageSerial) mangaNet->worker().cancel(mangaSrcImageSerial);
+			if (mangaJavaPagesSerial) mangaNet->javaExt().cancelGraphQl(mangaJavaPagesSerial);
+		}
+		mangaSrcPagesSerial = mangaSrcImageSerial = mangaJavaPagesSerial = 0;
+		mangaSrcLoading = false;
+		mangaSrcError.clear();
+		mangaSrcPendAt = -1;
+		mangaReadWaiting = false;
+		page = Page::MangaSeries;
+	}
+
+	void Ui::drawMangaReadWaiting()
+	{
+		drawBackIcon();
+		drawTextMid(mangaReadChapterTitle, 1, TEXT, 72, 24, 540);
+		drawTextMid(mangaTitle(mangaReadSeriesId), 0, DIM, 72, 50, 540);
+		Rect area = mangaAreaRect();
+		drawBox(area, SURFACE, R_TILE);
+		int mid = area.y + area.h / 2;
+		if (!mangaSrcLoading && !mangaSrcError.empty())
+		{
+			drawTextMid("The chapter didn\xE2\x80\x99t open", 1, DANGER, W / 2, mid - 14, 560, 2);
+			drawTextMid(mangaSrcError, 0, DIM, W / 2, mid + 16, 560, 2);
+			drawHints({{"A", "Try again"}, {"B", "Back"}});
+		}
+		else
+		{
+			drawTextMid("Loading chapter\xE2\x80\xA6", 1, TEXT, W / 2, mid, 0, 2);
+			drawHints({{"B", "Back"}});
+		}
 	}
 
 	void Ui::mangaSourcePagesAsk(Player& p)
@@ -1001,6 +1050,7 @@ namespace bp
 				return;
 			}
 		const MangaChapter& c = mangaSrcPendChapters[mangaSrcPendAt];
+		mangaReadWaiting = false;
 		std::string full, key;
 		splitSourceId(mangaSrcPendSeriesId, full, key);
 		std::string chapterId = sourceItemId(full, c.key);

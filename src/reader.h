@@ -103,6 +103,9 @@ namespace bp
 		int zoomPct() const { return (int)(zscale * 100 + 0.5); }	// (z is always one of the steps, 100 … 800)
 		// a few frames more (KMSDRM drops the first after a start or a wake)
 		void redrawSoon(int n = 5) { forceFrames = std::max(forceFrames, n); }
+		// a page still loading shows a turning ring: main wakes this often to draw its next step
+		static constexpr int SPIN_MS = 110;
+		bool spinning() const { return opened && pr.spun(); }
 
 	private:
 		struct Job { int index; std::string path; int width; };
@@ -155,6 +158,8 @@ namespace bp
 		Cbz cbz;
 		bool archive = false;
 		int viewW = 0, viewH = 0, forceFrames = 0;
+		int lastSpin = -1;
+		int64_t spinNow = 0;
 		bool full = false;	// (kept across chapters while the reader is open)
 		int gapPx = 0;
 		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };

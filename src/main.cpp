@@ -758,7 +758,7 @@ int main(int argc, char** argv)
 			}
 			if (crashTest && SDL_GetTicks() >= crashAt) bp::crashlog::testCrash(crashTest);
 			SDL_Event e;
-			bool got = SDL_WaitEventTimeout(&e, reader.isOpen() && reader.busy() ? 1 : reader.isOpen() && reader.seekPending() ? 16 : ui.animating() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250);
+			bool got = SDL_WaitEventTimeout(&e, reader.isOpen() && reader.busy() ? 1 : reader.isOpen() && reader.seekPending() ? 16 : reader.spinning() ? MangaReader::SPIN_MS / 2 : ui.animating() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250);
 			while (got)
 			{
 				// every button in the log (home/.config/banana-player/log.txt on the card), mapped or not: what the

@@ -1258,6 +1258,11 @@ namespace bp
 		// Page::MangaRead: the chapter open, what was last recorded, and the finger on it
 		std::string mangaReadSeriesId, mangaReadChapterId, mangaReadChapterTitle;
 		bool mangaReadLive = false;	// main has had this request open (a close before that isn't main's)
+		// a source's chapter picked from its series page: the reader page shows at once, "Loading chapter…" until its
+		// page list comes (then the request goes to main), or why it didn't (A tries again, B goes back)
+		bool mangaReadWaiting = false;
+		void drawMangaReadWaiting();
+		void mangaReadWaitCancel();
 		int mangaProgPage = -1, mangaProgPages = -1;
 		bool mangaTouch = false, mangaSlider = false;
 		double mangaTouchY = 0, mangaTouchX = 0;
