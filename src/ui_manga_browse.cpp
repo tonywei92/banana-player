@@ -733,9 +733,11 @@ namespace bp
 		// (starting is the notice at the top, on every page; only a failure stays said here)
 		else if (!javaStatus.empty() && mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed)
 			drawTextMid(javaStatus, 0, DANGER, sx1, smid, st.w, 1);
-		else if (mangaSrcLoading) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, sx1, smid, st.w, 1);
+		else if (mangaSrcLoading && n > 0) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, sx1, smid, st.w, 1);
 		else if (mangaSrcTab == SRC_SEARCH && !mangaSrcQuery.empty())
 			drawTextMid("Search: " + mangaSrcQuery, 0, DIM, sx1, smid, st.w, 1);
+		// the grid's first page on its way: the loading mark in the middle (later pages: Loading more… at the foot)
+		if (n == 0 && mangaSrcError.empty() && mangaSrcLoading) drawLoader(W / 2, 270, "Loading\xE2\x80\xA6");
 		if (n == 0 && mangaSrcError.empty() && !mangaSrcLoading && javaStatus.empty())
 		{
 			std::string line = mangaSrcTab == SRC_SEARCH ? (mangaSrcQuery.empty() ? "Y: search this source" : "No results")
@@ -1050,7 +1052,7 @@ namespace bp
 		}
 		else
 		{
-			drawTextMid("Loading chapter\xE2\x80\xA6", 1, TEXT, W / 2, mid, 0, 2);
+			drawLoader(W / 2, mid, "Loading chapter\xE2\x80\xA6");
 			drawHints({{"B", "Back"}});
 		}
 	}
@@ -1709,6 +1711,7 @@ namespace bp
 			{
 				// (a running job says "Loading…" or "Checking for new chapters…" above)
 				if (!mangaSrcLoading) drawTextMid("No chapters", 0, DIM, W / 2, 208, 0, 2);
+				else drawLoader(W / 2, 300, "Loading chapters\xE2\x80\xA6");
 				drawHints({{"L2", "Refresh"}, {"B", "Back"}});
 			}
 			return;

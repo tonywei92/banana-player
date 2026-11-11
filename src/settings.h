@@ -134,6 +134,9 @@ namespace bp
 		int mangaCacheSize = MANGA_CACHE_DEFAULT;
 		// adult sources a repository marks as adult: shown in the lists (hidden by default)
 		bool mangaAdult = false;
+		// Sources › Available shows these languages only ("en,id"; "" is every language). "all" (a source for every
+		// language) always shows
+		std::string mangaLangs;
 		// the History list (the reading progress, read marks and places, is kept either way); off clears it
 		bool mangaHistory = true;
 		// manga in Home's Recent (the card comes later)

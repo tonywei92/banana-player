@@ -4,6 +4,7 @@
 // here. Nothing in this file starts a thread or opens a socket: the host and MangaNet own those.
 #include "ui.h"
 #include "manganet.h"
+#include <functional>
 #include "ui_internal.h"
 #include <algorithm>
 #include <cmath>
@@ -32,12 +33,12 @@ namespace bp
 			return out;
 		}
 
-		std::vector<const SuwayomiExt*> javaAvailableExtensions(const MangaJava& mgr, bool adult)
+		std::vector<const SuwayomiExt*> javaAvailableExtensions(const MangaJava& mgr, bool adult, const std::function<bool(const std::string&)>& langOk = nullptr)
 		{
 			std::vector<const SuwayomiExt*> out;
 			// the installed ones too, on top: those with an update first, then the rest installed, then what isn't
 			for (const SuwayomiExt& e : mgr.extensions())
-				if (e.isInstalled || (!e.isObsolete && (adult || !e.isNsfw))) out.push_back(&e);
+				if (e.isInstalled || (!e.isObsolete && (adult || !e.isNsfw) && (!langOk || langOk(e.lang)))) out.push_back(&e);
 			auto rank = [](const SuwayomiExt* e) { return e->isInstalled ? (e->hasUpdate ? 0 : 1) : 2; };
 			std::sort(out.begin(), out.end(), [&](const SuwayomiExt* a, const SuwayomiExt* b) {
 				if (rank(a) != rank(b)) return rank(a) < rank(b);
@@ -158,7 +159,7 @@ namespace bp
 	int Ui::mangaJavaAvailableRows(const Player& p) const
 	{
 		if (!mangaNet || !mangaNet->started()) return 0;
-		return (int)javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult).size();
+		return (int)javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return mangaLangShown(p, l); }).size();
 	}
 
 	int Ui::mangaJavaRepoRows() const
@@ -183,7 +184,7 @@ namespace bp
 	void Ui::mangaJavaAvailableAct(int local, Player& p)
 	{
 		if (!mangaNet || !mangaNet->started()) return;
-		auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult);
+		auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return mangaLangShown(p, l); });
 		if (local < 0 || local >= (int)list.size()) return;
 		const std::string pkg = list[local]->pkgName;
 		std::string error;
@@ -434,7 +435,7 @@ namespace bp
 		}
 		else
 		{
-			auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult);
+			auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return mangaLangShown(p, l); });
 			if (local < 0 || local >= (int)list.size()) return;
 			e = list[local];
 		}

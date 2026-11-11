@@ -39,6 +39,9 @@ namespace bp
 		if (!p.settings.mangaAdult)
 			all.erase(std::remove_if(all.begin(), all.end(), [](const MangaRepos::AvailableSource& a) { return a.adult; }),
 				all.end());
+		// and the languages Available keeps (X › Languages)
+		all.erase(std::remove_if(all.begin(), all.end(), [&](const MangaRepos::AvailableSource& a) { return !mangaLangShown(p, a.lang); }),
+			all.end());
 		return all;
 	}
 
@@ -268,6 +271,7 @@ namespace bp
 
 	bool Ui::mangaSourcesKey(Button b, Player& p)
 	{
+		if (mstAvMenu) return mangaAvMenuKey(b, p);
 		if (mstJavaModal != MJM_NONE) return mangaJavaModalKey(b, p);
 		if (mstModal != MSM_NONE) return mangaSourcesModalKey(b, p);
 		// LEFT/RIGHT step the sub-lists here (the app's pages are L/R), the cursor of each kept
@@ -298,6 +302,8 @@ namespace bp
 		case Button::Down: if (n > 0) cur = (cur + 1) % n; break;
 		case Button::A: mangaSourcesAct(p); break;
 		case Button::X:
+			// Available: its menu (Refresh, Languages)
+			if (mstTab == MST_AVAILABLE) { mangaAvMenuOpen(p); break; }
 			// Options on an installed source (the design's X here, as the Series page's)
 			if (mstTab == MST_INSTALLED)
 			{
@@ -459,6 +465,7 @@ namespace bp
 	bool Ui::mangaSourcesPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (pt.kind != Pointer::Down) return false;
+		if (mstAvMenu) return mangaAvMenuPointer(x, y, p);
 		if (mstJavaModal != MJM_NONE) return mangaJavaModalPointer(pt, x, y, p);
 		if (mstModal != MSM_NONE)
 		{
@@ -637,11 +644,12 @@ namespace bp
 		if (mstTab == MST_INSTALLED)
 			drawHints({{"A", "Details"}, {"X", "Options"}, {"LEFT/RIGHT", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 		else if (mstTab == MST_AVAILABLE)
-			drawHints({{"A", "Install"}, {"LEFT/RIGHT", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+			drawHints({{"A", "Install"}, {"X", "Menu"}, {"LEFT/RIGHT", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 		else drawHints({{"A", "Open"}, {"LEFT/RIGHT", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 
 		if (mstModal != MSM_NONE) drawMangaSourceModal(p);
 		if (mstJavaModal != MJM_NONE) drawMangaJavaModal(p);
+		if (mstAvMenu) drawMangaAvMenu(p);
 	}
 
 	void Ui::drawMangaSourceModal(const Player& p)
@@ -735,5 +743,211 @@ namespace bp
 		if (mstUninstallArmed) drawFooterText("Press A again to uninstall", ACCENT);
 		else if (mstModal == MSM_REMOVE) drawHints({{"A", "Choose"}, {"LEFT/RIGHT", "Move"}, {"B", "Cancel"}});
 		else drawHints({{"A", "Choose"}, {"B", "Close"}});
+	}
+
+	// ---- Available's menu: Refresh, Languages ----
+
+	namespace
+	{
+		std::string langName(const std::string& code)
+		{
+			static const std::pair<const char*, const char*> NAMES[] = {{"all", "Every language"}, {"en", "English"},
+				{"id", "Indonesian"}, {"ja", "Japanese"}, {"ko", "Korean"}, {"zh", "Chinese"}, {"zh-Hans", "Chinese (simplified)"},
+				{"zh-Hant", "Chinese (traditional)"}, {"es", "Spanish"}, {"es-419", "Spanish (Latin America)"}, {"pt", "Portuguese"},
+				{"pt-BR", "Portuguese (Brazil)"}, {"fr", "French"}, {"de", "German"}, {"it", "Italian"}, {"ru", "Russian"},
+				{"ar", "Arabic"}, {"tr", "Turkish"}, {"vi", "Vietnamese"}, {"th", "Thai"}, {"pl", "Polish"}, {"uk", "Ukrainian"},
+				{"fil", "Filipino"}, {"ms", "Malay"}, {"hi", "Hindi"}, {"bn", "Bengali"}, {"fa", "Persian"}, {"he", "Hebrew"},
+				{"cs", "Czech"}, {"bg", "Bulgarian"}, {"ca", "Catalan"}, {"da", "Danish"}, {"fi", "Finnish"}, {"no", "Norwegian"},
+				{"my", "Burmese"}, {"km", "Khmer"}, {"lo", "Lao"}, {"mn", "Mongolian"}, {"ta", "Tamil"}, {"te", "Telugu"}, {"ur", "Urdu"},
+				{"sr", "Serbian"}, {"hr", "Croatian"}, {"sk", "Slovak"}, {"lt", "Lithuanian"}, {"et", "Estonian"}, {"ka", "Georgian"}, {"hu", "Hungarian"}, {"ro", "Romanian"}, {"nl", "Dutch"}, {"sv", "Swedish"}, {"el", "Greek"}};
+			for (auto& n : NAMES)
+				if (code == n.first) return std::string(n.second) + " \xC2\xB7 " + code;
+			return code;
+		}
+
+		std::vector<std::string> splitLangs(const std::string& s)
+		{
+			std::vector<std::string> out;
+			size_t a = 0;
+			while (a <= s.size())
+			{
+				size_t b = s.find(',', a);
+				if (b == std::string::npos) b = s.size();
+				std::string one = s.substr(a, b - a);
+				if (!one.empty()) out.push_back(one);
+				a = b + 1;
+			}
+			return out;
+		}
+	}
+
+	bool Ui::mangaLangShown(const Player& p, const std::string& lang) const
+	{
+		if (p.settings.mangaLangs.empty() || lang.empty() || lang == "all" || lang == "multi") return true;
+		for (const auto& l : splitLangs(p.settings.mangaLangs))
+			if (l == lang) return true;
+		return false;
+	}
+
+	std::string Ui::mangaLangsSummary(const Player& p) const
+	{
+		auto list = splitLangs(p.settings.mangaLangs);
+		if (list.empty()) return "All";
+		std::string out;
+		for (size_t i = 0; i < list.size() && i < 3; i++) out += (i ? ", " : "") + list[i];
+		if (list.size() > 3) out += " +" + std::to_string(list.size() - 3);
+		return out;
+	}
+
+	void Ui::mangaAvMenuOpen(Player& p)
+	{
+		(void)p;
+		mstAvMenu = 1;
+		mstAvCursor = mstAvScroll = 0;
+		mstLocal++;
+	}
+
+	Ui::Rect Ui::mangaAvBox() const
+	{
+		int rows = mstAvMenu == 1 ? 2 : std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
+		int h = 70 + rows * 44;
+		return {112, (436 - h) / 2, 416, h};
+	}
+
+	Ui::Rect Ui::mangaAvRow(int i) const
+	{
+		Rect b = mangaAvBox();
+		return {b.x + 16, b.y + 56 + i * 44, b.w - 32, 40};
+	}
+
+	void Ui::mangaAvMenuAct(Player& p)
+	{
+		if (mstAvMenu == 1)
+		{
+			if (mstAvCursor == 0)
+			{
+				// as Y does
+				mstAvMenu = 0;
+				if (mangaNet && mangaNet->started())
+				{
+					mangaNet->repos().refresh(true);
+					mangaJavaRefresh();
+					p.osd("Checking repositories\xE2\x80\xA6", 1200);
+				}
+			}
+			else
+			{
+				// the languages on offer now: the Lua repositories' and the extensions', each once, sorted
+				std::vector<std::string> langs;
+				auto add = [&](const std::string& l) {
+					if (!l.empty() && l != "all" && l != "multi" && std::find(langs.begin(), langs.end(), l) == langs.end())
+						langs.push_back(l);
+				};
+				if (mangaNet && mangaNet->started())
+				{
+					for (const auto& a : mangaNet->repos().available()) add(a.lang);
+					for (const auto& e : mangaNet->javaSources().extensions()) add(e.lang);
+				}
+				for (const auto& l : splitLangs(p.settings.mangaLangs)) add(l);
+				std::sort(langs.begin(), langs.end());
+				mstAvLangs = langs;
+				mstAvMenu = 2;
+				mstAvCursor = mstAvScroll = 0;
+			}
+			mstLocal++;
+			return;
+		}
+		// the language list: All clears the choice; a language is ticked or unticked
+		Settings s = p.settings;
+		if (mstAvCursor == 0) s.mangaLangs.clear();
+		else if (mstAvCursor - 1 < (int)mstAvLangs.size())
+		{
+			const std::string& l = mstAvLangs[mstAvCursor - 1];
+			auto list = splitLangs(s.mangaLangs);
+			auto it = std::find(list.begin(), list.end(), l);
+			if (it != list.end()) list.erase(it);
+			else list.push_back(l);
+			std::sort(list.begin(), list.end());
+			s.mangaLangs.clear();
+			for (size_t i = 0; i < list.size(); i++) s.mangaLangs += (i ? "," : "") + list[i];
+		}
+		p.setSettings(s);
+		// the Available list changed under its cursor: back to its top
+		mstCursor[MST_AVAILABLE] = mstScroll[MST_AVAILABLE] = 0;
+		mstLocal++;
+	}
+
+	bool Ui::mangaAvMenuKey(Button b, Player& p)
+	{
+		int n = mstAvMenu == 1 ? 2 : (int)mstAvLangs.size() + 1;
+		switch (b)
+		{
+		case Button::Up: mstAvCursor = (mstAvCursor + n - 1) % n; break;
+		case Button::Down: mstAvCursor = (mstAvCursor + 1) % n; break;
+		case Button::A: mangaAvMenuAct(p); break;
+		case Button::B:
+			// the languages go back to the menu; the menu closes
+			if (mstAvMenu == 2) { mstAvMenu = 1; mstAvCursor = 1; }
+			else mstAvMenu = 0;
+			break;
+		case Button::X: mstAvMenu = 0; break;
+		default: break;
+		}
+		if (mstAvMenu == 2)
+		{
+			if (mstAvCursor < mstAvScroll) mstAvScroll = mstAvCursor;
+			if (mstAvCursor >= mstAvScroll + MST_AV_SHOWN) mstAvScroll = mstAvCursor - MST_AV_SHOWN + 1;
+		}
+		mstLocal++;
+		return false;
+	}
+
+	bool Ui::mangaAvMenuPointer(int x, int y, Player& p)
+	{
+		if (!mangaAvBox().hit(x, y)) { mstAvMenu = 0; mstLocal++; return false; }
+		int shown = mstAvMenu == 1 ? 2 : std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
+		for (int i = 0; i < shown; i++)
+			if (mangaAvRow(i).hit(x, y))
+			{
+				mstAvCursor = (mstAvMenu == 2 ? mstAvScroll : 0) + i;
+				mangaAvMenuAct(p);
+				return false;
+			}
+		return false;
+	}
+
+	void Ui::drawMangaAvMenu(const Player& p)
+	{
+		Rect b = mangaAvBox();
+		drawDialog(b, mstAvMenu == 1 ? "Available" : "Languages");
+		if (mstAvMenu == 1)
+		{
+			const char* LABELS[2] = {"Refresh", "Languages"};
+			for (int i = 0; i < 2; i++)
+			{
+				Rect r = mangaAvRow(i);
+				bool at = i == mstAvCursor;
+				if (at) drawFocus(r);
+				drawTextMid(LABELS[i], 1, at ? ACCENT : TEXT, r.x + 12, r.y + r.h / 2, 200);
+				if (i == 1) drawTextMid(mangaLangsSummary(p), 0, at ? DIM_ON : DIM, r.x + r.w - 12, r.y + r.h / 2, 180, 1);
+			}
+			drawHints({{"A", "Choose"}, {"B", "Close"}});
+			return;
+		}
+		auto chosen = splitLangs(p.settings.mangaLangs);
+		int n = (int)mstAvLangs.size() + 1;
+		for (int i = 0; i < MST_AV_SHOWN && mstAvScroll + i < n; i++)
+		{
+			int k = mstAvScroll + i;
+			Rect r = mangaAvRow(i);
+			bool at = k == mstAvCursor;
+			if (at) drawFocus(r);
+			bool on = k == 0 ? chosen.empty()
+				: std::find(chosen.begin(), chosen.end(), mstAvLangs[k - 1]) != chosen.end();
+			drawTextMid(k == 0 ? "All languages" : langName(mstAvLangs[k - 1]), 1, at ? ACCENT : TEXT, r.x + 12, r.y + r.h / 2, 300);
+			if (on) drawGlyphMid(G_CHECK, r.x + r.w - 20, r.y + r.h / 2, at ? ACCENT : TEXT);
+		}
+		if (n > MST_AV_SHOWN) drawScrollBar(mangaAvRow(0).y, MST_AV_SHOWN * 44 - 4, mstAvScroll, MST_AV_SHOWN, n);
+		drawHints({{"A", "Tick / untick"}, {"B", "Done"}});
 	}
 }

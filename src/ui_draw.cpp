@@ -448,6 +448,7 @@ namespace bp
 		miniUp = miniBarShown(p);
 		setChip(p);
 		markAnim = false;
+		loaderShown = false;
 		if (page == Page::Info || page == Page::About) drawInfo(p);
 		else if (page == Page::Web) drawWeb(p);
 		else if (page == Page::Exit) drawExit(p);
@@ -475,6 +476,21 @@ namespace bp
 		drawExtNotice();
 		if (quickOpen) drawQuick(p);
 		if (kbOpen) drawKeyboard();
+	}
+
+	void Ui::drawLoader(int cx, int cy, const std::string& text)
+	{
+		loaderShown = true;
+		int step = (int)(SDL_GetTicks() / 110 % 8);
+		for (int k = 0; k < 8; k++)
+		{
+			int age = ((step - k) % 8 + 8) % 8;	// 0: the head
+			double a = k * 3.14159265 / 4;
+			int dx = cx + (int)std::lround(16 * std::sin(a)), dy = cy - 14 + (int)std::lround(-16 * std::cos(a));
+			SDL_Color c = age == 0 ? ACCENT : age < 3 ? TEXT : DIM;
+			fillRound({dx - 3, dy - 3, 6, 6}, c, 3);
+		}
+		if (!text.empty()) drawTextMid(text, 0, DIM, cx, cy + 22, 560, 2);
 	}
 
 	void Ui::readPower()

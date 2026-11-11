@@ -96,7 +96,7 @@ namespace bp
 		void tick(Player& p);
 		// something moves by itself (a flick, a playlist's rows scrolling under a dragged one): the loop should come
 		// round often
-		bool animating() const { return playHoldAt != 0 || flickAt != 0 || plDrag.on || stripT0 != 0 || likePopAt != 0 || addFlashUntil != 0 || landFlashUntil != 0 || listPulseAt != 0; }
+		bool animating() const { return loaderShown || playHoldAt != 0 || flickAt != 0 || plDrag.on || stripT0 != 0 || likePopAt != 0 || addFlashUntil != 0 || landFlashUntil != 0 || listPulseAt != 0; }
 		// the header's playing mark moves (something plays behind the browser, the bottom panel lit): the loop comes
 		// round a few times a second for its frames
 		bool markMoving() const { return markAnim && panel.on(); }
@@ -1271,6 +1271,10 @@ namespace bp
 		// a source's chapter picked from its series page: the reader page shows at once, "Loading chapter…" until its
 		// page list comes (then the request goes to main), or why it didn't (A tries again, B goes back)
 		bool mangaReadWaiting = false;
+		// the one loading mark: a ring of dots turning, a line under it, in the middle of what's loading (a page's
+		// list, a chapter). Drawn this frame: the loop comes round for its next step (animating, signature)
+		mutable bool loaderShown = false;
+		void drawLoader(int cx, int cy, const std::string& text);
 		// the source series page's unread count and Resume point, and what they were made from (drawMangaSourceSeries)
 		std::string mserSumKey;
 		std::string mserFocusChapter;
@@ -1558,7 +1562,20 @@ namespace bp
 		void mangaSourcesTick(Player& p);			// the manager's events into toasts, a typed URL added
 		bool mangaSourcesKey(Button b, Player& p);
 		bool mangaSourcesPointer(const Pointer& pt, int x, int y, Player& p);
-		bool mangaSourcesModal() const { return mstModal != MSM_NONE || mstJavaModal != MJM_NONE; }
+		bool mangaSourcesModal() const { return mstModal != MSM_NONE || mstJavaModal != MJM_NONE || mstAvMenu != 0; }
+		// Available's X: a menu (Refresh, Languages) and the language list (a tick on each kept; Settings::mangaLangs)
+		int mstAvMenu = 0, mstAvCursor = 0, mstAvScroll = 0;	// 0 none, 1 the menu, 2 the languages
+		std::vector<std::string> mstAvLangs;	// the languages the repositories offer, when the list was opened
+		static constexpr int MST_AV_SHOWN = 6;
+		bool mangaLangShown(const Player& p, const std::string& lang) const;
+		std::string mangaLangsSummary(const Player& p) const;
+		void mangaAvMenuOpen(Player& p);
+		bool mangaAvMenuKey(Button b, Player& p);
+		void mangaAvMenuAct(Player& p);
+		bool mangaAvMenuPointer(int x, int y, Player& p);
+		void drawMangaAvMenu(const Player& p);
+		Rect mangaAvBox() const;
+		Rect mangaAvRow(int i) const;
 		bool mangaSourcesModalKey(Button b, Player& p);
 		void mangaSourcesModalAct(Player& p);
 		void mangaSourcesCloseModal();
