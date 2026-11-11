@@ -20,6 +20,12 @@ handed over with the proposal (not in the repo): both panels of each screen, cap
   checks, removing a repository with or without its sources, results as notes, adult sources hidden unless shown; the
   repository manager, the Lua source worker and the sandbox behind it, and a test repository in
   `tools/manga-test-repo` (public-domain comic strips) to try it with.
+- **Java extensions (Tachiyomi / Mihon)**: a repository address ending `index.pb` or `index.min.json` is added as a
+  Suwayomi extension store (with the optional Java add-on from Manga settings; refused in one line without it);
+  its extensions show under **Available** and **Installed** with a **Java** badge, and its sources in **Browse**
+  beside the Lua ones — the same Popular / Latest / Search grid, filter sheet (groups included), series page,
+  chapter reading through `MangaReadRequest` and Download sheet. The host is wanted on every use and stops after
+  five idle minutes; progress and library entries are kept under `java:<source id>`.
 - **Browsing a source**: installed sources under *On this handheld* in **Browse**, a source's **Popular / Latest /
   Search** grid loading as it scrolls, its series' details and chapters through the worker (**Resume**, **In
   library**, read and unread), and a chapter read from its page URLs with the source's headers — pages fetched into

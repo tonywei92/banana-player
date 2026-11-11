@@ -9,6 +9,7 @@
 #include "javaext.h"
 #include "mangadownloader.h"
 #include "mangafetch.h"
+#include "mangajava.h"
 #include "mangarepos.h"
 #include "mangaservers.h"
 #include "mangaworker.h"
@@ -59,6 +60,9 @@ namespace bp
 		MangaServerStore& servers() { return serverStore; }
 		// the Java extensions' runtime and server: installed from Manga settings, started while a Java source is in use
 		JavaExtHost& javaExt() { return javaHost; }
+		// the Java repositories, the extensions Suwayomi lists, and the sources an install returned
+		MangaJava& javaSources() { return javaState; }
+		const MangaJava& javaSources() const { return javaState; }
 		const std::string& downloadsRoot() const { return dlRoot; }
 		// answers nobody in here claimed (the Ui's own fetches: a server's catalogue, a cover by URL)
 		std::vector<MangaFetch::Result> takeFetched();
@@ -66,6 +70,8 @@ namespace bp
 		// fetches are unaffected and the reader's answers are never lost to whichever takes first (null: none)
 		void setFetchOwner(std::function<bool(MangaFetch::Result&)> owner) { fetchOwner = std::move(owner); }
 		std::vector<MangaWorker::Result> takeWorker();
+		// the Java GraphQL answers the manager didn't own (the Ui's own: a source's filters, list, series, pages)
+		std::vector<JavaExtHost::GraphQlResult> takeJava();
 		// grows when anything the Ui shows changed (a queue step, a repository loaded, an answer waiting)
 		uint64_t serial() const;
 
@@ -81,8 +87,10 @@ namespace bp
 		std::unique_ptr<MangaDownloader> dl;
 		MangaServerStore serverStore;
 		JavaExtHost javaHost;
+		MangaJava javaState;
 		std::vector<MangaFetch::Result> fetched;
 		std::vector<MangaWorker::Result> workerDone;
+		std::vector<JavaExtHost::GraphQlResult> javaDone;
 		std::function<bool(MangaFetch::Result&)> fetchOwner;
 		uint64_t own = 0;
 	};

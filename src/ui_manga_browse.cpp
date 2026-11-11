@@ -80,6 +80,7 @@ namespace bp
 		mangaServersReset();
 		// the installed sources are read again: the list may have changed while the app was away
 		mangaSrcRowsSerial = 0;
+		mangaJavaRowsSerial = 0;
 		mangaSrcRowsOn = false;
 		mangaSrcRows.clear();
 		// a filter sheet closes with the page; the values and definitions stay for this run (5.2.1), but a job that
@@ -93,6 +94,7 @@ namespace bp
 			kv.second.checkCursor = kv.second.checkScroll = 0;
 			kv.second.textAt = -1;
 			kv.second.serial = 0;
+			kv.second.javaSerial = 0;
 			kv.second.loading = false;
 		}
 		mangaFilterLocal++;
@@ -114,12 +116,17 @@ namespace bp
 			return;
 		}
 		uint64_t serial = mangaNet->repos().serial();
-		if (mangaSrcRowsOn && serial == mangaSrcRowsSerial) return;
+		uint64_t javaSerial = mangaNet->javaSources().serial();
+		if (mangaSrcRowsOn && serial == mangaSrcRowsSerial && javaSerial == mangaJavaRowsSerial) return;
 		mangaSrcRowsOn = true;
 		mangaSrcRowsSerial = serial;
+		mangaJavaRowsSerial = javaSerial;
 		mangaSrcRows.clear();
 		for (const auto& s : mangaNet->repos().installed())
-			mangaSrcRows.push_back({s.fullId, s.name.empty() ? s.id : s.name, s.lang, s.file, s.adult});
+			mangaSrcRows.push_back({s.fullId, s.name.empty() ? s.id : s.name, s.lang, s.file, s.adult, false});
+		// the Java sources an install returned: one row per source and language, as the Lua sources are
+		for (const auto& s : mangaNet->javaSources().sources())
+			mangaSrcRows.push_back({MangaJava::sourceId(s.id), s.title(), s.lang, "", s.nsfw, true});
 	}
 
 	int Ui::mangaBrowseServerCount() const
@@ -349,15 +356,23 @@ namespace bp
 			}
 			const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p);
 			if (!r) continue;
-			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 32, mid, 470);
-			// its language, a chip at the row's end (as a cover's unread count is)
+			drawTextMid(r->name, 1, at ? ACCENT : TEXT, 32, mid, r->java ? 430 : 470);
+			// its language, a chip at the row's end (as a cover's unread count is); a Java source's badge
+			// sits outside it
+			int right = 608;
+			if (r->java)
+			{
+				int jw = (int)std::lround(textWidth("Java", 0) / sx) + 14;
+				drawMangaJavaBadge(right, mid, at);
+				right -= jw + 8;
+			}
 			std::string lang = r->lang;
 			for (char& c : lang) c = (char)std::toupper((unsigned char)c);
 			if (!lang.empty())
 			{
 				int tw = (int)std::lround(textWidth(lang, 0) / sx) + 14;
-				fillRound({608 - tw, mid - 10, tw, 20}, TRACK, R_CHIP);
-				drawTextMid(lang, 0, at ? ACCENT : DIM_ON, 608 - tw / 2, mid, tw - 6, 2);
+				fillRound({right - tw, mid - 10, tw, 20}, TRACK, R_CHIP);
+				drawTextMid(lang, 0, at ? ACCENT : DIM_ON, right - tw / 2, mid, tw - 6, 2);
 			}
 		}
 		// no saved connection: where they would be (the Files browser's Network adds one)
@@ -392,6 +407,9 @@ namespace bp
 		mangaSrcError.clear();
 		mangaSrcFailed = FAIL_NONE;
 		mangaView = 1;
+		// a Java source starts the host on open (the Starting line shows while it comes up) and says whether its
+		// Latest tab exists; a Lua source's latest() is asked by its first answer instead
+		if (MangaJava::isSourceId(row.id)) mangaJavaSourceOpened(row, p);
 		// a source's own filters (5.2.1): asked once a run, kept for the sheet and the Search jobs
 		mangaFilterAsk();
 		mangaSourceLoad(1);
@@ -419,6 +437,7 @@ namespace bp
 			mangaNet->worker().cancel(mangaSrcListSerial);
 			mangaSrcListSerial = 0;
 		}
+		if (MangaJava::isSourceId(mangaSrcId)) mangaJavaCancelList();
 		mangaSrcTab = tab;
 		mangaSrcItems.clear();
 		mangaSrcCursor = mangaSrcScroll = mangaSrcPage = 0;
@@ -449,6 +468,7 @@ namespace bp
 
 	void Ui::mangaSourceLoad(int page)
 	{
+		if (MangaJava::isSourceId(mangaSrcId)) { mangaJavaListLoad(page); return; }
 		mangaSrcError.clear();
 		mangaSrcFailed = FAIL_LIST;
 		if (mangaNet && mangaNet->started() && mangaSrcListSerial)
@@ -634,11 +654,17 @@ namespace bp
 		mangaCoverCancelOffScreen();
 		if (rows > 1) drawScrollBar(MG_SRC_TOP, SRC_CLIP_BOTTOM - MG_SRC_TOP - 4, mangaSrcScroll, SRC_ROWS_SHOWN, rows);
 		// the state under the grid: the source's error, a job running, or the query the Search tab ran
+		std::string javaStatus = mangaJavaStatusLine();
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 1, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
+		else if (!javaStatus.empty())
+		{
+			bool failed = mangaNet && mangaNet->javaExt().state() == JavaExtHost::State::Failed;
+			drawTextMid(javaStatus, 0, failed ? DANGER : ACCENT, W / 2, MG_SRC_STATUS_Y, 560, 2);
+		}
 		else if (mangaSrcLoading) drawTextMid("Loading\xE2\x80\xA6", 0, DIM, W / 2, MG_SRC_STATUS_Y, 0, 2);
 		else if (mangaSrcTab == SRC_SEARCH && !mangaSrcQuery.empty())
 			drawTextMid("Search: " + mangaSrcQuery, 0, DIM, W / 2, MG_SRC_STATUS_Y, 560, 2);
-		if (n == 0 && mangaSrcError.empty() && !mangaSrcLoading)
+		if (n == 0 && mangaSrcError.empty() && !mangaSrcLoading && javaStatus.empty())
 		{
 			std::string line = mangaSrcTab == SRC_SEARCH ? (mangaSrcQuery.empty() ? "Y: search this source" : "No results")
 				: "Nothing here yet";
@@ -846,6 +872,8 @@ namespace bp
 		// the fetcher's answers (covers, a server's catalogue) have one reader, the servers' poll, which hands covers
 		// to mangaCoverOnFetched: a second loop here would take, and drop, the answers a server page waits for
 		mangaServersPoll();
+		// the Java host's answers (a Java source's list, series, filters and pages) and the manager's events
+		mangaJavaPoll(p);
 	}
 
 	// ---- a chapter: its pages, then the reader ----
@@ -884,6 +912,11 @@ namespace bp
 		}
 		mangaSrcPagesSerial = mangaSrcImageSerial = 0;
 		if (mangaSrcPendAt < 0 || mangaSrcPendAt >= (int)mangaSrcPendChapters.size()) return;
+		{
+			std::string full, key;
+			splitSourceId(mangaSrcPendSeriesId, full, key);
+			if (MangaJava::isSourceId(full)) { mangaJavaPagesAsk(p); return; }
+		}
 		// a download page list waiting on the same source gives the worker to the chapter about to be read
 		mangaDlYieldToSource();
 		if (!mangaNet || !mangaNet->started())
@@ -951,6 +984,7 @@ namespace bp
 		}
 		mangaSrcListSerial = mangaSrcDetailsSerial = mangaSrcChaptersSerial = mangaSrcPagesSerial = mangaSrcImageSerial = 0;
 		mangaSrcLoading = false;
+		mangaJavaCancel();
 		mangaCoverCancelAll();
 	}
 
@@ -1037,6 +1071,7 @@ namespace bp
 		std::string full, key;
 		splitSourceId(id, full, key);
 		if (mangaNet) mangaNet->start();
+		if (MangaJava::isSourceId(full)) mangaJavaNeedHost();
 		mangaBrowseRepos(p);
 		mangaSourceCancel();
 		mangaSrcId = full;
@@ -1096,6 +1131,7 @@ namespace bp
 
 	void Ui::mangaSourceSeriesLoad(Player& p)
 	{
+		if (MangaJava::isSourceId(mangaSrcId)) { mangaJavaSeriesLoad(p); return; }
 		(void)p;
 		mangaSrcInfo = MangaDetails{};
 		mangaSrcInfoOn = false;
@@ -1417,6 +1453,18 @@ namespace bp
 			if (!mangaNetChapters.empty()) s += "|nc" + mangaNetChapters.front().path + mangaNetChapters.back().path;
 		}
 		if (mangaNet) s += "|mn" + std::to_string((unsigned long long)mangaNet->serial()) + std::to_string((int)mangaNet->started());
+		// the Java extensions' rows and sheets (ui_manga_java.cpp): the host's state and the page's own changes
+		{
+			char js[240];
+			snprintf(js, sizeof js, "|jv%llu %d %d %d %llu %llu %llu %llu",
+				(unsigned long long)mstJavaLocal, mstJavaModal, mstJavaModalCursor, (int)mstJavaUninstallArmed,
+				(unsigned long long)mangaJavaListSerial, (unsigned long long)mangaJavaSeriesSerial,
+				(unsigned long long)mangaJavaPagesSerial, (unsigned long long)mangaJavaManagerSerial());
+			s += js;
+			s += "|jh" + std::to_string((unsigned long long)mangaJavaSerial());
+			s += "|jsta" + mangaJavaStatusLine() + "|" + mstJavaModalId;
+			for (const auto& kv : mstJavaBusy) s += "|jb" + kv.first + kv.second;
+		}
 		return s;
 	}
 }

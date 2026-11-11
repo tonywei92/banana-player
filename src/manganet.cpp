@@ -1,4 +1,5 @@
 #include "manganet.h"
+#include "mangajava.h"
 #include <cstdio>
 #include <sys/stat.h>
 
@@ -46,6 +47,8 @@ namespace bp
 #endif
 		repoMgr = std::make_unique<MangaRepos>(*api, &MangaWorker::validateScript);
 		repoMgr->load(state);
+		javaState.setSubmit([this](const std::string& body) { return javaHost.graphql(body); });
+		javaState.load(state);
 		dlq.load(state);
 		dl = std::make_unique<MangaDownloader>(*api, dlq);
 		dl->setFolders(dlRoot, state + "/manga/downloading");
@@ -57,6 +60,7 @@ namespace bp
 	{
 		// the Java runtime is the reader's too, but it can be installed and starting with the rest still asleep
 		javaHost.stop();
+		javaState.cancelAll();
 		if (!running) return;
 		dl->pauseAll();
 		dlq.save();
@@ -64,12 +68,14 @@ namespace bp
 		work.cancelAll();
 		fetched.clear();
 		workerDone.clear();
+		javaDone.clear();
 		own++;
 	}
 
 	void MangaNet::stop()
 	{
 		javaHost.stop();
+		javaState.cancelAll();
 		if (!running) return;
 		dlq.save();
 		fetcher.stop();
@@ -93,6 +99,12 @@ namespace bp
 	{
 		if (!running) return;
 		for (auto& r : work.take()) workerDone.push_back(std::move(r));
+		// the Java host shares this wake event: the manager takes its own requests, the rest go to the Ui
+		for (auto& r : javaHost.takeGraphQl())
+		{
+			if (javaState.onAnswer(r.serial, r.body, r.error)) continue;
+			javaDone.push_back(std::move(r));
+		}
 		own++;
 	}
 
@@ -117,9 +129,16 @@ namespace bp
 		return out;
 	}
 
+	std::vector<JavaExtHost::GraphQlResult> MangaNet::takeJava()
+	{
+		std::vector<JavaExtHost::GraphQlResult> out;
+		out.swap(javaDone);
+		return out;
+	}
+
 	uint64_t MangaNet::serial() const
 	{
 		if (!running) return 0;
-		return own + dlq.serial() + dl->serial() + repoMgr->serial() + javaHost.serial();
+		return own + dlq.serial() + dl->serial() + repoMgr->serial() + javaHost.serial() + javaState.serial();
 	}
 }

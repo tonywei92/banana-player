@@ -755,11 +755,28 @@ namespace bp
 		if (!mangaNet || !mangaNet->started()) return;
 		// the worker replaces a waiting job of the same source and kind: a chapter being read keeps its page
 		// fetch first, and the download's list is asked once it is done
-		if (mangaSrcPagesSerial || mangaSrcImageSerial) return;
+		if (mangaSrcPagesSerial || mangaSrcImageSerial || mangaJavaPagesSerial) return;
 		while (!mdlAsks.empty())
 		{
 			mdlAsk = mdlAsks.front();
 			mdlAsks.erase(mdlAsks.begin());
+			if (MangaJava::isSourceId(mdlAsk.sourceId))
+			{
+				mdlPagesSerial = mangaJavaDlSubmit(mdlAsk);
+				if (mdlPagesSerial)
+				{
+					mdlAskOn = true;
+					mdlAskPages.clear();
+					mdlAskUrls.clear();
+					mdlAskImageAt = 0;
+					mdlLocal++;
+					return;
+				}
+				mdlNote = "Couldn\xE2\x80\x99t ask the Java source for a chapter\xE2\x80\x99s pages";
+				mdlNoteUntil = SDL_GetTicks() + 4000;
+				mdlAsk = MangaDlAsk{};
+				continue;
+			}
 			MangaWorker::Job job;
 			job.sourceId = mdlAsk.sourceId;
 			job.scriptPath = mdlAsk.scriptPath;
@@ -805,6 +822,8 @@ namespace bp
 		// the worker replaces a waiting job of the same source and kind, and an answer whose serial is gone is
 		// dropped: a chapter about to be read takes the worker, and the download's ask is asked again afterwards
 		if (!mdlAskOn) return;
+		if (mangaNet && mangaNet->started() && MangaJava::isSourceId(mdlAsk.sourceId) && mdlPagesSerial)
+			mangaNet->javaExt().cancelGraphQl(mdlPagesSerial);
 		mdlAsks.insert(mdlAsks.begin(), mdlAsk);
 		mdlAsk = MangaDlAsk{};
 		mdlAskOn = false;

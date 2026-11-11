@@ -296,15 +296,6 @@ namespace bp
 
 		// ---- filter conversion helpers ----
 
-		// the position a filter sits at in the source's list; Suwayomi's FilterChangeInput addresses each
-		// filter by this position, not by an id
-		int filterPosition(const std::vector<MangaFilter>& defs, size_t i)
-		{
-			// the defs vector is already in the source's order (parseFilters appends in that order), so the
-			// position is the index
-			return (int)i;
-		}
-
 		// a select's chosen option id onto the index the source's values array uses
 		int selectIndex(const MangaFilter& def, const std::string& optionId)
 		{
@@ -318,6 +309,72 @@ namespace bp
 		{
 			// our tri is the same encoding (mangafilters.h: 0 off, 1 include, 2 exclude)
 			return ourTri < 0 || ourTri > 2 ? 0 : ourTri;
+		}
+
+		// One value-carrying filter and the positions that reach it: the top-level index, then one index per
+		// group crossed. A leaf inside two groups is {g1, g2, leaf}: Suwayomi takes that as
+		// {position:g1, groupChange:{position:g2, groupChange:{position:leaf, ...}}}.
+		struct FilterLeaf
+		{
+			std::vector<int> path;
+			const MangaFilter* def = nullptr;
+			const MangaFilterValue* val = nullptr;
+		};
+
+		void collectFilterLeaves(const std::vector<MangaFilter>& defs, const std::vector<MangaFilterValue>& vals,
+			std::vector<int>& path, std::vector<FilterLeaf>& out)
+		{
+			for (size_t i = 0; i < defs.size() && i < vals.size(); i++)
+			{
+				const MangaFilter& d = defs[i];
+				const MangaFilterValue& v = vals[i];
+				if (d.type == "group")
+				{
+					path.push_back((int)i);
+					collectFilterLeaves(d.children, v.children, path, out);
+					path.pop_back();
+					continue;
+				}
+				path.push_back((int)i);
+				FilterLeaf leaf;
+				leaf.path = path;
+				leaf.def = &d;
+				leaf.val = &v;
+				out.push_back(std::move(leaf));
+				path.pop_back();
+			}
+		}
+
+		void writeFilterState(JsonWriter& w, const MangaFilter& d, const MangaFilterValue& v)
+		{
+			if (d.type == "select")
+			{
+				w.key("selectState").num(selectIndex(d, v.select));
+			}
+			else if (d.type == "sort")
+			{
+				int idx = selectIndex(d, v.sortBy);
+				w.key("sortState").obj().key("index").num(idx).key("ascending").boolean(v.sortAsc).end();
+			}
+			else if (d.type == "check")
+			{
+				w.key("checkBoxState").boolean(v.check);
+			}
+			else if (d.type == "tri")
+			{
+				// a tri state filter has no option list; the sheet's single tri value maps straight
+				// onto Suwayomi's triState (0 off, 1 include, 2 exclude)
+				int tri = v.tri.empty() ? 0 : triToSuwayomi(v.tri[0]);
+				w.key("triState").num(tri);
+			}
+			else if (d.type == "text")
+			{
+				// Suwayomi's textState is the trimmed string; the sheet keeps the raw input, so trim here
+				std::string t = v.text;
+				size_t a = t.find_first_not_of(" \t"), b = t.find_last_not_of(" \t");
+				t = a == std::string::npos ? std::string() : t.substr(a, b - a + 1);
+				w.key("textState").str(t);
+			}
 		}
 	}
 
@@ -373,7 +430,7 @@ namespace bp
 	{
 		// the aliased query: we ask for a `source` with the id we know, and read its `filters` — the same
 		// shape filters-mangaplus.json has
-		const char* q = "query SourceFilters($source: String!) { source(id: $source) { id name supportsLatest filters { __typename name ... on SelectFilter { values: selectOptions selectDefault } ... on SortFilter { values: selectOptions sortDefault { index ascending } } ... on CheckBoxFilter { checkBoxDefault } ... on TriStateFilter { triStateDefault } ... on TextFilter { textDefault } ... on GroupFilter { filters { __typename name ... on SelectFilter { values: selectOptions selectDefault } ... on SortFilter { values: selectOptions sortDefault { index ascending } } ... on CheckBoxFilter { checkBoxDefault } ... on TriStateFilter { triStateDefault } ... on TextFilter { textDefault } } } } } } }";
+		const char* q = "query SourceFilters($source: String!) { source(id: $source) { id name supportsLatest filters { __typename name ... on SelectFilter { values: selectOptions selectDefault } ... on SortFilter { values: selectOptions sortDefault { index ascending } } ... on CheckBoxFilter { checkBoxDefault } ... on TriStateFilter { triDefault } ... on TextFilter { textDefault } ... on GroupFilter { filters { __typename name ... on SelectFilter { values: selectOptions selectDefault } ... on SortFilter { values: selectOptions sortDefault { index ascending } } ... on CheckBoxFilter { checkBoxDefault } ... on TriStateFilter { triDefault } ... on TextFilter { textDefault } } } } } } }";
 		return gqlBody(q, sourceVar(sourceId));
 	}
 
@@ -442,7 +499,7 @@ namespace bp
 		return true;
 	}
 
-	bool suwayomiParseAddExtensionStore(const std::string& json, std::string& error)
+	bool suwayomiParseAddExtensionStore(const std::string& json, std::string& error, std::string* name)
 	{
 		error.clear();
 		if (suwayomiCheckErrors(json, error)) return false;
@@ -454,6 +511,11 @@ namespace bp
 		if (!add || add->kind != JVal::OBJ) { error = "no addExtensionStore"; return false; }
 		const JVal* store = add->find("extensionStore");
 		if (!store || store->kind != JVal::OBJ) { error = "no extensionStore"; return false; }
+		if (name)
+		{
+			std::string storeName = jStr(store->find("name"));
+			if (!storeName.empty()) *name = storeName;
+		}
 		return true;
 	}
 
@@ -609,9 +671,17 @@ namespace bp
 		}
 		else if (type == "TriStateFilter")
 		{
-			// a tri state has no option list; the sheet still represents it as a single tri, with no
-			// options — the user toggles one filter between off / include / exclude
+			// A Suwayomi tri state is one filter that is off, include or exclude — not a list of options. The
+			// sheet's tri row is a checklist, so it gets the filter itself as its single option: A then cycles
+			// that row off -> include -> exclude, and suwayomiFilterInputsJson turns it back into a triState.
 			out.type = "tri";
+			MangaFilterOption o;
+			o.id = "tri";
+			o.name = out.name;
+			out.options.push_back(std::move(o));
+			std::string def = jStr(f.find("triDefault"));
+			if (def == "INCLUDE") out.includeDefault = {out.options[0].id};
+			else if (def == "EXCLUDE") out.excludeDefault = {out.options[0].id};
 		}
 		else if (type == "TextFilter")
 		{
@@ -786,47 +856,24 @@ namespace bp
 			vp = &fallback;
 		}
 		const std::vector<MangaFilterValue>& values = *vp;
+		std::vector<FilterLeaf> leaves;
+		std::vector<int> path;
+		collectFilterLeaves(defs, values, path, leaves);
 		JsonWriter w;
 		w.arr();
-		for (size_t i = 0; i < defs.size(); i++)
+		for (const FilterLeaf& leaf : leaves)
 		{
-			const MangaFilter& d = defs[i];
-			const MangaFilterValue& v = values[i];
-			if (d.type == "group") continue;	// groups aren't sent as one entry; their children are
-			// every group's child is sent at its own position: the position is the child's index in the
-			// source's original filter list, which we don't carry. Suwayomi expects the group's children
-			// inlined with positions offset by the group's position — for now, the flat list skips
-			// groups, since the sheet doesn't expand them into positions either
+			if (leaf.path.empty() || !leaf.def || !leaf.val) continue;
 			w.obj();
-			w.key("position").num((int)i);
-			if (d.type == "select")
+			w.key("position").num(leaf.path[0]);
+			// every group crossed is one nested groupChange; its innermost position names the filter changed
+			for (size_t k = 1; k < leaf.path.size(); k++)
 			{
-				w.key("selectState").num(selectIndex(d, v.select));
+				w.key("groupChange").obj();
+				w.key("position").num(leaf.path[k]);
 			}
-			else if (d.type == "sort")
-			{
-				int idx = selectIndex(d, v.sortBy);
-				w.key("sortState").obj().key("index").num(idx).key("ascending").boolean(v.sortAsc).end();
-			}
-			else if (d.type == "check")
-			{
-				w.key("checkBoxState").boolean(v.check);
-			}
-			else if (d.type == "tri")
-			{
-				// a tri state filter has no option list; the sheet's single tri value maps straight
-				// onto Suwayomi's triState (0 off, 1 include, 2 exclude)
-				int tri = v.tri.empty() ? 0 : triToSuwayomi(v.tri[0]);
-				w.key("triState").num(tri);
-			}
-			else if (d.type == "text")
-			{
-				// Suwayomi's textState is the trimmed string; the sheet keeps the raw input, so trim here
-				std::string t = v.text;
-				size_t a = t.find_first_not_of(" \t"), b = t.find_last_not_of(" \t");
-				t = a == std::string::npos ? std::string() : t.substr(a, b - a + 1);
-				w.key("textState").str(t);
-			}
+			writeFilterState(w, *leaf.def, *leaf.val);
+			for (size_t k = 1; k < leaf.path.size(); k++) w.end();
 			w.end();
 		}
 		w.end();
