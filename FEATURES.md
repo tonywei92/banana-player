@@ -948,7 +948,9 @@ them while you read. **B** goes back where you came from.
 | **Secure DNS** | Off / Cloudflare (1.1.1.1) | Off | Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them. |
 | Repositories | | | Repositories are added by you. Banana Player doesn't provide or check their content. |
 
-The reader itself is turned on and off in **Manage extensions** (or on the web dashboard): **A** on its row.
+The reader itself is turned on and off in **Manage extensions** on the handheld (only there): **A** on its row. While
+it's on, the web dashboard has a **Manga** page with its repositories (add one by pasting its address, refresh, remove);
+browsing, reading and downloads are the handheld's.
 
 The page cache holds the pages of chapters read from a source (**Clear cache** says how much it holds), and **Adult
 sources** hides what a repository marks adult until you show it.

@@ -7,9 +7,10 @@
 #
 # The library (root 0) needs "Music/Yellow Album/01 Sunny Peel.mp3" and "02 Split Decision.mp3". All it creates goes
 # under one scratch folder in root 0, removed at the end. The wrong-PIN lockout runs last: it locks this machine out
-# for a minute. The manga section switches the reader on through /api/setting (what its Manage extensions card sends)
-# and off again, so the player needs --state-dir: its network side only starts with one. Exit status 1 when anything
-# failed.
+# for a minute. Extensions are switched on and off on the handheld only (the dashboard can't): the manga section checks
+# the 404s when the reader is off, and its routes when the player was started with it on ("manga-reader = yes" in the
+# state folder's settings.conf; --state-dir is needed, the network side only starts with one). Run it once each way
+# for both. Exit status 1 when anything failed.
 set -u
 BASE=${1:-http://127.0.0.1:8080}
 PIN=${2:-ACDE}
@@ -218,9 +219,13 @@ raw -X POST -b "$JAR" "$BASE/api/recent/clear"; status_is "clear without X-BP" 4
 post /api/recent/clear; status_is "clear recent" 200
 get /api/recent; jq_is "recent empty after clear" '.items | length == 0'
 
-echo "== manga off: every route it adds is 404"
+echo "== extensions: the dashboard can't switch them (the handheld's own)"
+post /api/setting -d key=manga-reader -d value=1; status_is "the manga reader's switch refused" 400
 # an index nothing can fetch: nothing listens on port 9
 MURL=http://127.0.0.1:9/index.json
+get /api/state; MANGA_ON=$(jq -r '.mangaOn' "$T/body")
+if [ "$MANGA_ON" != true ]; then
+echo "== manga off: every route it adds is 404 (start with manga-reader = yes for the manga-on checks)"
 # each route with the params its own first check wants, so a 404 is the extension's and not a missing parameter
 get /api/manga/state; status_is "manga state, off" 404
 jq_is "manga state, off: the extension's own 404" '.error == "Manga is off"'
@@ -238,12 +243,8 @@ post /api/manga/read -d seriesId=none --data-urlencode "chapters[]=1"; status_is
 post /api/manga/download -d series=none --data-urlencode "chapters[]=1"; status_is "manga download, off" 404
 del /api/manga/download -d id=none; status_is "manga delete a download, off" 404
 post /api/manga/download/pause; status_is "manga pause downloads, off" 404
-
-echo "== manga on: what Manage extensions sends (POST /api/setting key=manga-reader)"
-get /api/state; jq_is "the reader starts off (the 404s above)" '.mangaOn == false'
-post /api/setting -d key=manga-reader -d value=1; status_is "switch the manga reader on" 200
-jq_is "the switch answers on" '.mangaOn == true'
-get /api/state; jq_is "the snapshot carries the switch" '.mangaOn == true'
+else
+echo "== manga on (switched on on the handheld)"
 get /api/manga/state; status_is "manga state" 200
 jq_is "manga state: on, its four lists" '.on == true and (.library | type) == "array" and (.repos | type) == "array" and (.installed | type) == "array" and (.available | type) == "array"'
 jq_is "manga state: the adult filter and the downloads' summary" '(.showAdult | type) == "boolean" and (.dl | type) == "object" and (.dl.done | type) == "number" and (.dl.total | type) == "number" and (.dl.low | type) == "boolean"'
@@ -274,10 +275,7 @@ post /api/manga/repo --data-urlencode "url=not-a-url"; status_is "manga repo: a 
 jq_is "manga repo: the error says why" '.error == "not a URL"'
 get /api/manga/state; status_is "manga: the player still answers after both" 200
 
-echo "== manga off again: the switch put back"
-post /api/setting -d key=manga-reader -d value=0; status_is "switch the manga reader off" 200
-jq_is "the switch answers off" '.mangaOn == false'
-get /api/manga/state; status_is "manga state is 404 again" 404
+fi
 
 echo "== cleanup"
 get /api/playlist --get --data-urlencode "id=$ID2"; status_is "open renamed playlist" 200

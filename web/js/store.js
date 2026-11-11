@@ -71,7 +71,7 @@ export function useStore() {
 export function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 export function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-/* ================= routes: #/playing, #/files/<vpath>, #/playlists[/<id>], #/recent, #/extensions, #/manga[/<sub>] (the history bookkeeping is in router.js) ================= */
+/* ================= routes: #/playing, #/files/<vpath>, #/playlists[/<id>], #/recent, #/manga[/<sub>] (the history bookkeeping is in router.js) ================= */
 export function parseRoute() {
 	const h = location.hash.replace(/^#\/?/, '');
 	const [a, ...rest] = h.split('/');
@@ -79,7 +79,6 @@ export function parseRoute() {
 	if (a === 'files') return { page: 'files', path: tail };
 	if (a === 'playlists') return { page: 'playlists', id: tail };
 	if (a === 'recent') return { page: 'playlists', id: '~recent' };	// (recent.js's RECENT_ID: Recent sits with the playlists)
-	if (a === 'extensions') return { page: 'extensions' };
 	if (a === 'manga') return { page: 'manga', sub: tail || 'library' };
 	return { page: 'playing' };
 }
