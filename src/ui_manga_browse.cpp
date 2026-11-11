@@ -209,8 +209,14 @@ namespace bp
 			}
 			return;
 		}
-		// no source installed: the row after the servers is Add sources (A opens the Sources page)
-		if (mangaSrcRows.empty()) { openMangaSources(p); return; }
+		// no source installed: the row after the servers is Add repository (A opens the Sources page on its
+		// Repositories, where one is added: the way to a first source)
+		if (mangaSrcRows.empty())
+		{
+			openMangaSources(p);
+			mstTab = MST_REPOSITORIES;
+			return;
+		}
 		if (const MangaSrcRow* r = mangaBrowseSourceAt(i - mangaBrowseSourceStart(), p)) mangaOpenSource(*r, p);
 	}
 
@@ -385,7 +391,7 @@ namespace bp
 			{
 				// no source installed: the row after the servers says where they come from, and A (or a tap) opens it
 				drawGlyphMid(G_PLUS, 44, mid, ic);
-				drawTextMid("Add sources in Sources (X on Browse)", 1, at ? ACCENT : TEXT, 68, mid, 540);
+				drawTextMid("Add repository", 1, at ? ACCENT : TEXT, 68, mid, 540);
 				continue;
 			}
 			const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p);
