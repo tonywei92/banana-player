@@ -1654,6 +1654,10 @@ namespace bp
 		int mangaSrcTab = 0;					// the source's tabs, in their order: Popular, Latest, Search
 		bool mangaSrcHasLatest = true;			// a source without latest() loses its tab once the first ask says so
 		std::vector<MangaItem> mangaSrcItems;
+		// each tab's grid as it was left (source and tab; Search with its query): switching back shows it again, no
+		// ask. A few sources' worth, then forgotten
+		struct SrcTabState { std::vector<MangaItem> items; int page = 0, cursor = 0, scroll = 0; bool more = false; std::string query; };
+		std::map<std::string, SrcTabState> mangaSrcTabCache;
 		int mangaSrcCursor = 0, mangaSrcScroll = 0, mangaSrcPage = 0;
 		// a finger on the grid: where it went down, the scroll then, whether it has moved (a drag, not a tap)
 		int mangaSrcDragY = -1, mangaSrcDragScroll = 0, mangaSrcDragTap = -1;

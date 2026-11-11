@@ -453,6 +453,28 @@ namespace bp
 			mangaSrcListSerial = 0;
 		}
 		if (MangaJava::isSourceId(mangaSrcId)) mangaJavaCancelList();
+		// the tab left is kept as it is; the tab chosen comes back as it was left, if it was
+		if (!mangaSrcItems.empty() && !mangaSrcLoading && mangaSrcError.empty())
+		{
+			if (mangaSrcTabCache.size() > 12) mangaSrcTabCache.clear();
+			mangaSrcTabCache[mangaSrcId + "|" + std::to_string(mangaSrcTab)] =
+				{mangaSrcItems, mangaSrcPage, mangaSrcCursor, mangaSrcScroll, mangaSrcMore, mangaSrcQuery};
+		}
+		{
+			auto it = mangaSrcTabCache.find(mangaSrcId + "|" + std::to_string(tab));
+			if (it != mangaSrcTabCache.end() && (tab != SRC_SEARCH || it->second.query == mangaSrcQuery))
+			{
+				mangaSrcTab = tab;
+				mangaSrcItems = it->second.items;
+				mangaSrcPage = it->second.page;
+				mangaSrcCursor = it->second.cursor;
+				mangaSrcScroll = it->second.scroll;
+				mangaSrcMore = it->second.more;
+				mangaSrcError.clear();
+				mangaSrcLoading = false;
+				return;
+			}
+		}
 		mangaSrcTab = tab;
 		mangaSrcItems.clear();
 		mangaSrcCursor = mangaSrcScroll = mangaSrcPage = 0;
