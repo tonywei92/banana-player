@@ -475,7 +475,7 @@ namespace bp
 			size_t slash = path.rfind('/');
 			std::string dir = slash == std::string::npos ? "." : path.substr(0, slash);
 			bool cover = isNet ? !coverFileFor(namesIn(netParent(path))).empty() : folderHasCover(path), guessArt = cover || (dir == lastArtDir && lastArt);
-			if (topCovered && (settings.musicShow == SHOW_VIS || settings.musicShow == SHOW_BOTH)) graph = blankGraph();
+			if (vizResting() && (settings.musicShow == SHOW_VIS || settings.musicShow == SHOW_BOTH)) graph = blankGraph();
 			else if (settings.musicShow == SHOW_VIS) graph = graphFor(settings.visualizer, false);
 			else if (settings.musicShow == SHOW_NONE) graph = blankGraph();
 			else if (settings.musicShow == SHOW_BOTH) graph = graphFor(settings.visualizer, cover);
@@ -1964,16 +1964,28 @@ namespace bp
 			: settings.musicShow == SHOW_ART ? SHOW_NONE : SHOW_VIS;
 		// the manga reader over the top panel: a visualizer nobody sees would still make its 30 frames a second
 		// (mpv's sound waits on the graph) on the cores the reader decodes on; the bare graph meanwhile
-		if (topCovered && (show == SHOW_VIS || show == SHOW_BOTH)) return SHOW_NONE;
+		// (and while the manga engine starts: setEngineLoading)
+		if (vizResting() && (show == SHOW_VIS || show == SHOW_BOTH)) return SHOW_NONE;
 		return show;
 	}
 
 	void Player::setTopCovered(bool on)
 	{
 		if (on == topCovered) return;
+		bool was = vizResting();
 		topCovered = on;
 		fprintf(stderr, "music: top panel %s\n", on ? "covered: the visualizer rests" : "shown again: the visualizer back");
-		if (isAudio && loaded) applyAudioDisplay();
+		if (isAudio && loaded && was != vizResting()) applyAudioDisplay();
+	}
+
+	void Player::setEngineLoading(bool on)
+	{
+		if (on == engineLoading) return;
+		bool was = vizResting();
+		engineLoading = on;
+		fprintf(stderr, "music: manga engine %s\n", on ? "starting: the visualizer rests" : "started: the visualizer back");
+		if (isAudio && loaded && was != vizResting()) applyAudioDisplay();
+		updateOverlay();	// (the line under the title, whatever the top panel shows)
 	}
 
 	std::string Player::graphFor(int vis, bool overCover)
@@ -2062,6 +2074,8 @@ namespace bp
 		}
 		if (!artist.empty()) text += "\\N{\\fs" + std::to_string(big * 3 / 4) + "}" + assText(artist);
 		if (!album.empty()) text += "\\N{\\fs" + std::to_string(big * 2 / 3) + "}{\\c" + (pocket ? "&H306230&" : "&HB4B4B4&") + "}" + assText(album);
+		// why the visualizer has stopped for now, in the accent's yellow
+		if (engineLoading) text += "\\N{\\fs" + std::to_string(big / 2) + "}{\\c" + ass(ACCENT) + "}" + assText("Loading manga engine\xE2\x80\xA6");
 		const char* cmd[] = {"osd-overlay", "1", "ass-events", text.c_str(), "0", "720", "0", "no", "no", nullptr};
 		mpv_command_async(mpv, 0, cmd);
 	}

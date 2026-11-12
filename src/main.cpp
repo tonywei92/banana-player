@@ -1499,6 +1499,8 @@ int main(int argc, char** argv)
 				ui.readerCmds.clear();
 				// a song's visualizer rests while the pages cover the top panel (nobody sees it; its frames cost CPU)
 				player.setTopCovered(reader.isOpen());
+				// and while the manga engine starts (its ~25 s of Java start-up wants the cores the graph would take)
+				player.setEngineLoading(ui.mangaNet && ui.mangaNet->javaExt().state() == JavaExtHost::State::Starting);
 				// a URL chapter's pages: requests reordered and the free slots filled (the answers themselves come
 				// through MangaNet's fetch owner above)
 				if (reader.isOpen()) reader.tick(now);

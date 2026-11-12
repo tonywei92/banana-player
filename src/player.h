@@ -78,6 +78,9 @@ namespace bp
 		bool playingAudio() const { return isAudio && !playlist.empty(); }
 		// the manga reader is over the top panel: a song's visualizer rests (the bare graph) until it's gone
 		void setTopCovered(bool on);
+		// the manga engine is starting (its Java process takes ~25 s of the cores): the visualizer rests the same way,
+		// and the top panel says why under the song's title
+		void setEngineLoading(bool on);
 		bool playingPhoto() const { return isPhoto && !playlist.empty(); }
 		int index() const { return current; }
 		int count() const { return (int)playlist.size() - (ghost >= 0 ? 1 : 0); }
@@ -371,6 +374,8 @@ namespace bp
 		void updateOverlay();
 		bool isAudio = false, isPhoto = false;
 		bool topCovered = false;	// setTopCovered
+		bool engineLoading = false;	// setEngineLoading
+		bool vizResting() const { return topCovered || engineLoading; }
 		bool hidingVideo = false;	// hideVideo(true): a video's picture off (each video's loadfile says vid=no)
 		bool vidOff = false;		// the vid property itself is "no" (a song opened next needs it back first)
 		// photos: the size mpv shows (before any turn), the turn mpv makes of the file's own (rotation metadata) and
