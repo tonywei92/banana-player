@@ -921,8 +921,9 @@ input[type=range] { touch-action: pan-y; }
 .scrim { top: var(--vv-top, 0px); bottom: auto; height: var(--vv-h, 100%); }
 .modal { max-height: calc(var(--vv-h, 100dvh) - 24px); }
 .shell, .downwrap { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
-.logo32 { width: 32px; height: 32px; flex: none; image-rendering: crisp-edges; image-rendering: pixelated; display: block; }
-.brand img, .downbox img { image-rendering: crisp-edges; image-rendering: pixelated; }
+.logo32 { width: 32px; height: 32px; flex: none; display: block; }
+/* (the app's icon is a picture scaled down: smoothed. The down screen's handheld is drawn on a grid: kept crisp) */
+.downbox img { image-rendering: crisp-edges; image-rendering: pixelated; }
 
 /* ================= motion that says where you are =================
    Only transform and opacity; input is never held (the transition's layer lets taps through to the live page, and a

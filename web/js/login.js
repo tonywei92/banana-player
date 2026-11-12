@@ -78,7 +78,7 @@ export function Login() {
 	const busy = status === 'busy' || s.signingIn;
 	const dis = busy || locked;
 	return html`<main class="login"><div class="signin">
-		<div class="brand"><img src="/logo.svg" alt="" width="64" height="64" />Banana Player</div>
+		<div class="brand"><img src="/logo.png" alt="" width="64" height="64" />Banana Player</div>
 		${s.signedOut === 'pin' && html`<${Banner} cls="info" title="Signed out: a new PIN was made on your handheld." />`}
 		${s.signedOut === 'expired' && html`<${Banner} cls="info" title="You were signed out. Enter the PIN to continue." />`}
 		${s.loginNote && html`<${Banner} cls="info" title=${s.loginNote} />`}

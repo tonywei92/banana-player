@@ -31,14 +31,4 @@ out.append("</svg>")
 (root / "web" / "sprite.svg").write_text("\n".join(out) + "\n")
 print(f"{len(glyphs)} glyphs -> web/sprite.svg")
 
-# the app icon (same 32x32 grid as packaging/icon/make-icon.py) as web/logo.svg, for the login page and favicon
-icon_src = (root / "packaging" / "icon" / "make-icon.py").read_text()
-grid = re.search(r'GRID = """\n(.*?)"""', icon_src, re.S).group(1).split("\n")
-colours = {".": "#141318", "Y": "#F8C21C", "W": "#F7F4EA"}
-rects = []
-for y, row in enumerate(grid):
-	for c, fill in colours.items():
-		for run in re.finditer(re.escape(c) + "+", row):
-			rects.append(f'<rect x="{run.start()}" y="{y}" width="{run.end() - run.start()}" height="1" fill="{fill}"/>')
-(root / "web" / "logo.svg").write_text(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">{"".join(rects)}</svg>\n')
-print("web/logo.svg")
+# (the dashboard's logo is web/logo.png: assets/icons/app.png at 128 px, `sips -Z 128` or any resampler; not made here)

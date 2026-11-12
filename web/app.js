@@ -117,7 +117,7 @@ function Side({ nav }) {
 	const bat = sn && sn.battery >= 0 ? sn.battery : null, conn = !s.reconnecting;
 	const navItems = navWithManga(!!(sn && sn.mangaOn));
 	return html`<aside class="side" aria-label="Sections">
-		<div class="logo"><img class="logo32" src="/logo.svg" width="32" height="32" alt="" /><b>Banana Player</b></div>
+		<div class="logo"><img class="logo32" src="/logo.png" width="32" height="32" alt="" /><b>Banana Player</b></div>
 		<nav aria-label="Main" style="display:contents">${navItems.map(([k, l, ic, h]) => html`<button class="nav" aria-current=${r.page === k ? 'page' : undefined} onClick=${() => nav(k, h)}><${Icon} n=${ic} k=${2} />${l}</button>`)}</nav>
 		<${SidePls} />
 		<div class="box surface hhcard" role="group" aria-label="Your handheld">
@@ -211,7 +211,7 @@ function App() {
 	if (s.elsewhere && s.authed) return html`<div class="downwrap"><${ElsewhereScreen} />${s.upload.items.length > 0 && html`<${UploadFab} down=${true} />`}<${Toasts} /></div>`;
 	if (s.conn === 'down' && s.authed !== false) return html`<div class="downwrap"><${DownScreen} />${s.upload.items.length > 0 && html`<${UploadFab} down=${true} />`}<${Toasts} />
 		${s.modals.map(m => html`<div class=${'mwrap' + (m.out ? ' out' : '')} key=${m.id}>${m.render(m.close)}</div>`)}</div>`;
-	if (s.authed === null) return html`<main class="login"><div class="signin"><div class="brand"><img src="/logo.svg" alt="" width="64" height="64" />Banana Player</div><p class="dim" aria-live="polite">${slow ? 'Connecting…' : ' '}</p></div></main>`;
+	if (s.authed === null) return html`<main class="login"><div class="signin"><div class="brand"><img src="/logo.png" alt="" width="64" height="64" />Banana Player</div><p class="dim" aria-live="polite">${slow ? 'Connecting…' : ' '}</p></div></main>`;
 	if (!s.authed) return html`<${Login} />`;
 	return html`<${Shell} />`;
 }
