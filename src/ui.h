@@ -1977,6 +1977,9 @@ namespace bp
 			MG_SRC_STATUS_Y = 410;
 		// a source's series page: its buttons right under the details line, its chapters right under them
 		static constexpr int MG_SRC_BTN_Y = 104, MG_SRC_SERIES_TOP = 160;
+		// its chapters: 44 high (the app's lists are 48), six to a screen, five with the mini bar up
+		static constexpr int MG_SRC_ROW_H = 44;
+		int mserSrcRows() const { return miniUp ? 5 : 6; }
 		Rect mangaSrcCoverRect(int i) const
 		{
 			int row = i / MG_COLS, col = i % MG_COLS;

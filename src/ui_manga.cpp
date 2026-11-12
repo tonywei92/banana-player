@@ -300,7 +300,7 @@ namespace bp
 		int at = mangaReadChapterIndex();
 		if (at >= 0 && mangaSeriesId == mangaReadSeriesId && mangaNetView != MNF_SERIES)
 		{
-			int rows = isServerId(mangaSeriesId) || isSourceId(mangaSeriesId) ? mserRows() : MG_SER_ROWS;
+			int rows = isSourceId(mangaSeriesId) ? mserSrcRows() : isServerId(mangaSeriesId) ? mserRows() : MG_SER_ROWS;
 			mserCursor = at;
 			if (at < mserScroll) mserScroll = at;
 			if (at >= mserScroll + rows) mserScroll = at - rows + 1;
