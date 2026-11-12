@@ -93,7 +93,7 @@ namespace bp
 		bool sameAll(const Session& a, const Session& b)
 		{
 			return samePublished(a, b) && a.v == b.v && a.pos == b.pos && a.posAt == b.posAt && a.loadAt == b.loadAt &&
-				a.goneAt == b.goneAt && a.goneTab == b.goneTab;
+				a.goneAt == b.goneAt && a.goneTab == b.goneTab && a.goneBye == b.goneBye;
 		}
 
 		double clampPos(const Session& s, double t)
@@ -468,6 +468,7 @@ namespace bp
 					setOut(i.out);
 					n.goneAt = 0;
 					n.goneTab.clear();
+					n.goneBye = false;
 					if (s.index < 0) return "";
 					n.parked = false;
 					newLoad();
@@ -657,11 +658,12 @@ namespace bp
 					return "";
 				case IntentType::Tick:
 				{
-					if (s.goneAt && now - s.goneAt >= TAB_GRACE_MS)
+					if (s.goneAt && now - s.goneAt >= (s.goneBye ? TAB_BYE_GRACE_MS : TAB_GRACE_MS))
 					{
 						std::string tab = s.goneTab;
 						n.goneAt = 0;
 						n.goneTab.clear();
+						n.goneBye = false;
 						if (s.out.kind == OutKind::Browser && s.out.tab == tab)
 						{
 							// where it was when the tab went; never sound by itself: paused here
@@ -714,7 +716,11 @@ namespace bp
 						{
 							n.goneTab = i.path;
 							n.goneAt = now;
+							n.goneBye = i.on;
 						}
+						// already counted gone (its stream went quiet first), and now its goodbye: the shorter grace
+						else if (i.on)
+							n.goneBye = true;
 					}
 					return "";
 				case IntentType::TabBack:
@@ -722,6 +728,7 @@ namespace bp
 					{
 						n.goneAt = 0;
 						n.goneTab.clear();
+						n.goneBye = false;
 					}
 					return "";
 				case IntentType::Slept:
@@ -840,6 +847,8 @@ namespace bp
 				if (o[k] != k) return "I13: the hidden order isn't each place once";
 		}
 		if (s.seen.size() > SEEN_MAX) return "I10: the seen store over its size";
+		// I14: a goodbye is only held for a tab counted gone
+		if (s.goneBye && (!s.goneAt || s.goneTab.empty())) return "I14: a goodbye kept with no tab gone";
 		return "";
 	}
 

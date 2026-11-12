@@ -79,6 +79,9 @@ namespace bp
 	constexpr double RESTART_S = 5;	// Prev this far in or more: back to the start (Player::RESTART_S)
 	constexpr int64_t LOAD_TIMEOUT_MS = 8000;	// an output that never says Loaded: it can't play it
 	constexpr int64_t TAB_GRACE_MS = 10000;	// the output's tab gone this long: the handheld, paused
+	// a tab that said goodbye as it closed (the page's beacon): a reload is back well within this, a closed tab is
+	// over sooner
+	constexpr int64_t TAB_BYE_GRACE_MS = 3000;
 	constexpr int SESSION_LOOP_OFF = 0, SESSION_LOOP_ALL = 1, SESSION_LOOP_ONE = 2;	// settings.h's LOOP_*
 
 	struct Session
@@ -120,6 +123,7 @@ namespace bp
 		// host timers (not published, not a change of v): when this load was asked for; the output's tab gone since
 		int64_t loadAt = 0, goneAt = 0;
 		std::string goneTab;
+		bool goneBye = false;	// the gone tab said goodbye (TabGone with on): its grace is TAB_BYE_GRACE_MS
 		std::vector<OriginSeen> seen;	// the last SEEN_MAX origins, least recently used first
 	};
 
@@ -169,7 +173,7 @@ namespace bp
 		bool on = false;	// SetShuffle: the mode on or off (nothing reloads)
 		// Open, SetShuffle: the host's random number for Shuffle's order (the reducer stays deterministic)
 		uint64_t rnd = 0;
-		std::string path;	// FileGone; TabGone / TabBack: the tab
+		std::string path;	// FileGone; TabGone / TabBack: the tab (TabGone's on: it said goodbye as it went)
 		uint64_t load = 0;	// reports
 		double dur = 0;	// Loaded
 		bool audioOnly = false;	// Loaded

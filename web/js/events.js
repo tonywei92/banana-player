@@ -6,6 +6,23 @@ import { fetchT, get } from './api.js';
 
 /* ================= live updates ================= */
 let es = null;
+// this page load's own id: its stream and its goodbye carry it, so a goodbye never ends a reload's new stream
+const PAGE_LOAD = Math.random().toString(36).slice(2, 10);
+// leaving (closed, reloaded, gone to another site): said at once, so the handheld knows now and not at its next
+// keep-alive (15 s and more). Whether or not the stream is still open (a page hidden on its way out may have closed it
+// already; the handheld still holds it). sendBeacon is what browsers send reliably as a page goes (the server takes
+// it without the X-BP header, with our Origin and this load's id); a keepalive fetch where there's no beacon. A
+// reload's stream comes back within the handheld's grace, as before
+// (also when another tab of this browser takes the dashboard over: onetab.js)
+export function sayBye() {
+	if (!store.authed) return;
+	const url = '/api/bye?' + new URLSearchParams({ tab: TAB_ID, pg: PAGE_LOAD });
+	let sent = false;
+	try { sent = !!(navigator.sendBeacon && navigator.sendBeacon(url)); } catch (e) {}
+	if (!sent)
+		try { fetch(url, { method: 'POST', keepalive: true, credentials: 'same-origin', headers: { 'X-BP': '1' } }).catch(() => {}); } catch (e) {}
+}
+addEventListener('pagehide', sayBye);
 export function applySnap(s) {
 	const prev = store.snap;
 	set({ snap: s, snapAt: Date.now() });
@@ -19,9 +36,9 @@ export function applySnap(s) {
 export function openSSE() {
 	// hidden, the page listens only while it plays, or while it's where picks go (a song picked on the handheld comes
 	// here, a locked phone too): the handheld taking over must stop it (two sounds otherwise)
-	if (es || (document.hidden && !playingHere() && !isPref()) || !store.authed || store.conn !== 'ok') return;
+	if (es || store.elsewhere || (document.hidden && !playingHere() && !isPref()) || !store.authed || store.conn !== 'ok') return;
 	// (its name and whether it can play: the handheld's Play on lists it)
-	const me = es = new EventSource('/api/events?' + new URLSearchParams({ tab: TAB_ID, name: DEVICE_NAME, play: NO_HERE ? '0' : '1' }));
+	const me = es = new EventSource('/api/events?' + new URLSearchParams({ tab: TAB_ID, name: DEVICE_NAME, play: NO_HERE ? '0' : '1', pg: PAGE_LOAD }));
 	let heard = false;
 	C.lastEvent = Date.now();
 	const on = (name, fn) => es.addEventListener(name, e => { heard = true; C.sseRetry = 0; C.lastEvent = Date.now(); let d = {}; try { d = JSON.parse(e.data || '{}'); } catch (x) {} fn(d); });

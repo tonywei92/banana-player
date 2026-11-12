@@ -4,6 +4,8 @@ import { Art, HandheldArt, useTick } from './components.js';
 import { B } from './browser-player.js';
 import { fmtTime } from './util.js';
 import { probe } from './connection.js';
+import { uploading } from './uploads.js';
+import { useHere } from './onetab.js';
 import { Icon } from './icons.js';
 
 /* ================= down screen: the handheld closed, off, asleep or out of reach ================= */
@@ -33,3 +35,19 @@ export function DownScreen() {
 	</div></main>`;
 }
 
+/* ================= another tab has it: one dashboard per browser (onetab.js) ================= */
+export function ElsewhereScreen() {
+	const s = store;
+	const ref = useRef();
+	useEffect(() => { ref.current && ref.current.focus(); }, []);
+	const left = s.upload.items.filter(i => i.state === 'up' || i.state === 'queued' || i.state === 'waiting').length;
+	return html`<main class="down" aria-labelledby="else-t"><div class="downbox">
+		<div class="zz"><${HandheldArt} mode="off" /></div>
+		<div class="kicker">Open in another tab</div>
+		<h1 id="else-t" tabindex="-1" ref=${ref}>Banana Player is open in another tab</h1>
+		<p class="down-sub">One tab at a time stays connected to your handheld. Use this one instead, and the other one steps aside.</p>
+		${B.meta && B.parkedPlaying && html`<div class="box surface down-card"><span class="tile"><${Art} seed=${B.meta.p} kind=${B.meta.kind} /></span><div class="grow"><div class="t">${B.meta.title}</div><div class="dim" style="font-size:13px">Was playing here · stopped at <span class="num">${fmtTime(B.parked)}</span></div></div></div>`}
+		${uploading() && html`<p class="down-status" role="status" aria-live="polite">Finishing ${left} upload${left === 1 ? '' : 's'} here first</p>`}
+		<button class="btn" onClick=${() => useHere()}><${Icon} n="refresh" k=${2} />Use here</button>
+	</div></main>`;
+}

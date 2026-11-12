@@ -205,7 +205,8 @@ namespace bp
 		// the top panel while a web page plays the music instead: the paused picture dimmed, and why (a paused
 		// visualizer looks frozen otherwise). where: the page's name ("Chrome on Mac"); waiting: it was refused the
 		// sound without a tap there (Play on from here), and B plays here instead; glyph: drawn over the title (G_LAPTOP)
-		void showElsewhere(bool on, bool playing = true, const std::string& where = "your browser", bool waiting = false,
+		// hint: how to play here from the bottom panel as it is (1 hold A, 2 go to the player, 0 none)
+		void showElsewhere(bool on, bool playing = true, const std::string& where = "your browser", bool waiting = false, int hint = 1,
 			const char* const* glyph = nullptr, int glyphH = 0);
 		// the top panel's output made with nothing playing: mpv 0.40 makes force-window's only as it goes idle, and
 		// it's idle from the start, before force-window could be set (it needs the render context): black, logo and

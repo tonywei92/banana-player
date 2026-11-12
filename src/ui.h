@@ -356,6 +356,9 @@ namespace bp
 		bool plIsLiked(const std::string& file) const { return plStore && plStore->isBuiltinFile(file); }
 		// a page in a browser plays what plays here (the Session's output is that tab): the handheld holds it paused
 		bool pageIsOut() const;
+		// how this page can take a page's playback back, for the top panel's card: 1 hold A (the player), 2 elsewhere
+		// (A does something else there: the card says the player can)
+		int takeOverHint(const Player& p) const;
 		std::string outputName() const;	// where it plays now: "Handheld", or the page's name ("Chrome on Mac")
 		std::string pageName() const;	// the output page's name, as it gave it ("Browser" unknown)
 		// while a page plays the file, the paused copy here stays where it was (no seek per report: that decodes a frame):

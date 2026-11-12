@@ -8307,6 +8307,50 @@ static void testSessionNamed()
 		CHECK_EQ(u.s.index, 1);
 	}
 	{
+		// a tab that said goodbye as it closed (its beacon): the handheld after 3 s, not 10; a reload back within them
+		// keeps the browser; a goodbye after the stream had already gone quiet shortens the wait too (I14 throughout)
+		auto bye = [](Sim& m, const std::string& tab) {
+			Intent i;
+			i.type = IntentType::TabGone;
+			i.path = tab;
+			i.on = true;
+			return m.go(i);
+		};
+		Sim m;
+		m.open(5, 0, "tabA");
+		m.loaded();
+		m.report(IntentType::Pos, "tabA", m.s.load, 20, true);
+		bye(m, "tabA");
+		CHECK_EQ(m.s.goneBye, true);
+		m.now += TAB_BYE_GRACE_MS - 1;
+		m.host(IntentType::Tick);
+		CHECK_EQ(m.s.out, browserOut("tabA"));
+		m.now += 2;
+		m.host(IntentType::Tick);
+		CHECK_EQ(m.s.out, handheldOut());
+		CHECK_EQ(m.s.playing, false);
+		CHECK_EQ(m.s.goneBye, false);
+		Sim r;	// a reload: its goodbye, then its stream back within the grace
+		r.open(5, 0, "tabA");
+		r.loaded();
+		bye(r, "tabA");
+		r.now += 1500;
+		r.host(IntentType::TabBack, "tabA");
+		CHECK_EQ(r.s.goneBye, false);
+		r.now += TAB_GRACE_MS;
+		r.host(IntentType::Tick);
+		CHECK_EQ(r.s.out, browserOut("tabA"));
+		Sim q;	// counted gone first (quiet), the goodbye after: the shorter grace from when it went
+		q.open(5, 0, "tabA");
+		q.loaded();
+		q.host(IntentType::TabGone, "tabA");
+		q.now += 1000;
+		bye(q, "tabA");
+		q.now += TAB_BYE_GRACE_MS - 1000;
+		q.host(IntentType::Tick);
+		CHECK_EQ(q.s.out, handheldOut());
+	}
+	{
 		// output tab gone 10 s → handheld paused; tab back within 9 s keeps it
 		Sim m;
 		m.open(5, 0, "tabA");

@@ -50,6 +50,7 @@ export const store = {
 	authed: null, signedOut: '', epoch: 0,
 	// conn: 'ok', 'blip' (failing, the app stays; reconnecting: its banner, after 2 s), 'down' (the down screen)
 	conn: 'ok', reconnecting: false, downReason: '', probing: false, nextTry: 0,
+	elsewhere: false,	// another tab of this browser has the dashboard (onetab.js): this one shows Use here
 	snap: null, snapAt: 0, eq: null,
 	// where picks go: 'browser' when the Session's pref is this tab (browser-player.js onSession), else 'handheld'
 	target: 'handheld',

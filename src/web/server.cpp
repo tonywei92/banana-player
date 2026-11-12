@@ -359,8 +359,17 @@ namespace bp
 		if (!safe)
 		{
 			// CSRF: a form or a plain fetch from another site can't add the header, and SameSite=Strict keeps the cookie
-			// home; the Origin, when a browser sends one, has to be this very address
-			if (req.get_header_value("X-BP") != "1")
+			// home; the Origin, when a browser sends one, has to be this very address.
+			// One exception: a page's goodbye (/api/bye) goes by sendBeacon as the tab closes, which can't add a
+			// header. It must then carry our Origin (a beacon does), and it names the tab and its page load's random
+			// id, which another site can't know; all it can do is mark that one tab gone
+			bool beacon = req.path == "/api/bye";
+			if (beacon && !req.has_header("Origin"))
+			{
+				fail(res, 403, "Wrong origin");
+				return true;
+			}
+			if (!beacon && req.get_header_value("X-BP") != "1")
 			{
 				fail(res, 403, "Missing X-BP");
 				return true;
@@ -535,8 +544,14 @@ namespace bp
 	{
 		std::string end = "|" + tab;
 		for (auto& [key, token] : tabStreams)
-			if (key.size() >= end.size() && key.compare(key.size() - end.size(), end.size(), end) == 0) return true;
+			if (token && key.size() >= end.size() && key.compare(key.size() - end.size(), end.size(), end) == 0) return true;
 		return false;
+	}
+
+	bool WebServer::tabSaidBye(const std::string& tab) const
+	{
+		std::lock_guard<std::mutex> g(hubLock);
+		return byeTabs.count(tab) > 0;
 	}
 
 	bool WebServer::tabConnected(const std::string& tab) const
@@ -604,7 +619,8 @@ namespace bp
 		if (!tab.empty())
 		{
 			std::lock_guard<std::mutex> g(hubLock);
-			replacing = tabStreams.count(key) > 0;
+			auto it = tabStreams.find(key);
+			replacing = it != tabStreams.end() && it->second != 0;
 		}
 		int n = streams.load();
 		do
@@ -633,6 +649,8 @@ namespace bp
 			if (!s->key.empty())
 			{
 				tabStreams[s->key] = s->token = ++streamSeq;
+				tabPage[s->key] = req.get_param_value("pg");
+				byeTabs.erase(tab);	// (back: a reload, or the page shown again)
 				// its name (it keeps its place in the list across reconnects while it's known)
 				TabInfo& info = tabInfo[tab];
 				if (!info.since) info.since = s->token;
@@ -724,7 +742,12 @@ namespace bp
 				{
 					std::lock_guard<std::mutex> g(hubLock);
 					auto it = tabStreams.find(s->key);
-					if (it != tabStreams.end() && it->second == s->token) tabStreams.erase(it);
+					// its own entry, or one a goodbye zeroed (a newer stream of the tab has a token of its own: kept)
+					if (it != tabStreams.end() && (it->second == s->token || it->second == 0))
+					{
+						tabStreams.erase(it);
+						tabPage.erase(s->key);
+					}
 				}
 				streams--;
 				post(WebCall::Kind::ClientsChanged);
@@ -814,6 +837,36 @@ namespace bp
 			res.set_header("X-BP-Version", webVersion);
 		});
 		s.Get("/api/events", [this](const httplib::Request& req, httplib::Response& res) { events(req, res); });
+		// a page going away (closed, reloaded, gone to another site) says so: its live stream counts as gone now, not
+		// at the next keep-alive that fails (15 s and more), so the Session's grace starts at once and the Play on list
+		// drops it. Only the stream of that page load (?pg=): a reload's new stream may already be in when this comes,
+		// and stays. A reload comes back within the grace, as before
+		s.Post("/api/bye", [this](const httplib::Request& req, httplib::Response& res) {
+			std::string tab = req.get_param_value("tab"), pg = req.get_param_value("pg");
+			if (!tab.empty() && !pg.empty())
+			{
+				std::string key = hashToken(cookieValue(req.get_header_value("Cookie"), COOKIE)) + "|" + tab;
+				bool ended = false;
+				{
+					std::lock_guard<std::mutex> g(hubLock);
+					auto it = tabStreams.find(key);
+					auto pt = tabPage.find(key);
+					if (it != tabStreams.end() && it->second && pt != tabPage.end() && pt->second == pg)
+					{
+						it->second = 0;	// (its stream sees itself replaced and ends; tabUp no longer counts it)
+						ended = true;
+						if (byeTabs.size() > 48) byeTabs.clear();	// (a few at a time at most; never a growing list)
+						byeTabs.insert(tab);
+					}
+				}
+				if (ended)
+				{
+					hubCv.notify_all();
+					fprintf(stderr, "web: a page said goodbye (tab %s)\n", tab.c_str());
+				}
+			}
+			res.status = 204;
+		});
 		s.Get("/api/state", [this](const httplib::Request&, httplib::Response& res) {
 			res.set_header("X-BP-Version", webVersion);
 			if (cfg.snapshot)

@@ -6,6 +6,7 @@ import { fetchT, get } from './api.js';
 import { closeOverlays, seeVersion, toast } from './toasts.js';
 import { holdUploads, resumeUploads } from './uploads.js';
 import { loadExtras } from './login.js';
+import { claimTab } from './onetab.js';
 
 /* ================= connection =================
    ok -> blip (a request or the live stream failed: the app stays, "Reconnecting…" after 2 s) -> down (a goodbye from
@@ -73,6 +74,7 @@ async function reconnect(boot) {
 	openSSE();
 	resumeUploads();
 	if (wasDown || first) loadExtras();
+	if (first) claimTab();	// this tab has the dashboard now: one opened before steps aside
 	if (wasDown && !first) toast('Connected again');
 	return true;
 }
@@ -92,7 +94,7 @@ export function goDown(reason) {
 	if (!C.busy) schedule(3000);
 }
 function onVisible() {
-	if (document.hidden || store.authed === false) return;
+	if (document.hidden || store.authed === false || store.elsewhere) return;
 	if (store.conn !== 'ok') probe();
 	else if (store.authed) { openSSE(); refreshState(); }
 }

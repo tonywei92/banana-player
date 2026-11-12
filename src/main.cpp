@@ -1326,11 +1326,12 @@ int main(int argc, char** argv)
 				std::string name = elsewhere ? ui.pageName() : "";
 				// (sent again once the held copy has loaded, and for each file: the first one after a start could go to an
 				// mpv with no picture yet, and the card never showed till something else changed)
-				std::string shown = elsewhere ? std::to_string(ui.pagePlaying()) + std::to_string(sound) + std::to_string(waiting) + name +
+				int hint = elsewhere ? ui.takeOverHint(player) : 0;	// (sent again as the bottom panel's page changes)
+				std::string shown = elsewhere ? std::to_string(ui.pagePlaying()) + std::to_string(sound) + std::to_string(waiting) + std::to_string(hint) + name +
 					(player.loaded ? "|L|" : "|-|") + player.currentPath() : "";
 				if (shown != elsewhereShown)
 				{
-					player.showElsewhere(elsewhere, ui.pagePlaying(), name, waiting, G_LAPTOP_ROWS, G_LAPTOP.h);
+					player.showElsewhere(elsewhere, ui.pagePlaying(), name, waiting, hint, G_LAPTOP_ROWS, G_LAPTOP.h);
 					elsewhereShown = shown;
 				}
 			}
@@ -1362,7 +1363,8 @@ int main(int argc, char** argv)
 			if (haveUi)
 			{
 #ifdef BP_WEB
-				shadow.pass(player, ui, [&webServer](const std::string& tab) { return webServer && webServer->running() && webServer->tabConnected(tab); });
+				shadow.pass(player, ui, [&webServer](const std::string& tab) { return webServer && webServer->running() && webServer->tabConnected(tab); },
+					[&webServer](const std::string& tab) { return webServer && webServer->tabSaidBye(tab); });
 #else
 				shadow.pass(player, ui, nullptr);
 #endif

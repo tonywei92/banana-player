@@ -22,6 +22,13 @@ namespace bp
 {
 	bool Ui::pageIsOut() const { return SessionHost::get().pageIsOutput(); }
 
+	int Ui::takeOverHint(const Player& p) const
+	{
+		// (as tick() takes over: the player with no menu over it)
+		(void)p;
+		return page == Page::Main && !inMenu ? 1 : 2;
+	}
+
 	// (the Session's: a page the output of the file held here, its place by posNow, its play state the session's wish)
 	bool Ui::predicting(const Player& p) const
 	{

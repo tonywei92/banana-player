@@ -1597,7 +1597,7 @@ namespace bp
 
 	static std::string assText(std::string s);
 
-	void Player::showElsewhere(bool on, bool playing, const std::string& where, bool waiting, const char* const* glyph, int glyphH)
+	void Player::showElsewhere(bool on, bool playing, const std::string& where, bool waiting, int hint, const char* const* glyph, int glyphH)
 	{
 		if (!on)
 		{
@@ -1638,7 +1638,10 @@ namespace bp
 			ev += "{\\an5\\pos(480,412)\\bord0\\shad0\\fnInter\\fs30\\1c" + ass(TEXT) + "}Tap Play here on that page to start the sound\n";
 			ev += "{\\an5\\pos(480,464)\\bord0\\shad0\\fnInter\\fs28\\1c" + ass(TOP_SUB) + "}B: play on the handheld instead";
 		}
-		else ev += "{\\an5\\pos(480,412)\\bord0\\shad0\\fnInter\\fs30\\1c" + ass(TOP_SUB) + "}Hold A to play here";
+		// (only what works on the page shown below: A is the player's; elsewhere, where to go for it)
+		else if (hint == 1) ev += "{\\an5\\pos(480,412)\\bord0\\shad0\\fnInter\\fs30\\1c" + ass(TOP_SUB) + "}Hold A to play here";
+		else if (hint == 2)
+			ev += "{\\an5\\pos(480,412)\\bord0\\shad0\\fnInter\\fs30\\1c" + ass(TOP_SUB) + "}Go to the player to play it here";
 		// a song with the equalizer or an effect on: the browser plays it without them (they're the handheld's)
 		if (isAudio && (settings.eqOn || settings.soundFx != SoundFx::None))
 			ev += "\n{\\an5\\pos(480,600)\\bord0\\shad0\\fnInter\\fs26\\1c" + ass(TOP_SUB) + "}Your equalizer and effects don't apply in the browser";

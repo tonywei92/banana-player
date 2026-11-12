@@ -15,7 +15,7 @@ import { RECENT_ID } from './js/recent.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
 import { Files, Lightbox, UploadFab } from './js/files.js';
 import { Manga } from './js/manga.js';
-import { DownScreen } from './js/down.js';
+import { DownScreen, ElsewhereScreen } from './js/down.js';
 import { Login, loadExtras, pinFromHash, pingBoot } from './js/login.js';
 import { C, connFail, goDown } from './js/connection.js';
 import { boot, signOut } from './js/session.js';
@@ -207,6 +207,8 @@ const Fragment = ({ children }) => children;
 function App() {
 	const s = useStore();
 	const slow = useLater(s.authed === null && s.conn !== 'down', 600);
+	// another tab of this browser has the dashboard (uploads under way here still show and finish)
+	if (s.elsewhere && s.authed) return html`<div class="downwrap"><${ElsewhereScreen} />${s.upload.items.length > 0 && html`<${UploadFab} down=${true} />`}<${Toasts} /></div>`;
 	if (s.conn === 'down' && s.authed !== false) return html`<div class="downwrap"><${DownScreen} />${s.upload.items.length > 0 && html`<${UploadFab} down=${true} />`}<${Toasts} />
 		${s.modals.map(m => html`<div class=${'mwrap' + (m.out ? ' out' : '')} key=${m.id}>${m.render(m.close)}</div>`)}</div>`;
 	if (s.authed === null) return html`<main class="login"><div class="signin"><div class="brand"><img src="/logo.svg" alt="" width="64" height="64" />Banana Player</div><p class="dim" aria-live="polite">${slow ? 'Connecting…' : ' '}</p></div></main>`;

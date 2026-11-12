@@ -237,6 +237,7 @@ New route: `POST /api/intent` (JSON `{origin, seq, basis, type, …}`) → `{ok,
 | I11 | `blocked ⇒ playing && out = Browser && index ≥ 0 && loaded` | `Blocked` only then; cleared after any apply that pauses, reloads or moves the output (§12) |
 | I12 | `ended` (a finished list) `⇒ index < 0`, its index within its queue | set only by `Ended` at the end; cleared after any apply that leaves an item, and by `Stop` (§13) |
 | I13 | `order` (Shuffle's hidden play order) non-empty `⇔ shuffle && index ≥ 0`, and then each place of `queue` once | made by `Open` / `SetShuffle` on, `Ended`/`Step` past a round with Loop all (a new one); cleared by Shuffle off and a stop; `FileGone` and `Requeue` renumber it (§14) |
+| I14 | `goneBye ⇒ goneAt ≠ 0 && goneTab` non-empty | set by `TabGone` with `on` (the closing page's goodbye: grace `TAB_BYE_GRACE_MS`, 3 s, not 10); cleared with `goneAt` (`TabBack`, the grace's end, a `SetOutput`) |
 
 ### Failure modes
 

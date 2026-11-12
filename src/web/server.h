@@ -16,6 +16,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <set>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -112,6 +113,8 @@ namespace bp
 		int clients() const { return streams; }
 		// that tab's stream is open (its ?tab= id, any session); "" asks for any stream at all
 		bool tabConnected(const std::string& tab) const;
+		// that tab said goodbye as it closed (POST /api/bye) and hasn't connected since
+		bool tabSaidBye(const std::string& tab) const;
 		// the pages connected now that can play (their streams' ?play=, on unless 0), in the order they came, each with
 		// the name it gave (?name=, "Chrome on Mac"; none: "Browser"; a second of the same name gets " 2"). Only the
 		// handheld shows these (START › Playing › Play on)
@@ -193,7 +196,9 @@ namespace bp
 		std::string byeReason;			// why the last goodbye: what those streams say as they end
 		// each tab's stream (session + the tab's own id): a tab that reconnects (a reload, a dropped Wi-Fi) ends its
 		// old stream at once instead of holding a thread till the next ping finds it gone
-		std::map<std::string, uint64_t> tabStreams;
+		std::map<std::string, uint64_t> tabStreams;	// (a token of 0: the page said goodbye, its stream ending)
+		std::map<std::string, std::string> tabPage;	// the page load each tab's stream came from (?pg=): a goodbye names it
+		std::set<std::string> byeTabs;	// tabs (their own ids) that said goodbye, till they connect again
 		// each tab's name and whether it can play, from its last stream (kept a while after it goes: its name stays known)
 		struct TabInfo { std::string name; bool play = true; uint64_t since = 0; };
 		std::map<std::string, TabInfo> tabInfo;

@@ -531,6 +531,8 @@ handheld, carries on at 1:27"):
   runs on with the browser's time. **A** (or a tap on **Play**/**Pause**) on the handheld plays and pauses the browser;
   the handheld stays quiet. **Hold A** (or hold the Play button) for 0.6 s to play it on the handheld instead, from where
   the browser was: the button fills as you hold, the top screen says **Playing on the handheld**, and the browser stops.
+  The top screen's card says **Hold A to play here** on the player, and **Go to the player to play it here** on any other
+  page (where A does that page's own thing).
   **L / R** on the handheld move the browser's list on, however fast they're pressed: every press counts, and both end
   on the same file (**L** 5 s or more into the browser's song restarts it first, as Previous does everywhere).
 - **Where it plays is one choice for the whole system**, the switch's: anything opened plays there, whichever device
@@ -547,7 +549,10 @@ handheld, carries on at 1:27"):
   Network files play on the handheld once, with the browser still chosen for the next one. A photo opened on the handheld while the browser plays leaves the browser playing;
   closing the photo, the handheld holds the browser's file again. Once the chosen tab has been closed (or lost its connection) for 10 seconds, the
   handheld is chosen again: what the browser played waits there paused at its place (**Your browser went · paused
-  here**), and **Play** carries on. **Hold A** is still the way to bring the sound back to the handheld.
+  here**), and **Play** carries on. **Hold A** is still the way to bring the sound back to the handheld. A tab that's
+  closed (or reloaded, or sent to another site) tells the handheld as it goes, and then the handheld waits 3 seconds,
+  not 10 (a reload is back well within them). A tab that loses its connection without a word is found at the next
+  keep-alive, then the 10 seconds.
   Leaving the handheld's player (**B**) changes nothing for the browser: its mini bar reads **Playing in Chrome on Mac**
   (tap its mark to play or pause the browser, hold the mark to take it over). **Stop** on the handheld stops the browser
   too (the browser stays chosen: the next pick plays there). **Stop** in the browser unloads the handheld's copy too.

@@ -100,8 +100,10 @@ namespace bp
 		void seek(double t, bool relative, const std::string& origin);
 		void woke();
 		// each pass of main's loop: the handheld's reports (as the output), its picks once it can take them, Tick, the
-		// tabs, invariant I2, the effects. tabUp: is that tab's event stream connected
-		void pass(Player& p, Ui& u, const std::function<bool(const std::string&)>& tabUp);
+		// tabs, invariant I2, the effects. tabUp: is that tab's event stream connected; tabBye: did it say goodbye as it
+		// went (a closed tab's beacon: the Session's shorter grace)
+		void pass(Player& p, Ui& u, const std::function<bool(const std::string&)>& tabUp,
+			const std::function<bool(const std::string&)>& tabBye = nullptr);
 
 	private:
 		SessionHost();
@@ -111,6 +113,7 @@ namespace bp
 		std::map<std::string, uint64_t> seqs;
 		uint32_t tickAt = 0, posAt = 0, tabsAt = 0, mismatchSince = 0, soundingSince = 0;
 		std::map<std::string, bool> tabState;
+		std::map<std::string, bool> tabByeTold;	// a gone tab's goodbye already passed to the Session
 		uint64_t erroredLoad = 0;
 		bool picksWanted = false;	// the session's picks to put on the handheld's copy once its tracks are known
 		bool showHere = false;	// the next run that brings the item here shows the player

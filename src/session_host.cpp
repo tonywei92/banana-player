@@ -446,7 +446,8 @@ namespace bp
 		return k == SourceKind::Playlist ? 2 : k == SourceKind::NetFolder ? 1 : 0;
 	}
 
-	void SessionHost::pass(Player& p, Ui& u, const std::function<bool(const std::string&)>& tabUp)
+	void SessionHost::pass(Player& p, Ui& u, const std::function<bool(const std::string&)>& tabUp,
+		const std::function<bool(const std::string&)>& tabBye)
 	{
 		uint32_t now = SDL_GetTicks();
 		// the handheld as the output: its reports (it is the clock)
@@ -544,10 +545,15 @@ namespace bp
 				auto it = tabState.find(tab);
 				bool was = it == tabState.end() ? true : it->second;
 				tabState[tab] = up;
-				if (up != was)
+				// a goodbye (the page closing said so): with the going, or after it if its stream went quiet first
+				bool bye = !up && tabBye && tabBye(tab);
+				if (up) tabByeTold.erase(tab);
+				if (up != was || (bye && !tabByeTold.count(tab)))
 				{
 					Intent i = make(up ? IntentType::TabBack : IntentType::TabGone);
 					i.path = tab;
+					i.on = bye;
+					if (bye) tabByeTold[tab] = true;
 					submit(i, true);
 				}
 			}
