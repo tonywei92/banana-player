@@ -131,3 +131,19 @@ In the Mac player (EQ on, Hall, 192 kHz FLAC, Up Up to 2x, Bars and Art+Spectrum
 
 **Rule.** Anything added to a song's af goes after `@bpin` and runs at 44.1/48 kHz; keep `@bpin` first and always
 present for songs (its rate is what keeps EQ/effect switches from reopening the output).
+
+## 2026-11-12: Pocket console against Peaks
+
+Timed with `tools/viz-bench` on the handheld (player closed), 44.1 kHz, a synthesised 60 s song, the graphs as
+`visualizerGraph()` printed them that day:
+
+| Graph | ms/frame | share of a core at 1x |
+|---|---|---|
+| Peaks, visualizer | 6.49 | 19.5% |
+| Peaks, art + visualizer | 5.93 | 17.8% |
+| Pocket console, visualizer | 6.97 | 20.9% |
+| Pocket console, art + visualizer (art through the dots) | 7.28 | 21.9% |
+
+All at 30.0 frames a second. Pocket draws at the LCD's 80x60 dots and scales up, so its per-frame work is small; most
+of its cost over Peaks is the full-size grid lut2 (and over the art, the three plane lut2s). Circle (8.4 ms, 25%) stays
+the dearest shipped style. Note for the next run: the handheld has no sftp-server, so copy with `scp -O`.
