@@ -1471,7 +1471,7 @@ namespace bp
 			m.id = id;
 			m.title = mangaSrcTitle;
 			m.source = full;
-			m.cover = mangaSrcCover;
+			m.cover = mangaCoverStored(mangaSrcCover);
 			if (const MangaSeries* old = mangaStore->series(id))
 			{
 				m.added = old->added;
@@ -1739,7 +1739,7 @@ namespace bp
 		m.id = mangaSeriesId;
 		m.title = mangaSrcTitle;
 		m.source = mangaSrcId;
-		m.cover = mangaSrcCover;
+		m.cover = mangaCoverStored(mangaSrcCover);
 		m.added = (int64_t)time(nullptr);
 		m.inLibrary = true;
 		mangaStore->putSeries(m);
@@ -1937,17 +1937,22 @@ namespace bp
 		// cover takes theirs, so History and the Library say its name
 		if (mangaStore && mangaSrcInfoOn && !mangaSrcInfo.title.empty())
 			if (const MangaSeries* ms0 = mangaStore->series(mangaSeriesId))
-				if (ms0->title.empty() || ms0->title == mangaSrcKey || (ms0->cover.empty() && !mangaSrcInfo.cover.empty()))
+			{
+				// an extension series' cover keyed for another install (or saved before keys had one): this install's
+				std::string cur = mangaCoverStored(mangaSrcInfo.cover);
+				bool staleCover = MangaJava::isSourceId(mangaSrcId) && !mangaSrcInfo.cover.empty() && ms0->cover != cur;
+				if (ms0->title.empty() || ms0->title == mangaSrcKey || (ms0->cover.empty() && !mangaSrcInfo.cover.empty()) || staleCover)
 				{
 					MangaSeries fixed = *ms0;
 					if (fixed.title.empty() || fixed.title == mangaSrcKey) fixed.title = mangaSrcInfo.title;
-					if (fixed.cover.empty()) fixed.cover = mangaSrcInfo.cover;
+					if (fixed.cover.empty() || staleCover) fixed.cover = cur;
 					if (fixed.title != ms0->title || fixed.cover != ms0->cover)
 					{
 						mangaStore->putSeries(fixed);
 						mangaSave();
 					}
 				}
+			}
 		std::string from = mangaSourceLabel(mangaSeriesId);
 		drawTextMid((from.empty() ? "" : from + " \xC2\xB7 ") + std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " + std::to_string(unread) + " unread",
 			0, DIM, 16, 68);

@@ -16,6 +16,7 @@
 #include <netinet/in.h>
 #include <signal.h>
 #include <spawn.h>
+#include <random>
 #include <string>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -189,21 +190,31 @@ namespace bp
 			return out;
 		}
 
-		bool readMarker(const std::string& javaDir, int64_t& bytes)
+		// "bp-javaext <bytes> [<token>]": the token names this install (its database's ids are its own)
+		bool readMarker(const std::string& javaDir, int64_t& bytes, std::string* token = nullptr)
 		{
 			std::ifstream in(javaDir + "/" + MARKER);
-			std::string tag;
+			std::string tag, tok;
 			if (!(in >> tag >> bytes)) return false;
+			if (token && (in >> tok)) *token = tok;
 			return tag == "bp-javaext";
 		}
 
+		std::string newToken()
+		{
+			std::random_device rd;
+			char b[9];
+			snprintf(b, sizeof b, "%08x", (unsigned)rd());
+			return b;
+		}
+
 		// written only once both files are whole and the runtime is unpacked: its presence is "installed"
-		bool writeMarker(const std::string& javaDir, int64_t bytes)
+		bool writeMarker(const std::string& javaDir, int64_t bytes, const std::string& token)
 		{
 			std::string tmp = javaDir + "/" + MARKER + ".tmp";
 			FILE* f = fopen(tmp.c_str(), "wb");
 			if (!f) return false;
-			bool ok = fprintf(f, "bp-javaext %lld\n", (long long)bytes) > 0;
+			bool ok = fprintf(f, "bp-javaext %lld %s\n", (long long)bytes, token.c_str()) > 0;
 			if (fclose(f) != 0) ok = false;
 			if (!ok || rename(tmp.c_str(), (javaDir + "/" + MARKER).c_str()) != 0)
 			{
@@ -330,6 +341,7 @@ namespace bp
 		int64_t lastWant = 0;
 		// the runtime upgrade (HotSpot to OpenJ9): its own job number, so its failure never fails the engine
 		bool oldRt = false;
+		std::string token;	// this install's (the marker's): the engine's covers are cached under it
 		JavaExtHost::Step step = JavaExtHost::Step::Runtime;
 		uint64_t upJob = 0;
 		JavaExtHost::Upgrade up = JavaExtHost::Upgrade::None;
@@ -563,7 +575,15 @@ namespace bp
 		if (d->cardInstalled(nullptr))
 		{
 			int64_t bytes = 0;
-			if (!readMarker(d->javaDir, bytes) || bytes <= 0) bytes = treeSize(d->javaDir);
+			std::string tok;
+			if (!readMarker(d->javaDir, bytes, &tok) || bytes <= 0) bytes = treeSize(d->javaDir);
+			// an install from before tokens: one now, written once
+			if (tok.empty())
+			{
+				tok = newToken();
+				writeMarker(d->javaDir, bytes, tok);
+			}
+			d->token = tok;
 			d->installed = bytes;
 			d->set(State::Installed, "");
 		}
@@ -637,6 +657,12 @@ namespace bp
 			std::lock_guard<std::mutex> gate(self->gate);
 			self->installStep(j);
 		}).detach();
+	}
+
+	std::string JavaExtHost::installToken() const
+	{
+		std::lock_guard<std::mutex> g(impl->lock);
+		return impl->token;
 	}
 
 	JavaExtHost::Step JavaExtHost::step() const
@@ -1112,7 +1138,8 @@ namespace bp
 		if (r != Fetch::Ok) return;
 		if (!current(j)) return;
 		int64_t bytes = treeSize(javaDir);
-		if (!writeMarker(javaDir, bytes))
+		std::string tok = newToken();	// a fresh install's database numbers everything again: its own token
+		if (!writeMarker(javaDir, bytes, tok))
 		{
 			failJob(j, "Couldn't write to the card");
 			return;
@@ -1120,6 +1147,7 @@ namespace bp
 		std::lock_guard<std::mutex> g(lock);
 		if (j != job) return;
 		installed = bytes;
+		token = tok;
 		done = total;
 		oldRt = runtimeOldNow();
 		set(State::Installed, "");

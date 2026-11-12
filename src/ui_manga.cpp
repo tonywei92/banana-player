@@ -1079,11 +1079,14 @@ namespace bp
 		if (mangaCoverFetches.count(key)) return nullptr;	// fetching already
 		if (!mangaNet || !mangaNet->started()) return nullptr;
 		std::string fetchUrl = coverUrl;
-		if (key != coverUrl)
+		if (key.rfind("javahost/", 0) == 0)
 		{
+			// fetched only from the install its key names: another install's number is another series' now
+			size_t s = key.find('/', 9);
+			if (s == std::string::npos || key.substr(9, s - 9) != mangaNet->javaExt().installToken()) return nullptr;
 			std::string base = mangaNet->javaExt().baseUrl();
 			if (base.empty()) return nullptr;	// not running: no fetch (it isn't started for a cover)
-			fetchUrl = base + key.substr(std::string("javahost").size());
+			fetchUrl = base + key.substr(s);
 		}
 		if (coverFetchUrl) fetchUrl = coverFetchUrl(fetchUrl);
 		uint64_t id = mangaNet->fetchApi().get(fetchUrl, headers, 4 * 1024 * 1024);
@@ -1096,19 +1099,38 @@ namespace bp
 	{
 		// a source's or a server's series keeps its cover's URL in the store; a local one's is read from the card
 		const MangaSeries* s = mangaStore ? mangaStore->series(seriesId) : nullptr;
-		if (!s || s->cover.compare(0, 4, "http") != 0) return "";
+		if (!s) return "";
+		if (s->cover.rfind("javahost/", 0) == 0) return s->cover;
+		if (s->cover.compare(0, 4, "http") != 0) return "";
+		// an engine cover saved as its URL (before keys had a token): its install isn't known, so it's never fetched
+		// by that number (it may be another series' now); a cached one under the old key still shows
+		static const std::string local = "http://127.0.0.1:", engine = "/api/v1/manga/";
+		if (s->cover.compare(0, local.size(), local) == 0)
+		{
+			size_t slash = s->cover.find('/', local.size());
+			if (slash != std::string::npos && s->cover.compare(slash, engine.size(), engine) == 0)
+				return "javahost/legacy" + s->cover.substr(slash);
+		}
 		return s->cover;
 	}
 
-	std::string Ui::mangaCoverKey(const std::string& url)
+	std::string Ui::mangaCoverKey(const std::string& url) const
 	{
+		if (url.rfind("javahost/", 0) == 0) return url;	// a key already (a saved series' cover)
 		// only the manga engine's own covers (/api/v1/manga/<id>/thumbnail): a comic server the user runs on the
 		// handheld itself is on 127.0.0.1 too, at a port that stays, and its covers are fetched where they are
 		static const std::string local = "http://127.0.0.1:", engine = "/api/v1/manga/";
 		if (url.compare(0, local.size(), local) != 0) return url;
 		size_t slash = url.find('/', local.size());
 		if (slash == std::string::npos || url.compare(slash, engine.size(), engine) != 0) return url;
-		return "javahost" + url.substr(slash);
+		std::string tok = mangaNet && mangaNet->started() ? mangaNet->javaExt().installToken() : "";
+		return "javahost/" + (tok.empty() ? std::string("none") : tok) + url.substr(slash);
+	}
+
+	std::string Ui::mangaCoverStored(const std::string& url) const
+	{
+		std::string k = mangaCoverKey(url);
+		return k.rfind("javahost/", 0) == 0 ? k : url;
 	}
 
 	void Ui::mangaCoverCancelOffScreen()

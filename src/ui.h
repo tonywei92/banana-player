@@ -1249,7 +1249,11 @@ namespace bp
 		mutable int mangaCacheCount = -1;
 		mutable bool mangaCacheValid = false;
 		mutable std::vector<MangaSeries> mangaLib;
-		static std::string mangaCoverKey(const std::string& url);	// a cover's cache key (the extensions' without their port)
+		// a cover's cache key: the URL, but the manga engine's as "javahost/<install token>/<path>" (its port changes at
+		// every start, and its numbers start over at every fresh install: the token keeps covers of two installs apart)
+		std::string mangaCoverKey(const std::string& url) const;
+		// a cover as the store keeps it: the engine's by its key (its install known), any other by its URL
+		std::string mangaCoverStored(const std::string& url) const;
 		std::string mangaSeriesCoverUrl(const std::string& seriesId) const;	// a saved series' cover by URL ("" for a local one)
 		mutable std::vector<int> mangaLibUnread;
 		mutable std::vector<ChapterProgress> mangaHistory;	// one row per series (historyBySeries)

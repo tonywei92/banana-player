@@ -65,6 +65,9 @@ namespace bp
 		// runtime is unpacked, thousands of small files written with no bytes coming: said, not a bar standing still
 		enum class Step { Runtime, Unpacking, Server };
 		Step step() const;
+		// this install's token (its marker's): the engine numbers its series from 1 at every fresh install, so what is
+		// cached by those numbers (covers) is kept under the token too. "" when not installed
+		std::string installToken() const;
 		// how much the add-on takes on the card once installed (0: not installed)
 		int64_t installedBytes() const;
 
