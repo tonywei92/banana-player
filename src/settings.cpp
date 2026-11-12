@@ -288,7 +288,8 @@ namespace bp
 		// 15 bars of 4 dots and a 1-dot gap, inset 2 dots from each side as the floor is (80 dots across)
 		const int N = 15, BW = 5, W = 80, L = 2;
 		const int ROWS = overCover ? 25 : 60;	// dots high: 200 or 480 pixels
-		const int T = overCover ? 2 : 14, BH = overCover ? 20 : 36;	// the bars' rows (their top, their height); the floor under them
+		// the bars' rows (their top, their height) and the floor under them: on the screen's last row, no gap below
+		const int T = overCover ? 2 : 14, BH = overCover ? 22 : 45;
 		const int TOP = 8;	// as Peaks: the highest bands (16-24 kHz) measured and cut off
 		const std::string w = std::to_string(W), rows = std::to_string(ROWS), bh = std::to_string(BH), t = std::to_string(T);
 		const std::string cap = std::to_string((251 + BH / 2) / BH);	// one dot, in the height's 251 steps
