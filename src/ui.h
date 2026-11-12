@@ -1982,9 +1982,15 @@ namespace bp
 		}
 		// a source series page's one buttons row, 48 high and single-line glyph + label each (the keys are in the
 		// hints): Resume (A), Download (R2), Refresh (L2), In library (Y); 608 wide with the page's margins
-		Rect mangaSrcResumeRect() const { return {16, 150, 146, 48}; }
-		Rect mangaSrcHeartRect() const { return {478, 150, 146, 48}; }
-		Rect mangaSrcRefreshRect() const { return {324, 150, 146, 48}; }
+		// a source series' row of five: Resume, Download, Refresh, Info, Library (mserBtn 0..4)
+		static Rect mangaSrcBtn(int i) { return {16 + i * 123, 150, 116, 48}; }
+		Rect mangaSrcResumeRect() const { return mangaSrcBtn(0); }
+		Rect mangaSrcRefreshRect() const { return mangaSrcBtn(2); }
+		Rect mangaSrcInfoRect() const { return mangaSrcBtn(3); }
+		Rect mangaSrcHeartRect() const { return mangaSrcBtn(4); }
+		// Info: the series' details (its description) in a dialog, off the page (it took two lines above the row)
+		bool mangaSrcInfoShown = false;
+		void drawMangaSrcInfo();
 
 		// ---- the saved servers (ui_manga_servers.cpp) ----
 		// Browse › Y opens the Add server form: kind, name, address, user, password; Test, Save. A server's
@@ -2208,7 +2214,7 @@ namespace bp
 		void mangaDlWorker(MangaWorker::Result& r);	// its answers (the rest of mangaBrowsePoll's are the browse page's)
 		std::vector<int> mangaDlUnreadFrom(int from, int limit) const;	// unread source chapters, in list order
 		// the Download sheet
-		Rect mangaDlButtonRect() const { return {170, 150, 146, 48}; }
+		Rect mangaDlButtonRect() const { return mangaSrcBtn(1); }
 		Rect mangaDlSheetBox() const { return mdlSheet == MDLS_CHOOSE ? Rect{16, 62, 608, 366} : Rect{100, 96, 440, 260}; }
 		Rect mangaDlSheetRowRect(int i) const;
 		void mangaDlSheetOpen(Player& p);

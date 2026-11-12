@@ -1459,6 +1459,7 @@ namespace bp
 		mangaSrcFailed = FAIL_NONE;
 		mangaSeriesId = id;
 		mangaSeriesFrom = from;
+		mangaSrcInfoShown = false;
 		mserCursor = -1;
 		mserBtn = 0;
 		mserScroll = 0;
@@ -1762,8 +1763,13 @@ namespace bp
 
 	bool Ui::mangaSourceSeriesKey(Button b, Player& p)
 	{
-		// the Download sheet takes the keys while it shows
+		// the Download sheet takes the keys while it shows; Info's dialog closes on A or B
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetKey(b, p);
+		if (mangaSrcInfoShown)
+		{
+			if (b == Button::A || b == Button::B) { mangaSrcInfoShown = false; mstJavaLocal++; }
+			return false;
+		}
 		if (b == Button::Start) { openMangaSettings(); return false; }
 		if (b == Button::R2) { mangaDlSheetOpen(p); return false; }
 		// L2 checks the source again (it is free on this page: the reader's L2 steps chapters, not this page)
@@ -1783,7 +1789,7 @@ namespace bp
 		// the button row (cursor -1): LEFT/RIGHT go along it, A presses the one lit
 		if (mserCursor < 0 && (b == Button::Left || b == Button::Right))
 		{
-			mserBtn = std::clamp(mserBtn + (b == Button::Right ? 1 : -1), 0, 3);
+			mserBtn = std::clamp(mserBtn + (b == Button::Right ? 1 : -1), 0, 4);
 			return false;
 		}
 		if (b == Button::A)
@@ -1793,7 +1799,8 @@ namespace bp
 			{
 				if (mserBtn == 1) mangaDlSheetOpen(p);
 				else if (mserBtn == 2) mangaSourceSeriesRefresh(p);
-				else if (mserBtn == 3) mangaSourceSeriesInLibrary(p);
+				else if (mserBtn == 3) { mangaSrcInfoShown = true; mstJavaLocal++; }
+				else if (mserBtn == 4) mangaSourceSeriesInLibrary(p);
 				else mangaSourceSeriesResume(p);
 			}
 			else mangaSourceSeriesChoose(mserCursor, p);
@@ -1863,6 +1870,20 @@ namespace bp
 		}
 		if (pt.kind != Pointer::Down) return false;
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetPointer(pt, x, y, p);
+		// Info's dialog: a touch anywhere closes it (and presses nothing under it)
+		if (mangaSrcInfoShown)
+		{
+			mangaSrcInfoShown = false;
+			mstJavaLocal++;
+			swallowTouch = true;
+			return false;
+		}
+		if (mangaSrcInfoRect().hit(x, y))
+		{
+			mangaSrcInfoShown = true;
+			mstJavaLocal++;
+			return false;
+		}
 		if (mangaDlButtonRect().hit(x, y))
 		{
 			mangaDlSheetOpen(p);
@@ -1983,15 +2004,12 @@ namespace bp
 				line += (line.empty() ? "" : " \xC2\xB7 ") + mangaSrcInfo.status;
 		}
 		if (!line.empty()) drawTextMid(line, 0, bad ? DANGER : DIM, 16, 86, 592);
-		if (mangaSrcInfoOn && !mangaSrcInfo.description.empty())
-		{
-			std::vector<std::string> lines = wrapText(mangaSrcInfo.description, 0, 592, 2);
-			for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, DIM_ON, 16, 104 + (int)i * 18, 592);
-		}
+		// (the description is Info's, a dialog: on the page it pushed the age line against the buttons)
 		// the cached list's age, one line under the meta: only when it is 6 hours old or more (a fresh one adds
 		// nothing, and nothing refreshes by itself); a running Refresh says what it is doing instead
 		int64_t now = (int64_t)time(nullptr);
-		if (mangaSrcRefreshing) drawTextMid("Checking for new chapters\xE2\x80\xA6", 0, DIM, W / 2, 140, 592, 2);
+		const int AGE_Y = 114;
+		if (mangaSrcRefreshing) drawTextMid("Checking for new chapters\xE2\x80\xA6", 0, DIM, W / 2, AGE_Y, 592, 2);
 		else if (mangaCheckedStale(mangaSrcFetchedAt, now))
 		{
 			// "Chapters checked 3 days ago · " in grey, its key in yellow
@@ -1999,8 +2017,8 @@ namespace bp
 			const std::string key = "L2 Refresh";
 			int w1 = (int)std::lround(textWidth(stem, 0) / sx), w2 = (int)std::lround(textWidth(key, 0) / sx);
 			int x = W / 2 - (w1 + w2) / 2;
-			drawTextMid(stem, 0, DIM, x, 140);
-			drawTextMid(key, 0, ACCENT, x + w1, 140);
+			drawTextMid(stem, 0, DIM, x, AGE_Y);
+			drawTextMid(key, 0, ACCENT, x + w1, AGE_Y);
 		}
 		// Resume: the first started-but-unread chapter, else the first unread, else the first
 		MangaResumePoint resume = mserSumResume;
@@ -2022,9 +2040,13 @@ namespace bp
 		Rect fb = mangaSrcRefreshRect();
 		drawBox(fb, lit(2) ? BUTTON : SURFACE, R_BUTTON, lit(2));
 		drawButton(fb, &G_REFRESH, "Refresh", nullptr, mangaSrcRefreshing, 1);
+		// Info: the details in a dialog
+		Rect ib = mangaSrcInfoRect();
+		drawBox(ib, lit(3) ? BUTTON : SURFACE, R_BUTTON, lit(3));
+		drawButton(ib, &G_INFO, "Info", nullptr, false, 1);
 		Rect hb = mangaSrcHeartRect();
 		bool inLib = mangaSourceSeriesInLib();
-		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : lit(3) ? BUTTON : SURFACE, R_BUTTON, lit(3));
+		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : lit(4) ? BUTTON : SURFACE, R_BUTTON, lit(4));
 		drawButton(hb, inLib ? &G_HEART : &G_HEART_O, "Library", nullptr, false, 1, inLib);
 		if (n == 0)
 		{
@@ -2072,12 +2094,13 @@ namespace bp
 		// show read and unread), and the four buttons carry the rest
 		if (mserCursor < 0)
 		{
-			static const char* ROW[4] = {"Resume", "Download", "Refresh", "Library"};
-			drawHints({{"A", ROW[std::clamp(mserBtn, 0, 3)]}, {"LEFT/RIGHT", "Buttons"}, {"DOWN", "Chapters"}, {"B", "Back"}});
+			static const char* ROW[5] = {"Resume", "Download", "Refresh", "Info", "Library"};
+			drawHints({{"A", ROW[std::clamp(mserBtn, 0, 4)]}, {"LEFT/RIGHT", "Buttons"}, {"DOWN", "Chapters"}, {"B", "Back"}});
 		}
 		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
 		else drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) drawMangaDlSheet(p);
+		if (mangaSrcInfoShown) drawMangaSrcInfo();
 	}
 
 	// ---- signature() ----
@@ -2284,5 +2307,36 @@ namespace bp
 			mlocDeleteArmed ? "Press again" : count, mlocDeleteArmed ? ACCENT : DIM);
 		if (mlocDeleteArmed) drawFooterText("Press A again to delete its files", ACCENT);
 		else drawHints({{"A", "Choose"}, {"B", "Close"}});
+	}
+}
+
+namespace bp
+{
+	void Ui::drawMangaSrcInfo()
+	{
+		// the series' details: its title, author and status, and the description the page no longer has room for
+		Rect box{32, 40, 576, 388};
+		std::string title = mangaSrcInfoOn && !mangaSrcInfo.title.empty() ? mangaSrcInfo.title : mangaSrcTitle;
+		drawDialog(box, title.empty() ? "Series" : title);
+		std::string meta;
+		if (mangaSrcInfoOn && !mangaSrcInfo.author.empty()) meta = mangaSrcInfo.author;
+		if (mangaSrcInfoOn && !mangaSrcInfo.status.empty()) meta += (meta.empty() ? "" : " \xC2\xB7 ") + mangaSrcInfo.status;
+		std::string from = mangaSourceLabel(mangaSeriesId);
+		if (!from.empty()) meta = from + (meta.empty() ? "" : " \xC2\xB7 " + meta);
+		int y = box.y + 62;
+		if (!meta.empty())
+		{
+			drawTextMid(meta, 0, DIM, W / 2, y, box.w - 48, 2);
+			y += 30;
+		}
+		if (mangaSrcInfoOn && !mangaSrcInfo.description.empty())
+		{
+			// as many lines as the box holds (about 15), the last cut with "..."
+			int rows = (box.y + box.h - 24 - y) / 20;
+			std::vector<std::string> lines = wrapText(mangaSrcInfo.description, 0, box.w - 48, rows);
+			for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, TEXT, box.x + 24, y + (int)i * 20, box.w - 48);
+		}
+		else drawTextMid(mangaSrcInfoOn ? "The source gives no description." : "No details yet: Refresh (L2) asks the source.", 0, DIM, W / 2, y + 20, box.w - 48, 2);
+		drawHints({{"B", "Close"}});
 	}
 }

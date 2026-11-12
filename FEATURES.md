@@ -821,16 +821,18 @@ lists (**A** cycles off → include → exclude), text fields and groups as rows
 **Reset** back to the defaults and **Apply** to run the search again from page 1 — the values stay with that source
 while the app runs. **A** opens a series, **B** goes back to Browse's rows, and an error under the grid
 offers **A: Try again**. A source's series page is laid out like a card series': **Resume** (**A**), **Download**
-(**R2**), **Refresh** (**L2**) and the heart (**Y**) in one row of buttons, then the chapters with their read marks,
-**X** to mark one read or unread, **A** to read it. **Resume** keeps the series' own place, and the heart keeps it in
+(**R2**), **Refresh** (**L2**), **Info** and the heart (**Y**) in one row of buttons, then the chapters with their read marks,
+**X** to mark one read or unread, **A** to read it. **Info** shows the series' description, author and status in a
+dialog (**A**, **B** or a touch closes it); the page itself keeps only the source, the counts and the author line. **Resume** keeps the series' own place, and the heart keeps it in
 your library — a source's series starts outside it.
 
 **A source series on the card.** The details and the chapter list are kept when they're fetched, under
 `manga/series/` in the state folder, named by the series' hashed id (never its address). Opening the series shows them
 at once and asks the source nothing; **L2 Refresh** is the only thing that asks again, and it replaces the kept list
-when the answer comes. A check that fails keeps the list on screen and says so in a short note. Once the list is more
-than a day old, one line under the title says **Chapters checked 3 days ago · L2 Refresh** (a fresh one adds nothing,
-and nothing is ever asked by itself); while a check runs the line reads **Checking for new chapters…**.
+when the answer comes. A check that fails keeps the list on screen and says so in a short note. Once the list is 6 hours
+old or more, one line under the title says **Chapters checked 7 hours ago · L2 Refresh** (a fresh one adds nothing,
+and nothing is ever asked by itself). An extension's series doesn't start the manga engine when it opens either: that
+waits for **Resume** or a chapter; while a check runs the line reads **Checking for new chapters…**.
 
 **Sources.** **X** on Browse opens its own page (its header says **Sources**; **B** goes back to Browse). Three lists,
 stepped with **LEFT/RIGHT** (**L/R** still step the app's tabs): **Installed**, **Available** and **Repositories**. **Y**
