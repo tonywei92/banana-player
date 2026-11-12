@@ -1975,11 +1975,12 @@ namespace bp
 	{
 		// Circle's tables: made the first time it's wanted, beside the settings, else (none kept, or a folder a
 		// filter graph can't name) in /tmp. Tried again at the next song when they couldn't be written (a full card)
-		if (vis == VIS_CIRCLE && circleMaps.empty())
+		// (and the newer styles' stills, the same once: src/viz_more.h)
+		if (visualizerNeedsMaps(vis) && circleMaps.empty())
 		{
 			std::string dir = lavfiSafePath(opts.stateDir) ? opts.stateDir : "/tmp/banana-player";
-			if (writeCircleMaps(dir)) circleMaps = dir;
-			else fprintf(stderr, "banana-player: Circle's tables couldn't be written in %s: drawn as Bars\n", dir.c_str());
+			if (writeVisualizerMaps(dir)) circleMaps = dir;
+			else fprintf(stderr, "banana-player: the visualizers' stills couldn't be written in %s: drawn as Bars or Peaks\n", dir.c_str());
 		}
 		return visualizerGraph(vis, overCover, circleMaps);
 	}

@@ -33,8 +33,12 @@ namespace bp
 	// Bars, Waves and Spectrum are retired, their graphs and enum values kept: nothing offers them and a setting
 	// naming one reads as Peaks; VIS_SHOWN lists what's offered, in order
 	// Pocket: Peaks as an old handheld's screen, four greens on a grid of chunky dots
-	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VIS_POCKET, VISUALIZERS };
-	constexpr int VIS_SHOWN[] = {VIS_PEAKS, VIS_PEAKS_BANANA, VIS_CIRCLE, VIS_POCKET};
+	// and six more (src/viz_more.h, a file each): a hi-fi LED meter, Synthwave, Banana stack, Night city, a phosphor
+	// oscilloscope and Heartbeat
+	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VIS_POCKET, VIS_LED,
+		VIS_SYNTHWAVE, VIS_BANANA_STACK, VIS_CITY, VIS_SCOPE, VIS_HEART, VISUALIZERS };
+	constexpr int VIS_SHOWN[] = {VIS_PEAKS, VIS_PEAKS_BANANA, VIS_CIRCLE, VIS_POCKET, VIS_LED, VIS_SYNTHWAVE, VIS_BANANA_STACK,
+		VIS_CITY, VIS_SCOPE, VIS_HEART};
 	constexpr int VIS_SHOWN_COUNT = (int)(sizeof(VIS_SHOWN) / sizeof(VIS_SHOWN[0]));
 	// a visualizer's place in VIS_SHOWN (a hidden one: Peaks's, 0)
 	int visualizerSlot(int v);
@@ -57,6 +61,12 @@ namespace bp
 	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir = "");
 	// Circle's tables, remap's xmap and ymap as 16-bit PGMs, in dir (made once, kept); false if they can't be written
 	bool writeCircleMaps(const std::string& dir);
+	// every style's stills into dir (Circle's tables, and what the six newer ones read): true when all are there
+	bool writeVisualizerMaps(const std::string& dir);
+	// a style that reads stills from the maps folder (drawn as Peaks while there's none)
+	bool visualizerNeedsMaps(int vis);
+	// a path as a filter's argument, quoted; false for one a graph can't name (':', '=', a quote, a backslash)
+	bool lavfiPath(const std::string& p, std::string& out);
 	// a folder a filter graph can name (FFmpeg's option parser splits at ':' and '=' even inside quotes)
 	bool lavfiSafePath(const std::string& dir);
 	// Circle's picture, the panel's shape: the circle a little low, under the song's title

@@ -1,4 +1,5 @@
 #include "settings.h"
+#include "viz_more.h"
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
@@ -35,8 +36,10 @@ namespace bp
 
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};
 	static const char* SHOW_LABELS[SHOWS] = {"Album art", "Art + visualizer", "Visualizer", "None"};
-	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "pocket"};
-	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket console"};
+	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "pocket", "led",
+		"synthwave", "banana-stack", "night-city", "oscilloscope", "heartbeat"};
+	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket console",
+		"Hi-fi LED", "Synthwave", "Banana stack", "Night city", "Oscilloscope", "Heartbeat"};
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
 	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
 	static const char* MANGA_FIT_IDS[MANGA_FITS] = {"page", "width", "fill"};
@@ -159,7 +162,7 @@ namespace bp
 
 	// a path as a filter's argument: quoted (spaces, commas, brackets, ';'); one with ':', '=', a quote or a
 	// backslash can't be named at all
-	static bool lavfiPath(const std::string& p, std::string& out)
+	bool lavfiPath(const std::string& p, std::string& out)
 	{
 		if (!lavfiSafePath(p)) return false;
 		out = "'" + p + "'";
@@ -355,9 +358,41 @@ namespace bp
 		return g;
 	}
 
+	bool visualizerNeedsMaps(int vis)
+	{
+		return vis == VIS_CIRCLE || vis >= VIS_LED;
+	}
+
+	bool writeVisualizerMaps(const std::string& dir)
+	{
+		bool ok = writeCircleMaps(dir);
+		ok = writeLedMaps(dir) && ok;
+		ok = writeSynthwaveMaps(dir) && ok;
+		ok = writeBananaMaps(dir) && ok;
+		ok = writeCityMaps(dir) && ok;
+		ok = writeScopeMaps(dir) && ok;
+		ok = writeHeartMaps(dir) && ok;
+		return ok;
+	}
+
 	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir)
 	{
 		if (vis == VIS_POCKET) return pocketGraph(overCover);
+		// the six newer ones (a file each, src/viz_*.cpp); with no stills yet, as Peaks
+		if (vis >= VIS_LED && vis < VISUALIZERS)
+		{
+			std::string q;
+			if (mapsDir.empty() || !lavfiPath(mapsDir, q)) vis = VIS_PEAKS;
+			else switch (vis)
+			{
+			case VIS_LED: return ledGraph(overCover, mapsDir);
+			case VIS_SYNTHWAVE: return synthwaveGraph(overCover, mapsDir);
+			case VIS_BANANA_STACK: return bananaGraph(overCover, mapsDir);
+			case VIS_CITY: return cityGraph(overCover, mapsDir);
+			case VIS_SCOPE: return scopeGraph(overCover, mapsDir);
+			default: return heartGraph(overCover, mapsDir);
+			}
+		}
 		std::string quoted;
 		if (vis == VIS_CIRCLE && !mapsDir.empty() && lavfiPath(mapsDir, quoted)) return circleGraph(overCover, mapsDir);
 		if (vis == VIS_CIRCLE) vis = VIS_BARS;

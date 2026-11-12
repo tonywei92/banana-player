@@ -112,7 +112,7 @@ namespace bp
 	inline const char* LOOP_SHORT[LOOPS] = {"Off", "All", "One"};		// Loop on a button (beside its mark)
 	// the music key's modes (Ui::playMode): the Loops, then Shuffle (with any Loop)
 	constexpr int MODE_SHUFFLE = LOOPS;
-	inline const Ui::Glyph* const VIS_GLYPHS[VISUALIZERS] = {&G_VIS_BARS, &G_VIS_WAVES, &G_VIS_SPECTRUM, &G_VIS_CIRCLE, &G_VIS_PEAKS, &G_VIS_PEAKS_BANANA, &G_VIS_POCKET};
+	inline const Ui::Glyph* const VIS_GLYPHS[VISUALIZERS] = {&G_VIS_BARS, &G_VIS_WAVES, &G_VIS_SPECTRUM, &G_VIS_CIRCLE, &G_VIS_PEAKS, &G_VIS_PEAKS_BANANA, &G_VIS_POCKET, &G_VIS_LED, &G_VIS_SYNTHWAVE, &G_VIS_BANANA, &G_VIS_CITY, &G_VIS_SCOPE, &G_VIS_HEART};
 	// a show mode's mark: the visualizer ones take the style's
 	inline const Ui::Glyph* showGlyph(int show, int vis)
 	{

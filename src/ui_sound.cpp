@@ -52,7 +52,7 @@ namespace bp
 		{
 			pressedBtn = -1;
 			// outside: closed ("<" too), the finger lifting presses nothing
-			if (!Rect{32, 84, 576, 300}.hit(x, y))
+			if (!Rect{32, DISPLAY_BOX_Y, 576, DISPLAY_BOX_H}.hit(x, y))
 			{
 				displayOpen = false;
 				swallowTouch = true;
@@ -62,16 +62,16 @@ namespace bp
 				for (int i = 0; i < displayChips(r); i++)
 					if (displayChip(r, i).hit(x, y))
 					{
-						pressedBtn = CHIP_BTN + r * 8 + i;
+						pressedBtn = CHIP_BTN + r * 16 + i;
 						displayRow = r;
 					}
 			return false;
 		}
-		if (pt.kind == Pointer::Up && pressedBtn >= CHIP_BTN && pressedBtn < CHIP_BTN + 16)
+		if (pt.kind == Pointer::Up && pressedBtn >= CHIP_BTN && pressedBtn < CHIP_BTN + 32)
 		{
 			int id = pressedBtn - CHIP_BTN;
 			pressedBtn = -1;
-			if (displayChip(id / 8, id % 8).hit(x, y)) displaySet(id / 8, id / 8 ? VIS_SHOWN[id % 8] : id % 8, p);
+			if (displayChip(id / 16, id % 16).hit(x, y)) displaySet(id / 16, id / 16 ? VIS_SHOWN[id % 16] : id % 16, p);
 		}
 		return false;
 	}
@@ -79,8 +79,10 @@ namespace bp
 	void Ui::drawDisplay(const Player& p)
 	{
 		static const char* SHOW_NAMES[SHOWS] = {"Album art", "Art + viz", "Visualizer", "None"};
-		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket"};
-		drawDialog({32, 84, 576, 300}, "Display");
+		// the chips' own short names (five to a row: about eight letters fit); Settings says them in full
+		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Yellow", "Pocket",
+			"Hi-fi LED", "Synth", "Bananas", "Night city", "Scope", "Pulse"};
+		drawDialog({32, DISPLAY_BOX_Y, 576, DISPLAY_BOX_H}, "Display");
 		int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1), vis = std::clamp(p.settings.visualizer, 0, VISUALIZERS - 1);
 		// the art alone, or the title alone: no visualizer, its style muted (still changeable, for later)
 		bool muted = show == SHOW_ART || show == SHOW_NONE;
@@ -89,27 +91,34 @@ namespace bp
 			int rowY = displayChip(r, 0).y;
 			bool focus = r == displayRow;
 			drawTextMid(r ? "Style" : "Show", 0, focus ? ACCENT : TEXT, 52, rowY - 14, 200);
-			if (focus) fillRound({36, rowY, 4, 64}, ACCENT, 2);
+			// (Style's mark down both its rows)
+			if (focus) fillRound({36, rowY, 4, r ? 128 : 60}, ACCENT, 2);
 			for (int i = 0; i < displayChips(r); i++)
 			{
 				Rect c = displayChip(r, i);
 				// Style's chips are the offered visualizers (VIS_SHOWN), not every one
 				int item = r ? VIS_SHOWN[i] : i;
 				bool sel = item == (r ? vis : show), dim = r && muted;
-				SDL_Color bg = pressedBtn == CHIP_BTN + r * 8 + i ? PRESSED : sel ? (dim ? DIM : ACCENT) : dim ? TRACK : BUTTON;
+				SDL_Color bg = pressedBtn == CHIP_BTN + r * 16 + i ? PRESSED : sel ? (dim ? DIM : ACCENT) : dim ? TRACK : BUTTON;
 				SDL_Color ink = sel ? ON_ACCENT : dim ? DIM : TEXT;
 				drawBox(c, bg, R_BUTTON);
 				const Glyph* g = r ? VIS_GLYPHS[item] : i == SHOW_BOTH ? &G_ARTVIZ : showGlyph(i, vis);
-				drawGlyphMid(*g, c.x + c.w / 2, c.y + 20, ink);
-				drawTextMid(r ? STYLE_NAMES[item] : SHOW_NAMES[i], 0, ink, c.x + c.w / 2, c.y + 46, c.w - 8, 2);
+				drawGlyphMid(*g, c.x + c.w / 2, c.y + 19, ink);
+				drawTextMid(r ? STYLE_NAMES[item] : SHOW_NAMES[i], 0, ink, c.x + c.w / 2, c.y + 44, c.w - 8, 2);
 			}
 		}
 		const char* help = show == SHOW_ART ? "The style shows with Art + viz or Visualizer"
 			: show == SHOW_BOTH ? (vis == VIS_CIRCLE ? "Bars round a ring, the art inside it" : "The visualizer over the bottom of the art")
 			: show == SHOW_VIS ? (vis == VIS_PEAKS || vis == VIS_PEAKS_BANANA ? "Bars with caps that hold their highest and fall back"
-				: vis == VIS_POCKET ? "Peaks on an old handheld's screen: four greens, chunky dots" : "The visualizer alone")
+				: vis == VIS_POCKET ? "Peaks on an old handheld's screen: four greens, chunky dots"
+				: vis == VIS_LED ? "An old stereo's meter: green, yellow, then red, a peak that holds"
+				: vis == VIS_SYNTHWAVE ? "Neon bars on a glowing grid under a striped sunset"
+				: vis == VIS_BANANA_STACK ? "Columns of pixel bananas that fill with the music"
+				: vis == VIS_CITY ? "A skyline whose windows light up: bass left, treble right"
+				: vis == VIS_SCOPE ? "The waveform on an old green scope, with a fading trail"
+				: vis == VIS_HEART ? "A line that spikes on the beat, like a heart monitor" : "The visualizer alone")
 			: "Just the title: the lightest on the battery";
-		drawTextMid(help, 0, DIM, W / 2, 352, 544, 2);
+		drawTextMid(help, 0, DIM, W / 2, 380, 544, 2);
 		drawHints({{"D-PAD", "Change"}, {"SELECT", "Show"}, {"B", "Done"}});
 	}
 
