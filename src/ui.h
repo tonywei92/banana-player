@@ -1076,6 +1076,10 @@ namespace bp
 		int dragX0 = 0;
 		double dragFrom = 0;
 		bool dragMoved = false;
+		// let go, the bar stays where the finger left it until playback gets there (the exact seek takes a moment,
+		// and until then the position is still the old one: the bar flicked back and forth); -1 none
+		double seekHeld = -1;
+		Uint32 seekHeldAt = 0;
 		BottomPanel panel;
 		// Lock: over a video, touch does nothing but Screen off and a 1 s hold on the lock (its release); the
 		// buttons go on as Button hotkeys says

@@ -425,8 +425,11 @@ namespace bp
 				drawGlyphMid(G_RIGHT, 604, CHAPTER_Y, DIM);
 			}
 
+			// (while dragged, and just after until playback catches up: where the finger is or left it)
 			double pos = shownPosition(p);
-			double frac = dragging ? dragFraction : p.duration > 0 && pos >= 0 ? std::clamp(pos / p.duration, 0.0, 1.0) : 0;
+			bool held = dragging || seekHeld >= 0;
+			double heldFrac = dragging ? dragFraction : seekHeld;
+			double frac = held ? heldFrac : p.duration > 0 && pos >= 0 ? std::clamp(pos / p.duration, 0.0, 1.0) : 0;
 			drawLevel(BAR, (int)(BAR.w * frac), TRACK);
 			// where each chapter starts: a notch through the bar (none too close to the last, none at all past 100:
 			// they'd be a comb)
@@ -443,10 +446,10 @@ namespace bp
 				}
 			}
 			fillRound({BAR.x + (int)(BAR.w * frac) - 4, BAR.y - 6, 8, BAR.h + 12}, KNOB, R_KNOB);
-			drawText(formatTime(dragging ? dragFraction * p.duration : pos), 1, TEXT, BAR.x, BAR.y + 32);
+			drawText(formatTime(held ? heldFrac * p.duration : pos), 1, TEXT, BAR.x, BAR.y + 32);
 			drawText(formatTime(p.duration), 1, DIM, BAR.x + BAR.w, BAR.y + 32, 0, 1);
 			// how long is left, at the speed it plays (half at 2x)
-			double left = timeLeft(dragging ? dragFraction * p.duration : pos, p.duration, p.speed);
+			double left = timeLeft(held ? heldFrac * p.duration : pos, p.duration, p.speed);
 			// dragging the bar of a file with chapters: the chapter under the finger instead ("3 · The Dragon")
 			int under = -1;
 			if (dragging && p.duration > 0)
