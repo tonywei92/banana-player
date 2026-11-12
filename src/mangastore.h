@@ -51,6 +51,14 @@ namespace bp
 		void putSeries(const MangaSeries& s);	// added or changed; past MAX_SERIES the oldest added falls off
 		void setInLibrary(const std::string& id, bool on);
 		void removeSeries(const std::string& id);	// and its chapters' progress
+		// A series found again under a new id (an extension's, after the manga engine was installed afresh: its ids
+		// start over): its entry, its heart and its chapters' places move from `from` to `to`. A `to` already saved
+		// (opened from Browse meanwhile) keeps its own fields, with the earlier added date and either heart
+		void moveSeries(const std::string& from, const std::string& to);
+		// chapters' places moved to new chapter ids (old id -> new id); an id not in the map stays as it is
+		void moveChapters(const std::unordered_map<std::string, std::string>& ids);
+		// every saved place of one series' chapters
+		std::vector<ChapterProgress> progressOf(const std::string& seriesId) const;
 
 		// The chapter's place, added or changed. A chapter read to its last page counts as read, and the series'
 		// lastRead moves to p.at.

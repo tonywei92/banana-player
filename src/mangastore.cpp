@@ -339,6 +339,56 @@ namespace bp
 		serial_++;
 	}
 
+	void MangaStore::moveSeries(const std::string& from, const std::string& to)
+	{
+		if (from == to || from.empty() || to.empty()) return;
+		auto fi = std::find_if(series_.begin(), series_.end(), [&](const MangaSeries& s) { return s.id == from; });
+		auto ti = std::find_if(series_.begin(), series_.end(), [&](const MangaSeries& s) { return s.id == to; });
+		if (fi != series_.end())
+		{
+			if (ti != series_.end())
+			{
+				ti->inLibrary = ti->inLibrary || fi->inLibrary;
+				if (fi->added > 0 && (ti->added == 0 || fi->added < ti->added)) ti->added = fi->added;
+				ti->lastRead = std::max(ti->lastRead, fi->lastRead);
+				if (ti->readingMode.empty()) ti->readingMode = fi->readingMode;
+				series_.erase(fi);
+			}
+			else fi->id = to;
+		}
+		for (auto& p : progress_)
+			if (p.seriesId == from) p.seriesId = to;
+		serial_++;
+	}
+
+	void MangaStore::moveChapters(const std::unordered_map<std::string, std::string>& ids)
+	{
+		if (ids.empty()) return;
+		for (auto& p : progress_)
+		{
+			auto it = ids.find(p.chapterId);
+			if (it == ids.end()) continue;
+			// a place already kept under the new id (read since) wins: the old one goes
+			bool taken = std::any_of(progress_.begin(), progress_.end(),
+				[&](const ChapterProgress& o) { return o.chapterId == it->second; });
+			if (taken) p.chapterId.clear();
+			else p.chapterId = it->second;
+		}
+		progress_.erase(std::remove_if(progress_.begin(), progress_.end(),
+						   [](const ChapterProgress& p) { return p.chapterId.empty(); }),
+			progress_.end());
+		progIdxDirty_ = true;
+		serial_++;
+	}
+
+	std::vector<ChapterProgress> MangaStore::progressOf(const std::string& seriesId) const
+	{
+		std::vector<ChapterProgress> out;
+		for (const auto& p : progress_)
+			if (p.seriesId == seriesId) out.push_back(p);
+		return out;
+	}
+
 	void MangaStore::setProgress(const ChapterProgress& p, bool history)
 	{
 		ChapterProgress* e = nullptr;

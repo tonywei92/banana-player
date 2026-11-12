@@ -1605,6 +1605,15 @@ namespace bp
 		bool mangaJavaFilterAnswer(const JavaExtHost::GraphQlResult& r);
 		bool mangaJavaListAnswer(const JavaExtHost::GraphQlResult& r);
 		bool mangaJavaSeriesAnswer(const JavaExtHost::GraphQlResult& r);
+		// A saved extension series whose id the engine doesn't know, or now gives to another series (the engine was
+		// installed afresh: its ids start over): found again by its title at its source, once per opening, and its
+		// heart, History and chapters' places moved to the new ids
+		std::string mangaJavaRelinkFrom, mangaJavaRelinkTitle, mangaJavaLoadedFor;
+		uint64_t mangaJavaRelinkSerial = 0;
+		bool mangaJavaRelinkTried = false;
+		bool mangaJavaRelinkStart(const std::string& why);
+		bool mangaJavaRelinkAnswer(const JavaExtHost::GraphQlResult& r);
+		void mangaJavaRelinkChapters();
 		bool mangaJavaPagesAnswer(const JavaExtHost::GraphQlResult& r, const Player& p);
 		uint64_t mangaJavaDlSubmit(const MangaDlAsk& a);	// a chapter's page list for the Download sheet
 		bool mangaJavaDlAnswer(const JavaExtHost::GraphQlResult& r);

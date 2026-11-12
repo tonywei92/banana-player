@@ -3327,6 +3327,39 @@ static void testPaged()
 
 static void testMangaStore()
 {
+	// an extension's series found again under a new id: its entry, heart and chapters' places move over
+	{
+		MangaStore m;
+		MangaSeries old;
+		old.id = "src:java:9:1749";
+		old.title = "Genius";
+		old.added = 500;
+		old.inLibrary = true;
+		m.putSeries(old);
+		ChapterProgress c1;
+		c1.seriesId = old.id;
+		c1.chapterId = "src:java:9:20";
+		c1.chapterTitle = "Chapter 1";
+		c1.page = 4;
+		c1.pages = 10;
+		c1.at = 900;
+		m.setProgress(c1);
+		MangaSeries fresh;
+		fresh.id = "src:java:9:3";
+		fresh.title = "Genius";
+		fresh.added = 800;
+		fresh.inLibrary = false;
+		m.putSeries(fresh);
+		m.moveSeries(old.id, fresh.id);
+		CHECK_EQ(m.series(old.id) == nullptr, true);
+		CHECK_EQ(m.series(fresh.id)->inLibrary, true);
+		CHECK_EQ(m.series(fresh.id)->added, (int64_t)500);
+		CHECK_EQ(m.progressOf(fresh.id).size(), (size_t)1);
+		m.moveChapters({{"src:java:9:20", "src:java:9:7"}});
+		CHECK_EQ(m.progress("src:java:9:20") == nullptr, true);
+		CHECK_EQ(m.progress("src:java:9:7")->page, 4);
+		CHECK_EQ(m.progress("src:java:9:7")->seriesId, std::string("src:java:9:3"));
+	}
 	// Incognito mode: the place is kept, the History doesn't move (a new chapter hidden, a known one keeps its time)
 	{
 		MangaStore a;
