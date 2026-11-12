@@ -282,6 +282,9 @@ namespace bp
 	{
 		// the greens in BT.601 limited YUV: dark #0F380F, mid #306230, screen #9BBC0F; the grid #93B20E (luma only)
 		const int DY = 50, DU = 116, DV = 113, MY = 82, MU = 113, MV = 110, SY = 152, SU = 57, SV = 126, GY = 145;
+		// over the art the dots are the bright ones, so they pop on any cover: bars light #8BAC0F, their top, the caps
+		// and the floor a vivid lime #D4F75A
+		const int LY = 140, LU = 64, LV = 125, BY = 204, BU = 64, BV = 124;
 		// 15 bars of 4 dots and a 1-dot gap, inset 2 dots from each side as the floor is (80 dots across)
 		const int N = 15, BW = 5, W = 80, L = 2;
 		const int ROWS = overCover ? 25 : 60;	// dots high: 200 or 480 pixels
@@ -326,11 +329,11 @@ namespace bp
 					   "color=black:s=640x200:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [pcG]; "
 					   "color=black:s=320x100:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,4),3)+eq(mod(Y,4),3),1)',split [pcGu] [pcGv]; "
 					   "[pcc0] scale=640:200:flags=neighbor [pcc0s]; [pcc0s] [pcG] lut2=c0='if(y,0,x)' [pcc0g]; "
-					   "[pcc0g] [pcay] lut2=c0=" + paint(DY, MY) + " [pcY]; "
+					   "[pcc0g] [pcay] lut2=c0=" + paint(LY, BY) + " [pcY]; "
 					   "[pcc1] scale=320:100:flags=neighbor [pcc1s]; [pcc1s] [pcGu] lut2=c0='if(y,0,x)' [pcc1g]; "
-					   "[pcc1g] [pcau] lut2=c0=" + paint(DU, MU) + " [pcU]; "
+					   "[pcc1g] [pcau] lut2=c0=" + paint(LU, BU) + " [pcU]; "
 					   "[pcc2] scale=320:100:flags=neighbor [pcc2s]; [pcc2s] [pcGv] lut2=c0='if(y,0,x)' [pcc2g]; "
-					   "[pcc2g] [pcav] lut2=c0=" + paint(DV, MV) + " [pcW]; "
+					   "[pcc2g] [pcav] lut2=c0=" + paint(LV, BV) + " [pcW]; "
 					   "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
 		}
 		// each dot's green: a cap or the floor mid, a bar dark (its top third mid), else the screen
