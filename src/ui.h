@@ -1983,7 +1983,12 @@ namespace bp
 		// a source series page's one buttons row, 48 high and single-line glyph + label each (the keys are in the
 		// hints): Resume (A), Download (R2), Refresh (L2), In library (Y); 608 wide with the page's margins
 		// a source series' row of five: Resume, Download, Refresh, Info, Library (mserBtn 0..4)
-		static Rect mangaSrcBtn(int i) { return {16 + i * 123, 150, 116, 48}; }
+		// (Info, its label short, narrower: the others get the room; "Download" at the small size needs 104 of them)
+		static Rect mangaSrcBtn(int i)
+		{
+			static const int X[5] = {16, 148, 280, 412, 500}, Wd[5] = {124, 124, 124, 80, 124};
+			return {X[i], 150, Wd[i], 48};
+		}
 		Rect mangaSrcResumeRect() const { return mangaSrcBtn(0); }
 		Rect mangaSrcRefreshRect() const { return mangaSrcBtn(2); }
 		Rect mangaSrcInfoRect() const { return mangaSrcBtn(3); }

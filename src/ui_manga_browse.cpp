@@ -2031,23 +2031,23 @@ namespace bp
 		drawBox(rb, mangaPressed == MG_RESUME ? PRESSED : lit(0) ? BUTTON : SURFACE, R_BUTTON, lit(0));
 		// (dim while the engine loads or checks; not for a check only put off: Resume is what starts it)
 		bool engineWait = !mangaSourceEngineReady() && !mangaJavaCheckPending;
-		drawButton(rb, &G_PLAY, "Resume", nullptr, n == 0 || engineWait, 1);
+		drawButton(rb, &G_PLAY, "Resume", nullptr, n == 0 || engineWait, 0);
 		// Download: the sheet of This chapter / Next 5 unread / All unread / Choose chapters
 		Rect db = mangaDlButtonRect();
 		drawBox(db, lit(1) ? BUTTON : SURFACE, R_BUTTON, lit(1));
-		drawButton(db, &G_DOWNLOAD, "Download", nullptr, n == 0, 1);
+		drawButton(db, &G_DOWNLOAD, "Download", nullptr, n == 0, 0);
 		// Refresh (L2): ask the source again and replace the card's copy on success
 		Rect fb = mangaSrcRefreshRect();
 		drawBox(fb, lit(2) ? BUTTON : SURFACE, R_BUTTON, lit(2));
-		drawButton(fb, &G_REFRESH, "Refresh", nullptr, mangaSrcRefreshing, 1);
-		// Info: the details in a dialog
+		drawButton(fb, &G_REFRESH, "Refresh", nullptr, mangaSrcRefreshing, 0);
+		// Info: the details in a dialog (five to the row: the labels in the small size, the large overflowed)
 		Rect ib = mangaSrcInfoRect();
 		drawBox(ib, lit(3) ? BUTTON : SURFACE, R_BUTTON, lit(3));
-		drawButton(ib, &G_INFO, "Info", nullptr, false, 1);
+		drawButton(ib, &G_INFO, "Info", nullptr, false, 0);
 		Rect hb = mangaSrcHeartRect();
 		bool inLib = mangaSourceSeriesInLib();
 		drawBox(hb, mangaPressed == MG_HEART ? PRESSED : lit(4) ? BUTTON : SURFACE, R_BUTTON, lit(4));
-		drawButton(hb, inLib ? &G_HEART : &G_HEART_O, "Library", nullptr, false, 1, inLib);
+		drawButton(hb, inLib ? &G_HEART : &G_HEART_O, "Library", nullptr, false, 0, inLib);
 		if (n == 0)
 		{
 			if (!mangaSrcError.empty())
