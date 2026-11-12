@@ -35,8 +35,8 @@ namespace bp
 
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};
 	static const char* SHOW_LABELS[SHOWS] = {"Album art", "Art + visualizer", "Visualizer", "None"};
-	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow"};
-	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana"};
+	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "pocket"};
+	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket console"};
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
 	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
 	static const char* MANGA_FIT_IDS[MANGA_FITS] = {"page", "width", "fill"};
@@ -271,8 +271,63 @@ namespace bp
 		return g + " [vo]";
 	}
 
+	// Pocket console: Peaks as an old handheld's screen. The spectrum in 15 bars and their falling caps, as Peaks measures
+	// them, drawn at the LCD's own size (80 dots across, a dot each pixel: 15 bars of 4 dots and a gap 1), every pixel one of
+	// three greens by a lookup (the rows' "height" picture is still: one frame, repeated), then scaled 8x (nearest: a dot
+	// 8 pixels square) and a still grid of 1-pixel lines laid over the luma, so the dots show. The bars are dark, their
+	// top third mid green; the caps and the floor mid green; the screen the lightest. YUV only, nothing converted.
+	// Over the art: the art's top as it is, the console's strip (25 dots high) under it
+	static std::string pocketGraph(bool overCover)
+	{
+		// the greens in BT.601 limited YUV: dark #0F380F, mid #306230, screen #9BBC0F; the grid #93B20E (luma only)
+		const int DY = 50, DU = 116, DV = 113, MY = 82, MU = 113, MV = 110, SY = 152, SU = 57, SV = 126, GY = 145;
+		// 15 bars of 4 dots and a 1-dot gap, inset 2 dots from each side as the floor is (80 dots across)
+		const int N = 15, BW = 5, W = 80, L = 2;
+		const int ROWS = overCover ? 25 : 60;	// dots high: 200 or 480 pixels
+		const int T = overCover ? 2 : 14, BH = overCover ? 20 : 36;	// the bars' rows (their top, their height); the floor under them
+		const int TOP = 8;	// as Peaks: the highest bands (16-24 kHz) measured and cut off
+		const std::string w = std::to_string(W), rows = std::to_string(ROWS), bh = std::to_string(BH), t = std::to_string(T);
+		const std::string cap = std::to_string((251 + BH / 2) / BH);	// one dot, in the height's 251 steps
+		auto n = [](int v) { return std::to_string(v); };
+		// (fillborders refuses an odd height: the strip's 25 rows are smeared as 26 and the extra one cut off)
+		const int EV = ROWS + (ROWS & 1), mid = EV / 2 - 1;
+		const std::string stretch = "scale=" + n(N * BW) + ":1:flags=neighbor,pad=" + w + ":" + n(EV) + ":" + n(L) + ":" + n(mid) +
+									",fillborders=top=" + n(mid) + ":bottom=" + n(EV - 1 - mid) + ":mode=smear" +
+									(EV != ROWS ? ",crop=" + w + ":" + rows + ":0:0" : std::string()) + ",setsar=1";
+		std::string g = "[aid1] asplit [ao] [a]; ";
+		if (overCover)
+			g += "[vid1] scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:-1:-1:black,setsar=1,format=yuv420p,"
+				 "settb=AVTB,crop=640:280:0:0 [top]; ";
+		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
+			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=30:colors=white,crop=" + n(N) +
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255',split [pcv] [pcp]; "
+			 "[pcp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.8679,"
+			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*250)',format=gray," + stretch + " [pcP]; "
+			 "[pcv] " + stretch + " [pcV]; "
+			 // each dot's "height" (1..252 up the bars' rows), 253 a gap or outside them, 255 the floor
+			 "color=black:s=" + w + "x" + rows + ":r=1:d=1,format=gray,geq=lum='if(eq(Y," + n(T + BH) + ")*between(X," + n(L) + "," +
+			 n(L + N * BW - 2) + "),255,if(lt(Y," + t + ")+gte(Y," + n(T + BH) + ")+lt(X," + n(L) + ")+gte(X," + n(L + N * BW - 1) +
+			 ")+gte(mod(X-" + n(L) + "," + n(BW) + ")," + n(BW - 1) + "),253,1+floor(251*(" + n(T + BH - 1) + "-Y)/(" + bh + "-1))))' [pcR]; "
+			 // 254: a cap (one dot above the cap's value)
+			 "[pcP] [pcR] lut2=c0='if(lt(y,253)*gt(y,x)*lte(y,x+" + cap + "),254,y)' [pcQ]; "
+			 // each dot's green: a cap or the floor mid, a bar dark (its top third mid), else the screen
+			 "[pcV] [pcQ] lut2=c0='if(gte(y,254)," + n(MY) + ",if(lte(y,x)*lt(y,253),if(gt(y,x*0.66)," + n(MY) + "," + n(DY) +
+			 ")," + n(SY) + "))',split=3 [pcy] [pcu] [pcw]; "
+			 // the grid: the 8th line of every dot, across and down, a hair darker (a still picture, one frame)
+			 "color=black:s=640x" + n(ROWS * 8) + ":r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [pcG]; "
+			 "[pcy] scale=640:" + n(ROWS * 8) + ":flags=neighbor [pcY0]; [pcY0] [pcG] lut2=c0='if(y," + n(GY) + ",x)' [pcY]; "
+			 "[pcu] scale=320:" + n(ROWS * 4) + ":flags=neighbor,lut=c0='if(eq(val," + n(DY) + ")," + n(DU) + ",if(eq(val," + n(MY) +
+			 ")," + n(MU) + "," + n(SU) + "))' [pcU]; "
+			 "[pcw] scale=320:" + n(ROWS * 4) + ":flags=neighbor,lut=c0='if(eq(val," + n(DY) + ")," + n(DV) + ",if(eq(val," + n(MY) +
+			 ")," + n(MV) + "," + n(SV) + "))' [pcW]; "
+			 "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p";
+		if (overCover) return g + " [strip]; [top] [strip] vstack [vo]";
+		return g + " [vo]";
+	}
+
 	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir)
 	{
+		if (vis == VIS_POCKET) return pocketGraph(overCover);
 		std::string quoted;
 		if (vis == VIS_CIRCLE && !mapsDir.empty() && lavfiPath(mapsDir, quoted)) return circleGraph(overCover, mapsDir);
 		if (vis == VIS_CIRCLE) vis = VIS_BARS;

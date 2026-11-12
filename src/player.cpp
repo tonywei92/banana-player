@@ -2038,7 +2038,11 @@ namespace bp
 		int show = shownMusic();
 		const char* at = show == SHOW_ART ? "{\\an2}" : show == SHOW_NONE ? "{\\an5}" : "{\\an8}";
 		int big = show == SHOW_NONE ? 56 : 40;
-		std::string text = std::string(at) + "{\\bord3}{\\fs" + std::to_string(big) + "}{\\b1}" + assText(title) + "{\\b0}";
+		// Pocket console alone: the screen's own ink, dark green in the pixel font, no outline (the rest of the text
+		// takes it on; the album line its mid green)
+		bool pocket = show == SHOW_VIS && settings.visualizer == VIS_POCKET;
+		std::string text = std::string(at) + (pocket ? "{\\fnPixelify Sans}{\\bord0}{\\shad0}{\\1c&H0F380F&}" : "{\\bord3}") +
+			"{\\fs" + std::to_string(big) + "}{\\b1}" + assText(title) + "{\\b0}";
 		// an audiobook's (or a song's) chapter, under the title in yellow: where in the book this is
 		int c = currentChapter();
 		if (c >= 0 && c < (int)chapters.size())
@@ -2047,10 +2051,11 @@ namespace bp
 				? "Chapter " + std::to_string(c + 1) + " of " + std::to_string(chapters.size()) : cardText(chapters[c].title, 36);
 			// (no \q2: libass takes an event's last wrap style for all of it, and the title would stop wrapping; the
 			// label's cut keeps it to one line)
-			text += "\\N{\\b0}{\\fs" + std::to_string(big * 3 / 4) + "}{\\c" + ass(TOP_TITLE) + "}" + assText(label) + "{\\c&HFFFFFF&}";
+			text += "\\N{\\b0}{\\fs" + std::to_string(big * 3 / 4) + "}{\\c" + (pocket ? std::string("&H306230&") : ass(TOP_TITLE)) + "}" +
+				assText(label) + (pocket ? "{\\c&H0F380F&}" : "{\\c&HFFFFFF&}");
 		}
 		if (!artist.empty()) text += "\\N{\\fs" + std::to_string(big * 3 / 4) + "}" + assText(artist);
-		if (!album.empty()) text += "\\N{\\fs" + std::to_string(big * 2 / 3) + "}{\\c&HB4B4B4&}" + assText(album);
+		if (!album.empty()) text += "\\N{\\fs" + std::to_string(big * 2 / 3) + "}{\\c" + (pocket ? "&H306230&" : "&HB4B4B4&") + "}" + assText(album);
 		const char* cmd[] = {"osd-overlay", "1", "ass-events", text.c_str(), "0", "720", "0", "no", "no", nullptr};
 		mpv_command_async(mpv, 0, cmd);
 	}

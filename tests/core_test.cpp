@@ -5344,16 +5344,30 @@ static void testSettings()
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, false) != visualizerGraph(VIS_PEAKS, false), true);
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, true) != visualizerGraph(VIS_PEAKS, true), true);
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, false).find("lagfun=decay=") != std::string::npos, true);
-	// the cycle: Peaks, Peaks Banana, Circle; from a hidden one as from Peaks
+	// the cycle: Peaks, Peaks Banana, Circle, Pocket console; from a hidden one as from Peaks
 	CHECK_EQ(stepVisualizer(VIS_PEAKS, 1), (int)VIS_PEAKS_BANANA);
 	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, 1), (int)VIS_CIRCLE);
-	CHECK_EQ(stepVisualizer(VIS_CIRCLE, 1), (int)VIS_PEAKS);
-	CHECK_EQ(stepVisualizer(VIS_PEAKS, -1), (int)VIS_CIRCLE);
+	CHECK_EQ(stepVisualizer(VIS_CIRCLE, 1), (int)VIS_POCKET);
+	CHECK_EQ(stepVisualizer(VIS_POCKET, 1), (int)VIS_PEAKS);
+	CHECK_EQ(stepVisualizer(VIS_PEAKS, -1), (int)VIS_POCKET);
 	CHECK_EQ(stepVisualizer(VIS_SPECTRUM, 1), (int)VIS_PEAKS_BANANA);
 	{
 		int seen = 0;
 		for (int i = 0, v = VIS_PEAKS; i < VIS_SHOWN_COUNT; i++, v = stepVisualizer(v, 1)) seen |= 1 << v;
-		CHECK_EQ(seen, (1 << VIS_PEAKS) | (1 << VIS_PEAKS_BANANA) | (1 << VIS_CIRCLE));
+		CHECK_EQ(seen, (1 << VIS_PEAKS) | (1 << VIS_PEAKS_BANANA) | (1 << VIS_CIRCLE) | (1 << VIS_POCKET));
+	}
+	// Pocket console: kept by its id, named, its own graph (Peaks' caps, YUV only), alone and over the art
+	CHECK_EQ(parseSettings("visualizer = pocket\n").visualizer, (int)VIS_POCKET);
+	CHECK_EQ(parseSettings(serializeSettings(parseSettings("visualizer = pocket\n"))).visualizer, (int)VIS_POCKET);
+	CHECK_EQ(std::string(visualizerLabel(VIS_POCKET)), std::string("Pocket console"));
+	{
+		std::string alone = visualizerGraph(VIS_POCKET, false), over = visualizerGraph(VIS_POCKET, true);
+		CHECK_EQ(alone != visualizerGraph(VIS_PEAKS, false), true);
+		CHECK_EQ(alone.find("lagfun=decay=") != std::string::npos && alone.find("mergeplanes") != std::string::npos, true);
+		CHECK_EQ(alone.find("rgb") == std::string::npos && alone.find("[vid1]") == std::string::npos, true);
+		CHECK_EQ(over.find("[vid1]") != std::string::npos && over.find("vstack") != std::string::npos, true);
+		// each audio branch starts at 44.1/48 kHz, as every graph's
+		CHECK_EQ(alone.find("aformat=sample_rates=44100|48000") != std::string::npos, true);
 	}
 	CHECK_EQ(std::string(loopLabel(LOOP_ALL)), std::string("Loop all"));
 	// the setting before 0.1.1, carried over

@@ -360,8 +360,10 @@ Songs show their title, artist and album on the top screen. While a song plays:
   **Art + visualizer** (the visualizer over the bottom of the art), **Visualizer**, or **None** (just the title: the
   lightest on the battery). **Style** is the visualizer's look: **Peaks** (default: 64 coral bars,
   bass on the left, each with a green cap that stays at the bar's highest point and slowly falls back, over a faint
-  grid), **Peaks Banana** (the same in BananaOS's colours: yellow bars, cream caps) or **Circle** (bars round a
-  glowing ring, cyan to pink; with Art + visualizer, the album art sits inside the ring). Bars, Waves and Spectrum
+  grid), **Peaks Banana** (the same in BananaOS's colours: yellow bars, cream caps), **Circle** (bars round a
+  glowing ring, cyan to pink; with Art + visualizer, the album art sits inside the ring) or **Pocket console** (Peaks
+  on an old handheld's screen: 15 bars of chunky dots in four greens, with falling caps; alone, the title is in the
+  same dark green pixel type; with Art + visualizer, the console's strip sits under the art). Bars, Waves and Spectrum
   are retired: a saved choice of one of them becomes Peaks. The top screen
   changes as you choose. In the popup, the **D-pad** changes a setting, **SELECT** goes to the next Show mode, and
   **B** closes it. The Style row is greyed out for Album art and None, which don't show a visualizer, but it can still

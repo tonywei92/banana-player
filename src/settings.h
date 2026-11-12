@@ -32,8 +32,9 @@ namespace bp
 	// Peaks Banana: the same in BananaOS's colours (yellow bars, cream caps)
 	// Bars, Waves and Spectrum are retired, their graphs and enum values kept: nothing offers them and a setting
 	// naming one reads as Peaks; VIS_SHOWN lists what's offered, in order
-	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VISUALIZERS };
-	constexpr int VIS_SHOWN[] = {VIS_PEAKS, VIS_PEAKS_BANANA, VIS_CIRCLE};
+	// Pocket: Peaks as an old handheld's screen, four greens on a grid of chunky dots
+	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VIS_POCKET, VISUALIZERS };
+	constexpr int VIS_SHOWN[] = {VIS_PEAKS, VIS_PEAKS_BANANA, VIS_CIRCLE, VIS_POCKET};
 	constexpr int VIS_SHOWN_COUNT = (int)(sizeof(VIS_SHOWN) / sizeof(VIS_SHOWN[0]));
 	// a visualizer's place in VIS_SHOWN (a hidden one: Peaks's, 0)
 	int visualizerSlot(int v);

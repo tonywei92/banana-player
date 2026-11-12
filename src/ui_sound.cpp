@@ -79,7 +79,7 @@ namespace bp
 	void Ui::drawDisplay(const Player& p)
 	{
 		static const char* SHOW_NAMES[SHOWS] = {"Album art", "Art + viz", "Visualizer", "None"};
-		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana"};
+		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket"};
 		drawDialog({32, 84, 576, 300}, "Display");
 		int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1), vis = std::clamp(p.settings.visualizer, 0, VISUALIZERS - 1);
 		// the art alone, or the title alone: no visualizer, its style muted (still changeable, for later)
@@ -106,7 +106,8 @@ namespace bp
 		}
 		const char* help = show == SHOW_ART ? "The style shows with Art + viz or Visualizer"
 			: show == SHOW_BOTH ? (vis == VIS_CIRCLE ? "Bars round a ring, the art inside it" : "The visualizer over the bottom of the art")
-			: show == SHOW_VIS ? (vis == VIS_PEAKS || vis == VIS_PEAKS_BANANA ? "Bars with caps that hold their highest and fall back" : "The visualizer alone")
+			: show == SHOW_VIS ? (vis == VIS_PEAKS || vis == VIS_PEAKS_BANANA ? "Bars with caps that hold their highest and fall back"
+				: vis == VIS_POCKET ? "Peaks on an old handheld's screen: four greens, chunky dots" : "The visualizer alone")
 			: "Just the title: the lightest on the battery";
 		drawTextMid(help, 0, DIM, W / 2, 352, 544, 2);
 		drawHints({{"D-PAD", "Change"}, {"SELECT", "Show"}, {"B", "Done"}});
