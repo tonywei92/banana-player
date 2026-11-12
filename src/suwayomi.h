@@ -42,6 +42,16 @@ namespace bp
 
 	// a manga's details + its chapters
 	std::string suwayomiFetchMangaAndChapters(int mangaId);
+	// what the engine's own database says of a manga (no request to the site): its title, source and chapter ids.
+	// A saved series is checked with it before its saved chapter ids are used (an engine installed afresh numbers
+	// everything from 1 again)
+	std::string suwayomiCheckManga(int mangaId);
+	struct SuwayomiMangaCheck
+	{
+		std::string title, sourceId;
+		std::vector<int> chapterIds;
+	};
+	bool suwayomiParseCheckManga(const std::string& json, SuwayomiMangaCheck& out, std::string& error);
 
 	// a chapter's page paths
 	std::string suwayomiFetchChapterPages(int chapterId);

@@ -8740,6 +8740,20 @@ static void testPicSubs()
 // is parsed, with the same small JSON reader the rest of bpcore uses.
 static void testSuwayomi()
 {
+	// a saved series checked against the engine's own database: title, source and chapter ids
+	{
+		SuwayomiMangaCheck chk;
+		std::string err;
+		CHECK_EQ(suwayomiCheckManga(7).find("manga(id: $id)") != std::string::npos, true);
+		CHECK_EQ(suwayomiParseCheckManga(R"({"data":{"manga":{"id":7,"title":"Genius","sourceId":"4688509366795716377",)"
+			R"("chapters":{"nodes":[{"id":11},{"id":12}]}}}})", chk, err), true);
+		CHECK_EQ(chk.title, std::string("Genius"));
+		CHECK_EQ(chk.sourceId, std::string("4688509366795716377"));
+		CHECK_EQ(chk.chapterIds.size(), (size_t)2);
+		CHECK_EQ(chk.chapterIds[1], 12);
+		// an id the engine doesn't know: its errors, so no manga
+		CHECK_EQ(suwayomiParseCheckManga(R"({"data":null,"errors":[{"message":"Collection is empty."}]})", chk, err), false);
+	}
 	const std::string F = std::string(BP_TESTS_DIR) + "/fixtures/suwayomi/";
 	// a fixture is read into a string; the file is always there (a missing one is a test failure, not a skip)
 	auto read = [](const std::string& path) -> std::string

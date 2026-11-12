@@ -1493,6 +1493,8 @@ namespace bp
 		mangaSrcRefreshing = mangaSrcHadList = false;
 		mangaSrcFetchDetailsOk = mangaSrcFetchChaptersOk = false;
 		if (!mangaSourceSeriesCacheLoad()) mangaSourceSeriesLoad(p);
+		// an extension's series from the card's copy: checked against the engine's database before its chapters open
+		else if (MangaJava::isSourceId(mangaSrcId)) mangaJavaCheckStart();
 	}
 
 	void Ui::mangaSourceSeriesLoad(Player& p, bool refresh)
@@ -1625,7 +1627,7 @@ namespace bp
 		if (!mangaSourceEngineReady() && i >= 0 && i < (int)mangaSrcChapters.size() &&
 			mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]).kind != MangaDlMark::OnCard)
 		{
-			mangaNotice("The manga engine is still loading\xE2\x80\xA6", 2000);
+			mangaNotice(mangaSourceWaitText(), 2000);
 			return;
 		}
 		if (i < 0 || i >= (int)mangaSrcChapters.size()) return;
@@ -1644,14 +1646,22 @@ namespace bp
 		std::string full, key;
 		splitSourceId(mangaSeriesId, full, key);
 		if (!MangaJava::isSourceId(full)) return true;
-		return mangaNet && mangaNet->started() && mangaNet->javaExt().state() == JavaExtHost::State::Running;
+		// and the series checked against the engine's database (its saved ids may be an earlier install's)
+		return mangaNet && mangaNet->started() && mangaNet->javaExt().state() == JavaExtHost::State::Running &&
+			!mangaJavaChecking && !mangaJavaRelinkSerial;
+	}
+
+	std::string Ui::mangaSourceWaitText() const
+	{
+		return mangaNet && mangaNet->started() && mangaNet->javaExt().state() == JavaExtHost::State::Running
+			? "Checking this series\xE2\x80\xA6" : "The manga engine is still loading\xE2\x80\xA6";
 	}
 
 	void Ui::mangaSourceSeriesResume(Player& p)
 	{
 		if (!mangaSourceEngineReady())
 		{
-			mangaNotice("The manga engine is still loading\xE2\x80\xA6", 2000);
+			mangaNotice(mangaSourceWaitText(), 2000);
 			return;
 		}
 		if (mangaSrcChapters.empty()) return;

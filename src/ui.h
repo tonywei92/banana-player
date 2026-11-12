@@ -1614,6 +1614,12 @@ namespace bp
 		bool mangaJavaRelinkStart(const std::string& why);
 		bool mangaJavaRelinkAnswer(const JavaExtHost::GraphQlResult& r);
 		void mangaJavaRelinkChapters();
+		// the check of a series opened from the card's copy (title, source, chapter ids, from the engine's database)
+		bool mangaJavaChecking = false;
+		uint64_t mangaJavaCheckSerial = 0;
+		void mangaJavaCheckStart();
+		bool mangaJavaCheckAnswer(const JavaExtHost::GraphQlResult& r);
+		std::string mangaSourceWaitText() const;	// why an extension's chapter waits: the engine, or the check
 		bool mangaJavaPagesAnswer(const JavaExtHost::GraphQlResult& r, const Player& p);
 		uint64_t mangaJavaDlSubmit(const MangaDlAsk& a);	// a chapter's page list for the Download sheet
 		bool mangaJavaDlAnswer(const JavaExtHost::GraphQlResult& r);

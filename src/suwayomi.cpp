@@ -474,6 +474,14 @@ namespace bp
 		return gqlBody(q, v.out());
 	}
 
+	std::string suwayomiCheckManga(int mangaId)
+	{
+		const char* q = "query Check($id: Int!) { manga(id: $id) { id title sourceId chapters { nodes { id } } } }";
+		JsonWriter v;
+		v.obj().key("id").num(mangaId).end();
+		return gqlBody(q, v.out());
+	}
+
 	std::string suwayomiFetchChapterPages(int chapterId)
 	{
 		const char* q = "mutation ChapterPages($id: Int!) { fetchChapterPages(input: {chapterId: $id}) { pages chapter { id pageCount } } }";
@@ -847,6 +855,27 @@ namespace bp
 			if (el.kind != JVal::STR) continue;
 			out.push_back(joinUrl(baseUrl, el.s));
 		}
+		return true;
+	}
+
+	bool suwayomiParseCheckManga(const std::string& json, SuwayomiMangaCheck& out, std::string& error)
+	{
+		error.clear();
+		out = SuwayomiMangaCheck{};
+		if (suwayomiCheckErrors(json, error)) return false;
+		JVal root;
+		if (!jParse(json, root)) { error = "bad JSON"; return false; }
+		const JVal* data = root.find("data");
+		const JVal* m = data && data->kind == JVal::OBJ ? data->find("manga") : nullptr;
+		if (!m || m->kind != JVal::OBJ) { error = "no manga"; return false; }
+		out.title = jStr(m->find("title"));
+		const JVal* src = m->find("sourceId");
+		out.sourceId = src && src->kind == JVal::STR ? src->s : std::to_string(jInt64(src));
+		const JVal* ch = m->find("chapters");
+		const JVal* nodes = ch && ch->kind == JVal::OBJ ? ch->find("nodes") : nullptr;
+		if (nodes && nodes->kind == JVal::ARR)
+			for (const JVal& n : nodes->elems)
+				if (n.kind == JVal::OBJ) out.chapterIds.push_back(jInt(n.find("id")));
 		return true;
 	}
 

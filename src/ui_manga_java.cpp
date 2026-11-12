@@ -4,6 +4,7 @@
 // here. Nothing in this file starts a thread or opens a socket: the host and MangaNet own those.
 #include "ui.h"
 #include "manganet.h"
+#include <unordered_set>
 #include <functional>
 #include <unordered_map>
 #include <cstdint>
@@ -362,6 +363,7 @@ namespace bp
 		{
 			if (mangaJavaFilterAnswer(r)) continue;
 			if (mangaJavaListAnswer(r)) continue;
+			if (mangaJavaCheckAnswer(r)) continue;
 			if (mangaJavaRelinkAnswer(r)) continue;
 			if (mangaJavaSeriesAnswer(r)) continue;
 			if (mangaJavaPagesAnswer(r, p)) continue;
@@ -916,11 +918,11 @@ namespace bp
 		if (!mangaJavaSeriesSerial || r.serial != mangaJavaSeriesSerial) return false;
 		mangaJavaSeriesSerial = 0;
 		mangaSrcLoading = false;
-		// an id the engine doesn't know (its answer: "Collection is empty"): a series saved under an earlier install
-		if (!r.error.empty())
+		// an id the engine doesn't know (its answer: "Collection is empty", in the answer's errors with a 200, not a
+		// failed request): a series saved under an earlier install
 		{
 			std::string l;
-			for (char c : r.error) l += (char)std::tolower((unsigned char)c);
+			for (char c : r.error + r.body) l += (char)std::tolower((unsigned char)c);
 			if ((l.find("collection is empty") != std::string::npos || l.find("not found") != std::string::npos) &&
 				mangaJavaRelinkStart("the engine doesn't know it"))
 				return true;
@@ -986,6 +988,82 @@ namespace bp
 		if (!mangaJavaRelinkFrom.empty()) mangaJavaRelinkChapters();
 		if (mserCursor >= (int)mangaSrcChapters.size()) mserCursor = (int)mangaSrcChapters.size() - 1;
 		mangaSourceSeriesFetched();
+		mstJavaLocal++;
+		return true;
+	}
+
+	void Ui::mangaJavaCheckStart()
+	{
+		if (mangaNet && mangaNet->started() && mangaJavaCheckSerial) mangaNet->javaExt().cancelGraphQl(mangaJavaCheckSerial);
+		mangaJavaCheckSerial = 0;
+		mangaJavaChecking = false;
+		int id = std::atoi(mangaSrcKey.c_str());
+		if (id <= 0 || !mangaNet || !mangaNet->started() || !mangaJavaInstalled()) return;
+		if (mangaJavaLoadedFor != mangaSeriesId)
+		{
+			mangaJavaLoadedFor = mangaSeriesId;
+			mangaJavaRelinkTried = false;
+		}
+		mangaJavaNeedHost();
+		mangaJavaCheckSerial = mangaNet->javaExt().graphql(suwayomiCheckManga(id));
+		mangaJavaChecking = mangaJavaCheckSerial != 0;
+		mstJavaLocal++;
+	}
+
+	bool Ui::mangaJavaCheckAnswer(const JavaExtHost::GraphQlResult& r)
+	{
+		if (!mangaJavaCheckSerial || r.serial != mangaJavaCheckSerial) return false;
+		mangaJavaCheckSerial = 0;
+		SuwayomiMangaCheck chk;
+		std::string error;
+		bool known = r.error.empty() && suwayomiParseCheckManga(r.body, chk, error);
+		const MangaSeries* saved = mangaStore ? mangaStore->series(mangaSeriesId) : nullptr;
+		auto norm = [](std::string t) {
+			std::string o;
+			for (char c : t) o += (char)std::tolower((unsigned char)c);
+			size_t a = o.find_first_not_of(" \t"), b = o.find_last_not_of(" \t");
+			return a == std::string::npos ? std::string() : o.substr(a, b - a + 1);
+		};
+		bool sameSeries = known && chk.sourceId == MangaJava::suwayomiSourceId(mangaSrcId) &&
+			(!saved || saved->title.empty() || saved->title == mangaSrcKey || norm(saved->title) == norm(chk.title));
+		if (!sameSeries)
+		{
+			// not this database's series under that id (or none): the card's list is an earlier install's, so it goes,
+			// and the series is found again by its title
+			fprintf(stderr, "manga: %s: %s in the engine's database, finding it again\n", mangaSeriesId.c_str(),
+				known ? ("\"" + chk.title + "\"").c_str() : "unknown");
+			mangaSrcChapters.clear();
+			mangaSrcChaptersOn = false;
+			mangaSrcHadList = false;
+			mangaJavaChecking = false;
+			if (!mangaJavaRelinkStart("its id is an earlier install's"))
+			{
+				mangaSrcError = "This series was saved before the manga engine was installed again. Find it again in Browse.";
+				mangaSrcFailed = FAIL_SERIES;
+			}
+			mstJavaLocal++;
+			return true;
+		}
+		// the right series: its saved chapters are good when the database has every one of them
+		std::unordered_set<int> have(chk.chapterIds.begin(), chk.chapterIds.end());
+		bool allKnown = true;
+		for (const MangaChapter& c : mangaSrcChapters)
+			if (!have.count(std::atoi(c.key.c_str()))) { allKnown = false; break; }
+		if (allKnown)
+		{
+			mangaJavaChecking = false;
+			mstJavaLocal++;
+			return true;
+		}
+		// the series is, its chapters aren't (asked again from the site; the check ends with that answer)
+		fprintf(stderr, "manga: %s: its saved chapters aren't the engine's, asking for them again\n", mangaSeriesId.c_str());
+		mangaJavaRelinkFrom = mangaSeriesId;	// (the chapters' saved places move to the new ids by title when they come)
+		mangaSrcChapters.clear();
+		mangaSrcChaptersOn = false;
+		mangaSrcHadList = false;
+		mangaJavaSeriesSerial = mangaNet ? mangaNet->javaExt().graphql(suwayomiFetchMangaAndChapters(std::atoi(mangaSrcKey.c_str()))) : 0;
+		mangaSrcLoading = mangaJavaSeriesSerial != 0;
+		mangaJavaChecking = false;	// (the chapters are gone till the new ones come: nothing to open meanwhile)
 		mstJavaLocal++;
 		return true;
 	}
@@ -1114,7 +1192,8 @@ namespace bp
 		// a chapter id the engine doesn't know: the series page came from the card's copy, kept under an earlier
 		// install. The series is asked for again (its answer finds it again by title, the chapters with it); the
 		// chapter is picked again from the list that comes
-		if (!r.error.empty() && r.error.find("Collection is empty") != std::string::npos && !mangaJavaRelinkTried &&
+		// (the engine says so in the answer's errors, with a 200: the body, not a failed request)
+		if ((r.error + r.body).find("Collection is empty") != std::string::npos && !mangaJavaRelinkTried &&
 			mangaNet && mangaNet->started())
 		{
 			int mangaId = std::atoi(mangaSrcKey.c_str());
