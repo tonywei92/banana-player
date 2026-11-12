@@ -723,8 +723,18 @@ int main(int argc, char** argv)
 				fbTex(0x8D40, 0x8CE0 /* GL_COLOR_ATTACHMENT0 */, 0x0DE1, tex, 0);
 				bindFb(0x8D40, 0);
 			}
-			player.render(16, 16, sinkFbo, true);	// unseen: taken, not drawn (MPV_RENDER_PARAM_SKIP_RENDERING)
+			// unseen: taken, not drawn (MPV_RENDER_PARAM_SKIP_RENDERING), and not waited for; a slow take is logged (it
+			// would show as a stutter in the reader or a photo's pan while music plays)
+			Uint32 t0 = SDL_GetTicks();
+			player.render(16, 16, sinkFbo, true);
 			player.reportSwap();
+			static Uint32 slowLogged = 0;
+			Uint32 took = SDL_GetTicks() - t0;
+			if (took > 8 && SDL_GetTicks() - slowLogged > 5000)
+			{
+				slowLogged = SDL_GetTicks();
+				fprintf(stderr, "timing: a frame under the pages took %u ms to take\n", took);
+			}
 		};
 
 		// the top panel's pixels (RGBA, top row first), the frame drawn again for it: screenshots

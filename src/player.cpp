@@ -877,10 +877,15 @@ namespace bp
 		// skip: the frame is taken (mpv's queue moves on, its timing kept) but nothing is drawn: no scaling, no
 		// shaders, no GL work stealing time from the bottom panel's drawing
 		int skipping = skip ? 1 : 0;
+		// and, skipped, not waited for: mpv's default holds the call till the frame's display time, which for a frame
+		// nobody sees (the music's resting visualizer under the manga reader or a photo) stalled the main loop up to
+		// a frame's span, five times a second: the reader's scroll stuttered only while music played
+		int block = skip ? 0 : 1;
 		mpv_render_param params[] = {
 			{MPV_RENDER_PARAM_OPENGL_FBO, &fbo},
 			{MPV_RENDER_PARAM_FLIP_Y, &flip},
 			{MPV_RENDER_PARAM_SKIP_RENDERING, &skipping},
+			{MPV_RENDER_PARAM_BLOCK_FOR_TARGET_TIME, &block},
 			{MPV_RENDER_PARAM_INVALID, nullptr},
 		};
 		return mpv_render_context_render(rc, params);
