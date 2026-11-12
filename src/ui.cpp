@@ -463,9 +463,9 @@ namespace bp
 
 	void Ui::tick(Player& p)
 	{
-		// the bar held at a released drag: let go once playback is there, or after 1.5 s whatever happens
+		// the bar held at a released drag: let go once playback is there, or after 6 s whatever happens (a network file buffers a while)
 		if (seekHeld >= 0 && !dragging &&
-			(p.duration <= 0 || std::fabs(shownPosition(p) - seekHeld * p.duration) < 1.0 || SDL_GetTicks() - seekHeldAt > 1500))
+			(p.duration <= 0 || std::fabs(shownPosition(p) - seekHeld * p.duration) < 1.0 || SDL_GetTicks() - seekHeldAt > 6000))
 			seekHeld = -1;
 		mangaVideoGuard(p);
 		mangaEngineWatch(p);	// the engine's download sheet: closed when done
