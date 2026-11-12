@@ -91,7 +91,7 @@ namespace bp
 		int clock = CLOCK_24;
 		// the bottom panel off by itself (Settings › Controls & screen) while a song or video plays and nothing is touched
 		int screenOffAfter = SOFF_30;		// while a song plays
-		int screenOffVideo = SOFF_NEVER;	// while a video plays: its controls are what one reaches for (issue #5)
+		int screenOffVideo = SOFF_30;		// while a video plays: a dark bottom panel keeps the eye on the film; Never for those who want its controls lit (issue #5)
 		// photos: the next one opens at the zoom (and the place in it) the last was left at; off: each at its size
 		bool keepPhotoZoom = true;
 		// the photo's pan area on the bottom panel: the left half (the default) or the right

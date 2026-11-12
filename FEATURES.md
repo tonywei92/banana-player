@@ -465,7 +465,7 @@ goes back to the list.
 | | Battery percentage | Off | Shows the battery's percent beside its icon (the icon, with a bolt while charging, is always there) |
 | | Clock | 24-hour | The time in the top corner of the bottom screen, left of the battery: 24-hour (`14:32`), 12-hour (`2:32 PM`) or Off. Not over a photo |
 | | Screen off (music) | 30 seconds | While a song plays, the bottom screen turns off by itself after that long without a touch or a button: Never, 15 or 30 seconds, 1, 2 or 5 minutes. Not while paused, and never while a photo or a comic is shown. A touch or any button brings it back |
-| | Screen off (video) | Never | The same while a video plays (its seek bar, tracks and subtitles stay ready to touch unless a time is chosen) |
+| | Screen off (video) | 30 s | The same while a video plays; Never keeps its seek bar, tracks and subtitles lit and ready to touch |
 | **Updates** | Check automatically | On | Looks for a new version a few seconds after the start, in the background (Wi-Fi needed) |
 | | Check for updates | | Looks now, and shows what it found |
 | | Update to … | | Downloads the new version (shown when there's one), then **Restart now** |

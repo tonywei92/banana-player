@@ -5328,7 +5328,7 @@ static void testSettings()
 	CHECK_EQ(parseSettings("screen-off = never\n").screenOffAfter, (int)SOFF_NEVER);
 	CHECK_EQ(parseSettings("screen-off = 2m\n").screenOffAfter, (int)SOFF_120);
 	// a video's own timer (issue #5): Never by default, kept apart from a song's
-	CHECK_EQ(d.screenOffVideo, (int)SOFF_NEVER);
+	CHECK_EQ(d.screenOffVideo, (int)SOFF_30);
 	CHECK_EQ(parseSettings("screen-off-video = 1m\n").screenOffVideo, (int)SOFF_60);
 	CHECK_EQ(parseSettings("screen-off-video = 1m\n").screenOffAfter, (int)SOFF_30);
 	{
