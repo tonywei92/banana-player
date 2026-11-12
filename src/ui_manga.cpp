@@ -1197,6 +1197,7 @@ namespace bp
 				t = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, r.w, r.h);
 				if (t)
 				{
+					SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);	// shrunk to its tile: smooth, not jagged
 					SDL_UpdateTexture(t, nullptr, r.rgba.data(), r.w * 4);
 					SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);	// (its corners are transparent)
 				}
@@ -2091,6 +2092,9 @@ namespace bp
 						int th = std::min(2048, px.h - y);
 						SDL_Texture* t = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, px.w, th);
 						if (!t) break;
+						// filtered like the top panel's pages (GL_LINEAR): SDL's default, nearest, drops whole rows
+						// and columns when a page is shrunk to the panel, and its lines and letters go jagged (#6)
+						SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);
 						SDL_UpdateTexture(t, nullptr, px.rgba->data() + (size_t)y * px.w * 4, px.w * 4);
 						ft.tiles.push_back(t);
 					}
@@ -2412,6 +2416,7 @@ namespace bp
 					SDL_Texture* t = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, th.w, th.h);
 					if (t)
 					{
+						SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);	// scaled to its tile: smooth, not jagged
 						SDL_UpdateTexture(t, nullptr, th.rgba->data(), th.w * 4);
 						SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
 					}
