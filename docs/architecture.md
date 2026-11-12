@@ -253,7 +253,9 @@ CLAUDE.md now keeps one line per rule; this is the full text it had, kept here w
 - **Music graphs** (`lavfi-complex`): clear before setting `aid`/`sid`; taking a graph off leaves no audio (restore
   `aid`); set `vid` by id. A graph's picture never ends, so `checkSongEnd()` ends songs. A graph's still inputs are single
   frames, never `loop=-1` (floods mpv; memory grows, the handheld freezes); test with a memory watchdog. Every visual
-  branch starts with `aformat=sample_rates=44100|48000`, makes ≤30 frames/s, and converts no frame (no per-frame
+  branch starts with `aformat=sample_rates=44100|48000`, makes ≤30 frames/s (the exception: Pocket console and the
+  styles in `src/viz_*.cpp` measure and draw at 60, the owner's choice in 0.7.12, judged on the handheld; Peaks and
+  Circle stay at 30), and converts no frame (no per-frame
   `format=` but `rgb0`, no `colorkey`). Keep them cheap: time a new graph on the handheld if you can, and against
   Art+viz Bars (~0.85 ms/frame on the Mac, ~4 on the handheld). Circle reads `remap` tables written by `graphFor()`.
 - **Equalizer and effect** are one `af` after the graph: `@bpin` (to 48 kHz, always), `@bpeq`, `@bpfx`, built by
