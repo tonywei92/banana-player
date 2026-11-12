@@ -310,7 +310,11 @@ namespace bp
 			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255',split [pcv] [pcp]; "
 			 "[pcp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.8679,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*250)',format=gray," + stretch + " [pcP]; "
-			 "[pcv] " + stretch + " [pcV]; "
+			 // the bars themselves eased, as an LED meter's: up at once, down over ~0.4 s for the whole height (21 of
+			 // the 252 steps a frame), so whole-dot steps glide rather than flicker at 30 frames a second. The same
+			 // exp/log lagfun as the caps (15 values a frame: next to nothing); a cap's slower fall keeps it above
+			 "[pcv] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.417,"
+			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray," + stretch + " [pcV]; "
 			 // each dot's "height" (1..252 up the bars' rows), 253 a gap or outside them, 255 the floor
 			 "color=black:s=" + w + "x" + rows + ":r=1:d=1,format=gray,geq=lum='if(eq(Y," + n(T + BH) + ")*between(X," + n(L) + "," +
 			 n(L + N * BW - 2) + "),255,if(lt(Y," + t + ")+gte(Y," + n(T + BH) + ")+lt(X," + n(L) + ")+gte(X," + n(L + N * BW - 1) +
