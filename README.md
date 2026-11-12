@@ -39,7 +39,7 @@
 
 ## Install
 
-1. **Download** `BananaPlayer-0.7.11-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.11).
+1. **Download** `BananaPlayer-0.7.12-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.12).
 2. **Unzip it into `roms/ports`** on your SD card. You should see `Banana Player.sh`, a `BananaPlayer` folder and a
    `media` folder there.
 3. **Open the Ports shelf** on the handheld and choose **Banana Player**.
