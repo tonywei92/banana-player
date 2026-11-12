@@ -1666,6 +1666,8 @@ namespace bp
 		void mangaJavaRelinkChapters();
 		// the check of a series opened from the card's copy (title, source, chapter ids, from the engine's database)
 		bool mangaJavaChecking = false;
+		bool mangaJavaCheckPending = false;	// the open's check put off until a chapter is wanted (mangaSourceEngineWant)
+		void mangaSourceEngineWant();
 		uint64_t mangaJavaCheckSerial = 0;
 		void mangaJavaCheckStart();
 		bool mangaJavaCheckAnswer(const JavaExtHost::GraphQlResult& r);

@@ -1492,9 +1492,12 @@ namespace bp
 		mangaSrcFetchedAt = 0;
 		mangaSrcRefreshing = mangaSrcHadList = false;
 		mangaSrcFetchDetailsOk = mangaSrcFetchChaptersOk = false;
+		// an extension's series from the card's copy is checked against the engine's database before its chapters
+		// open, but not now: that starts the engine (~25 s of the cores) and can redo the list, and opening the page
+		// (from History, say) read as a refresh nobody asked for. Resume or a chapter starts it (mangaSourceEngineReady)
+		mangaJavaCheckPending = false;
 		if (!mangaSourceSeriesCacheLoad()) mangaSourceSeriesLoad(p);
-		// an extension's series from the card's copy: checked against the engine's database before its chapters open
-		else if (MangaJava::isSourceId(mangaSrcId)) mangaJavaCheckStart();
+		else if (MangaJava::isSourceId(mangaSrcId)) mangaJavaCheckPending = true;
 	}
 
 	void Ui::mangaSourceSeriesLoad(Player& p, bool refresh)
@@ -1546,6 +1549,7 @@ namespace bp
 	{
 		// one check at a time; the page's line says "Checking for new chapters…" while it runs
 		if (mangaSrcRefreshing) return;
+		mangaJavaCheckPending = false;	// (a refresh asks the engine for the list itself)
 		mangaSourceSeriesLoad(p, true);
 	}
 
@@ -1627,6 +1631,7 @@ namespace bp
 		if (!mangaSourceEngineReady() && i >= 0 && i < (int)mangaSrcChapters.size() &&
 			mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]).kind != MangaDlMark::OnCard)
 		{
+			mangaSourceEngineWant();
 			mangaNotice(mangaSourceWaitText(), 2000);
 			return;
 		}
@@ -1648,7 +1653,15 @@ namespace bp
 		if (!MangaJava::isSourceId(full)) return true;
 		// and the series checked against the engine's database (its saved ids may be an earlier install's)
 		return mangaNet && mangaNet->started() && mangaNet->javaExt().state() == JavaExtHost::State::Running &&
-			!mangaJavaChecking && !mangaJavaRelinkSerial;
+			!mangaJavaCheckPending && !mangaJavaChecking && !mangaJavaRelinkSerial;
+	}
+
+	void Ui::mangaSourceEngineWant()
+	{
+		// the check put off at the page's open, started now that a chapter is wanted (the engine with it)
+		if (!mangaJavaCheckPending) return;
+		mangaJavaCheckPending = false;
+		mangaJavaCheckStart();
 	}
 
 	std::string Ui::mangaSourceWaitText() const
@@ -1661,6 +1674,7 @@ namespace bp
 	{
 		if (!mangaSourceEngineReady())
 		{
+			mangaSourceEngineWant();
 			mangaNotice(mangaSourceWaitText(), 2000);
 			return;
 		}
@@ -1974,7 +1988,7 @@ namespace bp
 			std::vector<std::string> lines = wrapText(mangaSrcInfo.description, 0, 592, 2);
 			for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, DIM_ON, 16, 104 + (int)i * 18, 592);
 		}
-		// the cached list's age, one line under the meta: only when it is more than a day old (a fresh one adds
+		// the cached list's age, one line under the meta: only when it is 6 hours old or more (a fresh one adds
 		// nothing, and nothing refreshes by itself); a running Refresh says what it is doing instead
 		int64_t now = (int64_t)time(nullptr);
 		if (mangaSrcRefreshing) drawTextMid("Checking for new chapters\xE2\x80\xA6", 0, DIM, W / 2, 140, 592, 2);
@@ -1997,7 +2011,9 @@ namespace bp
 		auto lit = [&](int i) { return onRow && mserBtn == i; };
 		Rect rb = mangaSrcResumeRect();
 		drawBox(rb, mangaPressed == MG_RESUME ? PRESSED : lit(0) ? BUTTON : SURFACE, R_BUTTON, lit(0));
-		drawButton(rb, &G_PLAY, "Resume", nullptr, n == 0 || !mangaSourceEngineReady(), 1);
+		// (dim while the engine loads or checks; not for a check only put off: Resume is what starts it)
+		bool engineWait = !mangaSourceEngineReady() && !mangaJavaCheckPending;
+		drawButton(rb, &G_PLAY, "Resume", nullptr, n == 0 || engineWait, 1);
 		// Download: the sheet of This chapter / Next 5 unread / All unread / Choose chapters
 		Rect db = mangaDlButtonRect();
 		drawBox(db, lit(1) ? BUTTON : SURFACE, R_BUTTON, lit(1));
@@ -2059,7 +2075,7 @@ namespace bp
 			static const char* ROW[4] = {"Resume", "Download", "Refresh", "Library"};
 			drawHints({{"A", ROW[std::clamp(mserBtn, 0, 3)]}, {"LEFT/RIGHT", "Buttons"}, {"DOWN", "Chapters"}, {"B", "Back"}});
 		}
-		else if (!mangaSourceEngineReady()) drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
+		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
 		else drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) drawMangaDlSheet(p);
 	}

@@ -41,5 +41,6 @@ namespace bp
 	std::string mangaCheckedAgo(int64_t fetchedAt, int64_t now);
 
 	// More than a day old: the page then says when it was checked and offers L2 Refresh (never automatically).
+	// checked 6 hours ago or more: the series page offers L2 Refresh (it never refreshes by itself)
 	bool mangaCheckedStale(int64_t fetchedAt, int64_t now);
 }

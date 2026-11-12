@@ -2670,19 +2670,22 @@ static void testMangaSeriesCache()
 	CHECK_EQ(mangaSeriesCacheParse("{\"format\":2}", none), false);
 	CHECK_EQ(mangaSeriesCacheWrite("", id, c), false);	// nowhere to keep it
 
-	// how old a check reads, and what counts as stale (more than a day: the page offers L2 Refresh)
+	// how old a check reads, and what counts as stale (6 hours or more: the page offers L2 Refresh)
 	const int64_t t = 2000000000;
 	CHECK_EQ(mangaCheckedAgo(0, t), std::string(""));
 	CHECK_EQ(mangaCheckedAgo(t, t), std::string("today"));
-	CHECK_EQ(mangaCheckedAgo(t - 86399, t), std::string("today"));
+	CHECK_EQ(mangaCheckedAgo(t - 3599, t), std::string("today"));
+	CHECK_EQ(mangaCheckedAgo(t - 3600, t), std::string("1 hour"));
+	CHECK_EQ(mangaCheckedAgo(t - 6 * 3600, t), std::string("6 hours"));
+	CHECK_EQ(mangaCheckedAgo(t - 86399, t), std::string("23 hours"));
 	CHECK_EQ(mangaCheckedAgo(t - 86400, t), std::string("1 day"));
 	CHECK_EQ(mangaCheckedAgo(t - 2 * 86400, t), std::string("2 days"));
 	CHECK_EQ(mangaCheckedAgo(t - 400 * 86400, t), std::string("400 days"));
 	CHECK_EQ(mangaCheckedAgo(t + 3600, t), std::string("today"));	// a clock behind the file's stamp
 	CHECK_EQ(mangaCheckedStale(0, t), false);
 	CHECK_EQ(mangaCheckedStale(t, t), false);
-	CHECK_EQ(mangaCheckedStale(t - 86399, t), false);
-	CHECK_EQ(mangaCheckedStale(t - 86400, t), true);
+	CHECK_EQ(mangaCheckedStale(t - 6 * 3600 + 1, t), false);
+	CHECK_EQ(mangaCheckedStale(t - 6 * 3600, t), true);
 
 	unlink(path.c_str());
 	rmdir((state + "/manga/series").c_str());

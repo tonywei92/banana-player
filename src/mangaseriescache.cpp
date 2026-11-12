@@ -372,7 +372,8 @@ namespace bp
 	{
 		if (fetchedAt <= 0) return std::string();
 		int64_t age = now - fetchedAt;
-		if (age < 86400) return "today";	// also a clock behind the file's stamp
+		if (age < 3600) return "today";	// also a clock behind the file's stamp
+		if (age < 86400) return age < 7200 ? "1 hour" : std::to_string(age / 3600) + " hours";
 		int64_t days = age / 86400;
 		if (days == 1) return "1 day";
 		return std::to_string(days) + " days";
@@ -380,6 +381,6 @@ namespace bp
 
 	bool mangaCheckedStale(int64_t fetchedAt, int64_t now)
 	{
-		return fetchedAt > 0 && now - fetchedAt >= 86400;
+		return fetchedAt > 0 && now - fetchedAt >= 6 * 3600;
 	}
 }
