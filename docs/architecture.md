@@ -303,7 +303,7 @@ CLAUDE.md now keeps one line per rule; this is the full text it had, kept here w
   `Ui::backFromPlayer`. See "Photos" above and docs/notes/2026-11-10-photos-over-media.md.)
 - **Fonts:** SDL_ttf has no fallback (`Ui::runs()` picks per run); libass uses the bundle's `fonts.conf` (player's fonts
   only). The icon's 32×32 grid lives in both `packaging/icon/make-icon.py` and `src/logo.h`: change both.
-- **Code style:** tabs; comments say why, not what. Screenshots/README use Blender's *Sintel* (CC BY 3.0); no
+- **Code style:** tabs; comments say why, not what. Screenshots/README use Blender's *Big Buck Bunny* (CC BY 3.0; older pictures *Sintel*); no
   copyrighted material.
 
 

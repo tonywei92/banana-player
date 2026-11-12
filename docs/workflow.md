@@ -31,7 +31,7 @@ Moved out of CLAUDE.md word for word (CLAUDE.md keeps the commands and a line on
   `._Banana Player.sh` shows up as a broken port).
 - **Releasing:** (1) bump `project(... VERSION x.y.z)` in `CMakeLists.txt`, the README's install links
   (`releases/tag/vx.y.z`, the zip's name) and the `?v=x.y.z` on its screenshot links (images are cached by URL);
-  regenerate the pictures first if a pictured screen changed (Sintel library; the Network shot needs the Docker Samba and
+  regenerate the pictures first if a pictured screen changed (the Big Buck Bunny trailer, with chapters and subtitles added; the Network shot needs the Docker Samba and
   FTP servers). (2) Commit, push, `build-bundle.sh`, `shasum -a 256` the zip into `<zip>.sha256`. (3)
   `gh release create vx.y.z --target main --latest <zip> <zip>.sha256`, then prepend "Superseded by…" to the previous
   release's notes. (4) The BananaOS Store follows the releases (asset `BananaPlayer-{version}-aarch64.zip`, tag prefix

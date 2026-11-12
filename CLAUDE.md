@@ -74,7 +74,7 @@ tools/make-sprite.py                                 # web/sprite.svg from the G
 - **Playlists:** Liked is built in (only the heart adds to it). **Network:** `bpnet://<server-id>/<path>`, never
   credentials; passwords sealed by `secret.*`.
 - **Fonts:** SDL_ttf has no fallback (`Ui::runs()`); libass uses only the bundle's fonts.
-- **Style:** tabs; comments say why. Screenshots and promo use Blender's *Sintel* (CC BY 3.0) and generated media
+- **Style:** tabs; comments say why. Screenshots and promo use Blender's *Big Buck Bunny* (CC BY 3.0; older pictures *Sintel*) and generated media
   only; no copyrighted material and none of the owner's own files. Public text never compares to other apps by name.
 
 ## BananaOS (full list: docs/bananaos.md)

@@ -8,91 +8,65 @@
 
 <p align="center">
   <a href="#install">Install</a> ·
-  <a href="#the-basics">The basics</a> ·
+  <a href="#the-buttons-you-need">Buttons</a> ·
   <a href="FEATURES.md">All features</a> ·
-  <a href="#something-wrong">Help</a>
+  <a href="#need-help">Help</a>
 </p>
-
-Banana Player is a free video, music and photo player for [BananaOS](https://github.com/JorreFog/BananaLinux) on the
-Anbernic RG DS and RG DS Plus. Drop your files on the SD card, pick one, and watch. It remembers where you stopped a film,
-switches subtitles and audio tracks in a tap, turns a folder of songs into an album, lets you zoom around your
-photos with a finger, and reads manga across both screens. When a new version is out, it installs in one tap.
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/img/screen-browser.png?v=0.7.11" alt="The file list on the bottom screen, the Banana Player logo on the top"><br><sub><b>Your files.</b> Icons, sizes, and where you left off in each film</sub></td>
-    <td align="center" width="33%"><img src="docs/img/screen-playing.png?v=0.7.11" alt="A film playing on the top screen, the controls on the bottom"><br><sub><b>Watching.</b> Seek, skip, chapters, speed, subtitles and audio tracks, by button or by touch</sub></td>
-    <td align="center" width="33%"><img src="docs/img/screen-music.png?v=0.7.11" alt="A song with its album art inside the Circle visualizer"><br><sub><b>Music.</b> Album art, a visualizer, or both (here: Circle)</sub></td>
+    <td align="center" width="33%"><img src="docs/img/screen-browser.png?v=0.7.11b" alt="The Movies folder on the bottom screen, showing where you left off in a film"><br><sub><b>Your files</b>, and where you left off</sub></td>
+    <td align="center" width="33%"><img src="docs/img/screen-playing.png?v=0.7.11b" alt="Big Buck Bunny playing on the top screen with a subtitle, the controls on the bottom"><br><sub><b>Movies</b> with chapters, subtitles and audio tracks</sub></td>
+    <td align="center" width="33%"><img src="docs/img/screen-music.png?v=0.7.11b" alt="A song with its album art inside the Circle visualizer"><br><sub><b>Music</b> with album art and a visualizer</sub></td>
   </tr>
   <tr>
-    <td align="center"><img src="docs/img/screen-sound.png?v=0.7.11" alt="The equalizer on the bottom screen, ten bands set to the Rock preset, under a song with the Circle visualizer"><br><sub><b>Sound.</b> A 10-band equalizer with presets, and room effects like Concert hall</sub></td>
-    <td align="center"><img src="docs/img/screen-photo.png?v=0.7.11" alt="A photo zoomed in on the top screen, the pan area and its buttons on the bottom"><br><sub><b>Photos.</b> Zoom in and drag the box to look around</sub></td>
-    <td align="center"><img src="docs/img/screen-manga.png?v=0.7.11" alt="A colour manga page across both screens: a late night at the desk, tea brought in, and a moment to rest"><br><sub><b>Manga.</b> A page across both screens, or one a screen held like a book</sub></td>
+    <td align="center"><img src="docs/img/screen-sound.png?v=0.7.11b" alt="The 10-band equalizer on the bottom screen, set to Rock, under a song with the Circle visualizer"><br><sub><b>A 10-band equalizer</b> and room effects</sub></td>
+    <td align="center"><img src="docs/img/screen-photo.png?v=0.7.11b" alt="A Big Buck Bunny still zoomed in on the top screen, the pan area on the bottom"><br><sub><b>Photos</b> you can zoom and explore</sub></td>
+    <td align="center"><img src="docs/img/screen-manga.png?v=0.7.11b" alt="A colour manga page across both screens: a late night at the desk, tea brought in, and a moment to rest"><br><sub><b>Manga</b> across both screens</sub></td>
   </tr>
 </table>
 
-## Why you'll like it
+## What it does
 
-- 🎬 **Videos:** MP4, MKV, AVI and more, with subtitles and audio tracks you can switch mid-film, and chapters you can jump between with L2 and R2, and playlists that mix your card and network.
-- 🎵 **Music:** a folder plays as an album, with the cover art, a visualizer, or both. Audiobooks (M4B) keep their chapters.
-- 🕶️ **Incognito mode:** one tick in Quick settings and nothing you watch, listen to or read is remembered: no Recent, no manga History. Your places, playlists and downloads work as usual, a mark beside the clock (and on the web dashboard) shows it's on, and it switches itself off when Banana Player starts again.
-- 🎚️ **A real equalizer and room effects:** ten bands, twelve presets (Bass Boost, Vocal, Rock, Jazz…) and your own saved ones, plus Concert hall, Church, Cave, Wide stereo and a Headphones mode. Heard the moment you change it. It shapes the handheld's sound; set it there or from the web dashboard.
-- ❤️ **Playlists and Liked:** make playlists from your card and your network, and tap the heart on anything playing to keep it in Liked.
-- 🖼️ **Photos:** zoom in, look around, step through a folder; scanned comics keep your zoom from page to page.
-- 📖 **Manga reader** (an extension, turned on in **Manage extensions**): read CBZ files and folders of pictures from
-  your card, a long strip across both screens or page by page, right to left or left to right. Add series from
-  repositories you choose, your own comic server (Komga, Kavita, OPDS) or a network folder, and download chapters to
-  read offline. Banana Player doesn't provide or check any repository's content.
-- 📡 **From your computer or NAS:** play straight from shared folders on your Wi-Fi (SMB or FTP), with nothing copied to the card.
-- 🌐 **Web dashboard:** manage files and playlists, upload from your computer, control the handheld, or play a song or film in your phone's or computer's browser. Scan the QR code on the handheld.
-- 👆 **Built for two screens:** the picture on top, every control a big button under your thumb below. Every page has the same header and a footer that names the buttons, and an on-screen keyboard takes care of typing.
-- 💾 **Remembers for you:** where you stopped a film, which subtitles you chose, what you played recently.
-- 🔄 **One-tap updates** when a new version is out, with no re-copying files to the SD card. Your settings stay put.
-
-Videos play on the handheld's CPU. The various 1080p videos we tested play well; very high bitrates, and HEVC (x265) especially, may drop frames.
+- 🎬 **Movies:** MP4, MKV and more. Switch subtitles and audio tracks mid-film, jump between chapters, pick up where you stopped.
+- 🎵 **Music:** a folder plays as an album, with its cover, a visualizer and a 10-band equalizer.
+- 🖼️ **Photos:** zoom in and look around with a finger.
+- 📖 **Manga:** read across both screens, or hold the handheld sideways like a book. An optional extension.
+- 📡 **Your network:** play straight from your computer or NAS over Wi-Fi, nothing copied.
+- 🌐 **Web dashboard:** upload files, make playlists and control playback from your phone or computer.
+- 🕶️ **Incognito mode:** while it's on, nothing you play is remembered.
+- 🔄 **Updates in one tap**, with your settings kept.
 
 ## Install
 
-> [!TIP]
-> **Latest: [Banana Player 0.7.11](https://github.com/tonywei92/banana-player/releases/tag/v0.7.11)**, for BananaOS on the
-> Anbernic RG DS and RG DS Plus.
+1. **Download** `BananaPlayer-0.7.11-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.11).
+2. **Unzip it into `roms/ports`** on your SD card. You should see `Banana Player.sh`, a `BananaPlayer` folder and a
+   `media` folder there.
+3. **Open the Ports shelf** on the handheld and choose **Banana Player**.
 
-1. **Download** `BananaPlayer-0.7.11-aarch64.zip` from [the release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.11).
-2. **Unzip it into `roms/ports`** on your SD card. You should end up with `Banana Player.sh`, a `BananaPlayer` folder
-   and a `media` folder there. (On a Mac, if the zip opens into a folder of its own, move those three out of it.)
-3. **Play:** put the card back in, open the **Ports** shelf and choose **Banana Player**.
+Put your videos, music and photos anywhere on the card. Most 1080p videos play smoothly; very high bitrates and HEVC
+(x265) may stutter.
 
-Your videos, music and photos can live anywhere on the card. From then on, Banana Player tells you when a new
-version is out and installs it for you.
+## The buttons you need
 
-## The basics
+| Button | What it does |
+|---|---|
+| **A** | Open, play, pause |
+| **B** | Back (on Home: quit) |
+| **L / R** | Previous / next |
+| **START** | Menu and Settings |
+| **Menu/Function** | Quick settings: volume, brightness, web dashboard |
+| **F + START** | Quit straight away |
 
-The buttons follow the Nintendo layout: **A** confirms, **B** goes back.
-
-- **Home:** what you played recently along the top, then **Files**, **Playlists**, **Network** and **Extensions**.
-  **L / R** move between them; **B** at the top of one comes back Home, and **B** on Home asks to quit.
-- **Open something:** tap it, or press **A**. A folder plays as a playlist.
-- **Play / pause:** **A**. **L / R** go to the previous or next file.
-- **Close it:** tap **<** at the top left, or press **B** twice.
-- **Like it:** tap **Like** (or click **L3** on the RG DS Plus); it goes to **Liked**. **Add** puts it in a playlist.
-- **Skip back or ahead:** **LEFT** goes back 5 seconds, **RIGHT** forward 10, or drag the bar.
-- **Network:** **X** then **Find on the network** finds your computer.
-- **Options** (refresh, hide a folder; on Network, add a connection): **X**.
-- **Menu** (what's playing, Settings, About): **START**. **L / R** switch its tabs.
-- **Quick settings** (volume, brightness, the web dashboard, **incognito mode**, quit): press the **Menu/Function** button.
-- **Quit straight away:** **F + START**.
-
-The bottom line of every page shows what the buttons do there.
-
-Every button has a touch equivalent on the bottom screen. Every control, setting and format is in
+Everything also works by touch, and the bottom line of each screen shows its buttons. The full list is in
 **[FEATURES.md](FEATURES.md)**.
 
-## Something wrong?
+## Need help?
 
-Plug the SD card into a computer and attach `home/.config/banana-player/log.txt` to an
-[issue](https://github.com/tonywei92/banana-player/issues), and `crash.log` beside it if there is one (it keeps a
-record of every crash). To uninstall, delete `Banana Player.sh`, the
-`BananaPlayer` folder and `media/box/Banana Player.png` from `roms/ports`.
+Put the SD card in a computer and attach `home/.config/banana-player/log.txt` (and `crash.log` if there is one) to an
+[issue](https://github.com/tonywei92/banana-player/issues).
+
+To uninstall, delete `Banana Player.sh`, the `BananaPlayer` folder and `media/box/Banana Player.png` from `roms/ports`.
 
 Want to build it or help out? See [DEVELOPMENT.md](DEVELOPMENT.md).
 
@@ -100,30 +74,29 @@ Want to build it or help out? See [DEVELOPMENT.md](DEVELOPMENT.md).
 
 - Made by [tonywei92](https://github.com/tonywei92) for [BananaOS](https://github.com/JorreFog/BananaLinux) by
   JorreFog and the Banana contributors.
-- Plays with [mpv](https://mpv.io) and [FFmpeg](https://ffmpeg.org). Drawn with [SDL](https://libsdl.org).
-- Network folders with [libsmb2](https://github.com/sahlberg/libsmb2) (LGPL 2.1) and [libcurl](https://curl.se).
-- The manga reader with [Lua](https://www.lua.org) (MIT), [lexbor](https://github.com/lexbor/lexbor) (Apache 2.0) and
-  [libjpeg-turbo](https://libjpeg-turbo.org) (BSD-style). Its optional manga engine is downloaded on request, not included:
-  [Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server) (MPL 2.0) on a Java runtime.
-- Web dashboard with [cpp-httplib](https://github.com/yhirose/cpp-httplib) (MIT), [QR-Code-generator](https://github.com/nayuki/QR-Code-generator)
-  by Project Nayuki (MIT), [htm](https://github.com/developit/htm) with [Preact](https://preactjs.com) (Apache 2.0 and MIT)
-  and [SortableJS](https://sortablejs.github.io/Sortable/) (MIT).
+- Built on [mpv](https://mpv.io), [FFmpeg](https://ffmpeg.org) and [SDL](https://libsdl.org); network folders with
+  [libsmb2](https://github.com/sahlberg/libsmb2) (LGPL 2.1) and [libcurl](https://curl.se).
+- The manga reader uses [Lua](https://www.lua.org) (MIT), [lexbor](https://github.com/lexbor/lexbor) (Apache 2.0) and
+  [libjpeg-turbo](https://libjpeg-turbo.org) (BSD-style). Its optional manga engine,
+  [Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server) (MPL 2.0) on a Java runtime, is downloaded only if
+  you ask for it.
+- The web dashboard uses [cpp-httplib](https://github.com/yhirose/cpp-httplib) (MIT),
+  [QR-Code-generator](https://github.com/nayuki/QR-Code-generator) by Project Nayuki (MIT),
+  [htm](https://github.com/developit/htm) with [Preact](https://preactjs.com) (Apache 2.0 and MIT) and
+  [SortableJS](https://sortablejs.github.io/Sortable/) (MIT).
 - Fonts: [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans), [Inter](https://github.com/rsms/inter),
   [Fusion Pixel](https://github.com/TakWolf/fusion-pixel-font) and [Noto Sans](https://notofonts.github.io) Thai,
-  Arabic, Hebrew and Devanagari, under the SIL Open Font License 1.1.
-- The film in the screenshots is [Sintel](https://durian.blender.org), © copyright Blender Foundation |
-  durian.blender.org, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The manga page in them was made
-  for Banana Player, not taken from any series.
+  Arabic, Hebrew and Devanagari (SIL Open Font License 1.1).
+- The film in the screenshots is [Big Buck Bunny](https://peach.blender.org), © copyright Blender Foundation |
+  www.bigbuckbunny.org, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) (subtitles and chapters added
+  for the pictures). The manga page was made for Banana Player; the music and its cover are generated.
 
 ## No warranty
 
-Banana Player is free software provided **as is, with no warranty of any kind**. Use it at your own risk: the authors
-aren't responsible for any damage to your handheld, lost or corrupted files, or anything else that happens from using
-it. That's what the [MIT licence](LICENSE) says too; the licence is the full text.
-
-- **Manga sources and extensions** come from third parties. Banana Player doesn't host, check or vouch for what they
-  serve, and what you read through them is up to you and the laws where you live.
-- **BananaOS** is a separate project. Banana Player isn't made, checked or endorsed by its authors.
+Banana Player is free and comes **as is, with no warranty**: use it at your own risk. The authors aren't responsible
+for any damage to your handheld, lost files, or anything else that happens from using it. Manga sources are run by
+third parties, and Banana Player doesn't host or vouch for what they serve. BananaOS is a separate project that
+doesn't endorse Banana Player.
 
 ## Licence
 
