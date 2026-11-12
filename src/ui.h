@@ -887,7 +887,7 @@ namespace bp
 		bool displayPointer(const Pointer& pt, int x, int y, Player& p);
 		void drawDisplay(const Player& p);
 		// Show's 4 chips share a row; Style's (one an offered visualizer, VIS_SHOWN) go 5 to a row, as many rows as
-		// it takes (four for sixteen), the chips a little lower than Show's
+		// it takes (three for fifteen), the chips a little lower than Show's
 		static int displayChips(int row) { return row ? VIS_SHOWN_COUNT : SHOWS; }
 		static constexpr int DISPLAY_BOX_Y = 24, DISPLAY_BOX_H = 412, STYLE_COLS = 5, STYLE_ROWS = (VIS_SHOWN_COUNT + 4) / 5,
 			STYLE_Y = 166, STYLE_STEP = 56, CHIP_H = 50;
