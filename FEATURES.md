@@ -361,9 +361,14 @@ Songs show their title, artist and album on the top screen. While a song plays:
   lightest on the battery). **Style** is the visualizer's look: **Peaks** (default: 64 coral bars,
   bass on the left, each with a green cap that stays at the bar's highest point and slowly falls back, over a faint
   grid), **Peaks Banana** (the same in BananaOS's colours: yellow bars, cream caps), **Circle** (bars round a
-  glowing ring, cyan to pink; with Art + visualizer, the album art sits inside the ring) or **Pocket console** (Peaks
+  glowing ring, cyan to pink; with Art + visualizer, the album art sits inside the ring), **Pocket console** (Peaks
   on an old handheld's screen: 15 bars of chunky dots in four greens, with falling caps; alone, the title is in the
-  same dark green pixel type; with Art + visualizer, its dots are laid over the bottom of the art, which shows through around them). Bars, Waves and Spectrum
+  same dark green pixel type), **Hi-fi LED** (16 columns of green, yellow and red segments, the unlit ones dim, each
+  with a held peak), **Synthwave** (neon bars, pink to cyan, rising from the horizon of a striped sun over a
+  perspective grid), **Banana stack** (piles of pixel bananas that grow with each band), **Night city** (a skyline
+  whose windows light up with the music, warm yellow and orange), **Oscilloscope** (the sound's wave as a green trace
+  with a fading glow, over a graticule) or **Heartbeat** (a heart monitor's trace that spikes on each beat). With Art +
+  visualizer, every style but Circle is laid over the bottom of the art, which shows through around it. Bars, Waves and Spectrum
   are retired: a saved choice of one of them becomes Peaks. The top screen
   changes as you choose. In the popup, the **D-pad** changes a setting, **SELECT** goes to the next Show mode, and
   **B** closes it. The Style row is greyed out for Album art and None, which don't show a visualizer, but it can still
