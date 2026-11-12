@@ -276,7 +276,8 @@ namespace bp
 	// three greens by a lookup (the rows' "height" picture is still: one frame, repeated), then scaled 8x (nearest: a dot
 	// 8 pixels square) and a still grid of 1-pixel lines laid over the luma, so the dots show. The bars are dark, their
 	// top third mid green; the caps and the floor mid green; the screen the lightest. YUV only, nothing converted.
-	// Over the art: the art's top as it is, the console's strip (25 dots high) under it
+	// Over the art: the art's top as it is, and under it the console's 25 dots high with no screen of their own: the art
+	// shows through everywhere but the lit dots
 	static std::string pocketGraph(bool overCover)
 	{
 		// the greens in BT.601 limited YUV: dark #0F380F, mid #306230, screen #9BBC0F; the grid #93B20E (luma only)
@@ -295,9 +296,11 @@ namespace bp
 									",fillborders=top=" + n(mid) + ":bottom=" + n(EV - 1 - mid) + ":mode=smear" +
 									(EV != ROWS ? ",crop=" + w + ":" + rows + ":0:0" : std::string()) + ",setsar=1";
 		std::string g = "[aid1] asplit [ao] [a]; ";
+		// over the art: its top as it is, and its bottom slice in planes, each kept wherever no dot is lit (as Peaks)
 		if (overCover)
 			g += "[vid1] scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:-1:-1:black,setsar=1,format=yuv420p,"
-				 "settb=AVTB,crop=640:280:0:0 [top]; ";
+				 "settb=AVTB,split [pcart1] [pcart2]; [pcart1] crop=640:280:0:0 [top]; "
+				 "[pcart2] crop=640:200:0:280,extractplanes=y+u+v [pcay] [pcau] [pcav]; ";
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=30:colors=white,crop=" + n(N) +
 			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255',split [pcv] [pcp]; "
@@ -310,8 +313,28 @@ namespace bp
 			 ")+gte(mod(X-" + n(L) + "," + n(BW) + ")," + n(BW - 1) + "),253,1+floor(251*(" + n(T + BH - 1) + "-Y)/(" + bh + "-1))))' [pcR]; "
 			 // 254: a cap (one dot above the cap's value)
 			 "[pcP] [pcR] lut2=c0='if(lt(y,253)*gt(y,x)*lte(y,x+" + cap + "),254,y)' [pcQ]; "
-			 // each dot's green: a cap or the floor mid, a bar dark (its top third mid), else the screen
-			 "[pcV] [pcQ] lut2=c0='if(gte(y,254)," + n(MY) + ",if(lte(y,x)*lt(y,253),if(gt(y,x*0.66)," + n(MY) + "," + n(DY) +
+			 "";
+		if (overCover)
+		{
+			// the art shows through: each dot nothing (0), dark (1) or mid (2), and between the dots (the grid's lines)
+			// nothing either, so it reads as an LCD laid over the picture. Each plane the art's where nothing, else
+			// the green's; the chroma's grid at its half size
+			auto paint = [&](int dark, int midc) {
+				return "'if(eq(x,0),y,if(eq(x,1)," + n(dark) + "," + n(midc) + "))'";
+			};
+			return g + "[pcV] [pcQ] lut2=c0='if(gte(y,254),2,if(lte(y,x)*lt(y,253),if(gt(y,x*0.66),2,1),0))',split=3 [pcc0] [pcc1] [pcc2]; "
+					   "color=black:s=640x200:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [pcG]; "
+					   "color=black:s=320x100:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,4),3)+eq(mod(Y,4),3),1)',split [pcGu] [pcGv]; "
+					   "[pcc0] scale=640:200:flags=neighbor [pcc0s]; [pcc0s] [pcG] lut2=c0='if(y,0,x)' [pcc0g]; "
+					   "[pcc0g] [pcay] lut2=c0=" + paint(DY, MY) + " [pcY]; "
+					   "[pcc1] scale=320:100:flags=neighbor [pcc1s]; [pcc1s] [pcGu] lut2=c0='if(y,0,x)' [pcc1g]; "
+					   "[pcc1g] [pcau] lut2=c0=" + paint(DU, MU) + " [pcU]; "
+					   "[pcc2] scale=320:100:flags=neighbor [pcc2s]; [pcc2s] [pcGv] lut2=c0='if(y,0,x)' [pcc2g]; "
+					   "[pcc2g] [pcav] lut2=c0=" + paint(DV, MV) + " [pcW]; "
+					   "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
+		}
+		// each dot's green: a cap or the floor mid, a bar dark (its top third mid), else the screen
+		g += "[pcV] [pcQ] lut2=c0='if(gte(y,254)," + n(MY) + ",if(lte(y,x)*lt(y,253),if(gt(y,x*0.66)," + n(MY) + "," + n(DY) +
 			 ")," + n(SY) + "))',split=3 [pcy] [pcu] [pcw]; "
 			 // the grid: the 8th line of every dot, across and down, a hair darker (a still picture, one frame)
 			 "color=black:s=640x" + n(ROWS * 8) + ":r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [pcG]; "
@@ -320,9 +343,8 @@ namespace bp
 			 ")," + n(MU) + "," + n(SU) + "))' [pcU]; "
 			 "[pcw] scale=320:" + n(ROWS * 4) + ":flags=neighbor,lut=c0='if(eq(val," + n(DY) + ")," + n(DV) + ",if(eq(val," + n(MY) +
 			 ")," + n(MV) + "," + n(SV) + "))' [pcW]; "
-			 "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p";
-		if (overCover) return g + " [strip]; [top] [strip] vstack [vo]";
-		return g + " [vo]";
+			 "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p [vo]";
+		return g;
 	}
 
 	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir)
