@@ -2075,7 +2075,9 @@ namespace bp
 		if (!artist.empty()) text += "\\N{\\fs" + std::to_string(big * 3 / 4) + "}" + assText(artist);
 		if (!album.empty()) text += "\\N{\\fs" + std::to_string(big * 2 / 3) + "}{\\c" + (pocket ? "&H306230&" : "&HB4B4B4&") + "}" + assText(album);
 		// why the visualizer has stopped for now, in the accent's yellow
-		if (engineLoading) text += "\\N{\\fs" + std::to_string(big / 2) + "}{\\c" + ass(ACCENT) + "}" + assText("Loading manga engine\xE2\x80\xA6");
+		// (a small blank line first: right under the album line it read as part of the song's text)
+		if (engineLoading)
+			text += "\\N{\\fs" + std::to_string(big / 2) + "}\\h\\N{\\c" + ass(ACCENT) + "}" + assText("Loading manga engine\xE2\x80\xA6");
 		const char* cmd[] = {"osd-overlay", "1", "ass-events", text.c_str(), "0", "720", "0", "no", "no", nullptr};
 		mpv_command_async(mpv, 0, cmd);
 	}
