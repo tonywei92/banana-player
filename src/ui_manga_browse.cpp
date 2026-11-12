@@ -1905,10 +1905,10 @@ namespace bp
 			mangaSourceSeriesInLibrary(p);
 			return false;
 		}
-		if (n && y >= MG_SRC_SER_TOP && y < MG_SRC_SER_TOP + mserRows() * ROW_H)
+		if (n && y >= MG_SRC_SERIES_TOP && y < MG_SRC_SERIES_TOP + mserRows() * ROW_H)
 		{
 			// opened as the finger lifts, if it didn't drag
-			int i = mserScroll + (y - MG_SRC_SER_TOP) / ROW_H;
+			int i = mserScroll + (y - MG_SRC_SERIES_TOP) / ROW_H;
 			mserDragY = y;
 			mserDragScroll = mserScroll;
 			mserDragMoved = false;
@@ -2003,22 +2003,25 @@ namespace bp
 			if (mangaSrcInfoOn && !mangaSrcInfo.status.empty())
 				line += (line.empty() ? "" : " \xC2\xB7 ") + mangaSrcInfo.status;
 		}
-		if (!line.empty()) drawTextMid(line, 0, bad ? DANGER : DIM, 16, 86, 592);
-		// (the description is Info's, a dialog: on the page it pushed the age line against the buttons)
-		// the cached list's age, one line under the meta: only when it is 6 hours old or more (a fresh one adds
-		// nothing, and nothing refreshes by itself); a running Refresh says what it is doing instead
+		// the cached list's age goes on the same line, short: "· Checked 7h ago · L2" once it is 6 hours old or more (a
+		// fresh one adds nothing, and nothing refreshes by itself); a running Refresh says "Checking…" there instead
 		int64_t now = (int64_t)time(nullptr);
-		const int AGE_Y = 114;
-		if (mangaSrcRefreshing) drawTextMid("Checking for new chapters\xE2\x80\xA6", 0, DIM, W / 2, AGE_Y, 592, 2);
-		else if (mangaCheckedStale(mangaSrcFetchedAt, now))
+		std::string age;
+		bool stale = !bad && !mangaSrcRefreshing && mangaCheckedStale(mangaSrcFetchedAt, now);
+		if (!bad && mangaSrcRefreshing) age = "Checking for new chapters\xE2\x80\xA6";
+		else if (stale)
 		{
-			// "Chapters checked 3 days ago · " in grey, its key in yellow
-			std::string stem = "Chapters checked " + mangaCheckedAgo(mangaSrcFetchedAt, now) + " ago \xC2\xB7 ";
-			const std::string key = "L2 Refresh";
-			int w1 = (int)std::lround(textWidth(stem, 0) / sx), w2 = (int)std::lround(textWidth(key, 0) / sx);
-			int x = W / 2 - (w1 + w2) / 2;
-			drawTextMid(stem, 0, DIM, x, AGE_Y);
-			drawTextMid(key, 0, ACCENT, x + w1, AGE_Y);
+			int64_t a = std::max<int64_t>(0, now - mangaSrcFetchedAt);
+			age = "Checked " + (a < 86400 ? std::to_string(a / 3600) + "h" : std::to_string(a / 86400) + "d") + " ago";
+		}
+		if (!age.empty()) line += (line.empty() ? "" : " \xC2\xB7 ") + age;
+		if (!line.empty())
+		{
+			// (the key after it in yellow, as the hints do)
+			const std::string key = stale ? " \xC2\xB7 L2" : "";
+			int w1 = (int)std::lround(textWidth(line, 0) / sx);
+			drawTextMid(line, 0, bad ? DANGER : DIM, 16, 86, 592 - (key.empty() ? 0 : 40));
+			if (!key.empty()) drawTextMid(key, 0, ACCENT, 16 + std::min(w1, 552), 86);
 		}
 		// Resume: the first started-but-unread chapter, else the first unread, else the first
 		MangaResumePoint resume = mserSumResume;
@@ -2068,7 +2071,7 @@ namespace bp
 		for (int i = mserScroll; i < n && i < mserScroll + mserRows(); i++)
 		{
 			const MangaChapter& c = mangaSrcChapters[i];
-			int y = MG_SRC_SER_TOP + (i - mserScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
+			int y = MG_SRC_SERIES_TOP + (i - mserScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
 			bool at = mserCursor == i;
 			if (at) drawFocus({16, y, 608, ROW_H - 4});
 			// the one Resume would open: a small ACCENT dot
@@ -2088,7 +2091,7 @@ namespace bp
 				drawTextMid(pageLine(pr->page, pr->pages), 0, at ? DIM_ON : DIM, right, mid, 150, 1);
 			if (marked) drawMangaDlMark(dm, 608, mid, at);
 		}
-		drawScrollBar(MG_SRC_SER_TOP, mserRows() * ROW_H - 4, mserScroll, mserRows(), n);
+		drawScrollBar(MG_SRC_SERIES_TOP, mserRows() * ROW_H - 4, mserScroll, mserRows(), n);
 		if (!mangaSrcError.empty()) drawTextMid(mangaSrcError, 0, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
 		// X still marks a chapter read, but six hints don't fit this panel's line: its action stays (the row's marks
 		// show read and unread), and the four buttons carry the rest

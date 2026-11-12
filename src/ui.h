@@ -1975,6 +1975,8 @@ namespace bp
 		// two whole rows of covers with their titles, down to the hint bar (186 apart left a black band under them)
 		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 172, MG_SRC_SER_TOP = 200,
 			MG_SRC_STATUS_Y = 410;
+		// a source's series page: its buttons right under the details line, its chapters right under them
+		static constexpr int MG_SRC_BTN_Y = 104, MG_SRC_SERIES_TOP = 160;
 		Rect mangaSrcCoverRect(int i) const
 		{
 			int row = i / MG_COLS, col = i % MG_COLS;
@@ -1987,7 +1989,7 @@ namespace bp
 		static Rect mangaSrcBtn(int i)
 		{
 			static const int X[5] = {16, 148, 280, 412, 500}, Wd[5] = {124, 124, 124, 80, 124};
-			return {X[i], 150, Wd[i], 48};
+			return {X[i], MG_SRC_BTN_Y, Wd[i], 48};
 		}
 		Rect mangaSrcResumeRect() const { return mangaSrcBtn(0); }
 		Rect mangaSrcRefreshRect() const { return mangaSrcBtn(2); }

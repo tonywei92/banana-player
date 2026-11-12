@@ -830,9 +830,9 @@ your library — a source's series starts outside it.
 `manga/series/` in the state folder, named by the series' hashed id (never its address). Opening the series shows them
 at once and asks the source nothing; **L2 Refresh** is the only thing that asks again, and it replaces the kept list
 when the answer comes. A check that fails keeps the list on screen and says so in a short note. Once the list is 6 hours
-old or more, one line under the title says **Chapters checked 7 hours ago · L2 Refresh** (a fresh one adds nothing,
-and nothing is ever asked by itself). An extension's series doesn't start the manga engine when it opens either: that
-waits for **Resume** or a chapter; while a check runs the line reads **Checking for new chapters…**.
+old or more, the details line under the title ends **· Checked 7h ago · L2** (a fresh one adds nothing, and nothing is
+ever asked by itself). An extension's series doesn't start the manga engine when it opens either: that
+waits for **Resume** or a chapter; while a check runs it ends **Checking for new chapters…**.
 
 **Sources.** **X** on Browse opens its own page (its header says **Sources**; **B** goes back to Browse). Three lists,
 stepped with **LEFT/RIGHT** (**L/R** still step the app's tabs): **Installed**, **Available** and **Repositories**. **Y**
