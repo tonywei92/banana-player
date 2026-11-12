@@ -253,7 +253,13 @@ namespace bp
 	void Ui::mangaRecordProgress()
 	{
 		// a record of where the reader is: the reader's own status is the only thing that knows the page
-		if (!mangaStore || mangaReadChapterId.empty() || readerStatus.pages <= 0) return;
+		if (!mangaStore || mangaReadChapterId.empty() || readerStatus.pages <= 0)
+		{
+			// (logged: a chapter left without a record is a History that didn't move, and nothing else would say why)
+			fprintf(stderr, "manga: no progress kept for %s (%s)\n", mangaReadChapterId.empty() ? "-" : mangaReadChapterId.c_str(),
+				!mangaStore ? "no store" : mangaReadChapterId.empty() ? "no chapter" : "its pages not known yet");
+			return;
+		}
 		ChapterProgress cp;
 		cp.seriesId = mangaReadSeriesId;
 		cp.chapterId = mangaReadChapterId;
@@ -263,6 +269,8 @@ namespace bp
 		cp.read = readerStatus.page >= readerStatus.pages - 1;
 		cp.at = (int64_t)time(nullptr);
 		mangaStore->setProgress(cp, !incognito);
+		fprintf(stderr, "manga: progress %s page %d/%d%s%s\n", cp.chapterId.c_str(), cp.page + 1, cp.pages,
+			incognito ? " (incognito: not in History)" : "", mangaHistOn ? "" : " (History off)");
 		// with the History off the place is still kept: only the list stays empty, this entry hidden along with the rest
 		if (!mangaHistOn) mangaStore->clearHistory();
 		mangaProgPage = cp.page;
@@ -283,6 +291,7 @@ namespace bp
 	{
 		// a next chapter asked for (R2) and not waited for goes with the reader: its answer would open it again
 		mangaSourceCancel();
+		fprintf(stderr, "manga: reader closed on %s (status: %d pages, at %d)\n", mangaReadChapterId.c_str(), readerStatus.pages, readerStatus.page + 1);
 		mangaRecordProgress();
 		mangaSave();
 		readerCmds.push_back({ReaderCmd::Close, 0, (int64_t)SDL_GetTicks()});
