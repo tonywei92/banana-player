@@ -227,7 +227,7 @@ int main(int argc, char** argv)
 				// BUTTON~MS: held MS ms, then let go
 				std::string::size_type tilde = step.find('~');
 				bool held = tilde != std::string::npos && buttonFromName(step.substr(0, tilde)) != Button::None && atoi(step.c_str() + tilde + 1) > 0;
-				bool ok = burst || held || buttonFromName(step) != Button::None || step == "info" || step == "page" || step == "update" || step == "web" || step == "F" || step == "rows" || step == "screenshot" || step.rfind("prop:", 0) == 0 || step.rfind("shot:", 0) == 0 ||
+				bool ok = burst || held || buttonFromName(step) != Button::None || step == "info" || step == "page" || step == "update" || step == "web" || step == "F" || step == "rows" || step == "screenshot" || step.rfind("prop:", 0) == 0 || step.rfind("shot:", 0) == 0 || step.rfind("level:", 0) == 0 ||
 					(sscanf(step.c_str(), "tap:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "dtap:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "hold:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
@@ -902,6 +902,15 @@ int main(int argc, char** argv)
 				{
 					std::string* what = (std::string*)e.user.data1;
 					shown().showLevel(*what == "brightness" ? "Brightness" : "Volume", e.user.code);
+					// the manga reader draws the top panel itself: mpv's card would be under its pages, so the card
+					// goes over them as a picture of its own
+					if (reader.isOpen() && haveUi)
+					{
+						int cw = 0, ch = 0;
+						auto card = ui.levelCard(*what == "brightness" ? "Brightness" : "Volume", e.user.code, cw, ch);
+						SDL_GL_MakeCurrent(top, gl);
+						reader.showOverlay(card, cw, ch, (int64_t)SDL_GetTicks() + 1500);
+					}
 					if (haveUi) ui.levelChanged(*what, e.user.code);	// the quick settings' bar follows the keys
 					fprintf(stderr, "level: %s %d (at %u ms)\n", what->c_str(), e.user.code, SDL_GetTicks());
 					logNextTop = true;
@@ -1214,6 +1223,16 @@ int main(int argc, char** argv)
 								printf(r.header ? "  [%s]\n" : "    %-16s %s\n", r.label.c_str(), r.value.c_str());
 						}
 						else if (step == "screenshot") screenshot();	// as F + L2 does
+						else if (step.rfind("level:", 0) == 0)
+						{
+							// level:volume:40 (or brightness): as the hardware keys' change comes, so the level card shows
+							std::string rest = step.substr(6), name = rest.substr(0, rest.find(':'));
+							SDL_Event ev{};
+							ev.type = evLevel;
+							ev.user.code = rest.find(':') == std::string::npos ? 50 : atoi(rest.c_str() + rest.find(':') + 1);
+							ev.user.data1 = new std::string(name);
+							SDL_PushEvent(&ev);
+						}
 						else if (step.rfind("shot:", 0) == 0)
 						{
 							// both panels: <BP_SHOTS or .>/<name>-top.png and -bottom.png
@@ -1555,7 +1574,9 @@ int main(int argc, char** argv)
 					SDL_GL_SwapWindow(top);
 				}
 			}
-			else if (renderPending.exchange(false) || refresh || (!shown().playing() && (!topDark || levelUntil)))
+			// (a photo is a still: mpv puts the level card on it later than the key's redraw, and asks for no frame
+			// after, so it's drawn again while the card is up, as with nothing playing)
+			else if (renderPending.exchange(false) || refresh || (!shown().playing() && (!topDark || levelUntil)) || (photos.playing() && levelUntil))
 			{
 				SDL_GL_MakeCurrent(top, gl);
 				int w, h;

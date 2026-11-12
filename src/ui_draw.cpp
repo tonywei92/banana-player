@@ -901,4 +901,57 @@ namespace bp
 		if (tw) drawTextMid(label, size, ink, x + gw + gap, mid, b.w - 12 - gw - gap);
 		if (hint) drawTextMid(key, 0, off ? DIM : ACCENT, b.x + b.w / 2, b.y + b.h * 4 / 5 - 2, b.w - 6, 2);
 	}
+
+	std::shared_ptr<const std::vector<uint8_t>> Ui::levelCard(const std::string& label, int percent, int& w, int& h)
+	{
+		percent = std::clamp(percent, 0, 100);
+		const float s = sy;	// (both panels are the same size: the top's pixels per unit are the bottom's)
+		w = (int)std::lround(220 * s);
+		h = (int)std::lround(62 * s);
+		auto px = std::make_shared<std::vector<uint8_t>>((size_t)w * h * 4, 0);
+		auto& v = *px;
+		// over what's there: straight alpha, as the reader's pages are
+		auto blend = [&](int x, int y, theme::Rgb c, int a) {
+			if (x < 0 || y < 0 || x >= w || y >= h || a <= 0) return;
+			uint8_t* p = &v[((size_t)y * w + x) * 4];
+			int da = p[3], oa = a + da * (255 - a) / 255;
+			if (oa <= 0) return;
+			p[0] = (uint8_t)((c.r * a + p[0] * da * (255 - a) / 255) / oa);
+			p[1] = (uint8_t)((c.g * a + p[1] * da * (255 - a) / 255) / oa);
+			p[2] = (uint8_t)((c.b * a + p[2] * da * (255 - a) / 255) / oa);
+			p[3] = (uint8_t)oa;
+		};
+		auto round = [&](int x0, int y0, int bw, int bh, int r, theme::Rgb c, int a) {
+			for (int y = 0; y < bh; y++)
+				for (int x = 0; x < bw; x++)
+				{
+					// the corners cut round (inside the radius' quarter circles)
+					int cx = x < r ? r - x : x >= bw - r ? x - (bw - r - 1) : 0, cy = y < r ? r - y : y >= bh - r ? y - (bh - r - 1) : 0;
+					if (cx && cy && cx * cx + cy * cy > r * r) continue;
+					blend(x0 + x, y0 + y, c, a);
+				}
+		};
+		round(0, 0, w, h, (int)std::lround(14 * s), theme::TOP_CARD, 235);
+		int bx = (int)std::lround(18 * s), by = (int)std::lround(40 * s), bw = w - 2 * bx, bh = (int)std::lround(10 * s);
+		round(bx, by, bw, bh, bh / 2, theme::TOP_TRACK, 255);
+		if (percent > 0) round(bx, by, std::max(bh, bw * percent / 100), bh, bh / 2, theme::TOP_TITLE, 255);
+		// the label and its percent, in the panels' own font
+		std::string text = label + "  " + std::to_string(percent) + "%";
+		if (SDL_Surface* t = TTF_RenderUTF8_Blended(fonts[1], text.c_str(), TEXT))
+		{
+			if (SDL_Surface* r = SDL_ConvertSurfaceFormat(t, SDL_PIXELFORMAT_RGBA32, 0))
+			{
+				int tx = bx, ty = (int)std::lround(8 * s);
+				for (int y = 0; y < r->h; y++)
+					for (int x = 0; x < r->w; x++)
+					{
+						const uint8_t* q = (const uint8_t*)r->pixels + y * r->pitch + x * 4;
+						blend(tx + x, ty + y, theme::Rgb{q[0], q[1], q[2]}, q[3]);
+					}
+				SDL_FreeSurface(r);
+			}
+			SDL_FreeSurface(t);
+		}
+		return px;
+	}
 }

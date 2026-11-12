@@ -113,6 +113,9 @@ namespace bp
 		// 1 while the fit is shown, as the Zoom steps leave it (100 % … 800 %)
 		double zoom() const { return zscale; }
 		int zoomPct() const { return (int)(zscale * 100 + 0.5); }	// (z is always one of the steps, 100 … 800)
+		// a card over the pages (the level card: the volume or brightness while reading), RGBA, until untilMs; drawn a
+		// little below the middle of the top panel, as mpv's is over a video
+		void showOverlay(std::shared_ptr<const std::vector<uint8_t>> rgba, int w, int h, int64_t untilMs);
 		// a few frames more (KMSDRM drops the first after a start or a wake)
 		void redrawSoon(int n = 5) { forceFrames = std::max(forceFrames, n); }
 		// a page still loading shows a turning ring: main wakes this often to draw its next step
@@ -197,6 +200,10 @@ namespace bp
 		int bookHold = 0;	// MANGA_BOOK_*: main sets it again for each chapter (the series' own)
 		int bookS = 0;		// Book: the spread's first page
 		int bookPrevAngle = 0;	// the turn (L3) Book took over, given back when it ends
+		static constexpr int OVERLAY_KEY = 0x7ffffff0;	// the overlay's texture among the pages' (no page or band has it)
+		int overlayW = 0, overlayH = 0;
+		int64_t overlayUntil = 0;
+		bool overlayDrawn = false;
 		int gapPx = 0;
 		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Pix> kept;	// the decoded pages near the view, for the bottom panel in fullscreen

@@ -359,6 +359,9 @@ namespace bp
 		// how this page can take a page's playback back, for the top panel's card: 1 hold A (the player), 2 elsewhere
 		// (A does something else there: the card says the player can)
 		int takeOverHint(const Player& p) const;
+		// the top panel's level card (Volume / Brightness, as Player::showLevel has mpv draw it) as RGBA pixels, at the
+		// panels' scale: for a top panel mpv doesn't draw (the manga reader's pages)
+		std::shared_ptr<const std::vector<uint8_t>> levelCard(const std::string& label, int percent, int& w, int& h);
 		std::string outputName() const;	// where it plays now: "Handheld", or the page's name ("Chrome on Mac")
 		std::string pageName() const;	// the output page's name, as it gave it ("Browser" unknown)
 		// while a page plays the file, the paused copy here stays where it was (no seek per report: that decodes a frame):

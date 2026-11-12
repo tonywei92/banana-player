@@ -8,7 +8,7 @@ Moved out of CLAUDE.md word for word (CLAUDE.md keeps the commands and a line on
   after each, then quits; real input is ignored meanwhile. Steps: button names (`A,B,X,Y,L,R,L2,R2,Up,Down,Left,Right,
   Start,Select,L3`; `R*15`: that button N times, 80 ms apart; `A~700`: held 700 ms, then let go), `tap:X:Y`, `dtap:X:Y`, `drag:X1:Y1:X2:Y2`, `hold:X:Y` (bottom panel's 640×480 units), `info`, `page`,
   `rows` (the browser's rows; on Home the Recent cards, `card …`, then tiles, `tile …`, `>` on the focus), `prop:NAME`
-  (any mpv property), `shot:NAME` (both panels to `$BP_SHOTS/NAME-{top,bottom}.png`), `screenshot`, `web` (URL, PIN,
+  (any mpv property), `shot:NAME` (both panels to `$BP_SHOTS/NAME-{top,bottom}.png`), `level:volume:40` (or `brightness`: the level card, as the hardware keys bring it), `screenshot`, `web` (URL, PIN,
   clients). Use `--state-dir` with a scratch dir. The state line can lag a step behind (mpv is asynchronous; the harness
   doesn't wait for it). Steps wait for the file to open, 3 s at most. `timing: <file> started in N ms` log lines give
   start times, on the handheld too.

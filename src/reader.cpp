@@ -401,6 +401,7 @@ namespace bp
 			if (!bands.count(i)) { keys.insert(i); continue; }
 			for (int b : bandsWanted(i)) keys.insert(bandKey(i, b));
 		}
+		if (overlayUntil) keys.insert(OVERLAY_KEY);	// (the level card, while it's up)
 		pr.keepOnly(keys);
 		wantKeep.clear();
 		for (int k : keys)
@@ -1011,6 +1012,12 @@ namespace bp
 		}
 		if (any || moving) want();
 		bool need = any || moving || uploads || forceFrames > 0;
+		// the level card: up (its texture going up) or just down (one frame more, without it)
+		if (overlayUntil && (now >= overlayUntil || !overlayDrawn))
+		{
+			need = true;
+			if (now >= overlayUntil) { overlayUntil = 0; want(); }
+		}
 		spinNow = now;
 		// a loading ring on screen turns: a frame each step
 		if (pr.spun() && (int)(now / SPIN_MS) != lastSpin)
@@ -1021,12 +1028,26 @@ namespace bp
 		return need;
 	}
 
+	void MangaReader::showOverlay(std::shared_ptr<const std::vector<uint8_t>> rgba, int w, int h, int64_t untilMs)
+	{
+		if (!opened || !rgba || w <= 0 || h <= 0) return;
+		overlayW = w;
+		overlayH = h;
+		overlayUntil = untilMs;
+		pr.addPage(OVERLAY_KEY, w, h, rgba);
+		redrawSoon(2);
+	}
+
 	void MangaReader::draw(int w, int h)
 	{
 		if (!opened) return;
 		std::vector<PageRenderer::Placed> placed;
 		for (auto& b : boxes())
 			placed.push_back({b.page, b.x, b.y, b.w, b.h, !pr.has(b.page) && !failed.count(keyPage(b.page))});
+		// the level card over them while it's up (its texture goes with the next want() once it's down)
+		overlayDrawn = overlayUntil && spinNow < overlayUntil && pr.has(OVERLAY_KEY);
+		if (overlayDrawn)
+			placed.push_back({OVERLAY_KEY, (float)(w - overlayW) / 2, (float)(h * 0.62f), (float)overlayW, (float)overlayH, false, true});
 		pr.setSpinStep((int)(spinNow / SPIN_MS));
 		uploads = pr.draw(placed, w, h);
 		if (forceFrames > 0) forceFrames--;

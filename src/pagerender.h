@@ -31,7 +31,7 @@ namespace bp
 		bool draw(const Strip& strip, int w, int h);
 		// the same for any layout: each page's rectangle in view pixels (the paged modes)
 		// spin: a page still on its way (not one that failed): its grey place shows a ring of dots turning
-		struct Placed { int page; float x, y, w, h; bool spin = false; };
+		struct Placed { int page; float x, y, w, h; bool spin = false; bool blend = false; };	// blend: a card over the pages
 		bool draw(const std::vector<Placed>& placed, int w, int h);
 		size_t textureBytes() const { return bytes; }
 		// the ring's step (the caller's clock: one step a frame it asks for), and whether the last draw showed one

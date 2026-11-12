@@ -57,6 +57,8 @@ namespace bp
 		F(void, ClearColor, float, float, float, float)
 		F(void, Clear, unsigned)
 		F(void, Disable, unsigned)
+		F(void, Enable, unsigned)
+		F(void, BlendFunc, unsigned, unsigned)
 		F(void, GetIntegerv, unsigned, int*)
 		F(unsigned, GetError)
 		F(void, BindFramebuffer, unsigned, unsigned)
@@ -116,6 +118,8 @@ namespace bp
 		load(gl->ClearColor, "glClearColor");
 		load(gl->Clear, "glClear");
 		load(gl->Disable, "glDisable");
+		load(gl->Enable, "glEnable");
+		load(gl->BlendFunc, "glBlendFunc");
 		load(gl->GetIntegerv, "glGetIntegerv");
 		load(gl->BindFramebuffer, "glBindFramebuffer");
 		load(gl->GenVertexArrays, "glGenVertexArrays", !gles);
@@ -421,6 +425,12 @@ namespace bp
 				}
 				continue;
 			}
+			// (a card over the pages, not a page: its round corners blended over what's under it, straight alpha)
+			if (pl.blend && gl->Enable && gl->BlendFunc)
+			{
+				gl->Enable(BLEND);
+				gl->BlendFunc(0x0302 /* GL_SRC_ALPHA */, 0x0303 /* GL_ONE_MINUS_SRC_ALPHA */);
+			}
 			for (auto& t : p->tiles)
 			{
 				// the tile's rows, scaled to the page's height on screen
@@ -429,6 +439,7 @@ namespace bp
 				gl->BindTexture(TEXTURE_2D, t.tex);
 				quad(pl.x, y0, pl.x + pl.w, y1, 0, 1, w, h);
 			}
+			if (pl.blend) gl->Disable(BLEND);
 		}
 		// mpv draws next in this context: what it might rely on goes back to nothing bound
 		gl->DisableVertexAttribArray(aPos);
