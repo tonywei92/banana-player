@@ -34,11 +34,13 @@ namespace bp
 	// naming one reads as Peaks; VIS_SHOWN lists what's offered, in order
 	// Pocket: Peaks as an old handheld's screen, four greens on a grid of chunky dots
 	// and six more (src/viz_more.h, a file each): a hi-fi LED meter, Synthwave, Banana stack, Night city, a phosphor
-	// oscilloscope and Heartbeat
+	// oscilloscope and Heartbeat; then Campfire, Aurora, Sound garden, Turntable and Pixel sea. Peaks Banana, Hi-fi
+	// LED, Synthwave, Banana stack and Heartbeat are kept but not offered (the owner's pick, 0.7.12): a setting naming
+	// one reads as Peaks
 	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VIS_POCKET, VIS_LED,
-		VIS_SYNTHWAVE, VIS_BANANA_STACK, VIS_CITY, VIS_SCOPE, VIS_HEART, VISUALIZERS };
-	constexpr int VIS_SHOWN[] = {VIS_PEAKS, VIS_PEAKS_BANANA, VIS_CIRCLE, VIS_POCKET, VIS_LED, VIS_SYNTHWAVE, VIS_BANANA_STACK,
-		VIS_CITY, VIS_SCOPE, VIS_HEART};
+		VIS_SYNTHWAVE, VIS_BANANA_STACK, VIS_CITY, VIS_SCOPE, VIS_HEART, VIS_FIRE, VIS_AURORA, VIS_GARDEN, VIS_VINYL, VIS_SEA, VISUALIZERS };
+	constexpr int VIS_SHOWN[] = {VIS_PEAKS, VIS_CIRCLE, VIS_POCKET, VIS_CITY, VIS_SCOPE, VIS_FIRE, VIS_AURORA, VIS_GARDEN, VIS_VINYL,
+		VIS_SEA};
 	constexpr int VIS_SHOWN_COUNT = (int)(sizeof(VIS_SHOWN) / sizeof(VIS_SHOWN[0]));
 	// a visualizer's place in VIS_SHOWN (a hidden one: Peaks's, 0)
 	int visualizerSlot(int v);

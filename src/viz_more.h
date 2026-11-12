@@ -16,6 +16,11 @@ namespace bp
 	std::string cityGraph(bool overCover, const std::string& mapsDir);
 	std::string scopeGraph(bool overCover, const std::string& mapsDir);
 	std::string heartGraph(bool overCover, const std::string& mapsDir);
+	std::string fireGraph(bool overCover, const std::string& mapsDir);
+	std::string auroraGraph(bool overCover, const std::string& mapsDir);
+	std::string gardenGraph(bool overCover, const std::string& mapsDir);
+	std::string vinylGraph(bool overCover, const std::string& mapsDir);
+	std::string seaGraph(bool overCover, const std::string& mapsDir);
 	// their stills into dir (true: written, already there, or none needed)
 	bool writeLedMaps(const std::string& dir);
 	bool writeSynthwaveMaps(const std::string& dir);
@@ -23,14 +28,23 @@ namespace bp
 	bool writeCityMaps(const std::string& dir);
 	bool writeScopeMaps(const std::string& dir);
 	bool writeHeartMaps(const std::string& dir);
+	bool writeFireMaps(const std::string& dir);
+	bool writeAuroraMaps(const std::string& dir);
+	bool writeGardenMaps(const std::string& dir);
+	bool writeVinylMaps(const std::string& dir);
+	bool writeSeaMaps(const std::string& dir);
 	// The bars' contrast, between the measured levels (one row, 0..252) and their easing: showfreqs' log scale puts
-	// most bands within a few steps of each other, so each is pushed away from the mean of itself and its two
-	// neighbours (x3: a band above them a peak, one below a valley) and the levels spread a little around 170
-	// (x1.3). On a busy frame neighbours differ by ~27 steps of 252 rather than ~14, the mids still standing.
-	// tag: a prefix for the labels, unique in the graph. Starts with a comma, ends on the row.
-	inline std::string vizContrast(const std::string& tag)
+	// most bands within a few steps of each other, so each is pushed away from the mean of the bands around it (x6:
+	// a band above them a peak, one below a valley) and the levels spread around 150 (x1.8). On a busy frame
+	// neighbours differ by ~30 steps of 252 rather than ~14, and the row swings from near the floor to past half.
+	// tag: a prefix for the labels, unique in the graph; reach: the neighbours each side (1 for 16 bands, more
+	// where there are many); push, spread and pivot as above, for a style that wants it gentler (Pocket console:
+	// its chunky dots made the full strength jumpy). Starts with a comma, ends on the row.
+	inline std::string vizContrast(const std::string& tag, int reach = 1, const char* push = "6", const char* spread = "1.8",
+								   const char* pivot = "150")
 	{
-		return ",split [" + tag + "c1] [" + tag + "c2]; [" + tag + "c2] avgblur=sizeX=1:sizeY=1 [" + tag + "c3]; [" + tag +
-			   "c1] [" + tag + "c3] lut2=c0='clip(170+1.3*(x-170)+3*(x-y),0,252)'";
+		const std::string p = pivot;
+		return ",split [" + tag + "c1] [" + tag + "c2]; [" + tag + "c2] avgblur=sizeX=" + std::to_string(reach) + ":sizeY=1 [" +
+			   tag + "c3]; [" + tag + "c1] [" + tag + "c3] lut2=c0='clip(" + p + "+" + spread + "*(x-" + p + ")+" + push + "*(x-y),0,252)'";
 	}
 }

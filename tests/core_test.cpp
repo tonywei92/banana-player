@@ -5337,26 +5337,29 @@ static void testSettings()
 		CHECK_EQ(serializeSettings(parseSettings(std::string("visualizer = ") + id + "\n")).find("visualizer = peaks\n") != std::string::npos, true);
 	}
 	CHECK_EQ(Settings().visualizer, (int)VIS_PEAKS);
-	// Peaks Banana: the same graph in other colours
-	CHECK_EQ(parseSettings("visualizer = peaks-yellow\n").visualizer, (int)VIS_PEAKS_BANANA);
-	CHECK_EQ(parseSettings(serializeSettings(parseSettings("visualizer = peaks-yellow\n"))).visualizer, (int)VIS_PEAKS_BANANA);
+	// Peaks Banana: the same graph in other colours, kept but no longer offered, so a saved choice reads as Peaks
+	// (as Hi-fi LED, Synthwave, Banana stack and Heartbeat)
+	for (const char* id : {"peaks-yellow", "led", "synthwave", "banana-stack", "heartbeat"})
+		CHECK_EQ(parseSettings(std::string("visualizer = ") + id + "\n").visualizer, (int)VIS_PEAKS);
 	CHECK_EQ(std::string(visualizerLabel(VIS_PEAKS_BANANA)), std::string("Peaks Banana"));
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, false) != visualizerGraph(VIS_PEAKS, false), true);
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, true) != visualizerGraph(VIS_PEAKS, true), true);
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, false).find("lagfun=decay=") != std::string::npos, true);
-	// the cycle: Peaks, Peaks Banana, Circle, Pocket console, then the six newer ones; from a hidden one as from Peaks
-	CHECK_EQ(stepVisualizer(VIS_PEAKS, 1), (int)VIS_PEAKS_BANANA);
-	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, 1), (int)VIS_CIRCLE);
+	// the cycle: the offered ones (VIS_SHOWN); from one not offered as from Peaks
+	CHECK_EQ(stepVisualizer(VIS_PEAKS, 1), (int)VIS_CIRCLE);
 	CHECK_EQ(stepVisualizer(VIS_CIRCLE, 1), (int)VIS_POCKET);
-	CHECK_EQ(stepVisualizer(VIS_POCKET, 1), (int)VIS_LED);
-	CHECK_EQ(stepVisualizer(VIS_HEART, 1), (int)VIS_PEAKS);
-	CHECK_EQ(stepVisualizer(VIS_PEAKS, -1), (int)VIS_HEART);
-	CHECK_EQ(stepVisualizer(VIS_SPECTRUM, 1), (int)VIS_PEAKS_BANANA);
+	CHECK_EQ(stepVisualizer(VIS_POCKET, 1), (int)VIS_CITY);
+	CHECK_EQ(stepVisualizer(VIS_SCOPE, 1), (int)VIS_FIRE);
+	CHECK_EQ(stepVisualizer(VIS_SEA, 1), (int)VIS_PEAKS);
+	CHECK_EQ(stepVisualizer(VIS_PEAKS, -1), (int)VIS_SEA);
+	CHECK_EQ(stepVisualizer(VIS_SPECTRUM, 1), (int)VIS_CIRCLE);
+	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, 1), (int)VIS_CIRCLE);
 	{
 		int seen = 0;
 		for (int i = 0, v = VIS_PEAKS; i < VIS_SHOWN_COUNT; i++, v = stepVisualizer(v, 1)) seen |= 1 << v;
-		int want = (1 << VIS_PEAKS) | (1 << VIS_PEAKS_BANANA) | (1 << VIS_CIRCLE) | (1 << VIS_POCKET);
-		for (int v = VIS_LED; v < VISUALIZERS; v++) want |= 1 << v;
+		int want = 0;
+		for (int v : VIS_SHOWN) want |= 1 << v;
+		CHECK_EQ(VIS_SHOWN_COUNT, 10);
 		CHECK_EQ(seen, want);
 	}
 	// Pocket console: kept by its id, named, its own graph (Peaks' caps, YUV only), alone and over the art

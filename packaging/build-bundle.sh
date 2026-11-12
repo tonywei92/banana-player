@@ -148,14 +148,18 @@ BPB=/cache/bp-build
 # -g: the copy kept in dist/symbols/ maps crash.log's frames to lines (the bundle's own is stripped)
 cmake -S /src -B $BPB -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-g -DBP_GLES=ON -DBP_NET=ON -DBP_WEB=ON -DBP_TOOLS=OFF \
 	-DCMAKE_INSTALL_RPATH='$ORIGIN/../lib' -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON >/dev/null
+# --quick (a push to the handheld) builds the player alone: the tests are the desktop build's job there, and
+# core_test.cpp, which includes most headers, takes about 70 s to compile, so a change to settings.h took 73 s
+# rather than ~25. A full bundle (a release) builds and runs them on arm64 as well.
+TARGET=; [ "$QUICK" = 1 ] && TARGET="--target banana-player"
 # a failed compile stops here: before, the grep hid it and the last good binary went into the bundle unnoticed
-if ! cmake --build $BPB -j$JOBS > $BPB/build.log 2>&1; then
+if ! cmake --build $BPB -j$JOBS $TARGET > $BPB/build.log 2>&1; then
 	grep -E "error|FAILED" $BPB/build.log | head -40
 	echo "build failed: the bundle is not made" >&2
 	exit 1
 fi
 grep -E "warning" $BPB/build.log || true
-$BPB/core-test
+[ "$QUICK" = 1 ] || $BPB/core-test
 
 echo "== bundle"
 VERSION=$(grep -oP 'project\(banana-player VERSION \K[0-9.]+' /src/CMakeLists.txt)

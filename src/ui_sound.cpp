@@ -81,7 +81,8 @@ namespace bp
 		static const char* SHOW_NAMES[SHOWS] = {"Album art", "Art + viz", "Visualizer", "None"};
 		// the chips' own short names (five to a row: about eight letters fit); Settings says them in full
 		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Yellow", "Pocket",
-			"Hi-fi LED", "Synth", "Bananas", "Night city", "Scope", "Pulse"};
+			"Hi-fi LED", "Synth", "Bananas", "Night city", "Scope", "Pulse", "Campfire", "Aurora", "Garden", "Turntable",
+			"Sea"};
 		drawDialog({32, DISPLAY_BOX_Y, 576, DISPLAY_BOX_H}, "Display");
 		int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1), vis = std::clamp(p.settings.visualizer, 0, VISUALIZERS - 1);
 		// the art alone, or the title alone: no visualizer, its style muted (still changeable, for later)
@@ -116,7 +117,12 @@ namespace bp
 				: vis == VIS_BANANA_STACK ? "Columns of pixel bananas that fill with the music"
 				: vis == VIS_CITY ? "A skyline whose windows light up: bass left, treble right"
 				: vis == VIS_SCOPE ? "The waveform on an old green scope, with a fading trail"
-				: vis == VIS_HEART ? "A line that spikes on the beat, like a heart monitor" : "The visualizer alone")
+				: vis == VIS_HEART ? "A line that spikes on the beat, like a heart monitor"
+				: vis == VIS_FIRE ? "A pixel campfire: each flame leaps with its part of the sound"
+				: vis == VIS_AURORA ? "Northern lights over a ridge, each stretch of sky as bright as its band"
+				: vis == VIS_GARDEN ? "Pixel flowers that grow with the music and bloom at the peaks"
+				: vis == VIS_VINYL ? "A spinning record whose grooves glow: bass at the label, treble at the rim"
+				: vis == VIS_SEA ? "Waves under the moon: bass swells, mids chop, a little boat rides it" : "The visualizer alone")
 			: "Just the title: the lightest on the battery";
 		drawTextMid(help, 0, DIM, W / 2, 380, 544, 2);
 		drawHints({{"D-PAD", "Change"}, {"SELECT", "Show"}, {"B", "Done"}});

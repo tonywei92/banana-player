@@ -37,9 +37,10 @@ namespace bp
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};
 	static const char* SHOW_LABELS[SHOWS] = {"Album art", "Art + visualizer", "Visualizer", "None"};
 	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "pocket", "led",
-		"synthwave", "banana-stack", "night-city", "oscilloscope", "heartbeat"};
+		"synthwave", "banana-stack", "night-city", "oscilloscope", "heartbeat", "campfire", "aurora", "sound-garden", "turntable", "pixel-sea"};
 	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket console",
-		"Hi-fi LED", "Synthwave", "Banana stack", "Night city", "Oscilloscope", "Heartbeat"};
+		"Hi-fi LED", "Synthwave", "Banana stack", "Night city", "Oscilloscope", "Heartbeat", "Campfire", "Aurora",
+		"Sound garden", "Turntable", "Pixel sea"};
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
 	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
 	static const char* MANGA_FIT_IDS[MANGA_FITS] = {"page", "width", "fill"};
@@ -313,7 +314,7 @@ namespace bp
 		// unmeasured), and the bars move with it
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("pc") + ",split [pcv] [pcp]; "
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("pc", 1, "4", "1.5", "160") + ",split [pcv] [pcp]; "
 			 "[pcp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.9316,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*250)',format=gray," + stretch + " [pcP]; "
 			 // the bars themselves eased, as an LED meter's: up at once, down over ~0.15 s for the whole height (28 of
@@ -375,13 +376,18 @@ namespace bp
 		ok = writeCityMaps(dir) && ok;
 		ok = writeScopeMaps(dir) && ok;
 		ok = writeHeartMaps(dir) && ok;
+		ok = writeFireMaps(dir) && ok;
+		ok = writeAuroraMaps(dir) && ok;
+		ok = writeGardenMaps(dir) && ok;
+		ok = writeVinylMaps(dir) && ok;
+		ok = writeSeaMaps(dir) && ok;
 		return ok;
 	}
 
 	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir)
 	{
 		if (vis == VIS_POCKET) return pocketGraph(overCover);
-		// the six newer ones (a file each, src/viz_*.cpp); with no stills yet, as Peaks
+		// the newer ones (a file each, src/viz_*.cpp); with no stills yet, as Peaks
 		if (vis >= VIS_LED && vis < VISUALIZERS)
 		{
 			std::string q;
@@ -393,7 +399,12 @@ namespace bp
 			case VIS_BANANA_STACK: return bananaGraph(overCover, mapsDir);
 			case VIS_CITY: return cityGraph(overCover, mapsDir);
 			case VIS_SCOPE: return scopeGraph(overCover, mapsDir);
-			default: return heartGraph(overCover, mapsDir);
+			case VIS_HEART: return heartGraph(overCover, mapsDir);
+			case VIS_FIRE: return fireGraph(overCover, mapsDir);
+			case VIS_AURORA: return auroraGraph(overCover, mapsDir);
+			case VIS_GARDEN: return gardenGraph(overCover, mapsDir);
+			case VIS_VINYL: return vinylGraph(overCover, mapsDir);
+			default: return seaGraph(overCover, mapsDir);
 			}
 		}
 		std::string quoted;
@@ -501,9 +512,10 @@ namespace bp
 				if (key == "music-show" && value == SHOW_IDS[v]) s.musicShow = v;
 			for (int v = 0; v < VISUALIZERS; v++)
 				if (key == "visualizer" && value == VIS_IDS[v]) s.visualizer = v;
-			// Timeline (0.5.x, briefly) became Peaks; Bars, Waves and Spectrum are retired, read as Peaks
+			// Timeline (0.5.x, briefly) became Peaks; a style not offered (Bars, Waves, Spectrum, and those kept but
+			// not offered: VIS_SHOWN) is read as Peaks
 			if (key == "visualizer" && value == "timeline") s.visualizer = VIS_PEAKS;
-			if (key == "visualizer" && (s.visualizer == VIS_BARS || s.visualizer == VIS_WAVES || s.visualizer == VIS_SPECTRUM))
+			if (key == "visualizer" && std::find(std::begin(VIS_SHOWN), std::end(VIS_SHOWN), s.visualizer) == std::end(VIS_SHOWN))
 				s.visualizer = VIS_PEAKS;
 			for (int v = 0; v < LOOPS; v++)
 				if (key == "loop" && value == LOOP_IDS[v]) s.loop = v;
