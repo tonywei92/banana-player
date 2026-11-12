@@ -48,6 +48,7 @@ namespace bp
 			out.push_back(T + 7);
 			out.push_back(CLOCK_ROW);
 			out.push_back(SCREEN_OFF_ROW);
+			out.push_back(SCREEN_OFF_VIDEO_ROW);
 			return out;
 		}
 		case GROUP_UPDATES:
@@ -82,7 +83,8 @@ namespace bp
 		if (row == VIS_ROW) return "How the music is drawn: Peaks, Peaks Banana or Circle (SELECT while playing).";
 		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
 		if (row == CLOCK_ROW) return "The time in the top corner of this screen";
-		if (row == SCREEN_OFF_ROW) return "While a song or video plays, this screen goes dark after that long untouched. A touch brings it back.";
+		if (row == SCREEN_OFF_ROW) return "While a song plays, this screen goes dark after that long untouched. A touch brings it back.";
+		if (row == SCREEN_OFF_VIDEO_ROW) return "While a video plays, this screen goes dark after that long untouched. A touch brings it back.";
 		if (row == PAN_ROW) return "Which side the pan area (the small photo) is on.";
 		if (row == DRAG_ROW) return "The box: a drag moves the frame over the small photo. The photo: a drag moves the photo, as on a phone.";
 		if (row == CLEAR_ROW) return "Empties Recent. Press A twice. The places you stopped at are kept.";
@@ -220,6 +222,7 @@ namespace bp
 		else if (row == CLOCK_ROW) s.clock = ((s.clock + dir) % CLOCKS + CLOCKS) % CLOCKS;
 		// (not round: Never at one end, 5 minutes at the other)
 		else if (row == SCREEN_OFF_ROW) s.screenOffAfter = std::clamp(s.screenOffAfter + dir, 0, SCREEN_OFFS - 1);
+		else if (row == SCREEN_OFF_VIDEO_ROW) s.screenOffVideo = std::clamp(s.screenOffVideo + dir, 0, SCREEN_OFFS - 1);
 		else if (row == PAN_ROW) s.panRight = !s.panRight;
 		else if (row == DRAG_ROW) s.dragBox = !s.dragBox;
 		else s.*REMEMBER[row - TOGGLE_ROW] = !(s.*REMEMBER[row - TOGGLE_ROW]);
@@ -360,8 +363,13 @@ namespace bp
 		}
 		else if (row == SCREEN_OFF_ROW)
 		{
-			label = "Screen off after";
+			label = "Screen off (music)";
 			value = screenOffLabel(p.settings.screenOffAfter);
+		}
+		else if (row == SCREEN_OFF_VIDEO_ROW)
+		{
+			label = "Screen off (video)";
+			value = screenOffLabel(p.settings.screenOffVideo);
 		}
 		else if (row == PAN_ROW)
 		{

@@ -541,7 +541,8 @@ namespace bp
 		// brings it back). Paused, it stays: someone is about to act. Never while a picture is looked at, whatever
 		// plays meanwhile: a photo (panned here) or a comic in the manga reader (its pages are dragged here, and a
 		// reader reads longer than any timeout without touching)
-		int offSecs = screenOffSeconds(p.settings.screenOffAfter);
+		// (a song's own timer, and a video's: Never by default, its controls are what one reaches for)
+		int offSecs = screenOffSeconds(p.playingAudio() ? p.settings.screenOffAfter : p.settings.screenOffVideo);
 		bool viewing = p.playingPhoto() || readerStatus.open;
 		if (offSecs > 0 && panel.on() && p.playing() && !viewing && !p.paused && !p.loading() && p.error.empty() &&
 			!kbOpen && !quickOpen && !popupShown(p) && !dragging && SDL_GetTicks() - webInputAt >= (Uint32)offSecs * 1000)

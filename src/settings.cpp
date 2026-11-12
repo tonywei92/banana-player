@@ -343,6 +343,7 @@ namespace bp
 		for (auto& r : REMEMBER) out += std::string(r.key) + " = " + (s.*r.field ? "yes" : "no") + "\n";
 		out += std::string("clock = ") + CLOCK_IDS[s.clock] + "\n";
 		out += std::string("screen-off = ") + SCREEN_OFF_IDS[s.screenOffAfter] + "\n";
+		out += std::string("screen-off-video = ") + SCREEN_OFF_IDS[s.screenOffVideo] + "\n";
 		out += std::string("pan-area = ") + (s.panRight ? "right" : "left") + "\n";
 		out += std::string("pan-drag = ") + (s.dragBox ? "box" : "photo") + "\n";
 		out += std::string("eq = ") + (s.eqOn ? "on" : "off") + "\n";
@@ -386,7 +387,10 @@ namespace bp
 			for (int v = 0; v < CLOCKS; v++)
 				if (key == "clock" && value == CLOCK_IDS[v]) s.clock = v;
 			for (int v = 0; v < SCREEN_OFFS; v++)
+			{
 				if (key == "screen-off" && value == SCREEN_OFF_IDS[v]) s.screenOffAfter = v;
+				if (key == "screen-off-video" && value == SCREEN_OFF_IDS[v]) s.screenOffVideo = v;
+			}
 			for (int v = 0; v < MANGA_MODES; v++)
 				if (key == "manga-mode" && value == MANGA_MODE_IDS[v]) s.mangaMode = v;
 			for (int v = 0; v < MANGA_FITS; v++)

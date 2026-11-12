@@ -90,7 +90,8 @@ namespace bp
 		// the time left of the battery (Settings › Controls & screen): 24-hour, 12-hour or none
 		int clock = CLOCK_24;
 		// the bottom panel off by itself (Settings › Controls & screen) while a song or video plays and nothing is touched
-		int screenOffAfter = SOFF_30;
+		int screenOffAfter = SOFF_30;		// while a song plays
+		int screenOffVideo = SOFF_NEVER;	// while a video plays: its controls are what one reaches for (issue #5)
 		// photos: the next one opens at the zoom (and the place in it) the last was left at; off: each at its size
 		bool keepPhotoZoom = true;
 		// the photo's pan area on the bottom panel: the left half (the default) or the right

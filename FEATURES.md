@@ -108,7 +108,7 @@ the list while the playing screen was up.
   on behind it, sound and all (a song's next song follows as usual; a video's picture just isn't shown, or decoded,
   meanwhile). Close the photo (**B**, **Close**) and you're back where you opened it, the video showing again where it
   has got to. A page playing it in a browser isn't disturbed either.
-- **Screen off after** (Settings) works while browsing too, as long as something plays (not paused).
+- **Screen off (music)** and **Screen off (video)** (Settings) work while browsing too, as long as something plays (not paused).
 - Started with a file (`banana-player FILE`): **B** opens the list on its folder, as if you'd started with none.
 
 ## Playlists
@@ -464,7 +464,8 @@ goes back to the list.
 | | Button hotkeys | On | Off: buttons can't pause, skip or close while something plays (touch still can) |
 | | Battery percentage | Off | Shows the battery's percent beside its icon (the icon, with a bolt while charging, is always there) |
 | | Clock | 24-hour | The time in the top corner of the bottom screen, left of the battery: 24-hour (`14:32`), 12-hour (`2:32 PM`) or Off. Not over a photo |
-| | Screen off after | 30 seconds | While a song or video plays, the bottom screen turns off by itself after that long without a touch or a button: Never, 15 or 30 seconds, 1, 2 or 5 minutes. Not while paused, and never while a photo or a comic is shown. A touch or any button brings it back |
+| | Screen off (music) | 30 seconds | While a song plays, the bottom screen turns off by itself after that long without a touch or a button: Never, 15 or 30 seconds, 1, 2 or 5 minutes. Not while paused, and never while a photo or a comic is shown. A touch or any button brings it back |
+| | Screen off (video) | Never | The same while a video plays (its seek bar, tracks and subtitles stay ready to touch unless a time is chosen) |
 | **Updates** | Check automatically | On | Looks for a new version a few seconds after the start, in the background (Wi-Fi needed) |
 | | Check for updates | | Looks now, and shows what it found |
 | | Update to … | | Downloads the new version (shown when there's one), then **Restart now** |
@@ -1011,5 +1012,6 @@ combination instead.)
 - **Screen off:** turns the bottom screen off to save battery. While the player is showing, the playback buttons
   keep working with it off (**A**, **LEFT/RIGHT**, **L/R**, **L2/R2**, **UP/DOWN**, **L3**); a touch or any other button
   turns it back on (that press does nothing else). Elsewhere (a list), any button turns it back on. It also turns off by itself
-  while a song or video plays and nothing is touched (Settings › Controls & screen › **Screen off after**).
+  while a song or video plays and nothing is touched (Settings › Controls & screen › **Screen off (music)** and
+  **Screen off (video)**).
 - **Lid:** closing it pauses; opening it keeps it paused until you press play.
