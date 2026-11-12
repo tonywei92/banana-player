@@ -633,7 +633,7 @@ namespace bp
 			// the pages grid and the Reading menu are sheets over the reader (the menu is a menu, as today); in
 			// fullscreen the bottom panel is all page: the bar comes with the controls sheet, inside it
 			if (mangaPages || mangaMenu) return false;
-			if (readerStatus.fullscreen && readerBottom.on && !(mangaCtrlUntil && SDL_GetTicks() < mangaCtrlUntil)) return false;
+			if ((readerStatus.fullscreen || readerStatus.book) && readerBottom.on && !(mangaCtrlUntil && SDL_GetTicks() < mangaCtrlUntil)) return false;
 		}
 		return true;
 	}

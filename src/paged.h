@@ -34,6 +34,7 @@ namespace bp
 		// it) and pans inside it, the content under (fx, fy) keeping its place
 		void setZoom(double z, double fx, double fy);
 		double zoom() const { return zscale; }
+		bool zoomed() const { return zscale > 1.0001; }
 
 		int pageCount() const;
 		// the page being shown at rest, or the one whose centre the view's middle is nearest while the row moves;
@@ -105,6 +106,8 @@ namespace bp
 		double vBound(int k, double vmax) const;	// the bottom of screenful k
 		double hBound(int k, double hmax) const;	// and the far edge of column k
 		double snapV(double x, double vmax) const;	// to the nearest of a page's bounds
+		// a zoomed page's pan let go at (vv, vh) px/s: it glides on and rests where it comes to (no snap)
+		void panGlide(int page, double vv, double vh, int64_t ms);
 		double snapH(double x, double hmax) const;
 		int nearest(double x) const;	// the page whose centre is nearest a row position
 		void land(int page, double vTo, double hTo);

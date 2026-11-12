@@ -11,6 +11,11 @@ namespace bp
 		// over this the flick means a page turn or one screenful further however short the drag was — a slow one
 		// only turns when the finger actually carried the row past the middle, which nearest() decides
 		constexpr double FLICK_PX_S = 400;
+		// a flick turns the page only once the row has moved this share of the screen's width from the page's rest:
+		// a quick nudge at the end of a pan isn't a turn (dragging past half the page still is)
+		constexpr double TURN_SHARE = 0.10;
+		// past a pannable page's edge the row follows the finger at this rate: the turn is a deliberate pull
+		constexpr double EDGE_PULL = 0.5;
 		constexpr int64_t SNAP_MS = 220;	// a finger's snap glides for this (manga.md section 7)
 		constexpr int64_t STEP_MS = 180;	// the D-pad's and goTo's steps are quick slides (section 4)
 
@@ -443,7 +448,8 @@ namespace bp
 		}
 		else
 			h = 0;
-		off = clampD(off + f - panned, center.front(), center.back());
+		// (a page that pans: what's left over moves the row at EDGE_PULL, so reaching its edge isn't a turn already)
+		off = clampD(off + (f - panned) * (hmax > 0 ? EDGE_PULL : 1.0), center.front(), center.back());
 		int now = nearest(off);
 		double vmax = vMax(now);
 		if (vmax > 0)
@@ -497,9 +503,20 @@ namespace bp
 			// sideways: the nearest page, or the next or previous one when the flick is over the threshold in
 			// that direction; the row centring snaps the page's offsets to their bounds
 			int t = c;
-			if (vo > FLICK_PX_S && t + 1 < n) t++;
-			else if (vo < -FLICK_PX_S && t > 0) t--;
-			slide(t, snapV(v, vMax(t)), snapH(h, hMax(t)), ms, SNAP_MS);
+			double rel = off - center[c], need = screenW() * TURN_SHARE;
+			if (vo > FLICK_PX_S && rel >= need && t + 1 < n) t++;
+			else if (vo < -FLICK_PX_S && rel <= -need && t > 0) t--;
+			// zoomed and staying on the page: its pan glides on (as a photo's does)
+			if (zoomed() && t == c) panGlide(c, vv, vh, ms);
+			else slide(t, snapV(v, vMax(t)), snapH(h, hMax(t)), ms, SNAP_MS);
+			return;
+		}
+		// zoomed: a drag inside the page is a pan, free on both axes, gliding on from the finger's speed and kept
+		// where it comes to rest (issue #8). (At the fit a page bigger than the screen still steps a screenful at a
+		// time, below: the keys and the finger agree)
+		if (zoomed())
+		{
+			panGlide(c, vv, vh, ms);
 			return;
 		}
 		if (dh >= dv)
@@ -527,6 +544,18 @@ namespace bp
 			else if (vv < -FLICK_PX_S && k > 0) to = vBound(k - 1, vmax);		// and a flick down, back up
 		}
 		slide(c, to, snapH(h, hMax(c)), ms, SNAP_MS);
+	}
+
+	void Paged::panGlide(int page, double vv, double vh, int64_t ms)
+	{
+		// as far as the Strip's fling would carry at that speed (its decay: v0 * tau), eased out over about as long;
+		// a finger that rested has no speed and the pan stays put
+		constexpr double TAU_S = 0.325, MAX_SPEED = 6000, STILL = 20;
+		vv = clampD(vv, -MAX_SPEED, MAX_SPEED);
+		vh = clampD(vh, -MAX_SPEED, MAX_SPEED);
+		double fast = std::max(std::fabs(vv), std::fabs(vh));
+		if (fast < STILL) { slide(page, clampD(v, 0, vMax(page)), clampD(h, 0, hMax(page)), ms, 0); return; }
+		slide(page, v + vv * TAU_S, h + vh * TAU_S, ms, 650);
 	}
 
 	bool Paged::step(int64_t ms)

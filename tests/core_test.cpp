@@ -2475,6 +2475,52 @@ static void testCbzWrite()
 // the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
 static void testMangaUiLogic()
 {
+	// Book (issue #7): the store's string, which panel gets the spread's first page, the turn, the keys, a swipe
+	{
+		int m = -1, b = -1;
+		CHECK_EQ(parseMangaReadingMode("rtl/book-left", m, b), true);
+		CHECK_EQ(m, MANGA_RTL);
+		CHECK_EQ(b, MANGA_BOOK_LEFT);
+		CHECK_EQ(parseMangaReadingMode("ltr/book-right", m, b) && m == MANGA_LTR && b == MANGA_BOOK_RIGHT, true);
+		CHECK_EQ(parseMangaReadingMode("ltr", m, b) && m == MANGA_LTR && b == MANGA_BOOK_OFF, true);
+		CHECK_EQ(parseMangaReadingMode("strip/book-left", m, b) && m == MANGA_STRIP && b == MANGA_BOOK_OFF, true);	// no strip book
+		CHECK_EQ(!parseMangaReadingMode("", m, b), true);
+		CHECK_EQ(!parseMangaReadingMode("sideways", m, b), true);
+		CHECK_EQ(mangaReadingModeId(MANGA_RTL, MANGA_BOOK_LEFT), std::string("rtl/book-left"));
+		CHECK_EQ(mangaReadingModeId(MANGA_LTR, MANGA_BOOK_OFF), std::string("ltr"));
+		CHECK_EQ(mangaReadingModeId(MANGA_STRIP, MANGA_BOOK_RIGHT), std::string("strip"));
+		for (int mode = 0; mode < MANGA_MODES; mode++)
+			for (int book = 0; book < MANGA_BOOKS; book++)
+			{
+				int m2 = -1, b2 = -1;
+				CHECK_EQ(parseMangaReadingMode(mangaReadingModeId(mode, book), m2, b2), true);
+				CHECK_EQ(m2, mode);
+				CHECK_EQ(b2, mode == MANGA_STRIP ? MANGA_BOOK_OFF : book);
+			}
+		// held top-left: the top panel is the reader's left. right to left puts the first page on the right
+		CHECK_EQ(!mangaBookEarlierOnTop(MANGA_BOOK_LEFT, true), true);
+		CHECK_EQ(mangaBookEarlierOnTop(MANGA_BOOK_LEFT, false), true);
+		CHECK_EQ(mangaBookEarlierOnTop(MANGA_BOOK_RIGHT, true), true);
+		CHECK_EQ(!mangaBookEarlierOnTop(MANGA_BOOK_RIGHT, false), true);
+		CHECK_EQ(mangaBookAngle(MANGA_BOOK_LEFT), 90);
+		CHECK_EQ(mangaBookAngle(MANGA_BOOK_RIGHT), 270);
+		// top-left: UP points to the reader's left, which is forward in right to left
+		CHECK_EQ(mangaBookStep(MANGA_BOOK_LEFT, true, false, -1), 1);
+		CHECK_EQ(mangaBookStep(MANGA_BOOK_LEFT, true, false, 1), -1);
+		CHECK_EQ(mangaBookStep(MANGA_BOOK_LEFT, false, false, 1), 1);
+		// top-right: UP points to the reader's right
+		CHECK_EQ(mangaBookStep(MANGA_BOOK_RIGHT, true, false, 1), 1);
+		CHECK_EQ(mangaBookStep(MANGA_BOOK_RIGHT, false, false, -1), 1);
+		// Swap Left/Right turns it round
+		CHECK_EQ(mangaBookStep(MANGA_BOOK_LEFT, true, true, -1), -1);
+		CHECK_EQ(mangaBookStep(MANGA_BOOK_LEFT, true, false, 0), 0);
+		// a finger moving to the reader's left (up the panel, top-left) turns as the right key: back in right to left
+		CHECK_EQ(mangaBookSwipe(MANGA_BOOK_LEFT, true, false, -0.2), -1);
+		CHECK_EQ(mangaBookSwipe(MANGA_BOOK_LEFT, false, false, -0.2), 1);
+		// top-right: up the panel is the reader's right; a finger going right turns as the left key: forward in rtl
+		CHECK_EQ(mangaBookSwipe(MANGA_BOOK_RIGHT, true, false, -0.2), 1);
+		CHECK_EQ(mangaBookSwipe(MANGA_BOOK_RIGHT, true, false, 0.0), 0);
+	}
 	// a title's cover is its own and always the same; the top is dark and the bottom mid
 	MangaCoverColors a = mangaCoverColors("Ember Lantern"), b = mangaCoverColors("Ember Lantern");
 	CHECK_EQ(a.topR, b.topR);
@@ -3091,10 +3137,10 @@ static void testPaged()
 	wd.goTo(1, 0, false);
 	CHECK_EQ(near(find(wd.placements(), 1).x, 0), true);
 	wd.touchDown(10);
-	wd.drag(100, 0, 20);	// at its start edge the pan has nothing left to take: the whole drag moves the row
+	wd.drag(100, 0, 20);	// at its start edge the pan has nothing left to take: the drag pulls the row, at half rate
 	CHECK_EQ(wd.hscroll(), 0.0);
-	CHECK_EQ(near(find(wd.placements(), 1).x, 100), true);	// the page slides right…
-	CHECK_EQ(near(find(wd.placements(), 0).x, -900), true);	// …and page 0 follows at its edge, seam kept
+	CHECK_EQ(near(find(wd.placements(), 1).x, 50), true);	// the page slides right…
+	CHECK_EQ(near(find(wd.placements(), 0).x, -950), true);	// …and page 0 follows at its edge, seam kept
 	CHECK_EQ(wd.current(), 1);
 	wd.release(20);	// a lone sample: no flick, the row snaps back
 	CHECK_EQ(wd.moving(), true);
@@ -3105,11 +3151,11 @@ static void testPaged()
 	CHECK_EQ(near(wd.hscroll(), 500), true);
 	CHECK_EQ(near(find(wd.placements(), 1).x, -500), true);
 	CHECK_EQ(wd.current(), 1);
-	wd.drag(-300, 0, 420);	// 100 of this pans on to the far edge, the other 200 carry the row over
+	wd.drag(-300, 0, 420);	// 100 of this pans on to the far edge, the other 200 pull the row 100 (half rate)
 	CHECK_EQ(near(wd.hscroll(), 600), true);
 	CHECK_EQ(wd.current(), 1);	// nowhere near page 2's centre yet
-	CHECK_EQ(near(find(wd.placements(), 1).x, -800), true);
-	CHECK_EQ(near(find(wd.placements(), 2).x, 200), true);	// the next page waits at the panned one's edge
+	CHECK_EQ(near(find(wd.placements(), 1).x, -700), true);
+	CHECK_EQ(near(find(wd.placements(), 2).x, 300), true);	// the next page waits at the panned one's edge
 	wd.drag(0, 0, 430);	// the finger rests: no velocity to release
 	wd.release(430);	// slow and only 200 carried over: page 1's centre is still nearer, its pan stays at the end
 	CHECK_EQ(wd.step(650), false);
@@ -3275,6 +3321,59 @@ static void testPaged()
 	pd.release(400);	// it rests: no flick
 	CHECK_EQ(pd.step(620), false);
 	CHECK_EQ(pd.current(), 1);
+	// zoomed, a pan inside the page stays where the finger let it go: no snap to a screenful's bound (at the fit a
+	// page bigger than the screen still steps a screenful at a time)
+	{
+		Paged pf;
+		pf.setView(400, 600);
+		pf.setPages(3, 1.5);
+		pf.goTo(1, 0, false);
+		pf.setZoom(2, 200, 300);	// h 200, v 300
+		pf.touchDown(0);
+		pf.drag(0, -130, 10);	// down the page by 130: v 430, between bounds
+		pf.drag(-70, 0, 20);	// and across by 70: h 270
+		pf.release(1000);	// rested: no flick
+		pf.step(1300);
+		CHECK_EQ(pf.current(), 1);
+		CHECK_EQ(near(pf.vscroll(), 430), true);
+		CHECK_EQ(near(pf.hscroll(), 270), true);
+	}
+	// zoomed, a quick swipe across glides on past where the finger left it (issue #8), and stays inside the page
+	{
+		Paged pg;
+		pg.setView(400, 600);
+		pg.setPages(3, 1.5);
+		pg.goTo(1, 0, false);
+		pg.setZoom(2, 200, 300);	// h 200 of 400
+		pg.touchDown(0);
+		pg.drag(-40, 0, 10);
+		pg.drag(-40, 0, 20);	// 80 px in 20 ms: 4000 px/s across
+		pg.release(25);
+		CHECK_EQ(pg.moving(), true);
+		pg.step(2000);
+		CHECK_EQ(pg.current(), 1);
+		CHECK_EQ(pg.hscroll() > 280 + 1, true);	// further than the finger took it
+		CHECK_EQ(pg.hscroll() <= 400 + 0.5, true);	// and not past the page's end
+	}
+	// a quick nudge isn't a turn: a flick turns the page only once the row has moved 10 % of the screen
+	{
+		Paged pn;
+		pn.setView(400, 600);
+		pn.setPages(3, 1.5);
+		pn.goTo(1, 0, false);
+		pn.touchDown(0);
+		pn.drag(-15, 0, 10);
+		pn.drag(-15, 0, 20);	// 30 px (under 40) at 1500 px/s
+		pn.release(25);
+		pn.step(1000);
+		CHECK_EQ(pn.current(), 1);
+		pn.touchDown(2000);
+		pn.drag(-25, 0, 2010);
+		pn.drag(-25, 0, 2020);	// 50 px at 2500 px/s: a turn
+		pn.release(2025);
+		pn.step(3000);
+		CHECK_EQ(pn.current(), 2);
+	}
 	// right to left zooms about the centre the same way: h still runs with the reading order, from the right edge
 	Paged rz;
 	rz.setView(400, 600);
@@ -4555,6 +4654,26 @@ static bool near(double a, double b, double eps = 1e-6)
 
 static void testStrip()
 {
+	// zoomed, a quick swipe across glides on as one down does (issue #8): the pan keeps going after the finger
+	// lets go, within the column
+	{
+		Strip z;
+		z.setView(400, 600);
+		z.setPages(3);
+		z.setZoom(2, 200, 300);
+		double p0 = z.pan();
+		z.touchDown(0);
+		z.drag(0, 10, -40);	// a finger left: the column pans right (toward its right edge)
+		z.drag(0, 20, -40);	// 4000 px/s across, nothing down
+		double p1 = z.pan();
+		CHECK_EQ(near(p1, p0 + 80), true);
+		z.release(25);
+		CHECK_EQ(z.moving(), true);
+		z.step(3000);
+		CHECK_EQ(z.moving(), false);
+		CHECK_EQ(z.pan() > p1 + 1, true);
+		CHECK_EQ(z.pan() <= 400 + 0.5, true);	// a column 800 wide in a view of 400 pans 400 at most
+	}
 	// layout: pages at the view's width, no gap, placeholders 1.5 x the width
 	Strip s;
 	s.setView(400, 600);

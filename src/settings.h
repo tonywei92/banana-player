@@ -8,6 +8,9 @@
 namespace bp
 {
 	constexpr int MANGA_RTL = 0, MANGA_LTR = 1, MANGA_STRIP = 2, MANGA_MODES = 3;
+	// Book (issue #7): the handheld held sideways, one page turned upright on each panel. Which way it is held: the
+	// top panel on the reader's left (the buttons under the right hand) or on the right; off reads as before
+	constexpr int MANGA_BOOK_OFF = 0, MANGA_BOOK_LEFT = 1, MANGA_BOOK_RIGHT = 2, MANGA_BOOKS = 3;
 	// how the paged modes fit a page to the screen: Page keeps it whole, Width makes it as wide as the screen (read
 	// down a screenful at a time), Fill covers the screen and crops what overflows; the Strip always fits width
 	constexpr int MANGA_FIT_PAGE = 0, MANGA_FIT_WIDTH = 1, MANGA_FIT_FILL = 2, MANGA_FITS = 3;

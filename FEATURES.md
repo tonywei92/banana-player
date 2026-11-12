@@ -886,9 +886,9 @@ here to scroll* in **Strip**), and *Loading…* shows beside the page number whi
 | **Y** | The Pages grid (below) |
 | **L2 / R2** | Previous / next chapter |
 | **START** | The Reading menu (below) |
-| **SELECT** | Fullscreen on both screens (below) |
+| **SELECT** | Fullscreen on both screens (below); in **Book**, Fullscreen instead of Book |
 | **L3** (press the stick) | Turn the page a quarter turn: 90° clockwise each press, in the paged modes (kept for the chapter; **Strip** ignores it) |
-| **B** | Leave fullscreen, then close the reader; your place is kept |
+| **B** | Back to the chapters (from Fullscreen and Book too: the view stays as it was); your place is kept |
 
 - The **page fit** is a setting (below): **Page** (the whole page on the screen), **Width** (as wide as the screen, read
   down a screenful at a time) or **Fill** (the page covers the screen: it's cropped, and the overshoot pans in reading
@@ -913,17 +913,32 @@ treat it as they do a chapter on your card. A browser check stops either of them
 asks for a browser check (Cloudflare). Banana Player can't pass it yet.** (**DDoS-Guard** where that's the one) —
 under a source's grid with **A: Try again** while browsing, or in red where the page number sits while reading.
 
-**The Reading menu.** **START** while reading opens it over the page (in fullscreen too): **Fullscreen**, **Reading
-mode**, **Page fit**, **Zoom**, **Hinge gap** (fullscreen only), **Swap Left/Right**, **Pages** and **All Manga
-settings…**. **UP/DOWN** choose a row, **LEFT/RIGHT** change it where you stand, **A** acts on it, and **B** or
-**START** closes the menu: reading goes on exactly where it was. The last row opens **Manga settings**, and **Pages**
-opens the grid below.
+**The Reading menu.** **START** while reading opens it over the page (in fullscreen and Book too), in the screen's
+usual orientation. It shows only the rows that mean something for how you're reading: **View** (**One screen**,
+**Fullscreen** or **Book**), **Hold** (Book only: **Top screen left** or **Top screen right**), **Reading mode** (Right
+to left, Left to right or Strip; Book offers the first two), **Page fit** (not in Strip or Book), **Zoom** (not in
+Book), **Hinge gap** (Fullscreen in Strip only), **Swap Left/Right**, **Pages** and **All Manga settings…**. **UP/DOWN** choose
+a row, **LEFT/RIGHT** change it where you stand, **A** acts on it, and **B** or **START** closes the menu: reading goes
+on exactly where it was. Choosing One screen or Fullscreen there also sets **Open fullscreen**, so the next chapter
+opens the same way. The last row opens **Manga settings**, and **Pages** opens the grid below.
+
+**Book (held sideways).** View › **Book** in the Reading menu: hold the handheld sideways like a book, the hinge down
+the middle, and each screen shows one whole page, turned upright as you hold it. **Hold** says which side the top
+screen is on (**Top screen left**, the buttons under your right hand, or **Top screen right**). The spread follows the
+reading mode: in Right to left the earlier page is on the right. The D-pad's **UP** and **DOWN** point left and right
+as held and turn the spread (two pages; Swap Left/Right turns that round); **L / R** move one page, to realign a
+spread (a cover on its own, a two-page picture split over the hinge); **X** switches Right to left and Left to right;
+a swipe along the bottom screen turns the spread and a tap shows the page numbers. The page numbers show for a moment
+after a turn, at the foot of the spread and upright as held; at the chapter's end they stay and say what comes next
+(turn once more for the next chapter). No zoom or page fit in Book: each page is shown whole. The menu and notices
+keep the screen's usual orientation. Book is kept for the series, as the reading mode is.
 
 **Fullscreen (both screens).** **SELECT** while reading turns it on and off, and so does the **Fullscreen** button
 between **Prev chapter** and **Next chapter** on the reading page. The two panels become one tall view and
 the gap under the hinge is skipped, so the art lines up across the fold; the bottom panel draws its share of the pages
 from the pages the reader has already decoded. The gap's size is a setting of its own, **Hinge gap** in **Manga
-settings**: **36** of the panel's 480 lines by default. **B** leaves fullscreen first, and only then closes the reader.
+settings**: **36** of the panel's 480 lines by default. **SELECT** leaves fullscreen; **B** goes back to the chapters
+and fullscreen stays, so the next chapter opens in it too.
 The page number shows for a moment after the page changes. A tap puts the controls bar over the lower part of the
 view; the **Now playing** mini bar sits along its foot while something plays (the same bar as everywhere else), and
 while the bar shows, a tap anywhere outside it puts it away again and does nothing else (no page turn, no drag), and a
@@ -946,8 +961,8 @@ them while you read. **B** goes back where you came from.
 | **Reading mode** | Right to left / Left to right / Strip | Strip | How a series opens until you pick one for it (X while reading). |
 | **Page fit** | Page / Width / Fill | Page | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. Fill: the page covers the screen, cropped either way, panned in reading order. |
 | **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
-| **Hinge gap** | 0 to 200 px | 36 px | The strip skipped under the hinge in fullscreen, so pictures line up across the gap. |
-| **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT or B leaves. |
+| **Hinge gap** | 0 to 200 px | 36 px | The strip skipped under the hinge in fullscreen, so pictures line up across the gap. Strip only: Right to left, Left to right and Book put the screens edge to edge (0 px). |
+| **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT leaves. The Reading menu's View sets it too. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 1 GB | Pages kept on the card to read again without downloading; past the cap the least recently read go first. Covers: 50 MB more. |
 | **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |

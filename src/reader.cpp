@@ -2,6 +2,7 @@
 #include "manga_names.h"
 #include "readerfetchplan.h"
 #include "imagesize.h"
+#include "manga_ui_logic.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -188,6 +189,7 @@ namespace bp
 		zscale = 1;	// a chapter opens at the fit (the photo viewer keeps its zoom; a page of a new chapter is a new view)
 		zoomAt = 0;
 		angle = 0;	// a chapter opens unturned; the turn is per chapter (docs/design/manga.md section 4)
+		bookPrevAngle = 0;
 		strip.setView(w, layoutH());
 		strip.setPages((int)files.size(), 1.5);
 		strip.setZoom(1, 0, 0);	// the models outlive a chapter: the last one's zoom goes
@@ -206,6 +208,9 @@ namespace bp
 		readMode = m >= 0 && m < MANGA_MODES ? m : MANGA_STRIP;
 		paged.setRtl(readMode == MANGA_RTL);
 		paged.goTo(page, 0, false);
+		// Book held from the last chapter: its turn and its first spread (main sends the series' own Book next)
+		if (bookHold && readMode != MANGA_STRIP) angle = mangaBookAngle(bookHold);
+		bookS = page;
 		planPage = page;
 		planTarget = -1;
 		planAt = 0;
@@ -238,6 +243,7 @@ namespace bp
 		zscale = 1;
 		zoomAt = 0;
 		angle = 0;
+		bookS = 0;
 		if (archive)
 		{
 			std::lock_guard<std::mutex> l(cbzLock);
@@ -264,6 +270,8 @@ namespace bp
 	{
 		// a zoomed page is drawn wider than the view, so it is decoded at that width (a 2048 px cap keeps the
 		// textures within the panels' limit; decodePage adds its own 2x of the image's own width)
+		// Book: a page stands on the panel's height (turned, its width runs along the panel's 480 lines)
+		if (bookHold && readMode != MANGA_STRIP) return viewH;
 		if (!(zscale > 1.0001)) return viewW;
 		double w = zscale * viewW;
 		if (w > 2048) w = 2048;
@@ -275,6 +283,15 @@ namespace bp
 		// the one list want() queues from: the reader's own order (visible pages first, then the preload ahead and
 		// behind). (wantedPages() is the fetch plan's list, which follows the view only once a Seek run settles)
 		if (!opened) return {};
+		if (bookHold && readMode != MANGA_STRIP)
+		{
+			// the spread, then the spreads ahead (preload of them), then the one behind
+			int n = (int)files.size();
+			std::vector<int> out;
+			for (int i = bookS; i < std::min(n, bookS + 2 + 2 * preload); i++) out.push_back(i);
+			for (int i = bookS - 1; i >= std::max(0, bookS - 2); i--) out.push_back(i);
+			return out;
+		}
 		return readMode == MANGA_STRIP ? strip.wanted(preload, 1) : paged.wanted(preload, 1);
 	}
 
@@ -326,6 +343,7 @@ namespace bp
 		std::set<int> keep(list.begin(), list.end());
 		auto vis = strip.visible();
 		if (!s) vis = {paged.current(), paged.current()};
+		if (!s && bookHold) vis = {bookS, std::min(bookS + 1, (int)files.size() - 1)};
 		for (int i = vis.first - 2; i <= vis.second + 4; i++) keep.insert(i);
 		// Like a recycler view: what's on screen is always decoded; around it, the nearest pages (ahead first) only
 		// while they fit in DECODED_BUDGET. The rest stay as files in the page cache (fetchWanted still fetches
@@ -511,9 +529,30 @@ namespace bp
 		want();
 	}
 
+	std::vector<MangaReader::Box> MangaReader::bookBoxes() const
+	{
+		// a page on each panel, turned upright as held and fitted whole in it: the top panel's at the view's top,
+		// the bottom one's a panel and the hinge below (where bottomBoxes takes it from)
+		std::vector<Box> out;
+		int n = (int)files.size();
+		bool top = mangaBookEarlierOnTop(bookHold, readMode == MANGA_RTL);
+		auto place = [&](int page, double y0) {
+			if (page < 0 || page >= n) return;
+			double pw = 3, ph = 2;	// not decoded yet: a portrait page, turned
+			auto it = kept.find(page);
+			if (it != kept.end() && it->second.w > 0 && it->second.h > 0) { pw = it->second.w; ph = it->second.h; }
+			double sc = std::min(viewW / pw, viewH / ph), w = pw * sc, h = ph * sc;
+			out.push_back({page, (float)((viewW - w) / 2), (float)(y0 + (viewH - h) / 2), (float)w, (float)h});
+		};
+		place(top ? bookS : bookS + 1, 0);
+		place(top ? bookS + 1 : bookS, viewH + hingeGap());
+		return out;
+	}
+
 	std::vector<MangaReader::Box> MangaReader::boxes() const
 	{
 		std::vector<Box> out;
+		if (bookHold && readMode != MANGA_STRIP) return bookBoxes();
 		if (readMode == MANGA_STRIP)
 		{
 			auto vis = strip.visible();
@@ -564,8 +603,8 @@ namespace bp
 	{
 		// the view below the top panel and the hinge, in the bottom panel's own pixels
 		std::vector<Box> out;
-		if (!opened || !full) return out;
-		float shift = (float)(viewH + gapPx);
+		if (!opened || !bothPanels()) return out;
+		float shift = (float)(viewH + hingeGap());
 		for (auto b : boxes())
 		{
 			b.y -= shift;
@@ -603,7 +642,7 @@ namespace bp
 		strip.setView(viewW, layoutH());
 		paged.setView(viewW, layoutH());
 		if (readMode != MANGA_STRIP) paged.goTo(cur, 0, false);
-		fprintf(stderr, "reader: fullscreen %s (hinge %d px)\n", on ? "on" : "off", gapPx);
+		fprintf(stderr, "reader: fullscreen %s (hinge %d px)\n", on ? "on" : "off", hingeGap());
 		want();
 		redrawSoon(3);
 	}
@@ -658,12 +697,19 @@ namespace bp
 			int to = std::clamp((int)v, 0, (int)files.size() - 1);
 			if (readMode == MANGA_STRIP) strip.scrollTo(strip.pageTop(to));
 			else paged.goTo(to, ms, false);
+			bookS = to;	// (Book: the page asked for opens its spread)
 			if (seeks.seek(to, ms) == SeekRun::Now::Commit)
 				commitJump(planPage < 0 ? to : planPage, to, 1, ms);
 			redrawSoon(1);
 			return;
 		}
 		if (kind == Fullscreen) { setFullscreen(v > 0, (int)v2); return; }
+		if (kind == Book) { setBook((int)v); return; }
+		// Book shows each page whole, turned as held: no zoom, fit, turn or drag of its own (the Ui's swipe is a Step)
+		bool inBook = bookHold && readMode != MANGA_STRIP;
+		if (inBook && (kind == Zoom || kind == ZoomPoint || kind == Rotate || kind == Fit || kind == TouchDown ||
+						  kind == Drag || kind == Release))
+			return;
 		if (kind == Retry)
 		{
 			// Try again: the pages in view that failed are asked for again, and pages the GPU had no room for go up again
@@ -727,24 +773,22 @@ namespace bp
 		}
 		if (kind == Mode)
 		{
-			// the same page in the other mode, at rest
-			int cur = page(), m = (int)v;
-			if (m < 0 || m >= MANGA_MODES || m == readMode) return;
-			readMode = m;
-			// the paged modes show a page whole: the Strip's bands go (want() frees them), and are found again on the way back
-			bands.clear();
-			noBand.clear();
-			applyZoom();	// the model taking over reads at the zoom already set
-			strip.scrollTo(strip.pageTop(cur));
-			paged.setRtl(m == MANGA_RTL);
-			paged.goTo(cur, ms, false);
-			planPage = cur;
-			want();
-			redrawSoon(2);
+			// (Book reads a page at a time: it never goes to the Strip; the Ui offers the two directions only)
+			if (inBook && (int)v == MANGA_STRIP) return;
+			setMode((int)v, ms);
 			return;
 		}
 		// a step or a page turn is not a jump: its page starts its own preload at once
 		if (kind == Step || kind == Page) { planTarget = -1; planAt = 0; }
+		if (inBook)
+		{
+			// a spread forward or back (nothing past the last), or one page to realign the spread
+			int n = (int)files.size();
+			if (kind == Step && v > 0 && bookS + 2 < n) bookGo(bookS + 2);
+			else if (kind == Step && v < 0 && bookS > 0) bookGo(std::max(0, bookS - 2));
+			else if (kind == Page) bookGo(std::clamp(bookS + (v > 0 ? 1 : -1), 0, n - 1));
+			return;
+		}
 		if (readMode != MANGA_STRIP)
 		{
 			switch (kind)
@@ -784,6 +828,59 @@ namespace bp
 		}
 		if (kind == Step || kind == Page) planPage = page();
 		redrawSoon(1);
+	}
+
+	void MangaReader::setMode(int m, int64_t ms)
+	{
+		// the same page in the other mode, at rest
+		int cur = page();
+		if (m < 0 || m >= MANGA_MODES || m == readMode) return;
+		readMode = m;
+		// the paged modes show a page whole: the Strip's bands go (want() frees them), and are found again on the way back
+		bands.clear();
+		noBand.clear();
+		// the hinge's gap is the Strip's only: fullscreen's tall view changes height with the mode
+		strip.setView(viewW, layoutH());
+		paged.setView(viewW, layoutH());
+		applyZoom();	// the model taking over reads at the zoom already set
+		strip.scrollTo(strip.pageTop(cur));
+		paged.setRtl(m == MANGA_RTL);
+		paged.goTo(cur, ms, false);
+		bookS = cur;
+		planPage = cur;
+		want();
+		redrawSoon(2);
+	}
+
+	void MangaReader::setBook(int b)
+	{
+		if (b < 0 || b >= MANGA_BOOKS || b == bookHold) return;
+		int cur = page();
+		// a Strip reads one long column: Book opens it right to left, a page at a time
+		if (b && readMode == MANGA_STRIP) setMode(MANGA_RTL, 0);
+		if (!bookHold) bookPrevAngle = angle;
+		bookHold = b;
+		// whole pages: the zoom goes back to the fit (the paged row keeps its place under Book)
+		zscale = 1;
+		applyZoom();
+		angle = b ? mangaBookAngle(b) : bookPrevAngle;
+		bookS = cur;
+		paged.goTo(cur, 0, false);
+		planPage = cur;
+		fprintf(stderr, "reader: book %s (page %d)\n", b == MANGA_BOOK_LEFT ? "top screen left" : b ? "top screen right" : "off",
+			cur + 1);
+		applyRotation();	// every decoded page turned again (and want(): the spread's pages first)
+		redrawSoon(3);
+	}
+
+	void MangaReader::bookGo(int first)
+	{
+		if (first == bookS) return;
+		bookS = first;
+		paged.goTo(first, 0, false);	// (the paged row follows, so leaving Book reads on from this page)
+		planPage = first;
+		want();
+		redrawSoon(2);
 	}
 
 	void MangaReader::tick(int64_t now)
@@ -896,8 +993,10 @@ namespace bp
 				paged.setPageSize(d.index, pw, ph);	// Paged: the turned dimensions (same as original when unturned)
 				// (a copy for the bottom panel: the renderer drops its own once the page is on the GPU)
 				kept[d.index] = {pw, ph, displayPixels};
-				// the thumb is made from the turned pixels, so it matches what the reader shows
-				makeThumb(d.index, *displayPixels, pw, ph);
+				// the thumb is made from the turned pixels, so it matches what the reader shows; but in Book the grid
+				// (drawn the panel's usual way up) wants the page as it stands on the card
+				if (bookHold) makeThumb(d.index, *orig[d.index].rgba, d.img.w, d.img.h);
+				else makeThumb(d.index, *displayPixels, pw, ph);
 				// the renderer gets a copy it can move into its textures (the shared pixel buffer stays in kept/orig)
 				pr.addPage(d.index, pw, ph, displayPixels);
 				any = true;
@@ -938,6 +1037,12 @@ namespace bp
 		if (!opened) return false;
 		// a page that failed isn't waiting: it shows its grey placeholder and the error (error()); a page still to
 		// be fetched or decoded is
+		if (readMode != MANGA_STRIP && bookHold)
+		{
+			for (int i = bookS; i <= std::min(bookS + 1, (int)files.size() - 1); i++)
+				if (!pr.has(i) && !failed.count(i)) return true;
+			return false;
+		}
 		if (readMode != MANGA_STRIP)
 			return !pr.has(paged.current()) && !failed.count(paged.current());
 		auto vis = strip.visible();
@@ -957,6 +1062,7 @@ namespace bp
 	bool MangaReader::atEnd() const
 	{
 		if (!opened) return false;
+		if (readMode != MANGA_STRIP && bookHold) return bookS + 2 >= (int)files.size();	// the last page is in the spread
 		if (readMode != MANGA_STRIP) return paged.atEnd();
 		return strip.offset() >= strip.totalHeight() - strip.screenful() / 0.9 - 1;
 	}

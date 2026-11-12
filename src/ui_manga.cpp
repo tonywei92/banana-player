@@ -498,6 +498,8 @@ namespace bp
 			if (mangaMenu) return mangaMenuKey(b, p);
 			// the pages grid (Y): the D-pad moves the cursor, A jumps and closes, B or Y closes
 			if (mangaPages) return mangaPagesKey(b, p);
+			// Book: held sideways, the D-pad's UP and DOWN point along the spread
+			if (readerStatus.book) return mangaBookKey(b, p);
 			// RIGHT is forward unless Swap Left/Right is on (to match a right-to-left book); UP/DOWN zoom, and
 			// scrolling is the finger's alone (a drag on the page below)
 			bool flip = p.settings.mangaSwapLR;
@@ -527,10 +529,8 @@ namespace bp
 			// L3: turn the page 90° clockwise (paged modes only; the Strip ignores it, as the design says).
 			// each press cycles 0 → 90 → 180 → 270 → 0, kept per chapter, back to 0 on another chapter
 			case Button::L3: readerCmds.push_back({ReaderCmd::Rotate, 0, (int64_t)now}); break;
-			case Button::B:
-				if (readerStatus.fullscreen) mangaFullscreen(false, p);
-				else mangaCloseReader();
-				break;
+			// B goes back to the chapters; fullscreen stays how the reader reads (SELECT leaves it)
+			case Button::B: mangaCloseReader(); break;
 			default: break;
 			}
 			return false;
@@ -713,10 +713,11 @@ namespace bp
 			{
 				if (pt.kind == Pointer::Down && mangaMenuRect().hit(x, y))
 				{
+					auto rows = mangaMenuRows();
 					int r = (y - MGM_TOP) / MGM_ROW_H;
-					if (r >= 0 && r < MGM_ROWS && y < MGM_TOP + MGM_ROWS * MGM_ROW_H)
+					if (y >= MGM_TOP && r >= 0 && r < (int)rows.size())
 					{
-						mangaMenuCursor = r;
+						mangaMenuCursor = rows[r];
 						mangaMenuAct(p);
 					}
 				}
@@ -724,6 +725,28 @@ namespace bp
 			}
 			// the drag area and the slider follow the finger; the buttons act as it lifts
 			Uint32 now = SDL_GetTicks();
+			// Book: the panel is a page; a swipe along the spread (up or down the panel) turns it, a tap shows the
+			// page numbers. No drag of the page itself and no zoom: it is shown whole
+			if (readerStatus.book)
+			{
+				if (pt.kind == Pointer::Down)
+				{
+					if (readerStatus.failedHere && mangaRetryRect(true).hit(x, y)) { mangaRetry(); return false; }
+					mangaTouch = true;
+					mangaTapX = x;
+					mangaTapY = y;
+					mangaTapAt = now;
+				}
+				else if (pt.kind != Pointer::Move && mangaTouch)
+				{
+					mangaTouch = false;
+					int dy = y - mangaTapY, dx = x - mangaTapX;
+					if (std::abs(dy) > 40 && std::abs(dy) > std::abs(dx))
+						mangaBookTurn(mangaBookSwipe(readerStatus.book, readerStatus.mode == MANGA_RTL, p.settings.mangaSwapLR, dy), p);
+					else mfTagUntil = now + 1500;
+				}
+				return false;
+			}
 			bool full = readerStatus.fullscreen;
 			// the slider's page for the finger's x (the reading page's and, in fullscreen, the sheet's)
 			auto seekHere = [&]() {
@@ -1771,7 +1794,8 @@ namespace bp
 			drawMangaSeries(p);
 			return;
 		}
-		if (readerStatus.fullscreen && readerBottom.on)
+		// (the pages grid comes over Fullscreen and Book too: it is drawn below, never under the pages)
+		if (!mangaPages && (readerStatus.fullscreen || readerStatus.book) && readerBottom.on)
 		{
 			drawMangaFull();
 			if (mangaMenu) drawMangaReadingMenu(p);	// over the view's lower part, as any sheet there
@@ -1850,11 +1874,85 @@ namespace bp
 	int Ui::mangaModeFor(const std::string& seriesId, const Player& p) const
 	{
 		const MangaSeries* ms = mangaStore ? mangaStore->series(seriesId) : nullptr;
-		if (ms && ms->readingMode == "rtl") return MANGA_RTL;
-		if (ms && ms->readingMode == "ltr") return MANGA_LTR;
-		if (ms && ms->readingMode == "strip") return MANGA_STRIP;
+		int mode = 0, book = 0;
+		if (ms && parseMangaReadingMode(ms->readingMode, mode, book)) return mode;
 		int m = p.settings.mangaMode;
 		return m >= 0 && m < MANGA_MODES ? m : MANGA_RTL;
+	}
+
+	int Ui::mangaBookFor(const std::string& seriesId) const
+	{
+		const MangaSeries* ms = mangaStore ? mangaStore->series(seriesId) : nullptr;
+		int mode = 0, book = 0;
+		if (ms && parseMangaReadingMode(ms->readingMode, mode, book)) return book;
+		return MANGA_BOOK_OFF;
+	}
+
+	void Ui::mangaSetBook(int book, Player& p)
+	{
+		(void)p;
+		if (book < 0 || book >= MANGA_BOOKS || book == readerStatus.book) return;
+		Uint32 now = SDL_GetTicks();
+		readerCmds.push_back({ReaderCmd::Book, (double)book, (int64_t)now});
+		if (book) mangaHoldLast = book;	// (the View row turns Book on held the same way next time)
+		// a Strip opens Book right to left (the reader does the same): the series keeps both
+		int mode = readerStatus.mode == MANGA_STRIP && book ? MANGA_RTL : readerStatus.mode;
+		if (mangaStore)
+			if (const MangaSeries* ms = mangaStore->series(mangaReadSeriesId))
+			{
+				MangaSeries s = *ms;
+				s.readingMode = mangaReadingModeId(mode, book);
+				mangaStore->putSeries(s);
+				mangaSave();
+			}
+		// on: how to hold it, said the panel's usual way up (it is still held so); off: nothing to say
+		mangaBookToast = book;
+		mangaToastUntil = book ? now + 3000 : 0;
+		mangaCtrlUntil = 0;
+		mfTagUntil = book ? now + 3000 : 0;
+		mangaZoomAsked = 100;
+	}
+
+	void Ui::mangaBookTurn(int step, Player& p)
+	{
+		Uint32 now = SDL_GetTicks();
+		if (step > 0 && readerStatus.atEnd) { mangaChapterStep(1, p); return; }	// the last spread: the next chapter
+		if (step != 0) readerCmds.push_back({ReaderCmd::Step, (double)step, (int64_t)now});
+		mfTagUntil = now + 1500;
+	}
+
+	bool Ui::mangaBookKey(Button b, Player& p)
+	{
+		Uint32 now = SDL_GetTicks();
+		bool rtl = readerStatus.mode == MANGA_RTL;
+		// UP and DOWN point along the spread as it is held; LEFT and RIGHT across it, where there is nothing to do
+		if (b == Button::Up || b == Button::Down)
+		{
+			mangaBookTurn(mangaBookStep(readerStatus.book, rtl, p.settings.mangaSwapLR, b == Button::Up ? -1 : 1), p);
+			return false;
+		}
+		switch (b)
+		{
+		// one page, to realign a spread (a cover alone, a two-page picture split over the hinge)
+		case Button::L: readerCmds.push_back({ReaderCmd::Page, -1, (int64_t)now}); mfTagUntil = now + 1500; break;
+		case Button::R: readerCmds.push_back({ReaderCmd::Page, 1, (int64_t)now}); mfTagUntil = now + 1500; break;
+		case Button::A: if (readerStatus.failedHere) mangaRetry(); break;
+		// the two directions only: Book reads a page at a time
+		case Button::X: mangaSetMode(rtl ? MANGA_LTR : MANGA_RTL, p); mfTagUntil = now + 1500; break;
+		case Button::L2: mangaChapterStep(-1, p); break;
+		case Button::R2: mangaChapterStep(1, p); break;
+		// SELECT: fullscreen, the usual way up (Book goes)
+		case Button::Select:
+			mangaSetBook(MANGA_BOOK_OFF, p);
+			if (!readerStatus.fullscreen) mangaFullscreen(true, p);
+			break;
+		case Button::Start: mangaOpenReadingMenu(); break;
+		case Button::Y: mangaPagesOpen(p); break;
+		// B goes back to the chapters; Book stays the series' way to read (the menu's View leaves it)
+		case Button::B: mangaCloseReader(); break;
+		default: break;
+		}
+		return false;
 	}
 
 	void Ui::mangaCycleMode(Player& p)
@@ -1873,8 +1971,7 @@ namespace bp
 			if (const MangaSeries* ms = mangaStore->series(mangaReadSeriesId))
 			{
 				MangaSeries s = *ms;
-				static const char* IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
-				s.readingMode = IDS[m];
+				s.readingMode = mangaReadingModeId(m, readerStatus.book);	// (Book kept: X switches the direction in it)
 				mangaStore->putSeries(s);
 				mangaSave();
 			}
@@ -1907,20 +2004,82 @@ namespace bp
 	{
 		// over the page it is reading: nothing behind it moves, so closing it reads on exactly where it was
 		mangaMenu = true;
-		mangaMenuCursor = 0;
+		mangaMenuCursor = MGM_VIEW;
+		mangaViewAsked = -1;
+		mangaHoldAsked = 0;
+	}
+
+	int Ui::mangaViewNow() const
+	{
+		// what was just asked, until the reader says it (its status comes a pass behind)
+		if (mangaViewAsked >= 0) return mangaViewAsked;
+		return readerStatus.book ? MV_BOOK : readerStatus.fullscreen ? MV_FULL : MV_ONE;
+	}
+
+	int Ui::mangaHoldNow() const
+	{
+		if (mangaHoldAsked) return mangaHoldAsked;
+		return readerStatus.book ? readerStatus.book : mangaHoldLast;
+	}
+
+	std::vector<int> Ui::mangaMenuRows() const
+	{
+		// only what means something for the view and the mode: Hold in Book, the hinge in a fullscreen Strip (where
+		// a picture runs on across the fold), no fit for the Strip (it always fits the width), no fit or zoom in Book
+		// (a whole page on each screen)
+		int v = mangaViewNow();
+		std::vector<int> r{MGM_VIEW};
+		if (v == MV_BOOK) r.push_back(MGM_HOLD);
+		r.push_back(MGM_MODE);
+		if (v != MV_BOOK)
+		{
+			if (readerStatus.mode != MANGA_STRIP) r.push_back(MGM_FIT);
+			r.push_back(MGM_ZOOM);
+		}
+		if (v == MV_FULL && readerStatus.mode == MANGA_STRIP) r.push_back(MGM_HINGE);
+		r.push_back(MGM_SWAP);
+		r.push_back(MGM_PAGES);
+		r.push_back(MGM_SETTINGS);
+		return r;
+	}
+
+	void Ui::mangaSetView(int v, Player& p)
+	{
+		int cur = mangaViewNow();
+		if (v < 0 || v >= MV_COUNT || v == cur) return;
+		if (cur == MV_BOOK) mangaSetBook(MANGA_BOOK_OFF, p);
+		if (v == MV_BOOK)
+		{
+			// Book stands alone: fullscreen goes (leaving Book later comes back to one screen)
+			if (readerStatus.fullscreen) mangaFullscreen(false, p);
+			mangaSetBook(mangaHoldNow(), p);
+		}
+		else mangaFullscreen(v == MV_FULL, p);
+		// one screen or fullscreen is how the next chapter opens too (Book is the series' own)
+		if (v != MV_BOOK && p.settings.mangaOpenFull != (v == MV_FULL))
+		{
+			Settings s = p.settings;
+			s.mangaOpenFull = v == MV_FULL;
+			p.setSettings(s);
+		}
+		mangaViewAsked = v;
 	}
 
 	bool Ui::mangaMenuKey(Button b, Player& p)
 	{
+		auto rows = mangaMenuRows();
+		int n = (int)rows.size();
+		int i = (int)(std::find(rows.begin(), rows.end(), mangaMenuCursor) - rows.begin());
+		if (i >= n) i = 0;	// (its row went with the view: back to the first)
 		switch (b)
 		{
-		case Button::Up: mangaMenuCursor = (mangaMenuCursor + MGM_ROWS - 1) % MGM_ROWS; break;
-		case Button::Down: mangaMenuCursor = (mangaMenuCursor + 1) % MGM_ROWS; break;
-		case Button::Left: mangaMenuStep(-1, p); break;
-		case Button::Right: mangaMenuStep(1, p); break;
-		case Button::A: mangaMenuAct(p); break;
+		case Button::Up: mangaMenuCursor = rows[(i + n - 1) % n]; break;
+		case Button::Down: mangaMenuCursor = rows[(i + 1) % n]; break;
+		case Button::Left: mangaMenuCursor = rows[i]; mangaMenuStep(-1, p); break;
+		case Button::Right: mangaMenuCursor = rows[i]; mangaMenuStep(1, p); break;
+		case Button::A: mangaMenuCursor = rows[i]; mangaMenuAct(p); break;
 		case Button::B:
-		case Button::Start: mangaMenu = false; break;
+		case Button::Start: mangaMenu = false; mangaViewAsked = -1; mangaHoldAsked = 0; break;
 		default: break;
 		}
 		return false;
@@ -1928,20 +2087,30 @@ namespace bp
 
 	void Ui::mangaMenuStep(int dir, Player& p)
 	{
+		bool book = mangaViewNow() == MV_BOOK;
 		switch (mangaMenuCursor)
 		{
-		// Fullscreen: the same as SELECT (both arrows toggle, as a settings switch does)
-		case 0: mangaFullscreen(!readerStatus.fullscreen, p); break;
-		case 1: mangaSetMode((readerStatus.mode + dir + MANGA_MODES) % MANGA_MODES, p); break;
+		// One screen, Fullscreen, Book, round
+		case MGM_VIEW: mangaSetView((mangaViewNow() + dir + MV_COUNT) % MV_COUNT, p); break;
+		// the top screen on the left or the right as held
+		case MGM_HOLD:
+		{
+			int h = mangaHoldNow() == MANGA_BOOK_LEFT ? MANGA_BOOK_RIGHT : MANGA_BOOK_LEFT;
+			mangaSetBook(h, p);
+			mangaHoldAsked = h;
+			break;
+		}
+		// (Book reads a page at a time: its two directions only)
+		case MGM_MODE:
+			if (book) mangaSetMode(readerStatus.mode == MANGA_LTR ? MANGA_RTL : MANGA_LTR, p);
+			else mangaSetMode((readerStatus.mode + dir + MANGA_MODES) % MANGA_MODES, p);
+			break;
 		// the setting itself, so the next chapter opens the same way
-		case 2: changeSetting(MANGA_FIT_ROW, dir, p); break;
-		case 3: mangaZoomStep(dir); break;
-		// the hinge only means something with both panels as one view
-		case 4: if (readerStatus.fullscreen) changeSetting(MANGA_HINGE_ROW, dir, p); break;
-		case 5: changeSetting(TOGGLE_ROW + 13, dir, p); break;	// Swap Left/Right
-		// Pages: nothing to step
-		case 6: break;
-		default: break;
+		case MGM_FIT: changeSetting(MANGA_FIT_ROW, dir, p); break;
+		case MGM_ZOOM: mangaZoomStep(dir); break;
+		case MGM_HINGE: changeSetting(MANGA_HINGE_ROW, dir, p); break;
+		case MGM_SWAP: changeSetting(TOGGLE_ROW + 13, dir, p); break;	// Swap Left/Right
+		default: break;	// Pages and All Manga settings: nothing to step
 		}
 	}
 
@@ -1949,83 +2118,93 @@ namespace bp
 	{
 		switch (mangaMenuCursor)
 		{
-		case 0: mangaFullscreen(!readerStatus.fullscreen, p); break;
-		case 1: mangaSetMode((readerStatus.mode + 1) % MANGA_MODES, p); break;
-		case 2: changeSetting(MANGA_FIT_ROW, 1, p); break;
-		case 3: mangaZoomToggle(); break;
-		case 4: if (readerStatus.fullscreen) changeSetting(MANGA_HINGE_ROW, 1, p); break;
-		case 5: changeSetting(TOGGLE_ROW + 13, 1, p); break;
-		case 6:
+		case MGM_ZOOM: mangaZoomToggle(); break;
+		case MGM_PAGES:
 			// the pages grid; the menu closes, Y or B in the grid comes back to reading
 			mangaMenu = false;
 			mangaPagesOpen(p);
 			break;
-		case 7:
+		case MGM_SETTINGS:
 			// the app's own settings page; B there comes back here, the menu closed
 			mangaMenu = false;
 			openMangaSettings();
 			break;
-		default: break;
+		default: mangaMenuStep(1, p); break;	// a value: A steps it on, as RIGHT does
 		}
 	}
 
 	void Ui::drawMangaReadingMenu(const Player& p)
 	{
+		// the reader caught up with what was asked: its own status from here
+		if (mangaViewAsked >= 0 && mangaViewAsked == (readerStatus.book ? MV_BOOK : readerStatus.fullscreen ? MV_FULL : MV_ONE))
+			mangaViewAsked = -1;
+		if (mangaHoldAsked && mangaHoldAsked == readerStatus.book) mangaHoldAsked = 0;
 		// a compact sheet over the page: its title and how to leave it, then a row per thing read with
 		Rect sheet = mangaMenuRect();
 		fillRound(sheet, SURFACE, R_DIALOG, ROUND_TL | ROUND_TR);
 		drawTextMid("Reading", 1, TEXT, 24, 150, 300);
 		drawTextMid("START \xC2\xB7 B Close", 0, DIM, W - 24, 150, 300, 1);
+		static const char* VIEWS[MV_COUNT] = {"One screen", "Fullscreen", "Book"};
+		static const char* HOLDS[MANGA_BOOKS] = {"", "Top screen left", "Top screen right"};
 		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
 		static const char* FITS[MANGA_FITS] = {"Page", "Width", "Fill"};
+		int view = mangaViewNow();
+		bool book = view == MV_BOOK;
 		int mode = readerStatus.mode >= 0 && readerStatus.mode < MANGA_MODES ? readerStatus.mode : 0;
+		if (book && mode == MANGA_STRIP) mode = MANGA_RTL;	// (Book opens a Strip right to left; the status follows)
 		int fit = p.settings.mangaFit >= 0 && p.settings.mangaFit < MANGA_FITS ? p.settings.mangaFit : 0;
 		int zoom = readerStatus.zoomPct > 0 ? readerStatus.zoomPct : 100;
-		const char* LABELS[MGM_ROWS] = {"Fullscreen", "Reading mode", "Page fit", "Zoom", "Hinge gap",
+		static const char* LABELS[MGM_COUNT] = {"View", "Hold", "Reading mode", "Page fit", "Zoom", "Hinge gap",
 			"Swap Left/Right", "Pages", "All Manga settings\xE2\x80\xA6"};
-		for (int i = 0; i < MGM_ROWS; i++)
+		auto rows = mangaMenuRows();
+		if (std::find(rows.begin(), rows.end(), mangaMenuCursor) == rows.end()) mangaMenuCursor = MGM_VIEW;
+		for (int i = 0; i < (int)rows.size(); i++)
 		{
+			int id = rows[i];
 			Rect r = mangaMenuRowRect(i);
-			bool at = i == mangaMenuCursor;
-			// the hinge is a fullscreen thing: dimmed wherever the pages fill one panel only
-			bool dim = i == 4 && !readerStatus.fullscreen;
+			bool at = id == mangaMenuCursor;
 			if (at) drawFocus(r);
 			int mid = r.y + r.h / 2;
 			SDL_Color ink = at ? ACCENT : TEXT;
-			drawTextMid(LABELS[i], 1, dim ? DIM : ink, 32, mid, 330);
+			drawTextMid(LABELS[id], 1, ink, 32, mid, 330);
 			// the last two rows are doors (Pages, All Manga settings), not values: a chevron, no step arrows
-			if (i == 6 || i == 7)
+			if (id == MGM_PAGES || id == MGM_SETTINGS)
 			{
 				drawGlyphMid(G_RIGHT, 604, mid, at ? ACCENT : DIM);
 				continue;
 			}
-			bool step = !dim;
-			if (step) drawTextMid("<", 1, at ? ACCENT : DIM, SET_ARROW_X, mid);
+			drawTextMid("<", 1, at ? ACCENT : DIM, SET_ARROW_X, mid);
 			std::string value;
-			switch (i)
+			switch (id)
 			{
-			case 0: value = readerStatus.fullscreen ? "On" : "Off"; break;
-			case 1: value = MODES[mode]; break;
-			case 2: value = FITS[fit]; break;
-			case 3: value = std::to_string(zoom) + " %"; break;
-			case 4: value = readerStatus.fullscreen ? std::to_string(p.settings.mangaHinge) + " px" : "Fullscreen only"; break;
-			case 5: value = p.settings.mangaSwapLR ? "On" : "Off"; break;
+			case MGM_VIEW: value = VIEWS[view]; break;
+			case MGM_HOLD: value = HOLDS[mangaHoldNow() == MANGA_BOOK_RIGHT ? MANGA_BOOK_RIGHT : MANGA_BOOK_LEFT]; break;
+			case MGM_MODE: value = MODES[mode]; break;
+			case MGM_FIT: value = FITS[fit]; break;
+			case MGM_ZOOM: value = std::to_string(zoom) + " %"; break;
+			case MGM_HINGE: value = std::to_string(p.settings.mangaHinge) + " px"; break;
+			case MGM_SWAP: value = p.settings.mangaSwapLR ? "On" : "Off"; break;
 			default: break;
 			}
-			if (!value.empty()) drawTextMid(value, 1, dim ? DIM : ink, 490, mid, 196, 2);
-			if (step) drawTextMid(">", 1, at ? ACCENT : DIM, 608, mid, 0, 1);
+			drawTextMid(value, 1, ink, 490, mid, 196, 2);
+			drawTextMid(">", 1, at ? ACCENT : DIM, 608, mid, 0, 1);
 		}
 		// what the focused row does, in a line under them
-		static const char* HELP[MGM_ROWS] = {
-			"Both panels show the pages; SELECT does the same.",
-			"How this series reads; X does the same.",
-			"Page keeps it whole, Width fills the screen's width.",
-			"UP/DOWN step the zoom; A goes twice or back to the fit.",
-			"The gap between the panels, in fullscreen.",
-			"Off: RIGHT is forward. On: LEFT is forward.",
-			"The chapter's thumbnails; A jumps to a page.",
-			"The reader's own settings page; B comes back here."};
-		drawTextMid(HELP[mangaMenuCursor], 0, DIM, 24, 452, 592);
+		const char* help = "";
+		switch (mangaMenuCursor)
+		{
+		case MGM_VIEW: help = "One screen, both as one tall view, or Book (held sideways)."; break;
+		case MGM_HOLD: help = "Which side the top screen is on as you hold it."; break;
+		case MGM_MODE: help = book ? "Which page of a spread comes first; X does the same." : "How this series reads; X does the same."; break;
+		case MGM_FIT: help = "Page keeps it whole, Width fills the screen's width."; break;
+		case MGM_ZOOM: help = "UP/DOWN step the zoom; A goes twice or back to the fit."; break;
+		case MGM_HINGE: help = "The gap skipped under the hinge, so pictures line up."; break;
+		case MGM_SWAP: help = book ? "Turns round which way UP and DOWN turn the spread." : "Off: RIGHT is forward. On: LEFT is forward."; break;
+		case MGM_PAGES: help = "The chapter's thumbnails; A jumps to a page."; break;
+		case MGM_SETTINGS: help = "The reader's own settings page; B comes back here."; break;
+		default: break;
+		}
+		drawTextMid(help, 0, DIM, 24, 452, 592);
 	}
 
 	void Ui::mangaFullscreen(bool on, Player& p)
@@ -2033,6 +2212,7 @@ namespace bp
 		Uint32 now = SDL_GetTicks();
 		readerCmds.push_back({ReaderCmd::Fullscreen, on ? 1.0 : 0.0, (int64_t)now, (double)p.settings.mangaHinge});
 		mfTagUntil = on ? now + 2500 : 0;
+		mangaBookToast = 0;
 		if (!on) mangaCtrlUntil = 0;
 		// the first fullscreen ever says how to leave it, here in the panel's middle; remembered so it says it once
 		if (on && !p.settings.mangaFullSeen)
@@ -2066,7 +2246,7 @@ namespace bp
 		// this renderer's textures, one page a frame at most so a turn never stalls the panel
 		Uint32 now = SDL_GetTicks();
 		if (mangaCtrlUntil && now >= mangaCtrlUntil) mangaCtrlUntil = 0;	// the timer's end: the controls go
-		if (mangaToastUntil && now >= mangaToastUntil) mangaToastUntil = 0;
+		if (mangaToastUntil && now >= mangaToastUntil) mangaToastUntil = mangaBookToast = 0;
 		if (readerBottom.gen != mfGen) { mfFree(); mfGen = readerBottom.gen; }
 		// a new page: its number shows a moment
 		if (readerStatus.page != mfLastPage) { mfLastPage = readerStatus.page; mfTagUntil = now + 1500; }
@@ -2079,6 +2259,17 @@ namespace bp
 		{
 			SDL_Rect r{(int)std::lround(b.x * pw), (int)std::lround(b.y * ph), (int)std::lround(b.w * pw), (int)std::lround(b.h * ph)};
 			auto it = mfTex.find(b.page);
+			// the page's pixels changed (turned by L3 or Book, decoded again wider): made again from the new ones,
+			// the old texture drawn until then
+			if (it != mfTex.end() && !made)
+				for (auto& px : readerBottom.pages)
+					if (px.page == b.page && px.rgba && px.rgba.get() != it->second.src)
+					{
+						for (SDL_Texture* x : it->second.tiles) SDL_DestroyTexture(x);
+						mfTex.erase(it);
+						it = mfTex.end();
+						break;
+					}
 			if (it == mfTex.end() && !made)
 			{
 				for (auto& px : readerBottom.pages)
@@ -2087,6 +2278,7 @@ namespace bp
 					FullTex ft;
 					ft.w = px.w;
 					ft.h = px.h;
+					ft.src = px.rgba.get();
 					for (int y = 0; y < px.h; y += 2048)
 					{
 						int th = std::min(2048, px.h - y);
@@ -2131,8 +2323,14 @@ namespace bp
 			for (SDL_Texture* x : old->second.tiles) SDL_DestroyTexture(x);
 			mfTex.erase(old);
 		}
+		// Book: the page numbers turned as the pages are, at the foot of the spread as held (the panel's left edge
+		// held top-left, its right edge held top-right); at the chapter's end they stay, with what comes next
+		if (readerStatus.book && readerStatus.pages > 0)
+		{
+			if (now < mfTagUntil || readerStatus.atEnd) drawMangaBookTag();
+		}
 		// a thin page tag for a moment after a change
-		if (now < mfTagUntil && readerStatus.pages > 0)
+		else if (now < mfTagUntil && readerStatus.pages > 0)
 		{
 			std::string tag = std::to_string(readerStatus.page + 1) + " / " + std::to_string(readerStatus.pages);
 			int tw = (int)std::lround(textWidth(tag, 0) / sx) + 16;
@@ -2143,6 +2341,30 @@ namespace bp
 		// the controls, while they show (over the tag), then the first open's toast over both
 		if (now < mangaCtrlUntil) drawMangaControls();
 		if (now < mangaToastUntil) drawMangaToast();
+	}
+
+	void Ui::drawMangaBookTag()
+	{
+		int a = readerStatus.page + 1, n = readerStatus.pages, b = std::min(a + 1, n);
+		std::string tag = (a == b ? std::to_string(a) : std::to_string(a) + "\xE2\x80\x93" + std::to_string(b)) + " / " + std::to_string(n);
+		if (readerStatus.atEnd)
+		{
+			int ci = mangaReadChapterIndex();
+			bool next = ci >= 0 && ci + 1 < mangaReadChapterTotal();
+			tag += next ? " \xC2\xB7 End of chapter: turn once more for the next" : " \xC2\xB7 You\xE2\x80\x99re caught up";
+		}
+		SDL_Texture* t = text(tag, 0, TEXT);
+		if (!t) return;
+		int tw, th;
+		SDL_QueryTexture(t, nullptr, nullptr, &tw, &th);
+		// the chip, in units: turned, the text's length runs down the panel
+		int len = (int)std::lround(tw / sy) + 16, thick = (int)std::lround(th / sx) + 8;
+		bool left = readerStatus.book != MANGA_BOOK_RIGHT;
+		int cx = left ? 12 + thick / 2 : W - 12 - thick / 2, cy = H / 2;
+		fillRound({cx - thick / 2, cy - len / 2, thick, len}, SURFACE, R_CHIP);
+		// the text upright as held: a quarter turn clockwise held top-left (the panel's right edge is up), back held top-right
+		SDL_Rect dst{(int)std::lround(cx * sx) - tw / 2, (int)std::lround(cy * sy) - th / 2, tw, th};
+		SDL_RenderCopyEx(ren, t, nullptr, &dst, left ? 90.0 : 270.0, nullptr, SDL_FLIP_NONE);
 	}
 
 	void Ui::drawMangaControls()
@@ -2173,7 +2395,10 @@ namespace bp
 	void Ui::drawMangaToast()
 	{
 		// how to leave fullscreen, the first time it opens: a box in the panel's middle for 2 s
-		const char* text = "Fullscreen \xC2\xB7 SELECT or B to leave";
+		std::string text = "Fullscreen \xC2\xB7 SELECT to leave";
+		if (mangaBookToast)
+			text = std::string("Book \xC2\xB7 turn the handheld: top screen on the ") +
+				(mangaBookToast == MANGA_BOOK_RIGHT ? "right" : "left");
 		int tw = (int)std::lround(textWidth(text, 0) / sx) + 32;
 		fillRound({W / 2 - tw / 2, H / 2 - 22, tw, 44}, SURFACE, R_BUTTON);
 		drawTextMid(text, 0, TEXT, W / 2, H / 2, 0, 2);

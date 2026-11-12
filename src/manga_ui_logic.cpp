@@ -1,4 +1,5 @@
 #include "manga_ui_logic.h"
+#include "settings.h"
 #include <cstdio>
 
 namespace bp
@@ -93,5 +94,64 @@ namespace bp
 		if (d < 30 * 86400) return n(d / (7 * 86400), " week ago", " weeks ago");
 		if (d < 365 * 86400) return n(d / (30 * 86400), " month ago", " months ago");
 		return n(d / (365 * 86400), " year ago", " years ago");
+	}
+
+	bool parseMangaReadingMode(const std::string& s, int& mode, int& book)
+	{
+		book = MANGA_BOOK_OFF;
+		std::string m = s, b;
+		size_t slash = s.find('/');
+		if (slash != std::string::npos) { m = s.substr(0, slash); b = s.substr(slash + 1); }
+		if (m == "rtl") mode = MANGA_RTL;
+		else if (m == "ltr") mode = MANGA_LTR;
+		else if (m == "strip") mode = MANGA_STRIP;
+		else return false;
+		// a strip can't be a book (its pages run down, one long column)
+		if (mode != MANGA_STRIP)
+		{
+			if (b == "book-left") book = MANGA_BOOK_LEFT;
+			else if (b == "book-right") book = MANGA_BOOK_RIGHT;
+		}
+		return true;
+	}
+
+	std::string mangaReadingModeId(int mode, int book)
+	{
+		static const char* IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
+		std::string s = IDS[mode >= 0 && mode < MANGA_MODES ? mode : MANGA_RTL];
+		if (mode == MANGA_STRIP) return s;
+		if (book == MANGA_BOOK_LEFT) return s + "/book-left";
+		if (book == MANGA_BOOK_RIGHT) return s + "/book-right";
+		return s;
+	}
+
+	bool mangaBookEarlierOnTop(int book, bool rtl)
+	{
+		// the top panel is the reader's left when held top-left; the earlier page is on the left in left to right
+		bool topIsLeft = book != MANGA_BOOK_RIGHT;
+		return topIsLeft == !rtl;
+	}
+
+	int mangaBookAngle(int book)
+	{
+		// held with the top panel on the left, the panel's right edge is up: the page turned a quarter clockwise
+		return book == MANGA_BOOK_RIGHT ? 270 : 90;
+	}
+
+	int mangaBookStep(int book, bool rtl, bool swap, int dpadDy)
+	{
+		if (dpadDy == 0) return 0;
+		// top panel on the left: DOWN points to the reader's right; on the right, UP does
+		bool pressRight = book == MANGA_BOOK_RIGHT ? dpadDy < 0 : dpadDy > 0;
+		bool forwardRight = rtl == swap;	// left to right reads on rightward; Swap turns it round
+		return pressRight == forwardRight ? 1 : -1;
+	}
+
+	int mangaBookSwipe(int book, bool rtl, bool swap, double dy)
+	{
+		if (dy == 0) return 0;
+		// either way it is held, a finger moving up the panel goes the way UP points, and pulls in the page from
+		// DOWN's side: the turn DOWN makes
+		return mangaBookStep(book, rtl, swap, dy < 0 ? 1 : -1);
 	}
 }

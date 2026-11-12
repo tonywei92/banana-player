@@ -1452,6 +1452,8 @@ int main(int argc, char** argv)
 					}
 					else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode, rq.fit))
 						ui.readerStatus.error = reader.error();
+					// the series' own Book (or off), each chapter: it turns the pages as they are decoded
+					if (reader.isOpen()) reader.command(MangaReader::Book, rq.book, (int64_t)now);
 				}
 				for (auto& c : ui.readerCmds)
 				{
@@ -1485,9 +1487,10 @@ int main(int argc, char** argv)
 					ui.readerStatus.zoomPct = reader.zoomPct();
 					ui.readerStatus.fullscreen = reader.fullscreen();
 					ui.readerStatus.rotation = reader.rotation();
+					ui.readerStatus.book = reader.book();
 					// fullscreen: the bottom panel's share of the view, as fractions of the panel, and the pixels it needs
 					Ui::ReaderBottom rb;
-					rb.on = reader.fullscreen();
+					rb.on = reader.bothPanels();	// fullscreen, or Book (a page on each panel)
 					rb.gen = reader.chapterGen();
 					if (rb.on)
 					{

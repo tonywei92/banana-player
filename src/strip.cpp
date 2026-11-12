@@ -182,7 +182,7 @@ namespace bp
 		off = clampOff(off - dy);	// fingers move the content, so a downward drag walks up the column
 		panX = clampPan(panX - dx);	// and a rightward one reveals what is left of the zoomed column
 		if (off != was) dir = off > was ? 1 : -1;
-		drags.push_back({ms, off});
+		drags.push_back({ms, off, panX});
 		// 200 ms is twice the release's window: pruning here can never starve the estimate, and a gesture's samples
 		// stay small however long the finger drags
 		size_t drop = 0;
@@ -194,7 +194,7 @@ namespace bp
 	{
 		// the finger's velocity is how fast the content was moving in the last 100 ms before it let go; a finger
 		// that rested there has no sample in that window and so no fling
-		double v = 0;
+		double v = 0, vx = 0;
 		size_t at = 0;
 		while (at < drags.size() && drags[at].ms < ms - VELOCITY_WINDOW_MS) at++;
 		if (at + 1 < drags.size())
@@ -202,19 +202,27 @@ namespace bp
 			const Drag& a = drags[at];
 			const Drag& b = drags.back();
 			int64_t dt = b.ms - a.ms;
-			if (dt > 0) v = (b.off - a.off) / (double)dt * 1000;
+			if (dt > 0)
+			{
+				v = (b.off - a.off) / (double)dt * 1000;
+				vx = (b.pan - a.pan) / (double)dt * 1000;	// (0 at the fit: the column can't pan)
+			}
 		}
 		drags.clear();
-		if (v > MAX_FLING) v = MAX_FLING;
-		if (v < -MAX_FLING) v = -MAX_FLING;
+		v = std::max(-MAX_FLING, std::min(MAX_FLING, v));
+		vx = std::max(-MAX_FLING, std::min(MAX_FLING, vx));
 		// a speed the fling would stop at on its first step is no motion at all
-		if (std::fabs(v) < STOP_SPEED) return;
+		if (std::fabs(v) < STOP_SPEED) v = 0;
+		if (std::fabs(vx) < STOP_SPEED) vx = 0;
+		if (v == 0 && vx == 0) return;
 		stop();
 		fling = true;
 		flingV = v;
 		flingFrom = off;
+		flingVX = vx;
+		flingFromX = panX;
 		flingAt = ms;
-		dir = v > 0 ? 1 : -1;
+		if (v != 0) dir = v > 0 ? 1 : -1;
 	}
 
 	void Strip::animateTo(double y, int64_t ms, int64_t durationMs)
@@ -243,31 +251,27 @@ namespace bp
 			double t = (double)(ms - flingAt);
 			if (t < 0) t = 0;
 			bool done = false;
-			double speed = std::fabs(flingV) * std::exp(-t / TAU_MS);
+			// both axes slow on the one curve: the faster one says when it ends
+			double v0 = std::max(std::fabs(flingV), std::fabs(flingVX));
+			double speed = v0 * std::exp(-t / TAU_MS);
 			if (speed < STOP_SPEED)
 			{
 				// stop where the curve itself ends, not where this caller's frame happens to land, so a 5 ms and a
 				// 50 ms stepper finish on the same pixel
-				t = TAU_MS * std::log(std::fabs(flingV) / STOP_SPEED);
+				t = TAU_MS * std::log(v0 / STOP_SPEED);
 				done = true;
 			}
 			// the integral of v0 * exp(-t / tau): v0 * tau * (1 - exp(-t / tau)), with tau in seconds
-			double y = flingFrom + flingV * (TAU_MS / 1000.0) * (1 - std::exp(-t / TAU_MS));
+			double k = (TAU_MS / 1000.0) * (1 - std::exp(-t / TAU_MS));
+			double y = flingFrom + flingV * k, x = flingFromX + flingVX * k;
 			double max = maxOffset();
-			if (flingV > 0 && y >= max)
-			{
-				off = max;
-				stop();
-				return false;
-			}
-			if (flingV < 0 && y <= 0)
-			{
-				off = 0;
-				stop();
-				return false;
-			}
-			off = y;
-			if (done)
+			// an axis that meets its end stops there; the fling goes on while the other still moves
+			bool yEnd = flingV == 0 || (flingV > 0 && y >= max) || (flingV < 0 && y <= 0);
+			off = std::max(0.0, std::min(max, y));
+			double px = clampPan(x);
+			bool xEnd = flingVX == 0 || px != x;
+			panX = px;
+			if (done || (yEnd && xEnd))
 			{
 				stop();
 				return false;
@@ -356,7 +360,7 @@ namespace bp
 	void Strip::stop()
 	{
 		fling = false;
-		flingV = 0;
+		flingV = flingVX = 0;
 		anim = false;
 	}
 

@@ -109,7 +109,7 @@ namespace bp
 		case 14: return "Sources a repository marks as adult.";
 		case 15: return "Off clears it.";
 		case 16: return "Chapters you open show in Home's Recent. Off: they're left out.";
-		case 18: return "A chapter opens on both screens. SELECT or B leaves.";
+		case 18: return "A chapter opens on both screens. SELECT leaves.";
 		default: return "";
 		}
 	}

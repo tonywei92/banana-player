@@ -61,11 +61,14 @@ namespace bp
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
 		// Zoom: v the new factor (1 = the fit); the pages are decoded again at that width once it rests
 		// Rotate: paged modes only; each press turns 90° clockwise
 		// ZoomPoint: v the factor, v2/v3 the tap point as fractions of the view (0..1)
+		// Book: v MANGA_BOOK_* (issue #7): held sideways, a page turned upright on each panel, a spread at a time.
+		// Step turns a spread, Page moves one page (to realign it); zoom, fit, the turn (L3) and the finger's drag
+		// are the Ui's to leave out (the reader ignores them). A Strip opens it in right to left.
 		void command(int kind, double v, int64_t ms, double v2 = 0, double v3 = 0);
 		// the pages decoded ahead of the one read (the Preload setting): applied at once, the queue made again
 		void setPreload(int n);
@@ -80,7 +83,7 @@ namespace bp
 		// still moving or uploading: main keeps its loop at the display's rate
 		bool busy() const { return strip.moving() || paged.moving() || uploads || forceFrames > 0; }
 		int mode() const { return readMode; }
-		int page() const { return !opened ? 0 : std::max(0, readMode == MANGA_STRIP ? strip.currentPage() : paged.current()); }
+		int page() const { return !opened ? 0 : bookHold ? bookS : std::max(0, readMode == MANGA_STRIP ? strip.currentPage() : paged.current()); }
 		int pages() const { return (int)files.size(); }
 		bool loading() const;
 		bool atEnd() const;
@@ -93,6 +96,9 @@ namespace bp
 		// fullscreen: the view is both panels' height and the hinge's gap; the top panel shows its first panel-height,
 		// the bottom panel the rest (bottomBoxes, in the bottom panel's pixels, which match the top's)
 		bool fullscreen() const { return full; }
+		// Book (MANGA_BOOK_*): both panels show pages too (bottomBoxes), one each; fullscreen() is left as it was
+		int book() const { return bookHold; }
+		bool bothPanels() const { return full || bookHold != MANGA_BOOK_OFF; }
 		// page: a page's index, or a band's key (bands.h) for a long strip page drawn as its bands
 		struct Box { int page; float x, y, w, h; };
 		std::vector<Box> bottomBoxes() const;
@@ -134,7 +140,10 @@ namespace bp
 		void applyFit();
 		void applyZoom();
 		void setFullscreen(bool on, int hinge480);
-		int layoutH() const { return full ? viewH * 2 + gapPx : viewH; }
+		// the hinge's gap as it applies: only the Strip skips it (a picture runs on across the fold); the paged modes
+		// and Book put the panels edge to edge (the Reading menu shows Hinge gap for a fullscreen Strip only)
+		int hingeGap() const { return readMode == MANGA_STRIP ? gapPx : 0; }
+		int layoutH() const { return full ? viewH * 2 + hingeGap() : viewH; }
 		int decodeW() const;	// the width wanted now: z times the view's, up to 2048 (decodePage's 2x cap still applies)
 		std::vector<Box> boxes() const;	// every page (or band) in view now, in view pixels (y from the top panel's top)
 		// a long page's bands to have decoded now: the ones in view, and with margins the ones a screen above and two
@@ -145,6 +154,12 @@ namespace bp
 		void makeThumb(int page, const std::vector<uint8_t>& rgba, int pw, int ph);
 		// the page turn (L3): each press 90° clockwise; paged modes only; the fit and zoom work on the turned page
 		void applyRotation();
+		// a reading mode change, the page under the view kept (the Mode command, and Book leaving the Strip)
+		void setMode(int m, int64_t ms);
+		// Book: on (held as b) or off; and the spread to show (its first page; the last page may be alone)
+		void setBook(int b);
+		void bookGo(int first);
+		std::vector<Box> bookBoxes() const;
 		// rotate an RGBA buffer (w x h) by angle degrees clockwise; the returned buffer is (rw x rh), swapped if 90/270
 		static std::shared_ptr<const std::vector<uint8_t>> rotatePixels(
 			const std::shared_ptr<const std::vector<uint8_t>>& src, int w, int h, int angle);
@@ -179,6 +194,9 @@ namespace bp
 		int lastSpin = -1;
 		int64_t spinNow = 0;
 		bool full = false;	// (kept across chapters while the reader is open)
+		int bookHold = 0;	// MANGA_BOOK_*: main sets it again for each chapter (the series' own)
+		int bookS = 0;		// Book: the spread's first page
+		int bookPrevAngle = 0;	// the turn (L3) Book took over, given back when it ends
 		int gapPx = 0;
 		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Pix> kept;	// the decoded pages near the view, for the bottom panel in fullscreen

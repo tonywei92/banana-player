@@ -1254,9 +1254,10 @@ namespace bp
 				if (mangaPages)
 					photo += "|pg" + std::to_string(mangaPagesCursor) + "," + std::to_string(mangaPagesScroll) + " " +
 						std::to_string(mpTex.size()) + "," + std::to_string(readerThumbs.pages.size());
-				// fullscreen: where the pages are on this panel, which have their textures, the tag
-				if (readerStatus.fullscreen)
+				// fullscreen (or Book): where the pages are on this panel, which have their textures, the tag
+				if (readerStatus.fullscreen || readerStatus.book)
 				{
+					photo += "|bk" + std::to_string(readerStatus.book) + (mangaBookToast ? "t" : "");
 					photo += "|full" + std::to_string(readerBottom.gen) + " " + std::to_string(mfTex.size()) + " " +
 						std::to_string(mfWaiting) + " " + std::to_string(readerBottom.pages.size()) + (SDL_GetTicks() < mfTagUntil ? "T" : "");
 					// the controls over the pages and the first open's toast: how long they still show, in 100 ms

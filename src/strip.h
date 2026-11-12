@@ -67,6 +67,7 @@ namespace bp
 		{
 			int64_t ms;
 			double off;
+			double pan = 0;	// panX then: a zoomed column flings across as it does down (issue #8)
 		};
 
 		void rebuild();
@@ -89,6 +90,7 @@ namespace bp
 		bool fling = false;
 		double flingV = 0;	// px/s at the release
 		double flingFrom = 0;
+		double flingVX = 0, flingFromX = 0;	// across a zoomed column: px/s at the release, and where it started
 		int64_t flingAt = 0;
 
 		bool anim = false;
