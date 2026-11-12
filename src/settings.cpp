@@ -38,10 +38,12 @@ namespace bp
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};
 	static const char* SHOW_LABELS[SHOWS] = {"Album art", "Art + visualizer", "Visualizer", "None"};
 	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "pocket", "led",
-		"synthwave", "banana-stack", "night-city", "oscilloscope", "heartbeat", "campfire", "aurora", "sound-garden", "turntable", "pixel-sea"};
+		"synthwave", "banana-stack", "night-city", "oscilloscope", "heartbeat", "campfire", "aurora", "sound-garden", "turntable", "pixel-sea",
+		"bunny-hop", "bubble-tea", "jellyfish", "music-box", "fishbowl", "disco-ball", "banana-dancer"};
 	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket console",
 		"Hi-fi LED", "Synthwave", "Banana stack", "Night city", "Oscilloscope", "Heartbeat", "Campfire", "Aurora",
-		"Sound garden", "Turntable", "Pixel sea"};
+		"Sound garden", "Turntable", "Pixel sea", "Bunny hop",
+		"Bubble tea", "Jellyfish", "Music box", "Fishbowl", "Disco ball", "Banana dancer"};
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
 	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
 	static const char* MANGA_FIT_IDS[MANGA_FITS] = {"page", "width", "fill"};
@@ -382,6 +384,13 @@ namespace bp
 		ok = writeGardenMaps(dir) && ok;
 		ok = writeVinylMaps(dir) && ok;
 		ok = writeSeaMaps(dir) && ok;
+		ok = writeBunnyMaps(dir) && ok;
+		ok = writeBobaMaps(dir) && ok;
+		ok = writeJellyMaps(dir) && ok;
+		ok = writeMusicboxMaps(dir) && ok;
+		ok = writeFishbowlMaps(dir) && ok;
+		ok = writeDiscoMaps(dir) && ok;
+		ok = writeDancerMaps(dir) && ok;
 		return ok;
 	}
 
@@ -405,7 +414,14 @@ namespace bp
 			case VIS_AURORA: return auroraGraph(overCover, mapsDir);
 			case VIS_GARDEN: return gardenGraph(overCover, mapsDir);
 			case VIS_VINYL: return vinylGraph(overCover, mapsDir);
-			default: return seaGraph(overCover, mapsDir);
+			case VIS_SEA: return seaGraph(overCover, mapsDir);
+			case VIS_BUNNY: return bunnyGraph(overCover, mapsDir);
+			case VIS_BOBA: return bobaGraph(overCover, mapsDir);
+			case VIS_JELLY: return jellyGraph(overCover, mapsDir);
+			case VIS_MUSICBOX: return musicboxGraph(overCover, mapsDir);
+			case VIS_FISHBOWL: return fishbowlGraph(overCover, mapsDir);
+			case VIS_DISCO: return discoGraph(overCover, mapsDir);
+			default: return dancerGraph(overCover, mapsDir);
 			}
 		}
 		std::string quoted;

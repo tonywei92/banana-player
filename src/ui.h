@@ -886,14 +886,16 @@ namespace bp
 		bool displayKey(Button b, Player& p);
 		bool displayPointer(const Pointer& pt, int x, int y, Player& p);
 		void drawDisplay(const Player& p);
-		// Show's 4 chips share a row; Style's (one an offered visualizer, VIS_SHOWN) go 5 to a row, over two
+		// Show's 4 chips share a row; Style's (one an offered visualizer, VIS_SHOWN) go 5 to a row, as many rows as
+		// it takes (four for sixteen), the chips a little lower than Show's
 		static int displayChips(int row) { return row ? VIS_SHOWN_COUNT : SHOWS; }
-		static constexpr int DISPLAY_BOX_Y = 60, DISPLAY_BOX_H = 360, STYLE_COLS = 5;
+		static constexpr int DISPLAY_BOX_Y = 24, DISPLAY_BOX_H = 412, STYLE_COLS = 5, STYLE_ROWS = (VIS_SHOWN_COUNT + 4) / 5,
+			STYLE_Y = 166, STYLE_STEP = 56, CHIP_H = 50;
 		Rect displayChip(int row, int i) const
 		{
-			if (!row) return {48 + i * (130 + 8), 130, 130, 60};
+			if (!row) return {48 + i * (130 + 8), 84, 130, CHIP_H};
 			int w = (544 - (STYLE_COLS - 1) * 8) / STYLE_COLS;
-			return {48 + (i % STYLE_COLS) * (w + 8), 222 + (i / STYLE_COLS) * 68, w, 60};
+			return {48 + (i % STYLE_COLS) * (w + 8), STYLE_Y + (i / STYLE_COLS) * STYLE_STEP, w, CHIP_H};
 		}
 		void displaySet(int row, int value, Player& p);
 		// Sound (music's): two tabs, Equalizer and Effects (L/R), opened from the song's Sound button, its line, or

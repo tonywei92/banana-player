@@ -82,7 +82,7 @@ namespace bp
 		// the chips' own short names (five to a row: about eight letters fit); Settings says them in full
 		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks", "Pocket",
 			"Hi-fi LED", "Synth", "Bananas", "Night city", "Scope", "Pulse", "Campfire", "Aurora", "Garden", "Turntable",
-			"Sea"};
+			"Sea", "Bunnies", "Boba", "Jellyfish", "Music box", "Fishbowl", "Disco", "Dancer"};
 		drawDialog({32, DISPLAY_BOX_Y, 576, DISPLAY_BOX_H}, "Display");
 		int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1), vis = std::clamp(p.settings.visualizer, 0, VISUALIZERS - 1);
 		// the art alone, or the title alone: no visualizer, its style muted (still changeable, for later)
@@ -92,8 +92,8 @@ namespace bp
 			int rowY = displayChip(r, 0).y;
 			bool focus = r == displayRow;
 			drawTextMid(r ? "Style" : "Show", 0, focus ? ACCENT : TEXT, 52, rowY - 14, 200);
-			// (Style's mark down both its rows)
-			if (focus) fillRound({36, rowY, 4, r ? 128 : 60}, ACCENT, 2);
+			// (Style's mark down all its rows)
+			if (focus) fillRound({36, rowY, 4, r ? (STYLE_ROWS - 1) * STYLE_STEP + CHIP_H : CHIP_H}, ACCENT, 2);
 			for (int i = 0; i < displayChips(r); i++)
 			{
 				Rect c = displayChip(r, i);
@@ -104,8 +104,8 @@ namespace bp
 				SDL_Color ink = sel ? ON_ACCENT : dim ? DIM : TEXT;
 				drawBox(c, bg, R_BUTTON);
 				const Glyph* g = r ? VIS_GLYPHS[item] : i == SHOW_BOTH ? &G_ARTVIZ : showGlyph(i, vis);
-				drawGlyphMid(*g, c.x + c.w / 2, c.y + 19, ink);
-				drawTextMid(r ? STYLE_NAMES[item] : SHOW_NAMES[i], 0, ink, c.x + c.w / 2, c.y + 44, c.w - 8, 2);
+				drawGlyphMid(*g, c.x + c.w / 2, c.y + 16, ink);
+				drawTextMid(r ? STYLE_NAMES[item] : SHOW_NAMES[i], 0, ink, c.x + c.w / 2, c.y + 38, c.w - 8, 2);
 			}
 		}
 		const char* help = show == SHOW_ART ? "The style shows with Art + viz or Visualizer"
@@ -122,9 +122,16 @@ namespace bp
 				: vis == VIS_AURORA ? "Northern lights over a ridge, each stretch of sky as bright as its band"
 				: vis == VIS_GARDEN ? "Pixel flowers that grow with the music and bloom at the peaks"
 				: vis == VIS_VINYL ? "A spinning record whose grooves glow: bass at the label, treble at the rim"
-				: vis == VIS_SEA ? "Waves under the moon: bass swells, mids chop, a little boat rides it" : "The visualizer alone")
+				: vis == VIS_SEA ? "Waves under the moon: bass swells, mids chop, a little boat rides it"
+				: vis == VIS_BUNNY ? "Five pixel bunnies, each hopping to its own part of the music"
+				: vis == VIS_BOBA ? "A cup of bubble tea: pearls bounce on the bass, fizz climbs the straw"
+				: vis == VIS_JELLY ? "Glowing jellyfish in the deep sea, pulsing on the beat"
+				: vis == VIS_MUSICBOX ? "A music box: its comb's teeth ring with the music, a dancer turns"
+				: vis == VIS_FISHBOWL ? "Three goldfish swimming up with their bands, bubbles on the treble"
+				: vis == VIS_DISCO ? "A spinning mirror ball with rings of coloured lights orbiting it"
+				: vis == VIS_DANCER ? "A pixel banana that dances: bass bounces, mids wave, treble sparkles" : "The visualizer alone")
 			: "Just the title: the lightest on the battery";
-		drawTextMid(help, 0, DIM, W / 2, 380, 544, 2);
+		drawTextMid(help, 0, DIM, W / 2, STYLE_Y + STYLE_ROWS * STYLE_STEP + 18, 544, 2);
 		drawHints({{"D-PAD", "Change"}, {"SELECT", "Show"}, {"B", "Done"}});
 	}
 
