@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Your RG DS is a little cinema. Films, music, photos and manga on the top screen, big easy controls on the touch screen below.</b>
+  <b>A dual-screen media player for BananaOS on the RG DS and RG DS Plus: movies, music, photos and manga, from your card or your network, with a companion web dashboard.</b>
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@ photos with a finger, and reads manga across both screens. When a new version is
   <tr>
     <td align="center"><img src="docs/img/screen-sound.png?v=0.7.10" alt="The equalizer on the bottom screen, ten bands set to the Rock preset, under a song with the Circle visualizer"><br><sub><b>Sound.</b> A 10-band equalizer with presets, and room effects like Concert hall</sub></td>
     <td align="center"><img src="docs/img/screen-photo.png?v=0.7.10" alt="A photo zoomed in on the top screen, the pan area and its buttons on the bottom"><br><sub><b>Photos.</b> Zoom in and drag the box to look around</sub></td>
-    <td align="center"><img src="docs/img/screen-settings.png?v=0.7.10" alt="Settings › Subtitles, with a subtitle preview"><br><sub><b>Settings</b> as tiles, with a help line for each and a live subtitle preview</sub></td>
+    <td align="center"><img src="docs/img/screen-manga.png?v=0.7.10" alt="A manga page across both screens, the panels running on over the hinge"><br><sub><b>Manga.</b> A page across both screens, or one a screen held like a book</sub></td>
   </tr>
 </table>
 
@@ -112,7 +112,8 @@ Want to build it or help out? See [DEVELOPMENT.md](DEVELOPMENT.md).
   [Fusion Pixel](https://github.com/TakWolf/fusion-pixel-font) and [Noto Sans](https://notofonts.github.io) Thai,
   Arabic, Hebrew and Devanagari, under the SIL Open Font License 1.1.
 - The film in the screenshots is [Sintel](https://durian.blender.org), © copyright Blender Foundation |
-  durian.blender.org, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+  durian.blender.org, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The manga page is made from
+  stills of its trailer (cropped, in black and white, laid out as panels).
 
 ## No warranty
 
