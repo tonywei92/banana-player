@@ -506,7 +506,9 @@ namespace bp
 			return fwrite(data, size, n, c->fp);
 		}
 
-		static int onProgress(void* p, curl_off_t, curl_off_t, curl_off_t, curl_off_t dlnow)
+		// (curl's order: download total, downloaded, upload total, uploaded. The last was read as the download's: always
+		// 0, so the bar moved only as each file began and ended)
+		static int onProgress(void* p, curl_off_t, curl_off_t dlnow, curl_off_t, curl_off_t)
 		{
 			FetchCtx* c = (FetchCtx*)p;
 			Impl* d = c->host;
