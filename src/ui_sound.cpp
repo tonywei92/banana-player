@@ -25,7 +25,7 @@ namespace bp
 	{
 		Settings s = p.settings;
 		if (row == 0) s.musicShow = (value % SHOWS + SHOWS) % SHOWS;
-		else s.visualizer = value >= 0 && value < VISUALIZERS ? value : VIS_PEAKS;	// a visualizer, not a chip
+		else s.visualizer = value >= 0 && value < VISUALIZERS ? value : VIS_PEAKS_BANANA;	// a visualizer, not a chip
 		if (s.musicShow != p.settings.musicShow || s.visualizer != p.settings.visualizer) p.setSettings(s);
 	}
 
@@ -80,7 +80,7 @@ namespace bp
 	{
 		static const char* SHOW_NAMES[SHOWS] = {"Album art", "Art + viz", "Visualizer", "None"};
 		// the chips' own short names (five to a row: about eight letters fit); Settings says them in full
-		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Yellow", "Pocket",
+		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks", "Pocket",
 			"Hi-fi LED", "Synth", "Bananas", "Night city", "Scope", "Pulse", "Campfire", "Aurora", "Garden", "Turntable",
 			"Sea"};
 		drawDialog({32, DISPLAY_BOX_Y, 576, DISPLAY_BOX_H}, "Display");

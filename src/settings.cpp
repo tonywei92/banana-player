@@ -392,7 +392,7 @@ namespace bp
 		if (vis >= VIS_LED && vis < VISUALIZERS)
 		{
 			std::string q;
-			if (mapsDir.empty() || !lavfiPath(mapsDir, q)) vis = VIS_PEAKS;
+			if (mapsDir.empty() || !lavfiPath(mapsDir, q)) vis = VIS_PEAKS_BANANA;
 			else switch (vis)
 			{
 			case VIS_LED: return ledGraph(overCover, mapsDir);
@@ -514,10 +514,10 @@ namespace bp
 			for (int v = 0; v < VISUALIZERS; v++)
 				if (key == "visualizer" && value == VIS_IDS[v]) s.visualizer = v;
 			// Timeline (0.5.x, briefly) became Peaks; a style not offered (Bars, Waves, Spectrum, and those kept but
-			// not offered: VIS_SHOWN) is read as Peaks
-			if (key == "visualizer" && value == "timeline") s.visualizer = VIS_PEAKS;
+			// not offered: VIS_SHOWN) is read as Peaks Banana (the default)
+			if (key == "visualizer" && value == "timeline") s.visualizer = VIS_PEAKS_BANANA;
 			if (key == "visualizer" && std::find(std::begin(VIS_SHOWN), std::end(VIS_SHOWN), s.visualizer) == std::end(VIS_SHOWN))
-				s.visualizer = VIS_PEAKS;
+				s.visualizer = VIS_PEAKS_BANANA;
 			for (int v = 0; v < LOOPS; v++)
 				if (key == "loop" && value == LOOP_IDS[v]) s.loop = v;
 			for (int v = 0; v < CLOCKS; v++)
@@ -550,11 +550,11 @@ namespace bp
 			// the one setting before 0.1.1, kept: auto, cover-bars, bars, waves, spectrum, cover
 			if (key == "audio-display")
 			{
-				if (value == "cover-bars") { s.musicShow = SHOW_BOTH; s.visualizer = VIS_PEAKS; }
+				if (value == "cover-bars") { s.musicShow = SHOW_BOTH; s.visualizer = VIS_PEAKS_BANANA; }
 				else if (value == "bars" || value == "waves" || value == "spectrum")
 				{
 					s.musicShow = SHOW_VIS;
-					s.visualizer = VIS_PEAKS;	// retired: read as Peaks
+					s.visualizer = VIS_PEAKS_BANANA;	// retired: read as Peaks Banana
 				}
 				else s.musicShow = SHOW_ART;
 			}

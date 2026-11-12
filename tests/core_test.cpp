@@ -5242,7 +5242,7 @@ static void testSettings()
 	CHECK_EQ(parseSettings(serializeSettings(dns)).mangaSecureDns, true);
 	CHECK_EQ(parseSettings("manga-secure-dns = maybe\n").mangaSecureDns, false);
 	CHECK_EQ(d.musicShow, (int)SHOW_ART);
-	CHECK_EQ(d.visualizer, (int)VIS_PEAKS);
+	CHECK_EQ(d.visualizer, (int)VIS_PEAKS_BANANA);
 	CHECK_EQ(d.loop, (int)LOOP_OFF);
 	Settings m;
 	m.musicShow = SHOW_BOTH;
@@ -5303,13 +5303,13 @@ static void testSettings()
 	}
 	CHECK_EQ(parseSettings("visualizer = circle\n").visualizer, (int)VIS_CIRCLE);
 	// Peaks: read and written back by its id; Timeline (its first form) reads as Peaks
-	CHECK_EQ(parseSettings("visualizer = peaks\n").visualizer, (int)VIS_PEAKS);
-	CHECK_EQ(parseSettings("visualizer = timeline\n").visualizer, (int)VIS_PEAKS);
+	CHECK_EQ(parseSettings("visualizer = peaks\n").visualizer, (int)VIS_PEAKS_BANANA);
+	CHECK_EQ(parseSettings("visualizer = timeline\n").visualizer, (int)VIS_PEAKS_BANANA);
 	{
 		Settings t;
 		t.visualizer = VIS_PEAKS;
 		CHECK_EQ(serializeSettings(t).find("visualizer = peaks\n") != std::string::npos, true);
-		CHECK_EQ(parseSettings(serializeSettings(t)).visualizer, (int)VIS_PEAKS);
+		CHECK_EQ(parseSettings(serializeSettings(t)).visualizer, (int)VIS_PEAKS_BANANA);
 		CHECK_EQ(std::string(visualizerLabel(VIS_PEAKS)), std::string("Peaks"));
 		std::string v = visualizerGraph(VIS_PEAKS, false), a = visualizerGraph(VIS_PEAKS, true);
 		for (const std::string& g : {v, a})
@@ -5332,31 +5332,31 @@ static void testSettings()
 	// Bars, Waves and Spectrum: retired (graphs kept); a setting naming one reads, and is written back, as Peaks
 	for (const char* id : {"bars", "waves", "spectrum"})
 	{
-		CHECK_EQ(parseSettings(std::string("visualizer = ") + id + "\n").visualizer, (int)VIS_PEAKS);
-		CHECK_EQ(parseSettings(std::string("audio-display = ") + id + "\n").visualizer, (int)VIS_PEAKS);
-		CHECK_EQ(serializeSettings(parseSettings(std::string("visualizer = ") + id + "\n")).find("visualizer = peaks\n") != std::string::npos, true);
+		CHECK_EQ(parseSettings(std::string("visualizer = ") + id + "\n").visualizer, (int)VIS_PEAKS_BANANA);
+		CHECK_EQ(parseSettings(std::string("audio-display = ") + id + "\n").visualizer, (int)VIS_PEAKS_BANANA);
+		CHECK_EQ(serializeSettings(parseSettings(std::string("visualizer = ") + id + "\n")).find("visualizer = peaks-yellow\n") != std::string::npos, true);
 	}
-	CHECK_EQ(Settings().visualizer, (int)VIS_PEAKS);
-	// Peaks Banana: the same graph in other colours, kept but no longer offered, so a saved choice reads as Peaks
-	// (as Hi-fi LED, Synthwave, Banana stack and Heartbeat)
-	for (const char* id : {"peaks-yellow", "led", "synthwave", "banana-stack", "heartbeat"})
-		CHECK_EQ(parseSettings(std::string("visualizer = ") + id + "\n").visualizer, (int)VIS_PEAKS);
+	CHECK_EQ(Settings().visualizer, (int)VIS_PEAKS_BANANA);
+	// Peaks Banana is the default and the Peaks offered; the coral Peaks is kept but no longer offered, so a saved
+	// choice of it reads as Peaks Banana (as Hi-fi LED, Synthwave, Banana stack and Heartbeat)
+	for (const char* id : {"peaks", "led", "synthwave", "banana-stack", "heartbeat"})
+		CHECK_EQ(parseSettings(std::string("visualizer = ") + id + "\n").visualizer, (int)VIS_PEAKS_BANANA);
 	CHECK_EQ(std::string(visualizerLabel(VIS_PEAKS_BANANA)), std::string("Peaks Banana"));
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, false) != visualizerGraph(VIS_PEAKS, false), true);
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, true) != visualizerGraph(VIS_PEAKS, true), true);
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, false).find("lagfun=decay=") != std::string::npos, true);
-	// the cycle: the offered ones (VIS_SHOWN); from one not offered as from Peaks
-	CHECK_EQ(stepVisualizer(VIS_PEAKS, 1), (int)VIS_CIRCLE);
+	// the cycle: the offered ones (VIS_SHOWN); from one not offered as from Peaks Banana
+	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, 1), (int)VIS_CIRCLE);
 	CHECK_EQ(stepVisualizer(VIS_CIRCLE, 1), (int)VIS_POCKET);
 	CHECK_EQ(stepVisualizer(VIS_POCKET, 1), (int)VIS_CITY);
 	CHECK_EQ(stepVisualizer(VIS_SCOPE, 1), (int)VIS_FIRE);
-	CHECK_EQ(stepVisualizer(VIS_SEA, 1), (int)VIS_PEAKS);
-	CHECK_EQ(stepVisualizer(VIS_PEAKS, -1), (int)VIS_SEA);
+	CHECK_EQ(stepVisualizer(VIS_SEA, 1), (int)VIS_PEAKS_BANANA);
+	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, -1), (int)VIS_SEA);
 	CHECK_EQ(stepVisualizer(VIS_SPECTRUM, 1), (int)VIS_CIRCLE);
-	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, 1), (int)VIS_CIRCLE);
+	CHECK_EQ(stepVisualizer(VIS_PEAKS, 1), (int)VIS_CIRCLE);
 	{
 		int seen = 0;
-		for (int i = 0, v = VIS_PEAKS; i < VIS_SHOWN_COUNT; i++, v = stepVisualizer(v, 1)) seen |= 1 << v;
+		for (int i = 0, v = VIS_PEAKS_BANANA; i < VIS_SHOWN_COUNT; i++, v = stepVisualizer(v, 1)) seen |= 1 << v;
 		int want = 0;
 		for (int v : VIS_SHOWN) want |= 1 << v;
 		CHECK_EQ(VIS_SHOWN_COUNT, 10);
@@ -5378,9 +5378,9 @@ static void testSettings()
 	CHECK_EQ(std::string(loopLabel(LOOP_ALL)), std::string("Loop all"));
 	// the setting before 0.1.1, carried over
 	Settings old = parseSettings("audio-display = cover-bars\n");
-	CHECK_EQ(old.musicShow == SHOW_BOTH && old.visualizer == VIS_PEAKS, true);
+	CHECK_EQ(old.musicShow == SHOW_BOTH && old.visualizer == VIS_PEAKS_BANANA, true);
 	old = parseSettings("audio-display = waves\n");
-	CHECK_EQ(old.musicShow == SHOW_VIS && old.visualizer == VIS_PEAKS, true);
+	CHECK_EQ(old.musicShow == SHOW_VIS && old.visualizer == VIS_PEAKS_BANANA, true);
 	CHECK_EQ(parseSettings("audio-display = auto\n").musicShow, (int)SHOW_ART);
 	CHECK_EQ(parseSettings(serializeSettings(d)).keepHistory, true);
 	CHECK_EQ(parseSettings("keep-history = no\n").keepHistory, false);

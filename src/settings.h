@@ -34,12 +34,12 @@ namespace bp
 	// naming one reads as Peaks; VIS_SHOWN lists what's offered, in order
 	// Pocket: Peaks as an old handheld's screen, four greens on a grid of chunky dots
 	// and six more (src/viz_more.h, a file each): a hi-fi LED meter, Synthwave, Banana stack, Night city, a phosphor
-	// oscilloscope and Heartbeat; then Campfire, Aurora, Sound garden, Turntable and Pixel sea. Peaks Banana, Hi-fi
-	// LED, Synthwave, Banana stack and Heartbeat are kept but not offered (the owner's pick, 0.7.12): a setting naming
-	// one reads as Peaks
+	// oscilloscope and Heartbeat; then Campfire, Aurora, Sound garden, Turntable and Pixel sea. Peaks (coral), Hi-fi LED,
+	// Synthwave, Banana stack and Heartbeat are kept but not offered (the owner's pick, 0.7.12): Peaks Banana is the
+	// default, and a setting naming one not offered reads as it
 	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VIS_POCKET, VIS_LED,
 		VIS_SYNTHWAVE, VIS_BANANA_STACK, VIS_CITY, VIS_SCOPE, VIS_HEART, VIS_FIRE, VIS_AURORA, VIS_GARDEN, VIS_VINYL, VIS_SEA, VISUALIZERS };
-	constexpr int VIS_SHOWN[] = {VIS_PEAKS, VIS_CIRCLE, VIS_POCKET, VIS_CITY, VIS_SCOPE, VIS_FIRE, VIS_AURORA, VIS_GARDEN, VIS_VINYL,
+	constexpr int VIS_SHOWN[] = {VIS_PEAKS_BANANA, VIS_CIRCLE, VIS_POCKET, VIS_CITY, VIS_SCOPE, VIS_FIRE, VIS_AURORA, VIS_GARDEN, VIS_VINYL,
 		VIS_SEA};
 	constexpr int VIS_SHOWN_COUNT = (int)(sizeof(VIS_SHOWN) / sizeof(VIS_SHOWN[0]));
 	// a visualizer's place in VIS_SHOWN (a hidden one: Peaks's, 0)
@@ -95,7 +95,7 @@ namespace bp
 		// the handheld's buttons while a video plays; off: only touch acts there (no press by accident in a pocket
 		// or a hand), the menus' and the browser's buttons still work
 		bool buttonHotkeys = true;
-		int musicShow = SHOW_ART, visualizer = VIS_PEAKS, loop = LOOP_OFF;
+		int musicShow = SHOW_ART, visualizer = VIS_PEAKS_BANANA, loop = LOOP_OFF;
 		// the play mode Shuffle (the music key, the web's Shuffle): every list started plays shuffled from the item
 		// picked, till it's turned off; loop is off meanwhile (four modes). No Settings row: those keys are its switch
 		bool shuffle = false;
