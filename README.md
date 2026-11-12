@@ -102,9 +102,8 @@ Want to build it or help out? See [DEVELOPMENT.md](DEVELOPMENT.md).
 - Plays with [mpv](https://mpv.io) and [FFmpeg](https://ffmpeg.org). Drawn with [SDL](https://libsdl.org).
 - Network folders with [libsmb2](https://github.com/sahlberg/libsmb2) (LGPL 2.1) and [libcurl](https://curl.se).
 - The manga reader with [Lua](https://www.lua.org) (MIT), [lexbor](https://github.com/lexbor/lexbor) (Apache 2.0) and
-  [libjpeg-turbo](https://libjpeg-turbo.org) (BSD-style). Its optional manga engine is downloaded on request, not
-  included: [Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server) (MPL 2.0) on an
-  [Eclipse Temurin](https://adoptium.net) Java runtime (GPL 2.0 with the Classpath Exception).
+  [libjpeg-turbo](https://libjpeg-turbo.org) (BSD-style). Its optional manga engine is downloaded on request, not included:
+  [Suwayomi-Server](https://github.com/Suwayomi/Suwayomi-Server) (MPL 2.0) on a Java runtime.
 - Web dashboard with [cpp-httplib](https://github.com/yhirose/cpp-httplib) (MIT), [QR-Code-generator](https://github.com/nayuki/QR-Code-generator)
   by Project Nayuki (MIT), [htm](https://github.com/developit/htm) with [Preact](https://preactjs.com) (Apache 2.0 and MIT)
   and [SortableJS](https://sortablejs.github.io/Sortable/) (MIT).
