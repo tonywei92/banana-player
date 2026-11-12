@@ -2,7 +2,7 @@
 // slowly up; four pixel jellyfish (8-pixel pixels) at fixed spots, each listening to a slice of the spectrum (bands 0-2
 // magenta, 3-6 cyan, 7-10 violet, 11-15 teal): a dome bell with a brighter rim and six rippling tentacles under it.
 // As its slice plays a jellyfish glows (a soft halo round it, its colours brighter) and its tentacles grow longer;
-// they bob and sway gently.
+// they bob, sway and ripple briskly.
 //
 // How a frame is made, at 160x120 (4-pixel units; a jellyfish pixel is 2x2 of them) and then scaled up (nearest):
 // - the 16 bands measured (showfreqs at 60/s), vizContrast, eased (the exp/log lagfun: up at once, down in ~0.15 s),
@@ -41,12 +41,12 @@ namespace bp
 	namespace
 	{
 		// a new name whenever the stills change: they're cached by size
-		const char* JELLY_FILES[12] = {"jelly1-s0.pgm", "jelly1-s1.pgm", "jelly1-s2.pgm", "jelly1-s3.pgm", "jelly1-o0.pgm",
-									   "jelly1-o1.pgm", "jelly1-o2.pgm", "jelly1-o3.pgm", "jelly1-halo.pgm", "jelly1-ohalo.pgm",
-									   "jelly1-speck.pgm", "jelly1-row.pgm"};
+		const char* JELLY_FILES[12] = {"jelly2-s0.pgm", "jelly2-s1.pgm", "jelly2-s2.pgm", "jelly2-s3.pgm", "jelly2-o0.pgm",
+									   "jelly2-o1.pgm", "jelly2-o2.pgm", "jelly2-o3.pgm", "jelly2-halo.pgm", "jelly2-ohalo.pgm",
+									   "jelly2-speck.pgm", "jelly2-row.pgm"};
 		const int W = 160, H = 120, SH = 50;	// the drawing alone, and the strip's height over the art (x4 on screen)
 		const int NPH = 16;						// the tentacles' ripple: phases drawn
-		const double RIPPLE = 3.0;				// its speed, radians a second (as the preview)
+		const double RIPPLE = 6.0;				// its speed, radians a second (twice the preview's: the owner wanted more shake)
 		const int SPEED = 2;					// the specks' rise, units a second
 
 		// a layout: the strips' left edges (and the right edge), each jellyfish's bell centre (the unit left of the
@@ -59,9 +59,9 @@ namespace bp
 			int rx[4], ry;
 		};
 		// alone: as the preview's grid (80x60): bells at 14,22 33,14 52,26 68,16; strips split between them (even widths)
-		const Layout ALONE = {{0, 48, 86, 120, 160}, {28, 66, 104, 136}, {44, 28, 52, 32}, 2, 3, 4, {20, 18, 16, 16}, 22};
+		const Layout ALONE = {{0, 48, 86, 120, 160}, {28, 66, 104, 136}, {44, 28, 52, 32}, 2, 6, 7, {20, 18, 16, 16}, 22};
 		// over the art: smaller and in a row
-		const Layout OVER = {{0, 40, 80, 120, 160}, {20, 60, 100, 140}, {20, 17, 21, 18}, 1, 2, 3, {18, 18, 18, 18}, 18};
+		const Layout OVER = {{0, 40, 80, 120, 160}, {20, 60, 100, 140}, {20, 17, 21, 18}, 1, 4, 4, {18, 18, 18, 18}, 18};
 		// the sheets' phase hops between (the bob and sway's phases differ per jellyfish, as the preview's j.x and j.y)
 		const double BOBPH[4] = {14, 33, 52, 68}, SWAYPH[4] = {22, 14, 26, 16};
 		// the hues (HSL degrees)
@@ -112,7 +112,7 @@ namespace bp
 				// the tentacles: six, from under the bell, each pixel swung by a sine travelling down it (as the preview)
 				const double phi = 2 * M_PI * ph / NPH;
 				for (int t = -5; t <= 5; t += 2)
-					for (int k = 2; k <= 15; k++) put(t + (int)std::lround(std::sin(phi + k * 0.6 + t) * k / 6), k, k + 1, false);
+					for (int k = 2; k <= 15; k++) put(t + (int)std::lround(std::sin(phi + k * 0.6 + t) * k / 4), k, k + 1, false);
 				// the bell: a dome (x^2 + (1.4y)^2 <= 36, rows -4..1), its rim the pixels with the sea beside or above them
 				auto in = [](int x, int y) { return y <= 1 && x * x + 1.96 * y * y <= 36; };
 				for (int gy = -6; gy <= 1; gy++)
@@ -264,8 +264,8 @@ namespace bp
 				 "movie=" + q((overCover ? 4 : 0) + j) + ",mergeplanes=0x000000:yuv444p [jlsh" + J + "]; "
 				 "[jlm" + J + "] mergeplanes=0x000000:yuv444p [jlmm" + J + "]; "
 				 "[jlmm" + J + "] [jlsh" + J + "] overlay=format=yuv444:eof_action=repeat:"
-				 "x='round(" + n(L.sway) + "*sin(0.3*n/60+" + f(SWAYPH[j]) + "))-" + n(L.sway) + "':"
-				 "y='round(" + n(L.bob) + "*sin(0.8*n/60+" + f(BOBPH[j]) + "))-" + n(L.bob) + "-" + n(ch) + "*" + ph + "',"
+				 "x='round(" + n(L.sway) + "*sin(0.9*n/60+" + f(SWAYPH[j]) + "))-" + n(L.sway) + "':"
+				 "y='round(" + n(L.bob) + "*sin(2.0*n/60+" + f(BOBPH[j]) + "))-" + n(L.bob) + "-" + n(ch) + "*" + ph + "',"
 				 "extractplanes=y [jlcl" + J + "]; ";
 		}
 		// the codes: the body over the halo
