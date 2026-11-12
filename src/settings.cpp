@@ -1,5 +1,6 @@
 #include "settings.h"
 #include "viz_more.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <fstream>
