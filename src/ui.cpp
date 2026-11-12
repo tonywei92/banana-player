@@ -1093,7 +1093,9 @@ namespace bp
 			dragging = true;
 			dragMoved = false;
 			dragX0 = x;
-			dragFrom = dragFraction = scrubbed = p.duration > 0 && pos >= 0 ? std::clamp(pos / p.duration, 0.0, 1.0) : 0;
+			// (a drag let go a moment ago whose seek hasn't landed: from where it left the bar, not the old place)
+			dragFrom = dragFraction = scrubbed = seekHeld >= 0 ? seekHeld
+				: p.duration > 0 && pos >= 0 ? std::clamp(pos / p.duration, 0.0, 1.0) : 0;
 			scrubAt = SDL_GetTicks();
 			return false;
 		}
