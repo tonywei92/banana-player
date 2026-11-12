@@ -181,6 +181,10 @@ namespace bp
 		AVFormatContext* f = o.ctx;
 		MediaInfo m;
 		m.container = f->iformat && f->iformat->name ? f->iformat->name : "";
+		// an MP3's reader names every MPEG audio stream "mp3" until a frame is read; layer I/II inside a ".mp3" (game
+		// and broadcast rips) plays in no browser, so for these alone the first frames are read (an audio file's
+		// few kilobytes), and the stream comes back as mp2 when it is
+		if (m.container == "mp3") avformat_find_stream_info(f, nullptr);
 		bool pic = false;
 		for (unsigned i = 0; i < f->nb_streams; i++)
 		{

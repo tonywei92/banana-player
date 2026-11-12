@@ -7247,6 +7247,10 @@ static void testWeb()
 	const char* MP4 = "mov,mp4,m4a,3gp,3g2,mj2";
 	const char* MKV = "matroska,webm";
 	auto P = [](const char* c, const char* v, const char* a) { return playability(c, v, a); };
+	// an ".mp3" that is MPEG layer II inside (as FFmpeg probes it: container mp3, audio mp2): no browser plays it
+	CHECK_EQ(P("mp3", "", "mp2") == Playable::No, true);
+	CHECK_EQ(P("mp3", "", "mp1") == Playable::No, true);
+	CHECK_EQ(P("mp3", "", "mp3") == Playable::Yes, true);
 	// yes
 	CHECK_EQ(P("mp3", "", "mp3") == Playable::Yes, true);
 	CHECK_EQ(P("mp3", "mjpeg", "mp3") == Playable::Maybe, true);	// cover art counts as a video stream: left to the browser

@@ -95,8 +95,10 @@ namespace bp
 			hasToken(c, "mpegps") || hasToken(c, "flv") || hasToken(c, "rm") || hasToken(c, "dts") || hasToken(c, "dtshd") ||
 			hasToken(c, "truehd") || hasToken(c, "mlp"))
 			return Playable::No;
-		// ac3/eac3 as the default sound: Chrome and Firefox have no decoder, so the picture plays silent
-		if (a == "ape" || a.compare(0, 3, "wma") == 0 || a == "dts" || a == "dca" || a == "truehd" || a == "mlp" ||
+		// ac3/eac3 as the default sound: Chrome and Firefox have no decoder, so the picture plays silent. MPEG audio
+		// layer I/II (mp1, mp2), often inside a ".mp3" (game and broadcast rips): no browser decodes it, though it says
+		// it plays audio/mpeg
+		if (a == "mp1" || a == "mp2" || a == "ape" || a.compare(0, 3, "wma") == 0 || a == "dts" || a == "dca" || a == "truehd" || a == "mlp" ||
 			a == "ac3" || a == "eac3" || a.compare(0, 2, "rv") == 0 || a == "cook")
 			return Playable::No;
 		if (!v.empty() && (v == "mpeg4" || v.compare(0, 8, "msmpeg4v") == 0 || v == "mpeg2video" || v == "mpeg1video" ||
