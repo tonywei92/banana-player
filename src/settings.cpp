@@ -39,11 +39,11 @@ namespace bp
 	static const char* SHOW_LABELS[SHOWS] = {"Album art", "Art + visualizer", "Visualizer", "None"};
 	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "pocket", "led",
 		"synthwave", "banana-stack", "night-city", "oscilloscope", "heartbeat", "campfire", "aurora", "sound-garden", "turntable", "pixel-sea",
-		"bunny-hop", "bubble-tea", "jellyfish", "music-box", "fishbowl", "disco-ball", "banana-dancer"};
+		"bunny-hop", "bubble-tea", "jellyfish", "music-box", "fishbowl", "disco-ball", "banana-dancer", "vibing-cat"};
 	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket console",
 		"Hi-fi LED", "Synthwave", "Banana stack", "Night city", "Oscilloscope", "Heartbeat", "Campfire", "Aurora",
 		"Sound garden", "Turntable", "Pixel sea", "Bunny hop",
-		"Bubble tea", "Jellyfish", "Music box", "Fishbowl", "Disco ball", "Banana dancer"};
+		"Bubble tea", "Jellyfish", "Music box", "Fishbowl", "Disco ball", "Banana dancer", "Vibing cat"};
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
 	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
 	static const char* MANGA_FIT_IDS[MANGA_FITS] = {"page", "width", "fill"};
@@ -391,6 +391,7 @@ namespace bp
 		ok = writeFishbowlMaps(dir) && ok;
 		ok = writeDiscoMaps(dir) && ok;
 		ok = writeDancerMaps(dir) && ok;
+		ok = writeCatMaps(dir) && ok;
 		return ok;
 	}
 
@@ -421,7 +422,8 @@ namespace bp
 			case VIS_MUSICBOX: return musicboxGraph(overCover, mapsDir);
 			case VIS_FISHBOWL: return fishbowlGraph(overCover, mapsDir);
 			case VIS_DISCO: return discoGraph(overCover, mapsDir);
-			default: return dancerGraph(overCover, mapsDir);
+			case VIS_DANCER: return dancerGraph(overCover, mapsDir);
+			default: return catGraph(overCover, mapsDir);
 			}
 		}
 		std::string quoted;

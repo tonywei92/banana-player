@@ -5342,7 +5342,7 @@ static void testSettings()
 	CHECK_EQ(Settings().visualizer, (int)VIS_PEAKS_BANANA);
 	// Peaks Banana is the default and the Peaks offered; the coral Peaks is kept but no longer offered, so a saved
 	// choice of it reads as Peaks Banana (as Hi-fi LED, Synthwave, Banana stack and Heartbeat)
-	for (const char* id : {"peaks", "led", "synthwave", "banana-stack", "heartbeat", "oscilloscope", "turntable"})
+	for (const char* id : {"peaks", "led", "synthwave", "banana-stack", "heartbeat", "oscilloscope", "turntable", "disco-ball"})
 		CHECK_EQ(parseSettings(std::string("visualizer = ") + id + "\n").visualizer, (int)VIS_PEAKS_BANANA);
 	CHECK_EQ(std::string(visualizerLabel(VIS_PEAKS_BANANA)), std::string("Peaks Banana"));
 	CHECK_EQ(visualizerGraph(VIS_PEAKS_BANANA, false) != visualizerGraph(VIS_PEAKS, false), true);
@@ -5355,8 +5355,8 @@ static void testSettings()
 	CHECK_EQ(stepVisualizer(VIS_CITY, 1), (int)VIS_DANCER);
 	CHECK_EQ(stepVisualizer(VIS_DANCER, 1), (int)VIS_FIRE);
 	CHECK_EQ(stepVisualizer(VIS_SEA, 1), (int)VIS_BUNNY);
-	CHECK_EQ(stepVisualizer(VIS_DISCO, 1), (int)VIS_PEAKS_BANANA);
-	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, -1), (int)VIS_DISCO);
+	CHECK_EQ(stepVisualizer(VIS_CAT, 1), (int)VIS_PEAKS_BANANA);
+	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, -1), (int)VIS_CAT);
 	CHECK_EQ(stepVisualizer(VIS_SPECTRUM, 1), (int)VIS_CIRCLE);
 	CHECK_EQ(stepVisualizer(VIS_PEAKS, 1), (int)VIS_CIRCLE);
 	{
