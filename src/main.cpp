@@ -143,6 +143,42 @@ static void usage()
 		"keyboard: Enter, arrows, PgUp/PgDn (or Q/E), X, Y, Tab, Esc twice\n");
 }
 
+#ifdef __linux__
+// BananaOS's power daemon (bananad) dims the panels after 2 idle minutes and sleeps after 10 unless a game runs: a
+// live process named in /run/banana/game.pid. Its menu (banana-ui 0.5.3.4) writes that file through a stream it keeps
+// open, unflushed, for the whole session, so the file stays empty while the game runs, and a film went dim and then to
+// sleep (issue #4). An empty file, or one naming a process that's gone, gets this player's pid and start time (the
+// form bananad reads); the menu's own write, at the session's end, replaces it and then removes it
+static void holdIdleSleep()
+{
+	const char* path = "/run/banana/game.pid";
+	FILE* f = fopen(path, "r");
+	if (!f) return;	// not launched by BananaOS's menu (or not BananaOS): nothing to fill
+	long pid = 0;
+	int got = fscanf(f, "%ld", &pid);
+	fclose(f);
+	if (got == 1 && pid > 0 && kill((pid_t)pid, 0) == 0) return;	// a live one: bananad sees a game already
+	char buf[1024] = {};
+	FILE* st = fopen("/proc/self/stat", "r");
+	if (!st) return;
+	bool ok = fgets(buf, sizeof buf, st) != nullptr;
+	fclose(st);
+	if (!ok) return;
+	const char* q = strrchr(buf, ')');
+	if (!q) return;
+	q += 2;
+	for (int i = 0; i < 19 && *q; i++) { while (*q && *q != ' ') q++; while (*q == ' ') q++; }
+	unsigned long long start = strtoull(q, nullptr, 10);
+	if (FILE* w = fopen(path, "w"))
+	{
+		fprintf(w, "%ld %llu\n", (long)getpid(), start);
+		fclose(w);
+		fprintf(stderr, "banana-player: game.pid was %s: this player named in it (BananaOS's idle dim and sleep held)\n",
+			got == 1 ? "a process that's gone" : "empty");
+	}
+}
+#endif
+
 int main(int argc, char** argv)
 {
 #ifdef __GLIBC__
@@ -1334,6 +1370,15 @@ int main(int argc, char** argv)
 				if (int u = shadow.takeUnload()) stopPlaying(u == 2 ? StopWhy::End : StopWhy::Web);
 			}
 			Uint32 now = SDL_GetTicks();
+#ifdef __linux__
+			// (every 5 s: the file is BananaOS's, written at a launch; a few bytes read)
+			static Uint32 idleHoldAt = 0;
+			if (now - idleHoldAt >= 5000)
+			{
+				idleHoldAt = now;
+				holdIdleSleep();
+			}
+#endif
 			// a chapter or equalizer card shown: it goes the way the volume card does, after its time
 			if (int ms = std::max(player.takeCardShown(), photos.takeCardShown()))
 			{
