@@ -485,6 +485,9 @@ turn it on.
   **PIN**. Scan the QR code with your phone's camera: it opens the dashboard and signs you in. Or type the address into
   a browser and enter the PIN.
 - The phone or computer must be on the same Wi-Fi as the handheld.
+- One tab per browser: opening the dashboard in a second tab doesn't connect it; it says **Banana Player is open in
+  another tab** and asks **Switch here**. Switching moves it there (the other tab stops playing and offers the same).
+  Uploads under way in the tab that steps aside still finish.
 - It stays on across restarts until you turn it off. The PIN stays the same too, until you press **New PIN** on the
   handheld (press it twice). That signs out every browser.
 - While the QR code is on the screen, the bottom screen turns off after 90 seconds without a press (a touch brings it

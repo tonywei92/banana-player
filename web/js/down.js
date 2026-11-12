@@ -43,11 +43,11 @@ export function ElsewhereScreen() {
 	const left = s.upload.items.filter(i => i.state === 'up' || i.state === 'queued' || i.state === 'waiting').length;
 	return html`<main class="down" aria-labelledby="else-t"><div class="downbox">
 		<div class="zz"><${HandheldArt} mode="off" /></div>
-		<div class="kicker">Open in another tab</div>
+		<div class="kicker">Already open</div>
 		<h1 id="else-t" tabindex="-1" ref=${ref}>Banana Player is open in another tab</h1>
-		<p class="down-sub">One tab at a time stays connected to your handheld. Use this one instead, and the other one steps aside.</p>
+		<p class="down-sub">Only one tab at a time can be connected to your handheld. Switch here? The other tab steps aside.</p>
 		${B.meta && B.parkedPlaying && html`<div class="box surface down-card"><span class="tile"><${Art} seed=${B.meta.p} kind=${B.meta.kind} /></span><div class="grow"><div class="t">${B.meta.title}</div><div class="dim" style="font-size:13px">Was playing here · stopped at <span class="num">${fmtTime(B.parked)}</span></div></div></div>`}
 		${uploading() && html`<p class="down-status" role="status" aria-live="polite">Finishing ${left} upload${left === 1 ? '' : 's'} here first</p>`}
-		<button class="btn" onClick=${() => useHere()}><${Icon} n="refresh" k=${2} />Use here</button>
+		<button class="btn" onClick=${() => useHere()}><${Icon} n="refresh" k=${2} />Switch here</button>
 	</div></main>`;
 }

@@ -7,13 +7,18 @@ import { errMsg, fetchT, get, post } from './api.js';
 import { Banner, HandheldArt, useTick } from './components.js';
 import { fmtTime, touchOnly } from './util.js';
 import { Icon } from './icons.js';
+import { claimTab, otherTabHas } from './onetab.js';
 
 /* ================= login ================= */
 async function afterLogin() {
 	settle();
-	set({ authed: true, signedOut: '', loginNote: '', signingIn: false, conn: 'ok', reconnecting: false, downReason: '', route: parseRoute() });
+	// one tab at a time: another tab of this browser has it, and this one asks "Switch here?" (onetab.js)
+	const taken = await otherTabHas();
+	set({ authed: true, signedOut: '', loginNote: '', signingIn: false, conn: 'ok', reconnecting: false, downReason: '', route: parseRoute(), elsewhere: taken });
 	C.okAt = Date.now();
-	await refreshState(); openSSE(); loadExtras(); pingBoot();
+	await refreshState();
+	if (!taken) { openSSE(); loadExtras(); claimTab(); }
+	pingBoot();
 }
 // the player's start id, to tell a restart from a reconnect
 export async function pingBoot() { try { const { r } = await fetchT('/api/ping', { cache: 'no-store' }, 4000); C.boot = r.headers.get('X-BP-Boot') || C.boot; } catch (e) {} }

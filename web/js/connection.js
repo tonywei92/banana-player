@@ -6,7 +6,7 @@ import { fetchT, get } from './api.js';
 import { closeOverlays, seeVersion, toast } from './toasts.js';
 import { holdUploads, resumeUploads } from './uploads.js';
 import { loadExtras } from './login.js';
-import { claimTab } from './onetab.js';
+import { claimTab, otherTabHas } from './onetab.js';
 
 /* ================= connection =================
    ok -> blip (a request or the live stream failed: the app stays, "Reconnecting…" after 2 s) -> down (a goodbye from
@@ -65,7 +65,15 @@ async function reconnect(boot) {
 	}
 	const restarted = !!(boot && C.boot && boot !== C.boot);
 	if (boot) C.boot = boot;
-	const wasDown = store.conn === 'down', first = store.authed === null;
+	const wasDown = store.conn === 'down', first = store.authed === null, fresh = store.authed !== true;
+	// one tab at a time: a tab just opened (or just signed in) asks the others first; one has it, and this one asks
+	// "Switch here?" instead of connecting (onetab.js)
+	if (fresh && await otherTabHas()) {
+		settle();
+		set({ authed: true, conn: 'ok', reconnecting: false, downReason: '', probing: false, elsewhere: true });
+		applySnap(s);
+		return true;
+	}
 	settle();
 	C.okAt = Date.now();
 	if (restarted) dropBrowser();
@@ -74,7 +82,7 @@ async function reconnect(boot) {
 	openSSE();
 	resumeUploads();
 	if (wasDown || first) loadExtras();
-	if (first) claimTab();	// this tab has the dashboard now: one opened before steps aside
+	if (fresh) claimTab();	// this tab has the dashboard now
 	if (wasDown && !first) toast('Connected again');
 	return true;
 }
