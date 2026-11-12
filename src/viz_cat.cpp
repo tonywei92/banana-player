@@ -1,6 +1,8 @@
 // Vibing cat: pixel art on an 80x60 grid of 8-pixel dots. A dark purple room; a window (a wooden frame with a cross
-// bar) onto a navy night sky with a crescent moon and a few stars; a wooden sill with a little potted plant; on the sill
-// an orange cat sitting (a darker outline, a white chest) in red headphones (a band over its head, a pad each side).
+// bar) onto a navy night sky with a crescent moon and a few stars; a wooden sill with a little potted plant and a mug
+// of coffee, its steam always rising in soft wavy wisps (an atlas cropped by the frame number, a step stronger with the
+// mids); on the sill an orange cat sitting (a darker outline, a white chest) in red headphones (a band over its head,
+// a pad each side). The scene sits low, the window's top under the player's title.
 // Its head bobs down 0-2 rows with the bass (bands 0-2); its left ear twitches up when the treble (11-15) is high; its
 // eyes are two dots, or happy closed arcs (^ ^) while the music is loud (the mean of all 16 past half); a pink nose and
 // a small mouth. Its tail swishes beside it with the mids (4-9), faster and wider the louder; golden notes float up
@@ -36,8 +38,8 @@ namespace bp
 	namespace
 	{
 		// a new name whenever the stills change: they're cached by size
-		const char* const FILES[8] = {"cat1-scene-a.pgm", "cat1-row-a.pgm", "cat1-col-a.pgm", "cat1-scene-s.pgm",
-									  "cat1-row-s.pgm",	  "cat1-col-s.pgm", "cat1-tail.pgm",  "cat1-notes.pgm"};
+		const char* const FILES[9] = {"cat2-scene-a.pgm", "cat2-row-a.pgm", "cat2-col-a.pgm", "cat2-scene-s.pgm", "cat2-row-s.pgm",
+									  "cat2-col-s.pgm",	  "cat2-tail.pgm",	"cat2-notes.pgm", "cat2-steam.pgm"};
 
 		// the drawing's grid: alone 80x60 dots of 8 pixels; over the art 160x50 of 4 (640x200), the scene moved by
 		// (dx, dy) so the sill sits near the strip's bottom and the cat in its middle
@@ -46,7 +48,7 @@ namespace bp
 			int W, H, P, dx, dy;
 			bool room;	// the room and the window (alone), or the art (over it)
 		};
-		const Layout ALONE = {80, 60, 8, 0, 0, true};
+		const Layout ALONE = {80, 60, 8, 0, 12, true};	// 12 rows down: the window's top under the player's title
 		const Layout STRIP = {160, 50, 4, 50, 6, false};
 		const double PI = 3.14159265358979323846;
 		const int OFF = 64;	// the row and column stills: 64 + the dot's row (column) in the scene's own coordinates
@@ -73,12 +75,17 @@ namespace bp
 			C_EYE,	// 5
 			C_NOSE,	// 6
 			C_NOTE,	// + 0..3 (faint to full)
-			C_COUNT = C_NOTE + 4
+			C_MUG = C_NOTE + 4,
+			C_MUG2,
+			C_COFFEE,
+			C_STEAM,	// + 0..3 (faint to strong)
+			C_COUNT = C_STEAM + 4
 		};
 		const unsigned RGB[C_COUNT] = {0x1b1430, 0x1b1430, 0x6a4a3a, 0x1f2a5a, 0xfff3c4, 0x8a96d0, 0x8a5a3a,
 									   0x6a4228, 0x3fbf6a, 0xc0603a, 0xfff2e0, 0xf2a25a, 0xc87a38, 0xe8463c,
-									   0xb02e26, 0x2a1a10, 0xff8fa8, 0xffd66e, 0xffd66e, 0xffd66e, 0xffd66e};
-		const double NOTE_ALPHA[4] = {0.3, 0.55, 0.8, 1.0};
+									   0xb02e26, 0x2a1a10, 0xff8fa8, 0xffd66e, 0xffd66e, 0xffd66e, 0xffd66e,
+									   0xf4dce8, 0xc9a9bc, 0x4a2a16, 0xeef0f6, 0xeef0f6, 0xeef0f6, 0xeef0f6};
+		const double NOTE_ALPHA[4] = {0.3, 0.55, 0.8, 1.0}, STEAM_ALPHA[4] = {0.22, 0.4, 0.55, 0.7};
 
 		// the levels' thresholds (0..252, after the contrast and easing; the preview's fractions x 252): the head down
 		// a row from B1, two from B2; the ear up past EAR; happy eyes past LOUD; the tail's width steps; note i from
@@ -92,6 +99,8 @@ namespace bp
 		const int TX = 37, TY = 29, TW = 9, TH = 12, TPH = 60, TSTEP = 4;
 		// the notes' box, their loop (a phase every NSTEP frames: 2 s)
 		const int NX = 39, NY = 6, NW = 19, NH = 22, NPH = 60, NSTEP = 2;
+		// the steam's box over the mug, its loop (2 s)
+		const int SX = 47, SY = 21, SW = 10, SH = 14, SPH = 60, SSTEP = 2;
 
 		struct Yuv { int y, u, v; };
 		// BT.601 limited (mpv's reading of a picture this size)
@@ -137,6 +146,7 @@ namespace bp
 		{
 			if (k == 6) { w = TW * TPH; h = TH; return; }
 			if (k == 7) { w = NW * NPH; h = NH; return; }
+			if (k == 8) { w = SW * SPH; h = SH; return; }
 			const Layout& L = k < 3 ? ALONE : STRIP;
 			w = L.W;
 			h = L.H;
@@ -168,6 +178,23 @@ namespace bp
 							d = (unsigned char)((d & ~(3 << 2 * a)) | (i > 6 ? 2 : 1) << 2 * a);
 						}
 					}
+				return m;
+			}
+			if (k == 8)	// the steam: 3 wisps, each a wave travelling up in broken puffs; 1 faint .. 3 strong (low)
+			{
+				for (int p = 0; p < SPH; p++)
+				{
+					double T = 2.0 * p / SPH;
+					for (int j = 0; j < 3; j++)
+						for (int y = 21; y <= 34; y++)
+						{
+							// puffs 5 rows long, 3 apart, rising 8 rows a loop (4 a second)
+							if (std::fmod(y + T * 4 + j * 3 + 64, 8.0) >= 5) continue;
+							int x = 50 + j + jsRound(1.2 * std::sin(0.6 * y + PI * T + j * 2.1));
+							int f = y >= 31 ? 3 : y >= 27 ? 2 : 1;
+							if (x >= SX && x < SX + SW) m[(size_t)(y - SY) * w + p * SW + x - SX] = (unsigned char)f;
+						}
+				}
 				return m;
 			}
 			if (k == 7)	// the notes: 1 + note x 4 + its strength (0 faint .. 3 full)
@@ -222,6 +249,14 @@ namespace bp
 				for (int x = 0; x < w; x++) { put(x, 40 + L.dy, C_SILL); put(x, 41 + L.dy, C_SILL2); }
 			for (int y = 34; y < 40; y++)
 				for (int x = 60; x < 65; x++) px(x, y, y < 36 ? C_LEAF : C_POT);
+			// a mug of coffee between the cat and the plant: a rim round the coffee, a shaded foot, a handle
+			for (int y = 35; y < 40; y++)
+				for (int x = 49; x < 54; x++) px(x, y, y == 35 && x > 49 && x < 53 ? C_COFFEE : y == 39 ? C_MUG2 : C_MUG);
+			px(54, 36, C_MUG);
+			px(55, 36, C_MUG);
+			px(55, 37, C_MUG2);
+			px(54, 38, C_MUG2);
+			px(55, 38, C_MUG2);
 			// the body (the head is drawn over its top)
 			for (int y = 28; y < 40; y++)
 			{
@@ -279,10 +314,10 @@ namespace bp
 			return stat(path(k).c_str(), &st) == 0 && (size_t)st.st_size == header(w, h).size() + (size_t)w * h;
 		};
 		bool all = true;
-		for (int k = 0; k < 8; k++) all = all && ready(k);
+		for (int k = 0; k < 9; k++) all = all && ready(k);
 		if (all) return true;
 		mkdir(dir.c_str(), 0755);
-		for (int k = 0; k < 8; k++)
+		for (int k = 0; k < 9; k++)
 		{
 			int w, h;
 			dims(k, w, h);
@@ -308,9 +343,9 @@ namespace bp
 			for (int k = C_COUNT - 1; k >= 1; k--)
 			{
 				std::string v;
-				if (k >= C_NOTE)
+				if (k >= C_STEAM || (k >= C_NOTE && k < C_NOTE + 4))
 				{
-					double a = NOTE_ALPHA[k - C_NOTE];
+					double a = k >= C_STEAM ? STEAM_ALPHA[k - C_STEAM] : NOTE_ALPHA[k - C_NOTE];
 					if (art)
 						v = "round(" + std::to_string(a) + "*" + n(col[k].*plane) + "+" + std::to_string(1 - a) + "*y)";
 					else
@@ -334,7 +369,7 @@ namespace bp
 			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
 			 vizContrast("ct") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=4 [ctb] [ctm] [ctt] [ctl]; "
-			 "[ctb] crop=3:1:0:0,scale=1:1:flags=area [ctb1]; [ctm] crop=6:1:4:0,scale=1:1:flags=area [ctm1]; "
+			 "[ctb] crop=3:1:0:0,scale=1:1:flags=area [ctb1]; [ctm] crop=6:1:4:0,scale=1:1:flags=area,split [ctm1] [ctm2]; "
 			 "[ctt] crop=5:1:11:0,scale=1:1:flags=area,split [ctt1] [ctt2]; [ctl] scale=1:1:flags=area [ctl1]; ";
 
 		// the head: the state (bob x 4 + ear x 2 + eyes), against the rows: the variant x 12 + the head's row (255
@@ -365,8 +400,14 @@ namespace bp
 			 "[ctts] [ctnm] lut2=c0='if(eq(y,0),0,if(gte(x," + n(NOTE0) + "+" + n(NOTE1) + "*floor((y-1)/4))," + n(C_NOTE) +
 			 "+mod(y-1,4),0))',crop=" + n(NW) + ":" + n(NH) + ":x='" + n(NW) + "*mod(floor(n/" + n(NSTEP) + ")," + n(NPH) + ")':y=0,"
 			 "pad=" + W + ":" + H + ":" + n(NX + L.dx) + ":" + n(NY + L.dy) + ",setsar=1 [ctN]; ";
-		// merged over the scene: the tail, the head, the notes
-		g += "movie=" + q(0) + ",format=gray [ctsc]; [ctT] [ctsc] lut2=c0='if(x,x,y)' [ctm1x]; [ctH] [ctm1x] lut2=c0='if(x,x,y)' [ctm2x]; "
+		// the steam: always rising, a step stronger while the mids are up
+		g += "[ctm2] scale=" + n(SW * SPH) + ":" + n(SH) + ":flags=neighbor [ctss]; movie=" + q(8) + ",format=gray [ctsm]; "
+			 "[ctss] [ctsm] lut2=c0='if(y," + n(C_STEAM) + "+y-1+gte(x," + n(M2) + "),0)',"
+			 "crop=" + n(SW) + ":" + n(SH) + ":x='" + n(SW) + "*mod(floor(n/" + n(SSTEP) + ")," + n(SPH) + ")':y=0,"
+			 "pad=" + W + ":" + H + ":" + n(SX + L.dx) + ":" + n(SY + L.dy) + ",setsar=1 [ctV0]; ";
+		// merged over the scene: the tail, the steam, the head, the notes
+		g += "movie=" + q(0) + ",format=gray [ctsc]; [ctT] [ctsc] lut2=c0='if(x,x,y)' [ctm0x]; "
+			 "[ctV0] [ctm0x] lut2=c0='if(x,x,y)' [ctm1x]; [ctH] [ctm1x] lut2=c0='if(x,x,y)' [ctm2x]; "
 			 "[ctN] [ctm2x] lut2=c0='if(x,x,y)',split=3 [ctc0] [ctc1] [ctc2]; ";
 
 		if (overCover)
