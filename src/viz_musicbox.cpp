@@ -203,12 +203,13 @@ namespace bp
 			g += "[vid1] scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:-1:-1:black,setsar=1,format=yuv420p,"
 				 "settb=AVTB,split [mbart1] [mbart2]; [mbart1] crop=640:280:0:0 [top]; "
 				 "[mbart2] crop=640:200:0:280,extractplanes=y+u+v [mbay] [mbau] [mbav]; ";
-		// the bands: measured as Peaks does, 60 a second, pushed apart (vizContrast), eased: up at once, down over
-		// ~0.15 s (the exp/log lagfun, 16 values a frame)
+		// the bands: measured as Peaks does, 60 a second, pushed apart (vizContrast), then eased slower than the bar
+		// styles: a tooth's gold is a colour, not a height, and at their pace it flickered. Its rises averaged over four
+		// frames (tmix: ~65 ms), its falls over ~0.6 s (the exp/log lagfun, 16 values a frame)
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("mb", 1, "3", "1.3", "170") + ","
-			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("mb") + ",tmix=frames=4,"
+			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.75,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [mbl] [mbb]; "
 			 // each tooth's three columns its band's level, down the grid; padded to the atlas's width and stacked on it
 			 "[mbl] scale=" + n(N * 3) + ":1:flags=neighbor,pad=" + n(MW) + ":1:16:0:black,scale=" + n(MW) + ":" + n(R) +
