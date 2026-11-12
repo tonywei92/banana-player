@@ -945,6 +945,9 @@ namespace bp
 			{"Made by", "tonywei92"},
 			{"Source", "https://github.com/tonywei92/banana-player"},
 			{"License", "MIT: copies and forks keep the copyright notice and the licence (LICENSE)"},
+			// (the licence's own terms, said plainly: as the README's No warranty says them)
+			{"Warranty", "None: provided as is. Use it at your own risk: the authors aren't responsible for any damage to your handheld or lost files"},
+			{"Manga sources", "Third parties': Banana Player doesn't host or vouch for what they serve"},
 			{"Plays", "Video and music on BananaOS for the Anbernic RG DS and RG DS Plus"},
 			{"Built with", "", true},
 			{"mpv", mpv},
