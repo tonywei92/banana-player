@@ -5,7 +5,7 @@
 
 // Hi-fi LED meter: an old stereo's graphic equalizer display. 16 columns of 14 LED segments on near-black, lit from the
 // bottom: green, then yellow, then red for the top two; the unlit ones faintly there (their colour, dimmed). Each
-// column's level eases as an LED meter's (up at once, down over ~0.4 s), and one lit segment, the peak, holds at its
+// column's level eases as an LED meter's (up at once, down over ~0.15 s), and one lit segment, the peak, holds at its
 // highest point and falls back slowly, as Peaks' caps.
 //
 // Made as Pocket console's bars are, but classified at the segments' own size: showfreqs only measures (16 values a
@@ -69,15 +69,15 @@ namespace bp
 				 "settb=AVTB,split [ldart1] [ldart2]; [ldart1] crop=640:280:0:0 [top]; "
 				 "[ldart2] crop=640:200:0:280,extractplanes=y+u+v [lday] [ldau] [ldav]; ";
 		// the 16 levels, 0..252 (as Peaks and Pocket console measure them), each eased in the exp(value/24) domain,
-		// where lagfun's decay is an even fall: the level down over ~0.4 s for the whole height, the peak ~2.4 s
+		// where lagfun's decay is an even fall: the level down over ~0.15 s for the whole height, the peak ~2.4 s
 		const std::string toExp = "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=";
 		const std::string toLin = ",lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,"
 								  "scale=" + n(N) + ":" + n(S) + ":flags=neighbor,setsar=1";
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
-			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=30:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255',split [ldv] [ldp]; "
-			 "[ldv] " + toExp + "0.417" + toLin + " [ldV]; "
-			 "[ldp] " + toExp + "0.8679" + toLin + " [ldP]; "
+			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("ld") + ",split [ldv] [ldp]; "
+			 "[ldv] " + toExp + "0.311" + toLin + " [ldV]; "
+			 "[ldp] " + toExp + "0.9316" + toLin + " [ldP]; "
 			 // each segment's index, 0 at the bottom (a still: one frame, repeated by lut2)
 			 "color=black:s=" + n(N) + "x" + n(S) + ":r=1:d=1,format=gray,geq=lum='" + n(S - 1) + "-Y' [ldR]; "
 			 // the index, +16 when lit (the level reaches its middle)

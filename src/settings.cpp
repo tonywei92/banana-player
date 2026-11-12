@@ -308,15 +308,18 @@ namespace bp
 			g += "[vid1] scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:-1:-1:black,setsar=1,format=yuv420p,"
 				 "settb=AVTB,split [pcart1] [pcart2]; [pcart1] crop=640:280:0:0 [top]; "
 				 "[pcart2] crop=640:200:0:280,extractplanes=y+u+v [pcay] [pcau] [pcav]; ";
+		// measured and drawn 60 times a second (an exception to the 30 fps rule, for the owner to judge on the
+		// handheld): the 1024-sample windows overlap, so a short hit always counts (at 30 a third of the sound went
+		// unmeasured), and the bars move with it
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
-			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=30:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255',split [pcv] [pcp]; "
-			 "[pcp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.8679,"
+			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("pc") + ",split [pcv] [pcp]; "
+			 "[pcp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.9316,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*250)',format=gray," + stretch + " [pcP]; "
-			 // the bars themselves eased, as an LED meter's: up at once, down over ~0.4 s for the whole height (21 of
-			 // the 252 steps a frame), so whole-dot steps glide rather than flicker at 30 frames a second. The same
+			 // the bars themselves eased, as an LED meter's: up at once, down over ~0.15 s for the whole height (28 of
+			 // the 252 steps a measure), so whole-dot steps glide rather than flicker at 60 frames a second. The same
 			 // exp/log lagfun as the caps (15 values a frame: next to nothing); a cap's slower fall keeps it above
-			 "[pcv] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.417,"
+			 "[pcv] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray," + stretch + " [pcV]; "
 			 // each dot's "height" (1..252 up the bars' rows), 253 a gap or outside them, 255 the floor
 			 "color=black:s=" + w + "x" + rows + ":r=1:d=1,format=gray,geq=lum='if(eq(Y," + n(T + BH) + ")*between(X," + n(L) + "," +

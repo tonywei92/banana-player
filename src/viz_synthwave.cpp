@@ -170,12 +170,12 @@ namespace bp
 				 "[sws2] crop=640:" + n(SW_BAND) + ":0:" + n(SW_BAND_Y) + ",extractplanes=y+u+v [swby] [swbu] [swbv]; "
 				 "[sws3] crop=640:" + n(SW_H - SW_HORIZON) + ":0:" + n(SW_HORIZON) + " [swbot]; ";
 		// measured as Peaks (TOP more bands than drawn: the highest ninth, where music has next to nothing); the caps
-		// fall over ~2.4 s, the bars ease down over ~0.4 s (up at once), as Pocket console's
+		// fall over ~2.4 s, the bars ease down over ~0.15 s (up at once), as Pocket console's
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
-			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=30:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255',split [swv] [swp]; "
-			 "[swp] " + toExp + "lagfun=decay=0.8679" + fromExp + " [swP]; "
-			 "[swv] " + toExp + "lagfun=decay=0.417" + fromExp + " [swV]; "
+			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("sw") + ",split [swv] [swp]; "
+			 "[swp] " + toExp + "lagfun=decay=0.9316" + fromExp + " [swP]; "
+			 "[swv] " + toExp + "lagfun=decay=0.311" + fromExp + " [swV]; "
 			 // each pixel's height: 1..100 in a bar's columns, 101..200 (100 + height) in its glows, 253 empty
 			 "color=black:s=" + n(W) + "x" + n(H) + ":r=1:d=1,format=gray,geq=lum='if(lt(mod(X," + n(BW) + "),3)+gte(mod(X," +
 			 n(BW) + ")," + n(BW - 3) + "),253,if(eq(mod(X," + n(BW) + "),3)+eq(mod(X," + n(BW) + ")," + n(BW - 4) + ")," + n(2 * H) +

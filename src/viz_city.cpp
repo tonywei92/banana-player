@@ -279,11 +279,11 @@ namespace bp
 				 "settb=AVTB,split [ctart1] [ctart2]; [ctart1] crop=640:280:0:0 [top]; "
 				 "[ctart2] crop=640:200:0:280,extractplanes=y+u+v [ctay] [ctau] [ctav]; ";
 		// the bands: measured as Peaks does (one value each, 0..252), then eased as Pocket console's bars: up at once,
-		// down over ~0.4 s for the whole range (an exp/log lagfun, N values a frame)
+		// down over ~0.15 s for the whole range (an exp/log lagfun, N values a frame)
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
-			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=30:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255',"
-			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.417,"
+			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("ct") + ","
+			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray [ctl]; "
 			 // each column its building's level (one row: remap with the band table), stretched down the picture
 			 "movie=" + q(5) + " [ctbx]; movie=" + q(6) + " [ctby]; movie=" + q(overCover ? 4 : 3) + " [ctm]; "

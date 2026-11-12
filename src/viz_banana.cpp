@@ -125,13 +125,13 @@ namespace bp
 				 "settb=AVTB,split [bnart1] [bnart2]; [bnart1] crop=640:280:0:0 [top]; "
 				 "[bnart2] crop=640:200:0:280,extractplanes=y+u+v [bnay] [bnau] [bnav]; ";
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N * SUB + TOP) +
-			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=30:colors=white,crop=" + n(N * SUB) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255',split [bnv] [bnp]; "
+			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N * SUB) +
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("bn") + ",split [bnv] [bnp]; "
 			 // the caps: held, and let fall at an even speed (Peaks' exp/log lagfun, ~2.4 s for the whole height)
-			 "[bnp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.8679,"
+			 "[bnp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.9316,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray," + stretch + " [bnP]; "
-			 // the piles eased: up at once, down over ~0.4 s (as Pocket console's bars)
-			 "[bnv] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.417,"
+			 // the piles eased: up at once, down over ~0.15 s (as Pocket console's bars)
+			 "[bnv] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray," + stretch + " [bnV]; "
 			 "movie=" + mpath + ",format=gray [bnM]; "
 			 // +128: a banana's pixel in the cap's slot

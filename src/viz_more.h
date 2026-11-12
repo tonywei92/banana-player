@@ -23,4 +23,14 @@ namespace bp
 	bool writeCityMaps(const std::string& dir);
 	bool writeScopeMaps(const std::string& dir);
 	bool writeHeartMaps(const std::string& dir);
+	// The bars' contrast, between the measured levels (one row, 0..252) and their easing: showfreqs' log scale puts
+	// most bands within a few steps of each other, so each is pushed away from the mean of itself and its two
+	// neighbours (x3: a band above them a peak, one below a valley) and the levels spread a little around 170
+	// (x1.3). On a busy frame neighbours differ by ~27 steps of 252 rather than ~14, the mids still standing.
+	// tag: a prefix for the labels, unique in the graph. Starts with a comma, ends on the row.
+	inline std::string vizContrast(const std::string& tag)
+	{
+		return ",split [" + tag + "c1] [" + tag + "c2]; [" + tag + "c2] avgblur=sizeX=1:sizeY=1 [" + tag + "c3]; [" + tag +
+			   "c1] [" + tag + "c3] lut2=c0='clip(170+1.3*(x-170)+3*(x-y),0,252)'";
+	}
 }
