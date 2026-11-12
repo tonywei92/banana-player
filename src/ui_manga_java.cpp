@@ -348,8 +348,11 @@ namespace bp
 			mgr.save();
 			mstJavaLocal++;
 		}
-		// A Java repository's extensions are asked once the host is answering (and again after Y), not every tick
-		if (mangaJavaInstalled() && mgr.hasRepos() && !mgr.extensionsKnown() &&
+		// A Java repository's extensions are asked once the host is answering (and again after Y), not every tick, and
+		// only while Sources is open: the list (450 KB, 15-20 s) went first at every start and the engine answers one
+		// request at a time, so a series' check and a chapter's pages waited behind it. Browse doesn't need it (the
+		// installed sources are on the card); opening Sources asks for it
+		if (page == Page::MangaSources && mangaJavaInstalled() && mgr.hasRepos() && !mgr.extensionsKnown() &&
 			mangaNet->javaExt().state() == JavaExtHost::State::Running)
 		{
 			Uint32 now = SDL_GetTicks();
