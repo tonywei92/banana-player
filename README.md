@@ -114,6 +114,16 @@ Want to build it or help out? See [DEVELOPMENT.md](DEVELOPMENT.md).
 - The film in the screenshots is [Sintel](https://durian.blender.org), © copyright Blender Foundation |
   durian.blender.org, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
 
+## No warranty
+
+Banana Player is free software provided **as is, with no warranty of any kind**. Use it at your own risk: the authors
+aren't responsible for any damage to your handheld, lost or corrupted files, or anything else that happens from using
+it. That's what the [MIT licence](LICENSE) says too; the licence is the full text.
+
+- **Manga sources and extensions** come from third parties. Banana Player doesn't host, check or vouch for what they
+  serve, and what you read through them is up to you and the laws where you live.
+- **BananaOS** is a separate project. Banana Player isn't made, checked or endorsed by its authors.
+
 ## Licence
 
 [MIT](LICENSE) © tonywei92. You're free to use, change and share Banana Player; copies and forks must keep the
