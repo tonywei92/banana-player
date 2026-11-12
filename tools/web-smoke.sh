@@ -165,6 +165,7 @@ post /api/cmd -d c=seek -d t=30; status_is "seek" 200; wait_state "position near
 post /api/cmd -d c=seekrel -d d=-10; status_is "seekrel" 200
 post /api/cmd -d c=loop -d v=all; status_is "loop all" 200; wait_state "state loop all" '.loop == "all"'
 post /api/cmd -d c=loop -d v=no; wait_state "state loop no" '.loop == "no"'
+post /api/cmd -d c=shuffle -d v=off; status_is "shuffle off" 200; wait_state "state shuffle off" '.shuffleMode == false'	# a lasting setting: Next/Prev below go in order
 post /api/cmd -d c=loop -d v=sideways; status_is "bad loop" 400
 post /api/cmd -d c=next; status_is "next" 200; wait_state "next: song 2" '.path | endswith("02 Split Decision.mp3")'
 post /api/cmd -d c=prev; status_is "prev" 200; wait_state "prev: song 1" '.path | endswith("01 Sunny Peel.mp3")'
@@ -179,7 +180,7 @@ get /api/eq; status_is "eq list" 200
 get /api/source; status_is "source" 200; jq_is "source has the album" '.items | length >= 2'
 post /api/play --data-urlencode "p[]=$SONG2" --data-urlencode "p[]=$SONG"; status_is "play a selection" 200; wait_state "selection plays song 2 first" '(.path | endswith("02 Split Decision.mp3")) and (.source.count == 2)'
 post /api/play --data-urlencode "playlist=$PLAY" -d index=1; status_is "play a playlist at 1" 200; wait_state "playlist source at 1" '.source.kind == "playlist" and .source.index == 1'
-post /api/cmd -d c=shuffle; status_is "shuffle" 200
+post /api/cmd -d c=shuffle -d v=on; status_is "shuffle on" 200; wait_state "state shuffle on" '.shuffleMode == true'
 post /api/play --data-urlencode "p=$SONG"; status_is "play a song again" 200; wait_state "the song again" '.path | endswith("01 Sunny Peel.mp3")'
 # the Session (docs/design/session.md): a tab plays the song (Open), hands it to the handheld at 20 s, takes it back
 SQ=$(($(date +%s) * 1000000))
