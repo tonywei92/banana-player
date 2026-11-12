@@ -27,7 +27,7 @@ photos with a finger, and reads manga across both screens. When a new version is
   <tr>
     <td align="center"><img src="docs/img/screen-sound.png?v=0.7.10" alt="The equalizer on the bottom screen, ten bands set to the Rock preset, under a song with the Circle visualizer"><br><sub><b>Sound.</b> A 10-band equalizer with presets, and room effects like Concert hall</sub></td>
     <td align="center"><img src="docs/img/screen-photo.png?v=0.7.10" alt="A photo zoomed in on the top screen, the pan area and its buttons on the bottom"><br><sub><b>Photos.</b> Zoom in and drag the box to look around</sub></td>
-    <td align="center"><img src="docs/img/screen-manga.png?v=0.7.10" alt="A manga page across both screens, the panels running on over the hinge"><br><sub><b>Manga.</b> A page across both screens, or one a screen held like a book</sub></td>
+    <td align="center"><img src="docs/img/screen-manga.png?v=0.7.10" alt="A colour manga page across both screens: a city at dusk, a girl in shock, a glowing handheld, her eyes set on it"><br><sub><b>Manga.</b> A page across both screens, or one a screen held like a book</sub></td>
   </tr>
 </table>
 
@@ -112,8 +112,8 @@ Want to build it or help out? See [DEVELOPMENT.md](DEVELOPMENT.md).
   [Fusion Pixel](https://github.com/TakWolf/fusion-pixel-font) and [Noto Sans](https://notofonts.github.io) Thai,
   Arabic, Hebrew and Devanagari, under the SIL Open Font License 1.1.
 - The film in the screenshots is [Sintel](https://durian.blender.org), © copyright Blender Foundation |
-  durian.blender.org, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The manga page is made from
-  stills of its trailer (cropped, in black and white, laid out as panels).
+  durian.blender.org, under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The manga page in them is an
+  original drawing made for these screenshots, not from any series.
 
 ## No warranty
 
