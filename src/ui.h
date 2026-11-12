@@ -511,7 +511,7 @@ namespace bp
 		// laid out as Quick settings (F) is: its panel, its rows, its red Quit button
 		static constexpr Rect QUIT_BOX{40, 119, 560, 198};
 		Rect quitRow(int i) const { return {56, QUIT_BOX.y + 56 + i * 62, 528, 54}; }
-		void drawQuitDialog();
+		void drawQuitDialog(bool quitPlaying);	// (playing: it says quitting stops it)
 		void drawHome(const Player& p);
 		bool showHidden = false;	// the setting, kept here for drawBrowseMenu (no Player there)
 		bool mangaOn = false;		// the manga reader's switch, kept here for tileSub (no Player there)

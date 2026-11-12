@@ -213,8 +213,8 @@ namespace bp
 			{
 			case Button::Up: case Button::Down: quitCursor = (quitCursor + 1) % 2; break;
 			case Button::A:
-				// choosing Quit is the second B press of before: never while something plays
-				if (quitCursor == 0) return !nowPlayable(p);
+				// Quit quits, playing or not (as Quick settings' Quit: "leave" would only leave the player); Cancel closes
+				if (quitCursor == 0) quitRequested = true;
 				quitOpen = false;
 				break;
 			case Button::B: case Button::Start: quitOpen = false; break;
@@ -224,10 +224,10 @@ namespace bp
 		}
 		if (b == Button::B)
 		{
-			// something playing: B stays on Home (SELECT goes to it) and never quits while it plays; else it asks first
-			if (nowPlayable(p)) return false;
+			// it asks first, playing or not (the dialog says what quitting stops); the cursor on Cancel: a pocket's B,
+			// and a second one, never quit by themselves
 			quitOpen = true;
-			quitCursor = 1;	// Cancel: a pocket's B and a tap are safer there
+			quitCursor = 1;
 			return false;
 		}
 		if (b == Button::Start) { openMainMenu(p, playingTabShown(p) ? TAB_PLAYING : TAB_SETTINGS); return false; }
@@ -287,7 +287,7 @@ namespace bp
 				if (i < 2 && quitRow(i).hit(x, y))
 				{
 					quitCursor = i;
-					if (i == 0) return !nowPlayable(p);
+					if (i == 0) quitRequested = true;
 					quitOpen = false;
 				}
 			}
@@ -536,24 +536,24 @@ namespace bp
 				drawTextMid(tileSub(g), 0, soft, t.x + t.w / 2, t.y + 138, t.w - 20, 2);
 			}
 		}
-		// (something playing: the mini bar says SELECT goes to it, and B does nothing here; else B asks to quit)
-		bool playing = nowPlayable(p);
 		std::vector<Hint> h;
 		if (homeZone == HOME_STRIP && has && homeStrip < (int)recent.size())
 			h = {{"A", chipKind && recent[homeStrip].path == chipPath ? "Go to it" : "Play"}, {"Y", "Menu"}, {"X", "Options"}};
 		else if (homeZone == HOME_STRIP && has) h = {{"A", "Open"}, {"X", "Options"}};
 		else h = {{"D-PAD", "Move"}, {"A", "Open"}, {"X", "Options"}};
-		if (!playing) h.push_back({"B", "Quit"});
+		h.push_back({"B", "Quit"});
 		h.push_back({"START", "Menu"});
 		drawHints(h);
-		if (quitOpen) drawQuitDialog();
+		if (quitOpen) drawQuitDialog(nowPlayable(p));
 	}
 
-	void Ui::drawQuitDialog()
+	void Ui::drawQuitDialog(bool quitPlaying)
 	{
 		// the same sheet as Quick settings (F): its panel and title, Quit as its red button, Cancel a row as its rows
 		drawDialog(QUIT_BOX, "");
 		drawTextMid("Quit Banana Player?", 1, ACCENT, QUIT_BOX.x + 24, QUIT_BOX.y + 28);
+		// something playing: quitting stops it, said where the choice is made
+		if (quitPlaying) drawTextMid("What's playing stops.", 0, DIM, QUIT_BOX.x + QUIT_BOX.w - 24, QUIT_BOX.y + 28, 0, 1);
 		Rect q = quitRow(0);
 		bool down = pressedBtn == DLG_ROW, at = quitCursor == 0;
 		drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);

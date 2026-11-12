@@ -47,8 +47,9 @@ Open Banana Player and the bottom screen shows **Home**:
 
 Move with the D-pad: **UP/DOWN** between the strip and the tiles (back to the card or the column you left),
 **LEFT/RIGHT** along them. **X** on Home: **Clear Recent** (press twice), **Show hidden folders**, **Settings**. **B**
-asks to quit: **Quit Banana Player?** with **Quit** and **Cancel**, **Cancel** first; **B** or a tap outside cancels
-(while something plays, **B** does nothing on Home and **SELECT** goes to it), **START** opens the menu.
+asks to quit: **Quit Banana Player?** with **Quit** and **Cancel**, **Cancel** first; **B** or a tap outside cancels.
+While something plays it asks too, and says **What's playing stops** (**SELECT** still goes to what plays).
+**START** opens the menu.
 
 Inside a section the header reads its name with four markers beside it, the open one lit: **L/R** go to the section
 before or after, or tap a marker. Each section opens where you left it (its top if that folder or playlist is gone),
