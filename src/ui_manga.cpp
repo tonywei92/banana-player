@@ -286,6 +286,16 @@ namespace bp
 		mangaRecordProgress();
 		mangaSave();
 		readerCmds.push_back({ReaderCmd::Close, 0, (int64_t)SDL_GetTicks()});
+		// the series page comes back on the chapter last read: after L2/R2 that isn't the one opened from it, and
+		// the cursor stayed on that one (a network folder's list is its own: left as it was)
+		int at = mangaReadChapterIndex();
+		if (at >= 0 && mangaSeriesId == mangaReadSeriesId && mangaNetView != MNF_SERIES)
+		{
+			int rows = isServerId(mangaSeriesId) || isSourceId(mangaSeriesId) ? mserRows() : MG_SER_ROWS;
+			mserCursor = at;
+			if (at < mserScroll) mserScroll = at;
+			if (at >= mserScroll + rows) mserScroll = at - rows + 1;
+		}
 		page = Page::MangaSeries;
 		mangaMenu = false;
 		mangaPages = false;
