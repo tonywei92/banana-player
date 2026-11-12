@@ -766,6 +766,20 @@ namespace bp
 					mangaSeek((int)std::lround(std::clamp((x - tr.x) / (double)tr.w, 0.0, 1.0) * (readerStatus.pages - 1)));
 				}
 			};
+			// the slider landed on: nothing moves yet (a tap seeks as it lifts, a drag from the page it's on)
+			int heldPage = mangaSliderPage >= 0 ? mangaSliderPage : readerStatus.page;
+			auto slideStart = [&]() {
+				mangaSlider = true;
+				mgSlideX0 = x;
+				mgSlideFrom = std::max(0, heldPage);
+				mgSlideMoved = false;
+			};
+			auto slideMove = [&]() {
+				if (!mgSlideMoved && std::abs(x - mgSlideX0) >= DRAG_SLOP) mgSlideMoved = true;
+				if (!mgSlideMoved || readerStatus.pages <= 1) return;
+				Rect tr = mangaSliderRect();
+				mangaSeek((int)std::lround(mgSlideFrom + (x - mgSlideX0) / (double)tr.w * (readerStatus.pages - 1)));
+			};
 			if (pt.kind == Pointer::Down)
 			{
 				mangaPressed = -1;
@@ -788,7 +802,7 @@ namespace bp
 					if (mangaSheetRect().hit(x, y))
 					{
 						mangaCtrlUntil = now + MG_CTRL_MS;
-						if (mangaSliderRect().hit(x, y)) { mangaSlider = true; seekHere(); }
+						if (mangaSliderRect().hit(x, y)) slideStart();
 						else
 							for (int i = 0; i < 4; i++)
 								if (mangaCtrlBtnRect(i).hit(x, y)) mangaCtrlPressed = i;
@@ -818,8 +832,7 @@ namespace bp
 				}
 				if (mangaSliderRect().hit(x, y))
 				{
-					mangaSlider = true;
-					seekHere();
+					slideStart();
 					return false;
 				}
 				int ci = mangaReadChapterIndex();
@@ -850,7 +863,7 @@ namespace bp
 				else if (mangaSlider)
 				{
 					if (full) mangaCtrlUntil = now + MG_CTRL_MS;
-					seekHere();
+					slideMove();
 				}
 				return false;
 			}
@@ -903,7 +916,8 @@ namespace bp
 			if (mangaSlider)
 			{
 				mangaSlider = false;
-				seekHere();
+				if (mgSlideMoved) slideMove();
+				else seekHere();
 				if (full) mangaCtrlUntil = now + MG_CTRL_MS;
 				return false;
 			}

@@ -1369,6 +1369,11 @@ namespace bp
 		bool mangaBookKey(Button b, Player& p);	// the reader's keys while in Book
 		void mangaCycleMode(Player& p);	// X while reading
 		int mangaSliderPage = -1;
+		// the page slider's drag is relative, as the progress bar's: from the page it was on by the finger's travel
+		// (the slider's width is the chapter); a tap that doesn't move goes to the tapped page
+		int mgSlideX0 = 0;
+		double mgSlideFrom = 0;
+		bool mgSlideMoved = false;
 		// fullscreen's controls over the pages: a tap shows them 4 s (a drag or the 4 s hides them), and the finger that
 		// may still be a tap; the sheet's button under it (and its slider, which is the reading page's)
 		Uint32 mangaCtrlUntil = 0;	// when they hide (0: hidden)
