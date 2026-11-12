@@ -35,6 +35,7 @@ photos with a finger, and reads manga across both screens. When a new version is
 
 - 🎬 **Videos:** MP4, MKV, AVI and more, with subtitles and audio tracks you can switch mid-film, and chapters you can jump between with L2 and R2, and playlists that mix your card and network.
 - 🎵 **Music:** a folder plays as an album, with the cover art, a visualizer, or both. Audiobooks (M4B) keep their chapters.
+- 🕶️ **Incognito mode:** one tick in Quick settings and nothing you watch, listen to or read is remembered: no Recent, no manga History. Your places, playlists and downloads work as usual, a mark beside the clock (and on the web dashboard) shows it's on, and it switches itself off when Banana Player starts again.
 - 🎚️ **A real equalizer and room effects:** ten bands, twelve presets (Bass Boost, Vocal, Rock, Jazz…) and your own saved ones, plus Concert hall, Church, Cave, Wide stereo and a Headphones mode. Heard the moment you change it. It shapes the handheld's sound; set it there or from the web dashboard.
 - ❤️ **Playlists and Liked:** make playlists from your card and your network, and tap the heart on anything playing to keep it in Liked.
 - 🖼️ **Photos:** zoom in, look around, step through a folder; scanned comics keep your zoom from page to page.
@@ -78,7 +79,7 @@ The buttons follow the Nintendo layout: **A** confirms, **B** goes back.
 - **Network:** **X** then **Find on the network** finds your computer.
 - **Options** (refresh, hide a folder; on Network, add a connection): **X**.
 - **Menu** (what's playing, Settings, About): **START**. **L / R** switch its tabs.
-- **Quick settings** (volume, brightness, the web dashboard, quit): press the **Menu/Function** button.
+- **Quick settings** (volume, brightness, the web dashboard, **incognito mode**, quit): press the **Menu/Function** button.
 - **Quit straight away:** **F + START**.
 
 The bottom line of every page shows what the buttons do there.
