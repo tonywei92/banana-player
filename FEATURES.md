@@ -224,7 +224,8 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **Menu/Function** (F) | Quick settings: volume, brightness, Same brightness for both screens, Web dashboard, incognito mode, Quit |
 
 **By touch:**
-- **Progress bar:** touch it to jump there. Hold and drag to scrub, and the picture follows your finger.
+- **Progress bar:** tap it to jump there. Drag along it to scrub: it moves from where it was by how far your finger
+  goes (wherever you touched it, nothing jumps), and the picture follows.
 - **Buttons:** they act when you lift your finger, so slide off one to cancel.
 - **Audio and subtitles:** on a video, tap the audio or subtitle line under the buttons for that tab of Tracks.
 - **Sound:** on a song, tap the line under the buttons (it shows the preset and effect) to open the Sound page.
@@ -358,18 +359,22 @@ Songs show their title, artist and album on the top screen. While a song plays:
 
 - **SELECT: Display.** A popup on the bottom screen with two rows. **Show** is **Album art** (default),
   **Art + visualizer** (the visualizer over the bottom of the art), **Visualizer**, or **None** (just the title: the
-  lightest on the battery). **Style** is the visualizer's look: **Peaks** (default: 64 coral bars,
-  bass on the left, each with a green cap that stays at the bar's highest point and slowly falls back, over a faint
-  grid), **Peaks Banana** (the same in BananaOS's colours: yellow bars, cream caps), **Circle** (bars round a
-  glowing ring, cyan to pink; with Art + visualizer, the album art sits inside the ring), **Pocket console** (Peaks
-  on an old handheld's screen: 15 bars of chunky dots in four greens, with falling caps; alone, the title is in the
-  same dark green pixel type), **Hi-fi LED** (16 columns of green, yellow and red segments, the unlit ones dim, each
-  with a held peak), **Synthwave** (neon bars, pink to cyan, rising from the horizon of a striped sun over a
-  perspective grid), **Banana stack** (piles of pixel bananas that grow with each band), **Night city** (a skyline
-  whose windows light up with the music, warm yellow and orange), **Oscilloscope** (the sound's wave as a green trace
-  with a fading glow, over a graticule) or **Heartbeat** (a heart monitor's trace that spikes on each beat). With Art +
-  visualizer, every style but Circle is laid over the bottom of the art, which shows through around it. Bars, Waves and Spectrum
-  are retired: a saved choice of one of them becomes Peaks. The top screen
+  lightest on the battery). **Style** is the visualizer's look: **Peaks** (default: 64 yellow bars, bass on the
+  left, each with a cream cap that stays at the bar's highest point and slowly falls back, over a faint grid),
+  **Circle** (bars round a glowing ring, cyan to pink; with Art + visualizer, the album art sits inside the ring),
+  **Pocket console** (Peaks on an old handheld's screen: 15 bars of chunky dots in four greens, with falling caps;
+  alone, the title is in the same dark green pixel type), **Night city** (a skyline whose windows light up with the
+  music, warm yellow and orange), **Oscilloscope** (the sound's wave as a green trace with a fading glow, over a
+  graticule), **Campfire** (a pixel fire on its logs: each flame leaps with its part of the sound, sparks fly on the
+  treble), **Aurora** (northern lights over a snowy ridge, each stretch of sky as tall and bright as its band),
+  **Sound garden** (pixel flowers that grow with the music and bloom at the peaks, bees passing on the treble),
+  **Turntable** (a spinning record whose grooves glow, bass at the label, treble at the rim; with Art + visualizer,
+  the album art is the label) or **Pixel sea** (moonlit waves: the swell rises with the bass, the chop with the mids,
+  foam on the treble, and a little sailboat rides it). The bar styles move 60 times a second, and each bar stands
+  out from its neighbours so the spectrum has peaks and valleys. With Art + visualizer, every style but Circle and
+  Turntable is laid over the bottom of the art, which shows through around it. Coral Peaks, Hi-fi LED, Synthwave,
+  Banana stack and Heartbeat (earlier styles), and Bars, Waves and Spectrum, are retired: a saved choice of one of
+  them becomes Peaks. The top screen
   changes as you choose. In the popup, the **D-pad** changes a setting, **SELECT** goes to the next Show mode, and
   **B** closes it. The Style row is greyed out for Album art and None, which don't show a visualizer, but it can still
   be changed. A song without art shows its title alone on Album art, and the visualizer on Art + visualizer. Album art

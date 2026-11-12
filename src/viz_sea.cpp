@@ -145,10 +145,12 @@ namespace bp
 			g += "[vid1] scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:-1:-1:black,setsar=1,format=yuv420p,"
 				 "settb=AVTB,split [seart1] [seart2]; [seart1] crop=640:280:0:0 [top]; "
 				 "[seart2] crop=640:200:0:280,extractplanes=y+u+v [seay] [seau] [seav]; ";
-		// the bands measured and eased as Pocket console's bars (up at once, down over ~0.15 s), then averaged
+		// the bands measured and eased as Pocket console's bars (up at once, down over ~0.15 s), then averaged; the
+		// contrast spread wider (x2.2: averaging three or four bands evens them out) and the wave heights curved
+		// (level^1.5: a quiet passage near flat, a loud one high), so the sea moves with the music, not just on it
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("se") + ","
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("se", 1, "6", "2.2", "150") + ","
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=3 [sel1] [sel2] [sel3]; "
 			 "[sel1] crop=3:1:0:0,scale=1:1:flags=area,scale=" + n(W + P1) + ":1:flags=neighbor [sebass]; "
@@ -157,9 +159,9 @@ namespace bp
 			 "movie=" + q(3) + " [sews]; movie=" + q(4) + " [sewc]; movie=" + q(5) + " [sewf]; "
 			 // the swell's height (eighths of a row) and the chop's (around 128), each column; rolled sideways: the
 			 // swell right ~16 pixels a second, the chop left ~9, the foam's sparkle left 10
-			 "[sebass] [sews] lut2=c0='clip(round(8*" + f(K) + "*(3+12.5*x/252)*y/255),0,255)',crop=" + n(W) + ":1:x='" + n(P1 - 1) +
+			 "[sebass] [sews] lut2=c0='clip(round(8*" + f(K) + "*(2+20*pow(x/252,1.5))*y/255),0,255)',crop=" + n(W) + ":1:x='" + n(P1 - 1) +
 			 "-mod(floor(n*16/60)," + n(P1) + ")':y=0 [sea]; "
-			 "[semid] [sewc] lut2=c0='clip(round(128+8*" + f(K) + "*(1+3.5*x/252)*(y-128)/127),0,255)',crop=" + n(W) +
+			 "[semid] [sewc] lut2=c0='clip(round(128+8*" + f(K) + "*(0.5+5.5*pow(x/252,1.5))*(y-128)/127),0,255)',crop=" + n(W) +
 			 ":1:x='mod(floor(n*9/60)," + n(P2) + ")':y=0 [seb]; "
 			 // foam where the noise is under the treble's share (none when it's quiet)
 			 "[setre] [sewf] lut2=c0='128*lt(y,clip((x-130)*2.5,0,170))',crop=" + n(W) + ":1:x='mod(floor(n/6)," + n(PF) + ")':y=0 [sefo]; "

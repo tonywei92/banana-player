@@ -815,15 +815,19 @@ namespace bp
 		}
 		if (dragging)
 		{
-			dragFraction = barFraction();
+			// past a few pixels it's a drag: from the place it was by the finger's travel (the bar's width is the
+			// whole film), so landing anywhere on the bar never jumps
+			if (!dragMoved && std::abs(x - dragX0) >= DRAG_SLOP) dragMoved = true;
+			if (dragMoved) dragFraction = std::clamp(dragFrom + (x - dragX0) / (double)BAR.w, 0.0, 1.0);
 			if (pt.kind == Pointer::Up)
 			{
-				// the drag's last place, to the frame
+				// a tap goes where it touched; a drag to its last place, to the frame
 				dragging = false;
+				if (!dragMoved) dragFraction = barFraction();
 				p.seekFraction(dragFraction);
 				noteSeek(p, dragFraction * p.duration);
 			}
-			else if (SDL_GetTicks() - scrubAt >= SCRUB_MS && std::fabs(dragFraction - scrubbed) > 0.0005)
+			else if (dragMoved && SDL_GetTicks() - scrubAt >= SCRUB_MS && std::fabs(dragFraction - scrubbed) > 0.0005)
 			{
 				// the picture follows the finger: keyframes only, and no more often than the decoder keeps up with
 				scrubAt = SDL_GetTicks();
@@ -1077,12 +1081,14 @@ namespace bp
 		// the bar is easier to hit with some room around it
 		if (Rect{BAR.x - 8, BAR.y - 20, BAR.w + 16, BAR.h + 40}.hit(x, y) && p.duration > 0)
 		{
-			// the bar acts as the finger lands (not as it lifts, as the buttons do): the picture goes there at once
-			// and follows the finger while it holds and drags
+			// the bar holds its place as the finger lands: a drag moves it from there (relative, as a touch bar's
+			// slider), the picture following; a tap goes to the tapped place as the finger lifts
+			double pos = shownPosition(p);
 			dragging = true;
-			dragFraction = scrubbed = barFraction();
+			dragMoved = false;
+			dragX0 = x;
+			dragFrom = dragFraction = scrubbed = p.duration > 0 && pos >= 0 ? std::clamp(pos / p.duration, 0.0, 1.0) : 0;
 			scrubAt = SDL_GetTicks();
-			p.scrub(dragFraction);
 			return false;
 		}
 		for (int id : {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, QUIT_BTN, SCREEN_BTN, INFO_BTN, LOCK_BTN})

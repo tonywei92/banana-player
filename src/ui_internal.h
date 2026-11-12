@@ -27,6 +27,7 @@ namespace bp
 	using theme::R_KNOB;
 	inline const int SIZES[3] = {18, 24, 32};
 	inline const Uint32 QUIT_WINDOW_MS = 2000, SCRUB_MS = 100;
+	inline const int DRAG_SLOP = 8;	// the progress bar: a finger that moves this far is a drag, not a tap
 	inline const double BACK_S = 5, FORWARD_S = 10;
 
 	constexpr Ui::Rect Ui::BAR;

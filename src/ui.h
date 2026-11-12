@@ -1071,6 +1071,11 @@ namespace bp
 		bool dragging = false;
 		double dragFraction = 0, scrubbed = -1;
 		Uint32 scrubAt = 0;
+		// the bar's drag is relative (as a touch bar's slider): it moves the place from where it was by how far the
+		// finger goes, wherever it landed; a tap that doesn't move goes to the tapped place
+		int dragX0 = 0;
+		double dragFrom = 0;
+		bool dragMoved = false;
 		BottomPanel panel;
 		// Lock: over a video, touch does nothing but Screen off and a 1 s hold on the lock (its release); the
 		// buttons go on as Button hotkeys says
