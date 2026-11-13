@@ -39,35 +39,42 @@
 
 ## Visualizers
 
-Fifteen looks for your music, picked with **SELECT** while a song plays. Each one also works over the album art.
+Twenty looks for your music, picked with **SELECT** while a song plays. Each one also works over the album art.
 
 <table>
   <tr>
-    <td align="center" width="20%"><img src="docs/img/viz/peaks-yellow.jpg?v=0.7.12" alt="The Peaks visualizer"><br><sub>Peaks</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/circle.jpg?v=0.7.12" alt="The Circle visualizer"><br><sub>Circle</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/pocket.jpg?v=0.7.12" alt="The Pocket console visualizer"><br><sub>Pocket console</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/night-city.jpg?v=0.7.12" alt="The Night city visualizer"><br><sub>Night city</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/banana-dancer.jpg?v=0.7.12" alt="The Banana dancer visualizer"><br><sub>Banana dancer</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/peaks-yellow.jpg?v=0.7.13" alt="The Peaks visualizer"><br><sub>Peaks</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/circle.jpg?v=0.7.13" alt="The Circle visualizer"><br><sub>Circle</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/pocket.jpg?v=0.7.13" alt="The Pocket console visualizer"><br><sub>Pocket console</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/night-city.jpg?v=0.7.13" alt="The Night city visualizer"><br><sub>Night city</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/banana-dancer.jpg?v=0.7.13" alt="The Banana dancer visualizer"><br><sub>Banana dancer</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><img src="docs/img/viz/campfire.jpg?v=0.7.12" alt="The Campfire visualizer"><br><sub>Campfire</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/aurora.jpg?v=0.7.12" alt="The Aurora visualizer"><br><sub>Aurora</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/sound-garden.jpg?v=0.7.12" alt="The Sound garden visualizer"><br><sub>Sound garden</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/pixel-sea.jpg?v=0.7.12" alt="The Pixel sea visualizer"><br><sub>Pixel sea</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/bunny-hop.jpg?v=0.7.12" alt="The Bunny hop visualizer"><br><sub>Bunny hop</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/campfire.jpg?v=0.7.13" alt="The Campfire visualizer"><br><sub>Campfire</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/aurora.jpg?v=0.7.13" alt="The Aurora visualizer"><br><sub>Aurora</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/sound-garden.jpg?v=0.7.13" alt="The Sound garden visualizer"><br><sub>Sound garden</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/pixel-sea.jpg?v=0.7.13" alt="The Pixel sea visualizer"><br><sub>Pixel sea</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/bunny-hop.jpg?v=0.7.13" alt="The Bunny hop visualizer"><br><sub>Bunny hop</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><img src="docs/img/viz/bubble-tea.jpg?v=0.7.12" alt="The Bubble tea visualizer"><br><sub>Bubble tea</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/jellyfish.jpg?v=0.7.12" alt="The Jellyfish visualizer"><br><sub>Jellyfish</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/music-box.jpg?v=0.7.12" alt="The Music box visualizer"><br><sub>Music box</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/fishbowl.jpg?v=0.7.12" alt="The Fishbowl visualizer"><br><sub>Fishbowl</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/vibing-cat.jpg?v=0.7.12" alt="The Vibing cat visualizer"><br><sub>Vibing cat</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/bubble-tea.jpg?v=0.7.13" alt="The Bubble tea visualizer"><br><sub>Bubble tea</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/jellyfish.jpg?v=0.7.13" alt="The Jellyfish visualizer"><br><sub>Jellyfish</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/music-box.jpg?v=0.7.13" alt="The Music box visualizer"><br><sub>Music box</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/fishbowl.jpg?v=0.7.13" alt="The Fishbowl visualizer"><br><sub>Fishbowl</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/vibing-cat.jpg?v=0.7.13" alt="The Vibing cat visualizer"><br><sub>Vibing cat</sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="20%"><img src="docs/img/viz/popcorn-machine.jpg?v=0.7.13" alt="The Popcorn machine visualizer"><br><sub>Popcorn machine</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/jelly-wobble.jpg?v=0.7.13" alt="The Jelly wobble visualizer"><br><sub>Jelly wobble</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/tube-man.jpg?v=0.7.13" alt="The Tube man visualizer"><br><sub>Tube man</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/long-cat.jpg?v=0.7.13" alt="The Long cat visualizer"><br><sub>Long cat</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/washing-machine.jpg?v=0.7.13" alt="The Washing machine visualizer"><br><sub>Washing machine</sub></td>
   </tr>
 </table>
 
 ## Install
 
-1. **Download** `BananaPlayer-0.7.12-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.12).
+1. **Download** `BananaPlayer-0.7.13-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.13).
 2. **Unzip it into `roms/ports`** on your SD card. You should see `Banana Player.sh`, a `BananaPlayer` folder and a
    `media` folder there.
 3. **Open the Ports shelf** on the handheld and choose **Banana Player**.

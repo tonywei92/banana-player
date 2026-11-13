@@ -359,22 +359,26 @@ Songs show their title, artist and album on the top screen. While a song plays:
 
 - **SELECT: Display.** A popup on the bottom screen with two rows. **Show** is **Album art** (default),
   **Art + visualizer** (the visualizer over the bottom of the art), **Visualizer**, or **None** (just the title: the
-  lightest on the battery). **Style** is the visualizer's look: **Peaks** (default: 64 yellow bars, bass on the
-  left, each with a cream cap that stays at the bar's highest point and slowly falls back, over a faint grid),
+  lightest on the battery). **Style** is the visualizer's look, twenty of them: **Peaks** (default: 64 yellow bars, bass on
+  the left, each with a cream cap that stays at the bar's highest point and slowly falls back, over a faint grid),
   **Circle** (bars round a glowing ring, cyan to pink; with Art + visualizer, the album art sits inside the ring),
   **Pocket console** (Peaks on an old handheld's screen: 15 bars of chunky dots in four greens, with falling caps;
   alone, the title is in the same dark green pixel type), **Night city** (a skyline whose windows light up with the
-  music, warm yellow and orange), **Oscilloscope** (the sound's wave as a green trace with a fading glow, over a
-  graticule), **Campfire** (a pixel fire on its logs: each flame leaps with its part of the sound, sparks fly on the
-  treble), **Aurora** (northern lights over a snowy ridge, each stretch of sky as tall and bright as its band),
-  **Sound garden** (pixel flowers that grow with the music and bloom at the peaks, bees passing on the treble),
-  **Turntable** (a spinning record whose grooves glow, bass at the label, treble at the rim; with Art + visualizer,
-  the album art is the label) or **Pixel sea** (moonlit waves: the swell rises with the bass, the chop with the mids,
-  foam on the treble, and a little sailboat rides it). The bar styles move 60 times a second, and each bar stands
-  out from its neighbours so the spectrum has peaks and valleys. With Art + visualizer, every style but Circle and
-  Turntable is laid over the bottom of the art, which shows through around it. Coral Peaks, Hi-fi LED, Synthwave,
-  Banana stack and Heartbeat (earlier styles), and Bars, Waves and Spectrum, are retired: a saved choice of one of
-  them becomes Peaks. The top screen
+  music), **Banana dancer** (a pixel banana dancing on a disco floor: bass bounces it, the mids wave its arms),
+  **Campfire** (each flame leaps with its part of the sound, sparks fly on the treble), **Aurora** (northern lights
+  over a snowy ridge), **Sound garden** (pixel flowers that grow with the music and bloom at the peaks), **Pixel sea**
+  (moonlit waves and a little sailboat), **Bunny hop** (five bunnies, each hopping to its part of the music),
+  **Bubble tea** (pearls bouncing on the bass, fizz up the straw), **Jellyfish** (glowing jellyfish pulsing on the
+  beat), **Music box** (a comb whose teeth glow gold with the music, a turning dancer), **Fishbowl** (three goldfish
+  swimming up with their bands), **Vibing cat** (a cat in headphones nodding along, a coffee steaming beside it),
+  **Popcorn machine** (kernels popping on the beat), **Jelly wobble** (a worried jelly squashing on the bass), **Tube
+  man** (an inflatable tube man dancing faster with the music), **Long cat** (a cat that grows forever, climbing
+  faster with the music, a rainbow light along its edges) or **Washing machine** (shaking and walking on the bass,
+  socks and a duck tumbling). The bar styles' bars stand out from their neighbours, so the spectrum has peaks and
+  valleys. With Art + visualizer, every style but Circle is
+  laid over the bottom of the art, which shows through around it. Coral Peaks, Hi-fi LED, Synthwave, Banana stack,
+  Heartbeat, Oscilloscope, Turntable and Disco ball (earlier styles), and Bars, Waves and Spectrum, are retired: a
+  saved choice of one of them becomes Peaks. The top screen
   changes as you choose. In the popup, the **D-pad** changes a setting, **SELECT** goes to the next Show mode, and
   **B** closes it. The Style row is greyed out for Album art and None, which don't show a visualizer, but it can still
   be changed. A song without art shows its title alone on Album art, and the visualizer on Art + visualizer. Album art
