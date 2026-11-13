@@ -628,12 +628,14 @@ namespace bp
 		}
 		if (sub.external)
 		{
-			if (!readFile(sub.file, a.body, (size_t)16 << 20))
+			std::string bytes;
+			if (!readFile(sub.file, bytes, (size_t)16 << 20))
 			{
 				a.status = 404;
 				a.body = JsonWriter().obj().key("error").str("can't read the subtitle file").end().out();
 				return a;
 			}
+			a.body = subtitleTextToUtf8(bytes, sub.lang);	// (an old code page's file: libass in the browser reads UTF-8)
 			a.status = 200;
 			a.type = "text/plain; charset=utf-8";
 			return a;

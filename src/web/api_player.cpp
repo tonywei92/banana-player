@@ -405,7 +405,7 @@ namespace bp
 			{
 				const StyleSetting& st = all[k];
 				j.obj().key("key").str(st.key).key("label").str(st.label).key("choices").arr();
-				for (auto& c : st.choices) j.obj().key("id").str(c.id).key("label").str(c.label).end();
+				for (auto& c : st.choices) j.obj().key("id").str(c.id).key("label").str(c.full ? c.full : c.label).end();
 				int pick = p.settings.style.pick[k];
 				j.end().key("value").str(pick >= 0 && pick < (int)st.choices.size() ? st.choices[pick].id : "").end();
 			}

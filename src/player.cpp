@@ -1,5 +1,6 @@
 #include "player.h"
 #include "format.h"
+#include "webmedia.h"
 #include "logo.h"
 #include "pagedecode.h"
 #include "netpath.h"
@@ -171,6 +172,7 @@ namespace bp
 		mpv_set_wakeup_callback(mpv, wakeup, ctx);
 		setAspect(aspect);
 		for (auto& p : subStyleProperties(settings.style)) prop(p.first.c_str(), p.second);
+		setSubtitleCharset(subEncodingCharset(settings.style));	// (the web's subtitles read the same way)
 		return true;
 	}
 
@@ -1303,6 +1305,17 @@ namespace bp
 	void Player::setSettings(const Settings& s, bool persist)
 	{
 		for (auto& p : subStyleProperties(s.style)) prop(p.first.c_str(), p.second);
+		if (s.style.pick[ENCODING] != settings.style.pick[ENCODING])
+		{
+			setSubtitleCharset(subEncodingCharset(s.style));
+			// a subtitle file showing now, read again in the new code page (mpv reads one when it's added)
+			const Track* sub = selected(TrackType::Sub);
+			if (sub && sub->external)
+			{
+				const char* cmd[] = {"sub-reload", nullptr};
+				mpv_command_async(mpv, 0, cmd);
+			}
+		}
 		bool displayChanged = s.musicShow != settings.musicShow || s.visualizer != settings.visualizer || s.vizFps != settings.vizFps;
 		bool infoChanged = s.songInfo != settings.songInfo;
 		bool loopChanged = s.loop != settings.loop;

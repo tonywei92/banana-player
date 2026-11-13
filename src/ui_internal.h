@@ -61,7 +61,7 @@ namespace bp
 		&Settings::songInfo};
 	struct GroupName { const char* name; const char* about; };
 	inline const GroupName GROUP_NAMES[] = {
-		{"Subtitles", "Font, size, colour"},
+		{"Subtitles", "Font, size, text encoding"},
 		{"Music", "Display, visualizer, sound"},
 		{"Photos", "Zoom, pan area, drag"},
 		{"Remember", "Position, tracks"},

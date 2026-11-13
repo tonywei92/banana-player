@@ -6,6 +6,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <iconv.h>
+#include <mutex>
+#ifdef BP_UCHARDET
+#include <uchardet.h>
+#endif
 #include <vector>
 
 namespace bp
@@ -173,9 +177,49 @@ namespace bp
 			return ok;
 		}
 
-		// the file's text as UTF-8 with \n line ends. UTF-8 (BOM off) as is; UTF-16 by its BOM; else the first of the
-		// language hint's charsets ("ja": Shift-JIS, EUC-JP...) that converts without an error, else Windows-1252
-		// (and Latin-1 for the bytes it leaves out)
+		std::mutex charsetLock;
+		std::string chosenCharset;	// Settings › Subtitles › Text encoding ("" Auto)
+
+		// a language's code pages, most likely first, and its family's name (to weigh a guess against); none: {}
+		struct LangPages { std::vector<std::string> pages; const char* family; };
+		LangPages pagesOf(const std::string& hint)
+		{
+			std::string h = lower(hint);
+			auto is = [&](std::initializer_list<const char*> l) { for (const char* x : l) if (h == x) return true; return false; };
+			if (is({"ja", "jpn"})) return {{"SHIFT_JIS", "EUC-JP"}, "ja"};
+			if (is({"zh", "chi", "zho", "cn"})) return {{"GB18030", "BIG5"}, "zh"};
+			if (is({"ko", "kor"})) return {{"CP949"}, "ko"};
+			// Central European: Slovene, Croatian, Bosnian, Czech, Slovak, Polish, Hungarian, Romanian; Serbian's Latin
+			if (is({"sl", "slv", "hr", "hrv", "scr", "bs", "bos", "cs", "ces", "cze", "sk", "slk", "slo", "pl", "pol", "hu", "hun", "ro", "ron", "rum"}))
+				return {{"CP1250", "ISO-8859-2"}, "ce"};
+			if (is({"ru", "rus", "uk", "ukr", "bg", "bul", "be", "bel", "mk", "mkd", "mac", "sr", "srp"})) return {{"CP1251", "KOI8-R"}, "cy"};
+			if (is({"el", "ell", "gre"})) return {{"CP1253", "ISO-8859-7"}, "el"};
+			if (is({"tr", "tur"})) return {{"CP1254", "ISO-8859-9"}, "tr"};
+			if (is({"he", "heb", "iw"})) return {{"CP1255", "ISO-8859-8"}, "he"};
+			if (is({"ar", "ara"})) return {{"CP1256"}, "ar"};
+			if (is({"lt", "lit", "lv", "lav", "et", "est"})) return {{"CP1257", "ISO-8859-13"}, "bt"};
+			return {{}, ""};
+		}
+		// a code page's family, as pagesOf names them ("" for Western or one not listed)
+		std::string familyOf(const std::string& charset)
+		{
+			std::string c = lower(charset);
+			if (c == "windows-1250" || c == "cp1250" || c == "iso-8859-2" || c == "ibm852" || c == "cp852" || c == "mac-centraleurope") return "ce";
+			if (c == "windows-1251" || c == "cp1251" || c == "koi8-r" || c == "koi8-u" || c == "iso-8859-5" || c == "ibm855" || c == "ibm866" || c == "mac-cyrillic") return "cy";
+			if (c == "windows-1253" || c == "cp1253" || c == "iso-8859-7") return "el";
+			if (c == "windows-1254" || c == "cp1254" || c == "iso-8859-9") return "tr";
+			if (c == "windows-1255" || c == "cp1255" || c == "iso-8859-8") return "he";
+			if (c == "windows-1256" || c == "cp1256" || c == "iso-8859-6") return "ar";
+			if (c == "windows-1257" || c == "cp1257" || c == "iso-8859-13" || c == "iso-8859-4") return "bt";
+			if (c == "shift_jis" || c == "euc-jp" || c == "iso-2022-jp") return "ja";
+			if (c == "gb18030" || c == "big5" || c == "euc-tw" || c == "hz-gb-2312" || c == "iso-2022-cn") return "zh";
+			if (c == "euc-kr" || c == "uhc" || c == "cp949" || c == "iso-2022-kr") return "ko";
+			return "";
+		}
+
+		// the file's text as UTF-8 with \n line ends. UTF-8 (BOM off) as is; UTF-16 by its BOM; else, of the chosen
+		// code page, the guess (when the language doesn't name another family), the language's code pages and
+		// Windows-1252, the first that converts without an error (and Latin-1 for the bytes none takes)
 		std::string cleanText(const std::string& in, const std::string& hint = "")
 		{
 			std::string s = in, conv;
@@ -184,15 +228,19 @@ namespace bp
 			else if (s.compare(0, 2, "\xFE\xFF") == 0 && convertFrom("UTF-16BE", s.substr(2), conv)) s = conv;
 			else if (!validUtf8(s))
 			{
-				std::string h = lower(hint);
-				std::vector<const char*> tries;
-				if (h == "ja" || h == "jpn") tries = {"SHIFT_JIS", "EUC-JP"};
-				else if (h == "zh" || h == "chi" || h == "zho" || h == "cn") tries = {"GB18030", "BIG5"};
-				else if (h == "ko" || h == "kor") tries = {"CP949"};
+				std::vector<std::string> tries;
+				{
+					std::lock_guard<std::mutex> l(charsetLock);
+					if (!chosenCharset.empty()) tries.push_back(chosenCharset);
+				}
+				LangPages lang = pagesOf(hint);
+				std::string guess = guessCharset(s);
+				if (!guess.empty() && (!*lang.family || familyOf(guess) == lang.family)) tries.push_back(guess);
+				for (auto& p : lang.pages) tries.push_back(p);
 				tries.push_back("CP1252");
 				bool done = false;
-				for (const char* cs : tries)
-					if (convertFrom(cs, s, conv))
+				for (const std::string& cs : tries)
+					if (convertFrom(cs.c_str(), s, conv))
 					{
 						s = conv;
 						done = true;
@@ -497,6 +545,33 @@ namespace bp
 		// a "-->" in the text would end the timing line of nothing, but keep it out all the same
 		for (size_t p; (p = body.find("-->")) != std::string::npos;) body.replace(p, 3, "->");
 		return "WEBVTT\n\n" + vttTimestamp(start) + " --> " + vttTimestamp(end) + "\n" + body + "\n\n";
+	}
+
+	std::string subtitleTextToUtf8(const std::string& bytes, const std::string& langHint) { return cleanText(bytes, langHint); }
+
+	void setSubtitleCharset(const std::string& charset)
+	{
+		std::lock_guard<std::mutex> l(charsetLock);
+		chosenCharset = charset;
+	}
+
+	std::string guessCharset(const std::string& bytes)
+	{
+#ifdef BP_UCHARDET
+		uchardet_t d = uchardet_new();
+		std::string out;
+		if (uchardet_handle_data(d, bytes.data(), bytes.size()) == 0)
+		{
+			uchardet_data_end(d);
+			const char* cs = uchardet_get_charset(d);
+			if (cs && *cs && lower(cs) != "ascii" && lower(cs) != "utf-8") out = cs;
+		}
+		uchardet_delete(d);
+		return out;
+#else
+		(void)bytes;
+		return "";
+#endif
 	}
 
 	std::string subtitleFileToVtt(const std::string& ext, const std::string& text, const std::string& langHint)

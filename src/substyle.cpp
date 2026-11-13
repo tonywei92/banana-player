@@ -1,4 +1,5 @@
 #include "substyle.h"
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
@@ -26,6 +27,15 @@ namespace bp
 			{"color", "Colour", {{"white", "White"}, {"yellow", "Yellow"}, {"cyan", "Cyan"}, {"green", "Green"}, {"pink", "Pink"}, {"grey", "Grey"}}, 0},
 			{"border", "Border", {{"none", "None"}, {"thin", "Thin"}, {"normal", "Normal"}, {"thick", "Thick"}}, 2},
 			{"border-color", "Border colour", {{"black", "Black"}, {"dark-grey", "Dark grey"}, {"dark-blue", "Dark blue"}}, 0},
+			// (ids are their iconv names, lower case: ENCODINGS below in the same order)
+			{"encoding", "Text encoding", {{"auto", "Auto", "Auto (UTF-8, or detected)"},
+				{"cp1250", "C. Europe 1250", "Central European (Windows-1250)"},
+				{"iso-8859-2", "C. Europe 8859-2", "Central European (ISO-8859-2)"},
+				{"cp852", "C. Europe 852", "Central European (DOS 852)"},
+				{"cp1251", "Cyrillic 1251", "Cyrillic (Windows-1251)"}, {"koi8-r", "Cyrillic KOI8-R", "Cyrillic (KOI8-R)"},
+				{"cp1253", "Greek 1253", "Greek (Windows-1253)"}, {"cp1254", "Turkish 1254", "Turkish (Windows-1254)"},
+				{"cp1257", "Baltic 1257", "Baltic (Windows-1257)"}, {"cp1255", "Hebrew 1255", "Hebrew (Windows-1255)"},
+				{"cp1256", "Arabic 1256", "Arabic (Windows-1256)"}, {"cp1252", "Western 1252", "Western (Windows-1252)"}}, 0},
 		};
 		return settings;
 	}
@@ -61,7 +71,17 @@ namespace bp
 			{"sub-color", COLORS[s.pick[COLOR]]},
 			{"sub-border-size", BORDERS[s.pick[BORDER]]},
 			{"sub-border-color", BORDER_COLORS[s.pick[BORDER_COLOR]]},
+			// a code page still reads a file that's valid UTF-8 as UTF-8 (mpv tries UTF-8 first unless it's "+")
+			{"sub-codepage", s.pick[ENCODING] ? subEncodingCharset(s) : "auto"},
 		};
+	}
+
+	std::string subEncodingCharset(const SubStyle& s)
+	{
+		if (!s.pick[ENCODING]) return "";
+		std::string id = subStyleSettings()[ENCODING].choices[s.pick[ENCODING]].id;
+		for (char& c : id) c = (char)toupper((unsigned char)c);
+		return id;
 	}
 
 	SubStyleLook subStyleLook(const SubStyle& s)

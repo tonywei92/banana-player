@@ -82,6 +82,13 @@ target_link_libraries(bpcore PRIVATE lexbor_static)	# src/htmldoc.h hides lexbor
 if(APPLE)
 	target_link_libraries(bpcore PUBLIC iconv)	# glibc has iconv in libc; macOS has it apart
 endif()
+# uchardet: a subtitle file's code page guessed (src/webmedia.h), as libmpv guesses it with the same library (the
+# bundle builds both with it). Without it, the language's code pages, then Windows-1252
+pkg_check_modules(UCHARDET IMPORTED_TARGET uchardet)
+if(UCHARDET_FOUND)
+	target_link_libraries(bpcore PRIVATE PkgConfig::UCHARDET)
+	target_compile_definitions(bpcore PRIVATE BP_UCHARDET)
+endif()
 
 # Lua 5.4 for the manga reader's user-added source scripts (docs/design/manga.md 5.2). The vendored tree is the
 # library only (no lua.c/luac.c), warning-free as it came, with the platform Lua's makefile would pick.

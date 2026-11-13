@@ -27,6 +27,15 @@ namespace bp
 	// Whole subtitle files by their extension (any case): srt, ass, ssa, vtt. "" for another one. The text may be UTF-8 (BOM or not), UTF-16 with a BOM, or an old
 	// code page: langHint ("ja", "jpn", "zh", "chi", "ko"...) picks the charsets to try (Shift-JIS, GB18030...), else Windows-1252. Cues are in start order
 	std::string subtitleFileToVtt(const std::string& ext, const std::string& text, const std::string& langHint = "");
+	// A subtitle file's text as UTF-8 with \n line ends (an ASS file for the browser's libass). Not UTF-8 (nor UTF-16
+	// with a BOM): the chosen code page (setSubtitleCharset), else the guess (uchardet) unless the language (langHint:
+	// "sl", "slv", "ru"...) names another family, else the language's code pages, else Windows-1252
+	std::string subtitleTextToUtf8(const std::string& bytes, const std::string& langHint = "");
+	// Settings › Subtitles › Text encoding's iconv name ("CP1250"...), "" for Auto: set by the player, read by the
+	// web server's threads
+	void setSubtitleCharset(const std::string& charset);
+	// the code page uchardet guesses for these bytes ("WINDOWS-1250"...), "" when it can't or isn't built in
+	std::string guessCharset(const std::string& bytes);
 	// picture subtitles (hdmv_pgs_subtitle, dvd_subtitle, dvb_subtitle, xsub...), which the web can't show
 	bool imageSubtitleCodec(const std::string& codec);
 

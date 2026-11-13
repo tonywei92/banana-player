@@ -5201,7 +5201,7 @@ static void testSubStyle()
 	CHECK_EQ(props["sub-color"], std::string("#FFE45C"));
 	CHECK_EQ(props["sub-font"], std::string("Fusion Pixel 12px Prop zh-Hans"));
 	CHECK_EQ(props["sub-border-size"], std::string("3"));
-	CHECK_EQ(props.size(), (size_t)6);
+	CHECK_EQ(props.size(), (size_t)7);	// (sub-codepage the seventh)
 
 	stepStyle(s, FONT, -2);	// Inter Bold: the same family, bold
 	for (auto& p : subStyleProperties(s)) props[p.first] = p.second;
@@ -5215,6 +5215,39 @@ static void testSubStyle()
 	SubStyle odd = parseSubStyle("size = huge\ncolor=cyan\nnonsense\n# comment = x\n");
 	CHECK_EQ(styleValueLabel(odd, SIZE), std::string("Medium"));
 	CHECK_EQ(styleValueLabel(odd, COLOR), std::string("Cyan"));
+
+	// Text encoding: Auto by default (mpv's "auto"); a code page by its iconv name, kept in subtitles.conf
+	CHECK_EQ(styleValueLabel(def, ENCODING), std::string("Auto"));
+	CHECK_EQ(subEncodingCharset(def), std::string(""));
+	props.clear();
+	for (auto& p : subStyleProperties(def)) props[p.first] = p.second;
+	CHECK_EQ(props["sub-codepage"], std::string("auto"));
+	SubStyle enc = parseSubStyle("encoding = cp1250\n");
+	CHECK_EQ(subEncodingCharset(enc), std::string("CP1250"));
+	CHECK_EQ(styleValueLabel(enc, ENCODING), std::string("C. Europe 1250"));
+	for (auto& p : subStyleProperties(enc)) props[p.first] = p.second;
+	CHECK_EQ(props["sub-codepage"], std::string("CP1250"));
+	CHECK_EQ(subEncodingCharset(parseSubStyle(serializeSubStyle(parseSubStyle("encoding = cp852")))), std::string("CP852"));
+}
+
+// issue #9: a Slovene subtitle file in an old code page reads right in the browser
+static void testSubtitleCodePages()
+{
+	const std::string want = "Še čaj, žaba? Ćevapčiči in đuveč, šola.";
+	const std::string cp1250 = "\212e \350aj, \236aba? \306evap\350i\350i in \360uve\350, \232ola.", latin2 = "\251e \350aj, \276aba? \306evap\350i\350i in \360uve\350, \271ola.";
+	// a file tagged Slovene (movie.sl.srt): Central European first, whatever the guess
+	CHECK_EQ(subtitleTextToUtf8(cp1250, "sl"), want);
+	CHECK_EQ(subtitleTextToUtf8(cp1250, "slv"), want);
+	// the chosen code page first (Settings › Subtitles › Text encoding), even untagged; UTF-8 stays UTF-8
+	setSubtitleCharset("ISO-8859-2");
+	CHECK_EQ(subtitleTextToUtf8(latin2), want);
+	CHECK_EQ(subtitleTextToUtf8(want), want);
+	setSubtitleCharset("");
+	// untagged, with the guess built in: a longer Russian file in Windows-1251 read as Cyrillic
+	const std::string ru = "\317\360\350\342\345\362, \352\340\352 \344\345\353\340? \335\362\356 \357\360\356\342\345\360\352\340 \360\363\361\361\352\350\365 \361\363\341\362\350\362\360\356\342, \342\361\345 \341\363\352\342\373 \344\356\353\346\355\373 \367\350\362\340\362\374\361\377 \357\360\340\342\350\353\374\355\356.";
+	if (!guessCharset(ru).empty()) CHECK_EQ(subtitleTextToUtf8(ru), std::string("Привет, как дела? Это проверка русских субтитров, все буквы должны читаться правильно."));
+	CHECK_EQ(subtitleFileToVtt("srt", "1\n00:00:01,000 --> 00:00:02,000\n" + cp1250 + "\n", "sl"),
+		"WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n" + want + "\n\n");
 }
 
 static void testSettings()
@@ -9574,6 +9607,7 @@ int main()
 	testChapters();
 	testSpeed();
 	testSubStyle();
+	testSubtitleCodePages();
 	testSettings();
 	testEq();
 	testSoundFx();

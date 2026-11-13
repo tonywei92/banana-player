@@ -742,10 +742,10 @@ function SubStyle() {
 		${st.styled && html`<div class="note warn">This video's subtitles are styled (ASS): they keep their own look.</div>`}
 		<div class="sub-preview" aria-hidden="true"><span style=${prev}>Subtitles look like this</span></div>
 		${(st.settings || []).map(x => html`<div class="ss-row"><div class="ss-lab" id=${'ss-' + x.key}>${x.label}</div>
-			${x.key === 'font' ? html`<select class="sel" aria-labelledby=${'ss-' + x.key} value=${x.value} onChange=${e => change(x.key, e.target.value)}>${x.choices.map(c => html`<option value=${c.id}>${c.label}</option>`)}</select>`
+			${x.key === 'font' || x.key === 'encoding' ? html`<select class="sel" aria-labelledby=${'ss-' + x.key} value=${x.value} onChange=${e => change(x.key, e.target.value)}>${x.choices.map(c => html`<option value=${c.id}>${c.label}</option>`)}</select>`
 			: /color/.test(x.key) ? html`<div class="swatches" role="radiogroup" aria-labelledby=${'ss-' + x.key}>${x.choices.map(c => html`<button class="sw" role="radio" aria-checked=${c.id === x.value} onClick=${() => change(x.key, c.id)}><i style="background:${SUB_COLORS[c.id] || '#888'}"></i><span>${c.label}</span></button>`)}</div>`
 			: html`<div class="chips" role="radiogroup" aria-labelledby=${'ss-' + x.key}>${x.choices.map(c => html`<button class="chipbtn" role="radio" aria-checked=${c.id === x.value} onClick=${() => change(x.key, c.id)}>${c.label}</button>`)}</div>`}</div>`)}
-		<p class="note">How plain subtitles (SRT, VTT…) look. Styled ones (ASS) keep theirs.</p></div>`;
+		<p class="note">How plain subtitles (SRT, VTT…) look. Styled ones (ASS) keep theirs. Text encoding is how a subtitle file’s letters are read: if letters like š, č or ж come out wrong, pick the file’s.</p></div>`;
 }
 function BrowserAudio() {
 	useStore();

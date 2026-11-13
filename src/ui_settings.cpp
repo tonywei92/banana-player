@@ -68,6 +68,8 @@ namespace bp
 	std::string Ui::settingHelp(int row) const
 	{
 		const int T = TOGGLE_ROW;
+		if (row == STYLE_ROW0 + ENCODING)
+			return "How a subtitle file's letters are read. Auto works for most; if letters like š, č or ж come out wrong, pick the file's encoding.";
 		if (row >= STYLE_ROW0 && row < STYLE_ROW0 + STYLE_KEYS) return "How plain subtitles (SRT, VTT...) look. Styled ones (ASS) keep theirs.";
 		if (row == MANGA_MODE_ROW) return "How a series opens until you pick one for it (X while reading).";
 		if (row == MANGA_FIT_ROW) return "Width: a page as wide as the screen, read down with RIGHT a screenful at a time.";
@@ -460,15 +462,21 @@ namespace bp
 		// what the row under the cursor does, in a line or two above the footer
 		std::string help = cursor >= 0 && cursor < (int)rows.size() ? settingHelp(rows[cursor]) : "";
 		SDL_Color helpInk = DIM;
-		if (setGroup == GROUP_SUBS)
+		// the style's rows: the preview under them, where the help would be (it says more), or for styled subtitles a
+		// line that says they keep their look; Text encoding: its help (the preview has nothing to show for it). The
+		// six rows end at 368, the mini bar starts at 422
+		if (setGroup == GROUP_SUBS && cursor >= 0 && cursor < (int)rows.size() && rows[cursor] != STYLE_ROW0 + ENCODING)
 		{
-			Rect box{24, SET_Y + (int)rows.size() * SET_H + 8, 592, 56};
-			drawPreview(p.settings.style, box);
 			const Track* s = p.selected(TrackType::Sub);
 			if (s && (s->codec == "ass" || s->codec == "ssa"))
 			{
 				help = "This video's subtitles are styled (ASS): they keep their own look";
 				helpInk = ACCENT;
+			}
+			else
+			{
+				drawPreview(p.settings.style, Rect{24, SET_Y + (int)rows.size() * SET_H + 4, 592, 46});
+				help.clear();
 			}
 		}
 		if (setGroup == GROUP_UPDATES && updater && cursor < (int)rows.size() && (rows[cursor] == CHECK_ROW || rows[cursor] == INSTALL_ROW))

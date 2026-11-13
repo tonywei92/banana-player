@@ -471,7 +471,7 @@ goes back to the list.
 
 | Group | Setting | Default | |
 |---|---|---|---|
-| **Subtitles** | Font, size, colour, border, border colour | Inter, Medium, White, Normal, Black | How plain subtitles (SRT, VTT…) look, with a live preview. Styled subtitles (ASS/SSA) keep their own look. |
+| **Subtitles** | Font, size, colour, border, border colour, text encoding | Inter, Medium, White, Normal, Black, Auto | How plain subtitles (SRT, VTT…) look, with a live preview. Styled subtitles (ASS/SSA) keep their own look. **Text encoding** is how a subtitle file's letters are read, on the handheld and in the browser: Auto reads UTF-8, and guesses an older code page (a file named for its language, like `movie.sl.srt`, tries that language's first); if letters like š, č or ж still come out wrong, pick the file's: Central European (Windows-1250, ISO-8859-2, DOS 852), Cyrillic (Windows-1251, KOI8-R), Greek, Turkish, Baltic, Hebrew, Arabic or Western. A subtitle showing changes at once. |
 | **Music** | Music display, Visualizer, Sound | Album art, Bars, Off | What the top screen shows for music (also on SELECT while a song plays). **Sound** opens the [Sound page](#sound-equalizer-and-effects): the equalizer and the effects |
 | **Photos** | Keep zoom between photos | On | The next photo opens at the same zoom and place. Off: each opens whole |
 | | Pan area | Left | Which side of the bottom screen the photo's pan area is on |

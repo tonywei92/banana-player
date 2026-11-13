@@ -13,8 +13,8 @@
 # Out: dist/ports/BananaPlayer/ (bin, lib, share) and dist/ports/Banana Player.sh, ready for roms/ports on the card;
 # dist/BananaPlayer-<version>-aarch64.zip with both; dist/symbols/banana-player-<version>, the player unstripped (for crash.log).
 #
-# Bundled, built from source with only what playing needs: FFmpeg (decoders and demuxers), libplacebo, libass and
-# libmpv, and the few libraries they pull in; libsmb2 (network folders over SMB); Debian's libjpeg-turbo (libjpeg.so.62:
+# Bundled, built from source with only what playing needs: FFmpeg (decoders and demuxers), libplacebo, libass,
+# uchardet (subtitles' code pages) and libmpv, and the few libraries they pull in; libsmb2 (network folders over SMB); Debian's libjpeg-turbo (libjpeg.so.62:
 # the manga reader's long pages, decoded a band at a time). Taken from BananaOS instead (not
 # bundled): glibc, libstdc++, SDL2, SDL2_ttf, Mesa (EGL/GLES), libdrm, ALSA, FreeType, zlib, libpng, OpenSSL's
 # libcrypto (saved passwords) and libcurl (FTP): its SDL carries BananaOS's own patches (SDL_KMSDRM_FIRST picks the
@@ -26,6 +26,7 @@ LIBPLACEBO_VERSION=v7.349.0
 LIBASS_VERSION=0.17.3
 MPV_VERSION=v0.40.0
 LIBSMB2_VERSION=6.2
+UCHARDET_VERSION=0.0.8
 # FFmpeg's configure beyond the version: the mp4 muxer is the web dashboard's Direct Stream (src/web/remux.cpp)
 FFMPEG_CONFIG=mp4mux
 
@@ -117,6 +118,20 @@ if [ ! -f $PREFIX/lib/.libass-fontconfig ]; then
 	make -j$JOBS >/dev/null && make install >/dev/null && touch $PREFIX/lib/.libass-fontconfig
 fi
 
+# uchardet: a subtitle file's code page guessed (mpv's sub-codepage=auto, and the web's subtitles: src/webmedia.h).
+# Built before mpv; the first time it's there, mpv is built again with it (its marker: the rest of the cache stays)
+echo "== uchardet $UCHARDET_VERSION"
+fetch https://www.freedesktop.org/software/uchardet/releases/uchardet-$UCHARDET_VERSION.tar.xz uchardet-$UCHARDET_VERSION -J
+if [ ! -f $PREFIX/lib/.uchardet-$UCHARDET_VERSION ]; then
+	cd $SRC/uchardet-$UCHARDET_VERSION
+	rm -rf build
+	cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$PREFIX -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_BUILD_TYPE=Release \
+		-DBUILD_SHARED_LIBS=ON -DBUILD_BINARY=OFF -DBUILD_STATIC=OFF >/dev/null
+	cmake --build build -j$JOBS >/dev/null && cmake --install build >/dev/null
+	rm -f $PREFIX/lib/libmpv.*
+	touch $PREFIX/lib/.uchardet-$UCHARDET_VERSION
+fi
+
 echo "== mpv $MPV_VERSION"
 [ -d $SRC/mpv ] || git -c advice.detachedHead=false clone -q --depth 1 --branch $MPV_VERSION https://github.com/mpv-player/mpv.git $SRC/mpv
 if [ ! -f $PREFIX/lib/libmpv.so ]; then
@@ -124,7 +139,7 @@ if [ ! -f $PREFIX/lib/libmpv.so ]; then
 	rm -rf build
 	# libmpv only, drawn through its render API (plain-gl: no window system), sound to ALSA
 	meson setup build --prefix=$PREFIX --libdir=lib --buildtype=release -Dlibmpv=true -Dcplayer=false \
-		-Dauto_features=disabled -Dgl=enabled -Dplain-gl=enabled -Dalsa=enabled -Dzlib=enabled -Diconv=enabled \
+		-Dauto_features=disabled -Dgl=enabled -Dplain-gl=enabled -Dalsa=enabled -Dzlib=enabled -Diconv=enabled -Duchardet=enabled \
 		-Dlibavdevice=enabled 2>&1 | tail -40
 	ninja -C build >/dev/null && ninja -C build install >/dev/null
 fi
@@ -198,6 +213,8 @@ cp /src/assets/fonts/licenses/Inter-LICENSE.txt "$L/Inter-LICENSE.txt"
 cp /src/third_party/lua/LICENSE "$L/Lua-LICENSE.txt"
 cp /src/third_party/lexbor/LICENSE "$L/lexbor-LICENSE.txt"
 cp /usr/share/doc/libjpeg62-turbo/copyright "$L/libjpeg-turbo-COPYRIGHT.txt"
+# uchardet (bundled: MPL 1.1, or GPL 2+ / LGPL 2.1+)
+cp /cache/src/uchardet-$UCHARDET_VERSION/COPYING "$L/uchardet-COPYING.txt"
 # the launcher (the Store's menu.launch, and what the Ports shelf's script runs), the version the Store reads
 # (package.version_file) and the tile's picture (menu.media.image)
 cp /src/packaging/launch.sh "$B/launch.sh"
