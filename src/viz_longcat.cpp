@@ -9,8 +9,9 @@
 // position reaches the picture through astats' metadata (the last value of each 160 samples) and adrawgraph, whose colour
 // expression is the value itself: a 1x1 picture at 60 frames a second whose red is the position, exactly.
 // The music also lights the cat: a rainbow light on both sides of every row (ears, cheeks, paws, body), hugging its
-// outline, each row a band (the bass at the bottom, the treble at the ears), 8..60 pixels wide and brighter as its band
-// plays, fading out towards its far end; its hue band x 24 degrees, drifting round the rainbow.
+// outline, each row a band (the bass at the bottom, the treble at the ears), 8..120 pixels wide and brighter as its band
+// plays (both on a curve, so a quiet row stays short and faint and a loud one shoots out), fading out towards its
+// far end; its hue band x 24 degrees at full saturation, deep enough to stand out on the pale sky, drifting round.
 // A frame: the 16 bands measured, contrasted and eased (as Pocket console's bars). Then, at 640 x the cat's rows (one
 // row per cat pixel, every screen column, as a light's width is in screen pixels):
 //  - the levels turned into a column (bass at the bottom) and stretched across: each row its band's level; a lut2
@@ -27,7 +28,7 @@
 //    and a table of 20 random clouds over 243 rows); over the art: the art.
 // Stills are one frame each (movie=), never looped. YUV and gray only, nothing converted, no geq per frame.
 // Over the art: the art's top as it is, and in the 640x200 strip under it the same cat at 4-pixel pixels (its head at
-// the strip's top, its body climbing below), its light 4..28 pixels wide over the art, the art showing everywhere else.
+// the strip's top, its body climbing below), its light 4..56 pixels wide over the art, the art showing everywhere else.
 #include "viz_more.h"
 #include "settings.h"
 
@@ -46,9 +47,9 @@ namespace bp
 	{
 		// a new name whenever the stills change: they're cached by size
 		enum { F_HEAD, F_TROW, F_TCOL, F_HUE, F_DIST, PER = 5, F_ROW = 2 * PER, F_COL, NFILES };
-		const char* const FILES[NFILES] = {"lcat3-head-a.pgm", "lcat3-trow-a.pgm", "lcat3-tcol-a.pgm", "lcat3-hue-a.pgm",
-										   "lcat3-dist-a.pgm", "lcat3-head-s.pgm", "lcat3-trow-s.pgm", "lcat3-tcol-s.pgm",
-										   "lcat3-hue-s.pgm",  "lcat3-dist-s.pgm", "lcat3-row.pgm",	   "lcat3-col.pgm"};
+		const char* const FILES[NFILES] = {"lcat4-head-a.pgm", "lcat4-trow-a.pgm", "lcat4-tcol-a.pgm", "lcat4-hue-a.pgm",
+										   "lcat4-dist-a.pgm", "lcat4-head-s.pgm", "lcat4-trow-s.pgm", "lcat4-tcol-s.pgm",
+										   "lcat4-hue-s.pgm",  "lcat4-dist-s.pgm", "lcat4-row.pgm",	   "lcat4-col.pgm"};
 
 		// The cat: the owner's AI-made tall tabby, parsed with the owner's newest settings (a 53x72 grid of 20.25x20 px
 		// cells, offset 2.5,5, sampled at the point (84%, 43%... sx 84, sy 43), box 30, bg 70, columns 8-41, rows from 13,
@@ -86,8 +87,8 @@ namespace bp
 			int W, H, P, ox, oy, wmin, wmax;
 			bool sky;	// the sky and clouds (alone), or the art (over it)
 		};
-		const Layout ALONE = {80, 60, 8, 23, 5, 8, 60, true};
-		const Layout STRIP = {160, 50, 4, 63, 0, 4, 28, false};
+		const Layout ALONE = {80, 60, 8, 23, 5, 8, 120, true};
+		const Layout STRIP = {160, 50, 4, 63, 0, 4, 56, false};
 		int rowsOf(const Layout& L) { return L.H - L.oy; }	   // the cat's rows on screen
 		int tileRows(const Layout& L) { return rowsOf(L) - HEADR; }
 
@@ -279,7 +280,7 @@ namespace bp
 		Yuv cat[8];
 		for (int i = 0; i < 8; i++) cat[i] = yuv(PAL[i]);
 		// a plane's lut from the class to its packed value: 0 nothing; 1-8 the cat's colour; a light's: its colour in
-		// 5 bits (2..31 of 16..240) and its alpha in 3. The light at strength v: hsl(hue x 24, 95%, 45..70%)
+		// 5 bits (2..31 of 16..240) and its alpha in 3. The light at strength v: hsl(hue x 24, 100%, 38..58%)
 		auto pack = [&](double Yuvd::*plane) {
 			// the plane's value is affine in the lightness and in a x the hue's own term: val = c0 + cl x l - a x g(hue)
 			Yuvd o = yuvd(0, 0, 0), one = yuvd(255, 255, 255);
@@ -293,8 +294,8 @@ namespace bp
 				gh = "if(eq(ld(1)," + n(h) + ")," + f(gv) + "," + gh + ")";
 			}
 			std::string e = "st(0,mod(val-" + n(LIGHT) + "," + n(STEPS) + "));st(1,floor((val-" + n(LIGHT) + ")/" + n(STEPS) + "));"
-							"st(2,(ld(0)+0.5)/" + n(STEPS) + ");st(3,0.45+0.25*ld(2));"
-							"st(4," + f(o.*plane) + "+" + f(one.*plane - o.*plane) + "*ld(3)-0.95*min(ld(3),1-ld(3))*(" + gh + "));"
+							"st(2,(ld(0)+0.5)/" + n(STEPS) + ");st(3,0.38+0.2*ld(2));"
+							"st(4," + f(o.*plane) + "+" + f(one.*plane - o.*plane) + "*ld(3)-min(ld(3),1-ld(3))*(" + gh + "));"
 							"if(lt(val," + n(LIGHT) + "),val,8*clip(round((ld(4)-16)*31/224),2,31)+round(ld(2)*7))";
 			return "'" + e + "'";
 		};
@@ -323,7 +324,7 @@ namespace bp
 		// over ~0.15 s: the exp/log lagfun)
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
 			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,bplut=c0='val*252/255'" +
-			 vizContrast("lc") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
+			 vizContrast("lc", 1, "8", "2.2") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [lclv] [lcd1]; ";
 		// the climb's position (cloud rows, wrapped): the loudness eased, the speed from it (capped), integrated per
 		// sample; each 60th of a second its last value drawn as a 1x1 picture whose red is the value
@@ -335,11 +336,11 @@ namespace bp
 			 "s=1x2:r=60:bg=black,crop=1:1:0:1,extractplanes=r,setparams=color_trc=unknown:color_primaries=unknown:colorspace=unknown" + (L.sky ? ",split [lcp1] [lcp2]" : " [lcp1]") + "; ";
 		// the light: each row its band's level, against each pixel's distance from the outline: 0, or 1 + its step
 		// (the level's strength, less towards the light's far end)
-		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*x/252)";
+		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*pow(x/252,1.4))";
 		g += "[lclv] transpose=2,scale=640:" + n(R) + ":flags=neighbor,pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
 			 "movie=" + q(F_DIST) + ",format=gray [lcdist]; "
 			 "[lclc] [lcdist] bplut2=c0='if(y*lte(y," + wexp + "),1+min(" + n(STEPS - 1) + ",floor(" + n(STEPS) +
-			 "*(0.3+0.7*x/252)*(1-(y-1)/" + wexp + "))),0)' [lcmask]; ";
+			 "*(0.12+0.88*pow(x/252,1.6))*(1-(y-1)/" + wexp + "))),0)' [lcmask]; ";
 		// its hues, the column of the moment (the drift)
 		g += "[lcd1] scale=" + n(HUES) + ":" + H + ":flags=neighbor [lcd1s]; movie=" + q(F_HUE) + ",format=gray [lchm]; "
 			 "[lcd1s] [lchm] bplut2=c0='y',crop=1:" + H + ":x='mod(floor(n/" + n(HSTEP) + ")," + n(HUES) + ")':y=0,"
