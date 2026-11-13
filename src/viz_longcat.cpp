@@ -1,24 +1,33 @@
 // Long cat: the camera climbing a cat that never ends. A tall tabby (the owner's pixels, drawn 8 screen pixels a pixel,
 // 34 wide and centred, its top at y=40): its head fixed, its body's 18-row tile repeating down past the screen's bottom
-// and sliding down under the head (6 rows a second), while white clouds in a blue sky (#5aa8f0 at the top to #bfe2ff at
-// the bottom) slide down behind it half as fast again, so it reads as the camera rising up a cat that keeps growing.
-// The climb is steady: a crop's offset is the frame number, it can't add up the music, so the music lives in the light.
-// The music: a rainbow light hugging the cat's outline on both sides of every row (ears, cheeks, paws, body), each row
-// a band (the bass at the bottom, the treble at the ears), 3..15 pixels wide and brighter as its band plays, its hue
-// band x 24 degrees, drifting round the rainbow as it climbs.
+// and sliding down under the head, while white clouds in a blue sky (#5aa8f0 at the top to #bfe2ff at the bottom) slide
+// down behind it 1.5 times as fast, so it reads as the camera rising up a cat that keeps growing.
+// The climb follows the music: 9 cloud rows a second when it's quiet, up to 2.5 times that when it's loud (capped there,
+// so it never jumps), the speed eased over ~0.5 s. A crop's offset can't add up the music, so the adding up is done on
+// the sound: its loudness (mono, |sample|, a one-pole lowpass at 0.35 Hz), mapped to the speed, integrated per sample
+// (aintegral, in doubles) and wrapped to the clouds' 243 rows (the tile's 18 go into 162 = 243 / 1.5 evenly). That
+// position reaches the picture through astats' metadata (the last value of each 160 samples) and adrawgraph, whose colour
+// expression is the value itself: a 1x1 picture at 60 frames a second whose red is the position, exactly.
+// The music also lights the cat: a rainbow light on both sides of every row (ears, cheeks, paws, body), hugging its
+// outline, each row a band (the bass at the bottom, the treble at the ears), 8..60 pixels wide and brighter as its band
+// plays, fading out towards its far end; its hue band x 24 degrees, drifting round the rainbow.
 // A frame: the 16 bands measured, contrasted and eased (as Pocket console's bars). Then, at 640 x the cat's rows (one
 // row per cat pixel, every screen column, as a light's width is in screen pixels):
 //  - the levels turned into a column (bass at the bottom) and stretched across: each row its band's level; a lut2
 //    against a still of each pixel's distance from the row's outline (0 inside or far) lights the light's pixels, its
-//    width and strength (16 steps) from the level; another against a still of the rows' hues (15 hues, one variant a
-//    column, the column cropped by the frame number: the drift) gives each lit pixel its class (9 + step + 16 x hue);
-//  - the cat: the tile's still cropped by the frame number (the climb) under the head's still, classes 1-8;
+//    width and strength (16 steps, less further out) from the level; another against a still of the rows' hues (15
+//    hues, one variant a column, the column cropped by the frame number: the drift) gives each lit pixel its class
+//    (9 + step + 16 x hue);
+//  - the cat: the head's still over its body, whose rows are the tile's rows shifted by the position (a lut2 of a
+//    still of the rows against the position, then a lut2 of that against a still of the columns whose table is the
+//    tile itself, written as an expression of row and column); classes 1-8;
 //  - per plane, a lut from the class to a packed value (the cat's colour index, or the light's colour in 5 bits and its
-//    alpha in 3), and a lut2 against the background (alone: the sky's row or a cloud, from a tall still of clouds
-//    cropped by the frame number; over the art: the art) paints it, the light blended over; scaled up (nearest).
+//    alpha in 3), and a lut2 against the background paints it, the light blended over; scaled up (nearest). The
+//    background alone: the sky's row, or a cloud (the clouds the same way as the tile: rows shifted by the position,
+//    and a table of 20 random clouds over 243 rows); over the art: the art.
 // Stills are one frame each (movie=), never looped. YUV and gray only, nothing converted, no geq per frame.
 // Over the art: the art's top as it is, and in the 640x200 strip under it the same cat at 4-pixel pixels (its head at
-// the strip's top, its body climbing below), its light 2..8 pixels wide over the art, the art showing everywhere else.
+// the strip's top, its body climbing below), its light 4..28 pixels wide over the art, the art showing everywhere else.
 #include "viz_more.h"
 #include "settings.h"
 
@@ -36,19 +45,21 @@ namespace bp
 	namespace
 	{
 		// a new name whenever the stills change: they're cached by size
-		const char* const FILES[10] = {"lcat1-head-a.pgm", "lcat1-tile-a.pgm", "lcat1-hue-a.pgm", "lcat1-dist-a.pgm",
-									   "lcat1-head-s.pgm", "lcat1-tile-s.pgm", "lcat1-hue-s.pgm", "lcat1-dist-s.pgm",
-									   "lcat1-cloud.pgm",  "lcat1-row.pgm"};
+		enum { F_HEAD, F_TROW, F_TCOL, F_HUE, F_DIST, PER = 5, F_ROW = 2 * PER, F_COL, NFILES };
+		const char* const FILES[NFILES] = {"lcat2-head-a.pgm", "lcat2-trow-a.pgm", "lcat2-tcol-a.pgm", "lcat2-hue-a.pgm",
+										   "lcat2-dist-a.pgm", "lcat2-head-s.pgm", "lcat2-trow-s.pgm", "lcat2-tcol-s.pgm",
+										   "lcat2-hue-s.pgm",  "lcat2-dist-s.pgm", "lcat2-row.pgm",	   "lcat2-col.pgm"};
 
 		// The cat: the owner's AI-made tall tabby, parsed with the owner's own settings (a 53x72 grid of 20.25x20 px
-		// cells, offset 2.5,5, each sampled at 55%/44% of the cell, columns 8-41; palette as PAL below). The head, paws,
-		// collar and the top of the body as drawn; then the body's tile (its stripes and spots), repeated down.
+		// cells, offset 2.5,5, each sampled at 55%/44% of the cell, box 30, bg 70, columns 8-41, rows from 13, the tile
+		// rows 39-56, point mode, snapped, with the owner's edits; palette as PAL below). The head, paws, collar and the
+		// top of the body as drawn; then the body's tile (its stripes and spots), repeated down.
 		const int COLS = 34, HEADR = 26, TILER = 18;
 		const char* const HEAD[HEADR] = {
 			"                                  ", "         aaaa       aaaa          ", "        aaaaa       aaaa          ",
 			"       aallllaa   aallllaa        ", "       aallllaa   aallllaa        ", "       aalplllaaaaallpplaa        ",
 			"       aapppplmmmmmmppppaaa       ", "       aapppplmllmmmpppplla       ", "  y   aaap....mllmmllppplla       ",
-			" yyy  aa......mllmmllllllla       ", " ay   aa.......llllllllmmma    y  ", "    aa..............lllllllaa yyy ",
+			" yyy  aa......mllmmllllllla       ", "  y   aa.......llllllllmmma    y  ", "    aa..............lllllllaa yyy ",
 			"    aa....aa......aalllllllaa  y  ", "    aa....aa......aa.llllllaa     ", "    aamm..aa......aa...mmmmaa     ",
 			"    aamm.....a..a.......lllaa     ", "    aa........aa..........laaa    ", "      aaa............aaaaallma    ",
 			"    aa...aa.........a......lma    ", "   aaa...aa.........a......lma    ", "   aa.....karrrrrrra....kkalma    ",
@@ -74,15 +85,16 @@ namespace bp
 			int W, H, P, ox, oy, wmin, wmax;
 			bool sky;	// the sky and clouds (alone), or the art (over it)
 		};
-		const Layout ALONE = {80, 60, 8, 23, 5, 3, 15, true};
-		const Layout STRIP = {160, 50, 4, 63, 0, 2, 8, false};
+		const Layout ALONE = {80, 60, 8, 23, 5, 8, 60, true};
+		const Layout STRIP = {160, 50, 4, 63, 0, 4, 28, false};
 		int rowsOf(const Layout& L) { return L.H - L.oy; }	   // the cat's rows on screen
 		int tileRows(const Layout& L) { return rowsOf(L) - HEADR; }
 
-		// the climb: a tile row every CSTEP frames (6 a second); the clouds 1.5 times as fast; the hue a step (24
-		// degrees) every HSTEP frames
-		const int CSTEP = 10, HSTEP = 53;
-		const int CLOUDP = 444;	// the clouds' still: 37 clouds 12 rows apart, then its first 60 rows again
+		// the climb, in cloud rows: the position wraps at CLOUDP (the tile's rows move 2/3 as far: 162 of them, 9 tiles);
+		// its speed BASE a second, up to BASE + BOOST at a loudness (mean |sample|, eased) of LOUD and over
+		const int CLOUDP = 243, NCLOUDS = 20;
+		const char* const BASE = "9", * const BOOST = "13.5", * const LOUD = "0.18";
+		const int HSTEP = 53;	// the hue a step (24 degrees) every HSTEP frames
 
 		struct Yuv { int y, u, v; };
 		struct Yuvd { double y, u, v; };
@@ -130,72 +142,44 @@ namespace bp
 		// the band of the cat's row r of R (as the level column stretched by nearest: the bass at the bottom)
 		int bandOf(int r, int R) { return 15 - std::min(15, (int)std::floor((r + 0.5) * 16 / R)); }
 
-		// a still's size: k 0-3 alone (head, tile, hue, distance), 4-7 over the art, 8 the clouds, 9 the sky's rows
+		// a still's size: per layout (alone, then over the art) the head, the tile's rows and columns, the hues, the
+		// distances; then the sky's rows and columns (alone)
 		void dims(int k, int& w, int& h)
 		{
-			if (k == 8) { w = ALONE.W; h = CLOUDP + ALONE.H; return; }
-			if (k == 9) { w = ALONE.W; h = ALONE.H; return; }
-			const Layout& L = k < 4 ? ALONE : STRIP;
-			switch (k % 4)
+			if (k >= F_ROW) { w = ALONE.W; h = ALONE.H; return; }
+			const Layout& L = k < PER ? ALONE : STRIP;
+			switch (k % PER)
 			{
-				case 0: w = COLS; h = rowsOf(L); return;
-				case 1: w = COLS; h = TILER + tileRows(L); return;
-				case 2: w = HUES; h = L.H; return;
+				case F_HEAD: w = COLS; h = rowsOf(L); return;
+				case F_TROW:
+				case F_TCOL: w = COLS; h = tileRows(L); return;
+				case F_HUE: w = HUES; h = L.H; return;
 				default: w = 640; h = L.H; return;
 			}
 		}
-
-		// the preview's random clouds, made repeatable
-		struct Rng
-		{
-			uint32_t s = 12345;
-			double next() { s = s * 1103515245u + 12345u; return (double)((s >> 8) & 0xffffff) / 16777216.0; }
-		};
 
 		std::vector<unsigned char> still(int k)
 		{
 			int w, h;
 			dims(k, w, h);
 			std::vector<unsigned char> m((size_t)w * h, 0);
-			if (k == 9)	// the sky's rows: the row's number
-			{
+			auto fill = [&](auto v) {
 				for (int y = 0; y < h; y++)
-					for (int x = 0; x < w; x++) m[(size_t)y * w + x] = (unsigned char)y;
-				return m;
-			}
-			if (k == 8)	// the clouds: 1 white, 2 its pale underside; wrapped round CLOUDP, then its top again
-			{
-				Rng rng;
-				for (int i = 0; i < CLOUDP / 12; i++)
-				{
-					int cx = (int)std::floor(rng.next() * 70) - 5, cw = 6 + (int)std::floor(rng.next() * 9);
-					int ch = 2 + (int)std::floor(rng.next() * 2), cy = i * 12 + (int)std::floor(rng.next() * 5) - 2;
-					for (int r = 0; r < ch; r++)
-					{
-						int inset = r == 0 ? 2 : 0, y = ((cy + r) % CLOUDP + CLOUDP) % CLOUDP;
-						for (int x = cx + inset; x < cx + cw - inset; x++)
-							if (x >= 0 && x < w) m[(size_t)y * w + x] = (unsigned char)(r == ch - 1 ? 2 : 1);
-					}
-				}
-				for (int y = CLOUDP; y < h; y++)
-					for (int x = 0; x < w; x++) m[(size_t)y * w + x] = m[(size_t)(y - CLOUDP) * w + x];
-				return m;
-			}
-			const Layout& L = k < 4 ? ALONE : STRIP;
+					for (int x = 0; x < w; x++) m[(size_t)y * w + x] = (unsigned char)v(x, y);
+			};
+			if (k == F_ROW) { fill([](int, int y) { return y; }); return m; }
+			if (k == F_COL) { fill([](int x, int) { return x; }); return m; }
+			const Layout& L = k < PER ? ALONE : STRIP;
 			const int R = rowsOf(L);
-			switch (k % 4)
+			switch (k % PER)
 			{
-				case 0:	// the head (0 under it)
-					for (int y = 0; y < HEADR; y++)
-						for (int x = 0; x < COLS; x++) m[(size_t)y * w + x] = (unsigned char)cls(HEAD[y][x]);
+				case F_HEAD:	// the head (0 under it)
+					fill([](int x, int y) { return y < HEADR ? cls(HEAD[y][x]) : 0; });
 					break;
-				case 1:	// the tile, repeated (cropped by the climb)
-					for (int y = 0; y < h; y++)
-						for (int x = 0; x < COLS; x++) m[(size_t)y * w + x] = (unsigned char)cls(TILE[y % TILER][x]);
-					break;
-				case 2:	// the hues: column d, the cat's row r: its band plus d, round the 15
-					for (int y = L.oy; y < h; y++)
-						for (int d = 0; d < HUES; d++) m[(size_t)y * w + d] = (unsigned char)((bandOf(y - L.oy, R) + d) % HUES);
+				case F_TROW: fill([](int, int y) { return y; }); break;
+				case F_TCOL: fill([](int x, int) { return x; }); break;
+				case F_HUE:	// the hues: column d, the cat's row r: its band plus d, round the 15
+					fill([&](int d, int y) { return y < L.oy ? 0 : (bandOf(y - L.oy, R) + d) % HUES; });
 					break;
 				default:	// each pixel's distance outside its row's outline, 1..wmax (0 inside or past it)
 					for (int r = 0; r < R; r++)
@@ -227,6 +211,39 @@ namespace bp
 			g = ch(8);
 			b = ch(4);
 		}
+
+		// the tile as a lut2's table: x its row (0-17), y its column: the class. Each row as three numbers (12 columns
+		// of 4 bits each, the classes going to 8: under 2^53, exact in a double)
+		std::string tileExpr()
+		{
+			std::string e = "st(0,0);";
+			for (int r = 0; r < TILER; r++)
+			{
+				long long part[3] = {0, 0, 0};
+				for (int c = COLS - 1; c >= 0; c--) part[c / 12] = part[c / 12] * 16 + cls(TILE[r][c]);
+				e += "st(0,if(eq(x," + n(r) + "),if(lt(y,12)," + n(part[0]) + ",if(lt(y,24)," + n(part[1]) + "," + n(part[2]) +
+					 ")),ld(0)));";
+			}
+			return "'" + e + "mod(floor(ld(0)/pow(16,mod(y,12))),16)'";
+		}
+
+		// the clouds as a lut2's table: x a row of their CLOUDP (wrapping), y a column: 0 none, 1 white, 2 its pale
+		// underside (the preview's random clouds: 6-14 wide, 2-3 high, their top row 2 narrower each side)
+		std::string cloudExpr()
+		{
+			uint32_t s = 12345;
+			auto rnd = [&]() { s = s * 1103515245u + 12345u; return (double)((s >> 8) & 0xffffff) / 16777216.0; };
+			std::string e = "st(1,0);";
+			for (int i = 0; i < NCLOUDS; i++)
+			{
+				int cx = (int)std::floor(rnd() * 70) - 5, cw = 6 + (int)std::floor(rnd() * 9), ch = 2 + (int)std::floor(rnd() * 2);
+				int cy = (int)std::lround(i * (double)CLOUDP / NCLOUDS) + (int)std::floor(rnd() * 5) - 2;
+				cy = (cy % CLOUDP + CLOUDP) % CLOUDP;
+				e += "st(0,mod(x-" + n(cy) + "+" + n(CLOUDP) + "," + n(CLOUDP) + "));st(1,if(lt(ld(0)," + n(ch) + ")*gte(y," + n(cx) +
+					 "+2*eq(ld(0),0))*lte(y," + n(cx + cw - 1) + "-2*eq(ld(0),0)),1+eq(ld(0)," + n(ch - 1) + "),ld(1)));";
+			}
+			return "'" + e + "ld(1)'";
+		}
 	}
 
 	bool writeLongcatMaps(const std::string& dir)
@@ -239,10 +256,10 @@ namespace bp
 			return stat(path(k).c_str(), &st) == 0 && (size_t)st.st_size == header(w, h).size() + (size_t)w * h;
 		};
 		bool all = true;
-		for (int k = 0; k < 10; k++) all = all && ready(k);
+		for (int k = 0; k < NFILES; k++) all = all && ready(k);
 		if (all) return true;
 		mkdir(dir.c_str(), 0755);
-		for (int k = 0; k < 10; k++)
+		for (int k = 0; k < NFILES; k++)
 		{
 			int w, h;
 			dims(k, w, h);
@@ -254,14 +271,14 @@ namespace bp
 	std::string longcatGraph(bool overCover, const std::string& dir)
 	{
 		const Layout& L = overCover ? STRIP : ALONE;
-		const int base = overCover ? 4 : 0, R = rowsOf(L), TR = tileRows(L);
-		auto q = [&](int k) { std::string s; lavfiPath(dir + "/" + FILES[k < 4 ? base + k : k], s); return s; };
+		const int base = overCover ? PER : 0, R = rowsOf(L), TR = tileRows(L);
+		auto q = [&](int k) { std::string s; lavfiPath(dir + "/" + FILES[k < F_ROW ? base + k : k], s); return s; };
 		const std::string H = n(L.H);
 
 		Yuv cat[8];
 		for (int i = 0; i < 8; i++) cat[i] = yuv(PAL[i]);
 		// a plane's lut from the class to its packed value: 0 nothing; 1-8 the cat's colour; a light's: its colour in
-		// 5 bits (2..31 of 16..240) and its alpha in 3. The light: hsl(hue x 24, 95%, 45..70%), alpha 0.25..1
+		// 5 bits (2..31 of 16..240) and its alpha in 3. The light at strength v: hsl(hue x 24, 95%, 45..70%)
 		auto pack = [&](double Yuvd::*plane) {
 			// the plane's value is affine in the lightness and in a x the hue's own term: val = c0 + cl x l - a x g(hue)
 			Yuvd o = yuvd(0, 0, 0), one = yuvd(255, 255, 255);
@@ -281,7 +298,7 @@ namespace bp
 			return "'" + e + "'";
 		};
 		// a plane's lut2: the packed value (x) over the background (y: alone the sky's class, 0-59 its row, 60-61 a
-		// cloud; over the art the art)
+		// cloud; over the art the art); a light's alpha 0.06..1
 		auto paint = [&](double Yuvd::*plane, int Yuv::*iplane) {
 			std::string bg = "y";
 			if (L.sky)
@@ -292,11 +309,11 @@ namespace bp
 			}
 			std::string catc = "ld(0)";
 			for (int i = 7; i >= 0; i--) catc = "if(eq(x," + n(i + 1) + ")," + n(cat[i].*iplane) + "," + catc + ")";
-			return "'st(0," + bg + ");if(lt(x,9)," + catc + ",st(1,0.25+0.75*mod(x,8)/7);"
+			return "'st(0," + bg + ");if(lt(x,9)," + catc + ",st(1,0.06+0.94*mod(x,8)/7);"
 				   "round(ld(1)*(16+floor(x/8)*224/31)+(1-ld(1))*ld(0)))'";
 		};
 
-		std::string g = "[aid1] asplit [ao] [a]; ";
+		std::string g = "[aid1] asplit=3 [ao] [a] [ap]; ";
 		if (overCover)
 			g += "[vid1] scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:-1:-1:black,setsar=1,format=yuv420p,"
 				 "settb=AVTB,split [lcart1] [lcart2]; [lcart1] crop=640:280:0:0 [top]; "
@@ -306,32 +323,43 @@ namespace bp
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
 			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
 			 vizContrast("lc") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
-			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=" + n(L.sky ? 4 : 3) +
-			 " [lclv] [lcd1] [lcd2]" + (L.sky ? " [lcd3]" : "") + "; ";
+			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [lclv] [lcd1]; ";
+		// the climb's position (cloud rows, wrapped): the loudness eased, the speed from it (capped), integrated per
+		// sample; each 60th of a second its last value drawn as a 1x1 picture whose red is the value
+		g += "[ap] aformat=sample_rates=44100|48000:channel_layouts=mono,aeval='abs(val(0))',lowpass=f=0.35:poles=1,"
+			 "aeval='(" + std::string(BASE) + "+" + BOOST + "*min(val(0)/" + LOUD + ",1))/s',aintegral,"
+			 "aeval='floor(mod(val(0)," + n(CLOUDP) + "))+0.5',asetnsamples=n=160,"
+			 "astats=metadata=1:reset=1:measure_perchannel=Max_level:measure_overall=none,"
+			 "adrawgraph=m1=lavfi.astats.1.Max_level:fg1='0xff000000+floor(VAL)':min=-1000:max=1000:mode=bar:slide=replace:"
+			 "s=1x2:r=60:bg=black,crop=1:1:0:1,extractplanes=r,setparams=color_trc=unknown:color_primaries=unknown:colorspace=unknown" + (L.sky ? ",split [lcp1] [lcp2]" : " [lcp1]") + "; ";
 		// the light: each row its band's level, against each pixel's distance from the outline: 0, or 1 + its step
+		// (the level's strength, less towards the light's far end)
+		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*x/252)";
 		g += "[lclv] transpose=2,scale=640:" + n(R) + ":flags=neighbor,pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
-			 "movie=" + q(3) + ",format=gray [lcdist]; "
-			 "[lclc] [lcdist] lut2=c0='if(y*lte(y,round(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*x/252)),1+min(" + n(STEPS - 1) +
-			 ",floor(x*" + n(STEPS) + "/253)),0)' [lcmask]; ";
+			 "movie=" + q(F_DIST) + ",format=gray [lcdist]; "
+			 "[lclc] [lcdist] lut2=c0='if(y*lte(y," + wexp + "),1+min(" + n(STEPS - 1) + ",floor(" + n(STEPS) +
+			 "*(0.3+0.7*x/252)*(1-(y-1)/" + wexp + "))),0)' [lcmask]; ";
 		// its hues, the column of the moment (the drift)
-		g += "[lcd1] scale=" + n(HUES) + ":" + H + ":flags=neighbor [lcd1s]; movie=" + q(2) + ",format=gray [lchm]; "
+		g += "[lcd1] scale=" + n(HUES) + ":" + H + ":flags=neighbor [lcd1s]; movie=" + q(F_HUE) + ",format=gray [lchm]; "
 			 "[lcd1s] [lchm] lut2=c0='y',crop=1:" + H + ":x='mod(floor(n/" + n(HSTEP) + ")," + n(HUES) + ")':y=0,"
 			 "scale=640:" + H + ":flags=neighbor [lchue]; "
 			 "[lcmask] [lchue] lut2=c0='if(x," + n(LIGHT - 1) + "+x+" + n(STEPS) + "*y,0)' [lclight]; ";
-		// the cat: the tile cropped by the climb, under the head; put in its place, every screen column
-		g += "[lcd2] scale=" + n(COLS) + ":" + n(TILER + TR) + ":flags=neighbor [lcd2s]; movie=" + q(1) + ",format=gray [lctm]; "
-			 "movie=" + q(0) + ",format=gray [lchd]; "
-			 "[lcd2s] [lctm] lut2=c0='y',crop=" + n(COLS) + ":" + n(TR) + ":x=0:y='mod(" + n(TILER) + "-mod(floor(n/" + n(CSTEP) + ")," +
-			 n(TILER) + ")," + n(TILER) + ")',pad=" + n(COLS) + ":" + n(R) + ":0:" + n(HEADR) + " [lctl]; "
+		// the cat: its body's rows the tile's shifted by the position (2/3 of it), under the head; put in its place,
+		// every screen column
+		g += "[lcp1] scale=" + n(COLS) + ":" + n(TR) + ":flags=neighbor [lcps]; movie=" + q(F_TROW) + ",format=gray [lctr]; "
+			 "movie=" + q(F_TCOL) + ",format=gray [lctc]; movie=" + q(F_HEAD) + ",format=gray [lchd]; "
+			 "[lcps] [lctr] lut2=c0='mod(y-floor(x*2/3)+" + n(TILER * 20) + "," + n(TILER) + ")' [lctr2]; "
+			 "[lctr2] [lctc] lut2=c0=" + tileExpr() + ",pad=" + n(COLS) + ":" + n(R) + ":0:" + n(HEADR) + " [lctl]; "
 			 "[lctl] [lchd] lut2=c0='if(y,y,x)',scale=" + n(COLS * L.P) + ":" + n(R) + ":flags=neighbor,"
 			 "pad=640:" + H + ":" + n(L.ox * L.P) + ":" + n(L.oy) + ",setsar=1 [lccat]; "
 			 "[lccat] [lclight] lut2=c0='if(x,x,y)',split=3 [lck0] [lck1] [lck2]; ";
 
-		if (L.sky)	// the sky's classes: its row, or a cloud (the clouds' still cropped by the climb, 1.5x the cat's)
-			g += "[lcd3] scale=" + n(L.W) + ":" + n(CLOUDP + L.H) + ":flags=neighbor [lcd3s]; movie=" + q(8) + ",format=gray [lccm]; "
-				 "movie=" + q(9) + ",format=gray [lcrow]; "
-				 "[lcd3s] [lccm] lut2=c0='y',crop=" + n(L.W) + ":" + H + ":x=0:y='" + n(CLOUDP) + "-mod(floor(n*3/" + n(2 * CSTEP) + ")," +
-				 n(CLOUDP) + ")' [lccl]; [lccl] [lcrow] lut2=c0='if(x,59+x,y)',split=3 [lcs0] [lcs1] [lcs2]; "
+		if (L.sky)	// the sky's classes: its row, or a cloud (the clouds' rows shifted by the position)
+			g += "[lcp2] scale=" + n(L.W) + ":" + H + ":flags=neighbor [lcp2s]; movie=" + q(F_ROW) + ",format=gray,split [lcrow1] [lcrow2]; "
+				 "movie=" + q(F_COL) + ",format=gray [lccol]; "
+				 "[lcp2s] [lcrow1] lut2=c0='mod(y-x+" + n(CLOUDP) + "," + n(CLOUDP) + ")' [lccr]; "
+				 "[lccr] [lccol] lut2=c0=" + cloudExpr() + " [lccl]; "
+				 "[lccl] [lcrow2] lut2=c0='if(x,59+x,y)',split=3 [lcs0] [lcs1] [lcs2]; "
 				 "[lcs0] scale=640:" + H + ":flags=neighbor [lcby]; [lcs1] scale=320:" + H + ":flags=neighbor [lcbu]; "
 				 "[lcs2] scale=320:" + H + ":flags=neighbor [lcbv]; ";
 
