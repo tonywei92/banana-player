@@ -74,7 +74,7 @@ Twenty looks for your music, picked with **SELECT** while a song plays. Each one
 
 ## Install
 
-1. **Download** `BananaPlayer-0.7.14-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.14).
+1. **Download** `BananaPlayer-0.7.15-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.15).
 2. **Unzip it into `roms/ports`** on your SD card. You should see `Banana Player.sh`, a `BananaPlayer` folder and a
    `media` folder there.
 3. **Open the Ports shelf** on the handheld and choose **Banana Player**.
