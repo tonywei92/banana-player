@@ -8,8 +8,9 @@
 // (aintegral, in doubles) and wrapped to the clouds' 243 rows (the tile's 18 go into 162 = 243 / 1.5 evenly). That
 // position reaches the picture through astats' metadata (the last value of each 160 samples) and adrawgraph, whose colour
 // expression is the value itself: a 1x1 picture at 60 frames a second whose red is the position, exactly.
-// The music also lights the cat: a rainbow bar on both sides, one thin row a band (the bass at the bottom, the
-// treble at the ears), each reaching out from the cat's widest edge so equal levels end level (filled in to the
+// The music also lights the cat: a stack of thin rainbow bars on both sides, one a row and touching, each its own
+// hue and its level blended from the two nearest bands (the bass at the bottom, the treble at the ears), so the stack's
+// outline flows as one spectrum; each reaching out from the cat's widest edge so equal levels end level (filled in to the
 // cat where it's narrower), 8..120 pixels wide and brighter as its band
 // plays (both on a curve, so a quiet row stays short and faint and a loud one shoots out), solid to its tip (no
 // fade: the owner's call); its hue band x 24 degrees at full saturation, deep enough to stand out on the pale sky, drifting round.
@@ -48,9 +49,9 @@ namespace bp
 	{
 		// a new name whenever the stills change: they're cached by size
 		enum { F_HEAD, F_TROW, F_TCOL, F_HUE, F_DIST, PER = 5, F_ROW = 2 * PER, F_COL, NFILES };
-		const char* const FILES[NFILES] = {"lcat5-head-a.pgm", "lcat5-trow-a.pgm", "lcat5-tcol-a.pgm", "lcat5-hue-a.pgm",
-										   "lcat5-dist-a.pgm", "lcat5-head-s.pgm", "lcat5-trow-s.pgm", "lcat5-tcol-s.pgm",
-										   "lcat5-hue-s.pgm",  "lcat5-dist-s.pgm", "lcat5-row.pgm",	   "lcat5-col.pgm"};
+		const char* const FILES[NFILES] = {"lcat6-head-a.pgm", "lcat6-trow-a.pgm", "lcat6-tcol-a.pgm", "lcat6-hue-a.pgm",
+										   "lcat6-dist-a.pgm", "lcat6-head-s.pgm", "lcat6-trow-s.pgm", "lcat6-tcol-s.pgm",
+										   "lcat6-hue-s.pgm",  "lcat6-dist-s.pgm", "lcat6-row.pgm",	   "lcat6-col.pgm"};
 
 		// The cat: the owner's AI-made tall tabby, parsed with the owner's newest settings (a 53x72 grid of 20.25x20 px
 		// cells, offset 2.5,5, sampled at the point (84%, 43%... sx 84, sy 43), box 30, bg 70, columns 8-41, rows from 13,
@@ -182,9 +183,9 @@ namespace bp
 				case F_TROW: fill([](int, int y) { return y; }); break;
 				case F_TCOL: fill([](int x, int) { return x; }); break;
 				case F_HUE:	// the hues: column d, the cat's row r: its band plus d, round the 15
-					fill([&](int d, int y) { return y < L.oy ? 0 : (bandOf(y - L.oy, R) + d) % HUES; });
+					fill([&](int d, int y) { return y < L.oy ? 0 : (R - 1 - (y - L.oy) + d) % HUES; });	// a hue a row, round from the bottom
 					break;
-				default:	// the bars: one row a band (its middle one), each pixel's distance out from the cat's widest
+				default:	// the bars: every row one, touching, each pixel's distance out from the cat's widest
 							// edge, 1..wmax, so equal levels end level whatever the row's outline; between the row's own
 							// outline and that edge 1 (the bar still meets the cat); 0 elsewhere
 				{
@@ -198,13 +199,8 @@ namespace bp
 						rmax = std::max(rmax, (int)rr);
 					}
 					const int fL = (L.ox + lmin) * L.P, fR = (L.ox + rmax + 1) * L.P;
-					for (int b = 0; b < 16; b++)
+					for (int r = 0; r < R; r++)
 					{
-						int first = -1, last = -1;
-						for (int r = 0; r < R; r++)
-							if (bandOf(r, R) == b) { if (first < 0) first = r; last = r; }
-						if (first < 0) continue;
-						int r = (first + last) / 2;
 						std::string row = rowAt(r);
 						size_t l = row.find_first_not_of(' '), rr = row.find_last_not_of(' ');
 						int eL = l == std::string::npos ? fL : (L.ox + (int)l) * L.P, eR = l == std::string::npos ? fR : (L.ox + (int)rr + 1) * L.P;
@@ -353,7 +349,7 @@ namespace bp
 		// the light: each row its band's level, against each pixel's distance from the outline: 0, or 1 + its step
 		// (the level's strength, the same all along it)
 		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*pow(x/252,1.4))";
-		g += "[lclv] transpose=2,scale=640:" + n(R) + ":flags=neighbor,pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
+		g += "[lclv] transpose=2,scale=1:" + n(R) + ":flags=bilinear,scale=640:" + n(R) + ":flags=neighbor,pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
 			 "movie=" + q(F_DIST) + ",format=gray [lcdist]; "
 			 "[lclc] [lcdist] bplut2=c0='if(y*lte(y," + wexp + "),1+min(" + n(STEPS - 1) + ",floor(" + n(STEPS) +
 			 "*(0.12+0.88*pow(x/252,1.6)))),0)' [lcmask]; ";
