@@ -138,6 +138,7 @@ namespace bp
 			return false;
 		}
 		displayOpen = displayOpen && displayShown(p);	// (the song gone under it: closed)
+		if (!displayOpen) displayPending = -1;
 		if (displayOpen) return displayKey(b, p);
 		// a menu (the Options one, a row's hold, the mini bar's) takes the buttons first, on whatever page it is over
 		// (the mini bar's opens on pages whose own keys would otherwise eat them)
@@ -463,6 +464,8 @@ namespace bp
 
 	void Ui::tick(Player& p)
 	{
+		// the Display popup's arrows have rested on a style: it's applied now (displayKey)
+		if (displayPending >= 0 && SDL_GetTicks() - displayPendingAt >= DISPLAY_SETTLE_MS) displayApplyPending(p);
 		// the bar held at a released drag: let go once playback is there, or after 6 s whatever happens (a network file buffers a while)
 		if (seekHeld >= 0 && !dragging &&
 			(p.duration <= 0 || std::fabs(shownPosition(p) - seekHeld * p.duration) < 1.0 || SDL_GetTicks() - seekHeldAt > 6000))
@@ -1153,7 +1156,7 @@ namespace bp
 		{
 			char sb[160];
 			snprintf(sb, sizeof sb, "|snd%d %d %d %d %d %d %d %d %d %d %d", soundTab, fxCursor, eqBand, eqDialog, eqDlgCursor, eqListScroll,
-				displayShown(p) ? displayRow : -1, p.eqPresetSerial(), p.playingAudio(), stashOn, eqTouch);
+				displayShown(p) ? displayRow * 100 + displayPending + 1 : -1, p.eqPresetSerial(), p.playingAudio(), stashOn, eqTouch);
 			photo += sb;
 		}
 		// the dots of "Loading..." go round

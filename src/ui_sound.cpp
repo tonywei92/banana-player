@@ -29,18 +29,34 @@ namespace bp
 		if (s.musicShow != p.settings.musicShow || s.visualizer != p.settings.visualizer) p.setSettings(s);
 	}
 
+	void Ui::displayApplyPending(Player& p)
+	{
+		if (displayPending < 0) return;
+		int v = displayPending;
+		displayPending = -1;
+		displaySet(1, v, p);
+	}
+
 	bool Ui::displayKey(Button b, Player& p)
 	{
-		int now = displayRow ? p.settings.visualizer : p.settings.musicShow;
+		int now = displayRow ? (displayPending >= 0 ? displayPending : p.settings.visualizer) : p.settings.musicShow;
 		switch (b)
 		{
 		case Button::Up: case Button::Down: displayRow = 1 - displayRow; break;
 		case Button::Left: case Button::Right:
-			// Style steps through the offered ones only (Bars, Waves and Spectrum are retired)
-			displaySet(displayRow, displayRow ? stepVisualizer(now, b == Button::Right ? 1 : -1) : now + (b == Button::Right ? 1 : -1), p);
+			// Style steps through the offered ones only (Bars, Waves and Spectrum are retired). Each step only moves
+			// the highlight: the style changes once the arrows have rested DISPLAY_SETTLE_MS (tick()), so running
+			// along the row doesn't build (and take down) a filter graph per chip on the way
+			if (displayRow)
+			{
+				displayPending = stepVisualizer(now, b == Button::Right ? 1 : -1);
+				displayPendingAt = SDL_GetTicks();
+			}
+			else displaySet(0, now + (b == Button::Right ? 1 : -1), p);
 			break;
 		case Button::Select: displaySet(0, p.settings.musicShow + 1, p); break;
-		case Button::A: case Button::B: displayOpen = false; break;
+		// (closed: a style still waiting is taken now)
+		case Button::A: case Button::B: displayApplyPending(p); displayOpen = false; break;
 		default: break;
 		}
 		return false;
@@ -54,6 +70,7 @@ namespace bp
 			// outside: closed ("<" too), the finger lifting presses nothing
 			if (!Rect{32, DISPLAY_BOX_Y, 576, DISPLAY_BOX_H}.hit(x, y))
 			{
+				displayApplyPending(p);
 				displayOpen = false;
 				swallowTouch = true;
 				return false;
@@ -62,16 +79,21 @@ namespace bp
 				for (int i = 0; i < displayChips(r); i++)
 					if (displayChip(r, i).hit(x, y))
 					{
-						pressedBtn = CHIP_BTN + r * 16 + i;
+						pressedBtn = CHIP_BTN + r * CHIP_STRIDE + i;
 						displayRow = r;
 					}
 			return false;
 		}
-		if (pt.kind == Pointer::Up && pressedBtn >= CHIP_BTN && pressedBtn < CHIP_BTN + 32)
+		if (pt.kind == Pointer::Up && pressedBtn >= CHIP_BTN && pressedBtn < CHIP_BTN + 2 * CHIP_STRIDE)
 		{
-			int id = pressedBtn - CHIP_BTN;
+			int id = pressedBtn - CHIP_BTN, r = id / CHIP_STRIDE, i = id % CHIP_STRIDE;
 			pressedBtn = -1;
-			if (displayChip(id / 16, id % 16).hit(x, y)) displaySet(id / 16, id / 16 ? VIS_SHOWN[id % 16] : id % 16, p);
+			// a tap is a choice made: at once (a style still waiting from the arrows goes with it)
+			if (i < displayChips(r) && displayChip(r, i).hit(x, y))
+			{
+				if (r) displayPending = -1;
+				displaySet(r, r ? VIS_SHOWN[i] : i, p);
+			}
 		}
 		return false;
 	}
@@ -85,7 +107,8 @@ namespace bp
 			"Sea", "Bunnies", "Boba", "Jellyfish", "Music box", "Fishbowl", "Disco", "Dancer", "Cat",
 			"Popcorn", "Jelly", "Tube man", "Long cat", "Washer"};
 		drawDialog({32, DISPLAY_BOX_Y, 576, DISPLAY_BOX_H}, "Display");
-		int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1), vis = std::clamp(p.settings.visualizer, 0, VISUALIZERS - 1);
+		// (the style the arrows rest on is the one lit, before it's applied)
+		int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1), vis = std::clamp(displayPending >= 0 ? displayPending : p.settings.visualizer, 0, VISUALIZERS - 1);
 		// the art alone, or the title alone: no visualizer, its style muted (still changeable, for later)
 		bool muted = show == SHOW_ART || show == SHOW_NONE;
 		for (int r = 0; r < 2; r++)
@@ -101,7 +124,7 @@ namespace bp
 				// Style's chips are the offered visualizers (VIS_SHOWN), not every one
 				int item = r ? VIS_SHOWN[i] : i;
 				bool sel = item == (r ? vis : show), dim = r && muted;
-				SDL_Color bg = pressedBtn == CHIP_BTN + r * 16 + i ? PRESSED : sel ? (dim ? DIM : ACCENT) : dim ? TRACK : BUTTON;
+				SDL_Color bg = pressedBtn == CHIP_BTN + r * CHIP_STRIDE + i ? PRESSED : sel ? (dim ? DIM : ACCENT) : dim ? TRACK : BUTTON;
 				SDL_Color ink = sel ? ON_ACCENT : dim ? DIM : TEXT;
 				drawBox(c, bg, R_BUTTON);
 				const Glyph* g = r ? VIS_GLYPHS[item] : i == SHOW_BOTH ? &G_ARTVIZ : showGlyph(i, vis);

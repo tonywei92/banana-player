@@ -882,6 +882,12 @@ namespace bp
 		// applied at once (the player rebuilds the graph once the changes stop)
 		bool displayOpen = false;
 		int displayRow = 0;	// 0 Show, 1 Style
+		// the style the arrows have moved to, applied once they rest (-1 none): see displayKey
+		int displayPending = -1;
+		Uint32 displayPendingAt = 0;
+		static constexpr Uint32 DISPLAY_SETTLE_MS = 450;
+		static constexpr int CHIP_STRIDE = 32;	// a chip's touch id: CHIP_BTN + row * CHIP_STRIDE + chip
+		void displayApplyPending(Player& p);
 		bool displayShown(const Player& p) const { return displayOpen && page == Page::Main && !inMenu && p.playingAudio(); }
 		bool displayKey(Button b, Player& p);
 		bool displayPointer(const Pointer& pt, int x, int y, Player& p);
@@ -1169,7 +1175,7 @@ namespace bp
 		static constexpr int ADD_BTN = 503, LIKE_BTN = 504, PLAY_ROW = 550;
 		static constexpr int PLAY_GRID = 2;	// the grid's Play/Pause (A's place)
 		// Sound's touch buttons, apart from the grid's and the photo's; its dialogs' rows from DLG_ROW, the Display
-		// popup's chips from CHIP_BTN (row * 16 + chip)
+		// popup's chips from CHIP_BTN (row * CHIP_STRIDE + chip, up to 664)
 		static constexpr int SOUND_TAB0 = 510, SOUND_TAB1 = 511, EQ_SWITCH = 520, EQ_PREV = 521, EQ_NEXT = 522, EQ_NAME_ZONE = 523,
 			EQ_RESET = 524, EQ_SAVE = 525, EQ_OPTIONS = 526, DLG_ROW = 700, CHIP_BTN = 600, FX_ROW = 800;
 		void stepGroup(int dir);	// to the settings group before (-1) or after (1), round
