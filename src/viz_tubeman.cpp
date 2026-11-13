@@ -1,7 +1,7 @@
 // Tube man: pixel art on an 80x60 grid of 8-pixel dots. A light blue sky; a grey car-lot road along the bottom with
 // white dashes; a red "SALE!" sign; an inflatable tube man standing on a dark blower: a red tube (pink in its top
-// quarter) whose height follows the bass (10 rows when quiet, 36 on the beat), bending side to side along its length in
-// a wave (the bend grows up the tube) whose speed and size follow the mids in four steps, two orange arms flailing from
+// quarter) of a steady height, bending side to side along its length in a wave (the bend grows up the tube) whose
+// speed (only) follows the mids, held over ~0.75 s, in four steps, two orange arms flailing from
 // a point two thirds up, and a yellow face with dark eyes and an open mouth on its top.
 // A frame: the 16 bands measured, contrasted and eased (as Pocket console's bars), and from them the bass (bands 0-2)
 // and the mids (4-9). The tube is a stack of 5-dot rows, each row moved sideways by its bend, so it is drawn by
@@ -52,6 +52,9 @@ namespace bp
 		const int BASE = 46;	 // its bottom row
 		const int CLOCK = 240;	 // the loop: 4 s at 60 frames
 		const int PH = 32, APH = 16;	// the wave's phases, the arms'
+		// the tube's height in rows: steady (it followed the bass, 10..36 rows, and the jumps read as a glitch); the
+		// music sets only how fast it dances (the wave's and the arms' speed, from the mids held over ~0.75 s)
+		const int TUBE_H_ROWS = 32;
 
 		enum
 		{
@@ -201,7 +204,7 @@ namespace bp
 		};
 		// the wave from the moment (x: step x 32 + phase) at height k (an expression): its sideways offset, rounded
 		auto bend = [&](const std::string& k) {
-			return "round(sin(2*PI*mod(x," + n(PH) + ")/" + n(PH) + "+4*" + k + ")*(2+9*(floor(x/" + n(PH) + ")+0.5)/4)*" + k + ")";
+			return "round(sin(2*PI*mod(x," + n(PH) + ")/" + n(PH) + "+4*" + k + ")*6.5*" + k + ")";
 		};
 
 		std::string g = "[aid1] asplit [ao] [a]; ";
@@ -216,19 +219,19 @@ namespace bp
 			 vizContrast("tm") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [tmb] [tmm]; "
 			 "[tmb] crop=3:1:0:0,scale=1:1:flags=area,scale=" + W + ":" + H + ":flags=neighbor,split [tmb1] [tmb2]; "
-			 "[tmm] crop=6:1:4:0,scale=1:1:flags=area,scale=" + n(CLOCK) + ":1:flags=neighbor,split [tmm1] [tmm2]; "
+			 "[tmm] crop=6:1:4:0,scale=1:1:flags=area,tmix=frames=45,scale=" + n(CLOCK) + ":1:flags=neighbor,split [tmm1] [tmm2]; "
 			 "movie=" + q(6) + ",format=gray,split [tmk1] [tmk2]; "
 			 "movie=" + q(1) + ",format=gray,split [tmrow1] [tmrow2]; movie=" + q(2) + ",format=gray,split [tmcol1] [tmcol2]; ";
 		// the moments: the wave's (4, 5, 6 or 8 waves in the loop by the step; 32 phases) and the arms' (6 swings)
 		g += "[tmm1] [tmk1] lut2=c0='st(0," + step("x") + ");ld(0)*" + n(PH) + "+mod(floor(y*if(eq(ld(0),3),8,4+ld(0))*" + n(PH) +
 			 "/" + n(CLOCK) + ")," + n(PH) + ")',crop=1:1:x='mod(n," + n(CLOCK) + ")':y=0,scale=" + W + ":" + H +
 			 ":flags=neighbor,split [tmw1] [tmw2]; "
-			 "[tmm2] [tmk2] lut2=c0='" + step("x") + "*" + n(APH) + "+mod(floor(y*6*" + n(APH) + "/" + n(CLOCK) + ")," + n(APH) +
+			 "[tmm2] [tmk2] lut2=c0='st(0," + step("x") + ");ld(0)*" + n(APH) + "+mod(floor(y*if(eq(ld(0),3),8,4+ld(0))*" + n(APH) + "/" + n(CLOCK) + ")," + n(APH) +
 			 ")',crop=1:1:x='mod(n," + n(CLOCK) + ")':y=0,scale=" + W + ":" + H + ":flags=neighbor [tma]; ";
 		// the tube: each dot's place up it (h the height, i the dot's row up from the bottom, t the top row, the arms'
 		// row at 26 40ths): 0..40 (40ths of the height), 100 + 41 x face row (0 its mouth .. 2 its top) + the top's
 		// 40ths, or 255
-		g += "[tmb1] [tmrow1] lut2=c0='st(0,10+x*26/252);st(1," + n(BASE + OFF) + "-y);st(2,ceil(ld(0))-1);st(3,round(0.65*ld(0)));"
+		g += "[tmb1] [tmrow1] lut2=c0='st(0," + n(TUBE_H_ROWS) + ");st(1," + n(BASE + OFF) + "-y);st(2,ceil(ld(0))-1);st(3,round(0.65*ld(0)));"
 			 "if(between(ld(1),0,ld(2)),if(eq(ld(1),ld(3)),26,round(40*ld(1)/ld(0))),"
 			 "if(between(ld(1)-ld(2),1,3),100+41*(ld(1)-ld(2)-1)+round(40*ld(2)/ld(0)),255))' [tmu]; ";
 		// against the moment: role x 32 + offset + 12 (role 0 red, 1 pink, 2 the mouth's row, 3 the eyes', 4 the face's top)
@@ -240,10 +243,10 @@ namespace bp
 			 "if(eq(ld(0),2)*eq(ld(1),0)+eq(ld(0),3)*eq(abs(ld(1)),1)," + n(C_EYE) + "," + n(C_FACE) + "))))' [tmT]; ";
 		// the arms: each dot's row from their root (+8), its column from the tube's middle there (+16), the arm's row at
 		// that column (+8: the left arm up as its sine, the right down), equal: an arm
-		g += "[tmb2] [tmrow2] lut2=c0='st(0," + n(BASE + OFF) + "-y-round(0.65*(10+x*26/252)));if(between(ld(0),-8,8),ld(0)+8,255)' [tmdy]; "
+		g += "[tmb2] [tmrow2] lut2=c0='st(0," + n(BASE + OFF) + "-y-round(0.65*" + n(TUBE_H_ROWS) + "));if(between(ld(0),-8,8),ld(0)+8,255)' [tmdy]; "
 			 "[tmw2] [tmcol2] lut2=c0='st(0,y-" + n(OFF) + "-" + bend("0.65") + ");if(between(ld(0),-12,12),ld(0)+16,255)' [tmdx]; "
 			 "[tma] [tmdx] lut2=c0='st(0,y-16);st(1,abs(ld(0))-2);st(2,2*PI*mod(x," + n(APH) + ")/" + n(APH) + ");"
-			 "st(3,0.6*ld(1)*(0.5+(floor(x/" + n(APH) + ")+0.5)/4));"
+			 "st(3,0.6*ld(1)*0.85);"
 			 "if(eq(y,255)+not(between(ld(1),1,8)),255,if(lt(ld(0),0),8+round(sin(ld(2)+0.6*ld(1))*ld(3)),"
 			 "8-round(sin(ld(2)+0.6*ld(1)+1)*ld(3))))' [tmay0]; "
 			 "[tmay0] [tmdy] lut2=c0='if(eq(x,y)*lt(x,255)," + n(C_ARM) + ",0)' [tmA]; ";
