@@ -803,6 +803,16 @@ namespace bp
 				else if (e->reason == MPV_END_FILE_REASON_EOF) finished = true;
 				break;
 			}
+			case MPV_EVENT_AUDIO_RECONFIG:
+			case MPV_EVENT_VIDEO_RECONFIG:
+				if (graphAskedAt)
+				{
+					bool video = ev->event_id == MPV_EVENT_VIDEO_RECONFIG;
+					fprintf(stderr, "timing: graph switch: %s back in %llu ms\n", video ? "picture" : "sound",
+						(unsigned long long)(ticks() - graphAskedAt));
+					if (video) graphAskedAt = 0;
+				}
+				break;
 			case MPV_EVENT_PLAYBACK_RESTART:
 				// this file's (it comes after its FILE_LOADED): one left over from the last file's seek isn't
 				if (loaded && !started && netWait.dir.empty())
@@ -2039,6 +2049,8 @@ namespace bp
 				hasCover(tracks) ? "has" : "no", (int)tracks.size(), graph.empty() ? "off" : graph.find("[vid1]") != std::string::npos ? "with the art" : "without art");
 			syncEq(true);	// the graph's change rebuilds the chain from af
 			prop("lavfi-complex", graph);
+			// (in the log: how long a style takes to come up, the sound's restart and the picture's, on the handheld)
+			graphAskedAt = ticks();
 		}
 		if (graph.empty() && had)
 		{

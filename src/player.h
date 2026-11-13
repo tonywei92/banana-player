@@ -335,6 +335,7 @@ namespace bp
 		std::string graphFor(int vis, bool overCover);	// visualizerGraph, with Circle's tables made first
 		std::string circleMaps;	// where they are, once made
 		std::string graphSet;	// lavfi-complex as last set (prop)
+		uint64_t graphAskedAt = 0;	// when a song's graph was last changed while it played (the log times the switch)
 		uint64_t displayDueAt = 0;	// the display changed: its graph applied then (checkDisplay)
 		// The equalizer and the sound effect as mpv has them: af = a song's input entry (@bpin), the EQ's (@bpeq),
 		// then the effect's (@bpfx), either left out when off. afSet: the af last set (prop; af-command's changes don't show in mpv's af);
