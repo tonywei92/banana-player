@@ -35,14 +35,16 @@ namespace bp
 	// Pocket: Peaks as an old handheld's screen, four greens on a grid of chunky dots
 	// and six more (src/viz_more.h, a file each): a hi-fi LED meter, Synthwave, Banana stack, Night city, a phosphor
 	// oscilloscope and Heartbeat; then Campfire, Aurora, Sound garden, Turntable and Pixel sea; then Bunny hop, Bubble tea,
-	// Jellyfish, Music box, Fishbowl, Disco ball and Banana dancer. Vibing cat. Peaks (coral), Oscilloscope, Turntable, Disco ball, Hi-fi LED,
+	// Jellyfish, Music box, Fishbowl, Disco ball and Banana dancer. Vibing cat; then Popcorn machine, Jelly wobble,
+	// Tube man, Long cat and Washing machine. Peaks (coral), Oscilloscope, Turntable, Disco ball, Hi-fi LED,
 	// Synthwave, Banana stack and Heartbeat are kept but not offered (the owner's pick, 0.7.12): Peaks Banana is the
 	// default, and a setting naming one not offered reads as it
 	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VIS_POCKET, VIS_LED,
 		VIS_SYNTHWAVE, VIS_BANANA_STACK, VIS_CITY, VIS_SCOPE, VIS_HEART, VIS_FIRE, VIS_AURORA, VIS_GARDEN, VIS_VINYL, VIS_SEA, VIS_BUNNY, VIS_BOBA,
-		VIS_JELLY, VIS_MUSICBOX, VIS_FISHBOWL, VIS_DISCO, VIS_DANCER, VIS_CAT, VISUALIZERS };
+		VIS_JELLY, VIS_MUSICBOX, VIS_FISHBOWL, VIS_DISCO, VIS_DANCER, VIS_CAT, VIS_POPCORN, VIS_WOBBLE, VIS_TUBEMAN,
+		VIS_LONGCAT, VIS_WASHER, VISUALIZERS };
 	constexpr int VIS_SHOWN[] = {VIS_PEAKS_BANANA, VIS_CIRCLE, VIS_POCKET, VIS_CITY, VIS_DANCER, VIS_FIRE, VIS_AURORA, VIS_GARDEN,
-		VIS_SEA, VIS_BUNNY, VIS_BOBA, VIS_JELLY, VIS_MUSICBOX, VIS_FISHBOWL, VIS_CAT};
+		VIS_SEA, VIS_BUNNY, VIS_BOBA, VIS_JELLY, VIS_MUSICBOX, VIS_FISHBOWL, VIS_CAT, VIS_POPCORN, VIS_WOBBLE, VIS_TUBEMAN, VIS_LONGCAT, VIS_WASHER};
 	constexpr int VIS_SHOWN_COUNT = (int)(sizeof(VIS_SHOWN) / sizeof(VIS_SHOWN[0]));
 	// a visualizer's place in VIS_SHOWN (a hidden one: Peaks's, 0)
 	int visualizerSlot(int v);

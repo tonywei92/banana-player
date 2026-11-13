@@ -29,6 +29,11 @@ namespace bp
 	std::string discoGraph(bool overCover, const std::string& mapsDir);
 	std::string dancerGraph(bool overCover, const std::string& mapsDir);
 	std::string catGraph(bool overCover, const std::string& mapsDir);
+	std::string popcornGraph(bool overCover, const std::string& mapsDir);
+	std::string wobbleGraph(bool overCover, const std::string& mapsDir);
+	std::string tubemanGraph(bool overCover, const std::string& mapsDir);
+	std::string longcatGraph(bool overCover, const std::string& mapsDir);
+	std::string washerGraph(bool overCover, const std::string& mapsDir);
 	// their stills into dir (true: written, already there, or none needed)
 	bool writeLedMaps(const std::string& dir);
 	bool writeSynthwaveMaps(const std::string& dir);
@@ -49,6 +54,11 @@ namespace bp
 	bool writeDiscoMaps(const std::string& dir);
 	bool writeDancerMaps(const std::string& dir);
 	bool writeCatMaps(const std::string& dir);
+	bool writePopcornMaps(const std::string& dir);
+	bool writeWobbleMaps(const std::string& dir);
+	bool writeTubemanMaps(const std::string& dir);
+	bool writeLongcatMaps(const std::string& dir);
+	bool writeWasherMaps(const std::string& dir);
 	// The bars' contrast, between the measured levels (one row, 0..252) and their easing: showfreqs' log scale puts
 	// most bands within a few steps of each other, so each is pushed away from the mean of the bands around it (x6:
 	// a band above them a peak, one below a valley) and the levels spread around 150 (x1.8). On a busy frame

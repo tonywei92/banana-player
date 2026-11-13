@@ -82,7 +82,8 @@ namespace bp
 		// the chips' own short names (five to a row: about eight letters fit); Settings says them in full
 		static const char* STYLE_NAMES[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks", "Pocket",
 			"Hi-fi LED", "Synth", "Bananas", "Night city", "Scope", "Pulse", "Campfire", "Aurora", "Garden", "Turntable",
-			"Sea", "Bunnies", "Boba", "Jellyfish", "Music box", "Fishbowl", "Disco", "Dancer", "Cat"};
+			"Sea", "Bunnies", "Boba", "Jellyfish", "Music box", "Fishbowl", "Disco", "Dancer", "Cat",
+			"Popcorn", "Jelly", "Tube man", "Long cat", "Washer"};
 		drawDialog({32, DISPLAY_BOX_Y, 576, DISPLAY_BOX_H}, "Display");
 		int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1), vis = std::clamp(p.settings.visualizer, 0, VISUALIZERS - 1);
 		// the art alone, or the title alone: no visualizer, its style muted (still changeable, for later)
@@ -130,7 +131,13 @@ namespace bp
 				: vis == VIS_FISHBOWL ? "Three goldfish swimming up with their bands, bubbles on the treble"
 				: vis == VIS_DISCO ? "A spinning mirror ball with rings of coloured lights orbiting it"
 				: vis == VIS_DANCER ? "A pixel banana that dances: bass bounces, mids wave, treble sparkles"
-				: vis == VIS_CAT ? "A cat in headphones nodding along: bass bobs, mids swish its tail" : "The visualizer alone")
+				: vis == VIS_CAT ? "A cat in headphones nodding along: bass bobs, mids swish its tail"
+				: vis == VIS_POPCORN ? "A popcorn cart: kernels pop and fly on the beat, the lid rattles on the bass"
+				: vis == VIS_WOBBLE ? "A worried jelly that squashes and wobbles with the bass"
+				: vis == VIS_TUBEMAN ? "An inflatable tube man flailing with the mids, shooting up on the beat"
+				: vis == VIS_LONGCAT ? "A cat that grows forever, faster with the music"
+				: vis == VIS_WASHER ? "A washing machine on spin, walking across the floor with the bass"
+				: "The visualizer alone")
 			: "Just the title: the lightest on the battery";
 		drawTextMid(help, 0, DIM, W / 2, STYLE_Y + STYLE_ROWS * STYLE_STEP + 18, 544, 2);
 		drawHints({{"D-PAD", "Change"}, {"SELECT", "Show"}, {"B", "Done"}});

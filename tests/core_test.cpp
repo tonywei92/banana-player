@@ -5355,8 +5355,9 @@ static void testSettings()
 	CHECK_EQ(stepVisualizer(VIS_CITY, 1), (int)VIS_DANCER);
 	CHECK_EQ(stepVisualizer(VIS_DANCER, 1), (int)VIS_FIRE);
 	CHECK_EQ(stepVisualizer(VIS_SEA, 1), (int)VIS_BUNNY);
-	CHECK_EQ(stepVisualizer(VIS_CAT, 1), (int)VIS_PEAKS_BANANA);
-	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, -1), (int)VIS_CAT);
+	CHECK_EQ(stepVisualizer(VIS_CAT, 1), (int)VIS_POPCORN);
+	CHECK_EQ(stepVisualizer(VIS_WASHER, 1), (int)VIS_PEAKS_BANANA);
+	CHECK_EQ(stepVisualizer(VIS_PEAKS_BANANA, -1), (int)VIS_WASHER);
 	CHECK_EQ(stepVisualizer(VIS_SPECTRUM, 1), (int)VIS_CIRCLE);
 	CHECK_EQ(stepVisualizer(VIS_PEAKS, 1), (int)VIS_CIRCLE);
 	{
@@ -5364,7 +5365,7 @@ static void testSettings()
 		for (int i = 0, v = VIS_PEAKS_BANANA; i < VIS_SHOWN_COUNT; i++, v = stepVisualizer(v, 1)) seen |= 1 << v;
 		int want = 0;
 		for (int v : VIS_SHOWN) want |= 1 << v;
-		CHECK_EQ(VIS_SHOWN_COUNT, 15);
+		CHECK_EQ(VIS_SHOWN_COUNT, 20);
 		CHECK_EQ(seen, want);
 	}
 	// Pocket console: kept by its id, named, its own graph (Peaks' caps, YUV only), alone and over the art

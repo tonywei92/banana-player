@@ -39,11 +39,13 @@ namespace bp
 	static const char* SHOW_LABELS[SHOWS] = {"Album art", "Art + visualizer", "Visualizer", "None"};
 	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "pocket", "led",
 		"synthwave", "banana-stack", "night-city", "oscilloscope", "heartbeat", "campfire", "aurora", "sound-garden", "turntable", "pixel-sea",
-		"bunny-hop", "bubble-tea", "jellyfish", "music-box", "fishbowl", "disco-ball", "banana-dancer", "vibing-cat"};
+		"bunny-hop", "bubble-tea", "jellyfish", "music-box", "fishbowl", "disco-ball", "banana-dancer", "vibing-cat",
+		"popcorn-machine", "jelly-wobble", "tube-man", "long-cat", "washing-machine"};
 	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks Banana", "Pocket console",
 		"Hi-fi LED", "Synthwave", "Banana stack", "Night city", "Oscilloscope", "Heartbeat", "Campfire", "Aurora",
 		"Sound garden", "Turntable", "Pixel sea", "Bunny hop",
-		"Bubble tea", "Jellyfish", "Music box", "Fishbowl", "Disco ball", "Banana dancer", "Vibing cat"};
+		"Bubble tea", "Jellyfish", "Music box", "Fishbowl", "Disco ball", "Banana dancer", "Vibing cat",
+		"Popcorn machine", "Jelly wobble", "Tube man", "Long cat", "Washing machine"};
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
 	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
 	static const char* MANGA_FIT_IDS[MANGA_FITS] = {"page", "width", "fill"};
@@ -392,6 +394,11 @@ namespace bp
 		ok = writeDiscoMaps(dir) && ok;
 		ok = writeDancerMaps(dir) && ok;
 		ok = writeCatMaps(dir) && ok;
+		ok = writePopcornMaps(dir) && ok;
+		ok = writeWobbleMaps(dir) && ok;
+		ok = writeTubemanMaps(dir) && ok;
+		ok = writeLongcatMaps(dir) && ok;
+		ok = writeWasherMaps(dir) && ok;
 		return ok;
 	}
 
@@ -423,7 +430,12 @@ namespace bp
 			case VIS_FISHBOWL: return fishbowlGraph(overCover, mapsDir);
 			case VIS_DISCO: return discoGraph(overCover, mapsDir);
 			case VIS_DANCER: return dancerGraph(overCover, mapsDir);
-			default: return catGraph(overCover, mapsDir);
+			case VIS_CAT: return catGraph(overCover, mapsDir);
+			case VIS_POPCORN: return popcornGraph(overCover, mapsDir);
+			case VIS_WOBBLE: return wobbleGraph(overCover, mapsDir);
+			case VIS_TUBEMAN: return tubemanGraph(overCover, mapsDir);
+			case VIS_LONGCAT: return longcatGraph(overCover, mapsDir);
+			default: return washerGraph(overCover, mapsDir);
 			}
 		}
 		std::string quoted;
