@@ -5340,6 +5340,13 @@ static void testSettings()
 		CHECK_EQ(serializeSettings(parseSettings(std::string("visualizer = ") + id + "\n")).find("visualizer = peaks-yellow\n") != std::string::npos, true);
 	}
 	CHECK_EQ(Settings().visualizer, (int)VIS_PEAKS_BANANA);
+	// the visualizers' frame rate: 45 by default, 30/45/60 kept, anything else ignored, and it round-trips
+	CHECK_EQ(Settings().vizFps, 45);
+	CHECK_EQ(parseSettings("visualizer-fps = 60\n").vizFps, 60);
+	CHECK_EQ(parseSettings("visualizer-fps = 30\n").vizFps, 30);
+	CHECK_EQ(parseSettings("visualizer-fps = 50\n").vizFps, 45);
+	CHECK_EQ(parseSettings(serializeSettings(parseSettings("visualizer-fps = 60\n"))).vizFps, 60);
+	CHECK_EQ(Settings().songInfo, false);
 	// Peaks Banana is the default and the Peaks offered; the coral Peaks is kept but no longer offered, so a saved
 	// choice of it reads as Peaks Banana (as Hi-fi LED, Synthwave, Banana stack and Heartbeat)
 	for (const char* id : {"peaks", "led", "synthwave", "banana-stack", "heartbeat", "oscilloscope", "turntable", "disco-ball"})

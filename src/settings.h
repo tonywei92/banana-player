@@ -103,6 +103,9 @@ namespace bp
 		// or a hand), the menus' and the browser's buttons still work
 		bool buttonHotkeys = true;
 		int musicShow = SHOW_ART, visualizer = VIS_PEAKS_BANANA, loop = LOOP_OFF;
+		// the visualizers' frame rate: 30, 45 (default: smooth, lighter than 60 on the battery) or 60; Peaks and Circle
+		// draw at 30 whatever it says
+		int vizFps = 45;
 		// the play mode Shuffle (the music key, the web's Shuffle): every list started plays shuffled from the item
 		// picked, till it's turned off; loop is off meanwhile (four modes). No Settings row: those keys are its switch
 		bool shuffle = false;
