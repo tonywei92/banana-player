@@ -8,7 +8,7 @@
 // (aintegral, in doubles) and wrapped to the clouds' 243 rows (the tile's 18 go into 162 = 243 / 1.5 evenly). That
 // position reaches the picture through astats' metadata (the last value of each 160 samples) and adrawgraph, whose colour
 // expression is the value itself: a 1x1 picture at 60 frames a second whose red is the position, exactly.
-// The music also lights the cat: a stack of thin rainbow bars on both sides, one a row and touching, each its own
+// The music also lights the cat: a stack of rainbow bars on both sides, one every two rows and touching, each its own
 // hue and its level blended from the two nearest bands (the bass at the bottom, the treble at the ears), so the stack's
 // outline flows as one spectrum; each reaching out from the cat's widest edge so equal levels end level (filled in to the
 // cat where it's narrower), 8..120 pixels wide and brighter as its band
@@ -49,9 +49,9 @@ namespace bp
 	{
 		// a new name whenever the stills change: they're cached by size
 		enum { F_HEAD, F_TROW, F_TCOL, F_HUE, F_DIST, PER = 5, F_ROW = 2 * PER, F_COL, NFILES };
-		const char* const FILES[NFILES] = {"lcat7-head-a.pgm", "lcat7-trow-a.pgm", "lcat7-tcol-a.pgm", "lcat7-hue-a.pgm",
-										   "lcat7-dist-a.pgm", "lcat7-head-s.pgm", "lcat7-trow-s.pgm", "lcat7-tcol-s.pgm",
-										   "lcat7-hue-s.pgm",  "lcat7-dist-s.pgm", "lcat7-row.pgm",	   "lcat7-col.pgm"};
+		const char* const FILES[NFILES] = {"lcat8-head-a.pgm", "lcat8-trow-a.pgm", "lcat8-tcol-a.pgm", "lcat8-hue-a.pgm",
+										   "lcat8-dist-a.pgm", "lcat8-head-s.pgm", "lcat8-trow-s.pgm", "lcat8-tcol-s.pgm",
+										   "lcat8-hue-s.pgm",  "lcat8-dist-s.pgm", "lcat8-row.pgm",	   "lcat8-col.pgm"};
 
 		// The cat: the owner's AI-made tall tabby, parsed with the owner's newest settings (a 53x72 grid of 20.25x20 px
 		// cells, offset 2.5,5, sampled at the point (84%, 43%... sx 84, sy 43), box 30, bg 70, columns 8-41, rows from 13,
@@ -183,7 +183,7 @@ namespace bp
 				case F_TROW: fill([](int, int y) { return y; }); break;
 				case F_TCOL: fill([](int x, int) { return x; }); break;
 				case F_HUE:	// the hues: column d, the cat's row r: its band plus d, round the 15
-					fill([&](int d, int y) { return y < L.oy ? 0 : (R - 1 - (y - L.oy) + d) % HUES; });	// a hue a row, round from the bottom
+					fill([&](int d, int y) { return y < L.oy ? 0 : ((R - 1 - (y - L.oy)) / 2 + d) % HUES; });	// a hue a bar (2 rows), from the bottom
 					break;
 				default:	// the bars: every row one, touching, each pixel's distance out from the cat's widest
 							// edge, 1..wmax, so equal levels end level whatever the row's outline; between the row's own
@@ -350,7 +350,7 @@ namespace bp
 		// the light: each row its band's level, against each pixel's distance from the outline: 0, or 1 + its step
 		// (the level's strength, the same all along it)
 		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*pow(x/252,1.4))";
-		g += "[lclv] transpose=2,scale=1:" + n(R) + ":flags=bilinear,scale=640:" + n(R) + ":flags=neighbor,pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
+		g += "[lclv] transpose=2,scale=1:" + n((R + 1) / 2) + ":flags=bilinear,scale=640:" + n((R + 1) / 2 * 2) + ":flags=neighbor,crop=640:" + n(R) + ":0:" + n((R + 1) / 2 * 2 - R) + ",pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
 			 "movie=" + q(F_DIST) + ",format=gray [lcdist]; "
 			 "[lclc] [lcdist] bplut2=c0='if(y*lte(y," + wexp + "),1+min(" + n(STEPS - 1) + ",floor(" + n(STEPS) +
 			 "*(0.12+0.88*pow(x/252,1.6)))),0)' [lcmask]; ";
