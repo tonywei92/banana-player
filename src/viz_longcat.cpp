@@ -11,7 +11,7 @@
 // The music also lights the cat: a stack of rainbow bars on both sides, one every two rows and touching, each its own
 // hue and its level blended from the two nearest bands (the bass at the bottom, the treble at the ears), so the stack's
 // outline flows as one spectrum; each reaching out from the cat's widest edge so equal levels end level (filled in to the
-// cat where it's narrower), 8..120 pixels wide and brighter as its band
+// cat where it's narrower), 0..120 pixels wide (none at silence) and brighter as its band
 // plays (both on a curve, so a quiet row stays short and faint and a loud one shoots out), solid to its tip (no
 // fade: the owner's call); its hue band x 24 degrees at full saturation, deep enough to stand out on the pale sky, drifting round.
 // A frame: the 16 bands measured, contrasted and eased (as Pocket console's bars). Then, at 640 x the cat's rows (one
@@ -49,16 +49,16 @@ namespace bp
 	{
 		// a new name whenever the stills change: they're cached by size
 		enum { F_HEAD, F_TROW, F_TCOL, F_HUE, F_DIST, PER = 5, F_ROW = 2 * PER, F_COL, NFILES };
-		const char* const FILES[NFILES] = {"lcat8-head-a.pgm", "lcat8-trow-a.pgm", "lcat8-tcol-a.pgm", "lcat8-hue-a.pgm",
-										   "lcat8-dist-a.pgm", "lcat8-head-s.pgm", "lcat8-trow-s.pgm", "lcat8-tcol-s.pgm",
-										   "lcat8-hue-s.pgm",  "lcat8-dist-s.pgm", "lcat8-row.pgm",	   "lcat8-col.pgm"};
+		const char* const FILES[NFILES] = {"lcat9-head-a.pgm", "lcat9-trow-a.pgm", "lcat9-tcol-a.pgm", "lcat9-hue-a.pgm",
+										   "lcat9-dist-a.pgm", "lcat9-head-s.pgm", "lcat9-trow-s.pgm", "lcat9-tcol-s.pgm",
+										   "lcat9-hue-s.pgm",  "lcat9-dist-s.pgm", "lcat9-row.pgm",	   "lcat9-col.pgm"};
 
 		// The cat: the owner's AI-made tall tabby, parsed with the owner's newest settings (a 53x72 grid of 20.25x20 px
 		// cells, offset 2.5,5, sampled at the point (84%, 43%... sx 84, sy 43), box 30, bg 70, columns 8-41, rows from 13,
 		// the tile rows 39-56, point mode, snapped, with the owner's edits (8 cells cleared, the tile's stray sparkles
 		// outside the body among them); palette as PAL below). The head, paws, collar and the
 		// top of the body as drawn; then the body's tile (its stripes and spots), repeated down.
-		const int COLS = 34, HEADR = 26, TILER = 18;
+		const int COLS = 34, HEADR = 26, TILER = 18, EARR = 6;	// (the ears: the head's rows above EARR)
 		const char* const HEAD[HEADR] = {
 			"                                  ", "        aaaa        aaaa          ", "        aaaaa       aaaa          ",
 			"       allllaa    aallllaa        ", "       allllaa    aallllaa        ", "       alpplllaaaalllpplaa        ",
@@ -89,8 +89,8 @@ namespace bp
 			int W, H, P, ox, oy, wmin, wmax;
 			bool sky;	// the sky and clouds (alone), or the art (over it)
 		};
-		const Layout ALONE = {80, 60, 8, 23, 5, 8, 120, true};
-		const Layout STRIP = {160, 50, 4, 63, 0, 4, 56, false};
+		const Layout ALONE = {80, 60, 8, 23, 5, 0, 120, true};
+		const Layout STRIP = {160, 50, 4, 63, 0, 0, 56, false};
 		int rowsOf(const Layout& L) { return L.H - L.oy; }	   // the cat's rows on screen
 		int tileRows(const Layout& L) { return rowsOf(L) - HEADR; }
 
@@ -193,17 +193,17 @@ namespace bp
 					for (int k = 0; k < HEADR + TILER; k++)
 					{
 						std::string row = k < HEADR ? HEAD[k] : TILE[k - HEADR];
-						size_t l = row.find_first_not_of(' '), rr = row.find_last_not_of(' ');
+						size_t l = row.find_first_not_of(" y"), rr = row.find_last_not_of(" y");	// (y: a sparkle, not the cat)
 						if (l == std::string::npos) continue;
 						lmin = std::min(lmin, (int)l);
 						rmax = std::max(rmax, (int)rr);
 					}
 					const int fL = (L.ox + lmin) * L.P, fR = (L.ox + rmax + 1) * L.P;
-					for (int r = 0; r < R; r++)
+					for (int r = EARR; r < R; r++)	// (from under the ears)
 					{
 						std::string row = rowAt(r);
-						size_t l = row.find_first_not_of(' '), rr = row.find_last_not_of(' ');
-						if (l == std::string::npos) continue;	// (no cat on the row, above the ears: no bar, else it floats)
+						size_t l = row.find_first_not_of(" y"), rr = row.find_last_not_of(" y");
+						if (l == std::string::npos) continue;
 						int eL = (L.ox + (int)l) * L.P, eR = (L.ox + (int)rr + 1) * L.P;
 						unsigned char* line = &m[(size_t)(r + L.oy) * w];
 						for (int x = std::max(0, fL - L.wmax); x < eL; x++) line[x] = (unsigned char)std::max(1, fL - x);
@@ -313,7 +313,7 @@ namespace bp
 			return "'" + e + "'";
 		};
 		// a plane's lut2: the packed value (x) over the background (y: alone the sky's class, 0-59 its row, 60-61 a
-		// cloud; over the art the art); a light's alpha 0.06..1
+		// cloud; over the art the art); a light solid (its alpha left at 1: the owner's call)
 		auto paint = [&](double Yuvd::*plane, int Yuv::*iplane) {
 			std::string bg = "y";
 			if (L.sky)
@@ -324,7 +324,7 @@ namespace bp
 			}
 			std::string catc = "ld(0)";
 			for (int i = 7; i >= 0; i--) catc = "if(eq(x," + n(i + 1) + ")," + n(cat[i].*iplane) + "," + catc + ")";
-			return "'st(0," + bg + ");if(lt(x,9)," + catc + ",st(1,0.06+0.94*mod(x,8)/7);"
+			return "'st(0," + bg + ");if(lt(x,9)," + catc + ",st(1,1);"
 				   "round(ld(1)*(16+floor(x/8)*224/31)+(1-ld(1))*ld(0)))'";
 		};
 
@@ -349,7 +349,7 @@ namespace bp
 			 "s=1x2:r=60:bg=black,crop=1:1:0:1,extractplanes=r,setparams=color_trc=unknown:color_primaries=unknown:colorspace=unknown" + (L.sky ? ",split [lcp1] [lcp2]" : " [lcp1]") + "; ";
 		// the light: each row its band's level, against each pixel's distance from the outline: 0, or 1 + its step
 		// (the level's strength, the same all along it)
-		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*pow(x/252,1.4))";
+		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*pow(max(x-24,0)/228,1.4))";	// (none below 24: silence, hiss)
 		g += "[lclv] transpose=2,scale=1:" + n((R + 1) / 2) + ":flags=bilinear,scale=640:" + n((R + 1) / 2 * 2) + ":flags=neighbor,crop=640:" + n(R) + ":0:" + n((R + 1) / 2 * 2 - R) + ",pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
 			 "movie=" + q(F_DIST) + ",format=gray [lcdist]; "
 			 "[lclc] [lcdist] bplut2=c0='if(y*lte(y," + wexp + "),1+min(" + n(STEPS - 1) + ",floor(" + n(STEPS) +
