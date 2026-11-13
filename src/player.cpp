@@ -1302,9 +1302,11 @@ namespace bp
 	{
 		for (auto& p : subStyleProperties(s.style)) prop(p.first.c_str(), p.second);
 		bool displayChanged = s.musicShow != settings.musicShow || s.visualizer != settings.visualizer;
+		bool infoChanged = s.songInfo != settings.songInfo;
 		bool loopChanged = s.loop != settings.loop;
 		bool soundChanged = s.eqOn != settings.eqOn || s.eqGains != settings.eqGains || s.soundFx != settings.soundFx;
 		settings = s;
+		if (infoChanged && !displayChanged && isAudio && loaded) updateOverlay();
 		if (displayChanged && isAudio && loaded)
 		{
 			// the title's place at once; the graph once the presses stop (each change of it reopens the sound output,
@@ -2092,6 +2094,8 @@ namespace bp
 		// Pocket console alone: the screen's own ink, dark green in the pixel font, no outline (the rest of the text
 		// takes it on; the album line its mid green)
 		bool pocket = show == SHOW_VIS && settings.visualizer == VIS_POCKET;
+		// the song's info is a setting (off by default: the picture alone); None shows the title whatever it says
+		bool info = settings.songInfo || show == SHOW_NONE;
 		std::string text = std::string(at) + (pocket ? "{\\fnPixelify Sans}{\\bord0}{\\shad0}{\\1c&H0F380F&}" : "{\\bord3}") +
 			"{\\fs" + std::to_string(big) + "}{\\b1}" + assText(fitLine(title, big * 11 / 10)) + "{\\b0}";
 		// an audiobook's (or a song's) chapter, under the title in yellow: where in the book this is
@@ -2107,6 +2111,17 @@ namespace bp
 		}
 		if (!artist.empty()) text += "\\N{\\fs" + std::to_string(big * 3 / 4) + "}" + assText(fitLine(artist, big * 3 / 4));
 		if (!album.empty()) text += "\\N{\\fs" + std::to_string(big * 2 / 3) + "}{\\c" + (pocket ? "&H306230&" : "&HB4B4B4&") + "}" + assText(fitLine(album, big * 2 / 3));
+		// the info off: nothing over the picture (only the engine's note, when there is one)
+		if (!info)
+		{
+			if (!engineLoading)
+			{
+				const char* none[] = {"osd-overlay", "1", "none", "", nullptr};
+				mpv_command_async(mpv, 0, none);
+				return;
+			}
+			text = std::string(at) + "{\\bord3}";
+		}
 		// why the visualizer has stopped for now, in the accent's yellow
 		// (a small blank line first: right under the album line it read as part of the song's text)
 		if (engineLoading)

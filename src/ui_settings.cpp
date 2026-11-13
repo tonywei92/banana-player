@@ -31,7 +31,7 @@ namespace bp
 			for (int k = 0; k < STYLE_KEYS; k++) out.push_back(STYLE_ROW0 + k);
 			return out;
 		}
-		case GROUP_MUSIC: return {MUSIC_ROW, VIS_ROW, SOUND_ROW};
+		case GROUP_MUSIC: return {MUSIC_ROW, VIS_ROW, SONG_INFO_ROW, SOUND_ROW};
 		case GROUP_PHOTOS: return {T + 8, PAN_ROW, DRAG_ROW};
 		case GROUP_REMEMBER: return {T + 0, T + 1, T + 2};
 		case GROUP_FILES: return {T + 3, T + 6, T + 4, T + 11, CLEAR_ROW};
@@ -80,6 +80,7 @@ namespace bp
 		if (row == MANGA_JAVA_ROW)
 			return "Needed for repositories whose address ends in index.pb or index.min.json: a 241 MB download, and about 300 MB of memory while one of their sources is open.";
 		if (row == MUSIC_ROW) return "What the top screen shows while a song plays (SELECT while playing).";
+		if (row == SONG_INFO_ROW) return "The song's title, artist and album over the top screen's picture (None shows the title anyway).";
 		if (row == VIS_ROW) return "How the music is drawn: twenty styles, from Peaks to Washing machine (SELECT while playing).";
 		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
 		if (row == CLOCK_ROW) return "The time in the top corner of this screen";

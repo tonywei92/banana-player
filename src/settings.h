@@ -92,6 +92,9 @@ namespace bp
 		bool rememberPosition = true, rememberAudio = true, rememberSubs = true;
 		// the browser opens where it was left, rather than at its first page
 		bool rememberFolder = false;
+		// the song's title, artist and album over the top panel's picture (off: the picture alone; None still shows the
+		// title, that being all it shows)
+		bool songInfo = false;
 		// the videos played, for Recently watched; off: none kept (and those kept so far gone)
 		bool keepHistory = true;
 		// network files in Recently watched too; off: they're left out (and those kept so far go)

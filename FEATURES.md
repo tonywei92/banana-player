@@ -395,7 +395,9 @@ Songs show their title, artist and album on the top screen. While a song plays:
   - Loop and Shuffle apply to videos as to songs (set them on a song's **X** key or in the web dashboard: a video's **X**
     is its audio and subtitles).
 
-Settings › Music has the same two choices as **Music display** and **Visualizer**.
+Settings › Music has the same two choices as **Music display** and **Visualizer**, and **Song info on top** (off by
+default): the song's title, artist and album over the top screen's picture, each line cut with "…" if it's too long.
+With it off the picture shows alone; **None** still shows the title, since that's all it shows.
 
 ## Sound: equalizer and effects
 
