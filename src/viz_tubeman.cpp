@@ -215,7 +215,7 @@ namespace bp
 		// the 16 bands measured (the top 8 measured and cut off, as Pocket console), contrasted, eased (up at once, down
 		// over ~0.15 s: the exp/log lagfun), then the bass and the mids
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
-			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
+			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,bplut=c0='val*252/255'" +
 			 vizContrast("tm") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [tmb] [tmm]; "
 			 "[tmb] crop=3:1:0:0,scale=1:1:flags=area,scale=" + W + ":" + H + ":flags=neighbor,split [tmb1] [tmb2]; "
@@ -223,45 +223,45 @@ namespace bp
 			 "movie=" + q(6) + ",format=gray,split [tmk1] [tmk2]; "
 			 "movie=" + q(1) + ",format=gray,split [tmrow1] [tmrow2]; movie=" + q(2) + ",format=gray,split [tmcol1] [tmcol2]; ";
 		// the moments: the wave's (4, 5, 6 or 8 waves in the loop by the step; 32 phases) and the arms' (6 swings)
-		g += "[tmm1] [tmk1] lut2=c0='st(0," + step("x") + ");ld(0)*" + n(PH) + "+mod(floor(y*if(eq(ld(0),3),8,4+ld(0))*" + n(PH) +
+		g += "[tmm1] [tmk1] bplut2=c0='st(0," + step("x") + ");ld(0)*" + n(PH) + "+mod(floor(y*if(eq(ld(0),3),8,4+ld(0))*" + n(PH) +
 			 "/" + n(CLOCK) + ")," + n(PH) + ")',crop=1:1:x='mod(n," + n(CLOCK) + ")':y=0,scale=" + W + ":" + H +
 			 ":flags=neighbor,split [tmw1] [tmw2]; "
-			 "[tmm2] [tmk2] lut2=c0='st(0," + step("x") + ");ld(0)*" + n(APH) + "+mod(floor(y*if(eq(ld(0),3),8,4+ld(0))*" + n(APH) + "/" + n(CLOCK) + ")," + n(APH) +
+			 "[tmm2] [tmk2] bplut2=c0='st(0," + step("x") + ");ld(0)*" + n(APH) + "+mod(floor(y*if(eq(ld(0),3),8,4+ld(0))*" + n(APH) + "/" + n(CLOCK) + ")," + n(APH) +
 			 ")',crop=1:1:x='mod(n," + n(CLOCK) + ")':y=0,scale=" + W + ":" + H + ":flags=neighbor [tma]; ";
 		// the tube: each dot's place up it (h the height, i the dot's row up from the bottom, t the top row, the arms'
 		// row at 26 40ths): 0..40 (40ths of the height), 100 + 41 x face row (0 its mouth .. 2 its top) + the top's
 		// 40ths, or 255
-		g += "[tmb1] [tmrow1] lut2=c0='st(0," + n(TUBE_H_ROWS) + ");st(1," + n(BASE + OFF) + "-y);st(2,ceil(ld(0))-1);st(3,round(0.65*ld(0)));"
+		g += "[tmb1] [tmrow1] bplut2=c0='st(0," + n(TUBE_H_ROWS) + ");st(1," + n(BASE + OFF) + "-y);st(2,ceil(ld(0))-1);st(3,round(0.65*ld(0)));"
 			 "if(between(ld(1),0,ld(2)),if(eq(ld(1),ld(3)),26,round(40*ld(1)/ld(0))),"
 			 "if(between(ld(1)-ld(2),1,3),100+41*(ld(1)-ld(2)-1)+round(40*ld(2)/ld(0)),255))' [tmu]; ";
 		// against the moment: role x 32 + offset + 12 (role 0 red, 1 pink, 2 the mouth's row, 3 the eyes', 4 the face's top)
-		g += "[tmw1] [tmu] lut2=c0='if(eq(y,255),255,if(lt(y,41),32*gt(y,30)+12+" + bend("y/40") + ","
+		g += "[tmw1] [tmu] bplut2=c0='if(eq(y,255),255,if(lt(y,41),32*gt(y,30)+12+" + bend("y/40") + ","
 			 "32*(2+floor((y-100)/41))+12+" + bend("mod(y-100,41)/40") + "))' [tmv]; ";
 		// against the columns: the class
-		g += "[tmv] [tmcol1] lut2=c0='st(0,floor(x/32));st(1,y-" + n(OFF) + "-mod(x,32)+12);"
+		g += "[tmv] [tmcol1] bplut2=c0='st(0,floor(x/32));st(1,y-" + n(OFF) + "-mod(x,32)+12);"
 			 "if(eq(x,255)+gt(abs(ld(1)),2),0,if(eq(ld(0),0)," + n(C_RED) + ",if(eq(ld(0),1)," + n(C_PINK) + ","
 			 "if(eq(ld(0),2)*eq(ld(1),0)+eq(ld(0),3)*eq(abs(ld(1)),1)," + n(C_EYE) + "," + n(C_FACE) + "))))' [tmT]; ";
 		// the arms: each dot's row from their root (+8), its column from the tube's middle there (+16), the arm's row at
 		// that column (+8: the left arm up as its sine, the right down), equal: an arm
-		g += "[tmb2] [tmrow2] lut2=c0='st(0," + n(BASE + OFF) + "-y-round(0.65*" + n(TUBE_H_ROWS) + "));if(between(ld(0),-8,8),ld(0)+8,255)' [tmdy]; "
-			 "[tmw2] [tmcol2] lut2=c0='st(0,y-" + n(OFF) + "-" + bend("0.65") + ");if(between(ld(0),-12,12),ld(0)+16,255)' [tmdx]; "
-			 "[tma] [tmdx] lut2=c0='st(0,y-16);st(1,abs(ld(0))-2);st(2,2*PI*mod(x," + n(APH) + ")/" + n(APH) + ");"
+		g += "[tmb2] [tmrow2] bplut2=c0='st(0," + n(BASE + OFF) + "-y-round(0.65*" + n(TUBE_H_ROWS) + "));if(between(ld(0),-8,8),ld(0)+8,255)' [tmdy]; "
+			 "[tmw2] [tmcol2] bplut2=c0='st(0,y-" + n(OFF) + "-" + bend("0.65") + ");if(between(ld(0),-12,12),ld(0)+16,255)' [tmdx]; "
+			 "[tma] [tmdx] bplut2=c0='st(0,y-16);st(1,abs(ld(0))-2);st(2,2*PI*mod(x," + n(APH) + ")/" + n(APH) + ");"
 			 "st(3,0.6*ld(1)*0.85);"
 			 "if(eq(y,255)+not(between(ld(1),1,8)),255,if(lt(ld(0),0),8+round(sin(ld(2)+0.6*ld(1))*ld(3)),"
 			 "8-round(sin(ld(2)+0.6*ld(1)+1)*ld(3))))' [tmay0]; "
-			 "[tmay0] [tmdy] lut2=c0='if(eq(x,y)*lt(x,255)," + n(C_ARM) + ",0)' [tmA]; ";
+			 "[tmay0] [tmdy] bplut2=c0='if(eq(x,y)*lt(x,255)," + n(C_ARM) + ",0)' [tmA]; ";
 		// merged over the scene: the arms, then the tube
-		g += "movie=" + q(0) + ",format=gray [tmsc]; [tmA] [tmsc] lut2=c0='if(x,x,y)' [tmm0x]; "
-			 "[tmT] [tmm0x] lut2=c0='if(x,x,y)',split=3 [tmc0] [tmc1] [tmc2]; ";
+		g += "movie=" + q(0) + ",format=gray [tmsc]; [tmA] [tmsc] bplut2=c0='if(x,x,y)' [tmm0x]; "
+			 "[tmT] [tmm0x] bplut2=c0='if(x,x,y)',split=3 [tmc0] [tmc1] [tmc2]; ";
 
 		if (overCover)
-			return g + "[tmc0] scale=640:200:flags=neighbor [tmc0s]; [tmc0s] [tmay] lut2=c0=" + paint(&Yuv::y, "x", true) + " [tmY]; "
-					   "[tmc1] scale=320:100:flags=neighbor [tmc1s]; [tmc1s] [tmau] lut2=c0=" + paint(&Yuv::u, "x", true) + " [tmU]; "
-					   "[tmc2] scale=320:100:flags=neighbor [tmc2s]; [tmc2s] [tmav] lut2=c0=" + paint(&Yuv::v, "x", true) + " [tmV]; "
+			return g + "[tmc0] scale=640:200:flags=neighbor [tmc0s]; [tmc0s] [tmay] bplut2=c0=" + paint(&Yuv::y, "x", true) + " [tmY]; "
+					   "[tmc1] scale=320:100:flags=neighbor [tmc1s]; [tmc1s] [tmau] bplut2=c0=" + paint(&Yuv::u, "x", true) + " [tmU]; "
+					   "[tmc2] scale=320:100:flags=neighbor [tmc2s]; [tmc2s] [tmav] bplut2=c0=" + paint(&Yuv::v, "x", true) + " [tmV]; "
 					   "[tmY] [tmU] [tmV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
-		return g + "[tmc0] lut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [tmY]; "
-				   "[tmc1] lut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [tmU]; "
-				   "[tmc2] lut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [tmV]; "
+		return g + "[tmc0] bplut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [tmY]; "
+				   "[tmc1] bplut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [tmU]; "
+				   "[tmc2] bplut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [tmV]; "
 				   "[tmY] [tmU] [tmV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

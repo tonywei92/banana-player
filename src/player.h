@@ -334,6 +334,7 @@ namespace bp
 		void applyAudioDisplay();
 		std::string graphFor(int vis, bool overCover);	// visualizerGraph, with Circle's tables made first
 		std::string circleMaps;	// where they are, once made
+		bool lutsWarmed = false;	// every style's lut lookups asked for (graphFor), once a run
 		std::string graphSet;	// lavfi-complex as last set (prop)
 		uint64_t graphAskedAt = 0;	// when a song's graph was last changed while it played (the log times the switch)
 		uint64_t displayDueAt = 0;	// the display changed: its graph applied then (checkDisplay)

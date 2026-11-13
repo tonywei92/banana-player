@@ -52,8 +52,10 @@ tools/make-sprite.py                                 # web/sprite.svg from the G
   its id (`songAid()`), never by setting "auto" again. mpv's Lua scripts stay off. Photos play in their own mpv
   (main's `photos`, no sound): what plays goes on under a photo (a video with `vid=no`).
 - **Music graphs** (`lavfi-complex`): clear before `aid`/`sid`; still inputs are single frames, never `loop=-1`; each
-  branch starts with `aformat=sample_rates=44100|48000`, ≤30 fps (the styles in `viz_*.cpp` and Pocket console: 60, the
-  owner's choice in 0.7.12), no per-frame conversions; time new graphs.
+  branch starts with `aformat=sample_rates=44100|48000`, ≤30 fps (the styles in `viz_*.cpp` and Pocket console: written
+  at 60, drawn at the `visualizer-fps` setting by `vizAtFps`: count time in `n`, `rate=60`, `lagfun`, `tmix` only), no
+  per-frame conversions; time new graphs. A `lut`/`lut2` on 8-bit inputs is written `bplut=`/`bplut2=` (its
+  expression cached as a quick lookup: `src/vizcache.h`); 16-bit ones stay plain.
   EQ/effect is one `af` after the graph (`syncEq`).
 - **Ui:** redraws only when `signature()` changes (new drawing state goes in it); 640×480 units; colours/radii from
   `theme.h` via `fillRound`/`drawBox`; path checks via `pseudoDir()`.

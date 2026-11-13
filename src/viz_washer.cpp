@@ -285,7 +285,7 @@ namespace bp
 		// the 16 bands measured (the top 8 measured and cut off, as Pocket console), contrasted, eased (up at once, down
 		// over ~0.15 s: the exp/log lagfun), then the bass and the mids
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
-			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
+			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,bplut=c0='val*252/255'" +
 			 vizContrast("wm") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [wmb] [wmm]; "
 			 "[wmb] crop=3:1:0:0,scale=1:1:flags=area,split [wmb1] [wmb2]; "
@@ -297,46 +297,46 @@ namespace bp
 		// the contents: the atlas made a stream (by the mids' frames), a crop of a phase per speed (items and foam),
 		// each speed gated by the mids' step, merged
 		g += "[wmm1] scale=" + n(CW * PH) + ":" + n(2 * CW) + ":flags=neighbor [wmma]; movie=" + q(3) + ",format=gray [wmat]; "
-			 "[wmma] [wmat] lut2=c0='y',split=8 [wma0] [wma1] [wma2] [wma3] [wma4] [wma5] [wma6] [wma7]; ";
+			 "[wmma] [wmat] bplut2=c0='y',split=8 [wma0] [wma1] [wma2] [wma3] [wma4] [wma5] [wma6] [wma7]; ";
 		for (int k = 0; k < 4; k++)
 		{
 			const std::string K = n(k);
 			g += "[wma" + K + "] crop=" + n(CW) + ":" + n(CW) + ":x='" + n(CW) + "*mod(floor(n*" + d(SPEED[k]) + ")," + n(PH) + ")':y=0 [wmi" + K + "]; "
 				 "[wma" + n(k + 4) + "] crop=" + n(CW) + ":" + n(CW) + ":x='" + n(CW) + "*mod(floor(n*" + d(SPEED[k] * 1.3) + ")," + n(PH) +
 				 ")':y=" + n(CW) + " [wmf" + K + "]; "
-				 "[wmf" + K + "] [wmi" + K + "] lut2=c0='if(x,x,y)' [wms" + K + "]; "
-				 "[wmmg" + K + "] [wms" + K + "] lut2=c0='if(eq(" + midStep + "," + K + "),y,0)' [wmg" + K + "]; ";
+				 "[wmf" + K + "] [wmi" + K + "] bplut2=c0='if(x,x,y)' [wms" + K + "]; "
+				 "[wmmg" + K + "] [wms" + K + "] bplut2=c0='if(eq(" + midStep + "," + K + "),y,0)' [wmg" + K + "]; ";
 		}
-		g += "[wmg0] [wmg1] lut2=c0='if(x,x,y)' [wmg01]; [wmg2] [wmg3] lut2=c0='if(x,x,y)' [wmg23]; "
-			 "[wmg01] [wmg23] lut2=c0='if(x,x,y)',pad=" + n(BW) + ":" + n(BH) + ":" + n(WX - CW / 2) + ":" + n(WY - CW / 2) + " [wmc]; "
-			 "movie=" + q(2) + ",format=gray [wmsp]; [wmc] [wmsp] lut2=c0='if(x,x,y)',split=3 [wmk0] [wmk1] [wmk2]; ";
+		g += "[wmg0] [wmg1] bplut2=c0='if(x,x,y)' [wmg01]; [wmg2] [wmg3] bplut2=c0='if(x,x,y)' [wmg23]; "
+			 "[wmg01] [wmg23] bplut2=c0='if(x,x,y)',pad=" + n(BW) + ":" + n(BH) + ":" + n(WX - CW / 2) + ":" + n(WY - CW / 2) + " [wmc]; "
+			 "movie=" + q(2) + ",format=gray [wmsp]; [wmc] [wmsp] bplut2=c0='if(x,x,y)',split=3 [wmk0] [wmk1] [wmk2]; ";
 
 		// the machine: a copy per bass step, gated, placed by a crop of a canvas (the machine at (W, H) in it)
 		const std::string canvas = "pad=" + n(2 * L.W + BW) + ":" + n(2 * L.H + BH) + ":" + W + ":" + H;
 		for (int k = 0; k < 3; k++)
 		{
 			const std::string K = n(k);
-			g += "[wmbb" + K + "] [wmk" + K + "] lut2=c0='if(eq(" + bassStep + "," + K + "),y,0)'," + canvas + ",crop=" + W + ":" + H +
+			g += "[wmbb" + K + "] [wmk" + K + "] bplut2=c0='if(eq(" + bassStep + "," + K + "),y,0)'," + canvas + ",crop=" + W + ":" + H +
 				 ":x='" + W + "-(" + mx(k) + ")':y='" + H + "-(" + my(k) + ")' [wmp" + K + "]; ";
 		}
-		g += "[wmp0] [wmp1] lut2=c0='if(x,x,y)' [wmp01]; [wmp2] [wmp01] lut2=c0='if(x,x,y)' [wmp]; "
-			 "movie=" + q(overCover ? 1 : 0) + ",format=gray [wmsc]; [wmp] [wmsc] lut2=c0='if(x,x,y)'";
+		g += "[wmp0] [wmp1] bplut2=c0='if(x,x,y)' [wmp01]; [wmp2] [wmp01] bplut2=c0='if(x,x,y)' [wmp]; "
+			 "movie=" + q(overCover ? 1 : 0) + ",format=gray [wmsc]; [wmp] [wmsc] bplut2=c0='if(x,x,y)'";
 		if (L.F > 1) g += ",scale=" + FW + ":" + FH + ":flags=neighbor";
 		g += " [wmscene]; ";
 		// the thunk on the big step, beside the machine's top at the fine grid
-		g += "movie=" + q(4) + ",format=gray [wmtw]; [wmbt] [wmtw] lut2=c0='if(gte(x," + n(B2) + "),y,0)',"
+		g += "movie=" + q(4) + ",format=gray [wmtw]; [wmbt] [wmtw] bplut2=c0='if(gte(x," + n(B2) + "),y,0)',"
 			 "pad=" + n(2 * L.W * L.F + TW) + ":" + n(2 * L.H * L.F + TH) + ":" + FW + ":" + FH + ",crop=" + FW + ":" + FH + ":x='" + FW +
 			 "-(" + n(L.F) + "*(" + mx(2) + ")-" + n(L.TXO) + ")':y='" + FH + "-(" + n(L.F) + "*(" + my(2) + ")+" + n(L.TYO) + ")' [wmt]; "
-			 "[wmt] [wmscene] lut2=c0='if(x,x,y)',split=3 [wmc0] [wmc1] [wmc2]; ";
+			 "[wmt] [wmscene] bplut2=c0='if(x,x,y)',split=3 [wmc0] [wmc1] [wmc2]; ";
 
 		if (overCover)
-			return g + "[wmc0] scale=640:200:flags=neighbor [wmc0s]; [wmc0s] [wmay] lut2=c0=" + paint(&Yuv::y, "x", true) + " [wmY]; "
-					   "[wmc1] scale=320:100:flags=neighbor [wmc1s]; [wmc1s] [wmau] lut2=c0=" + paint(&Yuv::u, "x", true) + " [wmU]; "
-					   "[wmc2] scale=320:100:flags=neighbor [wmc2s]; [wmc2s] [wmav] lut2=c0=" + paint(&Yuv::v, "x", true) + " [wmV]; "
+			return g + "[wmc0] scale=640:200:flags=neighbor [wmc0s]; [wmc0s] [wmay] bplut2=c0=" + paint(&Yuv::y, "x", true) + " [wmY]; "
+					   "[wmc1] scale=320:100:flags=neighbor [wmc1s]; [wmc1s] [wmau] bplut2=c0=" + paint(&Yuv::u, "x", true) + " [wmU]; "
+					   "[wmc2] scale=320:100:flags=neighbor [wmc2s]; [wmc2s] [wmav] bplut2=c0=" + paint(&Yuv::v, "x", true) + " [wmV]; "
 					   "[wmY] [wmU] [wmV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
-		return g + "[wmc0] lut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [wmY]; "
-				   "[wmc1] lut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [wmU]; "
-				   "[wmc2] lut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [wmV]; "
+		return g + "[wmc0] bplut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [wmY]; "
+				   "[wmc1] bplut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [wmU]; "
+				   "[wmc2] bplut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [wmV]; "
 				   "[wmY] [wmU] [wmV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

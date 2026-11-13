@@ -195,7 +195,7 @@ namespace bp
 		// the mids (4-9, alone: the weed) and the treble (11-15: the bubbles)
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("fb") + ","
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("fb") + ","
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=" + n(overCover ? 4 : 5) +
 			 " [fbl0] [fbl1] [fbl2] [fbtre]" + (overCover ? "" : " [fbmid]") + "; ";
@@ -209,19 +209,19 @@ namespace bp
 			g += "[fbl" + K + "] crop=" + n(bandN[k]) + ":1:" + n(band0[k]) + ":0,scale=1:1:flags=area,split [fbla" + K + "] [fblb" + K + "]; "
 				 // the tail's frame: as the preview's floor(t*(4+10v)) mod 2, read off the frame number's row at the level
 				 "[fbla" + K + "] scale=" + n(RAMP) + ":1:flags=neighbor [fblw" + K + "]; "
-				 "[fblw" + K + "] [fbrp" + K + "] lut2=c0='255*mod(floor(y/60*(4+10*x/252)),2)',crop=1:1:x='mod(n," + n(RAMP) +
+				 "[fblw" + K + "] [fbrp" + K + "] bplut2=c0='255*mod(floor(y/60*(4+10*x/252)),2)',crop=1:1:x='mod(n," + n(RAMP) +
 				 ")':y=0,scale=" + n(CW) + ":1:flags=neighbor [fbwg" + K + "]; "
 				 // the column from the fish's nose (64 on it; +128 when the tail is in its second frame), drifting
-				 "[fbwg" + K + "] [fbcs" + K + "] lut2=c0='clip(y-" + n(AMP) + "-" + centre + "+64,0,127)+128*gt(x,127)',crop=" + RW +
+				 "[fbwg" + K + "] [fbcs" + K + "] bplut2=c0='clip(y-" + n(AMP) + "-" + centre + "+64,0,127)+128*gt(x,127)',crop=" + RW +
 				 ":1:x='" + n(AMP) + "-round(" + n(AMP) + "*sin(n/60*" + f(0.5 + 0.2 * k) + "+" + n(2 * k) + "))':y=0,scale=" + RW + ":" + RH +
 				 ":flags=neighbor [fbc" + K + "]; "
 				 // the row from the fish's top (64 on it), up with its level
 				 "[fblb" + K + "] scale=" + RW + ":" + RH + ":flags=neighbor [fblr" + K + "]; "
-				 "[fblr" + K + "] [fbrs" + K + "] lut2=c0='clip(y-" + fbase + "+round(x*" + n(rise) + "/252)+64,0,255)' [fbr" + K + "]; ";
+				 "[fblr" + K + "] [fbrs" + K + "] bplut2=c0='clip(y-" + fbase + "+round(x*" + n(rise) + "/252)+64,0,255)' [fbr" + K + "]; ";
 			// the sprite (8x5: ..##.... / .####.## / ######## / .####.## / ..##....), the middle fish turned the other
 			// way; its tail (sprite columns 6-7) forked or closed; 4 its eye, k+1 its body
 			const std::string c = k == 1 ? "(7-(mod(y,128)-64))" : "(mod(y,128)-64)";
-			g += "[fbr" + K + "] [fbc" + K + "] lut2=c0='st(0,x-64);st(1," + c + ");st(2,gte(y,128));"
+			g += "[fbr" + K + "] [fbc" + K + "] bplut2=c0='st(0,x-64);st(1," + c + ");st(2,gte(y,128));"
 				 "if(between(ld(0),0,4)*between(ld(1),0,7),if(eq(ld(0),1)*eq(ld(1),1),4,"
 				 "if(eq(ld(0),2)+eq(abs(ld(0)-2),1)*(between(ld(1),1,4)+gte(ld(1),6)*(1-ld(2)))+eq(abs(ld(0)-2),2)*between(ld(1),2,3)," +
 				 n(k + 1) + ",0)),0)' [fbf" + K + "]; ";
@@ -230,7 +230,7 @@ namespace bp
 		const int bw = overCover ? W : BW, bp = overCover ? SBP : BP, bh = overCover ? SH : BH;
 		g += "[fbtre] crop=5:1:11:0,scale=1:1:flags=area,scale=" + n(bw) + ":" + n(2 * bp) + ":flags=neighbor [fbtm]; "
 			 "movie=" + q(overCover ? FB_SBUB : FB_BUB) + " [fbbs]; "
-			 "[fbtm] [fbbs] lut2=c0='6*gt(y,0)*lte(y/255,0.15+x/252)',crop=" + n(bw) + ":" + n(bh) + ":0:'mod(floor(n*" + n(bp) + "/120)," +
+			 "[fbtm] [fbbs] bplut2=c0='6*gt(y,0)*lte(y/255,0.15+x/252)',crop=" + n(bw) + ":" + n(bh) + ":0:'mod(floor(n*" + n(bp) + "/120)," +
 			 n(bp) + ")'" + (overCover ? "" : ",pad=" + RW + ":" + RH + ":" + n(BX0) + ":" + n(BY0)) + " [fbb]; ";
 		std::string base;
 		if (!overCover)
@@ -240,20 +240,20 @@ namespace bp
 			const double tau = 6.283185307179586;
 			g += "[fbmid] crop=6:1:4:0,scale=1:1:flags=area,scale=" + n(WPH) + ":1:flags=neighbor [fbmw]; "
 				 "[fbrp3] crop=" + n(WPH) + ":1:0:0 [fbrq]; "
-				 "[fbmw] [fbrq] lut2=c0='y+" + n(WPH) + "*min(floor(x*" + n(WAMP) + "/253)," + n(WAMP - 1) + ")',crop=1:1:x='mod(floor(n*" +
+				 "[fbmw] [fbrq] bplut2=c0='y+" + n(WPH) + "*min(floor(x*" + n(WAMP) + "/253)," + n(WAMP - 1) + ")',crop=1:1:x='mod(floor(n*" +
 				 f(2.0 * WPH / (60 * tau)) + ")," + n(WPH) + ")':y=0,scale=" + n(WWD) + ":" + n(WHT) + ":flags=neighbor [fbwi]; "
 				 "movie=" + q(FB_WEED) + " [fbws]; "
-				 "[fbwi] [fbws] lut2=c0='st(0,y-1);st(1,gte(ld(0),112));st(0,ld(0)-112*ld(1));st(2,floor(ld(0)/8));"
+				 "[fbwi] [fbws] bplut2=c0='st(0,y-1);st(1,gte(ld(0),112));st(0,ld(0)-112*ld(1));st(2,floor(ld(0)/8));"
 				 "5*gt(y,0)*eq(mod(ld(0),8)-3,round(sin(mod(x," + n(WPH) + ")*" + f(tau / WPH) + "+ld(2)*0.4)*(0.5+2*(floor(x/" + n(WPH) +
 				 ")+0.5)/" + n(WAMP) + ")*ld(2)/(14-3*ld(1))))',pad=" + RW + ":" + RH + ":" + n(WX0) + ":" + n(WY0) + " [fbwd]; ";
 			base = "[fbwd]";
 		}
 		// the classes merged, later over earlier: weed, the fish in turn, bubbles
 		if (overCover)
-			g += "[fbf0] [fbf1] lut2=c0='if(y,y,x)' [fbm1]; ";
+			g += "[fbf0] [fbf1] bplut2=c0='if(y,y,x)' [fbm1]; ";
 		else
-			g += base + " [fbf0] lut2=c0='if(y,y,x)' [fbm0]; [fbm0] [fbf1] lut2=c0='if(y,y,x)' [fbm1]; ";
-		g += "[fbm1] [fbf2] lut2=c0='if(y,y,x)' [fbm2]; [fbm2] [fbb] lut2=c0='if(y,y,x)',split=3 [fbk0] [fbk1] [fbk2]; ";
+			g += base + " [fbf0] bplut2=c0='if(y,y,x)' [fbm0]; [fbm0] [fbf1] bplut2=c0='if(y,y,x)' [fbm1]; ";
+		g += "[fbm1] [fbf2] bplut2=c0='if(y,y,x)' [fbm2]; [fbm2] [fbb] bplut2=c0='if(y,y,x)',split=3 [fbk0] [fbk1] [fbk2]; ";
 
 		// each plane's colour by class: x the class, y the scene's (or the art's) pixel
 		const FbYuv f0 = yuvOf(FISHC[0]), f1 = yuvOf(FISHC[1]), f2 = yuvOf(FISHC[2]), eye = yuvOf(EYE), weedC = yuvOf(WEED), bub = yuvOf(BUBBLE);
@@ -262,14 +262,14 @@ namespace bp
 				   n(eye.*c) + ",if(eq(x,5)," + n(weedC.*c) + "," + n(bub.*c) + "))))))'";
 		};
 		if (overCover)
-			return g + "[fbk0] scale=640:200:flags=neighbor [fbk0s]; [fbk0s] [fbay] lut2=c0=" + paint(&FbYuv::y) + " [fbY]; "
-					   "[fbk1] scale=320:100:flags=neighbor [fbk1s]; [fbk1s] [fbau] lut2=c0=" + paint(&FbYuv::u) + " [fbU]; "
-					   "[fbk2] scale=320:100:flags=neighbor [fbk2s]; [fbk2s] [fbav] lut2=c0=" + paint(&FbYuv::v) + " [fbV]; "
+			return g + "[fbk0] scale=640:200:flags=neighbor [fbk0s]; [fbk0s] [fbay] bplut2=c0=" + paint(&FbYuv::y) + " [fbY]; "
+					   "[fbk1] scale=320:100:flags=neighbor [fbk1s]; [fbk1s] [fbau] bplut2=c0=" + paint(&FbYuv::u) + " [fbU]; "
+					   "[fbk2] scale=320:100:flags=neighbor [fbk2s]; [fbk2s] [fbav] bplut2=c0=" + paint(&FbYuv::v) + " [fbV]; "
 					   "[fbY] [fbU] [fbV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
 		return g + "movie=" + q(FB_Y) + " [fbsy]; movie=" + q(FB_U) + " [fbsu]; movie=" + q(FB_V) + " [fbsv]; "
-				   "[fbk0] [fbsy] lut2=c0=" + paint(&FbYuv::y) + ",scale=640:480:flags=neighbor [fbY]; "
-				   "[fbk1] [fbsu] lut2=c0=" + paint(&FbYuv::u) + ",scale=320:240:flags=neighbor [fbU]; "
-				   "[fbk2] [fbsv] lut2=c0=" + paint(&FbYuv::v) + ",scale=320:240:flags=neighbor [fbV]; "
+				   "[fbk0] [fbsy] bplut2=c0=" + paint(&FbYuv::y) + ",scale=640:480:flags=neighbor [fbY]; "
+				   "[fbk1] [fbsu] bplut2=c0=" + paint(&FbYuv::u) + ",scale=320:240:flags=neighbor [fbU]; "
+				   "[fbk2] [fbsv] bplut2=c0=" + paint(&FbYuv::v) + ",scale=320:240:flags=neighbor [fbV]; "
 				   "[fbY] [fbU] [fbV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

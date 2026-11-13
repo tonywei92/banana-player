@@ -249,7 +249,7 @@ namespace bp
 		// the 16 bands measured (the top 8 measured and cut off, as Pocket console), contrasted, eased (up at once, down
 		// over ~0.15 s: the exp/log lagfun), then the bass and the mean
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
-			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
+			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,bplut=c0='val*252/255'" +
 			 vizContrast("jw") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [jwb] [jwl]; "
 			 "[jwb] crop=3:1:0:0,scale=1:1:flags=area,split [jwb1] [jwb2]; [jwl] scale=1:1:flags=area [jwl1]; ";
@@ -258,28 +258,28 @@ namespace bp
 			 "[jwtick] [jwatlas] vstack,crop=" + n(BW) + ":" + n(BH * ST) + ":x='" + n(BW) + "*mod(floor(n/" + n(PSTEP) + ")," + n(PH) +
 			 ")':y=1 [jwph]; ";
 		// the step and the loudness as one value; against the column the step's pose as classes, the others 0
-		g += "[jwb2] [jwl1] lut2=c0='min(" + n(ST - 1) + ",floor(x*" + n(ST - 1) + "/252+0.5))+" + n(ST) + "*(gte(y," + n(RING) +
+		g += "[jwb2] [jwl1] bplut2=c0='min(" + n(ST - 1) + ",floor(x*" + n(ST - 1) + "/252+0.5))+" + n(ST) + "*(gte(y," + n(RING) +
 			 ")+gte(y," + n(DROP) + "))',scale=" + n(BW) + ":" + n(BH * ST) + ":flags=neighbor [jwst]; "
-			 "[jwst] [jwph] lut2=c0='st(0,mod(y,16));st(1,floor(x/" + n(ST) + "));if(eq(floor(y/16),mod(x," + n(ST) + "))," + cls + ",0)' [jwf0]; ";
+			 "[jwst] [jwph] bplut2=c0='st(0,mod(y,16));st(1,floor(x/" + n(ST) + "));if(eq(floor(y/16),mod(x," + n(ST) + "))," + cls + ",0)' [jwf0]; ";
 		// the eight poses folded into one (only one isn't 0)
 		for (int i = 0, rows = BH * ST; rows > BH; i++, rows /= 2)
 		{
 			const std::string a = "[jwf" + n(i) + "]", t = "jwf" + n(i), half = n(rows / 2);
 			g += a + " split [" + t + "a] [" + t + "b]; [" + t + "a] crop=" + n(BW) + ":" + half + ":0:0 [" + t + "c]; [" + t +
-				 "b] crop=" + n(BW) + ":" + half + ":0:" + half + " [" + t + "d]; [" + t + "c] [" + t + "d] lut2=c0='x+y' [jwf" + n(i + 1) + "]; ";
+				 "b] crop=" + n(BW) + ":" + half + ":0:" + half + " [" + t + "d]; [" + t + "c] [" + t + "d] bplut2=c0='x+y' [jwf" + n(i + 1) + "]; ";
 		}
 		// laid over the scene
 		g += "[jwf3] pad=" + W + ":" + H + ":" + n(X0 + L.dx) + ":" + n(Y0 + L.dy) + ",setsar=1 [jwJ]; movie=" + q(overCover ? 2 : 1) +
-			 ",format=gray [jwsc]; [jwJ] [jwsc] lut2=c0='if(x,x,y)',split=3 [jwc0] [jwc1] [jwc2]; ";
+			 ",format=gray [jwsc]; [jwJ] [jwsc] bplut2=c0='if(x,x,y)',split=3 [jwc0] [jwc1] [jwc2]; ";
 
 		if (overCover)
-			return g + "[jwc0] scale=640:200:flags=neighbor [jwc0s]; [jwc0s] [jway] lut2=c0=" + paint(&Yuv::y, "x", true) + " [jwY]; "
-					   "[jwc1] scale=320:100:flags=neighbor [jwc1s]; [jwc1s] [jwau] lut2=c0=" + paint(&Yuv::u, "x", true) + " [jwU]; "
-					   "[jwc2] scale=320:100:flags=neighbor [jwc2s]; [jwc2s] [jwav] lut2=c0=" + paint(&Yuv::v, "x", true) + " [jwV]; "
+			return g + "[jwc0] scale=640:200:flags=neighbor [jwc0s]; [jwc0s] [jway] bplut2=c0=" + paint(&Yuv::y, "x", true) + " [jwY]; "
+					   "[jwc1] scale=320:100:flags=neighbor [jwc1s]; [jwc1s] [jwau] bplut2=c0=" + paint(&Yuv::u, "x", true) + " [jwU]; "
+					   "[jwc2] scale=320:100:flags=neighbor [jwc2s]; [jwc2s] [jwav] bplut2=c0=" + paint(&Yuv::v, "x", true) + " [jwV]; "
 					   "[jwY] [jwU] [jwV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
-		return g + "[jwc0] lut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [jwY]; "
-				   "[jwc1] lut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [jwU]; "
-				   "[jwc2] lut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [jwV]; "
+		return g + "[jwc0] bplut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [jwY]; "
+				   "[jwc1] bplut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [jwU]; "
+				   "[jwc2] bplut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [jwV]; "
 				   "[jwY] [jwU] [jwV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

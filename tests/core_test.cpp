@@ -58,6 +58,7 @@ extern "C"
 #include "json.h"
 #include "suwayomi.h"
 #include "imagesize.h"
+#include "vizcache.h"
 #include "bands.h"
 #include "mangajava.h"
 #include "webauth.h"
@@ -9425,6 +9426,108 @@ static void testTarX()
 	rmdir(root.c_str());
 }
 
+// the visualizers' lut and lut2 lookups (src/vizcache.h): made once, named by the expression, giving the same
+// values as the expression; what can't or needn't be one stays as it was; the frame rate's rewrite
+static void testVizCache()
+{
+	char dir[] = "/tmp/bp-vizcache-XXXXXX";
+	if (!mkdtemp(dir)) return;
+	const std::string d = dir;
+	// a sprite-like lut2 (a palette by x, the art y where x is 0) and a palette lut, as the styles' are; a smooth one
+	// (no quicker as a lookup); a short one (quick already)
+	std::string pal2 = "if(eq(x,0),y", pal1 = "if(eq(val,0),0", close;
+	for (int i = 1; i < 24; i++)
+	{
+		pal2 += ",if(eq(x," + std::to_string(i) + ")," + std::to_string((i * 37) % 256);
+		pal1 += ",if(eq(val," + std::to_string(i) + ")," + std::to_string((i * 53) % 256);
+		close += ")";
+	}
+	pal2 += ",128" + close + ")";
+	pal1 += ",77" + close + ")";
+	const std::string smooth = "clip(150+1.8*(x-150)+6*(x-y),0,252)";
+	const std::string g = "[a] split [p] [q]; [p] [q] bplut2=c0='" + pal2 + "',split [r] [s]; [r] scale=8:8,bplut=c0='" + pal1 +
+						  "' [t]; [s] [t] bplut2=c0='if(y,y,x)',bplut2=c0='" + smooth + "' [vo]";
+	// plain: the markers gone, nothing else changed
+	std::string plain = vizPlainLuts(g);
+	CHECK_EQ(plain.find("bplut"), std::string::npos);
+	CHECK_EQ(plain.find("[p] [q] lut2=c0='" + pal2 + "',split") != std::string::npos, true);
+	CHECK_EQ(plain.find("scale=8:8,lut=c0='" + pal1 + "' [t]") != std::string::npos, true);
+	// the keys: the short one isn't among them
+	std::vector<std::string> keys = vizLutKeys(g);
+	CHECK_EQ(keys.size(), (size_t)3);
+	CHECK_EQ(keys[0], "2:" + pal2);
+	CHECK_EQ(keys[1], "1:" + pal1);
+	CHECK_EQ(vizLutFile(keys[0]).rfind("lut/", 0), (size_t)0);
+	CHECK_EQ(vizLutFile(keys[0]) != vizLutFile(keys[1]) && vizLutFile(keys[0]) == vizLutFile("2:" + pal2), true);
+	CHECK_EQ(vizLutFile(keys[0]).size(), std::string("lut/0123456789abcdef.txt").size());
+	// not made yet, and asked to leave them: plain, and listed
+	std::vector<std::string> missing;
+	CHECK_EQ(vizCacheLuts(g, d, &missing), plain);
+	CHECK_EQ(missing, keys);
+	// made: the palettes as lookups that give every value of their tables; the smooth one as it was
+	std::string c = vizCacheLuts(g, d);
+	CHECK_EQ(c.find("bplut"), std::string::npos);
+	CHECK_EQ(c.find(pal2), std::string::npos);
+	CHECK_EQ(c.find(pal1), std::string::npos);
+	CHECK_EQ(c.find("lut2=c0='" + smooth + "' [vo]") != std::string::npos, true);
+	CHECK_EQ(c.find("[s] [t] lut2=c0='if(y,y,x)',lut2=c0=") != std::string::npos, true);
+	auto read = [](const std::string& p) {
+		std::ifstream in(p, std::ios::binary);
+		return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	};
+	const std::string f2 = d + "/" + vizLutFile(keys[0]), f1 = d + "/" + vizLutFile(keys[1]), f3 = d + "/" + vizLutFile(keys[2]);
+	std::string l2 = read(f2), l1 = read(f1);
+	CHECK_EQ(read(f3), std::string("="));
+	CHECK_EQ(c.find("[p] [q] lut2=c0='" + l2 + "',split") != std::string::npos, true);
+	CHECK_EQ(c.find("scale=8:8,lut=c0='" + l1 + "' [t]") != std::string::npos, true);
+	std::vector<unsigned char> a, b;
+	CHECK_EQ(vizLutTable("2:" + l2, a) && vizLutTable("2:" + pal2, b) && a == b, true);
+	CHECK_EQ(vizLutTable("1:" + l1, a) && vizLutTable("1:" + pal1, b) && a == b, true);
+	CHECK_EQ(b.size(), (size_t)256);
+	CHECK_EQ((int)b[3], 159);
+	CHECK_EQ((int)b[200], 77);
+	CHECK_EQ(vizLutTable("2:" + pal2, a) && a.size() == 65536 && a[100 * 256 + 0] == 100 && a[100 * 256 + 2] == 74, true);
+	// a second time: the same files, kept (not written again); one taken away: asked for again
+	struct stat st1, st2;
+	stat(f2.c_str(), &st1);
+	unlink(f1.c_str());
+	missing.clear();
+	CHECK_EQ(vizCacheLuts(g, d, &missing).find(l2) != std::string::npos, true);
+	CHECK_EQ(missing, std::vector<std::string>{keys[1]});
+	CHECK_EQ(vizWriteLuts(missing, d), true);
+	CHECK_EQ(vizCacheLuts(g, d, &missing), c);
+	stat(f2.c_str(), &st2);
+	CHECK_EQ(st1.st_ino == st2.st_ino && st1.st_mtime == st2.st_mtime, true);
+	// what can't be a table: the size w, a NaN, a value past an int; such a file says "="
+	CHECK_EQ(vizLutTable("2:x*w", a), false);
+	CHECK_EQ(vizLutTable("2:0/0+x", a), false);
+	CHECK_EQ(vizLutTable("1:val*1e12", a), false);
+	CHECK_EQ(vizWriteLuts({"2:x*w"}, d), true);
+	CHECK_EQ(read(d + "/" + vizLutFile("2:x*w")), std::string("="));
+	CHECK_EQ(vizCacheLuts("[a] [b] bplut2=c0='x*w+y*h+x*x*0' [vo]", d), "[a] [b] lut2=c0='x*w+y*h+x*x*0' [vo]");
+	// a style changed: its old files go, the others stay
+	vizPruneLuts(d, {"[p] [q] bplut2=c0='" + pal2 + "' [vo]"});
+	CHECK_EQ(access(f2.c_str(), F_OK) == 0 && access(f1.c_str(), F_OK) != 0 && access(f3.c_str(), F_OK) != 0, true);
+	CHECK_EQ(access((d + "/" + vizLutFile("2:x*w")).c_str(), F_OK) != 0, true);
+	unlink(f2.c_str());
+	unlink((d + "/" + vizLutFile("2:x*w+y*h+x*x*0")).c_str());
+	rmdir((d + "/lut").c_str());
+	rmdir(dir);
+
+	// the frame rate: a 60-a-second style at 30, as fast in seconds
+	const std::string s60 = "[a] showfreqs=s=24x256:rate=60:colors=white,lagfun=decay=0.25,tmix=frames=30,"
+							"crop=1:1:x='mod(floor(n*8/60),3)+n':y=0 [b]; color=black:s=1x2:r=60 [c]; "
+							"[b] [c] overlay=x='sin(n/60)':y=0,lut=c0='n+1',scale=320:1 [vo]";
+	CHECK_EQ(vizAtFps(s60, 60), s60);
+	CHECK_EQ(vizAtFps(s60, 30), "[a] showfreqs=s=24x256:rate=30:colors=white,lagfun=decay=0.062500,tmix=frames=15,"
+								"crop=1:1:x='mod(floor(floor(n*60/30)*8/60),3)+floor(n*60/30)':y=0 [b]; color=black:s=1x2:r=30 [c]; "
+								"[b] [c] overlay=x='sin(floor(n*60/30)/60)':y=0,lut=c0='n+1',scale=320:1 [vo]");
+	CHECK_EQ(vizAtFps(s60, 45).find("tmix=frames=23,") != std::string::npos, true);
+	// a 30-a-second graph (Peaks, Circle) as it is
+	const std::string s30 = "[a] showfreqs=rate=30,lagfun=decay=0.8679,crop=1:1:x='n':y=0 [vo]";
+	CHECK_EQ(vizAtFps(s30, 45), s30);
+}
+
 // an image's size from its header (the reader's strip sizes a long page's place before decoding it)
 static void testImageSize()
 {
@@ -9452,6 +9555,7 @@ static void testImageSize()
 int main()
 {
 	testImageSize();
+	testVizCache();
 	testPicSubs();
 	testTarX();
 	testSessionNamed();

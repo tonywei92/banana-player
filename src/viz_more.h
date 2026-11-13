@@ -5,6 +5,9 @@
 // [aid1] in, [ao] (the sound, untouched) and [vo] out; each audio branch starts with aformat=sample_rates=44100|48000;
 // 30 frames a second at most; YUV (or gray) all the way, nothing converted per frame; a still input is one frame
 // (r=1:d=1, or a picture by movie=), never a loop; over the art ([vid1]) only the strip under it is drawn each frame.
+// Written at 60 a second and drawn at the visualizer-fps setting (vizAtFps, src/vizcache.h): time is counted only by
+// rate=60, lagfun's decay, tmix's frames and n in crop and overlay. A lut or lut2 whose inputs are 8 bits is written
+// bplut= / bplut2= (VIZ_LUT, VIZ_LUT2): its expression is swapped for a cached lookup that gives the same values.
 #include <string>
 
 namespace bp
@@ -71,6 +74,6 @@ namespace bp
 	{
 		const std::string p = pivot;
 		return ",split [" + tag + "c1] [" + tag + "c2]; [" + tag + "c2] avgblur=sizeX=" + std::to_string(reach) + ":sizeY=1 [" +
-			   tag + "c3]; [" + tag + "c1] [" + tag + "c3] lut2=c0='clip(" + p + "+" + spread + "*(x-" + p + ")+" + push + "*(x-y),0,252)'";
+			   tag + "c3]; [" + tag + "c1] [" + tag + "c3] bplut2=c0='clip(" + p + "+" + spread + "*(x-" + p + ")+" + push + "*(x-y),0,252)'";
 	}
 }

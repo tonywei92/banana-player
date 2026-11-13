@@ -248,7 +248,7 @@ namespace bp
 		// the bands measured and eased (as Pocket console's bars), then each jellyfish its slice's mean
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("jl") + ","
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("jl") + ","
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=4 [jlb0] [jlb1] [jlb2] [jlb3]; ";
 		const int B0[4] = {0, 3, 7, 11}, B1[4] = {2, 6, 10, 15};
@@ -270,26 +270,26 @@ namespace bp
 		}
 		// the codes: the body over the halo
 		g += std::string("[jlL0] [jlL1] [jlL2] [jlL3] hstack=4,split=") + (overCover ? "2" : "3 [jlsm]") + " [jlLa] [jlLb]; [jlcl0] [jlcl1] [jlcl2] [jlcl3] hstack=4 [jlC]; "
-			 "[jlC] [jlLa] lut2=c0='st(0,mod(x,64));st(1,floor(x/64));st(2,0.25+0.55*y/252);"
+			 "[jlC] [jlLa] bplut2=c0='st(0,mod(x,64));st(1,floor(x/64));st(2,0.25+0.55*y/252);"
 			 "if(eq(ld(0),0)+gte(ld(0),3)*gte(ld(0)-1,10+6*y/252),0,128+32*ld(1)+clip(round(32*if(eq(ld(0)," + n(BODY) +
 			 "),0.85*ld(2)+0.03,if(eq(ld(0)," + n(RIM) + "),ld(2)+0.15,(1-(ld(0)-1)/18)*ld(2)+(ld(0)-1)/18*0.05))),1,31))' [jlK]; ";
 		g += "movie=" + q(overCover ? 9 : 8) + " [jlhs]; "
-			 "[jlLb] [jlhs] lut2=c0='if(eq(mod(y,64),0),0,32*floor(y/64)+clip(round(31*mod(y,64)/63*(0.25+0.75*x/252)),0,31))' [jlG]; "
-			 "[jlK] [jlG] lut2=c0='if(gte(x,128),x,y)',split=3 [jlM0] [jlM1] [jlM2]; ";
+			 "[jlLb] [jlhs] bplut2=c0='if(eq(mod(y,64),0),0,32*floor(y/64)+clip(round(31*mod(y,64)/63*(0.25+0.75*x/252)),0,31))' [jlG]; "
+			 "[jlK] [jlG] bplut2=c0='if(gte(x,128),x,y)',split=3 [jlM0] [jlM1] [jlM2]; ";
 		if (overCover)
-			return g + "[jlM0] scale=640:200:flags=neighbor [jlM0s]; [jlM0s] [jlay] lut2=c0=" + paint(PY, true) + " [jlY]; "
-					   "[jlM1] scale=320:100:flags=neighbor [jlM1s]; [jlM1s] [jlau] lut2=c0=" + paint(PU, true) + " [jlU]; "
-					   "[jlM2] scale=320:100:flags=neighbor [jlM2s]; [jlM2s] [jlav] lut2=c0=" + paint(PV, true) + " [jlV]; "
+			return g + "[jlM0] scale=640:200:flags=neighbor [jlM0s]; [jlM0s] [jlay] bplut2=c0=" + paint(PY, true) + " [jlY]; "
+					   "[jlM1] scale=320:100:flags=neighbor [jlM1s]; [jlM1s] [jlau] bplut2=c0=" + paint(PU, true) + " [jlU]; "
+					   "[jlM2] scale=320:100:flags=neighbor [jlM2s]; [jlM2s] [jlav] bplut2=c0=" + paint(PV, true) + " [jlV]; "
 					   "[jlY] [jlU] [jlV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
 		// the sea: the row and the specks (rising one screen in H/SPEED seconds, wrapped)
 		return g + "movie=" + q(10) + ",mergeplanes=0x000000:yuv444p [jlsp]; movie=" + q(11) + " [jlrow]; "
 				   "[jlsm] mergeplanes=0x000000:yuv444p [jlsmm]; "
 				   "[jlsmm] [jlsp] overlay=format=yuv444:eof_action=repeat:x=0:y='-mod(floor(n*" + n(SPEED) + "/60)," + n(H) + ")',"
 				   "extractplanes=y [jlspk]; "
-				   "[jlspk] [jlrow] lut2=c0='y+128*gt(x,127)',split=3 [jlB0] [jlB1] [jlB2]; "
-				   "[jlM0] [jlB0] lut2=c0=" + paint(PY, false) + ",scale=640:480:flags=neighbor [jlY]; "
-				   "[jlM1] [jlB1] lut2=c0=" + paint(PU, false) + ",scale=320:240:flags=neighbor [jlU]; "
-				   "[jlM2] [jlB2] lut2=c0=" + paint(PV, false) + ",scale=320:240:flags=neighbor [jlV]; "
+				   "[jlspk] [jlrow] bplut2=c0='y+128*gt(x,127)',split=3 [jlB0] [jlB1] [jlB2]; "
+				   "[jlM0] [jlB0] bplut2=c0=" + paint(PY, false) + ",scale=640:480:flags=neighbor [jlY]; "
+				   "[jlM1] [jlB1] bplut2=c0=" + paint(PU, false) + ",scale=320:240:flags=neighbor [jlU]; "
+				   "[jlM2] [jlB2] bplut2=c0=" + paint(PV, false) + ",scale=320:240:flags=neighbor [jlV]; "
 				   "[jlY] [jlU] [jlV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

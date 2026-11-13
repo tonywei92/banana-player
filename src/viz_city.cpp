@@ -282,7 +282,7 @@ namespace bp
 		// down over ~0.15 s for the whole range (an exp/log lagfun, N values a frame)
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("ct") + ","
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("ct") + ","
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray [ctl]; "
 			 // each column its building's level (one row: remap with the band table), stretched down the picture
@@ -297,23 +297,23 @@ namespace bp
 				return "'if(eq(x,0),y,if(eq(x,1)," + n(back.*c) + ",if(eq(x,2)," + n(wall.*c) + ",if(eq(x,3)," + n(unlit.*c) +
 					   ",if(eq(x,4)," + n(lit.*c) + "," + n(hot.*c) + ")))))'";
 			};
-			return g + "[ctL] [ctm] lut2=c0='if(lt(y," + n(WIN_LO) + "),y,if(gte(x,y),if(gte(y," + n(ORANGE) + "),5,4),3))',split=3 [ctc0] [ctc1] [ctc2]; "
+			return g + "[ctL] [ctm] bplut2=c0='if(lt(y," + n(WIN_LO) + "),y,if(gte(x,y),if(gte(y," + n(ORANGE) + "),5,4),3))',split=3 [ctc0] [ctc1] [ctc2]; "
 					   "[ctc0] scale=640:200:flags=neighbor [ctcy]; "
-					   "[ctcy] [ctay] lut2=c0=" + paint(&Yuv::y) + " [ctY]; "
-					   "[ctc1] [ctau] lut2=c0=" + paint(&Yuv::u) + " [ctU]; "
-					   "[ctc2] [ctav] lut2=c0=" + paint(&Yuv::v) + " [ctV]; "
+					   "[ctcy] [ctay] bplut2=c0=" + paint(&Yuv::y) + " [ctY]; "
+					   "[ctc1] [ctau] bplut2=c0=" + paint(&Yuv::u) + " [ctU]; "
+					   "[ctc2] [ctav] bplut2=c0=" + paint(&Yuv::v) + " [ctV]; "
 					   "[ctY] [ctU] [ctV] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
 		}
 		// alone: 0 the scene (walls, unlit windows and all), 1 lit, 2 lit orange
 		auto paint = [&](int Yuv::*c) { return "'if(eq(x,0),y,if(eq(x,1)," + n(lit.*c) + "," + n(hot.*c) + "))'"; };
-		return g + "[ctL] [ctm] lut2=c0='if(gte(x,y)*gt(y,0),if(gte(y," + n(ORANGE) + "),2,1),0)',split=3 [ctc0] [ctc1] [ctc2]; "
+		return g + "[ctL] [ctm] bplut2=c0='if(gte(x,y)*gt(y,0),if(gte(y," + n(ORANGE) + "),2,1),0)',split=3 [ctc0] [ctc1] [ctc2]; "
 				   "movie=" + q(0) + " [ctst]; movie=" + q(7) + " [ctsy]; movie=" + q(1) + " [ctsu]; movie=" + q(2) + " [ctsv]; "
 				   // the luma: under the still top, at half size and scaled up (vstack repeats the top's one frame)
 				   "[ctc0] crop=" + n(HW) + ":" + n(HH - SPLIT) + ":0:" + n(SPLIT) + " [ctcb]; "
-				   "[ctcb] [ctsy] lut2=c0=" + paint(&Yuv::y) + ",scale=640:" + n(H - SPLIT * 2) + ":flags=neighbor [ctyb]; "
+				   "[ctcb] [ctsy] bplut2=c0=" + paint(&Yuv::y) + ",scale=640:" + n(H - SPLIT * 2) + ":flags=neighbor [ctyb]; "
 				   "[ctst] [ctyb] vstack [ctY]; "
-				   "[ctc1] [ctsu] lut2=c0=" + paint(&Yuv::u) + " [ctU]; "
-				   "[ctc2] [ctsv] lut2=c0=" + paint(&Yuv::v) + " [ctV]; "
+				   "[ctc1] [ctsu] bplut2=c0=" + paint(&Yuv::u) + " [ctU]; "
+				   "[ctc2] [ctsv] bplut2=c0=" + paint(&Yuv::v) + " [ctV]; "
 				   "[ctY] [ctU] [ctV] mergeplanes=0x001020:yuv420p [vo]";
 	}
 }

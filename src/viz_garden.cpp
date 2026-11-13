@@ -181,26 +181,26 @@ namespace bp
 				 "[gdart2] crop=640:200:0:280,extractplanes=y+u+v [gday] [gdau] [gdav]; ";
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N * SUB + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N * SUB) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("gd") +
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("gd") +
 			 // eased: up at once, down over ~0.15 s (Pocket console's exp/log lagfun)
 			 ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [gdl] [gdt]; "
 			 // each flower's colour (0..4 over again): a still row, one frame
 			 "color=black:s=" + n(N) + "x1:r=1:d=1,format=gray,geq=lum='mod(X," + n(PETALS) + ")' [gdc]; "
-			 "[gdl] [gdc] lut2=c0='min(" + n(s.hs) + ",round(x*" + n(s.hs) + "/252))+32*y'," + stretch + " [gdS]; "
+			 "[gdl] [gdc] bplut2=c0='min(" + n(s.hs) + ",round(x*" + n(s.hs) + "/252))+32*y'," + stretch + " [gdS]; "
 			 "movie=" + mpath + ",format=gray [gdM]; "
-			 "[gdS] [gdM] lut2=c0=" + flowers + " [gdF]; "
+			 "[gdS] [gdM] bplut2=c0=" + flowers + " [gdF]; "
 			 // the treble (the top three flowers' levels) over the bee strip: a bee out (its part) when the treble is
 			 // past 30%, 45% or 60% for the first, second and third, else 0
 			 "[gdt] crop=3:1:" + n(N - 3) + ":0,scale=1:1:flags=area,scale=" + n(BW) + ":" + n(BH * BEES) + ":flags=neighbor [gdT]; "
 			 "movie=" + bpath + ",format=gray [gdB]; "
-			 "[gdT] [gdB] lut2=c0='if(eq(y,0),0,if(gt(x,76+38*floor(y/4)),mod(y,4),0))',split=3 [gdb0] [gdb1] [gdb2]; ";
+			 "[gdT] [gdB] bplut2=c0='if(eq(y,0),0,if(gt(x,76+38*floor(y/4)),mod(y,4),0))',split=3 [gdb0] [gdb1] [gdb2]; ";
 		// each bee's band: sliding right 6 dots a second (each on its own place in the 90-dot round), bobbing 2 up and down
 		for (int b = 0; b < BEES; b++)
 			g += "[gdb" + n(b) + "] crop=w=" + n(W) + ":h=6:x='90-mod(t*6+" + n(27 * b) + ",90)':y='" + n(BH * b + 2) + "-round(2*sin(t*5+" +
 				 n(b) + "))' [gdbc" + n(b) + "]; ";
 		g += "[gdbc0] [gdbc1] [gdbc2] vstack=inputs=3,pad=" + n(W) + ":" + n(R) + ":0:" + n(s.beeTop) + " [gdBz]; "
-			 "[gdF] [gdBz] lut2=c0='if(eq(y,0),x,if(eq(y,1)," + n(c[C_WING].y) + ",if(eq(y,2)," + n(c[C_P1].y) + "," + n(c[C_BLACK].y) + ")))'";
+			 "[gdF] [gdBz] bplut2=c0='if(eq(y,0),x,if(eq(y,1)," + n(c[C_WING].y) + ",if(eq(y,2)," + n(c[C_P1].y) + "," + n(c[C_BLACK].y) + ")))'";
 		if (overCover)
 		{
 			// the art shows through where nothing (0) and between the dots; each plane the art's there, else the colour's
@@ -213,12 +213,12 @@ namespace bp
 			return g + ",split=3 [gdc0] [gdc1] [gdc2]; "
 					   "color=black:s=640x200:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [gdG]; "
 					   "color=black:s=320x100:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,4),3)+eq(mod(Y,4),3),1)',split [gdGu] [gdGv]; "
-					   "[gdc0] scale=640:200:flags=neighbor [gdc0s]; [gdc0s] [gdG] lut2=c0='if(y,0,x)' [gdc0g]; "
-					   "[gdc0g] [gday] lut2=c0=" + paint(&Yuv::y) + " [gdY]; "
-					   "[gdc1] scale=320:100:flags=neighbor [gdc1s]; [gdc1s] [gdGu] lut2=c0='if(y,0,x)' [gdc1g]; "
-					   "[gdc1g] [gdau] lut2=c0=" + paint(&Yuv::u) + " [gdU]; "
-					   "[gdc2] scale=320:100:flags=neighbor [gdc2s]; [gdc2s] [gdGv] lut2=c0='if(y,0,x)' [gdc2g]; "
-					   "[gdc2g] [gdav] lut2=c0=" + paint(&Yuv::v) + " [gdW]; "
+					   "[gdc0] scale=640:200:flags=neighbor [gdc0s]; [gdc0s] [gdG] bplut2=c0='if(y,0,x)' [gdc0g]; "
+					   "[gdc0g] [gday] bplut2=c0=" + paint(&Yuv::y) + " [gdY]; "
+					   "[gdc1] scale=320:100:flags=neighbor [gdc1s]; [gdc1s] [gdGu] bplut2=c0='if(y,0,x)' [gdc1g]; "
+					   "[gdc1g] [gdau] bplut2=c0=" + paint(&Yuv::u) + " [gdU]; "
+					   "[gdc2] scale=320:100:flags=neighbor [gdc2s]; [gdc2s] [gdGv] bplut2=c0='if(y,0,x)' [gdc2g]; "
+					   "[gdc2g] [gdav] bplut2=c0=" + paint(&Yuv::v) + " [gdW]; "
 					   "[gdY] [gdU] [gdW] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
 		}
 		// alone: the luma scaled x8 with the grid's lines (the sky's colour) over it; U and V from the luma at half size
@@ -229,9 +229,9 @@ namespace bp
 		};
 		g += ",split=3 [gdy] [gdu] [gdw]; "
 			 "color=black:s=640x480:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [gdG]; "
-			 "[gdy] scale=640:480:flags=neighbor [gdY0]; [gdY0] [gdG] lut2=c0='if(y," + n(c[C_SKY].y) + ",x)' [gdY]; "
-			 "[gdu] scale=320:240:flags=neighbor,lut=c0=" + chroma(&Yuv::u) + " [gdU]; "
-			 "[gdw] scale=320:240:flags=neighbor,lut=c0=" + chroma(&Yuv::v) + " [gdW]; "
+			 "[gdy] scale=640:480:flags=neighbor [gdY0]; [gdY0] [gdG] bplut2=c0='if(y," + n(c[C_SKY].y) + ",x)' [gdY]; "
+			 "[gdu] scale=320:240:flags=neighbor,bplut=c0=" + chroma(&Yuv::u) + " [gdU]; "
+			 "[gdw] scale=320:240:flags=neighbor,bplut=c0=" + chroma(&Yuv::v) + " [gdW]; "
 			 "[gdY] [gdU] [gdW] mergeplanes=0x001020:yuv420p [vo]";
 		return g;
 	}

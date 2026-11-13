@@ -152,7 +152,7 @@ namespace bp
 		const int groups[5][2] = {{0, 3}, {3, 3}, {6, 3}, {9, 3}, {12, 4}};
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("bh") + ","
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("bh") + ","
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=" + n(overCover ? 5 : 6);
 		for (int k = 0; k < 5; k++) g += " [bhs" + n(k) + "]";
@@ -166,13 +166,13 @@ namespace bp
 		// slowly (lagfun 0.93 a frame: from the top to the grass in ~0.3 s, a hop rather than a flicker). In rows
 		// v^2 x HOP; +32 while it's landing (under a row up, not yet still): squashed a row. Over its 15 columns
 		g += "[bhg0] [bhg1] [bhg2] [bhg3] [bhg4] hstack=5,split [bhl1] [bhl2]; [bhl2] tmix=frames=30 [bhm]; "
-			 "[bhl1] [bhm] lut2=c0='255*clip((x-y)/110,0,1)',lagfun=decay=0.93,"
-			 "lut=c0='st(0,round(pow(val/255,2)*" + n(HOP) + "));ld(0)+32*lt(ld(0),1)*gt(val,12)',"
+			 "[bhl1] [bhm] bplut2=c0='255*clip((x-y)/110,0,1)',lagfun=decay=0.93,"
+			 "bplut=c0='st(0,round(pow(val/255,2)*" + n(HOP) + "));ld(0)+32*lt(ld(0),1)*gt(val,12)',"
 			 "scale=75:1:flags=neighbor,pad=" + n(W) + ":1:3:0,scale=" + n(W) + ":" + R + ":flags=neighbor,setsar=1 [bhh]; "
 			 "movie=" + q(overCover ? 2 : 0) + " [bhd]; movie=" + q(overCover ? 3 : 1) + " [bhc]; ";
 		// each pixel's sprite row + 1 (1-10; squashed: row 1 left out), 20 the shadow (the ground's row under a bunny
 		// more than 2 rows up), 0 none
-		g += "[bhh] [bhd] lut2=c0='st(0,mod(x,32));st(1,gte(x,32));st(2,y-40);st(3,ld(2)+ld(0)-ld(1));"
+		g += "[bhh] [bhd] bplut2=c0='st(0,mod(x,32));st(1,gte(x,32));st(2,y-40);st(3,ld(2)+ld(0)-ld(1));"
 			 "st(4,if(ld(1)*gte(ld(3),1),ld(3)+1,ld(3)));if(between(ld(4),0,9),ld(4)+1,20*gt(ld(0),2)*eq(ld(2),10))' [bhr]; ";
 		// the sprite's rows, base 4 by column: 1 fur, 2 eye, 3 nose
 		std::string rowsExpr = "0";
@@ -184,7 +184,7 @@ namespace bp
 			rowsExpr = "if(eq(x," + n(r + 1) + ")," + std::to_string(code) + "," + rowsExpr + ")";
 		}
 		// the class: a bunny's part, a shadow on the grass (not where the hill falls away under it), or the background
-		g += "[bhr] [bhc] lut2=c0='st(0,mod(y,32));st(1,floor(y/32));st(2,mod(ld(0),16));st(3,floor(ld(0)/16));"
+		g += "[bhr] [bhc] bplut2=c0='st(0,mod(y,32));st(1,floor(y/32));st(2,mod(ld(0),16));st(3,floor(ld(0)/16));"
 			 "st(4,if(lt(ld(0),31)*between(x,1,10),mod(floor(" + rowsExpr + "/pow(4,ld(2))),4),0));"
 			 "if(eq(ld(4),1)," + n(CL_CREAM) + "+ld(3),if(eq(ld(4),2)," + n(CL_EYE) + ",if(eq(ld(4),3)," + n(CL_NOSE) + ","
 			 "if(eq(x,20)*lt(ld(0),31)*between(ld(2),2,6)*gte(ld(1)," + n(BG_TOP) + ")," + n(CL_SHADOW) + "+ld(1),ld(1)))))'";
@@ -192,8 +192,8 @@ namespace bp
 			// the clouds: right 4 columns a second, over the sky and its band only
 			// (a still is one frame: it's carried by a per-frame row first, or crop's x would be read once)
 			g += " [bhb]; [bhs5] crop=1:1:0:0,scale=" + n(W + CP) + ":" + n(CH) + ":flags=neighbor [bhtk]; movie=" + q(4) +
-				 " [bhcs]; [bhtk] [bhcs] lut2=c0='y',crop=" + n(W) + ":" + n(CH) + ":x='mod(" + n(CP) + "-mod(floor(n*4/60)," + n(CP) + ")," + n(CP) +
-				 ")':y=0,pad=" + n(W) + ":" + n(H) + ":0:" + n(CY) + ",setsar=1 [bhcl]; [bhb] [bhcl] lut2=c0='if(lte(x,1)*gt(y,0)," +
+				 " [bhcs]; [bhtk] [bhcs] bplut2=c0='y',crop=" + n(W) + ":" + n(CH) + ":x='mod(" + n(CP) + "-mod(floor(n*4/60)," + n(CP) + ")," + n(CP) +
+				 ")':y=0,pad=" + n(W) + ":" + n(H) + ":0:" + n(CY) + ",setsar=1 [bhcl]; [bhb] [bhcl] bplut2=c0='if(lte(x,1)*gt(y,0)," +
 				 n(CL_CLOUD) + ",x)'";
 		g += ",split=3 [bhk0] [bhk1] [bhk2]; ";
 
@@ -217,13 +217,13 @@ namespace bp
 				   n(nose.*c) + ",if(eq(" + K + "," + n(CL_CLOUD) + ")," + n(cloudC.*c) + "," + bg + "))))))'";
 		};
 		if (overCover)
-			return g + "[bhk0] scale=640:200:flags=neighbor [bhk0s]; [bhk0s] [bhay] lut2=c0=" + paint(&BunYuv::y) + " [bhY]; "
-					   "[bhk1] scale=320:100:flags=neighbor [bhk1s]; [bhk1s] [bhau] lut2=c0=" + paint(&BunYuv::u) + " [bhU]; "
-					   "[bhk2] scale=320:100:flags=neighbor [bhk2s]; [bhk2s] [bhav] lut2=c0=" + paint(&BunYuv::v) + " [bhV]; "
+			return g + "[bhk0] scale=640:200:flags=neighbor [bhk0s]; [bhk0s] [bhay] bplut2=c0=" + paint(&BunYuv::y) + " [bhY]; "
+					   "[bhk1] scale=320:100:flags=neighbor [bhk1s]; [bhk1s] [bhau] bplut2=c0=" + paint(&BunYuv::u) + " [bhU]; "
+					   "[bhk2] scale=320:100:flags=neighbor [bhk2s]; [bhk2s] [bhav] bplut2=c0=" + paint(&BunYuv::v) + " [bhV]; "
 					   "[bhY] [bhU] [bhV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
-		return g + "[bhk0] lut=c0=" + paint(&BunYuv::y) + ",scale=640:480:flags=neighbor [bhY]; "
-				   "[bhk1] lut=c0=" + paint(&BunYuv::u) + ",scale=320:240:flags=neighbor [bhU]; "
-				   "[bhk2] lut=c0=" + paint(&BunYuv::v) + ",scale=320:240:flags=neighbor [bhV]; "
+		return g + "[bhk0] bplut=c0=" + paint(&BunYuv::y) + ",scale=640:480:flags=neighbor [bhY]; "
+				   "[bhk1] bplut=c0=" + paint(&BunYuv::u) + ",scale=320:240:flags=neighbor [bhU]; "
+				   "[bhk2] bplut=c0=" + paint(&BunYuv::v) + ",scale=320:240:flags=neighbor [bhV]; "
 				   "[bhY] [bhU] [bhV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

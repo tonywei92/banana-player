@@ -159,28 +159,28 @@ namespace bp
 		// the bands: measured (one value each, 0..252), contrast, eased as Night city's
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("au") + ","
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("au") + ","
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [aul1] [aul2]; "
 			 // the still rows copied once a frame (the level row is the clock), each cropped where t has moved it:
 			 // the foot's waves one way and the other, the rays shimmering back and forth as they drift
 			 "movie=" + q(0) + " [aurw]; [aul1] scale=" + n(RW) + ":4:flags=neighbor [auck]; "
-			 "[auck] [aurw] lut2=c0='y',split=4 [aur0] [aur1] [aur2] [aur3]; "
+			 "[auck] [aurw] bplut2=c0='y',split=4 [aur0] [aur1] [aur2] [aur3]; "
 			 "[aur0] crop=" + n(W) + ":1:x='mod(8.6*t," + n(PA) + ")':y=0 [auca]; "
 			 "[aur1] crop=" + n(W) + ":1:x='" + n(PB) + "-mod(5.8*t," + n(PB) + ")':y=1 [aucb]; "
 			 "[aur2] crop=" + n(W) + ":1:x='mod(" + n(PS1 * 10) + "+1.2*t+3.3*sin(t)," + n(PS1) + ")':y=2 [aucc]; "
 			 "[aur3] crop=" + n(W) + ":1:x='" + n(PS2) + "-mod(2.1*t+2*sin(0.7*t+1)+" + n(PS2 * 10) + "," + n(PS2) + ")':y=3 [aucd]; "
 			 // the foot's row (each column's foot, in rows), and the rays' brightness (0..3)
-			 "[auca] [aucb] lut2=c0='clip(round(" + f(base) + "+" + f(ampA / 127) + "*(x-128)+" + f(ampB / 127) + "*(y-128)),0,250)' [aufr]; "
-			 "[aucc] [aucd] lut2=c0='clip(round(1.5+1.5*(0.6*(x-128)+0.4*(y-128))/127),0,3)' [austr]; "
+			 "[auca] [aucb] bplut2=c0='clip(round(" + f(base) + "+" + f(ampA / 127) + "*(x-128)+" + f(ampB / 127) + "*(y-128)),0,250)' [aufr]; "
+			 "[aucc] [aucd] bplut2=c0='clip(round(1.5+1.5*(0.6*(x-128)+0.4*(y-128))/127),0,3)' [austr]; "
 			 // each column its band's level (6 bits) and its ray (2 bits)
 			 "[aul2] scale=" + n(W) + ":1:flags=neighbor [aulv]; "
-			 "[aulv] [austr] lut2=c0='4*round(x*63/252)+y' [aupk]; " +
+			 "[aulv] [austr] bplut2=c0='4*round(x*63/252)+y' [aupk]; " +
 			 stretch("aupk", "auP") + stretch("aufr", "auF") +
 			 "movie=" + q(overCover ? 2 : 1) + " [aurp]; "
 			 // each pixel's height above the foot (0: at or under it, 63 the most), +64 a star; the ridge and snow as
 			 // they are
-			 "[auF] [aurp] lut2=c0='if(gte(y," + n(RIDGE) + "),y,clip(x-y+128*gte(y,128),0,63)+64*gte(y,128))' [auup]; ";
+			 "[auF] [aurp] bplut2=c0='if(gte(y," + n(RIDGE) + "),y,clip(x-y+128*gte(y,128),0,63)+64*gte(y,128))' [auup]; ";
 		// the pixel's code: in its curtain (0 < up < h) its glow, (1-k) x the ray x (0.4 + 0.6 level), and k = up/h
 		{
 			const std::string lv = "(floor(x/4)/63)", ray = "(0.2+0.8*mod(x,4)/3)", up = "mod(y,64)";
@@ -191,7 +191,7 @@ namespace bp
 			const std::string code = "if(" + lit + "*gt(" + gq + ",0)," + gq + "*8+min(7,floor(8*" + k + ")),0)";
 			// a star shows through the faint glow
 			const std::string withStar = "if(gte(y,64)*lt(" + lit + "*" + gq + ",6)," + n(STAR) + "," + code + ")";
-			g += "[auP] [auup] lut2=c0='if(gte(y," + n(RIDGE) + "),y," + withStar + ")'";
+			g += "[auP] [auup] bplut2=c0='if(gte(y," + n(RIDGE) + "),y," + withStar + ")'";
 		}
 
 		if (overCover)
@@ -207,9 +207,9 @@ namespace bp
 				return "'if(lt(x,8)+gte(x," + n(STAR) + "),y,y+" + weight + "*(" + colour + "-y))'";
 			};
 			return g + ",split=3 [auc0] [auc1] [auc2]; "
-					   "[auc0] scale=640:200:flags=neighbor [aucy]; [aucy] [auay] lut2=c0=" + blend(0) + " [auY]; "
-					   "[auc1] scale=320:100:flags=neighbor [aucu]; [aucu] [auau] lut2=c0=" + blend(1) + " [auU]; "
-					   "[auc2] scale=320:100:flags=neighbor [aucv]; [aucv] [auav] lut2=c0=" + blend(2) + " [auV]; "
+					   "[auc0] scale=640:200:flags=neighbor [aucy]; [aucy] [auay] bplut2=c0=" + blend(0) + " [auY]; "
+					   "[auc1] scale=320:100:flags=neighbor [aucu]; [aucu] [auau] bplut2=c0=" + blend(1) + " [auU]; "
+					   "[auc2] scale=320:100:flags=neighbor [aucv]; [aucv] [auav] bplut2=c0=" + blend(2) + " [auV]; "
 					   "[auY] [auU] [auV] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
 		}
 		// alone: each code's colour, a lut a plane at 160x120, then scaled up (nearest)
@@ -221,9 +221,9 @@ namespace bp
 			}, 0, 255) + "'";
 		};
 		return g + ",split=3 [auc0] [auc1] [auc2]; "
-				   "[auc0] lut=c0=" + plane(0) + ",scale=640:480:flags=neighbor [auY]; "
-				   "[auc1] lut=c0=" + plane(1) + ",scale=320:240:flags=neighbor [auU]; "
-				   "[auc2] lut=c0=" + plane(2) + ",scale=320:240:flags=neighbor [auV]; "
+				   "[auc0] bplut=c0=" + plane(0) + ",scale=640:480:flags=neighbor [auY]; "
+				   "[auc1] bplut=c0=" + plane(1) + ",scale=320:240:flags=neighbor [auU]; "
+				   "[auc2] bplut=c0=" + plane(2) + ",scale=320:240:flags=neighbor [auV]; "
 				   "[auY] [auU] [auV] mergeplanes=0x001020:yuv420p [vo]";
 	}
 }

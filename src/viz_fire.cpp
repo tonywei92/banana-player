@@ -176,7 +176,7 @@ namespace bp
 		// ~0.15 s (the exp/log lagfun, 16 values a frame)
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("fi") + ","
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("fi") + ","
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [fil] [fit]; "
 			 // the treble: bands 12-15 as one value, over the whole grid
@@ -186,7 +186,7 @@ namespace bp
 			 ":flags=neighbor,setsar=1 [fiL]; "
 			 "movie=" + q(overCover ? 1 : 0) + " [fiA]; movie=" + q(2) + " [fiN]; movie=" + q(3) + " [fiS]; "
 			 // the base heat, 1 - y / h, kept 0..63 (as (heat + 0.3) * 48) under the zone (x 64)
-			 "[fiL] [fiA] lut2=c0='st(0,floor(y/64));st(1,mod(y,64));ld(0)*64+if(eq(ld(1)," + n(NOFIRE) + "),0,"
+			 "[fiL] [fiA] bplut2=c0='st(0,floor(y/64));st(1,mod(y,64));ld(0)*64+if(eq(ld(1)," + n(NOFIRE) + "),0,"
 			 "clip(round((1.3-(ld(1)/" + kc + ")/(" + h0 + "+" + hk + "*x/252))*48),0,63))' [fiB]; "
 			 // stacked on the stills, then cropped: the heat, and the noise and the sparks from rows that rise with
 			 // the frames (24 rows a second at 60 frames)
@@ -195,10 +195,10 @@ namespace bp
 			 "[fis2] crop=w=" + n(GW) + ":h=" + n(R) + ":x=0:y='" + n(R) + "+mod(floor(n*0.4)," + n(NP) + ")' [fiNc]; "
 			 "[fis3] crop=w=" + n(GW) + ":h=" + n(R) + ":x=0:y='" + n(R + NH) + "+mod(floor(n*0.4)," + n(SP) + ")' [fiSc]; "
 			 // the heat plus the noise: 3..9 the palette's entry, else the zone (0..2)
-			 "[fiBc] [fiNc] lut2=c0='st(0,mod(x,64)/48-0.3+0.55*(y/255-0.5));if(gt(ld(0),0),3+min(6,floor(ld(0)*7.5)),floor(x/64))' [fiF]; "
-			 "[fiT] [fiSc] lut2=c0='gt(y,0)*gte(x,y)' [fiSp]; "
+			 "[fiBc] [fiNc] bplut2=c0='st(0,mod(x,64)/48-0.3+0.55*(y/255-0.5));if(gt(ld(0),0),3+min(6,floor(ld(0)*7.5)),floor(x/64))' [fiF]; "
+			 "[fiT] [fiSc] bplut2=c0='gt(y,0)*gte(x,y)' [fiSp]; "
 			 // the sparks where no flame is and in a zone (10 low, 11 high): every pixel's class, 0 the scene
-			 "[fiF] [fiSp] lut2=c0='if(gte(x,3),x,if(gt(x,0)*y,9+x,0))',split=3 [fic0] [fic1] [fic2]; ";
+			 "[fiF] [fiSp] bplut2=c0='if(gte(x,3),x,if(gt(x,0)*y,9+x,0))',split=3 [fic0] [fic1] [fic2]; ";
 		Yuv pal[12];
 		for (int k = 0; k < 7; k++) pal[3 + k] = yuv(FIRE[k]);
 		pal[10] = yuv(SPARK_LOW); pal[11] = yuv(SPARK_HIGH);
@@ -216,22 +216,22 @@ namespace bp
 			// nothing, else the class's colour
 			return g + "color=black:s=640x200:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [fiG]; "
 					   "color=black:s=320x100:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,4),3)+eq(mod(Y,4),3),1)',split [fiGu] [fiGv]; "
-					   "[fic0] scale=640:200:flags=neighbor [fic0s]; [fic0s] [fiG] lut2=c0='if(y,0,x)' [fic0g]; "
-					   "[fic0g] [fiay] lut2=c0=" + paint(&Yuv::y) + " [fiY]; "
-					   "[fic1] scale=320:100:flags=neighbor [fic1s]; [fic1s] [fiGu] lut2=c0='if(y,0,x)' [fic1g]; "
-					   "[fic1g] [fiau] lut2=c0=" + paint(&Yuv::u) + " [fiU]; "
-					   "[fic2] scale=320:100:flags=neighbor [fic2s]; [fic2s] [fiGv] lut2=c0='if(y,0,x)' [fic2g]; "
-					   "[fic2g] [fiav] lut2=c0=" + paint(&Yuv::v) + " [fiV]; "
+					   "[fic0] scale=640:200:flags=neighbor [fic0s]; [fic0s] [fiG] bplut2=c0='if(y,0,x)' [fic0g]; "
+					   "[fic0g] [fiay] bplut2=c0=" + paint(&Yuv::y) + " [fiY]; "
+					   "[fic1] scale=320:100:flags=neighbor [fic1s]; [fic1s] [fiGu] bplut2=c0='if(y,0,x)' [fic1g]; "
+					   "[fic1g] [fiau] bplut2=c0=" + paint(&Yuv::u) + " [fiU]; "
+					   "[fic2] scale=320:100:flags=neighbor [fic2s]; [fic2s] [fiGv] bplut2=c0='if(y,0,x)' [fic2g]; "
+					   "[fic2g] [fiav] bplut2=c0=" + paint(&Yuv::v) + " [fiV]; "
 					   "[fiY] [fiU] [fiV] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
 		}
 		// alone: the colours at 80x60 over the scene's stills; the luma scaled x8 and the grid's lines darker (a
 		// still, one frame), the chroma x4
 		return g + "movie=" + q(4) + " [fisy]; movie=" + q(5) + " [fisu]; movie=" + q(6) + " [fisv]; "
 				   "color=black:s=640x480:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [fiG]; "
-				   "[fic0] [fisy] lut2=c0=" + paint(&Yuv::y) + ",scale=640:480:flags=neighbor [fiY0]; "
-				   "[fiY0] [fiG] lut2=c0='if(y,16+(x-16)*0.4,x)' [fiY]; "
-				   "[fic1] [fisu] lut2=c0=" + paint(&Yuv::u) + ",scale=320:240:flags=neighbor [fiU]; "
-				   "[fic2] [fisv] lut2=c0=" + paint(&Yuv::v) + ",scale=320:240:flags=neighbor [fiV]; "
+				   "[fic0] [fisy] bplut2=c0=" + paint(&Yuv::y) + ",scale=640:480:flags=neighbor [fiY0]; "
+				   "[fiY0] [fiG] bplut2=c0='if(y,16+(x-16)*0.4,x)' [fiY]; "
+				   "[fic1] [fisu] bplut2=c0=" + paint(&Yuv::u) + ",scale=320:240:flags=neighbor [fiU]; "
+				   "[fic2] [fisv] bplut2=c0=" + paint(&Yuv::v) + ",scale=320:240:flags=neighbor [fiV]; "
 				   "[fiY] [fiU] [fiV] mergeplanes=0x001020:yuv420p [vo]";
 	}
 }

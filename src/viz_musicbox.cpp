@@ -208,7 +208,7 @@ namespace bp
 		// frames (tmix: ~65 ms), its falls over ~0.6 s (the exp/log lagfun, 16 values a frame)
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("mb") + ",tmix=frames=4,"
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("mb") + ",tmix=frames=4,"
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.75,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [mbl] [mbb]; "
 			 // each tooth's three columns its band's level, down the grid; padded to the atlas's width and stacked on it
@@ -218,28 +218,28 @@ namespace bp
 			 "[mbL] [mbA] vstack,split=" + n(overCover ? 3 : 4) + " [mbs0] [mbs1] [mbs2]" + (overCover ? "" : " [mbs3]") + "; "
 			 // the comb: each tooth's gold by its level, its tip straight or (loud) bent; the rail and the drum
 			 "[mbs0] crop=" + n(MW) + ":" + n(R) + ":0:0 [mbLv]; "
-			 "[mbLv] [mbC] lut2=c0='st(0,1+clip(round(7*(x-" + n(FLOOR) + ")/" + n(252 - FLOOR) + "),0,7));"
+			 "[mbLv] [mbC] bplut2=c0='st(0,1+clip(round(7*(x-" + n(FLOOR) + ")/" + n(252 - FLOOR) + "),0,7));"
 			 "if(eq(y,0),0,if(lt(y," + n(C_TIP) + "),ld(0),if(lt(y," + n(C_BENT) + "),if(lte(x," + n(BEND) + "),ld(0),0),"
 			 "if(lt(y," + n(C_RAIL) + "),if(gt(x," + n(BEND) + "),ld(0),0),if(eq(y," + n(C_RAIL) + "),18,19)))))' [mbK0]; "
 			 // the pins, 6 dots a second along the drum
 			 "[mbs1] crop=w=50:h=1:x='50-mod(floor(n/10),50)':y=" + n(R + PIN_ROW) + ",pad=" + n(MW) + ":" + n(R) + ":15:" + n(l.drum) +
 			 ":black [mbP]; "
-			 "[mbK0] [mbP] lut2=c0='if(y,y,x)' [mbK1]; "
+			 "[mbK0] [mbP] bplut2=c0='if(y,y,x)' [mbK1]; "
 			 // the notes: rising 22 rows in 2.5 s, swaying 2 dots each way; each dot's note (x 8) and its row's strength
 			 "[mbs2] crop=w=" + n(NCW) + ":h=" + n(RH) + ":x='2+round(2*sin(n/30))':y='" + n(R + NOTE_ROW + l.notesOff) +
 			 "+mod(floor(n*" + n(CYCLE) + "/150)," + n(CYCLE) + ")' [mbNc]; "
 			 "color=black:s=" + n(NCW) + "x" + n(RH) + ":r=1:d=1,format=gray,geq=lum='clip(round(4*(Y+" + n(l.notesOff) +
 			 "-4)/22),0,4)' [mbF]; "
-			 "[mbNc] [mbF] lut2=c0='if(x,x*8+y,0)' [mbNa]; "
+			 "[mbNc] [mbF] bplut2=c0='if(x,x*8+y,0)' [mbNa]; "
 			 "[mbb] crop=3:1:0:0,scale=1:1:flags=area,scale=" + n(NCW) + ":" + n(RH) + ":flags=neighbor [mbB]; "
 			 // a note is lit once the bass passes its threshold: 25% + 12% x its number
-			 "[mbNa] [mbB] lut2=c0='if(mod(x,8)*gt(y,63+30.24*(floor(x/8)-1)),13+mod(x,8),0)',pad=" + n(MW) + ":" + n(R) + ":" +
+			 "[mbNa] [mbB] bplut2=c0='if(mod(x,8)*gt(y,63+30.24*(floor(x/8)-1)),13+mod(x,8),0)',pad=" + n(MW) + ":" + n(R) + ":" +
 			 n(NX) + ":0:black [mbN]; "
-			 "[mbK1] [mbN] lut2=c0='if(y,y,x)'";
+			 "[mbK1] [mbN] bplut2=c0='if(y,y,x)'";
 		if (!overCover)
 			// the dancer: a pose four times a second
 			g += " [mbK2]; [mbs3] crop=w=" + n(PW) + ":h=" + n(PH) + ":x='" + n(PW) + "*mod(floor(n/15),4)':y=" + n(R) + ",pad=" +
-				 n(MW) + ":" + n(R) + ":36:11:black [mbD]; [mbK2] [mbD] lut2=c0='if(y,y,x)'";
+				 n(MW) + ":" + n(R) + ":36:11:black [mbD]; [mbK2] [mbD] bplut2=c0='if(y,y,x)'";
 		g += ",split=3 [mbc0] [mbc1] [mbc2]; ";
 
 		// each class's colour; 0 the scene's (or the art's), a note its colour blended over it by its strength
@@ -266,15 +266,15 @@ namespace bp
 			return e + std::string(close + 1, ')') + "'";
 		};
 		if (overCover)
-			return g + "[mbc0] scale=640:200:flags=neighbor [mbc0s]; [mbc0s] [mbay] lut2=c0=" + paint(&MbYuv::y) + " [mbY]; "
-					   "[mbc1] scale=320:100:flags=neighbor [mbc1s]; [mbc1s] [mbau] lut2=c0=" + paint(&MbYuv::u) + " [mbU]; "
-					   "[mbc2] scale=320:100:flags=neighbor [mbc2s]; [mbc2s] [mbav] lut2=c0=" + paint(&MbYuv::v) + " [mbW]; "
+			return g + "[mbc0] scale=640:200:flags=neighbor [mbc0s]; [mbc0s] [mbay] bplut2=c0=" + paint(&MbYuv::y) + " [mbY]; "
+					   "[mbc1] scale=320:100:flags=neighbor [mbc1s]; [mbc1s] [mbau] bplut2=c0=" + paint(&MbYuv::u) + " [mbU]; "
+					   "[mbc2] scale=320:100:flags=neighbor [mbc2s]; [mbc2s] [mbav] bplut2=c0=" + paint(&MbYuv::v) + " [mbW]; "
 					   "[mbY] [mbU] [mbW] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
 		// alone: the colours at 80x60 over the scene's stills; the luma scaled x8, the chroma x4
 		return g + "movie=" + q(3) + ",format=gray [mbsy]; movie=" + q(4) + ",format=gray [mbsu]; movie=" + q(5) + ",format=gray [mbsv]; "
-				   "[mbc0] [mbsy] lut2=c0=" + paint(&MbYuv::y) + ",scale=640:480:flags=neighbor [mbY]; "
-				   "[mbc1] [mbsu] lut2=c0=" + paint(&MbYuv::u) + ",scale=320:240:flags=neighbor [mbU]; "
-				   "[mbc2] [mbsv] lut2=c0=" + paint(&MbYuv::v) + ",scale=320:240:flags=neighbor [mbW]; "
+				   "[mbc0] [mbsy] bplut2=c0=" + paint(&MbYuv::y) + ",scale=640:480:flags=neighbor [mbY]; "
+				   "[mbc1] [mbsu] bplut2=c0=" + paint(&MbYuv::u) + ",scale=320:240:flags=neighbor [mbU]; "
+				   "[mbc2] [mbsv] bplut2=c0=" + paint(&MbYuv::v) + ",scale=320:240:flags=neighbor [mbW]; "
 				   "[mbY] [mbU] [mbW] mergeplanes=0x001020:yuv420p [vo]";
 	}
 }

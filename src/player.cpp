@@ -9,6 +9,7 @@
 #include "soundfx.h"
 #include "playlist.h"
 #include "theme.h"
+#include "vizcache.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -20,6 +21,7 @@
 #include <string>
 #include <sys/resource.h>
 #include <sys/stat.h>
+#include <thread>
 #include <unistd.h>
 
 namespace bp
@@ -1301,7 +1303,7 @@ namespace bp
 	void Player::setSettings(const Settings& s, bool persist)
 	{
 		for (auto& p : subStyleProperties(s.style)) prop(p.first.c_str(), p.second);
-		bool displayChanged = s.musicShow != settings.musicShow || s.visualizer != settings.visualizer;
+		bool displayChanged = s.musicShow != settings.musicShow || s.visualizer != settings.visualizer || s.vizFps != settings.vizFps;
 		bool infoChanged = s.songInfo != settings.songInfo;
 		bool loopChanged = s.loop != settings.loop;
 		bool soundChanged = s.eqOn != settings.eqOn || s.eqGains != settings.eqGains || s.soundFx != settings.soundFx;
@@ -2025,14 +2027,49 @@ namespace bp
 	{
 		// Circle's tables: made the first time it's wanted, beside the settings, else (none kept, or a folder a
 		// filter graph can't name) in /tmp. Tried again at the next song when they couldn't be written (a full card)
-		// (and the newer styles' stills, the same once: src/viz_more.h)
-		if (visualizerNeedsMaps(vis) && circleMaps.empty())
+		// (and the newer styles' stills, the same once: src/viz_more.h; and the folder for the lut tables of a style
+		// with none, Peaks or Pocket console)
+		if (circleMaps.empty() && (visualizerNeedsMaps(vis) || visualizerGraphMarked(vis, overCover).find("bplut") != std::string::npos))
 		{
 			std::string dir = lavfiSafePath(opts.stateDir) ? opts.stateDir : "/tmp/banana-player";
 			if (writeVisualizerMaps(dir)) circleMaps = dir;
 			else fprintf(stderr, "banana-player: the visualizers' stills couldn't be written in %s: drawn as Bars or Peaks\n", dir.c_str());
 		}
-		return visualizerGraph(vis, overCover, circleMaps);
+		// at the chosen frame rate; the lut and lut2 expressions as their lookups, read from their files
+		// (src/vizcache.h). Those not made yet keep their expressions this time and are made on a thread of their
+		// own, with every other style's the first time (so a change of style is quick from then on, this run and the
+		// next); files no style reads any more removed
+		std::string g = vizAtFps(visualizerGraphMarked(vis, overCover, circleMaps), settings.vizFps);
+		if (circleMaps.empty()) return vizPlainLuts(g);
+		std::vector<std::string> missing;
+		g = vizCacheLuts(g, circleMaps, &missing);
+		std::vector<std::string> graphs;
+		if (!lutsWarmed)
+		{
+			lutsWarmed = true;
+			for (int v : VIS_SHOWN)
+				for (int art = 0; art < 2; art++)
+				{
+					graphs.push_back(visualizerGraphMarked(v, art == 1, circleMaps));
+					for (const std::string& k : vizLutKeys(graphs.back())) missing.push_back(k);
+				}
+		}
+		if (!missing.empty())
+		{
+			std::string dir = circleMaps;
+			// (files only: the thread never touches the player)
+			std::thread([dir, missing, graphs] {
+#ifdef __linux__
+				setpriority(PRIO_PROCESS, 0, 10);	// (this thread alone, on Linux): the song's decoding first
+#endif
+				auto t0 = std::chrono::steady_clock::now();
+				vizWriteLuts(missing, dir);
+				if (!graphs.empty()) vizPruneLuts(dir, graphs);
+				fprintf(stderr, "music: %zu visualizer lookups checked or made in %.1f s\n", missing.size(),
+						std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count());
+			}).detach();
+		}
+		return g;
 	}
 
 	void Player::applyAudioDisplay()

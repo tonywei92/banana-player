@@ -191,14 +191,14 @@ namespace bp
 				 "[bbart2] crop=640:200:0:280,extractplanes=y+u+v [bbay] [bbau] [bbav]; ";
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + CUT) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("bb") +
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("bb") +
 			 ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray";
 
 		if (overCover)
 		{
 			// each pearl's lift (its level squared x 17 dots) over its 5 columns and down the strip's rows
-			g += ",lut=c0='round(pow(val/252,2)*17)',scale=" + n(W) + ":1:flags=neighbor,scale=" + n(W) + ":" + n(SH) +
+			g += ",bplut=c0='round(pow(val/252,2)*17)',scale=" + n(W) + ":1:flags=neighbor,scale=" + n(W) + ":" + n(SH) +
 				 ":flags=neighbor,setsar=1 [bbL]; movie=" + q(1) + ",format=gray [bbM]; ";
 			// a pearl dot: its row from the pearl's top (d) and its column (k): a round 5x5 (no corners), a milky rim
 			// round a dark 3x3 (its underside darker, a white highlight up left: it reads on dark art too); else the
@@ -210,16 +210,16 @@ namespace bp
 									   "if(eq(mod(ld(2),4),0)+eq(mod(ld(0),4),0)," + Y(C_FOAM) + ",if(eq(ld(2),3)," + Y(C_PBOT) +
 									   ",if(eq(ld(2),1)*eq(ld(0),1)," + Y(C_WHITE) + "," + Y(C_PTOP) + "))),"
 									   + fb + "))))'";
-			g += "[bbL] [bbM] lut2=c0=" + pearls + ",split=3 [bbc0] [bbc1] [bbc2]; ";
+			g += "[bbL] [bbM] bplut2=c0=" + pearls + ",split=3 [bbc0] [bbc1] [bbc2]; ";
 			// the art shows through where nothing (0); each plane the art's there, else the colour's
 			auto paint = [&](int BobaYuv::*plane) {
 				std::string e = "y";
 				for (int k : {C_WHITE, C_FOAM, C_SURF, C_TEA, C_PTOP, C_PBOT}) e = "if(eq(x," + n(c[k].y) + ")," + n(c[k].*plane) + "," + e + ")";
 				return "'" + e + "'";
 			};
-			return g + "[bbc0] scale=640:200:flags=neighbor [bbc0s]; [bbc0s] [bbay] lut2=c0=" + paint(&BobaYuv::y) + " [bbY]; "
-					   "[bbc1] scale=320:100:flags=neighbor [bbc1s]; [bbc1s] [bbau] lut2=c0=" + paint(&BobaYuv::u) + " [bbU]; "
-					   "[bbc2] scale=320:100:flags=neighbor [bbc2s]; [bbc2s] [bbav] lut2=c0=" + paint(&BobaYuv::v) + " [bbW]; "
+			return g + "[bbc0] scale=640:200:flags=neighbor [bbc0s]; [bbc0s] [bbay] bplut2=c0=" + paint(&BobaYuv::y) + " [bbY]; "
+					   "[bbc1] scale=320:100:flags=neighbor [bbc1s]; [bbc1s] [bbau] bplut2=c0=" + paint(&BobaYuv::u) + " [bbU]; "
+					   "[bbc2] scale=320:100:flags=neighbor [bbc2s]; [bbc2s] [bbav] bplut2=c0=" + paint(&BobaYuv::v) + " [bbW]; "
 					   "[bbY] [bbU] [bbW] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
 		}
 
@@ -227,14 +227,14 @@ namespace bp
 		// the surface: the mids (bands 4-9) times the still wave, rolled left ~14 dots a second; each column's offset
 		// 0..6 (3 at rest), as the preview's round(sin x mid x 2.5)
 		g += "[bbl1] crop=6:1:4:0,scale=1:1:flags=area,scale=" + n(W + WP) + ":1:flags=neighbor [bbmid]; movie=" + q(2) + ",format=gray [bbwv]; "
-			 "[bbmid] [bbwv] lut2=c0='clip(round(3+2.5*(x/252)*(y-128)/127),0,6)',crop=" + n(W) + ":1:x='mod(floor(n*14/60)," + n(WP) +
+			 "[bbmid] [bbwv] bplut2=c0='clip(round(3+2.5*(x/252)*(y-128)/127),0,6)',crop=" + n(W) + ":1:x='mod(floor(n*14/60)," + n(WP) +
 			 ")':y=0 [bbS]; ";
 		// the pearls: each one's lift (its level squared x 10), the front row's (bands 0-7) and the back row's (8-15)
 		// over their columns (3 each), front x 11 + back
-		g += "[bbl2] lut=c0='round(pow(val/252,2)*10)',split [bbp1] [bbp2]; "
+		g += "[bbl2] bplut=c0='round(pow(val/252,2)*10)',split [bbp1] [bbp2]; "
 			 "[bbp1] crop=8:1:0:0,scale=" + n(PCOLS) + ":1:flags=neighbor [bbpa]; "
 			 "[bbp2] crop=8:1:8:0,scale=" + n(PCOLS) + ":1:flags=neighbor [bbpb]; "
-			 "[bbpa] [bbpb] lut2=c0='x*11+y',pad=" + n(W) + ":1:" + n(PX0) + ":0 [bbP]; ";
+			 "[bbpa] [bbpb] bplut2=c0='x*11+y',pad=" + n(W) + ":1:" + n(PX0) + ":0 [bbP]; ";
 		// the two rows over the top and bottom halves (the surface moves in rows 17-23, the pearls in 42-53)
 		g += "[bbS] [bbP] vstack,scale=" + n(W) + ":" + n(H) + ":flags=neighbor,setsar=1 [bbst]; movie=" + q(0) + ",format=gray [bbM]; ";
 		// the mask's dot (y) against its column's state (x)
@@ -253,15 +253,15 @@ namespace bp
 								 ",if(eq(ld(0),ld(1))," + Y(C_SURF) + "," + Y(C_TEA) + "))";
 		std::string fixed = Y(C_COUNT - 1);
 		for (int k = C_COUNT - 2; k >= 0; k--) fixed = "if(eq(y," + n(k) + ")," + Y(k) + "," + fixed + ")";
-		g += "[bbst] [bbM] lut2=c0='if(lt(y," + n(M_FOAM) + ")," + fixed + ",if(lt(y," + n(M_PEARL) + ")," + foam + "," + pearl + "))' [bbF]; ";
+		g += "[bbst] [bbM] bplut2=c0='if(lt(y," + n(M_FOAM) + ")," + fixed + ",if(lt(y," + n(M_PEARL) + ")," + foam + "," + pearl + "))' [bbF]; ";
 		// the fizz: the treble (bands 11-15) against the still column, a bubble out when it's past 20%, 30%, .. 70% for
 		// the 1st .. 6th; slid up ~53 dots a second (over 42), placed on rows 6-50 and spread across; it whitens the
 		// straw's left side
 		const int FH = FIZZ_ROWS + FIZZ_GAP * FIZZ_N;
 		g += "[bbl3] crop=5:1:11:0,scale=1:1:flags=area,scale=1:" + n(FH) + ":flags=neighbor [bbtr]; movie=" + q(3) + ",format=gray [bbfz]; "
-			 "[bbtr] [bbfz] lut2=c0='255*gt(y,0)*gt(x,(0.1+0.1*y)*252)',crop=1:" + n(FIZZ_ROWS) + ":0:'mod(floor(n*53/60)," +
+			 "[bbtr] [bbfz] bplut2=c0='255*gt(y,0)*gt(x,(0.1+0.1*y)*252)',crop=1:" + n(FIZZ_ROWS) + ":0:'mod(floor(n*53/60)," +
 			 n(FIZZ_GAP * FIZZ_N) + ")',pad=1:" + n(H) + ":0:" + n(FIZZ_TOP) + ",scale=" + n(W) + ":" + n(H) + ":flags=neighbor,setsar=1 [bbZ]; "
-			 "[bbF] [bbZ] lut2=c0='if(gt(y,0)*eq(x," + Y(C_STRAW1) + ")," + Y(C_WHITE) + ",x)',split=3 [bby] [bbu] [bbw]; ";
+			 "[bbF] [bbZ] bplut2=c0='if(gt(y,0)*eq(x," + Y(C_STRAW1) + ")," + Y(C_WHITE) + ",x)',split=3 [bby] [bbu] [bbw]; ";
 		// the luma scaled x8; U and V looked up from it at 80x60, scaled x4
 		auto chroma = [&](int BobaYuv::*plane) {
 			std::string e = n(c[C_BG].*plane);
@@ -269,8 +269,8 @@ namespace bp
 			return "'" + e + "'";
 		};
 		g += "[bby] scale=640:480:flags=neighbor [bbY]; "
-			 "[bbu] lut=c0=" + chroma(&BobaYuv::u) + ",scale=320:240:flags=neighbor [bbU]; "
-			 "[bbw] lut=c0=" + chroma(&BobaYuv::v) + ",scale=320:240:flags=neighbor [bbW]; "
+			 "[bbu] bplut=c0=" + chroma(&BobaYuv::u) + ",scale=320:240:flags=neighbor [bbU]; "
+			 "[bbw] bplut=c0=" + chroma(&BobaYuv::v) + ",scale=320:240:flags=neighbor [bbW]; "
 			 "[bbY] [bbU] [bbW] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 		return g;
 	}

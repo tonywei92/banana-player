@@ -64,7 +64,11 @@ namespace bp
 	// mpv's lavfi-complex: the first audio track to the speakers and, drawn, to the picture; overCover: over the first
 	// video track (the art), on its lower part
 	// mapsDir: where writeCircleMaps put Circle's tables; without them Circle is drawn as Bars
-	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir = "");
+	// fps: the styles drawn at 60 a second (Pocket console, src/viz_*.cpp) drawn at 30 or 45 instead, as fast in
+	// seconds (vizAtFps, src/vizcache.h); Peaks and Circle are 30 at any setting
+	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir = "", int fps = 60);
+	// the same before vizAtFps, with its cacheable lut and lut2 marked (vizCacheLuts, src/vizcache.h, makes it a graph)
+	std::string visualizerGraphMarked(int vis, bool overCover, const std::string& mapsDir = "");
 	// Circle's tables, remap's xmap and ymap as 16-bit PGMs, in dir (made once, kept); false if they can't be written
 	bool writeCircleMaps(const std::string& dir);
 	// every style's stills into dir (Circle's tables, and what the six newer ones read): true when all are there

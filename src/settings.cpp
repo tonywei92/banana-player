@@ -1,5 +1,6 @@
 #include "settings.h"
 #include "viz_more.h"
+#include "vizcache.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -249,32 +250,32 @@ namespace bp
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + std::to_string(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=30:colors=white,crop=" + std::to_string(N) +
 			 ":256:0:0,scale=" + std::to_string(N) +
-			 ":1:flags=area,format=gray,lut=c0='val*252/255',split [pkv] [pkp]; "
+			 ":1:flags=area,format=gray,bplut=c0='val*252/255',split [pkv] [pkp]; "
 			 "[pkp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.8679,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*250)',format=gray," + stretch + " [pkP]; "
 			 "[pkv] " + stretch + " [pkV]; "
 			 "color=black:s=" + w + "x" + h + ":r=1:d=1,format=gray,geq=lum='if(gte(mod(X," + std::to_string(BW) + ")," +
 			 std::to_string(BW - 1) + "),253,1+floor(251*(" + h + "-1-Y)/(" + h + "-1)))' [pkR]; "
 			 // 254: a cap (over the cap's value, within cap steps of it), else the row's height (253: a gap)
-			 "[pkP] [pkR] lut2=c0='if(gt(y,x)*lte(y,x+" + cap + "),254,y)' [pkQ]; ";
+			 "[pkP] [pkR] bplut2=c0='if(gt(y,x)*lte(y,x+" + cap + "),254,y)' [pkQ]; ";
 		if (overCover)
 		{
 			// what each pixel is (0 nothing, 1 bar, 2 cap), then each plane: the art's where nothing, else a colour
 			auto paint = [](const char* bar, const char* capc) {
 				return std::string("'if(eq(x,0),y,if(eq(x,1),") + bar + "," + capc + "))'";
 			};
-			return g + "[pkV] [pkQ] lut2=c0='if(eq(y,254),2,if(lte(y,x)*lt(y,253),1,0))',split=3 [pkc0] [pkc1] [pkc2]; "
+			return g + "[pkV] [pkQ] bplut2=c0='if(eq(y,254),2,if(lte(y,x)*lt(y,253),1,0))',split=3 [pkc0] [pkc1] [pkc2]; "
 					   "[pkc0] scale=640:200:flags=neighbor [pkcy]; "
-					   "[pkcy] [pkay] lut2=c0=" + paint(bY.c_str(), cY.c_str()) + " [pkY]; "
-					   "[pkc1] [pkau] lut2=c0=" + paint(bU.c_str(), cU.c_str()) + " [pkU]; "
-					   "[pkc2] [pkav] lut2=c0=" + paint(bV.c_str(), cV.c_str()) + " [pkW]; "
+					   "[pkcy] [pkay] bplut2=c0=" + paint(bY.c_str(), cY.c_str()) + " [pkY]; "
+					   "[pkc1] [pkau] bplut2=c0=" + paint(bU.c_str(), cU.c_str()) + " [pkU]; "
+					   "[pkc2] [pkav] bplut2=c0=" + paint(bV.c_str(), cV.c_str()) + " [pkW]; "
 					   "[pkY] [pkU] [pkW] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
 		}
 		// the luma at half size, then U and V from it (a lut each) and the luma scaled up
-		g += "[pkV] [pkQ] lut2=c0='if(eq(y,254)," + cY + ",if(lte(y,x)*lt(y,253)," + bY + ",16))',split=3 [pky] [pku] [pkw]; "
+		g += "[pkV] [pkQ] bplut2=c0='if(eq(y,254)," + cY + ",if(lte(y,x)*lt(y,253)," + bY + ",16))',split=3 [pky] [pku] [pkw]; "
 			 "[pky] scale=640:480:flags=neighbor [pkY]; "
-			 "[pku] lut=c0='if(eq(val," + cY + ")," + cU + ",if(eq(val," + bY + ")," + bU + ",128))' [pkU]; "
-			 "[pkw] lut=c0='if(eq(val," + cY + ")," + cV + ",if(eq(val," + bY + ")," + bV + ",128))' [pkW]; "
+			 "[pku] bplut=c0='if(eq(val," + cY + ")," + cU + ",if(eq(val," + bY + ")," + bU + ",128))' [pkU]; "
+			 "[pkw] bplut=c0='if(eq(val," + cY + ")," + cV + ",if(eq(val," + bY + ")," + bV + ",128))' [pkW]; "
 			 "[pkY] [pkU] [pkW] mergeplanes=0x001020:yuv420p";
 		// a faint line every 96 pixels (white at 10%), over the bars too: four 1-pixel boxes
 		for (int y = 96; y < 480; y += 96) g += ",drawbox=x=0:y=" + std::to_string(y) + ":w=640:h=1:c=white@0.1:t=fill";
@@ -320,7 +321,7 @@ namespace bp
 		// unmeasured), and the bars move with it
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("pc", 1, "4", "1.5", "160") + ",split [pcv] [pcp]; "
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("pc", 1, "4", "1.5", "160") + ",split [pcv] [pcp]; "
 			 "[pcp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.9316,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*250)',format=gray," + stretch + " [pcP]; "
 			 // the bars themselves eased, as an LED meter's: up at once, down over ~0.15 s for the whole height (28 of
@@ -333,7 +334,7 @@ namespace bp
 			 n(L + N * BW - 2) + "),255,if(lt(Y," + t + ")+gte(Y," + n(T + BH) + ")+lt(X," + n(L) + ")+gte(X," + n(L + N * BW - 1) +
 			 ")+gte(mod(X-" + n(L) + "," + n(BW) + ")," + n(BW - 1) + "),253,1+floor(251*(" + n(T + BH - 1) + "-Y)/(" + bh + "-1))))' [pcR]; "
 			 // 254: a cap (one dot above the cap's value)
-			 "[pcP] [pcR] lut2=c0='if(lt(y,253)*gt(y,x)*lte(y,x+" + cap + "),254,y)' [pcQ]; "
+			 "[pcP] [pcR] bplut2=c0='if(lt(y,253)*gt(y,x)*lte(y,x+" + cap + "),254,y)' [pcQ]; "
 			 "";
 		if (overCover)
 		{
@@ -343,26 +344,26 @@ namespace bp
 			auto paint = [&](int dark, int midc) {
 				return "'if(eq(x,0),y,if(eq(x,1)," + n(dark) + "," + n(midc) + "))'";
 			};
-			return g + "[pcV] [pcQ] lut2=c0='if(gte(y,254),2,if(lte(y,x)*lt(y,253),if(gt(y,x*0.66),2,1),0))',split=3 [pcc0] [pcc1] [pcc2]; "
+			return g + "[pcV] [pcQ] bplut2=c0='if(gte(y,254),2,if(lte(y,x)*lt(y,253),if(gt(y,x*0.66),2,1),0))',split=3 [pcc0] [pcc1] [pcc2]; "
 					   "color=black:s=640x200:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [pcG]; "
 					   "color=black:s=320x100:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,4),3)+eq(mod(Y,4),3),1)',split [pcGu] [pcGv]; "
-					   "[pcc0] scale=640:200:flags=neighbor [pcc0s]; [pcc0s] [pcG] lut2=c0='if(y,0,x)' [pcc0g]; "
-					   "[pcc0g] [pcay] lut2=c0=" + paint(LY, BY) + " [pcY]; "
-					   "[pcc1] scale=320:100:flags=neighbor [pcc1s]; [pcc1s] [pcGu] lut2=c0='if(y,0,x)' [pcc1g]; "
-					   "[pcc1g] [pcau] lut2=c0=" + paint(LU, BU) + " [pcU]; "
-					   "[pcc2] scale=320:100:flags=neighbor [pcc2s]; [pcc2s] [pcGv] lut2=c0='if(y,0,x)' [pcc2g]; "
-					   "[pcc2g] [pcav] lut2=c0=" + paint(LV, BV) + " [pcW]; "
+					   "[pcc0] scale=640:200:flags=neighbor [pcc0s]; [pcc0s] [pcG] bplut2=c0='if(y,0,x)' [pcc0g]; "
+					   "[pcc0g] [pcay] bplut2=c0=" + paint(LY, BY) + " [pcY]; "
+					   "[pcc1] scale=320:100:flags=neighbor [pcc1s]; [pcc1s] [pcGu] bplut2=c0='if(y,0,x)' [pcc1g]; "
+					   "[pcc1g] [pcau] bplut2=c0=" + paint(LU, BU) + " [pcU]; "
+					   "[pcc2] scale=320:100:flags=neighbor [pcc2s]; [pcc2s] [pcGv] bplut2=c0='if(y,0,x)' [pcc2g]; "
+					   "[pcc2g] [pcav] bplut2=c0=" + paint(LV, BV) + " [pcW]; "
 					   "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
 		}
 		// each dot's green: a cap or the floor mid, a bar dark (its top third mid), else the screen
-		g += "[pcV] [pcQ] lut2=c0='if(gte(y,254)," + n(MY) + ",if(lte(y,x)*lt(y,253),if(gt(y,x*0.66)," + n(MY) + "," + n(DY) +
+		g += "[pcV] [pcQ] bplut2=c0='if(gte(y,254)," + n(MY) + ",if(lte(y,x)*lt(y,253),if(gt(y,x*0.66)," + n(MY) + "," + n(DY) +
 			 ")," + n(SY) + "))',split=3 [pcy] [pcu] [pcw]; "
 			 // the grid: the 8th line of every dot, across and down, a hair darker (a still picture, one frame)
 			 "color=black:s=640x" + n(ROWS * 8) + ":r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [pcG]; "
-			 "[pcy] scale=640:" + n(ROWS * 8) + ":flags=neighbor [pcY0]; [pcY0] [pcG] lut2=c0='if(y," + n(GY) + ",x)' [pcY]; "
-			 "[pcu] scale=320:" + n(ROWS * 4) + ":flags=neighbor,lut=c0='if(eq(val," + n(DY) + ")," + n(DU) + ",if(eq(val," + n(MY) +
+			 "[pcy] scale=640:" + n(ROWS * 8) + ":flags=neighbor [pcY0]; [pcY0] [pcG] bplut2=c0='if(y," + n(GY) + ",x)' [pcY]; "
+			 "[pcu] scale=320:" + n(ROWS * 4) + ":flags=neighbor,bplut=c0='if(eq(val," + n(DY) + ")," + n(DU) + ",if(eq(val," + n(MY) +
 			 ")," + n(MU) + "," + n(SU) + "))' [pcU]; "
-			 "[pcw] scale=320:" + n(ROWS * 4) + ":flags=neighbor,lut=c0='if(eq(val," + n(DY) + ")," + n(DV) + ",if(eq(val," + n(MY) +
+			 "[pcw] scale=320:" + n(ROWS * 4) + ":flags=neighbor,bplut=c0='if(eq(val," + n(DY) + ")," + n(DV) + ",if(eq(val," + n(MY) +
 			 ")," + n(MV) + "," + n(SV) + "))' [pcW]; "
 			 "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p [vo]";
 		return g;
@@ -403,7 +404,12 @@ namespace bp
 		return ok;
 	}
 
-	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir)
+	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir, int fps)
+	{
+		return vizPlainLuts(vizAtFps(visualizerGraphMarked(vis, overCover, mapsDir), fps));
+	}
+
+	std::string visualizerGraphMarked(int vis, bool overCover, const std::string& mapsDir)
 	{
 		if (vis == VIS_POCKET) return pocketGraph(overCover);
 		// the newer ones (a file each, src/viz_*.cpp); with no stills yet, as Peaks

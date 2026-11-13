@@ -46,32 +46,33 @@ namespace bp
 	{
 		// a new name whenever the stills change: they're cached by size
 		enum { F_HEAD, F_TROW, F_TCOL, F_HUE, F_DIST, PER = 5, F_ROW = 2 * PER, F_COL, NFILES };
-		const char* const FILES[NFILES] = {"lcat2-head-a.pgm", "lcat2-trow-a.pgm", "lcat2-tcol-a.pgm", "lcat2-hue-a.pgm",
-										   "lcat2-dist-a.pgm", "lcat2-head-s.pgm", "lcat2-trow-s.pgm", "lcat2-tcol-s.pgm",
-										   "lcat2-hue-s.pgm",  "lcat2-dist-s.pgm", "lcat2-row.pgm",	   "lcat2-col.pgm"};
+		const char* const FILES[NFILES] = {"lcat3-head-a.pgm", "lcat3-trow-a.pgm", "lcat3-tcol-a.pgm", "lcat3-hue-a.pgm",
+										   "lcat3-dist-a.pgm", "lcat3-head-s.pgm", "lcat3-trow-s.pgm", "lcat3-tcol-s.pgm",
+										   "lcat3-hue-s.pgm",  "lcat3-dist-s.pgm", "lcat3-row.pgm",	   "lcat3-col.pgm"};
 
-		// The cat: the owner's AI-made tall tabby, parsed with the owner's own settings (a 53x72 grid of 20.25x20 px
-		// cells, offset 2.5,5, each sampled at 55%/44% of the cell, box 30, bg 70, columns 8-41, rows from 13, the tile
-		// rows 39-56, point mode, snapped, with the owner's edits; palette as PAL below). The head, paws, collar and the
+		// The cat: the owner's AI-made tall tabby, parsed with the owner's newest settings (a 53x72 grid of 20.25x20 px
+		// cells, offset 2.5,5, sampled at the point (84%, 43%... sx 84, sy 43), box 30, bg 70, columns 8-41, rows from 13,
+		// the tile rows 39-56, point mode, snapped, with the owner's edits (8 cells cleared, the tile's stray sparkles
+		// outside the body among them); palette as PAL below). The head, paws, collar and the
 		// top of the body as drawn; then the body's tile (its stripes and spots), repeated down.
 		const int COLS = 34, HEADR = 26, TILER = 18;
 		const char* const HEAD[HEADR] = {
-			"                                  ", "         aaaa       aaaa          ", "        aaaaa       aaaa          ",
-			"       aallllaa   aallllaa        ", "       aallllaa   aallllaa        ", "       aalplllaaaaallpplaa        ",
-			"       aapppplmmmmmmppppaaa       ", "       aapppplmllmmmpppplla       ", "  y   aaap....mllmmllppplla       ",
-			" yyy  aa......mllmmllllllla       ", "  y   aa.......llllllllmmma    y  ", "    aa..............lllllllaa yyy ",
-			"    aa....aa......aalllllllaa  y  ", "    aa....aa......aa.llllllaa     ", "    aamm..aa......aa...mmmmaa     ",
-			"    aamm.....a..a.......lllaa     ", "    aa........aa..........laaa    ", "      aaa............aaaaallma    ",
-			"    aa...aa.........a......lma    ", "   aaa...aa.........a......lma    ", "   aa.....karrrrrrra....kkalma    ",
-			"   aa...kkkaaayyyaaa...kkkalma    ", "   aa..kkaaaaa.yyama..kkaaalla    ", "   aa..kkaalmayyyala..kkaallla    ",
-			"     aaaaa....aaa...aaaallllla    ", "     aaa a..........llllllllla    "};
+			"                                  ", "        aaaa        aaaa          ", "        aaaaa       aaaa          ",
+			"       allllaa    aallllaa        ", "       allllaa    aallllaa        ", "       alpplllaaaalllpplaa        ",
+			"       apppplmmmmmmmpppkaaa       ", "       apppplmmllmmmpppllaa       ", "  y   aapp...mmllmlllppllaa       ",
+			" yyy  a......mmllmlllllllaa       ", "  y   a........lllllllmmmaa    y  ", "    aa..............lllllllaa yyy ",
+			"    aa...aa.......aalllllllaa  y  ", "    aa...aa.......aa.llllllaa     ", "    aamm.aa.......aa..lmmmmaa     ",
+			"    aamm....a...a.......lllaa     ", "    aa.......aaa.........llaaa    ", "      aaa............aaaalllaa    ",
+			"    aa...a..........a......laa    ", "   aaa...a..........a......laa    ", "   al.....aarrrrrraa....kaalaa    ",
+			"   al..kkkaaaayyaaaa...kkaalaa    ", "   al.kkkaaaakyyyaaa..kkaaalaa    ", "   am.kkkaalayyyyaaa..kkalllaa    ",
+			"    aaaaaa....aaa...aaaallllaa    ", " y  aaaa a..........llllllllaa    "};
 		const char* const TILE[TILER] = {
-			"        aa..........llllllllla    ", "        aa............llmmmmma    ", "        aa............llmmmmma    ",
-			"        aa...k........llllllla    ", "        aa...k........llllllla    ", "        aa............llllllla    ",
-			"        aa........kk..llllllla    ", "        aa........kk..llmmmmma    ", "        aa............llmmmmma    ",
-			"        aa............llllllla    ", "        aa............llllllla    ", "        aa....k........lllllla    ",
-			"        aa.............lllmmma    ", "        aa.............lllmmma    ", "        aa.............lllmmma    ",
-			"        aa........kk...lllllla    ", "        aa.............lllllla    ", "        aa.............lllllla    "};
+			"        aa..........llllllllaa    ", "        aa............llmmmmaa    ", "        aa............llmmmmaa    ",
+			"        aa..kk........llllllaa    ", "        aa..kk........llllllaa    ", "        aa............llllllaa    ",
+			"        aa........kk..llllllaa    ", "        aa........kk..llmmmmaa    ", "        aa............llmmmmaa    ",
+			"        aa............llllllaa    ", "        aa............llllllaa    ", "        aa...kk........lllllaa    ",
+			"        aa.............llmmmaa    ", "        aa.............llmmmaa    ", "        aa.............llmmmaa    ",
+			"        aa........kk...lllllaa    ", "        aa.............lllllaa    ", "        aa.............lllllaa    "};
 		// the cat's classes 1-8, in this order
 		const char PALCH[8] = {'a', '.', 'l', 'm', 'p', 'r', 'y', 'k'};
 		const unsigned PAL[8] = {0x2a1e24, 0xfafafa, 0xcdcbd4, 0x888496, 0xf0828c, 0xd63a40, 0xecba28, 0xf6d6be};
@@ -321,7 +322,7 @@ namespace bp
 		// the 16 bands measured (the top 8 measured and cut off, as Pocket console), contrasted, eased (up at once, down
 		// over ~0.15 s: the exp/log lagfun)
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
-			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
+			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,bplut=c0='val*252/255'" +
 			 vizContrast("lc") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split [lclv] [lcd1]; ";
 		// the climb's position (cloud rows, wrapped): the loudness eased, the speed from it (capped), integrated per
@@ -337,46 +338,46 @@ namespace bp
 		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*x/252)";
 		g += "[lclv] transpose=2,scale=640:" + n(R) + ":flags=neighbor,pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
 			 "movie=" + q(F_DIST) + ",format=gray [lcdist]; "
-			 "[lclc] [lcdist] lut2=c0='if(y*lte(y," + wexp + "),1+min(" + n(STEPS - 1) + ",floor(" + n(STEPS) +
+			 "[lclc] [lcdist] bplut2=c0='if(y*lte(y," + wexp + "),1+min(" + n(STEPS - 1) + ",floor(" + n(STEPS) +
 			 "*(0.3+0.7*x/252)*(1-(y-1)/" + wexp + "))),0)' [lcmask]; ";
 		// its hues, the column of the moment (the drift)
 		g += "[lcd1] scale=" + n(HUES) + ":" + H + ":flags=neighbor [lcd1s]; movie=" + q(F_HUE) + ",format=gray [lchm]; "
-			 "[lcd1s] [lchm] lut2=c0='y',crop=1:" + H + ":x='mod(floor(n/" + n(HSTEP) + ")," + n(HUES) + ")':y=0,"
+			 "[lcd1s] [lchm] bplut2=c0='y',crop=1:" + H + ":x='mod(floor(n/" + n(HSTEP) + ")," + n(HUES) + ")':y=0,"
 			 "scale=640:" + H + ":flags=neighbor [lchue]; "
-			 "[lcmask] [lchue] lut2=c0='if(x," + n(LIGHT - 1) + "+x+" + n(STEPS) + "*y,0)' [lclight]; ";
+			 "[lcmask] [lchue] bplut2=c0='if(x," + n(LIGHT - 1) + "+x+" + n(STEPS) + "*y,0)' [lclight]; ";
 		// the cat: its body's rows the tile's shifted by the position (2/3 of it), under the head; put in its place,
 		// every screen column
 		g += "[lcp1] scale=" + n(COLS) + ":" + n(TR) + ":flags=neighbor [lcps]; movie=" + q(F_TROW) + ",format=gray [lctr]; "
 			 "movie=" + q(F_TCOL) + ",format=gray [lctc]; movie=" + q(F_HEAD) + ",format=gray [lchd]; "
-			 "[lcps] [lctr] lut2=c0='mod(y-floor(x*2/3)+" + n(TILER * 20) + "," + n(TILER) + ")' [lctr2]; "
-			 "[lctr2] [lctc] lut2=c0=" + tileExpr() + ",pad=" + n(COLS) + ":" + n(R) + ":0:" + n(HEADR) + " [lctl]; "
-			 "[lctl] [lchd] lut2=c0='if(y,y,x)',scale=" + n(COLS * L.P) + ":" + n(R) + ":flags=neighbor,"
+			 "[lcps] [lctr] bplut2=c0='mod(y-floor(x*2/3)+" + n(TILER * 20) + "," + n(TILER) + ")' [lctr2]; "
+			 "[lctr2] [lctc] bplut2=c0=" + tileExpr() + ",pad=" + n(COLS) + ":" + n(R) + ":0:" + n(HEADR) + " [lctl]; "
+			 "[lctl] [lchd] bplut2=c0='if(y,y,x)',scale=" + n(COLS * L.P) + ":" + n(R) + ":flags=neighbor,"
 			 "pad=640:" + H + ":" + n(L.ox * L.P) + ":" + n(L.oy) + ",setsar=1 [lccat]; "
-			 "[lccat] [lclight] lut2=c0='if(x,x,y)',split=3 [lck0] [lck1] [lck2]; ";
+			 "[lccat] [lclight] bplut2=c0='if(x,x,y)',split=3 [lck0] [lck1] [lck2]; ";
 
 		if (L.sky)	// the sky's classes: its row, or a cloud (the clouds' rows shifted by the position)
 			g += "[lcp2] scale=" + n(L.W) + ":" + H + ":flags=neighbor [lcp2s]; movie=" + q(F_ROW) + ",format=gray,split [lcrow1] [lcrow2]; "
 				 "movie=" + q(F_COL) + ",format=gray [lccol]; "
-				 "[lcp2s] [lcrow1] lut2=c0='mod(y-x+" + n(CLOUDP) + "," + n(CLOUDP) + ")' [lccr]; "
-				 "[lccr] [lccol] lut2=c0=" + cloudExpr() + " [lccl]; "
-				 "[lccl] [lcrow2] lut2=c0='if(x,59+x,y)',split=3 [lcs0] [lcs1] [lcs2]; "
+				 "[lcp2s] [lcrow1] bplut2=c0='mod(y-x+" + n(CLOUDP) + "," + n(CLOUDP) + ")' [lccr]; "
+				 "[lccr] [lccol] bplut2=c0=" + cloudExpr() + " [lccl]; "
+				 "[lccl] [lcrow2] bplut2=c0='if(x,59+x,y)',split=3 [lcs0] [lcs1] [lcs2]; "
 				 "[lcs0] scale=640:" + H + ":flags=neighbor [lcby]; [lcs1] scale=320:" + H + ":flags=neighbor [lcbu]; "
 				 "[lcs2] scale=320:" + H + ":flags=neighbor [lcbv]; ";
 
 		if (overCover)
-			return g + "[lck0] lut=c0=" + pack(&Yuvd::y) + ",scale=640:200:flags=neighbor [lcq0]; "
-					   "[lcq0] [lcby] lut2=c0=" + paint(&Yuvd::y, &Yuv::y) + " [lcY]; "
-					   "[lck1] scale=320:" + H + ":flags=neighbor,lut=c0=" + pack(&Yuvd::u) + ",scale=320:100:flags=neighbor [lcq1]; "
-					   "[lcq1] [lcbu] lut2=c0=" + paint(&Yuvd::u, &Yuv::u) + " [lcU]; "
-					   "[lck2] scale=320:" + H + ":flags=neighbor,lut=c0=" + pack(&Yuvd::v) + ",scale=320:100:flags=neighbor [lcq2]; "
-					   "[lcq2] [lcbv] lut2=c0=" + paint(&Yuvd::v, &Yuv::v) + " [lcV]; "
+			return g + "[lck0] bplut=c0=" + pack(&Yuvd::y) + ",scale=640:200:flags=neighbor [lcq0]; "
+					   "[lcq0] [lcby] bplut2=c0=" + paint(&Yuvd::y, &Yuv::y) + " [lcY]; "
+					   "[lck1] scale=320:" + H + ":flags=neighbor,bplut=c0=" + pack(&Yuvd::u) + ",scale=320:100:flags=neighbor [lcq1]; "
+					   "[lcq1] [lcbu] bplut2=c0=" + paint(&Yuvd::u, &Yuv::u) + " [lcU]; "
+					   "[lck2] scale=320:" + H + ":flags=neighbor,bplut=c0=" + pack(&Yuvd::v) + ",scale=320:100:flags=neighbor [lcq2]; "
+					   "[lcq2] [lcbv] bplut2=c0=" + paint(&Yuvd::v, &Yuv::v) + " [lcV]; "
 					   "[lcY] [lcU] [lcV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
-		return g + "[lck0] lut=c0=" + pack(&Yuvd::y) + " [lcq0]; "
-				   "[lcq0] [lcby] lut2=c0=" + paint(&Yuvd::y, &Yuv::y) + ",scale=640:480:flags=neighbor [lcY]; "
-				   "[lck1] scale=320:" + H + ":flags=neighbor,lut=c0=" + pack(&Yuvd::u) + " [lcq1]; "
-				   "[lcq1] [lcbu] lut2=c0=" + paint(&Yuvd::u, &Yuv::u) + ",scale=320:240:flags=neighbor [lcU]; "
-				   "[lck2] scale=320:" + H + ":flags=neighbor,lut=c0=" + pack(&Yuvd::v) + " [lcq2]; "
-				   "[lcq2] [lcbv] lut2=c0=" + paint(&Yuvd::v, &Yuv::v) + ",scale=320:240:flags=neighbor [lcV]; "
+		return g + "[lck0] bplut=c0=" + pack(&Yuvd::y) + " [lcq0]; "
+				   "[lcq0] [lcby] bplut2=c0=" + paint(&Yuvd::y, &Yuv::y) + ",scale=640:480:flags=neighbor [lcY]; "
+				   "[lck1] scale=320:" + H + ":flags=neighbor,bplut=c0=" + pack(&Yuvd::u) + " [lcq1]; "
+				   "[lcq1] [lcbu] bplut2=c0=" + paint(&Yuvd::u, &Yuv::u) + ",scale=320:240:flags=neighbor [lcU]; "
+				   "[lck2] scale=320:" + H + ":flags=neighbor,bplut=c0=" + pack(&Yuvd::v) + " [lcq2]; "
+				   "[lcq2] [lcbv] bplut2=c0=" + paint(&Yuvd::v, &Yuv::v) + ",scale=320:240:flags=neighbor [lcV]; "
 				   "[lcY] [lcU] [lcV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

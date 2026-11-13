@@ -252,7 +252,7 @@ namespace bp
 		// the 16 bands measured (the top 8 measured and cut off, as Pocket console), contrasted, eased (up at once, down
 		// over ~0.15 s: the exp/log lagfun), then the floor's row and the four averages
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
-			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
+			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,bplut=c0='val*252/255'" +
 			 vizContrast("dc") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=5 [dcf] [dcb] [dcl] [dcr] [dct]; "
 			 "[dcb] crop=3:1:0:0,scale=1:1:flags=area,split [dcb1] [dcb2]; "
@@ -263,7 +263,7 @@ namespace bp
 		const std::string variant = "(gte(x," + n(B1) + ")+gte(x," + n(B2) + ")+gte(x," + n(BM) + ")+gte(x," + n(B3) + "))";
 		g += "[dcb1] scale=" + W + ":" + H + ":flags=neighbor [dcbs]; movie=" + q(0) + ",format=gray,split [dcrow1] [dcrow2]; "
 			 "movie=" + q(1) + ",format=gray,split [dccol1] [dccol2]; "
-			 "[dcbs] [dcrow1] lut2=c0='if(between(y-" + R0 + ",0," + n(ROWS - 1) + ")," + variant + "*" + n(ROWS) + "+y-" + R0 + ",255)' [dcbv]; ";
+			 "[dcbs] [dcrow1] bplut2=c0='if(between(y-" + R0 + ",0," + n(ROWS - 1) + ")," + variant + "*" + n(ROWS) + "+y-" + R0 + ",255)' [dcbv]; ";
 		{
 			int top[5], feet[5], fy[5], legs[5], legR[5], shadow[5];
 			for (int v = 0; v < 5; v++)
@@ -298,7 +298,7 @@ namespace bp
 				"if(eq(ld(2)+round(3*" + sh + "),-ld(9))," + n(C_EDGE) + ",if(eq(ld(2)+round(3*" + sh + "),ld(9))," + n(C_PALE) + "," + n(C_BODY) + ")),"
 				// the shadow
 				"if(eq(ld(1)," + n(L.G + 2) + ")*lte(abs(ld(2))," + byVariant(shadow, 5) + ")," + n(C_SHADOW) + ",0)))))))";
-			g += "[dcbv] [dccol1] lut2=c0='" + body + "' [dcB]; ";
+			g += "[dcbv] [dccol1] bplut2=c0='" + body + "' [dcB]; ";
 
 			// the arms: one value, pose x 9 + left angle x 3 + right angle (0 down, 1 out, 2 up); with the row, the
 			// angles and the dot's row from the shoulder (-9..4) as one byte; with the column, the class
@@ -311,9 +311,9 @@ namespace bp
 			}
 			const std::string ang = "(gte(x," + n(A1) + ")+gte(x," + n(A2) + "))";
 			const std::string angY = "(gte(y," + n(A1) + ")+gte(y," + n(A2) + "))";
-			g += "[dcml] [dcmr] lut2=c0='3*" + ang + "+" + angY + "' [dcmm]; "
-				 "[dcb2] [dcmm] lut2=c0='9*" + pose + "+y',scale=" + W + ":" + H + ":flags=neighbor [dcas]; "
-				 "[dcas] [dcrow2] lut2=c0='st(0,floor(x/9));st(1,y-" + byVariant(sy, 4) + ");if(between(ld(1),-9,4),mod(x,9)*14+ld(1)+9,255)' [dcav0]; ";
+			g += "[dcml] [dcmr] bplut2=c0='3*" + ang + "+" + angY + "' [dcmm]; "
+				 "[dcb2] [dcmm] bplut2=c0='9*" + pose + "+y',scale=" + W + ":" + H + ":flags=neighbor [dcas]; "
+				 "[dcas] [dcrow2] bplut2=c0='st(0,floor(x/9));st(1,y-" + byVariant(sy, 4) + ");if(between(ld(1),-9,4),mod(x,9)*14+ld(1)+9,255)' [dcav0]; ";
 			// ld(0) the angle (this side's), ld(1) the row from the shoulder, ld(2) the dots out from the shoulder
 			// (1..8 the arm, 9 and 10 the glove), ld(3) the glove's row (up +)
 			const std::string arm =
@@ -323,7 +323,7 @@ namespace bp
 				"if(eq(x,255)+between(ld(4),-7,3),0,"
 				"if(between(ld(2),9,10)*between(-ld(1)-ld(3),0,1)," + n(C_GLOVE) + ","
 				"if(between(ld(2),1,8)*eq(-ld(1),if(eq(ld(0),2),ld(2),if(eq(ld(0),1),floor(ld(2)/2),-floor(ld(2)/2))))," + n(C_DARK) + ",0)))";
-			g += "[dcav0] [dccol2] lut2=c0='" + arm + "' [dcA]; ";
+			g += "[dcav0] [dccol2] bplut2=c0='" + arm + "' [dcA]; ";
 		}
 
 		// the floor: the levels over the tiles' columns, the back row's and the front's (half a tile on), down their rows
@@ -332,27 +332,27 @@ namespace bp
 			 "[dcf2] scale=" + tw + ":1:flags=neighbor,pad=" + W + ":1:" + n(L.x0 + L.stagger) + ":0 [dcff]; "
 			 "[dcfb] [dcff] vstack,scale=" + W + ":" + n(2 * L.tileH) + ":flags=neighbor,pad=" + W + ":" + H + ":0:" + n(L.floorTop) +
 			 ",setsar=1 [dcfl]; movie=" + q(2) + ",format=gray [dcfm]; "
-			 "[dcfl] [dcfm] lut2=c0='if(eq(y,0),0," + n(C_TILE) + "+mod(y-1,16)+16*gte(x,if(gte(y,17)," + n(F1) + "," + n(F0) + ")))' [dcF]; ";
+			 "[dcfl] [dcfm] bplut2=c0='if(eq(y,0),0," + n(C_TILE) + "+mod(y-1,16)+16*gte(x,if(gte(y,17)," + n(F1) + "," + n(F0) + ")))' [dcF]; ";
 		// the stars: the treble against the three phases, one shown (a new one 8 times a second)
 		g += "[dct] crop=4:1:12:0,scale=1:1:flags=area,scale=" + n(3 * L.W) + ":" + H + ":flags=neighbor [dcts]; "
 			 "movie=" + q(3) + ",format=gray [dcsm]; "
-			 "[dcts] [dcsm] lut2=c0='if(eq(y,0),0,if(gte(x," + n(S0) + "+" + n(S1) + "*mod(y-1,10)),if(lte(y,10)," + n(C_STAR) + "," +
+			 "[dcts] [dcsm] bplut2=c0='if(eq(y,0),0,if(gte(x," + n(S0) + "+" + n(S1) + "*mod(y-1,10)),if(lte(y,10)," + n(C_STAR) + "," +
 			 n(C_STARX) + "),0))',crop=" + W + ":" + H + ":x='" + W + "*mod(floor(n*8/60),3)':y=0 [dcS]; ";
 		// merged: the body and the floor (apart), the arms over them, the stars over all
-		g += "[dcB] [dcF] lut2=c0='x+y' [dcm1]; [dcm1] [dcA] lut2=c0='if(y,y,x)' [dcm2]; [dcm2] [dcS] lut2=c0='if(y,y,x)',split=3 [dcc0] [dcc1] [dcc2]; ";
+		g += "[dcB] [dcF] bplut2=c0='x+y' [dcm1]; [dcm1] [dcA] bplut2=c0='if(y,y,x)' [dcm2]; [dcm2] [dcS] bplut2=c0='if(y,y,x)',split=3 [dcc0] [dcc1] [dcc2]; ";
 
 		if (overCover)
 			return g + "movie=" + q(4) + ",format=gray [dcG]; "
-					   "[dcc0] scale=640:200:flags=neighbor [dcc0s]; [dcc0s] [dcG] lut2=c0='if(y,0,x)' [dcc0g]; "
-					   "[dcc0g] [dcay] lut2=c0=" + paint(&Yuv::y, "x", true) + " [dcY]; "
-					   "[dcc1] scale=320:100:flags=neighbor [dcc1s]; [dcc1s] [dcau] lut2=c0=" + paint(&Yuv::u, "x", true) + " [dcU]; "
-					   "[dcc2] scale=320:100:flags=neighbor [dcc2s]; [dcc2s] [dcav] lut2=c0=" + paint(&Yuv::v, "x", true) + " [dcV]; "
+					   "[dcc0] scale=640:200:flags=neighbor [dcc0s]; [dcc0s] [dcG] bplut2=c0='if(y,0,x)' [dcc0g]; "
+					   "[dcc0g] [dcay] bplut2=c0=" + paint(&Yuv::y, "x", true) + " [dcY]; "
+					   "[dcc1] scale=320:100:flags=neighbor [dcc1s]; [dcc1s] [dcau] bplut2=c0=" + paint(&Yuv::u, "x", true) + " [dcU]; "
+					   "[dcc2] scale=320:100:flags=neighbor [dcc2s]; [dcc2s] [dcav] bplut2=c0=" + paint(&Yuv::v, "x", true) + " [dcV]; "
 					   "[dcY] [dcU] [dcV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
 		return g + "movie=" + q(4) + ",format=gray [dcG]; "
-				   "[dcc0] lut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [dcY0]; "
-				   "[dcY0] [dcG] lut2=c0='if(y," + n(col[0].y) + ",x)' [dcY]; "
-				   "[dcc1] lut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [dcU]; "
-				   "[dcc2] lut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [dcV]; "
+				   "[dcc0] bplut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [dcY0]; "
+				   "[dcY0] [dcG] bplut2=c0='if(y," + n(col[0].y) + ",x)' [dcY]; "
+				   "[dcc1] bplut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [dcU]; "
+				   "[dcc2] bplut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [dcV]; "
 				   "[dcY] [dcU] [dcV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

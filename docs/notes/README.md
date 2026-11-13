@@ -7,6 +7,7 @@ Write the way the rest of the repo does: plain and precise, with the why. Say wh
 
 ## Index
 
+- [2026-11-13 visualizer lut cache](2026-11-13-viz-lut-cache.md): style changes slow on the handheld (lut2/lut configure); expressions cached as exact lookups; the remap form ruled out for its per-frame cost; the frame-rate setting.
 - [2026-11-11 reader memory](2026-11-11-reader-memory.md): the player and the manga reader, back and forth: no leak; glibc kept the freed pages (mmap threshold pinned); the engine restarted every five minutes inside Manga.
 - [2026-11-10 picture subtitles](2026-11-10-picture-subs.md): PGS/VobSub/DVB in the browser player; `/api/picsubs` windows, costs, test media.
 - [2026-11-10 play on](2026-11-10-play-on.md): the handheld picks where it plays; page names, the refused `play()` (`Blocked`) and how to test it headless.

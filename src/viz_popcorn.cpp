@@ -242,31 +242,31 @@ namespace bp
 		// the 16 bands measured (the top 8 measured and cut off, as Pocket console), contrasted; eased (up at once, down
 		// over ~0.15 s: the exp/log lagfun) for the pile and the lid, held longer (~0.9 s from the top) for the kernels
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
-			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
+			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,bplut=c0='val*252/255'" +
 			 vizContrast("pc") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',split [pce] [pch]; "
 			 "[pce] lagfun=decay=0.311,lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray" +
 			 (overCover ? " [pcl]; " : ",split [pcl] [pcb]; ") +
 			 "[pch] lagfun=decay=0.85,lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=3 [pch1] [pch2] [pch3]; ";
 
 		// the pile: the mean as the pile's height (+3, as the still), against the still
-		g += "[pcl] scale=1:1:flags=area,lut=c0='3+" + n(l.pileBase) + "+round(" + n(l.pileGain) + "*clip((val-" + n(FLOOR) +
+		g += "[pcl] scale=1:1:flags=area,bplut=c0='3+" + n(l.pileBase) + "+round(" + n(l.pileGain) + "*clip((val-" + n(FLOOR) +
 			 ")/" + range + ",0,1))',scale=" + n(W) + ":" + n(R) + ":flags=neighbor [pcpv]; movie=" + q(2 + S) + ",format=gray [pcpm]; "
-			 "[pcpm] [pcpv] lut2=c0='if(x*lte(floor(x/2),y)," + n(C_CREAM) + "+mod(x,2),0)' [pcP]; ";
+			 "[pcpm] [pcpv] bplut2=c0='if(x*lte(floor(x/2),y)," + n(C_CREAM) + "+mod(x,2),0)' [pcP]; ";
 
 		// the kernels: the three held values as one (bass + 6 x mids + 36 x treble digits), stacked over the atlas,
 		// the frame's window cropped by the frame number; a kernel lit once its group's digit reaches its step
 		g += "[pch1] crop=3:1:0:0,scale=1:1:flags=area [pchb]; [pch2] crop=6:1:4:0,scale=1:1:flags=area [pchm]; "
 			 "[pch3] crop=5:1:11:0,scale=1:1:flags=area [pcht]; "
-			 "[pchb] [pchm] lut2=c0='" + digit("x") + "+6*" + digit("y") + "' [pchbm]; "
-			 "[pchbm] [pcht] lut2=c0='x+36*" + digit("y") + "',scale=" + n(KW) + ":" + n(KH) + ":flags=neighbor [pcks]; "
+			 "[pchb] [pchm] bplut2=c0='" + digit("x") + "+6*" + digit("y") + "' [pchbm]; "
+			 "[pchbm] [pcht] bplut2=c0='x+36*" + digit("y") + "',scale=" + n(KW) + ":" + n(KH) + ":flags=neighbor [pcks]; "
 			 "movie=" + q(4 + S) + ",format=gray [pcka]; [pcks] [pcka] vstack,split [pck0] [pck1]; "
 			 "[pck0] crop=" + n(KW) + ":" + n(KH) + ":0:0 [pckv]; "
 			 "[pck1] crop=w=" + n(KW) + ":h=" + n(KH) + ":x=0:y='" + n(KH) + "*(1+mod(n," + n(F) + "))' [pckf]; "
-			 "[pckf] [pckv] lut2=c0='st(0,floor((x-1)/2));if(x*gte(mod(floor(y/pow(6,floor(ld(0)/5))),6),mod(ld(0),5)+1)," +
+			 "[pckf] [pckv] bplut2=c0='st(0,floor((x-1)/2));if(x*gte(mod(floor(y/pow(6,floor(ld(0)/5))),6),mod(ld(0),5)+1)," +
 			 n(C_CREAM) + "+mod(x-1,2),0)',pad=" + n(W) + ":" + n(R) + ":" + n(GX0) + ":" + n(KY) + ",setsar=1 [pcK]; ";
 
 		// merged over the scene: the pile, the kernels
-		g += "movie=" + q(S) + ",format=gray [pcsc]; [pcP] [pcsc] lut2=c0='if(x,x,y)' [pcm0]; [pcK] [pcm0] lut2=c0='if(x,x,y)'";
+		g += "movie=" + q(S) + ",format=gray [pcsc]; [pcP] [pcsc] bplut2=c0='if(x,x,y)' [pcm0]; [pcK] [pcm0] bplut2=c0='if(x,x,y)'";
 		if (overCover)
 			g += ",split=3 [pcc0] [pcc1] [pcc2]; ";	// no lid in the strip
 		else
@@ -274,11 +274,11 @@ namespace bp
 			g += " [pcm1]; [pcb] crop=3:1:0:0,scale=1:1:flags=area,scale=" + n(PHASES) + ":1:flags=neighbor [pcbb]; "
 				 "movie=" + q(7) + ",format=gray [pcph]; [pcbb] [pcph] vstack,split [pcr0] [pcr1]; "
 				 "[pcr0] crop=1:1:0:0 [pcrb]; [pcr1] crop=w=1:h=1:x='mod(n," + n(PHASES) + ")':y=1 [pcrp]; "
-				 "[pcrb] [pcrp] lut2=c0='if(gt(x," + n(FLOOR + (252 - FLOOR) * 60 / 100) + "),y,1)',scale=" + n(LW) + ":" + n(LH) +
+				 "[pcrb] [pcrp] bplut2=c0='if(gt(x," + n(FLOOR + (252 - FLOOR) * 60 / 100) + "),y,1)',scale=" + n(LW) + ":" + n(LH) +
 				 ":flags=neighbor [pcls]; movie=" + q(6) + ",format=gray [pclm]; "
-				 "[pclm] [pcls] lut2=c0='st(0,mod(floor(x/pow(4,y)),4));if(eq(ld(0),1)," + n(C_LID) + ",if(eq(ld(0),2)," + n(C_SIGN) +
+				 "[pclm] [pcls] bplut2=c0='st(0,mod(floor(x/pow(4,y)),4));if(eq(ld(0),1)," + n(C_LID) + ",if(eq(ld(0),2)," + n(C_SIGN) +
 				 ",if(eq(ld(0),3)," + n(C_DARK) + ",0)))',pad=" + n(W) + ":" + n(R) + ":" + n(LX) + ":" + n(LY) + ",setsar=1 [pcL]; "
-				 "[pcL] [pcm1] lut2=c0='if(x,x,y)',split=3 [pcc0] [pcc1] [pcc2]; ";
+				 "[pcL] [pcm1] bplut2=c0='if(x,x,y)',split=3 [pcc0] [pcc1] [pcc2]; ";
 
 		// a class's colour; the glass a tint over the room (or the art)
 		const Yuv room = yuv(PC_COLOURS[C_ROOM]);
@@ -298,13 +298,13 @@ namespace bp
 			return "'" + e + "'";
 		};
 		if (overCover)
-			return g + "[pcc0] scale=640:200:flags=neighbor [pcc0s]; [pcc0s] [pcay] lut2=c0=" + paint(&Yuv::y, "x", true) + " [pcY]; "
-					   "[pcc1] scale=320:100:flags=neighbor [pcc1s]; [pcc1s] [pcau] lut2=c0=" + paint(&Yuv::u, "x", true) + " [pcU]; "
-					   "[pcc2] scale=320:100:flags=neighbor [pcc2s]; [pcc2s] [pcav] lut2=c0=" + paint(&Yuv::v, "x", true) + " [pcV]; "
+			return g + "[pcc0] scale=640:200:flags=neighbor [pcc0s]; [pcc0s] [pcay] bplut2=c0=" + paint(&Yuv::y, "x", true) + " [pcY]; "
+					   "[pcc1] scale=320:100:flags=neighbor [pcc1s]; [pcc1s] [pcau] bplut2=c0=" + paint(&Yuv::u, "x", true) + " [pcU]; "
+					   "[pcc2] scale=320:100:flags=neighbor [pcc2s]; [pcc2s] [pcav] bplut2=c0=" + paint(&Yuv::v, "x", true) + " [pcV]; "
 					   "[pcY] [pcU] [pcV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
-		return g + "[pcc0] lut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [pcY]; "
-				   "[pcc1] lut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [pcU]; "
-				   "[pcc2] lut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [pcV]; "
+		return g + "[pcc0] bplut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [pcY]; "
+				   "[pcc1] bplut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [pcU]; "
+				   "[pcc2] bplut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [pcV]; "
 				   "[pcY] [pcU] [pcV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

@@ -397,7 +397,11 @@ Songs show their title, artist and album on the top screen. While a song plays:
 
 Settings › Music has the same two choices as **Music display** and **Visualizer**, and **Song info on top** (off by
 default): the song's title, artist and album over the top screen's picture, each line cut with "…" if it's too long.
-With it off the picture shows alone; **None** still shows the title, since that's all it shows.
+With it off the picture shows alone; **None** still shows the title, since that's all it shows. **Visualizer frame
+rate** (30, 45 or 60 fps; 45 by default) is how often the styles drawn at 60 (Pocket console and the pixel-art scenes)
+draw: everything moves at the same speed at any rate, only less smoothly at 30, which leaves the handheld more time
+for the sound. Peaks and Circle draw 30 a second at any setting. A style comes up quicker from the second time it's
+used: its lookup tables are worked out once in the background and kept beside the settings.
 
 ## Sound: equalizer and effects
 

@@ -150,7 +150,7 @@ namespace bp
 		// (level^1.5: a quiet passage near flat, a loud one high), so the sea moves with the music, not just on it
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
 			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,lut=c0='val*252/255'" + vizContrast("se", 1, "6", "2.2", "150") + ","
+			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("se", 1, "6", "2.2", "150") + ","
 			 "format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=3 [sel1] [sel2] [sel3]; "
 			 "[sel1] crop=3:1:0:0,scale=1:1:flags=area,scale=" + n(W + P1) + ":1:flags=neighbor [sebass]; "
@@ -159,15 +159,15 @@ namespace bp
 			 "movie=" + q(3) + " [sews]; movie=" + q(4) + " [sewc]; movie=" + q(5) + " [sewf]; "
 			 // the swell's height (eighths of a row) and the chop's (around 128), each column; rolled sideways: the
 			 // swell right ~16 pixels a second, the chop left ~9, the foam's sparkle left 10
-			 "[sebass] [sews] lut2=c0='clip(round(8*" + f(K) + "*(2+20*pow(x/252,1.5))*y/255),0,255)',crop=" + n(W) + ":1:x='" + n(P1 - 1) +
+			 "[sebass] [sews] bplut2=c0='clip(round(8*" + f(K) + "*(2+20*pow(x/252,1.5))*y/255),0,255)',crop=" + n(W) + ":1:x='" + n(P1 - 1) +
 			 "-mod(floor(n*16/60)," + n(P1) + ")':y=0 [sea]; "
-			 "[semid] [sewc] lut2=c0='clip(round(128+8*" + f(K) + "*(0.5+5.5*pow(x/252,1.5))*(y-128)/127),0,255)',crop=" + n(W) +
+			 "[semid] [sewc] bplut2=c0='clip(round(128+8*" + f(K) + "*(0.5+5.5*pow(x/252,1.5))*(y-128)/127),0,255)',crop=" + n(W) +
 			 ":1:x='mod(floor(n*9/60)," + n(P2) + ")':y=0 [seb]; "
 			 // foam where the noise is under the treble's share (none when it's quiet)
-			 "[setre] [sewf] lut2=c0='128*lt(y,clip((x-130)*2.5,0,170))',crop=" + n(W) + ":1:x='mod(floor(n/6)," + n(PF) + ")':y=0 [sefo]; "
+			 "[setre] [sewf] bplut2=c0='128*lt(y,clip((x-130)*2.5,0,170))',crop=" + n(W) + ":1:x='mod(floor(n/6)," + n(PF) + ")':y=0 [sefo]; "
 			 // the surface's row, each column
-			 "[sea] [seb] lut2=c0='clip(round(" + n(BASE) + "-x/8-(y-128)/8),0," + n(rows - 1) + ")',split [ses1] [ses2]; "
-			 "[ses1] [sefo] lut2=c0='x+y',scale=" + n(W) + ":" + R + ":flags=neighbor,setsar=1 [sesf]; "
+			 "[sea] [seb] bplut2=c0='clip(round(" + n(BASE) + "-x/8-(y-128)/8),0," + n(rows - 1) + ")',split [ses1] [ses2]; "
+			 "[ses1] [sefo] bplut2=c0='x+y',scale=" + n(W) + ":" + R + ":flags=neighbor,setsar=1 [sesf]; "
 			 // the boat's waterline: the surface under it in two halves, a line between them at a third of their slant,
 			 // placed at its columns
 			 "[ses2] crop=" + n(BW) + ":1:" + n(BX0) + ":0,split [seh1] [seh2]; "
@@ -178,16 +178,16 @@ namespace bp
 			 ":0,scale=" + n(W) + ":" + R + ":flags=neighbor,setsar=1 [sebl]; "
 			 "movie=" + q(overCover ? 8 : 6) + ",split [ser1] [ser2]; movie=" + q(7) + (overCover ? ",crop=" + n(W) + ":" + R + ":0:0" : "") + " [secol]; "
 			 // each pixel: 0 above the surface, 1 the crest, 2 foam on it, 3.. under it (2 + its depth in rows)
-			 "[sesf] [ser1] lut2=c0='if(lt(y,x-128*gte(x,128)),0,if(eq(y,x-128*gte(x,128)),1+gte(x,128),min(2+y-x+128*gte(x,128),199)))' [sek]; "
+			 "[sesf] [ser1] bplut2=c0='if(lt(y,x-128*gte(x,128)),0,if(eq(y,x-128*gte(x,128)),1+gte(x,128),min(2+y-x+128*gte(x,128),199)))' [sek]; "
 			 // the boat: each pixel's row from its waterline (64 on it), then its part by that and the column: 1 the
 			 // hull, 2 its deck, 3 the mast, 4 the sail, 5 under the hull (water where the wave falls away)
-			 "[sebl] [ser2] lut2=c0='clip(y-x+64,0,255)' [serel]; "
-			 "[serel] [secol] lut2=c0='st(0,x-64);st(1,y-" + n(BOATX) + ");"
+			 "[sebl] [ser2] bplut2=c0='clip(y-x+64,0,255)' [serel]; "
+			 "[serel] [secol] bplut2=c0='st(0,x-64);st(1,y-" + n(BOATX) + ");"
 			 "if(eq(ld(1),0)*between(ld(0),-15,-4),3,"
 			 "if(between(ld(0),-14,-5)*between(ld(1),1,floor((ld(0)+15)*0.65)),4,"
 			 "if(between(ld(0),-3,0)*lte(abs(ld(1)),5-ld(0)),if(eq(ld(0),-3),2,1),"
 			 "if(between(ld(0),1,6)*lte(abs(ld(1)),5),5,0))))' [sebc]; "
-			 "[sek] [sebc] lut2=c0='if(eq(y,0),x,if(eq(y,5),if(eq(x,0),5,x),200+y))',split=3 [sec0] [sec1] [sec2]; ";
+			 "[sek] [sebc] bplut2=c0='if(eq(y,0),x,if(eq(y,5),if(eq(x,0),5,x),200+y))',split=3 [sec0] [sec1] [sec2]; ";
 
 		// each plane's colour by class: x the class, y the scene's (or the art's) pixel
 		const SeaYuv shallow = yuvOf(50, 140, 200), deep = yuvOf(20, 70, 140), crest = yuvOf(CREST), foamC = yuvOf(FOAM),
@@ -200,14 +200,14 @@ namespace bp
 				   ",if(eq(x,201)," + n(hull.*c) + ",if(eq(x,202)," + n(deck.*c) + ",if(eq(x,203)," + n(mast.*c) + "," + n(sail.*c) + ")))))))'";
 		};
 		if (overCover)
-			return g + "[sec0] scale=640:200:flags=neighbor [sec0s]; [sec0s] [seay] lut2=c0=" + paint(&SeaYuv::y) + " [seY]; "
-					   "[sec1] scale=320:100:flags=neighbor [sec1s]; [sec1s] [seau] lut2=c0=" + paint(&SeaYuv::u) + " [seU]; "
-					   "[sec2] scale=320:100:flags=neighbor [sec2s]; [sec2s] [seav] lut2=c0=" + paint(&SeaYuv::v) + " [seV]; "
+			return g + "[sec0] scale=640:200:flags=neighbor [sec0s]; [sec0s] [seay] bplut2=c0=" + paint(&SeaYuv::y) + " [seY]; "
+					   "[sec1] scale=320:100:flags=neighbor [sec1s]; [sec1s] [seau] bplut2=c0=" + paint(&SeaYuv::u) + " [seU]; "
+					   "[sec2] scale=320:100:flags=neighbor [sec2s]; [sec2s] [seav] bplut2=c0=" + paint(&SeaYuv::v) + " [seV]; "
 					   "[seY] [seU] [seV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
 		return g + "movie=" + q(0) + " [sesy]; movie=" + q(1) + " [sesu]; movie=" + q(2) + " [sesv]; "
-				   "[sec0] [sesy] lut2=c0=" + paint(&SeaYuv::y) + ",scale=640:480:flags=neighbor [seY]; "
-				   "[sec1] [sesu] lut2=c0=" + paint(&SeaYuv::u) + ",scale=320:240:flags=neighbor [seU]; "
-				   "[sec2] [sesv] lut2=c0=" + paint(&SeaYuv::v) + ",scale=320:240:flags=neighbor [seV]; "
+				   "[sec0] [sesy] bplut2=c0=" + paint(&SeaYuv::y) + ",scale=640:480:flags=neighbor [seY]; "
+				   "[sec1] [sesu] bplut2=c0=" + paint(&SeaYuv::u) + ",scale=320:240:flags=neighbor [seU]; "
+				   "[sec2] [sesv] bplut2=c0=" + paint(&SeaYuv::v) + ",scale=320:240:flags=neighbor [seV]; "
 				   "[seY] [seU] [seV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }

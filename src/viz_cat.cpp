@@ -366,7 +366,7 @@ namespace bp
 		// the 16 bands measured (the top 8 measured and cut off, as Pocket console), contrasted, eased (up at once, down
 		// over ~0.15 s: the exp/log lagfun), then the four values
 		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=24x256:mode=bar:cmode=combined:ascale=log:"
-			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,lut=c0='val*252/255'" +
+			 "fscale=log:win_size=1024:rate=60:colors=white,crop=16:256:0:0,scale=16:1:flags=area,format=gray,bplut=c0='val*252/255'" +
 			 vizContrast("ct") + ",format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
 			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray,split=4 [ctb] [ctm] [ctt] [ctl]; "
 			 "[ctb] crop=3:1:0:0,scale=1:1:flags=area [ctb1]; [ctm] crop=6:1:4:0,scale=1:1:flags=area,split [ctm1] [ctm2]; "
@@ -374,10 +374,10 @@ namespace bp
 
 		// the head: the state (bob x 4 + ear x 2 + eyes), against the rows: the variant x 12 + the head's row (255
 		// outside); against the columns: the class
-		g += "[ctb1] [ctt1] lut2=c0='4*(gte(x," + n(B1) + ")+gte(x," + n(B2) + "))+2*gt(y," + n(EAR) + ")' [ctbt]; "
-			 "[ctbt] [ctl1] lut2=c0='x+gt(y," + n(LOUD) + ")',scale=" + W + ":" + H + ":flags=neighbor [cts]; "
+		g += "[ctb1] [ctt1] bplut2=c0='4*(gte(x," + n(B1) + ")+gte(x," + n(B2) + "))+2*gt(y," + n(EAR) + ")' [ctbt]; "
+			 "[ctbt] [ctl1] bplut2=c0='x+gt(y," + n(LOUD) + ")',scale=" + W + ":" + H + ":flags=neighbor [cts]; "
 			 "movie=" + q(1) + ",format=gray [ctrow]; movie=" + q(2) + ",format=gray [ctcol]; "
-			 "[cts] [ctrow] lut2=c0='st(0,y-" + n(OFF + HY0) + "-floor(x/4));if(between(ld(0),0," + n(HR - 1) + "),mod(x,4)*" + n(HR) +
+			 "[cts] [ctrow] bplut2=c0='st(0,y-" + n(OFF + HY0) + "-floor(x/4));if(between(ld(0),0," + n(HR - 1) + "),mod(x,4)*" + n(HR) +
 			 "+ld(0),255)' [cth]; ";
 		{
 			std::string rows = "0";
@@ -386,38 +386,38 @@ namespace bp
 				long long mask = headRow(k / HR, k % HR);
 				if (mask) rows = "if(eq(x," + n(k) + ")," + n(mask) + "," + rows + ")";
 			}
-			g += "[cth] [ctcol] lut2=c0='st(1,y-" + n(OFF + CX - 7) + ");st(0,if(eq(x,255)+lt(ld(1),0)+gt(ld(1)," + n(HC - 1) +
+			g += "[cth] [ctcol] bplut2=c0='st(1,y-" + n(OFF + CX - 7) + ");st(0,if(eq(x,255)+lt(ld(1),0)+gt(ld(1)," + n(HC - 1) +
 				 "),0,mod(floor((" + rows + ")/pow(8,ld(1))),8)));if(ld(0)," + n(C_CAT - 1) + "+ld(0),0)' [ctH]; ";
 		}
 		// the tail: the mids' width step against the atlas, the moment by the frame number
 		g += "[ctm1] scale=" + n(TW * TPH) + ":" + n(TH) + ":flags=neighbor [ctms]; movie=" + q(6) + ",format=gray [cttm]; "
-			 "[ctms] [cttm] lut2=c0='st(0,mod(floor(y/pow(4,gte(x," + n(M1) + ")+gte(x," + n(M2) + ")+gte(x," + n(M3) + "))),4));"
+			 "[ctms] [cttm] bplut2=c0='st(0,mod(floor(y/pow(4,gte(x," + n(M1) + ")+gte(x," + n(M2) + ")+gte(x," + n(M3) + "))),4));"
 			 "if(eq(ld(0),1)," + n(C_CAT) + ",if(eq(ld(0),2)," + n(C_DARK) + ",0))',"
 			 "crop=" + n(TW) + ":" + n(TH) + ":x='" + n(TW) + "*mod(floor(n/" + n(TSTEP) + ")," + n(TPH) + ")':y=0,"
 			 "pad=" + W + ":" + H + ":" + n(TX + L.dx) + ":" + n(TY + L.dy) + ",setsar=1 [ctT]; ";
 		// the notes: each past its own treble threshold
 		g += "[ctt2] scale=" + n(NW * NPH) + ":" + n(NH) + ":flags=neighbor [ctts]; movie=" + q(7) + ",format=gray [ctnm]; "
-			 "[ctts] [ctnm] lut2=c0='if(eq(y,0),0,if(gte(x," + n(NOTE0) + "+" + n(NOTE1) + "*floor((y-1)/4))," + n(C_NOTE) +
+			 "[ctts] [ctnm] bplut2=c0='if(eq(y,0),0,if(gte(x," + n(NOTE0) + "+" + n(NOTE1) + "*floor((y-1)/4))," + n(C_NOTE) +
 			 "+mod(y-1,4),0))',crop=" + n(NW) + ":" + n(NH) + ":x='" + n(NW) + "*mod(floor(n/" + n(NSTEP) + ")," + n(NPH) + ")':y=0,"
 			 "pad=" + W + ":" + H + ":" + n(NX + L.dx) + ":" + n(NY + L.dy) + ",setsar=1 [ctN]; ";
 		// the steam: always rising, a step stronger while the mids are up
 		g += "[ctm2] scale=" + n(SW * SPH) + ":" + n(SH) + ":flags=neighbor [ctss]; movie=" + q(8) + ",format=gray [ctsm]; "
-			 "[ctss] [ctsm] lut2=c0='if(y," + n(C_STEAM) + "+y-1+gte(x," + n(M2) + "),0)',"
+			 "[ctss] [ctsm] bplut2=c0='if(y," + n(C_STEAM) + "+y-1+gte(x," + n(M2) + "),0)',"
 			 "crop=" + n(SW) + ":" + n(SH) + ":x='" + n(SW) + "*mod(floor(n/" + n(SSTEP) + ")," + n(SPH) + ")':y=0,"
 			 "pad=" + W + ":" + H + ":" + n(SX + L.dx) + ":" + n(SY + L.dy) + ",setsar=1 [ctV0]; ";
 		// merged over the scene: the tail, the steam, the head, the notes
-		g += "movie=" + q(0) + ",format=gray [ctsc]; [ctT] [ctsc] lut2=c0='if(x,x,y)' [ctm0x]; "
-			 "[ctV0] [ctm0x] lut2=c0='if(x,x,y)' [ctm1x]; [ctH] [ctm1x] lut2=c0='if(x,x,y)' [ctm2x]; "
-			 "[ctN] [ctm2x] lut2=c0='if(x,x,y)',split=3 [ctc0] [ctc1] [ctc2]; ";
+		g += "movie=" + q(0) + ",format=gray [ctsc]; [ctT] [ctsc] bplut2=c0='if(x,x,y)' [ctm0x]; "
+			 "[ctV0] [ctm0x] bplut2=c0='if(x,x,y)' [ctm1x]; [ctH] [ctm1x] bplut2=c0='if(x,x,y)' [ctm2x]; "
+			 "[ctN] [ctm2x] bplut2=c0='if(x,x,y)',split=3 [ctc0] [ctc1] [ctc2]; ";
 
 		if (overCover)
-			return g + "[ctc0] scale=640:200:flags=neighbor [ctc0s]; [ctc0s] [ctay] lut2=c0=" + paint(&Yuv::y, "x", true) + " [ctY]; "
-					   "[ctc1] scale=320:100:flags=neighbor [ctc1s]; [ctc1s] [ctau] lut2=c0=" + paint(&Yuv::u, "x", true) + " [ctU]; "
-					   "[ctc2] scale=320:100:flags=neighbor [ctc2s]; [ctc2s] [ctav] lut2=c0=" + paint(&Yuv::v, "x", true) + " [ctV]; "
+			return g + "[ctc0] scale=640:200:flags=neighbor [ctc0s]; [ctc0s] [ctay] bplut2=c0=" + paint(&Yuv::y, "x", true) + " [ctY]; "
+					   "[ctc1] scale=320:100:flags=neighbor [ctc1s]; [ctc1s] [ctau] bplut2=c0=" + paint(&Yuv::u, "x", true) + " [ctU]; "
+					   "[ctc2] scale=320:100:flags=neighbor [ctc2s]; [ctc2s] [ctav] bplut2=c0=" + paint(&Yuv::v, "x", true) + " [ctV]; "
 					   "[ctY] [ctU] [ctV] mergeplanes=0x001020:yuv420p,setsar=1 [strip]; [top] [strip] vstack [vo]";
-		return g + "[ctc0] lut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [ctY]; "
-				   "[ctc1] lut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [ctU]; "
-				   "[ctc2] lut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [ctV]; "
+		return g + "[ctc0] bplut=c0=" + paint(&Yuv::y, "val", false) + ",scale=640:480:flags=neighbor [ctY]; "
+				   "[ctc1] bplut=c0=" + paint(&Yuv::u, "val", false) + ",scale=320:240:flags=neighbor [ctU]; "
+				   "[ctc2] bplut=c0=" + paint(&Yuv::v, "val", false) + ",scale=320:240:flags=neighbor [ctV]; "
 				   "[ctY] [ctU] [ctV] mergeplanes=0x001020:yuv420p,setsar=1 [vo]";
 	}
 }
