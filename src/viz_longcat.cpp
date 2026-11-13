@@ -8,8 +8,9 @@
 // (aintegral, in doubles) and wrapped to the clouds' 243 rows (the tile's 18 go into 162 = 243 / 1.5 evenly). That
 // position reaches the picture through astats' metadata (the last value of each 160 samples) and adrawgraph, whose colour
 // expression is the value itself: a 1x1 picture at 60 frames a second whose red is the position, exactly.
-// The music also lights the cat: a rainbow light on both sides of every row (ears, cheeks, paws, body), hugging its
-// outline, each row a band (the bass at the bottom, the treble at the ears), 8..120 pixels wide and brighter as its band
+// The music also lights the cat: a rainbow bar on both sides, one thin row a band (the bass at the bottom, the
+// treble at the ears), each reaching out from the cat's widest edge so equal levels end level (filled in to the
+// cat where it's narrower), 8..120 pixels wide and brighter as its band
 // plays (both on a curve, so a quiet row stays short and faint and a loud one shoots out), solid to its tip (no
 // fade: the owner's call); its hue band x 24 degrees at full saturation, deep enough to stand out on the pale sky, drifting round.
 // A frame: the 16 bands measured, contrasted and eased (as Pocket console's bars). Then, at 640 x the cat's rows (one
@@ -47,9 +48,9 @@ namespace bp
 	{
 		// a new name whenever the stills change: they're cached by size
 		enum { F_HEAD, F_TROW, F_TCOL, F_HUE, F_DIST, PER = 5, F_ROW = 2 * PER, F_COL, NFILES };
-		const char* const FILES[NFILES] = {"lcat4-head-a.pgm", "lcat4-trow-a.pgm", "lcat4-tcol-a.pgm", "lcat4-hue-a.pgm",
-										   "lcat4-dist-a.pgm", "lcat4-head-s.pgm", "lcat4-trow-s.pgm", "lcat4-tcol-s.pgm",
-										   "lcat4-hue-s.pgm",  "lcat4-dist-s.pgm", "lcat4-row.pgm",	   "lcat4-col.pgm"};
+		const char* const FILES[NFILES] = {"lcat5-head-a.pgm", "lcat5-trow-a.pgm", "lcat5-tcol-a.pgm", "lcat5-hue-a.pgm",
+										   "lcat5-dist-a.pgm", "lcat5-head-s.pgm", "lcat5-trow-s.pgm", "lcat5-tcol-s.pgm",
+										   "lcat5-hue-s.pgm",  "lcat5-dist-s.pgm", "lcat5-row.pgm",	   "lcat5-col.pgm"};
 
 		// The cat: the owner's AI-made tall tabby, parsed with the owner's newest settings (a 53x72 grid of 20.25x20 px
 		// cells, offset 2.5,5, sampled at the point (84%, 43%... sx 84, sy 43), box 30, bg 70, columns 8-41, rows from 13,
@@ -183,20 +184,35 @@ namespace bp
 				case F_HUE:	// the hues: column d, the cat's row r: its band plus d, round the 15
 					fill([&](int d, int y) { return y < L.oy ? 0 : (bandOf(y - L.oy, R) + d) % HUES; });
 					break;
-				default:	// each pixel's distance outside its row's outline, 1..wmax (0 inside or past it)
-					for (int r = 0; r < R; r++)
+				default:	// the bars: one row a band (its middle one), each pixel's distance out from the cat's widest
+							// edge, 1..wmax, so equal levels end level whatever the row's outline; between the row's own
+							// outline and that edge 1 (the bar still meets the cat); 0 elsewhere
+				{
+					int lmin = COLS, rmax = -1;
+					for (int k = 0; k < HEADR + TILER; k++)
 					{
-						std::string row = rowAt(r);
+						std::string row = k < HEADR ? HEAD[k] : TILE[k - HEADR];
 						size_t l = row.find_first_not_of(' '), rr = row.find_last_not_of(' ');
 						if (l == std::string::npos) continue;
-						int eL = (L.ox + (int)l) * L.P, eR = (L.ox + (int)rr + 1) * L.P;
-						unsigned char* line = &m[(size_t)(r + L.oy) * w];
-						for (int d = 1; d <= L.wmax; d++)
-						{
-							if (eL - d >= 0) line[eL - d] = (unsigned char)d;
-							if (eR + d - 1 < w) line[eR + d - 1] = (unsigned char)d;
-						}
+						lmin = std::min(lmin, (int)l);
+						rmax = std::max(rmax, (int)rr);
 					}
+					const int fL = (L.ox + lmin) * L.P, fR = (L.ox + rmax + 1) * L.P;
+					for (int b = 0; b < 16; b++)
+					{
+						int first = -1, last = -1;
+						for (int r = 0; r < R; r++)
+							if (bandOf(r, R) == b) { if (first < 0) first = r; last = r; }
+						if (first < 0) continue;
+						int r = (first + last) / 2;
+						std::string row = rowAt(r);
+						size_t l = row.find_first_not_of(' '), rr = row.find_last_not_of(' ');
+						int eL = l == std::string::npos ? fL : (L.ox + (int)l) * L.P, eR = l == std::string::npos ? fR : (L.ox + (int)rr + 1) * L.P;
+						unsigned char* line = &m[(size_t)(r + L.oy) * w];
+						for (int x = std::max(0, fL - L.wmax); x < eL; x++) line[x] = (unsigned char)std::max(1, fL - x);
+						for (int x = eR; x < std::min(w, fR + L.wmax); x++) line[x] = (unsigned char)std::max(1, x - fR + 1);
+					}
+				}
 			}
 			return m;
 		}

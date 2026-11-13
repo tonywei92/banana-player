@@ -1,6 +1,6 @@
 // Banana dancer: pixel art on an 80x60 grid of 8-pixel dots. A dark purple room; along the bottom a disco floor of 16
 // tiles in two staggered rows, each tile its band's colour (pink through blue and green to red, the bass on the left,
-// the colours stepping round the rainbow every half second), lit bright while its band is up; in the middle a pixel banana dances: a curved yellow body (a darker left edge, a pale
+// the colours running round the rainbow in ~2 s), lit bright while its band is up; in the middle a pixel banana dances: a curved yellow body (a darker left edge, a pale
 // right one), a brown stem, two eyes and a grin, dark arms with white gloves, red shoes and a shadow under it. Its
 // pose follows the bass in four steps (squashed and wide, standing, tall, jumping five rows up with its legs out) and
 // its grin opens on a strong bass; its left arm follows the low mids, its right the high mids (down, out, up); stars
@@ -62,7 +62,7 @@ namespace bp
 		// the levels' thresholds (0..252, after the contrast and easing): the bass's poses (squashed below B1, standing,
 		// tall from B2, jumping from B3) and its grin (open from BM); an arm out from A1, up from A2; the floor's back
 		// row lit from F0, the front (nearer) one from F1; the stars from S0, each next one S1 later
-		const int FLOORF = 30;	// the floor's colours a step on every half second
+		const int FLOORF = 8;	// the floor's colours a step on every 8 frames at 60 (round the rainbow in ~2 s)
 		const int B1 = 178, B2 = 206, BM = 222, B3 = 236, A1 = 50, A2 = 100, F0 = 120, F1 = 84, S0 = 30, S1 = 13;
 
 		struct Yuv { int y, u, v; };
