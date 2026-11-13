@@ -364,7 +364,8 @@ Songs show their title, artist and album on the top screen. While a song plays:
   **Circle** (bars round a glowing ring, cyan to pink; with Art + visualizer, the album art sits inside the ring),
   **Pocket console** (Peaks on an old handheld's screen: 15 bars of chunky dots in four greens, with falling caps;
   alone, the title is in the same dark green pixel type), **Night city** (a skyline whose windows light up with the
-  music), **Banana dancer** (a pixel banana dancing on a disco floor: bass bounces it, the mids wave its arms),
+  music), **Banana dancer** (a pixel banana dancing on a disco floor whose colours keep running round the rainbow: bass bounces it,
+  the mids wave its arms),
   **Campfire** (each flame leaps with its part of the sound, sparks fly on the treble), **Aurora** (northern lights
   over a snowy ridge), **Sound garden** (pixel flowers that grow with the music and bloom at the peaks), **Pixel sea**
   (moonlit waves and a little sailboat), **Bunny hop** (five bunnies, each hopping to its part of the music),
@@ -373,9 +374,10 @@ Songs show their title, artist and album on the top screen. While a song plays:
   swimming up with their bands), **Vibing cat** (a cat in headphones nodding along, a coffee steaming beside it),
   **Popcorn machine** (kernels popping on the beat), **Jelly wobble** (a worried jelly squashing on the bass), **Tube
   man** (an inflatable tube man dancing faster with the music), **Long cat** (a cat that grows forever, climbing
-  faster with the music, a rainbow light along its edges) or **Washing machine** (shaking and walking on the bass,
+  faster with the music, a stack of solid rainbow bars at its sides, gone when it's quiet) or **Washing machine** (shaking and walking on the bass,
   socks and a duck tumbling). The bar styles' bars stand out from their neighbours, so the spectrum has peaks and
-  valleys. With Art + visualizer, every style but Circle is
+  valleys. Every style measures the music evened out (only for the picture: the sound is untouched), so a quiet song
+  moves it about as much as a loud one, the treble side is lively too, and silence stays still. With Art + visualizer, every style but Circle is
   laid over the bottom of the art, which shows through around it. Coral Peaks, Hi-fi LED, Synthwave, Banana stack,
   Heartbeat, Oscilloscope, Turntable and Disco ball (earlier styles), and Bars, Waves and Spectrum, are retired: a
   saved choice of one of them becomes Peaks. The top screen
