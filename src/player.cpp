@@ -1720,6 +1720,27 @@ namespace bp
 	}
 
 	// a card's text: libass has no way to say a brace or a backslash literally, so they become look-alikes
+	// a line of the top panel's song text cut to fit its width at font size fs, "…" when cut: the overlay is 960x720
+	// units (4:3), about 860 usable, an average letter about 0.52 x fs wide, a wide (CJK) one about 0.95 x fs. Long
+	// titles wrapped onto two or three lines and pushed the rest down (the owner asked for "..." instead)
+	static std::string fitLine(const std::string& s, int fs)
+	{
+		const double budget = 860.0, narrow = 0.52 * fs, wide = 0.95 * fs, dots = 0.52 * fs;
+		double w = 0;
+		size_t cut = std::string::npos;
+		for (size_t i = 0; i < s.size();)
+		{
+			unsigned char c = (unsigned char)s[i];
+			size_t len = c < 0x80 ? 1 : c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : c >= 0xC0 ? 2 : 1;
+			double cw = len >= 3 ? wide : narrow;
+			if (cut == std::string::npos && w + cw > budget - dots) cut = i;	// where "…" would go, if it comes to that
+			w += cw;
+			if (w > budget) return s.substr(0, cut) + "\xe2\x80\xa6";
+			i += len;
+		}
+		return s;
+	}
+
 	static std::string cardText(const std::string& s, size_t maxChars)
 	{
 		std::string out;
@@ -2060,7 +2081,7 @@ namespace bp
 		// takes it on; the album line its mid green)
 		bool pocket = show == SHOW_VIS && settings.visualizer == VIS_POCKET;
 		std::string text = std::string(at) + (pocket ? "{\\fnPixelify Sans}{\\bord0}{\\shad0}{\\1c&H0F380F&}" : "{\\bord3}") +
-			"{\\fs" + std::to_string(big) + "}{\\b1}" + assText(title) + "{\\b0}";
+			"{\\fs" + std::to_string(big) + "}{\\b1}" + assText(fitLine(title, big * 11 / 10)) + "{\\b0}";
 		// an audiobook's (or a song's) chapter, under the title in yellow: where in the book this is
 		int c = currentChapter();
 		if (c >= 0 && c < (int)chapters.size())
@@ -2072,8 +2093,8 @@ namespace bp
 			text += "\\N{\\b0}{\\fs" + std::to_string(big * 3 / 4) + "}{\\c" + (pocket ? std::string("&H306230&") : ass(TOP_TITLE)) + "}" +
 				assText(label) + (pocket ? "{\\c&H0F380F&}" : "{\\c&HFFFFFF&}");
 		}
-		if (!artist.empty()) text += "\\N{\\fs" + std::to_string(big * 3 / 4) + "}" + assText(artist);
-		if (!album.empty()) text += "\\N{\\fs" + std::to_string(big * 2 / 3) + "}{\\c" + (pocket ? "&H306230&" : "&HB4B4B4&") + "}" + assText(album);
+		if (!artist.empty()) text += "\\N{\\fs" + std::to_string(big * 3 / 4) + "}" + assText(fitLine(artist, big * 3 / 4));
+		if (!album.empty()) text += "\\N{\\fs" + std::to_string(big * 2 / 3) + "}{\\c" + (pocket ? "&H306230&" : "&HB4B4B4&") + "}" + assText(fitLine(album, big * 2 / 3));
 		// why the visualizer has stopped for now, in the accent's yellow
 		// (a small blank line first: right under the album line it read as part of the song's text)
 		if (engineLoading)
