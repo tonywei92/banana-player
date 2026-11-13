@@ -1,7 +1,7 @@
 // Bunny hop: pixel art on an 80x60 grid of 8-pixel pixels. A light-blue sky with a paler band, a sun, three white
 // clouds drifting slowly right; a green hill with a wavy top and little pink flowers; five pixel bunnies on it
 // (cream and white by turns, pink nose, dark eyes), each listening to a slice of the spectrum (bands 0-2, 3-5, 6-8,
-// 9-11, 12-15): it hops up by its eased rise squared x 18 pixels (its level over its last half second, falling back
+// 9-11, 12-15): it hops up by its eased rise^1.3 x 18 pixels (its level over its last half second, falling back
 // over ~0.3 s), is squashed a row as it lands, and a faint shadow lies on the grass under one in the air.
 // A frame costs: 16 bands measured and eased (as Pocket console's bars), five averages (a crop and an area scale
 // each), stacked; a tmix of their last 30 frames, a lut2, a lagfun and a lut make each bunny's hop (+32 when
@@ -164,10 +164,11 @@ namespace bp
 		// on a steady sound (measured: the bass slice sits at 170-250 of 252 through a song, which as a plain level kept
 		// the first bunny in the air; the others' median is near 0, a note ~110 for a few frames), then let down
 		// slowly (lagfun 0.93 a frame: from the top to the grass in ~0.3 s, a hop rather than a flicker). In rows
-		// v^2 x HOP; +32 while it's landing (under a row up, not yet still): squashed a row. Over its 15 columns
+		// v^1.3 x HOP (a rise of 60 a full hop, a small one a fair hop: squared, over 110, a usual rise of
+		// 30-50 lifted them barely); +32 while it's landing (under a row up, not yet still): squashed a row. Over its 15 columns
 		g += "[bhg0] [bhg1] [bhg2] [bhg3] [bhg4] hstack=5,split [bhl1] [bhl2]; [bhl2] tmix=frames=30 [bhm]; "
-			 "[bhl1] [bhm] bplut2=c0='255*clip((x-y)/110,0,1)',lagfun=decay=0.93,"
-			 "bplut=c0='st(0,round(pow(val/255,2)*" + n(HOP) + "));ld(0)+32*lt(ld(0),1)*gt(val,12)',"
+			 "[bhl1] [bhm] bplut2=c0='255*clip((x-y)/60,0,1)',lagfun=decay=0.93,"
+			 "bplut=c0='st(0,round(pow(val/255,1.3)*" + n(HOP) + "));ld(0)+32*lt(ld(0),1)*gt(val,12)',"
 			 "scale=75:1:flags=neighbor,pad=" + n(W) + ":1:3:0,scale=" + n(W) + ":" + R + ":flags=neighbor,setsar=1 [bhh]; "
 			 "movie=" + q(overCover ? 2 : 0) + " [bhd]; movie=" + q(overCover ? 3 : 1) + " [bhc]; ";
 		// each pixel's sprite row + 1 (1-10; squashed: row 1 left out), 20 the shadow (the ground's row under a bunny
