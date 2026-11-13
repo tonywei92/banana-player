@@ -10,8 +10,8 @@
 // expression is the value itself: a 1x1 picture at 60 frames a second whose red is the position, exactly.
 // The music also lights the cat: a rainbow light on both sides of every row (ears, cheeks, paws, body), hugging its
 // outline, each row a band (the bass at the bottom, the treble at the ears), 8..120 pixels wide and brighter as its band
-// plays (both on a curve, so a quiet row stays short and faint and a loud one shoots out), fading out towards its
-// far end; its hue band x 24 degrees at full saturation, deep enough to stand out on the pale sky, drifting round.
+// plays (both on a curve, so a quiet row stays short and faint and a loud one shoots out), solid to its tip (no
+// fade: the owner's call); its hue band x 24 degrees at full saturation, deep enough to stand out on the pale sky, drifting round.
 // A frame: the 16 bands measured, contrasted and eased (as Pocket console's bars). Then, at 640 x the cat's rows (one
 // row per cat pixel, every screen column, as a light's width is in screen pixels):
 //  - the levels turned into a column (bass at the bottom) and stretched across: each row its band's level; a lut2
@@ -335,12 +335,12 @@ namespace bp
 			 "adrawgraph=m1=lavfi.astats.1.Max_level:fg1='0xff000000+floor(VAL)':min=-1000:max=1000:mode=bar:slide=replace:"
 			 "s=1x2:r=60:bg=black,crop=1:1:0:1,extractplanes=r,setparams=color_trc=unknown:color_primaries=unknown:colorspace=unknown" + (L.sky ? ",split [lcp1] [lcp2]" : " [lcp1]") + "; ";
 		// the light: each row its band's level, against each pixel's distance from the outline: 0, or 1 + its step
-		// (the level's strength, less towards the light's far end)
+		// (the level's strength, the same all along it)
 		const std::string wexp = "(" + n(L.wmin) + "+" + n(L.wmax - L.wmin) + "*pow(x/252,1.4))";
 		g += "[lclv] transpose=2,scale=640:" + n(R) + ":flags=neighbor,pad=640:" + H + ":0:" + n(L.oy) + " [lclc]; "
 			 "movie=" + q(F_DIST) + ",format=gray [lcdist]; "
 			 "[lclc] [lcdist] bplut2=c0='if(y*lte(y," + wexp + "),1+min(" + n(STEPS - 1) + ",floor(" + n(STEPS) +
-			 "*(0.12+0.88*pow(x/252,1.6))*(1-(y-1)/" + wexp + "))),0)' [lcmask]; ";
+			 "*(0.12+0.88*pow(x/252,1.6)))),0)' [lcmask]; ";
 		// its hues, the column of the moment (the drift)
 		g += "[lcd1] scale=" + n(HUES) + ":" + H + ":flags=neighbor [lcd1s]; movie=" + q(F_HUE) + ",format=gray [lchm]; "
 			 "[lcd1s] [lchm] bplut2=c0='y',crop=1:" + H + ":x='mod(floor(n/" + n(HSTEP) + ")," + n(HUES) + ")':y=0,"

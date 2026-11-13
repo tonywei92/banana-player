@@ -1,6 +1,6 @@
-// Banana dancer: pixel art on an 80x60 grid of 8-pixel dots. A dark purple room; along the bottom a disco floor of 16
-// tiles in two staggered rows, each tile its band's colour (pink through blue and green to red, the bass on the left),
-// lit bright while its band is up; in the middle a pixel banana dances: a curved yellow body (a darker left edge, a pale
+// Banana dancer: pixel art on an 80x60 grid of 8-pixel dots. A dark purple room; along the bottom an RGB LED floor (four rows
+// of LEDs, a rainbow chasing along them, each column's LEDs lit up from the bottom as far as its part of the spectrum
+// reaches, smoothed between the bands so the lit part rolls like a wave; the rest glow dim); in the middle a pixel banana dances: a curved yellow body (a darker left edge, a pale
 // right one), a brown stem, two eyes and a grin, dark arms with white gloves, red shoes and a shadow under it. Its
 // pose follows the bass in four steps (squashed and wide, standing, tall, jumping five rows up with its legs out) and
 // its grin opens on a strong bass; its left arm follows the low mids, its right the high mids (down, out, up); stars
@@ -12,8 +12,8 @@
 // that dot" into the dot's class. The banana in two passes of two lut2s: the bass against the row picks the pose and
 // the dot's row in it (one byte: pose x 40 + row), then that against the column says what the dot is in that pose
 // (body, edge, face, stem, legs, shoe, shadow: the preview's drawing as an expression of row and column). The arms
-// the same, from one value (pose x 9 + left angle x 3 + right angle). The floor: the levels stretched over the tiles'
-// columns (the front row moved half a tile) against the tile still. The stars: the treble against a still three
+// the same, from one value (pose x 9 + left angle x 3 + right angle). The floor: the levels stretched smoothly over its
+// columns, against a still of each LED's row and hue (one hue period wider, cropped along by the frame: the chase). The stars: the treble against a still three
 // grids wide (the twinkle's three phases), cropped where the time says. The layers merged (each over the one under),
 // a lut each makes the luma, U and V from the class, the luma scaled x8 (nearest) with a still mask of the gaps
 // between the dots laid over it, the chroma x4. YUV and gray only, nothing converted, no geq per frame.
@@ -34,9 +34,9 @@ namespace bp
 	namespace
 	{
 		// a new name whenever the stills change: they're cached by size
-		const char* const FILES[10] = {"dancer2-row-a.pgm", "dancer2-col-a.pgm", "dancer2-floor-a.pgm", "dancer2-stars-a.pgm",
-									   "dancer2-gap-a.pgm", "dancer2-row-s.pgm", "dancer2-col-s.pgm", "dancer2-floor-s.pgm",
-									   "dancer2-stars-s.pgm", "dancer2-gap-s.pgm"};
+		const char* const FILES[10] = {"dancer3-row-a.pgm", "dancer3-col-a.pgm", "dancer3-floor-a.pgm", "dancer3-stars-a.pgm",
+									   "dancer3-gap-a.pgm", "dancer3-row-s.pgm", "dancer3-col-s.pgm", "dancer3-floor-s.pgm",
+									   "dancer3-stars-s.pgm", "dancer3-gap-s.pgm"};
 		const int STARS = 10;
 
 		// the drawing's grid: alone 80x60 dots of 8 pixels; over the art 160x50 of 4 (640x200)
@@ -57,12 +57,15 @@ namespace bp
 
 		// the classes (the merged picture's values): 0 nothing (the room, or the art), the banana's parts, the stars,
 		// a tile: 16 + its band (dim), 32 + its band (lit)
-		enum { C_NONE, C_SHADOW, C_EDGE, C_BODY, C_PALE, C_STEM, C_DARK, C_GLOVE, C_SHOE, C_STAR, C_STARX, C_TILE = 16, C_LIT = 32, C_COUNT = 48 };
+		enum { C_NONE, C_SHADOW, C_EDGE, C_BODY, C_PALE, C_STEM, C_DARK, C_GLOVE, C_SHOE, C_STAR, C_STARX, C_LED = 16, C_COUNT = C_LED + 36 };
+		// the LED floor: 12 hues (30 degrees apart) round its columns, a hue period of LEDP columns, the chase a column every
+		// LEDF frames (at 60); a row (from the bottom) lit once its column's level passes 20 + its row x the row step, bright
+		// 40 past that; else dim. Its classes C_LED + 3 x hue + (0 dim, 1 lit, 2 bright)
+		const int LEDP = 12, LEDF = 4;
 
 		// the levels' thresholds (0..252, after the contrast and easing): the bass's poses (squashed below B1, standing,
-		// tall from B2, jumping from B3) and its grin (open from BM); an arm out from A1, up from A2; the floor's back
-		// row lit from F0, the front (nearer) one from F1; the stars from S0, each next one S1 later
-		const int B1 = 178, B2 = 206, BM = 222, B3 = 236, A1 = 50, A2 = 100, F0 = 120, F1 = 84, S0 = 30, S1 = 13;
+		// tall from B2, jumping from B3) and its grin (open from BM); an arm out from A1, up from A2; the stars from S0, each next one S1 later
+		const int B1 = 178, B2 = 206, BM = 222, B3 = 236, A1 = 50, A2 = 100, S0 = 30, S1 = 13;
 
 		struct Yuv { int y, u, v; };
 		// BT.601 limited (mpv's reading of a picture this size)
@@ -83,9 +86,7 @@ namespace bp
 			auto c = [](double v) { return (unsigned)std::lround(std::max(0.0, std::min(1.0, v)) * 255); };
 			return c(f(0)) << 16 | c(f(8)) << 8 | c(f(4));
 		}
-		// the tiles' hues, the bass's first
-		const int HUES[16] = {330, 300, 270, 240, 210, 190, 170, 140, 110, 80, 60, 45, 30, 15, 0, 350};
-		const unsigned ROOM = 0x120a22;
+				const unsigned ROOM = 0x120a22;
 
 		std::string n(int v) { return std::to_string(v); }
 
@@ -108,6 +109,7 @@ namespace bp
 			const Layout& L = k < 5 ? ALONE : STRIP;
 			switch (k % 5)
 			{
+				case 2: w = L.W + LEDP; h = L.H; break;
 				case 3: w = 3 * L.W; h = L.H; break;
 				case 4: w = 640; h = L.H * L.P; break;
 				default: w = L.W; h = L.H;
@@ -121,14 +123,7 @@ namespace bp
 			dims(k, w, h);
 			std::vector<unsigned char> m((size_t)w * h, 0);
 			auto at = [&](int x, int y) -> unsigned char& { return m[(size_t)y * w + x]; };
-			// the tile a dot (or, x the dot's size, a pixel) is on: its band + 1 + 16 x its row (0 none)
-			auto tile = [&](int x, int y) {
-				int r = (y - L.floorTop) / L.tileH;
-				if (y < L.floorTop || r > 1) return 0;
-				int t = x - L.x0 - r * L.stagger;
-				if (t < 0 || t >= 16 * L.tileW) return 0;
-				return 1 + t / L.tileW + 16 * r;
-			};
+			const int FR = 2 * L.tileH;	// the floor's rows of LEDs
 			switch (k % 5)
 			{
 				case 0:	// each dot's row
@@ -139,9 +134,10 @@ namespace bp
 					for (int y = 0; y < h; y++)
 						for (int x = 0; x < w; x++) at(x, y) = (unsigned char)std::max(0, std::min(255, x - L.cx + COL0));
 					break;
-				case 2:
-					for (int y = 0; y < h; y++)
-						for (int x = 0; x < w; x++) at(x, y) = (unsigned char)tile(x, y);
+				case 2:	// the floor: each LED's row from the bottom and hue, 1 + row x 16 + hue (0 off the floor); one hue
+						// period wider than the grid, the chase cropping it further along each step
+					for (int y = L.floorTop; y < L.floorTop + FR && y < h; y++)
+						for (int x = 0; x < w; x++) at(x, y) = (unsigned char)(1 + (L.floorTop + FR - 1 - y) * 16 + x % LEDP);
 					break;
 				case 3:	// the stars in three phases side by side: each one's dot (1 + it), and in one phase of three its
 						// cross round it (11 + it)
@@ -158,25 +154,10 @@ namespace bp
 							at(x, y) = (unsigned char)(1 + i);
 						}
 					break;
-				case 4:	// the gaps between the dots (255): a dot's last line across and down; a tile is one block (as
-						// the preview draws it: 1 pixel in from its left, 2 short of its right and bottom)
+				case 4:	// the gaps between the dots (255): a dot's last line across and down (each LED its own dot)
 					for (int y = 0; y < h; y++)
-						for (int x = 0; x < w; x++)
-						{
-							int dx = x / L.P, dy = y / L.P;
-							int t = tile(dx, dy);
-							bool gap;
-							if (t)
-							{
-								int r = (t - 1) / 16;
-								int lx = x - (L.x0 + r * L.stagger + ((t - 1) % 16) * L.tileW) * L.P;
-								int ly = y - (L.floorTop + r * L.tileH) * L.P;
-								gap = lx < 1 || lx > L.tileW * L.P - 3 || ly > L.tileH * L.P - 3;
-							}
-							else	// (at 4-pixel dots over the art, none: a 1-pixel line of art every 4 was noise)
-								gap = L.P == 8 && (x % L.P == L.P - 1 || y % L.P == L.P - 1);
-							at(x, y) = gap ? 255 : 0;
-						}
+						for (int x = 0; x < w; x++)	// (at 4-pixel dots over the art, none: a 1-pixel line of art every 4 was noise)
+							at(x, y) = L.P == 8 && (x % L.P == L.P - 1 || y % L.P == L.P - 1) ? 255 : 0;
 					break;
 			}
 			return m;
@@ -228,19 +209,20 @@ namespace bp
 		// the colours by class
 		Yuv col[C_COUNT];
 		for (auto& c : col) c = yuv(ROOM);
-		const unsigned part[C_TILE] = {ROOM, 0x0a0614, 0xc99a12, 0xffd23f, 0xfff08a, 0x5a3d12, 0x1b1206, 0xffffff, 0xe8463c, 0xfff6c8,
+		const unsigned part[C_LED] = {ROOM, 0x0a0614, 0xc99a12, 0xffd23f, 0xfff08a, 0x5a3d12, 0x1b1206, 0xffffff, 0xe8463c, 0xfff6c8,
 									   0xffd23f, ROOM, ROOM, ROOM, ROOM, ROOM};
-		for (int k = 1; k < C_TILE; k++) col[k] = yuv(part[k]);
-		for (int b = 0; b < 16; b++)
+		for (int k = 1; k < C_LED; k++) col[k] = yuv(part[k]);
+		for (int h = 0; h < 12; h++)
 		{
-			col[C_TILE + b] = yuv(hsl(HUES[b], 0.35, 0.18));
-			col[C_LIT + b] = yuv(hsl(HUES[b], 0.85, 0.58));
+			col[C_LED + 3 * h] = yuv(hsl(h * 30, 0.6, 0.14));
+			col[C_LED + 3 * h + 1] = yuv(hsl(h * 30, 1, 0.45));
+			col[C_LED + 3 * h + 2] = yuv(hsl(h * 30, 1, 0.68));
 		}
 		// a lut from the class (var) to a plane's value; over the art, 0 is the art's (y)
 		auto paint = [&](int Yuv::*plane, const char* var, bool art) {
 			std::string e = art ? "y" : n(col[0].*plane);
 			for (int k = C_COUNT - 1; k >= 1; k--)
-				if (k <= C_STARX || k >= C_TILE) e = std::string("if(eq(") + var + "," + n(k) + ")," + n(col[k].*plane) + "," + e + ")";
+				if (k <= C_STARX || k >= C_LED) e = std::string("if(eq(") + var + "," + n(k) + ")," + n(col[k].*plane) + "," + e + ")";
 			return "'" + e + "'";
 		};
 
@@ -326,13 +308,15 @@ namespace bp
 			g += "[dcav0] [dccol2] bplut2=c0='" + arm + "' [dcA]; ";
 		}
 
-		// the floor: the levels over the tiles' columns, the back row's and the front's (half a tile on), down their rows
-		const std::string tw = n(16 * L.tileW);
-		g += "[dcf] split [dcf1] [dcf2]; [dcf1] scale=" + tw + ":1:flags=neighbor,pad=" + W + ":1:" + n(L.x0) + ":0 [dcfb]; "
-			 "[dcf2] scale=" + tw + ":1:flags=neighbor,pad=" + W + ":1:" + n(L.x0 + L.stagger) + ":0 [dcff]; "
-			 "[dcfb] [dcff] vstack,scale=" + W + ":" + n(2 * L.tileH) + ":flags=neighbor,pad=" + W + ":" + H + ":0:" + n(L.floorTop) +
-			 ",setsar=1 [dcfl]; movie=" + q(2) + ",format=gray [dcfm]; "
-			 "[dcfl] [dcfm] bplut2=c0='if(eq(y,0),0," + n(C_TILE) + "+mod(y-1,16)+16*gte(x,if(gte(y,17)," + n(F1) + "," + n(F0) + ")))' [dcF]; ";
+		// the floor: the levels across its columns (smoothed between the bands: a wave), against each LED's row: off,
+		// dim, lit or bright; the hues the still's, cropped further along every LEDF frames (the chase)
+		const int FR = 2 * L.tileH;
+		g += "[dcf] split [dcf1] [dcf2]; [dcf1] scale=" + W + ":1:flags=bilinear,scale=" + W + ":" + H + ":flags=neighbor,setsar=1 [dcfl]; "
+			 "movie=" + q(2) + ",format=gray,split [dcfm0] [dcfm1]; [dcfm0] crop=" + W + ":" + H + ":0:0 [dcfm]; "
+			 "[dcfl] [dcfm] bplut2=c0='if(eq(y,0),0,st(0,20+floor(y/16)*" + n(200 / FR) + ");if(gt(x,ld(0)+40),3,if(gt(x,ld(0)),2,1)))' [dcfb]; "
+			 "[dcf2] scale=" + n(L.W + LEDP) + ":" + H + ":flags=neighbor,setsar=1 [dcft]; "
+			 "[dcft] [dcfm1] bplut2=c0='y',crop=" + W + ":" + H + ":x='mod(floor(n/" + n(LEDF) + ")," + n(LEDP) + ")':y=0 [dcfh]; "
+			 "[dcfb] [dcfh] bplut2=c0='if(x," + n(C_LED) + "+3*mod(y-1,16)+x-1,0)' [dcF]; ";
 		// the stars: the treble against the three phases, one shown (a new one 8 times a second)
 		g += "[dct] crop=4:1:12:0,scale=1:1:flags=area,scale=" + n(3 * L.W) + ":" + H + ":flags=neighbor [dcts]; "
 			 "movie=" + q(3) + ",format=gray [dcsm]; "
