@@ -9526,6 +9526,14 @@ static void testVizCache()
 	// a 30-a-second graph (Peaks, Circle) as it is
 	const std::string s30 = "[a] showfreqs=rate=30,lagfun=decay=0.8679,crop=1:1:x='n':y=0 [vo]";
 	CHECK_EQ(vizAtFps(s30, 45), s30);
+
+	// the measured copy evened out, the heard one untouched; a graph without the head as it is
+	const std::string sh = vizShapeInput("[aid1] asplit [ao] [a]; [a] showfreqs [vo]");
+	CHECK_EQ(sh.find("[aid1] asplit [ao] [ashape]; [ashape] aformat="), (size_t)0);
+	CHECK_EQ(sh.find("acompressor=") != std::string::npos && sh.find("highshelf=") != std::string::npos, true);
+	CHECK_EQ(sh.substr(sh.size() - 24), " [a]; [a] showfreqs [vo]");
+	CHECK_EQ(sh.find("[ao] ", sh.find("[ashape]")), std::string::npos);
+	CHECK_EQ(vizShapeInput("[aid1] asplit [ao] [v]; [v] showwaves [vo]"), "[aid1] asplit [ao] [v]; [v] showwaves [vo]");
 }
 
 // an image's size from its header (the reader's strip sizes a long page's place before decoding it)

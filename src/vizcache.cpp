@@ -379,6 +379,16 @@ namespace bp
 		return to > from && (to == g.size() || strchr(":, ;[", g[to]));
 	}
 
+	std::string vizShapeInput(const std::string& graph)
+	{
+		static const std::string head = "[aid1] asplit [ao] [a]; ";
+		if (graph.compare(0, head.size(), head) != 0) return graph;
+		return "[aid1] asplit [ao] [ashape]; [ashape] aformat=sample_rates=44100|48000:channel_layouts=mono,"
+			   "agate=threshold=0.003:range=0.05:attack=5:release=250,"
+			   "acompressor=threshold=0.03:ratio=4:attack=600:release=2500:makeup=8:knee=4,"
+			   "highshelf=f=2500:g=5:t=s:w=0.6 [a]; " + graph.substr(head.size());
+	}
+
 	std::string vizAtFps(const std::string& graph, int fps)
 	{
 		if (fps == 60 || fps <= 0 || graph.find("rate=60") == std::string::npos) return graph;

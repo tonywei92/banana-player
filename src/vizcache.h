@@ -44,6 +44,14 @@ namespace bp
 	// frames scaled, and n in crop's and overlay's expressions read as the frame it would be at 60 (floor(n*60/fps)),
 	// so a step every k frames comes as often. A graph without rate=60 (Peaks, Circle: 30 a second) as it is
 	std::string vizAtFps(const std::string& graph, int fps);
+	// the copy of the sound a style measures (never what's heard: [ao]) evened out first, so every song moves the
+	// picture alike: a gate keeps silence and hiss still; a slow compressor with make-up gain lifts a quiet song and
+	// holds a loud one (attack 0.6 s, release 2.5 s: the level is ridden, the hits are kept); a treble shelf (+5 dB
+	// from ~2.5 kHz) wakes the right of the spectrum, which sat low. Each works sample by sample with no look-ahead,
+	// so the picture stays on the beat (dynaudnorm was the obvious choice, but it waits seconds ahead). Measured on
+	// a song and the same 20 dB down: the bars' mean 133/90 before, 144/132 after, the movement a frame unchanged.
+	// The graph's "[aid1] asplit [ao] [a]; " head rewritten; any other graph as it is
+	std::string vizShapeInput(const std::string& graph);
 	// (tests and tools: an expression shorter than this is left as it is, quick already)
 	extern size_t vizLutMinLength;
 }

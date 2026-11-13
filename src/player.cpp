@@ -2039,7 +2039,8 @@ namespace bp
 		// (src/vizcache.h). Those not made yet keep their expressions this time and are made on a thread of their
 		// own, with every other style's the first time (so a change of style is quick from then on, this run and the
 		// next); files no style reads any more removed
-		std::string g = vizAtFps(visualizerGraphMarked(vis, overCover, circleMaps), settings.vizFps);
+		// (and the measured copy of the sound evened out: src/vizcache.h)
+		std::string g = vizShapeInput(vizAtFps(visualizerGraphMarked(vis, overCover, circleMaps), settings.vizFps));
 		if (circleMaps.empty()) return vizPlainLuts(g);
 		std::vector<std::string> missing;
 		g = vizCacheLuts(g, circleMaps, &missing);
