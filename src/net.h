@@ -5,6 +5,7 @@
 #include "servers.h"
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -52,6 +53,15 @@ namespace bp
 		virtual NetResult list(const std::string& path, std::vector<NetEntry>& out) = 0;
 		virtual std::unique_ptr<NetFile> open(const std::string& path, NetResult& result) = 0;
 		virtual void cancel() = 0;	// from another thread: a waiting call returns Cancelled
+
+		// Writing (Files' Copy, Move, Rename, Delete on a network folder). Paths as list() takes them. None of them
+		// replaces what is there: a name taken is an error (NoAccess on a folder the account can't write to)
+		virtual NetResult makeDir(const std::string& path) = 0;
+		virtual NetResult remove(const std::string& path, bool dir) = 0;	// a file, or an empty folder
+		virtual NetResult rename(const std::string& from, const std::string& to) = 0;	// within one share (SMB)
+		// a new file, its bytes from more(buf, n): how many it put in buf, 0 at the end, < 0 to stop (cancelled, or a
+		// read that failed: the file is then removed). A file already there isn't written over
+		virtual NetResult put(const std::string& path, const std::function<int64_t(char*, int64_t)>& more) = 0;
 	};
 
 	// password: the plain one (opened from the server's secret by the caller); timeoutMs bounds each wait

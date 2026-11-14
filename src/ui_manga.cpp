@@ -110,6 +110,7 @@ namespace bp
 			mangaPageCache.open(stateDirPath + "/manga/cache", mangaCacheBytes(p.settings.mangaCacheSize));
 			// the cover cache: 50 MB fixed, the oldest covers going first (docs/design/manga.md section 6)
 			mangaCoverCache.open(stateDirPath + "/manga/cache/covers", MANGA_COVER_CACHE_LIMIT);
+			mangaNetTrim("", p);
 		}
 		// a new open wants its own covers: what waited for the last one is dropped, and a cover that failed (a file
 		// fixed meanwhile) is tried once more. The ones that arrived stay: a cache of textures is worth keeping
@@ -189,6 +190,9 @@ namespace bp
 		mangaCacheValid = true;
 		mangaCacheSerial = serial;
 		mangaCacheCount = (int)mangaLocal.size();
+		// the series under the Library's cursor: the list is newest-read first, so the one just read goes to the
+		// top, and the cursor goes with it rather than staying on the place it left
+		std::string atId = mlibGrid >= 0 && mlibGrid < (int)mangaLib.size() ? mangaLib[mlibGrid].id : "";
 		mangaLib.clear();
 		mangaLibUnread.clear();
 		mangaHistory.clear();
@@ -208,6 +212,15 @@ namespace bp
 			mangaLibUnread.push_back(mangaStore->unread(s.id, ids));
 		}
 		mangaHistory = mangaStore->historyBySeries(50);
+		for (int i = 0; !atId.empty() && i < (int)mangaLib.size(); i++)
+			if (mangaLib[i].id == atId)
+			{
+				mlibGrid = i;
+				int row = i / MG_COLS, shown = std::max(1, (MG_LIB_BOTTOM - MG_LIB_TOP) / 186);
+				if (row < mlibScroll) mlibScroll = row;
+				else if (row >= mlibScroll + shown) mlibScroll = row - shown + 1;
+				break;
+			}
 	}
 
 	const LocalSeries* Ui::mangaLocalSeries(const std::string& id) const
@@ -252,6 +265,13 @@ namespace bp
 		return s ? (int)s->chapters.size() : 0;
 	}
 
+	float Ui::mangaWithinFor(const std::string& chapterId, int page) const
+	{
+		// the place inside the page, only when it opens at the page that place was kept for
+		const ChapterProgress* cp = mangaStore && !chapterId.empty() ? mangaStore->progress(chapterId) : nullptr;
+		return cp && cp->page == page ? cp->within : 0;
+	}
+
 	void Ui::mangaRecordProgress()
 	{
 		// a record of where the reader is: the reader's own status is the only thing that knows the page
@@ -269,14 +289,17 @@ namespace bp
 		cp.page = readerStatus.page;
 		cp.pages = readerStatus.pages;
 		cp.read = readerStatus.page >= readerStatus.pages - 1;
+		cp.within = readerStatus.within;
 		cp.at = (int64_t)time(nullptr);
 		mangaStore->setProgress(cp, !incognito);
-		fprintf(stderr, "manga: progress %s page %d/%d%s%s\n", cp.chapterId.c_str(), cp.page + 1, cp.pages,
+		fprintf(stderr, "manga: progress %s page %d/%d (%.0f%% in)%s%s\n", cp.chapterId.c_str(), cp.page + 1, cp.pages, cp.within * 100,
 			incognito ? " (incognito: not in History)" : "", mangaHistOn ? "" : " (History off)");
 		// with the History off the place is still kept: only the list stays empty, this entry hidden along with the rest
 		if (!mangaHistOn) mangaStore->clearHistory();
 		mangaProgPage = cp.page;
 		mangaProgPages = cp.pages;
+		mangaProgWithin = cp.within;
+		mangaProgAt = SDL_GetTicks();
 		mangaDirty = true;
 	}
 
@@ -285,6 +308,10 @@ namespace bp
 		// main turns the page; a change is this chapter's new place. The store is written once a second at most
 		if (readerStatus.open) mangaReadLive = true;
 		if (readerStatus.pages > 0 && (readerStatus.page != mangaProgPage || readerStatus.pages != mangaProgPages))
+			mangaRecordProgress();
+		// a scroll inside the same (tall) page: its place kept too, every 2 s at most
+		else if (readerStatus.pages > 0 && std::fabs(readerStatus.within - mangaProgWithin) > 0.02f &&
+			SDL_GetTicks() - mangaProgAt >= 2000)
 			mangaRecordProgress();
 		if (mangaDirty && SDL_GetTicks() - mangaSavedAt >= 1000) mangaSave();
 	}
@@ -308,6 +335,13 @@ namespace bp
 			if (at >= mserScroll + rows) mserScroll = at - rows + 1;
 		}
 		page = Page::MangaSeries;
+		// a one-file series never showed its page: back to the list it was opened from
+		if (mangaSingleFile(mangaReadSeriesId))
+		{
+			page = Page::Manga;
+			mangaTab = mangaSeriesFrom == 1 ? MT_BROWSE : mangaSeriesFrom == 2 ? MT_HISTORY : MT_LIBRARY;
+			mBrowseList = mangaSeriesFrom == 1;
+		}
 		mangaMenu = false;
 		mangaPages = false;
 		mpFree();
@@ -339,7 +373,22 @@ namespace bp
 		mangaSeriesFrom = from;
 		mserCursor = -1;
 		mserScroll = 0;
+		// a series that is one file (a PDF, a CBZ on its own): no chapters to choose, so the reader at once, where it
+		// was left (from the start again once it was read to its end); B goes back to the list (mangaCloseReader)
+		if (const LocalSeries* s = mangaSingleFile(id))
+		{
+			const ChapterProgress* cp = mangaStore ? mangaStore->progress(s->chapters[0].path) : nullptr;
+			int at = cp && !(cp->pages > 0 && cp->page >= cp->pages - 1) ? cp->page : 0;
+			mangaOpenChapter(*s, 0, at, p);
+			return;
+		}
 		page = Page::MangaSeries;
+	}
+
+	const LocalSeries* Ui::mangaSingleFile(const std::string& id) const
+	{
+		const LocalSeries* s = mangaLocalSeries(id);
+		return s && s->chapters.size() == 1 && s->chapters[0].path == s->path ? s : nullptr;
 	}
 
 	void Ui::mangaOpenChapter(const LocalSeries& s, int i, int page0, Player& p)
@@ -462,7 +511,13 @@ namespace bp
 			}
 			const LocalSeries* s = mangaLocalSeries(cp.seriesId);
 			int ci = s ? chapterIndexOf(*s, cp.chapterId) : -1;
-			if (!s || ci < 0) return;
+			if (!s || ci < 0)
+			{
+				// gone from the cards (or a card that's out, or a book Files now opens): said, not a silent A
+				if (cp.seriesId.rfind("local:", 0) == 0)
+					mangaNotice(!s ? "It\xE2\x80\x99s not on a card now" : "That chapter isn\xE2\x80\x99t there now", 2000);
+				return;
+			}
 			mangaSeriesFrom = 2;
 			mangaSeriesId = cp.seriesId;
 			mangaOpenChapter(*s, ci, cp.page, p);
@@ -490,6 +545,7 @@ namespace bp
 		if (page == Page::Manga && mangaTab == MT_BROWSE && mBrowseList && mangaView == 0 && mlocSheet != MLS_NONE)
 			return mangaLocalSheetKey(b, p);
 		if (page == Page::Manga && mhisMenu) return mangaHisMenuKey(b, p);
+		if (page == Page::Manga && mlibMenu) return mangaLibMenuKey(b, p);
 		// the worker's answers first: a source's list, a series' details, a chapter's pages (this page's or the
 		// reading page's next one)
 		mangaBrowsePoll(p);
@@ -658,6 +714,7 @@ namespace bp
 			int n = (int)mangaLib.size();
 			if (mlibGrid >= n) mlibGrid = std::max(0, n - 1);
 			if (!n) break;
+			if (b == Button::X) { mlibMenu = true; mlibArmed = false; break; }
 			if (b == Button::A) { mangaChoose(MT_LIBRARY, mlibGrid, p); break; }
 			int row = mlibGrid / MG_COLS, col = mlibGrid % MG_COLS, rows = (n + MG_COLS - 1) / MG_COLS;
 			switch (b)
@@ -959,6 +1016,13 @@ namespace bp
 			for (int i = 0; i < 2; i++)
 				if (mangaEngineRow(i).hit(x, y)) { mengCursor = i; mangaEngineChoose(i, p); return false; }
 			if (!mangaEngineBox().hit(x, y)) mengSheet = false;
+			return false;
+		}
+		if (page == Page::Manga && mlibMenu)
+		{
+			if (pt.kind != Pointer::Down) return false;
+			if (!mlibMenuBox().hit(x, y)) { mlibMenu = false; mlibArmed = false; return false; }
+			if (mlibMenuRow().hit(x, y)) mangaLibMenuAct(p);
 			return false;
 		}
 		if (page == Page::Manga && mhisMenu)
@@ -1576,7 +1640,80 @@ namespace bp
 		SDL_RenderSetClipRect(ren, nullptr);
 		drawScrollBar(MG_LIB_TOP, MG_LIB_BOTTOM - MG_LIB_TOP, mlibScroll,
 			std::max(1, (MG_LIB_BOTTOM - MG_LIB_TOP) / 186), rows);
-		drawHints({{"D-PAD", "Move"}, {"A", "Open"}, {"B", "Back"}});
+		drawHints({{"D-PAD", "Move"}, {"A", "Open"}, {"X", "Options"}, {"B", "Back"}});
+		if (mlibMenu) drawMangaLibMenu();
+	}
+
+	static bool isEpubPath(const std::string& path)
+	{
+		size_t dot = path.rfind('.');
+		if (dot == std::string::npos) return false;
+		std::string e = path.substr(dot + 1);
+		for (char& c : e) c = (char)tolower((unsigned char)c);
+		return e == "epub";
+	}
+
+	std::vector<std::string> Ui::mangaMissing() const
+	{
+		// a series of the cards ("local:<its folder or file>") the reader can't open now: its folder or file gone
+		// (or on a card taken out), or one it no longer reads as manga (a book: an EPUB or a TXT read before they
+		// were left to Files). Every one the store knows, in the Library or only in History; the sources' and
+		// servers' series are never "missing"
+		std::vector<std::string> out;
+		if (!mangaStore) return out;
+		for (const std::string& id : mangaStore->seriesIds())
+		{
+			if (id.rfind("local:", 0) != 0) continue;
+			std::string path = id.substr(6);
+			bool gone;
+			if (mangaScanned) gone = !mangaLocalById.count(id);	// what the last scan of the cards found
+			else
+			{
+				struct stat st;
+				gone = stat(path.c_str(), &st) != 0 || (S_ISREG(st.st_mode) && (!isPageBookName(path) || isEpubPath(path)));
+			}
+			if (gone) out.push_back(id);
+		}
+		return out;
+	}
+
+	bool Ui::mangaLibMenuKey(Button b, Player& p)
+	{
+		if (b == Button::A) mangaLibMenuAct(p);
+		else if (b == Button::B || b == Button::X) { mlibMenu = false; mlibArmed = false; }
+		return false;
+	}
+
+	void Ui::mangaLibMenuAct(Player& p)
+	{
+		(void)p;
+		auto gone = mangaMissing();
+		if (gone.empty()) { mlibMenu = false; mangaNotice("Nothing is missing", 1500); return; }
+		// twice: their places and read marks go with them
+		if (!mlibArmed) { mlibArmed = true; return; }
+		for (const auto& id : gone) mangaStore->removeSeries(id);
+		mangaSave();
+		mangaCacheValid = false;
+		mlibMenu = false;
+		mlibArmed = false;
+		mlibGrid = mlibScroll = 0;
+		fprintf(stderr, "manga: removed %zu missing series\n", gone.size());
+		mangaNotice("Removed " + std::to_string(gone.size()) + (gone.size() == 1 ? " missing series" : " missing series"), 2000);
+	}
+
+	void Ui::drawMangaLibMenu()
+	{
+		Rect b = mlibMenuBox();
+		drawDialog(b, "Library");
+		auto gone = mangaMissing();
+		Rect r = mlibMenuRow();
+		drawFocus(r);
+		std::string note = gone.empty() ? "None" : mlibArmed ? "A again" : std::to_string(gone.size()) + " gone";
+		drawDialogRow(r, &G_TRASH, "Remove missing", true, false, gone.empty() ? DIM : DANGER, note, mlibArmed ? ACCENT : DIM);
+		// (said under the row: what goes with them, and the card that may only be out)
+		drawTextMid(gone.empty() ? "Every series is on a card" : "Series no longer on a card, and books Files now opens", 0, DIM, W / 2, 278, 380, 2);
+		if (mlibArmed) drawFooterText("Their read marks go too. A card that's out? Put it back first", ACCENT);
+		else drawHints({{"A", "Remove"}, {"B", "Close"}});
 	}
 
 	bool Ui::mangaHisMenuKey(Button b, Player& p)

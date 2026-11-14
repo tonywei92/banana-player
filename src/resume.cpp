@@ -1,4 +1,5 @@
 #include "resume.h"
+#include "browser.h"
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
@@ -87,6 +88,17 @@ namespace bp
 			}
 		entries.insert(entries.begin(), e);
 		if (entries.size() > MAX_ENTRIES) entries.resize(MAX_ENTRIES);
+	}
+
+	bool ResumeStore::moved(const std::string& from, const std::string& to)
+	{
+		bool any = false;
+		for (auto& e : entries)
+		{
+			std::string n;
+			if (movedPath(e.path, from, to, n)) { e.path = n; any = true; }
+		}
+		return any;
 	}
 
 	bool worthResuming(double position, double duration)

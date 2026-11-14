@@ -350,6 +350,15 @@ namespace bp
 				}
 				case IntentType::Play:
 					if (s.index < 0) return "nothing";
+					// a network file the connection dropped (the handheld's): Play tries it again, from where it stopped
+					if (s.error == "net" && s.out.kind == OutKind::Handheld && !s.parked)
+					{
+						n.error.clear();
+						setPlaying(true);
+						newLoad();
+						loadHere();
+						return "";
+					}
 					if (!s.error.empty()) return "error";
 					if (s.parked && s.out.kind == OutKind::Handheld)
 					{
@@ -654,7 +663,9 @@ namespace bp
 					// the handheld: a file reached by Next, Previous or an end that it can't play is skipped, as the
 					// browser skips one (a list none of which plays stops once each has been tried); one picked stops
 					// with its error, which says why
-					if (!s.picked && s.queue.size() > 1)
+					// (a connection lost is no file the handheld can't play: the next would fail the same way, one after
+					// another, so it stops there and Play tries again)
+					if (!s.picked && s.queue.size() > 1 && i.reason != "net")
 					{
 						const std::string& path = s.queue[s.index];
 						std::string name = path.substr(path.rfind('/') == std::string::npos ? 0 : path.rfind('/') + 1);

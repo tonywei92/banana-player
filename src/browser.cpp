@@ -59,6 +59,15 @@ namespace bp
 		return dirs;
 	}
 
+	bool movedPath(const std::string& p, const std::string& from, const std::string& to, std::string& out)
+	{
+		if (from.empty() || p.size() < from.size() || p.compare(0, from.size(), from) != 0) return false;
+		if (p.size() == from.size()) { out = to; return true; }
+		if (p[from.size()] != '/') return false;
+		out = to + p.substr(from.size());
+		return true;
+	}
+
 	std::string parentFolder(const std::string& path)
 	{
 		std::string p = path;
@@ -85,6 +94,13 @@ namespace bp
 			m.ignore(4096, '\n');
 		}
 		return false;
+	}
+
+	bool cardOut(const std::string& path)
+	{
+		const std::string sd2 = "/run/sd2";
+		bool on = path == sd2 || path.rfind(sd2 + "/", 0) == 0;
+		return on && !mounted(sd2);
 	}
 
 	std::vector<BrowseRoot> browseRoots()

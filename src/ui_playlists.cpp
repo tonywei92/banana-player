@@ -143,7 +143,7 @@ namespace bp
 	{
 		if (!plDirty) return;
 		plDirty = false;
-		if (!plStore || !plStore->save(plCur)) p.osd("Couldn't save the playlist");
+		if (!plStore || !plStore->save(plCur)) alert("Couldn\xE2\x80\x99t save the playlist", "Is the card full or read only?");
 	}
 
 	void Ui::plTellPlayer(const Playlist& pl, const std::vector<int>& remap, Player& p)
@@ -202,7 +202,7 @@ namespace bp
 		std::string name = baseName(file);
 		for (auto& i : plStore->list())
 			if (i.file == file) name = i.name;
-		if (!plStore->remove(file)) { p.osd("Couldn't delete the playlist"); return; }
+		if (!plStore->remove(file)) { alert("Couldn\xE2\x80\x99t delete the playlist", "Is the card read only?"); return; }
 		p.osd("Deleted " + quoted(name));
 		if (p.resumeStore().lastFolder == file) p.setLastFolder("");
 		int c = cursor, s = scroll;
@@ -451,7 +451,7 @@ namespace bp
 			}
 			selSerial++;
 		}
-		else if (selMode == SEL_ADD) p.osd("Playlists take videos and songs");
+		else if (selMode == SEL_ADD) alert("Can\xE2\x80\x99t add this", "Playlists take videos and songs.");
 		return true;
 	}
 
@@ -848,7 +848,7 @@ namespace bp
 				// never listed: listed now (a moment; the busy dialog can cancel it), added when it comes
 				NetPath np;
 				const NetServer* sv = netStore && parseNetPath(dir, np) ? netStore->find(np.server) : nullptr;
-				if (!sv || !netWorker) { p.osd("This connection is gone"); return; }
+				if (!sv || !netWorker) { alert("This connection is gone", "It was deleted. Add it again in Network."); return; }
 				addPending = {dir, dest, ++addSerial, back};
 				netWorker->list(addSerial, *sv, netStore->password(*sv), dir);
 				return;
@@ -860,7 +860,7 @@ namespace bp
 			bool ok;
 			for (auto& e : listFolder(dir, ok, true))
 				if (!e.dir) names.push_back(e.name);
-			if (!ok) { p.osd("This folder can't be opened"); return; }
+			if (!ok) { alert("Can\xE2\x80\x99t open this folder", "Is the card still in?"); return; }
 		}
 		int photos = 0;
 		auto add = folderEntries(dir, names, photos);
@@ -875,20 +875,20 @@ namespace bp
 		std::string photoNote = photos ? " \xC2\xB7 skipped " + many(photos, "photo", "photos") : "";
 		if (add.empty())
 		{
-			p.osd("Nothing to add in " + quoted(from) + photoNote);
+			alert("Nothing to add", "There are no videos or songs in " + quoted(from) + photoNote + ".");
 			return false;
 		}
 		Playlist pl;
 		int skipped = 0;
 		plFlush(p);
-		if (plIsLiked(dest)) { p.osd("Use the Like button to add to Liked"); return false; }
-		if (!plStore || !plStore->load(dest, pl, skipped)) { p.osd("Couldn't read the playlist"); return false; }
+		if (plIsLiked(dest)) { alert("Liked fills itself", "Use the Like button (the heart) to add to Liked."); return false; }
+		if (!plStore || !plStore->load(dest, pl, skipped)) { alert("Couldn\xE2\x80\x99t read the playlist", "Its file may be damaged, or the card read only."); return false; }
 		int before = (int)pl.entries.size(), dropped = 0;
 		bool again = !pickerOne.empty() && plStore->containsPath(dest, pickerOne);
 		auto remap = addEntries(pl.entries, add, -1, PL_MAX_ENTRIES, dropped);
 		int added = (int)add.size() - dropped;
-		if (added <= 0) { p.osd("Playlist is full: " + quoted(pl.name) + " has " + std::to_string(PL_MAX_ENTRIES) + " items"); return false; }
-		if (!plStore->save(pl)) { p.osd("Couldn't save the playlist"); return false; }
+		if (added <= 0) { alert("The playlist is full", quoted(pl.name) + " has " + std::to_string(PL_MAX_ENTRIES) + " items, as many as a playlist holds."); return false; }
+		if (!plStore->save(pl)) { alert("Couldn\xE2\x80\x99t save the playlist", "Is the card full or read only?"); return false; }
 		plTellPlayer(pl, remap, p);
 		std::string note = "Added " + std::to_string(added) + " to " + quoted(pl.name) + photoNote;
 		if (dropped) note += " \xC2\xB7 Playlist is full, " + std::to_string(dropped) + " left out";
@@ -957,6 +957,16 @@ namespace bp
 
 	void Ui::drawWhere(int x, int maxW)
 	{
+		// a network folder the account can't write to says so at the line's end: a lock and "Read only"
+		if (isNetPath(browseDir) && netOpsHere() && !netLoading && !netWritable && page == Page::Browse)
+		{
+			const char* ro = "Read only";
+			int tw = (int)std::lround(textWidth(ro, 0) / sx), gw = glyphW(G_LOCK);
+			int right = x + maxW;
+			drawTextMid(ro, 0, DIM, right - tw, SUB_Y);
+			drawGlyphMid(G_LOCK, right - tw - 8 - gw / 2, SUB_Y, DIM);
+			maxW -= tw + gw + 24;
+		}
 		std::string where = elideLeft(browseWhere(), 0, maxW);
 		size_t cut = where.rfind(" / ");
 		if (cut == std::string::npos) drawTextMid(where, 0, TEXT, x, SUB_Y);

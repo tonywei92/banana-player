@@ -115,6 +115,7 @@ namespace bp
 		std::map<std::string, bool> tabState;
 		std::map<std::string, bool> tabByeTold;	// a gone tab's goodbye already passed to the Session
 		uint64_t erroredLoad = 0;
+		int erroredPlayerLoad = -1;	// the player's own load that error came from (a retry's reload not made yet: the old error)
 		bool picksWanted = false;	// the session's picks to put on the handheld's copy once its tracks are known
 		bool showHere = false;	// the next run that brings the item here shows the player
 		int unload = 0;

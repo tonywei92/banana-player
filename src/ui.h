@@ -182,17 +182,20 @@ namespace bp
 			bool archive = false;
 			int page = 0, mode = 0, fit = 0;
 			int book = 0;	// MANGA_BOOK_*: the series' own (takeMangaRead fills it)
+			float within = 0;	// the place inside `page` kept for this chapter (takeMangaRead fills it)
 			// a chapter from a source or a server: its pages' URLs, in order, and the headers they need (the source's
 			// Referer...); path is then the chapter's id (the cache's key, never opened). Empty: path is a folder or a CBZ
 			std::vector<std::string> pageUrls;
 			std::vector<std::pair<std::string, std::string>> pageHeaders;
 		};
+		float mangaWithinFor(const std::string& chapterId, int page) const;
 		bool takeMangaRead(MangaReadRequest& out)
 		{
 			if (mangaRead.path.empty()) return false;
 			out = std::move(mangaRead);
 			mangaRead = {};
 			out.book = mangaBookFor(out.seriesId);
+			out.within = mangaWithinFor(out.chapterId, out.page);
 			return true;
 		}
 		// the dashboard's series view (design 8): a chapter with what the reader knows of it. download is "", or the
@@ -242,6 +245,7 @@ namespace bp
 		{
 			bool open = false, loading = false, atEnd = false;	// atEnd: the strip's bottom reached (the next chapter's card)
 			int page = 0, pages = 0;	// the page under the view's middle (0-based), the chapter's page count
+			float within = 0;	// Vertical scroll: how far through that page the view's middle is
 			int mode = 0;	// the mode it reads in (MANGA_*)
 			int zoomPct = 100;	// the zoom (1 = the fit, 100 % … 800 %)
 			bool fullscreen = false;	// both panels show the pages
@@ -368,7 +372,7 @@ namespace bp
 		void toggleQuick(Player& p);
 		bool quickShown() const { return quickOpen; }
 		// a level from bananad (its keys: "volume" or "brightness", percent): the quick settings show it
-		void levelChanged(const std::string& what, int percent) { if (what == "volume") volumePct = percent; }
+		void levelChanged(const std::string& what, int percent) { if (what == "volume") volumePct = std::min(100, percent); }	// (the handheld's own: past 100 is the player's gain)
 
 		// the bottom panel's backlight: off from its button, on again at the next touch
 		bool screenOn() const { return panel.on(); }
@@ -395,6 +399,17 @@ namespace bp
 		bool takeStopRequest() { bool r = stopRequest; stopRequest = false; return r; }
 		// the handheld's volume, percent (-1 unknown): read once, then followed (bananad's keys, the quick settings, the web)
 		int volumeLevel();
+		// the volume as heard, 0 to Max volume: the handheld's (0-100), or past 100 the player's own gain over its 100%
+		int volumeTotal(Player& p);
+		// the volume set to v as heard (the web's bar, the volume keys past 100%): the handheld's to min(v, 100), the
+		// gain to the rest; force: the handheld's set even if it seems at that already (bananad's own key press lowered
+		// it). The first time past 120% in a run, a warning
+		void setVolumeTotal(Player& p, int v, bool force = false);
+		bool loudWarned = false;
+		// the browser tab playing the sound: its own volume as it last said (POST /api/browser-volume), -1 not known.
+		// The handheld's volume keys move it while the tab is the output; the handheld's own is left as it was
+		int browserVol = -1;
+		void keepHandheldVolume(int v) { if (v >= 0 && volume.present()) volume.set(v); if (v >= 0) volumePct = v; }
 		// the playlists' store serial (-1 none): the web's lists follow it
 		int playlistSerial() const { return plStore ? plStore->serial() : -1; }
 		// Like (the built-in Liked playlist). likeable: something plays that can be liked (a song or video, not a photo)
@@ -536,6 +551,18 @@ namespace bp
 		};
 		std::vector<RecentItem> recent;	// as listed with Home (or All recent)
 		void listRecent(Player& p);
+		// Home's Recent (and All recent) listed again where it's being looked at (the next song started, the web removed
+		// one): in the order it was shown, so nothing moves under the cursor; a newly played one comes when it's
+		// entered again (each entry lists it newest first)
+		bool recentKeepOrder = false;
+		// All recent's tabs: 0 everything, 1 videos, 2 music, 3 books and documents (L2/R2, or a tap on them); the counts
+		// as last listed, and where each tab was drawn (for a tap)
+		int recentTab = 0, recentCounts[4] = {0, 0, 0, 0};
+		Rect recentTabRect[4];
+		bool drawRecentTabs(int x, int mid, int right, bool counts = true);	// false (nothing drawn): they don't fit there
+		bool recentTabsUp = false;	// drawn on the title's line (else on the line under it)
+		void stepRecentTab(int dir, Player& p);
+		void recentInOrder(const std::vector<std::string>& before);
 		// the history changed from elsewhere (the web): Home or All recent listed again, the focus kept
 		void recentEdited(Player& p);
 		enum HomeZone { HOME_STRIP, HOME_GRID };
@@ -611,6 +638,22 @@ namespace bp
 		bool fileNameSubmit = false;
 		std::string fileNameNote, fileRenamePath;
 		bool fileOpsOn(int row) const;	// the row is a file or folder of the cards that can be copied, moved...
+		// a network folder's: the file actions there (inside a share; not an SMB server's list of shares), whether
+		// the account can write in it (the listing tried), and the files' sizes for Info
+		bool netOpsHere() const;
+		bool netWritable = false;
+		std::unordered_map<std::string, int64_t> netSizes;
+		bool netReadOnlySaid(const std::string& path, Player& p);	// a change in a read-only network folder: said, true
+		// a network document or comic: copied to <state>/netdocs first (a progress sheet), then opened from there, so
+		// a network that drops while reading takes nothing away
+		void netOpenCopy(const std::string& path, Player& p);
+		void startNetJob(int op, const std::string& src, const std::string& dest, const std::string& name, Player& p);
+	public:
+		// a file or folder moved (Files' Rename or Move here, the dashboard's): everything kept of it follows it, it and
+		// what's inside it — Recent and places to resume, playlists and Liked, a document's place and bookmarks, the
+		// manga reader's series and their read marks (main thread: the dashboard's come through WebServer::call)
+		void pathMoved(const std::string& from, const std::string& to, Player& p);
+	private:
 		void fileOpsAct(int what, const std::string& path, Player& p);
 		bool clipKey(Button b, Player& p);	// SELECT pastes here, X lets the clip go
 		bool clipPointer(const Pointer& pt, int x, int y, Player& p);
@@ -861,7 +904,7 @@ namespace bp
 		// folder (a ".hidden" file in it); everywhere Refresh (the list read again: a file copied in meanwhile); Cancel
 		enum CtxItem { CTX_HIDE, CTX_REFRESH, CTX_CANCEL, CTX_ADD, CTX_FIND, CTX_EDIT, CTX_TEST, CTX_DELETE,
 			// a playlist's (Y on one, X in one) and its items'
-			CTX_PL_NEW, CTX_PL_PLAY, CTX_PL_SHUFFLE, CTX_PL_RENAME, CTX_PL_DELETE, CTX_PL_DEDUP, CTX_PL_HERE, CTX_PL_REMOVE,
+			CTX_PL_NEW, CTX_PL_PLAY, CTX_PL_SHUFFLE, CTX_PL_RENAME, CTX_PL_DELETE, CTX_PL_DEDUP, CTX_PL_MISSING, CTX_PL_HERE, CTX_PL_REMOVE,
 			CTX_PL_SHOW, CTX_PL_ADD_FILES, CTX_PL_ADD_FOLDER, CTX_PL_SELECT, CTX_PL_MOVE,
 			// Local and Network: X's Select files, a folder's Add to playlist...
 			CTX_SELECT_FILES, CTX_ADD_TO,
@@ -884,6 +927,7 @@ namespace bp
 		std::string ctxServer;		// a connection's menu: its id
 		std::string ctxStatus;		// a connection's menu: Test's answer
 		bool ctxArmed = false;		// Delete pressed once
+		int ctxMissing = 0;		// a playlist's Remove missing, pressed once: how many it would take out
 		bool ctxOpen = false;
 		int ctxCursor = 0;
 		std::vector<int> ctxItems;	// CtxItem
@@ -1274,6 +1318,15 @@ namespace bp
 		std::vector<Row> browseRows;
 		std::vector<std::string> browsePaths;	// beside browseRows: what each row opens
 		std::vector<BrowseRoot> roots;
+		// the cards looked at again every few seconds: one put in or taken out shows at once (rootsSerial: main hands
+		// the dashboard its places again)
+		Uint32 rootsCheckedAt = 0;
+		int rootsChanged = 0;
+		void rootsCheck(Player& p);
+	public:
+		int rootsSerial() const { return rootsChanged; }
+		const std::vector<BrowseRoot>& places() const { return roots; }
+	private:
 		std::map<std::string, std::pair<int, int>> placeIn;	// each folder's cursor and scroll, for coming back
 		int browseVersion = 0;
 
@@ -1293,7 +1346,7 @@ namespace bp
 			MANGA_JAVA_ROW = MANGA_CLEAR_ROW + 1, SCREEN_OFF_VIDEO_ROW = MANGA_JAVA_ROW + 1, VIS_FPS_ROW = SCREEN_OFF_VIDEO_ROW + 1,
 			// Secure DNS is one of the REMEMBER switches (the last), so its id is that switch's: changeSetting's
 			// generic branch toggles it by that index
-			MANGA_DNS_ROW = TOGGLE_ROW + 19, SONG_INFO_ROW = TOGGLE_ROW + 20;
+			MANGA_DNS_ROW = TOGGLE_ROW + 19, SONG_INFO_ROW = TOGGLE_ROW + 20, VOLUME_MAX_ROW = VIS_FPS_ROW + 1;
 		// the panels' backlights (BananaOS's own levels: changed here as its menu changes them)
 		Backlight backlight;
 		bool sameBrightness = true;	// the setting's, kept here for settingRows (no Player there)
@@ -1325,7 +1378,8 @@ namespace bp
 		Rect quickBar(int i) const { Rect r = quickRowRect(i); return {r.x + 296, r.y + r.h / 2 - 10, 164, 20}; }
 		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + 472, r.y + (r.h - 48) / 2, 48, 48}; }
 		void setBrightness(Backlight::Panel panel, int permille, Player& p);
-		static constexpr int SET_Y = 92, SET_H = 46, SET_SHOWN = 7, HELP_Y = 400;
+		// (6 rows end at 368: the help's two lines at 400 stay clear of them; a longer group scrolls)
+		static constexpr int SET_Y = 92, SET_H = 46, SET_SHOWN = 6, HELP_Y = 400;
 		// a settings group's tile (Settings opens on them: two to a row)
 		Rect groupRect(int g) const { return {16 + g % 2 * 312, 70 + g / 2 * 86, 296, 78}; }
 		std::string settingHelp(int row) const;	// what a setting does, under its rows
@@ -1335,7 +1389,7 @@ namespace bp
 		static constexpr int64_t STYLE_ROW = -2;	// the subtitle menu's last row: the settings page
 		static constexpr int QUIT_BTN = 10, SCREEN_BTN = 12, INFO_BTN = 13, LOCK_BTN = 14, EXIT_BTN = 15,
 			BACK_ICON = 16,	// "<" at the top left of every page: B
-			EMPTY_BTN = 17,	// an empty page's button (no connections: Add connection)
+			EMPTY_BTN = 17,	// an empty page's button (no connections: Find on the network)
 			GROUP_PREV = 18, GROUP_NEXT = 19;	// a settings group's neighbours, either side of its title (Y, X)
 		// the web dashboard's page: New PIN and Turn off (its Turn on / Try again is EMPTY_BTN)
 		static constexpr int WEB_NEWPIN = 540, WEB_OFF = 541;
@@ -1457,7 +1511,7 @@ namespace bp
 		std::string mangaSeriesCoverUrl(const std::string& seriesId) const;	// a saved series' cover by URL ("" for a local one)
 		mutable std::vector<int> mangaLibUnread;
 		mutable std::vector<ChapterProgress> mangaHistory;	// one row per series (historyBySeries)
-		int mlibGrid = 0, mlibScroll = 0;
+		mutable int mlibGrid = 0, mlibScroll = 0;	// (mutable: the cursor follows its series when the list is sorted again)
 		int mhisCursor = 0, mhisScroll = 0;
 		int mbrowseCursor = 0, mListCursor = 0, mListScroll = 0;
 		bool mBrowseList = false;	// Browse's "On this handheld": the series list open
@@ -1472,6 +1526,10 @@ namespace bp
 		PageCache mangaCoverCache;
 		static constexpr uint64_t MANGA_COVER_CACHE_LIMIT = 50ull * 1024 * 1024;
 		Uint32 mangaCacheAt = 0;	// Clear cache pressed once: again within 2 s empties it
+		// the network folders' chapters copied to <state>/manga/cache/net: under the same cap as the pages, the
+		// oldest going first (never `keep`, the one open); their bytes join the Clear cache row's size
+		uint64_t mangaNetCacheBytes = 0;
+		void mangaNetTrim(const std::string& keep, const Player& p);
 		Uint32 mangaJavaAt = 0;		// Java extensions' Remove pressed once: again within 2 s removes it
 		bool mangaHistOn = true;	// the setting, kept here for the reader's records (mangaRecordProgress has no Player)
 		int mangaPressed = -1;		// the card, cover, row or button under the finger
@@ -1516,6 +1574,16 @@ namespace bp
 		// the error each asker last had a dialog for (0: a source's lists and series, 1: the reader's pages); forgotten
 		// once that asker's error clears (the source asked again), so the same error after a reopen is said again
 		std::string mangaErrFor[2], mangaErrText;
+		// A message that needs reading (what can't be done, what went wrong): a dialog on this panel with OK, A or B
+		// or a tap closes it. Short confirmations ("Copied", "Speed 1.5x") stay the top screen's notice (Player::osd)
+		bool alertOpen = false;
+		std::string alertTitle, alertText;
+		Rect alertBox() const;
+		Rect alertOk() const;
+		void drawAlert();
+	public:
+		void alert(const std::string& title, const std::string& text = "");
+	private:
 		Rect mangaErrBox() const { return {96, 120, 448, 220}; }
 		Rect mangaErrOk() const { return {240, 280, 160, 44}; }
 		void mangaErrCheck(const std::string& error, bool anyError = false, int asker = 0);	// anyError: not only a browser check
@@ -1527,6 +1595,8 @@ namespace bp
 		void drawMangaReadWaiting();
 		void mangaReadWaitCancel();
 		int mangaProgPage = -1, mangaProgPages = -1;
+		float mangaProgWithin = 0;	// the place inside that page last kept (Vertical scroll)
+		Uint32 mangaProgAt = 0;
 		bool mangaTouch = false, mangaSlider = false;
 		double mangaTouchY = 0, mangaTouchX = 0;
 		// fullscreen reading: the pages' textures on this panel (a page in slices of at most 2048 rows), the chapter
@@ -1957,6 +2027,15 @@ namespace bp
 		// a series page's chapter rows shown: five down to the hint bar, four while the mini bar takes the foot
 		bool mangaSourceEngineReady() const;	// an extension's series: the manga engine answering (Resume waits for it)
 		// History's X: Clear last hour / today / last 24 hours / all (the places to resume stay)
+		// the Library's X: Remove missing (series of the card whose files are on no card now), asked twice
+		bool mlibMenu = false, mlibArmed = false;
+		std::vector<std::string> mangaMissing() const;
+		const LocalSeries* mangaSingleFile(const std::string& id) const;	// a local series that is one file, or null	// their ids
+		bool mangaLibMenuKey(Button b, Player& p);
+		void mangaLibMenuAct(Player& p);
+		void drawMangaLibMenu();
+		Rect mlibMenuBox() const { return {112, 150, 416, 170}; }
+		Rect mlibMenuRow() const { return {128, 214, 384, 40}; }
 		bool mhisMenu = false;
 		int mhisMenuCursor = 0;
 		static constexpr int MHIS_MENU_ROWS = 5;	// Selected item, Last hour, Today, Last 24 hours, All

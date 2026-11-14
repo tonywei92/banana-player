@@ -1088,7 +1088,7 @@ namespace bp
 
 	void Ui::mangaServerAddOpen(Player& p)
 	{
-		if (!mangaNet || !mangaNet->started()) { p.osd("Servers need a state folder", 2500); return; }
+		if (!mangaNet || !mangaNet->started()) { alert("Can\xE2\x80\x99t add servers", "The player has no folder to keep them in.");; return; }
 		mangaServerCancel();
 		mangaSrvFormId.clear();
 		mangaSrvFormKind = "komga";

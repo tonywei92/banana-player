@@ -32,4 +32,9 @@ namespace bp
 
 	// rename that fails with EEXIST instead of replacing `to`; both on one filesystem (EXDEV otherwise). 0 or an errno
 	int renameNoReplace(const std::string& from, const std::string& to);
+
+	// A folder of cached items (the manga reader's network chapters: one folder or archive each) held under a
+	// budget: the least recently used (by mtime) go until what's left fits, never `keep` (the one open). Returns
+	// the bytes left.
+	uint64_t trimCacheFolder(const std::string& dir, uint64_t budget, const std::string& keep = "");
 }

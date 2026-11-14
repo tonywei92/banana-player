@@ -2264,7 +2264,7 @@ namespace bp
 		if (!inside || s.path.find("/../") != std::string::npos)
 		{
 			fprintf(stderr, "manga: not deleting %s (outside the Manga folders)\n", s.path.c_str());
-			p.osd("Couldn't delete " + s.title, 2500);
+			alert("Couldn\xE2\x80\x99t delete it", "\"" + s.title + "\" couldn\xE2\x80\x99t be deleted. Is the card read only?");
 			return;
 		}
 		Uint32 t0 = SDL_GetTicks();
@@ -2286,7 +2286,8 @@ namespace bp
 		mangaScan();
 		if (mListCursor >= (int)mangaLocal.size()) mListCursor = std::max(0, (int)mangaLocal.size() - 1);
 		if (mListScroll > mListCursor) mListScroll = mListCursor;
-		p.osd(failed ? "Some files of " + s.title + " couldn't be deleted" : "Deleted " + s.title, 2500);
+		if (failed) alert("Not all of it was deleted", "Some files of \"" + s.title + "\" couldn\xE2\x80\x99t be deleted.");
+		else p.osd("Deleted " + s.title, 2500);
 	}
 
 	void Ui::drawMangaLocalSheet(const Player& p)

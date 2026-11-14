@@ -11,7 +11,7 @@ import { Icon, dimsCache } from './js/icons.js';
 import { DevButton, LoopIcon, NowPlaying, TapToPlay, closePanel, loopName, showTab, targetLabel, useVideoSlot } from './js/playing.js';
 import { cmpName, fmtTime, isIOS, throttled } from './js/util.js';
 import { Playlists } from './js/playlists.js';
-import { RECENT_ID } from './js/recent.js';
+import { Home } from './js/home.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
 import { Files, Lightbox, UploadFab } from './js/files.js';
 import { JobFab, jobOver, refreshJobs } from './js/jobs.js';
@@ -23,7 +23,7 @@ import { boot, signOut } from './js/session.js';
 import { toast } from './js/toasts.js';
 
 /* ================= shell ================= */
-const NAV = [['playing', 'Playing', 'note', '#/playing'], ['files', 'Files', 'folder', '#/files'], ['playlists', 'Playlists', 'playlist', '#/playlists']];
+const NAV = [['home', 'Home', 'home', '#/home'], ['playing', 'Playing', 'note', '#/playing'], ['files', 'Files', 'folder', '#/files'], ['playlists', 'Playlists', 'playlist', '#/playlists']];
 // the Manga item is shown only while the reader is on (the handheld's setting)
 function navWithManga(mangaOn) {
 	const out = NAV.slice();
@@ -43,7 +43,7 @@ function MiniPlayer() {
 	if (!v.has || store.route.page === 'playing' || store.selecting) return null;
 	const frac = v.duration ? Math.min(1, v.pos() / v.duration) : 0;
 	return html`<div class="mini box surface" onClick=${() => go('#/playing')} role="region" aria-label="Now playing">
-		${vidHere(v) ? html`<div class="tile art-sm vthumb" key="v" ref=${slot}></div>` : html`<div class="tile art-sm" key="a"><${Art} src=${coverUrl(v.kind === 'video' ? v.path : v.cover)} seed=${v.path} kind=${v.kind} /></div>`}
+		${vidHere(v) ? html`<div class="tile art-sm vthumb" key="v" ref=${slot}><${Art} seed=${v.path} kind="video" /></div>` : html`<div class="tile art-sm" key="a"><${Art} src=${coverUrl(v.kind === 'video' ? v.path : v.cover)} seed=${v.path} kind=${v.kind} /></div>`}
 		<div class="meta"><div class="t ell">${v.title}</div><div class="m ell">${v.finished ? html`<span class="dim">Finished</span>${v.source && v.source.title ? ' · ' + v.source.title : ''}` : v.here ? 'In this browser' : html`<span class="y">On handheld</span>`}${!v.here && bgShown() ? ' · in the background' : v.artist ? ' · ' + v.artist : ''}</div></div>
 		${likable(v) && html`<${LikeBtn} v=${v} cls="ib" />`}
 		<button class="ib play" aria-label=${v.finished ? 'Play the list again' : v.paused ? 'Play' : 'Pause'} onClick=${e => { e.stopPropagation(); ctl.toggle(); }}><${Icon} n=${v.paused ? 'play' : 'pause'} k=${2} /></button>
@@ -67,7 +67,7 @@ function PlayerBar() {
 			<span class="ptime">${fin ? html`<span class="dim">Finished</span>` : html`${fmtTime(v.pos())} / ${fmtTime(v.duration)}`}</span></div>
 		<div class=${'pb-now' + (onPage ? ' here' : '')}>
 			<div class="go" onClick=${open} role=${onPage ? undefined : 'link'} tabindex=${onPage ? undefined : 0} aria-label=${onPage ? undefined : 'Open the player'} onKeyDown=${e => { if (e.key === 'Enter') open(); }}>
-				${vidHere(v) && !onPage ? html`<span class="tile art-sm vthumb" key="v" ref=${slot}></span>` : html`<span class="tile art-sm" key="a"><${Art} src=${coverUrl(v.kind === 'video' ? v.path : v.cover)} seed=${v.path} kind=${v.kind} /></span>`}<span class="grow"><div class="t ell">${v.title}</div><div class="m ell">${fin ? 'Finished' + (v.source && v.source.title ? ' · ' + v.source.title : '') : v.artist || targetLabel(s.target)}${!v.here && bgShown() ? ' · in the background' : ''}</div></span></div>
+				${vidHere(v) && !onPage ? html`<span class="tile art-sm vthumb" key="v" ref=${slot}><${Art} seed=${v.path} kind="video" /></span>` : html`<span class="tile art-sm" key="a"><${Art} src=${coverUrl(v.kind === 'video' ? v.path : v.cover)} seed=${v.path} kind=${v.kind} /></span>`}<span class="grow"><div class="t ell">${v.title}</div><div class="m ell">${fin ? 'Finished' + (v.source && v.source.title ? ' · ' + v.source.title : '') : v.artist || targetLabel(s.target)}${!v.here && bgShown() ? ' · in the background' : ''}</div></span></div>
 			${likable(v) && html`<${LikeBtn} v=${v} cls="ib" /><button class=${'ib' + (s.addOpen ? ' open' : '')} aria-label="Add to playlist" title="Add to playlist" aria-haspopup="dialog" aria-expanded=${!!s.addOpen} onClick=${e => addToPlaylist([v.path], v.title, e.currentTarget)}><${Icon} n="pl-add" k=${2} /></button>`}</div>
 		<div class="right">
 			<button class=${'ib opt' + (v.shuffled ? ' on' : '')} aria-label="Shuffle" title=${v.shuffled ? 'Shuffle: On' : 'Shuffle: Off'} aria-pressed=${!!v.shuffled} onClick=${ctl.shuffle} disabled=${off}><${Icon} n="shuffle" k=${2} /></button>
@@ -81,7 +81,9 @@ function BarVolume() {
 	const send = useMemo(() => throttled(v => post('/api/volume', { v }).catch(() => {}), 120), []);
 	if ((here && isIOS) || (!here && sn && sn.volume < 0)) return null;
 	const change = e => { const v = +e.target.value; hold(v); if (here) setBrowserVol(v); else send(v); };
-	return html`<div class="bar-vol"><${Icon} n="speaker" k=${2} /><input type="range" class="filled" style=${'--v:' + val + '%'} min="0" max="100" value=${val} onInput=${change} aria-label=${here ? 'Browser volume' : 'Handheld volume'} aria-valuetext=${val + '%'} /></div>`;
+	// (the handheld's goes past 100%, to its Max volume, as the volume card's; this browser's own stays 0-100)
+	const top = here ? 100 : Math.max(100, sn && sn.volumeMax || 100);
+	return html`<div class=${'bar-vol' + (!here && val > 100 ? ' boost' : '') + (!here && val > 120 ? ' loud' : '')} title=${!here && val > 120 ? 'Over 120% can damage your hearing and the speakers' : undefined}><${Icon} n="speaker" k=${2} /><input type="range" class="filled" style=${'--v:' + (val / top * 100).toFixed(1) + '%'} min="0" max=${top} step=${top > 100 ? 5 : 1} value=${val} onInput=${change} aria-label=${here ? 'Browser volume' : 'Handheld volume'} aria-valuetext=${val + '%'} /></div>`;
 }
 // the countdown ring only where there's a button to press in time (Undo, Show…); a notice just goes
 function Toasts() {
@@ -96,7 +98,7 @@ function HelpOverlay() {
 	return html`<${Modal} title="Keyboard shortcuts" onClose=${close} actions=${html`<button class="btn primary" onClick=${close}>Close</button>`}><div class="helpkeys">${keys.map(([k, d]) => html`<kbd>${k}</kbd><span>${d}</span>`)}</div></${Modal}>`;
 }
 
-// the sidebar's playlists: a shortcut, not the library (Liked, up to 5 recent, then all of them on their page)
+// the sidebar's playlists: a shortcut, not the library (Liked, up to 5 used lately, then all of them on their page)
 function SidePls() {
 	const s = store, list = s.pls;
 	if (!list) return html`<div class="plblock"></div>`;
@@ -108,7 +110,6 @@ function SidePls() {
 	return html`<div class="plblock" role="group" aria-label="Playlists">
 		<div class="plhead"><span class="kicker">Playlists</span><span class="num">${list.length}</span><span class="grow"></span><button class="ib sm" aria-label="New playlist" title="New playlist" onClick=${() => newPlaylistDialog(id => open(id))}><${Icon} n="plus" k=${1} /></button></div>
 		${liked && html`<button class="plnav" aria-current=${cur === liked.id ? 'page' : undefined} onClick=${() => open(liked.id)}><span class="y"><${Icon} n="heart" k=${1} /></span>Liked</button>`}
-		<button class="plnav" aria-current=${cur === RECENT_ID ? 'page' : undefined} onClick=${() => go('#/recent')}><span class="y"><${Icon} n="clock" k=${1} /></span>Recent</button>
 		${!few && shown.length > 0 && html`<div class="kicker plsub">Recently used</div>`}
 		${shown.map(p => html`<button class="plnav side-pl" key=${p.id} aria-current=${cur === p.id ? 'page' : undefined} onClick=${() => open(p.id)}><${Icon} n="playlist" k=${1} /><span class="ell">${p.name}</span></button>`)}
 		${!few && html`<button class="plnav all" onClick=${() => go('#/playlists')}>All ${list.length} playlists<span class="grow"></span><${Icon} n="right" k=${1} /></button>`}</div>`;
@@ -180,7 +181,7 @@ function Shell() {
 		};
 		addEventListener('keydown', key); return () => removeEventListener('keydown', key);
 	}, []);
-	const page = r.page === 'files' ? html`<${Files} />` : r.page === 'playlists' ? html`<${Playlists} />` : r.page === 'manga' ? html`<${Manga} />` : html`<${NowPlaying} />`;
+	const page = r.page === 'home' ? html`<${Home} />` : r.page === 'files' ? html`<${Files} />` : r.page === 'playlists' ? html`<${Playlists} />` : r.page === 'manga' ? html`<${Manga} />` : html`<${NowPlaying} />`;
 	const miniShown = !wide && v.has && r.page !== 'playing' && !s.selecting;
 	const fabShown = r.page !== 'playing' && !s.selecting && !s.pick && (s.upload.items.length > 0 || (r.page === 'files' && !!r.path) || s.jobs.some(j => !jobOver(j)));
 	const nav = (k, h) => go(k === 'files' ? filesHash(store.lastDir || '') : h);

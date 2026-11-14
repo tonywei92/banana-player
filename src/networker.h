@@ -21,6 +21,9 @@ namespace bp
 		NetResult result;
 		std::vector<NetEntry> entries;
 		std::vector<std::string> names;	// all the folder's files (subtitles, covers...): the player's sidecars
+		// the account can write here (a hidden file made and taken away again, as nothing else says it for both
+		// SMB and FTP); false too for an SMB server's list of shares, where nothing can be put
+		bool writable = false;
 	};
 
 	class NetWorker
@@ -30,7 +33,7 @@ namespace bp
 		explicit NetWorker(std::function<void(NetListing*)> done) : done(std::move(done)) {}
 		~NetWorker();
 		// dir: a bpnet path of server's; the listing comes to done() with this serial
-		void list(int serial, const NetServer& server, const std::string& password, const std::string& dir);
+		void list(int serial, const NetServer& server, const std::string& password, const std::string& dir, bool probe = false);
 		void test(int serial, const NetServer& server, const std::string& password);
 		// whatever runs now returns Cancelled; queued jobs go
 		void cancelAll();
@@ -44,6 +47,7 @@ namespace bp
 			NetServer server;
 			std::string password, dir;
 			bool test;
+			bool probe = false;	// try writing (the browser's folder: its file actions)
 		};
 		void run();
 		std::function<void(NetListing*)> done;

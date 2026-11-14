@@ -1,4 +1,5 @@
 #include "strip.h"
+#include <algorithm>
 #include <cmath>
 
 namespace bp
@@ -137,6 +138,22 @@ namespace bp
 	{
 		if (aspect.empty()) return -1;
 		return indexAt(off + viewH * 0.5);
+	}
+
+	double Strip::within() const
+	{
+		int p = currentPage();
+		if (p < 0 || pageHeight(p) <= 0) return 0;
+		return std::clamp((off + viewH * 0.5 - pageTop(p)) / pageHeight(p), 0.0, 1.0);
+	}
+
+	void Strip::scrollToWithin(int page, double share)
+	{
+		if (page < 0 || page >= pageCount()) return;
+		share = std::clamp(share, 0.0, 1.0);
+		// the page's top at the view's top when the place was near it (as a plain open is); else its middle there
+		double y = pageTop(page) + share * pageHeight(page) - viewH * 0.5;
+		scrollTo(std::max(y, share < 0.05 ? pageTop(page) : 0.0));
 	}
 
 	std::vector<int> Strip::wanted(int ahead, int behind) const

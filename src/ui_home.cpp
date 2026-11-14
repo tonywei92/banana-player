@@ -95,9 +95,62 @@ namespace bp
 		}
 	}
 
+	bool Ui::drawRecentTabs(int x, int mid, int right, bool counts)
+	{
+		// chips: the chosen one lit, each with its count; an empty kind dimmed. Measured first: all or none
+		static const char* NAMES[4] = {"All", "Videos", "Music", "Books"};
+		int ws[4], total = 0;
+		for (int i = 0; i < 4; i++)
+		{
+			ws[i] = (int)std::lround(textWidth(counts ? std::string(NAMES[i]) + " " + std::to_string(recentCounts[i]) : std::string(NAMES[i]), 0) / sx) + 20;
+			total += ws[i] + (i ? 6 : 0);
+		}
+		if (x + total > right) return false;
+		for (int i = 0; i < 4; i++)
+		{
+			std::string label = counts ? std::string(NAMES[i]) + " " + std::to_string(recentCounts[i]) : std::string(NAMES[i]);
+			int w = ws[i];
+			Rect r{x, mid - 14, w, 28};
+			recentTabRect[i] = r;
+			bool on = recentTab == i;
+			if (on) fillRound(r, ACCENT, 8);
+			else drawBox(r, BUTTON, 8);
+			drawTextMid(label, 0, on ? ON_ACCENT : recentCounts[i] || !i ? TEXT : DIM, r.x + 10, mid);
+			x += w + 6;
+		}
+		return true;
+	}
+
+	void Ui::stepRecentTab(int dir, Player& p)
+	{
+		// round, past the empty kinds (All is never skipped)
+		for (int k = 0; k < 4; k++)
+		{
+			recentTab = (recentTab + dir + 4) % 4;
+			if (!recentTab || recentCounts[recentTab]) break;
+		}
+		enterFolder(RECENT, p);
+		cursor = firstCursor();
+		scroll = 0;
+		fitList();
+	}
+
+	void Ui::recentInOrder(const std::vector<std::string>& before)
+	{
+		if (before.empty()) return;
+		std::unordered_map<std::string, size_t> at;
+		for (size_t i = 0; i < before.size(); i++) at.emplace(before[i], i);
+		std::vector<RecentItem> kept;
+		for (auto& it : recent)
+			if (at.count(it.path)) kept.push_back(it);
+		std::stable_sort(kept.begin(), kept.end(), [&](const RecentItem& a, const RecentItem& b) { return at[a.path] < at[b.path]; });
+		recent = std::move(kept);
+	}
+
 	void Ui::recentEdited(Player& p)
 	{
 		if (browseDir != HOMEDIR && browseDir != RECENT) return;
+		recentKeepOrder = true;
 		int c = cursor, s = scroll;
 		enterFolder(browseDir, p);
 		if (browseDir == RECENT)
@@ -398,10 +451,19 @@ namespace bp
 	{
 		// a document (TXT, EPUB, PDF, a comic): its viewer, not the player
 		if (openDocument(path, p)) return;
+		// one on the network: copied to the card first, then opened from there
+		if (isNetPath(path) && !isMediaFile(path))
+		{
+			std::string n = netBaseName(path);
+			if (isComicName(n) && !p.settings.mangaOn) { alert("Comics need the Manga reader", "Turn it on in Extensions to read CBZ and CBR files."); return; }
+			if (isDocumentName(n) || isComicName(n)) { netOpenCopy(path, p); return; }
+			alert("Can\xE2\x80\x99t open this file", "\"" + n + "\" isn\xE2\x80\x99t a video, song, photo, book or document the player can open.");
+			return;
+		}
 		// a file of the cards nothing here opens: said, not handed to the player
 		if (!isNetPath(path) && !isMediaFile(path))
 		{
-			p.osd(baseName(path) + " can't be opened here", 2000);
+			alert("Can\xE2\x80\x99t open this file", "\"" + baseName(path) + "\" isn\xE2\x80\x99t a video, song, photo, book or document the player can open.");
 			return;
 		}
 		// what plays: back to it, never from its start

@@ -110,6 +110,7 @@ namespace bp
 		// the visualizers' frame rate: 30, 45 (default: smooth, lighter than 60 on the battery) or 60; Peaks and Circle
 		// draw at 30 whatever it says
 		int vizFps = 45;
+		int volumeMax = 120;	// the volume's top: 100, 120 or 150 (above 100 the player's own gain, over the handheld's 100%); 120 by default, 150 only asked for
 		// the play mode Shuffle (the music key, the web's Shuffle): every list started plays shuffled from the item
 		// picked, till it's turned off; loop is off meanwhile (four modes). No Settings row: those keys are its switch
 		bool shuffle = false;

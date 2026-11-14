@@ -25,7 +25,7 @@ export async function pingBoot() { try { const { r } = await fetchT('/api/ping',
 // a link with the PIN opened while the page is open: sign in with it, the PIN gone from the address
 export async function pinFromHash() {
 	const m = location.hash.match(/^#pin=([A-Za-z0-9]{4})$/);
-	replaceHist(null, location.pathname + location.search + (store.authed ? '#/playing' : ''));
+	replaceHist(null, location.pathname + location.search + (store.authed ? '#/home' : ''));
 	if (!m) return;
 	if (store.authed) { set({ route: parseRoute() }); return; }
 	set({ authed: false, signingIn: true, route: parseRoute() });

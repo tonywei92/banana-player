@@ -1,4 +1,5 @@
 #include "mangadownloader.h"
+#include "browser.h"
 #include "cbzwrite.h"
 #include "comicinfo.h"
 #include "manga_names.h"	// chapterNumber: a chapter's number comes from its name, as the reader counts it
@@ -528,6 +529,11 @@ namespace bp
 		if (base.empty()) base = "Chapter";
 
 		std::string seriesDir = downloadsRoot_ + "/" + series;
+		if (cardOut(downloadsRoot_))
+		{
+			error = "The second card is out";
+			return false;
+		}
 		if (downloadsRoot_.empty() || !mkdirs(seriesDir))
 		{
 			error = "could not make " + seriesDir;

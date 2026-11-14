@@ -3643,8 +3643,8 @@ static void testMangaStore()
 		std::ifstream g(state + "/manga/progress.tsv");
 		std::getline(g, line);
 		CHECK_EQ(line, std::string("# banana-player manga progress v1"));
-		std::getline(g, line);	// a chapter's line: the hidden column is the last one
-		CHECK_EQ(line.size() > 2 && line.compare(line.size() - 2, 2, "\t0") == 0, true);
+		std::getline(g, line);	// a chapter's line: the hidden column, then the place inside the page, last
+		CHECK_EQ(line.size() > 8 && line.compare(line.size() - 8, 8, "\t0\t0.000") == 0, true);
 	}
 
 	// continue reading: each series' latest unfinished chapter, newest first
@@ -4767,6 +4767,106 @@ static void testEpub()
 	CHECK_EQ(t->fraction(ids[0]), 0.0);
 	std::vector<uint8_t> pic;
 	CHECK_EQ(t->image("OEBPS/Images/p.png", pic) && pic.size() > 8, true);
+}
+
+static void testMangaWithin()
+{
+	// Vertical scroll's place inside a tall page (a PDF's) is kept with the chapter and read back
+	char tmpl[] = "/tmp/bp-within-XXXXXX";
+	std::string dir = mkdtemp(tmpl);
+	{
+		MangaStore m;
+		m.load(dir);
+		ChapterProgress cp;
+		cp.seriesId = "local:/m/a.pdf";
+		cp.chapterId = "/m/a.pdf";
+		cp.page = 2;
+		cp.pages = 9;
+		cp.within = 0.625f;
+		m.setProgress(cp, true);
+		CHECK_EQ(m.save(), true);
+	}
+	MangaStore m;
+	m.load(dir);
+	const ChapterProgress* p = m.progress("/m/a.pdf");
+	CHECK_EQ(p && p->page == 2 && std::fabs(p->within - 0.625f) < 0.001f, true);
+	// the Strip: the middle of the view a share into the page, and back
+	Strip st;
+	st.setView(100, 200);
+	st.setPages(3, 4.0);	// pages 400 tall
+	st.scrollToWithin(1, 0.5);
+	CHECK_EQ(st.currentPage(), 1);
+	CHECK_EQ(std::fabs(st.within() - 0.5) < 0.01, true);
+	removeTree(dir);
+}
+
+static void testHistoryPerKind()
+{
+	// Recent keeps 30 of each kind: books read don't push the films out, nor songs the books
+	PlayHistory h;
+	for (int i = 0; i < 35; i++) h.add("/m/v" + std::to_string(i) + ".mkv");
+	for (int i = 0; i < 35; i++) h.add("/m/b" + std::to_string(i) + ".epub");
+	for (int i = 0; i < 5; i++) h.add("/m/s" + std::to_string(i) + ".mp3");
+	size_t v = 0, b = 0, s = 0;
+	for (auto& p : h.items()) { int k = PlayHistory::kindOf(p); (k == 0 ? v : k == 1 ? s : b)++; }
+	CHECK_EQ(v, (size_t)30);
+	CHECK_EQ(b, (size_t)30);
+	CHECK_EQ(s, (size_t)5);
+	CHECK_EQ(h.items().front(), std::string("/m/s4.mp3"));	// still newest first, across kinds
+	CHECK_EQ(std::find(h.items().begin(), h.items().end(), "/m/v4.mkv") == h.items().end(), true);	// the oldest videos went
+	PlayHistory again;
+	again.parse(h.serialize());
+	CHECK_EQ(again.items().size(), (size_t)65);
+}
+
+static void testPathMoved()
+{
+	std::string n;
+	CHECK_EQ(movedPath("/a/b", "/a/b", "/a/c", n) && n == "/a/c", true);
+	CHECK_EQ(movedPath("/a/b/x.mp3", "/a/b", "/run/sd2/b", n) && n == "/run/sd2/b/x.mp3", true);
+	CHECK_EQ(movedPath("/a/bc/x.mp3", "/a/b", "/a/c", n), false);	// a name that only starts the same
+	CHECK_EQ(movedPath("/a", "/a/b", "/a/c", n), false);
+	// Recent and the places kept follow a folder renamed, and what's inside it
+	PlayHistory h;
+	h.add("/m/Album/01.mp3");
+	h.add("/m/Other.mp4");
+	CHECK_EQ(h.moved("/m/Album", "/m/Best Album"), true);
+	CHECK_EQ(h.items()[1], std::string("/m/Best Album/01.mp3"));
+	CHECK_EQ(h.moved("/m/Nothing", "/m/Else"), false);
+	ResumeStore r;
+	ResumeEntry e;
+	e.path = "/m/Other.mp4";
+	e.position = 30;
+	r.put(e);
+	CHECK_EQ(r.moved("/m/Other.mp4", "/m/Film.mp4") && r.find("/m/Film.mp4") && r.find("/m/Film.mp4")->position == 30, true);
+	CHECK_EQ(r.find("/m/Other.mp4") == nullptr, true);
+}
+
+static void testTrimCacheFolder()
+{
+	// the network chapters' cache: oldest first until it fits, never the one open
+	char tmpl[] = "/tmp/bp-trim-XXXXXX";
+	std::string dir = mkdtemp(tmpl);
+	auto make = [&](const std::string& name, int bytes, time_t at) {
+		std::string d = dir + "/" + name;
+		mkdir(d.c_str(), 0755);
+		FILE* f = fopen((d + "/p.jpg").c_str(), "wb");
+		std::string b(bytes, 'x');
+		fwrite(b.data(), 1, b.size(), f);
+		fclose(f);
+		struct timeval tv[2] = {{at, 0}, {at, 0}};
+		utimes(d.c_str(), tv);
+	};
+	make("old", 100, 1000);
+	make("mid", 100, 2000);
+	make("new", 100, 3000);
+	CHECK_EQ(trimCacheFolder(dir, 1000), (uint64_t)300);	// fits: nothing goes
+	CHECK_EQ(trimCacheFolder(dir, 150, dir + "/old/p.jpg"), (uint64_t)100);	// old is open: mid and new go
+	struct stat st;
+	CHECK_EQ(stat((dir + "/old").c_str(), &st) == 0 && stat((dir + "/mid").c_str(), &st) != 0, true);
+	CHECK_EQ(trimCacheFolder(dir, 0), (uint64_t)0);
+	CHECK_EQ(trimCacheFolder(dir + "/none", 0), (uint64_t)0);
+	removeTree(dir);
 }
 
 static void testTextFind()
@@ -7885,7 +7985,7 @@ static void testWeb()
 		j.screen = "browser";
 		CHECK_EQ(toJson(j), std::string("{\"path\":\"0/M\\\"x\\\\.mp3\",\"title\":\"\",\"artist\":\"\",\"album\":\"\",\"kind\":\"audio\","
 			"\"source\":{\"kind\":\"playlist\",\"title\":\"\",\"id\":\"Road.m3u\",\"index\":0,\"count\":2},\"screen\":\"browser\",\"loading\":false,"
-			"\"paused\":false,\"position\":1.5,\"positionAt\":42,\"duration\":0,\"speed\":1,\"volume\":0,"
+			"\"paused\":false,\"position\":1.5,\"positionAt\":42,\"duration\":0,\"speed\":1,\"volume\":0,\"volumeMax\":100,"
 			"\"eq\":{\"on\":false,\"preset\":\"\",\"gains\":[-3,0,0,0,0,0,0,0,0,0]},\"fx\":\"\",\"loop\":\"one\","
 			"\"shuffled\":false,\"shuffleMode\":false,\"chapters\":[{\"title\":\"A\",\"start\":0}],\"chapter\":0,\"tracks\":null,"
 			"\"clients\":1,\"session\":{\"boot\":0,\"v\":0},\"playlistSerial\":0,\"liked\":false,\"showHiddenFolders\":false,\"mangaOn\":false,\"incognito\":false}"));
@@ -8166,6 +8266,29 @@ static void testSessionNamed()
 		none.step(1);
 		for (int k = 0; k < 4 && none.s.index >= 0; k++) none.report(IntentType::CantPlay, "hh", none.s.load);
 		CHECK_EQ(none.s.index < 0 || !none.s.error.empty(), true);	// each tried once at most, never round for ever
+	}
+	{
+		// the network drops a file on the handheld: no skipping (the next would fail the same way); it stops there
+		// with the error, and Play loads it again from where it stopped
+		Sim m;
+		m.open(3, 0);
+		m.step(1);
+		m.loaded();
+		m.report(IntentType::Pos, "hh", m.s.load, 42);
+		Intent lost = m.mk(IntentType::CantPlay);
+		lost.load = m.s.load;
+		lost.reason = "net";
+		m.go(lost);
+		CHECK_EQ(m.s.index, 1);
+		CHECK_EQ(m.s.error, std::string("net"));
+		CHECK_EQ(m.s.playing, false);
+		m.fx.clear();
+		m.go(m.mk(IntentType::Play));
+		CHECK_EQ(m.s.error.empty() && m.s.playing && m.s.index == 1, true);
+		bool again = false;
+		for (auto& e : m.fx)
+			if (e.kind == Effect::HhLoad && e.path == "/m/01.mp4" && std::fabs(e.t - 42) < 0.5) again = true;
+		CHECK_EQ(again, true);
 	}
 	{
 		// stop on handheld keeps the browser as the output for the next open
@@ -10053,6 +10176,10 @@ int main()
 	testEpub();
 	testMangaSkipsBooks();
 	testTextFind();
+	testPathMoved();
+	testHistoryPerKind();
+	testMangaWithin();
+	testTrimCacheFolder();
 	testMangaUiLogic();
 	testMangaSeriesCache();
 	testMangaFilters();

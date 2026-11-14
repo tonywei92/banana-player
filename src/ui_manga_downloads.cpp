@@ -466,7 +466,7 @@ namespace bp
 						else if (mdlCardCursor >= (int)mdlCard[mdlCardAt].chapters.size())
 							mdlCardCursor = std::max(0, (int)mdlCard[mdlCardAt].chapters.size() - 1);
 					}
-					else p.osd("Couldn't delete the chapter", 2200);
+					else alert("Couldn\xE2\x80\x99t delete the chapter", "Is the card read only?");
 				}
 				else
 				{
@@ -581,7 +581,8 @@ namespace bp
 					for (const auto& ch : s.chapters)
 						if (remove(ch.path.c_str()) == 0) gone++;
 					rmdir(s.path.c_str());
-					p.osd(gone ? "Deleted " + s.name : "Couldn't delete the series", gone ? 1800 : 2200);
+					if (gone) p.osd("Deleted " + s.name, 1800);
+					else alert("Couldn\xE2\x80\x99t delete the series", "Is the card read only?");
 					mdlDeletePath.clear();
 					mdlDeleteAt = 0;
 					mangaDlEnsureCard(true);

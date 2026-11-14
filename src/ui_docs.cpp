@@ -80,7 +80,7 @@ namespace bp
 		// a comic (CBZ, CBR) reads with the Manga reader's pages: only with it turned on
 		if (comic && !p.settings.mangaOn)
 		{
-			p.osd("Turn on the Manga reader (Extensions) to read comics", 2500);
+			alert("Comics need the Manga reader", "Turn it on in Extensions to read CBZ and CBR files.");
 			return true;
 		}
 		std::string e = extLower(path);
@@ -679,7 +679,6 @@ namespace bp
 			case Button::Down: docBookTurn(1, p); break;
 			case Button::L: textCmds.push_back({TextReader::BookTurn, -1, now}); break;
 			case Button::R: case Button::A: textCmds.push_back({TextReader::BookTurn, 1, now}); break;
-			case Button::L2: textCmds.push_back({TextReader::Jump, 0, now}); break;
 			case Button::X: docMarksOpen(); break;
 			case Button::Start: docMenu = DOC_MENU_OPTIONS; docMenuCursor = docMenuScroll = 0; break;
 			// SELECT or B: back to the scroll (B there closes the document)
@@ -706,7 +705,6 @@ namespace bp
 			case Button::Down: textCmds.push_back({TextReader::Lines, 3, now}); break;
 			case Button::Left: case Button::L: textCmds.push_back({TextReader::Page, -1, now}); break;
 			case Button::Right: case Button::R: case Button::A: textCmds.push_back({TextReader::Page, 1, now}); break;
-			case Button::L2: textCmds.push_back({TextReader::Jump, 0, now}); break;
 			case Button::X: docMarksOpen(); break;
 			case Button::Start: docMenu = DOC_MENU_OPTIONS; docMenuCursor = docMenuScroll = 0; break;
 			case Button::Y:
@@ -1131,16 +1129,18 @@ namespace bp
 			{
 				int alpha = since < DOC_NOTICE_MS - 600 ? 255 : (int)(255 * (DOC_NOTICE_MS - since) / 600);
 				std::string text = note ? docNote + (findOn ? "  \xC2\xB7  R next, L back" : "")
-					: std::string(textStatus.noticeDir > 0 ? "Next page" : "Previous page") + "  \xC2\xB7  " +
-					std::to_string((int)std::lround(textStatus.fraction * 100)) + "%";
-				if (SDL_Surface* sf = TTF_RenderUTF8_Blended(fonts[1], text.c_str(), TEXT))
+					: std::string(textStatus.noticeDir > 0 ? "Next page" : "Previous page");	// (the page's % is just below it)
+				if (SDL_Surface* sf = TTF_RenderUTF8_Blended(fonts[0], text.c_str(), TEXT))
 				{
 					if (SDL_Texture* t = SDL_CreateTextureFromSurface(ren, sf))
 					{
 						// a dark pill behind it, turned as the text is (its sides swapped on the panel)
-						int tw = sf->w, th = sf->h, padX = (int)std::lround(18 * sx), padY = (int)std::lround(8 * sy);
+						int tw = sf->w, th = sf->h, padX = (int)std::lround(14 * sx), padY = (int)std::lround(5 * sy);
 						int bw = tw + 2 * padX, bh = th + 2 * padY;
-						int cx = pw / 2, cy = ph / 2;
+						// just above the page's own % at its foot (not over the text in the middle): the page's foot is
+						// this panel's left edge for a page turned clockwise, its right edge for one turned the other way
+						int lift = (int)std::lround(pw * 0.06) + bh / 2;
+						int cx = textStatus.book == MANGA_BOOK_RIGHT ? pw - lift : lift, cy = ph / 2;
 						SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 						SDL_SetRenderDrawColor(ren, BG.r, BG.g, BG.b, (Uint8)(alpha * 220 / 255));
 						SDL_Rect pill{cx - bh / 2, cy - bw / 2, bh, bw};
@@ -1155,12 +1155,36 @@ namespace bp
 			}
 			if (SDL_GetTicks() < docBookToastUntil)
 			{
-				// (said the panel's usual way up: it's still held so as Book mode turns on)
-				fillRound({32, 166, 576, 148}, BG, R_DIALOG);
-				drawTextMid("Book mode", 1, ACCENT, W / 2, 196, 540, 2);
-				drawTextMid(std::string("Turn the handheld: the top screen on the ") + (textStatus.book == MANGA_BOOK_RIGHT ? "right" : "left"),
-					0, TEXT, W / 2, 236, 540, 2);
-				drawTextMid("Tap the middle for options \xC2\xB7 B: back to scroll", 0, DIM, W / 2, 272, 540, 2);
+				// turned as the pages are (it's read held sideways): a box, its lines stacked across the panel
+				struct Line { std::string text; int size; SDL_Color ink; };
+				Line lines[3] = {{"Book mode", 1, ACCENT},
+					{std::string("Hold it with the top screen on the ") + (textStatus.book == MANGA_BOOK_RIGHT ? "right" : "left"), 0, TEXT},
+					{"Tap the middle: options \xC2\xB7 B: back to scroll", 0, DIM}};
+				bool cw = textStatus.book != MANGA_BOOK_RIGHT;	// (MANGA_BOOK_LEFT: the page turned clockwise)
+				int cx = pw / 2, cy = ph / 2;
+				// the box upright is 420 x 150 units: on the panel, its sides swapped
+				int bw = (int)std::lround(420 * sx), bh = (int)std::lround(150 * sy);
+				SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+				SDL_SetRenderDrawColor(ren, BG.r, BG.g, BG.b, 255);
+				SDL_Rect box{cx - bh / 2, cy - bw / 2, bh, bw};
+				SDL_RenderFillRect(ren, &box);
+				// the lines' places as read: above the middle, at it, below it (upright y, in pixels)
+				const int offs[3] = {-44, 2, 40};
+				for (int i = 0; i < 3; i++)
+				{
+					SDL_Surface* sf = TTF_RenderUTF8_Blended(fonts[lines[i].size], lines[i].text.c_str(), lines[i].ink);
+					if (!sf) continue;
+					if (SDL_Texture* t = SDL_CreateTextureFromSurface(ren, sf))
+					{
+						// an upright line further down sits further left, turned clockwise (right, the other way)
+						int dy = (int)std::lround(offs[i] * sy), dx = cw ? -dy : dy;
+						int tw = std::min(sf->w, bw - (int)std::lround(24 * sx)), th = sf->h;
+						SDL_Rect d{cx + dx - tw / 2, cy - th / 2, tw, th};
+						SDL_RenderCopyEx(ren, t, nullptr, &d, cw ? 90 : 270, nullptr, SDL_FLIP_NONE);
+						SDL_DestroyTexture(t);
+					}
+					SDL_FreeSurface(sf);
+				}
 			}
 			drawFind();
 			return;

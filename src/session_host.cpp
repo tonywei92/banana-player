@@ -221,6 +221,8 @@ namespace bp
 					// (held for a page while a photo is open here: the photo stays; pass() holds the copy once it closes)
 					if (e.hold && p.playingPhoto()) break;
 					if (!holdsItem() && !(p.playing() && !p.playingPhoto() && p.jumpTo(e.path, s.index))) bringHere();
+					// held, but it ended in an error (the network dropped it; Play tries again): opened anew
+					else if (holdsItem() && !p.error.empty()) p.jumpTo(e.path, s.index);
 					if (e.t > 0) seekHere(e.t);
 					if (e.hold) p.holdPaused();
 				}
@@ -455,12 +457,13 @@ namespace bp
 		{
 			if (!p.error.empty())
 			{
-				if (erroredLoad != s.load)
+				if (erroredLoad != s.load && p.loads() != erroredPlayerLoad)
 				{
 					erroredLoad = s.load;
+					erroredPlayerLoad = p.loads();
 					Intent i = make(IntentType::CantPlay);
 					i.load = s.load;
-					i.reason = "error";
+					i.reason = p.errorNet ? "net" : "error";
 					submit(i);
 				}
 			}

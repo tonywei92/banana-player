@@ -3,6 +3,8 @@ export const fmtTime = s => { s = Math.max(0, Math.floor(s || 0)); const h = Mat
 export function fmtSize(b) { if (b == null) return ''; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1000 && i < 4) { b /= 1000; i++; } return (i > 1 ? b.toFixed(1) : Math.round(b)) + ' ' + u[i]; }
 export function fmtDate(t) { return t ? new Date(t * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''; }
 export const baseName = p => p.split('/').pop();
+// a network file (bpnet://<connection>/<path>): the handheld plays it, never this browser (it has no address the page can load)
+export const isNetPath = p => typeof p === 'string' && p.startsWith('bpnet://');
 export const dirName = p => p.split('/').slice(0, -1).join('/');
 export const joinPath = (d, n) => d ? d + '/' + n : n;
 export const stem = n => n.replace(/\.[^.]+$/, '');

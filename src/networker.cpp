@@ -19,13 +19,13 @@ namespace bp
 		if (worker.joinable()) worker.join();
 	}
 
-	void NetWorker::list(int serial, const NetServer& server, const std::string& password, const std::string& dir)
+	void NetWorker::list(int serial, const NetServer& server, const std::string& password, const std::string& dir, bool probe)
 	{
 		std::lock_guard<std::mutex> g(lock);
 		// a newer folder wins: whatever waits for the old one is for nothing
 		jobs.clear();
 		if (busy) busy->cancel();
-		jobs.push_back({serial, server, password, dir, false});
+		jobs.push_back({serial, server, password, dir, false, probe});
 		if (!worker.joinable()) worker = std::thread([this] { run(); });
 		wake.notify_one();
 	}
@@ -93,21 +93,31 @@ namespace bp
 				parseNetPath(job.dir, np);
 				std::vector<NetEntry> all;
 				out->result = be->list(np.path, all);
-				// what the browser lists: folders, then what the player plays, each in natural order; hidden (.) names out
+				// what the browser lists: folders, then every file (Files shows them all, each kind with its icon), each in
+				// natural order; hidden (.) names out
 				std::vector<NetEntry> dirs, files;
 				for (auto& e : all)
 				{
 					if (!e.dir) out->names.push_back(e.name);
 					if (e.name.empty() || e.name[0] == '.') continue;
 					if (e.dir) dirs.push_back(e);
-					else if (isMediaFile(e.name)) files.push_back(e);
+					else files.push_back(e);
 				}
 				auto byName = [](const NetEntry& a, const NetEntry& b) { return naturalLess(a.name, b.name); };
 				std::sort(dirs.begin(), dirs.end(), byName);
 				std::sort(files.begin(), files.end(), byName);
 				out->entries = dirs;
 				out->entries.insert(out->entries.end(), files.begin(), files.end());
-				// the folder's other files (subtitles, covers) stay out of the list: the player has them from names
+				// can it be written to? (a file of no bytes, put and taken away; NoAccess or any refusal: read only)
+				bool shareList = server.type == NetType::Smb && (np.path.empty() || np.path == "/");
+				if (out->result.ok() && !shareList && job.probe)
+				{
+					std::string probe = (np.path == "/" ? "" : np.path) + "/.bp-write-test";
+					NetResult w = be->put(probe, [](char*, int64_t) -> int64_t { return 0; });
+					if (w.ok()) be->remove(probe, false);
+					out->writable = w.ok();
+					if (!w.ok()) fprintf(stderr, "net: %s is read only here (%s)\n", job.dir.c_str(), w.detail.c_str());
+				}
 			}
 			if (!out->result.ok()) fprintf(stderr, "net: %s on %s: %s\n", job.test ? "test" : "list", job.server.host.c_str(), out->result.detail.c_str());
 			done(out);

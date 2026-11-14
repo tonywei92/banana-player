@@ -12,13 +12,14 @@ namespace bp
 		JsonWriter j;
 		j.obj();
 		j.key("path").str(s.path).key("title").str(s.title).key("artist").str(s.artist).key("album").str(s.album);
+		if (!s.netServer.empty()) j.key("netServer").str(s.netServer);
 		j.key("kind").str(s.kind);
 		j.key("source").obj().key("kind").str(s.sourceKind).key("title").str(s.sourceTitle).key("id").str(s.sourceId);
 		j.key("index").num(s.index).key("count").num(s.count).end();
 		j.key("screen").str(s.screen);
 		j.key("loading").boolean(s.loading).key("paused").boolean(s.paused);
 		j.key("position").num(s.position).key("positionAt").num(s.positionAtMs);
-		j.key("duration").num(s.duration).key("speed").num(s.speed).key("volume").num(s.volume);
+		j.key("duration").num(s.duration).key("speed").num(s.speed).key("volume").num(s.volume).key("volumeMax").num(s.volumeMax);
 		j.key("eq").obj().key("on").boolean(s.eqOn).key("preset").str(s.eqPreset).key("gains").arr();
 		for (double g : s.eqGains) j.num(g);
 		j.end().end();
@@ -55,10 +56,10 @@ namespace bp
 
 	bool snapshotChanged(const WebSnapshot& a, const WebSnapshot& b)
 	{
-		if (a.path != b.path || a.title != b.title || a.artist != b.artist || a.album != b.album || a.kind != b.kind || a.screen != b.screen ||
+		if (a.path != b.path || a.netServer != b.netServer || a.title != b.title || a.artist != b.artist || a.album != b.album || a.kind != b.kind || a.screen != b.screen ||
 			a.sourceKind != b.sourceKind || a.sourceTitle != b.sourceTitle || a.sourceId != b.sourceId ||
 			a.index != b.index || a.count != b.count || a.loading != b.loading || a.paused != b.paused ||
-			a.duration != b.duration || a.speed != b.speed || a.volume != b.volume || a.eqOn != b.eqOn ||
+			a.duration != b.duration || a.speed != b.speed || a.volume != b.volume || a.volumeMax != b.volumeMax || a.eqOn != b.eqOn ||
 			a.eqPreset != b.eqPreset || a.eqGains != b.eqGains || a.fx != b.fx || a.loop != b.loop || a.shuffleMode != b.shuffleMode ||
 			a.shuffled != b.shuffled || a.chapter != b.chapter || a.sessionV != b.sessionV || a.sessionBoot != b.sessionBoot ||
 			a.clients != b.clients || a.playlistSerial != b.playlistSerial || a.liked != b.liked || a.showHiddenFolders != b.showHiddenFolders || a.mangaOn != b.mangaOn || a.incognito != b.incognito || a.chapters.size() != b.chapters.size() ||

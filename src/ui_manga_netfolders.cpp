@@ -4,6 +4,8 @@
 #include "manga_names.h"
 #include "netpath.h"
 #include "ui_internal.h"
+#include "treecopy.h"
+#include <sys/time.h>
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -283,6 +285,13 @@ namespace bp
 		return dir + "/" + name;
 	}
 
+	void Ui::mangaNetTrim(const std::string& keep, const Player& p)
+	{
+		if (stateDirPath.empty()) return;
+		uint64_t limit = mangaCacheBytes(p.settings.mangaCacheSize), pages = mangaPageCache.size();
+		mangaNetCacheBytes = trimCacheFolder(stateDirPath + "/manga/cache/net", limit > pages ? limit - pages : 0, keep);
+	}
+
 	bool Ui::mangaNetCached(const std::string& localPath, bool archive) const
 	{
 		if (localPath.empty()) return false;
@@ -376,6 +385,12 @@ namespace bp
 		// paths, so progress and the store never see a machine's cache folder
 		mangaRead = {mangaNetSeriesPath, mangaNetSeriesTitle, c.path, c.title, localPath, c.archive, mangaNetPendPage,
 			mangaNetPendMode, mangaNetPendFit};
+		// its folder marked as just used (the cache's oldest go first), then the cache held under the cap
+		{
+			std::string item = c.archive ? localPath.substr(0, localPath.rfind('/')) : localPath;
+			utimes(item.c_str(), nullptr);
+			mangaNetTrim(item, p);
+		}
 		mangaProgPage = readerStatus.page;
 		mangaProgPages = readerStatus.pages;
 		mangaReadLive = false;

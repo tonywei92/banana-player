@@ -44,6 +44,7 @@ namespace bp
 			if (backlight.present(Backlight::TOP)) out.push_back(TOP_LIGHT_ROW);
 			if (backlight.present(Backlight::BOTTOM) && !(both && sameBrightness)) out.push_back(BOTTOM_LIGHT_ROW);
 			if (both) out.push_back(T + 10);
+			out.push_back(VOLUME_MAX_ROW);
 			out.push_back(T + 5);
 			out.push_back(T + 7);
 			out.push_back(CLOCK_ROW);
@@ -82,6 +83,7 @@ namespace bp
 		if (row == MANGA_JAVA_ROW)
 			return "Needed for repositories whose address ends in index.pb or index.min.json: a 241 MB download, and about 300 MB of memory while one of their sources is open.";
 		if (row == MUSIC_ROW) return "What the top screen shows while a song plays (SELECT while playing).";
+		if (row == VOLUME_MAX_ROW) return "How far the volume keys go: past 100% the player turns the sound up itself (louder than the handheld's own top, a little rougher on loud parts). Over 120% can damage your hearing and the speakers.";
 		if (row == VIS_FPS_ROW) return "How smoothly the visualizers move: 60 is smoothest, 30 lightest on the battery. Peaks and Circle stay at 30.";
 		if (row == SONG_INFO_ROW) return "The song's title, artist and album over the top screen's picture (None shows the title anyway).";
 		if (row == VIS_ROW) return "How the music is drawn: twenty styles, from Peaks to Washing machine (SELECT while playing).";
@@ -162,6 +164,7 @@ namespace bp
 			if (mangaCacheAt && now - mangaCacheAt < QUIT_WINDOW_MS)
 			{
 				mangaPageCache.clear();
+				mangaNetCacheBytes = 0;	// (clear() empties the whole folder, the network chapters too)
 				mangaCacheAt = 0;
 			}
 			else mangaCacheAt = now;
@@ -210,6 +213,7 @@ namespace bp
 			s.mangaCacheSize = ((s.mangaCacheSize + dir) % MANGA_CACHES + MANGA_CACHES) % MANGA_CACHES;
 			// over a smaller cap the cache gives its oldest pages up at once
 			mangaPageCache.setLimit(mangaCacheBytes(s.mangaCacheSize));
+			mangaNetTrim(mangaRead.path, p);
 		}
 		else if (row == TOGGLE_ROW + 15)
 		{
@@ -223,6 +227,13 @@ namespace bp
 			}
 		}
 		else if (row == VIS_ROW) s.visualizer = stepVisualizer(s.visualizer, dir);
+		else if (row == VOLUME_MAX_ROW)
+		{
+			static const int TOPS[3] = {100, 120, 150};
+			int i = s.volumeMax == 120 ? 1 : s.volumeMax == 150 ? 2 : 0;
+			s.volumeMax = TOPS[std::clamp(i + dir, 0, 2)];
+			if (s.volumeMax == 150) alert("Up to 150%", "Over 120% can damage your hearing, and the speakers (headphones too). The volume keys go there only one step at a time past 100%.");
+		}
 		else if (row == VIS_FPS_ROW)
 		{
 			static const int RATES[3] = {30, 45, 60};
@@ -237,6 +248,8 @@ namespace bp
 		else if (row == DRAG_ROW) s.dragBox = !s.dragBox;
 		else s.*REMEMBER[row - TOGGLE_ROW] = !(s.*REMEMBER[row - TOGGLE_ROW]);
 		p.setSettings(s);
+		// a lower top than the volume now: down to it
+		if (row == VOLUME_MAX_ROW && p.boost > std::max(100, s.volumeMax)) p.setBoost(s.volumeMax);
 	}
 
 	// a settings row: its label on the left, the arrows and the value; an action's or the repositories' note's own look
@@ -276,7 +289,7 @@ namespace bp
 		if (row == SOUND_ROW)
 		{
 			// a page of its own: what it's set to, and a chevron (no arrows: nothing to step)
-			drawTextMid("Sound", 1, at ? ACCENT : TEXT, 32, mid, 320);
+			drawTextMid("Sound FX", 1, at ? ACCENT : TEXT, 32, mid, 320);
 			drawTextMid(soundSummary(p.settings), 1, at ? ACCENT : p.settings.eqOn || p.settings.soundFx != SoundFx::None ? TEXT : DIM,
 				584, mid, 240, 1);
 			drawGlyphMid(G_RIGHT, 604, mid, at ? ACCENT : DIM);
@@ -294,7 +307,7 @@ namespace bp
 		if (row == MANGA_CLEAR_ROW)
 		{
 			// the cache's Clear: an action too (its size from the cache itself)
-			uint64_t size = mangaPageCache.size();
+			uint64_t size = mangaPageCache.size() + mangaNetCacheBytes;
 			drawTextMid("Clear cache", 1, at ? ACCENT : TEXT, 32, mid, 320);
 			drawTextMid(mangaCacheAt ? "Press again to clear" : size ? "Clear \xC2\xB7 " + formatBytes((long long)size) : "Empty", 1,
 				mangaCacheAt ? ACCENT : at ? DIM_ON : DIM, 608, mid, 0, 1);
@@ -354,6 +367,11 @@ namespace bp
 		{
 			label = "Music display";
 			value = musicShowLabel(p.settings.musicShow);
+		}
+		else if (row == VOLUME_MAX_ROW)
+		{
+			label = "Max volume";
+			value = std::to_string(p.settings.volumeMax) + "%";
 		}
 		else if (row == VIS_FPS_ROW)
 		{
@@ -459,6 +477,8 @@ namespace bp
 		auto rows = settingRows();
 		for (int i = scroll; i < (int)rows.size() && i < scroll + SET_SHOWN; i++)
 			drawSettingRow(rows[i], SET_Y + (i - scroll) * SET_H, i == cursor, p);
+		// more rows than the page holds (the handheld's Controls & screen with its brightness rows): a bar says so
+		if ((int)rows.size() > SET_SHOWN) drawScrollBar(SET_Y, SET_SHOWN * SET_H - 4, scroll, SET_SHOWN, (int)rows.size());
 		// what the row under the cursor does, in a line or two above the footer
 		std::string help = cursor >= 0 && cursor < (int)rows.size() ? settingHelp(rows[cursor]) : "";
 		SDL_Color helpInk = DIM;
@@ -475,7 +495,7 @@ namespace bp
 			}
 			else
 			{
-				drawPreview(p.settings.style, Rect{24, SET_Y + (int)rows.size() * SET_H + 4, 592, 46});
+				drawPreview(p.settings.style, Rect{24, SET_Y + std::min((int)rows.size(), SET_SHOWN) * SET_H + 4, 592, 46});
 				help.clear();
 			}
 		}

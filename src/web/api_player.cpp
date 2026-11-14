@@ -12,6 +12,7 @@
 #include "tracks.h"
 #include "ui.h"
 #include "session_host.h"
+#include "netpath.h"
 #include "webstate.h"
 #include <httplib.h>
 #include <SDL.h>
@@ -91,10 +92,18 @@ namespace bp
 		}
 
 		// the request's paths made real (on the server's thread: the checks touch the card); false: answered
-		bool resolveAll(WebServer& ws, const std::vector<std::string>& in, std::vector<std::string>& out, httplib::Response& res)
+		// (net: a bpnet:// path is taken as it is: no file of the card, only a saved connection's, which the handheld
+		// plays itself. Up next's picks of a network queue come back as these)
+		bool resolveAll(WebServer& ws, const std::vector<std::string>& in, std::vector<std::string>& out, httplib::Response& res, bool net = false)
 		{
 			for (auto& v : in)
 			{
+				NetPath np;
+				if (net && isNetPath(v) && parseNetPath(v, np))
+				{
+					out.push_back(v);
+					continue;
+				}
 				std::string real;
 				if (!ws.resolve(v, real, false, res)) return false;
 				out.push_back(real);
@@ -177,7 +186,14 @@ namespace bp
 			if (p.playing())
 			{
 				std::string path = p.currentPath();
-				s.path = ws.toVirtual(path);
+				// a network file: its bpnet:// path (no credentials in it), and the connection's name
+				s.path = isNetPath(path) ? path : ws.toVirtual(path);
+				if (isNetPath(path))
+				{
+					NetPath np;
+					const NetServer* sv = u.netStore && parseNetPath(path, np) ? u.netStore->find(np.server) : nullptr;
+					s.netServer = sv ? (sv->name.empty() ? sv->host : sv->name) : "the network";
+				}
 				s.title = webTitle(path, p.title);
 				s.artist = p.artist();
 				s.album = p.album();
@@ -187,7 +203,7 @@ namespace bp
 				const PlaySource& src = p.source();
 				s.sourceKind = src.kind == SourceKind::Playlist ? (src.id.empty() ? "selection" : "playlist") : "folder";
 				s.sourceTitle = src.title;
-				s.sourceId = src.kind == SourceKind::Playlist ? (src.id.empty() ? "" : playlistId(src.id)) : ws.toVirtual(src.id);
+				s.sourceId = src.kind == SourceKind::Playlist ? (src.id.empty() ? "" : playlistId(src.id)) : isNetPath(src.id) ? src.id : ws.toVirtual(src.id);
 				s.liked = u.plStore && u.plStore->isLiked(path);
 				s.index = p.index();
 				s.count = p.count();
@@ -218,7 +234,8 @@ namespace bp
 				}
 			}
 			s.positionAtMs = SDL_GetTicks();
-			s.volume = u.volumeLevel();
+			s.volume = u.volumeTotal(p);
+			s.volumeMax = std::max(100, p.settings.volumeMax);
 			s.eqOn = p.settings.eqOn;
 			s.eqPreset = p.settings.eqPreset;
 			for (int i = 0; i < EQ_BANDS; i++) s.eqGains[i] = p.settings.eqGains[i];
@@ -228,7 +245,7 @@ namespace bp
 			const SessionHost& sh = SessionHost::get();
 			s.sessionBoot = sh.boot();
 			s.sessionV = sh.version();
-			s.session = sessionJson(sh.session(), SDL_GetTicks(), [&ws](const std::string& path) { return ws.servedVirtual(path); });
+			s.session = sessionJson(sh.session(), SDL_GetTicks(), [&ws](const std::string& path) { return isNetPath(path) ? path : ws.servedVirtual(path); });
 			s.clients = ws.clients();
 			s.playlistSerial = u.playlistSerial();
 			s.showHiddenFolders = p.settings.showHiddenFolders;
@@ -298,6 +315,14 @@ namespace bp
 				return;
 			}
 			u.flushPlaylist(p);
+			// a network file (Recent's): as the handheld's Recent opens it, its server folder listed first, then the files
+			// beside it (it plays on the handheld only)
+			if (isNetPath(path))
+			{
+				u.openFile(path, p);
+				if (t > 0) seekWhenOpen(p, u, path, t);
+				return;
+			}
 			int index = 0;
 			std::vector<std::string> list = siblingVideos(path, index);
 			u.playRequest = {};
@@ -463,7 +488,7 @@ namespace bp
 				return;
 			}
 			std::vector<std::string> real;
-			if (!resolveAll(*w, values(req, "p"), real, res)) return;
+			if (!resolveAll(*w, values(req, "p"), real, res, true)) return;	// (a network file of Recent: on the handheld)
 			if (real.empty())
 			{
 				WebServer::fail(res, 400, "Nothing to play");
@@ -625,7 +650,7 @@ namespace bp
 				// the one playing by its tag; the others (their tags unread: the card isn't probed for a queue) by name
 				std::string cur = p.playing() ? p.currentPath() : "";
 				for (auto& path : q)
-					j.obj().key("p").str(w->toVirtual(path)).key("title").str(path == cur ? webTitle(path, p.title) : webTitle(path)).end();
+					j.obj().key("p").str(isNetPath(path) ? path : w->toVirtual(path)).key("title").str(path == cur ? webTitle(path, p.title) : webTitle(path)).end();
 				j.end().key("index").num(index);
 				return j.end().out();
 			}, 2000, status);
@@ -662,17 +687,29 @@ namespace bp
 			answer(res, body, status);
 		});
 
+		// the browser tab playing the sound says its own volume (0-100): the handheld's keys go on from it
+		s.Post("/api/browser-volume", [w](const httplib::Request& req, httplib::Response& res) {
+			int v = std::clamp(atoi(value(req, "v").c_str()), 0, 100);
+			int status = 200;
+			std::string body = w->call([v](Player&, Ui& u) {
+				u.browserVol = v;
+				return std::string("{\"ok\":true}");
+			}, 2000, status);
+			answer(res, body, status);
+		});
+
 		s.Post("/api/volume", [w](const httplib::Request& req, httplib::Response& res) {
 			if (!req.has_param("v"))
 			{
 				WebServer::fail(res, 400, "No volume");
 				return;
 			}
-			int v = std::clamp(atoi(value(req, "v").c_str()), 0, 100);
+			int v = std::clamp(atoi(value(req, "v").c_str()), 0, 150);
 			int status = 200;
 			std::string body = w->call([v](Player& p, Ui& u) {
-				WebPlayerGlue::setVolume(p, u, v);
-				return "{\"volume\":" + std::to_string(v) + "}";
+				// (past 100: the player's gain, as the volume keys go; up to Max volume)
+				u.setVolumeTotal(p, v);
+				return "{\"volume\":" + std::to_string(u.volumeTotal(p)) + "}";
 			}, 2000, status);
 			answer(res, body, status);
 		});
@@ -851,7 +888,7 @@ namespace bp
 			}
 			if (i.type == IntentType::Open)
 			{
-				if (!resolveAll(*w, values(req, "q"), i.queue, res)) return;
+				if (!resolveAll(*w, values(req, "q"), i.queue, res, true)) return;
 				i.index = atoi(value(req, "index").c_str());
 				i.t = std::max(0.0, atof(value(req, "t").c_str()));
 				std::string kind = value(req, "skind");
@@ -904,7 +941,7 @@ namespace bp
 				if (!r.reject.empty()) j.key("rejected").boolean(true).key("reason").str(r.reject);
 				else j.key("ok").boolean(true);
 				j.key("v").num(sh.version());
-				j.key("session").raw(sessionJson(sh.session(), SDL_GetTicks(), [w](const std::string& path) { return w->servedVirtual(path); }));
+				j.key("session").raw(sessionJson(sh.session(), SDL_GetTicks(), [w](const std::string& path) { return isNetPath(path) ? path : w->servedVirtual(path); }));
 				return j.end().out();
 			}, 2000, status);
 			answer(res, body, status);

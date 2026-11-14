@@ -4,7 +4,7 @@ import { view } from './browser-player.js';
 import { videoHere } from './events.js';
 import { reduceMotion } from './playing.js';
 
-/* ================= routes: #/playing, #/files/<vpath>, #/playlists[/<id>] ================= */
+/* ================= routes: #/home, #/playing, #/files/<vpath>, #/playlists[/<id>] ================= */
 export function go(hash) { location.hash = hash; }
 /* which history entries this page made: Back (the player's chevron) only steps into one of them. An entry from an
    earlier load of the page (an update's reload, a tab iOS dropped, the QR's link opened again) would load the page
@@ -48,7 +48,7 @@ addEventListener('hashchange', e => {
 	};
 	navMotion(swiped ? '' : navKind(was, r), apply);
 });
-/* motion that tells where you went: deeper slides in from the right (not in Files: folders switch at once), back slides out to the right, a sibling tab
+/* motion that tells where you went: deeper slides in from the right (not in Files or Playlists: they switch at once), back slides out to the right, a sibling tab
    cross-fades, the player rises from the small one (its cover, title and play button morph). View Transitions where
    the browser has them (Chrome, Safari 18); elsewhere the player's own slide, and the pages simply switch */
 export const depth = r => r.page === 'files' ? (r.path ? r.path.split('/').length : 0) : r.page === 'playlists' ? (r.id ? 1 : 0) : 0;
@@ -60,7 +60,8 @@ function navKind(a, b) {
 	// (the same on a tablet or a computer: the video moves between the player and the bar's tile)
 	if (has && videoHere() && (a.page === 'playing') !== (b.page === 'playing')) return '';
 	if (a.page !== b.page) return 'fade';
-	if (b.page === 'files') return '';	// folder to folder: at once (a slide every step was too much while browsing)
+	// folder to folder, the playlists to one and back: at once (a slide every step was too much while browsing)
+	if (b.page === 'files' || b.page === 'playlists') return '';
 	const d = depth(b) - depth(a);
 	return d > 0 ? 'fwd' : d < 0 ? 'back' : (a.path !== b.path || a.id !== b.id) ? 'fade' : '';
 }

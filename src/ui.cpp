@@ -92,6 +92,12 @@ namespace bp
 
 	bool Ui::press(Button b, Player& p)
 	{
+		// a message's dialog: A or B closes it (nothing else, so a press meant for the page isn't lost on it)
+		if (alertOpen)
+		{
+			if (b == Button::A || b == Button::B) alertOpen = false;
+			return false;
+		}
 		// the browser-check dialog takes the keys while it shows: A or B closes it
 		if (mangaErrOpen)
 		{
@@ -339,6 +345,8 @@ namespace bp
 			return false;
 		}
 		if (page == Page::Browse && !inMenu && b == Button::X) { openBrowseMenu(cursor, MENU_X); return false; }
+		// no connections yet: Y adds one by hand (A, the page's button, finds them)
+		if (page == Page::Browse && !inMenu && b == Button::Y && emptyAction() && browseDir == NETROOT) { openForm(nullptr, nullptr, p); return false; }
 		if (page == Page::Browse && !inMenu && b == Button::Y) { openBrowseMenu(cursor, MENU_Y); return false; }
 		// the form: LEFT/RIGHT step a choice (Type, Sign in, FTPS); L/R don't leave it for the other tab
 		if (page == Page::Browse && !inMenu && browseDir == FORMDIR)
@@ -353,6 +361,12 @@ namespace bp
 		if (page == Page::Browse && !inMenu && browseDir == FINDNET && (b == Button::L || b == Button::R)) return false;
 		if (page == Page::Browse && !inMenu && (b == Button::L || b == Button::R))
 		{
+			// All recent: its tabs (All, Videos, Music, Books)
+			if (browseDir == RECENT)
+			{
+				if (p.settings.keepHistory && recentCounts[0]) stepRecentTab(b == Button::R ? 1 : -1, p);
+				return false;
+			}
 			// a section each way, no wrap, at its top (All recent is none's)
 			int t = browseTab + (b == Button::R ? 1 : -1);
 			if (browseDir != RECENT && t >= 0 && t < BROWSE_TABS) openSection(t, p);
@@ -408,6 +422,13 @@ namespace bp
 			return false;
 		}
 		if (p.playingPhoto() && photoKey(b, p)) return false;
+		// the network dropped it: A tries again, from where it stopped (the session reloads it there)
+		if (!p.error.empty() && p.errorNet && b == Button::A)
+		{
+			fprintf(stderr, "net: trying %s again\n", p.currentPath().c_str());
+			SessionHost::get().playLive(true);	// (live: its reload runs now, as Next's does)
+			return false;
+		}
 		// a file that didn't open: nothing to pause, choose or speed up (Prev, Next, Up next, the menu and leaving still go)
 		if (!p.error.empty() && (b == Button::A || b == Button::X || b == Button::Select || b == Button::Up || b == Button::Down))
 			return false;
@@ -483,6 +504,7 @@ namespace bp
 		mangaVideoGuard(p);
 		if (page == Page::DocText || page == Page::DocPages) docTick(p);
 		fileJobTick(p);
+		rootsCheck(p);
 		mangaEngineWatch(p);	// the engine's download sheet: closed when done
 		// the rows' durations: none probed while a file opens; the rows on screen first
 		if (durWorker)
@@ -541,7 +563,10 @@ namespace bp
 		if (listPulseAt && SDL_GetTicks() - listPulseAt >= LIST_PULSE_MS) listPulseAt = 0;
 		// Home's Recent: listed again when what plays changes (the next song started by itself: its card comes first)
 		if (page == Page::Browse && !inMenu && atHome() && !homeTouch && !ctxOpen && p.currentPath() != homeListedFor)
+		{
+			recentKeepOrder = true;	// (its progress anew, its order as shown)
 			enterFolder(HOMEDIR, p);
+		}
 		// the hand-off from a browser: its position, once the file it opened knows its length (5 s at most)
 		if (!seekPath.empty())
 		{
@@ -708,6 +733,11 @@ namespace bp
 		webInputAt = SDL_GetTicks();
 		// a list's finger whose lift never came (a dialog took it): a new touch starts afresh
 		if (pt.kind == Pointer::Down) mlist = MangaListDrag();
+		if (alertOpen)
+		{
+			if (pt.kind == Pointer::Up) alertOpen = false;	// OK, or a tap anywhere
+			return false;
+		}
 		if (mangaErrOpen)
 		{
 			// OK, or a tap anywhere: closed
@@ -718,6 +748,23 @@ namespace bp
 		if (fileJob) return fileJobPointer(pt, x, y);
 		if (infoOpen) { if (pt.kind == Pointer::Up) infoOpen = false; return false; }
 		if (clipPointer(pt, x, y, p)) return false;
+		// All recent's tabs: a tap on one shows that kind
+		if (page == Page::Browse && browseDir == RECENT && !inMenu && !ctxOpen && p.settings.keepHistory && recentCounts[0] && y < ROW_Y)
+		{
+			for (int i = 0; i < 4; i++)
+				if (recentTabRect[i].hit(x, y))
+				{
+					if (pt.kind == Pointer::Up && i != recentTab && (i == 0 || recentCounts[i]))
+					{
+						recentTab = i;
+						enterFolder(RECENT, p);
+						cursor = firstCursor();
+						scroll = 0;
+						fitList();
+					}
+					return false;
+				}
+		}
 		if (kbOpen && panel.on())
 		{
 			kbPointer(pt, x, y);
@@ -1158,7 +1205,7 @@ namespace bp
 		// the manga reader's settings: the page cache's Clear (what it holds not being a setting, and the press waiting
 		// for its second), and the Java extensions' host state and progress
 		if (page == Page::MangaSettings)
-			upd += "|mc" + std::to_string(mangaPageCache.size()) + " " + std::to_string(mangaCacheAt != 0) +
+			upd += "|mc" + std::to_string(mangaPageCache.size() + mangaNetCacheBytes) + " " + std::to_string(mangaCacheAt != 0) +
 				"|mj" + std::to_string(mangaJavaSerial()) + " " + std::to_string(mangaJavaAt != 0);
 		if (updater)
 			upd += "|upd" + std::to_string((int)updater->state()) + " " + std::to_string(updater->progress()) + " " + updater->available() +
@@ -1325,7 +1372,7 @@ namespace bp
 				}
 			}
 		}
-		return buf + photo + "|me" + std::to_string((int)mangaErrOpen) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
+		return buf + photo + "|al" + (alertOpen ? alertTitle + alertText : "") + "|me" + std::to_string((int)mangaErrOpen) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string((int)kbShift) + (kbSymbols ? "s" : "") + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");
 	}
 }

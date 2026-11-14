@@ -63,9 +63,16 @@ static int report(const NetResult& r)
 	return 1;
 }
 
+static int outcome(const NetResult& r)
+{
+	if (r.ok()) { printf("ok\n"); return 0; }
+	return report(r);
+}
+
 static void usage()
 {
-	fprintf(stderr, "usage: bp-net ls|size|cat|loop|cancel-ls|cancel-cat <host[:port]> <user|-guest> <password|-> <path> [args]\n");
+	fprintf(stderr, "usage: bp-net ls|size|cat|loop|cancel-ls|cancel-cat|mkdir|rm|rmdir|mv|put <host[:port]> <user|-guest> <password|-> <path> [args]\n"
+		"  mv: <to>; put: <local file>\n");
 	exit(2);
 }
 
@@ -92,6 +99,26 @@ int main(int argc, char** argv)
 	if (!b) { fprintf(stderr, "no backend\n"); return 2; }
 	int64_t t0 = nowMs();
 
+	// writing
+	if (cmd == "mkdir") return outcome(b->makeDir(path));
+	if (cmd == "rm") return outcome(b->remove(path, false));
+	if (cmd == "rmdir") return outcome(b->remove(path, true));
+	if (cmd == "mv")
+	{
+		if (argc < 7) usage();
+		return outcome(b->rename(path, argv[6]));
+	}
+	if (cmd == "put")
+	{
+		if (argc < 7) usage();
+		FILE* in = fopen(argv[6], "rb");
+		if (!in) { perror(argv[6]); return 2; }
+		int64_t sent = 0;
+		NetResult r = b->put(path, [&](char* buf, int64_t n) -> int64_t { int64_t got = (int64_t)fread(buf, 1, (size_t)n, in); sent += got; return got; });
+		fclose(in);
+		printf("put %lld bytes in %lld ms\n", (long long)sent, (long long)(nowMs() - t0));
+		return outcome(r);
+	}
 	if (cmd == "ls" || cmd == "cancel-ls")
 	{
 		std::vector<NetEntry> v;

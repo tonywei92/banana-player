@@ -233,6 +233,8 @@ namespace bp
 		// a document opened from Files (a TXT, EPUB, PDF, a comic): in Recent as a video is (history off or
 		// incognito: not)
 		void addRecent(const std::string& path);
+		// a file or folder moved (Files' Rename or Move, the dashboard's): Recent and the places kept follow it
+		void pathsMoved(const std::string& from, const std::string& to);
 		void forgetPosition(const std::string& path);
 		// the browser's folder, kept (in resume.tsv) only while Remember last folder is on
 		void setLastFolder(const std::string& dir);
@@ -247,6 +249,16 @@ namespace bp
 		AspectMode aspect = AspectMode::Fit;
 		Settings settings;
 		std::string title, error;
+		int loads() const { return loadSerial; }	// how many files it has opened (each load counts)
+		bool errorNet = false;
+		// the volume over 100%: mpv's own gain (100 = none), up to settings.volumeMax, on top of the handheld's 100%
+		// (Ui::setVolumeTotal). Back to 100 at each start: a loud evening isn't the next one's
+		int boost = 100;
+		void setBoost(int v);
+		// the audio diagnostics (Player::logAudio): mpv's audio-params, audio-out-params, current-ao, af, lavfi-complex
+		std::string audioIn, audioOut, audioAo, audioAf, audioLavfi;
+		void logAudio(const char* what) const;	// the error is the network's (Play tries the file again), not the file's
+		bool errorNetFound = true;	// with errorNet: the server answered before (a connection lost), else it couldn't be reached
 		std::vector<Track> tracks;
 		// a song's artist and album from its tags ("" none)
 		const std::string& artist() const { return tagArtist; }
@@ -295,6 +307,11 @@ namespace bp
 
 	private:
 		void wakeHeld();	// heldUnplayed: the sound output reopened (mpv's ao-reload) as it starts to play
+	public:
+		// the sound output opened again (mpv's ao-reload): a speaker amplifier that didn't start gets another start
+		// (ampwatch.h); nothing while no sound plays
+		void reloadAudio();
+	private:
 		void load();
 		// load()'s loadfile, with the network file's options (its folder's sidecars): at once, or once the folder's
 		// listing is in (or its wait is over)

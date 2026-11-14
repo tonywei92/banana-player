@@ -2,7 +2,7 @@ import { html, render, useState, useEffect, useLayoutEffect, useRef, useMemo, us
 import { intent, B, S, clearFinished, finSource, finishedList, playFinished, playListOnHandheld, whereToPlay, playBlocked, CUE_SIZES, SPEEDS, SUBS, assBox, setSpeed, toggleCaptions, browserPlay, chooseAudio, chooseSub, directAudio, nativeAudio, playingAudio, streamWhy, continueHere, ctl, cueStyle, el, handoffToHandheld, playParked, probe1, probeOK, setBrowserVol, setCueStyle, setTarget, sizeCues, view } from './browser-player.js';
 import { AppMenu, Art, Empty, MoreDots, Seek, coverUrl, openSheet, palOf, useHeld, useMedia, useTick } from './components.js';
 import { NO_HERE, NO_HERE_WHY, Q_DESK, Q_WIDE, lsGet, lsSet, notify, phoneNow, set, store, useStore } from './store.js';
-import { baseName, chapterTitle, dirName, fmtDate, fmtSize, fmtTime, isIOS, kindOfName, throttled, titleFor, touchOnly, userTap } from './util.js';
+import { isNetPath, baseName, chapterTitle, dirName, fmtDate, fmtSize, fmtTime, isIOS, kindOfName, throttled, titleFor, touchOnly, userTap } from './util.js';
 import { Icon } from './icons.js';
 import { openModal, toast, trackDir, trackDirAt } from './toasts.js';
 import { canGoBack, filesHash, go, pushHist, replaceHash, replaceHist, tapped } from './router.js';
@@ -45,9 +45,11 @@ function Times({ v, skip, off }) {
 /* ---- where it plays: a two-segment switch on the player; in the bar, a key that opens a bubble ---- */
 export const targetLabel = t => t === 'browser' ? 'In this browser' : 'On handheld';
 // what the handheld plays can't play here (probed): the browser's choice says so
-const noHereFor = () => { const sn = store.snap; return store.target === 'handheld' && !B.active && !!sn && !!sn.path && playableCache[sn.path] === 'no'; };
-function DevSwitch({ small }) {
-	const t = store.target, why = NO_HERE ? NO_HERE_WHY : noHereFor() ? 'Plays on the handheld only' : '';
+const noHereFor = () => { const sn = store.snap; return store.target === 'handheld' && !B.active && !!sn && !!sn.path && (isNetPath(sn.path) || playableCache[sn.path] === 'no'); };
+const NET_WHY = 'Network files play on the handheld only';
+const hereWhy = () => NO_HERE ? NO_HERE_WHY : noHereFor() ? (isNetPath(store.snap.path) ? NET_WHY : 'Plays on the handheld only') : '';
+export function DevSwitch({ small }) {
+	const t = store.target, why = hereWhy();
 	return html`<div class="seg dev" role="group" aria-label="Where it plays">
 		<button aria-pressed=${t === 'handheld'} aria-label="On handheld" title="On handheld" onClick=${() => setTarget('handheld')}><${Icon} n="card" k=${2} />${!small && 'Handheld'}</button>
 		<button aria-pressed=${t === 'browser'} aria-label=${'In this browser' + (why ? '. ' + why : '')} title=${why || 'In this browser'} aria-disabled=${why && t !== 'browser' ? 'true' : undefined} onClick=${() => setTarget('browser')}><${Icon} n="laptop" k=${2} />${!small && 'This browser'}</button></div>`;
@@ -72,14 +74,14 @@ function DevBubble({ pos, onClose }) {
 		document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k);
 	}, []);
 	const at = v.has ? fmtTime(v.pos()) : '', live = v.has && !v.finished;
-	const hereSub = NO_HERE ? NO_HERE_WHY : noHereFor() ? 'Plays on the handheld only' : t === 'handheld' && live && v.kind !== 'photo' ? 'Pauses the handheld, carries on at ' + at : 'This phone or computer';
+	const hereSub = hereWhy() ? hereWhy() : t === 'handheld' && live && v.kind !== 'photo' ? 'Pauses the handheld, carries on at ' + at : 'This phone or computer';
 	const hhSub = t === 'browser' && live ? 'Pauses this browser, carries on there at ' + at : "The handheld's speakers or headphones";
 	const pick = x => { onClose(); setTarget(x); };
 	return html`<div class="popcatch" onMouseDown=${onClose}></div>
 		<div class="bubble box surface" role="dialog" aria-label="Play on" ref=${ref} style=${pos}>
 			<div class="kicker">Play on</div>
 			<button class=${'sheet-item' + (t === 'handheld' ? ' on' : '')} aria-pressed=${t === 'handheld'} onClick=${() => pick('handheld')}><${Icon} n="card" k=${2} /><span class="grow"><b>On handheld</b><span class="sm">${hhSub}</span></span></button>
-			<button class=${'sheet-item' + (t === 'browser' ? ' on' : '')} aria-pressed=${t === 'browser'} aria-disabled=${NO_HERE ? 'true' : undefined} onClick=${() => pick('browser')}><${Icon} n="laptop" k=${2} /><span class="grow"><b>In this browser</b><span class="sm">${hereSub}</span></span></button></div>`;
+			<button class=${'sheet-item' + (t === 'browser' ? ' on' : '')} aria-pressed=${t === 'browser'} aria-disabled=${NO_HERE || noHereFor() ? 'true' : undefined} onClick=${() => pick('browser')}><${Icon} n="laptop" k=${2} /><span class="grow"><b>In this browser</b><span class="sm">${hereSub}</span></span></button></div>`;
 }
 
 // "English" from "English · SRT", "Track 2" from "Track 2 · SRT"
@@ -170,8 +172,11 @@ export function TapToPlay({ floating }) {
    box); the small one shows the picture alone: :root.vid-mini is set while the video sits in it, and style.css hides
    the picture overlays then */
 const vslots = [];
+// the slot it goes to: the highest rank (the player's box 2, Home's Now playing card 1, the bar's or the small player's
+// tile 0), the newest of those
+const topSlot = () => vslots.reduce((t, s) => !t || s.rank >= t.rank ? s : t, null);
 function dockVideo() {
-	const top = vslots[vslots.length - 1], holder = document.getElementById('holder'), host = top ? top.n : holder;
+	const top = topSlot(), holder = document.getElementById('holder'), host = top ? top.n : holder;
 	const was = !el.paused && !!el.getAttribute('src');
 	if (el.parentNode !== host) host.prepend(el);
 	if (top && top.ass) { if (el.nextSibling !== assBox) el.after(assBox); }
@@ -185,12 +190,12 @@ function dockVideo() {
 		on(); setTimeout(on, 0);
 	}
 }
-export function useVideoSlot(ass) {
+export function useVideoSlot(ass, rank) {
 	const me = useRef(null);
 	return useCallback(n => {
 		const i = vslots.indexOf(me.current);
 		if (i >= 0) vslots.splice(i, 1);
-		me.current = n ? { n, ass } : null;
+		me.current = n ? { n, ass, rank: rank != null ? rank : ass ? 2 : 0 } : null;
 		if (n) vslots.push(me.current);
 		dockVideo();
 	}, []);
@@ -247,7 +252,7 @@ function Media({ v, off, immersive, onCollapse }) {
 	return html`<div class=${'media ' + (live ? 'is-video' : v.kind === 'video' ? 'is-poster' : 'is-cover') + (full ? ' full' : '') + (shown ? ' ov' : '')} ref=${box}
 		onPointerUp=${up} onPointerMove=${move} onMouseLeave=${() => { if (!view().paused && !t.current.menu) setOv(false); }} role="group" aria-label=${v.title}>
 		${live ? html`<div class="mvideo" ref=${slot}></div>` : html`<div class=${'mart ' + trackClass(v.path)} key=${v.path}><${Art} src=${coverUrl(cover)} seed=${v.path} kind=${v.kind} k=${v.kind === 'video' ? 6 : 10} /></div>`}
-		${!live && v.kind === 'video' && !v.finished && html`<div class="poster-tag"><${Icon} n="card" k=${2} />Playing on your handheld</div>`}
+		${!live && v.kind === 'video' && !v.finished && html`<div class="poster-tag"><${Icon} n=${isNetPath(v.path) ? 'network' : 'card'} k=${2} />${isNetPath(v.path) ? 'Playing on your handheld via the network' : 'Playing on your handheld'}</div>`}
 		${!live && v.kind === 'video' && v.paused && !v.loading && html`<div class="mpaused" aria-hidden="true"><${Icon} n="play" k=${5} /></div>`}
 		${live && html`<div class="mov" aria-hidden=${shown ? undefined : 'true'}>
 			${full && html`<div class="mov-top">
@@ -381,7 +386,7 @@ function NpMeta({ v, acts }) {
 			${acts && likable(v) && html`<${LikeBtn} v=${v} cls="np-ib" />`}
 			${acts && html`<button class="np-ib" aria-label="More" aria-haspopup="dialog" onClick=${e => npMore(v, e.currentTarget)}><${MoreDots} /></button>`}</div>
 		${(src || chip != null || v.chapters.length > 0) && html`<div class="np-lines">
-			${(src || chip != null) && html`<div class="np-source">${src && html`<${Icon} n=${src.kind === 'playlist' ? 'playlist' : 'folder'} k=${2} /><span class="ell">From <b>${src.title}</b>${src.count ? ' · ' + (src.index + 1) + ' / ' + src.count : ''}</span>`}
+			${(src || chip != null) && html`<div class="np-source">${src && html`<${Icon} n=${isNetPath(v.path) ? 'network' : src.kind === 'playlist' ? 'playlist' : 'folder'} k=${2} /><span class="ell">From <b>${src.title}</b>${isNetPath(v.path) && store.snap && store.snap.netServer ? ' on ' + store.snap.netServer : ''}${src.count ? ' · ' + (src.index + 1) + ' / ' + src.count : ''}</span>`}
 				${chip != null && html`<button class=${'chip' + (chip === 'Off' ? ' ghost' : '')} aria-label=${'Subtitles: ' + chip} title=${'Subtitles: ' + chip} onClick=${() => showTracks('sub')}><${Icon} n="cc" k=${1} /><span class="ell" style="max-width:120px">${chip}</span></button>`}</div>`}
 			${v.chapters.length > 0 && html`<button class="np-chap" onClick=${() => showTab('chapters')}><${Icon} n="chapters" k=${2} /><span class="ell">Chapter ${Math.max(1, v.chapter + 1)} of ${v.chapters.length}${v.chapter >= 0 ? ' · ' + chapterTitle(v.chapters[v.chapter], v.chapter) : ''}</span></button>`}</div>`}
 	</div>`;
@@ -412,7 +417,7 @@ function VolButton() {
 		return () => { document.removeEventListener('pointerdown', f, true); document.removeEventListener('keydown', k, true); };
 	}, [open]);
 	return html`<div class="volwrap" ref=${ref}><button class=${'np-ib' + (open ? ' on' : '')} aria-label="Volume" aria-expanded=${open} onClick=${() => setOpen(!open)}><${Icon} n="speaker" k=${2} /></button>
-		${open && html`<div class="volpop box surface" role="group" aria-label="Volume"><${VolumeRow} lab=${true} /></div>`}</div>`;
+		${open && html`<div class="volpop box surface" role="group" aria-label="Volume"><${VolumeRow} lab=${true} />${store.target === 'browser' && html`<${VolumeRow} lab=${true} which="handheld" />`}</div>`}</div>`;
 }
 
 function Strips({ v, other, sn }) {
@@ -421,7 +426,7 @@ function Strips({ v, other, sn }) {
 	return html`${v.finished && html`<div class="strip box surface"><span>${src ? html`The end of <b>${src}</b>` : 'The end of the list'}</span>
 			<button class="btn sm" onClick=${clearFinished}>Clear</button></div>`}
 		${v.here && v.parked != null && html`<div class="strip box surface"><span>Stopped when the connection to your handheld dropped.</span><button class="btn sm primary" onClick=${playParked}><${Icon} n="play" k=${2} />Play here from ${fmtTime(v.parked)}</button></div>`}
-		${other && !NO_HERE && html`<div class="strip box surface"><span>Your handheld is playing <b>${titleFor(sn.path, sn.title)}</b></span><button class="btn sm primary" onClick=${continueHere}>Continue here</button></div>`}`;
+		${other && !NO_HERE && !isNetPath(sn.path) && html`<div class="strip box surface"><span>Your handheld is playing <b>${titleFor(sn.path, sn.title)}</b></span><button class="btn sm primary" onClick=${continueHere}>Continue here</button></div>`}`;
 }
 
 export function NowPlaying() {
@@ -466,8 +471,8 @@ function FullPlayer({ v, off, other, sn, tabs, tab }) {
 	const entering = useMemo(() => Date.now() - (s.npAnim || 0) < 600 && store.vtKind !== 'player-open', []);
 	useEffect(() => {
 		if (store.backNav || !tapped()) return;	// (not tapped: Safari would skip the entry under it; the chevron replaces instead)
-		// opened straight at #/playing: Files goes under it, so Back folds the player instead of leaving the app
-		const under = filesHash(store.lastDir || '');
+		// opened straight at #/playing: Home goes under it, so Back folds the player instead of leaving the app
+		const under = '#/home';
 		replaceHist(null, under); pushHist(null, '#/playing');
 		set({ backHash: under, backNav: true });
 	}, []);
@@ -476,7 +481,7 @@ function FullPlayer({ v, off, other, sn, tabs, tab }) {
 		const sheet = history.state && history.state.sheet ? 1 : 0;
 		if (s.sheetOpen) set({ sheetOpen: false });
 		// back when what's behind is ours; else the page under it takes the player's place (no load: it keeps playing)
-		const leave = () => { if (store.backNav && canGoBack(1 + sheet)) history.go(-(1 + sheet)); else replaceHash(store.backHash || filesHash(store.lastDir || '')); };
+		const leave = () => { if (store.backNav && canGoBack(1 + sheet)) history.go(-(1 + sheet)); else replaceHash(store.backHash || '#/home'); };
 		if (reduceMotion() || (document.startViewTransition && !videoHere())) { leave(); return; }	// (a View Transition morphs it back)
 		setLeaving(true); setTimeout(leave, 260);
 	};
@@ -560,6 +565,8 @@ function DetailsTab({ v }) {
 		let dead = false;
 		const known = v.here && B.meta && B.meta.p === p && B.meta.media;
 		setM(known || null); setRow(null);
+		// a network file: no probe or listing here (the handheld reads it); what the session knows is shown
+		if (isNetPath(p)) { setM({}); setRow({}); return; }
 		if (!known) get('/api/media', { p }, { ms: 8000, quiet: true }).then(x => { if (!dead) setM(x || {}); }).catch(() => { if (!dead) setM({}); });
 		get('/api/ls', { p: dirName(p) }, { quiet: true }).then(r => { if (!dead) setRow((r.items || []).find(i => i.name === baseName(p)) || {}); }).catch(() => { if (!dead) setRow({}); });
 		return () => { dead = true; };
@@ -587,6 +594,13 @@ function DetailsTab({ v }) {
 		['Modified', row && row.mtime ? fmtDate(row.mtime) : ''],
 	].filter(r => r && r[1]);
 	const onCard = /^\d+\//.test(p);	// (a network file isn't in the page's tree)
+	if (isNetPath(p)) {
+		const sn = store.snap, dec = x => { try { return decodeURIComponent(x); } catch { return x; } };
+		const where = dirName(p.replace(/^bpnet:\/\/[^/]+/, '')).split('/').filter(Boolean).map(dec).join(' › ');
+		return html`<section class="box surface card" aria-label="Details"><dl class="details">${rows.map(([k, val]) => html`<dt>${k}</dt><dd>${val}</dd>`)}
+			<dt>Plays</dt><dd>On the handheld, from the network</dd>
+			<dt>Server</dt><dd>${sn && sn.netServer || 'A network folder'}</dd>${where && html`<dt>Folder</dt><dd>${where}</dd>`}</dl></section>`;
+	}
 	return html`<section class="box surface card" aria-label="Details"><dl class="details">${rows.map(([k, val]) => html`<dt>${k}</dt><dd>${val}</dd>`)}</dl></section>
 		<button class="box surface det-path" onClick=${() => go(filesHash(dirName(p)))} aria-label=${'Location: ' + segs.join(' › ') + '. Show in Files'}><${Icon} n="folder" k=${2} />
 			<span class="grow">${segs.map((sg, i) => html`${i > 0 && html`<span class="sep">›</span>`}<span>${i === 0 ? rootName(sg) : sg}</span>`)}<span class="sep">›</span><b>${baseName(p)}</b></span><span class="chip">Show in Files</span></button>
@@ -595,20 +609,23 @@ function DetailsTab({ v }) {
 }
 
 // lab: says whose volume (the speaker button's pop-up; the Sound tab's card has it in its head)
-function VolumeRow({ lab }) {
-	const s = store, here = s.target === 'browser', sn = s.snap;
+// which: 'handheld' for the handheld's own whatever plays where (two volumes, each its own); else the output's
+function VolumeRow({ lab, which }) {
+	const s = store, here = which !== 'handheld' && s.target === 'browser', sn = s.snap;
 	const [val, hold] = useHeld(here ? B.vol : sn ? sn.volume : 0);
 	const send = useMemo(() => throttled(v => post('/api/volume', { v }).catch(() => {}), 120), []);
 	const change = e => { const v = +e.target.value; hold(v); if (here) setBrowserVol(v); else send(v); };
 	if (here && isIOS) return html`<div class="vol-note">Use your phone's volume buttons</div>`;
 	// the server sends -1 when the handheld has no volume control to read (a desktop test run)
 	if (!here && sn && sn.volume < 0) return html`<div class="vol-note">The handheld's volume can't be changed from here.</div>`;
-	return html`${lab && html`<div class="vol-lab">${here ? 'Browser volume' : 'Handheld volume'}</div>`}<div class="vol"><${Icon} n="speaker" k=${2} /><input type="range" class="filled" style=${'--v:' + val + '%'} min="0" max="100" value=${val} onInput=${change} aria-label=${here ? 'Browser volume' : 'Handheld volume'} aria-valuetext=${val + '%'} disabled=${!here && s.reconnecting} />
-		<span class="pct">${val}</span></div>`;
+	// (the handheld's own past 100%, up to its Max volume: its quiet films; this browser's stays its own 0-100)
+	const top = here ? 100 : Math.max(100, sn && sn.volumeMax || 100), loud = !here && val > 120;
+	return html`${lab && html`<div class="vol-lab">${here ? 'Browser volume' : 'Handheld volume'}</div>`}<div class=${'vol' + (val > 100 ? ' boost' : '') + (loud ? ' loud' : '')}><${Icon} n="speaker" k=${2} /><input type="range" class="filled" style=${'--v:' + (val / top * 100).toFixed(1) + '%'} min="0" max=${top} step=${top > 100 ? 5 : 1} value=${val} onInput=${change} aria-label=${here ? 'Browser volume' : 'Handheld volume'} aria-valuetext=${val + '%'} disabled=${!here && s.reconnecting} />
+		<span class="pct">${val}</span></div>${loud && html`<div class="vol-note loud">Over 120% can damage your hearing and the speakers</div>`}`;
 }
 function VolumeCard() {
 	const here = store.target === 'browser';
-	return html`<section class="box surface card" aria-label="Volume"><div class="card-head"><h2 class="grow">Volume</h2><span class="chip ghost"><${Icon} n=${here ? 'laptop' : 'card'} k=${1} />${here ? 'this browser' : 'handheld'}</span></div><${VolumeRow} /></section>`;
+	return html`<section class="box surface card" aria-label="Volume"><div class="card-head"><h2 class="grow">Volume</h2><span class="chip ghost"><${Icon} n=${here ? 'laptop' : 'card'} k=${1} />${here ? 'this browser' : 'handheld'}</span></div><${VolumeRow} />${here && html`<div class="vol-lab">Handheld volume</div><${VolumeRow} which="handheld" />`}</section>`;
 }
 
 function ChaptersCard({ v }) {
@@ -660,6 +677,8 @@ function UpNext({ v }) {
 		// (with Shuffle on, what follows the row is random again: the session's new order from it)
 		if (v.here) return browserPlay(B.queue, i, B.source, 0);
 		const src = sn.source;
+		// (a network queue: the handheld steps to that row; its files have no address here to name)
+		if (isNetPath(items[i].p)) return playListOnHandheld(items.map(x => x.p), i, { kind: 'folder', title: src && src.title || '', id: '' });
 		try { if (src && src.kind === 'playlist' && src.id) await post('/api/play', { playlist: src.id, index: i }); else await post('/api/play', { p: items[i].p }); } catch (e) { toast(errMsg(e)); }
 	};
 	const src = v.source && v.source.title, pad = n => String(n).padStart(2, '0');

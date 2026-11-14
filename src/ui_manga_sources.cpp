@@ -141,7 +141,7 @@ namespace bp
 
 	void Ui::mangaSourcesAddOpen(Player& p)
 	{
-		if (!mangaNet || !mangaNet->started()) { p.osd("Repositories need a state folder", 2500); return; }
+		if (!mangaNet || !mangaNet->started()) { alert("Can\xE2\x80\x99t add repositories", "The player has no folder to keep them in.");; return; }
 		// the keyboard has no URL page of its own, so its letters page types a URL (its symbols page has / : .); the
 		// field is prefilled, the caret after it: a host goes on the end
 		openKeyboard(SRC_URL_FIELD, "https://");
@@ -191,7 +191,7 @@ namespace bp
 			mangaNet->repos().save();
 			p.osd("Removed " + (name.empty() ? std::string("the source") : name), 2000);
 		}
-		else p.osd("Couldn't remove the source", 2500);
+		else alert("Couldn\xE2\x80\x99t remove the source", "Is the card read only?");
 		mstInstalling.erase(fullId);
 		mangaSourcesCloseModal();
 	}
@@ -204,12 +204,12 @@ namespace bp
 			std::string url = mstPendingUrl;
 			mstPendingUrl.clear();
 			mstLocal++;
-			if (!mangaNet || !mangaNet->started()) p.osd("Repositories need a state folder", 2500);
+			if (!mangaNet || !mangaNet->started()) alert("Can\xE2\x80\x99t add repositories", "The player has no folder to keep them in.");
 			else if (MangaJava::isRepoUrl(url)) mangaJavaAddRepo(url, p);
 			else
 			{
 				std::string error;
-				if (!mangaNet->repos().addRepo(url, error)) p.osd("Repository not added: " + error, 3000);
+				if (!mangaNet->repos().addRepo(url, error)) alert("The repository wasn\xE2\x80\x99t added", error);
 				else
 				{
 					// its first index says Added: a load after a Refresh is silent
@@ -238,7 +238,7 @@ namespace bp
 				std::string name = e.repo;
 				for (auto& r : repos.repos())
 					if (r.url == e.repo) { name = r.name.empty() ? r.url : r.name; break; }
-				p.osd(elideMiddle(name, 0, 260) + ": " + mstRepoError[e.repo], 3000);
+				alert("The repository wasn\xE2\x80\x99t added", name + ": " + mstRepoError[e.repo]);
 				break;
 			}
 			case MangaRepos::Event::Installed:
@@ -252,7 +252,7 @@ namespace bp
 			}
 			case MangaRepos::Event::InstallFailed:
 				mstInstalling.erase(e.source);
-				p.osd(e.message.empty() ? "The source couldn't be installed" : e.message, 3000);
+				alert("The source couldn\xE2\x80\x99t be installed", e.message);
 				break;
 			}
 		}
@@ -297,7 +297,7 @@ namespace bp
 				mangaJavaRefresh();
 				p.osd("Checking repositories\xE2\x80\xA6", 1200);
 			}
-			else p.osd("Repositories need a state folder", 2500);
+			else alert("Can\xE2\x80\x99t check repositories", "The player has no folder to keep them in.");
 			mstLocal++;
 		}
 		else switch (b)
@@ -457,7 +457,7 @@ namespace bp
 				mstRepoError.erase(url);
 				p.osd(alsoSources ? "Removed the repository and its sources" : "Removed the repository", 2500);
 			}
-			else p.osd("Couldn't remove the repository", 2500);
+			else alert("Couldn\xE2\x80\x99t remove the repository", "Is the card read only?");
 			mangaSourcesCloseModal();
 			return;
 		}

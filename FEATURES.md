@@ -41,7 +41,10 @@ Open Banana Player and the bottom screen shows **Home**:
   (`0:27 / 0:52`, or `Played · 3:12`), a bar, and a network mark for a file on a server. **A** plays it (from where you
   left off), **Y** opens its menu: **Resume from…** (or **Play**), **Play from the start**, **Show in folder** (opens
   Files or Network on that file), **Add to playlist…**, **Remove from Recent**. The last card, **All recent**, opens
-  the whole list. On the touch screen tap a card to play it, swipe the strip, or hold a card for its menu. With nothing
+  the whole list, with tabs beside its title: **All**, **Videos**, **Music**, **Books** (books, PDFs, comics and text
+  files), each with how many: **L** / **R** step through them, or tap one. Recent keeps the last 30 of each kind, so
+  reading doesn't push your videos out, nor music your books. While Home or All recent shows, its order stays put (the
+  next song starting doesn't move the cards); what you played comes to the front the next time you open it. On the touch screen tap a card to play it, swipe the strip, or hold a card for its menu. With nothing
   played yet the strip is a single line and the tiles grow.
 - Four tiles, two by two: **Files** (your cards: **Videos**, the `videos` folder in `roms`, then **This card** and
   **Second card**), **Playlists**, **Network** and **Extensions** (**None on**, or **1 on · Manga reader**). Each says
@@ -154,7 +157,8 @@ folders. Playlists have a section of their own, between Files and Network.
 - A folder adds only the files directly in it, not those in its subfolders. Photos are skipped, and the note says how
   many. Files are added in the folder's order.
 - The same file can be in a playlist twice. **X** → **Remove duplicates** (in the playlist's **X** menu) keeps the first
-  of each.
+  of each. **Remove missing** takes out the items whose file is on no card now, after a second **A** that says how many
+  (put a card that's out back first; network items are never taken out).
 - A playlist holds 2,000 items at most. An add that goes past that adds what fits, and says so.
 - Editing the playlist that's playing (from the handheld or the dashboard) changes what plays next: songs added
   after the last one play after it (**Next** reaches them), removed ones are skipped, moved ones play in their new place.
@@ -327,9 +331,10 @@ To quit, use **Quit Banana Player** in quick settings (**F**), or **F + START** 
 ## Network folders
 
 Play videos, music and photos straight from a computer or a NAS on your Wi-Fi, over **SMB** (Windows file sharing,
-most NAS boxes, Samba) or **FTP** (and FTPS). Nothing is copied to the card.
+most NAS boxes, Samba) or **FTP** (and FTPS). What plays isn't copied to the card.
 
-- With no connections yet, the Network section offers **Add connection** (tap it, or **A**).
+- With no connections yet, the Network section offers **Find on the network** (tap it, or **A**); **Y** adds one by
+  its address instead.
 - **Find on the network** (X in Network) lists the computers sharing files nearby (Windows, Mac, Linux, NAS):
   pick one, type your user name and password, and Save. No address to type: a computer found by its name is found
   again by that name, even when its address changes.
@@ -342,7 +347,24 @@ most NAS boxes, Samba) or **FTP** (and FTPS). Nothing is copied to the card.
 Network files play like the ones on your card: the folder plays as a playlist, subtitles next to a video (`movie.srt`,
 `movie.en.srt`...) and a folder's `cover.jpg` are found, Recent lists them, and they resume where you left
 off. The player reads ahead (up to 64 MB), so a short Wi-Fi drop doesn't stop it; while it waits for more, the top
-screen says **Buffering**. If the connection is lost for good (20 seconds), it stops and says so.
+screen says **Buffering**. If the connection is lost for good (20 seconds), or the server can't be reached, it stops
+on that file and says so (**Lost the connection**, or **Can't reach it**), never skipping on through the rest of the
+folder or playlist; **Retry** (**A**) plays it again from where it stopped.
+
+A network folder lists every file, each kind with its icon, as Files does:
+
+- A book, a document or a comic (TXT, EPUB, PDF, CBZ, CBR) is copied to the card first, with its progress, then opens
+  as one on the card does; a network that drops while you read takes nothing away. A copy opened before opens at once
+  (the copies kept come to 2 GB at most, the oldest going first to make room for the next; one file bigger than
+  that is kept alone).
+- **Y** (or **X**) on a file or folder: **Info** (its kind, size, where it is, and whether you can change it), **Copy**,
+  **Move**, **Rename**, **Delete**, as on the cards. Copy and Move go between the card and the network either way, and
+  between network folders: open the folder it goes in (on the card or on a server) and press **SELECT**. A copy shows
+  its progress until it ends, and nothing half-copied is left behind, on the card or on the server; a move deletes its
+  original only once the copy is whole.
+- A folder the account can't write to shows a lock and **Read only** at the top: there Move, Rename and Delete are
+  dimmed (they say why), and nothing can be copied into it. (To know, the player puts a hidden empty file,
+  `.bp-write-test`, in the folder you open and takes it away again at once.)
 
 ## Photos
 
@@ -379,7 +401,6 @@ under it.
 |---|---|
 | **UP** / **DOWN** | A few lines up or down |
 | **LEFT** / **RIGHT**, **L** / **R**, **A** | A screen back or on |
-| **L2** | Back to the start |
 | **SELECT** | **Book mode** (below) |
 | **X** | **Bookmarks**: add one here, go to one, delete one |
 | **Y** | **Contents** (an EPUB's chapters): **A** goes to one |
@@ -516,7 +537,7 @@ used: its lookup tables are worked out once in the background and kept beside th
 
 The equalizer and the sound effects change the sound of music: songs and audiobooks. Videos are never changed. Open the
 **Sound** page from the **Sound** button, the line under the buttons (see **By touch** under [Controls](#controls)), or
-Settings › Music › **Sound**. It has two tabs: switch them with **L / R**, or tap a tab.
+Settings › Music › **Sound FX**. It has two tabs: switch them with **L / R**, or tap a tab.
 
 **Equalizer** shapes the sound with ten bands, from 31 Hz to 16 kHz, each boosted or cut by up to 12 dB.
 
@@ -589,6 +610,7 @@ goes back to the list.
 | | Clear play history | | Press **A** (or tap) twice. Positions you stopped at are kept |
 | **Controls & screen** | Brightness (or Top and Bottom brightness) | as BananaOS has them | The screens' backlight, 10% to 100%: the same levels as BananaOS's own Settings and the brightness keys, kept after a restart |
 | | Same for both screens | On | One brightness for both screens; off, each its own |
+| | Max volume | 120% | How far the volume keys go on the handheld: 100%, 120% or 150%. Past 100% (the handheld's own top) the player turns the sound up itself, 5% a press, for films mixed quiet; the volume card marks 100% and shows the rest in yellow, red past 120%, and the first time past 120% a warning says it can damage your hearing and the speakers. Down takes that off first. It starts again at 100% each time the player opens. The web dashboard's handheld volume goes as far; a browser playing the sound itself keeps its own 0–100%. Two volumes, each its own: while a browser plays the sound, the handheld's volume keys turn that browser's volume (the card says **Browser volume**) and leave the handheld's as it was; the dashboard's volume shows both then (**Browser volume**, **Handheld volume**), and moving one never moves the other |
 | | Button hotkeys | On | Off: buttons can't pause, skip or close while something plays (touch still can) |
 | | Battery percentage | Off | Shows the battery's percent beside its icon (the icon, with a bolt while charging, is always there) |
 | | Clock | 24-hour | The time in the top corner of the bottom screen, left of the battery: 24-hour (`14:32`), 12-hour (`2:32 PM`) or Off. Not over a photo |
@@ -639,10 +661,10 @@ hidden disconnects.
 
 ### In the browser
 
-Three sections: **Playing**, **Files** and **Playlists**. On a phone they're the tab bar at the bottom, with a small
+Four sections: **Home**, **Playing**, **Files** and **Playlists**. The dashboard opens on **Home**. On a phone they're the tab bar at the bottom, with a small
 player floating over it; on a tablet an icon rail on the left and a player bar at the bottom; on a computer a sidebar
 (the sections, a shortcut list of playlists, and a card with the handheld's battery, free space and **Sign out**) and
-the player bar. On a phone, **Sign out** is behind the handheld button at the top right of Files and Playlists.
+the player bar. On a phone, **Sign out** is behind the handheld button at the top right of Home, Files and Playlists.
 A video playing in this browser goes on, picture and all, when you leave **Playing**: it plays in the small player's
 (or the player bar's) cover tile, without its subtitles; a tap on it opens **Playing** again, where it carries on
 full size.
@@ -710,6 +732,9 @@ handheld, carries on at 1:27"):
   plays its default there and comes back on the handheld). A paused file stays paused where it goes.
 - A file the browser can't play (AVI, AC3 or DTS sound, WMA, APE and so on) says **Plays on the handheld only**, and
   asks before playing it there.
+- A file the handheld plays from a network folder shows here too, marked **Playing on your handheld via the network**
+  (and "From *folder* on *connection*"): its controls work from the page (play, pause, seek, Next and Previous, Up next,
+  audio and subtitles, speed, volume), but it can't move to this browser (**Network files play on the handheld only**).
 - **Tracks** in the browser (a video's audio and subtitles), as Plex does it: the video stays the file itself (Direct
   Play) whenever it can.
   - **Audio:** every track of the file is listed. Safari switches in the file itself. Other browsers play the file's
@@ -795,7 +820,7 @@ handheld, carries on at 1:27"):
   playlists: the ones played or added to lately in a **Recently used** row, then **Find a playlist** (**/** on a computer;
   Enter opens the first match), a sort (**A–Z**, **Recent**, **Size**) and **List** or **Grid**. The list (the default
   there) has a letter heading for each letter. The browser remembers the sort and the view. The computer's sidebar
-  lists Liked, Recent and up to five recently used playlists, then **All N playlists**.
+  lists Liked and up to five recently used playlists, then **All N playlists**.
 - Drag to change the order, remove items (with **Undo**), add files from **Files**.
 - **Play** or **Shuffle play**, on the handheld or in this browser.
 
@@ -816,17 +841,46 @@ handheld, carries on at 1:27"):
   plays on the handheld only, and a file gone from the card is marked **Gone**.
 - A like on the handheld shows up at once: the heart fills, and on the Liked page the new row comes in at the top, lit.
 
-**Recent** is the handheld's Home Recent strip, in the browser: pinned under Liked on the Playlists page (its play
-button resumes the latest), and right under Liked in a computer's sidebar.
+**Home** is where the dashboard opens: what you played or read last, on the handheld or in this browser, ready to
+pick up. It is the handheld's Home Recent strip, in the browser.
 
-- Newest first, as on the handheld (up to 30). Each row says where the video was left (**0:27 / 0:52**, with a yellow
-  bar on its tile) or **Played**; what plays on the handheld is marked **Playing**, and a file gone from the card is
-  dimmed and marked **Gone**. Network files aren't listed.
-- **A tap** plays it where you last played (the handheld or this browser), from where it was left. **⋯** has **Play on
-  handheld**, **Play in this browser**, **Like** / **Unlike**, **Add to playlist…**, **Show in Files** and **Remove from
-  Recent** (the place it was left at is kept, as on the handheld).
-- **⋯ › Clear Recent** (asks first) empties it, on the handheld too; the places your videos were left at are kept.
+- **Continue**, at the top: the newest item, large, with one yellow button for what comes next: **Resume at 4:12** for
+  a video left part-way, **Play** for a song or something played to its end. Beside it **From the start**, the heart (**Like**) and **⋯**. A line under the buttons
+  says where it will play.
+- **Play on** (**Handheld** · **This browser**), at the top of the page, is the same switch as the player's: a tap on
+  anything in Home plays there.
+- While something plays (picked here, on the handheld or anywhere else), that card is **Now playing** (or **Paused**)
+  and where, with its time running, and its buttons are **Open player** and **Pause** / **Play**. A video playing in
+  this browser plays right in the card (a tap opens the player); the small player and the player bar keep only its
+  picture then, and have the video again on every other page.
+- A tap on an item in Home plays it in that card and stays on Home (a video too).
+- **Recent**, below: everything older, newest first (up to 30), and while something plays, all of it (what plays
+  marked **Playing**). The order stays as it was when Home was opened: playing from it, or the next song starting,
+  doesn't move the rows (a removed one goes); what was played comes to the front the next time Home is opened. The
+  handheld's Home strip and All recent do the same. **All**, **Videos** and **Music** choose
+  what shows, and **Grid** or **List** how (a grid on a tablet or a computer, a list on a phone, until you choose; the
+  browser remembers). The first 8 show (6 on a phone), then **Show all**.
+- The cover's shape tells the kind: a video fills the frame, a song is a square sleeve. Each item says where it was left: **0:27 / 0:52** with a
+  yellow bar, or **Played**. What plays now is marked **Playing**.
+- **Books, PDFs, comics and text files** aren't listed here: they're read on the handheld's screens only, and its own
+  Home keeps them with their page.
+- **Network files** are marked **Network** and play on the handheld only, whatever **Play on** says (with **This
+  browser** chosen, a note says so). They have no Like, Add to playlist or Show in Files here.
+- A file that is gone from the card is dimmed and marked **Gone**; it can only be removed.
+- **⋯** on an item (right-click on a computer): **Resume on handheld**, **Resume in this browser**, **Play from the
+  start**, **Like** / **Unlike**, **Add to playlist…**, **Show in Files** and **Remove from Recent** (with **Undo**;
+  the place it was left at is kept, as on the handheld).
+- **⋯** at the top **› Clear Recent…** (asks first) empties it, on the handheld too; the places your videos were left
+  at are kept.
+- **Quick actions**, at the bottom: **Shuffle Liked**, **Upload files** (to the folder you were last in, or the card)
+  and **New playlist**.
 - It follows the handheld live: a file played, removed or cleared on either side shows on the other at once.
+- **Nothing played yet:** a welcome instead, with **Browse Files** and **Upload files**, four ways to start (Files,
+  uploading, a playlist, and network folders, which are added on the handheld: **Network › Add connection**), and how
+  the handheld and the browser work together.
+- **Play history off** (the handheld's **Settings › Files › Keep play history**): Home says so and where to turn it
+  back on, with the same ways to start.
+- The old address **#/recent** opens Home.
 
 **Manga** appears in the nav only while the reader is on, with three pages:
 
@@ -899,7 +953,11 @@ each time you open the app:
   one stands in until it arrives.
 
 **Library.** The series as covers, five to a row, starting right under the tabs: each cover carries the number of
-chapters you haven't read. **A** opens the series. With nothing in it yet:
+chapters you haven't read. After reading, the cursor stays on the series you read (which moves to the front). A series
+that is a single file (a PDF or a CBZ on its own) opens straight in the reader where you left it, and **B** comes back here. **X**:
+**Remove missing** takes out the series of the card whose files are on no card now (deleted, or on a card that's out),
+and books read here before Files took them over (EPUB, TXT), with their read marks and History, after a second **A**.
+In **History**, **A** on a series that's gone says so. With nothing in it yet:
 *Your library is empty* — put CBZ files (or CBR, PDF) or folders of pictures in a Manga folder on your card, or add series from
 Browse.
 
@@ -1001,7 +1059,8 @@ Add the address of its `index.json` as a repository, install **Public domain com
 **A series.** Its title, how many chapters it has and how many you haven't read. **Resume** opens the chapter you were
 in, or the first unread one, or the first. The heart (**Y**) takes the series out of your library and puts it back;
 every series found on your card is in the library to start with. The chapters are listed under: the one **Resume** would
-open has a dot beside it, a chapter you've read is dimmed and ticked, and one you started shows the page you were on.
+open has a dot beside it, a chapter you've read is dimmed and ticked, and one you started shows the page you were on. In
+Vertical scroll a chapter also comes back to the place inside its page (a PDF's tall page included).
 **X** marks the chapter under the cursor read or unread. **B** goes back to where you came from.
 
 **Downloading a chapter.** A source's series page has **Download** (**R2**, or the button): **This chapter**, **Next 5
@@ -1123,7 +1182,8 @@ The reader itself is turned on and off in **Manage extensions** on the handheld 
 it's on, the web dashboard has a **Manga** page with its repositories (add one by pasting its address, refresh, remove);
 browsing, reading and downloads are the handheld's.
 
-The page cache holds the pages of chapters read from a source (**Clear cache** says how much it holds), and **Adult
+The page cache holds the pages of chapters read from a source, and the chapters copied from a network folder, under
+the one **Cache size** (the oldest go first; **Clear cache** says how much it holds), and **Adult
 sources** hides what a repository marks adult until you show it.
 
 **Coming next:** pinch zoom (the screen reads one finger), and reading a manga in the browser.

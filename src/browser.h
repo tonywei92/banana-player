@@ -24,6 +24,14 @@ namespace bp
 	// "/data/roms/videos/Show" -> "/data/roms/videos"; "/" stays "/"
 	std::string parentFolder(const std::string& path);
 
+	// A file or folder moved (renamed, or moved to another folder or card) from `from` to `to`: p itself, or anything
+	// inside it, where it is now. false (out untouched) when p is neither. ("/a/b" doesn't move "/a/bc".)
+	bool movedPath(const std::string& p, const std::string& from, const std::string& to, std::string& out);
+
+	// the path is on the second card (/run/sd2) and nothing is mounted there: the card is out, and its folder is an
+	// empty one of the system's, where nothing may be written (it would be lost, and hidden under the card when it's back)
+	bool cardOut(const std::string& path);
+
 	// where the browser starts: the handheld's folders, or a computer's home; BP_BROWSE (folders separated by ':')
 	// settles it
 	struct BrowseRoot

@@ -1,5 +1,6 @@
 #include "treecopy.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cerrno>
 #include <chrono>
@@ -237,5 +238,39 @@ namespace bp
 		struct stat st;
 		if (lstat(to.c_str(), &st) == 0) return EEXIST;
 		return rename(from.c_str(), to.c_str()) == 0 ? 0 : errno;
+	}
+
+	uint64_t trimCacheFolder(const std::string& dir, uint64_t budget, const std::string& keep)
+	{
+		struct Item { std::string path; uint64_t bytes; int64_t at; };
+		std::vector<Item> items;
+		uint64_t total = 0;
+		if (DIR* d = opendir(dir.c_str()))
+		{
+			while (dirent* e = readdir(d))
+			{
+				std::string name = e->d_name;
+				if (name == "." || name == "..") continue;
+				std::string path = dir + "/" + name;
+				struct stat st;
+				if (lstat(path.c_str(), &st) != 0) continue;
+				TreeInfo info;
+				scanTree(path, info);
+				items.push_back({path, info.bytes, (int64_t)st.st_mtime});
+				total += info.bytes;
+			}
+			closedir(d);
+		}
+		std::sort(items.begin(), items.end(), [](const Item& a, const Item& b) {
+			return a.at != b.at ? a.at < b.at : a.path < b.path;
+		});
+		for (const Item& it : items)
+		{
+			if (total <= budget) break;
+			if (!keep.empty() && (it.path == keep || keep.compare(0, it.path.size() + 1, it.path + "/") == 0)) continue;
+			removeTree(it.path);
+			total -= std::min(total, it.bytes);
+		}
+		return total;
 	}
 }

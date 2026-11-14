@@ -523,6 +523,7 @@ namespace bp
 		out += std::string("music-show = ") + SHOW_IDS[s.musicShow] + "\n";
 		out += std::string("visualizer = ") + VIS_IDS[s.visualizer] + "\n";
 		out += "visualizer-fps = " + std::to_string(s.vizFps) + "\n";
+		out += "volume-max = " + std::to_string(s.volumeMax) + "\n";
 		out += std::string("loop = ") + LOOP_IDS[s.loop] + "\n";
 		out += std::string("manga-mode = ") + MANGA_MODE_IDS[s.mangaMode] + "\n";
 		out += std::string("manga-fit = ") + MANGA_FIT_IDS[s.mangaFit] + "\n";
@@ -572,6 +573,7 @@ namespace bp
 			// Timeline (0.5.x, briefly) became Peaks; a style not offered (Bars, Waves, Spectrum, and those kept but
 			// not offered: VIS_SHOWN) is read as Peaks Banana (the default)
 			if (key == "visualizer-fps") { int f = std::atoi(value.c_str()); if (f == 30 || f == 45 || f == 60) s.vizFps = f; }
+			if (key == "volume-max") { int m = std::atoi(value.c_str()); if (m == 100 || m == 120 || m == 150) s.volumeMax = m; }
 			if (key == "visualizer" && value == "timeline") s.visualizer = VIS_PEAKS_BANANA;
 			if (key == "visualizer" && std::find(std::begin(VIS_SHOWN), std::end(VIS_SHOWN), s.visualizer) == std::end(VIS_SHOWN))
 				s.visualizer = VIS_PEAKS_BANANA;

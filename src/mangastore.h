@@ -26,6 +26,7 @@ namespace bp
 		int page = 0, pages = 0;	// pages: the chapter's length; 0 when it isn't known
 		bool read = false;
 		bool hidden = false;		// cleared from the History; where to resume stays
+		float within = 0;	// Vertical scroll: how far into the page (0..1), so a tall page (a PDF's) resumes where it was
 		int64_t at = 0;	// when it was last here
 	};
 
@@ -59,6 +60,8 @@ namespace bp
 		void moveChapters(const std::unordered_map<std::string, std::string>& ids);
 		// every saved place of one series' chapters
 		std::vector<ChapterProgress> progressOf(const std::string& seriesId) const;
+		// every series' id saved (the card's are "local:<path>")
+		std::vector<std::string> seriesIds() const;
 
 		// The chapter's place, added or changed. A chapter read to its last page counts as read, and the series'
 		// lastRead moves to p.at.

@@ -1,19 +1,14 @@
-import { html, useState, useEffect } from '../vendor/htm-preact-standalone.module.js';
-import { NO_HERE, NO_HERE_WHY, set, store, useStore } from './store.js';
-import { baseName, dirName, fmtTime, plural } from './util.js';
+import { useEffect } from '../vendor/htm-preact-standalone.module.js';
+import { set, store, useStore } from './store.js';
 import { errMsg, errToast, get, post } from './api.js';
-import { playAt, playHere, view } from './browser-player.js';
-import { Art, Empty, MoreDots, Skeleton, coverUrl, openSheet, useLater } from './components.js';
-import { go } from './router.js';
-import { addToPlaylist, isLiked, setLike, showInFiles } from './plshared.js';
+import { playAt } from './browser-player.js';
 import { ask, toast } from './toasts.js';
-import { Icon } from './icons.js';
-import { GLYPH } from './files.js';
 
-/* ================= Recent: what the handheld's Home strip shows (its history, newest first, with the places kept) ================= */
-export const RECENT_ID = '~recent';
-// the list, shared by the Playlists page's card and the Recent page; again on every "recent" event
+/* ================= Recent: the handheld's history, newest first, with the places kept (Home shows it: home.js) ================= */
+// the list, shared by whoever shows it; asked again on every "recent" event
 store.recent = null; store.recentTick = 0;
+// rows taken out here and not yet on the handheld (Undo's few seconds): paths
+store.recentHidden = {};
 let seq = 0;
 export async function loadRecent() {
 	const n = ++seq;
@@ -25,53 +20,44 @@ export function useRecent() {
 	useEffect(() => { loadRecent(); }, [s.recentTick, s.epoch]);
 	return s.recent;
 }
-// Recent's cover: the clock on the dark of Liked's heart
-export const RecentArt = ({ k }) => html`<span class="recent-art gc"><${Icon} n="clock" k=${k || 2} /></span>`;
-
-// "0:27 / 0:52", "Played · 3:10"
-const noteOf = it => it.played ? 'Played' + (it.duration > 0 ? ' · ' + fmtTime(it.duration) : '') : fmtTime(it.position) + (it.duration > 0 ? ' / ' + fmtTime(it.duration) : '');
-// its folder's name; a place's own name at the top of one
-const folderOf = p => { const d = dirName(p); return d.includes('/') ? baseName(d) : (store.roots && store.roots[+d] && store.roots[+d].name) || 'This card'; };
-export const playRecent = (it, target) => playAt(it.p, it.played ? 0 : it.position, target, true);
-
-async function removeIt(it) {
-	try { await post('/api/recent/remove', { p: it.p }); toast('Removed from Recent'); loadRecent(); } catch (e) { errToast(e); }
+// a song or a video, from where it was left (the handheld finds its own place; this browser is told it)
+// (from Home: it plays in Home's Now playing card, the page staying, a video too)
+export const playRecent = (it, target) => playAt(it.p, it.played ? 0 : it.position, target, 'always');
+// the same from its beginning. /api/play has no "from the start": the handheld opens it at its place, and is sent
+// back to 0 once it shows the file
+export async function playFromStart(it, target) {
+	if (target === 'browser') return playAt(it.p, 0, 'browser', 'always');
+	if (!await playAt(it.p, 0, 'handheld', 'always')) return false;
+	for (let i = 0; i < 40; i++) {
+		await new Promise(r => setTimeout(r, 150));
+		const sn = store.snap;
+		if (sn && sn.path === it.p && !sn.loading) { post('/api/cmd', { c: 'seek', t: 0 }).catch(() => {}); break; }
+	}
+	return true;
 }
+// a book, a PDF or a comic: only the handheld shows those, so it is asked to open it at its page
+export async function openDoc(it) {
+	try { await post('/api/recent/open', { p: it.p }); toast('Opened on the handheld: ' + it.title); } catch (e) { errToast(e); }
+}
+
+/* Remove, with Undo: the server can't put a row back, so the row only hides here while the toast shows, and the
+   handheld is told when it has gone (or as the page closes) */
+const waiting = {};
+const hide = (p, on) => { const h = Object.assign({}, store.recentHidden); if (on) h[p] = 1; else delete h[p]; set({ recentHidden: h }); };
+async function flush(p) {
+	if (!waiting[p]) return;
+	clearTimeout(waiting[p]); delete waiting[p];
+	try { await post('/api/recent/remove', { p }); await loadRecent(); } catch (e) { errToast(e); }
+	hide(p, false);
+}
+export function removeRecent(it) {
+	const p = it.p;
+	hide(p, true);
+	clearTimeout(waiting[p]); waiting[p] = setTimeout(() => flush(p), 6000);
+	toast('Removed from Recent', { label: 'Undo', fn: () => { clearTimeout(waiting[p]); delete waiting[p]; hide(p, false); } }, 6000);
+}
+addEventListener('pagehide', () => Object.keys(waiting).forEach(flush));
 export async function clearRecent() {
 	if (!await ask('Clear Recent?', 'The places your videos were left at are kept.', { buttons: [{ label: 'Cancel', value: null }, { label: 'Clear', value: true, cls: 'danger' }] })) return;
 	try { await post('/api/recent/clear', {}); toast('Recent cleared'); loadRecent(); } catch (e) { errToast(e); }
-}
-
-export function RecentView() {
-	const r = useRecent(), v = view(), nowPath = v.has && !v.finished ? v.path : '';
-	const slow = useLater(!r, 300);
-	const items = r && r.items || [];
-	const menu = anchor => openSheet('Recent', 'clock', [{ label: 'Clear Recent', icon: 'trash', danger: true, disabled: !items.length, fn: clearRecent }], { anchor });
-	const rowMenu = (it, anchor) => {
-		const liked = isLiked(it.p);
-		openSheet(it.title, GLYPH[it.kind] || 'note', it.gone ? [{ label: 'Remove from Recent', icon: 'minus', sub: 'The file is gone from the card', fn: () => removeIt(it) }] : [
-			{ label: 'Play on handheld', icon: 'card', fn: () => playRecent(it, 'handheld') },
-			{ label: 'Play in this browser', icon: 'laptop', disabled: NO_HERE, sub: NO_HERE ? NO_HERE_WHY : undefined, fn: () => playHere(() => playRecent(it, 'browser'), it.p) }, '-',
-			{ label: liked ? 'Unlike' : 'Like', icon: liked ? 'heart-o' : 'heart', fn: () => setLike(it.p, !liked, 'menu') },
-			{ label: 'Add to playlist…', icon: 'pl-add', fn: () => addToPlaylist([it.p], it.title) },
-			{ label: 'Show in Files', icon: 'folder', fn: () => showInFiles(it.p) }, '-',
-			{ label: 'Remove from Recent', icon: 'minus', fn: () => removeIt(it) }], { anchor, sub: noteOf(it), seed: it.p, kind: it.kind, cover: coverUrl(it.p) });
-	};
-	const tap = it => it.gone ? toast('That file is gone from the card') : playHere(t => playRecent(it, t), it.p);
-	const head = html`<div class="phead" style="padding-bottom:0"><div class="crumbs"><nav><button aria-label="Back to playlists" onClick=${() => go('#/playlists')}><${Icon} n="left" k=${1} />Playlists</button></nav></div></div>
-		<div class="plhero"><span class="cv"><${RecentArt} k=${6} /></span>
-			<div class="grow" style="min-width:180px"><div class="kicker y" style="margin-bottom:8px">From the handheld · newest first</div><h1>Recent</h1>
-				<div class="meta2">${!r ? '' : r.on === false ? 'Play history is off' : items.length ? plural(items.length, 'item', 'items') : 'Nothing yet'}</div></div>
-			<div class="acts"><button class="btn icon" aria-label="More about Recent" aria-haspopup="dialog" onClick=${e => menu(e.currentTarget)}><${MoreDots} /></button></div></div>`;
-	if (r && r.error) return html`<div class="page">${head}<${Empty} icon="alert" title="Couldn't load Recent" sub=${r.error} button="Try again" onClick=${loadRecent} /></div>`;
-	if (!r) return html`<div class="page">${head}${slow ? html`<${Skeleton} />` : null}</div>`;
-	if (!items.length) return html`<div class="page">${head}<${Empty} icon="clock" title="Nothing played yet" sub=${r.on === false ? 'Play history is off in the handheld’s Settings.' : 'Songs and videos you play, here or on the handheld, show up here.'} button="Go to Files" onClick=${() => go('#/files')} /></div>`;
-	return html`<div class="page">${head}
-		<div class="box surface listbox"><div class="flist" role="list">${items.map(it => { const cur = it.p === nowPath; return html`<div class=${'pitem nogrip recent' + (it.gone ? ' gone' : '') + (cur ? ' cur' : '')} role="listitem" key=${it.p}>
-			<button class="main-btn tt" onClick=${() => tap(it)} onContextMenu=${e => { if (matchMedia('(hover: hover)').matches) { e.preventDefault(); rowMenu(it, { x: e.clientX, y: e.clientY }); } }}>
-				<span class="tile"><${Art} src=${it.gone ? '' : coverUrl(it.p)} seed=${it.p} kind=${it.kind} />${!it.played && it.duration > 0 && html`<span class="rprog" aria-hidden="true"><i style=${'width:' + Math.round(it.frac * 100) + '%'}></i></span>`}</span>
-				<span class="grow"><div class="fn ell">${it.title}</div>
-					<div class="fm">${cur && html`<span class="chip y tiny"><${Icon} n="play" k=${1} />Playing</span>`}${it.gone && html`<span class="chip red tiny">Gone</span>`}<span class="ell">${folderOf(it.p)}</span></div></span>
-				<span class=${'dur' + (it.played ? '' : ' y')}>${noteOf(it)}</span></button>
-			<button class="ib more" aria-label=${'More about ' + it.title} aria-haspopup="dialog" onClick=${e => rowMenu(it, e.currentTarget)}><${MoreDots} /></button></div>`; })}</div></div></div>`;
 }

@@ -11,6 +11,7 @@
 #include "png.h"
 #include "sleepwatch.h"
 #include "levelwatch.h"
+#include "ampwatch.h"
 #include "touch.h"
 #include "reader_proto.h"
 #include "reader.h"
@@ -63,7 +64,7 @@ namespace bp
 }
 #endif
 
-static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur, evCover;
+static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur, evCover, evAmp;
 #ifdef BP_WEB
 // the dashboard's server for the sleep watch's thread (made on the main thread, never destroyed)
 static std::atomic<bp::WebServer*> webForWatch{nullptr};
@@ -230,7 +231,7 @@ int main(int argc, char** argv)
 				// BUTTON~MS: held MS ms, then let go
 				std::string::size_type tilde = step.find('~');
 				bool held = tilde != std::string::npos && buttonFromName(step.substr(0, tilde)) != Button::None && atoi(step.c_str() + tilde + 1) > 0;
-				bool ok = burst || held || buttonFromName(step) != Button::None || step == "info" || step == "page" || step == "update" || step == "web" || step == "F" || step == "rows" || step == "screenshot" || step.rfind("prop:", 0) == 0 || step.rfind("shot:", 0) == 0 || step.rfind("level:", 0) == 0 ||
+				bool ok = burst || held || buttonFromName(step) != Button::None || step == "info" || step == "page" || step == "update" || step == "web" || step == "F" || step == "rows" || step == "screenshot" || step == "volup" || step == "voldown" || step.rfind("prop:", 0) == 0 || step.rfind("shot:", 0) == 0 || step.rfind("level:", 0) == 0 ||
 					(sscanf(step.c_str(), "tap:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "dtap:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "hold:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
@@ -280,7 +281,7 @@ int main(int argc, char** argv)
 		fprintf(stderr, "SDL: %s\n", SDL_GetError());
 		return 1;
 	}
-	evMpv = SDL_RegisterEvents(9);
+	evMpv = SDL_RegisterEvents(10);
 	evRender = evMpv + 1;
 	evTouch = evMpv + 2;
 	evLevel = evMpv + 3;
@@ -289,6 +290,7 @@ int main(int argc, char** argv)
 	evWeb = evMpv + 6;	// the web dashboard's calls and news (WebCall)
 	evDur = evMpv + 7;	// the file rows' durations: some are ready (DurationWorker::take)
 	evCover = evMpv + 8;	// the manga library's covers: some are decoded (CoverWorker::take)
+	evAmp = evMpv + 9;	// a speaker amplifier didn't start (AmpWatch): the sound output opened again
 
 	// On the handheld (SDL's KMSDRM) each panel is a display and each window fills one; elsewhere, two windows
 	if (windowed < 0) windowed = strcmp(SDL_GetCurrentVideoDriver(), "KMSDRM") != 0;
@@ -814,6 +816,22 @@ int main(int argc, char** argv)
 			ev.user.data1 = new std::string(what);
 			SDL_PushEvent(&ev);
 		});
+		// a speaker amplifier that didn't start (the RG DS Plus's aw88166s): the output opened again a moment later (both
+		// chips' failures come together: one reopen for both), 3 times a minute at most
+		AmpWatch ampWatch;
+		bool ampWatching = ampWatch.start([](const std::string& chip) {
+			SDL_Event ev{};
+			ev.type = evAmp;
+			ev.user.data1 = new std::string(chip);
+			SDL_PushEvent(&ev);
+		});
+		if (ampWatching) fprintf(stderr, "audio: watching the speaker amplifiers (kernel log)\n");
+		Uint32 ampReloadAt = 0;
+		int volumeOverride = 0;
+		Uint32 browserVolUntil = 0;	// the volume keys moving a browser tab's volume: bananad's report of them ignored
+		int handheldVolKept = -1;	// (and the handheld's own put back to this)	// the volume keys past 100%: what bananad's own report of them shows instead, a moment
+		Uint32 volumeOverrideUntil = 0;
+		std::vector<Uint32> ampReloads;
 		int topDraws = 0;
 		bool logNextTop = false;
 
@@ -852,6 +870,50 @@ int main(int argc, char** argv)
 				else if (e.type == SDL_JOYHATMOTION && e.jhat.value) fprintf(stderr, "input: joystick %d hat %d value %d\n", e.jhat.which, e.jhat.hat, e.jhat.value);
 				else if (e.type == SDL_KEYDOWN && !e.key.repeat)
 					fprintf(stderr, "input: key %s (scancode %d)\n", SDL_GetKeyName(e.key.keysym.sym), e.key.keysym.scancode);
+				// the volume keys past 100% (Max volume 120 or 150): bananad sets the handheld's level and stops at 100; the
+				// player's own gain goes on from there, 5 at a press. Down takes the gain off first (and puts back the 100
+				// bananad's press just took away). F + volume is bananad's brightness: left alone
+				bool volKey = e.type == SDL_KEYDOWN && !fHeld && haveUi &&
+					(e.key.keysym.scancode == SDL_SCANCODE_VOLUMEUP || e.key.keysym.scancode == SDL_SCANCODE_VOLUMEDOWN);
+#ifdef BP_WEB
+				// a browser tab plays the sound: the keys are its volume (5 a press, told to it), and the handheld's own,
+				// which bananad moves at the same press, is put back as it was (two volumes, each its own)
+				if (volKey && webServer)
+				{
+					const Session& ss = SessionHost::get().session();
+					if (ss.out.kind == OutKind::Browser && ss.index >= 0 && !ss.out.tab.empty())
+					{
+						bool up = e.key.keysym.scancode == SDL_SCANCODE_VOLUMEUP;
+						int bv = std::clamp((ui.browserVol >= 0 ? ui.browserVol : 100) + (up ? 5 : -5), 0, 100);
+						ui.browserVol = bv;
+						webServer->notify("volume", "{\"tab\":\"" + ss.out.tab + "\",\"v\":" + std::to_string(bv) + "}");
+						if (!(SDL_GetTicks() < browserVolUntil)) handheldVolKept = ui.volumeLevel();
+						browserVolUntil = SDL_GetTicks() + 1500;
+						shown().showLevel("Browser volume", bv);
+						levelUntil = SDL_GetTicks() + 1500;
+						renderPending = true;
+						fprintf(stderr, "level: the browser's volume %d (its tab told; the handheld's kept at %d)\n", bv, handheldVolKept);
+						volKey = false;
+					}
+				}
+#endif
+				if (volKey && !player.playingPhoto())
+				{
+					bool up = e.key.keysym.scancode == SDL_SCANCODE_VOLUMEUP;
+					int top = std::max(100, player.settings.volumeMax), now = player.boost;
+					int to = -1;
+					if (up && top > 100 && ui.volumeLevel() >= 100 && now < top) to = std::min(top, now + 5);
+					else if (!up && now > 100) to = now - 5;
+					if (to >= 0)
+					{
+						ui.setVolumeTotal(player, to, !up);
+						volumeOverride = to;
+						volumeOverrideUntil = SDL_GetTicks() + 1200;
+						levelUntil = SDL_GetTicks() + 1500;
+						renderPending = true;
+						fprintf(stderr, "level: volume %d (the player's gain over the handheld's 100%%)\n", to);
+					}
+				}
 				// F + any other button: no quick settings as F lets go (the button does what it does)
 				if (e.type == SDL_CONTROLLERBUTTONDOWN && fHeld && e.cbutton.button != SDL_CONTROLLER_BUTTON_GUIDE) fCombo = true;
 				if (e.type == SDL_QUIT) running = false;
@@ -916,9 +978,31 @@ int main(int argc, char** argv)
 					}
 					if (ui.press(b, shown())) leave();
 				}
+				else if (e.type == evAmp)
+				{
+					std::unique_ptr<std::string> chip((std::string*)e.user.data1);
+					fprintf(stderr, "audio: the speaker amplifier %s didn't start\n", chip ? chip->c_str() : "?");
+					if (!ampReloadAt) ampReloadAt = SDL_GetTicks() + 600;
+				}
 				else if (e.type == evLevel)
 				{
 					std::string* what = (std::string*)e.user.data1;
+					// bananad's word on a volume key that moved the browser's volume: the handheld's put back, and the
+					// card stays the browser's
+					if (*what == "volume" && SDL_GetTicks() < browserVolUntil)
+					{
+						if (haveUi) ui.keepHandheldVolume(handheldVolKept);
+						delete what;
+						got = SDL_PollEvent(&e);	// (the loop's next event: a bare continue would take this one again)
+						continue;
+					}
+					// bananad's word on a volume key the player took past 100% (its 100, or the 95 its Down set before the
+					// player put 100 back): the level as heard instead
+					if (*what == "volume" && (SDL_GetTicks() < volumeOverrideUntil || player.boost > 100))
+					{
+						int heard = SDL_GetTicks() < volumeOverrideUntil ? volumeOverride : player.boost;
+						if (heard >= 100) e.user.code = heard;
+					}
 					shown().showLevel(*what == "brightness" ? "Brightness" : "Volume", e.user.code);
 					// the manga reader draws the top panel itself: mpv's card would be under its pages, so the card
 					// goes over them as a picture of its own
@@ -1241,6 +1325,15 @@ int main(int argc, char** argv)
 								printf(r.header ? "  [%s]\n" : "    %-16s %s\n", r.label.c_str(), r.value.c_str());
 						}
 						else if (step == "screenshot") screenshot();	// as F + L2 does
+						else if (step == "volup" || step == "voldown")
+						{
+							// the handheld's volume keys (bananad's on the handheld: here only what the player does with them)
+							SDL_Event ev{};
+							ev.type = SDL_KEYDOWN;
+							ev.key.keysym.scancode = step == "volup" ? SDL_SCANCODE_VOLUMEUP : SDL_SCANCODE_VOLUMEDOWN;
+							ev.key.keysym.sym = step == "volup" ? SDLK_VOLUMEUP : SDLK_VOLUMEDOWN;
+							SDL_PushEvent(&ev);
+						}
 						else if (step.rfind("level:", 0) == 0)
 						{
 							// level:volume:40 (or brightness): as the hardware keys' change comes, so the level card shows
@@ -1419,6 +1512,19 @@ int main(int argc, char** argv)
 				if (int u = shadow.takeUnload()) stopPlaying(u == 2 ? StopWhy::End : StopWhy::Web);
 			}
 			Uint32 now = SDL_GetTicks();
+			// the sound output opened again after an amplifier didn't start (3 times a minute at most: a chip that never
+			// starts isn't helped by more)
+			if (ampReloadAt && (int)(now - ampReloadAt) >= 0)
+			{
+				ampReloadAt = 0;
+				ampReloads.erase(std::remove_if(ampReloads.begin(), ampReloads.end(), [now](Uint32 t) { return now - t > 60000; }), ampReloads.end());
+				if (ampReloads.size() < 3)
+				{
+					ampReloads.push_back(now);
+					player.reloadAudio();
+				}
+				else fprintf(stderr, "audio: an amplifier still won't start: not opened again (3 tries this minute)\n");
+			}
 #ifdef __linux__
 			// (every 5 s: the file is BananaOS's, written at a launch; a few bytes read)
 			static Uint32 idleHoldAt = 0;
@@ -1461,6 +1567,20 @@ int main(int argc, char** argv)
 				if (mangaWasOn && !player.settings.mangaOn) mangaNet->off();
 				mangaWasOn = player.settings.mangaOn;
 			}
+#ifdef BP_WEB
+			// the cards changed (a second card put in or taken out): the dashboard's places follow
+			{
+				static int rootsSeen = 0;
+				if (ui.rootsSerial() != rootsSeen && webServer)
+				{
+					rootsSeen = ui.rootsSerial();
+					std::vector<WebRoot> wr;
+					for (auto& r : ui.places())
+						if (r.path != "/") wr.push_back({r.label, r.path});
+					webServer->setRoots(wr);
+				}
+			}
+#endif
 			// the manga reader: a chapter asked for, the bottom panel's commands, what it shows told back
 			if (haveUi)
 			{
@@ -1503,6 +1623,8 @@ int main(int argc, char** argv)
 						ui.readerStatus.error = reader.error();
 					// the series' own Book (or off), each chapter: it turns the pages as they are decoded
 					if (reader.isOpen()) reader.command(MangaReader::Book, rq.book, (int64_t)now);
+					// back to the place inside the page it was left at (Vertical scroll: a PDF's tall page)
+					if (reader.isOpen() && rq.within > 0) reader.scrollWithin(rq.page, rq.within);
 				}
 				for (auto& c : ui.readerCmds)
 				{
@@ -1639,6 +1761,7 @@ int main(int argc, char** argv)
 					ui.readerStatus.failedHere = reader.failedInView();
 					ui.readerStatus.atEnd = reader.atEnd();
 					ui.readerStatus.page = reader.page();
+					ui.readerStatus.within = (float)reader.within();
 					ui.readerStatus.pages = reader.pages();
 					ui.readerStatus.mode = reader.mode();
 					// a zoom changed (keys, the menu, a double-tap): its percent on the pages a moment, fading out

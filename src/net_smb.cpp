@@ -103,6 +103,7 @@ namespace bp
 			case 0xC0000103: case 0xC0000056:
 				return NetError::NotFound;
 			case 0xC0000022: case 0xC0000043: case 0xC00000CC: case 0xC00000CA:	// (a share that isn't there: NoAccess, as asked)
+			case 0xC0000035: case 0xC00000A2: case 0xC0000101:	// a name taken, a write-protected medium, a folder not empty
 				return NetError::NoAccess;
 			case 0xC00000B5:
 				return NetError::Timeout;
@@ -172,6 +173,18 @@ namespace bp
 			case Wait::Answered: break;
 			}
 			uint32_t st = (uint32_t)smb2_get_nterror(c);
+			// (some of libsmb2's calls give the server's NTSTATUS itself as the status: an error's top bits set)
+			if (st == 0 && ((uint32_t)rc & 0xC0000000u) == 0xC0000000u) st = (uint32_t)rc;
+			// (and some keep it only in their words, "Create failed with status -1073741790", with an errno beside)
+			if ((st & 0xC0000000u) != 0xC0000000u || ((int32_t)st < 0 && (int32_t)st > -4096))
+			{
+				size_t at = e.find("status -");
+				if (at != std::string::npos)
+				{
+					uint32_t said = (uint32_t)(int32_t)atoll(e.c_str() + at + 7);
+					if ((said & 0xC0000000u) == 0xC0000000u) st = said;
+				}
+			}
 			if (st != 0)
 			{
 				if (loginRefused(st)) return result(NetError::Auth, what + ": " + e);
@@ -474,7 +487,112 @@ namespace bp
 
 			void cancel() override { canceller.cancel(); }
 
+			NetResult makeDir(const std::string& path) override
+			{
+				return simple(path, "Making the folder ", [](smb2_context* c, const char* sub, Call* k) { return smb2_mkdir_async(c, sub, answered, k); });
+			}
+
+			NetResult remove(const std::string& path, bool dir) override
+			{
+				if (dir) return simple(path, "Deleting the folder ", [](smb2_context* c, const char* sub, Call* k) { return smb2_rmdir_async(c, sub, answered, k); });
+				return simple(path, "Deleting ", [](smb2_context* c, const char* sub, Call* k) { return smb2_unlink_async(c, sub, answered, k); });
+			}
+
+			NetResult rename(const std::string& from, const std::string& to) override
+			{
+				std::string s1, a, s2, b;
+				split(from, s1, a);
+				split(to, s2, b);
+				if (s1.empty() || a.empty() || b.empty() || lower(s1) != lower(s2)) return result(NetError::Other, "Renaming " + from + ": not within one share");
+				return simple(from, "Renaming ", [&b](smb2_context* c, const char* sub, Call* k) { return smb2_rename_async(c, sub, b.c_str(), answered, k); });
+			}
+
+			NetResult put(const std::string& path, const std::function<int64_t(char*, int64_t)>& more) override
+			{
+				Busy b(canceller);
+				std::string share, sub;
+				split(path, share, sub);
+				if (share.empty() || sub.empty()) return result(NetError::NoAccess, path + ": a file can't go there");
+				NetResult r;
+				smb2_context* c = tree(share, r);
+				if (!c) return r;
+				int status = 0;
+				void* data = nullptr;
+				bool lost = false;
+				std::string what = "Writing " + path;
+				r = link.call(c, canceller, what, [&](Call* k) { return smb2_open_async(c, sub.c_str(), O_WRONLY | O_CREAT | O_EXCL, answered, k); },
+					status, data, lost);
+				if (r.ok() && (status != 0 || !data)) r = describe(c, what, Wait::Answered, status ? status : -EIO, link.timeoutMs);
+				if (!r.ok()) return fail(c, r, lost);
+				smb2fh* fh = (smb2fh*)data;
+				int64_t chunk = std::min<int64_t>((int64_t)std::max<uint32_t>(smb2_get_max_write_size(c), 65536), (int64_t)1 << 20);
+				std::vector<char> buf((size_t)chunk);
+				uint64_t offset = 0;
+				bool stopped = false;
+				for (;;)
+				{
+					int64_t n = more(buf.data(), chunk);
+					if (n < 0) { stopped = true; break; }
+					if (n == 0) break;
+					int64_t w = 0;
+					while (w < n)
+					{
+						r = link.call(c, canceller, what, [&](Call* k) { return smb2_pwrite_async(c, fh, (const uint8_t*)buf.data() + w, (uint32_t)(n - w), offset, answered, k); },
+							status, data, lost);
+						if (r.ok() && status <= 0) r = describe(c, what, Wait::Answered, status < 0 ? status : -EIO, link.timeoutMs);
+						if (!r.ok()) break;
+						w += status;
+						offset += (uint64_t)status;
+					}
+					if (!r.ok()) break;
+				}
+				if (lost || r.error == NetError::Cancelled)
+				{
+					// (the context is dead: a new one takes the half file away)
+					fail(c, r, true);
+					NetResult gone;
+					if (smb2_context* c2 = tree(share, gone))
+					{
+						int st2 = 0; void* d2 = nullptr; bool l2 = false;
+						Canceller fresh;
+						link.call(c2, fresh, "Deleting " + path, [&](Call* k) { return smb2_unlink_async(c2, sub.c_str(), answered, k); }, st2, d2, l2);
+					}
+					return r;
+				}
+				NetResult closed = link.call(c, canceller, what, [&](Call* k) { return smb2_close_async(c, fh, answered, k); }, status, data, lost);
+				if (r.ok() && closed.ok() && status < 0) closed = describe(c, what, Wait::Answered, status, link.timeoutMs);
+				if (r.ok() && !closed.ok()) r = closed;
+				if (!r.ok() || stopped)
+				{
+					int st2 = 0; void* d2 = nullptr; bool l2 = false;
+					link.call(c, canceller, "Deleting " + path, [&](Call* k) { return smb2_unlink_async(c, sub.c_str(), answered, k); }, st2, d2, l2);
+					if (r.ok()) r = result(NetError::Cancelled, what + ": stopped");
+					return fail(c, r, lost);
+				}
+				return r;
+			}
+
 		private:
+			// one request on a path's share, its answer's status the result
+			template <class Start> NetResult simple(const std::string& path, const std::string& verb, Start start)
+			{
+				Busy b(canceller);
+				std::string share, sub;
+				split(path, share, sub);
+				if (share.empty() || sub.empty()) return result(NetError::NoAccess, verb + path + ": not inside a share");
+				NetResult r;
+				smb2_context* c = tree(share, r);
+				if (!c) return r;
+				int status = 0;
+				void* data = nullptr;
+				bool lost = false;
+				std::string what = verb + path;
+				r = link.call(c, canceller, what, [&](Call* k) { return start(c, sub.c_str(), k); }, status, data, lost);
+				if (r.ok() && status != 0) r = describe(c, what, Wait::Answered, status, link.timeoutMs);
+				if (!r.ok()) return fail(c, r, lost);
+				return r;
+			}
+
 			struct Tree { std::string share; smb2_context* ctx; bool dead; };
 			Link link;
 			std::vector<Tree> trees;

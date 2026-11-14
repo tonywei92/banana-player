@@ -21,6 +21,36 @@
 
 namespace bp
 {
+	void Ui::rootsCheck(Player& p)
+	{
+		Uint32 now = SDL_GetTicks();
+		if (roots.empty() || now - rootsCheckedAt < 2000) return;
+		rootsCheckedAt = now;
+		std::vector<BrowseRoot> fresh = browseRoots();
+		bool same = fresh.size() == roots.size();
+		for (size_t i = 0; same && i < fresh.size(); i++) same = fresh[i].path == roots[i].path;
+		if (same) return;
+		std::vector<BrowseRoot> was = roots;
+		roots = fresh;
+		rootsChanged++;
+		mangaScanned = false;	// (the Manga folders read again: a card's came or went)
+		bool gone = false;
+		for (auto& r : was)
+		{
+			bool still = false;
+			for (auto& f : fresh) still = still || f.path == r.path;
+			if (!still && (browseDir == r.path || browseDir.rfind(r.path + "/", 0) == 0)) gone = true;
+		}
+		fprintf(stderr, "files: the cards changed (%zu places now)\n", fresh.size());
+		// in a card that went: back to the places, said; on the places' page: listed again
+		if (gone)
+		{
+			alert("The card was taken out", "Its folders come back when it\xE2\x80\x99s in again.");
+			enterFolder("", p);
+		}
+		else if (page == Page::Browse && browseDir.empty()) enterFolder("", p);
+	}
+
 	void Ui::startBrowser(Player& p, const std::string& folder)
 	{
 		roots = browseRoots();
@@ -214,7 +244,12 @@ namespace bp
 			// the Recent strip listed again, the focus kept on the file it was on (gone: the card that took its place)
 			std::string was = homeStrip < stripCards() ? recent[homeStrip].path : "";
 			int wasAt = homeStrip;
+			std::vector<std::string> before;
+			if (recentKeepOrder)
+				for (auto& r : recent) before.push_back(r.path);
 			listRecent(p);
+			if (recentKeepOrder) recentInOrder(before);
+			recentKeepOrder = false;
 			if (homeFresh)
 			{
 				homeFresh = false;
@@ -292,8 +327,9 @@ namespace bp
 			else
 			{
 				netLoading = true;
+				netWritable = false;	// (until the listing says)
 				add(-1, "Loading...", "", "");
-				netWorker->list(++netSerial, *sv, netStore->password(*sv), dir);
+				netWorker->list(++netSerial, *sv, netStore->password(*sv), dir, true);
 			}
 		}
 		else if (dir.empty())
@@ -302,8 +338,27 @@ namespace bp
 		else if (dir == RECENT)
 		{
 			// All recent: the history (a file taken away or on a card taken out left out); X clears it
+			std::vector<std::string> before;
+			if (recentKeepOrder)
+				for (auto& r : recent) before.push_back(r.path);
 			listRecent(p);
-			for (auto& it : recent) add(2, baseName(it.path), it.path, it.net ? fileNote(at(it.path), -1) : localNote(it.path));
+			if (recentKeepOrder) recentInOrder(before);
+			recentKeepOrder = false;
+			// the tabs: how many of each, and only the chosen kind listed (PlayHistory keeps 30 of each)
+			for (int& c : recentCounts) c = 0;
+			for (auto& it : recent)
+			{
+				recentCounts[0]++;
+				recentCounts[PlayHistory::kindOf(it.path) + 1]++;
+			}
+			// (a kind emptied meanwhile, its last one removed: back to All rather than an empty tab)
+			if (recentTab && !recentCounts[recentTab]) recentTab = 0;
+			for (auto& it : recent)
+			{
+				if (recentTab && recentTab != PlayHistory::kindOf(it.path) + 1) continue;
+				add(2, baseName(it.path), it.path, it.net ? fileNote(at(it.path), -1) : localNote(it.path));
+			}
+			if (recent.empty()) add(-1, "Nothing played yet", "", "");
 		}
 		else
 		{
@@ -368,7 +423,7 @@ namespace bp
 				NetPath np;
 				const NetServer* sv = netStore && parseNetPath(l->dir, np) ? netStore->find(np.server) : nullptr;
 				// (not found: the folder, most likely; the server answered its parent's listing)
-				p.osd(l->result.error == NetError::NotFound ? "Can't find " + quoted(folderName(l->dir))
+				alert("Couldn\xE2\x80\x99t add the folder", l->result.error == NetError::NotFound ? "Can't find " + quoted(folderName(l->dir)) + "."
 					: netErrorText(l->result.error, sv ? sv->host : "the server"));
 				return;
 			}
@@ -399,6 +454,10 @@ namespace bp
 		}
 		if (l->test || l->serial != netSerial || l->dir != browseDir || page != Page::Browse) return;
 		netLoading = false;
+		netWritable = l->writable;
+		netSizes.clear();
+		for (auto& e : l->entries)
+			if (!e.dir) netSizes[netJoin(l->dir, e.name)] = e.size;
 		browseRows.clear();
 		browsePaths.clear();
 		auto add = [&](int64_t id, const std::string& label, const std::string& path, const std::string& note) {
@@ -456,7 +515,8 @@ namespace bp
 			selStart(SEL_ADD, plCur.file);
 			switchTab(TAB_LOCAL, p);
 		}
-		else openForm(nullptr, nullptr, p);
+		// no connections yet: the search first (nothing to type); Add connection is Y's, for FTP or one it can't find
+		else enterFolder(FINDNET, p);
 	}
 
 	bool Ui::atFirstPage() const
@@ -630,12 +690,12 @@ namespace bp
 				{
 					// only the Like button adds to Liked; here: play, and remove (Select)
 					if (plCur.entries.empty()) return;
-					items = {CTX_PL_PLAY, CTX_PL_SHUFFLE, CTX_PL_SELECT};
+					items = {CTX_PL_PLAY, CTX_PL_SHUFFLE, CTX_PL_SELECT, CTX_PL_MISSING};
 				}
 				else
 				{
 					if (!plCur.entries.empty())
-						items = {CTX_PL_PLAY, CTX_PL_SHUFFLE, CTX_PL_ADD_FILES, CTX_PL_ADD_FOLDER, CTX_PL_SELECT, CTX_PL_DEDUP};
+						items = {CTX_PL_PLAY, CTX_PL_SHUFFLE, CTX_PL_ADD_FILES, CTX_PL_ADD_FOLDER, CTX_PL_SELECT, CTX_PL_DEDUP, CTX_PL_MISSING};
 					else items = {CTX_PL_ADD_FILES, CTX_PL_ADD_FOLDER};
 					items.push_back(CTX_PL_RENAME);
 					items.push_back(CTX_PL_DELETE);
@@ -698,7 +758,7 @@ namespace bp
 		}
 		else if (folder) items = {CTX_HIDE, CTX_REFRESH, CTX_CANCEL};
 		// a file of the cards: Copy..., Move..., Rename..., Delete (a folder's come before its Hide)
-		else if (how != MENU_X && fileOpsOn(row)) items = {CTX_CANCEL};
+		else if (how != MENU_X && fileOpsOn(row) && !netFolder) items = {CTX_CANCEL};
 		else if (netFolder && how != MENU_X && plStore)
 		{
 			// a server's folder: its videos and songs added to a playlist
@@ -714,7 +774,7 @@ namespace bp
 			items.insert(items.end() - 1, CTX_HIDDEN);
 		if (folder || netFolder) ctxFolder = browsePaths[row];
 		bool fileOps = how != MENU_X && fileOpsOn(row);
-		if (fileOps) items.insert(items.begin() + (folder && plStore ? 1 : 0), {CTX_F_INFO, CTX_F_COPY, CTX_F_MOVE, CTX_F_RENAME, CTX_F_DELETE});
+		if (fileOps) items.insert(items.begin() + ((folder || netFolder) && plStore ? 1 : 0), {CTX_F_INFO, CTX_F_COPY, CTX_F_MOVE, CTX_F_RENAME, CTX_F_DELETE});
 		// X: the highlighted file's or folder's Info (first, above Select files)
 		bool infoX = how == MENU_X && fileOpsOn(row);
 		if (selectFiles) items.insert(items.begin(), CTX_SELECT_FILES);
@@ -848,6 +908,26 @@ namespace bp
 			}
 			return;
 		}
+		if (what == CTX_PL_MISSING)
+		{
+			// the items whose file is on no card now (network ones are never judged: the server may only be off).
+			// Twice, the first saying how many: a card that's out makes its files look gone
+			std::set<int> gone;
+			for (size_t i = 0; i < plCur.entries.size(); i++)
+			{
+				const std::string& e = plCur.entries[i].path;
+				struct stat st;
+				if (!isNetPath(e) && stat(e.c_str(), &st) != 0) gone.insert((int)i);
+			}
+			if (gone.empty()) { ctxOpen = false; p.osd("Nothing is missing"); return; }
+			if (!ctxArmed) { ctxArmed = true; ctxMissing = (int)gone.size(); return; }
+			ctxOpen = false;
+			auto remap = removeEntries(plCur.entries, gone);
+			plSaved(p, remap);
+			fprintf(stderr, "playlists: removed %zu missing from %s\n", gone.size(), plCur.name.c_str());
+			p.osd("Removed " + std::to_string(gone.size()) + " missing");
+			return;
+		}
 		if (what == CTX_PL_DELETE)
 		{
 			// twice (the files themselves stay where they are: the menu says so)
@@ -866,7 +946,7 @@ namespace bp
 			int skipped = 0;
 			bool open = isPlDir(browseDir) && plLoaded && file == plCur.file;
 			if (open) pl = plCur;
-			else if (!file.empty() && (!plStore || !plStore->load(file, pl, skipped))) { p.osd("Couldn't read the playlist"); return; }
+			else if (!file.empty() && (!plStore || !plStore->load(file, pl, skipped))) { alert("Couldn\xE2\x80\x99t read the playlist", "Its file may be damaged, or the card read only."); return; }
 			if (plIsLiked(file) && (what == CTX_PL_RENAME || what == CTX_PL_DELETE || what == CTX_PL_DEDUP || what == CTX_PL_ADD_FILES ||
 				what == CTX_PL_ADD_FOLDER || what == CTX_PL_MOVE))
 				return;	// Liked is managed by the Like button; Remove and Select there are Unlike
@@ -978,7 +1058,7 @@ namespace bp
 			FILE* f = fopen(marker.c_str(), "w");
 			ok = f && fclose(f) == 0;
 		}
-		if (!ok) p.osd("Couldn't change the folder (is the card read-only?)");
+		if (!ok) alert("Couldn\xE2\x80\x99t change the folder", "Is the card read only?");
 		int c = cursor, s = scroll;
 		enterFolder(browseDir, p);	// again: it's gone from the list, or marked
 		cursor = c;
@@ -1055,7 +1135,15 @@ namespace bp
 		else if (browse && !inMenu)
 		{
 			// All recent: a page of Home's; else a section's header (its markers in place of tabs)
-			if (browseDir == RECENT) drawHeader("Recent", p);
+			if (browseDir == RECENT)
+			{
+				// its tabs on the title's line when they fit (the line under it left as room above the list)
+				int titleW = (int)std::lround(textWidth("Recent", 2) / sx);
+				drawHeader("Recent", p, 72 + titleW + 20);
+				// (with the counts, else without them: a battery and two-digit counts don't leave room for both)
+				int tx = 72 + titleW + 20, right = statusLeft(p) - 12;
+				recentTabsUp = p.settings.keepHistory && recentCounts[0] && (drawRecentTabs(tx, 32, right) || drawRecentTabs(tx, 32, right, false));
+			}
 			else drawSectionHeader(p);
 			if (browseDir == EXTDIR)
 			{
@@ -1075,7 +1163,8 @@ namespace bp
 					cards = cards || (rt.label.size() >= 4 && rt.label.compare(rt.label.size() - 4, 4, "card") == 0);
 					videos = videos || rt.label == "Videos";
 				}
-				std::string top = browseDir == RECENT ? "Newest first \xC2\xB7 the last 30"
+				if (browseDir == RECENT && p.settings.keepHistory && recentCounts[0] && !recentTabsUp) drawRecentTabs(16, SUB_Y, 624);
+				std::string top = browseDir == RECENT ? ""
 					: browseDir.empty() ? (videos && cards ? "Videos and your cards" : cards ? "Your cards" : "Your folders")
 					: browseDir == PLROOT ? (!plStore ? "" : n <= 1 ? "Liked"
 						: "Liked \xC2\xB7 " + std::to_string(n - 1) + (n == 2 ? " playlist" : " playlists"))
@@ -1118,6 +1207,7 @@ namespace bp
 			bool pl = browseDir == PLROOT || isPlDir(browseDir);
 			const Glyph& g = net ? G_NETWORK : browseDir == RECENT ? G_CLOCK : G_FOLDER;
 			std::string sub = m == "No connections yet" ? "Play from a computer or a NAS on your Wi-Fi"
+				: m == "Nothing played yet" ? "What you play or read shows up here, with where you left off"
 				: m == "Nothing to play here" ? "No videos, music or photos in this folder"
 				: m == "This folder can't be opened" ? "Is the card still in?"
 				: m == "Play history is off (Settings)" ? "Turn it on in Settings, Files" : "";
@@ -1130,6 +1220,8 @@ namespace bp
 					: m == "Playlists aren't available" ? "There's no folder to keep them in"
 					: m == "This playlist can't be opened" ? "Was it deleted?" : "Add videos and songs from your cards or the network",
 					!emptyAction() ? nullptr : isPlDir(browseDir) ? "Add files" : "New playlist");
+			else if (emptyAction() && browseDir == NETROOT)
+				drawEmpty(g, title, "Find the computers sharing files on your Wi-Fi.\nOr Y: add one by its address", "Find on the network", &G_SEARCH);
 			else drawEmpty(g, title, sub, emptyAction() ? "Add connection" : nullptr);
 		}
 		else if (noAudio) drawEmpty(G_SPEAKER, "No audio in this file", "This video has no sound track", nullptr);
@@ -1238,13 +1330,15 @@ namespace bp
 		bool plEmpty = r.size() == 1 && r[0].id < 0;
 		// a row with a menu of its own (Y): a folder, a connection, a playlist, its item
 		bool yMenu = cursor >= 0 && cursor < n && (folderRow(cursor) || (browseDir == NETROOT && r[cursor].id == 4) || r[cursor].id == PL_ROW ||
-			r[cursor].id == PL_ITEM || (isNetPath(browseDir) && r[cursor].id == 1 && plStore));
+			r[cursor].id == PL_ITEM || (isNetPath(browseDir) && r[cursor].id == 1 && plStore) || fileOpsOn(cursor));
 		bool file = cursor >= 0 && cursor < n && (r[cursor].id == 2 || r[cursor].id == PL_ITEM);
+		// a book, a document, any file that doesn't play: A opens it (or says it can't)
+		const char* aFile = file && cursor < (int)browsePaths.size() && !isMediaFile(browsePaths[cursor]) ? "Open" : "Play";
 		if (cursor < 0 && upRow()) drawHints({{"A", "Up"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 		else if (form) drawHints({{"A", "Change"}, {"LEFT/RIGHT", "Choose"}, {"B", "Cancel"}});
 		else if (browseDir == FINDNET) drawHints({{"A", "Add this one"}, {"B", "Back"}});
 		else if (browseDir == RECENT && plEmpty) drawHints({{"B", "Home"}, {"X", "Options"}, {"START", "Menu"}});
-		else if (browseDir == RECENT) drawHints({{"A", "Play"}, {"Y", "Menu"}, {"B", "Home"}, {"X", "Options"}, {"START", "Menu"}});
+		else if (browseDir == RECENT) drawHints({{"A", file && cursor < (int)browsePaths.size() && !isMediaFile(browsePaths[cursor]) ? "Open" : "Play"}, {"Y", "Menu"}, {"L/R", "Kind"}, {"B", "Home"}, {"X", "Options"}});
 		else if (plEmpty && isPlDir(browseDir) && plIsLiked(plCur.file)) drawHints({{"B", back}, {"L/R", "Sections"}, {"START", "Menu"}});
 		else if (browseDir == PLROOT && cursor >= 0 && cursor < n && r[cursor].id == PL_NEW)
 			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
@@ -1252,10 +1346,10 @@ namespace bp
 			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}, {"START", "Menu"}});
 		else if (emptyAction() && isPlDir(browseDir)) drawHints({{"A", "Add files"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 		else if (emptyAction())
-			drawHints({{"A", "Add connection"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}, {"START", "Menu"}});
+			drawHints({{"A", "Find"}, {"Y", "Add connection"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 		else if (plEmpty) drawHints({{"B", back}, {"X", "Options"}, {"L/R", "Sections"}, {"START", "Menu"}});
-		else if (yMenu) drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : "Play") : "Open"}, {"B", back}, {"X", "Options"}, {"Y", "Menu"}, {"L/R", "Sections"}});
-		else drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : "Play") : "Open"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+		else if (yMenu) drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"Y", "Menu"}, {"L/R", "Sections"}});
+		else drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 	}
 
 	void Ui::drawUpRow(int y, bool at)

@@ -211,6 +211,7 @@ namespace bp
 			// History; a value we can't read says the same
 			p.hidden = false;
 			if (f.size() > 7) toBool(f[7], p.hidden);
+			if (f.size() > 8) p.within = std::clamp((float)atof(f[8].c_str()), 0.0f, 1.0f);	// (a later column still)
 			if (p.chapterId.empty()) continue;
 			bool known = false;
 			for (auto& o : progress_)
@@ -279,8 +280,10 @@ namespace bp
 			out += p.read ? "1\t" : "0\t";
 			snprintf(buf, sizeof buf, "%lld\t", (long long)p.at);
 			out += buf;
-			// the hidden flag is the last column, so a file without it is an older one
-			out += p.hidden ? "1\n" : "0\n";
+			// the hidden flag, then the place inside the page: a file without them is an older one
+			out += p.hidden ? "1" : "0";
+			snprintf(buf, sizeof buf, "\t%.3f\n", p.within);
+			out += buf;
 		}
 		return out;
 	}
@@ -411,6 +414,7 @@ namespace bp
 			// a chapter read once stays read: opening it again doesn't unread it (markRead says otherwise)
 			e->read = e->read || p.read;
 			e->page = p.page;
+			e->within = p.within;
 			// the length and the name are kept when this update doesn't carry them: a caller that doesn't know
 			// them yet shouldn't throw away what is known
 			if (p.pages > 0) e->pages = p.pages;
@@ -600,5 +604,13 @@ namespace bp
 			progress_.erase(progress_.begin() + long(old));
 			progIdxDirty_ = true;
 		}
+	}
+
+	std::vector<std::string> MangaStore::seriesIds() const
+	{
+		std::vector<std::string> out;
+		out.reserve(series_.size());
+		for (const auto& s : series_) out.push_back(s.id);
+		return out;
 	}
 }

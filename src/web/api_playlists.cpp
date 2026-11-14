@@ -97,6 +97,39 @@ namespace bp
 
 	struct WebPlaylistGlue
 	{
+		// a Recent row's place on the cards or the network ("Videos", "MY-PC"), as the handheld's Home says it
+		static std::string where(Ui& u, const std::string& path)
+		{
+			if (isNetPath(path))
+			{
+				NetPath np;
+				const NetServer* sv = u.netStore && parseNetPath(path, np) ? u.netStore->find(np.server) : nullptr;
+				return sv ? serverName(*sv) : "Network";
+			}
+			std::string w = u.whereOf(parentFolder(path));
+			return w.substr(0, w.find(" / "));
+		}
+		// a document's place, from the handheld's own (a PDF's or a comic's page of so many; a text's or a book's share)
+		struct DocPlace { bool paged = false; int page = 0, pages = 0; double frac = 0; bool started = false; };
+		static DocPlace docPlace(Ui& u, const std::string& path)
+		{
+			DocPlace d;
+			u.docPlacesLoad();
+			const ResumeEntry* e = u.docPlaces->find(path);
+			d.paged = e && (e->aid == 2 || (e->aid != 1 && e->duration > 1));
+			if (!e) return d;
+			d.started = e->position > 0;
+			if (d.paged)
+			{
+				d.pages = (int)e->duration;
+				d.page = (int)e->position + 1;
+				d.frac = e->duration > 0 ? std::clamp((e->position + 1) / e->duration, 0.0, 1.0) : 0;
+			}
+			else d.frac = std::clamp(e->duration, 0.0, 1.0);
+			return d;
+		}
+		// a book, document or comic of Recent, opened on the handheld at its place (a network one copied first)
+		static void open(Player& p, Ui& u, const std::string& path) { u.openFile(path, p); }
 		// the playlist (its file by id) as it is on the card, the bottom panel's edits written first
 		static bool load(Player& p, Ui& u, const std::string& id, Playlist& pl, std::string& err)
 		{
@@ -456,14 +489,29 @@ namespace bp
 				std::string cur = p.playing() ? p.currentPath() : "";
 				for (auto& path : p.history().items())
 				{
-					if (isNetPath(path)) continue;
-					// (a document read on the handheld: no page here opens one)
-					if (isDocumentName(path) || isComicName(path)) continue;
+					// a network file: by its bpnet:// path (no credentials in it), its connection still saved; it plays on
+					// the handheld only, and whether it's still there is only known by asking its server
+					bool net = isNetPath(path);
+					NetPath np;
+					if (net && !(u.netStore && parseNetPath(path, np) && u.netStore->find(np.server))) continue;
 					struct stat st;
-					bool gone = stat(path.c_str(), &st) != 0;
-					if (!gone && !p.settings.showHiddenFolders && insideHiddenFolder(path)) continue;
-					std::string v = w->servedVirtual(path);
+					bool gone = !net && stat(path.c_str(), &st) != 0;
+					if (!net && !gone && !p.settings.showHiddenFolders && insideHiddenFolder(path)) continue;
+					std::string v = net ? path : w->servedVirtual(path);
 					if (v.empty()) continue;
+					std::string where = WebPlaylistGlue::where(u, path);
+					// a book, document or comic: its page or how far it's read (they open on the handheld)
+					if (isDocumentName(path) || isComicName(path))
+					{
+						std::string e = path.substr(path.rfind('.') == std::string::npos ? path.size() : path.rfind('.') + 1);
+						for (char& c : e) c = (char)tolower((unsigned char)c);
+						const char* kind = isComicName(path) ? "comic" : e == "epub" ? "epub" : isPdfName(path) ? "pdf" : "text";
+						auto d = WebPlaylistGlue::docPlace(u, path);
+						j.obj().key("p").str(v).key("title").str(webTitle(path)).key("kind").str(kind).key("where").str(where)
+							.key("net").boolean(net).key("gone").boolean(gone).key("started").boolean(d.started)
+							.key("frac").num(d.frac).key("page").num(d.page).key("pages").num(d.pages).end();
+						continue;
+					}
 					bool audio = isAudioFile(path), now = path == cur;
 					RecentProgress rp = recentProgress(p.resumeStore().find(path), audio);
 					// the file playing: where it is now (its kept place is from when it last stopped)
@@ -474,13 +522,32 @@ namespace bp
 						rp.frac = std::clamp(p.position / p.duration, 0.0, 1.0);
 						rp.played = false;
 					}
-					j.obj().key("p").str(v).key("title").str(webTitle(path)).key("kind").str(audio ? "audio" : "video")
+					j.obj().key("p").str(v).key("title").str(webTitle(path)).key("kind").str(audio ? "audio" : "video").key("where").str(where).key("net").boolean(net)
 						.key("position").num(rp.position).key("duration").num(rp.duration).key("frac").num(rp.frac)
 						.key("played").boolean(rp.played).key("playing").boolean(now).key("gone").boolean(gone).end();
 				}
-				(void)u;
 				return j.end().end().out();
 			}, 2000, status);
+			answer(res, body, status);
+		});
+
+		// Open on handheld (p: a Recent row's path): a book, document or comic, at its place, on the handheld's screens
+		// (a network one is copied to the card first, with its progress there). Only Recent's own rows
+		s.Post("/api/recent/open", [w](const httplib::Request& req, httplib::Response& res) {
+			std::string v = value(req, "p");
+			int status = 200;
+			std::string body = w->call([w, v](Player& p, Ui& u) {
+				std::string path;
+				for (auto& h : p.history().items())
+					if (isNetPath(h) ? h == v : w->servedVirtual(h) == v) path = h;
+				if (path.empty() || !(isDocumentName(path) || isComicName(path)))
+				{
+					WebCall::setStatus(404);
+					return error("Not a book or document in Recent", "missing");
+				}
+				WebPlaylistGlue::open(p, u, path);
+				return JsonWriter().obj().key("ok").boolean(true).end().out();
+			}, 3000, status);
 			answer(res, body, status);
 		});
 
@@ -497,7 +564,7 @@ namespace bp
 			std::string body = w->call([w, v](Player& p, Ui& u) {
 				std::string path;
 				for (auto& h : p.history().items())
-					if (!isNetPath(h) && w->servedVirtual(h) == v) path = h;
+					if (isNetPath(h) ? h == v : w->servedVirtual(h) == v) path = h;
 				if (path.empty())
 				{
 					WebCall::setStatus(404);

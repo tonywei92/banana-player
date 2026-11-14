@@ -94,6 +94,9 @@ namespace bp
 		// still moving or uploading: main keeps its loop at the display's rate
 		bool busy() const { return strip.moving() || paged.moving() || uploads || forceFrames > 0; }
 		int mode() const { return readMode; }
+		// the Strip's place inside page() (Strip::within); 0 in the paged modes
+		double within() const { return !opened || bookHold || readMode != MANGA_STRIP ? 0 : strip.within(); }
+		void scrollWithin(int page, double share) { if (opened && readMode == MANGA_STRIP && !bookHold) strip.scrollToWithin(page, share); }
 		int page() const { return !opened ? 0 : bookHold ? bookS : std::max(0, readMode == MANGA_STRIP ? strip.currentPage() : paged.current()); }
 		int pages() const { return (int)files.size(); }
 		bool loading() const;

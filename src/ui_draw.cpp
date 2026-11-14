@@ -481,6 +481,7 @@ namespace bp
 		if (quickOpen) drawQuick(p);
 		if (kbOpen) drawKeyboard();
 		drawFileInfo();
+		if (alertOpen) drawAlert();
 		drawFileJob();	// (over everything: it holds the panel until it ends)
 	}
 
@@ -760,6 +761,42 @@ namespace bp
 			t.erase(0, n);
 		}
 		return "..." + t;
+	}
+
+	void Ui::alert(const std::string& title, const std::string& text)
+	{
+		alertTitle = title;
+		alertText = text;
+		alertOpen = true;
+		fprintf(stderr, "ui: said \"%s\"%s%s\n", title.c_str(), text.empty() ? "" : ": ", text.c_str());
+	}
+
+	Ui::Rect Ui::alertBox() const
+	{
+		// as tall as its words: the title, up to four lines, OK
+		int lines = alertText.empty() ? 0 : (int)wrapText(alertText, 0, 448 - 56, 4).size();
+		int h = 150 + lines * 24;
+		return {96, (H - h) / 2 - 10, 448, h};
+	}
+
+	Ui::Rect Ui::alertOk() const
+	{
+		Rect b = alertBox();
+		return {W / 2 - 80, b.y + b.h - 66, 160, 46};
+	}
+
+	void Ui::drawAlert()
+	{
+		Rect b = alertBox();
+		drawDialog(b, "");
+		drawGlyphMid(G_ALERT, b.x + 40, b.y + 38, ACCENT);
+		drawTextMid(alertTitle, 1, TEXT, b.x + 64, b.y + 38, b.w - 88);
+		auto lines = wrapText(alertText, 0, b.w - 56, 4);
+		for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, DIM_ON, b.x + 28, b.y + 80 + (int)i * 24, b.w - 56);
+		Rect ok = alertOk();
+		drawBox(ok, ACCENT, R_BUTTON);
+		drawTextMid("OK", 1, ON_ACCENT, ok.x + ok.w / 2, ok.y + ok.h / 2, ok.w - 16, 2);
+		drawHints({{"A", "OK"}, {"B", "Close"}});
 	}
 
 	void Ui::drawDialog(Rect box, const std::string& title)

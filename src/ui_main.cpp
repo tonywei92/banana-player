@@ -262,7 +262,7 @@ namespace bp
 		if (id == MINI_BAR) return {MINI_BOX.x + 44, MINI_BOX.y, MINI_BOX.w - 44, MINI_BOX.h};
 		if (id >= PHOTO_BTN) return {0, 0, 0, 0};	// photoBtn's: they move with the pan area
 		if (id == QUIT_BTN) return {468, miniUp ? 376 : 428, 148, 44};	// (a photo's Close: above the mini bar too)
-		if (id == EMPTY_BTN) return {200, 300, 240, 52};
+		if (id == EMPTY_BTN) return page == Page::Browse && browseDir == NETROOT ? Rect{160, 300, 320, 52} : Rect{200, 300, 240, 52};	// (Find on the network: a longer label)
 		if (id == GROUP_PREV) return {16, 58, 172, 30};
 		if (id == GROUP_NEXT) return {452, 58, 172, 30};
 		if (id == SCREEN_BTN) return {320, 428, 140, 44};
@@ -393,8 +393,8 @@ namespace bp
 		if (err)
 		{
 			drawGlyphMid(G_ALERT, 35, STATUS_Y, DANGER);
-			drawTextMid("Can't play this file", 1, DANGER, 56, STATUS_Y, 300);
-			auto lines = wrapText(p.error, 0, 592, 2);
+			drawTextMid(!p.errorNet ? "Can't play this file" : p.errorNetFound ? "Lost the connection" : "Can't reach it", 1, DANGER, 56, STATUS_Y, 300);
+			auto lines = wrapText(p.errorNet ? p.error + ". A tries again from where it stopped" : p.error, 0, 592, 2);
 			for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, TEXT, 24, STATUS_Y + 32 + (int)i * 24, 592);
 		}
 		else
@@ -528,7 +528,9 @@ namespace bp
 				default: label = "Menu"; break;
 				}
 				// a file that didn't open: only what leads elsewhere (the next file, Up next, the menu), and Like / Add
-				if (err && which != Button::L && which != Button::R && which != Button::Y && which != Button::Start && which != Button::L3 && which != Button::None) off = true;
+				if (err && which != Button::L && which != Button::R && which != Button::Y && which != Button::Start && which != Button::L3 && which != Button::None &&
+					!(which == Button::A && p.errorNet)) off = true;
+				if (err && p.errorNet && which == Button::A) { label = "Retry"; g = &G_REFRESH; }
 				// the speed when it isn't 1x: a yellow key (as Locked is), so a changed speed can't go unnoticed
 				bool fast = which == Button::Up && !off && std::fabs(p.speed - 1) > 1e-6;
 				bool down = (pressedBtn == r * 5 + c || (which == Button::A && playHoldAt)) && !off;

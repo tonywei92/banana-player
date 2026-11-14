@@ -1,5 +1,5 @@
 import { DEVICE_NAME, NO_HERE, TAB_ID, set, store } from './store.js';
-import { B, el, isPref, onSession, updateMediaSession } from './browser-player.js';
+import { B, el, isPref, onSession, setBrowserVol, updateMediaSession } from './browser-player.js';
 import { markUsed } from './plshared.js';
 import { C, connFail, goDown, signOutHere } from './connection.js';
 import { fetchT, get } from './api.js';
@@ -50,6 +50,8 @@ export function openSSE() {
 	on('manga', () => set({ mangaTick: (store.mangaTick || 0) + 1 }));
 	// the handheld's history changed (played, removed, cleared, here or there): Recent loads again
 	on('recent', () => set({ recentTick: (store.recentTick || 0) + 1 }));
+	// the handheld's volume keys while this tab plays the sound: this tab's own volume (the handheld's stays as it was)
+	on('volume', d => { if (d.tab === TAB_ID && d.v >= 0) setBrowserVol(d.v, true); });
 	// a Copy or Move job started or ended on the handheld (jobs.js asks how they stand)
 	on('jobs', () => set({ jobsTick: (store.jobsTick || 0) + 1 }));
 	on('bye', d => {

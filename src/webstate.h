@@ -26,7 +26,8 @@ namespace bp
 
 	struct WebSnapshot
 	{
-		std::string path, title, artist, album;	// path: virtual ("" when nothing plays)
+		std::string path, title, artist, album;	// path: virtual ("" when nothing plays); a network file's bpnet:// path
+		std::string netServer;	// a network file's: its connection's name (the page says it plays on the handheld via it)
 		std::string kind;	// "video", "audio", "photo" or "" for none
 		std::string screen;	// the handheld's bottom screen: "player", or "browser" (it plays behind it); "" none
 		std::string sourceKind, sourceTitle, sourceId;	// "folder", "playlist", "selection", "" ; id: the playlist's id
@@ -35,7 +36,8 @@ namespace bp
 		double position = 0;	// seconds, as of positionAtMs
 		int64_t positionAtMs = 0;	// the server's clock (ms) when position was read
 		double duration = 0, speed = 1;
-		int volume = 0;	// percent
+		int volume = 0;	// percent (past 100: the player's gain over the handheld's 100%)
+		int volumeMax = 100;	// Max volume: how far the page's bar goes
 		bool eqOn = false;
 		std::string eqPreset;
 		std::array<double, 10> eqGains{};	// dB

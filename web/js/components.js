@@ -93,9 +93,11 @@ const PAL = [['#E8823A', '#6B1E4A'], ['#3AA7A0', '#18234F'], ['#F2C14E', '#B0413
 const MOTIFS = ['note', 'sun', 'moon', 'eq', 'vis-waves', 'vis-bars', 'vis-spectrum', 'note'];
 function hashOf(s) { let h = 5381; s = s || ''; for (let i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) | 0; return h >>> 0; }
 export const palOf = s => PAL[hashOf(s) % PAL.length];
+// (a book, a PDF, a comic: its own glyph, as in Files)
+const DOC_MOTIF = { epub: 'epub', pdf: 'pdf', comic: 'comic', text: 'page' };
 function GenCover({ seed, kind, k, r }) {
 	const h = hashOf(seed), [a, b] = PAL[h % PAL.length];
-	const n = kind === 'video' ? 'film' : kind === 'photo' ? 'picture' : MOTIFS[(h >>> 5) % MOTIFS.length];
+	const n = kind === 'video' ? 'film' : kind === 'photo' ? 'picture' : DOC_MOTIF[kind] || MOTIFS[(h >>> 5) % MOTIFS.length];
 	return html`<span class="gc" ref=${r} style=${`background:linear-gradient(135deg,${a},${b})`}><${Icon} n=${n} k=${k || 2} /></span>`;
 }
 // a cover asked for only once its tile comes near the screen (a long list asks for the rows you scroll to). Not the
@@ -109,7 +111,7 @@ function observeNear(el, fn) {
 	nearFns.set(el, fn); nearObs.observe(el);
 	return () => { nearFns.delete(el); nearObs.unobserve(el); };
 }
-export const coverUrl = p => p ? '/api/cover?p=' + encodeURIComponent(p) : '';
+export const coverUrl = p => p && !p.startsWith('bpnet://') ? '/api/cover?p=' + encodeURIComponent(p) : '';	// (a network file's art: the handheld's only)
 export function Art({ src, seed, kind, k }) {
 	const [st, setSt] = useState(''), [near, setNear] = useState(false), gc = useRef(null);
 	useEffect(() => setSt(''), [src]);

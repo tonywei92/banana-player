@@ -134,14 +134,14 @@ namespace bp
 
 	void Ui::mangaJavaAddRepo(const std::string& url, Player& p)
 	{
-		if (!mangaNet || !mangaNet->started()) { p.osd("Repositories need a state folder", 2500); return; }
+		if (!mangaNet || !mangaNet->started()) { alert("Can\xE2\x80\x99t add repositories", "The player has no folder to keep them in.");; return; }
 		// without the engine it's kept, and sent to the engine once it runs
 		bool engine = mangaJavaInstalled();
 		if (engine) mangaJavaNeedHost();
 		std::string error;
 		if (!mangaNet->javaSources().addRepo(url, error))
 		{
-			p.osd("Repository not added: " + error, 3000);
+			alert("The repository wasn\xE2\x80\x99t added", error);
 			return;
 		}
 		mangaNet->javaSources().save();
@@ -213,7 +213,7 @@ namespace bp
 			}
 			if (!mangaNet->javaSources().update(pkg, error))
 			{
-				p.osd(error.empty() ? "The extension couldn't be updated" : error, 3000);
+				alert("The extension couldn\xE2\x80\x99t be updated", error);
 				return;
 			}
 			mstJavaBusy[pkg] = "Updating\xE2\x80\xA6";
@@ -223,7 +223,7 @@ namespace bp
 		}
 		if (!mangaNet->javaSources().install(pkg, error))
 		{
-			p.osd(error.empty() ? "The extension couldn't be installed" : error, 3000);
+			alert("The extension couldn\xE2\x80\x99t be installed", error);
 			return;
 		}
 		mstJavaBusy[pkg] = "Installing\xE2\x80\xA6";
@@ -623,7 +623,7 @@ namespace bp
 			{
 				std::string error;
 				if (mgr.removeRepo(mstJavaModalId, error)) p.osd("Removed the repository", 2500);
-				else p.osd(error.empty() ? "Couldn't remove the repository" : error, 3000);
+				else alert("Couldn\xE2\x80\x99t remove the repository", error);
 				mgr.save();
 				mangaJavaModalClose();
 				return;
@@ -644,7 +644,7 @@ namespace bp
 			{
 				if (!mgr.uninstall(e->pkgName, error))
 				{
-					p.osd(error.empty() ? "The extension couldn't be removed" : error, 3000);
+					alert("The extension couldn\xE2\x80\x99t be removed", error);
 					return;
 				}
 				mstJavaBusy[e->pkgName] = "Removing\xE2\x80\xA6";
@@ -660,7 +660,7 @@ namespace bp
 		if (!e->hasUpdate) { p.osd("Already up to date", 1500); return; }
 		if (!mgr.update(e->pkgName, error))
 		{
-			p.osd(error.empty() ? "The extension couldn't be updated" : error, 3000);
+			alert("The extension couldn\xE2\x80\x99t be updated", error);
 			return;
 		}
 		mstJavaBusy[e->pkgName] = "Updating\xE2\x80\xA6";

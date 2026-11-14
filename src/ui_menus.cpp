@@ -653,8 +653,10 @@ namespace bp
 		drawDialog(box, name);
 		// a playlist's Delete, pressed once: what it doesn't do
 		bool plArmed = ctxArmed && ctxCursor < (int)ctxItems.size() && ctxItems[ctxCursor] == CTX_PL_DELETE;
-		if (ctxExtra() && (!ctxNote.empty() || plArmed))
-			drawTextMid(plArmed ? "Your files stay where they are" : ctxNote, 0, plArmed ? ACCENT : DIM, W / 2, box.y + 60, 368, 2);
+		bool missArmed = ctxArmed && ctxCursor < (int)ctxItems.size() && ctxItems[ctxCursor] == CTX_PL_MISSING;
+		if (ctxExtra() && (!ctxNote.empty() || plArmed || missArmed))
+			drawTextMid(missArmed ? "A card that\xE2\x80\x99s out? Put it back first" : plArmed ? "Your files stay where they are" : ctxNote, 0,
+				plArmed || missArmed ? ACCENT : DIM, W / 2, box.y + 60, 368, 2);
 		else if (ctxExtra())
 			drawTextMid(ctxStatus.empty() ? std::string(sv ? std::string(netTypeLabel(sv->type)) + "  " + sv->host : "") : ctxStatus, 0,
 				ctxStatus == "It works" ? ACCENT : DIM, W / 2, box.y + 60, 368, 2);
@@ -670,6 +672,11 @@ namespace bp
 			SDL_Color noteInk = i == ctxCursor ? DIM_ON : DIM;
 			if (it == CTX_R_SHOW && ri) note = ri->where;
 			if (it == CTX_HIDDEN) note = showHidden ? "On" : "Off";
+			if (it == CTX_PL_MISSING && ctxArmed && i == ctxCursor)
+			{
+				note = "Press again: " + std::to_string(ctxMissing);
+				noteInk = ACCENT;
+			}
 			if (it == CTX_CLEAR_RECENT)
 			{
 				bool armedClear = ctxArmed && i == ctxCursor;
@@ -689,7 +696,7 @@ namespace bp
 				: it == CTX_EDIT ? "Edit connection" : it == CTX_TEST ? "Test connection"
 				: armed ? "Press again to delete" : it == CTX_DELETE ? "Delete connection" : it == CTX_PL_DELETE ? "Delete playlist"
 				: it == CTX_PL_NEW ? "New playlist\xE2\x80\xA6" : it == CTX_PL_PLAY ? (isPlDir(browseDir) ? "Play all" : "Play")
-				: it == CTX_PL_SHUFFLE ? "Shuffle play" : it == CTX_PL_RENAME ? "Rename\xE2\x80\xA6" : it == CTX_PL_DEDUP ? "Remove duplicates"
+				: it == CTX_PL_SHUFFLE ? "Shuffle play" : it == CTX_PL_RENAME ? "Rename\xE2\x80\xA6" : it == CTX_PL_DEDUP ? "Remove duplicates" : it == CTX_PL_MISSING ? "Remove missing"
 				: it == CTX_PL_HERE ? "Play from here" : it == CTX_PL_REMOVE ? (inLiked ? "Unlike" : "Remove from playlist") : it == CTX_PL_SHOW ? "Show in folder"
 				: it == CTX_PL_ADD_FILES ? "Add files\xE2\x80\xA6" : it == CTX_PL_ADD_FOLDER ? "Add folder\xE2\x80\xA6"
 				: it == CTX_PL_SELECT ? "Select" : it == CTX_PL_MOVE ? "Move" : it == CTX_SELECT_FILES ? "Select files"
@@ -703,7 +710,7 @@ namespace bp
 				: it == CTX_HIDE ? &G_EYE : it == CTX_REFRESH ? &G_REFRESH : it == CTX_ADD ? &G_PLUS : it == CTX_FIND ? &G_SEARCH
 				: it == CTX_EDIT ? &G_PENCIL : it == CTX_TEST ? &G_PLUG : del ? &G_TRASH
 				: it == CTX_PL_NEW ? &G_PLUS : it == CTX_PL_PLAY || it == CTX_PL_HERE ? &G_PLAY : it == CTX_PL_SHUFFLE ? &G_SHUFFLE
-				: it == CTX_PL_RENAME ? &G_PENCIL : it == CTX_PL_DEDUP || it == CTX_PL_REMOVE ? &G_MINUS : it == CTX_PL_SHOW ? &G_FOLDER
+				: it == CTX_PL_RENAME ? &G_PENCIL : it == CTX_PL_DEDUP || it == CTX_PL_REMOVE ? &G_MINUS : it == CTX_PL_MISSING ? &G_TRASH : it == CTX_PL_SHOW ? &G_FOLDER
 				: it == CTX_PL_ADD_FILES ? &G_PLUS : it == CTX_PL_ADD_FOLDER ? &G_FOLDER : it == CTX_PL_SELECT || it == CTX_SELECT_FILES ? &G_BOX_ON
 				: it == CTX_PL_MOVE || it == CTX_F_MOVE ? &G_MOVE : it == CTX_ADD_TO ? &G_PLAYLIST : it == CTX_WEB ? &G_WEB
 				: it == CTX_F_COPY ? &G_PLUS : it == CTX_F_RENAME ? &G_PENCIL : it == CTX_F_INFO ? &G_INFO : &G_CROSS;
@@ -727,7 +734,10 @@ namespace bp
 					it == CTX_NP_STOP ? DANGER : it == CTX_NP_NOW || (it == CTX_NP_LIKE && liked) ? ACCENT : TEXT, npNote, noteInk);
 				continue;
 			}
-			drawDialogRow(ctxRow(i), g, label, i == ctxCursor, pressedBtn == 100 + i, del ? (armed ? ACCENT : DANGER) : it == CTX_CANCEL ? DIM
+			// a read-only network folder's Move, Rename, Delete: dim, and why on the right
+			bool ro = isNetPath(ctxPath) && !netWritable && (it == CTX_F_MOVE || it == CTX_F_RENAME || it == CTX_F_DELETE);
+			if (ro) { note = "Read only"; noteInk = DIM; }
+			drawDialogRow(ctxRow(i), g, label, i == ctxCursor, pressedBtn == 100 + i, ro ? DIM : del ? (armed ? ACCENT : DANGER) : it == CTX_CANCEL ? DIM
 				: it == CTX_R_LIKE && likedR ? ACCENT : TEXT, note, noteInk);	// (the heart lit only when it is liked)
 		}
 		// a menu too long for its line (a playlist's): Delete's word on the footer instead
@@ -1039,6 +1049,28 @@ namespace bp
 			volumePct = v < 0 ? -2 : v;
 		}
 		return volumePct < 0 ? -1 : volumePct;
+	}
+
+	int Ui::volumeTotal(Player& p)
+	{
+		int s = volumeLevel();
+		return p.boost > 100 && s >= 100 ? p.boost : s;
+	}
+
+	void Ui::setVolumeTotal(Player& p, int v, bool force)
+	{
+		v = std::clamp(v, 0, std::max(100, p.settings.volumeMax));
+		int sys = std::min(v, 100);
+		if ((force || volumePct != sys) && volume.present()) volume.set(sys);
+		volumePct = sys;
+		p.setBoost(v > 100 ? v : 100);
+		p.showLevel("Volume", v);
+		levelMs = 1500;
+		if (v > 120 && !loudWarned)
+		{
+			loudWarned = true;
+			alert("That's very loud", "Over 120% can damage your hearing, and the speakers (headphones too). Keep it short.");
+		}
 	}
 
 	// ---- Like ----

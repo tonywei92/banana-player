@@ -27,7 +27,35 @@
 
 namespace bp
 {
-	enum Observed : uint64_t { TIME_POS = 1, DURATION, PAUSE, TRACK_LIST, MEDIA_TITLE, AID, SID, SPEED, METADATA, PAUSED_FOR_CACHE, SEEKING, CHAPTER_LIST, CHAPTER };
+	enum Observed : uint64_t { TIME_POS = 1, DURATION, PAUSE, TRACK_LIST, MEDIA_TITLE, AID, SID, SPEED, METADATA, PAUSED_FOR_CACHE, SEEKING, CHAPTER_LIST, CHAPTER,
+		AUDIO_IN, AUDIO_OUT, CURRENT_AO, AF_CHAIN, LAVFI_GRAPH };
+
+	// the audio diagnostics (log.txt, "audio:" lines): an mpv node as "key=value key=value" (a map) or its value
+	static std::string nodeText(const mpv_node* n)
+	{
+		if (!n) return "-";
+		switch (n->format)
+		{
+		case MPV_FORMAT_STRING: return n->u.string ? n->u.string : "";
+		case MPV_FORMAT_INT64: return std::to_string((long long)n->u.int64);
+		case MPV_FORMAT_DOUBLE: { char b[32]; snprintf(b, sizeof b, "%g", n->u.double_); return b; }
+		case MPV_FORMAT_FLAG: return n->u.flag ? "yes" : "no";
+		case MPV_FORMAT_NODE_MAP:
+		{
+			std::string out;
+			for (int i = 0; i < n->u.list->num; i++)
+				out += (out.empty() ? "" : " ") + std::string(n->u.list->keys[i]) + "=" + nodeText(&n->u.list->values[i]);
+			return out;
+		}
+		case MPV_FORMAT_NODE_ARRAY:
+		{
+			std::string out;
+			for (int i = 0; i < n->u.list->num; i++) out += (out.empty() ? "" : ", ") + nodeText(&n->u.list->values[i]);
+			return "[" + out + "]";
+		}
+		default: return "-";
+		}
+	}
 	// screenshot-raw's answers for the photo's thumbnail: this plus the load they were asked in
 	static const uint64_t THUMB_REPLY = 1000;
 	// af-command's answers (the equalizer's bands): far above THUMB_REPLY's, which grow with each file
@@ -97,6 +125,11 @@ namespace bp
 		// stereo out, mixed by mpv: ALSA's plug (BananaOS has no sound server) puts a mono track on the left speaker
 		// only, and takes a 5.1 track's first two channels (no centre: no dialogue)
 		opt("audio-channels", "stereo");
+		// the stream kept going through pauses and seeks (silence then): on the RG DS Plus each start of a stream starts
+		// its speaker amplifiers again, and a start that fails leaves a speaker silent (ampwatch.h); fewer starts, fewer
+		// failures. (A suspend stops it all the same)
+		if (!o.photosOnly) opt("audio-stream-silence", "yes");
+		opt("volume-max", "150");	// (the boost's ceiling: Max volume's highest)
 		opt("input-default-bindings", "no");
 		opt("input-vo-keyboard", "no");
 		opt("osc", "no");
@@ -168,6 +201,12 @@ namespace bp
 		mpv_observe_property(mpv, SEEKING, "seeking", MPV_FORMAT_FLAG);
 		mpv_observe_property(mpv, CHAPTER_LIST, "chapter-list", MPV_FORMAT_NODE);
 		mpv_observe_property(mpv, CHAPTER, "chapter", MPV_FORMAT_INT64);
+		// the audio as it goes in and out (log.txt's "audio:" lines: a sound on one side only is told by them)
+		mpv_observe_property(mpv, AUDIO_IN, "audio-params", MPV_FORMAT_NODE);
+		mpv_observe_property(mpv, AUDIO_OUT, "audio-out-params", MPV_FORMAT_NODE);
+		mpv_observe_property(mpv, CURRENT_AO, "current-ao", MPV_FORMAT_STRING);
+		mpv_observe_property(mpv, AF_CHAIN, "af", MPV_FORMAT_NODE);
+		mpv_observe_property(mpv, LAVFI_GRAPH, "lavfi-complex", MPV_FORMAT_STRING);
 		if (o.net && !o.net->attach(mpv)) fprintf(stderr, "net: mpv has no stream callbacks: network files won't open\n");
 		mpv_set_wakeup_callback(mpv, wakeup, ctx);
 		setAspect(aspect);
@@ -429,9 +468,11 @@ namespace bp
 		heldUnplayed = false;
 		loaded = finished = false;
 		error.clear();
+		errorNet = false;
 		title.clear();
 		tracks.clear();
 		loadEntry = -1;
+		startedEntry = -1;	// (an end that comes before this file starts is the one before's)
 		tracksMine = false;
 		clearChapters();
 		position = duration = -1;
@@ -624,7 +665,51 @@ namespace bp
 		if (f.ok()) return;
 		opts.net->takeFailure(currentPath());
 		error = netPlayError(f.error);
+		errorNet = f.error != NetError::Other;
+		errorNetFound = f.error != NetError::NotFound;
 		const char* cmd[] = {"stop", nullptr};	// (its END_FILE is a stop: the error stays)
+		mpv_command_async(mpv, 0, cmd);
+	}
+
+	void Player::logAudio(const char* what) const
+	{
+		// one line for each change: what it is now, all of it, so one line says the whole state. An output that isn't
+		// two channels, or a layout with one side only, is marked: that's a sound on one speaker
+		std::string name = currentPath().empty() ? "-" : baseName(currentPath());
+		std::string aid = "none";
+		for (auto& t : tracks)
+			if (t.type == TrackType::Audio && t.selected) aid = std::to_string((long long)t.id) + " " + t.codec + " " + std::to_string(t.channels) + "ch" + (t.lang.empty() ? "" : " " + t.lang);
+		// (a key's value in "key=value key=value": the key at the start or after a space, so channels isn't hr-channels)
+		auto val = [](const std::string& t, const std::string& k) {
+			size_t a = t.rfind(k + "=", 0) == 0 ? 0 : t.find(" " + k + "=");
+			if (a == std::string::npos) return std::string();
+			a = t.find('=', a) + 1;
+			return t.substr(a, t.find(' ', a) == std::string::npos ? std::string::npos : t.find(' ', a) - a);
+		};
+		std::string cc = val(audioOut, "channel-count"), ch = val(audioOut, "channels");
+		bool suspect = !audioOut.empty() && ((!cc.empty() && cc != "2") || ch == "mono" || ch == "fl" || ch == "fr" || ch == "fc");
+		// (one line: compact, the whole state; mono in is normal, mpv mixes it to both speakers)
+		auto brief = [&](const std::string& t) {
+			if (t.empty() || t == "-") return std::string("-");
+			return val(t, "channels") + " " + val(t, "samplerate") + " " + val(t, "format");
+		};
+		fprintf(stderr, "audio: %s %s | in %s | out %s | ao %s | af %s | graph %s | aid %s | fx %s eq %s%s\n", what, name.c_str(),
+			brief(audioIn).c_str(), brief(audioOut).c_str(), audioAo.empty() ? "-" : audioAo.c_str(), audioAf.empty() ? "-" : audioAf.c_str(),
+			audioLavfi.empty() || audioLavfi == "-" ? "-" : (audioLavfi.size() > 80 ? audioLavfi.substr(0, 80) + "..." : audioLavfi).c_str(), aid.c_str(),
+			soundFxKey(settings.soundFx), settings.eqOn ? "on" : "off", suspect ? "  SUSPECT: the output isn't two channels" : "");
+	}
+
+	void Player::setBoost(int v)
+	{
+		boost = std::clamp(v, 100, std::max(100, settings.volumeMax));
+		prop("volume", std::to_string(boost));
+	}
+
+	void Player::reloadAudio()
+	{
+		if (!mpv || !playing() || playingPhoto() || audioOut.empty() || audioOut == "-") return;
+		fprintf(stderr, "audio: the output opened again (a speaker's amplifier didn't start)\n");
+		const char* cmd[] = {"ao-reload", nullptr};
 		mpv_command_async(mpv, 0, cmd);
 	}
 
@@ -672,6 +757,19 @@ namespace bp
 				auto* p = (mpv_event_property*)ev->data;
 				switch (ev->reply_userdata)
 				{
+				case AUDIO_IN: case AUDIO_OUT: case CURRENT_AO: case AF_CHAIN: case LAVFI_GRAPH:
+				{
+					std::string v = p->format == MPV_FORMAT_NODE ? nodeText((mpv_node*)p->data) : p->format == MPV_FORMAT_STRING ? *(char**)p->data : "-";
+					std::string& was = ev->reply_userdata == AUDIO_IN ? audioIn : ev->reply_userdata == AUDIO_OUT ? audioOut
+						: ev->reply_userdata == CURRENT_AO ? audioAo : ev->reply_userdata == AF_CHAIN ? audioAf : audioLavfi;
+					if (v == was) break;
+					was = v;
+					// (a property going away as a file closes, or anything before the output opens: not worth a line)
+					if (v == "-" || audioOut.empty() || audioOut == "-" || currentPath().empty()) break;
+					logAudio(ev->reply_userdata == AUDIO_IN ? "in" : ev->reply_userdata == AUDIO_OUT ? "out" : ev->reply_userdata == CURRENT_AO ? "ao"
+						: ev->reply_userdata == AF_CHAIN ? "af" : "graph");
+					break;
+				}
 				case TIME_POS: position = p->format == MPV_FORMAT_DOUBLE ? *(double*)p->data : -1; break;
 				case DURATION: duration = p->format == MPV_FORMAT_DOUBLE ? *(double*)p->data : -1; break;
 				case PAUSE: paused = p->format == MPV_FORMAT_FLAG && *(int*)p->data; break;
@@ -799,11 +897,30 @@ namespace bp
 				// the file before one waiting for its folder's listing, stopped (or ended): not the one to come
 				if (!netWait.dir.empty()) break;
 				auto* e = (mpv_event_end_file*)ev->data;
+				// an error ending an earlier entry (a retried file's failed try, ending after the new load began): not
+				// this file's
+				if (e->reason == MPV_END_FILE_REASON_ERROR && (startedEntry < 0 || e->playlist_entry_id != startedEntry))
+				{
+					fprintf(stderr, "player: an earlier entry's error end, not this file's (entry %lld)\n", (long long)e->playlist_entry_id);
+					break;
+				}
 				// a network file: a read that failed is an end of file to mpv; the connection's error, kept by the
 				// stream, says it wasn't
-				NetResult netFail = isNet && opts.net && !playlist.empty() ? opts.net->takeFailure(currentPath()) : NetResult();
-				if (e->reason == MPV_END_FILE_REASON_ERROR || (e->reason == MPV_END_FILE_REASON_EOF && !netFail.ok()))
+				// (only an error's or an end's: the stop of the file before, which comes once the next is already the
+				// current one, would take the next one's failure away)
+				bool ends = e->reason == MPV_END_FILE_REASON_ERROR || e->reason == MPV_END_FILE_REASON_EOF;
+				NetResult netFail = ends && isNet && opts.net && !playlist.empty() ? opts.net->takeFailure(currentPath()) : NetResult();
+				if (isNet && e->reason == MPV_END_FILE_REASON_ERROR)
+					fprintf(stderr, "net: %s ended with an error (%s)%s\n", currentPath().c_str(), mpv_error_string(e->error),
+						netFail.ok() ? (errorNet ? ", the connection's said already" : ", the stream kept none") : (", the stream's: " + netFail.detail).c_str());
+				// (checkNet may have taken the stream's error first, and stopped it: that error stays, not mpv's word)
+				if (netFail.ok() && errorNet && !error.empty()) {}
+				else if (e->reason == MPV_END_FILE_REASON_ERROR || (e->reason == MPV_END_FILE_REASON_EOF && !netFail.ok()))
+				{
 					error = netFail.ok() ? mpv_error_string(e->error) : netPlayError(netFail.error);
+					errorNet = !netFail.ok() && netFail.error != NetError::Other;
+					errorNetFound = netFail.error != NetError::NotFound;
+				}
 				else if (e->reason == MPV_END_FILE_REASON_EOF) finished = true;
 				break;
 			}
@@ -1529,8 +1646,12 @@ namespace bp
 		// an ASS card in the middle of a 960x720 canvas (the panel's 4:3; the title is at the top, subtitles at the
 		// bottom): a dark box, the label and percent, a bar in yellow on teal.
 		// ASS colours are &HBBGGRR&
-		percent = std::max(0, std::min(100, percent));
-		int fill = 260 * percent / 100;
+		// the volume past 100% (Max volume 120 or 150): the bar's whole is that top, a mark at 100, the part above it
+		// yellow, red past 120
+		bool vol = label == "Volume";
+		int top = vol ? std::max(100, settings.volumeMax) : 100;
+		percent = std::max(0, std::min(top, percent));
+		int fill = 260 * percent / top;
 		// with nothing playing, under the icon and the name rather than over them
 		int dy = playing() ? 0 : 250;
 		char ev[2048];
@@ -1542,6 +1663,25 @@ namespace bp
 			318 + dy, ass(TOP_CARD).c_str(), roundBox(300, 84, R_TOP_CARD).c_str(), 328 + dy, ass(TEXT).c_str(), label.c_str(), percent,
 			372 + dy, ass(TOP_TRACK).c_str(), roundBox(260, 12, R_TOP_BAR).c_str(), 372 + dy, ass(TOP_TITLE).c_str(),
 			roundBox(std::max(fill, 1), 12, R_TOP_BAR).c_str());
+		if (top > 100)
+		{
+			// the mark at 100, and the loud part's colour
+			int at = 260 * 100 / top;
+			char more[512];
+			snprintf(more, sizeof more, "\n{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c%s\\p1}m 0 0 l 3 0 3 20 0 20{\\p0}",
+				350 + at - 1, 368 + dy, ass(TEXT).c_str());
+			std::string e = ev;
+			e += more;
+			if (percent > 100)
+			{
+				snprintf(more, sizeof more, "\n{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c%s\\p1}%s{\\p0}", 350 + at, 372 + dy,
+					ass(percent > 120 ? DANGER : ACCENT).c_str(), roundBox(std::max(fill - at, 1), 12, R_TOP_BAR).c_str());
+				e += more;
+			}
+			const char* cmd2[] = {"osd-overlay", "2", "ass-events", e.c_str(), "960", "720", "10", "no", "no", nullptr};
+			mpv_command_async(mpv, 0, cmd2);
+			return;
+		}
 		const char* cmd[] = {"osd-overlay", "2", "ass-events", ev, "960", "720", "10", "no", "no", nullptr};
 		mpv_command_async(mpv, 0, cmd);
 	}
@@ -1943,6 +2083,7 @@ namespace bp
 		current = 0;
 		loaded = finished = false;
 		error.clear();
+		errorNet = false;
 		title.clear();
 		tracks.clear();
 		clearChapters();
@@ -1962,6 +2103,17 @@ namespace bp
 		updateOverlay();	// the title off the top panel
 		showIdle(true);
 		prop("lavfi-complex", "");
+	}
+
+	void Player::pathsMoved(const std::string& from, const std::string& to)
+	{
+		if (opts.stateDir.empty()) return;
+		if (played.moved(from, to))
+		{
+			recentSer++;
+			writeFile(opts.stateDir + "/history.tsv", played.serialize());
+		}
+		if (resume.moved(from, to)) writeFile(opts.stateDir + "/resume.tsv", resume.serialize());
 	}
 
 	void Player::addRecent(const std::string& path)

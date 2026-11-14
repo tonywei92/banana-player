@@ -27,6 +27,8 @@ namespace bp
 		const ResumeEntry* find(const std::string& path) const;
 		// keeps the entry first (the most recent); the oldest go past MAX_ENTRIES
 		void put(const ResumeEntry& e);
+		// a file or folder moved (browser.h's movedPath): its entries, and those inside it, follow; true if any did
+		bool moved(const std::string& from, const std::string& to);
 
 		// most recent first
 		const std::vector<ResumeEntry>& all() const { return entries; }

@@ -182,7 +182,14 @@ export function playParked() {
 	el.play().catch(() => {});
 	notify();
 }
-export function setBrowserVol(v) { B.vol = v; el.volume = v / 100; lsSet('bpVol', v); notify(); }
+// fromHandheld: its volume keys moved it (nothing to tell back). Else the handheld is told, so its keys go on from here
+let volSent = null;
+export function setBrowserVol(v, fromHandheld) {
+	B.vol = v; el.volume = v / 100; lsSet('bpVol', v); notify();
+	if (fromHandheld) return;
+	clearTimeout(volSent);
+	volSent = setTimeout(() => post('/api/browser-volume', { v: Math.round(v) }).catch(() => {}), 250);
+}
 export function bPos() {
 	if (B.parked != null) return B.parked;
 	if (B.remux) return B.remux.pending != null ? B.remux.pending : B.remux.base + (el.currentTime || 0);
@@ -708,10 +715,15 @@ export function onSession(ss) {
 		if (outMe(ss) && ss.index >= 0 && B.active && B.meta && B.meta.p === ss.file && ss.qindex >= 0) { B.queue = ss.queue.map(q => ({ p: q })); B.index = ss.qindex; }
 		notify();
 	}
-	const target = NO_HERE ? 'handheld' : isPref() ? 'browser' : 'handheld';
+	// the switch says where it plays while something does (the handheld's pick of a network file plays there, the
+	// browser still the choice for the next pick: the switch shows the handheld), else where the next pick goes
+	const playsHh = ss.index >= 0 && ss.out.kind === 'handheld';
+	const target = NO_HERE || playsHh ? 'handheld' : isPref() ? 'browser' : 'handheld';
 	if (store.target !== target) set({ target });
 	const was = S.me, me = isOutput();
 	S.me = me;
+	// (become the output: the handheld told this tab's volume, its keys go on from it)
+	if (me && !was) post('/api/browser-volume', { v: Math.round(B.vol) }).catch(() => {});
 	if (me && (!was || S.load !== ss.load)) {
 		S.load = ss.load;
 		// the file playing here already (this tab became the output of what it plays, a shuffle): nothing to load
@@ -800,6 +812,7 @@ function sendPick(type, pick) {
 export async function setTarget(t) {
 	if (t === 'browser') {
 		if (NO_HERE) { toast(NO_HERE_WHY + ': it plays on the handheld'); return; }
+		if (store.snap && store.snap.path && store.snap.path.startsWith('bpnet://') && store.target === 'handheld') { toast('Network files play on the handheld only'); return; }
 		if (isOutput() || !userTap()) return;
 		await continueHere();
 	} else if (store.target !== 'handheld' || isOutput()) await handoffToHandheld();
@@ -864,7 +877,8 @@ async function withFolder(p) {
 // "Play" for files/folders, on a target; the target changes only once it plays there
 // stay: a row's tap plays and the page stays (the small player shows it) — for a song; a video opens the player,
 // where it's watched (sv: stay for this file?)
-const sv = (stay, p) => stay && kindOfName(p || '') !== 'video';
+// ('always': a video too, Home's Now playing card showing it)
+const sv = (stay, p) => stay === 'always' || (stay && kindOfName(p || '') !== 'video');
 // stay: a row's tap plays and the page stays (the small player shows it); true when it plays
 export async function playPaths(paths, folderSet, target, stay) {
 	if (!userTap()) return;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(banana-player VERSION 0.7.16 LANGUAGES C CXX)
+project(banana-player VERSION 0.7.17 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -140,7 +140,7 @@ target_link_libraries(bpprobe PRIVATE PkgConfig::JPEG PkgConfig::PNG)
 # (included as <libpng16/png.h>: src/png.h, this project's own PNG writer, would answer <png.h>)
 target_include_directories(bpprobe PRIVATE ${PNG_INCLUDEDIR}/..)
 
-add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/textreader.cpp src/readerfetch.cpp src/manganet.cpp src/javaext.cpp src/ui_manga.cpp src/ui_docs.cpp src/ui_fileops.cpp src/mangarepos.cpp src/mangadownloader.cpp src/ui_manga_settings.cpp src/ui_manga_sources.cpp src/ui_manga_browse.cpp src/ui_manga_filters.cpp src/ui_manga_java.cpp src/ui_manga_servers.cpp src/ui_manga_downloads.cpp src/ui_manga_netfolders.cpp src/ui_manga_web.cpp)
+add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/ampwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/textreader.cpp src/readerfetch.cpp src/manganet.cpp src/javaext.cpp src/ui_manga.cpp src/ui_docs.cpp src/ui_fileops.cpp src/xfer.cpp src/mangarepos.cpp src/mangadownloader.cpp src/ui_manga_settings.cpp src/ui_manga_sources.cpp src/ui_manga_browse.cpp src/ui_manga_filters.cpp src/ui_manga_java.cpp src/ui_manga_servers.cpp src/ui_manga_downloads.cpp src/ui_manga_netfolders.cpp src/ui_manga_web.cpp)
 # libcurl: the Java add-on's downloads (BananaOS's own, with OpenSSL: not bundled), and the network folders' FTP and
 # the manga reader's images when BP_NET is on
 pkg_check_modules(CURL REQUIRED IMPORTED_TARGET libcurl)

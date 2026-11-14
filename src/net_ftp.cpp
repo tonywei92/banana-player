@@ -113,6 +113,7 @@ namespace bp
 			CURLcode code = CURLE_OK;
 			char errbuf[CURL_ERROR_SIZE] = {};
 
+			std::string entry;	// the login's folder ("/" on a server that confines its users), "" until known
 			int64_t buffered() const { return (int64_t)(buf.size() - head); }
 			const char* data() const { return buf.data() + head; }
 			void consume(int64_t n)
@@ -236,6 +237,15 @@ namespace bp
 				return Turn::More;
 			}
 
+			// a command sent before the transfer (MKD, DELE, RNFR + RNTO...), after the prepare() that set the list up
+			void addQuote(const std::string& cmd)
+			{
+				quote = curl_slist_append(quote, cmd.c_str());
+				curl_easy_setopt(easy, CURLOPT_QUOTE, quote);
+			}
+			// an upload's bytes sent: signs of life too, as a download's received are
+			void alive(int64_t n) { rx += n; }
+
 			void resume()
 			{
 				if (!paused) return;
@@ -256,6 +266,13 @@ namespace bp
 					case Turn::Finished:
 					{
 						NetResult r = describe(what, code);
+						// the folder the login lands in, once: the commands' paths start from it (the connection's
+						// own folder is wherever its last transfer went)
+						if (r.ok() && entry.empty())
+						{
+							char* ep = nullptr;
+							if (curl_easy_getinfo(easy, CURLINFO_FTP_ENTRY_PATH, &ep) == CURLE_OK && ep) entry = ep;
+						}
 						if (!r.ok()) hardClose();
 						return r;
 					}
@@ -291,6 +308,11 @@ namespace bp
 				switch (c)
 				{
 				case CURLE_LOGIN_DENIED: return failure(NetError::Auth, detail);
+				// a command or an upload the server refused: 550/553 (no permission, a name taken) mostly
+				case CURLE_QUOTE_ERROR:
+				case CURLE_UPLOAD_FAILED:
+				case CURLE_REMOTE_DISK_FULL:
+					return failure(c == CURLE_REMOTE_DISK_FULL ? NetError::Other : NetError::NoAccess, detail);
 				case CURLE_REMOTE_ACCESS_DENIED: return failure(NetError::NotFound, detail);	// (the CWD was refused: curl gives no reply text, and a folder that is not there is the usual cause)
 				case CURLE_REMOTE_FILE_NOT_FOUND: return failure(denied ? NetError::NoAccess : NetError::NotFound, detail);
 				case CURLE_FTP_COULDNT_RETR_FILE:
@@ -550,7 +572,93 @@ namespace bp
 
 			void cancel() override { canceller.cancel(); }
 
+			NetResult makeDir(const std::string& path) override { return command(path, {{"MKD ", path}}, "Making the folder "); }
+			NetResult remove(const std::string& path, bool dir) override
+			{
+				return command(path, {{dir ? "RMD " : "DELE ", path}}, dir ? "Deleting the folder " : "Deleting ");
+			}
+			NetResult rename(const std::string& from, const std::string& to) override
+			{
+				// (RNTO replaces a file on most servers: a name taken is refused here first)
+				NetResult r = taken(to);
+				if (!r.ok()) return r;
+				return command(from, {{"*RNFR ", from}, {"RNTO ", to}}, "Renaming ");	// (* : RNFR's 350 is no failure)
+			}
+
+			NetResult put(const std::string& path, const std::function<int64_t(char*, int64_t)>& more) override
+			{
+				NetResult r = taken(path);
+				if (!r.ok()) return r;
+				Busy b(canceller);
+				struct Feed { const std::function<int64_t(char*, int64_t)>* more; Session* s; bool stopped = false; };
+				Feed feed{&more, &s};
+				CURL* e = s.prepare(s.url(path, false));
+				curl_easy_setopt(e, CURLOPT_UPLOAD, 1L);
+				curl_easy_setopt(e, CURLOPT_READFUNCTION, (curl_read_callback)[](char* buf, size_t size, size_t n, void* user) -> size_t {
+					Feed* f = (Feed*)user;
+					int64_t got = (*f->more)(buf, (int64_t)(size * n));
+					if (got < 0) { f->stopped = true; return CURL_READFUNC_ABORT; }
+					f->s->alive(got);
+					return (size_t)got;
+				});
+				curl_easy_setopt(e, CURLOPT_READDATA, &feed);
+				r = s.run(canceller, "Writing " + path);
+				if (r.ok() && !feed.stopped) return r;
+				// the half file goes (on a connection of its own: this one may be gone)
+				Canceller fresh;
+				CURL* d = s.prepare(s.url("/", true));
+				curl_easy_setopt(d, CURLOPT_NOBODY, 1L);
+				if (!s.entry.empty()) s.addQuote("DELE " + rel(path));
+				s.run(fresh, "Deleting " + path);
+				if (r.ok()) r = Session::failure(NetError::Cancelled, "Writing " + path + ": stopped");
+				return r;
+			}
+
 		private:
+			// a path as the commands take it: whole, from the folder the login lands in (as url() reads paths)
+			std::string rel(const std::string& path) const
+			{
+				size_t from = path.find_first_not_of('/');
+				std::string r = from == std::string::npos ? "" : path.substr(from);
+				std::string base = s.entry.empty() ? "/" : s.entry;
+				if (base.back() != '/') base += '/';
+				return r.empty() ? "" : base + r;
+			}
+			// the login's folder known (a login that does nothing else)
+			NetResult entered()
+			{
+				if (!s.entry.empty()) return NetResult();
+				CURL* e = s.prepare(s.url("/", true));
+				curl_easy_setopt(e, CURLOPT_NOBODY, 1L);
+				return s.run(canceller, "Logging in to " + s.server.host);
+			}
+
+			// each command: its verb and its path (made whole once the login's folder is known)
+			NetResult command(const std::string& path, const std::vector<std::pair<std::string, std::string>>& cmds, const std::string& verb)
+			{
+				Busy b(canceller);
+				NetResult r0 = entered();
+				if (!r0.ok()) return r0;
+				if (path.find_first_not_of('/') == std::string::npos) return Session::failure(NetError::NoAccess, verb + path + ": the top folder");
+				CURL* e = s.prepare(s.url("/", true));
+				curl_easy_setopt(e, CURLOPT_NOBODY, 1L);
+				for (const auto& c : cmds) s.addQuote(c.first + rel(c.second));
+				return s.run(canceller, verb + path);
+			}
+
+			// NoAccess when something already has that name (its folder listed)
+			NetResult taken(const std::string& path)
+			{
+				size_t slash = path.rfind('/');
+				std::string dir = slash == std::string::npos || slash == 0 ? "/" : path.substr(0, slash), name = path.substr(slash == std::string::npos ? 0 : slash + 1);
+				std::vector<NetEntry> v;
+				NetResult r = list(dir, v);
+				if (!r.ok()) return r;
+				for (const NetEntry& x : v)
+					if (x.name == name) return Session::failure(NetError::NoAccess, path + ": something already has that name");
+				return r;
+			}
+
 			Session s;
 			Canceller canceller;
 			bool noMlsd = false;

@@ -3,6 +3,7 @@
 // asked only through ws.call (which file is playing).
 #include <cctype>
 #include "web/server.h"
+#include "ui.h"
 #include "browser.h"
 #include "json.h"
 #include "photo.h"
@@ -354,6 +355,14 @@ namespace bp
 		   It goes on with no page open. Each item is copied out of sight and put in place last (treecopy.h); a move
 		   removes the original only after that, and only if the handheld isn't playing it by then. */
 		struct JobItem { std::string vp, real, target, name; bool dir; };
+		// a file or folder moved or renamed here: what the handheld keeps of it (places, playlists, Liked, bookmarks, the
+		// manga reader's series) follows it, on the main thread
+		void movedOnHandheld(WebServer& ws, const std::string& from, const std::string& to)
+		{
+			int st = 200;
+			ws.call([from, to](Player& p, Ui& u) { u.pathMoved(from, to, p); return std::string(); }, 5000, st);
+		}
+
 		struct Job
 		{
 			std::string id;
@@ -502,6 +511,7 @@ namespace bp
 						failItem(it, "copied, but the original couldn't all be removed");
 						continue;
 					}
+					movedOnHandheld(ws, it.real, it.target);
 				}
 				std::lock_guard<std::mutex> g(jobsLock);
 				j->itemsDone++;
@@ -1214,6 +1224,7 @@ namespace bp
 			}
 			int r = renameNoReplace(real, target);
 			if (r != 0) return failCode(res, r == EEXIST ? 409 : r == ENOENT ? 404 : 500, r == EEXIST ? "There's already an item called " + name + " here" : errText(r), r == EEXIST ? "exists" : "");
+			movedOnHandheld(ws, real, target);
 			ws.post(WebCall::Kind::FsChanged, dirName(real));
 			std::string par;
 			parentV(vp, par);
@@ -1264,6 +1275,7 @@ namespace bp
 				}
 				touched.push_back(dirName(it.real));
 				done.push_back(vp);
+				movedOnHandheld(ws, it.real, it.target);
 			}
 			std::sort(touched.begin(), touched.end());
 			touched.erase(std::unique(touched.begin(), touched.end()), touched.end());

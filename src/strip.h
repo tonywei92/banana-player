@@ -42,6 +42,10 @@ namespace bp
 		std::pair<int, int> visible() const;
 		// the page under the view's vertical middle ("page 3 of 20"), -1 with no pages
 		int currentPage() const;
+		// how far through currentPage() the view's middle is (0 its top, 1 its bottom): a tall page's place (a PDF's)
+		// kept with the page, so a chapter opened again comes back to it, not to the page's top
+		double within() const;
+		void scrollToWithin(int page, double share);
 		// pages to decode, most urgent first: visible ones top to bottom, then `ahead` in the direction of the last
 		// motion (down if there was none), then `behind` on the other side; no duplicates
 		std::vector<int> wanted(int ahead, int behind) const;
