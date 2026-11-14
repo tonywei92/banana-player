@@ -107,6 +107,11 @@ To uninstall, delete `Banana Player.sh`, the `BananaPlayer` folder and `media/bo
 
 Want to build it or help out? See [DEVELOPMENT.md](DEVELOPMENT.md).
 
+## Support
+
+Banana Player is free and always will be. If it makes your handheld better and you'd like to say thanks, you can
+[buy me a coffee on Ko-fi](https://ko-fi.com/tonysong). Entirely optional: every feature is for everyone.
+
 ## Credits
 
 - Made by [tonywei92](https://github.com/tonywei92) for [BananaOS](https://github.com/JorreFog/BananaLinux) by
