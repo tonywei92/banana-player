@@ -109,8 +109,8 @@ Want to build it or help out? See [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Support
 
-Banana Player is free and always will be. If it makes your handheld better and you'd like to say thanks, you can
-[buy me a coffee on Ko-fi](https://ko-fi.com/tonysong). Entirely optional: every feature is for everyone.
+Banana Player is free and always will be. If it makes your handheld better and you'd like to say thanks:
+☕ [buy me a coffee on Ko-fi](https://ko-fi.com/tonysong). Entirely optional: every feature is for everyone. ❤️
 
 ## Credits
 
