@@ -74,7 +74,7 @@ namespace bp
 		if (row == MANGA_MODE_ROW) return "How a series opens until you pick one for it (X while reading).";
 		if (row == MANGA_FIT_ROW) return "Width: a page as wide as the screen, read down with RIGHT a screenful at a time.";
 		if (row == MANGA_HINGE_ROW)
-			return "The strip skipped under the hinge in fullscreen, so pictures line up across the gap. Measure on your handheld.";
+			return "The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Measure on your handheld.";
 		if (row == MANGA_PRELOAD_ROW) return "More: smoother on a slow server, more data.";
 		if (row == MANGA_CACHE_ROW) return "Pages kept on the card to read again without downloading. Covers: 50 MB more.";
 		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
@@ -314,7 +314,7 @@ namespace bp
 		}
 		else if (row == MANGA_MODE_ROW)
 		{
-			static const char* NAMES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
+			static const char* NAMES[MANGA_MODES] = {"Right to left", "Left to right", "Vertical scroll"};
 			label = "Reading mode";
 			value = NAMES[p.settings.mangaMode];
 		}

@@ -87,7 +87,7 @@ namespace bp
 				a.out == b.out && a.pref == b.pref && a.outV == b.outV && a.itemV == b.itemV && a.playV == b.playV &&
 				a.seekN == b.seekN && a.parked == b.parked && a.error == b.error && a.dur == b.dur &&
 				a.audioOnly == b.audioOnly && a.loaded == b.loaded && a.blocked == b.blocked && a.ended == b.ended && a.boot == b.boot &&
-				a.cantRun == b.cantRun && a.skipBack == b.skipBack;
+				a.cantRun == b.cantRun && a.skipBack == b.skipBack && a.picked == b.picked;
 		}
 
 		bool sameAll(const Session& a, const Session& b)
@@ -148,6 +148,7 @@ namespace bp
 				n.audioOnly = false;
 				n.parked = false;
 				n.skipBack = false;
+				n.picked = false;
 				newLoad();
 			}
 			void setPlaying(bool on)
@@ -213,6 +214,7 @@ namespace bp
 				n.order.clear();
 				n.queue.clear();
 				n.index = -1;
+				n.picked = false;
 				setPlaying(false);
 				n.parked = false;
 				n.error.clear();
@@ -334,6 +336,7 @@ namespace bp
 					n.queue = q;
 					n.source = i.source;
 					newItem(index);
+					n.picked = true;
 					newOrder();	// (Shuffle: a new hidden order, from the item picked)
 					n.pos = clampPos(n, i.t);
 					n.playing = true;
@@ -648,6 +651,27 @@ namespace bp
 						browserCant();
 						return "";
 					}
+					// the handheld: a file reached by Next, Previous or an end that it can't play is skipped, as the
+					// browser skips one (a list none of which plays stops once each has been tried); one picked stops
+					// with its error, which says why
+					if (!s.picked && s.queue.size() > 1)
+					{
+						const std::string& path = s.queue[s.index];
+						std::string name = path.substr(path.rfind('/') == std::string::npos ? 0 : path.rfind('/') + 1);
+						int size = (int)s.queue.size();
+						int run = s.cantRun + 1;
+						if (run < size && (s.skipBack ? prevItem() : nextItem()))
+						{
+							n.cantRun = run;
+							note(name + " can't be played \xC2\xB7 skipped");
+							return "";
+						}
+						if (run < size && !s.skipBack)
+						{
+							finishList();
+							return "";
+						}
+					}
 					n.error = i.reason.empty() ? "error" : i.reason;
 					n.loaded = false;
 					if (n.playing)
@@ -849,6 +873,8 @@ namespace bp
 		if (s.seen.size() > SEEN_MAX) return "I10: the seen store over its size";
 		// I14: a goodbye is only held for a tab counted gone
 		if (s.goneBye && (!s.goneAt || s.goneTab.empty())) return "I14: a goodbye kept with no tab gone";
+		// I15: picked only says how the item playing came
+		if (s.picked && s.index < 0) return "I15: picked with nothing playing";
 		return "";
 	}
 

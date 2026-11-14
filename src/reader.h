@@ -4,7 +4,7 @@
 // drawn by a PageRenderer in the top window's GL context. Main thread only, but for the decoder's threads, which never
 // touch it: they hand pages back and push `wakeEvent`.
 #include "bands.h"
-#include "cbz.h"
+#include "pagebook.h"
 #include "pagecache.h"
 #include "pagedecode.h"
 #include "pagerender.h"
@@ -61,7 +61,7 @@ namespace bp
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
 		// Zoom: v the new factor (1 = the fit); the pages are decoded again at that width once it rests
 		// Rotate: paged modes only; each press turns 90° clockwise
@@ -69,7 +69,18 @@ namespace bp
 		// Book: v MANGA_BOOK_* (issue #7): held sideways, a page turned upright on each panel, a spread at a time.
 		// Step turns a spread, Page moves one page (to realign it); zoom, fit, the turn (L3) and the finger's drag
 		// are the Ui's to leave out (the reader ignores them). A Strip opens it in right to left.
+		// Pan: the paged modes' page shown centred on (v, v2), shares of the page (the PDF viewer's pan area)
 		void command(int kind, double v, int64_t ms, double v2 = 0, double v3 = 0);
+		// a paged mode's page in view and the part of it shown, as shares of the page; false in the Strip
+		bool panBox(int& page, float& x0, float& y0, float& x1, float& y1) const;
+		// every page times this colour (a reading filter; 1,1,1: none)
+		void setTint(float r, float g, float b)
+		{
+			if (r == tint[0] && g == tint[1] && b == tint[2]) return;
+			tint[0] = r; tint[1] = g; tint[2] = b;
+			pr.setTint(r, g, b);
+			redrawSoon(2);
+		}
 		// the pages decoded ahead of the one read (the Preload setting): applied at once, the queue made again
 		void setPreload(int n);
 		// each pass, before the fetcher: a rest of Seeks (a slider or grid drag) commits its target then
@@ -191,7 +202,7 @@ namespace bp
 		PageCache* pageCache = nullptr;
 		std::string chapterKey;
 		std::set<int> fetching, failed;
-		Cbz cbz;
+		std::unique_ptr<PageBook> pbook;	// a chapter in one file (CBZ, CBR, PDF); null for a folder or URLs
 		bool archive = false;
 		int viewW = 0, viewH = 0, forceFrames = 0;
 		int lastSpin = -1;
@@ -200,11 +211,13 @@ namespace bp
 		int bookHold = 0;	// MANGA_BOOK_*: main sets it again for each chapter (the series' own)
 		int bookS = 0;		// Book: the spread's first page
 		int bookPrevAngle = 0;	// the turn (L3) Book took over, given back when it ends
-		static constexpr int OVERLAY_KEY = 0x7ffffff0;	// the overlay's texture among the pages' (no page or band has it)
+		static constexpr int OVERLAY_KEY = 0x7ffffff0;
+		static constexpr int OVERLAY_FADE_MS = 400;	// the card's last moments, fading out	// the overlay's texture among the pages' (no page or band has it)
 		int overlayW = 0, overlayH = 0;
 		int64_t overlayUntil = 0;
 		bool overlayDrawn = false;
 		int gapPx = 0;
+		float tint[3] = {1, 1, 1};
 		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Pix> kept;	// the decoded pages near the view, for the bottom panel in fullscreen
 		std::map<int, Pix> orig;	// the same pages unrotated: when the turn changes, kept is re-made from these
@@ -222,7 +235,7 @@ namespace bp
 		int errPage = -1;	// the page err is about (a URL page that failed); -1 for the chapter's own error
 		bool fingerDown = false;
 		// the decoder: its queue, its results, the chapter it works for (gen: a page of the last chapter is dropped)
-		std::mutex m, cbzLock;
+		std::mutex m, cbzLock;	// cbzLock: the book (one read at a time: an archive's position is shared)
 		std::condition_variable cv;
 		std::deque<Job> jobs;
 		std::deque<Done> done;

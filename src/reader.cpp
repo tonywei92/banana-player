@@ -94,12 +94,19 @@ namespace bp
 			PageImage img;
 			std::vector<uint8_t> bytes;
 			bool got;
-			if (archive)
+			if (archive && pbook && pbook->rendered())
+			{
+				// a PDF's page is drawn at the width wanted (sharp at any zoom), not decoded from bytes
+				std::lock_guard<std::mutex> l(cbzLock);
+				img = pbook->render(j.index, j.width, PAGE_MAX_PIXELS);
+				got = false;
+			}
+			else if (archive && pbook)
 			{
 				// one open archive for both threads: a read at a time (its position is shared)
 				std::lock_guard<std::mutex> l(cbzLock);
-				got = cbz.read(j.path, bytes);
-				if (!got) img.error = cbz.error();
+				got = pbook->read(j.path, bytes);
+				if (!got) img.error = pbook->error();
 			}
 			else got = readPageFile(j.path, bytes, img.error);
 			int band = -1;
@@ -146,8 +153,9 @@ namespace bp
 		if (archive)
 		{
 			std::lock_guard<std::mutex> l(cbzLock);
-			if (!cbz.open(path)) { err = cbz.error(); return false; }
-			names = cbz.pages();
+			pbook = openPageBook(path, err);
+			if (!pbook) return false;
+			names = pbook->pages();
 		}
 		else
 		{
@@ -197,12 +205,24 @@ namespace bp
 		if (remote())
 			for (int i = 0; i < (int)files.size(); i++)
 				if (fileThere(files[i])) sizeFromFile(i);
+		// a PDF says every page's shape from its page tree: each place right from the start (a long document's
+		// scroll bar and jumps are then exact before a page is drawn)
+		std::vector<std::pair<int, int>> shapes;
+		if (pbook && pbook->rendered())
+		{
+			std::lock_guard<std::mutex> l(cbzLock);
+			shapes.resize(files.size());
+			for (int i = 0; i < (int)files.size(); i++)
+				if (pbook->pageSize(i, shapes[i].first, shapes[i].second)) strip.setPageSize(i, shapes[i].first, shapes[i].second);
+		}
 		page = std::clamp(page, 0, (int)files.size() - 1);
 		// (placeholders are all the same height until pages come: their tops are exact for the first page wanted)
 		strip.scrollTo(strip.pageTop(page));
 		paged.setView(w, layoutH());
 		paged.setPages((int)files.size(), 1.5);
 		paged.setZoom(1, 0, 0);
+		for (int i = 0; i < (int)shapes.size(); i++)
+			if (shapes[i].first > 0) paged.setPageSize(i, shapes[i].first, shapes[i].second);
 		fit = f >= 0 && f < MANGA_FITS ? f : MANGA_FIT_PAGE;
 		applyFit();
 		readMode = m >= 0 && m < MANGA_MODES ? m : MANGA_STRIP;
@@ -247,7 +267,7 @@ namespace bp
 		if (archive)
 		{
 			std::lock_guard<std::mutex> l(cbzLock);
-			cbz.close();
+			pbook.reset();
 		}
 		files.clear();
 		urls.clear();
@@ -735,6 +755,13 @@ namespace bp
 			redrawSoon(2);
 			return;
 		}
+		if (kind == Pan)
+		{
+			if (readMode == MANGA_STRIP) return;
+			paged.panTo(std::clamp(v, 0.0, 1.0), std::clamp(v2, 0.0, 1.0));
+			redrawSoon(2);
+			return;
+		}
 		if (kind == ZoomPoint)
 		{
 			// a double-tap on the page area: zoom to the factor at the tapped point, or back to the fit
@@ -1013,7 +1040,8 @@ namespace bp
 		if (any || moving) want();
 		bool need = any || moving || uploads || forceFrames > 0;
 		// the level card: up (its texture going up) or just down (one frame more, without it)
-		if (overlayUntil && (now >= overlayUntil || !overlayDrawn))
+		// (and while it fades: a frame each pass)
+		if (overlayUntil && (now >= overlayUntil || !overlayDrawn || now >= overlayUntil - OVERLAY_FADE_MS))
 		{
 			need = true;
 			if (now >= overlayUntil) { overlayUntil = 0; want(); }
@@ -1047,7 +1075,11 @@ namespace bp
 		// the level card over them while it's up (its texture goes with the next want() once it's down)
 		overlayDrawn = overlayUntil && spinNow < overlayUntil && pr.has(OVERLAY_KEY);
 		if (overlayDrawn)
-			placed.push_back({OVERLAY_KEY, (float)(w - overlayW) / 2, (float)(h * 0.62f), (float)overlayW, (float)overlayH, false, true});
+		{
+			// it fades out over its last moments rather than vanishing
+			float a = std::clamp((float)(overlayUntil - spinNow) / OVERLAY_FADE_MS, 0.f, 1.f);
+			placed.push_back({OVERLAY_KEY, (float)(w - overlayW) / 2, (float)(h * 0.62f), (float)overlayW, (float)overlayH, false, true, a});
+		}
 		pr.setSpinStep((int)(spinNow / SPIN_MS));
 		uploads = pr.draw(placed, w, h);
 		if (forceFrames > 0) forceFrames--;
@@ -1086,5 +1118,22 @@ namespace bp
 		if (readMode != MANGA_STRIP && bookHold) return bookS + 2 >= (int)files.size();	// the last page is in the spread
 		if (readMode != MANGA_STRIP) return paged.atEnd();
 		return strip.offset() >= strip.totalHeight() - strip.screenful() / 0.9 - 1;
+	}
+
+	bool MangaReader::panBox(int& pg, float& x0, float& y0, float& x1, float& y1) const
+	{
+		if (!opened || readMode == MANGA_STRIP || bookHold) return false;
+		int cur = paged.current();
+		for (const auto& pl : paged.placements())
+		{
+			if (pl.page != cur || pl.w <= 0 || pl.h <= 0) continue;
+			pg = cur;
+			x0 = (float)std::clamp(-pl.x / pl.w, 0.0, 1.0);
+			x1 = (float)std::clamp((viewW - pl.x) / pl.w, 0.0, 1.0);
+			y0 = (float)std::clamp(-pl.y / pl.h, 0.0, 1.0);
+			y1 = (float)std::clamp((layoutH() - pl.y) / pl.h, 0.0, 1.0);
+			return true;
+		}
+		return false;
 	}
 }

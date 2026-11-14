@@ -96,7 +96,7 @@ namespace bp
 		void tick(Player& p);
 		// something moves by itself (a flick, a playlist's rows scrolling under a dragged one): the loop should come
 		// round often
-		bool animating() const { return loaderShown || playHoldAt != 0 || flickAt != 0 || plDrag.on || stripT0 != 0 || likePopAt != 0 || addFlashUntil != 0 || landFlashUntil != 0 || listPulseAt != 0; }
+		bool animating() const { return docTurning() || loaderShown || playHoldAt != 0 || flickAt != 0 || plDrag.on || stripT0 != 0 || likePopAt != 0 || addFlashUntil != 0 || landFlashUntil != 0 || listPulseAt != 0; }
 		// the header's playing mark moves (something plays behind the browser, the bottom panel lit): the loop comes
 		// round a few times a second for its frames
 		bool markMoving() const { return markAnim && panel.on(); }
@@ -235,7 +235,7 @@ namespace bp
 		// ZoomPoint (v: the factor; v2, v3: the tap point as fractions of the view width and height: zoom to that point
 		// / back to the fit, as a double-tap on the page area does)
 		// Book (v: MANGA_BOOK_*: held sideways, a page upright on each panel; Step turns a spread, Page moves one)
-		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
 		std::vector<ReaderCmd> readerCmds;
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus
@@ -251,6 +251,61 @@ namespace bp
 			bool failedHere = false;	// a page in view failed (fetch, decode or no GPU memory): Try again shows
 		};
 		ReaderStatus readerStatus;
+		// ---- Files' document viewers (ui_docs.cpp) ----
+		// A TXT or a book of text (EPUB) on main's TextReader: Ui asks (takeTextRead), main opens it, takes textCmds
+		// each pass and tells textStatus back. A PDF or a comic EPUB goes to main's MangaReader as a manga chapter
+		// does (mangaRead), shown by Page::DocPages
+		struct TextReadRequest { std::string path; uint64_t place = 0; };
+		bool takeTextRead(TextReadRequest& out)
+		{
+			if (textRead.path.empty()) return false;
+			out = std::move(textRead);
+			textRead = {};
+			return true;
+		}
+		struct TextCmd { int kind; double v; int64_t ms; };
+		std::vector<TextCmd> textCmds;
+		bool textCloseAsked = false;	// main closes the text viewer
+		bool textEncodingAsked = false;	// main gives the source this code page ("" the detected one)
+		std::string textEncoding;
+		struct TextStatus
+		{
+			bool open = false, atEnd = false;
+			double fraction = 0;
+			uint64_t place = 0;
+			std::string error, encoding, title;
+			std::vector<std::pair<std::string, std::pair<uint64_t, int>>> contents;	// title, (block id, depth)
+			int book = 0;	// Book's hold (0: the scroll)
+			std::string snippet;	// the first words at the place (a new bookmark's label)
+			std::shared_ptr<const std::vector<uint8_t>> bottom;	// Book: the bottom panel's page (RGBA, turned)
+			int bottomW = 0, bottomH = 0;
+			uint64_t bottomGen = 0;
+			// Book's page turn (textreader.h): the bottom's page before it, its way (0: none), its start, and whether
+			// the top panel holds the right-hand page
+			std::shared_ptr<const std::vector<uint8_t>> bottomOld;
+			int turnDir = 0;
+			int64_t turnAt = 0;
+			bool rightOnTop = false;
+			int turnMs = 340;
+			int matchStep = 0;	// Find's step within the block shown: 1 found one, -1 none (the search goes on), 0 none asked
+			int noticeDir = 0;	// the last turn's way, and when: its notice (next page, previous page) fades out
+			int64_t noticeAt = 0;
+		};
+		TextStatus textStatus;
+		// the reading filter for the PDF viewer's pages (DOC_FILTER_*), or -1 while no document of Files is shown
+		int docPagesFilter(const Player& p) const;
+		// Find's query while a match is shown (the text viewer marks it), else ""
+		std::string docHighlight() const;
+		// a document from Files: opened in its viewer; false when the path isn't one
+		bool openDocument(const std::string& path, Player& p);
+		// the PDF viewer's pan area: the page small, and the part on the top panel (main sets them each pass)
+		struct DocPan
+		{
+			int page = -1, w = 0, h = 0;
+			std::shared_ptr<const std::vector<uint8_t>> rgba;
+			float x0 = 0, y0 = 0, x1 = 1, y1 = 1;	// the view's box in the page, as fractions
+		};
+		DocPan docPan;
 		// fullscreen: what the bottom panel shows of the view (main sets it each pass): each page's box as fractions
 		// of the panel (x, y, w, h; y may run past 0..1), and the pages' pixels (RGBA, straight alpha) for those boxes;
 		// gen changes with the chapter (the bottom panel's textures of the last one go)
@@ -361,6 +416,7 @@ namespace bp
 		int takeOverHint(const Player& p) const;
 		// the top panel's level card (Volume / Brightness, as Player::showLevel has mpv draw it) as RGBA pixels, at the
 		// panels' scale: for a top panel mpv doesn't draw (the manga reader's pages)
+		// percent < 0: a small card of the label alone, without the bar (the reader's zoom)
 		std::shared_ptr<const std::vector<uint8_t>> levelCard(const std::string& label, int percent, int& w, int& h);
 		std::string outputName() const;	// where it plays now: "Handheld", or the page's name ("Chrome on Mac")
 		std::string pageName() const;	// the output page's name, as it gave it ("Browser" unknown)
@@ -396,7 +452,7 @@ namespace bp
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
 		enum class Page { Main, Tracks, Chapters, Settings, Browse, Info, About, Exit, Sound, Web, Playing, UpNext, Manga,
-			Extensions, MangaSeries, MangaRead, MangaSettings, MangaSources };
+			Extensions, MangaSeries, MangaRead, MangaSettings, MangaSources, DocText, DocPages };
 		struct Rect { int x, y, w, h; bool hit(int px, int py) const { return px >= x && py >= y && px < x + w && py < y + h; } };
 		struct Row { int64_t id; std::string label; bool selected; std::string note = ""; };
 
@@ -486,7 +542,10 @@ namespace bp
 		int homeZone = HOME_STRIP, homeStrip = 0, homeGrid = 0, homeCol = 0;
 		bool homeFresh = true;	// not yet shown this run: the focus starts on the newest card (Files with none)
 		static constexpr int CARD_W = 240, STRIDE = 250, CARD_Y = 84, CARD_H = 104, STRIP_TOP = 80, STRIP_H = 116;
-		int stripCount() const { return (int)recent.size() + 1; }	// (+ All recent)
+		// the strip: the newest few (the rest are in All recent, its last card)
+		static constexpr int HOME_RECENT_MAX = 5;
+		int stripCards() const { return std::min((int)recent.size(), HOME_RECENT_MAX); }
+		int stripCount() const { return stripCards() + 1; }	// (+ All recent)
 		int stripMax() const { return std::max(0, 16 + stripCount() * STRIDE - 10 + 16 - W); }
 		int stripTarget(int i) const { return std::clamp((i - 1) * STRIDE, 0, stripMax()); }
 		double stripOff = 0, stripFrom = 0, stripTo = 0;
@@ -531,6 +590,116 @@ namespace bp
 		// folder. plCur: the playlist open (its items are browseRows, in its order; PL_ITEM rows)
 		std::unique_ptr<PlaylistStore> plStore;
 		MangaReadRequest mangaRead;	// (takeMangaRead)
+		// ---- Files' own file operations (ui_fileops.cpp) ----
+		// Copy / Move: the item is held (clip) while you go to the folder it goes in, and pasted there (SELECT, or the
+		// bar's button); a copy, or a move to the other card, runs on a thread of its own with this panel showing
+		// its progress until it ends (nothing else answers meanwhile but Cancel)
+		enum { CLIP_NONE, CLIP_COPY, CLIP_MOVE };
+		int clipOp = CLIP_NONE;
+		std::string clipPath;
+		struct FileJob;
+		std::shared_ptr<FileJob> fileJob;
+		static void runFileJob(FileJob* j);	// on the job's thread
+		std::string fileJobSignature() const;
+		int fileJobPressed = -1;
+		// Info (Files' Y menu, the manga reader's series menu): a sheet of what a file or folder is, any key closes it
+		bool infoOpen = false;
+		std::string infoTitle;
+		std::vector<std::pair<std::string, std::string>> infoRows;
+		void openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra = {});
+		void drawFileInfo();
+		bool fileNameSubmit = false;
+		std::string fileNameNote, fileRenamePath;
+		bool fileOpsOn(int row) const;	// the row is a file or folder of the cards that can be copied, moved...
+		void fileOpsAct(int what, const std::string& path, Player& p);
+		bool clipKey(Button b, Player& p);	// SELECT pastes here, X lets the clip go
+		bool clipPointer(const Pointer& pt, int x, int y, Player& p);
+		bool clipCanPaste() const;
+		void filePaste(Player& p);
+		void fileJobTick(Player& p);
+		bool fileJobKey(Button b);
+		bool fileJobPointer(const Pointer& pt, int x, int y);
+		void drawFileJob();
+		void drawClipBar();
+		void fileRenameDone(Player& p);
+		Rect clipBtn(int i) const { return {i ? 328 : 24, 428, 288, 44}; }
+		Rect fileJobCancelRect() const { return {200, 300, 240, 52}; }
+		// ---- the document viewers' own (ui_docs.cpp) ----
+		TextReadRequest textRead;
+		std::string docPath;	// the document shown
+		Page docFrom = Page::Browse;	// where B goes back to
+		std::unique_ptr<ResumeStore> docPlaces;	// each document's place (a TXT's byte, a book's block, a PDF's page)
+		bool docPlacesDirty = false;
+		Uint32 docSavedAt = 0;
+		bool docLive = false;	// main has opened it (a close after that is the viewer closing)
+		void docPlacesLoad();
+		void docPlacesSave(bool now);
+		void docRemember();
+		void docClose(Player& p);
+		bool docKey(Button b, Player& p);
+		bool docPointer(const Pointer& pt, int x, int y, Player& p);
+		void docTick(Player& p);
+		void drawDocText(const Player& p);
+		void drawDocPages(const Player& p);
+		std::string docSignature() const;
+		// Find (TXT, EPUB): the query typed, searched on a thread of its own (on its own copy of the file), the place
+		// jumped to; then R / L the next / previous match while the bar shows, B leaves it
+		struct FindJob;
+		std::shared_ptr<FindJob> findJob;
+		std::string findQuery;
+		bool findOn = false, findSubmit = false;
+		int findStepWay = 0;	// a step asked of the block shown (+1 / -1): none there, the search goes on that way
+		std::string docNote;	// a word over the text a moment (found, not found): Book's turned as its pages
+		Uint32 docNoteAt = 0;
+		void findStart(bool back);
+		void findTick();
+		static void runFind(FindJob* j);
+		std::string findSignature() const;
+		void drawFind();
+		// the menus: the text viewer's Text options and Contents, the PDF viewer's options
+		enum { DOC_MENU_NONE, DOC_MENU_OPTIONS, DOC_MENU_CONTENTS, DOC_MENU_MARKS };
+		// bookmarks (a TXT's or a book's): each document's, kept in doc-bookmarks.conf (path, place, share, label)
+		struct DocMark { std::string path; uint64_t id = 0; double frac = 0; std::string label; };
+		std::vector<DocMark> docMarks;	// every document's
+		bool docMarksLoaded = false, docMarkArmed = false;
+		void docMarksLoad();
+		void docMarksSave();
+		std::vector<int> docMarksHere() const;	// this document's, in reading order (indexes into docMarks)
+		void docMarksOpen();
+		int docMenu = DOC_MENU_NONE, docMenuCursor = 0, docMenuScroll = 0;
+		std::vector<int> docMenuRows() const;
+		void docMenuStep(int dir, Player& p);
+		void docMenuAct(Player& p);
+		void drawDocMenu(const Player& p);
+		// the finger: on the text's scroll pad, the progress bar, the pan area, a button
+		bool docTouch = false, docBar = false, docPanTouch = false, docMoved = false;
+		int docDownX = 0, docDownY = 0, docLastY = 0, docPressed = -1;
+		Uint32 docLastAt = 0, docTapAt = 0;
+		double docVel = 0, docPanStartX = 0, docPanStartY = 0;
+		float docTouchY = 0, docTouchX = 0;
+		Uint32 docFullTagUntil = 0;
+		SDL_Texture* docPanTex = nullptr;
+		SDL_Texture* docBookTex = nullptr;	// Book: the bottom panel's page
+		SDL_Texture* docBookOldTex = nullptr;	// and the one before a turn, folding away (or opened over)
+		const void* docBookOldSrc = nullptr;
+		static constexpr int DOC_NOTICE_MS = 1800;	// a turn's notice: shown, then fading out over its last 600 ms
+		bool docTurning() const
+		{
+			int64_t now = SDL_GetTicks();
+			return page == Page::DocText && ((textStatus.turnDir && now - textStatus.turnAt < textStatus.turnMs) ||
+				(textStatus.noticeDir && now - textStatus.noticeAt < DOC_NOTICE_MS));
+		}
+		uint64_t docBookTexGen = 0;
+		Uint32 docBookToastUntil = 0;
+		int docBookHoldLast = 0;	// the way Book was last held (the View row turns it on so again)
+		void docBookTurn(int dpadDy, Player& p);
+		int docPanTexPage = -1;
+		const void* docPanTexSrc = nullptr;
+		Rect docBarRect() const;
+		Rect docPadRect() const;
+		Rect docPanRect() const { return {16, 80, PAN_W, PAN_H}; }
+		Rect docBtn(int i) const;
+		Rect docPanThumb() const;
 		Playlist plCur;
 		bool plLoaded = false;	// plCur read (false: the file couldn't be)
 		PlayRequest playRequest;
@@ -696,6 +865,8 @@ namespace bp
 			CTX_PL_SHOW, CTX_PL_ADD_FILES, CTX_PL_ADD_FOLDER, CTX_PL_SELECT, CTX_PL_MOVE,
 			// Local and Network: X's Select files, a folder's Add to playlist...
 			CTX_SELECT_FILES, CTX_ADD_TO,
+			// a file's or folder's own on the cards (Files, ui_fileops.cpp): Copy..., Move..., Rename..., Delete
+			CTX_F_COPY, CTX_F_MOVE, CTX_F_RENAME, CTX_F_DELETE, CTX_F_INFO,
 			// the Network tab's X: the web dashboard's page
 			CTX_WEB,
 			// Liked's item's Add to playlist... (the one file)
@@ -1182,7 +1353,7 @@ namespace bp
 		bool styleFromSubs = false;	// the subtitle style opened from the Subtitles list: B goes back to it
 		void drawBackIcon();
 		// the browser's rows' marks: what each row is
-		enum RowIcon { ICON_NONE, ICON_RECENT, ICON_PLACE, ICON_FOLDER, ICON_VIDEO, ICON_SONG, ICON_PHOTO, ICON_NETWORK, ICON_REFRESH,
+		enum RowIcon { ICON_NONE, ICON_RECENT, ICON_PLACE, ICON_FOLDER, ICON_VIDEO, ICON_SONG, ICON_PHOTO, ICON_DOC, ICON_BOOK, ICON_FILE, ICON_PDF, ICON_EPUB, ICON_COMIC, ICON_NETWORK, ICON_REFRESH,
 			ICON_TYPE, ICON_TEST, ICON_SAVE, ICON_PLAYLIST, ICON_LIKED, ICON_NEW };
 		RowIcon rowIcon(int row) const;
 		void drawRowIcon(RowIcon icon, int x, int y, SDL_Color c);
@@ -1561,9 +1732,10 @@ namespace bp
 		Rect mangaSliderRect() const { return {40, miniUp ? 330 : 352, 560, 22}; }
 		// the chapter row: three buttons of one size, equal margins and gaps across the panel's 608 (16, 208 wide
 		// pieces, 16 apart: the last one ends at 624, 16 from the right edge)
-		Rect mangaPrevRect() const { return {16, miniUp ? 372 : 404, 192, 40}; }
-		Rect mangaFullRect() const { return {224, miniUp ? 372 : 404, 192, 40}; }	// the Fullscreen button: what SELECT does
-		Rect mangaNextRect() const { return {432, miniUp ? 372 : 404, 192, 40}; }
+		// (52 tall: room for the key under the label, Button hotkeys on)
+		Rect mangaPrevRect() const { return {16, miniUp ? 364 : 396, 192, 52}; }
+		Rect mangaFullRect() const { return {224, miniUp ? 364 : 396, 192, 52}; }	// the Fullscreen button: what SELECT does
+		Rect mangaNextRect() const { return {432, miniUp ? 364 : 396, 192, 52}; }
 		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
 		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;
 		// History's rows hold two lines (series, then chapter and page): taller, so fewer
@@ -2067,7 +2239,7 @@ namespace bp
 		int mlocSheet = MLS_NONE, mlocCursor = 0;
 		bool mlocDeleteArmed = false;
 		Uint32 mlocDeleteAt = 0;
-		Rect mangaLocalHelpBox() const { return {48, 64, 544, 316}; }
+		Rect mangaLocalHelpBox() const { return {32, 20, 576, 410}; }
 		bool mangaLocalSheetKey(Button b, Player& p);
 		bool mangaLocalSheetPointer(int x, int y, Player& p);
 		void drawMangaLocalSheet(const Player& p);
@@ -2129,6 +2301,9 @@ namespace bp
 		}
 		Rect mangaSrvFormRowRect(int i) const { return {16, 74 + i * 40, 608, 36}; }
 		Rect mangaServerModalBox() const { return {112, 150, 416, 170}; }
+		// On this handheld's series menu: Open, Info, Delete
+		Rect mlocMenuBox() const { return {112, 126, 416, 218}; }
+		Rect mlocMenuRow(int i) const { return {128, 190 + i * 48, 384, 40}; }
 		Rect mangaServerModalRowRect(int i) const { return {128, 214 + i * 48, 384, 40}; }
 		// ---- the dashboard's chapters for a source series (api_manga.cpp, ui_manga_web.cpp) ----
 		// The worker's answer is kept by series: the page polls while it comes (202), then reads it at once. The

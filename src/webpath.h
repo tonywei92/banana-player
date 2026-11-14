@@ -20,6 +20,8 @@ namespace bp
 	// toVirtual for a path the dashboard lists without being asked for it (Recent): "" also when it is under a `deny`
 	// prefix or has a part starting with "." (resolveVirtual would refuse it). The file need not exist (a gone one).
 	std::string servedVirtual(const std::vector<WebRoot>& roots, const std::vector<std::string>& deny, const std::string& real);
+	// `real` (already resolved) is a `deny` prefix or inside one: what a walk through a folder must not reach
+	bool deniedPath(const std::vector<std::string>& deny, const std::string& real);
 
 	// 1-255 bytes; none of / \ < > : " | ? * or control characters; not blank; not "." or ".."
 	bool validName(const std::string& name);

@@ -1,4 +1,5 @@
 #include "pagedecode.h"
+#include "pagebook.h"
 #include <algorithm>
 #include <climits>
 #include <cmath>
@@ -745,5 +746,23 @@ namespace bp
 		out.w = w;
 		out.h = h;
 		return out;
+	}
+
+	PageImage bookPage(PageBook& book, int index, int targetW, long long maxPixels)
+	{
+		if (book.rendered()) return book.render(index, targetW, maxPixels);
+		PageImage img;
+		if (index < 0 || index >= (int)book.pages().size())
+		{
+			img.error = "No such page";
+			return img;
+		}
+		std::vector<uint8_t> bytes;
+		if (!book.read(book.pages()[index], bytes))
+		{
+			img.error = book.error();
+			return img;
+		}
+		return decodePage(bytes.data(), bytes.size(), targetW, 0, maxPixels);
 	}
 }

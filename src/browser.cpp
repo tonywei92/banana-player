@@ -1,4 +1,5 @@
 #include "browser.h"
+#include "pagebook.h"
 #include "playlist.h"
 #include <algorithm>
 #include <cstdlib>
@@ -48,7 +49,7 @@ namespace bp
 				b.dir = true;
 				dirs.push_back(b);
 			}
-			else if (isFile && isMediaFile(b.name)) videos.push_back(b);
+			else if (isFile) videos.push_back(b);	// every file: what can't be opened says so when picked
 		}
 		closedir(d);
 		auto byName = [](const BrowseEntry& a, const BrowseEntry& b) { return naturalLess(a.name, b.name); };

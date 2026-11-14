@@ -247,6 +247,16 @@ namespace bp
 		return bp::servedVirtual(cfg.roots, denied, real);
 	}
 
+	bool WebServer::denies(const std::string& real) const
+	{
+		std::vector<std::string> d;
+		{
+			std::lock_guard<std::mutex> g(lock);
+			d = denied;
+		}
+		return deniedPath(d, real);
+	}
+
 	void WebServer::setRoots(const std::vector<WebRoot>& r)
 	{
 		std::lock_guard<std::mutex> g(lock);

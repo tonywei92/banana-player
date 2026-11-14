@@ -371,8 +371,8 @@ namespace bp
 	{
 		if (row < 0 || row >= (int)browseRows.size()) return false;
 		if (selMode == SEL_EDIT) return isPlDir(browseDir) && browseRows[row].id == PL_ITEM;
-		// a file (never a photo: playlists are videos and songs)
-		return selMode == SEL_ADD && browseRows[row].id == 2 && !isPhotoFile(browsePaths[row]);
+		// a video or a song (playlists are those: never a photo, a document or any other file Files lists)
+		return selMode == SEL_ADD && browseRows[row].id == 2 && (isVideoFile(browsePaths[row]) || isAudioFile(browsePaths[row]));
 	}
 
 	bool Ui::selTicked(int row) const
@@ -451,7 +451,7 @@ namespace bp
 			}
 			selSerial++;
 		}
-		else if (selMode == SEL_ADD && isPhotoFile(browsePaths[row])) p.osd("Playlists take videos and songs");
+		else if (selMode == SEL_ADD) p.osd("Playlists take videos and songs");
 		return true;
 	}
 

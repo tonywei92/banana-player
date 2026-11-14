@@ -4,6 +4,7 @@
 //
 // Every edit carries the rev the page last read (FNV-1a of the playlist as it's written): another edit since (on the
 // handheld, in another browser) answers 409 with code "rev" and the rev now, and the page reads it again.
+#include "pagebook.h"
 #include "web/server.h"
 #include "json.h"
 #include "browser.h"
@@ -456,6 +457,8 @@ namespace bp
 				for (auto& path : p.history().items())
 				{
 					if (isNetPath(path)) continue;
+					// (a document read on the handheld: no page here opens one)
+					if (isDocumentName(path) || isComicName(path)) continue;
 					struct stat st;
 					bool gone = stat(path.c_str(), &st) != 0;
 					if (!gone && !p.settings.showHiddenFolders && insideHiddenFolder(path)) continue;

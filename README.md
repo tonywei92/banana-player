@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>A dual-screen media player for BananaOS on the RG DS and RG DS Plus: movies, music, photos and manga, from your card or your network, with a companion web dashboard.</b>
+  <b>A dual-screen media player for BananaOS on the RG DS and RG DS Plus: movies, music, photos, manga and books, from your card or your network, with a companion web dashboard.</b>
 </p>
 
 <p align="center">
@@ -31,7 +31,9 @@
 - 🎬 **Movies:** MP4, MKV and more. Switch subtitles and audio tracks mid-film, jump between chapters, pick up where you stopped.
 - 🎵 **Music:** a folder plays as an album, with its cover, a visualizer and a 10-band equalizer.
 - 🖼️ **Photos:** zoom in and look around with a finger.
-- 📖 **Manga:** read across both screens, or hold the handheld sideways like a book. An optional extension.
+- 📖 **Manga:** CBZ, CBR and PDF chapters across both screens, or hold the handheld sideways like a book. An optional extension.
+- 📚 **Books and documents:** TXT and EPUB in a reader of their own (fonts, sizes, warm filter, bookmarks, find, a book mode across both screens); PDFs page by page or as one long scroll. Even very large text files open at once.
+- 🗂️ **Files:** copy, move, rename and delete on the handheld, between both cards, with a progress bar.
 - 📡 **Your network:** play straight from your computer or NAS over Wi-Fi, nothing copied.
 - 🌐 **Web dashboard:** upload files, make playlists and control playback from your phone or computer.
 - 🕶️ **Incognito mode:** while it's on, nothing you play is remembered.
@@ -74,7 +76,7 @@ Twenty looks for your music, picked with **SELECT** while a song plays. Each one
 
 ## Install
 
-1. **Download** `BananaPlayer-0.7.15-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.15).
+1. **Download** `BananaPlayer-0.7.16-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.7.16).
 2. **Unzip it into `roms/ports`** on your SD card. You should see `Banana Player.sh`, a `BananaPlayer` folder and a
    `media` folder there.
 3. **Open the Ports shelf** on the handheld and choose **Banana Player**.

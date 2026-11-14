@@ -42,6 +42,9 @@ tools/make-sprite.py                                 # web/sprite.svg from the G
 - **Ui** (`src/ui.h`, split by area over `ui_*.cpp`; shared names `ui_internal.h`, glyphs `ui_glyphs.h`): the bottom panel.
 - **Web:** `src/web/` (server, API, probe, subs, picsubs, remux), `web/app.js` + `web/js/*.js` (ES modules, no build),
   `web/style.css` (copies `src/theme.h` by hand), embedded by `cmake/EmbedWeb.cmake`.
+- Books and documents: `pagebook.*` (a chapter in one file: CBZ, CBR via libarchive, PDF via pdfium, a comic EPUB),
+  `epub.*`, `textdoc.*` (a TXT mapped, read only around the place shown), `textsource.*`, `textreader.*` (the text
+  viewer on the top panel), `ui_docs.cpp` (Files' TXT/EPUB/PDF viewers).
 - Network: `net*.cpp`, `netstore`, `networker`, `netstream`, `discovery`. Updater: `updater.*`, `update.cpp`.
   Durations: `durations.*`, `durprobe.*`, `durworker.*`.
 

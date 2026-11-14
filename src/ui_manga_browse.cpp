@@ -242,9 +242,9 @@ namespace bp
 		{
 			int n = (int)mangaLocal.size();
 			if (mlocSheet != MLS_NONE) return mangaLocalSheetKey(b, p);
-			// Y: where to put manga for it to show here; X: the series' Open / Delete
-			if (b == Button::Y) { mlocSheet = MLS_HELP; return false; }
-			if (b == Button::X)
+			// Y: the series' Open / Info / Delete; X: where to put manga for it to show here
+			if (b == Button::X) { mlocSheet = MLS_HELP; return false; }
+			if (b == Button::Y)
 			{
 				if (n > 0)
 				{
@@ -2179,11 +2179,11 @@ namespace bp
 	{
 		if (mlocSheet == MLS_HELP)
 		{
-			// any of A, B, Y closes it (it says, it asks nothing)
-			if (b == Button::A || b == Button::B || b == Button::Y) mlocSheet = MLS_NONE;
+			// any of A, B, X closes it (it says, it asks nothing)
+			if (b == Button::A || b == Button::B || b == Button::X) mlocSheet = MLS_NONE;
 			return false;
 		}
-		if (b == Button::B || b == Button::X)
+		if (b == Button::B || b == Button::Y)
 		{
 			mlocSheet = MLS_NONE;
 			mlocDeleteArmed = false;
@@ -2191,7 +2191,7 @@ namespace bp
 		}
 		if (b == Button::Up || b == Button::Down)
 		{
-			mlocCursor = 1 - mlocCursor;
+			mlocCursor = (mlocCursor + (b == Button::Down ? 1 : 2)) % 3;
 			mlocDeleteArmed = false;
 			return false;
 		}
@@ -2200,6 +2200,18 @@ namespace bp
 		{
 			mlocSheet = MLS_NONE;
 			mangaChoose(MT_BROWSE, mListCursor, p);
+			return false;
+		}
+		if (mlocCursor == 1)
+		{
+			// Info: the series' folder (or its one file), with its chapters counted
+			mlocSheet = MLS_NONE;
+			if (mListCursor >= 0 && mListCursor < (int)mangaLocal.size())
+			{
+				const LocalSeries& s = mangaLocal[mListCursor];
+				int n = (int)s.chapters.size();
+				openFileInfo(s.path, s.title, {{"Chapters", std::to_string(n)}});
+			}
 			return false;
 		}
 		// Delete: A again within the window takes the files off the card
@@ -2221,14 +2233,14 @@ namespace bp
 			mlocSheet = MLS_NONE;
 			return false;
 		}
-		if (!mangaServerModalBox().hit(x, y))
+		if (!mlocMenuBox().hit(x, y))
 		{
 			mlocSheet = MLS_NONE;
 			mlocDeleteArmed = false;
 			return false;
 		}
-		for (int i = 0; i < 2; i++)
-			if (mangaServerModalRowRect(i).hit(x, y))
+		for (int i = 0; i < 3; i++)
+			if (mlocMenuRow(i).hit(x, y))
 			{
 				if (mlocCursor != i) mlocDeleteArmed = false;
 				mlocCursor = i;
@@ -2287,26 +2299,31 @@ namespace bp
 			int x = b.x + 32, w = b.w - 64, y = b.y + 72;
 			drawTextMid("Copy manga into this folder:", 0, TEXT, x, y, w);
 			drawTextMid(elideMiddle(mangaLocalFolder(), 1, w), 1, ACCENT, x, y + 30, w);
-			drawTextMid("or into a Manga folder at the top of a memory card.", 0, TEXT, x, y + 60, w);
+			// the second card: its own Manga folder is read too (Manga, manga or MANGA at its top)
+			drawTextMid("or into a Manga folder at the top of the second card:", 0, TEXT, x, y + 60, w);
+			drawTextMid("Second card \xE2\x80\xBA Manga", 1, ACCENT, x, y + 90, w);
+			drawTextMid("A card set up on a Mac: choose Master Boot Record and", 0, DIM, x, y + 120, w);
+			drawTextMid("exFAT (or FAT32), or the handheld may not see it.", 0, DIM, x, y + 144, w);
 			const char* rest[] = {
-				"Each series is a folder. Its chapters are .cbz files,",
-				"or folders of pictures (Chapter 1, Chapter 2...).",
-				"Copy them with the web dashboard's Files (Upload),",
+				"Each series is a folder. Its chapters are .cbz files (or",
+				".cbr, .pdf), or folders of pictures (Chapter 1...).",
+				"Copy them with Files, the web dashboard's Files (Upload),",
 				"or with the card in a computer."};
-			for (int i = 0; i < 4; i++) drawTextMid(rest[i], 0, DIM, x, y + 104 + i * 26, w);
-			drawGlyphMid(G_INFO, x + 8, y + 224, DIM);
-			drawTextMid("Downloaded chapters are kept there too.", 0, DIM, x + 24, y + 224, w - 24);
+			for (int i = 0; i < 4; i++) drawTextMid(rest[i], 0, DIM, x, y + 180 + i * 26, w);
+			drawGlyphMid(G_INFO, x + 8, y + 300, DIM);
+			drawTextMid("Downloaded chapters are kept there too.", 0, DIM, x + 24, y + 300, w - 24);
 			drawHints({{"A", "OK"}});
 			return;
 		}
 		if (mListCursor < 0 || mListCursor >= (int)mangaLocal.size()) return;
 		const LocalSeries& s = mangaLocal[mListCursor];
-		Rect box = mangaServerModalBox();
+		Rect box = mlocMenuBox();
 		// its name as the title (a line under it would sit on the first row); how much a delete takes, on its row
 		drawDialog(box, s.title);
 		std::string count = std::to_string(s.chapters.size()) + (s.chapters.size() == 1 ? " chapter" : " chapters");
-		drawDialogRow(mangaServerModalRowRect(0), &G_PLAY, "Open", mlocCursor == 0, false, TEXT, "", {0, 0, 0, 0});
-		drawDialogRow(mangaServerModalRowRect(1), &G_TRASH, "Delete", mlocCursor == 1, false, DANGER,
+		drawDialogRow(mlocMenuRow(0), &G_PLAY, "Open", mlocCursor == 0, false, TEXT, "", {0, 0, 0, 0});
+		drawDialogRow(mlocMenuRow(1), &G_INFO, "Info", mlocCursor == 1, false, TEXT, "", {0, 0, 0, 0});
+		drawDialogRow(mlocMenuRow(2), &G_TRASH, "Delete", mlocCursor == 2, false, DANGER,
 			mlocDeleteArmed ? "Press again" : count, mlocDeleteArmed ? ACCENT : DIM);
 		if (mlocDeleteArmed) drawFooterText("Press A again to delete its files", ACCENT);
 		else drawHints({{"A", "Choose"}, {"B", "Close"}});

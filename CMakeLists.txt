@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(banana-player VERSION 0.7.15 LANGUAGES C CXX)
+project(banana-player VERSION 0.7.16 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -72,7 +72,7 @@ endif()
 
 # what doesn't need a window: unit-tested on its own
 add_library(bpcore STATIC src/viz_led.cpp src/viz_synthwave.cpp src/viz_banana.cpp src/viz_city.cpp src/viz_scope.cpp src/viz_heart.cpp src/viz_fire.cpp src/viz_aurora.cpp src/viz_garden.cpp src/viz_vinyl.cpp src/viz_sea.cpp src/viz_bunny.cpp src/viz_boba.cpp src/viz_jelly.cpp src/viz_musicbox.cpp src/viz_fishbowl.cpp src/viz_disco.cpp src/viz_dancer.cpp src/viz_cat.cpp src/viz_popcorn.cpp src/viz_wobble.cpp src/viz_tubeman.cpp src/viz_longcat.cpp src/viz_washer.cpp src/vizcache.cpp src/aspect.cpp src/tracks.cpp src/challenge.cpp src/format.cpp src/substyle.cpp src/settings.cpp src/resume.cpp src/playlist.cpp src/browser.cpp src/history.cpp src/png.cpp src/battery.cpp src/photo.cpp src/update.cpp src/backlight.cpp src/netstore.cpp src/netpath.cpp src/servers.cpp src/secret.cpp src/sidecar.cpp src/ftplist.cpp src/keyboard.cpp src/eq.cpp src/soundfx.cpp src/playlists.cpp
-	src/webauth.cpp src/webpath.cpp src/json.cpp src/webmedia.cpp src/webstate.cpp src/crashlog.cpp src/session.cpp src/durations.cpp src/picsubs.cpp src/manga_names.cpp src/mangafilters.cpp src/mangastore.cpp src/pagecache.cpp src/strip.cpp src/comicinfo.cpp src/cbz.cpp src/mangalocal.cpp src/manganetfolders.cpp src/manga_ui_logic.cpp src/paged.cpp src/dlqueue.cpp src/mangarepo.cpp src/opds.cpp src/cbzwrite.cpp src/mangaservers.cpp src/htmldoc.cpp src/mangaremote.cpp src/readerfetchplan.cpp src/suwayomi.cpp src/mangajava.cpp src/doh.cpp src/tarx.cpp src/mangaseriescache.cpp src/imagesize.cpp src/bands.cpp)
+	src/webauth.cpp src/webpath.cpp src/json.cpp src/webmedia.cpp src/webstate.cpp src/crashlog.cpp src/session.cpp src/durations.cpp src/picsubs.cpp src/manga_names.cpp src/mangafilters.cpp src/mangastore.cpp src/pagecache.cpp src/strip.cpp src/comicinfo.cpp src/cbz.cpp src/pagebook.cpp src/textdoc.cpp src/textsource.cpp src/epub.cpp src/mangalocal.cpp src/manganetfolders.cpp src/manga_ui_logic.cpp src/paged.cpp src/dlqueue.cpp src/mangarepo.cpp src/opds.cpp src/cbzwrite.cpp src/mangaservers.cpp src/htmldoc.cpp src/mangaremote.cpp src/readerfetchplan.cpp src/suwayomi.cpp src/mangajava.cpp src/doh.cpp src/tarx.cpp src/mangaseriescache.cpp src/imagesize.cpp src/bands.cpp src/treecopy.cpp)
 target_include_directories(bpcore PUBLIC src)
 target_link_libraries(bpcore PUBLIC PkgConfig::MPV PkgConfig::ZLIB OpenSSL::Crypto ${CMAKE_DL_LIBS})
 # libavutil (FFmpeg, libmpv's own): av_expr, to work out the visualizers' lut2 tables as lut2 does (src/vizcache.h)
@@ -88,6 +88,26 @@ pkg_check_modules(UCHARDET IMPORTED_TARGET uchardet)
 if(UCHARDET_FOUND)
 	target_link_libraries(bpcore PRIVATE PkgConfig::UCHARDET)
 	target_compile_definitions(bpcore PRIVATE BP_UCHARDET)
+endif()
+
+# The manga reader's other books (src/pagebook.h): CBR (RAR 4 and 5) through libarchive, PDF through pdfium (a
+# prebuilt libpdfium: the bundle fetches its pinned release; on a Mac, unpack the same into .cache/mac/pdfium).
+# Without either, those files are simply not books.
+if(APPLE AND EXISTS "/opt/homebrew/opt/libarchive/lib/pkgconfig")
+	set(ENV{PKG_CONFIG_PATH} "/opt/homebrew/opt/libarchive/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+endif()
+pkg_check_modules(LIBARCHIVE IMPORTED_TARGET libarchive)
+if(LIBARCHIVE_FOUND)
+	target_link_libraries(bpcore PRIVATE PkgConfig::LIBARCHIVE)
+	target_compile_definitions(bpcore PRIVATE BP_ARCHIVE)
+endif()
+set(PDFIUM_DIR "${CMAKE_SOURCE_DIR}/.cache/mac/pdfium" CACHE PATH "an unpacked pdfium-binaries release (include/, lib/)")
+find_library(PDFIUM_LIB pdfium PATHS "${PDFIUM_DIR}/lib" NO_DEFAULT_PATH)
+if(PDFIUM_LIB AND EXISTS "${PDFIUM_DIR}/include/fpdfview.h")
+	target_include_directories(bpcore PRIVATE "${PDFIUM_DIR}/include")
+	target_link_libraries(bpcore PUBLIC "${PDFIUM_LIB}")
+	target_compile_definitions(bpcore PRIVATE BP_PDF)
+	message(STATUS "pdfium: ${PDFIUM_LIB}")
 endif()
 
 # Lua 5.4 for the manga reader's user-added source scripts (docs/design/manga.md 5.2). The vendored tree is the
@@ -120,7 +140,7 @@ target_link_libraries(bpprobe PRIVATE PkgConfig::JPEG PkgConfig::PNG)
 # (included as <libpng16/png.h>: src/png.h, this project's own PNG writer, would answer <png.h>)
 target_include_directories(bpprobe PRIVATE ${PNG_INCLUDEDIR}/..)
 
-add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/readerfetch.cpp src/manganet.cpp src/javaext.cpp src/ui_manga.cpp src/mangarepos.cpp src/mangadownloader.cpp src/ui_manga_settings.cpp src/ui_manga_sources.cpp src/ui_manga_browse.cpp src/ui_manga_filters.cpp src/ui_manga_java.cpp src/ui_manga_servers.cpp src/ui_manga_downloads.cpp src/ui_manga_netfolders.cpp src/ui_manga_web.cpp)
+add_executable(banana-player src/main.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/updater.cpp src/volume.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/reader_proto.cpp src/reader.cpp src/textreader.cpp src/readerfetch.cpp src/manganet.cpp src/javaext.cpp src/ui_manga.cpp src/ui_docs.cpp src/ui_fileops.cpp src/mangarepos.cpp src/mangadownloader.cpp src/ui_manga_settings.cpp src/ui_manga_sources.cpp src/ui_manga_browse.cpp src/ui_manga_filters.cpp src/ui_manga_java.cpp src/ui_manga_servers.cpp src/ui_manga_downloads.cpp src/ui_manga_netfolders.cpp src/ui_manga_web.cpp)
 # libcurl: the Java add-on's downloads (BananaOS's own, with OpenSSL: not bundled), and the network folders' FTP and
 # the manga reader's images when BP_NET is on
 pkg_check_modules(CURL REQUIRED IMPORTED_TARGET libcurl)

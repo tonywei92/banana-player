@@ -291,6 +291,9 @@ select.sel { background: var(--btn); color: var(--cream); border: var(--bw) soli
 .fabwrap.done .fab { animation: pop .35s var(--ease); }
 .fbadge { position: absolute; top: 2px; right: 0; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px 1px; border-radius: 10px; background: var(--red); color: #000; font: 400 12px/1 var(--pixel); box-shadow: 0 0 0 2px #000; pointer-events: none; }
 .fabwrap.picking { z-index: 46; }
+/* the Copy and Move key (jobs.js): above the uploads' when both show */
+.fabwrap.jobfab.stack { bottom: 96px; }
+.fbadge.job { background: var(--yellow); }
 .fabpick { position: absolute; right: 22px; bottom: 96px; z-index: 46; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; animation: menuin var(--t-ui) var(--ease); }
 .fabpick .btn { min-width: 128px; justify-content: flex-start; }
 .fabcatch { position: absolute; inset: 0; z-index: 45; background: rgba(0, 0, 0, .45); animation: fade var(--t-ui); }
@@ -350,6 +353,8 @@ select.sel { background: var(--btn); color: var(--cream); border: var(--bw) soli
 @keyframes menuin { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
 .picklist { max-height: 300px; overflow-y: auto; margin-top: var(--s2); border-radius: var(--r-btn); background: #000; box-shadow: inset 0 0 0 2px var(--btn); padding: 4px; }
 .picklist .sheet-item { min-height: 46px; }
+/* Move… and Copy…: which card (more than one place) */
+.cardpick > button { min-width: 0; }
 .names { list-style: none; padding: var(--s2) var(--s3); background: #000; box-shadow: inset 0 0 0 2px var(--btn); font-size: 15px; display: flex; flex-direction: column; gap: 4px; border-radius: var(--r-btn); }
 .helpkeys { display: grid; grid-template-columns: auto 1fr; gap: var(--s3) var(--s4); font-size: 15px; align-items: center; }
 .helpkeys kbd { justify-self: start; height: 24px; font-size: 13px; padding: 0 8px 1px; }
@@ -827,10 +832,11 @@ video::cue { font-size: var(--cue, 18px); color: #fff; background: rgba(0, 0, 0,
 	.rowplay { display: inline-flex; }
 	.selmode .rowplay, .pl-sel .rowplay { display: none; }
 	.plgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-	.selbar { width: 600px; max-width: 100%; margin-left: auto; margin-right: auto; bottom: 16px; }
+	.selbar { width: 700px; max-width: 100%; margin-left: auto; margin-right: auto; bottom: 16px; }
 	.selbar .acts .btn { flex-direction: row; min-height: 44px; font-size: 14px; padding: 0 8px var(--lip); }
 	.has-fab .toasts { bottom: 14px; right: 110px; }
 	.fabwrap { right: 20px; bottom: 18px; }
+	.fabwrap.jobfab.stack { bottom: 102px; }
 	.scrim { align-items: center; }
 	.modal { border-bottom: var(--bw) solid var(--e); border-radius: var(--r-dialog); max-width: 460px; max-height: 80dvh; width: calc(100% - 32px); padding-bottom: 0; animation: dlg var(--t-sheet) var(--ease); }
 	.modal::before { display: none; }
@@ -896,7 +902,7 @@ video::cue { font-size: var(--cue, 18px); color: #fff; background: rgba(0, 0, 0,
 	.np.desk .np-title { font-size: 28px; }
 	.np-panel { display: flex; flex-direction: column; min-height: 0; background: var(--surface); border-left: var(--bw) solid var(--e-surface); padding-top: 14px; }
 	.np-panel .tabbody { flex: 1; min-height: 0; }
-	.selbar { width: 640px; }
+	.selbar { width: 740px; }
 }
 @media (min-width: 1100px) and (max-width: 1279px) { .pbar .ptime { display: none; } }
 

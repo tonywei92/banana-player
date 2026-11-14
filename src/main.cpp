@@ -14,6 +14,9 @@
 #include "touch.h"
 #include "reader_proto.h"
 #include "reader.h"
+#include "textreader.h"
+#include <strings.h>
+#include "epub.h"
 #include "readerfetch.h"
 #include "manganet.h"
 #include "ui.h"
@@ -692,13 +695,27 @@ int main(int argc, char** argv)
 		unsigned sinkFbo = 0;
 		// the manga reader: its pages on the top panel while a chapter is open (Ui asks for it: takeMangaRead)
 		MangaReader reader;
+		uint64_t zoomShownGen = 0;	// the chapter the zoom card follows (a new chapter opens at 100%: no card for that)
+		// Files' text viewer (TXT, EPUB): its rows on the top panel while a document is open (Ui asks: takeTextRead)
+		TextReader textReader;
+		bool textReady = false;
+		auto textStyle = [&]() {
+			TextReader::Style st;
+			st.font = player.settings.txtFont;
+			st.size = player.settings.txtSize;
+			st.spacing = player.settings.txtSpacing;
+			st.margins = player.settings.txtMargins;
+			st.theme = player.settings.txtTheme;
+			st.filter = player.settings.txtFilter;
+			return st;
+		};
 		ReaderFetch readerFetch;	// a URL chapter's pages, kept coming while reader is open
 		// MangaNet routes a page's answer to the reader before the Ui can take it (the Ui's own answers are untouched)
 		mangaNet->setFetchOwner([&readerFetch](MangaFetch::Result& r) { return readerFetch.own(r); });
 		bool readerReady = false;
 		const Uint32 evReader = SDL_RegisterEvents(1);	// a page decoded: the loop wakes and takes it
 		auto drainUnder = [&] {
-			if ((!photos.playing() && !reader.isOpen()) || !player.playing() || !player.frameDue()) return;
+			if ((!photos.playing() && !reader.isOpen() && !textReader.isOpen()) || !player.playing() || !player.frameDue()) return;
 			SDL_GL_MakeCurrent(top, gl);
 			if (!sinkFbo)
 			{
@@ -746,6 +763,7 @@ int main(int argc, char** argv)
 			auto readPixels = (ReadPixels)SDL_GL_GetProcAddress("glReadPixels");
 			if (!readPixels) return nullptr;
 			if (reader.isOpen()) reader.draw(w, h);	// a manga chapter's pages
+			else if (textReader.isOpen()) textReader.draw(w, h);	// a document's text
 			else renderTop(w, h);	// a video, a photo, or the icon with nothing playing
 			std::vector<unsigned char> rgba((size_t)w * h * 4);
 			readPixels(0, 0, w, h, 0x1908 /* GL_RGBA */, 0x1401 /* GL_UNSIGNED_BYTE */, rgba.data());
@@ -820,7 +838,7 @@ int main(int argc, char** argv)
 			}
 			if (crashTest && SDL_GetTicks() >= crashAt) bp::crashlog::testCrash(crashTest);
 			SDL_Event e;
-			bool got = SDL_WaitEventTimeout(&e, reader.isOpen() && reader.busy() ? 1 : reader.isOpen() && reader.seekPending() ? 16 : reader.spinning() ? MangaReader::SPIN_MS / 2 : ui.animating() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250);
+			bool got = SDL_WaitEventTimeout(&e, (reader.isOpen() && reader.busy()) || (textReader.isOpen() && textReader.busy()) ? 1 : reader.isOpen() && reader.seekPending() ? 16 : reader.spinning() ? MangaReader::SPIN_MS / 2 : ui.animating() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250);
 			while (got)
 			{
 				// every button in the log (home/.config/banana-player/log.txt on the card), mapped or not: what the
@@ -1497,8 +1515,98 @@ int main(int argc, char** argv)
 					else reader.command((int)c.kind, c.v, c.ms, c.v2, c.v3);
 				}
 				ui.readerCmds.clear();
+				// Files' text viewer: a document asked for, the bottom panel's commands, where it is told back
+				{
+					Ui::TextReadRequest tq;
+					if (ui.takeTextRead(tq))
+					{
+						SDL_GL_MakeCurrent(top, gl);
+#ifdef BP_GLES
+						if (!textReady) textReady = textReader.init(true, opts.fontsDir);
+#else
+						if (!textReady) textReady = textReader.init(false, opts.fontsDir);
+#endif
+						int w, h;
+						SDL_GL_GetDrawableSize(top, &w, &h);
+						std::string err, title = ui.textStatus.title;
+						bool epub = tq.path.size() > 5 && strcasecmp(tq.path.c_str() + tq.path.size() - 5, ".epub") == 0;
+						auto src = !textReady ? nullptr : epub ? openEpubText(tq.path, err) : openTextFile(tq.path, err);
+						ui.textStatus = {};
+						ui.textStatus.title = title;
+						ui.textEncoding.clear();
+						if (!textReady) ui.textStatus.error = "The text viewer couldn't start";
+						else if (!src) ui.textStatus.error = err;
+						else if (textReader.setBook(player.settings.txtBook), false) {}
+						else if (Uint32 t0 = SDL_GetTicks(); !textReader.open(std::move(src), tq.place, w, h, textStyle()) ||
+							(fprintf(stderr, "text: open took %u ms\n", SDL_GetTicks() - t0), false))
+							ui.textStatus.error = "The text viewer couldn't open it";
+						else
+						{
+							// (the contents once: an EPUB's is read from its navigation document)
+							for (auto& c : textReader.contents()) ui.textStatus.contents.push_back({c.title, {c.id, c.depth}});
+							if (!textReader.title().empty()) ui.textStatus.title = textReader.title();
+							fprintf(stderr, "text: opened %s (%s), %zu in the contents\n", tq.path.c_str(),
+								textReader.encoding().empty() ? "book" : textReader.encoding().c_str(), ui.textStatus.contents.size());
+						}
+					}
+					if (ui.textCloseAsked)
+					{
+						ui.textCloseAsked = false;
+						SDL_GL_MakeCurrent(top, gl);	// (its textures are freed in this context)
+						textReader.close();
+						ui.textStatus = {};
+						renderPending = true;	// (the top panel shows what plays, or the icon, again)
+						topDark = false;
+					}
+					if (textReader.isOpen())
+					{
+						textReader.setStyle(textStyle());
+						textReader.setBook(player.settings.txtBook);
+						textReader.setTurnFold(player.settings.txtTurn == 0);
+						textReader.setHighlight(ui.docHighlight());
+						if (ui.textEncodingAsked)
+						{
+							ui.textEncodingAsked = false;
+							textReader.setEncoding(ui.textEncoding);
+						}
+						int w, h;
+						SDL_GL_GetDrawableSize(top, &w, &h);
+						// (a finger's moves come as shares of the panel: the top's pixels here)
+						for (auto& c : ui.textCmds)
+						{
+							Uint32 t0 = SDL_GetTicks();
+							textReader.command(c.kind, c.kind == TextReader::Scroll || c.kind == TextReader::Fling ? c.v * h : c.v, c.ms);
+							// (a jump's cost: the text found around its place, nothing else)
+							if (c.kind == TextReader::MatchStep) ui.textStatus.matchStep = textReader.matchStepped() ? 1 : -1;
+							if (c.kind == TextReader::Jump || c.kind == TextReader::JumpTo || c.kind == TextReader::JumpToLast)
+								fprintf(stderr, "text: jump to %.1f%% in %u ms\n", textReader.fraction() * 100, SDL_GetTicks() - t0);
+						}
+						ui.textStatus.open = true;
+						ui.textStatus.fraction = textReader.fraction();
+						ui.textStatus.place = textReader.place();
+						ui.textStatus.atEnd = textReader.atEnd();
+						ui.textStatus.encoding = textReader.encoding();
+						ui.textStatus.snippet = textReader.snippet();
+						// Book: the bottom panel's page
+						ui.textStatus.book = textReader.book();
+						ui.textStatus.turnDir = textReader.turnDir();
+						ui.textStatus.turnAt = textReader.turnAt();
+						ui.textStatus.rightOnTop = textReader.rightOnTop();
+						ui.textStatus.turnMs = TextReader::turnMs();
+						ui.textStatus.noticeDir = textReader.lastTurnDir();
+						ui.textStatus.noticeAt = textReader.lastTurnAt();
+						ui.textStatus.bottomOld = textReader.bottomBefore();
+						if (textReader.bottomGen() != ui.textStatus.bottomGen)
+						{
+							ui.textStatus.bottomGen = textReader.bottomGen();
+							ui.textStatus.bottom = textReader.bottomPage(ui.textStatus.bottomW, ui.textStatus.bottomH);
+						}
+						if (!textReader.error().empty()) ui.textStatus.error = textReader.error();
+					}
+					ui.textCmds.clear();
+				}
 				// a song's visualizer rests while the pages cover the top panel (nobody sees it; its frames cost CPU)
-				player.setTopCovered(reader.isOpen());
+				player.setTopCovered(reader.isOpen() || textReader.isOpen());
 				// and while the manga engine starts (its ~25 s of Java start-up wants the cores the graph would take)
 				player.setEngineLoading(ui.mangaNet && ui.mangaNet->javaExt().state() == JavaExtHost::State::Starting);
 				// a URL chapter's pages: requests reordered and the free slots filled (the answers themselves come
@@ -1509,6 +1617,22 @@ int main(int argc, char** argv)
 				{
 					// the row set while a chapter is open reaches the reader too (the fit comes as its own command)
 					reader.setPreload(player.settings.mangaPreload);
+					// a document of Files: its reading filter, and its pan area's page and box
+					{
+						int f = ui.docPagesFilter(player);
+						float r, g, b;
+						docFilterTint(f < 0 ? DOC_FILTER_OFF : f, r, g, b);
+						reader.setTint(r, g, b);
+						Ui::DocPan dp;
+						if (f >= 0 && reader.panBox(dp.page, dp.x0, dp.y0, dp.x1, dp.y1))
+						{
+							int pw = 0, ph = 0;
+							dp.rgba = reader.pixels(dp.page, pw, ph);
+							dp.w = pw;
+							dp.h = ph;
+						}
+						ui.docPan = std::move(dp);
+					}
 					ui.readerStatus.open = true;
 					ui.readerStatus.loading = reader.loading();
 					ui.readerStatus.error = reader.error();
@@ -1517,6 +1641,15 @@ int main(int argc, char** argv)
 					ui.readerStatus.page = reader.page();
 					ui.readerStatus.pages = reader.pages();
 					ui.readerStatus.mode = reader.mode();
+					// a zoom changed (keys, the menu, a double-tap): its percent on the pages a moment, fading out
+					if (reader.zoomPct() != ui.readerStatus.zoomPct && reader.chapterGen() == zoomShownGen && haveUi)
+					{
+						int cw = 0, ch = 0;
+						auto card = ui.levelCard(std::to_string(reader.zoomPct()) + "%", -1, cw, ch);
+						SDL_GL_MakeCurrent(top, gl);
+						reader.showOverlay(card, cw, ch, (int64_t)SDL_GetTicks() + 1200);
+					}
+					zoomShownGen = reader.chapterGen();
 					ui.readerStatus.zoomPct = reader.zoomPct();
 					ui.readerStatus.fullscreen = reader.fullscreen();
 					ui.readerStatus.rotation = reader.rotation();
@@ -1573,6 +1706,19 @@ int main(int argc, char** argv)
 					int w, h;
 					SDL_GL_GetDrawableSize(top, &w, &h);
 					reader.draw(w, h);
+					SDL_GL_SwapWindow(top);
+				}
+			}
+			else if (textReader.isOpen())
+			{
+				// a document's text, not mpv's picture (what plays goes on under it: drainUnder)
+				renderPending = false;
+				if (textReader.frame(now) || refresh)
+				{
+					SDL_GL_MakeCurrent(top, gl);
+					int w, h;
+					SDL_GL_GetDrawableSize(top, &w, &h);
+					textReader.draw(w, h);
 					SDL_GL_SwapWindow(top);
 				}
 			}

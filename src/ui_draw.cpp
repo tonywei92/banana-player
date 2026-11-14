@@ -419,7 +419,7 @@ namespace bp
 			homeTouch = false;
 			homePress = -1;
 			swallowTouch = true;
-			if (i >= 0 && i < (int)recent.size())
+			if (i >= 0 && i < stripCards())
 			{
 				homeZone = HOME_STRIP;
 				setStrip(i);
@@ -461,11 +461,14 @@ namespace bp
 		else if (page == Page::Manga) drawManga(p);
 		else if (page == Page::MangaSeries) drawMangaSeries(p);
 		else if (page == Page::MangaRead) drawMangaRead(p);
+		else if (page == Page::DocText) drawDocText(p);
+		else if (page == Page::DocPages) drawDocPages(p);
 		else if (page == Page::MangaSettings) drawMangaSettings(p);
 		else if (page == Page::MangaSources) drawMangaSourcesPage(p);
 		else if (page != Page::Main) drawTracks(p);
 		else drawMain(p);
 		if (miniUp) drawMiniBar(p);
+		drawClipBar();
 		if (displayShown(p)) drawDisplay(p);
 		if (inMenu) drawTabs(p);
 		if (ctxOpen) drawBrowseMenu(p);	// (the mini bar's hold menu opens on pages of its own too)
@@ -477,6 +480,8 @@ namespace bp
 		if (mangaErrOpen) drawMangaErr();
 		if (quickOpen) drawQuick(p);
 		if (kbOpen) drawKeyboard();
+		drawFileInfo();
+		drawFileJob();	// (over everything: it holds the panel until it ends)
 	}
 
 	void Ui::drawLoader(int cx, int cy, const std::string& text)
@@ -843,6 +848,8 @@ namespace bp
 		// each in a 22 x 20 box (logical units)
 		const Glyph* g = icon == ICON_RECENT ? &G_CLOCK : icon == ICON_PLACE ? &G_CARD : icon == ICON_FOLDER ? &G_FOLDER
 			: icon == ICON_VIDEO ? &G_FILM : icon == ICON_SONG ? &G_NOTE : icon == ICON_PHOTO ? &G_PICTURE
+			: icon == ICON_DOC ? &G_PAGE : icon == ICON_BOOK ? &G_BOOK : icon == ICON_FILE ? &G_FILE
+			: icon == ICON_PDF ? &G_PDF : icon == ICON_EPUB ? &G_EPUB : icon == ICON_COMIC ? &G_COMIC
 			: icon == ICON_NETWORK ? &G_NETWORK : icon == ICON_REFRESH ? &G_REFRESH : icon == ICON_TYPE ? &G_PENCIL
 			: icon == ICON_TEST ? &G_PLUG : icon == ICON_SAVE ? &G_CHECK : icon == ICON_PLAYLIST ? &G_PLAYLIST
 			: icon == ICON_LIKED ? &G_HEART : icon == ICON_NEW ? &G_PLUS : nullptr;
@@ -904,10 +911,11 @@ namespace bp
 
 	std::shared_ptr<const std::vector<uint8_t>> Ui::levelCard(const std::string& label, int percent, int& w, int& h)
 	{
+		bool bar = percent >= 0;	// (no bar: a small card of the label alone, as the reader's zoom)
 		percent = std::clamp(percent, 0, 100);
 		const float s = sy;	// (both panels are the same size: the top's pixels per unit are the bottom's)
-		w = (int)std::lround(220 * s);
-		h = (int)std::lround(62 * s);
+		w = (int)std::lround((bar ? 220 : 128) * s);
+		h = (int)std::lround((bar ? 62 : 40) * s);
 		auto px = std::make_shared<std::vector<uint8_t>>((size_t)w * h * 4, 0);
 		auto& v = *px;
 		// over what's there: straight alpha, as the reader's pages are
@@ -933,15 +941,15 @@ namespace bp
 		};
 		round(0, 0, w, h, (int)std::lround(14 * s), theme::TOP_CARD, 235);
 		int bx = (int)std::lround(18 * s), by = (int)std::lround(40 * s), bw = w - 2 * bx, bh = (int)std::lround(10 * s);
-		round(bx, by, bw, bh, bh / 2, theme::TOP_TRACK, 255);
-		if (percent > 0) round(bx, by, std::max(bh, bw * percent / 100), bh, bh / 2, theme::TOP_TITLE, 255);
+		if (bar) round(bx, by, bw, bh, bh / 2, theme::TOP_TRACK, 255);
+		if (bar && percent > 0) round(bx, by, std::max(bh, bw * percent / 100), bh, bh / 2, theme::TOP_TITLE, 255);
 		// the label and its percent, in the panels' own font
-		std::string text = label + "  " + std::to_string(percent) + "%";
+		std::string text = bar ? label + "  " + std::to_string(percent) + "%" : label;
 		if (SDL_Surface* t = TTF_RenderUTF8_Blended(fonts[1], text.c_str(), TEXT))
 		{
 			if (SDL_Surface* r = SDL_ConvertSurfaceFormat(t, SDL_PIXELFORMAT_RGBA32, 0))
 			{
-				int tx = bx, ty = (int)std::lround(8 * s);
+				int tx = bar ? bx : (w - r->w) / 2, ty = bar ? (int)std::lround(8 * s) : (h - r->h) / 2;
 				for (int y = 0; y < r->h; y++)
 					for (int x = 0; x < r->w; x++)
 					{

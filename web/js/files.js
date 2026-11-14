@@ -11,26 +11,47 @@ import { cancelAllUploads, cancelUpload, clearDone, dirLabel, doneTimer, entries
 import { filesHash, go, replaceHash } from './router.js';
 import { fileUrl, playHere, playPaths, view } from './browser-player.js';
 import { C } from './connection.js';
+import { watchJob } from './jobs.js';
 
 /* ================= files ================= */
 // one rule for a file or folder name, wherever it's typed (FAT cards take none of these)
 const nameError = n => !n ? 'Give it a name' : /[\/\\:*?"<>|]/.test(n) ? 'Names can\'t use / \\ : * ? " < > |' : n === '.' || n === '..' ? 'That name is taken by the card' : '';
 store.knownFolders = new Set();
-export const GLYPH = { folder: 'folder', audio: 'note', video: 'film', photo: 'picture', sub: 'cc', other: 'info' };
+export const GLYPH = { folder: 'folder', audio: 'note', video: 'film', photo: 'picture', sub: 'cc', text: 'page', epub: 'epub', pdf: 'pdf', comic: 'comic', other: 'file' };
 export const rootName = seg => (store.roots || []).find(r => r.path === seg)?.name || 'This card';
 
-function MovePicker({ paths, start, onClose, done }) {
+// Move… and Copy… (copy: true): a folder on any of the handheld's cards. With more than one place, a choice of them
+// above the folder path. A move on one card is a rename, at once; a copy, or a move to another card, runs on the
+// handheld as a job (jobs.js) and the key at the bottom shows how far it got
+function MovePicker({ paths, start, onClose, done, copy }) {
 	const [dir, setDir] = useState(start), [items, setItems] = useState(null), [err, setErr] = useState(''), [busy, setBusy] = useState(false), [tick, setTick] = useState(0);
-	useEffect(() => { setItems(null); get('/api/ls', { p: dir }).then(r => setItems(r.items.filter(i => i.dir).map(i => i.name).filter(n => !paths.includes(joinPath(dir, n))).sort(cmpName))).catch(e => setErr(errMsg(e))); }, [dir, tick]);
+	const roots = store.roots || [];
+	useEffect(() => { setItems(null); setErr(''); get('/api/ls', { p: dir }).then(r => setItems(r.items.filter(i => i.dir).map(i => i.name).filter(n => !paths.includes(joinPath(dir, n))).sort(cmpName))).catch(e => setErr(errMsg(e))); }, [dir, tick]);
 	const mkdir = () => nameDialog({ title: 'New folder', label: 'Folder name', ok: 'Create', submit: async n => { n = n.trim(); const bad = nameError(n); if (bad) return bad; try { await post('/api/mkdir', { p: dir, name: n }); setDir(joinPath(dir, n)); setTick(t => t + 1); return ''; } catch (e) { return e.message; } } });
-	const segs = dir.split('/');
-	const move = async () => { setBusy(true); try { await post('/api/move', { p: paths, to: dir }); onClose(); done(); toast('Moved ' + plural(paths.length, 'item', 'items') + ' to ' + (segs.length > 1 ? segs[segs.length - 1] : rootName(segs[0]))); } catch (e) { setErr(errMsg(e)); setBusy(false); } };
-	return html`<${Modal} title=${'Move ' + plural(paths.length, 'item', 'items') + ' to…'} onClose=${onClose} actions=${html`<button class="btn" onClick=${onClose}>Cancel</button><button class="btn primary" disabled=${busy || dir === dirName(paths[0])} onClick=${move}>Move here</button>`}>
+	const segs = dir.split('/'), card = segs[0];
+	const where = segs.length > 1 ? segs[segs.length - 1] : rootName(card);
+	const n = plural(paths.length, 'item', 'items');
+	const submit = async () => {
+		setBusy(true);
+		try {
+			const r = await post(copy ? '/api/copy' : '/api/move', { p: paths, to: dir });
+			onClose(); done();
+			const moved = r.done.length, bad = r.failed.length;
+			if (r.job) watchJob(r.job);
+			if (bad) toast((copy ? 'Couldn’t copy ' : 'Couldn’t move ') + (bad === 1 ? '“' + baseName(r.failed[0].p) + '”' : plural(bad, 'item', 'items')) + ': ' + whyNot(r.failed[0].error), null, 8000);
+			else if (moved && !r.job) toast('Moved ' + n + ' to ' + where);
+		} catch (e) { setErr(e.body && e.body.code === 'exists' ? 'Something in ' + where + ' already has that name' : errMsg(e)); setBusy(false); }
+	};
+	return html`<${Modal} title=${(copy ? 'Copy ' : 'Move ') + n + ' to…'} onClose=${onClose} actions=${html`<button class="btn" onClick=${onClose}>Cancel</button><button class="btn primary" disabled=${busy || dir === dirName(paths[0])} onClick=${submit}>${copy ? 'Copy here' : 'Move here'}</button>`}>
+		${roots.length > 1 && html`<div class="seg tabs2 cardpick" role="tablist" aria-label="Card">${roots.map(r => html`<button role="tab" aria-selected=${r.path === card} title=${fmtSize(r.free) + ' free'} onClick=${() => r.path !== card && setDir(r.path)}><${Icon} n="card" k=${1} /><span class="ell">${r.name}</span></button>`)}</div>`}
 		<div class="crumbs" style="gap:8px"><nav aria-label="Destination" class="grow">${segs.map((sg, i) => html`${i > 0 && html`<${Icon} n="right" k=${1} cls="sep" />`}<button aria-current=${i === segs.length - 1 ? 'page' : undefined} onClick=${() => setDir(segs.slice(0, i + 1).join('/'))}>${i === 0 ? rootName(sg) : sg}</button>`)}</nav><button class="btn sm" onClick=${mkdir}><${Icon} n="plus" k=${2} />New folder</button></div>
-		<div class="picklist">${items === null ? html`<div style="padding:var(--s4)" class="dim">Loading…</div>` : items.length === 0 ? html`<div style="padding:var(--s4)" class="dim">No folders here</div>` :
+		<div class="picklist">${items === null ? html`<div style="padding:var(--s4)" class="dim">${err ? '' : 'Loading…'}</div>` : items.length === 0 ? html`<div style="padding:var(--s4)" class="dim">No folders here</div>` :
 			items.map(n => html`<button class="sheet-item" onClick=${() => setDir(joinPath(dir, n))}><${Icon} n="folder" k=${2} cls="gl-y" /><span class="grow ell">${n}</span><${Icon} n="right" k=${1} /></button>`)}</div>
 		<div class="errtxt" role="alert">${err}</div></${Modal}>`;
 }
+// a failed item's reason, as the page says it
+const whyNot = e => e === 'exists' ? 'something there already has that name' : e;
+const openPicker = (paths, start, done, copy) => openModal(close => html`<${MovePicker} paths=${paths} start=${start} onClose=${close} done=${done} copy=${copy} />`);
 
 export function downloadPaths(paths) {
 	const files = paths.filter(p => !store.knownFolders.has(p));
@@ -86,7 +107,7 @@ function RowTile({ it, p, art }) {
 	if (it.dir) return html`<span class="tile folder"><${Icon} n="folder" k=${2} /></span>`;
 	const k = it.kind;
 	if (k === 'audio' || k === 'video' || k === 'photo') return html`<span class="tile"><${Art} src=${k === 'audio' ? art : ''} seed=${p} kind=${k} />${k === 'video' && html`<span class="mark"><${Icon} n="film" k=${1} /></span>`}</span>`;
-	return html`<span class="tile"><${Icon} n=${GLYPH[k] || 'info'} k=${2} /></span>`;
+	return html`<span class="tile"><${Icon} n=${GLYPH[k] || 'file'} k=${2} /></span>`;
 }
 const newFolderIn = (path, done) => nameDialog({ title: 'New folder', label: 'Folder name', ok: 'Create', submit: async n => { n = n.trim(); const bad = nameError(n); if (bad) return bad; try { await post('/api/mkdir', { p: path, name: n }); markFresh(joinPath(path, n)); done(); return ''; } catch (e) { return e.message; } } });
 
@@ -115,13 +136,15 @@ export function Files() {
 			if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;
 			if (!((e.key === 'Backspace' && !e.altKey) || (e.key === 'ArrowUp' && e.altKey))) return;
 			const t = e.target, segs = path.split('/').filter(Boolean);
-			if (segs.length < 2) return;
+			// (a card's top goes up to the list of cards when there's more than one)
+			if (segs.length < 2 && !(segs.length === 1 && (store.roots || []).length > 1)) return;
 			if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
 			if (store.modals.length || store.lightbox || document.querySelector('[aria-modal="true"]')) return;
 			e.preventDefault(); go(filesHash(segs.slice(0, -1).join('/')));
 		};
 		addEventListener('keydown', k); return () => removeEventListener('keydown', k);
 	}, [path]);
+
 	const all = useMemo(() => data ? data.items.slice().sort((a, b) => (b.dir - a.dir) || cmpName(a.name, b.name)) : [], [data]);
 	const f = desk ? filter.trim().toLowerCase() : '';
 	const items = f ? all.filter(i => i.name.toLowerCase().includes(f)) : all;
@@ -147,7 +170,7 @@ export function Files() {
 	const listRef = useRef();
 	useDurations(listRef, [data, f, path]);
 
-	// a row's ⋯: where it plays · Like, Add · Rename, Move, Download, Delete
+	// a row's ⋯: where it plays · Like, Add · Rename, Move, Copy, Download, Delete
 	function rowSheet(it, anchor) {
 		const p = full(it.name), isDir = it.dir, k = it.kind;
 		const playable = k === 'audio' || k === 'video';
@@ -161,7 +184,8 @@ export function Files() {
 			'-',
 			isDir && canHide && { label: it.hidden ? 'Unhide folder' : 'Hide folder', icon: 'eye', sub: it.hidden ? 'Listed on the handheld again' : 'Left out of the handheld’s lists', fn: () => setHidden([p], !it.hidden, refresh) },
 			{ label: 'Rename…', icon: 'pencil', fn: () => renamePath(p, refresh) },
-			{ label: 'Move…', icon: 'folder-move', fn: () => openModal(close => html`<${MovePicker} paths=${[p]} start=${path} onClose=${close} done=${refresh} />`) },
+			{ label: 'Move…', icon: 'folder-move', fn: () => openPicker([p], path, refresh, false) },
+			{ label: 'Copy…', icon: 'copy', fn: () => openPicker([p], path, refresh, true) },
 			!isDir && { label: 'Download', icon: 'download', fn: () => downloadPaths([p]) },
 			{ label: 'Delete…', icon: 'trash', danger: true, fn: () => deletePaths([p], refresh, byName) }],
 			{ anchor, sub: metaOf(it), seed: isDir ? null : p, kind: k, cover: k === 'audio' ? art : '' });
@@ -189,6 +213,9 @@ export function Files() {
 	const free = data && data.free;
 	const parentPath = crumbs.slice(0, -1).join('/');
 	const goUp = () => go(filesHash(parentPath));
+	// a card's top: up is the list of cards, when there's more than one (with one, that list is skipped)
+	const manyCards = (roots || []).length > 1;
+	const canUp = crumbs.length > 1 || (crumbs.length === 1 && manyCards);
 	const folderName = crumbs.length > 1 ? crumbs[crumbs.length - 1] : rootName(crumbs[0]);
 
 	if (!path) {
@@ -208,7 +235,7 @@ export function Files() {
 			<h1 aria-live="polite">${selCount} selected</h1>
 			${selCount < items.length ? html`<button class="btn sm" onClick=${() => setSel(items.map(i => full(i.name)))}>All</button>` : html`<button class="btn sm" onClick=${() => setSel([])}>None</button>`}</div></div>`
 		: html`<div class="phead">
-			${crumbs.length > 1 && html`<div class="crumbs"><button class="ib upbtn" aria-label="Up a folder" title="Up a folder (Backspace)" onClick=${goUp}><${Icon} n="up" k=${2} /></button><nav aria-label="Folder path">${crumbs.slice(0, -1).map((sg, i) => html`<button onClick=${() => go(filesHash(crumbs.slice(0, i + 1).join('/')))}>${i === 0 ? rootName(sg) : sg}</button><${Icon} n="right" k=${1} cls="sep" />`)}</nav></div>`}
+			${canUp && html`<div class="crumbs"><button class="ib upbtn" aria-label=${crumbs.length > 1 ? 'Up a folder' : 'All cards'} title=${crumbs.length > 1 ? 'Up a folder (Backspace)' : 'All cards (Backspace)'} onClick=${goUp}><${Icon} n="up" k=${2} /></button><nav aria-label="Folder path">${manyCards && html`<button onClick=${() => go(filesHash(''))}>Cards</button><${Icon} n="right" k=${1} cls="sep" />`}${crumbs.slice(0, -1).map((sg, i) => html`<button onClick=${() => go(filesHash(crumbs.slice(0, i + 1).join('/')))}>${i === 0 ? rootName(sg) : sg}</button><${Icon} n="right" k=${1} cls="sep" />`)}</nav></div>`}
 			<div class="row"><h1>${folderName}</h1><${AppMenu} /></div>
 			${data && html`<div class="sub">${chips.map(([k, one, many, g]) => html`<span class="chip"><${Icon} n=${g} k=${1} />${plural(cnt[k], one, many)}</span>`)}<span class="grow"></span>${free != null && html`<${Storage} free=${free} total=${data.total} />`}</div>`}</div>`;
 	return html`<div class=${'page files' + (showSel ? ' selmode' : '')}>
@@ -228,7 +255,7 @@ export function Files() {
 			!data ? (slow ? html`<${Skeleton} />` : null) :
 			all.length === 0 ? html`<${Empty} icon="folder" title="This folder is empty" sub=${touchOnly ? 'Upload music, videos or photos from this device.' : 'Drop files or folders here, or use Upload files.'} button=${pick ? undefined : 'Upload'} onClick=${() => pickUpload('files')} />` :
 			items.length === 0 ? html`<p class="note pad">Nothing here has “${filter.trim()}” in its name.</p>` : html`
-			<div class="box surface listbox"><ul class="flist" ref=${listRef}>${!showSel && crumbs.length > 1 && html`<li class="frow uprow"><button class="main-btn" onClick=${goUp}><span class="tile xs"><${Icon} n="up" k=${2} /></span><span class="grow"><div class="fn ell" aria-label="Up a folder">..</div></span></button></li>`}${items.map(it => { const p = full(it.name), on = sel.has(p), now = p === nowPath, playable = !it.dir && (it.kind === 'audio' || it.kind === 'video'); return html`<li class=${'frow' + (on ? ' sel' : '') + (s.fresh[p] ? ' fresh' : '') + (it.hidden ? ' hiddenf' : '') + (now && !showSel ? ' cur nowp' : '')} key=${it.name} data-dur=${playable && durable(p) && !durationOf(p) ? p : undefined}>
+			<div class="box surface listbox"><ul class="flist" ref=${listRef}>${!showSel && canUp && html`<li class="frow uprow"><button class="main-btn" onClick=${goUp}><span class="tile xs"><${Icon} n="up" k=${2} /></span><span class="grow"><div class="fn ell" aria-label="Up a folder">..</div></span></button></li>`}${items.map(it => { const p = full(it.name), on = sel.has(p), now = p === nowPath, playable = !it.dir && (it.kind === 'audio' || it.kind === 'video'); return html`<li class=${'frow' + (on ? ' sel' : '') + (s.fresh[p] ? ' fresh' : '') + (it.hidden ? ' hiddenf' : '') + (now && !showSel ? ' cur nowp' : '')} key=${it.name} data-dur=${playable && durable(p) && !durationOf(p) ? p : undefined}>
 				<button class="chk" aria-label=${(on ? 'Deselect ' : 'Select ') + it.name} aria-pressed=${on} onClick=${() => toggle(p)}><span class=${'check' + (on ? ' on' : '')}>${on && html`<${Icon} n="check" k=${2} />`}</span></button>
 				<button class="main-btn" onClick=${() => rowClick(it)} onPointerDown=${e => lpStart(e, it)} onPointerMove=${lpMove} onPointerUp=${lpEnd} onPointerCancel=${lpEnd} onContextMenu=${e => { e.preventDefault(); if (lp.current.mouse !== false && !lp.current.fired) rowSheet(it, { x: e.clientX, y: e.clientY }); }}>
 					<${RowTile} it=${it} p=${p} art=${art} />
@@ -241,7 +268,8 @@ export function Files() {
 		${selCount > 0 && !pick && html`<div class="selbar box surface" role="toolbar" aria-label="Selection"><div class="acts">
 			<button class="btn sm primary sb" onClick=${() => playOn(s.target, selected)}><${Icon} n="play" k=${2} /><span class="lbl">Play</span></button>
 			<button class="btn sm sb" onClick=${() => addToPlaylist(selected, selCount === 1 ? titleFor(selected[0]) : plural(selCount, 'item', 'items'))}><${Icon} n="pl-add" k=${2} /><span class="lbl">Add</span></button>
-			<button class="btn sm sb" onClick=${() => openModal(close => html`<${MovePicker} paths=${selected} start=${path} onClose=${close} done=${refresh} />`)}><${Icon} n="folder-move" k=${2} /><span class="lbl">Move</span></button>
+			<button class="btn sm sb" onClick=${() => openPicker(selected, path, refresh, false)}><${Icon} n="folder-move" k=${2} /><span class="lbl">Move</span></button>
+			<button class="btn sm sb" onClick=${() => openPicker(selected, path, refresh, true)}><${Icon} n="copy" k=${2} /><span class="lbl">Copy</span></button>
 			<button class="btn sm sb" onClick=${() => downloadPaths(selected)}><${Icon} n="download" k=${2} /><span class="lbl">Download</span></button>
 			${canHide && selFolders.length > 0 && html`<button class="btn sm sb" onClick=${() => setHidden(selFolders, !selAllHidden, refresh)}><${Icon} n="eye" k=${2} /><span class="lbl">${selAllHidden ? 'Unhide' : 'Hide'}</span></button>`}
 			<button class="btn sm danger sb" onClick=${() => deletePaths(selected, refresh, byName)}><${Icon} n="trash" k=${2} /><span class="lbl">Delete</span></button></div></div>`}

@@ -156,6 +156,8 @@ namespace bp
 		std::string toVirtual(const std::string& real) const;
 		// toVirtual, but "" for what the web never serves (a denied folder, a hidden part): for lists it makes itself
 		std::string servedVirtual(const std::string& real) const;
+		// a real path (resolved) in a denied folder: a copy walking through a folder stops there
+		bool denies(const std::string& real) const;
 
 	private:
 		struct Event { uint64_t id; std::string name, data; };

@@ -116,12 +116,17 @@ namespace bp
 				return false;
 			}
 		}
+		// a copy or move running: only its Cancel answers (ui_fileops.cpp)
+		if (fileJob) return fileJobKey(b);
+		// Info's sheet: any key closes it
+		if (infoOpen) { infoOpen = false; return false; }
 		if (quickOpen) return quickKey(b, p);
 		if (kbOpen)
 		{
 			kbPress(b);
 			if (eqNameSubmit) eqNameDone(p);
 			if (plNameSubmit) plNameDone(p);
+			if (fileNameSubmit) fileRenameDone(p);
 			return false;
 		}
 		// Add to... over what plays (or the Playing tab); the browser's is taken below, in its turn
@@ -168,7 +173,8 @@ namespace bp
 		// Not in START's menu, not over a photo (its keys are its own), and nothing with Button hotkeys off: they
 		// have no touch button to stand for
 		// (the manga pages have their own: the reader's chapter before or after, the series page's Download)
-		if ((b == Button::L2 || b == Button::R2) && page != Page::Manga && page != Page::MangaSeries && page != Page::MangaRead)
+		if ((b == Button::L2 || b == Button::R2) && page != Page::Manga && page != Page::MangaSeries && page != Page::MangaRead &&
+			page != Page::DocText && page != Page::DocPages)
 		{
 			if (p.settings.buttonHotkeys && !inMenu && p.playing() && !p.playingPhoto() && p.error.empty() &&
 				(page == Page::Main || page == Page::Tracks || page == Page::Chapters))
@@ -217,6 +223,10 @@ namespace bp
 			}
 			// the tab's page takes the rest (Recent's list, the settings' rows, About's scrolling)
 		}
+		// Files' Copy / Move held: SELECT pastes in this folder, X lets go
+		if (clipKey(b, p)) return false;
+		// Files' document viewers: their own keys (ui_docs.cpp)
+		if (page == Page::DocText || page == Page::DocPages) return docKey(b, p);
 		if (page == Page::Sound) return soundKey(b, p);
 		if (page == Page::Web) return webKey(b, p);
 		if (page == Page::Playing) return playingKey(b, p);
@@ -355,7 +365,7 @@ namespace bp
 			// a section's top: Home, on its tile (All recent: on its card)
 			if (atFirstPage())
 			{
-				if (browseDir == RECENT) goHome(HOME_STRIP, (int)recent.size(), p);
+				if (browseDir == RECENT) goHome(HOME_STRIP, stripCards(), p);
 				else goHome(HOME_GRID, browseTab, p);
 				return false;
 			}
@@ -471,6 +481,8 @@ namespace bp
 			(p.duration <= 0 || std::fabs(shownPosition(p) - seekHeld * p.duration) < 1.0 || SDL_GetTicks() - seekHeldAt > 6000))
 			seekHeld = -1;
 		mangaVideoGuard(p);
+		if (page == Page::DocText || page == Page::DocPages) docTick(p);
+		fileJobTick(p);
 		mangaEngineWatch(p);	// the engine's download sheet: closed when done
 		// the rows' durations: none probed while a file opens; the rows on screen first
 		if (durWorker)
@@ -703,11 +715,15 @@ namespace bp
 			return false;
 		}
 		mangaOn = p.settings.mangaOn;
+		if (fileJob) return fileJobPointer(pt, x, y);
+		if (infoOpen) { if (pt.kind == Pointer::Up) infoOpen = false; return false; }
+		if (clipPointer(pt, x, y, p)) return false;
 		if (kbOpen && panel.on())
 		{
 			kbPointer(pt, x, y);
 			if (eqNameSubmit) eqNameDone(p);
 			if (plNameSubmit) plNameDone(p);
+			if (fileNameSubmit) fileRenameDone(p);
 			return false;
 		}
 		// dark: a touch anywhere brings the panel back, and does nothing else (the finger can't see what's there)
@@ -928,6 +944,7 @@ namespace bp
 		}
 		// the reader's page: its drag area and slider take the finger's moves too (the mini bar's taken above)
 		if (page == Page::MangaRead) return mangaPointer(pt, x, y, p);
+		if (page == Page::DocText || page == Page::DocPages) return docPointer(pt, x, y, p);
 		// a manga source's grid scrolls with the finger: its moves and lift go to it (its down comes below)
 		if (((page == Page::Manga && mangaView == 1) || (page == Page::MangaSeries && mangaSourceSeriesOn())) && pt.kind != Pointer::Down)
 			return mangaPointer(pt, x, y, p);
@@ -1233,6 +1250,25 @@ namespace bp
 				std::to_string(extSheetCursor) + " " + std::to_string(extPressed);
 		// Manga: the tab, each page's cursors and scrolls, the store and the card's scan, the finger's article, the
 		// History's Clear armed; the reader's page when it shows (its status is main's answer)
+		// Files' copy or move: how far, and the file on its way; what's held for Copy / Move
+		photo += fileJobSignature();
+		if (infoOpen) photo += "|info" + infoTitle + std::to_string(infoRows.size());
+		if (clipOp != CLIP_NONE) photo += "|clip" + std::to_string(clipOp) + clipPath + (clipCanPaste() ? "p" : "");
+		if (page == Page::DocText || page == Page::DocPages)
+		{
+			photo += docSignature();
+			// (the pages grid and fullscreen are the manga reader's own drawing: their state as it signs it)
+			if (page == Page::DocPages && mangaPages)
+				photo += "|pg" + std::to_string(mangaPagesCursor) + "," + std::to_string(mangaPagesScroll) + " " +
+					std::to_string(mpTex.size()) + "," + std::to_string(readerThumbs.pages.size());
+			if (page == Page::DocPages && readerStatus.fullscreen)
+			{
+				photo += "|full" + std::to_string(readerBottom.gen) + " " + std::to_string(mfTex.size()) + " " +
+					std::to_string(mfWaiting) + " " + std::to_string(readerBottom.pages.size()) + (SDL_GetTicks() < mfTagUntil ? "T" : "");
+				for (auto& b : readerBottom.boxes)
+					photo += " " + std::to_string(b.page) + ":" + std::to_string((int)std::lround(b.x * 4096)) + "," + std::to_string((int)std::lround(b.y * 4096));
+			}
+		}
 		if (page == Page::Manga || page == Page::MangaSeries || page == Page::MangaRead || page == Page::MangaSources)
 		{
 			char mb[200];

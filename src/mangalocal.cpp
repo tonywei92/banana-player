@@ -2,7 +2,7 @@
 // reading order from manga_names, and archives asked through Cbz (its central directory only, plus one small
 // ComicInfo.xml per archive), so a full card costs listings and not page bytes.
 #include "mangalocal.h"
-#include "cbz.h"
+#include "pagebook.h"
 #include "comicinfo.h"
 #include "manga_names.h"
 #include "playlist.h"	// naturalLess, the order sortPages is built on
@@ -53,17 +53,16 @@ namespace bp
 			return e;
 		}
 
-		// the archives this scanner can open: CBZ is a ZIP, and so is a .zip someone renamed
+		// the one-file chapters this scanner can open (pagebook.h): CBZ (and a .zip renamed), CBR, PDF
 		bool isArchiveName(const std::string& name)
 		{
-			std::string e = extOf(name);
-			return e == "cbz" || e == "zip";
+			// (not an EPUB, a comic's or a novel's: books are read in Files; the manga reader keeps to comics)
+			return isPageBookName(name) && extOf(name) != "epub";
 		}
 
 		std::string stripArchiveExt(const std::string& name)
 		{
-			std::string e = extOf(name);
-			return (e == "cbz" || e == "zip") ? name.substr(0, name.size() - e.size() - 1) : name;
+			return stripBookExt(name);
 		}
 
 		std::string baseName(const std::string& path)
@@ -143,27 +142,21 @@ namespace bp
 			c.number = chapterNumber(c.title);
 			c.volume = volumeNumber(c.title);
 			if (c.volume < 0) c.volume = volOfParent;
-			Cbz z;
-			if (!z.open(path)) return c;	// unreadable: pages stays -1, and there is no metadata to read
-			std::vector<std::string> p = z.pages();
+			std::string err;
+			auto z = openPageBook(path, err);
+			if (!z) return c;	// unreadable: pages stays -1, and there is no metadata to read
+			const std::vector<std::string>& p = z->pages();
 			c.pages = (int)p.size();
 			if (!p.empty()) c.cover = path + "#" + p[0];
 			// ComicInfo.xml as the downloads write it: one look, only to fill what the name doesn't carry
-			for (const CbzEntry& e : z.entries())
+			std::string xml;
+			ComicInfo ci;
+			if (z->comicInfo(xml) && parseComicInfo(xml, ci))
 			{
-				std::string ln;
-				for (char ch : e.name) ln += lower(ch);
-				if (ln != "comicinfo.xml") continue;
-				std::vector<uint8_t> raw;
-				ComicInfo ci;
-				if (z.read(e.name, raw) && parseComicInfo(std::string(raw.begin(), raw.end()), ci))
-				{
-					if (c.number < 0) c.number = numberFromText(ci.number);
-					if (c.volume < 0 && ci.volume >= 0) c.volume = ci.volume;
-					c.ciSeries = ci.series;
-					c.ciSeriesKey = ci.seriesKey;
-				}
-				break;
+				if (c.number < 0) c.number = numberFromText(ci.number);
+				if (c.volume < 0 && ci.volume >= 0) c.volume = ci.volume;
+				c.ciSeries = ci.series;
+				c.ciSeriesKey = ci.seriesKey;
 			}
 			return c;
 		}

@@ -14,7 +14,7 @@
 # dist/BananaPlayer-<version>-aarch64.zip with both; dist/symbols/banana-player-<version>, the player unstripped (for crash.log).
 #
 # Bundled, built from source with only what playing needs: FFmpeg (decoders and demuxers), libplacebo, libass,
-# uchardet (subtitles' code pages) and libmpv, and the few libraries they pull in; libsmb2 (network folders over SMB); Debian's libjpeg-turbo (libjpeg.so.62:
+# uchardet (subtitles' code pages), libarchive (CBR) and libmpv; pdfium (PDF) as its pinned prebuilt release; and the few libraries they pull in; libsmb2 (network folders over SMB); Debian's libjpeg-turbo (libjpeg.so.62:
 # the manga reader's long pages, decoded a band at a time). Taken from BananaOS instead (not
 # bundled): glibc, libstdc++, SDL2, SDL2_ttf, Mesa (EGL/GLES), libdrm, ALSA, FreeType, zlib, libpng, OpenSSL's
 # libcrypto (saved passwords) and libcurl (FTP): its SDL carries BananaOS's own patches (SDL_KMSDRM_FIRST picks the
@@ -27,6 +27,11 @@ LIBASS_VERSION=0.17.3
 MPV_VERSION=v0.40.0
 LIBSMB2_VERSION=6.2
 UCHARDET_VERSION=0.0.8
+# the manga reader's CBR (libarchive: RAR 4 and 5) and the PDF reader (pdfium, a prebuilt release: building it takes
+# Chromium's toolchain; its checksum pinned here)
+LIBARCHIVE_VERSION=3.8.10
+PDFIUM_RELEASE=8111
+PDFIUM_SHA256=042de247138f96341534cccf24ed21c2550a7245b936bb4a60d2340120000f05
 # FFmpeg's configure beyond the version: the mp4 muxer is the web dashboard's Direct Stream (src/web/remux.cpp)
 FFMPEG_CONFIG=mp4mux
 
@@ -66,7 +71,7 @@ for a in "$@"; do case "$a" in --quick) QUICK=1 ;; --clean) CLEAN=1 ;; esac; don
 # the libraries' install, kept in the cache: built again only when a version changes (or --clean)
 PREFIX=/cache/prefix
 export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
-export LD_LIBRARY_PATH=$PREFIX/lib
+export LD_LIBRARY_PATH=$PREFIX/lib:$PREFIX/pdfium/lib	# (pdfium: its release's own folder)
 SRC=/cache/src
 STAMP="$FFMPEG_VERSION+$FFMPEG_CONFIG $LIBPLACEBO_VERSION $LIBASS_VERSION $MPV_VERSION $LIBSMB2_VERSION"
 if [ "$CLEAN" = 1 ] || [ "$(cat $PREFIX/.versions 2>/dev/null)" != "$STAMP" ]; then
@@ -154,6 +159,33 @@ if [ ! -f $PREFIX/lib/libsmb2.so ]; then
 		-DBUILD_SHARED_LIBS=ON -DENABLE_EXAMPLES=OFF -DENABLE_LIBKRB5=OFF -DENABLE_GSSAPI=OFF >/dev/null
 	cmake --build build -j$JOBS >/dev/null && cmake --install build >/dev/null
 fi
+
+# libarchive for CBR files: RAR's own decoders need no other library, so every optional one is off (and its tools)
+echo "== libarchive $LIBARCHIVE_VERSION"
+fetch https://github.com/libarchive/libarchive/releases/download/v$LIBARCHIVE_VERSION/libarchive-$LIBARCHIVE_VERSION.tar.xz libarchive-$LIBARCHIVE_VERSION -J
+if [ ! -f $PREFIX/lib/.libarchive-$LIBARCHIVE_VERSION ]; then
+	cd $SRC/libarchive-$LIBARCHIVE_VERSION
+	# (its release tarball's CMake files leave out their helper modules: configure it is)
+	make distclean >/dev/null 2>&1 || true
+	./configure --prefix=$PREFIX --disable-static --disable-bsdtar --disable-bsdcpio --disable-bsdcat --disable-bsdunzip \
+		--without-openssl --without-mbedtls --without-nettle --without-xml2 --without-expat --without-lzma --without-zstd \
+		--without-lz4 --without-lzo2 --without-bz2lib --without-libb2 --without-cng --disable-acl --disable-xattr >/dev/null
+	make -j$JOBS >/dev/null && make install >/dev/null
+	rm -f $PREFIX/lib/libarchive.a	# (the shared one is linked and bundled)
+	touch $PREFIX/lib/.libarchive-$LIBARCHIVE_VERSION
+fi
+
+# pdfium: the release's arm64 build (static libc++ inside, glibc 2.17 symbols), checked against its checksum
+echo "== pdfium $PDFIUM_RELEASE"
+if [ ! -f $PREFIX/pdfium/.release-$PDFIUM_RELEASE ]; then
+	rm -rf $PREFIX/pdfium && mkdir -p $PREFIX/pdfium
+	curl -sfL -o /tmp/pdfium.tgz https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/$PDFIUM_RELEASE/pdfium-linux-arm64.tgz
+	echo "$PDFIUM_SHA256  /tmp/pdfium.tgz" | sha256sum -c - >/dev/null || { echo "pdfium: checksum mismatch" >&2; exit 1; }
+	tar -xzf /tmp/pdfium.tgz -C $PREFIX/pdfium && rm /tmp/pdfium.tgz
+	# a soname, so the player's NEEDED names the file and not the path it was linked from
+	patchelf --set-soname libpdfium.so $PREFIX/pdfium/lib/libpdfium.so
+	touch $PREFIX/pdfium/.release-$PDFIUM_RELEASE
+fi
 echo "$STAMP" > $PREFIX/.versions
 
 echo "== banana-player"
@@ -161,7 +193,7 @@ echo "== banana-player"
 BPB=/cache/bp-build
 # BP_WEB: libavformat from the FFmpeg above (its .pc files are in $PREFIX/lib/pkgconfig, on PKG_CONFIG_PATH)
 # -g: the copy kept in dist/symbols/ maps crash.log's frames to lines (the bundle's own is stripped)
-cmake -S /src -B $BPB -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-g -DBP_GLES=ON -DBP_NET=ON -DBP_WEB=ON -DBP_TOOLS=OFF \
+cmake -S /src -B $BPB -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS=-g -DBP_GLES=ON -DBP_NET=ON -DBP_WEB=ON -DBP_TOOLS=OFF -DPDFIUM_DIR=$PREFIX/pdfium \
 	-DCMAKE_INSTALL_RPATH='$ORIGIN/../lib' -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON >/dev/null
 # --quick (a push to the handheld) builds the player alone: the tests are the desktop build's job there, and
 # core_test.cpp, which includes most headers, takes about 70 s to compile, so a change to settings.h took 73 s
@@ -215,6 +247,13 @@ cp /src/third_party/lexbor/LICENSE "$L/lexbor-LICENSE.txt"
 cp /usr/share/doc/libjpeg62-turbo/copyright "$L/libjpeg-turbo-COPYRIGHT.txt"
 # uchardet (bundled: MPL 1.1, or GPL 2+ / LGPL 2.1+)
 cp /cache/src/uchardet-$UCHARDET_VERSION/COPYING "$L/uchardet-COPYING.txt"
+# libarchive (BSD) and pdfium (BSD-3, with its third parties' licences in its folder)
+cp /cache/src/libarchive-$LIBARCHIVE_VERSION/COPYING "$L/libarchive-COPYING.txt"
+cp $PREFIX/pdfium/LICENSE "$L/pdfium-LICENSE.txt"
+mkdir -p "$L/pdfium" && cp $PREFIX/pdfium/licenses/* "$L/pdfium/"
+# the TXT viewer's reading fonts (OFL), beside the others
+cp /src/assets/fonts/licenses/Lora-OFL.txt "$L/Lora-OFL.txt"
+cp /src/assets/fonts/licenses/JetBrainsMono-OFL.txt "$L/JetBrainsMono-OFL.txt"
 # the launcher (the Store's menu.launch, and what the Ports shelf's script runs), the version the Store reads
 # (package.version_file) and the tile's picture (menu.media.image)
 cp /src/packaging/launch.sh "$B/launch.sh"

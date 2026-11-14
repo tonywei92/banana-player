@@ -276,7 +276,7 @@ namespace bp
 		}
 	}
 
-	void PageRenderer::uploadOne()
+	bool PageRenderer::uploadOne()
 	{
 		// the first page with a tile still down; one tile per frame keeps a frame under its 16 ms
 		for (auto& p : pages)
@@ -308,18 +308,18 @@ namespace bp
 					it = pages.erase(it);
 				}
 				Page* q = find(index);
-				if (!q) return;
+				if (!q) return false;
 				if (freed > 0 && q->oomTries == 0)
 				{
 					q->oomTries++;
 					fprintf(stderr, "reader: GPU out of memory at page %d (%zu MB of textures): freed %zu tiles, trying again\n",
 						index + 1, bytes >> 20, freed);
-					return;
+					return false;
 				}
 				q->stalled = true;
 				fprintf(stderr, "reader: GPU out of memory at page %d (%zu MB of textures): waiting for Try again\n", index + 1,
 					bytes >> 20);
-				return;
+				return false;
 			}
 			gl->TexParameteri(TEXTURE_2D, MIN_FILTER, LINEAR);
 			gl->TexParameteri(TEXTURE_2D, MAG_FILTER, LINEAR);
@@ -328,8 +328,9 @@ namespace bp
 			gl->PixelStorei(UNPACK_ALIGNMENT, 4);	// (GL's default, as mpv expects it)
 			bytes += (size_t)p.w * t.h * 4;
 			if (++p.uploaded == p.tiles.size()) p.rgba.reset();	// all up: the renderer lets go of the pixels
-			return;
+			return true;
 		}
+		return false;
 	}
 
 	void PageRenderer::quad(float x0, float y0, float x1, float y1, float v0, float v1, int w, int h)
@@ -361,6 +362,8 @@ namespace bp
 			dead.clear();
 		}
 		uploadOne();
+		if (uploadAll)
+			for (int k = 0; k < 256 && uploadOne(); k++) {}
 		// a sharper page all up: it takes the old one's place now, in one frame
 		for (auto it = pages.begin(); it != pages.end();)
 		{
@@ -385,7 +388,7 @@ namespace bp
 		gl->VertexAttribPointer(aPos, 2, FLOAT, 0, 16, (const void*)0);
 		gl->VertexAttribPointer(aUv, 2, FLOAT, 0, 16, (const void*)8);
 		gl->ActiveTexture(TEXTURE0);
-		gl->Uniform4f(uTint, 1, 1, 1, 1);
+		gl->Uniform4f(uTint, tint[0], tint[1], tint[2], 1);
 		bool pending = false;
 		spunLast = false;
 		onScreen.clear();
@@ -419,7 +422,7 @@ namespace bp
 							gl->Uniform4f(uTint, lum, lum, lum * 0.95f, 1);
 							quad(dx - dot, dy - dot, dx + dot, dy + dot, 0, 1, w, h);
 						}
-						gl->Uniform4f(uTint, 1, 1, 1, 1);
+						gl->Uniform4f(uTint, tint[0], tint[1], tint[2], 1);
 						spunLast = true;
 					}
 				}
@@ -430,6 +433,7 @@ namespace bp
 			{
 				gl->Enable(BLEND);
 				gl->BlendFunc(0x0302 /* GL_SRC_ALPHA */, 0x0303 /* GL_ONE_MINUS_SRC_ALPHA */);
+				if (pl.alpha < 1) gl->Uniform4f(uTint, tint[0], tint[1], tint[2], std::max(0.f, pl.alpha));
 			}
 			for (auto& t : p->tiles)
 			{
@@ -439,7 +443,11 @@ namespace bp
 				gl->BindTexture(TEXTURE_2D, t.tex);
 				quad(pl.x, y0, pl.x + pl.w, y1, 0, 1, w, h);
 			}
-			if (pl.blend) gl->Disable(BLEND);
+			if (pl.blend)
+			{
+				gl->Disable(BLEND);
+				gl->Uniform4f(uTint, tint[0], tint[1], tint[2], 1);
+			}
 		}
 		// mpv draws next in this context: what it might rely on goes back to nothing bound
 		gl->DisableVertexAttribArray(aPos);

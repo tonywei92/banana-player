@@ -144,6 +144,11 @@ namespace bp
 		return denied(deny, r) ? "" : v;
 	}
 
+	bool deniedPath(const std::vector<std::string>& deny, const std::string& real)
+	{
+		return denied(deny, real);
+	}
+
 	bool validName(const std::string& n)
 	{
 		if (n.empty() || n.size() > 255 || n == "." || n == "..") return false;

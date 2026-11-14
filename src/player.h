@@ -230,6 +230,9 @@ namespace bp
 		void clearHistory();
 		// Home's Recent: one taken out of the play history; one played from its start next time (its tracks kept)
 		void removeFromHistory(const std::string& path);
+		// a document opened from Files (a TXT, EPUB, PDF, a comic): in Recent as a video is (history off or
+		// incognito: not)
+		void addRecent(const std::string& path);
 		void forgetPosition(const std::string& path);
 		// the browser's folder, kept (in resume.tsv) only while Remember last folder is on
 		void setLastFolder(const std::string& dir);

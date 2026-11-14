@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "manganet.h"
 #include "ui_internal.h"
+#include "pagebook.h"
 #include "manga_ui_logic.h"
 #include <algorithm>
 #include <cmath>
@@ -17,7 +18,8 @@ namespace bp
 
 		// the photo viewer's steps (FEATURES.md, "Looking at a photo"): 1.0 is the fit, and the reader draws its pages
 		// from the same geometry, so Up/Down and the Reading menu's Zoom row walk the same ladder
-		constexpr int MANGA_ZOOMS[] = {100, 150, 200, 300, 400, 600, 800};
+		// small steps where reading zooms most (just past the fit), wider ones further in
+		constexpr int MANGA_ZOOMS[] = {100, 110, 125, 140, 160, 180, 200, 225, 250, 300, 350, 400, 500, 600, 700, 800};
 		constexpr int MANGA_ZOOM_STEPS = (int)(sizeof MANGA_ZOOMS / sizeof MANGA_ZOOMS[0]);
 
 		int chapterIndexOf(const LocalSeries& s, const std::string& chapterId)
@@ -1543,7 +1545,7 @@ namespace bp
 		if (n == 0)
 		{
 			drawEmpty(G_BOOK, "Your library is empty",
-				"Put CBZ files or folders of pictures in a Manga folder on your card, or add series from Browse.", nullptr);
+				"Put CBZ files (or CBR, PDF) or folders of pictures in a Manga folder on your card, or add series from Browse.", nullptr);
 			drawHints({{"B", "Back"}});
 			return;
 		}
@@ -1692,8 +1694,8 @@ namespace bp
 		{
 			if (n == 0)
 			{
-				drawEmpty(G_FOLDER, "No series found", "Copy manga into " + mangaLocalFolder() + ". Y shows how.", nullptr);
-				drawHints({{"Y", "How to add"}, {"B", "Back"}});
+				drawEmpty(G_FOLDER, "No series found", "Copy manga into " + mangaLocalFolder() + ". X shows how.", nullptr);
+				drawHints({{"X", "How to add"}, {"B", "Back"}});
 				if (mlocSheet == MLS_HELP) drawMangaLocalSheet(p);
 				return;
 			}
@@ -1704,12 +1706,16 @@ namespace bp
 				int y = MG_ROW_TOP + (i - mListScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
 				bool at = i == mListCursor;
 				if (at) drawFocus({16, y, 608, ROW_H - 4});
-				drawTextMid(s.title, 1, at ? ACCENT : TEXT, 32, mid, 470);
+				// what its chapters are: comics (CBZ, CBR), PDFs, or folders of pictures
+				const Glyph* g = &G_PICTURE;
+				if (!s.chapters.empty() && s.chapters[0].archive) g = isPdfName(s.chapters[0].path) ? &G_PDF : &G_COMIC;
+				drawGlyphMid(*g, 44, mid, at ? ACCENT : DIM);
+				drawTextMid(s.title, 1, at ? ACCENT : TEXT, 64, mid, 440);
 				drawTextMid(std::to_string(s.chapters.size()) + (s.chapters.size() == 1 ? " chapter" : " chapters"),
 					0, at ? DIM_ON : DIM, 608, mid, 160, 1);
 			}
 			drawScrollBar(MG_ROW_TOP, MG_ROWS * ROW_H - 4, mListScroll, MG_ROWS, n);
-			drawHints({{"A", "Open"}, {"X", "Options"}, {"Y", "How to add"}, {"B", "Back"}});
+			drawHints({{"A", "Open"}, {"Y", "Options"}, {"X", "How to add"}, {"B", "Back"}});
 			if (mlocSheet != MLS_NONE) drawMangaLocalSheet(p);
 			return;
 		}
@@ -1861,7 +1867,7 @@ namespace bp
 		drawTextMid(mangaTitle(mangaReadSeriesId), 0, DIM, 72, 50, 540);
 		// the big surface: it shows the pages' place and takes the finger's drag
 		drawBox(mangaAreaRect(), SURFACE, R_TILE);
-		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
+		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Vertical scroll"};
 		int m = readerStatus.mode >= 0 && readerStatus.mode < MANGA_MODES ? readerStatus.mode : 0;
 		if (readerStatus.failedHere) drawMangaRetry(false);
 		else
@@ -1892,12 +1898,14 @@ namespace bp
 				: "You\xE2\x80\x99re caught up", 0, next ? ACCENT : DIM, W / 2, miniUp ? 360 : 384, 560, 2);
 		Rect pb = mangaPrevRect(), fb = mangaFullRect(), nb = mangaNextRect();
 		drawBox(pb, mangaPressed == MG_PREV ? PRESSED : BUTTON, R_BUTTON);
-		drawButton(pb, &G_PREV, "Prev chapter", nullptr, !prev, 0);	// (L2/R2: in the hints)
+		// each with its key under it (Button hotkeys on), as the player's buttons
+		bool keys = p.settings.buttonHotkeys;
+		drawButton(pb, &G_PREV, "Prev chapter", keys ? "L2" : nullptr, !prev, 0);
 		// between them, as big as they are: fullscreen, exactly as SELECT turns it on
 		drawBox(fb, mangaPressed == MG_FULL ? PRESSED : BUTTON, R_BUTTON);
-		drawButton(fb, nullptr, "Fullscreen", nullptr, false, 0);
+		drawButton(fb, nullptr, "Fullscreen", keys ? "SELECT" : nullptr, false, 0);
 		drawBox(nb, mangaPressed == MG_NEXT ? PRESSED : BUTTON, R_BUTTON);
-		drawButton(nb, &G_NEXT, "Next chapter", nullptr, !next, 0);
+		drawButton(nb, &G_NEXT, "Next chapter", keys ? "R2" : nullptr, !next, 0);
 		// what the keys do: the useful ones, one line (the Reading menu, START, lists the rest); the fullscreen
 		// button is on the row above, so SELECT needn't be named
 		drawHints({{"UP/DOWN", "Zoom"}, {"L/R", "Page"}, {"START", "Menu"}, {"B", "Close"}});
@@ -2179,7 +2187,7 @@ namespace bp
 		drawTextMid("START \xC2\xB7 B Close", 0, DIM, W - 24, 150, 300, 1);
 		static const char* VIEWS[MV_COUNT] = {"One screen", "Fullscreen", "Book"};
 		static const char* HOLDS[MANGA_BOOKS] = {"", "Top screen left", "Top screen right"};
-		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Strip"};
+		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Vertical scroll"};
 		static const char* FITS[MANGA_FITS] = {"Page", "Width", "Fill"};
 		int view = mangaViewNow();
 		bool book = view == MV_BOOK;

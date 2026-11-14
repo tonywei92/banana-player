@@ -31,9 +31,13 @@ namespace bp
 		bool draw(const Strip& strip, int w, int h);
 		// the same for any layout: each page's rectangle in view pixels (the paged modes)
 		// spin: a page still on its way (not one that failed): its grey place shows a ring of dots turning
-		struct Placed { int page; float x, y, w, h; bool spin = false; bool blend = false; };	// blend: a card over the pages
+		struct Placed { int page; float x, y, w, h; bool spin = false; bool blend = false; float alpha = 1; };	// blend: a card over the pages (alpha: its fade)
 		bool draw(const std::vector<Placed>& placed, int w, int h);
 		size_t textureBytes() const { return bytes; }
+		// every pixel times this colour (a reading filter: warm, dim); 1,1,1 is none
+		void setTint(float r, float g, float b) { tint[0] = r; tint[1] = g; tint[2] = b; }
+		// all waiting tiles up in one draw, not one a draw (the text viewer's rows: small, and wanted at once)
+		void setUploadAll(bool on) { uploadAll = on; }
 		// the ring's step (the caller's clock: one step a frame it asks for), and whether the last draw showed one
 		void setSpinStep(int s) { spinStep = s; }
 		bool spun() const { return spunLast; }
@@ -62,7 +66,7 @@ namespace bp
 		};
 		Page* find(int index);
 		const Page* find(int index) const;
-		void uploadOne();
+		bool uploadOne();	// true: a tile went up
 		void freePage(Page& p);
 		void quad(float x0, float y0, float x1, float y1, float v0, float v1, int w, int h);
 
@@ -71,6 +75,8 @@ namespace bp
 		bool gles = false;
 		unsigned prog = 0, vbo = 0, vao = 0, grey = 0, white = 0;
 		int spinStep = 0;
+		float tint[3] = {1, 1, 1};
+		bool uploadAll = false;
 		int ooms = 0;
 		std::set<int> onScreen;	// the pages the last draw placed (an out-of-memory upload frees the rest)
 		bool spunLast = false;

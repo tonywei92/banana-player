@@ -16,6 +16,7 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "pagebook.h"
 #include "durworker.h"
 
 namespace bp
@@ -211,7 +212,7 @@ namespace bp
 		{
 			homeListedFor = p.currentPath();
 			// the Recent strip listed again, the focus kept on the file it was on (gone: the card that took its place)
-			std::string was = homeStrip < (int)recent.size() ? recent[homeStrip].path : "";
+			std::string was = homeStrip < stripCards() ? recent[homeStrip].path : "";
 			int wasAt = homeStrip;
 			listRecent(p);
 			if (homeFresh)
@@ -225,7 +226,7 @@ namespace bp
 				int found = -1;
 				for (size_t i = 0; i < recent.size() && !was.empty(); i++)
 					if (recent[i].path == was) found = (int)i;
-				homeStrip = was.empty() ? stripCount() - 1 : found >= 0 ? found : std::min(wasAt, std::max(0, (int)recent.size() - 1));
+				homeStrip = was.empty() ? stripCount() - 1 : found >= 0 ? found : std::min(wasAt, std::max(0, stripCards() - 1));
 				if (recent.empty() && homeZone == HOME_STRIP)
 				{
 					homeZone = HOME_GRID;
@@ -526,7 +527,7 @@ namespace bp
 		if (atHome())
 		{
 			if (homeZone == HOME_GRID) return SECTION_NAMES[homeGrid];
-			return homeStrip < (int)recent.size() ? recent[homeStrip].path : "All recent";
+			return homeStrip < stripCards() ? recent[homeStrip].path : "All recent";
 		}
 		if (cursor < 0) return upRow() ? ".." : "";
 		return cursor < (int)browsePaths.size() ? browsePaths[cursor] : "";
@@ -540,12 +541,12 @@ namespace bp
 			// the Recent cards (shown: in the strip's view now), then the tiles: "card" or "tile", its name, its line
 			int off = (int)std::lround(stripOff);
 			if (recent.empty()) out.push_back("shown    (no Recent: a line instead of the strip)");
-			for (int i = 0; !recent.empty() && i < (int)recent.size() + 1; i++)
+			for (int i = 0; !recent.empty() && i < stripCount(); i++)
 			{
 				int x = 16 + i * STRIDE - off;
 				bool at = homeZone == HOME_STRIP && homeStrip == i;
 				std::string l = std::string(x + CARD_W > 0 && x < W ? "shown  " : "hidden ") + (at ? "> " : "  ") + "card ";
-				if (i < (int)recent.size())
+				if (i < stripCards())
 					l += recent[i].name + "  | " + recent[i].sub + (recent[i].net ? " [net]" : "") + " \xC2\xB7 " + recent[i].where;
 				else l += "All recent  | " + std::to_string(recent.size()) + " played";
 				out.push_back(l);
@@ -696,6 +697,8 @@ namespace bp
 #endif
 		}
 		else if (folder) items = {CTX_HIDE, CTX_REFRESH, CTX_CANCEL};
+		// a file of the cards: Copy..., Move..., Rename..., Delete (a folder's come before its Hide)
+		else if (how != MENU_X && fileOpsOn(row)) items = {CTX_CANCEL};
 		else if (netFolder && how != MENU_X && plStore)
 		{
 			// a server's folder: its videos and songs added to a playlist
@@ -710,19 +713,27 @@ namespace bp
 		if (how == MENU_X && !isNetPath(browseDir) && (browseDir.empty() || !pseudoDir(browseDir)))
 			items.insert(items.end() - 1, CTX_HIDDEN);
 		if (folder || netFolder) ctxFolder = browsePaths[row];
+		bool fileOps = how != MENU_X && fileOpsOn(row);
+		if (fileOps) items.insert(items.begin() + (folder && plStore ? 1 : 0), {CTX_F_INFO, CTX_F_COPY, CTX_F_MOVE, CTX_F_RENAME, CTX_F_DELETE});
+		// X: the highlighted file's or folder's Info (first, above Select files)
+		bool infoX = how == MENU_X && fileOpsOn(row);
 		if (selectFiles) items.insert(items.begin(), CTX_SELECT_FILES);
+		if (infoX) items.insert(items.begin(), CTX_F_INFO);
 		ctxOpen = true;
 		ctxCursor = 0;
 		ctxItems = items;
 		ctxServer = id;
 		ctxStatus.clear();
 		ctxArmed = false;
-		ctxPath = folder && id.empty() ? browsePaths[row] : "";
+		ctxPath = (folder || fileOps || infoX) && id.empty() ? browsePaths[row] : "";
 	}
 
 	void Ui::chooseBrowseMenu(int item, Player& p)
 	{
 		int what = item >= 0 && item < (int)ctxItems.size() ? ctxItems[item] : CTX_CANCEL;
+		// Files' own: Copy..., Move..., Rename..., Delete (ui_fileops.cpp)
+		if (what == CTX_F_INFO) { ctxOpen = false; openFileInfo(ctxPath, ""); return; }
+		if (what >= CTX_F_COPY && what <= CTX_F_DELETE) { fileOpsAct(what, ctxPath, p); return; }
 		// (before the playlists' below: their numbers come after them)
 		if (what == CTX_WEB) { ctxOpen = false; openWeb(); return; }
 		if (what >= CTX_R_PLAY)
@@ -760,6 +771,17 @@ namespace bp
 			{
 			case CTX_SETTINGS: openMainMenu(p, TAB_SETTINGS); break;
 			case CTX_R_START:
+				// a document: its place forgotten, then opened
+				if (isDocumentName(path) || isComicName(path))
+				{
+					docPlacesLoad();
+					ResumeEntry e;
+					e.path = path;
+					docPlaces->put(e);
+					docPlacesDirty = true;
+					openFile(path, p);
+					break;
+				}
 				// (what plays: from its start, on the player)
 				if (p.playing() && p.currentPath() == path)
 				{

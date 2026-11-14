@@ -50,6 +50,8 @@ export function openSSE() {
 	on('manga', () => set({ mangaTick: (store.mangaTick || 0) + 1 }));
 	// the handheld's history changed (played, removed, cleared, here or there): Recent loads again
 	on('recent', () => set({ recentTick: (store.recentTick || 0) + 1 }));
+	// a Copy or Move job started or ended on the handheld (jobs.js asks how they stand)
+	on('jobs', () => set({ jobsTick: (store.jobsTick || 0) + 1 }));
 	on('bye', d => {
 		const r = d.reason || 'quit';
 		if (r === 'pin') return signOutHere('pin');

@@ -41,4 +41,8 @@ namespace bp
 
 	// a page's file whole (64 MB at most); false with a few words in error
 	bool readPageFile(const std::string& path, std::vector<uint8_t>& bytes, std::string& error);
+
+	class PageBook;
+	// one page of a book (pagebook.h) as pixels: a PDF's drawn, an archive's read and decoded as above
+	PageImage bookPage(PageBook& book, int index, int targetW, long long maxPixels = 0);
 }

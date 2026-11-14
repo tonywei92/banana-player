@@ -1964,6 +1964,14 @@ namespace bp
 		prop("lavfi-complex", "");
 	}
 
+	void Player::addRecent(const std::string& path)
+	{
+		if (!settings.keepHistory || incognito) return;
+		played.add(path);
+		recentSer++;
+		if (!opts.stateDir.empty()) writeFile(opts.stateDir + "/history.tsv", played.serialize());
+	}
+
 	void Player::clearHistory()
 	{
 		played.clear();

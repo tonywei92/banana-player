@@ -25,6 +25,8 @@ Everything Banana Player does, button by button. For installing it, see the [REA
 | **Video** | MP4, MKV, WebM, AVI, MOV, TS, M4V, MPG, WMV, FLV and more: H.264, HEVC, VP9, AV1, MPEG-2/4… |
 | **Music** | MP3, FLAC, OGG, WAV, M4A, M4B (audiobooks), AAC, Opus, WMA, AIFF, APE and more |
 | **Photos** | JPG, PNG, WebP, GIF (animated too), BMP, TIFF, AVIF |
+| **Documents** | TXT (any size), EPUB, PDF, opened from Files ([Documents](#documents)) |
+| **Comics** | CBZ, CBR and PDF in the Manga reader ([Extensions](#extensions)); EPUB comics in Files |
 | **Subtitles** | Inside the video (SRT, ASS/SSA, PGS, VobSub, VTT), or files next to it (`movie.srt`, `movie.en.ass`) |
 | **Languages** | Subtitles, titles and file names in Latin scripts (Vietnamese too), Cyrillic, Greek, Chinese, Japanese, Korean, Thai, Arabic, Hebrew and Hindi |
 
@@ -35,7 +37,7 @@ HEVC (x265), may drop frames. **Info** shows how it's keeping up.
 
 Open Banana Player and the bottom screen shows **Home**:
 
-- **Recent**, along the top: a card for each of the last 30 things you played, newest first, with how far you got
+- **Recent**, along the top: a card for each of the last 5 things you played or read (the rest in **All recent**), newest first, with how far you got
   (`0:27 / 0:52`, or `Played · 3:12`), a bar, and a network mark for a file on a server. **A** plays it (from where you
   left off), **Y** opens its menu: **Resume from…** (or **Play**), **Play from the start**, **Show in folder** (opens
   Files or Network on that file), **Add to playlist…**, **Remove from Recent**. The last card, **All recent**, opens
@@ -75,6 +77,11 @@ the folder's photos, and from a video or a song through its videos and songs. Wh
 its folder on that file.
 
 ## Playing while you browse
+
+A file picked in Files plays with the rest of its folder after it (**Up next**): its videos and songs only, never its
+photos, documents or other files. One the handheld can't play (a damaged file, a format it has no decoder for) stops
+with a note when you pick it; reached by **Next**, **Previous** or the end of the one before, it's skipped with a note
+(**… can't be played · skipped**) and the next one plays.
 
 Leaving the player doesn't stop what plays. **B** (or **Back**, or **<**) on the playing screen takes you to the list,
 and the song or video goes on: a video keeps playing full size on the top screen, a song keeps its visualizer or art.
@@ -277,19 +284,30 @@ See [Photos](#photos) for the touch screen.
 
 | Button | What it does |
 |---|---|
-| **A** (or tap it) | Open the folder, play the file, or open the playlist |
+| **A** (or tap it) | Open the folder, play the file (or open a document), or open the playlist. Files lists every file of the cards; one nothing here opens says so |
 | **B** or **Back** | Up one folder; at a section's top, back to Home |
 | **..** (the first row) | In any folder below a section's top (a card's folder, a server's, a playlist): up one, as **B** goes. A folder opens on its first item, an empty one on this row. It's never ticked or counted |
 | **UP / DOWN** | Move |
 | **LEFT / RIGHT** | Page up / down |
 | **L / R** | Previous / next section: Files, Playlists, Network, Extensions |
-| **X** | Options: **Refresh** (read the folder again), and on a folder **Hide folder** / **Unhide folder** (or hold the folder on the touch screen). In Files: **Show hidden folders**. In Files and Network: **Select files**, to tick files and add them to a playlist. In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: Home's options |
+| **X** | Options: **Info** on the file or folder the cursor is on (as Y's), **Refresh** (read the folder again), and on a folder **Hide folder** / **Unhide folder** (or hold the folder on the touch screen). In Files: **Show hidden folders**. In Files and Network: **Select files**, to tick files and add them to a playlist. In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: Home's options |
 | **Hold** (touch screen) | On a file in Files or Network: starts selecting, with that file ticked |
-| **Y** | On a folder: **Add to playlist…** (first). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
+| **Y** | On a file or folder of the cards: **Info** (its name, kind, size (a folder's with everything in it), length, where it is, when it was changed, its full path), **Copy…**, **Move…**, **Rename…**, **Delete** (press twice: it's gone for good) ([below](#copy-move-rename-delete)). On a folder: **Add to playlist…** (first). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
 | **SELECT** | Back to what plays (the playing screen); in select mode, Select all |
 | **L3** (press the stick) | Like / Unlike what plays |
 | **START** | Menu (on its **Playing** tab while something plays) |
 | **Mini bar** (touch screen) | On every page but the player: tap it for the playing screen · its play mark: play / pause · hold: its menu |
+
+### Copy, move, rename, delete
+
+**Y** on a file or folder in Files: **Copy…** or **Move…** holds it while you go to the folder it goes in (on the same
+card or the other one); a bar along the foot says what's held, and **SELECT** (or **Copy here** / **Move here**) puts it
+there, **X** (or **Cancel**) lets it go. Something of the same name already there is never replaced: the new one is
+called "name (2)". A move on the same card is instant. A copy, or a move to the other card, shows its progress (a bar,
+how much of how much, the file on its way) over the whole screen until it ends; **B** or **Cancel** stops it, and
+nothing half-copied is left (a move removes the original only once the copy is whole). It checks first that there's
+room, and that a FAT card isn't asked to hold a file of 4 GB or more. **Rename…** types the new name on the keyboard.
+What's playing can't be moved, renamed or deleted.
 
 ### The menu (START)
 
@@ -342,6 +360,91 @@ The next photo opens at the same zoom, in the same corner, which suits scanned c
 **Keep zoom between photos**). A song or video playing when you open a photo plays on behind it (see
 [Playing while you browse](#playing-while-you-browse)). Camera photos (JPEG) taken sideways are shown upright, and animated GIFs play. Photos don't go into
 Recent. **Info** shows the photo's size, format, and when and with which camera it was taken.
+
+## Documents
+
+Files lists text files, books and PDFs with the videos, songs and photos, and **A** opens them in a reader of their
+own. Each opens where you left it, and goes into Recent (its card says the page, or how far through). Comics (CBZ, CBR)
+open the same way as a PDF, with the Manga reader turned on (Extensions); without it, Files says to turn it on.
+
+### Text and books (TXT, EPUB)
+
+A `.txt` file, or an EPUB that is a book of text, is shown on the top screen as a page of text that you scroll. The
+bottom screen holds the controls: how far through you are (a bar: tap or drag it to go there), a big area to drag the
+text with your finger (let go while moving and it glides on; a tap on its upper half goes a screen back, on its lower
+half a screen on), and **Contents**, **Bookmarks**, **Options** (Text options) and **Book mode**, each with its key
+under it.
+
+| Button | What it does |
+|---|---|
+| **UP** / **DOWN** | A few lines up or down |
+| **LEFT** / **RIGHT**, **L** / **R**, **A** | A screen back or on |
+| **L2** | Back to the start |
+| **SELECT** | **Book mode** (below) |
+| **X** | **Bookmarks**: add one here, go to one, delete one |
+| **Y** | **Contents** (an EPUB's chapters): **A** goes to one |
+| **START** | **Text options** |
+| **L3** (press the stick) | **Find** (below) |
+| **B** | Back to Files |
+
+**Book mode:** hold the handheld sideways like an open book, and each screen shows a page of text, upright, the text going
+on from the left page to the right one. **UP** and **DOWN** turn the pages the way they point as you hold it (as do **L**
+/ **R** and **A**), or swipe along the bottom screen; a tap near either end of the bottom screen turns that way, a tap in
+its middle opens **Text options**. Each page shows how far through you are at its foot. **B** (or **SELECT**) goes back
+to the scroll; **B** there closes the document. Turn it on with **SELECT**, the **Book mode** button, or Text options › **View**; **Hold** says which side the top screen is on (left or
+right), and the D-pad follows it. Going back a page may split the text a little differently than going on did, as the
+pages are made from where you are, never from the start of the book. A turn folds the page at the spine, the hinge between the screens, as a page turns in a book: going on, the
+right-hand page folds away and the new left-hand one opens over the old (back, the other way round). Text options ›
+**Page turn** (Fold or Off) turns the fold off, and the pages change at once. Each turn says **Next page** or
+**Previous page** with how far through you are, upright as the pages are, and fades out after a moment.
+
+**Find** (**L3**, or Text options › **Find…**): type a word or phrase, and the text goes to the next place it shows
+(from where you are, round past the end), with every match marked. **R** goes to the next, **L** the one before,
+**B** leaves Find. Letters A–Z match in any case. In a TXT of any size the search runs over the file as it is on the
+card, so it's quick; a book is searched chapter by chapter. While it runs, a sheet shows how far it got (**B** stops
+it); a word says when there's nothing more to find.
+
+**Bookmarks** (**X**, the button, or Text options › **Bookmarks**): **Add a bookmark here** keeps the place with its first
+words; the list, in reading order, goes to one with **A** and deletes one with **X** (twice).
+
+**Text options:** **Find…**, **Bookmarks**, **View** (Scroll or Book mode), **Hold** and **Page turn** (in Book mode), **Font** (Serif, Sans, Mono, Pixel, Pixel CJK), **Text size** (five sizes), **Line spacing**,
+**Margins**, **Colours** (Dark, Light, Sepia, Black), **Filter** (Off, Warm, Warmer, Dim: a warm, yellowish light is
+easier on the eyes at night) and **Encoding** (a TXT only: Auto, or the code page an old file was written in, when
+its letters come out wrong). They're kept for the next file. To go anywhere in the text, tap or drag the bar at the
+top of the bottom screen.
+
+A TXT of any size opens at once and jumps anywhere at once: only the text on the screen is ever read, so a file of
+hundreds of megabytes is as quick as a short one. Its encoding is found by itself (UTF-8, UTF-16, or an old code page
+such as Windows-1250 or -1251). A book keeps its headings, paragraphs, bold and italic, quotes and pictures, in the
+viewer's own font and colours. Letters a font doesn't have (Chinese, Japanese, Korean, Thai, Arabic, Hebrew, Hindi)
+come from the player's other fonts.
+
+### PDF (and comics as EPUB)
+
+A PDF, or an EPUB that is a comic (a picture a page), opens a page at a time, sharp at any zoom: each page is drawn
+for the size it's shown at.
+
+- **Single page** (the first time): the bottom screen shows the page small, in the **pan area**, with a box around
+  the part you see on top, as with a photo: drag the box to look around, tap the small page to look there, double-tap
+  to zoom to 200% or back. Beside it: **Prev**, **Next**, **Zoom −**, **Zoom +**, **Page fit** (Page or Width), **Filter**,
+  **Pages** and **Options**, and under them **Vertical scroll** (**X**), to change to the other view.
+- **Vertical scroll**: the pages one under the other, scrolled with a finger on the bottom screen's big area, or a
+  screenful at a time with **LEFT/RIGHT** (and **A**).
+  **SELECT** (or **Fullscreen**) shows the strip across both screens; **SELECT** or **B** goes back to one.
+
+| Button | What it does |
+|---|---|
+| **LEFT** / **RIGHT** | Back / on: through a zoomed page first, then to the page before or after |
+| **L** / **R** | The page before / after, straight to it |
+| **UP** / **DOWN** | Zoom in / out (both views, as in the manga reader and the photo viewer) |
+| **A** | Single page: 200% or back to the whole page. Vertical scroll: on |
+| **X** | Single page or Vertical scroll (kept for the next PDF) |
+| **Y** | **Pages**: every page small; **A** goes to one |
+| **START** | **Options**: View, Fullscreen (Vertical scroll), Filter, Page fit (Page or Width), Zoom, Pages |
+| **B** | Back to Files |
+
+**Filter** (Off, Warm, Warmer, Dim) tints the pages, on both screens, to rest the eyes. It's the PDF viewer's own; the
+Manga reader has none. A PDF locked with a password says so and doesn't open.
 
 ## Picture size
 
@@ -661,13 +764,22 @@ handheld, carries on at 1:27"):
   cancel one, **Retry** a failed one, **Pause** (what's on its way starts again from the beginning), **Cancel all**.
   When all are up, the key ticks and a note says where they went, with **Show**. Uploads carry on while you move
   between pages, and the key stays on every page (not over the player) while they run or failed.
-- **New folder**, **Rename**, **Move**, **Download**, and **Delete** (permanent: it asks first and can't be undone).
+- **New folder**, **Rename**, **Move**, **Copy**, **Download**, and **Delete** (permanent: it asks first and can't be undone).
+- **Move…** and **Copy…** (a row's **⋯**, or the selection's band) open a folder picker. With a second card in, a
+  choice at its top switches between the handheld's places (**This card**, **Second card**), so files and folders go
+  from one card to the other. Nothing is ever replaced: an item whose name is taken there is left where it was, and
+  **Copy here** is off in the item's own folder. A move on one card is instant. A copy, or a move to the other card,
+  runs on the handheld and carries on with the page closed: a round key at the bottom right fills by the bytes copied
+  (**53%**), and a tap shows what it's copying, how much of how much, and **Cancel**, which removes what was half
+  copied. A move removes the originals only once their copies are in place. It checks the room first (and that no file
+  is over 4 GB for a card that can't hold one), and a toast says how it went, with **Show**.
 - **Play** a file or folder on the handheld or in this browser, or **Add to playlist**.
 - **Select** several files and folders to do any of these at once (or a long press on a row; on a computer, the **Select**
   button, or the box that fades in over a row's icon after a moment's hover). A band of actions floats at the bottom. Rename works on one item at a
   time.
 - **Up a folder** (the first row, **..**, and the arrow beside the folder path) goes to the parent folder;
-  on a computer **Backspace** or **Alt+Up** does too. A place's top has none.
+  on a computer **Backspace** or **Alt+Up** does too. With two cards in, a card's top goes up to the list of cards
+  (the path starts with **Cards**); with one, its top has none.
 - Songs and videos on the card show their length before their size (`3:34 · 3.5 MB · Nov 10, 2026`), asked of the
   handheld for the rows as they scroll into view (none for the formats and files the handheld's list shows none for).
 - On a computer, **Filter this folder** narrows the list as you type (**/** goes there).
@@ -777,8 +889,8 @@ each time you open the app:
 
 - a folder of pictures is a chapter;
 - a folder of chapters (folders of pictures, or `.cbz` files) is a series;
-- a `.cbz` file (or a `.zip` renamed to one) is a chapter, and one lying in the Manga folder itself is a series of a
-  single chapter;
+- a `.cbz` file (or a `.zip` renamed to one), a `.cbr` (or `.rar`) or a `.pdf` is a chapter, and one lying in the Manga
+  folder itself is a series of a single chapter (EPUBs and text files aren't read here: Files opens them);
 - one level of volume folders is read as well: a **Vol 1** folder holds the chapters of that volume, and they carry its
   number;
 - `ComicInfo.xml` inside an archive gives the series' title and the chapter's number and volume;
@@ -788,7 +900,7 @@ each time you open the app:
 
 **Library.** The series as covers, five to a row, starting right under the tabs: each cover carries the number of
 chapters you haven't read. **A** opens the series. With nothing in it yet:
-*Your library is empty* — put CBZ files or folders of pictures in a Manga folder on your card, or add series from
+*Your library is empty* — put CBZ files (or CBR, PDF) or folders of pictures in a Manga folder on your card, or add series from
 Browse.
 
 **History.** The series you've read, newest first, one row each: the cover, the series, the chapter you were last at
@@ -798,9 +910,9 @@ confirm); the rows are rebuilt from what is left. With the reading history off i
 settings** the list stays empty, but your places and your read marks are kept either way.
 
 **Browse.** *On this handheld* holds the series found on your cards; **A** opens the list of them, each with how many
-chapters it has, and **A** on one opens the series. In that list **Y** shows where to copy manga (the card's Manga
-folder, named in full) and how to lay it out, and **X** on a series offers **Open** / **Delete** (its files taken off the
-card; **A** twice). Under it come your saved network connections (from the Files
+chapters it has, and **A** on one opens the series. In that list **X** shows where to copy manga (the card's Manga
+folder, named in full) and how to lay it out, and **Y** on a series offers **Open**, **Info** (its chapters, size, where
+it is, its path) and **Delete** (its files taken off the card; **A** twice). Under it come your saved network connections (from the Files
 browser's **Network**), each with its kind and host, then your saved servers (**X** on one for **Edit** / **Delete**),
 then the sources you've installed, each with its language. **X** opens **Sources** (**X** on a server row is still
 **Edit** / **Delete**); **Y** adds a server (below). With no sources yet, a row says **Add sources in Sources (X on
@@ -910,19 +1022,19 @@ the network and resume where they stopped after a pause, a lost connection or a 
 
 **Reading.** A chapter opens on the top screen; the bottom screen holds the controls: the chapter and the series, the
 page number, the slider, the two chapter buttons and the mode. The big area says *Swipe here to turn the page* (or *Drag
-here to scroll* in **Strip**), and *Loading…* shows beside the page number while a page is decoded.
+here to scroll* in **Vertical scroll**), and *Loading…* shows beside the page number while a page is decoded.
 
 | Button | What it does |
 |---|---|
-| **RIGHT** / **LEFT** | Forward / back: a screenful down the page, then the next page; back goes a screenful up it, then to the page before (in **Strip**, a screenful down or up). With **Swap Left/Right** on, **LEFT** is forward |
-| **UP** / **DOWN** | Zoom in / out, in steps: 100, 150, 200, 300, 400, 600, 800 %. **A** zooms to 200 % or back to the fit |
+| **RIGHT** / **LEFT** | Forward / back: a screenful down the page, then the next page; back goes a screenful up it, then to the page before (in **Vertical scroll**, a screenful down or up). With **Swap Left/Right** on, **LEFT** is forward |
+| **UP** / **DOWN** | Zoom in / out, in small steps: 100, 110, 125, 140, 160, 180, 200, 225, 250, 300, 350, 400, 500, 600, 700, 800 %. The new zoom shows on the page a moment, then fades. **A** zooms to 200 % or back to the fit |
 | **L / R** | Previous / next page, straight to it |
-| **X** | The reading mode: Right to left → Left to right → Strip (kept for that series) |
+| **X** | The reading mode: Right to left → Left to right → Vertical scroll (kept for that series) |
 | **Y** | The Pages grid (below) |
 | **L2 / R2** | Previous / next chapter |
 | **START** | The Reading menu (below) |
 | **SELECT** | Fullscreen on both screens (below); in **Book**, Fullscreen instead of Book |
-| **L3** (press the stick) | Turn the page a quarter turn: 90° clockwise each press, in the paged modes (kept for the chapter; **Strip** ignores it) |
+| **L3** (press the stick) | Turn the page a quarter turn: 90° clockwise each press, in the paged modes (kept for the chapter; **Vertical scroll** ignores it) |
 | **B** | Back to the chapters (from Fullscreen and Book too: the view stays as it was); your place is kept |
 
 - The **page fit** is a setting (below): **Page** (the whole page on the screen), **Width** (as wide as the screen, read
@@ -932,7 +1044,7 @@ here to scroll* in **Strip**), and *Loading…* shows beside the page number whi
   Left/Right** on), and the forward key (or **R2**) opens the next one. The last chapter says **You're caught up**.
 - **Scrolling is the finger's alone**: the D-pad's **UP/DOWN** zoom, they never scroll. **By touch**: drag in the big
   area on the bottom screen to turn the page — it follows your finger and snaps to a page when you let go (a quick
-  flick turns the page even from a short drag), and in **Strip** it scrolls — the slider jumps to a page, and the
+  flick turns the page even from a short drag), and in **Vertical scroll** it scrolls — the slider jumps to a page, and the
   buttons go to the chapter before or after, or turn fullscreen on (the middle one, as **SELECT** does). The row is
   three buttons of one size with equal margins and gaps, above the **Now playing** mini bar when something plays. In
   fullscreen the whole bottom screen is the page, and the finger drags it anywhere; the controls bar has the mini bar
@@ -951,8 +1063,8 @@ under a source's grid with **A: Try again** while browsing, or in red where the 
 **The Reading menu.** **START** while reading opens it over the page (in fullscreen and Book too), in the screen's
 usual orientation. It shows only the rows that mean something for how you're reading: **View** (**One screen**,
 **Fullscreen** or **Book**), **Hold** (Book only: **Top screen left** or **Top screen right**), **Reading mode** (Right
-to left, Left to right or Strip; Book offers the first two), **Page fit** (not in Strip or Book), **Zoom** (not in
-Book), **Hinge gap** (Fullscreen in Strip only), **Swap Left/Right**, **Pages** and **All Manga settings…**. **UP/DOWN** choose
+to left, Left to right or Vertical scroll; Book offers the first two), **Page fit** (not in Vertical scroll or Book), **Zoom** (not in
+Book), **Hinge gap** (Fullscreen in Vertical scroll only), **Swap Left/Right**, **Pages** and **All Manga settings…**. **UP/DOWN** choose
 a row, **LEFT/RIGHT** change it where you stand, **A** acts on it, and **B** or **START** closes the menu: reading goes
 on exactly where it was. Choosing One screen or Fullscreen there also sets **Open fullscreen**, so the next chapter
 opens the same way. The last row opens **Manga settings**, and **Pages** opens the grid below.
@@ -993,10 +1105,10 @@ them while you read. **B** goes back where you came from.
 
 | Setting | Values | Default | |
 |---|---|---|---|
-| **Reading mode** | Right to left / Left to right / Strip | Strip | How a series opens until you pick one for it (X while reading). |
+| **Reading mode** | Right to left / Left to right / Vertical scroll | Vertical scroll | How a series opens until you pick one for it (X while reading). |
 | **Page fit** | Page / Width / Fill | Page | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. Fill: the page covers the screen, cropped either way, panned in reading order. |
 | **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
-| **Hinge gap** | 0 to 200 px | 36 px | The strip skipped under the hinge in fullscreen, so pictures line up across the gap. Strip only: Right to left, Left to right and Book put the screens edge to edge (0 px). |
+| **Hinge gap** | 0 to 200 px | 36 px | The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Vertical scroll only: Right to left, Left to right and Book put the screens edge to edge (0 px). |
 | **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT leaves. The Reading menu's View sets it too. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 1 GB | Pages kept on the card to read again without downloading; past the cap the least recently read go first. Covers: 50 MB more. |

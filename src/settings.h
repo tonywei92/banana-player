@@ -151,6 +151,15 @@ namespace bp
 		int mangaMode = MANGA_STRIP;	// a new reader reads down a strip (webtoons and most sources' chapters)
 		// the paged modes' fit (MANGA_FIT_*): Page, Width, Fill; the Strip always fits width
 		int mangaFit = MANGA_FIT_PAGE;
+		// Files' document viewers. The text viewer (TXT, EPUB): its font, size, line spacing, margins, colours and
+		// filter (textreader.h's TXT_* and DOC_FILTER_*); the PDF viewer: its filter, and Single page or Strip
+		int txtFont = 0, txtSize = 2, txtSpacing = 1, txtMargins = 1, txtTheme = 0, txtFilter = 0;
+		// the text viewer's view: 0 the scroll, MANGA_BOOK_LEFT / _RIGHT Book (held sideways, the top panel on that side)
+		int txtBook = 0;
+		// Book mode's page turn: 0 the fold (a page folding at the spine), 1 none (the pages change at once)
+		int txtTurn = 0;
+		int pdfFilter = 0;
+		bool pdfStrip = false;
 		// Off: RIGHT is forward on the reader's page. On: LEFT is (to match a right-to-left book)
 		bool mangaSwapLR = false;
 		// pages decoded ahead of the one read: 2, 3 or 6

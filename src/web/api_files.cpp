@@ -1,5 +1,7 @@
-// Files API: roots, list, probe, streaming, covers, uploads and the multi-select operations (mkdir, rename, move,
-// delete). Everything here runs on pool threads; Player is asked only through ws.call (which file is playing).
+// Files API: roots, list, probe, streaming, covers, uploads and the multi-select operations (mkdir, rename, move, copy,
+// delete). Everything here runs on pool threads (Copy, and Move to another card: a job thread of their own); Player is
+// asked only through ws.call (which file is playing).
+#include <cctype>
 #include "web/server.h"
 #include "browser.h"
 #include "json.h"
@@ -8,10 +10,12 @@
 #include "playlist.h"
 #include "web/probe.h"
 #include "durprobe.h"
+#include "durations.h"
 #include "web/remux.h"
 #include "web/subs.h"
 #include "webmedia.h"
 #include "webpath.h"
+#include "treecopy.h"
 #include "httplib.h"
 
 #include <algorithm>
@@ -29,6 +33,7 @@
 #include <mutex>
 #include <random>
 #include <set>
+#include <thread>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
 #include <unistd.h>
@@ -72,6 +77,14 @@ namespace bp
 			if (isAudioFile(name)) return "audio";
 			if (isPhotoFile(name)) return "photo";
 			if (isSubtitleFile(name)) return "sub";
+			// the documents and comics the handheld's Files opens (an icon each on the page; it opens none of them)
+			size_t dot = name.rfind('.');
+			std::string e = dot == std::string::npos ? "" : name.substr(dot + 1);
+			for (char& c : e) c = (char)std::tolower((unsigned char)c);
+			if (e == "txt") return "text";
+			if (e == "epub") return "epub";
+			if (e == "pdf") return "pdf";
+			if (e == "cbz" || e == "cbr") return "comic";
 			return "other";
 		}
 
@@ -143,33 +156,6 @@ namespace bp
 			return b;
 		}
 
-		// "a" and "b" must be on the same filesystem. Fails with EEXIST when `to` is taken
-		int renameNoReplace(const std::string& from, const std::string& to)
-		{
-			int r = -1;
-#if defined(__linux__) && defined(SYS_renameat2)
-			r = (int)syscall(SYS_renameat2, AT_FDCWD, from.c_str(), AT_FDCWD, to.c_str(), 1u /* RENAME_NOREPLACE */);
-			if (r == 0) return 0;
-			if (errno != EINVAL && errno != ENOSYS && errno != ENOTSUP) return errno;
-#elif defined(__APPLE__) && defined(RENAME_EXCL)
-			r = renamex_np(from.c_str(), to.c_str(), RENAME_EXCL);
-			if (r == 0) return 0;
-			if (errno != ENOTSUP && errno != EINVAL) return errno;
-#endif
-			(void)r;
-			// no atomic flag here (vfat, say): a hard link fails if the name is taken
-			if (link(from.c_str(), to.c_str()) == 0)
-			{
-				unlink(from.c_str());
-				return 0;
-			}
-			if (errno == EEXIST) return EEXIST;
-			// no hard links either: the check and the rename aren't atomic, but it's the best this filesystem allows
-			struct stat st;
-			if (lstat(to.c_str(), &st) == 0) return EEXIST;
-			return rename(from.c_str(), to.c_str()) == 0 ? 0 : errno;
-		}
-
 		// whether the file playing on the handheld is `real` (or inside it, for a folder). Asked once per request
 		struct PlayingGuard
 		{
@@ -209,7 +195,8 @@ namespace bp
 
 		struct Failed { std::string p, error; int status; };
 
-		std::string multiAnswer(const std::vector<std::string>& done, const std::vector<Failed>& failed, int& status)
+		// job: a Copy or Move job started for the rest (its JSON), "" if none
+		std::string multiAnswer(const std::vector<std::string>& done, const std::vector<Failed>& failed, int& status, const std::string& job = "")
 		{
 			JsonWriter w;
 			w.obj().key("ok").boolean(failed.empty());
@@ -226,8 +213,9 @@ namespace bp
 				if (playing) w.key("code").str("playing");
 				else if (e0 == "exists") w.key("code").str("exists");
 			}
+			if (!job.empty()) w.key("job").raw(job);
 			w.end();
-			status = (done.empty() && !failed.empty()) ? failed[0].status : 200;
+			status = (done.empty() && !failed.empty() && job.empty()) ? failed[0].status : 200;
 			return w.out();
 		}
 
@@ -289,46 +277,6 @@ namespace bp
 			return o;
 		}
 
-		// copy a file across filesystems: into a .part beside the target, then the no-replace rename
-		int copyFile(const std::string& from, const std::string& to)
-		{
-			int in = open(from.c_str(), O_RDONLY);
-			if (in < 0) return errno;
-			std::string part = dirName(to) + "/.bp-upload-" + randHex() + ".part";
-			int out = open(part.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0644);
-			if (out < 0)
-			{
-				int e = errno;
-				close(in);
-				return e;
-			}
-			std::vector<char> buf(256 * 1024);
-			int err = 0;
-			for (;;)
-			{
-				ssize_t n = read(in, buf.data(), buf.size());
-				if (n < 0)
-				{
-					err = errno;
-					break;
-				}
-				if (n == 0) break;
-				for (ssize_t off = 0; off < n && !err;)
-				{
-					ssize_t w = write(out, buf.data() + off, (size_t)(n - off));
-					if (w < 0) err = errno;
-					else off += w;
-				}
-				if (err) break;
-			}
-			close(in);
-			if (!err && fsync(out) != 0) err = errno;
-			close(out);
-			if (!err) err = renameNoReplace(part, to);
-			if (err) unlink(part.c_str());
-			return err;
-		}
-
 		// A folder may go only when it holds no hidden folder (a folder the player keeps out of sight); `bad` names the
 		// first one
 		bool deletable(const std::string& dir, std::string& bad)
@@ -359,26 +307,6 @@ namespace bp
 			}
 			closedir(d);
 			return ok;
-		}
-
-		void removeTree(const std::string& dir)
-		{
-			DIR* d = opendir(dir.c_str());
-			if (d)
-			{
-				while (dirent* e = readdir(d))
-				{
-					std::string n = e->d_name;
-					if (n == "." || n == "..") continue;
-					std::string full = dir + "/" + n;
-					struct stat st;
-					if (lstat(full.c_str(), &st) != 0) continue;
-					if (S_ISDIR(st.st_mode)) removeTree(full);
-					else unlink(full.c_str());
-				}
-				closedir(d);
-			}
-			rmdir(dir.c_str());
 		}
 
 		const char* errText(int e)
@@ -418,6 +346,265 @@ namespace bp
 		{
 			failCode(res, status, msg, code);
 			res.set_header("Connection", "close");
+		}
+
+		/* Copy, and Move to another card: a job of its own on the handheld (a thread), as gigabytes between cards take
+		   minutes. The request answers at once with the job; the pages ask GET /api/jobs while one runs (an SSE "jobs"
+		   event as one starts or ends, never per piece: progress would push the stream's other news out of its replay).
+		   It goes on with no page open. Each item is copied out of sight and put in place last (treecopy.h); a move
+		   removes the original only after that, and only if the handheld isn't playing it by then. */
+		struct JobItem { std::string vp, real, target, name; bool dir; };
+		struct Job
+		{
+			std::string id;
+			bool copy = false;
+			std::string toV, toName, realTo;
+			std::vector<JobItem> items;
+			std::atomic<bool> cancel{false};
+			// under jobsLock
+			std::string state = "waiting";	// waiting (another job copies), counting, copying, done, cancelled
+			uint64_t total = 0, doneB = 0;
+			std::string cur;
+			int itemsDone = 0;
+			std::vector<std::string> done;
+			std::vector<Failed> failed;
+			std::chrono::steady_clock::time_point ended;
+		};
+		std::mutex jobsLock;
+		std::vector<std::shared_ptr<Job>> jobs;
+		// one job copies at a time: two at once on one card are only slower
+		std::mutex jobRun;
+		std::atomic<unsigned> jobSeq{0};
+
+		bool jobOver(const Job& j) { return j.state == "done" || j.state == "cancelled"; }
+
+		// under jobsLock
+		void jobJson(JsonWriter& w, const Job& j)
+		{
+			w.obj().key("id").str(j.id).key("kind").str(j.copy ? "copy" : "move").key("state").str(j.state)
+				.key("total").num(j.total).key("done").num(j.doneB).key("n").num((int)j.items.size()).key("itemsDone").num(j.itemsDone)
+				.key("cur").str(j.cur).key("to").str(j.toV).key("toName").str(j.toName);
+			w.key("ok").arr();
+			for (auto& d : j.done) w.str(d);
+			w.end().key("failed").arr();
+			for (auto& f : j.failed) w.obj().key("p").str(f.p).key("error").str(f.error).end();
+			w.end().end();
+		}
+
+		// finished jobs are kept a while (a page opened later sees how one went), then forgotten. Under jobsLock
+		void pruneJobs()
+		{
+			auto now = std::chrono::steady_clock::now();
+			jobs.erase(std::remove_if(jobs.begin(), jobs.end(), [&](const std::shared_ptr<Job>& j) {
+				return jobOver(*j) && now - j->ended > std::chrono::minutes(10);
+			}), jobs.end());
+		}
+
+		void runJob(WebServer& ws, std::shared_ptr<Job> j)
+		{
+			std::unique_lock<std::mutex> run(jobRun);
+			auto failItem = [&](const JobItem& it, const std::string& why) {
+				std::lock_guard<std::mutex> g(jobsLock);
+				j->failed.push_back({it.vp, why, 500});
+			};
+			{
+				std::lock_guard<std::mutex> g(jobsLock);
+				if (j->state == "cancelled") return;	// cancelled while it waited (that answer's given)
+				j->state = "counting";
+			}
+			// a copy cut short by the player quitting left its hidden folder: nothing else copies now
+			if (DIR* d = opendir(j->realTo.c_str()))
+			{
+				std::vector<std::string> stale;
+				while (dirent* e = readdir(d))
+					if (strncmp(e->d_name, ".bp-copy-", 9) == 0) stale.push_back(j->realTo + "/" + e->d_name);
+				closedir(d);
+				for (auto& s : stale) removeTree(s);
+			}
+			// measured first: what can't be copied whole is refused before a byte is written
+			std::vector<JobItem> go;
+			uint64_t total = 0;
+			bool vfat = onVfat(j->realTo);
+			for (auto& it : j->items)
+			{
+				TreeInfo info;
+				if (!scanTree(it.real, info, [&ws](const std::string& p) { return ws.denies(p); }))
+				{
+					failItem(it, info.bad.empty() ? "can't be read" : "holds " + info.bad + ", which can't be copied (a link or a special file)");
+					continue;
+				}
+				if (vfat && info.biggest >= VFAT_LIMIT)
+				{
+					failItem(it, "has a file over 4 GB, too big for that card");
+					continue;
+				}
+				total += info.bytes;
+				go.push_back(it);
+			}
+			uint64_t fr = 0, tot = 0;
+			if (!go.empty() && freeSpace(j->realTo, fr, tot) && total + SPACE_MARGIN > fr)
+			{
+				// what can be used, as the uploads count it: a little is always left free
+				uint64_t room = fr > SPACE_MARGIN ? fr - SPACE_MARGIN : 0;
+				std::string why = "Not enough space on " + j->toName + ": needs " + fileNote("", -1, (long long)total) + ", there's " +
+					fileNote("", -1, (long long)room) + " to use";
+				for (auto& it : go) failItem(it, why);
+				go.clear();
+			}
+			{
+				std::lock_guard<std::mutex> g(jobsLock);
+				j->total = total;
+				j->state = "copying";
+			}
+			std::set<std::string> touched;
+			for (auto& it : go)
+			{
+				if (j->cancel) break;
+				uint64_t before;
+				{
+					std::lock_guard<std::mutex> g(jobsLock);
+					j->cur = it.name;
+					before = j->doneB;
+				}
+				int r = copyTree(it.real, it.target, [&](uint64_t add, const std::string& rel) {
+					std::lock_guard<std::mutex> g(jobsLock);
+					j->doneB += add;
+					j->cur = it.dir ? it.name + "/" + rel : it.name;
+					return !j->cancel.load();
+				});
+				if (r != 0)
+				{
+					{
+						// what this item had counted goes back out: the bar shows what's on the card
+						std::lock_guard<std::mutex> g(jobsLock);
+						j->doneB = before;
+					}
+					if (r == ECANCELED) break;
+					failItem(it, r == EEXIST ? "exists" : r == ENOSPC ? "Not enough space on " + j->toName : r == EFBIG ? "a file is too big for that card" : errText(r));
+					continue;
+				}
+				touched.insert(j->realTo);
+				if (!j->copy)
+				{
+					// asked again now: the handheld may have started it while it copied
+					PlayingGuard pg(ws);
+					if (int b = pg.busy(it.real, it.dir))
+					{
+						removeTree(it.target);
+						failItem(it, b == 409 ? "playing on the handheld" : "busy");
+						continue;
+					}
+					removeTree(it.real);
+					touched.insert(dirName(it.real));
+					struct stat st;
+					if (lstat(it.real.c_str(), &st) == 0)
+					{
+						failItem(it, "copied, but the original couldn't all be removed");
+						continue;
+					}
+				}
+				std::lock_guard<std::mutex> g(jobsLock);
+				j->itemsDone++;
+				j->done.push_back(it.vp);
+			}
+			run.unlock();
+			for (auto& t : touched)
+			{
+				ws.post(WebCall::Kind::FsChanged, t);
+				std::string v = ws.toVirtual(t);
+				if (!v.empty()) ws.notify("fs", JsonWriter().obj().key("dir").str(v).end().out());
+			}
+			{
+				std::lock_guard<std::mutex> g(jobsLock);
+				j->state = j->cancel ? "cancelled" : "done";
+				j->cur.clear();
+				j->ended = std::chrono::steady_clock::now();
+			}
+			ws.notify("jobs", "{}");
+		}
+
+		std::string startJob(WebServer& ws, bool copy, std::vector<JobItem> items, const std::string& toV, const std::string& realTo)
+		{
+			auto j = std::make_shared<Job>();
+			j->id = std::to_string(++jobSeq) + "-" + randHex().substr(0, 6);
+			j->copy = copy;
+			j->toV = toV;
+			j->realTo = realTo;
+			j->items = std::move(items);
+			std::string nv = toV;
+			while (nv.size() > 1 && nv.back() == '/') nv.pop_back();
+			j->toName = baseName(nv);
+			if (isRootV(nv))
+			{
+				auto roots = ws.roots();
+				size_t idx = (size_t)atoi(nv.c_str());
+				j->toName = idx < roots.size() ? roots[idx].name : "the card";
+			}
+			JsonWriter w;
+			{
+				std::lock_guard<std::mutex> g(jobsLock);
+				pruneJobs();
+				jobs.push_back(j);
+				jobJson(w, *j);
+			}
+			// the job outlives the request (and any page): a thread of its own, holding the job, gone when it ends
+			std::thread([&ws, j]() { runJob(ws, j); }).detach();
+			ws.notify("jobs", "{}");
+			return w.out();
+		}
+
+		/* Move and Copy's checks, item by item, the same for both: a root can't go, nor a folder into itself, nor (a
+		   move) what plays on the handheld, and nothing is ever replaced. false: `failed` says why, or it's where it
+		   was asked to go already (a move to its own folder: `noop`) */
+		bool planItem(WebServer& ws, PlayingGuard& pg, const std::string& vp, const std::string& vto, const std::string& realTo, bool copy,
+			JobItem& out, std::vector<Failed>& failed, bool& noop)
+		{
+			noop = false;
+			if (isRootV(vp))
+			{
+				failed.push_back({vp, copy ? "a root can't be copied" : "a root can't be moved", 403});
+				return false;
+			}
+			std::string real;
+			httplib::Response probe;
+			struct stat st;
+			if (!ws.resolve(vp, real, false, probe) || lstat(real.c_str(), &st) != 0)
+			{
+				failed.push_back({vp, "not found", 404});
+				return false;
+			}
+			bool dir = S_ISDIR(st.st_mode);
+			std::string name = baseName(real), target = realTo + "/" + name, check;
+			if (dir && (realTo == real || realTo.compare(0, real.size() + 1, real + "/") == 0))
+			{
+				failed.push_back({vp, "a folder can't go into itself", 409});
+				return false;
+			}
+			// a copy only reads, so what plays can be copied
+			if (!copy)
+				if (int b = pg.busy(real, dir))
+				{
+					failed.push_back({vp, b == 409 ? "playing on the handheld" : "busy", b});
+					return false;
+				}
+			if (dirName(real) == realTo)
+			{
+				if (!copy) noop = true;
+				else failed.push_back({vp, "exists", 409});
+				return false;
+			}
+			if (!ws.resolve(joinV(vto, name), check, true, probe))
+			{
+				failed.push_back({vp, "not allowed there", 403});
+				return false;
+			}
+			if (lstat(target.c_str(), &st) == 0)
+			{
+				failed.push_back({vp, "exists", 409});
+				return false;
+			}
+			out = {vp, real, target, name, dir};
+			return true;
 		}
 	}
 
@@ -1035,10 +1222,13 @@ namespace bp
 			WebServer::json(res, w.out());
 		});
 
-		svr.Post("/api/move", [&ws](const httplib::Request& req, httplib::Response& res) {
+		// Move: a rename on the same card, at once; what goes to another card is copied by a job (startJob), which
+		// removes each original after its copy is in place. Copy: always a job. The answer: done/failed as for the other
+		// multi-select operations, and `job` when one started
+		auto moveOrCopy = [&ws](const httplib::Request& req, httplib::Response& res, bool copy) {
 			auto items = paramList(req, "p");
 			std::string vto = req.get_param_value("to"), realTo;
-			if (items.empty()) return WebServer::fail(res, 400, "nothing to move");
+			if (items.empty()) return WebServer::fail(res, 400, copy ? "nothing to copy" : "nothing to move");
 			if (!ws.resolve(vto, realTo, false, res)) return;
 			struct stat ds;
 			if (stat(realTo.c_str(), &ds) != 0 || !S_ISDIR(ds.st_mode)) return WebServer::fail(res, 404, "not a folder");
@@ -1046,68 +1236,82 @@ namespace bp
 			std::vector<std::string> done;
 			std::vector<Failed> failed;
 			std::vector<std::string> touched{realTo};
+			std::vector<JobItem> job;
 			for (auto& vp : items)
 			{
-				if (isRootV(vp))
+				JobItem it;
+				bool noop = false;
+				if (!planItem(ws, pg, vp, vto, realTo, copy, it, failed, noop))
 				{
-					failed.push_back({vp, "a root can't be moved", 403});
+					if (noop) done.push_back(vp);
 					continue;
 				}
-				std::string real;
-				httplib::Response probe;
-				if (!ws.resolve(vp, real, false, probe))
+				if (copy)
 				{
-					failed.push_back({vp, "not found", 404});
+					job.push_back(it);
 					continue;
 				}
-				struct stat st;
-				if (lstat(real.c_str(), &st) != 0)
-				{
-					failed.push_back({vp, "not found", 404});
-					continue;
-				}
-				bool dir = S_ISDIR(st.st_mode);
-				std::string name = baseName(real), target = realTo + "/" + name;
-				if (dir && (realTo == real || realTo.compare(0, real.size() + 1, real + "/") == 0))
-				{
-					failed.push_back({vp, "a folder can't go into itself", 409});
-					continue;
-				}
-				if (int b = pg.busy(real, dir))
-				{
-					failed.push_back({vp, b == 409 ? "playing on the handheld" : "busy", b});
-					continue;
-				}
-				if (dirName(real) == realTo)
-				{
-					done.push_back(vp);
-					continue;
-				}
-				int r = renameNoReplace(real, target);
+				int r = renameNoReplace(it.real, it.target);
 				if (r == EXDEV)
 				{
-					if (dir)
-					{
-						failed.push_back({vp, "a folder can't move to another card", 409});
-						continue;
-					}
-					r = copyFile(real, target);
-					if (r == 0) unlink(real.c_str());
+					job.push_back(it);
+					continue;
 				}
 				if (r != 0)
 				{
 					failed.push_back({vp, errText(r), r == EEXIST ? 409 : r == ENOENT ? 404 : 500});
 					continue;
 				}
-				touched.push_back(dirName(real));
+				touched.push_back(dirName(it.real));
 				done.push_back(vp);
 			}
 			std::sort(touched.begin(), touched.end());
 			touched.erase(std::unique(touched.begin(), touched.end()), touched.end());
-			for (auto& t : touched) ws.post(WebCall::Kind::FsChanged, t);
+			if (!done.empty())
+				for (auto& t : touched) ws.post(WebCall::Kind::FsChanged, t);
+			std::string jobJs = job.empty() ? "" : startJob(ws, copy, std::move(job), vto, realTo);
 			int status;
-			std::string body = multiAnswer(done, failed, status);
+			std::string body = multiAnswer(done, failed, status, jobJs);
 			WebServer::json(res, body, status);
+		};
+		svr.Post("/api/move", [moveOrCopy](const httplib::Request& req, httplib::Response& res) { moveOrCopy(req, res, false); });
+		svr.Post("/api/copy", [moveOrCopy](const httplib::Request& req, httplib::Response& res) { moveOrCopy(req, res, true); });
+
+		// the Copy and Move jobs running, waiting, or ended lately
+		svr.Get("/api/jobs", [](const httplib::Request&, httplib::Response& res) {
+			JsonWriter w;
+			w.obj().key("jobs").arr();
+			{
+				std::lock_guard<std::mutex> g(jobsLock);
+				pruneJobs();
+				for (auto& j : jobs) jobJson(w, *j);
+			}
+			w.end().end();
+			WebServer::json(res, w.out());
+		});
+
+		// Cancel: the item being copied is removed (nothing half-copied stays); what's already copied, or moved, stays
+		svr.Post("/api/jobs/cancel", [&ws](const httplib::Request& req, httplib::Response& res) {
+			std::string id = req.get_param_value("id");
+			bool found = false;
+			{
+				std::lock_guard<std::mutex> g(jobsLock);
+				for (auto& j : jobs)
+				{
+					if (j->id != id) continue;
+					found = true;
+					j->cancel = true;
+					// one still waiting for another job ends now; one copying ends at its next piece
+					if (j->state == "waiting")
+					{
+						j->state = "cancelled";
+						j->ended = std::chrono::steady_clock::now();
+					}
+				}
+			}
+			if (!found) return WebServer::fail(res, 404, "No such job");
+			ws.notify("jobs", "{}");
+			WebServer::json(res, "{\"ok\":true}");
 		});
 
 		svr.Post("/api/delete", [&ws](const httplib::Request& req, httplib::Response& res) {

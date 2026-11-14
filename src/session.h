@@ -120,6 +120,9 @@ namespace bp
 		// it can't play stops once each has been tried, rather than going round for ever
 		int cantRun = 0;
 		bool skipBack = false;	// the item came by Previous: one the browser can't play is skipped backwards
+		// the item was picked (Open), not reached by Next, Previous or an end: one the handheld can't play says so and
+		// stops there; one it reached is skipped (as the browser output skips), so a folder's Up next never stalls on it
+		bool picked = false;
 		// host timers (not published, not a change of v): when this load was asked for; the output's tab gone since
 		int64_t loadAt = 0, goneAt = 0;
 		std::string goneTab;

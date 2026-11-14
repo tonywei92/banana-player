@@ -17,7 +17,7 @@ export function titleFor(p, tag) {
 }
 export const chapterTitle = (c, i) => c && c.title && !/^\(?unnamed\)?$/i.test(c.title) ? c.title : 'Chapter ' + (i + 1);
 export const itemsText = (n, more) => more ? (n || 9999).toLocaleString() + '+ items' : plural(n || 0, 'item', 'items');
-const EXT = { mp3: 'audio', wav: 'audio', flac: 'audio', ogg: 'audio', opus: 'audio', m4a: 'audio', aac: 'audio', ape: 'audio', wma: 'audio', mp4: 'video', mkv: 'video', webm: 'video', avi: 'video', mov: 'video', m4v: 'video', wmv: 'video', mpg: 'video', jpg: 'photo', jpeg: 'photo', png: 'photo', gif: 'photo', webp: 'photo', bmp: 'photo', srt: 'sub', ass: 'sub', ssa: 'sub', vtt: 'sub', sub: 'sub', idx: 'sub', lrc: 'sub' };
+const EXT = { mp3: 'audio', wav: 'audio', flac: 'audio', ogg: 'audio', opus: 'audio', m4a: 'audio', aac: 'audio', ape: 'audio', wma: 'audio', mp4: 'video', mkv: 'video', webm: 'video', avi: 'video', mov: 'video', m4v: 'video', wmv: 'video', mpg: 'video', jpg: 'photo', jpeg: 'photo', png: 'photo', gif: 'photo', webp: 'photo', bmp: 'photo', srt: 'sub', ass: 'sub', ssa: 'sub', vtt: 'sub', sub: 'sub', idx: 'sub', lrc: 'sub', txt: 'text', epub: 'epub', pdf: 'pdf', cbz: 'comic', cbr: 'comic' };
 export const kindOfName = n => EXT[(n.split('.').pop() || '').toLowerCase()] || 'other';
 export const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 export const touchOnly = matchMedia('(hover: none)').matches;

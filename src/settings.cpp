@@ -11,6 +11,22 @@
 
 namespace bp
 {
+	// the document viewers' choices, by name (textreader.h's order)
+	static const char* TXT_FONT_IDS[] = {"serif", "sans", "mono", "pixel", "cjk-pixel"};
+	static const char* TXT_SIZE_IDS[] = {"small", "medium", "large", "larger", "largest"};
+	static const char* TXT_SPACING_IDS[] = {"tight", "normal", "loose"};
+	static const char* TXT_MARGIN_IDS[] = {"narrow", "normal", "wide"};
+	static const char* TXT_THEME_IDS[] = {"dark", "light", "sepia", "black"};
+	static const char* DOC_FILTER_IDS[] = {"off", "warm", "warmer", "dim"};
+	static const char* TXT_VIEW_IDS[] = {"scroll", "book-left", "book-right"};
+	static const char* TXT_TURN_IDS[] = {"fold", "off"};
+	static const struct { const char* key; int Settings::*field; const char* const* ids; int count; } DOC_INTS[] = {
+		{"text-font", &Settings::txtFont, TXT_FONT_IDS, 5}, {"text-size", &Settings::txtSize, TXT_SIZE_IDS, 5},
+		{"text-spacing", &Settings::txtSpacing, TXT_SPACING_IDS, 3}, {"text-margins", &Settings::txtMargins, TXT_MARGIN_IDS, 3},
+		{"text-theme", &Settings::txtTheme, TXT_THEME_IDS, 4}, {"text-filter", &Settings::txtFilter, DOC_FILTER_IDS, 4},
+		{"pdf-filter", &Settings::pdfFilter, DOC_FILTER_IDS, 4}, {"text-view", &Settings::txtBook, TXT_VIEW_IDS, 3},
+		{"text-turn", &Settings::txtTurn, TXT_TURN_IDS, 2},
+	};
 	static const struct { const char* key; bool Settings::*field; } REMEMBER[] = {
 		{"remember-position", &Settings::rememberPosition},
 		{"remember-audio", &Settings::rememberAudio},
@@ -510,6 +526,8 @@ namespace bp
 		out += std::string("loop = ") + LOOP_IDS[s.loop] + "\n";
 		out += std::string("manga-mode = ") + MANGA_MODE_IDS[s.mangaMode] + "\n";
 		out += std::string("manga-fit = ") + MANGA_FIT_IDS[s.mangaFit] + "\n";
+		for (auto& d : DOC_INTS) out += std::string(d.key) + " = " + d.ids[std::clamp(s.*d.field, 0, d.count - 1)] + "\n";
+		out += std::string("pdf-view = ") + (s.pdfStrip ? "strip" : "page") + "\n";
 		out += "manga-preload = " + std::to_string(s.mangaPreload) + "\n";
 		out += "manga-hinge = " + std::to_string(s.mangaHinge) + "\n";
 		out += std::string("manga-cache = ") + MANGA_CACHE_IDS[s.mangaCacheSize] + "\n";
@@ -570,6 +588,10 @@ namespace bp
 				if (key == "manga-mode" && value == MANGA_MODE_IDS[v]) s.mangaMode = v;
 			for (int v = 0; v < MANGA_FITS; v++)
 				if (key == "manga-fit" && value == MANGA_FIT_IDS[v]) s.mangaFit = v;
+			for (auto& d : DOC_INTS)
+				for (int v = 0; v < d.count; v++)
+					if (key == d.key && value == d.ids[v]) s.*d.field = v;
+			if (key == "pdf-view" && (value == "strip" || value == "page")) s.pdfStrip = value == "strip";
 			for (int v = 0; v < MANGA_PRELOAD_COUNT; v++)
 				if (key == "manga-preload" && value == std::to_string(MANGA_PRELOADS[v])) s.mangaPreload = MANGA_PRELOADS[v];
 			for (int v = 0; v < MANGA_CACHES; v++)

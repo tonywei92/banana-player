@@ -122,6 +122,18 @@ post /api/rename --data-urlencode "p=0/$D/renamed.mp3" --data-urlencode "name=ba
 post /api/move --data-urlencode "p[]=0/$D/renamed.mp3" --data-urlencode "to=0/$D/Sub"; status_is "move" 200
 get /api/ls --get --data-urlencode "p=0/$D/Sub"; jq_is "moved file is in Sub" '.items[0].name == "renamed.mp3"'
 post /api/move --data-urlencode "p[]=0/$D/Sub" --data-urlencode "to=0/$D/Sub"; [ "$CODE" -ge 400 ]; check "move a folder into itself ($CODE)" $?
+# Copy: a job on the handheld (the answer carries it); /api/jobs says how it went
+post /api/copy --data-urlencode "p[]=0/$D/Album X" --data-urlencode "to=0/$D/Sub"; status_is "copy a folder" 200
+JOB=$(jq -r '.job.id // empty' "$T/body"); [ -n "$JOB" ]; check "copy answers with a job" $?
+for i in $(seq 1 50); do get /api/jobs; [ "$(jq -r --arg id "$JOB" '.jobs[] | select(.id == $id) | .state' "$T/body")" = done ] && break; sleep 0.1; done
+jq_is "copy job done, 1 item" '.jobs[] | select(.id == "'"$JOB"'") | .state == "done" and .ok == ["0/'"$D"'/Album X"] and .failed == []'
+get /api/ls --get --data-urlencode "p=0/$D/Sub/Album X/CD 1"; jq_is "the copy is there" '.items[0].name == "c.mp3"'
+get /api/ls --get --data-urlencode "p=0/$D/Album X/CD 1"; jq_is "the original stays" '.items[0].name == "c.mp3"'
+post /api/copy --data-urlencode "p[]=0/$D/Album X" --data-urlencode "to=0/$D/Sub"; status_is "copy onto a taken name" 409; jq_is "taken: code exists" '.code == "exists"'
+post /api/copy --data-urlencode "p[]=0/$D/Album X" --data-urlencode "to=0/$D"; status_is "copy into its own folder" 409
+post /api/copy --data-urlencode "p[]=0/$D" --data-urlencode "to=0/$D/Sub"; [ "$CODE" -ge 400 ]; check "copy a folder into itself ($CODE)" $?
+post /api/copy --data-urlencode "p[]=0" --data-urlencode "to=0/$D/Sub"; [ "$CODE" -ge 400 ]; check "copy a root refused ($CODE)" $?
+post /api/jobs/cancel --data-urlencode "id=nope"; status_is "cancel an unknown job" 404
 post /api/delete --data-urlencode "p[]=0/$D/Sub/renamed.mp3" --data-urlencode "p[]=0/$D/Album X"; status_is "delete a file and a folder" 200
 get /api/ls --get --data-urlencode "p=0/$D"; jq_is "scratch holds only Sub" '[.items[].name] == ["Sub"]'
 post /api/delete --data-urlencode "p[]=0"; [ "$CODE" -ge 400 ]; check "delete a root refused ($CODE)" $?

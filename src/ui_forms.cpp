@@ -34,6 +34,8 @@ namespace bp
 		case FORM_PASS: return "Password";
 		case EQ_NAME: return "Preset name";
 		case PL_NAME: return "Playlist name";
+		case FILE_NAME: return "New name";
+		case FIND_FIELD: return "Find";
 		case SRC_URL_FIELD: return "Repository URL";
 		case MANGA_SEARCH_FIELD: return "Search";
 		case MANGA_FILTER_FIELD: return "Filter";
@@ -255,6 +257,25 @@ namespace bp
 			if (keep) { eqNameSubmit = true; return; }
 			eqNameNote.clear();
 		}
+		if (kbField == FIND_FIELD)
+		{
+			// Find: Done searches on from the place; B keeps the last query as it was
+			kbOpen = false;
+			kbPressed = -1;
+			std::string q = trimmed(kbEdit.text);
+			if (keep && !q.empty())
+			{
+				findQuery = q;
+				findStart(false);
+			}
+			return;
+		}
+		if (kbField == FILE_NAME)
+		{
+			// a file's new name: checked and done by fileRenameDone, which closes it or says what's wrong
+			if (keep) { fileNameSubmit = true; return; }
+			fileNameNote.clear();
+		}
 		if (kbField == PL_NAME)
 		{
 			// the same for a playlist's name (plNameDone); cancelled, a new one for Add to... adds nothing
@@ -424,6 +445,7 @@ namespace bp
 		if (!after.empty()) drawTextMid(after, 1, TEXT, caretX + 5, 124, std::max(0, 580 - (caretX + 5 - 32)));
 		if (kbField == EQ_NAME && !eqNameNote.empty()) drawTextMid(eqNameNote, 0, ACCENT, 24, 176, 592);
 		if (kbField == PL_NAME && !plNameNote.empty()) drawTextMid(plNameNote, 0, ACCENT, 24, 176, 592);
+		if (kbField == FILE_NAME && !fileNameNote.empty()) drawTextMid(fileNameNote, 0, ACCENT, 24, 176, 592);
 		// both kinds of repository take a plain address: a Lua one's, or an extensions' index (index.pb, index.min.json)
 		if (kbField == SRC_URL_FIELD)
 			drawTextMid("Any repository URL, including ones ending in index.pb or index.min.json", 0, DIM, 24, 176, 592);

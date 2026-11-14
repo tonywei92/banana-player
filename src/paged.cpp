@@ -624,4 +624,16 @@ namespace bp
 		for (int i = c - 1; i >= 0 && c - i <= behind; i--) out.push_back(i);
 		return out;
 	}
+
+	void Paged::panTo(double fx, double fy)
+	{
+		int i = current();
+		if (i < 0) return;
+		stopAnim();
+		double pw = wide[i], ph = pageHeight(i);
+		double vTo = fy * ph - viewH * 0.5;
+		// (h runs with the reading order: from the right edge in right to left)
+		double hTo = (rtl ? (1 - fx) : fx) * pw - viewW * 0.5;
+		land(i, vTo, hTo);
+	}
 }

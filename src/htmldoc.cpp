@@ -200,4 +200,31 @@ namespace bp
 		if (name == nullptr) return "";
 		return std::string(reinterpret_cast<const char*>(name), len);
 	}
+
+	std::vector<HtmlNode> HtmlNode::children() const
+	{
+		std::vector<HtmlNode> out;
+		lxb_dom_node_t* node = static_cast<lxb_dom_node_t*>(node_);
+		if (node == nullptr) return out;
+		for (lxb_dom_node_t* c = lxb_dom_node_first_child(node); c != nullptr && out.size() < kMaxNodes; c = lxb_dom_node_next(c))
+			out.push_back(HtmlNode(c));
+		return out;
+	}
+
+	bool HtmlNode::isText() const
+	{
+		lxb_dom_node_t* node = static_cast<lxb_dom_node_t*>(node_);
+		return node != nullptr && node->type == LXB_DOM_NODE_TYPE_TEXT;
+	}
+
+	std::string HtmlNode::rawText() const
+	{
+		lxb_dom_node_t* node = static_cast<lxb_dom_node_t*>(node_);
+		if (node == nullptr || node->type != LXB_DOM_NODE_TYPE_TEXT) return "";
+		size_t len = 0;
+		const lxb_char_t* t = lxb_dom_node_text_content(node, &len);
+		std::string out = t ? std::string(reinterpret_cast<const char*>(t), len) : "";
+		if (t) lxb_dom_document_destroy_text(node->owner_document, const_cast<lxb_char_t*>(t));
+		return out;
+	}
 }

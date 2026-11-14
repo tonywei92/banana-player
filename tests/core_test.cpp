@@ -3,6 +3,10 @@
 #include "battery.h"
 #include "comicinfo.h"
 #include "cbz.h"
+#include "pagebook.h"
+#include "textdoc.h"
+#include "epub.h"
+#include "textsource.h"
 #include "dlqueue.h"
 #include "doh.h"
 #include "cbzwrite.h"
@@ -65,6 +69,9 @@ extern "C"
 #include "webmedia.h"
 #include "webpath.h"
 #include "webstate.h"
+#include "treecopy.h"
+#include <dirent.h>
+#include <sys/time.h>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -4555,6 +4562,275 @@ static void testPageDecode()
 	CHECK_EQ(missing.error.empty(), false);
 }
 
+static void testPageBook()
+{
+	const std::string B = std::string(BP_TESTS_DIR) + "/fixtures/books/";
+	std::string err;
+	// a CBZ goes through the same reader as before
+	auto z = openPageBook(std::string(BP_TESTS_DIR) + "/pages/stored.cbz", err);
+	CHECK_EQ(z != nullptr, true);
+	if (z) CHECK_EQ(z->pages(), (std::vector<std::string>{"001.jpg", "002.png"}));
+	CHECK_EQ(isPageBookName("a.CBZ"), true);
+	CHECK_EQ(isPageBookName("a.txt"), false);
+	CHECK_EQ(openPageBook(B + "nothing.cbr", err) == nullptr, true);
+
+	// CBR (when this build has libarchive): pages sorted naturally, the junk and the xml left out, read in any order
+	if (isPageBookName("a.cbr"))
+	{
+		auto r = openPageBook(B + "chapter.cbr", err);
+		CHECK_EQ(r != nullptr, true);
+		if (r)
+		{
+			CHECK_EQ(r->pages(), (std::vector<std::string>{"pages/1.png", "pages/2.png", "pages/10.png"}));
+			// backwards (an archive opened again), forwards (going on), and the same page twice
+			for (int i : {2, 0, 1, 1, 2})
+			{
+				PageImage img = bookPage(*r, i, 0);
+				CHECK_EQ(img.ok(), true);
+				if (!img.ok()) continue;
+				CHECK_EQ(img.w * 10 + img.h, 46);
+				const uint8_t want[3][3] = {{255, 0, 0}, {0, 255, 0}, {0, 0, 255}};
+				CHECK_EQ(img.rgba[0] == want[i][0] && img.rgba[1] == want[i][1] && img.rgba[2] == want[i][2], true);
+			}
+			std::string xml;
+			CHECK_EQ(r->comicInfo(xml) && xml.find("<Number>7</Number>") != std::string::npos, true);
+			std::vector<uint8_t> out;
+			CHECK_EQ(r->read("missing.png", out), false);
+			CHECK_EQ(stripBookExt("Ch 3.cbr"), std::string("Ch 3"));
+		}
+	}
+
+	// PDF (when this build has pdfium): drawn at the width asked, its shape known before drawing
+	if (isPageBookName("a.pdf"))
+	{
+		auto d = openPageBook(B + "two.pdf", err);
+		CHECK_EQ(d != nullptr, true);
+		if (d)
+		{
+			CHECK_EQ(d->rendered(), true);
+			CHECK_EQ(d->pages().size(), (size_t)2);
+			int w = 0, h = 0;
+			CHECK_EQ(d->pageSize(1, w, h) && w == 300 && h == 200, true);
+			PageImage a = bookPage(*d, 0, 100);
+			CHECK_EQ(a.ok() && a.w == 100 && a.h == 150, true);
+			if (a.ok()) CHECK_EQ(a.rgba[0] > 200 && a.rgba[1] < 40 && a.rgba[3] == 255, true);
+			PageImage b = bookPage(*d, 1, 600, 600 * 100);	// the pixel cap: narrower, the shape kept
+			CHECK_EQ(b.ok() && b.w * b.h <= 600 * 100 && std::abs(b.w * 2 - b.h * 3) <= 3, true);
+			if (b.ok()) CHECK_EQ(b.rgba[1] > 200 && b.rgba[0] < 40, true);
+			CHECK_EQ(bookPage(*d, 5, 100).ok(), false);
+		}
+		std::ofstream(B + "../../../build/notpdf.pdf") << "hello";
+		CHECK_EQ(openPageBook(B + "../../../build/notpdf.pdf", err) == nullptr && !err.empty(), true);
+	}
+}
+
+static void testTextDoc()
+{
+	TextDoc d;
+	auto all = [&](TextDoc& t)
+	{
+		// every piece from the start, as the viewer walks down
+		std::vector<std::string> out;
+		for (size_t at = t.begin(); at < t.size();)
+		{
+			TextDoc::Seg s = t.segFrom(at);
+			out.push_back(t.text(s));
+			at = s.next;
+		}
+		return out;
+	};
+	CHECK_EQ(d.openBytes("one\r\ntwo\tx\n\nlast"), true);
+	CHECK_EQ(d.encoding(), std::string("UTF-8"));
+	CHECK_EQ(all(d), (std::vector<std::string>{"one", "two    x", "", "last"}));
+	// around a place: the line holding it, and the one before
+	TextDoc::Seg s = d.segAt(7);	// in "two"
+	CHECK_EQ(d.text(s), std::string("two    x"));
+	TextDoc::Seg b;
+	CHECK_EQ(d.segBefore(s.from, b) && d.text(b) == "one", true);
+	CHECK_EQ(d.segBefore(b.from, b), false);
+	CHECK_EQ(d.segAt(d.size()).from, (size_t)12);
+
+	// a line longer than SEG: pieces of SEG bytes at most, cut between characters, all of it there once
+	std::string longLine;
+	while (longLine.size() < TextDoc::SEG * 2 + 100) longLine += "ab\xC5\xA1\xC4\x8D ";
+	CHECK_EQ(d.openBytes("first\n" + longLine + "\nend"), true);
+	std::vector<std::string> pieces = all(d);
+	CHECK_EQ(pieces.size(), (size_t)5);
+	std::string joined = pieces[1] + pieces[2] + pieces[3];
+	CHECK_EQ(joined == longLine, true);
+	CHECK_EQ(pieces[1].size() <= TextDoc::SEG && pieces[2].size() <= TextDoc::SEG, true);
+	// back from the line after it: its last piece, then the one before that
+	TextDoc::Seg endSeg = d.segAt(d.size() - 1), p3, p2;
+	CHECK_EQ(d.segBefore(endSeg.from, p3) && d.text(p3) == pieces[3], true);
+	CHECK_EQ(d.segBefore(p3.from, p2) && d.text(p2) == pieces[2], true);
+	CHECK_EQ(d.text(d.segAt(p2.from + 5)) == pieces[2], true);
+
+	// UTF-16 with its BOM, both ways round
+	std::string le = std::string("\xFF\xFE") + std::string("h\0i\0\n\0\x3E\x04\n\0z\0", 12);
+	CHECK_EQ(d.openBytes(le), true);
+	CHECK_EQ(d.encoding(), std::string("UTF-16LE"));
+	CHECK_EQ(all(d), (std::vector<std::string>{"hi", "\xD0\xBE", "z"}));
+	std::string be = std::string("\xFE\xFF") + std::string("\0h\0\n\x01\x0A\0\n\0z", 10);
+	CHECK_EQ(d.openBytes(be), true);
+	CHECK_EQ(all(d), (std::vector<std::string>{"h", "\xC4\x8A", "z"}));
+
+	// a code page: read as the one chosen
+	CHECK_EQ(d.openBytes("\xEF\xF0\xE8\xE2\xE5\xF2 \x9A"), true);
+	CHECK_EQ(d.encoding() != "UTF-8", true);
+	d.setEncoding("CP1251");
+	CHECK_EQ(d.text(d.segAt(0)).substr(0, 12), std::string("\xD0\xBF\xD1\x80\xD0\xB8\xD0\xB2\xD0\xB5\xD1\x82"));
+	d.setEncoding("CP1250");
+	CHECK_EQ(d.text(d.segAt(0)).substr(d.text(d.segAt(0)).size() - 2), std::string("\xC5\xA1"));
+	CHECK_EQ(d.openBytes(""), true);
+	CHECK_EQ(d.size(), (size_t)0);
+
+	// wrapping: words go down whole, a word too long for a row breaks inside it, spaces hang at the end
+	auto one = [](uint32_t, size_t) { return 1; };
+	CHECK_EQ(wrapRows("hello world foo", 11, one), (std::vector<uint32_t>{0, 12}));
+	CHECK_EQ(wrapRows("abcdefghij", 4, one), (std::vector<uint32_t>{0, 4, 8}));
+	CHECK_EQ(wrapRows("", 10, one), (std::vector<uint32_t>{0}));
+	CHECK_EQ(wrapRows("\xE4\xBD\xA0\xE5\xA5\xBD\xE4\xB8\x96", 2, one), (std::vector<uint32_t>{0, 6}));
+}
+
+static void testEpub()
+{
+	const std::string B = std::string(BP_TESTS_DIR) + "/fixtures/books/";
+	CHECK_EQ(epubResolve("OEBPS/Text/c1.xhtml", "../Images/p%201.jpg#x"), std::string("OEBPS/Images/p 1.jpg"));
+	CHECK_EQ(epubResolve("a/b.xhtml", "/root.png"), std::string("root.png"));
+
+	// a comic: its pictures are its pages, in spine order (img and svg image alike)
+	Epub c;
+	CHECK_EQ(c.open(B + "comic.epub"), true);
+	CHECK_EQ(c.pictureBook(), true);
+	CHECK_EQ(c.pictures(), (std::vector<std::string>{"OEBPS/i/1.png", "OEBPS/i/2.png"}));
+	std::string err;
+	auto pb = openPageBook(B + "comic.epub", err);
+	CHECK_EQ(pb != nullptr, true);
+	if (pb)
+	{
+		PageImage img = bookPage(*pb, 1, 0);
+		CHECK_EQ(img.ok() && img.rgba[2] == 255 && img.rgba[0] == 0, true);
+	}
+	// a novel is no comic: the reader says to open it from Files
+	CHECK_EQ(openPageBook(B + "novel.epub", err) == nullptr && err.find("Files") != std::string::npos, true);
+
+	Epub n;
+	CHECK_EQ(n.open(B + "novel.epub"), true);
+	CHECK_EQ(n.title(), std::string("Fixture & Book"));
+	CHECK_EQ(n.pictureBook(), false);
+	CHECK_EQ(n.spine(), (std::vector<std::string>{"OEBPS/Text/c1.xhtml", "OEBPS/Text/c 2.xhtml"}));
+	auto toc = n.toc();
+	CHECK_EQ(toc.size(), (size_t)3);
+	if (toc.size() == 3) CHECK_EQ(toc[1].title == "One A" && toc[1].depth == 1 && toc[2].doc == "OEBPS/Text/c 2.xhtml", true);
+
+	// a chapter's blocks: headings, paragraphs with their bold and italic, a break, a rule, a picture, a list
+	std::string x;
+	CHECK_EQ(n.readText("OEBPS/Text/c1.xhtml", x), true);
+	auto b = epubBlocks(x, "OEBPS/Text/c1.xhtml");
+	std::vector<std::string> texts;
+	for (auto& k : b) texts.push_back(k.text);
+	CHECK_EQ(texts, (std::vector<std::string>{"Chapter One", "It was a dark and stormy night.", "Inner", "tail", "a", "b", " ",
+		"pic", "\xE2\x80\xA2 item"}));
+	if (b.size() == 9)
+	{
+		CHECK_EQ(b[0].kind == TextBlock::H1 && b[1].kind == TextBlock::Para && b[6].kind == TextBlock::Rule, true);
+		CHECK_EQ(b[7].kind == TextBlock::Image && b[7].image == "OEBPS/Images/p.png", true);
+		CHECK_EQ(b[1].spans.size(), (size_t)2);
+		if (b[1].spans.size() == 2)
+			CHECK_EQ(b[1].text.substr(b[1].spans[0].from, b[1].spans[0].to - b[1].spans[0].from) == "dark" &&
+				b[1].spans[0].style == TextBlock::Italic && b[1].spans[1].style == TextBlock::Bold, true);
+	}
+
+	// the text viewer's walk over the whole book, both ways
+	auto t = openEpubText(B + "novel.epub", err);
+	CHECK_EQ(t != nullptr, true);
+	if (!t) return;
+	std::vector<std::string> fwd;
+	std::vector<uint64_t> ids;
+	for (uint64_t id = t->first(); id < t->end();)
+	{
+		TextBlock k;
+		uint64_t next;
+		if (!t->block(id, k, next)) break;
+		fwd.push_back(k.text);
+		ids.push_back(id);
+		id = next;
+	}
+	CHECK_EQ(fwd.size(), (size_t)13);
+	if (fwd.size() == 13) CHECK_EQ(fwd[9] == "Two" && fwd[10] == "Quoted" && fwd[11] == "line 1" && fwd[12] == "  line 2", true);
+	uint64_t at = t->end(), prev;
+	size_t back = 0;
+	while (t->before(at, prev)) { CHECK_EQ(back < ids.size() && prev == ids[ids.size() - 1 - back], true); at = prev; back++; }
+	CHECK_EQ(back, ids.size());
+	CHECK_EQ(t->contents().size(), (size_t)3);
+	CHECK_EQ(t->snap(t->at(0.99)) >= ids[9], true);
+	CHECK_EQ(t->fraction(ids[0]), 0.0);
+	std::vector<uint8_t> pic;
+	CHECK_EQ(t->image("OEBPS/Images/p.png", pic) && pic.size() > 8, true);
+}
+
+static void testTextFind()
+{
+	TextDoc d;
+	size_t at = 0;
+	// any case for ASCII letters, the first after from (forward) or the last before to (back)
+	CHECK_EQ(d.openBytes("Alpha beta\nGAMMA beta\ndelta"), true);
+	CHECK_EQ(d.find("BETA", 0, d.size(), false, at) && at == 6, true);
+	CHECK_EQ(d.find("beta", 7, d.size(), false, at) && at == 17, true);
+	CHECK_EQ(d.find("beta", 0, d.size(), true, at) && at == 17, true);
+	CHECK_EQ(d.find("gamma", 0, d.size(), false, at) && at == 11, true);
+	CHECK_EQ(d.find("zeta", 0, d.size(), false, at), false);
+	// UTF-16 (the query written in it) and a code page (the query through iconv)
+	std::string le = std::string("\xFF\xFE") + std::string("a\0b\0\n\0C\0d\0", 10);
+	CHECK_EQ(d.openBytes(le), true);
+	CHECK_EQ(d.find("cd", d.begin(), d.size(), false, at) && at == 8, true);
+	CHECK_EQ(d.openBytes("na\x9A" "e mesto"), true);
+	d.setEncoding("CP1250");
+	CHECK_EQ(d.find("\xC5\xA1" "e", 0, d.size(), false, at) && at == 2, true);
+
+	// through a TXT's source: the block after the place, round past the end, and back
+	char path[] = "/tmp/bp-find-XXXXXX";
+	int fd = mkstemp(path);
+	if (fd < 0) { failures++; return; }
+	std::string body = "one apple\ntwo\nthree apple\nfour\n";
+	if (write(fd, body.data(), body.size()) != (ssize_t)body.size()) failures++;
+	close(fd);
+	uint64_t found = 0;
+	CHECK_EQ(findInFile(path, false, "", "APPLE", 0, false, found, {}, {}) && found == 14, true);	// past the place's own line
+	CHECK_EQ(findInFile(path, false, "", "apple", 14, false, found, {}, {}) && found == 0, true);	// round past the end
+	CHECK_EQ(findInFile(path, false, "", "apple", 14, true, found, {}, {}) && found == 0, true);
+	CHECK_EQ(findInFile(path, false, "", "four", 0, true, found, {}, {}) && found == 26, true);	// back, round past the start
+	CHECK_EQ(findInFile(path, false, "", "pear", 0, false, found, {}, {}), false);
+	CHECK_EQ(findInFile(path, false, "", "apple", 0, false, found, [] { return true; }, {}), false);	// cancelled
+	unlink(path);
+	// an EPUB: the paragraph holding it, by chapter and block
+	const std::string B = std::string(BP_TESTS_DIR) + "/fixtures/books/novel.epub";
+	CHECK_EQ(findInFile(B, true, "", "QUOTED", 0, false, found, {}, {}) && found == ((1ull << 32) | 1), true);
+	CHECK_EQ(findInFile(B, true, "", "stormy", (1ull << 32) | 1, false, found, {}, {}) && found == 1, true);	// round
+	CHECK_EQ(findInFile(B, true, "", "stormy", 0, true, found, {}, {}) && found == 1, true);
+	CHECK_EQ(findInFile(B, true, "", "nowhere", 0, false, found, {}, {}), false);
+}
+
+static void testMangaSkipsBooks()
+{
+	// the manga reader keeps to comics: an EPUB (a comic's or a novel's) and a TXT on the card are left to Files
+	char dir[] = "/tmp/bp-mangabooks-XXXXXX";
+	if (!mkdtemp(dir)) { failures++; return; }
+	std::string d = dir;
+	auto copy = [](const std::string& from, const std::string& to) {
+		std::ifstream in(from, std::ios::binary);
+		std::ofstream(to, std::ios::binary) << in.rdbuf();
+	};
+	copy(std::string(BP_TESTS_DIR) + "/pages/stored.cbz", d + "/One.cbz");
+	copy(std::string(BP_TESTS_DIR) + "/fixtures/books/comic.epub", d + "/Two.epub");
+	std::ofstream(d + "/Three.txt") << "words";
+	auto found = scanMangaFolder(d);
+	CHECK_EQ(found.size(), (size_t)1);
+	if (!found.empty()) CHECK_EQ(found[0].path, d + "/One.cbz");
+	for (const char* n : {"/One.cbz", "/Two.epub", "/Three.txt"}) unlink((d + n).c_str());
+	rmdir(d.c_str());
+}
+
 static void testCbz()
 {
 	const std::string P = std::string(BP_TESTS_DIR) + "/pages/";
@@ -5641,21 +5917,22 @@ static void testBrowser()
 	bool ok = false;
 	auto e = listFolder(d, ok);
 	CHECK_EQ(ok, true);
-	CHECK_EQ(e.size(), (size_t)4);	// two folders, two videos; no subtitles, nothing hidden
-	if (e.size() == 4)
+	CHECK_EQ(e.size(), (size_t)5);	// two folders, then every file (the subtitles too); nothing hidden
+	if (e.size() == 5)
 	{
 		CHECK_EQ(e[0].name, std::string("Season 2"));
 		CHECK_EQ(e[0].dir, true);
 		CHECK_EQ(e[1].name, std::string("Season 10"));
 		CHECK_EQ(e[2].name, std::string("A.mp4"));
-		CHECK_EQ(e[3].path, d + "/b.mkv");
-		CHECK_EQ(e[3].dir, false);
+		CHECK_EQ(e[3].name, std::string("a.srt"));
+		CHECK_EQ(e[4].path, d + "/b.mkv");
+		CHECK_EQ(e[4].dir, false);
 	}
 	// a folder with a ".hidden" file: left out unless asked for
 	std::ofstream(d + "/Season 2/.hidden") << "";
 	std::ofstream(d + "/Season 2/x.mkv") << "x";
-	CHECK_EQ(listFolder(d, ok).size(), (size_t)3);
-	CHECK_EQ(listFolder(d, ok, true).size(), (size_t)4);
+	CHECK_EQ(listFolder(d, ok).size(), (size_t)4);
+	CHECK_EQ(listFolder(d, ok, true).size(), (size_t)5);
 	CHECK_EQ(isHiddenFolder(d + "/Season 2"), true);
 	CHECK_EQ(insideHiddenFolder(d + "/Season 2/x.mkv"), true);
 	CHECK_EQ(insideHiddenFolder(d + "/A.mp4"), false);
@@ -6847,6 +7124,97 @@ static void testPlaylists()
 }
 
 
+// the dashboard's Copy and Move between cards (treecopy): measured, copied out of sight, put in place last; a cancel or
+// a clash leaves nothing behind, a link is refused before anything is written
+static void testTreeCopy()
+{
+	char tmpl[] = "/tmp/bp-treecopy-XXXXXX";
+	char* made = mkdtemp(tmpl);
+	if (!made) { failures++; return; }
+	std::string T = made;
+	auto slurp = [](const std::string& p) { std::ifstream f(p, std::ios::binary); return std::string(std::istreambuf_iterator<char>(f), {}); };
+	auto exists = [](const std::string& p) { struct stat st; return lstat(p.c_str(), &st) == 0; };
+	// nothing but `want` in a folder (no ".bp-copy-…" left over)
+	auto names = [](const std::string& dir) {
+		std::set<std::string> s;
+		if (DIR* d = opendir(dir.c_str())) { while (dirent* e = readdir(d)) if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) s.insert(e->d_name); closedir(d); }
+		return s;
+	};
+	std::string big(3 * 1024 * 1024 + 17, '\0');
+	for (size_t i = 0; i < big.size(); i++) big[i] = char((i * 7919) & 0xff);
+	mkdir((T + "/src").c_str(), 0755);
+	mkdir((T + "/src/Album").c_str(), 0755);
+	mkdir((T + "/src/Album/.thumbs").c_str(), 0755);
+	mkdir((T + "/dst").c_str(), 0755);
+	std::ofstream(T + "/src/Album/a.mp3", std::ios::binary) << "song";
+	std::ofstream(T + "/src/Album/big.mkv", std::ios::binary) << big;
+	std::ofstream(T + "/src/Album/.thumbs/t", std::ios::binary) << "xy";
+	struct timeval tv[2] = {{1000000000, 0}, {1000000000, 0}};
+	utimes((T + "/src/Album/a.mp3").c_str(), tv);
+
+	TreeInfo info;
+	CHECK_EQ(scanTree(T + "/src/Album", info), true);
+	CHECK_EQ(info.files, (uint64_t)3);
+	CHECK_EQ(info.bytes, (uint64_t)(4 + big.size() + 2));
+	CHECK_EQ(info.biggest, (uint64_t)big.size());
+	// a folder the caller turns down (the dashboard's deny list)
+	CHECK_EQ(scanTree(T + "/src/Album", info, [](const std::string& p) { return p.find(".thumbs") != std::string::npos; }), false);
+	CHECK_EQ(info.bad, std::string(".thumbs"));
+
+	// the whole folder, progress adding up to its size, dates kept
+	uint64_t seen = 0;
+	CHECK_EQ(copyTree(T + "/src/Album", T + "/dst/Album", [&](uint64_t add, const std::string&) { seen += add; return true; }), 0);
+	CHECK_EQ(seen, (uint64_t)(4 + big.size() + 2));
+	CHECK_EQ(slurp(T + "/dst/Album/big.mkv") == big, true);
+	CHECK_EQ(slurp(T + "/dst/Album/a.mp3"), std::string("song"));
+	CHECK_EQ(slurp(T + "/dst/Album/.thumbs/t"), std::string("xy"));
+	struct stat st;
+	CHECK_EQ(stat((T + "/dst/Album/a.mp3").c_str(), &st) == 0 && st.st_mtime == 1000000000, true);
+	CHECK_EQ(names(T + "/dst"), (std::set<std::string>{"Album"}));
+	CHECK_EQ(exists(T + "/src/Album/a.mp3"), true);	// a copy leaves the original
+
+	// never replaced: the name is taken
+	CHECK_EQ(copyTree(T + "/src/Album", T + "/dst/Album"), EEXIST);
+	CHECK_EQ(copyTree(T + "/src/Album/a.mp3", T + "/dst/Album/a.mp3"), EEXIST);
+	CHECK_EQ(slurp(T + "/dst/Album/a.mp3"), std::string("song"));
+
+	// cancelled mid-file: nothing of it stays
+	int calls = 0;
+	CHECK_EQ(copyTree(T + "/src/Album", T + "/dst/Album2", [&](uint64_t, const std::string&) { return ++calls < 2; }), ECANCELED);
+	CHECK_EQ(exists(T + "/dst/Album2"), false);
+	CHECK_EQ(names(T + "/dst"), (std::set<std::string>{"Album"}));
+
+	// one file, to a new name
+	CHECK_EQ(copyTree(T + "/src/Album/big.mkv", T + "/dst/one.mkv"), 0);
+	CHECK_EQ(slurp(T + "/dst/one.mkv") == big, true);
+	CHECK_EQ(names(T + "/dst"), (std::set<std::string>{"Album", "one.mkv"}));
+
+	// a link in a folder: refused before anything is written
+	symlink("/etc", (T + "/src/Album/ln").c_str());
+	CHECK_EQ(scanTree(T + "/src/Album", info), false);
+	CHECK_EQ(info.bad, std::string("ln"));
+	// copyTree itself fails on one too, and cleans up
+	CHECK_EQ(copyTree(T + "/src/Album", T + "/dst/Album3"), EINVAL);
+	CHECK_EQ(exists(T + "/dst/Album3"), false);
+	CHECK_EQ(names(T + "/dst"), (std::set<std::string>{"Album", "one.mkv"}));
+	// a missing source
+	CHECK_EQ(scanTree(T + "/src/none", info), false);
+	CHECK_EQ(copyTree(T + "/src/none", T + "/dst/none"), ENOENT);
+
+	// the rename that never replaces
+	std::ofstream(T + "/dst/x", std::ios::binary) << "x";
+	CHECK_EQ(renameNoReplace(T + "/dst/x", T + "/dst/one.mkv"), EEXIST);
+	CHECK_EQ(renameNoReplace(T + "/dst/x", T + "/dst/y"), 0);
+	CHECK_EQ(slurp(T + "/dst/y"), std::string("x"));
+
+	// removeTree takes links away without following them
+	removeTree(T + "/src");
+	CHECK_EQ(exists(T + "/src"), false);
+	CHECK_EQ(exists("/etc"), true);
+	removeTree(T);
+	CHECK_EQ(exists(T), false);
+}
+
 static void testWeb()
 {
 	// PIN alphabet, uniformity, injected rng
@@ -7770,6 +8138,35 @@ namespace
 
 static void testSessionNamed()
 {
+	{
+		// the handheld can't play a file: picked, it stops there with its error; reached by Next, Previous or an
+		// end, it's skipped with a note (a folder's Up next never stalls on one); a list none of which plays stops
+		Sim m;
+		m.open(4, 0);
+		CHECK_EQ(m.s.picked, true);
+		m.report(IntentType::CantPlay, "hh", m.s.load);
+		CHECK_EQ(m.s.index, 0);
+		CHECK_EQ(m.s.error.empty(), false);
+		m.step(1);
+		CHECK_EQ(m.s.index, 1);
+		CHECK_EQ(m.s.picked, false);
+		m.fx.clear();
+		m.report(IntentType::CantPlay, "hh", m.s.load);
+		CHECK_EQ(m.s.index, 2);
+		CHECK_EQ(m.s.error.empty() && m.s.playing, true);
+		CHECK_EQ(m.count(Effect::Note, m.fx), 1);
+		m.loaded();
+		m.report(IntentType::Ended, "hh", m.s.load);
+		CHECK_EQ(m.s.index, 3);
+		m.report(IntentType::CantPlay, "hh", m.s.load);	// the last one, reached by an end: the list finishes
+		CHECK_EQ(m.s.index, -1);
+		CHECK_EQ(m.s.ended.index, 3);
+		Sim none;
+		none.open(3, 0);
+		none.step(1);
+		for (int k = 0; k < 4 && none.s.index >= 0; k++) none.report(IntentType::CantPlay, "hh", none.s.load);
+		CHECK_EQ(none.s.index < 0 || !none.s.error.empty(), true);	// each tried once at most, never round for ever
+	}
 	{
 		// stop on handheld keeps the browser as the output for the next open
 		Sim m;
@@ -9604,6 +10001,7 @@ int main()
 	testSessionFuzz();
 	testCrashLog();
 	testWeb();
+	testTreeCopy();
 	testChapters();
 	testSpeed();
 	testSubStyle();
@@ -9650,6 +10048,11 @@ int main()
 	testMangaRepo();
 	testOpds();
 	testCbzWrite();
+	testPageBook();
+	testTextDoc();
+	testEpub();
+	testMangaSkipsBooks();
+	testTextFind();
 	testMangaUiLogic();
 	testMangaSeriesCache();
 	testMangaFilters();

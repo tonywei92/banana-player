@@ -80,6 +80,8 @@ namespace bp
 		// start edge (the left for ltr, the right for rtl), hscroll's most the end edge
 		double vscroll() const;
 		double hscroll() const;
+		// the page shown, centred on (fx, fy) as shares of it (a pan area's box moved): as far as its edges allow
+		void panTo(double fx, double fy);
 
 		// pages to decode: the current one first, then up to ahead more of them in reading order, then up to
 		// behind before it; no duplicates, in range

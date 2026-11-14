@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "pagebook.h"
 #include "manganet.h"
 #include "manga_names.h"
 #include "netpath.h"
@@ -277,8 +278,8 @@ namespace bp
 		std::string dir = stateDirPath + "/manga/cache/net/" + fnvHex(c.path);
 		if (!c.archive) return dir;
 		std::string name = netDecode(baseName(c.path));
-		std::string ext = extOf(name);
-		if (!safeName(name) || (ext != "cbz" && ext != "zip")) name = "chapter.cbz";
+		// (its own extension kept: it says which kind of book the reader opens)
+		if (!safeName(name) || !isPageBookName(name)) name = "chapter.cbz";
 		return dir + "/" + name;
 	}
 

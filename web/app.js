@@ -14,6 +14,7 @@ import { Playlists } from './js/playlists.js';
 import { RECENT_ID } from './js/recent.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
 import { Files, Lightbox, UploadFab } from './js/files.js';
+import { JobFab, jobOver, refreshJobs } from './js/jobs.js';
 import { Manga } from './js/manga.js';
 import { DownScreen, ElsewhereScreen } from './js/down.js';
 import { Login, loadExtras, pinFromHash, pingBoot } from './js/login.js';
@@ -137,6 +138,8 @@ function Shell() {
 	const wide = useMedia(Q_WIDE), desk = useMedia(Q_DESK);
 	// the sidebar's playlists and the handheld's free space (a computer)
 	useEffect(() => { if (desk) loadPls(); }, [desk, s.plTick, s.epoch]);
+	// Copy and Move jobs on the handheld: asked again once connected, and when one starts or ends (any page's)
+	useEffect(() => { refreshJobs(); }, [s.epoch, s.jobsTick]);
 	useEffect(() => { if (!desk || !s.fsTick) return; const t = setTimeout(() => get('/api/roots', null, { quiet: true }).then(x => set({ roots: x.roots })).catch(() => {}), 2000); return () => clearTimeout(t); }, [desk, s.fsTick]);
 	// something playing: on a phone the player takes the whole screen
 	const full = r.page === 'playing' && v.has && !wide;
@@ -179,7 +182,7 @@ function Shell() {
 	}, []);
 	const page = r.page === 'files' ? html`<${Files} />` : r.page === 'playlists' ? html`<${Playlists} />` : r.page === 'manga' ? html`<${Manga} />` : html`<${NowPlaying} />`;
 	const miniShown = !wide && v.has && r.page !== 'playing' && !s.selecting;
-	const fabShown = r.page !== 'playing' && !s.selecting && !s.pick && (s.upload.items.length > 0 || (r.page === 'files' && !!r.path));
+	const fabShown = r.page !== 'playing' && !s.selecting && !s.pick && (s.upload.items.length > 0 || (r.page === 'files' && !!r.path) || s.jobs.some(j => !jobOver(j)));
 	const nav = (k, h) => go(k === 'files' ? filesHash(store.lastDir || '') : h);
 	const upIn = e => { startUpload(entriesFromInput(e.target.files), store.lastDir || (store.roots && store.roots[0] && store.roots[0].path) || ''); e.target.value = ''; };
 	return html`<div class=${'shell' + (miniShown ? ' has-mini' : '') + (fabShown ? ' has-fab' : '') + (r.page === 'playing' ? ' on-playing' : '') + (full ? ' fullplayer' + (s.sheetOpen ? ' sheet-open' : '') : '')}>
@@ -187,6 +190,7 @@ function Shell() {
 		<div class="mainwrap">
 			<main class="main" id="main">${s.updated && !s.reconnecting && html`<div class="reconnecting updated" role="status"><span>Banana Player was updated</span><button class="btn sm primary" onClick=${() => location.reload()}>Reload</button></div>`}${s.reconnecting && html`<div class="reconnecting" role="status"><span class="cdot off"></span>Reconnecting to your handheld…</div>`}${page}</main>
 			<${UploadFab} />
+			<${JobFab} />
 			<${Toasts} />
 		</div>
 		${!wide && html`<${MiniPlayer} />`}

@@ -284,6 +284,10 @@ CLAUDE.md now keeps one line per rule; this is the full text it had, kept here w
   and matching Origin on non-GET, `bp_s` session cookie on every `/api/*` but login. Paths are virtual
   `<rootIndex>/<rel>` via `resolveVirtual`; the deny list holds the state dir (`servers.key`), `/data/home`,
   `/data/banana`, `/data/store`. Server threads reach the player only through `WebServer::call` (`evWeb`; async calls).
+  Copy, and Move to another card, run as jobs (`api_files.cpp`: a detached thread each, one copying at a time, the
+  work in bpcore's `treecopy`: measured, copied into a hidden `.bp-copy-…`, renamed into place without replacing; a
+  move removes the original after, if the handheld isn't playing it). Pages poll `GET /api/jobs` while one runs; the
+  SSE `jobs` event only says one started or ended (progress would push other news out of the replay).
   The web app is plain ES modules: export a name where it is declared, assign a `let` only in its own module, and keep
   `store.js` free of app imports. `?debug` exposes `window.__bp` (tests use it). The glyph sprite is generated
   (`tools/make-sprite.py`); web-only glyphs are inline in `index.html`. `web/style.css` copies `theme.h` by hand.

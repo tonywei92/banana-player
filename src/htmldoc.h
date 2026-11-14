@@ -22,6 +22,11 @@ namespace bp
 		std::string tag() const;	// lower-case name ("a"), "" when this is no element
 		std::vector<HtmlNode> select(const std::string& css) const;	// only inside this node; never it itself
 		HtmlNode selectFirst(const std::string& css) const;
+		// the tree as it is, for a walk in document order (an EPUB's chapter read into paragraphs): the node's
+		// children (elements and text alike), and a text node's own characters, whitespace as written
+		std::vector<HtmlNode> children() const;
+		bool isText() const;
+		std::string rawText() const;
 
 	private:
 		friend class HtmlDoc;

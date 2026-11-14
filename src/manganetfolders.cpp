@@ -2,6 +2,7 @@
 // names alone, because a remote listing has no stat and no file to open; the ordering comes from the same helpers
 // (manga_names and naturalLess), so a chapter reads in the order it would from the card.
 #include "manganetfolders.h"
+#include "pagebook.h"
 #include "manga_names.h"
 #include "netpath.h"
 #include "playlist.h"	// naturalLess, the order sortPages is built on
@@ -35,16 +36,16 @@ namespace bp
 			return lower(name.substr(dot + 1));
 		}
 
+		// as the card's scan: every one-file chapter this build reads (pagebook.h)
 		bool isArchiveName(const std::string& name)
 		{
-			std::string e = extOf(name);
-			return e == "cbz" || e == "zip";
+			// (not an EPUB, a comic's or a novel's: books are read in Files; the manga reader keeps to comics)
+			return isPageBookName(name) && extOf(name) != "epub";
 		}
 
 		std::string stripArchiveExt(const std::string& name)
 		{
-			std::string e = extOf(name);
-			return (e == "cbz" || e == "zip") ? name.substr(0, name.size() - e.size() - 1) : name;
+			return stripBookExt(name);
 		}
 
 		struct Found

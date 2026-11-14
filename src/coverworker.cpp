@@ -1,5 +1,5 @@
 #include "coverworker.h"
-#include "cbz.h"
+#include "pagebook.h"
 #include "pagedecode.h"
 #include <algorithm>
 #include <cstring>
@@ -15,21 +15,23 @@ namespace bp
 		{
 			size_t at = source.find('#');
 			if (at == std::string::npos) return decodePageFile(source, w);
-			Cbz cbz;
-			if (!cbz.open(source.substr(0, at)))
+			// (any book: a CBZ's or CBR's entry, a PDF's page number; a PDF's cover is drawn at the tile's width)
+			std::string err;
+			auto book = openPageBook(source.substr(0, at), err);
+			PageImage p;
+			if (!book)
 			{
-				PageImage p;
-				p.error = cbz.error();
+				p.error = err;
 				return p;
 			}
-			std::vector<uint8_t> bytes;
-			if (!cbz.read(source.substr(at + 1), bytes))
+			const auto& names = book->pages();
+			auto it = std::find(names.begin(), names.end(), source.substr(at + 1));
+			if (it == names.end())
 			{
-				PageImage p;
-				p.error = cbz.error();
+				p.error = "No such page";
 				return p;
 			}
-			return decodePage(bytes.data(), bytes.size(), w);
+			return bookPage(*book, (int)(it - names.begin()), w);
 		}
 
 		// the top of the page, where a cover puts its title, at the tile's aspect: a whole page is much taller, and the

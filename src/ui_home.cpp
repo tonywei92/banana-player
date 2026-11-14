@@ -17,6 +17,8 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "pagebook.h"
+#include <strings.h>
 
 namespace bp
 {
@@ -42,6 +44,32 @@ namespace bp
 			size_t dot = it.name.rfind('.');
 			if (dot != std::string::npos && dot > 0) it.name.erase(dot);
 			it.kind = isAudioFile(path) ? &G_NOTE : isPhotoFile(path) ? &G_PICTURE : &G_FILM;
+			if (isDocumentName(path) || isComicName(path))
+			{
+				// a document: the page it's at (a PDF, a comic) or how far through (a TXT, a book), from its own places
+				bool epub = path.size() > 5 && strcasecmp(path.c_str() + path.size() - 5, ".epub") == 0;
+				it.kind = isComicName(path) ? &G_COMIC : epub ? &G_EPUB : isPdfName(path) ? &G_PDF : &G_PAGE;
+				docPlacesLoad();
+				const ResumeEntry* d = docPlaces->find(path);
+				// a PDF's or a comic's place is a page of so many; a text's, a share of it (kept before the kind was: a
+				// share is at most 1, a page count at least 1)
+				bool pages = d && (d->aid == 2 || (d->aid != 1 && d->duration > 1));
+				if (d && d->position > 0)
+				{
+					it.at = pages ? "page " + std::to_string((int)d->position + 1) : std::to_string((int)std::lround(d->duration * 100)) + "%";
+					it.sub = pages ? "Page " + std::to_string((int)d->position + 1) + " / " + std::to_string((int)d->duration) : it.at + " read";
+					it.frac = pages ? (d->position + 1) / d->duration : d->duration;
+				}
+				else
+				{
+					it.sub = pages ? std::to_string((int)d->duration) + " pages" : "Not started";
+					it.frac = 0;
+				}
+				std::string w = whereOf(parentFolder(path));
+				it.where = w.substr(0, w.find(" / "));
+				recent.push_back(it);
+				continue;
+			}
 			// how far into it: where it was left (a song always starts at its start: played), of how long it is
 			RecentProgress rp = recentProgress(p.resumeStore().find(path), isAudioFile(path));
 			double len = rp.duration, pos = rp.position;
@@ -199,7 +227,7 @@ namespace bp
 			openSection(homeGrid, p);
 			return;
 		}
-		if (homeStrip < (int)recent.size()) { openFile(recent[homeStrip].path, p); return; }
+		if (homeStrip < stripCards()) { openFile(recent[homeStrip].path, p); return; }
 		// All recent: the list, from its top
 		enterFolder(RECENT, p);
 	}
@@ -242,7 +270,7 @@ namespace bp
 			// down to the column left last
 			case Button::Down: homeZone = HOME_GRID; homeGrid = homeCol; break;
 			case Button::A: homeOpen(p); break;
-			case Button::Y: if (homeStrip < (int)recent.size()) openRecentMenu(recent[homeStrip].path); break;
+			case Button::Y: if (homeStrip < stripCards()) openRecentMenu(recent[homeStrip].path); break;
 			default: break;
 			}
 			return false;
@@ -312,7 +340,7 @@ namespace bp
 			{
 				// on the strip: a card (a hold on a file's opens its menu); a drag anywhere along it scrolls
 				homePress = cardAt(x, y);
-				if (homePress >= 0 && homePress < (int)recent.size()) homeHoldAt = SDL_GetTicks();
+				if (homePress >= 0 && homePress < stripCards()) homeHoldAt = SDL_GetTicks();
 				return false;
 			}
 			for (int g = 0; g < BROWSE_TABS; g++)
@@ -368,6 +396,14 @@ namespace bp
 
 	void Ui::openFile(const std::string& path, Player& p)
 	{
+		// a document (TXT, EPUB, PDF, a comic): its viewer, not the player
+		if (openDocument(path, p)) return;
+		// a file of the cards nothing here opens: said, not handed to the player
+		if (!isNetPath(path) && !isMediaFile(path))
+		{
+			p.osd(baseName(path) + " can't be opened here", 2000);
+			return;
+		}
 		// what plays: back to it, never from its start
 		if (p.playing() && !p.playingPhoto() && p.currentPath() == path) { showPlayer(); return; }
 		// a network file whose folder wasn't listed (Recent): listed first, a moment, for the files that play after it,
@@ -409,8 +445,10 @@ namespace bp
 		std::vector<int> items = {CTX_R_PLAY};
 		if (!it->at.empty()) items.push_back(CTX_R_START);
 		items.push_back(CTX_R_SHOW);
-		if (plStore && PlaylistStore::likable(path)) items.push_back(CTX_R_LIKE);
-		if (plStore) items.push_back(CTX_R_ADD);
+		// (a document is read, not played: no Like, no playlist)
+		bool doc = isDocumentName(path) || isComicName(path);
+		if (!doc && plStore && PlaylistStore::likable(path)) items.push_back(CTX_R_LIKE);
+		if (!doc && plStore) items.push_back(CTX_R_ADD);
 		items.push_back(CTX_R_REMOVE);
 		ctxOpen = true;
 		ctxCursor = 0;
@@ -464,7 +502,7 @@ namespace bp
 				bool at = lit && homeZone == HOME_STRIP && homeStrip == i;
 				drawBox(r, homePress == i ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
 				SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-				if (i < (int)recent.size())
+				if (i < stripCards())
 				{
 					// the name on up to two lines; under it, what kind, how far, and a network mark; a bar along the foot
 					const RecentItem& it = recent[i];
@@ -537,7 +575,7 @@ namespace bp
 			}
 		}
 		std::vector<Hint> h;
-		if (homeZone == HOME_STRIP && has && homeStrip < (int)recent.size())
+		if (homeZone == HOME_STRIP && has && homeStrip < stripCards())
 			h = {{"A", chipKind && recent[homeStrip].path == chipPath ? "Go to it" : "Play"}, {"Y", "Menu"}, {"X", "Options"}};
 		else if (homeZone == HOME_STRIP && has) h = {{"A", "Open"}, {"X", "Options"}};
 		else h = {{"D-PAD", "Move"}, {"A", "Open"}, {"X", "Options"}};

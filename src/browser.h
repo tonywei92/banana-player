@@ -4,7 +4,7 @@
 
 namespace bp
 {
-	// What the browser lists: folders first, then videos, audio files and photos, each in natural order; hidden (.) names and
+	// What the browser lists: folders first, then every file (videos, songs, photos, documents and the rest), each in natural order; hidden (.) names and
 	// everything the player can't open left out.
 	struct BrowseEntry
 	{

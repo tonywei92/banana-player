@@ -17,6 +17,8 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "pagebook.h"
+#include <strings.h>
 #include "durations.h"
 
 namespace bp
@@ -659,7 +661,7 @@ namespace bp
 		for (int i = 0; i < (int)ctxItems.size(); i++)
 		{
 			int it = ctxItems[i];
-			bool del = it == CTX_DELETE || it == CTX_PL_DELETE;
+			bool del = it == CTX_DELETE || it == CTX_PL_DELETE || it == CTX_F_DELETE;
 			bool armed = del && ctxArmed && i == ctxCursor;
 			const RecentItem* ri = nullptr;
 			for (auto& x : recent)
@@ -674,10 +676,11 @@ namespace bp
 				note = recent.empty() ? "Empty" : armedClear ? "Press again to clear" : "Press twice";
 				if (armedClear) noteInk = ACCENT;
 			}
-			std::string resume = ri && !ri->at.empty() ? "Resume from " + ri->at : "Play";
+			bool docR = isDocumentName(ctxRecent) || isComicName(ctxRecent);	// (a document is read, at a page)
+			std::string resume = ri && !ri->at.empty() ? (docR ? "Resume at " : "Resume from ") + ri->at : docR ? "Open" : "Play";
 			bool likedR = it == CTX_R_LIKE && plStore && plStore->isLiked(ctxRecent);
 			bool inLiked = plIsLiked(ctxPlFile);	// Liked's Remove is Unlike
-			const char* label = it == CTX_R_PLAY ? resume.c_str() : it == CTX_R_START ? "Play from the start"
+			const char* label = it == CTX_R_PLAY ? resume.c_str() : it == CTX_R_START ? (docR ? "Open from the start" : "Play from the start")
 				: it == CTX_R_SHOW ? "Show in folder" : it == CTX_R_ADD || it == CTX_PL_ADD_ONE ? "Add to playlist\xE2\x80\xA6"
 				: it == CTX_R_LIKE ? (likedR ? "Unlike" : "Like") : it == CTX_R_REMOVE ? "Remove from Recent"
 				: it == CTX_CLEAR_RECENT ? "Clear Recent" : it == CTX_HIDDEN ? "Show hidden folders" : it == CTX_SETTINGS ? "Settings"
@@ -690,9 +693,11 @@ namespace bp
 				: it == CTX_PL_HERE ? "Play from here" : it == CTX_PL_REMOVE ? (inLiked ? "Unlike" : "Remove from playlist") : it == CTX_PL_SHOW ? "Show in folder"
 				: it == CTX_PL_ADD_FILES ? "Add files\xE2\x80\xA6" : it == CTX_PL_ADD_FOLDER ? "Add folder\xE2\x80\xA6"
 				: it == CTX_PL_SELECT ? "Select" : it == CTX_PL_MOVE ? "Move" : it == CTX_SELECT_FILES ? "Select files"
-				: it == CTX_ADD_TO ? "Add to playlist\xE2\x80\xA6" : it == CTX_WEB ? "Web dashboard\xE2\x80\xA6" : "Cancel";
+				: it == CTX_ADD_TO ? "Add to playlist\xE2\x80\xA6" : it == CTX_WEB ? "Web dashboard\xE2\x80\xA6"
+				: it == CTX_F_COPY ? "Copy\xE2\x80\xA6" : it == CTX_F_MOVE ? "Move\xE2\x80\xA6" : it == CTX_F_RENAME ? "Rename\xE2\x80\xA6"
+				: it == CTX_F_DELETE ? "Delete" : it == CTX_F_INFO ? "Info" : "Cancel";
 			const Glyph* g = it == CTX_R_PLAY ? &G_PLAY : it == CTX_R_START ? &G_REFRESH : it == CTX_R_SHOW ? &G_FOLDER
-				: it == CTX_R_ADD || it == CTX_PL_ADD_ONE ? &G_PL_ADD : it == CTX_R_LIKE ? (likedR ? &G_HEART_O : &G_HEART)
+				: it == CTX_R_ADD || it == CTX_PL_ADD_ONE ? &G_PL_ADD : it == CTX_R_LIKE ? (likedR ? &G_HEART : &G_HEART_O)
 				: it == CTX_PL_REMOVE && inLiked ? &G_HEART_O : it == CTX_R_REMOVE ? &G_MINUS : it == CTX_CLEAR_RECENT ? &G_TRASH
 				: it == CTX_HIDDEN ? &G_EYE : it == CTX_SETTINGS ? &G_GEAR
 				: it == CTX_HIDE ? &G_EYE : it == CTX_REFRESH ? &G_REFRESH : it == CTX_ADD ? &G_PLUS : it == CTX_FIND ? &G_SEARCH
@@ -700,7 +705,8 @@ namespace bp
 				: it == CTX_PL_NEW ? &G_PLUS : it == CTX_PL_PLAY || it == CTX_PL_HERE ? &G_PLAY : it == CTX_PL_SHUFFLE ? &G_SHUFFLE
 				: it == CTX_PL_RENAME ? &G_PENCIL : it == CTX_PL_DEDUP || it == CTX_PL_REMOVE ? &G_MINUS : it == CTX_PL_SHOW ? &G_FOLDER
 				: it == CTX_PL_ADD_FILES ? &G_PLUS : it == CTX_PL_ADD_FOLDER ? &G_FOLDER : it == CTX_PL_SELECT || it == CTX_SELECT_FILES ? &G_BOX_ON
-				: it == CTX_PL_MOVE ? &G_MOVE : it == CTX_ADD_TO ? &G_PLAYLIST : it == CTX_WEB ? &G_WEB : &G_CROSS;
+				: it == CTX_PL_MOVE || it == CTX_F_MOVE ? &G_MOVE : it == CTX_ADD_TO ? &G_PLAYLIST : it == CTX_WEB ? &G_WEB
+				: it == CTX_F_COPY ? &G_PLUS : it == CTX_F_RENAME ? &G_PENCIL : it == CTX_F_INFO ? &G_INFO : &G_CROSS;
 			// the mini bar's: what plays (or was stopped for a photo); main's player, also over a photo
 			if (it >= CTX_NP_NOW)
 			{
@@ -714,15 +720,15 @@ namespace bp
 					: it == CTX_NP_LIKE ? (liked ? "Unlike" : "Like") : it == CTX_NP_ADD ? "Add to playlist\xE2\x80\xA6"
 					: it == CTX_NP_SHOW ? "Show in folder" : "Stop";
 				const Glyph* ng = it == CTX_NP_NOW ? &G_RIGHT : it == CTX_NP_PLAY ? (on ? &G_PAUSE : &G_PLAY)
-					: it == CTX_NP_LIKE ? (liked ? &G_HEART_O : &G_HEART) : it == CTX_NP_ADD ? &G_PL_ADD
+					: it == CTX_NP_LIKE ? (liked ? &G_HEART : &G_HEART_O) : it == CTX_NP_ADD ? &G_PL_ADD
 					: it == CTX_NP_SHOW ? &G_FOLDER : &G_STOP;
 				std::string npNote = it == CTX_NP_SHOW ? where : it == CTX_NP_NOW && np.settings.buttonHotkeys ? "SELECT" : "";
 				drawDialogRow(ctxRow(i), ng, npLabel, i == ctxCursor, pressedBtn == 100 + i,
-					it == CTX_NP_STOP ? DANGER : it == CTX_NP_NOW ? ACCENT : TEXT, npNote, noteInk);
+					it == CTX_NP_STOP ? DANGER : it == CTX_NP_NOW || (it == CTX_NP_LIKE && liked) ? ACCENT : TEXT, npNote, noteInk);
 				continue;
 			}
 			drawDialogRow(ctxRow(i), g, label, i == ctxCursor, pressedBtn == 100 + i, del ? (armed ? ACCENT : DANGER) : it == CTX_CANCEL ? DIM
-				: it == CTX_R_LIKE && !likedR ? ACCENT : TEXT, note, noteInk);
+				: it == CTX_R_LIKE && likedR ? ACCENT : TEXT, note, noteInk);	// (the heart lit only when it is liked)
 		}
 		// a menu too long for its line (a playlist's): Delete's word on the footer instead
 		if (plArmed && !ctxExtra()) drawFooterText("Your files stay where they are", ACCENT);
@@ -782,7 +788,11 @@ namespace bp
 		case 1:
 			if (path == RECENT) return ICON_RECENT;
 			return browseDir.empty() ? ICON_PLACE : ICON_FOLDER;	// the first page's: the places (this card...)
-		case 2: return isPhotoFile(path) ? ICON_PHOTO : isAudioFile(path) ? ICON_SONG : ICON_VIDEO;
+		case 2:
+			if (isComicName(path)) return ICON_COMIC;
+			if (isPdfName(path)) return ICON_PDF;
+			if (isDocumentName(path)) return path.size() > 5 && strcasecmp(path.c_str() + path.size() - 5, ".epub") == 0 ? ICON_EPUB : ICON_DOC;
+			return isPhotoFile(path) ? ICON_PHOTO : isAudioFile(path) ? ICON_SONG : isVideoFile(path) ? ICON_VIDEO : ICON_FILE;
 		default: return ICON_NONE;	// messages, Clear, Try again
 		}
 	}
