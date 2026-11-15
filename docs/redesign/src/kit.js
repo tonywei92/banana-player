@@ -1,0 +1,48 @@
+// ---------- icons (24 grid; blocky strokes to sit beside the pixel type) ----------
+const P={
+home:'M3 11 12 3l9 8M5 10v10h5v-6h4v6h5V10',folder:'M3 6h7l2 3h9v10H3z',playlist:'M4 6h13M4 11h13M4 16h7M16 20v-7h4',
+book:'M4 5h7l1 1 1-1h7v13h-7l-1 1-1-1H4zM12 6v13',manga:'M4 4h16v12h-9l-4 4v-4H4zM8 8h8M8 12h5',
+network:'M9 3h6v5H9zM3 16h6v5H3zM15 16h6v5h-6zM12 8v4M6 16v-4h12v4',sliders:'M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4h4V5zM6 15v4h4v-4z',
+video:'M3 5h18v14H3zM10 9v6l5-3z',music:'M9 18V5l10-2v13M9 18H5v-3h4M19 16h-4v-3h4',photo:'M3 5h18v14H3zM3 16l5-5 4 4 3-3 6 6M15 9h.01',
+doc:'M6 3h8l4 4v14H6zM14 3v4h4M9 12h6M9 16h6',heart:'M12 20 4 12V7l3-3h3l2 2 2-2h3l3 3v5z',plus:'M12 5v14M5 12h14',
+play:'M7 4v16l13-8z',pause:'M6 4h4v16H6zM14 4h4v16h-4z',prev:'M5 4h3v16H5zM20 4v16L9 12z',next:'M16 4h3v16h-3zM4 4v16l11-8z',
+stop:'M5 5h14v14H5z',rew:'M11 6l-7 6 7 6zM20 6l-7 6 7 6z',ff:'M13 6l7 6-7 6zM4 6l7 6-7 6z',
+list:'M4 6h2M9 6h11M4 12h2M9 12h11M4 18h2M9 18h11',eye:'M2 12l5-6h10l5 6-5 6H7zM10 10h4v4h-4z',more:'M4 10h4v4H4zM10 10h4v4h-4zM16 10h4v4h-4z',
+search:'M4 4h11v11H4zM15 15l5 5',bookmark:'M6 3h12v18l-6-5-6 5z',sun:'M9 9h6v6H9zM12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2',
+lock:'M6 11h12v10H6zM8 11V6h8v5',moon:'M20 14v3l-3 3H9l-5-5V9l3-4h3v6l3 3z',info:'M4 4h16v16H4zM12 11v6M12 7h.01',
+shuffle:'M3 7h4l10 10h4M3 17h4l3-3M14 10l3-3h4M18 4l3 3-3 3M18 14l3 3-3 3',repeat:'M4 11V7h13M14 4l3 3-3 3M20 13v4H7M10 14l-3 3 3 3',
+cc:'M3 5h18v14H3zM7 14h4M13 14h4M7 10h2M11 10h6',speaker:'M4 9h4l5-4v14l-5-4H4zM16 9v6M19 6v12',
+chevR:'M9 5l7 7-7 7',chevL:'M15 5l-7 7 7 7',chevD:'M5 9l7 7 7-7',chevU:'M5 15l7-7 7 7',check:'M4 12l5 5L20 6',
+globe:'M8 3h8l5 5v8l-5 5H8l-5-5V8zM3 12h18M12 3c-4 4-4 14 0 18M12 3c4 4 4 14 0 18',wifi:'M2 9l10-5 10 5M6 13l6-3 6 3M11 17h2',power:'M12 3v9M7 6l-3 4v5l4 5h8l4-5v-5l-3-4',
+zin:'M4 4h11v11H4zM15 15l5 5M7 9.5h5M9.5 7v5',zout:'M4 4h11v11H4zM15 15l5 5M7 9.5h5',rotate:'M20 12v5l-3 3H7l-3-3V7l3-3h9M13 1l3 3-3 3',
+fit:'M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5',download:'M12 3v12M7 10l5 5 5-5M4 20h16',trash:'M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14',
+pencil:'M4 20l1-5L16 4l4 4L9 19z',copy:'M8 8h12v12H8zM4 16V4h12',move:'M12 3v18M8 7l4-4 4 4M8 17l4 4 4-4',grid:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
+clock:'M4 4h16v16H4zM12 7v5h4',eq:'M6 4v16M12 4v16M18 4v16M4 9h4M10 15h4M16 7h4',viz:'M4 14v6M8 9v11M12 4v16M16 11v9M20 7v13',
+incog:'M3 11h18M7 11l1-6h8l1 6M6 15h4v4H6zM14 15h4v4h-4zM10 17h4',ext:'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM16.5 13v7M13 16.5h7',
+card:'M6 3h8l4 4v14H6zM9 6v3M12 6v3',speed:'M4 18v-6l4-6h8l4 6v6M12 14l4-5',eyeoff:'M3 3l18 18M2 12l5-6h10l5 6-5 6H7z',refresh:'M20 12v5l-3 3H7l-3-3V7l3-3h9M13 1l3 3-3 3',
+qr:'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM18 14h2M14 18h2',text:'M5 6V4h14v2M12 4v16M9 20h6'
+};
+const FILL=new Set(['play','pause','prev','next','stop','rew','ff','more','bookmark-f','heart-f']);
+P['heart-f']=P.heart;P['bookmark-f']=P.bookmark;
+const ico=(n,s0=20,st='')=>{const s=FILL.has(n)?s0:Math.max(16,s0);return `<svg class="i" width="${s}" height="${s}" viewBox="0 0 24 24" style="${st}" ${FILL.has(n)?'fill="currentColor" stroke="none"':'fill="none" stroke="currentColor" stroke-width="2.3"'}><path d="${P[n]||''}"/></svg>`};
+const cap=(k,c='')=>`<b class="cap ${c}">${k}</b>`;
+const caps=(k,c='')=>k.split('/').map(x=>cap(x,c)).join('');
+const hints=a=>`<div class="hints">${(a||[]).map(([k,l])=>`<span>${caps(k)}${l}</span>`).join('')}</div>`;
+const status=(o={})=>`<div class="status">${o.incog?`<span class="sb">${ico('incog',14)}</span>`:''}${o.web?`<span class="sb">${ico('globe',14)}${o.web}</span>`:''}${o.webIdle?ico('globe',16):''}${o.browser?`<span class="sb">${ico('globe',14)}${o.browser}</span>`:''}${o.boost?`<span class="sb ${parseInt(o.boost)>120?'r':''}">${ico('speaker',13)}${o.boost}</span>`:''}${o.play?'<span class="eqb"><i></i><i></i><i></i></span>':''}${o.globe?ico('globe',15,'color:var(--ac)'):''}${ico('wifi',16)}<span class="batt"><i style="width:72%"></i></span><span>21:47</span></div>`;
+const SEC=[['home','Home','home','home'],['files','Files','folder','files'],['playlists','Playlists','playlist','playlists'],['books','Books','book','books'],['manga','Manga','manga','manga'],['network','Network','network','net-folder']];
+const rail=(a,warn)=>`<div class="rail"><div class="lr">${cap('L')}</div>${SEC.map(([id,n,ic,go])=>`<div class="ri ${a==id?'on':''}" ${go&&a!=id?`data-go="${go}"`:''}>${ico(ic,22)}<span>${n}</span>${warn&&id=='manga'?'<i style="position:absolute;right:9px;top:5px;width:11px;height:11px;border-radius:3px;background:var(--dg);border:2px solid #0b0a0d"></i>':''}</div>`).join('')}<div class="lr">${cap('R')}</div><div class="sp"></div><div class="ri ${a=='settings'?'on':''}" ${a!='settings'?'data-go="settings"':''}>${ico('sliders',22)}<span>Settings</span></div></div>`;
+const head=o=>`<div class="hd">${o.back?`<div class="btn bk" data-go="${o.back}">${ico('chevL',20)}</div>`:''}<div class="tt"><h1>${o.title}</h1>${o.crumb?`<p class="in">${o.crumb}</p>`:''}</div>${o.right||''}${status(o.st)}${o.more===false?'':`<div class="btn mo" ${o.more?`data-go="${o.more}"`:''}>${ico('more',20)}</div>`}</div>`;
+const minibar=()=>`<div class="mini" data-go="music"><div class="pp">${ico('pause',16)}</div>${ico('music',17,'color:var(--do)')}<span style="font-size:15px">Sunny Peel</span><span class="in dm" style="font-size:12px">The Plantains · 1:12 / 3:34</span><span style="flex:1"></span><span class="in fx" style="font-size:12px;gap:5px;color:var(--do)">${cap('SELECT')}Now playing</span>${ico('chevR',14,'color:var(--ac)')}<i class="ln" style="width:34%"></i></div>`;
+const minibarV=(pills='')=>`<div class="mini" data-go="video"><div class="pp">${ico('pause',16)}</div>${ico('video',17,'color:var(--do)')}<span style="font-size:15px">Sintel</span><span class="in dm" style="font-size:12px">4:12 / 14:48</span>${pills}<span style="flex:1"></span><span class="in fx" style="font-size:12px;gap:5px;color:var(--do)">${cap('SELECT')}${pills?'':'Now playing'}</span>${ico('chevR',14,'color:var(--ac)')}<i class="ln" style="width:28%"></i></div>`;
+const minibarB=()=>`<div class="mini" data-go="browser-play"><div class="pp">${ico('pause',16)}</div>${ico('music',17,'color:var(--do)')}<span style="font-size:15px">Sunny Peel</span><span class="sb">${ico('globe',14)}Playing in Chrome on Mac</span><span class="in dm" style="font-size:12px">1:12 / 3:34</span><span style="flex:1"></span><span class="in fx" style="font-size:12px;gap:5px;color:var(--do)">${cap('SELECT')}</span>${ico('chevR',14,'color:var(--ac)')}<i class="ln" style="width:34%"></i></div>`;
+const shell=(a,o)=>rail(a,o.warn)+`<div class="main">${head(o)}<div class="body" style="${o.mini?'bottom:92px;':''}${o.bs||''}">${o.body}</div>${o.mini?(o.mini=='v'?minibarV(o.pills):o.mini=='b'?minibarB():minibar()):''}${hints(o.hint)}</div>`;
+const row=(ic,nm,nt='',cls='',ex='')=>`<div class="row ${cls}" ${ex}>${ic?ico(ic,20):''}<span class="nm">${nm}</span>${nt?`<span class="nt">${nt}</span>`:''}</div>`;
+const cover=(c,t,a,f='',w=96,h=136,ex='')=>`<div class="cover ${c}" style="width:${w}px;height:${h}px;flex:none;${ex}">${f?`<span class="fmt">${f}</span>`:''}<b style="font-size:${Math.max(12,w/7.6)}px">${t}</b><small style="font-size:${Math.max(9.5,w/10)}px">${a}</small></div>`;
+const tBrand=()=>`<div class="ab fx" style="left:20px;top:16px;gap:8px"><div style="width:22px;height:22px;border-radius:6px;background:var(--ac);display:grid;place-items:center;color:#000">${ico('play',12)}</div><span style="font-size:15px;color:var(--ac)">Banana Player</span></div>`;
+const tHint=a=>`<div class="in fx" style="gap:16px;font-size:13.5px;color:var(--do)">${a.map(([k,l])=>`<span class="fx" style="gap:6px">${caps(k)}${l}</span>`).join('')}</div>`;
+function peaks(n=52,h=120,seed=11){let s=seed,o='';for(let i=0;i<n;i++){s=(s*9301+49297)%233280;const r=s/233280,env=Math.exp(-i/26)*.62+.2,v=Math.max(.06,Math.min(1,(r*.75+.3)*env+(i%6==0?.12:0)));o+=`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end"><i style="height:3px;background:#f1e7c6;margin-bottom:${5+Math.round(r*12)}px"></i><i style="height:${Math.round(v*h)}px;background:var(--ac)"></i></div>`}return `<div style="display:flex;gap:3px;align-items:flex-end;height:${h+24}px">${o}</div>`}
+const sheet=(h,inner,hint)=>`<div class="veil"></div><div class="sheet" style="height:${h+10}px"><div class="grab"></div>${inner}${hint?hints(hint):''}</div>`;
+const tabs=(a,on,go={})=>`<div class="tabs">${cap('L')}${a.map((t,i)=>`<div class="tab ${i==on?'on':''}" ${go[i]?`data-go="${go[i]}"`:''}>${t}</div>`).join('')}${cap('R')}</div>`;
+const step=(v,w=118)=>`<div class="step">${ico('chevL',15,'color:var(--dm)')}<b style="min-width:${w}px">${v}</b>${ico('chevR',15,'color:var(--dm)')}</div>`;
+const pill=(t,tone='',ic='')=>`<span class="pill ${tone}">${ic?ico(ic,12):''}${t}</span>`;
+const srow=(l,v,foc='')=>`<div class="row ${foc}" style="height:46px">${`<span class="nm">${l}</span>`}${v}</div>`;

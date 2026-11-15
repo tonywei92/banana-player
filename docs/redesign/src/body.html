@@ -1,0 +1,279 @@
+<div class="layout">
+<nav class="side" id="nav">
+	<div class="brand"><div class="logo"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></div><span>Handheld redesign</span></div>
+	<h4>The case</h4>
+	<a href="#summary">Summary</a><a href="#problems">Problems today</a><a href="#principles">Principles</a><a href="#ia">The new map</a><a href="#keys">What each key does</a><a href="#states">State indicators</a><a href="#devices">Both devices</a><a href="#power">Power &amp; screens</a>
+	<h4>The design</h4>
+	<a href="#proto">Try it</a>
+	<span id="navscreens"></span>
+	<h4>The fine print</h4>
+	<a href="#map">Where everything went</a><a href="#questions">Open questions</a><a href="#components">Components</a><a href="#coverage">Coverage</a><a href="#limits">Not checked</a>
+</nav>
+<main>
+<header class="top" id="summary">
+	<div class="eyebrow">Proposal · 15 Nov 2026 · measured against 0.7.18 · nothing here is built</div>
+	<h1>Banana Player on the handheld: room for Books, and one way to do everything</h1>
+	<p class="lede">Home’s four tiles are full, so a fifth section has nowhere to go. Fixing that properly means fixing what sits under it: the same key does a different job on almost every screen. This proposal replaces the tiles with a rail, gives each key one job, and puts the top screen to work.</p>
+	<div class="cards five" style="margin-top:22px">
+		<div class="card"><span class="num">1</span><h3>A rail instead of four tiles</h3><p>Sections sit down the left edge of the bottom screen, named, 68 × 51 each. L / R still step them. Six today with Books, room for eight, then it scrolls.</p></div>
+		<div class="card"><span class="num">2</span><h3>Books is a section</h3><p>A shelf of covers for EPUB, PDF, TXT and comics, the ones you are reading first. Manga moves beside it instead of hiding under Extensions.</p></div>
+		<div class="card"><span class="num">3</span><h3>One job per key</h3><p><kbd>X</kbd> More, <kbd>Y</kbd> List, <kbd>SELECT</kbd> View, <kbd>START</kbd> Menu, <kbd>F</kbd> Quick settings: on every screen, with a touch key in the same place.</p></div>
+		<div class="card"><span class="num">4</span><h3>A player in three tiers</h3><p>Big transport, labelled state chips, and one sheet for the rest, the same for a video and a song. The seek gets on-screen keys.</p></div>
+		<div class="card"><span class="num">5</span><h3>The top screen earns its keep</h3><p>With nothing playing it previews what the cursor is on: a file’s tracks, a book’s cover and the line you stopped at, a setting’s live effect.</p></div>
+	</div>
+</header>
+
+<section id="problems">
+	<div class="eyebrow">1 · What is wrong today</div>
+	<h2>Six problems, from the screens as they are</h2>
+	<p class="sub">Shots are the desktop build of 0.7.18 with generated media (the Big Buck Bunny trailer, test clips, a generated text file), driven by the <code>--press</code> harness.</p>
+	<div class="cards">
+		<div class="card"><h3>The navigation is a fixed four</h3><p>Home is a 2 × 2 grid under the Recent strip, and inside a section the same four are unlabelled 36-unit markers beside the clock. Neither has a fifth slot. Books would have to push something out or shrink every tile.</p></div>
+		<div class="card"><h3>Books have no home; comics are three levels down</h3><p>EPUB, PDF and TXT open only from wherever they lie in Files. Comics need Home › Extensions › Manga reader. “Extensions” spends a top-level slot on a drawer that holds one tile.</p></div>
+		<div class="card"><h3>A key means something else on every screen</h3><p>SELECT is Now playing, Tracks, Display, Fit / Fill, Book mode, Fullscreen, EQ on / off or Select all, depending where you stand. X and START drift the same way (table below). Nothing learned on one screen carries to the next.</p></div>
+		<div class="card"><h3>Two menus per list, three kinds of menu</h3><p>In Files, X is “Options” and Y is “Menu”, and Info is in both. Elsewhere options are a pop-up, a full page (Text options), a page with tabs (Tracks), a grid pop-up (Display) or a panel (Quick settings).</p></div>
+		<div class="card"><h3>The player is sixteen keys of one weight</h3><p>Ten 108 × 60 keys, two tappable lines and four more keys below. Pause is the size of Menu. The key the hand needs most on a touch screen, seek, has no button. Loop and Shuffle share one key with five readings: Off, All, One, On, Once.</p></div>
+		<div class="card"><h3>The top screen idles; labels overflow</h3><p>On every browsing screen with nothing playing, the top panel is the logo and one line. Meanwhile the bottom one is short of room: the reader’s “Bookmarks” and “Book mode” labels touch their keys’ edges, and the hint line is the smallest type on the device.</p></div>
+	</div>
+	<div class="shots">
+		<figure><img alt="Today's Home: Recent strip above four tiles" src="{{img:t-home}}"><figcaption><b>Home.</b> Four tiles fill the panel. A fifth section does not fit.</figcaption></figure>
+		<figure><img alt="Today's Files list with four small section markers" src="{{img:t-files}}"><figcaption><b>Files.</b> The sections are four small icons with no names; the hints offer both “X Options” and “Y Menu”.</figcaption></figure>
+		<figure><img alt="Today's X menu in Files" src="{{img:t-xmenu}}"><figcaption><b>X in Files.</b> Info, Select files, Refresh, Show hidden folders.</figcaption></figure>
+		<figure><img alt="Today's Y menu in Files" src="{{img:t-ymenu}}"><figcaption><b>Y in Files.</b> Info again, then Copy, Move, Rename, Delete.</figcaption></figure>
+		<figure><img alt="Today's video player" src="{{img:t-video}}"><figcaption><b>Video.</b> Sixteen targets; the SELECT key is three glyphs and no word; no seek key.</figcaption></figure>
+		<figure><img alt="Today's music player" src="{{img:t-song}}"><figcaption><b>Music.</b> Sound is the faint “EQ off ›” at the right of a thin line.</figcaption></figure>
+		<figure><img alt="Today's START menu, Playing tab" src="{{img:t-menu}}"><figcaption><b>START.</b> A third place for Like, Add, Info and Stop, which are also keys on the player.</figcaption></figure>
+		<figure><img alt="Today's text reader controls" src="{{img:t-text}}"><figcaption><b>Text reader.</b> Here X is Bookmarks, START is Options, SELECT is Book mode; labels touch the key edges.</figcaption></figure>
+		<figure><img alt="Today's top panel with nothing playing" src="{{img:t-idle}}"><figcaption><b>Top screen</b> while browsing: the same card on Home, Files, Settings and Manga.</figcaption></figure>
+		<figure><img alt="Today's Manga library" src="{{img:t-manga}}"><figcaption><b>Manga.</b> Its own tabs on L / R, which are sections one level up.</figcaption></figure>
+	</div>
+	<h3 style="margin:26px 0 10px;font-size:20px">The same four keys, screen by screen (today)</h3>
+	<div class="tw"><table style="min-width:860px">
+		<tr><th>Key</th><th>Lists</th><th>Video</th><th>Song</th><th>Photo</th><th>Text / book</th><th>PDF</th><th>Comic</th><th>Settings</th><th>Sound</th></tr>
+		<tr><td class="k">X</td><td>Options menu</td><td>Loop / Shuffle</td><td>Loop / Shuffle</td><td>·</td><td>Bookmarks</td><td>Single / Vertical</td><td>Reading mode</td><td>Next group</td><td>Next preset</td></tr>
+		<tr><td class="k">Y</td><td>Item menu</td><td>Up next</td><td>Up next</td><td>·</td><td>Contents</td><td>Pages</td><td>Pages</td><td>Previous group</td><td>Previous preset</td></tr>
+		<tr><td class="k">SELECT</td><td>Now playing; Select all</td><td>Tracks</td><td>Display</td><td>Fit / Fill</td><td>Book mode</td><td>Fullscreen</td><td>Fullscreen</td><td>Now playing</td><td>EQ on / off</td></tr>
+		<tr><td class="k">START</td><td>Menu (3 tabs)</td><td>Menu</td><td>Menu</td><td>Menu</td><td>Text options</td><td>Options</td><td>Reading menu; Manga settings on its lists</td><td>Closes</td><td>EQ options</td></tr>
+		<tr><td class="k">L / R</td><td>Section</td><td>File</td><td>File</td><td>Photo</td><td>A screen</td><td>Page</td><td>Page; tabs on its lists</td><td>Tab</td><td>Tab</td></tr>
+	</table></div>
+</section>
+
+<section id="principles">
+	<div class="eyebrow">2 · Principles</div>
+	<h2>Seven rules the screens below follow</h2>
+	<div class="cards">
+		<div class="card"><h3>A key keeps its job</h3><p>If X is More here, X is More there. Where a screen has nothing for a key, the key does nothing rather than something else.</p></div>
+		<div class="card"><h3>Every key has a touch twin, in the same spot</h3><p>‹ top left is B. ⋯ top right is X. The row above the hints holds Y and SELECT with their names on them. No function is buttons-only or touch-only.</p></div>
+		<div class="card"><h3>One sheet for every menu</h3><p>More, List, View, Menu and Quick settings are the same piece: it rises over the bottom screen, the top keeps its picture, and the key that opened it (or B) closes it.</p></div>
+		<div class="card"><h3>Size follows use</h3><p>What is pressed every minute is the biggest thing on the screen. What is set once a film is a labelled chip. What is rare is in a sheet. A free-standing key is at least 56 units on its short side (7.1 mm on the 4-inch RG DS, 7.6 mm on the Plus); list rows are 52.</p></div>
+		<div class="card"><h3>State is written down</h3><p>The current subtitle, speed, repeat mode, EQ preset and reading colours are words on the screen, on the control that changes them.</p></div>
+		<div class="card"><h3>Away from normal is always in sight</h3><p>Anything changed from its normal state that alters what you see or hear shows in yellow, as its value, on its own control, and is echoed (mini bar, header) on screens that don’t hold the control. Normal is quiet: no badge means nothing is changed. <a href="#states">The table</a>.</p></div>
+		<div class="card"><h3>Two screens, two jobs</h3><p>The bottom is for the hand. The top is for the eyes: the picture when something plays, and otherwise the detail of whatever the cursor is on.</p></div>
+	</div>
+</section>
+
+<section id="ia">
+	<div class="eyebrow">3 · Information architecture</div>
+	<h2>The new map</h2>
+	<p class="sub">Three kinds of screen, and five sheets that work on all of them.</p>
+	<div class="layers">
+		<div class="layer"><b>The shell</b><span>Has the rail. Home and the sections: lists, grids and Settings. <kbd>L</kbd> <kbd>R</kbd> step sections; <kbd>L2</kbd> <kbd>R2</kbd> step tabs inside one. The mini bar sits above the hints while something plays.</span></div>
+		<div class="layer"><b>The player</b><span>No rail: the whole bottom screen is controls. One layout for video and music. <kbd>B</kbd> leaves it playing and returns you to where you were.</span></div>
+		<div class="layer"><b>The viewers</b><span>Photo, book, PDF, comic. No rail. One skeleton: the thing to drag, the hand’s keys, and a row of List · View · Light.</span></div>
+		<div class="layer"><b>The sheets</b><span><kbd>X</kbd> More · <kbd>Y</kbd> List · <kbd>SELECT</kbd> View · <kbd>START</kbd> Menu · <kbd>F</kbd> Quick settings. Each opens over any of the three above.</span></div>
+	</div>
+	<div class="ia">
+		<div class="n"><h3>Home</h3><ul><li>Continue (or Now playing)</li><li>Recent: All, Videos, Music, Books</li><li>Shuffle Liked · Send from phone · All recent</li></ul></div>
+		<div class="n"><h3>Files</h3><ul><li>Videos, This card, Second card</li><li>Folders and every file</li><li>Select, copy, move, rename, delete</li></ul></div>
+		<div class="n"><h3>Playlists</h3><ul><li>Liked</li><li>Your playlists</li><li>New playlist</li></ul></div>
+		<div class="n is-new"><h3>Books <span class="tag new">NEW</span></h3><ul><li>Reading now</li><li>Shelf: Books, Comics, PDF, Text</li><li>From a Books folder, or opened from Files</li></ul></div>
+		<div class="n"><h3>Manga <span class="tag mov">MOVED</span></h3><ul><li>Library, History, Browse, Downloads</li><li>Shown while the reader is on</li><li>Was Home › Extensions › Manga</li></ul></div>
+		<div class="n"><h3>Network</h3><ul><li>Connections</li><li>Find on the network, Add</li><li>Folders with file actions</li></ul></div>
+		<div class="n"><h3>Settings <span class="tag mov">MOVED</span></h3><ul><li>Playback, Subtitles, Music &amp; sound, Photos, Reading, Files &amp; history, Power &amp; screens</li><li>Web dashboard, Extensions, Manga, Updates, About</li></ul></div>
+		<div class="n" style="border-style:dashed"><h3>Slot 8</h3><ul><li>Free. A future extension that is turned on takes a slot, as Manga does.</li><li>Past eight the rail scrolls; START’s menu shows them all.</li></ul></div>
+	</div>
+</section>
+
+<section id="keys">
+	<div class="eyebrow">4 · The grammar</div>
+	<h2>What each key does, everywhere</h2>
+	<p class="sub">The table to learn once. The four cells that used to differ per screen now read the same across a row.</p>
+	<div class="tw"><table style="min-width:820px">
+		<tr><th>Key</th><th>Its job</th><th>In the shell</th><th>In the player</th><th>In a viewer</th><th>Touch twin</th></tr>
+		<tr><td class="k">A</td><td>Do it</td><td>Open / play</td><td>Play / pause</td><td>Next screen · 200%</td><td>Tap the thing</td></tr>
+		<tr><td class="k">B</td><td>Back</td><td>Up a folder, then Home; at Home, asks to quit</td><td>Back to where you were; it keeps playing</td><td>Close; your place is kept</td><td>‹ top left</td></tr>
+		<tr><td class="k">X</td><td>More: what can I do with this?</td><td>The file’s and the folder’s actions</td><td>Lock, Screen off, Info, Stop, Like, Add, Show in folder, Play on</td><td>Find, Info, Show in folder, the rest</td><td>⋯ top right</td></tr>
+		<tr><td class="k">Y</td><td>List: what is in this?</td><td>Select (tick items)</td><td>Up next · Chapters</td><td>Contents · Bookmarks · Pages</td><td>The List / Contents / Pages key</td></tr>
+		<tr><td class="k">SELECT</td><td>View: how is it shown?</td><td>Now playing (nothing to “view” in a list)</td><td>Subtitles, Audio, Picture, Speed · Display, Equalizer, Effects</td><td>Text · Fit / Fill · Single, Vertical, Fullscreen, Book</td><td>The View / Text key</td></tr>
+		<tr><td class="k">START</td><td>Menu: take me somewhere</td><td colspan="3">Home, the sections, Settings, About, Now playing, Quit</td><td>The rail (in the shell)</td></tr>
+		<tr><td class="k">F</td><td>Quick settings</td><td colspan="3">Volume, Brightness, Same on both, Web dashboard, Incognito, Screen off, Quit</td><td>·</td></tr>
+		<tr><td class="k">L / R</td><td>The one before / after</td><td>Section</td><td>File</td><td>Page / photo</td><td>The rail · Prev / Next keys</td></tr>
+		<tr><td class="k">L2 / R2</td><td>The part before / after</td><td>Tab inside a section</td><td>Chapter</td><td>Chapter</td><td>The tabs · chapter keys</td></tr>
+		<tr><td class="k">D-pad</td><td>Move / adjust</td><td>Move; ◀ ▶ page</td><td>◀ ▶ seek · ▼ onto the chips, ▲ back</td><td>Scroll / page · ▲ ▼ zoom</td><td>Drag</td></tr>
+		<tr><td class="k">L3</td><td>The screen’s one shortcut</td><td>Like what plays</td><td>Like</td><td>Find (text) · Rotate (photo, comic)</td><td>Its own key on screen</td></tr>
+	</table></div>
+	<p class="sub" style="margin-top:12px">Inside a sheet the sheet owns the keys: <kbd>L</kbd> <kbd>R</kbd> step its tabs, the D-pad moves, <kbd>A</kbd> chooses, <kbd>B</kbd> or the key that opened it closes it (one kept exception: on a song’s Display tab, SELECT steps to the next Show mode, as it does today, and B closes). F + L2 (screenshot) and F + START (quit at once) stay.</p>
+</section>
+
+<section id="states">
+	<div class="eyebrow">4b · State indicators</div>
+	<h2>What is not normal, and where it shows</h2>
+	<p class="sub">One visual language: <b>yellow</b>, the <b>value written out</b> in place of the setting’s name, and a <b>dot</b> in the control’s corner. In the header and on the mini bar the same thing is a small yellow pill. Nothing is ever left on the top screen over a picture; a change shows its card there for a moment, as today.</p>
+	<div class="tw"><table style="min-width:820px">
+		<tr><th>State</th><th>Normal (quiet)</th><th>On its control</th><th>Where the control isn’t on screen</th></tr>
+		<tr><td>Speed</td><td>1×</td><td>Speed chip: “1.5×”, yellow, dot; its row in View › Speed</td><td>Mini bar pill “1.5×”</td></tr>
+		<tr><td>Picture look</td><td>Off</td><td>Picture chip: the look’s name, yellow, dot; its tile in View › Picture</td><td>A top-screen note each time a video starts with a look on; mini bar pill with the name; Home’s Now playing card</td></tr>
+		<tr><td>Adjust (Brightness, Contrast, Saturation, Gamma)</td><td>All 0</td><td>Picture chip: “Adjusted”, or “+adj” beside a look; each slider’s name, fill and number yellow</td><td>Mini bar pill “Adjusted” (one pill with the look when both)</td></tr>
+		<tr><td>Shuffle · Repeat</td><td>Off · Off</td><td>Repeat / Shuffle chip: “All”, “One”, “On”, yellow, dot; the switches in List</td><td>Mini bar pill with the glyph</td></tr>
+		<tr><td>Equalizer · Effect</td><td>Off · None</td><td>Sound chip: “EQ Rock · Room”, yellow, dot</td><td>Mini bar pill “EQ” (a song only)</td></tr>
+		<tr><td>Volume boost</td><td>100% or less</td><td>The volume card and Quick settings’ bar: cream up to the 100 mark, yellow past it, red past 120%; the number in the same colour</td><td>Header badge “120%” on every screen, red past 120%</td></tr>
+		<tr><td>Incognito</td><td>Off</td><td>Quick settings’ tile, switch on</td><td>Header badge (hat and glasses) on every screen; Recent’s heading and Manga’s History say they are not being added to</td></tr>
+		<tr><td>Extra dim</td><td>0%</td><td>The Light key in a viewer: lit, “−30%”; its bar in the Light sheet</td><td>Only matters in a viewer. In Fullscreen / Book mode: on the page-number line after a turn, and on the controls bar</td></tr>
+		<tr><td>Reading filter</td><td>Off</td><td>The Light key: lit, “Warm”, “Warmer”, “Dim” (with Extra dim: “Warm · −30%”)</td><td>As Extra dim</td></tr>
+		<tr><td>Playing in a browser</td><td>Handheld</td><td>The player’s state line: “In Chrome on Mac”, yellow, with the globe; the Pause key says “Hold: play it here”; Sound and Top screen chips dimmed, “Handheld only”</td><td>Header badge “Chrome” on every screen (with a browser merely signed in: a badge with the count; nobody signed in: a quiet globe); mini bar pill “Playing in Chrome on Mac”; “In browser” on its row; the top screen’s card</td></tr>
+		<tr><td>Touch lock</td><td>Off</td><td colspan="2">As today: the lock over the controls with “hold to unlock”</td></tr>
+		<tr><td>Subtitle delay · Audio delay</td><td colspan="3">Not in 0.7.18 (FEATURES.md has neither). If added: tabs’ rows in View, and the Subtitles / Audio chip gains the offset (“English +0.3 s”) in yellow.</td></tr>
+	</table></div>
+	<p class="sub" style="margin-top:12px">Not marked, on purpose: choices that have no “normal” (which subtitle, which audio track, Fit / Fill, the visualizer’s style, the reader’s font and colours). They are written on their controls in cream. That includes a song’s Show mode (Visualizer alone is a choice, not a deviation), Song info on top, and the visualizer’s frame rate: 30 or 60 instead of 45 changes smoothness and battery, not what is shown, so it stays a quiet row in Settings › Music &amp; sound.</p>
+</section>
+
+<section id="devices">
+	<div class="eyebrow">4c · RG DS and RG DS Plus</div>
+	<h2>Does it work on both? Yes, after one pass of fixes</h2>
+	<p class="sub">Both are 4:3 and the bottom panel is laid out in 640 × 480 units, so the two show the same layout. The RG DS is 4.0 in (81.3 × 61.0 mm, 0.127 mm a unit, one unit = one pixel); the Plus is 4.3 in (87.4 × 65.5 mm, 0.137 mm a unit, 1.6 pixels a unit). Everything is 7% smaller in the hand on the RG DS, so that is the one to design for. The first version of these screens used a 44-unit floor, which is 5.6 mm there: too small. This version is resized; use the switch above the walk-through to see either device at its real size.</p>
+	<div class="tw"><table style="min-width:820px">
+		<tr><th>Check</th><th>Was</th><th>Now (units · mm on RG DS · mm on Plus)</th><th>Verdict</th></tr>
+		<tr class="grp"><td colspan="4">Touch targets (short side)</td></tr>
+		<tr><td>‹ back, ⋯ More, bookmark in the header</td><td>44 × 44 (5.6 mm)</td><td>56 × 48 drawn, in a corner: the touch area runs to the panel’s edges, 60 × 56 · 7.1 · 7.6</td><td>OK</td></tr>
+		<tr><td>Rail cells</td><td>68 × 51 (6.5 mm)</td><td>68 × 56 · 7.1 · 7.6</td><td>OK</td></tr>
+		<tr><td>Sheet tabs</td><td>36 tall (4.6 mm)</td><td>44 drawn in a 54 header; touch area the header’s height · 6.9 · 7.4</td><td>OK</td></tr>
+		<tr><td>Filter chips (Recent, Books), segmented choices</td><td>28 tall (3.6 mm)</td><td>40 drawn; touch area 56 with the dead space above and below · 7.1 · 7.6</td><td>OK, by touch area</td></tr>
+		<tr><td>Player: chapter line, state chips, Next line</td><td>32 / 44 / 50</td><td>40 (touch area with the title above: 56) / 52 / 50 · 6.4 to 7.1 · 6.8 to 7.6</td><td>OK; chips 6.6 mm are the smallest keys</td></tr>
+		<tr><td>Player transport, second row; reader and viewer rows; photo and PDF keys</td><td>74 / 56 / 64 / 62–84</td><td>unchanged · 7.1 mm or more</td><td>OK</td></tr>
+		<tr><td>List rows (Files, Playlists, Up next, Contents)</td><td>46 (5.8 mm); in sheets 40–42</td><td>52 in lists · 6.6 · 7.1; 46 in sheets · 5.8 · 6.3</td><td>Worst case kept: see below</td></tr>
+		<tr><td>More sheet’s two columns; settings rows in sheets</td><td>38 (4.8 mm)</td><td>44–48 · 5.6 to 6.1 · 6.0 to 6.6</td><td>Worst case kept: see below</td></tr>
+		<tr><td>Visualizer style tiles (5 × 4), look tiles</td><td>38 × 116 / 46</td><td>46 × 116 / 50 · 5.8 / 6.4 · 6.3 / 6.8</td><td>Short of 7 mm on the RG DS</td></tr>
+		<tr><td>Quick settings − / +, toggles; mini bar and its play mark</td><td>44 × 40; 50; 46 with a 40 × 36 mark</td><td>56 × 44; 54; 52 with a 56 × 42 mark · 5.6 to 6.9</td><td>OK, bar-height bound</td></tr>
+		<tr><td>“All recent” arrow on Home</td><td>34 wide (4.3 mm)</td><td>56 wide · 7.1 · 7.6</td><td>OK</td></tr>
+		<tr class="grp"><td colspan="4">Text</td></tr>
+		<tr><td>Smallest text</td><td>9-unit chip labels, 8.5 on cover badges, 10.5 labels, 11–11.5 notes</td><td>Floor of 12 units for running text (1.5 mm; 12 px on the RG DS, 19 px on the Plus), 11 for capital-letter labels, 13 for the pixel face</td><td>OK; nothing needs 1024 × 768 to be read</td></tr>
+		<tr><td>Hints line</td><td>12.5 units</td><td>unchanged: on the RG DS that is a 12–13 px face, the size of today’s hints</td><td>OK</td></tr>
+		<tr class="grp"><td colspan="4">Lines, icons, looks</td></tr>
+		<tr><td>1.5-unit outlines (key caps, battery)</td><td>1.5 px on the RG DS: grey fringe; 2.4 px on the Plus</td><td>2 units: 2 px / 3 px. Rule: every stroke is a whole number of units, snapped to whole pixels on the Plus (as theme.h’s edge and lip are)</td><td>Fixed</td></tr>
+		<tr><td>Icons</td><td>Line icons down to 12 units: a 1.1 px stroke on the RG DS</td><td>None under 16 units. To build: pixel glyphs drawn on the unit grid at 16 / 20 / 24, as ui_glyphs.h has today, not scaled vector strokes</td><td>Fixed in the drawing; a build rule</td></tr>
+		<tr><td>Scanlines, LCD grid</td><td>Drawn with a 4-unit period</td><td>Defined per panel in real pixels (2 + 2 on 480 lines, 3 + 3 on 768; grid cell 4 px / 6 px). The preview’s overlay only suggests it</td><td>A build rule; noted on the Picture screen</td></tr>
+		<tr><td>Look tiles’ samples (38 × 28)</td><td></td><td>Scanlines and LCD grid read at 38 px; Sharpen and Soften do not at either size: the name carries them, the top screen is the preview</td><td>OK</td></tr>
+		<tr class="grp"><td colspan="4">Resolution-dependent content</td></tr>
+		<tr><td>Visualizer</td><td></td><td>Peaks’ 64 bars: 6 px bars with 3 px gaps on 640, 10 + 5 on 1024; the pixel-art styles are drawn at one size and scaled, so they are chunkier, not different, on the Plus</td><td>OK</td></tr>
+		<tr><td>Reading text</td><td></td><td>Sizes are in units, so both show the same lines; “Large” is 20 px on the RG DS, sharp enough for the serif but with little to spare at “Small”. Suggest the RG DS opens on Medium at the smallest</td><td>OK, one default to choose</td></tr>
+		<tr><td>PDF and comic pages</td><td></td><td>A whole A4 page on 480 lines is not readable (today too): Page fit should default to Width on the RG DS. Covers at 96 × 136 show no legible title on either: the caption and top screen name them</td><td>One default to choose</td></tr>
+		<tr><td>Grids: Books 5 a row, Manga 5, Pages 6, styles 5 × 4</td><td></td><td>Cells are 96 units or more wide (12.2 mm on the RG DS); the same count on both</td><td>OK</td></tr>
+		<tr><td>Reader key rows and hint bars</td><td>Comic row: icon and key touching the edges</td><td>One rule for every reader row: icon and name on the first line, the key under it, 8 units of padding. Every hint bar fits in 640 units with room</td><td>Fixed</td></tr>
+	</table></div>
+	<p class="sub" style="margin-top:12px"><b>What still falls short of 7 mm on the RG DS:</b> rows inside sheets (5.6 to 6.1 mm tall, but half or full panel wide), the visualizer’s style tiles (5.8 mm) and list rows (6.6 mm; today’s are 6.1). All are also reached with the D-pad. Making them 56 units means six rows a screen instead of seven, a More sheet that scrolls, and a style grid that pages; that trade is an open question.</p>
+</section>
+
+<section id="power">
+	<div class="eyebrow">4d · Power &amp; screens</div>
+	<h2>When a screen may turn off, and when the handheld may sleep</h2>
+	<p class="sub">Three states, and who owns each. <b>Both on</b>. <b>Screen off</b>: the player turns the bottom panel’s light off (and, for a song, optionally the top one’s); everything keeps running; the player owns it. <b>Sleep</b>: BananaOS stops the player and darkens both screens; BananaOS owns it, the lid triggers it. The one rule behind the table: a screen that is showing you something stays on; the handheld sleeps only when nothing would be lost or interrupted.</p>
+	<div class="tw"><table style="min-width:1180px">
+		<tr><th>Situation</th><th>May the handheld sleep?</th><th>May the bottom screen turn off?</th><th>Top screen</th><th>What wakes it</th><th>The first press</th><th>Seen just before</th><th>Needs BananaOS to hold off sleep?</th></tr><tr><td>Music playing</td><td>No</td><td>Yes: Screen off (music), 30 s</td><td>Stays on (art / visualizer). Off too only if you set Top screen off (music): Never / 5 / 15 min</td><td>A touch or a non-playback key; playback keys act without waking</td><td>Wakes only</td><td>Bottom dims for 5 s, “Screen off in 5 s”</td><td>Yes: without it, playing must itself keep BananaOS awake</td></tr><tr><td>Music paused</td><td>Yes, after BananaOS’s own idle time</td><td>No timer of the player’s (as today)</td><td>On until the handheld sleeps</td><td>Power key or lid (BananaOS)</td><td>Nothing: it stays paused; A plays</td><td>BananaOS’s own, if any</td><td>No</td></tr><tr><td>Video playing</td><td>No</td><td>Yes: Screen off (video), 30 s</td><td>Always on</td><td>As music playing</td><td>Wakes only</td><td>Bottom dims for 5 s</td><td>Yes</td></tr><tr><td>Video paused</td><td>Yes, after BananaOS’s idle time</td><td>No</td><td>On until the handheld sleeps (the frozen picture)</td><td>Power key or lid</td><td>Stays paused at its place</td><td>BananaOS’s own</td><td>No</td></tr><tr><td>Reading a book, PDF or comic</td><td>Not for 10 min after the last page turn or scroll; then yes</td><td>No: never off while reading (as today for comics). It may dim to its lowest after 1 min; the first touch brightens and acts</td><td>Always on</td><td>Any key or touch (dimmed, not off)</td><td>Acts: a dimmed screen still takes the drag</td><td>None: dimming is the gentle step</td><td>Yes, for the 10 minutes</td></tr><tr><td>A photo</td><td>Yes, after BananaOS’s idle time (there is no slideshow)</td><td>No: never while a photo shows (as today)</td><td>On</td><td>Power key or lid</td><td>Shows the photo again</td><td>BananaOS’s own</td><td>No</td></tr><tr><td>A photo over music</td><td>No (music plays)</td><td>No (a photo shows)</td><td>On</td><td>—</td><td>—</td><td>—</td><td>Yes</td></tr><tr><td>Browsing, nothing playing</td><td>Yes</td><td>No</td><td>On (the preview)</td><td>Power key or lid</td><td>Back on the same page and cursor</td><td>BananaOS’s own</td><td>No</td></tr><tr><td>A copy, move or network copy running</td><td>No, until it ends</td><td>Yes, after 2 min untouched (a job is not something to watch)</td><td>As the page’s rule</td><td>Any key or touch</td><td>Wakes only</td><td>Bottom dims for 5 s</td><td>Yes</td></tr><tr><td>Manga downloads running</td><td>No, until the queue ends or the battery is at 15%</td><td>Yes, after 2 min</td><td>As the page’s rule</td><td>Any key or touch</td><td>Wakes only</td><td>Bottom dims for 5 s</td><td>Yes</td></tr><tr><td>The Manga online sources starting (about 25 s)</td><td>No</td><td>No</td><td>On</td><td>—</td><td>—</td><td>—</td><td>Yes (short)</td></tr><tr><td>Web dashboard on, no browser signed in</td><td>Yes: the dashboard sleeps with the handheld, and the page says so</td><td>QR page only: after 90 s (as today)</td><td>On</td><td>Power key or lid</td><td>—</td><td>—</td><td>No</td></tr><tr><td>A browser using the dashboard (a request in the last 2 min) or uploading</td><td>No</td><td>Yes, after 90 s on any page</td><td>On</td><td>Any key or touch</td><td>Wakes only</td><td>Bottom dims for 5 s</td><td>Yes</td></tr><tr><td>A browser playing (output to a browser)</td><td>No: the handheld is serving the file</td><td>Yes: by the timer for a song or a video</td><td>May turn off too after the same time: it only shows a card</td><td>A touch or non-playback key; A, L / R still drive the browser</td><td>Wakes only</td><td>Dims for 5 s</td><td>Yes</td></tr><tr><td>An update downloading</td><td>No</td><td>Yes, after 2 min</td><td>On</td><td>Any key or touch</td><td>Wakes only</td><td>Bottom dims</td><td>Yes</td></tr><tr><td>An update being put in place / restarting</td><td>No</td><td>No</td><td>On: “Don’t close the lid”</td><td>—</td><td>—</td><td>—</td><td>Yes</td></tr><tr><td>Lid closed while music plays</td><td>Today: yes (it pauses, then sleeps). Proposed option: no</td><td>Both screens off</td><td>Off</td><td>Opening the lid</td><td>Nothing: music is playing; the screens come back</td><td>—</td><td>Yes, and more: BananaOS must not stop the player on lid close</td></tr><tr><td>Lid closed, anything else</td><td>Yes (as today): pause first</td><td>Both off</td><td>Off</td><td>Opening the lid</td><td>Stays paused; “Paused: the handheld slept · A plays”</td><td>—</td><td>No</td></tr><tr><td>Battery 10% or less</td><td>As the situation says, but jobs stop holding it awake at 15%</td><td>Timers are halved (30 s becomes 15 s)</td><td>A red battery in the header; one note “Battery 10%”</td><td>—</td><td>—</td><td>The note</td><td>No</td></tr><tr><td>Battery 5% or less</td><td>Yes: the player stops asking to stay awake; pocket mode ends; what plays is paused with its place saved</td><td>—</td><td>A note: “Battery 5% · paused to keep your place”</td><td>Charging, or a key</td><td>Stays paused</td><td>The note</td><td>No</td></tr>
+	</table></div>
+	<div class="cards" style="margin-top:16px">
+		<div class="card"><h3>Needs checking with BananaOS</h3><p>Every “Yes” in the last column assumes BananaOS has an idle sleep of its own and a way for a program to hold it off (an inhibit), or has no idle sleep at all. This repo’s notes say only that bananad stops the player on sleep and that the lid triggers it. If there is no idle sleep, those rows already hold. If there is one and no way to hold it off, they cannot be kept, and jobs and long films will be cut by it, as today.</p></div>
+		<div class="card"><h3>Owner decision: music with the lid closed</h3><p>Today the lid pauses, always. A “pocket mode” (Settings › Power &amp; screens › When the lid closes: Keep music playing) is the most asked-for thing a music player in a pocket can do, and the most demanding: BananaOS must leave the player running with the lid shut. <b>Recommendation:</b> offer it, off by default, for songs and audiobooks only (a video always pauses), with the buttons locked while shut, ending at the end of the list or at 5% battery. Do not build it unless BananaOS can do its part.</p></div>
+		<div class="card"><h3>What changes from today</h3><p>A five-second dimmed warning before an automatic Screen off. Reading holds the handheld awake for ten minutes after the last page. Jobs hold it awake until done, with an “Awake” badge. A browser playing lets both screens go dark. Low battery shortens timers and, at 5%, pauses with your place kept. Everything else is 0.7.18’s behaviour, written down.</p></div>
+	</div>
+</section>
+
+<section id="proto">
+	<div class="eyebrow">5 · Try it</div>
+	<h2>A clickable walk-through</h2>
+	<p class="sub">Tap things on the bottom screen, or press the keys beside it (your keyboard works too: A B X Y, L R, S for SELECT, Enter for START, F). A good first path: Home → <kbd>R</kbd> to Books → <kbd>A</kbd> to open → <kbd>SELECT</kbd> for Text → <kbd>B</kbd> → <kbd>Y</kbd> for Contents.</p>
+	<div class="physbar" id="physbar"><span>Size:</span><span class="seg"><button data-phys="" class="on">Fit the page</button><button data-phys="81.28">RG DS · 4.0 in, real size</button><button data-phys="87.38">RG DS Plus · 4.3 in, real size</button></span><span class="cal"><span class="rule"></span> should be 50 mm on a ruler <input type="range" id="cal" min="0.6" max="1.6" step="0.01" value="1" aria-label="Calibrate real size"></span></div>
+	<div class="proto" id="protoBox">
+		<div class="device" id="protoDev"></div>
+		<div class="ctl">
+			<div class="eyebrow" id="protoGroup"></div>
+			<h3 id="protoName"></h3>
+			<p class="hotnote" id="protoWhy"></p>
+			<div class="crumbs"><button id="protoBack" class="pill">← Back</button><button data-jump="home" class="pill">Home</button><button data-jump="books" class="pill">Books</button><button data-jump="video" class="pill">Video</button><button data-jump="music" class="pill">Song</button><button data-jump="reader" class="pill">Book</button><button data-jump="book-text" class="pill">Book mode</button><button data-jump="video-picture" class="pill">Looks</button><button data-jump="video-adjust" class="pill">Adjust</button><button data-jump="video-states" class="pill">States</button><button data-jump="vol-boost" class="pill">Volume boost</button><button data-jump="power-dim" class="pill">Screen off</button><button data-jump="browser-play" class="pill">In a browser</button><button data-jump="net-folder" class="pill">Network</button><button data-jump="manga-repos" class="pill">Repositories</button><button data-jump="manga-guard" class="pill">Manga + video</button><button data-jump="photo" class="pill">Photo</button><button data-jump="manga" class="pill">Manga</button><button data-jump="settings" class="pill">Settings</button></div>
+			<label class="sw"><input type="checkbox" id="hotToggle" checked> Outline what is clickable</label>
+			<div class="pad" id="protoPad"></div>
+			<p class="hotnote">Greyed keys work on the device but lead to a screen this preview doesn’t draw.</p>
+		</div>
+	</div>
+</section>
+
+<section id="screens">
+	<div class="eyebrow">6 · The screens</div>
+	<h2>Every screen, with what changed</h2>
+	<p class="sub">Each is the two panels at 640 × 480 units, scaled to fit. <span class="tag new">NEW</span> did not exist · <span class="tag chg">CHANGED</span> works differently · <span class="tag mov">MOVED</span> same thing, new place · <span class="tag same">SAME</span> as today. The type is Pixelify Sans for names and keys, Inter for small notes.</p>
+	<div id="gallery"></div>
+</section>
+
+<section id="map">
+	<div class="eyebrow">7 · Nothing lost</div>
+	<h2>Where everything went</h2>
+	<p class="sub">Every control and feature in FEATURES.md, with its place today and its place in the proposal. The web dashboard’s own pages are not part of this redesign.</p>
+	<div class="tw"><table id="maptable" style="min-width:760px"></table></div>
+</section>
+
+<section id="questions">
+	<div class="eyebrow">8 · For the owner</div>
+	<h2>Open questions</h2>
+	<p class="sub">The owner has answered these (15 Nov). Three went another way than first assumed: comics do show in Books, UP / DOWN are no longer speed, and picture looks are global with no CRT. The rest stand as proposed.</p>
+	<div class="cards q">
+		<div class="card"><h3>Rail, or a bigger grid of tiles?</h3><p>The rail costs 78 of 640 units on every shell screen and keeps all sections one press away. The alternative keeps Home as tiles (3 × 2) and shows no sections inside a list.</p><b class="rec">Decided, as proposed: the rail.</b></div>
+		<div class="card"><h3>What fills the Books shelf?</h3><p>A <code>Books</code> folder per card (as <code>Manga</code> and <code>videos</code> work) plus anything opened from Files or Network. The other way is scanning the whole card for EPUB / PDF / TXT, which is slower and catches manuals and notes.</p><b class="rec">Decided, as proposed: the folder, plus what you open.</b></div>
+		<div class="card"><h3>Do comics (CBZ, CBR) show in Books too?</h3><p>They are listed in Books as well as in Manga, and open in the same comic reader with the same place.</p><b class="rec">Decided by the owner: yes.</b></div>
+		<div class="card"><h3>Extensions leave the top level?</h3><p>An extension that is on gets its own rail slot; on / off moves to Settings › Extensions, and Manga settings appear in Settings as well as in Manga’s X. This reverses “Manga settings are not in Banana Player’s Settings”.</p><b class="rec">Decided, as proposed: yes to both.</b></div>
+		<div class="card"><h3>Is losing X = Loop / Shuffle on the player acceptable?</h3><p>X becomes More everywhere, so the play mode takes two presses (Y, then the switch) or a tap on its chip. If one-press matters, <em>hold X</em> could cycle it.</p><b class="rec">Decided, as proposed: two presses is fine.</b></div>
+		<div class="card"><h3>Stop, Lock and Screen off behind X?</h3><p>They leave the player’s face for the first row of More: one press more by button, two taps by touch. Screen off also joins Quick settings. Stop could instead keep a small red key by the Next line.</p><b class="rec">Decided, as proposed: in More.</b></div>
+		<div class="card"><h3>START as Menu instead of Playing / Settings / About?</h3><p>People who press START then A to Like will find places instead. L3 and the Like key cover it, but it is the biggest habit this proposal breaks.</p><b class="rec">Decided, as proposed: yes.</b></div>
+		<div class="card"><h3>Drop the “..” row?</h3><p>‹ and B both go up, and the path is in the header. The row costs one of seven or eight rows in every folder.</p><b class="rec">Decided, as proposed: dropped.</b></div>
+		<div class="card"><h3>How rich may the top-screen preview be?</h3><p>Text and a cover are cheap. A poster frame from a video means opening it in a second decoder on a CPU that is already the limit. The screens assume metadata always, pictures only when one already exists (cover.jpg, the photo, a book’s cover).</p><b class="rec">Decided, as proposed: no video frame grabs.</b></div>
+		<div class="card"><h3>Inter for small text?</h3><p>Notes, hints and paths are set in Inter at 11.5 to 13 units; names, titles and keys stay in the pixel face. It reads better small, and moves a little away from the all-pixel look.</p><b class="rec">Decided, as proposed: yes, for secondary text only.</b></div>
+		<div class="card"><h3>Should UP / DOWN stay speed?</h3><p>No. DOWN now steps onto the player’s chips (LEFT / RIGHT choose, A opens, UP or B goes back), so every chip is reachable by buttons and a stray press only moves a highlight. Speed is set in View › Speed.</p><b class="rec">Decided by the owner: not speed. Proposed in its place: DOWN onto the chips.</b></div>
+		<div class="card"><h3>Picture looks: which, and how they are kept?</h3><p>Sharpen, Soften, Scanlines, LCD grid, Retro, with Strength. A look is global: it stays on across files; “Only this video” is opt-in. No CRT look. A look that is on is always said: the Picture chip, a top-screen note when a video starts, the mini bar.</p><b class="rec">Decided by the owner: global by default, no CRT, always shown.</b></div>
+		<div class="card"><h3>Ask before Manga stops a video?</h3><p>The sheet costs one press each time. “Don’t ask again” brings back today’s behaviour for those who want it. The other way is no sheet and a louder notice. Also: with no engine installed (card manga only), must a video still stop, or could it just pause while the pages have the top screen?</p><b class="rec">Decided, as proposed: ask, Stay focused, with “Don’t ask again”; a video still stops in Manga either way.</b></div>
+		<div class="card"><h3>How loud should “not normal” be?</h3><p>Drawn: yellow value and a dot on the control; pills on the mini bar for what plays; header badges only for Incognito and volume past 100%; nothing left on the top screen. More would be a permanent top-screen mark while browsing; less would be the control only.</p><b class="rec">Decided, as proposed: as drawn; the top screen stays clean.</b></div>
+		<div class="card"><h3>Adjust: Gamma in, Hue out? One “Use for” for everything?</h3><p>Gamma is the slider that rescues a dark film; Hue mostly breaks things. Size, look and Adjust share one “All videos / Only this video” choice, so a file is remembered whole. Separate scopes are possible but need three switches.</p><b class="rec">Decided, as proposed: four sliders, one scope.</b></div>
+		<div class="card"><h3>7 mm everywhere, or seven rows?</h3><p>Free-standing keys are now 7 mm or more on the 4-inch RG DS. Rows in sheets, list rows and the visualizer’s style tiles are 5.6 to 6.6 mm tall. Taking them to 56 units costs a row per screen, scrolling in the More sheet and paging in the style grid. Also: should the RG DS default PDFs to Width fit and books to a larger text size?</p><b class="rec">Decided, as proposed: rows stay as drawn (they are wide, and the D-pad reaches them); device-specific defaults: yes.</b></div>
+		<div class="card"><h3>In what order to build it?</h3><p>The parts stand alone: (1) the sheet and the key grammar on today’s screens, (2) the rail and Home, (3) the player, (4) Books, (5) the top-screen previews, (6) Settings’ regrouping.</p><b class="rec">Decided, as proposed: that order; each step ships by itself.</b></div>
+	</div>
+</section>
+
+<section id="components">
+	<div class="eyebrow">8b · For the build</div>
+	<h2>Components</h2>
+	<p class="sub">Every piece that appears on more than one of the screens, so each is coded once. Sizes are in the panel’s 640 × 480 units. Each says which existing building block it maps to: <span class="tag same">REUSE</span> exists, use as is · <span class="tag chg">VARIANT</span> exists, needs a variant · <span class="tag new">NEW</span>. <span id="compcount"></span></p>
+	<div id="complist"></div>
+	<h3 style="margin:30px 0 10px;font-size:20px">What was drawn two ways: now one</h3>
+	<p class="sub">Seventeen places where two screens showed nearly the same thing with different sizes or behaviour. Every screen has been redrawn to the one version; the screens and the examples above are drawn by the same functions and style rules, so they cannot drift apart. The few deliberate exceptions are named.</p>
+	<div class="tw"><table id="forktable" style="min-width:720px"></table></div>
+</section>
+
+<section id="coverage">
+	<div class="eyebrow">9 · Coverage</div>
+	<h2>What is drawn, and what is deliberately not</h2>
+	<p class="sub">A separate audit compared today’s screens, dialogs and messages (from the code and FEATURES.md) with this page. Every item it found is listed with where it is now drawn. Families that repeat one shape are drawn once, with their variants in a table under that screen.</p>
+	<div class="tw"><table style="min-width:720px"><tr><th>Audit item</th><th>Drawn as</th></tr><tr><td>1 · Playback failure, Buffering</td><td><a href="#s-play-fail">A file that won’t play</a> (Can’t play, skipped) · <a href="#s-net-stream">A video from the server</a> (Buffering, Lost the connection, Can’t reach it, Retry)</td></tr><tr><td>2 · Empty folder</td><td><a href="#s-empty-folder">An empty folder</a></td></tr><tr><td>3 · Alerts</td><td><a href="#s-alerts">Alerts (the pattern)</a>: one drawn large, three small, and a table of the titles by subject</td></tr><tr><td>4 · Gone items</td><td><a href="#s-gone">Gone items in a playlist</a></td></tr><tr><td>5 · Card out / in</td><td><a href="#s-card-out">A card taken out</a></td></tr><tr><td>6 · Reader end and error states</td><td><a href="#s-manga-end">Reading: the end, and pages that fail</a></td></tr><tr><td>7 · First engine install</td><td><a href="#s-manga-engine-get">Getting the online sources (first time)</a>: offer, download bar, unpacking, the lighter version</td></tr><tr><td>8 · “Reading folder…”</td><td><a href="#s-busy">Working… (the busy sheet)</a> with a table of every wait</td></tr><tr><td>9 · Transient top cards</td><td><a href="#s-toasts">Cards and notes on the top screen</a>: chapter, zoom, equalizer, brightness, Like, speed, edges; volume under <a href="#s-vol-boost">Volume past 100%</a></td></tr><tr><td>10 · Offline</td><td><a href="#s-offline">No Wi-Fi</a> with a table of each place</td></tr><tr><td>11 · Manga download sheets and marks</td><td><a href="#s-manga-dl">Getting chapters</a> · <a href="#s-manga-series">A series</a> (Queued, pages, Paused, Failed, On card) · <a href="#s-manga-downloads">Downloads</a></td></tr><tr><td>12 · Sources sub-screens</td><td><a href="#s-manga-sources">Installed and Available</a> (source sheet, 18+ chip, table of the sheets) · <a href="#s-manga-repos">Repositories</a> and its three states</td></tr><tr><td>13 · Library / History menus, local-series sheet</td><td><a href="#s-manga-menus">Menus on a series and a list</a> with a table per page</td></tr><tr><td>14 · Server form, net folders in Manga</td><td><a href="#s-manga-server">Adding a server</a> · <a href="#s-manga-browse">Browse</a></td></tr><tr><td>15 · Delete confirmation</td><td><a href="#s-delete">Delete?</a></td></tr><tr><td>Updater</td><td><a href="#s-update">An update is out</a> (out, downloading, ready, failed) · <a href="#s-set-updates">Settings › Updates</a></td></tr><tr><td>Web dashboard page</td><td><a href="#s-web-page">The Web dashboard page</a> (on, drawn; off, No Wi-Fi, failed, PIN changed in a table)</td></tr><tr><td>Network: list, Find, Add form</td><td><a href="#s-net-list">Your connections</a> · <a href="#s-net-find">Find on the network</a> · <a href="#s-net-form">Add or edit a connection</a></td></tr><tr><td>Job panel, clip bar</td><td><a href="#s-job">A copy or move under way</a> · <a href="#s-clip">Holding a file</a> · <a href="#s-net-copy">Copying a book</a></td></tr><tr><td>Select mode</td><td><a href="#s-select">Select mode</a></td></tr><tr><td>Keyboard</td><td><a href="#s-keyboard">The on-screen keyboard</a> · <a href="#s-manga-repo-add">for an address</a></td></tr><tr><td>Add-to-playlist picker</td><td><a href="#s-picker">Add to playlist…</a></td></tr><tr><td>Info</td><td><a href="#s-info">Info</a></td></tr><tr><td>Quit confirm</td><td><a href="#s-quit">Quit?</a></td></tr><tr><td>Touch lock; loading; lid; battery</td><td><a href="#s-lock">Touch lock, loading, lid, battery</a></td></tr><tr><td>Extensions drawer, first-time sheet, Manage</td><td><a href="#s-extensions">Settings › Extensions</a></td></tr><tr><td>Manga series, Search, Filters, Downloads, settings</td><td><a href="#s-manga-series">A series</a> · <a href="#s-manga-source">A source</a> · <a href="#s-manga-downloads">Downloads</a> · <a href="#s-manga-settings">Settings › Manga</a></td></tr><tr><td>Read-only folder</td><td><a href="#s-readonly">A read-only folder</a></td></tr><tr><td>EQ preset dialogs</td><td><a href="#s-eq-presets">Equalizer: presets</a></td></tr><tr><td>Each Settings group</td><td>Playback, Subtitles (with its preview), Music &amp; sound, Photos, Reading, Files &amp; history, Power &amp; screens, Web dashboard, Extensions, Manga, Updates, About: one screen each</td></tr></table></div>
+	<h3 style="margin:26px 0 10px;font-size:20px">Still not drawn, on purpose</h3>
+	<div class="tw"><table style="min-width:720px"><tr><th>Not drawn</th><th>Why</th></tr><tr><td>Each of the forty-odd alerts</td><td>One pattern, four examples and the full list of titles are drawn; the rest differ only in their two lines of text.</td></tr><tr><td>Every value of every setting</td><td>Each group is drawn once with its rows; stepping a value changes a word.</td></tr><tr><td>Manga: the Filters sheet’s rows, Languages list, Choose chapters list, History tab, the On this handheld list, a Kavita form</td><td>Each is a list or form in a pattern already drawn; their rows are in the tables under the Manga screens.</td></tr><tr><td>Web dashboard page: off, No Wi-Fi, couldn’t start</td><td>The page is drawn on; the other states are a line of text in the same frame (table).</td></tr><tr><td>The Light (Brightness & filter) sheet, the Pages grid, PDF vertical scroll, Find’s results</td><td>Kept as they are in 0.7.18; only how they are reached changed, which the readers’ notes say.</td></tr><tr><td>Inside a playlist: dragging by the grip; the All recent page; Up next on a song</td><td>The same list rows as Files and Playlists with one more control each.</td></tr><tr><td>View’s Audio, Speed and Effects tabs</td><td>Lists of radio rows like Subtitles’.</td></tr><tr><td>Keyboard layers (123, capitals) and password entry</td><td>The letters layer is drawn twice; the others swap the key caps.</td></tr><tr><td>Screenshot (F + L2), Screen off, sleep</td><td>Nothing shows on screen (a note on the top screen for the screenshot).</td></tr><tr><td>The browser side of the web dashboard</td><td>Out of scope: this proposal is the handheld.</td></tr></table></div>
+</section>
+
+<section id="limits">
+	<div class="eyebrow">10 · Honesty</div>
+	<h2>What this preview has not checked</h2>
+	<div class="cards four">
+		<div class="card"><h3>The real panels</h3><p>These are HTML drawings at the panel’s units, not the handheld. The real-size switch depends on your screen reporting its size truthfully (hence the 50 mm rule to calibrate), and a browser’s smooth text is kinder than SDL_ttf at 12 px. Legibility of 12-unit Inter, the rail under a left thumb and the reach to ⋯ need the device.</p></div>
+		<div class="card"><h3>Drawing cost</h3><p>The top-screen previews assume the top panel can show a laid-out card with a picture while idle. Today it is an mpv overlay; how far that stretches is an engineering question.</p></div>
+		<div class="card"><h3>Screens not drawn</h3><p>See Coverage above: what an audit of today’s app found is now drawn or listed there with the reason.</p></div>
+		<div class="card"><h3>What a look costs</h3><p>No shader has been run on the handheld. “Cheap” for Sharpen, Soften, Scanlines, LCD grid and Retro is an expectation from their being one pass on a GLES 2 chip, not a measurement; There is no CRT look. The CSS overlays here only suggest each look.</p></div>
+		<div class="card"><h3>Today’s comic page</h3><p>The “today” shots cover Home, lists, both players, Tracks, the menus, the text and PDF viewers, a photo, Settings and Manga’s lists. The comic reading page was read from FEATURES.md, not captured.</p></div>
+	</div>
+</section>
+</main>
+</div>
