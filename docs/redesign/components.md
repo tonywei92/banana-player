@@ -2,7 +2,7 @@
 
 Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 113 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
-Counts: 45 components: 9 reuse, 28 variant, 8 new. (Lid-shut keys is a rule with nothing to draw: it has no example in the preview’s Components section.)
+Counts: 46 components: 10 reuse, 28 variant, 8 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
 
 In the preview every screen draws these through shared functions and style rules (src/kit.js, src/screens.js, src/style.css beside preview.html), the same ones the Components section renders its examples from.
 
@@ -259,6 +259,14 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Inputs:** image or drawn cover, title, author, badge, progress, dimmed
 - **Keys and touch:** D-pad moves, A opens, drag scrolls.
 - **Code:** drawMangaCover (real cover decoded in the background, a drawn one standing in). Books uses the same.
+
+### QR code (exists, reuse)
+
+- **Used:** the Web dashboard page (196 square), Settings › About’s support line (84 square)
+- **Anatomy and states:** Black on a white square with a quiet edge of white, radius 6 to 10, whole modules only. It holds one address and nothing else. The address is always written out beside it, for typing. On About it is the last block of the page, under a rule: “Banana Player is free. If you’d like to support it:” Inter 12.5 dim, then ko-fi.com/tonysong Inter 15. Only there: no pop-up, reminder, badge or note elsewhere.
+- **Inputs:** the address, the size
+- **Keys and touch:** None. The handheld opens nothing; the phone that scans it does. Nothing is fetched.
+- **Code:** The dashboard page’s QR drawing (ui_web.cpp), given the support address, a constant. On the Web dashboard the same address is a plain link at the foot of Home (web/js/home.js), opened in a new tab with no referrer; no QR there.
 
 ### Recent card and Continue card (exists, needs a variant)
 

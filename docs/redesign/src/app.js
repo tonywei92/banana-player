@@ -148,6 +148,7 @@ const MAP=[
 ['Screen off (music) / (video) timers; Screen off by hand','Settings › Controls & screen; the player’s key','Settings › Power & screens; X · More and Quick settings; a five-second dimmed warning before an automatic one','chg'],
 ['With the bottom screen off: playback keys work; a touch or other key wakes it and does nothing else','Player','Unchanged','same'],
 ['Lid: pauses, then the handheld sleeps; stays paused on waking','BananaOS + player','Unchanged by default; the top screen says “Paused: the handheld slept”. Keep playing as today; with the lid shut: volume hold = next / previous, Power = play / pause, the shoulder keys a setting, the rest ignored','chg'],
+['Supporting the project','(nowhere)','Settings › About, at its foot: one line, a small QR code and ko-fi.com/tonysong. The Web dashboard: one link at the foot of Home. Nowhere else','new'],
 ['Incognito: nothing about the lid or the dashboard','Quick settings','The lid or sleep in incognito: Nothing / Close all (default) / Quit. The Web dashboard is off while incognito is on','new'],
 ['The handheld sleeping during a copy, download or update','It stops with the handheld','Kept awake until done (needs BananaOS), with an “Awake” badge and the reason in Quick settings','new'],
 ['A song’s top screen','Always on while it plays','Optional Top screen off (music): Never / 5 / 15 min','new'],
