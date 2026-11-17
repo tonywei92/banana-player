@@ -57,7 +57,7 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 
 ## Added after the audit (new features, not in today's UI)
 
-- Incognito and the lid: Settings › Power & screens › Lid closes in incognito (Nothing / Close all / Quit). Drawn: `incog-lid`. Spec: lid-and-incognito.md, section 1.
+- Incognito, the lid and sleep: Settings › Power & screens › Lid or sleep in incognito (Nothing / Close all / Quit). Drawn: `incog-lid`. Spec: lid-and-incognito.md, section 1.
 - Incognito and the Web dashboard: the server is off while incognito is on; the dimmed switch, the page, the question when a browser is signed in, what the browser sees. Drawn: `incog-web`, `incog-web-ask`. Section 2.
-- The keys with the lid shut: volume hold = next / previous, Shoulder keys, lid shut (Ignored / Hold / As usual), keys under the lid ignored; options A and B. Drawn: `lid-keys`; the rows in `set-screen`. Section 3.
+- The keys with the lid shut: volume hold = next / previous, Shoulder keys, lid shut (Ignored / Hold / As usual), keys under the lid ignored, the player owning the volume keys while shut, no sleep with the lid shut; options A and B. Drawn: `lid-keys`; the rows in `set-screen`. Section 3.
 - The Power & screens group and its table now use today's wording, When the lid closes: Pause / Keep playing (0.7.27), in place of the earlier "Keep music playing" proposal.

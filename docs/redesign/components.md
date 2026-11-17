@@ -247,7 +247,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Tile (exists, needs a variant)
 
 - **Used:** Settings (12), Menu (8), Home shortcuts, Quick settings
-- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Menu tile about 146 × 84: icon 26 over name 17 over a note. Shortcut and toggle tiles 56 tall. A toggle tile may carry a second line Inter 12 dim: its state in words (“Lid: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
+- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Menu tile about 146 × 84: icon 26 over name 17 over a note. Shortcut and toggle tiles 56 tall. A toggle tile may carry a second line Inter 12 dim: its state in words (“Lid or sleep: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
 - **Inputs:** icon, name, summary, focused, mark
 - **Keys and touch:** D-pad moves in two dimensions, A opens.
 - **Code:** Home’s tiles (drawHome), Settings’ group tiles (drawSettings). Needs: the live summary line.
@@ -371,10 +371,10 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Lid-shut keys (new)
 
 - **Used:** while the lid is shut and the handheld is awake (When the lid closes: Keep playing)
-- **Anatomy and states:** Nothing is drawn: both screens are off. One key map, the same on every page: Volume + / − press = volume (to 100%), hold 0.6 s = next / previous with the volume step taken back; Power press = play / pause, hold 2 s = sleep; L, R, L2, R2 by the setting Shoulder keys, lid shut (Ignored / Hold / As usual); everything under the lid ignored. One hold, one step; a key down over 5 s is ignored until let go. The full rules and the two options: lid-and-incognito.md.
+- **Anatomy and states:** Nothing is drawn: both screens are off. One key map, the same on every page: Volume + / − press = volume (to 100%), hold 0.6 s = next / previous; the volume step is made when the key is let go, so a hold never moves it; Power press = play / pause, hold 2 s = sleep, and nothing else sleeps the handheld while shut; L, R, L2, R2 by the setting Shoulder keys, lid shut (Ignored / Hold / As usual); everything under the lid ignored. One hold, one step; a key down over 5 s is ignored until let go. No sound effects. The full rules and the two options: lid-and-incognito.md.
 - **Inputs:** lid shut, the setting, what plays
 - **Keys and touch:** As above. Touch is ignored.
-- **Code:** New. One filter in front of the key handling in main.cpp, fed by `SleepWatch::lidClosed()`; it sends the Session’s own intents (step, play / pause), so the page left open never sees a key. The volume put back as under a browser output (`handheldVolKept`).
+- **Code:** New. One filter in front of the key handling in main.cpp, fed by `SleepWatch::lidClosed()`; it sends the Session’s own intents (step, play / pause), so the page left open never sees a key. BananaOS repeats a held volume key, so while the lid is shut the player takes the volume keys’ input device (`EVIOCGRAB`, Linux-only, beside sleepwatch.*) and steps the volume itself through `/usr/libexec/banana/volume`; it lets go when the lid opens and on exit.
 
 ### Lock overlay (exists, needs a variant)
 
