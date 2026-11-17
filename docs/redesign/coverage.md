@@ -49,7 +49,7 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Home (Continue, Recent, filters), All recent, START Menu, Files list, More (X) on a file, rail, mini bar and Playing/Paused chips.
 - Books section, empty state, text reader, Text view sheet, Contents/Bookmarks, PDF, Extra dim / Light sheet.
 - Video player, View, Picture looks, Adjust, List (Y), More while playing, Away-from-normal marks (and the same while browsing).
-- Song player, View/Display, Equalizer tab, visualizer alone, style picker.
+- Song player, View › Display (Show), View › Visualizer (the style, its own tab), Equalizer tab, visualizer alone.
 - Photo viewer; Manga section, reader, Manga-while-video guard, engine loading, "Stopped for Manga" on Home.
 - Settings, a settings group, Quick settings (F), volume past 100% and the 120% warning, Incognito badge.
 - Playing in a browser, Hold A, browser went away, mini bar while a browser plays, Play on picker.
