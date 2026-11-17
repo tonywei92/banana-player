@@ -63,7 +63,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Button row and grid (exists, reuse)
 
 - **Used:** reader, PDF, comic, photo, player rows, sheets’ key pairs, select bar
-- **Anatomy and states:** Rows: 16 from the sides, 8 between keys; widths divide exactly (four of 146, five of 115 + 116, three of 197). Grids beside a pan area: two columns, 8 apart.
+- **Anatomy and states:** Rows: 16 from the sides, 8 between keys; widths divide exactly (four of 146, five of 115 + 116, three of 197). The player’s row is Like · Playlist · List · Stop: no View key, since the chips under it open View on each tab and SELECT opens it by the keys. Grids beside a pan area: two columns, 8 apart.
 - **Inputs:** area, count, gap
 - **Keys and touch:** D-pad moves along it where the page gives the keys focus; each key also has its own button.
 - **Code:** rowCell, gridCell (docs/notes/button-rows.md). One function returns each cell’s rect; drawing and touch both ask it.
@@ -80,8 +80,8 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 - **Used:** player screens (14), four or five in a row
 - **Anatomy and states:** 52 tall, SURFACE, radius 10. Icon 16–18; a label in capitals Inter 600 11; the value Pixelify 13 under it. Normal: cream value, no mark. Away from normal: the value yellow and a 6-unit dot top right. Unavailable: 45% (one rule), the reason as its value, nothing else changes. Width from the row (146 with four, 115 with five). The value is one line: the shortest form of the state (a language without its region), cut with “…” at its end; never text under 16 units in a non-Latin script (the interface’s name for the language is used).
-- **Inputs:** icon, label, value, away-from-normal, enabled, focused, target sheet tab
-- **Keys and touch:** Tap: opens the sheet tab that sets it. By buttons: DOWN on the player focuses the row, LEFT / RIGHT choose, A opens, UP or B leaves.
+- **Inputs:** icon, label, value, away-from-normal, enabled, target sheet tab
+- **Keys and touch:** Tap: opens the sheet tab that sets it. Touch only: no D-pad focus. By buttons the same tabs are reached with SELECT (View), then L / R.
 - **Code:** New (today: two text lines under the keys, drawn in drawMain). Lay out with rowCell.
 
 ### Line key (exists, needs a variant)
