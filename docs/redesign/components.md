@@ -338,7 +338,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 - **Used:** every song screen
 - **Anatomy and states:** Album art alone: 260 square, centred. With Song info: art 240 left, three lines right (28 / 17 / 14), the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same in the space above a band of bars 148 tall along the foot. No art: a placeholder in the art’s place.
-- **Inputs:** Show (Album art / Art + visualizer / Visualizer / Title only), the visualizer’s style, song info, art or none, title, artist, album. Show and the style are two inputs, set in two places (View › Display, View › Visualizer; Settings › Music & sound › Music display, Visualizer) and never written as one value. With Album art or Title only the style is kept, can be changed, and is marked “not shown”, not dimmed.
+- **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four radio rows on View › Display), the visualizer’s style, song info, art or none, title, artist, album. Show and the style are two inputs, set in two places (View › Display, View › Visualizer; Settings › Music & sound › Music display, Visualizer) and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown”, not dimmed.
 - **Keys and touch:** SELECT steps Show (on View › Display).
 - **Code:** The music graph and the title lines in player.cpp (Player::shownMusic). A change to today’s layout.
 
