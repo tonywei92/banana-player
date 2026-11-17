@@ -78,10 +78,10 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### State chip (new)
 
-- **Used:** player screens (14), four or five in a row
-- **Anatomy and states:** 52 tall, SURFACE, radius 10. Icon 16–18; a label in capitals Inter 600 11; the value Pixelify 13 under it. Normal: cream value, no mark. Away from normal: the value yellow and a 6-unit dot top right. Unavailable: 45% (one rule), the reason as its value, nothing else changes. Width from the row (146 with four, 115 with five). The value is one line: the shortest form of the state (a language without its region), cut with “…” at its end; never text under 16 units in a non-Latin script (the interface’s name for the language is used).
+- **Used:** player screens (14), five in a row on a video (Subtitles, Audio, Picture, Speed, Repeat) and on a song (Sound, Sound FX, Display, Speed, Shuffle)
+- **Anatomy and states:** 52 tall, SURFACE, radius 10. Icon 16–18; a label in capitals Inter 600 11; the value Pixelify 13 under it. Normal: cream value, no mark. Away from normal: the value yellow and a 6-unit dot top right. Unavailable: 45% (one rule), the reason as its value, nothing else changes. Width from the row: 115, the last 116 (146 where a row has four). On a song’s Display chip the value is a short form, on the chip only: Art, Art + viz, Visualizer, None. The value is one line: the shortest form of the state (a language without its region), cut with “…” at its end; never text under 16 units in a non-Latin script (the interface’s name for the language is used).
 - **Inputs:** icon, label, value, away-from-normal, enabled, target sheet tab
-- **Keys and touch:** Tap: opens the View sheet on the tab that sets it, with its tab strip: the same sheet SELECT opens, never a second form of the page. A chip whose value names two things (Sound: “EQ Rock · Room”) opens the first one’s tab; the other is the next tab. Touch only: no D-pad focus. By buttons the same tabs are reached with SELECT (View), then L / R.
+- **Keys and touch:** Tap: opens the View sheet on the tab that sets it, with its tab strip: the same sheet SELECT opens, never a second form of the page. Touch only: no D-pad focus. By buttons the same tabs are reached with SELECT (View), then L / R.
 - **Code:** New (today: two text lines under the keys, drawn in drawMain). Lay out with rowCell.
 
 ### Line key (exists, needs a variant)

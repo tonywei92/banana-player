@@ -64,4 +64,4 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - The player's third row: View removed (the chips open it; SELECT by the keys, in the hint bar), Stop in its place; the chips touch only, UP / DOWN nothing. Drawn: `video`, `music`, `video-chips`.
 - Support link: Settings › About's last block (a line, a QR code of https://ko-fi.com/tonysong, the address written out), and one link at the foot of the Web dashboard's Home, which has no About today. Only there; nothing fetched. Drawn: `set-about`.
 - START's Playing tab: removed, item by item accounted for (the table under `video-more`). X is More, SELECT is View, on the player as elsewhere.
-- Chips and View: a chip opens the one tabbed View sheet on its tab (no tab-less form); no Sound FX chip; the Equalizer tab takes the full sheet height. Drawn: `music-eq`, `video-chips`.
+- Chips and View: a chip opens the one tabbed View sheet on its tab (no tab-less form); five chips on a song as on a video (Sound, Sound FX, Display, Speed, Shuffle), the Display chip in short values; the Equalizer tab takes the full sheet height. Drawn: `music-eq`, `video-chips`.
