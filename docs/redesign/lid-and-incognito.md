@@ -46,7 +46,7 @@ Incognito’s choice is decided first, at the moment the lid closes or just befo
 | When the lid closes | Nothing | Close all | Quit |
 |---|---|---|---|
 | Pause | Pauses; the handheld sleeps. Still in incognito on waking. | Stops, closes, Home, incognito off; the handheld sleeps. | Quits; the handheld sleeps. |
-| Keep playing | Keeps playing, still in incognito. The lid-shut keys work. | Stops, closes, Home, incognito off. The handheld stays awake (Keep playing never sleeps with the lid shut); Power has nothing to play and does nothing. | Quits; the handheld sleeps. |
+| Keep playing | Keeps playing, still in incognito. The lid-shut keys work. | Stops, closes, Home, incognito off. Nothing is loaded, so the handheld sleeps. | Quits; the handheld sleeps. |
 | Sleep by the power key or by itself (lid open or shut) | Sleeps, still in incognito on waking. | Stops, closes, Home, incognito off; then it sleeps. | Quits; then it sleeps. |
 
 - **Close all and Quit win over Keep playing.** In incognito the lid is the way to put everything away; that matters
@@ -122,7 +122,7 @@ Unavailable, by the one rule: 45%, the reason in the note.
 
 For listening with the handheld shut, in a pocket or a bag. It applies only while the lid is shut and the handheld is
 awake, so only with **When the lid closes: Keep playing**. With Pause the handheld sleeps and there are no keys.
-With Keep playing the handheld does not sleep while the lid is shut, playing or paused.
+With Keep playing the handheld does not sleep while the lid is shut and something is loaded, playing or paused.
 
 ### What the keys do on the player today (lid open)
 
@@ -189,8 +189,9 @@ The rules:
 7. **The volume keys stop at 100% with the lid shut.** A boost set before stays; the keys do not add to it unseen.
 8. **No sound effects.** What happened is heard in what plays: the song changes, the sound stops or starts. A hold
    with nothing to go to (the last one, the first one) does nothing.
-9. **No sleep with the lid shut.** With Keep playing the handheld stays awake for as long as the lid is shut: while it
-   plays, after a pause, after the list ends. Power can always play again. Only a 2 s hold of Power sleeps (and the
+9. **No sleep with the lid shut while something is loaded.** With Keep playing the handheld stays awake for as long
+   as the lid is shut and a file is loaded: while it plays, after a pause, after the list ends. With nothing loaded
+   (after Stop, or after Close all in incognito) it sleeps as BananaOS normally would. Power can always play again. Only a 2 s hold of Power sleeps (and the
    battery at 5%, as the power table says).
 10. **Opening the lid:** the screens come back on the page left open; the first press acts. No summary of what was
     pressed.
@@ -221,10 +222,9 @@ How it works:
 - Code: Linux-only (beside `sleepwatch.*`, which already reads the lid switch): `EVIOCGRAB` on the device, released on
   lid open and on exit; the arm64 Docker check applies.
 
-To be checked on the handheld: the volume keys must be on an input device the player can take without taking Power or
-the lid switch from BananaOS. If they share one device, the player takes it and passes on everything but the volume
-keys (a copy of the device through uinput). If neither can be done, the fallback is the second row of the table with
-the first step only: not offered until measured.
+The volume keys are their own input device on the RG DS (`gpio-keys-volume`), apart from the power key (`rk805
+pwrkey`) and the lid switch (`gpio-keys-hall`). So the player takes that one device and nothing else; BananaOS keeps
+Power and the lid.
 
 ### Trade-offs
 
@@ -249,10 +249,8 @@ anything. The extra value (Hold) is for audiobooks, where chapters matter and a 
 - *Lid or sleep in incognito* covers the lid, the power key's sleep and idle sleep.
 - A video with the lid shut gets the same keys as a song.
 - Leaving incognito puts the dashboard back as its switch says.
+- Keep playing, lid shut, nothing loaded (after Stop, or after Close all in incognito): the handheld sleeps as
+  BananaOS normally would.
+- The volume keys are their own input device, so the player takes them alone.
 
-### Open questions
-
-1. Which input device carries the volume keys on the RG DS and the RG DS Plus, and does it also carry Power or the lid
-   switch? That decides between taking the device and passing the other keys on.
-2. Keep playing, lid shut, nothing loaded (after Stop, or after Close all in incognito): the handheld stays awake by
-   the rule, with nothing Power could play. Should that one case sleep as BananaOS says?
+No open questions.
