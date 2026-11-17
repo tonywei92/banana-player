@@ -63,3 +63,4 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - The Power & screens group and its table now use today's wording, When the lid closes: Pause / Keep playing (0.7.27), in place of the earlier "Keep music playing" proposal.
 - The player's third row: View removed (the chips open it; SELECT by the keys, in the hint bar), Stop in its place; the chips touch only, UP / DOWN nothing. Drawn: `video`, `music`, `video-chips`.
 - Support link: Settings › About's last block (a line, a QR code of https://ko-fi.com/tonysong, the address written out), and one link at the foot of the Web dashboard's Home, which has no About today. Only there; nothing fetched. Drawn: `set-about`.
+- START's Playing tab: removed, item by item accounted for (the table under `video-more`). X is More, SELECT is View, on the player as elsewhere.
