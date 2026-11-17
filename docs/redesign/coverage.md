@@ -54,3 +54,10 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Settings, a settings group, Quick settings (F), volume past 100% and the 120% warning, Incognito badge.
 - Playing in a browser, Hold A, browser went away, mini bar while a browser plays, Play on picker.
 - Key grammar, device sizes (RG DS / Plus), interactive prototype.
+
+## Added after the audit (new features, not in today's UI)
+
+- Incognito and the lid: Settings › Power & screens › Lid closes in incognito (Nothing / Close all / Quit). Drawn: `incog-lid`. Spec: lid-and-incognito.md, section 1.
+- Incognito and the Web dashboard: the server is off while incognito is on; the dimmed switch, the page, the question when a browser is signed in, what the browser sees. Drawn: `incog-web`, `incog-web-ask`. Section 2.
+- The keys with the lid shut: volume hold = next / previous, Shoulder keys, lid shut (Ignored / Hold / As usual), keys under the lid ignored; options A and B. Drawn: `lid-keys`; the rows in `set-screen`. Section 3.
+- The Power & screens group and its table now use today's wording, When the lid closes: Pause / Keep playing (0.7.27), in place of the earlier "Keep music playing" proposal.

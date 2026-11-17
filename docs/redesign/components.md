@@ -1,8 +1,8 @@
 # Components of the handheld redesign
 
-Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 109 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
+Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 113 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
-Counts: 44 components: 9 reuse, 28 variant, 7 new.
+Counts: 45 components: 9 reuse, 28 variant, 8 new. (Lid-shut keys is a rule with nothing to draw: it has no example in the preview’s Components section.)
 
 In the preview every screen draws these through shared functions and style rules (src/kit.js, src/screens.js, src/style.css beside preview.html), the same ones the Components section renders its examples from.
 
@@ -178,7 +178,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Confirm sheet (exists, needs a variant)
 
-- **Used:** Quit, Delete, Manga + video, 120%, engine offer, updater, first-time notices (11)
+- **Used:** Quit, Delete, Manga + video, 120%, engine offer, updater, first-time notices, incognito with a browser signed in, the first-start lid question (13)
 - **Anatomy and states:** A bottom sheet 240–320 tall: title, one or two sentences, two keys 56 tall side by side. The safe key is on the left, yellow, focused, and is B; the action is on the right, red ink when it destroys. An optional “don’t ask again” line.
 - **Inputs:** icon, title, text, safe label, action label, danger, foot
 - **Keys and touch:** LEFT / RIGHT choose, A does the focused one, B = the safe key.
@@ -247,7 +247,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Tile (exists, needs a variant)
 
 - **Used:** Settings (12), Menu (8), Home shortcuts, Quick settings
-- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Menu tile about 146 × 84: icon 26 over name 17 over a note. Shortcut and toggle tiles 56 tall. Focused: yellow edge, icon and name yellow.
+- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Menu tile about 146 × 84: icon 26 over name 17 over a note. Shortcut and toggle tiles 56 tall. A toggle tile may carry a second line Inter 12 dim: its state in words (“Lid: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
 - **Inputs:** icon, name, summary, focused, mark
 - **Keys and touch:** D-pad moves in two dimensions, A opens.
 - **Code:** Home’s tiles (drawHome), Settings’ group tiles (drawSettings). Needs: the live summary line.
@@ -367,6 +367,14 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Inputs:** seconds left, which screen
 - **Keys and touch:** Any key or touch cancels and does nothing else.
 - **Code:** New. The Screen off timers exist (Settings: Screen off (music) / (video)); the five seconds before them are not drawn today. A veil and a notice row over whatever page shows.
+
+### Lid-shut keys (new)
+
+- **Used:** while the lid is shut and the handheld is awake (When the lid closes: Keep playing)
+- **Anatomy and states:** Nothing is drawn: both screens are off. One key map, the same on every page: Volume + / − press = volume (to 100%), hold 0.6 s = next / previous with the volume step taken back; Power press = play / pause, hold 2 s = sleep; L, R, L2, R2 by the setting Shoulder keys, lid shut (Ignored / Hold / As usual); everything under the lid ignored. One hold, one step; a key down over 5 s is ignored until let go. The full rules and the two options: lid-and-incognito.md.
+- **Inputs:** lid shut, the setting, what plays
+- **Keys and touch:** As above. Touch is ignored.
+- **Code:** New. One filter in front of the key handling in main.cpp, fed by `SleepWatch::lidClosed()`; it sends the Session’s own intents (step, play / pause), so the page left open never sees a key. The volume put back as under a browser output (`handheldVolKept`).
 
 ### Lock overlay (exists, needs a variant)
 
