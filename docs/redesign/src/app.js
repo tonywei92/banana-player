@@ -118,6 +118,8 @@ const MAP=[
 ['Subtitles; Music; Photos; Remember; Files; Controls & screen; Updates; Web dashboard','Groups','Same rows. Remember → Playback, Music → Music & sound, Files → Files & history, Controls & screen → Power & screens, with Max volume and Button hotkeys moved to Playback','same'],
 ['A setting’s explanation; the subtitle preview','Bottom screen','Top screen','mov'],
 ['Text and PDF viewer defaults','(only inside a book)','Settings › Reading','new'],
+['The app’s colours','One look: black, cream and yellow','Settings › Power & screens › Theme: Yellow (the default, today’s look), Dark, Dark red, Pink, Midnight blue, Light, High contrast. Both screens and the Web dashboard; cards over a picture stay dark','new'],
+['A book’s page colours: Dark, Light, Sepia, Black','Text options','The same four, and Match theme first (the default): the page follows the app’s theme until you choose one','chg'],
 ['The bottom screen while reading','Stays on','Stays on; may dim to its lowest (Settings › Reading › Dim the controls while reading)','new'],
 ['About','START › About tab','Settings › About; START › About','mov'],
 ['Web dashboard page: QR, address, PIN, New PIN; the globe','Settings, Quick settings, the globe','Unchanged','same'],
@@ -170,21 +172,31 @@ document.getElementById('maptable').innerHTML='<tr><th>Feature</th><th>Today</th
 // ---------- components ----------
 {const TG={reuse:['same','REUSE'],variant:['chg','VARIANT'],new:['new','NEW']};let g='';
  document.getElementById('complist').innerHTML=COMPS.map((c,i)=>{const e=c.ex();const hd=c.g!=g?`<div class="eyebrow" style="margin-top:22px">${g=c.g}</div>`:'';
-  return hd+`<div class="comp" id="c-${i}"><div class="panel" style="aspect-ratio:640/${e.h}"><div class="s" style="height:${e.h}px">${e.inner}</div></div><div><h3>${c.n} <span class="tag ${TG[c.st][0]}">${TG[c.st][1]}</span></h3><dl><dt>Used</dt><dd>${c.use}</dd><dt>Anatomy</dt><dd>${c.an}</dd><dt>Inputs</dt><dd>${c.pr}</dd><dt>Keys, touch</dt><dd>${c.in}</dd><dt>Code</dt><dd>${c.maps}</dd></dl></div></div>`}).join('');
+  return hd+`<div class="comp" id="c-${i}"><div class="panel" style="aspect-ratio:640/${e.h}"><div class="s${c.g=='Top screen'?' top':''}" style="height:${e.h}px">${e.inner}</div></div><div><h3>${c.n} <span class="tag ${TG[c.st][0]}">${TG[c.st][1]}</span></h3><dl><dt>Used</dt><dd>${c.use}</dd><dt>Anatomy</dt><dd>${c.an}</dd><dt>Inputs</dt><dd>${c.pr}</dd><dt>Keys, touch</dt><dd>${c.in}</dd><dt>Code</dt><dd>${c.maps}</dd></dl></div></div>`}).join('');
  const n=k=>COMPS.filter(c=>c.st==k).length;
  document.getElementById('compcount').textContent=`${COMPS.length} components: ${n('reuse')} reuse, ${n('variant')} variant, ${n('new')} new.`;
+ document.getElementById('themetable').innerHTML='<tr><th>Theme</th><th>BG</th><th>SURFACE</th><th>ACCENT</th><th>TEXT</th><th>What it is</th></tr>'+THEMES.map(t=>`<tr><td class="k">${t[1]}</td>${[2,3,4,5].map(i=>`<td><span style="display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px;border:1px solid var(--line);background:#${t[i]}"></span><code>#${t[i]}</code></td>`).join('')}<td>${t[7]}</td></tr>`).join('');
  document.getElementById('forktable').innerHTML='<tr><th>What</th><th>Was drawn as</th><th>Every screen now uses</th><th>Status</th></tr>'+FORKS.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');}
+// ---------- the theme switch (page chrome): data-bp on <html>, which the stylesheet's theme blocks read ----------
+function setTheme(id){if(!THEMES.some(t=>t[0]==id))id='yellow';document.documentElement.dataset.bp=id;try{localStorage.setItem('bptheme',id)}catch(e){}
+ document.querySelectorAll('#themebar button').forEach(b=>b.classList.toggle('on',b.dataset.theme==id))}
+function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.dataset.bp);setTheme(THEMES[(i+1)%THEMES.length][0])}
+{const bar=document.getElementById('themebar');
+ bar.insertAdjacentHTML('beforeend',THEMES.map(t=>`<button data-theme="${t[0]}" title="${t[1]}"><i style="background:linear-gradient(90deg,#${t[2]} 50%,#${t[4]} 50%)"></i>${t[1]}</button>`).join(''));
+ bar.addEventListener('click',e=>{const b=e.target.closest('button[data-theme]');if(b)setTheme(b.dataset.theme)});
+ let t=(location.search.match(/[?&]theme=([a-z]+)/)||[])[1];if(!t)try{t=localStorage.getItem('bptheme')}catch(e){}
+ setTheme(t||'yellow')}
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);
-const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;
-const dev=s=>s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
+const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;
+const dev=s=>s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
 const kb=k=>k.split(' or ').map(p=>p.split('/').map(x=>`<kbd>${x}</kbd>`).join(' ')).join(' or ');
 const gal=document.getElementById('gallery'),nav=document.getElementById('navscreens');
 let lastG='';
 SCREENS.forEach(s=>{
 	if(s.group!=lastG){lastG=s.group;nav.insertAdjacentHTML('beforeend',`<h4>${s.group}</h4>`)}
 	nav.insertAdjacentHTML('beforeend',`<a href="#s-${s.id}">${s.name}${s.isNew?'<small>NEW</small>':''}</a>`);
-	const goes=[...new Set(s.keys.filter(k=>k[2]&&k[2]!='<').map(k=>k[2]))];
+	const goes=[...new Set(s.keys.filter(k=>k[2]&&k[2]!='<'&&BY[k[2]]).map(k=>k[2]))];
 	gal.insertAdjacentHTML('beforeend',`<article class="screen ${s.side?'wide':''}" id="s-${s.id}"><div class="device ${s.side?'side':''}" data-gal="${s.id}">${dev(s)}</div><div class="notes"><div class="eyebrow">${s.group}${s.isNew?' · <span class="tag new">NEW</span>':''}</div><h3>${s.name}</h3><p class="why">${s.why}</p>
 	<ul>${s.notes.map(n=>`<li><span class="tag ${n[0]}">${TAGN[n[0]]}</span> ${n[1]}</li>`).join('')}</ul>${s.extra?s.extra():''}
 	<div class="keys">${s.keys.map(k=>`${`<span>${kb(k[0])}</span>`}<span>${k[1]}</span>`).join('')}</div>
@@ -195,6 +207,7 @@ SCREENS.forEach(s=>{
 const P_={cur:'home',hist:[]};
 const pd=document.getElementById('protoDev'),pad=document.getElementById('protoPad');
 function show(id,push=true){
+	if(id=='theme:step'){stepTheme();return}
 	if(id=='<'){id=P_.hist.pop()||'home';push=false}
 	if(!BY[id])return;
 	if(push&&id!=P_.cur)P_.hist.push(P_.cur);

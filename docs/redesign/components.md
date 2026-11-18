@@ -1,10 +1,12 @@
 # Components of the handheld redesign
 
-Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 113 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
+Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 114 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
 Counts: 46 components: 10 reuse, 28 variant, 8 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
 
 In the preview every screen draws these through shared functions and style rules (src/kit.js, src/screens.js, src/style.css beside preview.html), the same ones the Components section renders its examples from.
+
+Colours are roles: every colour named below is a token of src/theme.h, and a theme gives each its value (see Themes). “Yellow”, “cream” and “red” are ACCENT, TEXT and DANGER in the Yellow theme.
 
 Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overlay-stack.md), `Ui::Area` (docs/notes/ui-areas.md), `slideGrab` / src/slider.h (docs/notes/sliders.md), `rowCell` / `gridCell` / `drawKeyedLabel` (docs/notes/button-rows.md), `SettingDef` (docs/notes/settings-table.md), `drawDialog`, `drawFocus`, `drawHints`, `drawSlider`, `fillRound` / `drawBox`, and the tokens in src/theme.h.
 
@@ -29,7 +31,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Section rail (new)
 
 - **Used:** every shell screen (about 50)
-- **Anatomy and states:** 78 wide, full height, background #0B0A0D, a 1-unit rule on its right. Cell 68 × 56, radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. L and R key caps above the first and under the last section; Settings pinned at the foot. A red 11-unit mark on a cell that would stop what plays.
+- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 56, radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. L and R key caps above the first and under the last section; Settings pinned at the foot. A red 11-unit mark on a cell that would stop what plays.
 - **Inputs:** sections (icon, label, shown or not), the active one, a warning mark per cell
 - **Keys and touch:** L / R step the sections (wrapping); a tap opens one. The D-pad never enters it.
 - **Code:** New. Replaces the four markers drawn by drawSectionHeader and Home’s tiles (drawHome). Belongs to Ui’s shell, drawn for every page of an area that is a section.
@@ -105,7 +107,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Pill (mark on a row or card) (exists, needs a variant)
 
 - **Used:** about 30 screens
-- **Anatomy and states:** Inter 700 11, padding 3 6, radius 5, an optional 12-unit icon. Three tones: yellow fill, black ink = live or wants attention (Playing, Now, Here, Update, 12 / 40); neutral = TRACK fill, cream ink = a fact (On card, Added, Yours, Queued, Paused); red = 20% red fill, red ink (Gone, Failed, 18+).
+- **Anatomy and states:** Inter 700 11, padding 3 6, radius 5, an optional 12-unit icon. Three tones: ACCENT fill, ON_ACCENT ink = live or wants attention (Playing, Now, Here, Update, 12 / 40); neutral = TRACK fill, TEXT ink = a fact (On card, Added, Yours, Queued, Paused); red = DANGER at 20% (TINT) as the fill, DANGER ink (Gone, Failed, 18+).
 - **Inputs:** text, icon, tone
 - **Keys and touch:** None.
 - **Code:** drawChip, drawMark, drawMangaDlMark, drawAdultChip (ui.h). Needs: the three tones as one function.
@@ -237,7 +239,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Volume bar (exists, needs a variant)
 
 - **Used:** top card, Quick settings
-- **Anatomy and states:** A level bar whose range runs to Max volume: cream to 100%, yellow from 100 to 120%, red past 120%; a tick at 100%. The number takes the colour of the part it is in.
+- **Anatomy and states:** A level bar whose range runs to Max volume: TEXT (cream) to 100%, ACCENT from 100 to 120%, DANGER past 120%; a tick at 100%. The number takes the colour of the part it is in.
 - **Inputs:** value, max
 - **Keys and touch:** As a slider in Quick settings; the volume keys elsewhere.
 - **Code:** drawLevel (top card) and drawQuick’s bar. Needs: the three colours and the 100 mark as one function.
@@ -313,10 +315,10 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Level card (exists, needs a variant)
 
 - **Used:** volume, brightness, zoom, chapter, equalizer, look, adjust
-- **Anatomy and states:** Top right, 20 from the edges, 290 wide (200 with no bar), #0B0A0D, radius 18, padding 14 18. A small label Inter 12 dim over the value Pixelify 19, or icon + name + value on one line; a bar 8 tall under it; an optional third line Inter 12. Fades after a moment.
+- **Anatomy and states:** Top right, 20 from the edges, 290 wide (200 with no bar), TOP_CARD with a TOP_EDGE edge, radius 18, padding 14 18. A small label Inter 12 dim over the value Pixelify 19, or icon + name + value on one line; a bar 8 tall under it; an optional third line Inter 12. Fades after a moment.
 - **Inputs:** icon, label, value, share, tone, third line
 - **Keys and touch:** Shown by the key that changed the level.
-- **Code:** drawLevel and the chapter / EQ cards in main.cpp (ASS on the top panel, theme.h’s TOP_CARD, R_TOP_CARD). Needs: cream for normal levels.
+- **Code:** drawLevel and the chapter / EQ cards in main.cpp (ASS on the top panel, theme.h’s TOP_ tokens, R_TOP_CARD). Needs: TOP_TEXT (cream) for normal levels.
 
 ### Note (exists, reuse)
 
@@ -355,15 +357,15 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Focus (exists, reuse)
 
 - **Used:** everywhere
-- **Anatomy and states:** One meaning, three drawings by what is focused: a key or tile = its edge turns yellow; a row = BUTTON fill, yellow edge, yellow name; a cover = a 3-unit yellow outline 2 away. Never a second colour, never a glow.
+- **Anatomy and states:** One meaning, three drawings by what is focused: a key or tile = its edge turns ACCENT (yellow in the Yellow theme); a row = BUTTON fill, ACCENT edge, ACCENT name; a cover = a 3-unit ACCENT outline 2 away. Never a second colour, never a glow, in any theme.
 - **Inputs:** kind
 - **Keys and touch:** The D-pad moves it; touch does not show it.
-- **Code:** drawFocus (ui.h) and ACCENT.
+- **Code:** drawFocus (ui.h) and ACCENT: the theme’s, so focus needs no change per theme.
 
 ### Away-from-normal mark (new)
 
 - **Used:** chips, the Light key, header badges, mini bar pills, slider rows
-- **Anatomy and states:** Yellow; the value written in place of the setting’s name; a 6-unit dot in the control’s corner. Where the control isn’t on screen: the badge (header) or pill (mini bar). Red only past a danger line (volume over 120%, offline, failed).
+- **Anatomy and states:** ACCENT; the value written in place of the setting’s name; a 6-unit dot in the control’s corner. Where the control isn’t on screen: the badge (header) or pill (mini bar). DANGER only past a danger line (volume over 120%, offline, failed).
 - **Inputs:** state, its normal value, danger
 - **Keys and touch:** A tap on a badge or pill goes to where the control is.
 - **Code:** New as a rule (0.7.18 has the yellow speed key and the lit Brightness key). One helper: given a state and its normal, return the tone and the words.
@@ -392,9 +394,252 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Keys and touch:** Hold the lock 1 s. Buttons still work.
 - **Code:** The lock state in ui_main.cpp:391 (“Hold the lock 1 s to unlock”).
 
+## Themes
+
+A theme is a set of values for the tokens of `src/theme.h`, and nothing else. Every component in this document is drawn with those tokens, so a theme is a swap of the table: no component and no screen has a colour of its own, and none has a rule for one theme. The setting is Settings › Power & screens › Theme (first row); the preview draws it as `set-theme`, and the Theme switch at the foot of the preview page changes every screen at once.
+
+Where this document says yellow, cream or red, it means ACCENT, TEXT and DANGER: those are the Yellow theme's values.
+
+### What a theme does not change
+
+Sizes, radii (`R_*`), edge and lip widths (`EDGE` 2, `LIP` 3), type (Pixelify Sans, Inter and their sizes), layouts (`kitlayout.h`), states, keys and touch. The strengths `VEIL_SHEET` 68, `VEIL_LOCK` 80, `OFF` 45, `HOLD_FILL` 28, `TINT` 20 and the top card's 223 of 255. The Focus rule: one meaning, three drawings, the edge in ACCENT, never a second colour, never a glow. The Away-from-normal rule: the value in ACCENT with a dot; DANGER only past a danger line.
+
+### The themes
+
+Seven, stepped with LEFT / RIGHT in this order. Yellow is the default and is today's look, value for value.
+
+| Theme | What it is |
+|---|---|
+| Yellow | Today: true black, cream text, banana yellow. The default |
+| Dark | Black and neutral greys, white as the accent. Nothing coloured but DANGER |
+| Dark red | Near-black with a red cast, a bright red accent. DANGER is amber, so it is never mistaken for the accent |
+| Pink | Near-black with a plum cast, a pink accent. DANGER is amber, for the same reason |
+| Midnight blue | Deep navy, a sky-blue accent |
+| Light | Warm paper, dark ink, a dark amber accent with light ink on it. For sunlight |
+| High contrast | Black, white and a bright yellow; stronger edges; every text pair at 7 : 1 or more |
+
+### The tokens, and each theme's values
+
+Sixteen colour roles, one strength, and eight for the top screen. Existing names are kept. New ones are marked: RAIL (today a literal, #0B0A0D), EDGE_MIX (today the fixed 30 inside `edgeOf`), TOP_TEXT, TOP_EDGE and TOP_DANGER (today TEXT, no edge, and DANGER used on the card). "Preview" is the CSS variable of `src/style.css` that carries the token: one to one, so the switch in the preview swaps what the code will swap.
+
+| Token | Preview | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
+|---|---|---|---|---|---|---|---|---|
+| BG | `--bg` | #000000 | #000000 | #0A0405 | #0C060A | #040816 | #F7F4EC | #000000 |
+| SURFACE | `--sf` | #121116 | #141416 | #190C0E | #1B0F17 | #0C142E | #FFFDF8 | #0A0A0A |
+| BUTTON | `--bt` | #26242E | #27272B | #361D21 | #301C29 | #1A2649 | #E6E0D2 | #1E1E1E |
+| PRESSED | `--pr` | #3E3B4A | #404046 | #4D2A2F | #4B2E41 | #2C3C6C | #D0C9B8 | #3A3A3A |
+| TRACK | `--tr` | #1E1D24 | #1F1F23 | #241315 | #25151F | #131C3A | #DED8C9 | #2B2B2B |
+| RULE | `--ru` | #2A2833 | #2C2C31 | #382224 | #37222F | #202C52 | #D5CEBE | #5E5E5E |
+| RAIL | `--ra` | #0B0A0D | #0C0C0D | #13090A | #150B12 | #090F24 | #ECE7DB | #060606 |
+| SCREEN | `--sc` | #26242E | #27272B | #361D21 | #301C29 | #1A2649 | #E6E0D2 | #1E1E1E |
+| TEXT | `--tx` | #E8E2D3 | #D2D2D8 | #EFE1DD | #F1E2E9 | #E1E7F5 | #1B1A20 | #FFFFFF |
+| DIM | `--dm` | #8F8A80 | #8C8C94 | #A08B87 | #A18B97 | #8893B0 | #625E56 | #C6C6C6 |
+| DIM_ON | `--do` | #ABA597 | #A9A9B1 | #BCA8A4 | #BAA5B1 | #A5AFCA | #55514A | #D8D8D8 |
+| KNOB | `--kn` | #E8E2D3 | #D2D2D8 | #EFE1DD | #F1E2E9 | #E1E7F5 | #1B1A20 | #FFFFFF |
+| ACCENT | `--ac` | #FFD23F | #FFFFFF | #FF6A6E | #FF8FC7 | #8CC8FF | #7A5200 | #FFE14D |
+| ON_ACCENT | `--oa` | #000000 | #000000 | #000000 | #000000 | #000000 | #FFFDF8 | #000000 |
+| DANGER | `--dg` | #F0645A | #F47067 | #FFB224 | #FFB224 | #FF7A70 | #A3261D | #FF8A80 |
+| EDGE_MIX | (in the edges) | 30% | 30% | 30% | 30% | 30% | 55% | 50% |
+| TOP_CARD | `--tc` in the top scope | #0B0A0D | #0C0C0D | #13090A | #150B12 | #090F24 | #0B0A0D | #060606 |
+| TOP_EDGE | `--te` in the top scope | #2A2833 | #2C2C31 | #382224 | #37222F | #202C52 | #2A2833 | #5E5E5E |
+| TOP_TITLE | `--ac` in the top scope | #FFD23F | #FFFFFF | #FF6A6E | #FF8FC7 | #8CC8FF | #FFD23F | #FFE14D |
+| TOP_TEXT | `--tx` in the top scope | #E8E2D3 | #D2D2D8 | #EFE1DD | #F1E2E9 | #E1E7F5 | #E8E2D3 | #FFFFFF |
+| TOP_SUB | `--dm, --do` in the top scope | #8F8A80 | #8C8C94 | #A08B87 | #A18B97 | #8893B0 | #8F8A80 | #C6C6C6 |
+| TOP_TRACK | `--bt` in the top scope | #26242E | #27272B | #361D21 | #301C29 | #1A2649 | #26242E | #1E1E1E |
+| TOP_SQUARE | `--sf` in the top scope | #121116 | #141416 | #190C0E | #1B0F17 | #0C142E | #121116 | #0A0A0A |
+| TOP_DANGER | `--dg` in the top scope | #F0645A | #F47067 | #FFB224 | #FFB224 | #FF7A70 | #F0645A | #FF8A80 |
+
+| Worked out | Preview | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
+|---|---|---|---|---|---|---|---|---|
+| edgeOf(BUTTON) | `--ed` | #605D60 | #5A5A5F | #6E5859 | #6A5763 | #56607D | #767370 | #8F8F8F |
+| edgeOf(SURFACE) | `--eds` | #52504F | #4D4D50 | #594C4C | #5B4E56 | #4C536A | #828081 | #858585 |
+| lipOf(BUTTON) | `--lp` | #1B1920 | #1B1B1E | #261417 | #22141D | #121B33 | #A19D93 | #151515 |
+| edgeOf(ACCENT) | `--ae` | #F8D76B | #F1F1F3 | #FA8E8F | #FBA8D1 | #A6D1FC | #463312 | #FFF0A6 |
+| lipOf(ACCENT) | `--al` | #B3932C | #B3B3B3 | #B34A4D | #B3648B | #628CB3 | #553900 | #B39E36 |
+| edgeOf(DANGER) | `--de` | #EE8A7E | #EA8D89 | #FAC05C | #FBC05F | #F69B98 | #581F1F | #FFC5C0 |
+| lipOf(DANGER) | `--dl` | #A8463F | #AB4E48 | #B37D19 | #B37D19 | #B3554E | #721B14 | #B3615A |
+
+Aliases stay aliases in every theme: KNOB = TEXT, SCREEN = BUTTON. In the six dark themes the TOP_ tokens are aliases too, as today: TOP_TITLE = ACCENT, TOP_TEXT = TEXT, TOP_SUB = DIM, TOP_TRACK = BUTTON, TOP_SQUARE = SURFACE, TOP_DANGER = DANGER, TOP_EDGE = RULE, and TOP_CARD and RAIL are SURFACE at 60% over BG. Light gives the TOP_ tokens Yellow's values and RAIL its own.
+
+The worked-out colours keep their rules in every theme, so they are not stored:
+
+- `edgeOf(fill)`: the fill EDGE_MIX percent of the way to TEXT. A light theme's edges come out darker than the fill, a dark theme's lighter: the same rule.
+- `lipOf(fill)`: the fill × 0.7.
+- Unavailable: the piece at `OFF` percent over BG (`Kit::off`).
+- The veil under a sheet and under the lock: BG at `VEIL_SHEET` / `VEIL_LOCK`. In Light it is a paper veil, so what is written on it (the lock's two lines) stays TEXT and ACCENT on BG.
+- The play key's hold: BG at `HOLD_FILL` over the key.
+- A red pill's ground: DANGER at `TINT` over its ground. A header badge's ground: ACCENT at 17% over its ground.
+
+### Contrast
+
+WCAG ratios, worked out by `themes.py` (it fails if a pair is under its floor). Text pairs must reach 4.5 (AA); High contrast holds its main pairs to 7 (AAA). Edges and bars must reach 3. Unavailable pieces (45%) are outside the floors, as the standard allows.
+
+| Pair (floor) | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
+|---|---|---|---|---|---|---|---|
+| TEXT on BG (4.5; High contrast 7) | 16.3 | 14.0 | 16.0 | 16.1 | 16.1 | 15.7 | 21.0 |
+| TEXT on SURFACE (4.5; High contrast 7) | 14.5 | 12.2 | 15.0 | 14.9 | 14.7 | 17.0 | 19.8 |
+| TEXT on BUTTON (4.5; High contrast 7) | 11.8 | 9.9 | 12.2 | 12.7 | 12.0 | 13.1 | 16.7 |
+| TEXT on TRACK (a neutral pill) (4.5; High contrast 7) | 12.9 | 10.9 | 14.0 | 13.9 | 13.5 | 12.2 | 14.2 |
+| DIM on BG (4.5; High contrast 7) | 6.1 | 6.3 | 6.3 | 6.4 | 6.5 | 5.9 | 12.3 |
+| DIM on SURFACE (4.5) | 5.5 | 5.5 | 5.9 | 5.9 | 5.9 | 6.3 | 11.6 |
+| DIM_ON on BUTTON (4.5) | 6.2 | 6.4 | 6.8 | 6.9 | 6.8 | 6.0 | 11.7 |
+| DIM_ON on TRACK (a chip, off) (4.5) | 6.8 | 7.0 | 7.9 | 7.6 | 7.6 | 5.5 | 9.9 |
+| DIM_ON on RAIL (4.5) | 8.0 | 8.4 | 8.7 | 8.4 | 8.7 | 6.4 | 14.2 |
+| ACCENT on BG (4.5; High contrast 7) | 14.5 | 21.0 | 7.3 | 9.6 | 11.2 | 6.3 | 16.1 |
+| ACCENT on SURFACE (4.5; High contrast 7) | 13.0 | 18.4 | 6.9 | 8.9 | 10.2 | 6.8 | 15.2 |
+| ACCENT on BUTTON (the focused row) (4.5) | 10.6 | 14.9 | 5.6 | 7.6 | 8.3 | 5.3 | 12.8 |
+| ACCENT on its 17% tint (a badge) (4.5) | 8.8 | 11.0 | 5.4 | 6.5 | 7.1 | 5.3 | 10.3 |
+| ON_ACCENT on ACCENT (4.5; High contrast 7) | 14.5 | 21.0 | 7.5 | 10.0 | 11.8 | 6.8 | 16.1 |
+| ON_ACCENT on DANGER (Quit) (4.5) | 6.7 | 7.4 | 11.6 | 11.6 | 8.3 | 7.2 | 9.2 |
+| DANGER on BG (4.5) | 6.7 | 7.4 | 11.3 | 11.1 | 7.9 | 6.7 | 9.2 |
+| DANGER on SURFACE (4.5) | 6.0 | 6.4 | 10.6 | 10.3 | 7.2 | 7.2 | 8.7 |
+| DANGER on BUTTON (4.5) | 4.9 | 5.2 | 8.6 | 8.8 | 5.8 | 5.6 | 7.3 |
+| DANGER on its 20% tint (a red pill) (4.5) | 4.6 | 4.8 | 7.0 | 6.8 | 5.3 | 5.2 | 6.3 |
+| Focus edge (ACCENT) against BG (3) | 14.5 | 21.0 | 7.3 | 9.6 | 11.2 | 6.3 | 16.1 |
+| Focus edge against SURFACE (3) | 13.0 | 18.4 | 6.9 | 8.9 | 10.2 | 6.8 | 15.2 |
+| edgeOf(BUTTON) against BG (3) | 3.2 | 3.1 | 3.1 | 3.0 | 3.2 | 4.3 | 6.5 |
+| edgeOf(SURFACE) against BG (as today: a flat piece is its fill and edge) (2.4) | 2.6 | 2.5 | 2.5 | 2.6 | 2.6 | 3.6 | 5.7 |
+| Bar fill (ACCENT) against TRACK (3) | 11.6 | 16.4 | 6.4 | 8.3 | 9.4 | 4.9 | 10.9 |
+| KNOB against TRACK (3) | 12.9 | 10.9 | 14.0 | 13.9 | 13.5 | 12.2 | 14.2 |
+| TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 13.0 | 15.4 | 15.4 | 15.3 | 15.3 | 20.3 |
+| TOP_SUB on TOP_CARD (4.5) | 5.8 | 5.9 | 6.1 | 6.1 | 6.2 | 5.8 | 11.9 |
+| TOP_TITLE on TOP_CARD (4.5; High contrast 7) | 13.7 | 19.6 | 7.0 | 9.2 | 10.7 | 13.7 | 15.6 |
+| TOP_DANGER on TOP_CARD (4.5) | 6.3 | 6.9 | 10.9 | 10.7 | 7.5 | 6.3 | 8.9 |
+| Reader page (Match theme): text on page (4.5; High contrast 7) | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 14.1 | 10.9 |
+
+One pair is below 3 in the five dark themes, as it is today: a flat piece's edge against BG (2.5 to 2.6). A chip or a tile is told by its fill and its edge together; Light and High contrast lift it with EDGE_MIX.
+
+### Fixed in every theme
+
+- The picture: video, photos, album art, covers, the manga cover placeholders' gradients, a comic's or a PDF's page, and the black around them on the top screen.
+- The visualizers' own colours, Pocket console's LCD greens among them.
+- Subtitles and their preview: the subtitle settings decide them.
+- Text laid straight on a picture with no card under it: the song's title, artist and album (#FFFFFF, #B4B4B4, with their shadow), drawn as subtitles are.
+- A book's page: Reading › Colours (`text-theme`: Dark, Light, Sepia, Black) and the Light sheet's filters. See below.
+- The QR code: black on white with its white quiet edge.
+- The screen-off warning's veil and a screen that is off: black, because they stand for the backlight going down.
+- The picture looks' overlays (scanlines, LCD grid).
+
+### The top screen
+
+Two cases, by what is under the drawing.
+
+- **Nothing plays** (the Preview pane, a setting's help, the idle logo): app UI. It takes the main tokens, so in Light the top screen is light.
+- **A picture, or its place** (a video, a photo, a song's art or visualizer, a page, and the State card that stands where the picture would be: Buffering, Can't play, Playing in your browser): the TOP_ tokens only. Level cards and Notes are always drawn with the TOP_ tokens, over a pane too, so there is one drawing of each.
+
+The TOP_ tokens are dark in every theme. A light card over a film glares, hides more of the picture than it covers, and makes the film look darker. So Light keeps Yellow's cards; the five other dark themes tint them with their own accent.
+
+| Piece | Body | Edge | Main line | Second line | Bar | Past a danger line |
+|---|---|---|---|---|---|---|
+| Level card | TOP_CARD at 223 / 255 | TOP_EDGE | TOP_TEXT for a level, TOP_TITLE for a name (a chapter, a preset) and for a boosted volume | TOP_SUB | TOP_TRACK, filled TOP_TEXT to 100%, TOP_TITLE to 120%; the 100 mark TOP_SUB | TOP_DANGER (bar and number) |
+| Note | TOP_CARD at 223 / 255 | TOP_EDGE | TOP_TITLE | TOP_SUB | none | TOP_DANGER (a security or failure note) |
+| State card | TOP_CARD, the whole panel | none | TOP_TITLE; its tile TOP_SQUARE with `edgeOf(TOP_SQUARE)`, the icon TOP_TITLE | TOP_TEXT, then TOP_SUB; key caps TOP_TITLE | TOP_TRACK, filled TOP_TITLE | TOP_DANGER (title and icon) |
+
+### Where it is changed
+
+- **Settings › Power & screens › Theme**, the group's first row: a stepper, ‹ Yellow ›. Setting key `theme`, values `yellow`, `dark`, `dark-red`, `pink`, `midnight-blue`, `light`, `high-contrast`; default `yellow`. One entry in `settingDefs()`.
+- **Help line** (top screen, while the row is focused): “The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.” Under it: a swatch of each theme with the chosen one outlined, and a key, a focused row, pills and a bar as they now look.
+- **It previews live.** LEFT / RIGHT apply the theme at once: nothing to open, nothing to confirm, B leaves it as it is. Both panels redraw on the step (the theme is part of `signature()`), a card showing on the top screen is drawn again, and dashboard pages follow on their next state update.
+- **The group's tile** names it first: “Yellow · screen off 30 s · the lid pauses”.
+- **Not in Quick settings (F).** Quick settings holds what is changed while something plays; a theme is chosen once.
+- **The Web dashboard follows the handheld.** `web/style.css` holds the same tokens per theme (below), the page takes the handheld's theme with its state, and its Settings page has the same Theme row, which sets the handheld's. One setting, seen in both places. The page's `theme-color` and the Settings page's small picture of the two panels use the same tokens.
+
+### A book's page colours
+
+Reading › Colours stays its own setting: a page is read for hours and its colours are a reading choice, not the app's. It gains a first value, **Match theme**, which is the default: Light gives the Light page, High contrast the Black page, every other theme the Dark page. For anyone on Yellow that is the Dark page, as today. Choosing Dark, Light, Sepia or Black by hand holds, whatever the theme. The reader's sheets and keys are app UI and follow the theme; the page under them does not.
+
+### Every component, by the tokens it uses
+
+This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeOf(fill)`, `lipOf(fill)`. “Flat” is `Kit::flat`: a fill and `edgeOf(fill)`, no lip. “Off” is `Kit::off`. Focus always adds an ACCENT edge.
+
+| Component (this document) | Code | Tokens |
+|---|---|---|
+| Header | `Kit::header`, `Kit::iconKey` | BG ground; TEXT title; DIM crumb; keys: Box BUTTON / PRESSED, TEXT mark; ACCENT state (DANGER when it failed) |
+| Status cluster and badges | `drawBattery`, `drawWebIndicator` | DIM_ON marks and clock; ACCENT playing bars; badge: ACCENT on ACCENT at 17%; red badge and low battery: DANGER on DANGER at TINT |
+| Section rail | new | RAIL ground, RULE line; DIM_ON cells; active cell ACCENT with `lipOf(ACCENT)`, ON_ACCENT ink; caps ACCENT; warning mark DANGER |
+| Hint bar | `Kit::hints`, `Kit::caps`, `drawHints` | BG ground, RULE line, DIM_ON words; caps: ACCENT outline and letter on their ground (ON_ACCENT on an accent key) |
+| Mini bar | `drawMiniBar` | SURFACE, ACCENT edge; play mark BUTTON with ACCENT glyph; TEXT title; DIM time; DIM_ON kind icon; pills as Pill; progress line ACCENT |
+| Key (button) | `Kit::key`, `drawBox`, `drawButton`, `drawKeyedLabel` | Box BUTTON, pressed PRESSED, TEXT; primary: Box ACCENT (pressed `lipOf(ACCENT)`), ON_ACCENT; danger: DANGER ink, or Box DANGER with ON_ACCENT (Quit); lit: ACCENT ink; Off |
+| Button row and grid | `rowCell`, `gridCell`, `lay::cell` | none: Rects only |
+| Transport key | `Kit::transport` | as Key; the hold: BG at HOLD_FILL over the key; third line ON_ACCENT |
+| State chip | `Kit::chip` | Flat SURFACE; DIM_ON icon; DIM label; TEXT value; away from normal: ACCENT icon, value and dot; Off |
+| Line key | `Kit::line` | Flat SURFACE; DIM label; TEXT text (DIM when there is nothing to name); DIM note; ACCENT caps and chevron |
+| List row | `Kit::row`, `drawDialogRow`, `drawFocus` | its ground (BG on a page, SURFACE in a sheet); TEXT name; DIM note and lead; focused: BUTTON fill, ACCENT edge, ACCENT name, DIM_ON note; danger: DANGER; radio and tick: ACCENT; Off |
+| Pill | `Kit::pill` | live: ACCENT, ON_ACCENT; fact: TRACK, TEXT; bad: DANGER at TINT over its ground, DANGER ink |
+| Filter chips and segmented choice | `Kit::segment`, `drawTab` | off: TRACK, DIM_ON; on: ACCENT, ON_ACCENT |
+| Tabs | `Kit::tabs` | off: Box BUTTON, TEXT; on: ACCENT with `edgeOf(ACCENT)` and `lipOf(ACCENT)`, ON_ACCENT; caps ACCENT |
+| Switch | `Kit::toggle` | off: TRACK, `edgeOf(BUTTON)`, knob DIM; on: ACCENT, `edgeOf(ACCENT)`, knob ON_ACCENT |
+| Tick and radio | `Kit::row` (radio), the select tick | `edgeOf(BUTTON)` outline; on: ACCENT fill, ON_ACCENT check; radio: ACCENT ring and centre |
+| Settings row (stepper) | `Kit::settingRow` | as List row; value TEXT; arrows DIM; action note DIM (DANGER when it destroys) |
+| Form row | `ui_forms.cpp` | as List row; label DIM, ACCENT when focused; value TEXT |
+| Bottom sheet | `Kit::sheet`, `Kit::sheetBack`, `Ui::Overlay`, `drawDialog` | veil: BG at VEIL_SHEET; Flat SURFACE; grab mark PRESSED; title ACCENT (DANGER for danger); note DIM; its Hint bar |
+| Alert sheet, Confirm sheet | `Ui::AlertBox`, `drawQuitDialog`, `drawUpdatePopup` | Bottom sheet; sentence TEXT; safe key primary; the action key normal, DANGER ink when it destroys |
+| Busy and job sheet | `drawBusy`, `drawFileJob` | Bottom sheet; spinner ACCENT on TRACK; Progress bar; amounts DIM |
+| More sheet | `Ui::openMore`, `ui_more.cpp` | Bottom sheet; tiles as Key; rows as List row; column titles DIM |
+| Book bar | new | Bottom sheet, turned; a lit Light key: ACCENT ink |
+| Keyboard | `drawKeyboard` | field: SURFACE with an ACCENT outline, TEXT, cursor ACCENT; letter keys Box BUTTON, the focused one ACCENT edge; special keys TRACK; Done primary |
+| Slider | `drawSlider`, `drawSlideKnob`, `drawSlideTag`, `slideGrab`, `Kit::progress` | TRACK; fill ACCENT; KNOB; chapter notches BG; the held tag ACCENT with ON_ACCENT; the two-way tick DIM |
+| Progress bar | `Kit::bar` | TRACK; fill ACCENT |
+| Volume bar | `drawLevel`, `drawQuick` | TRACK; TEXT to 100%, ACCENT to 120%, DANGER past it; the 100 mark DIM_ON; on the top card the TOP_ tokens |
+| Tile | `Kit::settingTile`, `Kit::key` (stack) | Flat SURFACE; TEXT name; DIM summary; focused: ACCENT edge, icon and name |
+| Cover cell | `drawMangaCover` | the cover is a picture; count pill as Pill; progress as Progress bar; percent DIM; focused: ACCENT outline |
+| QR code | `ui_web.cpp` | fixed black on white; the address TEXT, the sentence DIM |
+| Recent card, Continue card | `drawHome` | Flat SURFACE; label DIM; TEXT title; DIM note; Progress bar; kind mark fixed (on a picture); the key primary |
+| Empty state | `drawEmpty` | DIM icon; TEXT title; DIM lines; keys: primary and normal |
+| Notice row | `drawExtNotice` | Flat SURFACE with its edge ACCENT (ready), DANGER (failed) or `edgeOf(SURFACE)`; TEXT; DIM second line; Progress bar; a small Key |
+| Select bar, clip bar | `drawSelBar`, `drawClipBar` | keys as Key (Delete: DANGER ink); clip bar: SURFACE, ACCENT edge, TEXT, DIM size |
+| Pan area, drag area | `ui_docs.cpp`, `drawPhoto` | pan area SCREEN, the box ACCENT; drag area Flat SURFACE, RULE dashes, DIM captions |
+| Level card, Note, State card | `levelcard.cpp`, the ASS cards in `player.cpp` | the TOP_ tokens (the table above) |
+| Preview pane | new | BG; brand tile ACCENT with ON_ACCENT, name ACCENT; label ACCENT; TEXT title; DIM_ON sentence; list DIM and TEXT; caps ACCENT |
+| Song layout | `Player::shownMusic` | fixed: the art, the visualizer, white text with its shadow; a missing cover's placeholder is a picture |
+| Focus | `drawFocus` | ACCENT |
+| Away-from-normal mark | new | ACCENT; DANGER past a danger line |
+| Screen-off warning | new | veil fixed black 62%; a Notice row with an ACCENT edge |
+| Lid-shut keys | new | nothing drawn |
+| Lock overlay | `Kit::lock` | veil: BG at VEIL_LOCK; Box BUTTON (PRESSED while held) with an ACCENT edge, ACCENT lock and title; DIM_ON line |
+| The reader views | `ui_reader.cpp`, `reader.*`, `textreader.*` | the page: fixed (its own colours); around a page not yet decoded: TOP_TRACK; the page-number note: a Note |
+
+### What breaks the swap today
+
+Found reading `src/theme.h`, `src/ui_internal.h`, `src/ui_kit.cpp`, `src/levelcard.cpp`, `web/style.css` and this spec. Each is a one-time change; after it a theme is values only.
+
+- The tokens are `constexpr` (`theme.h`, and `ui_internal.h`'s `SDL_Color` copies), fixed when the app is built. A theme is chosen while it runs: they become one table of themes, read through the same names.
+- `edgeOf` has 30 written in it: it reads EDGE_MIX.
+- `levelcard.cpp` draws the boosted part of the bar with ACCENT and DANGER and the 100 mark with TEXT: TOP_TITLE, TOP_DANGER, TOP_SUB. The card's text takes TOP_TEXT.
+- Scrims written as black: `{0,0,0,170}` (drawDialog, `ui_ext.cpp`) and `{0,0,0,200}` (`ui_fileops.cpp`). Both become BG at VEIL_SHEET, as `Kit::sheetBack` already does.
+- The reader's ground for a page not yet decoded, `40,40,44`: TOP_TRACK.
+- In this spec: the rail's #0B0A0D is RAIL; the level card's #0B0A0D is TOP_CARD; a badge's “17% yellow” is ACCENT at 17%.
+- `web/style.css`: `color: #000` on a yellow or red box is ON_ACCENT; the edges and lips copied by hand (`--e-*`, `--l-*`) are worked out; `--scrim` and `--veil-sheet` are black, and become BG at their strength.
+
+### The Web dashboard
+
+The same table. Each theme is one block of the variables below (`:root[data-theme=…]`), written from `theme.h`'s table, not copied by hand.
+
+| `web/style.css` | Token |
+|---|---|
+| `--bg`, `--surface`, `--btn`, `--pressed`, `--track`, `--rule` | BG, SURFACE, BUTTON, PRESSED, TRACK, RULE (today's `--rule` is a little darker than RULE: it takes RULE) |
+| `--cream`, `--dim`, `--dim-btn` | TEXT, DIM, DIM_ON |
+| `--yellow`, `--red` | ACCENT, DANGER. The names say a colour: `--accent`, `--danger`, and `--text` for `--cream`, are the names to move to |
+| ink on `.box.yellow`, `.box.red` | ON_ACCENT |
+| `--e-btn`, `--e-pressed`, `--e-surface`, `--e-yellow`, `--e-red`, `--e-track` | `edgeOf` of each, with EDGE_MIX |
+| `--l-btn`, `--l-pressed`, `--l-surface`, `--l-yellow`, `--l-red` | `lipOf` of each |
+| `--raised` (dashboard only) | SURFACE 35% of the way to BUTTON |
+| `--yellow-hover`, `--yellow-down` (dashboard only) | ACCENT 40% of the way to TEXT; ACCENT × 0.88 |
+| `--picked`, `--e-picked` (dashboard only) | ACCENT at 17% over BG; its `edgeOf` |
+| `--dot`, `--scrim`, `--veil-sheet` | TEXT at 7%; BG at 72%; BG at VEIL_SHEET |
+| `--green` (dashboard only: something is on, or worked) | a token of its own, OK: #7BD88F in the dark themes, #1F7A4D in Light, #8DF0A4 in High contrast |
+| `theme-color` in `index.html` | BG |
+| the Settings page's small picture of the two panels | the same tokens: the bottom panel the main ones, a card on the top one the TOP_ ones |
+
+### Not verified
+
+- No theme was tried on the handheld's panels or in sunlight. The ratios are worked out, not measured. Dark red's and Pink's accents on their BUTTON (5.6 and 7.6) are the ones to look at first outdoors.
+- `web/style.css` was read at its `:root` only.
+- OK's three values for the dashboard were not checked for contrast.
+
 ## What was drawn two ways: now one
 
-All seventeen are resolved in the preview; the exceptions are deliberate.
+All seventeen are resolved in the preview; the exceptions are deliberate. The last row was added with the themes.
 
 | What | Was drawn as | Every screen now uses | Status |
 |---|---|---|---|
@@ -415,6 +660,7 @@ All seventeen are resolved in the preview; the exceptions are deliberate.
 | Keyboard | Two drawings | One function; the field supplies its bottom row (https://, .json, .pb, / for an address) | Unified |
 | Confirm keys’ widths | Three ratios | Equal halves, the safe key left | Unified, one exception: the update sheet has three keys (Update now, Later, Not until tomorrow), in thirds |
 | A sentence on the top screen | Top and foot | Help for the focused row: top. Something that happened: foot | Unified |
+| Colours | Literals in places (the rail’s and the card’s #0B0A0D, black scrims, a badge’s yellow) | Tokens of theme.h only; a theme is their values (Themes) | Unified |
 
 ## Not verified
 
