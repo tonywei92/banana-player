@@ -12,9 +12,9 @@ import sys
 # PT: how strong a preview pane's decorative tint is over BG (the preview only).
 # page: the reader's page colours that "Match theme" picks (text-theme's own ids; not roles).
 T = {
- 'yellow': dict(name='Yellow', what='Today’s look, the default', BG='000000', SF='121116', BT='26242E', PR='3E3B4A', TR='1E1D24', RU='2A2833', TX='E8E2D3',
+ 'yellow': dict(name='Yellow', what='Today’s look', BG='000000', SF='121116', BT='26242E', PR='3E3B4A', TR='1E1D24', RU='2A2833', TX='E8E2D3',
                 DM='8F8A80', DO='ABA597', AC='FFD23F', OA='000000', DG='F0645A'),
- 'dark': dict(name='Dark', what='Near-black greys, a soft steel-blue accent; nothing pure white', BG='0B0B0D', SF='17171A', BT='2A2A2F', PR='424249', TR='222226', RU='2E2E34', TX='C2C4CA',
+ 'dark': dict(name='Dark', what='The default. Near-black greys, a soft steel-blue accent; nothing pure white', BG='0B0B0D', SF='17171A', BT='2A2A2F', PR='424249', TR='222226', RU='2E2E34', TX='C2C4CA',
               DM='8A8C94', DO='A6A8B0', AC='A9C4E6', OA='0B0B0D', DG='F47067', EM=40),
  'darkred': dict(name='Dark red', what='A red cast, a red accent; DANGER is amber', BG='0A0405', SF='190C0E', BT='361D21', PR='4D2A2F', TR='241315', RU='382224', TX='EFE1DD',
                  DM='A08B87', DO='BCA8A4', AC='FF6A6E', OA='000000', DG='FFB224'),

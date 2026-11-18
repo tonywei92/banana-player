@@ -406,11 +406,11 @@ Sizes, radii (`R_*`), edge and lip widths (`EDGE` 2, `LIP` 3), type (Pixelify Sa
 
 ### The themes
 
-Seventeen, stepped with LEFT / RIGHT in this order (it wraps): Yellow first, then the calm ones, then the playful ones, then the light ones (Sakura, Light) and High contrast. Yellow is the default and is today's look, value for value. The playful ones are for a small screen at night: tinted near-black grounds, soft text, one bright accent. 16-bit and 32-bit are inspired by classic consoles: their greys as the body, one key colour as the accent, red as DANGER. They carry no mark or name of any product, and their other key colours are not used: a theme has one accent.
+Seventeen, stepped with LEFT / RIGHT in this order (it wraps): Yellow first, then the calm ones, then the playful ones, then the light ones (Sakura, Light) and High contrast. Dark is the default; Yellow is today's look, value for value, and stays first in the order. The playful ones are for a small screen at night: tinted near-black grounds, soft text, one bright accent. 16-bit and 32-bit are inspired by classic consoles: their greys as the body, one key colour as the accent, red as DANGER. They carry no mark or name of any product, and their other key colours are not used: a theme has one accent.
 
 | Theme | What it is |
 |---|---|
-| Yellow | Today's look, the default |
+| Yellow | Today's look |
 | Dark | Near-black greys, a soft steel-blue accent; nothing pure white |
 | Midnight blue | Deep navy, a sky-blue accent |
 | Dark purple | Deep violet, a soft lilac accent |
@@ -563,7 +563,7 @@ The TOP_ tokens are dark in every theme. A light card over a film glares, hides 
 
 ### Where it is changed
 
-- **Settings › Power & screens › Theme**, the group's first row: a stepper, ‹ Yellow ›. Setting key `theme`, values `yellow`, `dark`, `midnight-blue`, `dark-purple`, `dark-red`, `pink`, `coffee`, `mint`, `retro-green`, `sunset`, `candy`, `16-bit`, `16-bit-lavender`, `32-bit`, `sakura`, `light`, `high-contrast`; default `yellow`. One entry in `settingDefs()`.
+- **Settings › Power & screens › Theme**, the group's first row: a stepper, ‹ Dark ›. Setting key `theme`, values `yellow`, `dark`, `midnight-blue`, `dark-purple`, `dark-red`, `pink`, `coffee`, `mint`, `retro-green`, `sunset`, `candy`, `16-bit`, `16-bit-lavender`, `32-bit`, `sakura`, `light`, `high-contrast`; default `dark`. One entry in `settingDefs()`.
 - **Help line** (top screen, while the row is focused): “The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.” Under it: a swatch of each theme in two rows, in the stepper's order (three rows of six: six, six, five; 84 × 30 each, 9 apart, its name under it in Inter 10.5), with the chosen one outlined, and a key, a focused row, pills and a bar as they now look.
 - **The preview always shows.** While the Theme row is focused the top screen is the theme's preview pane, whatever plays: a video or a song goes on underneath and its sound goes on, and its picture is back the moment the cursor leaves the row or Settings closes. It is the one row whose help takes the top screen from a picture, because the pane is what the setting changes.
 - **It previews live.** LEFT / RIGHT apply the theme at once: nothing to open, nothing to confirm, B leaves it as it is. Both panels redraw on the step (the theme is part of `signature()`), a card showing on the top screen is drawn again, and dashboard pages follow on their next state update.
@@ -573,7 +573,7 @@ The TOP_ tokens are dark in every theme. A light card over a film glares, hides 
 
 ### A book's page colours
 
-Reading › Colours stays its own setting: a page is read for hours and its colours are a reading choice, not the app's. It gains a first value, **Match theme**, which is the default: The light-bodied themes give the Light page, High contrast the Black page, every other theme the Dark page. For anyone on Yellow that is the Dark page, as today. Choosing Dark, Light, Sepia or Black by hand holds, whatever the theme. The reader's sheets and keys are app UI and follow the theme; the page under them does not.
+Reading › Colours stays its own setting: a page is read for hours and its colours are a reading choice, not the app's. It gains a first value, **Match theme**, which is the default: The light-bodied themes give the Light page, High contrast the Black page, every other theme the Dark page. For anyone on Yellow or Dark that is the Dark page, as today. Choosing Dark, Light, Sepia or Black by hand holds, whatever the theme. The reader's sheets and keys are app UI and follow the theme; the page under them does not.
 
 ### Every component, by the tokens it uses
 

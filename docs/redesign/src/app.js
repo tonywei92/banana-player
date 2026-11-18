@@ -186,7 +186,7 @@ function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.
  bar.insertAdjacentHTML('beforeend',THEMES.map(t=>`<button data-theme="${t[0]}" title="${t[1]}"><i style="background:linear-gradient(90deg,#${t[2]} 50%,#${t[4]} 50%)"></i><b>${t[1]}</b></button>`).join(''));
  bar.addEventListener('click',e=>{const b=e.target.closest('button[data-theme]');if(b)setTheme(b.dataset.theme)});
  let t=(location.search.match(/[?&]theme=([a-z0-9]+)/)||[])[1];if(!t)try{t=localStorage.getItem('bptheme')}catch(e){}
- setTheme(t||'yellow')}
+ setTheme(t||'dark')}
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);
 const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;
