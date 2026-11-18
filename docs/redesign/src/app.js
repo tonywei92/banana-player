@@ -10,6 +10,8 @@ const MAP=[
 ['A card’s menu (Y, hold): Resume, From the start, Show in folder, Add to playlist, Like, Remove','Home','X (or hold) on the card','mov'],
 ['X on Home: Clear Recent, Show hidden folders, Settings','Home','X › Clear recent · Files’ X › Show hidden folders · rail › Settings','mov'],
 ['B on Home asks to quit','Home','Unchanged','same'],
+['Home with nothing played yet','An empty Recent strip over the four tiles','An empty state: Nothing played yet, Browse Files (A), Web dashboard (Y); the top screen a welcome with three ways to start','chg'],
+['The lid question at the first start: Pause / Keep playing','A centred box','A confirm sheet over the fresh Home, Pause first and on B; the top screen explains both; changed later in Settings › Power & screens','chg'],
 ['Each section opens where you left it','Sections','Unchanged','same'],
 ['The mini bar; SELECT = Now playing; header’s three bars; Playing / Paused / In browser chips','Every page but the player','Unchanged','same'],
 ['Top screen with nothing playing','Logo and one line','A preview of what the cursor is on','new'],

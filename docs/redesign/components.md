@@ -1,6 +1,6 @@
 # Components of the handheld redesign
 
-Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 114 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
+Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 116 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
 Counts: 46 components: 10 reuse, 28 variant, 8 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
 
@@ -165,7 +165,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Bottom sheet (exists, needs a variant)
 
 - **Used:** about 45 screens
-- **Anatomy and states:** Full width from the foot; SURFACE, 2-unit edge, top corners 18; the page behind under a 68% black veil. Grab mark 44 × 4. Header 54: icon 20, title Pixelify 20 yellow (red for danger), a right note Inter 12.5. Body padding 0 14. Its own hint bar. Height by content, 226 to 470; in a tabbed sheet each tab has its own height (the Equalizer takes 470, a song’s Display 452). One of a kind open at a time; a sheet may open over a sheet.
+- **Anatomy and states:** Full width from the foot; SURFACE, 2-unit edge, top corners 18; the page behind under a 68% black veil. Grab mark 44 × 4. Header 54: icon 20, title Pixelify 20 yellow (red for danger), a right note Inter 12.5. Body padding 0 14. Its own hint bar. Height by content, 226 to 470; in a tabbed sheet each tab has its own height (the Equalizer takes 470, a song’s Display 452). One of a kind open at a time; a sheet may open over a sheet. A sheet that needs an answer (the first-start lid question) is not closed by a tap on the veil: B gives its safe answer.
 - **Inputs:** icon, title, note, body, hints, the key that opened it
 - **Keys and touch:** It owns every key while open. B or the opening key closes; a tap on the veil closes. L / R step its tabs.
 - **Code:** Ui::Overlay (the stack: keys, touches, draw, signature) with drawDialog for the body (docs/notes/overlay-stack.md). Needs: a sheet look for drawDialog (full width, top corners 18, a grab mark, its own hint bar) beside the centred box.
@@ -280,7 +280,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Empty state (exists, needs a variant)
 
-- **Used:** Books, an empty folder, Repositories, Network, Playlists, Recent
+- **Used:** Books, an empty folder, Repositories, Network, Playlists, Recent, Home on a fresh install (“Nothing played yet”: Browse Files on A, Web dashboard on Y)
 - **Anatomy and states:** Centred in the page: icon 54 (dim), title Pixelify 24, one or two lines Inter 13.5 dim, at most 400 wide; two keys 200 × 56, the first primary on A, the second on Y. The how-to (three numbered steps) is on the top screen.
 - **Inputs:** icon, title, text, key 1, key 2
 - **Keys and touch:** A = the first key, Y = the second.
@@ -339,7 +339,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Preview pane (new)
 
 - **Used:** every shell screen with nothing playing (about 40); and over whatever plays while Settings › Power & screens › Theme is focused (the picture is back when the cursor leaves the row)
-- **Anatomy and states:** Brand mark top left (22 tile + name 15). Then one of two layouts: text (a label in capitals Inter 600 11 yellow, a title Pixelify 28, a sentence Inter 14.5, a two-column list Inter 13.5, a key line) from 74 down, 44 from the sides; or cover (a 196 × 278 cover at 36, 66 with the same text column from 262). A picture only when one already exists.
+- **Anatomy and states:** Brand mark top left (22 tile + name 15). Then one of two layouts: text (a label in capitals Inter 600 11 yellow, a title Pixelify 28, a sentence Inter 14.5, a two-column list Inter 13.5, a key line) from 74 down, 44 from the sides; or cover (a 196 × 278 cover at 36, 66 with the same text column from 262). A picture only when one already exists. The welcome on a fresh install is the text layout with the app’s icon (84 square, radius 20) beside the name in place of the brand mark; the first-start lid question’s pane is the plain text layout.
 - **Inputs:** label, title, text, rows, hints, cover, picture
 - **Keys and touch:** None: it follows the cursor.
 - **Code:** New. The top panel is mpv’s overlay today (the idle logo card in player.cpp); this needs a laid-out card with an optional picture while nothing plays.
