@@ -406,110 +406,122 @@ Sizes, radii (`R_*`), edge and lip widths (`EDGE` 2, `LIP` 3), type (Pixelify Sa
 
 ### The themes
 
-Seven, stepped with LEFT / RIGHT in this order. Yellow is the default and is today's look, value for value.
+Fifteen, stepped with LEFT / RIGHT in this order (it wraps): Yellow first, then the calm ones, then the playful ones, then the two made for hard light and weak sight. Yellow is the default and is today's look, value for value. The playful ones are for a small screen at night: tinted near-black grounds, soft text, one bright accent. 16-bit and 32-bit are inspired by classic consoles: their greys as the body, one key colour as the accent, red as DANGER. They carry no mark or name of any product, and their other key colours are not used: a theme has one accent.
 
 | Theme | What it is |
 |---|---|
-| Yellow | Today: true black, cream text, banana yellow. The default |
-| Dark | Near-black and neutral greys, a soft steel-blue accent, grey text. Nothing is pure white or pure black: the quiet one |
-| Dark red | Near-black with a red cast, a bright red accent. DANGER is amber, so it is never mistaken for the accent |
-| Pink | Near-black with a plum cast, a pink accent. DANGER is amber, for the same reason |
+| Yellow | Today's look, the default |
+| Dark | Near-black greys, a soft steel-blue accent; nothing pure white |
 | Midnight blue | Deep navy, a sky-blue accent |
-| Light | Warm paper, dark ink, a dark amber accent with light ink on it. For sunlight |
-| High contrast | Black, white and a bright yellow; stronger edges; every text pair at 7 : 1 or more |
+| Dark purple | Deep violet, a soft lilac accent |
+| Dark red | A red cast, a red accent; DANGER is amber |
+| Pink | A plum cast, a pink accent; DANGER is amber |
+| Coffee | Roast browns, cream text, a latte accent |
+| Mint | Dark teal, a cool mint accent |
+| Retro green | An old handheld's greens, a lime accent |
+| Sunset | Warm dusk, an orange accent; DANGER is hot pink |
+| Candy | Grape night, pink-white text, an aqua accent |
+| 16-bit | A classic console's light grey and lavender, purple keys; light-bodied |
+| 32-bit | A classic console's cool greys, a deep blue accent; light-bodied |
+| Light | Warm paper, dark ink, dark amber: for sunlight |
+| High contrast | Black, white, bright yellow; text at 7 : 1 or more |
+
+Three are light-bodied: 16-bit, 32-bit and Light. They share Light's rules, which are the tokens' rules: a dark accent with light ink on it, EDGE_MIX 55, a veil of their own BG, the Light page under Match theme, and TOP_ tokens taken from a dark theme (below).
 
 ### The tokens, and each theme's values
 
 Sixteen colour roles, one strength, and eight for the top screen. Existing names are kept. New ones are marked: RAIL (today a literal, #0B0A0D), EDGE_MIX (today the fixed 30 inside `edgeOf`), TOP_TEXT, TOP_EDGE and TOP_DANGER (today TEXT, no edge, and DANGER used on the card). "Preview" is the CSS variable of `src/style.css` that carries the token: one to one, so the switch in the preview swaps what the code will swap.
 
-| Token | Preview | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
-|---|---|---|---|---|---|---|---|---|
-| BG | `--bg` | #000000 | #0B0B0D | #0A0405 | #0C060A | #040816 | #F7F4EC | #000000 |
-| SURFACE | `--sf` | #121116 | #17171A | #190C0E | #1B0F17 | #0C142E | #FFFDF8 | #0A0A0A |
-| BUTTON | `--bt` | #26242E | #2A2A2F | #361D21 | #301C29 | #1A2649 | #E6E0D2 | #1E1E1E |
-| PRESSED | `--pr` | #3E3B4A | #424249 | #4D2A2F | #4B2E41 | #2C3C6C | #D0C9B8 | #3A3A3A |
-| TRACK | `--tr` | #1E1D24 | #222226 | #241315 | #25151F | #131C3A | #DED8C9 | #2B2B2B |
-| RULE | `--ru` | #2A2833 | #2E2E34 | #382224 | #37222F | #202C52 | #D5CEBE | #5E5E5E |
-| RAIL | `--ra` | #0B0A0D | #121215 | #13090A | #150B12 | #090F24 | #ECE7DB | #060606 |
-| SCREEN | `--sc` | #26242E | #2A2A2F | #361D21 | #301C29 | #1A2649 | #E6E0D2 | #1E1E1E |
-| TEXT | `--tx` | #E8E2D3 | #C2C4CA | #EFE1DD | #F1E2E9 | #E1E7F5 | #1B1A20 | #FFFFFF |
-| DIM | `--dm` | #8F8A80 | #8A8C94 | #A08B87 | #A18B97 | #8893B0 | #625E56 | #C6C6C6 |
-| DIM_ON | `--do` | #ABA597 | #A6A8B0 | #BCA8A4 | #BAA5B1 | #A5AFCA | #55514A | #D8D8D8 |
-| KNOB | `--kn` | #E8E2D3 | #C2C4CA | #EFE1DD | #F1E2E9 | #E1E7F5 | #1B1A20 | #FFFFFF |
-| ACCENT | `--ac` | #FFD23F | #A9C4E6 | #FF6A6E | #FF8FC7 | #8CC8FF | #7A5200 | #FFE14D |
-| ON_ACCENT | `--oa` | #000000 | #0B0B0D | #000000 | #000000 | #000000 | #FFFDF8 | #000000 |
-| DANGER | `--dg` | #F0645A | #F47067 | #FFB224 | #FFB224 | #FF7A70 | #A3261D | #FF8A80 |
-| EDGE_MIX | (in the edges) | 30% | 40% | 30% | 30% | 30% | 55% | 50% |
-| TOP_CARD | `--tc` in the top scope | #0B0A0D | #121215 | #13090A | #150B12 | #090F24 | #0B0A0D | #060606 |
-| TOP_EDGE | `--te` in the top scope | #2A2833 | #2E2E34 | #382224 | #37222F | #202C52 | #2A2833 | #5E5E5E |
-| TOP_TITLE | `--ac` in the top scope | #FFD23F | #A9C4E6 | #FF6A6E | #FF8FC7 | #8CC8FF | #FFD23F | #FFE14D |
-| TOP_TEXT | `--tx` in the top scope | #E8E2D3 | #C2C4CA | #EFE1DD | #F1E2E9 | #E1E7F5 | #E8E2D3 | #FFFFFF |
-| TOP_SUB | `--dm, --do` in the top scope | #8F8A80 | #8A8C94 | #A08B87 | #A18B97 | #8893B0 | #8F8A80 | #C6C6C6 |
-| TOP_TRACK | `--bt` in the top scope | #26242E | #2A2A2F | #361D21 | #301C29 | #1A2649 | #26242E | #1E1E1E |
-| TOP_SQUARE | `--sf` in the top scope | #121116 | #17171A | #190C0E | #1B0F17 | #0C142E | #121116 | #0A0A0A |
-| TOP_DANGER | `--dg` in the top scope | #F0645A | #F47067 | #FFB224 | #FFB224 | #FF7A70 | #F0645A | #FF8A80 |
+| Token | Preview | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 32-bit | Light | High contrast |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| BG | `--bg` | #000000 | #0B0B0D | #040816 | #0A0612 | #0A0405 | #0C060A | #0D0907 | #050D0C | #0A0F08 | #0E0806 | #100A14 | #E4E3EA | #DEDEE1 | #F7F4EC | #000000 |
+| SURFACE | `--sf` | #121116 | #17171A | #0C142E | #150E22 | #190C0E | #1B0F17 | #1A1410 | #0D1917 | #131B10 | #1C110D | #1C1323 | #F4F3F8 | #EFEFF2 | #FFFDF8 | #0A0A0A |
+| BUTTON | `--bt` | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #CFCDDC | #C8C8CE | #E6E0D2 | #1E1E1E |
+| PRESSED | `--pr` | #3E3B4A | #424249 | #2C3C6C | #3D2C5E | #4D2A2F | #4B2E41 | #4A3B30 | #2A4642 | #35492D | #4E3328 | #4C365D | #B8B5CC | #B0B0B8 | #D0C9B8 | #3A3A3A |
+| TRACK | `--tr` | #1E1D24 | #222226 | #131C3A | #1D1430 | #241315 | #25151F | #241C17 | #132321 | #1A2516 | #261812 | #26192F | #D6D4E0 | #D0D0D6 | #DED8C9 | #2B2B2B |
+| RULE | `--ru` | #2A2833 | #2E2E34 | #202C52 | #2E2147 | #382224 | #37222F | #392D25 | #213734 | #2A3A24 | #3A261E | #3A2947 | #C6C4D3 | #C0C0C7 | #D5CEBE | #5E5E5E |
+| RAIL | `--ra` | #0B0A0D | #121215 | #090F24 | #110B1C | #13090A | #150B12 | #15100C | #0A1413 | #0F160D | #160D0A | #170F1D | #DAD9E2 | #D3D3D8 | #ECE7DB | #060606 |
+| SCREEN | `--sc` | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #CFCDDC | #C8C8CE | #E6E0D2 | #1E1E1E |
+| TEXT | `--tx` | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #26242E | #1E1E22 | #1B1A20 | #FFFFFF |
+| DIM | `--dm` | #8F8A80 | #8A8C94 | #8893B0 | #938AA8 | #A08B87 | #A18B97 | #9C8E7E | #859A95 | #8A9A7C | #A38D7E | #A08C9C | #5E5B6B | #595960 | #625E56 | #C6C6C6 |
+| DIM_ON | `--do` | #ABA597 | #A6A8B0 | #A5AFCA | #AEA5C3 | #BCA8A4 | #BAA5B1 | #B7A999 | #A1B5B0 | #A6B598 | #BDA797 | #BBA7B7 | #4F4C5C | #4B4B52 | #55514A | #D8D8D8 |
+| KNOB | `--kn` | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #26242E | #1E1E22 | #1B1A20 | #FFFFFF |
+| ACCENT | `--ac` | #FFD23F | #A9C4E6 | #8CC8FF | #B79CFF | #FF6A6E | #FF8FC7 | #E0B070 | #6FE0C2 | #A6D44A | #FF9A4D | #7FE0E8 | #55429C | #1F4E9E | #7A5200 | #FFE14D |
+| ON_ACCENT | `--oa` | #000000 | #0B0B0D | #000000 | #0A0612 | #000000 | #000000 | #0D0907 | #050D0C | #0A0F08 | #0E0806 | #100A14 | #F4F3F8 | #EFEFF2 | #FFFDF8 | #000000 |
+| DANGER | `--dg` | #F0645A | #F47067 | #FF7A70 | #FF7A70 | #FFB224 | #FFB224 | #FF7468 | #FF7A70 | #FF7A6B | #FF6B9D | #FF7A70 | #A81E2A | #961C24 | #A3261D | #FF8A80 |
+| EDGE_MIX | (in the edges) | 30% | 40% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 55% | 55% | 55% | 50% |
+| TOP_CARD | `--tc` in the top scope | #0B0A0D | #121215 | #090F24 | #110B1C | #13090A | #150B12 | #15100C | #0A1413 | #0F160D | #160D0A | #170F1D | #110B1C | #121215 | #0B0A0D | #060606 |
+| TOP_EDGE | `--te` in the top scope | #2A2833 | #2E2E34 | #202C52 | #2E2147 | #382224 | #37222F | #392D25 | #213734 | #2A3A24 | #3A261E | #3A2947 | #2E2147 | #2E2E34 | #2A2833 | #5E5E5E |
+| TOP_TITLE | `--ac` in the top scope | #FFD23F | #A9C4E6 | #8CC8FF | #B79CFF | #FF6A6E | #FF8FC7 | #E0B070 | #6FE0C2 | #A6D44A | #FF9A4D | #7FE0E8 | #B79CFF | #A9C4E6 | #FFD23F | #FFE14D |
+| TOP_TEXT | `--tx` in the top scope | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #E6DFF2 | #C2C4CA | #E8E2D3 | #FFFFFF |
+| TOP_SUB | `--dm, --do` in the top scope | #8F8A80 | #8A8C94 | #8893B0 | #938AA8 | #A08B87 | #A18B97 | #9C8E7E | #859A95 | #8A9A7C | #A38D7E | #A08C9C | #938AA8 | #8A8C94 | #8F8A80 | #C6C6C6 |
+| TOP_TRACK | `--bt` in the top scope | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #2C1F45 | #2A2A2F | #26242E | #1E1E1E |
+| TOP_SQUARE | `--sf` in the top scope | #121116 | #17171A | #0C142E | #150E22 | #190C0E | #1B0F17 | #1A1410 | #0D1917 | #131B10 | #1C110D | #1C1323 | #150E22 | #17171A | #121116 | #0A0A0A |
+| TOP_DANGER | `--dg` in the top scope | #F0645A | #F47067 | #FF7A70 | #FF7A70 | #FFB224 | #FFB224 | #FF7468 | #FF7A70 | #FF7A6B | #FF6B9D | #FF7A70 | #FF7A70 | #F47067 | #F0645A | #FF8A80 |
 
-| Worked out | Preview | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
-|---|---|---|---|---|---|---|---|---|
-| edgeOf(BUTTON) | `--ed` | #605D60 | #67686D | #6E5859 | #6A5763 | #56607D | #767370 | #8F8F8F |
-| edgeOf(SURFACE) | `--eds` | #52504F | #5B5C60 | #594C4C | #5B4E56 | #4C536A | #828081 | #858585 |
-| lipOf(BUTTON) | `--lp` | #1B1920 | #1D1D21 | #261417 | #22141D | #121B33 | #A19D93 | #151515 |
-| edgeOf(ACCENT) | `--ae` | #F8D76B | #B3C4DB | #FA8E8F | #FBA8D1 | #A6D1FC | #463312 | #FFF0A6 |
-| lipOf(ACCENT) | `--al` | #B3932C | #7689A1 | #B34A4D | #B3648B | #628CB3 | #553900 | #B39E36 |
-| edgeOf(DANGER) | `--de` | #EE8A7E | #E0928F | #FAC05C | #FBC05F | #F69B98 | #581F1F | #FFC5C0 |
-| lipOf(DANGER) | `--dl` | #A8463F | #AB4E48 | #B37D19 | #B37D19 | #B3554E | #721B14 | #B3615A |
+| Worked out | Preview | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 32-bit | Light | High contrast |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| edgeOf(BUTTON) | `--ed` | #605D60 | #67686D | #56607D | #645979 | #6E5859 | #6A5763 | #685E54 | #556763 | #596650 | #6C5B51 | #6B5C72 | #72707C | #6A6A6F | #767370 | #8F8F8F |
+| edgeOf(SURFACE) | `--eds` | #52504F | #5B5C60 | #4C536A | #544D60 | #594C4C | #5B4E56 | #585149 | #4B5855 | #4E5747 | #5C4F48 | #5D5260 | #838189 | #7C7C80 | #828081 | #858585 |
+| lipOf(BUTTON) | `--lp` | #1B1920 | #1D1D21 | #121B33 | #1F1630 | #261417 | #22141D | #221B16 | #12201E | #182214 | #241712 | #22182B | #91909A | #8C8C90 | #A19D93 | #151515 |
+| edgeOf(ACCENT) | `--ae` | #F8D76B | #B3C4DB | #A6D1FC | #C5B0FB | #FA8E8F | #FBA8D1 | #E3BE8D | #90E3CD | #B5D970 | #FBAF75 | #A2E1EA | #3B315F | #1E345A | #463312 | #FFF0A6 |
+| lipOf(ACCENT) | `--al` | #B3932C | #7689A1 | #628CB3 | #806DB3 | #B34A4D | #B3648B | #9D7B4E | #4E9D88 | #749434 | #B36C36 | #599DA2 | #3C2E6D | #16376F | #553900 | #B39E36 |
+| edgeOf(DANGER) | `--de` | #EE8A7E | #E0928F | #F69B98 | #F79897 | #FAC05C | #FBC05F | #F99487 | #F59C94 | #F49A87 | #FB8EAD | #FB9A96 | #60212C | #541D23 | #581F1F | #FFC5C0 |
+| lipOf(DANGER) | `--dl` | #A8463F | #AB4E48 | #B3554E | #B3554E | #B37D19 | #B37D19 | #B35149 | #B3554E | #B3554B | #B34B6E | #B3554E | #76151D | #691419 | #721B14 | #B3615A |
 
-Aliases stay aliases in every theme: KNOB = TEXT, SCREEN = BUTTON. In the six dark themes the TOP_ tokens are aliases too, as today: TOP_TITLE = ACCENT, TOP_TEXT = TEXT, TOP_SUB = DIM, TOP_TRACK = BUTTON, TOP_SQUARE = SURFACE, TOP_DANGER = DANGER, TOP_EDGE = RULE, and TOP_CARD and RAIL are SURFACE at 60% over BG. Light gives the TOP_ tokens Yellow's values and RAIL its own. EDGE_MIX is 30 except where a theme's TEXT is too close to its fills for the edge to show: Dark 40, High contrast 50, Light 55.
+Aliases stay aliases in every theme: KNOB = TEXT, SCREEN = BUTTON. In the twelve dark themes the TOP_ tokens are aliases too, as today: TOP_TITLE = ACCENT, TOP_TEXT = TEXT, TOP_SUB = DIM, TOP_TRACK = BUTTON, TOP_SQUARE = SURFACE, TOP_DANGER = DANGER, TOP_EDGE = RULE, and TOP_CARD and RAIL are SURFACE at 60% over BG. The light-bodied themes give RAIL its own value and take their TOP_ tokens from a dark theme: Light from Yellow, 16-bit from Dark purple, 32-bit from Dark. EDGE_MIX is 30 except where a theme's TEXT is too close to its fills for the edge to show: Dark 40, High contrast 50, the light-bodied ones 55.
 
 The worked-out colours keep their rules in every theme, so they are not stored:
 
 - `edgeOf(fill)`: the fill EDGE_MIX percent of the way to TEXT. A light theme's edges come out darker than the fill, a dark theme's lighter: the same rule.
 - `lipOf(fill)`: the fill × 0.7.
 - Unavailable: the piece at `OFF` percent over BG (`Kit::off`).
-- The veil under a sheet and under the lock: BG at `VEIL_SHEET` / `VEIL_LOCK`. In Light it is a paper veil, so what is written on it (the lock's two lines) stays TEXT and ACCENT on BG.
+- The veil under a sheet and under the lock: BG at `VEIL_SHEET` / `VEIL_LOCK`. In a light-bodied theme it is a pale veil, so what is written on it (the lock's two lines) stays TEXT and ACCENT on BG.
 - The play key's hold: BG at `HOLD_FILL` over the key.
 - A red pill's ground: DANGER at `TINT` over its ground. A header badge's ground: ACCENT at 17% over its ground.
 
-No theme but High contrast uses pure white (#FFFFFF) for a fill, a text or an accent, and only Yellow, as today, and High contrast have a pure black BG. Dark keeps its accent (11.0 on BG) and its text (11.3) well under the 14 to 21 the others reach, on purpose: it is the theme for a dark room. Its focus is told from plain text by the accent's blue against grey, as well as by the edge and the row's fill.
+No theme but High contrast uses pure white (#FFFFFF) for a fill, a text or an accent (the light-bodied grounds are off-white and light greys), and only Yellow, as today, and High contrast have a pure black BG. Dark keeps its accent (11.0 on BG) and its text (11.3) well under the 14 to 21 the others reach, on purpose: it is the theme for a dark room. Its focus is told from plain text by the accent's blue against grey, as well as by the edge and the row's fill.
+
+DANGER is never near the accent's hue: amber in Dark red and Pink, hot pink in Sunset (its accent is orange), a red in the rest (coral on dark, deep on a light body).
 
 ### Contrast
 
 WCAG ratios, worked out by `themes.py` (it fails if a pair is under its floor). Text pairs must reach 4.5 (AA); High contrast holds its main pairs to 7 (AAA). Edges and bars must reach 3. Unavailable pieces (45%) are outside the floors, as the standard allows.
 
-| Pair (floor) | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
-|---|---|---|---|---|---|---|---|
-| TEXT on BG (4.5; High contrast 7) | 16.3 | 11.3 | 16.0 | 16.1 | 16.1 | 15.7 | 21.0 |
-| TEXT on SURFACE (4.5; High contrast 7) | 14.5 | 10.3 | 15.0 | 14.9 | 14.7 | 17.0 | 19.8 |
-| TEXT on BUTTON (4.5; High contrast 7) | 11.8 | 8.2 | 12.2 | 12.7 | 12.0 | 13.1 | 16.7 |
-| TEXT on TRACK (a neutral pill) (4.5; High contrast 7) | 12.9 | 9.1 | 14.0 | 13.9 | 13.5 | 12.2 | 14.2 |
-| DIM on BG (4.5; High contrast 7) | 6.1 | 5.9 | 6.3 | 6.4 | 6.5 | 5.9 | 12.3 |
-| DIM on SURFACE (4.5) | 5.5 | 5.3 | 5.9 | 5.9 | 5.9 | 6.3 | 11.6 |
-| DIM_ON on BUTTON (4.5) | 6.2 | 6.0 | 6.8 | 6.9 | 6.8 | 6.0 | 11.7 |
-| DIM_ON on TRACK (a chip, off) (4.5) | 6.8 | 6.7 | 7.9 | 7.6 | 7.6 | 5.5 | 9.9 |
-| DIM_ON on RAIL (4.5) | 8.0 | 7.9 | 8.7 | 8.4 | 8.7 | 6.4 | 14.2 |
-| ACCENT on BG (4.5; High contrast 7) | 14.5 | 11.0 | 7.3 | 9.6 | 11.2 | 6.3 | 16.1 |
-| ACCENT on SURFACE (4.5; High contrast 7) | 13.0 | 10.0 | 6.9 | 8.9 | 10.2 | 6.8 | 15.2 |
-| ACCENT on BUTTON (the focused row) (4.5) | 10.6 | 8.0 | 5.6 | 7.6 | 8.3 | 5.3 | 12.8 |
-| ACCENT on its 17% tint (a badge) (4.5) | 8.8 | 7.0 | 5.4 | 6.5 | 7.1 | 5.3 | 10.3 |
-| ON_ACCENT on ACCENT (4.5; High contrast 7) | 14.5 | 11.0 | 7.5 | 10.0 | 11.8 | 6.8 | 16.1 |
-| ON_ACCENT on DANGER (Quit) (4.5) | 6.7 | 6.9 | 11.6 | 11.6 | 8.3 | 7.2 | 9.2 |
-| DANGER on BG (4.5) | 6.7 | 6.9 | 11.3 | 11.1 | 7.9 | 6.7 | 9.2 |
-| DANGER on SURFACE (4.5) | 6.0 | 6.3 | 10.6 | 10.3 | 7.2 | 7.2 | 8.7 |
-| DANGER on BUTTON (4.5) | 4.9 | 5.0 | 8.6 | 8.8 | 5.8 | 5.6 | 7.3 |
-| DANGER on its 20% tint (a red pill) (4.5) | 4.6 | 4.6 | 7.0 | 6.8 | 5.3 | 5.2 | 6.3 |
-| Focus edge (ACCENT) against BG (3) | 14.5 | 11.0 | 7.3 | 9.6 | 11.2 | 6.3 | 16.1 |
-| Focus edge against SURFACE (3) | 13.0 | 10.0 | 6.9 | 8.9 | 10.2 | 6.8 | 15.2 |
-| edgeOf(BUTTON) against BG (3) | 3.2 | 3.5 | 3.1 | 3.0 | 3.2 | 4.3 | 6.5 |
-| edgeOf(SURFACE) against BG (as today: a flat piece is its fill and edge) (2.4) | 2.6 | 2.9 | 2.5 | 2.6 | 2.6 | 3.6 | 5.7 |
-| Bar fill (ACCENT) against TRACK (3) | 11.6 | 8.9 | 6.4 | 8.3 | 9.4 | 4.9 | 10.9 |
-| KNOB against TRACK (3) | 12.9 | 9.1 | 14.0 | 13.9 | 13.5 | 12.2 | 14.2 |
-| TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 10.7 | 15.4 | 15.4 | 15.3 | 15.3 | 20.3 |
-| TOP_SUB on TOP_CARD (4.5) | 5.8 | 5.6 | 6.1 | 6.1 | 6.2 | 5.8 | 11.9 |
-| TOP_TITLE on TOP_CARD (4.5; High contrast 7) | 13.7 | 10.4 | 7.0 | 9.2 | 10.7 | 13.7 | 15.6 |
-| TOP_DANGER on TOP_CARD (4.5) | 6.3 | 6.6 | 10.9 | 10.7 | 7.5 | 6.3 | 8.9 |
-| Reader page (Match theme): text on page (4.5; High contrast 7) | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 14.1 | 10.9 |
+| Pair (floor) | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 32-bit | Light | High contrast |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| TEXT on BG (4.5; High contrast 7) | 16.3 | 11.3 | 16.1 | 15.5 | 16.0 | 16.1 | 15.1 | 16.0 | 14.6 | 15.6 | 15.9 | 12.0 | 12.4 | 15.7 | 21.0 |
+| TEXT on SURFACE (4.5; High contrast 7) | 14.5 | 10.3 | 14.7 | 14.5 | 15.0 | 14.9 | 13.9 | 14.6 | 13.3 | 14.5 | 14.7 | 13.8 | 14.5 | 17.0 | 19.8 |
+| TEXT on BUTTON (4.5; High contrast 7) | 11.8 | 8.2 | 12.0 | 11.7 | 12.2 | 12.7 | 11.2 | 11.6 | 10.5 | 12.0 | 12.0 | 9.8 | 10.0 | 13.1 | 16.7 |
+| TEXT on TRACK (a neutral pill) (4.5; High contrast 7) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 10.8 | 12.2 | 14.2 |
+| DIM on BG (4.5; High contrast 7) | 6.1 | 5.9 | 6.5 | 6.1 | 6.3 | 6.4 | 6.2 | 6.6 | 6.4 | 6.3 | 6.3 | 5.2 | 5.2 | 5.9 | 12.3 |
+| DIM on SURFACE (4.5) | 5.5 | 5.3 | 5.9 | 5.8 | 5.9 | 5.9 | 5.7 | 6.0 | 5.9 | 5.9 | 5.8 | 6.0 | 6.1 | 6.3 | 11.6 |
+| DIM_ON on BUTTON (4.5) | 6.2 | 6.0 | 6.8 | 6.5 | 6.8 | 6.9 | 6.4 | 6.6 | 6.4 | 6.7 | 6.5 | 5.3 | 5.2 | 6.0 | 11.7 |
+| DIM_ON on TRACK (a chip, off) (4.5) | 6.8 | 6.7 | 7.6 | 7.5 | 7.9 | 7.6 | 7.3 | 7.6 | 7.3 | 7.5 | 7.4 | 5.7 | 5.6 | 5.5 | 9.9 |
+| DIM_ON on RAIL (4.5) | 8.0 | 7.9 | 8.7 | 8.2 | 8.7 | 8.4 | 8.2 | 8.7 | 8.5 | 8.3 | 8.3 | 6.0 | 5.8 | 6.4 | 14.2 |
+| ACCENT on BG (4.5; High contrast 7) | 14.5 | 11.0 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.9 | 6.3 | 16.1 |
+| ACCENT on SURFACE (4.5; High contrast 7) | 13.0 | 10.0 | 10.2 | 8.2 | 6.9 | 8.9 | 9.2 | 11.2 | 10.2 | 8.8 | 11.8 | 7.2 | 6.9 | 6.8 | 15.2 |
+| ACCENT on BUTTON (the focused row) (4.5) | 10.6 | 8.0 | 8.3 | 6.6 | 5.6 | 7.6 | 7.5 | 8.9 | 8.0 | 7.3 | 9.6 | 5.1 | 4.8 | 5.3 | 12.8 |
+| ACCENT on its 17% tint (a badge) (4.5) | 8.8 | 7.0 | 7.1 | 6.1 | 5.4 | 6.5 | 6.6 | 7.6 | 7.0 | 6.4 | 8.0 | 5.5 | 5.3 | 5.3 | 10.3 |
+| ON_ACCENT on ACCENT (4.5; High contrast 7) | 14.5 | 11.0 | 11.8 | 8.8 | 7.5 | 10.0 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 7.2 | 6.9 | 6.8 | 16.1 |
+| ON_ACCENT on DANGER (Quit) (4.5) | 6.7 | 6.9 | 8.3 | 7.9 | 11.6 | 11.6 | 7.5 | 7.7 | 7.6 | 7.4 | 7.7 | 6.6 | 7.4 | 7.2 | 9.2 |
+| DANGER on BG (4.5) | 6.7 | 6.9 | 7.9 | 7.9 | 11.3 | 11.1 | 7.5 | 7.7 | 7.6 | 7.4 | 7.7 | 5.7 | 6.3 | 6.7 | 9.2 |
+| DANGER on SURFACE (4.5) | 6.0 | 6.3 | 7.2 | 7.4 | 10.6 | 10.3 | 6.9 | 7.1 | 6.9 | 6.9 | 7.1 | 6.6 | 7.4 | 7.2 | 8.7 |
+| DANGER on BUTTON (4.5) | 4.9 | 5.0 | 5.8 | 6.0 | 8.6 | 8.8 | 5.6 | 5.6 | 5.5 | 5.7 | 5.8 | 4.7 | 5.1 | 5.6 | 7.3 |
+| DANGER on its 20% tint (a red pill) (4.5) | 4.6 | 4.6 | 5.3 | 5.4 | 7.0 | 6.8 | 5.0 | 5.2 | 5.0 | 5.0 | 5.1 | 4.7 | 5.2 | 5.2 | 6.3 |
+| Focus edge (ACCENT) against BG (3) | 14.5 | 11.0 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.9 | 6.3 | 16.1 |
+| Focus edge against SURFACE (3) | 13.0 | 10.0 | 10.2 | 8.2 | 6.9 | 8.9 | 9.2 | 11.2 | 10.2 | 8.8 | 11.8 | 7.2 | 6.9 | 6.8 | 15.2 |
+| edgeOf(BUTTON) against BG (3) | 3.2 | 3.5 | 3.2 | 3.1 | 3.1 | 3.0 | 3.1 | 3.3 | 3.2 | 3.1 | 3.2 | 3.8 | 4.0 | 4.3 | 6.5 |
+| edgeOf(SURFACE) against BG (as today: a flat piece is its fill and edge) (2.4) | 2.6 | 2.9 | 2.6 | 2.5 | 2.5 | 2.6 | 2.5 | 2.6 | 2.6 | 2.5 | 2.6 | 3.0 | 3.1 | 3.6 | 5.7 |
+| Bar fill (ACCENT) against TRACK (3) | 11.6 | 8.9 | 9.4 | 7.7 | 6.4 | 8.3 | 8.5 | 10.2 | 9.2 | 8.2 | 10.9 | 5.4 | 5.2 | 4.9 | 10.9 |
+| KNOB against TRACK (3) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 10.8 | 12.2 | 14.2 |
+| TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 10.7 | 15.3 | 14.9 | 15.4 | 15.4 | 14.4 | 15.2 | 13.9 | 15.0 | 15.3 | 14.9 | 10.7 | 15.3 | 20.3 |
+| TOP_SUB on TOP_CARD (4.5) | 5.8 | 5.6 | 6.2 | 5.9 | 6.1 | 6.1 | 5.9 | 6.3 | 6.1 | 6.1 | 6.0 | 5.9 | 5.6 | 5.8 | 11.9 |
+| TOP_TITLE on TOP_CARD (4.5; High contrast 7) | 13.7 | 10.4 | 10.7 | 8.5 | 7.0 | 9.2 | 9.6 | 11.7 | 10.6 | 9.1 | 12.2 | 8.5 | 10.4 | 13.7 | 15.6 |
+| TOP_DANGER on TOP_CARD (4.5) | 6.3 | 6.6 | 7.5 | 7.6 | 10.9 | 10.7 | 7.2 | 7.4 | 7.2 | 7.2 | 7.4 | 7.6 | 6.6 | 6.3 | 8.9 |
+| Reader page (Match theme): text on page (4.5; High contrast 7) | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 14.1 | 14.1 | 14.1 | 10.9 |
 
-One pair is below 3 in the five dark themes, as it is today: a flat piece's edge against BG (2.5 to 2.9). A chip or a tile is told by its fill and its edge together; Light and High contrast lift it with EDGE_MIX.
+One pair is below 3 in the dark themes, as it is today: a flat piece's edge against BG (2.5 to 2.9). A chip or a tile is told by its fill and its edge together; The light-bodied themes and High contrast lift it with EDGE_MIX.
 
 ### Fixed in every theme
 
@@ -526,10 +538,10 @@ One pair is below 3 in the five dark themes, as it is today: a flat piece's edge
 
 Two cases, by what is under the drawing.
 
-- **Nothing plays** (the Preview pane, a setting's help, the idle logo): app UI. It takes the main tokens, so in Light the top screen is light.
+- **Nothing plays** (the Preview pane, a setting's help, the idle logo): app UI. It takes the main tokens, so in a light-bodied theme the top screen is light.
 - **A picture, or its place** (a video, a photo, a song's art or visualizer, a page, and the State card that stands where the picture would be: Buffering, Can't play, Playing in your browser): the TOP_ tokens only. Level cards and Notes are always drawn with the TOP_ tokens, over a pane too, so there is one drawing of each.
 
-The TOP_ tokens are dark in every theme. A light card over a film glares, hides more of the picture than it covers, and makes the film look darker. So Light keeps Yellow's cards; the five other dark themes tint them with their own accent.
+The TOP_ tokens are dark in every theme. A light card over a film glares, hides more of the picture than it covers, and makes the film look darker. So a light-bodied theme takes a dark theme's cards (Light Yellow's, 16-bit Dark purple's, 32-bit Dark's); the dark themes tint theirs with their own accent.
 
 | Piece | Body | Edge | Main line | Second line | Bar | Past a danger line |
 |---|---|---|---|---|---|---|
@@ -539,8 +551,8 @@ The TOP_ tokens are dark in every theme. A light card over a film glares, hides 
 
 ### Where it is changed
 
-- **Settings › Power & screens › Theme**, the group's first row: a stepper, ‹ Yellow ›. Setting key `theme`, values `yellow`, `dark`, `dark-red`, `pink`, `midnight-blue`, `light`, `high-contrast`; default `yellow`. One entry in `settingDefs()`.
-- **Help line** (top screen, while the row is focused): “The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.” Under it: a swatch of each theme with the chosen one outlined, and a key, a focused row, pills and a bar as they now look.
+- **Settings › Power & screens › Theme**, the group's first row: a stepper, ‹ Yellow ›. Setting key `theme`, values `yellow`, `dark`, `midnight-blue`, `dark-purple`, `dark-red`, `pink`, `coffee`, `mint`, `retro-green`, `sunset`, `candy`, `16-bit`, `32-bit`, `light`, `high-contrast`; default `yellow`. One entry in `settingDefs()`.
+- **Help line** (top screen, while the row is focused): “The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.” Under it: a swatch of each theme in two rows, in the stepper's order (eight, then seven; 62 × 38 each, 8 apart, its name under it in Inter 10), with the chosen one outlined, and a key, a focused row, pills and a bar as they now look.
 - **It previews live.** LEFT / RIGHT apply the theme at once: nothing to open, nothing to confirm, B leaves it as it is. Both panels redraw on the step (the theme is part of `signature()`), a card showing on the top screen is drawn again, and dashboard pages follow on their next state update.
 - **The group's tile** names it first: “Yellow · screen off 30 s · the lid pauses”.
 - **Not in Quick settings (F).** Quick settings holds what is changed while something plays; a theme is chosen once.
@@ -548,7 +560,7 @@ The TOP_ tokens are dark in every theme. A light card over a film glares, hides 
 
 ### A book's page colours
 
-Reading › Colours stays its own setting: a page is read for hours and its colours are a reading choice, not the app's. It gains a first value, **Match theme**, which is the default: Light gives the Light page, High contrast the Black page, every other theme the Dark page. For anyone on Yellow that is the Dark page, as today. Choosing Dark, Light, Sepia or Black by hand holds, whatever the theme. The reader's sheets and keys are app UI and follow the theme; the page under them does not.
+Reading › Colours stays its own setting: a page is read for hours and its colours are a reading choice, not the app's. It gains a first value, **Match theme**, which is the default: The light-bodied themes give the Light page, High contrast the Black page, every other theme the Dark page. For anyone on Yellow that is the Dark page, as today. Choosing Dark, Light, Sepia or Black by hand holds, whatever the theme. The reader's sheets and keys are app UI and follow the theme; the page under them does not.
 
 ### Every component, by the tokens it uses
 
@@ -629,13 +641,14 @@ The same table. Each theme is one block of the variables below (`:root[data-them
 | `--yellow-hover`, `--yellow-down` (dashboard only) | ACCENT 40% of the way to TEXT; ACCENT × 0.88 |
 | `--picked`, `--e-picked` (dashboard only) | ACCENT at 17% over BG; its `edgeOf` |
 | `--dot`, `--scrim`, `--veil-sheet` | TEXT at 7%; BG at 72%; BG at VEIL_SHEET |
-| `--green` (dashboard only: something is on, or worked) | a token of its own, OK: #7BD88F in the dark themes, #1F7A4D in Light, #8DF0A4 in High contrast |
+| `--green` (dashboard only: something is on, or worked) | a token of its own, OK: #7BD88F in the dark themes, #1F7A4D in the light-bodied ones, #8DF0A4 in High contrast |
 | `theme-color` in `index.html` | BG |
 | the Settings page's small picture of the two panels | the same tokens: the bottom panel the main ones, a card on the top one the TOP_ ones |
 
 ### Not verified
 
-- No theme was tried on the handheld's panels or in sunlight. The ratios are worked out, not measured. Dark red's and Pink's accents on their BUTTON (5.6 and 7.6) are the ones to look at first outdoors.
+- No theme was tried on the handheld's panels or in sunlight. The ratios are worked out, not measured. The lowest accent pairs are the ones to look at first: 32-bit's and 16-bit's accent on their BUTTON (4.8 and 5.1), and Dark red's (5.6).
+- 16-bit and 32-bit were checked by their ratios and by the swatches; neither was looked at on a whole screen.
 - `web/style.css` was read at its `:root` only.
 - OK's three values for the dashboard were not checked for contrast.
 

@@ -118,7 +118,7 @@ const MAP=[
 ['Subtitles; Music; Photos; Remember; Files; Controls & screen; Updates; Web dashboard','Groups','Same rows. Remember → Playback, Music → Music & sound, Files → Files & history, Controls & screen → Power & screens, with Max volume and Button hotkeys moved to Playback','same'],
 ['A setting’s explanation; the subtitle preview','Bottom screen','Top screen','mov'],
 ['Text and PDF viewer defaults','(only inside a book)','Settings › Reading','new'],
-['The app’s colours','One look: black, cream and yellow','Settings › Power & screens › Theme: Yellow (the default, today’s look), Dark, Dark red, Pink, Midnight blue, Light, High contrast. Both screens and the Web dashboard; cards over a picture stay dark','new'],
+['The app’s colours','One look: black, cream and yellow','Settings › Power & screens › Theme, fifteen: Yellow (the default, today’s look), Dark, Midnight blue, Dark purple, Dark red, Pink, Coffee, Mint, Retro green, Sunset, Candy, 16-bit, 32-bit, Light, High contrast. Both screens and the Web dashboard; cards over a picture stay dark','new'],
 ['A book’s page colours: Dark, Light, Sepia, Black','Text options','The same four, and Match theme first (the default): the page follows the app’s theme until you choose one','chg'],
 ['The bottom screen while reading','Stays on','Stays on; may dim to its lowest (Settings › Reading › Dim the controls while reading)','new'],
 ['About','START › About tab','Settings › About; START › About','mov'],
@@ -182,9 +182,9 @@ function setTheme(id){if(!THEMES.some(t=>t[0]==id))id='yellow';document.document
  document.querySelectorAll('#themebar button').forEach(b=>b.classList.toggle('on',b.dataset.theme==id))}
 function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.dataset.bp);setTheme(THEMES[(i+1)%THEMES.length][0])}
 {const bar=document.getElementById('themebar');
- bar.insertAdjacentHTML('beforeend',THEMES.map(t=>`<button data-theme="${t[0]}" title="${t[1]}"><i style="background:linear-gradient(90deg,#${t[2]} 50%,#${t[4]} 50%)"></i>${t[1]}</button>`).join(''));
+ bar.insertAdjacentHTML('beforeend',THEMES.map(t=>`<button data-theme="${t[0]}" title="${t[1]}"><i style="background:linear-gradient(90deg,#${t[2]} 50%,#${t[4]} 50%)"></i><b>${t[1]}</b></button>`).join(''));
  bar.addEventListener('click',e=>{const b=e.target.closest('button[data-theme]');if(b)setTheme(b.dataset.theme)});
- let t=(location.search.match(/[?&]theme=([a-z]+)/)||[])[1];if(!t)try{t=localStorage.getItem('bptheme')}catch(e){}
+ let t=(location.search.match(/[?&]theme=([a-z0-9]+)/)||[])[1];if(!t)try{t=localStorage.getItem('bptheme')}catch(e){}
  setTheme(t||'yellow')}
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);
