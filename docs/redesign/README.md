@@ -13,6 +13,7 @@ The proposed redesign of the handheld UI, kept for when it gets built.
   the table of each component with the tokens it uses.
 - `themes.py`: the themes' values and the contrast of each pair (`python3 themes.py`; `css` prints the blocks of
   `src/style.css`, `md` the tables of `components.md`). Change a value there, then paste both.
+- `backlog.md`: what the spec doesn't draw yet (the journeys audit's gaps) and the decisions waiting on the owner.
 - `coverage.md`: the audit of what the preview covers against the app's features.
 - `lid-and-incognito.md`: incognito and the lid, incognito and the Web dashboard, the keys with the lid shut
   (two options, one recommended).
