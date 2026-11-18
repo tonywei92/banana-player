@@ -13,8 +13,8 @@ import sys
 T = {
  'yellow': dict(name='Yellow', BG='000000', SF='121116', BT='26242E', PR='3E3B4A', TR='1E1D24', RU='2A2833', TX='E8E2D3',
                 DM='8F8A80', DO='ABA597', AC='FFD23F', OA='000000', DG='F0645A'),
- 'dark': dict(name='Dark', BG='000000', SF='141416', BT='27272B', PR='404046', TR='1F1F23', RU='2C2C31', TX='D2D2D8',
-              DM='8C8C94', DO='A9A9B1', AC='FFFFFF', OA='000000', DG='F47067'),
+ 'dark': dict(name='Dark', BG='0B0B0D', SF='17171A', BT='2A2A2F', PR='424249', TR='222226', RU='2E2E34', TX='C2C4CA',
+              DM='8A8C94', DO='A6A8B0', AC='A9C4E6', OA='0B0B0D', DG='F47067', EM=40),
  'darkred': dict(name='Dark red', BG='0A0405', SF='190C0E', BT='361D21', PR='4D2A2F', TR='241315', RU='382224', TX='EFE1DD',
                  DM='A08B87', DO='BCA8A4', AC='FF6A6E', OA='000000', DG='FFB224'),
  'pink': dict(name='Pink', BG='0C060A', SF='1B0F17', BT='301C29', PR='4B2E41', TR='25151F', RU='37222F', TX='F1E2E9',

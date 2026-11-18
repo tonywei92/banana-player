@@ -411,7 +411,7 @@ Seven, stepped with LEFT / RIGHT in this order. Yellow is the default and is tod
 | Theme | What it is |
 |---|---|
 | Yellow | Today: true black, cream text, banana yellow. The default |
-| Dark | Black and neutral greys, white as the accent. Nothing coloured but DANGER |
+| Dark | Near-black and neutral greys, a soft steel-blue accent, grey text. Nothing is pure white or pure black: the quiet one |
 | Dark red | Near-black with a red cast, a bright red accent. DANGER is amber, so it is never mistaken for the accent |
 | Pink | Near-black with a plum cast, a pink accent. DANGER is amber, for the same reason |
 | Midnight blue | Deep navy, a sky-blue accent |
@@ -424,42 +424,42 @@ Sixteen colour roles, one strength, and eight for the top screen. Existing names
 
 | Token | Preview | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
 |---|---|---|---|---|---|---|---|---|
-| BG | `--bg` | #000000 | #000000 | #0A0405 | #0C060A | #040816 | #F7F4EC | #000000 |
-| SURFACE | `--sf` | #121116 | #141416 | #190C0E | #1B0F17 | #0C142E | #FFFDF8 | #0A0A0A |
-| BUTTON | `--bt` | #26242E | #27272B | #361D21 | #301C29 | #1A2649 | #E6E0D2 | #1E1E1E |
-| PRESSED | `--pr` | #3E3B4A | #404046 | #4D2A2F | #4B2E41 | #2C3C6C | #D0C9B8 | #3A3A3A |
-| TRACK | `--tr` | #1E1D24 | #1F1F23 | #241315 | #25151F | #131C3A | #DED8C9 | #2B2B2B |
-| RULE | `--ru` | #2A2833 | #2C2C31 | #382224 | #37222F | #202C52 | #D5CEBE | #5E5E5E |
-| RAIL | `--ra` | #0B0A0D | #0C0C0D | #13090A | #150B12 | #090F24 | #ECE7DB | #060606 |
-| SCREEN | `--sc` | #26242E | #27272B | #361D21 | #301C29 | #1A2649 | #E6E0D2 | #1E1E1E |
-| TEXT | `--tx` | #E8E2D3 | #D2D2D8 | #EFE1DD | #F1E2E9 | #E1E7F5 | #1B1A20 | #FFFFFF |
-| DIM | `--dm` | #8F8A80 | #8C8C94 | #A08B87 | #A18B97 | #8893B0 | #625E56 | #C6C6C6 |
-| DIM_ON | `--do` | #ABA597 | #A9A9B1 | #BCA8A4 | #BAA5B1 | #A5AFCA | #55514A | #D8D8D8 |
-| KNOB | `--kn` | #E8E2D3 | #D2D2D8 | #EFE1DD | #F1E2E9 | #E1E7F5 | #1B1A20 | #FFFFFF |
-| ACCENT | `--ac` | #FFD23F | #FFFFFF | #FF6A6E | #FF8FC7 | #8CC8FF | #7A5200 | #FFE14D |
-| ON_ACCENT | `--oa` | #000000 | #000000 | #000000 | #000000 | #000000 | #FFFDF8 | #000000 |
+| BG | `--bg` | #000000 | #0B0B0D | #0A0405 | #0C060A | #040816 | #F7F4EC | #000000 |
+| SURFACE | `--sf` | #121116 | #17171A | #190C0E | #1B0F17 | #0C142E | #FFFDF8 | #0A0A0A |
+| BUTTON | `--bt` | #26242E | #2A2A2F | #361D21 | #301C29 | #1A2649 | #E6E0D2 | #1E1E1E |
+| PRESSED | `--pr` | #3E3B4A | #424249 | #4D2A2F | #4B2E41 | #2C3C6C | #D0C9B8 | #3A3A3A |
+| TRACK | `--tr` | #1E1D24 | #222226 | #241315 | #25151F | #131C3A | #DED8C9 | #2B2B2B |
+| RULE | `--ru` | #2A2833 | #2E2E34 | #382224 | #37222F | #202C52 | #D5CEBE | #5E5E5E |
+| RAIL | `--ra` | #0B0A0D | #121215 | #13090A | #150B12 | #090F24 | #ECE7DB | #060606 |
+| SCREEN | `--sc` | #26242E | #2A2A2F | #361D21 | #301C29 | #1A2649 | #E6E0D2 | #1E1E1E |
+| TEXT | `--tx` | #E8E2D3 | #C2C4CA | #EFE1DD | #F1E2E9 | #E1E7F5 | #1B1A20 | #FFFFFF |
+| DIM | `--dm` | #8F8A80 | #8A8C94 | #A08B87 | #A18B97 | #8893B0 | #625E56 | #C6C6C6 |
+| DIM_ON | `--do` | #ABA597 | #A6A8B0 | #BCA8A4 | #BAA5B1 | #A5AFCA | #55514A | #D8D8D8 |
+| KNOB | `--kn` | #E8E2D3 | #C2C4CA | #EFE1DD | #F1E2E9 | #E1E7F5 | #1B1A20 | #FFFFFF |
+| ACCENT | `--ac` | #FFD23F | #A9C4E6 | #FF6A6E | #FF8FC7 | #8CC8FF | #7A5200 | #FFE14D |
+| ON_ACCENT | `--oa` | #000000 | #0B0B0D | #000000 | #000000 | #000000 | #FFFDF8 | #000000 |
 | DANGER | `--dg` | #F0645A | #F47067 | #FFB224 | #FFB224 | #FF7A70 | #A3261D | #FF8A80 |
-| EDGE_MIX | (in the edges) | 30% | 30% | 30% | 30% | 30% | 55% | 50% |
-| TOP_CARD | `--tc` in the top scope | #0B0A0D | #0C0C0D | #13090A | #150B12 | #090F24 | #0B0A0D | #060606 |
-| TOP_EDGE | `--te` in the top scope | #2A2833 | #2C2C31 | #382224 | #37222F | #202C52 | #2A2833 | #5E5E5E |
-| TOP_TITLE | `--ac` in the top scope | #FFD23F | #FFFFFF | #FF6A6E | #FF8FC7 | #8CC8FF | #FFD23F | #FFE14D |
-| TOP_TEXT | `--tx` in the top scope | #E8E2D3 | #D2D2D8 | #EFE1DD | #F1E2E9 | #E1E7F5 | #E8E2D3 | #FFFFFF |
-| TOP_SUB | `--dm, --do` in the top scope | #8F8A80 | #8C8C94 | #A08B87 | #A18B97 | #8893B0 | #8F8A80 | #C6C6C6 |
-| TOP_TRACK | `--bt` in the top scope | #26242E | #27272B | #361D21 | #301C29 | #1A2649 | #26242E | #1E1E1E |
-| TOP_SQUARE | `--sf` in the top scope | #121116 | #141416 | #190C0E | #1B0F17 | #0C142E | #121116 | #0A0A0A |
+| EDGE_MIX | (in the edges) | 30% | 40% | 30% | 30% | 30% | 55% | 50% |
+| TOP_CARD | `--tc` in the top scope | #0B0A0D | #121215 | #13090A | #150B12 | #090F24 | #0B0A0D | #060606 |
+| TOP_EDGE | `--te` in the top scope | #2A2833 | #2E2E34 | #382224 | #37222F | #202C52 | #2A2833 | #5E5E5E |
+| TOP_TITLE | `--ac` in the top scope | #FFD23F | #A9C4E6 | #FF6A6E | #FF8FC7 | #8CC8FF | #FFD23F | #FFE14D |
+| TOP_TEXT | `--tx` in the top scope | #E8E2D3 | #C2C4CA | #EFE1DD | #F1E2E9 | #E1E7F5 | #E8E2D3 | #FFFFFF |
+| TOP_SUB | `--dm, --do` in the top scope | #8F8A80 | #8A8C94 | #A08B87 | #A18B97 | #8893B0 | #8F8A80 | #C6C6C6 |
+| TOP_TRACK | `--bt` in the top scope | #26242E | #2A2A2F | #361D21 | #301C29 | #1A2649 | #26242E | #1E1E1E |
+| TOP_SQUARE | `--sf` in the top scope | #121116 | #17171A | #190C0E | #1B0F17 | #0C142E | #121116 | #0A0A0A |
 | TOP_DANGER | `--dg` in the top scope | #F0645A | #F47067 | #FFB224 | #FFB224 | #FF7A70 | #F0645A | #FF8A80 |
 
 | Worked out | Preview | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
 |---|---|---|---|---|---|---|---|---|
-| edgeOf(BUTTON) | `--ed` | #605D60 | #5A5A5F | #6E5859 | #6A5763 | #56607D | #767370 | #8F8F8F |
-| edgeOf(SURFACE) | `--eds` | #52504F | #4D4D50 | #594C4C | #5B4E56 | #4C536A | #828081 | #858585 |
-| lipOf(BUTTON) | `--lp` | #1B1920 | #1B1B1E | #261417 | #22141D | #121B33 | #A19D93 | #151515 |
-| edgeOf(ACCENT) | `--ae` | #F8D76B | #F1F1F3 | #FA8E8F | #FBA8D1 | #A6D1FC | #463312 | #FFF0A6 |
-| lipOf(ACCENT) | `--al` | #B3932C | #B3B3B3 | #B34A4D | #B3648B | #628CB3 | #553900 | #B39E36 |
-| edgeOf(DANGER) | `--de` | #EE8A7E | #EA8D89 | #FAC05C | #FBC05F | #F69B98 | #581F1F | #FFC5C0 |
+| edgeOf(BUTTON) | `--ed` | #605D60 | #67686D | #6E5859 | #6A5763 | #56607D | #767370 | #8F8F8F |
+| edgeOf(SURFACE) | `--eds` | #52504F | #5B5C60 | #594C4C | #5B4E56 | #4C536A | #828081 | #858585 |
+| lipOf(BUTTON) | `--lp` | #1B1920 | #1D1D21 | #261417 | #22141D | #121B33 | #A19D93 | #151515 |
+| edgeOf(ACCENT) | `--ae` | #F8D76B | #B3C4DB | #FA8E8F | #FBA8D1 | #A6D1FC | #463312 | #FFF0A6 |
+| lipOf(ACCENT) | `--al` | #B3932C | #7689A1 | #B34A4D | #B3648B | #628CB3 | #553900 | #B39E36 |
+| edgeOf(DANGER) | `--de` | #EE8A7E | #E0928F | #FAC05C | #FBC05F | #F69B98 | #581F1F | #FFC5C0 |
 | lipOf(DANGER) | `--dl` | #A8463F | #AB4E48 | #B37D19 | #B37D19 | #B3554E | #721B14 | #B3615A |
 
-Aliases stay aliases in every theme: KNOB = TEXT, SCREEN = BUTTON. In the six dark themes the TOP_ tokens are aliases too, as today: TOP_TITLE = ACCENT, TOP_TEXT = TEXT, TOP_SUB = DIM, TOP_TRACK = BUTTON, TOP_SQUARE = SURFACE, TOP_DANGER = DANGER, TOP_EDGE = RULE, and TOP_CARD and RAIL are SURFACE at 60% over BG. Light gives the TOP_ tokens Yellow's values and RAIL its own.
+Aliases stay aliases in every theme: KNOB = TEXT, SCREEN = BUTTON. In the six dark themes the TOP_ tokens are aliases too, as today: TOP_TITLE = ACCENT, TOP_TEXT = TEXT, TOP_SUB = DIM, TOP_TRACK = BUTTON, TOP_SQUARE = SURFACE, TOP_DANGER = DANGER, TOP_EDGE = RULE, and TOP_CARD and RAIL are SURFACE at 60% over BG. Light gives the TOP_ tokens Yellow's values and RAIL its own. EDGE_MIX is 30 except where a theme's TEXT is too close to its fills for the edge to show: Dark 40, High contrast 50, Light 55.
 
 The worked-out colours keep their rules in every theme, so they are not stored:
 
@@ -470,44 +470,46 @@ The worked-out colours keep their rules in every theme, so they are not stored:
 - The play key's hold: BG at `HOLD_FILL` over the key.
 - A red pill's ground: DANGER at `TINT` over its ground. A header badge's ground: ACCENT at 17% over its ground.
 
+No theme but High contrast uses pure white (#FFFFFF) for a fill, a text or an accent, and only Yellow, as today, and High contrast have a pure black BG. Dark keeps its accent (11.0 on BG) and its text (11.3) well under the 14 to 21 the others reach, on purpose: it is the theme for a dark room. Its focus is told from plain text by the accent's blue against grey, as well as by the edge and the row's fill.
+
 ### Contrast
 
 WCAG ratios, worked out by `themes.py` (it fails if a pair is under its floor). Text pairs must reach 4.5 (AA); High contrast holds its main pairs to 7 (AAA). Edges and bars must reach 3. Unavailable pieces (45%) are outside the floors, as the standard allows.
 
 | Pair (floor) | Yellow | Dark | Dark red | Pink | Midnight blue | Light | High contrast |
 |---|---|---|---|---|---|---|---|
-| TEXT on BG (4.5; High contrast 7) | 16.3 | 14.0 | 16.0 | 16.1 | 16.1 | 15.7 | 21.0 |
-| TEXT on SURFACE (4.5; High contrast 7) | 14.5 | 12.2 | 15.0 | 14.9 | 14.7 | 17.0 | 19.8 |
-| TEXT on BUTTON (4.5; High contrast 7) | 11.8 | 9.9 | 12.2 | 12.7 | 12.0 | 13.1 | 16.7 |
-| TEXT on TRACK (a neutral pill) (4.5; High contrast 7) | 12.9 | 10.9 | 14.0 | 13.9 | 13.5 | 12.2 | 14.2 |
-| DIM on BG (4.5; High contrast 7) | 6.1 | 6.3 | 6.3 | 6.4 | 6.5 | 5.9 | 12.3 |
-| DIM on SURFACE (4.5) | 5.5 | 5.5 | 5.9 | 5.9 | 5.9 | 6.3 | 11.6 |
-| DIM_ON on BUTTON (4.5) | 6.2 | 6.4 | 6.8 | 6.9 | 6.8 | 6.0 | 11.7 |
-| DIM_ON on TRACK (a chip, off) (4.5) | 6.8 | 7.0 | 7.9 | 7.6 | 7.6 | 5.5 | 9.9 |
-| DIM_ON on RAIL (4.5) | 8.0 | 8.4 | 8.7 | 8.4 | 8.7 | 6.4 | 14.2 |
-| ACCENT on BG (4.5; High contrast 7) | 14.5 | 21.0 | 7.3 | 9.6 | 11.2 | 6.3 | 16.1 |
-| ACCENT on SURFACE (4.5; High contrast 7) | 13.0 | 18.4 | 6.9 | 8.9 | 10.2 | 6.8 | 15.2 |
-| ACCENT on BUTTON (the focused row) (4.5) | 10.6 | 14.9 | 5.6 | 7.6 | 8.3 | 5.3 | 12.8 |
-| ACCENT on its 17% tint (a badge) (4.5) | 8.8 | 11.0 | 5.4 | 6.5 | 7.1 | 5.3 | 10.3 |
-| ON_ACCENT on ACCENT (4.5; High contrast 7) | 14.5 | 21.0 | 7.5 | 10.0 | 11.8 | 6.8 | 16.1 |
-| ON_ACCENT on DANGER (Quit) (4.5) | 6.7 | 7.4 | 11.6 | 11.6 | 8.3 | 7.2 | 9.2 |
-| DANGER on BG (4.5) | 6.7 | 7.4 | 11.3 | 11.1 | 7.9 | 6.7 | 9.2 |
-| DANGER on SURFACE (4.5) | 6.0 | 6.4 | 10.6 | 10.3 | 7.2 | 7.2 | 8.7 |
-| DANGER on BUTTON (4.5) | 4.9 | 5.2 | 8.6 | 8.8 | 5.8 | 5.6 | 7.3 |
-| DANGER on its 20% tint (a red pill) (4.5) | 4.6 | 4.8 | 7.0 | 6.8 | 5.3 | 5.2 | 6.3 |
-| Focus edge (ACCENT) against BG (3) | 14.5 | 21.0 | 7.3 | 9.6 | 11.2 | 6.3 | 16.1 |
-| Focus edge against SURFACE (3) | 13.0 | 18.4 | 6.9 | 8.9 | 10.2 | 6.8 | 15.2 |
-| edgeOf(BUTTON) against BG (3) | 3.2 | 3.1 | 3.1 | 3.0 | 3.2 | 4.3 | 6.5 |
-| edgeOf(SURFACE) against BG (as today: a flat piece is its fill and edge) (2.4) | 2.6 | 2.5 | 2.5 | 2.6 | 2.6 | 3.6 | 5.7 |
-| Bar fill (ACCENT) against TRACK (3) | 11.6 | 16.4 | 6.4 | 8.3 | 9.4 | 4.9 | 10.9 |
-| KNOB against TRACK (3) | 12.9 | 10.9 | 14.0 | 13.9 | 13.5 | 12.2 | 14.2 |
-| TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 13.0 | 15.4 | 15.4 | 15.3 | 15.3 | 20.3 |
-| TOP_SUB on TOP_CARD (4.5) | 5.8 | 5.9 | 6.1 | 6.1 | 6.2 | 5.8 | 11.9 |
-| TOP_TITLE on TOP_CARD (4.5; High contrast 7) | 13.7 | 19.6 | 7.0 | 9.2 | 10.7 | 13.7 | 15.6 |
-| TOP_DANGER on TOP_CARD (4.5) | 6.3 | 6.9 | 10.9 | 10.7 | 7.5 | 6.3 | 8.9 |
+| TEXT on BG (4.5; High contrast 7) | 16.3 | 11.3 | 16.0 | 16.1 | 16.1 | 15.7 | 21.0 |
+| TEXT on SURFACE (4.5; High contrast 7) | 14.5 | 10.3 | 15.0 | 14.9 | 14.7 | 17.0 | 19.8 |
+| TEXT on BUTTON (4.5; High contrast 7) | 11.8 | 8.2 | 12.2 | 12.7 | 12.0 | 13.1 | 16.7 |
+| TEXT on TRACK (a neutral pill) (4.5; High contrast 7) | 12.9 | 9.1 | 14.0 | 13.9 | 13.5 | 12.2 | 14.2 |
+| DIM on BG (4.5; High contrast 7) | 6.1 | 5.9 | 6.3 | 6.4 | 6.5 | 5.9 | 12.3 |
+| DIM on SURFACE (4.5) | 5.5 | 5.3 | 5.9 | 5.9 | 5.9 | 6.3 | 11.6 |
+| DIM_ON on BUTTON (4.5) | 6.2 | 6.0 | 6.8 | 6.9 | 6.8 | 6.0 | 11.7 |
+| DIM_ON on TRACK (a chip, off) (4.5) | 6.8 | 6.7 | 7.9 | 7.6 | 7.6 | 5.5 | 9.9 |
+| DIM_ON on RAIL (4.5) | 8.0 | 7.9 | 8.7 | 8.4 | 8.7 | 6.4 | 14.2 |
+| ACCENT on BG (4.5; High contrast 7) | 14.5 | 11.0 | 7.3 | 9.6 | 11.2 | 6.3 | 16.1 |
+| ACCENT on SURFACE (4.5; High contrast 7) | 13.0 | 10.0 | 6.9 | 8.9 | 10.2 | 6.8 | 15.2 |
+| ACCENT on BUTTON (the focused row) (4.5) | 10.6 | 8.0 | 5.6 | 7.6 | 8.3 | 5.3 | 12.8 |
+| ACCENT on its 17% tint (a badge) (4.5) | 8.8 | 7.0 | 5.4 | 6.5 | 7.1 | 5.3 | 10.3 |
+| ON_ACCENT on ACCENT (4.5; High contrast 7) | 14.5 | 11.0 | 7.5 | 10.0 | 11.8 | 6.8 | 16.1 |
+| ON_ACCENT on DANGER (Quit) (4.5) | 6.7 | 6.9 | 11.6 | 11.6 | 8.3 | 7.2 | 9.2 |
+| DANGER on BG (4.5) | 6.7 | 6.9 | 11.3 | 11.1 | 7.9 | 6.7 | 9.2 |
+| DANGER on SURFACE (4.5) | 6.0 | 6.3 | 10.6 | 10.3 | 7.2 | 7.2 | 8.7 |
+| DANGER on BUTTON (4.5) | 4.9 | 5.0 | 8.6 | 8.8 | 5.8 | 5.6 | 7.3 |
+| DANGER on its 20% tint (a red pill) (4.5) | 4.6 | 4.6 | 7.0 | 6.8 | 5.3 | 5.2 | 6.3 |
+| Focus edge (ACCENT) against BG (3) | 14.5 | 11.0 | 7.3 | 9.6 | 11.2 | 6.3 | 16.1 |
+| Focus edge against SURFACE (3) | 13.0 | 10.0 | 6.9 | 8.9 | 10.2 | 6.8 | 15.2 |
+| edgeOf(BUTTON) against BG (3) | 3.2 | 3.5 | 3.1 | 3.0 | 3.2 | 4.3 | 6.5 |
+| edgeOf(SURFACE) against BG (as today: a flat piece is its fill and edge) (2.4) | 2.6 | 2.9 | 2.5 | 2.6 | 2.6 | 3.6 | 5.7 |
+| Bar fill (ACCENT) against TRACK (3) | 11.6 | 8.9 | 6.4 | 8.3 | 9.4 | 4.9 | 10.9 |
+| KNOB against TRACK (3) | 12.9 | 9.1 | 14.0 | 13.9 | 13.5 | 12.2 | 14.2 |
+| TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 10.7 | 15.4 | 15.4 | 15.3 | 15.3 | 20.3 |
+| TOP_SUB on TOP_CARD (4.5) | 5.8 | 5.6 | 6.1 | 6.1 | 6.2 | 5.8 | 11.9 |
+| TOP_TITLE on TOP_CARD (4.5; High contrast 7) | 13.7 | 10.4 | 7.0 | 9.2 | 10.7 | 13.7 | 15.6 |
+| TOP_DANGER on TOP_CARD (4.5) | 6.3 | 6.6 | 10.9 | 10.7 | 7.5 | 6.3 | 8.9 |
 | Reader page (Match theme): text on page (4.5; High contrast 7) | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 14.1 | 10.9 |
 
-One pair is below 3 in the five dark themes, as it is today: a flat piece's edge against BG (2.5 to 2.6). A chip or a tile is told by its fill and its edge together; Light and High contrast lift it with EDGE_MIX.
+One pair is below 3 in the five dark themes, as it is today: a flat piece's edge against BG (2.5 to 2.9). A chip or a tile is told by its fill and its edge together; Light and High contrast lift it with EDGE_MIX.
 
 ### Fixed in every theme
 
