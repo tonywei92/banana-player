@@ -1,8 +1,8 @@
 # Components of the handheld redesign
 
-Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 121 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
+Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 123 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
-Counts: 46 components: 10 reuse, 28 variant, 8 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
+Counts: 47 components: 10 reuse, 28 variant, 9 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
 
 In the preview every screen draws these through shared functions and style rules (src/kit.js, src/screens.js, src/style.css beside preview.html), the same ones the Components section renders its examples from.
 
@@ -47,7 +47,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Mini bar (exists, needs a variant)
 
 - **Used:** every shell screen while something plays (drawn on 5)
-- **Anatomy and states:** 52 tall, 12 from the sides, 36 above the foot; SURFACE with a 2-unit yellow outline, radius 10. Play mark 56 × 42; kind icon 17; title Pixelify 15; time Inter 12; state pills; SELECT cap; a 3-unit progress line along its foot. With pills it drops the words “Now playing”.
+- **Anatomy and states:** 52 tall, 12 from the sides, 36 above the foot; SURFACE with a 2-unit yellow outline, radius 10. Play mark 56 × 42; kind icon 17; title Pixelify 15, a Title marquee on SURFACE, in what the other parts leave; time Inter 12; state pills; SELECT cap; a 3-unit progress line along its foot. With pills it drops the words “Now playing”.
 - **Inputs:** title, time, paused, pills (speed, look, repeat, EQ, “Playing in …”), progress
 - **Keys and touch:** Tap: the player (SELECT). Tap the mark: play / pause. Hold the mark: take over from a browser. Hold the bar: its More sheet.
 - **Code:** drawMiniBar (ui.h). Needs: the wider play mark, state pills.
@@ -99,7 +99,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### List row (exists, needs a variant)
 
 - **Used:** about 60 screens
-- **Anatomy and states:** 52 tall in a page, 46 in a sheet, 60 with two lines (a track: language on the first, name · flags · format on the second). Every line is one line, cut with “…” at its end; a file name is cut in its middle, keeping its ending. A right-to-left name is drawn right to left inside its run; the row never flips. Radius 10, padding 0 12, gap 11. Slots left to right: lead (icon 20, or a tick 22, a radio 14, a number, a dot 8), name Pixelify 17 (cut with “…”), pills, note Inter 12.5 dim, trail (chevron 14, switch, a small key 44 tall, a grip). Focused: BUTTON fill, 2-unit yellow edge, the name yellow. Dimmed (gone, unavailable, offline): 45%, the reason in the note. Danger: red ink. In Search’s results the part of the name that matched is ACCENT.
+- **Anatomy and states:** 52 tall in a page, 46 in a sheet, 60 with two lines (a track: language on the first, name · flags · format on the second). Every line is one line, cut with “…” at its end; a file name is cut in its middle, keeping its ending. The focused row’s name is a Title marquee (one pass). A right-to-left name is drawn right to left inside its run; the row never flips. Radius 10, padding 0 12, gap 11. Slots left to right: lead (icon 20, or a tick 22, a radio 14, a number, a dot 8), name Pixelify 17 (cut with “…”), pills, note Inter 12.5 dim, trail (chevron 14, switch, a small key 44 tall, a grip). Focused: BUTTON fill, 2-unit yellow edge, the name yellow. Dimmed (gone, unavailable, offline): 45%, the reason in the note. Danger: red ink. In Search’s results the part of the name that matched is ACCENT.
 - **Inputs:** lead, name, second line, pills, note, trail, focused, dimmed, danger
 - **Keys and touch:** UP / DOWN move, LEFT / RIGHT page, A acts, a tap acts on lift, a drag scrolls, a hold starts select mode (file lists).
 - **Code:** drawPlRow, drawUpRow, drawRowIcon, drawDialogRow, drawFocus (ui.h). Needs: one row function with the slots below instead of one per list.
@@ -347,7 +347,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Song layout (exists, needs a variant)
 
 - **Used:** every song screen
-- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: a placeholder in the art’s place. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Peaks and the six simple styles (Mirror bars, Wave, Dots, Levels, Area, Radial) draw their marks in ACCENT and TEXT; the pixel-art styles and Pocket console keep their own colours. Visualizer only: Peaks and the simple styles on BG in the same colours, with the lines in TEXT, DIM_ON and DIM; a style that paints the whole screen is its own picture, the lines over it white with their shadow.
+- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. The title is a Title marquee in its line’s box (the text column beside the art; the panel’s width less its margins in Visualizer only and None, where it is centred while it fits); artist and album are cut with “…”. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: a placeholder in the art’s place. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Peaks and the six simple styles (Mirror bars, Wave, Dots, Levels, Area, Radial) draw their marks in ACCENT and TEXT; the pixel-art styles and Pocket console keep their own colours. Visualizer only: Peaks and the simple styles on BG in the same colours, with the lines in TEXT, DIM_ON and DIM; a style that paints the whole screen is its own picture, the lines over it white with their shadow.
 - **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four icon tiles on View › Display), the visualizer’s style (the twenty icon tiles under them), art or none, title, artist, album. Show and the style are two inputs, set on one page (View › Display) and in two rows of Settings › Music & sound (Music display, Visualizer), and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown now”, not dimmed.
 - **Keys and touch:** SELECT steps Show (on View › Display).
 - **Code:** The music graph and the title lines in player.cpp (Player::shownMusic). A change to today’s layout: the lines always drawn (the Song info on top setting and its `SettingDef` go), and a ground in BG under the art.
@@ -385,6 +385,32 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Inputs:** lid shut, the setting, what plays
 - **Keys and touch:** As above. Touch is ignored.
 - **Code:** New. One filter in front of the key handling in main.cpp, fed by `SleepWatch::lidClosed()`; it sends the Session’s own intents (step, play / pause), so the page left open never sees a key. BananaOS repeats a held volume key, so while the lid is shut the player takes the volume keys’ input device (`gpio-keys-volume`, its own device, apart from Power and the lid switch; `EVIOCGRAB`, Linux-only, beside sleepwatch.*) and steps the volume itself through `/usr/libexec/banana/volume`; it lets go when the lid opens and on exit.
+
+### Title marquee (new)
+
+- **Used:** the player’s title (a song and a video), the mini bar’s title, a song’s title on the top screen (all four Show modes), the focused row’s name in a list. Not the header’s title, not artist and album, not a chip’s value, not a Note: those stay one line cut with “…”.
+- **Anatomy and states:** One line in a box.
+  - **Fits:** drawn as before; nothing moves, nothing fades.
+  - **Doesn’t fit, at rest:** the text from its start, no “…”; its last 16 units fade into the ground, which says it goes on.
+  - **Moving:** after 1.5 s at its start it moves left until its end shows, rests 1.5 s there, fades back to its start (150 ms out, 150 ms in), rests 3 s, and does it once more. After two passes it stays at its start. A focused row makes one pass, and only after the cursor has rested 1.5 s on it, so stepping down a list starts nothing. While it moves both edges fade; at its end the right one doesn’t.
+  - **Speed:** whole units, 24 steps a second: 2 units a step (48 a second) for type of 24 and more, 1 unit a step (24 a second) under it. About three letters a second at both sizes; whole units keep the pixel type sharp.
+  - **Starts again:** the title changes; the screen is opened; the panel wakes. **Stops, back at its start:** the panel dims (the Screen-off warning) or turns off, the lid shuts, a sheet opens over it, Scroll long titles is turned off. Pausing changes nothing: two passes bound it, so a screen where nothing else changes is still again within seconds.
+  - **One at a time on a panel:** the focused row first; the mini bar’s title waits at its start until the row is done.
+  - **Right to left:** a title that starts in a right-to-left script rests at its right end and moves right.
+  - **Colours:** the text keeps its own (TEXT on the player, the mini bar and a song’s top screen; ACCENT in a focused row; white with its shadow over a picture). The fade is the ground’s token, from clear to full over 16 units: BG on the player and a song’s top screen, SURFACE in the mini bar, BUTTON in a focused row. Over a picture (a pixel-art visualizer alone) there is no fade: a plain cut at the box. Nothing is new per theme.
+- **Repeated start (the text it is given):** the shown title of what plays (the three places above, and the player’s Next line) leaves out its start when all of these hold. It is a rule, not a setting.
+  1. The whole title doesn’t fit the box it is drawn in. A title that fits is never changed, so a wide box may show more than a narrow one.
+  2. The start is, without regard to case, the album’s name, the artist’s, the name of the folder the file is in, or a start that every item of the playing list shares (three items or more, four letters or more).
+  3. That start ends at a separator: “ - ”, “ – ”, “ — ”, “: ”, “ | ” or “_”. The separator goes with it.
+  4. Three letters or more are left, not counting digits and marks (“Yellow Album - 03” stays whole).
+
+  At most two starts go (artist, then album). A track number stays: it is short and says where in the album. Nothing is renamed: list rows, Search and More › Info show the name whole, and a focused row scrolls the whole name. With Scroll long titles off the rule still applies, and helps most there.
+- **Inputs:** text, font and size, the box, the ground’s token (or none), passes (2; 1 in a row), Scroll long titles (Settings › Power & screens: On, the default / Off; help: “A title too long for its place moves along after a moment, twice, then rests at its start. Off: it is cut with “…”.”). Off: cut with “…” as today, a file name in its middle.
+- **Keys and touch:** None. A tap goes to what is under it (the mini bar: the player; the player’s title is not a key); a drag does not move it.
+- **Code:** New. `lay::marquee` in kitlayout (bpcore, tested): the offset from the time since it started, the text’s and the box’s widths and the type’s size; pure, so the rests, the speed and the two passes are one table. `Kit::marquee(Rect, text, font, ground)` in ui_kit.cpp. `shownTitle()` (bpcore, tested with the table on the screen A long title) for the Repeated start. One `SettingDef`, `scroll-titles`.
+  - **Bottom screen:** the text is drawn once to a texture (per text and font, through `Ui::runs()`), and a step copies a part of it into the box, then the two fades. The step is not in `signature()`: while a marquee moves, the pass redraws only its Rect over the panel as last drawn, 24 times a second, and the loop goes back to waiting when it rests. A full redraw (a `signature()` change) leaves its clock alone.
+  - **Top screen:** the song’s lines are an mpv ASS overlay. The title becomes its own overlay (so artist and album are not sent again): one event, `\an7\pos(x,y)\clip(box)`, sent again with a new x each step, in whole panel pixels (the overlay’s canvas is 960 × 720, so a 2-pixel step is 3 of its units). libass keeps the glyphs it has drawn, so a step is a blend, not a new drawing of the text. The fades are two fixed events (four 4-unit strips of BG at 20, 40, 60, 80%), sent once. Not an image overlay (`overlay-add`): that would draw the title with SDL_ttf, which has no font fallback, where libass has the bundle’s fonts for other scripts.
+  - **Cost:** a step makes mpv draw a frame. With a visualizer on, mpv draws 30 a second anyway and the steps ride on them. In Album art only and None the picture is still, so the marquee is the only thing drawing: at most two passes a song, a few seconds each, then nothing. Time it on the handheld with the other graphs.
 
 ### Lock overlay (exists, needs a variant)
 
@@ -636,6 +662,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Away-from-normal mark | new | ACCENT; DANGER past a danger line |
 | Screen-off warning | new | veil fixed black 62%; a Notice row with an ACCENT edge |
 | Lid-shut keys | new | nothing drawn |
+| Title marquee | new (`Kit::marquee`) | the text’s own colour (TEXT; ACCENT in a focused row; fixed white over a picture); the fades: the ground’s token (BG, SURFACE in the mini bar, BUTTON in a focused row), none over a picture |
 | Lock overlay | `Kit::lock` | veil: BG at VEIL_LOCK; Box BUTTON (PRESSED while held) with an ACCENT edge, ACCENT lock and title; DIM_ON line |
 | The reader views | `ui_reader.cpp`, `reader.*`, `textreader.*` | the page: fixed (its own colours); around a page not yet decoded: TOP_TRACK; the page-number note: a Note |
 
@@ -709,3 +736,4 @@ All seventeen are resolved in the preview; the exceptions are deliberate. The la
 - Sizes are the preview's CSS, in units; none was tried on the handheld.
 - The "Code" lines come from reading docs/notes and the function names in src/ui.h; the bodies of most draw functions were not read, so "needs a variant" is a judgement of how far today's drawing is from the preview, not a measured diff.
 - The top-panel components assume the top panel can lay out cards with pictures while nothing plays; today it is mpv's overlay.
+- Title marquee: the times and speeds are the preview’s, read on a desktop; none was tried on the handheld’s panels. Whether the bottom screen can redraw one Rect over the panel as last drawn was not checked in the code (if it can’t, the step goes in `signature()` for the seconds it moves: time both). That libass moves a clipped line by whole pixels without drawing its glyphs again, and what a step costs mpv in Album art only, were not measured.

@@ -70,6 +70,7 @@ const MAP=[
 ['Chapters of a long film; names that don’t fit; no names','Chapters tab','Y · List › Chapters: 46-unit rows, “17 of 42”, LEFT / RIGHT a page, names cut with “…”, “Chapter N” when unnamed; no thumbnails','chg'],
 ['Chapter line (tap for Chapters); marks on the bar','Above the bar','Unchanged, with L2 / R2 written on it','same'],
 ['What plays next','(open Up next)','The Next line','new'],
+['A title too long for its place','Cut with “…” (a file name in its middle)','It moves along in its box, twice, then rests; a start it shares with its album or folder is left out. Settings › Power & screens › Scroll long titles','new'],
 ['Like and Add to playlist keys','First row','Second row: Like, Playlist','same'],
 ['Lock, Info, Screen off, Stop','Bottom row','X · More, first four tiles (Screen off also in Quick settings)','mov'],
 ['START › Playing: Now playing, Like, Add to playlist…, Play on, Show in folder, Info, Stop','START menu tab','Removed. Every item is in X · More or on the player’s face (Like, Playlist, Stop); Now playing is SELECT and the mini bar','mov'],
@@ -266,3 +267,15 @@ if(/[?&]sheet/.test(location.search)){const n=+((location.search.match(/cols=(\d
 if(/[?&]comps/.test(location.search)){const l=document.getElementById('complist');document.body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px;align-items:start">${[...l.querySelectorAll('.comp')].map(c=>`<div><div style="font:600 12px Inter;color:#aaa;margin:2px">${c.querySelector('h3').textContent}</div>${c.querySelector('.panel').outerHTML}</div>`).join('')}</div>`;fit()}
 // ?only=id: one screen's card alone (for looking it over)
 {const m=location.search.match(/[?&]only=([\w-]+)/);if(m){const c=document.getElementById('s-'+m[1]);if(c){document.body.innerHTML='<main style="max-width:1240px;padding:20px">'+c.outerHTML+'</main>';fit()}}}
+
+// ---------- the Title marquee, moving (components.md › Title marquee) ----------
+// Measured here as the app will: it runs only if the text is wider than its box. Rest 1.5 s, move (48 units/s for type of 24 and more, 24 under),
+// rest 1.5 s, fade back. The app stops after two passes; the preview repeats so it can be seen.
+function mqRun(){document.querySelectorAll('.mq:not([data-mq])').forEach(b=>{const t=b.firstElementChild,w=b.clientWidth;if(!w)return;b.dataset.mq=1;
+	const d=t.offsetWidth-w;if(d<=0)return;b.classList.add('mqo');
+	const l=b.querySelector('.mql'),r=b.querySelector('.mqr'),sp=parseFloat(getComputedStyle(t).fontSize)>=24?48:24,m=d/sp*1000,T=1500+m+1500+300,a=1500/T,e=(1500+m)/T,f=(3000+m)/T,g=(3150+m)/T,o={duration:T,iterations:Infinity};
+	const X=x=>`translateX(${-x}px)`;
+	t.animate([{transform:X(0),opacity:1,offset:0},{transform:X(0),offset:a},{transform:X(d),offset:e},{transform:X(d),opacity:1,offset:f},{transform:X(d),opacity:0,offset:g},{transform:X(0),opacity:0,offset:g},{transform:X(0),opacity:1,offset:1}],o);
+	if(l)l.animate([{opacity:0,offset:0},{opacity:0,offset:a},{opacity:1,offset:Math.min(a+200/T,e)},{opacity:1,offset:g},{opacity:0,offset:g},{opacity:0,offset:1}],o);
+	if(r)r.animate([{opacity:1,offset:0},{opacity:1,offset:Math.max(e-200/T,a)},{opacity:0,offset:e},{opacity:0,offset:g},{opacity:1,offset:1}],o)})}
+{let q=0;const later=()=>{if(!q)q=setTimeout(()=>{q=0;mqRun()},60)};new MutationObserver(later).observe(document.body,{childList:true,subtree:true});addEventListener('click',later);addEventListener('resize',later);(document.fonts&&document.fonts.ready||Promise.resolve()).then(later)}

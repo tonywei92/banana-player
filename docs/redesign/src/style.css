@@ -225,6 +225,11 @@ label.sw{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:po
 .s .bar i{display:block;height:100%;background:var(--ac)}
 .s .mini{position:absolute;left:12px;right:12px;bottom:36px;height:52px;border-radius:10px;background:var(--sf);border:2px solid var(--ac);display:flex;align-items:center;gap:10px;padding:0 10px 0 4px;overflow:hidden}
 .s .mini .pp{width:56px;height:42px;border-radius:8px;background:var(--bt);display:grid;place-items:center;color:var(--ac)}
+.s .mq{position:relative;display:block;overflow:hidden;white-space:nowrap;min-width:0}
+.s .mq .mqt{display:inline-block;vertical-align:top}
+.s .mq>i{position:absolute;top:0;bottom:0;width:16px;opacity:0;pointer-events:none}
+.s .mq .mql{left:0}.s .mq .mqr{right:0}
+.s .mq.mqo .mqr{opacity:1}
 .s .mini .ln{position:absolute;left:0;bottom:0;height:3px;background:var(--ac)}
 .s .veil{position:absolute;inset:0;background:color-mix(in srgb,var(--bg) 68%,transparent)}
 .s .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--sf);border:2px solid var(--eds);border-bottom:0;border-radius:18px 18px 0 0;padding:0 14px}
