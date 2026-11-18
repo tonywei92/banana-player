@@ -49,7 +49,7 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Home (Continue, Recent, filters), All recent, START Menu, Files list, More (X) on a file, rail, mini bar and Playing/Paused chips.
 - Books section, empty state, text reader, Text view sheet, Contents/Bookmarks, PDF, Extra dim / Light sheet.
 - Video player, View, Picture looks, Adjust, List (Y), More while playing, Away-from-normal marks (and the same while browsing).
-- Song player, View › Display (Show), View › Visualizer (the style, its own tab), Equalizer tab, visualizer alone.
+- Song player, View › Display (the mode and the visualizer's style on one page), Equalizer tab, visualizer alone.
 - Photo viewer; Manga section, reader, Manga-while-video guard, engine loading, "Stopped for Manga" on Home.
 - Settings, a settings group, Quick settings (F), volume past 100% and the 120% warning, Incognito badge.
 - Playing in a browser, Hold A, browser went away, mini bar while a browser plays, Play on picker.
@@ -66,3 +66,4 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - START's Playing tab: removed, item by item accounted for (the table under `video-more`). X is More, SELECT is View, on the player as elsewhere.
 - Chips and View: a chip opens the one tabbed View sheet on its tab (no tab-less form); five chips on a song as on a video (Sound, Sound FX, Display, Speed, Shuffle), the Display chip in short values; the Equalizer tab takes the full sheet height. Drawn: `music-eq`, `video-chips`.
 - Themes: Settings › Power & screens › Theme, fifteen of them (Yellow, the default and today's look; Dark; Midnight blue; Dark purple; Dark red; Pink; Coffee; Mint; Retro green; Sunset; Candy; 16-bit; 32-bit; Light; High contrast), a set of values for theme.h's tokens and nothing else. The Web dashboard follows; cards over a picture stay dark; Reading › Colours gains Match theme. Drawn: `set-theme`, and every screen through the Theme switch at the foot of the preview. Spec: components.md, Themes; values and contrast: themes.py.
+- A song's Display: one page for the mode and the visualizer's style (four icon tiles, then twenty in a 5 × 4 grid; the app's own glyphs); View's tabs are Display, Equalizer, Effects, Speed. Song info on top is removed as a setting: the title, artist and album are always shown. The top screen's ground follows the theme in Album art only, Art + visualizer and None. Drawn: `music-view`, `music-viz`, `music-viz-pick`.

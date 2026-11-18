@@ -84,7 +84,7 @@ def pairs(k):
     t, o = full(k), top(k); F = 7 if k == 'contrast' else 4.5
     return [('TEXT on BG', t['TX'], t['BG'], F), ('TEXT on SURFACE', t['TX'], t['SF'], F), ('TEXT on BUTTON', t['TX'], t['BT'], F),
          ('TEXT on TRACK (a neutral pill)', t['TX'], t['TR'], F),
-         ('DIM on BG', t['DM'], t['BG'], F), ('DIM on SURFACE', t['DM'], t['SF'], 4.5),
+         ('DIM on BG', t['DM'], t['BG'], F), ('DIM_ON on BG (a song\'s artist line, the hint bar)', t['DO'], t['BG'], F), ('DIM on SURFACE', t['DM'], t['SF'], 4.5),
          ('DIM_ON on BUTTON', t['DO'], t['BT'], 4.5), ('DIM_ON on TRACK (a chip, off)', t['DO'], t['TR'], 4.5), ('DIM_ON on RAIL', t['DO'], t['RA'], 4.5),
          ('ACCENT on BG', t['AC'], t['BG'], F), ('ACCENT on SURFACE', t['AC'], t['SF'], F),
          ('ACCENT on BUTTON (the focused row)', t['AC'], t['BT'], 4.5), ('ACCENT on its 17% tint (a badge)', t['AC'], t['ATS'], 4.5),
@@ -92,7 +92,7 @@ def pairs(k):
          ('DANGER on BG', t['DG'], t['BG'], 4.5), ('DANGER on SURFACE', t['DG'], t['SF'], 4.5),
          ('DANGER on BUTTON', t['DG'], t['BT'], 4.5), ('DANGER on its 20% tint (a red pill)', t['DG'], t['DTS'], 4.5),
          ('Focus edge (ACCENT) against BG', t['AC'], t['BG'], 3), ('Focus edge against SURFACE', t['AC'], t['SF'], 3),
-         ('edgeOf(BUTTON) against BG', t['ED'], t['BG'], 3), ('edgeOf(SURFACE) against BG (as today: a flat piece is its fill and edge)', t['ES'], t['BG'], 2.4),
+         ('edgeOf(BUTTON) against BG', t['ED'], t['BG'], 3), ('edgeOf(SURFACE) against BG (as today: a flat piece, the album art\'s edge)', t['ES'], t['BG'], 2.4),
          ('Bar fill (ACCENT) against TRACK', t['AC'], t['TR'], 3), ('KNOB against TRACK', t['KN'], t['TR'], 3),
          ('TOP_TEXT on TOP_CARD', o['TX'], o['TC'], F), ('TOP_SUB on TOP_CARD', o['TS'], o['TC'], 4.5),
          ('TOP_TITLE on TOP_CARD', o['TT'], o['TC'], F), ('TOP_DANGER on TOP_CARD', o['TD'], o['TC'], 4.5),

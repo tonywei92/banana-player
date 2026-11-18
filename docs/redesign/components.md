@@ -122,7 +122,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Tabs (exists, needs a variant)
 
-- **Used:** sheets (View, List, Contents) and sections (Manga, Sources, a source)
+- **Used:** sheets (View: Subtitles, Audio, Picture, Speed on a video; Display, Equalizer, Effects, Speed on a song; List; Contents) and sections (Manga, Sources, a source)
 - **Anatomy and states:** 44 tall, padding 0 13, radius 10, Pixelify 15 everywhere; off = BUTTON with edge, on = yellow with lip; 6 apart. Key caps at both ends say what steps it: L R in a sheet, L2 R2 in a section. A count may follow the label.
 - **Inputs:** labels, counts, the open one, which keys step it
 - **Keys and touch:** The named keys step (no wrap); tap a tab.
@@ -165,7 +165,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Bottom sheet (exists, needs a variant)
 
 - **Used:** about 45 screens
-- **Anatomy and states:** Full width from the foot; SURFACE, 2-unit edge, top corners 18; the page behind under a 68% black veil. Grab mark 44 × 4. Header 54: icon 20, title Pixelify 20 yellow (red for danger), a right note Inter 12.5. Body padding 0 14. Its own hint bar. Height by content, 226 to 470; in a tabbed sheet each tab has its own height (the Equalizer takes 470). One of a kind open at a time; a sheet may open over a sheet.
+- **Anatomy and states:** Full width from the foot; SURFACE, 2-unit edge, top corners 18; the page behind under a 68% black veil. Grab mark 44 × 4. Header 54: icon 20, title Pixelify 20 yellow (red for danger), a right note Inter 12.5. Body padding 0 14. Its own hint bar. Height by content, 226 to 470; in a tabbed sheet each tab has its own height (the Equalizer takes 470, a song’s Display 452). One of a kind open at a time; a sheet may open over a sheet.
 - **Inputs:** icon, title, note, body, hints, the key that opened it
 - **Keys and touch:** It owns every key while open. B or the opening key closes; a tap on the veil closes. L / R step its tabs.
 - **Code:** Ui::Overlay (the stack: keys, touches, draw, signature) with drawDialog for the body (docs/notes/overlay-stack.md). Needs: a sheet look for drawDialog (full width, top corners 18, a grab mark, its own hint bar) beside the centred box.
@@ -249,7 +249,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Tile (exists, needs a variant)
 
 - **Used:** Settings (12), Menu (8), Home shortcuts, Quick settings
-- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Menu tile about 146 × 84: icon 26 over name 17 over a note. Shortcut and toggle tiles 56 tall. A toggle tile may carry a second line Inter 12 dim: its state in words (“Lid or sleep: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
+- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Menu tile about 146 × 84: icon 26 over name 17 over a note. Shortcut and toggle tiles 56 tall. A choice tile (View › Display on a song: the four modes 147 × 56 with the mark beside the name, Pixelify 13.5; the twenty styles 117 × 56 in a 5 × 4 grid, 6 apart, the mark 22 wide over the name, Pixelify 12) is one of a set: the one in use is filled ACCENT with ON_ACCENT ink, as a segmented choice is; the cursor is the ACCENT edge. A toggle tile may carry a second line Inter 12 dim: its state in words (“Lid or sleep: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
 - **Inputs:** icon, name, summary, focused, mark
 - **Keys and touch:** D-pad moves in two dimensions, A opens.
 - **Code:** Home’s tiles (drawHome), Settings’ group tiles (drawSettings). Needs: the live summary line.
@@ -347,10 +347,10 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Song layout (exists, needs a variant)
 
 - **Used:** every song screen
-- **Anatomy and states:** Album art alone: 260 square, centred. With Song info: art 240 left, three lines right (28 / 17 / 14), the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same in the space above a band of bars 148 tall along the foot. No art: a placeholder in the art’s place.
-- **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four radio rows on View › Display), the visualizer’s style, song info, art or none, title, artist, album. Show and the style are two inputs, set in two places (View › Display, View › Visualizer; Settings › Music & sound › Music display, Visualizer) and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown”, not dimmed.
+- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above a band 162 tall along the foot, the full width, holding the bars. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: a placeholder in the art’s place. Ground: BG in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art; the band and a visualizer alone keep the style’s own ground, and the lines over a visualizer are white with their shadow.
+- **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four icon tiles on View › Display), the visualizer’s style (the twenty icon tiles under them), art or none, title, artist, album. Show and the style are two inputs, set on one page (View › Display) and in two rows of Settings › Music & sound (Music display, Visualizer), and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown now”, not dimmed.
 - **Keys and touch:** SELECT steps Show (on View › Display).
-- **Code:** The music graph and the title lines in player.cpp (Player::shownMusic). A change to today’s layout.
+- **Code:** The music graph and the title lines in player.cpp (Player::shownMusic). A change to today’s layout: the lines always drawn (the Song info on top setting and its `SettingDef` go), and a ground in BG under the art.
 
 ## Rules
 
@@ -495,6 +495,7 @@ WCAG ratios, worked out by `themes.py` (it fails if a pair is under its floor). 
 | TEXT on BUTTON (4.5; High contrast 7) | 11.8 | 8.2 | 12.0 | 11.7 | 12.2 | 12.7 | 11.2 | 11.6 | 10.5 | 12.0 | 12.0 | 9.8 | 10.0 | 13.1 | 16.7 |
 | TEXT on TRACK (a neutral pill) (4.5; High contrast 7) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 10.8 | 12.2 | 14.2 |
 | DIM on BG (4.5; High contrast 7) | 6.1 | 5.9 | 6.5 | 6.1 | 6.3 | 6.4 | 6.2 | 6.6 | 6.4 | 6.3 | 6.3 | 5.2 | 5.2 | 5.9 | 12.3 |
+| DIM_ON on BG (a song's artist line, the hint bar) (4.5; High contrast 7) | 8.6 | 8.3 | 9.1 | 8.6 | 9.0 | 8.7 | 8.6 | 9.1 | 8.9 | 8.7 | 8.7 | 6.5 | 6.4 | 7.2 | 14.7 |
 | DIM on SURFACE (4.5) | 5.5 | 5.3 | 5.9 | 5.8 | 5.9 | 5.9 | 5.7 | 6.0 | 5.9 | 5.9 | 5.8 | 6.0 | 6.1 | 6.3 | 11.6 |
 | DIM_ON on BUTTON (4.5) | 6.2 | 6.0 | 6.8 | 6.5 | 6.8 | 6.9 | 6.4 | 6.6 | 6.4 | 6.7 | 6.5 | 5.3 | 5.2 | 6.0 | 11.7 |
 | DIM_ON on TRACK (a chip, off) (4.5) | 6.8 | 6.7 | 7.6 | 7.5 | 7.9 | 7.6 | 7.3 | 7.6 | 7.3 | 7.5 | 7.4 | 5.7 | 5.6 | 5.5 | 9.9 |
@@ -512,7 +513,7 @@ WCAG ratios, worked out by `themes.py` (it fails if a pair is under its floor). 
 | Focus edge (ACCENT) against BG (3) | 14.5 | 11.0 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.9 | 6.3 | 16.1 |
 | Focus edge against SURFACE (3) | 13.0 | 10.0 | 10.2 | 8.2 | 6.9 | 8.9 | 9.2 | 11.2 | 10.2 | 8.8 | 11.8 | 7.2 | 6.9 | 6.8 | 15.2 |
 | edgeOf(BUTTON) against BG (3) | 3.2 | 3.5 | 3.2 | 3.1 | 3.1 | 3.0 | 3.1 | 3.3 | 3.2 | 3.1 | 3.2 | 3.8 | 4.0 | 4.3 | 6.5 |
-| edgeOf(SURFACE) against BG (as today: a flat piece is its fill and edge) (2.4) | 2.6 | 2.9 | 2.6 | 2.5 | 2.5 | 2.6 | 2.5 | 2.6 | 2.6 | 2.5 | 2.6 | 3.0 | 3.1 | 3.6 | 5.7 |
+| edgeOf(SURFACE) against BG (as today: a flat piece, the album art's edge) (2.4) | 2.6 | 2.9 | 2.6 | 2.5 | 2.5 | 2.6 | 2.5 | 2.6 | 2.6 | 2.5 | 2.6 | 3.0 | 3.1 | 3.6 | 5.7 |
 | Bar fill (ACCENT) against TRACK (3) | 11.6 | 8.9 | 9.4 | 7.7 | 6.4 | 8.3 | 8.5 | 10.2 | 9.2 | 8.2 | 10.9 | 5.4 | 5.2 | 4.9 | 10.9 |
 | KNOB against TRACK (3) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 10.8 | 12.2 | 14.2 |
 | TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 10.7 | 15.3 | 14.9 | 15.4 | 15.4 | 14.4 | 15.2 | 13.9 | 15.0 | 15.3 | 14.9 | 10.7 | 15.3 | 20.3 |
@@ -526,9 +527,9 @@ One pair is below 3 in the dark themes, as it is today: a flat piece's edge agai
 ### Fixed in every theme
 
 - The picture: video, photos, album art, covers, the manga cover placeholders' gradients, a comic's or a PDF's page, and the black around them on the top screen.
-- The visualizers' own colours, Pocket console's LCD greens among them.
+- The visualizers' own colours, Pocket console's LCD greens among them, and the ground each draws on: the whole screen in Visualizer only, the band along the foot in Art + visualizer. The styles are drawn for a black ground (Peaks' yellow bars on Light's paper would be 1.4 : 1), and most paint a whole scene, so the band is a picture strip, as the art is a picture.
 - Subtitles and their preview: the subtitle settings decide them.
-- Text laid straight on a picture with no card under it: the song's title, artist and album (#FFFFFF, #B4B4B4, with their shadow), drawn as subtitles are.
+- Text laid straight on a picture with no card under it: the song's title, artist and album over a visualizer alone (#FFFFFF, #B4B4B4, with their shadow), drawn as subtitles are. On the theme's ground (the other three modes) the same lines are TEXT, DIM_ON and DIM.
 - A book's page: Reading › Colours (`text-theme`: Dark, Light, Sepia, Black) and the Light sheet's filters. See below.
 - The QR code: black on white with its white quiet edge.
 - The screen-off warning's veil and a screen that is off: black, because they stand for the backlight going down.
@@ -538,8 +539,8 @@ One pair is below 3 in the dark themes, as it is today: a flat piece's edge agai
 
 Two cases, by what is under the drawing.
 
-- **Nothing plays** (the Preview pane, a setting's help, the idle logo): app UI. It takes the main tokens, so in a light-bodied theme the top screen is light.
-- **A picture, or its place** (a video, a photo, a song's art or visualizer, a page, and the State card that stands where the picture would be: Buffering, Can't play, Playing in your browser): the TOP_ tokens only. Level cards and Notes are always drawn with the TOP_ tokens, over a pane too, so there is one drawing of each.
+- **Nothing plays** (the Preview pane, a setting's help, the idle logo), **or a song in Album art only, Art + visualizer or None**: app UI. It takes the main tokens, so in a light-bodied theme the top screen is light. A song's ground is BG, flat: the same ground as the bottom screen, so the two panels read as one. Its title is TEXT, the artist DIM_ON, the album DIM; the art keeps a 2-unit `edgeOf(SURFACE)` edge, which shows on a light ground and a dark one. The art and the band of bars are pictures on that ground.
+- **A picture, or its place** (a video, a photo, a visualizer alone, a page, and the State card that stands where the picture would be: Buffering, Can't play, Playing in your browser): the TOP_ tokens only. Level cards and Notes are always drawn with the TOP_ tokens, over a pane too, so there is one drawing of each.
 
 The TOP_ tokens are dark in every theme. A light card over a film glares, hides more of the picture than it covers, and makes the film look darker. So a light-bodied theme takes a dark theme's cards (Light Yellow's, 16-bit Dark purple's, 32-bit Dark's); the dark themes tint theirs with their own accent.
 
@@ -595,7 +596,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Slider | `drawSlider`, `drawSlideKnob`, `drawSlideTag`, `slideGrab`, `Kit::progress` | TRACK; fill ACCENT; KNOB; chapter notches BG; the held tag ACCENT with ON_ACCENT; the two-way tick DIM |
 | Progress bar | `Kit::bar` | TRACK; fill ACCENT |
 | Volume bar | `drawLevel`, `drawQuick` | TRACK; TEXT to 100%, ACCENT to 120%, DANGER past it; the 100 mark DIM_ON; on the top card the TOP_ tokens |
-| Tile | `Kit::settingTile`, `Kit::key` (stack) | Flat SURFACE; TEXT name; DIM summary; focused: ACCENT edge, icon and name |
+| Tile | `Kit::settingTile`, `Kit::key` (stack) | Flat SURFACE; TEXT name; DIM summary; focused: ACCENT edge, icon and name; a choice tile in use: ACCENT fill with `edgeOf(ACCENT)`, ON_ACCENT mark and name |
 | Cover cell | `drawMangaCover` | the cover is a picture; count pill as Pill; progress as Progress bar; percent DIM; focused: ACCENT outline |
 | QR code | `ui_web.cpp` | fixed black on white; the address TEXT, the sentence DIM |
 | Recent card, Continue card | `drawHome` | Flat SURFACE; label DIM; TEXT title; DIM note; Progress bar; kind mark fixed (on a picture); the key primary |
@@ -605,7 +606,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Pan area, drag area | `ui_docs.cpp`, `drawPhoto` | pan area SCREEN, the box ACCENT; drag area Flat SURFACE, RULE dashes, DIM captions |
 | Level card, Note, State card | `levelcard.cpp`, the ASS cards in `player.cpp` | the TOP_ tokens (the table above) |
 | Preview pane | new | BG; brand tile ACCENT with ON_ACCENT, name ACCENT; label ACCENT; TEXT title; DIM_ON sentence; list DIM and TEXT; caps ACCENT |
-| Song layout | `Player::shownMusic` | fixed: the art, the visualizer, white text with its shadow; a missing cover's placeholder is a picture |
+| Song layout | `Player::shownMusic` | ground BG and the three lines TEXT, DIM_ON, DIM (Album art only, Art + visualizer, None); the art's edge `edgeOf(SURFACE)`; fixed: the art, a missing cover's placeholder, the visualizer with its own ground, and white text with its shadow over a visualizer alone |
 | Focus | `drawFocus` | ACCENT |
 | Away-from-normal mark | new | ACCENT; DANGER past a danger line |
 | Screen-off warning | new | veil fixed black 62%; a Notice row with an ACCENT edge |
