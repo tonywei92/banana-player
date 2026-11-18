@@ -338,7 +338,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Preview pane (new)
 
-- **Used:** every shell screen with nothing playing (about 40)
+- **Used:** every shell screen with nothing playing (about 40); and over whatever plays while Settings › Power & screens › Theme is focused (the picture is back when the cursor leaves the row)
 - **Anatomy and states:** Brand mark top left (22 tile + name 15). Then one of two layouts: text (a label in capitals Inter 600 11 yellow, a title Pixelify 28, a sentence Inter 14.5, a two-column list Inter 13.5, a key line) from 74 down, 44 from the sides; or cover (a 196 × 278 cover at 36, 66 with the same text column from 262). A picture only when one already exists.
 - **Inputs:** label, title, text, rows, hints, cover, picture
 - **Keys and touch:** None: it follows the cursor.
@@ -539,7 +539,7 @@ One pair is below 3 in the dark themes, as it is today: a flat piece's edge agai
 
 Two cases, by what is under the drawing.
 
-- **Nothing plays** (the Preview pane, a setting's help, the idle logo), **or a song in Album art only, Art + visualizer or None**: app UI. It takes the main tokens, so in a light-bodied theme the top screen is light. A song's ground is BG, flat: the same ground as the bottom screen, so the two panels read as one. Its title is TEXT, the artist DIM_ON, the album DIM; the art keeps a 2-unit `edgeOf(SURFACE)` edge, which shows on a light ground and a dark one. The art and the band of bars are pictures on that ground.
+- **Nothing plays** (the Preview pane, a setting's help, the idle logo), **or a song in Album art only, Art + visualizer or None**: app UI. It takes the main tokens, so in a light-bodied theme the top screen is light. A song's ground is BG, flat: the same ground as the bottom screen, so the two panels read as one. Its title is TEXT, the artist DIM_ON, the album DIM; the art keeps a 2-unit `edgeOf(SURFACE)` edge, which shows on a light ground and a dark one. The art and the band of bars are pictures on that ground. One more case is app UI whatever plays: the theme's preview, while Settings › Power & screens › Theme is focused (Where it is changed).
 - **A picture, or its place** (a video, a photo, a visualizer alone, a page, and the State card that stands where the picture would be: Buffering, Can't play, Playing in your browser): the TOP_ tokens only. Level cards and Notes are always drawn with the TOP_ tokens, over a pane too, so there is one drawing of each.
 
 The TOP_ tokens are dark in every theme. A light card over a film glares, hides more of the picture than it covers, and makes the film look darker. So a light-bodied theme takes a dark theme's cards (Light Yellow's, 16-bit Dark purple's, 32-bit Dark's); the dark themes tint theirs with their own accent.
@@ -554,6 +554,7 @@ The TOP_ tokens are dark in every theme. A light card over a film glares, hides 
 
 - **Settings › Power & screens › Theme**, the group's first row: a stepper, ‹ Yellow ›. Setting key `theme`, values `yellow`, `dark`, `midnight-blue`, `dark-purple`, `dark-red`, `pink`, `coffee`, `mint`, `retro-green`, `sunset`, `candy`, `16-bit`, `32-bit`, `light`, `high-contrast`; default `yellow`. One entry in `settingDefs()`.
 - **Help line** (top screen, while the row is focused): “The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.” Under it: a swatch of each theme in two rows, in the stepper's order (eight, then seven; 62 × 38 each, 8 apart, its name under it in Inter 10), with the chosen one outlined, and a key, a focused row, pills and a bar as they now look.
+- **The preview always shows.** While the Theme row is focused the top screen is the theme's preview pane, whatever plays: a video or a song goes on underneath and its sound goes on, and its picture is back the moment the cursor leaves the row or Settings closes. It is the one row whose help takes the top screen from a picture, because the pane is what the setting changes.
 - **It previews live.** LEFT / RIGHT apply the theme at once: nothing to open, nothing to confirm, B leaves it as it is. Both panels redraw on the step (the theme is part of `signature()`), a card showing on the top screen is drawn again, and dashboard pages follow on their next state update.
 - **The group's tile** names it first: “Yellow · screen off 30 s · the lid pauses”.
 - **Not in Quick settings (F).** Quick settings holds what is changed while something plays; a theme is chosen once.
