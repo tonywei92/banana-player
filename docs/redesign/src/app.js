@@ -56,7 +56,7 @@ const MAP=[
 ['SELECT again in the popup: the next Show mode','Display popup','Unchanged: SELECT in View › Display steps Show; B closes','same'],
 ['Visualizer style (20)','Display popup, the Style row under Show; Settings › Music','View › Display, the grid of twenty icon tiles under the four modes (one page, as the popup was); Settings › Music & sound › Visualizer. Kept and changeable when the mode has no visualizer: “not shown now”','chg'],
 ['Song info on top (the setting)','Settings › Music','Removed: the title, artist and album are always shown','chg'],
-['A song’s top screen: its ground','Black','The theme’s BG in Album art only, Art + visualizer and None, with the song’s text in the theme’s TEXT; black under a visualizer alone, and under the band of bars','chg'],
+['A song’s top screen: its ground','Black','The theme’s BG in Album art only, Art + visualizer and None, with the song’s text in the theme’s TEXT; in Art + visualizer the style is drawn straight over it (Peaks and Circle in the theme’s ACCENT and TEXT), with no black strip; a pixel-art style alone keeps its own picture','chg'],
 ['Visualizer frame rate (30 / 45 / 60)','Settings › Music','Settings › Music & sound','same'],
 ['Speed 0.5× to 2.5×','UP / DOWN, a key that shows it','View › Speed (SELECT, or the Speed chip); the chip shows it','mov'],
 ['Audio and subtitle lines (tap for Tracks)','Two lines under the keys','Subtitles and Audio chips','chg'],
