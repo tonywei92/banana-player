@@ -99,7 +99,7 @@ def pairs(k):
          ('DANGER on BUTTON', t['DG'], t['BT'], 4.5), ('DANGER on its 20% tint (a red pill)', t['DG'], t['DTS'], 4.5),
          ('Focus edge (ACCENT) against BG', t['AC'], t['BG'], 3), ('Focus edge against SURFACE', t['AC'], t['SF'], 3),
          ('edgeOf(BUTTON) against BG', t['ED'], t['BG'], 3), ('edgeOf(SURFACE) against BG (as today: a flat piece, the album art\'s edge)', t['ES'], t['BG'], 2.4),
-         ('Peaks and Circle: bars (ACCENT) against BG', t['AC'], t['BG'], 3), ('Bar fill (ACCENT) against TRACK', t['AC'], t['TR'], 3), ('KNOB against TRACK', t['KN'], t['TR'], 3),
+         ('Peaks and the six simple styles: marks (ACCENT) against BG', t['AC'], t['BG'], 3), ('Bar fill (ACCENT) against TRACK', t['AC'], t['TR'], 3), ('KNOB against TRACK', t['KN'], t['TR'], 3),
          ('TOP_TEXT on TOP_CARD', o['TX'], o['TC'], F), ('TOP_SUB on TOP_CARD', o['TS'], o['TC'], 4.5),
          ('TOP_TITLE on TOP_CARD', o['TT'], o['TC'], F), ('TOP_DANGER on TOP_CARD', o['TD'], o['TC'], 4.5),
          ('Reader page (Match theme): text on page', t['PG'][1], t['PG'][0], F)]

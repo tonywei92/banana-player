@@ -347,7 +347,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Song layout (exists, needs a variant)
 
 - **Used:** every song screen
-- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: a placeholder in the art’s place. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Peaks and Circle draw their bars in ACCENT and their caps in TEXT; the pixel-art styles and Pocket console keep their own colours. Visualizer only: Peaks and Circle on BG in the same colours, with the lines in TEXT, DIM_ON and DIM; a style that paints the whole screen is its own picture, the lines over it white with their shadow.
+- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: a placeholder in the art’s place. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Peaks and the six simple styles (Mirror bars, Wave, Dots, Levels, Area, Radial) draw their marks in ACCENT and TEXT; the pixel-art styles and Pocket console keep their own colours. Visualizer only: Peaks and the simple styles on BG in the same colours, with the lines in TEXT, DIM_ON and DIM; a style that paints the whole screen is its own picture, the lines over it white with their shadow.
 - **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four icon tiles on View › Display), the visualizer’s style (the twenty icon tiles under them), art or none, title, artist, album. Show and the style are two inputs, set on one page (View › Display) and in two rows of Settings › Music & sound (Music display, Visualizer), and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown now”, not dimmed.
 - **Keys and touch:** SELECT steps Show (on View › Display).
 - **Code:** The music graph and the title lines in player.cpp (Player::shownMusic). A change to today’s layout: the lines always drawn (the Song info on top setting and its `SettingDef` go), and a ground in BG under the art.
@@ -529,7 +529,7 @@ WCAG ratios, worked out by `themes.py` (it fails if a pair is under its floor). 
 | Focus edge against SURFACE (3) | 13.0 | 10.0 | 10.2 | 8.2 | 6.9 | 8.9 | 9.2 | 11.2 | 10.2 | 8.8 | 11.8 | 7.2 | 6.9 | 6.9 | 7.8 | 6.8 | 15.2 |
 | edgeOf(BUTTON) against BG (3) | 3.2 | 3.5 | 3.2 | 3.1 | 3.1 | 3.0 | 3.1 | 3.3 | 3.2 | 3.1 | 3.2 | 3.8 | 4.3 | 4.0 | 4.0 | 4.3 | 6.5 |
 | edgeOf(SURFACE) against BG (as today: a flat piece, the album art's edge) (2.4) | 2.6 | 2.9 | 2.6 | 2.5 | 2.5 | 2.6 | 2.5 | 2.6 | 2.6 | 2.5 | 2.6 | 3.0 | 3.9 | 3.1 | 3.0 | 3.6 | 5.7 |
-| Peaks and Circle: bars (ACCENT) against BG (3) | 14.5 | 11.0 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.7 | 5.9 | 7.1 | 6.3 | 16.1 |
+| Peaks and the six simple styles: marks (ACCENT) against BG (3) | 14.5 | 11.0 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.7 | 5.9 | 7.1 | 6.3 | 16.1 |
 | Bar fill (ACCENT) against TRACK (3) | 11.6 | 8.9 | 9.4 | 7.7 | 6.4 | 8.3 | 8.5 | 10.2 | 9.2 | 8.2 | 10.9 | 5.4 | 4.9 | 5.2 | 6.1 | 4.9 | 10.9 |
 | KNOB against TRACK (3) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 5.4 | 10.8 | 9.1 | 12.2 | 14.2 |
 | TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 10.7 | 15.3 | 14.9 | 15.4 | 15.4 | 14.4 | 15.2 | 13.9 | 15.0 | 15.3 | 14.9 | 14.9 | 10.7 | 15.4 | 15.3 | 20.3 |
@@ -543,7 +543,7 @@ One pair is below 3 in the dark themes, as it is today: a flat piece's edge agai
 ### Fixed in every theme
 
 - The picture: video, photos, album art, covers, the manga cover placeholders' gradients, a comic's or a PDF's page, and the black around them on the top screen.
-- The pixel-art visualizers' own colours, and Pocket console's LCD greens: the things they draw, and the whole picture when one is alone on the screen. Not their ground in Art + visualizer, which is BG, and not Peaks' and Circle's marks, which take ACCENT and TEXT (their own yellow on Light's paper would be 1.4 : 1).
+- The pixel-art visualizers' own colours, and Pocket console's LCD greens: the things they draw, and the whole picture when one is alone on the screen. Not their ground in Art + visualizer, which is BG, and not the marks of Peaks and the six simple styles (Mirror bars, Wave, Dots, Levels, Area, Radial), which take ACCENT and TEXT (their own yellow on Light's paper would be 1.4 : 1).
 - Subtitles and their preview: the subtitle settings decide them.
 - Text laid straight on a picture with no card under it: the song's title, artist and album over a visualizer that fills the screen (#FFFFFF, #B4B4B4, with their shadow), drawn as subtitles are. On the theme's ground the same lines are TEXT, DIM_ON and DIM.
 - A book's page: Reading › Colours (`text-theme`: Dark, Light, Sepia, Black) and the Light sheet's filters. See below.
@@ -559,11 +559,11 @@ Two cases, by what is under the drawing.
 
 | Style | Over BG in Art + visualizer | Alone (Visualizer only) |
 |---|---|---|
-| Peaks, Circle | Recoloured, always: bars ACCENT, caps TEXT (two constants in the graph, set when it is built; in Yellow they are today's yellow and cream) | The same, on BG; the song's lines TEXT, DIM_ON, DIM |
+| Peaks, Mirror bars, Wave, Dots, Levels, Area, Radial | Recoloured, always: bars ACCENT, caps TEXT (two constants in the graph, set when it is built; in Yellow they are today's yellow and cream) | The same, on BG; the song's lines TEXT, DIM_ON, DIM |
 | Pocket console | As it is: its LCD greens, the ground showing between its dots | As it is: its own screen |
-| The seventeen pixel-art styles (Night city, Banana dancer, Campfire, Aurora, Sound garden, Pixel sea, Bunny hop, Bubble tea, Jellyfish, Music box, Fishbowl, Vibing cat, Popcorn, Jelly wobble, Tube man, Long cat, Washing machine) | As they are: their own colours, drawn as over the art, BG where the art was | As they are: the whole picture; the song's lines white with their shadow |
+| The twelve pixel-art styles (Night city, Banana dancer, Campfire, Aurora, Pixel sea, Bunny hop, Fishbowl, Vibing cat, Popcorn, Jelly wobble, Tube man, Washing machine) | As they are: their own colours, drawn as over the art, BG where the art was | As they are: the whole picture; the song's lines white with their shadow |
 
-The graph changes in one place for a theme: the colour of its ground source is BG, and Peaks' and Circle's two mark colours are ACCENT and TEXT. No frame is converted or keyed. One more case is app UI whatever plays: the theme's preview, while Settings › Power & screens › Theme is focused (Where it is changed).
+The graph changes in one place for a theme: the colour of its ground source is BG, and the two mark colours of Peaks and the six simple styles are ACCENT and TEXT. No frame is converted or keyed. One more case is app UI whatever plays: the theme's preview, while Settings › Power & screens › Theme is focused (Where it is changed).
 - **A picture, or its place** (a video, a photo, a pixel-art visualizer alone, a page, and the State card that stands where the picture would be: Buffering, Can't play, Playing in your browser): the TOP_ tokens only. Level cards and Notes are always drawn with the TOP_ tokens, over a pane too, so there is one drawing of each.
 
 The TOP_ tokens are dark in every theme. A light card over a film glares, hides more of the picture than it covers, and makes the film look darker. So a light-bodied theme takes a dark theme's cards (Light Yellow's, Sakura Pink's, 16-bit's and 16-bit Lavender's Dark purple's, 32-bit Dark's); the dark themes tint theirs with their own accent.
@@ -631,7 +631,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Pan area, drag area | `ui_docs.cpp`, `drawPhoto` | pan area SCREEN, the box ACCENT; drag area Flat SURFACE, RULE dashes, DIM captions |
 | Level card, Note, State card | `levelcard.cpp`, the ASS cards in `player.cpp` | the TOP_ tokens (the table above) |
 | Preview pane | new | BG; brand tile ACCENT with ON_ACCENT, name ACCENT; label ACCENT; TEXT title; DIM_ON sentence; list DIM and TEXT; caps ACCENT |
-| Song layout | `Player::shownMusic` | ground BG and the three lines TEXT, DIM_ON, DIM (Album art only, Art + visualizer, None, and Peaks or Circle alone); the art's edge `edgeOf(SURFACE)`; Peaks' and Circle's bars ACCENT, their caps TEXT; fixed: the art, a missing cover's placeholder, the pixel-art styles' and Pocket console's colours, and white text with its shadow over a style that fills the screen |
+| Song layout | `Player::shownMusic` | ground BG and the three lines TEXT, DIM_ON, DIM (Album art only, Art + visualizer, None, and Peaks or a simple style alone); the art's edge `edgeOf(SURFACE)`; the marks of Peaks and the six simple styles ACCENT and TEXT; fixed: the art, a missing cover's placeholder, the pixel-art styles' and Pocket console's colours, and white text with its shadow over a style that fills the screen |
 | Focus | `drawFocus` | ACCENT |
 | Away-from-normal mark | new | ACCENT; DANGER past a danger line |
 | Screen-off warning | new | veil fixed black 62%; a Notice row with an ACCENT edge |
@@ -674,7 +674,7 @@ The same table. Each theme is one block of the variables below (`:root[data-them
 ### Not verified
 
 - No theme was tried on the handheld's panels or in sunlight. The ratios are worked out, not measured. The lowest accent pairs are the ones to look at first: 32-bit's and 16-bit's accent on their BUTTON (4.8 and 5.1), and Dark red's (5.6).
-- The pixel-art styles over a light ground were not looked at: each was drawn to sit over album art, so most carry their own dark outlines, but the ones made of light (Aurora's curtains, Jellyfish, Night city's lit windows, Campfire) are the ones to try first on Light, Sakura and the 16-bit themes.
+- The pixel-art styles over a light ground were not looked at: each was drawn to sit over album art, so most carry their own dark outlines, but the ones made of light (Aurora's curtains, Night city's lit windows, Campfire) are the ones to try first on Light, Sakura and the 16-bit themes.
 - 16-bit and 32-bit were checked by their ratios and by the swatches; neither was looked at on a whole screen.
 - `web/style.css` was read at its `:root` only.
 - OK's three values for the dashboard were not checked for contrast.

@@ -70,3 +70,54 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Home on a fresh install (the Empty state on Home, a welcome on the top screen with the app's icon), the state in between (Recent with a card or two, nothing to continue), and the first-start lid question as a Confirm sheet over it. Drawn: `home-first`, `first-lid`.
 - Search (new): L3 on every shell screen, the keyboard with live counts on the top screen, results grouped by kind, recent searches, nothing found, a card still being read; the dashboard's search box. Drawn: `search`, `search-results`.
 - Music by albums and artists (new): a rail section with Albums (a cover grid) and Artists (rows), an album's and an artist's page with Play and Shuffle, from the songs' tags; the dashboard's Music tab. Drawn: `music-albums`, `music-album`, `music-artists`. The index both read: components.md, Search and Music: the index.
+
+## Journeys (is every one clickable in the walk-through?)
+
+Checked from the code, not from pictures: `python3 journeys.py --journeys` runs `src/kit.js` + `src/screens.js`, takes every
+link (a key's target in `keys`, a `data-go` in the drawing, the `TAPS` and `ALSO` tables at the end of `screens.js`) and
+walks each journey below one click at a time. `--all` prints every screen's links and every key that leads nowhere.
+
+Before this pass: 121 screens and 594 links; 79 screens reached by nothing from Home or the fresh Home (the pills above
+the walk-through jumped into a few of them), 19 with no B or ‹ that led anywhere, 63 hint-bar keys missing from a `keys`
+list. After: 122 screens and 782 links; none unreachable from the first start or Home, none without a way back, no
+hint-bar key unlisted, no link to a screen that isn't there. 223 keys still lead nowhere: most act in place (seek, zoom,
+type); the ones that should open something not drawn are the gaps under the table.
+
+What changed to get there, none of it a redesign: targets on keys that had a screen to go to; touch targets on the rows,
+tiles and keys of sheets and pages (`TAPS`); states that follow by themselves, a card pulled or the engine coming up
+(`ALSO`, shown as “then” under the keys); `B` → Home on the section roots and L2 / R2 round the twelve settings groups;
+shared sheets (keyboard, Info, Add to playlist) go back to where they were opened from. The rail has Music on every shell
+screen, as the Music section's note already said (six cells, Network scrolled off unless open), and Network opens the
+connections list, not a folder. One screen was added: `files-playing`, Files with the mini bar after B on a video.
+
+| Journey | State | The walk; what is not drawn |
+|---|---|---|
+| First start | wired | Lid question → fresh Home → Files → a video → View → close → B (keeps playing) → Files with the mini bar → the player → Stop |
+| Play music | wired, one step partly | Music › Albums → album → Play → View › Display → Equalizer → presets. From Files: the folder drawn holds videos, so no song row to press. A song's List (Y) and More (X) are not drawn (the video's are) |
+| Playlists | partly | Playlists → a playlist plays; Add to playlist from the video player → the picker → New playlist… → keyboard. A playlist's inside exists only as “Gone items” (`gone`); select mode and reordering by the grip are not drawn; the picker is drawn over a video only |
+| Liked | partly | L3 → the Like note; Home › Shuffle Liked plays. Liked's own list is not drawn (a playlist's inside, above) |
+| Books | wired | Shelf → a book → Contents → back; Text → Book mode → the Book bar; a PDF; the empty shelf. A PDF's Pages grid and View sheet are not drawn |
+| Manga | wired | Shelf → series → reader → Fullscreen → Book → end of chapter → Get → Downloads; Browse → a source → a series; Sources → Repositories → add one; a server; the engine loading / ready / failed; the question while a video plays. Not drawn: the reader's View sheet (SELECT steps the three modes instead), Pages grid, History, selecting chapters, a source's filters |
+| Search | wired | L3 on Home, Files and Music → typing → results → a video, a song, an album, a book, a folder. A playlist result has no page to open. Playlists lists L3 as “Like what plays”: see the open question |
+| Network | wired | Connections → Find → the form → keyboard → Save → a folder → a video buffering; a book copied first, the copy failing; a read-only folder and its alert; no Wi-Fi. Not drawn: Network with no connection yet, a connection's More (Edit, Test, Delete) |
+| Web dashboard | wired on the handheld | Fresh Home (Y), Home › Send from phone, Quick settings or Settings → the page (QR, address, PIN) → a browser signs in → it plays there → Hold A / Play on… / the browser gone. The page's off and No Wi-Fi views are not drawn; the phone's own pages are not part of this preview |
+| Settings | wired | START → Menu → Settings → each of the twelve groups (L2 / R2 go round) → Theme, which steps the page's theme |
+| Quick settings | wired | F → Web dashboard, Incognito, Screen off now, Quit; Volume past 100% and the first time past 120% |
+| Incognito | wired | Quick settings → the question when a browser is signed in → on, the dashboard off → off again; Settings › Lid or sleep in incognito; the badge on the player and the mini bar (`video-states`, `states-browse`) |
+| Lid and sleep | wired | The first-start question; When the lid closes and the lid-shut keys in Settings; the bottom screen dimming → off → waking (“Paused: the handheld slept” is in that screen's strip) |
+| Files: select, copy, move, delete | wired | Y → select → Copy / Move → put it here → the job; Delete?; Rename… → keyboard; Info; Add folder to playlist → Working… |
+| Errors and empty states | wired | A file that won't play → Info; an empty folder; a card taken out; gone items; touch lock; the alert pattern |
+| Updates | partly | Settings › Updates → “0.7.19 is out” → Later. Downloading, “is ready, Restart now” and “The update didn't work” are not drawn |
+| Photos | partly | Files → a photo → back. Its View (Fit / Fill) and More are not drawn |
+| Quit | wired | B on Home, START › Menu, Quick settings → Quit? → Cancel |
+
+Gaps left, in the order worth drawing:
+
+1. A playlist's inside in its usual state, select mode and the grip (two screens). The only core journey that cannot be walked.
+2. The comic reader's View sheet (One screen / Fullscreen / Book and the reading modes): SELECT stands in for it by stepping the three.
+3. The update's later states (Downloading %, Restart now, didn't work): three small cards on `update`.
+4. More (X) where it is only listed in `keys`: a Home card, a playlist, a book on the shelf, the reader, a PDF, a photo, a song, the comic reader, a connection, select mode, a search result, an album and an artist. One pattern (`actions`); draw the reader's and a Home card's, leave the rest to the lists.
+5. Pages grid (PDF, comic) and the PDF's and photo's View: today's pages restyled; draw one.
+6. Small ones: Network with no connection, All recent, an artist's page (a small figure under `music-artists` only), Manga › History, the Web dashboard page off / No Wi-Fi.
+7. Open question: L3 on a browsing screen. The map says Search on every shell screen; `playlists` and `browser-mini` list it as “Like what plays”. Recommended: Search while browsing, Like on the player and in More.
+8. Shared sheets are drawn over one screen each (the picker and Info over a video, the keyboard over Files). Opened from elsewhere they show that screen behind them; B returns to where you were. Nothing to fix.

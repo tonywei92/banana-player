@@ -60,7 +60,7 @@ const MAP=[
 ['SELECT again in the popup: the next Show mode','Display popup','Unchanged: SELECT in View › Display steps Show; B closes','same'],
 ['Visualizer style (20)','Display popup, the Style row under Show; Settings › Music','View › Display, the grid of twenty icon tiles under the four modes (one page, as the popup was); Settings › Music & sound › Visualizer. Kept and changeable when the mode has no visualizer: “not shown now”','chg'],
 ['Song info on top (the setting)','Settings › Music','Removed: the title, artist and album are always shown','chg'],
-['A song’s top screen: its ground','Black','The theme’s BG in Album art only, Art + visualizer and None, with the song’s text in the theme’s TEXT; in Art + visualizer the style is drawn straight over it (Peaks and Circle in the theme’s ACCENT and TEXT), with no black strip; a pixel-art style alone keeps its own picture','chg'],
+['A song’s top screen: its ground','Black','The theme’s BG in Album art only, Art + visualizer and None, with the song’s text in the theme’s TEXT; in Art + visualizer the style is drawn straight over it (Peaks and the six simple styles, Mirror bars, Wave, Dots, Levels, Area and Radial, in the theme’s ACCENT and TEXT), with no black strip; a pixel-art style alone keeps its own picture','chg'],
 ['Visualizer frame rate (30 / 45 / 60)','Settings › Music','Settings › Music & sound','same'],
 ['Speed 0.5× to 2.5×','UP / DOWN, a key that shows it','View › Speed (SELECT, or the Speed chip); the chip shows it','mov'],
 ['Audio and subtitle lines (tap for Tracks)','Two lines under the keys','Subtitles and Audio chips','chg'],
@@ -201,10 +201,10 @@ let lastG='';
 SCREENS.forEach(s=>{
 	if(s.group!=lastG){lastG=s.group;nav.insertAdjacentHTML('beforeend',`<h4>${s.group}</h4>`)}
 	nav.insertAdjacentHTML('beforeend',`<a href="#s-${s.id}">${s.name}${s.isNew?'<small>NEW</small>':''}</a>`);
-	const goes=[...new Set(s.keys.filter(k=>k[2]&&k[2]!='<'&&BY[k[2]]).map(k=>k[2]))];
+	const goes=[...new Set(s.keys.map(k=>k[2]).concat(s.also.map(a=>a[1])).filter(g=>g&&g!='<'&&BY[g]))];
 	gal.insertAdjacentHTML('beforeend',`<article class="screen ${s.side?'wide':''}" id="s-${s.id}"><div class="device ${s.side?'side':''}" data-gal="${s.id}">${dev(s)}</div><div class="notes"><div class="eyebrow">${s.group}${s.isNew?' · <span class="tag new">NEW</span>':''}</div><h3>${s.name}</h3><p class="why">${s.why}</p>
 	<ul>${s.notes.map(n=>`<li><span class="tag ${n[0]}">${TAGN[n[0]]}</span> ${n[1]}</li>`).join('')}</ul>${s.extra?s.extra():''}
-	<div class="keys">${s.keys.map(k=>`${`<span>${kb(k[0])}</span>`}<span>${k[1]}</span>`).join('')}</div>
+	<div class="keys">${s.keys.map(k=>`${`<span>${kb(k[0])}</span>`}<span>${k[1]}</span>`).join('')}${s.also.map(a=>`<span><kbd>then</kbd></span><span>${a[0]}</span>`).join('')}</div>
 	<p class="goes"><a href="#proto" data-jump="${s.id}">Open in the walk-through</a>${goes.length?' · leads to '+goes.map(g=>`<a href="#s-${g}">${BY[g].name}</a>`).join(', '):''}</p></div></article>`);
 });
 
@@ -222,7 +222,7 @@ function show(id,push=true){
 	document.getElementById('protoName').textContent=s.name;
 	document.getElementById('protoGroup').textContent=s.group;
 	document.getElementById('protoWhy').textContent=s.why;
-	pad.innerHTML=s.keys.map((k,i)=>`<button data-k="${i}" ${k[2]?'':'disabled'}><kbd>${k[0]}</kbd><span>${k[1]}</span></button>`).join('');
+	pad.innerHTML=s.keys.map((k,i)=>`<button data-k="${i}" ${k[2]?'':'disabled'}><kbd>${k[0]}</kbd><span>${k[1]}</span></button>`).join('')+s.also.map(a=>`<button data-jump="${a[1]}"><kbd>then</kbd><span>${a[0]}</span></button>`).join('');
 }
 pad.addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(b){const k=BY[P_.cur].keys[+b.dataset.k];if(k[2])show(k[2])}});
 document.addEventListener('click',e=>{
