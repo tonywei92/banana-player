@@ -119,7 +119,7 @@ const MAP=[
 ['Subtitles; Music; Photos; Remember; Files; Controls & screen; Updates; Web dashboard','Groups','Same rows. Remember → Playback, Music → Music & sound, Files → Files & history, Controls & screen → Power & screens, with Max volume and Button hotkeys moved to Playback','same'],
 ['A setting’s explanation; the subtitle preview','Bottom screen','Top screen','mov'],
 ['Text and PDF viewer defaults','(only inside a book)','Settings › Reading','new'],
-['The app’s colours','One look: black, cream and yellow','Settings › Power & screens › Theme, sixteen: Yellow (the default, today’s look), Dark, Midnight blue, Dark purple, Dark red, Pink, Coffee, Mint, Retro green, Sunset, Candy, 16-bit, 32-bit, Sakura, Light, High contrast. Both screens and the Web dashboard; cards over a picture stay dark','new'],
+['The app’s colours','One look: black, cream and yellow','Settings › Power & screens › Theme, seventeen: Yellow (the default, today’s look), Dark, Midnight blue, Dark purple, Dark red, Pink, Coffee, Mint, Retro green, Sunset, Candy, 16-bit, 16-bit Lavender, 32-bit, Sakura, Light, High contrast. Both screens and the Web dashboard; cards over a picture stay dark','new'],
 ['A book’s page colours: Dark, Light, Sepia, Black','Text options','The same four, and Match theme first (the default): the page follows the app’s theme until you choose one','chg'],
 ['The bottom screen while reading','Stays on','Stays on; may dim to its lowest (Settings › Reading › Dim the controls while reading)','new'],
 ['About','START › About tab','Settings › About; START › About','mov'],

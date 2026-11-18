@@ -37,19 +37,22 @@ T = {
  'bit16': dict(name='16-bit', what='A classic console’s light grey and lavender, purple keys; light-bodied', BG='E4E3EA', SF='F4F3F8', BT='CFCDDC', PR='B8B5CC',
                TR='D6D4E0', RU='C6C4D3', TX='26242E', DM='5E5B6B', DO='4F4C5C', AC='55429C', OA='F4F3F8', DG='A81E2A', RA='DAD9E2', EM=55, PT=22,
                top='purple', page='light'),
+ 'bit16l': dict(name='16-bit Lavender', what='From a five-colour palette: light grey body, lavender keys, dark grey text, a deepened purple accent; light-bodied',
+                BG='C2C2C2', SF='D4D4D6', BT='B5AFE1', PR='9E97D0', TR='B4B3BB', RU='96939F', TX='3B3B3B', DM='4C4A52', DO='434149', AC='4E3375',
+                OA='E6E4F0', DG='8A1420', RA='B8B8BA', EM=80, PT=22, top='purple', page='light'),
  'bit32': dict(name='32-bit', what='A classic console’s cool greys, a deep blue accent; light-bodied', BG='DEDEE1', SF='EFEFF2', BT='C8C8CE', PR='B0B0B8',
                TR='D0D0D6', RU='C0C0C7', TX='1E1E22', DM='595960', DO='4B4B52', AC='1F4E9E', OA='EFEFF2', DG='961C24', RA='D3D3D8', EM=55, PT=22,
                top='dark', page='light'),
- 'sakura': dict(name='Sakura', what='Cherry-blossom pink paper, plum text, a deep rose accent; light-bodied; DANGER is burnt orange', BG='F9E9ED', SF='FFF6F8',
-                BT='EFD3DB', PR='E0BAC6', TR='EBD3DA', RU='E2C6CF', TX='2E1A26', DM='6E5560', DO='5E4651', AC='9E2B57', OA='FFF6F8', DG='8F4300',
-                RA='F2DCE2', EM=55, PT=22, top='pink', page='light'),
+ 'sakura': dict(name='Sakura', what='From a five-colour palette: peach and blush paper, pink keys, plum text, a deepened mauve accent; light-bodied; DANGER is burnt orange',
+                BG='FFE6E0', SF='FFF3EF', BT='E8B3CF', PR='C1839F', TR='FACFD8', RU='E8B3CF', TX='561F33', DM='8A5069', DO='6F3C55', AC='852A59',
+                OA='FFE6E0', DG='7A3800', RA='FACFD8', EM=55, PT=22, top='pink', page='light'),
  'light': dict(name='Light', what='Warm paper, dark ink, dark amber: for sunlight', BG='F7F4EC', SF='FFFDF8', BT='E6E0D2', PR='D0C9B8', TR='DED8C9', RU='D5CEBE', TX='1B1A20',
                DM='625E56', DO='55514A', AC='7A5200', OA='FFFDF8', DG='A3261D', RA='ECE7DB', EM=55, PT=22, top='yellow', page='light'),
  'contrast': dict(name='High contrast', what='Black, white, bright yellow; text at 7 : 1 or more', BG='000000', SF='0A0A0A', BT='1E1E1E', PR='3A3A3A', TR='2B2B2B', RU='5E5E5E', TX='FFFFFF',
                   DM='C6C6C6', DO='D8D8D8', AC='FFE14D', OA='000000', DG='FF8A80', EM=50, page='black'),
 }
 # the stepper's order: Yellow, the calm ones, the playful ones, then the two for hard light and weak sight
-ORDER = ['yellow', 'dark', 'blue', 'purple', 'darkred', 'pink', 'coffee', 'mint', 'green', 'sunset', 'candy', 'bit16', 'bit32', 'sakura', 'light', 'contrast']
+ORDER = ['yellow', 'dark', 'blue', 'purple', 'darkred', 'pink', 'coffee', 'mint', 'green', 'sunset', 'candy', 'bit16', 'bit16l', 'bit32', 'sakura', 'light', 'contrast']
 PAGES = {'dark': ('1B1A20', 'E8E2D3', '8F8A80'), 'light': ('F4F1E8', '222222', '6B675E'), 'black': ('000000', 'BBBBBB', '8A8A8A')}
 
 def rgb(h): return [int(h[i:i + 2], 16) for i in (0, 2, 4)]
