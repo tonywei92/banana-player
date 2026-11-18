@@ -1,6 +1,6 @@
 # Components of the handheld redesign
 
-Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 116 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
+Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 121 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
 Counts: 46 components: 10 reuse, 28 variant, 8 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
 
@@ -15,7 +15,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Header (exists, needs a variant)
 
 - **Used:** every bottom screen (96)
-- **Anatomy and states:** 54 tall, at the top. Back key 56 × 48 (radius 10) when there is somewhere to go back to; title Pixelify 25 (19 in the viewers, where it is a file name), one line, cut with “…”; crumb under it, Inter 12, dim; status cluster; More key 56 × 48 at the right edge. Touch area of both keys runs to the panel’s edges (60 × 56).
+- **Anatomy and states:** 54 tall, at the top. Back key 56 × 48 (radius 10) when there is somewhere to go back to; title Pixelify 25 (19 in the viewers, where it is a file name), one line, cut with “…”; crumb under it, Inter 12, dim; status cluster; More key 56 × 48 at the right edge. Touch area of both keys runs to the panel’s edges (60 × 56). On a shell screen the right slot may hold a Search key (48 × 48, a magnifier) left of the status cluster: the touch way into Search, which L3 opens by the keys.
 - **Inputs:** title, crumb, back target, more (yes / no), right slot (tabs’ keys, a badge)
 - **Keys and touch:** ‹ = B. ⋯ = X. Nothing else in it is pressed.
 - **Code:** drawHeader, drawSectionHeader, drawBackIcon (ui.h). Needs: the crumb line, the More key, room for badges.
@@ -32,7 +32,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 - **Used:** every shell screen (about 50)
 - **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 56, radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. L and R key caps above the first and under the last section; Settings pinned at the foot. A red 11-unit mark on a cell that would stop what plays.
-- **Inputs:** sections (icon, label, shown or not), the active one, a warning mark per cell
+- **Inputs:** sections (icon, label, shown or not), the active one, a warning mark per cell. The sections: Home, Files, Music, Playlists, Books, Manga (while the reader is on), Network. Six cells fit; with seven the rail scrolls so the active one is in view, L and R still stepping all of them
 - **Keys and touch:** L / R step the sections (wrapping); a tap opens one. The D-pad never enters it.
 - **Code:** New. Replaces the four markers drawn by drawSectionHeader and Home’s tiles (drawHome). Belongs to Ui’s shell, drawn for every page of an area that is a section.
 
@@ -99,7 +99,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### List row (exists, needs a variant)
 
 - **Used:** about 60 screens
-- **Anatomy and states:** 52 tall in a page, 46 in a sheet, 60 with two lines (a track: language on the first, name · flags · format on the second). Every line is one line, cut with “…” at its end; a file name is cut in its middle, keeping its ending. A right-to-left name is drawn right to left inside its run; the row never flips. Radius 10, padding 0 12, gap 11. Slots left to right: lead (icon 20, or a tick 22, a radio 14, a number, a dot 8), name Pixelify 17 (cut with “…”), pills, note Inter 12.5 dim, trail (chevron 14, switch, a small key 44 tall, a grip). Focused: BUTTON fill, 2-unit yellow edge, the name yellow. Dimmed (gone, unavailable, offline): 45%, the reason in the note. Danger: red ink.
+- **Anatomy and states:** 52 tall in a page, 46 in a sheet, 60 with two lines (a track: language on the first, name · flags · format on the second). Every line is one line, cut with “…” at its end; a file name is cut in its middle, keeping its ending. A right-to-left name is drawn right to left inside its run; the row never flips. Radius 10, padding 0 12, gap 11. Slots left to right: lead (icon 20, or a tick 22, a radio 14, a number, a dot 8), name Pixelify 17 (cut with “…”), pills, note Inter 12.5 dim, trail (chevron 14, switch, a small key 44 tall, a grip). Focused: BUTTON fill, 2-unit yellow edge, the name yellow. Dimmed (gone, unavailable, offline): 45%, the reason in the note. Danger: red ink. In Search’s results the part of the name that matched is ACCENT.
 - **Inputs:** lead, name, second line, pills, note, trail, focused, dimmed, danger
 - **Keys and touch:** UP / DOWN move, LEFT / RIGHT page, A acts, a tap acts on lift, a drag scrolls, a hold starts select mode (file lists).
 - **Code:** drawPlRow, drawUpRow, drawRowIcon, drawDialogRow, drawFocus (ui.h). Needs: one row function with the slots below instead of one per list.
@@ -212,7 +212,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Keyboard (exists, needs a variant)
 
-- **Used:** rename, names, search, addresses, passwords
+- **Used:** rename, names, Search (L3: the top screen lists what is found, by kind, as each letter is typed), addresses, passwords
 - **Anatomy and states:** A page, not a sheet. Field 48 tall under the header, yellow outline, Pixelify 17. Letter keys 58 × 52, radius 6, ten across, 5 apart, three rows. Bottom row 56 tall: layer keys, Space, ⌫, Done (yellow), each with its button; a field may add whole pieces (https://, .json).
 - **Inputs:** title, value, secret, max length, special keys
 - **Keys and touch:** D-pad moves, A types, X deletes, Y space, L3 capitals, START done, B cancels.
@@ -257,7 +257,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Cover cell (exists, reuse)
 
 - **Used:** Books, Manga library, a source’s grid
-- **Anatomy and states:** 96 × 136, radius 5, five to a row, 14 apart. A count pill top right (unread). Under it, when in progress: a 4-unit bar and a percent, Inter 12. Focused: a 3-unit yellow outline 2 away. Dimmed 45% while it can’t open.
+- **Anatomy and states:** 96 × 136, radius 5, five to a row, 14 apart. A count pill top right (unread). Under it, when in progress: a 4-unit bar and a percent, Inter 12. Focused: a 3-unit yellow outline 2 away. Dimmed 45% while it can’t open. An album is the same cell, square: 96 × 96 with the album’s name (Pixelify 13) and its artist (Inter 11.5 dim) under it, one line each; 120 on the top screen’s artist pane.
 - **Inputs:** image or drawn cover, title, author, badge, progress, dimmed
 - **Keys and touch:** D-pad moves, A opens, drag scrolls.
 - **Code:** drawMangaCover (real cover decoded in the background, a drawn one standing in). Books uses the same.
@@ -393,6 +393,19 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Inputs:** held share
 - **Keys and touch:** Hold the lock 1 s. Buttons still work.
 - **Code:** The lock state in ui_main.cpp:391 (“Hold the lock 1 s to unlock”).
+
+## Search and Music: the index
+
+Both features read one index of the cards. It is the constraint that shapes them: a card holds tens of thousands of files, the handheld has 1 GB of memory, and a card is slow to walk.
+
+- **What it holds**, one record a file the app plays or opens, and one a folder: the name (folded: no capitals, no accents), its folder, its kind, its size and date. For a song, from its tags: title, artist, album artist, album, disc and track number, year, and whether it carries a picture. About 150 bytes a record: 50,000 files are 8 MB on the card, in the state folder, one file a card (named by the card's id, so a card that comes back is known).
+- **How it is read.** A background worker walks the folders (never the main thread; it posts an event when a folder is done). Tags are read by a small reader of ID3, Vorbis comments and MP4 atoms: the first kilobytes of a file, never a decoder, never mpv. Covers are not in the index: a cover is made the first time it is shown, small (96 and 196 units), and kept in the state folder, 48 MB at most, oldest dropped first.
+- **When it refreshes.** At start, and when a card goes in: a folder whose date has not changed is skipped, so a second start reads almost nothing. At once, without a walk, after anything the app itself does: a copy, a move, a rename, a delete, an upload from the dashboard. Files › More › Refresh walks that folder. A card taken out: its records are set aside, not deleted.
+- **It yields.** The walk stops while a video plays or the Manga engine is up (the card and the memory are theirs), and goes on with music. It never keeps the handheld awake by itself.
+- **Searching it.** The index is mapped, not loaded: a search is one pass over the names (50,000 in well under a tenth of a second), run off the main thread, the newest text replacing the one before. No word index, no ranking beyond “starts with it” first.
+- **While it is not done.** Search answers from what has been read, with a notice row and a bar; Music lists what it has and says “Reading the card · 62%” in its crumb.
+- **Not in it.** Network servers (no index to ask; a walk over Wi-Fi takes minutes and the server may be off), hidden folders while they are hidden, and anything played in incognito is not added to Recent searches.
+- **The Web dashboard** asks the handheld: `/api/search?q=` and `/api/music/albums`, `/artists`, `/album`, `/artist`, through `WebServer::call`, paths through `resolveVirtual` and the deny list as every route. Its header has the search box on every page (results as you type, 200 ms after the last letter, the same groups and counts); Music is a tab beside Files and Playlists, with the Albums grid and the Artists list in its own boxes and type, in the handheld's theme.
 
 ## Themes
 

@@ -13,6 +13,8 @@ const MAP=[
 ['Home with nothing played yet','An empty Recent strip over the four tiles','An empty state: Nothing played yet, Browse Files (A), Web dashboard (Y); the top screen a welcome with three ways to start','chg'],
 ['The lid question at the first start: Pause / Keep playing','A centred box','A confirm sheet over the fresh Home, Pause first and on B; the top screen explains both; changed later in Settings › Power & screens','chg'],
 ['Each section opens where you left it','Sections','Unchanged','same'],
+['Finding something by its name','(none: walk to it)','Search: L3 on any list, or the header’s magnifier; results by kind from an index of both cards; a search box in the Web dashboard’s header','new'],
+['Music by album and artist','(none: folders and playlists only)','Rail › Music: Albums (covers) and Artists, from the songs’ tags; Play and Shuffle on each; a Music tab on the Web dashboard','new'],
 ['The mini bar; SELECT = Now playing; header’s three bars; Playing / Paused / In browser chips','Every page but the player','Unchanged','same'],
 ['Top screen with nothing playing','Logo and one line','A preview of what the cursor is on','new'],
 ['Files, Network and playlists'],
