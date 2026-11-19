@@ -472,6 +472,13 @@ namespace bp
 		SDL_Color ground = row.pressed ? PRESSED : row.focused ? BUTTON : row.under;
 		SDL_Color ink = off(row.danger ? DANGER : row.focused || row.lit ? ACCENT : TEXT, row.off);
 		int cy = r.y + r.h / 2, x = r.x + 12, right = r.x + r.w - 12;
+		if (row.mark)
+		{
+			// the extension's picture in its 44 box, the row's left; the name and its line start after it
+			Rect m{r.x + 12, cy - 22, 44, 44};
+			row.mark(m);
+			x = m.x + m.w + 12;
+		}
 		if (row.tick)
 		{
 			// a select mode's box, in the place before the row's own lead
@@ -545,8 +552,11 @@ namespace bp
 		else if (noteW) right -= noteW + 9;
 		if (!row.pill.empty()) right -= pill(right, cy, row.pill, row.tone) + 9;
 		// the focused row's name: the Title marquee, one pass (the cursor rested 1.5 s first: its rest)
-		if (row.focused && !row.off) ui.drawMarquee(row.name, row.font, ink, x, cy, std::max(1, right - x), BUTTON, 1);
-		else ui.drawTextMid(row.name, row.font, ink, x, cy, std::max(1, right - x));
+		int nameY = row.second.empty() ? cy : cy - 8;
+		if (row.focused && !row.off) ui.drawMarquee(row.name, row.font, ink, x, nameY, std::max(1, right - x), BUTTON, 1);
+		else ui.drawTextMid(row.name, row.font, ink, x, nameY, std::max(1, right - x));
+		if (!row.second.empty())
+			ui.drawTextMid(row.second, F_I12, off(row.focused ? DIM_ON : DIM, row.off), x, cy + 9, std::max(1, right - x));
 	}
 
 	// ---- the Settings page's pieces ----

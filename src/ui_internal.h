@@ -112,14 +112,14 @@ namespace bp
 		"Files & history",
 		"Power & screens",
 		"Web dashboard",
+		"Extensions",
 		"Updates",
 		"About",
 	};
 	inline const char* RECENT = "\x01recent";
 	inline const char* HOMEDIR = "\x01home";	// Home: the Recent strip and the sections' tiles
-	inline const char* EXTDIR = "\x01" "ext";	// the Extensions section: the extensions' drawer
-	inline const char* SECTION_NAMES[] = {"Files", "Playlists", "Network", "Extensions"};
-	inline const Ui::Glyph* const SECTION_GLYPHS[] = {&G_CARD, &G_PLAYLIST, &G_NETWORK, &G_BLOCKS};
+	inline const char* SECTION_NAMES[] = {"Files", "Playlists", "Network"};
+	inline const Ui::Glyph* const SECTION_GLYPHS[] = {&G_CARD, &G_PLAYLIST, &G_NETWORK};
 	inline const char* NETROOT = "\x01net";	// the Network tab's first page: the saved connections
 	inline const char* FORMDIR = "\x01form";	// a connection's form (Add connection, Edit)
 	inline const char* FINDNET = "\x01find";	// the servers found on the network
@@ -132,12 +132,12 @@ namespace bp
 	// FINDNET don't start with \x01 (the escape takes their "f" as a hex digit)
 	inline bool pseudoDir(const std::string& d)
 	{
-		return d == RECENT || d == HOMEDIR || d == EXTDIR || d == NETROOT || d == FORMDIR || d == FINDNET || d == PLROOT || isPlDir(d);
+		return d == RECENT || d == HOMEDIR || d == NETROOT || d == FORMDIR || d == FINDNET || d == PLROOT || isPlDir(d);
 	}
-	// a section's first page (Ui::BrowseTab: Files, Playlists, Network, Extensions)
+	// a section's first page (Ui::BrowseTab: Files, Playlists, Network)
 	inline std::string sectionTop(int tab)
 	{
-		return tab == 1 ? PLROOT : tab == 2 ? NETROOT : tab == 3 ? EXTDIR : "";
+		return tab == 1 ? PLROOT : tab == 2 ? NETROOT : "";
 	}
 	// the browser's rows' ids: 1 a folder, 2 a file, 3 Clear play history, 4 a connection, 6 Try again, -1 a message;
 	// a playlist (Playlists' first page), a playlist's item

@@ -1,4 +1,4 @@
-// The browser (Page::Browse): Home, Files, Playlists, Network, All recent and the Extensions drawer, the pages that
+// The browser (Page::Browse): Home, Files, Playlists, Network, All recent, the pages that
 // are folders of one list (browseDir). An area of Ui (Ui::Area, ui.h; docs/notes/ui-areas.md): its keys, its late
 // touches, the list's state (the folder, its rows and paths, the section, the network listing), Files' own operations
 // (the clip, Rename, the network folders' actions) and the Network tab's form are here and in ui_browse.cpp,

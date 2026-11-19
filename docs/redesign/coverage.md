@@ -36,7 +36,7 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Lock: "Hold the lock 1 s to unlock" state (ui_main.cpp:391,681). Map: "Lock (hold to unlock) Unchanged".
 - Lid close / sleep / wake (FEATURES.md:1261), Screen off timers, F + L2 screenshot, Loading spinner: one map row "Unchanged".
 - Battery: charging bolt, red low state, percent (FEATURES.md:1250). Preview shows percent on Quick settings only in a note.
-- Extensions drawer "No extensions are on" and the first-time sheet ("Open Manga / Done"); Manage extensions switch. Map: "Manage extensions (On/Off, first-time sheet) -> Settings › Extensions".
+- Extensions drawer "No extensions are on" and the first-time sheet ("Open Manga / Done"); Manage extensions switch. Map: "Manage extensions (On/Off, first-time sheet) -> Settings › Extensions". Drawn since (2026-11-19): the drawer as the rail's Extensions section (`ext-section`, `ext-section-video`, `ext-section-empty`).
 - Manga series page (Resume, Download, Refresh, Info, heart, chapters list), Sources, Filters, Search. Limits card.
 - Manga Downloads tab (queue, pause / cancel all / retry; FEATURES.md:810) and Manga settings page. Map rows only.
 - Read-only folder (lock + "Read only", Move / Rename / Delete dimmed with a reason; FEATURES.md:372). One note mentions it.
@@ -97,7 +97,8 @@ connections list, not a folder. One screen was added: `files-playing`, Files wit
 | Playlists | wired | Playlists → a playlist’s items → play from one; Y → select mode → Move → put down → Done; Add to… → the picker; a playlist with gone items; Add to playlist from the video player → New playlist… → keyboard. A playlist’s and an item’s More are lists in `keys` |
 | Liked | wired | L3 → the Like note; Home › Shuffle Liked plays; Playlists → Liked → plays; its select mode; Liked with nothing in it |
 | Books | wired | Shelf → a book → Contents → back; Text → Book mode → the Book bar; More; a PDF → Pages → View → More; the empty shelf |
-| Manga | wired | Shelf → History → continue; series → reader → View → Fullscreen → View → Book → end of chapter → Get → Downloads; the reader’s More; Browse → a source → a series; Sources → Repositories → add one; a server; the engine loading / ready / failed; the question while a video plays. A comic’s Pages is the PDF’s sheet. Not drawn: selecting chapters, a source’s filters |
+| Manga | wired | Rail › Extensions → Manga reader → shelf → History → continue; series → reader → View → Fullscreen → View → Book → end of chapter → Get → Downloads; the reader’s More; Browse → a source → a series; Sources → Repositories → add one; a server; the engine loading / ready / failed; the question while a video plays (from Manga’s row on the Extensions page, never from the rail). A comic’s Pages is the PDF’s sheet. Not drawn: selecting chapters, a source’s filters |
+| Extensions | wired | Rail › Extensions → Manage extensions → Manga settings; → Manga reader → B back to the list → Home; with none on (Empty state) → Manage extensions; from START’s menu while a video plays: the page with “Stops the video” on Manga’s row |
 | Search | wired | L3 on Home, Files, Music and Playlists → typing → results → a video, a song, an album, a book, a folder. A playlist result opens the playlist’s page |
 | Network | wired | Connections → Find → the form → keyboard → Save → a folder → a video buffering; a book copied first, the copy failing; a read-only folder and its alert; no Wi-Fi; no connection yet (Empty state). A connection’s More (Edit, Test, Delete) is a list in `keys` |
 | Web dashboard | wired, both sides | Fresh Home (Y), Home › Send from phone, Quick settings or Settings → the page (QR, address, PIN) → a browser signs in → the phone’s Home → Files → a song → Now playing → Plays on: Handheld; or it plays there → Hold A / Play on… / the browser gone. The page off and with No Wi-Fi. The phone’s Music, Playlists and Books tabs are not drawn (Music’s two pages are minis under Music: Albums) |
@@ -114,7 +115,8 @@ connections list, not a folder. One screen was added: `files-playing`, Files wit
 
 The second pass (2026-11-19, backlog.md) drew the gaps the first one listed: 154 screens and 1,039 links, none unreachable, none without a way back,
 no hint-bar key unlisted, 23 journeys walked. A phone’s page is a screen with a third drawing (`phone`), shown beside the handheld’s two panels
-(what the handheld shows meanwhile); its taps are in `keys`, which is what `journeys.py` walks. What is still only listed, not drawn:
+(what the handheld shows meanwhile); its taps are in `keys`, which is what `journeys.py` walks. Extensions as the rail's section (the same day, the owner's request) makes it
+157 screens, 1,082 links and 24 journeys, with the same clean result. What is still only listed, not drawn:
 
 1. More (X) on a playlist and its items, Liked, a song in Files, an album, an artist, a search result, a connection, select mode and a book on the shelf: lists in `keys` (one pattern, `moreS()`; the table on “A playlist: its items” has the playlist ones).
 2. Manga: selecting chapters, a source’s filters.

@@ -1,11 +1,11 @@
-// Extensions and the manga reader: an area of Ui (Ui::Area, ui.h; docs/notes/ui-areas.md). Manage extensions
-// (Page::Extensions), Home's Extensions drawer (a folder of Browse's: Browse draws it, keys it and hands it its touches
-// through the methods below), and the Manga pages: the app's four tabs (Page::Manga, with a source's and a server's
+// Extensions and the manga reader: an area of Ui (Ui::Area, ui.h; docs/notes/ui-areas.md). The Extensions section's
+// page (Page::ExtSection: a row per extension that is on, then Manage extensions), Manage extensions
+// (Page::Extensions), and the Manga pages: the app's four tabs (Page::Manga, with a source's and a server's
 // grids as its views), a series (Page::MangaSeries), the reader's bottom panel (Page::MangaRead, on PageReader:
 // ui_reader.h), the Sources page and the reader's own settings. Its state and handlers are here and in ui_ext.cpp and
 // ui_manga*.cpp: a feature inside them touches these files, not ui.h. Included by those files, by main.cpp (the
 // workers' answers, the network side, the page cache) and the dashboard's routes (src/web/api_manga.cpp), and by the
-// few files of Ui that ask the area something (Home's drawer and tile, the keyboard's fields, Settings, Files' moves).
+// few files of Ui that ask the area something (Settings' Extensions group, the keyboard's fields, Files' moves).
 #pragma once
 #include "ui.h"
 #include "javaext.h"
@@ -28,8 +28,8 @@
 
 namespace bp
 {
-	// One area, not one per page: Manage extensions, the drawer and the app share the extension's switch, its sheet
-	// and their touch ids (extSheet, extCursor, extPressed); the app's tabs, a source's and a server's pages, the
+	// One area, not one per page: the Extensions page, Manage extensions and the app share the extension's switch,
+	// its sheet and their touch ids (extSheet, extPageCursor, extPressed); the app's tabs, a source's and a server's pages, the
 	// Downloads tab and the Download sheet share the store, the worker's jobs, the covers and the finger (a source's
 	// page is a view of Page::Manga, not a page of its own). It is cut where that state is shared.
 	struct Ui::Manga : Ui::Area
@@ -39,18 +39,18 @@ namespace bp
 		// ---- the area (Ui's press, pointer, tick, renderPage and signature come here while one of its pages shows) ----
 		bool has(Page pg) const override
 		{
-			return pg == Page::Extensions || pg == Page::Manga || pg == Page::MangaSeries || pg == Page::MangaRead ||
-				pg == Page::MangaSettings || pg == Page::MangaSources;
+			return pg == Page::ExtSection || pg == Page::Extensions || pg == Page::Manga || pg == Page::MangaSeries ||
+				pg == Page::MangaRead || pg == Page::MangaSettings || pg == Page::MangaSources;
 		}
 		bool key(Button b, Player& p) override;
-		// its moves and lifts where the readers' are taken; its downs (but the reader's) after the header's "<" and
-		// the empty page's button (pointerDownLate)
+		// its moves and lifts where the readers' are taken; its downs (but the reader's and the Extensions page's,
+		// which is a shell page) after the header's "<" and the empty page's button (pointerDownLate)
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override;
-		bool pointerDownLate() const override { return ui.page != Page::MangaRead; }
+		bool pointerDownLate() const override { return ui.page != Page::MangaRead && ui.page != Page::ExtSection; }
 		void tick(Player& p) override;
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
-		// the drawer's and Manage extensions' part of the signature (Ui adds it for the drawer, a Browse folder)
+		// the Extensions page's and Manage extensions' part of the signature
 		std::string extSignature() const;
 
 		// ---- for main, the dashboard and the page reader ----
@@ -125,36 +125,47 @@ namespace bp
 			int textAt = -1;			// the text filter the keyboard is editing
 		};
 		// ---- extensions (ui_ext.cpp) ----
-		// Home's Extensions drawer (browseDir EXTDIR), Manage extensions (Page::Extensions) and the manga reader's
-		// page (Page::Manga): the extension that is on, its switch, and the first-time note about repositories over
-		// Manage extensions
+		// The Extensions section's page (Page::ExtSection, docs/redesign: ext-section, ext-section-video,
+		// ext-section-empty), Manage extensions (Page::Extensions) and the manga reader's page (Page::Manga): a row per
+		// extension that is on, its switch, and the first-time note about repositories over Manage extensions
 		bool extSheet = false;	// the note, over Manage extensions
-		int extSheetCursor = 0, extCursor = 0, extPressed = -1;	// the sheet's two buttons, the drawer's tile, the touch's button
-		void openExtensions();		// START in the drawer (and its button, with none on)
+		int extSheetCursor = 0, extPressed = -1;	// the sheet's two buttons; the touch's button
+		void openExtensions(bool fromSettings = false);	// the Extensions page's Manage extensions row, Settings › Extensions
+		bool extFromSettings = false;					// Manage extensions was opened from Settings: B goes back there
 		void openManga(Player& p);	// the app: its store loaded and the card scanned (ui_manga.cpp)
-		void openExtensionsDrawer(Player& p);	// B in either page: back to the drawer (the Browse page on it)
+		// the rail's Extensions section: its list, or Manga again where it was left unless a video plays; the list
+		// alone for B on Manga (openExtList). Adopts the page into the shell's body (drawn on the kit, not bridged)
+		void openExtensionsSection(Player& p);
+		void openExtList(Player& p);
+		void sectionLeft(Page from);	// where the section is being left: Manga, or its list
+		void enterManga(Player& p);	// its page where it was left, else openManga
+		void extMangaRow(Player& p);	// A or a tap on the Manga row: the guard first while a video plays
+		void extStopVideo(Player&);	// "Stop video & open Manga": Stop's place kept, then Manga
 		void extToggleManga(Player& p);	// A on the row or the chip: on / off (the first time, the sheet)
 		void extSheetChoose(int i, Player& p);	// Open Manga, Done
-		bool extDrawerKey(Button b, Player& p);
+		bool extSectionKey(Button b, Player& p);
 		bool extKey(Button b, Player& p);
 		bool extPointer(const Pointer& pt, int x, int y, Player& p);
 		bool extAct(int id, Player& p);
 		void openExtSettings();	// X or the gear: the manga reader's own settings page (Page::MangaSettings)
-		void drawExtensionsDrawer(const Player& p);	// (the section header is already drawn)
+		void drawExtSection(const Player& p);
 		void drawExtensions(const Player& p);
 		void drawManga(const Player& p);
 		void drawExtSheet(const Player& p);
 		// the touch ids: apart from the grid's, the buttons' and the pages'
-		static constexpr int EXT_TILE = 560, EXT_MANAGE = 561, EXT_ROW = 562, EXT_CHIP = 563, EXT_GEAR = 564, EXT_OPEN = 565,
-			EXT_DONE = 566;
-		Rect extTileRect(int i) const { return {16 + i * 200, 88, 188, 150}; }	// (one to a row: several fit)
-		Rect extManageRect() const { return {190, 304, 260, 48}; }
+		static constexpr int EXT_ROW = 562, EXT_MANAGE_ROW = 567, EXT_EMPTY_KEY = 568, EXT_CHIP = 563, EXT_GEAR = 564,
+			EXT_OPEN = 565, EXT_DONE = 566;
 		Rect extRowRect() const { return {16, 88, 608, 70}; }
 		Rect extChipRect() const { return {548, 104, 64, 36}; }
 		Rect extGearRect() const { return {536, 104, 76, 36}; }
 		Rect extSheetBox() const { return {60, 90, 520, 300}; }
 		Rect extSheetBtn(int i) const { return {i ? 328 : 92, 310, 220, 50}; }
-		static constexpr int EXT_DRAWER_TILES = 1;	// (what's on: the manga reader, so far)
+		// the Extensions page (Page::ExtSection): its cursor over the rows (the extensions on, then Manage extensions),
+		// a finger's row, and where the section goes back to. Its Rects are lay::extPage's and lay::emptyState's.
+		int extPageCursor = 0, extPagePressed = -1;
+		Page extReturn = Page::ExtSection;	// the section's page when it is left: Manga, or its list
+		bool mangaReady = false;			// the Manga page has been opened once: entering it again keeps its tab and cursor
+		bool guardStoppedVideo = false;		// the guard's stop: the five-second "Video stopped" note is left out
 
 		// ---- the manga reader (ui_manga.cpp) ----
 		// Page::Manga's four tabs (Library, History, Browse, Downloads), each its own cursor and scroll;

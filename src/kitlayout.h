@@ -529,5 +529,28 @@ namespace bp
 		constexpr int FILE_INFO_ROW = 26;
 		Box fileInfoRow(Box body, int i);
 		int fileInfoShown(Box body);
+
+		// ---- Extensions, the rail's section (docs/redesign/src/screens.js: ext-section, ext-section-video,
+		// ext-section-empty) ----
+		// One row per extension that is on (64 tall: its 44 mark, its name, a line under it, a pill and a chevron),
+		// then a 1-unit rule and Manage extensions (52). `body` is a shell's body; the page's side margin is 8, as the
+		// mock-up's rows run the full width of the page. With none on the page is an empty state instead
+		// (lay::emptyState(body, 2, 1): "No extensions are on" and its one key).
+		constexpr int EXT_ROW_H = 64, EXT_ROW_GAP = 8, EXT_MANAGE_H = 52, EXT_PAGE_PAD = 8, EXT_RULE_GAP = 10;
+		struct ExtPage
+		{
+			Box area;				// the page's content column
+			std::vector<Box> row;	// the extensions on, top down
+			Box rule, manage;		// the rule under the last row, and Manage extensions under it
+		};
+		ExtPage extPage(Box body, int extensions);
+		// the page with none on (docs/redesign: ext-section-empty): the Extensions mark, "No extensions are on", two
+		// lines, and one key 240 wide ("Manage extensions", its cap); centred in the body
+		constexpr int EXT_EMPTY_KEY_W = 240;
+		struct ExtEmpty
+		{
+			Box icon, title, lines, key;
+		};
+		ExtEmpty extEmpty(Box body);
 	}
 }

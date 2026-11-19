@@ -6,12 +6,13 @@ Step 1 of the redesign's section screens: one frame every section page draws in,
 
 ## What it draws, and where
 
-- **Section rail** (`lay::shell().rail`, `lay::Rail`, `Ui::KitNew::rail`): Home, Files, Playlists, Manga (only while
-  `settings.mangaOn`), Network, then Settings pinned at the foot. Music is a later step and is hidden; **Books has no
-  page in the app yet** (books are EPUB/PDF/TXT files opened from Files), so it is hidden too. With both hidden, six
-  cells fit and the rail never scrolls. L / R step the sections and wrap, Settings included (L from Home is Settings,
-  R from Settings is Home, as `screens.js` has it); a tap opens one; the D-pad never enters the rail. Manga's cell
-  carries the red 11-unit warn mark while a video plays (Manga cannot share the memory with it).
+- **Section rail** (`lay::shell().rail`, `lay::Rail`, `Ui::KitNew::rail`): Home, Files, Playlists, Extensions, Network,
+  then Settings pinned at the foot. Music is a later step and is hidden; **Books has no page in the app yet** (books are
+  EPUB/PDF/TXT files opened from Files), so it is hidden too. With both hidden, six cells fit and the rail never
+  scrolls. L / R step the sections and wrap, Settings included (L from Home is Settings, R from Settings is Home, as
+  `screens.js` has it); a tap opens one; the D-pad never enters the rail. (The rail's cell was Manga, only while its
+  reader was on, with a red mark while a video played; since 2026-11-19 it is Extensions, always, and no cell carries
+  a warning: docs/notes/2026-11-19-extensions-rail.md.)
 - **Header** (`lay::shell().header`): the back key when `Ui::backIconShown` says there is somewhere to go, the title
   (24) and crumb (12.5) beside it, the status cluster drawn with `Kit::status` (clock, battery and its bolt, the
   playing bars, the incognito and Web badges), the More key (X's menu) and the 48 x 48 Search key left of the status

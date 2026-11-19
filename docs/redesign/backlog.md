@@ -23,6 +23,10 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
 9. **Done. The phone's dashboard pages:** `phone-home`, `phone-files`, `phone-playing`, each drawn at a phone's width
    beside what the handheld shows meanwhile.
 10. **Done. Photos:** `photo-view`, `photo-more`.
+11. **Done. Extensions as the rail's section** (the owner's request, below): `ext-section` (a row for each extension
+    that is on, then Manage extensions), `ext-section-video` (the same while a video plays: “Stops the video” on
+    Manga's row), `ext-section-empty` (none on). Redrawn for it: `manga` (a page inside Extensions, with ‹ and B back to
+    the list), `manga-guard` (asked from Manga's row), `menu` (an Extensions tile), `extensions` (Manage extensions).
 
 ## Decided (owner, 2026-11-19)
 
@@ -43,9 +47,21 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   visualizer, with the art and its lines centred; Rocket's stars fill the panel while the rocket stays in the band.
   The Display grid is 5 × 3; the spec's lists, glyphs and colour rules follow.
 
+- **Manga leaves the rail; the rail's cell is Extensions** (the owner: “I don't want people to accidentally tap Manga
+  and stop the video”). Manga reader is a row of the Extensions page, with Manage extensions under it. Opening the
+  page starts and stops nothing; only A on Manga's row can stop a video. This takes back “an extension that is on
+  gets its own rail slot”. The rule: components.md › Arriving stops nothing.
+- **Extensions, as drawn (owner, 2026-11-19, all six):** opening Manga while a video plays asks (`manga-guard`, Stay
+  focused and on B; a song or a photo is never asked about), with “Don't ask again” offered; the cell is always in the
+  rail, its page the Empty state when nothing is on (`ext-section-empty`); coming back returns to Manga where you left
+  it, except while a video plays (then the list); the cell sits in Manga's old place, between Books and Network; Home
+  keeps nothing of the drawer.
+
 ## Decisions waiting on the owner
 
 Each was needed to draw a gap; the drawn one is the recommendation.
+
+From the gaps:
 
 - **The brand mark's stripes:** ACCENT on BG (drawn: the strongest pair in every theme, crisp at 22), or ACCENT and
   TEXT as in the icon (purple and white there; in most themes two colours of the same lightness, so the bar goes flat).

@@ -65,13 +65,14 @@ Open Banana Player and the bottom screen shows **Home**:
 Move with the D-pad: **UP/DOWN** between Continue, the cards and the shortcuts, **LEFT/RIGHT** along them. **B**
 asks to quit: **Quit Banana Player?** with **Quit** and **Cancel**, **Cancel** first; **B** or a tap outside cancels.
 While something plays it asks too, and says **What's playing stops** (**SELECT** still goes to what plays).
-**START** opens the places (**Files**, **Playlists**, **Manga**, **Network**, **Settings**, **About**, Quick settings
+**START** opens the places (**Files**, **Playlists**, **Extensions**, **Network**, **Settings**, **About**, Quick settings
 and Quit); the section rail takes them over in the full redesign.
 
-Every section now shares one frame: a **rail** down the left with **Home**, **Files**, **Playlists**, **Network**
-(and **Manga** while the Manga reader is on), and **Settings** pinned at the foot. **L/R** step the sections and wrap,
-or tap one; the D-pad stays in the page. Manga's cell shows a red mark while a video plays, since the two cannot share
-the memory. The header carries the back key, the section's title and where you are, the status marks, **X** (More) and
+Every section now shares one frame: a **rail** down the left with **Home**, **Files**, **Playlists**, **Extensions**,
+**Network**, and **Settings** pinned at the foot. **L/R** step the sections and wrap,
+or tap one; the D-pad stays in the page. Arriving at a section starts and stops nothing, and no cell carries a warning:
+**Extensions** is one section for every extension that is on, and the Manga reader is a row of its page. The header
+carries the back key, the section's title and where you are, the status marks, **X** (More) and
 a Search key; **L3** and that key say Search is coming in a later step. The bar along the foot says what the buttons do
 there.
 
@@ -347,7 +348,7 @@ See [Photos](#photos) for the touch screen.
 | **B** or **Back** | Up one folder; at a section's top, back to Home. An empty folder's page offers **Go up** on **A** and **Send files** on **Y** |
 | **UP / DOWN** | Move |
 | **LEFT / RIGHT** | Page up / down |
-| **L / R** | Previous / next section: Files, Playlists, Network, Extensions |
+| **L / R** | Previous / next section: Home, Files, Playlists, Extensions, Network, Settings |
 | **X** (or **⋯** in the header) | **More**: the focused file on the left (**Play from the start** / **Open**, **Add to playlist…**, **Like** / **Unlike**, **Go to album** / **Go to artist** for a song, **Info**, **Copy…**, **Move…**, **Rename…**, **Delete**), and the folder it is in on the right (**Select files**, **Play all N**, **Shuffle play**, **Add folder to playlist…**, **Refresh**, **Hide folder**, **Show hidden folders**). In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: Home's options |
 | **Hold** (touch screen) | On a file in Files or Network: starts selecting, with that file ticked |
 | **Y** | In Files: select mode (**A** tick, **SELECT** all / none, the bar for Playlist / Copy / Move / Delete, **X** More). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
@@ -1046,31 +1047,48 @@ Not yet: network folders in the browser, a grid of photo thumbnails, and saving 
 
 ## Extensions
 
-Home's fourth tile, **Extensions**, opens the drawer: the extensions that are on, as tiles. Nothing is on at first: the
-drawer says so, and **START** (or its **Manage extensions** button) opens **Manage extensions**, which lists each
-extension with what it does and an **On/Off** switch (**A**). **X** (or the gear) opens the extension's own settings
-page: for the reader, **Manga settings**, a page of the Manga app's (not one of Banana Player's Settings). Turning one
-off hides it and stops it; nothing is deleted.
+**Extensions** is the rail's section for everything that adds to Banana Player: its page lists the extensions that are
+on, and under a rule **Manage extensions**, which lists each extension with what it does and an **On/Off** switch
+(**A**). **X** (or the gear) opens the extension's own settings page: for the reader, **Manga settings**, a page of the
+Manga app's (not one of Banana Player's Settings). Turning one off hides it and stops it; nothing is deleted. Settings
+has an **Extensions** group tile that opens the same Manage extensions page, and **B** returns to the door it came
+through.
 
 - **Manga reader**: comics and manga from the files on your cards, from your servers (Komga, Kavita, OPDS), and from
   sources you install from repositories. The first time it's turned on, a sheet says where to find it and that
   repositories are added by you: Banana Player doesn't provide or check their content.
 
-### The drawer and Manage extensions
+### The Extensions page
 
-- With the reader on, the drawer shows **1 on** and a tile for it: **Manga reader**, *Comics and manga*. **A** opens
-  it. With none on, the drawer says **No extensions are on** and explains that an extension adds to Banana Player and
-  that nothing of it shows or runs until you turn it on.
+- A row for each extension that is on: the **Manga reader**'s mark, its name, a line of what is in it (the series
+  read so far and downloads, once the reader has been opened) and a chevron; then a rule and **Manage extensions**.
+  **A** (or a tap) opens the row; **UP/DOWN** move; **B** goes Home; **L/R** step the sections; **L3** is Search, as
+  everywhere in the shell. Arriving on the page, by a tap on the rail, **L/R** or **START**'s menu, starts and stops
+  nothing: a video keeps playing, with the mini bar.
+- While a **video** plays (or is paused) the Manga row wears a red **Stops the video** pill, and **A** on it asks
+  first: **Stop the video to open Manga?** with **Stay** (focused, and **B**) and **Stop video & open Manga**. The
+  video's place is kept, as Stop keeps it, and Home's Continue card reads **Stopped for Manga**. **Y** (or a tap on the
+  line) ticks **Don't ask again**, which stops the video at once from then on; it is the Manga settings' **Manga and a
+  video** setting. A song or a photo is never asked about: it goes on under the reader with the mini bar.
+- With none on, the page is its Empty state: **No extensions are on**, what an extension is, and one key, **Manage
+  extensions** (**A**).
+- Coming back to the page lands on Manga where you left it (its tab and place are kept) when the reader is on; **B**
+  on Manga's pages comes back to this list. Manage extensions is reached from here and from Settings › Extensions.
+
+### Manage extensions
+
 - **Manage extensions** lists the reader with its mark, what it does and an **On/Off** switch. **A** turns it on or off;
   **X** (or the gear) opens **Manga settings**, the reader's own settings page.
 - The first time the reader is turned on, a sheet comes over **Manage extensions**: it says the reader reads from your
   files and servers, and from sources in repositories you add, and that repositories are added by you: Banana Player
   doesn't provide or check their content. **Open Manga** opens the reader, **Done** closes the sheet.
+- Home keeps no Extensions tile or drawer: the page is the drawer, promoted to a section.
 
 ### The Manga reader
 
 The reader is an app of its own. It opens on **Library** and has four tabs, stepped with **L/R**: **Library**,
-**History**, **Browse** and **Downloads**. **B** goes back — out of Browse's list of series first, then to the drawer.
+**History**, **Browse** and **Downloads**. **B** goes back — out of Browse's list of series first, then to the
+**Extensions** page (it was Home before).
 **START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page too); **B** there
 comes back where you were. Music keeps playing while you read: the pages take the top screen, and the mini bar is on the
 app's pages, the reading page included (**SELECT** there goes to what plays: a video shows on the top screen again, and
@@ -1178,7 +1196,7 @@ while **Adult sources** is Hidden), **A** installs one, and **Installed** lists 
 reports a newer one and **Uninstall** (asked twice). A Java source appears in **Browse** as one row per source and
 language — same Popular / Latest / Search grid, covers, filters sheet, series page and reading page as a Lua source.
 Its series and reading progress are kept under `java:<source id>` with the Suwayomi manga id, so the Library and
-History open them again through the host. While the extensions start, a notice at the top of every page counts the seconds (then *Extensions ready*). No video plays in the manga reader or while the extensions run (the handheld's memory can't hold both): entering the reader, or the extensions starting, stops a video as Stop would, with a notice; music and photos go on. The runtime is started as Manga is entered and kept running while any Manga page is open (a chapter read from the card included, so its 25 s start isn't paid again on the way back to a source); it stops five minutes after Manga is left, at once when a video plays outside Manga, and when Banana Player quits; the
+History open them again through the host. While the extensions start, a notice at the top of every page counts the seconds (then *Extensions ready*). No video plays in the manga reader or while the extensions run (the handheld's memory can't hold both): the Extensions page's Manga row asks first while a video plays (**Stops the video**, then **Stay** / **Stop video & open Manga**), and any other way in stops a video as Stop would, with a notice; music and photos go on. The runtime is started as Manga is entered and kept running while any Manga page is open (a chapter read from the card included, so its 25 s start isn't paid again on the way back to a source); it stops five minutes after Manga is left, at once when a video plays outside Manga, and when Banana Player quits; the
 hosted pages are read from `127.0.0.1` through the same page cache as any other chapter.
 
 - **Repositories**: each one you've added, with when it was last checked (or *Not checked yet*). **A** on one offers
@@ -1309,7 +1327,7 @@ the grid, **B** or **Y** closes it; on the touch screen, tap a thumbnail to jump
 ### Manga settings
 
 The reader's own settings are a page of their own, **Manga settings**, inside the Manga app: they are not in Banana
-Player's Settings, which has no Extensions group. **START** opens them on any Manga page (the four tabs, the Sources
+Player's Settings (whose **Extensions** group opens Manage extensions). **START** opens them on any Manga page (the four tabs, the Sources
 page and a series page), the gear (**X**) in **Manage extensions** opens them too, and the Reading menu's last row opens
 them while you read. **B** goes back where you came from.
 
