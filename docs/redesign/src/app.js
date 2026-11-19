@@ -268,6 +268,15 @@ document.querySelectorAll('section[id],header[id],article[id]').forEach(el=>io.o
 
 // ?sheet: only the devices, in a grid (for looking over every screen at once)
 if(/[?&]sheet/.test(location.search)){const n=+((location.search.match(/cols=(\d+)/)||[])[1]||3);document.body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(${n},1fr);gap:14px;padding:14px">${SCREENS.map(s=>`<div class="device ${s.side?'side':''}" style="max-width:none">${dev(s)}</div>`).join('')}</div>`;fit()}
+// ?audit: every screen measured (for a spacing audit; read it with headless Chrome's --dump-dom): what runs past its box, and
+// what a finger presses that is under 44 units in both its own height and the row it sits in
+if(/[?&]audit/.test(location.search)){document.body.innerHTML=`<div style="width:660px">${SCREENS.map(s=>`<div class="device" data-id="${s.id}" style="max-width:none">${dev(s)}</div>`).join('')}</div><pre id="audit"></pre>`;fit();
+	const out=[];document.querySelectorAll('.device').forEach(d=>{const id=d.dataset.id;
+		d.querySelectorAll('.body,.hints,.rail,.hd,.sheet,.mini').forEach(e=>{const k=e.className.split(' ')[0];
+			if(e.scrollHeight>e.clientHeight+1)out.push(`${id}\tover-y\t${k}\t${e.scrollHeight-e.clientHeight}`);
+			if(e.scrollWidth>e.clientWidth+1)out.push(`${id}\tover-x\t${k}\t${e.scrollWidth-e.clientWidth}`)});
+		d.querySelectorAll('.btn,.chip,.tab,.ri,[data-go]').forEach(e=>{const h=e.offsetHeight,w=e.offsetWidth;if(h&&(h<44||w<44))out.push(`${id}\tsmall\t${e.className.split(' ').slice(0,2).join('.')}\t${w}x${h}\t${(e.textContent||'').trim().slice(0,24)}`)})});
+	document.getElementById('audit').textContent=out.join('\n')}
 // ?comps: only the components' examples (for looking them over)
 if(/[?&]comps/.test(location.search)){const l=document.getElementById('complist');document.body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px;align-items:start">${[...l.querySelectorAll('.comp')].map(c=>`<div><div style="font:600 12px Inter;color:#aaa;margin:2px">${c.querySelector('h3').textContent}</div>${c.querySelector('.panel').outerHTML}</div>`).join('')}</div>`;fit()}
 // ?only=id: one screen's card alone (for looking it over)

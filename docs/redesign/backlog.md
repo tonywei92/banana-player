@@ -97,35 +97,27 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   video player as one item of the album's list; not listed in Videos. `music-album`.
 - **Videos get Music's folder rule** (owner): the folder named Videos at the top of each card, the main one and the
   second, any capitals, all of them if a card has several. Drawn as a rail section: `videos`, `videos-empty`,
-  `videos-reading`. The choices this needed are below.
+  `videos-reading`.
+- **Videos is a rail section** (owner), between Files and Music, with the views All / Folders / Not finished.
+- **Seven rail cells, all in sight** (owner): 47 tall with seven sections, 56 with six or fewer; the rail never
+  scrolls.
+- **`/data/roms/videos` counts too** (owner): BananaOS's own videos folder on the main card is read with the rest.
+- **Videos' folder names are “Videos” and “Movies”** (owner), any capitals, every such folder on a card.
+- **The Web dashboard's tabs follow the rail** (owner): Home, Files, Videos, Music, Books. Playlists is Music's
+  third view there too; Videos is the new tab. Drawn under `videos` (the Videos tab, Music › Playlists) and on the
+  phone pages' tab row. Extensions, Network and Settings stay on the handheld.
+
+- **Music's folders** (owner, 2026-11-19): “Music” and “Musics”, any capitals, every such folder at the top of each
+  card, plus `/data/roms/music` when BananaOS has one; all merged, as Videos' are.
 
 ## Decisions waiting on the owner
 
 Each was needed to draw a gap; the drawn one is the recommendation.
 
-From the owner's Videos, Music and Playlists decisions (2026-11-19):
-
-- **Videos is a rail section** (drawn: Home, Files, Videos, Music, Books, Extensions, Network), with three views, All
-  / Folders / Not finished. A folder that is read by itself needs a place that shows what was read, and Music has
-  one. Or: no section, and the Videos folders only feed Home's Recent and a shortcut row at the top of Files (less to
-  build, but then the rule changes nothing you can see).
-- **Seven sections, all in sight** (drawn): with seven the rail's cells are 47 tall instead of 56, so the rail never
-  scrolls. Or: keep 56 and scroll the seventh out of view, as before Playlists left (a section you cannot see).
-- **“SD1:/videos and SD1/videos”** is read as both cards: the main card and the second (drawn). The build today
-  lists `/data/roms/videos` as its Videos root; recommended: that folder counts too, as BananaOS's own videos folder,
-  or today's users lose their list on updating.
-- **Which names count as Videos:** “Videos” alone, in any capitals (drawn, as the owner wrote it). Or “Video” and
-  “Movies” too. Music's twin choice (“Music” or “Musics”) is still waiting below; whichever way it goes, both should
-  go the same way.
-- **The dashboard's tabs** still read Home, Files, Music, Playlists, Books (drawn, unchanged): recommended to follow
-  the handheld later (Playlists into Music, a Videos tab), in its own pass.
-
 From the gaps:
 
 - **The brand mark's stripes:** ACCENT on BG (drawn: the strongest pair in every theme, crisp at 22), or ACCENT and
   TEXT as in the icon (purple and white there; in most themes two colours of the same lightness, so the bar goes flat).
-- **Which folder names count as Music:** “Music” or “Musics”, any capitals, all of them if a card has several (drawn),
-  or “Music” alone in any capitals (stricter, one thing to explain).
 - **Tags outside Music:** read only for songs in the Music folders, so a song elsewhere is found by its file's name
   (drawn: less reading, one rule), or read for every song so Search finds any song by its title tag.
 - **Y in a playlist's select mode is Move** (drawn: today's key, and the playlist's own job), or Y does nothing there
@@ -134,8 +126,50 @@ From the gaps:
 - **An update that is ready while something plays:** the Restart question waits for a pause or the file's end, with a
   Note meanwhile (drawn), or asks at once.
 
+## Spacing audit (2026-11-19)
+
+The scale and the rules are in components.md › Spacing. Found, worst first, and what was done in the spec:
+
+1. **No scale.** Fourteen different gaps (3 to 18) across the kit and the screens. Now 2 / 4 / 6 / 8 / 12 / 16 / 24; the
+   kit's own values are fixed (a key's icon gap 7 → 8, a row's 11 → 12, hints 15 → 16 apart, a tab's padding 13 → 12).
+2. **Chips under 44.** Every view and filter chip was 40 tall (Home's Recent, Music, Videos, Books, Search, Manga).
+   Now 44, and their row 44.
+3. **Three gutters.** The header's More key ended 10 from the edge, the body 12, sheets 14, the player 16. Now the
+   shell is 12 everywhere and sheets match the player's 16.
+4. **The header sat on the body** (2 apart: Home's card touched the header's keys). Now 6.
+5. **The mini bar** had 4 above it and 6 under it. Now 8 and 8.
+6. **Home's blocks** were 10 / 8 / 10 apart. Now 12 before the Recent heading, 8 after it, and the shortcuts 8
+   under the strip.
+7. **The player's rows** were 8, 10 and 8 apart, with 2 over the hint bar. Now 8, 8, 8 and 4.
+8. **Search's kind chips** ran 32 past the column with six kinds. Their padding is 8 there; the rule: a chip row that
+   does not fit at 12 uses 8, and past that scrolls with the cursor.
+9. **Playlists' rows** were drawn 42 tall to fit over the mini bar. They are 46.
+10. **Drawn under 44, pressed larger** (kept, and now written down): the rail's Search key (68 × 40), the mini bar's
+    mark (56 × 42), the player's line (40).
+
+Not changed, only noted: inline one-off gaps inside individual drawings (a 5 or a 9 between a label and its value)
+are still in `src/screens.js`; they follow the scale as each screen is next touched. `preview.html?audit` lists what
+overflows its box and what is under 44 (read it with headless Chrome's `--dump-dom`).
+
+For the builders (the build's screenshots of 2026-11-19 against this):
+
+- `lay::shell`: the body starts 6 under the header (it is 2: “12 from its sides, 2 under the header”); with the mini
+  bar the body ends 8 above it. `MINI_FOOT` 36 → 38.
+- Filter and view chips 44 tall (Home's Recent filters draw about 38).
+- Home (`ui_home`): the card to the Recent filters is about 22 and the filters to the strip about 14; they are 12 and
+  8. The strip is followed by the shortcuts row 8 under it; with the mini bar gone from Home there is room.
+- The header: the status cluster's items and the Search / More keys are 8 apart; in Settings the “L2 About ·
+  Subtitles R2” pair runs into the clock (no gap): 8 before the clock, or drop the neighbours' names when they don't
+  fit. `lay::statusRow` already takes a gap of 8.
+- The player (`lay::playerLayout`): `keys`, `chip` and `next` 8 apart and `next` 4 over the hints (the Next line
+  sits about 2 from the hint bar); the title to the bar has about 45 of air where the line (40) belongs.
+- Quick settings and Quit are still the old centred dialogs with their own hint style (“UP/DOWN Choose”): they are
+  bottom sheets, gutter 16, rows 46, the kit's hint bar.
+- The rail: Search's key at the top (touch 78 × 48), cells `RAIL_CELL_H` 56, or 47 with seven sections;
+  `RAIL_CAP_H` is only the START cap now.
+
 ## Still only listed
 
 More (X) on a playlist and its items, Liked, a song in Files, an album, an artist, a search result, a connection,
 select mode and a book on the shelf (lists in `keys`); Manga's chapter selection and a source's filters; the phone's
-Music, Playlists and Books tabs as phone pages.
+Videos, Music (with Playlists) and Books tabs as phone pages.
