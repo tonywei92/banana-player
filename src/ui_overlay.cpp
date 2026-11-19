@@ -435,7 +435,7 @@ namespace bp
 		{
 			// the cursor, the volume, a button under a finger and the web row's half aren't settings; nor are the
 			// screens' levels (the keys change them too), which the backlight holds. The Now playing block's state,
-			// its art, its title and its place are (its progress line moves with the seconds)
+			// its art (arriving: the serial), its title and its place are (its progress line moves with the seconds)
 			const Player& bp = ui.barPlayer(p);
 			bool live = ui.nowPlayable(bp);
 			char now[320];
@@ -444,7 +444,8 @@ namespace bp
 				live ? bp.artPlaceholderKey().c_str() : "", live ? bp.title.c_str() : "");
 			return std::to_string(ui.quickCursor) + " " + std::to_string(ui.volumePct) + " " + std::to_string(ui.pressedBtn) +
 				" " + std::to_string(ui.backlight.permille(Backlight::TOP)) + "," + std::to_string(ui.backlight.permille(Backlight::BOTTOM)) +
-				" " + std::to_string(ui.quickSub) + now + (live && !bp.paused ? std::to_string(SDL_GetTicks() / 166) : "");
+				" " + std::to_string(ui.quickSub) + " " + std::to_string(ui.artSerial) + now +
+				(live && !bp.paused ? std::to_string(SDL_GetTicks() / 166) : "");
 		}
 	};
 

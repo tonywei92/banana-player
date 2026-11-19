@@ -10,6 +10,7 @@
 #include "volume.h"
 #include "slider.h"
 #include "kitlayout.h"
+#include "coverworker.h"
 #include "netstore.h"
 #include "networker.h"
 #include <SDL.h>
@@ -25,6 +26,7 @@
 #include <memory>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace bp
 {
@@ -206,6 +208,9 @@ namespace bp
 		// its answers (main forwards its event): into the rows' notes
 		DurationWorker* durWorker = nullptr;
 		void durationsReady(Player& p);
+		// a song's album art arrived (the cover worker's "home:" answers, forwarded by main): into the shared
+		// texture cache (Home's cards, the rail's Now playing key, Quick settings' block), on this thread
+		void songCoversReady(std::vector<CoverWorker::Result> results);
 		// the on-screen keyboard is up: its caret blinks (the loop wakes often enough to draw it)
 		bool typing() const { return kbOpen; }
 		// Find on the network: discovery runs here, its hosts sent to hostFound (on the main thread: main forwards them)
@@ -906,10 +911,31 @@ namespace bp
 		bool sameBrightness = true;	// the setting's, kept here for settingRows (no Player there)
 		Volume volume;
 		int volumePct = -1;	// as read when the quick settings opened, then as set there
+		// ---- a song's album art, decoded by the one cover worker ----
+		// Shared by Home's cards, the rail's Now playing key and Quick settings' Now playing block (it was
+		// Home's own, 2026-11-19-home-art.md; one cache, not a copy each). A texture is one picture decoded
+		// at one box's device pixels and rounded at upload, so its key holds the box too: the Continue
+		// card's 128 x 84 crop is not the block's 48 square. A handful at most, the least recently drawn
+		// freed. A path with no art (or an unreadable one) stays in artFailed: its placeholder is the
+		// answer, and it is never asked again.
+		struct ArtTex { SDL_Texture* tex = nullptr; uint64_t drawnAt = 0; };
+		std::unordered_map<std::string, ArtTex> artTex;
+		std::unordered_map<std::string, std::string> artPath;	// key -> path (a failure is the path's)
+		std::unordered_map<std::string, int> artRad;		// key -> the radius the crop was cut for
+		std::unordered_set<std::string> artAsked, artFailed;
+		uint64_t artDrawn = 0;	// the LRU's order
+		int artSerial = 0;	// what signature()s follow: a cover arrived, the page draws it now
+		static constexpr size_t ART_KEEP = 12;
+		// the placeholder, then the decoded art over it when it has arrived (the edge and the rounded corners
+		// stay the placeholder's); asks the worker once per key, never decodes here
+		void drawSongArt(const std::string& path, const std::string& key, Rect r, int rad);
+		// what plays in an art's box, as Home's cards have it: a song's art (its placeholder while it decodes,
+		// or for good when it has none), a video's kind mark, a music mark when nothing plays
+		void drawNowArt(const Player& bp, Rect r, int rad);
 		// ---- Quick settings (F): a panel centred on the whole bottom screen, over the rail ----
 		int quickCursor = 0;	// a row's index; -1: the Now playing block above Volume (the cursor opens on Volume)
 		enum QuickRow { Q_VOLUME, Q_BRIGHT, Q_BOTTOM, Q_SAME, Q_WEB, Q_INCOGNITO, Q_QUIT };
-		int quickSub = 0;	// Web dashboard's row: 0 its switch, 1 New PIN (LEFT/RIGHT)
+		int quickSub = 0;	// Web dashboard's tile: 0 its switch, 1 its own key to the page (LEFT/RIGHT)
 		// the Now playing block's pieces under a finger (pressedBtn): the card (opens the player), its three keys
 		static constexpr int QUICK_NOW_CARD = 290, QUICK_NOW_PREV = 291, QUICK_NOW_PLAY = 292, QUICK_NOW_NEXT = 293;
 		Uint32 quickHoldAt = 0;	// a finger on the block's Play: held, it takes playback over from a browser
@@ -924,44 +950,11 @@ namespace bp
 		void quickNowKey(int what, Player& p);	// its three touch keys
 		void quickStep(int dir, Player& p);	// L / R: previous / next, from any row
 		void drawQuick(const Player& p);
-		void drawQuickNow(const Player& p);
-		// the panel: 592 wide (24 from the sides), padding 16, the title's 48, the Now playing block's 64 and the
-		// rows; as tall as it needs, centred above the hint bar
-		static constexpr int QUICK_W = 592, QUICK_PAD = 16, QUICK_TITLE_H = 48, QUICK_NOW_H = 64, QUICK_GAP = 8;
-		int quickStep() const
-		{
-			// the rows share what the title and the block leave: roomy (52) while they fit, closer as rows come
-			int n = std::max(1, (int)quickRows().size());
-			int room = 436 - 2 * QUICK_PAD - QUICK_TITLE_H - 2 * QUICK_GAP - QUICK_NOW_H;
-			return std::min(52, std::max(24, room / n));
-		}
-		// centred on the whole panel, over the shell's rail too (the owner, 2026-11-19): a modal under its veil
-		Rect quickPanel() const
-		{
-			int h = 2 * QUICK_PAD + QUICK_TITLE_H + 2 * QUICK_GAP + QUICK_NOW_H + (int)quickRows().size() * quickStep();
-			return {24, std::max(0, (436 - h) / 2), QUICK_W, h};
-		}
-		// the Now playing block: a card above Volume; art 48, the title and its line, Prev / Play / Next at its right
-		Rect quickNowRect() const
-		{
-			Rect p = quickPanel();
-			return {p.x + QUICK_PAD, p.y + QUICK_PAD + QUICK_TITLE_H + QUICK_GAP, p.w - 2 * QUICK_PAD, QUICK_NOW_H};
-		}
-		Rect quickNowArt() const { Rect r = quickNowRect(); return {r.x + 8, r.y + 8, 48, 48}; }
-		Rect quickNowPrev() const { Rect r = quickNowRect(); return {r.x + r.w - 8 - 52 - 8 - 68 - 8 - 52, r.y + 8, 52, 48}; }
-		Rect quickNowPlay() const { Rect r = quickNowRect(); return {r.x + r.w - 8 - 52 - 8 - 68, r.y + 8, 68, 48}; }
-		Rect quickNowNext() const { Rect r = quickNowRect(); return {r.x + r.w - 8 - 52, r.y + 8, 52, 48}; }
-		Rect quickRowRect(int i) const
-		{
-			Rect p = quickPanel();
-			return {p.x + QUICK_PAD, quickNowRect().y + QUICK_NOW_H + QUICK_GAP + i * quickStep(), p.w - 2 * QUICK_PAD,
-				std::min(52, quickStep() - 2)};
-		}
-		// the stepper's pieces are laid from the row's right edge, so the panel's width changes nothing they need
-		Rect quickPinBtn(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 164, r.y + (r.h - std::min(48, r.h)) / 2, 160, std::min(48, r.h)}; }
-		Rect quickMinus(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 292, r.y + (r.h - std::min(48, r.h)) / 2, 48, std::min(48, r.h)}; }
-		Rect quickBar(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 232, r.y + r.h / 2 - 10, 164, 20}; }
-		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 56, r.y + (r.h - std::min(48, r.h)) / 2, 48, std::min(48, r.h)}; }
+		void drawQuickNow(const Player& p, const lay::QuickPanel& q);
+		// the panel's boxes (kitlayout's QuickPanel: one place for the drawing and the touches, tested in
+		// core_test.cpp): the level rows, the switch tiles (the Web tile's own key while the dashboard is
+		// on) and Quit, from what quickRows() holds
+		lay::QuickPanel quickLayout(const Player& p) const;
 		void setBrightness(Backlight::Panel panel, int permille, Player& p);
 		// (7 rows end at 386: the help's two lines at 400 stay clear of them; a longer group scrolls)
 		static constexpr int SET_Y = 92, SET_H = 46, SET_SHOWN = lay::SET_ROWS, HELP_Y = 400;

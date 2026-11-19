@@ -959,5 +959,64 @@ namespace bp
 			e.key = {cx - EXT_EMPTY_KEY_W / 2, y, EXT_EMPTY_KEY_W, FORM_KEY_H};
 			return e;
 		}
+
+		// ---- Quick settings (F) ----
+
+		QuickPanel quickPanel(int levels, int tiles, int webTile, bool webKey)
+		{
+			QuickPanel q;
+			int tileRows = (tiles + 1) / 2;
+			// apart from the level rows' own heights: the padding, the title, the block, the tiles and Quit,
+			// and one gap between each two sections (the block and Quit are always there, so sections + 2)
+			int sections = (levels ? 1 : 0) + (tiles ? 1 : 0);
+			int rest = 2 * QUICK_PAD + QUICK_TITLE_H + QUICK_NOW_H + QUICK_QUIT_H +
+				tileRows * QUICK_TILE_H + (tileRows > 1 ? (tileRows - 1) * QUICK_TILE_GAP : 0) +
+				(sections + 2) * QUICK_GAP;
+			// the level rows share the height that is left: 52 while they fit, less when they don't
+			q.rowH = levels ? std::clamp((PANEL_H - HINTS_H - rest - (levels - 1) * QUICK_GAP) / levels,
+				QUICK_MIN_ROW, QUICK_ROW_H) : 0;
+			int h = rest + levels * q.rowH + (levels > 1 ? (levels - 1) * QUICK_GAP : 0);
+			q.box = {QUICK_SIDE, std::max(0, (PANEL_H - HINTS_H - h) / 2), QUICK_W, h};
+			int x = q.box.x + QUICK_PAD, w = q.box.w - 2 * QUICK_PAD;
+			q.title = {x, q.box.y + QUICK_PAD, w, QUICK_TITLE_H};
+			q.now = {x, q.title.y + q.title.h + QUICK_GAP, w, QUICK_NOW_H};
+			q.nowArt = {q.now.x + SP8, q.now.y + SP8, 48, 48};
+			q.nowNext = {q.now.x + q.now.w - SP8 - 52, q.now.y + SP8, 52, 48};
+			q.nowPlay = {q.nowNext.x - SP8 - 68, q.now.y + SP8, 68, 48};
+			q.nowPrev = {q.nowPlay.x - SP8 - 52, q.now.y + SP8, 52, 48};
+			int y = q.now.y + q.now.h + QUICK_GAP;
+			q.level.resize(levels);
+			for (int i = 0; i < levels; i++)
+			{
+				QuickLevel& l = q.level[i];
+				l.row = {x, y + i * (q.rowH + QUICK_GAP), w, q.rowH};
+				int mid = l.row.y + l.row.h / 2, stepH = std::min(QUICK_STEP_H, l.row.h);
+				l.icon = {l.row.x + 12, l.row.y, 20, l.row.h};	// (the icon's centre: x + 22)
+				l.label = {l.row.x + 36, l.row.y, QUICK_LABEL_W, l.row.h};
+				l.minus = {l.label.x + l.label.w + SP8, mid - stepH / 2, QUICK_STEP_W, stepH};
+				l.number = {l.row.x + l.row.w - SP12 - QUICK_NUM_W, mid - 12, QUICK_NUM_W, 24};
+				l.plus = {l.number.x - SP8 - QUICK_STEP_W, mid - stepH / 2, QUICK_STEP_W, stepH};
+				l.bar = {l.minus.x + QUICK_STEP_W + SP8, l.row.y,
+					l.plus.x - SP8 - (l.minus.x + QUICK_STEP_W + SP8), l.row.h};
+			}
+			if (tiles)
+			{
+				Box area{x, y + (levels ? levels * q.rowH + (levels - 1) * QUICK_GAP + QUICK_GAP : 0), w,
+					tileRows * QUICK_TILE_H + (tileRows - 1) * QUICK_TILE_GAP};
+				q.tile.reserve(tiles);
+				for (int i = 0; i < tiles; i++) q.tile.push_back(tileCell(area, tiles, 2, QUICK_TILE_H, i));
+				if (webTile >= 0 && webTile < tiles && webKey)
+				{
+					// the Web tile's own key, 40 x 40 between its name and its switch (the switch and its 12
+					// of padding are the tile's last 52): RIGHT, then A reaches the dashboard's page from
+					// here. A chevron alone, as any row's "this leads to a page" — its label "Web dashboard"
+					// measures 121 and this leaves its name 122, where a labelled key would cut it to 73
+					Box& t = q.tile[webTile];
+					q.webKey = {t.x + t.w - SP12 - 40 - SP8 - 40, t.y + (QUICK_TILE_H - 40) / 2, 40, 40};
+				}
+			}
+			q.quit = {x, q.box.y + q.box.h - QUICK_PAD - QUICK_QUIT_H, w, QUICK_QUIT_H};
+			return q;
+		}
 	}
 }

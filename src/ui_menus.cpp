@@ -199,9 +199,120 @@ namespace bp
 		openQuick();
 	}
 
+	// ---- a song's real art (the cache Ui holds for Home's cards, the rail's Now playing key and this
+	// panel's block; it was Home's own until the rail and the block joined in) ----
+
+	void Ui::drawSongArt(const std::string& path, const std::string& key, Rect r, int rad)
+	{
+		// the placeholder is the ground either way: its edge and rounded corners stay whole under the picture, and a
+		// song without art (or before its decode) is exactly what was drawn before
+		Kit& k = *kit;
+		k.artPlaceholder(r, key, rad, true);
+		if (path.empty() || artFailed.count(path)) return;
+		// inside the placeholder's edge, cut to the same rounded shape: the edge is not covered
+		Rect in{r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE};
+		SDL_Rect d = devRect(in);
+		std::string artKey = std::string(HOME_COVER_KEY) + path + "|" + std::to_string(d.w) + "x" + std::to_string(d.h) +
+			"r" + std::to_string(rad);
+		auto it = artTex.find(artKey);
+		if (it != artTex.end())
+		{
+			it->second.drawnAt = ++artDrawn;
+			SDL_RenderCopy(ren, it->second.tex, nullptr, &d);
+			return;
+		}
+		if (artAsked.count(artKey)) return;
+		CoverWorker* worker = manga ? manga->coverWorker : nullptr;
+		if (!worker) return;
+		artPath[artKey] = path;
+		artRad[artKey] = rad;
+		worker->wantSong(artKey, path, d.w, d.h);
+		artAsked.insert(artKey);
+	}
+
+	void Ui::drawNowArt(const Player& bp, Rect r, int rad)
+	{
+		// a song asks for its art (the placeholder stands in until the answer, and for good when there is
+		// none); a video shows its kind mark, as Home's cards do — no picture is decoded for one
+		if (bp.playingAudio())
+		{
+			drawSongArt(bp.currentPath(), bp.artPlaceholderKey(), r, rad);
+			return;
+		}
+		fillRound(r, TRACK, rad);
+		int cell = r.w >= 44 ? 3 : 2;	// (the mark's size follows the box: 30 at the rail, 48 in the block)
+		drawGlyphMid(G_FILM, r.x + r.w / 2, r.y + r.h / 2, DIM_ON, cell);
+	}
+
+	void Ui::songCoversReady(std::vector<CoverWorker::Result> results)
+	{
+		for (auto& r : results)
+		{
+			artAsked.erase(r.key);
+			auto pi = artPath.find(r.key);
+			std::string path = pi == artPath.end() ? r.key : pi->second;
+			auto ri = artRad.find(r.key);
+			int rad = ri == artRad.end() ? 8 : ri->second;
+			artPath.erase(r.key);
+			artRad.erase(r.key);
+			if (!r.ok)
+			{
+				// the placeholder stays for good: asking a file with no art again each frame helps no one
+				fprintf(stderr, "song art: none for %s\n", path.c_str());
+				artFailed.insert(path);
+				continue;
+			}
+			roundCorners(r.rgba, r.w, r.h, devRadius(std::max(0, rad - theme::EDGE)));
+			SDL_Texture* t = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, r.w, r.h);
+			if (!t)
+			{
+				artFailed.insert(path);
+				continue;
+			}
+			SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);
+			SDL_UpdateTexture(t, nullptr, r.rgba.data(), r.w * 4);
+			SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);	// (its corners are transparent)
+			auto old = artTex.find(r.key);
+			if (old != artTex.end() && old->second.tex) SDL_DestroyTexture(old->second.tex);
+			artTex[r.key] = {t, ++artDrawn};
+			artSerial++;
+			fprintf(stderr, "song art: %dx%d for %s\n", r.w, r.h, path.c_str());
+		}
+		// the cap: the ones drawn longest ago go first (what is on screen was drawn this frame)
+		while (artTex.size() > ART_KEEP)
+		{
+			auto oldest = artTex.end();
+			for (auto i = artTex.begin(); i != artTex.end(); ++i)
+				if (oldest == artTex.end() || i->second.drawnAt < oldest->second.drawnAt) oldest = i;
+			if (oldest->second.tex) SDL_DestroyTexture(oldest->second.tex);
+			artTex.erase(oldest);
+		}
+	}
+
+	lay::QuickPanel Ui::quickLayout(const Player& p) const
+	{
+		// the panel's boxes from what quickRows() holds: the level rows first (their order in quickRows),
+		// then the switch tiles (the Web tile's place among them), Quit last
+		auto rows = quickRows();
+		int levels = 0, tiles = 0, webTile = -1;
+		for (int row : rows)
+		{
+			if (row == Q_VOLUME || row == Q_BRIGHT || row == Q_BOTTOM) levels++;
+			else if (row != Q_QUIT)
+			{
+				if (row == Q_WEB) webTile = tiles;
+				tiles++;
+			}
+		}
+		// the Web tile's own key while the dashboard is on (and not held off in incognito: nothing to open
+		// then, and the tile says why it can't be changed)
+		bool webKey = webTile >= 0 && p.settings.webDashboard && !incognito;
+		return lay::quickPanel(levels, tiles, webTile, webKey);
+	}
+
 	void Ui::quickAdjust(int row, int dir, Player& p)
 	{
-		// Web dashboard's row: LEFT the switch, RIGHT its Settings button (while it's on); while incognito, nothing moves
+		// Web dashboard's row: LEFT the switch, RIGHT its own key (while it's on); while incognito, nothing moves
 		if (row == Q_WEB)
 		{
 			if (!incognito) quickSub = dir > 0 && p.settings.webDashboard ? 1 : 0;
@@ -225,17 +336,19 @@ namespace bp
 	{
 		// the row's bar under a finger: the volume in fives, a screen's brightness in tenths (never under 10%)
 		int which = quickRows()[row];
+		lay::QuickPanel q = quickLayout(p);
+		Rect bar = q.level[row].bar;
 		if (which == Q_VOLUME)
 		{
 			if (volumePct < 0) return;
-			slideGrab(SL_QUICK, row, {quickBar(row), {0, (double)std::max(100, p.settings.volumeMax), 5}, false, 0, (double)volumeTotal(p)}, x, y, p, [this](double v, bool, Player& p) {
+			slideGrab(SL_QUICK, row, {bar, {0, (double)std::max(100, p.settings.volumeMax), 5}, false, 0, (double)volumeTotal(p)}, x, y, p, [this](double v, bool, Player& p) {
 				if ((int)v == volumeTotal(p)) return;
 				setVolumeTotal(p, (int)v, false);
 			});
 			return;
 		}
 		Backlight::Panel panelOf = which == Q_BOTTOM ? Backlight::BOTTOM : Backlight::TOP;
-		slideGrab(SL_QUICK, row, {quickBar(row), {0, 1000, 100}, false, 0, (double)std::max(100, backlight.permille(panelOf))}, x, y, p, [this, panelOf](double v, bool, Player& p) {
+		slideGrab(SL_QUICK, row, {bar, {0, 1000, 100}, false, 0, (double)std::max(100, backlight.permille(panelOf))}, x, y, p, [this, panelOf](double v, bool, Player& p) {
 			int pm = std::max(100, (int)v);
 			if (pm != backlight.permille(panelOf)) setBrightness(panelOf, pm, p);
 		});
@@ -312,7 +425,7 @@ namespace bp
 		}
 		else if (row == Q_WEB)
 		{
-			// its Settings button: the Web dashboard page (the QR code, the PIN, New PIN), the quick settings put away
+			// its own key: the Web dashboard page (the QR code, the PIN, New PIN), the quick settings put away
 			if (incognito)
 			{
 				// off in incognito: the switch keeps its saved value; a note says why it can't be changed
@@ -403,6 +516,7 @@ namespace bp
 	bool Ui::quickPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		auto rows = quickRows();
+		lay::QuickPanel q = quickLayout(p);
 		auto barRow = [&](int i) { return rows[i] == Q_VOLUME || rows[i] == Q_BRIGHT || rows[i] == Q_BOTTOM; };
 		bool live = nowPlayable(barPlayer(p));
 		if (pt.kind == Pointer::Down)
@@ -410,7 +524,7 @@ namespace bp
 			pressedBtn = -1;
 			quickHoldAt = 0;
 			// outside: closed (the finger lifting presses nothing)
-			if (!quickPanel().hit(x, y))
+			if (!q.box.hit(x, y))
 			{
 				closeQuick();
 				swallowTouch = true;
@@ -418,29 +532,35 @@ namespace bp
 			}
 			// the Now playing block: its three keys do their jobs; anywhere else on it is the player, and it is not
 			// pressed while nothing plays (the cursor skips it then)
-			if (quickNowRect().hit(x, y))
+			if (q.now.hit(x, y))
 			{
 				if (!live) return false;
 				quickCursor = -1;
-				if (quickNowPlay().hit(x, y)) { pressedBtn = QUICK_NOW_PLAY; quickHoldAt = SDL_GetTicks(); }
-				else if (quickNowPrev().hit(x, y)) pressedBtn = QUICK_NOW_PREV;
-				else if (quickNowNext().hit(x, y)) pressedBtn = QUICK_NOW_NEXT;
+				if (q.nowPlay.hit(x, y)) { pressedBtn = QUICK_NOW_PLAY; quickHoldAt = SDL_GetTicks(); }
+				else if (q.nowPrev.hit(x, y)) pressedBtn = QUICK_NOW_PREV;
+				else if (q.nowNext.hit(x, y)) pressedBtn = QUICK_NOW_NEXT;
 				else pressedBtn = QUICK_NOW_CARD;
 				return false;
 			}
 			for (int i = 0; i < (int)rows.size(); i++)
 			{
-				if (!quickRowRect(i).hit(x, y)) continue;
+				Rect r = rows[i] == Q_QUIT ? q.quit : barRow(i) ? q.level[i].row : q.tile[i - (int)q.level.size()];
+				if (!r.hit(x, y)) continue;
 				quickCursor = i;
-				if (barRow(i) && quickMinus(i).hit(x, y)) pressedBtn = 300 + i * 4;
-				else if (barRow(i) && quickPlus(i).hit(x, y)) pressedBtn = 301 + i * 4;
-				else if (rows[i] == Q_WEB && p.settings.webDashboard && quickPinBtn(i).hit(x, y)) pressedBtn = 303 + i * 4;
-				else if (barRow(i) && Rect{quickBar(i).x - 6, quickRowRect(i).y, quickBar(i).w + 12, quickRowRect(i).h}.hit(x, y))
+				if (barRow(i))
 				{
-					// the bar (anywhere in the row between its two buttons): to the finger at once, and with it
-					quickSlide(i, x, y, p);
+					// the row's own pieces: − and + step, the bar between them (with its slack) grabs
+					const lay::QuickLevel& l = q.level[i];
+					if (l.minus.hit(x, y)) pressedBtn = 300 + i * 4;
+					else if (l.plus.hit(x, y)) pressedBtn = 301 + i * 4;
+					else if (Rect{l.bar.x - 6, l.row.y, l.bar.w + 12, l.row.h}.hit(x, y))
+					{
+						// the bar (anywhere in its strip): to the finger at once, and with it
+						quickSlide(i, x, y, p);
+					}
 				}
-				else if (!barRow(i)) pressedBtn = 302 + i * 4;
+				else if (rows[i] == Q_WEB && q.webKey.w > 0 && q.webKey.hit(x, y)) pressedBtn = 303 + i * 4;
+				else pressedBtn = 302 + i * 4;
 			}
 			return false;
 		}
@@ -451,7 +571,7 @@ namespace bp
 			{
 				int what = pressedBtn;
 				pressedBtn = -1;
-				if (!quickNowRect().hit(x, y)) return false;
+				if (!q.now.hit(x, y)) return false;
 				// a tap on the card (art, title, line, progress) opens the player and closes the panel
 				if (what == QUICK_NOW_CARD) { if (live) { closeQuick(); goNowPlaying(p); } }
 				else if (live) quickNowKey(what, p);
@@ -462,12 +582,15 @@ namespace bp
 		{
 			int i = (pressedBtn - 300) / 4, what = (pressedBtn - 300) % 4;
 			pressedBtn = -1;
-			if (i >= (int)rows.size() || !quickRowRect(i).hit(x, y)) return false;
+			// the lift acts when it is still on the piece it went down on (the row, the tile, the key)
+			if (i >= (int)rows.size()) return false;
+			Rect r = rows[i] == Q_QUIT ? q.quit : barRow(i) ? q.level[i].row : q.tile[i - (int)q.level.size()];
+			if (!r.hit(x, y)) return false;
 			if (what == 0) quickAdjust(rows[i], -1, p);
 			else if (what == 1) quickAdjust(rows[i], 1, p);
 			else
 			{
-				// Web dashboard's: its Settings button (3), or the rest of the row, its switch (2)
+				// Web dashboard's: its Settings key (3), or the rest of the tile, its switch (2)
 				if (rows[i] == Q_WEB) quickSub = what == 3 ? 1 : 0;
 				quickChoose(rows[i], p);
 			}
@@ -475,23 +598,23 @@ namespace bp
 		return false;
 	}
 
-	void Ui::drawQuickNow(const Player& p)
+	void Ui::drawQuickNow(const Player& p, const lay::QuickPanel& q)
 	{
 		const Player& bp = barPlayer(p);
 		bool live = nowPlayable(bp);
 		bool err = live && !bp.error.empty();
-		Rect card = quickNowRect();
+		Rect card = q.now;
 		// a card: focused while the cursor is on it (only while something plays: the block is passed by when idle)
 		if (quickCursor < 0 && live) kit->flat(card, BUTTON, 12, ACCENT);
 		else kit->flat(card, SURFACE, 12, kit->edgeOf(SURFACE));
-		Rect art = quickNowArt();
-		if (live) kit->artPlaceholder(art, bp.artPlaceholderKey(), 6, true);
+		Rect art = q.nowArt;
+		if (live) drawNowArt(bp, art, 6);
 		else
 		{
 			fillRound(art, TRACK, 6);
 			drawGlyphMid(G_NOTE, art.x + art.w / 2, art.y + art.h / 2, DIM);
 		}
-		int x0 = art.x + art.w + 12, xr = quickNowPrev().x - 12, room = std::max(1, xr - x0);
+		int x0 = art.x + art.w + 12, xr = q.nowPrev.x - 12, room = std::max(1, xr - x0);
 		if (!live)
 		{
 			drawTextMid("Nothing playing", F_P14, DIM, x0, card.y + 24, room);
@@ -526,9 +649,9 @@ namespace bp
 			SDL_Color ink = off ? Kit::off(TEXT) : primary ? (down ? TEXT : ON_ACCENT) : TEXT;
 			drawGlyphMid(*g, r.x + r.w / 2, r.y + r.h / 2, ink, 2);
 		};
-		key(quickNowPrev(), QUICK_NOW_PREV, &G_PREV, false);
-		key(quickNowPlay(), QUICK_NOW_PLAY, live && bp.paused ? &G_PLAY : &G_PAUSE, true);
-		key(quickNowNext(), QUICK_NOW_NEXT, &G_NEXT, false);
+		key(q.nowPrev, QUICK_NOW_PREV, &G_PREV, false);
+		key(q.nowPlay, QUICK_NOW_PLAY, live && bp.paused ? &G_PLAY : &G_PAUSE, true);
+		key(q.nowNext, QUICK_NOW_NEXT, &G_NEXT, false);
 		// the progress line along its foot (the mini bar's own piece); held Play fills the hold as the player's does
 		lay::MiniBar m = lay::miniBar(card);
 		if (live && !err && bp.duration > 0)
@@ -538,7 +661,7 @@ namespace bp
 		}
 		if (quickHoldAt && pressedBtn == QUICK_NOW_PLAY)
 		{
-			Rect r = quickNowPlay();
+			Rect r = q.nowPlay;
 			double f = std::min(1.0, (SDL_GetTicks() - quickHoldAt) / (double)PLAY_HOLD_MS);
 			fillRound({r.x + 6, r.y + r.h - 8, (int)((r.w - 12) * f), 3}, ACCENT, 1);
 		}
@@ -546,141 +669,156 @@ namespace bp
 
 	void Ui::drawQuick(const Player& p)
 	{
-		Rect pr = quickPanel();
-		drawDialog(pr, "");
-		drawTextMid("Quick settings", 1, ACCENT, pr.x + 24, pr.y + 28);
+		Kit& k = *kit;
+		lay::QuickPanel q = quickLayout(p);
+		// the veil over whatever the panel holds (the rail too), then the panel: SURFACE, its 2-unit edge,
+		// radius 18, centred above the hint bar (components.md "Quick settings panel")
+		fill({0, 0, W, H}, sdl(theme::BG, (Uint8)(255 * theme::VEIL_SHEET / 100)));
+		k.flat(q.box, k.cardFill(SURFACE), lay::QUICK_RAD, k.edgeOf(SURFACE));
+		// the title line: the name (Pixelify 20), the battery at its right
+		drawTextMid("Quick settings", F_P20, ACCENT, q.title.x, q.title.y + q.title.h / 2);
 		if (battery.percent >= 0)
-			drawTextMid("Battery " + std::to_string(battery.percent) + "%" + (battery.charging ? " \xC2\xB7 charging" : ""), 0, DIM,
-				pr.x + pr.w - 24, pr.y + 28, 0, 1);
-		drawQuickNow(p);
+			drawTextMid("Battery " + std::to_string(battery.percent) + "%" + (battery.charging ? " \xC2\xB7 charging" : ""),
+				F_I12, DIM, q.title.x + q.title.w, q.title.y + q.title.h / 2, 0, 1);
+		drawQuickNow(p, q);
 		auto rows = quickRows();
+		int levels = (int)q.level.size();
 		for (int i = 0; i < (int)rows.size(); i++)
 		{
-			Rect r = quickRowRect(i);
 			bool at = i == quickCursor;
-			int row = rows[i], mid = r.y + r.h / 2;
+			int row = rows[i];
 			if (row == Q_QUIT)
 			{
-				// an action key: Classic whatever the page (the one red-filled key)
+				// the one red-filled key (the spec's "Quit, DANGER fill"): Classic whatever the page, as
+				// Home's quit dialog draws its action
+				Rect r = q.quit;
+				int mid = r.y + r.h / 2;
 				Kit::ClassicHere classic;
 				bool down = pressedBtn == 302 + i * 4;
 				drawBox(r, down ? PRESSED : DANGER, R_BUTTON, at);
 				SDL_Color ink = down ? TEXT : ON_ACCENT;	// black on the red: cream reads 2.4:1 there
-				int tw = (int)std::lround(textWidth("Quit Banana Player", 1) / sx), gw = glyphW(G_POWER), x = r.x + r.w / 2 - (tw + gw + 12) / 2;
+				int tw = (int)std::lround(textWidth("Quit Banana Player", F_P16) / sx), gw = glyphW(G_POWER),
+					x = r.x + r.w / 2 - (tw + gw + 12) / 2;
 				drawGlyphMid(G_POWER, x + gw / 2, mid, ink);
-				drawTextMid("Quit Banana Player", 1, ink, x + gw + 12, mid);
+				drawTextMid("Quit Banana Player", F_P16, ink, x + gw + 12, mid);
 				continue;
 			}
-			if (at) drawFocus(r);
+			if (row == Q_VOLUME || row == Q_BRIGHT || row == Q_BOTTOM)
+			{
+				// a Kit row: nothing until the cursor is on it, then a lit button with a yellow edge
+				const lay::QuickLevel& l = q.level[i];
+				int mid = l.row.y + l.row.h / 2;
+				if (at) k.flat(l.row, BUTTON, R_BUTTON, ACCENT);
+				SDL_Color ink = at ? ACCENT : TEXT;
+				int pct;
+				std::string label;
+				if (row == Q_VOLUME)
+				{
+					pct = volumePct >= 100 && p.boost > 100 ? p.boost : volumePct;
+					label = "Volume";
+				}
+				else
+				{
+					int pm = backlight.permille(row == Q_BOTTOM ? Backlight::BOTTOM : Backlight::TOP);
+					pct = pm < 0 ? -1 : (pm + 5) / 10;
+					label = row == Q_BOTTOM ? "Bottom" : p.settings.sameBrightness ? "Brightness" : "Top";
+				}
+				drawGlyphMid(row == Q_VOLUME ? G_SPEAKER : G_SUN, l.icon.x + 10, mid, ink);
+				drawTextMid(label, F_P16, ink, l.label.x, mid, l.label.w);
+				// − and + either side of the bar (56 x 44): keys, quiet in a row in Clean (rule 7)
+				Kit::Key step;
+				step.quiet = true;
+				step.pressed = pressedBtn == 300 + i * 4;
+				step.glyph = &G_MINUS;
+				k.key(l.minus, step);
+				step.pressed = pressedBtn == 301 + i * 4;
+				step.glyph = &G_PLUS;
+				k.key(l.plus, step);
+				// (the bar under a finger: its value lit beside it, a knob where the fill ends, as a held one's)
+				bool held = slideHeld(SL_QUICK, i);
+				if (row == Q_VOLUME)
+				{
+					// the kit's volume bar: cream to 100, yellow to 120, red past it, the 100 mark; its number
+					// at the row's right
+					int vmax = std::max(100, p.settings.volumeMax);
+					lay::VolumeBar vb;
+					vb.bar = {l.bar.x, mid - 6, l.bar.w, 12};
+					vb.number = l.number;
+					vb.tickX = vmax > 100 ? lay::volumeX(vb.bar, 100, vmax) : -1;
+					k.volumeBar(vb, std::max(0, pct), vmax);
+					if (held) drawSlideKnob({lay::volumeX(vb.bar, std::max(0, pct), vmax) - 5, vb.bar.y - 4, 10, vb.bar.h + 8});
+				}
+				else
+				{
+					// the kit's slider: 14 tall, the knob grown while it is held
+					k.progress({l.bar.x, mid - 7, l.bar.w, 14}, pct > 0 ? std::min(pct, 100) / 100.0 : 0, {}, held);
+					drawTextMid(pct < 0 ? "-" : std::to_string(pct) + "%", F_P16, held ? ACCENT : at ? DIM_ON : DIM,
+						l.number.x, mid, l.number.w, 1);
+				}
+				continue;
+			}
+			// a switch tile, two to a row: the kit's tile (flat, its edge, the icon and name) with the
+			// switch's room kept at its right — the kit's tile would run its name under it — and its state
+			// in words on the note line when there is something to say. The switch is never the touch
+			// target: the tile is
+			Rect r = q.tile[i - levels];
+			int mid = r.y + r.h / 2;
+			bool off = false, on = false;
+			std::string name, note;
+			const Glyph* glyph = &G_INCOGNITO;
 			if (row == Q_SAME)
 			{
-				// a tick box
-				Rect box{r.x + 16, mid - 13, 26, 26};
-				fillRound(box, at ? ACCENT : TEXT, R_FIELD);
-				fillRound({box.x + 2, box.y + 2, box.w - 4, box.h - 4}, at ? BUTTON : SURFACE, R_FIELD - 2);
-				if (p.settings.sameBrightness) drawGlyphMid(G_CHECK, box.x + box.w / 2, box.y + box.h / 2, ACCENT);
-				drawTextMid("Same brightness for both screens", 1, at ? ACCENT : TEXT, r.x + 56, mid, r.w - 66);
-				continue;
+				glyph = &G_SUN;
+				name = "Same on both screens";
+				on = p.settings.sameBrightness;
 			}
-			if (row == Q_INCOGNITO)
+			else if (row == Q_WEB)
 			{
-				// a tick box, and what it keeps out of the history; while it's on, what the lid or a sleep does
-				Rect box{r.x + 16, mid - 13, 26, 26};
-				fillRound(box, at ? ACCENT : TEXT, R_FIELD);
-				fillRound({box.x + 2, box.y + 2, box.w - 4, box.h - 4}, at ? BUTTON : SURFACE, R_FIELD - 2);
-				if (incognito) drawGlyphMid(G_CHECK, box.x + box.w / 2, box.y + box.h / 2, ACCENT);
-				drawTextMid("Incognito mode", 1, at ? ACCENT : TEXT, r.x + 56, incognito && p.settings.lidIncognito != LID_INCOGNITO_NOTHING ? mid - 8 : mid, 300);
-				drawGlyphMid(G_INCOGNITO, r.x + r.w - 24, mid, incognito ? ACCENT : (at ? DIM_ON : DIM));
+				glyph = &G_WEB;
+				name = "Web dashboard";
+				// incognito holds the dashboard off: the switch keeps its value, the tile says why, nothing changes
+				off = incognito;
+				on = p.settings.webDashboard && !off;
+				if (off) note = "Off in incognito";
+			}
+			else
+			{
+				name = "Incognito mode";
+				on = incognito;
+				// while it's on, what the lid or a sleep does
 				if (incognito && p.settings.lidIncognito != LID_INCOGNITO_NOTHING)
-					drawTextMid(p.settings.lidIncognito == LID_INCOGNITO_QUIT ? "Lid or sleep: quits" : "Lid or sleep: closes all", 0,
-						DIM, r.x + 56, mid + 12, 320);
-				continue;
+					note = p.settings.lidIncognito == LID_INCOGNITO_QUIT ? "Lid or sleep: quits" : "Lid or sleep: closes all";
 			}
-			if (row == Q_WEB)
+			bool down = pressedBtn == 302 + i * 4;
+			k.flat(r, Kit::off(down ? PRESSED : k.cardFill(SURFACE), off), theme::R_TILE,
+				at && !off ? ACCENT : Kit::off(k.edgeOf(SURFACE), off));
+			SDL_Color ink = Kit::off(at ? ACCENT : TEXT, off);
+			int x = r.x + 14, right = r.x + r.w - 12 - 40 - lay::SP8;
+			if (row == Q_WEB && q.webKey.w > 0) right = q.webKey.x - lay::SP8;
+			if (glyph) { drawGlyphMid(*glyph, x + 11, mid, ink); x += 22 + 10; }
+			drawTextMid(name, F_P16, ink, x, note.empty() ? mid : mid - 9, std::max(1, right - x));
+			if (!note.empty()) drawTextMid(note, F_I12, Kit::off(DIM, off), x, mid + 11, std::max(1, right - x));
+			k.toggle(r.x + r.w - 12 - 40, mid, on && !off);
+			if (row == Q_WEB && q.webKey.w > 0)
 			{
-				// a tick box (on or off), its name, and while it's on a button to its page in Settings. Incognito holds
-				// the dashboard off: the box at 45%, its reason in the note, and nothing changes
-				bool off = incognito, on = p.settings.webDashboard && !off;
-				bool onSwitch = !off && at && (quickSub == 0 || !on);
-				Rect box{r.x + 16, mid - 13, 26, 26};
-				fillRound(box, Kit::off(onSwitch ? ACCENT : TEXT, off), R_FIELD);
-				fillRound({box.x + 2, box.y + 2, box.w - 4, box.h - 4}, Kit::off(at ? BUTTON : SURFACE, off), R_FIELD - 2);
-				if (on) drawGlyphMid(G_CHECK, box.x + box.w / 2, box.y + box.h / 2, ACCENT);
-				drawTextMid("Web dashboard", 1, Kit::off(onSwitch ? ACCENT : TEXT, off), r.x + 56, off ? mid - 8 : mid, 200);
-				if (off)
-				{
-					drawTextMid("Off in incognito", 0, DIM, r.x + 56, mid + 12, 240);
-					continue;
-				}
-				if (on)
-				{
-					// the row's action key: Classic in Clean too
-					Kit::ClassicHere classic;
-					Rect b = quickPinBtn(i);
-					drawBox(b, pressedBtn == 303 + i * 4 ? PRESSED : at ? BG : BUTTON, R_BUTTON, at && quickSub == 1);
-					drawButton({b.x, b.y, b.w - 20, b.h}, nullptr, "Settings", nullptr, false, 1);	// (centred in what the arrow leaves)
-					drawGlyphMid(G_RIGHT, b.x + b.w - 18, b.y + b.h / 2, TEXT);
-				}
-				else drawTextMid("Off", 0, at ? DIM_ON : DIM, r.x + r.w - 16, mid, 0, 1);
-				continue;
-			}
-			int pct;
-			std::string label;
-			if (row == Q_VOLUME)
-			{
-				pct = volumePct >= 100 && p.boost > 100 ? p.boost : volumePct;
-				label = "Volume";
-			}
-			else
-			{
-				int pm = backlight.permille(row == Q_BOTTOM ? Backlight::BOTTOM : Backlight::TOP);
-				pct = pm < 0 ? -1 : (pm + 5) / 10;
-				label = row == Q_BOTTOM ? "Bottom" : p.settings.sameBrightness ? "Brightness" : "Top";
-			}
-			SDL_Color ink = at ? ACCENT : TEXT;
-			drawGlyphMid(row == Q_VOLUME ? G_SPEAKER : G_SUN, r.x + 25, mid, ink);
-			drawTextMid(label, 1, ink, r.x + 46, mid, 146);
-			// (the bar under a finger: its value, left of the bar, lit; a knob where the fill ends, as a held one's)
-			bool held = slideHeld(SL_QUICK, i);
-			if (row != Q_VOLUME) drawTextMid(pct < 0 ? "-" : std::to_string(pct) + "%", 0, held ? ACCENT : at ? DIM_ON : DIM, quickMinus(i).x - 6, mid, 0, 1);
-			for (int k = 0; k < 2; k++)
-			{
-				// the steppers are the row's, not keys: a quiet look (no ground) in Clean, a key in Classic
-				Rect bt = k ? quickPlus(i) : quickMinus(i);
-				bool down = pressedBtn == 300 + i * 4 + k;
-				if (theme::drawingClean())
-				{
-					if (down) fillRound(bt, PRESSED, R_BUTTON);
-				}
-				else drawBox(bt, down ? PRESSED : at ? BG : BUTTON, R_BUTTON);
-				drawGlyphMid(k ? G_PLUS : G_MINUS, bt.x + bt.w / 2, bt.y + bt.h / 2, TEXT);
-			}
-			Rect bar = quickBar(i);
-			if (row == Q_VOLUME)
-			{
-				// the kit's volume bar: cream to 100, yellow to 120, red past it, the 100 mark; its number left of the buttons
-				int vmax = std::max(100, p.settings.volumeMax);
-				lay::VolumeBar vb;
-				vb.bar = {bar.x, bar.y + (bar.h - 12) / 2, bar.w, 12};
-				vb.number = {quickMinus(i).x - 6 - 64, mid - 12, 64, 24};
-				vb.tickX = vmax > 100 ? lay::volumeX(vb.bar, 100, vmax) : -1;
-				Kit(*this).volumeBar(vb, std::max(0, pct), vmax);
-				if (held) drawSlideKnob({lay::volumeX(vb.bar, std::max(0, pct), vmax) - 5, vb.bar.y - 4, 10, vb.bar.h + 8});
-			}
-			else
-			{
-				// the redesign's slider: 14 tall, the knob 8 taller; its share the screen's level (never under 10%)
-				drawSlider({bar.x, bar.y + (bar.h - 14) / 2, bar.w, 14}, pct > 0 ? std::min(pct, 100) / 100.0 : 0, held);
+				// its own key, while the dashboard is on: a chevron alone, the row's "this leads to a page" —
+				// RIGHT, then A (or a tap) opens the page. The cursor's half (quickSub) is its edge
+				Kit::Key wk;
+				wk.glyph = &G_RIGHT;
+				wk.pressed = pressedBtn == 303 + i * 4;
+				wk.focused = at && quickSub == 1;
+				k.key(q.webKey, wk);
 			}
 		}
+		// the kit's hint bar over the veil (the old page's footer text is gone): four items, as many as fit
+		// (L / R still step, they are the player's keys, but a fifth would run past the bar)
 		if (p.settings.buttonHotkeys)
 		{
-			// five items would run past the panel's width: L / R still step, they are the player's keys
 			if (nowPlayable(barPlayer(p)))
-				drawHints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"SELECT", "Player"}, {"F/B", "Close"}});
-			else drawHints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"A", "Toggle"}, {"F/B", "Close"}});
+				k.hints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"SELECT", "Player"}, {"F/B", "Close"}});
+			else k.hints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"A", "Toggle"}, {"F/B", "Close"}});
 		}
-		else drawFooterText("Tap outside to close", DIM);
+		else k.hints({{"", "Tap outside to close"}});
 	}
 
 	bool Ui::popupShown(const Player& p) const

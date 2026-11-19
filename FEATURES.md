@@ -126,7 +126,9 @@ you land in the folder (or playlist) it plays from, the cursor on it. The same g
 video's list while the playing screen was up; a song's list ending keeps the song up instead.
 
 - **What plays, on every screen:** the rail's **Now playing key**, just above Settings (the art at 30 and three
-  playing bars, a pause mark while paused; its slot is kept while nothing plays). Tap it for the playing screen; hold
+  playing bars, a pause mark while paused; its slot is kept while nothing plays). The art is the song's real
+  album cover, decoded in the background — the Art placeholder until it arrives, and for good when the file has
+  none; a video shows its film mark. Tap it for the playing screen; hold
   it for its menu: **Now playing**, **Play** / **Pause**, **Like**, **Add to playlist…**, **Show in folder**, **Stop**.
   **SELECT** is its key on any section page. Quick settings' **Now playing block** (F, on every screen, the player
   included) is the one place to play, pause and skip without leaving the page; its **Play** held takes playback over
@@ -367,7 +369,7 @@ See [Photos](#photos) for the touch screen.
 | **SELECT** | Back to what plays (the playing screen): the rail's Now playing key's key, on any section page; in select mode, All / none |
 | **L3** (press the stick) | **Search**: the cards' search, coming in a later step (the rail's key does the same) |
 | **START** | **Settings**: its ten group tiles; **B** or **START** returns to the folder you were in; **F** is Quick settings |
-| **The rail's Now playing key** (touch screen) | Just above Settings, on every section page: the art and the playing bars. Tap it for the playing screen · hold: its menu. Its slot is kept while nothing plays |
+| **The rail's Now playing key** (touch screen) | Just above Settings, on every section page: the song's album art (a video's film mark) and the playing bars. Tap it for the playing screen · hold: its menu. Its slot is kept while nothing plays |
 
 ### Copy, move, rename, delete
 
@@ -777,7 +779,7 @@ turn it on.
 
 ### Turning it on
 
-- **Settings › Web dashboard**, or **Quick settings** (F) › **Web dashboard** (a tick box), or the Network section's
+- **Settings › Web dashboard**, or **Quick settings** (F) › **Web dashboard** (a switch tile), or the Network section's
   **X** › **Web dashboard…**.
 - The handheld's page shows a **QR code**, the **address** (for example `192.168.1.23:8080`) and a four-character
   **PIN**. Scan the QR code with your phone's camera: it opens the dashboard and signs you in. Or type the address into
@@ -1389,32 +1391,38 @@ on the card, not in the player's folder.
 
 ## Quick settings
 
-Press the **Menu/Function** button (F), anywhere, for a panel centred on the bottom screen, over the rail:
+Press the **Menu/Function** button (F), anywhere, for a panel centred on the bottom screen, over the rail: the
+kit's own look — **Volume** and **Brightness** as rows with a **−** and **+** key either side of the bar, the
+switches as tiles two to a row, **Quit** as the one red key, and the hint bar along the foot naming the keys
+(with Button hotkeys off it says **Tap outside to close**).
 
-- **Now playing** (its first block, always there): the art (48; the Art placeholder, or a music mark when nothing
-  plays), the title, the artist and the time, then **Previous 52**, **Play / Pause 68** and **Next 52**, and a line
-  along its foot showing how far it has got. It has the state marks too (1.5×, Repeat one, a look, the EQ, "Playing in
-  Chrome"), in yellow after the time. With nothing loaded it is the same block, idle: a music mark, **Nothing
-  playing** / **What you play shows here**, the three keys dimmed, no line; the cursor passes it and it isn't
-  pressed. The **D-pad** opens on **Volume**; **UP** reaches the block. **A** on it plays or pauses, **LEFT / RIGHT**
-  seek (5 s back, 10 s on), **L / R** step to the previous and next from any row, **SELECT** opens the player. By touch
-  its three keys do their jobs; a tap anywhere else on it (the art, the title, the line) opens the player and closes the
-  panel. A finger held on **Play** takes playback over from a browser. Its actions go through
-  the session like the player's keys.
+- **Now playing** (its first block, always there): the art (48; a song's album cover — the Art placeholder until
+  the background decode answers, and for good when the file has none — a video's film mark, or a music mark when
+  nothing plays), the title, the artist and the time, then **Previous 52**, **Play / Pause 68** and **Next 52**, and a
+  line along its foot showing how far it has got. It has the state marks too (1.5×, Repeat one, a look, the EQ,
+  "Playing in Chrome"), in yellow after the time. With nothing loaded it is the same block, idle: a music mark,
+  **Nothing playing** / **What you play shows here**, the three keys dimmed, no line; the cursor passes it and it
+  isn't pressed. The **D-pad** opens on **Volume**; **UP** reaches the block. **A** on it plays or pauses,
+  **LEFT / RIGHT** seek (5 s back, 10 s on), **L / R** step to the previous and next from any row, **SELECT**
+  opens the player. By touch its three keys do their jobs; a tap anywhere else on it (the art, the title, the
+  line) opens the player and closes the panel. A finger held on **Play** takes playback over from a browser. Its
+  actions go through the session like the player's keys.
 - **Volume** and **Brightness**: touch the bar (anywhere in its row between **−** and **+**) and slide, tap **−** / **+**, or use **LEFT / RIGHT**. They change the same
-  levels as BananaOS's own settings and its volume and brightness keys, and they're kept after a restart.
-- **Same brightness for both screens** (a tick box): on, one Brightness bar sets both screens; off, **Top** and
+  levels as BananaOS's own settings and its volume and brightness keys, and they're kept after a restart. With
+  **Max volume** past 100 the volume bar carries the 100 mark and its number takes the colour of the part it is
+  in (yellow past 100, red past 120).
+- **Same brightness for both screens** (a switch tile): on, one Brightness bar sets both screens; off, **Top** and
   **Bottom** each get their own.
-- **Web dashboard** (a tick box): on or off. While it's on, **Settings** (Right, then A, or a tap) opens its page: the
+- **Web dashboard** (a switch tile): on or off. While it's on, its own key (Right, then A, or a tap) opens its page: the
   QR code, the address, the PIN and **New PIN**. See [Web dashboard](#web-dashboard).
-- **Incognito mode** (a tick box): while it's on, nothing you play goes into Recent and nothing you read
+- **Incognito mode** (a switch tile): while it's on, nothing you play goes into Recent and nothing you read
   goes into the manga History; where you stopped a film, your reading places and read marks, playlists, Liked and
   downloads all work as usual. A hat-and-glasses mark sits beside the clock while it's on. It's never saved: off again
   whenever Banana Player starts. While it's on the **Web dashboard is off** (the switch keeps its value; the server is
   back with the same PIN and sign-ins when you leave), the globe leaves the header, and Play on isn't offered; with a
-  browser signed in, turning it on asks **Turn on incognito?** first. Its second line says what the lid or a sleep
+  browser signed in, turning it on asks **Turn on incognito?** first. Its tile's second line says what the lid or a sleep
   does: **Lid or sleep: closes all** or **quits** (Settings › Power & screens › Lid or sleep in incognito).
-- **Quit Banana Player.**
+- **Quit Banana Player** (the one red key).
 
 **F** again, **B** or a tap outside the panel closes it. (F with another button, like F + L2 or F + volume, does that
 combination instead.)

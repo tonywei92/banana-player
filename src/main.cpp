@@ -1351,7 +1351,8 @@ int main(int argc, char** argv)
 				else if (e.type == evCover)
 				{
 					// a cover arrived: into a texture on this thread, and the page redraws (its serial is in signature).
-					// Main's one worker decodes Manga's covers and Home's songs' art: the "home:" keys are Home's
+					// Main's one worker decodes Manga's covers and the songs' art: the "home:" keys are the song
+					// art cache's (Ui's: Home's cards, the rail's Now playing key, Quick settings' block)
 					std::vector<CoverWorker::Result> results = coverWorker->take();
 					std::vector<CoverWorker::Result> home, manga;
 					const size_t prefix = std::strlen(HOME_COVER_KEY);
@@ -1360,7 +1361,7 @@ int main(int argc, char** argv)
 					if (haveUi)
 					{
 						if (!manga.empty()) ui.manga->coversReady(std::move(manga));
-						if (!home.empty() && ui.browse->homeView) ui.browse->homeView->coversReady(std::move(home));
+						if (!home.empty()) ui.songCoversReady(std::move(home));
 					}
 					// (nothing draws them when !haveUi: dropped)
 				}
