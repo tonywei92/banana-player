@@ -375,6 +375,23 @@ namespace bp
 
 		int badgeW(int textW, bool glyph) { return 2 * BADGE_PAD + (glyph ? 16 + 4 : 0) + textW; }
 
+		Shell shell(bool mini)
+		{
+			Shell s;
+			s.rail = {0, 0, RAIL_W, PANEL_H};
+			s.main = {RAIL_W, 0, PANEL_W - RAIL_W, PANEL_H};
+			s.header = {RAIL_W, 0, s.main.w, SHELL_HEAD};
+			s.hints = {RAIL_W, PANEL_H - HINTS_H, s.main.w, HINTS_H};
+			int foot = s.hints.y;
+			if (mini)
+			{
+				s.mini = {RAIL_W + MINI_SIDE, PANEL_H - MINI_FOOT - MINI_H, s.main.w - 2 * MINI_SIDE, MINI_H};
+				foot = s.mini.y - 4;
+			}
+			s.body = {RAIL_W, SHELL_HEAD, s.main.w, foot - SHELL_HEAD};
+			return s;
+		}
+
 		MiniBar miniBar()
 		{
 			MiniBar m;

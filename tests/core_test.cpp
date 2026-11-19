@@ -9910,6 +9910,17 @@ static void testKitVariantBars()
 
 static void testKitLayout()
 {
+	{	// the shell: the body between the header and the hints (or the mini bar), right of the rail
+		for (bool mini : {false, true})
+		{
+			lay::Shell s = lay::shell(mini);
+			CHECK(s.body.x == lay::RAIL_W && s.body.x + s.body.w == lay::PANEL_W);
+			CHECK(s.body.y == s.header.y + s.header.h);
+			CHECK(s.body.y + s.body.h <= (mini ? s.mini.y : s.hints.y));
+			CHECK(mini ? s.mini.w > 0 && s.mini.y + s.mini.h <= s.hints.y : s.mini.w == 0);
+		}
+	}
+
 	using namespace lay;
 	// a row's cells end on the area's right edge whatever the division leaves (five across 608: 115 x 4 + 116)
 	Box area{16, 338, 608, 52};

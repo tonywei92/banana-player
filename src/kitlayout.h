@@ -317,6 +317,20 @@ namespace bp
 		// L / R: the section before / after, round (n: the sections L / R step through)
 		int railStep(int at, int dir, int n);
 
+		// ---- The shell: a section's page (Home, Files, Music, Playlists, Books, Manga, Network, Settings) ----
+		// The rail at the left; right of it the header (54), the body, the hint bar (HINTS_H) at the foot. While
+		// something plays the mini bar sits over the body's foot (MINI_H, MINI_FOOT above the panel's foot), so the
+		// body ends above it. The shared contract the redesigned screens draw in: a screen lays out its own content in
+		// `body` and never draws over the rail, the header or the hints (docs/redesign/components.md, Frame).
+		constexpr int SHELL_HEAD = 54;
+		struct Shell
+		{
+			Box rail, main;	// the rail's strip; everything right of it
+			Box header, body, hints;
+			Box mini;	// the mini bar's box (w = 0 when nothing plays)
+		};
+		Shell shell(bool mini);
+
 		// ---- Preview pane: the top screen with nothing playing (its own 640x480 units) ----
 		// The brand mark top left, then a text column (from 74, 44 from the sides) or, with a cover, the cover at
 		// 36, 66 (196 x 278) and the text column from 262
