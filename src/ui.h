@@ -917,8 +917,6 @@ namespace bp
 		void quickSlide(int row, int x, int y, Player& p);	// a finger on the row's bar: grabbed
 		void quickChoose(int row, Player& p);
 		void drawQuick(const Player& p);
-		// the shell's pages: their main strip is right of the rail, so a dialog there never hangs over it
-		bool inShell() const { return page == Page::Browse || page == Page::Settings; }
 		// the quick settings' panel: rows 62 apart, closer (56) when that many don't fit above the footer
 		// the rows' spacing: roomy while they fit above the hints, closer as rows come (seven at most: both panels'
 		// brightness apart, the dashboard, incognito mode and quit)
@@ -927,16 +925,10 @@ namespace bp
 			int n = (int)quickRows().size();
 			return 74 + n * 62 <= 436 ? 62 : 74 + n * 56 <= 436 ? 56 : (436 - 74) / n;
 		}
-		// inside the shell's main strip the panel is inset 8 from the rail and the right edge (the dialog's veil
-		// still dims the whole panel, the rail included: a modal, not a panel hung over the rail)
+		// centred on the whole panel, over the shell's rail too (the owner, 2026-11-19): a modal under its veil
 		Rect quickPanel() const
 		{
 			int h = 74 + (int)quickRows().size() * quickStep();
-			if (inShell())
-			{
-				lay::Box main = lay::shell(false).main;
-				return {main.x + 8, (436 - h) / 2, main.w - 16, h};
-			}
 			return {40, (436 - h) / 2, 560, h};
 		}
 		Rect quickRowRect(int i) const

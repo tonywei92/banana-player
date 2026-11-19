@@ -86,3 +86,5 @@ instead — "Card 2" no longer ends in "card", and a folder that happens to be n
 - A real second card (`/run/sd2`); the Files shot uses `BP_BROWSE` basenames, so it checks the row layout and
   the missing path, not `browseRoots()` mounting.
 - The Manga library help line's new string on the handheld.
+
+Later the same day the owner asked for Quick settings centred on the whole panel and over the rail (a modal under its veil): `quickPanel()` is the full-panel box again in every page. Home's quit question stays right of the rail.
