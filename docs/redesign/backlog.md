@@ -27,8 +27,9 @@ What the redesign spec doesn't draw yet, found by the journeys audit (`journeys.
 - **Music's place:** a rail section (drawn now; the rail scrolls with Manga on, Network out of view unless open) or
   tabs inside Playlists.
 - **A Songs list in Music**, or Search alone for finding a song (recommended: none for now).
-- **The brand mark:** the small play-tile on the top screen's panes, or a small clapperboard like the new app icon
-  (about forty panes).
+- ~~The brand mark~~ **Decided (owner, 2026-11-19):** the brand mark is the app's icon, so it becomes a small
+  version of the new clapperboard icon (simplified, flat, in the theme's roles, 22 units) on every pane that shows it
+  (about forty). To draw.
 - **Circle** is gone from the app (the final fifteen styles); nothing to decide unless it comes back.
 
 ## Visualizers (the app, 2026-11-19)
