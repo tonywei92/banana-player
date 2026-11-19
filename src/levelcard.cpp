@@ -13,8 +13,10 @@ namespace bp
 	// the TOP_* tokens only: a card stands over a picture or in its place, dark in every theme (theme.h)
 	using namespace theme;
 
-	// the cards' body is a little see-through (the picture shows a little through, as the ASS cards' \1a&H20&)
-	static const int CARD_ALPHA = 223;
+	// the cards' body is see-through (the owner, 2026-11-19: the picture shows through every note, level and chapter
+	// card; it was 223, barely so). The text keeps its contrast: TOP_TEXT on TOP_CARD is high, and the card darkens
+	// what is under it by two thirds
+	static const int CARD_ALPHA = 165;
 
 	int levelTop(const std::string& label, int volumeMax)
 	{
