@@ -31,7 +31,7 @@ namespace bp
 	{
 		// (as tick() takes over: the player with no menu over it)
 		(void)p;
-		return page == Page::Main && !inMenu ? 1 : 2;
+		return page == Page::Main ? 1 : 2;
 	}
 
 	// (the Session's: a page the output of the file held here, its place by posNow, its play state the session's wish)
@@ -93,7 +93,7 @@ namespace bp
 	bool Ui::repeats(Button b, const Player& p) const
 	{
 		// a photo: on to the next, and zooming, while held
-		if (page == Page::Main && !inMenu && p.playingPhoto())
+		if (page == Page::Main && p.playingPhoto())
 			return b == Button::Left || b == Button::Right || b == Button::L || b == Button::R || b == Button::Up || b == Button::Down;
 		if (b == Button::L2 || b == Button::R2) return false;
 		if (b == Button::Left || b == Button::Right) return true;

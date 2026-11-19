@@ -18,6 +18,8 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "ui_browse.h"
+#include "ui_home.h"
 #include "ui_kit.h"
 #include "ui_reader.h"
 #include "ui_manga.h"
@@ -43,6 +45,57 @@ namespace bp
 			return docLabel(DOC_FONTS, 5, s.txtFont) + " \xC2\xB7 " + docLabel(DOC_SIZES, 5, s.txtSize) + " \xC2\xB7 " +
 				docLabel(DOC_THEMES, 5, s.txtTheme);
 		}
+	}
+
+	// Settings from START: remember where it was pressed, so B or START there goes back to it (the player, a book's
+	// page, a folder). The rail and L/R open it as a section (`fromStart` false), and B then goes Home.
+	void Ui::openSettings(Player& p, bool fromStart)
+	{
+		if (page == Page::Settings) return;
+		settingsOver = fromStart;
+		if (fromStart)
+		{
+			settingsBackPage = page;
+			settingsBackDir = browse->browseDir;
+			settingsBackCursor = cursor;
+			settingsBackScroll = scroll;
+			settingsBackTab = browse->browseTab;
+		}
+		settingsPage->styleFromSubs = false;
+		page = Page::Settings;
+		setGroup = -1;
+		cursor = scroll = 0;
+		ctxOpen = false;
+		pressedBtn = -1;
+		fprintf(stderr, "ui: Settings, %s\n", fromStart ? "back to where it was opened from" : "a section");
+		(void)p;
+	}
+
+	void Ui::closeSettings(Player& p)
+	{
+		bool over = settingsOver;
+		settingsOver = false;
+		if (!over)
+		{
+			// a section, as the rail opened it: B goes Home (it keeps playing behind the browser)
+			page = Page::Browse;
+			cursor = scroll = 0;
+			browse->homeView->goHome(Home::HOME_GRID, 0, p);
+			return;
+		}
+		Page back = settingsBackPage;
+		cursor = settingsBackCursor;
+		scroll = settingsBackScroll;
+		if (back == Page::Browse)
+		{
+			page = Page::Browse;
+			if (browse->browseDir != settingsBackDir)
+			{
+				browse->setSection(settingsBackTab);
+				browse->enterFolder(settingsBackDir, p);
+			}
+		}
+		else page = back;
 	}
 
 	Ui::SettingsPage::SettingsPage(Ui& u) : Area(u)
@@ -613,7 +666,8 @@ namespace bp
 		{
 			styleFromSubs = false;
 			if (!ui.playerShown(p) || p.playingAudio() || p.playingPhoto()) return false;
-			ui.inMenu = false;
+			// the sheet takes over from Settings: back on the player, not to where START opened it
+			ui.settingsOver = false;
 			ui.page = Page::Main;
 			ui.playerPage->openView(0, p);
 			return true;
@@ -667,17 +721,12 @@ namespace bp
 		// the mini bar's right end says SELECT: back to what plays (Settings has no SELECT of its own)
 		case Button::Select: if (ui.nowPlayable(ui.barPlayer(p))) ui.goNowPlaying(p); break;
 		case Button::B:
+			// a group goes back to the tiles; the tiles close Settings back to where it was opened (START's origin,
+			// or Home when the rail or L/R made it a section)
 			if (ui.setGroup >= 0) { ui.cursor = ui.setGroup; ui.setGroup = -1; }
-			// START opened Settings directly: B at the tiles closes it back to where the user was
-			else if (ui.inMenu) ui.closeMenu(p);
-			else ui.page = ui.home(p);
+			else ui.closeSettings(p);
 			break;
-		case Button::Start:
-			// (Settings is START's page now: pressed again it closes, as B does; opened on its own, as over the
-			// browser, ui.inMenu is false and this opens it)
-			if (ui.inMenu) ui.closeMenu(p);
-			else ui.openMainMenu(p);
-			break;
+		case Button::Start: ui.closeSettings(p); break;
 		default: break;
 		}
 		// (a group's rows scroll; the tiles and the pages of their own keep their own scroll)

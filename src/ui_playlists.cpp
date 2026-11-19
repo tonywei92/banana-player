@@ -202,7 +202,7 @@ namespace bp
 
 	bool Ui::Playlists::onPage() const
 	{
-		if (ui.page != Page::Browse || ui.inMenu) return false;
+		if (ui.page != Page::Browse) return false;
 		return ui.browse->browseDir == PLROOT || isPlDir(ui.browse->browseDir);
 	}
 

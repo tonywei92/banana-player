@@ -755,7 +755,7 @@ namespace bp
 			case Button::Left: case Button::L: textCmds.push_back({TextReader::Page, -1, now}); break;
 			case Button::Right: case Button::R: case Button::A: textCmds.push_back({TextReader::Page, 1, now}); break;
 			case Button::X: docMarksOpen(); break;
-			case Button::Start: docMenu = DOC_MENU_OPTIONS; docMenuCursor = docMenuScroll = 0; break;
+			// (START is Settings, from Ui::press; the options are the on-screen Options key)
 			case Button::Y:
 				if (!textStatus.contents.empty())
 				{
@@ -820,7 +820,11 @@ namespace bp
 			}
 			break;
 		case Button::Y: ui.pageReader->mangaPagesOpen(p); break;
-		case Button::Start: docMenu = DOC_MENU_OPTIONS; docMenuCursor = docMenuScroll = 0; break;
+		// START is Settings (Ui::press), except held sideways: there it is the Book bar's own key
+		case Button::Start:
+			if (ui.pageReader->readerStatus.book) docMenu = DOC_MENU_OPTIONS;
+			docMenuCursor = docMenuScroll = 0;
+			break;
 		case Button::B: docClose(p); break;
 		default: break;
 		}
@@ -1299,7 +1303,7 @@ namespace bp
 		}
 		// each with its key under it (as the photo viewer's), so Book is seen to be there
 		struct { const char* label; const char* key; bool off; } btns[5] = {
-			{"Contents", "Y", textStatus.contents.empty()}, {"Bookmarks", "X", false}, {"Options", "START", false},
+			{"Contents", "Y", textStatus.contents.empty()}, {"Bookmarks", "X", false}, {"Options", "", false},
 			{"Book mode", "SELECT", false}, {"Brightness", "", false}};
 		bool hints = p.settings.buttonHotkeys;
 		for (int i = 0; i < 5; i++)
@@ -1331,7 +1335,8 @@ namespace bp
 			}
 			ui.drawTextMid("Find \u201C" + findQuery + "\u201D", 0, ACCENT, W / 2, docBtn(0).y + docBtn(0).h + 22, 560, 2);
 		}
-		else ui.drawHints({{"UP/DOWN", "Scroll"}, {"L/R", "Page"}, {"L3", "Find"}, {"B", "Close"}});	// (the buttons above say their own keys)
+		// (the buttons above say their own keys; START is Settings, as the redesign's text reader has it)
+		else ui.drawHints({{"UP/DOWN", "Scroll"}, {"L/R", "Page"}, {"L3", "Find"}, {"B", "Close"}, {"START", "Settings"}});
 		// Find's word (found, not found), over the scroll area a moment
 		if (!docNote.empty() && SDL_GetTicks() - docNoteAt < 2000)
 		{
@@ -1419,7 +1424,7 @@ namespace bp
 				pan.y + pan.h + (ui.miniUp ? 24 : 36), pan.w);
 			const char* labels[9] = {"Prev", "Next", "Zoom -", "Zoom +", "Page fit", "Brightness", "Pages", "Options", "Vertical scroll"};
 			const char* keys[9] = {"L", "R", "DOWN", "UP", p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page", "", "Y",
-				"START", "X"};
+				"", "X"};
 			bool hints = p.settings.buttonHotkeys;
 			for (int i = 0; i < 9; i++)
 			{
@@ -1439,7 +1444,7 @@ namespace bp
 				}
 				ui.drawKeyedLabel(b, label, hints || i == 4 ? keys[i] : "", off);	// (the fit's says which one is on)
 			}
-			ui.drawHints({{"LEFT/RIGHT", "Page"}, {"UP/DOWN", "Zoom"}, {"A", "2x"}, {"B", "Close"}});
+			ui.drawHints({{"LEFT/RIGHT", "Page"}, {"UP/DOWN", "Zoom"}, {"A", "2x"}, {"B", "Close"}, {"START", "Settings"}});
 		}
 		else
 		{
@@ -1463,7 +1468,7 @@ namespace bp
 				std::string key = i == 2 ? ui.lightNote(p) : std::string(hints ? keys[i] : "");
 				ui.drawKeyedLabel(b, labels[i], key);
 			}
-			ui.drawHints({{"UP/DOWN", "Zoom"}, {"LEFT/RIGHT", "Scroll"}, {"B", "Close"}});
+			ui.drawHints({{"UP/DOWN", "Zoom"}, {"LEFT/RIGHT", "Scroll"}, {"B", "Close"}, {"START", "Settings"}});
 		}
 		if (docMenu != DOC_MENU_NONE) drawDocMenu(p);
 	}

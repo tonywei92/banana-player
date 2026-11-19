@@ -392,7 +392,7 @@ namespace bp
 		case Button::X: openMoreSheet(); break;
 		case Button::Y: return listAct(p);
 		// the menu opens on what plays (Like, Add to playlist...): Settings is a tab along
-		case Button::Start: ui.openMainMenu(p); break;
+		case Button::Start: ui.openSettings(p, true); break;
 		// the stick pressed in (the RG DS Plus): Like, at once (over a photo it turns it, above)
 		case Button::L3: ui.likeNow(p); break;
 		// More, as X: View (what SELECT used to open) is its first row, then Lock, Screen off, Info, Stop, Like, Add,

@@ -10,24 +10,26 @@ namespace bp
 {
 	// ---- Section rail ----
 
-	void Ui::KitNew::rail(Kit& k, const lay::Rail& r, const std::vector<RailItem>& sections, const RailItem& settings, int active, int pressed)
+	void Ui::KitNew::rail(Kit& k, const lay::Rail& r, const std::vector<RailItem>& sections, const RailItem& settings, int active,
+		int pressed, bool searchLit, bool searchPressed)
 	{
 		Ui& ui = k.ui;
 		ui.fill(r.area, RAIL);
 		ui.fill({r.area.x + r.area.w - 1, r.area.y, 1, r.area.h}, RULE);
+		auto lit = [&](Ui::Rect c) {
+			// lit as a key: ACCENT with its darker lip along the foot, no edge
+			ui.fillRound(c, sdl(theme::lipOf(theme::ACCENT)), R_BUTTON);
+			ui.fillRound({c.x, c.y, c.w, c.h - theme::LIP}, ACCENT, R_BUTTON);
+		};
 		auto cell = [&](Ui::Rect c, const RailItem& it, bool on, bool held) {
 			SDL_Color ink = on ? ON_ACCENT : DIM_ON;
-			if (on)
-			{
-				// lit as a key: ACCENT with its darker lip along the foot, no edge
-				ui.fillRound(c, sdl(theme::lipOf(theme::ACCENT)), R_BUTTON);
-				ui.fillRound({c.x, c.y, c.w, c.h - theme::LIP}, ACCENT, R_BUTTON);
-			}
+			if (on) lit(c);
 			else if (held) ui.fillRound(c, PRESSED, R_BUTTON);
-			// icon 22 over the label, the pair centred in the cell
-			int cx = c.x + c.w / 2;
-			if (it.glyph) ui.drawGlyphMid(*it.glyph, cx, c.y + 21, ink, 2);
-			ui.drawTextMid(it.label, F_I11B, ink, cx, c.y + 42, c.w - 4, 2);
+			// icon 22 over the label, the pair centred in the cell (a seven-section rail's 47-tall cells sit closer)
+			int cx = c.x + c.w / 2, iconCy = c.h >= lay::RAIL_CELL_H ? c.y + 21 : c.y + 16;
+			int labelY = c.h >= lay::RAIL_CELL_H ? c.y + 42 : c.y + 35;
+			if (it.glyph) ui.drawGlyphMid(*it.glyph, cx, iconCy, ink, 2);
+			ui.drawTextMid(it.label, F_I11B, ink, cx, labelY, c.w - 4, 2);
 			if (it.warn)
 			{
 				// red, 11 units, ringed in the rail's ground so it stands off the cell
@@ -36,12 +38,23 @@ namespace bp
 				ui.fillRound(m, DANGER, 3);
 			}
 		};
-		int mid = r.area.x + (r.area.w - 1) / 2;
-		k.caps("L", mid - k.capsW("L") / 2, r.capL.y + r.capL.h / 2, ACCENT, RAIL);
+		// Search, pinned at the top: the magnifier alone; ACCENT while Search shows
+		if (searchLit) lit(r.search);
+		else ui.drawBox(r.search, searchPressed ? PRESSED : BUTTON, R_BUTTON);
+		ui.drawGlyphMid(G_SEARCH, r.search.x + r.search.w / 2, r.search.y + r.search.h / 2 + 1,
+			searchLit ? ON_ACCENT : TEXT, 2);
+		// the sections: only the part inside their view (a drag scrolls them under it)
+		SDL_Rect clip = ui.devRect(r.view), previous;
+		bool hadClip = SDL_RenderIsClipEnabled(ui.ren) == SDL_TRUE;
+		if (hadClip) SDL_RenderGetClipRect(ui.ren, &previous);
+		SDL_RenderSetClipRect(ui.ren, &clip);
 		size_t n = std::min(sections.size(), r.cell.size());
 		for (size_t i = 0; i < n; i++) cell(r.cell[i], sections[i], (int)i == active, (int)i == pressed);
-		k.caps("R", mid - k.capsW("R") / 2, r.capR.y + r.capR.h / 2, ACCENT, RAIL);
+		SDL_RenderSetClipRect(ui.ren, hadClip ? &previous : nullptr);
+		// Settings pinned at the foot, with its START cap over it
 		cell(r.settings, settings, active == (int)r.cell.size(), pressed == (int)r.cell.size());
+		int mid = r.area.x + (r.area.w - 1) / 2;
+		k.caps("START", mid - k.capsW("START") / 2, r.capStart.y + r.capStart.h / 2, ACCENT, RAIL);
 	}
 
 	// ---- Away-from-normal ----

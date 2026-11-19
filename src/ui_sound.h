@@ -32,7 +32,7 @@ namespace bp
 		// (B goes back there, on its row); the tab last open kept for the run
 		enum SoundTab { SOUND_EQ, SOUND_FX };
 		int soundTab = SOUND_EQ;
-		bool soundFromSettings = false, soundFromMenu = false;
+		bool soundFromSettings = false;
 		void closeSound(Player& p);
 		void drawSoundHeader(const Player& p);
 		void drawEqualizer(const Player& p);

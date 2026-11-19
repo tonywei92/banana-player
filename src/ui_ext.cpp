@@ -190,7 +190,7 @@ namespace bp
 		switch (b)
 		{
 		case Button::A: extToggleManga(p); break;
-		case Button::Start: ui.openMainMenu(p); break;
+		case Button::Start: ui.openSettings(p, true); break;
 		case Button::B:
 			// back to the door it came through: the Extensions page's row, or Settings › Extensions
 			if (extFromSettings)

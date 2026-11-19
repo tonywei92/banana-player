@@ -361,20 +361,26 @@ namespace bp
 		// previewpane.h; tests: testKitNew in tests/core_test.cpp)
 
 		// ---- Section rail: 78 wide, full height, at the panel's left ----
-		// From the top: the L cap's row, the sections (68 x 56, 2 apart), the R cap's row; Settings pinned at the foot.
-		// More sections than fit above Settings: the last ones are left out (cells.size() says how many were placed)
-		constexpr int RAIL_W = 78, RAIL_CELL_W = 68, RAIL_CELL_H = 56, RAIL_GAP = 2, RAIL_PAD = 5, RAIL_CAP_H = 19;
+		// From the top: Search's key (68 x 40, the magnifier alone), the sections (68 x 56, or 68 x 47 with seven so all
+		// show at once, 2 apart), and Settings pinned at the foot under a START cap. When the sections don't fit their
+		// view, `scroll` moves them under a finger; Settings and Search stay put (components.md, Section rail).
+		constexpr int RAIL_W = 78, RAIL_CELL_W = 68, RAIL_CELL_H = 56, RAIL_CELL_H7 = 47, RAIL_GAP = 2, RAIL_PAD = 5,
+			RAIL_CAP_H = 19, RAIL_SEARCH_H = 40;
 		struct Rail
 		{
 			Box area;	// the whole strip (its rule is its last unit)
-			Box capL, capR;	// the rows of the L and R caps
-			std::vector<Box> cell;	// the sections shown, top down
-			Box settings;	// pinned at the foot
+			Box search;	// Search's key, pinned at the top
+			Box view;	// the sections' viewport, between Search and the START cap
+			std::vector<Box> cell;	// every section, top down (clipped to `view` when drawn)
+			Box settings;	// pinned at the foot, never scrolled
+			Box capStart;	// the START cap over Settings
+			int cellH = RAIL_CELL_H;	// 47 when seven or more show
+			int scroll = 0, maxScroll = 0;	// the sections' offset, in units from their top
 		};
-		Rail rail(int sections, int h = PANEL_H);
-		// the cell under (x, y): 0..cells-1, `cells` for Settings, -1 none
+		Rail rail(int sections, int h = PANEL_H, int scroll = 0);
+		// the cell under (x, y): 0..cells-1, `cells` for Settings, -1 none (Search is the shell's own key)
 		int railAt(const Rail& r, int x, int y);
-		// L / R: the section before / after, round (n: the sections L / R step through)
+		// L / R: the section before / after, round (n: the sections L / R step through; Search is passed by)
 		int railStep(int at, int dir, int n);
 
 		// ---- The shell: a section's page (Home, Files, Music, Playlists, Books, Manga, Network, Settings) ----

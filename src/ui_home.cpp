@@ -529,8 +529,7 @@ namespace bp
 			quitCursor = 1;
 			return false;
 		}
-		// the places (Files, Playlists, Manga, Network, Settings, About): the way to the sections until the rail lands
-		if (b == Button::Start) { ui.openMainMenu(p, TAB_MENU); return false; }
+		// (START is Settings, from Ui::press: the rail's START cap says so)
 		if (b == Button::X)
 		{
 			// the focused card's More sheet; with no card, Home's own
@@ -857,13 +856,13 @@ namespace bp
 		if (ui.browse->browseDir == RECENT)
 		{
 			bool empty = ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0);
-			h = empty ? std::vector<Hint>{{"A", "Browse Files"}, {"B", "Home"}, {"START", "Menu"}}
-				: std::vector<Hint>{{"A", "Resume"}, {"X", "More"}, {"B", "Home"}, {"START", "Menu"}};
+			h = empty ? std::vector<Hint>{{"A", "Browse Files"}, {"B", "Home"}, {"L/R", "Sections"}}
+				: std::vector<Hint>{{"A", "Resume"}, {"X", "More"}, {"B", "Home"}, {"L/R", "Sections"}};
 			return h;
 		}
 		if (recent.empty() && !continueOf(p).shown)
 		{
-			h = {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"B", "Quit"}, {"START", "Menu"}};
+			h = {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"B", "Quit"}, {"L/R", "Sections"}};
 			return h;
 		}
 		Continue c = continueOf(p);
@@ -878,7 +877,7 @@ namespace bp
 		if (c.live) h.push_back({"SELECT", "Now playing"});
 		h.push_back({"X", "More"});
 		h.push_back({"B", "Quit"});
-		h.push_back({"START", "Menu"});
+		h.push_back({"L/R", "Sections"});
 		return h;
 	}
 
@@ -1383,14 +1382,7 @@ namespace bp
 			MoreItem i;
 			i.glyph = &G_GEAR;
 			i.label = "Settings";
-			i.act = [this](Player& pl) { ui.openMainMenu(pl, TAB_SETTINGS); return false; };
-			right.push_back(i);
-		}
-		{
-			MoreItem i;
-			i.glyph = &G_HOME;
-			i.label = "Menu";
-			i.act = [this](Player& pl) { ui.openMainMenu(pl, TAB_MENU); return false; };
+			i.act = [this](Player& pl) { ui.openSettings(pl, true); return false; };
 			right.push_back(i);
 		}
 		{
@@ -1521,7 +1513,6 @@ namespace bp
 		const Player& bp = barPlayer(p);
 		if (!bp.playing() || bp.playingPhoto()) return false;
 		if (kbOpen || browse->playlists->selMode != SEL_NONE) return false;
-		if (inMenu && page != Page::Settings) return false;
 		if (page == Page::Info) return false;
 		// Book mode (held sideways, a page on each panel): both panels are the book, never the bar (the owner's call)
 		if (page == Page::DocText && docs->textStatus.book) return false;

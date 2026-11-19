@@ -128,7 +128,7 @@ namespace bp
 		}
 		if (r[i].id == STYLE_ROW)
 		{
-			openMainMenu(p, TAB_SETTINGS);
+			openSettings(p, true);
 			settingsPage->openGroup(GROUP_SUBS);
 			settingsPage->styleFromSubs = true;
 			return;
@@ -158,219 +158,6 @@ namespace bp
 		SessionHost::get().handheldPicked(type, id);
 		p.osd(std::string(type == TrackType::Audio ? "Audio: " : "Subtitles: ") + label);
 		return true;
-	}
-
-	void Ui::openMainMenu(Player& p, int tab)
-	{
-		// The owner's decision (2026-11-18): START opens Settings' group list directly. The Menu of places stays in
-		// the tree (Page::Menu, showTab(TAB_MENU), drawMenu, menuKey, menuPointer, menuGo) for the full redesign,
-		// which brings it back; nothing opens it meanwhile.
-		if (!inMenu)
-		{
-			menuReturnDir = browse->browseDir;
-			menuReturnCursor = cursor;
-			menuReturnScroll = scroll;
-			menuReturnPage = page == Page::Extensions || page == Page::Main ? page : Page::Browse;
-		}
-		inMenu = true;
-		showTab(tab, p);
-	}
-
-	void Ui::showTab(int tab, Player& p)
-	{
-		menuTab = tab == TAB_SETTINGS ? TAB_SETTINGS : TAB_MENU;
-		settingsPage->styleFromSubs = false;
-		cursor = scroll = 0;
-		if (tab == TAB_SETTINGS) { page = Page::Settings; setGroup = -1; return; }
-		// (the kept Menu of places: unreached since START opens Settings)
-		menuCursor = 0;
-		page = Page::Menu;
-	}
-
-	void Ui::closeMenu(Player& p)
-	{
-		inMenu = false;
-		// (over what plays behind the browser: back to the browser)
-		if (playerShown(p)) { page = Page::Main; return; }
-		// Manage extensions, as it was
-		if (menuReturnPage != Page::Browse)
-		{
-			page = menuReturnPage;
-			menuReturnPage = Page::Browse;
-			cursor = menuReturnCursor;
-			scroll = menuReturnScroll;
-			return;
-		}
-		// the browser, back in its folder (and on its row), listed again (a setting can change what it lists)
-		page = Page::Browse;
-		cursor = menuReturnCursor;
-		scroll = menuReturnScroll;
-		browse->enterFolder(menuReturnDir, p);
-	}
-
-	// ---- START: the Menu of places (Page::Menu), kept but unreached ----
-	// START opens Settings directly now (the owner's decision); this page stays in the tree for the full redesign.
-	// One page, no tabs: where you could go. What plays keeps playing while you go; B or START closes it.
-	bool Ui::menuNowShown(const Player& p) const
-	{
-		// (on the player it is left out: you are there, and B goes back to it)
-		return p.playing() && !p.playingPhoto() && menuReturnPage != Page::Main;
-	}
-
-	Ui::Rect Ui::menuTileRect(int top, int i) const
-	{
-		return lay::settingsTile({lay::MARGIN, top, lay::PANEL_W - 2 * lay::MARGIN, 2 * lay::SET_TILE_H + lay::SET_TILE_GAP},
-			MP_PLACES, 4, i);
-	}
-
-	Ui::Rect Ui::menuKeyRect(int top, int i) const
-	{
-		int y = top + 2 * lay::SET_TILE_H + lay::SET_TILE_GAP + 10;
-		return lay::cell({lay::MARGIN, y, lay::PANEL_W - 2 * lay::MARGIN, 56}, 2, lay::GAP, i);
-	}
-
-	void Ui::menuGo(int place, Player& p)
-	{
-		switch (place)
-		{
-		case MP_HOME:
-			inMenu = false;
-			browse->homeView->goHome(Home::HOME_GRID, 0, p);
-			page = Page::Browse;
-			break;
-		case MP_FILES: case MP_PLAYLISTS: case MP_NETWORK:
-			inMenu = false;
-			browse->openSection(place == MP_FILES ? TAB_LOCAL : place == MP_PLAYLISTS ? TAB_PLAYLISTS : TAB_NETWORK, p);
-			page = Page::Browse;
-			break;
-		case MP_EXTENSIONS:
-			// one tile for every extension, as the rail has one cell: it opens the Extensions page, which starts and
-			// stops nothing (Manga is a row there, and asks before it stops a video)
-			inMenu = false;
-			manga->openExtensionsSection(p);
-			break;
-		case MP_SETTINGS:
-			menuTab = TAB_SETTINGS;
-			page = Page::Settings;
-			setGroup = -1;
-			cursor = scroll = 0;
-			break;
-		case MP_ABOUT:
-			// the last group of Settings: L2 / R2 step its neighbours and B goes back to the tiles
-			openAbout(p);	// (its lines, read now; page = About, scroll 0)
-			setGroup = GROUP_ABOUT;
-			break;
-		default: break;
-		}
-	}
-
-	bool Ui::menuKey(Button b, Player& p)
-	{
-		int n = MP_PLACES, c = std::clamp(menuCursor, 0, n - 1);
-		switch (b)
-		{
-		case Button::Left: if (c % 4) menuCursor = c - 1; break;
-		case Button::Right: if (c % 4 < 3 && c + 1 < n) menuCursor = c + 1; break;
-		case Button::Up: if (c >= 4) menuCursor = c - 4; break;
-		case Button::Down: menuCursor = c + 4 < n ? c + 4 : (c < 4 ? std::min(n - 1, c + 4) : c); break;
-		case Button::A: menuGo(menuCursor, p); break;
-		case Button::Select: if (menuNowShown(p)) { closeMenu(p); showPlayer(); } break;
-		default: return false;
-		}
-		return false;
-	}
-
-	bool Ui::menuPointer(const Pointer& pt, int x, int y, Player& p)
-	{
-		int top = menuTop(p);
-		if (pt.kind == Pointer::Down)
-		{
-			pressedBtn = -1;
-			if (menuNowShown(p) && menuNowRect().hit(x, y)) pressedBtn = MENU_NOW;
-			for (int i = 0; i < MP_PLACES; i++)
-				if (menuTileRect(top, i).hit(x, y)) { menuCursor = i; pressedBtn = MENU_TILE + i; }
-			for (int i = 0; i < 2; i++)
-				if (menuKeyRect(top, i).hit(x, y)) pressedBtn = MENU_QUICK + i;
-			return false;
-		}
-		if (pt.kind != Pointer::Up || pressedBtn < MENU_NOW) return false;
-		int id = pressedBtn;
-		pressedBtn = -1;
-		if (id == MENU_NOW && menuNowShown(p) && menuNowRect().hit(x, y)) { closeMenu(p); showPlayer(); return false; }
-		if (id >= MENU_TILE && id < MENU_TILE + MP_PLACES && menuTileRect(top, id - MENU_TILE).hit(x, y))
-		{
-			menuCursor = id - MENU_TILE;
-			menuGo(menuCursor, p);
-			return false;
-		}
-		if (id == MENU_QUICK && menuKeyRect(top, 0).hit(x, y)) { toggleQuick(p); return false; }
-		if (id == MENU_QUIT && menuKeyRect(top, 1).hit(x, y)) { quitRequested = true; return false; }
-		return false;
-	}
-
-	void Ui::drawMenu(const Player& p)
-	{
-		Kit& k = *kit;
-		lay::PlayerLayout pl = lay::playerLayout(0);
-		Kit::Header head;
-		head.title = "Menu";
-		head.back = false;
-		head.more = false;
-		if (p.playing() && !p.playingPhoto())
-		{
-			head.state = p.paused ? "Paused" : "Playing";
-			head.stateMark = p.paused ? &G_PAUSE : &G_PLAY;
-		}
-		head.right = [&, this](int right, int cy) {
-			drawBattery(right, cy - 8, p, pl.title.x + 130);
-			return right - (616 - statusLeft(p)) - 10;
-		};
-		k.header(pl, head);
-		int top = menuTop(p);
-		if (menuNowShown(p))
-		{
-			// the place that is playing: a tap (or SELECT) goes back to it
-			Kit::Line l;
-			l.label = "NOW";
-			l.glyph = p.playingAudio() ? &G_NOTE : &G_FILM;
-			l.text = !p.title.empty() ? p.title : entryTitle(p.currentPath());
-			l.note = p.paused ? "Paused" : outputName();
-			l.keys = "SELECT";
-			k.line(menuNowRect(), l);
-		}
-		static const char* NAMES[MP_PLACES] = {"Home", "Files", "Playlists", "Extensions", "Network", "Settings", "About"};
-		static const Glyph* const MARKS[MP_PLACES] = {&G_HOME, &G_CARD, &G_PLAYLIST, &G_BLOCKS, &G_NETWORK, &G_GEAR, &G_INFO};
-		std::string summaries[MP_PLACES] = {
-			"Continue", "This card", "Saved lists",
-			p.settings.mangaOn ? "1 on \xC2\xB7 Manga reader" : "None on",
-			"Your servers", "", std::string("Version ") + BP_VERSION};
-		for (int i = 0; i < MP_PLACES; i++)
-		{
-			Kit::SettingTile t;
-			t.glyph = MARKS[i];
-			t.name = NAMES[i];
-			t.summary = summaries[i];
-			t.focused = i == menuCursor;
-			t.pressed = pressedBtn == MENU_TILE + i;
-			k.settingTile(menuTileRect(top, i), t);
-		}
-		Kit::Key quick;
-		quick.glyph = &G_SUN;
-		quick.label = "Quick settings";
-		quick.key = "F";
-		quick.pressed = pressedBtn == MENU_QUICK;
-		k.key(menuKeyRect(top, 0), quick);
-		Kit::Key quit;
-		quit.glyph = &G_POWER;
-		quit.label = "Quit Banana Player";
-		quit.tone = Kit::Tone::Danger;
-		quit.pressed = pressedBtn == MENU_QUIT;
-		k.key(menuKeyRect(top, 1), quit);
-		int noteY = menuKeyRect(top, 0).y + 56 + 12;
-		drawTextMid("What plays keeps playing while you go somewhere else.", F_I12, DIM, W / 2, noteY, 604, 2);
-		drawTextMid("B brings you back to where you were.", F_I12, DIM, W / 2, noteY + 20, 604, 2);
-		if (menuNowShown(p)) k.hints({{"D-PAD", "Move"}, {"A", "Go"}, {"SELECT", "Now playing"}, {"B", "Close"}});
-		else k.hints({{"D-PAD", "Move"}, {"A", "Go"}, {"B", "Close"}});
 	}
 
 	std::vector<int> Ui::quickRows() const
@@ -497,7 +284,7 @@ namespace bp
 		if (page == Page::MangaRead) manga->mangaCloseReader();
 		for (auto& o : overlays) o->done = true;
 		dropClosedOverlays();
-		inMenu = false;
+		settingsOver = false;
 		ctxOpen = false;
 		kbOpen = false;
 		browse->playlists->pickerOpen = false;
@@ -728,7 +515,7 @@ namespace bp
 
 	bool Ui::popupShown(const Player& p) const
 	{
-		if (!updater || popupClosed || page != Page::Browse || inMenu || ctxOpen) return false;
+		if (!updater || popupClosed || page != Page::Browse || ctxOpen) return false;
 		Updater::State st = updater->state();
 		// a release found: unless "Not until tomorrow" holds; after "Update now", what became of it
 		if (st == Updater::State::Available) return time(nullptr) >= (time_t)p.settings.updateRemindAfter;
@@ -1087,7 +874,7 @@ namespace bp
 			};
 			kit->header(pl, h);
 		}
-		else if (!inMenu) drawHeader("Info", p);
+		else drawHeader("Info", p);
 		int top = page == Page::About ? ABOUT_Y : INFO_Y;
 		int shown = page == Page::About ? ABOUT_SHOWN : INFO_SHOWN;
 		for (int i = scroll; i < (int)infoLines.size() && i < scroll + shown; i++)
@@ -1111,8 +898,7 @@ namespace bp
 			else kit->hints({{"UP/DOWN", "Scroll"}, {"Y", "QR"}, {"L2/R2", "Group"}, {"B", "Back"}});
 			return;
 		}
-		if (inMenu) drawHints({{"UP/DOWN", "Scroll"}, {"B", "Close"}, {"L/R", "Tabs"}});
-		else drawHints({{"UP/DOWN", "Scroll"}, {"A/B", "Back"}});
+		drawHints({{"UP/DOWN", "Scroll"}, {"A/B", "Back"}});
 	}
 
 	// About's foot: one dim line, the static QR image of the same address (packaging/support/kofi-qr.png, shipped beside

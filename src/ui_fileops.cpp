@@ -468,7 +468,7 @@ namespace bp
 
 	bool Ui::Browse::clipKey(Button b, Player& p)
 	{
-		if (clipOp == CLIP_NONE || ui.page != Page::Browse || ui.inMenu || ui.ctxOpen || ui.kbOpen) return false;
+		if (clipOp == CLIP_NONE || ui.page != Page::Browse || ui.ctxOpen || ui.kbOpen) return false;
 		if (b == Button::Select && clipCanPaste()) { filePaste(p); return true; }
 		if (b == Button::X)
 		{
@@ -483,7 +483,7 @@ namespace bp
 
 	bool Ui::Browse::clipPointer(const Pointer& pt, int x, int y, Player& p)
 	{
-		if (clipOp == CLIP_NONE || ui.page != Page::Browse || ui.inMenu || ui.ctxOpen || ui.kbOpen) return false;
+		if (clipOp == CLIP_NONE || ui.page != Page::Browse || ui.ctxOpen || ui.kbOpen) return false;
 		lay::FilesClip l = lay::filesClipBar(lay::shell(false).body);
 		if (!l.box.hit(x, y)) return false;
 		if (pt.kind == Pointer::Up)
@@ -691,7 +691,7 @@ namespace bp
 
 	void Ui::Browse::drawClipBar()
 	{
-		if (clipOp == CLIP_NONE || ui.page != Page::Browse || ui.inMenu) return;
+		if (clipOp == CLIP_NONE || ui.page != Page::Browse) return;
 		// the redesign's clip bar (a sheet with a yellow edge): what is held and its size, Put here and Cancel
 		std::vector<std::string> paths = clipPaths.empty() ? std::vector<std::string>{clipPath} : clipPaths;
 		uint64_t bytes = 0;
