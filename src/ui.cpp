@@ -29,6 +29,9 @@
 #include "ui_player.h"
 #include "ui_shell.h"
 #include "ui_search.h"
+#include "ui_music.h"
+#include "ui_videos.h"
+#include "ui_books.h"
 #include "durworker.h"
 
 namespace bp
@@ -102,6 +105,13 @@ namespace bp
 		areas.push_back(settingsPage.get());
 		browse = std::make_unique<Browse>(*this);
 		areas.push_back(browse.get());
+		// the rail's library sections, filled by themselves from the cards' index (main hands each the index)
+		music = std::make_unique<Music>(*this);
+		areas.push_back(music.get());
+		videos = std::make_unique<Videos>(*this);
+		areas.push_back(videos.get());
+		books = std::make_unique<Books>(*this);
+		areas.push_back(books.get());
 		kit = std::make_unique<Kit>(*this);	// (not an area: the redesign's components, drawn by the areas rebuilt on them)
 		search = std::make_unique<Search>(*this);	// (its constructor adopts Page::Search: drawn in the shell's body)
 		areas.push_back(search.get());
@@ -148,7 +158,7 @@ namespace bp
 	bool Ui::startOpensSettings(const Player& p) const
 	{
 		if (page == Page::Settings || page == Page::About || page == Page::Main || page == Page::ExtSection ||
-			page == Page::Extensions)
+			page == Page::Extensions || page == Page::Music || page == Page::Videos || page == Page::Books)
 			return true;
 		// Search: START is Done to the results while typing, and its page's own key otherwise
 		if (page == Page::Search) return false;
@@ -265,6 +275,16 @@ namespace bp
 		if (b == Button::L2 || b == Button::R2)
 		{
 			if (page == Page::Settings || page == Page::Web) { area()->key(b, p); return false; }
+			// Music's views (Albums / Artists / Playlists) and Videos' (All / Folders / Not finished): the
+			// shoulders step them; the pages below them (an album's, an artist's, a folder's) keep the keys
+			if (page == Page::Music || page == Page::Videos) { area()->key(b, p); return false; }
+			// Music's Playlists view (the browser's own page): back to Albums / Artists
+			if (page == Page::Browse && browse->browseDir == PLROOT && browse->playlists->selMode == SEL_NONE &&
+				!browse->playlists->moving && !browse->playlists->addPending.serial)
+			{
+				music->viewStep(b == Button::R2 ? 1 : -1, p);
+				return false;
+			}
 			// About is a settings group too (its page its own): back to its neighbours
 			if (page == Page::About)
 			{

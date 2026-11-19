@@ -1296,6 +1296,7 @@ namespace bp
 				if (k >= 0 && k < (int)plCur.entries.size()) pickerSel.push_back(plCur.entries[k]);
 		}
 		if (!one) pickerOne.clear();
+		pickerNewName.clear();		// (Music's own name for a new one: only openPickerEntries sets it)
 		pickerList = plStore->addTargets();	// not Liked: only the Like button adds there
 		// the one changed last first (as good as the one last added to), then by name as listed
 		std::vector<std::pair<long long, size_t>> order;
@@ -1321,11 +1322,45 @@ namespace bp
 		ui.pressedBtn = -1;
 	}
 
+	void Ui::Playlists::openPickerEntries(std::vector<PlaylistEntry> entries, const std::string& newName, Player& p)
+	{
+		// the Music pages' Add to playlist…: these very entries (an album's or an artist's songs) into a playlist
+		// chosen in the picker — the select bar's own "Add to…" flow, with the entries held instead of ticked
+		if (!plStore || entries.empty()) return;
+		plFlush(p);
+		pickerEdit = true;
+		pickerSel = std::move(entries);
+		pickerOne.clear();
+		pickerFolder.clear();
+		pickerNewName = newName;
+		pickerList = plStore->addTargets();		// not Liked: only the Like button adds there
+		// the one changed last first (openPicker's own order)
+		std::vector<std::pair<long long, size_t>> order;
+		for (size_t i = 0; i < pickerList.size(); i++)
+		{
+			struct stat st;
+			order.push_back({stat(pickerList[i].file.c_str(), &st) == 0 ? (long long)st.st_mtime : 0LL, i});
+		}
+		std::stable_sort(order.begin(), order.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+		std::vector<PlaylistStore::Info> sorted;
+		for (auto& o : order) sorted.push_back(pickerList[o.second]);
+		pickerList = sorted;
+		pickerHas.assign(pickerList.size(), 0);
+		pickerArmed = -1;
+		// none yet: the one to make is the only choice (named after the album or the artist)
+		if (pickerList.empty()) { pickerNew(p); return; }
+		pickerOpen = true;
+		pickerCursor = pickerScroll = 0;
+		ui.pressedBtn = -1;
+	}
+
 	void Ui::Playlists::pickerNew(Player&)
 	{
-		// named after the folder (a ticked file's, the one the menu was for)
+		// named after the folder (a ticked file's, the one the menu was for; Music's: the album or the artist)
 		pickerOpen = false;
-		plNameOpen(false, "", pickerOne.empty() ? folderName(pickerFolder.empty() ? ui.browse->browseDir : pickerFolder) : "");
+		std::string start = !pickerNewName.empty() ? pickerNewName : !pickerOne.empty() ? std::string()
+			: folderName(pickerFolder.empty() ? ui.browse->browseDir : pickerFolder);
+		plNameOpen(false, "", start);
 		plNameThenAdd = true;
 		plNameAddFolder = pickerFolder;
 	}
@@ -1353,6 +1388,7 @@ namespace bp
 			{
 				pickerEdit = false;
 				pickerSel.clear();
+				pickerNewName.clear();
 			}
 			return;
 		}

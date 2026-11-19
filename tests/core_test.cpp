@@ -434,6 +434,68 @@ static void testMediaIndex()
 		if (hadBrowse) setenv("BP_BROWSE", hadBrowse, 1); else unsetenv("BP_BROWSE");
 	}
 
+	// ---- the Books shelves' folders, their walk, and the line's words
+	for (const char* n : {"Books", "BOOKS", "Documents", "documents"})
+		CHECK_EQ(isBookFolderName(n), true);
+	for (const char* n : {"Book", "Docs", "My Books", "books "})
+		CHECK_EQ(isBookFolderName(n), false);
+	{
+		const char* hadIndex = getenv("BP_INDEX"), *hadBrowse = getenv("BP_BROWSE");
+		setenv("BP_INDEX", C.c_str(), 1);
+		mkdirAt(C + "/Books");
+		mkdirAt(C + "/Documents");
+		write(C + "/BOOKS", "a file named like a folder, not one\n");	// (never listed)
+		std::vector<std::string> bf = bookFolders();
+		CHECK_EQ(bf.size(), (size_t)2);
+		CHECK_EQ(bf[0], C + "/Books");
+		CHECK_EQ(bf[1], C + "/Documents");
+		// the walk: every book file under them, however deep; hidden and dotted folders out; by name, natural
+		auto rowNameOf = [](const std::vector<MediaBook>& books, size_t i) {
+			std::string n = books[i].path.substr(books[i].path.rfind('/') + 1);
+			size_t dot = n.rfind('.');
+			if (dot != std::string::npos && dot > 0) n.resize(dot);
+			return n;
+		};
+		mkdirAt(C + "/Books/Deep");
+		write(C + "/Books/Novel.epub", "a");
+		write(C + "/Books/notes.txt", "n");
+		write(C + "/Books/Deep/Paper 2.pdf", "p");
+		write(C + "/Books/Deep/Paper 10.pdf", "p");	// (natural: 2 before 10)
+		write(C + "/Books/Comic.cbz", "c");
+		write(C + "/Books/cover.jpg", "no");			// (a book file only)
+		write(C + "/Documents/Manual.pdf", "m");
+		std::vector<MediaBook> books = listBooks(bf);
+		CHECK_EQ(books.size(), (size_t)6);
+		CHECK_EQ(rowNameOf(books, 0), "Comic");		// Comic, Manual, Novel, notes, Paper 2, Paper 10
+		CHECK_EQ(rowNameOf(books, 1), "Manual");
+		CHECK_EQ(rowNameOf(books, 2), "notes");	// (natural and case-insensitive: notes before Novel)
+		CHECK_EQ(rowNameOf(books, 3), "Novel");
+		CHECK_EQ(rowNameOf(books, 4), "Paper 2");
+		CHECK_EQ(rowNameOf(books, 5), "Paper 10");
+		// the line's words: the folders' kinds as one phrase, and which cards hold them
+		CHECK_EQ(mediaFromWords({C + "/Music", C + "/Musics"}), "Music on this card");
+		CHECK_EQ(mediaFromWords({C + "/Videos", C + "/MOVIES"}), "Videos and Movies on this card");
+		CHECK_EQ(mediaFromWords({C + "/Books", C + "/Documents"}), "Books and Documents on this card");
+		CHECK_EQ(mediaFromWords({}), "");
+		CHECK_EQ(mediaCards().size(), (size_t)1);
+		// two cards: both words
+		char card2[] = "/tmp/bp-media2-XXXXXX";
+		if (mkdtemp(card2))
+		{
+			std::string C2 = card2;
+			mkdirAt(C2 + "/Music");
+			std::string both = std::string(C) + ":" + C2;
+			setenv("BP_INDEX", both.c_str(), 1);
+			MediaFolders f = mediaFolders();
+			CHECK_EQ(f.music.size(), (size_t)3);
+			CHECK_EQ(mediaFromWords(f.music), "Music on both cards");
+			CHECK_EQ(mediaCards().size(), (size_t)2);
+			rmrf(C2);
+		}
+		if (hadIndex) setenv("BP_INDEX", hadIndex, 1); else unsetenv("BP_INDEX");
+		if (hadBrowse) setenv("BP_BROWSE", hadBrowse, 1); else unsetenv("BP_BROWSE");
+	}
+
 	// ---- the walk: songs and music videos under Music, videos under Videos, tags from a fake reader
 	MediaFolders folders;
 	folders.music = {C + "/Music", C + "/Musics"};

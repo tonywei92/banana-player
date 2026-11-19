@@ -157,6 +157,14 @@ namespace bp
 			for (auto& l : infoLines) out.push_back(l.header ? "[" + l.label + "]" : l.label + ": " + l.text);
 			return out;
 		}
+		// the rail's library sections (the media index's pages), for test runs: "" when another page shows
+		std::string libPageName() const
+		{
+			if (page == Page::Music) return "music";
+			if (page == Page::Videos) return "videos";
+			if (page == Page::Books) return "books";
+			return "";
+		}
 		std::string takeOpenRequest() { std::string r; r.swap(openRequest); return r; }
 		// a playlist picked in the browser (an item, Play, Shuffle play), once: the caller opens it (openPlaylist)
 		// names: a network folder's listing (open's folderNames); stay: opened behind the browser, not on the player
@@ -187,6 +195,16 @@ namespace bp
 		// (public: the dashboard's routes reach its folder, rows and form)
 		struct Browse;
 		std::unique_ptr<Browse> browse;
+		// ---- the rail's library sections, filled by themselves from the cards' media index (docs/redesign:
+		// music-albums, music-artists, music-album, music-artist, videos, books): areas, ui_music.h / ui_videos.h /
+		// ui_books.h; main hands each the index (MediaIndexWorker's) ----
+		// (public: main reaches them to hand the index in)
+		struct Music;
+		std::unique_ptr<Music> music;
+		struct Videos;
+		std::unique_ptr<Videos> videos;
+		struct Books;
+		std::unique_ptr<Books> books;
 		// the playlists: a plain struct the browser owns (browse->playlists), ui_playlists.h / ui_playlists.cpp
 		struct Playlists;
 		// Home and All recent: a plain struct the browser owns (browse->homeView), ui_home.h / ui_home.cpp
@@ -326,7 +344,7 @@ namespace bp
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
 		enum class Page { Main, Settings, Browse, Search, Info, About, Sound, Web, Manga, ExtSection, Extensions, MangaSeries,
-			MangaRead, MangaSettings, MangaSources, DocText, DocPages };
+			MangaRead, MangaSettings, MangaSources, DocText, DocPages, Music, Videos, Books };
 		using Rect = lay::Box;	// (kitlayout.h: the kit's layout maths give and take the same box)
 		// An overlay: a dialog or a sheet over the page (ui_overlay.cpp; docs/notes/overlay-stack.md). While it is on
 		// the stack it gets the keys and the touches (the topmost one only: it is modal), is drawn over the page (all

@@ -48,6 +48,30 @@ namespace bp
 		std::vector<std::string> music, videos;	// full paths; empty: none anywhere
 	};
 	MediaFolders mediaFolders();
+	// the card roots the index reads (BP_INDEX, else BP_BROWSE, else the handheld's own two): for the line under a
+	// page's title, which says whether the folders are on one card or both
+	std::vector<std::string> mediaCards();
+	// "Music on both cards", "Videos and Movies on this card": the folders' kinds as one phrase and which cards hold
+	// them ("" when there are none). Music folds "Musics" in; the kinds read in a fixed order, " and " between
+	std::string mediaFromWords(const std::vector<std::string>& folders);
+
+	// ---- the Books shelves' folders (the Books page, ui_books.h; the brief's rule: the cards' Books and Documents
+	// folders — the index holds songs and videos only, so the shelf lists these itself) ----
+	// "Books" or "Documents", any capitals
+	bool isBookFolderName(const std::string& name);
+	// every such folder at the top of each card, as mediaFolders() walks its own names (never BananaOS's roms: it
+	// has no books folder)
+	std::vector<std::string> bookFolders();
+	// a book file under them, however deep: a path, a size and a date. A folder that can't be read is skipped; a
+	// hidden one (a ".hidden" marker) or a dotted name is not walked — the index's rules, for a much smaller list
+	struct MediaBook
+	{
+		std::string path;
+		long long size = 0;
+		int64_t mtime = 0;
+	};
+	// by the file's name less its extension, natural and case-insensitive
+	std::vector<MediaBook> listBooks(const std::vector<std::string>& folders);
 
 	// ---- the folded word
 

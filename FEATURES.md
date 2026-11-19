@@ -78,8 +78,8 @@ While something plays it asks too, and says **What's playing stops** (**SELECT**
 settings, **L3** is Search, and About is Settings' last group.
 
 Every section now shares one frame: a **rail** down the left with a **Search** key pinned at its top, **Home**,
-**Files**, **Playlists**, **Extensions**, **Network**, and at the foot the **Now playing key** over **Settings** (no START
-cap: START is Settings from every screen).
+**Files**, **Videos**, **Music**, **Books**, **Extensions**, **Network**, and at the foot the **Now playing key** over
+**Settings** (no START cap: START is Settings from every screen).
 **L/R** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
 52 units tall, 45 with seven sections so all show at once; when they still don't fit, a finger drag scrolls them
 (Search, the Now playing key and Settings stay put). Arriving at a section starts and stops nothing, and no cell
@@ -90,8 +90,9 @@ Search key is in the rail. **L3** and that key open **Search** (a tool, not a se
 **B** goes back where you were), and its key is lit while the page shows.
 The hint bar along the foot says what the buttons do there.
 
-Inside a section the list opens where you left it (its top if that folder or playlist is gone); the **Playlists** rail
-cell opens the list of playlists, and **B** goes up a folder, and from the section's top back to Home.
+Inside a section the list opens where you left it (its top if that folder or playlist is gone); **B** goes up a
+folder, and from the section's top back to Home. **Playlists** is no cell of the rail: it is Music's third view
+(see [The Music section](#the-music-section)).
 
 Folders come first, then files in natural order (episode 2 before episode 10). Each row has an icon (folder, video,
 song, photo), and each file shows its size. Songs and videos on the card show their length too (`3:34 · 3.5 MB`; a
@@ -113,6 +114,78 @@ greyed out. The web dashboard's Previous (both targets, and
 a headset's or the lock screen's) follows the same rule. Photos simply step back. Folders can mix videos and music. Photos are a list of their own: from a photo you step through
 the folder's photos, and from a video or a song through its videos and songs. When you stop something, you're back in
 its folder on that file.
+
+## The Music section
+
+Songs by what they are, not where they are. The **Music** cell opens three views of the cards' index, stepped with
+**L2/R2** or tapped: **Albums**, **Artists** and **Playlists** (the same playlists as ever, drawn under Music; Liked
+first). The line under the title says where the list comes from and how much (`From Music on both cards · 148 albums ·
+1,912 songs`; `on this card` when one card has none). Albums and Artists fill by themselves from the folders named
+**Music** or **Musics** (any capitals) at the top of each card, plus BananaOS's own `/data/roms/music`; every such
+folder is read, however deep inside it everything counts. A song anywhere else is not listed here: it stays in Files,
+plays the same, and Search finds it. There is no list of all songs.
+
+- **Albums**: a grid of covers, five across. The art is the album's own (the picture in the file, else `cover.*` /
+  `folder.*` beside it), the drawn record while it decodes or for good when there is none; under it the album's name
+  and its artist. An album that plays carries a yellow play mark on its cover, the one paused a pause mark. **A**
+  (or a tap) opens the album.
+- **Artists**: a row each (`3 albums · 34 songs`), the unknown artist last. **A** opens the artist.
+- **Playlists**: the browser's own Playlists pages, exactly as they were, with the Music cell kept lit (their keys
+  and touch are theirs; **L2** steps back to Artists, **R2** rounds to Albums).
+
+An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
+(**A**), **Shuffle** (**Y**) and **+** (Add to playlist, touch only). Under them the songs in disc, track and name
+order — a music video sits among them with a **VIDEO** pill and plays as one item of the album's list (Next goes on
+to the next song); the one playing shows its mark in the number's place, a liked one its heart, each its length.
+**A** on Play plays the album from its first song; **A** on a song plays from that song; **Y** anywhere plays it
+shuffled; **DOWN** steps from the keys into the songs. **X** is **More**: **Add to playlist…** (the album's songs into
+one of yours; New playlist… starts from the album's name), **Show in folder**, and on a song **Like / Unlike** too.
+**B** is back to the grid.
+
+An artist's page: the same keys (everything of theirs, by album and track), then their albums newest first as a strip
+of covers (**◀/▶** steps, **A** opens one), then every song of theirs with its album and length (**A** plays from
+there). **X** is the same **More** (theirs, or the song's). **B** is back to the list.
+
+With no Music folder on either card (or none with a song in it) the page says so — **No music here yet**, the folder's
+name in the accent, **Browse Files** (A) and **Web dashboard** (Y) — and **L2/R2** still reaches Playlists. While a
+card is read the first time a notice row under the chips says the albums fill in as it goes, and the page shows them
+when the pass lands. A music video's tags are read as a song's are; without any it goes by its file's name, in its
+folder's album, exactly as an untagged song does.
+
+## The Videos section
+
+The films on the cards in one list, without walking folders: filled by itself from the folders named **Videos** or
+**Movies** (any capitals) at the top of each card, plus BananaOS's own `/data/roms/videos`. Three views, stepped with
+**L2/R2** or tapped, with their counts:
+
+- **All**: every video by name. A row shows its length (`9:56`), where it was left (`at 6:12 / 9:56` with a bar), a
+  tick when played through, and its folder, size and date (`Movies · 2.1 GB · 12 Nov`). No thumbnails are made for the
+  list; the top screen previews nothing here (the kind's mark stands in).
+- **Folders**: the folders directly inside the Videos folders, each with how much is under it (`42 videos`), then the
+  loose files under them. **A** opens a folder's own list (everything under it, however deep).
+- **Not finished**: what you started and left, newest first, with its place.
+
+**A** plays from the place you left it, with the view's videos as the list (Next goes to the next row; a folder's
+list is the folder's). **X** is **More**: **Play from the start**, **Add to playlist…**, **Like / Unlike**, **Show in
+folder** and **Info**. **◀/▶** page the list, **B** leaves a folder (or goes Home). With no Videos folder on either
+card the page says so, with **Browse Files** (A) and **Web dashboard** (Y); while a card is first read a notice row
+says the list fills in. A video anywhere else on a card is not listed here: it is in Files, found by Search, kept in
+Recent; and a video inside a Music folder belongs to Music.
+
+## The Books section
+
+A shelf of the book files on the cards — EPUB, PDF, TXT, and comics (CBZ, CBR) — with the ones you are reading
+first. **Reading now** is the newest five with a place kept, each cover with how far in; **Shelf** under it is every
+book, five across, by name. **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
+comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
+
+The shelf is filled from two places: the books you have opened from anywhere (their places are the readers' own), and
+the folders named **Books** or **Documents** (any capitals) at the top of each card. Every cover is the drawn one (a
+sleeve with a spine, keyed by the name) until the readers' own cover decoding joins in — a later step. **X** is
+**More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in folder**. **◀/▶** page the
+shelf, **B** goes Home. With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
+Files still lists and opens every book, and Recent keeps its Books filter; comics still need the Manga reader turned
+on, and say so when it isn't.
 
 ## Playing while you browse
 

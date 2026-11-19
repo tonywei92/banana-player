@@ -100,6 +100,10 @@ namespace bp
 		bool pickerScrolled = false;
 		std::vector<PlaylistStore::Info> pickerList;
 		std::string pickerFolder;	// a folder's media ("Add to playlist..." on a folder); "" the ticked files
+		// Music's Add to playlist… (an album's or an artist's songs): these very entries into a playlist chosen
+		// in the picker, and a new one starts from `pickerNewName` ("" none: the folder's or the file's own rule)
+		std::string pickerNewName;
+		void openPickerEntries(std::vector<PlaylistEntry> entries, const std::string& newName, Player& p);
 		// one file (Main's Add square, the Playing tab, a Recent card, a Liked item): "Add “title” to…", the playlists
 		// last added to first, ✓ Added on those that have it (pickerHas), whose A asks again first (pickerArmed)
 		std::string pickerOne, pickerOneTitle;

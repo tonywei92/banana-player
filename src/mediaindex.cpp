@@ -3,6 +3,7 @@
 // one part that must touch the card, so it is this file's, driven from whatever thread called it (the worker's).
 #include "mediaindex.h"
 #include "browser.h"
+#include "pagebook.h"
 #include "playlist.h"
 #include <algorithm>
 #include <cctype>
@@ -39,6 +40,12 @@ namespace bp
 				m.ignore(4096, '\n');
 			}
 			return false;
+		}
+
+		// the folder's own name (the path's last part)
+		std::string baseName(const std::string& p)
+		{
+			return p.substr(p.rfind('/') + 1);
 		}
 
 		// the name a row shows: the file's own, less its extension
@@ -161,9 +168,41 @@ namespace bp
 		return n == "videos" || n == "movies";
 	}
 
+	// the cards as the index sees them, defined below mediaFolders (its own first half, so the two can never disagree)
+	static std::vector<std::string> indexCards();
+
 	MediaFolders mediaFolders()
 	{
 		MediaFolders out;
+		std::vector<std::string> cards = indexCards();
+		for (auto& card : cards)
+		{
+			// every such folder at the top, all as one (a card may have Music and Musics, or Videos twice)
+			if (DIR* d = opendir(card.c_str()))
+			{
+				std::string prefix = card == "/" ? "/" : card + "/";
+				while (dirent* e = readdir(d))
+				{
+					if (e->d_name[0] == '.') continue;
+					bool dir = e->d_type == DT_DIR;
+					if (e->d_type == DT_UNKNOWN || e->d_type == DT_LNK) dir = isDir(prefix + e->d_name);
+					if (!dir) continue;
+					std::string path = prefix + e->d_name;
+					if (isMusicFolderName(e->d_name)) out.music.push_back(path);
+					else if (isVideosFolderName(e->d_name)) out.videos.push_back(path);
+				}
+				closedir(d);
+			}
+		}
+		// BananaOS's own, beside the cards' folders (a computer has none of these)
+		if (isDir("/data/roms/music")) out.music.push_back("/data/roms/music");
+		if (isDir("/data/roms/videos")) out.videos.push_back("/data/roms/videos");
+		return out;
+	}
+
+	// the cards as the index sees them (mediaFolders' own first half, so the two can never disagree)
+	static std::vector<std::string> indexCards()
+	{
 		std::vector<std::string> cards;
 		// BP_INDEX settles the index alone (a test that wants it pointed elsewhere than the browser's places);
 		// without it the browser's own test roots stand in, so one variable walks both
@@ -187,9 +226,53 @@ namespace bp
 			cards.push_back("/data");
 			if (mounted("/run/sd2")) cards.push_back("/run/sd2");
 		}
-		for (auto& card : cards)
+		return cards;
+	}
+
+	std::vector<std::string> mediaCards() { return indexCards(); }
+
+	std::string mediaFromWords(const std::vector<std::string>& folders)
+	{
+		if (folders.empty()) return "";
+		// the kinds the folders' names stand for, in a fixed order, each once ("Musics" is Music)
+		static const struct { const char* plain; const char* word; } KIND[] = {
+			{"music", "Music"}, {"videos", "Videos"}, {"movies", "Movies"}, {"books", "Books"}, {"documents", "Documents"}};
+		bool seen[5] = {};
+		for (auto& f : folders)
 		{
-			// every such folder at the top, all as one (a card may have Music and Musics, or Videos twice)
+			std::string n = lowerAscii(baseName(f));
+			for (int i = 0; i < 5; i++)
+				if (n == KIND[i].plain) { seen[i] = true; break; }
+		}
+		std::string kinds;
+		for (int i = 0; i < 5; i++)
+		{
+			if (!seen[i]) continue;
+			if (!kinds.empty()) kinds += " and ";
+			kinds += KIND[i].word;
+		}
+		if (kinds.empty()) return "";
+		// one card's folders or both: the folders' card roots (a roms folder is the main card's)
+		std::set<std::string> on;
+		std::vector<std::string> cards = indexCards();
+		for (auto& f : folders)
+			for (auto& c : cards)
+				if (f == c || f.compare(0, c.size() + 1, c + "/") == 0) { on.insert(c); break; }
+		return kinds + (on.size() > 1 ? " on both cards" : " on this card");
+	}
+
+	bool isBookFolderName(const std::string& name)
+	{
+		std::string n = lowerAscii(name);
+		return n == "books" || n == "documents";
+	}
+
+	std::vector<std::string> bookFolders()
+	{
+		std::vector<std::string> out;
+		for (auto& card : indexCards())
+		{
+			// every such folder at the top, all as one (a card may have Books and Documents)
 			if (DIR* d = opendir(card.c_str()))
 			{
 				std::string prefix = card == "/" ? "/" : card + "/";
@@ -198,17 +281,47 @@ namespace bp
 					if (e->d_name[0] == '.') continue;
 					bool dir = e->d_type == DT_DIR;
 					if (e->d_type == DT_UNKNOWN || e->d_type == DT_LNK) dir = isDir(prefix + e->d_name);
-					if (!dir) continue;
-					std::string path = prefix + e->d_name;
-					if (isMusicFolderName(e->d_name)) out.music.push_back(path);
-					else if (isVideosFolderName(e->d_name)) out.videos.push_back(path);
+					if (dir && isBookFolderName(e->d_name)) out.push_back(prefix + e->d_name);
 				}
 				closedir(d);
 			}
 		}
-		// BananaOS's own, beside the cards' folders (a computer has none of these)
-		if (isDir("/data/roms/music")) out.music.push_back("/data/roms/music");
-		if (isDir("/data/roms/videos")) out.videos.push_back("/data/roms/videos");
+		return out;
+	}
+
+	std::vector<MediaBook> listBooks(const std::vector<std::string>& folders)
+	{
+		std::vector<MediaBook> out;
+		std::vector<std::string> stack(folders.rbegin(), folders.rend());
+		while (!stack.empty())
+		{
+			std::string dir = stack.back();
+			stack.pop_back();
+			if (DIR* d = opendir(dir.c_str()))
+			{
+				std::string prefix = dir == "/" ? "/" : dir + "/";
+				while (dirent* e = readdir(d))
+				{
+					if (e->d_name[0] == '.') continue;
+					std::string path = prefix + e->d_name;
+					bool dir2 = e->d_type == DT_DIR;
+					if (e->d_type == DT_UNKNOWN || e->d_type == DT_LNK) dir2 = isDir(path);
+					if (dir2)
+					{
+						if (!isHiddenFolder(path)) stack.push_back(path);
+						continue;
+					}
+					if (!isDocumentName(path) && !isComicName(path)) continue;
+					struct stat st;
+					if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) continue;
+					out.push_back({path, (long long)st.st_size, (int64_t)st.st_mtime});
+				}
+				closedir(d);
+			}
+		}
+		std::sort(out.begin(), out.end(), [](const MediaBook& a, const MediaBook& b) {
+			return naturalLess(baseNameLessExt(a.path), baseNameLessExt(b.path));
+		});
 		return out;
 	}
 
