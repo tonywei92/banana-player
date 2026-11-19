@@ -32,7 +32,7 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
 
 - **L3 while browsing is Search** on every shell screen. Like is L3 on the player, the Like key there, and a row of
   More. `playlists` and `browser-mini` were the two screens that still said “Like what plays”; both are fixed.
-- **Music is its own rail section**, as drawn.
+- **Music is its own rail section**, as drawn (and since holds Playlists as its third view).
 - **No Songs list in Music.** Search finds a song; Files lists them where they are.
 - **Music's source:** Albums and Artists are filled by themselves from the Music folder at the top of each card;
   songs elsewhere stay in Files and Search. The UI says so: the line under Music's title (“From Music on both cards ·
@@ -57,9 +57,68 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   it, except while a video plays (then the list); the cell sits in Manga's old place, between Books and Network; Home
   keeps nothing of the drawer.
 
+- **START's menu is dropped; START opens Settings** (the owner: “why do we need START Menu on the Home page?”). The
+  menu held nothing of its own: its places are the rail's cells, About is Settings' last group, Now playing is SELECT
+  and the mini bar, Quick settings is F, Search is L3 and the header's key. START opens Settings from every shell
+  screen, the player and the text and PDF readers; START or B there goes back to where you were. It stays Save / Done
+  in forms and the Book bar in the comic reader. A START cap sits over the rail's Settings cell, so no shell hint bar
+  names it. The `menu` screen is removed. With the menu gone a finger needs another way to the seventh section: a drag
+  scrolls the rail's cells.
+- **B on Home asks to quit**, Cancel focused, as today; Home's hint bar says “B Quit” (A Resume · X More · L/R
+  Section · F Quick · B Quit). Quit is also in Quick settings and on F + START.
+- **Search is a key at the top of the rail** (owner, 2026-11-19; it takes back “the header's magnifier, no rail
+  cell”). 68 × 40, the magnifier alone, pinned as Settings is at the foot, on every shell screen, Settings included.
+  Search is a page that keeps its results until you search again; its key is lit while it shows and B goes back to
+  where you were. L3 stays its key while browsing; L / R pass it by. The header has no magnifier, and the rail's L
+  and R caps are gone to make the room (every shell hint bar says L/R Section).
+- **On the player SELECT opens More, as X does** (owner; the build does it). Inside a chip's sheet SELECT or B
+  closes, and in a song's Display sheet SELECT steps the Show mode. The hint bar says “X / SELECT More”. In
+  a book, a PDF and a comic SELECT is still View (Text in a book).
+- **Home while something plays: one card, no mini bar** (owner). Home's big card is Continue (Resume) or Now playing
+  (Pause / Play in the same spot, the state pills after the time; a tap or A goes to the player, a hold or X is its
+  More). The mini bar is hidden on Home, and only there; Home's layout is the same either way. `states-browse`.
+- **The Repeat and Shuffle chips change in place** (owner): Repeat steps Off → All → One → Off, Shuffle on / off. No
+  sheet and no note on the top screen; the chip's word and colour say it. Both stay at the top of List (Y).
+- **No View sheet and no tabs on the player** (owner). Each chip opens its own sheet at once: Subtitles, Audio,
+  Picture, Speed on a video; Sound (the Equalizer), Sound FX (Effects), Display, Speed on a song. Adjust is a page of
+  Picture, behind its last row (‹ or B back to Picture). By the keys: SELECT or X opens More, whose first row is the
+  same five chips under the cursor; A opens the sheet and closes More, and A on Repeat or Shuffle changes it in
+  place. L and R do nothing in a sheet. `video-more`, `music-more`, `video-view` (Subtitles), `video-picture`,
+  `video-adjust`, `video-speed`, `music-view` (Display), `music-eq`.
+- **On a photo SELECT opens More too** (owner). `photo-view` is removed: the Fit key steps Fit / Fill in place, and
+  More's first row is four chips changed in place (Shown, Keep zoom, Pan area, A drag moves). Zoom is UP / DOWN and
+  Turn is L3.
+
+- **Playlists are inside Music** (owner): Music's third view, beside Albums and Artists (L2 / R2, or its chip). The
+  Playlists cell leaves the rail. A playlist that holds videos is still there, and says so on its row. Music is always
+  in the rail, with or without a Music folder. `playlists`, and every playlist page keeps Music lit.
+- **A video in a Music folder is part of Music** (owner): with tags it sits in its album and under its artist like a
+  song, with none it goes by its file's name; a VIDEO pill on its row, counted in the album's line, played by the
+  video player as one item of the album's list; not listed in Videos. `music-album`.
+- **Videos get Music's folder rule** (owner): the folder named Videos at the top of each card, the main one and the
+  second, any capitals, all of them if a card has several. Drawn as a rail section: `videos`, `videos-empty`,
+  `videos-reading`. The choices this needed are below.
+
 ## Decisions waiting on the owner
 
 Each was needed to draw a gap; the drawn one is the recommendation.
+
+From the owner's Videos, Music and Playlists decisions (2026-11-19):
+
+- **Videos is a rail section** (drawn: Home, Files, Videos, Music, Books, Extensions, Network), with three views, All
+  / Folders / Not finished. A folder that is read by itself needs a place that shows what was read, and Music has
+  one. Or: no section, and the Videos folders only feed Home's Recent and a shortcut row at the top of Files (less to
+  build, but then the rule changes nothing you can see).
+- **Seven sections, all in sight** (drawn): with seven the rail's cells are 47 tall instead of 56, so the rail never
+  scrolls. Or: keep 56 and scroll the seventh out of view, as before Playlists left (a section you cannot see).
+- **“SD1:/videos and SD1/videos”** is read as both cards: the main card and the second (drawn). The build today
+  lists `/data/roms/videos` as its Videos root; recommended: that folder counts too, as BananaOS's own videos folder,
+  or today's users lose their list on updating.
+- **Which names count as Videos:** “Videos” alone, in any capitals (drawn, as the owner wrote it). Or “Video” and
+  “Movies” too. Music's twin choice (“Music” or “Musics”) is still waiting below; whichever way it goes, both should
+  go the same way.
+- **The dashboard's tabs** still read Home, Files, Music, Playlists, Books (drawn, unchanged): recommended to follow
+  the handheld later (Playlists into Music, a Videos tab), in its own pass.
 
 From the gaps:
 

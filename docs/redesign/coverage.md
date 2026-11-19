@@ -46,7 +46,7 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 
 ## Covered (drawn or fully noted)
 
-- Home (Continue, Recent, filters), All recent, START Menu, Files list, More (X) on a file, rail, mini bar and Playing/Paused chips.
+- Home (Continue, Recent, filters), All recent, Files list, More (X) on a file, rail, mini bar and Playing/Paused chips.
 - Books section, empty state, text reader, Text view sheet, Contents/Bookmarks, PDF, Extra dim / Light sheet.
 - Video player, View, Picture looks, Adjust, List (Y), More while playing, Away-from-normal marks (and the same while browsing).
 - Song player, View › Display (the mode and the visualizer's style on one page), Equalizer tab, visualizer alone.
@@ -61,9 +61,9 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Incognito and the Web dashboard: the server is off while incognito is on; the dimmed switch, the page, the question when a browser is signed in, what the browser sees. Drawn: `incog-web`, `incog-web-ask`. Section 2.
 - The keys with the lid shut: volume hold = next / previous, Power key, lid shut (Play / pause / Sleep), Volume keys, lid shut (Volume and skip / Volume only), Shoulder keys, lid shut (Ignored / Hold / As usual), keys under the lid ignored, the player owning the volume keys while shut, no sleep with the lid shut; options A and B. Drawn: `lid-keys`; the rows in `set-screen`. Section 3.
 - The Power & screens group and its table now use today's wording, When the lid closes: Pause / Keep playing (0.7.27), in place of the earlier "Keep music playing" proposal.
-- The player's third row: View removed (the chips open it; SELECT by the keys, in the hint bar), Stop in its place; the chips touch only, UP / DOWN nothing. Drawn: `video`, `music`, `video-chips`.
+- The player's third row: View removed (each chip opens its own sheet; by the keys the chips are More’s first row, X or SELECT), Stop in its place; the chips touch only, UP / DOWN nothing. Drawn: `video`, `music`, `video-chips`.
 - Support link: Settings › About's last block (a line, a QR code of https://ko-fi.com/tonysong, the address written out), and one link at the foot of the Web dashboard's Home, which has no About today. Only there; nothing fetched. Drawn: `set-about`.
-- START's Playing tab: removed, item by item accounted for (the table under `video-more`). X is More, SELECT is View, on the player as elsewhere.
+- START's Playing tab: removed, item by item accounted for (the table under `video-more`). X is More; on the player SELECT opens More too, with the chips its first row (the owner, 2026-11-19), and on a photo; in a book, a PDF and a comic SELECT is View.
 - Chips and View: a chip opens the one tabbed View sheet on its tab (no tab-less form); five chips on a song as on a video (Sound, Sound FX, Display, Speed, Shuffle), the Display chip in short values; the Equalizer tab takes the full sheet height. Drawn: `music-eq`, `video-chips`.
 - Themes: Settings › Power & screens › Theme, seventeen of them (Yellow, the default and today's look; Dark; Midnight blue; Dark purple; Dark red; Pink; Coffee; Mint; Retro green; Sunset; Candy; 16-bit; 16-bit Lavender; 32-bit; Sakura; Light; High contrast), a set of values for theme.h's tokens and nothing else. The Web dashboard follows; cards over a picture stay dark; Reading › Colours gains Match theme. Drawn: `set-theme`, and every screen through the Theme switch at the foot of the preview. Spec: components.md, Themes; values and contrast: themes.py.
 - A song's Display: one page for the mode and the visualizer's style (four icon tiles, then fifteen in a 5 × 3 grid; the app's own glyphs); View's tabs are Display, Equalizer, Effects, Speed. Song info on top is removed as a setting: the title, artist and album are always shown. The top screen's ground follows the theme in Album art only, Art + visualizer and None. Drawn: `music-view`, `music-viz`, `music-viz-pick`.
@@ -87,7 +87,7 @@ What changed to get there, none of it a redesign: targets on keys that had a scr
 tiles and keys of sheets and pages (`TAPS`); states that follow by themselves, a card pulled or the engine coming up
 (`ALSO`, shown as “then” under the keys); `B` → Home on the section roots and L2 / R2 round the twelve settings groups;
 shared sheets (keyboard, Info, Add to playlist) go back to where they were opened from. The rail has Music on every shell
-screen, as the Music section's note already said (six cells, Network scrolled off unless open), and Network opens the
+screen, as the Music section's note already said (since 2026-11-19 the rail shows all seven sections at once: Home, Files, Videos, Music, Books, Extensions, Network; Playlists is a view of Music), and Network opens the
 connections list, not a folder. One screen was added: `files-playing`, Files with the mini bar after B on a video.
 
 | Journey | State | The walk; what is not drawn |
@@ -98,11 +98,11 @@ connections list, not a folder. One screen was added: `files-playing`, Files wit
 | Liked | wired | L3 → the Like note; Home › Shuffle Liked plays; Playlists → Liked → plays; its select mode; Liked with nothing in it |
 | Books | wired | Shelf → a book → Contents → back; Text → Book mode → the Book bar; More; a PDF → Pages → View → More; the empty shelf |
 | Manga | wired | Rail › Extensions → Manga reader → shelf → History → continue; series → reader → View → Fullscreen → View → Book → end of chapter → Get → Downloads; the reader’s More; Browse → a source → a series; Sources → Repositories → add one; a server; the engine loading / ready / failed; the question while a video plays (from Manga’s row on the Extensions page, never from the rail). A comic’s Pages is the PDF’s sheet. Not drawn: selecting chapters, a source’s filters |
-| Extensions | wired | Rail › Extensions → Manage extensions → Manga settings; → Manga reader → B back to the list → Home; with none on (Empty state) → Manage extensions; from START’s menu while a video plays: the page with “Stops the video” on Manga’s row |
+| Extensions | wired | Rail › Extensions → Manage extensions → Manga settings; → Manga reader → B back to the list → Home; with none on (Empty state) → Manage extensions; from the rail while a video plays: the page with “Stops the video” on Manga’s row |
 | Search | wired | L3 on Home, Files, Music and Playlists → typing → results → a video, a song, an album, a book, a folder. A playlist result opens the playlist’s page |
 | Network | wired | Connections → Find → the form → keyboard → Save → a folder → a video buffering; a book copied first, the copy failing; a read-only folder and its alert; no Wi-Fi; no connection yet (Empty state). A connection’s More (Edit, Test, Delete) is a list in `keys` |
 | Web dashboard | wired, both sides | Fresh Home (Y), Home › Send from phone, Quick settings or Settings → the page (QR, address, PIN) → a browser signs in → the phone’s Home → Files → a song → Now playing → Plays on: Handheld; or it plays there → Hold A / Play on… / the browser gone. The page off and with No Wi-Fi. The phone’s Music, Playlists and Books tabs are not drawn (Music’s two pages are minis under Music: Albums) |
-| Settings | wired | START → Menu → Settings → each of the twelve groups (L2 / R2 go round) → Theme, which steps the page’s theme |
+| Settings | wired | START → Settings → each of the twelve groups (L2 / R2 go round) → Theme, which steps the page’s theme |
 | Quick settings | wired | F → Web dashboard, Incognito, Screen off now, Quit; Volume past 100% and the first time past 120% |
 | Incognito | wired | Quick settings → the question when a browser is signed in → on, the dashboard off → off again; Settings › Lid or sleep in incognito; the badge on the player and the mini bar (`video-states`, `states-browse`) |
 | Lid and sleep | wired | The first-start question; When the lid closes and the lid-shut keys in Settings; the bottom screen dimming → off → waking (“Paused: the handheld slept” is in that screen’s strip) |
@@ -111,7 +111,7 @@ connections list, not a folder. One screen was added: `files-playing`, Files wit
 | Updates | wired | Settings › Updates → “0.7.19 is out” → Update now → Downloading (Hide) → ready, Restart now → Home; the check failing → Try again |
 | Photos | wired | Files → a photo → View (Fit / Fill) → back → More → Info |
 | Home: a card’s More, All recent | wired | Home → X · More → Resume; All recent → an item |
-| Quit | wired | B on Home, START › Menu, Quick settings → Quit? → Cancel |
+| Quit | wired | B on Home, Quick settings → Quit? → Cancel |
 
 The second pass (2026-11-19, backlog.md) drew the gaps the first one listed: 154 screens and 1,039 links, none unreachable, none without a way back,
 no hint-bar key unlisted, 23 journeys walked. A phone’s page is a screen with a third drawing (`phone`), shown beside the handheld’s two panels
