@@ -6979,7 +6979,16 @@ static void testVizNative()
 	const int was = st.to;
 	st.beats++;
 	vizStep(st, 1 / 30.0);
-	CHECK(st.hit[was] > 0.9f && st.from == was && st.to != was && std::abs(st.to - was) <= 7);
+	CHECK(st.from == was && st.to != was && std::abs(st.to - was) <= 7);	// a landed ball takes the hop at once
+	// a beat before it lands does not send it on: it finishes the hop, lands (its key lit), then hops on the beat
+	const int target = st.to;
+	st.beats++;
+	vizStep(st, 1 / 30.0);
+	CHECK(st.to == target && st.from == was);
+	int frames = 0;
+	for (; frames < 40 && st.from != target; frames++) vizStep(st, 1 / 30.0);
+	// (the beat that waited sends it on the moment it lands, from the key it landed on, lit)
+	CHECK(st.from == target && frames >= 10 && st.hit[target] > 0.5f);
 	float bx0, by0, br;
 	vizBouncyBall(st, bx0, by0, br);
 	for (int f = 0; f < 60; f++) vizStep(st, 1 / 30.0);	// (no beat: it waits on its key)

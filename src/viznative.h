@@ -112,6 +112,10 @@ namespace bp
 		float hit[16] = {};
 		int from = 3, to = 8, trailN = 0;
 		float hop = 0.6f, trail[9][2] = {};
+		// the ball's own flight clock: a hop always lands before the next starts (a beat that comes early waits for
+		// the landing; one that came while it sat launches it at once)
+		double flight = 0, flightLen = 0.55;
+		bool landed = true, beatWaiting = false;
 		// Faders: how long each band's peak has held before it falls (0.35 s, as the preview)
 		float holdAge[16] = {};
 		// Lanterns: each lantern's swing (angle, speed), its eased light, and the beat count it last felt

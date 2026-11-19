@@ -228,6 +228,7 @@ namespace bp
 		bass = 0;
 		std::fill(std::begin(hit), std::end(hit), 0.0f);
 		from = 3, to = 8, trailN = 0, hop = 0.6f;
+		flight = 0, flightLen = 0.55, landed = true, beatWaiting = false;
 		std::fill(std::begin(holdAge), std::end(holdAge), 0.0f);
 		std::fill(std::begin(lnA), std::end(lnA), 0.0f);
 		std::fill(std::begin(lnV), std::end(lnV), 0.0f);
@@ -352,10 +353,23 @@ namespace bp
 			case VIS_BOUNCY:
 			{
 				for (int i = 0; i < s.n; i++) s.hit[i] *= (float)std::pow(0.86, k);
-				if (beat)
+				// the ball flies on its own clock: it lands (the key dips and lights) when its hop is done, and only a
+				// landed ball takes the next hop, on a beat. (A beat used to restart the hop wherever the ball was, so
+				// it jumped to the next key in mid-air)
+				s.flight += std::max(0.0, dt);
+				if (!s.landed && s.flight >= s.flightLen)
 				{
-					// landed: the key dips and lights; the next hop to a loud key within seven
+					s.landed = true;
 					s.hit[s.to] = 1;
+				}
+				if (beat) s.beatWaiting = true;
+				if (s.landed && s.beatWaiting)
+				{
+					// the next hop to a loud key within seven, as long as a beat
+					s.landed = false;
+					s.beatWaiting = false;
+					s.flight = 0;
+					s.flightLen = std::clamp(s.interval * 0.92, 0.25, 1.1);
 					s.from = s.to;
 					float best = -1;
 					for (int i = 0; i < s.n; i++)
@@ -465,7 +479,7 @@ namespace bp
 		const float h = s.band ? 200.0f : 480.0f, base = (s.band ? 280.0f : 0.0f) + h, kw = 640.0f / 14;
 		r = s.band ? 11.0f : 17.0f;
 		auto top = [&](int i) { return base - h * (0.2f + 0.34f * s.levels[std::clamp(i, 0, 13)] / VN_TOP) + 9 * s.hit[std::clamp(i, 0, 15)]; };
-		const float u = (float)std::clamp(s.sinceBeat / s.interval, 0.0, 1.0);
+		const float u = (float)std::clamp(s.flight / s.flightLen, 0.0, 1.0);
 		const float xa = (s.from + 0.5f) * kw, xb = (s.to + 0.5f) * kw;
 		bx = xa + (xb - xa) * u;
 		by = top(s.from) + (top(s.to) - top(s.from)) * u - 4 * u * (1 - u) * h * 0.42f * s.hop - r;
@@ -1076,7 +1090,7 @@ namespace bp
 			float bx, by, r;
 			vizBouncyBall(s, bx, by, r);
 			for (int k = 2; k < s.trailN; k++) disc(out, s.trail[k][0], s.trail[k][1], r * (0.75f - k * 0.06f), VI_DIM, 0.6f * (1 - (float)k / s.trailN));
-			const float u = (float)std::clamp(s.sinceBeat / s.interval, 0.0, 1.0);
+			const float u = (float)std::clamp(s.flight / s.flightLen, 0.0, 1.0);
 			const float sq = u < 1 ? std::max(0.0f, 1 - std::min(u, 1 - u) * 12) * 0.3f : 0;	// (squashed as it lands or leaves)
 			oval(out, bx, by + r * sq, r * (1 + sq * 0.6f), r * (1 - sq), VI_ACCENT);
 		}
