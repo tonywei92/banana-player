@@ -291,11 +291,50 @@ namespace bp
 			return {area.x, area.y + i * SET_ROW_H, area.w, SET_ROW_H - 2};
 		}
 
+		Box settingsBody(Box body)
+		{
+			return {body.x + MARGIN, body.y + 10, std::max(0, body.w - 2 * MARGIN), std::max(0, body.h - 10)};
+		}
+
+		Box settingsTiles(Box body, int rows)
+		{
+			Box a = settingsBody(body);
+			a.h = rows > 0 ? rows * SET_TILE_H + (rows - 1) * SET_TILE_GAP : 0;
+			return a;
+		}
+
+		SettingsRows settingsRowsIn(Box body, int shown)
+		{
+			SettingsRows l;
+			Box a = settingsBody(body);
+			l.area = {a.x, a.y, a.w, std::max(0, shown * SET_ROW_H - 2)};
+			l.help = {0, 0, 0, 0};
+			// the help's two lines sit 50 above the body's foot, when the rows leave that much room; with the mini bar
+			// up the body ends just under the seventh row and the rows take the page
+			int helpTop = body.y + body.h - 50;
+			if (helpTop >= l.area.y + l.area.h + 2) l.help = {a.x + 8, helpTop, std::max(0, a.w - 16), 2 * 22};
+			return l;
+		}
+
 		SettingsRows settingsRows(int shown)
 		{
 			SettingsRows l;
 			l.area = {MARGIN, SET_ROW_TOP, PANEL_W - 2 * MARGIN, shown * SET_ROW_H - 2};
 			l.help = {24, SET_HELP_Y, PANEL_W - 2 * 24, 2 * 22};
+			return l;
+		}
+
+		PlayerLayout shellHeader(Box main)
+		{
+			PlayerLayout l;
+			l.back = {main.x + 10, 3, 56, 48};
+			l.backHit = {main.x, 0, 70, SHELL_HEAD};
+			l.more = {main.x + main.w - 10 - 56, 3, 56, 48};
+			l.moreHit = {main.x + main.w - 70, 0, 70, SHELL_HEAD};
+			// (only its x and width are used: the header's title sits beside the back key, in the strip, and its right
+			// slot ends at this box's right edge less 8)
+			l.title = {main.x + MARGIN, 0, std::max(0, main.w - 2 * MARGIN), SHELL_HEAD};
+			l.hints = {main.x, PANEL_H - HINTS_H, main.w, HINTS_H};
 			return l;
 		}
 

@@ -705,7 +705,8 @@ where you were. Settings and its groups have the kit's header: the back key at
 the left, then the page's title with its crumb (**Settings · 3 of 10**) under it on the same line, and a group's
 neighbours named either side of **L2** / **R2** at the right (those keys step the groups). Seven rows fit under that
 line. In a group, **UP/DOWN** chooses a row, **LEFT/RIGHT** changes it in place, and the
-line above the bottom says what the setting under the cursor does. **Subtitle style...** at the end of View's Subtitles tab
+line above the bottom says what the setting under the cursor does; while a song or video plays, the mini bar takes
+that line's room and the seven rows keep it (the setting's help is then the top screen's, not this one's). **Subtitle style...** at the end of View's Subtitles tab
 opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 
 | Group | Setting | Default | |

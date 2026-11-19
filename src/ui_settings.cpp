@@ -408,51 +408,83 @@ namespace bp
 		}
 	}
 
-	void Ui::SettingsPage::draw(const Player& p)
+	std::string Ui::SettingsPage::title() const
+	{
+		return ui.setGroup >= 0 ? GROUP_NAMES[ui.setGroup] : "Settings";
+	}
+
+	std::string Ui::SettingsPage::crumb() const
+	{
+		if (ui.setGroup >= 0) return "Settings \xC2\xB7 " + std::to_string(ui.setGroup + 1) + " of " + std::to_string(GROUPS);
+		return std::string("Banana Player ") + BP_VERSION;
+	}
+
+	// the shared frame: the shell's header strip (back, title, crumb, status or the neighbour groups) and its hint
+	// bar. It is the one function the merge with Ui::Shell replaces; the page below draws in lay::shell(mini).body.
+	void Ui::SettingsPage::frame(const Player& p)
 	{
 		Kit& k = *ui.kit;
-		// the kit's header (the player's): back, what this is, and the status marks; a group page names its neighbours
-		// in the right slot (the spec's "L2 Playback · Music R2"), the tiles say whose they are in the crumb
-		lay::PlayerLayout pl = lay::playerLayout(0);
+		lay::Shell shell = lay::shell(ui.miniBarShown(p));
+		lay::PlayerLayout h = lay::shellHeader(shell.main);
 		Kit::Header head;
 		head.more = false;
 		head.inlineTitle = true;	// the title beside the back key, its crumb under it: no title row, so the tiles start at 64
-		head.backPressed = ui.pressedBtn == BACK_ICON;
+		head.backPressed = backDown || ui.pressedBtn == BACK_ICON;
+		head.title = title();
+		head.crumb = crumb();
 		bool groupPage = ui.setGroup >= 0;
 		int prevGroup = groupPage ? (ui.setGroup + GROUPS - 1) % GROUPS : -1;
 		int nextGroup = groupPage ? (ui.setGroup + 1) % GROUPS : -1;
 		if (groupPage)
 		{
-			head.title = GROUP_NAMES[ui.setGroup];
-			head.crumb = "Settings \xC2\xB7 " + std::to_string(ui.setGroup + 1) + " of " + std::to_string(GROUPS);
+			// a group page names its neighbours either side of the title (the spec's "L2 Playback · Music R2")
+			head.right = [&, prevGroup, nextGroup](int right, int cy) {
+				int r = right, w = k.capsW("R2");
+				k.caps("R2", r - w, cy, ACCENT, BG);
+				r -= w + 6;
+				std::string nextName = shortGroupName(nextGroup);
+				ui.drawTextMid(nextName, F_I12, DIM, r, cy, 0, 1);
+				r -= k.textW(nextName, F_I12) + 14;
+				std::string prevName = shortGroupName(prevGroup);
+				ui.drawTextMid(prevName, F_I12, DIM, r, cy, 0, 1);
+				r -= k.textW(prevName, F_I12) + 6;
+				w = k.capsW("L2");
+				k.caps("L2", r - w, cy, ACCENT, BG);
+				return r - w;
+			};
 		}
 		else
 		{
-			head.title = "Settings";
-			head.crumb = std::string("Banana Player ") + BP_VERSION;
-		}
-		head.right = [&, groupPage, prevGroup, nextGroup](int right, int cy) {
-			if (!groupPage)
-			{
-				// the tiles: the panel's status marks, right to left, the crumb ending before them
-				ui.drawBattery(right, cy - 8, p, pl.back.x + pl.back.w + 130);
+			// the tiles: the panel's status marks, right to left, the crumb ending before them
+			head.right = [&, h](int right, int cy) {
+				ui.drawBattery(right, cy - 8, p, h.back.x + h.back.w + 130);
 				return right - (616 - ui.statusLeft(p)) - 10;
-			}
-			// a group: right to left, R2, the group after, a gap, the group before, L2
-			int r = right, w = k.capsW("R2");
-			k.caps("R2", r - w, cy, ACCENT, BG);
-			r -= w + 6;
-			std::string nextName = shortGroupName(nextGroup);
-			ui.drawTextMid(nextName, F_I12, DIM, r, cy, 0, 1);
-			r -= k.textW(nextName, F_I12) + 14;
-			std::string prevName = shortGroupName(prevGroup);
-			ui.drawTextMid(prevName, F_I12, DIM, r, cy, 0, 1);
-			r -= k.textW(prevName, F_I12) + 6;
-			w = k.capsW("L2");
-			k.caps("L2", r - w, cy, ACCENT, BG);
-			return r - w;
-		};
-		k.header(pl, head);
+			};
+		}
+		k.header(h, head);
+		k.hints(shell.hints, hints(p));
+	}
+
+	std::vector<Ui::Hint> Ui::SettingsPage::hints(const Player&) const
+	{
+		// B closes Settings back to where START was pressed; Quit lives in Quick settings (F), which the hint keeps in
+		// sight now that the Menu's keys are gone
+		if (ui.setGroup < 0) return {{"D-PAD", "Move"}, {"A", "Open"}, {"F", "Quick settings"}, {"B", "Close"}};
+		auto rows = settingRows();
+		bool action = ui.cursor >= 0 && ui.cursor < (int)rows.size() && (rows[ui.cursor] == CHECK_ROW || rows[ui.cursor] == INSTALL_ROW ||
+			rows[ui.cursor] == CLEAR_ROW || rows[ui.cursor] == SOUND_ROW);
+		if (action)
+			return {{"A", rows[ui.cursor] == CLEAR_ROW ? "Clear" : rows[ui.cursor] == CHECK_ROW ? "Check" : rows[ui.cursor] == SOUND_ROW ? "Open" : "Update"},
+				{"UP/DOWN", "Choose"}, {"L2/R2", "Group"}, {"B", "Back"}};
+		return {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"L2/R2", "Group"}, {"B", "Back"}};
+	}
+
+	void Ui::SettingsPage::draw(const Player& p)
+	{
+		Kit& k = *ui.kit;
+		bool mini = ui.miniBarShown(p);
+		lay::Shell shell = lay::shell(mini);
+		frame(p);
 		if (ui.setGroup < 0)
 		{
 			// the groups as tiles, two to a row (the mock-up's Settings tile: a mark, a name, what it is set to now)
@@ -466,15 +498,12 @@ namespace bp
 				t.summary = groupSummary(g, p);
 				t.focused = g == ui.cursor;
 				t.pressed = ui.pressedBtn == 400 + g;
-				k.settingTile(groupRect(g), t);
+				k.settingTile(groupRect(g, mini), t);
 			}
-			// B closes Settings back to where START was pressed; Quit lives in Quick settings (F), which the hint
-			// keeps in sight now that the Menu's keys are gone
-			k.hints({{"D-PAD", "Move"}, {"A", "Open"}, {"F", "Quick settings"}, {"B", "Close"}});
 			return;
 		}
 		// the group's rows: the layout starts under the header's strip (the title is in it, beside the back key)
-		lay::SettingsRows l = lay::settingsRows();
+		lay::SettingsRows l = lay::settingsRowsIn(shell.body);
 		auto rows = settingRows();
 		for (int i = ui.scroll; i < (int)rows.size() && i < ui.scroll + SET_SHOWN; i++)
 		{
@@ -542,12 +571,13 @@ namespace bp
 		}
 		// more rows than the page holds (Power & screens with its brightness rows): a bar says so
 		if ((int)rows.size() > SET_SHOWN) ui.drawScrollBar(l.area.y, SET_SHOWN * lay::SET_ROW_H - 4, ui.scroll, SET_SHOWN, (int)rows.size());
-		// what the row under the cursor does, in a line or two above the footer
-		std::string help = ui.cursor >= 0 && ui.cursor < (int)rows.size() ? settingHelp(rows[ui.cursor]) : "";
+		// what the row under the cursor does, in a line or two above the footer (with the mini bar up the rows take
+		// that room: the help is the top screen's then, which this step does not change)
+		std::string help = l.help.w > 0 && ui.cursor >= 0 && ui.cursor < (int)rows.size() ? settingHelp(rows[ui.cursor]) : "";
 		SDL_Color helpInk = DIM;
 		// the style's rows: the preview under them, where the help would be (it says more), or for styled subtitles a
 		// line that says they keep their look; Text encoding: its help (the preview has nothing to show for it).
-		if (ui.setGroup == GROUP_SUBS && ui.cursor >= 0 && ui.cursor < (int)rows.size() && rows[ui.cursor] != STYLE_ROW0 + ENCODING)
+		if (l.help.w > 0 && ui.setGroup == GROUP_SUBS && ui.cursor >= 0 && ui.cursor < (int)rows.size() && rows[ui.cursor] != STYLE_ROW0 + ENCODING)
 		{
 			const Track* s = p.selected(TrackType::Sub);
 			if (s && (s->codec == "ass" || s->codec == "ssa"))
@@ -557,11 +587,12 @@ namespace bp
 			}
 			else
 			{
-				drawPreview(p.settings.style, Rect{24, l.area.y + std::min((int)rows.size(), SET_SHOWN) * lay::SET_ROW_H + 4, 592, 46});
+				drawPreview(p.settings.style, Rect{l.area.x + 8, l.area.y + std::min((int)rows.size(), SET_SHOWN) * lay::SET_ROW_H + 4,
+					l.area.w - 16, 46});
 				help.clear();
 			}
 		}
-		if (ui.setGroup == GROUP_UPDATES && ui.updater && ui.cursor < (int)rows.size() && (rows[ui.cursor] == CHECK_ROW || rows[ui.cursor] == INSTALL_ROW))
+		if (l.help.w > 0 && ui.setGroup == GROUP_UPDATES && ui.updater && ui.cursor < (int)rows.size() && (rows[ui.cursor] == CHECK_ROW || rows[ui.cursor] == INSTALL_ROW))
 		{
 			help = ui.updater->fromStore() ? "Installed from the BananaOS Store: the Store updates it"
 				: ui.updater->state() == Updater::State::Off ? "Updates are for the handheld's Ports install"
@@ -570,15 +601,11 @@ namespace bp
 				: "Downloads from GitHub, checked before anything changes";
 			helpInk = ui.updater->state() == Updater::State::Failed ? ACCENT : DIM;
 		}
-		auto lines = ui.wrapText(help, 0, l.help.w, ui.miniUp ? 1 : 2);
-		for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, helpInk, l.help.x, l.help.y + (int)i * 22, l.help.w);
-		bool action = ui.cursor < (int)rows.size() && (rows[ui.cursor] == CHECK_ROW || rows[ui.cursor] == INSTALL_ROW || rows[ui.cursor] == CLEAR_ROW ||
-			rows[ui.cursor] == SOUND_ROW);
-		if (action)
-			k.hints({{"A", rows[ui.cursor] == CLEAR_ROW ? "Clear"
-				: rows[ui.cursor] == CHECK_ROW ? "Check" : rows[ui.cursor] == SOUND_ROW ? "Open" : "Update"},
-				{"UP/DOWN", "Choose"}, {"L2/R2", "Group"}, {"B", "Back"}});
-		else k.hints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"L2/R2", "Group"}, {"B", "Back"}});
+		if (l.help.w > 0)
+		{
+			auto lines = ui.wrapText(help, 0, l.help.w, 2);
+			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, helpInk, l.help.x, l.help.y + (int)i * 22, l.help.w);
+		}
 	}
 
 	// a line in the chosen font, colour and border over a stand-in for the picture, at the size it has on the top
@@ -704,25 +731,44 @@ namespace bp
 		return false;
 	}
 
-	// only a finger's down is the page's own (a row or a tile); its moves and lifts are the list's, in Ui::pointer
-	bool Ui::SettingsPage::pointer(const Pointer& pt, int x, int y, Player&)
+	// a finger's down is the page's own (a row or a tile); its moves and lifts are the list's, in Ui::pointer. The
+	// shell's back key is in the header strip, left of the body, so the page takes it here until Ui::Shell does.
+	bool Ui::SettingsPage::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
-		if (pt.kind != Pointer::Down) return false;
-		return settingsDown(x, y);
+		bool mini = ui.miniBarShown(p);
+		lay::PlayerLayout h = lay::shellHeader(lay::shell(mini).main);
+		if (pt.kind == Pointer::Down)
+		{
+			backDown = h.backHit.hit(x, y);
+			if (backDown) return false;
+			return settingsDown(x, y, mini);
+		}
+		if (backDown)
+		{
+			bool on = pt.kind == Pointer::Up && h.backHit.hit(x, y);
+			backDown = false;
+			if (on) ui.pressAnyway(Button::B, p);
+			return false;
+		}
+		return false;
 	}
 
 	std::string Ui::SettingsPage::signature(const Player&) const
 	{
-		// the backlights' levels while their rows show (the keys change them too), and the shoulder rows' availability
-		return ui.setGroup == GROUP_SCREEN
-			? "|bl" + std::to_string(ui.backlight.permille(Backlight::TOP)) + "," + std::to_string(ui.backlight.permille(Backlight::BOTTOM)) : "";
+		// the backlights' levels while their rows show (the keys change them too), the shoulder rows' availability,
+		// and the shell header's back key under a finger
+		std::string out = backDown ? "|bk" : "";
+		if (ui.setGroup == GROUP_SCREEN) out += "|bl" + std::to_string(ui.backlight.permille(Backlight::TOP)) + "," +
+			std::to_string(ui.backlight.permille(Backlight::BOTTOM));
+		return out;
 	}
 
 	// a finger down on the settings' list (Settings' groups or a group's rows, the Manga settings' rows): the row it
 	// is on, and the list's touch begun (its lift acts, its moves scroll)
-	bool Ui::SettingsPage::settingsDown(int x, int y)
+	bool Ui::SettingsPage::settingsDown(int x, int y, bool mini)
 	{
-		lay::SettingsRows l = lay::settingsRows();
+		// the Settings page's list is inside the shell's body; the manga reader's own settings page keeps the old page
+		lay::SettingsRows l = ui.page == Page::Settings ? lay::settingsRowsIn(lay::shell(mini).body) : lay::settingsRows();
 		bool groups = ui.page == Page::Settings && ui.setGroup < 0;
 		auto srows = groups ? std::vector<int>() : ui.page == Page::MangaSettings ? ui.manga->mangaSettingRows() : settingRows();
 		int n = groups ? GROUPS : (int)srows.size();
@@ -732,7 +778,7 @@ namespace bp
 			// a tile
 			row = -1;
 			for (int g = 0; g < GROUPS; g++)
-				if (groupRect(g).hit(x, y)) row = g;
+				if (groupRect(g, mini).hit(x, y)) row = g;
 			if (row < 0) return false;
 		}
 		else if (y < l.area.y || y >= l.area.y + SET_SHOWN * lay::SET_ROW_H || row >= n) return false;
