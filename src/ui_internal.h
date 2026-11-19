@@ -36,20 +36,22 @@ namespace bp
 	using theme::R_KNOB;
 	inline const int SIZES[3] = {18, 24, 32};
 	// The panel's type, by the size index every text call takes: small, normal and large are every page's (at SIZES);
-	// the rest are the redesign kit's (src/ui_kit.h, docs/redesign/components.md). All IBM Plex Sans (the owner,
-	// 2026-11-19): SemiBold for titles, labels and keys, Medium for notes and hints (sturdier than Regular at 12 units on
-	// the panel), Regular for a sentence; its figures are one width, so a running time doesn't jitter. In 640x480 units, opened at the
+	// the rest are the redesign kit's (src/ui_kit.h, docs/redesign/components.md). Pixelify Sans + IBM Plex Sans (the
+	// owner, 2026-11-19): Pixelify for display where it is big enough to be crisp (16 units and up: titles, key labels),
+	// Plex for everything smaller and everything read: SemiBold for small labels, caps and chip values (nothing in
+	// Pixelify under 15), Medium for notes and hints (sturdier than Regular at 12 units on the panel), Regular for a
+	// sentence; Plex's figures are one width, so a running time doesn't jitter. In 640x480 units, opened at the
 	// panel's own pixels; the kit's are opened when first drawn (Ui::font)
 	enum { F_SMALL, F_NORMAL, F_LARGE, F_P12, F_P13, F_P14, F_P16, F_P20, F_P28, F_I11B, F_I12, F_I14, F_COUNT };
 	struct FontDef { const char* file; double units; bool pixel; };
 	inline const FontDef FONT_DEFS[F_COUNT] = {
-		{"IBMPlexSans-Medium.ttf", 18, false}, {"IBMPlexSans-Medium.ttf", 24, false}, {"IBMPlexSans-SemiBold.ttf", 32, false},
+		{"PixelifySans-Regular.ttf", 18, true}, {"PixelifySans-Regular.ttf", 24, true}, {"PixelifySans-Regular.ttf", 32, true},
 		{"IBMPlexSans-SemiBold.ttf", 12, false},	// a key cap's letters
 		{"IBMPlexSans-SemiBold.ttf", 13, false},	// a chip's value
 		{"IBMPlexSans-SemiBold.ttf", 14, false},	// a transport key's and a tile's label
-		{"IBMPlexSans-SemiBold.ttf", 16, false},	// a 56-tall key's label, the player's state, a line key's text
-		{"IBMPlexSans-SemiBold.ttf", 20, false},	// a sheet's title
-		{"IBMPlexSans-SemiBold.ttf", 28, false},	// the player's title
+		{"PixelifySans-Regular.ttf", 16, true},	// a 56-tall key's label, the player's state, a line key's text
+		{"PixelifySans-Regular.ttf", 20, true},	// a sheet's title
+		{"PixelifySans-Regular.ttf", 28, true},	// the player's title
 		{"IBMPlexSans-SemiBold.ttf", 11, false},	// small capitals (a chip's label, "NEXT"), a pill
 		{"IBMPlexSans-Medium.ttf", 12.5, false},	// notes, hints, the header's crumb
 		{"IBMPlexSans-Regular.ttf", 14, false},	// a sentence

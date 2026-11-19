@@ -47,8 +47,8 @@ namespace bp
 		SDL_GetRendererOutputSize(ren, &ow, &oh);
 		sx = ow / (float)W;
 		sy = oh / (float)H;
-		// the text is drawn at the panel's own size rather than scaled up (IBM Plex Sans: the owner, 2026-11-19)
-		std::string path = fontsDir + "/IBMPlexSans-Medium.ttf";
+		// the text is drawn at the panel's own size rather than scaled up: Pixelify Sans stays sharp
+		std::string path = fontsDir + "/PixelifySans-Regular.ttf";
 		for (int i = 0; i < 3; i++)
 		{
 			fonts[i] = TTF_OpenFont(path.c_str(), (int)std::lround(SIZES[i] * sy));
