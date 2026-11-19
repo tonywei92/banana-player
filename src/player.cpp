@@ -2474,8 +2474,10 @@ namespace bp
 	{
 		// (the lines and the art aren't kept clear: mpv's layer is composed over the shapes, the lines with their
 		// outline and no box round them; with no layer, as before: the lines' and the art's boxes too)
+		// (the cards neither, with mpv's layer over the shapes: they are see-through, and the visualizer shows under
+		// them, the owner; with no layer they are kept clear as before, or the shapes would cover them)
+		if (!noLayer) return {};
 		std::vector<VizRect> r = cardsUp();
-		if (!noLayer) return r;
 		if (shownMusic() == SHOW_VIS && linesBox.x1 > linesBox.x0) r.push_back(linesBox);
 		if (shownMusic() == SHOW_BOTH && vizBehindArt(settings.visualizer))
 		{
