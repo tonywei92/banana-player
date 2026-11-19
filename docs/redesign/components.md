@@ -346,7 +346,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Note (exists, reuse)
 
 - **Used:** Like, speed, skipped, finished, copied, a look that is on when a video starts, a browser signing in or out, wrong PINs
-- **Anatomy and states:** Bottom centre, 26 up (above a subtitle): the card’s body, one line Pixelify 19 yellow (red for a security or failure note) with an optional icon, an optional second line Inter 13. Stays 3 s; 6 s for a browser signing in. Each line is cut with “…” (a file name in its middle). A wide variant (20 from both sides, Inter 13) for a sentence that explains, kept until the next key.
+- **Anatomy and states:** Over a video: top centre, 20 from the top, so it never covers the subtitles. Over a song, a photo or nothing playing: bottom centre, 26 up. The place is set by what is under it, not by the note. The card’s body, one line Pixelify 19 yellow (red for a security or failure note) with an optional icon, an optional second line Inter 13. Stays 3 s; 6 s for a browser signing in. Each line is cut with “…” (a file name in its middle). A wide variant (20 from both sides, Inter 13) for a sentence that explains, kept until the next key.
 - **Inputs:** text, icon, second line, wide, sticky
 - **Keys and touch:** None.
 - **Code:** The short OSD lines in player.cpp / main.cpp (“This is the first one”, “Added to Liked”).
@@ -753,7 +753,7 @@ All seventeen are resolved in the preview; the exceptions are deliberate. The la
 | Volume card | Yellow 230-wide on one screen | The cream 290-wide one | Unified |
 | Keyboard | Two drawings | One function; the field supplies its bottom row (https://, .json, .pb, / for an address) | Unified |
 | Confirm keys’ widths | Three ratios | Equal halves, the safe key left | Unified, one exception: the update sheet has three keys (Update now, Later, Not until tomorrow), in thirds |
-| A sentence on the top screen | Top and foot | Help for the focused row: top. Something that happened: foot | Unified |
+| A sentence on the top screen | Top and foot | Help for the focused row: top. Something that happened: foot; over a video, top centre (clear of the subtitles) | Unified |
 | Colours | Literals in places (the rail’s and the card’s #0B0A0D, black scrims, a badge’s yellow) | Tokens of theme.h only; a theme is their values (Themes) | Unified |
 
 ## Not verified
