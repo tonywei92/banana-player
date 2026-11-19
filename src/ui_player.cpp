@@ -6,6 +6,10 @@
 #include "ui_settings.h"
 #include "ui_sound.h"
 #include "session_host.h"
+#include "volumestep.h"
+#ifdef BP_WEB
+#include "web/server.h"
+#endif
 #include <cmath>
 
 namespace bp
@@ -364,6 +368,46 @@ namespace bp
 
 	// ---- keys ----
 
+	void Ui::PlayerPage::release(Button b, Player& p)
+	{
+		(void)p;
+		if (b == volHold) volHold = Button::None;
+	}
+
+	void Ui::PlayerPage::volumeKey(Button b, Player& p)
+	{
+		volStepAt = SDL_GetTicks();	// (a hold at 100% steps nowhere: the repeats still say it is held)
+		bool up = b == Button::Up, hold = volHold == b;
+		if (!hold) { volHold = b; volHoldLogged = false; }
+#ifdef BP_WEB
+		// a browser tab plays the sound: UP / DOWN move its volume, five a press, as the handheld's keys do (the
+		// handheld's own is left as it was); the card says whose volume it is
+		const Session& s = SessionHost::get().session();
+		if (ui.web && s.out.kind == OutKind::Browser && s.index >= 0 && !s.out.tab.empty())
+		{
+			int bv = std::clamp((ui.browserVol >= 0 ? ui.browserVol : 100) + (up ? 5 : -5), 0, 100);
+			ui.browserVol = bv;
+			ui.web->notify("volume", "{\"tab\":\"" + s.out.tab + "\",\"v\":" + std::to_string(bv) + "}");
+			ui.levelLabel = "Browser volume";
+			ui.levelPct = bv;
+			ui.levelMs = 1500;
+			fprintf(stderr, "volume: UP/DOWN: the browser's volume %d\n", bv);
+			return;
+		}
+#endif
+		int now = ui.volumeTotal(p);
+		if (now < 0) now = p.boost;	// (no level read: the player's own gain is what it steps from)
+		VolumeStep st = volumeStep(now, p.settings.volumeMax, up, hold);
+		if (st.stopped && !volHoldLogged && p.settings.volumeMax > 100)
+		{
+			volHoldLogged = true;
+			fprintf(stderr, "volume: a hold stops at 100%% (a fresh press boosts)\n");
+		}
+		if (st.v == now) return;
+		ui.setVolumeTotal(p, st.v, !up);
+		fprintf(stderr, "volume: UP/DOWN %s: %d%%%s\n", up ? "up" : "down", st.v, hold ? " (held)" : "");
+	}
+
 	bool Ui::PlayerPage::key(Button b, Player& p)
 	{
 		if (p.playingPhoto())
@@ -382,9 +426,9 @@ namespace bp
 		}
 		// a file that didn't open: nothing to pause or choose (Prev, Next, the list, More, the menu and leaving still go)
 		if (err && b == Button::A) return false;
-		// UP / DOWN do nothing on the player: the Next line is a tap (they used to change the speed: the easiest keys
-		// to hit by mistake in a film). LEFT / RIGHT seek.
-		if (b == Button::Up || b == Button::Down) return false;
+		// UP / DOWN are the volume, as the handheld's keys are (five a step, past 100% the player's gain; the browser's
+		// volume while a browser plays); after the photo branch, where they zoom
+		if (b == Button::Up || b == Button::Down) { volumeKey(b, p); return false; }
 		switch (b)
 		{
 		case Button::A:
@@ -434,6 +478,8 @@ namespace bp
 
 	void Ui::PlayerPage::tick(Player& p)
 	{
+		// a hold whose key-up was missed (the page left under it, the focus lost) ends a second after its last step
+		if (volHold != Button::None && SDL_GetTicks() - volStepAt > 1000) volHold = Button::None;
 		// the bar held at a released drag: let go once playback is there, or after 6 s whatever happens (a network file
 		// buffers a while)
 		if (seekHeld >= 0 && !ui.slideHeld(SL_SEEK) &&
@@ -2079,9 +2125,9 @@ namespace bp
 		if (!p.settings.buttonHotkeys) return {{"", "Button hotkeys are off: the keys on this screen do it all"}};
 		if (ui.pageDrives(p))
 			return {{"A", ui.pagePlaying() ? "Pause there" : "Play there"}, {"Hold A", "Play here"}, {"L/R", "Step"}, {"X/SELECT", "More"}, {"B", "Back"}};
-		std::vector<Hint> out{{"LEFT/RIGHT", "Seek"}, {"X/SELECT", "More"}};
+		std::vector<Hint> out{{"LEFT/RIGHT", "Seek"}, {"UP/DOWN", "Volume"}, {"X/SELECT", "More"}};
 		if (chapters) out.push_back({"L2/R2", "Chapter"});
-		out.push_back({"B", "Back, keeps playing"});
+		out.push_back({"B", "Back"});
 		return out;
 	}
 

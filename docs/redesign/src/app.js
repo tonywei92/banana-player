@@ -17,7 +17,7 @@ const MAP=[
 ['Music by album and artist','(none: folders and playlists only)','Rail › Music: Albums (covers) and Artists, from the songs’ tags; Play and Shuffle on each; a Music tab on the Web dashboard','new'],
 ['Where Albums and Artists come from','(none)','The folder named Music at the top of each card (any capitals), read by itself; the line under Music’s title says so, and with none there is an Empty state with the how-to. Songs elsewhere stay in Files and Search. No list of all songs','new'],
 ['The app’s mark on the top screen','A yellow tile with a play triangle','The Brand mark: the app’s icon, a clapperboard, small and flat in the theme’s colours','chg'],
-['The mini bar; SELECT = Now playing; header’s three bars; Playing / Paused / In browser chips','Every page but the player','Unchanged','same'],
+['The Now playing block; SELECT = Now playing; header’s three bars; Playing / Paused / In browser chips','Every page but the player','Unchanged','same'],
 ['Top screen with nothing playing','Logo and one line','A preview of what the cursor is on','new'],
 ['Files, Network and playlists'],
 ['A opens / plays; B up a folder; LEFT / RIGHT page','Lists','Unchanged','same'],
@@ -42,7 +42,7 @@ const MAP=[
 ['Select mode: A ticks, SELECT all, X Remove, Y Move, drag the grip','Playlist','A ticks, SELECT all; Y still moves (the ticked rows lift, the D-pad carries them, A puts them down); Remove, Move and Add to… on the select bar and in X · More; a grip on every row in select mode','chg'],
 ['The player'],
 ['A play / pause · L / R file · L2 / R2 chapter · LEFT / RIGHT seek · L3 Like','Keys','Unchanged','same'],
-['UP / DOWN: faster / slower','Player keys','Gone from the D-pad: UP and DOWN do nothing on the player. Speed is set in the Speed chip’s sheet','chg'],
+['UP / DOWN: faster / slower','Player keys','UP and DOWN are the volume on the player, as the volume keys are (the same step, card and boost). Speed is set in the Speed chip’s sheet','chg'],
 ['Stop','START › Playing › Stop','A key on the player: Like · Playlist · List · Stop. Also X · More › Stop, for the keys','chg'],
 ['View (Tracks, Display) by touch','A key, or the two track lines','The chips, each with its own sheet; no View key and no tabs. By the keys the chips are More’s first row','chg'],
 ['Back 5 s / forward 10 s by touch','(none: drag the bar)','Two keys beside Pause','new'],
@@ -53,7 +53,7 @@ const MAP=[
 ['Sound: Equalizer and Effects','A page, from the line under the keys or Settings','The Sound and Sound FX chips’ sheets (by the keys: SELECT, then the chip); Settings › Music & sound','mov'],
 ['EQ keys: Y / X preset, SELECT on / off, A save, START options','Sound page','L2 / R2 preset, Y on / off, A save, X options','chg'],
 ['Picture size: Fit, Fill, Stretch','SELECT › Tracks › Picture','the chip’s sheet: Picture, a row of three; the Picture chip','same'],
-['Picture looks: Sharpen, Soften, Scanlines, LCD grid, Retro; Strength; global, with Only this video as an option','(none)','the chip’s sheet: Picture; shown on the Picture chip, in a top-screen note when a video starts with one on, on the mini bar; default in Settings › Playback','new'],
+['Picture looks: Sharpen, Soften, Scanlines, LCD grid, Retro; Strength; global, with Only this video as an option','(none)','the chip’s sheet: Picture; shown on the Picture chip, in a top-screen note when a video starts with one on, on the Now playing block; default in Settings › Playback','new'],
 ['Brightness, Contrast, Saturation, Gamma for a video; Reset; All videos / Only this video','(none)','the chip’s sheet: Adjust; shown on the Picture chip (“Adjusted”, “+adj”)','new'],
 ['Show modes: Album art, Art + visualizer, Visualizer, None','Display popup; Settings › Music','The Display chip’s sheet, four icon tiles in a row: Album art only, Art + visualizer, Visualizer only, None; the Display chip says which in a short form (Art, Art + viz, Visualizer, None) and nothing else; Settings › Music & sound › Music display','chg'],
 ['Album art’s size on the top screen','Scaled to the full 480 height; in Art + visualizer the visualizer is laid over its bottom','Smaller: 240 units beside the title, artist and album, the pair centred; 224 with the visualizer, above a band of bars along the bottom; the bars are under the art, never over it. A change to today’s app','chg'],
@@ -75,7 +75,7 @@ const MAP=[
 ['A title too long for its place','Cut with “…” (a file name in its middle)','It moves along in its box, twice, then rests; a start it shares with its album or folder is left out. Settings › Power & screens › Scroll long titles','new'],
 ['Like and Add to playlist keys','First row','Second row: Like, Playlist','same'],
 ['Lock, Info, Screen off, Stop','Bottom row','X · More, first four tiles (Screen off also in Quick settings)','mov'],
-['START › Playing: Now playing, Like, Add to playlist…, Play on, Show in folder, Info, Stop','START menu tab','Removed. Every item is in X · More or on the player’s face (Like, Playlist, Stop); Now playing is SELECT and the mini bar','mov'],
+['START › Playing: Now playing, Like, Add to playlist…, Play on, Show in folder, Info, Stop','START menu tab','Removed. Every item is in X · More or on the player’s face (Like, Playlist, Stop); Now playing is SELECT and the Now playing block','mov'],
 ['The key for ⋯ (More) on the player','START (the Playing tab)','X, as on every screen; on the player SELECT opens More too, and the chips are its first row','chg'],
 ['Hold A to play here; Waiting for a browser; Play on','Player','Unchanged; Play on is a row of X · More','same'],
 ['B / ‹: back, it keeps playing; Stop stops everywhere','Player','Unchanged','same'],
@@ -135,11 +135,11 @@ const MAP=[
 ['Quick settings (F): Volume, Brightness, Same for both, Web dashboard, Incognito, Quit','Sheet','Unchanged contents, as tiles; + Screen off now, battery percent','chg'],
 ['Quit','Quick settings, B on Home, F + START','The same three; Home’s hint bar says “B Quit”','same'],
 ['START menu','Tabs: Playing, Settings, About','START opens Settings (About is its last group); Playing’s items are on the player and in X · More. No menu','chg'],
-['The speed key turns yellow off 1×','Player','The rule for every state: value in yellow with a dot on its control; a pill on the mini bar','chg'],
+['The speed key turns yellow off 1×','Player','The rule for every state: value in yellow with a dot on its control; a pill on the Now playing block','chg'],
 ['Incognito’s hat-and-glasses mark beside the clock','Header','A yellow badge in the header, every screen; Recent’s heading says it is not being added to','chg'],
 
 ['Extra dim / filter: Brightness key lit with “Warm · −30%”; a dot on the text viewer’s sun','Readers','The Light key in every viewer, lit, with the same words; on the page-number line in Fullscreen and Book mode','chg'],
-['EQ / effect on; Shuffle; Repeat','Sound line; the X key','Sound, Shuffle and Repeat chips in yellow; pills on the mini bar','chg'],
+['EQ / effect on; Shuffle; Repeat','Sound line; the X key','Sound, Shuffle and Repeat chips in yellow; pills on the Now playing block','chg'],
 ['Volume card: 100% mark, yellow past it, red past 120%','Top screen, while it shows','Same marks; cream up to 100% so yellow means boosted; one line says what is happening','chg'],
 ['The first-time warning past 120%','A warning, then it carries on','The press stops at 120% and asks once (Stay at 120% / Go louder); Volume + again goes on','chg'],
 ['Volume slider','Quick settings','Quick settings only (none on the player): cream to a “100” mark, yellow past it','chg'],
@@ -147,7 +147,7 @@ const MAP=[
 ['Hold A (0.6 s) to play here, the key filling','Play key; top card “Hold A to play here”','Same; “Hold: play it here” is written on the key, and the top screen fills with it','chg'],
 ['Equalizer, effects, visualizer while a browser plays','Not offered','Sound, Sound FX and Display chips, and their tabs in View, dimmed with “Handheld only”; on a video, Picture and Adjust too','chg'],
 ['Browser volume on the volume keys','Card says Browser volume','Unchanged','same'],
-['Mini bar “Playing in Chrome on Mac” (tap mark: pause; hold: take over); “In browser” row chip; “Go to the player to play it here”','Lists','Unchanged; the mini bar’s text is its yellow state pill','same'],
+['Now playing block “Playing in Chrome on Mac” (tap mark: pause; hold: take over); “In browser” row chip; “Go to the player to play it here”','Lists','Unchanged; the Now playing block’s text is its yellow state pill','same'],
 ['“Your browser went · paused here”; “Waiting for Chrome on Mac” (B plays here)','Top card','Unchanged; the “went” card stays until the next key','chg'],
 ['Play on: Handheld and each open page','START › Playing › Play on','X · More › Play on…; each row says what that place has or needs','mov'],
 ['Alerts (about forty messages)','A centred box with OK','The sheet: title, one line, one key; red only when something failed','chg'],
@@ -171,7 +171,7 @@ const MAP=[
 ['Book mode for text: held sideways, a page a screen, UP / DOWN (as held), L / R, A and swipes turn; a tap in the middle opens Text options; B or SELECT back to scroll','Text viewer','Same turning. A tap in the middle (or START) brings an upright Book bar: progress, Contents, Text, Light, Find, Back to scrolling; sheets open upright at the page’s width','chg'],
 ['Book for comics: a page a screen, the spread follows the reading mode, UP / DOWN turn the spread, L / R one page, a tap shows page numbers','Manga reader','Same; page numbers and notes upright at each page’s foot; the Book bar as for text. Reading mode moves from X to View','chg'],
 ['Menus and notices in Book','Keep the screen’s usual orientation (sideways to the reader)','Upright, as the pages are: the same sheet at 480 wide','chg'],
-['Fullscreen for comics: one tall view over both screens, the hinge gap skipped; a tap shows the controls bar with the mini bar','Manga reader, PDF vertical scroll','Same; the bar is the reader’s own row; “Fullscreen” is a row of View (SELECT)','chg'],
+['Fullscreen for comics: one tall view over both screens, the hinge gap skipped; a tap shows the controls bar with the Now playing block','Manga reader, PDF vertical scroll','Same; the bar is the reader’s own row; “Fullscreen” is a row of View (SELECT)','chg'],
 ['Update prompt; level cards; Loading; Lid; Screen off timers; Lock (hold to unlock); F + L2 screenshot','System','Unchanged','same'],
 ['On-screen keyboard; dialogs (press twice to confirm)','Overlays','Unchanged','same'],
 ];
@@ -194,13 +194,20 @@ function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.
  bar.insertAdjacentHTML('beforeend',THEMES.map(t=>`<button data-theme="${t[0]}" title="${t[1]}"><i style="background:linear-gradient(90deg,#${t[2]} 50%,#${t[4]} 50%)"></i><b>${t[1]}</b></button>`).join(''));
  bar.addEventListener('click',e=>{const b=e.target.closest('button[data-theme]');if(b)setTheme(b.dataset.theme)});
  let t=(location.search.match(/[?&]theme=([a-z0-9]+)/)||[])[1];if(!t)try{t=localStorage.getItem('bptheme')}catch(e){}
- setTheme(t||'dark')}
+ setTheme(t||'dark');
+ // the Style switch: Classic (edges and lips) or Clean, on every drawing of the page that is not pinned to one
+ bar.insertAdjacentHTML('beforeend','<button class="sty" id="stybtn"></button>');const sb=document.getElementById('stybtn');
+ const setClean=c=>{if(c)document.documentElement.dataset.clean='1';else delete document.documentElement.dataset.clean;sb.textContent='Style: '+(c?'Clean':'Classic');try{localStorage.setItem('bpstyle',c?'clean':'classic')}catch(e){}};
+ sb.addEventListener('click',()=>setClean(!document.documentElement.dataset.clean));
+ // Classic is the app's default style; ?clean (or the switch) draws Clean
+ let c=/[?&]clean/.test(location.search);if(!c&&!/[?&]classic/.test(location.search))try{c=localStorage.getItem('bpstyle')=='clean'}catch(e){}
+ setClean(c)}
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);
 const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;
 // a phone's page beside the handheld: the dashboard at a phone's width (390 CSS px), and what the handheld shows meanwhile
 const devPhone=s=>`<div class="phonepair"><div class="pcol"><div class="lbl"><span>A phone’s browser</span><span>390 wide</span></div><div class="panel ph" data-w="390"><div class="s">${s.phone()}</div></div></div><div class="hcol"><div class="lbl"><span>Meanwhile, the handheld</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>${s.name}</span></div></div></div>`;
-const dev=s=>s.phone?devPhone(s):s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
+const dev=s=>s.phone?devPhone(s):s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s${topCls(s.top())} ${s.cls||''}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s ${s.cls||''}">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
 const kb=k=>k.split(' or ').map(p=>p.split('/').map(x=>`<kbd>${x}</kbd>`).join(' ')).join(' or ');
 const gal=document.getElementById('gallery'),nav=document.getElementById('navscreens');
 let lastG='';

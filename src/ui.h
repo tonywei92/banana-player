@@ -61,11 +61,14 @@ namespace bp
 
 		// true when the player should leave
 		bool press(Button b, Player& p);
-		// a button let go (keys and the pad; the scripted steps right after their press): only A cares, for its hold
-		// while a page plays the file
+		// a button let go (keys and the pad; the scripted steps right after their press): A cares, for its hold while
+		// a page plays the file, and the area (the player's volume hold)
 		void release(Button b, Player& p);
-		// a held button that repeats here (seeking, moving in a list, photo to photo)
+		// a held button that repeats here (seeking, moving in a list, photo to photo, the player's volume)
 		bool repeats(Button b, const Player& p) const;
+		// how often a held button repeats, once repeats() takes it: the player's UP / DOWN eight a second (a volume
+		// step), everything else 150 ms
+		int repeatMs(Button b, const Player& p) const;
 		// called each turn of the loop: a flicked photo glides on
 		void tick(Player& p);
 		// the left stick's up/down push (SDL_CONTROLLER_AXIS_LEFTY, -32768 up … 32767 down), every pass while a
@@ -357,6 +360,8 @@ namespace bp
 			virtual bool has(Page pg) const = 0;	// the page is one of its own
 			// as Ui::press and Ui::pointer (x, y in the panel's 640x480 units): true leaves the player
 			virtual bool key(Button b, Player& p) = 0;
+			// a button let go: the area's own held state (the player's volume hold) ends; most have none
+			virtual void release(Button, Player&) {}
 			virtual bool pointer(const Pointer& pt, int x, int y, Player& p) = 0;
 			virtual void tick(Player&) {}	// each turn of the loop while its page shows
 			virtual void draw(const Player& p) = 0;

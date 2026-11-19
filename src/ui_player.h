@@ -5,8 +5,9 @@
 // sheet for the rest (its first row is those same chips, then Lock, Screen off, Info, Stop, Like, Add to playlist,
 // Show in folder, Play on). The row under the transport is Like · Playlist · List · Stop; SELECT and X both open More,
 // and each chip opens its own titled sheet (Subtitles, Audio, Picture, Speed; a song's Equalizer, Effects, Display,
-// Speed); Repeat steps Off / All / One in place and Shuffle turns on and off. UP / DOWN do nothing here (the Next line
-// is a tap).
+// Speed); Repeat steps Off / All / One in place and Shuffle turns on and off. UP / DOWN are the volume, as the
+// handheld's own volume keys are (five a step, past 100% the player's gain; a hold repeats eight a second and stops at
+// 100%, a fresh press boosts); the Next line is a tap.
 // A photo is this page too (Player::playingPhoto): its viewer is unchanged and still Ui's (drawPhoto, photoKey,
 // photoPointer in ui_main.cpp); the area hands it the keys, the touches and the drawing, and SELECT or X opens the
 // photo's More (four chips changed in place, then its file's rows).
@@ -22,6 +23,7 @@ namespace bp
 		explicit PlayerPage(Ui& u) : Area(u) {}
 		bool has(Page pg) const override { return pg == Page::Main; }
 		bool key(Button b, Player& p) override;
+		void release(Button b, Player& p) override;
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override;
 		void tick(Player& p) override;
 		void draw(const Player& p) override;
@@ -43,6 +45,12 @@ namespace bp
 		// a video: Subtitles, Audio, Picture, Speed, Repeat; a song: Sound, Sound FX, Display, Speed, Shuffle
 		std::vector<ChipDef> chips(const Player& p) const;
 		void chipAct(ChipKind kind, Player& p);	// A on it, or a tap: what sets it
+
+		// ---- the volume (UP / DOWN, as the handheld's own keys: the volume card, the boost to Max volume) ----
+		Button volHold = Button::None;	// the direction held: a repeat isn't a fresh press, so it never boosts past 100%
+		bool volHoldLogged = false;	// that hold's stop at 100% is logged once
+		Uint32 volStepAt = 0;	// when it last stepped (a hold whose key-up was missed ends after a second without one)
+		void volumeKey(Button b, Player& p);
 
 		// ---- the chapter line and the Next line ----
 		bool chapterLineShown(const Player& p) const;

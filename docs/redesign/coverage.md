@@ -46,13 +46,13 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 
 ## Covered (drawn or fully noted)
 
-- Home (Continue, Recent, filters), All recent, Files list, More (X) on a file, rail, mini bar and Playing/Paused chips.
+- Home (Continue, Recent, filters), All recent, Files list, More (X) on a file, rail, Now playing block and Playing/Paused chips.
 - Books section, empty state, text reader, Text view sheet, Contents/Bookmarks, PDF, Extra dim / Light sheet.
 - Video player, View, Picture looks, Adjust, List (Y), More while playing, Away-from-normal marks (and the same while browsing).
 - Song player, View › Display (the mode and the visualizer's style on one page), Equalizer tab, visualizer alone.
 - Photo viewer; Manga section, reader, Manga-while-video guard, engine loading, "Stopped for Manga" on Home.
 - Settings, a settings group, Quick settings (F), volume past 100% and the 120% warning, Incognito badge.
-- Playing in a browser, Hold A, browser went away, mini bar while a browser plays, Play on picker.
+- Playing in a browser, Hold A, browser went away, Now playing block while a browser plays, Play on picker.
 - Key grammar, device sizes (RG DS / Plus), interactive prototype.
 
 ## Added after the audit (new features, not in today's UI)
@@ -88,11 +88,11 @@ tiles and keys of sheets and pages (`TAPS`); states that follow by themselves, a
 (`ALSO`, shown as “then” under the keys); `B` → Home on the section roots and L2 / R2 round the twelve settings groups;
 shared sheets (keyboard, Info, Add to playlist) go back to where they were opened from. The rail has Music on every shell
 screen, as the Music section's note already said (since 2026-11-19 the rail shows all seven sections at once: Home, Files, Videos, Music, Books, Extensions, Network; Playlists is a view of Music), and Network opens the
-connections list, not a folder. One screen was added: `files-playing`, Files with the mini bar after B on a video.
+connections list, not a folder. One screen was added: `files-playing`, Files after B on a video (the header’s bars; no Now playing block since 2026-11-19).
 
 | Journey | State | The walk; what is not drawn |
 |---|---|---|
-| First start | wired | Lid question → fresh Home → Files → a video → View → close → B (keeps playing) → Files with the mini bar → the player → Stop |
+| First start | wired | Lid question → fresh Home → Files → a video → View → close → B (keeps playing) → Files, the header showing the bars → the player → Stop |
 | Play music | wired | Music › Albums → album → Play → View › Display → Equalizer → presets. From Files: a folder of songs → a song → List (Y) → More (X) → Go to artist → an album. Music with no Music folder (Empty state) and while a card is first read |
 | Playlists | wired | Playlists → a playlist’s items → play from one; Y → select mode → Move → put down → Done; Add to… → the picker; a playlist with gone items; Add to playlist from the video player → New playlist… → keyboard. A playlist’s and an item’s More are lists in `keys` |
 | Liked | wired | L3 → the Like note; Home › Shuffle Liked plays; Playlists → Liked → plays; its select mode; Liked with nothing in it |
@@ -104,7 +104,7 @@ connections list, not a folder. One screen was added: `files-playing`, Files wit
 | Web dashboard | wired, both sides | Fresh Home (Y), Home › Send from phone, Quick settings or Settings → the page (QR, address, PIN) → a browser signs in → the phone’s Home → Files → a song → Now playing → Plays on: Handheld; or it plays there → Hold A / Play on… / the browser gone. The page off and with No Wi-Fi. The phone’s Music, Playlists and Books tabs are not drawn (Music’s two pages are minis under Music: Albums) |
 | Settings | wired | START → Settings → each of the twelve groups (L2 / R2 go round) → Theme, which steps the page’s theme |
 | Quick settings | wired | F → Web dashboard, Incognito, Screen off now, Quit; Volume past 100% and the first time past 120% |
-| Incognito | wired | Quick settings → the question when a browser is signed in → on, the dashboard off → off again; Settings › Lid or sleep in incognito; the badge on the player and the mini bar (`video-states`, `states-browse`) |
+| Incognito | wired | Quick settings → the question when a browser is signed in → on, the dashboard off → off again; Settings › Lid or sleep in incognito; the badge on the player and the Now playing block (`video-states`, `states-browse`) |
 | Lid and sleep | wired | The first-start question; When the lid closes and the lid-shut keys in Settings; the bottom screen dimming → off → waking (“Paused: the handheld slept” is in that screen’s strip) |
 | Files: select, copy, move, delete | wired | Y → select → Copy / Move → put it here → the job; Delete?; Rename… → keyboard; Info; Add folder to playlist → Working… |
 | Errors and empty states | wired | A file that won’t play → Info; an empty folder; a card taken out; gone items; touch lock; the alert pattern |

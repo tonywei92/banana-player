@@ -76,6 +76,7 @@ add_library(bpcore STATIC src/viz_led.cpp src/viz_synthwave.cpp src/viz_banana.c
 target_include_directories(bpcore PUBLIC src)
 target_sources(bpcore PRIVATE src/kitlayout_new.cpp)	# kit-new's layout (its own line: see target_sources(banana-player) below)
 target_sources(bpcore PRIVATE src/stickscroll.cpp)	# the left stick's scrolling speed (issue 16)
+target_sources(bpcore PRIVATE src/volumestep.cpp)	# the volume keys' step, and a hold's stop at 100%
 # PFFFT (third_party/pffft, BSD-like): the native visualizers' spectrum (src/viznative.h); NEON on aarch64, SSE on x86
 add_library(pffft_static STATIC third_party/pffft/pffft.c)
 set_target_properties(pffft_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
