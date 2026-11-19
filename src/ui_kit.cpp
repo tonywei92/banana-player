@@ -116,8 +116,8 @@ namespace bp
 		if (!th.strongKeys) ui.fill({bar.x, bar.y, bar.w, 1}, RULE);
 		std::vector<int> widths;
 		for (auto& h : list) widths.push_back(capsW(h.key) + (h.key.empty() || h.verb.empty() ? 0 : 5) + textW(h.verb, F_I12));
-		int left = bar.x + 8, right = bar.x + bar.w - 8;
-		auto xs = lay::spread(widths, 15, left, right);
+		int left = bar.x + lay::SP8, right = bar.x + bar.w - lay::SP8;
+		auto xs = lay::spread(widths, lay::SP16, left, right);
 		int cy = bar.y + bar.h / 2 + 1;
 		for (size_t i = 0; i < list.size(); i++)
 		{
@@ -162,7 +162,7 @@ namespace bp
 		if (h.more) iconKey(l.more, G_MORE, h.morePressed);
 		const int cy = l.back.y + l.back.h / 2;
 		// no More: the right slot reaches the panel's own right margin (the Settings pages, About)
-		int right = h.more ? l.more.x - 10 : l.title.x + l.title.w - 8;
+		int right = h.more ? l.more.x - lay::SP8 : l.title.x + l.title.w - lay::SP8;
 		if (h.right) right = h.right(right, cy);
 		int x = l.back.x + l.back.w + 10;
 		if (h.inlineTitle)
@@ -233,18 +233,18 @@ namespace bp
 		}
 		bool under = r.h >= 60 && !k.key.empty();	// the cap under the label; else beside it
 		int capW = k.key.empty() ? 0 : capsW(k.key);
-		int room = r.w - 16 - (gw ? gw + 7 : 0) - (capW && !under ? capW + 7 : 0);
+		int room = r.w - lay::SP16 - (gw ? gw + lay::SP8 : 0) - (capW && !under ? capW + lay::SP8 : 0);
 		int tw = std::min(std::max(0, room), textW(k.label, F_P16));
-		int w = gw + (gw && tw ? 7 : 0) + tw + (capW && !under ? 7 + capW : 0);
+		int w = gw + (gw && tw ? lay::SP8 : 0) + tw + (capW && !under ? lay::SP8 + capW : 0);
 		int x = cx - w / 2, y = under ? cy - 11 : cy;
 		if (k.glyph)
 		{
 			ui.drawGlyphMid(*k.glyph, x + gw / 2, y, ink);
-			x += gw + 7;
+			x += gw + lay::SP8;
 		}
 		if (tw) ui.drawTextMid(k.label, F_P16, ink, x, y, tw + 1);
 		if (capW && under) caps(k.key, cx - capW / 2, cy + 14, capInk, ground);
-		else if (capW) caps(k.key, x + tw + 7, y, capInk, ground);
+		else if (capW) caps(k.key, x + tw + lay::SP8, y, capInk, ground);
 	}
 
 	void Ui::Kit::transport(Rect r, const Transport& t)
@@ -493,21 +493,21 @@ namespace bp
 		{
 			// a select mode's box, in the place before the row's own lead
 			ui.drawGlyphMid(row.tickOn ? G_BOX_ON : G_BOX, x + 11, cy, off(row.tickOn ? ACCENT : DIM, row.off));
-			x += 22 + 11;
+			x += 22 + lay::SP12;
 		}
 		if (row.numberThenIcon && row.glyph)
 		{
 			// a playlist's row: its place, then what it is, then its name (the mock-up's "3  ♪  Sunny Peel")
 			if (row.leadGlyph) ui.drawGlyphMid(*row.leadGlyph, x + 10, cy, off(ACCENT, row.off));
 			else ui.drawTextMid(row.lead, F_P14, off(DIM, row.off), x + 10, cy, 20, 2);
-			x += 20 + 8;
+			x += 20 + lay::SP8;
 			ui.drawGlyphMid(*row.glyph, x + 10, cy, ink);
-			x += 20 + 11;
+			x += 20 + lay::SP12;
 		}
 		else if (row.glyph)
 		{
 			ui.drawGlyphMid(*row.glyph, x + 10, cy, ink);
-			x += 20 + 11;
+			x += 20 + lay::SP12;
 		}
 		else if (row.radio || !row.lead.empty())
 		{
@@ -517,7 +517,7 @@ namespace bp
 				ui.drawGlyphMid(row.radioOn ? G_RADIO_ON : G_RADIO, x + 10, cy,
 					off(row.radioOn ? ACCENT : row.focused ? DIM_ON : DIM, row.off));
 			else ui.drawTextMid(row.lead, F_P14, off(DIM, row.off), x + 10, cy, 20, 2);
-			x += 20 + 11;
+			x += 20 + lay::SP12;
 		}
 		if (row.trail == Trail::Chevron)
 		{

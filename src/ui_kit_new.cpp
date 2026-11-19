@@ -123,9 +123,9 @@ namespace bp
 			ui.drawBox(r, held ? PRESSED : BUTTON, R_BUTTON, lit ? ACCENT : k.edgeOf(held ? PRESSED : BUTTON));
 			// the name (its icon before it) on the first line; the key's cap under it, or a lit key's state
 			int cx = r.x + r.w / 2, cy1 = r.y + r.h / 2 - 10, cy2 = r.y + r.h / 2 + 12;
-			int lw = k.textW(bk.label, F_P16) + (bk.glyph ? 18 + 7 : 0), x = cx - lw / 2;
+			int lw = k.textW(bk.label, F_P16) + (bk.glyph ? 18 + lay::SP8 : 0), x = cx - lw / 2;
 			SDL_Color ink = lit ? ACCENT : TEXT;
-			if (bk.glyph) { ui.drawGlyphMid(*bk.glyph, x + 9, cy1, ink, 2); x += 18 + 7; }
+			if (bk.glyph) { ui.drawGlyphMid(*bk.glyph, x + 9, cy1, ink, 2); x += 18 + lay::SP8; }
 			ui.drawTextMid(bk.label, F_P16, ink, x, cy1, r.x + r.w - 8 - x);
 			if (lit)
 			{
@@ -151,7 +151,7 @@ namespace bp
 			std::vector<int> widths;
 			for (auto& hn : s.hints)
 				widths.push_back(k.capsW(hn.key) + (hn.key.empty() || hn.verb.empty() ? 0 : 5) + k.textW(hn.verb, F_I12));
-			auto xs = lay::spread(widths, 15, h.x + 8, h.x + h.w - 8);
+			auto xs = lay::spread(widths, lay::SP16, h.x + lay::SP8, h.x + h.w - lay::SP8);
 			int cy = h.y + h.h / 2 + 1;
 			for (size_t i = 0; i < s.hints.size() && i < xs.size(); i++)
 			{

@@ -9752,7 +9752,7 @@ static void testKitVariantMiniBar()
 	CHECK_EQ(m.box.h, 52);
 	CHECK_EQ(m.box.x, 12);
 	CHECK_EQ(m.box.x + m.box.w, 628);
-	CHECK_EQ(m.box.y + m.box.h, 480 - 36);
+	CHECK_EQ(m.box.y + m.box.h, 480 - 38);
 	CHECK_EQ(m.mark.w, 56);
 	CHECK_EQ(m.mark.h, 42);
 	CHECK(m.box.hit(m.mark.x, m.mark.y) && m.box.hit(m.mark.x + m.mark.w - 1, m.mark.y + m.mark.h - 1));
@@ -9766,13 +9766,13 @@ static void testKitVariantFilters()
 	using namespace lay;
 	FilterChips c = filterChips({16, 100, 608, CHIP_STRIP}, {60, 80, 70});
 	CHECK_EQ((int)c.chip.size(), 3);
-	CHECK_EQ(c.chip[0].h, 40);
-	CHECK_EQ(c.hit[0].h, 56);
+	CHECK_EQ(c.chip[0].h, 44);
+	CHECK_EQ(c.hit[0].h, 44);
 	CHECK_EQ(c.chip[1].x, c.chip[0].x + 60 + CHIP_GAP);
 	// no dead strip between two chips: the gap's middle belongs to one of them
 	CHECK_EQ(filterAt(c, 16 + 60 + 2, 128), 0);
 	CHECK_EQ(filterAt(c, 16 + 60 + 4, 128), 1);
-	CHECK_EQ(filterAt(c, 16 + 60, 100 + 55), 0);
+	CHECK_EQ(filterAt(c, 16 + 60, 100 + 43), 0);
 	CHECK_EQ(filterAt(c, 16 + 60, 99), -1);
 }
 
@@ -9974,14 +9974,14 @@ static bool kitInside(lay::Box b, int w, int h) { return b.x >= 0 && b.y >= 0 &&
 static bool kitApart(lay::Box a, lay::Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; }
 static void testKitLayout()
 {
-	{	// the shell: the body between the header and the hints (or the mini bar), right of the rail
+	{	// the shell: the body 6 under the header and between it and the hints (or 8 above the mini bar), right of the rail
 		for (bool mini : {false, true})
 		{
 			lay::Shell s = lay::shell(mini);
 			CHECK(s.body.x == lay::RAIL_W && s.body.x + s.body.w == lay::PANEL_W);
-			CHECK(s.body.y == s.header.y + s.header.h);
-			CHECK(s.body.y + s.body.h <= (mini ? s.mini.y : s.hints.y));
-			CHECK(mini ? s.mini.w > 0 && s.mini.y + s.mini.h <= s.hints.y : s.mini.w == 0);
+			CHECK_EQ(s.body.y, s.header.y + s.header.h + 6);
+			CHECK(s.body.y + s.body.h <= (mini ? s.mini.y - 8 : s.hints.y));
+			CHECK(mini ? s.mini.w > 0 && s.mini.y + s.mini.h == s.hints.y - 8 : s.mini.w == 0);
 		}
 	}
 
@@ -10010,14 +10010,14 @@ static void testKitLayout()
 	int tw[5] = {100, 100, 176, 100, 100}, tx = 16;
 	for (int i = 0; i < 5; i++)
 	{
-		Box c = transportCell({16, 188, 608, 74}, i);
+		Box c = transportCell({16, 188, 608, 76}, i);
 		CHECK_EQ(c.x, tx);
 		CHECK_EQ(c.w, tw[i]);
 		tx += tw[i] + 8;
 	}
 	// (a width that four sides don't divide: the play key takes what's left, the row still ends on the edge)
-	CHECK_EQ(transportCell({0, 0, 610, 74}, 4).x + transportCell({0, 0, 610, 74}, 4).w, 610);
-	CHECK_EQ(transportCell({0, 0, 610, 74}, 2).w, 178);
+	CHECK_EQ(transportCell({0, 0, 610, 76}, 4).x + transportCell({0, 0, 610, 76}, 4).w, 610);
+	CHECK_EQ(transportCell({0, 0, 610, 76}, 2).w, 178);
 
 	// the bar: the knob centred on the share; a notch a chapter but the first, none too close, none past 100 chapters
 	Box track{16, 138, 608, 14};
@@ -10038,16 +10038,16 @@ static void testKitLayout()
 	many.pop_back();
 	CHECK(barMarks(track, 200, many).size() > 40);	// (a hundred fit: one each 6 units at the closest)
 
-	// a centred row of hints: 15 apart while they fit, closer when they don't, never left of the edge
-	auto xs = spread({100, 50}, 15, 8, 632);
-	CHECK_EQ(xs[0], 8 + (624 - 165) / 2);
-	CHECK_EQ(xs[1], xs[0] + 115);
-	xs = spread({300, 300, 20}, 15, 8, 632);
+	// a centred row of hints: 16 apart while they fit, closer when they don't, never left of the edge
+	auto xs = spread({100, 50}, 16, 8, 632);
+	CHECK_EQ(xs[0], 8 + (624 - 166) / 2);
+	CHECK_EQ(xs[1], xs[0] + 116);
+	xs = spread({300, 300, 20}, 16, 8, 632);
 	CHECK_EQ(xs[0], 8);
 	CHECK_EQ(xs[1], 314);	// (the gap never under minGap, 6: the row then runs past the right edge, cut by who draws it)
-	xs = spread({300, 300, 20}, 15, 8, 632, 2);
+	xs = spread({300, 300, 20}, 16, 8, 632, 2);
 	CHECK_EQ(xs[2] + 20, 632);
-	CHECK_EQ(spread({}, 15, 8, 632).size(), (size_t)0);
+	CHECK_EQ(spread({}, 16, 8, 632).size(), (size_t)0);
 
 	// tabs: 44 tall in a 54-tall header, the caps at both ends, 6 apart
 	Tabs strip = tabs({16, 60, 608, 54}, {80, 100});
@@ -10070,7 +10070,7 @@ static void testKitLayout()
 	CHECK_EQ(ls.row(0).y, ls.head.y + 54);
 	CHECK_EQ(ls.row(0).h, 46);
 	CHECK_EQ(ls.row(6).y + 46 + 8, ls.hints.y);
-	CHECK_EQ(ls.row(0).w, 612);
+	CHECK_EQ(ls.row(0).w, 608);
 	CHECK_EQ(listSheet(0).box.h, 11 + 54 + 8 + 30);
 	CHECK_EQ(listSheet(3, 40).rowsY, listSheet(3, 40).head.y + 40);
 	// a body's own height (the Equalizer tab): the most a sheet may be, the rows left unused
@@ -10120,12 +10120,12 @@ static void testKitLayout()
 	CHECK_EQ(sh.box.w, 640);
 	CHECK_EQ(sh.box.y + sh.box.h, 480);
 	CHECK_EQ(sh.box.h, 11 + 54 + 68 + 92 + 8 + 30);
-	CHECK_EQ(sh.tile(0).x, 14);
-	CHECK_EQ(sh.tile(0).w, 147);
+	CHECK_EQ(sh.tile(0).x, 16);
+	CHECK_EQ(sh.tile(0).w, 146);
 	CHECK_EQ(sh.tile(0).h, 60);
-	CHECK_EQ(sh.tile(3).x + sh.tile(3).w, 626);
-	CHECK_EQ(sh.row(0).w, 299);
-	CHECK_EQ(sh.row(1).x, 14 + 299 + 14);
+	CHECK_EQ(sh.tile(3).x + sh.tile(3).w, 624);
+	CHECK_EQ(sh.row(0).w, 296);
+	CHECK_EQ(sh.row(1).x, 16 + 296 + 16);
 	CHECK_EQ(sh.row(2).y, sh.row(0).y + 46);
 	CHECK_EQ(sh.row(3).y + sh.row(3).h + 8, sh.hints.y);	// the rows end clear of the hint bar
 	CHECK_EQ(sh.tile(0).y + 60 + 8, sh.row(0).y);
@@ -10169,8 +10169,8 @@ static void testKitLayout()
 	CHECK_EQ(ps.box.h, 11 + 54 + 52 + 8 + 60 + 8 + 2 * 46 + 8 + 30);
 	CHECK_EQ(ps.chip(0).y, ps.head.y + 54);
 	CHECK_EQ(ps.chip(0).h, 52);
-	CHECK_EQ(ps.chip(0).x, 14);
-	CHECK_EQ(ps.chip(4).x + ps.chip(4).w, 626);	// the last chip ends on the sheet's right edge
+	CHECK_EQ(ps.chip(0).x, 16);
+	CHECK_EQ(ps.chip(4).x + ps.chip(4).w, 624);	// the last chip ends on the sheet's right edge
 	CHECK_EQ(ps.tile(0).y, ps.chip(0).y + 52 + 8);
 	CHECK_EQ(ps.row(0).y, ps.tile(0).y + 60 + 8);
 	CHECK(ps.item(0).x == ps.chip(0).x && ps.item(5).x == ps.tile(0).x && ps.item(9).x == ps.row(0).x);
@@ -10186,7 +10186,7 @@ static void testKitLayout()
 	// a photo's: four chips 147 wide over rows, and no tiles
 	SheetSpec photo{0, 3, 1, 0, 4};
 	Sheet ph = sheet(photo);
-	CHECK_EQ(ph.chip(0).w, 147);
+	CHECK_EQ(ph.chip(0).w, 146);
 	CHECK_EQ(sheetMove(photo, 3, Dir::Down), 4);
 	CHECK_EQ(sheetMove(photo, 0, Dir::Down), 4);
 	CHECK_EQ(sheetMove(photo, 4, Dir::Up), 0);
@@ -10282,6 +10282,12 @@ static void testKitLayout()
 		for (auto& b : l.transport) CHECK(b.h >= 56 && b.w >= 56);
 		for (auto& b : l.keys) CHECK(b.h >= 56);
 		CHECK_EQ(l.transport[2].w, 176);
+		CHECK_EQ(l.transport[0].h, 76);
+		// the rows 8 apart, the Next line 4 over the hint bar
+		CHECK_EQ(l.keys[0].y - (l.transport[2].y + l.transport[2].h), 8);
+		CHECK_EQ(l.chip[0].y - (l.keys[0].y + l.keys[0].h), 8);
+		CHECK_EQ(l.next.y - (l.chip[0].y + l.chip[0].h), 8);
+		CHECK_EQ(l.next.y + l.next.h, l.hints.y - 4);
 		CHECK_EQ(l.chip[chips - 1].x + l.chip[chips - 1].w, 624);
 		// the touch areas: the header's keys to the panel's edges; the bar's row and the chapter line's don't meet
 		CHECK(l.backHit.hit(0, 0) && l.moreHit.hit(639, 0) && !l.backHit.hit(l.moreHit.x, 10));
@@ -10329,13 +10335,17 @@ static void testKitLayout()
 	{
 		// Home inside the shell's body: the content column, Continue, the filter strip, four cards and the chevron,
 		// the three shortcuts; nothing over another, the row ending on the column's right edge
-		Box body{78, 54, 562, 396};
+		Box body{78, 60, 562, 390};
 		std::vector<int> widths{60, 80, 80, 80};
 		HomePage h = homePage(body, true, true, 4, true, widths);
 		CHECK_EQ(h.inner.x, 90);
 		CHECK_EQ(h.inner.w, 538);
+		CHECK_EQ(h.inner.y, body.y);
 		CHECK(h.cont.h == HOME_CONTINUE_H);
 		CHECK_EQ((int)h.chips.chip.size(), 4);
+		CHECK_EQ(h.chipStrip.h, CHIP_STRIP);
+		CHECK_EQ(h.chipStrip.y - (h.cont.y + h.cont.h), 12);
+		CHECK_EQ(h.card[0].y - (h.chipStrip.y + h.chipStrip.h), 8);
 		CHECK(h.cont.y + h.cont.h <= h.chipStrip.y);
 		CHECK(h.chipStrip.y + h.chipStrip.h <= h.card[0].y);
 		CHECK_EQ(h.cards, 4);
@@ -10344,10 +10354,11 @@ static void testKitLayout()
 		CHECK_EQ(h.more.x + h.more.w, h.inner.x + h.inner.w);
 		CHECK_EQ(h.shortcuts, 3);
 		CHECK_EQ(h.shortcut[2].x + h.shortcut[2].w, h.inner.x + h.inner.w);
+		CHECK_EQ(h.shortcut[0].y - (h.card[0].y + h.card[0].h), 8);
 		CHECK(h.card[0].y + h.card[0].h <= h.shortcut[0].y);
 		CHECK(h.shortcut[0].y + h.shortcut[0].h <= h.inner.y + h.inner.h);
 		// with the mini bar over the foot the shortcut row no longer fits: Continue + Recent only
-		HomePage m = homePage({78, 54, 562, 334}, true, true, 4, true, widths);
+		HomePage m = homePage({78, 60, 562, 322}, true, true, 4, true, widths);
 		CHECK_EQ(m.shortcuts, 0);
 		CHECK(m.card[0].y + m.card[0].h <= m.inner.y + m.inner.h);
 		// no Continue: the filter strip takes the top; two cards and no chevron
@@ -10372,9 +10383,9 @@ static void testKitLayout()
 	{
 		// All recent: the kind chips under the header, then the list's rows at the browser's own first row (84),
 		// seven of them above the hint bar, six with the mini bar over the foot
-		Box body{78, 54, 562, 396};
+		Box body{78, 60, 562, 390};
 		AllRecentPage a = allRecentPage(body);
-		CHECK_EQ(a.chipStrip.y, body.y + 2);
+		CHECK_EQ(a.chipStrip.y, body.y - 4);
 		CHECK_EQ(a.chipStrip.y + a.chipStrip.h, 84);
 		CHECK_EQ(a.rowY, 84);
 		CHECK_EQ(a.shown, 7);
@@ -10385,7 +10396,7 @@ static void testKitLayout()
 			CHECK(a.row(i).y + a.row(i).h <= body.y + body.h);
 			if (i) CHECK(a.row(i).y == a.row(i - 1).y + a.row(i - 1).h);
 		}
-		AllRecentPage m = allRecentPage({78, 54, 562, 334});
+		AllRecentPage m = allRecentPage({78, 60, 562, 322});
 		CHECK_EQ(m.shown, 6);
 	}
 	{	// Files: the rows, the footer and the select bar inside the shell's body
@@ -10452,7 +10463,7 @@ static void testKitLayout()
 		auto apart = [](Box a, Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; };
 		Box body = lay::shell(false).body;
 		PlaylistPage p = playlistPage(body, 3, 0);
-		CHECK_EQ(p.rows, 6);
+		CHECK_EQ(p.rows, 5);
 		CHECK_EQ(p.key[0].x, p.list.x);
 		CHECK_EQ(p.key[2].x + p.key[2].w, p.list.x + p.list.w);
 		CHECK_EQ(p.key[2].w, PL_ADD_W);
@@ -10473,7 +10484,7 @@ static void testKitLayout()
 			CHECK_EQ(r.h, PL_ROW_H);
 			if (i) CHECK_EQ(apart(r, p.row(i - 1)), true);
 		}
-		// the mini bar takes the body's foot: two rows fewer
+		// the mini bar takes the body's foot: a row fewer
 		Box small = lay::shell(true).body;
 		CHECK_EQ(playlistPage(small, 3, 0).rows, 4);
 		// the select bar: three keys at the body's foot, the rows ending 6 above them
@@ -10495,9 +10506,9 @@ static void testKitLayout()
 		CHECK_EQ(m.barKey[1].x + m.barKey[1].w, m.list.x + m.list.w);
 		CHECK_EQ(apart(m.barKey[0], m.barKey[1]), true);
 		CHECK_EQ(m.key[1].x + m.key[1].w, m.list.x + m.list.w);
-		// the list of playlists: no keys and no bar: seven rows, six with the mini bar
+		// the list of playlists: no keys and no bar: seven rows, five with the mini bar
 		CHECK_EQ(playlistPage(body, 0, 0).rows, 7);
-		CHECK_EQ(playlistPage(small, 0, 0).rows, 6);
+		CHECK_EQ(playlistPage(small, 0, 0).rows, 5);
 	}
 	// Settings inside the shared shell: the header strip's boxes stay in the main strip, and the page's tiles and
 	// rows stay in the body (with the mini bar up the body ends under the seventh row, so the help waits for it)
@@ -10513,16 +10524,18 @@ static void testKitLayout()
 		CHECK(h.hints.x == sh.main.x && h.hints.w == sh.main.w && h.hints.y == 480 - HINTS_H);
 		Box body = settingsBody(sh.body);
 		CHECK_EQ(body.x, sh.body.x + MARGIN);
-		CHECK_EQ(body.y, sh.body.y + 10);
+		CHECK_EQ(body.y, sh.body.y + 4);
 		CHECK_EQ(body.w, sh.body.w - 2 * MARGIN);
 		CHECK(body.x >= sh.main.x && body.x + body.w <= sh.main.x + sh.main.w);
 		Box tiles = settingsTiles(sh.body, 5);
-		CHECK(tiles.y + tiles.h <= sh.body.y + sh.body.h);
+		// (with the mini bar the five tile rows end 4 into the body's 8 above it: the page keeps its 64)
+		int bottom = mini ? sh.mini.y : sh.body.y + sh.body.h;
+		CHECK(tiles.y + tiles.h <= bottom);
 		for (int i = 0; i < 10; i++)
 		{
 			Box t = settingsTile(tiles, 10, 2, i);
 			CHECK(t.x >= body.x && t.x + t.w <= body.x + body.w);
-			CHECK(t.y >= body.y && t.y + t.h <= body.y + body.h);
+			CHECK(t.y >= body.y && t.y + t.h <= bottom);
 			CHECK_EQ(t.h, SET_TILE_H);
 			for (int j = i + 1; j < 10; j++)
 			{
@@ -10531,11 +10544,12 @@ static void testKitLayout()
 			}
 		}
 		SettingsRows r = settingsRowsIn(sh.body);
-		CHECK_EQ(r.row(0).y, sh.body.y + 10);
+		CHECK_EQ(r.row(0).y, sh.body.y + 4);
 		CHECK_EQ(r.row(0).x, body.x);
 		CHECK_EQ(r.row(0).w, body.w);
-		CHECK_EQ(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h, sh.body.y + 10 + SET_ROWS * SET_ROW_H - 2);
-		CHECK(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h <= sh.body.y + sh.body.h);
+		CHECK_EQ(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h, sh.body.y + 4 + SET_ROWS * SET_ROW_H - 2);
+		// (with the mini bar the body ends 8 above it; the seventh row ends 2 under the body's foot, 6 over the bar)
+		CHECK(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h <= (mini ? sh.mini.y : sh.body.y + sh.body.h));
 		if (mini) CHECK_EQ(r.help.w, 0);
 		else
 		{
@@ -10569,7 +10583,7 @@ static void testKitLayout()
 			CHECK_EQ(e.row[0].h, EXT_ROW_H);
 			CHECK_EQ(e.row[0].w, body.w - 2 * EXT_PAGE_PAD);
 			CHECK_EQ(e.row[0].x, body.x + EXT_PAGE_PAD);
-			CHECK_EQ(e.row[0].y, body.y + 2);
+			CHECK_EQ(e.row[0].y, body.y);
 			CHECK(kitInside(e.row[0], PANEL_W, PANEL_H));
 			CHECK(e.rule.y >= e.row[0].y + e.row[0].h);
 			CHECK_EQ(e.rule.h, 1);

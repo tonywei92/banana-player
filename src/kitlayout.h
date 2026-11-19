@@ -20,7 +20,9 @@ namespace bp
 
 		constexpr int PANEL_W = 640, PANEL_H = 480;
 		constexpr int HINTS_H = 30;	// the hint bar along the foot (a rule above it)
-		constexpr int MARGIN = 16, GAP = 8;	// a page's side margin; between the keys of a row
+		// the spec's one spacing scale (components.md "Spacing"): 2 / 4 / 6 / 8 / 12 / 16 / 24, nothing in between
+		constexpr int SP2 = 2, SP4 = 4, SP6 = 6, SP8 = 8, SP12 = 12, SP16 = 16, SP24 = 24;
+		constexpr int MARGIN = SP16, GAP = SP8;	// a page's side margin; between the keys of a row
 
 		// the i-th of n cells across `area`, `gap` apart. Widths that don't divide: the spare units go one each to the
 		// last cells (five across 608: 115, 115, 115, 115, 116), so the row always ends on the area's right edge
@@ -43,7 +45,7 @@ namespace bp
 		std::vector<int> spread(const std::vector<int>& widths, int gap, int left, int right, int minGap = 6);
 
 		// ---- tabs, and the List sheet (Y on the player: Up next / Chapters) ----
-		constexpr int TAB_H = 44, TAB_GAP = 6, TAB_PAD = 13, TAB_CAP = 19;
+		constexpr int TAB_H = 44, TAB_GAP = 6, TAB_PAD = SP12, TAB_CAP = 19;
 		struct Tabs
 		{
 			Box area;
@@ -79,7 +81,7 @@ namespace bp
 		int rowAt(int y, int rowsY, int scroll, int shown, int n);
 
 		// ---- the bottom sheet (the More sheet: tiles, then rows in one or two columns) ----
-		constexpr int SHEET_HEAD = 54, SHEET_PAD = 14, SHEET_ROW = 46, SHEET_TILE = 60, SHEET_CHIP_H = 52, SHEET_MIN = 226, SHEET_MAX = 470;
+		constexpr int SHEET_HEAD = 54, SHEET_PAD = SP16, SHEET_ROW = 46, SHEET_TILE = 60, SHEET_CHIP_H = 52, SHEET_MIN = 226, SHEET_MAX = 470;
 		struct SheetSpec
 		{
 			int tiles = 0;	// a first row of keys, icon over label (four across)
@@ -214,8 +216,8 @@ namespace bp
 		StatusRow statusRow(int right, const std::vector<int>& widths, int gap = 8);
 		int badgeW(int textW, bool glyph);	// a badge: padding both sides, its mark (16) and a gap before the text
 
-		// ---- the mini bar: 52 tall, 12 from the sides, 36 above the foot ----
-		constexpr int MINI_H = 52, MINI_SIDE = 12, MINI_FOOT = 36, MINI_MARK_W = 56, MINI_MARK_H = 42;
+		// ---- the mini bar: 52 tall, 12 from the sides, 38 above the foot (8 over the 30-tall hint bar) ----
+		constexpr int MINI_H = 52, MINI_SIDE = SP12, MINI_FOOT = HINTS_H + SP8, MINI_MARK_W = 56, MINI_MARK_H = 42;
 		struct MiniBar
 		{
 			Box box, mark, line;	// the bar; the play mark (its own touch); the 3-tall progress line along its foot
@@ -226,11 +228,11 @@ namespace bp
 		// the same pieces inside `box` (the shell's mini bar sits right of the rail: lay::shell(mini).mini)
 		MiniBar miniBar(Box box);
 
-		// ---- filter chips used as filters: 40 tall in a 56-tall touch strip ----
-		constexpr int CHIP_H = 40, CHIP_STRIP = 56, CHIP_GAP = 6;
+		// ---- filter chips used as filters: 44 tall (a finger's size) in a 44-tall row ----
+		constexpr int CHIP_H = 44, CHIP_STRIP = 44, CHIP_GAP = 6;
 		struct FilterChips
 		{
-			std::vector<Box> chip, hit;	// the chip as drawn; the touch area (56 tall, up to the next one)
+			std::vector<Box> chip, hit;	// the chip as drawn; the touch area (44 tall, up to the next one)
 		};
 		FilterChips filterChips(Box area, const std::vector<int>& widths);
 		int filterAt(const FilterChips& c, int x, int y);	// the chip a touch is on (-1 none)
@@ -304,9 +306,9 @@ namespace bp
 		ContinueCard continueCard(Box box);
 
 		// ======== Home and All recent (docs/redesign: home, home-first, home-stopped, recent-all) ========
-		// The content column inside lay::shell(mini).body: 12 from its sides, 2 under the header. The screens draw
+		// The content column inside lay::shell(mini).body: 12 from its sides, 6 under the header. The screens draw
 		// inside these boxes only; their touches test the same ones.
-		constexpr int HOME_PAD = 12, HOME_CONTINUE_H = 108, HOME_CARD_ROW_H = 100, HOME_SHORTCUT_H = 56;
+		constexpr int HOME_PAD = SP12, HOME_CONTINUE_H = 108, HOME_CARD_ROW_H = 100, HOME_SHORTCUT_H = 56;
 		constexpr int HOME_CARDS_MAX = 4;
 		struct HomePage
 		{
@@ -328,7 +330,7 @@ namespace bp
 		// for what plays), so there its body is the same height whether something plays or not and the row stays.
 		HomePage homePage(Box body, bool hasContinue, bool hasRecent, int cards, bool more, const std::vector<int>& chipWidths);
 		// All recent: the filter chips' 28-tall strip under the header, then the rows (48 tall, as the list's pointers
-		// expect: their first is at body.y + 30). `shown` is what fits above the hint bar (or the mini bar).
+		// expect: their first is at Ui::ROW_Y, 84). `shown` is what fits above the hint bar (or the mini bar).
 		struct AllRecentPage
 		{
 			Box inner, chipStrip;
@@ -389,10 +391,11 @@ namespace bp
 		int railStep(int at, int dir, int n);
 
 		// ---- The shell: a section's page (Home, Files, Music, Playlists, Books, Manga, Network, Settings) ----
-		// The rail at the left; right of it the header (54), the body, the hint bar (HINTS_H) at the foot. While
-		// something plays the mini bar sits over the body's foot (MINI_H, MINI_FOOT above the panel's foot), so the
-		// body ends above it. The shared contract the redesigned screens draw in: a screen lays out its own content in
-		// `body` and never draws over the rail, the header or the hints (docs/redesign/components.md, Frame).
+		// The rail at the left; right of it the header (54), the body (from 6 under the header), the hint bar
+		// (HINTS_H) at the foot. While something plays the mini bar sits over the body's foot (MINI_H, MINI_FOOT above
+		// the panel's foot), so the body ends 8 above it. The shared contract the redesigned screens draw in: a screen
+		// lays out its own content in `body` and never draws over the rail, the header or the hints
+		// (docs/redesign/components.md, Frame).
 		constexpr int SHELL_HEAD = 54;
 		struct Shell
 		{

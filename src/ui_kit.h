@@ -249,7 +249,7 @@ namespace bp
 			int count = -1;	// -1: none
 		};
 		std::vector<int> filterWidths(const std::vector<FilterItem>& items) const;
-		// the chips in `area` (56 tall: lay::filterChips); on: the chosen one; focused: the D-pad's
+		// the chips in `area` (44 tall: lay::filterChips); on: the chosen one; focused: the D-pad's
 		void filters(const lay::FilterChips& c, const std::vector<FilterItem>& items, int on, int focused = -1, int pressed = -1);
 
 		// ---- a form row (Add connection, Add a server) ----
