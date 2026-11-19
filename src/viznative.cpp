@@ -977,13 +977,13 @@ namespace bp
 		}
 
 		// Pocket console (redesigned 2026-11-19, docs/notes/2026-11-19-pocket-console-redesign.md): a little LCD in a
-		// bezel, kept clean: few things, each on the dot grid (a dot 8 units, a 1-unit grid line), nothing blended. The
+		// bezel, kept clean: few things, each on the dot grid (a dot 8 units, the last of them a gap), nothing blended. The
 		// screen is 75 dots across (20 units of bezel each side), 56 down alone and 23 in the band; on it: the sun at the
 		// top right (alone: a core in a halo, swelling with the bass, four rays while a beat rings, turning beat by
 		// beat), the 15 bars (3 dots and a gap of 2, one ink) with a mid cap riding each held peak, the floor and under
 		// it the road's dashes passing by with the loudness, and (alone) at the foot a heart that beats and a note that
 		// hops. The band is the bars, their caps and the road, 17 rows tall.
-		// Then the grid, and the screen's corners cut in steps
+		// Then the dots' gaps, and the screen's corners cut in steps
 		const char* const PK_HEART[5] = {".#.#.", "#####", "#####", ".###.", "..#.."};
 		const char* const PK_HEART_SMALL[5] = {".....", ".#.#.", ".###.", "..#..", "....."};
 		const char* const PK_NOTE[5] = {"..###", "..#.#", "..#..", ".##..", ".##.."};
@@ -1064,9 +1064,10 @@ namespace bp
 				sprite(s.pkPulse > 0.4f ? PK_HEART : PK_HEART_SMALL, 5, L, sr, VI_P_INK);
 				sprite(PK_NOTE, 5, R - 5, sr - (s.pkPulse > 0.6f ? 1 : 0), VI_P_INK);
 			}
-			// the grid: the 8th unit of every dot, across and down
-			for (int c = 0; c < COLS; c++) box(out, X0 + c * 8 + 7, Y0, X0 + c * 8 + 8, Y1, VI_P_GRID);
-			for (int r = 0; r < ROWS; r++) box(out, X0, Y0 + r * 8 + 7, X1, Y0 + r * 8 + 8, VI_P_GRID);
+			// the dots' gaps: the 8th unit of every dot, across and down, in the screen's own colour (the lit dots are cut
+			// apart, the empty screen stays flat: a grid shade over all of it read as a texture, not clean)
+			for (int c = 0; c < COLS; c++) box(out, X0 + c * 8 + 7, Y0, X0 + c * 8 + 8, Y1, VI_P_SCREEN);
+			for (int r = 0; r < ROWS; r++) box(out, X0, Y0 + r * 8 + 7, X1, Y0 + r * 8 + 8, VI_P_SCREEN);
 			// the corners: three dots of bezel each, the recess's line going round the steps
 			for (int k = 0; k < 4; k++)
 			{

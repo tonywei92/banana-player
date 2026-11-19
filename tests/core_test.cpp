@@ -6511,12 +6511,12 @@ static void testVizNative()
 	float big = 0;
 	for (auto& q : r) if (q.kind == 1) big = std::max(big, q.y1);
 	CHECK(big > small * 2);
-	// Pocket console: the bezel round a 75-dot screen (the grid 75 + 56 lines alone), nothing blended, every dot on the
+	// Pocket console: the bezel round a 75-dot screen (the dots' gaps 75 + 56 lines of the screen's colour alone), nothing blended, every dot on the
 	// screen; full, a bar 32 rows of one ink, its top row 15; let go, its cap (mid) rides the held peak above it
 	st.reset(VIS_POCKET);
 	vizShapes(st, false, r);
-	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1);
-	CHECK_EQ(inksOf(r, VI_P_GRID), 75 + 56);
+	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1 + 75 + 56);
+	CHECK_EQ(inksOf(r, VI_P_GRID), 0);
 	const int idle = inksOf(r, VI_P_INK);	// (the heart and the note)
 	for (auto& q : r) CHECK(!(q.ink == VI_P_MID && q.x1 - q.x0 == 8 && q.y1 - q.y0 == 8));
 	for (int i = 0; i < 15; i++) st.targets[i] = VN_TOP;
@@ -6546,8 +6546,7 @@ static void testVizNative()
 	for (auto& q : r) if (q.ink == VI_P_MID && q.x1 - q.x0 == 3 * 8 && q.y1 - q.y0 == 8 && q.y0 < 16 + 20 * 8) caps++;
 	CHECK_EQ(caps, 15);
 	vizShapes(st, true, r);	// the band: the same screen, 23 dots tall under row 280; no sun
-	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1);
-	CHECK_EQ(inksOf(r, VI_P_GRID), 75 + 23);
+	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1 + 75 + 23);
 	onScreen = true;
 	for (auto& q : r) if (q.y0 < 280) onScreen = false;
 	CHECK(onScreen);

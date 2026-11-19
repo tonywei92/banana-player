@@ -7,7 +7,8 @@ clean". This is what it is now, how it got there, and what it costs. Code: `pock
 ## What it is
 
 A little LCD in a thin bezel: an original pocket game screen, no real product's look, name or marks. Everything on
-the screen is a dot of 8 units under a 1-unit grid line, all boxes, nothing blended, no texture.
+the screen is a dot of 8 units, the last unit a gap in the screen's own colour: lit dots are cut apart, the empty
+screen is flat. All boxes, nothing blended, no texture.
 
 - **The frame.** 20 units of bezel left and right, 16 above and below (alone); a 3-unit line for the screen's recess;
   the screen's corners cut in three steps of bezel, the line going round them. The screen is 75 x 56 dots alone.
@@ -48,14 +49,16 @@ eight rays always on, a status line of low / mid / high letters and pips, a glin
 ghost columns and the pips were the noise, and the owner said so. Cut, in this order of how much each helped: the
 ghost columns, the status meters, the clouds, the glint, the bars' second tone; then the bars went from 4 + 1 dots
 to 3 + 2 (air between them), the rays show only while a beat rings, the floor and dashes stop at the bars' edges,
-and the band lost the heart and note for taller bars. Rule of thumb that came out of it: one moving thing per
+and the band lost the heart and note for taller bars. Last, the grid: its own shade over the whole screen read as a
+texture (most in a dark theme), so the gaps are now the screen's colour and only lit dots show them
+(`PocketInks::grid` is the graph's alone now). Rule of thumb that came out of it: one moving thing per
 signal (bars: spectrum; caps: peaks; road: loudness; sun, heart, note: the beat), and nothing drawn that isn't one.
 
 ## Cost
 
 Desktop, a 2x window (1280 x 960), `viz-native: draw` lines: alone 0.15 ms a frame of ours (shapes 0.06, GL 0.09),
 about 1420 vertices, 2 draws, 1.8 M px filled (about 460 k on the 640 x 480 panel: the screen once, the bezel as
-four strips, the grid's 131 lines, the bars), **0 blended**; the band about 1400 vertices and less fill. The first
+four strips, the gaps' 131 lines, the bars), **0 blended**; the band about 1400 vertices and less fill. The first
 native Pocket console filled about the same (the screen box, 140 grid lines). Not timed on the handheld: nothing in
 it is heavier than what that one drew.
 
