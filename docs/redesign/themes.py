@@ -160,7 +160,7 @@ if __name__ == '__main__':
             pre = '' if k == 'yellow' else f':root[data-bp={k}] '
             print(f"{pre}.s{{{cssvars(full(k))}}}")
             print(f"{','.join(pre + x for x in scope)}{{{cssTop(top(k))}}}")
-        for k in ('dark', 'light', 'gundam', 'gundam0', 'dark0', 'darkb', 'darkc'):  # a theme pinned to one drawing (the Clean style's side-by-side screens)
+        for k in ('dark', 'light', 'gundam', 'gundam0', 'dark0', 'darkb', 'darkc', 'blue'):  # a theme pinned to one drawing (the Clean style's side-by-side screens)
             print(f":root .s.t-{k}.t-{k}{{{cssvars(full(k))}}}")
         print(':root:not([data-bp]) .s .thv>em.t-yellow,' + ','.join(f':root[data-bp={k}] .s .thv>em.t-{k}' for k in ORDER) + '{display:inline}')
         print(','.join(f':root[data-bp={k}] .s .thsw.t-{k}' for k in ORDER) + '{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}')
