@@ -10221,6 +10221,67 @@ static void testKitLayout()
 		CHECK(m.line.x >= m.box.x && m.line.x + m.line.w <= m.box.x + m.box.w);
 		CHECK(m.line.y + m.line.h <= m.box.y + m.box.h);
 		CHECK(m.textX > m.mark.x + m.mark.w && m.textX < m.rightX);
+	{
+		// Home inside the shell's body: the content column, Continue, the filter strip, four cards and the chevron,
+		// the three shortcuts; nothing over another, the row ending on the column's right edge
+		Box body{78, 54, 562, 396};
+		std::vector<int> widths{60, 80, 80, 80};
+		HomePage h = homePage(body, true, true, 4, true, widths);
+		CHECK_EQ(h.inner.x, 90);
+		CHECK_EQ(h.inner.w, 538);
+		CHECK(h.cont.h == HOME_CONTINUE_H);
+		CHECK_EQ((int)h.chips.chip.size(), 4);
+		CHECK(h.cont.y + h.cont.h <= h.chipStrip.y);
+		CHECK(h.chipStrip.y + h.chipStrip.h <= h.card[0].y);
+		CHECK_EQ(h.cards, 4);
+		CHECK(!overlaps(h.card[0], h.card[1]));
+		CHECK(h.more.x >= h.card[3].x + RECENT_W + GAP);
+		CHECK_EQ(h.more.x + h.more.w, h.inner.x + h.inner.w);
+		CHECK_EQ(h.shortcuts, 3);
+		CHECK_EQ(h.shortcut[2].x + h.shortcut[2].w, h.inner.x + h.inner.w);
+		CHECK(h.card[0].y + h.card[0].h <= h.shortcut[0].y);
+		CHECK(h.shortcut[0].y + h.shortcut[0].h <= h.inner.y + h.inner.h);
+		// with the mini bar over the foot the shortcut row no longer fits: Continue + Recent only
+		HomePage m = homePage({78, 54, 562, 334}, true, true, 4, true, widths);
+		CHECK_EQ(m.shortcuts, 0);
+		CHECK(m.card[0].y + m.card[0].h <= m.inner.y + m.inner.h);
+		// no Continue: the filter strip takes the top; two cards and no chevron
+		HomePage n = homePage(body, false, true, 2, false, widths);
+		CHECK_EQ(n.cont.w, 0);
+		CHECK_EQ(n.chipStrip.y, n.inner.y);
+		CHECK_EQ(n.cards, 2);
+		CHECK_EQ(n.more.w, 0);
+		CHECK(n.chipStrip.y + n.chipStrip.h <= n.card[0].y);
+		// a kind chosen that leaves no card: the chips and the shortcuts stay (that is how it is changed back)
+		HomePage f = homePage(body, false, true, 0, false, widths);
+		CHECK_EQ(f.cards, 0);
+		CHECK_EQ(f.shortcuts, 3);
+		CHECK(f.chipStrip.y + f.chipStrip.h <= f.shortcut[0].y);
+		// nothing played: no strip, cards or shortcuts (the empty state's page)
+		HomePage e = homePage(body, false, false, 0, false, widths);
+		CHECK_EQ(e.chipStrip.h, 0);
+		CHECK_EQ(e.cards, 0);
+		CHECK_EQ(e.more.w, 0);
+		CHECK_EQ(e.shortcuts, 0);
+	}
+	{
+		// All recent: the kind chips under the header, then the list's rows at the browser's own first row (84),
+		// seven of them above the hint bar, six with the mini bar over the foot
+		Box body{78, 54, 562, 396};
+		AllRecentPage a = allRecentPage(body);
+		CHECK_EQ(a.chipStrip.y, body.y + 2);
+		CHECK_EQ(a.chipStrip.y + a.chipStrip.h, 84);
+		CHECK_EQ(a.rowY, 84);
+		CHECK_EQ(a.shown, 7);
+		CHECK(!overlaps(a.chipStrip, a.row(0)));
+		for (int i = 0; i < a.shown; i++)
+		{
+			CHECK(a.row(i).x == a.inner.x && a.row(i).w == a.inner.w);
+			CHECK(a.row(i).y + a.row(i).h <= body.y + body.h);
+			if (i) CHECK(a.row(i).y == a.row(i - 1).y + a.row(i - 1).h);
+		}
+		AllRecentPage m = allRecentPage({78, 54, 562, 334});
+		CHECK_EQ(m.shown, 6);
 	}
 }
 

@@ -274,7 +274,9 @@ namespace bp
 			if (homeView->homeFresh)
 			{
 				homeView->homeFresh = false;
-				homeView->homeZone = homeView->recent.empty() ? Home::HOME_GRID : Home::HOME_STRIP;
+				// the focus starts on Continue, else the newest card (nothing played yet: the empty state)
+				homeView->homeZone = homeView->continueOf(p).shown ? Home::HOME_CONTINUE
+					: homeView->recent.empty() ? Home::HOME_EMPTY : Home::HOME_CARDS;
 				homeView->homeStrip = homeView->homeGrid = homeView->homeCol = 0;
 			}
 			else
@@ -285,7 +287,7 @@ namespace bp
 				homeView->homeStrip = was.empty() ? homeView->stripCount() - 1 : found >= 0 ? found : std::min(wasAt, std::max(0, homeView->stripCards() - 1));
 				if (homeView->recent.empty() && homeView->homeZone == Home::HOME_STRIP)
 				{
-					homeView->homeZone = Home::HOME_GRID;
+					homeView->homeZone = homeView->continueOf(p).shown ? Home::HOME_CONTINUE : Home::HOME_EMPTY;
 					homeView->homeGrid = homeView->homeCol = 0;
 				}
 			}
@@ -1148,6 +1150,8 @@ namespace bp
 		bool inBrowse = page == Page::Browse;
 		bool sel = inBrowse && !inMenu && browse->playlists->selMode != SEL_NONE;
 		if (inBrowse && !inMenu && !sel && browse->atHome()) { browse->homeView->drawHome(p); return; }
+		// All recent is Home's own page (its filter chips, every card, the kit's rows)
+		if (inBrowse && !inMenu && !sel && browse->browseDir == RECENT) { browse->homeView->drawAllRecent(p); return; }
 		if (sel) browse->playlists->drawSelHeader(p);
 		else if (inBrowse && !inMenu)
 		{
@@ -1433,11 +1437,23 @@ namespace bp
 		}
 		if (!ui.inMenu && playlists->selMode != SEL_NONE && playlists->selKey(b, p)) return false;
 		if (!ui.inMenu && atHome()) return homeView->homeKey(b, p);
-		// All recent: X Home's options, Y a file's menu (as on its card)
-		if (!ui.inMenu && browseDir == RECENT && b == Button::X) { homeView->openHomeOptions(); return false; }
+		// All recent: X the focused card's More sheet (Home's own things are its right column), else Home's; Y the same
+		// card menu (kept, as it was the key for it)
+		if (!ui.inMenu && browseDir == RECENT && b == Button::X)
+		{
+			if (ui.cursor >= 0 && ui.cursor < (int)browseRows.size() && browseRows[ui.cursor].id == 2) homeView->openRecentMenu(browsePaths[ui.cursor]);
+			else homeView->openHomeOptions();
+			return false;
+		}
 		if (!ui.inMenu && browseDir == RECENT && b == Button::Y)
 		{
 			if (ui.cursor >= 0 && ui.cursor < (int)browseRows.size() && browseRows[ui.cursor].id == 2) homeView->openRecentMenu(browsePaths[ui.cursor]);
+			return false;
+		}
+		// All recent with nothing in it: its empty state's key (Browse Files)
+		if (!ui.inMenu && browseDir == RECENT && b == Button::A && (browseRows.empty() || (browseRows.size() == 1 && browseRows[0].id < 0)))
+		{
+			openSection(TAB_LOCAL, p);
 			return false;
 		}
 		if (!ui.inMenu && b == Button::X) { ui.openBrowseMenu(ui.cursor, MENU_X); return false; }
@@ -1524,6 +1540,9 @@ namespace bp
 			}
 		}
 		if (!ui.inMenu && atHome()) return homeView->homePointer(pt, x, y, p);
+		// All recent: its rows are Home's Rects (48 tall from body.y + 30, clear of the mini bar); the list's lift and
+		// drag then act on the cursor it sets
+		if (!ui.inMenu && browseDir == RECENT) return homeView->recentPointer(pt, x, y, p);
 		if (!ui.inMenu && y < 60)
 		{
 			// a section's marker: that section (Home and All recent have none)
@@ -1542,7 +1561,7 @@ namespace bp
 		ui.drawTracks(p);
 	}
 
-	std::string Ui::Browse::signature(const Player&) const
+	std::string Ui::Browse::signature(const Player& p) const
 	{
 		// the section and its listing; what Copy / Move holds (the bar along the foot); Home's focus and strip
 		std::string s = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "");
@@ -1557,6 +1576,8 @@ namespace bp
 			// B's quit dialog over it, and the row it has the focus on
 			s += std::string("|quit") + std::to_string(homeView->quitOpen) + std::to_string(homeView->quitCursor);
 		}
+		// Home's and All recent's own new state (the kind filter, what a finger is on, the Continue card's words)
+		if (atHome() || browseDir == RECENT) s += homeView->sig(p);
 		return s;
 	}
 

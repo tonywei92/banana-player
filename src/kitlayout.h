@@ -274,6 +274,39 @@ namespace bp
 		};
 		ContinueCard continueCard(Box box);
 
+		// ======== Home and All recent (docs/redesign: home, home-first, home-stopped, recent-all) ========
+		// The content column inside lay::shell(mini).body: 12 from its sides, 2 under the header. The screens draw
+		// inside these boxes only; their touches test the same ones.
+		constexpr int HOME_PAD = 12, HOME_CONTINUE_H = 108, HOME_CARD_ROW_H = 100, HOME_SHORTCUT_H = 56;
+		constexpr int HOME_CARDS_MAX = 4;
+		struct HomePage
+		{
+			Box inner;
+			bool hasContinue = false;
+			Box cont;	// the Continue card (w 0 without one)
+			Box chipStrip;	// the filter chips' 56-tall strip (w 0 with no Recent)
+			FilterChips chips;
+			Box card[HOME_CARDS_MAX];	// the Recent cards shown, left to right
+			int cards = 0;
+			Box more;	// the chevron card after them (w 0 when all of them fit)
+			Box shortcut[3];
+			int shortcuts = 0;
+		};
+		// hasContinue: a Continue card over the Recent row; hasRecent: Recent has anything (else no chip strip, cards
+		// or shortcuts: the empty state); cards: how many Recent cards (at most HOME_CARDS_MAX); more: the chevron
+		// card after them (there are more than fit); chipWidths: the filter chips' measured widths. The shortcut row is
+		// left out when the mini bar leaves no room for it (with something playing, Home is Continue + Recent only).
+		HomePage homePage(Box body, bool hasContinue, bool hasRecent, int cards, bool more, const std::vector<int>& chipWidths);
+		// All recent: the filter chips' 28-tall strip under the header, then the rows (48 tall, as the list's pointers
+		// expect: their first is at body.y + 30). `shown` is what fits above the hint bar (or the mini bar).
+		struct AllRecentPage
+		{
+			Box inner, chipStrip;
+			int rowY = 0, rowH = 48, shown = 0;
+			Box row(int i) const { return {inner.x, rowY + i * rowH, inner.w, rowH}; }
+		};
+		AllRecentPage allRecentPage(Box body);
+
 		// ---- the empty state: centred in the page; keys 200 x 56 ----
 		struct EmptyState
 		{

@@ -576,6 +576,59 @@ namespace bp
 			return c;
 		}
 
+		HomePage homePage(Box body, bool hasContinue, bool hasRecent, int cards, bool more, const std::vector<int>& chipWidths)
+		{
+			HomePage h;
+			h.cont = h.chipStrip = h.more = {0, 0, 0, 0};
+			for (auto& c : h.card) c = {0, 0, 0, 0};
+			for (auto& s : h.shortcut) s = {0, 0, 0, 0};
+			h.inner = {body.x + HOME_PAD, body.y + 2, body.w - 2 * HOME_PAD, body.h - 4};
+			h.hasContinue = hasContinue;
+			h.cards = std::clamp(cards, 0, HOME_CARDS_MAX);
+			int y = h.inner.y;
+			if (hasContinue)
+			{
+				h.cont = {h.inner.x, y, h.inner.w, HOME_CONTINUE_H};
+				y += HOME_CONTINUE_H + 10;
+			}
+			// a filter row over the cards (kept even when the chosen kind leaves none: that is how it is changed);
+			// 56 tall so a finger has room around the 40-tall chips
+			if (hasRecent)
+			{
+				h.chipStrip = {h.inner.x, y, h.inner.w, CHIP_STRIP};
+				h.chips = filterChips(h.chipStrip, chipWidths);
+				y += CHIP_STRIP + 4;
+			}
+			for (int i = 0; i < h.cards; i++) h.card[i] = {h.inner.x + i * (RECENT_W + GAP), y, RECENT_W, HOME_CARD_ROW_H};
+			if (more && h.cards > 0)
+			{
+				// the last cell of the row: the way to all of them, on the column's right edge
+				h.more = {h.inner.x + h.inner.w - HOME_SHORTCUT_H, y, HOME_SHORTCUT_H, HOME_CARD_ROW_H};
+			}
+			if (h.cards > 0 || more) y += HOME_CARD_ROW_H + 10;
+			// the three shortcuts, unless the mini bar has taken the room (the row then ends above it)
+			int bottom = h.inner.y + h.inner.h;
+			if (hasRecent && y + HOME_SHORTCUT_H <= bottom)
+			{
+				Box row{h.inner.x, y, h.inner.w, HOME_SHORTCUT_H};
+				for (int i = 0; i < 3; i++) h.shortcut[i] = cell(row, 3, GAP, i);
+				h.shortcuts = 3;
+			}
+			return h;
+		}
+
+		AllRecentPage allRecentPage(Box body)
+		{
+			AllRecentPage p;
+			p.inner = {body.x + HOME_PAD, body.y + 2, body.w - 2 * HOME_PAD, body.h - 4};
+			// the chips fit the 30 units between the header and the list's first row, whose touch maths is the list's
+			// own (Ui::ROW_Y: the body starts at the header's 54)
+			p.chipStrip = {p.inner.x, p.inner.y, p.inner.w, 28};
+			p.rowY = body.y + 30;
+			p.shown = std::clamp((p.inner.y + p.inner.h - p.rowY) / p.rowH, 0, 7);
+			return p;
+		}
+
 		EmptyState emptyState(Box page, int lineCount, int keys)
 		{
 			EmptyState e;

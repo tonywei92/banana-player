@@ -1,3 +1,7 @@
+// Home, and All recent: redesigned on the kit (ui_home.h says what is Home's and what stayed Ui's; docs/redesign:
+// home, home-first, home-stopped, home-more, recent-all, card-out). A Continue card, the Recent row with its kind
+// filters, three shortcuts; no section tiles (the rail has the sections). All recent is the same filters over every
+// card in the history.
 #include "ui.h"
 #include "session_host.h"
 #include "format.h"
@@ -17,6 +21,7 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
 #include "ui_home.h"
@@ -29,11 +34,26 @@
 
 namespace bp
 {
-	// ---- Home: the Recent strip and the sections' tiles; a section's header ----
+	namespace
+	{
+		const char* const FILTER_NAMES[4] = {"All", "Videos", "Music", "Books"};
+		bool isDocument(const std::string& path) { return isDocumentName(path) || isComicName(path); }
+		// a file's title without its extension, as a card's
+		std::string cardTitle(const std::string& path)
+		{
+			std::string n = baseName(path);
+			size_t dot = n.rfind('.');
+			if (dot != std::string::npos && dot > 0) n.erase(dot);
+			return n;
+		}
+	}
+
+	// ---- listing Recent ----
 
 	void Ui::Home::listRecent(Player& p)
 	{
 		recent.clear();
+		for (int& c : recentCounts) c = 0;
 		if (!p.settings.keepHistory) return;
 		for (auto& path : p.history().items())
 		{
@@ -46,19 +66,14 @@ namespace bp
 			RecentItem it;
 			it.path = path;
 			it.net = net;
-			// its name without the extension, as a card's title
-			it.name = baseName(path);
-			size_t dot = it.name.rfind('.');
-			if (dot != std::string::npos && dot > 0) it.name.erase(dot);
+			it.name = cardTitle(path);
 			it.kind = isAudioFile(path) ? &G_NOTE : isPhotoFile(path) ? &G_PICTURE : &G_FILM;
-			if (isDocumentName(path) || isComicName(path))
+			if (isDocument(path))
 			{
 				// a document: the page it's at (a PDF, a comic) or how far through (a TXT, a book), from its own places
 				bool epub = path.size() > 5 && strcasecmp(path.c_str() + path.size() - 5, ".epub") == 0;
 				it.kind = isComicName(path) ? &G_COMIC : epub ? &G_EPUB : isPdfName(path) ? &G_PDF : &G_PAGE;
 				const ResumeEntry* d = ui.docs->placeOf(path);
-				// a PDF's or a comic's place is a page of so many; a text's, a share of it (kept before the kind was: a
-				// share is at most 1, a page count at least 1)
 				bool pages = d && (d->aid == 2 || (d->aid != 1 && d->duration > 1));
 				if (d && d->position > 0)
 				{
@@ -74,6 +89,8 @@ namespace bp
 				std::string w = ui.whereOf(parentFolder(path));
 				it.where = w.substr(0, w.find(" / "));
 				recent.push_back(it);
+				recentCounts[0]++;
+				recentCounts[PlayHistory::kindOf(path) + 1]++;
 				continue;
 			}
 			// how far into it: where it was left (a song always starts at its start: played), of how long it is
@@ -98,38 +115,135 @@ namespace bp
 				it.where = w.substr(0, w.find(" / "));
 			}
 			recent.push_back(it);
+			recentCounts[0]++;
+			recentCounts[PlayHistory::kindOf(path) + 1]++;
+		}
+		// a kind emptied while its filter was on: back to All rather than an empty page
+		if (recentTab && !recentCounts[recentTab]) recentTab = 0;
+	}
+
+	const Ui::Home::RecentItem* Ui::Home::findRecent(const std::string& path) const
+	{
+		for (auto& it : recent)
+			if (it.path == path) return &it;
+		return nullptr;
+	}
+
+	bool Ui::Home::matchesFilter(int i) const
+	{
+		return i >= 0 && i < (int)recent.size() && (!recentTab || PlayHistory::kindOf(recent[i].path) + 1 == recentTab);
+	}
+
+	int Ui::Home::visibleCount() const
+	{
+		int n = 0;
+		for (size_t i = 0; i < recent.size(); i++)
+			if (matchesFilter((int)i)) n++;
+		return n;
+	}
+
+	int Ui::Home::firstVisible() const
+	{
+		for (size_t i = 0; i < recent.size(); i++)
+			if (matchesFilter((int)i)) return (int)i;
+		return -1;
+	}
+
+	int Ui::Home::nextVisible(int from, int dir) const
+	{
+		for (int i = from + dir; i >= 0 && i < (int)recent.size(); i += dir)
+			if (matchesFilter(i)) return i;
+		return -1;
+	}
+
+	int Ui::Home::nthVisible(int n) const
+	{
+		int k = 0;
+		for (size_t i = 0; i < recent.size(); i++)
+			if (matchesFilter((int)i) && k++ == n) return (int)i;
+		return -1;
+	}
+
+	std::string Ui::Home::tileSub(int g) const
+	{
+		// (Home no longer draws the section tiles; the browser's state line still asks for their lines)
+		int key = (ui.browse->playlists->plStore ? ui.browse->playlists->plStore->serial() : -1) * 7919 + (ui.netStore ? ui.netStore->version() : -1) * 31 + (int)ui.roots.size() +
+			(ui.mangaOn ? 1 : 0) * 1000003;
+		if (key != tileSubsKey)
+		{
+			tileSubsKey = key;
+			auto join = [](const std::vector<std::string>& parts) {
+				std::string out;
+				for (auto& s : parts) out += (out.empty() ? "" : " \xC2\xB7 ") + s;
+				return out;
+			};
+			int cards = 0;
+			for (auto& r : ui.roots)
+				if (r.label.size() >= 4 && r.label.compare(r.label.size() - 4, 4, "card") == 0) cards++;
+			std::vector<std::string> parts;
+			bool counted = false;
+			for (auto& r : ui.roots)
+			{
+				bool card = r.label.size() >= 4 && r.label.compare(r.label.size() - 4, 4, "card") == 0;
+				if (!card || cards < 2) parts.push_back(r.label);
+				else if (!counted)
+				{
+					parts.push_back(std::to_string(cards) + " cards");
+					counted = true;
+				}
+			}
+			tileSubs[TAB_LOCAL] = parts.empty() ? "No folders" : join(parts);
+			size_t n = ui.browse->playlists->plStore ? ui.browse->playlists->plStore->addTargets().size() : 0;
+			tileSubs[TAB_PLAYLISTS] = !ui.browse->playlists->plStore ? "Not available" : n == 0 ? "Liked"
+				: "Liked \xC2\xB7 " + std::to_string(n) + (n == 1 ? " playlist" : " playlists");
+			std::vector<NetServer> list = ui.netStore ? ui.netStore->servers() : std::vector<NetServer>();
+			std::stable_sort(list.begin(), list.end(), [](const NetServer& a, const NetServer& b) { return a.lastUsed > b.lastUsed; });
+			parts.clear();
+			for (auto& sv : list) parts.push_back(serverName(sv));
+			tileSubs[TAB_NETWORK] = parts.empty() ? "No connections yet" : join(parts);
+			tileSubs[TAB_EXT] = ui.mangaOn ? "1 on \xC2\xB7 Manga reader" : "None on";
+		}
+		return g >= 0 && g < BROWSE_TABS ? tileSubs[g] : "";
+	}
+
+	void Ui::Home::setRecentFilter(int tab)
+	{
+		if (tab < 0 || tab > 3 || (tab && !recentCounts[tab])) return;
+		recentTab = tab;
+		// the cursor moves onto a card the filter leaves (the chevron if there are more than the row shows)
+		if (homeZone == HOME_CARDS)
+		{
+			int at = firstVisible();
+			homeStrip = at >= 0 ? at : (int)recent.size();
 		}
 	}
 
 	bool Ui::Home::drawRecentTabs(int x, int mid, int right, bool counts)
 	{
-		// chips: the chosen one lit, each with its count; an empty kind dimmed. Measured first: all or none
-		static const char* NAMES[4] = {"All", "Videos", "Music", "Books"};
+		// (the browser's old in-header tabs: kept for its state line; All recent draws the kit's own strip)
 		int ws[4], total = 0;
 		for (int i = 0; i < 4; i++)
 		{
-			ws[i] = (int)std::lround(ui.textWidth(counts ? std::string(NAMES[i]) + " " + std::to_string(recentCounts[i]) : std::string(NAMES[i]), 0) / sx) + 20;
+			ws[i] = (int)std::lround(ui.textWidth(counts ? std::string(FILTER_NAMES[i]) + " " + std::to_string(recentCounts[i]) : std::string(FILTER_NAMES[i]), F_P13) / sx) + 20;
 			total += ws[i] + (i ? 6 : 0);
 		}
 		if (x + total > right) return false;
 		for (int i = 0; i < 4; i++)
 		{
-			std::string label = counts ? std::string(NAMES[i]) + " " + std::to_string(recentCounts[i]) : std::string(NAMES[i]);
-			int w = ws[i];
-			Rect r{x, mid - 14, w, 28};
+			std::string label = counts ? std::string(FILTER_NAMES[i]) + " " + std::to_string(recentCounts[i]) : std::string(FILTER_NAMES[i]);
+			Rect r{x, mid - 14, ws[i], 28};
 			recentTabRect[i] = r;
 			bool on = recentTab == i;
 			if (on) ui.fillRound(r, ACCENT, 8);
-			else ui.drawBox(r, BUTTON, 8);
-			ui.drawTextMid(label, 0, on ? ON_ACCENT : recentCounts[i] || !i ? TEXT : DIM, r.x + 10, mid);
-			x += w + 6;
+			else ui.fillRound(r, TRACK, 8);
+			ui.drawTextMid(label, F_P13, on ? ON_ACCENT : recentCounts[i] || !i ? TEXT : DIM, r.x + 10, mid);
+			x += ws[i] + 6;
 		}
 		return true;
 	}
 
 	void Ui::Home::stepRecentTab(int dir, Player& p)
 	{
-		// round, past the empty kinds (All is never skipped)
 		for (int k = 0; k < 4; k++)
 		{
 			recentTab = (recentTab + dir + 4) % 4;
@@ -167,128 +281,204 @@ namespace bp
 		}
 	}
 
-	void Ui::Home::setStrip(int i, bool animate)
+	void Ui::Home::setStrip(int i, bool)
 	{
-		homeStrip = std::clamp(i, 0, stripCount() - 1);
-		double to = stripTarget(homeStrip);
-		if (!animate || to == stripOff)
-		{
-			stripOff = to;
-			stripT0 = 0;
-			return;
-		}
-		stripFrom = stripOff;
-		stripTo = to;
-		stripT0 = std::max<Uint32>(1, SDL_GetTicks());
+		homeStrip = recent.empty() ? 0 : std::clamp(i, 0, (int)recent.size());
+		stripOff = 0;
+		stripT0 = 0;
 	}
 
 	void Ui::Home::stripStep()
 	{
-		if (!stripT0) return;
-		// eased out over 120 ms: quick to start, settling into place
-		double k = std::min(1.0, (SDL_GetTicks() - stripT0) / 120.0), e = 1 - std::pow(1 - k, 3);
-		stripOff = stripFrom + (stripTo - stripFrom) * e;
-		if (k >= 1)
+		// the row no longer scrolls sideways (All recent is every card): the eased offset stays at zero
+		if (stripOff != 0) stripOff = 0;
+		// no finger down (a hold took the card's More sheet, or a lift was taken elsewhere): no pressed piece stays lit
+		if (!homeTouch && !homeHoldAt)
 		{
-			stripOff = stripTo;
-			stripT0 = 0;
+			pressedContinue = pressedResume = false;
+			pressedCard = pressedShortcut = pressedChip = pressedEmptyKey = -1;
 		}
 	}
 
-	Ui::Rect Ui::Home::tileRect(int g) const
-	{
-		// two by two under the strip; taller with no Recent (a line in its place)
-		bool has = !recent.empty();
-		// (shorter over the mini bar)
-		int y0 = has ? 200 : 96, h = has ? (ui.miniUp ? 100 : 110) : (ui.miniUp ? 154 : 162);
-		return {16 + g % 2 * 312, y0 + g / 2 * (h + 8), 296, h};
-	}
+	// ---- the Continue card ----
 
-	std::string Ui::Home::tileSub(int g) const
+	Ui::Home::Continue Ui::Home::continueOf(const Player& p) const
 	{
-		// made again when what they say changes: the playlists, the connections, the places
-		int key = (ui.browse->playlists->plStore ? ui.browse->playlists->plStore->serial() : -1) * 7919 + (ui.netStore ? ui.netStore->version() : -1) * 31 + (int)ui.roots.size() +
-			(ui.mangaOn ? 1 : 0) * 1000003;
-		if (key != tileSubsKey)
+		Continue c;
+		// a video Manga stopped: remembered from the moment the reader took the screen (the card says why until it
+		// plays again, or something else is played)
+		if (p.playing() && !p.playingPhoto()) mangaStopped.clear();
+		if (ui.manga && ui.manga->videoBlockedAt && ui.manga->videoBlockedAt != mangaStopSeen)
 		{
-			tileSubsKey = key;
-			auto join = [](const std::vector<std::string>& parts) {
-				std::string out;
-				for (auto& s : parts) out += (out.empty() ? "" : " \xC2\xB7 ") + s;
-				return out;
-			};
-			// Files: the places, two cards or more counted ("Videos · 2 cards")
-			int cards = 0;
-			for (auto& r : ui.roots)
-				if (r.label.size() >= 4 && r.label.compare(r.label.size() - 4, 4, "card") == 0) cards++;
-			std::vector<std::string> parts;
-			bool counted = false;
-			for (auto& r : ui.roots)
+			mangaStopSeen = ui.manga->videoBlockedAt;
+			mangaStopped.clear();
+			for (auto& it : recent)
+				if (it.kind == &G_FILM) { mangaStopped = it.path; break; }
+			if (mangaStopped.empty())
+				for (auto& e : p.resumeStore().all())
+					if (isVideoFile(e.path)) { mangaStopped = e.path; break; }
+		}
+		if (p.playing() && !p.playingPhoto())
+		{
+			c.shown = c.live = true;
+			c.path = p.currentPath();
+			c.label = "Now playing";
+			c.key = "Go to it";
+			if (const RecentItem* it = findRecent(c.path))
 			{
-				bool card = r.label.size() >= 4 && r.label.compare(r.label.size() - 4, 4, "card") == 0;
-				if (!card || cards < 2) parts.push_back(r.label);
-				else if (!counted)
-				{
-					parts.push_back(std::to_string(cards) + " cards");
-					counted = true;
-				}
+				c.title = it->name;
+				c.kind = it->kind;
+				c.note = it->sub + (it->where.empty() ? "" : " \xC2\xB7 " + it->where);
+				c.frac = it->frac;
+				c.artKey = it->name;
 			}
-			tileSubs[TAB_LOCAL] = parts.empty() ? "No folders" : join(parts);
-			size_t n = ui.browse->playlists->plStore ? ui.browse->playlists->plStore->addTargets().size() : 0;	// the user's own (Liked is always there)
-			tileSubs[TAB_PLAYLISTS] = !ui.browse->playlists->plStore ? "Not available" : n == 0 ? "Liked"
-				: "Liked \xC2\xB7 " + std::to_string(n) + (n == 1 ? " playlist" : " playlists");
-			// Network: the connections by name, the most recently used first
-			std::vector<NetServer> list = ui.netStore ? ui.netStore->servers() : std::vector<NetServer>();
-			std::stable_sort(list.begin(), list.end(), [](const NetServer& a, const NetServer& b) { return a.lastUsed > b.lastUsed; });
-			parts.clear();
-			for (auto& sv : list) parts.push_back(serverName(sv));
-			tileSubs[TAB_NETWORK] = parts.empty() ? "No connections yet" : join(parts);
-			tileSubs[TAB_EXT] = ui.mangaOn ? "1 on \xC2\xB7 Manga reader" : "None on";
+			else
+			{
+				c.title = !p.title.empty() ? p.title : cardTitle(c.path);
+				c.kind = p.playingAudio() ? &G_NOTE : p.playingPhoto() ? &G_PICTURE : &G_FILM;
+				c.artKey = c.title;
+				c.note = formatTime(std::max(0.0, ui.shownPosition(p)));
+				if (p.duration > 0) c.note += " / " + formatTime(p.duration);
+				std::string w = ui.whereOf(parentFolder(c.path));
+				if (!w.empty()) c.note += " \xC2\xB7 " + w.substr(0, w.find(" / "));
+			}
+			if (p.duration > 0)
+			{
+				c.frac = std::clamp(std::max(0.0, ui.shownPosition(p)) / p.duration, 0.0, 1.0);
+				c.note = formatTime(std::max(0.0, ui.shownPosition(p))) + " / " + formatTime(p.duration);
+				std::string w = ui.whereOf(parentFolder(c.path));
+				if (!w.empty()) c.note += " \xC2\xB7 " + w.substr(0, w.find(" / "));
+			}
+			return c;
 		}
-		return g >= 0 && g < BROWSE_TABS ? tileSubs[g] : "";
+		auto fromResume = [&](const ResumeEntry& e) {
+			c.shown = true;
+			c.path = e.path;
+			c.title = cardTitle(e.path);
+			c.kind = &G_FILM;
+			c.artKey = c.title;
+			c.frac = std::clamp(e.position / e.duration, 0.0, 1.0);
+			c.note = "Stopped at " + formatTime(e.position) + " / " + formatTime(e.duration);
+			std::string w = ui.whereOf(parentFolder(e.path));
+			if (!w.empty()) c.note += " \xC2\xB7 " + w.substr(0, w.find(" / "));
+			c.stopped = !mangaStopped.empty() && mangaStopped == e.path;
+			c.label = c.stopped ? "Stopped for Manga" : "Continue";
+			c.key = "Resume";
+			return c;
+		};
+		// what was played last, if it was left in the middle: this is the one to carry on, even when its card has been
+		// taken out and its file has gone from Recent (the place is kept in resume.tsv)
+		const std::vector<ResumeEntry>& all = p.resumeStore().all();
+		if (!all.empty())
+		{
+			const ResumeEntry& e = all.front();
+			// the last thing played, or one whose file has gone (a card out): not an older video after a book was read
+			bool last = recent.empty() || recent.front().path == e.path || !findRecent(e.path);
+			if (last && isVideoFile(e.path) && e.position > 0 && e.duration > 0 && worthResuming(e.position, e.duration)) return fromResume(e);
+		}
+		// else the newest thing not finished (played-through songs and films stay in Recent, not in Continue)
+		for (auto& it : recent)
+		{
+			if (!(it.frac > 0.0 && it.frac < 1.0 - 1e-6)) continue;
+			c.shown = true;
+			c.path = it.path;
+			c.title = it.name;
+			c.kind = it.kind;
+			c.note = it.sub + (it.where.empty() ? "" : " \xC2\xB7 " + it.where);
+			c.frac = it.frac;
+			c.artKey = it.name;
+			c.stopped = !mangaStopped.empty() && mangaStopped == it.path;
+			c.label = c.stopped ? "Stopped for Manga" : "Continue";
+			c.key = "Resume";
+			return c;
+		}
+		// a card taken out with something older still in resume.tsv: its place is kept too
+		for (auto& e : all)
+		{
+			if (!isVideoFile(e.path) || e.position <= 0 || e.duration <= 0) continue;
+			if (!worthResuming(e.position, e.duration) || findRecent(e.path)) continue;
+			return fromResume(e);
+		}
+		return c;
+	}
+
+	void Ui::Home::openContinue(const Continue& c, Player& p)
+	{
+		if (c.shown && !c.path.empty()) ui.openFile(c.path, p);
+	}
+
+	void Ui::Home::openCard(int i, Player& p)
+	{
+		if (i < 0 || i >= (int)recent.size())
+		{
+			ui.browse->enterFolder(RECENT, p);
+			return;
+		}
+		ui.openFile(recent[i].path, p);
+	}
+
+	void Ui::Home::openShortcut(int i, Player& p)
+	{
+		bool liked = ui.browse->playlists->plStore && ui.browse->playlists->plStore->likedCount() > 0;
+		if (!liked)
+		{
+			// nothing liked: the first shortcut is Browse Files until a heart fills the Liked list
+			if (i == 0) { ui.browse->openSection(TAB_LOCAL, p); return; }
+			if (i == 1) { ui.openWeb(); return; }
+			ui.browse->enterFolder(RECENT, p);
+			return;
+		}
+		if (i == 0)
+		{
+			// Shuffle Liked: the built-in list, shuffled, as its own page's Shuffle play does
+			PlaylistStore* store = ui.browse->playlists->plStore.get();
+			Playlist pl;
+			int skipped = 0;
+			if (store && store->load(store->likedFile(), pl, skipped) && !pl.entries.empty())
+				ui.browse->playlists->plPlay(pl, 0, true, p);
+			else p.osd("Nothing liked yet");
+			return;
+		}
+		if (i == 1) { ui.openWeb(); return; }
+		ui.browse->enterFolder(RECENT, p);
 	}
 
 	void Ui::Home::goHome(int zone, int idx, Player& p)
 	{
 		ui.browse->enterFolder(HOMEDIR, p);
-		if (zone == HOME_GRID || recent.empty())
+		homeGrid = homeCol = 0;
+		homeShortcut = 0;
+		stripOff = 0;
+		if (recent.empty())
 		{
-			homeZone = HOME_GRID;
-			homeGrid = zone == HOME_GRID ? std::clamp(idx, 0, BROWSE_TABS - 1) : 0;
-			homeCol = homeGrid % 2;
-			// back on Home from a section: the Recent strip from its start, newest first (left where it was scrolled
-			// to, it showed old cards first and read as a different list). A refresh while on Home keeps its place
+			homeZone = HOME_EMPTY;
 			homeStrip = 0;
-			stripOff = stripTarget(0);
-			stripT0 = 0;
 			return;
 		}
-		homeZone = HOME_STRIP;
-		setStrip(idx, false);
+		Continue c = continueOf(p);
+		if (zone == HOME_CARDS)
+		{
+			// back from All recent: on the card it was opened from (or the chevron)
+			homeStrip = std::clamp(idx, 0, (int)recent.size());
+			if (homeStrip >= (int)recent.size() && !moreShown()) homeStrip = std::max(0, firstVisible());
+			if (homeStrip < (int)recent.size() && !matchesFilter(homeStrip)) homeStrip = std::max(0, firstVisible());
+			homeZone = HOME_CARDS;
+		}
+		else homeZone = c.shown ? HOME_CONTINUE : HOME_CARDS;
+	}
+
+	void Ui::Home::homeFocusFromPointer()
+	{
+		// (touch never shows the focus; it follows what was touched)
+		if (homeZone == HOME_CARDS && !matchesFilter(homeStrip)) homeStrip = std::max(0, firstVisible());
 	}
 
 	void Ui::Home::homeOpen(Player& p)
 	{
-		if (homeZone == HOME_GRID)
-		{
-			// Playlists from Home: the list of them, the cursor on the one left open (a playlist reopened from Home read
-			// as a wrong turn; L/R and the markers still go back to it)
-			std::string was = homeGrid == TAB_PLAYLISTS ? ui.browse->tabDir[TAB_PLAYLISTS] : std::string();
-			if (isPlDir(was))
-			{
-				ui.browse->tabDir[TAB_PLAYLISTS] = PLROOT;
-				ui.browse->openSection(homeGrid, p);
-				std::string file = plFileOf(was);
-				for (size_t i = 0; i < ui.browse->browsePaths.size(); i++)
-					if (ui.browse->browsePaths[i] == file) { ui.cursor = (int)i; ui.browse->fitList(); break; }
-				return;
-			}
-			ui.browse->openSection(homeGrid, p);
-			return;
-		}
-		if (homeStrip < stripCards()) { ui.openFile(recent[homeStrip].path, p); return; }
-		// All recent: the list, from its top
-		ui.browse->enterFolder(RECENT, p);
+		if (homeZone == HOME_CONTINUE) { openContinue(continueOf(p), p); return; }
+		if (homeZone == HOME_SHORTCUTS) { openShortcut(homeShortcut, p); return; }
+		if (homeZone == HOME_EMPTY) { ui.browse->openSection(TAB_LOCAL, p); return; }
+		openCard(homeStrip, p);
 	}
 
 	bool Ui::Home::homeKey(Button b, Player& p)
@@ -300,7 +490,6 @@ namespace bp
 			{
 			case Button::Up: case Button::Down: quitCursor = (quitCursor + 1) % 2; break;
 			case Button::A:
-				// Quit quits, playing or not (as Quick settings' Quit: "leave" would only leave the player); Cancel closes
 				if (quitCursor == 0) ui.quitRequested = true;
 				quitOpen = false;
 				break;
@@ -311,42 +500,98 @@ namespace bp
 		}
 		if (b == Button::B)
 		{
-			// it asks first, playing or not (the dialog says what quitting stops); the cursor on Cancel: a pocket's B,
-			// and a second one, never quit by themselves
+			// it asks first, playing or not (the dialog says what quitting stops); the cursor on Cancel
 			quitOpen = true;
 			quitCursor = 1;
 			return false;
 		}
-		if (b == Button::Start) { ui.openMainMenu(p); return false; }
-		if (b == Button::X) { openHomeOptions(); return false; }
-		bool has = !recent.empty();
-		if (homeZone == HOME_STRIP && has)
+		// the places (Files, Playlists, Manga, Network, Settings, About): the way to the sections until the rail lands
+		if (b == Button::Start) { ui.openMainMenu(p, TAB_MENU); return false; }
+		if (b == Button::X)
 		{
+			// the focused card's More sheet; with no card, Home's own
+			if ((homeZone == HOME_CARDS || homeZone == HOME_CONTINUE) && !recent.empty())
+			{
+				Continue c = continueOf(p);
+				if (homeZone == HOME_CONTINUE && c.shown && findRecent(c.path)) openRecentMenu(c.path);
+				else if (homeStrip < (int)recent.size()) openRecentMenu(recent[homeStrip].path);
+				else openHomeOptions();
+			}
+			else openHomeOptions();
+			return false;
+		}
+		if (b == Button::Y)
+		{
+			if (homeZone == HOME_EMPTY) { ui.openWeb(); return false; }
+			Continue c = continueOf(p);
+			if (homeZone == HOME_CONTINUE && c.shown && findRecent(c.path)) openRecentMenu(c.path);
+			else if ((homeZone == HOME_CARDS) && homeStrip < (int)recent.size()) openRecentMenu(recent[homeStrip].path);
+			else openHomeOptions();
+			return false;
+		}
+		if (b == Button::L2 || b == Button::R2)
+		{
+			// (a step of the kind; the shared L2/R2 handler sends these here once the shell owns the rail)
+			setRecentFilter((recentTab + (b == Button::R2 ? 1 : 3) + 4) % 4);
+			return false;
+		}
+		if (homeZone == HOME_EMPTY)
+		{
+			if (b == Button::A) ui.browse->openSection(TAB_LOCAL, p);
+			return false;
+		}
+		Continue c = continueOf(p);
+		int vis = visibleCount();
+		if (homeZone == HOME_CONTINUE)
+		{
+			if (b == Button::A) { openContinue(c, p); return false; }
+			if (b == Button::Down)
+			{
+				if (vis > 0) { homeZone = HOME_CARDS; homeStrip = std::max(0, firstVisible()); }
+				else if (vis >= 0) homeZone = HOME_SHORTCUTS;
+			}
+			return false;
+		}
+		if (homeZone == HOME_CARDS)
+		{
+			bool more = moreShown();
+			int shown = std::min(vis, HOME_RECENT_MAX);
 			switch (b)
 			{
-			case Button::Left: if (homeStrip > 0) setStrip(homeStrip - 1); break;
-			case Button::Right: if (homeStrip < stripCount() - 1) setStrip(homeStrip + 1); break;
-			// down to the column left last
-			case Button::Down: homeZone = HOME_GRID; homeGrid = homeCol; break;
-			case Button::A: homeOpen(p); break;
-			case Button::Y: if (homeStrip < stripCards()) openRecentMenu(recent[homeStrip].path); break;
+			case Button::Left:
+				if (homeStrip >= (int)recent.size() && shown > 0) homeStrip = nthVisible(shown - 1);
+				else
+				{
+					for (int k = shown - 1; k >= 0; k--)
+						if (nthVisible(k) < homeStrip) { homeStrip = nthVisible(k); break; }
+				}
+				break;
+			case Button::Right:
+				if (homeStrip >= (int)recent.size()) break;
+				if (more)
+				{
+					int rank = -1;
+					for (int k = 0; k < shown; k++) if (nthVisible(k) == homeStrip) rank = k;
+					if (rank + 1 >= shown) homeStrip = (int)recent.size();
+					else homeStrip = nthVisible(rank + 1);
+				}
+				break;
+			case Button::Up: if (c.shown) homeZone = HOME_CONTINUE; break;
+			case Button::Down: if (vis > 0) { homeZone = HOME_SHORTCUTS; homeShortcut = 0; } break;
+			case Button::A: openCard(homeStrip, p); break;
 			default: break;
 			}
 			return false;
 		}
-		homeZone = HOME_GRID;
-		int g = homeGrid;
+		// the shortcuts
 		switch (b)
 		{
-		case Button::Left: if (g % 2) homeGrid--; break;
-		case Button::Right: if (g % 2 == 0) homeGrid++; break;
-		case Button::Down: if (g < 2) homeGrid += 2; break;
-		// up from the top row: the strip, on the card left there
-		case Button::Up: if (g >= 2) homeGrid -= 2; else if (has) homeZone = HOME_STRIP; break;
-		case Button::A: homeOpen(p); break;
+		case Button::Left: homeShortcut = std::max(0, homeShortcut - 1); break;
+		case Button::Right: homeShortcut = std::min(2, homeShortcut + 1); break;
+		case Button::Up: homeZone = c.shown ? HOME_CONTINUE : HOME_CARDS; if (!c.shown) homeStrip = std::max(0, firstVisible()); break;
+		case Button::A: openShortcut(homeShortcut, p); break;
 		default: break;
 		}
-		if (homeZone == HOME_GRID) homeCol = homeGrid % 2;
 		return false;
 	}
 
@@ -380,78 +625,623 @@ namespace bp
 			}
 			return false;
 		}
+		lay::Shell sh = lay::shell(ui.miniUp);
+		Continue c = continueOf(p);
+		int vis = visibleCount();
 		bool has = !recent.empty();
-		auto cardAt = [&](int px, int py) {
-			if (!has || py < CARD_Y || py >= CARD_Y + CARD_H) return -1;
-			int rel = px - 16 + (int)std::lround(stripOff);
-			int i = rel >= 0 ? rel / STRIDE : -1;
-			return i >= 0 && i < stripCount() && rel - i * STRIDE < CARD_W ? i : -1;
-		};
+		std::vector<Kit::FilterItem> items;
+		for (int i = 0; i < 4; i++) items.push_back({FILTER_NAMES[i], recentCounts[i]});
+		lay::HomePage hp = lay::homePage(sh.body, c.shown, has, std::min(vis, HOME_RECENT_MAX), moreShown(), ui.kit->filterWidths(items));
+		lay::EmptyState es = lay::emptyState(sh.body, 2, 2);
 		if (pt.kind == Pointer::Down)
 		{
 			homeTouch = true;
 			homeMoved = false;
 			homeDownX = x;
-			homeDownOff = stripOff;
+			homeDownOff = 0;
 			homePress = -1;
 			homeHoldAt = 0;
-			if (has && y >= STRIP_TOP && y < STRIP_TOP + STRIP_H)
+			pressedContinue = pressedResume = false;
+			pressedCard = pressedShortcut = pressedChip = pressedEmptyKey = -1;
+			if (c.shown && hp.cont.hit(x, y))
 			{
-				// on the strip: a card (a hold on a file's opens its menu); a drag anywhere along it scrolls
-				homePress = cardAt(x, y);
-				if (homePress >= 0 && homePress < stripCards()) homeHoldAt = SDL_GetTicks();
+				homeZone = HOME_CONTINUE;
+				pressedContinue = true;
+				pressedResume = lay::continueCard(hp.cont).key.hit(x, y);
 				return false;
 			}
-			for (int g = 0; g < BROWSE_TABS; g++)
-				if (tileRect(g).hit(x, y)) homePress = HOME_TILE + g;
-			if (homePress < 0) homeTouch = false;
+			if (has && hp.chipStrip.hit(x, y))
+			{
+				int k = lay::filterAt(hp.chips, x, y);
+				if (k >= 0) { pressedChip = k; return false; }
+			}
+			for (int i = 0; i < hp.cards; i++)
+				if (hp.card[i].hit(x, y))
+				{
+					int idx = nthVisible(i);
+					if (idx < 0) break;
+					homeZone = HOME_CARDS;
+					homeStrip = idx;
+					homePress = idx;
+					pressedCard = idx;
+					homeHoldAt = SDL_GetTicks();
+					return false;
+				}
+			if (moreShown() && hp.more.hit(x, y))
+			{
+				homeZone = HOME_CARDS;
+				homeStrip = (int)recent.size();
+				homePress = homeStrip;
+				pressedCard = homeStrip;
+				return false;
+			}
+			for (int i = 0; i < hp.shortcuts; i++)
+				if (hp.shortcut[i].hit(x, y))
+				{
+					homeZone = HOME_SHORTCUTS;
+					homeShortcut = i;
+					pressedShortcut = i;
+					return false;
+				}
+			if (!has && !c.shown)
+			{
+				homeZone = HOME_EMPTY;
+				for (int i = 0; i < es.keys; i++)
+					if (es.key[i].hit(x, y)) pressedEmptyKey = i;
+				return false;
+			}
+			// a finger on nothing: no drag, no tap
+			homeTouch = false;
 			return false;
 		}
 		if (!homeTouch) return false;
-		bool onStrip = homePress < HOME_TILE;
 		if (pt.kind == Pointer::Move)
 		{
-			if (!homeMoved && std::abs(x - homeDownX) > 8)
+			if (!homeMoved && std::abs(x - homeDownX) > DRAG_SLOP)
 			{
 				homeMoved = true;
 				homeHoldAt = 0;
-				if (onStrip) homePress = -1;
-			}
-			if (homeMoved && onStrip)
-			{
-				stripT0 = 0;
-				stripOff = std::clamp(homeDownOff - (x - homeDownX), 0.0, (double)stripMax());
 			}
 			return false;
 		}
 		if (pt.kind != Pointer::Up) return false;
 		homeTouch = false;
 		homeHoldAt = 0;
-		int id = homePress;
 		homePress = -1;
-		if (homeMoved && onStrip)
+		bool moved = homeMoved;
+		homeMoved = false;
+		if (moved)
 		{
-			// the focus follows a swipe: onto the card now in the second slot
-			homeZone = HOME_STRIP;
-			setStrip((int)std::lround(stripOff / STRIDE) + (stripOff > 0 ? 1 : 0));
+			pressedContinue = pressedResume = false;
+			pressedCard = pressedShortcut = pressedChip = pressedEmptyKey = -1;
 			return false;
 		}
-		if (id >= HOME_TILE)
+		if (pressedResume && hp.cont.hit(x, y)) { openContinue(c, p); }
+		else if (pressedContinue && hp.cont.hit(x, y)) { openContinue(c, p); }
+		else if (pressedChip >= 0 && lay::filterAt(hp.chips, x, y) == pressedChip) setRecentFilter(pressedChip);
+		else if (pressedCard >= 0)
 		{
-			if (!tileRect(id - HOME_TILE).hit(x, y)) return false;
-			homeZone = HOME_GRID;
-			homeGrid = id - HOME_TILE;
-			homeCol = homeGrid % 2;
-			homeOpen(p);
+			if (pressedCard >= (int)recent.size()) { if (hp.more.hit(x, y)) ui.browse->enterFolder(RECENT, p); }
+			else if (pressedCard < (int)recent.size())
+			{
+				// still on the same card (a touch that slid to another presses nothing)
+				bool on = false;
+				for (int i = 0; i < hp.cards; i++)
+					if (nthVisible(i) == pressedCard && hp.card[i].hit(x, y)) on = true;
+				if (on) openCard(pressedCard, p);
+			}
 		}
-		else if (id >= 0 && cardAt(x, y) == id)
+		else if (pressedShortcut >= 0 && pressedShortcut < hp.shortcuts && hp.shortcut[pressedShortcut].hit(x, y))
 		{
-			homeZone = HOME_STRIP;
-			setStrip(id);
-			homeOpen(p);
+			homeShortcut = pressedShortcut;
+			openShortcut(pressedShortcut, p);
+		}
+		else if (pressedEmptyKey >= 0 && pressedEmptyKey < es.keys && es.key[pressedEmptyKey].hit(x, y))
+		{
+			if (pressedEmptyKey == 0) ui.browse->openSection(TAB_LOCAL, p);
+			else ui.openWeb();
+		}
+		pressedContinue = pressedResume = false;
+		pressedCard = pressedShortcut = pressedChip = pressedEmptyKey = -1;
+		return false;
+	}
+
+	bool Ui::Home::recentPointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		// All recent's rows: the generic list's pointers take over from here (its Up chooses the cursor this sets)
+		if (pt.kind != Pointer::Down) return false;
+		lay::Shell sh = lay::shell(ui.miniUp);
+		lay::AllRecentPage lp = lay::allRecentPage(sh.body);
+		// its empty state's one key (Browse Files), as the key says
+		if (ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0))
+		{
+			lay::EmptyState es = lay::emptyState(sh.body, 2, 1);
+			if (es.key[0].hit(x, y)) ui.browse->openSection(TAB_LOCAL, p);
+			return false;
+		}
+		for (int i = 0; i < lp.shown; i++)
+		{
+			int idx = ui.scroll + i;
+			if (!lp.row(i).hit(x, y)) continue;
+			if (idx < 0 || idx >= (int)ui.browse->browseRows.size() || ui.browse->browseRows[idx].id < 0) return false;
+			ui.cursor = idx;
+			ui.listTouch = true;
+			ui.listScrolled = false;
+			ui.touchStartY = y;
+			ui.scrollStart = ui.scroll;
+			return false;
 		}
 		return false;
 	}
+
+	// ---- the frame (the shell step replaces this one function) ----
+
+	std::string Ui::Home::title() const
+	{
+		return ui.browse->browseDir == RECENT ? "All recent" : "Home";
+	}
+
+	std::string Ui::Home::crumb(const Player&) const
+	{
+		if (ui.browse->browseDir != RECENT) return "";
+		size_t n = recent.size();
+		return "Home  \xE2\x80\xBA  All recent \xC2\xB7 " + std::to_string(n) + (n == 1 ? " item" : " items");
+	}
+
+	std::vector<Ui::Hint> Ui::Home::hintList(const Player& p) const
+	{
+		std::vector<Hint> h;
+		if (ui.browse->browseDir == RECENT)
+		{
+			bool empty = ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0);
+			h = empty ? std::vector<Hint>{{"A", "Browse Files"}, {"B", "Home"}, {"START", "Menu"}}
+				: std::vector<Hint>{{"A", "Resume"}, {"X", "More"}, {"B", "Home"}, {"START", "Menu"}};
+			return h;
+		}
+		if (recent.empty() && !continueOf(p).shown)
+		{
+			h = {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"B", "Quit"}, {"START", "Menu"}};
+			return h;
+		}
+		Continue c = continueOf(p);
+		if (homeZone == HOME_CONTINUE && c.shown) h.push_back({"A", c.key});
+		else if (homeZone == HOME_SHORTCUTS) h.push_back({"A", "Open"});
+		else h.push_back({"A", c.live ? "Go to it" : "Play"});
+		h.push_back({"X", "More"});
+		h.push_back({"B", "Quit"});
+		h.push_back({"START", "Menu"});
+		return h;
+	}
+
+	void Ui::Home::frame(const Player& p, const std::string& t, const std::string& cr, const std::vector<Hint>& h)
+	{
+		// the old header and hint bar until the shell's own land (title, crumb, battery): the shell step swaps this
+		ui.drawHeader(t, p);
+		if (!cr.empty())
+		{
+			int x = ui.backIconShown(p) ? 72 : 16;
+			ui.drawTextMid(cr, F_I12, DIM, x, 46, 616 - x);
+		}
+		ui.drawHints(h);
+	}
+
+	std::string Ui::Home::sig(const Player& p) const
+	{
+		Continue c = continueOf(p);
+		char b[320];
+		snprintf(b, sizeof b, "|hm%d %d %d %d %d %d %d %d %d %d %d %zu %d", homeZone, homeStrip, homeShortcut, homePress, recentTab,
+			(int)pressedContinue, (int)pressedResume, pressedCard, pressedShortcut, pressedChip, pressedEmptyKey, recent.size(),
+			clearArmedAt && SDL_GetTicks() < clearArmedAt ? 1 : 0);
+		std::string s = b;
+		if (c.shown) s += "|hc" + c.label + c.path + std::to_string((int)std::lround(c.frac * 100));
+		if (!morePath.empty()) s += "|mp" + morePath;
+		return s;
+	}
+
+	// ---- drawing ----
+
+	void Ui::Home::drawHome(const Player& p)
+	{
+		Kit& k = *ui.kit;
+		lay::Shell sh = lay::shell(ui.miniUp);
+		Continue c = continueOf(p);
+		bool has = !recent.empty();
+		std::vector<Kit::FilterItem> items;
+		for (int i = 0; i < 4; i++) items.push_back({FILTER_NAMES[i], recentCounts[i]});
+		int vis = visibleCount(), shown = std::min(vis, HOME_RECENT_MAX);
+		lay::HomePage hp = lay::homePage(sh.body, c.shown, has, shown, moreShown(), k.filterWidths(items));
+		if (!has && !c.shown)
+		{
+			// home-first: nothing played yet (or the history off): what goes here and the two quickest ways to start
+			lay::EmptyState es = lay::emptyState(sh.body, 2, 2);
+			Kit::Empty e;
+			e.glyph = &G_HOME;
+			e.title = p.settings.keepHistory ? "Nothing played yet" : "Play history is off";
+			e.lines = p.settings.keepHistory
+				? std::vector<std::string>{"What you play shows up here, so you can carry on.", "Start with the files on your card, or send some from a phone."}
+				: std::vector<std::string>{"What you play isn't kept, so there is nothing here to carry on from.", "Turn the history on in Settings \xE2\x80\xBA Files & history."};
+			e.key1 = "Browse Files";
+			e.key2 = "Web dashboard";
+			e.glyph1 = &G_CARD;
+			e.glyph2 = &G_WEB;
+			e.hotkeys = p.settings.buttonHotkeys;
+			e.pressed1 = pressedEmptyKey == 0;
+			e.pressed2 = pressedEmptyKey == 1;
+			k.emptyState(es, e);
+			frame(p, title(), crumb(p), hintList(p));
+			if (quitOpen) drawQuitDialog(ui.nowPlayable(p));
+			return;
+		}
+		if (c.shown)
+		{
+			lay::ContinueCard l = lay::continueCard(hp.cont);
+			Kit::Card card;
+			card.kind = c.kind;
+			card.label = c.label;
+			card.title = c.title;
+			card.note = c.note;
+			card.key = c.key;
+			card.keyGlyph = &G_PLAY;
+			card.progress = c.frac;
+			card.focused = homeZone == HOME_CONTINUE;
+			card.pressed = pressedContinue;
+			card.keyPressed = pressedResume;
+			card.picture = [&k, c](Rect r) {
+				// a song's art (the placeholder when it has none); a video's and a book's kind mark
+				if (c.kind == &G_NOTE) k.artPlaceholder(r, c.artKey.empty() ? c.title : c.artKey, 10, true);
+				else
+				{
+					Kit::Card plain;
+					plain.kind = c.kind;
+					k.pictureOf(r, plain, 10);
+				}
+				// the kind over the picture's top left, as the mock-up's Continue card has it
+				const char* label = c.kind == &G_NOTE ? "MUSIC" : c.kind == &G_PICTURE ? "PHOTO"
+					: c.kind == &G_EPUB || c.kind == &G_PDF || c.kind == &G_PAGE || c.kind == &G_COMIC ? "BOOK" : "VIDEO";
+				int w = k.textW(label, F_I11B) + 12;
+				k.pill(r.x + 6 + w, r.y + 16, label, Kit::Pill::Fact);
+			};
+			k.continueCard(l, card);
+			// the marks the old strip carried: a liked file's heart, a network one's server
+			int rx = l.pic.x + l.pic.w - 10;
+			if (!c.path.empty() && isNetPath(c.path)) { ui.drawGlyphMid(G_NETWORK, rx, l.pic.y + l.pic.h - 11, DIM_ON); rx -= 16; }
+			if (!c.path.empty() && ui.browse->playlists->plStore && ui.browse->playlists->plStore->isLiked(c.path))
+				ui.drawGlyphMid(G_HEART_S, rx, l.pic.y + l.pic.h - 11, ACCENT);
+		}
+		if (hp.chipStrip.h > 0)
+			k.filters(hp.chips, items, recentTab, -1, pressedChip);
+		for (int i = 0; i < hp.cards; i++)
+		{
+			int idx = nthVisible(i);
+			if (idx < 0) continue;
+			const RecentItem& it = recent[idx];
+			lay::RecentCard l = lay::recentCard(hp.card[i]);
+			Kit::Card card;
+			card.kind = it.kind;
+			card.title = it.name;
+			card.note = it.sub;
+			card.progress = it.frac;
+			card.focused = homeZone == HOME_CARDS && homeStrip == idx;
+			card.pressed = pressedCard == idx;
+			if (it.kind == &G_NOTE)
+			{
+				std::string key = it.name;
+				card.picture = [&k, key](Rect r) { k.artPlaceholder(r, key, 8, true); };
+			}
+			k.recentCard(l, card);
+			// a liked one's heart and a network one's mark, over the picture's right corner (as the strip had them)
+			int rx = l.pic.x + l.pic.w - 9;
+			if (it.net) { ui.drawGlyphMid(G_NETWORK, rx, l.pic.y + l.pic.h - 10, DIM_ON); rx -= 15; }
+			if (ui.browse->playlists->plStore && ui.browse->playlists->plStore->isLiked(it.path))
+				ui.drawGlyphMid(G_HEART_S, rx, l.pic.y + l.pic.h - 10, ACCENT);
+		}
+		if (moreShown())
+		{
+			bool at = homeZone == HOME_CARDS && homeStrip >= (int)recent.size();
+			k.flat(hp.more, pressedCard >= (int)recent.size() ? PRESSED : SURFACE, 12, at ? ACCENT : k.edgeOf(SURFACE));
+			ui.drawGlyphMid(G_RIGHT, hp.more.x + hp.more.w / 2, hp.more.y + hp.more.h / 2, at ? ACCENT : DIM, 3);
+		}
+		if (hp.shortcuts > 0)
+		{
+			bool liked = ui.browse->playlists->plStore && ui.browse->playlists->plStore->likedCount() > 0;
+			const char* names[3] = {liked ? "Shuffle Liked" : "Browse Files", "Send from phone", "All recent"};
+			const Glyph* glyphs[3] = {liked ? &G_HEART_S : &G_CARD, &G_WEB, &G_CLOCK};
+			for (int i = 0; i < hp.shortcuts; i++)
+			{
+				Kit::Tile t;
+				t.glyph = glyphs[i];
+				t.name = names[i];
+				t.lit = i == 0 && liked;
+				t.focused = homeZone == HOME_SHORTCUTS && homeShortcut == i;
+				t.pressed = pressedShortcut == i;
+				k.tile(hp.shortcut[i], t);
+			}
+		}
+		frame(p, title(), crumb(p), hintList(p));
+		if (quitOpen) drawQuitDialog(ui.nowPlayable(p));
+	}
+
+	void Ui::Home::drawAllRecent(const Player& p)
+	{
+		Kit& k = *ui.kit;
+		lay::Shell sh = lay::shell(ui.miniUp);
+		lay::AllRecentPage lp = lay::allRecentPage(sh.body);
+		// the kind chips on the line under the header (28 tall: the list's own row maths starts at 84)
+		int x = lp.chipStrip.x, cy = lp.chipStrip.y + lp.chipStrip.h / 2;
+		for (int i = 0; i < 4; i++)
+		{
+			std::string label = std::string(FILTER_NAMES[i]) + " " + std::to_string(recentCounts[i]);
+			int w = (int)std::lround(ui.textWidth(label, F_P13) / sx) + 20;
+			if (x + w > lp.chipStrip.x + lp.chipStrip.w) { recentTabRect[i] = {0, 0, 0, 0}; continue; }
+			Rect r{x, cy - 14, w, 28};
+			recentTabRect[i] = r;
+			bool on = recentTab == i;
+			ui.fillRound(r, on ? ACCENT : TRACK, 9);
+			ui.drawTextMid(label, F_P13, on ? ON_ACCENT : recentCounts[i] || !i ? TEXT : DIM, r.x + 10, cy);
+			x += w + 6;
+		}
+		if (ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0))
+		{
+			std::string msg = ui.browse->browseRows.empty() ? "" : ui.browse->browseRows[0].label;
+			lay::EmptyState es = lay::emptyState(sh.body, 2, 1);
+			Kit::Empty e;
+			e.glyph = &G_CLOCK;
+			e.title = msg.empty() || msg == "Nothing played yet" ? "Nothing played yet" : msg;
+			e.lines = p.settings.keepHistory ? std::vector<std::string>{"What you play shows up here, so you can carry on."}
+				: std::vector<std::string>{"Play history is off (Settings \xE2\x80\xBA Files & history)."};
+			e.key1 = "Browse Files";
+			e.glyph1 = &G_CARD;
+			e.hotkeys = p.settings.buttonHotkeys;
+			e.pressed1 = false;
+			k.emptyState(es, e);
+			frame(p, title(), crumb(p), hintList(p));
+			return;
+		}
+		for (int i = 0; i < lp.shown; i++)
+		{
+			int idx = ui.scroll + i;
+			if (idx < 0 || idx >= (int)ui.browse->browseRows.size()) break;
+			const auto& br = ui.browse->browseRows[idx];
+			if (br.id < 0) continue;
+			const RecentItem* it = findRecent(ui.browse->browsePaths[idx]);
+			Kit::Row row;
+			row.font = F_SMALL;
+			row.under = BG;
+			row.glyph = it ? it->kind : &G_FILM;
+			row.name = it ? it->name : br.label;
+			row.note = it ? it->sub : br.note;
+			if (it && !it->where.empty()) { row.pill = it->where; row.tone = Kit::Pill::Fact; }
+			else if (it && it->net) { row.pill = "Network"; row.tone = Kit::Pill::Fact; }
+			row.focused = ui.cursor == idx;
+			row.lit = false;
+			k.row(lp.row(i), row);
+		}
+		frame(p, title(), crumb(p), hintList(p));
+	}
+
+	void Ui::Home::drawQuitDialog(bool quitPlaying)
+	{
+		// the same sheet as Quick settings (F): its panel and title, Quit as its red button, Cancel a row as its rows
+		ui.drawDialog(QUIT_BOX, "");
+		ui.drawTextMid("Quit Banana Player?", 1, ACCENT, QUIT_BOX.x + 24, QUIT_BOX.y + 28);
+		if (quitPlaying) ui.drawTextMid("What's playing stops.", 0, DIM, QUIT_BOX.x + QUIT_BOX.w - 24, QUIT_BOX.y + 28, 0, 1);
+		Rect q = quitRow(0);
+		bool down = ui.pressedBtn == DLG_ROW, at = quitCursor == 0;
+		ui.drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);
+		SDL_Color ink = down ? TEXT : ON_ACCENT;	// black on the red, as Quick settings' Quit
+		int tw = (int)std::lround(ui.textWidth("Quit", 1) / sx), gw = ui.glyphW(G_POWER), x = q.x + q.w / 2 - (tw + gw + 12) / 2;
+		ui.drawGlyphMid(G_POWER, x + gw / 2, q.y + q.h / 2, ink);
+		ui.drawTextMid("Quit", 1, ink, x + gw + 12, q.y + q.h / 2);
+		Rect c = quitRow(1);
+		at = quitCursor == 1;
+		if (ui.pressedBtn == DLG_ROW + 1) ui.drawBox(c, PRESSED, R_BUTTON);
+		else if (at) ui.drawFocus(c);
+		ui.drawTextMid("Cancel", 1, at ? ACCENT : TEXT, c.x + c.w / 2, c.y + c.h / 2, 0, 2);
+		ui.drawHints({{"UP/DOWN", "Choose"}, {"A", "OK"}, {"B", "Cancel"}});
+	}
+
+	// ---- the More sheet on a card (X or a hold), Home's own things beside it ----
+
+	void Ui::Home::openRecentMenu(const std::string& path)
+	{
+		morePath = path;
+		ctxRecent = path;
+		clearArmedAt = 0;
+		ui.openMore([this](const Player& p) { return moreSpec(p); });
+	}
+
+	void Ui::Home::openHomeOptions()
+	{
+		morePath.clear();
+		ctxRecent.clear();
+		clearArmedAt = 0;
+		ui.openMore([this](const Player& p) { return moreSpec(p); });
+	}
+
+	Ui::MoreSpec Ui::Home::moreSpec(const Player& p)
+	{
+		MoreSpec m;
+		std::vector<MoreItem> left, right;
+		bool forItem = !morePath.empty();
+		if (forItem)
+		{
+			const RecentItem* it = findRecent(morePath);
+			if (!it) return m;	// it has gone: the sheet closes itself (MoreSheet draws nothing)
+			std::string path = it->path, title = it->name;
+			bool doc = isDocument(path);
+			bool playing = p.playing() && p.currentPath() == path;
+			bool liked = ui.browse->playlists->plStore && ui.browse->playlists->plStore->isLiked(path);
+			m.glyph = it->kind;
+			m.title = title;
+			m.note = it->sub + (it->where.empty() ? "" : " \xC2\xB7 " + it->where);
+			auto row = [](const Glyph* g, const std::string& label, const std::string& note, std::string key = "", bool danger = false, bool off = false, bool stay = false) {
+				MoreItem i;
+				i.glyph = g;
+				i.label = label;
+				i.note = note;
+				i.key = std::move(key);
+				i.danger = danger;
+				i.off = off;
+				i.stay = stay;
+				return i;
+			};
+			{
+				MoreItem i = row(&G_PLAY, playing ? "Go to it" : "Resume", it->at, "", false, false, false);
+				i.act = [this, path](Player& pl) { ui.openFile(path, pl); return false; };
+				left.push_back(i);
+			}
+			{
+				MoreItem i = row(&G_REFRESH, "Play from the start", "", "", false, false, false);
+				i.act = [this, path, doc, playing](Player& pl) {
+					if (doc) ui.docs->forgetPlace(path);
+					if (playing)
+					{
+						pl.seekFraction(0);
+						if (!ui.pageIsOut()) pl.unpause();
+						else ui.noteSeek(pl, 0);
+						ui.showPlayer();
+					}
+					else
+					{
+						pl.forgetPosition(path);
+						ui.openFile(path, pl);
+					}
+					return false;
+				};
+				left.push_back(i);
+			}
+			{
+				MoreItem i = row(&G_CARD, "Show in folder", "", "", false, false, false);
+				i.act = [this, path](Player& pl) { ui.showInFolder(path, pl); return false; };
+				left.push_back(i);
+			}
+			{
+				MoreItem i = row(&G_PLUS, "Add to playlist\xE2\x80\xA6", doc ? "Songs and videos" : "", "", false, doc, false);
+				i.act = [this, path, title](Player& pl) {
+					if (ui.browse->playlists->plStore) ui.browse->playlists->openAddOne(path, title, -1, pl);
+					return false;
+				};
+				left.push_back(i);
+			}
+			{
+				MoreItem i = row(liked ? &G_HEART : &G_HEART_O, liked ? "Unlike" : "Like", doc ? "Songs and videos" : "", "L3", false, doc, true);
+				i.lit = liked;
+				i.act = [this, path, title, liked](Player& pl) {
+					if (!ui.browse->playlists->plStore) return false;
+					if (ui.setLikedPath(pl, path, title, -1, !liked) != liked) ui.likeCard(pl, !liked, title);
+					return false;
+				};
+				left.push_back(i);
+			}
+			{
+				MoreItem i = row(&G_INFO, "Info", "", "", false, false, false);
+				i.act = [this, path](Player&) { ui.openFileInfo(path, ""); return false; };
+				left.push_back(i);
+			}
+			{
+				MoreItem i = row(&G_MINUS, "Remove from Recent", "", "", false, false, false);
+				i.act = [this, path](Player& pl) {
+					pl.removeFromHistory(path);
+					pl.osd("Removed from Recent");
+					ui.browse->enterFolder(ui.browse->browseDir, pl);
+					if (ui.browse->browseDir == HOMEDIR) homeStrip = std::max(0, std::min(homeStrip, (int)recent.size()));
+					return false;
+				};
+				left.push_back(i);
+			}
+		}
+		// Home's own things, one column; on a card they are the sheet's second column
+		{
+			MoreItem i;
+			i.glyph = &G_CLOCK;
+			i.label = "All recent";
+			i.note = std::to_string(recent.size());
+			i.act = [this](Player& pl) { ui.browse->enterFolder(RECENT, pl); return false; };
+			right.push_back(i);
+		}
+		{
+			MoreItem i;
+			i.glyph = &G_CARD;
+			i.label = "Browse Files";
+			i.act = [this](Player& pl) { ui.browse->openSection(TAB_LOCAL, pl); return false; };
+			right.push_back(i);
+		}
+		{
+			MoreItem i;
+			i.glyph = &G_EYE;
+			i.label = "Show hidden folders";
+			i.note = p.settings.showHiddenFolders ? "On" : "Off";
+			i.stay = true;
+			i.act = [this](Player& pl) {
+				Settings st = pl.settings;
+				st.showHiddenFolders = !st.showHiddenFolders;
+				pl.setSettings(st);
+				ui.browse->enterFolder(ui.browse->browseDir, pl);
+				return false;
+			};
+			right.push_back(i);
+		}
+		{
+			bool armed = clearArmedAt && SDL_GetTicks() < clearArmedAt;
+			MoreItem i;
+			i.glyph = &G_TRASH;
+			i.label = "Clear recent\xE2\x80\xA6";
+			i.note = armed ? "Press again" : "";
+			i.danger = armed;
+			i.stay = true;
+			i.act = [this](Player& pl) {
+				if (!clearArmedAt || SDL_GetTicks() >= clearArmedAt) { clearArmedAt = SDL_GetTicks() + 3000; return false; }
+				clearArmedAt = 0;
+				pl.clearHistory();
+				pl.osd("Recent cleared");
+				ui.browse->enterFolder(HOMEDIR, pl);
+				homeZone = HOME_EMPTY;
+				homeStrip = 0;
+				return false;
+			};
+			right.push_back(i);
+		}
+		{
+			MoreItem i;
+			i.glyph = &G_GEAR;
+			i.label = "Settings";
+			i.act = [this](Player& pl) { ui.openMainMenu(pl, TAB_SETTINGS); return false; };
+			right.push_back(i);
+		}
+		{
+			MoreItem i;
+			i.glyph = &G_HOME;
+			i.label = "Menu";
+			i.act = [this](Player& pl) { ui.openMainMenu(pl, TAB_MENU); return false; };
+			right.push_back(i);
+		}
+		{
+			MoreItem i;
+			i.glyph = &G_SUN;
+			i.label = "Quick settings";
+			i.act = [this](Player& pl) { ui.toggleQuick(pl); return false; };
+			right.push_back(i);
+		}
+		if (!forItem)
+		{
+			m.glyph = &G_HOME;
+			m.title = "Home";
+			m.note = std::to_string(recent.size()) + (recent.size() == 1 ? " item" : " items") + " in Recent";
+			m.rows = right;
+			m.cols = 1;
+			return m;
+		}
+		// two columns, a pair a row: the card's actions on the left, Home's on the right
+		for (size_t i = 0; i < left.size() || i < right.size(); i++)
+		{
+			if (i < left.size()) m.rows.push_back(left[i]);
+			if (i < right.size()) m.rows.push_back(right[i]);
+		}
+		m.cols = 2;
+		return m;
+	}
+
+	// ---- what plays a file, and where it is (Ui's; Home and the dashboard call these) ----
 
 	void Ui::openFile(const std::string& path, Player& p)
 	{
@@ -503,178 +1293,6 @@ namespace bp
 		browse->fitList();
 	}
 
-	void Ui::Home::openRecentMenu(const std::string& path)
-	{
-		const RecentItem* it = nullptr;
-		for (auto& x : recent)
-			if (x.path == path) it = &x;
-		if (!it) return;
-		ctxRecent = path;
-		std::vector<int> items = {CTX_R_PLAY};
-		if (!it->at.empty()) items.push_back(CTX_R_START);
-		items.push_back(CTX_R_SHOW);
-		// (a document is read, not played: no Like, no playlist)
-		bool doc = isDocumentName(path) || isComicName(path);
-		if (!doc && ui.browse->playlists->plStore && PlaylistStore::likable(path)) items.push_back(CTX_R_LIKE);
-		if (!doc && ui.browse->playlists->plStore) items.push_back(CTX_R_ADD);
-		items.push_back(CTX_R_REMOVE);
-		ui.ctxOpen = true;
-		ui.ctxCursor = 0;
-		ui.ctxItems = items;
-		ui.ctxServer.clear();
-		ui.ctxStatus.clear();
-		ui.ctxArmed = false;
-		ui.ctxPath.clear();
-		ui.ctxFolder.clear();
-		ui.ctxTitle = it->name;
-		ui.ctxNote.clear();
-		ui.browse->playlists->ctxPlFile.clear();
-		ui.browse->playlists->ctxPlItem = -1;
-	}
-
-	void Ui::Home::openHomeOptions()
-	{
-		ctxRecent.clear();
-		ui.ctxOpen = true;
-		ui.ctxCursor = 0;
-		ui.ctxItems = {CTX_CLEAR_RECENT, CTX_HIDDEN, CTX_SETTINGS};
-		ui.ctxServer.clear();
-		ui.ctxStatus.clear();
-		ui.ctxArmed = false;
-		ui.ctxPath.clear();
-		ui.ctxFolder.clear();
-		ui.ctxTitle = "Options";
-		ui.ctxNote.clear();
-		ui.browse->playlists->ctxPlFile.clear();
-		ui.browse->playlists->ctxPlItem = -1;
-	}
-
-	void Ui::Home::drawHome(const Player& p)
-	{
-		ui.drawHeader("Banana Player", p);
-		bool has = !recent.empty();
-		// the focus shows with nothing over the page
-		bool lit = !ui.ctxOpen && !ui.browse->playlists->pickerOpen && !ui.kbOpen && !ui.popupShown(p);
-		if (has)
-		{
-			ui.drawTextMid("Recent", 0, DIM, 16, SUB_Y);
-			// the strip: cards side by side, cut at the panel's edges
-			SDL_Rect clip{0, (int)std::lround(STRIP_TOP * sy), (int)std::lround(W * sx), (int)std::lround(STRIP_H * sy)};
-			SDL_RenderSetClipRect(ui.ren, &clip);
-			int off = (int)std::lround(stripOff);
-			for (int i = 0; i < stripCount(); i++)
-			{
-				int x = 16 + i * STRIDE - off;
-				if (x + CARD_W < 0 || x > W) continue;
-				Rect r{x, CARD_Y, CARD_W, CARD_H};
-				bool at = lit && homeZone == HOME_STRIP && homeStrip == i;
-				ui.drawBox(r, homePress == i ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
-				SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-				if (i < stripCards())
-				{
-					// the name on up to two lines; under it, what kind, how far, and a network mark; a bar along the foot
-					const RecentItem& it = recent[i];
-					// what plays (or was stopped for a photo): a chip top right, its time and bar live
-					int chip = ui.chipKind && it.path == ui.chipPath ? ui.chipKind : 0;
-					std::string sub = it.sub;
-					double frac = it.frac;
-					bool lit = !it.at.empty();
-					if (chip && p.playing() && p.duration > 0)
-					{
-						double pos = std::max(0.0, ui.shownPosition(p));
-						sub = formatTime(pos) + " / " + formatTime(p.duration);
-						frac = std::clamp(pos / p.duration, 0.0, 1.0);
-						lit = true;
-					}
-					int chipW = chip ? ui.drawChip(x + CARD_W - 8, CARD_Y + 19, chip, true) + 8 : 0;
-					auto lines = ui.wrapText(it.name, 1, CARD_W - 28 - chipW, 2);
-					for (size_t k = 0; k < lines.size(); k++)
-						ui.drawTextMid(lines[k], 1, ink, x + 14, CARD_Y + (lines.size() == 1 ? 34 : 24) + (int)k * 26, CARD_W - 28 - (k ? 0 : chipW));
-					ui.drawGlyphMid(*it.kind, x + 25, CARD_Y + 78, soft);
-					// a liked one: a small heart, left of the network mark
-					bool liked = ui.browse->playlists->plStore && ui.browse->playlists->plStore->isLiked(it.path);
-					ui.drawTextMid(sub, 0, soft, x + 44, CARD_Y + 78, CARD_W - 58 - (it.net ? 30 : 0) - (liked ? 22 : 0));
-					int mx = x + CARD_W - 22;
-					if (it.net) { ui.drawGlyphMid(G_NETWORK, mx - 3, CARD_Y + 78, soft); mx -= 30; }
-					if (liked) ui.drawGlyphMid(G_HEART_S, mx, CARD_Y + 78, ACCENT);
-					// along the card's foot, in its corners: over its edge, or inside the cursor's yellow one
-					int w = (int)std::lround(CARD_W * frac);
-					Rect in = at ? Rect{x + theme::EDGE, CARD_Y + theme::EDGE, CARD_W - 2 * theme::EDGE, CARD_H - 2 * theme::EDGE} : r;
-					if (w > 0)
-						ui.fillRoundBand(in, at ? R_TILE - theme::EDGE : R_TILE, CARD_Y + CARD_H - 4, in.y + in.h, lit && chip != 4 ? ACCENT : DIM, x + w);
-				}
-				else
-				{
-					// the last: the whole list
-					ui.drawGlyphMid(G_CLOCK, x + CARD_W / 2, CARD_Y + 30, at ? ACCENT : DIM, 3);
-					ui.drawTextMid("All recent", 1, ink, x + CARD_W / 2, CARD_Y + 66, CARD_W - 20, 2);
-					ui.drawTextMid(std::to_string(recent.size()) + " played", 0, soft, x + CARD_W / 2, CARD_Y + 88, CARD_W - 20, 2);
-				}
-			}
-			SDL_RenderSetClipRect(ui.ren, nullptr);
-		}
-		else
-		{
-			// nothing played yet: a line in the strip's place, the tiles taller
-			ui.drawGlyphMid(G_CLOCK, 30, SUB_Y + 4, DIM);
-			ui.drawTextMid(p.settings.keepHistory ? "Nothing played yet \xC2\xB7 what you play shows up here"
-				: "Play history is off \xC2\xB7 Settings, Files", 0, DIM, 50, SUB_Y + 4, 570);
-		}
-		for (int g = 0; g < BROWSE_TABS; g++)
-		{
-			Rect t = tileRect(g);
-			bool at = lit && homeZone == HOME_GRID && homeGrid == g, soon = g == TAB_EXT;
-			ui.drawBox(t, homePress == HOME_TILE + g ? PRESSED : at ? BUTTON : SURFACE, R_TILE, at);
-			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM, mark = at ? ACCENT : soon ? DIM : TEXT;
-			const Glyph& gl = *SECTION_GLYPHS[g];
-			if (has)
-			{
-				// side by side: the mark, then the name over what's in it
-				ui.drawGlyphMid(gl, t.x + 54, t.y + t.h / 2, mark, 4);
-				ui.drawTextMid(SECTION_NAMES[g], 2, ink, t.x + 104, t.y + t.h / 2 - 14, t.w - 114);
-				ui.drawTextMid(tileSub(g), 0, soft, t.x + 104, t.y + t.h / 2 + 20, t.w - 114);
-			}
-			else
-			{
-				// taller: stacked and centred
-				ui.drawGlyphMid(gl, t.x + t.w / 2, t.y + 52, mark, 5);
-				ui.drawTextMid(SECTION_NAMES[g], 2, ink, t.x + t.w / 2, t.y + 106, t.w - 20, 2);
-				ui.drawTextMid(tileSub(g), 0, soft, t.x + t.w / 2, t.y + 138, t.w - 20, 2);
-			}
-		}
-		std::vector<Hint> h;
-		if (homeZone == HOME_STRIP && has && homeStrip < stripCards())
-			h = {{"A", ui.chipKind && recent[homeStrip].path == ui.chipPath ? "Go to it" : "Play"}, {"Y", "Menu"}, {"X", "Options"}};
-		else if (homeZone == HOME_STRIP && has) h = {{"A", "Open"}, {"X", "Options"}};
-		else h = {{"D-PAD", "Move"}, {"A", "Open"}, {"X", "Options"}};
-		h.push_back({"B", "Quit"});
-		h.push_back({"START", "Settings"});
-		ui.drawHints(h);
-		if (quitOpen) drawQuitDialog(ui.nowPlayable(p));
-	}
-
-	void Ui::Home::drawQuitDialog(bool quitPlaying)
-	{
-		// the same sheet as Quick settings (F): its panel and title, Quit as its red button, Cancel a row as its rows
-		ui.drawDialog(QUIT_BOX, "");
-		ui.drawTextMid("Quit Banana Player?", 1, ACCENT, QUIT_BOX.x + 24, QUIT_BOX.y + 28);
-		// something playing: quitting stops it, said where the choice is made
-		if (quitPlaying) ui.drawTextMid("What's playing stops.", 0, DIM, QUIT_BOX.x + QUIT_BOX.w - 24, QUIT_BOX.y + 28, 0, 1);
-		Rect q = quitRow(0);
-		bool down = ui.pressedBtn == DLG_ROW, at = quitCursor == 0;
-		ui.drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);
-		SDL_Color ink = down ? TEXT : ON_ACCENT;	// black on the red, as Quick settings' Quit
-		int tw = (int)std::lround(ui.textWidth("Quit", 1) / sx), gw = ui.glyphW(G_POWER), x = q.x + q.w / 2 - (tw + gw + 12) / 2;
-		ui.drawGlyphMid(G_POWER, x + gw / 2, q.y + q.h / 2, ink);
-		ui.drawTextMid("Quit", 1, ink, x + gw + 12, q.y + q.h / 2);
-		Rect c = quitRow(1);
-		at = quitCursor == 1;
-		if (ui.pressedBtn == DLG_ROW + 1) ui.drawBox(c, PRESSED, R_BUTTON);
-		else if (at) ui.drawFocus(c);
-		ui.drawTextMid("Cancel", 1, at ? ACCENT : TEXT, c.x + c.w / 2, c.y + c.h / 2, 0, 2);
-		ui.drawHints({{"UP/DOWN", "Choose"}, {"A", "OK"}, {"B", "Cancel"}});
-	}
-
 	Ui::Rect Ui::Browse::pipRect(int k, const Player& p) const
 	{
 		// as the mock-up has them (x 344..500, R at 508), moved left only when the battery, the web's globe and the
@@ -690,7 +1308,6 @@ namespace bp
 		// "<", the section's name, its markers (L, Files Playlists Network Extensions, R: this one lit), the battery
 		ui.drawBackIcon();
 		Rect first = pipRect(0, p);
-		// (inside Liked: its name, as its line has no place to say it)
 		bool liked = isPlDir(browseDir) && ui.plIsLiked(plFileOf(browseDir));
 		ui.drawTextMid(liked ? PlaylistStore::LIKED_NAME : SECTION_NAMES[browseTab], 2, TEXT, 72, 32, std::max(40, first.x - 22 - 72));
 		ui.drawTextMid("L", 0, ACCENT, first.x - 10, 32, 0, 1);
@@ -876,7 +1493,6 @@ namespace bp
 		int x0 = b.x + 78, room = keyX - 14 - x0;
 		int sw = std::min(room / 2, (int)std::lround(textWidth(sub, 0) / sx));
 		int tmax = std::max(40, room - sw - 12);
-		// static, cut with "…": the mini bar doesn't take the Title marquee (the owner's call, 2026-11-19)
 		drawTextMid(title, 0, TEXT, x0, mid, tmax);
 		int tw = std::min(tmax, (int)std::lround(textWidth(title, 0) / sx));
 		int sx0 = x0 + tw + 12;
