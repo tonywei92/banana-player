@@ -199,14 +199,16 @@ icon = B, drag lists). The reader:
 - **Right is forward whatever the reading direction** by default. **Swap Left/Right** (a Manga setting, Off) makes Left
   forward, for those who want it to match a right-to-left book. Either way the page-turn slide follows the reading
   direction (right to left: the new page comes in from the left).
-- **Scrolling is the finger's alone:** Up/Down zoom, they never scroll. The pan is a drag on the bottom panel's page.
+- **Scrolling is the finger's and the left stick's:** Up/Down zoom, they never scroll; the stick scrolls the Strip while
+  it is held (a dead zone at rest, its speed squared with the push), and pans a paged page that is taller than the view
+  (issue #16). The pan is otherwise a drag on the bottom panel's page.
 
 | Input | Paged (Right to left, Left to right) | Strip |
 |---|---|---|
 | **D-pad Right / Left** | forward / back by a screenful, then by a page (above) | a screenful down / up |
 | **R / L** | next / previous page, straight to it (skips the rest of a tall or zoomed page) | the next / previous page, straight to it |
 | **D-pad Up / Down** | zoom in / out, in steps: 100, 150, 200, 300, 400, 600, 800 % | the same |
-| **Stick** | not read: the page pans with the finger | the same |
+| **Stick** (left, up / down) | a zoomed or taller page pans while it is held (issue #16); a page that fits does not move | scrolls while it is held, faster the further it is pushed |
 | **A** | zoom to 200 % at the centre / back to the fit | the same |
 | **B** | leave fullscreen first, then close the reader (progress saved) to the series page | same |
 | **X** | reading mode, cycled (RTL → LTR → Strip), kept for this series | same |

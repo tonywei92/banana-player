@@ -37,6 +37,8 @@ namespace bp
 		void pathMoved(const std::string& from, const std::string& to);
 		// the keyboard's Done on Find's field: searched on from the place
 		void findTyped(const std::string& query);
+		// the left stick (issue 16): the text scrolls, the pages pan; Book turns a spread the way its D-pad points
+		void stickAxis(int value, Player& p);
 		// the place now, queued, and the writer waited for (quit: at most a second)
 		void docFlush();
 		// main creates it once and never destroys it (its thread may be inside an fsync at exit)
@@ -138,6 +140,9 @@ namespace bp
 		void docMenuStep(int dir, Player& p);
 		void docMenuAct(Player& p);
 		void drawDocMenu(const Player& p);
+		// the left stick (issue 16): which reader it last commanded (0 none, 1 the text, 2 the pages), and Book's
+		// last push direction (so one push is one spread, not one a frame)
+		int stickTarget = 0, stickDir = 0;
 		// the finger: on the text's scroll pad, the progress bar, the pan area, a button
 		bool docTouch = false, docPanTouch = false, docMoved = false;
 		int docDownX = 0, docDownY = 0, docLastY = 0, docPressed = -1;

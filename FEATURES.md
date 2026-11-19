@@ -460,6 +460,7 @@ under it.
 | Button | What it does |
 |---|---|
 | **UP** / **DOWN** | A few lines up or down |
+| **Left stick** (up / down) | Scrolls smoothly while it is held: a small push crawls, a full push is about a screen a second |
 | **LEFT** / **RIGHT**, **L** / **R**, **A** | A screen back or on |
 | **SELECT** | **Book mode** (below) |
 | **X** | **Bookmarks**: add one here, go to one, delete one |
@@ -470,7 +471,7 @@ under it.
 
 **Book mode:** hold the handheld sideways like an open book, and each screen shows a page of text, upright, the text going
 on from the left page to the right one. **UP** and **DOWN** turn the pages the way they point as you hold it (as do **L**
-/ **R** and **A**), or swipe along the bottom screen; a tap near either end of the bottom screen turns that way, a tap in
+/ **R** and **A**, and one push of the left stick up or down), or swipe along the bottom screen; a tap near either end of the bottom screen turns that way, a tap in
 its middle opens **Text options**. Each page shows how far through you are at its foot. **B** (or **SELECT**) goes back
 to the scroll; **B** there closes the document. Turn it on with **SELECT**, the **Book mode** button, or Text options › **View**; **Hold** says which side the top screen is on (left or
 right), and the D-pad follows it. Going back a page may split the text a little differently than going on did, as the
@@ -517,6 +518,7 @@ for the size it's shown at.
 | **LEFT** / **RIGHT** | Back / on: through a zoomed page first, then to the page before or after |
 | **L** / **R** | The page before / after, straight to it |
 | **UP** / **DOWN** | Zoom in / out (both views, as in the manga reader and the photo viewer) |
+| **Left stick** (up / down) | Vertical scroll: scrolls smoothly while held. Single page: pans a page that is zoomed or taller than the screen |
 | **A** | Single page: 200% or back to the whole page. Vertical scroll: on |
 | **X** | Single page or Vertical scroll (kept for the next PDF) |
 | **Y** | **Pages**: every page small; **A** goes to one |
@@ -1231,6 +1233,7 @@ here to scroll* in **Vertical scroll**), and *Loading…* shows beside the page 
 |---|---|
 | **RIGHT** / **LEFT** | Forward / back: a screenful down the page, then the next page; back goes a screenful up it, then to the page before (in **Vertical scroll**, a screenful down or up). With **Swap Left/Right** on, **LEFT** is forward |
 | **UP** / **DOWN** | Zoom in / out, in small steps: 100, 110, 125, 140, 160, 180, 200, 225, 250, 300, 350, 400, 500, 600, 700, 800 %. The new zoom shows on the page a moment, then fades. **A** zooms to 200 % or back to the fit |
+| **Left stick** (up / down) | **Vertical scroll**: scrolls smoothly while held, faster the further it is pushed. Paged modes: pans a page that is zoomed or taller than the screen; a page that fits does not move. **Book**: one push turns a spread, the way its D-pad points |
 | **L / R** | Previous / next page, straight to it |
 | **X** | The reading mode: Right to left → Left to right → Vertical scroll (kept for that series) |
 | **Y** | The Pages grid (below) |
@@ -1245,7 +1248,8 @@ here to scroll* in **Vertical scroll**), and *Loading…* shows beside the page 
   order). It applies at once to the chapter you're reading.
 - At the end of a chapter the screen says **End of chapter · R2 or RIGHT for the next** (**LEFT** with **Swap
   Left/Right** on), and the forward key (or **R2**) opens the next one. The last chapter says **You're caught up**.
-- **Scrolling is the finger's alone**: the D-pad's **UP/DOWN** zoom, they never scroll. **By touch**: drag in the big
+- **Scrolling is the finger's and the left stick's**: the D-pad's **UP/DOWN** zoom, they never scroll. The stick
+  scrolls while held, up or down, with a dead zone at rest and a speed that follows the push. **By touch**: drag in the big
   area on the bottom screen to turn the page — it follows your finger and snaps to a page when you let go (a quick
   flick turns the page even from a short drag), and in **Vertical scroll** it scrolls — the slider jumps to a page, and the
   buttons go to the chapter before or after, turn fullscreen on (as **SELECT** does), or open **Brightness** (above,

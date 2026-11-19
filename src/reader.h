@@ -61,7 +61,7 @@ namespace bp
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan, Stick };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
 		// Zoom: v the new factor (1 = the fit); the pages are decoded again at that width once it rests
 		// Rotate: paged modes only; each press turns 90° clockwise
@@ -70,6 +70,8 @@ namespace bp
 		// Step turns a spread, Page moves one page (to realign it); zoom, fit, the turn (L3) and the finger's drag
 		// are the Ui's to leave out (the reader ignores them). A Strip opens it in right to left.
 		// Pan: the paged modes' page shown centred on (v, v2), shares of the page (the PDF viewer's pan area)
+		// Stick: v the left stick's LEFTY (-32768 up … 32767 down): the Strip scrolls, a paged page with room pans,
+		// every frame while held (issue 16)
 		void command(int kind, double v, int64_t ms, double v2 = 0, double v3 = 0);
 		// a paged mode's page in view and the part of it shown, as shares of the page; false in the Strip
 		bool panBox(int& page, float& x0, float& y0, float& x1, float& y1) const;
@@ -92,7 +94,10 @@ namespace bp
 		// the frame, into the bound framebuffer
 		void draw(int w, int h);
 		// still moving or uploading: main keeps its loop at the display's rate
-		bool busy() const { return strip.moving() || paged.moving() || uploads || forceFrames > 0; }
+		bool busy() const
+		{
+			return strip.moving() || paged.moving() || uploads || forceFrames > 0 || (stickSpeedNow() != 0 && stickCanMove);
+		}
 		int mode() const { return readMode; }
 		// the Strip's place inside page() (Strip::within); 0 in the paged modes
 		double within() const { return !opened || bookHold || readMode != MANGA_STRIP ? 0 : strip.within(); }
@@ -146,6 +151,8 @@ namespace bp
 		struct Job { int index; std::string path; int width; int band = -1; int y0 = 0, rows = 0; bool mayBand = false; };
 		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; int width; int band; };
 		void decodeLoop();
+		// the stick's speed now (0 at rest, inside its dead zone, in Book, or on a paged page that fits the view)
+		double stickSpeedNow() const;
 		// files is ready: the models, the page and the first want()
 		bool begin(const std::string& label, int page, int w, int h, int m, int f);
 		void want();
@@ -211,6 +218,11 @@ namespace bp
 		std::unique_ptr<PageBook> pbook;	// a chapter in one file (CBZ, CBR, PDF); null for a folder or URLs
 		bool archive = false;
 		int viewW = 0, viewH = 0, forceFrames = 0;
+		// the left stick (issue 16): its last LEFTY value, when the last scrolling frame ran, and whether that
+		// frame could still move the view (at an end it can't: main's loop needn't spin until the value changes)
+		int stickValue = 0;
+		int64_t stickAt = 0;
+		bool stickCanMove = false;
 		int lastSpin = -1;
 		int64_t spinNow = 0;
 		bool full = false;	// (kept across chapters while the reader is open)

@@ -12,6 +12,7 @@
 #include "pagebook.h"
 #include "playlist.h"	// naturalLess: the listing's order kept when titles change
 #include "manga_ui_logic.h"
+#include "stickscroll.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -2570,6 +2571,47 @@ namespace bp
 		if (step > 0 && ui.pageReader->readerStatus.atEnd) { mangaChapterStep(1, p); return; }	// the last spread: the next chapter
 		if (step != 0) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Step, (double)step, (int64_t)now});
 		ui.pageReader->mfTagUntil = now + 1500;
+	}
+
+	void Ui::Manga::stickAxis(int value, Player& p)
+	{
+		bool reading = ui.page == Page::MangaRead && ui.pageReader->readerStatus.open && !mangaMenu &&
+			!ui.pageReader->mangaPages && !mangaReadWaiting && ui.pageReader->readerStatus.error.empty();
+		// Book is held sideways, whole pages: one push is one spread, turned the way its D-pad points
+		if (reading && ui.pageReader->readerStatus.book)
+		{
+			if (stickSent) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, 0, (int64_t)SDL_GetTicks()});
+			stickSent = false;
+			double speed = stickScrollSpeed(value, 1.0);
+			int dy = speed == 0 ? 0 : speed > 0 ? 1 : -1;
+			if (dy != 0 && dy != stickDir)
+			{
+				int book = ui.pageReader->readerStatus.book;
+				mangaBookTurn(mangaBookStep(book, ui.pageReader->readerStatus.mode == MANGA_RTL, p.settings.mangaSwapLR, dy), p);
+			}
+			stickDir = dy;
+			return;
+		}
+		stickDir = 0;
+		if (!reading)
+		{
+			// the reader left, or a menu took the keys: a held stick stops at once
+			if (stickSent) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, 0, (int64_t)SDL_GetTicks()});
+			stickSent = false;
+			return;
+		}
+		if (value != 0)
+		{
+			// the reader scrolls the Strip, or pans a paged page with room (issue 16); every pass, so a chapter
+			// opened under a held stick starts at once (the same value changes nothing)
+			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, (double)value, (int64_t)SDL_GetTicks()});
+			stickSent = true;
+		}
+		else if (stickSent)
+		{
+			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, 0, (int64_t)SDL_GetTicks()});
+			stickSent = false;
+		}
 	}
 
 	bool Ui::Manga::mangaBookKey(Button b, Player& p)

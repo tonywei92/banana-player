@@ -82,6 +82,11 @@ namespace bp
 		double hscroll() const;
 		// the page shown, centred on (fx, fy) as shares of it (a pan area's box moved): as far as its edges allow
 		void panTo(double fx, double fy);
+		// the left stick (issue 16): the page shown moved down by dy px (up: negative) inside a page taller than the
+		// view, as a finger's drag does; true when it moved. A page that fits the view has nothing to pan
+		bool panBy(double dy);
+		// whether the page shown has anywhere to pan down or up (a tall page, a zoomed one)
+		bool canPanV() const;
 
 		// pages to decode: the current one first, then up to ahead more of them in reading order, then up to
 		// behind before it; no duplicates, in range

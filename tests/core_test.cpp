@@ -67,6 +67,7 @@ extern "C"
 #include "resume.h"
 #include "session.h"
 #include "settings.h"
+#include "stickscroll.h"
 #include "theme.h"
 #include "strip.h"
 #include "tarx.h"
@@ -2939,6 +2940,33 @@ static void testMangaFilters()
 	CHECK_EQ(odd.size(), (size_t)0);
 }
 
+// the left stick's speed curve (issue 16): a dead zone round the middle, then squared, up to a panel's height a second
+static void testStickScroll()
+{
+	auto near = [](double a, double b, double eps = 0.001) { return std::fabs(a - b) <= eps; };
+	const double panel = 480;
+	// a resting stick and its drift do nothing
+	CHECK_EQ(stickScrollSpeed(0, panel), 0.0);
+	CHECK_EQ(stickScrollSpeed((int)(0.10 * 32767), panel), 0.0);
+	CHECK_EQ(stickScrollSpeed(-(int)(0.14 * 32767), panel), 0.0);
+	CHECK_EQ(stickScrollSpeed((int)(STICK_DEAD_ZONE * 32767), panel), 0.0);
+	// just past it, a crawl (the curve is gentle at first); half a push, still well under half speed
+	double edge = stickScrollSpeed((int)(0.16 * 32767), panel);
+	CHECK_EQ(edge > 0 && edge < 4, true);
+	double half = stickScrollSpeed((int)(0.50 * 32767), panel);
+	CHECK_EQ(half > 0 && half < panel * 0.25, true);
+	// a full push either way is the panel a second, and the sign follows the axis (up negative)
+	CHECK_EQ(near(stickScrollSpeed(32767, panel), panel), true);
+	CHECK_EQ(near(stickScrollSpeed(-32768, panel), -panel), true);
+	CHECK_EQ(stickScrollSpeed(-32768, panel) < 0, true);
+	// every push past the dead zone is faster than the one before it
+	CHECK_EQ(stickScrollSpeed((int)(0.30 * 32767), panel) < stickScrollSpeed((int)(0.60 * 32767), panel), true);
+	// a bad speed or dead zone doesn't move anything
+	CHECK_EQ(stickScrollSpeed(32767, 0), 0.0);
+	CHECK_EQ(stickScrollSpeed(32767, -480), 0.0);
+	CHECK_EQ(stickScrollSpeed(32767, 480, 1.0), 0.0);
+}
+
 // the paged modes: rows of centred pages, drag and snap, and Right/Left through tall pages
 static void testPaged()
 {
@@ -3115,6 +3143,19 @@ static void testPaged()
 	CHECK_EQ(near(find(pl, 1).h, 900), true);
 	CHECK_EQ(near(find(pl, 1).y, 0), true);
 	CHECK_EQ(t.vscroll(), 0.0);
+	// the left stick's pan (issue 16): down and up inside a page taller than the view, stopped at its edges
+	CHECK_EQ(t.canPanV(), true);
+	CHECK_EQ(t.panBy(60), true);
+	CHECK_EQ(near(t.vscroll(), 60), true);
+	CHECK_EQ(t.panBy(-1000), true);
+	CHECK_EQ(t.vscroll(), 0.0);
+	CHECK_EQ(t.panBy(-10), false);
+	CHECK_EQ(t.panBy(1000), true);
+	CHECK_EQ(near(t.vscroll(), 300), true);
+	CHECK_EQ(t.panBy(10), false);
+	t.panBy(-1000);	// (back to the top for the steps below)
+	CHECK_EQ(r.canPanV(), false);	// a page that fits the view: the stick leaves it alone
+	CHECK_EQ(r.panBy(10), false);
 	t.forward(0);	// one screenful (540), which here is the rest of the page
 	CHECK_EQ(t.moving(), true);
 	CHECK_EQ(t.step(180), false);	// the D-pad step slides for 180 ms
@@ -13236,6 +13277,7 @@ int main()
 	testMangaUiLogic();
 	testMangaSeriesCache();
 	testMangaFilters();
+	testStickScroll();
 	testPaged();
 	testMangaStore();
 	testMangaStoreLinkedDownloads();

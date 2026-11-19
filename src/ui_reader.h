@@ -47,7 +47,8 @@ namespace bp
 		// ZoomPoint (v: the factor; v2, v3: the tap point as fractions of the view width and height: zoom to that point
 		// / back to the fit, as a double-tap on the page area does)
 		// Book (v: MANGA_BOOK_*: held sideways, a page upright on each panel; Step turns a spread, Page moves one)
-		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
+		// Stick (v: the left stick's LEFTY, -32768 up … 32767 down): the Strip scrolls, a paged page with room pans
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan, Stick } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
 		std::vector<ReaderCmd> readerCmds;
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus

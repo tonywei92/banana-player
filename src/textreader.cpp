@@ -279,9 +279,11 @@ namespace bp
 		return h;
 	}
 
-	void TextReader::scrollBy(double px)
+	bool TextReader::scrollBy(double px)
 	{
-		if (!src || px == 0) return;
+		if (!src || px == 0) return false;
+		Pos was = top;
+		double wasY = yoff;
 		yoff += px;
 		while (yoff < 0)
 		{
@@ -322,6 +324,7 @@ namespace bp
 			}
 		}
 		redrawSoon(1);
+		return top.block != was.block || top.row != was.row || yoff != wasY;
 	}
 
 	bool TextReader::open(std::unique_ptr<TextSource> s, uint64_t place, int w, int h, const Style& st)
@@ -362,6 +365,9 @@ namespace bp
 		pr.keepOnly({});
 		pr.flushDead();
 		flingV = glideLeft = 0;
+		stickValue = 0;
+		stickAt = 0;
+		stickCanMove = false;
 		endShown = false;
 	}
 
@@ -440,6 +446,8 @@ namespace bp
 		}
 		if (bookHold)
 		{
+			// Book turns spreads, never scrolls: the Ui reads the stick for its turns (as the D-pad)
+			if (kind == Stick) { stickValue = 0; stickCanMove = false; return; }
 			// a spread at a time: the D-pad's and the finger's steps are turns; a jump is a spread from there
 			int turn = kind == BookTurn || kind == Lines || kind == Page ? (v > 0 ? 1 : v < 0 ? -1 : 0) : 0;
 			if (turn > 0 && !spreadEnd)
@@ -479,6 +487,31 @@ namespace bp
 		switch (kind)
 		{
 		case Scroll: flingV = glideLeft = 0; scrollBy(v); break;
+		case Stick:
+		{
+			// the left stick (issue 16): frame() turns its value into pixels, so the speed is the same at any rate
+			bool was = stickSpeedNow() != 0;
+			bool changed = stickValue != (int)v;
+			stickValue = (int)v;
+			bool on = stickSpeedNow() != 0;
+			// a new value after the text stopped at an end can move it again (a same value every pass leaves it)
+			if (on && (changed || !was)) stickCanMove = true;
+			if (!on) stickCanMove = false;
+			if (on && !was)
+			{
+				stickAt = ms;
+				flingV = glideLeft = 0;	// the stick takes the text from a glide at once
+				// one line each way, with the value, so a handheld's log reads the stick's range and dead zone
+				fprintf(stderr, "text: stick scroll on (value %d, %.0f px/s)\n", stickValue, stickSpeedNow());
+				redrawSoon(1);
+			}
+			else if (!on && was)
+			{
+				stickAt = 0;
+				fprintf(stderr, "text: stick scroll off (value %d)\n", stickValue);
+			}
+			break;
+		}
 		case Lines: glideLeft += v * lineH; glideV = std::max(0.6, std::abs(glideLeft) / 110.0); break;
 		case Page: glideLeft += v * std::max(lineH, viewH - lineH * 2); glideV = std::max(1.5, std::abs(glideLeft) / 160.0); break;
 		case Jump:
@@ -526,6 +559,22 @@ namespace bp
 		double dt = lastMs ? std::clamp<double>((double)(now - lastMs), 0, 50) : 16;
 		lastMs = now;
 		bool moved = false;
+		// the left stick: every frame while held, by the time since the last one (not per event)
+		if (double sv = stickSpeedNow(); sv != 0)
+		{
+			stickAt = now;
+			if (double step = sv * dt / 1000.0; step != 0)
+			{
+				stickCanMove = scrollBy(step);
+				moved = stickCanMove;
+			}
+			// (a zero-length frame says nothing about an end: the next one tries again)
+		}
+		else
+		{
+			stickAt = 0;
+			stickCanMove = false;
+		}
 		if (flingV != 0)
 		{
 			scrollBy(flingV * dt);

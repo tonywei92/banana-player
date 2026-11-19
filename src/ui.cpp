@@ -130,6 +130,15 @@ namespace bp
 		if (ren) SDL_DestroyRenderer(ren);
 	}
 
+	void Ui::stickAxis(int value, Player& p)
+	{
+		// one reader at a time; the other gets a 0, so a stick held as its page closes stops it at once
+		if (page == Page::DocText || page == Page::DocPages) docs->stickAxis(value, p);
+		else docs->stickAxis(0, p);
+		if (page == Page::MangaRead) manga->stickAxis(value, p);
+		else manga->stickAxis(0, p);
+	}
+
 	bool Ui::press(Button b, Player& p)
 	{
 		// a key while a finger holds a slider: the slider is let go where it is (the key may close what it's on)
