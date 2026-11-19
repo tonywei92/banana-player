@@ -6,7 +6,7 @@ html=f'''<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Banana Player · handheld redesign</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&family=Pixelify+Sans:wght@400;500;600&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=Lexend:wght@400;500;600;700&family=Rubik:wght@400;500;600;700&family=Jersey+10&family=Silkscreen:wght@400;700&family=Tiny5&display=swap" rel="stylesheet">
 <style>
 {rd('style.css')}
 </style></head><body>

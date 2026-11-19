@@ -36,7 +36,7 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Lock: "Hold the lock 1 s to unlock" state (ui_main.cpp:391,681). Map: "Lock (hold to unlock) Unchanged".
 - Lid close / sleep / wake (FEATURES.md:1261), Screen off timers, F + L2 screenshot, Loading spinner: one map row "Unchanged".
 - Battery: charging bolt, red low state, percent (FEATURES.md:1250). Preview shows percent on Quick settings only in a note.
-- Extensions drawer "No extensions are on" and the first-time sheet ("Open Manga / Done"); Manage extensions switch. Map: "Manage extensions (On/Off, first-time sheet) -> Settings › Extensions". Drawn since (2026-11-19): the drawer as the rail's Extensions section (`ext-section`, `ext-section-video`, `ext-section-empty`).
+- Extensions drawer "No extensions are on" and the first-time sheet ("Open Manga / Done"); Manage extensions switch. Map: "Manage extensions (On/Off, first-time sheet) -> Extensions › Manage extensions" (Settings has no Extensions group since 2026-11-19). Drawn since (2026-11-19): the drawer as the rail's Extensions section (`ext-section`, `ext-section-video`, `ext-section-empty`).
 - Manga series page (Resume, Download, Refresh, Info, heart, chapters list), Sources, Filters, Search. Limits card.
 - Manga Downloads tab (queue, pause / cancel all / retry; FEATURES.md:810) and Manga settings page. Map rows only.
 - Read-only folder (lock + "Read only", Move / Rename / Delete dimmed with a reason; FEATURES.md:372). One note mentions it.
@@ -85,7 +85,7 @@ type); the ones that should open something not drawn are the gaps under the tabl
 
 What changed to get there, none of it a redesign: targets on keys that had a screen to go to; touch targets on the rows,
 tiles and keys of sheets and pages (`TAPS`); states that follow by themselves, a card pulled or the engine coming up
-(`ALSO`, shown as “then” under the keys); `B` → Home on the section roots and L2 / R2 round the twelve settings groups;
+(`ALSO`, shown as “then” under the keys); `B` → Home on the section roots and L2 / R2 round the ten settings groups;
 shared sheets (keyboard, Info, Add to playlist) go back to where they were opened from. The rail has Music on every shell
 screen, as the Music section's note already said (since 2026-11-19 the rail shows all seven sections at once: Home, Files, Videos, Music, Books, Extensions, Network; Playlists is a view of Music), and Network opens the
 connections list, not a folder. One screen was added: `files-playing`, Files after B on a video (the header’s bars; no Now playing block since 2026-11-19).
@@ -102,7 +102,7 @@ connections list, not a folder. One screen was added: `files-playing`, Files aft
 | Search | wired | L3 on Home, Files, Music and Playlists → typing → results → a video, a song, an album, a book, a folder. A playlist result opens the playlist’s page |
 | Network | wired | Connections → Find → the form → keyboard → Save → a folder → a video buffering; a book copied first, the copy failing; a read-only folder and its alert; no Wi-Fi; no connection yet (Empty state). A connection’s More (Edit, Test, Delete) is a list in `keys` |
 | Web dashboard | wired, both sides | Fresh Home (Y), Home › Send from phone, Quick settings or Settings → the page (QR, address, PIN) → a browser signs in → the phone’s Home → Files → a song → Now playing → Plays on: Handheld; or it plays there → Hold A / Play on… / the browser gone. The page off and with No Wi-Fi. The phone’s Music, Playlists and Books tabs are not drawn (Music’s two pages are minis under Music: Albums) |
-| Settings | wired | START → Settings → each of the twelve groups (L2 / R2 go round) → Theme, which steps the page’s theme |
+| Settings | wired | START → Settings → each of the ten groups (L2 / R2 go round) → Theme, which steps the page’s theme |
 | Quick settings | wired | F → Web dashboard, Incognito, Screen off now, Quit; Volume past 100% and the first time past 120% |
 | Incognito | wired | Quick settings → the question when a browser is signed in → on, the dashboard off → off again; Settings › Lid or sleep in incognito; the badge on the player and the Now playing block (`video-states`, `states-browse`) |
 | Lid and sleep | wired | The first-start question; When the lid closes and the lid-shut keys in Settings; the bottom screen dimming → off → waking (“Paused: the handheld slept” is in that screen’s strip) |

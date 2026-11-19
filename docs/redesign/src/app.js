@@ -114,9 +114,9 @@ const MAP=[
 ['Repositories: last checked, A for Refresh / Remove (remove its sources too?), Add repository…, Y checks all','Sources › Repositories','Same; rows are two lines with address and state; a failed one says so and has Retry; the top screen shows the whole address','chg'],
 ['First-time notice: repositories are added by you','When the reader is first turned on','There, and once before the first repository is added','chg'],
 ['Typing a repository’s address','On-screen keyboard','Same keyboard with https://, .json, .pb keys; SELECT hands over to the phone','chg'],
-['Manage extensions (On / Off, first-time sheet)','Extensions drawer, START','Rail › Extensions › Manage extensions; Settings › Extensions (one page)','mov'],
+['Manage extensions (On / Off, first-time sheet)','Extensions drawer, START','Rail › Extensions › Manage extensions (its only door)','mov'],
 ['Tabs Library, History, Browse, Downloads','L / R','L2 / R2, or tap','chg'],
-['Manga settings','START on Manga pages; gear in Manage extensions','X · More › Manga settings; Settings › Manga','mov'],
+['Manga settings','START on Manga pages; gear in Manage extensions','X · More › Manga settings; X on its row in Manage extensions','mov'],
 ['Library X: Remove missing · History X: Clear · Downloads X: Pause / Delete','X acts at once','X · More lists them (one press more)','chg'],
 ['Browse: X Sources, Y Add server; a server’s Edit / Delete','Keys','X · More: Sources, Add server, Edit, Delete; “Manage sources” and “Add” rows stay','chg'],
 ['A source: Popular / Latest / Search tabs, X Filters, Y Search','L / R, X, Y','L2 / R2 tabs; Filters and Search in X · More and as keys in the header','chg'],
@@ -201,7 +201,14 @@ function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.
  sb.addEventListener('click',()=>setClean(!document.documentElement.dataset.clean));
  // Clean is the app's look. Classic is not a setting any more (it is High contrast's look): the switch stays here as a review aid
  let c=!/[?&]classic/.test(location.search);if(c&&!/[?&]clean/.test(location.search))try{c=localStorage.getItem('bpstyle')!='classic'}catch(e){}
- setClean(c)}
+ setClean(c);
+ // the Type switch (a review aid, like the one above): the display and text faces of every drawing on the page
+ const TY=[['pi','Pixelify + Inter (today)'],['px','Pixelify + IBM Plex Sans'],['pa','Pixelify + Atkinson'],['jp','Jersey 10 + Public Sans'],['sl','Silkscreen + Lexend'],['tr','Tiny5 + Rubik'],['pp','All pixel: Pixelify'],['xx','All sans: IBM Plex Sans']];
+ bar.insertAdjacentHTML('beforeend','<button class="sty" id="typbtn"></button>');const tb=document.getElementById('typbtn');
+ const setType=k=>{if(!TY.some(t=>t[0]==k))k='pi';document.documentElement.dataset.type=k;tb.textContent='Type: '+TY.find(t=>t[0]==k)[1];try{localStorage.setItem('bptype',k)}catch(e){}};
+ tb.addEventListener('click',()=>{const i=TY.findIndex(t=>t[0]==document.documentElement.dataset.type);setType(TY[(i+1)%TY.length][0])});
+ let ty=(location.search.match(/[?&]type=([a-z]+)/)||[])[1];if(!ty)try{ty=localStorage.getItem('bptype')}catch(e){}
+ setType(ty||'pi')}
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);
 const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;

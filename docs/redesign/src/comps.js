@@ -97,7 +97,7 @@ const COMPS=[
 {g:'Values',n:'Volume bar',st:'variant',maps:'drawLevel (top card) and drawQuick’s bar. Needs: the three colours and the 100 mark as one function.',use:'top card, Quick settings',
  an:'A level bar whose range runs to Max volume: cream to 100%, yellow from 100 to 120%, red past 120%; a tick at 100%. The number takes the colour of the part it is in.',pr:'value, max',in:'As a slider in Quick settings; the volume keys elsewhere.',
  ex:()=>X(60,`<div class="ab fx" style="left:16px;right:16px;top:22px;gap:14px">${vsl(60)}${vsl(110)}</div>`)},
-{g:'Cells',n:'Tile',st:'variant',maps:'Home’s tiles (drawHome), Settings’ group tiles (drawSettings). Needs: the live summary line.',use:'Settings (12), Home shortcuts, Quick settings',
+{g:'Cells',n:'Tile',st:'variant',maps:'Home’s tiles (drawHome), Settings’ group tiles (drawSettings). Needs: the live summary line.',use:'Settings (10), Home shortcuts, Quick settings',
  an:'SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Shortcut and toggle tiles 56 tall. Focused: yellow edge, icon and name yellow.',pr:'icon, name, summary, focused, mark',in:'D-pad moves in two dimensions, A opens.',
  ex:()=>X(78,`<div class="ab" style="left:16px;right:16px;top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px">${setTile('cc','Subtitles','Inter · Medium · White','foc')}${setTile('music','Music & sound','Art + Peaks · EQ Rock')}</div>`)},
 {g:'Cells',n:'Cover cell',st:'reuse',maps:'drawMangaCover (real cover decoded in the background, a drawn one standing in). Books uses the same.',use:'Books, Manga library, a source’s grid',
