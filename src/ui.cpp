@@ -263,7 +263,9 @@ namespace bp
 				aboutQr = false;
 				return false;
 			}
-			if (b == Button::Start || b == Button::B) { closeMenu(p); return false; }
+			// Manage extensions opened from Settings › Extensions is a page of the menu's: its own B goes back to the
+			// tiles (Manga's area takes it, extKey), not out of the menu
+			if (b == Button::Start || (b == Button::B && page != Page::Extensions)) { closeMenu(p); return false; }
 			// the page's own (the Menu's places, the settings' rows, About's scrolling)
 		}
 		if (page == Page::Menu) return menuKey(b, p);
@@ -494,7 +496,7 @@ namespace bp
 		if (id == SEL_CANCEL) { browse->playlists->selBack(p, false); return false; }
 		if (id == MOVE_CANCEL || id == MOVE_DONE) { browse->playlists->moveEnd(id == MOVE_DONE, p); return false; }
 		if (id == BUSY_CANCEL) { browse->playlists->cancelAdd(p); return false; }
-		if (id >= manga->EXT_TILE && id <= manga->EXT_DONE) return manga->extAct(id, p);
+		if (id >= manga->EXT_ROW && id <= manga->EXT_DONE) return manga->extAct(id, p);
 		if (id >= PHOTO_BTN && id < PHOTO_BTN + PHOTO_BTNS)
 		{
 			static const Button PHOTO_KEYS[PHOTO_BTNS] = {Button::L, Button::R, Button::Down, Button::Up, Button::L3,
@@ -775,8 +777,8 @@ namespace bp
 		// "<": B (up a folder; twice, out of what plays or, from the first page, out of the player)
 		if (backIconShown(p) && buttonRect(BACK_ICON).hit(x, y)) { pressedBtn = BACK_ICON; return false; }
 		if (browse->emptyAction() && buttonRect(EMPTY_BTN).hit(x, y)) { pressedBtn = EMPTY_BTN; return false; }
-		// the Extensions drawer's and the browser's (Browse::pointer), and an area whose downs come late (the Manga pages):
-		// their own taps (the mini bar's, the header's and "<" taken above)
+		// the browser's (Browse::pointer), and an area whose downs come late (the Manga pages): their own taps (the
+		// mini bar's, the header's and "<" taken above)
 		if (Area* a = area(); a && a->pointerDownLate()) return a->pointer(pt, x, y, p);
 		if (page == Page::Info || page == Page::About)
 		{
@@ -896,9 +898,6 @@ namespace bp
 				(long)std::floor(shownPosition(bp)), (long)bp.duration, (int)bp.playingAudio(), (int)bp.playing());
 			photo += std::string(nb) + bp.title + "|" + bp.currentPath();
 		}
-		// Extensions: the drawer's tile and the note's focus, the switch, a finger's button down on them (the area's
-		// pages add it in their signature; here, the drawer and any other page while Browse is on it)
-		if (browse->browseDir == EXTDIR && area() != manga.get()) photo += manga->extSignature();
 		// Files' copy or move: how far, and the file on its way; what's held for Copy / Move
 		photo += fileJobSignature();
 		photo += shell->signature(p);	// the rail's section and warning, the frame's pressed piece, the shell's mini bar

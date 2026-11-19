@@ -78,6 +78,8 @@ namespace bp
 	void Ui::Manga::mangaOpen(Player& p)
 	{
 		Uint32 openAt = SDL_GetTicks();
+		mangaReady = true;
+		guardStoppedVideo = false;
 		// the network side's threads and stores, the first time the app is used with the reader on
 		if (mangaNet && p.settings.mangaOn) mangaNet->start();
 		mangaTab = MT_LIBRARY;	// the app opens on the library, as the mock has it
@@ -1005,7 +1007,7 @@ namespace bp
 			// Browse's "On this handheld": one step back to its rows first; a card series' chapters: its series
 			if (mangaTab == MT_BROWSE && mBrowseList) mBrowseList = false;
 			else if (mangaTab == MT_DOWNLOADS && mangaDownloadsBack()) { }
-			else openExtensionsDrawer(p);
+			else openExtList(p);
 			return false;
 		}
 		if (b == Button::L || b == Button::R)
@@ -1729,8 +1731,9 @@ namespace bp
 
 	bool Ui::Manga::key(Button b, Player& p)
 	{
-		// Manage extensions and the manga reader's pages: their own keys (the sheet over the first)
-		if (ui.page == Page::Extensions || ui.page == Page::Manga) return extKey(b, p);
+		// the Extensions page, Manage extensions and the manga reader's pages: their own keys (the sheet over the
+		// first two)
+		if (ui.page == Page::ExtSection || ui.page == Page::Extensions || ui.page == Page::Manga) return extKey(b, p);
 		if (ui.page == Page::MangaSeries || ui.page == Page::MangaRead) return mangaKey(b, p);
 		if (ui.page == Page::MangaSources && mengSheet) return mangaEngineKey(b, p);
 		if (ui.page == Page::MangaSources) return mangaSourcesPageKey(b, p);
@@ -1744,7 +1747,7 @@ namespace bp
 		// pages' own taps; the Manga settings' rows are the settings list's
 		if (pt.kind == Pointer::Down && ui.page != Page::MangaRead)
 		{
-			if (ui.page == Page::Extensions || ui.page == Page::Manga) return extPointer(pt, x, y, p);
+			if (ui.page == Page::ExtSection || ui.page == Page::Extensions || ui.page == Page::Manga) return extPointer(pt, x, y, p);
 			if (ui.page == Page::MangaSeries || ui.page == Page::MangaSources) return mangaPointer(pt, x, y, p);
 			if (ui.page == Page::MangaSettings) return ui.settingsPage->settingsDown(x, y);
 			return false;
@@ -1754,9 +1757,10 @@ namespace bp
 		// a manga source's grid scrolls with the finger: its moves and lift go to it (its down comes late)
 		if (((ui.page == Page::Manga && mangaView == 1) || (ui.page == Page::MangaSeries && mangaSourceSeriesOn())) && pt.kind != Pointer::Down)
 			return mangaPointer(pt, x, y, p);
-		// Manage extensions and the app's tabs: a tile or a row acts as the finger lifts (as Home's do), so the lift is
-		// taken here, before Ui's down-only pages; the down comes late
-		if (pt.kind == Pointer::Up && (ui.page == Page::Extensions || ui.page == Page::Manga)) return extPointer(pt, x, y, p);
+		// Manage extensions and the app's tabs: a row acts as the finger lifts (as Home's do), so the lift is taken
+		// here, before Ui's down-only pages; the down comes late (the Extensions page's comes straight to extPointer)
+		if (pt.kind == Pointer::Up && (ui.page == Page::ExtSection || ui.page == Page::Extensions || ui.page == Page::Manga))
+			return extPointer(pt, x, y, p);
 		return false;
 	}
 
@@ -1772,7 +1776,8 @@ namespace bp
 
 	void Ui::Manga::draw(const Player& p)
 	{
-		if (ui.page == Page::Extensions) drawExtensions(p);
+		if (ui.page == Page::ExtSection) drawExtSection(p);
+		else if (ui.page == Page::Extensions) drawExtensions(p);
 		else if (ui.page == Page::Manga) drawManga(p);
 		else if (ui.page == Page::MangaSeries) drawMangaSeries(p);
 		else if (ui.page == Page::MangaRead) drawMangaRead(p);
@@ -1782,8 +1787,10 @@ namespace bp
 
 	std::string Ui::Manga::extSignature() const
 	{
-		return "|ext" + std::to_string(ui.mangaOn) + std::to_string(extCursor) + std::to_string(extSheet) +
-			std::to_string(extSheetCursor) + " " + std::to_string(extPressed);
+		return "|ext" + std::to_string(ui.mangaOn) + std::to_string(extPageCursor) + std::to_string(extSheet) +
+			std::to_string(extSheetCursor) + " " + std::to_string(extPressed) + "." + std::to_string(extPagePressed) +
+			(mangaStore ? "+" + std::to_string(mangaStore->serial()) : "-") +
+			(ui.mangaOn ? "d" + std::to_string(mangaDlQueueCount()) : "");
 	}
 
 	std::string Ui::Manga::signature(const Player& p) const
@@ -1795,9 +1802,9 @@ namespace bp
 		if (ui.page == Page::MangaSettings)
 			sig += "|mc" + std::to_string(mangaPageCache.size() + mangaNetCacheBytes) + " " + std::to_string(mangaCacheAt != 0) +
 				"|mj" + std::to_string(mangaJavaSerial()) + " " + std::to_string(mangaJavaAt != 0);
-		// Extensions: the drawer's tile and the note's focus, the switch (its lines and rows say it), a finger's button
-		// down on them (mangaOn is in the settings too: a change redraws anywhere)
-		if (ui.page == Page::Extensions || ui.page == Page::Manga || ui.browse->browseDir == EXTDIR) sig += extSignature();
+		// Extensions: the page's cursor and a finger's row, the note's focus, the switch (the rows say it), a finger's
+		// button down on them (mangaOn is in the settings too: a change redraws anywhere)
+		if (ui.page == Page::ExtSection || ui.page == Page::Extensions || ui.page == Page::Manga) sig += extSignature();
 		// Manga: the tab, each page's cursors and scrolls, the store and the card's scan, the finger's article, the
 		// History's Clear armed; the reader's page when it shows (its status is main's answer)
 		if (ui.page == Page::Manga || ui.page == Page::MangaSeries || ui.page == Page::MangaRead || ui.page == Page::MangaSources)

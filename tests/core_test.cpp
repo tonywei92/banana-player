@@ -9969,6 +9969,9 @@ static void testKitVariantBars()
 	CHECK(c.key[0].y >= c.box.y && c.key[0].y + c.key[0].h <= c.box.y + c.box.h);
 }
 
+// ---- kit-new's layouts (kitlayout.h's kit-new block): one named test each ----
+static bool kitInside(lay::Box b, int w, int h) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= w && b.y + b.h <= h; }
+static bool kitApart(lay::Box a, lay::Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; }
 static void testKitLayout()
 {
 	{	// the shell: the body between the header and the hints (or the mini bar), right of the rail
@@ -10527,13 +10530,47 @@ static void testKitLayout()
 		CHECK(stepperBack(st, st.prevX + 1));
 		CHECK(!stepperBack(st, st.value.x + st.value.w / 2 + 1));
 	}
+	{	// Extensions, the rail's section: a row per extension (64), a rule, then Manage extensions (52), all inside
+		// the body; with none on the page is the empty state and its one key
+		for (bool mini : {false, true})
+		{
+			Box body = shell(mini).body;
+			ExtPage e = extPage(body, 1);
+			CHECK_EQ((int)e.row.size(), 1);
+			CHECK_EQ(e.row[0].h, EXT_ROW_H);
+			CHECK_EQ(e.row[0].w, body.w - 2 * EXT_PAGE_PAD);
+			CHECK_EQ(e.row[0].x, body.x + EXT_PAGE_PAD);
+			CHECK_EQ(e.row[0].y, body.y + 2);
+			CHECK(kitInside(e.row[0], PANEL_W, PANEL_H));
+			CHECK(e.rule.y >= e.row[0].y + e.row[0].h);
+			CHECK_EQ(e.rule.h, 1);
+			CHECK(e.manage.y > e.rule.y + e.rule.h);
+			CHECK_EQ(e.manage.h, EXT_MANAGE_H);
+			CHECK_EQ(e.manage.w, e.row[0].w);
+			CHECK(e.manage.y + e.manage.h <= body.y + body.h);
+			CHECK_EQ(kitApart(e.row[0], e.manage), true);
+			// two rows: 8 apart, the rule and Manage still in the body
+			ExtPage two = extPage(body, 2);
+			CHECK_EQ((int)two.row.size(), 2);
+			CHECK_EQ(two.row[1].y, two.row[0].y + EXT_ROW_H + EXT_ROW_GAP);
+			CHECK_EQ(kitApart(two.row[0], two.row[1]), true);
+			CHECK(two.manage.y + two.manage.h <= body.y + body.h);
+			// none on: "No extensions are on" and its one 240-wide key, centred in the body
+			ExtEmpty z = extEmpty(body);
+			CHECK_EQ(z.key.w, EXT_EMPTY_KEY_W);
+			CHECK_EQ(z.key.h, FORM_KEY_H);
+			CHECK(kitInside(z.key, PANEL_W, PANEL_H));
+			CHECK_EQ(z.key.x + z.key.w / 2, body.x + body.w / 2);
+			CHECK(z.key.y > z.lines.y);
+			CHECK(z.lines.y > z.title.y);
+			CHECK_EQ(z.title.x + z.title.w / 2, body.x + body.w / 2);
+			CHECK(z.key.y + z.key.h <= body.y + body.h);
+		}
+	}
 }
 
 // Session: nextPlace, what the player's "Next" line names (Step's own choice, read without stepping)
 // ---- kit-new's layouts (kitlayout.h's kit-new block): one named test each ----
-static bool kitInside(lay::Box b, int w, int h) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= w && b.y + b.h <= h; }
-static bool kitApart(lay::Box a, lay::Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; }
-
 static void testKitNewSectionRail()
 {
 	using namespace lay;

@@ -768,8 +768,10 @@ int main(int argc, char** argv)
 			if (!player.playing()) return;
 			// started with a file: its end still quits (as it always did)
 			if (!browserMode && why == StopWhy::End) { running = false; return; }
-			// (a photo up over it: the photo stays, and closing it goes where it would have)
-			bool shown = !haveUi || (ui.playerShown(player) && !photos.playing());
+			// (a photo up over it: the photo stays, and closing it goes where it would have; the Manga guard's Stop
+			// keeps the page it stopped from)
+			bool keepPage = haveUi && ui.takeStopKeepsPage();
+			bool shown = !keepPage && (!haveUi || (ui.playerShown(player) && !photos.playing()));
 			toBrowserMode();
 			// what it played from, read before stop() forgets it: a playlist goes back to that playlist
 			std::string last = player.currentPath();
@@ -1850,6 +1852,7 @@ int main(int argc, char** argv)
 								printf(" under=%s t=%.1f paused=%d", player.currentPath().substr(player.currentPath().rfind('/') + 1).c_str(), player.position, player.paused);
 							printf("\n");
 						}
+						else if (ui.extPageShown()) printf("press %zu: extensions\n", pressed);
 						else if (!player.playing()) printf("press %zu: settings (from the browser)\n", pressed);
 						else
 						{

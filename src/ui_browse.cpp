@@ -318,8 +318,7 @@ namespace bp
 			homeView->stripOff = homeView->stripTarget(homeView->homeStrip);
 			homeView->stripT0 = 0;
 		}
-		// the drawer draws itself (ui_ext.cpp): its one row only keeps the list's counts sane
-		else if (dir == EXTDIR) add(-1, ui.mangaOn ? "1 on" : "None on", "", "");
+		// the playlists are the browser's own page (ui_playlists.cpp), not a folder's rows
 		else if (dir == PLROOT)
 		{
 			// the saved playlists, by name
@@ -569,7 +568,7 @@ namespace bp
 
 	bool Ui::Browse::atFirstPage() const
 	{
-		return browseDir.empty() || browseDir == NETROOT || browseDir == PLROOT || browseDir == EXTDIR || browseDir == RECENT;
+		return browseDir.empty() || browseDir == NETROOT || browseDir == PLROOT || browseDir == RECENT;
 	}
 
 	bool Ui::Browse::atHome() const
@@ -704,8 +703,8 @@ namespace bp
 
 	void Ui::openBrowseMenu(int row, MenuHow how)
 	{
-		// (Home's and All recent's are their own: openHomeOptions, openRecentMenu; Extensions has none yet)
-		if (browse->browseDir == FORMDIR || browse->browseDir == EXTDIR || browse->atHome()) return;
+		// (Home's and All recent's are their own: openHomeOptions, openRecentMenu)
+		if (browse->browseDir == FORMDIR || browse->atHome()) return;
 		bool onRow = row >= 0 && row < (int)browse->browseRows.size();
 		if (browse->browseDir == PLROOT || isPlDir(browse->browseDir))
 		{
@@ -1177,8 +1176,7 @@ namespace bp
 
 	bool Ui::Browse::filesPage() const
 	{
-		// the cards' places and the folders under them; Home, All recent, the playlists, the network and the
-		// Extensions drawer keep Ui's list
+		// the cards' places and the folders under them; Home, All recent, the playlists and the network keep Ui's list
 		return ui.page == Page::Browse && !ui.inMenu && (playlists->selMode == SEL_NONE || fileSel) && browseTab == TAB_LOCAL &&
 			(browseDir.empty() || (!pseudoDir(browseDir) && !isNetPath(browseDir)));
 	}
@@ -1903,12 +1901,6 @@ namespace bp
 				browse->homeView->recentTabsUp = p.settings.keepHistory && browse->homeView->recentCounts[0] && (browse->homeView->drawRecentTabs(tx, 32, right) || browse->homeView->drawRecentTabs(tx, 32, right, false));
 			}
 			else browse->drawSectionHeader(p);
-			if (browse->browseDir == EXTDIR)
-			{
-				// the drawer: what's on, or none (its own drawing, ui_ext.cpp)
-				manga->drawExtensionsDrawer(p);
-				return;
-			}
 			// where it is, its end kept; the folder it's in brighter. A playlist: how many items, on the right. A
 			// section's top: what's in it
 			if (browse->atFirstPage())
@@ -2227,8 +2219,7 @@ namespace bp
 			if (browseDir != RECENT && t >= 0 && t < BROWSE_TABS) openSection(t, p);
 			return false;
 		}
-		// the Extensions drawer: A opens what's on (or Manage extensions with none on), START Manage extensions
-		if (!ui.inMenu && browseDir == EXTDIR && ui.manga->extDrawerKey(b, p)) return false;
+		// the browser's own keys below: B up a folder or Home, START the menu, the list's
 		if (b == Button::B)
 		{
 			// a section's top: Home, on its tile (All recent: on its card)
@@ -2254,16 +2245,12 @@ namespace bp
 		// (its downs come late: after the header's "<" and the empty page's button; the rest where the readers' do)
 		if (pt.kind != Pointer::Down)
 		{
-			// the Extensions drawer: a tile acts as the finger lifts (as Home's do)
-			if (pt.kind == Pointer::Up && !ui.inMenu && browseDir == EXTDIR) return ui.manga->extPointer(pt, x, y, p);
 			// The rebuilt Files page keeps its finger itself (filesTouch/filesPressed): its drag scrolls the list and
 			// its lift is the tap. Without this its downs were the only events it ever saw, so a finger on a row set
 			// the cursor but never opened it, and a drag never scrolled.
 			if (!ui.inMenu && filesPage()) return filesPointer(pt, x, y, p);
 			return false;
 		}
-		// the drawer: its own taps
-		if (!ui.inMenu && browseDir == EXTDIR) return ui.manga->extPointer(pt, x, y, p);
 		// the Files page: its rows, header keys, select bar and empty page's keys
 		if (!ui.inMenu && filesPage()) return filesPointer(pt, x, y, p);
 		if (!ui.inMenu && playlists->selMode != SEL_NONE)

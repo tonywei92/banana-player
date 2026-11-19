@@ -29,7 +29,7 @@ namespace bp
 		explicit Shell(Ui& u) : Area(u) {}
 
 		// the spec's sections, in the rail's order (Music and Books are not built yet: cells() leaves them out)
-		enum class Section { Home, Files, Music, Playlists, Books, Manga, Network, Settings };
+		enum class Section { Home, Files, Music, Playlists, Books, Extensions, Network, Settings };
 		struct Cell
 		{
 			Section section;
@@ -37,8 +37,8 @@ namespace bp
 			const char* label;
 		};
 
-		bool page(Page pg) const;	// the shared frame's pages: Browse and Settings
-		std::vector<Cell> cells(const Player& p) const;	// the rail's sections, Manga only while its reader is on
+		bool page(Page pg) const;	// the shared frame's pages: Browse, ExtSection and Settings
+		std::vector<Cell> cells(const Player& p) const;	// the rail's sections (Extensions always, Manga is a row in it)
 		Section section(const Player& p) const;	// the one the page shown belongs to (Settings for Page::Settings)
 		lay::Shell layout(const Player& p) const;	// lay::shell(miniBarShown(p))
 		ShellHead head(const Player& p) const;	// this step's head: title, crumb, hints; later the pages' own
@@ -46,12 +46,16 @@ namespace bp
 		// the entry point: the frame for `section`, then nothing of the body (the page draws that itself)
 		void draw(Section section, const ShellHead& head, const Player& p);
 
+		// a section's page, from any page or a page's own B (the Extensions page's B is Home): L/R's own step and a
+		// tap on the rail both come here
+		void openSection(Section s, Player& p);
+
 		// The old bodies draw the whole panel (their own header, hints and 640-wide rows). beginBody renders that
 		// into a texture; endBody copies the 0,54..450 part into layout().body and remembers the mapping so
 		// mapPoint() can send the page's touches where they were drawn. A page rebuilt on the kit calls adopt(pg)
 		// once (in its area's constructor) and draws directly in the body box: no texture, no mapping. The browser's
 		// rebuilt views (Home, All recent, Files, Playlists) share Page::Browse with the pages still on the old
-		// drawing (Network, the Extensions drawer, the forms), so adoptBrowse() says the browser is rebuilt and
+		// drawing (Network, the forms), so adoptBrowse() says the browser is rebuilt and
 		// adopted(p) tells its views from the rest.
 		bool beginBody(const Player& p);
 		void endBody(const Player& p);
@@ -74,7 +78,6 @@ namespace bp
 		enum { F_BACK, F_MORE, F_SEARCH, F_RAIL = 100 };
 		int pressedFrame = -1;	// F_* or F_RAIL + the rail cell under a finger
 		void search(Player& p);	// Search's one place: a note until the page is built
-		void openSection(Section s, Player& p);
 		int activeIndex(const std::vector<Cell>& cells, Section at) const;
 		bool frameRects(const Player& p, const ShellHead& h, lay::Box& back, lay::Box& more, lay::Box& search) const;
 		void drawHeader(const ShellHead& h, const Player& p);

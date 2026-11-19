@@ -469,7 +469,7 @@ namespace bp
 
 	std::string Ui::Manga::extNoticeText() const
 	{
-		if (videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000)
+		if (videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000 && !guardStoppedVideo)
 			return "Video stopped: no video in the manga reader";
 		if (noticeUntil && SDL_GetTicks() < noticeUntil) return noticeText;
 		if (!mangaNet || !mangaNet->started()) return "";
@@ -492,10 +492,13 @@ namespace bp
 
 	void Ui::Manga::drawExtNotice()
 	{
+		// the guard's stop is its own notice (the sheet and Home's card): once its five seconds are over, the flag
+		// clears so a later stop by another way in says its note as ever
+		if (guardStoppedVideo && videoBlockedAt && SDL_GetTicks() - videoBlockedAt >= 5000) guardStoppedVideo = false;
 		std::string t = extNoticeText();
 		if (t.empty()) return;
 		bool failed = extNoticeState == (int)JavaExtHost::State::Failed ||
-			(videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000);
+			(videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000 && !guardStoppedVideo);
 		bool ready = extNoticeState == (int)JavaExtHost::State::Running;
 		int tw = (int)std::lround(ui.textWidth(t, 0) / sx);
 		Rect r{W / 2 - (tw + 40) / 2, 8, tw + 40, 30};

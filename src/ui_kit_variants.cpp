@@ -232,9 +232,18 @@ namespace bp
 		{
 			int cy = l.foot.y + l.foot.h / 2;
 			ui.drawGlyphMid(c.footOn ? G_BOX_ON : G_BOX, l.foot.x + 12, cy, c.footOn ? ACCENT : DIM);
-			ui.drawTextMid(c.foot, F_I12, DIM, l.foot.x + 30, cy, l.foot.w - 40);
+			int right = l.foot.x + l.foot.w;
+			if (!c.footKey.empty())
+			{
+				int w = capsW(c.footKey);
+				caps(c.footKey, right - w, cy, ACCENT, SURFACE);
+				right -= w + 9;
+			}
+			ui.drawTextMid(c.foot, F_I12, DIM, l.foot.x + 30, cy, std::max(1, right - (l.foot.x + 30)));
 		}
-		hints({{"LEFT/RIGHT", "Choose"}, {"A", c.focus == 0 ? c.safe : c.action}, {"B", c.safe}});
+		std::vector<Hint> h = {{"LEFT/RIGHT", "Choose"}, {"A", c.focus == 0 ? c.safe : c.action}, {"B", c.safe}};
+		if (!c.footKey.empty()) h.push_back({c.footKey, "Don't ask again"});
+		hints(h);
 	}
 
 	void Ui::Kit::busySheet(const lay::BusySheet& l, const BusySpec& b)

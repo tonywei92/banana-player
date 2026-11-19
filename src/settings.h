@@ -236,6 +236,9 @@ namespace bp
 		bool mangaSecureDns = false;
 		// its first-time note about repositories has been shown: it isn't again when the reader is turned on
 		bool mangaIntroShown = false;
+		// Opening Manga while a video plays asks first: the manga-guard sheet (Stop video & open Manga / Stay). Off
+		// ("Don't ask again" in that sheet, or Settings › Manga) stops the video and opens Manga on the press
+		bool mangaAskVideo = true;
 	};
 
 	std::string serializeSettings(const Settings& s);
@@ -244,7 +247,7 @@ namespace bp
 	Settings parseSettings(const std::string& text);
 
 	// The Settings page's groups (Ui::SetGroup's order: ui_settings.cpp checks it), and the manga reader's own page
-	enum SettingsGroup { SG_NONE = -1, SG_PLAYBACK, SG_SUBS, SG_MUSIC, SG_PHOTOS, SG_READING, SG_FILES, SG_SCREEN, SG_WEB, SG_UPDATES, SG_MANGA = 100 };
+	enum SettingsGroup { SG_NONE = -1, SG_PLAYBACK, SG_SUBS, SG_MUSIC, SG_PHOTOS, SG_READING, SG_FILES, SG_SCREEN, SG_WEB, SG_EXTENSIONS, SG_UPDATES, SG_MANGA = 100 };
 
 	// One setting of settings.conf, declared once in settings.cpp's table: its key, its member, how its value is read and
 	// written, and (when a page shows it) the group, place, label, value text and help line of its row. Parsing,

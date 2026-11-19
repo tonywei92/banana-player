@@ -243,11 +243,11 @@ namespace bp
 			browse->openSection(place == MP_FILES ? TAB_LOCAL : place == MP_PLAYLISTS ? TAB_PLAYLISTS : TAB_NETWORK, p);
 			page = Page::Browse;
 			break;
-		case MP_MANGA:
-			// the reader's app when it is on; the Extensions page (where it is turned on) when it is not
+		case MP_EXTENSIONS:
+			// one tile for every extension, as the rail has one cell: it opens the Extensions page, which starts and
+			// stops nothing (Manga is a row there, and asks before it stops a video)
 			inMenu = false;
-			if (p.settings.mangaOn) { page = Page::Manga; manga->openManga(p); }
-			else { browse->openSection(TAB_EXT, p); page = Page::Browse; }
+			manga->openExtensionsSection(p);
 			break;
 		case MP_SETTINGS:
 			menuTab = TAB_SETTINGS;
@@ -338,12 +338,11 @@ namespace bp
 			l.keys = "SELECT";
 			k.line(menuNowRect(), l);
 		}
-		static const char* NAMES[MP_PLACES] = {"Home", "Files", "Playlists", "Manga", "Network", "Settings", "About"};
-		static const Glyph* const MARKS[MP_PLACES] = {&G_HOME, &G_CARD, &G_PLAYLIST, &G_BOOK, &G_NETWORK, &G_GEAR, &G_INFO};
-		bool video = p.playing() && !p.playingAudio() && !p.playingPhoto();
+		static const char* NAMES[MP_PLACES] = {"Home", "Files", "Playlists", "Extensions", "Network", "Settings", "About"};
+		static const Glyph* const MARKS[MP_PLACES] = {&G_HOME, &G_CARD, &G_PLAYLIST, &G_BLOCKS, &G_NETWORK, &G_GEAR, &G_INFO};
 		std::string summaries[MP_PLACES] = {
 			"Continue", "This card", "Saved lists",
-			video ? "stops the video" : p.settings.mangaOn ? "Reader on" : "Reader off",
+			p.settings.mangaOn ? "1 on \xC2\xB7 Manga reader" : "None on",
 			"Your servers", "", std::string("Version ") + BP_VERSION};
 		for (int i = 0; i < MP_PLACES; i++)
 		{

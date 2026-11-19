@@ -907,5 +907,39 @@ namespace bp
 		}
 
 		int fileInfoShown(Box body) { return std::max(0, (body.h - 16) / FILE_INFO_ROW); }
+
+		// ---- Extensions, the rail's section ----
+
+		ExtPage extPage(Box body, int extensions)
+		{
+			ExtPage p;
+			p.area = {body.x + EXT_PAGE_PAD, body.y + 2, body.w - 2 * EXT_PAGE_PAD, body.h - 4};
+			int y = p.area.y;
+			for (int i = 0; i < extensions; i++)
+			{
+				p.row.push_back({p.area.x, y, p.area.w, EXT_ROW_H});
+				y += EXT_ROW_H + EXT_ROW_GAP;
+			}
+			// the mock-up's rule (margin 10, 2 from the sides), then Manage extensions
+			p.rule = {p.area.x + 2, y + 2, p.area.w - 4, 1};
+			p.manage = {p.area.x, p.rule.y + 1 + EXT_RULE_GAP, p.area.w, EXT_MANAGE_H};
+			return p;
+		}
+
+		ExtEmpty extEmpty(Box body)
+		{
+			// the empty state's stack, centred (as lay::emptyState centres its own) with the mock-up's 240-wide key
+			ExtEmpty e;
+			int total = 54 + 12 + 28 + 6 + 40 + 18 + FORM_KEY_H;
+			int y = body.y + std::max(0, (body.h - total) / 2), cx = body.x + body.w / 2;
+			e.icon = {cx - 27, y, 54, 54};
+			y += 54 + 12;
+			e.title = {cx - 200, y, 400, 28};
+			y += 28 + 6;
+			e.lines = {cx - 200, y, 400, 40};
+			y += 40 + 18;
+			e.key = {cx - EXT_EMPTY_KEY_W / 2, y, EXT_EMPTY_KEY_W, FORM_KEY_H};
+			return e;
+		}
 	}
 }

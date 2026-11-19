@@ -629,6 +629,7 @@ namespace bp
 		static const char* CLOCK_NAMES[CLOCKS] = {"24-hour", "12-hour", "Off"};
 		static const char* SHOWN_ADULT[2] = {"Hidden", "Shown"};
 		static const char* SHOWN_DNS[2] = {"Off", "Cloudflare (1.1.1.1)"};
+		static const char* SHOWN_ASK_VIDEO[2] = {"Stop", "Ask"};
 		static const char* SHOWN_PAN[2] = {"Left", "Right"};
 		static const char* SHOWN_DRAG[2] = {"The photo", "The box"};
 		static const char* SHOWN_LID[2] = {"Pause", "Keep playing"};
@@ -715,6 +716,8 @@ namespace bp
 			D::flag("shuffle", &Settings::shuffle),	// (no row: the play mode, as loop)
 			D::flag("manga-reader", &Settings::mangaOn),
 			D::flag("manga-intro-shown", &Settings::mangaIntroShown),
+			D::flag("manga-ask-video", &Settings::mangaAskVideo, "stop", "ask")
+				.page(SG_MANGA, 20, "Manga and a video", "Ask: opening Manga while a video plays asks first, and the video stops only when you say so (the same question as the Extensions page's Manga row). Stop: the video stops at once and Manga opens. A song or a photo never asks.").shownAs(SHOWN_ASK_VIDEO, ""),
 			D::flag("manga-swap-lr", &Settings::mangaSwapLR)
 				.page(SG_MANGA, 30, "Swap Left/Right", "Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book)."),
 			D::flag("manga-adult", &Settings::mangaAdult)

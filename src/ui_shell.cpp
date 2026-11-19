@@ -23,38 +23,39 @@ namespace bp
 
 	bool Ui::Shell::page(Page pg) const
 	{
-		// the shell's pages this step builds: the browser (Home, Files, Playlists, Network, All recent) and Settings.
-		// The redesigned bodies of Home, Files, Playlists and Settings replace theirs one at a time; Manga's pages keep
-		// their own frame (their tabs are the top of the panel) until they are rebuilt too.
-		return pg == Page::Browse || pg == Page::Settings;
+		// the shell's pages this step builds: the browser (Home, Files, Playlists, Network, All recent), the
+		// Extensions section's list and Settings. The redesigned bodies of these replace theirs one at a time;
+		// Manga's pages keep their own frame (their tabs are the top of the panel) until they are rebuilt too.
+		return pg == Page::Browse || pg == Page::ExtSection || pg == Page::Settings;
 	}
 
 	std::vector<Ui::Shell::Cell> Ui::Shell::cells(const Player& p) const
 	{
-		// the spec's order: Home, Files, Music, Playlists, Books, Manga, Network. Music is a later step, Books has no
-		// page in the app yet (books are files in Files), and Manga shows only while its reader is on.
-		std::vector<Cell> out = {
+		// The spec's order: Home, Files, Music, Playlists, Books, Extensions, Network. Music is a later step, Books has
+		// no page in the app yet (books are files in Files). Extensions is one cell for every extension that is on
+		// (Manga reader is a row of its page), and it is always in the rail: opening it starts and stops nothing.
+		(void)p;
+		return {
 			{Section::Home, &G_HOME, "Home"},
 			{Section::Files, &G_FOLDER, "Files"},
 			{Section::Playlists, &G_PLAYLIST, "Playlists"},
+			{Section::Extensions, &G_BLOCKS, "Extensions"},
+			{Section::Network, &G_NETWORK, "Network"},
 		};
-		if (p.settings.mangaOn) out.push_back({Section::Manga, &G_COMIC, "Manga"});
-		out.push_back({Section::Network, &G_NETWORK, "Network"});
-		return out;
 	}
 
 	Ui::Shell::Section Ui::Shell::section(const Player& p) const
 	{
 		if (ui.page == Page::Settings) return Section::Settings;
-		if (ui.page == Page::Manga || ui.page == Page::MangaSeries || ui.page == Page::MangaRead || ui.page == Page::MangaSettings ||
-			ui.page == Page::MangaSources || ui.page == Page::Extensions)
-			return Section::Manga;
+		// Manga is a page of Extensions: its own pages and Manage extensions keep the section's cell lit
+		if (ui.page == Page::ExtSection || ui.page == Page::Manga || ui.page == Page::MangaSeries || ui.page == Page::MangaRead ||
+			ui.page == Page::MangaSettings || ui.page == Page::MangaSources || ui.page == Page::Extensions)
+			return Section::Extensions;
 		if (ui.page != Page::Browse) return Section::Home;
 		const std::string& dir = ui.browse->browseDir;
 		if (dir == HOMEDIR || dir == RECENT) return Section::Home;
 		if (dir == PLROOT || isPlDir(dir)) return Section::Playlists;
 		if (dir == NETROOT || dir == FORMDIR || dir == FINDNET || isNetPath(dir)) return Section::Network;
-		if (dir == EXTDIR) return Section::Manga;
 		return Section::Files;
 	}
 
@@ -76,6 +77,19 @@ namespace bp
 		h.back = ui.backIconShown(p);
 		h.more = ui.page != Page::Settings;
 		h.search = true;
+		if (ui.page == Page::ExtSection)
+		{
+			// the Extensions section (docs/redesign: ext-section, ext-section-video, ext-section-empty): a list that
+			// starts nothing; A opens a row, B goes Home, L/R step the sections, L3 is Search
+			h.title = "Extensions";
+			h.crumb = p.settings.mangaOn ? "1 on" : "None on";
+			h.back = false;
+			h.more = false;
+			h.hints = p.settings.mangaOn
+				? std::vector<Hint>{{"A", "Open"}, {"B", "Home"}, {"L/R", "Sections"}, {"START", "Menu"}, {"L3", "Search"}}
+				: std::vector<Hint>{{"A", "Manage extensions"}, {"B", "Home"}, {"L/R", "Sections"}, {"START", "Menu"}, {"L3", "Search"}};
+			return h;
+		}
 		if (ui.page == Page::Settings)
 		{
 			// Settings is START's page, opened as a section: its own title, crumb and hints; a group also has its
@@ -89,7 +103,7 @@ namespace bp
 			{
 				int prev = (ui.setGroup + GROUPS - 1) % GROUPS, next = (ui.setGroup + 1) % GROUPS;
 				static const char* const SHORT_GROUP[] = {"Playback", "Subtitles", "Music", "Photos", "Reading", "Files",
-					"Power", "Web", "Updates", "About"};
+					"Power", "Web", "Extensions", "Updates", "About"};
 				std::string prevName = SHORT_GROUP[prev], nextName = SHORT_GROUP[next];
 				Kit& k = *ui.kit;
 				h.rightW = k.capsW("L2") + 6 + k.textW(prevName, F_I12) + 14 + k.textW(nextName, F_I12) + 6 + k.capsW("R2");
@@ -154,12 +168,6 @@ namespace bp
 			h.crumb = dir == NETROOT ? "Home" : std::string("Network");
 			h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Add"}, {"B", "Up"}, {"L/R", "Sections"}};
 		}
-		else if (dir == EXTDIR)
-		{
-			h.title = "Extensions";
-			h.crumb = "Home";
-			h.hints = {{"A", "Open"}, {"X", "More"}, {"B", "Home"}, {"L/R", "Sections"}};
-		}
 		else
 		{
 			// Files, and the folders under it: the folder's name, the way there under it ("Files › Videos › Movies")
@@ -189,10 +197,15 @@ namespace bp
 			if (ui.page != Page::Settings || !ui.inMenu) ui.openMainMenu(p, TAB_SETTINGS);
 			return;
 		}
+		// where the Extensions section was left (Manga, where you were; its list): the rail's rule
+		if (ui.manga) ui.manga->sectionLeft(ui.page);
 		// leaving Settings: START's menu (inMenu) closes back to where it was; a Settings page opened on its own
 		// (Sound's way back, the Web page's) becomes the browser
 		if (ui.page == Page::Settings && !ui.inMenu) ui.page = Page::Browse;
 		if (ui.inMenu) ui.closeMenu(p);
+		// another section's page is the browser's (the Extensions page sets its own, in openExtensionsSection). Closing
+		// START's menu over what plays lands on the player; a section asked for from there still shows its page.
+		if (ui.page != Page::Browse && s != Section::Extensions) ui.page = Page::Browse;
 		switch (s)
 		{
 		case Section::Home:
@@ -201,9 +214,9 @@ namespace bp
 		case Section::Files: ui.browse->openSection(TAB_LOCAL, p); break;
 		case Section::Playlists: ui.browse->openSection(TAB_PLAYLISTS, p); break;
 		case Section::Network: ui.browse->openSection(TAB_NETWORK, p); break;
-		case Section::Manga:
-			if (ui.page != Page::Manga) ui.manga->openManga(p);
-			break;
+		// Extensions: its list, or Manga again where it was left (and never opened by the rail itself, so arriving
+		// here starts and stops nothing)
+		case Section::Extensions: ui.manga->openExtensionsSection(p); break;
 		default: break;
 		}
 	}
@@ -220,18 +233,17 @@ namespace bp
 				br.homeView->stepRecentTab(b == Button::R2 ? 1 : -1, p);
 			return true;
 		}
-		// Search by the keys (L3), while browsing or on Settings: a note for now (not while a form, a selection or
-		// the picker has the page)
-		if (b == Button::L3 && (ui.page == Page::Settings || (ui.page == Page::Browse && !modal)))
+		// Search by the keys (L3), while browsing, on the Extensions page or on Settings: a note for now (not while a
+		// form, a selection or the picker has the page)
+		if (b == Button::L3 && (ui.page == Page::Settings || ui.page == Page::ExtSection || (ui.page == Page::Browse && !modal)))
 		{
 			search(p);
 			return true;
 		}
 		if (b != Button::L && b != Button::R) return false;
-		// an open form's LEFT / RIGHT step its choices, a select mode and the picker keep theirs, and the Extensions
-		// drawer its own: the section step does not take those keys away
-		if (ui.page == Page::Browse &&
-			(modal || br.browseDir == FORMDIR || br.browseDir == FINDNET || br.browseDir == EXTDIR))
+		// an open form's LEFT / RIGHT step its choices, a select mode and the picker keep theirs: the section step does
+		// not take those keys away
+		if (ui.page == Page::Browse && (modal || br.browseDir == FORMDIR || br.browseDir == FINDNET))
 			return false;
 		std::vector<Cell> cs = cells(p);
 		if (cs.empty()) return false;
@@ -339,12 +351,10 @@ namespace bp
 		if (!page(ui.page)) return "";
 		std::vector<Cell> cs = cells(p);
 		int at = activeIndex(cs, section(p));
-		bool warn = false;
-		if (p.settings.mangaOn && p.playing() && !p.playingAudio())
-			for (auto& c : cs)
-				warn = warn || c.section == Section::Manga;
+		// (no cell carries a warning: opening a section starts and stops nothing; the Extensions page's row says
+		// "Stops the video" and asks first)
 		return "|sh" + std::to_string((int)section(p)) + "." + std::to_string(at) + "." + std::to_string(pressedFrame) +
-			(warn ? "W" : "-") + std::to_string(ui.miniBarShown(p));
+			std::to_string(ui.miniBarShown(p));
 	}
 
 	// ---- the frame's drawing ----
@@ -418,8 +428,6 @@ namespace bp
 			KitNew::RailItem it;
 			it.glyph = c.glyph;
 			it.label = c.label;
-			// the red mark on a cell that would stop what plays (Manga cannot share the memory with a video)
-			it.warn = c.section == Section::Manga && p.playing() && !p.playingAudio();
 			items.push_back(it);
 		}
 		KitNew::RailItem settings{&G_GEAR, "Settings", false};
@@ -448,8 +456,8 @@ namespace bp
 
 	bool Ui::Shell::adopted(const Player& p) const
 	{
-		// the browser's rebuilt views draw in the body box; Network, the Extensions drawer and the forms still draw
-		// the old full panel and keep the bridge
+		// the browser's rebuilt views draw in the body box; Network and the forms still draw the old full panel and
+		// keep the bridge
 		if (ui.page != Page::Browse) return adopted(ui.page);
 		if (!browseBuilt) return false;
 		const Browse& b = *ui.browse;

@@ -171,6 +171,10 @@ namespace bp
 			bool focused = false, pressed = false, off = false, danger = false, lit = false;
 			int font = F_SMALL;	// the name's (a sheet's two-column rows: F_P16)
 			SDL_Color under = SURFACE;	// what the row lies on: a sheet (a page: BG)
+			// An extension's row: a 44 x 44 mark at the left (its picture), and a second line under the name (its
+			// counts), as the mock-up's ext-section row has them. The name moves up to leave the line its room.
+			std::function<void(Rect)> mark;
+			std::string second;
 		};
 		void row(Rect r, const Row& row);
 		int pill(int right, int cy, const std::string& text, Pill tone = Pill::Live);	// its width
@@ -269,6 +273,7 @@ namespace bp
 			int focus = 0;	// 0 the safe key (yellow, focused, B), 1 the action
 			int pressed = -1;
 			bool footOn = false;	// the "don't ask again" line ticked
+			std::string footKey;	// the cap that ticks the line ("Y"); "" none
 		};
 		void confirmSheet(const lay::ConfirmSheet& l, const ConfirmSpec& c, const std::vector<std::string>& lines);
 		struct BusySpec

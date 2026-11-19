@@ -201,7 +201,6 @@ namespace bp
 			parts.clear();
 			for (auto& sv : list) parts.push_back(serverName(sv));
 			tileSubs[TAB_NETWORK] = parts.empty() ? "No connections yet" : join(parts);
-			tileSubs[TAB_EXT] = ui.mangaOn ? "1 on \xC2\xB7 Manga reader" : "None on";
 		}
 		return g >= 0 && g < BROWSE_TABS ? tileSubs[g] : "";
 	}

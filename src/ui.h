@@ -117,6 +117,9 @@ namespace bp
 		void drawGalleryNew();
 		// the player's own Stop (X's More sheet, START › Playing › Stop, the mini bar's menu), once: main stops what plays
 		bool takeStopPressed() { bool r = stopPressed; stopPressed = false; return r; }
+		// The Stop the Manga guard asked for (ext-section-video): the page stays where it is (Manga), rather than
+		// going back to where the video was opened from. Once, as the stop itself.
+		bool takeStopKeepsPage() { bool r = stopKeepsPage; stopKeepsPage = false; return r; }
 		// the mini bar's tap over a photo: the photo closes and the player of what plays takes the screen (once; main
 		// does it: only it can close the photo viewer)
 		bool takePlayerOverPhoto() { bool r = playerOverPhoto; playerOverPhoto = false; return r; }
@@ -138,6 +141,8 @@ namespace bp
 		// a video picked in the browser, once: the caller opens it
 		// the browser's rows as they are listed (label, then note; Home: the Recent cards, then the tiles), for test runs
 		std::vector<std::string> browseLabels() const;
+		// the Extensions section's page (Page::ExtSection): for test runs (the state line and nothing else)
+		bool extPageShown() const { return page == Page::ExtSection; }
 		// the Info or About page's lines as they are drawn, for test runs
 		std::vector<std::string> pageLines() const
 		{
@@ -162,8 +167,8 @@ namespace bp
 		struct PageReader;
 		std::unique_ptr<PageReader> pageReader;
 		// ---- extensions and the manga reader: an area (Area), all of it in ui_manga.h, ui_manga*.cpp, ui_ext.cpp ----
-		// Manage extensions, the Manga pages, and Home's Extensions drawer (a Browse folder: Browse draws, keys and
-		// touches it through the area's methods). (public: main and the dashboard's routes reach its store, caches, workers)
+		// The Extensions section's page, Manage extensions and the Manga pages. (public: main and the dashboard's routes
+		// reach its store, caches, workers)
 		struct Manga;
 		std::unique_ptr<Manga> manga;
 		// ---- Files' document viewers: an area (Area, below), all of it in ui_docs.h / ui_docs.cpp ----
@@ -308,7 +313,7 @@ namespace bp
 		friend struct WebPlayerGlue;
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
-		enum class Page { Main, Menu, Settings, Browse, Info, About, Sound, Web, Manga, Extensions, MangaSeries,
+		enum class Page { Main, Menu, Settings, Browse, Info, About, Sound, Web, Manga, ExtSection, Extensions, MangaSeries,
 			MangaRead, MangaSettings, MangaSources, DocText, DocPages };
 		using Rect = lay::Box;	// (kitlayout.h: the kit's layout maths give and take the same box)
 		// An overlay: a dialog or a sheet over the page (ui_overlay.cpp; docs/notes/overlay-stack.md). While it is on
@@ -397,10 +402,11 @@ namespace bp
 		void choose(int i, Player& p);
 		// Settings opens on its groups (setGroup -1); A or a tap opens one, B goes back to them. The order is the spec's
 		// (docs/redesign/src/screens.js, "settings"): Playback, Subtitles, Music & sound, Photos, Reading, Files &
-		// history, Power & screens, Web dashboard, Updates, About (Web dashboard is a tile like the groups, but its own
-		// page: openGroup and stepGroup open Page::Web)
+		// history, Power & screens, Web dashboard, Extensions, Updates, About (Web dashboard, Extensions and About are
+		// tiles like the groups but pages of their own: openGroup and stepGroup open Page::Web, Page::Extensions and
+		// Page::About)
 		enum SetGroup { GROUP_PLAYBACK, GROUP_SUBS, GROUP_MUSIC, GROUP_PHOTOS, GROUP_READING, GROUP_FILES, GROUP_SCREEN,
-			GROUP_WEB, GROUP_UPDATES, GROUP_ABOUT, GROUPS };
+			GROUP_WEB, GROUP_EXTENSIONS, GROUP_UPDATES, GROUP_ABOUT, GROUPS };
 		// the page is an area (SettingsPage, ui_settings.h): the rows, changeSetting, openGroup, its drawing and keys.
 		// Here stay: the groups' ids, the rows' ids and the list's measures (Manga's settings page and the tables use
 		// them) and setGroup, the open group, which showPlayer's, the dashboard's and Browse's way-back records keep
@@ -408,11 +414,12 @@ namespace bp
 		struct SettingsPage;
 		std::unique_ptr<SettingsPage> settingsPage;
 		Page home(const Player& p) const { return playerShown(p) ? Page::Main : Page::Browse; }
-		// the browser's four sections, opened from Home's tiles: Files (the cards), Playlists (the saved ones, then their
-		// items), Network (the saved connections, then their folders) and Extensions (a placeholder). L/R step to the
-		// one before or after (no wrap), at its top; the header's markers by touch. The section shown and where each
-		// was left are the browser's (Browse::browseTab, tabDir)
-		enum BrowseTab { TAB_LOCAL, TAB_PLAYLISTS, TAB_NETWORK, TAB_EXT, BROWSE_TABS };
+		// the browser's three sections, opened from Home's shortcuts and the section markers: Files (the cards),
+		// Playlists (the saved ones, then their items) and Network (the saved connections, then their folders).
+		// Extensions is the rail's section now (Page::ExtSection), not a folder of the browser's. L/R step to the one
+		// before or after (no wrap), at its top; the section shown and where each was left are the browser's
+		// (Browse::browseTab, tabDir)
+		enum BrowseTab { TAB_LOCAL, TAB_PLAYLISTS, TAB_NETWORK, BROWSE_TABS };
 
 		// ---- the redesign's component kit (ui_kit.h / ui_kit.cpp; docs/notes/2026-11-16-redesign-kit.md) ----
 		// the pieces the redesigned screens are drawn from (key caps, keys, chips, line keys, the bar, sheets, rows):
@@ -610,7 +617,7 @@ namespace bp
 		// closes it back to where the user was. The Menu of places that used to be here (Page::Menu, its tiles
 		// Home..About, Quick settings and Quit) is kept but unreached: the full redesign brings it back.
 		enum Tab { TAB_MENU, TAB_SETTINGS, TABS };
-		enum MenuPlace { MP_HOME, MP_FILES, MP_PLAYLISTS, MP_MANGA, MP_NETWORK, MP_SETTINGS, MP_ABOUT, MP_PLACES };
+		enum MenuPlace { MP_HOME, MP_FILES, MP_PLAYLISTS, MP_EXTENSIONS, MP_NETWORK, MP_SETTINGS, MP_ABOUT, MP_PLACES };
 		bool inMenu = false;
 		int menuTab = TAB_SETTINGS;	// (the page's report: Settings; TAB_MENU is the kept, unreached menu)
 		int menuCursor = 0;
@@ -1021,12 +1028,18 @@ namespace bp
 		// the answer is saved, so it isn't asked again (LidAskBox in ui_overlay.cpp)
 		void askLid();
 		struct LidAskBox;
+		// Opening Manga while a video plays (docs/redesign: manga-guard, ext-section-video): the confirm sheet that
+		// says the video stops, Stay focused and B, with "Don't ask again" (the manga-ask-video setting). Pushed by
+		// the Extensions page's Manga row (MangaGuard in ui_ext.cpp); a song or a photo is never asked about.
+		void askMangaGuard(const Player& p);
+		struct MangaGuard;
 	private:
 
 		// ---- playing behind the browser ----
 		// the player left (B, "<", Back) while a song or video plays on: the browser is the base page; showPlayer ends it
 		bool bgPlay = false;
 		bool stopPressed = false;	// the player's own Stop (takeStopPressed)
+		bool stopKeepsPage = false;	// the Manga guard's Stop: the page shown stays (takeStopKeepsPage)
 		bool playerOverPhoto = false;	// the mini bar's tap over a photo (takePlayerOverPhoto)
 		// the player shown (showPlayer) and not left since; back: where it was opened from (backFromPlayer)
 		bool onPlayer = true;
