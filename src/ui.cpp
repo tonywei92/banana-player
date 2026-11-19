@@ -518,6 +518,10 @@ namespace bp
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
 		const int rawX = x, rawY = y;
 		webInputAt = SDL_GetTicks();
+		// The shell's pages in the handheld's log: where a touch began and which section it did (the rebuilt pages log
+		// their drags and taps too, so a finger that does nothing leaves the line that says where it stopped)
+		if (pt.kind == Pointer::Down && shell->page(page))
+			fprintf(stderr, "touch: down %d,%d on page %d, section %d\n", x, y, (int)page, (int)shell->section(p));
 		// a list's finger whose lift never came (a dialog took it): a new touch starts afresh
 		if (pt.kind == Pointer::Down) pageReader->mlist = PageReader::MangaListDrag();
 		// a slider under the finger: it keeps the finger until it lifts, whatever it passes over (a new touch with
@@ -675,11 +679,13 @@ namespace bp
 				shown = groups ? GROUPS : set ? SET_SHOWN : info ? INFO_SHOWN : ROWS_SHOWN;
 			if (pt.kind == Pointer::Move && (listScrolled || std::abs(y - touchStartY) > 12))
 			{
+				bool started = !listScrolled;
 				listScrolled = true;
 				holdAt = 0;
-				int rowsMoved = (int)std::lround((touchStartY - y) / (double)rowH);
 				int first = set || info ? 0 : browse->listFirst();
-				scroll = std::clamp(scrollStart + rowsMoved, first, std::max(first, n - shown));
+				scroll = lay::dragScroll(scrollStart, touchStartY, y, rowH, first, n, shown);
+				if (started) fprintf(stderr, "touch: list drag page %d y %d -> %d, scroll %d -> %d of %d\n", (int)page,
+					touchStartY, y, scrollStart, scroll, n);
 				cursor = std::clamp(cursor, scroll, scroll + shown - 1);
 			}
 			else if (pt.kind == Pointer::Up)

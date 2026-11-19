@@ -10084,6 +10084,17 @@ static void testKitLayout()
 	CHECK_EQ(listScroll(41, 30, 7, 42), 35);
 	CHECK_EQ(listScroll(2, 0, 7, 3), 0);
 	CHECK_EQ(listScroll(9, 99, 7, 0), 0);
+	// a finger's drag: one row per row pitch, rounded, inside the list (the same maths for Files, Playlists and the
+	// shell's lists: a drag up scrolls down)
+	CHECK_EQ(dragScroll(0, 300, 300, 52, 0, 20, 7), 0);	// no travel
+	CHECK_EQ(dragScroll(0, 300, 250, 52, 0, 20, 7), 1);	// 50 up: one row (rounded)
+	CHECK_EQ(dragScroll(0, 300, 320, 52, 0, 20, 7), 0);	// 20 down at the top: nothing to go back to
+	CHECK_EQ(dragScroll(4, 300, 510, 52, 0, 20, 7), 0);	// 210 down from 4: four rows back, clamped at its start
+	CHECK_EQ(dragScroll(2, 300, 60, 52, 0, 20, 7), 7);	// 240 up: five rows on
+	CHECK_EQ(dragScroll(0, 300, 3002, 52, 0, 20, 7), 0);
+	CHECK_EQ(dragScroll(0, 300, -2100, 52, 0, 20, 7), 13);	// the far end: the last window, never past n - shown
+	CHECK_EQ(dragScroll(-1, 300, 300, 46, -1, 20, 7), -1);	// a list with a ".." row keeps its start
+	CHECK_EQ(dragScroll(0, 300, 300, 0, 0, 20, 7), 0);	// (no pitch: nothing moves)
 	// the row under a finger at a drag's lift: its own y in the scrolled list, not one row per scroll step. At a
 	// clamped end (the list can't scroll) the finger still moved over another row; off the rows, the nearest
 	CHECK_EQ(rowAt(200, 120, 0, 7, 8), 1);

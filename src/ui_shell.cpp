@@ -313,7 +313,11 @@ namespace bp
 		if (x < lay::RAIL_W)
 		{
 			int at = lay::railAt(r, x, y);
-			if (at >= 0) pressedFrame = F_RAIL + at;
+			if (at >= 0)
+			{
+				pressedFrame = F_RAIL + at;
+				fprintf(stderr, "touch: shell rail %s\n", at < (int)cs.size() ? cs[at].label : "Settings");
+			}
 			return true;
 		}
 		// the header: back, More and Search; nothing else there is pressed

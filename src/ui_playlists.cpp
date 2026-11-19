@@ -735,11 +735,13 @@ namespace bp
 		}
 		if (pt.kind == Pointer::Move && plPressRow >= 0)
 		{
+			bool started = !plTouchScrolled;
 			if (!plTouchScrolled && std::abs(y - plTouchY) > 12) plTouchScrolled = true;
 			if (plTouchScrolled)
 			{
-				int moved = (int)std::lround((plTouchY - y) / (double)lay::PL_ROW_PITCH);
-				ui.scroll = std::clamp(plScrollStart + moved, 0, std::max(0, n - l.rows));
+				ui.scroll = lay::dragScroll(plScrollStart, plTouchY, y, lay::PL_ROW_PITCH, 0, n, l.rows);
+				if (started) fprintf(stderr, "touch: playlist drag y %d -> %d, scroll %d -> %d of %d\n", plTouchY, y,
+					plScrollStart, ui.scroll, n);
 			}
 			return true;
 		}

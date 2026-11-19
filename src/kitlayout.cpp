@@ -140,6 +140,13 @@ namespace bp
 			return std::clamp(scroll, 0, std::max(0, n - shown));
 		}
 
+		int dragScroll(int scrollStart, int downY, int y, int rowH, int first, int n, int shown)
+		{
+			int maxScroll = std::max(first, n - shown);
+			int moved = rowH > 0 ? (int)std::lround((downY - y) / (double)rowH) : 0;
+			return std::clamp(scrollStart + moved, first, maxScroll);
+		}
+
 		int rowAt(int y, int rowsY, int scroll, int shown, int n)
 		{
 			if (n <= 0) return 0;

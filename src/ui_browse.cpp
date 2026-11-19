@@ -1823,11 +1823,13 @@ namespace bp
 		{
 			if (filesScrolled || std::abs(y - filesTouchY) > 12)
 			{
+				// a drag scrolls the list (lay::dragScroll: one row a row) and never becomes the tap its lift would be
+				bool started = !filesScrolled;
 				filesScrolled = true;
-				int moved = (int)std::lround((filesTouchY - y) / (double)lay::FILE_ROW_H);
-				int maxScroll = std::max(0, n - f.shown);
-				ui.scroll = std::clamp(filesScrollStart + moved, 0, maxScroll);
+				ui.scroll = lay::dragScroll(filesScrollStart, filesTouchY, y, lay::FILE_ROW_H, 0, n, f.shown);
 				ui.cursor = std::clamp(ui.cursor, ui.scroll, ui.scroll + std::max(0, f.shown - 1));
+				if (started) fprintf(stderr, "touch: files drag y %d -> %d, scroll %d -> %d of %d\n", filesTouchY, y,
+					filesScrollStart, ui.scroll, n);
 			}
 			return false;
 		}
@@ -1872,6 +1874,7 @@ namespace bp
 		{
 			Rect r = f.row(touch - scroll);
 			if (filesScrolled || !r.hit(x, y)) return false;
+			fprintf(stderr, "touch: files tap row %d of %d at %d,%d\n", touch, n, x, y);
 			if (fileSel) filesTickRow(touch);
 			else { ui.cursor = touch; ui.choose(touch, p); }
 		}
@@ -2252,6 +2255,10 @@ namespace bp
 		{
 			// the Extensions drawer: a tile acts as the finger lifts (as Home's do)
 			if (pt.kind == Pointer::Up && !ui.inMenu && browseDir == EXTDIR) return ui.manga->extPointer(pt, x, y, p);
+			// The rebuilt Files page keeps its finger itself (filesTouch/filesPressed): its drag scrolls the list and
+			// its lift is the tap. Without this its downs were the only events it ever saw, so a finger on a row set
+			// the cursor but never opened it, and a drag never scrolled.
+			if (!ui.inMenu && filesPage()) return filesPointer(pt, x, y, p);
 			return false;
 		}
 		// the drawer: its own taps

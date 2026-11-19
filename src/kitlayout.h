@@ -69,6 +69,11 @@ namespace bp
 		// the first row shown so that `cursor` is one of them, the scroll kept inside the list: what LEFT / RIGHT
 		// paging and a tap leave behind
 		int listScroll(int cursor, int scroll, int shown, int n);
+		// A finger's drag down a list: the scroll it asks for. `first` is the row the list can scroll back to (0, or -1
+		// with a ".." row), `rowH` its row pitch (46 on Settings, 52 on Files, 54 on a playlist): a row per rowH the
+		// finger travels, rounded, kept inside what there is. The drag slop (a finger's drift before it is a drag) is
+		// the caller's; both the shell's rebuilt pages and the old list call this, so a list scrolls the same way.
+		int dragScroll(int scrollStart, int downY, int y, int rowH, int first, int n, int shown);
 		// the row under a finger at `y` with the list scrolled to `scroll`: a drag's lift puts the highlight there.
 		// Outside the rows it is the nearest one (above them the first shown, below them the last), and always in 0..n-1
 		int rowAt(int y, int rowsY, int scroll, int shown, int n);
