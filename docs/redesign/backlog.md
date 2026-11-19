@@ -41,9 +41,10 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
 - **The brand mark is the app's icon:** a small flat clapperboard in the theme's roles, one helper (`brandMark()` in
   `src/kit.js`), on every pane that shows it and in the dashboard's header; the full icon stays on the welcome pane.
   components.md › Brand mark.
-- **The visualizers are fifteen**, in this order: Peaks, Ribbon, Mirror bars, Pocket console, Horizon, Grid, Starfield,
-  Strings, Helix, Sparks, Bouncy keys, Rocket, Rain check, Sleepy moon, Dance line. All are drawn by the player in the
-  theme's colours. Sparks, Starfield, Rain check and Sleepy moon fill the whole panel behind the art in Art +
+- **The visualizers are fifteen**, in this order (Faders in Pocket console's place and Lanterns in Rain check's, the
+  owner, 2026-11-19; Lanterns is a band style, so three fill the panel now): Peaks, Ribbon, Mirror bars, Faders, Horizon, Grid, Starfield,
+  Strings, Helix, Sparks, Bouncy keys, Rocket, Lanterns, Sleepy moon, Dance line. All are drawn by the player in the
+  theme's colours. Sparks, Starfield and Sleepy moon fill the whole panel behind the art in Art +
   visualizer, with the art and its lines centred; Rocket's stars fill the panel while the rocket stays in the band.
   The Display grid is 5 × 3; the spec's lists, glyphs and colour rules follow.
 
@@ -125,7 +126,9 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   built. `theme-gundam` keeps the first values beside them.
 - **Match album art, as drawn** (owner): the song's player, the top screen and Quick settings' block; always a dark
   result; a switch in Settings › Music & sound and at the foot of the song's Display sheet. `dyn-art`.
-- **Classic is the default style, Clean the option** (owner): Settings › Power & screens › Style. `clean-style`.
+- **Clean is the look; Classic is not offered** (owner; it takes back “Classic is the default, Clean the option”).
+  No Style row in Settings. Clean as balanced since: keys stay keys. High contrast alone is drawn Classic.
+  `clean-style`.
 - **Held, UP stops at 100%** (owner): the boost takes a fresh press. **UP / DOWN are the volume only on the player.**
 - **No mini bar; Quick settings' Now playing block replaces it everywhere** (owner). No shell page has a bar at its
   foot; the body has the room. The block heads Quick settings on every screen, the player included, and is always
@@ -140,6 +143,37 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
 - **A playing mark on the rail** (owner), instead of only the header's bars: while something is loaded the rail has
   a Now playing key, and one tap on it opens the player. Details chosen for it are in the waiting list.
 
+- **In Clean, the player's and the photo viewer's keys stay Classic** (owner). Covered: the transport row and the
+  Like · Playlist · List · Stop row on a video and a song; Zoom −, Zoom +, Rotate, Fit, Previous, Next on a photo.
+  Edges, lips, solid fills, radius 10, outlined caps, as in Classic. Also covered (owner, the same day): the
+  player's setting chips (Subtitles, Audio, Picture, Speed, Repeat; Sound, Sound FX, Display, Speed, Shuffle), on its
+  face and in its More. Not covered (they stay Clean): the header's Back and More, the chapter and Next lines, the
+  hint bar, and the rest of the sheets opened from those screens.
+  components.md › Clean style, rule 7; drawn on `clean-style`.
+
+- **Match album art's backdrop, the owner's pipeline:** resize the art (to 160 × 120), a real Gaussian blur (40
+  units at panel scale, σ 10 at the working size), the dominant colours taken from the art, a dark vertical gradient
+  over the blur (the palette's BG at 66 / 60 / 80 / 90 / 94% at y 0 / 120 / 168 / 330 / 480, deepened for a bright
+  art), and the result cached by the artwork's hash (`<state dir>/artbg/`, 16 MB, oldest dropped). The flat scrim is
+  gone. components.md › Match album art; `dyn-art`.
+
+- **In Clean, keys stay keys** (owner: “the border also applies to big buttons”). Every labelled key keeps its
+  Classic look (edge, lip, solid fill): the player's and the photo viewer's (as decided), Home's Resume / Pause and
+  its three shortcuts, an empty page's keys, every sheet's and panel's action keys (More's four tiles and Quick
+  settings' Previous / Play / Next and Quit among them), the readers' key rows and the Book bar, an album's Play /
+  Shuffle / Add. Clean still cleans the page: rows, cards and tiles that go somewhere or hold a value, chips, tabs,
+  the rail, the header's icons, the two lines of the player, steppers, caps, pills, the hint bar. components.md ›
+  Clean style, rule 7.
+
+- **The keyboard is all keys** (as drawn): every key of it Classic, in Clean too.
+
+- **Match album art is constrained** (owner; it takes back the palette worked out from the art): “artwork
+  influences the atmosphere, not the UI identity.” The art gives one hue (median cut, then near-black, near-white,
+  extreme and rare colours dropped), blended at 15% saturation into the theme's fixed charcoal; the blurred art
+  (Gaussian, 40 units) lies behind the player under the dark vertical gradient; accent, text, keys, chips and
+  controls stay the theme's; a neutral dark gradient when the art gives nothing, cannot be protected, or its hue is
+  opposite the accent's. Cached by the art's hash as before. components.md › Match album art; `dyn-art`.
+
 ## Decisions waiting on the owner
 
 Each was needed to draw a gap; the drawn one is the recommendation.
@@ -151,6 +185,11 @@ Each was needed to draw a gap; the drawn one is the recommendation.
   mini bar's hold did. L / R pass it by; SELECT is its key. The header's status cluster still opens Quick settings,
   and the header keeps its playing bars (a book and a photo have no rail). Or: under Search at the top; or a hold
   that opens Quick settings; or no kept place (the cells would jump when playback starts).
+
+- **Match album art in a light theme.** Drawn: the top screen only (it is dark in every theme); the bottom screen
+  keeps the theme's light ground, with no backdrop, so the theme stays itself. Or: the player goes dark for a song,
+  on the theme's top-screen colours (its keys and accent would change: against the rule); or a pale wash of the art
+  over the light ground (possible, but the gradient has to pass 90% to keep dark text readable, so little shows).
 
 From the gaps:
 
