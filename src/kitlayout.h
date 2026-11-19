@@ -623,5 +623,108 @@ namespace bp
 		CoverTile coverTile(Box box, bool title, bool progress);
 		// n tiles in `cols` columns, COVER_W wide, 14 apart, `cellH` tall (the cell's own height), top down
 		std::vector<Box> coverCells(Box area, int n, int cols, int cellH);
+
+		// ==== Music, Videos, Books and Search (2026-11-19: the pages the next screens need; docs/redesign/
+		// src/screens.js: music-albums, music-artists, videos, books, search-results) ====
+
+		// ---- an album: a 96-square cover, its name and its artist under it, a now-playing mark in the art's corner ----
+		// The grid is the mock-up's `.alb`: five to a row, 14 between the columns, 12 between the rows. The album's
+		// name is one line (Pixelify 13), the artist one (Inter 12); the mark is 22 square, 8 inside the art's top right.
+		constexpr int ALBUM_ART = 96, ALBUM_COL_GAP = COVER_GAP, ALBUM_ROW_GAP = SP12;
+		constexpr int ALBUM_TITLE_GAP = SP6, ALBUM_TITLE_H = 16, ALBUM_ARTIST_GAP = SP2, ALBUM_ARTIST_H = 14;
+		constexpr int ALBUM_CELL_H = ALBUM_ART + ALBUM_TITLE_GAP + ALBUM_TITLE_H + ALBUM_ARTIST_GAP + ALBUM_ARTIST_H;
+		constexpr int ALBUM_MARK = 22, ALBUM_MARK_INSET = SP8;
+		struct AlbumTile
+		{
+			Box box, cover, title, artist, mark;
+		};
+		AlbumTile albumTile(Box box);
+		// The albums in `cols` columns: `first` is the row at the top (a scroll, clamped), so a cell of a row
+		// scrolled out lies above `area`; `shown` is the whole rows that fit. The caller draws `cell[i]`.
+		struct AlbumGrid
+		{
+			Box area;
+			int cols = 5, cellW = ALBUM_ART, cellH = ALBUM_CELL_H, colGap = ALBUM_COL_GAP, rowGap = ALBUM_ROW_GAP;
+			int albums = 0, rows = 0, shown = 0, first = 0;
+			std::vector<Box> cell;
+			Box rowBox(int r) const;
+		};
+		AlbumGrid albumGrid(Box area, int albums, int first = 0, int cols = 5);
+
+		// ---- an artist's row: a 40 disc (the first letter) or its art, the name, "3 albums · 34 songs" ----
+		// Rows are 60 tall, as a Music/Videos row is: the name and its line on the row's middle, a chevron at the right
+		constexpr int ARTIST_ROW_H = 60, ARTIST_ART = 40, ARTIST_ART_GAP = SP12;
+		struct ArtistRow
+		{
+			Box row, art, name, second;
+			int right = 0, chevronX = 0;
+		};
+		ArtistRow artistRow(Box row);
+
+		// ---- Music's page head: the line under the title, then the view chips (Albums / Artists / Playlists) ----
+		// `chipWidths` is Kit::filterWidths' answer (the labels carry their counts); the chips are 44 tall, 8 under
+		// the line, and `chips` is the same lay::FilterChips the touches test.
+		struct MusicHeader
+		{
+			Box line, strip;
+			FilterChips chips;
+		};
+		MusicHeader musicHeader(Box body, const std::vector<int>& chipWidths);
+
+		// ---- a Videos row: a 64 x 36 (16:9) thumbnail or the kind's mark, the title, the length at the right, a
+		// size/date line under it, and a thin resume bar along the row's foot ----
+		constexpr int VIDEO_ROW_H = 60, VIDEO_THUMB_W = 64, VIDEO_THUMB_H = 36, VIDEO_BAR_H = 3;
+		struct VideoRow
+		{
+			Box row, thumb, name, note, second, bar;
+			int right = 0;
+		};
+		VideoRow videoRow(Box row);
+		// A folder inside Videos: a 44 tile, the folder's name and its counts, a chevron; the same 60 tall
+		constexpr int FOLDER_ROW_H = 60, FOLDER_TILE = 44;
+		struct FolderRow
+		{
+			Box row, tile, name, second, chevron;
+			int right = 0;
+		};
+		FolderRow folderRow(Box row);
+
+		// ---- the Books shelf: a "Reading now" strip of cover cells, then the shelf's grid ----
+		// The strip is one row of lay::coverCells at COVER_CELL_H (title and progress bar); the shelf's cells are
+		// COVER_H + the title (no bar, as the mock-up's shelf), five to a row, 14 apart, `first` rows scrolled.
+		constexpr int SHELF_HEAD_GAP = SP8, SHELF_GROUP_GAP = SP12;
+		constexpr int SHELF_CELL_H = COVER_H + COVER_TITLE_GAP + COVER_TITLE_H;
+		struct BooksShelf
+		{
+			Box area;
+			int cols = 5;
+			Box readingHead, readingStrip, shelfHead, shelfGrid;
+			std::vector<Box> reading;	// the strip's cells (title and progress: lay::coverTile(cell, true, true))
+			std::vector<Box> shelf;		// the shelf's cells (title only: lay::coverTile(cell, true, false))
+			int rows = 0, shown = 0, first = 0;
+		};
+		BooksShelf booksShelf(Box body, int readingNow, int shelfCount, int first = 0);
+
+		// ---- Search's page: the field, then a group's heading and its result rows, then Recent searches and
+		// their Clear row ----
+		// Groups are skipped when they hold nothing; 12 between a group and the next, 8 under a heading. The rows
+		// are lay::RESULT_ROW_H (50); a recent one 50; Clear 46, 6 under the last recent. Everything is positioned;
+		// the caller draws what the page's body holds.
+		constexpr int SEARCH_GROUP_GAP = SP12, SEARCH_HEAD_GAP = SP8, SEARCH_CLEAR_GAP = SP6;
+		constexpr int SEARCH_RECENT_H = RESULT_ROW_H, SEARCH_CLEAR_H = 46;
+		struct SearchGroup
+		{
+			Box head;
+			int firstRow = 0, rows = 0;	// its rows' place in SearchPage::row
+		};
+		struct SearchPage
+		{
+			Box area, field;
+			std::vector<SearchGroup> group;
+			std::vector<Box> row;		// every result row, in group order
+			Box recentHead{}, clear{};	// w 0: no recent list (clear: none)
+			std::vector<Box> recent;
+		};
+		SearchPage searchPage(Box body, const std::vector<int>& groupRows, int recentCount = 0, bool clear = true);
 	}
 }

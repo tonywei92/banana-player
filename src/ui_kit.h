@@ -441,6 +441,55 @@ namespace bp
 			bool caps = false;
 		};
 		void sectionLine(const lay::SectionLine& l, const SectionLine& s);
+
+		// ==== Music, Videos, Books and Search (ui_kit_variants.cpp; docs/notes/2026-11-19-kit-pages.md):
+		// the album tile and its grid, the artist row, the video and folder rows, the Books shelf's book cover,
+		// and Search's page. Layouts: kitlayout.h's same block. ====
+
+		// An album cell: the 96-square art (the caller's picture, else the Art placeholder keyed by the album), the
+		// album's name, its artist, and a "now playing" mark (a yellow square with a play or pause mark) in the art's
+		// top right. Focused: the 3-unit ACCENT outline 2 clear of the art, as a Cover cell has it.
+		struct Album
+		{
+			std::function<void(Rect)> art;
+			std::string artKey, title, artist;
+			bool playing = false, paused = false, focused = false, off = false;
+		};
+		void albumTile(const lay::AlbumTile& l, const Album& a);
+
+		// An artist's row: the caller's picture or a disc with the name's first letter, the name and its line. The
+		// disc's fill is a tint of ACCENT over BUTTON, the letter in ACCENT (the same in every theme's roles).
+		struct Artist
+		{
+			std::function<void(Rect)> art;
+			std::string name, second;
+			bool focused = false, pressed = false, off = false;
+		};
+		void artistRow(const lay::ArtistRow& l, const Artist& a);
+
+		// A Videos row: a 64 x 36 thumbnail (the caller's frame, else the kind's mark on TRACK), the title and the
+		// length (right), a size/date line under it, a tick when finished, and a 3-unit resume bar at the foot when
+		// resume is 0..1. A folder row is the 44 tile, the folder's name and counts, and a chevron.
+		struct Video
+		{
+			std::function<void(Rect)> art;
+			const Glyph* glyph = nullptr;	// the kind's mark (G_FILM when none is given)
+			std::string name, note, second;
+			double resume = -1;	// -1: no bar (not started); 1: finished
+			bool done = false, focused = false, pressed = false, off = false;
+		};
+		void videoRow(const lay::VideoRow& l, const Video& v);
+		struct Folder
+		{
+			std::string name, second, note;
+			bool focused = false, pressed = false, off = false;
+		};
+		void folderRow(const lay::FolderRow& l, const Folder& f);
+
+		// A book's drawn cover (a Cover cell with no picture): a sleeve in BUTTON, the spine in PRESSED with the
+		// ACCENT mark, and the title's bars in TEXT and DIM, their widths keyed by the book's name so a shelf is not
+		// one drawing repeated. The song's record-in-its-sleeve would read as an album on the Books page.
+		void bookPlaceholder(Rect r, const std::string& key, int rad = 5);
 	};
 
 	// ---- the More sheet's list (Ui::openMore; ui_more.cpp) ----

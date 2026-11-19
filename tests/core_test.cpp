@@ -2,6 +2,7 @@
 #include "kitlayout.h"
 #include "songlayout.h"
 #include "artph.h"
+#include "artbackdrop.h"
 #include "viznative.h"
 #include "slider.h"
 #include "filesave.h"
@@ -10107,6 +10108,123 @@ static void testKitLayoutLists()
 	for (auto& b : two) CHECK(insidePanel(b));
 }
 
+// ---- the Music, Videos, Books and Search pieces (kitlayout.h's 2026-11-19 second block): an album cell and its
+// grid, an artist's row, Music's head, a video's and a folder's row, the Books shelf, Search's page ----
+static void testKitLayoutPages()
+{
+	using namespace lay;
+	// an album: 96-square art, the name and artist under it, the now-playing mark 8 inside the art's top right
+	AlbumTile a = albumTile({16, 100, ALBUM_ART, ALBUM_CELL_H});
+	CHECK_EQ(a.cover.w, 96);
+	CHECK_EQ(a.cover.h, 96);
+	CHECK(a.title.y >= a.cover.y + a.cover.h);
+	CHECK(a.artist.y >= a.title.y + a.title.h);
+	CHECK_EQ(a.mark.w, ALBUM_MARK);
+	CHECK_EQ(a.mark.x + a.mark.w, a.cover.x + a.cover.w - ALBUM_MARK_INSET);
+	CHECK_EQ(a.mark.y, a.cover.y + ALBUM_MARK_INSET);
+	CHECK(a.artist.y + a.artist.h <= a.box.y + a.box.h);
+	// the grid: five across 96 wide 14 apart, rows ALBUM_CELL_H tall 12 apart; a scrolled row lies above the area
+	AlbumGrid g = albumGrid({16, 100, 608, 320}, 12);
+	CHECK_EQ(g.cols, 5);
+	CHECK_EQ(g.rows, 3);
+	CHECK_EQ((int)g.cell.size(), 12);
+	CHECK_EQ(g.cell[1].x, g.cell[0].x + ALBUM_ART + ALBUM_COL_GAP);
+	CHECK_EQ(g.cell[4].x + g.cell[4].w, 16 + 5 * ALBUM_ART + 4 * ALBUM_COL_GAP);
+	CHECK_EQ(g.cell[5].y, g.cell[0].y + ALBUM_CELL_H + ALBUM_ROW_GAP);
+	CHECK(g.cell[4].y + g.cell[4].h <= 420);
+	CHECK_EQ(g.first, 0);
+	CHECK_EQ(g.shown, 2);
+	AlbumGrid sc = albumGrid({16, 100, 608, 320}, 12, 1);
+	CHECK_EQ(sc.first, 1);
+	CHECK_EQ(sc.cell[0].y, 100 - (ALBUM_CELL_H + ALBUM_ROW_GAP));
+	CHECK_EQ(sc.cell[5].y, 100);
+	CHECK_EQ(sc.rowBox(0).y, 100 - (ALBUM_CELL_H + ALBUM_ROW_GAP));
+	CHECK_EQ(sc.rowBox(0).h, ALBUM_CELL_H);
+	CHECK_EQ(albumGrid({16, 100, 608, 320}, 12, 99).first, 1);	// the last whole window
+	CHECK_EQ(albumGrid({16, 100, 608, 320}, 0).rows, 0);
+
+	// an artist: a 40 disc, the name, its line under it, the chevron at the row's right
+	ArtistRow ar = artistRow({16, 100, 608, ARTIST_ROW_H});
+	CHECK_EQ(ar.row.h, 60);
+	CHECK_EQ(ar.art.w, 40);
+	CHECK_EQ(ar.art.h, 40);
+	CHECK_EQ(ar.art.y, 110);
+	CHECK(ar.name.x > ar.art.x + ar.art.w);
+	CHECK(ar.second.y > ar.name.y);
+	CHECK(ar.second.y + ar.second.h <= ar.row.y + ar.row.h);
+	CHECK(ar.chevronX <= ar.right && ar.chevronX >= ar.right - 14);
+
+	// Music's head: the page's line 22, the chips' 44 strip 8 under it, the chips inside it
+	MusicHeader mh = musicHeader({90, 60, 538, 300}, {84, 82, 96});
+	CHECK_EQ(mh.line.h, LINE_H);
+	CHECK_EQ(mh.strip.y, 60 + LINE_H + 8);
+	CHECK_EQ(mh.strip.h, CHIP_STRIP);
+	CHECK_EQ((int)mh.chips.chip.size(), 3);
+	CHECK(mh.chips.chip[0].y >= mh.strip.y && mh.chips.chip[0].y + mh.chips.chip[0].h <= mh.strip.y + mh.strip.h);
+
+	// a video: a 64 x 36 (16:9) thumb, the title, the length at the right, the second line, the bar at the foot
+	VideoRow v = videoRow({16, 100, 608, VIDEO_ROW_H});
+	CHECK_EQ(v.row.h, 60);
+	CHECK_EQ(v.thumb.w, 64);
+	CHECK_EQ(v.thumb.h, 36);
+	CHECK_EQ(v.thumb.y, 112);
+	CHECK(v.name.x > v.thumb.x + v.thumb.w);
+	CHECK_EQ(v.note.x + v.note.w, 612);
+	CHECK(v.second.y > v.name.y);
+	CHECK_EQ(v.bar.h, VIDEO_BAR_H);
+	CHECK_EQ(v.bar.x, v.name.x);
+	CHECK(v.bar.y + v.bar.h <= v.row.y + v.row.h);
+	CHECK_EQ(v.right, 612);
+
+	// a folder row: the 44 tile, the name and counts, a chevron
+	FolderRow fr = folderRow({16, 160, 608, FOLDER_ROW_H});
+	CHECK_EQ(fr.tile.w, 44);
+	CHECK_EQ(fr.tile.h, 44);
+	CHECK(fr.name.x > fr.tile.x + fr.tile.w);
+	CHECK(fr.second.y > fr.name.y);
+	CHECK_EQ(fr.chevron.x + fr.chevron.w, 612);
+
+	// the Books shelf: Reading now (title and progress cells) then the shelf (title cells); one shelf row fits
+	BooksShelf b = booksShelf({16, 4, 608, 440}, 5, 10);
+	CHECK_EQ((int)b.reading.size(), 5);
+	CHECK_EQ(b.readingHead.y, 4);
+	CHECK_EQ(b.reading[0].y, 4 + LINE_H + SHELF_HEAD_GAP);
+	CHECK_EQ(b.reading[0].h, COVER_CELL_H);
+	CHECK_EQ(b.reading[1].x, b.reading[0].x + COVER_W + COVER_GAP);
+	CHECK_EQ(b.shelfHead.y, b.reading[0].y + COVER_CELL_H + SHELF_GROUP_GAP);
+	CHECK_EQ((int)b.shelf.size(), 10);
+	CHECK_EQ(b.shelf[0].h, SHELF_CELL_H);
+	CHECK_EQ(b.shelf[0].y, b.shelfHead.y + LINE_H + SHELF_HEAD_GAP);
+	CHECK_EQ(b.shelf[5].y, b.shelf[0].y + SHELF_CELL_H + COVER_GAP);
+	CHECK_EQ(b.shown, 1);
+	CHECK_EQ(b.rows, 2);
+	CHECK_EQ(b.first, 0);
+	CHECK_EQ(booksShelf({16, 4, 608, 440}, 5, 10, 9).first, 1);
+	CHECK_EQ((int)booksShelf({16, 4, 608, 440}, 3, 0).reading.size(), 3);
+
+	// Search: the field 48, a heading and its rows, then Recent searches and Clear; an empty group is left out
+	SearchPage p = searchPage({16, 4, 608, 440}, {1, 1}, 2);
+	CHECK_EQ(p.field.y, 4);
+	CHECK_EQ(p.field.h, SEARCH_FIELD_H);
+	CHECK_EQ((int)p.group.size(), 2);
+	CHECK_EQ(p.group[0].head.y, 4 + SEARCH_FIELD_H + SEARCH_GROUP_GAP);
+	CHECK_EQ(p.group[0].firstRow, 0);
+	CHECK_EQ(p.group[0].rows, 1);
+	CHECK_EQ((int)p.row.size(), 2);
+	CHECK_EQ(p.row[0].y, p.group[0].head.y + LINE_H + SEARCH_HEAD_GAP);
+	CHECK_EQ(p.row[0].h, RESULT_ROW_H);
+	CHECK_EQ(p.group[1].head.y, p.row[0].y + RESULT_ROW_H + SEARCH_GROUP_GAP);
+	CHECK_EQ(p.group[1].firstRow, 1);
+	CHECK_EQ(p.recentHead.y, p.row[1].y + RESULT_ROW_H + SEARCH_GROUP_GAP);
+	CHECK_EQ((int)p.recent.size(), 2);
+	CHECK_EQ(p.recent[0].y, p.recentHead.y + LINE_H + SEARCH_HEAD_GAP);
+	CHECK_EQ(p.clear.y, p.recent[1].y + SEARCH_RECENT_H + SEARCH_CLEAR_GAP);
+	CHECK_EQ(p.clear.h, SEARCH_CLEAR_H);
+	CHECK(p.clear.y + p.clear.h <= 444);
+	CHECK_EQ(searchPage({16, 4, 608, 440}, {0, 2}, 0).group.size(), 1);
+	CHECK_EQ(searchPage({16, 4, 608, 440}, {0}, 0, false).clear.w, 0);
+}
+
 // ---- kit-new's layouts (kitlayout.h's kit-new block): one named test each ----
 static bool kitInside(lay::Box b, int w, int h) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= w && b.y + b.h <= h; }
 static bool kitApart(lay::Box a, lay::Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; }
@@ -13429,6 +13547,205 @@ static void testArtPlaceholder()
 	CHECK_EQ(artph::shape(120, "abc").record % 2, 0);
 }
 
+// ---- Match album art's pure half (artbackdrop.h): synthetic arts, the hue and the filters, the theme's stops and
+// the cache's bytes ----
+template <typename F>
+static std::vector<uint8_t> artImage(int w, int h, F paint)
+{
+	std::vector<uint8_t> px((size_t)w * h * 4, 0);
+	for (int y = 0; y < h; y++)
+		for (int x = 0; x < w; x++)
+		{
+			uint8_t* p = px.data() + ((size_t)y * w + x) * 4;
+			p[3] = 255;
+			paint(x, y, p);
+		}
+	return px;
+}
+
+static void testArtBackdrop()
+{
+	using namespace artbg;
+	auto solid = [](uint8_t r, uint8_t g, uint8_t b) {
+		return [=](int, int, uint8_t* p) { p[0] = r; p[1] = g; p[2] = b; };
+	};
+	// black, white and grey have nothing to give: no hue, and the theme's fallback
+	int flat[3][3] = {{0, 0, 0}, {255, 255, 255}, {128, 128, 128}};
+	for (auto& c : flat)
+	{
+		auto px = artImage(64, 48, solid(c[0], c[1], c[2]));
+		Art a = artBackdrop(px.data(), 64, 48);
+		CHECK_EQ(a.hasHue, false);
+		CHECK_EQ((int)a.rgb.size(), W * H * 3);
+		CHECK_EQ(a.l95top, c[0] == 0 ? 0 : (c[0] == 255 ? 255 : a.l95top));
+		CHECK(a.l95low >= 0 && a.l95low <= 255);
+	}
+	// a black art's picture is black; a white one's is white (its saturation is nothing to scale)
+	{
+		auto px = artImage(64, 48, solid(0, 0, 0));
+		Art a = artBackdrop(px.data(), 64, 48);
+		CHECK_EQ(a.l95top, 0);
+		CHECK_EQ(a.l95low, 0);
+		CHECK_EQ(a.rgb[0], 0);
+	}
+	{
+		auto px = artImage(64, 48, solid(255, 255, 255));
+		Art a = artBackdrop(px.data(), 64, 48);
+		CHECK_EQ(a.l95top > 245, true);
+		CHECK_EQ(a.l95low > 245, true);
+	}
+	// a neon green is over 85% saturation: dropped like a grey
+	{
+		auto px = artImage(64, 48, solid(0, 255, 0));
+		CHECK_EQ(artBackdrop(px.data(), 64, 48).hasHue, false);
+	}
+	// one colour with a hue: orange (about 26 degrees)
+	{
+		auto px = artImage(64, 48, solid(200, 120, 60));
+		Art a = artBackdrop(px.data(), 64, 48);
+		CHECK_EQ(a.hasHue, true);
+		CHECK(std::abs(a.hue - 26) <= 8);
+		CHECK_EQ((int)a.rgb.size(), W * H * 3);
+		CHECK(a.l95top > 40 && a.l95top < 160);
+		CHECK(a.l95low > 40 && a.l95low < 160);
+	}
+	// a two-colour art: the larger share (70% red) gives the hue, and the blur mixes them where they meet
+	{
+		auto px = artImage(64, 48, [](int x, int, uint8_t* p) {
+			if (x < 45) { p[0] = 200; p[1] = 80; p[2] = 60; }
+			else { p[0] = 60; p[1] = 90; p[2] = 200; }
+		});
+		Art a = artBackdrop(px.data(), 64, 48);
+		CHECK_EQ(a.hasHue, true);
+		CHECK(std::abs(a.hue - 9) <= 12);
+		// the middle of the picture is no longer either colour alone (the sigma 10 blur crosses the split)
+		size_t mid = ((size_t)60 * W + 80) * 3;
+		CHECK(a.rgb[mid + 2] > 60);	// the blue side has reached the red
+		CHECK(a.rgb[mid] > 60);
+	}
+	// a tiny or empty art: the fallback, no picture
+	{
+		Art a = artBackdrop(nullptr, 0, 0);
+		CHECK_EQ(a.hasHue, false);
+		CHECK_EQ((int)a.rgb.size(), 0);
+	}
+}
+
+static void testArtBackdropTheme()
+{
+	using namespace artbg;
+	const ThemeColours dark{{0, 0, 0}, {18, 17, 22}, {232, 226, 211}, {171, 165, 151}, {255, 210, 63}};
+	// a hue: the tinted ground, no fallback, five stops raised from the mock-up's 66 / 60 / 80 / 90 / 94
+	Backdrop b = backdropFor(dark, 26, 40, 70);
+	CHECK_EQ(b.fallback, false);
+	CHECK_EQ(b.stop[0], b.ground);
+	CHECK_EQ((int)b.stop[4].r, (int)b.ground.r);
+	CHECK(b.veil[0] >= 66 && b.veil[0] <= 96);
+	CHECK(b.veil[1] >= 60 && b.veil[1] <= 96);
+	CHECK(b.veil[2] >= 80 && b.veil[2] <= 96);
+	CHECK(b.veil[3] >= 90 && b.veil[3] <= 96);
+	CHECK(b.veil[4] >= 94 && b.veil[4] <= 96);
+	// a white picture needs a deeper veil under the bar than a dark one
+	Backdrop bright = backdropFor(dark, 26, 250, 250);
+	CHECK_EQ(bright.fallback, false);
+	CHECK(bright.veil[2] > b.veil[2]);
+	CHECK(bright.veil[4] >= b.veil[4]);
+	// no hue: the neutral gradient, the charcoal 35% to SURFACE at the top and BG at the foot
+	Backdrop f = backdropFor(dark, -1, 0, 0);
+	CHECK_EQ(f.fallback, true);
+	CHECK(f.top.r > dark.bg.r);
+	CHECK_EQ((int)f.bottom.r, (int)dark.bg.r);
+	CHECK_EQ(f.veil[0], 0);
+	// an accent with a colour of its own (blue) clashes with orange art: the fallback
+	const ThemeColours blue{{0, 0, 0}, {18, 17, 22}, {232, 226, 211}, {171, 165, 151}, {0, 80, 220}};
+	CHECK_EQ(backdropFor(blue, 26, 40, 70).fallback, true);
+	// a grey accent has no hue of its own: no clash
+	const ThemeColours grey{{0, 0, 0}, {18, 17, 22}, {232, 226, 211}, {171, 165, 151}, {128, 128, 128}};
+	CHECK_EQ(backdropFor(grey, 26, 40, 70).fallback, false);
+	// the art's own struct feeds the same function
+	Art a;
+	a.hasHue = true;
+	a.hue = 26;
+	a.l95top = 40;
+	a.l95low = 70;
+	CHECK_EQ(backdropFor(dark, a).fallback, false);
+}
+
+static void testArtBackdropCache()
+{
+	using namespace artbg;
+	Art a;
+	a.hasHue = true;
+	a.hue = 210;
+	a.l95top = 40;
+	a.l95low = 70;
+	a.rgb.assign(PIXELS * 3, 7);
+	a.rgb[0] = 1;
+	a.rgb[PIXELS * 3 - 1] = 200;
+	std::vector<uint8_t> bytes = encode(a);
+	CHECK_EQ((int)bytes.size(), 5 + (int)PIXELS * 3);
+	CHECK_EQ((int)bytes[0], (int)CACHE_VERSION);
+	Art b;
+	CHECK_EQ(decode(bytes.data(), bytes.size(), b), true);
+	CHECK_EQ(b.hasHue, true);
+	CHECK_EQ(b.hue, 210);
+	CHECK_EQ(b.l95top, 40);
+	CHECK_EQ(b.l95low, 70);
+	CHECK_EQ(b.rgb.size(), a.rgb.size());
+	CHECK_EQ((int)b.rgb[0], 1);
+	CHECK_EQ((int)b.rgb[PIXELS * 3 - 1], 200);
+	// a wrong length or version is not the file
+	CHECK_EQ(decode(bytes.data(), bytes.size() - 1, b), false);
+	std::vector<uint8_t> wrong = bytes;
+	wrong[0] = 9;
+	CHECK_EQ(decode(wrong.data(), wrong.size(), b), false);
+	// no hue: the header's 0xFFFF
+	a.hasHue = false;
+	Art n;
+	std::vector<uint8_t> nb = encode(a);
+	CHECK_EQ(decode(nb.data(), nb.size(), n), true);
+	CHECK_EQ(n.hasHue, false);
+	CHECK_EQ(n.rgb.size(), a.rgb.size());
+	// the name and the hash
+	CHECK_EQ(cacheName(0x0123456789abcdefull), std::string("0123456789abcdef.bg"));
+	CHECK_EQ(cachePath(1), std::string("artbg/0000000000000001.bg"));
+	const uint8_t data[3] = {1, 2, 3};
+	CHECK_EQ(fnv64(data, 3), fnv64(data, 3));
+	CHECK(fnv64(data, 3) != fnv64(data, 2));
+	CHECK(fnv64(data, 3) != 0);
+	// LRU: four 6 MB files against 16 MB: the oldest two go, in their date's order
+	const size_t mb = 1024u * 1024u;
+	std::vector<CacheFile> files = {{"a", 6 * mb, 10}, {"b", 6 * mb, 30}, {"c", 6 * mb, 20}, {"d", 6 * mb, 40}};
+	std::vector<size_t> drop = evict(files);
+	CHECK_EQ((int)drop.size(), 2);
+	CHECK_EQ((int)drop[0], 0);
+	CHECK_EQ((int)drop[1], 2);
+	// one file over the cap goes alone
+	std::vector<CacheFile> one = {{"big", 20 * mb, 1}};
+	CHECK_EQ((int)evict(one).size(), 1);
+	// nothing to do under the cap; everything goes with a tiny cap
+	CHECK_EQ((int)evict(files, 100 * mb).size(), 0);
+	CHECK_EQ((int)evict(files, 0).size(), 4);
+}
+
+static void testArtBackdropSizes()
+{
+	// an art narrower than 4:3 is cropped top and bottom; a wide one left and right; both give a 160 x 120 picture
+	using namespace artbg;
+	auto px = artImage(80, 80, [](int, int, uint8_t* p) { p[0] = 180; p[1] = 100; p[2] = 70; });
+	Art a = artBackdrop(px.data(), 80, 80);
+	CHECK_EQ(a.hasHue, true);
+	CHECK_EQ((int)a.rgb.size(), W * H * 3);
+	auto wide = artImage(120, 60, [](int, int, uint8_t* p) { p[0] = 180; p[1] = 100; p[2] = 70; });
+	Art w = artBackdrop(wide.data(), 120, 60);
+	CHECK_EQ((int)w.rgb.size(), W * H * 3);
+	// a 1 x 1 art still works (no crash, no hue from a single colour with no saturation)
+	std::vector<uint8_t> one = {200, 100, 50, 255};
+	Art s = artBackdrop(one.data(), 1, 1);
+	CHECK_EQ(s.hasHue, true);
+	CHECK_EQ((int)s.rgb.size(), W * H * 3);
+}
+
 static void testSongLayout()
 {
 	// the title lines are always on (no setting): Album art only, a long title: art 240 at the 40 margin, the text to 600
@@ -13486,6 +13803,10 @@ int main()
 	testSlider();
 	testSongLayout();
 	testArtPlaceholder();
+	testArtBackdrop();
+	testArtBackdropTheme();
+	testArtBackdropCache();
+	testArtBackdropSizes();
 	testVizTheme();
 	testVizSimple();
 	testVizNative();
@@ -13599,6 +13920,7 @@ int main()
 	testKitVariantNotice();
 	testKitVariantBars();
 	testKitLayoutLists();
+	testKitLayoutPages();
 	testKitNewSectionRail();
 	testKitNewPreviewPane();
 	testKitNewBookBar();
