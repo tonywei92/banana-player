@@ -11,7 +11,7 @@ namespace bp
 	// ---- Section rail ----
 
 	void Ui::KitNew::rail(Kit& k, const lay::Rail& r, const std::vector<RailItem>& sections, const RailItem& settings, int active,
-		int pressed, bool searchLit, bool searchPressed, bool npPlaying, bool npPaused, const std::string& npArt)
+		int pressed, bool searchLit, bool searchPressed, bool npPlaying, bool npPaused, const std::function<void(Rect)>& npPicture)
 	{
 		Ui& ui = k.ui;
 		bool clean = theme::drawingClean(), strong = theme::current.strongKeys;
@@ -72,11 +72,12 @@ namespace bp
 		// Settings pinned at the foot
 		cell(r.settings, settings, active == (int)r.cell.size(), pressed == (int)r.cell.size());
 		// Now playing, pinned above Settings: its slot is kept while nothing plays (nothing drawn then). While
-		// something is loaded: the art at 30, then three bars in ACCENT (a pause mark when paused)
-		if (npArt.empty()) return;
+		// something is loaded: the art at 30 (the caller's picture: a song's real art or its placeholder, a
+		// video's kind mark), then three bars in ACCENT (a pause mark when paused)
+		if (!npPicture) return;
 		if (pressed == NP_PRESSED) ui.fillRound(r.np, PRESSED, R_BUTTON);
 		Rect art{r.np.x + 8, r.np.y + (r.np.h - 30) / 2, 30, 30};
-		k.artPlaceholder(art, npArt, 5, true);
+		npPicture(art);
 		int cx = art.x + art.w + (r.np.x + r.np.w - 6 - (art.x + art.w)) / 2;
 		if (npPaused)
 		{

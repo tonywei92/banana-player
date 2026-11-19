@@ -11082,6 +11082,107 @@ static void testKitNewScreenOffWarn()
 	CHECK_EQ(screenOffWords(0), std::string("Screen off in 1 s"));
 }
 
+static void testQuickPanel()
+{
+	using namespace lay;
+	// the handheld's usual six: two level rows (Volume, Brightness), three switch tiles, Quit. The panel
+	// fills the height above the hint bar exactly, its rows at their full 52
+	QuickPanel q = quickPanel(2, 3, 1, true);
+	CHECK_EQ(q.box.x, QUICK_SIDE);
+	CHECK_EQ(q.box.w, QUICK_W);
+	CHECK_EQ(q.box.y, 0);
+	CHECK_EQ(q.box.y + q.box.h, PANEL_H - HINTS_H);
+	CHECK_EQ(q.rowH, QUICK_ROW_H);
+	CHECK_EQ((int)q.level.size(), 2);
+	CHECK_EQ((int)q.tile.size(), 3);
+	// the title line, then 8 apart the Now playing block: the art 48 at its left, Previous 52 / Play 68 /
+	// Next 52 at its right, nothing over anything else
+	CHECK_EQ(q.title.y, q.box.y + QUICK_PAD);
+	CHECK_EQ(q.title.h, QUICK_TITLE_H);
+	CHECK_EQ(q.now.y, q.title.y + q.title.h + QUICK_GAP);
+	CHECK_EQ(q.now.h, QUICK_NOW_H);
+	CHECK_EQ(q.nowArt.x, q.now.x + SP8);
+	CHECK_EQ(q.nowArt.w, 48);
+	CHECK_EQ(q.nowNext.x + q.nowNext.w, q.now.x + q.now.w - SP8);
+	CHECK_EQ(q.nowPlay.x, q.nowNext.x - SP8 - 68);
+	CHECK_EQ(q.nowPrev.x, q.nowPlay.x - SP8 - 52);
+	Box block[] = {q.title, q.now, q.nowArt, q.nowPrev, q.nowPlay, q.nowNext, q.quit};
+	for (Box b : block) CHECK_EQ(kitInside(b, q.box.x + q.box.w, q.box.y + q.box.h) && b.x >= q.box.x && b.y >= q.box.y, true);
+	CHECK_EQ(kitApart(q.title, q.now), true);
+	CHECK_EQ(kitApart(q.now, q.level[0].row), true);
+	for (int i = 0; i < 2; i++)
+	{
+		const QuickLevel& l = q.level[i];
+		CHECK_EQ(l.row.h, QUICK_ROW_H);
+		if (i) CHECK_EQ(l.row.y, q.level[i - 1].row.y + QUICK_ROW_H + QUICK_GAP);
+		// − and + 56 x 44 beside the bar, the number 48 at the row's right, the bar between them: a touch
+		// in it (the caller adds its slack) grabs the level
+		CHECK_EQ(l.minus.w, QUICK_STEP_W);
+		CHECK_EQ(l.minus.h, QUICK_STEP_H);
+		CHECK_EQ(l.plus.w, QUICK_STEP_W);
+		CHECK_EQ(l.plus.h, QUICK_STEP_H);
+		CHECK_EQ(l.number.x + l.number.w, l.row.x + l.row.w - SP12);
+		CHECK_EQ(l.plus.x + l.plus.w, l.number.x - SP8);
+		CHECK_EQ(l.bar.x, l.minus.x + QUICK_STEP_W + SP8);
+		CHECK_EQ(l.bar.x + l.bar.w, l.plus.x - SP8);
+		CHECK_EQ(l.bar.y, l.row.y);
+		CHECK_EQ(l.bar.h, l.row.h);
+		// the touch boxes: a finger on − , on the bar and on + each finds its own piece, and the label and
+		// the icon are the row's left
+		CHECK_EQ(l.minus.hit(l.minus.x + 2, l.row.y + l.row.h / 2), true);
+		CHECK_EQ(l.bar.hit(l.bar.x + l.bar.w / 2, l.row.y + l.row.h / 2), true);
+		CHECK_EQ(l.plus.hit(l.plus.x + 2, l.row.y + l.row.h / 2), true);
+		CHECK_EQ(l.bar.hit(l.plus.x + 2, l.row.y + l.row.h / 2), false);
+		CHECK_EQ(l.icon.x, l.row.x + 12);
+		CHECK_EQ(l.label.x, l.row.x + 36);
+		CHECK_EQ(l.label.w, QUICK_LABEL_W);
+	}
+	// the tiles: two to a row, the third below the first, all as wide as the column
+	CHECK_EQ(q.tile[0].y, q.tile[2].y - QUICK_TILE_H - QUICK_TILE_GAP);
+	CHECK_EQ(q.tile[0].h, QUICK_TILE_H);
+	CHECK_EQ(q.tile[0].x, q.box.x + QUICK_PAD);
+	CHECK_EQ(q.tile[0].w + q.tile[1].w + QUICK_TILE_GAP, q.box.w - 2 * QUICK_PAD);
+	CHECK_EQ(q.tile[1].x, q.tile[0].x + q.tile[0].w + QUICK_TILE_GAP);
+	CHECK_EQ(q.tile[2].x, q.tile[0].x);
+	CHECK_EQ(kitApart(q.tile[0], q.tile[1]), true);
+	CHECK_EQ(kitApart(q.tile[0], q.tile[2]), true);
+	// the Web tile's own key: a 40 x 40 chevron key inside the tile, clear of its switch (the tile's last
+	// 52) and of its neighbours, so a tap on it is not a tap on the tile
+	CHECK_EQ(q.webKey.w, 40);
+	CHECK_EQ(q.webKey.h, 40);
+	CHECK_EQ(q.webKey.x + q.webKey.w, q.tile[1].x + q.tile[1].w - SP12 - 40 - SP8);
+	CHECK_EQ(q.webKey.y, q.tile[1].y + (QUICK_TILE_H - 40) / 2);
+	CHECK_EQ(kitApart(q.webKey, q.tile[0]), true);
+	// the tile's name keeps its room beside it: the icon's 46, the key's 48 and the switch's 52 are all the
+	// tile's label loses of its 276
+	CHECK_EQ(q.webKey.x - SP8 - (q.tile[1].x + 46), 122);
+	// Quit: 46 at the panel's foot, 8 under the last tile
+	CHECK_EQ(q.quit.h, QUICK_QUIT_H);
+	CHECK_EQ(q.quit.y, q.box.y + q.box.h - QUICK_PAD - QUICK_QUIT_H);
+	CHECK_EQ(q.quit.y - QUICK_GAP, q.tile[2].y + q.tile[2].h);
+	// the handheld's seven (the screens' brightness split into Top and Bottom): the level rows share what
+	// is left — never under 24 — so the block, the tiles and Quit keep their size, and it still fits
+	QuickPanel seven = quickPanel(3, 3, 1, true);
+	CHECK_EQ(seven.rowH < QUICK_ROW_H, true);
+	CHECK_EQ(seven.rowH >= QUICK_MIN_ROW, true);
+	CHECK_EQ(seven.box.y + seven.box.h, PANEL_H - HINTS_H);
+	CHECK_EQ(seven.tile[0].h, QUICK_TILE_H);
+	CHECK_EQ(seven.quit.h, QUICK_QUIT_H);
+	CHECK_EQ(seven.now.h, QUICK_NOW_H);
+	CHECK_EQ(seven.level[2].row.y + seven.level[2].row.h + QUICK_GAP, seven.tile[0].y);
+	// fewer pieces: the panel is as tall as what it holds and centred; a lone tile takes the whole row
+	QuickPanel few = quickPanel(2, 1, -1, false);
+	CHECK_EQ(few.rowH, QUICK_ROW_H);
+	CHECK_EQ(few.box.y + few.box.h < PANEL_H - HINTS_H, true);
+	CHECK_EQ(few.box.y, (PANEL_H - HINTS_H - few.box.h) / 2);
+	CHECK_EQ(few.tile[0].w, few.box.w - 2 * QUICK_PAD);
+	CHECK_EQ(few.webKey.w, 0);
+	QuickPanel none = quickPanel(0, 2, -1, false);
+	CHECK_EQ((int)none.level.size(), 0);
+	CHECK_EQ(none.now.y + none.now.h + QUICK_GAP, none.tile[0].y);
+	CHECK_EQ(kitApart(none.now, none.tile[0]), true);
+}
+
 static void testSessionNextPlace()
 {
 	Session s;
@@ -13952,6 +14053,7 @@ int main()
 	testKitNewBookBar();
 	testKitNewAway();
 	testKitNewScreenOffWarn();
+	testQuickPanel();
 	testSessionNextPlace();
 	testTrackList();
 	testSuwayomi();

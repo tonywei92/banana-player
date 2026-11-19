@@ -21,8 +21,9 @@
 
 namespace bp
 {
-	// Home's album art carries this prefix: main sends those answers to Ui::Home, every other key to Manga (Home's
-	// keys are its own, so a Manga series' id cannot collide)
+	// The songs' album art carries this prefix: main sends those answers to Ui's song art cache (Home's cards,
+	// the rail's Now playing key, Quick settings' block share it), every other key to Manga (the prefix keeps
+	// a Manga series' id from ever colliding with one of these)
 	inline constexpr const char* HOME_COVER_KEY = "home:";
 
 	class CoverWorker

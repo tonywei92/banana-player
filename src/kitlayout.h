@@ -725,5 +725,38 @@ namespace bp
 			std::vector<Box> recent;
 		};
 		SearchPage searchPage(Box body, const std::vector<int>& groupRows, int recentCount = 0, bool clear = true);
+
+		// ==== Quick settings (F): the panel centred on the whole screen, over the rail (docs/redesign:
+		// quick, quick-playing; components.md "Quick settings panel") ====
+		// 592 wide (24 from the sides), radius 18, padding 16: the title line 48, the Now playing block 64,
+		// then 8 apart the level rows (52) and the switch tiles two to a row (54), Quit 46 at the foot — as
+		// tall as its rows, centred in the height above the hint bar. When they don't all fit there (the
+		// handheld's seven: Volume, Top, Bottom and the three tiles), the level rows share what is left,
+		// never under 24, so the block, the tiles and Quit keep their size whatever is plugged in.
+		constexpr int QUICK_W = 592, QUICK_SIDE = SP24, QUICK_PAD = SP16, QUICK_GAP = SP8, QUICK_RAD = 18,
+			QUICK_TITLE_H = 48, QUICK_NOW_H = 64, QUICK_ROW_H = 52, QUICK_MIN_ROW = 24,
+			QUICK_TILE_H = 54, QUICK_TILE_GAP = SP8, QUICK_QUIT_H = 46,
+			QUICK_STEP_W = 56, QUICK_STEP_H = 44, QUICK_LABEL_W = 96, QUICK_NUM_W = 48;
+		// a level row's own pieces. `bar` is the whole strip between its − and its +: the track is drawn
+		// centred in it, and a touch anywhere in it grabs the slider (the caller adds the touch's slack)
+		struct QuickLevel
+		{
+			Box row, icon, label, minus, bar, plus, number;
+		};
+		struct QuickPanel
+		{
+			Box box;	// the panel
+			Box title;	// the title line: the name at its left, the battery at its right
+			Box now;	// the Now playing block, always there (idle while nothing plays)
+			Box nowArt, nowPrev, nowPlay, nowNext;	// its 48 art, and Previous 52 / Play 68 / Next 52
+			std::vector<QuickLevel> level;	// the volume and brightness rows, top down
+			std::vector<Box> tile;		// the switch tiles, two to a row
+			Box webKey{};		// the Web tile's own key, while the dashboard is on (w 0 without one)
+			Box quit;
+			int rowH = QUICK_ROW_H;	// the level rows' height: 52, or less when they don't fit
+		};
+		// levels: the volume and brightness rows; tiles: the switch tiles; webTile: which tile is the Web
+		// dashboard's (-1 none); webKey: that tile's own key is drawn (the dashboard is on)
+		QuickPanel quickPanel(int levels, int tiles, int webTile = -1, bool webKey = false);
 	}
 }

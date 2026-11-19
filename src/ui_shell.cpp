@@ -417,9 +417,11 @@ namespace bp
 		if (searchUp && !ui.findOverlay("alert")) searchUp = false;
 		const Player& bp = ui.barPlayer(p);
 		bool live = bp.playing() && !bp.playingPhoto();
-		// the rail's Now playing key: its art, its bars (moving while it plays) and its pause mark
+		// the rail's Now playing key: its art (a song's arrives: artSerial; a video shows its kind mark), its
+		// bars (moving while it plays) and its pause mark
 		std::string np = live ? bp.artPlaceholderKey() : "";
 		if (live && !bp.paused) np += "." + std::to_string(SDL_GetTicks() / 166);
+		if (live) np += "|" + std::string(bp.playingAudio() ? "a" : "v") + std::to_string(ui.artSerial);
 		return "|sh" + std::to_string((int)section(p)) + "." + std::to_string(at) + "." + std::to_string(pressedFrame) +
 			"." + std::to_string(railScroll) + (searchUp ? "S" : "") + "|np" + (live ? "1" : "0") + (live && bp.paused ? "p" : "") + np;
 	}
@@ -482,8 +484,12 @@ namespace bp
 		if (searchUp && !ui.findOverlay("alert")) searchUp = false;
 		const Player& bp = ui.barPlayer(p);
 		bool live = bp.playing() && !bp.playingPhoto();
+		// the key's art, drawn by Ui: a song's real cover (its placeholder until the worker answers), a
+		// video's kind mark — the same box the block and Home's cards show
+		std::function<void(Rect)> npPicture;
+		if (live) npPicture = [this, &bp](Rect r) { ui.drawNowArt(bp, r, 5); };
 		KitNew::rail(k, r, items, settings, activeIndex(cs, at), pressedFrame >= F_RAIL ? pressedFrame - F_RAIL : pressedFrame == F_NP ? KitNew::NP_PRESSED : -1,
-			searchUp, pressedFrame == F_SEARCH, live, live && bp.paused, live ? bp.artPlaceholderKey() : "");
+			searchUp, pressedFrame == F_SEARCH, live, live && bp.paused, npPicture);
 		drawHeader(h, p);
 		k.hints(s.hints, h.hints);
 	}
