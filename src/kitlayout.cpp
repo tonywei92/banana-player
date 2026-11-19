@@ -739,5 +739,62 @@ namespace bp
 			m.step = p * 100000 + step;
 			return m;
 		}
+
+		// ---- Files ----
+
+		FilesPage filesPage(Box body, int rows, bool select, bool footer)
+		{
+			FilesPage f{};
+			f.body = body;
+			// the page's own side margin inside the shell's main (the rail is already out)
+			Box inner{body.x + MARGIN, body.y, body.w - 2 * MARGIN, body.h};
+			f.rows = inner;
+			if (select)
+			{
+				Box bar{inner.x, body.y + body.h - FILE_SELBAR_H, inner.w, FILE_SELBAR_H};
+				for (int i = 0; i < 4; i++) f.bar[i] = cell(bar, 4, GAP, i);
+				f.rows.h = bar.y - FILE_SELBAR_GAP - body.y;
+			}
+			if (footer && !select)
+			{
+				f.footer = {inner.x, body.y + body.h - FILE_FOOT_H, inner.w, FILE_FOOT_H};
+				f.rows.h = body.h - FILE_FOOT_H;
+			}
+			f.shown = std::clamp(rows, 0, std::max(0, f.rows.h / FILE_ROW_H));
+			return f;
+		}
+
+		FilesHeader filesHeader(Box header)
+		{
+			FilesHeader f{};
+			int cy = header.y + header.h / 2;
+			f.back = {header.x + 10, header.y + 3, 56, 48};
+			f.backHit = {header.x, header.y, 70, header.h};
+			f.more = {header.x + header.w - 66, header.y + 3, 56, 48};
+			f.moreHit = {header.x + header.w - 70, header.y, 70, header.h};
+			// the title's line and the crumb's under it, beside the back key (the shell's 54-tall strip)
+			f.title = {f.back.x + f.back.w + 10, header.y + 4, f.more.x - (f.back.x + f.back.w + 10) - 8, 28};
+			f.crumb = {f.title.x, cy + 2, f.title.w, 18};
+			f.right = f.title.x + f.title.w;
+			return f;
+		}
+
+		FilesClip filesClipBar(Box body)
+		{
+			FilesClip c{};
+			c.box = {body.x + MARGIN, body.y + body.h - CLIPBAR_H, body.w - 2 * MARGIN, CLIPBAR_H};
+			int y = c.box.y + (CLIPBAR_H - CLIP_KEY_H) / 2;
+			c.key[1] = {c.box.x + c.box.w - 8 - 110, y, 110, CLIP_KEY_H};
+			c.key[0] = {c.key[1].x - 8 - 170, y, 170, CLIP_KEY_H};
+			c.text = {c.box.x + 14, c.box.y, c.key[0].x - 10 - (c.box.x + 14), CLIPBAR_H};
+			return c;
+		}
+
+		Box fileInfoRow(Box body, int i)
+		{
+			return {body.x + MARGIN, body.y + 8 + i * FILE_INFO_ROW, body.w - 2 * MARGIN, FILE_INFO_ROW};
+		}
+
+		int fileInfoShown(Box body) { return std::max(0, (body.h - 16) / FILE_INFO_ROW); }
 	}
 }

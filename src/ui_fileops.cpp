@@ -8,6 +8,7 @@
 #include "ui_home.h"
 #include "ui_docs.h"
 #include "ui_manga.h"
+#include "ui_kit.h"
 #include "treecopy.h"
 #include "pagebook.h"
 #include "netpath.h"
@@ -41,6 +42,9 @@ namespace bp
 		bool net = false;
 		XferEnd srcEnd, destEnd;
 		std::string newName, openAfter;
+		// a group Copy / Move (the select bar's): every source, and what landed (for pathMoved), under m
+		std::vector<std::string> srcs;
+		std::vector<std::pair<std::string, std::string>> moved;
 		std::atomic<uint64_t> done{0}, total{0};
 		std::atomic<bool> cancel{false}, finished{false};
 		std::mutex m;
@@ -128,6 +132,81 @@ namespace bp
 					j->name = name;
 				}
 				if (!err.empty()) fail(err);
+				j->finished = true;
+				return;
+			}
+			if (!j->srcs.empty())
+			{
+				// a group (the select bar's Copy / Move): measured first, then each file written out of sight;
+				// a move's originals go only once every copy is complete, and a cancel takes back what was made
+				uint64_t total = 0;
+				for (const std::string& src : j->srcs)
+				{
+					TreeInfo info;
+					if (!scanTree(src, info))
+					{
+						fail(info.bad.empty() ? "\"" + nameOf(src) + "\" can't be read" : "\"" + info.bad + "\" in it can't be copied (a link, or unreadable)");
+						j->finished = true;
+						return;
+					}
+					total += info.bytes;
+				}
+				j->total = total;
+				struct statvfs vs;
+				if (statvfs(j->dest.c_str(), &vs) == 0)
+				{
+					uint64_t room = (uint64_t)vs.f_bavail * vs.f_frsize, margin = 64ull << 20;
+					if (total + margin > room)
+					{
+						fail("Not enough room: it needs " + sizeText(total) + ", " + sizeText(room > margin ? room - margin : 0) + " is free");
+						j->finished = true;
+						return;
+					}
+				}
+				std::vector<std::string> made;
+				std::string err;
+				for (const std::string& src : j->srcs)
+				{
+					if (j->cancel.load()) break;
+					bool folder = isDirPath(src);
+					std::string name = freeName(j->dest, nameOf(src), folder);
+					if (name.empty()) { err = "There's no free name for \"" + nameOf(src) + "\" in this folder."; break; }
+					{
+						std::lock_guard<std::mutex> l(j->m);
+						j->name = name;
+						j->current = name;
+					}
+					std::string target = j->dest + "/" + name;
+					int r = copyTree(src, target, [j](uint64_t add, const std::string& rel) {
+						j->done += add;
+						{
+							std::lock_guard<std::mutex> l(j->m);
+							j->current = rel;
+						}
+						return !j->cancel.load();
+					});
+					if (r != 0)
+					{
+						err = r == ECANCELED ? "Cancelled: nothing was changed" : std::string("It couldn't be copied: ") + strerror(r);
+						break;
+					}
+					made.push_back(target);
+					std::lock_guard<std::mutex> l(j->m);
+					j->moved.push_back({src, target});
+				}
+				if (!err.empty() || j->cancel.load())
+				{
+					// nothing half-copied stays: what was made goes, and a move's originals were never touched
+					for (const std::string& target : made) removeTree(target);
+					std::lock_guard<std::mutex> l(j->m);
+					j->moved.clear();
+					if (err.empty()) fail("Cancelled: nothing was changed");
+					else fail(err);
+				}
+				else if (j->op == Ui::CLIP_MOVE)
+				{
+					for (const std::string& src : j->srcs) removeTree(src);
+				}
 				j->finished = true;
 				return;
 			}
@@ -288,6 +367,7 @@ namespace bp
 			if (what == CTX_F_MOVE && playing) { ui.alert("It\xE2\x80\x99s playing", "Stop it first, then try again."); return; }
 			clipOp = what == CTX_F_COPY ? CLIP_COPY : CLIP_MOVE;
 			clipPath = path;
+			clipPaths.clear();
 			ui.ctxOpen = false;
 			p.osd(std::string(clipOp == CLIP_COPY ? "Copy" : "Move") + ": open the folder it goes in, then SELECT", 2500);
 			return;
@@ -394,6 +474,7 @@ namespace bp
 		{
 			clipOp = CLIP_NONE;
 			clipPath.clear();
+			clipPaths.clear();
 			p.osd("Let go", 1000);
 			return true;
 		}
@@ -403,60 +484,69 @@ namespace bp
 	bool Ui::Browse::clipPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (clipOp == CLIP_NONE || ui.page != Page::Browse || ui.inMenu || ui.ctxOpen || ui.kbOpen) return false;
-		if (!clipBtn(0).hit(x, y) && !clipBtn(1).hit(x, y)) return false;
+		lay::FilesClip l = lay::filesClipBar(lay::shell(false).body);
+		if (!l.box.hit(x, y)) return false;
 		if (pt.kind == Pointer::Up)
 		{
-			if (clipBtn(0).hit(x, y)) clipKey(Button::X, p);
-			else if (clipCanPaste()) filePaste(p);
+			if (l.key[1].hit(x, y)) clipKey(Button::X, p);
+			else if (l.key[0].hit(x, y) && clipCanPaste()) filePaste(p);
 		}
 		return true;
 	}
 
 	void Ui::Browse::filePaste(Player& p)
 	{
-		std::string src = clipPath, dest = browseDir;
+		std::string dest = browseDir;
+		std::vector<std::string> srcs = clipPaths.empty() ? std::vector<std::string>{clipPath} : clipPaths;
+		if (srcs.empty() || srcs.front().empty()) return;
+		auto letGo = [this] { clipOp = CLIP_NONE; clipPath.clear(); clipPaths.clear(); };
 		if (cardOut(dest)) { ui.alert("The second card is out", "Put it back in, then try again.");; return; }
-		// a network folder at one end (or both): xfer.h's job
-		if (isNetPath(src) || isNetPath(dest))
+		bool group = srcs.size() > 1;
+		if (group && (isNetPath(dest) || isNetPath(srcs.front())))
 		{
-			bool srcNet = isNetPath(src);
-			if (dest == src || dest.rfind(src + "/", 0) == 0) { ui.alert("Can\xE2\x80\x99t put it there", "A folder can\xE2\x80\x99t go into itself.");; return; }
-			std::string parent = srcNet ? netParent(src) : parentFolder(src);
-			if (clipOp == CLIP_MOVE && parent == dest) { p.osd("It's already here", 1500); clipOp = CLIP_NONE; return; }
+			ui.alert("One at a time", "A server takes one file at a time: pick them one by one.");
+			return;
+		}
+		// a move of what is already here is nothing; the others still go
+		if (clipOp == CLIP_MOVE)
+			srcs.erase(std::remove_if(srcs.begin(), srcs.end(), [&](const std::string& s) { return parentFolder(s) == dest || (isNetPath(s) && netParent(s) == dest); }), srcs.end());
+		if (srcs.empty()) { p.osd("It's already here", 1500); letGo(); return; }
+		for (const std::string& src : srcs)
+		{
+			bool folder = isDirPath(src);
+			struct stat st;
+			if (!isNetPath(src) && lstat(src.c_str(), &st) != 0)
+			{
+				ui.alert("It isn\xE2\x80\x99t there any more", "It was moved or deleted meanwhile.");
+				letGo();
+				return;
+			}
+			if (folder && (dest == src || dest.rfind(src + "/", 0) == 0)) { ui.alert("Can\xE2\x80\x99t put it there", "A folder can\xE2\x80\x99t go into itself.");; return; }
 			if (clipOp == CLIP_MOVE && p.playing() && (p.currentPath() == src || p.currentPath().rfind(src + "/", 0) == 0))
 			{
 				ui.alert("It\xE2\x80\x99s playing", "Stop it first, then try again.");
 				return;
 			}
-			if (!srcNet)
-			{
-				struct stat st;
-				if (lstat(src.c_str(), &st) != 0) { ui.alert("It isn\xE2\x80\x99t there any more", "It was moved or deleted meanwhile.");; clipOp = CLIP_NONE; return; }
-			}
+		}
+		std::string src = srcs.front();
+		// a network folder at one end (or both), one file: xfer.h's job
+		if (isNetPath(src) || isNetPath(dest))
+		{
+			bool srcNet = isNetPath(src);
 			int op = clipOp;
-			clipOp = CLIP_NONE;
-			clipPath.clear();
+			letGo();
 			startNetJob(op, src, dest, srcNet ? netBaseName(src) : nameOf(src), p);
 			return;
 		}
 		bool folder = isDirPath(src);
-		struct stat st;
-		if (lstat(src.c_str(), &st) != 0) { ui.alert("It isn\xE2\x80\x99t there any more", "It was moved or deleted meanwhile.");; clipOp = CLIP_NONE; return; }
-		if (folder && (dest == src || dest.rfind(src + "/", 0) == 0)) { ui.alert("Can\xE2\x80\x99t put it there", "A folder can\xE2\x80\x99t go into itself.");; return; }
-		if (clipOp == CLIP_MOVE && parentFolder(src) == dest) { p.osd("It's already here", 1500); clipOp = CLIP_NONE; return; }
-		if (clipOp == CLIP_MOVE && p.playing() && (p.currentPath() == src || p.currentPath().rfind(src + "/", 0) == 0))
-		{
-			ui.alert("It\xE2\x80\x99s playing", "Stop it first, then try again.");
-			return;
-		}
 		auto j = std::make_shared<FileJob>();
 		j->op = clipOp;
 		j->src = src;
 		j->dest = dest;
+		j->srcs = group ? srcs : std::vector<std::string>();
 		j->name = freeName(dest, nameOf(src), folder);	// (a copy in its own folder: "name (2)")
 		if (j->name.empty()) { ui.alert("Can\xE2\x80\x99t put it here", "There\xE2\x80\x99s no free name for it in this folder.");; return; }
-		clipOp = CLIP_NONE;
-		clipPath.clear();
+		letGo();
 		ui.fileJob = j;
 		ui.fileJobPressed = -1;
 		fprintf(stderr, "files: %s %s -> %s/%s\n", j->op == CLIP_COPY ? "copy" : "move", src.c_str(), dest.c_str(), j->name.c_str());
@@ -500,6 +590,29 @@ namespace bp
 			return;
 		}
 		bool copy = j->op == CLIP_COPY;
+		if (!j->srcs.empty())
+		{
+			// a group: each landing follows its place, a playlist or a document
+			std::vector<std::pair<std::string, std::string>> moved;
+			{
+				std::lock_guard<std::mutex> l(j->m);
+				moved.swap(j->moved);
+			}
+			for (auto& m : moved) pathMoved(m.first, m.second, p);
+			fprintf(stderr, "files: %s %zu files: %s\n", copy ? "copy" : "move", j->srcs.size(), err.empty() ? "done" : err.c_str());
+			if (err.empty()) p.osd(std::string(copy ? "Copied " : "Moved ") + std::to_string(moved.size()) + (moved.size() == 1 ? " file" : " files"), 2500);
+			else if (err.rfind("Cancelled", 0) == 0) p.osd(err, 2000);
+			else alert(copy ? "Couldn\xE2\x80\x99t copy them" : "Couldn\xE2\x80\x99t move them", err);
+			if (page == Page::Browse && browse->browseDir == j->dest)
+			{
+				std::string landed = moved.empty() ? std::string() : moved.front().second;
+				browse->enterFolder(browse->browseDir, p);
+				for (size_t i = 0; i < browse->browsePaths.size() && !landed.empty(); i++)
+					if (browse->browsePaths[i] == landed) cursor = (int)i;
+				browse->fitList();
+			}
+			return;
+		}
 		fprintf(stderr, "files: %s %s: %s\n", copy ? "copy" : "move", j->name.c_str(), err.empty() ? "done" : err.c_str());
 		// a move: what was kept of it goes along (a copy is a new file: nothing follows it)
 		std::string landed = isNetPath(j->dest) ? netJoin(j->dest, j->name) : j->dest + "/" + j->name;
@@ -527,10 +640,11 @@ namespace bp
 
 	bool Ui::fileJobPointer(const Pointer& pt, int x, int y)
 	{
-		if (pt.kind == Pointer::Down) fileJobPressed = fileJobCancelRect().hit(x, y) ? 0 : -1;
+		Rect key = lay::busySheet().key;
+		if (pt.kind == Pointer::Down) fileJobPressed = key.hit(x, y) ? 0 : -1;
 		else if (pt.kind == Pointer::Up)
 		{
-			if (fileJobPressed == 0 && fileJobCancelRect().hit(x, y)) fileJob->cancel = true;
+			if (fileJobPressed == 0 && key.hit(x, y)) fileJob->cancel = true;
 			fileJobPressed = -1;
 		}
 		return false;
@@ -540,62 +654,62 @@ namespace bp
 	{
 		if (!fileJob) return;
 		FileJob& j = *fileJob;
-		// over the whole panel: nothing under it can be used until it ends
-		SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
-		fill({0, 0, W, H}, sdl(theme::BG, (Uint8)(255 * theme::VEIL_SHEET / 100)));	// (the veil: BG, as a sheet's)
-		Rect box{60, 110, W - 120, 270};
-		drawBox(box, SURFACE, R_DIALOG);
 		bool copy = j.op == CLIP_COPY;
-		std::string jname;
+		std::string jname, cur;
 		{
 			std::lock_guard<std::mutex> l(j.m);
 			jname = j.name;
+			cur = j.current;
 		}
 		const char* verb = j.op == JOB_RENAME ? "Renaming" : j.op == JOB_DELETE ? "Deleting" : j.op == JOB_FETCH ? "Opening" : copy ? "Copying" : "Moving";
-		drawTextMid(std::string(verb) + " \"" + jname + "\"", 1, TEXT, W / 2, 146, box.w - 40, 2);
+		std::string title = verb;
+		if ((j.op == CLIP_COPY || j.op == CLIP_MOVE) && !j.dest.empty()) title += " to " + (isNetPath(j.dest) ? std::string("the server") : baseName(j.dest));
+		if (!j.srcs.empty()) title += " \xC2\xB7 " + std::to_string(j.srcs.size()) + (j.srcs.size() == 1 ? " file" : " files");
 		uint64_t done = j.done, total = j.total;
-		double f = total ? std::min(1.0, done / (double)total) : 0;
-		Rect track{box.x + 30, 186, box.w - 60, 14};
-		drawLevel(track, (int)std::lround(track.w * f), TRACK, ACCENT);
-		std::string amount = total ? std::to_string((int)std::lround(f * 100)) + "%  \xC2\xB7  " + sizeText(done) + " of " + sizeText(total)
+		double share = total ? std::min(1.0, done / (double)total) : -1;
+		std::string left = total ? sizeText(done) + " of " + sizeText(total) + " \xC2\xB7 " + std::to_string((int)std::lround(share * 100)) + "%"
 			: j.op == JOB_RENAME || j.op == JOB_DELETE ? "Asking the server\xE2\x80\xA6" : "Measuring\xE2\x80\xA6";
-		// a network document: fetched to read, not a copy into your files (it goes in the player's own folder)
 		if (j.op == JOB_FETCH)
 		{
 			const NetServer& sv = j.srcEnd.server;
 			std::string from = !sv.host.empty() ? sv.host : sv.name;
-			amount = "Getting it from " + (from.empty() ? std::string("the server") : from) + "\xE2\x80\xA6" +
-				(total ? "  \xC2\xB7  " + std::to_string((int)std::lround(f * 100)) + "%" : std::string());
+			left = "Getting it from " + (from.empty() ? std::string("the server") : from) + "\xE2\x80\xA6" +
+				(total ? "  \xC2\xB7  " + std::to_string((int)std::lround(share * 100)) + "%" : std::string());
 		}
-		drawTextMid(amount, 0, TEXT, W / 2, 222, box.w - 40, 2);
-		std::string cur;
-		{
-			std::lock_guard<std::mutex> l(j.m);
-			cur = j.current;
-		}
-		if (j.op != JOB_FETCH) drawTextMid(cur.empty() ? " " : cur, 0, DIM, W / 2, 252, box.w - 40, 2);	// (one file: its name is the title's)
-		Rect c = fileJobCancelRect();
-		bool stopping = j.cancel;
-		drawBox(c, fileJobPressed == 0 ? PRESSED : BUTTON, R_BUTTON);
-		drawTextMid(stopping ? "Stopping\xE2\x80\xA6" : "Cancel (B)", 1, stopping ? DIM : TEXT, c.x + c.w / 2, c.y + c.h / 2, c.w - 10, 2);
+		Kit::BusySpec b;
+		b.title = title;
+		b.file = j.srcs.empty() || j.op == JOB_FETCH ? (j.op == JOB_FETCH ? jname : (cur.empty() ? jname : cur)) : (cur.empty() ? jname : cur);
+		b.left = left;
+		b.share = share;
+		b.glyph = j.op == JOB_RENAME ? &G_PENCIL : j.op == JOB_DELETE ? &G_TRASH : j.op == JOB_FETCH ? &G_DOWNLOAD : copy ? &G_PAGE : &G_MOVE;
+		b.tick = (int)(SDL_GetTicks() / 110 % 8);
+		b.key = j.cancel ? "Stopping\xE2\x80\xA6" : "Cancel";
+		b.cap = "B";
+		b.pressed = fileJobPressed == 0;
+		kit->busySheet(lay::busySheet(), b);
 	}
 
 	void Ui::Browse::drawClipBar()
 	{
 		if (clipOp == CLIP_NONE || ui.page != Page::Browse || ui.inMenu) return;
-		// along the foot: what's held, and Cancel / Paste here
-		ui.fill({0, 376, W, H - 376}, BG);
-		ui.fill({0, 376, W, 2}, RULE);
-		std::string what = std::string(clipOp == CLIP_COPY ? "Copy" : "Move") + " \"" + nameOf(clipPath) + "\"";
-		ui.drawTextMid(what, 0, TEXT, 24, 400, W - 48);
+		// the redesign's clip bar (a sheet with a yellow edge): what is held and its size, Put here and Cancel
+		std::vector<std::string> paths = clipPaths.empty() ? std::vector<std::string>{clipPath} : clipPaths;
+		uint64_t bytes = 0;
+		for (const std::string& p : paths) bytes += (uint64_t)std::max<long long>(0, fileSize(p));
 		bool can = clipCanPaste();
-		const char* labels[2] = {"Cancel (X)", clipOp == CLIP_COPY ? "Copy here (SELECT)" : "Move here (SELECT)"};
-		for (int i = 0; i < 2; i++)
-		{
-			Rect b = clipBtn(i);
-			ui.drawBox(b, BUTTON, R_BUTTON);
-			ui.drawTextMid(labels[i], 0, i == 1 && !can ? DIM : TEXT, b.x + b.w / 2, b.y + b.h / 2, b.w - 10, 2);
-		}
+		lay::FilesClip l = lay::filesClipBar(lay::shell(false).body);
+		Kit::Clip c;
+		c.what = paths.size() == 1 ? std::string(clipOp == CLIP_COPY ? "Copy" : "Move") + " \"" + nameOf(paths.front()) + "\""
+			: std::to_string(paths.size()) + " files held";
+		c.size = bytes ? sizeText(bytes) : "";
+		c.put = {clipOp == CLIP_COPY ? &G_PAGE : &G_MOVE, clipOp == CLIP_COPY ? "Copy here" : "Move here", "SELECT", Kit::Tone::Normal, false, !can, true};
+		c.cancel = {nullptr, "Cancel", "X", Kit::Tone::Normal, false, false, false};
+		lay::ClipBar cb;
+		cb.box = l.box;
+		cb.text = l.text;
+		cb.key[0] = l.key[0];
+		cb.key[1] = l.key[1];
+		ui.kit->clipBar(cb, c);
 	}
 
 	std::string Ui::fileJobSignature() const
@@ -607,7 +721,212 @@ namespace bp
 			fileJob->current;
 	}
 
-	// ---- Info ----
+	// ---- the delete question: the redesign's Confirm sheet (docs/redesign: delete) ----
+
+	struct Ui::Browse::FileDeleteAsk : Ui::Overlay
+	{
+		std::vector<std::string> paths;
+		int focus = 0, pressed = -1;
+		FileDeleteAsk(Ui& u, std::vector<std::string> at) : Overlay(u), paths(std::move(at)) {}
+		const char* name() const override { return "filedelete"; }
+
+		std::string title() const
+		{
+			if (paths.size() == 1) return "Delete \"" + nameOf(paths.front()) + "\"?";
+			return "Delete " + std::to_string(paths.size()) + " files?";
+		}
+		std::string text() const
+		{
+			uint64_t bytes = 0;
+			for (const std::string& path : paths) bytes += (uint64_t)std::max<long long>(0, fileSize(path));
+			std::string s = paths.size() == 1 ? "It is removed from the card for good." : "They are removed from the card for good.";
+			if (bytes > 0) s += " " + sizeText(bytes) + ".";
+			s += " This can\xE2\x80\x99t be undone.";
+			return s;
+		}
+		std::vector<std::string> lines() const { return ui.kit->sheetText(text()); }
+		void act(Player& p)
+		{
+			for (const std::string& path : paths)
+				if (p.playing() && (p.currentPath() == path || p.currentPath().rfind(path + "/", 0) == 0))
+				{
+					close();
+					ui.alert("It\xE2\x80\x99s playing", "Stop it first, then try again.");
+					return;
+				}
+			int done = 0;
+			for (const std::string& path : paths)
+			{
+				removeTree(path);
+				struct stat st;
+				if (lstat(path.c_str(), &st) != 0) done++;
+			}
+			close();
+			ui.browse->filesSelEnd(p);
+			if (ui.page == Page::Browse && ui.browse->filesPage()) ui.browse->filesRefresh(p);
+			if (done == (int)paths.size())
+				p.osd("Deleted " + std::to_string(done) + (done == 1 ? " file" : " files"), 2000);
+			else if (done == 0) ui.alert("Couldn\xE2\x80\x99t delete it", "Is the card read only?");
+			else ui.alert("Not all of it was deleted", std::to_string(done) + " of " + std::to_string(paths.size()) + " were removed.");
+		}
+		bool key(Button b, Player& p) override
+		{
+			switch (b)
+			{
+			case Button::Left: case Button::Right: focus = 1 - focus; break;
+			case Button::A:
+				if (focus == 1) act(p);
+				else close();
+				break;
+			case Button::B: close(); break;
+			default: break;
+			}
+			return false;
+		}
+		bool pointer(const Pointer& pt, int x, int y, Player& p) override
+		{
+			lay::ConfirmSheet l = lay::confirmSheet((int)lines().size(), false);
+			if (pt.kind == Pointer::Down)
+			{
+				pressed = -1;
+				if (!l.sheet.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
+				if (l.safe.hit(x, y)) pressed = 0;
+				else if (l.action.hit(x, y)) pressed = 1;
+				return false;
+			}
+			if (pt.kind != Pointer::Up) return false;
+			int at = pressed;
+			pressed = -1;
+			if (at == 0 && l.safe.hit(x, y)) { close(); return false; }
+			if (at == 1 && l.action.hit(x, y)) { focus = 1; act(p); }
+			return false;
+		}
+		void draw(const Player&) override
+		{
+			auto ls = lines();
+			lay::ConfirmSheet l = lay::confirmSheet((int)ls.size(), false);
+			Kit::ConfirmSpec c;
+			c.title = title();
+			c.text = text();
+			c.safe = "Cancel";
+			c.action = "Delete";
+			c.danger = true;
+			c.focus = focus;
+			c.pressed = pressed;
+			ui.kit->confirmSheet(l, c, ls);
+		}
+		std::string signature(const Player&) const override
+		{
+			return std::to_string(focus) + "," + std::to_string(pressed) + "," + std::to_string(paths.size()) + title();
+		}
+	};
+
+	void Ui::Browse::filesDeleteAsk(std::vector<std::string> paths, Player& p)
+	{
+		if (paths.empty()) return;
+		for (const std::string& path : paths)
+			if (p.playing() && (p.currentPath() == path || p.currentPath().rfind(path + "/", 0) == 0))
+			{
+				ui.alert("It\xE2\x80\x99s playing", "Stop it first, then try again.");
+				return;
+			}
+		ui.pushOverlay(std::make_unique<FileDeleteAsk>(ui, std::move(paths)));
+	}
+
+	// ---- Info: one scrolling page (docs/redesign: info) ----
+
+	struct Ui::Browse::FileInfoSheet : Ui::Overlay
+	{
+		int scroll = 0, pressed = -1, touchY = 0, startScroll = 0;
+		bool scrolled = false;
+		explicit FileInfoSheet(Ui& u) : Overlay(u) {}
+		const char* name() const override { return "fileinfo"; }
+		int total() const { return 1 + (int)ui.infoRows.size(); }
+		int shown() const { return lay::fileInfoShown(lay::shell(false).body); }
+		void clampScroll() { scroll = std::clamp(scroll, 0, std::max(0, total() - shown())); }
+
+		bool key(Button b, Player& p) override
+		{
+			(void)p;
+			switch (b)
+			{
+			case Button::Up: scroll--; break;
+			case Button::Down: scroll++; break;
+			case Button::Left: scroll -= shown(); break;
+			case Button::Right: scroll += shown(); break;
+			case Button::A: case Button::B: close(); break;
+			default: break;
+			}
+			clampScroll();
+			return false;
+		}
+		bool pointer(const Pointer& pt, int x, int y, Player& p) override
+		{
+			(void)p;
+			lay::Shell s = lay::shell(false);
+			lay::FilesHeader h = lay::filesHeader(s.header);
+			if (pt.kind == Pointer::Down)
+			{
+				pressed = -1;
+				scrolled = false;
+				touchY = y;
+				startScroll = scroll;
+				if (h.backHit.hit(x, y)) pressed = 200;
+				return false;
+			}
+			if (pt.kind == Pointer::Move)
+			{
+				if (std::abs(y - touchY) > 12)
+				{
+					scrolled = true;
+					scroll = startScroll + (int)std::lround((touchY - y) / (double)lay::FILE_INFO_ROW);
+					clampScroll();
+				}
+				return false;
+			}
+			if (pt.kind != Pointer::Up) return false;
+			int at = pressed;
+			pressed = -1;
+			if (at == 200 && h.backHit.hit(x, y)) close();
+			else if (!scrolled && at < 0) close();
+			return false;
+		}
+		void draw(const Player&) override
+		{
+			lay::Shell s = lay::shell(false);
+			Kit& k = *ui.kit;
+			ui.fill({s.main.x, 0, s.main.w, H}, BG);
+			lay::FilesHeader h = lay::filesHeader(s.header);
+			k.iconKey(h.back, G_BACK, pressed == 200, 2);
+			int cy = h.title.y + h.title.h / 2;
+			ui.drawTextMid("Info", F_P28, TEXT, h.title.x, cy, std::max(40, h.title.w - 10));
+			std::string crumb = ui.infoTitle;
+			if (k.textW(crumb, F_I12) > h.crumb.w) crumb = ui.elideLeft(crumb, F_I12, h.crumb.w);
+			ui.drawTextMid(crumb, F_I12, DIM, h.crumb.x, h.crumb.y + h.crumb.h / 2, h.crumb.w);
+			// one group heading, then the rows; scrolled
+			int shown = lay::fileInfoShown(s.body);
+			for (int k2 = 0; k2 < shown; k2++)
+			{
+				int line = scroll + k2;
+				if (line >= total()) break;
+				lay::Box r = lay::fileInfoRow(s.body, k2);
+				int ry = r.y + r.h / 2;
+				if (line == 0)
+				{
+					ui.drawTextMid("File", F_I11B, ACCENT, r.x, ry, r.w);
+					continue;
+				}
+				const auto& row = ui.infoRows[line - 1];
+				ui.drawTextMid(row.first, F_I12, DIM, r.x, ry, 120);
+				ui.drawTextMid(row.second, F_I12, TEXT, r.x + 132, ry, std::max(1, r.w - 132));
+			}
+			k.hints({{"UP/DOWN", "Scroll"}, {"A/B", "Back"}});
+		}
+		std::string signature(const Player&) const override
+		{
+			return std::to_string(scroll) + "," + std::to_string(pressed) + "|" + ui.infoTitle + std::to_string(total());
+		}
+	};
 
 	void Ui::openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra)
 	{
@@ -628,7 +947,7 @@ namespace bp
 			infoRows.push_back({"Access", browse->netWritable ? "Read and write" : "Read only (for this account)"});
 			NetPath np;
 			if (parseNetPath(path, np)) infoRows.push_back({"Path", np.path});
-			openInfo();
+			pushOverlay(std::make_unique<Browse::FileInfoSheet>(*this));
 			return;
 		}
 		infoTitle = title.empty() ? nameOf(path) : title;
@@ -667,7 +986,7 @@ namespace bp
 			infoRows.push_back({"Modified", when});
 		}
 		infoRows.push_back({"Path", path});
-		openInfo();
+		pushOverlay(std::make_unique<Browse::FileInfoSheet>(*this));
 	}
 
 	void Ui::drawFileInfo()

@@ -164,14 +164,17 @@ folders. Playlists have a section of their own, between Files and Network.
 
 ### Adding items
 
-- In **Files** or **Network**, **X** → **Select files**, tick the files you want (**A**, or a tap), then **Y** →
-  **Add to…** and pick a playlist (or **New playlist…**). On the touch screen, a hold on a file starts this with that
-  file ticked. **B** goes up a folder, as in browsing, and the ticks stay (at a section's top it leaves). **X** (or
-  **Cancel**) leaves select mode from any folder; with files ticked, press it twice. The **✕** at the top left leaves
-  at once.
+- In **Files**, **Y** starts select mode with the focused file ticked; **A** (or a tap) ticks and unticks, **SELECT**
+  is all / none, and the bar at the foot holds **Playlist**, **Copy**, **Move** and **Delete**. **X** is More (the same
+  field as the bar, and Info). On the touch screen, a hold on a file starts select mode with that file ticked. **B**
+  leaves select mode. In **Network**, **X** → **Select files** still ticks files for a playlist; **B** goes up a folder
+  there and the ticks stay.
+- The **Playlist** key adds the ticked videos and songs to a playlist (or **New playlist…**). **Copy** / **Move** hold
+  all the ticked files and folders while you walk to the destination; **Delete** asks first, in a sheet.
 - Inside a playlist, **X** → **Add files…** opens the file list, and the files you tick are added to that playlist.
   **Add folder…** adds a whole folder instead.
-- On any folder, **Y** (or a hold) → **Add to playlist…** comes first, and adds that folder's files.
+- On any folder, **X** · More → **Add folder to playlist…** adds that folder's files (in Network, the folder's menu
+  still has it).
 - A folder adds only the files directly in it, not those in its subfolders. Photos are skipped, and the note says how
   many. Files are added in the folder's order.
 - The same file can be in a playlist twice. **X** → **Remove duplicates** (in the playlist's **X** menu) keeps the first
@@ -333,29 +336,36 @@ See [Photos](#photos) for the touch screen.
 | Button | What it does |
 |---|---|
 | **A** (or tap it) | Open the folder, play the file (or open a document), or open the playlist. Files lists every file of the cards; one nothing here opens says so |
-| **B** or **Back** | Up one folder; at a section's top, back to Home |
-| **..** (the first row) | In any folder below a section's top (a card's folder, a server's, a playlist): up one, as **B** goes. A folder opens on its first item, an empty one on this row. It's never ticked or counted |
+| **B** or **Back** | Up one folder; at a section's top, back to Home. An empty folder's page offers **Go up** on **A** and **Send files** on **Y** |
 | **UP / DOWN** | Move |
 | **LEFT / RIGHT** | Page up / down |
 | **L / R** | Previous / next section: Files, Playlists, Network, Extensions |
-| **X** | Options: **Info** on the file or folder the cursor is on (as Y's), **Refresh** (read the folder again), and on a folder **Hide folder** / **Unhide folder** (or hold the folder on the touch screen). In Files: **Show hidden folders**. In Files and Network: **Select files**, to tick files and add them to a playlist. In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: the focused card's **More** sheet (Home's own column when none) |
+| **X** (or **⋯** in the header) | **More**: the focused file on the left (**Play from the start** / **Open**, **Add to playlist…**, **Like** / **Unlike**, **Go to album** / **Go to artist** for a song, **Info**, **Copy…**, **Move…**, **Rename…**, **Delete**), and the folder it is in on the right (**Select files**, **Play all N**, **Shuffle play**, **Add folder to playlist…**, **Refresh**, **Hide folder**, **Show hidden folders**). In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: Home's options |
 | **Hold** (touch screen) | On a file in Files or Network: starts selecting, with that file ticked |
-| **Y** | On a file or folder of the cards: **Info** (its name, kind, size (a folder's with everything in it), length, where it is, when it was changed, its full path), **Copy…**, **Move…**, **Rename…**, **Delete** (press twice: it's gone for good) ([below](#copy-move-rename-delete)). On a folder: **Add to playlist…** (first). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
-| **SELECT** | Back to what plays (the playing screen); in select mode, Select all |
+| **Y** | In Files: select mode (**A** tick, **SELECT** all / none, the bar for Playlist / Copy / Move / Delete, **X** More). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
+| **SELECT** | Back to what plays (the playing screen); in select mode, All / none |
 | **L3** (press the stick) | Like / Unlike what plays |
 | **START** | **Settings**: its ten group tiles; **F** is Quick settings |
 | **Mini bar** (touch screen) | On every page but the player: tap it for the playing screen · its play mark: play / pause · hold: its menu |
 
 ### Copy, move, rename, delete
 
-**Y** on a file or folder in Files: **Copy…** or **Move…** holds it while you go to the folder it goes in (on the same
+**X** on a file or folder in Files, **Copy…** or **Move…** holds it while you go to the folder it goes in (on the same
 card or the other one); a bar along the foot says what's held, and **SELECT** (or **Copy here** / **Move here**) puts it
-there, **X** (or **Cancel**) lets it go. Something of the same name already there is never replaced: the new one is
-called "name (2)". A move on the same card is instant. A copy, or a move to the other card, shows its progress (a bar,
-how much of how much, the file on its way) over the whole screen until it ends; **B** or **Cancel** stops it, and
-nothing half-copied is left (a move removes the original only once the copy is whole). It checks first that there's
-room, and that a FAT card isn't asked to hold a file of 4 GB or more. **Rename…** types the new name on the keyboard.
-What's playing can't be moved, renamed or deleted.
+there, **X** (or **Cancel**) lets it go. Select mode's bar does the same with every ticked file and folder (one at a
+time to a server). Something of the same name already there is never replaced: the new one is called "name (2)". A move
+on the same card is instant (a group move copies first, then removes the originals). A copy, or a move to the other
+card, shows its progress in a job sheet (a bar, how much of how much, the file on its way) until it ends; **B** or
+**Cancel** stops it, and nothing half-copied is left. It checks first that there's room, and that a FAT card isn't asked
+to hold a file of 4 GB or more. **Rename…** types the new name on the keyboard. **Delete** opens a Confirm sheet that
+names the file (the safe **Cancel** has the focus; **B** is Cancel) and deletes only on the red **Delete**. What's
+playing can't be moved, renamed or deleted.
+
+The redesigned Files page is a section: its header names the folder and its path (**Files › Videos › Movies**), the
+list counts its items and the room on the card at the foot. The old **..** row is gone (**B** and the header's back
+key go up). A folder this account can't write shows **Read only** in the header, and **Move**, **Rename**, **Delete**
+and **Hide folder** are dimmed with that reason. An empty folder is a page of its own: what it has, with **Go up**
+(**A**) and **Send files** (**Y**, the Web dashboard page).
 
 ### Settings from START
 

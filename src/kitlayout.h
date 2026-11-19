@@ -448,5 +448,40 @@ namespace bp
 		// ms since it started; the text's and the box's widths (units); the type's size; passes (2, or 1 in a row).
 		// A text that fits: nothing moves (done, no fades)
 		MarqueeAt marquee(int ms, int textW, int boxW, int fontSize, int passes = 2);
+
+		// ---- Files (docs/redesign/src/screens.js: files, files-playing, select) ----
+		// The page's rows are 52 tall, the footer's line 24, the select bar 56 at the body's foot. The body comes
+		// from lay::shell, so the rows never run under the rail, the header, the hints or the mini bar.
+		constexpr int FILE_ROW_H = 52, FILE_FOOT_H = 24, FILE_SELBAR_H = 56, FILE_SELBAR_GAP = 8;
+		struct FilesPage
+		{
+			Box body, rows, footer;	// footer.w 0: none
+			Box bar[4];	// the select bar's keys (all w 0 when not selecting)
+			int shown = 0;	// the rows that fit
+			Box row(int i) const { return {rows.x, rows.y + i * FILE_ROW_H, rows.w, FILE_ROW_H}; }
+		};
+		// rows: how many the list has (the ones that fit are shown); select: the bar takes the foot; footer: a
+		// line under the rows (not with the bar, and not while the mini bar shows: the caller leaves it out)
+		FilesPage filesPage(Box body, int rows, bool select, bool footer);
+		// the header it draws before the shell lands: the back key, the More key, the crumb and title beside them
+		// (the mock-up's .hd .tt), and the room the status and the read-only badge leave at its right
+		struct FilesHeader
+		{
+			Box back, backHit, more, moreHit;
+			Box title, crumb;
+			int right = 0;	// where the title and crumb must end (the status cluster's left)
+		};
+		FilesHeader filesHeader(Box header);
+		// the clip bar (a held file or several) at the body's foot: the body of a shell with no mini bar (a held
+		// file folds the mini bar away); what is held, and Put here (SELECT) and Cancel (X)
+		struct FilesClip
+		{
+			Box box, text, key[2];
+		};
+		FilesClip filesClipBar(Box body);
+		// Info's page: the rows of one line each, scrolled; `body` is a shell's body
+		constexpr int FILE_INFO_ROW = 26;
+		Box fileInfoRow(Box body, int i);
+		int fileInfoShown(Box body);
 	}
 }

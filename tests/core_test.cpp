@@ -10282,6 +10282,64 @@ static void testKitLayout()
 		}
 		AllRecentPage m = allRecentPage({78, 54, 562, 334});
 		CHECK_EQ(m.shown, 6);
+	{	// Files: the rows, the footer and the select bar inside the shell's body
+		lay::Shell s = lay::shell(false);
+		lay::FilesPage f = lay::filesPage(s.body, 40, false, true);
+		CHECK_EQ(f.rows.x, s.body.x + lay::MARGIN);
+		CHECK_EQ(f.rows.w, s.body.w - 2 * lay::MARGIN);
+		CHECK_EQ(f.shown, 7);	// (396 - 24) / 52
+		for (int i = 0; i < f.shown; i++)
+		{
+			CHECK_EQ(f.row(i).h, lay::FILE_ROW_H);
+			CHECK_EQ(f.row(i).y, s.body.y + i * lay::FILE_ROW_H);
+			CHECK(f.row(i).x >= 0 && f.row(i).x + f.row(i).w <= lay::PANEL_W && f.row(i).y + f.row(i).h <= lay::PANEL_H);
+			if (i) CHECK_EQ(f.row(i).y, f.row(i - 1).y + f.row(i - 1).h);
+		}
+		CHECK_EQ(f.footer.y + f.footer.h, s.body.y + s.body.h);
+		CHECK_EQ(f.footer.x + f.footer.w, f.rows.x + f.rows.w);
+		CHECK(f.row(f.shown - 1).y + f.row(f.shown - 1).h <= f.footer.y);
+		// selecting: six rows above a 56-tall bar of four keys at the body's foot
+		lay::FilesPage sel = lay::filesPage(s.body, 40, true, true);
+		CHECK_EQ(sel.shown, 6);
+		CHECK_EQ(sel.footer.w, 0);
+		CHECK_EQ(sel.bar[0].x, sel.rows.x);
+		CHECK_EQ(sel.bar[3].x + sel.bar[3].w, sel.rows.x + sel.rows.w);
+		CHECK_EQ(sel.bar[0].y, s.body.y + s.body.h - lay::FILE_SELBAR_H);
+		CHECK(sel.row(sel.shown - 1).y + sel.row(sel.shown - 1).h <= sel.bar[0].y);
+		for (int i = 1; i < 4; i++)
+			CHECK(sel.bar[i - 1].x + sel.bar[i - 1].w <= sel.bar[i].x || sel.bar[i].x + sel.bar[i].w <= sel.bar[i - 1].x);
+		// the mini bar's body: a row fewer, no footer
+		lay::Shell sm = lay::shell(true);
+		lay::FilesPage m = lay::filesPage(sm.body, 40, false, false);
+		CHECK_EQ(m.shown, 6);
+		CHECK_EQ(m.footer.w, 0);
+		CHECK(m.row(m.shown - 1).y + m.row(m.shown - 1).h <= sm.body.y + sm.body.h);
+		// no rows, no negative boxes
+		lay::FilesPage none = lay::filesPage(s.body, 0, false, false);
+		CHECK_EQ(none.shown, 0);
+		// the header: back at the left of the main, More at its right, title and crumb between
+		lay::FilesHeader h = lay::filesHeader(s.header);
+		CHECK_EQ(h.back.x, s.header.x + 10);
+		CHECK_EQ(h.more.x + h.more.w, s.header.x + s.header.w - 10);
+		CHECK(h.backHit.hit(s.header.x, 0) && h.moreHit.hit(lay::PANEL_W - 1, 0));
+		CHECK(h.title.x > h.back.x + h.back.w && h.title.x + h.title.w < h.more.x);
+		CHECK_EQ(h.crumb.x, h.title.x);
+		// the clip bar: inside the body's width, its keys at the right
+		lay::FilesClip c = lay::filesClipBar(s.body);
+		CHECK_EQ(c.box.x, s.body.x + lay::MARGIN);
+		CHECK_EQ(c.box.x + c.box.w, s.body.x + s.body.w - lay::MARGIN);
+		CHECK_EQ(c.box.y + c.box.h, s.body.y + s.body.h);
+		CHECK_EQ(c.key[1].x + c.key[1].w, c.box.x + c.box.w - 8);
+		CHECK(c.key[0].x > c.box.x && c.text.x + c.text.w < c.key[0].x);
+		for (auto& k : c.key) CHECK(k.x >= 0 && k.x + k.w <= lay::PANEL_W && k.y >= 0 && k.y + k.h <= lay::PANEL_H);
+		// Info: 26-tall rows down the body, scrolled
+		CHECK_EQ(lay::fileInfoShown(s.body), (s.body.h - 16) / lay::FILE_INFO_ROW);
+		CHECK_EQ(lay::fileInfoRow(s.body, 0).y, s.body.y + 8);
+		CHECK_EQ(lay::fileInfoRow(s.body, 1).y, s.body.y + 8 + lay::FILE_INFO_ROW);
+		{
+			lay::Box b = lay::fileInfoRow(s.body, lay::fileInfoShown(s.body) - 1);
+			CHECK(b.x >= 0 && b.x + b.w <= lay::PANEL_W && b.y >= 0 && b.y + b.h <= lay::PANEL_H);
+		}
 	}
 }
 
