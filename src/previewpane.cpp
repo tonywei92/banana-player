@@ -134,7 +134,7 @@ namespace bp
 			d.box(ix + iw - 6 - 12, iy + ih - 4 - 4, 12, 4, 2, t.ACCENT);
 		}
 
-		// the Theme row's block: every theme's swatch (seventeen: 6 + 6 + 5), then "As it looks" and the pieces drawn in the theme now
+		// the Theme row's block: every theme's swatch (eighteen: three rows of six), then "As it looks" and the pieces drawn in the theme now
 		float themesBlock(PaneDraw& d, const PaneSpec& s, float x, float y, float w)
 		{
 			using namespace theme;

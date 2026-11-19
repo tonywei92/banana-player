@@ -6692,12 +6692,12 @@ static void testThemes()
 	}
 	CHECK_EQ(parseSettings("theme = no-such\n").theme, Settings().theme);
 	CHECK_EQ(std::string(theme::themeIds()[Settings().theme]), std::string("dark"));	// the default
-	// seventeen, in the stepper's order (docs/redesign/themes.py ORDER)
+	// eighteen, in the stepper's order (docs/redesign/themes.py ORDER)
 	{
 		std::string order;
 		for (int i = 0; i < themeCount(); i++) order += std::string(themeId(i)) + " ";
 		CHECK_EQ(order, std::string("yellow dark midnight-blue dark-purple dark-red pink coffee mint retro-green sunset candy 16-bit "
-			"16-bit-lavender 32-bit sakura light high-contrast "));
+			"16-bit-lavender 32-bit sakura gundam light high-contrast "));
 	}
 	// 16-bit Lavender and Sakura: light-bodied, their own RAIL, the Light page, top cards from Dark purple and Pink
 	for (int i = 0; i < themeCount(); i++)
@@ -6716,6 +6716,16 @@ static void testThemes()
 			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "FFE6E0FFF3EFE8B3CFFACFD8852A59561F33");
 			CHECK_EQ(hx(p.DANGER) + hx(p.ON_ACCENT), "7A3800FFE6E0");
 			CHECK_EQ(hx(p.TOP_TITLE), "FF8FC7");
+			CHECK_EQ(p.page, 1);
+		}
+		// Gundam: white SURFACE, the palette's blue, yellow and grey as given (ACCENT, ON_ACCENT, DIM), the red deepened;
+		// Midnight blue's top cards
+		if (id == "gundam")
+		{
+			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "EDEDEFFFFFFFDDE3F3E5E5E82C52B3282931");
+			CHECK_EQ(hx(p.DIM) + hx(p.DANGER) + hx(p.ON_ACCENT), "5A5B6DB02127FFF867");
+			CHECK_EQ(p.EDGE_MIX, 55);
+			CHECK_EQ(hx(p.TOP_TITLE), "8CC8FF");
 			CHECK_EQ(p.page, 1);
 		}
 	}
@@ -10502,13 +10512,13 @@ static void testKitNewPreviewPane()
 	CHECK_EQ(c.column.x, 262);
 	CHECK_EQ(kitApart(c.cover, c.column), true);
 	CHECK_EQ(kitInside(c.cover, PANEL_W, PANEL_H) && kitInside(c.column, PANEL_W, PANEL_H), true);
-	// the Theme row's swatches: seventeen in three rows (six, six, five), each row inside the column's width
-	auto sw = swatches(17, t.column.x, 180);
-	CHECK_EQ((int)sw.size(), 17);
+	// the Theme row's swatches: eighteen in three rows of six, each row inside the column's width
+	auto sw = swatches(18, t.column.x, 180);
+	CHECK_EQ((int)sw.size(), 18);
 	CHECK_EQ(sw[5].x + sw[5].w <= t.column.x + t.column.w, true);
 	CHECK_EQ(sw[6].x, t.column.x);
 	CHECK_EQ(sw[6].y, 180 + SWATCH_H + SWATCH_NAME + SWATCH_ROW_GAP);
-	CHECK_EQ(sw[16].y, sw[12].y);
+	CHECK_EQ(sw[17].y, sw[12].y);
 	CHECK_EQ(sw[12].y, 180 + 2 * (SWATCH_H + SWATCH_NAME + SWATCH_ROW_GAP));
 	for (size_t i = 1; i < sw.size(); i++) CHECK_EQ(kitApart(sw[i], sw[i - 1]), true);
 	CHECK_EQ(sw[1].x - sw[0].x, SWATCH_W + SWATCH_GAP);

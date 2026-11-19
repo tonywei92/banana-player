@@ -406,7 +406,7 @@ namespace bp
 		};
 		Pane previewPane(bool cover);
 		// the Theme row's swatches: n of 84 x 30 in rows of `perRow`, 9 apart, each with its name's line (14) under it
-		// and 9 between the rows, from (left, top): seventeen as 6 + 6 + 5. The row is 6 * 84 + 5 * 9 = 549, inside the
+		// and 9 between the rows, from (left, top): eighteen as three rows of six. The row is 6 * 84 + 5 * 9 = 549, inside the
 		// text column's 552
 		constexpr int SWATCH_W = 84, SWATCH_H = 30, SWATCH_GAP = 9, SWATCH_NAME = 14, SWATCH_ROW_GAP = 9, SWATCH_PER_ROW = 6;
 		std::vector<Box> swatches(int n, int left, int top, int perRow = SWATCH_PER_ROW);
