@@ -10221,6 +10221,7 @@ static void testKitLayout()
 		CHECK(m.line.x >= m.box.x && m.line.x + m.line.w <= m.box.x + m.box.w);
 		CHECK(m.line.y + m.line.h <= m.box.y + m.box.h);
 		CHECK(m.textX > m.mark.x + m.mark.w && m.textX < m.rightX);
+	}
 	{
 		// Home inside the shell's body: the content column, Continue, the filter strip, four cards and the chevron,
 		// the three shortcuts; nothing over another, the row ending on the column's right edge
@@ -10282,6 +10283,7 @@ static void testKitLayout()
 		}
 		AllRecentPage m = allRecentPage({78, 54, 562, 334});
 		CHECK_EQ(m.shown, 6);
+	}
 	{	// Files: the rows, the footer and the select bar inside the shell's body
 		lay::Shell s = lay::shell(false);
 		lay::FilesPage f = lay::filesPage(s.body, 40, false, true);
@@ -10340,6 +10342,7 @@ static void testKitLayout()
 			lay::Box b = lay::fileInfoRow(s.body, lay::fileInfoShown(s.body) - 1);
 			CHECK(b.x >= 0 && b.x + b.w <= lay::PANEL_W && b.y >= 0 && b.y + b.h <= lay::PANEL_H);
 		}
+	}
 	// a playlist's page: the keys, the rows, the select / move bar, inside the shell's body
 	{
 		auto apart = [](Box a, Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; };
@@ -10391,6 +10394,7 @@ static void testKitLayout()
 		// the list of playlists: no keys and no bar: seven rows, six with the mini bar
 		CHECK_EQ(playlistPage(body, 0, 0).rows, 7);
 		CHECK_EQ(playlistPage(small, 0, 0).rows, 6);
+	}
 	// Settings inside the shared shell: the header strip's boxes stay in the main strip, and the page's tiles and
 	// rows stay in the body (with the mini bar up the body ends under the seventh row, so the help waits for it)
 	for (bool mini : {false, true})
