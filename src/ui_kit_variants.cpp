@@ -428,9 +428,9 @@ namespace bp
 	void Ui::Kit::choiceTile(Rect r, const Choice& c)
 	{
 		bool clean = theme::drawingClean();
-		// (Clean: the chosen one a strong wash of the accent and a dot in its corner: the 17% tint alone was lost in a
-		// grid of fifteen, and in Dark the accent is near the text's colour)
-		SDL_Color fill = clean ? (c.on ? sdl(theme::mix(rgbOf(c.pressed ? PRESSED : BUTTON), theme::current.ACCENT, 34)) : c.pressed ? PRESSED : cardFill(SURFACE))
+		// (Clean: the chosen one the accent's tint, and a dot in its corner so it is found in a grid of fifteen; a
+		// stronger wash was tried and the owner preferred the tint)
+		SDL_Color fill = clean ? (c.on ? sdl(theme::tintOf(rgbOf(c.pressed ? PRESSED : BUTTON))) : c.pressed ? PRESSED : cardFill(SURFACE))
 			: c.on ? ACCENT : c.pressed ? PRESSED : SURFACE;
 		SDL_Color ink = clean ? (c.on || c.focused ? ACCENT : TEXT) : c.on ? ON_ACCENT : c.focused ? ACCENT : TEXT;
 		if (clean)

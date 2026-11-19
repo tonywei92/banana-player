@@ -7006,7 +7006,7 @@ static void testVizNative()
 	CHECK(onPanel);
 	vizShapes(st, true, r);
 	CHECK(r.size() > 40);
-	CHECK(vizBehindArt(VIS_ROCKET) && !vizFullPanel(VIS_ROCKET) && !vizBehindArt(VIS_DANCE));
+	CHECK(vizBehindArt(VIS_ROCKET) && vizBehindArt(VIS_BOUNCY) && !vizFullPanel(VIS_ROCKET) && !vizBehindArt(VIS_DANCE));
 	float starTop = 480;
 	for (auto& q : r) if (q.kind == 2 && q.ink == VI_DIM_BG) starTop = std::min(starTop, std::min(q.y0, q.y3));
 	CHECK(starTop < 200);	// (in the band, its stars streak over the whole panel)

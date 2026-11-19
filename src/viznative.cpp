@@ -146,7 +146,8 @@ namespace bp
 	}
 
 	bool vizFullPanel(int vis) { return vis == VIS_SPARKS || vis == VIS_STARFIELD || vis == VIS_MOON; }
-	bool vizBehindArt(int vis) { return vizFullPanel(vis) || vis == VIS_ROCKET; }
+	// (Bouncy keys too: a high hop rises past the band; cut at row 280 it vanished into the art's part, the owner)
+	bool vizBehindArt(int vis) { return vizFullPanel(vis) || vis == VIS_ROCKET || vis == VIS_BOUNCY; }
 
 	float vizLoudness(const float* samples, int n)
 	{
