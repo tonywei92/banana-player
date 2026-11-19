@@ -77,6 +77,7 @@ target_include_directories(bpcore PUBLIC src)
 target_sources(bpcore PRIVATE src/kitlayout_new.cpp)	# kit-new's layout (its own line: see target_sources(banana-player) below)
 target_sources(bpcore PRIVATE src/stickscroll.cpp)	# the left stick's scrolling speed (issue 16)
 target_sources(bpcore PRIVATE src/volumestep.cpp)	# the volume keys' step, and a hold's stop at 100%
+target_sources(bpcore PRIVATE src/mediaindex.cpp src/mediacache.cpp)	# the cards' media index (its walk, grouping and query; the tag cache)
 # PFFFT (third_party/pffft, BSD-like): the native visualizers' spectrum (src/viznative.h); NEON on aarch64, SSE on x86
 add_library(pffft_static STATIC third_party/pffft/pffft.c)
 set_target_properties(pffft_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -142,9 +143,10 @@ add_library(bpmanga STATIC src/mangasource.cpp src/mangasource.h)
 target_include_directories(bpmanga PUBLIC src)
 target_link_libraries(bpmanga PUBLIC bpcore PRIVATE lua_static)
 
-# libavformat (FFmpeg: libmpv's own dependency) for the file lists' durations; the web dashboard's probe uses it too
+# libavformat (FFmpeg: libmpv's own dependency) for the file lists' durations; the web dashboard's probe uses it too,
+# and the media index's tag reader (src/mediatags.cpp)
 pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
-add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp)
+add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp src/mediatags.cpp)
 target_link_libraries(bpprobe PUBLIC bpcore PkgConfig::AV)
 # libjpeg (libjpeg-turbo's jpeg_skip_scanlines) and libpng: a long strip page's bands, decoded without the whole
 # picture in memory (pagedecode.cpp's decodeBand); FFmpeg's decoders only give whole frames
@@ -157,6 +159,8 @@ target_include_directories(bpprobe PRIVATE ${PNG_INCLUDEDIR}/..)
 add_executable(banana-player src/main.cpp src/topscreen.cpp src/player.cpp src/ui.cpp src/ui_draw.cpp src/ui_menus.cpp src/ui_browse.cpp src/ui_forms.cpp src/ui_playlists.cpp src/ui_settings.cpp src/ui_main.cpp src/ui_kit.cpp src/ui_kit_variants.cpp src/ui_more.cpp src/ui_player.cpp src/ui_sound.cpp src/ui_web.cpp src/ui_home.cpp src/ui_ext.cpp src/input.cpp src/sleepwatch.cpp src/powerkey.cpp src/volumekey.cpp src/touch.cpp src/panel.cpp src/levelwatch.cpp src/ampwatch.cpp src/updater.cpp src/volume.cpp src/idlesleep_host.cpp src/networker.cpp src/netstream.cpp src/netresolve.cpp src/discovery.cpp src/session_host.cpp src/durworker.cpp src/coverworker.cpp src/pagerender.cpp src/levelcard.cpp src/supportqr.cpp src/reader_proto.cpp src/reader.cpp src/textreader.cpp src/readerfetch.cpp src/manganet.cpp src/javaext.cpp src/ui_manga.cpp src/ui_docs.cpp src/ui_reader.cpp src/ui_fileops.cpp src/ui_light.cpp src/ui_overlay.cpp src/ui_slider.cpp src/xfer.cpp src/mangarepos.cpp src/mangadownloader.cpp src/ui_manga_settings.cpp src/ui_manga_sources.cpp src/ui_manga_browse.cpp src/ui_manga_filters.cpp src/ui_manga_java.cpp src/ui_manga_servers.cpp src/ui_manga_downloads.cpp src/ui_manga_netfolders.cpp src/ui_manga_web.cpp src/mangalibworker.cpp src/lidsleep_host.cpp src/writequeue.cpp)
 # kit-new (docs/notes/2026-11-18-kit-new.md): its own line, so branches adding to the lists above merge cleanly
 target_sources(banana-player PRIVATE src/ui_kit_new.cpp src/ui_shell.cpp src/previewpane.cpp)
+# the cards' media index's thread (its own line for the same reason)
+target_sources(banana-player PRIVATE src/mediaworker.cpp)
 # the native visualizers' second decode of a song (src/viztap.h): libswresample (FFmpeg's, libmpv's own) for mono 32 kHz
 pkg_check_modules(SWR REQUIRED IMPORTED_TARGET libswresample)
 target_sources(banana-player PRIVATE src/viztap.cpp src/topviz.cpp)
