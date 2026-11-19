@@ -403,6 +403,60 @@ namespace bp
 			if (mask & (1 << k)) SDL_RenderCopyEx(ren, t, nullptr, &at[k], 0, nullptr, flips[k]);
 	}
 
+	SDL_Texture* Ui::ringCorner(int R, int E)
+	{
+		int key = R * 256 + E;
+		auto it = ringCorners.find(key);
+		if (it != ringCorners.end()) return it->second;
+		// the top-left quarter of a ring centred on (R, R): outer radius R, inner R - E, coverage as alpha (4x4 samples)
+		SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, R, R, 32, SDL_PIXELFORMAT_RGBA32);
+		if (!s) return ringCorners[key] = nullptr;
+		SDL_LockSurface(s);
+		float ro = (float)R, ri = (float)std::max(0, R - E);
+		for (int y = 0; y < R; y++)
+		{
+			Uint8* row = (Uint8*)s->pixels + y * s->pitch;
+			for (int x = 0; x < R; x++)
+			{
+				int in = 0;
+				for (int j = 0; j < 4; j++)
+					for (int i = 0; i < 4; i++)
+					{
+						float dx = R - (x + (i + 0.5f) / 4), dy = R - (y + (j + 0.5f) / 4), d2 = dx * dx + dy * dy;
+						in += d2 <= ro * ro && d2 > ri * ri;
+					}
+				row[x * 4] = row[x * 4 + 1] = row[x * 4 + 2] = 255;
+				row[x * 4 + 3] = (Uint8)(in * 255 / 16);
+			}
+		}
+		SDL_UnlockSurface(s);
+		SDL_Texture* t = SDL_CreateTextureFromSurface(ren, s);
+		SDL_FreeSurface(s);
+		if (t) SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+		return ringCorners[key] = t;
+	}
+
+	void Ui::strokeRound(Rect r, SDL_Color c, int rad, int e)
+	{
+		SDL_Rect d = devRect(r);
+		int E = std::max(1, (int)std::lround(e * std::min(sx, sy)));
+		int R = std::min({devRadius(theme::kitRadius(rad)), d.w / 2, d.h / 2});
+		R = std::max(R, E);
+		SDL_SetRenderDrawBlendMode(ren, c.a < 255 ? SDL_BLENDMODE_BLEND : SDL_BLENDMODE_NONE);
+		SDL_SetRenderDrawColor(ren, c.r, c.g, c.b, c.a);
+		SDL_Rect sides[4] = {{d.x + R, d.y, d.w - 2 * R, E}, {d.x + R, d.y + d.h - E, d.w - 2 * R, E},
+			{d.x, d.y + R, E, d.h - 2 * R}, {d.x + d.w - E, d.y + R, E, d.h - 2 * R}};
+		SDL_RenderFillRects(ren, sides, 4);
+		SDL_Texture* t = ringCorner(R, E);
+		if (!t) return;
+		SDL_SetTextureColorMod(t, c.r, c.g, c.b);
+		SDL_SetTextureAlphaMod(t, c.a);
+		SDL_Rect at[4] = {{d.x, d.y, R, R}, {d.x + d.w - R, d.y, R, R}, {d.x, d.y + d.h - R, R, R}, {d.x + d.w - R, d.y + d.h - R, R, R}};
+		static const SDL_RendererFlip flips[4] = {SDL_FLIP_NONE, SDL_FLIP_HORIZONTAL, SDL_FLIP_VERTICAL,
+			(SDL_RendererFlip)(SDL_FLIP_HORIZONTAL | SDL_FLIP_VERTICAL)};
+		for (int k = 0; k < 4; k++) SDL_RenderCopyEx(ren, t, nullptr, &at[k], 0, nullptr, flips[k]);
+	}
+
 	void Ui::fillRound(Rect r, SDL_Color c, int rad, int mask)
 	{
 		roundDev(devRect(r), c, devRadius(theme::kitRadius(rad)), mask);

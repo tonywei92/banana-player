@@ -50,20 +50,9 @@ namespace bp
 
 	void Ui::Kit::ring(Rect r, int rad, SDL_Color c)
 	{
-		// the 2-unit outline as four clipped bands, so the inside keeps what was under it (a state chip has no fill)
-		int e = theme::EDGE;
-		SDL_Rect d = ui.devRect(r), keep;
-		bool had = SDL_RenderIsClipEnabled(ui.ren) == SDL_TRUE;
-		if (had) SDL_RenderGetClipRect(ui.ren, &keep);
-		SDL_Rect bands[4] = {{d.x, d.y, d.w, e}, {d.x, d.y + d.h - e, d.w, e}, {d.x, d.y + e, e, d.h - 2 * e},
-			{d.x + d.w - e, d.y + e, e, d.h - 2 * e}};
-		for (SDL_Rect b : bands)
-		{
-			if (had && !SDL_IntersectRect(&b, &keep, &b)) continue;
-			SDL_RenderSetClipRect(ui.ren, &b);
-			ui.fillRound(r, c, rad);
-		}
-		SDL_RenderSetClipRect(ui.ren, had ? &keep : nullptr);
+		// the 2-unit outline, its corners following the fill's radius, the inside left as it was (a state chip has no
+		// fill). (It was four clipped bands of a filled box: the bands missed the curves, so the corners vanished)
+		ui.strokeRound(r, c, rad, theme::EDGE);
 	}
 
 	void Ui::Kit::artPlaceholder(Rect r, const std::string& key, int rad, bool edge)

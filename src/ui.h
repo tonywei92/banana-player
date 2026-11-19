@@ -782,6 +782,13 @@ namespace bp
 		int devRadius(int rad) const;
 		SDL_Texture* corner(int R);
 		std::vector<SDL_Texture*> corners;	// by radius in pixels
+	public:
+		// a rounded outline e units thick (the focus ring): straight sides as rects, corners anti-aliased quarter rings,
+		// the inside left as it was
+		void strokeRound(Rect r, SDL_Color c, int rad, int e);
+	private:
+		SDL_Texture* ringCorner(int R, int E);
+		std::map<int, SDL_Texture*> ringCorners;	// by R * 256 + E, in pixels
 		// a glyph at (x, y), its cells cell units square, snapped to the panel's pixels; Mid: centred on (cx, cy)
 		void drawGlyph(const Glyph& g, int x, int y, SDL_Color c, int cell = 2);
 		void drawGlyphMid(const Glyph& g, int cx, int cy, SDL_Color c, int cell = 2);
