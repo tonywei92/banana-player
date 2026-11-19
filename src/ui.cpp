@@ -28,6 +28,7 @@
 #include "ui_web.h"
 #include "ui_player.h"
 #include "ui_shell.h"
+#include "ui_search.h"
 #include "durworker.h"
 
 namespace bp
@@ -102,6 +103,8 @@ namespace bp
 		browse = std::make_unique<Browse>(*this);
 		areas.push_back(browse.get());
 		kit = std::make_unique<Kit>(*this);	// (not an area: the redesign's components, drawn by the areas rebuilt on them)
+		search = std::make_unique<Search>(*this);	// (its constructor adopts Page::Search: drawn in the shell's body)
+		areas.push_back(search.get());
 		playerPage = std::make_unique<PlayerPage>(*this);
 		areas.push_back(playerPage.get());
 	}
@@ -147,6 +150,8 @@ namespace bp
 		if (page == Page::Settings || page == Page::About || page == Page::Main || page == Page::ExtSection ||
 			page == Page::Extensions)
 			return true;
+		// Search: START is Done to the results while typing, and its page's own key otherwise
+		if (page == Page::Search) return false;
 		if (page == Page::Browse)
 		{
 			if (browse->browseDir == FORMDIR || browse->browseDir == FINDNET) return false;

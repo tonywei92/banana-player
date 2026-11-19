@@ -22,6 +22,32 @@
 
 namespace bp
 {
+	namespace
+	{
+		// The page's boxes (net-web: the QR at the left, the address and PIN large at the right, the keys under
+		// them). The switch row is at the top in every state; its trail is the switch itself.
+		struct WebPageLayout
+		{
+			lay::Box body, sw, qr, addrHead, addr, pinHead, pin, newPin, off, empty;
+		};
+
+		WebPageLayout webPageLayout()
+		{
+			WebPageLayout l;
+			l.body = {16, 64, 608, 376};
+			l.sw = {16, 64, 608, 52};
+			l.qr = {16, 128, 196, 196};
+			l.addrHead = {228, 126, 396, 22};
+			l.addr = {228, 150, 396, 44};
+			l.pinHead = {228, 206, 396, 22};
+			l.pin = {228, 228, 396, 64};
+			l.newPin = {16, 384, 300, 56};
+			l.off = {324, 384, 300, 56};
+			l.empty = {16, 248, 240, 56};
+			return l;
+		}
+	}
+
 	// ---- the web dashboard ----
 
 	int Ui::webView(const Player& p) const
@@ -221,7 +247,9 @@ namespace bp
 		}
 		if (v == WEB_ON_VIEW)
 		{
-			if (b == Button::Y) webNewPin(p);
+			// A is the switch itself (the spec: on the switch, on / off); Y a new PIN, X also turns it off
+			if (b == Button::A) ui.webTurn(false, p);
+			else if (b == Button::Y) webNewPin(p);
 			else if (b == Button::X) ui.webTurn(false, p);
 		}
 		else if (b == Button::A) webPrimary(p);
@@ -232,70 +260,115 @@ namespace bp
 	bool Ui::Web::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		int v = ui.webView(p);
+		WebPageLayout l = webPageLayout();
+		lay::PlayerLayout header = lay::shellHeader({0, 0, W, lay::SHELL_HEAD});
+		auto on = [&](int id, const lay::Box& b) { return id == ui.pressedBtn && b.hit(x, y); };
 		if (pt.kind == Pointer::Down)
 		{
 			ui.pressedBtn = -1;
-			if (ui.buttonRect(BACK_ICON).hit(x, y)) ui.pressedBtn = BACK_ICON;
+			if (header.backHit.hit(x, y)) ui.pressedBtn = BACK_ICON;
+			else if (l.sw.hit(x, y)) ui.pressedBtn = WEB_SWITCH;
 			else if (v == WEB_ON_VIEW)
 			{
-				for (int id : {WEB_NEWPIN, WEB_OFF})
-					if (ui.buttonRect(id).hit(x, y)) ui.pressedBtn = id;
+				if (l.newPin.hit(x, y)) ui.pressedBtn = WEB_NEWPIN;
+				else if (l.off.hit(x, y)) ui.pressedBtn = WEB_OFF;
 			}
-			else if (ui.buttonRect(EMPTY_BTN).hit(x, y)) ui.pressedBtn = EMPTY_BTN;
+			else if (l.empty.hit(x, y)) ui.pressedBtn = EMPTY_BTN;
 			return false;
 		}
 		if (pt.kind != Pointer::Up || ui.pressedBtn < 0) return false;
 		int id = ui.pressedBtn;
 		ui.pressedBtn = -1;
-		if (!ui.buttonRect(id).hit(x, y)) return false;
-		if (id == BACK_ICON) return key(Button::B, p);
-		if (id == WEB_NEWPIN && v == WEB_ON_VIEW) webNewPin(p);
-		else if (id == WEB_OFF && v == WEB_ON_VIEW) ui.webTurn(false, p);
-		else if (id == EMPTY_BTN && v == WEB_INCOGNITO_VIEW) ui.setIncognito(false, p);
-		else if (id == EMPTY_BTN && v != WEB_ON_VIEW) webPrimary(p);
+		if (id == BACK_ICON) { if (header.backHit.hit(x, y)) return key(Button::B, p); return false; }
+		if (id == WEB_SWITCH) { if (on(id, l.sw)) key(Button::A, p); return false; }	// the switch: on / off
+		if (id == WEB_NEWPIN && v == WEB_ON_VIEW) { if (on(id, l.newPin)) webNewPin(p); }
+		else if (id == WEB_OFF && v == WEB_ON_VIEW) { if (on(id, l.off)) ui.webTurn(false, p); }
+		else if (id == EMPTY_BTN && v == WEB_INCOGNITO_VIEW) { if (on(id, l.empty)) ui.setIncognito(false, p); }
+		else if (id == EMPTY_BTN && v != WEB_ON_VIEW) { if (on(id, l.empty)) webPrimary(p); }
 		return false;
 	}
 
 	void Ui::Web::draw(const Player& p)
 	{
-		ui.drawHeader("Web dashboard", p);
+		Kit& k = *ui.kit;
+		WebPageLayout l = webPageLayout();
 		int v = ui.webView(p);
+		// the header: the back key, the title beside it and the crumb, then the status cluster (its globe marks the
+		// dashboard); the page has no rail (it is a settings group opened from anywhere)
+		lay::PlayerLayout header = lay::shellHeader({0, 0, W, lay::SHELL_HEAD});
+		Kit::Header hd;
+		hd.title = "Web dashboard";
+		hd.crumb = "Settings";
+		hd.inlineTitle = true;
+		hd.back = true;
+		hd.backPressed = ui.pressedBtn == BACK_ICON;
+		hd.more = false;
+		hd.right = [this, &p](int right, int cy) {
+			Kit::Status st;
+			st.clock = ui.clockText(p);
+			st.battery = ui.battery.percent;
+			st.charging = ui.battery.charging;
+			if (ui.webIndicatorShown(p)) st.badges.push_back({&G_WEB, ""});
+			return ui.kit->status(right, cy, st);
+		};
+		k.header(header, hd);
+		// the switch row, on every state: the one control a finger needs (the trail is drawn by Kit::row; the row is
+		// the touch target, as a switch's always is)
+		Kit::Row sw;
+		sw.name = "Web dashboard";
+		sw.trail = v == WEB_INCOGNITO_VIEW || v == WEB_OFF_VIEW ? Kit::Trail::SwitchOff : Kit::Trail::SwitchOn;
+		sw.off = v == WEB_INCOGNITO_VIEW;
+		sw.note = v == WEB_ON_VIEW ? (ui.webClients() ? std::to_string(ui.webClients()) + (ui.webClients() == 1 ? " browser" : " browsers")
+			: "On") : v == WEB_OFF_VIEW ? "Off" : v == WEB_INCOGNITO_VIEW ? "Off in incognito" : "On, no address";
+		sw.pressed = ui.pressedBtn == WEB_SWITCH;
+		sw.under = BG;
+		k.row(l.sw, sw);
 		if (v == WEB_INCOGNITO_VIEW)
 		{
-			// held off by incognito: the switch at 45% with its reason, one sentence, and the way out (Y). No QR,
-			// address or PIN (there is nothing to sign in to while it is off)
-			Rect row{16, 72, 608, 52};
-			ui.fillRound(row, SURFACE, R_BUTTON);
-			ui.drawTextMid("Web dashboard", 1, DIM, 32, row.y + row.h / 2, 260);
-			Rect sw{row.x + row.w - 16 - 40, row.y + row.h / 2 - 11, 40, 22};
-			ui.drawTextMid("Off in incognito", 0, DIM, sw.x - 12, row.y + row.h / 2, 240, 1);
-			ui.fillRound(sw, Kit::off(TRACK), 11);
-			ui.fillRound({sw.x + 4, sw.y + 4, 14, 14}, Kit::off(DIM), 7);
-			auto lines = ui.wrapText("The Web dashboard is off while incognito is on. It comes back by itself when you leave incognito.",
-				0, 560, 3);
-			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, DIM_ON, W / 2, 156 + (int)i * 24, 560, 2);
-			Rect b = ui.buttonRect(EMPTY_BTN);
-			ui.drawBox(b, ui.pressedBtn == EMPTY_BTN ? PRESSED : ACCENT, R_BUTTON, true);
-			int gw = ui.glyphW(G_INCOGNITO), tw = (int)std::lround(ui.textWidth("Leave incognito", 0) / sx);
-			int x = b.x + b.w / 2 - (gw + 10 + tw) / 2;
-			ui.drawGlyphMid(G_INCOGNITO, x + gw / 2, b.y + b.h / 2, ON_ACCENT);
-			ui.drawTextMid("Leave incognito", 0, ON_ACCENT, x + gw + 10, b.y + b.h / 2, 300);
-			ui.drawHints({{"Y", "Leave incognito"}, {"L2/R2", "Group"}, {"B", "Back"}});
+			// held off by incognito: the switch at 45% with its reason (above), one sentence and the way out. No QR,
+			// address or PIN: there is nothing to sign in to while it is off
+			auto lines = ui.wrapText("The Web dashboard is off while incognito is on. It comes back by itself when you "
+				"leave incognito.", F_I14, 560, 3);
+			int y = l.body.y + 70;
+			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], F_I14, DIM_ON, l.body.x, y + (int)i * 22, 560);
+			Kit::Key leave;
+			leave.glyph = &G_INCOGNITO;
+			leave.label = "Leave incognito";
+			leave.key = "Y";
+			leave.pressed = ui.pressedBtn == EMPTY_BTN;
+			k.key(l.empty, leave);
+			k.hints({0, lay::PANEL_H - lay::HINTS_H, W, lay::HINTS_H}, {{"Y", "Leave incognito"}, {"L2/R2", "Group"}, {"B", "Back"}});
 			return;
 		}
 		if (v != WEB_ON_VIEW)
 		{
-			// one of the empty pages: a mark, what it is, the lines under it (two at most), the button
-			const Glyph& g = v == WEB_OFF_VIEW ? G_WEB : G_ALERT;
-			std::string title = v == WEB_OFF_VIEW ? "Web dashboard is off" : v == WEB_NOWIFI_VIEW ? "No Wi-Fi" : "Couldn't start the web dashboard";
-			std::string sub = v == WEB_OFF_VIEW ? "Manage files and playlists, and control the music, from a phone or computer on your Wi-Fi."
-				: v == WEB_NOWIFI_VIEW ? "Connect to Wi-Fi in BananaOS first. It comes back on with the Wi-Fi."
+			// off: the switch off, one line on what it is for, nothing else; no Wi-Fi or a failed start: the same
+			// switch stays on and a notice says why, with Try again
+			if (v == WEB_OFF_VIEW)
+			{
+				auto lines = ui.wrapText("Manage files and playlists, and control the music, from a phone or computer "
+					"on your Wi-Fi.", F_I14, 560, 3);
+				int y = l.body.y + 70;
+				for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], F_I14, DIM_ON, l.body.x, y + (int)i * 22, 560);
+				k.hints({0, lay::PANEL_H - lay::HINTS_H, W, lay::HINTS_H}, {{"A", "Turn on"}, {"B", "Back"}});
+				return;
+			}
+			lay::Notice nl = lay::notice({l.body.x, l.body.y + 58, l.body.w}, true, false, 0);
+			Kit::NoticeRow n;
+			n.tone = Kit::NoticeTone::Failed;
+			n.glyph = v == WEB_NOWIFI_VIEW ? &G_NETWORK : &G_ALERT;
+			n.text = v == WEB_NOWIFI_VIEW ? "No Wi-Fi" : "The dashboard couldn't start";
+			n.second = v == WEB_NOWIFI_VIEW ? "Connect to Wi-Fi in BananaOS first. It comes back on with the Wi-Fi."
 				: "Something else is using port 8080. Try again in a moment.";
-			ui.drawEmpty(g, title, "", v == WEB_OFF_VIEW ? "Turn on" : "Try again", v == WEB_OFF_VIEW ? &G_POWER : &G_REFRESH);
-			auto lines = ui.wrapText(sub, 0, 520, 2);
-			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, DIM, W / 2, 242 + (int)i * 24, 560, 2);
-			if (v == WEB_OFF_VIEW) ui.drawHints({{"A", "Turn on"}, {"L2/R2", "Group"}, {"B", "Back"}});
-			else ui.drawHints({{"A", "Try again"}, {"X", "Turn off"}, {"L2/R2", "Group"}, {"B", "Back"}});
+			k.notice(nl, n);
+			Kit::Key again;
+			again.glyph = &G_REFRESH;
+			again.label = "Try again";
+			again.key = "A";
+			again.pressed = ui.pressedBtn == EMPTY_BTN;
+			k.key(l.empty, again);
+			k.hints({0, lay::PANEL_H - lay::HINTS_H, W, lay::HINTS_H},
+				{{"A", "Try again"}, {"X", "Turn off"}, {"L2/R2", "Group"}, {"B", "Back"}});
 			return;
 		}
 		std::string addr = ui.webAddress(), pin = ui.webPin();
@@ -323,7 +396,7 @@ namespace bp
 #endif
 		// the card: cream, dark modules (never the other way round: phones' readers want dark on light), each module a
 		// whole number of the panel's pixels, the quiet zone (3 modules at least) the card's own margin
-		Rect card{24, 72, 248, 248};
+		lay::Box card = l.qr;
 		ui.fillRound(card, TEXT, R_TILE);
 		if (qrSize > 0)
 		{
@@ -344,17 +417,23 @@ namespace bp
 					xx = e;
 				}
 		}
-		ui.drawTextMid("Scan with your phone", 0, TEXT, 148, 340, 248, 2);
-		ui.drawTextMid("It signs you in too", 0, DIM, 148, 362, 248, 2);
+		ui.drawTextMid("Scan with your phone", F_I12, TEXT, card.x + card.w / 2, card.y + card.h + 12, card.w, 2);
+		ui.drawTextMid("It signs you in too", F_I12, DIM, card.x + card.w / 2, card.y + card.h + 30, card.w, 2);
 
-		ui.drawTextMid("Or type this address", 0, DIM, 296, 84, 320);
-		bool fits = ui.textWidth(addr, 2) / sx <= 320;
-		ui.drawTextMid(addr, fits ? 2 : 1, ACCENT, 296, 116, 320);
-		ui.drawTextMid("PIN", 0, DIM, 296, 160);
+		// Address and PIN, large at the right of the code
+		Kit::SectionLine sl;
+		sl.text = "Address";
+		sl.caps = true;
+		k.sectionLine(lay::sectionLine(l.addrHead, false), sl);
+		ui.drawTextMid(addr, F_P28, ACCENT, l.addr.x, l.addr.y + l.addr.h / 2, l.addr.w);
+		Kit::SectionLine pl2;
+		pl2.text = "PIN";
+		pl2.caps = true;
+		k.sectionLine(lay::sectionLine(l.pinHead, false), pl2);
 		for (int i = 0; i < 4; i++)
 		{
-			Rect bx{296 + i * 84, 176, 68, 80};
-			ui.fillRound(bx, BUTTON, R_BUTTON);
+			lay::Box bx{l.pin.x + i * 60, l.pin.y, 52, l.pin.h};
+			ui.fillRound(bx, TRACK, R_BUTTON);
 			if (i >= (int)pin.size() || !ui.pinFont) continue;
 			std::string key = "pin|" + pin.substr(i, 1);
 			SDL_Texture* t = nullptr;
@@ -373,31 +452,36 @@ namespace bp
 			int minx, maxx, miny, maxy, adv, cap = th / 2;
 			if (TTF_GlyphMetrics(ui.pinFont, 'H', &minx, &maxx, &miny, &maxy, &adv) == 0) cap = TTF_FontAscent(ui.pinFont) - maxy / 2;
 			int cx = (int)std::lround((bx.x + bx.w / 2.0) * sx), cy = (int)std::lround((bx.y + bx.h / 2.0) * sy);
-			SDL_Rect d{cx - tw / 2, cy - cap, tw, th};
-			SDL_RenderCopy(ui.ren, t, nullptr, &d);
+			SDL_Rect src{0, 0, tw, th}, d{cx - tw / 2, cy - cap, tw, th};
+			SDL_RenderCopy(ui.ren, t, &src, &d);
 		}
 		int n = ui.webClients();
-		ui.drawGlyphMid(G_WEB, 305, 292, n ? ACCENT : DIM);
-		if (n) ui.drawTextMid(std::to_string(n) + (n == 1 ? " browser connected" : " browsers connected"), 1, TEXT, 324, 292, 300);
-		else ui.drawTextMid("No browser connected yet", 0, DIM, 324, 292, 300);
-
-		// New PIN pressed once: what the second press does, where the note is
-		auto note = ui.wrapText(ui.pinArmed ? "A new PIN signs out every browser" : "Your phone needs the same Wi-Fi", 0, 248, 2);
-		int noteY = 410;
+		int cy = l.pin.y + l.pin.h + 14;
+		ui.drawGlyphMid(G_WEB, l.pin.x + 9, cy, n ? ACCENT : DIM);
+		if (n) ui.drawTextMid(std::to_string(n) + (n == 1 ? " browser connected" : " browsers connected"), F_I12, TEXT,
+			l.pin.x + 28, cy, l.pin.w - 28);
+		else ui.drawTextMid("No browser connected yet", F_I12, DIM, l.pin.x + 28, cy, l.pin.w - 28);
+		// what New PIN's second press does, or what the phone needs
+		auto note = ui.wrapText(ui.pinArmed ? "A new PIN signs out every browser" : "Your phone needs the same Wi-Fi",
+			F_I12, l.pin.w, 2);
+		int noteY = l.newPin.y - 10 - (int)note.size() * 18;
 		for (size_t i = 0; i < note.size(); i++)
-			ui.drawTextMid(note[i], 0, ui.pinArmed ? ACCENT : DIM, 148, noteY - (int)(note.size() - 1) * 11 + (int)i * 22, 248, 2);
-		Rect np = ui.buttonRect(WEB_NEWPIN), off = ui.buttonRect(WEB_OFF);
-		bool npDown = ui.pressedBtn == WEB_NEWPIN;
-		ui.drawBox(np, npDown ? PRESSED : ui.pinArmed ? DANGER : BUTTON, R_BUTTON);
-		if (ui.pinArmed && !npDown)
-		{
-			// black on the red (cream reads 2.4:1 there), its key too
-			ui.drawTextMid("Press again", 1, ON_ACCENT, np.x + np.w / 2, np.y + np.h * 2 / 5, np.w - 12, 2);
-			ui.drawTextMid("Y", 0, ON_ACCENT, np.x + np.w / 2, np.y + np.h * 4 / 5 - 2, np.w - 6, 2);
-		}
-		else ui.drawButton(np, ui.pinArmed ? nullptr : &G_REFRESH, ui.pinArmed ? "Press again" : "New PIN", "Y", false, 1);
-		ui.drawBox(off, ui.pressedBtn == WEB_OFF ? PRESSED : BUTTON, R_BUTTON);
-		ui.drawButton(off, &G_POWER, "Turn off", "X", false, 1);
-		ui.drawHints({{"Y", "New PIN"}, {"X", "Turn off"}, {"L2/R2", "Group"}, {"B", "Back"}});
+			ui.drawTextMid(note[i], F_I12, ui.pinArmed ? ACCENT : DIM, l.pin.x, noteY + (int)i * 18, l.pin.w);
+
+		Kit::Key np;
+		np.glyph = ui.pinArmed ? nullptr : &G_REFRESH;
+		np.label = ui.pinArmed ? "Press again" : "New PIN";
+		np.key = "Y";
+		np.tone = ui.pinArmed ? Kit::Tone::Danger : Kit::Tone::Normal;
+		np.pressed = ui.pressedBtn == WEB_NEWPIN;
+		k.key(l.newPin, np);
+		Kit::Key off;
+		off.glyph = &G_POWER;
+		off.label = "Turn off";
+		off.key = "X";
+		off.pressed = ui.pressedBtn == WEB_OFF;
+		k.key(l.off, off);
+		k.hints({0, lay::PANEL_H - lay::HINTS_H, W, lay::HINTS_H},
+			{{"A", "On / off"}, {"Y", "New PIN"}, {"X", "Turn off"}, {"L2/R2", "Group"}, {"B", "Back"}});
 	}
 }

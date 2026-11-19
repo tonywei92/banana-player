@@ -552,14 +552,14 @@ int main(int argc, char** argv)
 		ui.manga->coverWorker = coverWorker;
 		// the cards' media index (Music, Videos and Search read it; docs/redesign/components.md › "Search and
 		// Music: the index"): a pass on this thread at start and one when the cards change, never destroyed (its
-		// thread may be mid-probe at exit). The UI reads the answer from indexWorker->index() later; nothing here
-		// draws from it yet
+		// thread may be mid-probe at exit). Search reads the answer through ui.mediaIndex (Music and Videos later)
 		MediaIndexWorker* indexWorker = new MediaIndexWorker(*new MediaIndex, [] {
 			SDL_Event ev{};
 			ev.type = evIndex;
 			SDL_PushEvent(&ev);
 		});
 		indexWorker->configure(opts.stateDir);
+		ui.mediaIndex = &indexWorker->index();	// Search (and Music, Videos) read its answers on this thread
 		indexWorker->start();
 		// the manga store's durable writes (a progress save's fsync on the card); never destroyed, its thread may be
 		// inside an fsync at exit
