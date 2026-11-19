@@ -10208,6 +10208,53 @@ static void testKitLayout()
 	sub.type = TrackType::Sub;	// (the same language in another kind of track doesn't count)
 	CHECK_EQ(chipTrack(en, 1, {en, sub}), std::string("English"));
 	CHECK_EQ(caps("Top screen 2"), std::string("TOP SCREEN 2"));
+
+	// Settings inside the shared shell: the header strip's boxes stay in the main strip, and the page's tiles and
+	// rows stay in the body (with the mini bar up the body ends under the seventh row, so the help waits for it)
+	for (bool mini : {false, true})
+	{
+		Shell sh = shell(mini);
+		PlayerLayout h = shellHeader(sh.main);
+		CHECK(h.back.x >= sh.main.x && h.back.x + h.back.w <= sh.main.x + sh.main.w);
+		CHECK(h.more.x >= sh.main.x && h.more.x + h.more.w <= sh.main.x + sh.main.w);
+		CHECK(h.back.x + h.back.w < h.more.x);
+		CHECK_EQ(h.title.x, sh.main.x + MARGIN);
+		CHECK_EQ(h.title.x + h.title.w, sh.main.x + sh.main.w - MARGIN);
+		CHECK(h.hints.x == sh.main.x && h.hints.w == sh.main.w && h.hints.y == 480 - HINTS_H);
+		Box body = settingsBody(sh.body);
+		CHECK_EQ(body.x, sh.body.x + MARGIN);
+		CHECK_EQ(body.y, sh.body.y + 10);
+		CHECK_EQ(body.w, sh.body.w - 2 * MARGIN);
+		CHECK(body.x >= sh.main.x && body.x + body.w <= sh.main.x + sh.main.w);
+		Box tiles = settingsTiles(sh.body, 5);
+		CHECK(tiles.y + tiles.h <= sh.body.y + sh.body.h);
+		for (int i = 0; i < 10; i++)
+		{
+			Box t = settingsTile(tiles, 10, 2, i);
+			CHECK(t.x >= body.x && t.x + t.w <= body.x + body.w);
+			CHECK(t.y >= body.y && t.y + t.h <= body.y + body.h);
+			CHECK_EQ(t.h, SET_TILE_H);
+			for (int j = i + 1; j < 10; j++)
+			{
+				Box o = settingsTile(tiles, 10, 2, j);
+				CHECK(t.x + t.w <= o.x || o.x + o.w <= t.x || t.y + t.h <= o.y || o.y + o.h <= t.y);
+			}
+		}
+		SettingsRows r = settingsRowsIn(sh.body);
+		CHECK_EQ(r.row(0).y, sh.body.y + 10);
+		CHECK_EQ(r.row(0).x, body.x);
+		CHECK_EQ(r.row(0).w, body.w);
+		CHECK_EQ(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h, sh.body.y + 10 + SET_ROWS * SET_ROW_H - 2);
+		CHECK(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h <= sh.body.y + sh.body.h);
+		if (mini) CHECK_EQ(r.help.w, 0);
+		else
+		{
+			CHECK(r.help.w > 0);
+			CHECK(r.help.y > r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h);
+			CHECK(r.help.y + r.help.h <= sh.body.y + sh.body.h);
+			CHECK_EQ(r.help.h, 2 * 22);
+		}
+	}
 }
 
 // Session: nextPlace, what the player's "Next" line names (Step's own choice, read without stepping)

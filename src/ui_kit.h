@@ -52,6 +52,9 @@ namespace bp
 		int capsW(const std::string& keys) const;
 		int caps(const std::string& keys, int x, int cy, SDL_Color ink = ACCENT, SDL_Color ground = BG);
 		void hints(const std::vector<Hint>& list);	// (Ui::Hint: key, verb)
+		// the same bar in a box of its own: a screen inside the shell passes lay::shell(mini).hints, so the rail's
+		// strip is not painted over
+		void hintsIn(Rect area, const std::vector<Hint>& list);
 
 		// ---- the header (every redesigned page has one) ----
 		// The strip a player layout gives the back key, the More key and the crumb, then the title under it (and the

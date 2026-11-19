@@ -135,6 +135,13 @@ namespace bp
 			Box row(int i) const;
 			Box help;	// the focused row's line(s) above the hint bar
 		};
+		// the page without the frame (the old page's own 16-unit margins). The shell variant works the same inside
+		// lay::shell(mini).body: settingsBody is that body inset to the page's margins, settingsTiles its tile area for
+		// `rows` rows of two columns, and settingsRowsIn the rows and help that fit above the body's foot (no help
+		// with the mini bar up: the body ends just under the seventh row)
+		Box settingsBody(Box body);
+		Box settingsTiles(Box body, int rows);
+		SettingsRows settingsRowsIn(Box body, int shown = SET_ROWS);
 		SettingsRows settingsRows(int shown = SET_ROWS);
 
 		// ---- the player screen ----
@@ -330,6 +337,10 @@ namespace bp
 			Box mini{0, 0, 0, 0};	// the mini bar's box (w = 0 when nothing plays)
 		};
 		Shell shell(bool mini);
+
+		// Kit::header's boxes on the shell's header strip: the back key at the main strip's left, the More key at its
+		// right, and the title's room between the margins (a page with no More has it to the right margin)
+		PlayerLayout shellHeader(Box main);
 
 		// ---- Preview pane: the top screen with nothing playing (its own 640x480 units) ----
 		// The brand mark top left, then a text column (from 74, 44 from the sides) or, with a cover, the cover at

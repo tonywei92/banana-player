@@ -99,19 +99,23 @@ namespace bp
 
 	void Ui::Kit::hints(const std::vector<Hint>& list)
 	{
-		// 30 tall along the foot, a rule above; each item its caps then its word, the row centred
-		Rect bar{0, H - lay::HINTS_H, W, lay::HINTS_H};
-		ui.fill(bar, BG);
-		ui.fill({0, bar.y, W, 1}, RULE);
+		hintsIn({0, H - lay::HINTS_H, W, lay::HINTS_H}, list);
+	}
+
+	void Ui::Kit::hintsIn(Rect area, const std::vector<Hint>& list)
+	{
+		// 30 tall along the area's foot, a rule above; each item its caps then its word, the row centred
+		ui.fill(area, BG);
+		ui.fill({area.x, area.y, area.w, 1}, RULE);
 		std::vector<int> widths;
 		for (auto& h : list) widths.push_back(capsW(h.key) + (h.key.empty() || h.verb.empty() ? 0 : 5) + textW(h.verb, F_I12));
-		auto xs = lay::spread(widths, 15, 8, W - 8);
-		int cy = bar.y + bar.h / 2 + 1;
+		auto xs = lay::spread(widths, 15, area.x + 8, area.x + area.w - 8);
+		int cy = area.y + area.h / 2 + 1;
 		for (size_t i = 0; i < list.size(); i++)
 		{
 			int x = xs[i];
 			if (!list[i].key.empty()) x += caps(list[i].key, x, cy) + 5;
-			ui.drawTextMid(list[i].verb, F_I12, DIM_ON, x, cy, std::max(1, W - 8 - x));
+			ui.drawTextMid(list[i].verb, F_I12, DIM_ON, x, cy, std::max(1, area.x + area.w - 8 - x));
 		}
 	}
 
