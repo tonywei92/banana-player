@@ -196,9 +196,9 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### More sheet (menu) (exists, needs a variant)
 
-- **Used:** X on every screen (drawn on 8)
+- **Used:** X on every screen. Drawn: a file, a video and a song while they play, a Home card, a book, a PDF, a comic while reading, a photo, a Manga series. Listed in the screen’s keys (and in the table on “A playlist: its items”): a playlist and its items, Liked, a song in Files, an album, an artist, a search result, a connection, select mode, a book on the shelf
 - **Anatomy and states:** A bottom sheet of 46-tall rows. One column up to six rows. Two columns when it holds both the item (left, titled “This file”) and the place (right, titled “This folder”). On the player only: a first row of four tiles 60 tall (Lock, Screen off, Info, Stop). Unavailable rows: 45% with the reason as the note.
-- **Inputs:** title, note, left rows, right rows, tiles
+- **Inputs:** title, note, left rows, right rows, tiles (the spec’s `moreS()` takes exactly these). A row: icon, label, an optional note or key cap, unavailable or danger, where it leads. A row that only makes sense for some items (Go to album, for a song in the Music folder) is left out for the others, not dimmed; a row that is unavailable now (Play on… with no browser open) is dimmed with its reason.
 - **Keys and touch:** D-pad moves (two columns: LEFT / RIGHT cross), A chooses, X or B closes.
 - **Code:** drawBrowseMenu, drawDialogRow, drawMangaLibMenu, drawMangaHisMenu, drawMangaLocalSheet, drawDocMenu: today one per page. One overlay fed a list.
 
@@ -288,8 +288,8 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Brand mark (new)
 
 - **Used:** top left of every Preview pane on the top screen (about forty), with the name beside it; the Web dashboard’s header (24). The full icon (`img/app.png`, 84 units) is on the welcome pane of a fresh Home only.
-- **Anatomy and states:** the app’s icon, a clapperboard, made small and flat: one drawing on a 22 grid, every edge on a whole unit at 22. Body: a rounded square 22 × 22, radius 5, BUTTON, with the 1-unit `edgeOf(SURFACE)` edge. Clapper bar: 16 × 4 at (3, 4), radius 1, TEXT, with four ACCENT stripes 2 wide leaning 2 units (the diagonal of the icon’s bar). Slate: 16 × 10 at (3, 9), radius 1.5, SURFACE. Play triangle: ACCENT, 4.5 × 4.5, centred in the slate’s upper part. Progress bar: 12 × 1 at (5, 16), DIM, its first half ACCENT, a 2 × 2 TEXT knob at the join. No gradient, no shadow, no tilt. It has one state. Beside it: “Banana Player”, Pixelify 15, ACCENT, 8 away.
-- **Inputs:** size (22; 24 on the dashboard). Nothing else: the roles come from the theme, so it changes with it (the stripes are the theme’s accent and text on every one of the seventeen; the body is never the ground’s colour, so it reads on a light-bodied theme as on a dark one).
+- **Anatomy and states:** the app’s icon, a clapperboard, made small and flat: one drawing on a 22 grid, every edge on a whole unit at 22. Body: a rounded square 22 × 22, radius 5, BUTTON, with the 1-unit `edgeOf(SURFACE)` edge. Clapper bar: 16 × 4 at (3, 4), radius 1, BG, with four ACCENT stripes 2 wide leaning 2 units (the diagonal of the icon’s bar). ACCENT on BG is the strongest pair every theme has (the table under Contrast), so the stripes read at 22 on all seventeen; ACCENT beside TEXT, the icon’s own purple and white, is two light colours on the dark themes and two dark ones on the light, and the bar goes flat. Slate: 16 × 10 at (3, 9), radius 1.5, SURFACE. Play triangle: ACCENT, 4.5 × 4.5, centred in the slate’s upper part. Progress bar: 12 × 1 at (5, 16), DIM, its first half ACCENT, a 2 × 2 TEXT knob at the join. No gradient, no shadow, no tilt. It has one state. Beside it: “Banana Player”, Pixelify 15, ACCENT, 8 away.
+- **Inputs:** size (22; 24 on the dashboard). Nothing else: the roles come from the theme, so it changes with it (the stripes are the theme’s accent on its ground on every one of the seventeen; the body is BUTTON, never the ground’s colour, so it reads on a light-bodied theme as on a dark one).
 - **Keys and touch:** none.
 - **Code:** new: one function (`Ui::Kit::brandMark(x, y, size)`: six `fillRound` calls and four four-point fills); the spec’s is `brandMark()` in `src/kit.js`, used by `tBrand()` and the dashboard’s header. It replaces the play tile (an ACCENT square with a triangle).
 
@@ -311,7 +311,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Empty state (exists, needs a variant)
 
-- **Used:** Books, an empty folder, Repositories, Network, Playlists, Recent, Home on a fresh install (“Nothing played yet”: Browse Files on A, Web dashboard on Y)
+- **Used:** Books, Music (no Music folder), Liked, an empty folder, Repositories, Network (no connection yet), Playlists, Recent, the Web dashboard page when off (its icon and line, under the switch), Home on a fresh install (“Nothing played yet”: Browse Files on A, Web dashboard on Y)
 - **Anatomy and states:** Centred in the page: icon 54 (dim), title Pixelify 24, one or two lines Inter 13.5 dim, at most 400 wide; two keys 200 × 56, the first primary on A, the second on Y. The how-to (three numbered steps) is on the top screen.
 - **Inputs:** icon, title, text, key 1, key 2
 - **Keys and touch:** A = the first key, Y = the second.
@@ -327,10 +327,10 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Select bar and clip bar (exists, needs a variant)
 
-- **Used:** select mode, a held file
-- **Anatomy and states:** At the foot of the list, above the hints. Select bar: four keys 56 tall (Playlist, Copy, Move, Delete in red). Clip bar: 60 tall, yellow outline, what is held and its size, two keys 46 tall (… here on SELECT, Cancel on X).
+- **Used:** select mode in Files and in a playlist, a held file, items being moved in a playlist
+- **Anatomy and states:** At the foot of the list, above the hints (above the mini bar when there is one). Select bar: four keys 56 tall (Playlist, Copy, Move, Delete in red). In a playlist: three (Remove, which wants a second press; Move, on Y; Add to…), and every row shows a grip at its right, 30 × 44, DIM. Moving: the ticked rows are lifted as one block (BUTTON ground, ACCENT edge, set in 10 units, a 5-unit shadow, grips ACCENT) and the bar is two keys, Put here (primary, A) and Cancel (B); UP / DOWN carry the block, the rest renumber as it passes. Clip bar: 60 tall, yellow outline, what is held and its size, two keys 46 tall (… here on SELECT, Cancel on X).
 - **Inputs:** mode, count, held item
-- **Keys and touch:** SELECT = all / put here; X = More / Cancel while a file is held.
+- **Keys and touch:** SELECT = all / put here; X = More / Cancel while a file is held. In a playlist: Y lifts the ticked items, UP / DOWN a place, LEFT / RIGHT a page, L2 / R2 the top or the foot, A puts down, B cancels; a finger drags one row by its grip, and the list scrolls within 40 units of its top or foot; a 0.5 s hold on a row outside select mode ticks and lifts it.
 - **Code:** drawSelBar, drawSelHeader, drawClipBar (ui.h).
 
 ### Pan area and drag area (exists, reuse)
@@ -460,9 +460,11 @@ Both features read one index of the cards. It is the constraint that shapes them
 - **When it refreshes.** At start, and when a card goes in: a folder whose date has not changed is skipped, so a second start reads almost nothing. At once, without a walk, after anything the app itself does: a copy, a move, a rename, a delete, an upload from the dashboard. Files › More › Refresh walks that folder. A card taken out: its records are set aside, not deleted.
 - **It yields.** The walk stops while a video plays or the Manga engine is up (the card and the memory are theirs), and goes on with music. It never keeps the handheld awake by itself.
 - **Searching it.** The index is mapped, not loaded: a search is one pass over the names (50,000 in well under a tenth of a second), run off the main thread, the newest text replacing the one before. No word index, no ranking beyond “starts with it” first.
-- **While it is not done.** Search answers from what has been read, with a notice row and a bar; Music lists what it has and says “Reading the card · 62%” in its crumb.
+- **What Music lists.** Albums and Artists are filled by themselves from the Music folder of each card, and from nothing else: a folder at the top of the main card and of the second card whose name is “Music” or “Musics” without regard to capitals (Music, music, MUSIC, Musics, musics). If a card has several that differ only so, all are read as one. Everything under them counts, however deep. A song anywhere else on a card is not in Albums or Artists: it stays in Files and in Search, plays, and can be liked and put in playlists. Tags are read for the songs in the Music folders (that is what an album needs); a song elsewhere is in the index by its file’s name, as any file is. There is no list of all songs: Search finds a song.
+- **Saying so.** The line under Music’s title names the source and the count: “From Music on both cards · 148 albums · 1,912 songs” (“on this card” when one card has none). With no Music folder on either card, or none with a song in it, Music is its Empty state: “Put your music in a folder named Music on either card”, the how-to on the top screen. Search’s Empty state and a song’s More say nothing new: a song outside Music simply has no Go to album row.
+- **While it is not done.** Search answers from what has been read, with a notice row and a bar. Music lists what it has, with a Notice row under its tabs (“Reading Music on the second card”, songs read of about how many, a bar) and “41 albums so far” in the line under the title; albums come in at their sorted places, so the cursor’s album stays under it.
 - **Not in it.** Network servers (no index to ask; a walk over Wi-Fi takes minutes and the server may be off), hidden folders while they are hidden, and anything played in incognito is not added to Recent searches.
-- **The Web dashboard** asks the handheld: `/api/search?q=` and `/api/music/albums`, `/artists`, `/album`, `/artist`, through `WebServer::call`, paths through `resolveVirtual` and the deny list as every route. Its header has the search box on every page (results as you type, 200 ms after the last letter, the same groups and counts); Music is a tab beside Files and Playlists, with the Albums grid and the Artists list in its own boxes and type, in the handheld's theme.
+- **The Web dashboard** asks the handheld: `/api/search?q=` and `/api/music/albums`, `/artists`, `/album`, `/artist`, through `WebServer::call`, paths through `resolveVirtual` and the deny list as every route. Its header has the search box on every page (results as you type, 200 ms after the last letter, the same groups and counts); Music is a tab beside Files and Playlists, with the Albums grid and the Artists list in its own boxes and type, in the handheld's theme; it carries the same line (“From Music on both cards”), and with no Music folder the same sentence with one key, Upload to Music, which makes the folder.
 
 ## Themes
 
@@ -688,7 +690,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Select bar, clip bar | `drawSelBar`, `drawClipBar` | keys as Key (Delete: DANGER ink); clip bar: SURFACE, ACCENT edge, TEXT, DIM size |
 | Pan area, drag area | `ui_docs.cpp`, `drawPhoto` | pan area SCREEN, the box ACCENT; drag area Flat SURFACE, RULE dashes, DIM captions |
 | Level card, Note, State card | `levelcard.cpp`, the ASS cards in `player.cpp` | the TOP_ tokens (the table above) |
-| Preview pane | new | BG; Brand mark (body BUTTON with `edgeOf(SURFACE)`, bar TEXT and ACCENT, slate SURFACE, play ACCENT, progress DIM, ACCENT and TEXT), name ACCENT; label ACCENT; TEXT title; DIM_ON sentence; list DIM and TEXT; caps ACCENT |
+| Preview pane | new | BG; Brand mark (body BUTTON with `edgeOf(SURFACE)`, bar BG and ACCENT, slate SURFACE, play ACCENT, progress DIM, ACCENT and TEXT), name ACCENT; label ACCENT; TEXT title; DIM_ON sentence; list DIM and TEXT; caps ACCENT |
 | Song layout | `Player::shownMusic` | ground BG and the three lines TEXT, DIM_ON, DIM (all four modes, every style); the art's edge `edgeOf(SURFACE)`; no art: the Art placeholder in that box; the marks of all fifteen styles ACCENT and TEXT, DIM for what recedes; fixed: the art |
 | Focus | `drawFocus` | ACCENT |
 | Away-from-normal mark | new | ACCENT; DANGER past a danger line |
