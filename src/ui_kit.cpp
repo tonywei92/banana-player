@@ -50,8 +50,10 @@ namespace bp
 		const int ox = (r.w - side) / 2, oy = (r.h - side) / 2;
 		if (edge) flat(r, BUTTON, rad, edgeOf(BUTTON));
 		else ui.fillRound(r, BUTTON, rad);
-		// the discs reach past the square (half out): cut to it
-		SDL_Rect old, d = ui.devRect(r);
+		// the discs reach past the square (half out): cut to it, inside its edge when it has one (else a disc at the
+		// foot paints over the edge and the box looks cut off)
+		const int in = edge ? theme::EDGE : 0;
+		SDL_Rect old, d = ui.devRect({r.x + in, r.y + in, r.w - 2 * in, r.h - 2 * in});
 		const bool had = SDL_RenderIsClipEnabled(ui.ren);
 		if (had)
 		{
