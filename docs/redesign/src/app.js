@@ -15,6 +15,8 @@ const MAP=[
 ['Each section opens where you left it','Sections','Unchanged','same'],
 ['Finding something by its name','(none: walk to it)','Search: L3 on any list, or the header’s magnifier; results by kind from an index of both cards; a search box in the Web dashboard’s header','new'],
 ['Music by album and artist','(none: folders and playlists only)','Rail › Music: Albums (covers) and Artists, from the songs’ tags; Play and Shuffle on each; a Music tab on the Web dashboard','new'],
+['Where Albums and Artists come from','(none)','The folder named Music at the top of each card (any capitals), read by itself; the line under Music’s title says so, and with none there is an Empty state with the how-to. Songs elsewhere stay in Files and Search. No list of all songs','new'],
+['The app’s mark on the top screen','A yellow tile with a play triangle','The Brand mark: the app’s icon, a clapperboard, small and flat in the theme’s colours','chg'],
 ['The mini bar; SELECT = Now playing; header’s three bars; Playing / Paused / In browser chips','Every page but the player','Unchanged','same'],
 ['Top screen with nothing playing','Logo and one line','A preview of what the cursor is on','new'],
 ['Files, Network and playlists'],
@@ -37,7 +39,7 @@ const MAP=[
 ['A playlist’s Play, Shuffle play, Rename…, Delete','Y or hold','X · More or hold','mov'],
 ['Inside a playlist: Play all, Add files…, Add folder…, Remove duplicates, Remove missing, Select','X','X · More (Select also on Y)','same'],
 ['An item’s Play from here, Move, Remove, Show in folder, Unlike','Y','X · More','mov'],
-['Select mode: A ticks, SELECT all, X Remove, Y Move, drag the grip','Playlist','A ticks, SELECT all; Remove and Move in X · More and as keys on the select bar; grip unchanged','chg'],
+['Select mode: A ticks, SELECT all, X Remove, Y Move, drag the grip','Playlist','A ticks, SELECT all; Y still moves (the ticked rows lift, the D-pad carries them, A puts them down); Remove, Move and Add to… on the select bar and in X · More; a grip on every row in select mode','chg'],
 ['The player'],
 ['A play / pause · L / R file · L2 / R2 chapter · LEFT / RIGHT seek · L3 Like','Keys','Unchanged','same'],
 ['UP / DOWN: faster / slower','Player keys','Gone from the D-pad: UP and DOWN do nothing on the player. Speed is set in View › Speed (SELECT, or a tap on the Speed chip)','chg'],
@@ -195,7 +197,9 @@ function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);
 const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;
-const dev=s=>s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
+// a phone's page beside the handheld: the dashboard at a phone's width (390 CSS px), and what the handheld shows meanwhile
+const devPhone=s=>`<div class="phonepair"><div class="pcol"><div class="lbl"><span>A phone’s browser</span><span>390 wide</span></div><div class="panel ph" data-w="390"><div class="s">${s.phone()}</div></div></div><div class="hcol"><div class="lbl"><span>Meanwhile, the handheld</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>${s.name}</span></div></div></div>`;
+const dev=s=>s.phone?devPhone(s):s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
 const kb=k=>k.split(' or ').map(p=>p.split('/').map(x=>`<kbd>${x}</kbd>`).join(' ')).join(' or ');
 const gal=document.getElementById('gallery'),nav=document.getElementById('navscreens');
 let lastG='';
@@ -243,7 +247,7 @@ document.addEventListener('keydown',e=>{
 });
 
 // ---------- scale each panel's 640x480 drawing to its box ----------
-function fit(){document.querySelectorAll('.panel').forEach(p=>p.style.setProperty('--k',p.clientWidth/(p.classList.contains('pt')?480:640)))}
+function fit(){document.querySelectorAll('.panel').forEach(p=>p.style.setProperty('--k',p.clientWidth/(+p.dataset.w||(p.classList.contains('pt')?480:640))))}
 new ResizeObserver(fit).observe(document.body);addEventListener('resize',fit);
 show('home',false);fit();
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);

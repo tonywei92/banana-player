@@ -22,7 +22,7 @@ SPECIAL = {'<', 'theme:step'}          # app.js: back in the walk-through's hist
 STARTS = ['first-lid', 'home-first', 'home']   # the very first start, a fresh Home, Home in use
 KEYS = {'A', 'B', 'X', 'Y', 'L', 'R', 'L2', 'R2', 'L3', 'SELECT', 'START', 'F'}
 # the player's bar is drawn, but the first press only keeps the screen on
-HINT_OK = {'power-dim'}
+HINT_OK = {'power-dim', 'phone-home', 'phone-files', 'phone-playing'}   # a phone page: the bar is the handheld's, drawn beside it (its keys: web-signin, browser-play)
 NO_B = {'power-wake': 'the screen is off: any key but the playback ones wakes it'}
 
 # The journeys, each a walk of screen ids: every step must be one click (a key, a tap, an `also`) from the one before.
@@ -30,24 +30,26 @@ NO_B = {'power-wake': 'the screen is off: any key but the playback ones wakes it
 JOURNEYS = [
 	('First start', 'first-lid home-first files video video-view video files-playing video files'),
 	('Music: an album, View, Equalizer', 'home music-albums music-album music music-view music-eq eq-presets music-eq music playlists music'),
+	('Music: from Files, List, More, an artist', 'files files-music music music-list music music-more music-artist music-album; music-more music-album; music-albums music-artists music-artist music; music-albums music-empty files; music-albums music-reading music-album'),
 	('Add to a playlist from the player', 'video picker keyboard'),
-	('Playlists', 'home playlists music; playlists gone music; home music'),
-	('Liked', 'video toasts video; home music'),
-	('Books', 'home books reader reader-contents reader reader-view book-text book-text-bar reader books pdf books; books books-empty files'),
-	('Manga: shelf, series, chapter, reader', 'home manga manga-series manga-read comic-full book-comic book-comic-end manga-read manga-end manga-series manga-dl manga-downloads manga'),
+	('Playlists', 'home playlists playlist music; playlist playlist-select playlist-move playlist-select playlist playlists; playlist-select picker; playlists gone music; home music'),
+	('Liked', 'video toasts video; home music; playlists liked music; liked playlist-select; liked liked-empty files'),
+	('Books', 'home books reader reader-contents reader reader-view book-text book-text-bar reader reader-more reader books pdf pdf-pages pdf pdf-view pdf pdf-more pdf books; books books-empty files'),
+	('Manga: shelf, series, chapter, reader', 'home manga manga-history manga-read comic-more manga-read; manga manga-series manga-read comic-view comic-full comic-view book-comic book-comic-end manga-read manga-end manga-series manga-dl manga-downloads manga'),
 	('Manga: sources and servers', 'manga manga-browse manga-source manga-series; manga-browse manga-sources manga-repos manga-repo-add manga-repos manga-repo-empty manga-repo-first manga-repo-add; manga-browse manga-server manga-browse manga-engine-get'),
 	('Manga while a video plays', 'files-playing menu manga-guard manga-loading manga-ready manga-read; manga-loading manga-failed manga-loading home-stopped video'),
 	('Search', 'home search search-results video; search-results music; search-results music-album; search-results reader; search-results search'),
-	('Network', 'home menu net-list net-find net-form keyboard; net-form net-list net-folder net-stream net-folder net-copy pdf; net-copy net-copy-fail net-copy; net-folder readonly alerts; net-list offline'),
-	('Web dashboard', 'home-first web-page web-signin browser-play play-on music; browser-play browser-mini browser-play browser-lost music; quick web-page; home web-page'),
+	('Network', 'home menu net-list net-find net-form keyboard; net-form net-list net-folder net-stream net-folder net-copy pdf; net-copy net-copy-fail net-copy; net-folder readonly alerts; net-list offline; net-list net-empty net-find; net-empty net-form'),
+	('Web dashboard', 'home-first web-page web-signin phone-home phone-files phone-playing music; web-page web-page-off web-page web-page-nowifi web-page; web-signin browser-play play-on music; browser-play browser-mini browser-play browser-lost music; quick web-page; home web-page'),
 	('Settings and Theme', 'home menu settings set-theme set-screen lid-keys settings set-playback settings-group set-music set-photos set-reading set-files set-screen web-page extensions manga-settings set-updates set-about settings home'),
 	('Quick settings', 'home quick; video quick power-wake video; quick quit home; video vol-boost vol-warn vol-boost quick'),
 	('Incognito', 'quick incog-web-ask incog-web quick; set-screen incog-lid'),
 	('Lid and sleep', 'first-lid home-first; set-theme set-screen lid-keys; video power-dim power-wake video'),
 	('Files: select, copy, move, delete', 'files select clip job files; select picker; select delete files; files actions keyboard; actions info; actions busy files'),
 	('Errors and empty states', 'files play-fail info; files empty-folder web-page; files card-out files; playlists gone; video video-more lock video'),
-	('Updates', 'settings set-updates update files'),
-	('Photos', 'files photo files'),
+	('Updates', 'settings set-updates update update-downloading update-ready home; update-downloading update-failed update-downloading files'),
+	('Photos', 'files photo photo-view photo photo-more info; photo-more photo files'),
+	('Home: a card’s More, All recent', 'home home-more video; home-more recent-all home-more; home recent-all video'),
 	('Quit', 'home quit home; menu quit'),
 ]
 
