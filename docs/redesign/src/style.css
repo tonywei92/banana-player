@@ -416,7 +416,7 @@ body.phys .device::after{content:"7 mm";position:absolute;right:-64px;bottom:14p
 :is(:root[data-clean]:not([data-bp=contrast]) .s:not(.ed),.s.cl) .btn.flat.kb{background:var(--sf);border-color:var(--eds);border-radius:10px!important}
 /* ---- type: the two faces of every drawing are variables (--fd display, --ft text); data-type on <html> swaps them for the page, .ty-* for one drawing.
    Grey-scale smoothing, as SDL_ttf draws (no subpixel colour) ---- */
-.s{--fd:'IBM Plex Sans';--ft:'IBM Plex Sans';-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
+.s{--fd:'Pixelify Sans';--ft:'Pixelify Sans';-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
 :root[data-type=pi] .s:not([class*=ty-]),.s.ty-pi{--fd:'Pixelify Sans';--ft:Inter}
 :root[data-type=px] .s:not([class*=ty-]),.s.ty-px{--fd:'Pixelify Sans';--ft:'IBM Plex Sans'}
 :root[data-type=pa] .s:not([class*=ty-]),.s.ty-pa{--fd:'Pixelify Sans';--ft:'Atkinson Hyperlegible Next'}
@@ -435,3 +435,8 @@ body.phys .device::after{content:"7 mm";position:absolute;right:-64px;bottom:14p
 :is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .btn,:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .tab,:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .chip.on,:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .rail .ri.on span{font-weight:600}
 :is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .btn .in{font-weight:500}
 :is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) [style*="font-size:22px"]:not(.in){font-size:20px!important;font-weight:600}
+/* Pixelify Sans + IBM Plex Sans (the owner's choice): the pixel face only at 16 units and up; under that, Plex (components.md › Type) */
+:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:15px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:15.5px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:14.5px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:14px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:13.5px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:13px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:12.5px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:12px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:11.5px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:11px"]:not(.in),:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) [style*="font-size:10.5px"]:not(.in){font-family:var(--ft),sans-serif;font-weight:600}
+:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) .cap,:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) .tab,:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) .chip.on{font-family:var(--ft),sans-serif;font-weight:600}
+:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) .chip,:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) .status{font-family:var(--ft),sans-serif;font-weight:500}
+:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) .btn .in,:is(:root[data-type=px] .s:not([class*=ty-]),.s.ty-px) .row .nt{font-weight:500}

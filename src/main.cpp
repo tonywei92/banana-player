@@ -1781,7 +1781,7 @@ int main(int argc, char** argv)
 						}
 						else if (step.rfind("gallery:variants", 0) == 0)
 						{
-							// gallery:variants[:PAGE] (1..14): the kit's variant components on one page, for a shot:
+							// gallery:variants[:PAGE] (1..20): the kit's variant components on one page, for a shot:
 							std::string::size_type colon = step.rfind(':');
 							int pg = colon > 7 ? atoi(step.c_str() + colon + 1) : 1;
 							ui.openVariantsGallery(pg > 0 ? pg : 1);

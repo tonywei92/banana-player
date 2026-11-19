@@ -28,6 +28,7 @@
 // Unavailable ("off") is one rule everywhere: the piece at theme::OFF percent, nothing else changed.
 #pragma once
 #include "ui_internal.h"
+#include "artbackdrop.h"
 #include <functional>
 
 namespace bp
@@ -49,6 +50,9 @@ namespace bp
 		};
 
 		int textW(const std::string& s, int font) const;	// in 640x480 units
+		// s cut with "..." at a character boundary until it fits `room` (the cut Ui::drawTextAt makes), for
+		// placing something right after the name: a pill that follows it
+		std::string elided(const std::string& s, int font, int room) const;
 		static SDL_Color off(SDL_Color c, bool isOff = true);	// c as an unavailable piece shows it
 		static SDL_Color edgeOf(SDL_Color fill);
 		static SDL_Color cardFill(SDL_Color c);	// Clean: SURFACE becomes BUTTON (a fill carries a card or tile's shape)
@@ -367,6 +371,13 @@ namespace bp
 			const Glyph* glyph = nullptr;
 			std::string title;
 			std::vector<std::string> lines;	// each a line (Inter 14 dim, at most 400 wide); a page wraps its sentences first
+			// a word drawn in ACCENT inside a line, as the preview's `hl()` marks a folder an empty page names
+			// ("Music", "Videos or Movies"): the byte range in that line. Any number, in line order
+			struct AccentWord
+			{
+				int line = 0, at = 0, len = 0;
+			};
+			std::vector<AccentWord> accent;
 			std::string key1, key2;	// A, Y ("" none)
 			const Glyph *glyph1 = nullptr, *glyph2 = nullptr;
 			bool pressed1 = false, pressed2 = false, hotkeys = true;
@@ -507,6 +518,59 @@ namespace bp
 		// ACCENT mark, and the title's bars in TEXT and DIM, their widths keyed by the book's name so a shelf is not
 		// one drawing repeated. The song's record-in-its-sleeve would read as an album on the Books page.
 		void bookPlaceholder(Rect r, const std::string& key, int rad = 5);
+
+		// ==== the library's pages (ui_kit_variants.cpp; docs/notes/2026-11-19-kit-more.md): an album's and an
+		// artist's page head, the album's track row, the Playlists page's row, and Match album art's backdrop.
+		// Layouts: kitlayout.h's same block. ====
+
+		// An album's or an artist's page head (screens.js music-album, music-artist): the art at the left (the
+		// caller's picture; none: the Art placeholder keyed by the album, or the artist's disc), the title, its
+		// lines under it, and the page's keys: Play (primary, A), Shuffle (Y) and Add (touch only; Liked has no Add)
+		struct PageHead
+		{
+			std::function<void(Rect)> art;
+			std::string artKey;	// the Art placeholder's key (an album's or an artist's name)
+			bool disc = false;	// an artist with no picture: the initial's disc (the ACCENT's tint over BUTTON)
+			std::string title;
+			std::vector<std::string> lines;	// an album: its artist, then its counts; an artist: its counts
+			int focused = -1;	// the key the cursor is on (-1 none)
+			int pressed = -1;	// the key under a finger
+			bool hotkeys = true;	// the keys' caps ("" while Button hotkeys are off)
+		};
+		void pageHead(const lay::PageHead& l, const PageHead& h);
+
+		// A track of an album's page: its number or the playing mark in its place, the title, a pill right after
+		// the title when the track is a music video ("VIDEO"), a heart when it is liked, its length at the right
+		struct Track
+		{
+			std::string number;	// its place on the album ("" when the playing mark is shown)
+			bool playing = false, paused = false;	// the mark in the number's place
+			std::string name, pill;
+			Pill tone = Pill::Fact;	// the music video's VIDEO pill is a fact, not a state
+			bool heart = false;
+			std::string note;	// the length ("" until the length cache has it)
+			bool focused = false, pressed = false, off = false;
+		};
+		void trackRow(const lay::TrackRow& l, const Track& t);
+
+		// The Playlists page's row: the list's icon or Liked's heart, the name, a Now pill (a play mark and the
+		// word) when it is the one playing, its counts at the right. New playlist is the dimmed plus row
+		struct Playlist
+		{
+			const Glyph* glyph = nullptr;	// the row's mark (G_PLAYLIST, G_PLUS for New playlist; none: Liked's heart)
+			bool liked = false;	// Liked: the filled heart, in ACCENT
+			std::string name, note;
+			bool playing = false;
+			bool focused = false, pressed = false, off = false, lit = false;
+		};
+		void playlistRow(const lay::PlaylistRow& l, const Playlist& p);
+
+		// Match album art's backdrop (components.md "Match album art"; the maths: artbackdrop.h): the art's
+		// 160 x 120 picture stretched over `r` with linear filtering, then the ground's five-stop vertical veil
+		// over it (the stops' places: artbg::STOP_Y, scaled to r). A fallback Backdrop draws no picture: the
+		// neutral gradient (a light theme's is its plain BG, the two ends one colour). `pic` null with a
+		// non-fallback Backdrop draws the veil alone, until the art's texture is decoded
+		void backdrop(Rect r, SDL_Texture* pic, const artbg::Backdrop& b);
 	};
 
 	// ---- the More sheet's list (Ui::openMore; ui_more.cpp) ----

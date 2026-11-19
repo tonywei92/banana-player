@@ -203,10 +203,9 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   height less 8 a side, right corners rounded 1, in the accent (KEY_FOCUS in a strong theme), in Classic and Clean,
   alongside the cell's tint.
 
-- **One face: IBM Plex Sans for everything** (owner; it takes back Pixelify Sans + Inter). No pixel face in the
-  interface. Weights by role (600 titles, key labels, tile names, what is selected; 500 names, notes, hints; 700
-  pills and badges), smallest size 11, digits of one width as drawn. Sizes stay, except a page's title 25 → 23, a
-  card's 22 → 20, a sheet's 20 → 19. components.md › Type; `type-options` keeps the eight pairs that were compared.
+- **One face: Pixelify Sans for everything** (owner; built and on the handheld; it takes back Pixelify + Inter, the
+  all-Plex entry and Pixelify + Plex). Sizes as the components name them, as before the other faces were tried.
+  components.md › Type; `type-options` keeps the eight pairs that were compared.
 
 ## Decisions waiting on the owner
 

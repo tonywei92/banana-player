@@ -203,12 +203,12 @@ function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.
  let c=!/[?&]classic/.test(location.search);if(c&&!/[?&]clean/.test(location.search))try{c=localStorage.getItem('bpstyle')!='classic'}catch(e){}
  setClean(c);
  // the Type switch (a review aid, like the one above): the display and text faces of every drawing on the page
- const TY=[['pi','Pixelify + Inter (before)'],['px','Pixelify + IBM Plex Sans'],['pa','Pixelify + Atkinson'],['jp','Jersey 10 + Public Sans'],['sl','Silkscreen + Lexend'],['tr','Tiny5 + Rubik'],['pp','All pixel: Pixelify'],['xx','IBM Plex Sans (the app’s)']];
+ const TY=[['pi','Pixelify + Inter (before)'],['px','Pixelify + IBM Plex Sans'],['pa','Pixelify + Atkinson'],['jp','Jersey 10 + Public Sans'],['sl','Silkscreen + Lexend'],['tr','Tiny5 + Rubik'],['pp','All Pixelify Sans (the app’s)'],['xx','All sans: IBM Plex Sans']];
  bar.insertAdjacentHTML('beforeend','<button class="sty" id="typbtn"></button>');const tb=document.getElementById('typbtn');
- const setType=k=>{if(!TY.some(t=>t[0]==k))k='xx';document.documentElement.dataset.type=k;tb.textContent='Type: '+TY.find(t=>t[0]==k)[1];try{localStorage.setItem('bptype2',k)}catch(e){}};
+ const setType=k=>{if(!TY.some(t=>t[0]==k))k='pp';document.documentElement.dataset.type=k;tb.textContent='Type: '+TY.find(t=>t[0]==k)[1];try{localStorage.setItem('bptype4',k)}catch(e){}};
  tb.addEventListener('click',()=>{const i=TY.findIndex(t=>t[0]==document.documentElement.dataset.type);setType(TY[(i+1)%TY.length][0])});
- let ty=(location.search.match(/[?&]type=([a-z]+)/)||[])[1];if(!ty)try{ty=localStorage.getItem('bptype2')}catch(e){}
- setType(ty||'xx')}
+ let ty=(location.search.match(/[?&]type=([a-z]+)/)||[])[1];if(!ty)try{ty=localStorage.getItem('bptype4')}catch(e){}
+ setType(ty||'pp')}
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);
 const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;

@@ -8,7 +8,9 @@
 // dropped (and a grey has no hue to give); the largest one's hue at S 15% / L 13%, blended 45% into the theme's
 // charcoal. The picture is the art cropped to 4:3, box-filtered to 160 x 120, Gaussian-blurred at sigma 10 (61 taps,
 // edges clamped) and its saturation taken to 55%. The theme is not part of the art's key: backdropFor works the
-// ground, the five stops and the accent clash out from the hue and the two luminances.
+// ground, the five stops and the accent clash out from the hue and the four luminances. A light-bodied theme (its
+// ground lighter than its text: Light, Sakura, Gundam, the 16-bit ones) takes the light version — the same picture
+// lifted onto the theme's paper, the veil whitened until its dark text holds — and its fallback is the plain ground.
 #include "theme.h"
 #include <cstddef>
 #include <cstdint>
@@ -22,15 +24,18 @@ namespace artbg
 	constexpr int BLUR_RADIUS = 30;	// 61 taps each way: sigma 10 at this size (40 units on the panel)
 	constexpr size_t PIXELS = (size_t)W * H;
 	constexpr size_t CACHE_CAP = 16u * 1024u * 1024u;	// at most this much in artbg/ (about 270 files)
-	constexpr uint8_t CACHE_VERSION = 1;
+	constexpr uint8_t CACHE_VERSION = 2;	// (2: the 5th-percentile luminances joined the header)
 
-	// What the art gives: one hue (or none), the picture's two 95th-percentile luminances (relative luminance x 255:
-	// the rows above y 168 on the panel and those below), and its 160 x 120 RGB bytes.
+	// What the art gives: one hue (or none), the picture's 95th- and 5th-percentile luminances over the two bands of
+	// the panel (relative luminance x 255: the rows above y 168 and those below — the 95th says how bright a dark
+	// theme's veil must be to keep its light text legible, the 5th how white a light theme's must be), and its
+	// 160 x 120 RGB bytes.
 	struct Art
 	{
 		bool hasHue = false;
 		int hue = 0;	// 0..359
 		int l95top = 0, l95low = 0;	// 0..255
+		int l5top = 0, l5low = 0;	// 0..255, never above the matching l95
 		std::vector<uint8_t> rgb;	// W * H * 3, top row first
 	};
 
@@ -41,28 +46,38 @@ namespace artbg
 	};
 
 	// One stop of the veil over the picture: `veil` is the ground's opacity in percent (0..96). The renderer draws
-	// the picture, then each stop's ground at its veil, or the fallback's top-to-bottom gradient instead.
+	// the picture, then each stop's ground at its veil, or the fallback's top-to-bottom gradient instead (a light
+	// theme's fallback is its plain BG: the gradient's two ends are the same colour, so it draws one fill).
 	struct Backdrop
 	{
 		bool fallback = true;
-		Rgb ground;		// the tinted charcoal, or the plain one for the fallback
+		Rgb ground;		// the tinted charcoal (or paper), the plain one for the fallback
 		Rgb stop[5];		// the veil's colour at each stop (always `ground`)
 		int veil[5] = {0, 0, 0, 0, 0};
 		Rgb top, bottom;	// the fallback's gradient ends (the charcoal 35% towards SURFACE, then BG)
 	};
 
+	// the stops' places down the panel, in its 640 x 480 units (components.md "Match album art": 66% at y 0, 60% at
+	// y 120, 80% at y 168, 90% at y 330, 94% at y 480); the renderer scales them to the Rect it draws
+	constexpr int STOP_Y[5] = {0, 120, 168, 330, 480};
+
 	// The art's encoded bytes, RGBA (the alpha is ignored: an art is opaque), w x h. A tiny or empty image gives no
 	// hue and an empty picture (the fallback).
 	Art artBackdrop(const uint8_t* rgba, int w, int h);
 
-	// The theme's part: `hue` -1 for none (the art gave nothing). The fallback is the neutral gradient when there is
-	// no hue, when the veil would have to be over 96% at every stop, or when the art's hue is 150..210 degrees from a
-	// theme accent with a colour of its own.
-	Backdrop backdropFor(const ThemeColours& theme, int hue, int l95top, int l95low);
+	// The theme's part: `hue` -1 for none (the art gave nothing); the four luminances of the Art (the 5th-percentile
+	// ones are what a light theme protects its text against). A light-bodied theme — its BG lighter than its TEXT
+	// (Light, Sakura, Gundam, the 16-bit ones) — takes the light version: the paper (half way BG to SURFACE) with the
+	// hue at S 22% / L 86% blended in at 45%, its veil scaled until the picture's 5th-percentile luminance under it
+	// leaves the theme's TEXT, DIM_ON and ACCENT at 4.5:1 (a dark art is whitened, as a bright one is darkened in a
+	// dark theme), and the fallback the theme's plain BG. The dark theme's fallback is the neutral gradient, when
+	// there is no hue, when the veil would have to be over 96% at every stop, or when the art's hue is 150..210
+	// degrees from a theme accent with a colour of its own.
+	Backdrop backdropFor(const ThemeColours& theme, int hue, int l95top, int l95low, int l5top, int l5low);
 	Backdrop backdropFor(const ThemeColours& theme, const Art& art);
 
-	// ---- the cache: <state dir>/artbg/<fnv64>.bg, a 5-byte header then W * H * 3 RGB bytes ----
-	// The header: version (1), the hue as two little-endian bytes (0xFFFF: none), then the two luminances.
+	// ---- the cache: <state dir>/artbg/<fnv64>.bg, a 7-byte header then W * H * 3 RGB bytes ----
+	// The header: version (2), the hue as two little-endian bytes (0xFFFF: none), then the four luminances.
 	uint64_t fnv64(const uint8_t* data, size_t n);
 	std::string cacheName(uint64_t hash);	// "0123456789abcdef.bg"
 	std::string cachePath(uint64_t hash);	// "artbg/0123456789abcdef.bg"

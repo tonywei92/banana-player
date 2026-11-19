@@ -15,7 +15,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Header (exists, needs a variant)
 
 - **Used:** every bottom screen (96)
-- **Anatomy and states:** 54 tall, at the top. Back key 56 × 48 (radius 10) when there is somewhere to go back to; title Plex 600 23 (18 in the viewers, where it is a file name), one line, cut with “…”; crumb under it, Plex 12, dim; status cluster; More key 56 × 48, its right edge on the column’s (12 from the panel’s); 8 between the header’s parts; the body starts 6 under the header. Touch area of both keys runs to the panel’s edges (60 × 56). Search is not in the header: its key is at the top of the rail (Section rail).
+- **Anatomy and states:** 54 tall, at the top. Back key 56 × 48 (radius 10) when there is somewhere to go back to; title Pixelify 25 (19 in the viewers, where it is a file name), one line, cut with “…”; crumb under it, Pixelify 12, dim; status cluster; More key 56 × 48, its right edge on the column’s (12 from the panel’s); 8 between the header’s parts; the body starts 6 under the header. Touch area of both keys runs to the panel’s edges (60 × 56). Search is not in the header: its key is at the top of the rail (Section rail).
 - **Inputs:** title, crumb, back target, more (yes / no), right slot (tabs’ keys, a badge)
 - **Keys and touch:** ‹ = B. ⋯ = X. The status cluster (badges, Wi-Fi, battery, clock; the playing bars too on a page with no rail) is a touch target, 48 tall, on every header: a tap opens Quick settings, as F does. Its globe keeps its own tap: the Web dashboard page.
 - **Code:** drawHeader, drawSectionHeader, drawBackIcon (ui.h). Needs: the crumb line, the More key, room for badges.
@@ -23,7 +23,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Status cluster and header badges (exists, needs a variant)
 
 - **Used:** every header; badges on 9 screens
-- **Anatomy and states:** Right of the title: badges, playing bars (3 × 13; only on a page with no rail: the player, a book, a comic, a photo. On a shell page the rail’s Now playing key carries them), Wi-Fi 16, battery 22 × 12 (2-unit outline; red when low, a bolt when charging), clock Plex 15. Badge: 20 tall, padding 0 5, radius 5, Plex 700 11, yellow on 17% yellow; red variant on 20% red. The globe: absent with the dashboard off, a plain 16 icon with nobody signed in, a badge with the count when someone is, a badge with the browser’s name while it plays. Icon in a badge 14–16.
+- **Anatomy and states:** Right of the title: badges, playing bars (3 × 13; only on a page with no rail: the player, a book, a comic, a photo. On a shell page the rail’s Now playing key carries them), Wi-Fi 16, battery 22 × 12 (2-unit outline; red when low, a bolt when charging), clock Pixelify 15. Badge: 20 tall, padding 0 5, radius 5, Pixelify 700 11, yellow on 17% yellow; red variant on 20% red. The globe: absent with the dashboard off, a plain 16 icon with nobody signed in, a badge with the count when someone is, a badge with the browser’s name while it plays. Icon in a badge 14–16.
 - **Inputs:** which states are on; battery level / charging; clock format
 - **Keys and touch:** Two touch targets. The globe, when it shows, has its own: a tap opens the Web dashboard page. The rest of the cluster (badges, Wi-Fi, battery, clock, and the playing bars where they show) is one target, 48 tall: a tap opens Quick settings (F by the keys).
 - **Code:** drawBattery, drawWebIndicator, the clock and incognito mark in drawHeader. New: the badge shape for states (boost, browser, incognito, Wi-Fi off, read only).
@@ -31,7 +31,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Section rail (new)
 
 - **Used:** every shell screen (about 50)
-- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 52 (68 × 45 when seven sections show), radius 10: icon 22 over a label Plex 600 11.5. Active cell: yellow fill, black ink, 3-unit lip (Clean: the accent's tint, ACCENT ink), and a bar at the panel's left edge beside it: 3 wide, flush to x 0, the cell's height less 8 at each end, its right corners rounded 1, in ACCENT (KEY_FOCUS in a strong theme: Gundam's yellow). The bar is drawn in Classic and in Clean, for a section and for Settings; not for Search's key. A Search key pinned at the top (68 × 40, the magnifier alone at 22, BUTTON with its edge; yellow fill while Search shows); then the sections; a Now playing key pinned above Settings while something is loaded (68 × 44: the art at 30, radius 5, a video’s frame or the Art placeholder when there is none, and beside it the three playing bars in ACCENT, moving; a pause mark in DIM_ON when paused; Classic: a key, BUTTON with its edge and lip; Clean: no ground); its place is kept empty when nothing is loaded, so the cells never change height; Settings pinned at the foot (68 × 50), with no key cap on it (START opens Settings from every shell screen, the player and the text and PDF readers; it is taught on the Settings page, whose hint bar reads “B / START Back”, and on the first-start pane). No cell carries a warning: opening a section starts and stops nothing (Rules › Arriving stops nothing). “Extensions” is the longest label, 62 of the cell’s 68.
+- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 52 (68 × 45 when seven sections show), radius 10: icon 22 over a label Pixelify 600 11.5. Active cell: yellow fill, black ink, 3-unit lip (Clean: the accent's tint, ACCENT ink), and a bar at the panel's left edge beside it: 3 wide, flush to x 0, the cell's height less 8 at each end, its right corners rounded 1, in ACCENT (KEY_FOCUS in a strong theme: Gundam's yellow). The bar is drawn in Classic and in Clean, for a section and for Settings; not for Search's key. A Search key pinned at the top (68 × 40, the magnifier alone at 22, BUTTON with its edge; yellow fill while Search shows); then the sections; a Now playing key pinned above Settings while something is loaded (68 × 44: the art at 30, radius 5, a video’s frame or the Art placeholder when there is none, and beside it the three playing bars in ACCENT, moving; a pause mark in DIM_ON when paused; Classic: a key, BUTTON with its edge and lip; Clean: no ground); its place is kept empty when nothing is loaded, so the cells never change height; Settings pinned at the foot (68 × 50), with no key cap on it (START opens Settings from every shell screen, the player and the text and PDF readers; it is taught on the Settings page, whose hint bar reads “B / START Back”, and on the first-start pane). No cell carries a warning: opening a section starts and stops nothing (Rules › Arriving stops nothing). “Extensions” is the longest label, 62 of the cell’s 68.
 - **Inputs:** sections (icon, label, shown or not), the active one. The sections: Home, Files, Videos, Music, Books, Extensions, Network. Extensions is one cell for every extension: Manga reader is a row of its page (`ext-section`), not a cell, and every Manga page keeps the Extensions cell lit. All seven show at once: with seven sections the cells are 45 tall (the icon 22 and the label still fit), with six or fewer 52; the rail never scrolls and no section is ever out of sight. Playlists is not a section: it is Music’s third view
 - **Keys and touch:** L / R step the sections (wrapping) and pass Search by, whose key is L3, and the Now playing key, whose key is SELECT; a tap opens one. A tap on the Now playing key opens the player (one tap, as the mini bar was); a hold opens the More sheet of what plays. START opens Settings; there, START or B goes back to where you were. The D-pad never enters it.
 - **Code:** New. Replaces the four markers drawn by drawSectionHeader and Home’s tiles (drawHome). Belongs to Ui’s shell, drawn for every page of an area that is a section.
@@ -39,7 +39,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Hint bar (exists, needs a variant)
 
 - **Used:** every bottom screen and every sheet
-- **Anatomy and states:** 30 tall at the foot, a 1-unit rule above. Items centred, 15 apart: key cap(s) then the word, Plex 12.5. Key cap: 19 tall, min 19 wide, 2-unit yellow outline, radius 5, Plex 600 12. At most six items; always A, B, X, Y first, then shoulders.
+- **Anatomy and states:** 30 tall at the foot, a 1-unit rule above. Items centred, 15 apart: key cap(s) then the word, Pixelify 12.5. Key cap: 19 tall, min 19 wide, 2-unit yellow outline, radius 5, Pixelify 600 12. At most six items; always A, B, X, Y first, then shoulders.
 - **Inputs:** list of (keys, word)
 - **Keys and touch:** A legend only: not pressed.
 - **Code:** drawHints (ui.h). Needs: the key in a boxed cap instead of plain yellow text; Inter for the words.
@@ -70,36 +70,31 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 
 ## Type
 
-**One face: IBM Plex Sans** (the owner, 2026-11-19), for everything the interface writes; no pixel face. (A book's page keeps its own reading faces.) SIL Open Font License. SDL_ttf draws it with grey-scale smoothing and no font features, and draws a variable font only at its default weight, so the bundle carries three static files: **Medium (500), SemiBold (600), Bold (700)**, about 0.2 MB each. It covers Latin with accents, Greek and Cyrillic; CJK in a title is handled apart, as before. Where a component above says “Plex 17” with no weight, the weight is its role's, from this table.
+**One face: Pixelify Sans** (the owner, 2026-11-19; built and on the handheld), for everything the interface writes. SIL Open Font License; one variable file of 79 KB, or its static weights (SDL_ttf draws a variable font at its default weight only): Regular 400, Medium 500, SemiBold 600, Bold 700. It covers Latin with accents; CJK in a title is handled apart, as before. A book's page keeps its own reading faces.
 
 | Role | Weight | Size (units) |
 |---|---|---|
-| A page's title (header) | 600 | 23 (18 in the viewers, where it is a file's name) |
-| A sheet's and a panel's title | 600 | 19 |
-| A card's title (Continue, Now playing) | 600 | 20 |
-| The player's title | 600 | 27 |
-| A key's label, a tile's name, a tab | 600 | 14 to 17, as each component says |
-| A state chip's value | 600 | 13 |
-| What is selected (a chip that is on, the rail's active label) | 600 | its own size |
-| A row's name, a chip that is off, a stepper's value, the clock, times | 500 | 17 (rows), 14 (chips), 15 (clock), 17 (times) |
-| A note, a crumb, a hint's word, a help line, the rail's labels | 500 | 12 to 12.5 (rail 11.5) |
-| A label in capitals (a chip's label, a group's heading) | 600, tracked 0.04 em | 11 |
+| A page's title; a sheet's and a panel's; a card's; the player's | 500 | 25 (19 in the viewers); 20; 22; 27 |
+| A row's name, a key's label, a tile's name, a stepper's value, times | 500 | 14 to 17, as each component says |
+| A state chip's value; a tab; a chip | 500 | 13; 15; 14 |
 | A key cap | 600 | 12 |
+| A note, a crumb, a hint's word, a help line | 500 | 12 to 12.5 |
+| The rail's labels | 600 | 11.5 |
+| A label in capitals (a chip's label, a group's heading), tracked 0.04 em | 600 | 11 |
 | A pill, a badge | 700 | 11 |
-| The top screen: title, lines | 600, then 500 | 28 / 17 / 14 (40 on a preview pane's large title) |
+| The top screen: title, lines | 600, then 500 | 28 / 17 / 14 |
 
-- **Smallest size: 11**, and only for capitals, pills and badges; sentence-case text is 12 or more.
-- **Numerals.** Plex's digits are one width as drawn (no feature needed): times, counts, percentages and the clock stay still as they change. Times are never set in another face.
-- **Cutting.** As before: one line, “…” at the end (a file's name in its middle); a title that does not fit is a Title marquee.
-- **Sizes against the pixel face it replaces:** Plex is about 4% narrower than Pixelify Sans at the same size and has a taller x-height (0.52 of the size against 0.46), so everything that fitted still fits and reads a little larger. Sizes therefore stay, except the three titles that were sized up for the pixel face: 25 → 23, 22 → 20, 20 → 19.
-- **Code.** `Ui::font()`'s table: every `F_P*` (Pixelify) and `F_I*` (Inter) entry becomes Plex at the weight of its role; three `TTF_Font` files instead of two families. `Ui::runs()` (the script fallback for CJK) is unchanged.
+- **Sizes** are the ones the components name, as they were before other faces were tried (Pixelify + Inter): where an entry says “Pixelify N”, “Plex N” or “Inter N”, read N in Pixelify Sans.
+- **Smallest size: 11**, for capitals, pills and badges; sentence-case text is 12 or more. At 11 to 12.5 the face's steps are smaller than a real pixel at 1.6 and soften: keep those texts short and at weight 500 or more.
+- **Numerals.** Pixelify's digits are one width but for the 1, so a running time moves a little when a 1 comes or goes; right-align times, as the player does.
+- **Code.** `Ui::font()`'s table: every entry is Pixelify Sans at its role's weight. `Ui::runs()` (the script fallback for CJK) is unchanged.
 
 ## Keys
 
 ### Key (button) (exists, needs a variant)
 
 - **Used:** everywhere
-- **Anatomy and states:** Radius 10, 2-unit edge, 3-unit lip. Two layouts by height: 56 tall = icon 19, label Plex 16, cap inline, padding 0 8; 60 and taller = icon + label on the first line, the cap under it (drawKeyedLabel). States: normal BUTTON; focused = yellow edge; pressed PRESSED; primary = yellow fill, black ink; danger = red ink (red fill only for Quit); disabled 45%. Minimum short side 56.
+- **Anatomy and states:** Radius 10, 2-unit edge, 3-unit lip. Two layouts by height: 56 tall = icon 19, label Pixelify 16, cap inline, padding 0 8; 60 and taller = icon + label on the first line, the cap under it (drawKeyedLabel). States: normal BUTTON; focused = yellow edge; pressed PRESSED; primary = yellow fill, black ink; danger = red ink (red fill only for Quit); disabled 45%. Minimum short side 56.
 - **Inputs:** icon, label, key, kind (normal / primary / danger / flat), enabled
 - **Keys and touch:** Acts on lift (slide off to cancel). A on the focused one.
 - **Code:** drawBox / fillRound with theme.h’s BUTTON, PRESSED, R_BUTTON, EDGE, LIP; drawButton, drawBarButton; drawKeyedLabel for label + key. Needs: the inline-cap layout for 56-tall keys.
@@ -115,7 +110,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Transport key (exists, needs a variant)
 
 - **Used:** every player screen (14)
-- **Anatomy and states:** 74 tall. Four of 100 and the play key 176, yellow. Icon 22 (28 on play), label 14 with its cap. Play key variants: Pause / Play / Next (when a file can’t play) / hold-to-take-over (a darker fill growing left to right, a third line Plex 12).
+- **Anatomy and states:** 74 tall. Four of 100 and the play key 176, yellow. Icon 22 (28 on play), label 14 with its cap. Play key variants: Pause / Play / Next (when a file can’t play) / hold-to-take-over (a darker fill growing left to right, a third line Pixelify 12).
 - **Inputs:** icon, label, key, hold progress, third line
 - **Keys and touch:** A = the play key; hold A 0.6 s = take over from a browser.
 - **Code:** The player grid’s drawButton (BTN_STEP columns). Needs: unequal widths (the play key 176), the hold-fill, the third line.
@@ -123,7 +118,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### State chip (new)
 
 - **Used:** player screens (14), five in a row on a video (Subtitles, Audio, Picture, Speed, Repeat) and on a song (Sound, Sound FX, Display, Speed, Shuffle)
-- **Anatomy and states:** 52 tall, SURFACE, radius 10. Icon 16–18; a label in capitals Plex 600 11; the value Plex 13 under it. Normal: cream value, no mark. Away from normal: the value yellow and a 6-unit dot top right. Unavailable: 45% (one rule), the reason as its value, nothing else changes. Width from the row: 115, the last 116 (146 where a row has four). On a song’s Display chip the value is a short form, on the chip only: Art, Art + viz, Visualizer, None. The value is one line: the shortest form of the state (a language without its region), cut with “…” at its end; never text under 16 units in a non-Latin script (the interface’s name for the language is used).
+- **Anatomy and states:** 52 tall, SURFACE, radius 10. Icon 16–18; a label in capitals Pixelify 600 11; the value Pixelify 13 under it. Normal: cream value, no mark. Away from normal: the value yellow and a 6-unit dot top right. Unavailable: 45% (one rule), the reason as its value, nothing else changes. Width from the row: 115, the last 116 (146 where a row has four). On a song’s Display chip the value is a short form, on the chip only: Art, Art + viz, Visualizer, None. The value is one line: the shortest form of the state (a language without its region), cut with “…” at its end; never text under 16 units in a non-Latin script (the interface’s name for the language is used).
 - **Inputs:** icon, label, value, away-from-normal, enabled, target sheet tab
 - **Keys and touch:** Tap: opens that chip’s own sheet (Subtitles, Audio, Picture, Speed; on a song Equalizer, Effects, Display, Speed): a bottom sheet titled with the chip’s name, as tall as its content, with no tab strip; Adjust is a page of Picture, behind its last row. Two chips open nothing and change in place: Repeat steps Off → All → One → Off, Shuffle turns on and off; no note, the chip’s word and its yellow say it; Repeat one wears the repeat-one glyph. By the keys both are also at the top of List (Y). The same five chips are the first row of the player’s More (116 wide, the cursor opening on the first): there they take focus, A opens the sheet and closes More, and A on Repeat or Shuffle changes it with More left open. A photo’s More has four in the same place (147 wide), all changed in place: Shown, Keep zoom, Pan area, A drag moves. Touch only: no D-pad focus. By buttons: X or SELECT (More), then the chip.
 - **Code:** New (today: two text lines under the keys, drawn in drawMain). Lay out with rowCell.
@@ -141,7 +136,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### List row (exists, needs a variant)
 
 - **Used:** about 60 screens
-- **Anatomy and states:** 52 tall in a page, 46 in a sheet, 60 with two lines (a track: language on the first, name · flags · format on the second). Every line is one line, cut with “…” at its end; a file name is cut in its middle, keeping its ending. The focused row’s name is a Title marquee (one pass). A right-to-left name is drawn right to left inside its run; the row never flips. Radius 10, padding 0 12, gap 11. Slots left to right: lead (icon 20, or a tick 22, a radio 14, a number, a dot 8), name Plex 17 (cut with “…”), pills, note Plex 12.5 dim, trail (chevron 14, switch, a small key 44 tall, a grip). Focused: BUTTON fill, 2-unit yellow edge, the name yellow. Dimmed (gone, unavailable, offline): 45%, the reason in the note. Danger: red ink. In Search’s results the part of the name that matched is ACCENT.
+- **Anatomy and states:** 52 tall in a page, 46 in a sheet, 60 with two lines (a track: language on the first, name · flags · format on the second). Every line is one line, cut with “…” at its end; a file name is cut in its middle, keeping its ending. The focused row’s name is a Title marquee (one pass). A right-to-left name is drawn right to left inside its run; the row never flips. Radius 10, padding 0 12, gap 11. Slots left to right: lead (icon 20, or a tick 22, a radio 14, a number, a dot 8), name Pixelify 17 (cut with “…”), pills, note Pixelify 12.5 dim, trail (chevron 14, switch, a small key 44 tall, a grip). Focused: BUTTON fill, 2-unit yellow edge, the name yellow. Dimmed (gone, unavailable, offline): 45%, the reason in the note. Danger: red ink. In Search’s results the part of the name that matched is ACCENT.
 - **Inputs:** lead, name, second line, pills, note, trail, focused, dimmed, danger
 - **Keys and touch:** UP / DOWN move, LEFT / RIGHT page, A acts, a tap acts on lift, a drag scrolls, a hold starts select mode (file lists).
 - **Code:** drawPlRow, drawUpRow, drawRowIcon, drawDialogRow, drawFocus (ui.h). Needs: one row function with the slots below instead of one per list.
@@ -149,7 +144,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Pill (mark on a row or card) (exists, needs a variant)
 
 - **Used:** about 30 screens
-- **Anatomy and states:** Plex 700 11, padding 3 6, radius 5, an optional 12-unit icon. Three tones: ACCENT fill, ON_ACCENT ink = live or wants attention (Playing, Now, Here, Update, 12 / 40); neutral = TRACK fill, TEXT ink = a fact (On card, Added, Yours, Queued, Paused); red = DANGER at 20% (TINT) as the fill, DANGER ink (Gone, Failed, 18+).
+- **Anatomy and states:** Pixelify 700 11, padding 3 6, radius 5, an optional 12-unit icon. Three tones: ACCENT fill, ON_ACCENT ink = live or wants attention (Playing, Now, Here, Update, 12 / 40); neutral = TRACK fill, TEXT ink = a fact (On card, Added, Yours, Queued, Paused); red = DANGER at 20% (TINT) as the fill, DANGER ink (Gone, Failed, 18+).
 - **Inputs:** text, icon, tone
 - **Keys and touch:** None.
 - **Code:** drawChip, drawMark, drawMangaDlMark, drawAdultChip (ui.h). Needs: the three tones as one function.
@@ -157,7 +152,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Filter chips and segmented choice (exists, needs a variant)
 
 - **Used:** Home, Books, All recent; Use for, View, Repeat, Show
-- **Anatomy and states:** 40 tall, radius 9, padding 0 12, Plex 14 (13 when three share a sheet header); 6 apart. Off: TRACK fill, dim ink. On: yellow fill, black ink. As a filter row its touch area is 56 tall.
+- **Anatomy and states:** 40 tall, radius 9, padding 0 12, Pixelify 14 (13 when three share a sheet header); 6 apart. Off: TRACK fill, dim ink. On: yellow fill, black ink. As a filter row its touch area is 56 tall.
 - **Inputs:** options (label, count), the chosen one
 - **Keys and touch:** Filters: L2 / R2 step, or tap. In a row: LEFT / RIGHT change, or tap.
 - **Code:** drawRecentTabs, drawTab (ui.h). Needs: use as a two- or three-way choice inside a row.
@@ -165,7 +160,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Tabs (exists, needs a variant)
 
 - **Used:** sheets (List; Contents; Pages) and sections (Manga, Sources, a source). Not the player’s chip sheets: each is one subject with a title
-- **Anatomy and states:** 44 tall, padding 0 13, radius 10, Plex 15 everywhere; off = BUTTON with edge, on = yellow with lip; 6 apart. Key caps at both ends say what steps it: L R in a sheet, L2 R2 in a section. A count may follow the label.
+- **Anatomy and states:** 44 tall, padding 0 13, radius 10, Pixelify 15 everywhere; off = BUTTON with edge, on = yellow with lip; 6 apart. Key caps at both ends say what steps it: L R in a sheet, L2 R2 in a section. A count may follow the label.
 - **Inputs:** labels, counts, the open one, which keys step it
 - **Keys and touch:** The named keys step (no wrap); tap a tab.
 - **Code:** drawTabs, drawTab, drawTracksHeader, drawMangaTabs (ui.h). Needs: one strip for both uses, with its stepping keys drawn at its ends.
@@ -207,7 +202,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Bottom sheet (exists, needs a variant)
 
 - **Used:** about 45 screens
-- **Anatomy and states:** Full width from the foot; SURFACE, 2-unit edge, top corners 18; the page behind under a 68% black veil. Grab mark 44 × 4. Header 54: icon 20, title Plex 600 19 yellow (red for danger), a right note Plex 12.5. Body padding 0 14. Its own hint bar. Height by content, 226 to 470; in a tabbed sheet each tab has its own height (the Equalizer takes 470, a song’s Display 452). One of a kind open at a time; a sheet may open over a sheet. A sheet that needs an answer (the first-start lid question) is not closed by a tap on the veil: B gives its safe answer.
+- **Anatomy and states:** Full width from the foot; SURFACE, 2-unit edge, top corners 18; the page behind under a 68% black veil. Grab mark 44 × 4. Header 54: icon 20, title Pixelify 20 yellow (red for danger), a right note Pixelify 12.5. Body padding 0 14. Its own hint bar. Height by content, 226 to 470; in a tabbed sheet each tab has its own height (the Equalizer takes 470, a song’s Display 452). One of a kind open at a time; a sheet may open over a sheet. A sheet that needs an answer (the first-start lid question) is not closed by a tap on the veil: B gives its safe answer.
 - **Inputs:** icon, title, note, body, hints, the key that opened it
 - **Keys and touch:** It owns every key while open. B or the opening key closes; a tap on the veil closes. L / R step its tabs.
 - **Code:** Ui::Overlay (the stack: keys, touches, draw, signature) with drawDialog for the body (docs/notes/overlay-stack.md). Needs: a sheet look for drawDialog (full width, top corners 18, a grab mark, its own hint bar) beside the centred box.
@@ -215,7 +210,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Alert sheet (exists, needs a variant)
 
 - **Used:** about forty messages (1 drawn large, 6 small)
-- **Anatomy and states:** A bottom sheet 226 tall: info icon, title, one sentence Plex 14, one primary key 56 tall, full width. Red title only when something failed or is dangerous. The key may name the next step.
+- **Anatomy and states:** A bottom sheet 226 tall: info icon, title, one sentence Pixelify 14, one primary key 56 tall, full width. Red title only when something failed or is dangerous. The key may name the next step.
 - **Inputs:** title, text, key label, danger
 - **Keys and touch:** A or B closes.
 - **Code:** Ui::AlertBox (ui_overlay.cpp:72), opened by alert(title, text). Keep the call; change its draw to the sheet.
@@ -231,7 +226,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Busy and job sheet (exists, needs a variant)
 
 - **Used:** Reading folder, copies, moves, downloads, searches (8)
-- **Anatomy and states:** A bottom sheet 214–270 tall: a spinner 22 (or the job’s icon), what it is doing, a file name line, a progress bar 12 tall when the amount is known, “x of y · %” left and time left right (Plex 13), one Cancel key 56 tall.
+- **Anatomy and states:** A bottom sheet 214–270 tall: a spinner 22 (or the job’s icon), what it is doing, a file name line, a progress bar 12 tall when the amount is known, “x of y · %” left and time left right (Pixelify 13), one Cancel key 56 tall.
 - **Inputs:** title, text, file, share, amounts, can cancel, can hide
 - **Keys and touch:** B cancels (or hides a download that carries on).
 - **Code:** drawBusy, drawFileJob (ui_fileops.cpp), drawMangaEngineSheet; the Find-in-book job. One overlay for all.
@@ -247,7 +242,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Book bar (and sheets held sideways) (new)
 
 - **Used:** Book mode for a book and for a comic (4 screens)
-- **Anatomy and states:** A bottom sheet on the touch page, upright as held, 480 wide, about 340 tall: title Plex 18 (one line), a progress slider row 36 tall, four keys in two rows (60 tall, about 222 wide: name on the first line, key under it), one full-width key 56 tall to leave Book mode, an upright hint bar. A lit Light key carries its state. Other sheets opened from it (Text, Contents, View, Light) are the same sheet component at 480 wide with 46-tall rows.
+- **Anatomy and states:** A bottom sheet on the touch page, upright as held, 480 wide, about 340 tall: title Pixelify 18 (one line), a progress slider row 36 tall, four keys in two rows (60 tall, about 222 wide: name on the first line, key under it), one full-width key 56 tall to leave Book mode, an upright hint bar. A lit Light key carries its state. Other sheets opened from it (Text, Contents, View, Light) are the same sheet component at 480 wide with 46-tall rows.
 - **Inputs:** title, progress, four keys, the leave key, which side the top screen is on
 - **Keys and touch:** A tap in the middle of the page, or START, shows and hides it. Directions in its hints are as you see them while holding the handheld.
 - **Code:** New. Today a tap in the middle opens Text options (drawDocMenu) or the Reading menu (drawMangaReadingMenu), drawn in the panel’s usual orientation. This is a bottom sheet drawn rotated a quarter turn on the touch panel, 480 wide by up to 640 tall; every sheet needs that rotated draw in Book mode.
@@ -255,7 +250,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Keyboard (exists, needs a variant)
 
 - **Used:** rename, names, Search (L3: the top screen lists what is found, by kind, as each letter is typed), addresses, passwords
-- **Anatomy and states:** A page, not a sheet. Field 48 tall under the header, yellow outline, Plex 17. Letter keys 58 × 52, radius 6, ten across, 5 apart, three rows. Bottom row 56 tall: layer keys, Space, ⌫, Done (yellow), each with its button; a field may add whole pieces (https://, .json).
+- **Anatomy and states:** A page, not a sheet. Field 48 tall under the header, yellow outline, Pixelify 17. Letter keys 58 × 52, radius 6, ten across, 5 apart, three rows. Bottom row 56 tall: layer keys, Space, ⌫, Done (yellow), each with its button; a field may add whole pieces (https://, .json).
 - **Inputs:** title, value, secret, max length, special keys
 - **Keys and touch:** D-pad moves, A types, X deletes, Y space, L3 capitals, START done, B cancels.
 - **Code:** drawKeyboard (ui.h). Needs: a special row per field, the text echoed on the top screen.
@@ -263,8 +258,8 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Quick settings panel (exists, needs a variant)
 
 - **Used:** F, on every screen but the on-screen keyboard
-- **Anatomy and states:** Not a sheet: a panel centred on the whole bottom screen, over the rail (as built; the owner’s choice), 592 wide (24 from the sides), SURFACE, 2-unit edge, radius 18, padding 16, as tall as its rows, centred in the height above the hint bar; the page behind under the veil. Title line 48 (Plex 20, ACCENT; the battery at its right). Then, 8 apart: the Now playing block when it applies; Volume and Brightness (rows 52, a − and a + key 56 × 44 each side of the bar); the switch tiles two to a row (54 tall); Quit (46, DANGER fill).
-- **Now playing block:** 64 tall, a card: the art 48 (the Art placeholder when a song has none; a video’s frame), the title Plex 15 (a Title marquee) over artist · time Plex 12, then Previous 52 × 48, Play / Pause 68 × 48 (primary) and Next 52 × 48, 12 apart from the text, 8 from each other; a 3-unit progress line along its foot. Always shown, on every screen, the player included (the owner’s choice): it is the one place outside the player and Home’s card where what plays is controlled. After the time, in ACCENT, the state marks the Now playing block’s pills carried (1.5×, a look, Repeat one, EQ, “Playing in Chrome”). **Idle** (nothing loaded): the same block, a music mark on TRACK in the art’s place, “Nothing playing” in DIM over “What you play shows here”, the three keys at 45%, no progress line; it is not pressed and the cursor passes it.
+- **Anatomy and states:** Not a sheet: a panel centred on the whole bottom screen, over the rail (as built; the owner’s choice), 592 wide (24 from the sides), SURFACE, 2-unit edge, radius 18, padding 16, as tall as its rows, centred in the height above the hint bar; the page behind under the veil. Title line 48 (Pixelify 20, ACCENT; the battery at its right). Then, 8 apart: the Now playing block when it applies; Volume and Brightness (rows 52, a − and a + key 56 × 44 each side of the bar); the switch tiles two to a row (54 tall); Quit (46, DANGER fill).
+- **Now playing block:** 64 tall, a card: the art 48 (the Art placeholder when a song has none; a video’s frame), the title Pixelify 15 (a Title marquee) over artist · time Pixelify 12, then Previous 52 × 48, Play / Pause 68 × 48 (primary) and Next 52 × 48, 12 apart from the text, 8 from each other; a 3-unit progress line along its foot. Always shown, on every screen, the player included (the owner’s choice): it is the one place outside the player and Home’s card where what plays is controlled. After the time, in ACCENT, the state marks the Now playing block’s pills carried (1.5×, a look, Repeat one, EQ, “Playing in Chrome”). **Idle** (nothing loaded): the same block, a music mark on TRACK in the art’s place, “Nothing playing” in DIM over “What you play shows here”, the three keys at 45%, no progress line; it is not pressed and the cursor passes it.
 - **Keys and touch:** UP / DOWN choose (the cursor opens on Volume), LEFT / RIGHT change a level, A toggles. With the block: A on it plays or pauses, LEFT / RIGHT on it seek (5 s back, 10 s on), L / R step to the previous and next from any row, SELECT goes to the player. A tap on one of the block’s three keys does its job; a tap anywhere else on the block (art, title, artist, time, the progress line) opens the player and closes the panel. A on the block is play / pause, not “open”: SELECT opens the player. The block is one cursor stop. A tap on the veil, F or B closes.
 - **Code:** drawQuickSettings as an Overlay (it is one today, centred); needs the block (what the Now playing block showed: `lay::miniBar`’s fields, plus two keys) and the kit’s rows and tiles.
 
@@ -299,7 +294,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Tile (exists, needs a variant)
 
 - **Used:** Settings (10), Home shortcuts, Quick settings
-- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Plex 17, a live summary Plex 12 dim. Shortcut and toggle tiles 56 tall. A choice tile (the Display sheet on a song: the four modes 147 × 56 with the mark beside the name, Plex 13.5; the fifteen styles 117 × 56 in a 5 × 3 grid, 6 apart, the mark 22 wide over the name, Plex 12) is one of a set: the one in use is filled ACCENT with ON_ACCENT ink, as a segmented choice is; the cursor is the ACCENT edge. A toggle tile may carry a second line Plex 12 dim: its state in words (“Lid or sleep: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
+- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Pixelify 12 dim. Shortcut and toggle tiles 56 tall. A choice tile (the Display sheet on a song: the four modes 147 × 56 with the mark beside the name, Pixelify 13.5; the fifteen styles 117 × 56 in a 5 × 3 grid, 6 apart, the mark 22 wide over the name, Pixelify 12) is one of a set: the one in use is filled ACCENT with ON_ACCENT ink, as a segmented choice is; the cursor is the ACCENT edge. A toggle tile may carry a second line Pixelify 12 dim: its state in words (“Lid or sleep: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
 - **Inputs:** icon, name, summary, focused, mark
 - **Keys and touch:** D-pad moves in two dimensions, A opens.
 - **Code:** Home’s tiles (drawHome), Settings’ group tiles (drawSettings). Needs: the live summary line.
@@ -307,7 +302,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Cover cell (exists, reuse)
 
 - **Used:** Books, Manga library, a source’s grid
-- **Anatomy and states:** 96 × 136, radius 5, five to a row, 14 apart. A count pill top right (unread). Under it, when in progress: a 4-unit bar and a percent, Plex 12. Focused: a 3-unit yellow outline 2 away. Dimmed 45% while it can’t open. An album is the same cell, square: 96 × 96 with the album’s name (Plex 13) and its artist (Plex 11.5 dim) under it, one line each; 120 on the top screen’s artist pane. An album with no cover in its songs: the Art placeholder at the cell’s size (96, 120), radius 5, keyed by the album’s name, so a grid of them is not one drawing repeated; the focus outline as on any cover. A song’s row that shows art takes the placeholder at the row’s art size, with its 1-unit edge. Books and manga keep their drawn covers.
+- **Anatomy and states:** 96 × 136, radius 5, five to a row, 14 apart. A count pill top right (unread). Under it, when in progress: a 4-unit bar and a percent, Pixelify 12. Focused: a 3-unit yellow outline 2 away. Dimmed 45% while it can’t open. An album is the same cell, square: 96 × 96 with the album’s name (Pixelify 13) and its artist (Pixelify 11.5 dim) under it, one line each; 120 on the top screen’s artist pane. An album with no cover in its songs: the Art placeholder at the cell’s size (96, 120), radius 5, keyed by the album’s name, so a grid of them is not one drawing repeated; the focus outline as on any cover. A song’s row that shows art takes the placeholder at the row’s art size, with its 1-unit edge. Books and manga keep their drawn covers.
 - **Inputs:** image or drawn cover (an album: its art or the Art placeholder), title, author, badge, progress, dimmed
 - **Keys and touch:** D-pad moves, A opens, drag scrolls.
 - **Code:** drawMangaCover (real cover decoded in the background, a drawn one standing in). Books uses the same.
@@ -338,7 +333,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Brand mark (new)
 
 - **Used:** top left of every Preview pane on the top screen (about forty), with the name beside it; the Web dashboard’s header (24). The full icon (`img/app.png`, 84 units) is on the welcome pane of a fresh Home only.
-- **Anatomy and states:** the app’s icon, a clapperboard, made small and flat: one drawing on a 22 grid, every edge on a whole unit at 22. Body: a rounded square 22 × 22, radius 5, BUTTON, with the 1-unit `edgeOf(SURFACE)` edge. Clapper bar: 16 × 4 at (3, 4), radius 1, BG, with four ACCENT stripes 2 wide leaning 2 units (the diagonal of the icon’s bar). ACCENT on BG is the strongest pair every theme has (the table under Contrast), so the stripes read at 22 on all seventeen; ACCENT beside TEXT, the icon’s own purple and white, is two light colours on the dark themes and two dark ones on the light, and the bar goes flat. Slate: 16 × 10 at (3, 9), radius 1.5, SURFACE. Play triangle: ACCENT, 4.5 × 4.5, centred in the slate’s upper part. Progress bar: 12 × 1 at (5, 16), DIM, its first half ACCENT, a 2 × 2 TEXT knob at the join. No gradient, no shadow, no tilt. It has one state. Beside it: “Banana Player”, Plex 15, ACCENT, 8 away.
+- **Anatomy and states:** the app’s icon, a clapperboard, made small and flat: one drawing on a 22 grid, every edge on a whole unit at 22. Body: a rounded square 22 × 22, radius 5, BUTTON, with the 1-unit `edgeOf(SURFACE)` edge. Clapper bar: 16 × 4 at (3, 4), radius 1, BG, with four ACCENT stripes 2 wide leaning 2 units (the diagonal of the icon’s bar). ACCENT on BG is the strongest pair every theme has (the table under Contrast), so the stripes read at 22 on all seventeen; ACCENT beside TEXT, the icon’s own purple and white, is two light colours on the dark themes and two dark ones on the light, and the bar goes flat. Slate: 16 × 10 at (3, 9), radius 1.5, SURFACE. Play triangle: ACCENT, 4.5 × 4.5, centred in the slate’s upper part. Progress bar: 12 × 1 at (5, 16), DIM, its first half ACCENT, a 2 × 2 TEXT knob at the join. No gradient, no shadow, no tilt. It has one state. Beside it: “Banana Player”, Pixelify 15, ACCENT, 8 away.
 - **Inputs:** size (22; 24 on the dashboard). Nothing else: the roles come from the theme, so it changes with it (the stripes are the theme’s accent on its ground on every one of the seventeen; the body is BUTTON, never the ground’s colour, so it reads on a light-bodied theme as on a dark one).
 - **Keys and touch:** none.
 - **Code:** new: one function (`Ui::Kit::brandMark(x, y, size)`: six `fillRound` calls and four four-point fills); the spec’s is `brandMark()` in `src/kit.js`, used by `tBrand()` and the dashboard’s header. It replaces the play tile (an ACCENT square with a triangle).
@@ -346,7 +341,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### QR code (exists, reuse)
 
 - **Used:** the Web dashboard page (196 square), Settings › About’s support line (84 square)
-- **Anatomy and states:** Black on a white square with a quiet edge of white, radius 6 to 10, whole modules only. It holds one address and nothing else. The address is always written out beside it, for typing. On About it is the last block of the page, under a rule: “Banana Player is free. If you’d like to support it:” Plex 12.5 dim, then ko-fi.com/tonysong Plex 15. Only there: no pop-up, reminder, badge or note elsewhere.
+- **Anatomy and states:** Black on a white square with a quiet edge of white, radius 6 to 10, whole modules only. It holds one address and nothing else. The address is always written out beside it, for typing. On About it is the last block of the page, under a rule: “Banana Player is free. If you’d like to support it:” Pixelify 12.5 dim, then ko-fi.com/tonysong Pixelify 15. Only there: no pop-up, reminder, badge or note elsewhere.
 - **Inputs:** the address, the size
 - **Keys and touch:** None. The handheld opens nothing; the phone that scans it does. Nothing is fetched.
 - **Code:** The dashboard page’s QR drawing (ui_web.cpp), given the support address, a constant. On the Web dashboard the same address is a plain link at the foot of Home (web/js/home.js), opened in a new tab with no referrer; no QR there.
@@ -354,7 +349,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Recent card and Continue card (exists, needs a variant)
 
 - **Used:** Home and its states
-- **Anatomy and states:** Recent card 112 × 100, radius 12: a 48-tall picture with a kind mark, title 14, note 12, a 3-unit progress line. Continue card 108 tall, radius 14: picture 128 × 84, a label in capitals (Continue / Now playing / Stopped for Manga), title 20 (600), note 12.5, a bar, one primary key 118 × 52. It is one card in two states. Continue: nothing is loaded; the key is Resume. Now playing: something is loaded, playing or paused; the picture wears the NOW pill, the note is the time followed by the Now playing block’s state pills (speed, look, repeat, EQ, “Playing in …”), and the key is Pause, or Play when paused. The card is the one place on Home for what plays, and Home keeps the same layout either way.
+- **Anatomy and states:** Recent card 112 × 100, radius 12: a 48-tall picture with a kind mark, title 14, note 12, a 3-unit progress line. Continue card 108 tall, radius 14: picture 128 × 84, a label in capitals (Continue / Now playing / Stopped for Manga), title 22, note 12.5, a bar, one primary key 118 × 52. It is one card in two states. Continue: nothing is loaded; the key is Resume. Now playing: something is loaded, playing or paused; the picture wears the NOW pill, the note is the time followed by the Now playing block’s state pills (speed, look, repeat, EQ, “Playing in …”), and the key is Pause, or Play when paused. The card is the one place on Home for what plays, and Home keeps the same layout either way.
 - **Inputs:** picture, kind, title, note, progress, label, key
 - **Keys and touch:** A plays or resumes; X (or hold) its More sheet. Now playing: A or a tap on the card goes to the player (SELECT too); a tap on its key pauses or plays; a hold on the key takes over from a browser, as the Now playing block’s mark does; X or a hold on the card is its More.
 - **Code:** Home’s Recent cards in drawHome. Needs: the Continue card.
@@ -362,7 +357,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Empty state (exists, needs a variant)
 
 - **Used:** Books, Music (no Music folder), Liked, an empty folder, Repositories, Network (no connection yet), Playlists, Recent, the Web dashboard page when off (its icon and line, under the switch), Home on a fresh install (“Nothing played yet”: Browse Files on A, Web dashboard on Y)
-- **Anatomy and states:** Centred in the page: icon 54 (dim), title Plex 24, one or two lines Plex 13.5 dim, at most 400 wide; two keys 200 × 56, the first primary on A, the second on Y. The how-to (three numbered steps) is on the top screen.
+- **Anatomy and states:** Centred in the page: icon 54 (dim), title Pixelify 24, one or two lines Pixelify 13.5 dim, at most 400 wide; two keys 200 × 56, the first primary on A, the second on Y. The how-to (three numbered steps) is on the top screen.
 - **Inputs:** icon, title, text, key 1, key 2
 - **Keys and touch:** A = the first key, Y = the second.
 - **Code:** drawEmpty (ui.h). Needs: the two keys and the top-screen how-to.
@@ -370,7 +365,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Notice row (exists, needs a variant)
 
 - **Used:** Manga loading / ready / failed, No Wi-Fi, a card taken out
-- **Anatomy and states:** A line key that is not pressed: 52 tall, radius 12, SURFACE; edge yellow (ready), red (failed, offline) or plain (working). Icon 20, text Plex 15, a second line Plex 12, an optional 5-unit bar, an optional key 44 tall at its right. 60 tall when it has a second line and a key.
+- **Anatomy and states:** A line key that is not pressed: 52 tall, radius 12, SURFACE; edge yellow (ready), red (failed, offline) or plain (working). Icon 20, text Pixelify 15, a second line Pixelify 12, an optional 5-unit bar, an optional key 44 tall at its right. 60 tall when it has a second line and a key.
 - **Inputs:** tone, icon, text, second line, share, key
 - **Keys and touch:** Its key only (Y, or a tap).
 - **Code:** drawExtNotice, drawMangaToast (the chip that counts seconds). Needs: a row in the page that stays, with an optional bar and key.
@@ -489,7 +484,7 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 ### Level card (exists, needs a variant)
 
 - **Used:** volume, brightness, zoom, chapter, equalizer, look, adjust
-- **Anatomy and states:** Top right, 20 from the edges, 290 wide (200 with no bar), TOP_CARD with a TOP_EDGE edge, radius 18, padding 14 18. A small label Plex 12 dim over the value Plex 19, or icon + name + value on one line; a bar 8 tall under it; an optional third line Plex 12. Fades after a moment.
+- **Anatomy and states:** Top right, 20 from the edges, 290 wide (200 with no bar), TOP_CARD with a TOP_EDGE edge, radius 18, padding 14 18. A small label Pixelify 12 dim over the value Pixelify 19, or icon + name + value on one line; a bar 8 tall under it; an optional third line Pixelify 12. Fades after a moment.
 - **Inputs:** icon, label, value, share, tone, third line
 - **Keys and touch:** Shown by the key that changed the level. The volume’s: the volume keys anywhere, and the D-pad’s UP / DOWN on the player’s face (a video or a song): the same step, the same boost past 100%; held, UP / DOWN repeat (0.4 s, then eight a second) and a hold going up stops at 100%.
 - **Code:** drawLevel and the chapter / EQ cards in main.cpp (ASS on the top panel, theme.h’s TOP_ tokens, R_TOP_CARD). Needs: TOP_TEXT (cream) for normal levels.
@@ -497,7 +492,7 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 ### Note (exists, reuse)
 
 - **Used:** Like, speed, skipped, finished, copied, a look that is on when a video starts, a browser signing in or out, wrong PINs
-- **Anatomy and states:** Over a video: the middle of the panel, centred both ways, so it covers neither the subtitles nor a Level card (top right), and it stays 1.5 s. Over a song, a photo or nothing playing: bottom centre, 26 up, 3 s. The place is set by what is under it, not by the note. The card’s body, one line Plex 19 yellow (red for a security or failure note) with an optional icon, an optional second line Plex 13. Stays 3 s (1.5 s over a video); 6 s for a browser signing in. Each line is cut with “…” (a file name in its middle). A wide variant (20 from both sides, Plex 13) for a sentence that explains, kept until the next key.
+- **Anatomy and states:** Over a video: the middle of the panel, centred both ways, so it covers neither the subtitles nor a Level card (top right), and it stays 1.5 s. Over a song, a photo or nothing playing: bottom centre, 26 up, 3 s. The place is set by what is under it, not by the note. The card’s body, one line Pixelify 19 yellow (red for a security or failure note) with an optional icon, an optional second line Pixelify 13. Stays 3 s (1.5 s over a video); 6 s for a browser signing in. Each line is cut with “…” (a file name in its middle). A wide variant (20 from both sides, Pixelify 13) for a sentence that explains, kept until the next key.
 - **Inputs:** text, icon, second line, wide, sticky
 - **Keys and touch:** None.
 - **Code:** The short OSD lines in player.cpp / main.cpp (“This is the first one”, “Added to Liked”).
@@ -505,7 +500,7 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 ### State card (exists, needs a variant)
 
 - **Used:** browser output, buffering, opening, can’t play, lost connection, end of chapter
-- **Anatomy and states:** The whole top screen, centred column from 104–150 down: a 72 tile with an icon (or a spinner 54, or a red icon 48), a title Plex 26–29 (yellow; red on failure), one line Plex 15–16, an optional bar, a hint line Plex 14 with its key.
+- **Anatomy and states:** The whole top screen, centred column from 104–150 down: a 72 tile with an icon (or a spinner 54, or a red icon 48), a title Pixelify 26–29 (yellow; red on failure), one line Pixelify 15–16, an optional bar, a hint line Pixelify 14 with its key.
 - **Inputs:** icon or spinner, tone, title, line, share, hint
 - **Keys and touch:** The key it names (A retries, hold A takes over, B goes back).
 - **Code:** The top panel’s “Playing in your browser”, Buffering, Finished and error cards (player.cpp, ui_main.cpp:395). One layout for all.
@@ -513,7 +508,7 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 ### Preview pane (new)
 
 - **Used:** every shell screen with nothing playing (about 40); and over whatever plays while Settings › Power & screens › Theme is focused (the picture is back when the cursor leaves the row)
-- **Anatomy and states:** Brand mark top left (the clapperboard, 22, + name 15). Then one of two layouts: text (a label in capitals Plex 600 11 yellow, a title Plex 28, a sentence Plex 14.5, a two-column list Plex 13.5, a key line) from 74 down, 44 from the sides; or cover (a 196 × 278 cover at 36, 66 with the same text column from 262). A picture only when one already exists. The welcome on a fresh install is the text layout with the app’s icon (84 square, radius 20) beside the name in place of the brand mark; the first-start lid question’s pane is the plain text layout.
+- **Anatomy and states:** Brand mark top left (the clapperboard, 22, + name 15). Then one of two layouts: text (a label in capitals Pixelify 600 11 yellow, a title Pixelify 28, a sentence Pixelify 14.5, a two-column list Pixelify 13.5, a key line) from 74 down, 44 from the sides; or cover (a 196 × 278 cover at 36, 66 with the same text column from 262). A picture only when one already exists. The welcome on a fresh install is the text layout with the app’s icon (84 square, radius 20) beside the name in place of the brand mark; the first-start lid question’s pane is the plain text layout.
 - **Inputs:** label, title, text, rows, hints, cover, picture
 - **Keys and touch:** None: it follows the cursor.
 - **Code:** New. The top panel is mpv’s overlay today (the idle logo card in player.cpp); this needs a laid-out card with an optional picture while nothing plays.
@@ -547,7 +542,7 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 ### Screen-off warning (new)
 
 - **Used:** before any automatic screen off (bottom or top)
-- **Anatomy and states:** A 62% black veil over the panel (the backlight also drops to a third), and one notice row 52 tall, 40 above the foot, yellow edge: a moon icon 20, “Screen off in N s” Plex 15 yellow, and “touch, or any key, keeps it on” Plex 12.5. On the top screen it is a note at the foot instead.
+- **Anatomy and states:** A 62% black veil over the panel (the backlight also drops to a third), and one notice row 52 tall, 40 above the foot, yellow edge: a moon icon 20, “Screen off in N s” Pixelify 15 yellow, and “touch, or any key, keeps it on” Pixelify 12.5. On the top screen it is a note at the foot instead.
 - **Inputs:** seconds left, which screen
 - **Keys and touch:** Any key or touch cancels and does nothing else.
 - **Code:** New. The Screen off timers exist (Settings: Screen off (music) / (video)); the five seconds before them are not drawn today. A veil and a notice row over whatever page shows.
@@ -599,7 +594,7 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 ### Lock overlay (exists, needs a variant)
 
 - **Used:** the player, locked
-- **Anatomy and states:** An 80% black veil over the controls; a 120-square key (radius 30, yellow edge) with a lock 54; “Touch is locked” Plex 22 yellow; one line Plex 14.
+- **Anatomy and states:** An 80% black veil over the controls; a 120-square key (radius 30, yellow edge) with a lock 54; “Touch is locked” Pixelify 22 yellow; one line Pixelify 14.
 - **Inputs:** held share
 - **Keys and touch:** Hold the lock 1 s. Buttons still work.
 - **Code:** The lock state in ui_main.cpp:391 (“Hold the lock 1 s to unlock”).
@@ -792,7 +787,7 @@ The TOP_ tokens are dark in every theme. A light card over a film glares, hides 
 ### Where it is changed
 
 - **Settings › Power & screens › Theme**, the group's first row: a stepper, ‹ Dark ›. Setting key `theme`, values `yellow`, `dark`, `midnight-blue`, `dark-purple`, `dark-red`, `pink`, `coffee`, `mint`, `retro-green`, `sunset`, `candy`, `16-bit`, `16-bit-lavender`, `32-bit`, `sakura`, `light`, `high-contrast`; default `dark`. One entry in `settingDefs()`.
-- **Help line** (top screen, while the row is focused): “The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.” Under it: a swatch of each theme in two rows, in the stepper's order (three rows of six: six, six, five; 84 × 30 each, 9 apart, its name under it in Plex 10.5), with the chosen one outlined, and a key, a focused row, pills and a bar as they now look.
+- **Help line** (top screen, while the row is focused): “The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.” Under it: a swatch of each theme in two rows, in the stepper's order (three rows of six: six, six, five; 84 × 30 each, 9 apart, its name under it in Pixelify 10.5), with the chosen one outlined, and a key, a focused row, pills and a bar as they now look.
 - **The preview always shows.** While the Theme row is focused the top screen is the theme's preview pane, whatever plays: a video or a song goes on underneath and its sound goes on, and its picture is back the moment the cursor leaves the row or Settings closes. It is the one row whose help takes the top screen from a picture, because the pane is what the setting changes.
 - **It previews live.** LEFT / RIGHT apply the theme at once: nothing to open, nothing to confirm, B leaves it as it is. Both panels redraw on the step (the theme is part of `signature()`), a card showing on the top screen is drawn again, and dashboard pages follow on their next state update.
 - **The group's tile** names it first: “Yellow · screen off 30 s · the lid pauses”.
