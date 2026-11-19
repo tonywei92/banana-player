@@ -114,14 +114,10 @@ namespace bp
 		bool pickerKey(Button b, Player& p);
 		bool pickerPointer(const Pointer& pt, int x, int y, Player& p);
 		void drawPicker();
-		// as tall as its rows, 7 at most (then 392, from y 22)
+		// the picker's sheet: lay::sheet over the page, 46-tall rows; the header names what goes where
 		static constexpr int PICKER_SHOWN = 7;
-		Rect pickerBox() const
-		{
-			int h = 66 + std::min((int)pickerList.size() + 1, PICKER_SHOWN) * 46;
-			return {96, (436 - h) / 2, 448, h};
-		}
-		Rect pickerRow(int i) const { return {112, pickerBox().y + 52 + (i - pickerScroll) * 46, 416, 42}; }
+		Rect pickerBox() const;
+		Rect pickerRow(int i) const;
 		bool plNameThenAdd = false;	// the name typed is a new playlist to add to (pickerFolder's, the one file, or the ticked files)
 		bool pickerNewOne = false;	// the playlist added to was just made (the card says so)
 		std::string plNameAddFolder;
@@ -154,6 +150,35 @@ namespace bp
 		int ctxPlItem = -1;
 
 		void drawPlRow(int i, int mid, bool at);	// a playlist's item: its number, mark, name and where it is
+
+		// ---- the redesigned pages (docs/redesign: playlists, playlist, playlist-select, playlist-move, liked) ----
+		// The area's own drawing, inside lay::shell(mini).body only. Until the shell lands, frame() draws the page's
+		// header and hints (the merge swaps that one function for Ui::Shell).
+		bool onPage() const;	// the list of playlists, or a playlist's own page
+		lay::PlaylistPage pageLayout(const Player& p) const;
+		void frame(const Player& p);
+		void draw(const Player& p);
+		std::string plTitle(const Player& p) const;
+		std::string plCrumb(const Player& p) const;
+		std::vector<Hint> plHints(const Player& p) const;
+		int keyFocus = -1;	// the keys row over a playlist's rows (-1: the rows)
+		int keyPress = -1;	// the key under a finger
+		int barPress = -1;	// the select / move bar's key under a finger
+		int plPressRow = -1;	// the row under a finger
+		int plTouchY = 0;
+		int plScrollStart = 0;
+		bool plTouchScrolled = false;
+		int rowsY = 0, rowsShown = 0;	// the last layout's rows (the drag's maths)
+		std::string focusFor;	// the playlist the focus was put in (a playing one opens on its row)
+		void syncFocus(const Player& p);
+		bool key(Button b, Player& p);	// the page's own; false: the browser's (X, Y, B, L/R, the menu)
+		bool pointer(const Pointer& pt, int x, int y, Player& p);
+		void actKey(int i, Player& p);	// Play, Shuffle, Add
+		void barAct(int i, Player& p);	// select: Remove, Move, Add to; move: Put here, Cancel
+		void addSheet(Player& p);	// the Add key's two rows (Add files…, Add folder…)
+		bool pickerEdit = false;	// the picker is adding a playlist's ticked items (not files ticked in Files)
+		std::vector<PlaylistEntry> pickerSel;	// those items, as they were when it opened
+		int pickerShown() const;	// the picker's rows that fit its box
 
 		// playlists edited from the web (WebPlaylistGlue), on the main thread. plWebFile: a playlist's file from its
 		// id (its file's name less .m3u), "" none. plWebEdited: the file was saved with remap (old -> new): the page

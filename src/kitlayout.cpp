@@ -392,6 +392,53 @@ namespace bp
 			return s;
 		}
 
+		PlaylistPage playlistPage(Box body, int keys, int barKeys)
+		{
+			PlaylistPage p;
+			p.area = body;
+			int x = body.x + MARGIN, w = body.w - 2 * MARGIN;
+			int top = body.y + PL_PAD;
+			p.keys = std::clamp(keys, 0, 3);
+			if (p.keys == 2)
+			{
+				p.key[0] = cell({x, top, w, PL_KEYS_H}, 2, GAP, 0);
+				p.key[1] = cell({x, top, w, PL_KEYS_H}, 2, GAP, 1);
+			}
+			else if (p.keys == 3)
+			{
+				// the Add key is 64 wide (the mock-up's ＋): Play and Shuffle share what is left
+				int addX = x + w - PL_ADD_W, rest = addX - GAP - x;
+				p.key[0] = {x, top, rest / 2, PL_KEYS_H};
+				p.key[1] = {x + rest / 2 + GAP, top, rest - rest / 2 - GAP, PL_KEYS_H};
+				p.key[2] = {addX, top, PL_ADD_W, PL_KEYS_H};
+			}
+			p.rowsY = p.keys ? top + PL_KEYS_H + GAP : top;
+			int rowsEnd = body.y + body.h;
+			p.bar = {0, 0, 0, 0};
+			p.barKeys = std::clamp(barKeys, 0, 3);
+			if (p.barKeys)
+			{
+				p.bar = {x, body.y + body.h - PL_BAR_H, w, PL_BAR_H};
+				rowsEnd = p.bar.y - PL_FOOT_GAP;
+				if (p.barKeys == 2)
+				{
+					p.barKey[0] = cell({x, p.bar.y, w, PL_BAR_H}, 2, GAP, 0);
+					p.barKey[1] = cell({x, p.bar.y, w, PL_BAR_H}, 2, GAP, 1);
+				}
+				else
+				{
+					// three keys, 6 apart, as the mock-up's bar
+					int bw = (w - 2 * 6) / 3, last = w - 2 * (bw + 6);
+					for (int i = 0; i < 3; i++)
+						p.barKey[i] = {x + i * (bw + 6), p.bar.y, i == 2 ? last : bw, PL_BAR_H};
+				}
+			}
+			p.rows = std::max(0, (rowsEnd - p.rowsY + (PL_ROW_PITCH - PL_ROW_H)) / PL_ROW_PITCH);
+			int h = p.rows ? (p.rows - 1) * PL_ROW_PITCH + PL_ROW_H : 0;
+			p.list = {x, p.rowsY, w, h};
+			return p;
+		}
+
 		MiniBar miniBar()
 		{
 			MiniBar m;

@@ -147,13 +147,17 @@ namespace bp
 		// options shared across `area` 6 apart, 40 tall (the caller's area): the chosen one yellow with black ink
 		void segment(Rect area, const std::vector<std::string>& options, int on);
 		enum class Pill { None, Live, Fact, Bad };	// yellow: live or wants attention; neutral: a fact; red: failed
-		enum class Trail { None, Chevron, SwitchOff, SwitchOn };
+		enum class Trail { None, Chevron, SwitchOff, SwitchOn, Grip, Heart };
 		struct Row
 		{
 			const Glyph* glyph = nullptr;
 			std::string lead;	// a number in the icon's place (a list's place), when there is no icon
+			const Glyph* leadGlyph = nullptr;	// a mark in the lead's place (a playing row's play mark)
+			bool numberThenIcon = false;	// a playlist's row: its place, then its kind's icon, then the name
+			bool tick = false, tickOn = false;	// a select box in the first slot (a playlist's select mode)
 			bool radio = false;	// a choice's mark in the icon's place (View's tracks, sizes and speeds)
 			bool radioOn = false;	// the one in use: G_RADIO_ON in yellow
+			bool heart = false;	// a small heart before the note (an item of a playlist that is liked)
 			std::string name, note, key, pill;
 			Pill tone = Pill::Live;
 			Trail trail = Trail::None;

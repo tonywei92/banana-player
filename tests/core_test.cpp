@@ -10208,6 +10208,58 @@ static void testKitLayout()
 	sub.type = TrackType::Sub;	// (the same language in another kind of track doesn't count)
 	CHECK_EQ(chipTrack(en, 1, {en, sub}), std::string("English"));
 	CHECK_EQ(caps("Top screen 2"), std::string("TOP SCREEN 2"));
+	// a playlist's page: the keys, the rows, the select / move bar, inside the shell's body
+	{
+		auto apart = [](Box a, Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; };
+		Box body = lay::shell(false).body;
+		PlaylistPage p = playlistPage(body, 3, 0);
+		CHECK_EQ(p.rows, 6);
+		CHECK_EQ(p.key[0].x, p.list.x);
+		CHECK_EQ(p.key[2].x + p.key[2].w, p.list.x + p.list.w);
+		CHECK_EQ(p.key[2].w, PL_ADD_W);
+		CHECK_EQ(p.key[0].y, body.y + PL_PAD);
+		CHECK_EQ(p.list.y, p.key[0].y + PL_KEYS_H + GAP);
+		Box pieces[] = {p.key[0], p.key[1], p.key[2]};
+		for (Box b : pieces)
+		{
+			CHECK_EQ(b.x >= body.x && b.x + b.w <= body.x + body.w, true);
+			CHECK_EQ(b.y >= body.y && b.y + b.h <= body.y + body.h, true);
+		}
+		CHECK_EQ(apart(p.key[0], p.key[1]) && apart(p.key[1], p.key[2]), true);
+		for (int i = 0; i < p.rows; i++)
+		{
+			Box r = p.row(i);
+			CHECK_EQ(r.x >= body.x && r.x + r.w <= body.x + body.w, true);
+			CHECK_EQ(r.y >= p.list.y && r.y + r.h <= body.y + body.h, true);
+			CHECK_EQ(r.h, PL_ROW_H);
+			if (i) CHECK_EQ(apart(r, p.row(i - 1)), true);
+		}
+		// the mini bar takes the body's foot: two rows fewer
+		Box small = lay::shell(true).body;
+		CHECK_EQ(playlistPage(small, 3, 0).rows, 4);
+		// the select bar: three keys at the body's foot, the rows ending 6 above them
+		PlaylistPage s = playlistPage(body, 3, 3);
+		CHECK_EQ(s.rows, 4);
+		CHECK_EQ(s.bar.y + s.bar.h, body.y + body.h);
+		CHECK_EQ(s.barKey[0].x, s.list.x);
+		CHECK_EQ(s.barKey[2].x + s.barKey[2].w, s.list.x + s.list.w);
+		CHECK_EQ(s.list.y + s.list.h <= s.bar.y - PL_FOOT_GAP, true);
+		for (int i = 0; i < 3; i++)
+		{
+			CHECK_EQ(s.barKey[i].h, PL_BAR_H);
+			CHECK_EQ(s.barKey[i].y, s.bar.y);
+			if (i) CHECK_EQ(apart(s.barKey[i], s.barKey[i - 1]), true);
+		}
+		// the move bar: two keys; and Liked's page without Add
+		PlaylistPage m = playlistPage(body, 2, 2);
+		CHECK_EQ(m.rows, 4);
+		CHECK_EQ(m.barKey[1].x + m.barKey[1].w, m.list.x + m.list.w);
+		CHECK_EQ(apart(m.barKey[0], m.barKey[1]), true);
+		CHECK_EQ(m.key[1].x + m.key[1].w, m.list.x + m.list.w);
+		// the list of playlists: no keys and no bar: seven rows, six with the mini bar
+		CHECK_EQ(playlistPage(body, 0, 0).rows, 7);
+		CHECK_EQ(playlistPage(small, 0, 0).rows, 6);
+	}
 }
 
 // Session: nextPlace, what the player's "Next" line names (Step's own choice, read without stepping)

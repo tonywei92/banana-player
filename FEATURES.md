@@ -135,9 +135,11 @@ folders. Playlists have a section of their own, between Files and Network.
 - **Make one:** in **Playlists**, **A** on **New playlist** (the last row), or **X** → **New playlist…**, then name it on the
   keyboard. A name is 40 characters at most, can't have a **/** in it, and can't match one you already have (capitals
   don't count).
-- **Open one:** **A** on it shows its items, in order. The section lists Liked first, then your playlists by name, each with its number of items.
-- **Its menu:** **Y** on a playlist (or hold it) gives **Play**, **Shuffle play**, **Rename…** and **Delete playlist**
-  (press it twice). Deleting a playlist leaves its files where they are.
+- **Open one:** **A** on it shows its items, in order. The section lists Liked first, then your playlists by name, each with its number of items. A playlist's page has **Play**, **Shuffle** and (on a playlist of your own) **Add** over the rows: **Play** starts at the top, **Shuffle** turns Shuffle on and starts at a random item, **Add** offers **Add files…** and **Add folder…**. **UP** from the first row reaches those keys.
+- **Its rows:** each shows its place, what it is, its name, a heart if it is liked, and its length. The one that plays
+  has the play mark in the place's stead, a **Now** pill and where it has got to. A file that is gone says **Gone**.
+- **Its menu:** **X** (or **Y**, or a hold on a playlist) gives **Play**, **Shuffle play**, **Rename…** and **Delete
+  playlist** (press it twice). Deleting a playlist leaves its files where they are.
 
 ### Playing
 
@@ -171,20 +173,22 @@ folders. Playlists have a section of their own, between Files and Network.
 
 ### Select, remove and move
 
-In a playlist, **X** → **Select** (or a hold on an item) turns on select mode:
+In a playlist, **Y** (or a hold on an item, or **X** → **Select**) turns on select mode:
 
 - **A** ticks an item (a tap does too). **SELECT** ticks them all, or clears them all.
-- **X** → **Remove** takes the ticked items out of the playlist. Press it twice. The files stay where they are, and
-  select mode ends.
-- **Y** → **Move** rearranges them (below). **B** leaves select mode.
+- The bar at the foot has **Remove**, **Move** and **Add to…**. **Remove** takes the ticked items out of the playlist and
+  asks for a second press; the files stay where they are. **Add to…** opens the playlist picker for the ticked items.
+  **X** → **More** has the same actions. **B** leaves select mode.
+- Every row shows a grip at its right while selecting: a finger drags a row by it, ticked or not.
 
-To move items: tick them, then press **Y** (**Move**). The ticked items gather into one block. **UP / DOWN** moves it a
-row at a time, **LEFT / RIGHT** a page at a time. **A** drops it where it is, and **B** puts it back. On the touch
-screen, drag the grip on the right of a row instead. **Move** in an item's **Y** menu starts a move too, and after it
-you're back in the normal list.
+To move items: tick them, then press **Y** (**Move**). The ticked items gather into one lifted block. **UP / DOWN** moves
+it a row at a time, **LEFT / RIGHT** a page at a time, **L2 / R2** to the top or the foot. **A** puts it down (the ticks
+stay), and **B** puts it back. On the touch screen, drag a row's grip instead, as in select mode. **Move** in an item's
+**X** menu starts a move too, and after it you're back in the normal list.
 
-Single items: an item's **Y** menu has **Play from here**, **Move**, **Remove from playlist** and **Show in folder** (which
-opens the item's folder, with the file under the cursor).
+Single items: **X** on an item (or a hold) has **Play from here**, **Play next**, **Move**, **Remove from playlist** and
+**Show in folder** (which opens the item's folder, with the file under the cursor). **X** with the keys row focused is
+the playlist's own menu.
 
 ### Missing items
 
@@ -210,9 +214,10 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
   first, then the playlists you changed last. A playlist that already has it says **✓ Added**: choosing it asks
   **Add again?**, and a second **A** adds another copy. **New playlist…** names one on the keyboard and adds to it. The
   button shows a check and the top screen says where it went.
-- **Liked** is always first in **Playlists**, with a yellow heart. It's newest first and can't be reordered, renamed or
-  deleted, and only Like adds to it. Inside it, an item's **Y** menu has **Play from here**, **Unlike**, **Add to
-  playlist…** and **Show in folder**; select mode's **X** is **Unlike** (press it twice).
+- **Liked** is always first in **Playlists**, with a yellow heart. It's newest first; it can be reordered like any
+  playlist (select mode, **Y**/the grip), but it can't be renamed or deleted, and only Like adds to it. Inside it, an
+  item's **X** menu has **Play from here**, **Unlike**, **Add to playlist…** and **Show in folder**; select mode's
+  **Remove** is **Unlike** (press it twice). A tap on a row's heart unlikes it.
 - **Home:** a liked file's Recent card has a small yellow heart, and a card's **Y** menu has **Like** / **Unlike** and
   **Add to playlist…**. In **Files** and **Network**, liked files have a small heart before their note.
 - Liked holds 2,000; liking one more lets the oldest go. Likes made in the web dashboard show up on the handheld at
@@ -943,7 +948,8 @@ handheld, carries on at 1:27"):
   **Recent**. Liked is never listed.
 - A song or video's **⋯** in Files has **Like** / **Unlike** (with **Undo**) and **Add to playlist…**; photos and
   folders have no Like. Liked files have a small yellow heart after their name. **Add** in a selection adds them all.
-- **Liked** is pinned at the top of Playlists. It's newest first, with no reordering: each row has a heart that unlikes
+- **Liked** is pinned at the top of Playlists. It's newest first, and the dashboard doesn't reorder it (the handheld
+  can): each row has a heart that unlikes
   it (with **Undo**, which puts it back at the top), and **⋯ › Select…** unlikes several at once. A network file in it
   plays on the handheld only, and a file gone from the card is marked **Gone**.
 - A like on the handheld shows up at once: the heart fills, and on the Liked page the new row comes in at the top, lit.
