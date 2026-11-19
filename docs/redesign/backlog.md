@@ -203,6 +203,11 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   height less 8 a side, right corners rounded 1, in the accent (KEY_FOCUS in a strong theme), in Classic and Clean,
   alongside the cell's tint.
 
+- **One face: IBM Plex Sans for everything** (owner; it takes back Pixelify Sans + Inter). No pixel face in the
+  interface. Weights by role (600 titles, key labels, tile names, what is selected; 500 names, notes, hints; 700
+  pills and badges), smallest size 11, digits of one width as drawn. Sizes stay, except a page's title 25 → 23, a
+  card's 22 → 20, a sheet's 20 → 19. components.md › Type; `type-options` keeps the eight pairs that were compared.
+
 ## Decisions waiting on the owner
 
 Each was needed to draw a gap; the drawn one is the recommendation.
@@ -214,13 +219,6 @@ Each was needed to draw a gap; the drawn one is the recommendation.
   mini bar's hold did. L / R pass it by; SELECT is its key. The header's status cluster still opens Quick settings,
   and the header keeps its playing bars only where there is no rail (decided since: none on shell pages). Or: under Search at the top; or a hold
   that opens Quick settings; or no kept place (the cells would jump when playback starts).
-
-- **The faces** (the owner: fonts that are good at low resolution). Drawn (`type-options`: eight pairs on the same
-  screens, a piece of each at the panel's real pixels, and a Type switch in the theme bar). Recommended: keep
-  Pixelify Sans for display and change the text face from Inter to **IBM Plex Sans** (sturdier at 11 to 13 units,
-  digits of one width by default, which SDL_ttf cannot turn on in Inter; OFL; about 0.2 MB a static weight), with
-  the rule that nothing is set in the pixel face under 15 units (chip values and card titles move to the text face
-  at 600). Runner-up: Pixelify Sans + Atkinson Hyperlegible Next. Or: stay with Inter; or one of the other five.
 
 From the gaps:
 

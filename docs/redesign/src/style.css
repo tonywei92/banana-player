@@ -183,7 +183,7 @@ label.sw{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:po
 :root[data-bp=yellow] .s .thsw.t-yellow,:root[data-bp=dark] .s .thsw.t-dark,:root[data-bp=blue] .s .thsw.t-blue,:root[data-bp=purple] .s .thsw.t-purple,:root[data-bp=darkred] .s .thsw.t-darkred,:root[data-bp=pink] .s .thsw.t-pink,:root[data-bp=coffee] .s .thsw.t-coffee,:root[data-bp=mint] .s .thsw.t-mint,:root[data-bp=green] .s .thsw.t-green,:root[data-bp=sunset] .s .thsw.t-sunset,:root[data-bp=candy] .s .thsw.t-candy,:root[data-bp=bit16] .s .thsw.t-bit16,:root[data-bp=bit16l] .s .thsw.t-bit16l,:root[data-bp=bit32] .s .thsw.t-bit32,:root[data-bp=sakura] .s .thsw.t-sakura,:root[data-bp=gundam] .s .thsw.t-gundam,:root[data-bp=light] .s .thsw.t-light,:root[data-bp=contrast] .s .thsw.t-contrast{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}
 /* themes: end */
 .s{font-variant-ligatures:none;
-	background:var(--bg);color:var(--tx);font:500 17px/1.15 'Pixelify Sans',monospace;user-select:none}
+	background:var(--bg);color:var(--tx);font:500 17px/1.15 var(--fd),monospace;user-select:none}
 .s *{box-sizing:border-box}
 .s .in{font-family:var(--ft),system-ui,sans-serif;font-weight:500}
 .s svg.i{flex:none;stroke-linecap:square;stroke-linejoin:miter;display:block}
@@ -416,7 +416,7 @@ body.phys .device::after{content:"7 mm";position:absolute;right:-64px;bottom:14p
 :is(:root[data-clean]:not([data-bp=contrast]) .s:not(.ed),.s.cl) .btn.flat.kb{background:var(--sf);border-color:var(--eds);border-radius:10px!important}
 /* ---- type: the two faces of every drawing are variables (--fd display, --ft text); data-type on <html> swaps them for the page, .ty-* for one drawing.
    Grey-scale smoothing, as SDL_ttf draws (no subpixel colour) ---- */
-.s{--fd:'Pixelify Sans';--ft:Inter;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
+.s{--fd:'IBM Plex Sans';--ft:'IBM Plex Sans';-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;font-synthesis:none}
 :root[data-type=pi] .s:not([class*=ty-]),.s.ty-pi{--fd:'Pixelify Sans';--ft:Inter}
 :root[data-type=px] .s:not([class*=ty-]),.s.ty-px{--fd:'Pixelify Sans';--ft:'IBM Plex Sans'}
 :root[data-type=pa] .s:not([class*=ty-]),.s.ty-pa{--fd:'Pixelify Sans';--ft:'Atkinson Hyperlegible Next'}
@@ -428,3 +428,10 @@ body.phys .device::after{content:"7 mm";position:absolute;right:-64px;bottom:14p
 .typ{margin-top:18px}.typ h4{font:600 15px Inter,sans-serif;margin:0 0 2px}.typ p{font-size:13px;color:var(--ink2);margin:0 0 8px;line-height:1.45}.typ .panel{margin-bottom:8px}
 /* the rail's active section: a 3-unit bar flush to the panel's left edge, 8 in from the cell's top and foot, in the accent (KEY_FOCUS in a strong theme) */
 .s .rail .ri.on:not(.rs)::before{content:"";position:absolute;left:-5px;top:8px;bottom:8px;width:3px;border-radius:0 1px 1px 0;background:var(--kf)}
+/* IBM Plex Sans for everything (the owner's choice): the weights and the few sizes that change with it (components.md › Type) */
+:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .hd h1{font-size:23px;font-weight:600}
+:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .hd h1[style*="font-size:19px"]{font-size:18px}
+:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .sheet h2,:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .qs h2{font-size:19px;font-weight:600}
+:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .btn,:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .tab,:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .chip.on,:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .rail .ri.on span{font-weight:600}
+:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) .btn .in{font-weight:500}
+:is(:root[data-type=xx] .s:not([class*=ty-]),.s.ty-xx) [style*="font-size:22px"]:not(.in){font-size:20px!important;font-weight:600}
