@@ -9969,6 +9969,77 @@ static void testKitVariantBars()
 	CHECK(c.key[0].y >= c.box.y && c.key[0].y + c.key[0].h <= c.box.y + c.box.h);
 }
 
+// ---- the list and page pieces (kitlayout.h's 2026-11-19 block): a page's line, Search's field and result row,
+// a Music/Videos row and a Books cover tile ----
+static void testKitLayoutLists()
+{
+	using namespace lay;
+	// the page's line: 22 tall, the note at the right margin, the line 8 before it
+	SectionLine sl = sectionLine({16, 100, 608, LINE_H}, true);
+	CHECK_EQ(sl.line.x, 16);
+	CHECK_EQ(sl.line.y, 100);
+	CHECK_EQ(sl.line.h, LINE_H);
+	CHECK_EQ(sl.note.x + sl.note.w, 624);
+	CHECK_EQ(sl.line.x + sl.line.w + 8, sl.note.x);
+	CHECK_EQ(sectionLine({16, 100, 608, LINE_H}, false).note.w, 0);
+
+	// Search's field: 48 tall, the magnifier inside at the left, the cap 12 from the right edge, the text between
+	SearchField f = searchField({16, 44, 608, SEARCH_FIELD_H});
+	CHECK_EQ(f.box.h, 48);
+	CHECK_EQ(f.box.w, 608);
+	CHECK_EQ(f.icon.x, 16 + SEARCH_FIELD_PAD);
+	CHECK_EQ(f.cap.x + f.cap.w, 16 + 608 - SEARCH_FIELD_PAD);
+	CHECK(f.text.x >= f.icon.x + f.icon.w);
+	CHECK(f.text.x + f.text.w + 8 <= f.cap.x);
+
+	// a result row: 50 tall; the icon, the name, then the note at the right; all inside the row
+	ResultRow r = resultRow({16, 100, 608, RESULT_ROW_H});
+	CHECK_EQ(r.row.h, 50);
+	CHECK(insidePanel(r.row));
+	CHECK(r.name.x > r.icon.x + r.icon.w);
+	CHECK(r.name.x + r.name.w <= r.note.x);
+	CHECK_EQ(r.note.x + r.note.w, 612);
+
+	// a Music/Videos row: 60 tall, its 30-square art inside, the two lines starting after it
+	MediaRow m = mediaRow({16, 100, 608, MEDIA_ROW_H});
+	CHECK_EQ(m.row.h, 60);
+	CHECK_EQ(m.art.w, 30);
+	CHECK_EQ(m.art.h, 30);
+	CHECK(m.art.x >= m.row.x && m.art.y >= m.row.y);
+	CHECK(m.art.y + m.art.h <= m.row.y + m.row.h);
+	CHECK(m.name.x > m.art.x + m.art.w);
+	CHECK(m.second.y > m.name.y);
+	CHECK_EQ(m.right, 612);
+
+	// a Books cover: 96 x 136, the title under it, the bar and its percent under that, all inside the tile
+	CoverTile c = coverTile({16, 100, COVER_W, COVER_CELL_H}, true, true);
+	CHECK_EQ(c.cover.w, COVER_W);
+	CHECK_EQ(c.cover.h, COVER_H);
+	CHECK_EQ(c.cover.x, 16);
+	CHECK(c.title.y >= c.cover.y + c.cover.h);
+	CHECK(c.bar.y > c.title.y);
+	CHECK_EQ(c.bar.h, COVER_BAR_H);
+	CHECK_EQ(c.percent.x + c.percent.w, 16 + COVER_W);
+	CHECK(c.percent.y + c.percent.h <= 100 + COVER_CELL_H);
+	CoverTile p = coverTile({16, 100, COVER_W, COVER_CELL_H}, false, false);
+	CHECK_EQ(p.title.h, 0);
+	CHECK_EQ(p.bar.h, 0);
+	CHECK_EQ(p.percent.w, 0);
+
+	// a shelf: five covers across 96 wide, 14 apart, in 96 + 14 columns; a second row 14 under
+	std::vector<Box> one = coverCells({90, 100, 538, COVER_CELL_H}, 5, 5, COVER_CELL_H);
+	CHECK_EQ((int)one.size(), 5);
+	CHECK_EQ(one[1].x, one[0].x + COVER_W + COVER_GAP);
+	CHECK_EQ(one[3].y, one[0].y);
+	CHECK(one[4].x + one[4].w <= 628);
+	CHECK(insidePanel(one[4]));
+	std::vector<Box> two = coverCells({16, 100, 608, COVER_CELL_H}, 7, 5, COVER_CELL_H);
+	CHECK_EQ((int)two.size(), 7);
+	CHECK_EQ(two[5].x, two[0].x);
+	CHECK_EQ(two[5].y, two[0].y + COVER_CELL_H + COVER_GAP);
+	for (auto& b : two) CHECK(insidePanel(b));
+}
+
 // ---- kit-new's layouts (kitlayout.h's kit-new block): one named test each ----
 static bool kitInside(lay::Box b, int w, int h) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= w && b.y + b.h <= h; }
 static bool kitApart(lay::Box a, lay::Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; }
@@ -13447,6 +13518,7 @@ int main()
 	testKitVariantEmpty();
 	testKitVariantNotice();
 	testKitVariantBars();
+	testKitLayoutLists();
 	testKitNewSectionRail();
 	testKitNewPreviewPane();
 	testKitNewBookBar();

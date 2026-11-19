@@ -1,6 +1,8 @@
 // The kit's second set (declared in ui_kit.h's "KIT VARIANTS" block; layouts in kitlayout.h; docs/notes/
 // 2026-11-18-kit-variants.md): status cluster and badges, mini bar, filter chips, form row, alert / confirm / busy
 // sheets, keyboard, volume bar, tiles, Recent and Continue cards, empty state, notice row, select and clip bars.
+// The list and page pieces of 2026-11-19 are here too: the state pills Home and the mini bar share, the Search
+// field and result row, a Music/Videos row, a Books cover tile and a page's line (docs/notes/2026-11-19-kit-inventory.md).
 // As the rest of the kit: a Rect from kitlayout and a small struct in, pixels out, nothing kept; tokens only.
 #include "ui_kit.h"
 #include <cmath>
@@ -537,6 +539,137 @@ namespace bp
 		key(l.key[0], barKey(c.put));
 		key(l.key[1], barKey(c.cancel));
 	}
+
+	// ---- the state pills Home and the mini bar share ----
+	// (moved here from ui_home.cpp's homeStatePills, so both places say the same thing)
+
+	std::vector<std::string> Ui::Kit::statePills(const Player& p) const
+	{
+		std::vector<std::string> out;
+		const Settings& st = p.settings;
+		if (std::fabs(p.speed - 1.0) > 1e-6) out.push_back(speedLabel(p.speed));
+		if (p.playingAudio())
+		{
+			if (st.shuffle) out.push_back("Shuffle");
+			if (st.eqOn) out.push_back(st.eqPreset.empty() ? CUSTOM_NAME : st.eqPreset);
+			if (st.soundFx != SoundFx::None) out.push_back(FX_SHORT[std::clamp((int)st.soundFx, 0, SOUNDFX_COUNT - 1)]);
+		}
+		else if (st.loop == LOOP_ONE) out.push_back("Repeat one");
+		if (ui.pageIsOut() && !ui.pageName().empty()) out.push_back("Playing in " + ui.pageName());
+		return out;
+	}
+
+	// ---- the Search field, its result rows, a Music/Videos row, a Books cover tile and a page's line ----
+
+	void Ui::Kit::searchField(const lay::SearchField& l, const SearchFieldView& f)
+	{
+		flat(l.box, SURFACE, 8, f.focused ? ACCENT : edgeOf(SURFACE));
+		int cy = l.box.y + l.box.h / 2;
+		ui.drawGlyphMid(G_SEARCH, l.icon.x + l.icon.w / 2, cy, DIM, 1);
+		int tw = l.text.w;
+		if (f.value.empty()) ui.drawTextMid(f.placeholder, F_SMALL, DIM, l.text.x, cy, tw);
+		else ui.drawTextMid(f.secret ? std::string(f.value.size(), '*') : f.value, F_SMALL, TEXT, l.text.x, cy, tw);
+		if (!f.key.empty()) caps(f.key, l.cap.x + l.cap.w - capsW(f.key), cy, ACCENT, SURFACE);
+	}
+
+	void Ui::Kit::resultRow(const lay::ResultRow& l, const Result& r)
+	{
+		if (r.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
+		else if (r.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
+		int cy = l.row.y + l.row.h / 2;
+		if (r.glyph) ui.drawGlyphMid(*r.glyph, l.icon.x + l.icon.w / 2, cy, off(r.focused ? ACCENT : DIM_ON, r.off));
+		// the right end, leftwards: the note, then a kind pill; the name gets what is left
+		int right = l.note.x + l.note.w;
+		if (!r.note.empty())
+		{
+			ui.drawTextMid(r.note, F_I12, off(r.focused ? DIM_ON : DIM, r.off), right, cy, 0, 1);
+			right -= textW(r.note, F_I12) + 8;
+		}
+		if (!r.pill.empty()) right -= pill(right, cy, r.pill, Pill::Fact) + 8;
+		int room = std::max(1, right - 8 - l.name.x);
+		SDL_Color ink = off(r.focused ? ACCENT : TEXT, r.off);
+		// the part that matched in ACCENT (the design: "the part of the name that matched is ACCENT")
+		bool marked = r.matchAt >= 0 && r.matchLen > 0 && r.matchAt + r.matchLen <= (int)r.name.size();
+		if (marked)
+		{
+			std::string a = r.name.substr(0, r.matchAt), b = r.name.substr(r.matchAt, r.matchLen), c = r.name.substr(r.matchAt + r.matchLen);
+			int aw = textW(a, F_P16), bw = textW(b, F_P16), cw = textW(c, F_P16);
+			if (aw + bw + cw <= room)
+			{
+				int x = l.name.x;
+				if (!a.empty()) { ui.drawTextMid(a, F_P16, ink, x, cy, room); x += aw; }
+				ui.drawTextMid(b, F_P16, off(ACCENT, r.off), x, cy, std::max(1, room - aw));
+				x += bw;
+				if (!c.empty()) ui.drawTextMid(c, F_P16, ink, x, cy, std::max(1, room - aw - bw));
+				return;
+			}
+		}
+		ui.drawTextMid(r.name, F_P16, ink, l.name.x, cy, room);
+	}
+
+	void Ui::Kit::mediaRow(const lay::MediaRow& l, const Media& m)
+	{
+		if (m.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
+		else if (m.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
+		int cy = l.row.y + l.row.h / 2;
+		// the art: the caller's picture, the record in its sleeve, or the kind's icon in a TRACK square
+		if (m.art) m.art(l.art);
+		else if (!m.artKey.empty()) artPlaceholder(l.art, m.artKey, 5, true);
+		else
+		{
+			ui.fillRound(l.art, off(TRACK, m.off), 5);
+			if (m.glyph) ui.drawGlyphMid(*m.glyph, l.art.x + l.art.w / 2, l.art.y + l.art.h / 2, off(DIM_ON, m.off));
+		}
+		// the right end, leftwards: the note, the heart, a kind pill
+		int right = l.right;
+		if (!m.note.empty())
+		{
+			ui.drawTextMid(m.note, F_I12, off(m.focused ? DIM_ON : DIM, m.off), right, cy, 0, 1);
+			right -= textW(m.note, F_I12) + 8;
+		}
+		if (m.heart)
+		{
+			ui.drawGlyphMid(G_HEART_S, right - 7, cy, off(ACCENT, m.off), 1);
+			right -= 16 + 4;
+		}
+		if (!m.pill.empty()) right -= pill(right, cy, m.pill, m.tone) + 8;
+		int room = std::max(1, right - 8 - l.name.x);
+		ui.drawTextMid(m.name, F_P16, off(m.focused ? ACCENT : TEXT, m.off), l.name.x, cy - 9, room);
+		if (!m.second.empty())
+		{
+			// the second line under the title, in the room the same right end leaves
+			ui.drawTextMid(m.second, F_I12, off(DIM, m.off), l.name.x, cy + 9, room);
+		}
+	}
+
+	void Ui::Kit::coverTile(const lay::CoverTile& l, const Cover& c)
+	{
+		// focused: a 3-unit ACCENT outline 2 clear of the cover (components.md, "Cover cell")
+		if (c.focused)
+		{
+			ui.fillRound({l.cover.x - 5, l.cover.y - 5, l.cover.w + 10, l.cover.h + 10}, ACCENT, 10);
+			ui.fillRound({l.cover.x - 2, l.cover.y - 2, l.cover.w + 4, l.cover.h + 4}, BG, 7);
+		}
+		if (c.picture) c.picture(l.cover);
+		else artPlaceholder(l.cover, c.key, 5, false);
+		if (!c.badge.empty()) pill(l.cover.x + l.cover.w + 4, l.cover.y + 4, c.badge, Pill::Live);
+		if (l.title.h > 0) ui.drawTextMid(c.title, F_P13, off(c.focused ? ACCENT : TEXT, c.off), l.title.x, l.title.y + l.title.h / 2, l.title.w);
+		if (l.bar.h > 0 && c.progress >= 0)
+		{
+			bar(l.bar, c.progress);
+			int pct = (int)std::lround(std::clamp(c.progress, 0.0, 1.0) * 100);
+			ui.drawTextMid(std::to_string(pct) + "%", F_I12, off(DIM_ON, c.off), l.percent.x + l.percent.w, l.percent.y + l.percent.h / 2, 0, 1);
+		}
+	}
+
+	void Ui::Kit::sectionLine(const lay::SectionLine& l, const SectionLine& s)
+	{
+		int cy = l.line.y + l.line.h / 2;
+		if (s.caps) ui.drawTextMid(lay::caps(s.text), F_I11B, DIM, l.line.x, cy, l.line.w);
+		else ui.drawTextMid(s.text, F_I12, DIM, l.line.x, cy, l.line.w);
+		if (l.note.w > 0 && !s.note.empty())
+			ui.drawTextMid(s.note, F_I12, DIM_ON, l.note.x + l.note.w, cy, 0, 1);
+	}
 }
 
 namespace bp
@@ -813,6 +946,109 @@ namespace bp
 			k.busySheet(lay::busySheet(), b);
 		}
 
+		// Search: the field, a group heading and result rows (a kind icon, the matched part in ACCENT, a note)
+		void page9(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			ui.drawTextMid("Search", F_P28, TEXT, 16, 20, 400);
+			Kit::SearchFieldView f;
+			f.value = "bunn";
+			k.searchField(lay::searchField({16, 40, 608, lay::SEARCH_FIELD_H}), f);
+			Kit::SectionLine h;
+			h.caps = true;
+			h.text = "Videos \xC2\xB7 2";
+			k.sectionLine(lay::sectionLine({16, 98, 608, lay::LINE_H}, false), h);
+			Kit::Result r;
+			r.glyph = &G_FILM;
+			r.name = "Big Buck Bunny.mkv";
+			r.note = "Videos / Movies \xC2\xB7 9:56";
+			r.matchAt = 9;
+			r.matchLen = 5;
+			r.focused = true;
+			k.resultRow(lay::resultRow({16, 120, 608, lay::RESULT_ROW_H}), r);
+			r = Kit::Result();
+			r.glyph = &G_FILM;
+			r.name = "Bunny trailer.mp4";
+			r.note = "Videos / Clips \xC2\xB7 0:33";
+			r.matchAt = 0;
+			r.matchLen = 3;
+			k.resultRow(lay::resultRow({16, 170, 608, lay::RESULT_ROW_H}), r);
+			h.text = "Music \xC2\xB7 3";
+			k.sectionLine(lay::sectionLine({16, 224, 608, lay::LINE_H}, false), h);
+			r = Kit::Result();
+			r.glyph = &G_NOTE;
+			r.name = "Bunny Hop";
+			r.note = "The Plantains \xC2\xB7 Yellow Album";
+			r.matchAt = 0;
+			r.matchLen = 5;
+			r.pill = "VIDEO";
+			k.resultRow(lay::resultRow({16, 246, 608, lay::RESULT_ROW_H}), r);
+			r = Kit::Result();
+			r.glyph = &G_BLOCKS;
+			r.name = "Bunny Songs";
+			r.note = "Album \xC2\xB7 The Carrots \xC2\xB7 9 songs";
+			r.off = true;
+			k.resultRow(lay::resultRow({16, 296, 608, lay::RESULT_ROW_H}), r);
+			h.text = "Books \xC2\xB7 1";
+			k.sectionLine(lay::sectionLine({16, 350, 608, lay::LINE_H}, false), h);
+			r = Kit::Result();
+			r.glyph = &G_BOOK;
+			r.name = "The Velveteen Bunny.epub";
+			r.note = "Books \xC2\xB7 12% read";
+			r.matchAt = 14;
+			r.matchLen = 5;
+			k.resultRow(lay::resultRow({16, 372, 608, lay::RESULT_ROW_H}), r);
+			k.hints({{"A", "Open"}, {"X", "More"}, {"Y", "Edit"}, {"B", "Back"}});
+		}
+
+		// Music and Videos: the page's line, three list rows (album, artist, video) and the Books shelf
+		void page10(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			Kit::SectionLine sl;
+			sl.text = "From Music on both cards \xC2\xB7 148 albums \xC2\xB7 1,912 songs";
+			k.sectionLine(lay::sectionLine({16, 8, 608, lay::LINE_H}, true), sl);
+			Kit::Media m;
+			m.artKey = "Yellow Album";
+			m.name = "Sunny Peel";
+			m.second = "The Plantains \xC2\xB7 Yellow Album";
+			m.note = "3:34";
+			m.pill = "VIDEO";
+			m.tone = Kit::Pill::Fact;
+			m.focused = true;
+			k.mediaRow(lay::mediaRow({16, 36, 608, lay::MEDIA_ROW_H}), m);
+			m = Kit::Media();
+			m.glyph = &G_NOTE;
+			m.name = "The Plantains";
+			m.second = "3 albums \xC2\xB7 34 songs";
+			m.note = "2 h 6 min";
+			k.mediaRow(lay::mediaRow({16, 100, 608, lay::MEDIA_ROW_H}), m);
+			m = Kit::Media();
+			m.artKey = "Big Buck Bunny";
+			m.name = "Big Buck Bunny";
+			m.second = "Videos / Movies \xC2\xB7 9:56";
+			m.pill = "VIDEO";
+			m.heart = true;
+			k.mediaRow(lay::mediaRow({16, 164, 608, lay::MEDIA_ROW_H}), m);
+			Kit::SectionLine shelf;
+			shelf.caps = true;
+			shelf.text = "Reading now \xC2\xB7 3";
+			k.sectionLine(lay::sectionLine({16, 238, 608, lay::LINE_H}, false), shelf);
+			std::vector<lay::Box> cells = lay::coverCells({16, 264, 608, lay::COVER_CELL_H}, 5, 5, lay::COVER_CELL_H);
+			const char* titles[5] = {"Alice's Adventures", "The Time Machine", "Field Guide", "Frankenstein", "Krazy Kat"};
+			for (int i = 0; i < 5 && i < (int)cells.size(); i++)
+			{
+				Kit::Cover c;
+				c.key = titles[i];
+				c.title = titles[i];
+				c.focused = i == 0;
+				c.badge = i == 1 ? "3" : "";
+				c.progress = i == 0 ? 0.07 : i == 1 ? 0.58 : -1;
+				k.coverTile(lay::coverTile(cells[i], true, c.progress >= 0), c);
+			}
+			k.hints({{"L2/R2", "View"}, {"A", "Open"}, {"X", "More"}, {"L3", "Search"}});
+		}
+
 		void draw(const Player&) override
 		{
 			Kit& k = *ui.kit;
@@ -825,6 +1061,8 @@ namespace bp
 			case 6: page6(k); break;
 			case 7: page7(k); break;
 			case 8: page8(k); break;
+			case 9: page9(k); break;
+			case 10: page10(k); break;
 			default: page1(k); break;
 			}
 		}

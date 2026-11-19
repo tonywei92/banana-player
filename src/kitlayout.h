@@ -564,5 +564,62 @@ namespace bp
 			Box icon, title, lines, key;
 		};
 		ExtEmpty extEmpty(Box body);
+
+		// ==== list and page pieces (2026-11-19: the Music/Videos and Books pages, Search, and the line under a
+		// page's title; docs/notes/2026-11-19-kit-inventory.md) ====
+
+		// ---- a page's own line under its title, or a group's heading over a grid ----
+		// 22 tall at the area's top: the line on the left (cut with "..."), an optional note right-aligned. `caps`
+		// in Kit::SectionLine sets the small capitals a group heading uses ("READING NOW · 3"); the page's line
+		// ("From Music on both cards · 148 albums") is the same box in Inter 12.
+		constexpr int LINE_H = 22;
+		struct SectionLine
+		{
+			Box line, note;	// note.w 0: none
+		};
+		SectionLine sectionLine(Box area, bool note);
+
+		// ---- Search's field: 48 tall, the magnifier, the text (or its placeholder), a key cap at the right ----
+		constexpr int SEARCH_FIELD_H = 48, SEARCH_FIELD_PAD = 12, SEARCH_ICON = 18;
+		struct SearchField
+		{
+			Box box, icon, text, cap;	// cap 32 wide, its right edge 12 inside the field
+		};
+		SearchField searchField(Box row);
+
+		// ---- a Search result row: 50 tall, the kind's icon, the name, the note at the right ----
+		// A result's kind pill (none in the mock-up's search rows, but a row says VIDEO like the album's) is drawn
+		// from note.x leftwards, so the name ends before it.
+		constexpr int RESULT_ROW_H = 50, RESULT_ICON = 19, RESULT_NOTE_W = 140;
+		struct ResultRow
+		{
+			Box row, icon, name, note;
+		};
+		ResultRow resultRow(Box row);
+
+		// ---- a Music/Videos row: 60 tall, its art 30 square at the left, the title and a second line, a kind
+		// pill and the note (the length, the counts) at the right ----
+		constexpr int MEDIA_ROW_H = 60, MEDIA_ART = 30, MEDIA_ROW_PAD = 12, MEDIA_ART_GAP = 10;
+		struct MediaRow
+		{
+			Box row, art, name, second;
+			int right = 0;	// where the note and the pill end (12 inside the row)
+		};
+		MediaRow mediaRow(Box row);
+
+		// ---- a Books cover tile: a 96 x 136 cover, the title under it, and (in progress) a bar and its percent ----
+		// The cover has no box of its own (the cover is the picture); the title is one line, Pixelify 13. A shelf is
+		// 5 covers across 96 + 14 apart, so `coverCells` lays them at those sizes rather than dividing the width.
+		constexpr int COVER_W = 96, COVER_H = 136, COVER_GAP = 14, COVER_TITLE_GAP = 6, COVER_TITLE_H = 14,
+			COVER_BAR_H = 6, COVER_BAR_GAP = 4, COVER_PERCENT_W = 34;
+		// the tile's own height with its title and its progress line (5 over the 6-tall bar for the percent's type)
+		constexpr int COVER_CELL_H = COVER_H + COVER_TITLE_GAP + COVER_TITLE_H + COVER_BAR_GAP + 16;
+		struct CoverTile
+		{
+			Box box, cover, title, bar, percent;	// title/bar/percent h 0: not shown
+		};
+		CoverTile coverTile(Box box, bool title, bool progress);
+		// n tiles in `cols` columns, COVER_W wide, 14 apart, `cellH` tall (the cell's own height), top down
+		std::vector<Box> coverCells(Box area, int n, int cols, int cellH);
 	}
 }

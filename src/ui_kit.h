@@ -180,6 +180,7 @@ namespace bp
 		};
 		void row(Rect r, const Row& row);
 		int pill(int right, int cy, const std::string& text, Pill tone = Pill::Live);	// its width
+		int pillW(const std::string& text) const;	// the width `pill` draws (text + its 12 of padding), for laying a run out
 		void toggle(int x, int cy, bool on);	// 40 x 22, its left edge at x
 
 		// ---- the Settings page's pieces (docs/redesign/components.md: "Settings row (stepper)", "Settings tile") ----
@@ -384,6 +385,62 @@ namespace bp
 			BarKey put, cancel;	// put: "... here" (SELECT), cancel: (X)
 		};
 		void clipBar(const lay::ClipBar& l, const Clip& c);
+
+		// ==== list and page pieces (ui_kit_variants.cpp; docs/notes/2026-11-19-kit-inventory.md): the Search
+		// field and its result row, a Music/Videos row, a Books cover tile, a page's own line, and the state pills
+		// the mini bar and Home's Now playing card share. Layouts: kitlayout.h's same block. ====
+		// The state pills are the kit's one helper that reads the Player (a pill's words are the same everywhere):
+		// only what is away from normal, in yellow: the speed, Shuffle or Repeat one, the EQ preset and the sound
+		// effect, and where a browser plays it. Home's Continue card and the shell's mini bar both show these
+		// (components.md, "Pill", "Mini bar", "Continue card"); all are Live
+		std::vector<std::string> statePills(const Player& p) const;
+		// Search's field: 48 tall, focused (ACCENT edge) while the keyboard has it; value or placeholder; a key cap
+		struct SearchFieldView
+		{
+			std::string value, placeholder = "A name, or part of one", key = "A";
+			bool focused = true, secret = false;
+		};
+		void searchField(const lay::SearchField& l, const SearchFieldView& f);
+		// A result row: the kind's mark, the name with the part that matched in ACCENT, an optional kind pill and
+		// the note at the right (where it is: "Videos / Movies · 9:56")
+		struct Result
+		{
+			const Glyph* glyph = nullptr;
+			std::string name, note, pill;
+			int matchAt = -1, matchLen = 0;	// the matched part, in `name`'s own bytes (-1: nothing to mark)
+			bool focused = false, pressed = false, off = false;
+		};
+		void resultRow(const lay::ResultRow& l, const Result& r);
+		// A Music/Videos row: its art in a 30 square (none: the Art placeholder keyed by `artKey`, else the kind's
+		// icon there), the title, a second line, a kind pill at the right and the note (the length, the counts)
+		struct Media
+		{
+			std::function<void(Rect)> art;	// the picture, decoded by the caller; none: the placeholder or the icon
+			const Glyph* glyph = nullptr;	// the kind's icon (a video, an artist) when there is no picture
+			std::string artKey;	// the Art placeholder's key (the album, else the title)
+			std::string name, second, note, pill;
+			Pill tone = Pill::Fact;
+			bool focused = false, pressed = false, off = false, heart = false;
+		};
+		void mediaRow(const lay::MediaRow& l, const Media& m);
+		// A Books cover: the picture (none: the Art placeholder keyed by the title), a count pill at its top
+		// right, the title under it, and a 6-tall progress bar with its percent
+		struct Cover
+		{
+			std::function<void(Rect)> picture;
+			std::string key, title, badge;
+			double progress = -1;	// -1: no bar
+			bool focused = false, pressed = false, off = false;
+		};
+		void coverTile(const lay::CoverTile& l, const Cover& c);
+		// A page's own line under its title, or a group's heading: `caps` sets the small capitals and a wider
+		// tracking a heading has ("READING NOW · 3"); the note is right-aligned
+		struct SectionLine
+		{
+			std::string text, note;
+			bool caps = false;
+		};
+		void sectionLine(const lay::SectionLine& l, const SectionLine& s);
 	};
 
 	// ---- the More sheet's list (Ui::openMore; ui_more.cpp) ----

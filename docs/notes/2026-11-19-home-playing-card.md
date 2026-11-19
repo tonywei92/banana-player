@@ -63,6 +63,6 @@ Built (`cmake --build build -j`) and `./build/core-test` (all passed). Scripted 
 - The take-over hold from a browser (a web page playing the file): needs a web client driving the session; the hook
   is the mini bar's own (`pageDrives` → `playHoldAt`), but it was not exercised.
 - "Stopped for Manga" after a Manga stop was not re-shot; its path (`fromResume`) is untouched.
-- The mini bar's own pills are still not drawn by this branch's bar (it shows the words "Now playing"); Home's card
-  builds its pills from the settings directly. If the bar gains a shared pill helper, Home should use it instead of
-  `homeStatePills` so the two can never disagree.
+- The mini bar's own pills were still not drawn by this branch's bar (it shows the words "Now playing"); Home's card
+  built its pills from the settings directly. The shared helper now exists: `Kit::statePills` (ui_kit_variants.cpp),
+  used by Home's Continue card and by the shell's mini bar (docs/notes/2026-11-19-kit-inventory.md).

@@ -1,6 +1,7 @@
 // The kit-new block of kitlayout.h: where the Section rail, the Preview pane, the Book bar, the away-from-normal dot
 // and the Screen-off warning put their pieces (docs/redesign/components.md). Pure numbers, tested in core_test.cpp
-// (testKitNew).
+// (testKitNew). The 2026-11-19 pieces are here too: a page's line, Search's field and result row, a Music/Videos row
+// and a Books cover tile (testKitLayoutLists).
 #include "kitlayout.h"
 #include <algorithm>
 
@@ -168,6 +169,87 @@ namespace bp
 		{
 			int s = std::max(1, (msLeft + 999) / 1000);
 			return "Screen off in " + std::to_string(s) + " s";
+		}
+
+		// ---- a page's own line, the Search field and result row, a Music/Videos row, a Books cover tile ----
+
+		SectionLine sectionLine(Box area, bool note)
+		{
+			SectionLine l;
+			int right = area.x + area.w;
+			l.note = note ? Box{right - 160, area.y, 160, LINE_H} : Box{right, area.y, 0, LINE_H};
+			l.line = {area.x, area.y, (note ? l.note.x - 8 : right) - area.x, LINE_H};
+			return l;
+		}
+
+		SearchField searchField(Box row)
+		{
+			SearchField f;
+			f.box = row;
+			f.icon = {row.x + SEARCH_FIELD_PAD, row.y + (row.h - SEARCH_ICON) / 2, SEARCH_ICON, SEARCH_ICON};
+			// the cap is 32 wide at the right; the text runs from after the magnifier to 10 before it
+			f.cap = {row.x + row.w - SEARCH_FIELD_PAD - 32, row.y + (row.h - 19) / 2, 32, 19};
+			int tx = f.icon.x + f.icon.w + 10;
+			f.text = {tx, row.y, std::max(1, f.cap.x - 8 - tx), row.h};
+			return f;
+		}
+
+		ResultRow resultRow(Box row)
+		{
+			ResultRow r;
+			r.row = row;
+			r.icon = {row.x + MEDIA_ROW_PAD, row.y + (row.h - RESULT_ICON) / 2, RESULT_ICON, RESULT_ICON};
+			int right = row.x + row.w - MEDIA_ROW_PAD;
+			r.note = {right - RESULT_NOTE_W, row.y, RESULT_NOTE_W, row.h};
+			int x = r.icon.x + r.icon.w + 11;
+			r.name = {x, row.y, std::max(1, r.note.x - 8 - x), row.h};
+			return r;
+		}
+
+		MediaRow mediaRow(Box row)
+		{
+			MediaRow m;
+			m.row = row;
+			m.art = {row.x + MEDIA_ROW_PAD, row.y + (row.h - MEDIA_ART) / 2, MEDIA_ART, MEDIA_ART};
+			m.right = row.x + row.w - MEDIA_ROW_PAD;
+			int x = m.art.x + m.art.w + MEDIA_ART_GAP;
+			// the two lines sit on one centre line either side of the row's: title above, the second line below
+			m.name = {x, row.y + 8, std::max(1, m.right - x), 22};
+			m.second = {x, row.y + 30, std::max(1, m.right - x), 18};
+			return m;
+		}
+
+		CoverTile coverTile(Box box, bool title, bool progress)
+		{
+			CoverTile c;
+			c.box = box;
+			c.cover = {box.x, box.y, std::min(COVER_W, box.w), COVER_H};
+			int y = c.cover.y + c.cover.h;
+			c.title = title ? Box{box.x, y + COVER_TITLE_GAP, box.w, COVER_TITLE_H} : Box{box.x, y, box.w, 0};
+			if (title) y += COVER_TITLE_GAP + COVER_TITLE_H;
+			if (progress)
+			{
+				int py = y + COVER_BAR_GAP;
+				c.percent = {box.x + box.w - COVER_PERCENT_W, py - 5, COVER_PERCENT_W, COVER_BAR_H + 10};
+				c.bar = {box.x, py, std::max(1, box.w - COVER_PERCENT_W - 6), COVER_BAR_H};
+			}
+			else
+			{
+				c.bar = {box.x, y, 0, 0};
+				c.percent = {box.x, y, 0, 0};
+			}
+			return c;
+		}
+
+		std::vector<Box> coverCells(Box area, int n, int cols, int cellH)
+		{
+			std::vector<Box> out;
+			if (n <= 0 || cols <= 0) return out;
+			out.reserve(n);
+			for (int i = 0; i < n; i++)
+				out.push_back({area.x + (i % cols) * (COVER_W + COVER_GAP), area.y + (i / cols) * (cellH + COVER_GAP),
+					COVER_W, cellH});
+			return out;
 		}
 	}
 }
