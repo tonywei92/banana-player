@@ -10603,7 +10603,7 @@ static void testKitLayout()
 static void testKitNewSectionRail()
 {
 	using namespace lay;
-	// Search pinned at the top and Settings at the foot under its START cap; six sections at 56, none over another
+	// Search pinned at the top and Settings at the foot (no START cap); six sections at 56, none over another
 	Rail r = rail(6);
 	CHECK_EQ((int)r.cell.size(), 6);
 	CHECK_EQ(r.area.w, 78);
@@ -10611,9 +10611,8 @@ static void testKitNewSectionRail()
 	CHECK_EQ(r.search.h, RAIL_SEARCH_H);
 	CHECK_EQ(r.search.y, RAIL_PAD);
 	CHECK_EQ(r.settings.y + r.settings.h, PANEL_H - RAIL_PAD);
-	CHECK_EQ(r.capStart.y + r.capStart.h, r.settings.y - RAIL_GAP);
 	CHECK_EQ(r.view.y, r.search.y + r.search.h + RAIL_GAP);
-	CHECK_EQ(r.view.y + r.view.h, r.capStart.y - RAIL_GAP);
+	CHECK_EQ(r.view.y + r.view.h, r.settings.y - RAIL_GAP);
 	CHECK_EQ(r.cellH, 56);
 	CHECK_EQ(r.maxScroll, 0);
 	for (size_t i = 0; i < r.cell.size(); i++)
@@ -10631,19 +10630,18 @@ static void testKitNewSectionRail()
 	}
 	CHECK_EQ(railAt(r, 40, r.settings.y + 10), 6);
 	CHECK_EQ(railAt(r, 40, r.search.y + 10), -1);	// (Search is the shell's own key)
-	CHECK_EQ(railAt(r, 40, r.capStart.y + 2), -1);
 	CHECK_EQ(railAt(r, 100, r.cell[0].y + 10), -1);	// off the rail
-	// seven: 47-tall cells, all seven in sight, still no scrolling
+	// seven: 50-tall cells, all seven in sight, still no scrolling
 	Rail seven = rail(7);
 	CHECK_EQ((int)seven.cell.size(), 7);
-	CHECK_EQ(seven.cellH, 47);
+	CHECK_EQ(seven.cellH, 50);
 	CHECK_EQ(seven.maxScroll, 0);
 	CHECK_EQ(seven.cell[6].y + seven.cell[6].h <= seven.view.y + seven.view.h, true);
 	CHECK_EQ(railAt(seven, 40, seven.cell[6].y + 10), 6);
 	// more than fit: a drag scrolls the sections; Settings stays at the foot and Search at the top
 	Rail many = rail(9);
 	CHECK_EQ((int)many.cell.size(), 9);
-	CHECK_EQ(many.cellH, 47);
+	CHECK_EQ(many.cellH, 50);
 	CHECK(many.maxScroll > 0);
 	CHECK(many.cell[8].y >= many.view.y + many.view.h);	// out of the view: not yet shown
 	CHECK_EQ(many.settings.y, seven.settings.y);

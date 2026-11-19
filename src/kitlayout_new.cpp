@@ -17,10 +17,10 @@ namespace bp
 			const int x = (RAIL_W - 1 - RAIL_CELL_W + 1) / 2;	// centred left of the rule
 			r.search = {x, RAIL_PAD, RAIL_CELL_W, RAIL_SEARCH_H};
 			r.settings = {x, h - RAIL_PAD - RAIL_CELL_H, RAIL_CELL_W, RAIL_CELL_H};
-			r.capStart = {0, r.settings.y - RAIL_GAP - RAIL_CAP_H, RAIL_W - 1, RAIL_CAP_H};
+			// (no START cap over Settings: the owner, 2026-11-19; START is taught by Settings' own hint bar)
 			r.view = {0, r.search.y + r.search.h + RAIL_GAP, RAIL_W - 1,
-				std::max(0, r.capStart.y - RAIL_GAP - (r.search.y + r.search.h + RAIL_GAP))};
-			// seven sections all in sight at 47; six or fewer take the roomier 56
+				std::max(0, r.settings.y - RAIL_GAP - (r.search.y + r.search.h + RAIL_GAP))};
+			// seven sections all in sight at 50; six or fewer take the roomier 56
 			int n = std::max(0, sections);
 			r.cellH = n >= 7 ? RAIL_CELL_H7 : RAIL_CELL_H;
 			int content = n * r.cellH + std::max(0, n - 1) * RAIL_GAP;

@@ -366,11 +366,11 @@ namespace bp
 		// previewpane.h; tests: testKitNew in tests/core_test.cpp)
 
 		// ---- Section rail: 78 wide, full height, at the panel's left ----
-		// From the top: Search's key (68 x 40, the magnifier alone), the sections (68 x 56, or 68 x 47 with seven so all
-		// show at once, 2 apart), and Settings pinned at the foot under a START cap. When the sections don't fit their
+		// From the top: Search's key (68 x 40, the magnifier alone), the sections (68 x 56, or 68 x 50 with seven so all
+		// show at once, 2 apart), and Settings pinned at the foot. When the sections don't fit their
 		// view, `scroll` moves them under a finger; Settings and Search stay put (components.md, Section rail).
-		constexpr int RAIL_W = 78, RAIL_CELL_W = 68, RAIL_CELL_H = 56, RAIL_CELL_H7 = 47, RAIL_GAP = 2, RAIL_PAD = 5,
-			RAIL_CAP_H = 19, RAIL_SEARCH_H = 40;
+		constexpr int RAIL_W = 78, RAIL_CELL_W = 68, RAIL_CELL_H = 56, RAIL_CELL_H7 = 50, RAIL_GAP = 2, RAIL_PAD = 5,
+			RAIL_SEARCH_H = 40;
 		struct Rail
 		{
 			Box area;	// the whole strip (its rule is its last unit)
@@ -378,8 +378,7 @@ namespace bp
 			Box view;	// the sections' viewport, between Search and the START cap
 			std::vector<Box> cell;	// every section, top down (clipped to `view` when drawn)
 			Box settings;	// pinned at the foot, never scrolled
-			Box capStart;	// the START cap over Settings
-			int cellH = RAIL_CELL_H;	// 47 when seven or more show
+			int cellH = RAIL_CELL_H;	// 50 when seven or more show
 			int scroll = 0, maxScroll = 0;	// the sections' offset, in units from their top
 		};
 		Rail rail(int sections, int h = PANEL_H, int scroll = 0);

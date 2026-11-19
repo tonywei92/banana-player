@@ -25,7 +25,7 @@ namespace bp
 			SDL_Color ink = on ? ON_ACCENT : DIM_ON;
 			if (on) lit(c);
 			else if (held) ui.fillRound(c, PRESSED, R_BUTTON);
-			// icon 22 over the label, the pair centred in the cell (a seven-section rail's 47-tall cells sit closer)
+			// icon 22 over the label, the pair centred in the cell (a seven-section rail's 50-tall cells sit closer)
 			int cx = c.x + c.w / 2, iconCy = c.h >= lay::RAIL_CELL_H ? c.y + 21 : c.y + 16;
 			int labelY = c.h >= lay::RAIL_CELL_H ? c.y + 42 : c.y + 35;
 			if (it.glyph) ui.drawGlyphMid(*it.glyph, cx, iconCy, ink, 2);
@@ -51,10 +51,8 @@ namespace bp
 		size_t n = std::min(sections.size(), r.cell.size());
 		for (size_t i = 0; i < n; i++) cell(r.cell[i], sections[i], (int)i == active, (int)i == pressed);
 		SDL_RenderSetClipRect(ui.ren, hadClip ? &previous : nullptr);
-		// Settings pinned at the foot, with its START cap over it
+		// Settings pinned at the foot
 		cell(r.settings, settings, active == (int)r.cell.size(), pressed == (int)r.cell.size());
-		int mid = r.area.x + (r.area.w - 1) / 2;
-		k.caps("START", mid - k.capsW("START") / 2, r.capStart.y + r.capStart.h / 2, ACCENT, RAIL);
 	}
 
 	// ---- Away-from-normal ----

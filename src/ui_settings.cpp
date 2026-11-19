@@ -481,7 +481,7 @@ namespace bp
 	{
 		// B closes Settings back to where START was pressed; Quit lives in Quick settings (F), which the hint keeps in
 		// sight now that the Menu's keys are gone
-		if (ui.setGroup < 0) return {{"D-PAD", "Move"}, {"A", "Open"}, {"F", "Quick settings"}, {"B", "Close"}};
+		if (ui.setGroup < 0) return {{"D-PAD", "Move"}, {"A", "Open"}, {"F", "Quick settings"}, {"B/START", "Back"}};
 		auto rows = settingRows();
 		bool action = ui.cursor >= 0 && ui.cursor < (int)rows.size() && (rows[ui.cursor] == CHECK_ROW || rows[ui.cursor] == INSTALL_ROW ||
 			rows[ui.cursor] == CLEAR_ROW || rows[ui.cursor] == SOUND_ROW);
