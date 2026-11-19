@@ -3117,33 +3117,36 @@ namespace bp
 			std::string look = pocket ? "\\q2\\fnPixelify Sans\\bord3\\3c" + ass(pocketInks().screen) + "\\shad0"
 				: peaksAlone ? "\\q2" + OUTLINE
 				: "\\q2\\bord2\\blur4\\3c&H000000&\\shad3\\4c&H000000&";
-			// a line each, from the top (22, 18): title 26, then 5 down the artist 17, 3 down the album 14
-			double y = 18;
+			// a line each, from the top (22, 18): title 26, then 5 down the artist 17, 3 down the album 14 (Pocket
+			// console: inside its screen, over the bars' left edge and clear of the cut corner, from (28, 30); 350 wide as
+			// measured, its pixel type a fifth wider: to 448, short of the sun at the screen's top right)
+			const int lx = pocket ? 28 : 22, lw = pocket ? 350 : 596;
+			double y = pocket ? 30 : 18;
 			int linesW = 0;
 			auto line = [&](const std::string& s, int fs, bool bold, const std::string& colour, int gap) {
 				y += gap;
 				if (&s == &title)
 				{
-					// the title: the Title marquee when it doesn't fit (its box the whole line, 596)
-					const std::string shown = titleIn(fs, bold, 596);
+					// the title: the Title marquee when it doesn't fit (its box the whole line, lw)
+					const std::string shown = titleIn(fs, bold, lw);
 					const int tw = lineW(shown, fs, bold);
-					if (settings.scrollTitles && tw > 596)
+					if (settings.scrollTitles && tw > lw)
 					{
 						marq = true;
-						setTopMarquee(shown, look + "\\fs" + num(u(fs)) + (bold ? "\\b1" : "\\b0") + "\\1c" + colour, 7, 22, y, 596, fs, tw, peaksAlone);
-						linesW = 596;
+						setTopMarquee(shown, look + "\\fs" + num(u(fs)) + (bold ? "\\b1" : "\\b0") + "\\1c" + colour, 7, lx, y, lw, fs, tw, peaksAlone);
+						linesW = lw;
 						y += fs * 1.2;
 						return;
 					}
-					linesW = std::max(linesW, lineW(songFitText(shown, fs, 596, bold), fs, bold));
-					ev += "{\\an7\\pos(" + num(u(22)) + "," + num(u(y)) + ")" + look + "\\fs" + num(u(fs)) + (bold ? "\\b1" : "\\b0") + "\\1c" + colour + "}" +
-						  assText(songFitText(shown, fs, 596, bold)) + "\n";
+					linesW = std::max(linesW, lineW(songFitText(shown, fs, lw, bold), fs, bold));
+					ev += "{\\an7\\pos(" + num(u(lx)) + "," + num(u(y)) + ")" + look + "\\fs" + num(u(fs)) + (bold ? "\\b1" : "\\b0") + "\\1c" + colour + "}" +
+						  assText(songFitText(shown, fs, lw, bold)) + "\n";
 					y += fs * 1.2;
 					return;
 				}
-				linesW = std::max(linesW, lineW(songFitText(s, fs, 596, bold), fs, bold));
-				ev += "{\\an7\\pos(" + num(u(22)) + "," + num(u(y)) + ")" + look + "\\fs" + num(u(fs)) + (bold ? "\\b1" : "\\b0") + "\\1c" + colour + "}" +
-					  assText(songFitText(s, fs, 596, bold)) + "\n";
+				linesW = std::max(linesW, lineW(songFitText(s, fs, lw, bold), fs, bold));
+				ev += "{\\an7\\pos(" + num(u(lx)) + "," + num(u(y)) + ")" + look + "\\fs" + num(u(fs)) + (bold ? "\\b1" : "\\b0") + "\\1c" + colour + "}" +
+					  assText(songFitText(s, fs, lw, bold)) + "\n";
 				y += fs * 1.2;
 			};
 			// (Pocket console's: its screen's ink and mid, the theme's: pocketInks; Yellow's the greens #0F380F, #306230)
@@ -3154,7 +3157,7 @@ namespace bp
 			if (!artist.empty()) line(artist, 17, false, pocket ? PINK : peaksAlone ? INK2 : CREAM, 5);
 			if (!album.empty()) line(album, 14, false, pocket ? PMID : peaksAlone ? INK3 : GREY, 3);
 			// the lines' box (only kept clear with no layer to compose: nativeKeepClear)
-			linesBox = {22 - 8, 18 - 8, 22 + (float)linesW * (pocket ? 1.2f : 1) + 8, (float)y + 6, 0};
+			linesBox = {lx - 8.0f, (pocket ? 30 : 18) - 8.0f, lx + (float)linesW * (pocket ? 1.2f : 1) + 8, (float)y + 6, 0};
 		}
 		// the manga engine starting over Album art only (the visualizers rest as None): its note at the foot
 		if (engineLoading && show != SHOW_NONE)

@@ -231,6 +231,7 @@ namespace bp
 		dropN = splashN = ringN = 0;
 		awake = false;
 		aw = zPhase = 0;
+		pkScroll = pkPulse = 0;
 		for (Streak& q : streaks)
 		{
 			q.x = rand01() * 640;
@@ -508,6 +509,18 @@ namespace bp
 			s.levels[i] = s.vis == VIS_PEAKS_BANANA ? s.targets[i] : vizEase(s.levels[i], s.targets[i], dt);
 			if (s.vis == VIS_PEAKS_BANANA || s.vis == VIS_POCKET) s.holds[i] = std::min(250.0f, vizHold(s.holds[i], s.levels[i], PEAKS_CAP_FALL, dt));
 			else if (s.vis == VIS_STEPS) s.holds[i] = vizHold(s.holds[i], s.levels[i], STEPS_PEAK_FALL, dt);
+		}
+		if (s.vis == VIS_POCKET)
+		{
+			// Pocket console's scene: the beat's pulse (1 on a beat, gone in 0.4 s), the road passing by with the
+			// loudness (2 to 24 dots a second; its dashes come round every 5)
+			dt = std::max(0.0, dt);
+			s.time += dt;
+			const bool beat = s.beats != s.beatsSeen;
+			s.beatsSeen = s.beats;
+			s.pkPulse = beat ? 1.0f : std::max(0.0f, s.pkPulse - (float)dt * 2.5f);
+			s.loudShown = toward(s.loudShown, s.loud, 0.2f, dt * 30);
+			s.pkScroll = std::fmod(s.pkScroll + (float)dt * (2 + 22 * s.loudShown), 5.0f);
 		}
 	}
 
@@ -963,49 +976,110 @@ namespace bp
 			}
 		}
 
-		// Pocket console: the graph's LCD (Peaks on an old handheld's screen) as shapes: 15 bars of 4-dot columns, the
-		// lower two thirds of a lit bar the ink, its top third and the caps and floor mid; dots of 8 units with a 1-unit
-		// grid line. Alone, on the screen's colour with the grid over it all; in the band, the screen is the ground (the
-		// art's band) and the lit dots the bright pair, the grid cut through them in BG
+		// Pocket console (redesigned 2026-11-19, docs/notes/2026-11-19-pocket-console-redesign.md): a little LCD in a
+		// bezel, kept clean: few things, each on the dot grid (a dot 8 units, a 1-unit grid line), nothing blended. The
+		// screen is 75 dots across (20 units of bezel each side), 56 down alone and 23 in the band; on it: the sun at the
+		// top right (alone: a core in a halo, swelling with the bass, four rays while a beat rings, turning beat by
+		// beat), the 15 bars (3 dots and a gap of 2, one ink) with a mid cap riding each held peak, the floor and under
+		// it the road's dashes passing by with the loudness, and (alone) at the foot a heart that beats and a note that
+		// hops. The band is the bars, their caps and the road, 17 rows tall.
+		// Then the grid, and the screen's corners cut in steps
+		const char* const PK_HEART[5] = {".#.#.", "#####", "#####", ".###.", "..#.."};
+		const char* const PK_HEART_SMALL[5] = {".....", ".#.#.", ".###.", "..#..", "....."};
+		const char* const PK_NOTE[5] = {"..###", "..#.#", "..#..", ".##..", ".##.."};
+
 		void pocket(const VizStyleState& s, bool band, std::vector<VizRect>& out)
 		{
-			const int N = 15, BW = 5, L = 2, ROWS = band ? 25 : 60, T = band ? 2 : 14, BH = band ? 22 : 45;
-			const float top = band ? 280 : 0;
-			const int cap = (251 + BH / 2) / BH;
-			const int dark = band ? VI_P_LIGHT : VI_P_INK, mid = band ? VI_P_BRIGHT : VI_P_MID;
-			if (!band) box(out, 0, 0, 640, 480, VI_P_SCREEN);
-			auto rowY = [&](int Y) { return top + Y * 8.0f; };
+			const int COLS = 75, ROWS = band ? 23 : 56, FOOT = band ? 19 : 47, BH = band ? 17 : 32, N = 15;
+			const float X0 = 20, Y0 = band ? 288 : 16, X1 = X0 + COLS * 8, Y1 = Y0 + ROWS * 8, top = band ? 280 : 0;
+			// the bezel (four strips: the screen isn't painted twice), the screen's recess (a 3-unit line), the screen
+			box(out, 0, top, 640, Y0, VI_P_BEZEL);
+			box(out, 0, Y1, 640, 480, VI_P_BEZEL);
+			box(out, 0, Y0, X0, Y1, VI_P_BEZEL);
+			box(out, X1, Y0, 640, Y1, VI_P_BEZEL);
+			box(out, X0 - 3, Y0 - 3, X1 + 3, Y0, VI_P_EDGE);
+			box(out, X0 - 3, Y1, X1 + 3, Y1 + 3, VI_P_EDGE);
+			box(out, X0 - 3, Y0, X0, Y1, VI_P_EDGE);
+			box(out, X1, Y0, X1 + 3, Y1, VI_P_EDGE);
+			box(out, X0, Y0, X1, Y1, VI_P_SCREEN);
+			// dots, kept on the screen
+			auto dot = [&](int c, int r, int w, int h, int ink) {
+				const int c0 = std::max(c, 0), c1 = std::min(c + w, COLS), r0 = std::max(r, 0), r1 = std::min(r + h, ROWS);
+				if (c1 > c0 && r1 > r0) box(out, X0 + c0 * 8, Y0 + r0 * 8, X0 + c1 * 8, Y0 + r1 * 8, ink);
+			};
+			// a little picture, each row's runs of '#' a box
+			auto sprite = [&](const char* const* rows, int n, int c, int r, int ink) {
+				for (int j = 0; j < n; j++)
+					for (int i = 0; rows[j][i];)
+					{
+						int e = i;
+						while (rows[j][e] == '#') e++;
+						if (e > i) dot(c + i, r + j, e - i, 1, ink), i = e;
+						else i++;
+					}
+			};
+			auto disc = [&](int cx, int cy, int R, int ink) {
+				for (int j = -R; j <= R; j++)
+				{
+					const int w = (int)std::lround(std::sqrt((float)(R * R + R - j * j)));
+					dot(cx - w, cy + j, 2 * w + 1, 1, ink);
+				}
+			};
+			if (!band)
+			{
+				float bass = 0;
+				for (int i = 0; i < 4 && i < s.n; i++) bass += std::clamp(s.levels[i], 0.0f, VN_TOP) / (4 * VN_TOP);
+				const int cx = 65, cy = 10;
+				disc(cx, cy, bass > 0.6f ? 6 : 5, VI_P_GHOST);
+				disc(cx, cy, s.pkPulse > 0.6f ? 4 : 3, VI_P_MID);
+				if (s.pkPulse > 0.25f)
+				{
+					static const int RAYS[2][4][2] = {{{0, -8}, {0, 8}, {-8, 0}, {8, 0}}, {{-6, -6}, {6, -6}, {-6, 6}, {6, 6}}};
+					for (const int* q : RAYS[s.beatsSeen & 1]) dot(cx + q[0], cy + q[1], 1, 1, VI_P_MID);
+				}
+			}
+			// the bars. A level lights the rows whose step is at most it (the graph's steps: 1 + 251 k / (BH - 1))
+			auto rowsOf = [&](float v) { return v < 1 ? 0 : std::min(BH, (int)((v - 1) * (BH - 1) / 251) + 1); };
 			for (int b = 0; b < N && b < s.n; b++)
 			{
-				const float x0 = (L + b * BW) * 8.0f, x1 = x0 + (BW - 1) * 8.0f;
-				const float lv = std::clamp(s.levels[b], 0.0f, VN_TOP), pk = std::clamp(s.holds[b], 0.0f, VN_TOP);
-				// k rows up from the bar's foot: step 1 + floor(251 k / (BH - 1)); lit while the step is at most the level
-				int lit = 0, low = 0, c0 = -1, c1 = -1;
-				for (int k = 0; k < BH; k++)
-				{
-					const int st = 1 + 251 * k / (BH - 1);
-					if (st <= lv)
-					{
-						lit = k + 1;
-						if (st <= lv * 0.66f) low = k + 1;
-					}
-					else if (st > pk && st <= pk + cap)
-					{
-						if (c0 < 0) c0 = k;
-						c1 = k + 1;
-					}
-				}
-				const int foot = T + BH;	// (the row under the bars' last)
-				box(out, x0, rowY(foot - low), x1, rowY(foot), dark);
-				box(out, x0, rowY(foot - lit), x1, rowY(foot - low), mid);
-				if (c0 >= 0) box(out, x0, rowY(foot - c1), x1, rowY(foot - c0), mid);
+				const int c = 1 + b * 5;
+				const int lit = rowsOf(std::clamp(s.levels[b], 0.0f, VN_TOP)), cp = rowsOf(std::clamp(s.holds[b], 0.0f, VN_TOP));
+				dot(c, FOOT - lit, 3, lit, VI_P_INK);
+				if (cp > lit) dot(c, FOOT - cp, 3, 1, VI_P_MID);
 			}
-			// the floor: the screen's last row under the bars
-			box(out, L * 8.0f, rowY(T + BH), (L + N * BW) * 8.0f, rowY(T + BH + 1), mid);
+			// the floor under the bars (their width), and the road's dashes under it (2 dots every 5: one a bar)
+			const int L = 1, R = COLS - 1;	// (the bars' first column, and the one past their last)
+			dot(L, FOOT, R - L, 1, VI_P_MID);
+			for (int c = L - (int)s.pkScroll; c < R; c += 5)
+			{
+				const int c0 = std::max(c, L), c1 = std::min(c + 2, R);
+				if (c1 > c0) dot(c0, FOOT + 1, c1 - c0, 1, VI_P_GHOST);
+			}
+			// the foot: the heart (full while a beat rings) under the bars' left edge, the note (a hop each beat) under
+			// their right
+			// (alone: the band is the bars and their road, nothing else)
+			if (!band)
+			{
+				const int sr = FOOT + 3;
+				sprite(s.pkPulse > 0.4f ? PK_HEART : PK_HEART_SMALL, 5, L, sr, VI_P_INK);
+				sprite(PK_NOTE, 5, R - 5, sr - (s.pkPulse > 0.6f ? 1 : 0), VI_P_INK);
+			}
 			// the grid: the 8th unit of every dot, across and down
-			const int g = band ? VI_BG : VI_P_GRID;
-			for (int c = 0; c < 80; c++) box(out, c * 8 + 7.0f, top, c * 8 + 8.0f, top + ROWS * 8.0f, g);
-			for (int r = 0; r < ROWS; r++) box(out, 0, rowY(r) + 7, 640, rowY(r) + 8, g);
+			for (int c = 0; c < COLS; c++) box(out, X0 + c * 8 + 7, Y0, X0 + c * 8 + 8, Y1, VI_P_GRID);
+			for (int r = 0; r < ROWS; r++) box(out, X0, Y0 + r * 8 + 7, X1, Y0 + r * 8 + 8, VI_P_GRID);
+			// the corners: three dots of bezel each, the recess's line going round the steps
+			for (int k = 0; k < 4; k++)
+			{
+				const bool right = k & 1, low = k & 2;
+				const int cx = right ? COLS - 1 : 0, cy = low ? ROWS - 1 : 0, dx = right ? -1 : 1, dy = low ? -1 : 1;
+				const int at[3][2] = {{cx, cy}, {cx + dx, cy}, {cx, cy + dy}};
+				for (const int* q : at)
+					box(out, X0 + q[0] * 8 - (right ? 3 : 0), Y0 + q[1] * 8 - (low ? 3 : 0), X0 + q[0] * 8 + 8 + (right ? 0 : 3), Y0 + q[1] * 8 + 8 + (low ? 0 : 3),
+						VI_P_EDGE);
+				for (const int* q : at)
+					box(out, X0 + q[0] * 8 - (q[0] == 0 ? 3 : 0), Y0 + q[1] * 8 - (q[1] == 0 ? 3 : 0), X0 + q[0] * 8 + 8 + (q[0] == COLS - 1 ? 3 : 0),
+						Y0 + q[1] * 8 + 8 + (q[1] == ROWS - 1 ? 3 : 0), VI_P_BEZEL);
+			}
 		}
 
 		// ---- the five fun ones (2026-11-19): ellipses, rounded boxes, round-ended lines, arcs, fans ----

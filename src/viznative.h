@@ -143,6 +143,8 @@ namespace bp
 		double phase = 0;	// Strings' swing, Helix's twist; Grid's time to its next row (0..1)
 		uint32_t rng = 1;	// (xorshift: the particles' and stars' chance, the same run to run)
 		float slow[VN_MAX_BARS] = {};	// Ribbon's slow line
+		// Pocket console's scene: the road's scroll (dots, 0..5) and the beat's pulse (1 on a beat, gone in 0.4 s)
+		float pkScroll = 0, pkPulse = 0;
 		static constexpr int GRID_ROWS = 12, GRID_BANDS = 17;	// (12 rows: 17 stacked the fills on the handheld)
 		float gridRows[GRID_ROWS][GRID_BANDS] = {};	// Grid's moments ago, a ring: gridHead the newest
 		int gridCount = 0, gridHead = 0;
@@ -176,7 +178,7 @@ namespace bp
 	// VI_DIM_BG: DIM laid over BG at mix, opaque (a faint shape drawn without blending: Sleepy moon's far clouds,
 	// Rocket's smoke; the ground under them is always BG)
 	enum VizInk { VI_ACCENT, VI_DIM, VI_BUTTON, VI_TEXT, VI_BG, VI_RAMP, VI_WHITE, VI_P_INK, VI_P_MID, VI_P_SCREEN, VI_P_GRID, VI_P_LIGHT,
-		VI_P_BRIGHT, VI_DIM_BG };
+		VI_P_BRIGHT, VI_DIM_BG, VI_P_GHOST, VI_P_BEZEL, VI_P_EDGE };
 	// kind 2: a quad (x0,y0) (x1,y1) (x2,y2) (x3,y3) in order round, alpha at the first two corners and alpha2 at the
 	// other two (a fade)
 	struct VizRect
