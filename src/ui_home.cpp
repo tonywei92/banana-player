@@ -340,14 +340,16 @@ namespace bp
 				c.note = formatTime(std::max(0.0, ui.shownPosition(p)));
 				if (p.duration > 0) c.note += " / " + formatTime(p.duration);
 				std::string w = ui.whereOf(parentFolder(c.path));
-				if (!w.empty()) c.note += " \xC2\xB7 " + w.substr(0, w.find(" / "));
+				w = w.substr(0, w.find(" / "));
+				if (!w.empty()) c.note += " \xC2\xB7 " + w;
 			}
 			if (p.duration > 0)
 			{
 				c.frac = std::clamp(std::max(0.0, ui.shownPosition(p)) / p.duration, 0.0, 1.0);
 				c.note = formatTime(std::max(0.0, ui.shownPosition(p))) + " / " + formatTime(p.duration);
 				std::string w = ui.whereOf(parentFolder(c.path));
-				if (!w.empty()) c.note += " \xC2\xB7 " + w.substr(0, w.find(" / "));
+				w = w.substr(0, w.find(" / "));
+				if (!w.empty()) c.note += " \xC2\xB7 " + w;
 			}
 			return c;
 		}
@@ -360,7 +362,8 @@ namespace bp
 			c.frac = std::clamp(e.position / e.duration, 0.0, 1.0);
 			c.note = "Stopped at " + formatTime(e.position) + " / " + formatTime(e.duration);
 			std::string w = ui.whereOf(parentFolder(e.path));
-			if (!w.empty()) c.note += " \xC2\xB7 " + w.substr(0, w.find(" / "));
+			w = w.substr(0, w.find(" / "));
+			if (!w.empty()) c.note += " \xC2\xB7 " + w;
 			c.stopped = !mangaStopped.empty() && mangaStopped == e.path;
 			c.label = c.stopped ? "Stopped for Manga" : "Continue";
 			c.key = "Resume";

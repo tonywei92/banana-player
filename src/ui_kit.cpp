@@ -44,7 +44,10 @@ namespace bp
 
 	void Ui::Kit::artPlaceholder(Rect r, const std::string& key, int rad, bool edge)
 	{
-		const artph::Shape a = artph::shape(r.w, key);
+		// the sums are a square's: in a wide box (Home's Continue and Recent cards) the square of its height, centred
+		const int side = std::min(r.w, r.h);
+		const artph::Shape a = artph::shape(side, key);
+		const int ox = (r.w - side) / 2, oy = (r.h - side) / 2;
 		if (edge) flat(r, BUTTON, rad, edgeOf(BUTTON));
 		else ui.fillRound(r, BUTTON, rad);
 		// the discs reach past the square (half out): cut to it
@@ -56,7 +59,7 @@ namespace bp
 			if (!SDL_IntersectRect(&d, &old, &d)) return;
 		}
 		SDL_RenderSetClipRect(ui.ren, &d);
-		auto disc = [&](int dia, SDL_Color c) { ui.fillRound({r.x + a.cx - dia / 2, r.y + a.cy - dia / 2, dia, dia}, c, dia / 2); };
+		auto disc = [&](int dia, SDL_Color c) { ui.fillRound({r.x + ox + a.cx - dia / 2, r.y + oy + a.cy - dia / 2, dia, dia}, c, dia / 2); };
 		disc(a.record, BG);
 		if (a.band) disc(a.band, SURFACE);
 		disc(a.label, ACCENT);
