@@ -5,11 +5,11 @@
 // A plain struct owned by the browser's area (Ui::Browse::homeView, ui_browse.h; docs/notes/ui-areas.md): Home is a
 // folder of Page::Browse, not a page, so Browse's key and pointer hand it Home's keys and touches (homeKey, homePointer)
 // and drawTracks draws it (drawHome; recent-all: drawAllRecent). Stayed Ui's: what plays a recent file or shows it in
-// its folder (openFile, showInFolder), the mini bar and the playing file's chip (every page's), the settings mirrored
+// its folder (openFile, showInFolder), the playing file's chip (every page's), the settings mirrored
 // for drawing (showHidden, mangaOn) and the Home touches Ui::pointer takes before the area's point (the quit dialog
 // over every finger, a card's hold in progress), which call in here where they always were.
-// Home draws only its body in lay::shell(mini).body; Ui::Shell draws the header and hint bar from title(), crumb(),
-// hintList() and draws the rail, the header's back and More keys and the mini bar.
+// Home draws only its body in lay::shell().body; Ui::Shell draws the header and hint bar from title(), crumb(),
+// hintList() and draws the rail, the header's back and More keys.
 #pragma once
 #include "ui.h"
 #include "coverworker.h"
@@ -76,12 +76,12 @@ namespace bp
 		bool moreShown() const { return visibleCount() > HOME_RECENT_MAX; }
 		// the Continue card: what plays now, else the newest unfinished thing (a card's even when its file has gone:
 		// the place is kept). label: Now playing / Continue / Stopped for Manga. Live: the note is the time and the
-		// mini bar's state pills (speed, repeat or Shuffle, the EQ, "Playing in ..."), and key is Pause / Play
+		// the Now playing block's state pills (speed, repeat or Shuffle, the EQ, "Playing in ..."), and key is Pause / Play
 		struct Continue
 		{
 			bool shown = false, live = false, stopped = false, paused = false;
 			std::string path, title, note, label, key, artKey;
-			std::vector<std::string> pills;	// all Live (yellow), the kit's statePills: away from normal, as the mini bar has them
+			std::vector<std::string> pills;	// all Live (yellow), the kit's statePills: away from normal, as Quick settings' block has them
 			const Glyph* kind = nullptr;
 			double frac = 0;
 		};
@@ -123,7 +123,7 @@ namespace bp
 		int homeDownX = 0, homePress = -1;	// homePress: a card's index, HOME_PRESS_CONTINUE, or HOME_TILE + an old tile's
 		double homeDownOff = 0;
 		Uint32 homeHoldAt = 0;
-		Uint32 resumeHoldAt = 0;	// a finger on the live card's key: held, it takes over from a browser (the mini bar's)
+		Uint32 resumeHoldAt = 0;	// a finger on the live card's key: held, it takes over from a browser (Quick settings' block's)
 		static constexpr int HOME_TILE = 1000;
 		static constexpr int HOME_PRESS_CONTINUE = -2;	// a finger held on the Continue card (its More, at 500 ms)
 		// what a finger is on (one of them: the lift acts only if it is still on it)
@@ -138,7 +138,7 @@ namespace bp
 		static constexpr int QUIT_Y = 119, QUIT_H = 198;
 		Rect quitBox() const
 		{
-			lay::Box main = lay::shell(false).main;
+			lay::Box main = lay::shell().main;
 			return {main.x + 8, QUIT_Y, main.w - 16, QUIT_H};
 		}
 		Rect quitRow(int i) const

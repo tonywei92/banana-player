@@ -47,7 +47,7 @@ Open Banana Player and the bottom screen shows **Home**:
   everything played through there is no Continue card and **Recent** moves to the top. A song's picture is its real
   album art: the picture in the file, else `cover.*`, `folder.*` or `front.*` beside it (its title is the title tag
   when it has one, not the file's name). A song without any keeps the drawn record. The card is Home's one place for
-  what plays: the mini bar is not drawn there, and Home's Recent and shortcuts stay where they are either way.
+  what plays. Home's Recent and shortcuts stay where they are either way.
 - **Recent**, under it: up to four cards, newest first, with the kind's mark, the title, what it was
   (`Played · 3:34`, `7% read`, `6:12 / 9:56`) and a bar; a liked file has a yellow heart, a server's a network mark,
   and a song's card shows its album art when it has one.
@@ -75,14 +75,16 @@ While something plays it asks too, and says **What's playing stops** (**SELECT**
 settings, **L3** is Search, and About is Settings' last group.
 
 Every section now shares one frame: a **rail** down the left with a **Search** key pinned at its top, **Home**,
-**Files**, **Playlists**, **Extensions**, **Network**, and **Settings** pinned at the foot under a **START** cap.
-**L/R** step the sections and wrap (they pass Search by), or tap one; the D-pad stays in the page. With seven
-sections the cells are 47 units tall so all show at once, and with six or fewer 56; when they still don't fit, a
-finger drag scrolls them (Search and Settings stay put). Arriving at a section starts and stops nothing, and no cell
+**Files**, **Playlists**, **Extensions**, **Network**, and at the foot the **Now playing key** over **Settings** (no START
+cap: START is Settings from every screen).
+**L/R** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
+52 units tall, 45 with seven sections so all show at once; when they still don't fit, a finger drag scrolls them
+(Search, the Now playing key and Settings stay put). Arriving at a section starts and stops nothing, and no cell
 carries a warning: **Extensions** is one section for every extension that is on, and the Manga reader is a row of its
-page. The header carries the back key, the section's title and where you are, the status marks and **X** (More); the
+page. The header carries the back key, the section's title and where you are, the status marks and **X** (More); its
+status cluster is one touch target for Quick settings. The
 Search key is in the rail. **L3** and that key say Search is coming in a later step, and the key is lit while it shows.
-The bar along the foot says what the buttons do there, and never names START (the cap over Settings does).
+The hint bar along the foot says what the buttons do there.
 
 Inside a section the list opens where you left it (its top if that folder or playlist is gone); the **Playlists** rail
 cell opens the list of playlists, and **B** goes up a folder, and from the section's top back to Home.
@@ -123,30 +125,26 @@ that playlist. Started with a file, or after **Show in folder**,
 you land in the folder (or playlist) it plays from, the cursor on it. The same goes for **Stop**, and for the end of a
 video's list while the playing screen was up; a song's list ending keeps the song up instead.
 
-- **The mini bar**, along the bottom of every page but the player itself and Home (Home's big card is Now playing
-  there): every list (Files, Playlists, Network,
-  All recent), Settings and its groups, Sound, the web dashboard, Manage extensions, the manga reader's pages, the
-  photo viewer. The comic reader and the photo viewer are pages of their
-  own, not the player: over a photo the bar shows and controls what plays underneath (a song or a video), not the
-  photo. The bar: the play / pause mark, the title, `0:14 / 1:00` (· paused), and a line showing how far it has got.
-  Tap the bar to go back to the playing screen; tap the mark on its left to play or pause and stay where you are; hold
-  the bar for its menu: **Now playing**, **Play** / **Pause**, **Like**, **Add to playlist…**, **Show in folder**,
-  **Stop**. It's hidden while you select files, type, fill in a connection, with a popup menu or a sheet over the
-  page, and on the player's own screens (the playing screen, Up next, Info); Settings and its groups, Sound and the web
-  dashboard have it.
+- **What plays, on every screen:** the rail's **Now playing key**, just above Settings (the art at 30 and three
+  playing bars, a pause mark while paused; its slot is kept while nothing plays). Tap it for the playing screen; hold
+  it for its menu: **Now playing**, **Play** / **Pause**, **Like**, **Add to playlist…**, **Show in folder**, **Stop**.
+  **SELECT** is its key on any section page. Quick settings' **Now playing block** (F, on every screen, the player
+  included) is the one place to play, pause and skip without leaving the page; its **Play** held takes playback over
+  from a browser. There is no bar at the foot of any page any more (the owner, 2026-11-19): the body has that room.
 - **The header** shows three small yellow bars left of the clock while something plays behind the list (dim and still
-  when it's paused).
+  when it's paused), and the status cluster (those bars, Wi-Fi, the battery and the clock) is one touch target:
+  **F**'s panel, Quick settings, anywhere. The globe inside it keeps its own tap.
 - **The playing file's row** carries a chip: **Playing**, **Paused** or **In browser** (the web dashboard plays it). Its card on Home says **Now** with its time and bar running. **A** on that row or card goes back to it,
   never from its start.
-- **Back to the playing screen:** **SELECT** on any page with the bar (or on Home), a tap on the mini bar, **A** on its
+- **Back to the playing screen:** **SELECT** on any section page, a tap on the rail's Now playing key, **A** on its
   row or card, or **B** on Home. From a book or a comic, a video takes the top screen
   back while its player shows; **B** returns to the page you were reading.
 - **L3** (press the stick) likes or unlikes what plays **on the player**; in the shell's lists it is Search.
-- **Stop** ends it: **Stop** at the bottom right of the playing screen, **X · More** › **Stop**, or the mini
-  bar's menu. The place is kept (its card on Home resumes it). A song that reaches the end of the folder or playlist
-  doesn't close: it stays on the playing screen (or the bar keeps it) at **0:00**, paused, and **A** (or the power key
+- **Stop** ends it: **Stop** at the bottom right of the playing screen, **X · More** › **Stop**, or a hold on the
+  rail's Now playing key for its menu. The place is kept (its card on Home resumes it). A song that reaches the end of the folder or playlist
+  doesn't close: it stays on the playing screen (or Home's card keeps it) at **0:00**, paused, and **A** (or the power key
   with the lid shut, or **Play** in the browser) plays it again from its start. A video's end still stops: on the playing
-  screen you're back in the list on it; while browsing the bar folds away and the top screen says **Finished**.
+  screen you're back in the list on it; while browsing the top screen says **Finished**.
 - **Opening a photo** while a song or video plays doesn't stop it: the photo takes the top screen and what plays goes
   on behind it, sound and all (a song's next song follows as usual; a video's picture just isn't shown, or decoded,
   meanwhile). Close the photo (**B**, **Close**) and you're back where you opened it, the video showing again where it
@@ -366,10 +364,10 @@ See [Photos](#photos) for the touch screen.
 | **X** (or **⋯** in the header) | **More**: the focused file on the left (**Play from the start** / **Open**, **Add to playlist…**, **Like** / **Unlike**, **Go to album** / **Go to artist** for a song, **Info**, **Copy…**, **Move…**, **Rename…**, **Delete**), and the folder it is in on the right (**Select files**, **Play all N**, **Shuffle play**, **Add folder to playlist…**, **Refresh**, **Hide folder**, **Show hidden folders**). In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: Home's options |
 | **Hold** (touch screen) | On a file in Files or Network: starts selecting, with that file ticked |
 | **Y** | In Files: select mode (**A** tick, **SELECT** all / none, the bar for Playlist / Copy / Move / Delete, **X** More). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
-| **SELECT** | Back to what plays (the playing screen); in select mode, All / none |
+| **SELECT** | Back to what plays (the playing screen): the rail's Now playing key's key, on any section page; in select mode, All / none |
 | **L3** (press the stick) | **Search**: the cards' search, coming in a later step (the rail's key does the same) |
 | **START** | **Settings**: its ten group tiles; **B** or **START** returns to the folder you were in; **F** is Quick settings |
-| **Mini bar** (touch screen) | On every page but the player and Home (its Now playing card stands in): tap it for the playing screen · its play mark: play / pause · hold: its menu |
+| **The rail's Now playing key** (touch screen) | Just above Settings, on every section page: the art and the playing bars. Tap it for the playing screen · hold: its menu. Its slot is kept while nothing plays |
 
 ### Copy, move, rename, delete
 
@@ -396,13 +394,13 @@ From any screen, **START** opens **Settings** directly, on its ten group tiles (
 Photos, Reading, Files & history, Power & screens, Web dashboard, Updates, About), under the kit's header. **A** or a
 tap opens one; in a group, **B** goes back to the tiles. **B** or **START** at the tiles closes Settings back to where
 you were: the player, the page of a book, the folder. The hint bar there names **F Quick settings**, so Quit stays in
-reach, and the rail's **START** cap says START is Settings without any bar naming it.
+reach; the Settings page itself teaches **B / START Back**, and the first-start pane says it too.
 
 Settings reached from the **rail** or **L/R** is a section instead: **B** goes Home. That is the whole difference: the
 same page, but it remembers which way it was opened.
 
 There is no START menu: its places are the rail's cells, **F** is Quick settings, **L3** is Search, About is Settings'
-last group, Now playing is **SELECT** and the mini bar, and Quit is **B** on Home, Quick settings or **F + START**.
+last group, Now playing is **SELECT** and the rail's Now playing key, and Quit is **B** on Home, Quick settings or **F + START**.
 Nothing is lost: like, Add to playlist…, Show in folder, Play on, Info and Stop are on the player's **X · More** sheet
 (Stop is also a key on the player). See [Like and Add to playlist](#like-and-add-to-playlist) and
 [Play on](#play-on-from-the-handheld).
@@ -649,7 +647,8 @@ Songs show their title, artist and album on the top screen. While a song plays:
 **Long titles move** (the Title marquee): a title too long for its place is drawn from its start, its end fading
 into the ground, and after 1.5 s moves left until its end shows, rests, fades back to its start and, 3 s later, does
 it once more; then it rests at its start. It does this for the player's title (a song or a video), the song's title on the top screen (every Show mode; artist and album stay cut with "…") and the focused row
-of a list (one pass, once the cursor has rested on it). The mini bar's title stays still, cut with "…". One title moves at a time on a screen; a sheet or menu over it
+of a list (one pass, once the cursor has rested on it). Quick settings' Now playing block is the same marquee, in a
+panel. One title moves at a time on a screen; a sheet or menu over it
 holds it at its start, and it starts again on a new title, when the page opens or the screen wakes. A title that
 doesn't fit also leaves out a start it shares with its artist, album, folder or playing list ("Yellow Album - 03 -
 Sunny Peel" shows "03 - Sunny Peel") when that start ends at " - ", ": ", " | " or "_" and three letters or more are
@@ -735,8 +734,7 @@ where you were. Settings and its groups have the kit's header: the back key at
 the left, then the page's title with its crumb (**Settings · 3 of 10**) under it on the same line, and a group's
 neighbours named either side of **L2** / **R2** at the right (those keys step the groups). Seven rows fit under that
 line. In a group, **UP/DOWN** chooses a row, **LEFT/RIGHT** changes it in place, and the
-line above the bottom says what the setting under the cursor does; while a song or video plays, the mini bar takes
-that line's room and the seven rows keep it (the setting's help is then the top screen's, not this one's). **Subtitle style...** at the end of the **Subtitles** sheet
+line above the bottom says what the setting under the cursor does. **Subtitle style...** at the end of the **Subtitles** sheet
 opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 
 | Group | Setting | Default | |
@@ -855,7 +853,7 @@ handheld, carries on at 1:27"):
   on the same file (**L** 5 s or more into the browser's song restarts it first; a video always goes to the one before).
 - **Where it plays is one choice for the whole system**, the switch's: anything opened plays there, whichever device
   it was picked on. With **This browser** chosen, a song or video opened on the handheld (from the list, Recent, a
-  playlist, Play folder, Shuffle play, the mini bar) or in another browser tab plays **in that browser**, in the
+  playlist, Play folder, Shuffle play, Quick settings' block) or in another browser tab plays **in that browser**, in the
   handheld's list, and the handheld holds it paused, as if the browser had picked it. Picked fast, the last pick wins.
   Only the switch, **Continue here**, **Play here** / **Play on handheld**, the handheld's **Play on** and holding **A**
   change the choice: Stop (on either side), the end of a list, pausing, a photo, a dropped connection and a file the browser can't play leave it
@@ -1088,12 +1086,13 @@ through.
   read so far and downloads, once the reader has been opened) and a chevron; then a rule and **Manage extensions**.
   **A** (or a tap) opens the row; **UP/DOWN** move; **B** goes Home; **L/R** step the sections; **L3** is Search, as
   everywhere in the shell. Arriving on the page, by a tap on the rail or **L/R**, starts and stops nothing: a video
-  keeps playing, with the mini bar.
+  keeps playing, with the rail's Now playing key above Settings.
 - While a **video** plays (or is paused) the Manga row wears a red **Stops the video** pill, and **A** on it asks
   first: **Stop the video to open Manga?** with **Stay** (focused, and **B**) and **Stop video & open Manga**. The
   video's place is kept, as Stop keeps it, and Home's Continue card reads **Stopped for Manga**. **Y** (or a tap on the
   line) ticks **Don't ask again**, which stops the video at once from then on; it is the Manga settings' **Manga and a
-  video** setting. A song or a photo is never asked about: it goes on under the reader with the mini bar.
+  video** setting. A song or a photo is never asked about: it goes on under the reader (F, then the Now playing block,
+  is the way back to it).
 - With none on, the page is its Empty state: **No extensions are on**, what an extension is, and one key, **Manage
   extensions** (**A**).
 - Coming back to the page lands on Manga where you left it (its tab and place are kept) when the reader is on; **B**
@@ -1114,8 +1113,8 @@ The reader is an app of its own. It opens on **Library** and has four tabs, step
 **History**, **Browse** and **Downloads**. **B** goes back — out of Browse's list of series first, then to the
 **Extensions** page (it was Home before).
 **START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page too); **B** there
-comes back where you were. Music keeps playing while you read: the pages take the top screen, and the mini bar is on the
-app's pages, the reading page included (**SELECT** there goes to what plays: a video shows on the top screen again, and
+comes back where you were. Music keeps playing while you read: the pages take the top screen, and F's Now playing
+block is on every page, the reading page included (its **SELECT** opens what plays: a video shows on the top screen again, and
 **B** comes back to the pages). **Sources** is a page of its own, opened
 with **X** on Browse (below), where sources are installed from repositories you add; **Downloads** is the queue and what's
 on the card (below).
@@ -1298,9 +1297,9 @@ here to scroll* in **Vertical scroll**), and *Loading…* shows beside the page 
   area on the bottom screen to turn the page — it follows your finger and snaps to a page when you let go (a quick
   flick turns the page even from a short drag), and in **Vertical scroll** it scrolls — the slider jumps to a page, and the
   buttons go to the chapter before or after, turn fullscreen on (as **SELECT** does), or open **Brightness** (above,
-  under Books and documents). The row is four buttons of one size with equal margins and gaps, above the **Now playing** mini bar when something plays. In
-  fullscreen the whole bottom screen is the page, and the finger drags it anywhere; the controls bar has the mini bar
-  along its foot too, and a tap anywhere on the page — including the top-left corner — shows it. A double-tap on the
+  under Books and documents). The row is four buttons of one size with equal margins and gaps. In
+  fullscreen the whole bottom screen is the page, and the finger drags it anywhere; the controls bar has the same keys
+  along its foot, and a tap anywhere on the page — including the top-left corner — shows it. A double-tap on the
   page zooms to 200 % at that spot, and a double-tap again goes back to the fit.
 - Your place is kept on the card, in the player's own folder (`home/.config/banana-player`): the page of every chapter
   you've opened, and when.
@@ -1339,9 +1338,7 @@ from the pages the reader has already decoded. The gap's size is a setting of it
 settings**: **36** of the panel's 480 lines by default. **SELECT** leaves fullscreen; **B** goes back to the chapters
 and fullscreen stays, so the next chapter opens in it too.
 The page number shows for a moment after the page changes. A tap puts the controls bar over the lower part of the
-view; the **Now playing** mini bar sits along its foot while something plays (the same bar as everywhere else), and
-while the bar shows, a tap anywhere outside it puts it away again and does nothing else (no page turn, no drag), and a
-tap on the bar's own controls works as it says.
+view; a tap anywhere outside it puts it away again and does nothing else (no page turn, no drag).
 
 **The Pages grid.** **Y** while reading (or the Reading menu's **Pages**) opens the chapter's thumbnails, six to a
 row, each with its page number in its cell, on the page you're reading. Pages not decoded yet show their number alone
@@ -1398,8 +1395,18 @@ on the card, not in the player's folder.
 
 ## Quick settings
 
-Press the **Menu/Function** button (F), anywhere, for a panel on the bottom screen:
+Press the **Menu/Function** button (F), anywhere, for a panel centred on the bottom screen, over the rail:
 
+- **Now playing** (its first block, always there): the art (48; the Art placeholder, or a music mark when nothing
+  plays), the title, the artist and the time, then **Previous 52**, **Play / Pause 68** and **Next 52**, and a line
+  along its foot showing how far it has got. It has the state marks too (1.5×, Repeat one, a look, the EQ, "Playing in
+  Chrome"), in yellow after the time. With nothing loaded it is the same block, idle: a music mark, **Nothing
+  playing** / **What you play shows here**, the three keys dimmed, no line; the cursor passes it and it isn't
+  pressed. The **D-pad** opens on **Volume**; **UP** reaches the block. **A** on it plays or pauses, **LEFT / RIGHT**
+  seek (5 s back, 10 s on), **L / R** step to the previous and next from any row, **SELECT** opens the player. By touch
+  its three keys do their jobs; a tap anywhere else on it (the art, the title, the line) opens the player and closes the
+  panel. A finger held on **Play** takes playback over from a browser. Its actions go through
+  the session like the player's keys.
 - **Volume** and **Brightness**: touch the bar (anywhere in its row between **−** and **+**) and slide, tap **−** / **+**, or use **LEFT / RIGHT**. They change the same
   levels as BananaOS's own settings and its volume and brightness keys, and they're kept after a restart.
 - **Same brightness for both screens** (a tick box): on, one Brightness bar sets both screens; off, **Top** and

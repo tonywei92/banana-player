@@ -2477,13 +2477,13 @@ namespace bp
 		}
 		int pages = ui.pageReader->readerStatus.pages;
 		if (!ui.pageReader->readerStatus.error.empty())
-			ui.drawTextMid(ui.pageReader->readerStatus.error, 1, DANGER, W / 2, ui.miniUp ? 310 : 340, 560, 2);
+			ui.drawTextMid(ui.pageReader->readerStatus.error, 1, DANGER, W / 2, 340, 560, 2);
 		else
 		{
 			ui.drawTextMid(pages > 0 ? "Page " + std::to_string((ui.slideHeld(SL_MANGA) ? (int)ui.slide.value : ui.pageReader->readerStatus.page) + 1) + " / " + std::to_string(pages) : "Page",
-				1, TEXT, W / 2, ui.miniUp ? 310 : 340, 380, 2);
+				1, TEXT, W / 2, 340, 380, 2);
 			if (ui.pageReader->readerStatus.loading)
-				ui.drawTextMid("Loading" + std::string(SDL_GetTicks() / 400 % 4, '.'), 0, DIM, W / 2 + 150, ui.miniUp ? 312 : 342, 0, 2);
+				ui.drawTextMid("Loading" + std::string(SDL_GetTicks() / 400 % 4, '.'), 0, DIM, W / 2 + 150, 342, 0, 2);
 		}
 		// the slider: the ACCENT fill to the page, its knob; a finger there is a Seek (mangaSlide)
 		drawMangaSlider();
@@ -2492,7 +2492,7 @@ namespace bp
 		bool prev = ci > 0, next = ci >= 0 && ci + 1 < mangaReadChapterTotal();
 		if (ui.pageReader->readerStatus.atEnd)
 			ui.drawTextMid(next ? std::string("End of chapter \xC2\xB7 R2 or ") + (p.settings.mangaSwapLR ? "LEFT" : "RIGHT") + " for the next"
-				: "You\xE2\x80\x99re caught up", 0, next ? ACCENT : DIM, W / 2, ui.miniUp ? 360 : 384, 560, 2);
+				: "You\xE2\x80\x99re caught up", 0, next ? ACCENT : DIM, W / 2, 384, 560, 2);
 		Rect pb = mangaPrevRect(), fb = mangaFullRect(), nb = mangaNextRect();
 		ui.drawBox(pb, mangaPressed == MG_PREV ? PRESSED : BUTTON, R_BUTTON);
 		// each with its key under it (Button hotkeys on), as the player's buttons
@@ -2933,7 +2933,7 @@ namespace bp
 			ui.drawBox(b, mangaCtrlPressed == i ? PRESSED : BUTTON, R_BUTTON);
 			ui.drawButton(b, nullptr, LABELS[i], KEYS[i], false, 0);
 		}
-		ui.drawTextMid("Hides in 4 s \xC2\xB7 drag to hide now", 0, DIM, W / 2, ui.miniUp ? 468 : 460);
+		ui.drawTextMid("Hides in 4 s \xC2\xB7 drag to hide now", 0, DIM, W / 2, 460);
 	}
 
 	void Ui::Manga::drawMangaToast()

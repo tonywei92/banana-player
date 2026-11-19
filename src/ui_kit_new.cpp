@@ -11,7 +11,7 @@ namespace bp
 	// ---- Section rail ----
 
 	void Ui::KitNew::rail(Kit& k, const lay::Rail& r, const std::vector<RailItem>& sections, const RailItem& settings, int active,
-		int pressed, bool searchLit, bool searchPressed)
+		int pressed, bool searchLit, bool searchPressed, bool npPlaying, bool npPaused, const std::string& npArt)
 	{
 		Ui& ui = k.ui;
 		ui.fill(r.area, RAIL);
@@ -53,6 +53,29 @@ namespace bp
 		SDL_RenderSetClipRect(ui.ren, hadClip ? &previous : nullptr);
 		// Settings pinned at the foot
 		cell(r.settings, settings, active == (int)r.cell.size(), pressed == (int)r.cell.size());
+		// Now playing, pinned above Settings: its slot is kept while nothing plays (nothing drawn then). While
+		// something is loaded: the art at 30, then three bars in ACCENT (a pause mark when paused)
+		if (npArt.empty()) return;
+		if (pressed == NP_PRESSED) ui.fillRound(r.np, PRESSED, R_BUTTON);
+		Rect art{r.np.x + 8, r.np.y + (r.np.h - 30) / 2, 30, 30};
+		k.artPlaceholder(art, npArt, 5, true);
+		int cx = art.x + art.w + (r.np.x + r.np.w - 6 - (art.x + art.w)) / 2;
+		if (npPaused)
+		{
+			// the pause mark, as the player's: two bars in DIM_ON
+			ui.fillRound({cx - 7, r.np.y + (r.np.h - 14) / 2, 5, 14}, DIM_ON, 1);
+			ui.fillRound({cx + 2, r.np.y + (r.np.h - 14) / 2, 5, 14}, DIM_ON, 1);
+		}
+		else
+		{
+			// three bars, moving while it plays (a frame about 6 times a second, as the header's mark)
+			double t = (SDL_GetTicks() / 166) * 166 / 160.0;
+			for (int i = 0; i < 3; i++)
+			{
+				int h = npPlaying ? 5 + (int)std::lround(std::fabs(std::sin(t + i * 1.7)) * 11) : 5;
+				ui.fillRound({cx - 6 + i * 6, r.np.y + r.np.h / 2 + 7 - h, 4, h}, ACCENT, 1);
+			}
+		}
 	}
 
 	// ---- Away-from-normal ----

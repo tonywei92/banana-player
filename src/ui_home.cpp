@@ -514,7 +514,7 @@ namespace bp
 			quitCursor = 1;
 			return false;
 		}
-		// (START is Settings, from Ui::press: the rail's START cap says so)
+		// (START is Settings, from Ui::press, on every screen)
 		if (b == Button::X)
 		{
 			// the focused card's More sheet; with no card, Home's own
@@ -633,7 +633,7 @@ namespace bp
 			}
 			return false;
 		}
-		lay::Shell sh = lay::shell(ui.miniUp);
+		lay::Shell sh = lay::shell();
 		Continue c = continueOf(p);
 		int vis = visibleCount();
 		bool has = !recent.empty();
@@ -795,7 +795,7 @@ namespace bp
 	{
 		// All recent's rows: the generic list's pointers take over from here (its Up chooses the cursor this sets)
 		if (pt.kind != Pointer::Down) return false;
-		lay::Shell sh = lay::shell(ui.miniUp);
+		lay::Shell sh = lay::shell();
 		lay::AllRecentPage lp = lay::allRecentPage(sh.body);
 		// its empty state's one key (Browse Files), as the key says
 		if (ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0))
@@ -858,7 +858,7 @@ namespace bp
 		if (homeZone == HOME_CONTINUE && c.shown) h.push_back({"A", c.live ? "Go to it" : c.key});
 		else if (homeZone == HOME_SHORTCUTS) h.push_back({"A", "Open"});
 		else h.push_back({"A", onPlaying ? "Go to it" : "Play"});
-		// the mini bar is not drawn on Home: SELECT's way back to what plays is named here instead
+		// SELECT's way back to what plays is named here (the rail's Now playing key says it too)
 		if (c.live) h.push_back({"SELECT", "Now playing"});
 		h.push_back({"X", "More"});
 		h.push_back({"B", "Quit"});
@@ -987,7 +987,7 @@ namespace bp
 	void Ui::Home::drawHome(const Player& p)
 	{
 		Kit& k = *ui.kit;
-		lay::Shell sh = lay::shell(ui.miniUp);
+		lay::Shell sh = lay::shell();
 		Continue c = continueOf(p);
 		bool has = !recent.empty();
 		std::vector<Kit::FilterItem> items;
@@ -1127,7 +1127,7 @@ namespace bp
 	void Ui::Home::drawAllRecent(const Player& p)
 	{
 		Kit& k = *ui.kit;
-		lay::Shell sh = lay::shell(ui.miniUp);
+		lay::Shell sh = lay::shell();
 		lay::AllRecentPage lp = lay::allRecentPage(sh.body);
 		// the kind chips on the line under the header (28 tall: the list's own row maths starts at 84)
 		int x = lp.chipStrip.x, cy = lp.chipStrip.y + lp.chipStrip.h / 2;
@@ -1477,12 +1477,12 @@ namespace bp
 		ui.drawBattery(616, 24, p);
 	}
 
-	// ---- what plays behind the browser: the mini bar, the playing row's chip, what a photo stopped ----
+	// ---- what plays behind the browser: the playing row's chip, what a photo stopped ----
 
 	bool Ui::goNowPlaying(Player& p)
 	{
-		// the bar is main's player's, also over a photo: a tap there closes the photo and opens the player, once (main
-		// does it: only it can close the photo viewer)
+		// main's player's, also over a photo: from the rail's key, Quick settings' block or SELECT, it closes the
+		// photo and opens the player, once (main does it: only it can close the photo viewer)
 		const Player& bp = barPlayer(p);
 		if (!bp.playing() || bp.playingPhoto()) return false;
 		if (p.playingPhoto()) { playerOverPhoto = true; return false; }
@@ -1490,42 +1490,9 @@ namespace bp
 		return true;
 	}
 
-	bool Ui::miniBarShown(const Player& p) const
-	{
-		// the owner's rule: on every page but the player's own (the song or video player page, its tracks and chapters,
-		// its queue, its Info); the comic reader and the photo viewer are pages of their own, not the player, so it
-		// shows there too. Still not while typing or selecting: Settings is a page with room for it
-		const Player& bp = barPlayer(p);
-		if (!bp.playing() || bp.playingPhoto()) return false;
-		if (kbOpen || browse->playlists->selMode != SEL_NONE) return false;
-		if (page == Page::Info) return false;
-		// Book mode (held sideways, a page on each panel): both panels are the book, never the bar (the owner's call)
-		if (page == Page::DocText && docs->textStatus.book) return false;
-		if ((page == Page::MangaRead || page == Page::DocPages) && pageReader->readerStatus.book) return false;
-		// over a photo this is the photo viewer's page (drawPhoto), not the player's
-		if (page == Page::Main) return p.playingPhoto();
-		if (page == Page::Browse)
-		{
-			// Home is the one page it skips: its big card is Now playing there, and Home's layout is the same with
-			// something playing or not (the owner: one card, no mini bar; docs/redesign/backlog.md)
-			if (browse->atHome()) return false;
-			return browse->browseDir != FORMDIR && browse->browseDir != FINDNET && !browse->playlists->addPending.serial;
-		}
-		// the Sound page's dialogs (Options, presets, Delete) reach the panel's bottom
-		if (page == Page::Sound) return !sound->dialogOpen();
-		if (page == Page::MangaRead)
-		{
-			// the pages grid and the Reading menu are sheets over the reader (the menu is a menu, as today); in
-			// fullscreen the bottom panel is all page: the bar comes with the controls sheet, inside it
-			if (pageReader->mangaPages || manga->mangaMenu) return false;
-			if ((pageReader->readerStatus.fullscreen || pageReader->readerStatus.book) && pageReader->readerBottom.on && !(manga->mangaCtrlUntil && SDL_GetTicks() < manga->mangaCtrlUntil)) return false;
-		}
-		return true;
-	}
-
 	void Ui::miniToggle(Player& p)
 	{
-		// the bar's play mark: main's player, never the photo
+		// the Now playing block's / Home card's Play: main's player, never the photo
 		Player& bp = barPlayer(p);
 		if (!bp.playing() || bp.playingPhoto()) return;
 		// a page plays it: the page's play / pause (as A on the player)
@@ -1599,67 +1566,5 @@ namespace bp
 		return w;
 	}
 
-	void Ui::drawMiniBar(const Player& p)
-	{
-		// main's player, also over a photo (the bar says what plays under it, and its mark works on that)
-		const Player& bp = barPlayer(p);
-		Rect b = MINI_BOX;
-		int mid = b.y + b.h / 2;
-		bool live = bp.playing() && !bp.playingPhoto();
-		bool held = live && pageDrives(bp);
-		bool err = live && !bp.error.empty();
-		bool flash = landFlashUntil != 0;
-		drawBox(b, pressedBtn == MINI_BAR ? PRESSED : SURFACE, R_BUTTON, flash);
-		// how far into it, along its foot (dim: stopped for a photo)
-		double pos = live ? shownPosition(bp) : 0, dur = live ? bp.duration : 0;
-		double frac = dur > 0 && pos >= 0 ? std::clamp(pos / dur, 0.0, 1.0) : 0;
-		int fw = (int)std::lround(b.w * frac);
-		Rect in = flash ? Rect{b.x + theme::EDGE, b.y + theme::EDGE, b.w - 2 * theme::EDGE, b.h - 2 * theme::EDGE} : b;
-		if (fw > 0 && !err) fillRoundBand(in, flash ? R_BUTTON - theme::EDGE : R_BUTTON, in.y + in.h - 3, in.y + in.h, live ? ACCENT : DIM, b.x + fw);
-		// its play mark, a zone of its own (held while a page plays the file: filling, as Main's Play does)
-		bool playingNow = held ? pagePlaying() : live && !bp.paused && !err;
-		if (pressedBtn == MINI_PP || (playHoldMini && playHoldAt)) fillRound({b.x + 4, b.y + 4, 36, b.h - 8}, PRESSED, 8);
-		if (playHoldMini && playHoldAt)
-		{
-			double f = std::min(1.0, (SDL_GetTicks() - playHoldAt) / (double)PLAY_HOLD_MS);
-			fillRound({b.x + 6, b.y + b.h - 8, (int)(32 * f), 3}, ACCENT, 1);
-		}
-		drawGlyphMid(playingNow ? G_PAUSE : G_PLAY, b.x + 22, mid, err ? DIM : ACCENT);
-		fill({b.x + 44, b.y + 7, 2, b.h - 14}, RULE);
-		bool audio = live && bp.playingAudio();
-		drawGlyphMid(audio ? G_NOTE : G_FILM, b.x + 62, mid, DIM);
-		// the right end: SELECT Now playing, a chevron
-		drawGlyphMid(G_RIGHT, b.x + b.w - 14, mid, DIM);
-		int xr = b.x + b.w - 28;
-		std::string verb = " Now playing";
-		int vw = (int)std::lround(textWidth(verb, 0) / sx);
-		drawTextMid(verb, 0, DIM, xr, mid, 0, 1);
-		int keyX = xr - vw;
-		if (bp.settings.buttonHotkeys && selectToPlayer())
-		{
-			drawTextMid("SELECT", 0, ACCENT, keyX, mid, 0, 1);
-			keyX -= (int)std::lround(textWidth("SELECT", 0) / sx);
-		}
-		// the title, then how it stands (dim; yellow for a page's; red for an error)
-		std::string title = live ? (!bp.title.empty() ? bp.title : entryTitle(bp.currentPath())) : "";
-		std::string sub;
-		SDL_Color subInk = DIM;
-		if (err) { sub = "Couldn't read"; subInk = DANGER; }
-		else if (held) { sub = (SessionHost::get().pageWaits() ? "Waiting for " : pagePlaying() ? "Playing in " : "Paused in ") + pageName(); subInk = ACCENT; }
-		else if (!live) sub = "stopped at " + formatTime(pos);
-		else if (bp.loading()) sub = "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.');
-		else sub = formatTime(pos) + " / " + formatTime(dur) + (bp.paused ? " \xC2\xB7 paused" : "");
-		int x0 = b.x + 78, room = keyX - 14 - x0;
-		int sw = std::min(room / 2, (int)std::lround(textWidth(sub, 0) / sx));
-		int tmax = std::max(40, room - sw - 12);
-		drawTextMid(title, 0, TEXT, x0, mid, tmax);
-		int tw = std::min(tmax, (int)std::lround(textWidth(title, 0) / sx));
-		int sx0 = x0 + tw + 12;
-		if (held)
-		{
-			drawGlyphMid(G_LAPTOP, sx0 + glyphW(G_LAPTOP, 1) / 2, mid, ACCENT, 1);
-			sx0 += glyphW(G_LAPTOP, 1) + 6;
-		}
-		if (keyX - 14 - sx0 > 20) drawTextMid(sub, 0, subInk, sx0, mid, keyX - 14 - sx0);
-	}
 }
+

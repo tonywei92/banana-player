@@ -10112,15 +10112,12 @@ static bool kitInside(lay::Box b, int w, int h) { return b.x >= 0 && b.y >= 0 &&
 static bool kitApart(lay::Box a, lay::Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; }
 static void testKitLayout()
 {
-	{	// the shell: the body 6 under the header and between it and the hints (or 8 above the mini bar), right of the rail
-		for (bool mini : {false, true})
-		{
-			lay::Shell s = lay::shell(mini);
-			CHECK(s.body.x == lay::RAIL_W && s.body.x + s.body.w == lay::PANEL_W);
-			CHECK_EQ(s.body.y, s.header.y + s.header.h + 6);
-			CHECK(s.body.y + s.body.h <= (mini ? s.mini.y - 8 : s.hints.y));
-			CHECK(mini ? s.mini.w > 0 && s.mini.y + s.mini.h == s.hints.y - 8 : s.mini.w == 0);
-		}
+	{	// the shell: the body 6 under the header, between it and the hints (no bar at the foot any more: it runs to
+		// the hint bar, as Home always did)
+		lay::Shell s = lay::shell();
+		CHECK(s.body.x == lay::RAIL_W && s.body.x + s.body.w == lay::PANEL_W);
+		CHECK_EQ(s.body.y, s.header.y + s.header.h + 6);
+		CHECK_EQ(s.body.y + s.body.h, s.hints.y);
 	}
 
 	using namespace lay;
@@ -10457,13 +10454,14 @@ static void testKitLayout()
 	CHECK_EQ(chipTrack(en, 1, {en, sub}), std::string("English"));
 	CHECK_EQ(caps("Top screen 2"), std::string("TOP SCREEN 2"));
 
-	{	// the mini bar in the shell's own box: its mark, progress line and title stay inside it
-		Shell sh = shell(true);
-		MiniBar m = miniBar(sh.mini);
-		CHECK_EQ(m.box.x, sh.mini.x);
-		CHECK_EQ(m.box.y, sh.mini.y);
-		CHECK_EQ(m.box.w, sh.mini.w);
-		CHECK_EQ(m.box.h, sh.mini.h);
+	{	// the mini bar's measures, kept as Quick settings' Now playing block data: its mark and progress line stay in
+		// the box it is given
+		Box box = {24, 100, 560, 64};
+		MiniBar m = miniBar(box);
+		CHECK_EQ(m.box.x, box.x);
+		CHECK_EQ(m.box.y, box.y);
+		CHECK_EQ(m.box.w, box.w);
+		CHECK_EQ(m.box.h, box.h);
 		CHECK(m.mark.x >= m.box.x && m.mark.y >= m.box.y && m.mark.x + m.mark.w <= m.box.x + m.box.w);
 		CHECK(m.mark.y + m.mark.h <= m.box.y + m.box.h);
 		CHECK(m.line.x >= m.box.x && m.line.x + m.line.w <= m.box.x + m.box.w);
@@ -10538,7 +10536,7 @@ static void testKitLayout()
 		CHECK_EQ(m.shown, 6);
 	}
 	{	// Files: the rows, the footer and the select bar inside the shell's body
-		lay::Shell s = lay::shell(false);
+		lay::Shell s = lay::shell();
 		lay::FilesPage f = lay::filesPage(s.body, 40, false, true);
 		CHECK_EQ(f.rows.x, s.body.x + lay::MARGIN);
 		CHECK_EQ(f.rows.w, s.body.w - 2 * lay::MARGIN);
@@ -10563,12 +10561,6 @@ static void testKitLayout()
 		CHECK(sel.row(sel.shown - 1).y + sel.row(sel.shown - 1).h <= sel.bar[0].y);
 		for (int i = 1; i < 4; i++)
 			CHECK(sel.bar[i - 1].x + sel.bar[i - 1].w <= sel.bar[i].x || sel.bar[i].x + sel.bar[i].w <= sel.bar[i - 1].x);
-		// the mini bar's body: a row fewer, no footer
-		lay::Shell sm = lay::shell(true);
-		lay::FilesPage m = lay::filesPage(sm.body, 40, false, false);
-		CHECK_EQ(m.shown, 6);
-		CHECK_EQ(m.footer.w, 0);
-		CHECK(m.row(m.shown - 1).y + m.row(m.shown - 1).h <= sm.body.y + sm.body.h);
 		// no rows, no negative boxes
 		lay::FilesPage none = lay::filesPage(s.body, 0, false, false);
 		CHECK_EQ(none.shown, 0);
@@ -10599,7 +10591,7 @@ static void testKitLayout()
 	// a playlist's page: the keys, the rows, the select / move bar, inside the shell's body
 	{
 		auto apart = [](Box a, Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; };
-		Box body = lay::shell(false).body;
+		Box body = lay::shell().body;
 		PlaylistPage p = playlistPage(body, 3, 0);
 		CHECK_EQ(p.rows, 5);
 		CHECK_EQ(p.key[0].x, p.list.x);
@@ -10622,9 +10614,6 @@ static void testKitLayout()
 			CHECK_EQ(r.h, PL_ROW_H);
 			if (i) CHECK_EQ(apart(r, p.row(i - 1)), true);
 		}
-		// the mini bar takes the body's foot: a row fewer
-		Box small = lay::shell(true).body;
-		CHECK_EQ(playlistPage(small, 3, 0).rows, 4);
 		// the select bar: three keys at the body's foot, the rows ending 6 above them
 		PlaylistPage s = playlistPage(body, 3, 3);
 		CHECK_EQ(s.rows, 4);
@@ -10644,15 +10633,13 @@ static void testKitLayout()
 		CHECK_EQ(m.barKey[1].x + m.barKey[1].w, m.list.x + m.list.w);
 		CHECK_EQ(apart(m.barKey[0], m.barKey[1]), true);
 		CHECK_EQ(m.key[1].x + m.key[1].w, m.list.x + m.list.w);
-		// the list of playlists: no keys and no bar: seven rows, five with the mini bar
+		// the list of playlists: no keys and no bar: seven rows
 		CHECK_EQ(playlistPage(body, 0, 0).rows, 7);
-		CHECK_EQ(playlistPage(small, 0, 0).rows, 5);
 	}
 	// Settings inside the shared shell: the header strip's boxes stay in the main strip, and the page's tiles and
-	// rows stay in the body (with the mini bar up the body ends under the seventh row, so the help waits for it)
-	for (bool mini : {false, true})
+	// rows stay in the body, with the help under the seventh row
 	{
-		Shell sh = shell(mini);
+		Shell sh = shell();
 		PlayerLayout h = shellHeader(sh.main);
 		CHECK(h.back.x >= sh.main.x && h.back.x + h.back.w <= sh.main.x + sh.main.w);
 		CHECK(h.more.x >= sh.main.x && h.more.x + h.more.w <= sh.main.x + sh.main.w);
@@ -10666,8 +10653,7 @@ static void testKitLayout()
 		CHECK_EQ(body.w, sh.body.w - 2 * MARGIN);
 		CHECK(body.x >= sh.main.x && body.x + body.w <= sh.main.x + sh.main.w);
 		Box tiles = settingsTiles(sh.body, 5);
-		// (with the mini bar the five tile rows end 4 into the body's 8 above it: the page keeps its 64)
-		int bottom = mini ? sh.mini.y : sh.body.y + sh.body.h;
+		int bottom = sh.body.y + sh.body.h;
 		CHECK(tiles.y + tiles.h <= bottom);
 		for (int i = 0; i < 10; i++)
 		{
@@ -10686,19 +10672,14 @@ static void testKitLayout()
 		CHECK_EQ(r.row(0).x, body.x);
 		CHECK_EQ(r.row(0).w, body.w);
 		CHECK_EQ(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h, sh.body.y + 4 + SET_ROWS * SET_ROW_H - 2);
-		// (with the mini bar the body ends 8 above it; the seventh row ends 2 under the body's foot, 6 over the bar)
-		CHECK(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h <= (mini ? sh.mini.y : sh.body.y + sh.body.h));
-		if (mini) CHECK_EQ(r.help.w, 0);
-		else
-		{
-			CHECK(r.help.w > 0);
-			CHECK(r.help.y > r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h);
-			CHECK(r.help.y + r.help.h <= sh.body.y + sh.body.h);
-			CHECK_EQ(r.help.h, 2 * 22);
-		}
+		CHECK(r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h <= sh.body.y + sh.body.h);
+		CHECK(r.help.w > 0);
+		CHECK(r.help.y > r.row(SET_ROWS - 1).y + r.row(SET_ROWS - 1).h);
+		CHECK(r.help.y + r.help.h <= sh.body.y + sh.body.h);
+		CHECK_EQ(r.help.h, 2 * 22);
 	}
 	{	// a row's stepper: the value centred between its arrows wherever the row starts (the shell's inset body)
-		Box row = settingsRowsIn(shell(false).body).row(0);
+		Box row = settingsRowsIn(shell().body).row(0);
 		SettingStepper st = settingStepper(row);
 		CHECK_EQ(st.nextX, row.x + row.w - 14);
 		CHECK_EQ(st.prevX, st.nextX - STEP_VALUE_W);
@@ -10713,9 +10694,8 @@ static void testKitLayout()
 	}
 	{	// Extensions, the rail's section: a row per extension (64), a rule, then Manage extensions (52), all inside
 		// the body; with none on the page is the empty state and its one key
-		for (bool mini : {false, true})
 		{
-			Box body = shell(mini).body;
+			Box body = shell().body;
 			ExtPage e = extPage(body, 1);
 			CHECK_EQ((int)e.row.size(), 1);
 			CHECK_EQ(e.row[0].h, EXT_ROW_H);
@@ -10755,25 +10735,35 @@ static void testKitLayout()
 static void testKitNewSectionRail()
 {
 	using namespace lay;
-	// Search pinned at the top and Settings at the foot (no START cap); six sections at 56, none over another
+	// Search pinned at the top, Settings at the foot (68 x 50), the Now playing key above it (68 x 44); six sections
+	// at 52, none over another
 	Rail r = rail(6);
 	CHECK_EQ((int)r.cell.size(), 6);
 	CHECK_EQ(r.area.w, 78);
 	CHECK_EQ(r.search.w, 68);
 	CHECK_EQ(r.search.h, RAIL_SEARCH_H);
 	CHECK_EQ(r.search.y, RAIL_PAD);
+	CHECK_EQ(r.settings.h, RAIL_SETTINGS_H);
+	CHECK_EQ(r.settings.h, 50);
 	CHECK_EQ(r.settings.y + r.settings.h, PANEL_H - RAIL_PAD);
+	// the Now playing key is pinned just above Settings, and its slot is kept while nothing plays
+	CHECK_EQ(r.np.w, 68);
+	CHECK_EQ(r.np.h, RAIL_NP_H);
+	CHECK_EQ(r.np.h, 44);
+	CHECK_EQ(r.np.y + r.np.h + RAIL_GAP, r.settings.y);
 	CHECK_EQ(r.view.y, r.search.y + r.search.h + RAIL_GAP);
-	CHECK_EQ(r.view.y + r.view.h, r.settings.y - RAIL_GAP);
-	CHECK_EQ(r.cellH, 56);
+	CHECK_EQ(r.view.y + r.view.h, r.np.y - RAIL_GAP);
+	CHECK_EQ(r.cellH, 52);
+	CHECK_EQ(r.cellH, RAIL_CELL_H);
 	CHECK_EQ(r.maxScroll, 0);
 	for (size_t i = 0; i < r.cell.size(); i++)
 	{
 		CHECK_EQ(r.cell[i].w, 68);
-		CHECK_EQ(r.cell[i].h, 56);
-		CHECK_EQ(r.cell[i].y, r.view.y + (int)i * (56 + RAIL_GAP));
+		CHECK_EQ(r.cell[i].h, 52);
+		CHECK_EQ(r.cell[i].y, r.view.y + (int)i * (52 + RAIL_GAP));
 		CHECK_EQ(kitInside(r.cell[i], RAIL_W - 1, PANEL_H), true);	// left of the rule
 		CHECK_EQ(kitApart(r.cell[i], r.settings), true);
+		CHECK_EQ(kitApart(r.cell[i], r.np), true);
 		CHECK_EQ(kitApart(r.cell[i], r.search), true);	// Search is above the sections' view
 		if (i) CHECK_EQ(kitApart(r.cell[i], r.cell[i - 1]), true);
 		// a tap on the cell (or beside it, still on the rail) is that section
@@ -10782,21 +10772,27 @@ static void testKitNewSectionRail()
 	}
 	CHECK_EQ(railAt(r, 40, r.settings.y + 10), 6);
 	CHECK_EQ(railAt(r, 40, r.search.y + 10), -1);	// (Search is the shell's own key)
+	CHECK_EQ(railAt(r, 40, r.np.y + 10), -1);	// (Now playing too)
 	CHECK_EQ(railAt(r, 100, r.cell[0].y + 10), -1);	// off the rail
-	// seven: 50-tall cells, all seven in sight, still no scrolling
+	// seven: 45-tall cells, all seven in sight, still no scrolling
 	Rail seven = rail(7);
 	CHECK_EQ((int)seven.cell.size(), 7);
-	CHECK_EQ(seven.cellH, 50);
+	CHECK_EQ(seven.cellH, 45);
+	CHECK_EQ(seven.cellH, RAIL_CELL_H7);
 	CHECK_EQ(seven.maxScroll, 0);
 	CHECK_EQ(seven.cell[6].y + seven.cell[6].h <= seven.view.y + seven.view.h, true);
 	CHECK_EQ(railAt(seven, 40, seven.cell[6].y + 10), 6);
-	// more than fit: a drag scrolls the sections; Settings stays at the foot and Search at the top
+	// the cells' height is the section count's, never playback's: the slot is reserved at every count
+	CHECK_EQ(seven.np.y, r.np.y);
+	CHECK_EQ(seven.settings.y, r.settings.y);
+	// more than fit: a drag scrolls the sections; Settings and the Now playing key stay at the foot, Search on top
 	Rail many = rail(9);
 	CHECK_EQ((int)many.cell.size(), 9);
-	CHECK_EQ(many.cellH, 50);
+	CHECK_EQ(many.cellH, 45);
 	CHECK(many.maxScroll > 0);
 	CHECK(many.cell[8].y >= many.view.y + many.view.h);	// out of the view: not yet shown
 	CHECK_EQ(many.settings.y, seven.settings.y);
+	CHECK_EQ(many.np.y, seven.np.y);
 	CHECK_EQ(many.search.y, seven.search.y);
 	Rail end = rail(9, PANEL_H, many.maxScroll);
 	CHECK_EQ(end.scroll, many.maxScroll);

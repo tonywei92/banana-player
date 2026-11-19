@@ -152,7 +152,7 @@ namespace bp
 		void drawPlRow(int i, int mid, bool at);	// a playlist's item: its number, mark, name and where it is
 
 		// ---- the redesigned pages (docs/redesign: playlists, playlist, playlist-select, playlist-move, liked) ----
-		// The area's own drawing, inside lay::shell(mini).body only; Ui::Shell draws the header and hints from
+		// The area's own drawing, inside lay::shell().body only; Ui::Shell draws the header and hints from
 		// plTitle, plCrumb and plHints.
 		bool onPage() const;	// the list of playlists, or a playlist's own page
 		lay::PlaylistPage pageLayout(const Player& p) const;

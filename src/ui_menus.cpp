@@ -178,6 +178,7 @@ namespace bp
 
 	void Ui::closeQuick()
 	{
+		quickHoldAt = 0;
 		if (Overlay* o = findOverlay("quick")) o->close();
 	}
 
@@ -333,32 +334,98 @@ namespace bp
 	{
 		auto rows = quickRows();
 		int n = (int)rows.size();
-		quickCursor = std::clamp(quickCursor, 0, n - 1);
-		int row = rows[quickCursor];
+		bool live = nowPlayable(barPlayer(p));
+		quickCursor = std::clamp(quickCursor, -1, n - 1);
+		if (quickCursor < 0 && !live) quickCursor = 0;
 		switch (b)
 		{
-		case Button::Up: quickCursor = (quickCursor + n - 1) % n; break;
-		case Button::Down: quickCursor = (quickCursor + 1) % n; break;
-		case Button::Left: case Button::Right: quickAdjust(row, b == Button::Right ? 1 : -1, p); break;
-		case Button::A: quickChoose(row, p); break;
+		case Button::Up:
+			// the block is one stop above Volume, and only while something plays; the cursor opens on Volume
+			if (quickCursor < 0) quickCursor = n - 1;
+			else if (quickCursor == 0 && live) quickCursor = -1;
+			else quickCursor = (quickCursor + n - 1) % n;
+			break;
+		case Button::Down:
+			quickCursor = quickCursor < 0 ? 0 : (quickCursor + 1) % n;
+			break;
+		case Button::Left: case Button::Right:
+			if (quickCursor < 0) quickNow(b, p);
+			else quickAdjust(rows[quickCursor], b == Button::Right ? 1 : -1, p);
+			break;
+		case Button::A:
+			if (quickCursor < 0) quickNow(b, p);
+			else quickChoose(rows[quickCursor], p);
+			break;
+		// L / R: previous / next, from any row (the player's own keys)
+		case Button::L: case Button::R: quickStep(b == Button::R ? 1 : -1, p); break;
+		// SELECT: the player, as it does from every list; Quick settings closes and the page keeps its place
+		case Button::Select:
+			if (live) { closeQuick(); goNowPlaying(p); }
+			break;
 		case Button::B: case Button::Start: closeQuick(); break;
 		default: break;
 		}
 		return false;
 	}
 
+	void Ui::quickNow(Button b, Player& p)
+	{
+		// the block's keys by the D-pad: A plays or pauses, LEFT / RIGHT seek (5 s back, 10 s on), as the player's
+		Player& bp = barPlayer(p);
+		if (!nowPlayable(bp)) return;
+		if (b == Button::A) { miniToggle(p); return; }
+		double delta = b == Button::Left ? -BACK_S : FORWARD_S;
+		if (predicting(bp) && bp.duration > 0)
+		{
+			double t = std::clamp(shownPosition(bp) + delta, 0.0, bp.duration);
+			bp.seekFraction(t / bp.duration);
+			noteSeek(bp, t);
+		}
+		else bp.seekRelative(delta);
+	}
+
+	void Ui::quickNowKey(int what, Player& p)
+	{
+		if (what == QUICK_NOW_PREV) quickStep(-1, p);
+		else if (what == QUICK_NOW_NEXT) quickStep(1, p);
+		else miniToggle(p);
+	}
+
+	void Ui::quickStep(int dir, Player& p)
+	{
+		// the player's L / R: the session's Step; what it doesn't have (it disagrees), the list's previous / next
+		Player& bp = barPlayer(p);
+		if (!nowPlayable(bp)) return;
+		if (SessionHost::get().stepsHere(bp)) { SessionHost::get().step(dir); return; }
+		if (dir < 0 ? !bp.back() : !bp.next()) bp.osd(dir < 0 ? "This is the first one" : "This is the last one");
+	}
+
 	bool Ui::quickPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		auto rows = quickRows();
 		auto barRow = [&](int i) { return rows[i] == Q_VOLUME || rows[i] == Q_BRIGHT || rows[i] == Q_BOTTOM; };
+		bool live = nowPlayable(barPlayer(p));
 		if (pt.kind == Pointer::Down)
 		{
 			pressedBtn = -1;
+			quickHoldAt = 0;
 			// outside: closed (the finger lifting presses nothing)
 			if (!quickPanel().hit(x, y))
 			{
 				closeQuick();
 				swallowTouch = true;
+				return false;
+			}
+			// the Now playing block: its three keys do their jobs; anywhere else on it is the player, and it is not
+			// pressed while nothing plays (the cursor skips it then)
+			if (quickNowRect().hit(x, y))
+			{
+				if (!live) return false;
+				quickCursor = -1;
+				if (quickNowPlay().hit(x, y)) { pressedBtn = QUICK_NOW_PLAY; quickHoldAt = SDL_GetTicks(); }
+				else if (quickNowPrev().hit(x, y)) pressedBtn = QUICK_NOW_PREV;
+				else if (quickNowNext().hit(x, y)) pressedBtn = QUICK_NOW_NEXT;
+				else pressedBtn = QUICK_NOW_CARD;
 				return false;
 			}
 			for (int i = 0; i < (int)rows.size(); i++)
@@ -368,7 +435,7 @@ namespace bp
 				if (barRow(i) && quickMinus(i).hit(x, y)) pressedBtn = 300 + i * 4;
 				else if (barRow(i) && quickPlus(i).hit(x, y)) pressedBtn = 301 + i * 4;
 				else if (rows[i] == Q_WEB && p.settings.webDashboard && quickPinBtn(i).hit(x, y)) pressedBtn = 303 + i * 4;
-				else if (barRow(i) && Rect{quickBar(i).x - 6, quickRowRect(i).y, quickBar(i).w + 12, 54}.hit(x, y))
+				else if (barRow(i) && Rect{quickBar(i).x - 6, quickRowRect(i).y, quickBar(i).w + 12, quickRowRect(i).h}.hit(x, y))
 				{
 					// the bar (anywhere in the row between its two buttons): to the finger at once, and with it
 					quickSlide(i, x, y, p);
@@ -376,6 +443,20 @@ namespace bp
 				else if (!barRow(i)) pressedBtn = 302 + i * 4;
 			}
 			return false;
+		}
+		if (pt.kind == Pointer::Up)
+		{
+			quickHoldAt = 0;
+			if (pressedBtn >= QUICK_NOW_CARD && pressedBtn <= QUICK_NOW_NEXT)
+			{
+				int what = pressedBtn;
+				pressedBtn = -1;
+				if (!quickNowRect().hit(x, y)) return false;
+				// a tap on the card (art, title, line, progress) opens the player and closes the panel
+				if (what == QUICK_NOW_CARD) { if (live) { closeQuick(); goNowPlaying(p); } }
+				else if (live) quickNowKey(what, p);
+				return false;
+			}
 		}
 		if (pt.kind == Pointer::Up && pressedBtn >= 300)
 		{
@@ -394,11 +475,84 @@ namespace bp
 		return false;
 	}
 
+	void Ui::drawQuickNow(const Player& p)
+	{
+		const Player& bp = barPlayer(p);
+		bool live = nowPlayable(bp);
+		bool err = live && !bp.error.empty();
+		Rect card = quickNowRect();
+		// a card: focused while the cursor is on it (only while something plays: the block is passed by when idle)
+		if (quickCursor < 0 && live) kit->flat(card, BUTTON, 12, ACCENT);
+		else kit->flat(card, SURFACE, 12, kit->edgeOf(SURFACE));
+		Rect art = quickNowArt();
+		if (live) kit->artPlaceholder(art, bp.artPlaceholderKey(), 6, true);
+		else
+		{
+			fillRound(art, TRACK, 6);
+			drawGlyphMid(G_NOTE, art.x + art.w / 2, art.y + art.h / 2, DIM);
+		}
+		int x0 = art.x + art.w + 12, xr = quickNowPrev().x - 12, room = std::max(1, xr - x0);
+		if (!live)
+		{
+			drawTextMid("Nothing playing", F_P14, DIM, x0, card.y + 24, room);
+			drawTextMid("What you play shows here", F_I12, DIM, x0, card.y + 44, room);
+		}
+		else
+		{
+			std::string title = !bp.title.empty() ? bp.title : entryTitle(bp.currentPath());
+			drawTextMid(title, F_P14, TEXT, x0, card.y + 22, room);
+			// artist and time, then the state marks the mini bar's pills said, in ACCENT
+			std::string line = bp.artist();
+			if (!line.empty()) line += " \xC2\xB7 ";
+			line += err ? "Couldn't read" : formatTime(shownPosition(bp)) + " / " + formatTime(bp.duration);
+			SDL_Color ink = err ? DANGER : DIM;
+			drawTextMid(line, F_I12, ink, x0, card.y + 44, room);
+			int px = x0 + kit->textW(line, F_I12);
+			for (auto& s : kit->statePills(bp))
+			{
+				std::string t = " \xC2\xB7 " + s;
+				int tw = kit->textW(t, F_I12);
+				if (px + tw > xr) break;
+				drawTextMid(t, F_I12, ACCENT, px, card.y + 44, tw + 1);
+				px += tw;
+			}
+		}
+		// the three keys: Previous 52 x 48, Play / Pause 68 x 48 (the primary), Next 52 x 48; dimmed when idle
+		auto key = [&](Rect r, int id, const Glyph* g, bool primary) {
+			bool down = pressedBtn == id;
+			bool off = !live;
+			SDL_Color ground = off ? Kit::off(BUTTON) : down ? PRESSED : primary ? ACCENT : BUTTON;
+			drawBox(r, ground, R_BUTTON);
+			SDL_Color ink = off ? Kit::off(TEXT) : primary ? (down ? TEXT : ON_ACCENT) : TEXT;
+			drawGlyphMid(*g, r.x + r.w / 2, r.y + r.h / 2, ink, 2);
+		};
+		key(quickNowPrev(), QUICK_NOW_PREV, &G_PREV, false);
+		key(quickNowPlay(), QUICK_NOW_PLAY, live && bp.paused ? &G_PLAY : &G_PAUSE, true);
+		key(quickNowNext(), QUICK_NOW_NEXT, &G_NEXT, false);
+		// the progress line along its foot (the mini bar's own piece); held Play fills the hold as the player's does
+		lay::MiniBar m = lay::miniBar(card);
+		if (live && !err && bp.duration > 0)
+		{
+			double f = std::clamp(shownPosition(bp) / bp.duration, 0.0, 1.0);
+			if (f > 0) fillRound({m.line.x, m.line.y, (int)std::lround(m.line.w * f), m.line.h}, ACCENT, 1);
+		}
+		if (quickHoldAt && pressedBtn == QUICK_NOW_PLAY)
+		{
+			Rect r = quickNowPlay();
+			double f = std::min(1.0, (SDL_GetTicks() - quickHoldAt) / (double)PLAY_HOLD_MS);
+			fillRound({r.x + 6, r.y + r.h - 8, (int)((r.w - 12) * f), 3}, ACCENT, 1);
+		}
+	}
+
 	void Ui::drawQuick(const Player& p)
 	{
 		Rect pr = quickPanel();
 		drawDialog(pr, "");
 		drawTextMid("Quick settings", 1, ACCENT, pr.x + 24, pr.y + 28);
+		if (battery.percent >= 0)
+			drawTextMid("Battery " + std::to_string(battery.percent) + "%" + (battery.charging ? " \xC2\xB7 charging" : ""), 0, DIM,
+				pr.x + pr.w - 24, pr.y + 28, 0, 1);
+		drawQuickNow(p);
 		auto rows = quickRows();
 		for (int i = 0; i < (int)rows.size(); i++)
 		{
@@ -509,7 +663,13 @@ namespace bp
 				drawSlider({bar.x, bar.y + (bar.h - 14) / 2, bar.w, 14}, pct > 0 ? std::min(pct, 100) / 100.0 : 0, held);
 			}
 		}
-		if (p.settings.buttonHotkeys) drawHints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"F/B", "Close"}});
+		if (p.settings.buttonHotkeys)
+		{
+			// five items would run past the panel's width: L / R still step, they are the player's keys
+			if (nowPlayable(barPlayer(p)))
+				drawHints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"SELECT", "Player"}, {"F/B", "Close"}});
+			else drawHints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"A", "Toggle"}, {"F/B", "Close"}});
+		}
 		else drawFooterText("Tap outside to close", DIM);
 	}
 

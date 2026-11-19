@@ -17,11 +17,14 @@ namespace bp
 			r.area = {0, 0, RAIL_W, h};
 			const int x = (RAIL_W - 1 - RAIL_CELL_W + 1) / 2;	// centred left of the rule
 			r.search = {x, RAIL_PAD, RAIL_CELL_W, RAIL_SEARCH_H};
-			r.settings = {x, h - RAIL_PAD - RAIL_CELL_H, RAIL_CELL_W, RAIL_CELL_H};
+			r.settings = {x, h - RAIL_PAD - RAIL_SETTINGS_H, RAIL_CELL_W, RAIL_SETTINGS_H};
+			// the Now playing key is pinned just above Settings, and its slot is kept while nothing plays: the cells
+			// never change height when playback starts (the owner, 2026-11-19)
+			r.np = {x, r.settings.y - RAIL_GAP - RAIL_NP_H, RAIL_CELL_W, RAIL_NP_H};
 			// (no START cap over Settings: the owner, 2026-11-19; START is taught by Settings' own hint bar)
 			r.view = {0, r.search.y + r.search.h + RAIL_GAP, RAIL_W - 1,
-				std::max(0, r.settings.y - RAIL_GAP - (r.search.y + r.search.h + RAIL_GAP))};
-			// seven sections all in sight at 50; six or fewer take the roomier 56
+				std::max(0, r.np.y - RAIL_GAP - (r.search.y + r.search.h + RAIL_GAP))};
+			// seven sections all in sight at 45; six or fewer take the roomier 52
 			int n = std::max(0, sections);
 			r.cellH = n >= 7 ? RAIL_CELL_H7 : RAIL_CELL_H;
 			int content = n * r.cellH + std::max(0, n - 1) * RAIL_GAP;
@@ -35,7 +38,7 @@ namespace bp
 		int railAt(const Rail& r, int x, int y)
 		{
 			// Settings has its own box, pinned below the view; a section's touch reaches the strip's sides (the units
-			// either side of its cell are still the rail), but only inside the view (Search and the START cap are the
+			// either side of its cell are still the rail), but only inside the view (Search and Now playing are the
 			// shell's own keys)
 			if (r.settings.hit(x, y)) return (int)r.cell.size();
 			if (!r.view.hit(x, y)) return -1;

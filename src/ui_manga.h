@@ -345,10 +345,9 @@ namespace bp
 		Rect mangaSheetRect() const { return {0, 300, W, H - 300}; }
 		Rect mangaCtrlBtnRect(int i) const
 		{
-			// four to a row across the panel's 608: the long one ("Leave fullscreen") takes a little more; above the
-			// mini bar while it shows in the sheet
+			// four to a row across the panel's 608: the long one ("Leave fullscreen") takes a little more
 			static const int X[4] = {16, 164, 312, 488}, WIDTH[4] = {140, 140, 168, 136};
-			return {X[i], ui.miniUp ? 374 : 392, WIDTH[i], 44};
+			return {X[i], 392, WIDTH[i], 44};
 		}
 		void mangaOpen(Player& p);		// openManga: the store loaded, the card scanned, the tabs reset
 		void mangaScan();				// each Manga folder read again (in the background) and its series put in the store
@@ -429,10 +428,9 @@ namespace bp
 		}
 		Rect mangaResumeRect() const { return {16, 84, 220, 52}; }
 		Rect mangaHeartRect() const { return {556, 84, 68, 52}; }
-		// the reading page's own pieces sit above the mini bar when it shows (it takes the panel's bottom): the page
-		// area, the slider and the chapter row all move up, the hints keep to the line under the bar
-		Rect mangaAreaRect() const { return {16, 70, 608, ui.miniUp ? 222 : 260}; }	// (222: the page line below keeps 8 clear of it)
-		Rect mangaSliderRect() const { return {40, ui.miniUp ? 330 : 352, 560, 22}; }
+		// the reading page's own pieces
+		Rect mangaAreaRect() const { return {16, 70, 608, 260}; }	// (the page line below keeps 8 clear of it)
+		Rect mangaSliderRect() const { return {40, 352, 560, 22}; }
 		Rect mangaSliderTrack() const { Rect r = mangaSliderRect(); return {r.x, r.y + 8, r.w, 10}; }
 		// where a finger takes it: the panel's width, from the page line's foot to the chapter row (8 more than the
 		// slider's own 22 above; below, what the row leaves)
@@ -441,7 +439,7 @@ namespace bp
 		void drawMangaSlider();
 		// the chapter row: four buttons of one size across the panel's 608 (146 wide, 8 apart: 16 to 624)
 		// (52 tall: room for the key under the label, Button hotkeys on)
-		Rect mangaChapterCell(int i) const { return rowCell({16, ui.miniUp ? 364 : 396, 608, 52}, 4, 8, i); }	// four of 146
+		Rect mangaChapterCell(int i) const { return rowCell({16, 396, 608, 52}, 4, 8, i); }	// four of 146
 		Rect mangaPrevRect() const { return mangaChapterCell(0); }
 		Rect mangaFullRect() const { return mangaChapterCell(1); }	// the Fullscreen button: what SELECT does
 		Rect mangaLightRect() const { return mangaChapterCell(2); }	// the Brightness sheet
@@ -652,7 +650,7 @@ namespace bp
 		int mangaSrcDragY = -1, mangaSrcDragScroll = 0, mangaSrcDragTap = -1;
 		bool mangaSrcDragMoved = false;
 		void mangaSourceMaybeMore();
-		// a series page's chapter rows shown: five down to the hint bar, four while the mini bar takes the foot
+		// a series page's chapter rows shown: six down to the hint bar
 		bool mangaSourceEngineReady() const;	// an extension's series: the manga engine answering (Resume waits for it)
 		// History's X: Clear last hour / today / last 24 hours / all (the places to resume stay)
 		// the Library's X: Remove missing (series of the card whose files are on no card now), asked twice
@@ -675,9 +673,9 @@ namespace bp
 		std::string mangaSourceDownloadsId(const std::string& sourceSeriesId) const;
 		std::string mangaSourceLabel(const std::string& seriesId) const;	// its source by name ("" unknown)	// "local:<folder>" or ""
 		bool mangaSourceSeriesInLib() const;	// the series or its downloads folder in the Library
-		int mserRows() const { return ui.miniUp ? 4 : 5; }
-		// the grid's foot: down to the hint bar, or above the mini bar while it shows (a touch there is the bar's)
-		int mangaSrcClipBottom() const { return ui.miniUp ? 418 : 448; }	// near the grid's end (cursor or scroll): its next page asked for
+		int mserRows() const { return 5; }
+		// the grid's foot: down to the hint bar
+		int mangaSrcClipBottom() const { return 448; }	// near the grid's end (cursor or scroll): its next page asked for
 		Rect mangaSrcStatusRect() const { return {436, 64, 188, 30}; }	// right of the tabs: Loading…, an error (tap: Try again)
 		bool mangaSrcMore = false, mangaSrcLoading = false;
 		std::string mangaSrcError;				// the source's one-line message, while it shows
@@ -862,9 +860,9 @@ namespace bp
 			MG_SRC_STATUS_Y = 410;
 		// a source's series page: its buttons right under the details line, its chapters right under them
 		static constexpr int MG_SRC_BTN_Y = 104, MG_SRC_SERIES_TOP = 160;
-		// its chapters: 44 high (the app's lists are 48), six to a screen, five with the mini bar up
+		// its chapters: 44 high (the app's lists are 48), six to a screen
 		static constexpr int MG_SRC_ROW_H = 44;
-		int mserSrcRows() const { return ui.miniUp ? 5 : 6; }
+		int mserSrcRows() const { return 6; }
 		Rect mangaSrcCoverRect(int i) const
 		{
 			int row = i / MG_COLS, col = i % MG_COLS;

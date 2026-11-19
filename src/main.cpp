@@ -480,8 +480,8 @@ int main(int argc, char** argv)
 		auto shown = [&]() -> Player& { return photos.playing() ? photos : player; };
 
 		Ui ui;
-		// the mini bar's player: main's (songs and videos), also while a photo is shown (the photo viewer is its own
-		// Player, and a page of its own)
+		// the Now playing keys' player: main's (songs and videos), also while a photo is shown (the photo viewer is its
+		// own Player, and a page of its own)
 		ui.mainPlayer = &player;
 		bool haveUi = bottom && ui.init(bottom, opts.fontsDir);
 		// the theme settings.conf names, before anything is drawn (a change later: the loop's check, below)

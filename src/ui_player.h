@@ -12,7 +12,7 @@
 // photoPointer in ui_main.cpp); the area hands it the keys, the touches and the drawing, and SELECT or X opens the
 // photo's More (four chips changed in place, then its file's rows).
 // Still Ui's, because other pages use them: Like (likeNow), the play mode's label (modeLabel), the hold that
-// takes playback over from a browser (playHoldAt: the mini bar holds the same way), Stop's flag (stopPressed).
+// takes playback over from a browser (playHoldAt: Quick settings' block holds the same way), Stop's flag (stopPressed).
 #pragma once
 #include "ui_kit.h"
 

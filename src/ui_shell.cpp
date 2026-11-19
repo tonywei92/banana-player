@@ -61,7 +61,8 @@ namespace bp
 
 	lay::Shell Ui::Shell::layout(const Player& p) const
 	{
-		return lay::shell(ui.miniBarShown(p));
+		(void)p;
+		return lay::shell();
 	}
 
 	int Ui::Shell::activeIndex(const std::vector<Cell>& cs, Section at) const
@@ -79,8 +80,8 @@ namespace bp
 		if (ui.page == Page::ExtSection)
 		{
 			// the Extensions section (docs/redesign: ext-section, ext-section-video, ext-section-empty): a list that
-			// starts nothing; A opens a row, B goes Home, L/R step the sections, L3 is Search. START is Settings, and
-			// the rail's START cap says so: no hint bar repeats it
+			// starts nothing; A opens a row, B goes Home, L/R step the sections, L3 is Search. START is Settings
+			// everywhere: no hint bar repeats it
 			h.title = "Extensions";
 			h.crumb = p.settings.mangaOn ? "1 on" : "None on";
 			h.back = false;
@@ -221,6 +222,18 @@ namespace bp
 		}
 	}
 
+	void Ui::Shell::tick(Player& p)
+	{
+		// a finger on the rail's Now playing key: held 600 ms, the More sheet of what plays (as the mini bar's was);
+		// the lift that follows chooses nothing
+		if (pressedFrame != F_NP || !npHoldAt) return;
+		if (SDL_GetTicks() - npHoldAt < 600) return;
+		npHoldAt = 0;
+		pressedFrame = -1;
+		ui.swallowTouch = true;
+		ui.openNowMenu(p);
+	}
+
 	bool Ui::Shell::key(Button b, Player& p)
 	{
 		if (!page(ui.page)) return false;
@@ -238,6 +251,13 @@ namespace bp
 		if (b == Button::L3 && (ui.page == Page::Settings || ui.page == Page::ExtSection || (ui.page == Page::Browse && !modal)))
 		{
 			search(p);
+			return true;
+		}
+		// SELECT is the rail's Now playing key's key: what plays, from any of the shell's pages (a copy or move, a
+		// selection and the picker keep theirs)
+		if (b == Button::Select && ui.nowPlayable(p) && !modal && !(ui.page == Page::Browse && br.clipOp != CLIP_NONE))
+		{
+			ui.goNowPlaying(p);
 			return true;
 		}
 		if (b != Button::L && b != Button::R) return false;
@@ -298,6 +318,7 @@ namespace bp
 			if (pt.kind == Pointer::Up)
 			{
 				pressedFrame = -1;
+				if (id == F_NP) npHoldAt = 0;
 				bool hit = false;
 				if (id >= F_RAIL)
 				{
@@ -306,6 +327,10 @@ namespace bp
 				}
 				else if (id == F_SEARCH)
 					hit = r.search.hit(x, y);
+				else if (id == F_NP)
+					hit = r.np.hit(x, y) && ui.nowPlayable(p);
+				else if (id == F_STATUS)
+					hit = statusBox.hit(x, y);
 				else
 				{
 					ShellHead h = head(p);
@@ -319,6 +344,8 @@ namespace bp
 					if (id == F_BACK) ui.act(BACK_ICON, p);
 					else if (id == F_MORE) ui.press(Button::X, p);
 					else if (id == F_SEARCH) search(p);
+					else if (id == F_NP) ui.goNowPlaying(p);
+					else if (id == F_STATUS) ui.toggleQuick(p);
 					// (the cell past the sections is Settings, pinned at the foot: not one of cs)
 					else openSection(id - F_RAIL < (int)cs.size() ? cs[id - F_RAIL].section : Section::Settings, p);
 				}
@@ -326,6 +353,7 @@ namespace bp
 			return true;
 		}
 		pressedFrame = -1;
+		npHoldAt = 0;
 		railDrag = railMoved = false;
 		// the rail: Search at the top, a cell opens its section, Settings at the foot; the blank parts take the touch
 		// (nothing of the page is under the strip). Its sections also take a drag (a tap opens one)
@@ -342,6 +370,18 @@ namespace bp
 				pressedFrame = F_RAIL + at;
 				fprintf(stderr, "touch: shell rail %s\n", at < (int)cs.size() ? cs[at].label : "Settings");
 			}
+			// the Now playing key, pinned above Settings: a tap opens the player, a hold its More sheet; while
+			// nothing plays its slot is empty and presses nothing
+			if (r.np.hit(x, y))
+			{
+				if (ui.nowPlayable(p))
+				{
+					pressedFrame = F_NP;
+					npHoldAt = SDL_GetTicks();
+					fprintf(stderr, "touch: shell rail Now playing\n");
+				}
+				return true;
+			}
 			// a finger on the sections (a cell or the gap) may drag them; a lift without a move is the tap
 			if (r.view.hit(x, y))
 			{
@@ -351,7 +391,8 @@ namespace bp
 			}
 			return true;
 		}
-		// the header: back and More; nothing else there is pressed
+		// the header: back, More and the status cluster (one touch target: F opens Quick settings); nothing else
+		// there is pressed
 		if (y < s.header.y + s.header.h)
 		{
 			ShellHead h = head(p);
@@ -359,6 +400,7 @@ namespace bp
 			frameRects(p, h, back, more);
 			if (h.back && lay::Box{back.x - 12, 0, back.w + 24, 56}.hit(x, y)) pressedFrame = F_BACK;
 			else if (h.more && lay::Box{more.x - 12, 0, more.w + 24, 56}.hit(x, y)) pressedFrame = F_MORE;
+			else if (statusBox.w > 0 && statusBox.hit(x, y)) pressedFrame = F_STATUS;
 			return true;
 		}
 		return false;
@@ -373,8 +415,13 @@ namespace bp
 		// "Stops the video" and asks first)
 		// the note Search puts up is all it shows today: the key is lit while it is
 		if (searchUp && !ui.findOverlay("alert")) searchUp = false;
+		const Player& bp = ui.barPlayer(p);
+		bool live = bp.playing() && !bp.playingPhoto();
+		// the rail's Now playing key: its art, its bars (moving while it plays) and its pause mark
+		std::string np = live ? bp.artPlaceholderKey() : "";
+		if (live && !bp.paused) np += "." + std::to_string(SDL_GetTicks() / 166);
 		return "|sh" + std::to_string((int)section(p)) + "." + std::to_string(at) + "." + std::to_string(pressedFrame) +
-			"." + std::to_string(railScroll) + (searchUp ? "S" : "") + std::to_string(ui.miniBarShown(p));
+			"." + std::to_string(railScroll) + (searchUp ? "S" : "") + "|np" + (live ? "1" : "0") + (live && bp.paused ? "p" : "") + np;
 	}
 
 	// ---- the frame's drawing ----
@@ -396,6 +443,8 @@ namespace bp
 		if (ui.incognito) st.badges.push_back({&G_INCOGNITO, ""});
 		if (ui.webIndicatorShown(p)) st.badges.push_back({&G_WEB, ""});
 		int left = k.status(more.x - lay::SP8, cy, st);
+		// the cluster is one touch target (F opens Quick settings): its mark, Wi-Fi, battery and clock
+		statusBox = left < more.x - lay::SP8 ? lay::Box{left - 8, 0, more.x - lay::SP8 - (left - 8), 54} : lay::Box{0, 0, 0, 0};
 		// the right slot (a badge, Settings' neighbours) keeps 8 before the status cluster, so the pair beside the
 		// clock never touches it
 		if (h.right) left = h.right(left - lay::SP8, cy);
@@ -410,32 +459,6 @@ namespace bp
 			if (right - x < (int)std::lround(ui.textWidth(crumb, F_I12) / sx)) crumb = ui.elideLeft(crumb, F_I12, right - x);
 			ui.drawTextMid(crumb, F_I12, DIM, x, cy + 12, right - x);
 		}
-	}
-
-	void Ui::Shell::drawMini(const lay::Shell& s, const Player& p)
-	{
-		if (s.mini.w <= 0 || !ui.miniBarShown(p)) return;
-		const Player& bp = ui.barPlayer(p);
-		bool live = bp.playing() && !bp.playingPhoto();
-		double pos = live ? ui.shownPosition(bp) : 0, dur = live ? bp.duration : 0;
-		lay::MiniBar l = lay::miniBar(s.mini);
-		Kit::Mini m;
-		m.kind = live && bp.playingAudio() ? &G_NOTE : &G_FILM;
-		m.title = live ? (!bp.title.empty() ? bp.title : entryTitle(bp.currentPath())) : "";
-		m.time = live ? formatTime(pos) + " / " + formatTime(dur) : "stopped at " + formatTime(pos);
-		m.paused = live && bp.paused;
-		m.err = live && !bp.error.empty();
-		m.pressed = ui.pressedBtn == MINI_BAR;
-		m.markPressed = ui.pressedBtn == MINI_PP;
-		m.progress = dur > 0 && pos >= 0 ? std::clamp(pos / dur, 0.0, 1.0) : 0;
-		// the same state pills Home's Now playing card shows (only what is away from normal); with them the bar
-		// drops the words "Now playing"
-		if (live)
-			for (auto& s : ui.kit->statePills(bp)) m.pills.push_back({s, Kit::Pill::Live});
-		if (ui.playHoldMini && ui.playHoldAt)
-			m.hold = std::min(1.0, (SDL_GetTicks() - ui.playHoldAt) / (double)PLAY_HOLD_MS);
-		m.key = bp.settings.buttonHotkeys && ui.selectToPlayer() ? "SELECT" : "";
-		ui.kit->miniBar(l, m);
 	}
 
 	void Ui::Shell::draw(Section at, const ShellHead& h, const Player& p)
@@ -456,10 +479,11 @@ namespace bp
 		}
 		KitNew::RailItem settings{&G_GEAR, "Settings", false};
 		if (searchUp && !ui.findOverlay("alert")) searchUp = false;
-		KitNew::rail(k, r, items, settings, activeIndex(cs, at), pressedFrame >= F_RAIL ? pressedFrame - F_RAIL : -1,
-			searchUp, pressedFrame == F_SEARCH);
+		const Player& bp = ui.barPlayer(p);
+		bool live = bp.playing() && !bp.playingPhoto();
+		KitNew::rail(k, r, items, settings, activeIndex(cs, at), pressedFrame >= F_RAIL ? pressedFrame - F_RAIL : pressedFrame == F_NP ? KitNew::NP_PRESSED : -1,
+			searchUp, pressedFrame == F_SEARCH, live, live && bp.paused, live ? bp.artPlaceholderKey() : "");
 		drawHeader(h, p);
-		drawMini(s, p);
 		k.hints(s.hints, h.hints);
 	}
 
@@ -564,21 +588,5 @@ namespace bp
 		x = (x - b.x) * 640 / b.w;
 		y = 54 + (y - b.y) * 396 / b.h;
 		return true;
-	}
-
-	Ui::Rect Ui::miniBox(const Player& p) const
-	{
-		if (shell && shell->page(page)) return shell->layout(p).mini;
-		return MINI_BOX;
-	}
-
-	int Ui::miniMarkRight(const Player& p) const
-	{
-		if (shell && shell->page(page))
-		{
-			lay::MiniBar m = lay::miniBar(shell->layout(p).mini);
-			return m.mark.x + m.mark.w;
-		}
-		return MINI_BOX.x + 44;
 	}
 }

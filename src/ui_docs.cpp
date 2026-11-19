@@ -874,7 +874,7 @@ namespace bp
 	// ---- the finger ----
 
 	Ui::Rect Ui::Docs::docBarRect() const { return {24, 66, W - 48, 30}; }
-	Ui::Rect Ui::Docs::docPadRect() const { return {16, 104, W - 32, (ui.miniUp ? 344 : 396) - 104 - 64}; }
+	Ui::Rect Ui::Docs::docPadRect() const { return {16, 104, W - 32, 396 - 104 - 64}; }
 	Ui::Rect Ui::Docs::docBtn(int i) const
 	{
 		if (ui.page == Page::DocPages && ui.pageReader->readerStatus.mode != MANGA_STRIP)
@@ -883,7 +883,7 @@ namespace bp
 			if (i == 8) return {368, 336, 248, 52};
 			return gridCell({368, 80, 120, 56}, 2, 8, 8, i);
 		}
-		int y = (ui.miniUp ? 344 : 396) - 56;
+		int y = 396 - 56;
 		// the text reader: four across 554, then Brightness's sun (50, 4 clear of them, ending at 624)
 		if (ui.page == Page::DocText) return i == 4 ? Rect{574, y, 50, 56} : rowCell({16, y, 554, 56}, 4, 6, i);
 		return rowCell({16, y, 608, 56}, 4, 8, i);
@@ -1419,9 +1419,9 @@ namespace bp
 			}
 			else ui.drawText(ui.pageReader->readerStatus.loading || !ui.pageReader->readerStatus.open ? "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.') : "",
 				1, DIM, pan.x + pan.w / 2, pan.y + pan.h / 2 - 12, 0, 2);
-			ui.drawText("Zoom " + std::to_string(ui.pageReader->readerStatus.zoomPct) + "%", 0, TEXT, pan.x, pan.y + pan.h + (ui.miniUp ? 4 : 10), pan.w);
+			ui.drawText("Zoom " + std::to_string(ui.pageReader->readerStatus.zoomPct) + "%", 0, TEXT, pan.x, pan.y + pan.h + 10, pan.w);
 			ui.drawText(ui.pageReader->readerStatus.zoomPct > 100 ? "Drag the box \xC2\xB7 double-tap: zoom out" : "Double-tap: zoom in", 0, DIM, pan.x,
-				pan.y + pan.h + (ui.miniUp ? 24 : 36), pan.w);
+				pan.y + pan.h + 36, pan.w);
 			const char* labels[9] = {"Prev", "Next", "Zoom -", "Zoom +", "Page fit", "Brightness", "Pages", "Options", "Vertical scroll"};
 			const char* keys[9] = {"L", "R", "DOWN", "UP", p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page", "", "Y",
 				"", "X"};

@@ -348,6 +348,7 @@ namespace bp
 		slideLive(p);
 		manga->mangaVideoGuard(p);
 		if (Area* a = area()) a->tick(p);
+		if (shell->page(page)) shell->tick(p);	// the rail's Now playing key's hold
 		fileJobTick(p);
 		rootsCheck(p);
 		manga->mangaEngineWatch(p);	// the engine's download sheet: closed when done
@@ -379,10 +380,8 @@ namespace bp
 		}
 		// A or the Play button held while a page plays the file: here instead, once, as the hold reaches its length (not
 		// as it lets go). Gone off the player (B, the menu), or the page gone: nothing
-		// (the mini bar's play mark holds the same way, on any page that has the bar: what it plays is main's player)
-		// (Home's Now playing card key holds too: Home draws no mini bar, so its card is the only way back to a page's file)
-		bool holdHere = page == Page::Main ||
-			(playHoldMini && (miniBarShown(p) || (page == Page::Browse && browse->atHome())));
+		// (Home's Now playing card key holds too: Home's card is the way back to a page's file)
+		bool holdHere = page == Page::Main || (playHoldMini && page == Page::Browse && browse->atHome());
 		if (playHoldAt && (!holdHere || !pageDrives(barPlayer(p)))) playHoldAt = 0;
 		if (!playHoldAt) playHoldMini = false;
 		if (playHoldAt && SDL_GetTicks() - playHoldAt >= PLAY_HOLD_MS)
@@ -392,14 +391,16 @@ namespace bp
 			if (playHoldTouch) { pressedBtn = -1; playerPage->dropTouch(); swallowTouch = true; }	// the finger's lift presses nothing
 			takeOver(barPlayer(p));
 		}
-		// a finger held on the mini bar: its menu (the lift that follows chooses nothing)
-		if (miniHoldAt && (pressedBtn == MINI_BAR || pressedBtn == MINI_PP) && SDL_GetTicks() - miniHoldAt >= 600)
+		// a finger held on Quick settings' Play: it takes playback over from a browser, as the mini bar's mark did
+		// (the lift that follows chooses nothing)
+		if (quickHoldAt && quickShown() && pressedBtn == QUICK_NOW_PLAY && SDL_GetTicks() - quickHoldAt >= 600)
 		{
-			miniHoldAt = 0;
+			quickHoldAt = 0;
 			pressedBtn = -1;
 			swallowTouch = true;
-			if (miniBarShown(p)) openNowMenu(p);
+			takeOver(barPlayer(p));
 		}
+		if (!quickShown()) quickHoldAt = 0;
 		if (landFlashUntil && SDL_GetTicks() >= landFlashUntil) landFlashUntil = 0;
 		// Home's Recent: listed again when what plays changes (the next song started by itself: its card comes first)
 		if (page == Page::Browse && browse->atHome() && !browse->homeView->homeTouch && !ctxOpen && p.currentPath() != browse->homeView->homeListedFor)
@@ -490,9 +491,6 @@ namespace bp
 		// adding files: the header's key is a ✕ that cancels at once (B goes up a folder there)
 		if (id == BACK_ICON && page == Page::Browse && (browse->playlists->selMode == SEL_ADD || browse->playlists->selMode == SEL_PICK)) { browse->playlists->selBack(p, true); return false; }
 		if (id == BACK_ICON) return pressAnyway(Button::B, p);
-		// the mini bar: the player, or its play mark
-		if (id == MINI_BAR) { goNowPlaying(p); return false; }
-		if (id == MINI_PP) { miniToggle(p); return false; }
 		if (id == EMPTY_BTN) { browse->doEmptyAction(p); return false; }
 		// the select mode's bar: its keys' (Cancel leaves from any folder)
 		if (id == SEL_ALL) { browse->playlists->selKey(Button::Select, p); return false; }
@@ -527,7 +525,6 @@ namespace bp
 	bool Ui::pointer(const Pointer& pt, Player& p)
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
-		const int rawX = x, rawY = y;
 		webInputAt = SDL_GetTicks();
 		// The shell's pages in the handheld's log: where a touch began and which section it did (the rebuilt pages log
 		// their drags and taps too, so a finger that does nothing leaves the line that says where it stopped)
@@ -633,6 +630,14 @@ namespace bp
 			}
 			return false;
 		}
+		// the header's status cluster: one touch target on every header, the touch twin of F (the globe inside it
+		// keeps its own tap, taken above). Only the down: the panel it opens takes the lift
+		if (statusHit.w > 0 && statusHit.hit(x, y) && pt.kind == Pointer::Down && !ctxOpen && !browse->playlists->pickerOpen &&
+			!popupShown(p) && !kbOpen)
+		{
+			toggleQuick(p);
+			return false;
+		}
 		if (Area* a = area(); a && a->pointerFirst()) return a->pointer(pt, x, y, p);
 		// locked, over a video or a song: a hold on the lock (draw() times it) releases it; nothing else answers a finger
 		if (page == Page::Main && playerPage->locked(p)) return playerPage->lockPointer(pt, x, y, p);
@@ -719,7 +724,7 @@ namespace bp
 				int dir = 1;
 				if (set && !groups)
 				{
-					lay::SettingsRows l = page == Page::Settings ? lay::settingsRowsIn(lay::shell(miniBarShown(p)).body)
+					lay::SettingsRows l = page == Page::Settings ? lay::settingsRowsIn(lay::shell().body)
 						: lay::settingsRows();
 					lay::SettingStepper st = lay::settingStepper(l.row(cursor - scroll));
 					dir = lay::stepperBack(st, touchX) ? -1 : 1;
@@ -739,44 +744,12 @@ namespace bp
 			if (pt.kind != Pointer::Up) return false;
 			int id = pressedBtn;
 			pressedBtn = -1;
-			miniHoldAt = 0;
-			// the mini bar's play mark while a page plays the file: let go before the hold took it over here, the
-			// page's play / pause
-			if (id == MINI_PP && playHoldMini)
-			{
-				bool on = playHoldAt != 0;
-				playHoldAt = 0;
-				playHoldMini = false;
-				if (on && buttonRect(id).hit(x, y) && pageDrives(barPlayer(p))) toggleBrowser(barPlayer(p));
-				return false;
-			}
-			// let go off the button: nothing (a finger that slid away changed its mind). The mini bar is the frame's,
-			// so its finger is in the panel's own units, not the body's mapped ones
-			bool mini = id == MINI_PP || id == MINI_BAR;
+			// let go off the button: nothing (a finger that slid away changed its mind)
 			Rect r = id >= PHOTO_BTN && id < PHOTO_BTN + PHOTO_BTNS ? photoBtn(id - PHOTO_BTN, p) : buttonRect(id);
-			return r.hit(mini ? rawX : x, mini ? rawY : y) && act(id, p);
+			return r.hit(x, y) && act(id, p);
 		}
-		// the mini bar: acts as the finger lifts (a hold: its menu, tick()); its play mark while a page plays the file
-		// holds as Main's Play does (here instead). Its down is taken here for every page, the reader's included
-		if (pt.kind == Pointer::Down && miniBarShown(p) && miniBox(p).hit(rawX, rawY))
-		{
-			// (the shell's bar is right of the rail and its play mark is 56 wide; another page's is MINI_BOX's)
-			Player& bp = barPlayer(p);
-			pressedBtn = rawX < miniMarkRight(p) ? MINI_PP : MINI_BAR;
-			miniHoldAt = SDL_GetTicks();
-			// in fullscreen the bar is the controls sheet's: a touch on it shows the sheet 4 s more
-			if (page == Page::MangaRead && pageReader->readerStatus.fullscreen) manga->mangaCtrlUntil = SDL_GetTicks() + manga->MG_CTRL_MS;
-			if (pressedBtn == MINI_PP && pageDrives(bp))
-			{
-				miniHoldAt = 0;
-				playHoldAt = SDL_GetTicks();
-				playHoldTouch = true;
-				playHoldMini = true;
-			}
-			return false;
-		}
-		// an area's page (the readers, the Manga pages): its own touches; the mini bar's taken above. An area whose
-		// downs come late (Manga's pages but the reader) has them below, after "<"
+		// an area's page (the readers, the Manga pages): its own touches. An area whose downs come late (Manga's
+		// pages but the reader) has them below, after "<"
 		if (Area* a = area(); a && !(pt.kind == Pointer::Down && a->pointerDownLate())) return a->pointer(pt, x, y, p);
 		if (pt.kind != Pointer::Down) return false;
 
@@ -887,22 +860,13 @@ namespace bp
 		// the clock: its minute
 		if (!clockText(p).empty()) photo += "|clk" + std::to_string((long long)time(nullptr) / 60);
 		if (incognito) photo += "|incognito";	// its mark beside the clock, its row in Manga settings
-		// behind the browser: the mini bar (what it shows, its press, its flash), the rows' chip, the header's mark (its
-		// frame while it moves), what was stopped for a photo
+		// behind the browser: the rows' chip, the header's mark (its frame while it moves), what was stopped for a
+		// photo
 		{
 			char bb[160];
-			snprintf(bb, sizeof bb, "|bg%d %d %d %d %d %d %d %d %.0f", bgPlay, miniBarShown(p), chipKind, landFlashUntil != 0 ? 1 : 0, playHoldMini,
+			snprintf(bb, sizeof bb, "|bg%d %d %d %d %d %d %d %.0f", bgPlay, chipKind, landFlashUntil != 0 ? 1 : 0, playHoldMini,
 				markW(p), markW(p) && markLive(p) && panel.on() ? (int)(SDL_GetTicks() / 166) : -1, p.loading(), 0.0);
 			photo += bb + chipPath + "|" + p.currentPath();
-		}
-		// the mini bar over a photo: it shows main's player, whose title, place and state are not the photo viewer's
-		if (miniBarShown(p) && &barPlayer(p) != &p)
-		{
-			const Player& bp = barPlayer(p);
-			char nb[240];
-			snprintf(nb, sizeof nb, "|np%d %d %d %ld %ld %d %d", bp.paused, (int)bp.loading(), bp.error.empty() ? 0 : 1,
-				(long)std::floor(shownPosition(bp)), (long)bp.duration, (int)bp.playingAudio(), (int)bp.playing());
-			photo += std::string(nb) + bp.title + "|" + bp.currentPath();
 		}
 		// Files' copy or move: how far, and the file on its way; what's held for Copy / Move
 		photo += fileJobSignature();

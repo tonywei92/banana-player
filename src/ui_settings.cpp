@@ -494,8 +494,7 @@ namespace bp
 	void Ui::SettingsPage::draw(const Player& p)
 	{
 		Kit& k = *ui.kit;
-		bool mini = ui.miniBarShown(p);
-		lay::Shell shell = lay::shell(mini);
+		lay::Shell shell = lay::shell();
 		if (ui.setGroup < 0)
 		{
 			// the groups as tiles, two to a row (the mock-up's Settings tile: a mark, a name, what it is set to now)
@@ -509,7 +508,7 @@ namespace bp
 				t.summary = groupSummary(g, p);
 				t.focused = g == ui.cursor;
 				t.pressed = ui.pressedBtn == 400 + g;
-				k.settingTile(groupRect(g, mini), t);
+				k.settingTile(groupRect(g), t);
 			}
 			return;
 		}
@@ -582,8 +581,7 @@ namespace bp
 		}
 		// more rows than the page holds (Power & screens with its brightness rows): a bar says so
 		if ((int)rows.size() > SET_SHOWN) ui.drawScrollBar(l.area.y, SET_SHOWN * lay::SET_ROW_H - 4, ui.scroll, SET_SHOWN, (int)rows.size());
-		// what the row under the cursor does, in a line or two above the footer (with the mini bar up the rows take
-		// that room: the help is the top screen's then, which this step does not change)
+		// what the row under the cursor does, in a line or two above the footer
 		std::string help = l.help.w > 0 && ui.cursor >= 0 && ui.cursor < (int)rows.size() ? settingHelp(rows[ui.cursor]) : "";
 		SDL_Color helpInk = DIM;
 		// the style's rows: the preview under them, where the help would be (it says more), or for styled subtitles a
@@ -718,7 +716,7 @@ namespace bp
 			else if (rows[ui.cursor] == SOUND_ROW) { ui.sound->open(p, true); return false; }
 			else changeSetting(rows[ui.cursor], 1, p);
 			break;
-		// the mini bar's right end says SELECT: back to what plays (Settings has no SELECT of its own)
+		// SELECT: back to what plays (Settings has no SELECT of its own)
 		case Button::Select: if (ui.nowPlayable(ui.barPlayer(p))) ui.goNowPlaying(p); break;
 		case Button::B:
 			// a group goes back to the tiles; the tiles close Settings back to where it was opened (START's origin,
@@ -742,7 +740,7 @@ namespace bp
 	// shell's header owns the back key, so the page sees only the body.
 	bool Ui::SettingsPage::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
-		if (pt.kind == Pointer::Down) return settingsDown(x, y, ui.miniBarShown(p));
+		if (pt.kind == Pointer::Down) return settingsDown(x, y);
 		return false;
 	}
 
@@ -757,10 +755,10 @@ namespace bp
 
 	// a finger down on the settings' list (Settings' groups or a group's rows, the Manga settings' rows): the row it
 	// is on, and the list's touch begun (its lift acts, its moves scroll)
-	bool Ui::SettingsPage::settingsDown(int x, int y, bool mini)
+	bool Ui::SettingsPage::settingsDown(int x, int y)
 	{
 		// the Settings page's list is inside the shell's body; the manga reader's own settings page keeps the old page
-		lay::SettingsRows l = ui.page == Page::Settings ? lay::settingsRowsIn(lay::shell(mini).body) : lay::settingsRows();
+		lay::SettingsRows l = ui.page == Page::Settings ? lay::settingsRowsIn(lay::shell().body) : lay::settingsRows();
 		bool groups = ui.page == Page::Settings && ui.setGroup < 0;
 		auto srows = groups ? std::vector<int>() : ui.page == Page::MangaSettings ? ui.manga->mangaSettingRows() : settingRows();
 		int n = groups ? GROUPS : (int)srows.size();
@@ -770,7 +768,7 @@ namespace bp
 			// a tile
 			row = -1;
 			for (int g = 0; g < GROUPS; g++)
-				if (groupRect(g, mini).hit(x, y)) row = g;
+				if (groupRect(g).hit(x, y)) row = g;
 			if (row < 0) return false;
 		}
 		else if (y < l.area.y || y >= l.area.y + SET_SHOWN * lay::SET_ROW_H || row >= n) return false;
