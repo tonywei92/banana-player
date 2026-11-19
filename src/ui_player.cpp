@@ -2242,6 +2242,7 @@ namespace bp
 
 		// ---- the transport: what is pressed all the time ----
 		{
+			Kit::ClassicHere classic;	// (the owner: the transport keeps Classic in the Clean style)
 			Uint32 now = SDL_GetTicks();
 			bool drives = ui.pageDrives(p) && !err;
 			// a page plays it: the page's play and pause (a hold plays here)
@@ -2270,6 +2271,7 @@ namespace bp
 
 		// ---- Like, Playlist, List, Stop ----
 		{
+			Kit::ClassicHere classic;	// (the named key row keeps Classic in the Clean style)
 			Uint32 now = SDL_GetTicks();
 			bool liked = ui.likedNow(p), added = ui.addFlashUntil && now < ui.addFlashUntil;
 			Kit::Key keys[4];

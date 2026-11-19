@@ -17,6 +17,7 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
 #include "ui_home.h"
@@ -254,6 +255,7 @@ namespace bp
 
 	void Ui::drawPhoto(const Player& p)
 	{
+		Kit::ClassicHere classic;	// (the photo viewer's on-screen keys keep Classic in the Clean style)
 		std::string name = p.currentPath().substr(p.currentPath().rfind('/') + 1);
 		drawHeader(!p.title.empty() ? p.title : !p.error.empty() ? name : "Opening...", p);
 		Rect pan = panRect(p);

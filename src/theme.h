@@ -39,6 +39,7 @@ namespace bp
 			bool strongKeys;
 			Rgb KEY, ON_KEY, KEY_FOCUS, HINT_BAR, ON_HINT;
 			Rgb PRIMARY, ON_PRIMARY;	// a primary key's fill and ink (Play, Pause, a dialog's first key): ACCENT, ON_ACCENT unless set
+			Rgb ON_RAIL;	// the rail's icons and labels on a dark RAIL in a light theme (Gundam): DIM_ON unless set
 		};
 
 		// the themes, in theme.cpp's order (LEFT / RIGHT steps through them): Yellow first. Adding one is a line there
@@ -73,6 +74,8 @@ namespace bp
 		inline const Rgb& KNOB = current.TEXT;	// (= TEXT)
 		inline const Rgb& RULE = current.RULE;	// thin lines between rows
 		inline const Rgb& RAIL = current.RAIL;
+		inline const Rgb& ON_RAIL = current.ON_RAIL;	// the rail's ink (DIM_ON unless a theme gives it)
+		inline const Rgb& KEY_FOCUS = current.KEY_FOCUS;	// a focused strong key, the rail's active cell in a strong theme
 		inline const int& EDGE_MIX = current.EDGE_MIX;
 
 		// the top panel's cards (src/levelcard.cpp: level, chapter/Equalizer, note, state card; mpv image overlays) and the
@@ -105,6 +108,20 @@ namespace bp
 		constexpr int EDGE = 2;	// a box's edge, inside its outline
 		constexpr int LIP = 3;	// the darker band above its bottom edge
 
+		// The Clean style (Settings::cleanStyle; components.md "Clean style"): the kit draws a fill and the focus ring,
+		// no edge and no lip, with one radius for pressed things and one for small tints. Ui::renderPage sets `clean`
+		// from the setting (High contrast is always Classic); Kit::ClassicHere raises classicDepth while a page draws
+		// pieces that stay Classic (the player's keys, the photo viewer's).
+		extern bool clean;
+		extern int classicDepth;
+		inline bool drawingClean() { return clean && classicDepth == 0; }
+		// one radius in Clean: 12 for what is pressed (keys, cards, tiles, chips, tabs, rows), 6 for caps and pills
+		constexpr int cleanRadius(int rad)
+		{
+			return rad == R_BUTTON || rad == R_TILE ? 12 : rad == R_CAP ? 6 : rad;
+		}
+		inline int kitRadius(int rad) { return drawingClean() ? cleanRadius(rad) : rad; }
+
 		// a box's edge: its fill EDGE_MIX percent towards the text (a light theme's edges come out darker than the fill,
 		// a dark theme's lighter: one rule); its lip: the fill 30% darker (both rounded, as the mock's)
 		constexpr unsigned char towards(int a, int b, int percent)
@@ -134,6 +151,8 @@ namespace bp
 			return {(unsigned char)(under.r + (c.r - under.r) * percent / 100), (unsigned char)(under.g + (c.g - under.g) * percent / 100),
 				(unsigned char)(under.b + (c.b - under.b) * percent / 100)};
 		}
+		// the accent's tint over a ground: what is selected in Clean (a chip, a tab, the rail's cell)
+		inline Rgb tintOf(Rgb ground) { return mix(ground, current.ACCENT, 17); }
 
 		// "&HBBGGRR&", as ASS writes a colour
 		inline std::string ass(Rgb c)

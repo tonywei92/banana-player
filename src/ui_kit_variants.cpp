@@ -166,6 +166,19 @@ namespace bp
 		{
 			Rect r = c.chip[i];
 			bool at = (int)i == on, focus = (int)i == focused;
+			if (theme::drawingClean())
+			{
+				// a word off; the chosen one the accent's tint with ACCENT ink; a ring for the cursor
+				if (at) ui.fillRound(r, sdl(theme::tintOf(rgbOf(BG))), theme::kitRadius(R_BUTTON));
+				else if ((int)i == pressed) ui.fillRound(r, PRESSED, theme::kitRadius(R_BUTTON));
+				if (focus) ring(r, R_BUTTON, ACCENT);
+				SDL_Color ink = at ? ACCENT : DIM_ON;
+				int x0 = r.x + 12, cy0 = r.y + r.h / 2;
+				ui.drawTextMid(items[i].label, F_P14, ink, x0, cy0, r.w - 24);
+				if (items[i].count >= 0)
+					ui.drawTextMid(std::to_string(items[i].count), F_P13, at ? ACCENT : DIM, r.x + r.w - 12, cy0, 0, 1);
+				continue;
+			}
 			if (focus) ui.fillRound({r.x - 1, r.y - 1, r.w + 2, r.h + 2}, ACCENT, 10);
 			SDL_Color fill = (int)i == pressed ? PRESSED : at ? ACCENT : TRACK;
 			flat(r, fill, 9, focus ? ACCENT : at ? edgeOf(ACCENT) : edgeOf(BUTTON));
@@ -361,7 +374,7 @@ namespace bp
 
 	void Ui::Kit::tile(Rect r, const Tile& t)
 	{
-		SDL_Color fill = t.pressed ? PRESSED : SURFACE;
+		SDL_Color fill = t.pressed ? PRESSED : cardFill(SURFACE);
 		flat(r, off(fill, t.off), theme::R_TILE, t.focused && !t.off ? ACCENT : off(edgeOf(SURFACE), t.off));
 		SDL_Color ink = off(t.focused || t.lit ? ACCENT : TEXT, t.off);
 		SDL_Color noteInk = off(DIM, t.off);
@@ -390,14 +403,24 @@ namespace bp
 
 	void Ui::Kit::choiceTile(Rect r, const Choice& c)
 	{
-		if (c.on && c.focused)
+		bool clean = theme::drawingClean();
+		SDL_Color fill = clean ? (c.on ? sdl(theme::tintOf(rgbOf(c.pressed ? PRESSED : BUTTON))) : c.pressed ? PRESSED : cardFill(SURFACE))
+			: c.on ? ACCENT : c.pressed ? PRESSED : SURFACE;
+		SDL_Color ink = clean ? (c.on || c.focused ? ACCENT : TEXT) : c.on ? ON_ACCENT : c.focused ? ACCENT : TEXT;
+		if (clean)
 		{
-			ui.fillRound({r.x - 4, r.y - 4, r.w + 8, r.h + 8}, ACCENT, theme::R_BUTTON + 4);
-			ui.fillRound({r.x - 2, r.y - 2, r.w + 4, r.h + 4}, SURFACE, theme::R_BUTTON + 2);
+			ui.fillRound(r, fill, theme::kitRadius(R_BUTTON));
+			if (c.focused) ring(r, R_BUTTON, ACCENT);
 		}
-		SDL_Color fill = c.on ? ACCENT : c.pressed ? PRESSED : SURFACE;
-		flat(r, fill, theme::R_BUTTON, c.focused && !c.on ? ACCENT : edgeOf(fill));
-		SDL_Color ink = c.on ? ON_ACCENT : c.focused ? ACCENT : TEXT;
+		else
+		{
+			if (c.on && c.focused)
+			{
+				ui.fillRound({r.x - 4, r.y - 4, r.w + 8, r.h + 8}, ACCENT, theme::R_BUTTON + 4);
+				ui.fillRound({r.x - 2, r.y - 2, r.w + 4, r.h + 4}, SURFACE, theme::R_BUTTON + 2);
+			}
+			flat(r, fill, theme::R_BUTTON, c.focused && !c.on ? ACCENT : edgeOf(fill));
+		}
 		int cx = r.x + r.w / 2, cy = r.y + r.h / 2;
 		if (c.over)
 		{
@@ -426,7 +449,7 @@ namespace bp
 
 	void Ui::Kit::recentCard(const lay::RecentCard& l, const Card& c)
 	{
-		flat(l.box, off(c.pressed ? PRESSED : SURFACE, c.off), 12, c.focused && !c.off ? ACCENT : off(edgeOf(SURFACE), c.off));
+		flat(l.box, off(c.pressed ? PRESSED : cardFill(SURFACE), c.off), 12, c.focused && !c.off ? ACCENT : off(edgeOf(SURFACE), c.off));
 		pictureOf(l.pic, c, 8);
 		// the kind's mark over the picture: a dark chip, light ink in every theme
 		if (c.kind && c.picture)
@@ -442,7 +465,7 @@ namespace bp
 
 	void Ui::Kit::continueCard(const lay::ContinueCard& l, const Card& c)
 	{
-		flat(l.box, off(c.pressed ? PRESSED : SURFACE, c.off), theme::R_TILE, c.focused && !c.off ? ACCENT : off(edgeOf(SURFACE), c.off));
+		flat(l.box, off(c.pressed ? PRESSED : cardFill(SURFACE), c.off), theme::R_TILE, c.focused && !c.off ? ACCENT : off(edgeOf(SURFACE), c.off));
 		pictureOf(l.pic, c, 10);
 		ui.drawTextMid(lay::caps(c.label), F_I11B, off(DIM, c.off), l.label.x, l.label.y + l.label.h / 2, l.label.w);
 		ui.drawTextMid(c.title, F_NORMAL, off(TEXT, c.off), l.title.x, l.title.y + l.title.h / 2, l.title.w);
@@ -495,7 +518,7 @@ namespace bp
 	void Ui::Kit::notice(const lay::Notice& l, const NoticeRow& n)
 	{
 		SDL_Color edge = n.tone == NoticeTone::Ready ? ACCENT : n.tone == NoticeTone::Failed ? DANGER : edgeOf(SURFACE);
-		flat(l.row, SURFACE, 12, edge);
+		flat(l.row, cardFill(SURFACE), 12, edge);
 		SDL_Color ink = n.tone == NoticeTone::Ready ? ACCENT : n.tone == NoticeTone::Failed ? DANGER : DIM_ON;
 		if (n.glyph) ui.drawGlyphMid(*n.glyph, l.icon.x + l.icon.w / 2, l.icon.y + l.icon.h / 2, ink);
 		ui.drawTextMid(n.text, F_P14, TEXT, l.text.x, l.text.y + l.text.h / 2, l.text.w);
@@ -532,7 +555,8 @@ namespace bp
 
 	void Ui::Kit::clipBar(const lay::ClipBar& l, const Clip& c)
 	{
-		flat(l.box, SURFACE, 12, ACCENT);
+		if (theme::drawingClean()) ui.fillRound(l.box, cardFill(SURFACE), theme::kitRadius(12));
+		else flat(l.box, SURFACE, 12, ACCENT);
 		int cy = l.box.y + l.box.h / 2;
 		ui.drawTextMid(c.what, F_P14, TEXT, l.text.x, cy - 9, l.text.w);
 		ui.drawTextMid(c.size, F_I12, DIM, l.text.x, cy + 10, l.text.w);
@@ -563,7 +587,15 @@ namespace bp
 
 	void Ui::Kit::searchField(const lay::SearchField& l, const SearchFieldView& f)
 	{
-		flat(l.box, SURFACE, 8, f.focused ? ACCENT : edgeOf(SURFACE));
+		if (theme::drawingClean())
+		{
+			// a text field keeps its edge: 2 units, edgeOf(SURFACE), ACCENT while the keyboard has it
+			SDL_Color edge = f.focused ? ACCENT : edgeOf(SURFACE);
+			ui.fillRound(l.box, edge, 8);
+			ui.fillRound({l.box.x + theme::EDGE, l.box.y + theme::EDGE, l.box.w - 2 * theme::EDGE, l.box.h - 2 * theme::EDGE},
+				SURFACE, 8 - theme::EDGE);
+		}
+		else flat(l.box, SURFACE, 8, f.focused ? ACCENT : edgeOf(SURFACE));
 		int cy = l.box.y + l.box.h / 2;
 		ui.drawGlyphMid(G_SEARCH, l.icon.x + l.icon.w / 2, cy, DIM, 1);
 		int tw = l.text.w;

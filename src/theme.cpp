@@ -31,7 +31,7 @@ namespace bp
 				int top, page;
 				unsigned ok;
 				// optional (0: unset): dark keys with light lettering, and a primary key in its own colour (theme.h)
-				unsigned key = 0, onKey = 0, keyFocus = 0, hintBar = 0, onHint = 0, primary = 0, onPrimary = 0;
+				unsigned key = 0, onKey = 0, keyFocus = 0, hintBar = 0, onHint = 0, primary = 0, onPrimary = 0, onRail = 0;
 			};
 			constexpr unsigned GREEN = 0x7BD88F;
 			// the values: one line a theme, in the stepper's order (written from docs/redesign/themes.py, which checks their
@@ -52,9 +52,9 @@ namespace bp
 				{"16-bit-lavender", "16-bit Lavender", 0xC2C2C2, 0xD4D4D6, 0xB5AFE1, 0x9E97D0, 0xB4B3BB, 0x96939F, 0x3B3B3B, 0x4C4A52, 0x434149, 0x4E3375, 0xE6E4F0, 0x8A1420, 80, 0xB8B8BA, 3, 1, 0x1F7A4D},
 				{"32-bit", "32-bit", 0xDEDEE1, 0xEFEFF2, 0xC8C8CE, 0xB0B0B8, 0xD0D0D6, 0xC0C0C7, 0x1E1E22, 0x595960, 0x4B4B52, 0x1F4E9E, 0xEFEFF2, 0x961C24, 55, 0xD3D3D8, 1, 1, 0x1F7A4D},
 				{"sakura", "Sakura", 0xFFE6E0, 0xFFF3EF, 0xE8B3CF, 0xC1839F, 0xFACFD8, 0xE8B3CF, 0x561F33, 0x8A5069, 0x6F3C55, 0x852A59, 0xFFE6E0, 0x7A3800, 55, 0xFACFD8, 5, 1, 0x1F7A4D},
-				// (white armour SURFACE, the blue ACCENT, the yellow ON_ACCENT, the grey DIM as given; the red deepened: 3.8 : 1 on white as given)
-				{"gundam", "Gundam", 0xE8ECF4, 0xFFFFFF, 0xF3F5FA, 0xD5DDEE, 0xCDD4E3, 0xC3CBDB, 0x141B33, 0x5A5B6D, 0x464755, 0x1A56C9, 0xFFFFFF, 0xB81F28, 55, 0xDFE4EE, 2, 1, 0x1F7A4D,
-					0x1C3C8E, 0xFFFFFF, 0xFFF867, 0x172E6B, 0xFFFFFF, 0xD3222B, 0xFFFFFF},
+				// (the owner's values, 2026-11-19: a grey-blue ground, one blue for keys and accent, a navy frame, the yellow where you are)
+				{"gundam", "Gundam", 0xD9DFEC, 0xFFFFFF, 0xECEFF6, 0xCBD3E4, 0xC6CEDF, 0xB4BDD0, 0x141B33, 0x53546A, 0x43445A, 0x2C52B3, 0xFFFFFF, 0xB81F28, 55, 0x172E6B, 2, 1, 0x1F7A4D,
+					0x2C52B3, 0xFFFFFF, 0xFFF867, 0x172E6B, 0xFFFFFF, 0xD3222B, 0xFFFFFF, 0xC9D3EE},
 				{"light", "Light", 0xF7F4EC, 0xFFFDF8, 0xE6E0D2, 0xD0C9B8, 0xDED8C9, 0xD5CEBE, 0x1B1A20, 0x625E56, 0x55514A, 0x7A5200, 0xFFFDF8, 0xA3261D, 55, 0xECE7DB, 0, 1, 0x1F7A4D},
 				{"high-contrast", "High contrast", 0x000000, 0x0A0A0A, 0x1E1E1E, 0x3A3A3A, 0x2B2B2B, 0x5E5E5E, 0xFFFFFF, 0xC6C6C6, 0xD8D8D8, 0xFFE14D, 0x000000, 0xFF8A80, 50, 0, -1, 3, 0x8DF0A4},
 			};
@@ -81,6 +81,7 @@ namespace bp
 				p.KEY = b.key ? hex(b.key) : p.BUTTON, p.ON_KEY = b.key ? hex(b.onKey) : p.TEXT, p.KEY_FOCUS = b.key ? hex(b.keyFocus) : p.ACCENT;
 				p.HINT_BAR = b.key ? hex(b.hintBar) : p.BG, p.ON_HINT = b.key ? hex(b.onHint) : p.DIM_ON;
 				p.PRIMARY = b.primary ? hex(b.primary) : p.ACCENT, p.ON_PRIMARY = b.primary ? hex(b.onPrimary) : p.ON_ACCENT;
+				p.ON_RAIL = b.onRail ? hex(b.onRail) : p.DIM_ON;
 				return p;
 			}
 			struct Table
@@ -97,6 +98,8 @@ namespace bp
 
 		// (constant-initialized: Yellow before anything is drawn, and before any static that reads it)
 		Palette current = TABLE.p[0];
+		bool clean = false;
+		int classicDepth = 0;
 
 		int themeCount() { return COUNT; }
 		const Palette& palette(int i) { return TABLE.p[i >= 0 && i < COUNT ? i : 0]; }
@@ -150,7 +153,7 @@ namespace bp
 				// (strong keys: Gundam's navy keys and red primary ones; unset, the button, accent and text roles they always were)
 				css += "--key:" + h(p.KEY) + ";--on-key:" + h(p.ON_KEY) + ";--key-focus:" + h(p.KEY_FOCUS) +
 					";--hint-bar:" + h(p.HINT_BAR) + ";--on-hint:" + h(p.ON_HINT) +
-					";--primary:" + h(p.PRIMARY) + ";--on-primary:" + h(p.ON_PRIMARY) + ";";
+					";--primary:" + h(p.PRIMARY) + ";--on-primary:" + h(p.ON_PRIMARY) + ";--on-rail:" + h(p.ON_RAIL) + ";";
 				// (accent ink on a key: the accent, or on a strong theme's dark key its focus yellow)
 				css += "--key-lit:" + h(p.strongKeys ? p.KEY_FOCUS : p.ACCENT) + ";";
 				css += "--e-btn:" + e(p.BUTTON) + ";--e-pressed:" + e(p.PRESSED) + ";--e-surface:" + e(p.SURFACE) + ";--e-yellow:" + e(p.ACCENT) +

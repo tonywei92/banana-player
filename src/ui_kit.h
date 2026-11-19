@@ -37,9 +37,21 @@ namespace bp
 		Ui& ui;
 		explicit Kit(Ui& u) : ui(u) {}
 
+		// a page or a piece that stays Classic in the Clean style (the player's transport and named keys, the photo
+		// viewer's on-screen keys): alive for the drawing only
+		struct ClassicHere
+		{
+			ClassicHere() { ++theme::classicDepth; }
+			~ClassicHere() { --theme::classicDepth; }
+			ClassicHere(const ClassicHere&) = delete;
+			ClassicHere& operator=(const ClassicHere&) = delete;
+		};
+
 		int textW(const std::string& s, int font) const;	// in 640x480 units
 		static SDL_Color off(SDL_Color c, bool isOff = true);	// c as an unavailable piece shows it
 		static SDL_Color edgeOf(SDL_Color fill);
+		static SDL_Color cardFill(SDL_Color c);	// Clean: SURFACE becomes BUTTON (a fill carries a card or tile's shape)
+		void ring(Rect r, int rad, SDL_Color c);	// a 2-unit outline (the focus ring), the inside left alone
 		void flat(Rect r, SDL_Color fill, int rad, SDL_Color edge);
 		// the art placeholder: a record in its sleeve in the theme's roles (artph.h), r a square; key: the album's name,
 		// else the title, else the file's name. rad: the art box's radius; edge: a 1-unit edgeOf(BUTTON) edge inside the

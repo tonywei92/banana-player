@@ -1102,7 +1102,7 @@ namespace bp
 		if (moreShown())
 		{
 			bool at = homeZone == HOME_CARDS && homeStrip >= (int)recent.size();
-			k.flat(hp.more, pressedCard >= (int)recent.size() ? PRESSED : SURFACE, 12, at ? ACCENT : k.edgeOf(SURFACE));
+			k.flat(hp.more, pressedCard >= (int)recent.size() ? PRESSED : Kit::cardFill(SURFACE), 12, at ? ACCENT : k.edgeOf(SURFACE));
 			ui.drawGlyphMid(G_RIGHT, hp.more.x + hp.more.w / 2, hp.more.y + hp.more.h / 2, at ? ACCENT : DIM, 3);
 		}
 		if (hp.shortcuts > 0)

@@ -48,6 +48,9 @@ That is the whole change; the group's list, the help line, Left/Right and the sa
 something besides keep its value (the way Max volume lowers the volume that is over it), the one hook is the
 `if (d->... == &Settings::x)` chain after `stepSetting` in `Ui::changeSetting` (`ui_settings.cpp`).
 
+The Clean style is the same shape with its own words: `D::flag("style", &Settings::cleanStyle, "classic", "clean")`
+with `.shownAs({ "Classic", "Clean" })`, its row under Theme. Its value is read by the kit's drawing only.
+
 `places` are only an order inside the group (gaps are fine); the page's own rows have theirs in `settingRows()` and
 `mangaSettingRows()`. Defaults are not in the table: the member's initializer is the one place.
 

@@ -6764,8 +6764,9 @@ static void testThemes()
 		// and hints as before
 		if (id == "gundam")
 		{
-			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "E8ECF4FFFFFFF3F5FADFE4EE1A56C9141B33");
-			CHECK_EQ(hx(p.KEY) + hx(p.ON_KEY) + hx(p.KEY_FOCUS) + hx(p.HINT_BAR) + hx(p.PRIMARY) + hx(p.ON_PRIMARY), "1C3C8EFFFFFFFFF867172E6BD3222BFFFFFF");
+			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "D9DFECFFFFFFECEFF6172E6B2C52B3141B33");
+			CHECK_EQ(hx(p.PRESSED) + hx(p.TRACK) + hx(p.RULE) + hx(p.DIM) + hx(p.DIM_ON) + hx(p.ON_RAIL), "CBD3E4C6CEDFB4BDD053546A43445AC9D3EE");
+			CHECK_EQ(hx(p.KEY) + hx(p.ON_KEY) + hx(p.KEY_FOCUS) + hx(p.HINT_BAR) + hx(p.PRIMARY) + hx(p.ON_PRIMARY), "2C52B3FFFFFFFFF867172E6BD3222BFFFFFF");
 			CHECK_EQ(p.strongKeys, true);
 			CHECK_EQ(hx(p.TOP_TITLE), "8CC8FF");
 			CHECK_EQ(p.page, 1);
@@ -6774,6 +6775,7 @@ static void testThemes()
 		{
 			CHECK_EQ(p.strongKeys, false);
 			CHECK_EQ(hx(p.KEY) + hx(p.PRIMARY) + hx(p.HINT_BAR), hx(p.BUTTON) + hx(p.ACCENT) + hx(p.BG));
+			CHECK_EQ(hx(p.ON_RAIL), hx(p.DIM_ON));	// the rail's ink, as before when a theme doesn't give it
 		}
 	}
 	// Light: its own RAIL, edges darker than the fill (EDGE_MIX 55), Yellow's top cards; the spec's worked-out values
@@ -6816,9 +6818,12 @@ static void testThemes()
 	CHECK_EQ(css.find("data-theme=\"yellow\"") == std::string::npos, true);
 	CHECK_EQ(css.find(":root[data-theme=\"light\"]{color-scheme:light;--bg:#f7f4ec;") != std::string::npos, true);
 	// strong keys: Gundam's navy keys and red primary; a theme without them keeps the button and accent roles
-	CHECK_EQ(css.find("--key:#1c3c8e;--on-key:#ffffff;--key-focus:#fff867;--hint-bar:#172e6b;--on-hint:#ffffff;--primary:#d3222b;--on-primary:#ffffff;") != std::string::npos, true);
+	CHECK_EQ(css.find("--key:#2c52b3;--on-key:#ffffff;--key-focus:#fff867;--hint-bar:#172e6b;--on-hint:#ffffff;--primary:#d3222b;--on-primary:#ffffff;--on-rail:#c9d3ee;") != std::string::npos, true);
 	CHECK_EQ(css.find(":root[data-theme=\"light\"]{color-scheme:light;--bg:#f7f4ec;--surface:#fffdf8;") != std::string::npos, true);
 	CHECK_EQ(css.find("--key:#e6e0d2;--on-key:#1b1a20;--key-focus:#7a5200;--hint-bar:#f7f4ec;--on-hint:#55514a;--primary:#7a5200;--on-primary:#fffdf8;") != std::string::npos, true);
+	// the Clean style's selected tint: ACCENT 17% over the ground (Yellow is current here)
+	CHECK_EQ(hx(theme::tintOf(theme::palette(0).BG)), "2B230A");
+	CHECK_EQ(hx(theme::tintOf(theme::palette(0).SURFACE)), "3A311C");
 }
 
 // the settings table (SettingDef): every entry reads what it writes, an old settings.conf reads as it did before the
@@ -6828,6 +6833,34 @@ static void testSettingsTable()
 	const auto& defs = settingDefs();
 	std::string plain = serializeSettings(Settings());
 	CHECK_EQ(serializeSettings(parseSettings(plain)), plain);
+	// the Clean style: a setting (Classic by default, its words classic/clean) with one row under Theme; the kit's
+	// radii and the ClassicHere scope are the drawing's only readers
+	{
+		CHECK_EQ(Settings().cleanStyle, false);
+		CHECK_EQ(serializeSettings(Settings()).find("style = classic") != std::string::npos, true);
+		Settings c = parseSettings("style = clean\n");
+		CHECK_EQ(c.cleanStyle, true);
+		CHECK_EQ(serializeSettings(c).find("style = clean") != std::string::npos, true);
+		int at = settingIndex("style");
+		CHECK_EQ(at >= 0, true);
+		CHECK_EQ(defs[at].group, SG_SCREEN);
+		CHECK_EQ(std::string(defs[at].label), std::string("Style"));
+		CHECK_EQ(std::string(settingValueText(defs[at], c)), std::string("Clean"));
+		// (High contrast is forced Classic by Ui::renderPage, not by the setting)
+		theme::clean = true;
+		CHECK_EQ(theme::drawingClean(), true);
+		CHECK_EQ(theme::kitRadius(theme::R_BUTTON), 12);
+		CHECK_EQ(theme::kitRadius(theme::R_TILE), 12);
+		CHECK_EQ(theme::kitRadius(theme::R_CHIP), 6);	// (a cap's and a bar's 6: not a pressed box)
+		CHECK_EQ(theme::kitRadius(theme::R_CAP), 6);
+		CHECK_EQ(theme::kitRadius(theme::R_SHEET), theme::R_SHEET);
+		theme::classicDepth = 1;	// (Kit::ClassicHere: the player's keys, the photo viewer)
+		CHECK_EQ(theme::drawingClean(), false);
+		CHECK_EQ(theme::kitRadius(theme::R_BUTTON), 10);
+		theme::classicDepth = 0;
+		theme::clean = false;
+		CHECK_EQ(theme::kitRadius(theme::R_BUTTON), 10);
+	}
 	std::set<std::string> keys;
 	for (size_t i = 0; i < defs.size(); i++)
 	{
@@ -6857,8 +6890,9 @@ static void testSettingsTable()
 	CHECK_EQ(std::string(defs[playback.back()].key), "button-hotkeys");
 	auto screen = settingsOfGroup(SG_SCREEN);
 	CHECK_EQ(std::string(defs[screen.front()].key), "theme");	// (the group's first row)
-	CHECK_EQ(std::string(defs[screen[1]].key), "same-brightness");
-	CHECK_EQ(std::string(defs[screen[2]].key), "screen-off");
+	CHECK_EQ(std::string(defs[screen[1]].key), "style");	// (Style, under Theme)
+	CHECK_EQ(std::string(defs[screen[2]].key), "same-brightness");
+	CHECK_EQ(std::string(defs[screen[3]].key), "screen-off");
 	CHECK_EQ(std::string(defs[screen.back()].key), "clock");
 	// the lid's key rows, under When the lid closes: power, volume, shoulders, then incognito
 	auto lid = std::find_if(screen.begin(), screen.end(), [&](int i) { return std::string(defs[i].key) == "lid-close"; });
