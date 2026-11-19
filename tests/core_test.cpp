@@ -25,6 +25,9 @@
 #include "challenge.h"
 #include "crashlog.h"
 #include "durations.h"
+#include "mediacache.h"
+#include "mediaindex.h"
+#include "mediatags.h"
 #include "codepages.h"
 #include "durprobe.h"
 extern "C"
@@ -353,6 +356,372 @@ static void testDurationFile()
 	unlink(file.c_str());
 	unlink((file + ".tmp").c_str());
 	rmdir(dir);
+}
+
+// the cards' media index (docs/redesign/components.md › "Search and Music: the index"): the folders that count,
+// the fold, the walk with its tag cache, the grouping into albums and artists, and the query
+static void testMediaIndex()
+{
+	// ---- the folders' names, any capitals
+	for (const char* n : {"Music", "music", "MUSIC", "Musics", "mUsIcS"})
+		CHECK_EQ(isMusicFolderName(n), true);
+	for (const char* n : {"", "My Music", "mus", "musick", "Music ", "Musi"})
+		CHECK_EQ(isMusicFolderName(n), false);
+	for (const char* n : {"Videos", "VIDEOS", "Movies", "movies"})
+		CHECK_EQ(isVideosFolderName(n), true);
+	for (const char* n : {"Video", "Movie", "My Videos", "video"})
+		CHECK_EQ(isVideosFolderName(n), false);
+
+	// ---- the fold: case and accents off, for matching only
+	CHECK_EQ(foldText("Café"), "cafe");
+	CHECK_EQ(foldText("ÜBER ALLES"), "uber alles");
+	CHECK_EQ(foldText("Æon FlØde"), "aeon flode");
+	CHECK_EQ(foldText("ÀÉÎÕÜ ÿ"), "aeiou y");
+	CHECK_EQ(foldText("Straße"), "strasse");
+	CHECK_EQ(foldText("Žůžek"), "zuzek");
+	CHECK_EQ(foldText("\xd0\x9c\xd0\xa3\xd0\x97\xd0\xab\xd0\x9a\xd0\x90"), "\xd0\xbc\xd1\x83\xd0\xb7\xd1\x8b\xd0\xba\xd0\xb0");	// МУЗЫКА -> музыку (Cyrillic keeps its own case)
+	CHECK_EQ(foldText("\xce\xa3\xce\xa9\xce\xa3"), "\xcf\x83\xcf\x89\xcf\x83");	// ΣΩΣ -> σως (Greek too)
+	CHECK_EQ(foldText("cafe\xcc\x81"), "cafe");	// (a combining mark only decorates the letter before it)
+	CHECK_EQ(foldText("plain 123"), "plain 123");
+
+	// ---- a card: several Music folders on it, a Videos and a Movies, and a file named like a folder
+	char card[] = "/tmp/bp-media-XXXXXX";
+	if (!mkdtemp(card)) { failures++; return; }
+	std::string C = card;
+	auto mkdirAt = [&](const std::string& p) { CHECK_EQ(mkdir(p.c_str(), 0755), 0); };
+	auto write = [&](const std::string& p, const std::string& bytes) {
+		std::ofstream(p, std::ios::binary) << bytes;
+		return p;
+	};
+	std::function<void(const std::string&)> rmrf = [&](const std::string& dir) {
+		if (DIR* d = opendir(dir.c_str()))
+		{
+			while (dirent* e = readdir(d))
+			{
+				if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
+				std::string p = dir + "/" + e->d_name;
+				struct stat st;
+				if (stat(p.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) rmrf(p);
+				else unlink(p.c_str());
+			}
+			closedir(d);
+		}
+		rmdir(dir.c_str());
+	};
+	mkdirAt(C + "/Music");
+	mkdirAt(C + "/Musics");		// (a card may have several, all read as one)
+	mkdirAt(C + "/Videos");
+	mkdirAt(C + "/MOVIES");
+	write(C + "/MUSIC", "a file named like a folder, not one\n");	// (never listed)
+	{
+		const char* hadIndex = getenv("BP_INDEX"), *hadBrowse = getenv("BP_BROWSE");
+		setenv("BP_INDEX", C.c_str(), 1);
+		MediaFolders f = mediaFolders();
+		CHECK_EQ(f.music.size(), (size_t)2);
+		CHECK_EQ(f.music[0], C + "/Music");
+		CHECK_EQ(f.music[1], C + "/Musics");
+		CHECK_EQ(f.videos.size(), (size_t)2);
+		CHECK_EQ(f.videos[0], C + "/Videos");
+		CHECK_EQ(f.videos[1], C + "/MOVIES");
+		// without BP_INDEX the browser's own test roots stand in
+		setenv("BP_INDEX", "", 1);
+		setenv("BP_BROWSE", C.c_str(), 1);
+		f = mediaFolders();
+		CHECK_EQ(f.music.size(), (size_t)2);
+		CHECK_EQ(f.videos.size(), (size_t)2);
+		if (hadIndex) setenv("BP_INDEX", hadIndex, 1); else unsetenv("BP_INDEX");
+		if (hadBrowse) setenv("BP_BROWSE", hadBrowse, 1); else unsetenv("BP_BROWSE");
+	}
+
+	// ---- the walk: songs and music videos under Music, videos under Videos, tags from a fake reader
+	MediaFolders folders;
+	folders.music = {C + "/Music", C + "/Musics"};
+	folders.videos = {C + "/Videos", C + "/MOVIES"};
+	mkdirAt(C + "/Music/Album One");
+	mkdirAt(C + "/Music/.dotted");
+	mkdirAt(C + "/Music/Hidden");
+	write(C + "/Music/Hidden/.hidden", "");		// (hidden folders, while they are hidden, are not in it)
+	write(C + "/Music/Hidden/x.mp3", "x");
+	write(C + "/Music/.dotted/y.mp3", "y");
+	write(C + "/Music/notes.txt", "no");
+	write(C + "/Music/cover.jpg", "no");
+	write(C + "/Music/Album One/01 First.mp3", "one");
+	write(C + "/Music/Album One/02 Second.mp3", "two");
+	write(C + "/Music/Show.mkv", "v");
+	mkdirAt(C + "/Videos/Deep");
+	write(C + "/Videos/A Movie.mp4", "a");
+	write(C + "/Videos/Deep/B Movie.mp4", "b");
+	std::map<std::string, MediaTags> tagWords;
+	MediaTags first;
+	first.title = "First Song";
+	first.artist = "Artist A";
+	first.albumArtist = "Artist A";
+	first.album = "Album One";
+	first.track = 1;
+	first.year = 2020;
+	first.duration = 61;
+	tagWords[C + "/Music/Album One/01 First.mp3"] = first;
+	int read = 0;
+	TagReader fake = [&](const std::string& path, long long, int64_t, MediaTags& out) {
+		read++;
+		auto it = tagWords.find(path);
+		if (it != tagWords.end()) out = it->second;
+		return true;
+	};
+	WalkGate go = [] { return true; };
+	auto titlesOf = [](MediaWalk& w) {
+		std::vector<std::string> titles;	// (the walk's own order is the card's listing order: never relied on)
+		for (auto& s : w.songs) titles.push_back(w.words.at(s.title));
+		std::sort(titles.begin(), titles.end());
+		return titles;
+	};
+	const std::string cacheFile = C + "/media-index.tsv";
+	// the walk's order is the card's listing order: find a song by what it is
+	auto byTitle = [&](MediaWalk& w, const char* title) -> const MediaSong& {
+		for (auto& s : w.songs)
+			if (w.words.at(s.title) == title) return s;
+		failures++;
+		fprintf(stderr, "no song titled %s\n", title);
+		return w.songs[0];
+	};
+	{
+		MediaTagCache cache;
+		CHECK_EQ(cache.load(cacheFile), true);
+		MediaWalk w;
+		CHECK_EQ(walkMedia(folders, fake, cache, go, w), true);
+		CHECK_EQ(w.songs.size(), (size_t)3);		// two songs and the music video
+		CHECK_EQ(w.videos.size(), (size_t)2);
+		CHECK_EQ(w.probed, 3);
+		CHECK_EQ(w.kept, 0);
+		CHECK_EQ(read, 3);
+		CHECK_EQ(w.failed.empty(), true);
+		CHECK_EQ(titlesOf(w), std::vector<std::string>({"02 Second", "First Song", "Show"}));
+		const MediaSong& sFirst = byTitle(w, "First Song");
+		CHECK_EQ(sFirst.track, 1);
+		CHECK_EQ(sFirst.year, 2020);
+		CHECK_EQ(sFirst.duration, 61);
+		CHECK_EQ(w.words.at(sFirst.album), "Album One");
+		// an untagged song goes by its own name, in its folder's album
+		const MediaSong& sSecond = byTitle(w, "02 Second");
+		CHECK_EQ(w.words.at(sSecond.album), "Album One");
+		// the video in a Music folder: marked, in its folder's album (its tags would sit it in its own)
+		const MediaSong& sShow = byTitle(w, "Show");
+		CHECK_EQ(sShow.video, true);
+		CHECK_EQ(w.words.at(sShow.album), "Music");
+		for (auto& v : w.videos)
+			if (v.path == C + "/Videos/A Movie.mp4") CHECK_EQ(v.size, (long long)1);
+	}
+	{
+		// the same card again, through the cache file: nothing is opened a second time
+		int readBefore = read;
+		MediaTagCache cache;
+		CHECK_EQ(cache.load(cacheFile), true);
+		MediaWalk w;
+		CHECK_EQ(walkMedia(folders, fake, cache, go, w), true);
+		CHECK_EQ(w.kept, 3);
+		CHECK_EQ(w.probed, 0);
+		CHECK_EQ(read, readBefore);
+		CHECK_EQ(titlesOf(w), std::vector<std::string>({"02 Second", "First Song", "Show"}));
+		CHECK_EQ(byTitle(w, "First Song").track, 1);	// (the words came back as they were)
+		CHECK_EQ(byTitle(w, "Show").video, true);
+	}
+	{
+		// one file changed: only it is read again
+		write(C + "/Music/Album One/01 First.mp3", "one and more");
+		int readBefore = read;
+		MediaTagCache cache;
+		CHECK_EQ(cache.load(cacheFile), true);
+		MediaWalk w;
+		CHECK_EQ(walkMedia(folders, fake, cache, go, w), true);
+		CHECK_EQ(w.kept, 2);
+		CHECK_EQ(w.probed, 1);
+		CHECK_EQ(read, readBefore + 1);
+	}
+	{
+		// the gate says no (a quit): not a whole answer, and nothing is kept from it
+		MediaTagCache cache;
+		MediaWalk w;
+		CHECK_EQ(walkMedia(folders, fake, cache, [] { return false; }, w), false);
+		CHECK_EQ(w.songs.size(), (size_t)0);
+	}
+
+	{
+		// a root that starts with a dot (the player's test roots are relative, ".scratch/cards"): its files count
+		// all the same — the walk knows a file by its own name, never by its whole path
+		char was[PATH_MAX] = {0};
+		if (!getcwd(was, sizeof was)) { failures++; return; }
+		if (chdir(C.c_str()) != 0) { failures++; return; }
+		MediaFolders dot;
+		dot.music = {"./Music"};
+		dot.videos = {"./Videos"};
+		MediaTagCache cache;
+		MediaWalk w;
+		CHECK_EQ(walkMedia(dot, fake, cache, go, w), true);
+		CHECK_EQ(w.songs.size(), (size_t)3);
+		CHECK_EQ(w.videos.size(), (size_t)2);
+		CHECK_EQ(chdir(was), 0);
+	}
+
+	// ---- the cache file on its own: round trip, a rewritten file a miss, a torn line tolerated
+	{
+		const std::string f2 = C + "/cache.tsv";
+		{
+			MediaTagCache a;
+			CHECK_EQ(a.load(f2), true);
+			MediaTags t;
+			t.title = "T";
+			t.artist = "A";
+			t.albumArtist = "AA";
+			t.album = "AL";
+			t.track = 3;
+			t.disc = 2;
+			t.year = 2021;
+			t.duration = 95.7;
+			a.put("/m/one.mp3", 10, 100, t, false);
+			MediaTags v;
+			v.title = "V";
+			a.put("/m/two.mkv", 20, 200, v, true);
+		}
+		{
+			MediaTagCache b;
+			CHECK_EQ(b.load(f2), true);
+			CHECK_EQ(b.size(), (size_t)2);
+			MediaTags t;
+			CHECK_EQ(b.find("/m/one.mp3", 10, 100, t), true);
+			CHECK_EQ(t.title, "T");
+			CHECK_EQ(t.artist, "A");
+			CHECK_EQ(t.albumArtist, "AA");
+			CHECK_EQ(t.album, "AL");
+			CHECK_EQ(t.track, 3);
+			CHECK_EQ(t.disc, 2);
+			CHECK_EQ(t.year, 2021);
+			CHECK_EQ(t.duration, 96.0);		// (a whole second is plenty for a row)
+			CHECK_EQ(b.find("/m/one.mp3", 11, 100, t), false);		// rewritten: another file
+			CHECK_EQ(b.find("/m/one.mp3", 10, 101, t), false);
+			CHECK_EQ(b.find("/m/two.mkv", 20, 200, t), true);
+			CHECK_EQ(t.title, "V");
+			// a word with a tab or a newline in it reads back with the spaces it folds to
+			MediaTags tab;
+			tab.title = "a\tb\nc";
+			b.put("/m/tab.mp3", 1, 1, tab, false);
+			// a path that can't sit on one line is simply not kept
+			b.put("/m/ta\tb.mp3", 1, 1, tab, false);
+		}
+		{
+			MediaTagCache c;
+			CHECK_EQ(c.load(f2), true);
+			CHECK_EQ(c.size(), (size_t)3);
+			MediaTags t;
+			CHECK_EQ(c.find("/m/tab.mp3", 1, 1, t), true);
+			CHECK_EQ(t.title, "a b c");
+			// a torn last line (power lost on the card while it was written): whole lines before it still load
+			std::ofstream(f2, std::ios::app | std::ios::binary) << "torn";
+		}
+		{
+			MediaTagCache d;
+			CHECK_EQ(d.load(f2), true);
+			CHECK_EQ(d.size(), (size_t)3);
+			MediaTags t;
+			CHECK_EQ(d.find("/m/one.mp3", 10, 100, t), true);
+		}
+	}
+
+	// ---- grouping: albums by album artist + album, artists by name with the unknown last
+	{
+		MediaWords w;
+		auto song = [&](const char* title, const char* artist, const char* albumArtist, const char* album,
+			int track, const std::string& path) {
+			MediaTags t;
+			t.title = title;
+			t.artist = artist;
+			t.albumArtist = albumArtist;
+			t.album = album;
+			t.track = track;
+			MediaSong s;
+			internSong(w, s, path, t);
+			return s;
+		};
+		std::vector<MediaSong> songs;
+		songs.push_back(song("T2", "BB", "BB", "X", 2, "/card/Music/X/2.mp3"));
+		songs.push_back(song("T1", "BB", "BB", "X", 1, "/card/Music/X/1.mp3"));
+		songs.push_back(song("T3", "AA", "", "Y", 0, "/card/Music/Y/3.mp3"));
+		// an untagged song: its own name, its folder's album, an unknown artist
+		songs.push_back(song("", "", "", "", 0, "/card/Music/Loose/z.mp3"));
+		// a music video with tags: one of its album's songs, marked
+		MediaSong vid = song("Live", "BB", "BB", "X", 0, "/card/Music/X/live.mkv");
+		vid.video = true;
+		songs.push_back(vid);
+		std::shared_ptr<const MediaSnapshot> snap = groupMediaSnapshot(std::move(w), std::move(songs), {},
+			{"/card/Music"}, {"/card/Videos"});
+		CHECK_EQ(snap->artists.size(), (size_t)3);
+		CHECK_EQ(snap->at(snap->artists[0].name), "AA");
+		CHECK_EQ(snap->at(snap->artists[1].name), "BB");
+		CHECK_EQ(snap->artists[2].name, (uint32_t)0);		// the unknown artist, last
+		CHECK_EQ(snap->artists[1].songs, (uint32_t)3);		// BB: two songs and the video
+		CHECK_EQ(snap->artists[1].albums.size(), (size_t)1);
+		const MediaAlbum& x = snap->albums[snap->artists[1].albums[0]];
+		CHECK_EQ(snap->at(x.name), "X");
+		CHECK_EQ(x.songs.size(), (size_t)3);
+		// in track order, an untracked one (the video) by its name
+		CHECK_EQ(snap->at(snap->songs[x.songs[0]].title), "T1");
+		CHECK_EQ(snap->at(snap->songs[x.songs[1]].title), "T2");
+		CHECK_EQ(snap->songs[x.songs[2]].video, true);
+		CHECK_EQ(snap->at(snap->albums[snap->artists[0].albums[0]].name), "Y");
+		CHECK_EQ(snap->at(snap->albums[snap->artists[2].albums[0]].name), "Loose");
+		CHECK_EQ(snap->musicFolders, std::vector<std::string>({"/card/Music"}));
+		// the read API: a generation for a page's signature, and the snapshot the worker last committed
+		MediaIndex idx;
+		CHECK_EQ(idx.generation(), 0u);
+		idx.commit(snap);
+		CHECK_EQ(idx.generation(), 1u);
+		CHECK_EQ(idx.snapshot().get(), snap.get());
+		CHECK_EQ(idx.snapshot()->artists.size(), (size_t)3);
+	}
+
+	// ---- the query
+	{
+		MediaWords w;
+		auto song = [&](const char* title, const char* artist, const char* album) {
+			MediaTags t;
+			t.title = title;
+			t.artist = artist;
+			t.album = album;
+			MediaSong s;
+			internSong(w, s, std::string("/m/") + title + ".mp3", t);
+			return s;
+		};
+		std::vector<MediaSong> songs;
+		songs.push_back(song("Café", "Béla", "Música"));
+		songs.push_back(song("Not Café", "Béla", "Música"));
+		std::vector<MediaVideo> videos;
+		MediaVideo a, b;
+		a.path = "/v/A Movie.mp4";
+		b.path = "/v/B Movie.mp4";
+		videos.push_back(a);
+		videos.push_back(b);
+		std::shared_ptr<const MediaSnapshot> snap = groupMediaSnapshot(std::move(w), std::move(songs),
+			std::move(videos), {}, {});
+		// a hit that starts with the query before one that only holds it
+		SearchHits h = mediaSearch(*snap, {"Book One.epub"}, "cafe");
+		CHECK_EQ(h.songs, std::vector<uint32_t>({0, 1}));
+		h = mediaSearch(*snap, {"Book One.epub"}, "MÚSICA");
+		CHECK_EQ(h.songs, std::vector<uint32_t>({0, 1}));	// accents and case never matter; the album counts
+		h = mediaSearch(*snap, {}, "bela zzz");
+		CHECK_EQ(h.songs.empty(), true);		// every word must sit somewhere
+		h = mediaSearch(*snap, {}, "bela");
+		CHECK_EQ(h.songs, std::vector<uint32_t>({0, 1}));
+		h = mediaSearch(*snap, {}, "movie");
+		CHECK_EQ(h.videos.size(), (size_t)2);
+		h = mediaSearch(*snap, {}, "a movie");
+		CHECK_EQ(h.videos, std::vector<uint32_t>({0}));		// "b movie" holds no "a"
+		h = mediaSearch(*snap, {"Book One.epub"}, "book");
+		CHECK_EQ(h.files, std::vector<uint32_t>({0}));
+		h = mediaSearch(*snap, {"Book One.epub"}, "   ");
+		CHECK_EQ(h.songs.empty() && h.videos.empty() && h.files.empty(), true);
+	}
+
+	// (the card's tree, gone)
+	rmrf(C);
 }
 
 static void testMangaNames()
@@ -13864,6 +14233,7 @@ int main()
 	testTime();
 	testDurations();
 	testDurationFile();
+	testMediaIndex();
 	testCodePages();
 	testMangaNames();
 	testReaderFetchPlan();

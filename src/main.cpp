@@ -41,6 +41,7 @@
 #include "durations.h"
 #include "durworker.h"
 #include "coverworker.h"
+#include "mediaworker.h"
 #include "mangalibworker.h"
 #include "netstream.h"
 #include "netpath.h"
@@ -83,7 +84,7 @@ namespace bp
 }
 #endif
 
-static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur, evCover, evAmp, evMangaLib, evUnplug, evPower, evVolKey, evLidIncognito, evViz;
+static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur, evCover, evAmp, evMangaLib, evUnplug, evPower, evVolKey, evLidIncognito, evViz, evIndex;
 #ifdef BP_WEB
 // the dashboard's server for the sleep watch's thread (made on the main thread, never destroyed)
 static std::atomic<bp::WebServer*> webForWatch{nullptr};
@@ -312,9 +313,9 @@ int main(int argc, char** argv)
 		fprintf(stderr, "SDL: %s\n", SDL_GetError());
 		return 1;
 	}
-	// 16: evMpv itself and the 15 event types below it. One short once handed the manga's two registrations the
+	// 17: evMpv itself and the 16 event types below it. One short once handed the manga's two registrations the
 	// numbers of evVolKey and evLidIncognito, so a manga worker's wake closed everything as if the lid had shut
-	evMpv = SDL_RegisterEvents(16);
+	evMpv = SDL_RegisterEvents(17);
 	evRender = evMpv + 1;
 	evTouch = evMpv + 2;
 	evLevel = evMpv + 3;
@@ -330,6 +331,7 @@ int main(int argc, char** argv)
 	evVolKey = evMpv + 13;	// a volume key with the lid shut (VolumeKey): one step, or next / previous on a hold
 	evLidIncognito = evMpv + 14;	// the lid closed in incognito with Close all or Quit (SleepWatch): main closes or quits
 	evViz = evMpv + 15;	// the native visualizer's new bars (VizTap's worker): the top panel draws a frame
+	evIndex = evMpv + 16;	// the cards' media index: a pass finished (Music, Videos and Search read MediaIndex)
 
 	// On the handheld (SDL's KMSDRM) each panel is a display and each window fills one; elsewhere, two windows
 	if (windowed < 0) windowed = strcmp(SDL_GetCurrentVideoDriver(), "KMSDRM") != 0;
@@ -548,6 +550,17 @@ int main(int argc, char** argv)
 			SDL_PushEvent(&ev);
 		});
 		ui.manga->coverWorker = coverWorker;
+		// the cards' media index (Music, Videos and Search read it; docs/redesign/components.md › "Search and
+		// Music: the index"): a pass on this thread at start and one when the cards change, never destroyed (its
+		// thread may be mid-probe at exit). The UI reads the answer from indexWorker->index() later; nothing here
+		// draws from it yet
+		MediaIndexWorker* indexWorker = new MediaIndexWorker(*new MediaIndex, [] {
+			SDL_Event ev{};
+			ev.type = evIndex;
+			SDL_PushEvent(&ev);
+		});
+		indexWorker->configure(opts.stateDir);
+		indexWorker->start();
 		// the manga store's durable writes (a progress save's fsync on the card); never destroyed, its thread may be
 		// inside an fsync at exit
 		ui.manga->writer = new DurableWriter();
@@ -1327,6 +1340,12 @@ int main(int argc, char** argv)
 				}
 				else if (e.type == evNet) ui.netListed((NetListing*)e.user.data1, player);
 				else if (e.type == evDur) ui.durationsReady(player);
+				else if (e.type == evIndex)
+				{
+					// the media index finished a pass: a new snapshot with a new generation is in indexWorker->index().
+					// Nothing reads it yet — Music, Videos and Search will (their signature() takes the generation,
+					// and they redraw here, on the main thread, never from the worker)
+				}
 				else if (e.type == evMangaFetch) mangaNet->onFetchEvent();
 				else if (e.type == evMangaWorker) mangaNet->onWorkerEvent();
 				else if (e.type == evCover)
@@ -2140,6 +2159,23 @@ int main(int argc, char** argv)
 				if (mangaWasOn && !player.settings.mangaOn) mangaNet->off();
 				mangaWasOn = player.settings.mangaOn;
 			}
+			// the cards changed (ui.rootsCheck every few seconds: one put in or taken out): the media index walks again
+			{
+				static int indexRootsSeen = 0;
+				if (haveUi && ui.rootsSerial() != indexRootsSeen)
+				{
+					indexRootsSeen = ui.rootsSerial();
+					indexWorker->refresh();
+				}
+			}
+			// the media index's walk waits out whatever has the card: a file opening (its seeks and its decode), a
+			// video's picture, the Manga engine while the reader is on. Music never stops it, and neither does a photo
+			{
+				static bool indexBusy = false;
+				bool busy = player.loading() || player.settings.mangaOn ||
+					(player.playing() && !player.playingAudio() && !player.playingPhoto());
+				if (busy != indexBusy) indexWorker->setBusy(indexBusy = busy);
+			}
 #ifdef BP_WEB
 			// the cards changed (a second card put in or taken out): the dashboard's places follow
 			{
@@ -2202,6 +2238,7 @@ int main(int argc, char** argv)
 		mangaNet->setFetchOwner({});
 		mangaNet->stop();
 		coverWorker->stop();
+		indexWorker->stop();
 		mangaLibWorker->stop();
 		// (before the watch stops: it knows the lid)
 		lidGuard.release(sleepWatch.lidClosed());
