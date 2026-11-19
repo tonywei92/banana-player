@@ -303,7 +303,8 @@ namespace bp
 					if (id == F_BACK) ui.act(BACK_ICON, p);
 					else if (id == F_MORE) ui.press(Button::X, p);
 					else if (id == F_SEARCH) search(p);
-					else openSection(cs[id - F_RAIL].section, p);
+					// (the cell past the sections is Settings, pinned at the foot: not one of cs)
+					else openSection(id - F_RAIL < (int)cs.size() ? cs[id - F_RAIL].section : Section::Settings, p);
 				}
 			}
 			return true;
