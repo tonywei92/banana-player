@@ -15,11 +15,13 @@ namespace bp
 	{
 		Ui& ui = k.ui;
 		bool clean = theme::drawingClean(), strong = theme::current.strongKeys;
-		// Classic: RAIL ground and a rule; Clean: none
-		if (!clean)
+		// Classic: RAIL ground and a rule; Clean: none, except a strong theme's rail (Gundam's navy frame), whose ink
+		// (ON_RAIL) is light and would vanish on the page's ground
+		bool ground = !clean || strong;
+		if (ground)
 		{
 			ui.fill(r.area, RAIL);
-			ui.fill({r.area.x + r.area.w - 1, r.area.y, 1, r.area.h}, RULE);
+			if (!clean) ui.fill({r.area.x + r.area.w - 1, r.area.y, 1, r.area.h}, RULE);
 		}
 		// the active cell: a strong theme (Gundam) fills it KEY_FOCUS with TEXT ink; otherwise Classic's solid ACCENT,
 		// or Clean's accent tint
@@ -48,7 +50,7 @@ namespace bp
 			{
 				// red, 11 units, ringed in the rail's ground so it stands off the cell
 				Ui::Rect m{c.x + c.w - 9 - 11, c.y + 5, 11, 11};
-				ui.fillRound({m.x - 2, m.y - 2, m.w + 4, m.h + 4}, on ? activeFill : clean ? BG : RAIL, 5);
+				ui.fillRound({m.x - 2, m.y - 2, m.w + 4, m.h + 4}, on ? activeFill : ground ? RAIL : BG, 5);
 				ui.fillRound(m, DANGER, 3);
 			}
 		};

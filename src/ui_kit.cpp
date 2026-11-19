@@ -259,6 +259,7 @@ namespace bp
 		else
 		{
 			SDL_Color edge = k.focused && !k.off ? sdl(strong ? th.KEY_FOCUS : th.ACCENT) : edgeOf(fill);
+			ClassicHere classic;	// (drawBox drops edge and lip in Clean unless asked: a key keeps both)
 			ui.drawBox(r, off(fill, k.off), R_BUTTON, off(edge, k.off));
 		}
 		if (k.glow > 0 && !k.pressed)
@@ -304,7 +305,10 @@ namespace bp
 		// a transport key is a key: Classic always (components.md "Clean style", rule 7)
 		SDL_Color fill = t.primary ? sdl(t.pressed && t.hold < 0 ? theme::lipOf(th.PRIMARY) : th.PRIMARY) : t.pressed ? PRESSED : BUTTON;
 		SDL_Color ink = off(t.primary ? sdl(th.ON_PRIMARY) : TEXT, t.off), capInk = off(t.primary ? sdl(th.ON_PRIMARY) : ACCENT, t.off);
-		ui.drawBox(r, off(fill, t.off), R_BUTTON, off(edgeOf(fill), t.off));
+		{
+			ClassicHere classic;
+			ui.drawBox(r, off(fill, t.off), R_BUTTON, off(edgeOf(fill), t.off));
+		}
 		if (t.hold >= 0)
 		{
 			// the hold, a darker part growing left to right, inside the edge
@@ -346,7 +350,10 @@ namespace bp
 		}
 		// a key is a key, whatever the page (rule 7)
 		SDL_Color fill = th.strongKeys ? sdl(pressed ? theme::lipOf(th.KEY) : th.KEY) : pressed ? PRESSED : BUTTON;
-		ui.drawBox(r, fill, R_BUTTON);
+		{
+			ClassicHere classic;
+			ui.drawBox(r, fill, R_BUTTON);
+		}
 		ui.drawGlyphMid(g, r.x + r.w / 2, r.y + (r.h - theme::LIP) / 2 + 1, sdl(th.ON_KEY), cell);
 	}
 
