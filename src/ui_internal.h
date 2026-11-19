@@ -112,7 +112,6 @@ namespace bp
 		"Files & history",
 		"Power & screens",
 		"Web dashboard",
-		"Extensions",
 		"Updates",
 		"About",
 	};

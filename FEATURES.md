@@ -1090,7 +1090,7 @@ through.
 - With none on, the page is its Empty state: **No extensions are on**, what an extension is, and one key, **Manage
   extensions** (**A**).
 - Coming back to the page lands on Manga where you left it (its tab and place are kept) when the reader is on; **B**
-  on Manga's pages comes back to this list. Manage extensions is reached from here and from Settings › Extensions.
+  on Manga's pages comes back to this list. Manage extensions is reached from here (Settings has no Extensions group).
 
 ### Manage extensions
 

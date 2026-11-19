@@ -198,7 +198,7 @@ namespace bp
 				extFromSettings = false;
 				ui.page = Page::Settings;
 				ui.setGroup = -1;
-				ui.cursor = GROUP_EXTENSIONS;
+				ui.cursor = 0;
 			}
 			else openExtList(p);
 			break;

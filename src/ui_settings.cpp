@@ -109,7 +109,7 @@ namespace bp
 		static_assert((int)GROUP_PLAYBACK == (int)SG_PLAYBACK && (int)GROUP_SUBS == (int)SG_SUBS &&
 			(int)GROUP_MUSIC == (int)SG_MUSIC && (int)GROUP_PHOTOS == (int)SG_PHOTOS && (int)GROUP_READING == (int)SG_READING &&
 			(int)GROUP_FILES == (int)SG_FILES && (int)GROUP_SCREEN == (int)SG_SCREEN && (int)GROUP_UPDATES == (int)SG_UPDATES &&
-			(int)GROUP_WEB == (int)SG_WEB && (int)GROUP_EXTENSIONS == (int)SG_EXTENSIONS, "Ui::SetGroup and SettingsGroup go together");
+			(int)GROUP_WEB == (int)SG_WEB, "Ui::SetGroup and SettingsGroup go together");
 		switch (ui.setGroup)
 		{
 		case GROUP_SUBS:
@@ -203,13 +203,6 @@ namespace bp
 			ui.cursor = GROUP_WEB;
 			ui.openWeb();
 		}
-		else if (ui.setGroup == GROUP_EXTENSIONS)
-		{
-			// Manage extensions: a page of its own, as the Web dashboard is
-			ui.setGroup = -1;
-			ui.cursor = GROUP_EXTENSIONS;
-			ui.manga->openExtensions();
-		}
 		else if (ui.setGroup == GROUP_ABOUT)
 		{
 			ui.setGroup = -1;
@@ -227,14 +220,6 @@ namespace bp
 			ui.setGroup = -1;
 			ui.cursor = GROUP_WEB;
 			ui.openWeb();
-			return;
-		}
-		if (g == GROUP_EXTENSIONS)
-		{
-			// the same page the Extensions section's row opens; B comes back to these tiles
-			ui.setGroup = -1;
-			ui.cursor = GROUP_EXTENSIONS;
-			ui.manga->openExtensions(true);
 			return;
 		}
 		if (g == GROUP_ABOUT)
@@ -459,7 +444,6 @@ namespace bp
 			if (!s.webDashboard) return "Off";
 			return ui.webClients() == 0 ? "On \xC2\xB7 No browser yet"
 				: "On \xC2\xB7 " + std::to_string(ui.webClients()) + (ui.webClients() == 1 ? " browser" : " browsers");
-		case GROUP_EXTENSIONS: return s.mangaOn ? "1 on \xC2\xB7 Manga reader" : "None on";
 		case GROUP_UPDATES: return ui.updateStatus();
 		case GROUP_ABOUT: return std::string("Version ") + BP_VERSION;
 		default: return "";
@@ -499,7 +483,7 @@ namespace bp
 		{
 			// the groups as tiles, two to a row (the mock-up's Settings tile: a mark, a name, what it is set to now)
 			static const Glyph* MARKS[GROUPS] = {&G_PLAY, &G_CC, &G_NOTE, &G_PICTURE, &G_BOOK, &G_FOLDER, &G_SUN, &G_WEB,
-				&G_BLOCKS, &G_DOWNLOAD, &G_INFO};
+				&G_DOWNLOAD, &G_INFO};
 			for (int g = 0; g < GROUPS; g++)
 			{
 				Kit::SettingTile t;

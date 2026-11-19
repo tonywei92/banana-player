@@ -104,7 +104,7 @@ namespace bp
 			{
 				int prev = (ui.setGroup + GROUPS - 1) % GROUPS, next = (ui.setGroup + 1) % GROUPS;
 				static const char* const SHORT_GROUP[] = {"Playback", "Subtitles", "Music", "Photos", "Reading", "Files",
-					"Power", "Web", "Extensions", "Updates", "About"};
+					"Power", "Web", "Updates", "About"};
 				std::string prevName = SHORT_GROUP[prev], nextName = SHORT_GROUP[next];
 				Kit& k = *ui.kit;
 				h.rightW = k.capsW("L2") + 6 + k.textW(prevName, F_I12) + 14 + k.textW(nextName, F_I12) + 6 + k.capsW("R2");

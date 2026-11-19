@@ -408,7 +408,7 @@ namespace bp
 		// tiles like the groups but pages of their own: openGroup and stepGroup open Page::Web, Page::Extensions and
 		// Page::About)
 		enum SetGroup { GROUP_PLAYBACK, GROUP_SUBS, GROUP_MUSIC, GROUP_PHOTOS, GROUP_READING, GROUP_FILES, GROUP_SCREEN,
-			GROUP_WEB, GROUP_EXTENSIONS, GROUP_UPDATES, GROUP_ABOUT, GROUPS };
+			GROUP_WEB, GROUP_UPDATES, GROUP_ABOUT, GROUPS };	// (no Extensions: Extensions › Manage extensions, the owner)
 		// the page is an area (SettingsPage, ui_settings.h): the rows, changeSetting, openGroup, its drawing and keys.
 		// Here stay: the groups' ids, the rows' ids and the list's measures (Manga's settings page and the tables use
 		// them) and setGroup, the open group, which showPlayer's, the dashboard's and Browse's way-back records keep
