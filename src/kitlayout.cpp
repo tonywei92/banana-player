@@ -322,7 +322,9 @@ namespace bp
 
 		Box settingsBody(Box body)
 		{
-			return {body.x + MARGIN, body.y + 10, std::max(0, body.w - 2 * MARGIN), std::max(0, body.h - 10)};
+			// the page's own top margin is 4: with the shell's body 6 under the header the Settings page starts at 64,
+			// where its non-shell variant does (SET_ROW_TOP)
+			return {body.x + MARGIN, body.y + SP4, std::max(0, body.w - 2 * MARGIN), std::max(0, body.h - SP4)};
 		}
 
 		Box settingsTiles(Box body, int rows)
@@ -399,11 +401,12 @@ namespace bp
 			l.bar = {page.x, 138, page.w, 14};
 			l.barHit = {page.x - 8, 132, page.w + 16, 52};	// the whole row, down to the times
 			l.times = {page.x, 160, page.w, 20};
-			for (int i = 0; i < 5; i++) l.transport[i] = transportCell({page.x, 188, page.w, 74}, i);
+			// the four rows 8 apart (transport 76, keys 56, chips 52, Next 50), the Next line 4 over the hint bar
+			for (int i = 0; i < 5; i++) l.transport[i] = transportCell({page.x, 188, page.w, 76}, i);
 			for (int i = 0; i < 4; i++) l.keys[i] = cell({page.x, 272, page.w, 56}, 4, GAP, i);
 			l.chips = std::clamp(chips, 0, PLAYER_CHIPS_MAX);
-			for (int i = 0; i < l.chips; i++) l.chip[i] = cell({page.x, 338, page.w, 52}, l.chips, GAP, i);
-			l.next = {page.x, 398, page.w, 50};
+			for (int i = 0; i < l.chips; i++) l.chip[i] = cell({page.x, 336, page.w, 52}, l.chips, GAP, i);
+			l.next = {page.x, 396, page.w, 50};
 			l.hints = {0, PANEL_H - HINTS_H, PANEL_W, HINTS_H};
 			l.lock = {PANEL_W / 2 - 60, 150, 120, 120};
 			return l;
@@ -472,9 +475,9 @@ namespace bp
 			if (mini)
 			{
 				s.mini = {RAIL_W + MINI_SIDE, PANEL_H - MINI_FOOT - MINI_H, s.main.w - 2 * MINI_SIDE, MINI_H};
-				foot = s.mini.y - 4;
+				foot = s.mini.y - SP8;
 			}
-			s.body = {RAIL_W, SHELL_HEAD, s.main.w, foot - SHELL_HEAD};
+			s.body = {RAIL_W, SHELL_HEAD + SP6, s.main.w, foot - SHELL_HEAD - SP6};
 			return s;
 		}
 
@@ -715,22 +718,22 @@ namespace bp
 			h.cont = h.chipStrip = h.more = {0, 0, 0, 0};
 			for (auto& c : h.card) c = {0, 0, 0, 0};
 			for (auto& s : h.shortcut) s = {0, 0, 0, 0};
-			h.inner = {body.x + HOME_PAD, body.y + 2, body.w - 2 * HOME_PAD, body.h - 4};
+			h.inner = {body.x + HOME_PAD, body.y, body.w - 2 * HOME_PAD, body.h};
 			h.hasContinue = hasContinue;
 			h.cards = std::clamp(cards, 0, HOME_CARDS_MAX);
 			int y = h.inner.y;
 			if (hasContinue)
 			{
 				h.cont = {h.inner.x, y, h.inner.w, HOME_CONTINUE_H};
-				y += HOME_CONTINUE_H + 10;
+				y += HOME_CONTINUE_H + SP12;
 			}
 			// a filter row over the cards (kept even when the chosen kind leaves none: that is how it is changed);
-			// 56 tall so a finger has room around the 40-tall chips
+			// 44 tall, the chips' own height, a finger's size
 			if (hasRecent)
 			{
 				h.chipStrip = {h.inner.x, y, h.inner.w, CHIP_STRIP};
 				h.chips = filterChips(h.chipStrip, chipWidths);
-				y += CHIP_STRIP + 4;
+				y += CHIP_STRIP + SP8;
 			}
 			for (int i = 0; i < h.cards; i++) h.card[i] = {h.inner.x + i * (RECENT_W + GAP), y, RECENT_W, HOME_CARD_ROW_H};
 			if (more && h.cards > 0)
@@ -738,7 +741,7 @@ namespace bp
 				// the last cell of the row: the way to all of them, on the column's right edge
 				h.more = {h.inner.x + h.inner.w - HOME_SHORTCUT_H, y, HOME_SHORTCUT_H, HOME_CARD_ROW_H};
 			}
-			if (h.cards > 0 || more) y += HOME_CARD_ROW_H + 10;
+			if (h.cards > 0 || more) y += HOME_CARD_ROW_H + SP8;
 			// the three shortcuts, unless the mini bar has taken the room (the row then ends above it)
 			int bottom = h.inner.y + h.inner.h;
 			if (hasRecent && y + HOME_SHORTCUT_H <= bottom)
@@ -753,11 +756,11 @@ namespace bp
 		AllRecentPage allRecentPage(Box body)
 		{
 			AllRecentPage p;
-			p.inner = {body.x + HOME_PAD, body.y + 2, body.w - 2 * HOME_PAD, body.h - 4};
-			// the chips fit the 30 units between the header and the list's first row, whose touch maths is the list's
-			// own (Ui::ROW_Y: the body starts at the header's 54)
+			// this page is still the old list's: its first row must stay at Ui::ROW_Y (84), so the 28-tall kind chips
+			// stand in the 6 between the header and the body rather than under it
+			p.inner = {body.x + HOME_PAD, body.y - SP4, body.w - 2 * HOME_PAD, body.h + SP2};
 			p.chipStrip = {p.inner.x, p.inner.y, p.inner.w, 28};
-			p.rowY = body.y + 30;
+			p.rowY = SHELL_HEAD + 30;
 			p.shown = std::clamp((p.inner.y + p.inner.h - p.rowY) / p.rowH, 0, 7);
 			return p;
 		}
@@ -935,7 +938,7 @@ namespace bp
 		ExtPage extPage(Box body, int extensions)
 		{
 			ExtPage p;
-			p.area = {body.x + EXT_PAGE_PAD, body.y + 2, body.w - 2 * EXT_PAGE_PAD, body.h - 4};
+			p.area = {body.x + EXT_PAGE_PAD, body.y, body.w - 2 * EXT_PAGE_PAD, body.h};
 			int y = p.area.y;
 			for (int i = 0; i < extensions; i++)
 			{

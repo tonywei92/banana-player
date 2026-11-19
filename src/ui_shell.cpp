@@ -395,8 +395,10 @@ namespace bp
 		st.tick = (int)(SDL_GetTicks() / 166);
 		if (ui.incognito) st.badges.push_back({&G_INCOGNITO, ""});
 		if (ui.webIndicatorShown(p)) st.badges.push_back({&G_WEB, ""});
-		int left = k.status(more.x - 10, cy, st);
-		if (h.right) left = h.right(left, cy);
+		int left = k.status(more.x - lay::SP8, cy, st);
+		// the right slot (a badge, Settings' neighbours) keeps 8 before the status cluster, so the pair beside the
+		// clock never touches it
+		if (h.right) left = h.right(left - lay::SP8, cy);
 		int x = h.back ? back.x + back.w + 10 : lay::RAIL_W + 16;
 		int right = left - 14;	// the title ends before the status cluster (Search is the rail's key)
 		if (right <= x + 20) return;
