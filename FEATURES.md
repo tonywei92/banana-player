@@ -37,30 +37,38 @@ HEVC (x265), may drop frames. **Info** shows how it's keeping up.
 
 Open Banana Player and the bottom screen shows **Home**:
 
-- **Recent**, along the top: a card for each of the last 5 things you played or read (the rest in **All recent**), newest first, with how far you got
-  (`0:27 / 0:52`, or `Played · 3:12`), a bar, and a network mark for a file on a server. **A** plays it (from where you
-  left off), **Y** opens its menu: **Resume from…** (or **Play**), **Play from the start**, **Show in folder** (opens
-  Files or Network on that file), **Add to playlist…**, **Remove from Recent**. The last card, **All recent**, opens
-  the whole list, with tabs beside its title: **All**, **Videos**, **Music**, **Books** (books, PDFs, comics and text
-  files), each with how many: **L** / **R** step through them, or tap one. Recent keeps the last 100 of each kind, so
+- **Continue**: the newest thing you haven't finished, as a card with its picture, title, where it was left
+  (`6:12 / 9:56 · Videos`), a bar, and **Resume**. What plays now says **Now playing** with **Go to it**; a video the
+  Manga reader stopped says **Stopped for Manga** until it plays again or something else is played. With everything
+  played through there is no Continue card and **Recent** moves to the top.
+- **Recent**, under it: up to four cards, newest first, with the kind's mark, the title, what it was
+  (`Played · 3:34`, `7% read`, `6:12 / 9:56`) and a bar; a liked file has a yellow heart, a server's a network mark.
+  The kind chips beside **Recent** are **All**, **Videos**, **Music** and **Books** with how many: tap one (the
+  filters' keys come with the rail) or step them with **L2/R2** where the shell routes them. The chevron after the
+  cards, and **(All recent)**, open every card, with the same chips. Recent keeps the last 100 of each kind, so
   reading doesn't push your videos out, nor music your books. While Home or All recent shows, its order stays put (the
-  next song starting doesn't move the cards); what you played comes to the front the next time you open it. On the touch screen tap a card to play it, swipe the strip, or hold a card for its menu. With nothing
-  played yet the strip is a single line and the tiles grow.
-- Four tiles, two by two: **Files** (your cards: **Videos**, the `videos` folder in `roms`, then **This card** and
-  **Second card**), **Playlists**, **Network** and **Extensions** (**None on**, or **1 on · Manga reader**). Each says
-  what's in it.
+  next song starting doesn't move the cards); what you played comes to the front the next time you open it.
+- Three shortcuts: **Shuffle Liked** (**Browse Files** until something is liked), **Send from phone** (the Web
+  dashboard's page, to scan its code) and **All recent**.
+- **A** resumes or plays, **X** (or a hold on a card) opens the card's **More** sheet: **Resume**, **Play from the
+  start**, **Show in folder**, **Add to playlist…**, **Like** / **Unlike** (L3), **Info** and **Remove from Recent**;
+  the right column has Home's own **All recent**, **Browse Files**, **Show hidden folders**, **Clear recent…** (press
+  twice), **Settings**, **Menu** and **Quick settings**. With no card under the cursor, **X** opens that column alone.
+  **Y** opens the same card sheet. Tap a card to play it, tap its key to resume, tap a chip to filter it.
+- With nothing played yet Home is an **Empty state**: **Nothing played yet**, what goes here, and **Browse Files** (A)
+  and **Web dashboard** (Y); no Continue, Recent or shortcut row (each would be empty). With the play history off it
+  says so instead.
 
-Move with the D-pad: **UP/DOWN** between the strip and the tiles (back to the card or the column you left),
-**LEFT/RIGHT** along them. **X** on Home: **Clear Recent** (press twice), **Show hidden folders**, **Settings**. **B**
+Move with the D-pad: **UP/DOWN** between Continue, the cards and the shortcuts, **LEFT/RIGHT** along them. **B**
 asks to quit: **Quit Banana Player?** with **Quit** and **Cancel**, **Cancel** first; **B** or a tap outside cancels.
 While something plays it asks too, and says **What's playing stops** (**SELECT** still goes to what plays).
-**START** opens Settings.
+**START** opens the places (**Files**, **Playlists**, **Manga**, **Network**, **Settings**, **About**, Quick settings
+and Quit); the section rail takes them over in the full redesign.
 
 Inside a section the header reads its name with four markers beside it, the open one lit: **L/R** go to the section
 before or after, or tap a marker. Each section opens where you left it (its top if that folder or playlist is gone),
-from L/R, a marker or its tile on Home; the **Playlists** tile on Home always opens the list of playlists, the cursor on
-the one you were in. **B** goes up a folder, and from the section's top back to Home, on its
-tile.
+from L/R, a marker or the places' **Menu**; the **Playlists** place always opens the list of playlists, the cursor on
+the one you were in. **B** goes up a folder, and from the section's top back to Home.
 
 Folders come first, then files in natural order (episode 2 before episode 10). Each row has an icon (folder, video,
 song, photo), and each file shows its size. Songs and videos on the card show their length too (`3:34 · 3.5 MB`; a
@@ -213,8 +221,9 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 - **Liked** is always first in **Playlists**, with a yellow heart. It's newest first and can't be reordered, renamed or
   deleted, and only Like adds to it. Inside it, an item's **Y** menu has **Play from here**, **Unlike**, **Add to
   playlist…** and **Show in folder**; select mode's **X** is **Unlike** (press it twice).
-- **Home:** a liked file's Recent card has a small yellow heart, and a card's **Y** menu has **Like** / **Unlike** and
-  **Add to playlist…**. In **Files** and **Network**, liked files have a small heart before their note.
+- **Home:** a liked file's Continue and Recent cards have a small yellow heart, and a card's **More** sheet (X, a hold,
+  or Y) has **Like** / **Unlike** and **Add to playlist…**. In **Files** and **Network**, liked files have a small
+  heart before their note.
 - Liked holds 2,000; liking one more lets the oldest go. Likes made in the web dashboard show up on the handheld at
   once, and the other way round.
 
@@ -324,7 +333,7 @@ See [Photos](#photos) for the touch screen.
 | **UP / DOWN** | Move |
 | **LEFT / RIGHT** | Page up / down |
 | **L / R** | Previous / next section: Files, Playlists, Network, Extensions |
-| **X** | Options: **Info** on the file or folder the cursor is on (as Y's), **Refresh** (read the folder again), and on a folder **Hide folder** / **Unhide folder** (or hold the folder on the touch screen). In Files: **Show hidden folders**. In Files and Network: **Select files**, to tick files and add them to a playlist. In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: Home's options |
+| **X** | Options: **Info** on the file or folder the cursor is on (as Y's), **Refresh** (read the folder again), and on a folder **Hide folder** / **Unhide folder** (or hold the folder on the touch screen). In Files: **Show hidden folders**. In Files and Network: **Select files**, to tick files and add them to a playlist. In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: the focused card's **More** sheet (Home's own column when none) |
 | **Hold** (touch screen) | On a file in Files or Network: starts selecting, with that file ticked |
 | **Y** | On a file or folder of the cards: **Info** (its name, kind, size (a folder's with everything in it), length, where it is, when it was changed, its full path), **Copy…**, **Move…**, **Rename…**, **Delete** (press twice: it's gone for good) ([below](#copy-move-rename-delete)). On a folder: **Add to playlist…** (first). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
 | **SELECT** | Back to what plays (the playing screen); in select mode, Select all |
