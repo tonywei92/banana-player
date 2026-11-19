@@ -208,7 +208,7 @@ namespace bp
 
 	lay::PlaylistPage Ui::Playlists::pageLayout(const Player& p) const
 	{
-		lay::Shell sh = lay::shell(ui.miniBarShown(p));
+		lay::Shell sh = lay::shell();
 		bool inPl = isPlDir(ui.browse->browseDir);
 		bool empty = !inPl || !plLoaded || plCur.entries.empty();
 		int keys = inPl && !empty && selMode == SEL_NONE ? (ui.plIsLiked(plCur.file) ? 2 : 3) : 0;

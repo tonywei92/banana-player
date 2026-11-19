@@ -381,9 +381,9 @@ namespace bp
 		if (n) ui.drawTextMid(std::to_string(n) + (n == 1 ? " browser connected" : " browsers connected"), 1, TEXT, 324, 292, 300);
 		else ui.drawTextMid("No browser connected yet", 0, DIM, 324, 292, 300);
 
-		// New PIN pressed once: what the second press does, where the note is (up a line while the mini bar is there)
+		// New PIN pressed once: what the second press does, where the note is
 		auto note = ui.wrapText(ui.pinArmed ? "A new PIN signs out every browser" : "Your phone needs the same Wi-Fi", 0, 248, 2);
-		int noteY = ui.miniUp && note.size() > 1 ? 390 : 410;
+		int noteY = 410;
 		for (size_t i = 0; i < note.size(); i++)
 			ui.drawTextMid(note[i], 0, ui.pinArmed ? ACCENT : DIM, 148, noteY - (int)(note.size() - 1) * 11 + (int)i * 22, 248, 2);
 		Rect np = ui.buttonRect(WEB_NEWPIN), off = ui.buttonRect(WEB_OFF);

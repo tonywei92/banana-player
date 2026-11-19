@@ -1231,9 +1231,9 @@ namespace bp
 
 	lay::FilesPage Ui::Browse::filesLayout(const Player& p) const
 	{
-		lay::Shell s = lay::shell(ui.miniBarShown(p));
+		lay::Shell s = lay::shell();
 		int n = (int)browseRows.size();
-		bool footer = !ui.miniBarShown(p) && !filesEmpty();
+		bool footer = !filesEmpty();
 		return lay::filesPage(s.body, n, fileSel, footer);
 	}
 
@@ -1259,7 +1259,8 @@ namespace bp
 			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L/R", "Sections"}};
 		}
 		std::vector<Hint> h = {{"A", "Play / open"}, {"B", browseDir.empty() ? "Home" : "Up"}, {"X", "More"}, {"Y", "Select"}};
-		if (ui.miniBarShown(p)) h.push_back({"SELECT", "Now playing"});
+		// the rail's Now playing key is the touch; SELECT its key (files-playing)
+		if (ui.nowPlayable(p)) h.push_back({"SELECT", "Now playing"});
 		else h.push_back({"LEFT/RIGHT", "Page"});
 		h.push_back({"L/R", "Sections"});
 		return h;
@@ -1420,7 +1421,7 @@ namespace bp
 			if (fileTickable(i)) any = i;
 		if (any < 0) { p.osd("Nothing to select here"); return; }
 		fileSel = true;
-		// (miniBarShown still hides the bar while the browser selects: the bar would sit under this one)
+		// (the select bar takes the body's foot while the browser selects)
 		playlists->selMode = SEL_PICK;
 		fileSelPaths.clear();
 		fileSelOrder.clear();
@@ -1769,7 +1770,7 @@ namespace bp
 
 	bool Ui::Browse::filesPointer(const Pointer& pt, int x, int y, Player& p)
 	{
-		lay::Shell sh = lay::shell(ui.miniBarShown(p));
+		lay::Shell sh = lay::shell();
 		lay::FilesHeader h = lay::filesHeader(sh.header);
 		lay::FilesPage f = filesLayout(p);
 		int n = (int)browseRows.size(), scroll = filesScroll(p);
@@ -2298,7 +2299,7 @@ namespace bp
 			fileSelPaths = playlists->picked;
 			fileSelOrder = playlists->pickOrder;
 			playlists->selEnd();
-			playlists->selMode = SEL_PICK;	// (miniBarShown hides the bar while selecting)
+			playlists->selMode = SEL_PICK;
 		}
 		// Files has its own page (the redesign); Home, Playlists, Network and All recent keep Ui's list
 		if (filesPage()) { drawFiles(p); return; }

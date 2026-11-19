@@ -99,8 +99,8 @@ namespace bp
 		// what plays (a song or a video) has its screen as the bottom panel's base: Main, or a page or the menu over it.
 		// False while it plays behind the browser (the player left with B, "<" or Back)
 		bool playerShown(const Player& p) const { return p.playing() && !bgPlay; }
-		// the player's own pages: over an open reader (the mini bar tapped while reading), the top panel shows what
-		// plays, not the pages; B comes back to the reader, and its pages to the top panel
+		// the player's own pages: over an open reader (the rail's Now playing key or SELECT tapped while reading), the
+		// top panel shows what plays, not the pages; B comes back to the reader, and its pages to the top panel
 		bool topShowsPlayer() const
 		{
 			return page == Page::Main || page == Page::Info;
@@ -115,16 +115,17 @@ namespace bp
 		// test only (--press gallery:new, gallery:new:2): kit-new's components drawn in place of the page (0: off)
 		int galleryNew = 0;
 		void drawGalleryNew();
-		// the player's own Stop (X's More sheet, START › Playing › Stop, the mini bar's menu), once: main stops what plays
+		// the player's own Stop (X's More sheet, START › Playing › Stop, the Now playing block's hold menu), once: main
+		// stops what plays
 		bool takeStopPressed() { bool r = stopPressed; stopPressed = false; return r; }
 		// The Stop the Manga guard asked for (ext-section-video): the page stays where it is (Manga), rather than
 		// going back to where the video was opened from. Once, as the stop itself.
 		bool takeStopKeepsPage() { bool r = stopKeepsPage; stopKeepsPage = false; return r; }
-		// the mini bar's tap over a photo: the photo closes and the player of what plays takes the screen (once; main
-		// does it: only it can close the photo viewer)
+		// the rail's / Quick settings' tap over a photo: the photo closes and the player of what plays takes the
+		// screen (once; main does it: only it can close the photo viewer)
 		bool takePlayerOverPhoto() { bool r = playerOverPhoto; playerOverPhoto = false; return r; }
-		// the player the mini bar works on: main's (songs and videos), set by main, also while a photo is shown. The
-		// photo viewer is a Player of its own and a page of its own: the bar never plays the photo, only what goes
+		// the player the Now playing keys work on: main's (songs and videos), set by main, also while a photo is shown.
+		// The photo viewer is a Player of its own and a page of its own: the keys never play the photo, only what goes
 		// on under it. Without main's (a test, a caller that has none) it is the player it is given
 		Player* mainPlayer = nullptr;
 		// what plays stopped (any Stop, the end of the list): a page playing the file has nothing held here any more
@@ -363,7 +364,7 @@ namespace bp
 			// everything draw() shows that Settings doesn't hold: the panel is drawn again only when this changes
 			virtual std::string signature(const Player& p) const = 0;
 			virtual bool animating() const { return false; }	// something of its moves by itself (Ui::animating)
-			// its touches come before the updater's pop-up and the mini bar (a page that always had them so); the rest after
+			// its touches come before the updater's pop-up (a page that always had them so); the rest after
 			virtual bool pointerFirst() const { return false; }
 			// its downs come late: after the header's "<" and the empty page's button (its moves and lifts
 			// still come where the others' do). Manga's pages took them so (asked per page: the reader's come early)
@@ -423,7 +424,7 @@ namespace bp
 		struct Kit;
 		struct KitNew;	// kit-new's components, beside Kit (ui_kit.h's kit-new block)
 		std::unique_ptr<Kit> kit;
-		// the redesigned section pages' shared frame (ui_shell.h): the rail, the header, the hints and the mini bar.
+		// the redesigned section pages' shared frame (ui_shell.h): the rail, the header and the hints.
 		// Not an Area of its pages (Browse and Settings keep their keys and touches): Ui asks it directly
 		struct Shell;
 		struct ShellHead;
@@ -525,7 +526,8 @@ namespace bp
 			CTX_R_PLAY, CTX_R_START, CTX_R_SHOW, CTX_R_LIKE, CTX_R_ADD, CTX_R_REMOVE,
 			// Home's X
 			CTX_CLEAR_RECENT, CTX_HIDDEN, CTX_SETTINGS,
-			// the mini bar's (a hold on it): Now playing, Play / Pause, Like, Add to playlist..., Show in folder, Stop
+			// the Now playing menu (a hold on the rail's key or Home's card): Now playing, Play / Pause, Like, Add to
+			// playlist..., Show in folder, Stop
 			CTX_NP_NOW, CTX_NP_PLAY, CTX_NP_LIKE, CTX_NP_ADD, CTX_NP_SHOW, CTX_NP_STOP };
 		// how it was opened: X (the place's menu), Y (the row's), a finger held on a row (the row's, folders and
 		// connections only)
@@ -879,7 +881,7 @@ namespace bp
 		void incognitoCloseAllNow(Player& p) { incognitoCloseAll(p); }
 	private:
 
-		static constexpr int ROW_Y = 84, ROW_H = 48, ROWS_SHOWN = 7;	// 7 rows end at 420, above the hints (and the mini bar)
+		static constexpr int ROW_Y = 84, ROW_H = 48, ROWS_SHOWN = 7;	// 7 rows end at 420, above the hints
 		// the settings' rows by id: the subtitle style's, and the actions and pages that have their own code (the rest are
 		// the settings table's: SET_ROW0 + the index in settingDefs(), ui_internal.h). Shown a group at a time
 		// (settingRows), after a list of the groups. The manga reader's rows are its own page's (Page::MangaSettings):
@@ -892,9 +894,13 @@ namespace bp
 		bool sameBrightness = true;	// the setting's, kept here for settingRows (no Player there)
 		Volume volume;
 		int volumePct = -1;	// as read when the quick settings opened, then as set there
-		int quickCursor = 0;
+		// ---- Quick settings (F): a panel centred on the whole bottom screen, over the rail ----
+		int quickCursor = 0;	// a row's index; -1: the Now playing block above Volume (the cursor opens on Volume)
 		enum QuickRow { Q_VOLUME, Q_BRIGHT, Q_BOTTOM, Q_SAME, Q_WEB, Q_INCOGNITO, Q_QUIT };
 		int quickSub = 0;	// Web dashboard's row: 0 its switch, 1 New PIN (LEFT/RIGHT)
+		// the Now playing block's pieces under a finger (pressedBtn): the card (opens the player), its three keys
+		static constexpr int QUICK_NOW_CARD = 290, QUICK_NOW_PREV = 291, QUICK_NOW_PLAY = 292, QUICK_NOW_NEXT = 293;
+		Uint32 quickHoldAt = 0;	// a finger on the block's Play: held, it takes playback over from a browser
 		void closeQuick();	// (its overlay, if open: B, START, the Web button, a tap outside)
 		std::vector<int> quickRows() const;
 		bool quickKey(Button b, Player& p);
@@ -902,31 +908,48 @@ namespace bp
 		void quickAdjust(int row, int dir, Player& p);
 		void quickSlide(int row, int x, int y, Player& p);	// a finger on the row's bar: grabbed
 		void quickChoose(int row, Player& p);
+		void quickNow(Button b, Player& p);	// on the block: A play / pause, LEFT / RIGHT seek
+		void quickNowKey(int what, Player& p);	// its three touch keys
+		void quickStep(int dir, Player& p);	// L / R: previous / next, from any row
 		void drawQuick(const Player& p);
-		// the quick settings' panel: rows 62 apart, closer (56) when that many don't fit above the footer
-		// the rows' spacing: roomy while they fit above the hints, closer as rows come (seven at most: both panels'
-		// brightness apart, the dashboard, incognito mode and quit)
+		void drawQuickNow(const Player& p);
+		// the panel: 592 wide (24 from the sides), padding 16, the title's 48, the Now playing block's 64 and the
+		// rows; as tall as it needs, centred above the hint bar
+		static constexpr int QUICK_W = 592, QUICK_PAD = 16, QUICK_TITLE_H = 48, QUICK_NOW_H = 64, QUICK_GAP = 8;
 		int quickStep() const
 		{
-			int n = (int)quickRows().size();
-			return 74 + n * 62 <= 436 ? 62 : 74 + n * 56 <= 436 ? 56 : (436 - 74) / n;
+			// the rows share what the title and the block leave: roomy (52) while they fit, closer as rows come
+			int n = std::max(1, (int)quickRows().size());
+			int room = 436 - 2 * QUICK_PAD - QUICK_TITLE_H - 2 * QUICK_GAP - QUICK_NOW_H;
+			return std::min(52, std::max(24, room / n));
 		}
 		// centred on the whole panel, over the shell's rail too (the owner, 2026-11-19): a modal under its veil
 		Rect quickPanel() const
 		{
-			int h = 74 + (int)quickRows().size() * quickStep();
-			return {40, (436 - h) / 2, 560, h};
+			int h = 2 * QUICK_PAD + QUICK_TITLE_H + 2 * QUICK_GAP + QUICK_NOW_H + (int)quickRows().size() * quickStep();
+			return {24, std::max(0, (436 - h) / 2), QUICK_W, h};
 		}
+		// the Now playing block: a card above Volume; art 48, the title and its line, Prev / Play / Next at its right
+		Rect quickNowRect() const
+		{
+			Rect p = quickPanel();
+			return {p.x + QUICK_PAD, p.y + QUICK_PAD + QUICK_TITLE_H + QUICK_GAP, p.w - 2 * QUICK_PAD, QUICK_NOW_H};
+		}
+		Rect quickNowArt() const { Rect r = quickNowRect(); return {r.x + 8, r.y + 8, 48, 48}; }
+		Rect quickNowPrev() const { Rect r = quickNowRect(); return {r.x + r.w - 8 - 52 - 8 - 68 - 8 - 52, r.y + 8, 52, 48}; }
+		Rect quickNowPlay() const { Rect r = quickNowRect(); return {r.x + r.w - 8 - 52 - 8 - 68, r.y + 8, 68, 48}; }
+		Rect quickNowNext() const { Rect r = quickNowRect(); return {r.x + r.w - 8 - 52, r.y + 8, 52, 48}; }
 		Rect quickRowRect(int i) const
 		{
 			Rect p = quickPanel();
-			return {p.x + 16, p.y + 56 + i * quickStep(), p.w - 32, std::min(54, quickStep() - 2)};
+			return {p.x + QUICK_PAD, quickNowRect().y + QUICK_NOW_H + QUICK_GAP + i * quickStep(), p.w - 2 * QUICK_PAD,
+				std::min(52, quickStep() - 2)};
 		}
 		// the stepper's pieces are laid from the row's right edge, so the panel's width changes nothing they need
-		Rect quickPinBtn(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 164, r.y + (r.h - 48) / 2, 160, 48}; }
-		Rect quickMinus(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 292, r.y + (r.h - 48) / 2, 48, 48}; }
+		Rect quickPinBtn(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 164, r.y + (r.h - std::min(48, r.h)) / 2, 160, std::min(48, r.h)}; }
+		Rect quickMinus(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 292, r.y + (r.h - std::min(48, r.h)) / 2, 48, std::min(48, r.h)}; }
 		Rect quickBar(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 232, r.y + r.h / 2 - 10, 164, 20}; }
-		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 56, r.y + (r.h - 48) / 2, 48, 48}; }
+		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 56, r.y + (r.h - std::min(48, r.h)) / 2, 48, std::min(48, r.h)}; }
 		void setBrightness(Backlight::Panel panel, int permille, Player& p);
 		// (7 rows end at 386: the help's two lines at 400 stay clear of them; a longer group scrolls)
 		static constexpr int SET_Y = 92, SET_H = 46, SET_SHOWN = lay::SET_ROWS, HELP_Y = 400;
@@ -1011,7 +1034,7 @@ namespace bp
 		bool bgPlay = false;
 		bool stopPressed = false;	// the player's own Stop (takeStopPressed)
 		bool stopKeepsPage = false;	// the Manga guard's Stop: the page shown stays (takeStopKeepsPage)
-		bool playerOverPhoto = false;	// the mini bar's tap over a photo (takePlayerOverPhoto)
+		bool playerOverPhoto = false;	// the Now playing key's tap over a photo (takePlayerOverPhoto)
 		// the player shown (showPlayer) and not left since; back: where it was opened from (backFromPlayer)
 		bool onPlayer = true;
 		struct PlayerBack
@@ -1022,33 +1045,20 @@ namespace bp
 			std::string browseDir;	// the folder or playlist page it was opened from (a playlist's play moves the list's)
 			int browseTab = 0;
 		} playerBack;
-		// back to what plays (SELECT on a browse page, the bar, Now playing, B at Home): the player. False: nothing plays
+		// back to what plays (SELECT on a browse page, the rail's Now playing key, Now playing, B at Home): the player.
+		// False: nothing plays
 		bool goNowPlaying(Player& p);
 		bool nowPlayable(const Player& p) const { return p.playing() && !p.playingPhoto(); }
-		// the player the mini bar works on: main's (see mainPlayer above); without it, p
+		// the player the Now playing block and the header's marks work on: main's (see mainPlayer above); without it, p
 		Player& barPlayer(Player& p) const { return mainPlayer ? *mainPlayer : p; }
 		const Player& barPlayer(const Player& p) const { return mainPlayer ? *mainPlayer : p; }
-		// the mini bar (Now playing) along the bottom of every page but the player's own (the song or video player
-		// page, its tracks, its queue, its Info): a tap the player, its play mark play / pause (a page playing the
-		// file: the page's, held: here), a hold its menu. The comic reader and the photo viewer are pages of their
-		// own, not the player: it shows there too
-		// SELECT here goes back to what plays (the bar's right end names it), but where SELECT is the page's own key
-		// (a photo's Fit/Fill, Sound's On/Off, the reader's fullscreen) the bar doesn't name it
-		bool selectToPlayer() const { return page != Page::Main && page != Page::Sound && page != Page::MangaRead; }
-		static constexpr Rect MINI_BOX{16, 422, 608, 34};
-		static constexpr int MINI_PP = 560, MINI_BAR = 561;
-		bool miniBarShown(const Player& p) const;
-		// where the bar is now: the shell's own box on a section page (right of the rail), the old one elsewhere;
-		// and where its play mark ends (a tap left of it is the mark, the rest the bar)
-		Rect miniBox(const Player& p) const;
-		int miniMarkRight(const Player& p) const;
-		bool miniUp = false;	// shown in the last frame drawn (tileRect, the footer's line)
-		void drawMiniBar(const Player& p);
-		void miniToggle(Player& p);	// its play mark: play / pause what plays (a page's too)
-		void openNowMenu(const Player& p);
-		Uint32 miniHoldAt = 0;
-		bool playHoldMini = false;	// the Play hold (a page plays the file) is on the mini bar's play mark
-		int footY() const { return miniUp ? 468 : FOOT_Y; }
+		void miniToggle(Player& p);	// play / pause what plays (Quick settings' block, Home's card)
+		void openNowMenu(const Player& p);	// a hold on the rail's Now playing key (and Home's card): what plays' More
+		bool playHoldMini = false;	// the Play hold (a page plays the file) is on Home's Now playing card
+		int footY() const { return FOOT_Y; }
+		// the header's status cluster (the playing bars, Wi-Fi, battery, clock), as last drawn: one touch target that
+		// opens Quick settings, on every header
+		Rect statusHit{0, 0, 0, 0};
 		// the playing file's row (and Recent card): a chip ("Playing", "Paused", "In browser", "Stopped"), set each frame
 		std::string chipPath, chipPlDir;	// chipPlDir: a playlist's page (only there, of the playlists: the one playing)
 		int chipKind = 0;	// 0 none, 1 playing, 2 paused, 3 in a browser

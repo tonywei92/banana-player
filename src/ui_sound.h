@@ -17,7 +17,7 @@ namespace bp
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override;
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
-		// Ui::pointer hands this page its touches before the updater's pop-up and the mini bar, as it always did
+		// Ui::pointer hands this page its touches before the updater's pop-up, as it always did
 		bool pointerFirst() const override { return true; }
 
 		// ---- for the rest of Ui ----
@@ -25,7 +25,7 @@ namespace bp
 		void open(Player& p, bool fromSettings);
 		// the keyboard's Done on a preset's name: the player checks it first, then it closes or says what's wrong
 		void nameDone(Player& p) { eqNameDone(p); }
-		bool dialogOpen() const { return eqDialog != EQD_NONE; }	// the mini bar is not drawn under a dialog
+		bool dialogOpen() const { return eqDialog != EQD_NONE; }
 		Rect tabRect(int t) const { return soundTabRect(t); }
 
 		// two tabs, Equalizer and Effects (L/R), opened from the song's Sound button, its line, or Settings > Music

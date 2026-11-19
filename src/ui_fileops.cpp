@@ -484,7 +484,7 @@ namespace bp
 	bool Ui::Browse::clipPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (clipOp == CLIP_NONE || ui.page != Page::Browse || ui.ctxOpen || ui.kbOpen) return false;
-		lay::FilesClip l = lay::filesClipBar(lay::shell(false).body);
+		lay::FilesClip l = lay::filesClipBar(lay::shell().body);
 		if (!l.box.hit(x, y)) return false;
 		if (pt.kind == Pointer::Up)
 		{
@@ -697,7 +697,7 @@ namespace bp
 		uint64_t bytes = 0;
 		for (const std::string& p : paths) bytes += (uint64_t)std::max<long long>(0, fileSize(p));
 		bool can = clipCanPaste();
-		lay::FilesClip l = lay::filesClipBar(lay::shell(false).body);
+		lay::FilesClip l = lay::filesClipBar(lay::shell().body);
 		Kit::Clip c;
 		c.what = paths.size() == 1 ? std::string(clipOp == CLIP_COPY ? "Copy" : "Move") + " \"" + nameOf(paths.front()) + "\""
 			: std::to_string(paths.size()) + " files held";
@@ -842,7 +842,7 @@ namespace bp
 		explicit FileInfoSheet(Ui& u) : Overlay(u) {}
 		const char* name() const override { return "fileinfo"; }
 		int total() const { return 1 + (int)ui.infoRows.size(); }
-		int shown() const { return lay::fileInfoShown(lay::shell(false).body); }
+		int shown() const { return lay::fileInfoShown(lay::shell().body); }
 		void clampScroll() { scroll = std::clamp(scroll, 0, std::max(0, total() - shown())); }
 
 		bool key(Button b, Player& p) override
@@ -863,7 +863,7 @@ namespace bp
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override
 		{
 			(void)p;
-			lay::Shell s = lay::shell(false);
+			lay::Shell s = lay::shell();
 			lay::FilesHeader h = lay::filesHeader(s.header);
 			if (pt.kind == Pointer::Down)
 			{
@@ -893,7 +893,7 @@ namespace bp
 		}
 		void draw(const Player&) override
 		{
-			lay::Shell s = lay::shell(false);
+			lay::Shell s = lay::shell();
 			Kit& k = *ui.kit;
 			ui.fill({s.main.x, 0, s.main.w, H}, BG);
 			lay::FilesHeader h = lay::filesHeader(s.header);

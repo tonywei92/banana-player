@@ -591,11 +591,10 @@ namespace bp
 		showHidden = p.settings.showHiddenFolders;
 		SDL_SetRenderDrawColor(ren, BG.r, BG.g, BG.b, 255);
 		SDL_RenderClear(ren);
-		if (galleryNew) { drawGalleryNew(); return; }	// (test only: --press gallery:new)
+		if (galleryNew) { statusHit = {0, 0, 0, 0}; drawGalleryNew(); return; }	// (test only: --press gallery:new)
 		webInd = {0, 0, 0, 0};	// (drawBattery puts it back where it draws it)
-		// what plays behind the browser: its bar along the bottom, its row's chip, the header's mark (drawBattery says
-		// whether it moved)
-		miniUp = miniBarShown(p);
+		statusHit = {0, 0, 0, 0};
+		// what plays behind the browser: its row's chip, the header's mark (drawBattery says whether it moved)
 		setChip(p);
 		markAnim = false;
 		loaderShown = false;
@@ -607,7 +606,6 @@ namespace bp
 		else drawTracks(p);	// (Page::Main is an area: PlayerPage::draw)
 		if (bridged) shell->endBody(p);
 		if (shellPage) shell->draw(shell->section(p), shell->head(p), p);
-		if (miniUp && !shellPage) drawMiniBar(p);
 		browse->drawClipBar();
 		if (ctxOpen) drawBrowseMenu(p);	// (the mini bar's hold menu opens on pages of its own too)
 		if (browse->playlists->pickerOpen) browse->playlists->drawPicker();
@@ -698,6 +696,9 @@ namespace bp
 	{
 		// the clock, left of the rest (as statusLeft has it); dim while touch is locked
 		// (then the playing mark, left of it)
+		// the whole cluster is one touch target (F opens Quick settings); the globe inside keeps its own tap
+		int loud = statusLeft(p);
+		statusHit = loud < right ? Rect{loud - 8, 0, right - (loud - 8), 54} : Rect{0, 0, 0, 0};
 		auto clock = [&](int edge) {
 			std::string c = clockText(p);
 			int cr = edge - (edge == right ? 0 : 10);

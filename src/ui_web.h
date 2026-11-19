@@ -17,7 +17,7 @@ namespace bp
 		void tick(Player& p) override;
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
-		// Ui::pointer hands this page its touches before the updater's pop-up and the mini bar, as it always did
+		// Ui::pointer hands this page its touches before the updater's pop-up, as it always did
 		bool pointerFirst() const override { return true; }
 
 		// ---- for the rest of Ui ----

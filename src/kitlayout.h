@@ -148,9 +148,8 @@ namespace bp
 			Box help;	// the focused row's line(s) above the hint bar
 		};
 		// the page without the frame (the old page's own 16-unit margins). The shell variant works the same inside
-		// lay::shell(mini).body: settingsBody is that body inset to the page's margins, settingsTiles its tile area for
-		// `rows` rows of two columns, and settingsRowsIn the rows and help that fit above the body's foot (no help
-		// with the mini bar up: the body ends just under the seventh row)
+		// lay::shell().body: settingsBody is that body inset to the page's margins, settingsTiles its tile area for
+		// `rows` rows of two columns, and settingsRowsIn the rows and help that fit above the body's foot
 		Box settingsBody(Box body);
 		Box settingsTiles(Box body, int rows);
 		SettingsRows settingsRowsIn(Box body, int shown = SET_ROWS);
@@ -216,7 +215,8 @@ namespace bp
 		StatusRow statusRow(int right, const std::vector<int>& widths, int gap = 8);
 		int badgeW(int textW, bool glyph);	// a badge: padding both sides, its mark (16) and a gap before the text
 
-		// ---- the mini bar: 52 tall, 12 from the sides, 38 above the foot (8 over the 30-tall hint bar) ----
+		// ---- the mini bar's measures: no page draws it any more (the owner, 2026-11-19); Quick settings'
+		// Now playing block takes its box and its progress line ----
 		constexpr int MINI_H = 52, MINI_SIDE = SP12, MINI_FOOT = HINTS_H + SP8, MINI_MARK_W = 56, MINI_MARK_H = 42;
 		struct MiniBar
 		{
@@ -225,7 +225,7 @@ namespace bp
 			int cy = 0;
 		};
 		MiniBar miniBar();
-		// the same pieces inside `box` (the shell's mini bar sits right of the rail: lay::shell(mini).mini)
+		// the same pieces inside `box` (a Quick settings Now playing block: its progress line along the foot)
 		MiniBar miniBar(Box box);
 
 		// ---- filter chips used as filters: 44 tall (a finger's size) in a 44-tall row ----
@@ -306,7 +306,7 @@ namespace bp
 		ContinueCard continueCard(Box box);
 
 		// ======== Home and All recent (docs/redesign: home, home-first, home-stopped, recent-all) ========
-		// The content column inside lay::shell(mini).body: 12 from its sides, 6 under the header. The screens draw
+		// The content column inside lay::shell().body: 12 from its sides, 6 under the header. The screens draw
 		// inside these boxes only; their touches test the same ones.
 		constexpr int HOME_PAD = SP12, HOME_CONTINUE_H = 108, HOME_CARD_ROW_H = 100, HOME_SHORTCUT_H = 56;
 		constexpr int HOME_CARDS_MAX = 4;
@@ -326,11 +326,10 @@ namespace bp
 		// hasContinue: a Continue card over the Recent row; hasRecent: Recent has anything (else no chip strip, cards
 		// or shortcuts: the empty state); cards: how many Recent cards (at most HOME_CARDS_MAX); more: the chevron
 		// card after them (there are more than fit); chipWidths: the filter chips' measured widths. The shortcut row is
-		// left out when the body leaves no room for it; Home draws no mini bar (its Now playing card is the one place
-		// for what plays), so there its body is the same height whether something plays or not and the row stays.
+		// left out when the body leaves no room for it; Home's Now playing card is the one place for what plays.
 		HomePage homePage(Box body, bool hasContinue, bool hasRecent, int cards, bool more, const std::vector<int>& chipWidths);
 		// All recent: the filter chips' 28-tall strip under the header, then the rows (48 tall, as the list's pointers
-		// expect: their first is at Ui::ROW_Y, 84). `shown` is what fits above the hint bar (or the mini bar).
+		// expect: their first is at Ui::ROW_Y, 84). `shown` is what fits above the hint bar.
 		struct AllRecentPage
 		{
 			Box inner, chipStrip;
@@ -368,41 +367,42 @@ namespace bp
 		// previewpane.h; tests: testKitNew in tests/core_test.cpp)
 
 		// ---- Section rail: 78 wide, full height, at the panel's left ----
-		// From the top: Search's key (68 x 40, the magnifier alone), the sections (68 x 56, or 68 x 50 with seven so all
-		// show at once, 2 apart), and Settings pinned at the foot. When the sections don't fit their
-		// view, `scroll` moves them under a finger; Settings and Search stay put (components.md, Section rail).
-		constexpr int RAIL_W = 78, RAIL_CELL_W = 68, RAIL_CELL_H = 56, RAIL_CELL_H7 = 50, RAIL_GAP = 2, RAIL_PAD = 5,
-			RAIL_SEARCH_H = 40;
+		// From the top: Search's key (68 x 40, the magnifier alone), the sections (68 x 52, or 68 x 45 with seven so
+		// all show at once, 2 apart), the Now playing key (68 x 44, above Settings, its slot kept while nothing plays)
+		// and Settings pinned at the foot (68 x 50). When the sections don't fit their view, `scroll` moves them under
+		// a finger; Settings and Search stay put (components.md, Section rail).
+		constexpr int RAIL_W = 78, RAIL_CELL_W = 68, RAIL_CELL_H = 52, RAIL_CELL_H7 = 45, RAIL_GAP = 2, RAIL_PAD = 5,
+			RAIL_SEARCH_H = 40, RAIL_SETTINGS_H = 50, RAIL_NP_H = 44;
 		struct Rail
 		{
 			Box area;	// the whole strip (its rule is its last unit)
 			Box search;	// Search's key, pinned at the top
-			Box view;	// the sections' viewport, between Search and the START cap
+			Box view;	// the sections' viewport, between Search and the Now playing key
 			std::vector<Box> cell;	// every section, top down (clipped to `view` when drawn)
+			Box np;	// Now playing, pinned above Settings (its slot is always there)
 			Box settings;	// pinned at the foot, never scrolled
-			int cellH = RAIL_CELL_H;	// 50 when seven or more show
+			int cellH = RAIL_CELL_H;	// 45 when seven or more show
 			int scroll = 0, maxScroll = 0;	// the sections' offset, in units from their top
 		};
 		Rail rail(int sections, int h = PANEL_H, int scroll = 0);
-		// the cell under (x, y): 0..cells-1, `cells` for Settings, -1 none (Search is the shell's own key)
+		// the cell under (x, y): 0..cells-1, `cells` for Settings, -1 none (Search and Now playing are the shell's keys)
 		int railAt(const Rail& r, int x, int y);
 		// L / R: the section before / after, round (n: the sections L / R step through; Search is passed by)
 		int railStep(int at, int dir, int n);
 
 		// ---- The shell: a section's page (Home, Files, Music, Playlists, Books, Manga, Network, Settings) ----
-		// The rail at the left; right of it the header (54), the body (from 6 under the header), the hint bar
-		// (HINTS_H) at the foot. While something plays the mini bar sits over the body's foot (MINI_H, MINI_FOOT above
-		// the panel's foot), so the body ends 8 above it. The shared contract the redesigned screens draw in: a screen
-		// lays out its own content in `body` and never draws over the rail, the header or the hints
+		// The rail at the left; right of it the header (54), the body (from 6 under the header) and the hint bar
+		// (HINTS_H) at the foot. No page has a bar at its foot any more (the owner, 2026-11-19): the body runs to the
+		// hint bar, as it does on Home. The shared contract the redesigned screens draw in: a screen lays out its own
+		// content in `body` and never draws over the rail, the header or the hints
 		// (docs/redesign/components.md, Frame).
 		constexpr int SHELL_HEAD = 54;
 		struct Shell
 		{
 			Box rail{}, main{};	// the rail's strip; everything right of it
 			Box header{}, body{}, hints{};
-			Box mini{0, 0, 0, 0};	// the mini bar's box (w = 0 when nothing plays)
 		};
-		Shell shell(bool mini);
+		Shell shell();
 
 		// ---- A playlist's page (docs/redesign: playlists, playlist, playlist-select, playlist-move, liked) ----
 		// Inside `body`: an optional row of keys (Play, Shuffle and Add; Liked has no Add), then the rows, and at the
@@ -511,7 +511,7 @@ namespace bp
 
 		// ---- Files (docs/redesign/src/screens.js: files, files-playing, select) ----
 		// The page's rows are 52 tall, the footer's line 24, the select bar 56 at the body's foot. The body comes
-		// from lay::shell, so the rows never run under the rail, the header, the hints or the mini bar.
+		// from lay::shell, so the rows never run under the rail, the header or the hints.
 		constexpr int FILE_ROW_H = 52, FILE_FOOT_H = 24, FILE_SELBAR_H = 56, FILE_SELBAR_GAP = 8;
 		struct FilesPage
 		{
@@ -521,7 +521,7 @@ namespace bp
 			Box row(int i) const { return {rows.x, rows.y + i * FILE_ROW_H, rows.w, FILE_ROW_H}; }
 		};
 		// rows: how many the list has (the ones that fit are shown); select: the bar takes the foot; footer: a
-		// line under the rows (not with the bar, and not while the mini bar shows: the caller leaves it out)
+		// line under the rows (not with the bar: the caller leaves it out)
 		FilesPage filesPage(Box body, int rows, bool select, bool footer);
 		// the header it draws before the shell lands: the back key, the More key, the crumb and title beside them
 		// (the mock-up's .hd .tt), and the room the status and the read-only badge leave at its right
@@ -532,8 +532,7 @@ namespace bp
 			int right = 0;	// where the title and crumb must end (the status cluster's left)
 		};
 		FilesHeader filesHeader(Box header);
-		// the clip bar (a held file or several) at the body's foot: the body of a shell with no mini bar (a held
-		// file folds the mini bar away); what is held, and Put here (SELECT) and Cancel (X)
+		// the clip bar (a held file or several) at the body's foot: what is held, and Put here (SELECT) and Cancel (X)
 		struct FilesClip
 		{
 			Box box, text, key[2];

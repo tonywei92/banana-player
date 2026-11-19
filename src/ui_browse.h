@@ -78,7 +78,7 @@ namespace bp
 
 		// ---- the Files page (docs/redesign: files, files-playing, select, actions, delete, empty-folder, info,
 		// readonly, files-music): the local folders only (the cards' places and the folders under them). It draws in
-		// lay::shell(p).body; Home, Playlists, Network and All recent keep Ui's list (drawTracks). ----
+		// lay::shell().body; Home, Playlists, Network and All recent keep Ui's list (drawTracks). ----
 		bool filesPage() const;	// this page, a local folder (or the places), no menu
 		std::string filesTitle() const;
 		std::string filesCrumb() const;
@@ -153,7 +153,7 @@ namespace bp
 		void filePaste(Player& p);
 		void drawClipBar();
 		void fileRenameDone(Player& p);
-		Rect clipBtn(int i) const { lay::FilesClip c = lay::filesClipBar(lay::shell(false).body); return c.key[i]; }
+		Rect clipBtn(int i) const { lay::FilesClip c = lay::filesClipBar(lay::shell().body); return c.key[i]; }
 
 		// ---- the Network tab's other pages (ui_forms.cpp), as the browser's (browseDir FORMDIR, FINDNET) ----
 		// A connection's form: its rows (form*), each opening the keyboard or stepping through its choices

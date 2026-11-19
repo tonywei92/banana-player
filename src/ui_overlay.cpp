@@ -431,13 +431,20 @@ namespace bp
 
 		void draw(const Player& p) override { ui.drawQuick(p); }
 
-		std::string signature(const Player&) const override
+		std::string signature(const Player& p) const override
 		{
 			// the cursor, the volume, a button under a finger and the web row's half aren't settings; nor are the
-			// screens' levels (the keys change them too), which the backlight holds
+			// screens' levels (the keys change them too), which the backlight holds. The Now playing block's state,
+			// its art, its title and its place are (its progress line moves with the seconds)
+			const Player& bp = ui.barPlayer(p);
+			bool live = ui.nowPlayable(bp);
+			char now[320];
+			snprintf(now, sizeof now, "|np%d %d %d %d %ld %ld %s|%s|", live, live && bp.paused, (int)bp.playingAudio(),
+				bp.error.empty() ? 0 : 1, (long)std::floor(ui.shownPosition(bp)), (long)bp.duration,
+				live ? bp.artPlaceholderKey().c_str() : "", live ? bp.title.c_str() : "");
 			return std::to_string(ui.quickCursor) + " " + std::to_string(ui.volumePct) + " " + std::to_string(ui.pressedBtn) +
 				" " + std::to_string(ui.backlight.permille(Backlight::TOP)) + "," + std::to_string(ui.backlight.permille(Backlight::BOTTOM)) +
-				" " + std::to_string(ui.quickSub);
+				" " + std::to_string(ui.quickSub) + now + (live && !bp.paused ? std::to_string(SDL_GetTicks() / 166) : "");
 		}
 	};
 

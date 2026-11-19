@@ -388,10 +388,11 @@ namespace bp
 
 		// ==== list and page pieces (ui_kit_variants.cpp; docs/notes/2026-11-19-kit-inventory.md): the Search
 		// field and its result row, a Music/Videos row, a Books cover tile, a page's own line, and the state pills
-		// the mini bar and Home's Now playing card share. Layouts: kitlayout.h's same block. ====
+		// the mini bar's state pills and Home's Now playing card share. Layouts: kitlayout.h's same block. ====
 		// The state pills are the kit's one helper that reads the Player (a pill's words are the same everywhere):
 		// only what is away from normal, in yellow: the speed, Shuffle or Repeat one, the EQ preset and the sound
-		// effect, and where a browser plays it. Home's Continue card and the shell's mini bar both show these
+		// effect, and where a browser plays it. Home's Continue card, Quick settings' Now playing block and the
+		// shell's Now playing key (its bars) show these
 		// (components.md, "Pill", "Mini bar", "Continue card"); all are Live
 		std::vector<std::string> statePills(const Player& p) const;
 		// Search's field: 48 tall, focused (ACCENT edge) while the keyboard has it; value or placeholder; a key cap
@@ -469,7 +470,7 @@ namespace bp
 	// (previewpane.h). Not used by a screen yet: --press gallery:new draws them (docs/workflow.md).
 	struct Ui::KitNew
 	{
-		// ---- Section rail: RAIL ground, a rule on its right, Search at the top, Settings under a START cap ----
+		// ---- Section rail: RAIL ground, a rule on its right, Search at the top, Now playing above Settings ----
 		struct RailItem
 		{
 			const Glyph* glyph = nullptr;
@@ -477,9 +478,14 @@ namespace bp
 			bool warn = false;	// a red mark: opening it would stop what plays
 		};
 		// active: the section lit (sections.size(): Settings; -1 none); pressed: the cell under a finger (sections.size():
-		// Settings); searchLit: Search shows (its key filled); searchPressed: the key under a finger
+		// Settings; -2: Now playing); searchLit: Search shows (its key filled); searchPressed: the key under a finger.
+		// npArt: the Now playing key's art (a song's placeholder key, or what plays), empty when nothing is loaded (the
+		// key's slot is drawn empty then); npPlaying / npPaused: its bars, moving or a pause mark. Its place is always
+		// kept, so the cells never change height when playback starts.
+		static constexpr int NP_PRESSED = -2;
 		static void rail(Kit& k, const lay::Rail& r, const std::vector<RailItem>& sections, const RailItem& settings, int active,
-			int pressed = -1, bool searchLit = false, bool searchPressed = false);
+			int pressed = -1, bool searchLit = false, bool searchPressed = false, bool npPlaying = false, bool npPaused = false,
+			const std::string& npArt = "");
 
 		// ---- Book bar: Book mode's bottom sheet, drawn upright as the handheld is held ----
 		struct BookKey

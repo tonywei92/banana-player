@@ -340,8 +340,7 @@ namespace bp
 			Box a = settingsBody(body);
 			l.area = {a.x, a.y, a.w, std::max(0, shown * SET_ROW_H - 2)};
 			l.help = {0, 0, 0, 0};
-			// the help's two lines sit 50 above the body's foot, when the rows leave that much room; with the mini bar
-			// up the body ends just under the seventh row and the rows take the page
+			// the help's two lines sit 50 above the body's foot, when the rows leave that much room
 			int helpTop = body.y + body.h - 50;
 			if (helpTop >= l.area.y + l.area.h + 2) l.help = {a.x + 8, helpTop, std::max(0, a.w - 16), 2 * 22};
 			return l;
@@ -464,20 +463,14 @@ namespace bp
 
 		int badgeW(int textW, bool glyph) { return 2 * BADGE_PAD + (glyph ? 16 + 4 : 0) + textW; }
 
-		Shell shell(bool mini)
+		Shell shell()
 		{
 			Shell s;
 			s.rail = {0, 0, RAIL_W, PANEL_H};
 			s.main = {RAIL_W, 0, PANEL_W - RAIL_W, PANEL_H};
 			s.header = {RAIL_W, 0, s.main.w, SHELL_HEAD};
 			s.hints = {RAIL_W, PANEL_H - HINTS_H, s.main.w, HINTS_H};
-			int foot = s.hints.y;
-			if (mini)
-			{
-				s.mini = {RAIL_W + MINI_SIDE, PANEL_H - MINI_FOOT - MINI_H, s.main.w - 2 * MINI_SIDE, MINI_H};
-				foot = s.mini.y - SP8;
-			}
-			s.body = {RAIL_W, SHELL_HEAD + SP6, s.main.w, foot - SHELL_HEAD - SP6};
+			s.body = {RAIL_W, SHELL_HEAD + SP6, s.main.w, s.hints.y - SHELL_HEAD - SP6};
 			return s;
 		}
 
