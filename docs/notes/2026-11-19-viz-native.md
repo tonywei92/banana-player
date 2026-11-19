@@ -124,7 +124,8 @@ Radial, whose replacements were Dots and Steps, too). The six new ids (`ribbon`,
   Grid keeps 17 rows in a ring, one every 0.1 s (a long gap gives one row, not a burst); Sparks a fixed pool of 400
   (`VizStyleState::sparks`, packed: a dead one swapped for the last; nothing allocated a frame); Starfield 160 stars;
   the chance (spawns, star places) is a xorshift in the state, the same run to run (tests).
-- **Pocket console** natively: its graph's LCD as shapes (no texture, no picture): the screen box, 15 bars of 4-dot
+- **Pocket console** natively (redesigned since: `2026-11-19-pocket-console-redesign.md`; what follows is the first
+  native one): its graph's LCD as shapes (no texture, no picture): the screen box, 15 bars of 4-dot
   columns (the ink the lower two thirds, mid the top third, the caps and the floor), the 1-unit grid (80 + 60 lines)
   over everything, the four shades from `pocketInks()` read each frame. Its bands: 15, 40 Hz..8 kHz, contrast pushed
   but no bed cut (as its graph). Alone, its lines (pixel type, its ink) sit in a screen-coloured ASS box (the shapes

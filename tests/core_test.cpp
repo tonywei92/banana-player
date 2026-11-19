@@ -6511,20 +6511,45 @@ static void testVizNative()
 	float big = 0;
 	for (auto& q : r) if (q.kind == 1) big = std::max(big, q.y1);
 	CHECK(big > small * 2);
-	// Pocket console: the screen, the grid (80 + 60 lines alone), the floor; full, the bars' ink up to row 14
+	// Pocket console: the bezel round a 75-dot screen (the dots' gaps 75 + 56 lines of the screen's colour alone), nothing blended, every dot on the
+	// screen; full, a bar 32 rows of one ink, its top row 15; let go, its cap (mid) rides the held peak above it
 	st.reset(VIS_POCKET);
 	vizShapes(st, false, r);
-	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1);
-	CHECK_EQ(inksOf(r, VI_P_GRID), 80 + 60);
+	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1 + 75 + 56);
+	CHECK_EQ(inksOf(r, VI_P_GRID), 0);
+	const int idle = inksOf(r, VI_P_INK);	// (the heart and the note)
+	for (auto& q : r) CHECK(!(q.ink == VI_P_MID && q.x1 - q.x0 == 8 && q.y1 - q.y0 == 8));
 	for (int i = 0; i < 15; i++) st.targets[i] = VN_TOP;
+	st.beats++;
 	vizStep(st, 0.016);
+	CHECK_EQ(st.pkPulse, 1.0f);
 	vizShapes(st, false, r);
+	int rays = 0;
+	for (auto& q : r) if (q.ink == VI_P_MID && q.x1 - q.x0 == 8 && q.y1 - q.y0 == 8) rays++;
+	CHECK_EQ(rays, 4);	// (the sun's, on the beat; none before it)
+	CHECK_EQ(inksOf(r, VI_P_INK) > idle, true);
 	float inkTop = 480;
-	for (auto& q : r) if (q.ink == VI_P_MID && q.x0 == 16 && q.y1 < 470) inkTop = std::min(inkTop, q.y0);
-	CHECK_EQ(inkTop, 14 * 8.0f);
-	vizShapes(st, true, r);	// the band: no screen, the bright pair, the grid in BG
-	CHECK_EQ(inksOf(r, VI_P_SCREEN), 0);
-	CHECK(inksOf(r, VI_P_LIGHT) == 15 && inksOf(r, VI_BG) == 80 + 25);
+	bool onScreen = true;
+	for (auto& q : r)
+	{
+		if (q.ink == VI_P_INK && q.x0 == 20 + 8 && q.x1 == 20 + 4 * 8) inkTop = std::min(inkTop, q.y0);
+		if (q.alpha < 1 || q.kind != 0) onScreen = false;
+		if (q.ink != VI_P_BEZEL && q.ink != VI_P_EDGE && (q.x0 < 20 || q.x1 > 620 || q.y0 < 16 || q.y1 > 464)) onScreen = false;
+	}
+	CHECK_EQ(inkTop, 16 + 15 * 8.0f);
+	CHECK(onScreen);
+	for (int i = 0; i < 15; i++) st.targets[i] = 0;
+	vizStep(st, 0.2);	// (the bars are down; the caps a fifth of a second into their fall)
+	CHECK(st.levels[0] == 0 && st.holds[0] > VN_TOP * 0.9f && st.pkPulse < 1);
+	vizShapes(st, false, r);
+	int caps = 0;
+	for (auto& q : r) if (q.ink == VI_P_MID && q.x1 - q.x0 == 3 * 8 && q.y1 - q.y0 == 8 && q.y0 < 16 + 20 * 8) caps++;
+	CHECK_EQ(caps, 15);
+	vizShapes(st, true, r);	// the band: the same screen, 23 dots tall under row 280; no sun
+	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1 + 75 + 23);
+	onScreen = true;
+	for (auto& q : r) if (q.y0 < 280) onScreen = false;
+	CHECK(onScreen);
 
 	// the five fun ones (2026-11-19): all native, Rain check and Sleepy moon over the whole panel
 	for (int v : {VIS_BOUNCY, VIS_ROCKET, VIS_RAIN, VIS_MOON, VIS_DANCE}) CHECK(vizNativeStyle(v));

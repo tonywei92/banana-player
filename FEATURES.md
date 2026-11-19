@@ -590,9 +590,13 @@ Songs show their title, artist and album on the top screen. While a song plays:
   bass on the left, each with a cap in the theme's text colour that stays at the bar's highest point and slowly falls
   back, over a faint grid), **Ribbon** (the spectrum as one smooth glowing line, bass to treble, a soft fade beneath
   it and a slower line behind showing where the song has been sitting), **Mirror bars** (the spectrum's bars growing
-  up and down from a faint centre line), **Pocket console** (Peaks on an old handheld's screen: 15 bars of chunky dots
-  in four shades, with falling caps; alone, the title is in the same ink in pixel type. In Yellow the old handheld's
-  greens; in another theme four shades of its accent on a screen tinted with it), **Horizon** (the spectrum as a
+  up and down from a faint centre line), **Pocket console** (a little pocket game screen in a thin bezel, its
+  corners cut in steps, everything on it made of chunky dots and kept clean: 15 bars of one ink, each with a cap that
+  stays at its highest point and falls back, standing on a road whose dashes pass by faster the louder the song is.
+  Alone, the title is on the screen in the same ink in pixel type, a sun at the top right swells with the bass and
+  throws four rays on each beat, turning from beat to beat, and at the foot a heart beats and a note hops in time; in
+  Art + visualizer the screen is a strip along the foot with the bars and the road. In Yellow the screen is four
+  greens; in another theme shades of its accent on a screen tinted with it), **Horizon** (the spectrum as a
   mirrored skyline, the bass in the middle, on a horizon line with a low sun behind and a striped reflection below),
   **Grid** (a floor in perspective: the front ridge is the spectrum now, bass in the middle, and each ridge behind it
   a moment ago, rolling to the horizon and fading), **Starfield** (stars streaming out of the middle: quiet passages
@@ -658,8 +662,9 @@ With Album art only, Art + visualizer and None the top screen takes the theme: i
 in a light theme) and the lines are in its text colours; every style alone (Visualizer only) is drawn on it too. With the art (Album art only, Art + visualizer) the art moves left (240 units; 224 above the band) and the three
 lines sit to its right, centred on the art's middle; the art and the lines are centred together on their real width, so
 a short title doesn't leave them hugging the left, and nothing is ever written over the art. Over Visualizer only the
-lines are at the top left, outlined in the theme's background colour (Pocket console: in its own green pixel type,
-outlined in its screen's colour), with the visualizer passing under them; a long title's moving line fades at its
+lines are at the top left, outlined in the theme's background colour (Pocket console: on its screen, in its own ink
+and pixel type, outlined in its screen's colour, and kept short of its sun: a longer title moves or ends in an
+ellipsis sooner), with the visualizer passing under them; a long title's moving line fades at its
 edges by the text itself fading, not by a band of background over the visualizer. An audiobook's or a song's
 chapter is a line in the accent under the title. **None** shows the title in the middle (then "artist · album"). **Visualizer frame
 rate** (30, 45 or 60 fps; 45 by default) is how often the styles draw (each frame on a steady beat of its own,

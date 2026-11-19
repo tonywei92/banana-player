@@ -281,13 +281,21 @@ namespace bp
 		using theme::Rgb;
 		using theme::mix;
 		// Yellow: the old handheld's four greens, and the lime pair over the art
+		const Rgb bg = theme::BG, ac = theme::ACCENT, tx = theme::TEXT;
+		const bool dark = colourContrast(bg, Rgb{0, 0, 0}) < colourContrast(bg, Rgb{255, 255, 255});
+		// the frame's shades, from the first four: the ghost a little ink on the screen, the bezel the ground a step
+		// towards the text (the console's face, quiet), the edge the screen's shadowed side
+		auto framed = [&](PocketInks p) {
+			p.ghost = mix(p.screen, p.ink, 15);
+			p.bezel = mix(bg, tx, dark ? 9 : 16);
+			p.edge = mix(p.screen, dark ? bg : p.ink, dark ? 70 : 45);
+			return p;
+		};
 		if (theme::currentTheme() == 0)
-			return {{0x0F, 0x38, 0x0F}, {0x30, 0x62, 0x30}, {0x9B, 0xBC, 0x0F}, {0x93, 0xB2, 0x0E}, {0x8B, 0xAC, 0x0F}, {0xD4, 0xF7, 0x5A}};
+			return framed({{0x0F, 0x38, 0x0F}, {0x30, 0x62, 0x30}, {0x9B, 0xBC, 0x0F}, {0x93, 0xB2, 0x0E}, {0x8B, 0xAC, 0x0F}, {0xD4, 0xF7, 0x5A}});
 		// a little LCD in the theme: the screen the ground tinted with the accent, the ink the accent (a dark theme: a
 		// lit screen) or the accent darkened towards the text (a light one), at 3:1 on the screen at least; mid between
 		// them; the grid a hair off the screen. Over the art (the band on BG): the ink at 3:1 on BG, and the accent
-		const Rgb bg = theme::BG, ac = theme::ACCENT, tx = theme::TEXT;
-		const bool dark = colourContrast(bg, Rgb{0, 0, 0}) < colourContrast(bg, Rgb{255, 255, 255});
 		PocketInks p{};
 		p.screen = mix(bg, ac, dark ? 25 : 18);
 		p.ink = inkOn(dark ? ac : mix(ac, tx, 35), p.screen, tx, 3.0);
@@ -295,7 +303,7 @@ namespace bp
 		p.grid = mix(p.screen, dark ? bg : p.ink, dark ? 30 : 8);
 		p.light = inkOn(dark ? ac : mix(ac, tx, 35), bg, tx, 3.0);
 		p.bright = colourContrast(ac, bg) >= 3.0 && ac != p.light ? ac : mix(p.light, tx, 45);
-		return p;
+		return framed(p);
 	}
 
 	static std::string pocketGraph(bool overCover)

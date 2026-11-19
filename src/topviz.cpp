@@ -426,7 +426,7 @@ namespace bp
 			std::vector<VizRect>& shapes = g.shapes;
 			shapes.clear();
 			vizShapes(nativeState, shown.nativeBand(), shapes);
-			// the theme's inks, read each frame: a theme change shows at once (Pocket console's four shades too)
+			// the theme's inks, read each frame: a theme change shows at once (Pocket console's shades too)
 			const PocketInks pk = nativeState.vis == VIS_POCKET ? pocketInks() : PocketInks{};
 			auto inkOf = [&pk](const VizRect& r, unsigned char* c) {
 				theme::Rgb k;
@@ -443,6 +443,9 @@ namespace bp
 				case VI_P_GRID: k = pk.grid; break;
 				case VI_P_LIGHT: k = pk.light; break;
 				case VI_P_BRIGHT: k = pk.bright; break;
+				case VI_P_GHOST: k = pk.ghost; break;
+				case VI_P_BEZEL: k = pk.bezel; break;
+				case VI_P_EDGE: k = pk.edge; break;
 				case VI_DIM: k = theme::DIM; break;
 				case VI_BUTTON: k = theme::BUTTON; break;
 				case VI_TEXT: k = theme::TEXT; break;

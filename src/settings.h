@@ -33,7 +33,8 @@ namespace bp
 	// Peaks Banana: the same in the theme's colours (ACCENT bars, TEXT caps), offered as "Peaks" (the coral one retired)
 	// Bars, Waves and Spectrum are retired, their graphs and enum values kept: nothing offers them and a setting
 	// naming one reads as Peaks; VIS_SHOWN lists what's offered, in order
-	// Pocket: Peaks as an old handheld's screen, four greens on a grid of chunky dots
+	// Pocket: a little LCD in a bezel, a clean scene of chunky dots: 15 dot bars with caps on a road that passes by, a
+	// sun that beats, a heart and a note
 	// and the styles a file each (src/viz_*.cpp, declared in src/viz_more.h): a hi-fi LED meter, Synthwave, Banana
 	// stack, Night city, a phosphor oscilloscope, Heartbeat, Aurora, Turntable, Pixel sea, Disco ball, Banana dancer,
 	// Jelly wobble, Tube man, Washing machine. Peaks (coral), Oscilloscope, Turntable, Disco ball, Hi-fi LED,
@@ -98,10 +99,12 @@ namespace bp
 	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir = "", int fps = 60);
 	// the same before vizAtFps, with its cacheable lut and lut2 marked (vizCacheLuts, src/vizcache.h, makes it a graph)
 	std::string visualizerGraphMarked(int vis, bool overCover, const std::string& mapsDir = "");
-	// Pocket console's screen in the theme (docs/notes/2026-11-19-viz-theme.md): its ink (a bar), mid (a cap, a bar's
-	// top, the floor) and screen; over the art its two lit inks. Yellow: the old handheld's greens, as before. The
-	// song's lines over it (Visualizer only) are drawn in ink and mid
-	struct PocketInks { theme::Rgb ink, mid, screen, grid, light, bright; };
+	// Pocket console's screen in the theme (docs/notes/2026-11-19-viz-theme.md): its ink (a bar, the heart, the note),
+	// mid (a cap, the floor, the sun) and screen; light and bright are its graph's lit pair over the art (the network
+	// fallback's). Yellow: four greens, as before. The song's lines over it (Visualizer only) are drawn in ink and mid
+	// The redesign's (docs/notes/2026-11-19-pocket-console-redesign.md): ghost (the faint things: the sun's halo, the
+	// road's dashes), bezel (the frame round the screen) and edge (the screen's recess, a line)
+	struct PocketInks { theme::Rgb ink, mid, screen, grid, light, bright, ghost, bezel, edge; };
 	PocketInks pocketInks();
 	// a theme colour helper the styles share: WCAG contrast, and `c` moved towards `to` till it reaches `ratio` on `on`
 	double colourContrast(theme::Rgb a, theme::Rgb b);
