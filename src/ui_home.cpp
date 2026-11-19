@@ -48,6 +48,23 @@ namespace bp
 			if (dot != std::string::npos && dot > 0) n.erase(dot);
 			return n;
 		}
+
+		// the mini bar's state pills, for Home's Now playing card (components.md: only what is away from normal, in
+		// yellow): speed, Repeat one (a video), Shuffle (a song), the EQ preset and the effect, and where a browser
+		// plays it
+		void homeStatePills(const Player& p, const Ui& ui, std::vector<std::string>& out)
+		{
+			const Settings& st = p.settings;
+			if (std::fabs(p.speed - 1.0) > 1e-6) out.push_back(speedLabel(p.speed));
+			if (p.playingAudio())
+			{
+				if (st.shuffle) out.push_back("Shuffle");
+				if (st.eqOn) out.push_back(st.eqPreset.empty() ? CUSTOM_NAME : st.eqPreset);
+				if (st.soundFx != SoundFx::None) out.push_back(FX_SHORT[std::clamp((int)st.soundFx, 0, SOUNDFX_COUNT - 1)]);
+			}
+			else if (st.loop == LOOP_ONE) out.push_back("Repeat one");
+			if (ui.pageIsOut() && !ui.pageName().empty()) out.push_back("Playing in " + ui.pageName());
+		}
 	}
 
 	// ---- listing Recent ----
@@ -296,6 +313,7 @@ namespace bp
 		// no finger down (a hold took the card's More sheet, or a lift was taken elsewhere): no pressed piece stays lit
 		if (!homeTouch && !homeHoldAt)
 		{
+			resumeHoldAt = 0;
 			pressedContinue = pressedResume = false;
 			pressedCard = pressedShortcut = pressedChip = pressedEmptyKey = -1;
 		}
@@ -324,36 +342,33 @@ namespace bp
 			c.shown = c.live = true;
 			c.path = p.currentPath();
 			c.label = "Now playing";
-			c.key = "Go to it";
+			// a page the output: the session's wish is the state shown (the player's pause follows it)
+			c.paused = ui.predicting(p) ? !ui.pagePlaying() : p.paused;
+			c.key = c.paused ? "Play" : "Pause";
 			if (const RecentItem* it = findRecent(c.path))
 			{
 				// the tag's title when mpv has one (a song's "Song 2", not its file's "song2"), as the mini bar and
 				// the player screen say it; the card's own name is the fallback
 				c.title = p.playingAudio() && !p.title.empty() ? p.title : it->name;
 				c.kind = it->kind;
-				c.note = it->sub + (it->where.empty() ? "" : " \xC2\xB7 " + it->where);
 				c.frac = it->frac;
 				c.artKey = it->name;
 			}
 			else
 			{
 				c.title = !p.title.empty() ? p.title : cardTitle(c.path);
-				c.kind = p.playingAudio() ? &G_NOTE : p.playingPhoto() ? &G_PICTURE : &G_FILM;
+				c.kind = p.playingAudio() ? &G_NOTE : &G_FILM;
 				c.artKey = c.title;
-				c.note = formatTime(std::max(0.0, ui.shownPosition(p)));
-				if (p.duration > 0) c.note += " / " + formatTime(p.duration);
-				std::string w = ui.whereOf(parentFolder(c.path));
-				w = w.substr(0, w.find(" / "));
-				if (!w.empty()) c.note += " \xC2\xB7 " + w;
 			}
+			// the note is the time, then the mini bar's state pills (the card is Home's one place for what plays)
+			double pos = std::max(0.0, ui.shownPosition(p));
+			c.note = formatTime(pos);
 			if (p.duration > 0)
 			{
-				c.frac = std::clamp(std::max(0.0, ui.shownPosition(p)) / p.duration, 0.0, 1.0);
-				c.note = formatTime(std::max(0.0, ui.shownPosition(p))) + " / " + formatTime(p.duration);
-				std::string w = ui.whereOf(parentFolder(c.path));
-				w = w.substr(0, w.find(" / "));
-				if (!w.empty()) c.note += " \xC2\xB7 " + w;
+				c.note += " / " + formatTime(p.duration);
+				c.frac = std::clamp(pos / p.duration, 0.0, 1.0);
 			}
+			homeStatePills(p, ui, c.pills);
 			return c;
 		}
 		auto fromResume = [&](const ResumeEntry& e) {
@@ -410,7 +425,10 @@ namespace bp
 
 	void Ui::Home::openContinue(const Continue& c, Player& p)
 	{
-		if (c.shown && !c.path.empty()) ui.openFile(c.path, p);
+		if (!c.shown || c.path.empty()) return;
+		// what plays: the card is its way back to the player; nothing loaded: the place it was left at
+		if (c.live) { ui.showPlayer(); return; }
+		ui.openFile(c.path, p);
 	}
 
 	void Ui::Home::openCard(int i, Player& p)
@@ -647,6 +665,7 @@ namespace bp
 			homeDownOff = 0;
 			homePress = -1;
 			homeHoldAt = 0;
+			resumeHoldAt = 0;
 			pressedContinue = pressedResume = false;
 			pressedCard = pressedShortcut = pressedChip = pressedEmptyKey = -1;
 			if (c.shown && hp.cont.hit(x, y))
@@ -654,6 +673,20 @@ namespace bp
 				homeZone = HOME_CONTINUE;
 				pressedContinue = true;
 				pressedResume = lay::continueCard(hp.cont).key.hit(x, y);
+				// the live card's key held takes over from a page that plays the file (as the mini bar's mark does);
+				// otherwise a hold anywhere on the card, the key included, opens its More
+				resumeHoldAt = pressedResume && c.live ? SDL_GetTicks() : 0;
+				if (!(pressedResume && c.live && ui.pageDrives(ui.barPlayer(p))))
+				{
+					homePress = HOME_PRESS_CONTINUE;
+					homeHoldAt = SDL_GetTicks();
+				}
+				else
+				{
+					ui.playHoldAt = SDL_GetTicks();
+					ui.playHoldMini = true;
+					ui.playHoldTouch = false;
+				}
 				return false;
 			}
 			if (has && hp.chipStrip.hit(x, y))
@@ -718,11 +751,33 @@ namespace bp
 		homeMoved = false;
 		if (moved)
 		{
+			resumeHoldAt = 0;
+			ui.playHoldAt = 0;
+			ui.playHoldMini = false;
 			pressedContinue = pressedResume = false;
 			pressedCard = pressedShortcut = pressedChip = pressedEmptyKey = -1;
 			return false;
 		}
-		if (pressedResume && hp.cont.hit(x, y)) { openContinue(c, p); }
+		if (pressedResume && hp.cont.hit(x, y))
+		{
+			bool key = lay::continueCard(hp.cont).key.hit(x, y);
+			Uint32 at = resumeHoldAt;
+			resumeHoldAt = 0;
+			// the hold fired in tick() at the threshold (a browser's file is the handheld's now): its lift does nothing
+			bool held = c.live && at && SDL_GetTicks() - at >= PLAY_HOLD_MS;
+			ui.playHoldAt = 0;
+			ui.playHoldMini = false;
+			if (key && c.live && held)
+			{
+				// the hold fired in tick() already (a page's file is the handheld's now); a lift in the same frame it
+				// came due takes over here instead
+				Player& bp = ui.barPlayer(p);
+				if (ui.pageDrives(bp)) ui.takeOver(bp);
+			}
+			else if (key && c.live) ui.miniToggle(p);
+			else if (key && !c.live) openContinue(c, p);
+			else if (!key) openContinue(c, p);	// the rest of the card: the player
+		}
 		else if (pressedContinue && hp.cont.hit(x, y)) { openContinue(c, p); }
 		else if (pressedChip >= 0 && lay::filterAt(hp.chips, x, y) == pressedChip) setRecentFilter(pressedChip);
 		else if (pressedCard >= 0)
@@ -812,9 +867,15 @@ namespace bp
 			return h;
 		}
 		Continue c = continueOf(p);
-		if (homeZone == HOME_CONTINUE && c.shown) h.push_back({"A", c.key});
+		// A's word follows what has the focus: the card goes back to what plays, a card that is what plays too (A
+		// there is openFile's way back), any other plays a file
+		bool onPlaying = homeZone == HOME_CARDS && homeStrip >= 0 && homeStrip < (int)recent.size() && p.playing() &&
+			!p.playingPhoto() && recent[homeStrip].path == p.currentPath();
+		if (homeZone == HOME_CONTINUE && c.shown) h.push_back({"A", c.live ? "Go to it" : c.key});
 		else if (homeZone == HOME_SHORTCUTS) h.push_back({"A", "Open"});
-		else h.push_back({"A", c.live ? "Go to it" : "Play"});
+		else h.push_back({"A", onPlaying ? "Go to it" : "Play"});
+		// the mini bar is not drawn on Home: SELECT's way back to what plays is named here instead
+		if (c.live) h.push_back({"SELECT", "Now playing"});
 		h.push_back({"X", "More"});
 		h.push_back({"B", "Quit"});
 		h.push_back({"START", "Menu"});
@@ -853,7 +914,11 @@ namespace bp
 			clearArmedAt && SDL_GetTicks() < clearArmedAt ? 1 : 0);
 		std::string s = b;
 		s += "|ha" + std::to_string(artSerial);	// a song's art arrived: the cards draw it now
-		if (c.shown) s += "|hc" + c.label + c.path + std::to_string((int)std::lround(c.frac * 100));
+		if (c.shown)
+		{
+			s += "|hc" + c.label + c.path + std::to_string((int)std::lround(c.frac * 100)) + c.key + (c.paused ? "p" : "");
+			for (auto& pill : c.pills) s += "|hp" + pill;	// a speed, Repeat or EQ changed: the note line draws anew
+		}
 		if (!morePath.empty()) s += "|mp" + morePath;
 		return s;
 	}
@@ -973,7 +1038,7 @@ namespace bp
 			card.title = c.title;
 			card.note = c.note;
 			card.key = c.key;
-			card.keyGlyph = &G_PLAY;
+			card.keyGlyph = c.live && !c.paused ? &G_PAUSE : &G_PLAY;
 			card.progress = c.frac;
 			card.focused = homeZone == HOME_CONTINUE;
 			card.pressed = pressedContinue;
@@ -988,13 +1053,39 @@ namespace bp
 					plain.kind = c.kind;
 					k.pictureOf(r, plain, 10);
 				}
-				// the kind over the picture's top left, as the mock-up's Continue card has it
-				const char* label = c.kind == &G_NOTE ? "MUSIC" : c.kind == &G_PICTURE ? "PHOTO"
-					: c.kind == &G_EPUB || c.kind == &G_PDF || c.kind == &G_PAGE || c.kind == &G_COMIC ? "BOOK" : "VIDEO";
-				int w = k.textW(label, F_I11B) + 12;
-				k.pill(r.x + 6 + w, r.y + 16, label, Kit::Pill::Fact);
+				if (c.live)
+				{
+					// the NOW pill over the picture's top left (the mock-up's Now playing card)
+					int gw = ui.glyphW(G_PLAY, 1), tw = k.textW("NOW", F_I11B);
+					Rect pr{r.x + 6, r.y + 7, 8 + gw + 4 + tw + 8, 17};
+					ui.fillRound(pr, ACCENT, theme::R_CAP);
+					ui.drawGlyphMid(G_PLAY, pr.x + 8 + gw / 2, pr.y + pr.h / 2, ON_ACCENT, 1);
+					ui.drawTextMid("NOW", F_I11B, ON_ACCENT, pr.x + 8 + gw + 4, pr.y + pr.h / 2);
+				}
+				else
+				{
+					// the kind over the picture's top left, as the mock-up's Continue card has it
+					const char* label = c.kind == &G_NOTE ? "MUSIC" : c.kind == &G_PICTURE ? "PHOTO"
+						: c.kind == &G_EPUB || c.kind == &G_PDF || c.kind == &G_PAGE || c.kind == &G_COMIC ? "BOOK" : "VIDEO";
+					int w = k.textW(label, F_I11B) + 12;
+					k.pill(r.x + 6 + w, r.y + 16, label, Kit::Pill::Fact);
+				}
 			};
 			k.continueCard(l, card);
+			// the state pills after the time on the note line (their words are the mini bar's; nothing when normal)
+			if (c.live && !c.pills.empty())
+			{
+				int cy = l.note.y + l.note.h / 2, right = l.note.x + l.note.w;
+				int nw = c.note.empty() ? 0 : std::min(l.note.w, (int)k.textW(c.note, F_I12));
+				int x = l.note.x + nw + (nw ? 8 : 0);
+				for (auto& pill : c.pills)
+				{
+					int w = k.textW(pill, F_I11B) + 12;
+					if (x + w > right) break;	// the time and the ones that fit (the key's side is not covered)
+					k.pill(x + w, cy, pill, Kit::Pill::Live);
+					x += w + 5;
+				}
+			}
 			// the marks the old strip carried: a liked file's heart, a network one's server
 			int rx = l.pic.x + l.pic.w - 10;
 			if (!c.path.empty() && isNetPath(c.path)) { ui.drawGlyphMid(G_NETWORK, rx, l.pic.y + l.pic.h - 11, DIM_ON); rx -= 16; }
@@ -1438,7 +1529,12 @@ namespace bp
 		// over a photo this is the photo viewer's page (drawPhoto), not the player's
 		if (page == Page::Main) return p.playingPhoto();
 		if (page == Page::Browse)
+		{
+			// Home is the one page it skips: its big card is Now playing there, and Home's layout is the same with
+			// something playing or not (the owner: one card, no mini bar; docs/redesign/backlog.md)
+			if (browse->atHome()) return false;
 			return browse->browseDir != FORMDIR && browse->browseDir != FINDNET && !browse->playlists->addPending.serial;
+		}
 		// the Sound page's dialogs (Options, presets, Delete) reach the panel's bottom
 		if (page == Page::Sound) return !sound->dialogOpen();
 		if (page == Page::MangaRead)

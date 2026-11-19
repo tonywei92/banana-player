@@ -376,7 +376,9 @@ namespace bp
 		// A or the Play button held while a page plays the file: here instead, once, as the hold reaches its length (not
 		// as it lets go). Gone off the player (B, the menu), or the page gone: nothing
 		// (the mini bar's play mark holds the same way, on any page that has the bar: what it plays is main's player)
-		bool holdHere = (page == Page::Main && !inMenu) || (playHoldMini && miniBarShown(p));
+		// (Home's Now playing card key holds too: Home draws no mini bar, so its card is the only way back to a page's file)
+		bool holdHere = (page == Page::Main && !inMenu) ||
+			(playHoldMini && (miniBarShown(p) || (page == Page::Browse && !inMenu && browse->atHome())));
 		if (playHoldAt && (!holdHere || !pageDrives(barPlayer(p)))) playHoldAt = 0;
 		if (!playHoldAt) playHoldMini = false;
 		if (playHoldAt && SDL_GetTicks() - playHoldAt >= PLAY_HOLD_MS)

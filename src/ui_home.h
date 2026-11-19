@@ -75,11 +75,13 @@ namespace bp
 		bool matchesFilter(int i) const;
 		bool moreShown() const { return visibleCount() > HOME_RECENT_MAX; }
 		// the Continue card: what plays now, else the newest unfinished thing (a card's even when its file has gone:
-		// the place is kept). label: Now playing / Continue / Stopped for Manga
+		// the place is kept). label: Now playing / Continue / Stopped for Manga. Live: the note is the time and the
+		// mini bar's state pills (speed, repeat or Shuffle, the EQ, "Playing in ..."), and key is Pause / Play
 		struct Continue
 		{
-			bool shown = false, live = false, stopped = false;
+			bool shown = false, live = false, stopped = false, paused = false;
 			std::string path, title, note, label, key, artKey;
+			std::vector<std::string> pills;	// all Live (yellow): away from normal, as the mini bar has them
 			const Glyph* kind = nullptr;
 			double frac = 0;
 		};
@@ -118,10 +120,12 @@ namespace bp
 		// a finger on Home: on a card (a tap plays, a hold opens its More sheet) or a shortcut; the old drag fields
 		// stay for Ui's hold and state line
 		bool homeTouch = false, homeMoved = false;
-		int homeDownX = 0, homePress = -1;	// homePress: a card's index, or HOME_TILE + an old tile's
+		int homeDownX = 0, homePress = -1;	// homePress: a card's index, HOME_PRESS_CONTINUE, or HOME_TILE + an old tile's
 		double homeDownOff = 0;
 		Uint32 homeHoldAt = 0;
+		Uint32 resumeHoldAt = 0;	// a finger on the live card's key: held, it takes over from a browser (the mini bar's)
 		static constexpr int HOME_TILE = 1000;
+		static constexpr int HOME_PRESS_CONTINUE = -2;	// a finger held on the Continue card (its More, at 500 ms)
 		// what a finger is on (one of them: the lift acts only if it is still on it)
 		bool pressedContinue = false, pressedResume = false;
 		int pressedCard = -1, pressedShortcut = -1, pressedChip = -1, pressedEmptyKey = -1;

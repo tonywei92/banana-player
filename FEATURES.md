@@ -38,11 +38,15 @@ HEVC (x265), may drop frames. **Info** shows how it's keeping up.
 Open Banana Player and the bottom screen shows **Home**:
 
 - **Continue**: the newest thing you haven't finished, as a card with its picture, title, where it was left
-  (`6:12 / 9:56 · Videos`), a bar, and **Resume**. What plays now says **Now playing** with **Go to it**; a video the
-  Manga reader stopped says **Stopped for Manga** until it plays again or something else is played. With everything
-  played through there is no Continue card and **Recent** moves to the top. A song's picture is its real album art:
-  the picture in the file, else `cover.*`, `folder.*` or `front.*` beside it (its title is the title tag when it has
-  one, not the file's name). A song without any keeps the drawn record.
+  (`6:12 / 9:56 · Videos`), a bar, and **Resume**. What plays now says **Now playing**, with a **NOW** mark on its
+  picture, the time and its state pills after it, and **Pause** where **Resume** was (**Play** when paused); **A** or
+  a tap on the card goes back to the player, and its key pauses and plays it without leaving Home (as **A** does on
+  the player). Held, the key takes it over from a browser that plays it. A
+  video the Manga reader stopped says **Stopped for Manga** until it plays again or something else is played. With
+  everything played through there is no Continue card and **Recent** moves to the top. A song's picture is its real
+  album art: the picture in the file, else `cover.*`, `folder.*` or `front.*` beside it (its title is the title tag
+  when it has one, not the file's name). A song without any keeps the drawn record. The card is Home's one place for
+  what plays: the mini bar is not drawn there, and Home's Recent and shortcuts stay where they are either way.
 - **Recent**, under it: up to four cards, newest first, with the kind's mark, the title, what it was
   (`Played · 3:34`, `7% read`, `6:12 / 9:56`) and a bar; a liked file has a yellow heart, a server's a network mark,
   and a song's card shows its album art when it has one.
@@ -53,7 +57,8 @@ Open Banana Player and the bottom screen shows **Home**:
   next song starting doesn't move the cards); what you played comes to the front the next time you open it.
 - Three shortcuts: **Shuffle Liked** (**Browse Files** until something is liked), **Send from phone** (the Web
   dashboard's page, to scan its code) and **All recent**.
-- **A** resumes or plays, **X** (or a hold on a card) opens the card's **More** sheet: **Resume**, **Play from the
+- **A** resumes or plays (on **Now playing**: **A** goes to the player), **X** (or a hold on a card, the Now playing
+  card included) opens the card's **More** sheet: **Resume** / **Go to it**, **Play from the
   start**, **Show in folder**, **Add to playlist…**, **Like** / **Unlike** (L3), **Info** and **Remove from Recent**;
   the right column has Home's own **All recent**, **Browse Files**, **Show hidden folders**, **Clear recent…** (press
   twice), **Settings**, **Menu** and **Quick settings**. With no card under the cursor, **X** opens that column alone.
@@ -115,7 +120,8 @@ that playlist. Started with a file, or after **Show in folder**,
 you land in the folder (or playlist) it plays from, the cursor on it. The same goes for **Stop**, and for the end of a
 video's list while the playing screen was up; a song's list ending keeps the song up instead.
 
-- **The mini bar**, along the bottom of every page but the player itself: Home, every list (Files, Playlists, Network,
+- **The mini bar**, along the bottom of every page but the player itself and Home (Home's big card is Now playing
+  there): every list (Files, Playlists, Network,
   All recent), Settings and its groups, Sound, the web dashboard, Manage extensions, the manga reader's pages, the
   photo viewer. The comic reader and the photo viewer are pages of their
   own, not the player: over a photo the bar shows and controls what plays underneath (a song or a video), not the
@@ -356,7 +362,7 @@ See [Photos](#photos) for the touch screen.
 | **SELECT** | Back to what plays (the playing screen); in select mode, All / none |
 | **L3** (press the stick) | Like / Unlike what plays |
 | **START** | **Settings**: its ten group tiles; **F** is Quick settings |
-| **Mini bar** (touch screen) | On every page but the player: tap it for the playing screen · its play mark: play / pause · hold: its menu |
+| **Mini bar** (touch screen) | On every page but the player and Home (its Now playing card stands in): tap it for the playing screen · its play mark: play / pause · hold: its menu |
 
 ### Copy, move, rename, delete
 
