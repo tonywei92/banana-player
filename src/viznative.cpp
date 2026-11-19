@@ -142,10 +142,10 @@ namespace bp
 	bool vizNativeStyle(int vis)
 	{
 		return vis == VIS_MIRROR || vis == VIS_PEAKS_BANANA || vis == VIS_DOTS || vis == VIS_STEPS || vis == VIS_BARCODE || vis == VIS_RINGS ||
-			   vis == VIS_HORIZON || vis == VIS_POCKET || vis >= VIS_RIBBON;
+			   vis == VIS_HORIZON || vis == VIS_FADERS || vis >= VIS_RIBBON;
 	}
 
-	bool vizFullPanel(int vis) { return vis == VIS_SPARKS || vis == VIS_STARFIELD || vis == VIS_RAIN || vis == VIS_MOON; }
+	bool vizFullPanel(int vis) { return vis == VIS_SPARKS || vis == VIS_STARFIELD || vis == VIS_MOON; }
 	bool vizBehindArt(int vis) { return vizFullPanel(vis) || vis == VIS_ROCKET; }
 
 	float vizLoudness(const float* samples, int n)
@@ -191,8 +191,8 @@ namespace bp
 		case VIS_HORIZON: return {20, false};
 		case VIS_BARCODE: return {96, false};
 		case VIS_RINGS: return {10, false};
-		// Pocket console: its graph's 15 bars, contrast pushed but nothing cut
-		case VIS_POCKET: return {15, false, false, 8000};
+		// Faders: sixteen rails, one a band
+		case VIS_FADERS: return {16, false};
 		case VIS_RIBBON: return {48, false};
 		case VIS_GRID: return {VizStyleState::GRID_BANDS, false};
 		case VIS_STARFIELD: return {16, false};	// (the loudness only: a few bands for the wake)
@@ -201,7 +201,7 @@ namespace bp
 		case VIS_SPARKS: return {32, false};
 		case VIS_BOUNCY: return {14, false};
 		case VIS_ROCKET: return {16, false};
-		case VIS_RAIN:
+		case VIS_LANTERNS: return {9, false};
 		case VIS_MOON: return {20, false};
 		case VIS_DANCE: return {12, false};
 		default: return {VN_BARS, false};
@@ -228,10 +228,13 @@ namespace bp
 		bass = 0;
 		std::fill(std::begin(hit), std::end(hit), 0.0f);
 		from = 3, to = 8, trailN = 0, hop = 0.6f;
-		dropN = splashN = ringN = 0;
+		std::fill(std::begin(holdAge), std::end(holdAge), 0.0f);
+		std::fill(std::begin(lnA), std::end(lnA), 0.0f);
+		std::fill(std::begin(lnV), std::end(lnV), 0.0f);
+		std::fill(std::begin(lnLv), std::end(lnLv), 0.0f);
+		lnSeen = beats;
 		awake = false;
 		aw = zPhase = 0;
-		pkScroll = pkPulse = 0;
 		for (Streak& q : streaks)
 		{
 			q.x = rand01() * 640;
@@ -270,6 +273,9 @@ namespace bp
 
 	namespace
 	{
+		// (defined below with the fun ones' shapes: Lanterns' per-lantern swing uses it)
+		float hash01(int a, int b);
+
 		// the proposals' easing, told per frame at 30 a second: a step of f toward the target, over dt
 		float toward(float v, float target, float f, double k)
 		{
@@ -289,7 +295,7 @@ namespace bp
 			case VIS_HELIX: up = 0.55f; break;
 			case VIS_BOUNCY: up = 0.55f, down = 0.18f; break;
 			case VIS_ROCKET: down = 0.2f; break;
-			case VIS_RAIN: up = 0.6f, down = 0.2f; break;
+			case VIS_LANTERNS: up = 0.6f, down = 0.2f; break;
 			case VIS_MOON: up = 0.4f, down = 0.12f; break;
 			case VIS_DANCE: down = 0.22f; break;
 			default: break;
@@ -383,54 +389,23 @@ namespace bp
 				}
 				break;
 			}
-			case VIS_RAIN:
+			case VIS_LANTERNS:
 			{
-				s.bass = toward(s.bass, s.levels[0] / VN_TOP, 0.4f, k);
-				const float W = 640, Hh = 480, ground = Hh - 12, ux = W / 2, uy = Hh - 150 - 6 * s.bass, R = 112;
-				for (int i = 0; i < s.n; i++)
+				const int nb = s.band ? 9 : 7;
+				const bool hit = s.beats != s.lnSeen;
+				if (hit) s.lnSeen = s.beats;
+				s.loudShown = toward(s.loudShown, s.loud, 0.2f, k);
+				for (int i = 0; i < nb; i++)
 				{
-					const float p = 0.03f + s.levels[i] / VN_TOP * 0.95f;
-					if (s.dropN < VizStyleState::DROPS && s.rand01() < (float)(1 - std::pow(1 - std::min(p, 0.999f), k)))
-						s.drops[s.dropN++] = {(i + s.rand01()) / s.n * (W + 90), -20 - s.rand01() * 30, 13 + s.rand01() * 6};
+					const float lv = std::clamp(s.levels[std::min(i, s.n - 1)] / VN_TOP, 0.0f, 1.0f);
+					if (hit) s.lnV[i] += (s.beats % 2 ? 1.0f : -1.0f) * (0.5f + 0.35f * hash01(i, 7)) * (0.4f + s.loudShown);
+					s.lnV[i] += (-22 * s.lnA[i] - 2.4f * s.lnV[i]) * (float)dt;
+					s.lnA[i] += s.lnV[i] * (float)dt;
+					if (std::fabs(s.lnA[i]) < 0.0015f && std::fabs(s.lnV[i]) < 0.004f) s.lnA[i] = s.lnV[i] = 0;
+					// paper lights quickly and cools slowly (the preview's 30 and 5 a second)
+					const float target = std::min(1.0f, lv * 1.25f);
+					s.lnLv[i] += (target - s.lnLv[i]) * (float)(1 - std::exp(-dt * (target > s.lnLv[i] ? 30 : 5)));
 				}
-				const bool cover = s.band && s.cover[2] > s.cover[0];
-				auto splash = [&](float px, float py) {
-					for (int sg = -1; sg <= 1; sg += 2)
-						if (s.splashN < VizStyleState::SPLASHES)
-							s.splashes[s.splashN++] = {px, py, sg * (1 + s.rand01() * 2.5f), -(2 + s.rand01() * 3), 9};
-				};
-				for (int i = s.dropN - 1; i >= 0; i--)
-				{
-					VizStyleState::Drop& d = s.drops[i];
-					const float y0 = d.y;
-					d.y += d.v * (float)k;
-					d.x -= d.v * 0.2f * (float)k;
-					bool hit = false;
-					if (cover) hit = d.x > s.cover[0] && d.x < s.cover[2] && y0 < s.cover[1] + 30 && d.y >= s.cover[1];	// (crossed its top)
-					else if (!s.band)
-					{
-						const float dx = d.x - ux, dy = d.y - uy;
-						hit = dy < 0 && dx * dx + dy * dy < R * R;
-					}
-					if (hit) splash(d.x, cover ? s.cover[1] : d.y);
-					else if (d.y >= ground)
-					{
-						if (s.ringN < VizStyleState::RINGS) s.rings[s.ringN++] = {d.x, 0};
-					}
-					else continue;
-					d = s.drops[--s.dropN];
-				}
-				for (int i = s.splashN - 1; i >= 0; i--)
-				{
-					VizStyleState::Splash& q = s.splashes[i];
-					q.x += q.vx * (float)k;
-					q.y += q.vy * (float)k;
-					q.vy += 0.6f * (float)k;
-					q.life -= (float)k;
-					if (q.life <= 0) q = s.splashes[--s.splashN];
-				}
-				for (int i = s.ringN - 1; i >= 0; i--)
-					if ((s.rings[i].a += 0.09f * (float)k) >= 1) s.rings[i] = s.rings[--s.ringN];
 				break;
 			}
 			case VIS_MOON:
@@ -507,20 +482,18 @@ namespace bp
 		{
 			// Peaks' bars are showfreqs' as measured each frame (its graph eased only the caps)
 			s.levels[i] = s.vis == VIS_PEAKS_BANANA ? s.targets[i] : vizEase(s.levels[i], s.targets[i], dt);
-			if (s.vis == VIS_PEAKS_BANANA || s.vis == VIS_POCKET) s.holds[i] = std::min(250.0f, vizHold(s.holds[i], s.levels[i], PEAKS_CAP_FALL, dt));
+			if (s.vis == VIS_PEAKS_BANANA) s.holds[i] = std::min(250.0f, vizHold(s.holds[i], s.levels[i], PEAKS_CAP_FALL, dt));
 			else if (s.vis == VIS_STEPS) s.holds[i] = vizHold(s.holds[i], s.levels[i], STEPS_PEAK_FALL, dt);
 		}
-		if (s.vis == VIS_POCKET)
+		if (s.vis == VIS_FADERS)
 		{
-			// Pocket console's scene: the beat's pulse (1 on a beat, gone in 0.4 s), the road passing by with the
-			// loudness (2 to 24 dots a second; its dashes come round every 5)
+			// each band's peak holds 0.35 s, then falls at the preview's 0.55 of the height a second
 			dt = std::max(0.0, dt);
-			s.time += dt;
-			const bool beat = s.beats != s.beatsSeen;
-			s.beatsSeen = s.beats;
-			s.pkPulse = beat ? 1.0f : std::max(0.0f, s.pkPulse - (float)dt * 2.5f);
-			s.loudShown = toward(s.loudShown, s.loud, 0.2f, dt * 30);
-			s.pkScroll = std::fmod(s.pkScroll + (float)dt * (2 + 22 * s.loudShown), 5.0f);
+			for (int i = 0; i < s.n && i < 16; i++)
+			{
+				if (s.levels[i] >= s.holds[i]) s.holds[i] = s.levels[i], s.holdAge[i] = 0.35f;
+				else if ((s.holdAge[i] -= (float)dt) < 0) s.holds[i] = std::max(s.levels[i], s.holds[i] - (float)(0.55 * VN_TOP * dt));
+			}
 		}
 	}
 
@@ -976,113 +949,6 @@ namespace bp
 			}
 		}
 
-		// Pocket console (redesigned 2026-11-19, docs/notes/2026-11-19-pocket-console-redesign.md): a little LCD in a
-		// bezel, kept clean: few things, each on the dot grid (a dot 8 units, the last of them a gap), nothing blended. The
-		// screen is 75 dots across (20 units of bezel each side), 56 down alone and 23 in the band; on it: the sun at the
-		// top right (alone: a core in a halo, swelling with the bass, four rays while a beat rings, turning beat by
-		// beat), the 15 bars (3 dots and a gap of 2, one ink) with a mid cap riding each held peak, the floor and under
-		// it the road's dashes passing by with the loudness, and (alone) at the foot a heart that beats and a note that
-		// hops. The band is the bars, their caps and the road, 17 rows tall.
-		// Then the dots' gaps, and the screen's corners cut in steps
-		const char* const PK_HEART[5] = {".#.#.", "#####", "#####", ".###.", "..#.."};
-		const char* const PK_HEART_SMALL[5] = {".....", ".#.#.", ".###.", "..#..", "....."};
-		const char* const PK_NOTE[5] = {"..###", "..#.#", "..#..", ".##..", ".##.."};
-
-		void pocket(const VizStyleState& s, bool band, std::vector<VizRect>& out)
-		{
-			const int COLS = 75, ROWS = band ? 23 : 56, FOOT = band ? 19 : 47, BH = band ? 17 : 32, N = 15;
-			const float X0 = 20, Y0 = band ? 288 : 16, X1 = X0 + COLS * 8, Y1 = Y0 + ROWS * 8, top = band ? 280 : 0;
-			// the bezel (four strips: the screen isn't painted twice), the screen's recess (a 3-unit line), the screen
-			box(out, 0, top, 640, Y0, VI_P_BEZEL);
-			box(out, 0, Y1, 640, 480, VI_P_BEZEL);
-			box(out, 0, Y0, X0, Y1, VI_P_BEZEL);
-			box(out, X1, Y0, 640, Y1, VI_P_BEZEL);
-			box(out, X0 - 3, Y0 - 3, X1 + 3, Y0, VI_P_EDGE);
-			box(out, X0 - 3, Y1, X1 + 3, Y1 + 3, VI_P_EDGE);
-			box(out, X0 - 3, Y0, X0, Y1, VI_P_EDGE);
-			box(out, X1, Y0, X1 + 3, Y1, VI_P_EDGE);
-			box(out, X0, Y0, X1, Y1, VI_P_SCREEN);
-			// dots, kept on the screen
-			auto dot = [&](int c, int r, int w, int h, int ink) {
-				const int c0 = std::max(c, 0), c1 = std::min(c + w, COLS), r0 = std::max(r, 0), r1 = std::min(r + h, ROWS);
-				if (c1 > c0 && r1 > r0) box(out, X0 + c0 * 8, Y0 + r0 * 8, X0 + c1 * 8, Y0 + r1 * 8, ink);
-			};
-			// a little picture, each row's runs of '#' a box
-			auto sprite = [&](const char* const* rows, int n, int c, int r, int ink) {
-				for (int j = 0; j < n; j++)
-					for (int i = 0; rows[j][i];)
-					{
-						int e = i;
-						while (rows[j][e] == '#') e++;
-						if (e > i) dot(c + i, r + j, e - i, 1, ink), i = e;
-						else i++;
-					}
-			};
-			auto disc = [&](int cx, int cy, int R, int ink) {
-				for (int j = -R; j <= R; j++)
-				{
-					const int w = (int)std::lround(std::sqrt((float)(R * R + R - j * j)));
-					dot(cx - w, cy + j, 2 * w + 1, 1, ink);
-				}
-			};
-			if (!band)
-			{
-				float bass = 0;
-				for (int i = 0; i < 4 && i < s.n; i++) bass += std::clamp(s.levels[i], 0.0f, VN_TOP) / (4 * VN_TOP);
-				const int cx = 65, cy = 10;
-				disc(cx, cy, bass > 0.6f ? 6 : 5, VI_P_GHOST);
-				disc(cx, cy, s.pkPulse > 0.6f ? 4 : 3, VI_P_MID);
-				if (s.pkPulse > 0.25f)
-				{
-					static const int RAYS[2][4][2] = {{{0, -8}, {0, 8}, {-8, 0}, {8, 0}}, {{-6, -6}, {6, -6}, {-6, 6}, {6, 6}}};
-					for (const int* q : RAYS[s.beatsSeen & 1]) dot(cx + q[0], cy + q[1], 1, 1, VI_P_MID);
-				}
-			}
-			// the bars. A level lights the rows whose step is at most it (the graph's steps: 1 + 251 k / (BH - 1))
-			auto rowsOf = [&](float v) { return v < 1 ? 0 : std::min(BH, (int)((v - 1) * (BH - 1) / 251) + 1); };
-			for (int b = 0; b < N && b < s.n; b++)
-			{
-				const int c = 1 + b * 5;
-				const int lit = rowsOf(std::clamp(s.levels[b], 0.0f, VN_TOP)), cp = rowsOf(std::clamp(s.holds[b], 0.0f, VN_TOP));
-				dot(c, FOOT - lit, 3, lit, VI_P_INK);
-				if (cp > lit) dot(c, FOOT - cp, 3, 1, VI_P_MID);
-			}
-			// the floor under the bars (their width), and the road's dashes under it (2 dots every 5: one a bar)
-			const int L = 1, R = COLS - 1;	// (the bars' first column, and the one past their last)
-			dot(L, FOOT, R - L, 1, VI_P_MID);
-			for (int c = L - (int)s.pkScroll; c < R; c += 5)
-			{
-				const int c0 = std::max(c, L), c1 = std::min(c + 2, R);
-				if (c1 > c0) dot(c0, FOOT + 1, c1 - c0, 1, VI_P_GHOST);
-			}
-			// the foot: the heart (full while a beat rings) under the bars' left edge, the note (a hop each beat) under
-			// their right
-			// (alone: the band is the bars and their road, nothing else)
-			if (!band)
-			{
-				const int sr = FOOT + 3;
-				sprite(s.pkPulse > 0.4f ? PK_HEART : PK_HEART_SMALL, 5, L, sr, VI_P_INK);
-				sprite(PK_NOTE, 5, R - 5, sr - (s.pkPulse > 0.6f ? 1 : 0), VI_P_INK);
-			}
-			// the dots' gaps: the 8th unit of every dot, across and down, in the screen's own colour (the lit dots are cut
-			// apart, the empty screen stays flat: a grid shade over all of it read as a texture, not clean)
-			for (int c = 0; c < COLS; c++) box(out, X0 + c * 8 + 7, Y0, X0 + c * 8 + 8, Y1, VI_P_SCREEN);
-			for (int r = 0; r < ROWS; r++) box(out, X0, Y0 + r * 8 + 7, X1, Y0 + r * 8 + 8, VI_P_SCREEN);
-			// the corners: three dots of bezel each, the recess's line going round the steps
-			for (int k = 0; k < 4; k++)
-			{
-				const bool right = k & 1, low = k & 2;
-				const int cx = right ? COLS - 1 : 0, cy = low ? ROWS - 1 : 0, dx = right ? -1 : 1, dy = low ? -1 : 1;
-				const int at[3][2] = {{cx, cy}, {cx + dx, cy}, {cx, cy + dy}};
-				for (const int* q : at)
-					box(out, X0 + q[0] * 8 - (right ? 3 : 0), Y0 + q[1] * 8 - (low ? 3 : 0), X0 + q[0] * 8 + 8 + (right ? 0 : 3), Y0 + q[1] * 8 + 8 + (low ? 0 : 3),
-						VI_P_EDGE);
-				for (const int* q : at)
-					box(out, X0 + q[0] * 8 - (q[0] == 0 ? 3 : 0), Y0 + q[1] * 8 - (q[1] == 0 ? 3 : 0), X0 + q[0] * 8 + 8 + (q[0] == COLS - 1 ? 3 : 0),
-						Y0 + q[1] * 8 + 8 + (q[1] == ROWS - 1 ? 3 : 0), VI_P_BEZEL);
-			}
-		}
-
 		// ---- the five fun ones (2026-11-19): ellipses, rounded boxes, round-ended lines, arcs, fans ----
 
 		void oval(std::vector<VizRect>& out, float cx, float cy, float rx, float ry, int ink, float alpha = 1)
@@ -1270,43 +1136,87 @@ namespace bp
 			disc(out, X(16), Y(0), 4.5f * S, VI_BG, 1);
 		}
 
-		// Rain check: rain across the whole panel where the music is (ACCENT drops), splashes (TEXT), puddle rings (DIM) on
-		// the ground (BUTTON); alone, someone under an umbrella that bobs with the bass; with the art, it bounces off the
-		// cover instead
-		void rainCheck(const VizStyleState& s, std::vector<VizRect>& out)
+		// Faders (2026-11-19, docs/notes/2026-11-19-faders-lanterns.md): a mixing desk from above, sixteen thin rails
+		// across the panel, a knob riding each at its band's level. The rail LINE, its lit part and the peak tick DIM,
+		// the knob INK (three inks on BG). Alone the rails run from 150 to 424; in the band from 310 to 456. Silence:
+		// every knob sits on the floor in a row.
+		void faders(const VizStyleState& s, bool band, std::vector<VizRect>& out)
 		{
-			const float ground = 480 - 12;
-			box(out, 0, ground, 640, 480, VI_BUTTON);
-			for (int i = 0; i < s.ringN; i++)
+			const int n = std::min(16, s.n);
+			const float top = band ? 310 : 150, bot = band ? 456 : 424, x0 = 76, x1 = 564;
+			for (int i = 0; i < n; i++)
 			{
-				const auto& r = s.rings[i];
-				arcLine(out, r.x, ground + 2, 4 + r.a * 16, 1.5f + r.a * 4, 0, (float)(2 * M_PI), 2, VI_DIM, 1 - r.a);
+				const float x = x0 + (x1 - x0) * i / std::max(1, n - 1);
+				const float lv = std::clamp(s.levels[i] / VN_TOP, 0.0f, 1.0f), pk = std::clamp(s.holds[i] / VN_TOP, 0.0f, 1.0f);
+				const float y = bot + (top + 6 - bot) * lv, py = bot + (top + 6 - bot) * pk;
+				box(out, x - 1.5f, top, x + 1.5f, bot, VI_LINE);
+				box(out, x - 1.5f, y, x + 1.5f, bot, VI_DIM);
+				if (py < y - 9) box(out, x - 6, py - 1, x + 6, py + 1, VI_DIM);
+				roundBox(out, x - 12, y - 6, x + 12, y + 6, 6, 6, VI_INK);
 			}
-			std::vector<float> seg(4);
-			for (int i = 0; i < s.dropN; i++)
-			{
-				const auto& d = s.drops[i];
-				seg = {d.x, d.y, d.x + d.v * 0.2f, d.y - d.v};
-				polyline(out, seg, 2.5f, VI_ACCENT, 1);
-			}
-			for (int i = 0; i < s.splashN; i++) disc(out, s.splashes[i].x, s.splashes[i].y, 2.2f, VI_TEXT, 1);
-			if (s.band) return;
-			const float ux = 320, uy = 480 - 150 - 6 * s.bass, R = 112, feet = ground;
-			stick(out, ux, uy - 4, ux, feet - 62, 5, VI_DIM);
-			stick(out, ux - 34, feet - 30, ux - 36, feet - 3, 9, VI_TEXT);
-			stick(out, ux - 18, feet - 30, ux - 16, feet - 3, 9, VI_TEXT);
-			roundBox(out, ux - 44, feet - 92, ux - 8, feet - 26, 14, 14, VI_TEXT);
-			disc(out, ux - 26, feet - 108, 15, VI_TEXT, 1);
-			stick(out, ux - 14, feet - 76, ux + 1, feet - 64, 7, VI_TEXT);
-			std::vector<float> dome;
-			for (int k = 0; k <= 24; k++)
-			{
-				const float a = (float)M_PI + (float)M_PI * k / 24;
-				dome.push_back(ux + std::cos(a) * R), dome.push_back(uy + std::sin(a) * R);
-			}
-			fan(out, dome, VI_ACCENT);
-			for (int k = 0; k < 4; k++) oval(out, ux - R + R / 4 + k * R / 2, uy + 2, R / 4 - 1, 13, VI_BG);
-			roundBox(out, ux - 3, uy - R - 12, ux + 3, uy - R + 4, 3, 3, VI_ACCENT);
+		}
+
+		// Lanterns (2026-11-19): a string of paper lanterns across the panel, each lit by its band; the beat nudges the
+		// string and they swing and settle. Unlit paper BUTTON, lit INK (the colour between mixed, opaque), a halo of
+		// INK 10% on BG behind a bright one, caps and tassels DIM, the string LINE. Seven alone, nine smaller ones in
+		// the band. Silence: unlit, hanging straight and still.
+		void lanterns(const VizStyleState& s, bool band, std::vector<VizRect>& out)
+		{
+			const int n = std::min(band ? 9 : 7, s.n);
+			const float sy = band ? 290 : 128, sag = band ? 18 : 40, w = band ? 40 : 58, h = band ? 52 : 76;
+			auto SY = [&](float x) { return sy + sag * (1 - std::pow((x - 320) / 320.0f, 2)); };
+			std::vector<float> str;
+			for (int x = 0; x <= 640; x += 16) str.push_back((float)x), str.push_back(SY((float)x));
+			polyline(out, str, 2, VI_LINE, 1);
+			auto at = [&](int i) { return 320 + (i - (n - 1) / 2.0f) * (band ? 66 : 84); };
+			for (int pass = 0; pass < 2; pass++)
+				for (int i = 0; i < n; i++)
+				{
+					const float x = at(i), y = SY(x), th = i % 2 ? (band ? 34 : 86) : (band ? 12 : 22), v = std::clamp(s.lnLv[i], 0.0f, 1.0f);
+					const float ang = s.lnA[i] * 0.22f, cs = std::cos(ang), sn = std::sin(ang);
+					// local (0, th + 7 + h / 2): the body's middle, rotated from the string's point
+					auto rot = [&](float lx, float ly, float& ox, float& oy) { ox = x + lx * cs - ly * sn, oy = y + lx * sn + ly * cs; };
+					if (!pass)
+					{
+						if (v > 0.3f)
+						{
+							float hx, hy;
+							rot(0, th + 7 + h / 2, hx, hy);
+							out.push_back({hx, hy, 0, w * 0.62f + (v - 0.3f) * w * 0.55f, VI_INK_BG, 0.10f, 1, 1});
+						}
+						continue;
+					}
+					auto rbox = [&](float lx0, float ly0, float lx1, float ly1, int ink) {
+						float ax, ay, bx, by, cx, cy, dx, dy;
+						rot(lx0, ly0, ax, ay), rot(lx1, ly0, bx, by), rot(lx1, ly1, cx, cy), rot(lx0, ly1, dx, dy);
+						quad(out, ax, ay, bx, by, cx, cy, dx, dy, ink, 1, 1);
+					};
+					// the cord, the top cap, the paper body (a rounded rectangle, its corners w * 0.42), the bottom cap, the tassel
+					rbox(-1, 0, 1, th, VI_DIM);
+					rbox(-w * 0.21f, th, w * 0.21f, th + 7, VI_DIM);
+					{
+						const float hw = w / 2, hh = h / 2, cy0 = th + 7 + hh, r = std::min(w * 0.42f, std::min(hw, hh));
+						std::vector<float> p;
+						auto corner = [&](float lx, float ly, float a0) {
+							for (int k = 0; k <= 4; k++)
+							{
+								const float a = a0 + k * (float)M_PI / 8;
+								float ox, oy;
+								rot(lx + std::cos(a) * r, ly + std::sin(a) * r, ox, oy);
+								p.push_back(ox), p.push_back(oy);
+							}
+						};
+						corner(-hw + r, cy0 - hh + r, (float)M_PI);
+						corner(hw - r, cy0 - hh + r, (float)M_PI * 1.5f);
+						corner(hw - r, cy0 + hh - r, 0);
+						corner(-hw + r, cy0 + hh - r, (float)M_PI * 0.5f);
+						const size_t start = out.size();
+						fan(out, p, VI_INK_RAMP, 1);
+						for (size_t k = start; k < out.size(); k++) out[k].mix = std::pow(v, 0.8f);
+					}
+					rbox(-w * 0.21f, th + 7 + h, w * 0.21f, th + 14 + h, VI_DIM);
+					rbox(-1, th + 14 + h, 1, th + 14 + h + (band ? 9 : 14), VI_DIM);
+				}
 		}
 
 		// Sleepy moon: a moon (ACCENT) that dozes through quiet passages, eyes shut, breathing out Zs (TEXT), and wakes when
@@ -1403,7 +1313,7 @@ namespace bp
 		case VIS_BARCODE: barcode(s, band, out); break;
 		case VIS_RINGS: rings(s, band, out); break;
 		case VIS_HORIZON: horizon(s, band, out); break;
-		case VIS_POCKET: pocket(s, band, out); break;
+		case VIS_FADERS: faders(s, band, out); break;
 		case VIS_RIBBON: ribbon(s, band, out); break;
 		case VIS_GRID: grid(s, band, out); break;
 		case VIS_STARFIELD: starfield(s, out); break;
@@ -1412,7 +1322,7 @@ namespace bp
 		case VIS_SPARKS: sparks(s, out); break;
 		case VIS_BOUNCY: bouncyKeys(s, band, out); break;
 		case VIS_ROCKET: rocket(s, band, out); break;
-		case VIS_RAIN: rainCheck(s, out); break;
+		case VIS_LANTERNS: lanterns(s, band, out); break;
 		case VIS_MOON: sleepyMoon(s, out); break;
 		case VIS_DANCE: danceLine(s, band, out); break;
 		default: mirrorBarsRects(s.levels, s.n, band, out); break;

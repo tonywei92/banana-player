@@ -336,8 +336,6 @@ namespace bp
 		nativeUp = true;
 		// paused: the shapes stay as they were (the graph's picture froze too); mpv may still ask for a frame (a card)
 		nativeState.band = shown.nativeBand();
-		const VizRect art = shown.nativeArtBox();
-		nativeState.cover[0] = art.x0, nativeState.cover[1] = art.y0, nativeState.cover[2] = art.x1, nativeState.cover[3] = art.y1;
 		const uint64_t b0 = SDL_GetPerformanceCounter();
 		if (!shown.paused) vizStep(nativeState, dt);
 		nativeCost.buildMs += (SDL_GetPerformanceCounter() - b0) * f;
@@ -416,8 +414,7 @@ namespace bp
 		if (layered)
 		{
 			// the ground: the theme's BG (what mpv's picture had under the shapes)
-			const theme::Rgb bg = nativeState.vis == VIS_POCKET && !shown.nativeBand() ? pocketInks().screen : theme::BG;
-			g.ClearColor(bg.r / 255.0f, bg.g / 255.0f, bg.b / 255.0f, 1);
+			g.ClearColor(theme::BG.r / 255.0f, theme::BG.g / 255.0f, theme::BG.b / 255.0f, 1);
 			g.Clear(GL_COLOR_BUFFER_BIT_);
 		}
 		std::vector<Run> runs;
@@ -426,9 +423,9 @@ namespace bp
 			std::vector<VizRect>& shapes = g.shapes;
 			shapes.clear();
 			vizShapes(nativeState, shown.nativeBand(), shapes);
-			// the theme's inks, read each frame: a theme change shows at once (Pocket console's shades too)
-			const PocketInks pk = nativeState.vis == VIS_POCKET ? pocketInks() : PocketInks{};
-			auto inkOf = [&pk](const VizRect& r, unsigned char* c) {
+			// the theme's inks, read each frame: a theme change shows at once (the styles' own derived inks too)
+			const theme::Rgb vizInk = visualizerInk(), vizLine = visualizerLine();
+			auto inkOf = [&vizInk, &vizLine](const VizRect& r, unsigned char* c) {
 				theme::Rgb k;
 				auto mixed = [](theme::Rgb a, theme::Rgb b, float t) {
 					t = std::clamp(t, 0.0f, 1.0f);
@@ -437,21 +434,16 @@ namespace bp
 				};
 				switch (r.ink)
 				{
-				case VI_P_INK: k = pk.ink; break;
-				case VI_P_MID: k = pk.mid; break;
-				case VI_P_SCREEN: k = pk.screen; break;
-				case VI_P_GRID: k = pk.grid; break;
-				case VI_P_LIGHT: k = pk.light; break;
-				case VI_P_BRIGHT: k = pk.bright; break;
-				case VI_P_GHOST: k = pk.ghost; break;
-				case VI_P_BEZEL: k = pk.bezel; break;
-				case VI_P_EDGE: k = pk.edge; break;
 				case VI_DIM: k = theme::DIM; break;
 				case VI_BUTTON: k = theme::BUTTON; break;
 				case VI_TEXT: k = theme::TEXT; break;
 				case VI_BG: k = theme::BG; break;
 				case VI_WHITE: k = {255, 255, 255}; break;
 				case VI_RAMP: k = mixed(theme::BUTTON, theme::ACCENT, r.mix); break;
+				case VI_INK: k = vizInk; break;
+				case VI_LINE: k = vizLine; break;
+				case VI_INK_RAMP: k = mixed(theme::BUTTON, vizInk, r.mix); break;
+				case VI_INK_BG: k = mixed(theme::BG, vizInk, r.mix); break;
 				case VI_DIM_BG: k = mixed(theme::BG, theme::DIM, r.mix); break;
 				default: k = theme::ACCENT; break;
 				}

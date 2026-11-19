@@ -590,13 +590,9 @@ Songs show their title, artist and album on the top screen. While a song plays:
   bass on the left, each with a cap in the theme's text colour that stays at the bar's highest point and slowly falls
   back, over a faint grid), **Ribbon** (the spectrum as one smooth glowing line, bass to treble, a soft fade beneath
   it and a slower line behind showing where the song has been sitting), **Mirror bars** (the spectrum's bars growing
-  up and down from a faint centre line), **Pocket console** (a little pocket game screen in a thin bezel, its
-  corners cut in steps, everything on it made of chunky dots and kept clean: 15 bars of one ink, each with a cap that
-  stays at its highest point and falls back, standing on a road whose dashes pass by faster the louder the song is.
-  Alone, the title is on the screen in the same ink in pixel type, a sun at the top right swells with the bass and
-  throws four rays on each beat, turning from beat to beat, and at the foot a heart beats and a note hops in time; in
-  Art + visualizer the screen is a strip along the foot with the bars and the road. In Yellow the screen is four
-  greens; in another theme shades of its accent on a screen tinted with it), **Horizon** (the spectrum as a
+  up and down from a faint centre line), **Faders** (a mixing desk from above: sixteen thin rails across the screen,
+  a knob riding each one at its band's level, bass at the left, with a small tick holding each band's recent peak
+  before it falls back; silence leaves every knob on the floor in a row), **Horizon** (the spectrum as a
   mirrored skyline, the bass in the middle, on a horizon line with a low sun behind and a striped reflection below),
   **Grid** (a floor in perspective: the front ridge is the spectrum now, bass in the middle, and each ridge behind it
   a moment ago, rolling to the horizon and fading), **Starfield** (stars streaming out of the middle: quiet passages
@@ -608,14 +604,14 @@ Songs show their title, artist and album on the top screen. While a song plays:
   bands, and a ball hopping from key to key, a hop a beat, toward a loud key, which dips and lights as it lands),
   **Rocket** (a little rocket flying right, its flame growing with the bass, its smoke trail the spectrum, the stars
   streaking past faster as the song gets louder; with Art + visualizer the rocket stays in the band and its stars
-  streak over the whole screen behind the art), **Rain check** (rain falling where the music is, heavier under the
-  loud bands; alone someone waits it out under an umbrella that bobs with the bass, with the art the rain bounces off
-  the cover), **Sleepy moon** (a moon that dozes through quiet passages breathing out Zs and wakes when the song gets
+  streak over the whole screen behind the art), **Lanterns** (a string of paper lanterns across the screen, each
+  lantern's paper going from unlit to the accent with its band, the beat nudging the string so they swing and settle;
+  seven alone, nine smaller ones in the band, and silence hangs them straight, still and unlit), **Sleepy moon** (a moon that dozes through quiet passages breathing out Zs and wakes when the song gets
   loud, rays out, stars twinkling with the treble over a cloud bank that is the spectrum; with the art a smaller moon
   at the top right) or **Dance line** (twelve tiny dancers, one a band, jumping as high as their band is loud, the
   line swaying in time). The bar styles' bars stand out from their neighbours, so the
   spectrum has peaks and valleys; silence stays still. With Art + visualizer, every style is drawn along the bottom of
-  the screen, under the art, on the theme's ground, except **Sparks**, **Starfield**, **Rain check** and **Sleepy moon**, which fill the whole screen
+  the screen, under the art, on the theme's ground, except **Sparks**, **Starfield** and **Sleepy moon**, which fill the whole screen
   behind the art and the song's lines (they pass behind them, never over them; so does Rocket's starfield), the art and lines then centred on
   the screen as on Album art only. All fifteen are drawn by the player, not
   mpv, at the Visualizer frame rate setting, in the theme's colours (a theme change recolours them at once):
@@ -662,9 +658,7 @@ With Album art only, Art + visualizer and None the top screen takes the theme: i
 in a light theme) and the lines are in its text colours; every style alone (Visualizer only) is drawn on it too. With the art (Album art only, Art + visualizer) the art moves left (240 units; 224 above the band) and the three
 lines sit to its right, centred on the art's middle; the art and the lines are centred together on their real width, so
 a short title doesn't leave them hugging the left, and nothing is ever written over the art. Over Visualizer only the
-lines are at the top left, outlined in the theme's background colour (Pocket console: on its screen, in its own ink
-and pixel type, outlined in its screen's colour, and kept short of its sun: a longer title moves or ends in an
-ellipsis sooner), with the visualizer passing under them; a long title's moving line fades at its
+lines are at the top left, outlined in the theme's background colour, with the visualizer passing under them; a long title's moving line fades at its
 edges by the text itself fading, not by a band of background over the visualizer. An audiobook's or a song's
 chapter is a line in the accent under the title. **None** shows the title in the middle (then "artist · album"). **Visualizer frame
 rate** (30, 45 or 60 fps; 45 by default) is how often the styles draw (each frame on a steady beat of its own,

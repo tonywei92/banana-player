@@ -49,7 +49,7 @@ namespace bp
 	{
 		int bars = 40;
 		bool plain = false;
-		bool cut = true;	// (not plain) the bottom 40 steps cut off; Pocket console's graph kept them
+		bool cut = true;	// (not plain) the bottom 40 steps cut off (the spectrum's near-constant bed)
 		double hi = 14000;	// the top band's upper edge, Hz
 	};
 	VizBands vizStyleBands(int vis);
@@ -57,7 +57,7 @@ namespace bp
 	// each band's target level 0..VN_TOP from the magnitudes, as the graph styles' spectrumRow did it: the band's
 	// loudest bin in showfreqs' log scale (-120..0 dB), a slope of +3 dB an octave from 500 Hz (music falls to the
 	// right; log bands show it more than the graph's near-linear columns did); unless plain, its contrast pushed (each
-	// bar against its neighbours, Pocket console's) and the bottom 40 steps (the spectrum's near-constant bed) cut off
+	// bar against its neighbours) and the bottom 40 steps (the spectrum's near-constant bed) cut off
 	void vizBandTargets(const float* mag, const std::vector<int>& edges, int rate, int fft, bool plain, float* out, bool cut = true);
 
 	// besides the bands, the worker's hint (Starfield, Helix and Sparks): the loudness 0..1 (the window's RMS, -42 dBFS
@@ -103,10 +103,8 @@ namespace bp
 		// the final ten's new six (2026-11-19): the worker's hint, as told and as eased
 		float loud = 0, loudShown = 0, avg = 0;
 		uint32_t beats = 0, beatsSeen = 0;
-		// told by the caller before vizStep: Art + visualizer, and the art's box there (Rain check's drops bounce off it;
-		// x1 <= x0: none)
+		// told by the caller before vizStep: Art + visualizer (the band along the foot) or the whole panel
 		bool band = false;
-		float cover[4] = {0, 0, 0, 0};
 		// the five fun ones (2026-11-19): the time, the beat's interval (a beat-timed motion between beats)
 		double time = 0, sinceBeat = 0, interval = 0.55;
 		float bass = 0;
@@ -114,37 +112,23 @@ namespace bp
 		float hit[16] = {};
 		int from = 3, to = 8, trailN = 0;
 		float hop = 0.6f, trail[9][2] = {};
-		// Rocket's stars; Rain check's drops, splashes and puddle rings; Sleepy moon's state
+		// Faders: how long each band's peak has held before it falls (0.35 s, as the preview)
+		float holdAge[16] = {};
+		// Lanterns: each lantern's swing (angle, speed), its eased light, and the beat count it last felt
+		float lnA[9] = {}, lnV[9] = {}, lnLv[9] = {};
+		uint32_t lnSeen = 0;
+		// Rocket's stars; Sleepy moon's state
 		struct Streak
 		{
 			float x, y, sp;
 		};
 		static constexpr int STREAKS = 40;
 		Streak streaks[STREAKS] = {};
-		struct Drop
-		{
-			float x, y, v;
-		};
-		static constexpr int DROPS = 260, SPLASHES = 80, RINGS = 40;
-		Drop drops[DROPS] = {};
-		struct Splash
-		{
-			float x, y, vx, vy, life;
-		};
-		Splash splashes[SPLASHES] = {};
-		struct Puddle
-		{
-			float x, a;
-		};
-		Puddle rings[RINGS] = {};
-		int dropN = 0, splashN = 0, ringN = 0;
 		bool awake = false;
 		float aw = 0, zPhase = 0;
 		double phase = 0;	// Strings' swing, Helix's twist; Grid's time to its next row (0..1)
 		uint32_t rng = 1;	// (xorshift: the particles' and stars' chance, the same run to run)
 		float slow[VN_MAX_BARS] = {};	// Ribbon's slow line
-		// Pocket console's scene: the road's scroll (dots, 0..5) and the beat's pulse (1 on a beat, gone in 0.4 s)
-		float pkScroll = 0, pkPulse = 0;
 		static constexpr int GRID_ROWS = 12, GRID_BANDS = 17;	// (12 rows: 17 stacked the fills on the handheld)
 		float gridRows[GRID_ROWS][GRID_BANDS] = {};	// Grid's moments ago, a ring: gridHead the newest
 		int gridCount = 0, gridHead = 0;
@@ -173,12 +157,14 @@ namespace bp
 	void vizBouncyBall(const VizStyleState& s, float& bx, float& by, float& r);
 
 	// a shape to draw, in 640x480 units. kind 0 a box (x0,y0)-(x1,y1); kind 1 a ring round (x0,y0) from radius x1 to
-	// y1 (0: a disc). ink: VizInk; mix: VI_RAMP's place from BUTTON (0) to ACCENT (1); alpha: 1 opaque
-	// VI_P_*: Pocket console's LCD shades (pocketInks: the theme's)
+	// y1 (0: a disc). ink: VizInk; mix: VI_RAMP's place from BUTTON (0) to ACCENT (1), VI_INK_RAMP's from BUTTON to
+	// INK, VI_DIM_BG's from BG to DIM, VI_INK_BG's from BG to INK; alpha: 1 opaque
+	// VI_INK and VI_LINE: Faders' and Lanterns' derived inks (settings.h's visualizerInk/visualizerLine: the theme's
+	// ACCENT made 3:1 on BG, and its RULE towards DIM)
 	// VI_DIM_BG: DIM laid over BG at mix, opaque (a faint shape drawn without blending: Sleepy moon's far clouds,
 	// Rocket's smoke; the ground under them is always BG)
-	enum VizInk { VI_ACCENT, VI_DIM, VI_BUTTON, VI_TEXT, VI_BG, VI_RAMP, VI_WHITE, VI_P_INK, VI_P_MID, VI_P_SCREEN, VI_P_GRID, VI_P_LIGHT,
-		VI_P_BRIGHT, VI_DIM_BG, VI_P_GHOST, VI_P_BEZEL, VI_P_EDGE };
+	enum VizInk { VI_ACCENT, VI_DIM, VI_BUTTON, VI_TEXT, VI_BG, VI_RAMP, VI_WHITE, VI_INK, VI_LINE, VI_INK_RAMP, VI_INK_BG,
+		VI_DIM_BG };
 	// kind 2: a quad (x0,y0) (x1,y1) (x2,y2) (x3,y3) in order round, alpha at the first two corners and alpha2 at the
 	// other two (a fade)
 	struct VizRect

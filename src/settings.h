@@ -47,17 +47,17 @@ namespace bp
 	// Lite (the player-drawn one, no graph) was removed for now, after the owner saw its bars sit mostly at the top
 	// on the handheld: branch vizlite keeps it, docs/notes/2026-11-17-viz-lite.md has its story, and a setting naming
 	// it reads as Peaks
-	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VIS_POCKET, VIS_LED,
+	enum Visualizer { VIS_BARS, VIS_WAVES, VIS_SPECTRUM, VIS_CIRCLE, VIS_PEAKS, VIS_PEAKS_BANANA, VIS_FADERS, VIS_LED,
 		VIS_SYNTHWAVE, VIS_BANANA_STACK, VIS_CITY, VIS_SCOPE, VIS_HEART, VIS_FIRE, VIS_AURORA, VIS_GARDEN, VIS_VINYL, VIS_SEA, VIS_BUNNY, VIS_BOBA,
 		VIS_JELLY, VIS_MUSICBOX, VIS_FISHBOWL, VIS_DISCO, VIS_DANCER, VIS_CAT, VIS_POPCORN, VIS_WOBBLE, VIS_TUBEMAN,
 		VIS_LONGCAT, VIS_WASHER, VIS_MIRROR, VIS_WAVE, VIS_DOTS, VIS_LEVELS, VIS_AREA, VIS_RADIAL, VIS_HORIZON,
 		VIS_STEPS, VIS_BARCODE, VIS_RINGS, VIS_RIBBON, VIS_GRID, VIS_STARFIELD, VIS_STRINGS, VIS_HELIX, VIS_SPARKS,
-		VIS_BOUNCY, VIS_ROCKET, VIS_RAIN, VIS_MOON, VIS_DANCE, VISUALIZERS };
+		VIS_BOUNCY, VIS_ROCKET, VIS_LANTERNS, VIS_MOON, VIS_DANCE, VISUALIZERS };
 	// the owner's final ten (2026-11-19) and the five fun ones after them, in its order, all drawn by the player
 	// (src/viznative.h, no mpv graph). The others are commented out of the list, their code kept so they can come
 	// back: a setting naming one reads as Peaks
-	constexpr int VIS_SHOWN[] = {VIS_PEAKS_BANANA, VIS_RIBBON, VIS_MIRROR, VIS_POCKET, VIS_HORIZON, VIS_GRID, VIS_STARFIELD, VIS_STRINGS,
-		VIS_HELIX, VIS_SPARKS, VIS_BOUNCY, VIS_ROCKET, VIS_RAIN, VIS_MOON, VIS_DANCE /* , VIS_CITY, VIS_AURORA, VIS_DOTS, VIS_STEPS, VIS_BARCODE, VIS_RINGS, VIS_DANCER, VIS_SEA, VIS_WOBBLE,
+	constexpr int VIS_SHOWN[] = {VIS_PEAKS_BANANA, VIS_RIBBON, VIS_MIRROR, VIS_FADERS, VIS_HORIZON, VIS_GRID, VIS_STARFIELD, VIS_STRINGS,
+		VIS_HELIX, VIS_SPARKS, VIS_BOUNCY, VIS_ROCKET, VIS_LANTERNS, VIS_MOON, VIS_DANCE /* , VIS_CITY, VIS_AURORA, VIS_DOTS, VIS_STEPS, VIS_BARCODE, VIS_RINGS, VIS_DANCER, VIS_SEA, VIS_WOBBLE,
 		VIS_WASHER, VIS_TUBEMAN */};
 	constexpr int VIS_SHOWN_COUNT = (int)(sizeof(VIS_SHOWN) / sizeof(VIS_SHOWN[0]));
 	// a visualizer's place in VIS_SHOWN (a hidden one: the first offered, Peaks, at 0)
@@ -99,16 +99,13 @@ namespace bp
 	std::string visualizerGraph(int vis, bool overCover, const std::string& mapsDir = "", int fps = 60);
 	// the same before vizAtFps, with its cacheable lut and lut2 marked (vizCacheLuts, src/vizcache.h, makes it a graph)
 	std::string visualizerGraphMarked(int vis, bool overCover, const std::string& mapsDir = "");
-	// Pocket console's screen in the theme (docs/notes/2026-11-19-viz-theme.md): its ink (a bar, the heart, the note),
-	// mid (a cap, the floor, the sun) and screen; light and bright are its graph's lit pair over the art (the network
-	// fallback's). Yellow: four greens, as before. The song's lines over it (Visualizer only) are drawn in ink and mid
-	// The redesign's (docs/notes/2026-11-19-pocket-console-redesign.md): ghost (the faint things: the sun's halo, the
-	// road's dashes), bezel (the frame round the screen) and edge (the screen's recess, a line)
-	struct PocketInks { theme::Rgb ink, mid, screen, grid, light, bright, ghost, bezel, edge; };
-	PocketInks pocketInks();
 	// a theme colour helper the styles share: WCAG contrast, and `c` moved towards `to` till it reaches `ratio` on `on`
 	double colourContrast(theme::Rgb a, theme::Rgb b);
 	theme::Rgb inkOn(theme::Rgb c, theme::Rgb on, theme::Rgb to, double ratio);
+	// the native styles' two derived inks (docs/notes/2026-11-19-faders-lanterns.md): INK is ACCENT moved towards TEXT
+	// until 3:1 on BG; LINE is RULE 25% (light theme) or 35% (dark) of the way to DIM, a quiet rule that still shows
+	theme::Rgb visualizerInk();
+	theme::Rgb visualizerLine();
 	// every style's stills into dir (src/viz_*.cpp: the scenes' pictures): true when all are there.
 	// The retired styles' stills, if any are left there, removed
 	bool writeVisualizerMaps(const std::string& dir);
