@@ -1454,7 +1454,7 @@ int main(int argc, char** argv)
 			}
 			if (held != Button::None && SDL_GetTicks() >= heldNext)
 			{
-				heldNext = SDL_GetTicks() + 150;
+				heldNext = SDL_GetTicks() + ui.repeatMs(held, shown());
 				if (ui.repeats(held, shown()) && ui.press(held, shown())) leave();
 			}
 

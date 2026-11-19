@@ -68,6 +68,7 @@ extern "C"
 #include "session.h"
 #include "settings.h"
 #include "stickscroll.h"
+#include "volumestep.h"
 #include "theme.h"
 #include "strip.h"
 #include "tarx.h"
@@ -2965,6 +2966,47 @@ static void testStickScroll()
 	CHECK_EQ(stickScrollSpeed(32767, 0), 0.0);
 	CHECK_EQ(stickScrollSpeed(32767, -480), 0.0);
 	CHECK_EQ(stickScrollSpeed(32767, 480, 1.0), 0.0);
+}
+
+// the volume keys' step (the player's D-pad UP / DOWN): five a press, and a hold that stops at 100% (only a fresh
+// press boosts past it, up to Max volume)
+static void testVolumeStep()
+{
+	// under the handheld's 100%: five either way, a hold or a press
+	CHECK_EQ(volumeStep(90, 120, true, false).v, 95);
+	CHECK_EQ(volumeStep(90, 120, true, true).v, 95);
+	CHECK_EQ(volumeStep(97, 120, true, true).v, 100);
+	CHECK_EQ(volumeStep(100, 120, false, false).v, 95);
+	CHECK_EQ(volumeStep(100, 120, false, true).v, 95);
+	CHECK_EQ(volumeStep(3, 120, false, false).v, 0);
+	CHECK_EQ(volumeStep(0, 120, false, true).v, 0);
+	// a hold at 100% stops there (and says so once); a fresh press goes on, five at a time, to Max volume
+	auto held = volumeStep(100, 120, true, true);
+	CHECK_EQ(held.v, 100);
+	CHECK_EQ(held.stopped, true);
+	CHECK_EQ(volumeStep(100, 120, true, false).v, 105);
+	CHECK_EQ(volumeStep(105, 120, true, false).v, 110);
+	CHECK_EQ(volumeStep(115, 120, true, false).v, 120);
+	CHECK_EQ(volumeStep(120, 120, true, false).v, 120);
+	// a hold can't add beyond a fresh press's boost either
+	CHECK_EQ(volumeStep(105, 120, true, true).v, 105);
+	CHECK_EQ(volumeStep(105, 120, true, true).stopped, false);
+	// down takes the gain off first, then the handheld's volume
+	CHECK_EQ(volumeStep(120, 120, false, false).v, 115);
+	CHECK_EQ(volumeStep(105, 120, false, true).v, 100);
+	CHECK_EQ(volumeStep(100, 120, false, false).v, 95);
+	// Max volume 100%: 100 is the top, no gain (a hold there is the top, not a boost stopped)
+	CHECK_EQ(volumeStep(95, 100, true, false).v, 100);
+	CHECK_EQ(volumeStep(100, 100, true, false).v, 100);
+	auto atTop = volumeStep(100, 100, true, true);
+	CHECK_EQ(atTop.v, 100);
+	CHECK_EQ(atTop.stopped, true);
+	// Max volume 150%
+	CHECK_EQ(volumeStep(145, 150, true, false).v, 150);
+	CHECK_EQ(volumeStep(150, 150, true, true).v, 150);
+	// a nonsense level is clamped to the range, never under it or over Max volume
+	CHECK_EQ(volumeStep(-1, 120, true, false).v, 5);
+	CHECK_EQ(volumeStep(500, 120, false, false).v, 115);
 }
 
 // the paged modes: rows of centred pages, drag and snap, and Right/Left through tall pages
@@ -10368,7 +10410,7 @@ static void testKitLayout()
 	}
 	CHECK_EQ(playerLayout(9).chips, PLAYER_CHIPS_MAX);
 
-	// the D-pad's UP / DOWN do nothing on the player (the Next line is a tap): LEFT / RIGHT are the seek's
+	// the D-pad's UP / DOWN are the volume on the player (a key, not a layout): LEFT / RIGHT are the seek's
 
 	// a chip's value for a track: the language; two in one language: what tells them apart; none: its number
 	Track en;
@@ -13504,6 +13546,7 @@ int main()
 	testMangaSeriesCache();
 	testMangaFilters();
 	testStickScroll();
+	testVolumeStep();
 	testPaged();
 	testMangaStore();
 	testMangaStoreLinkedDownloads();

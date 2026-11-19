@@ -85,6 +85,7 @@ namespace bp
 
 	void Ui::release(Button b, Player& p)
 	{
+		if (Area* a = area()) a->release(b, p);
 		if (b != Button::A || !playHoldAt || playHoldTouch) return;
 		playHoldAt = 0;	// let go before PLAY_HOLD_MS (tick() takes over at it, and clears this)
 		if (pageDrives(p)) toggleBrowser(p);
@@ -98,8 +99,18 @@ namespace bp
 		if (b == Button::L2 || b == Button::R2) return false;
 		if (b == Button::Left || b == Button::Right) return true;
 		if (b == Button::L || b == Button::R) return false;	// (the browser's tabs)
-		// (the player: UP / DOWN move the focus a step a press, onto the chips and back)
-		return page != Page::Main && (b == Button::Up || b == Button::Down);
+		// (the player's face: UP / DOWN are the volume; with a sheet, a menu or a picker over it they move the cursor
+		// one a press, as before)
+		if (page == Page::Main)
+			return !topOverlay() && !ctxOpen && !kbOpen && !browse->playlists->pickerOpen && (b == Button::Up || b == Button::Down);
+		return b == Button::Up || b == Button::Down;
+	}
+
+	int Ui::repeatMs(Button b, const Player& p) const
+	{
+		// the player's volume: eight a second, as a volume key held does
+		if (page == Page::Main && !p.playingPhoto() && (b == Button::Up || b == Button::Down)) return 125;
+		return 150;
 	}
 
 	// a touch button: what its button does, whether the buttons themselves are on or not

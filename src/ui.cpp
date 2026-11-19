@@ -184,14 +184,14 @@ namespace bp
 		sameBrightness = p.settings.sameBrightness;
 		mangaOn = p.settings.mangaOn;
 		// dark (Screen off, or off by itself): over what plays, the playback keys work blind and leave it dark (play
-		// and pause, seek, next and previous, chapters, like: issue #3, watching with the bottom screen off; not UP /
-		// DOWN, which do nothing on the player now);
-		// any other button, or anywhere else (a list: A there would open whatever the cursor is on), brings the
-		// panel back and does nothing else, as a touch does. F + START still quits, in main
+		// and pause, seek, next and previous, chapters, like: issue #3, watching with the bottom screen off; UP / DOWN
+		// too, the volume, which the hardware keys move without waking it); any other button, or anywhere else (a list:
+		// A there would open whatever the cursor is on), brings the panel back and does nothing else, as a touch does.
+		// F + START still quits, in main
 		if (!panel.on())
 		{
-			bool playKey = b == Button::A || b == Button::Left || b == Button::Right || b == Button::L || b == Button::R ||
-						   b == Button::L2 || b == Button::R2 || b == Button::L3;
+			bool playKey = b == Button::A || b == Button::Left || b == Button::Right || b == Button::Up || b == Button::Down ||
+						   b == Button::L || b == Button::R || b == Button::L2 || b == Button::R2 || b == Button::L3;
 			bool overPlayer = page == Page::Main && !quickShown() && !kbOpen && p.playing() && !p.playingPhoto();
 			if (!(playKey && overPlayer))
 			{
@@ -245,8 +245,12 @@ namespace bp
 			return false;
 		}
 		// Button hotkeys off: the buttons do nothing over a playing video (touch does it all); the pages opened from
-		// there by touch still take them
-		if (page == Page::Main && !p.settings.buttonHotkeys) return false;
+		// there by touch still take them. UP / DOWN stay the volume, as the hardware volume keys do (it isn't playback)
+		if (page == Page::Main && !p.settings.buttonHotkeys)
+		{
+			if (!p.playingPhoto() && (b == Button::Up || b == Button::Down)) area()->key(b, p);
+			return false;
+		}
 		// the shell's pages: L / R step the sections, L3 is Search (and All recent's tabs keep L2 / R2)
 		if (shell->page(page) && shell->key(b, p)) return false;
 		// L2/R2: the chapter before or after, over what plays and its two pages (the Chapters page's mark follows).
