@@ -61,9 +61,8 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   menu held nothing of its own: its places are the rail's cells, About is Settings' last group, Now playing is SELECT
   and the mini bar, Quick settings is F, Search is L3 and the header's key. START opens Settings from every shell
   screen, the player and the text and PDF readers; START or B there goes back to where you were. It stays Save / Done
-  in forms and the Book bar in the comic reader. A START cap sits over the rail's Settings cell, so no shell hint bar
-  names it. The `menu` screen is removed. With the menu gone a finger needs another way to the seventh section: a drag
-  scrolls the rail's cells.
+  in forms and the Book bar in the comic reader. The rail carries no START cap (taken off by the owner, below). The `menu` screen is removed.
+  (The rail has since stopped scrolling: all seven sections show.)
 - **B on Home asks to quit**, Cancel focused, as today; Home's hint bar says “B Quit” (A Resume · X More · L/R
   Section · F Quick · B Quit). Quit is also in Quick settings and on F + START.
 - **Search is a key at the top of the rail** (owner, 2026-11-19; it takes back “the header's magnifier, no rail
@@ -99,7 +98,7 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   second, any capitals, all of them if a card has several. Drawn as a rail section: `videos`, `videos-empty`,
   `videos-reading`.
 - **Videos is a rail section** (owner), between Files and Music, with the views All / Folders / Not finished.
-- **Seven rail cells, all in sight** (owner): 47 tall with seven sections, 56 with six or fewer; the rail never
+- **Seven rail cells, all in sight** (owner): 45 tall with seven sections, 52 with six or fewer (since the Now playing key took a place); the rail never
   scrolls.
 - **`/data/roms/videos` counts too** (owner): BananaOS's own videos folder on the main card is read with the rest.
 - **Videos' folder names are “Videos” and “Movies”** (owner), any capitals, every such folder on a card.
@@ -110,9 +109,48 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
 - **Music's folders** (owner, 2026-11-19): “Music” and “Musics”, any capitals, every such folder at the top of each
   card, plus `/data/roms/music` when BananaOS has one; all merged, as Videos' are.
 
+- **No START cap on the rail** (owner). START still opens Settings from every shell screen, the player and the text
+  and PDF readers. It is taught where it is used: Settings' hint bar reads “B / START Back”, and the first-start
+  pane's key line names it. The rail gets the room back: with seven sections the cells are 50 tall.
+
+- **On the player, UP / DOWN are the volume** (owner: the volume keys are hard to reach with the handheld lying
+  down). A video and a song alike. They do what the volume keys do: one step a press, the Level card on the top
+  screen, the boost past 100% up to Max volume with its warning; the browser's volume while a browser plays. The hint
+  bar says “▲/▼ Volume”. UP and DOWN did nothing on the player before (the chips take no focus; the keys reach them
+  through More), so nothing moved.
+
+- **Gundam takes the proposed values** (owner): BG #D9DFEC, BUTTON #ECEFF6, PRESSED #CBD3E4, TRACK #C6CEDF, RULE
+  #B4BDD0, RAIL #172E6B, DIM #53546A, DIM_ON #43445A, ACCENT and KEY #2C52B3, a new optional ON_RAIL #C9D3EE; the
+  rail's active cell is KEY_FOCUS (#FFF867) with TEXT ink and the hint bar's caps are KEY_FOCUS; the rest as first
+  built. `theme-gundam` keeps the first values beside them.
+- **Match album art, as drawn** (owner): the song's player, the top screen and Quick settings' block; always a dark
+  result; a switch in Settings › Music & sound and at the foot of the song's Display sheet. `dyn-art`.
+- **Classic is the default style, Clean the option** (owner): Settings › Power & screens › Style. `clean-style`.
+- **Held, UP stops at 100%** (owner): the boost takes a fresh press. **UP / DOWN are the volume only on the player.**
+- **No mini bar; Quick settings' Now playing block replaces it everywhere** (owner). No shell page has a bar at its
+  foot; the body has the room. The block heads Quick settings on every screen, the player included, and is always
+  there: idle (“Nothing playing”, keys dimmed, not pressed) when nothing is loaded. Home's Now playing card stays.
+  `quick`, `quick-playing`.
+
+- **Dark's accent is neutral** (the owner: it looked bluish, purplish). ACCENT #A9C4E6 → #E8E4DA, a warm off-white;
+  nothing else of Dark changes (ON_ACCENT stays #0B0B0D). For the builders: the `dark` line of `BASES` in
+  `src/theme.cpp`, its tenth colour; the top cards' title and the dashboard follow through `build()` and `themeCss`.
+  The two candidates not taken (Chalk #ECEEF1, Mist #D3DAE4) are beside it on `theme-dark-accent`.
+
+- **A playing mark on the rail** (owner), instead of only the header's bars: while something is loaded the rail has
+  a Now playing key, and one tap on it opens the player. Details chosen for it are in the waiting list.
+
 ## Decisions waiting on the owner
 
 Each was needed to draw a gap; the drawn one is the recommendation.
+
+- **The rail's Now playing key: what had to be chosen.** Drawn: it sits above Settings (near the thumb, where the
+  mini bar was), 68 × 44, the art at 30 with the three playing bars beside it (a pause mark when paused), no label;
+  its place is kept empty when nothing plays, so the rail's cells never change height (45 tall with seven sections,
+  52 with fewer; Settings 50). A tap opens the player; a hold opens the More of what plays (Stop, Like, Add…), as the
+  mini bar's hold did. L / R pass it by; SELECT is its key. The header's status cluster still opens Quick settings,
+  and the header keeps its playing bars (a book and a photo have no rail). Or: under Search at the top; or a hold
+  that opens Quick settings; or no kept place (the cells would jump when playback starts).
 
 From the gaps:
 
@@ -163,10 +201,10 @@ For the builders (the build's screenshots of 2026-11-19 against this):
   fit. `lay::statusRow` already takes a gap of 8.
 - The player (`lay::playerLayout`): `keys`, `chip` and `next` 8 apart and `next` 4 over the hints (the Next line
   sits about 2 from the hint bar); the title to the bar has about 45 of air where the line (40) belongs.
-- Quick settings and Quit are still the old centred dialogs with their own hint style (“UP/DOWN Choose”): they are
-  bottom sheets, gutter 16, rows 46, the kit's hint bar.
-- The rail: Search's key at the top (touch 78 × 48), cells `RAIL_CELL_H` 56, or 47 with seven sections;
-  `RAIL_CAP_H` is only the START cap now.
+- Quick settings stays a centred panel (the owner; components.md › Quick settings panel) but takes the kit's rows,
+  tiles and hint bar in place of its own hint style (“UP/DOWN Choose”); Quit is a Confirm sheet.
+- The rail: Search's key at the top (touch 78 × 48), cells `RAIL_CELL_H` 56, or 50 with seven sections; no caps
+  at all (`RAIL_CAP_H` and the capStart row go).
 
 ## Still only listed
 

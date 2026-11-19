@@ -17,7 +17,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Used:** every bottom screen (96)
 - **Anatomy and states:** 54 tall, at the top. Back key 56 × 48 (radius 10) when there is somewhere to go back to; title Pixelify 25 (19 in the viewers, where it is a file name), one line, cut with “…”; crumb under it, Inter 12, dim; status cluster; More key 56 × 48, its right edge on the column’s (12 from the panel’s); 8 between the header’s parts; the body starts 6 under the header. Touch area of both keys runs to the panel’s edges (60 × 56). Search is not in the header: its key is at the top of the rail (Section rail).
 - **Inputs:** title, crumb, back target, more (yes / no), right slot (tabs’ keys, a badge)
-- **Keys and touch:** ‹ = B. ⋯ = X. Nothing else in it is pressed.
+- **Keys and touch:** ‹ = B. ⋯ = X. The status cluster (the playing bars, badges, Wi-Fi, battery, clock) is one touch target, 48 tall, on every header: a tap opens Quick settings, as F does.
 - **Code:** drawHeader, drawSectionHeader, drawBackIcon (ui.h). Needs: the crumb line, the More key, room for badges.
 
 ### Status cluster and header badges (exists, needs a variant)
@@ -31,9 +31,9 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Section rail (new)
 
 - **Used:** every shell screen (about 50)
-- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 56 (68 × 47 when seven sections show), radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. A Search key pinned at the top (68 × 40, the magnifier alone at 22, BUTTON with its edge; yellow fill while Search shows); then the sections; Settings pinned at the foot, a START cap over it (START opens Settings from every shell screen, the player and the text and PDF readers; no hint bar repeats it). No cell carries a warning: opening a section starts and stops nothing (Rules › Arriving stops nothing). “Extensions” is the longest label, 62 of the cell’s 68.
-- **Inputs:** sections (icon, label, shown or not), the active one. The sections: Home, Files, Videos, Music, Books, Extensions, Network. Extensions is one cell for every extension: Manga reader is a row of its page (`ext-section`), not a cell, and every Manga page keeps the Extensions cell lit. All seven show at once: with seven sections the cells are 47 tall (the icon 22 and the label still fit), with six or fewer 56; the rail never scrolls and no section is ever out of sight. Playlists is not a section: it is Music’s third view
-- **Keys and touch:** L / R step the sections (wrapping) and pass Search by, whose key is L3; a tap opens one. START opens Settings; there, START or B goes back to where you were. The D-pad never enters it.
+- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 52 (68 × 45 when seven sections show), radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. A Search key pinned at the top (68 × 40, the magnifier alone at 22, BUTTON with its edge; yellow fill while Search shows); then the sections; a Now playing key pinned above Settings while something is loaded (68 × 44: the art at 30, radius 5, a video’s frame or the Art placeholder when there is none, and beside it the three playing bars in ACCENT, moving; a pause mark in DIM_ON when paused; Classic: a key, BUTTON with its edge and lip; Clean: no ground); its place is kept empty when nothing is loaded, so the cells never change height; Settings pinned at the foot (68 × 50), with no key cap on it (START opens Settings from every shell screen, the player and the text and PDF readers; it is taught on the Settings page, whose hint bar reads “B / START Back”, and on the first-start pane). No cell carries a warning: opening a section starts and stops nothing (Rules › Arriving stops nothing). “Extensions” is the longest label, 62 of the cell’s 68.
+- **Inputs:** sections (icon, label, shown or not), the active one. The sections: Home, Files, Videos, Music, Books, Extensions, Network. Extensions is one cell for every extension: Manga reader is a row of its page (`ext-section`), not a cell, and every Manga page keeps the Extensions cell lit. All seven show at once: with seven sections the cells are 45 tall (the icon 22 and the label still fit), with six or fewer 52; the rail never scrolls and no section is ever out of sight. Playlists is not a section: it is Music’s third view
+- **Keys and touch:** L / R step the sections (wrapping) and pass Search by, whose key is L3, and the Now playing key, whose key is SELECT; a tap opens one. A tap on the Now playing key opens the player (one tap, as the mini bar was); a hold opens the More sheet of what plays. START opens Settings; there, START or B goes back to where you were. The D-pad never enters it.
 - **Code:** New. Replaces the four markers drawn by drawSectionHeader and Home’s tiles (drawHome). Belongs to Ui’s shell, drawn for every page of an area that is a section.
 
 ### Hint bar (exists, needs a variant)
@@ -44,13 +44,9 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Keys and touch:** A legend only: not pressed.
 - **Code:** drawHints (ui.h). Needs: the key in a boxed cap instead of plain yellow text; Inter for the words.
 
-### Mini bar (exists, needs a variant)
+### Mini bar (removed)
 
-- **Used:** every shell screen while something plays, except Home, whose Now playing card does its job (drawn on 4)
-- **Anatomy and states:** 52 tall, 12 from the sides, 38 above the foot (8 over the hint bar; the body ends 8 above it); SURFACE with a 2-unit yellow outline, radius 10. Play mark 56 × 42; kind icon 17; title Pixelify 15, a Title marquee on SURFACE, in what the other parts leave; time Inter 12; state pills; SELECT cap; a 3-unit progress line along its foot. With pills it drops the words “Now playing”. Where the bar shows a song’s art (30 square, radius 5, in the kind icon’s place), a song with none gets the Art placeholder at 30 with its 1-unit edge: its BUTTON sleeve shows on the bar’s SURFACE.
-- **Inputs:** title, time, paused, pills (speed, look, repeat, EQ, “Playing in …”), progress
-- **Keys and touch:** Tap: the player (SELECT). Tap the mark: play / pause. Hold the mark: take over from a browser. Hold the bar: its More sheet.
-- **Code:** drawMiniBar (ui.h). Needs: the wider play mark, state pills.
+Removed (the owner, 2026-11-19): no page has a bar at its foot any more, and the body has that room. What plays is controlled from its player, from Home’s Now playing card, and from the Now playing block that heads Quick settings on every screen (Sheets › Quick settings panel). The header’s playing bars, in ACCENT, say that something plays; SELECT goes to the player; a tap on the header’s status cluster opens Quick settings.
 
 ## Spacing
 
@@ -61,15 +57,15 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 | 2 | an edge, an outline's offset, the rail's cells apart |
 | 4 | inside a pill or a badge; a label over its value; the hint bar over the panel's foot on the player |
 | 6 | chips in a row; a key cap and its word; the header over the body |
-| 8 | keys in a row, tiles and cards in a grid, cards in a strip; an icon and its label in a key; one block and the next (card, chips, strip, shortcuts on Home: 12 before a heading, 8 after it); the mini bar over the hint bar and under the body |
-| 12 | the shell's gutter (the body, the header and the mini bar are 12 from the rail and from the right edge); a row's padding and its icon to its name |
+| 8 | keys in a row, tiles and cards in a grid, cards in a strip; an icon and its label in a key; one block and the next (card, chips, strip, shortcuts on Home: 12 before a heading, 8 after it) |
+| 12 | the shell's gutter (the body and the header are 12 from the rail and from the right edge); a row's padding and its icon to its name |
 | 16 | the gutter of a page with no rail (the player, the readers) and of every sheet; hints apart in the hint bar |
 | 24 | a group and the next on a page of settings; the empty state's text over its keys |
 
-- **One column.** In the shell everything starts 12 right of the rail (x 90) and ends 12 from the right edge (x 628): the title, the More key's right edge, the rows, the mini bar. A focused row's outline is that column's full width; its text starts 12 inside it. On the player and in a sheet the column is 16 to 624, so a sheet's keys stand over the player's.
-- **Down a shell page:** header 54; 6; the body; the hint bar 30 at the foot (a list runs to 2 above its rule, since it scrolls under it). With the mini bar: the body ends 8 above it, the bar is 52, then 8, then the hint bar.
+- **One column.** In the shell everything starts 12 right of the rail (x 90) and ends 12 from the right edge (x 628): the title, the More key's right edge, the rows. A focused row's outline is that column's full width; its text starts 12 inside it. On the player and in a sheet the column is 16 to 624, so a sheet's keys stand over the player's.
+- **Down a shell page:** header 54; 6; the body; the hint bar 30 at the foot (a list runs to 2 above its rule, since it scrolls under it).
 - **Down the player:** header 54, title 34, the line 40, the bar and its times, then four rows 8 apart (transport 76, keys 56, chips 52, Next 50), 4, the hint bar.
-- **Touch.** Nothing a finger presses is under 44 in either direction. Where the drawing is smaller the touch area is larger and says so: the rail's Search key draws 68 × 40 and takes the rail's whole top (78 × 48); the mini bar's mark draws 56 × 42 and takes the bar's height (52); the player's line draws 40 and takes 44; a switch (40 × 22) and a stepper's arrows are pressed through their row (46 or more). Chips are 44 tall (they were 40); list rows 52, a sheet's rows 46, a playlist's rows 46.
+- **Touch.** Nothing a finger presses is under 44 in either direction. Where the drawing is smaller the touch area is larger and says so: the rail's Search key draws 68 × 40 and takes the rail's whole top (78 × 48); the Now playing block's mark draws 56 × 42 and takes the bar's height (52); the player's line draws 40 and takes 44; a switch (40 × 22) and a stepper's arrows are pressed through their row (46 or more). Chips are 44 tall (they were 40); list rows 52, a sheet's rows 46, a playlist's rows 46.
 - **Centring.** A key's label and its cap sit on one centre line, the icon 8 before the label; a two-line key (60 and taller) centres the pair. A row's name is centred on the row, its note on the same line, right-aligned to the column's edge less 12. A stepper's value is centred between its arrows, and the arrows of every row on a page share two x positions.
 
 ## Keys
@@ -238,6 +234,14 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 - **Keys and touch:** D-pad moves, A types, X deletes, Y space, L3 capitals, START done, B cancels.
 - **Code:** drawKeyboard (ui.h). Needs: a special row per field, the text echoed on the top screen.
 
+### Quick settings panel (exists, needs a variant)
+
+- **Used:** F, on every screen but the on-screen keyboard
+- **Anatomy and states:** Not a sheet: a panel centred on the whole bottom screen, over the rail (as built; the owner’s choice), 592 wide (24 from the sides), SURFACE, 2-unit edge, radius 18, padding 16, as tall as its rows, centred in the height above the hint bar; the page behind under the veil. Title line 48 (Pixelify 20, ACCENT; the battery at its right). Then, 8 apart: the Now playing block when it applies; Volume and Brightness (rows 52, a − and a + key 56 × 44 each side of the bar); the switch tiles two to a row (54 tall); Quit (46, DANGER fill).
+- **Now playing block:** 64 tall, a card: the art 48 (the Art placeholder when a song has none; a video’s frame), the title Pixelify 15 (a Title marquee) over artist · time Inter 12, then Previous 52 × 48, Play / Pause 68 × 48 (primary) and Next 52 × 48, 12 apart from the text, 8 from each other; a 3-unit progress line along its foot. Always shown, on every screen, the player included (the owner’s choice): it is the one place outside the player and Home’s card where what plays is controlled. After the time, in ACCENT, the state marks the Now playing block’s pills carried (1.5×, a look, Repeat one, EQ, “Playing in Chrome”). **Idle** (nothing loaded): the same block, a music mark on TRACK in the art’s place, “Nothing playing” in DIM over “What you play shows here”, the three keys at 45%, no progress line; it is not pressed and the cursor passes it.
+- **Keys and touch:** UP / DOWN choose (the cursor opens on Volume), LEFT / RIGHT change a level, A toggles. With the block: A on it plays or pauses, LEFT / RIGHT on it seek (5 s back, 10 s on), L / R step to the previous and next from any row, SELECT goes to the player. A tap on one of the block’s three keys does its job; a tap anywhere else on the block (art, title, artist, time, the progress line) opens the player and closes the panel. A on the block is play / pause, not “open”: SELECT opens the player. The block is one cursor stop. A tap on the veil, F or B closes.
+- **Code:** drawQuickSettings as an Overlay (it is one today, centred); needs the block (what the Now playing block showed: `lay::miniBar`’s fields, plus two keys) and the kit’s rows and tiles.
+
 ## Values
 
 ### Slider (exists, reuse)
@@ -251,7 +255,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Progress bar (exists, reuse)
 
 - **Used:** about 40 screens
-- **Anatomy and states:** Not touched. Three sizes: a 3-unit line along the foot of a card or the mini bar; 6 tall (radius 3) in rows, cards and top-screen previews; 12 tall (radius 6) in job sheets. TRACK with a yellow fill. On top-screen level cards: 8 tall.
+- **Anatomy and states:** Not touched. Three sizes: a 3-unit line along the foot of a card or the Now playing block; 6 tall (radius 3) in rows, cards and top-screen previews; 12 tall (radius 6) in job sheets. TRACK with a yellow fill. On top-screen level cards: 8 tall.
 - **Inputs:** share, size
 - **Keys and touch:** None.
 - **Code:** The download, Find-job, file-job and Recent-card bars (plain fillRound).
@@ -284,7 +288,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 
 ### Art placeholder (new)
 
-- **Used:** wherever a song’s or an album’s art would be and there is none: the top screen’s Song layout (240 in Album art only, 224 in Art + visualizer), the player’s thumbnail by the artist line (30), the mini bar, list rows, an album’s Cover cell (96; 120 on the artist pane), the Web dashboard’s album covers
+- **Used:** wherever a song’s or an album’s art would be and there is none: the top screen’s Song layout (240 in Album art only, 224 in Art + visualizer), the player’s thumbnail by the artist line (30), the Now playing block, list rows, an album’s Cover cell (96; 120 on the artist pane), the Web dashboard’s album covers
 - **Anatomy and states:** It follows the theme: flat shapes in theme roles only, no picture, no glyph, no gradient, nothing of its own in any theme. A record in its sleeve, five shapes, back to front, on a square of side s:
 
   | Shape | Role | Size |
@@ -298,8 +302,8 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
   Diameters are rounded to an even number of units, so every centre is on a whole unit. The discs share one centre and are clipped to the square.
   - **Placement (the variation):** four, so a grid of albums without covers is not one drawing repeated. 0: whole, centred. 1: half out of the bottom edge (centre at the edge’s middle). 2: half out of the right edge. 3: half out of the top edge. Never the left: a right one beside it in a grid would read as one record cut in two. At 88% a half record stays clear of the box’s corners, so a plain clip rect is enough.
   - **Which one:** the top two bits of FNV-1a (32 bits) over the UTF-8 bytes of the key. The key is the album’s name; with none, the title; with none, the file’s name. So an album’s songs, its cell in Music › Albums, the top screen and the dashboard all draw the same one, and it does not change between starts. The preview’s names: Yellow Album 0, Red Room 1, Wheel 2, Field Recordings 3.
-  - **Small (s under 64: the thumbnail, the mini bar, a row):** always placement 0, without the SURFACE disc: three shapes on the square. At 30: record 22, label 8, hole 2.
-  - **Edge:** the art’s own box and edge where it has one (the top screen: 2 units, edgeOf(SURFACE)). Where the art has none (the thumbnail, the mini bar, a row), a 1-unit edgeOf(BUTTON) edge inside the square, so it still has a shape on a focused row’s BUTTON. A Cover cell has none; focused, the Cover cell’s ACCENT outline.
+  - **Small (s under 64: the thumbnail, the Now playing block, a row):** always placement 0, without the SURFACE disc: three shapes on the square. At 30: record 22, label 8, hole 2.
+  - **Edge:** the art’s own box and edge where it has one (the top screen: 2 units, edgeOf(SURFACE)). Where the art has none (the thumbnail, the Now playing block, a row), a 1-unit edgeOf(BUTTON) edge inside the square, so it still has a shape on a focused row’s BUTTON. A Cover cell has none; focused, the Cover cell’s ACCENT outline.
   - **Per theme:** nothing but the roles’ values. The record is the theme’s ground, so it is the darkest part in a dark theme (a black record, the label lit) and the lightest in a light-bodied one (Light, Sakura, 16-bit, 16-bit Lavender, 32-bit: a paper record on a BUTTON sleeve, the label in the theme’s deep ACCENT). The label on the record and on the sleeve are ACCENT on BG and ACCENT on BUTTON, both checked at 4.5 : 1 or more in every theme (themes.py); the sleeve stands off the ground as much as a key does, and the record off the sleeve by the same step.
   - **Not used here:** TEXT, DIM, DIM_ON, PRESSED (no text, no second state: it is not a key and has no pressed or off drawing of its own; a dimmed cell dims it with the cell).
 - **Inputs:** side, key (album, else title, else file name), the box’s radius and edge
@@ -324,9 +328,9 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Recent card and Continue card (exists, needs a variant)
 
 - **Used:** Home and its states
-- **Anatomy and states:** Recent card 112 × 100, radius 12: a 48-tall picture with a kind mark, title 14, note 12, a 3-unit progress line. Continue card 108 tall, radius 14: picture 128 × 84, a label in capitals (Continue / Now playing / Stopped for Manga), title 22, note 12.5, a bar, one primary key 118 × 52. It is one card in two states. Continue: nothing is loaded; the key is Resume. Now playing: something is loaded, playing or paused; the picture wears the NOW pill, the note is the time followed by the mini bar’s state pills (speed, look, repeat, EQ, “Playing in …”), and the key is Pause, or Play when paused. While it shows, Home draws no mini bar: the card is the one place for what plays there, and Home keeps the same layout either way.
+- **Anatomy and states:** Recent card 112 × 100, radius 12: a 48-tall picture with a kind mark, title 14, note 12, a 3-unit progress line. Continue card 108 tall, radius 14: picture 128 × 84, a label in capitals (Continue / Now playing / Stopped for Manga), title 22, note 12.5, a bar, one primary key 118 × 52. It is one card in two states. Continue: nothing is loaded; the key is Resume. Now playing: something is loaded, playing or paused; the picture wears the NOW pill, the note is the time followed by the Now playing block’s state pills (speed, look, repeat, EQ, “Playing in …”), and the key is Pause, or Play when paused. The card is the one place on Home for what plays, and Home keeps the same layout either way.
 - **Inputs:** picture, kind, title, note, progress, label, key
-- **Keys and touch:** A plays or resumes; X (or hold) its More sheet. Now playing: A or a tap on the card goes to the player (SELECT too); a tap on its key pauses or plays; a hold on the key takes over from a browser, as the mini bar’s mark does; X or a hold on the card is its More.
+- **Keys and touch:** A plays or resumes; X (or hold) its More sheet. Now playing: A or a tap on the card goes to the player (SELECT too); a tap on its key pauses or plays; a hold on the key takes over from a browser, as the Now playing block’s mark does; X or a hold on the card is its More.
 - **Code:** Home’s Recent cards in drawHome. Needs: the Continue card.
 
 ### Empty state (exists, needs a variant)
@@ -348,7 +352,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Select bar and clip bar (exists, needs a variant)
 
 - **Used:** select mode in Files and in a playlist, a held file, items being moved in a playlist
-- **Anatomy and states:** At the foot of the list, above the hints (above the mini bar when there is one). Select bar: four keys 56 tall (Playlist, Copy, Move, Delete in red). In a playlist: three (Remove, which wants a second press; Move, on Y; Add to…), and every row shows a grip at its right, 30 × 44, DIM. Moving: the ticked rows are lifted as one block (BUTTON ground, ACCENT edge, set in 10 units, a 5-unit shadow, grips ACCENT) and the bar is two keys, Put here (primary, A) and Cancel (B); UP / DOWN carry the block, the rest renumber as it passes. Clip bar: 60 tall, yellow outline, what is held and its size, two keys 46 tall (… here on SELECT, Cancel on X).
+- **Anatomy and states:** At the foot of the list, above the hints. Select bar: four keys 56 tall (Playlist, Copy, Move, Delete in red). In a playlist: three (Remove, which wants a second press; Move, on Y; Add to…), and every row shows a grip at its right, 30 × 44, DIM. Moving: the ticked rows are lifted as one block (BUTTON ground, ACCENT edge, set in 10 units, a 5-unit shadow, grips ACCENT) and the bar is two keys, Put here (primary, A) and Cancel (B); UP / DOWN carry the block, the rest renumber as it passes. Clip bar: 60 tall, yellow outline, what is held and its size, two keys 46 tall (… here on SELECT, Cancel on X).
 - **Inputs:** mode, count, held item
 - **Keys and touch:** SELECT = all / put here; X = More / Cancel while a file is held. In a playlist: Y lifts the ticked items, UP / DOWN a place, LEFT / RIGHT a page, L2 / R2 the top or the foot, A puts down, B cancels; a finger drags one row by its grip, and the list scrolls within 40 units of its top or foot; a 0.5 s hold on a row outside select mode ticks and lifts it.
 - **Code:** drawSelBar, drawSelHeader, drawClipBar (ui.h).
@@ -361,6 +365,85 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 - **Keys and touch:** Drag the box (or the photo), tap to look there, double-tap 200%. Drag area: drag scrolls and glides, tap halves page.
 - **Code:** The photo and document viewers’ pan box and drag area (ui_docs.cpp, drawPhoto), with gridCell for the keys beside.
 
+### Strong keys (a theme's optional roles)
+
+A theme may give eight more roles; Gundam is the one that does. Unset, each is the ordinary role beside it, so every other theme draws as before.
+
+| Role | Unset | Drawn on |
+|---|---|---|
+| KEY, ON_KEY | BUTTON, TEXT | a named key (`Kit::key`, `Kit::iconKey`: Like, Playlist, List, Stop, the header's Back and More, a sheet's keys); its caps take ON_KEY |
+| KEY_FOCUS | ACCENT | a focused named key's edge; in a theme with a dark rail, also the rail's active cell (TEXT ink) and the hint bar's key caps |
+| PRIMARY, ON_PRIMARY | ACCENT, ON_ACCENT | the primary key (Play / Pause, Resume, a sheet's first key) |
+| HINT_BAR, ON_HINT | BG, DIM_ON | the hint bar and its words |
+| ON_RAIL | DIM_ON | the rail's icons and labels, when RAIL is dark in a light theme (Gundam, proposed) |
+
+Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary roles. In the Clean style a named key goes back to BUTTON with TEXT ink (one quiet fill); the primary key, the hint bar and the rail keep their strong roles. A theme whose BUTTON does not stand 1.15 off its BG and SURFACE is always Classic (Gundam as first built was one; its values since 2026-11-19 are not). Drawn: `theme-gundam`.
+
+## Clean style
+
+A second way to draw the whole kit, beside Classic (the edges and lips everything above describes). Same sizes, places, touch areas, spacing scale, type and colour roles: a screen is laid out once and drawn either way. What changes is how a piece shows its shape and how loudly. Drawn: `clean-style`, and the page's Style switch redraws every screen.
+
+**The idea.** Classic boxes everything, so everything has the same voice. Clean gives each screen three voices and no more: plain text on the page (what you read), a quiet fill (what you press), and the accent, solid, for the one thing the screen is for. The only line left is the focus ring.
+
+**Rules, for every component**
+
+1. **No edges and no lips.** A fill carries the shape. Radius 12 on everything pressed (keys, cards, tiles, chips, tabs, rows, rail cells, the Now playing block), 6 on small tints (caps, pills, badges), 18 on a sheet's top corners.
+2. **One fill for what is pressed: BUTTON,** on BG or on a sheet's SURFACE. A Clean card or tile is BUTTON too, not SURFACE: SURFACE stands off BG by as little as 1.06 and cannot carry a shape alone. Pressed is PRESSED.
+3. **Solid accent once.** The primary key (Resume, Pause, Play, Save) is the only solid ACCENT on a screen. What is merely selected (a chip, a tab, the rail's cell) is the accent's tint (17% over its ground) with ACCENT ink.
+4. **Focus is the one ring:** 2 units of ACCENT on the thing under the cursor, its name in ACCENT; a focused row also takes BUTTON. No outer glow.
+5. **Text where a box said nothing.** An unselected chip, the player's state chips, its chapter line and Next line, the header's Back and More, the rail's Search: no ground at all, the same touch areas. The rail has no ground and no rule; the hint bar has no rule.
+6. **Tints for small marks.** Key caps, pills and badges are the accent's tint with ACCENT ink (red's for danger), not outlined or solid boxes.
+7. **What keeps a line:** the focus ring; a text field (2 units, edgeOf(SURFACE); ACCENT while typed in); a sheet's top hairline (1 unit, RULE), so it is told from what it covers; a slider's track is a fill as before. High contrast is always Classic.
+
+| Component | Classic | Clean |
+|---|---|---|
+| Key, transport key, keyboard key | BUTTON, 2-unit edge, 3-unit lip | BUTTON, nothing else; primary: ACCENT, flat; danger: DANGER ink (Quit: DANGER fill) |
+| Header keys (Back, More) | keys | the glyph alone, set to the column's edges; touch 60 × 56 as before; pressed: PRESSED |
+| Rail | RAIL ground, a rule, the active cell solid ACCENT with a lip | BG, no rule; the active cell the accent's tint, ACCENT ink; Search's key a glyph |
+| Row | no box; focused: BUTTON and the ring | the same |
+| Card, tile, notice row | SURFACE and its edge | BUTTON, no edge |
+| State chip (the player's), the chapter line, the Next line | SURFACE and its edge | no ground: label over value; a ring when focused (in More) |
+| Chip (a view, a filter) | TRACK off, solid ACCENT on | a word off; the tint with ACCENT ink on |
+| Tab | a key; solid ACCENT on | BUTTON; the tint on |
+| Pill, badge, key cap | solid ACCENT / an outlined box | the tint, ACCENT ink |
+| Now playing block | SURFACE, 2-unit ACCENT outline | BUTTON, no outline; the mark a glyph; the progress line stays |
+| Sheet | SURFACE, 2-unit edge | SURFACE, a 1-unit RULE hairline along its top, the veil |
+| Switch | TRACK with an edge; ACCENT on | TRACK, no edge; ACCENT on |
+| Text field, the keyboard's field | edge | edge (kept) |
+| Top-screen card | TOP_CARD, TOP_EDGE | TOP_CARD, no edge |
+
+**Every theme.** `themes.py` checks what Clean leans on (the three “Clean style” rows of the pairs table): BUTTON against BG 1.16 to 1.50, BUTTON against SURFACE 1.17 to 1.64, PRESSED against BUTTON 1.24 to 1.68, floors 1.15, 1.15 and 1.2; and ACCENT on its tint, already 4.5 or more everywhere. The lowest are the 16-bit themes and Light on BG and Pink on a sheet: the reason Classic stays for anyone who wants more.
+
+**How it is offered** (decided): Settings › Power & screens › Style: Classic / Clean, the row under Theme. Classic is the default, Clean the option. One setting for the app, not a property of a theme.
+
+**Code.** One flag, `Settings::cleanStyle` (a `SettingDef`, `style`), read in three places of the kit and nowhere in a screen: `drawBox` / `fillRound` (no edge, no lip when clean), `Kit::flat` (BUTTON for a card or tile; nothing for a state chip, a line, a header key, an off chip), and `Kit::selected` (the tint, instead of solid ACCENT, for a chip, a tab, the rail's cell). Tokens: none new; the tint is `mix(ground, ACCENT, 17)` as a badge's already is, the hairline is RULE. Radii: one `KIT_R` (10 Classic, 12 Clean). `signature()` takes the flag. High contrast forces Classic.
+
+## Match album art
+
+A song's own colours for the places that are about that song, worked out from its art. Drawn: `dyn-art` (four arts, Classic and Clean, the top screen, the Now playing block, Quick settings' block). The preview runs the rule itself (`dynPal` in `src/screens.js`).
+
+- **Where.** The song's player, the top screen while a song plays (its cards and the visualizer), the Now playing block, Quick settings' Now playing block. Nowhere else: every other page keeps the chosen theme. Never for a video or a photo, never in High contrast, and a song without art uses the chosen theme.
+- **Picking two colours.** From a 32 × 32 copy of the art, pixels are sorted into buckets of hue (12) and lightness (3). **dom** is the mean colour of the bucket that covers most of the picture. **viv** is the mean of the bucket with the largest (pixels × saturation) among those with a saturation of 25% or more; none, and the art is grey.
+- **The palette, always dark** (lightness and saturation are HSL's; H and S are dom's, S capped at 45%):
+
+| Role | Value |
+|---|---|
+| BG, SURFACE, TRACK, BUTTON, RULE, PRESSED | H at lightness 6, 10, 14, 17, 20, 25%; saturation S × 1, 0.9, 0.8, 0.8, 0.7, 0.7 |
+| TEXT | H, saturation min(S, 25%) × 0.6, lightness 90% |
+| DIM, DIM_ON | H, saturation min(S, 20%) × 0.5; lightness from 58% (DIM) and 70% (DIM_ON), raised 2% at a time until DIM is 4.5 on BG and SURFACE and DIM_ON 4.5 on BUTTON and TRACK |
+| ACCENT | viv's hue, its saturation held to 55–90%, lightness from 64%, raised 2% at a time (to 92% at most) until it is 7 on BG, 4.8 on BUTTON and 4.5 on its own 17% tint. A grey art: TEXT |
+| ON_ACCENT | BG |
+| DANGER | #F47067; #FFB224 when ACCENT's hue is within 28° of red |
+| edges, lips, RAIL | as a theme's: edgeOf at 40%, lipOf, RAIL 60% of the way from BG to SURFACE |
+
+  The fixed lightness of the ground is what makes every pair of `themes.py` hold for any art: TEXT is 14 or more on BG, and only DIM, DIM_ON and ACCENT ever need lifting.
+- **The backdrop** (the player only): the art shrunk to 64 × 48 and scaled up to the panel, smoothed (a blur for the cost of one small texture, made once a song), with BG laid over it at the opacity that puts the blur's 95th-percentile luminance at 0.045. Text straight on it is TEXT or DIM_ON, not DIM (DIM_ON is 4.5 or more there). The hint bar has no ground over it.
+- **The kit on it.** Classic: every piece as usual, solid. Clean: a fill is BUTTON at 70% over the backdrop; the rest as Clean.
+- **Changing.** When the next song's art has been read, the roles and the backdrop cross-fade in 0.5 s (each role's value mixed in sRGB). Until it has been read the colours stay; if there is no art, the fade goes to the chosen theme. Leaving the player keeps the palette on the Now playing block and in Quick settings' block.
+- **The top screen.** TOP_* take the palette (TOP_CARD from BG and SURFACE, TOP_TITLE the ACCENT), and the visualizers drawn by the player use its ACCENT on its BG, as they use a theme's.
+- **Offered as** a switch (decided): Settings › Music & sound › Match album art, and the same at the foot of the song's Display sheet.
+- **Code.** New. `artPalette(pixels32) → Palette` in bpcore, pure and tested (the four arts of the drawing, a white art, a black art, a one-colour art: every pair of the theme test passes). It runs on the worker that already decodes the art (never `Ui` or `Player` from there); the worker posts an SDL user event with the palette and the 64 × 48 backdrop. The main thread keeps `songPalette` beside the chosen theme and a fade start time; `theme()` for the song's surfaces returns `mix(from, to, t)`; `signature()` takes the fade's step (quantised to the frame), the palette's id and the backdrop's texture id, so the player redraws during the half second and not after. The backdrop is one texture, stretched by the GPU's linear filter.
+
 ## Top screen
 
 ### Level card (exists, needs a variant)
@@ -368,7 +451,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 - **Used:** volume, brightness, zoom, chapter, equalizer, look, adjust
 - **Anatomy and states:** Top right, 20 from the edges, 290 wide (200 with no bar), TOP_CARD with a TOP_EDGE edge, radius 18, padding 14 18. A small label Inter 12 dim over the value Pixelify 19, or icon + name + value on one line; a bar 8 tall under it; an optional third line Inter 12. Fades after a moment.
 - **Inputs:** icon, label, value, share, tone, third line
-- **Keys and touch:** Shown by the key that changed the level.
+- **Keys and touch:** Shown by the key that changed the level. The volume’s: the volume keys anywhere, and the D-pad’s UP / DOWN on the player’s face (a video or a song): the same step, the same boost past 100%; held, UP / DOWN repeat (0.4 s, then eight a second) and a hold going up stops at 100%.
 - **Code:** drawLevel and the chapter / EQ cards in main.cpp (ASS on the top panel, theme.h’s TOP_ tokens, R_TOP_CARD). Needs: TOP_TEXT (cream) for normal levels.
 
 ### Note (exists, reuse)
@@ -415,8 +498,8 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 
 ### Away-from-normal mark (new)
 
-- **Used:** chips, the Light key, header badges, mini bar pills, slider rows
-- **Anatomy and states:** ACCENT; the value written in place of the setting’s name; a 6-unit dot in the control’s corner. Where the control isn’t on screen: the badge (header) or pill (mini bar). DANGER only past a danger line (volume over 120%, offline, failed).
+- **Used:** chips, the Light key, header badges, the Now playing block’s marks, slider rows
+- **Anatomy and states:** ACCENT; the value written in place of the setting’s name; a 6-unit dot in the control’s corner. Where the control isn’t on screen: the badge (header) or pill (Now playing block). DANGER only past a danger line (volume over 120%, offline, failed).
 - **Inputs:** state, its normal value, danger
 - **Keys and touch:** A tap on a badge or pill goes to where the control is.
 - **Code:** New as a rule (0.7.18 has the yellow speed key and the lit Brightness key). One helper: given a state and its normal, return the tone and the words.
@@ -441,7 +524,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 
 - **Used:** the rail, the Extensions page, Manga’s row, a comic opened from Files or Search
 - **Anatomy and states:** Opening a section, by a tap on the rail or by L / R, shows a page and does nothing else: it starts no engine, takes no memory and leaves the top screen to what plays. A row that would stop what plays wears a DANGER pill with the Stop glyph and the words (“Stops the video”), at its right before the chevron, for as long as that is true. A on it (or a tap) opens a Confirm sheet: the safe key keeps what plays and is focused, the action names both halves (“Stop video & open Manga”), one sentence gives the reason and one says where the stopped thing waits. Nothing else asks: the rail, L / R and B only move. Drawn: `ext-section`, `ext-section-video`, `manga-guard`.
-- **When it asks:** only for a video (playing or paused): the handheld’s 1 GB cannot hold it and the manga engine together. A song or a photo goes on under Manga with its mini bar, and no pill or question shows. The stopped video’s place is kept as Stop keeps it; Home’s Continue card reads “Stopped for Manga”.
+- **When it asks:** only for a video (playing or paused): the handheld’s 1 GB cannot hold it and the manga engine together. A song or a photo goes on under Manga with its Now playing block, and no pill or question shows. The stopped video’s place is kept as Stop keeps it; Home’s Continue card reads “Stopped for Manga”.
 - **Coming back:** the Extensions section returns to the page it was left on (Manga, where you were), as any section does, unless a video is playing: then it returns to its list, so the rule holds.
 - **Inputs:** what plays (a video, a song, nothing), what the row needs (the top screen, the memory)
 - **Keys and touch:** A or a tap on the row asks; B, or the safe key, stays. L / R and a tap on the rail never ask and never stop anything.
@@ -449,16 +532,16 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 
 ### Title marquee (new)
 
-- **Used:** the player’s title (a song and a video), the mini bar’s title, a song’s title on the top screen (all four Show modes), the focused row’s name in a list. Not the header’s title, not artist and album, not a chip’s value, not a Note: those stay one line cut with “…”.
+- **Used:** the player’s title (a song and a video), the Now playing block’s title, a song’s title on the top screen (all four Show modes), the focused row’s name in a list. Not the header’s title, not artist and album, not a chip’s value, not a Note: those stay one line cut with “…”.
 - **Anatomy and states:** One line in a box.
   - **Fits:** drawn as before; nothing moves, nothing fades.
   - **Doesn’t fit, at rest:** the text from its start, no “…”; its last 16 units fade into the ground, which says it goes on.
   - **Moving:** after 1.5 s at its start it moves left until its end shows, rests 1.5 s there, fades back to its start (150 ms out, 150 ms in), rests 3 s, and does it once more. After two passes it stays at its start. A focused row makes one pass, and only after the cursor has rested 1.5 s on it, so stepping down a list starts nothing. While it moves both edges fade; at its end the right one doesn’t.
   - **Speed:** whole units, 24 steps a second: 2 units a step (48 a second) for type of 24 and more, 1 unit a step (24 a second) under it. About three letters a second at both sizes; whole units keep the pixel type sharp.
   - **Starts again:** the title changes; the screen is opened; the panel wakes. **Stops, back at its start:** the panel dims (the Screen-off warning) or turns off, the lid shuts, a sheet opens over it, Scroll long titles is turned off. Pausing changes nothing: two passes bound it, so a screen where nothing else changes is still again within seconds.
-  - **One at a time on a panel:** the focused row first; the mini bar’s title waits at its start until the row is done.
+  - **One at a time on a panel:** the focused row first; the Now playing block’s title waits at its start until the row is done.
   - **Right to left:** a title that starts in a right-to-left script rests at its right end and moves right.
-  - **Colours:** the text keeps its own (TEXT on the player, the mini bar and a song’s top screen; ACCENT in a focused row; white with its shadow over a picture: a video’s card). The fade is the ground’s token, from clear to full over 16 units: BG on the player and a song’s top screen, SURFACE in the mini bar, BUTTON in a focused row. Over a visualizer alone the ground is BG too, so the fade is the same; a style that fills the panel passes under it. Nothing is new per theme.
+  - **Colours:** the text keeps its own (TEXT on the player, the Now playing block and a song’s top screen; ACCENT in a focused row; white with its shadow over a picture: a video’s card). The fade is the ground’s token, from clear to full over 16 units: BG on the player and a song’s top screen, SURFACE in the Now playing block, BUTTON in a focused row. Over a visualizer alone the ground is BG too, so the fade is the same; a style that fills the panel passes under it. Nothing is new per theme.
 - **Repeated start (the text it is given):** the shown title of what plays (the three places above, and the player’s Next line) leaves out its start when all of these hold. It is a rule, not a setting.
   1. The whole title doesn’t fit the box it is drawn in. A title that fits is never changed, so a wide box may show more than a narrow one.
   2. The start is, without regard to case, the album’s name, the artist’s, the name of the folder the file is in, or a start that every item of the playing list shares (three items or more, four letters or more).
@@ -467,7 +550,7 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 
   At most two starts go (artist, then album). A track number stays: it is short and says where in the album. Nothing is renamed: list rows, Search and More › Info show the name whole, and a focused row scrolls the whole name. With Scroll long titles off the rule still applies, and helps most there.
 - **Inputs:** text, font and size, the box, the ground’s token (or none), passes (2; 1 in a row), Scroll long titles (Settings › Power & screens: On, the default / Off; help: “A title too long for its place moves along after a moment, twice, then rests at its start. Off: it is cut with “…”.”). Off: cut with “…” as today, a file name in its middle.
-- **Keys and touch:** None. A tap goes to what is under it (the mini bar: the player; the player’s title is not a key); a drag does not move it.
+- **Keys and touch:** None. A tap goes to what is under it (the Now playing block: the player; the player’s title is not a key); a drag does not move it.
 - **Code:** New. `lay::marquee` in kitlayout (bpcore, tested): the offset from the time since it started, the text’s and the box’s widths and the type’s size; pure, so the rests, the speed and the two passes are one table. `Kit::marquee(Rect, text, font, ground)` in ui_kit.cpp. `shownTitle()` (bpcore, tested with the table on the screen A long title) for the Repeated start. One `SettingDef`, `scroll-titles`.
   - **Bottom screen:** the text is drawn once to a texture (per text and font, through `Ui::runs()`), and a step copies a part of it into the box, then the two fades. The step is not in `signature()`: while a marquee moves, the pass redraws only its Rect over the panel as last drawn, 24 times a second, and the loop goes back to waiting when it rests. A full redraw (a `signature()` change) leaves its clock alone.
   - **Top screen:** the song’s lines are an mpv ASS overlay. The title becomes its own overlay (so artist and album are not sent again): one event, `\an7\pos(x,y)\clip(box)`, sent again with a new x each step, in whole panel pixels (the overlay’s canvas is 960 × 720, so a 2-pixel step is 3 of its units). libass keeps the glyphs it has drawn, so a step is a blend, not a new drawing of the text. The fades are two fixed events (four 4-unit strips of BG at 20, 40, 60, 80%), sent once. Not an image overlay (`overlay-add`): that would draw the title with SDL_ttf, which has no font fallback, where libass has the bundle’s fonts for other scripts.
@@ -539,96 +622,96 @@ Five are light-bodied: 16-bit, 16-bit Lavender, 32-bit, Sakura and Light. 16-bit
 
 Sixteen colour roles, one strength, and eight for the top screen. Existing names are kept. New ones are marked: RAIL (today a literal, #0B0A0D), EDGE_MIX (today the fixed 30 inside `edgeOf`), TOP_TEXT, TOP_EDGE and TOP_DANGER (today TEXT, no edge, and DANGER used on the card). "Preview" is the CSS variable of `src/style.css` that carries the token: one to one, so the switch in the preview swaps what the code will swap.
 
-| Token | Preview | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 16-bit Lavender | 32-bit | Sakura | Light | High contrast |
+| Token | Preview | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 16-bit Lavender | 32-bit | Sakura | Gundam | Light | High contrast |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| BG | `--bg` | #000000 | #0B0B0D | #040816 | #0A0612 | #0A0405 | #0C060A | #0D0907 | #050D0C | #0A0F08 | #0E0806 | #100A14 | #E4E3EA | #C2C2C2 | #DEDEE1 | #FFE6E0 | #D9DFEC | #F7F4EC | #000000 |
+| SURFACE | `--sf` | #121116 | #17171A | #0C142E | #150E22 | #190C0E | #1B0F17 | #1A1410 | #0D1917 | #131B10 | #1C110D | #1C1323 | #F4F3F8 | #D4D4D6 | #EFEFF2 | #FFF3EF | #FFFFFF | #FFFDF8 | #0A0A0A |
+| BUTTON | `--bt` | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #CFCDDC | #B5AFE1 | #C8C8CE | #E8B3CF | #ECEFF6 | #E6E0D2 | #1E1E1E |
+| PRESSED | `--pr` | #3E3B4A | #424249 | #2C3C6C | #3D2C5E | #4D2A2F | #4B2E41 | #4A3B30 | #2A4642 | #35492D | #4E3328 | #4C365D | #B8B5CC | #9E97D0 | #B0B0B8 | #C1839F | #CBD3E4 | #D0C9B8 | #3A3A3A |
+| TRACK | `--tr` | #1E1D24 | #222226 | #131C3A | #1D1430 | #241315 | #25151F | #241C17 | #132321 | #1A2516 | #261812 | #26192F | #D6D4E0 | #B4B3BB | #D0D0D6 | #FACFD8 | #C6CEDF | #DED8C9 | #2B2B2B |
+| RULE | `--ru` | #2A2833 | #2E2E34 | #202C52 | #2E2147 | #382224 | #37222F | #392D25 | #213734 | #2A3A24 | #3A261E | #3A2947 | #C6C4D3 | #96939F | #C0C0C7 | #E8B3CF | #B4BDD0 | #D5CEBE | #5E5E5E |
+| RAIL | `--ra` | #0B0A0D | #121215 | #090F24 | #110B1C | #13090A | #150B12 | #15100C | #0A1413 | #0F160D | #160D0A | #170F1D | #DAD9E2 | #B8B8BA | #D3D3D8 | #FACFD8 | #172E6B | #ECE7DB | #060606 |
+| SCREEN | `--sc` | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #CFCDDC | #B5AFE1 | #C8C8CE | #E8B3CF | #ECEFF6 | #E6E0D2 | #1E1E1E |
+| TEXT | `--tx` | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #26242E | #3B3B3B | #1E1E22 | #561F33 | #141B33 | #1B1A20 | #FFFFFF |
+| DIM | `--dm` | #8F8A80 | #8A8C94 | #8893B0 | #938AA8 | #A08B87 | #A18B97 | #9C8E7E | #859A95 | #8A9A7C | #A38D7E | #A08C9C | #5E5B6B | #4C4A52 | #595960 | #8A5069 | #53546A | #625E56 | #C6C6C6 |
+| DIM_ON | `--do` | #ABA597 | #A6A8B0 | #A5AFCA | #AEA5C3 | #BCA8A4 | #BAA5B1 | #B7A999 | #A1B5B0 | #A6B598 | #BDA797 | #BBA7B7 | #4F4C5C | #434149 | #4B4B52 | #6F3C55 | #43445A | #55514A | #D8D8D8 |
+| KNOB | `--kn` | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #26242E | #3B3B3B | #1E1E22 | #561F33 | #141B33 | #1B1A20 | #FFFFFF |
+| ACCENT | `--ac` | #FFD23F | #E8E4DA | #8CC8FF | #B79CFF | #FF6A6E | #FF8FC7 | #E0B070 | #6FE0C2 | #A6D44A | #FF9A4D | #7FE0E8 | #55429C | #4E3375 | #1F4E9E | #852A59 | #2C52B3 | #7A5200 | #FFE14D |
+| ON_ACCENT | `--oa` | #000000 | #0B0B0D | #000000 | #0A0612 | #000000 | #000000 | #0D0907 | #050D0C | #0A0F08 | #0E0806 | #100A14 | #F4F3F8 | #E6E4F0 | #EFEFF2 | #FFE6E0 | #FFFFFF | #FFFDF8 | #000000 |
+| DANGER | `--dg` | #F0645A | #F47067 | #FF7A70 | #FF7A70 | #FFB224 | #FFB224 | #FF7468 | #FF7A70 | #FF7A6B | #FF6B9D | #FF7A70 | #A81E2A | #8A1420 | #961C24 | #7A3800 | #B81F28 | #A3261D | #FF8A80 |
+| KEY (optional) | `--key` | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | #2C52B3 | · | · |
+| ON_KEY (optional) | `--onk` | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | #FFFFFF | · | · |
+| KEY_FOCUS (optional) | `--kf` | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | #FFF867 | · | · |
+| HINT_BAR (optional) | `--hb` | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | #172E6B | · | · |
+| ON_HINT (optional) | `--oh` | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | #FFFFFF | · | · |
+| PRIMARY (optional) | `--pri` | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | #D3222B | · | · |
+| ON_PRIMARY (optional) | `--op` | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | #FFFFFF | · | · |
+| ON_RAIL (optional) | `--or` | · | · | · | · | · | · | · | · | · | · | · | · | · | · | · | #C9D3EE | · | · |
+| EDGE_MIX | (in the edges) | 30% | 40% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 55% | 80% | 55% | 55% | 55% | 55% | 50% |
+| TOP_CARD | `--tc` in the top scope | #0B0A0D | #121215 | #090F24 | #110B1C | #13090A | #150B12 | #15100C | #0A1413 | #0F160D | #160D0A | #170F1D | #110B1C | #110B1C | #121215 | #150B12 | #090F24 | #0B0A0D | #060606 |
+| TOP_EDGE | `--te` in the top scope | #2A2833 | #2E2E34 | #202C52 | #2E2147 | #382224 | #37222F | #392D25 | #213734 | #2A3A24 | #3A261E | #3A2947 | #2E2147 | #2E2147 | #2E2E34 | #37222F | #202C52 | #2A2833 | #5E5E5E |
+| TOP_TITLE | `--ac` in the top scope | #FFD23F | #E8E4DA | #8CC8FF | #B79CFF | #FF6A6E | #FF8FC7 | #E0B070 | #6FE0C2 | #A6D44A | #FF9A4D | #7FE0E8 | #B79CFF | #B79CFF | #E8E4DA | #FF8FC7 | #8CC8FF | #FFD23F | #FFE14D |
+| TOP_TEXT | `--tx` in the top scope | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #E6DFF2 | #E6DFF2 | #C2C4CA | #F1E2E9 | #E1E7F5 | #E8E2D3 | #FFFFFF |
+| TOP_SUB | `--dm, --do` in the top scope | #8F8A80 | #8A8C94 | #8893B0 | #938AA8 | #A08B87 | #A18B97 | #9C8E7E | #859A95 | #8A9A7C | #A38D7E | #A08C9C | #938AA8 | #938AA8 | #8A8C94 | #A18B97 | #8893B0 | #8F8A80 | #C6C6C6 |
+| TOP_TRACK | `--bt` in the top scope | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #2C1F45 | #2C1F45 | #2A2A2F | #301C29 | #1A2649 | #26242E | #1E1E1E |
+| TOP_SQUARE | `--sf` in the top scope | #121116 | #17171A | #0C142E | #150E22 | #190C0E | #1B0F17 | #1A1410 | #0D1917 | #131B10 | #1C110D | #1C1323 | #150E22 | #150E22 | #17171A | #1B0F17 | #0C142E | #121116 | #0A0A0A |
+| TOP_DANGER | `--dg` in the top scope | #F0645A | #F47067 | #FF7A70 | #FF7A70 | #FFB224 | #FFB224 | #FF7468 | #FF7A70 | #FF7A6B | #FF6B9D | #FF7A70 | #FF7A70 | #FF7A70 | #F47067 | #FFB224 | #FF7A70 | #F0645A | #FF8A80 |
+
+| Worked out | Preview | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 16-bit Lavender | 32-bit | Sakura | Gundam | Light | High contrast |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| edgeOf(BUTTON) | `--ed` | #605D60 | #67686D | #56607D | #645979 | #6E5859 | #6A5763 | #685E54 | #556763 | #596650 | #6C5B51 | #6B5C72 | #72707C | #53525C | #6A6A6F | #986279 | #757A8B | #767370 | #8F8F8F |
+| edgeOf(SURFACE) | `--eds` | #52504F | #5B5C60 | #4C536A | #544D60 | #594C4C | #5B4E56 | #585149 | #4B5855 | #4E5747 | #5C4F48 | #5D5260 | #838189 | #5A5A5A | #7C7C80 | #A27E88 | #7E828F | #828081 | #858585 |
+| lipOf(BUTTON) | `--lp` | #1B1920 | #1D1D21 | #121B33 | #1F1630 | #261417 | #22141D | #221B16 | #12201E | #182214 | #241712 | #22182B | #91909A | #7F7B9E | #8C8C90 | #A27D91 | #A5A7AC | #A19D93 | #151515 |
+| edgeOf(ACCENT) | `--ae` | #F8D76B | #D9D7D4 | #A6D1FC | #C5B0FB | #FA8E8F | #FBA8D1 | #E3BE8D | #90E3CD | #B5D970 | #FBAF75 | #A2E1EA | #3B315F | #3F3947 | #1E345A | #6B2444 | #1F346D | #463312 | #FFF0A6 |
+| lipOf(ACCENT) | `--al` | #B3932C | #A2A099 | #628CB3 | #806DB3 | #B34A4D | #B3648B | #9D7B4E | #4E9D88 | #749434 | #B36C36 | #599DA2 | #3C2E6D | #372452 | #16376F | #5D1D3E | #1F397D | #553900 | #B39E36 |
+| edgeOf(DANGER) | `--de` | #EE8A7E | #E0928F | #F69B98 | #F79897 | #FAC05C | #FBC05F | #F99487 | #F59C94 | #F49A87 | #FB8EAD | #FB9A96 | #60212C | #4B3336 | #541D23 | #662A1C | #5E1D2E | #581F1F | #FFC5C0 |
+| lipOf(DANGER) | `--dl` | #A8463F | #AB4E48 | #B3554E | #B3554E | #B37D19 | #B37D19 | #B35149 | #B3554E | #B3554B | #B34B6E | #B3554E | #76151D | #610E16 | #691419 | #552700 | #81161C | #721B14 | #B3615A |
+
+| Pair (floor) | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 16-bit Lavender | 32-bit | Sakura | Gundam | Light | High contrast |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| BG | `--bg` | #000000 | #0B0B0D | #040816 | #0A0612 | #0A0405 | #0C060A | #0D0907 | #050D0C | #0A0F08 | #0E0806 | #100A14 | #E4E3EA | #C2C2C2 | #DEDEE1 | #FFE6E0 | #F7F4EC | #000000 |
-| SURFACE | `--sf` | #121116 | #17171A | #0C142E | #150E22 | #190C0E | #1B0F17 | #1A1410 | #0D1917 | #131B10 | #1C110D | #1C1323 | #F4F3F8 | #D4D4D6 | #EFEFF2 | #FFF3EF | #FFFDF8 | #0A0A0A |
-| BUTTON | `--bt` | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #CFCDDC | #B5AFE1 | #C8C8CE | #E8B3CF | #E6E0D2 | #1E1E1E |
-| PRESSED | `--pr` | #3E3B4A | #424249 | #2C3C6C | #3D2C5E | #4D2A2F | #4B2E41 | #4A3B30 | #2A4642 | #35492D | #4E3328 | #4C365D | #B8B5CC | #9E97D0 | #B0B0B8 | #C1839F | #D0C9B8 | #3A3A3A |
-| TRACK | `--tr` | #1E1D24 | #222226 | #131C3A | #1D1430 | #241315 | #25151F | #241C17 | #132321 | #1A2516 | #261812 | #26192F | #D6D4E0 | #B4B3BB | #D0D0D6 | #FACFD8 | #DED8C9 | #2B2B2B |
-| RULE | `--ru` | #2A2833 | #2E2E34 | #202C52 | #2E2147 | #382224 | #37222F | #392D25 | #213734 | #2A3A24 | #3A261E | #3A2947 | #C6C4D3 | #96939F | #C0C0C7 | #E8B3CF | #D5CEBE | #5E5E5E |
-| RAIL | `--ra` | #0B0A0D | #121215 | #090F24 | #110B1C | #13090A | #150B12 | #15100C | #0A1413 | #0F160D | #160D0A | #170F1D | #DAD9E2 | #B8B8BA | #D3D3D8 | #FACFD8 | #ECE7DB | #060606 |
-| SCREEN | `--sc` | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #CFCDDC | #B5AFE1 | #C8C8CE | #E8B3CF | #E6E0D2 | #1E1E1E |
-| TEXT | `--tx` | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #26242E | #3B3B3B | #1E1E22 | #561F33 | #1B1A20 | #FFFFFF |
-| DIM | `--dm` | #8F8A80 | #8A8C94 | #8893B0 | #938AA8 | #A08B87 | #A18B97 | #9C8E7E | #859A95 | #8A9A7C | #A38D7E | #A08C9C | #5E5B6B | #4C4A52 | #595960 | #8A5069 | #625E56 | #C6C6C6 |
-| DIM_ON | `--do` | #ABA597 | #A6A8B0 | #A5AFCA | #AEA5C3 | #BCA8A4 | #BAA5B1 | #B7A999 | #A1B5B0 | #A6B598 | #BDA797 | #BBA7B7 | #4F4C5C | #434149 | #4B4B52 | #6F3C55 | #55514A | #D8D8D8 |
-| KNOB | `--kn` | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #26242E | #3B3B3B | #1E1E22 | #561F33 | #1B1A20 | #FFFFFF |
-| ACCENT | `--ac` | #FFD23F | #A9C4E6 | #8CC8FF | #B79CFF | #FF6A6E | #FF8FC7 | #E0B070 | #6FE0C2 | #A6D44A | #FF9A4D | #7FE0E8 | #55429C | #4E3375 | #1F4E9E | #852A59 | #7A5200 | #FFE14D |
-| ON_ACCENT | `--oa` | #000000 | #0B0B0D | #000000 | #0A0612 | #000000 | #000000 | #0D0907 | #050D0C | #0A0F08 | #0E0806 | #100A14 | #F4F3F8 | #E6E4F0 | #EFEFF2 | #FFE6E0 | #FFFDF8 | #000000 |
-| DANGER | `--dg` | #F0645A | #F47067 | #FF7A70 | #FF7A70 | #FFB224 | #FFB224 | #FF7468 | #FF7A70 | #FF7A6B | #FF6B9D | #FF7A70 | #A81E2A | #8A1420 | #961C24 | #7A3800 | #A3261D | #FF8A80 |
-| EDGE_MIX | (in the edges) | 30% | 40% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 30% | 55% | 80% | 55% | 55% | 55% | 50% |
-| TOP_CARD | `--tc` in the top scope | #0B0A0D | #121215 | #090F24 | #110B1C | #13090A | #150B12 | #15100C | #0A1413 | #0F160D | #160D0A | #170F1D | #110B1C | #110B1C | #121215 | #150B12 | #0B0A0D | #060606 |
-| TOP_EDGE | `--te` in the top scope | #2A2833 | #2E2E34 | #202C52 | #2E2147 | #382224 | #37222F | #392D25 | #213734 | #2A3A24 | #3A261E | #3A2947 | #2E2147 | #2E2147 | #2E2E34 | #37222F | #2A2833 | #5E5E5E |
-| TOP_TITLE | `--ac` in the top scope | #FFD23F | #A9C4E6 | #8CC8FF | #B79CFF | #FF6A6E | #FF8FC7 | #E0B070 | #6FE0C2 | #A6D44A | #FF9A4D | #7FE0E8 | #B79CFF | #B79CFF | #A9C4E6 | #FF8FC7 | #FFD23F | #FFE14D |
-| TOP_TEXT | `--tx` in the top scope | #E8E2D3 | #C2C4CA | #E1E7F5 | #E6DFF2 | #EFE1DD | #F1E2E9 | #EADFCF | #DDEBE7 | #D9E4C8 | #F1E1D2 | #F3E4EE | #E6DFF2 | #E6DFF2 | #C2C4CA | #F1E2E9 | #E8E2D3 | #FFFFFF |
-| TOP_SUB | `--dm, --do` in the top scope | #8F8A80 | #8A8C94 | #8893B0 | #938AA8 | #A08B87 | #A18B97 | #9C8E7E | #859A95 | #8A9A7C | #A38D7E | #A08C9C | #938AA8 | #938AA8 | #8A8C94 | #A18B97 | #8F8A80 | #C6C6C6 |
-| TOP_TRACK | `--bt` in the top scope | #26242E | #2A2A2F | #1A2649 | #2C1F45 | #361D21 | #301C29 | #30261F | #1A2E2B | #22301D | #33211A | #31223D | #2C1F45 | #2C1F45 | #2A2A2F | #301C29 | #26242E | #1E1E1E |
-| TOP_SQUARE | `--sf` in the top scope | #121116 | #17171A | #0C142E | #150E22 | #190C0E | #1B0F17 | #1A1410 | #0D1917 | #131B10 | #1C110D | #1C1323 | #150E22 | #150E22 | #17171A | #1B0F17 | #121116 | #0A0A0A |
-| TOP_DANGER | `--dg` in the top scope | #F0645A | #F47067 | #FF7A70 | #FF7A70 | #FFB224 | #FFB224 | #FF7468 | #FF7A70 | #FF7A6B | #FF6B9D | #FF7A70 | #FF7A70 | #FF7A70 | #F47067 | #FFB224 | #F0645A | #FF8A80 |
-
-| Worked out | Preview | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 16-bit Lavender | 32-bit | Sakura | Light | High contrast |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| edgeOf(BUTTON) | `--ed` | #605D60 | #67686D | #56607D | #645979 | #6E5859 | #6A5763 | #685E54 | #556763 | #596650 | #6C5B51 | #6B5C72 | #72707C | #53525C | #6A6A6F | #986279 | #767370 | #8F8F8F |
-| edgeOf(SURFACE) | `--eds` | #52504F | #5B5C60 | #4C536A | #544D60 | #594C4C | #5B4E56 | #585149 | #4B5855 | #4E5747 | #5C4F48 | #5D5260 | #838189 | #5A5A5A | #7C7C80 | #A27E88 | #828081 | #858585 |
-| lipOf(BUTTON) | `--lp` | #1B1920 | #1D1D21 | #121B33 | #1F1630 | #261417 | #22141D | #221B16 | #12201E | #182214 | #241712 | #22182B | #91909A | #7F7B9E | #8C8C90 | #A27D91 | #A19D93 | #151515 |
-| edgeOf(ACCENT) | `--ae` | #F8D76B | #B3C4DB | #A6D1FC | #C5B0FB | #FA8E8F | #FBA8D1 | #E3BE8D | #90E3CD | #B5D970 | #FBAF75 | #A2E1EA | #3B315F | #3F3947 | #1E345A | #6B2444 | #463312 | #FFF0A6 |
-| lipOf(ACCENT) | `--al` | #B3932C | #7689A1 | #628CB3 | #806DB3 | #B34A4D | #B3648B | #9D7B4E | #4E9D88 | #749434 | #B36C36 | #599DA2 | #3C2E6D | #372452 | #16376F | #5D1D3E | #553900 | #B39E36 |
-| edgeOf(DANGER) | `--de` | #EE8A7E | #E0928F | #F69B98 | #F79897 | #FAC05C | #FBC05F | #F99487 | #F59C94 | #F49A87 | #FB8EAD | #FB9A96 | #60212C | #4B3336 | #541D23 | #662A1C | #581F1F | #FFC5C0 |
-| lipOf(DANGER) | `--dl` | #A8463F | #AB4E48 | #B3554E | #B3554E | #B37D19 | #B37D19 | #B35149 | #B3554E | #B3554B | #B34B6E | #B3554E | #76151D | #610E16 | #691419 | #552700 | #721B14 | #B3615A |
-
-Aliases stay aliases in every theme: KNOB = TEXT, SCREEN = BUTTON. In the twelve dark themes the TOP_ tokens are aliases too, as today: TOP_TITLE = ACCENT, TOP_TEXT = TEXT, TOP_SUB = DIM, TOP_TRACK = BUTTON, TOP_SQUARE = SURFACE, TOP_DANGER = DANGER, TOP_EDGE = RULE, and TOP_CARD and RAIL are SURFACE at 60% over BG. The light-bodied themes give RAIL its own value and take their TOP_ tokens from a dark theme: Light from Yellow, Sakura from Pink, 16-bit and 16-bit Lavender from Dark purple, 32-bit from Dark. EDGE_MIX is 30 except where a theme's TEXT is too close to its fills for the edge to show: Dark 40, High contrast 50, the light-bodied ones 55, 16-bit Lavender 80.
-
-The worked-out colours keep their rules in every theme, so they are not stored:
-
-- `edgeOf(fill)`: the fill EDGE_MIX percent of the way to TEXT. A light theme's edges come out darker than the fill, a dark theme's lighter: the same rule.
-- `lipOf(fill)`: the fill × 0.7.
-- Unavailable: the piece at `OFF` percent over BG (`Kit::off`).
-- The veil under a sheet and under the lock: BG at `VEIL_SHEET` / `VEIL_LOCK`. In a light-bodied theme it is a pale veil, so what is written on it (the lock's two lines) stays TEXT and ACCENT on BG.
-- The play key's hold: BG at `HOLD_FILL` over the key.
-- A red pill's ground: DANGER at `TINT` over its ground. A header badge's ground: ACCENT at 17% over its ground.
-
-No theme but High contrast uses pure white (#FFFFFF) for a fill, a text or an accent (the light-bodied grounds are off-white and light greys), and only Yellow, as today, and High contrast have a pure black BG. Dark keeps its accent (11.0 on BG) and its text (11.3) well under the 14 to 21 the others reach, on purpose: it is the theme for a dark room. Its focus is told from plain text by the accent's blue against grey, as well as by the edge and the row's fill.
-
-DANGER is never near the accent's hue: amber in Dark red and Pink, hot pink in Sunset (its accent is orange), burnt orange in Sakura (its accent is rose), a red in the rest (coral on dark, deep on a light body).
-
-### Contrast
-
-WCAG ratios, worked out by `themes.py` (it fails if a pair is under its floor). Text pairs must reach 4.5 (AA); High contrast holds its main pairs to 7 (AAA). Edges and bars must reach 3. Unavailable pieces (45%) are outside the floors, as the standard allows.
-
-| Pair (floor) | Yellow | Dark | Midnight blue | Dark purple | Dark red | Pink | Coffee | Mint | Retro green | Sunset | Candy | 16-bit | 16-bit Lavender | 32-bit | Sakura | Light | High contrast |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| TEXT on BG (4.5; High contrast 7) | 16.3 | 11.3 | 16.1 | 15.5 | 16.0 | 16.1 | 15.1 | 16.0 | 14.6 | 15.6 | 15.9 | 12.0 | 6.3 | 12.4 | 10.8 | 15.7 | 21.0 |
-| TEXT on SURFACE (4.5; High contrast 7) | 14.5 | 10.3 | 14.7 | 14.5 | 15.0 | 14.9 | 13.9 | 14.6 | 13.3 | 14.5 | 14.7 | 13.8 | 7.6 | 14.5 | 11.8 | 17.0 | 19.8 |
-| TEXT on BUTTON (4.5; High contrast 7) | 11.8 | 8.2 | 12.0 | 11.7 | 12.2 | 12.7 | 11.2 | 11.6 | 10.5 | 12.0 | 12.0 | 9.8 | 5.4 | 10.0 | 7.2 | 13.1 | 16.7 |
-| TEXT on TRACK (a neutral pill) (4.5; High contrast 7) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 5.4 | 10.8 | 9.1 | 12.2 | 14.2 |
-| DIM on BG (4.5; High contrast 7) | 6.1 | 5.9 | 6.5 | 6.1 | 6.3 | 6.4 | 6.2 | 6.6 | 6.4 | 6.3 | 6.3 | 5.2 | 4.9 | 5.2 | 5.1 | 5.9 | 12.3 |
-| DIM_ON on BG (a song's artist line, the hint bar) (4.5; High contrast 7) | 8.6 | 8.3 | 9.1 | 8.6 | 9.0 | 8.7 | 8.6 | 9.1 | 8.9 | 8.7 | 8.7 | 6.5 | 5.6 | 6.4 | 7.2 | 7.2 | 14.7 |
-| DIM on SURFACE (4.5) | 5.5 | 5.3 | 5.9 | 5.8 | 5.9 | 5.9 | 5.7 | 6.0 | 5.9 | 5.9 | 5.8 | 6.0 | 5.9 | 6.1 | 5.6 | 6.3 | 11.6 |
-| DIM_ON on BUTTON (4.5) | 6.2 | 6.0 | 6.8 | 6.5 | 6.8 | 6.9 | 6.4 | 6.6 | 6.4 | 6.7 | 6.5 | 5.3 | 4.9 | 5.2 | 4.8 | 6.0 | 11.7 |
-| DIM_ON on TRACK (a chip, off) (4.5) | 6.8 | 6.7 | 7.6 | 7.5 | 7.9 | 7.6 | 7.3 | 7.6 | 7.3 | 7.5 | 7.4 | 5.7 | 4.8 | 5.6 | 6.1 | 5.5 | 9.9 |
-| DIM_ON on RAIL (4.5) | 8.0 | 7.9 | 8.7 | 8.2 | 8.7 | 8.4 | 8.2 | 8.7 | 8.5 | 8.3 | 8.3 | 6.0 | 5.1 | 5.8 | 6.1 | 6.4 | 14.2 |
-| ACCENT on BG (4.5; High contrast 7) | 14.5 | 11.0 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.7 | 5.9 | 7.1 | 6.3 | 16.1 |
-| ACCENT on SURFACE (4.5; High contrast 7) | 13.0 | 10.0 | 10.2 | 8.2 | 6.9 | 8.9 | 9.2 | 11.2 | 10.2 | 8.8 | 11.8 | 7.2 | 6.9 | 6.9 | 7.8 | 6.8 | 15.2 |
-| ACCENT on BUTTON (the focused row) (4.5) | 10.6 | 8.0 | 8.3 | 6.6 | 5.6 | 7.6 | 7.5 | 8.9 | 8.0 | 7.3 | 9.6 | 5.1 | 5.0 | 4.8 | 4.8 | 5.3 | 12.8 |
-| ACCENT on its 17% tint (a badge) (4.5) | 8.8 | 7.0 | 7.1 | 6.1 | 5.4 | 6.5 | 6.6 | 7.6 | 7.0 | 6.4 | 8.0 | 5.5 | 5.3 | 5.3 | 5.9 | 5.3 | 10.3 |
-| ON_ACCENT on ACCENT (4.5; High contrast 7) | 14.5 | 11.0 | 11.8 | 8.8 | 7.5 | 10.0 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 7.2 | 8.1 | 6.9 | 7.1 | 6.8 | 16.1 |
-| ON_ACCENT on DANGER (Quit) (4.5) | 6.7 | 6.9 | 8.3 | 7.9 | 11.6 | 11.6 | 7.5 | 7.7 | 7.6 | 7.4 | 7.7 | 6.6 | 7.6 | 7.4 | 7.4 | 7.2 | 9.2 |
-| DANGER on BG (4.5) | 6.7 | 6.9 | 7.9 | 7.9 | 11.3 | 11.1 | 7.5 | 7.7 | 7.6 | 7.4 | 7.7 | 5.7 | 5.4 | 6.3 | 7.4 | 6.7 | 9.2 |
-| DANGER on SURFACE (4.5) | 6.0 | 6.3 | 7.2 | 7.4 | 10.6 | 10.3 | 6.9 | 7.1 | 6.9 | 6.9 | 7.1 | 6.6 | 6.4 | 7.4 | 8.1 | 7.2 | 8.7 |
-| DANGER on BUTTON (4.5) | 4.9 | 5.0 | 5.8 | 6.0 | 8.6 | 8.8 | 5.6 | 5.6 | 5.5 | 5.7 | 5.8 | 4.7 | 4.6 | 5.1 | 4.9 | 5.6 | 7.3 |
-| DANGER on its 20% tint (a red pill) (4.5) | 4.6 | 4.6 | 5.3 | 5.4 | 7.0 | 6.8 | 5.0 | 5.2 | 5.0 | 5.0 | 5.1 | 4.7 | 4.6 | 5.2 | 5.8 | 5.2 | 6.3 |
-| Focus edge (ACCENT) against BG (3) | 14.5 | 11.0 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.7 | 5.9 | 7.1 | 6.3 | 16.1 |
-| Focus edge against SURFACE (3) | 13.0 | 10.0 | 10.2 | 8.2 | 6.9 | 8.9 | 9.2 | 11.2 | 10.2 | 8.8 | 11.8 | 7.2 | 6.9 | 6.9 | 7.8 | 6.8 | 15.2 |
-| edgeOf(BUTTON) against BG (3) | 3.2 | 3.5 | 3.2 | 3.1 | 3.1 | 3.0 | 3.1 | 3.3 | 3.2 | 3.1 | 3.2 | 3.8 | 4.3 | 4.0 | 4.0 | 4.3 | 6.5 |
-| edgeOf(SURFACE) against BG (as today: a flat piece, the album art's edge) (2.4) | 2.6 | 2.9 | 2.6 | 2.5 | 2.5 | 2.6 | 2.5 | 2.6 | 2.6 | 2.5 | 2.6 | 3.0 | 3.9 | 3.1 | 3.0 | 3.6 | 5.7 |
-| The fifteen visualizer styles: marks (ACCENT) against BG (3) | 14.5 | 11.0 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.7 | 5.9 | 7.1 | 6.3 | 16.1 |
-| Bar fill (ACCENT) against TRACK (3) | 11.6 | 8.9 | 9.4 | 7.7 | 6.4 | 8.3 | 8.5 | 10.2 | 9.2 | 8.2 | 10.9 | 5.4 | 4.9 | 5.2 | 6.1 | 4.9 | 10.9 |
-| KNOB against TRACK (3) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 5.4 | 10.8 | 9.1 | 12.2 | 14.2 |
-| TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 10.7 | 15.3 | 14.9 | 15.4 | 15.4 | 14.4 | 15.2 | 13.9 | 15.0 | 15.3 | 14.9 | 14.9 | 10.7 | 15.4 | 15.3 | 20.3 |
-| TOP_SUB on TOP_CARD (4.5) | 5.8 | 5.6 | 6.2 | 5.9 | 6.1 | 6.1 | 5.9 | 6.3 | 6.1 | 6.1 | 6.0 | 5.9 | 5.9 | 5.6 | 6.1 | 5.8 | 11.9 |
-| TOP_TITLE on TOP_CARD (4.5; High contrast 7) | 13.7 | 10.4 | 10.7 | 8.5 | 7.0 | 9.2 | 9.6 | 11.7 | 10.6 | 9.1 | 12.2 | 8.5 | 8.5 | 10.4 | 9.2 | 13.7 | 15.6 |
-| TOP_DANGER on TOP_CARD (4.5) | 6.3 | 6.6 | 7.5 | 7.6 | 10.9 | 10.7 | 7.2 | 7.4 | 7.2 | 7.2 | 7.4 | 7.6 | 7.6 | 6.6 | 10.7 | 6.3 | 8.9 |
-| Reader page (Match theme): text on page (4.5; High contrast 7) | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 14.1 | 14.1 | 14.1 | 14.1 | 14.1 | 10.9 |
+| TEXT on BG (4.5; High contrast 7) | 16.3 | 11.3 | 16.1 | 15.5 | 16.0 | 16.1 | 15.1 | 16.0 | 14.6 | 15.6 | 15.9 | 12.0 | 6.3 | 12.4 | 10.8 | 12.7 | 15.7 | 21.0 |
+| TEXT on SURFACE (4.5; High contrast 7) | 14.5 | 10.3 | 14.7 | 14.5 | 15.0 | 14.9 | 13.9 | 14.6 | 13.3 | 14.5 | 14.7 | 13.8 | 7.6 | 14.5 | 11.8 | 17.0 | 17.0 | 19.8 |
+| TEXT on BUTTON (4.5; High contrast 7) | 11.8 | 8.2 | 12.0 | 11.7 | 12.2 | 12.7 | 11.2 | 11.6 | 10.5 | 12.0 | 12.0 | 9.8 | 5.4 | 10.0 | 7.2 | 14.8 | 13.1 | 16.7 |
+| TEXT on TRACK (a neutral pill) (4.5; High contrast 7) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 5.4 | 10.8 | 9.1 | 10.8 | 12.2 | 14.2 |
+| DIM on BG (4.5; High contrast 7) | 6.1 | 5.9 | 6.5 | 6.1 | 6.3 | 6.4 | 6.2 | 6.6 | 6.4 | 6.3 | 6.3 | 5.2 | 4.9 | 5.2 | 5.1 | 5.5 | 5.9 | 12.3 |
+| DIM_ON on BG (a song's artist line, the hint bar) (4.5; High contrast 7) | 8.6 | 8.3 | 9.1 | 8.6 | 9.0 | 8.7 | 8.6 | 9.1 | 8.9 | 8.7 | 8.7 | 6.5 | 5.6 | 6.4 | 7.2 | 7.1 | 7.2 | 14.7 |
+| DIM on SURFACE (4.5) | 5.5 | 5.3 | 5.9 | 5.8 | 5.9 | 5.9 | 5.7 | 6.0 | 5.9 | 5.9 | 5.8 | 6.0 | 5.9 | 6.1 | 5.6 | 7.4 | 6.3 | 11.6 |
+| DIM_ON on BUTTON (4.5) | 6.2 | 6.0 | 6.8 | 6.5 | 6.8 | 6.9 | 6.4 | 6.6 | 6.4 | 6.7 | 6.5 | 5.3 | 4.9 | 5.2 | 4.8 | 8.2 | 6.0 | 11.7 |
+| DIM_ON on TRACK (a chip, off) (4.5) | 6.8 | 6.7 | 7.6 | 7.5 | 7.9 | 7.6 | 7.3 | 7.6 | 7.3 | 7.5 | 7.4 | 5.7 | 4.8 | 5.6 | 6.1 | 6.0 | 5.5 | 9.9 |
+| ACCENT on BG (4.5; High contrast 7) | 14.5 | 15.5 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.7 | 5.9 | 7.1 | 5.3 | 6.3 | 16.1 |
+| ACCENT on SURFACE (4.5; High contrast 7) | 13.0 | 14.1 | 10.2 | 8.2 | 6.9 | 8.9 | 9.2 | 11.2 | 10.2 | 8.8 | 11.8 | 7.2 | 6.9 | 6.9 | 7.8 | 7.1 | 6.8 | 15.2 |
+| ACCENT on BUTTON (the focused row) (4.5) | 10.6 | 11.2 | 8.3 | 6.6 | 5.6 | 7.6 | 7.5 | 8.9 | 8.0 | 7.3 | 9.6 | 5.1 | 5.0 | 4.8 | 4.8 | 6.2 | 5.3 | 12.8 |
+| ACCENT on its 17% tint (a badge) (4.5) | 8.8 | 8.9 | 7.1 | 6.1 | 5.4 | 6.5 | 6.6 | 7.6 | 7.0 | 6.4 | 8.0 | 5.5 | 5.3 | 5.3 | 5.9 | 5.5 | 5.3 | 10.3 |
+| ON_ACCENT on ACCENT (4.5; High contrast 7) | 14.5 | 15.5 | 11.8 | 8.8 | 7.5 | 10.0 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 7.2 | 8.1 | 6.9 | 7.1 | 7.1 | 6.8 | 16.1 |
+| ON_ACCENT on DANGER (Quit) (4.5) | 6.7 | 6.9 | 8.3 | 7.9 | 11.6 | 11.6 | 7.5 | 7.7 | 7.6 | 7.4 | 7.7 | 6.6 | 7.6 | 7.4 | 7.4 | 6.4 | 7.2 | 9.2 |
+| DANGER on BG (4.5) | 6.7 | 6.9 | 7.9 | 7.9 | 11.3 | 11.1 | 7.5 | 7.7 | 7.6 | 7.4 | 7.7 | 5.7 | 5.4 | 6.3 | 7.4 | 4.8 | 6.7 | 9.2 |
+| DANGER on SURFACE (4.5) | 6.0 | 6.3 | 7.2 | 7.4 | 10.6 | 10.3 | 6.9 | 7.1 | 6.9 | 6.9 | 7.1 | 6.6 | 6.4 | 7.4 | 8.1 | 6.4 | 7.2 | 8.7 |
+| DANGER on BUTTON (4.5) | 4.9 | 5.0 | 5.8 | 6.0 | 8.6 | 8.8 | 5.6 | 5.6 | 5.5 | 5.7 | 5.8 | 4.7 | 4.6 | 5.1 | 4.9 | 5.6 | 5.6 | 7.3 |
+| DANGER on its 20% tint (a red pill) (4.5) | 4.6 | 4.6 | 5.3 | 5.4 | 7.0 | 6.8 | 5.0 | 5.2 | 5.0 | 5.0 | 5.1 | 4.7 | 4.6 | 5.2 | 5.8 | 4.6 | 5.2 | 6.3 |
+| Focus edge (ACCENT) against BG (3) | 14.5 | 15.5 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.7 | 5.9 | 7.1 | 5.3 | 6.3 | 16.1 |
+| Focus edge against SURFACE (3) | 13.0 | 14.1 | 10.2 | 8.2 | 6.9 | 8.9 | 9.2 | 11.2 | 10.2 | 8.8 | 11.8 | 7.2 | 6.9 | 6.9 | 7.8 | 7.1 | 6.8 | 15.2 |
+| edgeOf(BUTTON) against BG (3) | 3.2 | 3.5 | 3.2 | 3.1 | 3.1 | 3.0 | 3.1 | 3.3 | 3.2 | 3.1 | 3.2 | 3.8 | 4.3 | 4.0 | 4.0 | 3.2 | 4.3 | 6.5 |
+| edgeOf(SURFACE) against BG (as today: a flat piece, the album art's edge) (2.4) | 2.6 | 2.9 | 2.6 | 2.5 | 2.5 | 2.6 | 2.5 | 2.6 | 2.6 | 2.5 | 2.6 | 3.0 | 3.9 | 3.1 | 3.0 | 2.9 | 3.6 | 5.7 |
+| Peaks and the six simple styles: marks (ACCENT) against BG (3) | 14.5 | 15.5 | 11.2 | 8.8 | 7.3 | 9.6 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 6.2 | 5.7 | 5.9 | 7.1 | 5.3 | 6.3 | 16.1 |
+| Bar fill (ACCENT) against TRACK (3) | 11.6 | 12.5 | 9.4 | 7.7 | 6.4 | 8.3 | 8.5 | 10.2 | 9.2 | 8.2 | 10.9 | 5.4 | 4.9 | 5.2 | 6.1 | 4.5 | 4.9 | 10.9 |
+| KNOB against TRACK (3) | 12.9 | 9.1 | 13.5 | 13.6 | 14.0 | 13.9 | 12.7 | 13.3 | 12.0 | 13.5 | 13.6 | 10.4 | 5.4 | 10.8 | 9.1 | 10.8 | 12.2 | 14.2 |
+| Clean style: BUTTON (a key, a card, a tile with no edge) against BG (1.15) | 1.4 | 1.4 | 1.3 | 1.3 | 1.3 | 1.3 | 1.3 | 1.4 | 1.4 | 1.3 | 1.3 | 1.2 | 1.2 | 1.2 | 1.5 | 1.2 | 1.2 | 1.3 |
+| Clean style: BUTTON against SURFACE (a key on a sheet) (1.15) | 1.2 | 1.3 | 1.2 | 1.2 | 1.2 | 1.2 | 1.2 | 1.3 | 1.3 | 1.2 | 1.2 | 1.4 | 1.4 | 1.5 | 1.6 | 1.2 | 1.3 | 1.2 |
+| Clean style: PRESSED against BUTTON (1.2) | 1.4 | 1.4 | 1.4 | 1.2 | 1.2 | 1.3 | 1.4 | 1.4 | 1.4 | 1.3 | 1.4 | 1.3 | 1.3 | 1.3 | 1.7 | 1.3 | 1.3 | 1.5 |
+| ON_KEY on KEY (a named key) (4.5) | 11.8 | 8.2 | 12.0 | 11.7 | 12.2 | 12.7 | 11.2 | 11.6 | 10.5 | 12.0 | 12.0 | 9.8 | 5.4 | 10.0 | 7.2 | 7.1 | 13.1 | 16.7 |
+| ON_PRIMARY on PRIMARY (4.5) | 14.5 | 15.5 | 11.8 | 8.8 | 7.5 | 10.0 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 7.2 | 8.1 | 6.9 | 7.1 | 5.2 | 6.8 | 16.1 |
+| ON_HINT on HINT_BAR (4.5) | 8.6 | 8.3 | 9.1 | 8.6 | 9.0 | 8.7 | 8.6 | 9.1 | 8.9 | 8.7 | 8.7 | 6.5 | 5.6 | 6.4 | 7.2 | 12.8 | 7.2 | 14.7 |
+| ON_RAIL on RAIL (4.5) | 8.0 | 7.9 | 8.7 | 8.2 | 8.7 | 8.4 | 8.2 | 8.7 | 8.5 | 8.3 | 8.3 | 6.0 | 5.1 | 5.8 | 6.1 | 8.6 | 6.4 | 14.2 |
+| The rail’s active cell: its ink on its fill (4.5) | 14.5 | 15.5 | 11.8 | 8.8 | 7.5 | 10.0 | 10.0 | 12.3 | 11.2 | 9.5 | 12.8 | 7.2 | 8.1 | 6.9 | 7.1 | 15.3 | 6.8 | 16.1 |
+| KEY_FOCUS (a focused key’s edge) against KEY (3) | 10.6 | 11.2 | 8.3 | 6.6 | 5.6 | 7.6 | 7.5 | 8.9 | 8.0 | 7.3 | 9.6 | 5.1 | 5.0 | 4.8 | 4.8 | 6.4 | 5.3 | 12.8 |
+| TOP_TEXT on TOP_CARD (4.5; High contrast 7) | 15.3 | 10.7 | 15.3 | 14.9 | 15.4 | 15.4 | 14.4 | 15.2 | 13.9 | 15.0 | 15.3 | 14.9 | 14.9 | 10.7 | 15.4 | 15.3 | 15.3 | 20.3 |
+| TOP_SUB on TOP_CARD (4.5) | 5.8 | 5.6 | 6.2 | 5.9 | 6.1 | 6.1 | 5.9 | 6.3 | 6.1 | 6.1 | 6.0 | 5.9 | 5.9 | 5.6 | 6.1 | 6.2 | 5.8 | 11.9 |
+| TOP_TITLE on TOP_CARD (4.5; High contrast 7) | 13.7 | 14.7 | 10.7 | 8.5 | 7.0 | 9.2 | 9.6 | 11.7 | 10.6 | 9.1 | 12.2 | 8.5 | 8.5 | 14.7 | 9.2 | 10.7 | 13.7 | 15.6 |
+| TOP_DANGER on TOP_CARD (4.5) | 6.3 | 6.6 | 7.5 | 7.6 | 10.9 | 10.7 | 7.2 | 7.4 | 7.2 | 7.2 | 7.4 | 7.6 | 7.6 | 6.6 | 10.7 | 7.5 | 6.3 | 8.9 |
+| Reader page (Match theme): text on page (4.5; High contrast 7) | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 13.4 | 14.1 | 14.1 | 14.1 | 14.1 | 14.1 | 14.1 | 10.9 |
+| Clean style: BUTTON (a key, a card, a tile with no edge) against BG (1.15) | 1.37 | 1.38 | 1.35 | 1.33 | 1.31 | 1.27 | 1.34 | 1.37 | 1.39 | 1.30 | 1.33 | 1.23 | 1.16 | 1.24 | 1.50 | 1.20 | 1.26 |
+| Clean style: BUTTON against SURFACE (a key on a sheet) (1.15) | 1.23 | 1.25 | 1.23 | 1.24 | 1.23 | 1.17 | 1.24 | 1.26 | 1.27 | 1.21 | 1.22 | 1.42 | 1.39 | 1.45 | 1.64 | 1.29 | 1.19 |
+| Clean style: PRESSED against BUTTON (1.2) | 1.40 | 1.43 | 1.39 | 1.24 | 1.25 | 1.33 | 1.38 | 1.40 | 1.42 | 1.33 | 1.40 | 1.28 | 1.31 | 1.29 | 1.68 | 1.25 | 1.47 |
 
 One pair is below 3 in the dark themes, as it is today: a flat piece's edge against BG (2.5 to 2.9). A chip or a tile is told by its fill and its edge together; The light-bodied themes and High contrast lift it with EDGE_MIX.
 
@@ -690,7 +773,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Status cluster and badges | `drawBattery`, `drawWebIndicator` | DIM_ON marks and clock; ACCENT playing bars; badge: ACCENT on ACCENT at 17%; red badge and low battery: DANGER on DANGER at TINT |
 | Section rail | new | RAIL ground, RULE line; DIM_ON cells; active cell ACCENT with `lipOf(ACCENT)`, ON_ACCENT ink; caps ACCENT |
 | Hint bar | `Kit::hints`, `Kit::caps`, `drawHints` | BG ground, RULE line, DIM_ON words; caps: ACCENT outline and letter on their ground (ON_ACCENT on an accent key) |
-| Mini bar | `drawMiniBar` | SURFACE, ACCENT edge; play mark BUTTON with ACCENT glyph; TEXT title; DIM time; DIM_ON kind icon; pills as Pill; progress line ACCENT |
+| Now playing block | `drawMiniBar` | SURFACE, ACCENT edge; play mark BUTTON with ACCENT glyph; TEXT title; DIM time; DIM_ON kind icon; pills as Pill; progress line ACCENT |
 | Key (button) | `Kit::key`, `drawBox`, `drawButton`, `drawKeyedLabel` | Box BUTTON, pressed PRESSED, TEXT; primary: Box ACCENT (pressed `lipOf(ACCENT)`), ON_ACCENT; danger: DANGER ink, or Box DANGER with ON_ACCENT (Quit); lit: ACCENT ink; Off |
 | Button row and grid | `rowCell`, `gridCell`, `lay::cell` | none: Rects only |
 | Transport key | `Kit::transport` | as Key; the hold: BG at HOLD_FILL over the key; third line ON_ACCENT |
@@ -729,7 +812,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Away-from-normal mark | new | ACCENT; DANGER past a danger line |
 | Screen-off warning | new | veil fixed black 62%; a Notice row with an ACCENT edge |
 | Lid-shut keys | new | nothing drawn |
-| Title marquee | new (`Kit::marquee`) | the text’s own colour (TEXT; ACCENT in a focused row; fixed white over a picture); the fades: the ground’s token (BG, SURFACE in the mini bar, BUTTON in a focused row), none over a picture |
+| Title marquee | new (`Kit::marquee`) | the text’s own colour (TEXT; ACCENT in a focused row; fixed white over a picture); the fades: the ground’s token (BG, SURFACE in the Now playing block, BUTTON in a focused row), none over a picture |
 | Lock overlay | `Kit::lock` | veil: BG at VEIL_LOCK; Box BUTTON (PRESSED while held) with an ACCENT edge, ACCENT lock and title; DIM_ON line |
 | The reader views | `ui_reader.cpp`, `reader.*`, `textreader.*` | the page: fixed (its own colours); around a page not yet decoded: TOP_TRACK; the page-number note: a Note |
 
