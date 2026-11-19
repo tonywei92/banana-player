@@ -6759,14 +6759,14 @@ static void testThemes()
 			CHECK_EQ(hx(p.TOP_TITLE), "FF8FC7");
 			CHECK_EQ(p.page, 1);
 		}
-		// Gundam: white SURFACE, the palette's blue, yellow and grey as given (ACCENT, ON_ACCENT, DIM), the red deepened;
-		// Midnight blue's top cards
+		// Gundam: white SURFACE, the palette's red deepened as ACCENT with its yellow lettering, blue-tinted keys, grey
+		// as given (DIM), DANGER a burnt amber; Dark red's top cards
 		if (id == "gundam")
 		{
-			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "EDEDEFFFFFFFDDE3F3E5E5E82C52B3282931");
-			CHECK_EQ(hx(p.DIM) + hx(p.DANGER) + hx(p.ON_ACCENT), "5A5B6DB02127FFF867");
+			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "EDEDEFFFFFFFDDE3F3E5E5E8BF242B282931");
+			CHECK_EQ(hx(p.DIM) + hx(p.DANGER) + hx(p.ON_ACCENT), "5A5B6D8A4500FFF867");
 			CHECK_EQ(p.EDGE_MIX, 55);
-			CHECK_EQ(hx(p.TOP_TITLE), "8CC8FF");
+			CHECK_EQ(hx(p.TOP_TITLE), "FF6A6E");
 			CHECK_EQ(p.page, 1);
 		}
 	}

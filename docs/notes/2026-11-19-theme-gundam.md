@@ -6,15 +6,17 @@ after Sakura in the stepper. One line in `src/theme.cpp`; the dashboard's CSS an
 | Role | Value | From |
 |---|---|---|
 | SURFACE | #FFFFFF | white, as given (the armour: tiles, rows, sheets) |
-| ACCENT | #2C52B3 | blue, as given (7.1 : 1 on white) |
-| ON_ACCENT | #FFF867 | yellow, as given: lettering on the blue keys and on Quit's red (6.4 and 6.1 : 1) |
+| ACCENT | #BF242B | the red 24% towards black (owner: a red accent; 24% is the least that holds 4.5 on BUTTON and on its badge tint) |
+| ON_ACCENT | #FFF867 | yellow, as given: lettering on the red keys |
 | DIM | #5A5B6D | grey, as given (5.7 on BG, 6.7 on white) |
-| DANGER | #B02127 | the red 30% towards black |
+| DANGER | #8A4500 | a burnt amber (red is the accent now, so danger takes another hue, as in Dark red and Sakura) |
 | TEXT, DIM_ON | #282931, #464755 | the grey 55% and 22% towards black |
 | BG, RAIL, TRACK, RULE | #EDEDEF, #E5E5E8, #DEDEE2, #CDCED3 | white with 11, 16, 20, 30% of the grey |
-| BUTTON, PRESSED | #DDE3F3, #BBC8E7 | white with 16, 32% of the blue |
+| BUTTON, PRESSED | #DDE3F3, #BBC8E7 | white with 16, 32% of the blue (where the blue stays) |
 
-EDGE_MIX 55, the Light page, Midnight blue's top cards (navy over a film).
+EDGE_MIX 55, the Light page, Dark red's top cards.
+
+First built with the blue as ACCENT and the red as DANGER; the owner asked for a red accent the same day.
 
 What did not work as given:
 - Yellow on white is 1.1 : 1: no text, edge, bar or pressed fill on the light body. On the blue it is 6.4 : 1, so it is
@@ -27,7 +29,7 @@ entry (all pass; lowest: DANGER on its tint 4.8, DANGER on BUTTON 5.3, ACCENT on
 and 3.0). The entry to add there, in ORDER after `sakura`, with the Themes tables of components.md and the preview:
 
 ```python
- 'gundam': dict(name='Gundam', what='From a five-colour palette: a white mobile suit. White surfaces on pale grey, blue keys with yellow lettering, dark grey text; light-bodied; DANGER is the red deepened',
-                BG='EDEDEF', SF='FFFFFF', BT='DDE3F3', PR='BBC8E7', TR='DEDEE2', RU='CDCED3', TX='282931', DM='5A5B6D', DO='464755', AC='2C52B3',
-                OA='FFF867', DG='B02127', RA='E5E5E8', EM=55, PT=22, top='blue', page='light'),
+ 'gundam': dict(name='Gundam', what='From a five-colour palette: a white mobile suit. White surfaces on pale grey, a red accent with yellow lettering, blue-tinted keys, dark grey text; light-bodied; DANGER is burnt amber',
+                BG='EDEDEF', SF='FFFFFF', BT='DDE3F3', PR='BBC8E7', TR='DEDEE2', RU='CDCED3', TX='282931', DM='5A5B6D', DO='464755', AC='BF242B',
+                OA='FFF867', DG='8A4500', RA='E5E5E8', EM=55, PT=22, top='darkred', page='light'),
 ```
