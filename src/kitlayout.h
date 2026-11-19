@@ -79,24 +79,29 @@ namespace bp
 		int rowAt(int y, int rowsY, int scroll, int shown, int n);
 
 		// ---- the bottom sheet (the More sheet: tiles, then rows in one or two columns) ----
-		constexpr int SHEET_HEAD = 54, SHEET_PAD = 14, SHEET_ROW = 46, SHEET_TILE = 60, SHEET_MIN = 226, SHEET_MAX = 470;
+		constexpr int SHEET_HEAD = 54, SHEET_PAD = 14, SHEET_ROW = 46, SHEET_TILE = 60, SHEET_CHIP_H = 52, SHEET_MIN = 226, SHEET_MAX = 470;
 		struct SheetSpec
 		{
 			int tiles = 0;	// a first row of keys, icon over label (four across)
 			int rows = 0;	// list rows under them
 			int cols = 1;	// the rows' columns (filled row by row)
 			int body = 0;	// other content's height, between the header and the tiles
+			int chips = 0;	// a first row of state chips (the player's More: its five, under the cursor)
 		};
 		struct Sheet
 		{
 			SheetSpec spec;
 			Box box, grab, head, hints;
-			int bodyY = 0, tilesY = 0, rowsY = 0;
+			int bodyY = 0, chipsY = 0, tilesY = 0, rowsY = 0;
+			Box chip(int i) const;
 			Box tile(int i) const;
 			Box row(int i) const;
-			int count() const { return spec.tiles + spec.rows; }
-			// the cursor's item: the tiles first, then the rows
-			Box item(int i) const { return i < spec.tiles ? tile(i) : row(i - spec.tiles); }
+			int count() const { return spec.chips + spec.tiles + spec.rows; }
+			// the cursor's item: the chips first, then the tiles, then the rows
+			Box item(int i) const
+			{
+				return i < spec.chips ? chip(i) : i < spec.chips + spec.tiles ? tile(i - spec.chips) : row(i - spec.chips - spec.tiles);
+			}
 		};
 		// full width, from the foot, as tall as its content (SHEET_MIN at least, SHEET_MAX at most)
 		Sheet sheet(const SheetSpec& s);

@@ -16,10 +16,12 @@ namespace bp
 
 		static lay::Sheet layout(const MoreSpec& m)
 		{
-			return lay::sheet({(int)m.tiles.size(), (int)m.rows.size(), m.cols, 0});
+			return lay::sheet({(int)m.tiles.size(), (int)m.rows.size(), m.cols, 0, (int)m.chips.size()});
 		}
 		static const MoreItem& item(const MoreSpec& m, int i)
 		{
+			if (i < (int)m.chips.size()) return m.chips[i];
+			i -= (int)m.chips.size();
 			return i < (int)m.tiles.size() ? m.tiles[i] : m.rows[i - m.tiles.size()];
 		}
 
@@ -47,6 +49,8 @@ namespace bp
 			case Button::Right: cursor = lay::sheetMove(s.spec, cursor, lay::Dir::Right); break;
 			case Button::A: return choose(m, cursor, p);
 			case Button::B: case Button::X: close(); break;
+			// (on the player and a photo SELECT opens this sheet, so it closes it too; elsewhere it is not More's key)
+			case Button::Select: if (!m.chips.empty()) close(); break;
 			case Button::L3:
 				// the row that shows L3's cap: that button's, sheet open or not
 				for (int i = 0; i < n; i++)
@@ -89,6 +93,20 @@ namespace bp
 			if (!s.count()) { close(); return; }
 			cursor = std::clamp(cursor, 0, std::max(0, s.count() - 1));
 			k.sheet(s, {m.glyph, m.title, m.note, false});
+			for (int i = 0; i < (int)m.chips.size(); i++)
+			{
+				const MoreItem& it = m.chips[i];
+				Kit::Chip chip;
+				chip.glyph = it.glyph;
+				chip.label = it.label;
+				chip.value = it.value;
+				chip.away = it.away;
+				chip.off = it.off;
+				chip.pressed = pressed == i;
+				chip.focused = cursor == i;
+				k.chip(s.chip(i), chip);
+			}
+			int base = (int)m.chips.size();
 			for (int i = 0; i < (int)m.tiles.size(); i++)
 			{
 				const MoreItem& it = m.tiles[i];
@@ -96,17 +114,18 @@ namespace bp
 				key.glyph = it.glyph;
 				key.label = it.label;
 				key.tone = it.danger ? Kit::Tone::Danger : Kit::Tone::Normal;
-				key.pressed = pressed == i;
-				key.focused = cursor == i;
+				key.pressed = pressed == base + i;
+				key.focused = cursor == base + i;
 				key.off = it.off;
 				key.lit = it.lit;
 				key.stack = true;
 				k.key(s.tile(i), key);
 			}
+			base += (int)m.tiles.size();
 			for (int i = 0; i < (int)m.rows.size(); i++)
 			{
 				const MoreItem& it = m.rows[i];
-				int at = (int)m.tiles.size() + i;
+				int at = base + i;
 				Kit::Row row;
 				row.glyph = it.glyph;
 				row.name = it.label;
@@ -120,7 +139,7 @@ namespace bp
 				row.font = F_P16;
 				k.row(s.row(i), row);
 			}
-			k.hints({{s.spec.tiles || s.spec.cols > 1 ? "D-pad" : "UP/DOWN", "Move"}, {"A", "Choose"}, {"X/B", "Close"}});
+			k.hints({{s.spec.chips || s.spec.tiles || s.spec.cols > 1 ? "D-pad" : "UP/DOWN", "Move"}, {"A", "Choose"}, {"X/B", "Close"}});
 		}
 
 		std::string signature(const Player& p) const override
@@ -128,8 +147,8 @@ namespace bp
 			// the cursor and the finger, and everything the list says now
 			MoreSpec m = build(p);
 			std::string sig = std::to_string(cursor) + "," + std::to_string(pressed) + "," + std::to_string(ui.touchIsLocked()) + m.title + "|" + m.note;
-			for (auto* list : {&m.tiles, &m.rows})
-				for (auto& it : *list) sig += "|" + it.label + ":" + it.note + (it.off ? "o" : "") + (it.lit ? "l" : "");
+			for (auto* list : {&m.chips, &m.tiles, &m.rows})
+				for (auto& it : *list) sig += "|" + it.label + ":" + it.value + ":" + it.note + (it.off ? "o" : "") + (it.away ? "a" : "") + (it.lit ? "l" : "");
 			return sig;
 		}
 	};

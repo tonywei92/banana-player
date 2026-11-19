@@ -164,16 +164,23 @@ namespace bp
 			out.spec.cols = std::max(1, s.cols);
 			int lines = (s.rows + out.spec.cols - 1) / out.spec.cols;
 			// the grab mark's 11, the header, the content, 8 clear of the hint bar
-			int h = 11 + SHEET_HEAD + s.body + (s.tiles ? SHEET_TILE + GAP : 0) + lines * SHEET_ROW + 8 + HINTS_H;
+			int h = 11 + SHEET_HEAD + s.body + (s.chips ? SHEET_CHIP_H + GAP : 0) + (s.tiles ? SHEET_TILE + GAP : 0) +
+				lines * SHEET_ROW + 8 + HINTS_H;
 			h = std::clamp(h, SHEET_MIN, SHEET_MAX);
 			out.box = {0, PANEL_H - h, PANEL_W, h};
 			out.grab = {PANEL_W / 2 - 22, out.box.y + 7, 44, 4};
 			out.head = {SHEET_PAD, out.box.y + 11, PANEL_W - 2 * SHEET_PAD, SHEET_HEAD};
 			out.bodyY = out.head.y + SHEET_HEAD;
-			out.tilesY = out.bodyY + s.body;
+			out.chipsY = out.bodyY + s.body;
+			out.tilesY = out.chipsY + (s.chips ? SHEET_CHIP_H + GAP : 0);
 			out.rowsY = out.tilesY + (s.tiles ? SHEET_TILE + GAP : 0);
 			out.hints = {0, PANEL_H - HINTS_H, PANEL_W, HINTS_H};
 			return out;
+		}
+
+		Box Sheet::chip(int i) const
+		{
+			return cell({SHEET_PAD, chipsY, PANEL_W - 2 * SHEET_PAD, SHEET_CHIP_H}, std::max(1, spec.chips), GAP, i);
 		}
 
 		Box Sheet::tile(int i) const
@@ -190,28 +197,43 @@ namespace bp
 
 		int sheetMove(const SheetSpec& s, int cursor, Dir d)
 		{
-			int cols = std::max(1, s.cols), n = s.tiles + s.rows;
+			int cols = std::max(1, s.cols), chips = s.chips, tiles = s.tiles, rows = s.rows;
+			int n = chips + tiles + rows;
 			if (n <= 0) return 0;
 			cursor = std::clamp(cursor, 0, n - 1);
-			if (cursor < s.tiles)
+			if (cursor < chips)
 			{
 				if (d == Dir::Left) return std::max(0, cursor - 1);
-				if (d == Dir::Right) return std::min(s.tiles - 1, cursor + 1);
-				if (d == Dir::Up || !s.rows) return cursor;
-				// down: the column under the tile (four tiles over two columns: the left two, the right two)
-				int col = std::min(cols - 1, cursor * cols / s.tiles);
-				return s.tiles + std::min(s.rows - 1, col);
+				if (d == Dir::Right) return std::min(chips - 1, cursor + 1);
+				if (d == Dir::Up) return cursor;
+				// down: the tile (or row) under the chip's place in the line
+				if (tiles) return chips + std::min(tiles - 1, cursor * tiles / chips);
+				if (rows) return chips;
+				return cursor;
 			}
-			int r = cursor - s.tiles, col = r % cols, line = r / cols;
+			if (cursor < chips + tiles)
+			{
+				int t = cursor - chips;
+				if (d == Dir::Left) return chips + std::max(0, t - 1);
+				if (d == Dir::Right) return chips + std::min(tiles - 1, t + 1);
+				if (d == Dir::Up) return chips ? std::min(chips - 1, t) : cursor;
+				if (!rows) return cursor;
+				// down: the row under the tile (four tiles over two columns: the left two, the right two)
+				int col = std::min(cols - 1, t * cols / tiles);
+				return chips + tiles + std::min(rows - 1, col);
+			}
+			int r = cursor - chips - tiles, col = r % cols, line = r / cols;
 			switch (d)
 			{
 			case Dir::Left: return col > 0 ? cursor - 1 : cursor;
-			case Dir::Right: return col + 1 < cols && r + 1 < s.rows ? cursor + 1 : cursor;
-			case Dir::Down: return r + cols < s.rows ? cursor + cols : cursor;
+			case Dir::Right: return col + 1 < cols && r + 1 < rows ? cursor + 1 : cursor;
+			case Dir::Down: return r + cols < rows ? cursor + cols : cursor;
 			default:
 				if (line > 0) return cursor - cols;
-				// up from the first line: the first tile over that column
-				return s.tiles ? std::min(s.tiles - 1, (col * s.tiles + cols - 1) / cols) : cursor;
+				// up from the first line: the tile (or chip) over that column
+				if (tiles) return chips + std::min(tiles - 1, (col * tiles + cols - 1) / cols);
+				if (chips) return std::min(chips - 1, col);
+				return cursor;
 			}
 		}
 

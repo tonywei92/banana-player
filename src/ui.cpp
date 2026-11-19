@@ -500,7 +500,9 @@ namespace bp
 		if (id >= PHOTO_BTN && id < PHOTO_BTN + PHOTO_BTNS)
 		{
 			static const Button PHOTO_KEYS[PHOTO_BTNS] = {Button::L, Button::R, Button::Down, Button::Up, Button::L3,
-				Button::Select, Button::None, Button::Start};
+				Button::None, Button::None, Button::Start};
+			// Fit / Fill changes in place (SELECT opens the photo's More now); Info is the page it always was
+			if (id == PHOTO_BTN + 5) { p.togglePhotoFill(); return false; }
 			Button b = PHOTO_KEYS[id - PHOTO_BTN];
 			if (b != Button::None) return pressAnyway(b, p);
 			id = INFO_BTN;

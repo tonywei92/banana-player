@@ -177,6 +177,10 @@ namespace bp
 		void scrub(double fraction);		// fast (to a keyframe): while a finger drags the bar
 		void seekFraction(double fraction);	// to the frame
 		void setSpeed(double s);
+		// the Picture sheet's Adjust page: brightness, contrast, saturation and gamma (mpv's video equalizer, each
+		// -100..100; 0 is the film as it is). They apply to every video while the app runs, never to a photo.
+		double videoAdjust(int i) const { return videoAdj[std::clamp(i, 0, 3)]; }
+		void setVideoAdjust(int i, double v);
 		// a choice of the player's: also the language a file opened for the first time starts with
 		void selectTrack(TrackType type, int64_t id);
 		void setAspect(AspectMode m);
@@ -289,6 +293,7 @@ namespace bp
 		// a film stopped is still kept
 		bool incognito = false;
 		AspectMode aspect = AspectMode::Fit;
+		double videoAdj[4] = {0, 0, 0, 0};	// the Picture sheet's Adjust: brightness, contrast, saturation, gamma
 		Settings settings;
 		std::string title, error;
 		int loads() const { return loadSerial; }	// how many files it has opened (each load counts)

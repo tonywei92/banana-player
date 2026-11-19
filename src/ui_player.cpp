@@ -3,6 +3,7 @@
 #include "ui_player.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
+#include "ui_settings.h"
 #include "ui_sound.h"
 #include "session_host.h"
 #include <cmath>
@@ -140,9 +141,10 @@ namespace bp
 			add(C_TOP, showGlyph(show, st.visualizer), "Display", SHOW_SHORT[show], false);
 		}
 		add(C_SPEED, &G_SPEED, "Speed", speedLabel(p.speed), std::fabs(p.speed - 1) > 1e-6);
-		// Repeat is its own state now (Off / All / One), set in the List sheet; a song's fourth chip is Shuffle
+		// Repeat is its own state (Off / All / One): the chip steps it in place; a song's fourth chip is Shuffle
 		if (p.playingAudio()) add(C_SHUFFLE, &G_SHUFFLE, "Shuffle", st.shuffle ? "On" : "Off", st.shuffle);
-		else add(C_MODE, &G_LOOP, "Repeat", LOOP_SHORT[std::clamp(st.loop, 0, LOOPS - 1)], st.loop != LOOP_OFF);
+		else add(C_MODE, st.loop == LOOP_ONE ? &G_LOOP_ONE : &G_LOOP, "Repeat", LOOP_SHORT[std::clamp(st.loop, 0, LOOPS - 1)],
+			st.loop != LOOP_OFF);
 		// a browser page plays it: these are the handheld's (their graphs, its screen), so they say so and are dim;
 		// the buttons still answer (chipAct says why nothing changed)
 		if (ui.predicting(p))
@@ -162,21 +164,27 @@ namespace bp
 		}
 		switch (kind)
 		{
-		// a video's: View's tabs (its tracks, its size, its speed), the sheet over the controls
+		// a video's: its own sheet (the tracks, the picture, the speed), over the controls
 		case C_SUBS: openView(0, p); break;
 		case C_AUDIO: openView(1, p); break;
 		case C_PICTURE: openView(2, p); break;
-		// a song's: View's Equalizer, Effects and Display tabs (the preset, the effect, the Show mode)
+		// a song's: Equalizer, Effects and Display (the preset, the effect, the Show mode)
 		case C_SOUND: openView(1, p); break;
 		case C_FX: openView(2, p); break;
 		case C_TOP: openView(0, p); break;
-		// Speed: View's last tab for both (the one place it is set now): a video's fifth, a song's fourth
-		case C_SPEED: openView(p.playingAudio() ? 3 : 4, p); break;
-		// the List sheet: Repeat and Shuffle are set there; a song's Shuffle chip turns it on or off
-		case C_MODE: openList(listTab, p); break;
+		// Speed: its own sheet for both (a video's fourth, a song's fourth)
+		case C_SPEED: openView(3, p); break;
+		// Repeat steps Off -> All -> One -> Off in place (the List sheet's own setting, through the Session); a song's
+		// Shuffle turns on and off in place. No sheet and no note: the chip's word and its yellow say it
+		case C_MODE:
+		{
+			Settings st = p.settings;
+			st.loop = (st.loop + 1) % LOOPS;
+			p.setSettings(st);
+			break;
+		}
 		case C_SHUFFLE:
 			SessionHost::get().setShuffle(!p.settings.shuffle);
-			p.osd(ui.modeLabel(p));
 			break;
 		}
 	}
@@ -360,6 +368,8 @@ namespace bp
 	{
 		if (p.playingPhoto())
 		{
+			// SELECT or X: the photo's More (the four chips, then its file's rows)
+			if (b == Button::X || b == Button::Select) { openPhotoMore(); return false; }
 			if (ui.photoKey(b, p)) return false;
 		}
 		bool err = !p.error.empty();
@@ -395,7 +405,7 @@ namespace bp
 		case Button::Start: ui.openMainMenu(p); break;
 		// the stick pressed in (the RG DS Plus): Like, at once (over a photo it turns it, above)
 		case Button::L3: ui.likeNow(p); break;
-		// More, as X: View (what SELECT used to open) is its first row, then Lock, Screen off, Info, Stop, Like, Add,
+		// More, as X: its first row is the player's five chips, then Lock, Screen off, Info, Stop, Like, Add,
 		// Show in folder, Play on
 		case Button::Select: openMoreSheet(); break;
 		// (a page playing it: from where it should be by now; the jump is passed on to the page)
@@ -454,6 +464,20 @@ namespace bp
 			it.act = std::move(act);
 			return it;
 		};
+		// the first row: the player's own five chips, under the cursor. A opens that chip's sheet (and More closes);
+		// Repeat and Shuffle change in place and the sheet stays
+		for (auto& d : chips(p))
+		{
+			MoreItem it;
+			it.glyph = d.look.glyph;
+			it.label = d.look.label;
+			it.value = d.look.value;
+			it.away = d.look.away;
+			it.off = d.look.off;
+			it.stay = d.kind == C_MODE || d.kind == C_SHUFFLE;
+			it.act = [self, kind = d.kind](Player& p) { self->chipAct(kind, p); return false; };
+			m.chips.push_back(it);
+		}
 		// the tiles: what was the player's bottom row
 		m.tiles.push_back(item(&G_LOCK, touchLocked ? "Unlock touch" : "Lock touch", [self](Player& p) {
 			if (self->touchLocked) self->unlock();
@@ -470,11 +494,7 @@ namespace bp
 		// (main stops it, the place kept: B only leaves the player, it plays on)
 		m.tiles.push_back(item(&G_STOP, "Stop", [u](Player&) { u->stopPressed = true; return false; }));
 		m.tiles.back().danger = true;
-		// the rows: what START's Playing tab has, then View (SELECT opens this sheet now, so View has to be a row)
-		m.rows.push_back(item(&G_PICTURE, "View", [self](Player& p) {
-			self->openView(p.playingAudio() ? self->songViewTab : self->viewTab, p);
-			return false;
-		}));
+		// the rows: what START's Playing tab has
 		MoreItem like = item(liked ? &G_HEART : &G_HEART_O, liked ? "Liked" : "Like", [u](Player& p) { u->likeNow(p); return false; });
 		like.key = hasL3() ? "L3" : "";
 		like.lit = liked;
@@ -503,6 +523,60 @@ namespace bp
 	{
 		pressed = T_NONE;
 		ui.openMore([this](const Player& p) { return moreSpec(p); });
+	}
+
+	// A photo's More (SELECT or X): the four chips that shape how photos are shown, changed in place, then the file's
+	// own rows (Info, its folder, Photo settings). The zoom and the turn have their keys, so they need no chip.
+	Ui::MoreSpec Ui::PlayerPage::photoMoreSpec(const Player& p) const
+	{
+		MoreSpec m;
+		if (!p.playingPhoto() || ui.page != Page::Main) return m;
+		Ui* u = &ui;
+		m.glyph = &G_PICTURE;
+		m.title = !p.title.empty() ? p.title : entryTitle(p.currentPath());
+		m.note = p.photoWidth() > 0 ? std::to_string(p.photoWidth()) + " x " + std::to_string(p.photoHeight()) : "";
+		auto chip = [](const Glyph* g, const char* label, const std::string& value, bool away, std::function<void(Player&)> act) {
+			MoreItem it;
+			it.glyph = g;
+			it.label = label;
+			it.value = value;
+			it.away = away;
+			it.stay = true;	// (changed in place: the chip says what it is now)
+			it.act = [act = std::move(act)](Player& p) { act(p); return false; };
+			return it;
+		};
+		m.chips.push_back(chip(&G_PICTURE, "Shown", p.photo().fill ? "Fill" : "Fit", p.photo().fill, [](Player& p) { p.togglePhotoFill(); }));
+		m.chips.push_back(chip(&G_REFRESH, "Keep zoom", p.settings.keepPhotoZoom ? "On" : "Off", !p.settings.keepPhotoZoom,
+			[](Player& p) { Settings s = p.settings; s.keepPhotoZoom = !s.keepPhotoZoom; p.setSettings(s); }));
+		m.chips.push_back(chip(&G_MOVE, "Pan area", p.settings.panRight ? "Right" : "Left", p.settings.panRight,
+			[](Player& p) { Settings s = p.settings; s.panRight = !s.panRight; p.setSettings(s); }));
+		m.chips.push_back(chip(&G_MOVE, "A drag moves", p.settings.dragBox ? "The box" : "The photo", !p.settings.dragBox,
+			[](Player& p) { Settings s = p.settings; s.dragBox = !s.dragBox; p.setSettings(s); }));
+		auto row = [](const Glyph* g, const char* label, std::function<bool(Player&)> act) {
+			MoreItem it;
+			it.glyph = g;
+			it.label = label;
+			it.act = std::move(act);
+			return it;
+		};
+		m.rows.push_back(row(&G_INFO, "Info", [u](Player&) {
+			u->page = Page::Info;
+			u->cursor = u->scroll = 0;
+			u->infoAt = 0;	// read at once
+			return false;
+		}));
+		m.rows.push_back(row(&G_FOLDER, "Show in folder", [u](Player& p) { u->showAfterLeave = p.currentPath(); return true; }));
+		m.rows.push_back(row(&G_GEAR, "Photo settings", [u](Player& p) {
+			u->openMainMenu(p, TAB_SETTINGS);
+			u->settingsPage->openGroup(GROUP_PHOTOS, &p);
+			return false;
+		}));
+		return m;
+	}
+
+	void Ui::PlayerPage::openPhotoMore()
+	{
+		ui.openMore([this](const Player& p) { return photoMoreSpec(p); });
 	}
 
 	// List (Y): what is in this file and what comes after it, side by side (docs/redesign, "video-list" and
@@ -838,16 +912,130 @@ namespace bp
 		ui.pushOverlay(std::make_unique<ListSheet>(ui, tab, p));
 	}
 
-	// View (More's View row; SELECT used to open it): what is in the file and how it plays, as a sheet over the controls (docs/redesign,
-	// "video-view", "video-speed"). Subtitles, Audio and Picture are Ui::rows' rows, the ones the old Tracks page
-	// listed, and Ui::choose does each one's action (a track by its id, a picture size); Speed is format.h's five
-	// speeds, and A sets it at once. It stays open on a choice (several are made here), unless the row leaves for
-	// Settings (the subtitle style). L / R step the tabs, UP / DOWN move, LEFT / RIGHT page, A chooses, SELECT / B
-	// close; a tap on a tab or a row acts on the lift, outside closes.
+	// Adjust: a page of the Picture sheet, behind its last row (docs/redesign, "video-adjust"). Four two-way sliders
+	// (Brightness, Contrast, Saturation, Gamma) change the film on the top screen as they move; A puts the focused one
+	// back to 0, X all four, and a slide anywhere on a row moves it from where it is (a tap jumps). B (or its <) goes
+	// back to Picture; SELECT closes the sheet too.
+	struct Ui::AdjustSheet : Ui::Overlay
+	{
+		std::function<void()> closeParent;	// SELECT closes the whole sheet (Picture under this page)
+		int cursor = 0, slideRow = -1;
+		static constexpr const char* NAMES[4] = {"Brightness", "Contrast", "Saturation", "Gamma"};
+		AdjustSheet(Ui& u, std::function<void()> parent) : Overlay(u), closeParent(std::move(parent)) {}
+		const char* name() const override { return "adjust"; }
+		static std::string valueText(const Player& p, int i)
+		{
+			int v = (int)std::lround(p.videoAdjust(i));
+			return v > 0 ? "+" + std::to_string(v) : std::to_string(v);
+		}
+		static lay::ListSheet layout() { return lay::listSheet(4); }
+		static Rect backRect(const lay::ListSheet& s) { return {14, s.head.y + 5, 44, 44}; }
+		static Rect rowRect(const lay::ListSheet& s, int i) { return s.row(i); }
+		static int rowAt(const lay::ListSheet& s, int x, int y)
+		{
+			for (int i = 0; i < 4; i++)
+				if (rowRect(s, i).hit(x, y)) return i;
+			return -1;
+		}
+		static void setFromX(const lay::ListSheet& s, int i, int x, Player& p)
+		{
+			Rect r = rowRect(s, i);
+			double f = std::clamp((x - (r.x + 12)) / (double)std::max(1, r.w - 24), 0.0, 1.0);
+			p.setVideoAdjust(i, std::lround((f * 200 - 100) / 5) * 5);	// (steps of 5)
+		}
+		bool key(Button b, Player& p) override
+		{
+			if (!p.playing() || p.playingPhoto() || p.playingAudio() || ui.page != Page::Main) { close(); return false; }
+			switch (b)
+			{
+			case Button::Up: cursor = (cursor + 3) % 4; break;
+			case Button::Down: cursor = (cursor + 1) % 4; break;
+			case Button::Left: case Button::Right:
+				p.setVideoAdjust(cursor, std::clamp(p.videoAdjust(cursor) + (b == Button::Right ? 5 : -5), -100.0, 100.0));
+				break;
+			case Button::A: p.setVideoAdjust(cursor, 0); break;
+			case Button::X:
+				for (int i = 0; i < 4; i++) p.setVideoAdjust(i, 0);
+				break;
+			case Button::B: close(); break;
+			case Button::Select: close(); if (closeParent) closeParent(); break;
+			default: break;
+			}
+			return false;
+		}
+		bool pointer(const Pointer& pt, int x, int y, Player& p) override
+		{
+			if (ui.touchIsLocked()) return false;
+			if (!p.playing() || p.playingPhoto() || p.playingAudio() || ui.page != Page::Main) { close(); return false; }
+			lay::ListSheet s = layout();
+			if (pt.kind == Pointer::Down)
+			{
+				if (backRect(s).hit(x, y)) { close(); return false; }
+				if (!s.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
+				int at = rowAt(s, x, y);
+				if (at >= 0) { cursor = slideRow = at; setFromX(s, at, x, p); }
+				return false;
+			}
+			if (pt.kind == Pointer::Move)
+			{
+				if (slideRow >= 0) setFromX(s, slideRow, x, p);
+				return false;
+			}
+			if (pt.kind == Pointer::Up) slideRow = -1;
+			return false;
+		}
+		void draw(const Player& p) override
+		{
+			if (!p.playing() || p.playingPhoto() || p.playingAudio() || ui.page != Page::Main) { close(); return; }
+			Kit& k = *ui.kit;
+			lay::ListSheet s = layout();
+			k.sheetBack(s.box, s.grab);
+			int cy = s.head.y + s.head.h / 2;
+			ui.drawGlyphMid(G_LEFT, backRect(s).x + 22, cy, ACCENT);
+			ui.drawTextMid("Adjust", F_P20, ACCENT, backRect(s).x + 52, cy, 260);
+			ui.drawTextMid("Picture", F_I12, DIM, s.head.x + s.head.w, cy, 0, 1);
+			for (int i = 0; i < 4; i++)
+			{
+				Rect r = rowRect(s, i);
+				Kit::Row row;
+				row.font = F_P16;
+				row.name = NAMES[i];
+				row.note = valueText(p, i);
+				row.focused = i == cursor;
+				row.off = false;
+				k.row(r, row);
+				// the two-way track: the middle is 0, the fill runs from it to the value
+				Rect track{r.x + 12, r.y + r.h - 9, r.w - 24, 6};
+				ui.fillRound(track, TRACK, 3);
+				int mid = track.x + track.w / 2;
+				double share = std::clamp(p.videoAdjust(i) / 100.0, -1.0, 1.0);
+				int ex = mid + (int)std::lround(share * track.w / 2);
+				if (ex != mid)
+					ui.fillRound({std::min(mid, ex), track.y, std::abs(ex - mid), track.h}, i == cursor ? ACCENT : PRESSED, 3);
+				ui.fill({mid, track.y - 3, 1, track.h + 6}, DIM_ON);
+			}
+			k.hints({{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Adjust"}, {"A", "To 0"}, {"X", "Reset all"}, {"B", "Picture"}});
+		}
+		std::string signature(const Player& p) const override
+		{
+			std::string sig = std::to_string(cursor) + "," + std::to_string(slideRow) + "," + std::to_string(ui.touchIsLocked());
+			for (int i = 0; i < 4; i++) sig += "|" + valueText(p, i);
+			return sig;
+		}
+	};
+
+	// One of the video's own sheets (docs/redesign, "video-view", "video-picture", "video-speed"): Subtitles, Audio,
+	// Picture or Speed, opened straight from its chip, titled with the chip's name and with no tab strip. The rows are
+	// Ui::rows' rows, the ones the old Tracks page listed, and Ui::choose does each one's action (a track by its id, a
+	// picture size); Speed is format.h's five speeds, and A sets it at once. Picture's last row opens Adjust (a page of
+	// this sheet). It stays open on a choice (several are made here), unless the row leaves for Settings (the subtitle
+	// style) or for Adjust. UP / DOWN move, LEFT / RIGHT page, A chooses, SELECT / B close; a tap on a row acts on the
+	// lift, outside closes. L and R do nothing: there are no tabs.
 	struct Ui::ViewSheet : Ui::Overlay
 	{
 		enum Tab { TAB_SUBS, TAB_AUDIO, TAB_PICTURE, TAB_SPEED, TABS };
-		enum Press { P_NONE, P_ROW, P_TAB };
+		enum Press { P_NONE, P_ROW };
+		static constexpr int64_t ADJUST_ROW = -3;	// Picture's last row: the Adjust page
 		int tab = 0, cursor = 0, scroll = 0, press = P_NONE, pressAt = -1;
 		// a finger dragging the rows scrolls them; a tap (no drag) still chooses
 		bool drag = false;
@@ -856,7 +1044,6 @@ namespace bp
 		ViewSheet(Ui& u, int at, const Player& p) : Overlay(u)
 		{
 			tab = std::clamp(at, 0, TABS - 1);
-			ui.playerPage->viewTab = tab;
 			// opened on what is in use: the chosen track (Off among the subtitles too), the size, the speed
 			int n = count(p), cur = current(p);
 			cursor = std::clamp(cur, 0, std::max(0, n - 1));
@@ -865,6 +1052,11 @@ namespace bp
 		const char* name() const override { return "view"; }
 
 		static std::vector<std::string> labels() { return {"Subtitles", "Audio", "Picture", "Speed"}; }
+		static const Glyph* glyphFor(int t)
+		{
+			static const Glyph* G[TABS] = {&G_CC, &G_SPEAKER, &G_PICTURE, &G_SPEED};
+			return G[std::clamp(t, 0, TABS - 1)];
+		}
 		static int tracksTabFor(int t) { return t == TAB_AUDIO ? TRACKS_AUDIO : t == TAB_PICTURE ? TRACKS_PICTURE : TRACKS_SUBS; }
 		// Ui::rows reads the tab it is on: point it at this one while asking, and put it back (asking is not choosing)
 		std::vector<Ui::Row> rowsFor(int t, const Player& p) const
@@ -881,6 +1073,8 @@ namespace bp
 			ui.tracksTab = tracksTabFor(t);
 			auto out = ui.rows(p);
 			ui.tracksTab = keep;
+			// the picture's last row: the Adjust page (Brightness, Contrast, Saturation, Gamma)
+			if (t == TAB_PICTURE) out.push_back({ADJUST_ROW, "Adjust\xE2\x80\xA6", false, "Brightness, Contrast, Saturation, Gamma"});
 			return out;
 		}
 		int count(const Player& p) const { return (int)rowsFor(tab, p).size(); }
@@ -901,31 +1095,13 @@ namespace bp
 			cursor = std::clamp(cursor, 0, n - 1);
 			scroll = lay::listScroll(cursor, scroll, shown(p), n);
 		}
-		void openTab(int t, const Player& p)
-		{
-			tab = std::clamp(t, 0, TABS - 1);
-			int n = count(p), cur = current(p);
-			cursor = std::clamp(cur, 0, std::max(0, n - 1));
-			scroll = lay::listScroll(cursor, std::max(0, cursor - 3), shown(p), n);
-			ui.playerPage->viewTab = tab;
-		}
-		// what the header says on the tabs' right: how many there are to choose
+		// what the header says under its title (on the right): how many there are to choose
 		std::string headNote(const Player& p) const
 		{
 			if (tab == TAB_SPEED) return "";
 			if (tab == TAB_PICTURE) return "3 sizes";
 			int n = (int)p.tracksOf(tab == TAB_AUDIO ? TrackType::Audio : TrackType::Sub).size();
 			return n == 0 ? "None in this file" : n == 1 ? "1 track" : std::to_string(n) + " tracks";
-		}
-		struct Head { Rect tabs, note; };
-		Head head(const lay::ListSheet& s, const Player& p) const
-		{
-			Head h;
-			std::string note = headNote(p);
-			int w = note.empty() ? 0 : ui.kit->textW(note, F_I12);
-			h.tabs = {s.head.x, s.head.y, std::max(0, s.head.w - (w ? w + 16 : 0)), s.head.h};
-			h.note = {s.head.x + s.head.w - w, s.head.y + s.head.h / 2 - 7, w, 14};
-			return h;
 		}
 
 		void choose(int i, Player& p)
@@ -939,6 +1115,12 @@ namespace bp
 				double s = speedChoices()[i];
 				p.setSpeed(s);
 				p.osd("Speed " + speedLabel(s));
+				return;
+			}
+			if (tab == TAB_PICTURE && r[i].id == ADJUST_ROW)
+			{
+				// a page of this sheet: it stays under Adjust, and B (or its <) comes back here
+				ui.pushOverlay(std::make_unique<AdjustSheet>(ui, [this] { close(); }));
 				return;
 			}
 			// the style row leaves for Settings (its page draws there): the sheet closes first. A track or a size
@@ -965,9 +1147,6 @@ namespace bp
 			// a page at a time when there are more rows than show (the List sheet's LEFT / RIGHT)
 			case Button::Left: cursor = std::max(0, cursor - shown(p)); break;
 			case Button::Right: cursor = std::min(n - 1, cursor + shown(p)); break;
-			// the tabs: L back, R on, no wrap
-			case Button::L: if (tab > 0) openTab(tab - 1, p); break;
-			case Button::R: if (tab + 1 < TABS) openTab(tab + 1, p); break;
 			case Button::A: choose(cursor, p); break;
 			case Button::Select:
 			case Button::B:
@@ -987,7 +1166,6 @@ namespace bp
 			if (n <= 0) { close(); return false; }
 			settle(p);
 			lay::ListSheet s = layout(p);
-			Head h = head(s, p);
 			if (pt.kind == Pointer::Down)
 			{
 				press = P_NONE;
@@ -995,9 +1173,6 @@ namespace bp
 				drag = false;
 				// the veil: closed (the lift that follows presses nothing)
 				if (!s.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
-				auto tabs = ui.kit->tabRects(h.tabs, labels(), true);
-				for (int i = 0; i < (int)tabs.size(); i++)
-					if (tabs[i].hit(x, y)) { press = P_TAB; pressAt = i; return false; }
 				for (int i = scroll; i < n && i < scroll + shown(p); i++)
 					if (s.row(i - scroll).hit(x, y))
 					{
@@ -1037,11 +1212,6 @@ namespace bp
 			}
 			// let go off it: nothing (a finger that slid away changed its mind)
 			if (kind == P_ROW && at >= scroll && at < n && s.row(at - scroll).hit(x, y)) choose(at, p);
-			else if (kind == P_TAB)
-			{
-				auto tabs = ui.kit->tabRects(h.tabs, labels(), true);
-				if (at >= 0 && at < (int)tabs.size() && tabs[at].hit(x, y)) openTab(at, p);
-			}
 			return false;
 		}
 
@@ -1053,12 +1223,8 @@ namespace bp
 			if (n <= 0) { close(); return; }
 			settle(p);
 			lay::ListSheet s = layout(p);
-			Head h = head(s, p);
 			Kit& k = *ui.kit;
-			k.sheetBack(s.box, s.grab);
-			k.tabs(h.tabs, labels(), tab, "L/R");
-			std::string note = headNote(p);
-			if (!note.empty()) ui.drawTextMid(note, F_I12, DIM, h.note.x, h.note.y + h.note.h / 2, h.note.w, 1);
+			k.sheet(s, {glyphFor(tab), labels()[tab], headNote(p), false});
 
 			// a choice a row: its radio (the track in use, the size, the speed) and its note
 			auto list = rowsFor(tab, p);
@@ -1075,8 +1241,8 @@ namespace bp
 				// (a message row — "No audio in this file" — is no choice: no radio, and dim)
 				row.radio = r.id >= 0;
 				row.radioOn = row.radio && r.selected;
-				row.trail = r.id == STYLE_ROW ? Kit::Trail::Chevron : Kit::Trail::None;
-				row.off = r.id < 0 && r.id != STYLE_ROW;
+				row.trail = r.id == STYLE_ROW || r.id == ADJUST_ROW ? Kit::Trail::Chevron : Kit::Trail::None;
+				row.off = r.id < 0 && r.id != STYLE_ROW && r.id != ADJUST_ROW;
 				k.row(s.row(i - first), row);
 			}
 			ui.drawScrollBar(s.rowsY, shown(p) * lay::LIST_ROW, scroll, shown(p), n);
@@ -1084,7 +1250,6 @@ namespace bp
 			std::vector<Hint> hints{{"UP/DOWN", "Move"}};
 			if (n > shown(p)) hints.push_back({"LEFT/RIGHT", "Page"});
 			hints.push_back({"A", tab == TAB_SPEED ? "Set" : "Choose"});
-			hints.push_back({"L/R", "Tab"});
 			hints.push_back({"SELECT/B", "Close"});
 			k.hints(hints);
 		}
@@ -1102,16 +1267,17 @@ namespace bp
 		}
 	};
 
-	// View (More's View row; SELECT used to open it) on a song: Display, Equalizer, Effects and Speed in one sheet, where the Display popup and the Sound
-	// page used to be three places (docs/redesign, "music-view", "music-viz-pick", "music-eq"). Display is one page for
-	// both choices (lay::displayPage): the four Show modes in a row of choice tiles, the fifteen visualizer styles in a
-	// 5 x 4 grid under them; the cursor moves over both and changes nothing, A sets what is under it (the top screen
-	// follows at once). The equalizer is the Sound page's bands in the sheet's body, its preset options as rows. L / R
-	// step the tabs, B closes (SELECT closes too, but on Display it steps the Show mode as the popup did).
+	// One of a song's own sheets (docs/redesign, "music-view", "music-viz-pick", "music-eq"): Display, Equalizer,
+	// Effects or Speed, opened straight from its chip, titled with the chip's name and with no tab strip. Display is one
+	// page for both choices (lay::displayPage): the four Show modes in a row of choice tiles, the fifteen visualizer
+	// styles in a 5 x 4 grid under them; the cursor moves over both and changes nothing, A sets what is under it (the
+	// top screen follows at once). The equalizer is the Sound page's bands in the sheet's body, its preset options as
+	// rows. B closes (on Display SELECT steps the Show mode as the popup did; elsewhere SELECT closes too). L and R do
+	// nothing: there are no tabs.
 	struct Ui::SongViewSheet : Ui::Overlay
 	{
 		enum Tab { TAB_SHOW, TAB_EQ, TAB_FX, TAB_SPEED, TABS };
-		enum Press { P_NONE, P_ROW, P_TAB, P_PREV, P_NEXT, P_NAME, P_ON, P_SAVE, P_TILE };
+		enum Press { P_NONE, P_ROW, P_PREV, P_NEXT, P_NAME, P_ON, P_SAVE, P_TILE };
 		enum EqMode { EQ_MAIN, EQ_OPTIONS, EQ_LIST, EQ_DELETE };
 		int tab = 0, cursor = 0, scroll = 0, press = P_NONE, pressAt = -1;
 		int eqMode = EQ_MAIN;	// (its lists are the sheet's rows: cursor and scroll)
@@ -1121,13 +1287,22 @@ namespace bp
 		SongViewSheet(Ui& u, int at, const Player& p) : Overlay(u)
 		{
 			tab = std::clamp(at, 0, TABS - 1);
-			ui.playerPage->songViewTab = tab;
 			cursor = currentRow(p);
 			scroll = tab == TAB_SHOW ? 0 : lay::listScroll(cursor, 0, shown(p), count(p));
 		}
 		const char* name() const override { return "songview"; }
 
 		static std::vector<std::string> labels() { return {"Display", "Equalizer", "Effects", "Speed"}; }
+		static const Glyph* glyphFor(int t, const Player& p)
+		{
+			switch (t)
+			{
+			case TAB_EQ: return &G_EQ;
+			case TAB_FX: return &G_SPEAKER;
+			case TAB_SPEED: return &G_SPEED;
+			default: return showGlyph(std::clamp(p.settings.musicShow, 0, SHOWS - 1), p.settings.visualizer);
+			}
+		}
 		static bool showHidesVisualizer(const Player& p)
 		{
 			int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1);
@@ -1189,22 +1364,6 @@ namespace bp
 			if (n <= 0) { cursor = scroll = 0; return; }
 			cursor = std::clamp(cursor, 0, n - 1);
 			scroll = lay::listScroll(cursor, scroll, shown(p), n);
-		}
-		void openTab(int t, const Player& p)
-		{
-			tab = std::clamp(t, 0, TABS - 1);
-			eqMode = EQ_MAIN;
-			if (tab == TAB_SHOW)
-			{
-				cursor = currentRow(p);
-				scroll = 0;
-				ui.playerPage->songViewTab = tab;
-				return;
-			}
-			int n = count(p), cur = currentRow(p);
-			cursor = std::clamp(cur, 0, std::max(0, n - 1));
-			scroll = lay::listScroll(cursor, std::max(0, cursor - 3), shown(p), n);
-			ui.playerPage->songViewTab = tab;
 		}
 
 		// ---- Display and the two lists into rows ----
@@ -1472,20 +1631,20 @@ namespace bp
 			// (the song has gone, it became a video, or the player was left under the sheet: closed)
 			if (!p.playing() || p.playingPhoto() || !p.playingAudio() || ui.page != Page::Main) { close(); return false; }
 			settle(p);
-			// its own dialogs: B goes back a step, not out of the sheet
+			// its own dialogs: B goes back a step, not out of the sheet; SELECT closes the sheet
 			if (tab == TAB_EQ && eqMode != EQ_MAIN)
 			{
+				if (b == Button::Select) { close(); return false; }
 				if (b == Button::B || b == Button::Start) { eqMode = EQ_MAIN; return false; }
 				if (listKey(b, p)) return false;
 				settle(p);
 				return false;
 			}
-			// Display: L / R step the tabs, SELECT steps the Show mode (as the popup did), B (and Y: List opens there) close
+			// Display: SELECT steps the Show mode (as the popup did), B (and Y: List opens there) close
 			if (tab == TAB_SHOW)
 			{
 				switch (b)
 				{
-				case Button::R: openTab(TAB_EQ, p); break;
 				case Button::B: case Button::Y: close(); break;
 				case Button::Select:
 					{
@@ -1501,10 +1660,8 @@ namespace bp
 			}
 			switch (b)
 			{
-			case Button::L: if (tab > 0) openTab(tab - 1, p); break;
-			case Button::R: if (tab + 1 < TABS) openTab(tab + 1, p); break;
 			case Button::B: close(); break;
-			// (the tabs but Display close, as View does)
+			// (Display steps the mode on SELECT; every other sheet closes)
 			case Button::Select: close(); break;
 			// (the equalizer turns on and off with Y, as the Sound page had SELECT; elsewhere Y closes: List opens there)
 			case Button::Y:
@@ -1524,7 +1681,7 @@ namespace bp
 		{
 			if (ui.touchIsLocked()) return false;
 			if (!p.playing() || p.playingPhoto() || !p.playingAudio() || ui.page != Page::Main) { close(); return false; }
-			// Display: a tab, or a tile (a tap sets it, as A does)
+			// Display: a tile (a tap sets it, as A does)
 			if (tab == TAB_SHOW)
 			{
 				lay::DisplayPage d = displayLayout();
@@ -1533,9 +1690,6 @@ namespace bp
 					press = P_NONE;
 					pressAt = -1;
 					if (!d.sheet.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
-					auto tabs = ui.kit->tabRects(d.sheet.head, labels(), true);
-					for (int i = 0; i < (int)tabs.size(); i++)
-						if (tabs[i].hit(x, y)) { press = P_TAB; pressAt = i; return false; }
 					int at = lay::displayAt(d, x, y);
 					if (at >= 0) { press = P_TILE; pressAt = at; cursor = at; }
 					return false;
@@ -1544,12 +1698,7 @@ namespace bp
 				int kind = press, at = pressAt;
 				press = P_NONE;
 				pressAt = -1;
-				if (kind == P_TAB)
-				{
-					auto tabs = ui.kit->tabRects(d.sheet.head, labels(), true);
-					if (at >= 0 && at < (int)tabs.size() && tabs[at].hit(x, y)) openTab(at, p);
-				}
-				else if (kind == P_TILE && at >= 0 && lay::displayAt(d, x, y) == at) setTile(at, p);
+				if (kind == P_TILE && at >= 0 && lay::displayAt(d, x, y) == at) setTile(at, p);
 				return false;
 			}
 			lay::ListSheet s = layout(p);
@@ -1560,9 +1709,6 @@ namespace bp
 				drag = false;
 				// the veil: closed (the lift that follows presses nothing)
 				if (!s.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
-				auto tabs = ui.kit->tabRects(s.head, labels(), true);
-				for (int i = 0; i < (int)tabs.size(); i++)
-					if (tabs[i].hit(x, y)) { press = P_TAB; pressAt = i; return false; }
 				if (tab == TAB_EQ && eqMode == EQ_MAIN)
 				{
 					EqLayout e = eqLayout(s);
@@ -1620,11 +1766,6 @@ namespace bp
 				return false;
 			}
 			if (kind == P_ROW && at >= scroll && at < listCount(p) && s.row(at - scroll).hit(x, y)) choose(at, p);
-			else if (kind == P_TAB)
-			{
-				auto tabs = ui.kit->tabRects(s.head, labels(), true);
-				if (at >= 0 && at < (int)tabs.size() && tabs[at].hit(x, y)) openTab(at, p);
-			}
 			else if (kind == P_SAVE && eqLayout(s).save.hit(x, y)) ui.sound->eqSave(p);
 			else if (kind == P_ON && Rect{eqLayout(s).toggleX, eqLayout(s).cy - 11, 40, 22}.hit(x, y)) ui.sound->eqToggle(p);
 			else if (kind == P_PREV && (eqLayout(s).prevCap.hit(x, y) || eqLayout(s).prevArrow.hit(x, y))) ui.sound->eqStep(-1, p);
@@ -1711,8 +1852,7 @@ namespace bp
 		{
 			Kit& k = *ui.kit;
 			lay::DisplayPage d = displayLayout();
-			k.sheetBack(d.sheet.box, d.sheet.grab);
-			k.tabs(d.sheet.head, labels(), tab, "L/R");
+			k.sheet(d.sheet, {glyphFor(tab, p), labels()[tab], "", false});
 			int show = std::clamp((int)p.settings.musicShow, 0, SHOWS - 1);
 			static const Glyph* MODE_GLYPH[SHOWS] = {&G_PICTURE, &G_ARTVIZ, &G_VIS_BARS, &G_TITLE_ONLY};
 			ui.drawTextMid("TOP SCREEN SHOWS", F_I11B, DIM, d.modesLabel.x + 2, d.modesLabel.y + d.modesLabel.h / 2, d.modesLabel.w);
@@ -1746,7 +1886,7 @@ namespace bp
 			std::string line = visualizerLabel(p.settings.visualizer);
 			if (showHidesVisualizer(p)) line += std::string(" \xC2\xB7 not shown now: the top screen shows ") + musicShowLabel(show);
 			ui.drawTextMid(line, F_I12, DIM_ON, lx, cy, d.styleLine.x + d.styleLine.w - lx);
-			k.hints({{"D-PAD", "Move"}, {"A", "Set"}, {"SELECT", "Next mode"}, {"L/R", "Tab"}, {"B", "Close"}});
+			k.hints({{"D-PAD", "Move"}, {"A", "Set"}, {"SELECT", "Next mode"}, {"B", "Close"}});
 		}
 
 		void draw(const Player& p) override
@@ -1759,8 +1899,7 @@ namespace bp
 				return;
 			}
 			lay::ListSheet s = layout(p);
-			k.sheetBack(s.box, s.grab);
-			k.tabs(s.head, labels(), tab, "L/R");
+			k.sheet(s, {glyphFor(tab, p), labels()[tab], "", false});
 			if (tab == TAB_EQ && eqMode == EQ_MAIN)
 			{
 				drawEq(p, s);
@@ -1795,8 +1934,7 @@ namespace bp
 				std::vector<Hint> hints{{"UP/DOWN", "Move"}};
 				if (n > shownN) hints.push_back({"LEFT/RIGHT", "Page"});
 				hints.push_back({"A", "Choose"});
-				hints.push_back({"L/R", "Tab"});
-				hints.push_back({"B", "Close"});
+				hints.push_back({"SELECT/B", "Close"});
 				k.hints(hints);
 			}
 		}
@@ -1820,7 +1958,6 @@ namespace bp
 		if (p.playingAudio()) ui.pushOverlay(std::make_unique<SongViewSheet>(ui, tab, p));
 		else ui.pushOverlay(std::make_unique<ViewSheet>(ui, tab, p));
 	}
-
 	// Play on: where it plays (the Session's output), the handheld or a dashboard page that can play. A sheet of rows;
 	// the list is read each time (a page that closes leaves it)
 	struct Ui::PlayOnSheet : Ui::Overlay
@@ -1941,8 +2078,8 @@ namespace bp
 	{
 		if (!p.settings.buttonHotkeys) return {{"", "Button hotkeys are off: the keys on this screen do it all"}};
 		if (ui.pageDrives(p))
-			return {{"A", ui.pagePlaying() ? "Pause there" : "Play there"}, {"Hold A", "Play here"}, {"L/R", "Step"}, {"SELECT", "More"}, {"B", "Back"}};
-		std::vector<Hint> out{{"LEFT/RIGHT", "Seek"}, {"SELECT", "More"}};
+			return {{"A", ui.pagePlaying() ? "Pause there" : "Play there"}, {"Hold A", "Play here"}, {"L/R", "Step"}, {"X/SELECT", "More"}, {"B", "Back"}};
+		std::vector<Hint> out{{"LEFT/RIGHT", "Seek"}, {"X/SELECT", "More"}};
 		if (chapters) out.push_back({"L2/R2", "Chapter"});
 		out.push_back({"B", "Back, keeps playing"});
 		return out;

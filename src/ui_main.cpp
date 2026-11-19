@@ -135,8 +135,7 @@ namespace bp
 		case Button::Right: case Button::R: if (!p.next()) p.osd("This is the last one"); return true;
 		case Button::Up: case Button::Down: photoZoomTo(stepZoom(v.zoom, b == Button::Up ? 1 : -1), v.panX, v.panY, p); return true;
 		case Button::L3: p.rotatePhoto(); p.osd("Turned " + std::to_string(p.photo().rotate) + "°", 800); return true;
-		case Button::Select: p.togglePhotoFill(); p.osd(p.photo().fill ? "Fill" : "Fit", 800); return true;
-		case Button::X: case Button::Y: return true;	// nothing for a photo
+		case Button::X: case Button::Y: return true;	// (X opens More, above, before this)
 		default: return false;	// B and START: as over a video
 		}
 	}
@@ -314,7 +313,7 @@ namespace bp
 			{"Zoom -", "DOWN", v.zoom <= 1.001},
 			{"Zoom +", "UP", v.zoom >= MAX_ZOOM - 0.001},
 			{"Rotate", "L3", false},
-			{v.fill ? "Fill" : "Fit", "SELECT", false},
+			{v.fill ? "Fill" : "Fit", "", false},
 			{"Info", "", false},
 			{"Settings", "START", false},
 		};

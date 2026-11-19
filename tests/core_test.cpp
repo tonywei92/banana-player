@@ -10163,6 +10163,35 @@ static void testKitLayout()
 	CHECK_EQ(sheetMove(list, 1, Dir::Right), 1);
 	CHECK_EQ(sheetMove({0, 0, 1, 0}, 3, Dir::Down), 0);
 
+	// the player's More: the five chips first (under the cursor on opening), then the tiles and the rows
+	SheetSpec player{4, 4, 2, 0, 5};
+	Sheet ps = sheet(player);
+	CHECK_EQ(ps.box.h, 11 + 54 + 52 + 8 + 60 + 8 + 2 * 46 + 8 + 30);
+	CHECK_EQ(ps.chip(0).y, ps.head.y + 54);
+	CHECK_EQ(ps.chip(0).h, 52);
+	CHECK_EQ(ps.chip(0).x, 14);
+	CHECK_EQ(ps.chip(4).x + ps.chip(4).w, 626);	// the last chip ends on the sheet's right edge
+	CHECK_EQ(ps.tile(0).y, ps.chip(0).y + 52 + 8);
+	CHECK_EQ(ps.row(0).y, ps.tile(0).y + 60 + 8);
+	CHECK(ps.item(0).x == ps.chip(0).x && ps.item(5).x == ps.tile(0).x && ps.item(9).x == ps.row(0).x);
+	CHECK_EQ(sheetMove(player, 0, Dir::Right), 1);
+	CHECK_EQ(sheetMove(player, 4, Dir::Right), 4);
+	CHECK_EQ(sheetMove(player, 0, Dir::Up), 0);
+	CHECK_EQ(sheetMove(player, 0, Dir::Down), 5);	// the chip's column, in the tiles
+	CHECK_EQ(sheetMove(player, 4, Dir::Down), 8);
+	CHECK_EQ(sheetMove(player, 5, Dir::Down), 9);	// the tile's column, in the rows
+	CHECK_EQ(sheetMove(player, 8, Dir::Down), 10);
+	CHECK_EQ(sheetMove(player, 9, Dir::Up), 5);
+	CHECK_EQ(sheetMove(player, 10, Dir::Up), 7);
+	// a photo's: four chips 147 wide over rows, and no tiles
+	SheetSpec photo{0, 3, 1, 0, 4};
+	Sheet ph = sheet(photo);
+	CHECK_EQ(ph.chip(0).w, 147);
+	CHECK_EQ(sheetMove(photo, 3, Dir::Down), 4);
+	CHECK_EQ(sheetMove(photo, 0, Dir::Down), 4);
+	CHECK_EQ(sheetMove(photo, 4, Dir::Up), 0);
+	CHECK_EQ(sheetMove(photo, 2, Dir::Up), 2);	// (the chips are the first row: UP stays)
+
 	// the Settings page: ten tiles, two a row, all inside; a group's seven rows 46 tall, clear of the help and hints
 	Box tiles{16, SET_TILE_TOP, 608, 5 * SET_TILE_H + 4 * SET_TILE_GAP};
 	// the header's strip is 54 tall and holds the title beside its back key: there is no title row, so the page starts
