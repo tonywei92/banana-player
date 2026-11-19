@@ -76,6 +76,60 @@ namespace bp
 		std::map<std::string, std::vector<std::string>> netNames;	// netFolderNames'
 		std::string netOpenPending;	// a network file to open once its folder is listed
 
+		// ---- the Files page (docs/redesign: files, files-playing, select, actions, delete, empty-folder, info,
+		// readonly, files-music): the local folders only (the cards' places and the folders under them). It draws in
+		// lay::shell(p).body; Home, Playlists, Network and All recent keep Ui's list (drawTracks). ----
+		bool filesPage() const;	// this page, a local folder (or the places), no menu
+		std::string filesTitle() const;
+		std::string filesCrumb() const;
+		std::vector<Hint> filesHints(const Player& p) const;
+		// (until the shared shell lands: the page's own header and hint bar, so the merge swaps only this)
+		void frame(const Player& p);
+		void drawFiles(const Player& p);
+		lay::FilesPage filesLayout(const Player& p) const;
+		int filesShown(const Player& p) const;
+		int filesScroll(const Player& p) const;	// the scroll that keeps the cursor in view
+		bool filesEmpty() const;
+		bool filesReadOnly() const;	// the folder can't be written by this account
+		std::string filesFooter() const;	// "7 items · 21 GB free"
+		void filesRefresh(Player& p);
+		void filesPlayAll(const std::string& dir, bool shuffle, Player& p);
+		void filesToggleHidden(const std::string& path, Player& p);
+		void filesToggleShowHidden(Player& p);
+		// X, and a header's More: the More sheet (ui_more.cpp), built from the focused row and the folder it is in
+		void filesOpenMore(Player& p);
+		// Y: select mode (the Files one: any file or folder, for Playlist, Copy, Move, Delete)
+		bool fileTickable(int row) const;
+		bool fileTicked(int row) const;
+		int fileSelCount() const { return (int)fileSelPaths.size(); }
+		void filesSelStart(Player& p);
+		void filesSelEnd(Player& p);
+		void filesSelAll(Player& p);
+		void filesSelAct(int what, Player& p);	// 0 Playlist, 1 Copy, 2 Move, 3 Delete
+		void filesSelMore(Player& p);
+		void filesClipStart(int op, Player& p);
+		// the delete question (a Confirm sheet) and Info's page (an overlay of the browser's)
+		void filesDeleteAsk(std::vector<std::string> paths, Player& p);
+		struct FileDeleteAsk;
+		struct FileInfoSheet;
+		// a finger on the redesigned page: the header's keys, a row, the select bar, an empty page's keys
+		bool filesKey(Button b, Player& p);
+		bool filesPointer(const Pointer& pt, int x, int y, Player& p);
+		// Files' new state (the redraws): select mode and its ticks, the touch, the read-only mark and the footer
+		bool fileSel = false;
+		std::set<std::string> fileSelPaths;
+		std::vector<std::string> fileSelOrder;
+		std::vector<std::string> clipPaths;	// a group Copy / Move (empty: clipPath alone)
+		int filesTouch = -1, filesPressed = -1;
+		int filesTouchY = 0, filesScrollStart = 0;
+		bool filesScrolled = false;
+		mutable std::string filesFooterCache, filesFooterDir;
+		mutable Uint32 filesFooterAt = 0;
+		void filesMove(int to, Player& p);
+		void filesTickRow(int row);
+		void drawFilesRow(int i, const lay::FilesPage& f, int onScreen, bool at, const Player& p);
+		void drawFilesEmpty(const lay::FilesPage& f, const Player& p);
+
 		// ---- Files' own file operations (ui_fileops.cpp; the job's card and Info's sheet are Ui's) ----
 		// Copy / Move: the item is held (clip) while you go to the folder it goes in, and pasted there (SELECT, or the
 		// bar's button); clipOp is one of Ui's CLIP_* (the file job's codes)
@@ -101,7 +155,7 @@ namespace bp
 		void filePaste(Player& p);
 		void drawClipBar();
 		void fileRenameDone(Player& p);
-		Rect clipBtn(int i) const { return {i ? 328 : 24, 428, 288, 44}; }
+		Rect clipBtn(int i) const { lay::FilesClip c = lay::filesClipBar(lay::shell(false).body); return c.key[i]; }
 
 		// ---- the Network tab's other pages (ui_forms.cpp), as the browser's (browseDir FORMDIR, FINDNET) ----
 		// A connection's form: its rows (form*), each opening the keyboard or stepping through its choices

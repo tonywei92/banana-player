@@ -22,11 +22,26 @@
 #include "ui_home.h"
 #include "ui_docs.h"
 #include "ui_manga.h"
+#include "ui_kit.h"
+#include "session_host.h"
 #include "pagebook.h"
 #include "durworker.h"
+#include <sys/statvfs.h>
 
 namespace bp
 {
+	namespace
+	{
+		std::string fileBytes(uint64_t b)
+		{
+			char out[32];
+			if (b >= (1ull << 30)) snprintf(out, sizeof out, "%.1f GB", b / 1073741824.0);
+			else if (b >= (1ull << 20)) snprintf(out, sizeof out, "%.1f MB", b / 1048576.0);
+			else if (b >= 1024) snprintf(out, sizeof out, "%llu KB", (unsigned long long)(b / 1024));
+			else snprintf(out, sizeof out, "%llu bytes", (unsigned long long)b);
+			return out;
+		}
+	}
 	void Ui::rootsCheck(Player& p)
 	{
 		Uint32 now = SDL_GetTicks();
@@ -234,6 +249,14 @@ namespace bp
 	// the rows' ids: 1 a folder to go into, 2 a video to open, -1 nothing (a message)
 	void Ui::Browse::enterFolder(std::string dir, Player& p)
 	{
+		// a folder changed under the Files select mode (a card pulled, another page): the ticks belong to the old one
+		if (fileSel && dir != browseDir)
+		{
+			fileSel = false;
+			if (playlists->selMode == SEL_PICK) playlists->selMode = SEL_NONE;
+			fileSelPaths.clear();
+			fileSelOrder.clear();
+		}
 		// the playlist's edits written before another page reads it (or the list counts it)
 		playlists->plFlush(p);
 		placeIn[browseDir] = {ui.cursor, ui.scroll};
@@ -396,6 +419,7 @@ namespace bp
 		if (dir == RECENT) ui.cursor = ui.scroll = 0;
 		fitList();
 		browseVersion++;
+		filesFooterAt = 0;	// (the count and the free room: read again)
 		// (an empty list too: the last folder's probes stop)
 		if (ui.durWorker) ui.durWorker->want(++durSerial, std::move(durWant));
 		durLo = -1;
@@ -585,6 +609,8 @@ namespace bp
 	bool Ui::Browse::upRow() const
 	{
 		if (ui.page != Page::Browse || atHome() || atFirstPage() || browseDir == FORMDIR || browseDir == FINDNET) return false;
+		// the redesigned Files page has no ".." row: B and the header's back key go up (the spec's change)
+		if (filesPage()) return false;
 		// editing a playlist's items, moving them: the list is what's being worked on
 		return playlists->selMode != SEL_EDIT && !playlists->moving;
 	}
@@ -1143,6 +1169,740 @@ namespace bp
 		return out;
 	}
 
+	// ---- the Files page (docs/redesign: files, files-playing, select, actions, delete, empty-folder, readonly,
+	// files-music) ----
+
+	bool Ui::Browse::filesPage() const
+	{
+		// the cards' places and the folders under them; Home, All recent, the playlists, the network and the
+		// Extensions drawer keep Ui's list
+		return ui.page == Page::Browse && !ui.inMenu && (playlists->selMode == SEL_NONE || fileSel) && browseTab == TAB_LOCAL &&
+			(browseDir.empty() || (!pseudoDir(browseDir) && !isNetPath(browseDir)));
+	}
+
+	bool Ui::Browse::filesEmpty() const
+	{
+		return browseRows.empty() || (browseRows.size() == 1 && browseRows[0].id < 0);
+	}
+
+	bool Ui::Browse::filesReadOnly() const
+	{
+		return !browseDir.empty() && !pseudoDir(browseDir) && !isNetPath(browseDir) && access(browseDir.c_str(), W_OK) != 0;
+	}
+
+	std::string Ui::Browse::filesTitle() const
+	{
+		if (browseDir.empty()) return "Files";
+		for (auto& r : ui.roots)
+			if (r.path == browseDir) return r.label;
+		return baseName(browseDir);
+	}
+
+	std::string Ui::Browse::filesCrumb() const
+	{
+		if (browseDir.empty()) return "Your folders";
+		std::string where = ui.whereOf(browseDir);
+		std::string out = "Files \xE2\x80\xBA ";
+		for (size_t i = 0; i < where.size(); i++)
+		{
+			if (where.compare(i, 3, " / ") == 0) { out += " \xE2\x80\xBA "; i += 2; }
+			else out += where[i];
+		}
+		return out;
+	}
+
+	std::string Ui::Browse::filesFooter() const
+	{
+		// the folder's count and the free room on the card it is on (a card's place, in a folder's page)
+		if (browseDir.empty() || filesEmpty()) return "";
+		Uint32 now = SDL_GetTicks();
+		if (filesFooterDir == browseDir && filesFooterAt && now - filesFooterAt < 2000) return filesFooterCache;
+		int n = 0;
+		for (auto& r : browseRows)
+			if (r.id >= 0) n++;
+		std::string text = std::to_string(n) + (n == 1 ? " item" : " items");
+		struct statvfs vs;
+		if (statvfs(browseDir.c_str(), &vs) == 0 && vs.f_frsize)
+		{
+			uint64_t free = (uint64_t)vs.f_bavail * (uint64_t)vs.f_frsize;
+			if (free > 0) text += " \xC2\xB7 " + fileBytes(free) + " free";
+		}
+		filesFooterCache = text;
+		filesFooterDir = browseDir;
+		filesFooterAt = now;
+		return text;
+	}
+
+	lay::FilesPage Ui::Browse::filesLayout(const Player& p) const
+	{
+		lay::Shell s = lay::shell(ui.miniBarShown(p));
+		int n = (int)browseRows.size();
+		bool footer = !ui.miniBarShown(p) && !filesEmpty();
+		return lay::filesPage(s.body, n, fileSel, footer);
+	}
+
+	int Ui::Browse::filesShown(const Player& p) const { return filesLayout(p).shown; }
+
+	int Ui::Browse::filesScroll(const Player& p) const
+	{
+		int n = (int)browseRows.size(), shown = filesShown(p);
+		return lay::listScroll(std::max(0, ui.cursor), ui.scroll, shown, n);
+	}
+
+	std::vector<Ui::Hint> Ui::Browse::filesHints(const Player& p) const
+	{
+		if (fileSel)
+			return {{"A", "Tick"}, {"SELECT", "All / none"}, {"X", "More"}, {"B", "Done"}};
+		if (clipOp != CLIP_NONE)
+			return {{"SELECT", "Put it here"}, {"X", "Cancel"}, {"A", "Open"}, {"B", "Up"}};
+		if (filesEmpty())
+		{
+			if (browseDir.empty()) return {{"L/R", "Sections"}, {"START", "Settings"}};
+			if (!browseRows.empty() && browseRows[0].label == "This folder can't be opened")
+				return {{"A/B", "Go up"}, {"X", "More"}, {"L/R", "Sections"}};
+			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L/R", "Sections"}};
+		}
+		std::vector<Hint> h = {{"A", "Play / open"}, {"B", browseDir.empty() ? "Home" : "Up"}, {"X", "More"}, {"Y", "Select"}};
+		if (ui.miniBarShown(p)) h.push_back({"SELECT", "Now playing"});
+		else h.push_back({"LEFT/RIGHT", "Page"});
+		h.push_back({"L/R", "Sections"});
+		return h;
+	}
+
+	void Ui::Browse::frame(const Player& p)
+	{
+		// (until the shared shell lands: this page's header and hint bar; the merge swaps only this function)
+		lay::Shell s = lay::shell(ui.miniBarShown(p));
+		lay::FilesHeader h = lay::filesHeader(s.header);
+		Kit& k = *ui.kit;
+		k.iconKey(h.back, G_BACK, filesPressed == 200 || ui.pressedBtn == BACK_ICON, 2);
+		if (!fileSel) k.iconKey(h.more, G_MORE, filesPressed == 201, 2);
+		// the status cluster: what plays, the battery and the clock; the read-only badge left of them
+		Kit::Status st;
+		st.playing = ui.bgPlay && p.playing() && !p.playingPhoto();
+		st.battery = ui.battery.percent;
+		st.charging = ui.battery.charging;
+		st.clock = ui.clockText(p);
+		if (filesReadOnly()) st.badges.push_back({&G_LOCK, "Read only", false});
+		int right = k.status(h.more.x - 10, s.header.y + s.header.h / 2, st);
+		int room = std::max(40, right - 12 - h.title.x);
+		std::string title = fileSel ? (fileSelCount() ? std::to_string(fileSelCount()) + " selected" : std::string("Select")) : filesTitle();
+		ui.drawTextMid(title, F_P28, TEXT, h.title.x, h.title.y + h.title.h / 2, room);
+		std::string crumb = filesCrumb();
+		if (k.textW(crumb, F_I12) > room) crumb = ui.elideLeft(crumb, F_I12, room);
+		ui.drawTextMid(crumb, F_I12, DIM, h.crumb.x, h.crumb.y + h.crumb.h / 2, room);
+		k.hints(filesHints(p));
+	}
+
+	void Ui::Browse::drawFilesRow(int i, const lay::FilesPage& f, int onScreen, bool at, const Player& p)
+	{
+		Rect r = f.row(onScreen);
+		Kit& k = *ui.kit;
+		int cy = r.y + r.h / 2;
+		bool ticked = fileTicked(i);
+		if (at) k.flat(r, BUTTON, 10, ACCENT);
+		else if (fileSel && ticked) k.flat(r, SURFACE, 10, k.edgeOf(SURFACE));
+		SDL_Color ink = at ? ACCENT : TEXT;
+		SDL_Color soft = at ? DIM_ON : DIM;
+		int x = r.x + 12, right = r.x + r.w - 12;
+		if (fileSel)
+		{
+			ui.drawGlyphMid(ticked ? G_BOX_ON : G_BOX, x + 11, cy, ticked ? ACCENT : soft);
+			x += 22 + 11;
+		}
+		RowIcon icon = ui.rowIcon(i);
+		const Glyph* g = icon == ICON_RECENT ? &G_CLOCK : icon == ICON_PLACE ? &G_CARD : icon == ICON_FOLDER ? &G_FOLDER
+			: icon == ICON_VIDEO ? &G_FILM : icon == ICON_SONG ? &G_NOTE : icon == ICON_PHOTO ? &G_PICTURE
+			: icon == ICON_DOC ? &G_PAGE : icon == ICON_BOOK ? &G_BOOK : icon == ICON_FILE ? &G_FILE
+			: icon == ICON_PDF ? &G_PDF : icon == ICON_EPUB ? &G_EPUB : icon == ICON_COMIC ? &G_COMIC
+			: icon == ICON_NETWORK ? &G_NETWORK : icon == ICON_REFRESH ? &G_REFRESH : icon == ICON_TYPE ? &G_PENCIL
+			: icon == ICON_TEST ? &G_PLUG : icon == ICON_SAVE ? &G_CHECK : icon == ICON_PLAYLIST ? &G_CHECK
+			: icon == ICON_LIKED ? &G_HEART : icon == ICON_NEW ? &G_PLUS : nullptr;
+		if (g)
+		{
+			ui.drawGlyphMid(*g, x + 10, cy, at ? ACCENT : TEXT);
+			x += 20 + 11;
+		}
+		// the right side: the playing / paused pill, a heart, then the length and size
+		int noteW = 0;
+		if (int kind = ui.rowChip(i))
+		{
+			static const char* WORDS[] = {"", "Playing", "Paused", "In browser", "Stopped"};
+			Kit::Pill tone = kind == 1 || kind == 3 ? Kit::Pill::Live : Kit::Pill::Fact;
+			int w = k.pill(right, cy, WORDS[std::clamp(kind, 0, 4)], tone);
+			right -= w + 9;
+		}
+		if (i >= 0 && i < (int)browseRows.size() && browseRows[i].id == 2 && playlists->plStore && i < (int)browsePaths.size() &&
+			playlists->plStore->isLiked(browsePaths[i]))
+		{
+			ui.drawGlyphMid(G_HEART_S, right - 5, cy, ACCENT);
+			right -= 22;
+		}
+		if (i >= 0 && i < (int)browseRows.size() && !browseRows[i].note.empty())
+		{
+			std::string note = browseRows[i].note;
+			int w = std::min(260, k.textW(note, F_I12));
+			ui.drawTextMid(note, F_I12, soft, right, cy, std::min(260, right - x), 1);
+			noteW = w + 10;
+		}
+		int room = std::max(1, right - noteW - x);
+		std::string name = i >= 0 && i < (int)browseRows.size() ? browseRows[i].label : std::string();
+		if (!fileSel && at) ui.drawMarquee(name, F_SMALL, ink, x, cy, room, BUTTON, 1);
+		else
+		{
+			// a file's name keeps its ending when it is cut ("...Sintel.mkv"), as the browser always did
+			if (!fileSel && i >= 0 && i < (int)browseRows.size() && browseRows[i].id == 2) name = ui.elideLeft(name, F_SMALL, room);
+			ui.drawTextMid(name, F_SMALL, ink, x, cy, room);
+		}
+	}
+
+	void Ui::Browse::drawFilesEmpty(const lay::FilesPage& f, const Player& p)
+	{
+		bool folder = !browseDir.empty();
+		bool broken = !browseRows.empty() && browseRows[0].label == "This folder can't be opened";
+		std::string title = !browseRows.empty() ? browseRows[0].label : "Nothing to play here";
+		std::string line = broken ? "Is the card still in?" : folder ? "No videos, music or photos in this folder." : "No cards or folders to show.";
+		int keys = folder ? (broken ? 1 : 2) : 0;
+		lay::EmptyState l = lay::emptyState(f.rows, 1, keys);
+		Kit::Empty e;
+		e.glyph = broken ? &G_ALERT : &G_FOLDER;
+		e.title = title;
+		e.lines = {line};
+		if (keys)
+		{
+			e.key1 = "Go up";
+			e.glyph1 = &G_BACK;
+		}
+		if (keys == 2)
+		{
+			e.key2 = "Send files";
+			e.glyph2 = &G_NETWORK;
+		}
+		e.hotkeys = p.settings.buttonHotkeys;
+		ui.kit->emptyState(l, e);
+	}
+
+	void Ui::Browse::drawFiles(const Player& p)
+	{
+		lay::FilesPage f = filesLayout(p);
+		if (filesEmpty())
+		{
+			drawFilesEmpty(f, p);
+			frame(p);
+			return;
+		}
+		int scroll = filesScroll(p), n = (int)browseRows.size();
+		for (int k = 0; k < f.shown && scroll + k < n; k++) drawFilesRow(scroll + k, f, k, scroll + k == ui.cursor, p);
+		if (fileSel)
+		{
+			int media = 0;
+			for (auto& path : fileSelOrder)
+				if (isVideoFile(path) || isAudioFile(path)) media++;
+			bool ro = filesReadOnly(), any = fileSelCount() > 0;
+			Kit::BarKey keys[4] = {
+				{&G_PLUS, "Playlist", "", Kit::Tone::Normal, filesPressed == 100, !any || !media},
+				{&G_PAGE, "Copy", "", Kit::Tone::Normal, filesPressed == 101, !any},
+				{&G_MOVE, "Move", "", Kit::Tone::Normal, filesPressed == 102, !any || ro},
+				{&G_TRASH, "Delete", "", Kit::Tone::Danger, filesPressed == 103, !any || ro},
+			};
+			ui.kit->selectBar(f.bar, keys);
+		}
+		else if (f.footer.w > 0)
+			ui.drawTextMid(filesFooter(), F_I12, DIM, f.footer.x, f.footer.y + f.footer.h / 2, f.footer.w);
+		frame(p);
+	}
+
+	bool Ui::Browse::fileTickable(int row) const
+	{
+		return row >= 0 && row < (int)browseRows.size() && fileOpsOn(row);
+	}
+
+	bool Ui::Browse::fileTicked(int row) const
+	{
+		return fileTickable(row) && row < (int)browsePaths.size() && fileSelPaths.count(browsePaths[row]) > 0;
+	}
+
+	void Ui::Browse::filesTickRow(int row)
+	{
+		if (!fileTickable(row) || row >= (int)browsePaths.size()) return;
+		const std::string& path = browsePaths[row];
+		if (fileSelPaths.erase(path))
+			fileSelOrder.erase(std::remove(fileSelOrder.begin(), fileSelOrder.end(), path), fileSelOrder.end());
+		else
+		{
+			fileSelPaths.insert(path);
+			fileSelOrder.push_back(path);
+		}
+		browseVersion++;
+	}
+
+	void Ui::Browse::filesMove(int to, Player& p)
+	{
+		int n = (int)browseRows.size();
+		if (n <= 0) return;
+		ui.cursor = std::clamp(to, 0, n - 1);
+		ui.scroll = lay::listScroll(ui.cursor, ui.scroll, filesShown(p), n);
+	}
+
+	void Ui::Browse::filesSelStart(Player& p)
+	{
+		int any = -1;
+		for (int i = 0; i < (int)browseRows.size() && any < 0; i++)
+			if (fileTickable(i)) any = i;
+		if (any < 0) { p.osd("Nothing to select here"); return; }
+		fileSel = true;
+		// (miniBarShown still hides the bar while the browser selects: the bar would sit under this one)
+		playlists->selMode = SEL_PICK;
+		fileSelPaths.clear();
+		fileSelOrder.clear();
+		filesPressed = filesTouch = -1;
+		if (fileTickable(ui.cursor)) filesTickRow(ui.cursor);
+		else filesTickRow(any);
+		ui.scroll = lay::listScroll(ui.cursor, ui.scroll, filesShown(p), (int)browseRows.size());
+		browseVersion++;
+	}
+
+	void Ui::Browse::filesSelEnd(Player&)
+	{
+		fileSel = false;
+		if (playlists->selMode == SEL_PICK) playlists->selMode = SEL_NONE;
+		fileSelPaths.clear();
+		fileSelOrder.clear();
+		filesPressed = filesTouch = -1;
+		browseVersion++;
+	}
+
+	void Ui::Browse::filesSelAll(Player&)
+	{
+		std::vector<int> rows;
+		for (int i = 0; i < (int)browseRows.size(); i++)
+			if (fileTickable(i)) rows.push_back(i);
+		if (rows.empty()) return;
+		bool all = true;
+		for (int i : rows) all = all && fileTicked(i);
+		for (int i : rows)
+		{
+			if (i >= (int)browsePaths.size()) continue;
+			const std::string& path = browsePaths[i];
+			if (all) fileSelPaths.erase(path);
+			else if (fileSelPaths.insert(path).second) fileSelOrder.push_back(path);
+		}
+		if (all) fileSelOrder.erase(std::remove_if(fileSelOrder.begin(), fileSelOrder.end(),
+			[&](const std::string& s) { return fileSelPaths.count(s) == 0; }), fileSelOrder.end());
+		browseVersion++;
+	}
+
+	void Ui::Browse::filesClipStart(int op, Player&)
+	{
+		if (fileSelOrder.empty() || (op == CLIP_MOVE && filesReadOnly())) return;
+		clipOp = op;
+		clipPaths = fileSelOrder;
+		clipPath = clipPaths.front();
+		fileSel = false;
+		if (playlists->selMode == SEL_PICK) playlists->selMode = SEL_NONE;
+		fileSelPaths.clear();
+		fileSelOrder.clear();
+		browseVersion++;
+	}
+
+	void Ui::Browse::filesSelAct(int what, Player& p)
+	{
+		if (what == 3)
+		{
+			if (filesReadOnly()) { p.osd("This folder is read only"); return; }
+			filesDeleteAsk(fileSelOrder, p);
+			return;
+		}
+		if (what == 0)
+		{
+			std::vector<PlaylistEntry> add;
+			for (auto& path : fileSelOrder)
+				if (isVideoFile(path) || isAudioFile(path))
+				{
+					PlaylistEntry e;
+					e.path = path;
+					e.title = entryTitle(path);
+					add.push_back(e);
+				}
+			if (add.empty()) { p.osd("Playlists take videos and songs"); return; }
+			playlists->picked.clear();
+			playlists->pickOrder.clear();
+			for (auto& e : add)
+			{
+				playlists->picked.insert(e.path);
+				playlists->pickOrder.push_back(e.path);
+			}
+			playlists->openPicker("", p);
+			return;
+		}
+		if ((what == 1 || what == 2) && fileSelCount())
+		{
+			if (what == 2 && filesReadOnly()) { p.osd("This folder is read only"); return; }
+			if (what == 2)
+				for (auto& path : fileSelOrder)
+					if (p.playing() && (p.currentPath() == path || p.currentPath().rfind(path + "/", 0) == 0))
+					{
+						ui.alert("It\xE2\x80\x99s playing", "Stop it first, then try again.");
+						return;
+					}
+			filesClipStart(what == 1 ? CLIP_COPY : CLIP_MOVE, p);
+			p.osd(std::string(what == 1 ? "Copy" : "Move") + ": open the folder it goes in, then SELECT", 2500);
+		}
+	}
+
+	void Ui::Browse::filesSelMore(Player& p)
+	{
+		std::vector<std::string> paths = fileSelOrder;
+		std::string title = paths.size() == 1 ? baseName(paths[0]) : std::to_string(paths.size()) + " selected";
+		bool ro = filesReadOnly();
+		ui.openMore([this, paths, title, ro](const Player& pl) {
+			MoreSpec m;
+			m.glyph = &G_BOX_ON;
+			m.title = title;
+			m.note = std::to_string(paths.size()) + (paths.size() == 1 ? " file" : " files");
+			auto row = [](MoreItem it) { return it; };
+			m.rows.push_back(row({&G_PLUS, "Add to playlist\xE2\x80\xA6", "", "", [this](Player& p) { filesSelAct(0, p); return false; }}));
+			m.rows.push_back(row({&G_PAGE, "Copy\xE2\x80\xA6", "", "", [this](Player& p) { filesSelAct(1, p); return false; }}));
+			m.rows.push_back(row({&G_MOVE, "Move\xE2\x80\xA6", ro ? "This folder is read only" : "", "", [this](Player& p) { filesSelAct(2, p); return false; }, false, ro}));
+			m.rows.push_back(row({&G_TRASH, "Delete", ro ? "This folder is read only" : "Asks first", "", [this](Player& p) { filesSelAct(3, p); return false; }, true, ro}));
+			MoreItem info{&G_INFO, "Info", "", "", [this](Player& p) { if (ui.cursor >= 0 && ui.cursor < (int)browsePaths.size()) ui.openFileInfo(browsePaths[ui.cursor], ""); return false; }};
+			m.rows.push_back(info);
+			return m;
+		});
+	}
+
+	void Ui::Browse::filesRefresh(Player& p)
+	{
+		std::string at = ui.cursor >= 0 && ui.cursor < (int)browsePaths.size() ? browsePaths[ui.cursor] : "";
+		int c = ui.cursor, s = ui.scroll;
+		enterFolder(browseDir, p);
+		ui.cursor = c;
+		ui.scroll = s;
+		for (size_t i = 0; i < browsePaths.size(); i++)
+			if (!at.empty() && browsePaths[i] == at) ui.cursor = (int)i;
+		fitList();
+	}
+
+	void Ui::Browse::filesPlayAll(const std::string& dir, bool shuffle, Player& p)
+	{
+		bool ok = false;
+		std::vector<std::string> paths;
+		for (auto& e : listFolder(dir, ok, p.settings.showHiddenFolders))
+			if (!e.dir && isMediaFile(e.path)) paths.push_back(e.path);
+		if (!ok || paths.empty()) { p.osd("Nothing to play here"); return; }
+		int index = 0;
+		if (shuffle)
+		{
+			std::random_device rd;
+			index = (int)(rd() % (unsigned)paths.size());
+			SessionHost::get().setShuffle(true);
+		}
+		ui.playRequest = {};
+		ui.playRequest.paths = paths;
+		ui.playRequest.index = index;
+		ui.playRequest.source.kind = SourceKind::Folder;
+		ui.playRequest.source.title = baseName(dir);
+		p.setLastFolder(dir);
+	}
+
+	void Ui::Browse::filesToggleHidden(const std::string& path, Player& p)
+	{
+		std::string marker = path + "/.hidden";
+		bool ok;
+		if (isHiddenFolder(path)) ok = unlink(marker.c_str()) == 0;
+		else
+		{
+			FILE* f = fopen(marker.c_str(), "w");
+			ok = f && fclose(f) == 0;
+		}
+		if (!ok) { ui.alert("Couldn\xE2\x80\x99t change the folder", "Is the card read only?"); return; }
+		filesRefresh(p);
+	}
+
+	void Ui::Browse::filesToggleShowHidden(Player& p)
+	{
+		Settings st = p.settings;
+		st.showHiddenFolders = !st.showHiddenFolders;
+		p.setSettings(st);
+		filesRefresh(p);
+	}
+
+	void Ui::Browse::filesOpenMore(Player& p)
+	{
+		// the focused row (or the folder it is in, on an empty page): the item's actions on the left, this folder's
+		// on the right, as the mock-up's More sheet
+		bool onRow = ui.cursor >= 0 && ui.cursor < (int)browseRows.size() && ui.cursor < (int)browsePaths.size() && browseRows[ui.cursor].id >= 0;
+		std::string path = onRow ? browsePaths[ui.cursor] : browseDir;
+		int id = onRow ? browseRows[ui.cursor].id : 1;
+		std::string label = onRow ? browseRows[ui.cursor].label : filesTitle();
+		std::string note = onRow ? browseRows[ui.cursor].note : std::string();
+		std::string dir = browseDir.empty() ? path : browseDir;
+		bool ro = filesReadOnly();
+		bool ops = onRow && fileOpsOn(ui.cursor);
+		bool media = onRow && id == 2 && isMediaFile(path);
+		bool likable = onRow && id == 2 && playlists->plStore && PlaylistStore::likable(path);
+		bool liked = likable && playlists->plStore->isLiked(path);
+		bool song = onRow && id == 2 && isAudioFile(path);
+		bool doc = onRow && id == 2 && !isMediaFile(path);
+		ui.openMore([this, path, id, label, note, dir, ro, ops, media, likable, song, doc, onRow](const Player& pl) {
+			bool liked = playlists->plStore && playlists->plStore->isLiked(path);
+			MoreSpec m;
+			m.glyph = id == 2 ? (isAudioFile(path) ? &G_NOTE : isVideoFile(path) ? &G_FILM : &G_FILE) : &G_FOLDER;
+			m.title = label.empty() ? filesTitle() : label;
+			m.note = note;
+			std::vector<MoreItem> left, right;
+			auto item = [](const Glyph* g, std::string text, std::string nt, std::function<bool(Player&)> act, bool danger = false,
+				bool off = false, bool lit = false, bool stay = false, std::string key = "") {
+				MoreItem i;
+				i.glyph = g;
+				i.label = std::move(text);
+				i.note = std::move(nt);
+				i.act = std::move(act);
+				i.danger = danger;
+				i.off = off;
+				i.lit = lit;
+				i.stay = stay;
+				i.key = std::move(key);
+				return i;
+			};
+			if (id == 2 && media)
+				left.push_back(item(&G_PLAY, "Play from the start", "", [this, path](Player& p) {
+					if (p.playing() && p.currentPath() == path)
+					{
+						p.seekFraction(0);
+						if (!ui.pageIsOut()) p.unpause();
+						else ui.noteSeek(p, 0);
+						ui.showPlayer();
+					}
+					else
+					{
+						p.forgetPosition(path);
+						ui.openFile(path, p);
+					}
+					return false;
+				}));
+			if (doc)
+				left.push_back(item(&G_FILE, "Open", "", [this, path](Player& p) { ui.openFile(path, p); return false; }));
+			if (id == 1 && onRow)
+				left.push_back(item(&G_FOLDER, "Open", "", [this, path](Player& p) {
+					if (isNetPath(path)) { ui.browse->netSelect.clear(); enterFolder(path, p); }
+					else { setSection(TAB_LOCAL); enterFolder(path, p); }
+					p.setLastFolder(path);
+					return false;
+				}));
+			if (onRow && id == 2 && (isVideoFile(path) || isAudioFile(path)) && playlists->plStore)
+				left.push_back(item(&G_PLUS, "Add to playlist\xE2\x80\xA6", "", [this, path, label](Player& p) {
+					playlists->openAddOne(path, label, -1, p);
+					return false;
+				}));
+			if (likable)
+				left.push_back(item(liked ? &G_HEART : &G_HEART_O, liked ? "Unlike" : "Like", "", [this, path, label, liked](Player& p) {
+					bool was = playlists->plStore && playlists->plStore->isLiked(path);
+					if (ui.setLikedPath(p, path, label, -1, !was) != was) ui.likeCard(p, !was, label);
+					return false;
+				}, false, false, liked, true));
+			if (song)
+			{
+				left.push_back(item(&G_CARD, "Go to album", "Comes with Music", nullptr, false, true));
+				left.push_back(item(&G_NOTE, "Go to artist", "Comes with Music", nullptr, false, true));
+			}
+			if (id == 2)
+				left.push_back(item(&G_FOLDER, "Show in folder", "", [this, path](Player& p) { ui.showInFolder(path, p); return false; }));
+			if (onRow)
+				left.push_back(item(&G_INFO, "Info", "", [this, path](Player& p) { ui.openFileInfo(path, ""); return false; }));
+			if (ops)
+			{
+				left.push_back(item(&G_PAGE, "Copy\xE2\x80\xA6", "", [this, path](Player& p) { fileOpsAct(CTX_F_COPY, path, p); return false; }));
+				left.push_back(item(&G_MOVE, "Move\xE2\x80\xA6", ro ? "This folder is read only" : "", [this, path](Player& p) { fileOpsAct(CTX_F_MOVE, path, p); return false; }, false, ro));
+				left.push_back(item(&G_PENCIL, "Rename\xE2\x80\xA6", ro ? "This folder is read only" : "", [this, path](Player& p) { fileOpsAct(CTX_F_RENAME, path, p); return false; }, false, ro));
+				left.push_back(item(&G_TRASH, "Delete", ro ? "This folder is read only" : "", [this, path](Player& p) {
+					std::vector<std::string> one{path};
+					filesDeleteAsk(one, p);
+					return false;
+				}, true, ro));
+			}
+			// this folder's own
+			if (!fileSel) right.push_back(item(&G_BOX, "Select files", "", [this](Player& p) { filesSelStart(p); return false; }, false, false, false, false, "Y"));
+			int n = 0;
+			if (dir == browseDir)
+			{
+				for (size_t i = 0; i < browseRows.size() && i < browsePaths.size(); i++)
+					if (browseRows[i].id == 2 && isMediaFile(browsePaths[i])) n++;
+			}
+			else
+			{
+				bool ok = false;
+				for (auto& e : listFolder(dir, ok, pl.settings.showHiddenFolders))
+					if (!e.dir && isMediaFile(e.path)) n++;
+			}
+			if (n)
+			{
+				right.push_back(item(&G_PLAY, "Play all " + std::to_string(n), "", [this, dir](Player& p) { filesPlayAll(dir, false, p); return false; }));
+				right.push_back(item(&G_SHUFFLE, "Shuffle play", "", [this, dir](Player& p) { filesPlayAll(dir, true, p); return false; }));
+			}
+			if (playlists->plStore && !dir.empty() && !pseudoDir(dir))
+				right.push_back(item(&G_PLUS, "Add folder to playlist\xE2\x80\xA6", "", [this, dir](Player& p) { playlists->openPicker(dir, p); return false; }));
+			right.push_back(item(&G_REFRESH, "Refresh", "", [this](Player& p) { filesRefresh(p); return false; }));
+			if (!dir.empty() && !pseudoDir(dir))
+				right.push_back(item(&G_EYE, isHiddenFolder(dir) ? "Show folder" : "Hide folder", "",
+					[this, dir](Player& p) { filesToggleHidden(dir, p); return false; }, false, ro));
+			right.push_back(item(&G_EYE, "Show hidden folders", pl.settings.showHiddenFolders ? "On" : "Off",
+				[this](Player& p) { filesToggleShowHidden(p); return false; }));
+			int max = std::max(left.size(), right.size());
+			for (int i = 0; i < max; i++)
+			{
+				if (i < (int)left.size()) m.rows.push_back(left[i]);
+				if (i < (int)right.size()) m.rows.push_back(right[i]);
+			}
+			m.cols = left.empty() || right.empty() ? 1 : 2;
+			return m;
+		});
+	}
+
+	bool Ui::Browse::filesKey(Button b, Player& p)
+	{
+		if (fileSel)
+		{
+			// the sentinel that keeps the mini bar away while ticking (a picker's selEnd may have cleared it)
+			if (playlists->selMode == SEL_NONE) playlists->selMode = SEL_PICK;
+			int shown = std::max(1, filesShown(p));
+			switch (b)
+			{
+			case Button::Up: filesMove(ui.cursor - 1, p); return true;
+			case Button::Down: filesMove(ui.cursor + 1, p); return true;
+			case Button::Left: filesMove(ui.cursor - shown, p); return true;
+			case Button::Right: filesMove(ui.cursor + shown, p); return true;
+			case Button::A: filesTickRow(ui.cursor); return true;
+			case Button::Select: filesSelAll(p); return true;
+			case Button::X: filesSelMore(p); return true;
+			case Button::B: filesSelEnd(p); return true;
+			default: return true;	// (START, L/R: nothing while ticking)
+			}
+		}
+		if (b == Button::Y && filesEmpty() && !browseDir.empty() &&
+			(browseRows.empty() || browseRows[0].label != "This folder can't be opened")) { ui.openWeb(); return true; }
+		int shown = std::max(1, filesShown(p));
+		switch (b)
+		{
+		case Button::Up: filesMove(ui.cursor - 1, p); return true;
+		case Button::Down: filesMove(ui.cursor + 1, p); return true;
+		case Button::Left: filesMove(ui.cursor - shown, p); return true;
+		case Button::Right: filesMove(ui.cursor + shown, p); return true;
+		case Button::A:
+			if (filesEmpty() || ui.cursor < 0 || ui.cursor >= (int)browseRows.size() || browseRows[ui.cursor].id < 0) browseUp(p);
+			else ui.choose(ui.cursor, p);
+			return true;
+		case Button::Y: filesSelStart(p); return true;
+		case Button::X: filesOpenMore(p); return true;
+		default: return false;
+		}
+	}
+
+	bool Ui::Browse::filesPointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		lay::Shell sh = lay::shell(ui.miniBarShown(p));
+		lay::FilesHeader h = lay::filesHeader(sh.header);
+		lay::FilesPage f = filesLayout(p);
+		int n = (int)browseRows.size(), scroll = filesScroll(p);
+		auto emptyKeys = [&](int& keys) {
+			bool folder = !browseDir.empty();
+			bool broken = !browseRows.empty() && browseRows[0].label == "This folder can't be opened";
+			keys = folder ? (broken ? 1 : 2) : 0;
+			return lay::emptyState(f.rows, 1, keys);
+		};
+		if (pt.kind == Pointer::Down)
+		{
+			filesTouch = filesPressed = -1;
+			filesScrolled = false;
+			// the header's keys
+			if (h.backHit.hit(x, y)) { filesPressed = 200; return false; }
+			if (!fileSel && h.moreHit.hit(x, y)) { filesPressed = 201; return false; }
+			if (fileSel)
+			{
+				for (int i = 0; i < 4; i++)
+					if (f.bar[i].hit(x, y)) { filesPressed = 100 + i; return false; }
+			}
+			if (filesEmpty())
+			{
+				int keys = 0;
+				lay::EmptyState e = emptyKeys(keys);
+				for (int i = 0; i < keys; i++)
+					if (e.key[i].hit(x, y)) { filesPressed = 300 + i; return false; }
+				return false;
+			}
+			if (y >= f.rows.y && y < f.rows.y + f.rows.h)
+			{
+				int k = (y - f.rows.y) / lay::FILE_ROW_H;
+				if (k >= 0 && k < f.shown && scroll + k < n)
+				{
+					ui.cursor = scroll + k;
+					filesTouch = ui.cursor;
+					filesTouchY = y;
+					filesScrollStart = scroll;
+					return false;
+				}
+			}
+			return false;
+		}
+		if (pt.kind == Pointer::Move && filesPressed < 0 && filesTouch >= 0)
+		{
+			if (filesScrolled || std::abs(y - filesTouchY) > 12)
+			{
+				filesScrolled = true;
+				int moved = (int)std::lround((filesTouchY - y) / (double)lay::FILE_ROW_H);
+				int maxScroll = std::max(0, n - f.shown);
+				ui.scroll = std::clamp(filesScrollStart + moved, 0, maxScroll);
+				ui.cursor = std::clamp(ui.cursor, ui.scroll, ui.scroll + std::max(0, f.shown - 1));
+			}
+			return false;
+		}
+		if (pt.kind != Pointer::Up) return false;
+		int pressed = filesPressed, touch = filesTouch;
+		filesPressed = -1;
+		filesTouch = -1;
+		if (pressed == 200)
+		{
+			if (h.backHit.hit(x, y))
+			{
+				if (fileSel) filesSelEnd(p);
+				else if (atFirstPage()) homeView->goHome(Home::HOME_GRID, browseTab, p);
+				else browseUp(p);
+			}
+			return false;
+		}
+		if (pressed == 201) { if (h.moreHit.hit(x, y)) filesOpenMore(p); return false; }
+		if (pressed >= 100 && pressed < 104)
+		{
+			int i = pressed - 100, media = 0;
+			for (auto& path : fileSelOrder)
+				if (isVideoFile(path) || isAudioFile(path)) media++;
+			bool any = fileSelCount() > 0, ro = filesReadOnly();
+			bool on = i == 0 ? any && media : i == 1 ? any : any && !ro;
+			if (on && f.bar[i].hit(x, y)) filesSelAct(i, p);
+			return false;
+		}
+		if (pressed >= 300)
+		{
+			int keys = 0;
+			lay::EmptyState e = emptyKeys(keys);
+			int i = pressed - 300;
+			if (i < keys && e.key[i].hit(x, y))
+			{
+				if (i == 0) browseUp(p);
+				else ui.openWeb();
+			}
+			return false;
+		}
+		if (touch >= 0 && !filesScrolled && touch < n)
+		{
+			Rect r = f.row(touch - scroll);
+			if (filesScrolled || !r.hit(x, y)) return false;
+			if (fileSel) filesTickRow(touch);
+			else { ui.cursor = touch; ui.choose(touch, p); }
+		}
+		return false;
+	}
+
 	void Ui::drawTracks(const Player& p)
 	{
 		bool inBrowse = page == Page::Browse;
@@ -1425,6 +2185,9 @@ namespace bp
 			playlists->pickerKey(b, p);
 			return false;
 		}
+		// the Files page's own keys (the redesign): the D-pad, A, Y and X; a select mode takes every key, before
+		// SELECT's Now playing and L3's Like
+		if (!ui.inMenu && filesPage() && filesKey(b, p)) return false;
 		// something playing behind the browser: SELECT goes back to it, L3 likes it (a page's own keys don't use them)
 		if (!ui.inMenu && playlists->selMode == SEL_NONE && browseDir != FORMDIR)
 		{
@@ -1499,6 +2262,8 @@ namespace bp
 		}
 		// the drawer: its own taps
 		if (!ui.inMenu && browseDir == EXTDIR) return ui.manga->extPointer(pt, x, y, p);
+		// the Files page: its rows, header keys, select bar and empty page's keys
+		if (!ui.inMenu && filesPage()) return filesPointer(pt, x, y, p);
 		if (!ui.inMenu && playlists->selMode != SEL_NONE)
 		{
 			// selecting: no tabs (the header's "<" was taken above); the bar's buttons, those that can act now
@@ -1538,7 +2303,19 @@ namespace bp
 
 	void Ui::Browse::draw(const Player& p)
 	{
-		// the list's page, as the track lists' (drawTracks: Home, a section's header, the rows, the footer)
+		// a hold on a file of the cards started the old Add-files select mode (Ui::draw): the redesigned Files
+		// page's own select mode is the same thing now, with its bar, so it takes that tick over
+		if (!ui.inMenu && !fileSel && playlists->selMode == SEL_ADD && playlists->selDest.empty() && browseTab == TAB_LOCAL &&
+			!browseDir.empty() && !pseudoDir(browseDir) && !isNetPath(browseDir))
+		{
+			fileSel = true;
+			fileSelPaths = playlists->picked;
+			fileSelOrder = playlists->pickOrder;
+			playlists->selEnd();
+			playlists->selMode = SEL_PICK;	// (miniBarShown hides the bar while selecting)
+		}
+		// Files has its own page (the redesign); Home, Playlists, Network and All recent keep Ui's list
+		if (filesPage()) { drawFiles(p); return; }
 		ui.drawTracks(p);
 	}
 
@@ -1546,6 +2323,15 @@ namespace bp
 	{
 		// the section and its listing; what Copy / Move holds (the bar along the foot); Home's focus and strip
 		std::string s = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "");
+		if (filesPage())
+		{
+			// Files' own: select mode and its ticks, the finger, the read-only mark, the footer's count and room,
+			// and a group Copy / Move held
+			s += "|files" + std::to_string(fileSel) + ":" + std::to_string(filesPressed) + ":" + std::to_string(filesTouch) +
+				(filesReadOnly() ? "ro" : "") + "|" + filesFooter() + "|" + filesTitle();
+			for (auto& path : fileSelPaths) s += "|" + path;
+			for (auto& path : clipPaths) s += "|c" + path;
+		}
 		if (clipOp != CLIP_NONE) s += "|clip" + std::to_string(clipOp) + clipPath + (clipCanPaste() ? "p" : "");
 		// Home: the focus, the strip's scroll, a finger on a card or a tile, the tiles' lines (the connections)
 		if (atHome())
@@ -1582,5 +2368,9 @@ namespace bp
 		return it == browse->netNames.end() ? std::vector<std::string>() : it->second;
 	}
 
-	bool Ui::backIconShown(const Player&) const { return !(page == Page::Browse && !inMenu && browse->atHome()); }
+	bool Ui::backIconShown(const Player&) const
+	{
+		// Home has none; the redesigned Files page draws its own (frame), so the old one is not drawn nor hit
+		return !(page == Page::Browse && !inMenu && (browse->atHome() || browse->filesPage()));
+	}
 }
