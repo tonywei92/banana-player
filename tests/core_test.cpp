@@ -10509,6 +10509,20 @@ static void testKitLayout()
 			CHECK_EQ(r.help.h, 2 * 22);
 		}
 	}
+	{	// a row's stepper: the value centred between its arrows wherever the row starts (the shell's inset body)
+		Box row = settingsRowsIn(shell(false).body).row(0);
+		SettingStepper st = settingStepper(row);
+		CHECK_EQ(st.nextX, row.x + row.w - 14);
+		CHECK_EQ(st.prevX, st.nextX - STEP_VALUE_W);
+		CHECK_EQ(st.value.x + st.value.w / 2, (st.prevX + st.nextX) / 2);
+		CHECK_EQ(st.value.w, STEP_VALUE_TEXT);
+		CHECK_EQ(st.value.y, row.y);
+		CHECK_EQ(st.value.h, row.h);
+		CHECK(st.value.x > st.prevX && st.value.x + st.value.w < st.nextX);
+		CHECK(st.label.x + st.label.w < st.prevX);
+		CHECK(stepperBack(st, st.prevX + 1));
+		CHECK(!stepperBack(st, st.value.x + st.value.w / 2 + 1));
+	}
 }
 
 // Session: nextPlace, what the player's "Next" line names (Step's own choice, read without stepping)

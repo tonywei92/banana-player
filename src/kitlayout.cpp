@@ -331,6 +331,24 @@ namespace bp
 			return l;
 		}
 
+		SettingStepper settingStepper(Box row)
+		{
+			SettingStepper s;
+			s.row = row;
+			// the right arrow is the row's last 14 units in, as it always was; the left one 238 before it, and the
+			// value's 196-unit box centred in between (its own box, not an offset from the old full-panel margin)
+			s.nextX = row.x + row.w - 14;
+			s.prevX = s.nextX - STEP_VALUE_W;
+			int mid = (s.prevX + s.nextX) / 2;
+			s.label = {row.x + 16, row.y, std::max(1, s.prevX - row.x - 32), row.h};
+			s.value = {mid - STEP_VALUE_TEXT / 2, row.y, STEP_VALUE_TEXT, row.h};
+			s.back = {s.prevX - 12, row.y, mid - (s.prevX - 12), row.h};
+			s.fwd = {mid, row.y, row.x + row.w - mid, row.h};
+			return s;
+		}
+
+		bool stepperBack(const SettingStepper& s, int x) { return x >= s.back.x && x < s.back.x + s.back.w; }
+
 		PlayerLayout shellHeader(Box main)
 		{
 			PlayerLayout l;

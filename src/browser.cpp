@@ -123,8 +123,8 @@ namespace bp
 		if (isDir("/data/banana"))
 		{
 			if (isDir("/data/roms/videos")) roots.push_back({"Videos", "/data/roms/videos"});
-			roots.push_back({"This card", "/data"});
-			if (mounted("/run/sd2")) roots.push_back({"Second card", "/run/sd2"});
+			roots.push_back({"This card", "/data", true});
+			if (mounted("/run/sd2")) roots.push_back({"Card 2", "/run/sd2", true});
 			return roots;
 		}
 		if (const char* home = getenv("HOME")) roots.push_back({"Home", home});

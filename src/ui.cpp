@@ -535,6 +535,12 @@ namespace bp
 		mangaOn = p.settings.mangaOn;
 		if (fileJob) return fileJobPointer(pt, x, y);
 		if (browse->clipPointer(pt, x, y, p)) return false;
+		// Home's quit question takes every finger, the shell's rail and header included: a row chooses as it lifts,
+		// outside it cancels (it sits in the main strip, so the rail is no longer under its panel to block them).
+		// Dark and the touch that woke the panel keep their turns, as they had when the question was a full panel.
+		if (page == Page::Browse && !inMenu && browse->atHome() && browse->homeView->quitOpen && !popupShown(p) &&
+			panel.on() && !swallowTouch && !kbOpen)
+			return browse->homeView->homePointer(pt, x, y, p);
 		// the shell's rail, header and mini bar first (the page's body is under them)
 		if (shell->page(page) && shell->pointer(pt, x, y, p)) return false;
 		// a section page's old body is drawn scaled into the shell's body box: its touches are mapped back
@@ -585,8 +591,6 @@ namespace bp
 		}
 		// Add to... over what plays as over the browser
 		if (browse->playlists->pickerOpen) return browse->playlists->pickerPointer(pt, x, y, p);
-		// Home's quit dialog takes every finger: a row chooses as it lifts, outside it cancels
-		if (page == Page::Browse && !inMenu && browse->atHome() && browse->homeView->quitOpen && !popupShown(p)) return browse->homeView->homePointer(pt, x, y, p);
 		// the header's web dashboard mark: its page, as the finger lifts on it
 		if (webIndDown || (pt.kind == Pointer::Down && webInd.w && webInd.hit(x, y) && !ctxOpen && !browse->playlists->pickerOpen && !popupShown(p)))
 		{
@@ -699,8 +703,16 @@ namespace bp
 					if (page == Page::About && aboutQrRect().hit(x, y)) aboutQr = true;
 					return false;
 				}
-				// a setting: the left of its value (its arrow) steps back, the rest of the row on
-				int dir = touchX >= SET_ARROW_X - 12 && touchX < 490 ? -1 : 1;
+				// a setting: the left of its value (its arrow) steps back, the rest of the row on. The stepper's
+				// boxes come from lay::settingStepper, the same ones Kit::settingRow drew
+				int dir = 1;
+				if (set && !groups)
+				{
+					lay::SettingsRows l = page == Page::Settings ? lay::settingsRowsIn(lay::shell(miniBarShown(p)).body)
+						: lay::settingsRows();
+					lay::SettingStepper st = lay::settingStepper(l.row(cursor - scroll));
+					dir = lay::stepperBack(st, touchX) ? -1 : 1;
+				}
 				if (groups) settingsPage->openGroup(cursor, &p);
 				else if (set && page == Page::Settings && srows[cursor] == SOUND_ROW) sound->open(p, true);	// a page, not a value
 				else if (set) settingsPage->changeSetting(srows[cursor], dir, p);

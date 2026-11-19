@@ -553,9 +553,10 @@ namespace bp
 		else if (s.focused) flat(r, BUTTON, R_BUTTON, ACCENT);
 		SDL_Color ink = off(s.focused ? ACCENT : TEXT, s.off);
 		int cy = r.y + r.h / 2;
-		// the stepper's own places, as the page's tap uses them (SET_ARROW_X: left of it steps back)
-		int arrowX = SET_ARROW_X + r.x - lay::MARGIN;
-		ui.drawTextMid(s.label, F_P16, ink, r.x + 16, cy, arrowX - r.x - 24);
+		// the stepper's own places, shared with the page's taps (lay::settingStepper): the value's box is centred
+		// between the arrows, so it stays centred whatever the row's width right of the rail
+		lay::SettingStepper st = lay::settingStepper(r);
+		ui.drawTextMid(s.label, F_P16, ink, st.label.x, cy, st.label.w);
 		if (s.action)
 		{
 			// a note and a chevron: nothing to step
@@ -565,9 +566,9 @@ namespace bp
 			return;
 		}
 		SDL_Color arrow = off(s.focused ? ACCENT : DIM, s.off);
-		ui.drawGlyphMid(G_LEFT, arrowX, cy, arrow);
-		ui.drawTextMid(s.value, F_P16, ink, arrowX + 118, cy, 196, 2);
-		ui.drawGlyphMid(G_RIGHT, r.x + r.w - 14, cy, arrow);
+		ui.drawGlyphMid(G_LEFT, st.prevX, cy, arrow);
+		ui.drawTextMid(s.value, F_P16, ink, st.value.x + st.value.w / 2, cy, st.value.w, 2);
+		ui.drawGlyphMid(G_RIGHT, st.nextX, cy, arrow);
 	}
 
 	void Ui::Kit::settingTile(Rect r, const SettingTile& t)

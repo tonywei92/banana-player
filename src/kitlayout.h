@@ -149,6 +149,18 @@ namespace bp
 		SettingsRows settingsRowsIn(Box body, int shown = SET_ROWS);
 		SettingsRows settingsRows(int shown = SET_ROWS);
 
+		// A row's stepper: the value centred between its two arrows, both of which are laid from the row's right
+		// edge, so a row right of the rail gets the same stepper as a full-panel one. `back` is the tap that steps
+		// back (the left arrow's half of the value); `fwd` is the rest of the row, the page's lift asks these.
+		constexpr int STEP_VALUE_W = 238, STEP_VALUE_TEXT = 196;
+		struct SettingStepper
+		{
+			Box row, label, value;	// the label's room; the value's box (196 wide, centred between the arrows)
+			Box back, fwd;
+			int prevX = 0, nextX = 0;	// the arrows' centres
+		};
+		SettingStepper settingStepper(Box row);
+		bool stepperBack(const SettingStepper& s, int x);
 		// ---- the player screen ----
 		constexpr int PLAYER_CHIPS_MAX = 5;
 		struct PlayerLayout

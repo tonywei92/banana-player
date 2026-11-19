@@ -930,7 +930,7 @@ handheld, carries on at 1:27"):
   between pages, and the key stays on every page (not over the player) while they run or failed.
 - **New folder**, **Rename**, **Move**, **Copy**, **Download**, and **Delete** (permanent: it asks first and can't be undone).
 - **Move…** and **Copy…** (a row's **⋯**, or the selection's band) open a folder picker. With a second card in, a
-  choice at its top switches between the handheld's places (**This card**, **Second card**), so files and folders go
+  choice at its top switches between the handheld's places (**This card**, **Card 2**), so files and folders go
   from one card to the other. Nothing is ever replaced: an item whose name is taken there is left where it was, and
   **Copy here** is off in the item's own folder. A move on one card is instant. A copy, or a move to the other card,
   runs on the handheld and carries on with the page closed: a round key at the bottom right fills by the bytes copied

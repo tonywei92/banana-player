@@ -33,10 +33,11 @@ namespace bp
 	bool cardOut(const std::string& path);
 
 	// where the browser starts: the handheld's folders, or a computer's home; BP_BROWSE (folders separated by ':')
-	// settles it
+	// settles it. `card` says a place is a memory card (the browser's summaries count them), not just a folder
 	struct BrowseRoot
 	{
 		std::string label, path;
+		bool card = false;
 	};
 	std::vector<BrowseRoot> browseRoots();
 }
