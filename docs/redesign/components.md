@@ -2,7 +2,7 @@
 
 Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 123 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
-Counts: 47 components: 10 reuse, 28 variant, 9 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
+Counts: 48 components: 10 reuse, 28 variant, 10 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
 
 In the preview every screen draws these through shared functions and style rules (src/kit.js, src/screens.js, src/style.css beside preview.html), the same ones the Components section renders its examples from.
 
@@ -47,7 +47,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Mini bar (exists, needs a variant)
 
 - **Used:** every shell screen while something plays (drawn on 5)
-- **Anatomy and states:** 52 tall, 12 from the sides, 36 above the foot; SURFACE with a 2-unit yellow outline, radius 10. Play mark 56 × 42; kind icon 17; title Pixelify 15, a Title marquee on SURFACE, in what the other parts leave; time Inter 12; state pills; SELECT cap; a 3-unit progress line along its foot. With pills it drops the words “Now playing”.
+- **Anatomy and states:** 52 tall, 12 from the sides, 36 above the foot; SURFACE with a 2-unit yellow outline, radius 10. Play mark 56 × 42; kind icon 17; title Pixelify 15, a Title marquee on SURFACE, in what the other parts leave; time Inter 12; state pills; SELECT cap; a 3-unit progress line along its foot. With pills it drops the words “Now playing”. Where the bar shows a song’s art (30 square, radius 5, in the kind icon’s place), a song with none gets the Art placeholder at 30 with its 1-unit edge: its BUTTON sleeve shows on the bar’s SURFACE.
 - **Inputs:** title, time, paused, pills (speed, look, repeat, EQ, “Playing in …”), progress
 - **Keys and touch:** Tap: the player (SELECT). Tap the mark: play / pause. Hold the mark: take over from a browser. Hold the bar: its More sheet.
 - **Code:** drawMiniBar (ui.h). Needs: the wider play mark, state pills.
@@ -257,11 +257,34 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Cover cell (exists, reuse)
 
 - **Used:** Books, Manga library, a source’s grid
-- **Anatomy and states:** 96 × 136, radius 5, five to a row, 14 apart. A count pill top right (unread). Under it, when in progress: a 4-unit bar and a percent, Inter 12. Focused: a 3-unit yellow outline 2 away. Dimmed 45% while it can’t open. An album is the same cell, square: 96 × 96 with the album’s name (Pixelify 13) and its artist (Inter 11.5 dim) under it, one line each; 120 on the top screen’s artist pane.
-- **Inputs:** image or drawn cover, title, author, badge, progress, dimmed
+- **Anatomy and states:** 96 × 136, radius 5, five to a row, 14 apart. A count pill top right (unread). Under it, when in progress: a 4-unit bar and a percent, Inter 12. Focused: a 3-unit yellow outline 2 away. Dimmed 45% while it can’t open. An album is the same cell, square: 96 × 96 with the album’s name (Pixelify 13) and its artist (Inter 11.5 dim) under it, one line each; 120 on the top screen’s artist pane. An album with no cover in its songs: the Art placeholder at the cell’s size (96, 120), radius 5, keyed by the album’s name, so a grid of them is not one drawing repeated; the focus outline as on any cover. A song’s row that shows art takes the placeholder at the row’s art size, with its 1-unit edge. Books and manga keep their drawn covers.
+- **Inputs:** image or drawn cover (an album: its art or the Art placeholder), title, author, badge, progress, dimmed
 - **Keys and touch:** D-pad moves, A opens, drag scrolls.
 - **Code:** drawMangaCover (real cover decoded in the background, a drawn one standing in). Books uses the same.
 
+### Art placeholder (new)
+
+- **Used:** wherever a song’s or an album’s art would be and there is none: the top screen’s Song layout (240 in Album art only, 224 in Art + visualizer), the player’s thumbnail by the artist line (30), the mini bar, list rows, an album’s Cover cell (96; 120 on the artist pane), the Web dashboard’s album covers
+- **Anatomy and states:** It follows the theme: flat shapes in theme roles only, no picture, no glyph, no gradient, nothing of its own in any theme. A record in its sleeve, five shapes, back to front, on a square of side s:
+
+  | Shape | Role | Size |
+  |---|---|---|
+  | The square (the sleeve) | BUTTON | s, with the radius of the art’s box (8 on the top screen, 5 elsewhere) |
+  | The record: a disc | BG | D = 72% of s when whole, 88% when half out |
+  | Its inner band: a disc | SURFACE | 62% of D (s of 64 or more) |
+  | The label: a disc, the one mark | ACCENT | 34% of D |
+  | The hole: a dot | BG | 7% of D, at least 2 |
+
+  Diameters are rounded to an even number of units, so every centre is on a whole unit. The discs share one centre and are clipped to the square.
+  - **Placement (the variation):** four, so a grid of albums without covers is not one drawing repeated. 0: whole, centred. 1: half out of the bottom edge (centre at the edge’s middle). 2: half out of the right edge. 3: half out of the top edge. Never the left: a right one beside it in a grid would read as one record cut in two. At 88% a half record stays clear of the box’s corners, so a plain clip rect is enough.
+  - **Which one:** the top two bits of FNV-1a (32 bits) over the UTF-8 bytes of the key. The key is the album’s name; with none, the title; with none, the file’s name. So an album’s songs, its cell in Music › Albums, the top screen and the dashboard all draw the same one, and it does not change between starts. The preview’s names: Yellow Album 0, Red Room 1, Wheel 2, Field Recordings 3.
+  - **Small (s under 64: the thumbnail, the mini bar, a row):** always placement 0, without the SURFACE disc: three shapes on the square. At 30: record 22, label 8, hole 2.
+  - **Edge:** the art’s own box and edge where it has one (the top screen: 2 units, edgeOf(SURFACE)). Where the art has none (the thumbnail, the mini bar, a row), a 1-unit edgeOf(BUTTON) edge inside the square, so it still has a shape on a focused row’s BUTTON. A Cover cell has none; focused, the Cover cell’s ACCENT outline.
+  - **Per theme:** nothing but the roles’ values. The record is the theme’s ground, so it is the darkest part in a dark theme (a black record, the label lit) and the lightest in a light-bodied one (Light, Sakura, 16-bit, 16-bit Lavender, 32-bit: a paper record on a BUTTON sleeve, the label in the theme’s deep ACCENT). The label on the record and on the sleeve are ACCENT on BG and ACCENT on BUTTON, both checked at 4.5 : 1 or more in every theme (themes.py); the sleeve stands off the ground as much as a key does, and the record off the sleeve by the same step.
+  - **Not used here:** TEXT, DIM, DIM_ON, PRESSED (no text, no second state: it is not a key and has no pressed or off drawing of its own; a dimmed cell dims it with the cell).
+- **Inputs:** side, key (album, else title, else file name), the box’s radius and edge
+- **Keys and touch:** None of its own: it is the art, and takes what the art would.
+- **Code:** New: `Kit::artPlaceholder(Rect, key)` on the bottom panel (a `fillRound` and three or four discs, a disc being a `fillRound` with radius half its side, under `SDL_RenderSetClipRect`); the same shapes in the top panel’s GL drawing (a scissor rect; no texture, no image to load or scale); on the Web dashboard an inline SVG of the same five shapes in `--btn`, `--bg`, `--surface`, `--yellow`, with the same sum in JS. Replaces the colour-wheel picture with the note, which was the same in every theme. The placement sum goes in bpcore with a test against the four names above.
 ### QR code (exists, reuse)
 
 - **Used:** the Web dashboard page (196 square), Settings › About’s support line (84 square)
@@ -347,7 +370,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Song layout (exists, needs a variant)
 
 - **Used:** every song screen
-- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. The title is a Title marquee in its line’s box (the text column beside the art; the panel’s width less its margins in Visualizer only and None, where it is centred while it fits); artist and album are cut with “…”. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: a placeholder in the art’s place. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Peaks and the six simple styles (Mirror bars, Wave, Dots, Levels, Area, Radial) draw their marks in ACCENT and TEXT; the pixel-art styles and Pocket console keep their own colours. Visualizer only: Peaks and the simple styles on BG in the same colours, with the lines in TEXT, DIM_ON and DIM; a style that paints the whole screen is its own picture, the lines over it white with their shadow.
+- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. The title is a Title marquee in its line’s box (the text column beside the art; the panel’s width less its margins in Visualizer only and None, where it is centred while it fits); artist and album are cut with “…”. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: the Art placeholder in the art’s place, at the art’s size (240, 224), in the same radius-8 box with the same 2-unit edgeOf(SURFACE) edge, keyed by the song’s album; the layout and the chosen mode stay. The player’s 30-unit thumbnail by the artist line is the same placeholder at 30. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Peaks and the six simple styles (Mirror bars, Wave, Dots, Levels, Area, Radial) draw their marks in ACCENT and TEXT; the pixel-art styles and Pocket console keep their own colours. Visualizer only: Peaks and the simple styles on BG in the same colours, with the lines in TEXT, DIM_ON and DIM; a style that paints the whole screen is its own picture, the lines over it white with their shadow.
 - **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four icon tiles on View › Display), the visualizer’s style (the twenty icon tiles under them), art or none, title, artist, album. Show and the style are two inputs, set on one page (View › Display) and in two rows of Settings › Music & sound (Music display, Visualizer), and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown now”, not dimmed.
 - **Keys and touch:** SELECT steps Show (on View › Display).
 - **Code:** The music graph and the title lines in player.cpp (Player::shownMusic). A change to today’s layout: the lines always drawn (the Song info on top setting and its `SettingDef` go), and a ground in BG under the art.
@@ -568,7 +591,7 @@ One pair is below 3 in the dark themes, as it is today: a flat piece's edge agai
 
 ### Fixed in every theme
 
-- The picture: video, photos, album art, covers, the manga cover placeholders' gradients, a comic's or a PDF's page, and the black around them on the top screen.
+- The picture: video, photos, album art, covers, the manga cover placeholders' gradients, a comic's or a PDF's page, and the black around them on the top screen. Not the Art placeholder: what stands in for missing album art is app UI, drawn in BUTTON, BG, SURFACE and ACCENT, and changes with the theme.
 - The pixel-art visualizers' own colours, and Pocket console's LCD greens: the things they draw, and the whole picture when one is alone on the screen. Not their ground in Art + visualizer, which is BG, and not the marks of Peaks and the six simple styles (Mirror bars, Wave, Dots, Levels, Area, Radial), which take ACCENT and TEXT (their own yellow on Light's paper would be 1.4 : 1).
 - Subtitles and their preview: the subtitle settings decide them.
 - Text laid straight on a picture with no card under it: the song's title, artist and album over a visualizer that fills the screen (#FFFFFF, #B4B4B4, with their shadow), drawn as subtitles are. On the theme's ground the same lines are TEXT, DIM_ON and DIM.
@@ -581,7 +604,7 @@ One pair is below 3 in the dark themes, as it is today: a flat piece's edge agai
 
 Two cases, by what is under the drawing.
 
-- **Nothing plays** (the Preview pane, a setting's help, the idle logo), **or a song in Album art only, Art + visualizer or None**: app UI. It takes the main tokens, so in a light-bodied theme the top screen is light. A song's ground is BG, flat: the same ground as the bottom screen, so the two panels read as one. Its title is TEXT, the artist DIM_ON, the album DIM; the art keeps a 2-unit `edgeOf(SURFACE)` edge, which shows on a light ground and a dark one. The art is a picture on that ground. In Art + visualizer the ground runs to the foot of the screen and the visualizer is drawn over it, as today's app draws it over the art (every style has that drawing: only its marks, nothing behind them); there is no black strip on any theme.
+- **Nothing plays** (the Preview pane, a setting's help, the idle logo), **or a song in Album art only, Art + visualizer or None**: app UI. It takes the main tokens, so in a light-bodied theme the top screen is light. A song's ground is BG, flat: the same ground as the bottom screen, so the two panels read as one. Its title is TEXT, the artist DIM_ON, the album DIM; the art keeps a 2-unit `edgeOf(SURFACE)` edge, which shows on a light ground and a dark one. The art is a picture on that ground; a song with none shows the Art placeholder there, which is app UI in the same tokens. In Art + visualizer the ground runs to the foot of the screen and the visualizer is drawn over it, as today's app draws it over the art (every style has that drawing: only its marks, nothing behind them); there is no black strip on any theme.
 
 | Style | Over BG in Art + visualizer | Alone (Visualizer only) |
 |---|---|---|
@@ -648,7 +671,8 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Progress bar | `Kit::bar` | TRACK; fill ACCENT |
 | Volume bar | `drawLevel`, `drawQuick` | TRACK; TEXT to 100%, ACCENT to 120%, DANGER past it; the 100 mark DIM_ON; on the top card the TOP_ tokens |
 | Tile | `Kit::settingTile`, `Kit::key` (stack) | Flat SURFACE; TEXT name; DIM summary; focused: ACCENT edge, icon and name; a choice tile in use: ACCENT fill with `edgeOf(ACCENT)`, ON_ACCENT mark and name |
-| Cover cell | `drawMangaCover` | the cover is a picture; count pill as Pill; progress as Progress bar; percent DIM; focused: ACCENT outline |
+| Cover cell | `drawMangaCover` | the cover is a picture (an album with none: the Art placeholder); count pill as Pill; progress as Progress bar; percent DIM; focused: ACCENT outline |
+| Art placeholder | new (`Kit::artPlaceholder`) | the square BUTTON; the record BG; its inner band SURFACE; the label ACCENT; the hole BG; with no box of its own a 1-unit `edgeOf(BUTTON)` edge |
 | QR code | `ui_web.cpp` | fixed black on white; the address TEXT, the sentence DIM |
 | Recent card, Continue card | `drawHome` | Flat SURFACE; label DIM; TEXT title; DIM note; Progress bar; kind mark fixed (on a picture); the key primary |
 | Empty state | `drawEmpty` | DIM icon; TEXT title; DIM lines; keys: primary and normal |
@@ -657,7 +681,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 | Pan area, drag area | `ui_docs.cpp`, `drawPhoto` | pan area SCREEN, the box ACCENT; drag area Flat SURFACE, RULE dashes, DIM captions |
 | Level card, Note, State card | `levelcard.cpp`, the ASS cards in `player.cpp` | the TOP_ tokens (the table above) |
 | Preview pane | new | BG; brand tile ACCENT with ON_ACCENT, name ACCENT; label ACCENT; TEXT title; DIM_ON sentence; list DIM and TEXT; caps ACCENT |
-| Song layout | `Player::shownMusic` | ground BG and the three lines TEXT, DIM_ON, DIM (Album art only, Art + visualizer, None, and Peaks or a simple style alone); the art's edge `edgeOf(SURFACE)`; the marks of Peaks and the six simple styles ACCENT and TEXT; fixed: the art, a missing cover's placeholder, the pixel-art styles' and Pocket console's colours, and white text with its shadow over a style that fills the screen |
+| Song layout | `Player::shownMusic` | ground BG and the three lines TEXT, DIM_ON, DIM (Album art only, Art + visualizer, None, and Peaks or a simple style alone); the art's edge `edgeOf(SURFACE)`; no art: the Art placeholder in that box; the marks of Peaks and the six simple styles ACCENT and TEXT; fixed: the art, a missing cover's placeholder, the pixel-art styles' and Pocket console's colours, and white text with its shadow over a style that fills the screen |
 | Focus | `drawFocus` | ACCENT |
 | Away-from-normal mark | new | ACCENT; DANGER past a danger line |
 | Screen-off warning | new | veil fixed black 62%; a Notice row with an ACCENT edge |
@@ -695,6 +719,7 @@ The same table. Each theme is one block of the variables below (`:root[data-them
 | `--picked`, `--e-picked` (dashboard only) | ACCENT at 17% over BG; its `edgeOf` |
 | `--dot`, `--scrim`, `--veil-sheet` | TEXT at 7%; BG at 72%; BG at VEIL_SHEET |
 | `--green` (dashboard only: something is on, or worked) | a token of its own, OK: #7BD88F in the dark themes, #1F7A4D in the light-bodied ones, #8DF0A4 in High contrast |
+| an album or a song with no cover | the Art placeholder, an inline SVG: `--btn`, `--bg`, `--surface`, `--yellow` (ACCENT); the same placement sum as the handheld |
 | `theme-color` in `index.html` | BG |
 | the Settings page's small picture of the two panels | the same tokens: the bottom panel the main ones, a card on the top one the TOP_ ones |
 

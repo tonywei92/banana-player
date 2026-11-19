@@ -43,6 +43,15 @@ const minibarB=()=>`<div class="mini" data-go="browser-play"><div class="pp">${i
 const shell=(a,o)=>rail(a,o.warn)+`<div class="main">${head(o)}<div class="body" style="${o.mini?'bottom:92px;':''}${o.bs||''}">${o.body}</div>${o.mini?(o.mini=='v'?minibarV(o.pills):o.mini=='b'?minibarB():minibar(o.mt)):''}${hints(o.hint)}</div>`;
 const row=(ic,nm,nt='',cls='',ex='')=>`<div class="row ${cls}" ${ex}>${ic?ico(ic,20):''}<span class="nm">${nm}</span>${nt?`<span class="nt">${nt}</span>`:''}</div>`;
 const cover=(c,t,a,f='',w=96,h=136,ex='')=>`<div class="cover ${c}" style="width:${w}px;height:${h}px;flex:none;${ex}">${f?`<span class="fmt">${f}</span>`:''}<b style="font-size:${Math.max(12,w/7.6)}px">${t}</b><small style="font-size:${Math.max(9.5,w/10)}px">${a}</small></div>`;
+// Art placeholder (components.md › Cells): what stands where a song's or an album's art would be when it has none.
+// A record in its sleeve, flat, from four roles: sleeve BUTTON, record BG, its inner band SURFACE, label ACCENT, hole BG.
+// key: the album's name (the title when it has none): its hash picks one of four placements. o.v forces one, o.edge adds the 1-unit edge of a place with no edge of its own
+// FNV-1a, 32 bits, over the name's UTF-8 bytes (the same sum in C++ and on the dashboard); the placement is its top two bits
+const phHash=s=>{let h=2166136261;for(const c of unescape(encodeURIComponent(s)))h=Math.imul(h^c.charCodeAt(0),16777619);return h>>>0};
+const phEven=x=>Math.max(2,2*Math.round(x/2));
+const ph=(sz,key='',o={})=>{const big=sz>=64,v=o.v!=null?o.v:big?phHash(key)>>>30:0,D=phEven(sz*(v?.88:.72)),[cx,cy]=[[sz/2,sz/2],[sz/2,sz],[sz,sz/2],[sz/2,0]][v];
+	const disc=(d,c)=>`<i style="position:absolute;left:${cx-d/2}px;top:${cy-d/2}px;width:${d}px;height:${d}px;border-radius:50%;background:var(--${c})"></i>`;
+	return `<div class="ph" style="width:${sz}px;height:${sz}px;flex:none;position:relative;overflow:hidden;background:var(--bt);border-radius:${o.r!=null?o.r:5}px;${o.edge?'box-shadow:inset 0 0 0 1px var(--ed);':''}${o.st||''}">${disc(D,'bg')}${big?disc(phEven(D*.62),'sf'):''}${disc(phEven(D*.34),'ac')}${disc(phEven(D*.07),'bg')}</div>`};
 const tBrand=()=>`<div class="ab fx" style="left:20px;top:16px;gap:8px"><div style="width:22px;height:22px;border-radius:6px;background:var(--ac);display:grid;place-items:center;color:var(--oa)">${ico('play',12)}</div><span style="font-size:15px;color:var(--ac)">Banana Player</span></div>`;
 const tHint=a=>`<div class="in fx" style="gap:16px;font-size:13.5px;color:var(--do)">${a.map(([k,l])=>`<span class="fx" style="gap:6px">${caps(k)}${l}</span>`).join('')}</div>`;
 function peaks(n=52,h=120,seed=11){let s=seed,o='';for(let i=0;i<n;i++){s=(s*9301+49297)%233280;const r=s/233280,env=Math.exp(-i/26)*.62+.2,v=Math.max(.06,Math.min(1,(r*.75+.3)*env+(i%6==0?.12:0)));o+=`<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end"><i style="height:3px;background:var(--tx);margin-bottom:${5+Math.round(r*12)}px"></i><i style="height:${Math.round(v*h)}px;background:var(--ac)"></i></div>`}return `<div style="display:flex;gap:3px;align-items:flex-end;height:${h+24}px">${o}</div>`}
