@@ -636,4 +636,29 @@ namespace bp
 		double hTo = (rtl ? (1 - fx) : fx) * pw - viewW * 0.5;
 		land(i, vTo, hTo);
 	}
+
+	bool Paged::panBy(double dy)
+	{
+		int i = current();
+		if (i < 0 || dy == 0) return false;
+		double vmax = vMax(i);
+		if (vmax <= 0)
+		{
+			// a page that fits the view has nothing to pan: the stick leaves paged modes alone (issue 16)
+			v = 0;
+			return false;
+		}
+		double to = clampD(v + dy, 0, vmax);
+		if (to == v) return false;
+		stopAnim();
+		v = to;
+		vbase[i] = v;
+		return true;
+	}
+
+	bool Paged::canPanV() const
+	{
+		int i = current();
+		return i >= 0 && vMax(i) > 0;
+	}
 }

@@ -7,6 +7,7 @@ Write the way the rest of the repo does: plain and precise, with the why. Say wh
 
 ## Index
 
+- [2026-11-19 the left stick scrolls the readers](2026-11-19-stick-scroll.md): LEFTY read past a 15 % dead zone, squared, one panel height a second at full push; the text viewer and the Strip scroll, a paged page with room pans, Book turns; the speed curve is bpcore's `stickScrollSpeed` (issue #16).
 - [2026-11-18 Previous on a video](2026-11-18-previous-video.md): Previous restarts a song 5 s in, never a video; a video always goes to the one before, and on the first one does nothing unless Repeat All; the kind is the session's `audioOnly` (`Loaded`), I17.
 - [2026-11-17 a song's View: the equalizer's bands](2026-11-17-song-view-eq-drag.md): the sheet's ten bands did not move under a finger (the slider was grabbed with no overlay owner, so it was dropped as stale); `this` makes them the Sound page's slider, through `eqSetBand` / `syncEq`.
 - [2026-11-17 settings groups](2026-11-17-settings-groups.md): the Settings page as the spec's ten groups, drawn with the kit (tiles with a live summary, rows with the stepper), L2 / R2 between groups; the readers' defaults get their own rows.

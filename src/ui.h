@@ -68,6 +68,9 @@ namespace bp
 		bool repeats(Button b, const Player& p) const;
 		// called each turn of the loop: a flicked photo glides on
 		void tick(Player& p);
+		// the left stick's up/down push (SDL_CONTROLLER_AXIS_LEFTY, -32768 up … 32767 down), every pass while a
+		// reader is open: the text viewer or the pages scroll or pan while it is held; elsewhere it does nothing
+		void stickAxis(int value, Player& p);
 		// something moves by itself (a flick, a playlist's rows scrolling under a dragged one): the loop should come
 		// round often
 		bool animating() const;

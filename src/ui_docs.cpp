@@ -9,6 +9,7 @@
 #include "manga_ui_logic.h"
 #include "epub.h"
 #include "pagebook.h"
+#include "stickscroll.h"
 #include "substyle.h"
 #include "textreader.h"
 #include <atomic>
@@ -824,6 +825,39 @@ namespace bp
 		default: break;
 		}
 		return false;
+	}
+
+	void Ui::Docs::stickAxis(int value, Player& p)
+	{
+		int64_t now = SDL_GetTicks();
+		bool text = ui.page == Page::DocText && textStatus.open && docMenu == DOC_MENU_NONE && !findJob;
+		bool pages = ui.page == Page::DocPages && ui.pageReader->readerStatus.open && docMenu == DOC_MENU_NONE &&
+			!ui.pageReader->mangaPages;
+		// Book is held sideways: one push is one spread, turned the way its D-pad points (not scrolled)
+		if (text && textStatus.book)
+		{
+			if (stickTarget == 1) textCmds.push_back({TextReader::Stick, 0, now});
+			else if (stickTarget == 2) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, 0, now});
+			stickTarget = 0;
+			double speed = stickScrollSpeed(value, 1.0);
+			int dy = speed == 0 ? 0 : speed > 0 ? 1 : -1;
+			if (dy != 0 && dy != stickDir) docBookTurn(dy, p);
+			stickDir = dy;
+			return;
+		}
+		stickDir = 0;
+		int target = text ? 1 : pages ? 2 : 0;	// 1 the text, 2 the pages (its reader)
+		if (target != stickTarget)
+		{
+			// the reader left stops at once, and the one taking over starts from the value held
+			if (stickTarget == 1) textCmds.push_back({TextReader::Stick, 0, now});
+			else if (stickTarget == 2) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, 0, now});
+			stickTarget = target;
+		}
+		// every pass while it is the stick's own reader: a chapter or a page that opens under a held stick is
+		// picked up at once, and the reader ignores the same value as before
+		if (target == 1) textCmds.push_back({TextReader::Stick, (double)value, now});
+		else if (target == 2) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, (double)value, now});
 	}
 
 	void Ui::Docs::docBookTurn(int dpadDy, Player& p)

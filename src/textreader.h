@@ -6,6 +6,7 @@
 // The place is the block at the top, the row in it, and the pixels scrolled into that row.
 // Main thread only, in the top window's GL context (as the manga reader: its own PageRenderer).
 #include "pagerender.h"
+#include "stickscroll.h"
 #include "textsource.h"
 #include <SDL_ttf.h>
 #include <cstdint>
@@ -61,7 +62,8 @@ namespace bp
 		// BookTurn: v spreads on (+1) or back (-1), in Book. MatchStep: v +1 / -1, Find's next or previous match in
 		// the block shown (a long paragraph's own); matchStepped() says whether there was one
 		// JumpToLast: JumpTo, on the block's last match (Find going back)
-		enum Cmd { Scroll, Lines, Page, Jump, JumpTo, Fling, Hold, BookTurn, MatchStep, JumpToLast };
+		// Stick: v the left stick's LEFTY (-32768 up … 32767 down): the text scrolls every frame while held (issue 16)
+		enum Cmd { Scroll, Lines, Page, Jump, JumpTo, Fling, Hold, BookTurn, MatchStep, JumpToLast, Stick };
 		bool matchStepped() const { return stepped; }
 		// Book (MANGA_BOOK_LEFT / _RIGHT: held sideways, the top panel on the left or the right; 0: off, the scroll):
 		// a page on each panel, upright as the handheld is held, the text going on from the left page to the right
@@ -91,7 +93,7 @@ namespace bp
 		// a pass of main's loop: the motion advanced; true when the panel needs a frame
 		bool frame(int64_t now);
 		void draw(int w, int h);
-		bool busy() const { return flingV != 0 || glideLeft != 0 || forceFrames > 0; }
+		bool busy() const { return flingV != 0 || glideLeft != 0 || forceFrames > 0 || (stickSpeedNow() != 0 && stickCanMove); }
 		void redrawSoon(int n = 3) { forceFrames = std::max(forceFrames, n); }
 		// a card over the text (the level card, levelcard.h: the volume or brightness while reading), RGBA, until
 		// untilMs. The manga reader's own, the same way
@@ -124,7 +126,7 @@ namespace bp
 		bool nextRow(Pos& p);	// false at the end
 		bool prevRow(Pos& p);	// false at the start
 		int rowH(const Pos& p);
-		void scrollBy(double px);
+		bool scrollBy(double px);	// false when the text didn't move (its start or end)
 		int heightBelow(Pos p, int limit);	// the rows' height from p down, up to limit
 		// Book: a page's rows from p, as many as fit in height (at least one); false in ended: the text ran out
 		std::vector<Pos> fillPage(Pos p, int height, Pos& next, bool& ended);
@@ -132,6 +134,8 @@ namespace bp
 		std::shared_ptr<std::vector<uint8_t>> drawPage(const std::vector<Pos>& rows, double fraction);
 		int layoutW() const { return bookHold ? viewH : viewW; }	// a Book page is the panel turned: its height wide
 		int pageH() const { return viewW; }
+		// the stick's speed now (0 at rest, inside its dead zone, or in Book, which turns spreads instead)
+		double stickSpeedNow() const { return bookHold ? 0 : stickScrollSpeed(stickValue, viewH); }
 		void relayout();	// a new size, font or width: the cache goes, the place stays
 		void openFonts();
 		void closeFonts();
@@ -162,6 +166,11 @@ namespace bp
 		int nextKey = 1;
 		double flingV = 0;	// pixels a ms
 		double glideLeft = 0, glideV = 0;	// a step's pixels still to go, and its speed
+		// the left stick (issue 16): its last LEFTY value, and whether the last frame could still move the text
+		// (at the start or the end it can't: main's loop needn't spin until the value changes)
+		int stickValue = 0;
+		int64_t stickAt = 0;
+		bool stickCanMove = false;
 		int64_t lastMs = 0;
 		int forceFrames = 0;
 		static constexpr int BG_KEY = 0;

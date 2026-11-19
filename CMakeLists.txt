@@ -75,6 +75,7 @@ add_library(bpcore STATIC src/viz_led.cpp src/viz_synthwave.cpp src/viz_banana.c
 	src/webauth.cpp src/webpath.cpp src/json.cpp src/webmedia.cpp src/codepages.cpp src/webstate.cpp src/crashlog.cpp src/session.cpp src/durations.cpp src/picsubs.cpp src/manga_names.cpp src/mangafilters.cpp src/mangastore.cpp src/pagecache.cpp src/strip.cpp src/comicinfo.cpp src/cbz.cpp src/pagebook.cpp src/textdoc.cpp src/textsource.cpp src/epub.cpp src/mangalocal.cpp src/manganetfolders.cpp src/manga_ui_logic.cpp src/paged.cpp src/dlqueue.cpp src/mangarepo.cpp src/opds.cpp src/cbzwrite.cpp src/mangaservers.cpp src/htmldoc.cpp src/mangaremote.cpp src/readerfetchplan.cpp src/suwayomi.cpp src/mangajava.cpp src/doh.cpp src/tarx.cpp src/mangaseriescache.cpp src/imagesize.cpp src/bands.cpp src/treecopy.cpp)
 target_include_directories(bpcore PUBLIC src)
 target_sources(bpcore PRIVATE src/kitlayout_new.cpp)	# kit-new's layout (its own line: see target_sources(banana-player) below)
+target_sources(bpcore PRIVATE src/stickscroll.cpp)	# the left stick's scrolling speed (issue 16)
 # PFFFT (third_party/pffft, BSD-like): the native visualizers' spectrum (src/viznative.h); NEON on aarch64, SSE on x86
 add_library(pffft_static STATIC third_party/pffft/pffft.c)
 set_target_properties(pffft_static PROPERTIES POSITION_INDEPENDENT_CODE ON)

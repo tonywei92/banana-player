@@ -4,6 +4,7 @@
 #include "readerfetchplan.h"
 #include "imagesize.h"
 #include "manga_ui_logic.h"
+#include "stickscroll.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -289,6 +290,9 @@ namespace bp
 		onCard.clear();
 		errPage = -1;
 		opened = fingerDown = false;
+		stickValue = 0;
+		stickAt = 0;
+		stickCanMove = false;
 	}
 
 	int MangaReader::decodeW() const
@@ -714,9 +718,45 @@ namespace bp
 		return rotateRgba(src, w, h, angle);
 	}
 
+	double MangaReader::stickSpeedNow() const
+	{
+		if (!opened || stickValue == 0) return 0;
+		// Book shows whole pages: nothing there scrolls or pans (its spread turns come from the Ui)
+		if (bookHold) return 0;
+		// a paged page that fits the view has nowhere to go; the Strip always has the chapter's column
+		if (readMode != MANGA_STRIP && !paged.canPanV()) return 0;
+		// one panel's height a second at a full push, the reader's panel pixels (issue 16)
+		return stickScrollSpeed(stickValue, viewH);
+	}
+
 	void MangaReader::command(int kind, double v, int64_t ms, double v2, double v3)
 	{
 		if (!opened) return;
+		if (kind == Stick)
+		{
+			// the left stick is read as a value; frame() turns it into pixels, so the speed is the same at any rate
+			bool was = stickSpeedNow() != 0;
+			bool changed = stickValue != (int)v;
+			stickValue = (int)v;
+			bool on = stickSpeedNow() != 0;
+			// a new value after the view stopped at an end can move it again (a same value every pass leaves it)
+			if (on && (changed || !was)) stickCanMove = true;
+			if (!on) stickCanMove = false;
+			if (on && !was)
+			{
+				stickAt = ms;
+				// one line each way, with the value, so a handheld's log reads the stick's range and dead zone
+				fprintf(stderr, "reader: stick scroll on (value %d, %.0f px/s) in %s\n", stickValue, stickSpeedNow(),
+					modeName());
+				redrawSoon(1);
+			}
+			else if (!on && was)
+			{
+				stickAt = 0;
+				fprintf(stderr, "reader: stick scroll off (value %d)\n", stickValue);
+			}
+			return;
+		}
 		if (kind == Seek)
 		{
 			// the view moves now (a placeholder until the page comes); want() and the fetcher follow only when a
@@ -1037,7 +1077,34 @@ namespace bp
 				any = true;
 			}
 		}
+		// the left stick (issue 16): every frame while held, by the time since the last one (not per event), so the
+		// speed is the same at any frame rate; released, its command stops it at once
+		bool stickMoved = false;
+		if (double sv = stickSpeedNow(); sv != 0)
+		{
+			double dt = stickAt ? std::clamp<double>((double)(now - stickAt), 0, 50) : 16;
+			stickAt = now;
+			double step = sv * dt / 1000.0;
+			if (step != 0)
+			{
+				if (readMode == MANGA_STRIP)
+				{
+					double was = strip.offset();
+					strip.scrollBy(step);
+					stickMoved = strip.offset() != was;
+				}
+				else stickMoved = paged.panBy(step);
+				stickCanMove = stickMoved;
+			}
+			// (a zero-length frame says nothing about an end: the next one tries again)
+		}
+		else
+		{
+			stickAt = 0;
+			stickCanMove = false;
+		}
 		bool moving = readMode == MANGA_STRIP ? strip.step(now) : paged.step(now);
+		if (stickMoved) moving = true;
 		// the zoom rests: the pages in view are wanted again at its width (want reads the width itself)
 		if (zoomAt && now - zoomAt >= ZOOM_SETTLE_MS)
 		{
