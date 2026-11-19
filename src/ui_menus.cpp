@@ -753,7 +753,7 @@ namespace bp
 					// the kit's slider: 14 tall, the knob grown while it is held
 					k.progress({l.bar.x, mid - 7, l.bar.w, 14}, pct > 0 ? std::min(pct, 100) / 100.0 : 0, {}, held);
 					drawTextMid(pct < 0 ? "-" : std::to_string(pct) + "%", F_P16, held ? ACCENT : at ? DIM_ON : DIM,
-						l.number.x, mid, l.number.w, 1);
+						l.number.x + l.number.w, mid, l.number.w, 1);	// (align 1: x is the right edge)
 				}
 				continue;
 			}
