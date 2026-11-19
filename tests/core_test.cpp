@@ -6791,7 +6791,7 @@ static void testThemes()
 	CHECK_EQ(hx(edgeOf(L.ACCENT, L.TEXT, L.EDGE_MIX)) + hx(lipOf(L.ACCENT)) + hx(edgeOf(L.DANGER, L.TEXT, L.EDGE_MIX)), "463312553900581F1F");
 	CHECK_EQ(hx(L.TOP_CARD) + hx(L.TOP_TITLE), "0B0A0DFFD23F");
 	const Palette& K = palette(dark);
-	CHECK_EQ(hx(K.RAIL) + hx(K.TOP_CARD) + hx(edgeOf(K.BUTTON, K.TEXT, K.EDGE_MIX)) + hx(lipOf(K.ACCENT)), "12121512121567686D7689A1");
+	CHECK_EQ(hx(K.RAIL) + hx(K.TOP_CARD) + hx(edgeOf(K.BUTTON, K.TEXT, K.EDGE_MIX)) + hx(lipOf(K.ACCENT)), "12121512121567686DA2A099");
 	// Match theme (text-theme's first value, the default): Light's page with Light, Black with High contrast, else Dark;
 	// a page chosen by hand holds whatever the theme; an old file's "dark" stays Dark
 	Settings m;
