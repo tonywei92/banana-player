@@ -27,7 +27,7 @@ namespace bp
 		inline TTF_Font* faceFont(const std::string& fontsDir, Face face, float px)
 		{
 			static std::map<std::string, TTF_Font*> fonts;
-			std::string path = fontsDir + (face == PIXEL ? "/PixelifySans-Regular.ttf" : face == INTER_BOLD ? "/IBMPlexSans-Bold.ttf" : "/IBMPlexSans-Medium.ttf");
+			std::string path = fontsDir + (face == PIXEL ? "/PixelifySans-Regular.ttf" : face == INTER_BOLD ? "/PixelifySans-Regular.ttf" : "/PixelifySans-Regular.ttf");
 			int pt = std::max(6, (int)std::lround(px));
 			std::string key = path + "@" + std::to_string(pt);
 			auto it = fonts.find(key);

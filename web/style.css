@@ -10,7 +10,7 @@
 @font-face { font-family: "Pixelify Sans"; src: url("/fonts/PixelifySans-Regular.ttf") format("truetype"); font-display: swap; }
 @font-face { font-family: "Inter"; src: url("/fonts/Inter-Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
 @font-face { font-family: "Inter"; src: url("/fonts/Inter-Bold.ttf") format("truetype"); font-weight: 600 700; font-display: swap; }
-/* Pixelify Sans for display, IBM Plex Sans for text, as the handheld (the owner, 2026-11-19) */
+/* all Pixelify Sans, as the handheld (the owner, 2026-11-19); the Plex faces stay for a switch back */
 @font-face { font-family: "IBM Plex Sans"; src: url("/fonts/IBMPlexSans-Regular.ttf") format("truetype"); font-weight: 400 500; font-display: swap; }
 @font-face { font-family: "IBM Plex Sans"; src: url("/fonts/IBMPlexSans-SemiBold.ttf") format("truetype"); font-weight: 600 700; font-display: swap; }
 
@@ -42,7 +42,7 @@
 	--bw: 2px; --lip: 3px; --hit: 44px;
 	--s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s7: 32px; --s8: 40px; --s9: 56px;
 	--gutter: 20px;
-	--pixel: "Pixelify Sans", ui-monospace, monospace; --text: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+	--pixel: "Pixelify Sans", ui-monospace, monospace; --text: "Pixelify Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 	--ease: cubic-bezier(.2, .8, .2, 1); --t-press: 90ms; --t-ui: 160ms; --t-sheet: 260ms;
 	--safe-b: env(safe-area-inset-bottom, 0px);
 	/* the page's background: BananaOS's dotted black (never on surfaces) */
