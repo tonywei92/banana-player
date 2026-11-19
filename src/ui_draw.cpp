@@ -552,7 +552,14 @@ namespace bp
 			browse->homeView->homeTouch = false;
 			browse->homeView->homePress = -1;
 			swallowTouch = true;
-			if (i >= 0 && i < browse->homeView->stripCards())
+			if (i == Home::HOME_PRESS_CONTINUE)
+			{
+				// the Continue / Now playing card's own More (its file's sheet, Home's when it's not in Recent)
+				Home::Continue c = browse->homeView->continueOf(p);
+				if (c.shown && !c.path.empty() && browse->homeView->findRecent(c.path)) browse->homeView->openRecentMenu(c.path);
+				else browse->homeView->openHomeOptions();
+			}
+			else if (i >= 0 && i < browse->homeView->stripCards())
 			{
 				browse->homeView->homeZone = Home::HOME_STRIP;
 				browse->homeView->setStrip(i);

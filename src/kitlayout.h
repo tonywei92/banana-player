@@ -319,7 +319,8 @@ namespace bp
 		// hasContinue: a Continue card over the Recent row; hasRecent: Recent has anything (else no chip strip, cards
 		// or shortcuts: the empty state); cards: how many Recent cards (at most HOME_CARDS_MAX); more: the chevron
 		// card after them (there are more than fit); chipWidths: the filter chips' measured widths. The shortcut row is
-		// left out when the mini bar leaves no room for it (with something playing, Home is Continue + Recent only).
+		// left out when the body leaves no room for it; Home draws no mini bar (its Now playing card is the one place
+		// for what plays), so there its body is the same height whether something plays or not and the row stays.
 		HomePage homePage(Box body, bool hasContinue, bool hasRecent, int cards, bool more, const std::vector<int>& chipWidths);
 		// All recent: the filter chips' 28-tall strip under the header, then the rows (48 tall, as the list's pointers
 		// expect: their first is at body.y + 30). `shown` is what fits above the hint bar (or the mini bar).
