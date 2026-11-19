@@ -2199,6 +2199,9 @@ namespace bp
 			if (b == Button::L3 && p.playing() && !p.playingPhoto()) { ui.likeNow(p); return false; }
 		}
 		if (!ui.inMenu && playlists->selMode != SEL_NONE && playlists->selKey(b, p)) return false;
+		// the redesigned playlist pages (a playlist's rows, its keys row, Liked): their own keys; the rest (X, Y,
+		// B, L/R, START) is the browser's below
+		if (!ui.inMenu && playlists->onPage() && playlists->key(b, p)) return false;
 		if (!ui.inMenu && atHome()) return homeView->homeKey(b, p);
 		// All recent: X the focused card's More sheet (Home's own things are its right column), else Home's; Y the same
 		// card menu (kept, as it was the key for it)
@@ -2269,6 +2272,8 @@ namespace bp
 
 	bool Ui::Browse::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
+		// the redesigned playlist pages: their rows, keys and bars test the Rects their draw used
+		if (!ui.inMenu && playlists->onPage() && playlists->pointer(pt, x, y, p)) return false;
 		// (its downs come late: after the header's "<" and the empty page's button; the rest where the readers' do)
 		if (pt.kind != Pointer::Down)
 		{
@@ -2335,6 +2340,9 @@ namespace bp
 		}
 		// Files has its own page (the redesign); Home, Playlists, Network and All recent keep Ui's list
 		if (filesPage()) { drawFiles(p); return; }
+		// a playlist and Liked draw their own redesigned pages (inside lay::shell's body)
+		if (!ui.inMenu && (browseDir == PLROOT || isPlDir(browseDir))) { playlists->draw(p); return; }
+		// the list's page, as the track lists' (drawTracks: Home, a section's header, the rows, the footer)
 		ui.drawTracks(p);
 	}
 
@@ -2351,6 +2359,8 @@ namespace bp
 			for (auto& path : fileSelPaths) s += "|" + path;
 			for (auto& path : clipPaths) s += "|c" + path;
 		}
+		// the playlist pages' focus over the rows (the keys row, a bar's key under a finger)
+		s += "|plf" + std::to_string(playlists->keyFocus) + "," + std::to_string(playlists->barPress) + "," + std::to_string(playlists->keyPress);
 		if (clipOp != CLIP_NONE) s += "|clip" + std::to_string(clipOp) + clipPath + (clipCanPaste() ? "p" : "");
 		// Home: the focus, the strip's scroll, a finger on a card or a tile, the tiles' lines (the connections)
 		if (atHome())

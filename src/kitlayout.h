@@ -366,6 +366,25 @@ namespace bp
 		};
 		Shell shell(bool mini);
 
+		// ---- A playlist's page (docs/redesign: playlists, playlist, playlist-select, playlist-move, liked) ----
+		// Inside `body`: an optional row of keys (Play, Shuffle and Add; Liked has no Add), then the rows, and at the
+		// foot an optional select bar (3 keys) or move bar (2). Rows are 52 tall, 2 apart; the bar 56, 6 above the
+		// rows' end. The rows that fit are `rows`; the caller's scroll picks which.
+		constexpr int PL_KEYS_H = 56, PL_ROW_H = 52, PL_ROW_PITCH = 54, PL_BAR_H = 56, PL_FOOT_GAP = 6, PL_PAD = 8, PL_ADD_W = 64;
+		struct PlaylistPage
+		{
+			Box area;	// the body given
+			int keys = 0;	// 0, 2 (Play, Shuffle) or 3 (and Add)
+			Box key[3];
+			Box list;	// the rows' strip
+			Box bar;	// w 0 without one
+			int barKeys = 0;	// 0, 3 (Remove, Move, Add to) or 2 (Put here, Cancel)
+			Box barKey[3];
+			int rowsY = 0, rows = 0;
+			Box row(int i) const { return {list.x, rowsY + i * PL_ROW_PITCH, list.w, PL_ROW_H}; }
+		};
+		PlaylistPage playlistPage(Box body, int keys, int barKeys);
+
 		// ---- Preview pane: the top screen with nothing playing (its own 640x480 units) ----
 		// The brand mark top left, then a text column (from 74, 44 from the sides) or, with a cover, the cover at
 		// 36, 66 (196 x 278) and the text column from 262

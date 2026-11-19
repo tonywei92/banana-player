@@ -459,7 +459,22 @@ namespace bp
 		SDL_Color ground = row.pressed ? PRESSED : row.focused ? BUTTON : row.under;
 		SDL_Color ink = off(row.danger ? DANGER : row.focused || row.lit ? ACCENT : TEXT, row.off);
 		int cy = r.y + r.h / 2, x = r.x + 12, right = r.x + r.w - 12;
-		if (row.glyph)
+		if (row.tick)
+		{
+			// a select mode's box, in the place before the row's own lead
+			ui.drawGlyphMid(row.tickOn ? G_BOX_ON : G_BOX, x + 11, cy, off(row.tickOn ? ACCENT : DIM, row.off));
+			x += 22 + 11;
+		}
+		if (row.numberThenIcon && row.glyph)
+		{
+			// a playlist's row: its place, then what it is, then its name (the mock-up's "3  ♪  Sunny Peel")
+			if (row.leadGlyph) ui.drawGlyphMid(*row.leadGlyph, x + 10, cy, off(ACCENT, row.off));
+			else ui.drawTextMid(row.lead, F_P14, off(DIM, row.off), x + 10, cy, 20, 2);
+			x += 20 + 8;
+			ui.drawGlyphMid(*row.glyph, x + 10, cy, ink);
+			x += 20 + 11;
+		}
+		else if (row.glyph)
 		{
 			ui.drawGlyphMid(*row.glyph, x + 10, cy, ink);
 			x += 20 + 11;
@@ -484,18 +499,37 @@ namespace bp
 			toggle(right - 40, cy, row.trail == Trail::SwitchOn);
 			right -= 40 + 9;
 		}
+		else if (row.trail == Trail::Grip)
+		{
+			// 30 x 44 at the row's right: a finger's hold, yellow on a lifted row
+			ui.drawGlyphMid(G_GRIP, right - 15, cy, off(row.lit || row.focused ? ACCENT : DIM, row.off));
+			right -= 30 + 3;
+		}
+		else if (row.trail == Trail::Heart)
+		{
+			// a Liked item's heart ends the row; a tap on it unlikes (the row's touch decides)
+			ui.drawGlyphMid(G_HEART_S, right - 9, cy, off(ACCENT, row.off));
+			right -= 18 + 9;
+		}
 		if (!row.key.empty())
 		{
 			int w = capsW(row.key);
 			caps(row.key, right - w, cy, off(ACCENT, row.off), ground);
 			right -= w + 9;
 		}
+		int noteW = 0;
 		if (!row.note.empty())
 		{
-			int w = std::min(r.w / 2, textW(row.note, F_I12));
+			noteW = std::min(r.w / 2, textW(row.note, F_I12));
 			ui.drawTextMid(row.note, F_I12, off(row.focused ? DIM_ON : DIM, row.off), right, cy, r.w / 2, 1);
-			right -= w + 9;
 		}
+		if (row.heart)
+		{
+			// the note's left, as the mock-up's liked row shows it
+			ui.drawGlyphMid(G_HEART_S, right - noteW - 10, cy, off(ACCENT, row.off));
+			right -= noteW + 10 + 9;
+		}
+		else if (noteW) right -= noteW + 9;
 		if (!row.pill.empty()) right -= pill(right, cy, row.pill, row.tone) + 9;
 		// the focused row's name: the Title marquee, one pass (the cursor rested 1.5 s first: its rest)
 		if (row.focused && !row.off) ui.drawMarquee(row.name, row.font, ink, x, cy, std::max(1, right - x), BUTTON, 1);

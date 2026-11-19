@@ -17,6 +17,7 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
 #include "ui_home.h"
@@ -194,6 +195,580 @@ namespace bp
 		ui.scroll = s;
 		ui.browse->fitList();
 		ui.browse->browseVersion++;
+	}
+
+	// ---- the redesigned pages (docs/redesign: playlists, playlist, playlist-select, playlist-move, liked) ----
+
+	bool Ui::Playlists::onPage() const
+	{
+		if (ui.page != Page::Browse || ui.inMenu) return false;
+		return ui.browse->browseDir == PLROOT || isPlDir(ui.browse->browseDir);
+	}
+
+	lay::PlaylistPage Ui::Playlists::pageLayout(const Player& p) const
+	{
+		lay::Shell sh = lay::shell(ui.miniBarShown(p));
+		bool inPl = isPlDir(ui.browse->browseDir);
+		bool empty = !inPl || !plLoaded || plCur.entries.empty();
+		int keys = inPl && !empty && selMode == SEL_NONE ? (ui.plIsLiked(plCur.file) ? 2 : 3) : 0;
+		int bar = 0;
+		if (selMode == SEL_EDIT && inPl && !empty) bar = moving ? 2 : 3;
+		return lay::playlistPage(sh.body, keys, bar);
+	}
+
+	void Ui::Playlists::syncFocus(const Player& p)
+	{
+		// the page it was left on keeps its cursor; a playlist opened afresh: its playing row if it plays from
+		// here, else the Play key (the mock-up's two openings)
+		if (!isPlDir(ui.browse->browseDir)) { focusFor.clear(); return; }
+		lay::PlaylistPage l = pageLayout(p);
+		rowsY = l.rowsY;
+		rowsShown = l.rows;
+		if (focusFor == plCur.file)
+		{
+			ui.scroll = std::clamp(ui.scroll, 0, std::max(0, (int)plCur.entries.size() - l.rows));
+			return;
+		}
+		focusFor = plCur.file;
+		keyFocus = -1;
+		keyPress = barPress = plPressRow = -1;
+		int at = -1;
+		for (int i = 0; i < (int)ui.browse->browsePaths.size() && at < 0; i++)
+			if (ui.rowChip(i)) at = i;
+		if (at >= 0)
+		{
+			ui.cursor = at;
+			ui.scroll = std::clamp(at - l.rows + 1, 0, std::max(0, (int)plCur.entries.size() - l.rows));
+		}
+		else
+		{
+			ui.cursor = plCur.entries.empty() ? -1 : 0;
+			ui.scroll = 0;
+			if (!plCur.entries.empty()) keyFocus = 0;
+		}
+	}
+
+	std::string Ui::Playlists::plTitle(const Player&) const
+	{
+		if (selMode == SEL_EDIT)
+		{
+			int n = (int)plSel.size();
+			if (moving) return "Moving " + std::to_string(n);
+			return n ? std::to_string(n) + " selected" : "Select items";
+		}
+		if (ui.browse->browseDir == PLROOT) return "Playlists";
+		return plCur.name.empty() ? "Playlist" : plCur.name;
+	}
+
+	std::string Ui::Playlists::plCrumb(const Player&) const
+	{
+		auto items = [](size_t n) { return std::to_string(n) + (n == 1 ? " item" : " items"); };
+		if (ui.browse->browseDir == PLROOT)
+		{
+			size_t n = 0;
+			if (plStore)
+				for (auto& i : plStore->list())
+					if (!i.builtin) n++;
+			return n ? std::to_string(n) + (n == 1 ? " playlist" : " playlists") : "No playlists yet";
+		}
+		std::string crumb = "Playlists  \xE2\x80\xBA  " + plCur.name;
+		if (selMode == SEL_EDIT)
+		{
+			if (moving && !plSel.empty())
+			{
+				int first = *plSel.begin() + 1, last = *plSel.rbegin() + 1;
+				crumb += first == last ? "  \xC2\xB7  to place " + std::to_string(first) + " of " + std::to_string(plCur.entries.size())
+					: "  \xC2\xB7  to places " + std::to_string(first) + " and " + std::to_string(last) + " of " + std::to_string(plCur.entries.size());
+			}
+			return crumb;
+		}
+		double total = 0;
+		for (auto& e : plCur.entries)
+			if (e.duration > 0) total += e.duration;
+		crumb += "  \xC2\xB7  " + items(plCur.entries.size());
+		if (total > 0) crumb += "  \xC2\xB7  " + formatTime(total);
+		return crumb;
+	}
+
+	std::vector<Ui::Hint> Ui::Playlists::plHints(const Player& p) const
+	{
+		if (selMode == SEL_EDIT)
+		{
+			if (moving) return {{"UP/DOWN", "Move"}, {"LEFT/RIGHT", "Page"}, {"L2/R2", "Top/bottom"}, {"A", "Put here"}, {"B", "Cancel"}};
+			return {{"A", "Tick"}, {"SELECT", "All"}, {"Y", "Move"}, {"X", "More"}, {"B", "Done"}};
+		}
+		if (ui.browse->browseDir == PLROOT) return {{"A", "Open"}, {"X", "More"}, {"B", "Home"}, {"L/R", "Sections"}};
+		if (!plLoaded || plCur.entries.empty())
+			return ui.plIsLiked(plCur.file) ? std::vector<Hint>{{"A", "Browse Files"}, {"B", "Playlists"}, {"L/R", "Sections"}}
+				: std::vector<Hint>{{"A", "Add files"}, {"Y", "Add folder"}, {"B", "Playlists"}, {"L/R", "Sections"}};
+		std::vector<Hint> h{{"A", "Play"}, {"X", "More"}, {"Y", "Select"}, {"SELECT", "Now playing"}, {"B", "Playlists"}};
+		if (p.playing()) h[0] = {"A", "Play from here"};
+		return h;
+	}
+
+	void Ui::Playlists::frame(const Player& p)
+	{
+		// the page's header and hint bar, in one place: the merge swaps this for the shared Ui::Shell
+		lay::Shell sh = lay::shell(ui.miniBarShown(p));
+		ui.drawTextMid(plTitle(p), F_P28, TEXT, sh.body.x + lay::MARGIN, 22, sh.main.w - 2 * lay::MARGIN);
+		ui.drawTextMid(plCrumb(p), F_I12, DIM, sh.body.x + lay::MARGIN, 44, sh.main.w - 2 * lay::MARGIN);
+		ui.kit->hints(plHints(p));
+	}
+
+	void Ui::Playlists::addSheet(Player& p)
+	{
+		// the Add key's two ways (docs/redesign "playlist": Add files… / Add folder…)
+		(void)p;
+		std::string file = plCur.file, name = plCur.name;
+		ui.openMore([this, file, name](const Player&) {
+			MoreSpec m;
+			m.glyph = &G_PLUS;
+			m.title = "Add to " + quoted(name);
+			m.rows.push_back({&G_FOLDER, "Add files\xE2\x80\xA6", "Videos and songs you tick", "", [this, file](Player& p) {
+				selStart(SEL_ADD, file);
+				ui.browse->switchTab(TAB_LOCAL, p);
+				return false;
+			}});
+			m.rows.push_back({&G_FOLDER, "Add folder\xE2\x80\xA6", "Its videos and songs", "", [this, file](Player& p) {
+				selStart(SEL_PICK, file);
+				ui.browse->switchTab(TAB_LOCAL, p);
+				return false;
+			}});
+			return m;
+		});
+	}
+
+	void Ui::Playlists::actKey(int i, Player& p)
+	{
+		if (i == 0 || i == 1)
+		{
+			if (plCur.entries.empty()) { p.osd(quoted(plCur.name) + " is empty"); return; }
+			plPlay(plCur, 0, i == 1, p);
+			return;
+		}
+		if (i == 2) addSheet(p);
+	}
+
+	void Ui::Playlists::barAct(int i, Player& p)
+	{
+		if (moving)
+		{
+			if (i == 0) moveEnd(true, p);
+			else if (i == 1) moveEnd(false, p);
+			return;
+		}
+		if (i == 0) selAct(p);	// Remove (twice), or Unlike in Liked
+		else if (i == 1) { if (!plSel.empty()) { moveFromMenu = false; moveStart(p); } }
+		else if (i == 2)
+		{
+			// Add to…: the picker, for the ticked items themselves
+			if (plSel.empty()) return;
+			pickerEdit = true;
+			pickerSel.clear();
+			for (int k : plSel)
+				if (k >= 0 && k < (int)plCur.entries.size()) pickerSel.push_back(plCur.entries[k]);
+			openPicker("", p);
+		}
+	}
+
+	void Ui::Playlists::draw(const Player& p)
+	{
+		if (!onPage()) return;
+		syncFocus(p);
+		lay::PlaylistPage l = pageLayout(p);
+		rowsY = l.rowsY;
+		rowsShown = l.rows;
+		frame(p);
+		Kit& k = *ui.kit;
+		bool inPl = isPlDir(ui.browse->browseDir);
+
+		if (!inPl)
+		{
+			int n = (int)ui.browse->browseRows.size();
+			if (n == 0 || (n == 1 && ui.browse->browseRows[0].id < 0))
+			{
+				lay::EmptyState es = lay::emptyState(l.area, 1, plStore ? 1 : 0);
+				Kit::Empty e;
+				e.glyph = &G_PLAYLIST;
+				e.title = plStore ? "No playlists yet" : "Playlists aren't available";
+				e.lines = {plStore ? "Gather videos and songs to play in your order." : "There's no folder to keep them in."};
+				e.key1 = plStore ? "New playlist" : "";
+				e.glyph1 = &G_PLUS;
+				e.hotkeys = p.settings.buttonHotkeys;
+				k.emptyState(es, e);
+				return;
+			}
+			ui.scroll = std::clamp(ui.scroll, 0, std::max(0, n - l.rows));
+			for (int i = ui.scroll; i < n && i < ui.scroll + l.rows; i++)
+			{
+				const auto& row = ui.browse->browseRows[i];
+				const std::string& file = i < (int)ui.browse->browsePaths.size() ? ui.browse->browsePaths[i] : std::string();
+				Kit::Row r;
+				r.font = F_SMALL;
+				r.under = BG;
+				r.name = row.label;
+				r.note = row.note;
+				r.focused = ui.cursor == i;
+				if (row.id == PL_NEW) { r.glyph = &G_PLUS; r.lit = false; }
+				else if (ui.plIsLiked(file)) r.glyph = &G_HEART;
+				else r.glyph = &G_PLAYLIST;
+				if (row.id == PL_ROW && p.playing() && p.source().kind == SourceKind::Playlist && p.source().id == file)
+				{
+					r.pill = "Playing";
+					r.tone = Kit::Pill::Live;
+				}
+				if (row.id == PL_NEW) r.note.clear();
+				k.row(l.row(i - ui.scroll), r);
+			}
+			return;
+		}
+
+		if (!plLoaded)
+		{
+			lay::EmptyState es = lay::emptyState(l.area, 1, 0);
+			Kit::Empty e;
+			e.glyph = &G_PLAYLIST;
+			e.title = "This playlist can't be opened";
+			e.lines = {"Was it deleted?"};
+			k.emptyState(es, e);
+			return;
+		}
+		if (plCur.entries.empty())
+		{
+			bool liked = ui.plIsLiked(plCur.file);
+			lay::EmptyState es = lay::emptyState(l.area, 2, liked ? 1 : 2);
+			Kit::Empty e;
+			e.glyph = liked ? &G_HEART_O : &G_PLAYLIST;
+			e.title = liked ? "Nothing liked yet" : quoted(plCur.name) + " is empty";
+			e.lines = liked ? std::vector<std::string>{"Press L3 on the player to like what plays.", "What you like is kept here, to play or shuffle."}
+				: std::vector<std::string>{"Add videos and songs from your cards or the network."};
+			e.key1 = liked ? "Browse Files" : "Add files";
+			e.key2 = liked ? "" : "Add folder";
+			e.glyph1 = &G_FOLDER;
+			e.glyph2 = liked ? nullptr : &G_FOLDER;
+			e.hotkeys = p.settings.buttonHotkeys;
+			k.emptyState(es, e);
+			return;
+		}
+
+		// the keys over the list
+		for (int i = 0; i < l.keys; i++)
+		{
+			Kit::Key key;
+			key.tone = i == 0 ? Kit::Tone::Primary : Kit::Tone::Normal;
+			key.glyph = i == 0 ? &G_PLAY : i == 1 ? &G_SHUFFLE : &G_PLUS;
+			key.label = i == 0 ? "Play" : i == 1 ? "Shuffle" : "";
+			key.key = i == 0 && keyFocus == 0 ? "A" : i == 1 && keyFocus == 1 ? "Y" : "";
+			key.focused = keyFocus == i;
+			key.pressed = keyPress == i;
+			k.key(l.key[i], key);
+		}
+
+		int n = (int)plCur.entries.size();
+		ui.scroll = std::clamp(ui.scroll, 0, std::max(0, n - l.rows));
+		bool likedPl = ui.plIsLiked(plCur.file);
+		bool sel = selMode == SEL_EDIT;
+		for (int i = ui.scroll; i < n && i < ui.scroll + l.rows; i++)
+		{
+			const PlaylistEntry& e = plCur.entries[i];
+			Rect r = l.row(i - ui.scroll);
+			bool lifted = moving && plSel.count(i);
+			if (lifted)
+			{
+				// the block, set in 10 units: a shadow under it, a lifted ground, the grips in yellow
+				ui.fillRound({r.x + 12, r.y + 5, r.w - 2, r.h}, PRESSED, R_BUTTON);
+				r.x += 10;
+			}
+			Kit::Row row;
+			row.font = F_SMALL;
+			row.under = BG;
+			row.lead = std::to_string(i + 1);
+			row.numberThenIcon = true;
+			row.glyph = isAudioFile(e.path) ? &G_NOTE : &G_FILM;
+			row.name = e.title.empty() ? entryTitle(e.path) : e.title;
+			row.focused = lifted || (!sel && keyFocus < 0 && ui.cursor == i);
+			row.lit = lifted;
+			int miss = plMissingAt(i);
+			int chip = ui.rowChip(i);
+			if (chip)
+			{
+				row.leadGlyph = &G_PLAY;
+				static const char* NOW[] = {"", "Now", "Paused", "In browser", "Stopped"};
+				row.pill = NOW[std::clamp(chip, 0, 4)];
+				row.tone = chip == 1 ? Kit::Pill::Live : Kit::Pill::Fact;
+				const PlaylistEntry& e2 = plCur.entries[i];
+				double len = e2.duration > 0 ? e2.duration : p.duration;
+				row.note = formatTime(ui.shownPosition(p)) + " / " + (len > 0 ? formatTime(len) : std::string("\xE2\x80\x93"));
+			}
+			else if (miss)
+			{
+				row.pill = "Gone";
+				row.tone = Kit::Pill::Bad;
+				row.off = true;
+				row.note = miss == 2 ? "connection deleted" : "not found";
+			}
+			else if (e.duration > 0) row.note = formatTime(e.duration);
+			else row.note = i < (int)ui.browse->browseRows.size() ? ui.browse->browseRows[i].note : "";
+			if (plStore && plStore->isLiked(e.path) && !likedPl) row.heart = true;
+			if (sel)
+			{
+				row.tick = true;
+				row.tickOn = plSel.count(i) > 0;
+				row.trail = Kit::Trail::Grip;
+			}
+			else if (likedPl) row.trail = Kit::Trail::Heart;
+			k.row(r, row);
+		}
+		// the drag's landing line
+		if (sel && plDrag.on && !dragSel.empty() && dragTarget() != *dragSel.begin())
+		{
+			int slot = dragSlot();
+			if (slot >= ui.scroll && slot <= ui.scroll + l.rows)
+				ui.fillRound({l.list.x, rowsY + (slot - ui.scroll) * lay::PL_ROW_PITCH - 3, l.list.w, 2}, ACCENT, 1);
+		}
+
+		// the select / move bar
+		if (!l.barKeys) return;
+		bool liked = ui.plIsLiked(plCur.file);
+		for (int i = 0; i < l.barKeys; i++)
+		{
+			Kit::Key key;
+			if (moving)
+			{
+				key.tone = i == 0 ? Kit::Tone::Primary : Kit::Tone::Normal;
+				key.glyph = i == 0 ? &G_CHECK : &G_CROSS;
+				key.label = i == 0 ? "Put here" : "Cancel";
+				key.key = i == 0 ? "A" : "B";
+			}
+			else
+			{
+				key.tone = i == 0 ? Kit::Tone::Danger : Kit::Tone::Normal;
+				key.glyph = i == 0 ? (liked ? &G_HEART_O : &G_MINUS) : i == 1 ? &G_MOVE : &G_PLUS;
+				key.label = i == 0 ? (removeArmed ? (liked ? "Again: unlike " : "Again: remove ") + std::to_string((int)plSel.size())
+						: std::string(liked ? "Unlike" : "Remove"))
+					: i == 1 ? "Move" : "Add to\xE2\x80\xA6";
+				key.key = i == 1 ? "Y" : "";
+			}
+			key.focused = false;
+			key.pressed = barPress == i;
+			key.off = !moving && i == 0 && plSel.empty();
+			k.key(l.barKey[i], key);
+		}
+	}
+
+	bool Ui::Playlists::key(Button b, Player& p)
+	{
+		if (!onPage()) return false;
+		lay::PlaylistPage l = pageLayout(p);
+		rowsY = l.rowsY;
+		rowsShown = l.rows;
+		bool inPl = isPlDir(ui.browse->browseDir);
+		int n = inPl ? (int)plCur.entries.size() : (int)ui.browse->browseRows.size();
+		if (n == 1 && !inPl && ui.browse->browseRows[0].id < 0) n = 0;
+		if (n <= 0)
+		{
+			// the empty page's keys (A: its first key; Y: the second)
+			if (b == Button::A)
+			{
+				if (inPl) { if (plLoaded) { selStart(SEL_ADD, plCur.file); ui.browse->switchTab(TAB_LOCAL, p); } }
+				else if (plStore) plNameOpen(false, "", "");
+				else ui.browse->doEmptyAction(p);
+			}
+			else if (b == Button::Y && inPl && plLoaded && !ui.plIsLiked(plCur.file))
+			{
+				selStart(SEL_PICK, plCur.file);
+				ui.browse->switchTab(TAB_LOCAL, p);
+			}
+			else return false;
+			return true;
+		}
+
+		if (selMode == SEL_EDIT)
+		{
+			// the bar's and Move's keys are selKey's; A ticks, the arrows walk the rows (the list's own keys come after)
+			if (moving) return false;
+			if (b == Button::A && ui.cursor >= 0) { selChoose(ui.cursor, p); return true; }
+			if (b == Button::Up) ui.cursor = (std::max(ui.cursor, 0) + n - 1) % n;
+			else if (b == Button::Down) ui.cursor = (std::max(ui.cursor, 0) + 1) % n;
+			else if (b == Button::Left) ui.cursor = std::max(0, ui.cursor - std::max(1, rowsShown));
+			else if (b == Button::Right) ui.cursor = std::min(n - 1, ui.cursor + std::max(1, rowsShown));
+			else return false;
+			if (ui.cursor < ui.scroll) ui.scroll = ui.cursor;
+			if (ui.cursor >= ui.scroll + std::max(1, rowsShown)) ui.scroll = ui.cursor - std::max(1, rowsShown) + 1;
+			ui.scroll = std::clamp(ui.scroll, 0, std::max(0, n - rowsShown));
+			return true;
+		}
+
+		// a playlist's keys row (Liked has no Add)
+		if (inPl && plLoaded && !plCur.entries.empty())
+		{
+			int kc = ui.plIsLiked(plCur.file) ? 2 : 3;
+			if (keyFocus >= 0)
+			{
+				if (b == Button::Left) { keyFocus = (keyFocus + kc - 1) % kc; return true; }
+				if (b == Button::Right) { keyFocus = (keyFocus + 1) % kc; return true; }
+				if (b == Button::Up) return true;
+				if (b == Button::A) { actKey(keyFocus, p); return true; }
+				if (b == Button::Down) { keyFocus = -1; return true; }
+				if (b == Button::Y) { selStart(SEL_EDIT, ""); return true; }
+				return false;	// X, B, SELECT: the page's own
+			}
+			if (b == Button::Up && ui.cursor <= 0) { keyFocus = 0; return true; }
+		}
+		if (inPl)
+		{
+			// Y starts selecting (the item's own menu stays on X, or a hold)
+			if (b == Button::Y) { selStart(SEL_EDIT, ""); return true; }
+			if (b == Button::X)
+			{
+				bool overKeys = keyFocus >= 0 || ui.cursor < 0;
+				ui.openBrowseMenu(overKeys ? -1 : ui.cursor, overKeys ? MENU_X : MENU_Y);
+				return true;
+			}
+		}
+		else if (!inPl && b == Button::X)
+		{
+			// the list of playlists: a row's menu (Play, Shuffle, Rename, Delete), else New playlist
+			bool onRow = ui.cursor >= 0 && ui.cursor < (int)ui.browse->browseRows.size() && ui.browse->browseRows[ui.cursor].id == PL_ROW;
+			ui.openBrowseMenu(onRow ? ui.cursor : -1, onRow ? MENU_Y : MENU_X);
+			return true;
+		}
+		if (b == Button::A) { if (n) ui.choose(ui.cursor, p); return true; }
+		// the rows: the cursor and the scroll, as many as the body shows
+		int first = 0;
+		if (b == Button::Up) ui.cursor = (std::max(ui.cursor, first) - first + n - 1) % n + first;
+		else if (b == Button::Down) ui.cursor = (std::max(ui.cursor, first) - first + 1) % n + first;
+		else if (b == Button::Left) ui.cursor = std::max(first, ui.cursor - std::max(1, rowsShown));
+		else if (b == Button::Right) ui.cursor = std::min(n - 1 + first, ui.cursor + std::max(1, rowsShown));
+		else return false;
+		if (ui.cursor < ui.scroll) ui.scroll = ui.cursor;
+		if (ui.cursor >= ui.scroll + std::max(1, rowsShown)) ui.scroll = ui.cursor - std::max(1, rowsShown) + 1;
+		ui.scroll = std::clamp(ui.scroll, 0, std::max(0, n - rowsShown));
+		return true;
+	}
+
+	bool Ui::Playlists::pointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		if (!onPage()) return false;
+		lay::PlaylistPage l = pageLayout(p);
+		rowsY = l.rowsY;
+		rowsShown = l.rows;
+		bool inPl = isPlDir(ui.browse->browseDir);
+		int n = inPl ? (int)plCur.entries.size() : (int)ui.browse->browseRows.size();
+
+		// the empty page's keys
+		if (inPl && (!plLoaded || plCur.entries.empty()))
+		{
+			if (pt.kind == Pointer::Down) return true;
+			if (pt.kind != Pointer::Up) return false;
+			bool liked = ui.plIsLiked(plCur.file);
+			lay::EmptyState es = lay::emptyState(l.area, 2, liked ? 1 : 2);
+			if (es.key[0].hit(x, y))
+			{
+				if (liked) ui.browse->openSection(TAB_LOCAL, p);
+				else { selStart(SEL_ADD, plCur.file); ui.browse->switchTab(TAB_LOCAL, p); }
+			}
+			else if (es.keys > 1 && es.key[1].hit(x, y))
+			{
+				selStart(SEL_PICK, plCur.file);
+				ui.browse->switchTab(TAB_LOCAL, p);
+			}
+			return true;
+		}
+		if (!inPl && (n == 0 || (n == 1 && ui.browse->browseRows[0].id < 0)))
+		{
+			if (pt.kind == Pointer::Down) return true;
+			if (pt.kind != Pointer::Up || !plStore) return false;
+			lay::EmptyState es = lay::emptyState(l.area, 1, 1);
+			if (es.key[0].hit(x, y)) plNameOpen(false, "", "");
+			return true;
+		}
+
+		// the select / move bar
+		if (l.barKeys)
+		{
+			if (pt.kind == Pointer::Down)
+			{
+				barPress = -1;
+				for (int i = 0; i < l.barKeys; i++)
+					if (l.barKey[i].hit(x, y)) barPress = i;
+				if (barPress >= 0) return true;
+			}
+			else if (pt.kind == Pointer::Up)
+			{
+				int i = barPress;
+				barPress = -1;
+				if (i >= 0 && l.barKey[i].hit(x, y)) barAct(i, p);
+				return true;
+			}
+		}
+
+		// the keys row
+		if (l.keys)
+		{
+			if (pt.kind == Pointer::Down)
+			{
+				for (int i = 0; i < l.keys; i++)
+					if (l.key[i].hit(x, y)) { keyPress = i; keyFocus = i; return true; }
+			}
+			else if (pt.kind == Pointer::Up && keyPress >= 0)
+			{
+				int i = keyPress;
+				keyPress = -1;
+				if (i < l.keys && l.key[i].hit(x, y)) actKey(i, p);
+				return true;
+			}
+		}
+
+		// the rows
+		if (pt.kind == Pointer::Down)
+		{
+			plPressRow = -1;
+			plTouchScrolled = false;
+			keyFocus = -1;
+			if (y >= rowsY && y < rowsY + l.rows * lay::PL_ROW_PITCH)
+			{
+				int at = ui.scroll + (y - rowsY) / lay::PL_ROW_PITCH;
+				if (at >= 0 && at < n && (y - rowsY) % lay::PL_ROW_PITCH < lay::PL_ROW_H)
+				{
+					plPressRow = at;
+					plTouchY = y;
+					plScrollStart = ui.scroll;
+					ui.cursor = at;
+					if (selMode == SEL_EDIT && x >= l.list.x + l.list.w - 34 && selTickable(at)) { dragBegin(at, y, p); return true; }
+					ui.dropTouch();
+				}
+			}
+			return true;	// (nothing else on the page answers a fresh finger)
+		}
+		if (pt.kind == Pointer::Move && plPressRow >= 0)
+		{
+			if (!plTouchScrolled && std::abs(y - plTouchY) > 12) plTouchScrolled = true;
+			if (plTouchScrolled)
+			{
+				int moved = (int)std::lround((plTouchY - y) / (double)lay::PL_ROW_PITCH);
+				ui.scroll = std::clamp(plScrollStart + moved, 0, std::max(0, n - l.rows));
+			}
+			return true;
+		}
+		if (pt.kind == Pointer::Up && plPressRow >= 0)
+		{
+			int at = plPressRow;
+			plPressRow = -1;
+			if (plTouchScrolled || at < 0 || at >= n) return true;
+			Rect r = l.row(at - ui.scroll);
+			if (at >= ui.scroll && at < ui.scroll + l.rows && !r.hit(x, y)) return true;
+			if (inPl && ui.plIsLiked(plCur.file) && x >= r.x + r.w - 34)
+			{
+				// a Liked row's heart: unlike (L3's job on the player)
+				const PlaylistEntry& e = plCur.entries[at];
+				ui.setLikedPath(p, e.path, e.title, e.duration, false);
+				return true;
+			}
+			ui.choose(at, p);
+			return true;
+		}
+		return false;
 	}
 
 	void Ui::Playlists::plDelete(const std::string& file, Player& p)
@@ -536,11 +1111,13 @@ namespace bp
 		if (b != (adding ? Button::X : Button::B)) dropArmed = 0;
 		if (moving)
 		{
-			// the block: a row, a page; A drops it, B puts it back
+			// the block: a row, a page, or the ends; A drops it, B puts it back
 			switch (b)
 			{
 			case Button::Up: case Button::Down: moveStep(b == Button::Up ? -1 : 1, 1, p); break;
 			case Button::Left: case Button::Right: moveStep(b == Button::Left ? -1 : 1, ROWS_SHOWN, p); break;
+			case Button::L2: moveStep(-1, (int)plCur.entries.size(), p); break;
+			case Button::R2: moveStep(1, (int)plCur.entries.size(), p); break;
 			case Button::A: moveEnd(true, p); break;
 			case Button::B: moveEnd(false, p); break;
 			default: break;
@@ -593,7 +1170,7 @@ namespace bp
 
 	void Ui::Playlists::moveStart(Player& p)
 	{
-		if (plSel.empty() || !plLoaded || ui.plIsLiked(plCur.file)) return;
+		if (plSel.empty() || !plLoaded) return;
 		moveOrig = plCur.entries;
 		moveOrigSel = plSel;
 		// the ticked ones together, at the first one's place, at once
@@ -660,7 +1237,7 @@ namespace bp
 
 	void Ui::Playlists::dragBegin(int row, int y, Player& p)
 	{
-		if (ui.plIsLiked(plCur.file)) return;	// Liked has no order of its own to change
+		// (Liked is an ordinary .m3u in the state folder: its order is as safe to change as any playlist's)
 		// a ticked row takes the ticked ones with it, gathered at once; else the row alone
 		std::set<int> block = plSel.count(row) ? plSel : std::set<int>{row};
 		moveRemap = gatherSelection(plCur.entries, block);
@@ -677,7 +1254,7 @@ namespace bp
 	int Ui::Playlists::dragSlot() const
 	{
 		int n = (int)ui.browse->browseRows.size();
-		return std::clamp(ui.scroll + (int)std::lround((plDrag.y - ROW_Y) / (double)ROW_H), 0, n);
+		return std::clamp(ui.scroll + (int)std::lround((plDrag.y - rowsY) / (double)lay::PL_ROW_PITCH), 0, n);
 	}
 
 	int Ui::Playlists::dragTarget() const
@@ -716,6 +1293,14 @@ namespace bp
 	{
 		if (!plStore) return;
 		plFlush(p);
+		pickerEdit = selMode == SEL_EDIT;
+		if (pickerEdit)
+		{
+			// the ticked items themselves (Add to… on the select bar), not files ticked in Files
+			pickerSel.clear();
+			for (int k : plSel)
+				if (k >= 0 && k < (int)plCur.entries.size()) pickerSel.push_back(plCur.entries[k]);
+		}
 		if (!one) pickerOne.clear();
 		pickerList = plStore->addTargets();	// not Liked: only the Like button adds there
 		// the one changed last first (as good as the one last added to), then by name as listed
@@ -767,6 +1352,16 @@ namespace bp
 
 	void Ui::Playlists::pickerAdd(const std::string& dest, Player& p)
 	{
+		if (pickerEdit)
+		{
+			// the playlist's ticked items, into another playlist; the ticks stay for another
+			if (addTo(dest, pickerSel, 0, plCur.name, false, p))
+			{
+				pickerEdit = false;
+				pickerSel.clear();
+			}
+			return;
+		}
 		if (!pickerOne.empty())
 		{
 			// the one file (addTo shows the card and lights the Add square)
@@ -787,31 +1382,33 @@ namespace bp
 	bool Ui::Playlists::pickerKey(Button b, Player& p)
 	{
 		int n = (int)pickerList.size() + 1;
+		int shown = pickerShown();
 		if (b != Button::A) pickerArmed = -1;	// moved off it: asked again next time
 		switch (b)
 		{
 		case Button::Up: pickerCursor = (pickerCursor + n - 1) % n; break;
 		case Button::Down: pickerCursor = (pickerCursor + 1) % n; break;
-		case Button::Left: pickerCursor = std::max(0, pickerCursor - PICKER_SHOWN); break;
-		case Button::Right: pickerCursor = std::min(n - 1, pickerCursor + PICKER_SHOWN); break;
+		case Button::Left: pickerCursor = std::max(0, pickerCursor - shown); break;
+		case Button::Right: pickerCursor = std::min(n - 1, pickerCursor + shown); break;
 		case Button::A: pickerChoose(pickerCursor, p); return true;
 		case Button::B: pickerOpen = false; return true;
 		default: return true;
 		}
 		if (pickerCursor < pickerScroll) pickerScroll = pickerCursor;
-		if (pickerCursor >= pickerScroll + PICKER_SHOWN) pickerScroll = pickerCursor - PICKER_SHOWN + 1;
+		if (pickerCursor >= pickerScroll + shown) pickerScroll = pickerCursor - shown + 1;
 		return true;
 	}
 
 	bool Ui::Playlists::pickerPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		int n = (int)pickerList.size() + 1;
+		int shown = pickerShown();
 		if (pt.kind == Pointer::Down)
 		{
 			// outside the box: closed; on a row, chosen as the finger lifts there (a drag scrolls)
 			if (!pickerBox().hit(x, y)) { pickerOpen = false; ui.swallowTouch = true; return false; }
 			ui.pressedBtn = -1;
-			for (int i = pickerScroll; i < n && i < pickerScroll + PICKER_SHOWN; i++)
+			for (int i = pickerScroll; i < n && i < pickerScroll + shown; i++)
 				if (pickerRow(i).hit(x, y)) ui.pressedBtn = PICK_ROW + i;
 			pickerTouchY = y;
 			pickerScrollStart = pickerScroll;
@@ -822,8 +1419,8 @@ namespace bp
 		{
 			pickerScrolled = true;
 			ui.pressedBtn = -1;
-			pickerScroll = std::clamp(pickerScrollStart + (int)std::lround((pickerTouchY - y) / 46.0), 0, std::max(0, n - PICKER_SHOWN));
-			pickerCursor = std::clamp(pickerCursor, pickerScroll, pickerScroll + PICKER_SHOWN - 1);
+			pickerScroll = std::clamp(pickerScrollStart + (int)std::lround((pickerTouchY - y) / 46.0), 0, std::max(0, n - shown));
+			pickerCursor = std::clamp(pickerCursor, pickerScroll, pickerScroll + shown - 1);
 			return false;
 		}
 		if (pt.kind == Pointer::Up)
@@ -1104,51 +1701,73 @@ namespace bp
 		drawBarButton(SEL_ACT, &G_FOLDER, "Add this folder", "Y", TEXT, true, !pickable());
 	}
 
+	Ui::Rect Ui::Playlists::pickerBox() const
+	{
+		lay::Sheet s = lay::sheet({0, (int)pickerList.size() + 1, 1, 0});
+		return {s.box.x, s.box.y, s.box.w, s.box.h};
+	}
+
+	Ui::Rect Ui::Playlists::pickerRow(int i) const
+	{
+		lay::Sheet s = lay::sheet({0, (int)pickerList.size() + 1, 1, 0});
+		lay::Box b = s.row(i - pickerScroll);
+		return {b.x, b.y, b.w, b.h};
+	}
+
+	int Ui::Playlists::pickerShown() const
+	{
+		int n = (int)pickerList.size() + 1;
+		lay::Sheet s = lay::sheet({0, n, 1, 0});
+		int fit = (s.hints.y - s.rowsY) / lay::SHEET_ROW;
+		return std::clamp(fit, 1, n);
+	}
+
 	void Ui::Playlists::drawPicker()
 	{
-		Rect box = pickerBox();
-		int n = (int)pickerList.size() + 1;
-		ui.drawDialog(box, !pickerOne.empty() ? "Add " + quoted(pickerOneTitle) + " to\xE2\x80\xA6"
+		lay::Sheet sh = lay::sheet({0, (int)pickerList.size() + 1, 1, 0});
+		std::string title = pickerEdit ? "Add " + std::to_string((int)pickerSel.size()) + (pickerSel.size() == 1 ? " item" : " items") + " to\xE2\x80\xA6"
+			: !pickerOne.empty() ? "Add " + quoted(pickerOneTitle) + " to\xE2\x80\xA6"
 			: pickerFolder.empty() ? "Add " + std::to_string(picked.size()) + " to\xE2\x80\xA6"
-			: "Add " + quoted(folderName(pickerFolder)) + " to\xE2\x80\xA6");
-		for (int i = pickerScroll; i < n && i < pickerScroll + PICKER_SHOWN; i++)
+			: "Add " + quoted(folderName(pickerFolder)) + " to\xE2\x80\xA6";
+		ui.kit->sheet(sh, {&G_PLUS, title, ""});
+		int n = (int)pickerList.size() + 1, shown = pickerShown();
+		for (int i = pickerScroll; i < n && i < pickerScroll + shown; i++)
 		{
 			Rect r = pickerRow(i);
-			bool at = i == pickerCursor, down = ui.pressedBtn == PICK_ROW + i;
-			if (down) ui.drawBox(r, PRESSED, R_BUTTON);
-			else if (at) ui.drawFocus(r);
-			SDL_Color ink = at ? ACCENT : TEXT;
-			int mid = r.y + r.h / 2;
+			Kit::Row row;
+			row.font = F_P16;
+			row.under = SURFACE;
+			row.focused = i == pickerCursor;
+			row.pressed = ui.pressedBtn == PICK_ROW + i;
 			if (i == 0)
 			{
-				ui.drawGlyphMid(G_PLUS, r.x + 31, mid, ink);
-				ui.drawTextMid("New playlist\xE2\x80\xA6", 1, ink, r.x + 56, mid, r.w - 68);
-				continue;
+				row.glyph = &G_PLUS;
+				row.name = "New playlist\xE2\x80\xA6";
 			}
-			auto& pl = pickerList[i - 1];
-			// on the right: Add again? (asked), ✓ Added (it has the one file), else how many
-			bool has = i - 1 < (int)pickerHas.size() && pickerHas[i - 1], armed = pickerArmed == i;
-			std::string count = armed ? "Add again?" : has ? "Added" : std::to_string(pl.count) + (pl.count == 1 ? " item" : " items");
-			int cw = (int)std::lround(ui.textWidth(count, 0) / sx);
-			ui.drawTextMid(count, 0, armed ? ACCENT : at ? DIM_ON : DIM, 512, mid, 0, 1);
-			if (has && !armed)
+			else
 			{
-				ui.drawGlyphMid(G_CHECK, 512 - cw - 14, mid, ACCENT);
-				cw += 24;
+				auto& pl = pickerList[i - 1];
+				bool has = i - 1 < (int)pickerHas.size() && pickerHas[i - 1], armed = pickerArmed == i;
+				row.glyph = &G_PLAYLIST;
+				row.name = pl.name;
+				row.note = std::to_string(pl.count) + (pl.count == 1 ? " item" : " items");
+				if (armed) { row.pill = "Add again?"; row.tone = Kit::Pill::Live; }
+				else if (has) { row.pill = "Added"; row.tone = Kit::Pill::Fact; }
 			}
-			ui.drawGlyphMid(G_PLAYLIST, r.x + 31, mid, ink);
-			ui.drawTextMid(pl.name, 1, ink, r.x + 56, mid, 512 - cw - 12 - (r.x + 56));
+			ui.kit->row(r, row);
 		}
 		// where the list is, when it's longer than the box
-		if (n > PICKER_SHOWN)
+		if (n > shown)
 		{
-			int top = pickerRow(pickerScroll).y, height = PICKER_SHOWN * 46 - 4;
-			ui.fillRound({532, top, 4, height}, SCREEN, 2);
-			int h = std::max(16, height * PICKER_SHOWN / n);
-			ui.fillRound({532, top + (height - h) * pickerScroll / std::max(1, n - PICKER_SHOWN), 4, h}, DIM, 2);
+			Rect first = pickerRow(pickerScroll), last = pickerRow(pickerScroll + shown - 1);
+			int top = first.y, height = last.y + last.h - top;
+			ui.fillRound({sh.box.x + sh.box.w - 12, top, 4, height}, SCREEN, 2);
+			int h = std::max(16, height * shown / n);
+			ui.fillRound({sh.box.x + sh.box.w - 12, top + (height - h) * pickerScroll / std::max(1, n - shown), 4, h}, DIM, 2);
 		}
-		ui.drawHints({{"A", pickerArmed > 0 ? "Add again" : "Add"}, {"B", "Cancel"}});
+		ui.kit->hints({{"A", pickerArmed > 0 ? "Add again" : "Add"}, {"B", "Close"}});
 	}
+
 
 	void Ui::Playlists::drawBusy()
 	{
