@@ -14,17 +14,31 @@ namespace bp
 		int pressed, bool searchLit, bool searchPressed, bool npPlaying, bool npPaused, const std::string& npArt)
 	{
 		Ui& ui = k.ui;
-		ui.fill(r.area, RAIL);
-		ui.fill({r.area.x + r.area.w - 1, r.area.y, 1, r.area.h}, RULE);
+		bool clean = theme::drawingClean(), strong = theme::current.strongKeys;
+		// Classic: RAIL ground and a rule; Clean: none
+		if (!clean)
+		{
+			ui.fill(r.area, RAIL);
+			ui.fill({r.area.x + r.area.w - 1, r.area.y, 1, r.area.h}, RULE);
+		}
+		// the active cell: a strong theme (Gundam) fills it KEY_FOCUS with TEXT ink; otherwise Classic's solid ACCENT,
+		// or Clean's accent tint
+		SDL_Color activeFill = strong ? sdl(theme::KEY_FOCUS) : clean ? sdl(theme::tintOf(theme::BG)) : ACCENT;
+		SDL_Color activeInk = strong ? TEXT : clean ? ACCENT : ON_ACCENT;
 		auto lit = [&](Ui::Rect c) {
-			// lit as a key: ACCENT with its darker lip along the foot, no edge
-			ui.fillRound(c, sdl(theme::lipOf(theme::ACCENT)), R_BUTTON);
-			ui.fillRound({c.x, c.y, c.w, c.h - theme::LIP}, ACCENT, R_BUTTON);
+			if (strong) ui.fillRound(c, activeFill, theme::kitRadius(R_BUTTON));
+			else if (clean) ui.fillRound(c, activeFill, theme::kitRadius(R_BUTTON));
+			else
+			{
+				// lit as a key: ACCENT with its darker lip along the foot, no edge
+				ui.fillRound(c, sdl(theme::lipOf(theme::ACCENT)), R_BUTTON);
+				ui.fillRound({c.x, c.y, c.w, c.h - theme::LIP}, ACCENT, R_BUTTON);
+			}
 		};
 		auto cell = [&](Ui::Rect c, const RailItem& it, bool on, bool held) {
-			SDL_Color ink = on ? ON_ACCENT : DIM_ON;
+			SDL_Color ink = on ? activeInk : sdl(theme::ON_RAIL);
 			if (on) lit(c);
-			else if (held) ui.fillRound(c, PRESSED, R_BUTTON);
+			else if (held) ui.fillRound(c, PRESSED, theme::kitRadius(R_BUTTON));
 			// icon 22 over the label, the pair centred in the cell (a seven-section rail's 50-tall cells sit closer)
 			int cx = c.x + c.w / 2, iconCy = c.h >= lay::RAIL_CELL_H ? c.y + 21 : c.y + 16;
 			int labelY = c.h >= lay::RAIL_CELL_H ? c.y + 42 : c.y + 35;
@@ -34,15 +48,19 @@ namespace bp
 			{
 				// red, 11 units, ringed in the rail's ground so it stands off the cell
 				Ui::Rect m{c.x + c.w - 9 - 11, c.y + 5, 11, 11};
-				ui.fillRound({m.x - 2, m.y - 2, m.w + 4, m.h + 4}, on ? ACCENT : RAIL, 5);
+				ui.fillRound({m.x - 2, m.y - 2, m.w + 4, m.h + 4}, on ? activeFill : clean ? BG : RAIL, 5);
 				ui.fillRound(m, DANGER, 3);
 			}
 		};
-		// Search, pinned at the top: the magnifier alone; ACCENT while Search shows
+		// Search, pinned at the top: the magnifier alone; the accent while Search shows (Clean: a glyph, no ground)
 		if (searchLit) lit(r.search);
+		else if (clean)
+		{
+			if (searchPressed) ui.fillRound(r.search, PRESSED, theme::kitRadius(R_BUTTON));
+		}
 		else ui.drawBox(r.search, searchPressed ? PRESSED : BUTTON, R_BUTTON);
 		ui.drawGlyphMid(G_SEARCH, r.search.x + r.search.w / 2, r.search.y + r.search.h / 2 + 1,
-			searchLit ? ON_ACCENT : TEXT, 2);
+			searchLit ? activeInk : clean ? sdl(theme::ON_RAIL) : TEXT, 2);
 		// the sections: only the part inside their view (a drag scrolls them under it)
 		SDL_Rect clip = ui.devRect(r.view), previous;
 		bool hadClip = SDL_RenderIsClipEnabled(ui.ren) == SDL_TRUE;
@@ -123,11 +141,19 @@ namespace bp
 			oy = Ui::H - b.box.h;
 		}
 		auto at = [&](Ui::Rect r) { return Ui::Rect{ox + r.x, oy + r.y, r.w, r.h}; };
-		// the sheet: an edge on three sides, its top corners round, the grab mark
+		// the sheet: Classic's edge on three sides, or Clean's fill and 1-unit RULE hairline; the grab mark
 		Ui::Rect box = at({0, 0, b.box.w, b.box.h});
-		ui.fillRound(box, k.edgeOf(SURFACE), theme::R_SHEET, Ui::ROUND_TL | Ui::ROUND_TR);
-		ui.fillRound({box.x + theme::EDGE, box.y + theme::EDGE, box.w - 2 * theme::EDGE, box.h - theme::EDGE}, SURFACE,
-			theme::R_SHEET - theme::EDGE, Ui::ROUND_TL | Ui::ROUND_TR);
+		if (theme::drawingClean())
+		{
+			ui.fillRound(box, SURFACE, theme::R_SHEET, Ui::ROUND_TL | Ui::ROUND_TR);
+			ui.fill({box.x + theme::R_SHEET, box.y, box.w - 2 * theme::R_SHEET, 1}, RULE);
+		}
+		else
+		{
+			ui.fillRound(box, k.edgeOf(SURFACE), theme::R_SHEET, Ui::ROUND_TL | Ui::ROUND_TR);
+			ui.fillRound({box.x + theme::EDGE, box.y + theme::EDGE, box.w - 2 * theme::EDGE, box.h - theme::EDGE}, SURFACE,
+				theme::R_SHEET - theme::EDGE, Ui::ROUND_TL | Ui::ROUND_TR);
+		}
 		ui.fillRound(at(b.grab), PRESSED, 2);
 		Ui::Rect t = at(b.title);
 		ui.drawTextMid(s.title, F_SMALL, ACCENT, t.x, t.y + t.h / 2, t.w);
@@ -138,6 +164,8 @@ namespace bp
 		ui.drawTextMid(s.note, F_I12, DIM, n.x + n.w, n.y + n.h / 2, n.w, 1);
 		for (int i = 0; i < 4; i++)
 		{
+			// the Book bar's keys are keys, in Clean too (components.md "Clean style", rule 7)
+			Kit::ClassicHere classic;
 			const BookKey& bk = s.keys[i];
 			Ui::Rect r = at(b.keys[i]);
 			bool lit = !bk.lit.empty(), held = s.pressed == i;
@@ -157,6 +185,7 @@ namespace bp
 		}
 		// the key that leaves Book mode: its name and its cap, centred
 		{
+			Kit::ClassicHere classic;	// the leaving key too
 			Ui::Rect r = at(b.leave);
 			bool held = s.pressed == 4;
 			ui.drawBox(r, held ? PRESSED : BUTTON, R_BUTTON);
@@ -168,7 +197,7 @@ namespace bp
 		// its own hint bar (the panel's is along the other edge as held): a rule, then caps and words
 		{
 			Ui::Rect h = at(b.hints);
-			ui.fill({h.x + theme::EDGE, h.y, h.w - 2 * theme::EDGE, 1}, RULE);
+			if (!theme::drawingClean()) ui.fill({h.x + theme::EDGE, h.y, h.w - 2 * theme::EDGE, 1}, RULE);
 			std::vector<int> widths;
 			for (auto& hn : s.hints)
 				widths.push_back(k.capsW(hn.key) + (hn.key.empty() || hn.verb.empty() ? 0 : 5) + k.textW(hn.verb, F_I12));

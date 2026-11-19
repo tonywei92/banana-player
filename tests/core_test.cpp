@@ -6832,8 +6832,9 @@ static void testThemes()
 		// and hints as before
 		if (id == "gundam")
 		{
-			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "E8ECF4FFFFFFF3F5FADFE4EE1A56C9141B33");
-			CHECK_EQ(hx(p.KEY) + hx(p.ON_KEY) + hx(p.KEY_FOCUS) + hx(p.HINT_BAR) + hx(p.PRIMARY) + hx(p.ON_PRIMARY), "1C3C8EFFFFFFFFF867172E6BD3222BFFFFFF");
+			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "D9DFECFFFFFFECEFF6172E6B2C52B3141B33");
+			CHECK_EQ(hx(p.PRESSED) + hx(p.TRACK) + hx(p.RULE) + hx(p.DIM) + hx(p.DIM_ON) + hx(p.ON_RAIL), "CBD3E4C6CEDFB4BDD053546A43445AC9D3EE");
+			CHECK_EQ(hx(p.KEY) + hx(p.ON_KEY) + hx(p.KEY_FOCUS) + hx(p.HINT_BAR) + hx(p.PRIMARY) + hx(p.ON_PRIMARY), "2C52B3FFFFFFFFF867172E6BD3222BFFFFFF");
 			CHECK_EQ(p.strongKeys, true);
 			CHECK_EQ(hx(p.TOP_TITLE), "8CC8FF");
 			CHECK_EQ(p.page, 1);
@@ -6842,6 +6843,7 @@ static void testThemes()
 		{
 			CHECK_EQ(p.strongKeys, false);
 			CHECK_EQ(hx(p.KEY) + hx(p.PRIMARY) + hx(p.HINT_BAR), hx(p.BUTTON) + hx(p.ACCENT) + hx(p.BG));
+			CHECK_EQ(hx(p.ON_RAIL), hx(p.DIM_ON));	// the rail's ink, as before when a theme doesn't give it
 		}
 	}
 	// Light: its own RAIL, edges darker than the fill (EDGE_MIX 55), Yellow's top cards; the spec's worked-out values
@@ -6884,9 +6886,12 @@ static void testThemes()
 	CHECK_EQ(css.find("data-theme=\"yellow\"") == std::string::npos, true);
 	CHECK_EQ(css.find(":root[data-theme=\"light\"]{color-scheme:light;--bg:#f7f4ec;") != std::string::npos, true);
 	// strong keys: Gundam's navy keys and red primary; a theme without them keeps the button and accent roles
-	CHECK_EQ(css.find("--key:#1c3c8e;--on-key:#ffffff;--key-focus:#fff867;--hint-bar:#172e6b;--on-hint:#ffffff;--primary:#d3222b;--on-primary:#ffffff;") != std::string::npos, true);
+	CHECK_EQ(css.find("--key:#2c52b3;--on-key:#ffffff;--key-focus:#fff867;--hint-bar:#172e6b;--on-hint:#ffffff;--primary:#d3222b;--on-primary:#ffffff;--on-rail:#c9d3ee;") != std::string::npos, true);
 	CHECK_EQ(css.find(":root[data-theme=\"light\"]{color-scheme:light;--bg:#f7f4ec;--surface:#fffdf8;") != std::string::npos, true);
 	CHECK_EQ(css.find("--key:#e6e0d2;--on-key:#1b1a20;--key-focus:#7a5200;--hint-bar:#f7f4ec;--on-hint:#55514a;--primary:#7a5200;--on-primary:#fffdf8;") != std::string::npos, true);
+	// the Clean style's selected tint: ACCENT 17% over the ground (Yellow is current here)
+	CHECK_EQ(hx(theme::tintOf(theme::palette(0).BG)), "2B230A");
+	CHECK_EQ(hx(theme::tintOf(theme::palette(0).SURFACE)), "3A311C");
 }
 
 // the settings table (SettingDef): every entry reads what it writes, an old settings.conf reads as it did before the
@@ -6896,6 +6901,31 @@ static void testSettingsTable()
 	const auto& defs = settingDefs();
 	std::string plain = serializeSettings(Settings());
 	CHECK_EQ(serializeSettings(parseSettings(plain)), plain);
+	// the look: there is no Style setting; Clean is every theme but High contrast, which is Classic. Its radii are the
+	// page's; a key keeps R_BUTTON (10) whatever the style, which is what Kit::key draws with
+	{
+		CHECK_EQ(settingIndex("style") < 0, true);
+		CHECK_EQ(serializeSettings(Settings()).find("\nstyle = ") == std::string::npos, true);
+		int contrast = theme::themeCount() - 1;
+		CHECK_EQ(std::string(theme::themeId(contrast)), "high-contrast");
+		CHECK_EQ(theme::setTheme(contrast), true);
+		CHECK_EQ(theme::clean, false);
+		CHECK_EQ(theme::drawingClean(), false);
+		CHECK_EQ(theme::setTheme(0), true);	// Yellow, the first: Clean
+		CHECK_EQ(theme::clean, true);
+		CHECK_EQ(theme::drawingClean(), true);
+		CHECK_EQ(theme::R_BUTTON, 10);	// a key's own radius
+		CHECK_EQ(theme::kitRadius(theme::R_BUTTON), 12);
+		CHECK_EQ(theme::kitRadius(theme::R_TILE), 12);
+		CHECK_EQ(theme::kitRadius(theme::R_CHIP), 6);	// (a cap's and a bar's 6: not a pressed box)
+		CHECK_EQ(theme::kitRadius(theme::R_CAP), 6);
+		CHECK_EQ(theme::kitRadius(theme::R_SHEET), theme::R_SHEET);
+		theme::classicDepth = 1;	// (Kit::ClassicHere: the photo viewer, the keyboard)
+		CHECK_EQ(theme::drawingClean(), false);
+		CHECK_EQ(theme::kitRadius(theme::R_BUTTON), 10);
+		theme::classicDepth = 0;
+		CHECK_EQ(theme::drawingClean(), true);
+	}
 	std::set<std::string> keys;
 	for (size_t i = 0; i < defs.size(); i++)
 	{

@@ -405,7 +405,7 @@ namespace bp
 
 	void Ui::fillRound(Rect r, SDL_Color c, int rad, int mask)
 	{
-		roundDev(devRect(r), c, devRadius(rad), mask);
+		roundDev(devRect(r), c, devRadius(theme::kitRadius(rad)), mask);
 	}
 
 	void Ui::fillRoundBand(Rect box, int rad, int y0, int y1, SDL_Color c, int x1)
@@ -470,6 +470,21 @@ namespace bp
 
 	void Ui::drawBox(Rect r, SDL_Color c, int rad, SDL_Color edge)
 	{
+		if (theme::drawingClean())
+		{
+			// a fill carries the shape; only an edge that is not the fill's own is the focus ring
+			SDL_Color own = sdl(theme::edgeOf(rgb(c)));
+			bool focus = edge.r != own.r || edge.g != own.g || edge.b != own.b || edge.a != own.a;
+			int R = devRadius(theme::kitRadius(rad));
+			SDL_Rect d = devRect(r);
+			roundDev(d, c, R, ROUND_ALL);
+			if (!focus) return;
+			int e = std::max(1, devRadius(theme::EDGE));
+			roundDev(d, edge, R, ROUND_ALL);
+			SDL_Rect in{d.x + e, d.y + e, d.w - 2 * e, d.h - 2 * e};
+			if (in.w > 0 && in.h > 0) roundDev(in, c, std::max(0, R - e), ROUND_ALL);
+			return;
+		}
 		// the edge as the whole box, the lip inside it, the fill over all but the lip's band: 3 rounded fills
 		SDL_Rect d = devRect(r);
 		int R = devRadius(rad), e = std::max(1, devRadius(theme::EDGE)), lip = devRadius(theme::LIP);
@@ -579,6 +594,8 @@ namespace bp
 
 	void Ui::renderPage(const Player& p)
 	{
+		// (the Clean style follows the theme: setTheme sets theme::clean; High contrast alone is Classic)
+		theme::classicDepth = 0;
 		// the Title marquee: a new frame (the first title drawn claims the panel); another page: titles start again
 		marqFrame++;
 		marqUp = false;
@@ -812,6 +829,13 @@ namespace bp
 
 	void Ui::drawTab(Rect r, const char* name, bool active, int size)
 	{
+		if (theme::drawingClean())
+		{
+			SDL_Color fill = active ? sdl(theme::tintOf(theme::BG)) : BUTTON;
+			fillRound(r, fill, R_BUTTON);
+			drawTextMid(name, size, active ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
+			return;
+		}
 		drawBox(r, active ? ACCENT : BUTTON, R_BUTTON);
 		drawTextMid(name, size, active ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
 	}

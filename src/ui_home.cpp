@@ -1039,12 +1039,15 @@ namespace bp
 				}
 				if (c.live)
 				{
-					// the NOW pill over the picture's top left (the mock-up's Now playing card)
+					// the NOW pill over the picture's top left (the mock-up's Now playing card): a small tint in Clean,
+					// a solid accent in Classic (components.md "Clean style", rule 6)
 					int gw = ui.glyphW(G_PLAY, 1), tw = k.textW("NOW", F_I11B);
 					Rect pr{r.x + 6, r.y + 7, 8 + gw + 4 + tw + 8, 17};
-					ui.fillRound(pr, ACCENT, theme::R_CAP);
-					ui.drawGlyphMid(G_PLAY, pr.x + 8 + gw / 2, pr.y + pr.h / 2, ON_ACCENT, 1);
-					ui.drawTextMid("NOW", F_I11B, ON_ACCENT, pr.x + 8 + gw + 4, pr.y + pr.h / 2);
+					bool clean = theme::drawingClean();
+					SDL_Color pillInk = clean ? ACCENT : ON_ACCENT;
+					ui.fillRound(pr, clean ? sdl(theme::tintOf(theme::BG)) : ACCENT, theme::R_CAP);
+					ui.drawGlyphMid(G_PLAY, pr.x + 8 + gw / 2, pr.y + pr.h / 2, pillInk, 1);
+					ui.drawTextMid("NOW", F_I11B, pillInk, pr.x + 8 + gw + 4, pr.y + pr.h / 2);
 				}
 				else
 				{
@@ -1102,7 +1105,7 @@ namespace bp
 		if (moreShown())
 		{
 			bool at = homeZone == HOME_CARDS && homeStrip >= (int)recent.size();
-			k.flat(hp.more, pressedCard >= (int)recent.size() ? PRESSED : SURFACE, 12, at ? ACCENT : k.edgeOf(SURFACE));
+			k.flat(hp.more, pressedCard >= (int)recent.size() ? PRESSED : Kit::cardFill(SURFACE), 12, at ? ACCENT : k.edgeOf(SURFACE));
 			ui.drawGlyphMid(G_RIGHT, hp.more.x + hp.more.w / 2, hp.more.y + hp.more.h / 2, at ? ACCENT : DIM, 3);
 		}
 		if (hp.shortcuts > 0)
@@ -1115,6 +1118,7 @@ namespace bp
 				Kit::Tile t;
 				t.glyph = glyphs[i];
 				t.name = names[i];
+				t.classic = true;	// (the Classic flat piece: SURFACE and its edge, in Clean too)
 				t.lit = i == 0 && liked;
 				t.focused = homeZone == HOME_SHORTCUTS && homeShortcut == i;
 				t.pressed = pressedShortcut == i;
@@ -1188,7 +1192,11 @@ namespace bp
 		if (quitPlaying) ui.drawTextMid("What's playing stops.", 0, DIM, box.x + box.w - 24, box.y + 28, 0, 1);
 		Rect q = quitRow(0);
 		bool down = ui.pressedBtn == DLG_ROW, at = quitCursor == 0;
-		ui.drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);
+		{
+			// the dialog's action key: Classic in Clean too (the one red-filled key)
+			Kit::ClassicHere classic;
+			ui.drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);
+		}
 		SDL_Color ink = down ? TEXT : ON_ACCENT;	// black on the red, as Quick settings' Quit
 		int tw = (int)std::lround(ui.textWidth("Quit", 1) / sx), gw = ui.glyphW(G_POWER), x = q.x + q.w / 2 - (tw + gw + 12) / 2;
 		ui.drawGlyphMid(G_POWER, x + gw / 2, q.y + q.h / 2, ink);

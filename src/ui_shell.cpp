@@ -431,8 +431,9 @@ namespace bp
 		Kit& k = *ui.kit;
 		lay::Box back, more;
 		frameRects(p, h, back, more);
-		if (h.back) k.iconKey(back, G_BACK, pressedFrame == F_BACK, 3);
-		if (h.more) k.iconKey(more, G_MORE, pressedFrame == F_MORE);
+		// the header's two ask for the quiet look: a glyph alone in Clean, the same touch area (rule 5)
+		if (h.back) k.iconKey(back, G_BACK, pressedFrame == F_BACK, 3, true);
+		if (h.more) k.iconKey(more, G_MORE, pressedFrame == F_MORE, 2, true);
 		int cy = 27;
 		Kit::Status st;
 		st.clock = ui.clockText(p);

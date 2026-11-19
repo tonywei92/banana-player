@@ -37,9 +37,22 @@ namespace bp
 		Ui& ui;
 		explicit Kit(Ui& u) : ui(u) {}
 
+		// a piece that stays Classic in the Clean style (the photo viewer's on-screen keys, the keyboard, Home's
+		// shortcuts): alive for the drawing only. A named key needs no scope: Kit::key and Kit::transport are always
+		// Classic (components.md "Clean style", rule 7)
+		struct ClassicHere
+		{
+			ClassicHere() { ++theme::classicDepth; }
+			~ClassicHere() { --theme::classicDepth; }
+			ClassicHere(const ClassicHere&) = delete;
+			ClassicHere& operator=(const ClassicHere&) = delete;
+		};
+
 		int textW(const std::string& s, int font) const;	// in 640x480 units
 		static SDL_Color off(SDL_Color c, bool isOff = true);	// c as an unavailable piece shows it
 		static SDL_Color edgeOf(SDL_Color fill);
+		static SDL_Color cardFill(SDL_Color c);	// Clean: SURFACE becomes BUTTON (a fill carries a card or tile's shape)
+		void ring(Rect r, int rad, SDL_Color c);	// a 2-unit outline (the focus ring), the inside left alone
 		void flat(Rect r, SDL_Color fill, int rad, SDL_Color edge);
 		// the art placeholder: a record in its sleeve in the theme's roles (artph.h), r a square; key: the album's name,
 		// else the title, else the file's name. rad: the art box's radius; edge: a 1-unit edgeOf(BUTTON) edge inside the
@@ -94,6 +107,7 @@ namespace bp
 			bool pressed = false, focused = false, off = false;
 			bool lit = false;	// the icon and label in yellow (on: the heart once liked)
 			bool stack = false;	// icon over label (a sheet's tile)
+			bool quiet = false;	// the page asks for a quiet look (a row's steppers): in Clean, no ground at all
 			double glow = 0;	// 0..1: a soft yellow swell over the key (it asks to be noticed)
 		};
 		void key(Rect r, const Key& k);
@@ -106,7 +120,8 @@ namespace bp
 			std::string third;	// a third line ("Hold: play it here")
 		};
 		void transport(Rect r, const Transport& t);
-		void iconKey(Rect r, const Glyph& g, bool pressed, int cell = 2);
+		// a key that is only a mark. quiet: the header's Back and More, a glyph alone in Clean (rule 5)
+		void iconKey(Rect r, const Glyph& g, bool pressed, int cell = 2, bool quiet = false);
 
 		// ---- state chips and line keys ----
 		struct Chip
@@ -316,6 +331,7 @@ namespace bp
 			const Glyph* glyph = nullptr;
 			std::string name, note, mark;	// note: the live summary, or (off) the reason; mark: a small pill at a corner
 			bool focused = false, pressed = false, off = false, lit = false;
+			bool classic = false;	// Home's shortcuts: the Classic flat piece (SURFACE and its edge, radius 10)
 		};
 		void tile(Rect r, const Tile& t);
 		// a choice tile, one of a set (View › Display: the modes, icon beside the name; the styles, icon over it): the one

@@ -897,7 +897,7 @@ namespace bp
 			Kit& k = *ui.kit;
 			ui.fill({s.main.x, 0, s.main.w, H}, BG);
 			lay::FilesHeader h = lay::filesHeader(s.header);
-			k.iconKey(h.back, G_BACK, pressed == 200, 2);
+			k.iconKey(h.back, G_BACK, pressed == 200, 2, true);
 			int cy = h.title.y + h.title.h / 2;
 			ui.drawTextMid("Info", F_P28, TEXT, h.title.x, cy, std::max(40, h.title.w - 10));
 			std::string crumb = ui.infoTitle;

@@ -740,7 +740,7 @@ namespace bp
 				.page(SG_MANGA, 120, "Secure DNS", "Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them.").shownAs(SHOWN_DNS),
 			// (the ids and names are theme.cpp's table: a theme added there is a value here)
 			D::choice("theme", &Settings::theme, theme::themeIds(), theme::themeCount())
-				.page(SG_SCREEN, 5, "Theme", "The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.")
+				.page(SG_SCREEN, 5, "Theme", "The app's colours, on both screens and on the Web dashboard. Every theme but High contrast is drawn Clean: the page has no edges, and the keys stay keys. High contrast is Classic. Videos, pictures, album art, subtitles and a book's page keep their own.")
 				.shownAs(theme::themeNames()).stepped(true),
 			D::choice("clock", &Settings::clock, CLOCK_IDS, CLOCKS)
 				.page(SG_SCREEN, 130, "Clock", "The time in the top corner of this screen").shownAs(CLOCK_NAMES).stepped(true),
