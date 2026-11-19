@@ -6128,9 +6128,9 @@ static void testSubtitleCodePages()
 // the themes (theme.h): Yellow is today's values, the table's rules give the spec's worked-out colours
 // (docs/redesign/components.md, Themes: from themes.py), the setting reads and writes each by its id, Match theme
 // picks the reader's page by the theme, and a swap changes what the names read
-// the styles in the theme (docs/notes/2026-11-19-viz-theme.md): Yellow's Pocket console and Night city graphs are
-// today's, text for text; another theme's take its colours, Pocket's ink 3:1 at least on its screen; Campfire's band
-// spans the width over the art
+// the styles in the theme (docs/notes/2026-11-19-viz-theme.md): Yellow's Night city graph is today's, text for text;
+// another theme's take its colours; Faders' and Lanterns' shared inks (docs/notes/2026-11-19-faders-lanterns.md) are
+// the theme's: INK 3:1 at least on BG, LINE RULE towards DIM
 static uint64_t fnv64(const std::string& s)
 {
 	uint64_t h = 0xcbf29ce484222325ull;
@@ -6151,21 +6151,16 @@ static void testVizTheme()
 		return g;
 	};
 	theme::setTheme(0);
-	CHECK_EQ(fnv64(graph(VIS_POCKET, false)), 0xe2c2c5731dc4357full);
-	CHECK_EQ(fnv64(graph(VIS_POCKET, true)), 0x5e9b96d7f1a0cc3eull);
 	CHECK_EQ(fnv64(graph(VIS_CITY, false)), 0xa242fd54394c13a4ull);
 	CHECK_EQ(fnv64(graph(VIS_CITY, true)), 0x801aa2d70b020947ull);
-	CHECK_EQ(pocketInks().ink == (theme::Rgb{0x0F, 0x38, 0x0F}), true);
-	const std::string yPocket = graph(VIS_POCKET, false), yCity = graph(VIS_CITY, false);
-	for (int i = 1; i < theme::themeCount(); i++)
+	const std::string yCity = graph(VIS_CITY, false);
+	for (int i = 0; i < theme::themeCount(); i++)
 	{
 		theme::setTheme(i);
-		PocketInks p = pocketInks();
-		CHECK_EQ(colourContrast(p.ink, p.screen) >= 3.0, true);
-		CHECK_EQ(colourContrast(p.light, theme::BG) >= 3.0, true);
+		CHECK_EQ(colourContrast(visualizerInk(), theme::BG) >= 3.0, true);
+		CHECK(visualizerLine() != theme::BG);
 		if (std::string(theme::themeId(i)) == "sakura")
 		{
-			CHECK_EQ(graph(VIS_POCKET, false) != yPocket, true);
 			std::string c = graph(VIS_CITY, false);
 			CHECK_EQ(c != yCity && c.find("city4-sakura-yt.pgm") != std::string::npos, true);
 		}
@@ -6438,8 +6433,8 @@ static void testVizNative()
 	// the final ten (2026-11-19): all drawn by the player; the new six's band counts
 	for (int v : VIS_SHOWN) CHECK(vizNativeStyle(v));
 	CHECK_EQ(vizStyleBands(VIS_RIBBON).bars, 48);
-	CHECK_EQ(vizStyleBands(VIS_POCKET).bars, 15);
-	CHECK(!vizStyleBands(VIS_POCKET).cut && vizStyleBands(VIS_RIBBON).cut);
+	CHECK_EQ(vizStyleBands(VIS_FADERS).bars, 16);
+	CHECK(vizStyleBands(VIS_FADERS).cut && vizStyleBands(VIS_RIBBON).cut);
 	CHECK(vizFullPanel(VIS_SPARKS) && vizFullPanel(VIS_STARFIELD) && !vizFullPanel(VIS_RIBBON) && !vizFullPanel(VIS_GRID));
 	auto inside = [](const std::vector<VizRect>& rs, float y0) {
 		bool ok = true;
@@ -6554,49 +6549,59 @@ static void testVizNative()
 	float big = 0;
 	for (auto& q : r) if (q.kind == 1) big = std::max(big, q.y1);
 	CHECK(big > small * 2);
-	// Pocket console: the bezel round a 75-dot screen (the dots' gaps 75 + 56 lines of the screen's colour alone), nothing blended, every dot on the
-	// screen; full, a bar 32 rows of one ink, its top row 15; let go, its cap (mid) rides the held peak above it
-	st.reset(VIS_POCKET);
+	// Faders: sixteen rails (LINE) with a knob (INK) each; silence leaves every knob on the floor, so the lit parts
+	// (DIM) have no height; a full band lifts its knob, and let go its peak tick rides above it for 0.35 s
+	st.reset(VIS_FADERS);
 	vizShapes(st, false, r);
-	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1 + 75 + 56);
-	CHECK_EQ(inksOf(r, VI_P_GRID), 0);
-	const int idle = inksOf(r, VI_P_INK);	// (the heart and the note)
-	for (auto& q : r) CHECK(!(q.ink == VI_P_MID && q.x1 - q.x0 == 8 && q.y1 - q.y0 == 8));
-	for (int i = 0; i < 15; i++) st.targets[i] = VN_TOP;
-	st.beats++;
+	CHECK_EQ(inksOf(r, VI_LINE), 16);
+	CHECK(inksOf(r, VI_INK) >= 16);
+	CHECK_EQ(inksOf(r, VI_DIM), 0);
+	for (int i = 0; i < 16; i++) st.targets[i] = VN_TOP;
 	vizStep(st, 0.016);
-	CHECK_EQ(st.pkPulse, 1.0f);
 	vizShapes(st, false, r);
-	int rays = 0;
-	for (auto& q : r) if (q.ink == VI_P_MID && q.x1 - q.x0 == 8 && q.y1 - q.y0 == 8) rays++;
-	CHECK_EQ(rays, 4);	// (the sun's, on the beat; none before it)
-	CHECK_EQ(inksOf(r, VI_P_INK) > idle, true);
-	float inkTop = 480;
-	bool onScreen = true;
-	for (auto& q : r)
-	{
-		if (q.ink == VI_P_INK && q.x0 == 20 + 8 && q.x1 == 20 + 4 * 8) inkTop = std::min(inkTop, q.y0);
-		if (q.alpha < 1 || q.kind != 0) onScreen = false;
-		if (q.ink != VI_P_BEZEL && q.ink != VI_P_EDGE && (q.x0 < 20 || q.x1 > 620 || q.y0 < 16 || q.y1 > 464)) onScreen = false;
-	}
-	CHECK_EQ(inkTop, 16 + 15 * 8.0f);
-	CHECK(onScreen);
-	for (int i = 0; i < 15; i++) st.targets[i] = 0;
-	vizStep(st, 0.2);	// (the bars are down; the caps a fifth of a second into their fall)
-	CHECK(st.levels[0] == 0 && st.holds[0] > VN_TOP * 0.9f && st.pkPulse < 1);
+	CHECK_EQ(inksOf(r, VI_LINE), 16);
+	CHECK(inksOf(r, VI_INK) >= 16);
+	CHECK_EQ(inksOf(r, VI_DIM), 16);	// (the lit part of each rail, full height)
+	float knobTop = 480;
+	for (auto& q : r) if (q.ink == VI_INK) knobTop = std::min(knobTop, q.kind == 2 ? std::min(std::min(q.y0, q.y1), std::min(q.y2, q.y3)) : q.y0);
+	CHECK(std::fabs(knobTop - (150 + 6 - 6)) < 0.01f);
+	for (int i = 0; i < 16; i++) st.targets[i] = 0;
+	vizStep(st, 0.2);
+	CHECK(st.levels[0] == 0 && st.holds[0] > VN_TOP * 0.9f);
 	vizShapes(st, false, r);
-	int caps = 0;
-	for (auto& q : r) if (q.ink == VI_P_MID && q.x1 - q.x0 == 3 * 8 && q.y1 - q.y0 == 8 && q.y0 < 16 + 20 * 8) caps++;
-	CHECK_EQ(caps, 15);
-	vizShapes(st, true, r);	// the band: the same screen, 23 dots tall under row 280; no sun
-	CHECK_EQ(inksOf(r, VI_P_SCREEN), 1 + 75 + 23);
-	onScreen = true;
-	for (auto& q : r) if (q.y0 < 280) onScreen = false;
-	CHECK(onScreen);
+	CHECK_EQ(inksOf(r, VI_DIM), 16);	// (the ticks)
+	vizShapes(st, true, r);	// the band: rails 310 to 456, nothing above row 280
+	bool inBand = true;
+	for (auto& q : r) if (q.y0 < 280 || q.y1 > 481) inBand = false;
+	CHECK(inBand);
 
-	// the five fun ones (2026-11-19): all native, Rain check and Sleepy moon over the whole panel
-	for (int v : {VIS_BOUNCY, VIS_ROCKET, VIS_RAIN, VIS_MOON, VIS_DANCE}) CHECK(vizNativeStyle(v));
-	CHECK(vizFullPanel(VIS_RAIN) && vizFullPanel(VIS_MOON) && !vizFullPanel(VIS_BOUNCY) && !vizFullPanel(VIS_ROCKET) && !vizFullPanel(VIS_DANCE));
+	// Lanterns: a string of seven (nine in the band); at rest unlit paper (INK_RAMP at 0, so BUTTON), no halo; the
+	// beat swings them and loud paper lights (a halo of INK 10% on BG)
+	st.reset(VIS_LANTERNS);
+	vizShapes(st, false, r);
+	CHECK(inksOf(r, VI_INK_RAMP) > 0);
+	CHECK_EQ(inksOf(r, VI_INK_BG), 0);
+	CHECK(inksOf(r, VI_LINE) > 0);
+	for (int i = 0; i < 9; i++) st.targets[i] = VN_TOP;
+	st.beats++;
+	vizStep(st, 0.1);
+	CHECK(st.lnV[0] != 0);
+	vizShapes(st, false, r);
+	CHECK(inksOf(r, VI_INK_BG) > 0);
+	float lit = 0;
+	for (auto& q : r) if (q.ink == VI_INK_RAMP) lit = std::max(lit, q.mix);
+	CHECK(lit > 0.5f);
+	for (int i = 0; i < 9; i++) st.targets[i] = 0;
+	for (int f = 0; f < 300; f++) vizStep(st, 1 / 30.0);
+	CHECK(st.lnLv[0] < 0.1f && std::fabs(st.lnA[0]) < 0.001f && std::fabs(st.lnV[0]) < 0.004f);
+	vizShapes(st, true, r);	// the band: nine smaller ones, all below row 280
+	inBand = true;
+	for (auto& q : r) if (q.y0 < 280 || q.y1 > 481) inBand = false;
+	CHECK(inBand);
+
+	// the five fun ones (2026-11-19): all native, Sleepy moon over the whole panel
+	for (int v : {VIS_BOUNCY, VIS_ROCKET, VIS_LANTERNS, VIS_MOON, VIS_DANCE}) CHECK(vizNativeStyle(v));
+	CHECK(vizFullPanel(VIS_MOON) && !vizFullPanel(VIS_LANTERNS) && !vizFullPanel(VIS_BOUNCY) && !vizFullPanel(VIS_ROCKET) && !vizFullPanel(VIS_DANCE));
 	// Bouncy keys: a beat lands the ball (its key lit) and sends it to another key within seven; the ball's hop is timed
 	// by the beat's interval
 	st.reset(VIS_BOUNCY);
@@ -6627,33 +6632,6 @@ static void testVizNative()
 	float starTop = 480;
 	for (auto& q : r) if (q.kind == 2 && q.ink == VI_DIM_BG) starTop = std::min(starTop, std::min(q.y0, q.y3));
 	CHECK(starTop < 200);	// (in the band, its stars streak over the whole panel)
-	// Rain check: the pools never past their sizes; alone, drops hit the umbrella (splashes); with the art, its top
-	st.reset(VIS_RAIN);
-	for (int i = 0; i < 20; i++) st.targets[i] = VN_TOP;
-	int splashed = 0;
-	for (int f = 0; f < 300; f++)
-	{
-		vizStep(st, f % 5 ? 1 / 30.0 : 0.2);
-		CHECK(st.dropN <= VizStyleState::DROPS && st.splashN <= VizStyleState::SPLASHES && st.ringN <= VizStyleState::RINGS);
-		splashed = std::max(splashed, st.splashN);
-	}
-	CHECK(st.dropN == VizStyleState::DROPS || st.dropN > 100);
-	CHECK(splashed > 0);
-	vizShapes(st, false, r);
-	CHECK(inksOf(r, VI_TEXT) > 0);	// (the figure under the umbrella)
-	st.reset(VIS_RAIN);
-	st.band = true;
-	st.cover[0] = 98, st.cover[1] = 116, st.cover[2] = 342, st.cover[3] = 364;
-	for (int i = 0; i < 20; i++) st.targets[i] = VN_TOP;
-	bool under = false;
-	for (int f = 0; f < 120; f++)
-	{
-		vizStep(st, 1 / 30.0);
-		for (int i = 0; i < st.dropN; i++)
-			under = under || (st.drops[i].x > 120 && st.drops[i].x < 300 && st.drops[i].y > 200 && st.drops[i].y < 360);
-	}
-	CHECK(!under);	// (none falls through the cover; beside it they drift a little under its edge, as the proposal)
-	st.band = false;
 	// Sleepy moon: awake past its line on the loudness over a second, asleep again only under the lower one
 	st.reset(VIS_MOON);
 	st.avg = 0.3f;
@@ -7030,7 +7008,7 @@ static void testSettingsTable()
 	const SettingDef& vis = defs[settingIndex("visualizer")];
 	s.visualizer = VIS_MIRROR;
 	stepSetting(vis, s, 1);
-	CHECK_EQ(s.visualizer, (int)VIS_POCKET);	// the styles offered, in order
+	CHECK_EQ(s.visualizer, (int)VIS_FADERS);	// the styles offered, in order
 	// an old file, as it read before the table (hand-made values; each read by the build before it)
 	Settings o = parseSettings("visualizer-fps = 045\nmanga-filter = abc\nread-dim = 55\nvolume-max = 130\nmanga-hinge =\nmanga-preload = 03\n"
 		"update-remind-after = 99999\nmanga-cache = 2g\nclock = 36h\naudio-display = cover-bars\n");
@@ -7204,15 +7182,15 @@ static void testSettings()
 	// the cycle: the offered ones (VIS_SHOWN), Peaks first; from one not offered as from Peaks
 	{
 		// the owner's final ten (2026-11-19) and the five fun ones, in its order, round
-		const int order[] = {VIS_PEAKS_BANANA, VIS_RIBBON, VIS_MIRROR, VIS_POCKET, VIS_HORIZON, VIS_GRID, VIS_STARFIELD, VIS_STRINGS,
-			VIS_HELIX, VIS_SPARKS, VIS_BOUNCY, VIS_ROCKET, VIS_RAIN, VIS_MOON, VIS_DANCE};
+		const int order[] = {VIS_PEAKS_BANANA, VIS_RIBBON, VIS_MIRROR, VIS_FADERS, VIS_HORIZON, VIS_GRID, VIS_STARFIELD, VIS_STRINGS,
+			VIS_HELIX, VIS_SPARKS, VIS_BOUNCY, VIS_ROCKET, VIS_LANTERNS, VIS_MOON, VIS_DANCE};
 		for (int i = 0; i < 15; i++)
 		{
 			CHECK_EQ(stepVisualizer(order[i], 1), order[(i + 1) % 15]);
 			CHECK_EQ(stepVisualizer(order[(i + 1) % 15], -1), order[i]);
 		}
 		// the new ids, kept by their words
-		for (const char* id : {"ribbon", "grid", "starfield", "strings", "helix", "sparks", "bouncy-keys", "rocket", "rain-check", "sleepy-moon", "dance-line"})
+		for (const char* id : {"ribbon", "grid", "starfield", "strings", "helix", "sparks", "bouncy-keys", "rocket", "lanterns", "sleepy-moon", "dance-line"})
 		{
 			const int v = parseSettings(std::string("visualizer = ") + id + "\n").visualizer;
 			CHECK(v >= VIS_RIBBON && v <= VIS_DANCE);
@@ -7237,19 +7215,25 @@ static void testSettings()
 		CHECK_EQ(VIS_SHOWN_COUNT, 15);
 		CHECK_EQ(seen, want);
 	}
-	// Pocket console: kept by its id, named, its own graph (Peaks' caps, YUV only), alone and over the art
-	CHECK_EQ(parseSettings("visualizer = pocket\n").visualizer, (int)VIS_POCKET);
-	CHECK_EQ(parseSettings(serializeSettings(parseSettings("visualizer = pocket\n"))).visualizer, (int)VIS_POCKET);
-	CHECK_EQ(std::string(visualizerLabel(VIS_POCKET)), std::string("Pocket console"));
+	// Faders and Lanterns: by their ids and named; the replaced styles' saved ids (Pocket console, Rain check) still
+	// load as them, in their places, and are written back under the new ids
+	CHECK_EQ(parseSettings("visualizer = faders\n").visualizer, (int)VIS_FADERS);
+	CHECK_EQ(parseSettings("visualizer = pocket\n").visualizer, (int)VIS_FADERS);
 	{
-		std::string alone = visualizerGraph(VIS_POCKET, false), over = visualizerGraph(VIS_POCKET, true);
-		CHECK_EQ(alone != visualizerGraph(VIS_PEAKS, false), true);
-		CHECK_EQ(alone.find("lagfun=decay=") != std::string::npos && alone.find("mergeplanes") != std::string::npos, true);
-		CHECK_EQ(alone.find("rgb") == std::string::npos && alone.find("[vid1]") == std::string::npos, true);
-		CHECK_EQ(over.find("[vid1]") != std::string::npos && over.find("vstack") != std::string::npos, true);
-		// each audio branch starts at 44.1/48 kHz, as every graph's
-		CHECK_EQ(alone.find("aformat=sample_rates=44100|48000") != std::string::npos, true);
+		const Settings s = parseSettings("visualizer = pocket\n");
+		CHECK_EQ(s.visualizer, (int)VIS_FADERS);
+		CHECK(serializeSettings(s).find("visualizer = faders") != std::string::npos);
 	}
+	CHECK_EQ(std::string(visualizerLabel(VIS_FADERS)), std::string("Faders"));
+	CHECK_EQ(parseSettings("visualizer = lanterns\n").visualizer, (int)VIS_LANTERNS);
+	CHECK_EQ(parseSettings("visualizer = rain-check\n").visualizer, (int)VIS_LANTERNS);
+	CHECK_EQ(parseSettings(serializeSettings(parseSettings("visualizer = rain-check\n"))).visualizer, (int)VIS_LANTERNS);
+	CHECK_EQ(std::string(visualizerLabel(VIS_LANTERNS)), std::string("Lanterns"));
+	// no graph of their own (drawn by the player): as Peaks where one is wanted, alone and over the art
+	CHECK_EQ(visualizerGraph(VIS_FADERS, false), visualizerGraph(VIS_PEAKS_BANANA, false));
+	CHECK_EQ(visualizerGraph(VIS_FADERS, true), visualizerGraph(VIS_PEAKS_BANANA, true));
+	CHECK_EQ(visualizerGraph(VIS_LANTERNS, false), visualizerGraph(VIS_PEAKS_BANANA, false));
+	CHECK_EQ(visualizerGraph(VIS_LANTERNS, true), visualizerGraph(VIS_PEAKS_BANANA, true));
 	CHECK_EQ(std::string(loopLabel(LOOP_ALL)), std::string("Loop all"));
 	// the setting before 0.1.1, carried over
 	Settings old = parseSettings("audio-display = cover-bars\n");

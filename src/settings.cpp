@@ -26,17 +26,17 @@ namespace bp
 
 	static const char* SHOW_IDS[SHOWS] = {"art", "both", "visualizer", "none"};
 	static const char* SHOW_LABELS[SHOWS] = {"Album art only", "Art + visualizer", "Visualizer only", "None"};
-	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "pocket", "led",
+	static const char* VIS_IDS[VISUALIZERS] = {"bars", "waves", "spectrum", "circle", "peaks", "peaks-yellow", "faders", "led",
 		"synthwave", "banana-stack", "night-city", "oscilloscope", "heartbeat", "campfire", "aurora", "sound-garden", "turntable", "pixel-sea",
 		"bunny-hop", "bubble-tea", "jellyfish", "music-box", "fishbowl", "disco-ball", "banana-dancer", "vibing-cat",
 		"popcorn-machine", "jelly-wobble", "tube-man", "long-cat", "washing-machine", "mirror-bars", "wave", "dots", "levels", "area",
-		"radial", "horizon", "steps", "barcode", "rings", "ribbon", "grid", "starfield", "strings", "helix", "sparks", "bouncy-keys", "rocket", "rain-check", "sleepy-moon", "dance-line"};
-	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks", "Pocket console",
+		"radial", "horizon", "steps", "barcode", "rings", "ribbon", "grid", "starfield", "strings", "helix", "sparks", "bouncy-keys", "rocket", "lanterns", "sleepy-moon", "dance-line"};
+	static const char* VIS_LABELS[VISUALIZERS] = {"Bars", "Waves", "Spectrum", "Circle", "Peaks", "Peaks", "Faders",
 		"Hi-fi LED", "Synthwave", "Banana stack", "Night city", "Oscilloscope", "Heartbeat", "Campfire", "Aurora",
 		"Sound garden", "Turntable", "Pixel sea", "Bunny hop",
 		"Bubble tea", "Jellyfish", "Music box", "Fishbowl", "Disco ball", "Banana dancer", "Vibing cat",
 		"Popcorn", "Jelly wobble", "Tube man", "Long cat", "Washing machine", "Mirror bars", "Wave", "Dots", "Levels", "Area", "Radial", "Horizon", "Steps", "Barcode", "Rings",
-		"Ribbon", "Grid", "Starfield", "Strings", "Helix", "Sparks", "Bouncy keys", "Rocket", "Rain check",
+		"Ribbon", "Grid", "Starfield", "Strings", "Helix", "Sparks", "Bouncy keys", "Rocket", "Lanterns",
 		"Sleepy moon", "Dance line"};
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
 	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
@@ -125,7 +125,7 @@ namespace bp
 	bool visualizerOnGround(int v)
 	{
 		return v == VIS_PEAKS_BANANA || v == VIS_MIRROR || v == VIS_DOTS || v == VIS_HORIZON || v == VIS_STEPS || v == VIS_BARCODE ||
-			   v == VIS_RINGS || v == VIS_POCKET || v == VIS_RIBBON || v == VIS_GRID || v == VIS_STARFIELD || v == VIS_STRINGS || v == VIS_HELIX || v == VIS_SPARKS ||
+			   v == VIS_RINGS || v == VIS_FADERS || v == VIS_RIBBON || v == VIS_GRID || v == VIS_STARFIELD || v == VIS_STRINGS || v == VIS_HELIX || v == VIS_SPARKS ||
 			   v >= VIS_BOUNCY;
 	}
 	const char* loopLabel(int v) { return LOOP_LABELS[v >= 0 && v < LOOPS ? v : 0]; }
@@ -276,132 +276,18 @@ namespace bp
 		return far;
 	}
 
-	PocketInks pocketInks()
+	theme::Rgb visualizerInk()
 	{
-		using theme::Rgb;
-		using theme::mix;
-		// Yellow: the old handheld's four greens, and the lime pair over the art
-		const Rgb bg = theme::BG, ac = theme::ACCENT, tx = theme::TEXT;
-		const bool dark = colourContrast(bg, Rgb{0, 0, 0}) < colourContrast(bg, Rgb{255, 255, 255});
-		// the frame's shades, from the first four: the ghost a little ink on the screen, the bezel the ground a step
-		// towards the text (the console's face, quiet), the edge the screen's shadowed side
-		auto framed = [&](PocketInks p) {
-			p.ghost = mix(p.screen, p.ink, 15);
-			p.bezel = mix(bg, tx, dark ? 9 : 16);
-			p.edge = mix(p.screen, dark ? bg : p.ink, dark ? 70 : 45);
-			return p;
-		};
-		if (theme::currentTheme() == 0)
-			return framed({{0x0F, 0x38, 0x0F}, {0x30, 0x62, 0x30}, {0x9B, 0xBC, 0x0F}, {0x93, 0xB2, 0x0E}, {0x8B, 0xAC, 0x0F}, {0xD4, 0xF7, 0x5A}});
-		// a little LCD in the theme: the screen the ground tinted with the accent, the ink the accent (a dark theme: a
-		// lit screen) or the accent darkened towards the text (a light one), at 3:1 on the screen at least; mid between
-		// them; the grid a hair off the screen. Over the art (the band on BG): the ink at 3:1 on BG, and the accent
-		PocketInks p{};
-		p.screen = mix(bg, ac, dark ? 25 : 18);
-		p.ink = inkOn(dark ? ac : mix(ac, tx, 35), p.screen, tx, 3.0);
-		p.mid = mix(p.screen, p.ink, 55);
-		p.grid = mix(p.screen, dark ? bg : p.ink, dark ? 30 : 8);
-		p.light = inkOn(dark ? ac : mix(ac, tx, 35), bg, tx, 3.0);
-		p.bright = colourContrast(ac, bg) >= 3.0 && ac != p.light ? ac : mix(p.light, tx, 45);
-		return framed(p);
+		// the preview's derived ink: ACCENT moved towards TEXT in 10% steps till it reaches 3:1 on BG (so a light
+		// theme's accent doesn't vanish on its ground)
+		return inkOn(theme::ACCENT, theme::BG, theme::TEXT, 3.0);
 	}
 
-	static std::string pocketGraph(bool overCover)
+	theme::Rgb visualizerLine()
 	{
-		// the colours in BT.601 limited YUV. Yellow's greens: dark #0F380F, mid #306230, screen #9BBC0F; the grid
-		// #93B20E (luma only); over the art the dots are the bright ones, so they pop on any cover: bars light #8BAC0F,
-		// their top, the caps and the floor a vivid lime #D4F75A. Another theme: pocketInks' (the numbers worked out
-		// here; three lumas told apart, as the chroma's luts read them)
-		int DY = 50, DU = 116, DV = 113, MY = 82, MU = 113, MV = 110, SY = 152, SU = 57, SV = 126, GY = 145;
-		int LY = 140, LU = 64, LV = 125, BY = 204, BU = 64, BV = 124;
-		if (theme::currentTheme() != 0)
-		{
-			PocketInks p = pocketInks();
-			int gu, gv;
-			yuv601(p.ink, DY, DU, DV);
-			yuv601(p.mid, MY, MU, MV);
-			yuv601(p.screen, SY, SU, SV);
-			yuv601(p.grid, GY, gu, gv);
-			yuv601(p.light, LY, LU, LV);
-			yuv601(p.bright, BY, BU, BV);
-			auto apart = [](int& y, int from) { if (y == from) y += y < 235 ? 1 : -1; };
-			apart(MY, DY); apart(SY, DY); apart(SY, MY); apart(BY, LY);
-			auto hex = [](theme::Rgb c) { char b[8]; snprintf(b, sizeof b, "%02X%02X%02X", c.r, c.g, c.b); return std::string(b); };
-			fprintf(stderr, "visualizer: Pocket console in %s: ink #%s, mid #%s, screen #%s, grid #%s; over the art #%s, #%s\n",
-				theme::themeId(theme::currentTheme()), hex(p.ink).c_str(), hex(p.mid).c_str(), hex(p.screen).c_str(),
-				hex(p.grid).c_str(), hex(p.light).c_str(), hex(p.bright).c_str());
-		}
-		// 15 bars of 4 dots and a 1-dot gap, inset 2 dots from each side as the floor is (80 dots across)
-		const int N = 15, BW = 5, W = 80, L = 2;
-		const int ROWS = overCover ? 25 : 60;	// dots high: 200 or 480 pixels
-		// the bars' rows (their top, their height) and the floor under them: on the screen's last row, no gap below
-		const int T = overCover ? 2 : 14, BH = overCover ? 22 : 45;
-		const int TOP = 8;	// as Peaks: the highest bands (16-24 kHz) measured and cut off
-		const std::string w = std::to_string(W), rows = std::to_string(ROWS), bh = std::to_string(BH), t = std::to_string(T);
-		const std::string cap = std::to_string((251 + BH / 2) / BH);	// one dot, in the height's 251 steps
-		auto n = [](int v) { return std::to_string(v); };
-		// (fillborders refuses an odd height: the strip's 25 rows are smeared as 26 and the extra one cut off)
-		const int EV = ROWS + (ROWS & 1), mid = EV / 2 - 1;
-		const std::string stretch = "scale=" + n(N * BW) + ":1:flags=neighbor,pad=" + w + ":" + n(EV) + ":" + n(L) + ":" + n(mid) +
-									",fillborders=top=" + n(mid) + ":bottom=" + n(EV - 1 - mid) + ":mode=smear" +
-									(EV != ROWS ? ",crop=" + w + ":" + rows + ":0:0" : std::string()) + ",setsar=1";
-		std::string g = "[aid1] asplit [ao] [a]; ";
-		// over the art: its top as it is, and its bottom slice in planes, each kept wherever no dot is lit (as Peaks)
-		if (overCover)
-			g += "[vid1] scale=640:480:force_original_aspect_ratio=decrease,pad=640:480:-1:-1:black,setsar=1,format=yuv420p,"
-				 "settb=AVTB,split [pcart1] [pcart2]; [pcart1] crop=640:280:0:0 [top]; "
-				 "[pcart2] crop=640:200:0:280,extractplanes=y+u+v [pcay] [pcau] [pcav]; ";
-		// measured and drawn 60 times a second (an exception to the 30 fps rule, for the owner to judge on the
-		// handheld): the 1024-sample windows overlap, so a short hit always counts (at 30 a third of the sound went
-		// unmeasured), and the bars move with it
-		g += "[a] aformat=sample_rates=44100|48000:channel_layouts=mono,showfreqs=s=" + n(N + TOP) +
-			 "x256:mode=bar:cmode=combined:ascale=log:fscale=log:win_size=1024:rate=60:colors=white,crop=" + n(N) +
-			 ":256:0:0,scale=" + n(N) + ":1:flags=area,format=gray,bplut=c0='val*252/255'" + vizContrast("pc", 1, "4", "1.5", "160") + ",split [pcv] [pcp]; "
-			 "[pcp] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.9316,"
-			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*250)',format=gray," + stretch + " [pcP]; "
-			 // the bars themselves eased, as an LED meter's: up at once, down over ~0.15 s for the whole height (28 of
-			 // the 252 steps a measure), so whole-dot steps glide rather than flicker at 60 frames a second. The same
-			 // exp/log lagfun as the caps (15 values a frame: next to nothing); a cap's slower fall keeps it above
-			 "[pcv] format=gray16le,lut=c0='65535*exp((val/257-252)/24)',lagfun=decay=0.311,"
-			 "lut=c0='clip(257*(252+24*log(max(val,1)/65535)),0,257*252)',format=gray," + stretch + " [pcV]; "
-			 // each dot's "height" (1..252 up the bars' rows), 253 a gap or outside them, 255 the floor
-			 "color=black:s=" + w + "x" + rows + ":r=1:d=1,format=gray,geq=lum='if(eq(Y," + n(T + BH) + ")*between(X," + n(L) + "," +
-			 n(L + N * BW - 2) + "),255,if(lt(Y," + t + ")+gte(Y," + n(T + BH) + ")+lt(X," + n(L) + ")+gte(X," + n(L + N * BW - 1) +
-			 ")+gte(mod(X-" + n(L) + "," + n(BW) + ")," + n(BW - 1) + "),253,1+floor(251*(" + n(T + BH - 1) + "-Y)/(" + bh + "-1))))' [pcR]; "
-			 // 254: a cap (one dot above the cap's value)
-			 "[pcP] [pcR] bplut2=c0='if(lt(y,253)*gt(y,x)*lte(y,x+" + cap + "),254,y)' [pcQ]; "
-			 "";
-		if (overCover)
-		{
-			// the art shows through: each dot nothing (0), dark (1) or mid (2), and between the dots (the grid's lines)
-			// nothing either, so it reads as an LCD laid over the picture. Each plane the art's where nothing, else
-			// the green's; the chroma's grid at its half size
-			auto paint = [&](int dark, int midc) {
-				return "'if(eq(x,0),y,if(eq(x,1)," + n(dark) + "," + n(midc) + "))'";
-			};
-			return g + "[pcV] [pcQ] bplut2=c0='if(gte(y,254),2,if(lte(y,x)*lt(y,253),if(gt(y,x*0.66),2,1),0))',split=3 [pcc0] [pcc1] [pcc2]; "
-					   "color=black:s=640x200:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [pcG]; "
-					   "color=black:s=320x100:r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,4),3)+eq(mod(Y,4),3),1)',split [pcGu] [pcGv]; "
-					   "[pcc0] scale=640:200:flags=neighbor [pcc0s]; [pcc0s] [pcG] bplut2=c0='if(y,0,x)' [pcc0g]; "
-					   "[pcc0g] [pcay] bplut2=c0=" + paint(LY, BY) + " [pcY]; "
-					   "[pcc1] scale=320:100:flags=neighbor [pcc1s]; [pcc1s] [pcGu] bplut2=c0='if(y,0,x)' [pcc1g]; "
-					   "[pcc1g] [pcau] bplut2=c0=" + paint(LU, BU) + " [pcU]; "
-					   "[pcc2] scale=320:100:flags=neighbor [pcc2s]; [pcc2s] [pcGv] bplut2=c0='if(y,0,x)' [pcc2g]; "
-					   "[pcc2g] [pcav] bplut2=c0=" + paint(LV, BV) + " [pcW]; "
-					   "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p [strip]; [top] [strip] vstack [vo]";
-		}
-		// each dot's green: a cap or the floor mid, a bar dark (its top third mid), else the screen
-		g += "[pcV] [pcQ] bplut2=c0='if(gte(y,254)," + n(MY) + ",if(lte(y,x)*lt(y,253),if(gt(y,x*0.66)," + n(MY) + "," + n(DY) +
-			 ")," + n(SY) + "))',split=3 [pcy] [pcu] [pcw]; "
-			 // the grid: the 8th line of every dot, across and down, a hair darker (a still picture, one frame)
-			 "color=black:s=640x" + n(ROWS * 8) + ":r=1:d=1,format=gray,geq=lum='255*gte(eq(mod(X,8),7)+eq(mod(Y,8),7),1)' [pcG]; "
-			 "[pcy] scale=640:" + n(ROWS * 8) + ":flags=neighbor [pcY0]; [pcY0] [pcG] bplut2=c0='if(y," + n(GY) + ",x)' [pcY]; "
-			 "[pcu] scale=320:" + n(ROWS * 4) + ":flags=neighbor,bplut=c0='if(eq(val," + n(DY) + ")," + n(DU) + ",if(eq(val," + n(MY) +
-			 ")," + n(MU) + "," + n(SU) + "))' [pcU]; "
-			 "[pcw] scale=320:" + n(ROWS * 4) + ":flags=neighbor,bplut=c0='if(eq(val," + n(DY) + ")," + n(DV) + ",if(eq(val," + n(MY) +
-			 ")," + n(MV) + "," + n(SV) + "))' [pcW]; "
-			 "[pcY] [pcU] [pcW] mergeplanes=0x001020:yuv420p [vo]";
-		return g;
+		// a quiet rule that still shows: RULE is very close to BG in the dark themes, so it goes towards DIM
+		const bool light = colourContrast(theme::BG, theme::Rgb{0, 0, 0}) > colourContrast(theme::BG, theme::Rgb{255, 255, 255});
+		return theme::mix(theme::RULE, theme::DIM, light ? 25 : 35);
 	}
 
 	bool visualizerNeedsMaps(int vis)
@@ -459,9 +345,8 @@ namespace bp
 	std::string visualizerGraphMarked(int vis, bool overCover, const std::string& mapsDir)
 	{
 		vis = visualizerReplacement(vis);
-		// the six drawn only by the player (2026-11-19, no graph of their own): as Peaks where a graph is needed
-		if (vis >= VIS_RIBBON) vis = VIS_PEAKS_BANANA;
-		if (vis == VIS_POCKET) return pocketGraph(overCover);
+		// the styles drawn only by the player (2026-11-19, no graph of their own): as Peaks where a graph is needed
+		if (vis == VIS_FADERS || vis >= VIS_RIBBON) vis = VIS_PEAKS_BANANA;
 		// the simple ones (src/viz_simple.cpp)
 		switch (vis)
 		{
@@ -609,6 +494,9 @@ namespace bp
 	{
 		// a retired style (2026-11-19): its replacement, in its place (Circle: Mirror bars, Long cat and Radial: Steps...)
 		s.visualizer = visualizerReplacement(s.visualizer);
+		// the two replaced styles (2026-11-19): their saved ids load as the new styles in the same places
+		if (value == "pocket") s.visualizer = VIS_FADERS;
+		if (value == "rain-check") s.visualizer = VIS_LANTERNS;
 		if (value == "timeline") s.visualizer = VIS_PEAKS_BANANA;
 		// Lite isn't a choice any more: its values stay on branch vizlite
 		if (value == "lite") s.visualizer = VIS_PEAKS_BANANA;

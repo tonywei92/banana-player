@@ -3109,19 +3109,12 @@ namespace bp
 		}
 		else if (!group)
 		{
-			// over a visualizer: top left, with a shadow. Pocket console alone: the screen's own ink, dark green in the
-			// pixel font, no shadow (the album line its mid green)
-			bool pocket = show == SHOW_VIS && style == VIS_POCKET;
-			// (the native styles: the theme's lines with the ground's outline, the visualizer passing under them;
-			// Pocket console's outline its screen's colour, crisp for the pixel font)
-			std::string look = pocket ? "\\q2\\fnPixelify Sans\\bord3\\3c" + ass(pocketInks().screen) + "\\shad0"
-				: peaksAlone ? "\\q2" + OUTLINE
-				: "\\q2\\bord2\\blur4\\3c&H000000&\\shad3\\4c&H000000&";
-			// a line each, from the top (22, 18): title 26, then 5 down the artist 17, 3 down the album 14 (Pocket
-			// console: inside its screen, over the bars' left edge and clear of the cut corner, from (28, 30); 350 wide as
-			// measured, its pixel type a fifth wider: to 448, short of the sun at the screen's top right)
-			const int lx = pocket ? 28 : 22, lw = pocket ? 350 : 596;
-			double y = pocket ? 30 : 18;
+			// over a visualizer: top left, with a shadow (the native styles: the theme's lines with the ground's
+			// outline, the visualizer passing under them)
+			std::string look = peaksAlone ? "\\q2" + OUTLINE : "\\q2\\bord2\\blur4\\3c&H000000&\\shad3\\4c&H000000&";
+			// a line each, from the top (22, 18): title 26, then 5 down the artist 17, 3 down the album 14
+			const int lx = 22, lw = 596;
+			double y = 18;
 			int linesW = 0;
 			auto line = [&](const std::string& s, int fs, bool bold, const std::string& colour, int gap) {
 				y += gap;
@@ -3149,15 +3142,12 @@ namespace bp
 					  assText(songFitText(s, fs, lw, bold)) + "\n";
 				y += fs * 1.2;
 			};
-			// (Pocket console's: its screen's ink and mid, the theme's: pocketInks; Yellow's the greens #0F380F, #306230)
-			const PocketInks pk = pocketInks();
-			const std::string PINK = ass(pk.ink), PMID = ass(pk.mid);
-			line(title, 26, true, pocket ? PINK : peaksAlone ? INK : WHITE, 0);
-			if (!chapter.empty()) line(chapter, 17, false, pocket ? PMID : peaksAlone ? MARK : ass(TOP_TITLE), 4);
-			if (!artist.empty()) line(artist, 17, false, pocket ? PINK : peaksAlone ? INK2 : CREAM, 5);
-			if (!album.empty()) line(album, 14, false, pocket ? PMID : peaksAlone ? INK3 : GREY, 3);
+			line(title, 26, true, peaksAlone ? INK : WHITE, 0);
+			if (!chapter.empty()) line(chapter, 17, false, peaksAlone ? MARK : ass(TOP_TITLE), 4);
+			if (!artist.empty()) line(artist, 17, false, peaksAlone ? INK2 : CREAM, 5);
+			if (!album.empty()) line(album, 14, false, peaksAlone ? INK3 : GREY, 3);
 			// the lines' box (only kept clear with no layer to compose: nativeKeepClear)
-			linesBox = {lx - 8.0f, (pocket ? 30 : 18) - 8.0f, lx + (float)linesW * (pocket ? 1.2f : 1) + 8, (float)y + 6, 0};
+			linesBox = {lx - 8.0f, 18 - 8.0f, lx + (float)linesW + 8, (float)y + 6, 0};
 		}
 		// the manga engine starting over Album art only (the visualizers rest as None): its note at the foot
 		if (engineLoading && show != SHOW_NONE)
