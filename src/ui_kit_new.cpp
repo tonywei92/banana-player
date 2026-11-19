@@ -39,7 +39,14 @@ namespace bp
 		};
 		auto cell = [&](Ui::Rect c, const RailItem& it, bool on, bool held) {
 			SDL_Color ink = on ? activeInk : sdl(theme::ON_RAIL);
-			if (on) lit(c);
+			if (on)
+			{
+				lit(c);
+				// the active section's mark: a 3-unit bar flush to the panel's left edge, the cell's height less 8
+				// a side, in the accent (a strong theme's KEY_FOCUS: Gundam's yellow), the owner
+				ui.fillRound({r.area.x, c.y + 8, 3, std::max(4, c.h - 16)}, strong ? sdl(theme::KEY_FOCUS) : ACCENT, 1,
+					ROUND_TR | ROUND_BR);
+			}
 			else if (held) ui.fillRound(c, PRESSED, theme::kitRadius(R_BUTTON));
 			// icon 22 over the label, the pair centred in the cell (a seven-section rail's 50-tall cells sit closer)
 			int cx = c.x + c.w / 2, iconCy = c.h >= lay::RAIL_CELL_H ? c.y + 21 : c.y + 16;
