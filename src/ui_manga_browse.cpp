@@ -2307,7 +2307,7 @@ namespace bp
 			ui.drawTextMid(elideMiddle(mangaLocalFolder(), 1, w), 1, ACCENT, x, y + 30, w);
 			// the second card: its own Manga folder is read too (Manga, manga or MANGA at its top)
 			ui.drawTextMid("or into a Manga folder at the top of the second card:", 0, TEXT, x, y + 60, w);
-			ui.drawTextMid("Second card \xE2\x80\xBA Manga", 1, ACCENT, x, y + 90, w);
+			ui.drawTextMid("Card 2 \xE2\x80\xBA Manga", 1, ACCENT, x, y + 90, w);
 			ui.drawTextMid("A card set up on a Mac: choose Master Boot Record and", 0, DIM, x, y + 120, w);
 			ui.drawTextMid("exFAT (or FAT32), or the handheld may not see it.", 0, DIM, x, y + 144, w);
 			const char* rest[] = {

@@ -179,12 +179,12 @@ namespace bp
 			};
 			int cards = 0;
 			for (auto& r : ui.roots)
-				if (r.label.size() >= 4 && r.label.compare(r.label.size() - 4, 4, "card") == 0) cards++;
+				if (r.card) cards++;
 			std::vector<std::string> parts;
 			bool counted = false;
 			for (auto& r : ui.roots)
 			{
-				bool card = r.label.size() >= 4 && r.label.compare(r.label.size() - 4, 4, "card") == 0;
+				bool card = r.card;
 				if (!card || cards < 2) parts.push_back(r.label);
 				else if (!counted)
 				{
@@ -603,7 +603,7 @@ namespace bp
 			if (pt.kind == Pointer::Down)
 			{
 				ui.pressedBtn = -1;
-				if (!QUIT_BOX.hit(x, y))
+				if (!quitBox().hit(x, y))
 				{
 					quitOpen = false;
 					ui.swallowTouch = true;
@@ -790,6 +790,8 @@ namespace bp
 
 	std::vector<Ui::Hint> Ui::Home::hintList(const Player& p) const
 	{
+		// the quit question's own keys: it has the panel until it closes
+		if (quitOpen) return {{"UP/DOWN", "Choose"}, {"A", "OK"}, {"B", "Cancel"}};
 		std::vector<Hint> h;
 		if (ui.browse->browseDir == RECENT)
 		{
@@ -1026,9 +1028,10 @@ namespace bp
 	void Ui::Home::drawQuitDialog(bool quitPlaying)
 	{
 		// the same sheet as Quick settings (F): its panel and title, Quit as its red button, Cancel a row as its rows
-		ui.drawDialog(QUIT_BOX, "");
-		ui.drawTextMid("Quit Banana Player?", 1, ACCENT, QUIT_BOX.x + 24, QUIT_BOX.y + 28);
-		if (quitPlaying) ui.drawTextMid("What's playing stops.", 0, DIM, QUIT_BOX.x + QUIT_BOX.w - 24, QUIT_BOX.y + 28, 0, 1);
+		Rect box = quitBox();
+		ui.drawDialog(box, "");
+		ui.drawTextMid("Quit Banana Player?", 1, ACCENT, box.x + 24, box.y + 28);
+		if (quitPlaying) ui.drawTextMid("What's playing stops.", 0, DIM, box.x + box.w - 24, box.y + 28, 0, 1);
 		Rect q = quitRow(0);
 		bool down = ui.pressedBtn == DLG_ROW, at = quitCursor == 0;
 		ui.drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);
@@ -1041,7 +1044,8 @@ namespace bp
 		if (ui.pressedBtn == DLG_ROW + 1) ui.drawBox(c, PRESSED, R_BUTTON);
 		else if (at) ui.drawFocus(c);
 		ui.drawTextMid("Cancel", 1, at ? ACCENT : TEXT, c.x + c.w / 2, c.y + c.h / 2, 0, 2);
-		ui.drawHints({{"UP/DOWN", "Choose"}, {"A", "OK"}, {"B", "Cancel"}});
+		// its hints are Home::hintList's while the question is up: the shell draws them after this body (a full-panel
+		// hint bar here would be painted over, and over the rail with it)
 	}
 
 	// ---- the More sheet on a card (X or a hold), Home's own things beside it ----

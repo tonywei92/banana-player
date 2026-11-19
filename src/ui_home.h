@@ -105,11 +105,22 @@ namespace bp
 		bool pressedContinue = false, pressedResume = false;
 		int pressedCard = -1, pressedShortcut = -1, pressedChip = -1, pressedEmptyKey = -1;
 
-		// B on Home with nothing playing asks first; the dialog is Home's, over the page (drawHome)
+		// B on Home with nothing playing asks first; the dialog is Home's, over the page (drawHome). Its panel
+		// sits inside the shell's main strip (right of the rail) and its veil dims the whole panel, as Quick
+		// settings' draws do; the rows and the page's touches ask the same box.
 		bool quitOpen = false;
 		int quitCursor = 1;	// Cancel first
-		static constexpr Rect QUIT_BOX{40, 119, 560, 198};
-		Rect quitRow(int i) const { return {56, QUIT_BOX.y + 56 + i * 62, 528, 54}; }
+		static constexpr int QUIT_Y = 119, QUIT_H = 198;
+		Rect quitBox() const
+		{
+			lay::Box main = lay::shell(false).main;
+			return {main.x + 8, QUIT_Y, main.w - 16, QUIT_H};
+		}
+		Rect quitRow(int i) const
+		{
+			Rect b = quitBox();
+			return {b.x + 16, b.y + 56 + i * 62, b.w - 32, 54};
+		}
 		void drawQuitDialog(bool quitPlaying);
 		void drawHome(const Player& p);
 		void drawAllRecent(const Player& p);

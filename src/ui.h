@@ -917,7 +917,9 @@ namespace bp
 		void quickSlide(int row, int x, int y, Player& p);	// a finger on the row's bar: grabbed
 		void quickChoose(int row, Player& p);
 		void drawQuick(const Player& p);
-		// rows 62 apart, closer (56) when that many don't fit above the footer
+		// the shell's pages: their main strip is right of the rail, so a dialog there never hangs over it
+		bool inShell() const { return page == Page::Browse || page == Page::Settings; }
+		// the quick settings' panel: rows 62 apart, closer (56) when that many don't fit above the footer
 		// the rows' spacing: roomy while they fit above the hints, closer as rows come (seven at most: both panels'
 		// brightness apart, the dashboard, incognito mode and quit)
 		int quickStep() const
@@ -925,12 +927,28 @@ namespace bp
 			int n = (int)quickRows().size();
 			return 74 + n * 62 <= 436 ? 62 : 74 + n * 56 <= 436 ? 56 : (436 - 74) / n;
 		}
-		Rect quickPanel() const { int h = 74 + (int)quickRows().size() * quickStep(); return {40, (436 - h) / 2, 560, h}; }
-		Rect quickRowRect(int i) const { return {56, quickPanel().y + 56 + i * quickStep(), 528, std::min(54, quickStep() - 2)}; }
+		// inside the shell's main strip the panel is inset 8 from the rail and the right edge (the dialog's veil
+		// still dims the whole panel, the rail included: a modal, not a panel hung over the rail)
+		Rect quickPanel() const
+		{
+			int h = 74 + (int)quickRows().size() * quickStep();
+			if (inShell())
+			{
+				lay::Box main = lay::shell(false).main;
+				return {main.x + 8, (436 - h) / 2, main.w - 16, h};
+			}
+			return {40, (436 - h) / 2, 560, h};
+		}
+		Rect quickRowRect(int i) const
+		{
+			Rect p = quickPanel();
+			return {p.x + 16, p.y + 56 + i * quickStep(), p.w - 32, std::min(54, quickStep() - 2)};
+		}
+		// the stepper's pieces are laid from the row's right edge, so the panel's width changes nothing they need
 		Rect quickPinBtn(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 164, r.y + (r.h - 48) / 2, 160, 48}; }
-		Rect quickMinus(int i) const { Rect r = quickRowRect(i); return {r.x + 236, r.y + (r.h - 48) / 2, 48, 48}; }
-		Rect quickBar(int i) const { Rect r = quickRowRect(i); return {r.x + 296, r.y + r.h / 2 - 10, 164, 20}; }
-		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + 472, r.y + (r.h - 48) / 2, 48, 48}; }
+		Rect quickMinus(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 292, r.y + (r.h - 48) / 2, 48, 48}; }
+		Rect quickBar(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 232, r.y + r.h / 2 - 10, 164, 20}; }
+		Rect quickPlus(int i) const { Rect r = quickRowRect(i); return {r.x + r.w - 56, r.y + (r.h - 48) / 2, 48, 48}; }
 		void setBrightness(Backlight::Panel panel, int permille, Player& p);
 		// (7 rows end at 386: the help's two lines at 400 stay clear of them; a longer group scrolls)
 		static constexpr int SET_Y = 92, SET_H = 46, SET_SHOWN = lay::SET_ROWS, HELP_Y = 400;
@@ -957,7 +975,7 @@ namespace bp
 		// every page has it but Home (nowhere to go back to; B there asks to quit, START has Quit)
 		bool backIconShown(const Player&) const;
 		static constexpr Uint32 UNLOCK_HOLD_MS = 1000;	// buttonRect's ids beside the grid's 0..9
-		static constexpr int SET_ARROW_X = 372;	// a settings row's left arrow: a tap left of the value's middle steps back
+		static constexpr int SET_ARROW_X = 372;	// an old full-panel settings row's left arrow (the shell's rows use lay::settingStepper)
 
 		// ---- the web dashboard ----
 		// Page::Web is an area (Area), ui_web.h / ui_web.cpp; what every page shows of it (the header's globe, the quick

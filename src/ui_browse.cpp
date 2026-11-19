@@ -379,7 +379,8 @@ namespace bp
 			}
 		}
 		else if (dir.empty())
-			for (auto& r : ui.roots) add(1, r.label, r.path, r.path);	// Files' top: the places (Recent is Home's)
+			for (auto& r : ui.roots) add(1, r.label, r.path, "");	// Files' top: the places (Recent is Home's; the
+																	// internal path stays out of the row)
 		else if (dir == RECENT && !p.settings.keepHistory) add(-1, "Play history is off (Settings)", "", "");
 		else if (dir == RECENT)
 		{
@@ -1914,7 +1915,7 @@ namespace bp
 				bool cards = false, videos = false;
 				for (auto& rt : roots)
 				{
-					cards = cards || (rt.label.size() >= 4 && rt.label.compare(rt.label.size() - 4, 4, "card") == 0);
+					cards = cards || rt.card;
 					videos = videos || rt.label == "Videos";
 				}
 				if (browse->browseDir == RECENT && p.settings.keepHistory && browse->homeView->recentCounts[0] && !browse->homeView->recentTabsUp) browse->homeView->drawRecentTabs(16, SUB_Y, 624);
