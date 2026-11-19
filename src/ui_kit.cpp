@@ -389,6 +389,16 @@ namespace bp
 		ui.drawTextMid(h.title, F_P20, ink, x, cy, std::max(1, right - x - (noteW ? noteW + 12 : 0)));
 	}
 
+	void Ui::Kit::sheet(const lay::ListSheet& s, const SheetHead& h)
+	{
+		lay::Sheet sh;
+		sh.box = s.box;
+		sh.grab = s.grab;
+		sh.head = s.head;
+		sh.hints = s.hints;
+		sheet(sh, h);
+	}
+
 	void Ui::Kit::sheetBack(Rect box, Rect grab)
 	{
 		// the page behind under a black veil; the sheet from the foot, its top corners round, an edge on three sides

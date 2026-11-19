@@ -2,11 +2,14 @@
 // (docs/notes/ui-areas.md): its state and its handlers, drawn with the component kit (ui_kit.h) on the Rects of
 // lay::playerLayout (kitlayout.h), which its touches test too. Three tiers: the transport row (what is pressed all the
 // time), the state chips (what is set sometimes: each says its state, yellow when away from normal), and X's More
-// sheet for the rest (Lock, Screen off, Info, Stop, Like, Add to playlist, Show in folder, Play on, and View). The row
-// under the transport is Like · Playlist · List · Stop; SELECT and X both open More (its View row is the View sheet), and
-// UP / DOWN do nothing here (the Next line is a tap).
+// sheet for the rest (its first row is those same chips, then Lock, Screen off, Info, Stop, Like, Add to playlist,
+// Show in folder, Play on). The row under the transport is Like · Playlist · List · Stop; SELECT and X both open More,
+// and each chip opens its own titled sheet (Subtitles, Audio, Picture, Speed; a song's Equalizer, Effects, Display,
+// Speed); Repeat steps Off / All / One in place and Shuffle turns on and off. UP / DOWN do nothing here (the Next line
+// is a tap).
 // A photo is this page too (Player::playingPhoto): its viewer is unchanged and still Ui's (drawPhoto, photoKey,
-// photoPointer in ui_main.cpp); the area hands it the keys, the touches and the drawing.
+// photoPointer in ui_main.cpp); the area hands it the keys, the touches and the drawing, and SELECT or X opens the
+// photo's More (four chips changed in place, then its file's rows).
 // Still Ui's, because other pages use them: Like (likeNow), the play mode's label (modeLabel), the hold that
 // takes playback over from a browser (playHoldAt: the mini bar holds the same way), Stop's flag (stopPressed).
 #pragma once
@@ -54,15 +57,16 @@ namespace bp
 		// the chapter line and the Next line open it on theirs
 		int listTab = 0;
 		void openList(int tab, Player& p);
-		// View (More's View row): the View sheet (ui_player.cpp), opened on the tab last used. A video: Subtitles / Audio /
-		// Picture / Speed; the track chips open it on theirs, the Speed chip on Speed. A song: Display (the mode and the
-		// style on one page) / Equalizer / Effects / Speed; Sound opens Equalizer, Sound FX Effects, Display Display.
-		int viewTab = 0, songViewTab = 0;
+		// Each chip opens its own titled sheet (ui_player.cpp): a video's Subtitles / Audio / Picture / Speed; a song's
+		// Equalizer / Effects / Display / Speed. No tabs: the sheet is the chip's subject. Speed opens the same sheet on
+		// both; Picture's last row opens Adjust, a page of that sheet.
 		void openView(int tab, Player& p);
 
-		// ---- X: the More sheet's list, and Play on's sheet ----
+		// ---- X / SELECT: the More sheet's list, Play on's sheet, and a photo's own More ----
 		MoreSpec moreSpec(const Player& p) const;
 		void openMoreSheet();
+		MoreSpec photoMoreSpec(const Player& p) const;
+		void openPhotoMore();
 		void openPlayOn();
 
 		// ---- Lock: touch does nothing but a 1 s hold on the lock (the buttons go on as Button hotkeys says) ----

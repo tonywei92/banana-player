@@ -439,11 +439,12 @@ namespace bp
 		// ---- the player screen (Page::Main: a video, a song; a photo's viewer is still here in Ui): an area,
 		// ui_player.h / ui_player.cpp ----
 		struct PlayerPage;
-		struct SongViewSheet;	// (ui_player.cpp: a song's View sheet, a table of it too)
+		struct SongViewSheet;	// (ui_player.cpp: a song's chip's sheet, a table of it too)
 		std::unique_ptr<PlayerPage> playerPage;
 		struct PlayOnSheet;
 		struct ListSheet;
 		struct ViewSheet;
+		struct AdjustSheet;	// (ui_player.cpp: Picture's Adjust page)
 
 		// the readers' Brightness sheet (ui_light.cpp): the screens' backlight, Extra dim, the reader's filter
 		// (an overlay: LightSheet, pushed by openLight)
@@ -642,7 +643,7 @@ namespace bp
 		// what the top screen says as the play mode changes (the dashboard's labels too)
 		std::string modeLabel(const Player& p) const;
 		// Sound (music's): two tabs, Equalizer and Effects: an area (Area), ui_sound.h / ui_sound.cpp. The song's
-		// View sheet opens these same actions in its Equalizer and Effects tabs (PlayerPage's SongViewSheet)
+		// Equalizer and Effects sheets (PlayerPage's SongViewSheet) call these same actions
 		struct Sound;
 		std::unique_ptr<Sound> sound;
 		// a photo: the pan area (its thumbnail, the part on the top panel boxed: a finger drags the photo as on a

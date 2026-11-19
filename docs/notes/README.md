@@ -7,6 +7,7 @@ Write the way the rest of the repo does: plain and precise, with the why. Say wh
 
 ## Index
 
+- [2026-11-19 the player's chips open their own sheets](2026-11-19-player-sheets.md): no View sheet or tabs (each chip opens a titled sheet), Repeat steps and Shuffle toggles in place, More's first row is the chips, Picture's Adjust page, and a photo's SELECT More; `G_LOOP_ONE`, the sheet chip row, `--press` shots.
 - [2026-11-19 the shell's touch: Files rows and drags](2026-11-19-shell-touch.md): Files' rows set the cursor but never opened (its Move/Up never left `Browse::pointer`) and no rebuilt list shared one drag's maths; one `lay::dragScroll`, the Files lift, and `touch:` log lines that name the page and the missed step.
 - [2026-11-19 the left stick scrolls the readers](2026-11-19-stick-scroll.md): LEFTY read past a 15 % dead zone, squared, one panel height a second at full push; the text viewer and the Strip scroll, a paged page with room pans, Book turns; the speed curve is bpcore's `stickScrollSpeed` (issue #16).
 - [2026-11-18 Previous on a video](2026-11-18-previous-video.md): Previous restarts a song 5 s in, never a video; a video always goes to the one before, and on the first one does nothing unless Repeat All; the kind is the session's `audioOnly` (`Loaded`), I17.

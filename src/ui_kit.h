@@ -141,6 +141,8 @@ namespace bp
 			bool danger = false;
 		};
 		void sheet(const lay::Sheet& s, const SheetHead& h);
+		// the same header over a list sheet's box and head (a sheet of rows, no tiles)
+		void sheet(const lay::ListSheet& s, const SheetHead& h);
 		// the veil, the box and the grab mark: what a sheet draws before its own content (the header too, if it has
 		// one; the List sheet has tabs and controls instead)
 		void sheetBack(Rect box, Rect grab);
@@ -392,13 +394,15 @@ namespace bp
 		std::string key;	// a row's cap ("L3": that button chooses it while the sheet is open)
 		std::function<bool(Player&)> act;	// what choosing it does; true: leave the player (as Ui::press says)
 		bool danger = false, off = false, lit = false;
-		bool stay = false;	// the sheet stays open (the row says what it is now: Like)
+		bool stay = false;	// the sheet stays open (the row says what it is now: Like; a chip changed in place)
+		std::string value;	// a chip's state ("All", "Fit")
+		bool away = false;	// a chip away from its normal state (yellow, with a dot)
 	};
 	struct Ui::MoreSpec
 	{
 		const Glyph* glyph = nullptr;
 		std::string title, note;
-		std::vector<MoreItem> tiles, rows;	// a first row of keys (four across), then the list
+		std::vector<MoreItem> chips, tiles, rows;	// a first row of state chips, a row of keys (four across), then the list
 		int cols = 1;	// the list's columns
 	};
 

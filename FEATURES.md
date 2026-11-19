@@ -263,10 +263,10 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **LEFT / RIGHT** | Back 5 seconds / forward 10 seconds (hold to keep going); the **5 s** and **10 s** keys either side of Play do the same by touch |
 | **L / R** | Previous / next file in the folder (a song 5 s or more in restarts first; a video always goes to the one before; on the first video: nothing, unless Repeat All) |
 | **L2 / R2** | Previous / next chapter (**F + L2** is still the screenshot) |
-| **UP / DOWN** | Nothing: the Next line is a tap, and the chips are touch only. (They no longer change the speed; that is the **Speed** chip or View's Speed tab) |
-| **X** | **More**: a sheet with **Lock touch**, **Screen off**, **Info** and **Stop** (in red) as its first four keys, then **View** (what a video or song shows: the View sheet below), **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. The D-pad moves, **A** chooses, **X** or **B** closes |
+| **UP / DOWN** | Nothing: the Next line is a tap, and the chips are touch only (the keys reach them through **More**). (They no longer change the speed; that is the **Speed** chip) |
+| **X** | **More**: its first row is the player's five chips, under the cursor; then **Lock touch**, **Screen off**, **Info** and **Stop** (in red), and **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. On a chip, **A** opens that chip's sheet and More closes; on **Repeat** or **Shuffle** it changes it and More stays open. **LEFT / RIGHT** move along the chips, **DOWN** to the tiles and rows; **A** chooses, **X** or **B** closes |
 | **Y** | **List** (the **List** key): one sheet with **Up next** (the folder or playlist that plays, in its own order, the one playing marked **Now**) and **Chapters** (every chapter with its start; a file without chapters has only Up next), with **Shuffle**'s switch and **Repeat** (Off / All / One) in its header. **L / R** step the tabs, **UP / DOWN** move, **LEFT / RIGHT** page, **A** plays from the row, **L2 / R2** jump a chapter with the sheet open, **Y** or **B** closes |
-| **SELECT** | **More**, the same sheet **X** opens (the hint bar says **SELECT More**). Its first row, **View**, opens **View**, a sheet over the controls. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (Fit, Fill, Stretch) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Visualizer** (the fifteen styles as a grid), **Equalizer**, **Effects** and **Speed**. **L / R** switch tabs, **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's Display, **SELECT** steps the Show mode); it opens on the tab you used last. The rest of More is X's list |
+| **SELECT** | **More**, the same sheet **X** opens (the hint bar says **X/SELECT More**). Its first row is the five chips: **A** on one opens its own sheet, and More closes. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (Fit, Fill, Stretch, then **Adjust…**) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Equalizer**, **Effects** and **Speed**. There are no tabs and **L / R** do nothing in a sheet: **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's **Display**, **SELECT** steps the Show mode). **Picture**'s last row opens **Adjust**; **‹** or **B** goes back to **Picture** |
 | **START** | **Settings**: the ten group tiles; **B** or **START** closes it back to where you were (the player, here) |
 | **L3** (press the stick, RG DS Plus) | Like / Unlike what plays |
 | **B** (or **Back**) | Back to the list: it keeps playing (see [Playing while you browse](#playing-while-you-browse)) |
@@ -288,17 +288,21 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 - **The transport row:** **Prev**, **5 s** back, **Play / Pause** (the wide yellow key), **10 s** forward, **Next**.
 - **The second row**, the same on a video and a song: **Like**, **Playlist** (Add to playlist…), **List** (Up next,
   **Y**) and **Stop** (at the right edge, in plain ink: it stops everywhere, the place kept; **X** › **More** has
-  the same Stop in red). **SELECT** opens **More**, as **X** does: its first row, **View**, opens **View** (a video's
-  tracks and speed, or a song's display, visualizer, equalizer and effects); the hint bar says **SELECT More**.
-- **The chips** under them say how it is set, and a tap changes or opens each (they are touch only: the D-pad never
-  lands on one). Five on both. A video: **Subtitles**, **Audio** and **Picture** (each opens its tab of View), **Speed**
-  (View's Speed tab) and **Repeat**. A song: **Equalizer** (the equalizer's preset, opening View's Equalizer tab), **Sound
-  FX** (the effect, opening Effects), **Display** (opening Display; its value is the Show mode in its short form, **Art**,
-  **Art + viz**, **Visualizer** or **None**, never the style), **Speed** (View's Speed tab) and **Shuffle**.
+  the same Stop in red). **SELECT** opens **More**, as **X** does, and its first row is the five chips; the hint bar
+  says **X/SELECT More**.
+- **The chips** under them say how it is set, and a tap changes or opens each (they are touch only: the D-pad reaches
+  them through More's first row). Five on both. A video: **Subtitles**, **Audio**, **Picture**, **Speed** and
+  **Repeat**. A song: **Equalizer** (the equalizer's preset), **Sound FX** (the effect), **Display** (its value is the
+  Show mode in its short form, **Art**, **Art + viz**, **Visualizer** or **None**, never the style), **Speed** and
+  **Shuffle**. Each opens its own sheet at once: no View sheet and no tabs. **Repeat** and **Shuffle** open nothing:
+  **Repeat** steps **Off → All → One → Off** in place (and wears the repeat-one mark on One), **Shuffle** turns on and
+  off. No note is put up: the chip's word and its colour say it.
   A chip whose value isn't the normal one is yellow with a dot (a speed that isn't 1x, Repeat all or one, Shuffle, Fill
-  or Stretch, an equalizer or effect left on), so it can't go unnoticed. **Speed** opens View's Speed tab on both; the
-  speed is set there.
-  **Repeat** (a video) opens the List sheet, where Off / All / One is chosen; on a song **Shuffle** turns on or off.
+  or Stretch, an equalizer or effect left on), so it can't go unnoticed.
+- **Adjust** (a video's **Picture** sheet, last row): **Brightness**, **Contrast**, **Saturation** and **Gamma** for a
+  film that is too dark, flat or loud in colour; **LEFT / RIGHT** change the focused one, **A** puts it back to 0,
+  **X** resets all four, **B** or **‹** goes back to **Picture**. The film on the top screen changes as they move.
+  They stay for every video while the app runs, and never touch a photo.
 - **The Next line** along the bottom names what plays after this: its length once the lists have probed it, else its
   place in the list ("2 of 7"; "shuffled" with Shuffle on), **A new shuffled round** at a round's end, **Nothing after
   this** at the end of a list played in order. A tap opens the List sheet on Up next, as **Y** does.
@@ -333,7 +337,7 @@ The top line of the player shows what's playing from: the folder (`Videos / Movi
 name, then the server's name when the item is on one), and `3 / 12`, the file's place in its folder or playlist (with
 Shuffle on too: the list keeps its order). Under it the title, and on its right how it plays: **Playing**, **Paused**,
 or, while a dashboard page plays it, **In Chrome on Mac** (the Play key then says **Hold: play it here** and fills as
-you hold it). A song's fourth chip is **Shuffle**; a video's fifth is **Repeat**.
+you hold it). A song's fifth chip is **Shuffle**; a video's fifth is **Repeat**.
 
 ### Looking at a photo
 
@@ -343,7 +347,7 @@ you hold it). A song's fourth chip is **Shuffle**; a video's fifth is **Repeat**
 | **UP / DOWN** | Zoom in / out: 100%, 150%, 200%, 300%, 400%, 600%, 800% |
 | **A** | Zoom to 200%, or back to the whole photo |
 | **L3** (press the stick) | Rotate a quarter turn |
-| **SELECT** | Fit (the whole photo) or Fill (the screen filled) |
+| **SELECT** or **X** | **More**: four chips changed in place (**Shown**: Fit / Fill, **Keep zoom**, **Pan area**, **A drag moves**), then **Info**, **Show in folder** and **Photo settings**. The **Fit** key on the photo's face steps Fit / Fill in place |
 | **START** | Settings |
 | **B** (or **Back**) | Close the photo (**Close** at the bottom right too) |
 
@@ -453,9 +457,12 @@ Photos can put it on the right), with a box around the part you see on top:
 - **Tap** somewhere on the small photo to look there.
 
 The buttons beside it do the same as the handheld's: Prev, Next, Zoom −, Zoom +, Rotate, Fit/Fill, Info and Menu.
+The **Fit** key steps Fit / Fill in place, and **SELECT** (or **X**, or **More**) opens the photo's **More**: its four
+chips change how photos are shown in place (**Shown**, **Keep zoom**, **Pan area**, **A drag moves**), and **Info**,
+**Show in folder** and **Photo settings** follow them.
 
 The next photo opens at the same zoom, in the same corner, which suits scanned comics page by page (turn this off with
-**Keep zoom between photos**). A song or video playing when you open a photo plays on behind it (see
+**Keep zoom between photos**, or the **Keep zoom** chip on a photo's More). A song or video playing when you open a photo plays on behind it (see
 [Playing while you browse](#playing-while-you-browse)). Camera photos (JPEG) taken sideways are shown upright, and animated GIFs play. Photos don't go into
 Recent. **Info** shows the photo's size, format, and when and with which camera it was taken.
 
@@ -560,7 +567,8 @@ text viewer's sun gets a dot).
 
 ## Picture size
 
-On a video, **More** (**X** or **SELECT**) › **View** › **Picture**: **A** chooses, the one in use has its radio filled.
+On a video, the **Picture** chip (or **X** / **SELECT** › **Picture**): **A** chooses, the one in use has its radio filled.
+**Adjust…** is its last row, for Brightness, Contrast, Saturation and Gamma.
 
 | | |
 |---|---|
@@ -572,8 +580,7 @@ On a video, **More** (**X** or **SELECT**) › **View** › **Picture**: **A** c
 
 Songs show their title, artist and album on the top screen. While a song plays:
 
-- **More › View › Display** (**SELECT** or **X** opens More; View's tabs on a song: Display, Equalizer, Effects, Speed; the player's Display chip opens
-  it too). One page: under "Top screen shows", four tiles in a row, one always in use: **Album art only** (default),
+- **Display** (**SELECT** or **X** opens More, then its **Display** chip; the player's **Display** chip opens it too). One page: under "Top screen shows", four tiles in a row, one always in use: **Album art only** (default),
   **Art + visualizer** (the art above the visualizer along the foot), **Visualizer only**, or **None** (just the title:
   the lightest on the battery). Under them the line "Visualizer · <style>" (with Album art only or None: "<style> · not
   shown now: the top screen shows <mode>"; the style can still be set, and is kept), then the fifteen styles in a 5 × 3
@@ -617,23 +624,22 @@ Songs show their title, artist and album on the top screen. While a song plays:
   coral Peaks, Hi-fi LED, Synthwave, Banana stack, Heartbeat, Oscilloscope, Turntable, Disco ball, Bars, Waves,
   Spectrum and Lite) read as Peaks. The **D-pad** moves over both groups (DOWN from a mode to the style under
   it, UP back), and moving changes nothing: **A** (or a tap) sets the mode or the style, and the top screen follows at
-  once. **SELECT** steps the mode (Album art only → Art + visualizer → Visualizer only → None), **L** / **R** the tabs,
-  **B** closes. The art is a square with rounded corners and a thin edge: 240 units on Album art only, 224 above the
+  once. **SELECT** steps the mode (Album art only → Art + visualizer → Visualizer only → None), **B** closes. The art is a square with rounded corners and a thin edge: 240 units on Album art only, 224 above the
   visualizer on Art + visualizer. A song without art shows a placeholder in the art's place (a colour wheel with a note on it), in
   the same layout: the mode you chose is the mode you see. Album art can be inside the song file or a `cover.jpg` in
   the same folder. A song with no cover shows a flat **record in its sleeve** in the theme's colours (on the top screen, by the artist line on the player page and on the dashboard's covers), placed one of four ways by the album's name so a grid of them is not one drawing repeated.
 - **Y: List**, as on a video: **Up next**, and **Chapters** when the song or audiobook has them (**L2** / **R2** jump
   from either tab); a tap on the chapter line above the progress bar opens its **Chapters** tab. **Shuffle**'s switch
-  and **Repeat** Off / All / One are in the sheet's header, and the song's fourth chip is a **Shuffle** switch of its own.
-- **X: More**, as on a video (Lock touch, Screen off, Info, Stop, Like, Add to playlist…, Show in folder, Play on…).
-  Shuffle and Repeat no longer share a key: each is set on its own.
+  and **Repeat** Off / All / One are in the sheet's header, and the song's fifth chip is a **Shuffle** switch of its own.
+- **X: More**, as on a video (its first row is the song's five chips, then Lock touch, Screen off, Info, Stop, Like, Add to playlist…, Show in folder, Play on…).
+  Shuffle and Repeat no longer share a key: each is set on its own (the **Shuffle** chip turns it on and off in place).
 - **Shuffle** never reorders what you see (the folder, the playlist, Up next keep their order): **Next** and a song's
   end go to a random one not played yet in this round, **Previous** goes back the way it came. The song playing when
   you turn it on (or off) plays on. With **Loop all**, each round is followed by a new random one (never the same song
   twice in a row); with Loop off the list stops once every song has played; with **Loop one** the song repeats.
 - Shuffle and Repeat are settings: they stay as they are for every folder, playlist or file you play next, here or
   from the web, and after a restart. The web sets them separately. They apply to videos as to songs, from the same
-  List sheet (a video's **Repeat** chip opens it; a song's **Shuffle** chip turns Shuffle on or off).
+  List sheet (a video's **Repeat** chip steps it Off / All / One in place; a song's **Shuffle** chip turns Shuffle on or off).
 
 **Long titles move** (the Title marquee): a title too long for its place is drawn from its start, its end fading
 into the ground, and after 1.5 s moves left until its end shows, rests, fades back to its start and, 3 s later, does
@@ -662,11 +668,11 @@ smoothly at 30, which leaves the handheld more time for the sound.
 ## Sound: equalizer and effects
 
 The equalizer and the sound effects change the sound of music: songs and audiobooks. Videos are never changed. Open
-them from **More** (**SELECT** or **X**) › **View** › the **Equalizer** or **Effects** tab (the **Sound** chip opens View on Equalizer,
-**Sound FX** on Effects). Settings › Music › **Sound FX** still opens the Sound page, whose two tabs are the same. In
-View's Equalizer and Effects tabs, **L / R** switch tabs, **LEFT / RIGHT** pick a band and **UP / DOWN** changes it,
+them from the **Equalizer** or **Sound FX** chip (or **More**, then that chip: each opens its own sheet, no tabs).
+Settings › Music › **Sound FX** still opens the Sound page, whose two tabs are the same. In the sheets, **LEFT / RIGHT**
+pick a band and **UP / DOWN** changes it,
 **L2 / R2** step the presets, **Y** turns the equalizer on or off, **A** saves, and **X** opens Options. On the Sound
-page itself the keys are the ones below. The Equalizer tab's sheet is the full height a sheet may have (470 units), so
+page itself the keys are the ones below. The Equalizer sheet is the full height a sheet may have (470 units), so
 its ten bands are about 300 tall.
 
 **Equalizer** shapes the sound with ten bands, from 31 Hz to 16 kHz, each boosted or cut by up to 12 dB.
@@ -724,7 +730,7 @@ the left, then the page's title with its crumb (**Settings · 3 of 10**) under i
 neighbours named either side of **L2** / **R2** at the right (those keys step the groups). Seven rows fit under that
 line. In a group, **UP/DOWN** chooses a row, **LEFT/RIGHT** changes it in place, and the
 line above the bottom says what the setting under the cursor does; while a song or video plays, the mini bar takes
-that line's room and the seven rows keep it (the setting's help is then the top screen's, not this one's). **Subtitle style...** at the end of View's Subtitles tab
+that line's room and the seven rows keep it (the setting's help is then the top screen's, not this one's). **Subtitle style...** at the end of the **Subtitles** sheet
 opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 
 | Group | Setting | Default | |
@@ -735,7 +741,7 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | | Max volume | 120% | How far the volume keys go on the handheld: 100%, 120% or 150%. Past 100% (the handheld's own top) the player turns the sound up itself, 5% a press, for films mixed quiet; the volume card marks 100% and shows the rest in yellow, red past 120%, and the first time past 120% a warning says it can damage your hearing and the speakers. Down takes that off first. It starts again at 100% each time the player opens. The web dashboard's handheld volume goes as far; a browser playing the sound itself keeps its own 0–100%. Two volumes, each its own: while a browser plays the sound, the handheld's volume keys turn that browser's volume (the card says **Browser volume**) and leave the handheld's as it was; the dashboard's volume shows both then (**Browser volume**, **Handheld volume**), and moving one never moves the other |
 | | Button hotkeys | On | Off: buttons can't pause, skip or close while something plays (touch still can) |
 | **Subtitles** | Font, size, colour, border, border colour, text encoding | Inter, Medium, White, Normal, Black, Auto | How plain subtitles (SRT, VTT…) look, with a live preview. Styled subtitles (ASS/SSA) keep their own look. **Text encoding** is how a subtitle file's letters are read, on the handheld and in the browser: Auto reads UTF-8, and guesses an older code page (a file named for its language, like `movie.sl.srt`, tries that language's first); if letters like š, č or ж still come out wrong, pick the file's: Central European (Windows-1250, ISO-8859-2, DOS 852), Cyrillic (Windows-1251, KOI8-R), Greek, Turkish, Baltic, Hebrew, Arabic or Western. A subtitle showing changes at once. |
-| **Music & sound** | Music display, Visualizer style, Visualizer frame rate | Album art only, Peaks, 45 fps | What the top screen shows for music, and which visualizer (both also on View › Display while a song plays). **Sound** opens the [Sound page](#sound-equalizer-and-effects): the equalizer and the effects |
+| **Music & sound** | Music display, Visualizer style, Visualizer frame rate | Album art only, Peaks, 45 fps | What the top screen shows for music, and which visualizer (both also on the **Display** sheet while a song plays). **Sound** opens the [Sound page](#sound-equalizer-and-effects): the equalizer and the effects |
 | **Photos** | Keep zoom between photos | On | The next photo opens at the same zoom and place. Off: each opens whole |
 | | Pan area | Left | Which side of the bottom screen the photo's pan area is on |
 | | Drag moves | The box | A drag in the pan area moves the box over the small photo, or the photo itself (like a phone) |

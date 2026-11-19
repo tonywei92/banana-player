@@ -652,6 +652,8 @@ namespace bp
 			// a camera's 4000 pixels on the panel's 640: a filter that keeps fine lines, not the fast profile's bilinear
 			// (drawn once, not 30 times a second)
 			prop("dscale", "hermite");
+			// a photo is never colour-adjusted: a film's Adjust page leaves it as it was taken
+			for (const char* n : {"brightness", "contrast", "saturation", "gamma"}) prop(n, "0");
 			prop("correct-downscaling", "yes");
 			prop("image-display-duration", "inf");
 			// at most 4096 pixels across: the RG DS's GPU may take no picture over 8192 (a 50 MP photo would stay
@@ -663,6 +665,12 @@ namespace bp
 			exif = ExifInfo();
 			prop("vf", "");
 			for (auto& a : aspectProperties(aspect)) prop(a.first, a.second);
+			// the Picture sheet's Adjust, kept for every video while the app runs (0: the film as it is); never a
+			// song's album art or visualizer
+			{
+				static const char* NAMES[4] = {"brightness", "contrast", "saturation", "gamma"};
+				for (int i = 0; i < 4; i++) prop(NAMES[i], std::to_string(isAudio ? 0 : (int)std::lround(videoAdj[i])));
+			}
 			// (that panscan is the aspect mode's: a song's Album art only sets its own again, margins and all, at its
 			// next updateOverlay: the next song's art filled its square no longer)
 			marginsSet = "?";
@@ -1626,6 +1634,16 @@ namespace bp
 	{
 		aspect = m;
 		for (auto& p : aspectProperties(m)) prop(p.first, p.second);
+	}
+
+	void Player::setVideoAdjust(int i, double v)
+	{
+		i = std::clamp(i, 0, 3);
+		v = std::clamp(v, -100.0, 100.0);
+		videoAdj[i] = v;
+		static const char* NAMES[4] = {"brightness", "contrast", "saturation", "gamma"};
+		mpv_set_property_async(mpv, 0, NAMES[i], MPV_FORMAT_DOUBLE, &v);
+		fprintf(stderr, "video: adjust %s %.0f\n", NAMES[i], v);
 	}
 
 	void Player::writeFile(const std::string& path, const std::string& text)
