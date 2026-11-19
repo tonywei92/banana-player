@@ -407,6 +407,8 @@ namespace bp
 			int row = rows[i], mid = r.y + r.h / 2;
 			if (row == Q_QUIT)
 			{
+				// an action key: Classic whatever the page (the one red-filled key)
+				Kit::ClassicHere classic;
 				bool down = pressedBtn == 302 + i * 4;
 				drawBox(r, down ? PRESSED : DANGER, R_BUTTON, at);
 				SDL_Color ink = down ? TEXT : ON_ACCENT;	// black on the red: cream reads 2.4:1 there
@@ -458,6 +460,8 @@ namespace bp
 				}
 				if (on)
 				{
+					// the row's action key: Classic in Clean too
+					Kit::ClassicHere classic;
 					Rect b = quickPinBtn(i);
 					drawBox(b, pressedBtn == 303 + i * 4 ? PRESSED : at ? BG : BUTTON, R_BUTTON, at && quickSub == 1);
 					drawButton({b.x, b.y, b.w - 20, b.h}, nullptr, "Settings", nullptr, false, 1);	// (centred in what the arrow leaves)
@@ -487,8 +491,14 @@ namespace bp
 			if (row != Q_VOLUME) drawTextMid(pct < 0 ? "-" : std::to_string(pct) + "%", 0, held ? ACCENT : at ? DIM_ON : DIM, quickMinus(i).x - 6, mid, 0, 1);
 			for (int k = 0; k < 2; k++)
 			{
+				// the steppers are the row's, not keys: a quiet look (no ground) in Clean, a key in Classic
 				Rect bt = k ? quickPlus(i) : quickMinus(i);
-				drawBox(bt, pressedBtn == 300 + i * 4 + k ? PRESSED : at ? BG : BUTTON, R_BUTTON);
+				bool down = pressedBtn == 300 + i * 4 + k;
+				if (theme::drawingClean())
+				{
+					if (down) fillRound(bt, PRESSED, R_BUTTON);
+				}
+				else drawBox(bt, down ? PRESSED : at ? BG : BUTTON, R_BUTTON);
 				drawGlyphMid(k ? G_PLUS : G_MINUS, bt.x + bt.w / 2, bt.y + bt.h / 2, TEXT);
 			}
 			Rect bar = quickBar(i);

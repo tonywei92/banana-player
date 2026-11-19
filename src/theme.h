@@ -108,14 +108,15 @@ namespace bp
 		constexpr int EDGE = 2;	// a box's edge, inside its outline
 		constexpr int LIP = 3;	// the darker band above its bottom edge
 
-		// The Clean style (Settings::cleanStyle; components.md "Clean style"): the kit draws a fill and the focus ring,
-		// no edge and no lip, with one radius for pressed things and one for small tints. Ui::renderPage sets `clean`
-		// from the setting (High contrast is always Classic); Kit::ClassicHere raises classicDepth while a page draws
-		// pieces that stay Classic (the player's keys, the photo viewer's).
+		// The Clean style is the look (components.md "Clean style"): every theme but High contrast, which is Classic.
+		// The kit draws a fill and the focus ring, no edge and no lip, with one radius for the page's pressed pieces and
+		// one for small tints. `clean` follows the theme (setTheme); Kit::ClassicHere raises classicDepth while a page
+		// draws pieces that stay Classic whatever the style (the photo viewer's keys, all keys by rule 7).
 		extern bool clean;
 		extern int classicDepth;
 		inline bool drawingClean() { return clean && classicDepth == 0; }
-		// one radius in Clean: 12 for what is pressed (keys, cards, tiles, chips, tabs, rows), 6 for caps and pills
+		// one radius in Clean: 12 for the page's pressed pieces (cards, tiles, chips, tabs, rows, rail cells), 6 for
+		// caps and pills. A key keeps R_BUTTON: a key is a key (rule 7)
 		constexpr int cleanRadius(int rad)
 		{
 			return rad == R_BUTTON || rad == R_TILE ? 12 : rad == R_CAP ? 6 : rad;

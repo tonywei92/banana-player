@@ -594,8 +594,7 @@ namespace bp
 
 	void Ui::renderPage(const Player& p)
 	{
-		// the kit's style: Settings › Power & screens › Style (High contrast is always Classic)
-		theme::clean = p.settings.cleanStyle && std::string(theme::themeId(theme::currentTheme())) != "high-contrast";
+		// (the Clean style follows the theme: setTheme sets theme::clean; High contrast alone is Classic)
 		theme::classicDepth = 0;
 		// the Title marquee: a new frame (the first title drawn claims the panel); another page: titles start again
 		marqFrame++;

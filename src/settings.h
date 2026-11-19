@@ -165,9 +165,6 @@ namespace bp
 		bool lidAsk = false;
 		// the app's colours, both panels and the dashboard (Settings › Power & screens › Theme): theme.h's table, by index
 		int theme = 1;	// Dark (theme.cpp's order: Yellow, the look before themes, is 0)
-		// the kit's drawing style (Settings › Power & screens › Style): Classic (edges and lips) or Clean (fills, a focus
-		// ring). Read in the kit only; High contrast always draws Classic
-		bool cleanStyle = false;
 		// the time left of the battery (Settings › Power & screens): 24-hour, 12-hour or none
 		int clock = CLOCK_24;
 		// the bottom panel off by itself (Settings › Power & screens) while a song or video plays and nothing is touched

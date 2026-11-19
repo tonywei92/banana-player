@@ -255,7 +255,8 @@ namespace bp
 
 	void Ui::drawPhoto(const Player& p)
 	{
-		Kit::ClassicHere classic;	// (the photo viewer's on-screen keys keep Classic in the Clean style)
+		// (the photo viewer's keys are drawn with drawBox, not the kit's key: Classic whatever the style, rule 7)
+		Kit::ClassicHere classic;
 		std::string name = p.currentPath().substr(p.currentPath().rfind('/') + 1);
 		drawHeader(!p.title.empty() ? p.title : !p.error.empty() ? name : "Opening...", p);
 		Rect pan = panRect(p);

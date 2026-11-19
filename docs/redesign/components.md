@@ -377,7 +377,7 @@ A theme may give eight more roles; Gundam is the one that does. Unset, each is t
 | HINT_BAR, ON_HINT | BG, DIM_ON | the hint bar and its words |
 | ON_RAIL | DIM_ON | the rail's icons and labels, when RAIL is dark in a light theme (Gundam, proposed) |
 
-Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary roles. In the Clean style a named key goes back to BUTTON with TEXT ink (one quiet fill); the primary key, the hint bar and the rail keep their strong roles. A theme whose BUTTON does not stand 1.15 off its BG and SURFACE is always Classic (Gundam as first built was one; its values since 2026-11-19 are not). Drawn: `theme-gundam`.
+Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary roles. Clean keeps a key a key (rule 7), so a named key stays KEY with ON_KEY lettering; the primary key, the hint bar and the rail keep their strong roles. A theme whose BUTTON does not stand 1.15 off its BG and SURFACE is always Classic (Gundam as first built was one; its values since 2026-11-19 are not). Drawn: `theme-gundam`.
 
 ## Clean style
 

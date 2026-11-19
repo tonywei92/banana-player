@@ -6833,33 +6833,30 @@ static void testSettingsTable()
 	const auto& defs = settingDefs();
 	std::string plain = serializeSettings(Settings());
 	CHECK_EQ(serializeSettings(parseSettings(plain)), plain);
-	// the Clean style: a setting (Classic by default, its words classic/clean) with one row under Theme; the kit's
-	// radii and the ClassicHere scope are the drawing's only readers
+	// the look: there is no Style setting; Clean is every theme but High contrast, which is Classic. Its radii are the
+	// page's; a key keeps R_BUTTON (10) whatever the style, which is what Kit::key draws with
 	{
-		CHECK_EQ(Settings().cleanStyle, false);
-		CHECK_EQ(serializeSettings(Settings()).find("style = classic") != std::string::npos, true);
-		Settings c = parseSettings("style = clean\n");
-		CHECK_EQ(c.cleanStyle, true);
-		CHECK_EQ(serializeSettings(c).find("style = clean") != std::string::npos, true);
-		int at = settingIndex("style");
-		CHECK_EQ(at >= 0, true);
-		CHECK_EQ(defs[at].group, SG_SCREEN);
-		CHECK_EQ(std::string(defs[at].label), std::string("Style"));
-		CHECK_EQ(std::string(settingValueText(defs[at], c)), std::string("Clean"));
-		// (High contrast is forced Classic by Ui::renderPage, not by the setting)
-		theme::clean = true;
+		CHECK_EQ(settingIndex("style") < 0, true);
+		CHECK_EQ(serializeSettings(Settings()).find("\nstyle = ") == std::string::npos, true);
+		int contrast = theme::themeCount() - 1;
+		CHECK_EQ(std::string(theme::themeId(contrast)), "high-contrast");
+		CHECK_EQ(theme::setTheme(contrast), true);
+		CHECK_EQ(theme::clean, false);
+		CHECK_EQ(theme::drawingClean(), false);
+		CHECK_EQ(theme::setTheme(0), true);	// Yellow, the first: Clean
+		CHECK_EQ(theme::clean, true);
 		CHECK_EQ(theme::drawingClean(), true);
+		CHECK_EQ(theme::R_BUTTON, 10);	// a key's own radius
 		CHECK_EQ(theme::kitRadius(theme::R_BUTTON), 12);
 		CHECK_EQ(theme::kitRadius(theme::R_TILE), 12);
 		CHECK_EQ(theme::kitRadius(theme::R_CHIP), 6);	// (a cap's and a bar's 6: not a pressed box)
 		CHECK_EQ(theme::kitRadius(theme::R_CAP), 6);
 		CHECK_EQ(theme::kitRadius(theme::R_SHEET), theme::R_SHEET);
-		theme::classicDepth = 1;	// (Kit::ClassicHere: the player's keys, the photo viewer)
+		theme::classicDepth = 1;	// (Kit::ClassicHere: the photo viewer, the keyboard)
 		CHECK_EQ(theme::drawingClean(), false);
 		CHECK_EQ(theme::kitRadius(theme::R_BUTTON), 10);
 		theme::classicDepth = 0;
-		theme::clean = false;
-		CHECK_EQ(theme::kitRadius(theme::R_BUTTON), 10);
+		CHECK_EQ(theme::drawingClean(), true);
 	}
 	std::set<std::string> keys;
 	for (size_t i = 0; i < defs.size(); i++)
@@ -6890,9 +6887,8 @@ static void testSettingsTable()
 	CHECK_EQ(std::string(defs[playback.back()].key), "button-hotkeys");
 	auto screen = settingsOfGroup(SG_SCREEN);
 	CHECK_EQ(std::string(defs[screen.front()].key), "theme");	// (the group's first row)
-	CHECK_EQ(std::string(defs[screen[1]].key), "style");	// (Style, under Theme)
-	CHECK_EQ(std::string(defs[screen[2]].key), "same-brightness");
-	CHECK_EQ(std::string(defs[screen[3]].key), "screen-off");
+	CHECK_EQ(std::string(defs[screen[1]].key), "same-brightness");
+	CHECK_EQ(std::string(defs[screen[2]].key), "screen-off");
 	CHECK_EQ(std::string(defs[screen.back()].key), "clock");
 	// the lid's key rows, under When the lid closes: power, volume, shoulders, then incognito
 	auto lid = std::find_if(screen.begin(), screen.end(), [&](int i) { return std::string(defs[i].key) == "lid-close"; });

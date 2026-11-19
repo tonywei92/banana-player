@@ -4,6 +4,7 @@
 // doc-places.conf (the state folder), so it opens where it was left.
 #include "ui_internal.h"
 #include "ui_docs.h"
+#include "ui_kit.h"
 #include "ui_reader.h"
 #include "filesave.h"
 #include "manga_ui_logic.h"
@@ -1308,6 +1309,8 @@ namespace bp
 		bool hints = p.settings.buttonHotkeys;
 		for (int i = 0; i < 5; i++)
 		{
+			// a reader's key row: keys in Clean too (components.md "Clean style", rule 7)
+			Kit::ClassicHere classic;
 			Rect b = docBtn(i);
 			ui.drawBox(b, docPressed == i ? PRESSED : BUTTON, R_BUTTON);
 			if (i == 4)
@@ -1328,6 +1331,7 @@ namespace bp
 			const char* keys[3] = {"L", "R", "B"};
 			for (int i = 0; i < 3; i++)
 			{
+				Kit::ClassicHere classic;	// Find's keys too
 				Rect r = docBtn(0);
 				Rect bb = rowCell({16, r.y, 608, r.h}, 3, 10, i);
 				ui.drawBox(bb, BUTTON, R_BUTTON);
@@ -1428,6 +1432,7 @@ namespace bp
 			bool hints = p.settings.buttonHotkeys;
 			for (int i = 0; i < 9; i++)
 			{
+				Kit::ClassicHere classic;	// the page reader's key row: keys in Clean too
 				Rect b = docBtn(i);
 				ui.drawBox(b, docPressed == i ? PRESSED : BUTTON, R_BUTTON);
 				bool off = (i == 0 && ui.pageReader->readerStatus.page <= 0) || (i == 1 && ui.pageReader->readerStatus.page + 1 >= pages) ||
@@ -1462,6 +1467,7 @@ namespace bp
 			bool hints = p.settings.buttonHotkeys;
 			for (int i = 0; i < 4; i++)
 			{
+				Kit::ClassicHere classic;	// the strip's key row: keys in Clean too
 				Rect b = docBtn(i);
 				ui.drawBox(b, docPressed == i ? PRESSED : BUTTON, R_BUTTON);
 				// (Brightness: what's on under it while Extra dim or a filter is)

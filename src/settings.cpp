@@ -632,7 +632,6 @@ namespace bp
 		static const char* SHOWN_ASK_VIDEO[2] = {"Stop", "Ask"};
 		static const char* SHOWN_PAN[2] = {"Left", "Right"};
 		static const char* SHOWN_DRAG[2] = {"The photo", "The box"};
-		static const char* STYLE_LABELS[2] = {"Classic", "Clean"};
 		static const char* SHOWN_LID[2] = {"Pause", "Keep playing"};
 		static const char* TXT_FONT_LABELS[5] = {"Serif", "Sans", "Mono", "Pixel", "CJK pixel"};
 		static const char* TXT_SIZE_LABELS[5] = {"Small", "Medium", "Large", "Larger", "Largest"};
@@ -733,11 +732,8 @@ namespace bp
 				.page(SG_MANGA, 120, "Secure DNS", "Looks up sites through Cloudflare over HTTPS (one.one.one.one), past a network that blocks them.").shownAs(SHOWN_DNS),
 			// (the ids and names are theme.cpp's table: a theme added there is a value here)
 			D::choice("theme", &Settings::theme, theme::themeIds(), theme::themeCount())
-				.page(SG_SCREEN, 5, "Theme", "The app's colours, on both screens and on the Web dashboard. Videos, pictures, album art, subtitles and a book's page keep their own.")
+				.page(SG_SCREEN, 5, "Theme", "The app's colours, on both screens and on the Web dashboard. Every theme but High contrast is drawn Clean: the page has no edges, and the keys stay keys. High contrast is Classic. Videos, pictures, album art, subtitles and a book's page keep their own.")
 				.shownAs(theme::themeNames()).stepped(true),
-			D::flag("style", &Settings::cleanStyle, "classic", "clean")
-				.page(SG_SCREEN, 6, "Style", "Classic: every key, card and row has an edge and a lip. Clean: one quiet fill and no edges; the accent marks what is chosen, and a ring marks the cursor.")
-				.shownAs(STYLE_LABELS),
 			D::choice("clock", &Settings::clock, CLOCK_IDS, CLOCKS)
 				.page(SG_SCREEN, 130, "Clock", "The time in the top corner of this screen").shownAs(CLOCK_NAMES).stepped(true),
 			// (not round: Never at one end, 5 minutes at the other)

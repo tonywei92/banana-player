@@ -196,8 +196,8 @@ namespace bp
 
 	void Ui::Kit::header(const lay::PlayerLayout& l, const Header& h)
 	{
-		if (h.back) iconKey(l.back, G_BACK, h.backPressed, 3);
-		if (h.more) iconKey(l.more, G_MORE, h.morePressed);
+		if (h.back) iconKey(l.back, G_BACK, h.backPressed, 3, true);
+		if (h.more) iconKey(l.more, G_MORE, h.morePressed, 2, true);
 		const int cy = l.back.y + l.back.h / 2;
 		// no More: the right slot reaches the panel's own right margin (the Settings pages, About)
 		int right = h.more ? l.more.x - lay::SP8 : l.title.x + l.title.w - lay::SP8;
@@ -242,31 +242,32 @@ namespace bp
 	void Ui::Kit::key(Rect r, const Key& k)
 	{
 		const theme::Palette& th = theme::current;
-		bool primary = k.tone == Tone::Primary, strong = th.strongKeys, clean = theme::drawingClean();
-		// a strong theme's keys: dark fills (a danger key filled DANGER) with ON_KEY lettering, focus a KEY_FOCUS edge.
-		// In Clean a normal key is one BUTTON fill with TEXT ink and the primary key the one solid accent
+		bool primary = k.tone == Tone::Primary, strong = th.strongKeys;
+		// Keys stay keys (components.md "Clean style", rule 7): BUTTON (KEY in a strong theme), its 2-unit edge and
+		// 3-unit lip, radius 10, outlined caps, the primary key solid PRIMARY, danger as Classic. The page never changes
+		// that; only `quiet` asks for the Clean no-ground look (a row's steppers)
+		bool quiet = k.quiet && theme::drawingClean();
 		theme::Rgb base = primary ? th.PRIMARY : strong && k.tone == Tone::Danger ? th.DANGER : th.KEY;
-		SDL_Color fill = clean ? (primary ? sdl(th.ACCENT) : k.pressed ? PRESSED : BUTTON)
-			: primary || strong ? sdl(k.pressed ? theme::lipOf(base) : base) : k.pressed ? PRESSED : BUTTON;
-		SDL_Color ink = clean ? (primary ? sdl(th.ON_ACCENT) : k.tone == Tone::Danger ? DANGER : k.lit ? ACCENT : TEXT)
-			: primary ? sdl(th.ON_PRIMARY) : strong ? sdl(th.ON_KEY) : k.tone == Tone::Danger ? DANGER : k.lit ? ACCENT : TEXT;
-		SDL_Color capInk = clean ? (primary ? sdl(th.ON_ACCENT) : ACCENT)
-			: primary ? sdl(th.ON_PRIMARY) : strong ? sdl(th.ON_KEY) : ACCENT;
-		SDL_Color edge = k.focused && !k.off ? sdl(strong ? th.KEY_FOCUS : th.ACCENT) : edgeOf(fill);
-		if (clean)
+		SDL_Color fill = primary || strong ? sdl(k.pressed ? theme::lipOf(base) : base) : k.pressed ? PRESSED : BUTTON;
+		SDL_Color ink = primary ? sdl(th.ON_PRIMARY) : strong ? sdl(th.ON_KEY) : k.tone == Tone::Danger ? DANGER : k.lit ? ACCENT : TEXT;
+		SDL_Color capInk = primary ? sdl(th.ON_PRIMARY) : strong ? sdl(th.ON_KEY) : ACCENT;
+		if (quiet)
 		{
-			ui.fillRound(r, off(fill, k.off), theme::kitRadius(R_BUTTON));
+			if (k.pressed) ui.fillRound(r, off(PRESSED, k.off), R_BUTTON);
 			if (k.focused && !k.off) ring(r, R_BUTTON, sdl(strong ? th.KEY_FOCUS : th.ACCENT));
 		}
-		else ui.drawBox(r, off(fill, k.off), R_BUTTON, off(edge, k.off));
+		else
+		{
+			SDL_Color edge = k.focused && !k.off ? sdl(strong ? th.KEY_FOCUS : th.ACCENT) : edgeOf(fill);
+			ui.drawBox(r, off(fill, k.off), R_BUTTON, off(edge, k.off));
+		}
 		if (k.glow > 0 && !k.pressed)
 		{
 			SDL_Color glow = ACCENT;
 			glow.a = (Uint8)std::lround(90 * std::min(1.0, k.glow));
-			if (glow.a) ui.fillRound({r.x + 2, r.y + 2, r.w - 4, r.h - 6}, glow, theme::kitRadius(R_BUTTON) - 2);
+			if (glow.a) ui.fillRound({r.x + 2, r.y + 2, r.w - 4, r.h - 6}, glow, R_BUTTON - 2);
 		}
-		if (clean && k.focused && !k.off && !primary) ink = k.tone == Tone::Danger ? DANGER : ACCENT;
-		else if (!clean && k.focused && !k.off && !primary && !strong) ink = k.tone == Tone::Danger ? DANGER : ACCENT;
+		if (k.focused && !k.off && !primary && !strong) ink = k.tone == Tone::Danger ? DANGER : ACCENT;
 		ink = off(ink, k.off);
 		capInk = off(capInk, k.off);
 		SDL_Color ground = off(fill, k.off);
@@ -291,6 +292,8 @@ namespace bp
 			x += gw + lay::SP8;
 		}
 		if (tw) ui.drawTextMid(k.label, F_P16, ink, x, y, tw + 1);
+		// a key's caps are outlined whatever the page is: the rule that keeps a key a key
+		ClassicHere classic;
 		if (capW && under) caps(k.key, cx - capW / 2, cy + 14, capInk, ground);
 		else if (capW) caps(k.key, x + tw + lay::SP8, y, capInk, ground);
 	}
@@ -298,11 +301,10 @@ namespace bp
 	void Ui::Kit::transport(Rect r, const Transport& t)
 	{
 		const theme::Palette& th = theme::current;
-		bool clean = theme::drawingClean();
+		// a transport key is a key: Classic always (components.md "Clean style", rule 7)
 		SDL_Color fill = t.primary ? sdl(t.pressed && t.hold < 0 ? theme::lipOf(th.PRIMARY) : th.PRIMARY) : t.pressed ? PRESSED : BUTTON;
 		SDL_Color ink = off(t.primary ? sdl(th.ON_PRIMARY) : TEXT, t.off), capInk = off(t.primary ? sdl(th.ON_PRIMARY) : ACCENT, t.off);
-		if (clean) ui.fillRound(r, off(fill, t.off), theme::kitRadius(R_BUTTON));
-		else ui.drawBox(r, off(fill, t.off), R_BUTTON, off(edgeOf(fill), t.off));
+		ui.drawBox(r, off(fill, t.off), R_BUTTON, off(edgeOf(fill), t.off));
 		if (t.hold >= 0)
 		{
 			// the hold, a darker part growing left to right, inside the edge
@@ -324,20 +326,25 @@ namespace bp
 		int x = cx - (tw + (capW ? 6 + capW : 0)) / 2;
 		ui.drawTextMid(t.label, F_P14, ink, x, y + lineH / 2, tw + 1);
 		// (the cap's inside is the key's own fill: under the hold's darker part it stays the plain one, a hair lighter)
-		if (capW) caps(t.key, x + tw + 6, y + lineH / 2, capInk, off(fill, t.off));
+		if (capW)
+		{
+			ClassicHere classic;	// a transport key's caps are outlined too
+			caps(t.key, x + tw + 6, y + lineH / 2, capInk, off(fill, t.off));
+		}
 		if (thirdH) ui.drawTextMid(t.third, F_I12, ink, cx, y + lineH + gap + thirdH / 2, r.w - 10, 2);
 	}
 
-	void Ui::Kit::iconKey(Rect r, const Glyph& g, bool pressed, int cell)
+	void Ui::Kit::iconKey(Rect r, const Glyph& g, bool pressed, int cell, bool quiet)
 	{
 		const theme::Palette& th = theme::current;
-		if (theme::drawingClean())
+		if (quiet && theme::drawingClean())
 		{
-			// the glyph alone (a header's Back and More), the touch area unchanged
-			if (pressed) ui.fillRound(r, PRESSED, theme::kitRadius(R_BUTTON));
+			// the glyph alone (a header's Back and More), the touch area unchanged (rule 5)
+			if (pressed) ui.fillRound(r, PRESSED, R_BUTTON);
 			ui.drawGlyphMid(g, r.x + r.w / 2, r.y + r.h / 2, TEXT, cell);
 			return;
 		}
+		// a key is a key, whatever the page (rule 7)
 		SDL_Color fill = th.strongKeys ? sdl(pressed ? theme::lipOf(th.KEY) : th.KEY) : pressed ? PRESSED : BUTTON;
 		ui.drawBox(r, fill, R_BUTTON);
 		ui.drawGlyphMid(g, r.x + r.w / 2, r.y + (r.h - theme::LIP) / 2 + 1, sdl(th.ON_KEY), cell);
@@ -347,21 +354,13 @@ namespace bp
 
 	void Ui::Kit::chip(Rect r, const Chip& c)
 	{
-		bool clean = theme::drawingClean();
+		// a state chip is a key's piece: the Classic flat piece whatever the page (rule 7)
+		ClassicHere classic;
 		SDL_Color fill = off(c.pressed ? PRESSED : SURFACE, c.off);
 		bool focus = c.focused && !c.off;
-		if (clean)
-		{
-			// a state chip has no ground: its label over its value; focused, the ring
-			if (c.pressed) ui.fillRound(r, fill, theme::kitRadius(R_BUTTON));
-			if (focus) ring(r, R_BUTTON, ACCENT);
-		}
-		else
-		{
-			// focused: its edge yellow, a unit wider all round so it reads at a glance among five
-			if (focus) ui.fillRound({r.x - 1, r.y - 1, r.w + 2, r.h + 2}, ACCENT, R_BUTTON + 1);
-			flat(r, fill, R_BUTTON, focus ? ACCENT : off(edgeOf(SURFACE), c.off));
-		}
+		// focused: its edge yellow, a unit wider all round so it reads at a glance among five
+		if (focus) ui.fillRound({r.x - 1, r.y - 1, r.w + 2, r.h + 2}, ACCENT, R_BUTTON + 1);
+		flat(r, fill, R_BUTTON, focus ? ACCENT : off(edgeOf(SURFACE), c.off));
 		bool narrow = r.w < 140;
 		int pad = narrow ? 7 : 9, gap = narrow ? 6 : 8, cy = r.y + r.h / 2;
 		int x = r.x + pad;
@@ -708,6 +707,7 @@ namespace bp
 			ui.drawTextMid(s.value, F_I12, off(s.focused ? DIM_ON : DIM, s.off), right - 18, cy, r.w / 2, 1);
 			return;
 		}
+		// the steppers are the row's, not keys: a quiet look (no ground) in Clean as in Classic
 		SDL_Color arrow = off(s.focused ? ACCENT : DIM, s.off);
 		ui.drawGlyphMid(G_LEFT, st.prevX, cy, arrow);
 		ui.drawTextMid(s.value, F_P16, ink, st.value.x + st.value.w / 2, cy, st.value.w, 2);

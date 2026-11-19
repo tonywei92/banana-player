@@ -98,7 +98,7 @@ namespace bp
 
 		// (constant-initialized: Yellow before anything is drawn, and before any static that reads it)
 		Palette current = TABLE.p[0];
-		bool clean = false;
+		bool clean = true;	// Yellow is Clean; setTheme follows the theme (High contrast alone is Classic)
 		int classicDepth = 0;
 
 		int themeCount() { return COUNT; }
@@ -118,6 +118,8 @@ namespace bp
 		bool setTheme(int i)
 		{
 			if (i < 0 || i >= COUNT) i = 0;
+			// the look follows the theme even when it doesn't change (a start on High contrast names the index now)
+			clean = std::string(themeId(i)) != "high-contrast";
 			if (i == now) return false;
 			now = i;
 			current = TABLE.p[i];

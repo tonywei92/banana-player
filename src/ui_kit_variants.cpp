@@ -295,6 +295,8 @@ namespace bp
 
 	void Ui::Kit::keyboard(const lay::Keyboard& l, const KeyboardView& v)
 	{
+		// every key of it is a key, in Clean too (components.md "Clean style", rule 7), and its caps are outlined
+		ClassicHere classic;
 		// the field: SURFACE with an ACCENT outline, the text, the caret a bar of its own (room kept when it is off)
 		flat(l.field, SURFACE, theme::R_FIELD, ACCENT);
 		std::string shown = v.secret ? std::string(v.value.size(), '*') : v.value;
@@ -374,8 +376,19 @@ namespace bp
 
 	void Ui::Kit::tile(Rect r, const Tile& t)
 	{
-		SDL_Color fill = t.pressed ? PRESSED : cardFill(SURFACE);
-		flat(r, off(fill, t.off), theme::R_TILE, t.focused && !t.off ? ACCENT : off(edgeOf(SURFACE), t.off));
+		if (t.classic)
+		{
+			// Home's three shortcuts are keys' pieces: the Classic flat piece in Clean too, SURFACE and its edge at
+			// radius 10 (components.md "Clean style", rule 7)
+			ClassicHere classic;
+			SDL_Color fill = t.pressed ? PRESSED : SURFACE;
+			flat(r, off(fill, t.off), R_BUTTON, t.focused && !t.off ? ACCENT : off(edgeOf(SURFACE), t.off));
+		}
+		else
+		{
+			SDL_Color fill = t.pressed ? PRESSED : cardFill(SURFACE);
+			flat(r, off(fill, t.off), theme::R_TILE, t.focused && !t.off ? ACCENT : off(edgeOf(SURFACE), t.off));
+		}
 		SDL_Color ink = off(t.focused || t.lit ? ACCENT : TEXT, t.off);
 		SDL_Color noteInk = off(DIM, t.off);
 		if (r.h >= 70)
@@ -933,7 +946,7 @@ namespace bp
 			v.cursor = 13;
 			lay::Keyboard l = lay::keyboard({100, 90, 80, 90}, {10, 10, 10}, 2);
 			k.keyboard(l, v);
-			k.iconKey({16, 8, 56, 46}, G_BACK, false, 3);
+			k.iconKey({16, 8, 56, 46}, G_BACK, false, 3, true);
 			ui.drawTextMid("Address", F_P28, TEXT, 84, 31, 400);
 			k.hints({{"A", "Type"}, {"B", "Delete"}, {"X", "Space"}, {"Y", "Shift"}, {"START", "Done"}});
 		}

@@ -14,8 +14,8 @@ DIM_ON, ACCENT, ON_ACCENT and DIM_ON, so every other theme draws as before (a te
 KEY_FOCUS edge; a primary key (Kit::key's Primary tone and the player's Play/Pause) is PRIMARY; the hint bar is HINT_BAR
 with ON_HINT words and KEY_FOCUS caps. The rail's icons and labels are ON_RAIL, and its active cell is KEY_FOCUS with
 TEXT ink. The transport keys, tiles, rows, tabs and pills keep the ordinary roles (white keys with navy ink in the
-mock-up). In the Clean style a named key goes back to BUTTON with TEXT ink; the primary key, the hint bar and the rail
-keep their strong roles.
+mock-up). Clean keeps a key a key (rule 7), so a named key stays KEY with ON_KEY lettering; the primary key, the hint bar
+and the rail keep their strong roles.
 
 | Role | Value | |
 |---|---|---|

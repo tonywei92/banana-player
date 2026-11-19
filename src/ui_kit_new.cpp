@@ -118,11 +118,19 @@ namespace bp
 			oy = Ui::H - b.box.h;
 		}
 		auto at = [&](Ui::Rect r) { return Ui::Rect{ox + r.x, oy + r.y, r.w, r.h}; };
-		// the sheet: an edge on three sides, its top corners round, the grab mark
+		// the sheet: Classic's edge on three sides, or Clean's fill and 1-unit RULE hairline; the grab mark
 		Ui::Rect box = at({0, 0, b.box.w, b.box.h});
-		ui.fillRound(box, k.edgeOf(SURFACE), theme::R_SHEET, Ui::ROUND_TL | Ui::ROUND_TR);
-		ui.fillRound({box.x + theme::EDGE, box.y + theme::EDGE, box.w - 2 * theme::EDGE, box.h - theme::EDGE}, SURFACE,
-			theme::R_SHEET - theme::EDGE, Ui::ROUND_TL | Ui::ROUND_TR);
+		if (theme::drawingClean())
+		{
+			ui.fillRound(box, SURFACE, theme::R_SHEET, Ui::ROUND_TL | Ui::ROUND_TR);
+			ui.fill({box.x + theme::R_SHEET, box.y, box.w - 2 * theme::R_SHEET, 1}, RULE);
+		}
+		else
+		{
+			ui.fillRound(box, k.edgeOf(SURFACE), theme::R_SHEET, Ui::ROUND_TL | Ui::ROUND_TR);
+			ui.fillRound({box.x + theme::EDGE, box.y + theme::EDGE, box.w - 2 * theme::EDGE, box.h - theme::EDGE}, SURFACE,
+				theme::R_SHEET - theme::EDGE, Ui::ROUND_TL | Ui::ROUND_TR);
+		}
 		ui.fillRound(at(b.grab), PRESSED, 2);
 		Ui::Rect t = at(b.title);
 		ui.drawTextMid(s.title, F_SMALL, ACCENT, t.x, t.y + t.h / 2, t.w);
@@ -133,6 +141,8 @@ namespace bp
 		ui.drawTextMid(s.note, F_I12, DIM, n.x + n.w, n.y + n.h / 2, n.w, 1);
 		for (int i = 0; i < 4; i++)
 		{
+			// the Book bar's keys are keys, in Clean too (components.md "Clean style", rule 7)
+			Kit::ClassicHere classic;
 			const BookKey& bk = s.keys[i];
 			Ui::Rect r = at(b.keys[i]);
 			bool lit = !bk.lit.empty(), held = s.pressed == i;
@@ -152,6 +162,7 @@ namespace bp
 		}
 		// the key that leaves Book mode: its name and its cap, centred
 		{
+			Kit::ClassicHere classic;	// the leaving key too
 			Ui::Rect r = at(b.leave);
 			bool held = s.pressed == 4;
 			ui.drawBox(r, held ? PRESSED : BUTTON, R_BUTTON);
@@ -163,7 +174,7 @@ namespace bp
 		// its own hint bar (the panel's is along the other edge as held): a rule, then caps and words
 		{
 			Ui::Rect h = at(b.hints);
-			ui.fill({h.x + theme::EDGE, h.y, h.w - 2 * theme::EDGE, 1}, RULE);
+			if (!theme::drawingClean()) ui.fill({h.x + theme::EDGE, h.y, h.w - 2 * theme::EDGE, 1}, RULE);
 			std::vector<int> widths;
 			for (auto& hn : s.hints)
 				widths.push_back(k.capsW(hn.key) + (hn.key.empty() || hn.verb.empty() ? 0 : 5) + k.textW(hn.verb, F_I12));
