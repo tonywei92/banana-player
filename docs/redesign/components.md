@@ -15,7 +15,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Header (exists, needs a variant)
 
 - **Used:** every bottom screen (96)
-- **Anatomy and states:** 54 tall, at the top. Back key 56 × 48 (radius 10) when there is somewhere to go back to; title Pixelify 25 (19 in the viewers, where it is a file name), one line, cut with “…”; crumb under it, Inter 12, dim; status cluster; More key 56 × 48 at the right edge. Touch area of both keys runs to the panel’s edges (60 × 56). On a shell screen the right slot may hold a Search key (48 × 48, a magnifier) left of the status cluster: the touch way into Search, which L3 opens by the keys.
+- **Anatomy and states:** 54 tall, at the top. Back key 56 × 48 (radius 10) when there is somewhere to go back to; title Pixelify 25 (19 in the viewers, where it is a file name), one line, cut with “…”; crumb under it, Inter 12, dim; status cluster; More key 56 × 48 at the right edge. Touch area of both keys runs to the panel’s edges (60 × 56). Search is not in the header: its key is at the top of the rail (Section rail).
 - **Inputs:** title, crumb, back target, more (yes / no), right slot (tabs’ keys, a badge)
 - **Keys and touch:** ‹ = B. ⋯ = X. Nothing else in it is pressed.
 - **Code:** drawHeader, drawSectionHeader, drawBackIcon (ui.h). Needs: the crumb line, the More key, room for badges.
@@ -31,9 +31,9 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Section rail (new)
 
 - **Used:** every shell screen (about 50)
-- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 56, radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. L and R key caps above the first and under the last section; Settings pinned at the foot. No cell carries a warning: opening a section starts and stops nothing (Rules › Arriving stops nothing). “Extensions” is the longest label, 62 of the cell’s 68.
-- **Inputs:** sections (icon, label, shown or not), the active one. The sections: Home, Files, Music, Playlists, Books, Extensions, Network. Extensions is one cell for every extension: Manga reader is a row of its page (`ext-section`), not a cell, and every Manga page keeps the Extensions cell lit. Six cells fit; with seven the rail scrolls so the active one is in view, L and R still stepping all of them
-- **Keys and touch:** L / R step the sections (wrapping); a tap opens one. The D-pad never enters it.
+- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 56 (68 × 47 when seven sections show), radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. A Search key pinned at the top (68 × 40, the magnifier alone at 22, BUTTON with its edge; yellow fill while Search shows); then the sections; Settings pinned at the foot, a START cap over it (START opens Settings from every shell screen, the player and the text and PDF readers; no hint bar repeats it). No cell carries a warning: opening a section starts and stops nothing (Rules › Arriving stops nothing). “Extensions” is the longest label, 62 of the cell’s 68.
+- **Inputs:** sections (icon, label, shown or not), the active one. The sections: Home, Files, Videos, Music, Books, Extensions, Network. Extensions is one cell for every extension: Manga reader is a row of its page (`ext-section`), not a cell, and every Manga page keeps the Extensions cell lit. All seven show at once: with seven sections the cells are 47 tall (the icon 22 and the label still fit), with six or fewer 56; the rail never scrolls and no section is ever out of sight. Playlists is not a section: it is Music’s third view
+- **Keys and touch:** L / R step the sections (wrapping) and pass Search by, whose key is L3; a tap opens one. START opens Settings; there, START or B goes back to where you were. The D-pad never enters it.
 - **Code:** New. Replaces the four markers drawn by drawSectionHeader and Home’s tiles (drawHome). Belongs to Ui’s shell, drawn for every page of an area that is a section.
 
 ### Hint bar (exists, needs a variant)
@@ -46,7 +46,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Mini bar (exists, needs a variant)
 
-- **Used:** every shell screen while something plays (drawn on 5)
+- **Used:** every shell screen while something plays, except Home, whose Now playing card does its job (drawn on 4)
 - **Anatomy and states:** 52 tall, 12 from the sides, 36 above the foot; SURFACE with a 2-unit yellow outline, radius 10. Play mark 56 × 42; kind icon 17; title Pixelify 15, a Title marquee on SURFACE, in what the other parts leave; time Inter 12; state pills; SELECT cap; a 3-unit progress line along its foot. With pills it drops the words “Now playing”. Where the bar shows a song’s art (30 square, radius 5, in the kind icon’s place), a song with none gets the Art placeholder at 30 with its 1-unit edge: its BUTTON sleeve shows on the bar’s SURFACE.
 - **Inputs:** title, time, paused, pills (speed, look, repeat, EQ, “Playing in …”), progress
 - **Keys and touch:** Tap: the player (SELECT). Tap the mark: play / pause. Hold the mark: take over from a browser. Hold the bar: its More sheet.
@@ -65,7 +65,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Button row and grid (exists, reuse)
 
 - **Used:** reader, PDF, comic, photo, player rows, sheets’ key pairs, select bar
-- **Anatomy and states:** Rows: 16 from the sides, 8 between keys; widths divide exactly (four of 146, five of 115 + 116, three of 197). The player’s row is Like · Playlist · List · Stop: no View key, since the chips under it open View on each tab and SELECT opens it by the keys. Grids beside a pan area: two columns, 8 apart.
+- **Anatomy and states:** Rows: 16 from the sides, 8 between keys; widths divide exactly (four of 146, five of 115 + 116, three of 197). The player’s row is Like · Playlist · List · Stop: no View key: each chip under it opens its own sheet, and by the keys the same chips are More’s first row (X or SELECT). Grids beside a pan area: two columns, 8 apart.
 - **Inputs:** area, count, gap
 - **Keys and touch:** D-pad moves along it where the page gives the keys focus; each key also has its own button.
 - **Code:** rowCell, gridCell (docs/notes/button-rows.md). One function returns each cell’s rect; drawing and touch both ask it.
@@ -83,7 +83,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Used:** player screens (14), five in a row on a video (Subtitles, Audio, Picture, Speed, Repeat) and on a song (Sound, Sound FX, Display, Speed, Shuffle)
 - **Anatomy and states:** 52 tall, SURFACE, radius 10. Icon 16–18; a label in capitals Inter 600 11; the value Pixelify 13 under it. Normal: cream value, no mark. Away from normal: the value yellow and a 6-unit dot top right. Unavailable: 45% (one rule), the reason as its value, nothing else changes. Width from the row: 115, the last 116 (146 where a row has four). On a song’s Display chip the value is a short form, on the chip only: Art, Art + viz, Visualizer, None. The value is one line: the shortest form of the state (a language without its region), cut with “…” at its end; never text under 16 units in a non-Latin script (the interface’s name for the language is used).
 - **Inputs:** icon, label, value, away-from-normal, enabled, target sheet tab
-- **Keys and touch:** Tap: opens the View sheet on the tab that sets it, with its tab strip: the same sheet SELECT opens, never a second form of the page. Touch only: no D-pad focus. By buttons the same tabs are reached with SELECT (View), then L / R.
+- **Keys and touch:** Tap: opens that chip’s own sheet (Subtitles, Audio, Picture, Speed; on a song Equalizer, Effects, Display, Speed): a bottom sheet titled with the chip’s name, as tall as its content, with no tab strip; Adjust is a page of Picture, behind its last row. Two chips open nothing and change in place: Repeat steps Off → All → One → Off, Shuffle turns on and off; no note, the chip’s word and its yellow say it; Repeat one wears the repeat-one glyph. By the keys both are also at the top of List (Y). The same five chips are the first row of the player’s More (116 wide, the cursor opening on the first): there they take focus, A opens the sheet and closes More, and A on Repeat or Shuffle changes it with More left open. A photo’s More has four in the same place (147 wide), all changed in place: Shown, Keep zoom, Pan area, A drag moves. Touch only: no D-pad focus. By buttons: X or SELECT (More), then the chip.
 - **Code:** New (today: two text lines under the keys, drawn in drawMain). Lay out with rowCell.
 
 ### Line key (exists, needs a variant)
@@ -122,7 +122,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Tabs (exists, needs a variant)
 
-- **Used:** sheets (View: Subtitles, Audio, Picture, Speed on a video; Display, Equalizer, Effects, Speed on a song; List; Contents) and sections (Manga, Sources, a source)
+- **Used:** sheets (List; Contents; Pages) and sections (Manga, Sources, a source). Not the player’s chip sheets: each is one subject with a title
 - **Anatomy and states:** 44 tall, padding 0 13, radius 10, Pixelify 15 everywhere; off = BUTTON with edge, on = yellow with lip; 6 apart. Key caps at both ends say what steps it: L R in a sheet, L2 R2 in a section. A count may follow the label.
 - **Inputs:** labels, counts, the open one, which keys step it
 - **Keys and touch:** The named keys step (no wrap); tap a tab.
@@ -138,7 +138,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Tick and radio (exists, reuse)
 
-- **Used:** select mode, View’s lists
+- **Used:** select mode, the Subtitles, Audio and Speed sheets’ lists
 - **Anatomy and states:** Tick: 22 square, radius 6, 2-unit edge; ticked = yellow fill with a black check. Radio: 14 round, 2-unit edge; chosen = yellow ring with a yellow centre. Both are a row’s lead; the row is the target.
 - **Inputs:** on
 - **Keys and touch:** A ticks; SELECT ticks all (select mode).
@@ -248,8 +248,8 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Tile (exists, needs a variant)
 
-- **Used:** Settings (12), Menu (8), Home shortcuts, Quick settings
-- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Menu tile about 146 × 84: icon 26 over name 17 over a note. Shortcut and toggle tiles 56 tall. A choice tile (View › Display on a song: the four modes 147 × 56 with the mark beside the name, Pixelify 13.5; the fifteen styles 117 × 56 in a 5 × 3 grid, 6 apart, the mark 22 wide over the name, Pixelify 12) is one of a set: the one in use is filled ACCENT with ON_ACCENT ink, as a segmented choice is; the cursor is the ACCENT edge. A toggle tile may carry a second line Inter 12 dim: its state in words (“Lid or sleep: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
+- **Used:** Settings (12), Home shortcuts, Quick settings
+- **Anatomy and states:** SURFACE, 2-unit edge, radius 14. Settings tile 265 × 58: icon 22, name Pixelify 17, a live summary Inter 12 dim. Shortcut and toggle tiles 56 tall. A choice tile (the Display sheet on a song: the four modes 147 × 56 with the mark beside the name, Pixelify 13.5; the fifteen styles 117 × 56 in a 5 × 3 grid, 6 apart, the mark 22 wide over the name, Pixelify 12) is one of a set: the one in use is filled ACCENT with ON_ACCENT ink, as a segmented choice is; the cursor is the ACCENT edge. A toggle tile may carry a second line Inter 12 dim: its state in words (“Lid or sleep: closes all”) or, at 45%, the reason it can’t be changed (“Off in incognito”). Focused: yellow edge, icon and name yellow.
 - **Inputs:** icon, name, summary, focused, mark
 - **Keys and touch:** D-pad moves in two dimensions, A opens.
 - **Code:** Home’s tiles (drawHome), Settings’ group tiles (drawSettings). Needs: the live summary line.
@@ -304,9 +304,9 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Recent card and Continue card (exists, needs a variant)
 
 - **Used:** Home and its states
-- **Anatomy and states:** Recent card 112 × 100, radius 12: a 48-tall picture with a kind mark, title 14, note 12, a 3-unit progress line. Continue card 108 tall, radius 14: picture 128 × 84, a label in capitals (Continue / Now playing / Stopped for Manga), title 22, note 12.5, a bar, one primary key 118 × 52.
+- **Anatomy and states:** Recent card 112 × 100, radius 12: a 48-tall picture with a kind mark, title 14, note 12, a 3-unit progress line. Continue card 108 tall, radius 14: picture 128 × 84, a label in capitals (Continue / Now playing / Stopped for Manga), title 22, note 12.5, a bar, one primary key 118 × 52. It is one card in two states. Continue: nothing is loaded; the key is Resume. Now playing: something is loaded, playing or paused; the picture wears the NOW pill, the note is the time followed by the mini bar’s state pills (speed, look, repeat, EQ, “Playing in …”), and the key is Pause, or Play when paused. While it shows, Home draws no mini bar: the card is the one place for what plays there, and Home keeps the same layout either way.
 - **Inputs:** picture, kind, title, note, progress, label, key
-- **Keys and touch:** A plays or resumes; X (or hold) its More sheet.
+- **Keys and touch:** A plays or resumes; X (or hold) its More sheet. Now playing: A or a tap on the card goes to the player (SELECT too); a tap on its key pauses or plays; a hold on the key takes over from a browser, as the mini bar’s mark does; X or a hold on the card is its More.
 - **Code:** Home’s Recent cards in drawHome. Needs: the Continue card.
 
 ### Empty state (exists, needs a variant)
@@ -379,8 +379,8 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 - **Used:** every song screen
 - **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. The title is a Title marquee in its line’s box (the text column beside the art; the panel’s width less its margins in Visualizer only and None, where it is centred while it fits); artist and album are cut with “…”. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: the Art placeholder in the art’s place, at the art’s size (240, 224), in the same radius-8 box with the same 2-unit edgeOf(SURFACE) edge, keyed by the song’s album; the layout and the chosen mode stay. The player’s 30-unit thumbnail by the artist line is the same placeholder at 30. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Every style is drawn by the player in the theme’s colours (ACCENT and TEXT for its marks, DIM for what recedes); none keeps colours of its own. Visualizer only: the style on BG in the same colours, the three lines top left in TEXT, DIM_ON and DIM. Sparks, Starfield, Rain check and Sleepy moon fill the whole panel; in Art + visualizer they are drawn behind the art, and the art and its lines are centred in the panel as in Album art only. Rocket’s stars fill the panel while the rocket stays in the band.
-- **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four icon tiles on View › Display), the visualizer’s style (the fifteen icon tiles under them), art or none, title, artist, album. Show and the style are two inputs, set on one page (View › Display) and in two rows of Settings › Music & sound (Music display, Visualizer), and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown now”, not dimmed.
-- **Keys and touch:** SELECT steps Show (on View › Display).
+- **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four icon tiles on the Display sheet), the visualizer’s style (the fifteen icon tiles under them), art or none, title, artist, album. Show and the style are two inputs, set on one sheet (Display) and in two rows of Settings › Music & sound (Music display, Visualizer), and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown now”, not dimmed.
+- **Keys and touch:** SELECT steps Show (in the Display sheet).
 - **Code:** The music graph and the title lines in player.cpp (Player::shownMusic). A change to today’s layout: the lines always drawn (the Song info on top setting and its `SettingDef` go), and a ground in BG under the art.
 
 ## Rules
@@ -419,8 +419,8 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Arriving stops nothing (new)
 
-- **Used:** the rail, START’s menu, the Extensions page, Manga’s row, a comic opened from Files or Search
-- **Anatomy and states:** Opening a section, by a tap on the rail, by L / R or from START’s menu, shows a page and does nothing else: it starts no engine, takes no memory and leaves the top screen to what plays. A row that would stop what plays wears a DANGER pill with the Stop glyph and the words (“Stops the video”), at its right before the chevron, for as long as that is true. A on it (or a tap) opens a Confirm sheet: the safe key keeps what plays and is focused, the action names both halves (“Stop video & open Manga”), one sentence gives the reason and one says where the stopped thing waits. Nothing else asks: the rail, START’s menu, L / R and B only move. Drawn: `ext-section`, `ext-section-video`, `manga-guard`.
+- **Used:** the rail, the Extensions page, Manga’s row, a comic opened from Files or Search
+- **Anatomy and states:** Opening a section, by a tap on the rail or by L / R, shows a page and does nothing else: it starts no engine, takes no memory and leaves the top screen to what plays. A row that would stop what plays wears a DANGER pill with the Stop glyph and the words (“Stops the video”), at its right before the chevron, for as long as that is true. A on it (or a tap) opens a Confirm sheet: the safe key keeps what plays and is focused, the action names both halves (“Stop video & open Manga”), one sentence gives the reason and one says where the stopped thing waits. Nothing else asks: the rail, L / R and B only move. Drawn: `ext-section`, `ext-section-video`, `manga-guard`.
 - **When it asks:** only for a video (playing or paused): the handheld’s 1 GB cannot hold it and the manga engine together. A song or a photo goes on under Manga with its mini bar, and no pill or question shows. The stopped video’s place is kept as Stop keeps it; Home’s Continue card reads “Stopped for Manga”.
 - **Coming back:** the Extensions section returns to the page it was left on (Manga, where you were), as any section does, unless a video is playing: then it returns to its list, so the rule holds.
 - **Inputs:** what plays (a video, a song, nothing), what the row needs (the top screen, the memory)
@@ -471,6 +471,9 @@ Both features read one index of the cards. It is the constraint that shapes them
 - **It yields.** The walk stops while a video plays or the Manga engine is up (the card and the memory are theirs), and goes on with music. It never keeps the handheld awake by itself.
 - **Searching it.** The index is mapped, not loaded: a search is one pass over the names (50,000 in well under a tenth of a second), run off the main thread, the newest text replacing the one before. No word index, no ranking beyond “starts with it” first.
 - **What Music lists.** Albums and Artists are filled by themselves from the Music folder of each card, and from nothing else: a folder at the top of the main card and of the second card whose name is “Music” or “Musics” without regard to capitals (Music, music, MUSIC, Musics, musics). If a card has several that differ only so, all are read as one. Everything under them counts, however deep. A song anywhere else on a card is not in Albums or Artists: it stays in Files and in Search, plays, and can be liked and put in playlists. Tags are read for the songs in the Music folders (that is what an album needs); a song elsewhere is in the index by its file’s name, as any file is. There is no list of all songs: Search finds a song.
+- **A video in a Music folder** is part of Music (a music video). Its tags are read as a song’s are (MP4 atoms, Matroska tags): with them it sits in its album and under its artist, in track order; with none it is listed by its file’s name, as an untagged song is. Its row wears a VIDEO pill and the album’s line counts it (“12 songs, 1 a video”). It plays in the video player as one item of the album’s list. It is not listed in Videos.
+- **Playlists are Music’s third view**, beside Albums and Artists (L2 / R2, or its chip), not a rail section. A playlist that holds videos is still there; its row says how many (“18 items · 4 videos”). Music is always in the rail, since Playlists need no Music folder.
+- **What Videos lists.** Music’s rule, for films: the folder named “Videos” at the top of the main card and of the second card, without regard to capitals (Videos, videos, VIDEOS); several on a card that differ only so are read as one; everything under them counts, however deep. Views: All (by name), Folders (those directly inside Videos), Not finished. No tags are read and no thumbnails made: a name, a size, a date, the length from the length cache, your place from the resume store. A video anywhere else is in Files, Search and Recent, and plays the same. With no Videos folder, or none with a video in it, Videos is its Empty state; while a card is first read, a Notice row under its views.
 - **Saying so.** The line under Music’s title names the source and the count: “From Music on both cards · 148 albums · 1,912 songs” (“on this card” when one card has none). With no Music folder on either card, or none with a song in it, Music is its Empty state: “Put your music in a folder named Music on either card”, the how-to on the top screen. Search’s Empty state and a song’s More say nothing new: a song outside Music simply has no Go to album row.
 - **While it is not done.** Search answers from what has been read, with a notice row and a bar. Music lists what it has, with a Notice row under its tabs (“Reading Music on the second card”, songs read of about how many, a bar) and “41 albums so far” in the line under the title; albums come in at their sorted places, so the cursor’s album stays under it.
 - **Not in it.** Network servers (no index to ask; a walk over Wi-Fi takes minutes and the server may be off), hidden folders while they are hidden, and anything played in incognito is not added to Recent searches.

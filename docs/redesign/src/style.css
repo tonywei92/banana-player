@@ -194,6 +194,7 @@ label.sw{display:inline-flex;gap:6px;align-items:center;font-size:13px;cursor:po
 .s .rail{position:absolute;left:0;top:0;bottom:0;width:78px;background:var(--ra);border-right:1px solid var(--ru);display:flex;flex-direction:column;align-items:center;padding:5px 0;gap:2px}
 .s .rail .ri{position:relative;width:68px;height:56px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--do)}
 .s .rail .ri span{font:600 11.5px/1 Inter,sans-serif}
+.s .rail .ri.rs{height:40px;flex:none;border:2px solid var(--ed);background:var(--bt);margin-bottom:3px}
 .s .rail .ri.on{background:var(--ac);color:var(--oa);box-shadow:inset 0 -3px 0 var(--al)}
 .s .rail .lr{height:19px;display:flex;align-items:center;opacity:.8}
 .s .rail .sp{flex:1}
