@@ -11,14 +11,14 @@ namespace bp
 	// What a page tells the shell about its header. The page supplies this and draws its body inside
 	// lay::shell(mini).body; until a page is rebuilt on the kit the shell bridges its old full-panel drawing into the
 	// body box (see beginBody/endBody). `right` is the header's right slot (badges, a group's neighbours), drawn from
-	// `right` leftwards and returning its left edge; the Search key sits left of what it leaves.
+	// `right` leftwards and returning its left edge; the title ends left of what it leaves. Search is the rail's key.
 	struct Ui::ShellHead
 	{
 		std::string title, crumb;
-		bool back = true, more = true, search = true;
+		bool back = true, more = true;
 		std::vector<Hint> hints;
 		std::function<int(int right, int cy)> right;
-		int rightW = 0;	// the room `right` needs, so Search and the title end before it
+		int rightW = 0;	// the room `right` needs, so the title ends before it
 	};
 
 	// An area in shape (Ui::Area) but with no page of its own: Browse and Settings keep their keys and touches
@@ -65,8 +65,8 @@ namespace bp
 		bool adopted(Page pg) const;
 		bool adopted(const Player& p) const;	// the page shown draws its body itself (Browse: only its rebuilt views)
 
-		// frame keys and touches (Ui calls them while page() is true): L/R step the sections, L3 and the Search key
-		// say Search is coming, the rail's cells open a section, back is B, More is X
+		// frame keys and touches (Ui calls them while page() is true): L/R step the sections (Search is passed by), L3
+		// and the rail's Search key say Search is coming, the rail's cells open a section, back is B, More is X
 		bool key(Button b, Player& p) override;
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override;
 		std::string signature(const Player& p) const override;
@@ -77,9 +77,13 @@ namespace bp
 	private:
 		enum { F_BACK, F_MORE, F_SEARCH, F_RAIL = 100 };
 		int pressedFrame = -1;	// F_* or F_RAIL + the rail cell under a finger
+		mutable bool searchUp = false;	// Search shows: its rail key is lit (today its note, until the page is built)
+		int railScroll = 0;	// the sections' offset, moved by a finger drag when they don't fit
+		bool railDrag = false, railMoved = false;
+		int railDownY = 0, railScrollAt = 0;
 		void search(Player& p);	// Search's one place: a note until the page is built
 		int activeIndex(const std::vector<Cell>& cells, Section at) const;
-		bool frameRects(const Player& p, const ShellHead& h, lay::Box& back, lay::Box& more, lay::Box& search) const;
+		bool frameRects(const Player& p, const ShellHead& h, lay::Box& back, lay::Box& more) const;
 		void drawHeader(const ShellHead& h, const Player& p);
 		void drawMini(const lay::Shell& s, const Player& p);
 

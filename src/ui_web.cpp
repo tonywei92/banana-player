@@ -133,7 +133,7 @@ namespace bp
 	void Ui::Web::open()
 	{
 		if (ui.page == Page::Web) return;
-		webBack = {ui.page, ui.inMenu, ui.menuTab, ui.setGroup, ui.cursor, ui.scroll};
+		webBack = {ui.page, ui.settingsOver, ui.setGroup, ui.cursor, ui.scroll};
 		// from Settings: back on its tile, among the groups
 		if (ui.page == Page::Settings)
 		{
@@ -141,8 +141,7 @@ namespace bp
 			webBack.cursor = GROUP_WEB;
 			webBack.scroll = 0;
 		}
-		// the page has a header of its own: the menu's tabs put away
-		ui.inMenu = false;
+		// the page has a header of its own
 		ui.ctxOpen = false;
 		ui.settingsPage->styleFromSubs = false;
 		ui.page = Page::Web;
@@ -156,8 +155,7 @@ namespace bp
 	void Ui::Web::close()
 	{
 		ui.page = webBack.page;
-		ui.inMenu = webBack.inMenu;
-		ui.menuTab = webBack.menuTab;
+		ui.settingsOver = webBack.settingsOver;
 		ui.setGroup = webBack.setGroup;
 		ui.cursor = webBack.cursor;
 		ui.scroll = webBack.scroll;
@@ -203,8 +201,6 @@ namespace bp
 		if (b == Button::L2 || b == Button::R2)
 		{
 			ui.page = Page::Settings;
-			ui.inMenu = true;
-			ui.menuTab = TAB_SETTINGS;
 			ui.setGroup = GROUP_WEB;
 			ui.settingsPage->stepGroup(b == Button::R2 ? 1 : -1, &p);
 			ui.cursor = ui.scroll = 0;

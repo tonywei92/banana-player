@@ -5,7 +5,7 @@ Everything Banana Player does, button by button. For installing it, see the [REA
 - [What it plays](#what-it-plays)
 - [Finding something to play](#finding-something-to-play)
 - [Playlists](#playlists)
-- [Controls](#controls): [while playing](#while-playing), [photos](#looking-at-a-photo), [the file list](#in-the-file-list), [START's settings](#settings-from-start)
+- [Controls](#controls): [while playing](#while-playing), [photos](#looking-at-a-photo), [the file list](#in-the-file-list), [Settings from START](#settings-from-start)
 - [Photos](#photos)
 - [Picture size](#picture-size)
 - [Music](#music)
@@ -54,9 +54,9 @@ Open Banana Player and the bottom screen shows **Home**:
 - Three shortcuts: **Shuffle Liked** (**Browse Files** until something is liked), **Send from phone** (the Web
   dashboard's page, to scan its code) and **All recent**.
 - **A** resumes or plays, **X** (or a hold on a card) opens the card's **More** sheet: **Resume**, **Play from the
-  start**, **Show in folder**, **Add to playlist…**, **Like** / **Unlike** (L3), **Info** and **Remove from Recent**;
+  start**, **Show in folder**, **Add to playlist…**, **Like** / **Unlike**, **Info** and **Remove from Recent**;
   the right column has Home's own **All recent**, **Browse Files**, **Show hidden folders**, **Clear recent…** (press
-  twice), **Settings**, **Menu** and **Quick settings**. With no card under the cursor, **X** opens that column alone.
+  twice), **Settings** and **Quick settings**. With no card under the cursor, **X** opens that column alone.
   **Y** opens the same card sheet. Tap a card to play it, tap its key to resume, tap a chip to filter it.
 - With nothing played yet Home is an **Empty state**: **Nothing played yet**, what goes here, and **Browse Files** (A)
   and **Web dashboard** (Y); no Continue, Recent or shortcut row (each would be empty). With the play history off it
@@ -65,16 +65,18 @@ Open Banana Player and the bottom screen shows **Home**:
 Move with the D-pad: **UP/DOWN** between Continue, the cards and the shortcuts, **LEFT/RIGHT** along them. **B**
 asks to quit: **Quit Banana Player?** with **Quit** and **Cancel**, **Cancel** first; **B** or a tap outside cancels.
 While something plays it asks too, and says **What's playing stops** (**SELECT** still goes to what plays).
-**START** opens the places (**Files**, **Playlists**, **Extensions**, **Network**, **Settings**, **About**, Quick settings
-and Quit); the section rail takes them over in the full redesign.
+**START** opens **Settings** (there is no START menu any more). Its places are the rail's cells, **F** is Quick
+settings, **L3** is Search, and About is Settings' last group.
 
-Every section now shares one frame: a **rail** down the left with **Home**, **Files**, **Playlists**, **Extensions**,
-**Network**, and **Settings** pinned at the foot. **L/R** step the sections and wrap,
-or tap one; the D-pad stays in the page. Arriving at a section starts and stops nothing, and no cell carries a warning:
-**Extensions** is one section for every extension that is on, and the Manga reader is a row of its page. The header
-carries the back key, the section's title and where you are, the status marks, **X** (More) and
-a Search key; **L3** and that key say Search is coming in a later step. The bar along the foot says what the buttons do
-there.
+Every section now shares one frame: a **rail** down the left with a **Search** key pinned at its top, **Home**,
+**Files**, **Playlists**, **Extensions**, **Network**, and **Settings** pinned at the foot under a **START** cap.
+**L/R** step the sections and wrap (they pass Search by), or tap one; the D-pad stays in the page. With seven
+sections the cells are 47 units tall so all show at once, and with six or fewer 56; when they still don't fit, a
+finger drag scrolls them (Search and Settings stay put). Arriving at a section starts and stops nothing, and no cell
+carries a warning: **Extensions** is one section for every extension that is on, and the Manga reader is a row of its
+page. The header carries the back key, the section's title and where you are, the status marks and **X** (More); the
+Search key is in the rail. **L3** and that key say Search is coming in a later step, and the key is lit while it shows.
+The bar along the foot says what the buttons do there, and never names START (the cap over Settings does).
 
 Inside a section the list opens where you left it (its top if that folder or playlist is gone); the **Playlists** rail
 cell opens the list of playlists, and **B** goes up a folder, and from the section's top back to Home.
@@ -131,7 +133,7 @@ video's list while the playing screen was up; a song's list ending keeps the son
 - **Back to the playing screen:** **SELECT** on any page with the bar (or on Home), a tap on the mini bar, **A** on its
   row or card, or **B** on Home. From a book or a comic, a video takes the top screen
   back while its player shows; **B** returns to the page you were reading.
-- **L3** (press the stick) likes or unlikes what plays, from the lists too.
+- **L3** (press the stick) likes or unlikes what plays **on the player**; in the shell's lists it is Search.
 - **Stop** ends it: **Stop** at the bottom right of the playing screen, **X · More** › **Stop**, or the mini
   bar's menu. The place is kept (its card on Home resumes it). A song that reaches the end of the folder or playlist
   doesn't close: it stays on the playing screen (or the bar keeps it) at **0:00**, paused, and **A** (or the power key
@@ -228,7 +230,7 @@ Playlists.
 Like a song or a video to keep it in **Liked**, a playlist of its own. Photos and folders can't be liked.
 
 - **Like:** the **Like** key (the heart, under the transport row) while something plays, **X** → **Like**, or
-  **L3** on the RG DS Plus. The heart turns yellow and the top screen says **Added to Liked** with the title
+  **L3** on the RG DS Plus on the player (in a list, L3 is Search). The heart turns yellow and the top screen says **Added to Liked** with the title
   (**Removed from Liked** when you press it again). A like is the file's, wherever it plays from.
 - **Add to playlist:** the **Playlist** key (beside Like), or **X** → **Add to playlist…**. **New playlist…** comes
   first, then the playlists you changed last. A playlist that already has it says **✓ Added**: choosing it asks
@@ -258,7 +260,7 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **X** | **More**: a sheet with **Lock touch**, **Screen off**, **Info** and **Stop** (in red) as its first four keys, then **View** (what a video or song shows: the View sheet below), **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. The D-pad moves, **A** chooses, **X** or **B** closes |
 | **Y** | **List** (the **List** key): one sheet with **Up next** (the folder or playlist that plays, in its own order, the one playing marked **Now**) and **Chapters** (every chapter with its start; a file without chapters has only Up next), with **Shuffle**'s switch and **Repeat** (Off / All / One) in its header. **L / R** step the tabs, **UP / DOWN** move, **LEFT / RIGHT** page, **A** plays from the row, **L2 / R2** jump a chapter with the sheet open, **Y** or **B** closes |
 | **SELECT** | **More**, the same sheet **X** opens (the hint bar says **SELECT More**). Its first row, **View**, opens **View**, a sheet over the controls. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (Fit, Fill, Stretch) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Visualizer** (the fifteen styles as a grid), **Equalizer**, **Effects** and **Speed**. **L / R** switch tabs, **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's Display, **SELECT** steps the Show mode); it opens on the tab you used last. The rest of More is X's list |
-| **START** | **Settings**: the ten group tiles; **B** or **START** closes it back to where you were |
+| **START** | **Settings**: the ten group tiles; **B** or **START** closes it back to where you were (the player, here) |
 | **L3** (press the stick, RG DS Plus) | Like / Unlike what plays |
 | **B** (or **Back**) | Back to the list: it keeps playing (see [Playing while you browse](#playing-while-you-browse)) |
 | **F + L2** | Screenshot of both screens (saved in the card's `screenshots` folder) |
@@ -353,8 +355,8 @@ See [Photos](#photos) for the touch screen.
 | **Hold** (touch screen) | On a file in Files or Network: starts selecting, with that file ticked |
 | **Y** | In Files: select mode (**A** tick, **SELECT** all / none, the bar for Playlist / Copy / Move / Delete, **X** More). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
 | **SELECT** | Back to what plays (the playing screen); in select mode, All / none |
-| **L3** (press the stick) | Like / Unlike what plays |
-| **START** | **Settings**: its ten group tiles; **F** is Quick settings |
+| **L3** (press the stick) | **Search**: the cards' search, coming in a later step (the rail's key does the same) |
+| **START** | **Settings**: its ten group tiles; **B** or **START** returns to the folder you were in; **F** is Quick settings |
 | **Mini bar** (touch screen) | On every page but the player: tap it for the playing screen · its play mark: play / pause · hold: its menu |
 
 ### Copy, move, rename, delete
@@ -381,14 +383,17 @@ and **Hide folder** are dimmed with that reason. An empty folder is a page of it
 From any screen, **START** opens **Settings** directly, on its ten group tiles (Playback, Subtitles, Music & sound,
 Photos, Reading, Files & history, Power & screens, Web dashboard, Updates, About), under the kit's header. **A** or a
 tap opens one; in a group, **B** goes back to the tiles. **B** or **START** at the tiles closes Settings back to where
-you were (on the player: back to it). The hint bar there names **F Quick settings**, so Quit stays in reach.
+you were: the player, the page of a book, the folder. The hint bar there names **F Quick settings**, so Quit stays in
+reach, and the rail's **START** cap says START is Settings without any bar naming it.
 
-The Menu of places (Home, Files, Playlists, Manga, Network, Settings, About, Quick settings and Quit) is not shown for
-now, on the owner's decision: the full redesign brings it back. Nothing is lost meanwhile. Everything plays on: like,
-playlists, **SELECT** and the mini bar are as they were, and the places are reached from Home, the browser's sections
-and the player's **X · More** sheet. Like, Add to playlist…, Show in folder, Play on, Info and Stop are on that sheet
-(Stop is also a key on the player), and Now playing is the mini bar or **SELECT** from a list. See
-[Like and Add to playlist](#like-and-add-to-playlist) and [Play on](#play-on-from-the-handheld).
+Settings reached from the **rail** or **L/R** is a section instead: **B** goes Home. That is the whole difference: the
+same page, but it remembers which way it was opened.
+
+There is no START menu: its places are the rail's cells, **F** is Quick settings, **L3** is Search, About is Settings'
+last group, Now playing is **SELECT** and the mini bar, and Quit is **B** on Home, Quick settings or **F + START**.
+Nothing is lost: like, Add to playlist…, Show in folder, Play on, Info and Stop are on the player's **X · More** sheet
+(Stop is also a key on the player). See [Like and Add to playlist](#like-and-add-to-playlist) and
+[Play on](#play-on-from-the-handheld).
 
 To quit, use **Quit Banana Player** in quick settings (**F**), or **F + START** from anywhere.
 
@@ -459,7 +464,7 @@ A `.txt` file, or an EPUB that is a book of text, is shown on the top screen as 
 bottom screen holds the controls: how far through you are (a bar: tap or drag it to go there), a big area to drag the
 text with your finger (let go while moving and it glides on; a tap on its upper half goes a screen back, on its lower
 half a screen on), and **Contents**, **Bookmarks**, **Options** (Text options) and **Book mode**, each with its key
-under it.
+under it (Options has none: it is the touch key).
 
 | Button | What it does |
 |---|---|
@@ -469,7 +474,7 @@ under it.
 | **SELECT** | **Book mode** (below) |
 | **X** | **Bookmarks**: add one here, go to one, delete one |
 | **Y** | **Contents** (an EPUB's chapters): **A** goes to one |
-| **START** | **Text options** |
+| **START** | **Settings**: **B** or **START** returns to the page you were reading. **Text options** is the Options button (by touch); held sideways, START is still Text options |
 | **L3** (press the stick) | **Find** (below) |
 | **B** | Back to Files |
 
@@ -526,7 +531,7 @@ for the size it's shown at.
 | **A** | Single page: 200% or back to the whole page. Vertical scroll: on |
 | **X** | Single page or Vertical scroll (kept for the next PDF) |
 | **Y** | **Pages**: every page small; **A** goes to one |
-| **START** | **Options**: View, Fullscreen (Vertical scroll), Brightness & filter, Page fit (Page or Width), Zoom, Pages |
+| **START** | **Settings**: **B** or **START** returns to the page you were on. **Options** (View, Fullscreen (Vertical scroll), Brightness & filter, Page fit (Page or Width), Zoom, Pages) is the button (by touch) |
 | **B** | Back to Files |
 
 A PDF locked with a password says so and doesn't open.
@@ -1063,8 +1068,8 @@ through.
 - A row for each extension that is on: the **Manga reader**'s mark, its name, a line of what is in it (the series
   read so far and downloads, once the reader has been opened) and a chevron; then a rule and **Manage extensions**.
   **A** (or a tap) opens the row; **UP/DOWN** move; **B** goes Home; **L/R** step the sections; **L3** is Search, as
-  everywhere in the shell. Arriving on the page, by a tap on the rail, **L/R** or **START**'s menu, starts and stops
-  nothing: a video keeps playing, with the mini bar.
+  everywhere in the shell. Arriving on the page, by a tap on the rail or **L/R**, starts and stops nothing: a video
+  keeps playing, with the mini bar.
 - While a **video** plays (or is paused) the Manga row wears a red **Stops the video** pill, and **A** on it asks
   first: **Stop the video to open Manga?** with **Stay** (focused, and **B**) and **Stop video & open Manga**. The
   video's place is kept, as Stop keeps it, and Home's Continue card reads **Stopped for Manga**. **Y** (or a tap on the

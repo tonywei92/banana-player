@@ -408,16 +408,17 @@ namespace bp
 	// (previewpane.h). Not used by a screen yet: --press gallery:new draws them (docs/workflow.md).
 	struct Ui::KitNew
 	{
-		// ---- Section rail: RAIL ground, a rule on its right, the sections, the L / R caps, Settings at the foot ----
+		// ---- Section rail: RAIL ground, a rule on its right, Search at the top, Settings under a START cap ----
 		struct RailItem
 		{
 			const Glyph* glyph = nullptr;
 			std::string label;
 			bool warn = false;	// a red mark: opening it would stop what plays
 		};
-		// active: the section lit (sections.size(): Settings; -1 none); pressed: the cell under a finger
+		// active: the section lit (sections.size(): Settings; -1 none); pressed: the cell under a finger (sections.size():
+		// Settings); searchLit: Search shows (its key filled); searchPressed: the key under a finger
 		static void rail(Kit& k, const lay::Rail& r, const std::vector<RailItem>& sections, const RailItem& settings, int active,
-			int pressed = -1);
+			int pressed = -1, bool searchLit = false, bool searchPressed = false);
 
 		// ---- Book bar: Book mode's bottom sheet, drawn upright as the handheld is held ----
 		struct BookKey

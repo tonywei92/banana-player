@@ -76,18 +76,18 @@ namespace bp
 		ShellHead h;
 		h.back = ui.backIconShown(p);
 		h.more = ui.page != Page::Settings;
-		h.search = true;
 		if (ui.page == Page::ExtSection)
 		{
 			// the Extensions section (docs/redesign: ext-section, ext-section-video, ext-section-empty): a list that
-			// starts nothing; A opens a row, B goes Home, L/R step the sections, L3 is Search
+			// starts nothing; A opens a row, B goes Home, L/R step the sections, L3 is Search. START is Settings, and
+			// the rail's START cap says so: no hint bar repeats it
 			h.title = "Extensions";
 			h.crumb = p.settings.mangaOn ? "1 on" : "None on";
 			h.back = false;
 			h.more = false;
 			h.hints = p.settings.mangaOn
-				? std::vector<Hint>{{"A", "Open"}, {"B", "Home"}, {"L/R", "Sections"}, {"START", "Menu"}, {"L3", "Search"}}
-				: std::vector<Hint>{{"A", "Manage extensions"}, {"B", "Home"}, {"L/R", "Sections"}, {"START", "Menu"}, {"L3", "Search"}};
+				? std::vector<Hint>{{"A", "Open"}, {"B", "Home"}, {"L/R", "Sections"}, {"L3", "Search"}}
+				: std::vector<Hint>{{"A", "Manage extensions"}, {"B", "Home"}, {"L/R", "Sections"}, {"L3", "Search"}};
 			return h;
 		}
 		if (ui.page == Page::Settings)
@@ -183,8 +183,9 @@ namespace bp
 
 	void Ui::Shell::search(Player& p)
 	{
-		// Search is a later step. This is its one place: L3 and the header's Search key both come here; the page it
-		// opens (or the sheet it puts over the list) replaces this note.
+		// Search is a later step. This is its one place: L3 and the rail's Search key both come here; the page it
+		// opens (or the sheet it puts over the list) replaces this note, and lights the key as that page shows.
+		searchUp = true;
 		ui.alert("Search", "Search is coming in a later step.");
 		(void)p;
 	}
@@ -194,17 +195,16 @@ namespace bp
 		if (s == Section::Music || s == Section::Books) return;	// (not in the rail yet)
 		if (s == Section::Settings)
 		{
-			if (ui.page != Page::Settings || !ui.inMenu) ui.openMainMenu(p, TAB_SETTINGS);
+			// the rail and L/R open Settings as a section: B goes Home (not back to where START would)
+			ui.openSettings(p, false);
 			return;
 		}
 		// where the Extensions section was left (Manga, where you were; its list): the rail's rule
 		if (ui.manga) ui.manga->sectionLeft(ui.page);
-		// leaving Settings: START's menu (inMenu) closes back to where it was; a Settings page opened on its own
-		// (Sound's way back, the Web page's) becomes the browser
-		if (ui.page == Page::Settings && !ui.inMenu) ui.page = Page::Browse;
-		if (ui.inMenu) ui.closeMenu(p);
-		// another section's page is the browser's (the Extensions page sets its own, in openExtensionsSection). Closing
-		// START's menu over what plays lands on the player; a section asked for from there still shows its page.
+		// leaving Settings: it becomes the browser, whichever way it was opened (a section page now shows)
+		ui.settingsOver = false;
+		if (ui.page == Page::Settings) ui.page = Page::Browse;
+		// another section's page is the browser's (the Extensions page sets its own, in openExtensionsSection)
 		if (ui.page != Page::Browse && s != Section::Extensions) ui.page = Page::Browse;
 		switch (s)
 		{
@@ -254,31 +254,13 @@ namespace bp
 		return true;
 	}
 
-	bool Ui::Shell::frameRects(const Player& p, const ShellHead& h, lay::Box& back, lay::Box& more, lay::Box& search) const
+	bool Ui::Shell::frameRects(const Player& p, const ShellHead& h, lay::Box& back, lay::Box& more) const
 	{
 		lay::Shell s = layout(p);
 		back = {s.main.x + 10, 3, 56, 48};
 		more = {lay::PANEL_W - 10 - 56, 3, 56, 48};
-		// the status cluster's width, item by item, as Kit::status lays it out (clock, battery and its bolt, the
-		// playing bars, then the badges), right to left with 8 between
-		Kit& k = *ui.kit;
-		std::vector<int> widths;
-		std::string clock = ui.clockText(p);
-		if (!clock.empty()) widths.push_back(k.textW(clock, F_P14));
-		if (ui.battery.percent >= 0)
-		{
-			widths.push_back(24);
-			if (ui.battery.charging) widths.push_back(10);
-		}
-		if (ui.markW(p) && ui.markLive(p)) widths.push_back(13);
-		if (ui.incognito) widths.push_back(lay::badgeW(0, true));
-		if (ui.webIndicatorShown(p)) widths.push_back(lay::badgeW(0, true));
-		if (h.rightW) widths.push_back(h.rightW);
-		int st = 0;
-		for (int w : widths) st += w;
-		if (!widths.empty()) st += 8 * ((int)widths.size() - 1);
-		int left = more.x - 10 - st;
-		search = {left - 8 - 48, 3, 48, 48};
+		// (the status cluster's width is laid out by Kit::status; frameRects needs only the two keys' boxes)
+		(void)h;
 		return true;
 	}
 
@@ -287,9 +269,30 @@ namespace bp
 		if (!page(ui.page)) return false;
 		lay::Shell s = layout(p);
 		std::vector<Cell> cs = cells(p);
-		lay::Rail r = lay::rail((int)cs.size());
+		lay::Rail r = lay::rail((int)cs.size(), lay::PANEL_H, railScroll);
 		if (pt.kind != Pointer::Down)
 		{
+			// a finger that went down on the rail's sections: it scrolls them while it moves; a tap opens one
+			if (railDrag)
+			{
+				if (pt.kind == Pointer::Move)
+				{
+					if (!railMoved && std::abs(y - railDownY) > 6) railMoved = true;
+					if (railMoved)
+					{
+						railScroll = std::clamp(railScrollAt - (y - railDownY), 0, r.maxScroll);
+						pressedFrame = -1;
+					}
+					return true;
+				}
+				bool moved = railMoved;
+				railDrag = railMoved = false;
+				if (moved)
+				{
+					pressedFrame = -1;
+					return true;
+				}
+			}
 			if (pressedFrame < 0) return false;
 			int id = pressedFrame;
 			if (pt.kind == Pointer::Up)
@@ -301,14 +304,15 @@ namespace bp
 					int at = id - F_RAIL;
 					hit = at >= 0 && at < (int)cs.size() ? lay::railAt(r, x, y) == at : lay::railAt(r, x, y) == (int)r.cell.size();
 				}
+				else if (id == F_SEARCH)
+					hit = r.search.hit(x, y);
 				else
 				{
 					ShellHead h = head(p);
-					lay::Box back, more, search;
-					frameRects(p, h, back, more, search);
+					lay::Box back, more;
+					frameRects(p, h, back, more);
 					hit = (id == F_BACK && h.back && lay::Box{back.x - 12, 0, back.w + 24, 56}.hit(x, y)) ||
-						(id == F_MORE && h.more && lay::Box{more.x - 12, 0, more.w + 24, 56}.hit(x, y)) ||
-						(id == F_SEARCH && h.search && lay::Box{search.x - 8, 0, search.w + 16, 56}.hit(x, y));
+						(id == F_MORE && h.more && lay::Box{more.x - 12, 0, more.w + 24, 56}.hit(x, y));
 				}
 				if (hit)
 				{
@@ -322,26 +326,39 @@ namespace bp
 			return true;
 		}
 		pressedFrame = -1;
-		// the rail: a cell opens its section; the strip's blank parts take the touch (nothing of the page is under it)
+		railDrag = railMoved = false;
+		// the rail: Search at the top, a cell opens its section, Settings at the foot; the blank parts take the touch
+		// (nothing of the page is under the strip). Its sections also take a drag (a tap opens one)
 		if (x < lay::RAIL_W)
 		{
+			if (r.search.hit(x, y))
+			{
+				pressedFrame = F_SEARCH;
+				return true;
+			}
 			int at = lay::railAt(r, x, y);
 			if (at >= 0)
 			{
 				pressedFrame = F_RAIL + at;
 				fprintf(stderr, "touch: shell rail %s\n", at < (int)cs.size() ? cs[at].label : "Settings");
 			}
+			// a finger on the sections (a cell or the gap) may drag them; a lift without a move is the tap
+			if (r.view.hit(x, y))
+			{
+				railDrag = true;
+				railDownY = y;
+				railScrollAt = railScroll;
+			}
 			return true;
 		}
-		// the header: back, More and Search; nothing else there is pressed
+		// the header: back and More; nothing else there is pressed
 		if (y < s.header.y + s.header.h)
 		{
 			ShellHead h = head(p);
-			lay::Box back, more, search;
-			frameRects(p, h, back, more, search);
+			lay::Box back, more;
+			frameRects(p, h, back, more);
 			if (h.back && lay::Box{back.x - 12, 0, back.w + 24, 56}.hit(x, y)) pressedFrame = F_BACK;
 			else if (h.more && lay::Box{more.x - 12, 0, more.w + 24, 56}.hit(x, y)) pressedFrame = F_MORE;
-			else if (h.search && lay::Box{search.x - 8, 0, search.w + 16, 56}.hit(x, y)) pressedFrame = F_SEARCH;
 			return true;
 		}
 		return false;
@@ -354,8 +371,10 @@ namespace bp
 		int at = activeIndex(cs, section(p));
 		// (no cell carries a warning: opening a section starts and stops nothing; the Extensions page's row says
 		// "Stops the video" and asks first)
+		// the note Search puts up is all it shows today: the key is lit while it is
+		if (searchUp && !ui.findOverlay("alert")) searchUp = false;
 		return "|sh" + std::to_string((int)section(p)) + "." + std::to_string(at) + "." + std::to_string(pressedFrame) +
-			std::to_string(ui.miniBarShown(p));
+			"." + std::to_string(railScroll) + (searchUp ? "S" : "") + std::to_string(ui.miniBarShown(p));
 	}
 
 	// ---- the frame's drawing ----
@@ -363,8 +382,8 @@ namespace bp
 	void Ui::Shell::drawHeader(const ShellHead& h, const Player& p)
 	{
 		Kit& k = *ui.kit;
-		lay::Box back, more, search;
-		frameRects(p, h, back, more, search);
+		lay::Box back, more;
+		frameRects(p, h, back, more);
 		if (h.back) k.iconKey(back, G_BACK, pressedFrame == F_BACK, 3);
 		if (h.more) k.iconKey(more, G_MORE, pressedFrame == F_MORE);
 		int cy = 27;
@@ -378,10 +397,8 @@ namespace bp
 		if (ui.webIndicatorShown(p)) st.badges.push_back({&G_WEB, ""});
 		int left = k.status(more.x - 10, cy, st);
 		if (h.right) left = h.right(left, cy);
-		// Search left of the status cluster (the spec's right slot)
-		if (h.search) k.iconKey(search, G_SEARCH, pressedFrame == F_SEARCH, 2);
 		int x = h.back ? back.x + back.w + 10 : lay::RAIL_W + 16;
-		int right = search.x - 12;
+		int right = left - 14;	// the title ends before the status cluster (Search is the rail's key)
 		if (right <= x + 20) return;
 		if (!h.title.empty()) ui.drawTextMid(h.title, F_NORMAL, TEXT, x, cy - 7, right - x);
 		if (!h.crumb.empty())
@@ -422,7 +439,7 @@ namespace bp
 		// the header's ground (the body is the page's; the rail covers its own 78 either way)
 		ui.fill({s.main.x, 0, s.main.w, lay::SHELL_HEAD}, BG);
 		std::vector<Cell> cs = cells(p);
-		lay::Rail r = lay::rail((int)cs.size());
+		lay::Rail r = lay::rail((int)cs.size(), lay::PANEL_H, railScroll);
 		std::vector<KitNew::RailItem> items;
 		for (auto& c : cs)
 		{
@@ -432,7 +449,9 @@ namespace bp
 			items.push_back(it);
 		}
 		KitNew::RailItem settings{&G_GEAR, "Settings", false};
-		KitNew::rail(k, r, items, settings, activeIndex(cs, at), pressedFrame >= F_RAIL ? pressedFrame - F_RAIL : -1);
+		if (searchUp && !ui.findOverlay("alert")) searchUp = false;
+		KitNew::rail(k, r, items, settings, activeIndex(cs, at), pressedFrame >= F_RAIL ? pressedFrame - F_RAIL : -1,
+			searchUp, pressedFrame == F_SEARCH);
 		drawHeader(h, p);
 		drawMini(s, p);
 		k.hints(s.hints, h.hints);

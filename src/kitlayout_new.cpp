@@ -10,31 +10,36 @@ namespace bp
 	{
 		// ---- Section rail ----
 
-		Rail rail(int sections, int h)
+		Rail rail(int sections, int h, int scroll)
 		{
 			Rail r;
 			r.area = {0, 0, RAIL_W, h};
 			const int x = (RAIL_W - 1 - RAIL_CELL_W + 1) / 2;	// centred left of the rule
+			r.search = {x, RAIL_PAD, RAIL_CELL_W, RAIL_SEARCH_H};
 			r.settings = {x, h - RAIL_PAD - RAIL_CELL_H, RAIL_CELL_W, RAIL_CELL_H};
-			r.capL = {0, RAIL_PAD, RAIL_W - 1, RAIL_CAP_H};
-			int y = r.capL.y + r.capL.h + RAIL_GAP;
-			for (int i = 0; i < sections; i++)
-			{
-				// the R cap's row and a gap must still fit above Settings
-				if (y + RAIL_CELL_H + RAIL_GAP + RAIL_CAP_H + RAIL_GAP > r.settings.y) break;
-				r.cell.push_back({x, y, RAIL_CELL_W, RAIL_CELL_H});
-				y += RAIL_CELL_H + RAIL_GAP;
-			}
-			r.capR = {0, y, RAIL_W - 1, RAIL_CAP_H};
+			r.capStart = {0, r.settings.y - RAIL_GAP - RAIL_CAP_H, RAIL_W - 1, RAIL_CAP_H};
+			r.view = {0, r.search.y + r.search.h + RAIL_GAP, RAIL_W - 1,
+				std::max(0, r.capStart.y - RAIL_GAP - (r.search.y + r.search.h + RAIL_GAP))};
+			// seven sections all in sight at 47; six or fewer take the roomier 56
+			int n = std::max(0, sections);
+			r.cellH = n >= 7 ? RAIL_CELL_H7 : RAIL_CELL_H;
+			int content = n * r.cellH + std::max(0, n - 1) * RAIL_GAP;
+			r.maxScroll = std::max(0, content - r.view.h);
+			r.scroll = std::clamp(scroll, 0, r.maxScroll);
+			for (int i = 0; i < n; i++)
+				r.cell.push_back({x, r.view.y - r.scroll + i * (r.cellH + RAIL_GAP), RAIL_CELL_W, r.cellH});
 			return r;
 		}
 
 		int railAt(const Rail& r, int x, int y)
 		{
-			// a cell's touch reaches the strip's sides (the 5 units either side of it are still the rail)
+			// Settings has its own box, pinned below the view; a section's touch reaches the strip's sides (the units
+			// either side of its cell are still the rail), but only inside the view (Search and the START cap are the
+			// shell's own keys)
+			if (r.settings.hit(x, y)) return (int)r.cell.size();
+			if (!r.view.hit(x, y)) return -1;
 			for (size_t i = 0; i < r.cell.size(); i++)
 				if (Box{0, r.cell[i].y, RAIL_W, r.cell[i].h}.hit(x, y)) return (int)i;
-			if (Box{0, r.settings.y, RAIL_W, r.settings.h}.hit(x, y)) return (int)r.cell.size();
 			return -1;
 		}
 

@@ -596,7 +596,6 @@ namespace bp
 		bool shellPage = shell->page(page);
 		bool bridged = shellPage && shell->beginBody(p);
 		if (page == Page::Info || page == Page::About) drawInfo(p);
-		else if (page == Page::Menu) drawMenu(p);
 		else if (Area* a = area()) a->draw(p);
 		else drawTracks(p);	// (Page::Main is an area: PlayerPage::draw)
 		if (bridged) shell->endBody(p);
@@ -784,7 +783,7 @@ namespace bp
 		Rect b = buttonRect(BACK_ICON);
 		drawBox(b, pressedBtn == BACK_ICON ? PRESSED : BUTTON, R_BUTTON);
 		// adding files to a playlist: a ✕, it cancels (B goes up a folder there)
-		bool cancel = page == Page::Browse && !inMenu && (browse->playlists->selMode == SEL_ADD || browse->playlists->selMode == SEL_PICK);
+		bool cancel = page == Page::Browse && (browse->playlists->selMode == SEL_ADD || browse->playlists->selMode == SEL_PICK);
 		if (cancel) drawGlyphMid(G_CROSS, b.x + b.w / 2, b.y + b.h / 2, TEXT, 2);
 		else drawGlyphMid(G_BACK, b.x + b.w / 2 - 1, b.y + b.h / 2, TEXT, 3);
 	}

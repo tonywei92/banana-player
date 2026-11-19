@@ -139,6 +139,30 @@ namespace bp
 		else manga->stickAxis(0, p);
 	}
 
+	// START opens Settings everywhere in the shell, on the player and in the text and PDF readers. The exceptions are
+	// the places where START is a page's own key: a form's Save/Done (and Find on the network), the Book bar while a
+	// page is held sideways, a document's open menu, the on-screen keyboard (taken before this) and Manga's own pages.
+	bool Ui::startOpensSettings(const Player& p) const
+	{
+		if (page == Page::Settings || page == Page::About || page == Page::Main || page == Page::ExtSection ||
+			page == Page::Extensions)
+			return true;
+		if (page == Page::Browse)
+		{
+			if (browse->browseDir == FORMDIR || browse->browseDir == FINDNET) return false;
+			if (browse->playlists->selMode != SEL_NONE || browse->playlists->addPending.serial) return false;
+			// Home's quit question takes every key (START backs out of it, as B does)
+			return !(browse->atHome() && browse->homeView->quitOpen);
+		}
+		if (page == Page::DocText || page == Page::DocPages)
+		{
+			bool book = page == Page::DocText ? docs->textStatus.book : pageReader->readerStatus.book;
+			return !book && docs->docMenu == Docs::DOC_MENU_NONE;	// (a menu's START closes the menu)
+		}
+		(void)p;
+		return false;
+	}
+
 	bool Ui::press(Button b, Player& p)
 	{
 		// a key while a finger holds a slider: the slider is let go where it is (the key may close what it's on)
@@ -168,7 +192,7 @@ namespace bp
 		{
 			bool playKey = b == Button::A || b == Button::Left || b == Button::Right || b == Button::L || b == Button::R ||
 						   b == Button::L2 || b == Button::R2 || b == Button::L3;
-			bool overPlayer = page == Page::Main && !inMenu && !quickShown() && !kbOpen && p.playing() && !p.playingPhoto();
+			bool overPlayer = page == Page::Main && !quickShown() && !kbOpen && p.playing() && !p.playingPhoto();
 			if (!(playKey && overPlayer))
 			{
 				panel.set(true);
@@ -206,10 +230,18 @@ namespace bp
 			return false;
 		}
 		// a page the output waits for a tap there to start the sound (the top panel says so): B plays here instead
-		if (b == Button::B && !inMenu && (page == Page::Main || page == Page::Browse) && SessionHost::get().pageWaits() &&
+		if (b == Button::B && (page == Page::Main || page == Page::Browse) && SessionHost::get().pageWaits() &&
 			!ctxOpen && !browse->playlists->pickerOpen && !popupShown(p) && browse->playlists->selMode == SEL_NONE && !browse->playlists->addPending.serial)
 		{
 			takeOver(p);
+			return false;
+		}
+		// START: Settings, everywhere (docs/redesign: no START menu; its places are the rail, F, L3, About in Settings).
+		// Before the hotkeys guard: it is not a playback key, and a video with the buttons off still has Settings
+		if (b == Button::Start && startOpensSettings(p))
+		{
+			if (page == Page::Settings || page == Page::About) closeSettings(p);
+			else openSettings(p, true);
 			return false;
 		}
 		// Button hotkeys off: the buttons do nothing over a playing video (touch does it all); the pages opened from
@@ -235,40 +267,11 @@ namespace bp
 			if (page != Page::Manga && page != Page::MangaSeries && page != Page::MangaRead &&
 				page != Page::DocText && page != Page::DocPages)
 			{
-				if (p.settings.buttonHotkeys && !inMenu && p.playing() && !p.playingPhoto() && p.error.empty() && page == Page::Main)
+				if (p.settings.buttonHotkeys && p.playing() && !p.playingPhoto() && p.error.empty() && page == Page::Main)
 					chapterStep(b == Button::L2 ? -1 : 1, p);
 				return false;
 			}
 		}
-		if (inMenu)
-		{
-			// START again closes Settings back to where the user was, as the Menu did (the Menu of places is
-			// unreached now, so there is no top page to go back to first)
-			if (b == Button::Start) { closeMenu(p); return false; }
-			// B in the subtitle style opened from the Subtitles list, or in a settings group: back (SettingsPage)
-			if (b == Button::B && page == Page::Settings)
-			{
-				if (settingsPage->menuBack(p)) return false;
-				// the tiles: back to the Menu (SettingsPage::key)
-				area()->key(b, p);
-				return false;
-			}
-			// B in About (a settings group, its own page): back to the groups' tiles, not out of the menu
-			if (b == Button::B && page == Page::About)
-			{
-				page = Page::Settings;
-				setGroup = -1;
-				cursor = GROUP_ABOUT;
-				scroll = 0;
-				aboutQr = false;
-				return false;
-			}
-			// Manage extensions opened from Settings › Extensions is a page of the menu's: its own B goes back to the
-			// tiles (Manga's area takes it, extKey), not out of the menu
-			if (b == Button::Start || (b == Button::B && page != Page::Extensions)) { closeMenu(p); return false; }
-			// the page's own (the Menu's places, the settings' rows, About's scrolling)
-		}
-		if (page == Page::Menu) return menuKey(b, p);
 		// Files' Copy / Move held: SELECT pastes in this folder, X lets go
 		if (browse->clipKey(b, p)) return false;
 		// an area's page (Files' document viewers): its own keys
@@ -286,9 +289,6 @@ namespace bp
 				// About is a settings group: back to the groups' tiles
 				if (page == Page::About) { page = Page::Settings; setGroup = -1; cursor = GROUP_ABOUT; scroll = 0; aboutQr = false; }
 				else page = home(p);
-				break;
-			case Button::Start:
-				if (page == Page::About && inMenu) { page = Page::Menu; cursor = 0; scroll = 0; }
 				break;
 			case Button::Y:
 				// About's support QR, large on the top panel (a tap on the small code does it too)
@@ -376,7 +376,7 @@ namespace bp
 		// A or the Play button held while a page plays the file: here instead, once, as the hold reaches its length (not
 		// as it lets go). Gone off the player (B, the menu), or the page gone: nothing
 		// (the mini bar's play mark holds the same way, on any page that has the bar: what it plays is main's player)
-		bool holdHere = (page == Page::Main && !inMenu) || (playHoldMini && miniBarShown(p));
+		bool holdHere = page == Page::Main || (playHoldMini && miniBarShown(p));
 		if (playHoldAt && (!holdHere || !pageDrives(barPlayer(p)))) playHoldAt = 0;
 		if (!playHoldAt) playHoldMini = false;
 		if (playHoldAt && SDL_GetTicks() - playHoldAt >= PLAY_HOLD_MS)
@@ -396,7 +396,7 @@ namespace bp
 		}
 		if (landFlashUntil && SDL_GetTicks() >= landFlashUntil) landFlashUntil = 0;
 		// Home's Recent: listed again when what plays changes (the next song started by itself: its card comes first)
-		if (page == Page::Browse && !inMenu && browse->atHome() && !browse->homeView->homeTouch && !ctxOpen && p.currentPath() != browse->homeView->homeListedFor)
+		if (page == Page::Browse && browse->atHome() && !browse->homeView->homeTouch && !ctxOpen && p.currentPath() != browse->homeView->homeListedFor)
 		{
 			browse->homeView->recentKeepOrder = true;	// (its progress anew, its order as shown)
 			browse->enterFolder(HOMEDIR, p);
@@ -477,7 +477,8 @@ namespace bp
 		// "<" over a photo closes it at once (the player's own "<" is its area's: PlayerPage::act)
 		if (id == BACK_ICON && page == Page::Main && p.playing()) return true;
 		// elsewhere (a page over what plays, Settings): B, back a step
-		if (id == BACK_ICON && (inMenu || (page != Page::Browse && page != Page::Main))) return pressAnyway(Button::B, p);
+		if (id == BACK_ICON && ((page == Page::Settings && settingsOver) || (page != Page::Browse && page != Page::Main)))
+			return pressAnyway(Button::B, p);
 		// a photo's Close
 		if (id == QUIT_BTN) return p.playingPhoto();
 		// adding files: the header's key is a ✕ that cancels at once (B goes up a folder there)
@@ -540,7 +541,7 @@ namespace bp
 		// Home's quit question takes every finger, the shell's rail and header included: a row chooses as it lifts,
 		// outside it cancels (it sits in the main strip, so the rail is no longer under its panel to block them).
 		// Dark and the touch that woke the panel keep their turns, as they had when the question was a full panel.
-		if (page == Page::Browse && !inMenu && browse->atHome() && browse->homeView->quitOpen && !popupShown(p) &&
+		if (page == Page::Browse && browse->atHome() && browse->homeView->quitOpen && !popupShown(p) &&
 			panel.on() && !swallowTouch && !kbOpen)
 			return browse->homeView->homePointer(pt, x, y, p);
 		// the shell's rail, header and mini bar first (the page's body is under them)
@@ -552,7 +553,7 @@ namespace bp
 			if (shell->mapPoint(p, mx, my)) { x = mx; y = my; }
 		}
 		// All recent's tabs: a tap on one shows that kind
-		if (page == Page::Browse && browse->browseDir == RECENT && !inMenu && !ctxOpen && p.settings.keepHistory && browse->homeView->recentCounts[0] && y < ROW_Y)
+		if (page == Page::Browse && browse->browseDir == RECENT && !ctxOpen && p.settings.keepHistory && browse->homeView->recentCounts[0] && y < ROW_Y)
 		{
 			for (int i = 0; i < 4; i++)
 				if (browse->homeView->recentTabRect[i].hit(x, y))
@@ -722,9 +723,6 @@ namespace bp
 			}
 			return false;
 		}
-		// the Menu's places, its Now playing line and its two keys (its downs as well as its ups; before pressedBtn's
-		// own act, which is every other page's)
-		if (page == Page::Menu) return menuPointer(pt, x, y, p);
 		// a finger that went down on one of the manga app's lists: its moves scroll the list and its lift is the tap
 		// (the down came through mangaPointer, after the sheets, the header and the mini bar had their turn)
 		if (pageReader->mlist.on && pt.kind != Pointer::Down) return pageReader->mangaListPointer(pt, x, y);
@@ -803,7 +801,7 @@ namespace bp
 		listScrolled = false;
 		touchStartY = y;
 		scrollStart = scroll;
-		holdAt = page == Page::Browse && !inMenu && browse->playlists->selMode == SEL_NONE && browse->holdRow(i) ? SDL_GetTicks() : 0;
+		holdAt = page == Page::Browse && browse->playlists->selMode == SEL_NONE && browse->holdRow(i) ? SDL_GetTicks() : 0;
 		return false;
 	}
 
@@ -902,7 +900,7 @@ namespace bp
 		photo += fileJobSignature();
 		photo += shell->signature(p);	// the rail's section and warning, the frame's pressed piece, the shell's mini bar
 		if (Area* a = area()) photo += a->signature(p);
-		return buf + photo + overlaySignature(p) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + manga->extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) + "." + std::to_string(menuCursor) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
+		return buf + photo + overlaySignature(p) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + manga->extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (page == Page::Settings && settingsOver ? "|set1" : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + sound->eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string((int)kbShift) + (kbSymbols ? "s" : "") + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");
 	}
 }

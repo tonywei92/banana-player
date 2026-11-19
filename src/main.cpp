@@ -1847,7 +1847,7 @@ int main(int argc, char** argv)
 						player.pollEvents();
 						const Track* a = player.selected(TrackType::Audio);
 						const Track* s = player.selected(TrackType::Sub);
-						if (*ui.menuTabName()) printf("press %zu: menu=%s\n", pressed, ui.menuTabName());
+						if (ui.settingsPageOpen()) printf("press %zu: settings\n", pressed);
 						else if (ui.browsing())
 						{
 							std::string at = ui.browseSelection();

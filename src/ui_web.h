@@ -25,7 +25,7 @@ namespace bp
 		void close();	// back there
 
 		// Page::Web: where it was opened from (B goes back there)
-		struct WebBack { Page page = Page::Browse; bool inMenu = false; int menuTab = 0, setGroup = -1, cursor = 0, scroll = 0; } webBack;
+		struct WebBack { Page page = Page::Browse; bool settingsOver = false; int setGroup = -1, cursor = 0, scroll = 0; } webBack;
 		void webNewPin(Player& p);			// New PIN: pressed twice (2 s apart at most)
 		void webPrimary(Player& p);			// the empty page's button: Turn on, Try again
 		// the QR code of the page's URL, made again when the URL changes: its modules, a row at a time

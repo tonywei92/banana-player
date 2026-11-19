@@ -10574,33 +10574,59 @@ static void testKitLayout()
 static void testKitNewSectionRail()
 {
 	using namespace lay;
-	// six sections fit between the caps, Settings pinned at the foot; none over another, all inside the strip
+	// Search pinned at the top and Settings at the foot under its START cap; six sections at 56, none over another
 	Rail r = rail(6);
 	CHECK_EQ((int)r.cell.size(), 6);
 	CHECK_EQ(r.area.w, 78);
+	CHECK_EQ(r.search.w, 68);
+	CHECK_EQ(r.search.h, RAIL_SEARCH_H);
+	CHECK_EQ(r.search.y, RAIL_PAD);
 	CHECK_EQ(r.settings.y + r.settings.h, PANEL_H - RAIL_PAD);
-	CHECK_EQ(r.cell[0].y, r.capL.y + r.capL.h + RAIL_GAP);
-	CHECK_EQ(r.capR.y, r.cell[5].y + r.cell[5].h + RAIL_GAP);
-	CHECK_EQ(r.capR.y + r.capR.h <= r.settings.y, true);
+	CHECK_EQ(r.capStart.y + r.capStart.h, r.settings.y - RAIL_GAP);
+	CHECK_EQ(r.view.y, r.search.y + r.search.h + RAIL_GAP);
+	CHECK_EQ(r.view.y + r.view.h, r.capStart.y - RAIL_GAP);
+	CHECK_EQ(r.cellH, 56);
+	CHECK_EQ(r.maxScroll, 0);
 	for (size_t i = 0; i < r.cell.size(); i++)
 	{
 		CHECK_EQ(r.cell[i].w, 68);
 		CHECK_EQ(r.cell[i].h, 56);
+		CHECK_EQ(r.cell[i].y, r.view.y + (int)i * (56 + RAIL_GAP));
 		CHECK_EQ(kitInside(r.cell[i], RAIL_W - 1, PANEL_H), true);	// left of the rule
 		CHECK_EQ(kitApart(r.cell[i], r.settings), true);
+		CHECK_EQ(kitApart(r.cell[i], r.search), true);	// Search is above the sections' view
 		if (i) CHECK_EQ(kitApart(r.cell[i], r.cell[i - 1]), true);
 		// a tap on the cell (or beside it, still on the rail) is that section
 		CHECK_EQ(railAt(r, r.cell[i].x + 30, r.cell[i].y + 20), (int)i);
 		CHECK_EQ(railAt(r, 1, r.cell[i].y + 1), (int)i);
 	}
 	CHECK_EQ(railAt(r, 40, r.settings.y + 10), 6);
-	CHECK_EQ(railAt(r, 40, r.capL.y + 2), -1);
+	CHECK_EQ(railAt(r, 40, r.search.y + 10), -1);	// (Search is the shell's own key)
+	CHECK_EQ(railAt(r, 40, r.capStart.y + 2), -1);
 	CHECK_EQ(railAt(r, 100, r.cell[0].y + 10), -1);	// off the rail
-	// more than fit: the last left out, Settings never covered
+	// seven: 47-tall cells, all seven in sight, still no scrolling
+	Rail seven = rail(7);
+	CHECK_EQ((int)seven.cell.size(), 7);
+	CHECK_EQ(seven.cellH, 47);
+	CHECK_EQ(seven.maxScroll, 0);
+	CHECK_EQ(seven.cell[6].y + seven.cell[6].h <= seven.view.y + seven.view.h, true);
+	CHECK_EQ(railAt(seven, 40, seven.cell[6].y + 10), 6);
+	// more than fit: a drag scrolls the sections; Settings stays at the foot and Search at the top
 	Rail many = rail(9);
-	CHECK_EQ((int)many.cell.size(), 6);
-	CHECK_EQ(many.capR.y + many.capR.h <= many.settings.y, true);
-	// L / R wrap
+	CHECK_EQ((int)many.cell.size(), 9);
+	CHECK_EQ(many.cellH, 47);
+	CHECK(many.maxScroll > 0);
+	CHECK(many.cell[8].y >= many.view.y + many.view.h);	// out of the view: not yet shown
+	CHECK_EQ(many.settings.y, seven.settings.y);
+	CHECK_EQ(many.search.y, seven.search.y);
+	Rail end = rail(9, PANEL_H, many.maxScroll);
+	CHECK_EQ(end.scroll, many.maxScroll);
+	CHECK_EQ(railAt(end, 40, end.cell[8].y + 10), 8);
+	CHECK_EQ(railAt(end, 40, end.cell[2].y + 10), 2);	// (scrolled up, still in the view)
+	CHECK_EQ(railAt(end, 40, end.settings.y + 10), 9);
+	CHECK_EQ(end.search.y, many.search.y);
+	CHECK_EQ(rail(9, PANEL_H, 99999).scroll, many.maxScroll);	// never past its end
+	// L / R wrap and pass Search by
 	CHECK_EQ(railStep(0, -1, 7), 6);
 	CHECK_EQ(railStep(6, 1, 7), 0);
 	CHECK_EQ(railStep(2, 1, 7), 3);

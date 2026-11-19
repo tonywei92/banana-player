@@ -26,10 +26,9 @@ namespace bp
 
 	void Ui::Sound::open(Player& p, bool fromSettings)
 	{
-		// from Settings (START's or not): B goes back there; the page has tabs of its own, so the menu's are put away
+		// from Settings (START's or not): B goes back there, and Settings keeps the way it was opened (its START origin
+		// or the rail); the page has tabs of its own
 		soundFromSettings = fromSettings;
-		soundFromMenu = fromSettings && ui.inMenu;
-		ui.inMenu = false;
 		ui.settingsPage->styleFromSubs = false;
 		ui.page = Page::Sound;
 		eqDialog = EQD_NONE;
@@ -59,8 +58,6 @@ namespace bp
 			return;
 		}
 		ui.page = Page::Settings;
-		ui.inMenu = soundFromMenu;
-		if (ui.inMenu) ui.menuTab = TAB_SETTINGS;
 		ui.setGroup = GROUP_MUSIC;
 		ui.cursor = std::max(0, rowsIndexOf(ui.settingsPage->settingRows(), SOUND_ROW));
 		ui.scroll = 0;

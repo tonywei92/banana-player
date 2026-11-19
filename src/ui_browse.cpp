@@ -106,7 +106,7 @@ namespace bp
 		if (homeAfterCloseAll)
 		{
 			homeAfterCloseAll = false;
-			inMenu = false;
+			settingsOver = false;
 			showSourceAfterLeave = false;
 			browse->homeView->goHome(Home::HOME_GRID, 0, p);
 			page = Page::Browse;
@@ -122,7 +122,6 @@ namespace bp
 		showSourceAfterLeave = false;
 		if (!b.set || !showAfterLeave.empty() || b.page == Page::Main || toSource)
 		{
-			if (toSource) inMenu = false;
 			showBrowser(p, lastPlayed, from, index);
 			return;
 		}
@@ -136,14 +135,10 @@ namespace bp
 			browse->enterFolder(b.browseDir, p);
 		}
 		page = b.page;
-		inMenu = b.inMenu;
-		menuTab = b.menuTab;
 		setGroup = b.setGroup;
 		cursor = b.cursor;
 		scroll = b.scroll;
-		menuReturnDir = b.menuReturnDir;
-		menuReturnCursor = b.menuReturnCursor;
-		menuReturnScroll = b.menuReturnScroll;
+		settingsOver = false;
 		bgPlay = p.playing();
 		ctxOpen = false;
 		playerPage->unlock();	// the lock is the player's
@@ -151,7 +146,7 @@ namespace bp
 		dropTouch();
 		// played from a playlist's page: back to the list of playlists, the cursor on that one (the owner's rule: Back
 		// leaves the playlist; List on the player opens it, toSource above)
-		if (page == Page::Browse && !inMenu && isPlDir(browse->browseDir))
+		if (page == Page::Browse && isPlDir(browse->browseDir))
 		{
 			std::string file = plFileOf(browse->browseDir);
 			browse->enterFolder(PLROOT, p);
@@ -160,7 +155,7 @@ namespace bp
 			browse->fitList();
 		}
 		// back in the folder of what played: the cursor on it (the photo last viewed, the song or video Next moved on to)
-		else if (page == Page::Browse && !inMenu && !lastPlayed.empty())
+		else if (page == Page::Browse && !lastPlayed.empty())
 			for (size_t i = 0; i < browse->browsePaths.size(); i++)
 				if (browse->browsePaths[i] == lastPlayed)
 				{
@@ -168,8 +163,8 @@ namespace bp
 					browse->fitList();
 					break;
 				}
-		fprintf(stderr, "ui: back from the player to %s\n", page == Page::Browse && !inMenu ? (browse->atHome() ? "Home" : browse->browseDir.empty() ? "Files" : browse->browseDir.c_str())
-			: inMenu ? "the menu" : "a page");
+		fprintf(stderr, "ui: back from the player to %s\n",
+			page == Page::Browse ? (browse->atHome() ? "Home" : browse->browseDir.empty() ? "Files" : browse->browseDir.c_str()) : "a page");
 	}
 
 	void Ui::showBrowser(Player& p, const std::string& lastPlayed, const PlaySource& from, int index)
@@ -189,7 +184,7 @@ namespace bp
 			// the Playing tab's Show in folder: that folder, wherever it played from
 			std::string path;
 			path.swap(showAfterLeave);
-			inMenu = false;
+			settingsOver = false;
 			showInFolder(path, p);
 			return;
 		}
@@ -549,7 +544,7 @@ namespace bp
 	{
 		// (an empty playlist's: Add files)
 		bool emptyPl = isPlDir(browseDir) && playlists->plLoaded && playlists->plStore && playlists->plCur.entries.empty() && !ui.plIsLiked(playlists->plCur.file);
-		return ui.page == Page::Browse && !ui.inMenu && playlists->selMode == SEL_NONE &&
+		return ui.page == Page::Browse && playlists->selMode == SEL_NONE &&
 			((browseDir == NETROOT) || (browseDir == PLROOT && playlists->plStore) || emptyPl) && browseRows.size() == 1 && browseRows[0].id < 0;
 	}
 
@@ -878,7 +873,7 @@ namespace bp
 			ctxOpen = false;
 			switch (what)
 			{
-			case CTX_SETTINGS: openMainMenu(p, TAB_SETTINGS); break;
+			case CTX_SETTINGS: openSettings(p, true); break;
 			case CTX_R_START:
 				// a document: its place forgotten, then opened
 				if (isDocumentName(path) || isComicName(path))
@@ -1177,7 +1172,7 @@ namespace bp
 	bool Ui::Browse::filesPage() const
 	{
 		// the cards' places and the folders under them; Home, All recent, the playlists and the network keep Ui's list
-		return ui.page == Page::Browse && !ui.inMenu && (playlists->selMode == SEL_NONE || fileSel) && browseTab == TAB_LOCAL &&
+		return ui.page == Page::Browse && (playlists->selMode == SEL_NONE || fileSel) && browseTab == TAB_LOCAL &&
 			(browseDir.empty() || (!pseudoDir(browseDir) && !isNetPath(browseDir)));
 	}
 
@@ -1258,7 +1253,7 @@ namespace bp
 			return {{"SELECT", "Put it here"}, {"X", "Cancel"}, {"A", "Open"}, {"B", "Up"}};
 		if (filesEmpty())
 		{
-			if (browseDir.empty()) return {{"L/R", "Sections"}, {"START", "Settings"}};
+			if (browseDir.empty()) return {{"L/R", "Sections"}};
 			if (!browseRows.empty() && browseRows[0].label == "This folder can't be opened")
 				return {{"A/B", "Go up"}, {"X", "More"}, {"L/R", "Sections"}};
 			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L/R", "Sections"}};
@@ -1883,12 +1878,12 @@ namespace bp
 	void Ui::drawTracks(const Player& p)
 	{
 		bool inBrowse = page == Page::Browse;
-		bool sel = inBrowse && !inMenu && browse->playlists->selMode != SEL_NONE;
-		if (inBrowse && !inMenu && !sel && browse->atHome()) { browse->homeView->drawHome(p); return; }
+		bool sel = inBrowse && browse->playlists->selMode != SEL_NONE;
+		if (inBrowse && !sel && browse->atHome()) { browse->homeView->drawHome(p); return; }
 		// All recent is Home's own page (its filter chips, every card, the kit's rows)
-		if (inBrowse && !inMenu && !sel && browse->browseDir == RECENT) { browse->homeView->drawAllRecent(p); return; }
+		if (inBrowse && !sel && browse->browseDir == RECENT) { browse->homeView->drawAllRecent(p); return; }
 		if (sel) browse->playlists->drawSelHeader(p);
-		else if (inBrowse && !inMenu)
+		else if (inBrowse)
 		{
 			// All recent: a page of Home's; else a section's header (its markers in place of tabs)
 			if (browse->browseDir == RECENT)
@@ -2055,17 +2050,17 @@ namespace bp
 		if (cursor < 0 && browse->upRow()) drawHints({{"A", "Up"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 		else if (form) drawHints({{"A", "Change"}, {"LEFT/RIGHT", "Choose"}, {"B", "Cancel"}});
 		else if (browse->browseDir == FINDNET) drawHints({{"A", "Add this one"}, {"B", "Back"}});
-		else if (browse->browseDir == RECENT && plEmpty) drawHints({{"B", "Home"}, {"X", "Options"}, {"START", "Settings"}});
+		else if (browse->browseDir == RECENT && plEmpty) drawHints({{"B", "Home"}, {"X", "Options"}});
 		else if (browse->browseDir == RECENT) drawHints({{"A", file && cursor < (int)browse->browsePaths.size() && !isMediaFile(browse->browsePaths[cursor]) ? "Open" : "Play"}, {"Y", "Menu"}, {"L/R", "Kind"}, {"B", "Home"}, {"X", "Options"}});
-		else if (plEmpty && isPlDir(browse->browseDir) && plIsLiked(browse->playlists->plCur.file)) drawHints({{"B", back}, {"L/R", "Sections"}, {"START", "Settings"}});
+		else if (plEmpty && isPlDir(browse->browseDir) && plIsLiked(browse->playlists->plCur.file)) drawHints({{"B", back}, {"L/R", "Sections"}});
 		else if (browse->browseDir == PLROOT && cursor >= 0 && cursor < n && r[cursor].id == PL_NEW)
 			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 		else if (browse->emptyAction() && browse->browseDir == PLROOT)
-			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}, {"START", "Settings"}});
+			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 		else if (browse->emptyAction() && isPlDir(browse->browseDir)) drawHints({{"A", "Add files"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 		else if (browse->emptyAction())
 			drawHints({{"A", "Find"}, {"Y", "Add connection"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
-		else if (plEmpty) drawHints({{"B", back}, {"X", "Options"}, {"L/R", "Sections"}, {"START", "Settings"}});
+		else if (plEmpty) drawHints({{"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 		else if (yMenu) drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"Y", "Menu"}, {"L/R", "Sections"}});
 		else drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
 	}
@@ -2084,7 +2079,7 @@ namespace bp
 		int miss = plMissingAt(i);
 		SDL_Color soft = at ? DIM_ON : DIM;
 		// selecting: its box where its number was, its grip on the right (Move's block: its arrows, yellow)
-		bool edit = selMode == SEL_EDIT && !ui.inMenu;
+		bool edit = selMode == SEL_EDIT;
 		bool block = edit && ((moving && plSel.count(i)) || (plDrag.on && dragSel.count(i)));
 		// (Liked has no numbers: its order is the likes', newest first)
 		bool liked = ui.plIsLiked(plCur.file);
@@ -2160,43 +2155,43 @@ namespace bp
 		}
 		// the Files page's own keys (the redesign): the D-pad, A, Y and X; a select mode takes every key, before
 		// SELECT's Now playing and L3's Like
-		if (!ui.inMenu && filesPage() && filesKey(b, p)) return false;
+		if (filesPage() && filesKey(b, p)) return false;
 		// something playing behind the browser: SELECT goes back to it, L3 likes it (a page's own keys don't use them)
-		if (!ui.inMenu && playlists->selMode == SEL_NONE && browseDir != FORMDIR)
+		if (playlists->selMode == SEL_NONE && browseDir != FORMDIR)
 		{
 			if (b == Button::Select && ui.nowPlayable(p)) { ui.goNowPlaying(p); return false; }
 			if (b == Button::L3 && p.playing() && !p.playingPhoto()) { ui.likeNow(p); return false; }
 		}
-		if (!ui.inMenu && playlists->selMode != SEL_NONE && playlists->selKey(b, p)) return false;
+		if (playlists->selMode != SEL_NONE && playlists->selKey(b, p)) return false;
 		// the redesigned playlist pages (a playlist's rows, its keys row, Liked): their own keys; the rest (X, Y,
 		// B, L/R, START) is the browser's below
-		if (!ui.inMenu && playlists->onPage() && playlists->key(b, p)) return false;
-		if (!ui.inMenu && atHome()) return homeView->homeKey(b, p);
+		if (playlists->onPage() && playlists->key(b, p)) return false;
+		if (atHome()) return homeView->homeKey(b, p);
 		// All recent: X the focused card's More sheet (Home's own things are its right column), else Home's; Y the same
 		// card menu (kept, as it was the key for it)
-		if (!ui.inMenu && browseDir == RECENT && b == Button::X)
+		if (browseDir == RECENT && b == Button::X)
 		{
 			if (ui.cursor >= 0 && ui.cursor < (int)browseRows.size() && browseRows[ui.cursor].id == 2) homeView->openRecentMenu(browsePaths[ui.cursor]);
 			else homeView->openHomeOptions();
 			return false;
 		}
-		if (!ui.inMenu && browseDir == RECENT && b == Button::Y)
+		if (browseDir == RECENT && b == Button::Y)
 		{
 			if (ui.cursor >= 0 && ui.cursor < (int)browseRows.size() && browseRows[ui.cursor].id == 2) homeView->openRecentMenu(browsePaths[ui.cursor]);
 			return false;
 		}
 		// All recent with nothing in it: its empty state's key (Browse Files)
-		if (!ui.inMenu && browseDir == RECENT && b == Button::A && (browseRows.empty() || (browseRows.size() == 1 && browseRows[0].id < 0)))
+		if (browseDir == RECENT && b == Button::A && (browseRows.empty() || (browseRows.size() == 1 && browseRows[0].id < 0)))
 		{
 			openSection(TAB_LOCAL, p);
 			return false;
 		}
-		if (!ui.inMenu && b == Button::X) { ui.openBrowseMenu(ui.cursor, MENU_X); return false; }
+		if (b == Button::X) { ui.openBrowseMenu(ui.cursor, MENU_X); return false; }
 		// no connections yet: Y adds one by hand (A, the page's button, finds them)
-		if (!ui.inMenu && b == Button::Y && emptyAction() && browseDir == NETROOT) { openForm(nullptr, nullptr, p); return false; }
-		if (!ui.inMenu && b == Button::Y) { ui.openBrowseMenu(ui.cursor, MENU_Y); return false; }
+		if (b == Button::Y && emptyAction() && browseDir == NETROOT) { openForm(nullptr, nullptr, p); return false; }
+		if (b == Button::Y) { ui.openBrowseMenu(ui.cursor, MENU_Y); return false; }
 		// the form: LEFT/RIGHT step a choice (Type, Sign in, FTPS); L/R don't leave it for the other tab
-		if (!ui.inMenu && browseDir == FORMDIR)
+		if (browseDir == FORMDIR)
 		{
 			if (b == Button::L || b == Button::R) return false;
 			if ((b == Button::Left || b == Button::Right) && ui.cursor >= 0 && ui.cursor < (int)browseRows.size())
@@ -2205,8 +2200,8 @@ namespace bp
 				return false;
 			}
 		}
-		if (!ui.inMenu && browseDir == FINDNET && (b == Button::L || b == Button::R)) return false;
-		if (!ui.inMenu && (b == Button::L || b == Button::R))
+		if (browseDir == FINDNET && (b == Button::L || b == Button::R)) return false;
+		if ((b == Button::L || b == Button::R))
 		{
 			// All recent: its tabs (All, Videos, Music, Books)
 			if (browseDir == RECENT)
@@ -2232,28 +2227,27 @@ namespace bp
 			browseUp(p);
 			return false;
 		}
-		// (on what plays behind it, as over the player)
-		if (b == Button::Start) { ui.openMainMenu(p); return false; }
-		// the list's own (UP/DOWN, a page with LEFT/RIGHT, A)
+		// (START is Settings, from Ui::press; the list's own keys follow: UP/DOWN, a page with LEFT/RIGHT, A)
+
 		return ui.listKey(b, p);
 	}
 
 	bool Ui::Browse::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		// the redesigned playlist pages: their rows, keys and bars test the Rects their draw used
-		if (!ui.inMenu && playlists->onPage() && playlists->pointer(pt, x, y, p)) return false;
+		if (playlists->onPage() && playlists->pointer(pt, x, y, p)) return false;
 		// (its downs come late: after the header's "<" and the empty page's button; the rest where the readers' do)
 		if (pt.kind != Pointer::Down)
 		{
 			// The rebuilt Files page keeps its finger itself (filesTouch/filesPressed): its drag scrolls the list and
 			// its lift is the tap. Without this its downs were the only events it ever saw, so a finger on a row set
 			// the cursor but never opened it, and a drag never scrolled.
-			if (!ui.inMenu && filesPage()) return filesPointer(pt, x, y, p);
+			if (filesPage()) return filesPointer(pt, x, y, p);
 			return false;
 		}
 		// the Files page: its rows, header keys, select bar and empty page's keys
-		if (!ui.inMenu && filesPage()) return filesPointer(pt, x, y, p);
-		if (!ui.inMenu && playlists->selMode != SEL_NONE)
+		if (filesPage()) return filesPointer(pt, x, y, p);
+		if (playlists->selMode != SEL_NONE)
 		{
 			// selecting: no tabs (the header's "<" was taken above); the bar's buttons, those that can act now
 			if (y < 60) return false;
@@ -2277,11 +2271,11 @@ namespace bp
 				if (playlists->selTickable(i)) { playlists->dragBegin(i, y, p); return false; }
 			}
 		}
-		if (!ui.inMenu && atHome()) return homeView->homePointer(pt, x, y, p);
+		if (atHome()) return homeView->homePointer(pt, x, y, p);
 		// All recent: its rows are Home's Rects (48 tall from body.y + 30, clear of the mini bar); the list's lift and
 		// drag then act on the cursor it sets
-		if (!ui.inMenu && browseDir == RECENT) return homeView->recentPointer(pt, x, y, p);
-		if (!ui.inMenu && y < 60)
+		if (browseDir == RECENT) return homeView->recentPointer(pt, x, y, p);
+		if (y < 60)
 		{
 			// a section's marker: that section (Home and All recent have none)
 			if (browseDir != RECENT)
@@ -2297,7 +2291,7 @@ namespace bp
 	{
 		// a hold on a file of the cards started the old Add-files select mode (Ui::draw): the redesigned Files
 		// page's own select mode is the same thing now, with its bar, so it takes that tick over
-		if (!ui.inMenu && !fileSel && playlists->selMode == SEL_ADD && playlists->selDest.empty() && browseTab == TAB_LOCAL &&
+		if (!fileSel && playlists->selMode == SEL_ADD && playlists->selDest.empty() && browseTab == TAB_LOCAL &&
 			!browseDir.empty() && !pseudoDir(browseDir) && !isNetPath(browseDir))
 		{
 			fileSel = true;
@@ -2309,7 +2303,7 @@ namespace bp
 		// Files has its own page (the redesign); Home, Playlists, Network and All recent keep Ui's list
 		if (filesPage()) { drawFiles(p); return; }
 		// a playlist and Liked draw their own redesigned pages (inside lay::shell's body)
-		if (!ui.inMenu && (browseDir == PLROOT || isPlDir(browseDir))) { playlists->draw(p); return; }
+		if ((browseDir == PLROOT || isPlDir(browseDir))) { playlists->draw(p); return; }
 		// the list's page, as the track lists' (drawTracks: Home, a section's header, the rows, the footer)
 		ui.drawTracks(p);
 	}
@@ -2349,11 +2343,11 @@ namespace bp
 
 	void Ui::showPlayer()
 	{
-		if (!onPlayer) playerBack = {true, page, inMenu, menuTab, setGroup, cursor, scroll, menuReturnDir, menuReturnCursor, menuReturnScroll, browse->browseDir, browse->browseTab};
+		if (!onPlayer) playerBack = {true, page, setGroup, cursor, scroll, browse->browseDir, browse->browseTab};
 		if (!onPlayer) playerPage->listPulseArm = true;	// (a playlist's song: the List key glows twice, PlayerPage::draw)
 		onPlayer = true;
 		page = Page::Main;
-		inMenu = false;
+		settingsOver = false;
 		bgPlay = false;
 		ctxOpen = false;
 		dropTouch();
@@ -2370,6 +2364,6 @@ namespace bp
 	bool Ui::backIconShown(const Player&) const
 	{
 		// Home has none; every other page (Files included, now that the shell draws its header) has the way back
-		return !(page == Page::Browse && !inMenu && browse->atHome());
+		return !(page == Page::Browse && browse->atHome());
 	}
 }

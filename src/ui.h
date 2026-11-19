@@ -222,12 +222,8 @@ namespace bp
 		// the bottom panel's backlight: off from its button, on again at the next touch
 		bool screenOn() const { return panel.on(); }
 		bool touchIsLocked() const;	// (the player screen's lock: PlayerPage, ui_player.h)
-		// START's page (Settings; the kept Menu of places would report "menu"), "" while it's closed: for test runs
-		const char* menuTabName() const
-		{
-			static const char* names[] = {"menu", "settings"};
-			return inMenu ? names[std::clamp(menuTab, 0, 1)] : "";
-		}
+		// Settings open (START's page): for test runs
+		bool settingsPageOpen() const { return page == Page::Settings; }
 
 		// The web dashboard (BP_WEB builds): main's server, null till it's first turned on, and its switch (start or
 		// stop it, on the main thread). The routes reach the rest through WebPlayerGlue and WebPlaylistGlue
@@ -313,7 +309,7 @@ namespace bp
 		friend struct WebPlayerGlue;
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
-		enum class Page { Main, Menu, Settings, Browse, Info, About, Sound, Web, Manga, ExtSection, Extensions, MangaSeries,
+		enum class Page { Main, Settings, Browse, Info, About, Sound, Web, Manga, ExtSection, Extensions, MangaSeries,
 			MangaRead, MangaSettings, MangaSources, DocText, DocPages };
 		using Rect = lay::Box;	// (kitlayout.h: the kit's layout maths give and take the same box)
 		// An overlay: a dialog or a sheet over the page (ui_overlay.cpp; docs/notes/overlay-stack.md). While it is on
@@ -613,35 +609,17 @@ namespace bp
 		void kbKey(int i);
 		void kbClose(bool keep);
 		void drawKeyboard();
-		// START's page: Settings' group list, opened directly on the owner's decision (2026-11-18). B or START
-		// closes it back to where the user was. The Menu of places that used to be here (Page::Menu, its tiles
-		// Home..About, Quick settings and Quit) is kept but unreached: the full redesign brings it back.
-		enum Tab { TAB_MENU, TAB_SETTINGS, TABS };
-		enum MenuPlace { MP_HOME, MP_FILES, MP_PLAYLISTS, MP_EXTENSIONS, MP_NETWORK, MP_SETTINGS, MP_ABOUT, MP_PLACES };
-		bool inMenu = false;
-		int menuTab = TAB_SETTINGS;	// (the page's report: Settings; TAB_MENU is the kept, unreached menu)
-		int menuCursor = 0;
-		// the browser's folder before the menu, and its cursor: back to them after
-		Page menuReturnPage = Page::Browse;	// where the menu was opened over (Main, Extensions, Browse)
-		std::string menuReturnDir;
-		int menuReturnCursor = 0, menuReturnScroll = 0;
-		void openMainMenu(Player& p, int tab = TAB_SETTINGS);
-		void showTab(int tab, Player& p);
-		void closeMenu(Player& p);
-		// the kept Menu of places' rows (unreached): a Now playing line while it plays and it was opened over
-		// another page; the places' tiles (four across); Quick settings and Quit. The tiles start under the header
-		// at 100, or under the line at 166
-		bool menuNowShown(const Player& p) const;
-		int menuTop(const Player& p) const { return menuNowShown(p) ? 166 : 100; }
-		Rect menuNowRect() const { return {16, 100, 608, 56}; }
-		Rect menuTileRect(int top, int i) const;
-		Rect menuKeyRect(int top, int i) const;	// 0 Quick settings, 1 Quit
-		int menuPlaceCount() const { return MP_PLACES; }
-		void menuGo(int place, Player& p);
-		void drawMenu(const Player& p);
-		bool menuKey(Button b, Player& p);
-		bool menuPointer(const Pointer& pt, int x, int y, Player& p);
-		Rect tabRect(int tab) const { return {72 + tab * 136, 10, 128, 44}; }
+		// Settings: START's page on every shell screen, the player and the text and PDF readers (there is no START
+		// menu any more: its places are the rail's cells, F is Quick settings, L3 is Search, and About is a Settings
+		// group). Opened by START it remembers where it came from, and B or START goes back there (the player, a book
+		// page, a folder); opened by the rail or L/R it is a section, and B goes Home.
+		bool settingsOver = false;
+		Page settingsBackPage = Page::Browse;
+		std::string settingsBackDir;
+		int settingsBackCursor = 0, settingsBackScroll = 0, settingsBackTab = 0;
+		void openSettings(Player& p, bool fromStart);
+		void closeSettings(Player& p);
+		bool startOpensSettings(const Player& p) const;	// START's one exception: forms' Save/Done, the Book bar
 		// Play on, where it plays: the handheld or one of the dashboard pages (PlayerPage's PlayOnSheet, ui_player.cpp).
 		// Picking one is the Session's SetOutput (SessionHost::sendTo)
 		struct OutChoice { std::string tab, name; };	// tab "": the handheld
@@ -1039,10 +1017,7 @@ namespace bp
 		{
 			bool set = false;
 			Page page = Page::Browse;
-			bool inMenu = false;
-			int menuTab = 0, setGroup = -1, cursor = 0, scroll = 0;
-			std::string menuReturnDir;
-			int menuReturnCursor = 0, menuReturnScroll = 0;
+			int setGroup = -1, cursor = 0, scroll = 0;
 			std::string browseDir;	// the folder or playlist page it was opened from (a playlist's play moves the list's)
 			int browseTab = 0;
 		} playerBack;
