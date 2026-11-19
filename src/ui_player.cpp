@@ -371,7 +371,7 @@ namespace bp
 			return false;
 		}
 		// a file that didn't open: nothing to pause or choose (Prev, Next, the list, More, the menu and leaving still go)
-		if (err && (b == Button::A || b == Button::Select)) return false;
+		if (err && b == Button::A) return false;
 		// UP / DOWN do nothing on the player: the Next line is a tap (they used to change the speed: the easiest keys
 		// to hit by mistake in a film). LEFT / RIGHT seek.
 		if (b == Button::Up || b == Button::Down) return false;
@@ -395,8 +395,9 @@ namespace bp
 		case Button::Start: ui.openMainMenu(p); break;
 		// the stick pressed in (the RG DS Plus): Like, at once (over a photo it turns it, above)
 		case Button::L3: ui.likeNow(p); break;
-		// View: a video's tracks, size and speed, or a song's Display, equalizer and effects, as tabs of one sheet
-		case Button::Select: openView(p.playingAudio() ? songViewTab : viewTab, p); break;
+		// More, as X: View (what SELECT used to open) is its first row, then Lock, Screen off, Info, Stop, Like, Add,
+		// Show in folder, Play on
+		case Button::Select: openMoreSheet(); break;
 		// (a page playing it: from where it should be by now; the jump is passed on to the page)
 		case Button::Left:
 		case Button::Right:
@@ -469,7 +470,11 @@ namespace bp
 		// (main stops it, the place kept: B only leaves the player, it plays on)
 		m.tiles.push_back(item(&G_STOP, "Stop", [u](Player&) { u->stopPressed = true; return false; }));
 		m.tiles.back().danger = true;
-		// the rows: what START's Playing tab has
+		// the rows: what START's Playing tab has, then View (SELECT opens this sheet now, so View has to be a row)
+		m.rows.push_back(item(&G_PICTURE, "View", [self](Player& p) {
+			self->openView(p.playingAudio() ? self->songViewTab : self->viewTab, p);
+			return false;
+		}));
 		MoreItem like = item(liked ? &G_HEART : &G_HEART_O, liked ? "Liked" : "Like", [u](Player& p) { u->likeNow(p); return false; });
 		like.key = hasL3() ? "L3" : "";
 		like.lit = liked;
@@ -833,7 +838,7 @@ namespace bp
 		ui.pushOverlay(std::make_unique<ListSheet>(ui, tab, p));
 	}
 
-	// View (SELECT) on a video: what is in the file and how it plays, as a sheet over the controls (docs/redesign,
+	// View (More's View row; SELECT used to open it): what is in the file and how it plays, as a sheet over the controls (docs/redesign,
 	// "video-view", "video-speed"). Subtitles, Audio and Picture are Ui::rows' rows, the ones the old Tracks page
 	// listed, and Ui::choose does each one's action (a track by its id, a picture size); Speed is format.h's five
 	// speeds, and A sets it at once. It stays open on a choice (several are made here), unless the row leaves for
@@ -1097,7 +1102,7 @@ namespace bp
 		}
 	};
 
-	// View (SELECT) on a song: Display, Equalizer, Effects and Speed in one sheet, where the Display popup and the Sound
+	// View (More's View row; SELECT used to open it) on a song: Display, Equalizer, Effects and Speed in one sheet, where the Display popup and the Sound
 	// page used to be three places (docs/redesign, "music-view", "music-viz-pick", "music-eq"). Display is one page for
 	// both choices (lay::displayPage): the four Show modes in a row of choice tiles, the fifteen visualizer styles in a
 	// 5 x 4 grid under them; the cursor moves over both and changes nothing, A sets what is under it (the top screen
@@ -1936,10 +1941,9 @@ namespace bp
 	{
 		if (!p.settings.buttonHotkeys) return {{"", "Button hotkeys are off: the keys on this screen do it all"}};
 		if (ui.pageDrives(p))
-			return {{"A", ui.pagePlaying() ? "Pause there" : "Play there"}, {"Hold A", "Play here"}, {"L/R", "Step"}, {"X", "More"}, {"B", "Back"}};
-		std::vector<Hint> out{{"LEFT/RIGHT", "Seek"}, {"SELECT", "View"}};
+			return {{"A", ui.pagePlaying() ? "Pause there" : "Play there"}, {"Hold A", "Play here"}, {"L/R", "Step"}, {"SELECT", "More"}, {"B", "Back"}};
+		std::vector<Hint> out{{"LEFT/RIGHT", "Seek"}, {"SELECT", "More"}};
 		if (chapters) out.push_back({"L2/R2", "Chapter"});
-		out.push_back({"X", "More"});
 		out.push_back({"B", "Back, keeps playing"});
 		return out;
 	}

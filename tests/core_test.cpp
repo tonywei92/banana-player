@@ -6815,6 +6815,10 @@ static void testThemes()
 	std::string css = themeCss();
 	CHECK_EQ(css.find("data-theme=\"yellow\"") == std::string::npos, true);
 	CHECK_EQ(css.find(":root[data-theme=\"light\"]{color-scheme:light;--bg:#f7f4ec;") != std::string::npos, true);
+	// strong keys: Gundam's navy keys and red primary; a theme without them keeps the button and accent roles
+	CHECK_EQ(css.find("--key:#1c3c8e;--on-key:#ffffff;--key-focus:#fff867;--hint-bar:#172e6b;--on-hint:#ffffff;--primary:#d3222b;--on-primary:#ffffff;") != std::string::npos, true);
+	CHECK_EQ(css.find(":root[data-theme=\"light\"]{color-scheme:light;--bg:#f7f4ec;--surface:#fffdf8;") != std::string::npos, true);
+	CHECK_EQ(css.find("--key:#e6e0d2;--on-key:#1b1a20;--key-focus:#7a5200;--hint-bar:#f7f4ec;--on-hint:#55514a;--primary:#7a5200;--on-primary:#fffdf8;") != std::string::npos, true);
 }
 
 // the settings table (SettingDef): every entry reads what it writes, an old settings.conf reads as it did before the
