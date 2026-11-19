@@ -40,9 +40,12 @@ Open Banana Player and the bottom screen shows **Home**:
 - **Continue**: the newest thing you haven't finished, as a card with its picture, title, where it was left
   (`6:12 / 9:56 · Videos`), a bar, and **Resume**. What plays now says **Now playing** with **Go to it**; a video the
   Manga reader stopped says **Stopped for Manga** until it plays again or something else is played. With everything
-  played through there is no Continue card and **Recent** moves to the top.
+  played through there is no Continue card and **Recent** moves to the top. A song's picture is its real album art:
+  the picture in the file, else `cover.*`, `folder.*` or `front.*` beside it (its title is the title tag when it has
+  one, not the file's name). A song without any keeps the drawn record.
 - **Recent**, under it: up to four cards, newest first, with the kind's mark, the title, what it was
-  (`Played · 3:34`, `7% read`, `6:12 / 9:56`) and a bar; a liked file has a yellow heart, a server's a network mark.
+  (`Played · 3:34`, `7% read`, `6:12 / 9:56`) and a bar; a liked file has a yellow heart, a server's a network mark,
+  and a song's card shows its album art when it has one.
   The kind chips beside **Recent** are **All**, **Videos**, **Music** and **Books** with how many: tap one (the
   filters' keys come with the rail) or step them with **L2/R2** where the shell routes them. The chevron after the
   cards, and **(All recent)**, open every card, with the same chips. Recent keeps the last 100 of each kind, so

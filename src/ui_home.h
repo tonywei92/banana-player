@@ -12,6 +12,9 @@
 // hintList() and draws the rail, the header's back and More keys and the mini bar.
 #pragma once
 #include "ui.h"
+#include "coverworker.h"
+#include <unordered_map>
+#include <unordered_set>
 
 namespace bp
 {
@@ -83,6 +86,24 @@ namespace bp
 		Continue continueOf(const Player& p) const;
 		mutable std::string mangaStopped;	// a video Manga stopped (the Continue card says why); cleared when it plays again
 		mutable Uint32 mangaStopSeen = 0;
+
+		// ---- a song's real album art (the Continue card and the Recent cards) ----
+		// A texture is one picture decoded at one card's pixels and rounded at upload, so its key holds the card's
+		// box too: the Continue card's 128x84 crop is not the Recent card's 104x48 strip. A handful at most, the
+		// least recently drawn freed. A path that has no art stays in artFailed: its placeholder is the answer, and
+		// it is never asked again.
+		struct ArtTex { SDL_Texture* tex = nullptr; uint64_t drawnAt = 0; };
+		std::unordered_map<std::string, ArtTex> artTex;
+		std::unordered_map<std::string, std::string> artPath;	// key -> path (a failure is the path's)
+		std::unordered_map<std::string, int> artRad;			// key -> the placeholder radius the crop was cut for
+		std::unordered_set<std::string> artAsked, artFailed;
+		uint64_t artDrawn = 0, artSerial = 0;	// the LRU's order and what sig() follows (a cover arrived)
+		static constexpr size_t ART_KEEP = 12;
+		// the placeholder, then the decoded art over it when it has arrived (the edge and the rounded corners stay the
+		// placeholder's); asks the worker once per key, never decodes here
+		void drawSongArt(const std::string& path, const std::string& key, Rect r, int rad);
+		// main's evCover: the answers whose key is "home:…", into textures on this thread
+		void coversReady(std::vector<CoverWorker::Result> results);
 
 		void openContinue(const Continue& c, Player& p);
 		void openCard(int i, Player& p);	// A / a tap: the card's file, or the chevron's All recent

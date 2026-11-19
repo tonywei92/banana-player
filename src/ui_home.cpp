@@ -10,6 +10,7 @@
 #include "theme.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <random>
 #include <ctime>
@@ -38,6 +39,7 @@ namespace bp
 	{
 		const char* const FILTER_NAMES[4] = {"All", "Videos", "Music", "Books"};
 		bool isDocument(const std::string& path) { return isDocumentName(path) || isComicName(path); }
+
 		// a file's title without its extension, as a card's
 		std::string cardTitle(const std::string& path)
 		{
@@ -326,7 +328,9 @@ namespace bp
 			c.key = "Go to it";
 			if (const RecentItem* it = findRecent(c.path))
 			{
-				c.title = it->name;
+				// the tag's title when mpv has one (a song's "Song 2", not its file's "song2"), as the mini bar and
+				// the player screen say it; the card's own name is the fallback
+				c.title = p.playingAudio() && !p.title.empty() ? p.title : it->name;
 				c.kind = it->kind;
 				c.note = it->sub + (it->where.empty() ? "" : " \xC2\xB7 " + it->where);
 				c.frac = it->frac;
@@ -849,9 +853,85 @@ namespace bp
 			(int)pressedContinue, (int)pressedResume, pressedCard, pressedShortcut, pressedChip, pressedEmptyKey, recent.size(),
 			clearArmedAt && SDL_GetTicks() < clearArmedAt ? 1 : 0);
 		std::string s = b;
+		s += "|ha" + std::to_string(artSerial);	// a song's art arrived: the cards draw it now
 		if (c.shown) s += "|hc" + c.label + c.path + std::to_string((int)std::lround(c.frac * 100));
 		if (!morePath.empty()) s += "|mp" + morePath;
 		return s;
+	}
+
+	// ---- a song's real art ----
+
+	void Ui::Home::drawSongArt(const std::string& path, const std::string& key, Rect r, int rad)
+	{
+		// the placeholder is the ground either way: its edge and rounded corners stay whole under the picture, and a
+		// song without art (or before its decode) is exactly what Home drew before
+		Kit& k = *ui.kit;
+		k.artPlaceholder(r, key, rad, true);
+		if (path.empty() || artFailed.count(path)) return;
+		// inside the placeholder's edge, cut to the same rounded shape: the edge is not covered
+		Rect in{r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE};
+		SDL_Rect d = ui.devRect(in);
+		std::string artKey = std::string(HOME_COVER_KEY) + path + "|" + std::to_string(d.w) + "x" + std::to_string(d.h) +
+			"r" + std::to_string(rad);
+		auto it = artTex.find(artKey);
+		if (it != artTex.end())
+		{
+			it->second.drawnAt = ++artDrawn;
+			SDL_RenderCopy(ui.ren, it->second.tex, nullptr, &d);
+			return;
+		}
+		if (artAsked.count(artKey)) return;
+		CoverWorker* worker = ui.manga ? ui.manga->coverWorker : nullptr;
+		if (!worker) return;
+		artPath[artKey] = path;
+		artRad[artKey] = rad;
+		worker->wantSong(artKey, path, d.w, d.h);
+		artAsked.insert(artKey);
+	}
+
+	void Ui::Home::coversReady(std::vector<CoverWorker::Result> results)
+	{
+		for (auto& r : results)
+		{
+			artAsked.erase(r.key);
+			auto pi = artPath.find(r.key);
+			std::string path = pi == artPath.end() ? r.key : pi->second;
+			auto ri = artRad.find(r.key);
+			int rad = ri == artRad.end() ? 8 : ri->second;
+			artPath.erase(r.key);
+			artRad.erase(r.key);
+			if (!r.ok)
+			{
+				// the placeholder stays for good: asking a file with no art again each frame helps no one
+				fprintf(stderr, "home: no art for %s\n", path.c_str());
+				artFailed.insert(path);
+				continue;
+			}
+			roundCorners(r.rgba, r.w, r.h, ui.devRadius(std::max(0, rad - theme::EDGE)));
+			SDL_Texture* t = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, r.w, r.h);
+			if (!t)
+			{
+				artFailed.insert(path);
+				continue;
+			}
+			SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);
+			SDL_UpdateTexture(t, nullptr, r.rgba.data(), r.w * 4);
+			SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);	// (its corners are transparent)
+			auto old = artTex.find(r.key);
+			if (old != artTex.end() && old->second.tex) SDL_DestroyTexture(old->second.tex);
+			artTex[r.key] = {t, ++artDrawn};
+			artSerial++;
+			fprintf(stderr, "home: art %dx%d for %s\n", r.w, r.h, path.c_str());
+		}
+		// the cap: the ones drawn longest ago go first (what is on screen was drawn this frame)
+		while (artTex.size() > ART_KEEP)
+		{
+			auto oldest = artTex.end();
+			for (auto i = artTex.begin(); i != artTex.end(); ++i)
+				if (oldest == artTex.end() || i->second.drawnAt < oldest->second.drawnAt) oldest = i;
+			if (oldest->second.tex) SDL_DestroyTexture(oldest->second.tex);
+			artTex.erase(oldest);
+		}
 	}
 
 	// ---- drawing ----
@@ -899,9 +979,10 @@ namespace bp
 			card.focused = homeZone == HOME_CONTINUE;
 			card.pressed = pressedContinue;
 			card.keyPressed = pressedResume;
-			card.picture = [&k, c](Rect r) {
-				// a song's art (the placeholder when it has none); a video's and a book's kind mark
-				if (c.kind == &G_NOTE) k.artPlaceholder(r, c.artKey.empty() ? c.title : c.artKey, 10, true);
+			card.picture = [this, &k, c](Rect r) {
+				// a song's real art (its placeholder while it decodes, or forever when it has none); a video's and a
+				// book's kind mark
+				if (c.kind == &G_NOTE) drawSongArt(c.path, c.artKey.empty() ? c.title : c.artKey, r, 10);
 				else
 				{
 					Kit::Card plain;
@@ -936,11 +1017,7 @@ namespace bp
 			card.progress = it.frac;
 			card.focused = homeZone == HOME_CARDS && homeStrip == idx;
 			card.pressed = pressedCard == idx;
-			if (it.kind == &G_NOTE)
-			{
-				std::string key = it.name;
-				card.picture = [&k, key](Rect r) { k.artPlaceholder(r, key, 8, true); };
-			}
+			if (it.kind == &G_NOTE) card.picture = [this, path = it.path, key = it.name](Rect r) { drawSongArt(path, key, r, 8); };
 			k.recentCard(l, card);
 			// a liked one's heart and a network one's mark, over the picture's right corner (as the strip had them)
 			int rx = l.pic.x + l.pic.w - 9;

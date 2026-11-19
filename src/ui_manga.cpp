@@ -51,27 +51,10 @@ namespace bp
 
 		// The tile's rounded corners in the cover's own alpha, at upload (the panel's pixels): the generated cover is
 		// rounded by fillRound, and the real one is copied over whatever fill the tile sits on (a page's or a card's),
-		// so squaring its corners would draw the wrong colour there. Only the four corner squares are touched.
+		// so squaring its corners would draw the wrong colour there.
 		void roundCover(std::vector<uint8_t>& rgba, int w, int h)
 		{
-			int R = std::max(0, (int)std::lround(R_TILE * std::min(sx, sy)));
-			R = std::min({R, w / 2, h / 2});
-			for (int cy = 0; cy < 2; cy++)
-				for (int cx = 0; cx < 2; cx++)
-					for (int y = 0; y < R; y++)
-						for (int x = 0; x < R; x++)
-						{
-							int in = 0;
-							for (int j = 0; j < 4; j++)
-								for (int i = 0; i < 4; i++)
-								{
-									float dx = R - (x + (i + 0.5f) / 4), dy = R - (y + (j + 0.5f) / 4);
-									in += dx * dx + dy * dy <= (float)R * R;
-								}
-							int px = cx ? w - 1 - x : x, py = cy ? h - 1 - y : y;
-							uint8_t* p = rgba.data() + ((size_t)py * (size_t)w + (size_t)px) * 4;
-							p[3] = (uint8_t)(p[3] * in / 16);
-						}
+			roundCorners(rgba, w, h, std::max(0, (int)std::lround(R_TILE * std::min(sx, sy))));
 		}
 	}
 

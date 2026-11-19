@@ -60,6 +60,29 @@ namespace bp
 
 	inline float sx = 1, sy = 1;	// logical 640x480 -> the panel's pixels
 
+	// A decoded picture's corners in its own alpha, rounded over R pixels (4x4 samples a pixel, as Ui::corner does):
+	// drawn over a rounded fill, the fill shows through the corners, so a cover looks cut to the box's shape without a
+	// mask at draw time.
+	inline void roundCorners(std::vector<uint8_t>& rgba, int w, int h, int R)
+	{
+		R = std::min({R, w / 2, h / 2});
+		for (int cy = 0; cy < 2; cy++)
+			for (int cx = 0; cx < 2; cx++)
+				for (int y = 0; y < R; y++)
+					for (int x = 0; x < R; x++)
+					{
+						int in = 0;
+						for (int j = 0; j < 4; j++)
+							for (int i = 0; i < 4; i++)
+							{
+								float dx = R - (x + (i + 0.5f) / 4), dy = R - (y + (j + 0.5f) / 4);
+								in += dx * dx + dy * dy <= (float)R * R;
+							}
+						int px = cx ? w - 1 - x : x, py = cy ? h - 1 - y : y;
+						uint8_t* p = rgba.data() + ((size_t)py * (size_t)w + (size_t)px) * 4;
+						p[3] = (uint8_t)(p[3] * in / 16);
+					}
+	}
 
 	// a Settings row made from the settings table (settings.h's SettingDef): SET_ROW0 + its index in settingDefs()
 	inline constexpr int SET_ROW0 = 1000;

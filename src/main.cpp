@@ -26,6 +26,8 @@
 #include "ui_glyphs.h"
 #include "ui_docs.h"
 #include "ui_manga.h"
+#include "ui_browse.h"
+#include "ui_home.h"
 #include "session_host.h"
 #include "updater.h"
 #include "idlesleep_host.h"
@@ -1327,9 +1329,19 @@ int main(int argc, char** argv)
 				else if (e.type == evMangaWorker) mangaNet->onWorkerEvent();
 				else if (e.type == evCover)
 				{
-					// a cover arrived: into a texture on this thread, and the grid redraws (its serial is in signature)
-					if (haveUi) ui.manga->coversReady(coverWorker->take());
-					else coverWorker->take();	// (nothing draws them: dropped)
+					// a cover arrived: into a texture on this thread, and the page redraws (its serial is in signature).
+					// Main's one worker decodes Manga's covers and Home's songs' art: the "home:" keys are Home's
+					std::vector<CoverWorker::Result> results = coverWorker->take();
+					std::vector<CoverWorker::Result> home, manga;
+					const size_t prefix = std::strlen(HOME_COVER_KEY);
+					for (auto& r : results)
+						(r.key.compare(0, prefix, HOME_COVER_KEY) == 0 ? home : manga).push_back(std::move(r));
+					if (haveUi)
+					{
+						if (!manga.empty()) ui.manga->coversReady(std::move(manga));
+						if (!home.empty() && ui.browse->homeView) ui.browse->homeView->coversReady(std::move(home));
+					}
+					// (nothing draws them when !haveUi: dropped)
 				}
 				else if (e.type == evMangaLib)
 				{

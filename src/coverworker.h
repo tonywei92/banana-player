@@ -3,6 +3,9 @@
 // the card (a picture file, or an entry inside a CBZ) decoded to the tile's own pixels. Decoding one is tens of
 // milliseconds of software work, so a grid of them must never happen on the main thread.
 //
+// It also decodes a song's album art for Home's cards (wantSong): the same worker, since both are one picture to
+// decode off the main thread, and one queue keeps a manga grid from being starved by two threads.
+//
 // One thread, one cover at a time, the newest request first (the grid scrolls away from what was asked before it). At
 // most 200 wait: a fast scroll through a big library can't build a queue nobody will see. Like the Updater and
 // DurationWorker it is made on the heap and never destroyed (its thread may be inside libavcodec at exit). It never
@@ -18,6 +21,10 @@
 
 namespace bp
 {
+	// Home's album art carries this prefix: main sends those answers to Ui::Home, every other key to Manga (Home's
+	// keys are its own, so a Manga series' id cannot collide)
+	inline constexpr const char* HOME_COVER_KEY = "home:";
+
 	class CoverWorker
 	{
 	public:
@@ -33,7 +40,12 @@ namespace bp
 		// page); w, h: the tile in the panel's own pixels. A cover already waiting keeps one place in the queue, moved
 		// to the front
 		void want(const std::string& key, const std::string& source, int w, int h);
-		// the app closed or was read again: nothing of the queue is wanted any more (a decode under way finishes)
+		// a song's album art: the picture in the file, else cover/folder/front.* beside it (probeCover), decoded to the
+		// card's own pixels. key carries Home's "home:" prefix, which is how main routes the answer back to it; the
+		// crop is the middle of the picture, not a page's top (album art is not a manga page)
+		void wantSong(const std::string& key, const std::string& path, int w, int h);
+		// the Manga app was read again: nothing of its queue is wanted any more (a decode under way finishes). Home's
+		// cards are not the Manga app's to cancel: their "home:" requests stay
 		void cancel();
 		// main thread: the answers since the last take
 		std::vector<Result> take();
@@ -45,7 +57,9 @@ namespace bp
 		{
 			std::string key, source;
 			int w = 0, h = 0;
+			bool song = false;	// source is a song file: its embedded art, else the cover beside it
 		};
+		void ask(const std::string& key, const std::string& source, int w, int h, bool song);
 		void run();
 		std::function<void()> ready;
 		std::thread thread;
