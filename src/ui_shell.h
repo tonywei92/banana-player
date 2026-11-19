@@ -71,7 +71,7 @@ namespace bp
 		bool adopted(const Player& p) const;	// the page shown draws its body itself (Browse: only its rebuilt views)
 
 		// frame keys and touches (Ui calls them while page() is true): L/R step the sections (Search is passed by), L3
-		// and the rail's Search key say Search is coming, the rail's cells open a section, back is B, More is X
+		// and the rail's Search key open Search's page, the rail's cells open a section, back is B, More is X
 		bool key(Button b, Player& p) override;
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override;
 		std::string signature(const Player& p) const override;
@@ -82,7 +82,7 @@ namespace bp
 	private:
 		enum { F_BACK, F_MORE, F_STATUS, F_NP, F_SEARCH, F_RAIL = 100 };
 		int pressedFrame = -1;	// F_* or F_RAIL + the rail cell under a finger
-		mutable bool searchUp = false;	// Search shows: its rail key is lit (today its note, until the page is built)
+
 		int railScroll = 0;	// the sections' offset, moved by a finger drag when they don't fit
 		bool railDrag = false, railMoved = false;
 		int railDownY = 0, railScrollAt = 0;

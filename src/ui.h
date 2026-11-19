@@ -32,6 +32,7 @@ namespace bp
 {
 	class WebServer;
 	class DurationWorker;
+	class MediaIndex;	// mediaindex.h (the cards' index: Music, Videos and Search)
 	struct PaneSpec;	// previewpane.h
 
 	// the on-screen keyboard's field for a repository's URL (Ui's Sources page; the form's are in ui_internal.h)
@@ -190,6 +191,12 @@ namespace bp
 		struct Playlists;
 		// Home and All recent: a plain struct the browser owns (browse->homeView), ui_home.h / ui_home.cpp
 		struct Home;
+		// ---- Search (Page::Search): an area (Area), ui_search.h / ui_search.cpp. The rail's Search key and L3 open
+		// it; the cards' index answers the query (mediaIndex, main's worker) ----
+		struct Search;
+		std::unique_ptr<Search> search;
+		// the cards' media index, as main's worker answers it (Music, Videos and Search read it; null: not built)
+		MediaIndex* mediaIndex = nullptr;
 		// a document from Files: opened in its viewer; false when the path isn't one
 		bool openDocument(const std::string& path, Player& p);
 		// started with no file: the video's Quit closes it (back to the browser)
@@ -318,7 +325,7 @@ namespace bp
 		friend struct WebPlayerGlue;
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
-		enum class Page { Main, Settings, Browse, Info, About, Sound, Web, Manga, ExtSection, Extensions, MangaSeries,
+		enum class Page { Main, Settings, Browse, Search, Info, About, Sound, Web, Manga, ExtSection, Extensions, MangaSeries,
 			MangaRead, MangaSettings, MangaSources, DocText, DocPages };
 		using Rect = lay::Box;	// (kitlayout.h: the kit's layout maths give and take the same box)
 		// An overlay: a dialog or a sheet over the page (ui_overlay.cpp; docs/notes/overlay-stack.md). While it is on
@@ -974,7 +981,7 @@ namespace bp
 			BACK_ICON = 16,	// "<" at the top left of every page: B
 			EMPTY_BTN = 17;	// an empty page's button (no connections: Find on the network)
 		// the web dashboard's page: New PIN and Turn off (its Turn on / Try again is EMPTY_BTN)
-		static constexpr int WEB_NEWPIN = 540, WEB_OFF = 541;
+		static constexpr int WEB_NEWPIN = 540, WEB_OFF = 541, WEB_SWITCH = 542;
 		// the select mode's bar (and Move's), the busy dialog's Cancel, the Add to... picker's rows (PICK_ROW + i)
 		static constexpr int SEL_ALL = 530, SEL_MOVE = 531, SEL_ACT = 532, SEL_CANCEL = 533, MOVE_CANCEL = 534, MOVE_DONE = 535,
 			BUSY_CANCEL = 536, PICK_ROW = 900;

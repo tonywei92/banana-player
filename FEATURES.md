@@ -13,6 +13,7 @@ Everything Banana Player does, button by button. For installing it, see the [REA
 - [Chapters](#chapters)
 - [Settings](#settings)
 - [Quick settings](#quick-settings)
+- [Search](#search)
 - [Web dashboard](#web-dashboard)
 - [Extensions](#extensions)
 - [Updates](#updates)
@@ -85,7 +86,8 @@ cap: START is Settings from every screen).
 carries a warning: **Extensions** is one section for every extension that is on, and the Manga reader is a row of its
 page. The header carries the back key, the section's title and where you are, the status marks and **X** (More); its
 status cluster is one touch target for Quick settings. The
-Search key is in the rail. **L3** and that key say Search is coming in a later step, and the key is lit while it shows.
+Search key is in the rail. **L3** and that key open **Search** (a tool, not a section: no rail cell lights on it and
+**B** goes back where you were), and its key is lit while the page shows.
 The hint bar along the foot says what the buttons do there.
 
 Inside a section the list opens where you left it (its top if that folder or playlist is gone); the **Playlists** rail
@@ -369,7 +371,7 @@ See [Photos](#photos) for the touch screen.
 | **Hold** (touch screen) | On a file in Files or Network: starts selecting, with that file ticked |
 | **Y** | In Files: select mode (**A** tick, **SELECT** all / none, the bar for Playlist / Copy / Move / Delete, **X** More). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
 | **SELECT** | Back to what plays (the playing screen): the rail's Now playing key's key, on any section page; in select mode, All / none |
-| **L3** (press the stick) | **Search**: the cards' search, coming in a later step (the rail's key does the same) |
+| **L3** (press the stick) | **Search**: the cards' search (its page keeps the last query; the rail's key does the same). In a document or the Manga reader L3 is Find or Likes, as those pages say |
 | **START** | **Settings**: its ten group tiles; **B** or **START** returns to the folder you were in; **F** is Quick settings |
 | **The rail's Now playing key** (touch screen) | Just above Settings, on every section page: the song's album art (a video's film mark) and the playing bars. Tap it for the playing screen · hold: its menu. Its slot is kept while nothing plays |
 
@@ -411,14 +413,29 @@ Nothing is lost: like, Add to playlist…, Show in folder, Play on, Info and Sto
 
 To quit, use **Quit Banana Player** in quick settings (**F**), or **F + START** from anywhere.
 
+## Search
+
+Find a song, a video or a file by any part of its name, from the **Search** key at the top of the rail or **L3** on a
+list. The keyboard opens at once; **START** (or Done) shows the results, and the page keeps the query when you come
+back to it (**Y** edits it). With the field empty it rests on **Recent searches** (the last eight, kept in the state
+folder; **Clear recent searches** empties it, and incognito keeps none).
+
+Results are grouped **Videos**, **Music** and **Files**, each with its count; a group with nothing is left out. **A**
+opens one as Files would: a video or a song plays with its folder as the list, a book opens at your place, a file says
+what it is. **UP/DOWN** move, **LEFT/RIGHT** page, **B** goes back where you were. While the cards are first being read
+a notice row says so and the list fills in. Nothing found is an empty page saying what was searched (network folders
+are not searched), with **Try another** (**A**) and **Browse Files** (**Y**). The index is the cards' one: the folders
+named Music, Videos and Movies on either card, and the files you have played or the folder Files is showing.
+
 ## Network folders
 
 Play videos, music and photos straight from a computer or a NAS on your Wi-Fi, over **SMB** (Windows file sharing,
 most NAS boxes, Samba) or **FTP** (and FTPS). What plays isn't copied to the card.
 
-- With no connections yet, the Network section offers **Find on the network** (tap it, or **A**); **Y** adds one by
-  its address instead.
-- **Find on the network** (X in Network) lists the computers sharing files nearby (Windows, Mac, Linux, NAS):
+- The Network section lists the saved connections on the kit's rows (name, then kind and address, never the password),
+  with **Find on the network** and **Add connection…** as rows at the foot as well as in **X · More**. With none yet
+  it offers **Find nearby** (tap it, or **A**); **Y** adds one by its address instead.
+- **Find on the network** (its row, or **X** in Network) lists the computers sharing files nearby (Windows, Mac, Linux, NAS):
   pick one, type your user name and password, and Save. No address to type: a computer found by its name is found
   again by that name, even when its address changes.
 - **Add connection** (X) for one it can't find, or for FTP: the type, the server's address or name, and optionally the
@@ -792,6 +809,9 @@ turn it on.
   **PIN**. Scan the QR code with your phone's camera: it opens the dashboard and signs you in. Or type the address into
   a browser and enter the PIN.
 - The phone or computer must be on the same Wi-Fi as the handheld.
+- On the page the **Web dashboard** switch is the one control: **A** (or a tap on its row) turns it on or off. With
+  it off the page says what it is for and nothing else. **No Wi-Fi** keeps the switch on and hides the QR, address and
+  PIN until there is an address; a port already taken says **The dashboard couldn't start**, with **Try again**.
 - One tab per browser: opening the dashboard in a second tab doesn't connect it; it says **Banana Player is open in
   another tab** and asks **Switch here**. Switching moves it there (the other tab stops playing and offers the same).
   Uploads under way in the tab that steps aside still finish.

@@ -269,6 +269,8 @@ namespace bp
 		placeIn[browseDir] = {ui.cursor, ui.scroll};
 		netOpenPending.clear();	// gone elsewhere first: not opened
 		if (browseDir == FINDNET && dir != FINDNET && ui.discovery) ui.discovery->stop();
+		if (dir != NETROOT) netFoot = -1;
+		netPressed = -1;
 		browseDir = dir;
 		browseRows.clear();
 		browsePaths.clear();
@@ -2159,6 +2161,358 @@ namespace bp
 		browse->browseVersion++;
 	}
 
+	// ---- the Network pages (docs/redesign: net-list, net-find, net-form) ----
+
+	bool Ui::Browse::netPage() const
+	{
+		return browseDir == NETROOT || browseDir == FORMDIR || browseDir == FINDNET;
+	}
+
+	Ui::Browse::NetPageLayout Ui::Browse::netLayout(const Player& p) const
+	{
+		(void)p;
+		lay::Shell sh = lay::shell();
+		NetPageLayout l;
+		l.body = {sh.body.x + 8, sh.body.y + 4, sh.body.w - 16, sh.body.h - 8};
+		l.list = l.body;
+		l.rowsY = l.body.y;
+		int x = l.body.x, w = l.body.w, y = l.body.y, h = l.body.h;
+		if (browseDir == NETROOT)
+		{
+			// the two ways in at the foot (the spec's rows after the connections): 44 each, a finger's size
+			l.add = {x, y + h - 44, w, 44};
+			l.find = {x, l.add.y - 48, w, 44};
+			l.list = {x, y, w, std::max(0, l.find.y - 6 - y)};
+			l.rowH = 60;
+		}
+		else if (browseDir == FORMDIR)
+		{
+			// Test (left) and Save (right): formKeys' two cells, in the shell's body
+			lay::Box keys = {x, y + h - 56, w, 56};
+			l.test = lay::cell(keys, 2, lay::GAP, 0);
+			l.save = lay::cell(keys, 2, lay::GAP, 1);
+			l.list = {x, y, w, std::max(0, keys.y - 6 - y)};
+			l.rowH = 48;
+		}
+		else
+		{
+			l.rowH = 52;	// Find on the network: the found hosts
+		}
+		l.shown = std::max(1, l.list.h / l.rowH);
+		return l;
+	}
+
+	std::vector<int> Ui::Browse::formCfg() const
+	{
+		std::vector<int> out;
+		for (size_t i = 0; i < browseRows.size(); i++)
+			if (browseRows[i].id != FORM_TEST && browseRows[i].id != FORM_SAVE) out.push_back((int)i);
+		return out;
+	}
+
+	int Ui::Browse::formShown(const Player& p) const
+	{
+		return std::max(1, netLayout(p).list.h / 48);
+	}
+
+	void Ui::Browse::drawNetList(const Player& p)
+	{
+		Kit& k = *ui.kit;
+		NetPageLayout l = netLayout(p);
+		if (browseRows.size() == 1 && browseRows[0].id < 0)
+		{
+			// no connections yet: Find on the network on A, Add by address on Y (the spec's empty state)
+			lay::EmptyState e = lay::emptyState(l.body, 2, 2);
+			Kit::Empty empty;
+			empty.glyph = &G_NETWORK;
+			empty.title = "No connections yet";
+			empty.lines = {"Find the computers sharing files on your Wi-Fi.", "Or add one by its address."};
+			empty.key1 = "Find nearby";
+			empty.key2 = "Add by address";
+			empty.glyph1 = &G_SEARCH;
+			empty.glyph2 = &G_PLUS;
+			empty.pressed1 = netPressed == 1;
+			empty.pressed2 = netPressed == 2;
+			k.emptyState(e, empty);
+			return;
+		}
+		int n = (int)browseRows.size();
+		for (int i = ui.scroll; i < n && i < ui.scroll + l.shown; i++)
+		{
+			Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
+			Kit::Media m;
+			m.glyph = &G_NETWORK;
+			m.name = browseRows[i].label;
+			m.second = browseRows[i].note;
+			m.focused = i == ui.cursor && netFoot < 0;
+			m.pressed = netPressed == i;
+			k.mediaRow(lay::mediaRow(r), m);
+		}
+		auto foot = [&](Rect r, const Glyph& g, const std::string& name, const std::string& note, int which) {
+			Kit::Row row;
+			row.glyph = &g;
+			row.name = name;
+			row.note = note;
+			row.focused = netFoot == which;
+			row.pressed = netPressed == 100 + which;
+			row.under = BG;
+			k.row(r, row);
+		};
+		foot(l.find, G_SEARCH, "Find on the network", "computers sharing files nearby", 0);
+		foot(l.add, G_PLUS, "Add connection\xE2\x80\xA6", "by its address, or FTP", 1);
+	}
+
+	void Ui::Browse::drawNetFind(const Player& p)
+	{
+		Kit& k = *ui.kit;
+		NetPageLayout l = netLayout(p);
+		int n = (int)browseRows.size();
+		for (int i = ui.scroll; i < n && i < ui.scroll + l.shown; i++)
+		{
+			if (browseRows[i].id < 0) continue;	// (Searching… is the busy sheet's)
+			Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
+			Kit::Row row;
+			row.glyph = browseRows[i].id == R_FOUND ? &G_NETWORK : browseRows[i].id == R_SEARCH ? &G_REFRESH : &G_PENCIL;
+			row.name = browseRows[i].label;
+			row.note = browseRows[i].note;
+			row.trail = browseRows[i].id == R_FOUND ? Kit::Trail::Chevron : Kit::Trail::None;
+			row.focused = i == ui.cursor;
+			row.pressed = netPressed == i;
+			row.under = BG;
+			k.row(r, row);
+		}
+		if (ui.discovery && ui.discovery->running())
+		{
+			lay::BusySheet bs = lay::busySheet();
+			Kit::BusySpec b;
+			b.title = "Searching\xE2\x80\xA6";
+			b.file = "Computers sharing files nearby";
+			b.share = -1;
+			b.key = "Back";
+			b.cap = "B";
+			b.pressed = netPressed == 200;
+			k.busySheet(bs, b);
+		}
+	}
+
+	void Ui::Browse::drawNet(const Player& p)
+	{
+		if (browseDir == NETROOT) drawNetList(p);
+		else if (browseDir == FORMDIR) drawNetForm(p);
+		else drawNetFind(p);
+	}
+
+	bool Ui::Browse::netKey(Button b, Player& p)
+	{
+		NetPageLayout l = netLayout(p);
+		if (browseDir == FORMDIR)
+		{
+			std::vector<int> cfg = formCfg();
+			int n = (int)cfg.size() + 2;
+			ui.cursor = std::clamp(ui.cursor, 0, n - 1);
+			if (b == Button::Up) ui.cursor = std::max(0, ui.cursor - 1);
+			else if (b == Button::Down) ui.cursor = std::min(n - 1, ui.cursor + 1);
+			else if (b == Button::Left || b == Button::Right)
+			{
+				if (ui.cursor < (int)cfg.size()) formChange(browseRows[cfg[ui.cursor]].id, b == Button::Right ? 1 : -1);
+			}
+			else if (b == Button::A)
+			{
+				if (ui.cursor < (int)cfg.size()) formChoose(browseRows[cfg[ui.cursor]].id, p);
+				else formChoose(ui.cursor == (int)cfg.size() ? FORM_TEST : FORM_SAVE, p);
+			}
+			else if (b == Button::Y) formChoose(FORM_TEST, p);
+			else if (b == Button::Start) formChoose(FORM_SAVE, p);
+			else return false;
+			int shown = l.shown;
+			if (ui.cursor < (int)cfg.size())
+			{
+				if (ui.cursor < ui.scroll) ui.scroll = ui.cursor;
+				if (ui.cursor >= ui.scroll + shown) ui.scroll = ui.cursor - shown + 1;
+			}
+			else ui.scroll = std::max(0, (int)cfg.size() - shown);
+			ui.scroll = std::max(0, ui.scroll);
+			return true;
+		}
+		if (browseDir == FINDNET)
+		{
+			int n = (int)browseRows.size();
+			if (!n) return false;
+			if (b == Button::Up) ui.cursor = std::max(0, ui.cursor - 1);
+			else if (b == Button::Down) ui.cursor = std::min(n - 1, ui.cursor + 1);
+			else if (b == Button::A) ui.choose(ui.cursor, p);
+			else return false;
+			if (ui.cursor < ui.scroll) ui.scroll = ui.cursor;
+			if (ui.cursor >= ui.scroll + l.shown) ui.scroll = ui.cursor - l.shown + 1;
+			return true;
+		}
+		// NETROOT
+		if (emptyAction())
+		{
+			if (b == Button::A) doEmptyAction(p);
+			return b == Button::A;
+		}
+		int n = (int)browseRows.size();
+		if (b == Button::Down)
+		{
+			if (netFoot < 0)
+			{
+				if (ui.cursor < n - 1) ui.cursor++;
+				else netFoot = 0;
+			}
+			else if (netFoot == 0) netFoot = 1;
+		}
+		else if (b == Button::Up)
+		{
+			if (netFoot == 1) netFoot = 0;
+			else if (netFoot == 0) netFoot = -1;
+			else if (ui.cursor > 0) ui.cursor--;
+		}
+		else if (b == Button::A)
+		{
+			if (netFoot == 0) enterFolder(FINDNET, p);
+			else if (netFoot == 1) openForm(nullptr, nullptr, p);
+			else ui.choose(ui.cursor, p);
+		}
+		else return false;
+		int shown = l.shown;
+		if (ui.cursor < ui.scroll) ui.scroll = ui.cursor;
+		if (ui.cursor >= ui.scroll + shown) ui.scroll = ui.cursor - shown + 1;
+		return true;
+	}
+
+	bool Ui::Browse::netPointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		NetPageLayout l = netLayout(p);
+		if (pt.kind == Pointer::Down)
+		{
+			netPressed = -1;
+			netFinger = false;
+			netFingerMoved = false;
+			if (browseDir == NETROOT && emptyAction())
+			{
+				lay::EmptyState e = lay::emptyState(l.body, 2, 2);
+				for (int i = 0; i < e.keys; i++)
+					if (e.key[i].hit(x, y)) netPressed = i + 1;
+				return false;
+			}
+			if (browseDir == FORMDIR)
+			{
+				if (l.test.hit(x, y)) { netPressed = 100; return false; }
+				if (l.save.hit(x, y)) { netPressed = 101; return false; }
+				std::vector<int> cfg = formCfg();
+				for (int i = ui.scroll; i < (int)cfg.size() && i < ui.scroll + l.shown; i++)
+				{
+					Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH - 2};
+					if (!r.hit(x, y)) continue;
+					ui.cursor = i;
+					netPressed = i;
+					netFinger = true;
+					netFingerY = y;
+					netFingerScroll = ui.scroll;
+					break;
+				}
+				return false;
+			}
+			if (browseDir == FINDNET)
+			{
+				if (ui.discovery && ui.discovery->running())
+				{
+					lay::BusySheet bs = lay::busySheet();
+					if (bs.key.hit(x, y)) { netPressed = 200; return false; }
+					if (bs.sheet.box.hit(x, y)) return false;
+				}
+				for (int i = ui.scroll; i < (int)browseRows.size() && i < ui.scroll + l.shown; i++)
+				{
+					Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
+					if (r.hit(x, y) && browseRows[i].id >= 0)
+					{
+						ui.cursor = i;
+						netPressed = i;
+						netFinger = true;
+						netFingerY = y;
+						netFingerScroll = ui.scroll;
+						break;
+					}
+				}
+				return false;
+			}
+			// NETROOT: a connection, or Find / Add at the foot
+			if (l.find.hit(x, y)) { netFoot = 0; netPressed = 100; return false; }
+			if (l.add.hit(x, y)) { netFoot = 1; netPressed = 101; return false; }
+			for (int i = ui.scroll; i < (int)browseRows.size() && i < ui.scroll + l.shown; i++)
+			{
+				Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
+				if (!r.hit(x, y)) continue;
+				ui.cursor = i;
+				netFoot = -1;
+				netPressed = i;
+				netFinger = true;
+				netFingerY = y;
+				netFingerScroll = ui.scroll;
+				break;
+			}
+			return false;
+		}
+		if (netFinger && pt.kind == Pointer::Move)
+		{
+			int dy = y - netFingerY;
+			if (!netFingerMoved && std::abs(dy) > 8) netFingerMoved = true;
+			if (netFingerMoved)
+			{
+				int n = browseDir == FORMDIR ? (int)formCfg().size() : (int)browseRows.size();
+				ui.scroll = lay::dragScroll(netFingerScroll, netFingerY, y, l.rowH, 0, n, l.shown);
+				netPressed = -1;
+			}
+			return false;
+		}
+		if (netFinger && pt.kind == Pointer::Up)
+		{
+			netFinger = false;
+			int was = netPressed;
+			netPressed = -1;
+			if (!netFingerMoved && was >= 0)
+			{
+				if (browseDir == FORMDIR)
+				{
+					std::vector<int> cfg = formCfg();
+					if (was < (int)cfg.size()) formChoose(browseRows[cfg[was]].id, p);
+				}
+				else if (was < (int)browseRows.size()) ui.choose(was, p);
+			}
+			return false;
+		}
+		if (pt.kind == Pointer::Up && netPressed >= 0)
+		{
+			int was = netPressed;
+			netPressed = -1;
+			if (was == 100)
+			{
+				if (browseDir == FORMDIR) formChoose(FORM_TEST, p);
+				else if (browseDir == FINDNET && ui.discovery && ui.discovery->running()) { if (ui.discovery) browseUp(p); }
+				else enterFolder(FINDNET, p);
+			}
+			else if (was == 101)
+			{
+				if (browseDir == FORMDIR) formChoose(FORM_SAVE, p);
+				else openForm(nullptr, nullptr, p);
+			}
+			else if (was == 200) browseUp(p);
+			else if (browseDir == NETROOT && netFoot >= 0)
+			{
+				if (netFoot == 0) enterFolder(FINDNET, p);
+				else openForm(nullptr, nullptr, p);
+			}
+			else if (was == 1 || was == 2)
+			{
+				if (was == 1) doEmptyAction(p);
+				else openForm(nullptr, nullptr, p);
+			}
+			return false;
+		}
+		return false;
+	}
+
 	// ---- the area ----
 
 	bool Ui::Browse::key(Button b, Player& p)
@@ -2209,6 +2563,8 @@ namespace bp
 			openSection(TAB_LOCAL, p);
 			return false;
 		}
+		// the Network pages: the cursor over their kit rows (and the two foot rows), LEFT/RIGHT a form's choices
+		if (netPage() && netKey(b, p)) return false;
 		if (b == Button::X) { ui.openBrowseMenu(ui.cursor, MENU_X); return false; }
 		// no connections yet: Y adds one by hand (A, the page's button, finds them)
 		if (b == Button::Y && emptyAction() && browseDir == NETROOT) { openForm(nullptr, nullptr, p); return false; }
@@ -2259,6 +2615,8 @@ namespace bp
 	{
 		// the redesigned playlist pages: their rows, keys and bars test the Rects their draw used
 		if (playlists->onPage() && playlists->pointer(pt, x, y, p)) return false;
+		// the Network pages' own boxes (netLayout: the same Rects their draw used)
+		if (netPage()) return netPointer(pt, x, y, p);
 		// (its downs come late: after the header's "<" and the empty page's button; the rest where the readers' do)
 		if (pt.kind != Pointer::Down)
 		{
@@ -2327,6 +2685,8 @@ namespace bp
 		if (filesPage()) { drawFiles(p); return; }
 		// a playlist and Liked draw their own redesigned pages (inside lay::shell's body)
 		if ((browseDir == PLROOT || isPlDir(browseDir))) { playlists->draw(p); return; }
+		// Network, Find on the network and the form: kit pages in the shell's body (net-list, net-find, net-form)
+		if (netPage()) { drawNet(p); return; }
 		// the list's page, as the track lists' (drawTracks: Home, a section's header, the rows, the footer)
 		ui.drawTracks(p);
 	}
@@ -2335,6 +2695,8 @@ namespace bp
 	{
 		// the section and its listing; what Copy / Move holds (the bar along the foot); Home's focus and strip
 		std::string s = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "");
+		if (netPage()) s += "|net" + std::to_string(netFoot) + "," + std::to_string(netPressed) + "," +
+			std::to_string(netFinger) + "," + std::to_string(netFingerMoved) + "," + browseDir;
 		if (filesPage())
 		{
 			// Files' own: select mode and its ticks, the finger, the read-only mark, the footer's count and room,

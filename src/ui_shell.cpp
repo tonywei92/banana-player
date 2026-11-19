@@ -9,6 +9,7 @@
 #include "ui_playlists.h"
 #include "ui_settings.h"
 #include "ui_manga.h"
+#include "ui_search.h"
 #include "format.h"
 #include "netpath.h"
 #include <algorithm>
@@ -24,9 +25,9 @@ namespace bp
 	bool Ui::Shell::page(Page pg) const
 	{
 		// the shell's pages this step builds: the browser (Home, Files, Playlists, Network, All recent), the
-		// Extensions section's list and Settings. The redesigned bodies of these replace theirs one at a time;
-		// Manga's pages keep their own frame (their tabs are the top of the panel) until they are rebuilt too.
-		return pg == Page::Browse || pg == Page::ExtSection || pg == Page::Settings;
+		// Extensions section's list, Settings and Search. The redesigned bodies of these replace theirs one at a
+		// time; Manga's pages keep their own frame (their tabs are the top of the panel) until they are rebuilt too.
+		return pg == Page::Browse || pg == Page::ExtSection || pg == Page::Settings || pg == Page::Search;
 	}
 
 	std::vector<Ui::Shell::Cell> Ui::Shell::cells(const Player& p) const
@@ -124,6 +125,8 @@ namespace bp
 			}
 			return h;
 		}
+		// Search: its own title, crumb (the query and how many it found) and hints; it is a tool, not a section
+		if (ui.page == Page::Search) return ui.search->head(p);
 		const Browse& b = *ui.browse;
 		const std::string& dir = b.browseDir;
 		// the rebuilt views say what their header shows (title, crumb, hints, back, More); the rest keep the generic
@@ -165,9 +168,18 @@ namespace bp
 		if (dir == NETROOT || dir == FORMDIR || dir == FINDNET || isNetPath(dir))
 		{
 			h.title = dir == NETROOT ? "Network" : dir == FORMDIR ? (b.formId.empty() ? "Add connection" : "Edit connection")
-				: dir == FINDNET ? "On your network" : baseName(dir);
-			h.crumb = dir == NETROOT ? "Home" : std::string("Network");
-			h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Add"}, {"B", "Up"}, {"L/R", "Sections"}};
+				: dir == FINDNET ? "Find on the network" : baseName(dir);
+			int servers = 0;
+			for (auto& row : b.browseRows) servers += row.id == 4;
+			h.crumb = dir == NETROOT ? (servers ? std::to_string(servers) + (servers == 1 ? " connection" : " connections")
+				: std::string("No connections")) : std::string("Network");
+			h.more = dir == NETROOT;
+			if (dir == NETROOT && b.emptyAction())
+				h.hints = {{"A", "Find on the network"}, {"Y", "Add connection"}, {"B", "Home"}, {"L/R", "Sections"}};
+			else if (dir == NETROOT) h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Add"}, {"B", "Home"}, {"L/R", "Sections"}};
+			else if (dir == FORMDIR) h.hints = {{"A", "Edit"}, {"LEFT/RIGHT", "Change"}, {"Y", "Test"}, {"START", "Save"}, {"B", "Cancel"}};
+			else if (dir == FINDNET) h.hints = {{"A", "Add this one"}, {"B", "Back"}};
+			else h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Select"}, {"B", "Up"}, {"L/R", "Sections"}};
 		}
 		else
 		{
@@ -184,11 +196,9 @@ namespace bp
 
 	void Ui::Shell::search(Player& p)
 	{
-		// Search is a later step. This is its one place: L3 and the rail's Search key both come here; the page it
-		// opens (or the sheet it puts over the list) replaces this note, and lights the key as that page shows.
-		searchUp = true;
-		ui.alert("Search", "Search is coming in a later step.");
-		(void)p;
+		// Search's one way in: L3 and the rail's Search key both come here. The page keeps its last query (a second
+		// press edits it); opening it from anywhere remembers where B goes back to.
+		ui.search->open(p);
 	}
 
 	void Ui::Shell::openSection(Section s, Player& p)
@@ -253,6 +263,9 @@ namespace bp
 			search(p);
 			return true;
 		}
+		// Search keeps every other key: LEFT / RIGHT move its caret (or its page), SELECT its keyboard's layer.
+		// It is a tool: L / R do not step the sections under it.
+		if (ui.page == Page::Search) return false;
 		// SELECT is the rail's Now playing key's key: what plays, from any of the shell's pages (a copy or move, a
 		// selection and the picker keep theirs)
 		if (b == Button::Select && ui.nowPlayable(p) && !modal && !(ui.page == Page::Browse && br.clipOp != CLIP_NONE))
@@ -410,11 +423,10 @@ namespace bp
 	{
 		if (!page(ui.page)) return "";
 		std::vector<Cell> cs = cells(p);
-		int at = activeIndex(cs, section(p));
+		// Search is a tool, not a section: no cell is lit on its page, only its own key
+		int at = ui.page == Page::Search ? -1 : activeIndex(cs, section(p));
 		// (no cell carries a warning: opening a section starts and stops nothing; the Extensions page's row says
 		// "Stops the video" and asks first)
-		// the note Search puts up is all it shows today: the key is lit while it is
-		if (searchUp && !ui.findOverlay("alert")) searchUp = false;
 		const Player& bp = ui.barPlayer(p);
 		bool live = bp.playing() && !bp.playingPhoto();
 		// the rail's Now playing key: its art (a song's arrives: artSerial; a video shows its kind mark), its
@@ -423,7 +435,8 @@ namespace bp
 		if (live && !bp.paused) np += "." + std::to_string(SDL_GetTicks() / 166);
 		if (live) np += "|" + std::string(bp.playingAudio() ? "a" : "v") + std::to_string(ui.artSerial);
 		return "|sh" + std::to_string((int)section(p)) + "." + std::to_string(at) + "." + std::to_string(pressedFrame) +
-			"." + std::to_string(railScroll) + (searchUp ? "S" : "") + "|np" + (live ? "1" : "0") + (live && bp.paused ? "p" : "") + np;
+			"." + std::to_string(railScroll) + (ui.page == Page::Search ? "S" : "") + "|np" + (live ? "1" : "0") +
+			(live && bp.paused ? "p" : "") + np;
 	}
 
 	// ---- the frame's drawing ----
@@ -481,15 +494,16 @@ namespace bp
 			items.push_back(it);
 		}
 		KitNew::RailItem settings{&G_GEAR, "Settings", false};
-		if (searchUp && !ui.findOverlay("alert")) searchUp = false;
+		const bool searchLit = ui.page == Page::Search;	// Search shows: its key is filled (a tool, not a section)
 		const Player& bp = ui.barPlayer(p);
 		bool live = bp.playing() && !bp.playingPhoto();
 		// the key's art, drawn by Ui: a song's real cover (its placeholder until the worker answers), a
 		// video's kind mark — the same box the block and Home's cards show
 		std::function<void(Rect)> npPicture;
 		if (live) npPicture = [this, &bp](Rect r) { ui.drawNowArt(bp, r, 5); };
-		KitNew::rail(k, r, items, settings, activeIndex(cs, at), pressedFrame >= F_RAIL ? pressedFrame - F_RAIL : pressedFrame == F_NP ? KitNew::NP_PRESSED : -1,
-			searchUp, pressedFrame == F_SEARCH, live, live && bp.paused, npPicture);
+		KitNew::rail(k, r, items, settings, ui.page == Page::Search ? -1 : activeIndex(cs, at),
+			pressedFrame >= F_RAIL ? pressedFrame - F_RAIL : pressedFrame == F_NP ? KitNew::NP_PRESSED : -1,
+			searchLit, pressedFrame == F_SEARCH, live, live && bp.paused, npPicture);
 		drawHeader(h, p);
 		k.hints(s.hints, h.hints);
 	}
@@ -518,7 +532,8 @@ namespace bp
 		if (ui.page != Page::Browse) return adopted(ui.page);
 		if (!browseBuilt) return false;
 		const Browse& b = *ui.browse;
-		return b.atHome() || b.browseDir == RECENT || b.filesPage() || b.browseDir == PLROOT || isPlDir(b.browseDir);
+		return b.atHome() || b.browseDir == RECENT || b.filesPage() || b.browseDir == PLROOT || isPlDir(b.browseDir) ||
+			b.browseDir == NETROOT || b.browseDir == FORMDIR || b.browseDir == FINDNET;
 	}
 
 	Ui::Shell::Bridge Ui::Shell::bridgeFor(const Player& p) const

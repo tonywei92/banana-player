@@ -16,6 +16,7 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
 #include "ui_home.h"
@@ -191,6 +192,54 @@ namespace bp
 		if (!ui.netWorker) { testText = "No network support in this build"; return; }
 		testText = "Testing...";
 		ui.netWorker->test(++testSerial, s, password);
+	}
+
+	void Ui::Browse::drawNetForm(const Player& p)
+	{
+		// the form on the kit: a form row per field (the keyboard or a choice), Test and Save as the two keys at the
+		// foot (lay::formKeys' measure in the shell's body), the focused row's help in the header's crumb
+		(void)p;
+		Kit& k = *ui.kit;
+		NetPageLayout l = netLayout(p);
+		std::vector<int> cfg = formCfg();
+		int n = (int)cfg.size();
+		ui.cursor = std::clamp(ui.cursor, 0, n + 1);
+		for (int i = ui.scroll; i < n && i < ui.scroll + l.shown; i++)
+		{
+			Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, lay::FORM_ROW};
+			int id = browseRows[cfg[i]].id;
+			Kit::FormField f;
+			f.label = browseRows[cfg[i]].label;
+			const std::string& note = browseRows[cfg[i]].note;
+			if (!note.empty() && note[0] == DIM_NOTE) f.placeholder = note.substr(1);
+			else f.value = note;
+			f.secret = id == FORM_PASS && !f.value.empty();
+			f.focused = ui.cursor == i;
+			f.pressed = netPressed == i;
+			k.formRow(lay::formRow(r), f);
+		}
+		Kit::Key test;
+		test.glyph = &G_REFRESH;
+		test.label = "Test connection";
+		test.key = "Y";
+		test.focused = ui.cursor == n;
+		test.pressed = netPressed == 100;
+		k.key(l.test, test);
+		Kit::Key save;
+		save.glyph = &G_CHECK;
+		save.label = "Save";
+		save.key = "START";
+		save.tone = Kit::Tone::Primary;
+		save.focused = ui.cursor == n + 1;
+		save.pressed = netPressed == 101;
+		k.key(l.save, save);
+		// what Test answered, or what Save needs: the line over the keys
+		if (!testText.empty() || !formNote.empty())
+		{
+			int cy = l.test.y - 14;
+			if (!testText.empty()) ui.drawTextMid(testText, F_I12, testText == "It works" ? ACCENT : DIM, l.list.x, cy, l.list.w);
+			else ui.drawTextMid(formNote, F_I12, DANGER, l.list.x, cy, l.list.w);
+		}
 	}
 
 	// ---- the servers found on the network ----

@@ -155,6 +155,33 @@ namespace bp
 		void fileRenameDone(Player& p);
 		Rect clipBtn(int i) const { lay::FilesClip c = lay::filesClipBar(lay::shell().body); return c.key[i]; }
 
+		// ---- the Network pages on the kit (docs/redesign: net-list, net-find, net-form) ----
+		// The connections, Find on the network and a connection's form draw in lay::shell().body with Kit::row,
+		// mediaRow, formRow, busySheet and emptyState; their touches test the same boxes. Keys stay as they were
+		// (X's menu, Y's Add, START's Settings off the form) and gain the foot rows the spec draws.
+		bool netPage() const;	// the Network tab, Find on the network or the form
+		struct NetPageLayout
+		{
+			Rect body, list;
+			int rowsY = 0, rowH = 60, shown = 0;
+			Rect find, add;		// NETROOT's foot rows (w 0: none)
+			Rect test, save;	// FORMDIR's two keys
+		};
+		NetPageLayout netLayout(const Player& p) const;
+		void drawNet(const Player& p);
+		void drawNetList(const Player& p);
+		void drawNetForm(const Player& p);
+		void drawNetFind(const Player& p);
+		bool netKey(Button b, Player& p);
+		bool netPointer(const Pointer& pt, int x, int y, Player& p);
+		std::vector<int> formCfg() const;	// browseRows' config rows (Test and Save are the foot keys)
+		int formShown(const Player& p) const;
+		int netFoot = -1;	// NETROOT: -1 the list, 0 Find on the network, 1 Add connection
+		int netPressed = -1;	// a finger on a row, a foot row or a form key
+		bool netFinger = false;
+		int netFingerY = 0, netFingerScroll = 0;
+		bool netFingerMoved = false;
+
 		// ---- the Network tab's other pages (ui_forms.cpp), as the browser's (browseDir FORMDIR, FINDNET) ----
 		// A connection's form: its rows (form*), each opening the keyboard or stepping through its choices
 		NetServer form;
