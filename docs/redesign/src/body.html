@@ -1,6 +1,6 @@
 <div class="layout">
 <nav class="side" id="nav">
-	<div class="brand"><div class="logo"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></div><span>Handheld redesign</span></div>
+	<div class="brand"><div class="logo"><svg width="22" height="22" viewBox="0 0 22 22"><rect x="3" y="4" width="16" height="4" rx="1" fill="#000"/><path d="M5 4h2L5 8H3zM9 4h2L9 8H7zM13 4h2l-2 4h-2zM17 4h2l-2 4h-2z" fill="#fff"/><rect x="3" y="9" width="16" height="10" rx="1.5" fill="#000"/><path d="M9 10.5v4.5l4.5-2.25z" fill="#ffd23f"/><rect x="5" y="16" width="12" height="1" fill="#777"/><rect x="5" y="16" width="6" height="1" fill="#ffd23f"/></svg></div><span>Handheld redesign</span></div>
 	<h4>The case</h4>
 	<a href="#summary">Summary</a><a href="#problems">Problems today</a><a href="#principles">Principles</a><a href="#ia">The new map</a><a href="#keys">What each key does</a><a href="#states">State indicators</a><a href="#devices">Both devices</a><a href="#power">Power &amp; screens</a>
 	<h4>The design</h4>
@@ -110,7 +110,7 @@
 		<tr><td class="k">L / R</td><td>The one before / after</td><td>Section</td><td>File</td><td>Page / photo</td><td>The rail · Prev / Next keys</td></tr>
 		<tr><td class="k">L2 / R2</td><td>The part before / after</td><td>Tab inside a section</td><td>Chapter</td><td>Chapter</td><td>The tabs · chapter keys</td></tr>
 		<tr><td class="k">D-pad</td><td>Move / adjust</td><td>Move; ◀ ▶ page</td><td>◀ ▶ seek · ▲ ▼ nothing</td><td>Scroll / page · ▲ ▼ zoom</td><td>Drag</td></tr>
-		<tr><td class="k">L3</td><td>The screen’s one shortcut</td><td>Like what plays</td><td>Like</td><td>Find (text) · Rotate (photo, comic)</td><td>Its own key on screen</td></tr>
+		<tr><td class="k">L3</td><td>The screen’s one shortcut</td><td>Search</td><td>Like</td><td>Find (text) · Rotate (photo, comic)</td><td>Its own key on screen</td></tr>
 	</table></div>
 	<p class="sub" style="margin-top:12px">Inside a sheet the sheet owns the keys: <kbd>L</kbd> <kbd>R</kbd> step its tabs, the D-pad moves, <kbd>A</kbd> chooses, <kbd>B</kbd> or the key that opened it closes it (one kept exception: on a song’s Display tab, SELECT steps to the next Show mode, as it does today, and B closes). F + L2 (screenshot) and F + START (quit at once) stay.</p>
 </section>
@@ -134,7 +134,7 @@
 		<tr><td>Touch lock</td><td>Off</td><td colspan="2">As today: the lock over the controls with “hold to unlock”</td></tr>
 		<tr><td>Subtitle delay · Audio delay</td><td colspan="3">Not in 0.7.18 (FEATURES.md has neither). If added: tabs’ rows in View, and the Subtitles / Audio chip gains the offset (“English +0.3 s”) in yellow.</td></tr>
 	</table></div>
-	<p class="sub" style="margin-top:12px">Not marked, on purpose: choices that have no “normal” (which subtitle, which audio track, Fit / Fill, the visualizer’s style, the reader’s font and colours). They are written on their controls in cream. That includes a song’s Show mode (Visualizer alone is a choice, not a deviation), Song info on top, and the visualizer’s frame rate: 30 or 60 instead of 45 changes smoothness and battery, not what is shown, so it stays a quiet row in Settings › Music &amp; sound.</p>
+	<p class="sub" style="margin-top:12px">Not marked, on purpose: choices that have no “normal” (which subtitle, which audio track, Fit / Fill, the visualizer’s style, the reader’s font and colours). They are written on their controls in cream. That includes a song’s Show mode (Visualizer alone is a choice, not a deviation) and the visualizer’s frame rate: 30 or 60 instead of 45 changes smoothness and battery, not what is shown, so it stays a quiet row in Settings › Music &amp; sound.</p>
 </section>
 
 <section id="devices">
@@ -152,7 +152,7 @@
 		<tr><td>Player transport, second row; reader and viewer rows; photo and PDF keys</td><td>74 / 56 / 64 / 62–84</td><td>unchanged · 7.1 mm or more</td><td>OK</td></tr>
 		<tr><td>List rows (Files, Playlists, Up next, Contents)</td><td>46 (5.8 mm); in sheets 40–42</td><td>52 in lists · 6.6 · 7.1; 46 in sheets · 5.8 · 6.3</td><td>Worst case kept: see below</td></tr>
 		<tr><td>More sheet’s two columns; settings rows in sheets</td><td>38 (4.8 mm)</td><td>44–48 · 5.6 to 6.1 · 6.0 to 6.6</td><td>Worst case kept: see below</td></tr>
-		<tr><td>Visualizer style tiles (5 × 4), look tiles</td><td>38 × 116 / 46</td><td>46 × 116 / 50 · 5.8 / 6.4 · 6.3 / 6.8</td><td>Short of 7 mm on the RG DS</td></tr>
+		<tr><td>Visualizer style tiles (5 × 3), look tiles</td><td>38 × 116 / 46</td><td>46 × 116 / 50 · 5.8 / 6.4 · 6.3 / 6.8</td><td>Short of 7 mm on the RG DS</td></tr>
 		<tr><td>Quick settings − / +, toggles; mini bar and its play mark</td><td>44 × 40; 50; 46 with a 40 × 36 mark</td><td>56 × 44; 54; 52 with a 56 × 42 mark · 5.6 to 6.9</td><td>OK, bar-height bound</td></tr>
 		<tr><td>“All recent” arrow on Home</td><td>34 wide (4.3 mm)</td><td>56 wide · 7.1 · 7.6</td><td>OK</td></tr>
 		<tr class="grp"><td colspan="4">Text</td></tr>
@@ -164,10 +164,10 @@
 		<tr><td>Scanlines, LCD grid</td><td>Drawn with a 4-unit period</td><td>Defined per panel in real pixels (2 + 2 on 480 lines, 3 + 3 on 768; grid cell 4 px / 6 px). The preview’s overlay only suggests it</td><td>A build rule; noted on the Picture screen</td></tr>
 		<tr><td>Look tiles’ samples (38 × 28)</td><td></td><td>Scanlines and LCD grid read at 38 px; Sharpen and Soften do not at either size: the name carries them, the top screen is the preview</td><td>OK</td></tr>
 		<tr class="grp"><td colspan="4">Resolution-dependent content</td></tr>
-		<tr><td>Visualizer</td><td></td><td>Peaks’ 64 bars: 6 px bars with 3 px gaps on 640, 10 + 5 on 1024; the pixel-art styles are drawn at one size and scaled, so they are chunkier, not different, on the Plus</td><td>OK</td></tr>
+		<tr><td>Visualizer</td><td></td><td>Peaks’ 64 bars: 6 px bars with 3 px gaps on 640, 10 + 5 on 1024; every style is drawn by the player in the panel’s own pixels, in the theme’s colours</td><td>OK</td></tr>
 		<tr><td>Reading text</td><td></td><td>Sizes are in units, so both show the same lines; “Large” is 20 px on the RG DS, sharp enough for the serif but with little to spare at “Small”. Suggest the RG DS opens on Medium at the smallest</td><td>OK, one default to choose</td></tr>
 		<tr><td>PDF and comic pages</td><td></td><td>A whole A4 page on 480 lines is not readable (today too): Page fit should default to Width on the RG DS. Covers at 96 × 136 show no legible title on either: the caption and top screen name them</td><td>One default to choose</td></tr>
-		<tr><td>Grids: Books 5 a row, Manga 5, Pages 6, styles 5 × 4</td><td></td><td>Cells are 96 units or more wide (12.2 mm on the RG DS); the same count on both</td><td>OK</td></tr>
+		<tr><td>Grids: Books 5 a row, Manga 5, Pages 6, styles 5 × 3</td><td></td><td>Cells are 96 units or more wide (12.2 mm on the RG DS); the same count on both</td><td>OK</td></tr>
 		<tr><td>Reader key rows and hint bars</td><td>Comic row: icon and key touching the edges</td><td>One rule for every reader row: icon and name on the first line, the key under it, 8 units of padding. Every hint bar fits in 640 units with room</td><td>Fixed</td></tr>
 	</table></div>
 	<p class="sub" style="margin-top:12px"><b>What still falls short of 7 mm on the RG DS:</b> rows inside sheets (5.6 to 6.1 mm tall, but half or full panel wide), the visualizer’s style tiles (5.8 mm) and list rows (6.6 mm; today’s are 6.1). All are also reached with the D-pad. Making them 56 units means six rows a screen instead of seven, a More sheet that scrolls, and a style grid that pages; that trade is an open question.</p>
@@ -198,7 +198,7 @@
 			<div class="eyebrow" id="protoGroup"></div>
 			<h3 id="protoName"></h3>
 			<p class="hotnote" id="protoWhy"></p>
-			<div class="crumbs"><button id="protoBack" class="pill">← Back</button><button data-jump="home" class="pill">Home</button><button data-jump="books" class="pill">Books</button><button data-jump="video" class="pill">Video</button><button data-jump="music" class="pill">Song</button><button data-jump="reader" class="pill">Book</button><button data-jump="book-text" class="pill">Book mode</button><button data-jump="video-picture" class="pill">Looks</button><button data-jump="video-adjust" class="pill">Adjust</button><button data-jump="video-states" class="pill">States</button><button data-jump="vol-boost" class="pill">Volume boost</button><button data-jump="power-dim" class="pill">Screen off</button><button data-jump="browser-play" class="pill">In a browser</button><button data-jump="net-folder" class="pill">Network</button><button data-jump="manga-repos" class="pill">Repositories</button><button data-jump="manga-guard" class="pill">Manga + video</button><button data-jump="photo" class="pill">Photo</button><button data-jump="manga" class="pill">Manga</button><button data-jump="settings" class="pill">Settings</button></div>
+			<div class="crumbs"><button id="protoBack" class="pill">← Back</button><button data-jump="first-lid" class="pill">First start</button><button data-jump="home" class="pill">Home</button><button data-jump="books" class="pill">Books</button><button data-jump="video" class="pill">Video</button><button data-jump="music" class="pill">Song</button><button data-jump="reader" class="pill">Book</button><button data-jump="book-text" class="pill">Book mode</button><button data-jump="video-picture" class="pill">Looks</button><button data-jump="video-adjust" class="pill">Adjust</button><button data-jump="video-states" class="pill">States</button><button data-jump="vol-boost" class="pill">Volume boost</button><button data-jump="power-dim" class="pill">Screen off</button><button data-jump="browser-play" class="pill">In a browser</button><button data-jump="net-folder" class="pill">Network</button><button data-jump="manga-repos" class="pill">Repositories</button><button data-jump="manga-guard" class="pill">Manga + video</button><button data-jump="photo" class="pill">Photo</button><button data-jump="manga" class="pill">Manga</button><button data-jump="settings" class="pill">Settings</button></div>
 			<label class="sw"><input type="checkbox" id="hotToggle" checked> Outline what is clickable</label>
 			<div class="pad" id="protoPad"></div>
 			<p class="hotnote">Greyed keys work on the device but lead to a screen this preview doesn’t draw.</p>
@@ -226,6 +226,8 @@
 	<p class="sub">The owner has answered these (15 Nov). Three went another way than first assumed: comics do show in Books, UP / DOWN are no longer speed, and picture looks are global with no CRT. The rest stand as proposed.</p>
 	<div class="cards q">
 		<div class="card"><h3>Rail, or a bigger grid of tiles?</h3><p>The rail costs 78 of 640 units on every shell screen and keeps all sections one press away. The alternative keeps Home as tiles (3 × 2) and shows no sections inside a list.</p><b class="rec">Decided, as proposed: the rail.</b></div>
+		<div class="card"><h3>Open · Does the Web dashboard follow the handheld’s theme?</h3><p>Proposed: yes. One Theme setting, shown on the handheld and on the dashboard’s Settings page; a page takes the handheld’s theme with its state. The other way is a theme per browser, kept in that browser, which lets a phone stay dark while the handheld is Light, at the cost of a second setting and two places that can disagree.</p><b class="rec">Proposed: it follows the handheld.</b></div>
+		<div class="card"><h3>Open · Are the light-bodied themes worth their cost?</h3><p>Light, Sakura, 16-bit, 16-bit Lavender and 32-bit are the themes whose ground is not dark, so they are the ones that needed rules: a paper veil under sheets, a dark accent with light ink, and cards over a picture that stay dark. They are also the ones that read best in sunlight. The other way is to ship the dark themes first and add the light-bodied ones once one has been tried outdoors on the handheld.</p><b class="rec">Proposed: keep them in the set; try one on the handheld before the release that carries them.</b></div>
 		<div class="card"><h3>What fills the Books shelf?</h3><p>A <code>Books</code> folder per card (as <code>Manga</code> and <code>videos</code> work) plus anything opened from Files or Network. The other way is scanning the whole card for EPUB / PDF / TXT, which is slower and catches manuals and notes.</p><b class="rec">Decided, as proposed: the folder, plus what you open.</b></div>
 		<div class="card"><h3>Do comics (CBZ, CBR) show in Books too?</h3><p>They are listed in Books as well as in Manga, and open in the same comic reader with the same place.</p><b class="rec">Decided by the owner: yes.</b></div>
 		<div class="card"><h3>Extensions leave the top level?</h3><p>An extension that is on gets its own rail slot; on / off moves to Settings › Extensions, and Manga settings appear in Settings as well as in Manga’s X. This reverses “Manga settings are not in Banana Player’s Settings”.</p><b class="rec">Decided, as proposed: yes to both.</b></div>
@@ -250,6 +252,9 @@
 	<h2>Components</h2>
 	<p class="sub">Every piece that appears on more than one of the screens, so each is coded once. Sizes are in the panel’s 640 × 480 units. Each says which existing building block it maps to: <span class="tag same">REUSE</span> exists, use as is · <span class="tag chg">VARIANT</span> exists, needs a variant · <span class="tag new">NEW</span>. <span id="compcount"></span></p>
 	<div id="complist"></div>
+	<h3 style="margin:30px 0 10px;font-size:20px" id="themes">Themes</h3>
+	<p class="sub">A theme is a set of values for the tokens of <code>src/theme.h</code>, and nothing else: every component above is drawn with those tokens, so no component and no screen has a colour or a rule of its own for a theme. Sizes, corners, type, layouts, states and the focus rule are the same in all seventeen. The Theme switch at the foot of this page sets the same variables the code will swap; <a href="#s-set-theme">Settings › Power & screens › Theme</a> is where it is changed on the handheld. Cards over a video, a photo or album art take the TOP_ tokens, which are dark in every theme. The values, the contrast of each pair, what stays fixed, and the table of every component with the tokens it uses are in <code>components.md</code>, section Themes; <code>themes.py</code> works the values and ratios out.</p>
+	<div class="tw"><table id="themetable" style="min-width:720px"></table></div>
 	<h3 style="margin:30px 0 10px;font-size:20px">What was drawn two ways: now one</h3>
 	<p class="sub">Seventeen places where two screens showed nearly the same thing with different sizes or behaviour. Every screen has been redrawn to the one version; the screens and the examples above are drawn by the same functions and style rules, so they cannot drift apart. The few deliberate exceptions are named.</p>
 	<div class="tw"><table id="forktable" style="min-width:720px"></table></div>
@@ -277,3 +282,6 @@
 </section>
 </main>
 </div>
+
+<div class="themebar" id="themebar" role="group" aria-label="The handheld’s theme, on every screen of this page"><span>Theme</span></div>
+<style>.s .appicon{background:url({{img:app}}) center/cover}</style>

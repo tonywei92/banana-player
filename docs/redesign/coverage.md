@@ -49,7 +49,7 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Home (Continue, Recent, filters), All recent, START Menu, Files list, More (X) on a file, rail, mini bar and Playing/Paused chips.
 - Books section, empty state, text reader, Text view sheet, Contents/Bookmarks, PDF, Extra dim / Light sheet.
 - Video player, View, Picture looks, Adjust, List (Y), More while playing, Away-from-normal marks (and the same while browsing).
-- Song player, View › Display (Show), View › Visualizer (the style, its own tab), Equalizer tab, visualizer alone.
+- Song player, View › Display (the mode and the visualizer's style on one page), Equalizer tab, visualizer alone.
 - Photo viewer; Manga section, reader, Manga-while-video guard, engine loading, "Stopped for Manga" on Home.
 - Settings, a settings group, Quick settings (F), volume past 100% and the 120% warning, Incognito badge.
 - Playing in a browser, Hold A, browser went away, mini bar while a browser plays, Play on picker.
@@ -65,3 +65,59 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Support link: Settings › About's last block (a line, a QR code of https://ko-fi.com/tonysong, the address written out), and one link at the foot of the Web dashboard's Home, which has no About today. Only there; nothing fetched. Drawn: `set-about`.
 - START's Playing tab: removed, item by item accounted for (the table under `video-more`). X is More, SELECT is View, on the player as elsewhere.
 - Chips and View: a chip opens the one tabbed View sheet on its tab (no tab-less form); five chips on a song as on a video (Sound, Sound FX, Display, Speed, Shuffle), the Display chip in short values; the Equalizer tab takes the full sheet height. Drawn: `music-eq`, `video-chips`.
+- Themes: Settings › Power & screens › Theme, seventeen of them (Yellow, the default and today's look; Dark; Midnight blue; Dark purple; Dark red; Pink; Coffee; Mint; Retro green; Sunset; Candy; 16-bit; 16-bit Lavender; 32-bit; Sakura; Light; High contrast), a set of values for theme.h's tokens and nothing else. The Web dashboard follows; cards over a picture stay dark; Reading › Colours gains Match theme. Drawn: `set-theme`, and every screen through the Theme switch at the foot of the preview. Spec: components.md, Themes; values and contrast: themes.py.
+- A song's Display: one page for the mode and the visualizer's style (four icon tiles, then fifteen in a 5 × 3 grid; the app's own glyphs); View's tabs are Display, Equalizer, Effects, Speed. Song info on top is removed as a setting: the title, artist and album are always shown. The top screen's ground follows the theme in Album art only, Art + visualizer and None. Drawn: `music-view`, `music-viz`, `music-viz-pick`.
+- Home on a fresh install (the Empty state on Home, a welcome on the top screen with the app's icon), the state in between (Recent with a card or two, nothing to continue), and the first-start lid question as a Confirm sheet over it. Drawn: `home-first`, `first-lid`.
+- Search (new): L3 on every shell screen, the keyboard with live counts on the top screen, results grouped by kind, recent searches, nothing found, a card still being read; the dashboard's search box. Drawn: `search`, `search-results`.
+- Music by albums and artists (new): a rail section with Albums (a cover grid) and Artists (rows), an album's and an artist's page with Play and Shuffle, from the songs' tags; the dashboard's Music tab. Drawn: `music-albums`, `music-album`, `music-artists`. The index both read: components.md, Search and Music: the index.
+
+## Journeys (is every one clickable in the walk-through?)
+
+Checked from the code, not from pictures: `python3 journeys.py --journeys` runs `src/kit.js` + `src/screens.js`, takes every
+link (a key's target in `keys`, a `data-go` in the drawing, the `TAPS` and `ALSO` tables at the end of `screens.js`) and
+walks each journey below one click at a time. `--all` prints every screen's links and every key that leads nowhere.
+
+Before the first pass: 121 screens and 594 links; 79 screens reached by nothing from Home or the fresh Home (the pills above
+the walk-through jumped into a few of them), 19 with no B or ‹ that led anywhere, 63 hint-bar keys missing from a `keys`
+list. After: 122 screens and 782 links; none unreachable from the first start or Home, none without a way back, no
+hint-bar key unlisted, no link to a screen that isn't there. 223 keys still lead nowhere: most act in place (seek, zoom,
+type); the ones that should open something not drawn are the gaps under the table.
+
+What changed to get there, none of it a redesign: targets on keys that had a screen to go to; touch targets on the rows,
+tiles and keys of sheets and pages (`TAPS`); states that follow by themselves, a card pulled or the engine coming up
+(`ALSO`, shown as “then” under the keys); `B` → Home on the section roots and L2 / R2 round the twelve settings groups;
+shared sheets (keyboard, Info, Add to playlist) go back to where they were opened from. The rail has Music on every shell
+screen, as the Music section's note already said (six cells, Network scrolled off unless open), and Network opens the
+connections list, not a folder. One screen was added: `files-playing`, Files with the mini bar after B on a video.
+
+| Journey | State | The walk; what is not drawn |
+|---|---|---|
+| First start | wired | Lid question → fresh Home → Files → a video → View → close → B (keeps playing) → Files with the mini bar → the player → Stop |
+| Play music | wired | Music › Albums → album → Play → View › Display → Equalizer → presets. From Files: a folder of songs → a song → List (Y) → More (X) → Go to artist → an album. Music with no Music folder (Empty state) and while a card is first read |
+| Playlists | wired | Playlists → a playlist’s items → play from one; Y → select mode → Move → put down → Done; Add to… → the picker; a playlist with gone items; Add to playlist from the video player → New playlist… → keyboard. A playlist’s and an item’s More are lists in `keys` |
+| Liked | wired | L3 → the Like note; Home › Shuffle Liked plays; Playlists → Liked → plays; its select mode; Liked with nothing in it |
+| Books | wired | Shelf → a book → Contents → back; Text → Book mode → the Book bar; More; a PDF → Pages → View → More; the empty shelf |
+| Manga | wired | Shelf → History → continue; series → reader → View → Fullscreen → View → Book → end of chapter → Get → Downloads; the reader’s More; Browse → a source → a series; Sources → Repositories → add one; a server; the engine loading / ready / failed; the question while a video plays. A comic’s Pages is the PDF’s sheet. Not drawn: selecting chapters, a source’s filters |
+| Search | wired | L3 on Home, Files, Music and Playlists → typing → results → a video, a song, an album, a book, a folder. A playlist result opens the playlist’s page |
+| Network | wired | Connections → Find → the form → keyboard → Save → a folder → a video buffering; a book copied first, the copy failing; a read-only folder and its alert; no Wi-Fi; no connection yet (Empty state). A connection’s More (Edit, Test, Delete) is a list in `keys` |
+| Web dashboard | wired, both sides | Fresh Home (Y), Home › Send from phone, Quick settings or Settings → the page (QR, address, PIN) → a browser signs in → the phone’s Home → Files → a song → Now playing → Plays on: Handheld; or it plays there → Hold A / Play on… / the browser gone. The page off and with No Wi-Fi. The phone’s Music, Playlists and Books tabs are not drawn (Music’s two pages are minis under Music: Albums) |
+| Settings | wired | START → Menu → Settings → each of the twelve groups (L2 / R2 go round) → Theme, which steps the page’s theme |
+| Quick settings | wired | F → Web dashboard, Incognito, Screen off now, Quit; Volume past 100% and the first time past 120% |
+| Incognito | wired | Quick settings → the question when a browser is signed in → on, the dashboard off → off again; Settings › Lid or sleep in incognito; the badge on the player and the mini bar (`video-states`, `states-browse`) |
+| Lid and sleep | wired | The first-start question; When the lid closes and the lid-shut keys in Settings; the bottom screen dimming → off → waking (“Paused: the handheld slept” is in that screen’s strip) |
+| Files: select, copy, move, delete | wired | Y → select → Copy / Move → put it here → the job; Delete?; Rename… → keyboard; Info; Add folder to playlist → Working… |
+| Errors and empty states | wired | A file that won’t play → Info; an empty folder; a card taken out; gone items; touch lock; the alert pattern |
+| Updates | wired | Settings › Updates → “0.7.19 is out” → Update now → Downloading (Hide) → ready, Restart now → Home; the check failing → Try again |
+| Photos | wired | Files → a photo → View (Fit / Fill) → back → More → Info |
+| Home: a card’s More, All recent | wired | Home → X · More → Resume; All recent → an item |
+| Quit | wired | B on Home, START › Menu, Quick settings → Quit? → Cancel |
+
+The second pass (2026-11-19, backlog.md) drew the gaps the first one listed: 154 screens and 1,039 links, none unreachable, none without a way back,
+no hint-bar key unlisted, 23 journeys walked. A phone’s page is a screen with a third drawing (`phone`), shown beside the handheld’s two panels
+(what the handheld shows meanwhile); its taps are in `keys`, which is what `journeys.py` walks. What is still only listed, not drawn:
+
+1. More (X) on a playlist and its items, Liked, a song in Files, an album, an artist, a search result, a connection, select mode and a book on the shelf: lists in `keys` (one pattern, `moreS()`; the table on “A playlist: its items” has the playlist ones).
+2. Manga: selecting chapters, a source’s filters.
+3. The phone’s Music, Playlists and Books tabs as phone pages (Music is drawn as desktop-width minis).
+4. The one song player drawing says “Playlist · Late night” whichever list it was opened from (an album, an artist, a folder): the crumb is text, the layout is the same.
+5. Shared sheets are drawn over one screen each (the picker and Info over a video, the keyboard over Files). Opened from elsewhere they show that screen behind them; B returns to where you were. Nothing to fix.

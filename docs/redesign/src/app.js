@@ -10,7 +10,13 @@ const MAP=[
 ['A card’s menu (Y, hold): Resume, From the start, Show in folder, Add to playlist, Like, Remove','Home','X (or hold) on the card','mov'],
 ['X on Home: Clear Recent, Show hidden folders, Settings','Home','X › Clear recent · Files’ X › Show hidden folders · rail › Settings','mov'],
 ['B on Home asks to quit','Home','Unchanged','same'],
+['Home with nothing played yet','An empty Recent strip over the four tiles','An empty state: Nothing played yet, Browse Files (A), Web dashboard (Y); the top screen a welcome with three ways to start','chg'],
+['The lid question at the first start: Pause / Keep playing','A centred box','A confirm sheet over the fresh Home, Pause first and on B; the top screen explains both; changed later in Settings › Power & screens','chg'],
 ['Each section opens where you left it','Sections','Unchanged','same'],
+['Finding something by its name','(none: walk to it)','Search: L3 on any list, or the header’s magnifier; results by kind from an index of both cards; a search box in the Web dashboard’s header','new'],
+['Music by album and artist','(none: folders and playlists only)','Rail › Music: Albums (covers) and Artists, from the songs’ tags; Play and Shuffle on each; a Music tab on the Web dashboard','new'],
+['Where Albums and Artists come from','(none)','The folder named Music at the top of each card (any capitals), read by itself; the line under Music’s title says so, and with none there is an Empty state with the how-to. Songs elsewhere stay in Files and Search. No list of all songs','new'],
+['The app’s mark on the top screen','A yellow tile with a play triangle','The Brand mark: the app’s icon, a clapperboard, small and flat in the theme’s colours','chg'],
 ['The mini bar; SELECT = Now playing; header’s three bars; Playing / Paused / In browser chips','Every page but the player','Unchanged','same'],
 ['Top screen with nothing playing','Logo and one line','A preview of what the cursor is on','new'],
 ['Files, Network and playlists'],
@@ -33,7 +39,7 @@ const MAP=[
 ['A playlist’s Play, Shuffle play, Rename…, Delete','Y or hold','X · More or hold','mov'],
 ['Inside a playlist: Play all, Add files…, Add folder…, Remove duplicates, Remove missing, Select','X','X · More (Select also on Y)','same'],
 ['An item’s Play from here, Move, Remove, Show in folder, Unlike','Y','X · More','mov'],
-['Select mode: A ticks, SELECT all, X Remove, Y Move, drag the grip','Playlist','A ticks, SELECT all; Remove and Move in X · More and as keys on the select bar; grip unchanged','chg'],
+['Select mode: A ticks, SELECT all, X Remove, Y Move, drag the grip','Playlist','A ticks, SELECT all; Y still moves (the ticked rows lift, the D-pad carries them, A puts them down); Remove, Move and Add to… on the select bar and in X · More; a grip on every row in select mode','chg'],
 ['The player'],
 ['A play / pause · L / R file · L2 / R2 chapter · LEFT / RIGHT seek · L3 Like','Keys','Unchanged','same'],
 ['UP / DOWN: faster / slower','Player keys','Gone from the D-pad: UP and DOWN do nothing on the player. Speed is set in View › Speed (SELECT, or a tap on the Speed chip)','chg'],
@@ -43,19 +49,20 @@ const MAP=[
 ['X: In order → Loop all → Loop one → Shuffle','Key in the second row','Shuffle switch + Repeat Off / All / One at the top of Y · List; state on the Repeat / Shuffle chip','chg'],
 ['Y: Up next','Page','Y · List, first tab','same'],
 ['SELECT (video): Tracks = Chapters, Subtitles, Audio, Picture','Page with tabs','SELECT · View = Subtitles, Audio, Picture, Speed; Chapters is Y · List’s second tab','chg'],
-['SELECT (song): Display popup: Show, Style','Popup','SELECT · View, Display tab','chg'],
+['SELECT (song): Display popup: Show, Style','Popup','SELECT · View, Display tab: the modes and the styles on one page','chg'],
 ['Sound: Equalizer and Effects','A page, from the line under the keys or Settings','SELECT · View, Equalizer and Effects tabs; the Sound chip; Settings › Music & sound','mov'],
 ['EQ keys: Y / X preset, SELECT on / off, A save, START options','Sound page','L2 / R2 preset, Y on / off, A save, X options','chg'],
 ['Picture size: Fit, Fill, Stretch','SELECT › Tracks › Picture','SELECT · View › Picture, a row of three; the Picture chip','same'],
 ['Picture looks: Sharpen, Soften, Scanlines, LCD grid, Retro; Strength; global, with Only this video as an option','(none)','SELECT · View › Picture; shown on the Picture chip, in a top-screen note when a video starts with one on, on the mini bar; default in Settings › Playback','new'],
 ['Brightness, Contrast, Saturation, Gamma for a video; Reset; All videos / Only this video','(none)','SELECT · View › Adjust; shown on the Picture chip (“Adjusted”, “+adj”)','new'],
-['Show modes: Album art, Art + visualizer, Visualizer, None','Display popup; Settings › Music','View › Display, four radio rows: Album art only, Art + visualizer, Visualizer only, None; the Display chip says which in a short form (Art, Art + viz, Visualizer, None) and nothing else; Settings › Music & sound › Music display','chg'],
-['Album art’s size on the top screen','Scaled to the full 480 height; in Art + visualizer the visualizer is laid over its bottom','Smaller: 260 units alone and centred, 240 with the visualizer above a band of bars along the bottom; the bars are under the art, never over it. A change to today’s app','chg'],
-['Song info on top, with art','Over the picture','Off: the art alone, centred. On: the art moves left (240 / 224 units) and title, artist, album sit to its right, the pair centred; over a visualizer alone, top left as today','chg'],
-['A song with no album art','Album art falls back to the title alone; Art + visualizer falls back to the visualizer alone','A placeholder (the colour wheel with a note) in the art’s spot in both art modes; the layout and the chosen mode stay','chg'],
+['Show modes: Album art, Art + visualizer, Visualizer, None','Display popup; Settings › Music','View › Display, four icon tiles in a row: Album art only, Art + visualizer, Visualizer only, None; the Display chip says which in a short form (Art, Art + viz, Visualizer, None) and nothing else; Settings › Music & sound › Music display','chg'],
+['Album art’s size on the top screen','Scaled to the full 480 height; in Art + visualizer the visualizer is laid over its bottom','Smaller: 240 units beside the title, artist and album, the pair centred; 224 with the visualizer, above a band of bars along the bottom; the bars are under the art, never over it. A change to today’s app','chg'],
+['Title, artist and album on the top screen','A setting, Song info on top: off, or written over the picture','Always there, no setting. With art: the art left (240 / 224 units), the three lines to its right, the pair centred; over a visualizer alone, top left; None is the title alone','chg'],
+['A song with no album art','Album art falls back to the title alone; Art + visualizer falls back to the visualizer alone','The Art placeholder (a record in its sleeve, in the theme’s colours) in the art’s spot in both art modes; the layout and the chosen mode stay','chg'],
 ['SELECT again in the popup: the next Show mode','Display popup','Unchanged: SELECT in View › Display steps Show; B closes','same'],
-['Visualizer style (20)','Display popup, the Style row under Show; Settings › Music','Its own tab, View › Visualizer (also the Visualizer row on Display); Settings › Music & sound › Visualizer. Kept and changeable when Show has no visualizer: “not shown”','chg'],
-['Song info on top','Settings › Music','Settings › Music & sound, and a switch in View › Display','mov'],
+['Visualizer style (20 today; fifteen now: Peaks, Ribbon, Mirror bars, Pocket console, Horizon, Grid, Starfield, Strings, Helix, Sparks, Bouncy keys, Rocket, Rain check, Sleepy moon, Dance line)','Display popup, the Style row under Show; Settings › Music','View › Display, the grid of fifteen icon tiles, 5 × 3, under the four modes (one page, as the popup was); Settings › Music & sound › Visualizer. Kept and changeable when the mode has no visualizer: “not shown now”','chg'],
+['Song info on top (the setting)','Settings › Music','Removed: the title, artist and album are always shown','chg'],
+['A song’s top screen: its ground','Black','The theme’s BG in Album art only, Art + visualizer and None, with the song’s text in the theme’s TEXT; in Art + visualizer the style is drawn straight over it, with no black strip. All fifteen styles are drawn by the player in the theme’s colours, alone too; Sparks, Starfield, Rain check and Sleepy moon fill the whole panel behind the art, with the art and its lines centred; Rocket’s stars fill the panel while the rocket stays in the band','chg'],
 ['Visualizer frame rate (30 / 45 / 60)','Settings › Music','Settings › Music & sound','same'],
 ['Speed 0.5× to 2.5×','UP / DOWN, a key that shows it','View › Speed (SELECT, or the Speed chip); the chip shows it','mov'],
 ['Audio and subtitle lines (tap for Tracks)','Two lines under the keys','Subtitles and Audio chips','chg'],
@@ -65,6 +72,7 @@ const MAP=[
 ['Chapters of a long film; names that don’t fit; no names','Chapters tab','Y · List › Chapters: 46-unit rows, “17 of 42”, LEFT / RIGHT a page, names cut with “…”, “Chapter N” when unnamed; no thumbnails','chg'],
 ['Chapter line (tap for Chapters); marks on the bar','Above the bar','Unchanged, with L2 / R2 written on it','same'],
 ['What plays next','(open Up next)','The Next line','new'],
+['A title too long for its place','Cut with “…” (a file name in its middle)','It moves along in its box, twice, then rests; a start it shares with its album or folder is left out. Settings › Power & screens › Scroll long titles','new'],
 ['Like and Add to playlist keys','First row','Second row: Like, Playlist','same'],
 ['Lock, Info, Screen off, Stop','Bottom row','X · More, first four tiles (Screen off also in Quick settings)','mov'],
 ['START › Playing: Now playing, Like, Add to playlist…, Play on, Show in folder, Info, Stop','START menu tab','Removed. Every item is in X · More or on the player’s face (Like, Playlist, Stop); Now playing is SELECT and the mini bar','mov'],
@@ -118,6 +126,8 @@ const MAP=[
 ['Subtitles; Music; Photos; Remember; Files; Controls & screen; Updates; Web dashboard','Groups','Same rows. Remember → Playback, Music → Music & sound, Files → Files & history, Controls & screen → Power & screens, with Max volume and Button hotkeys moved to Playback','same'],
 ['A setting’s explanation; the subtitle preview','Bottom screen','Top screen','mov'],
 ['Text and PDF viewer defaults','(only inside a book)','Settings › Reading','new'],
+['The app’s colours','One look: black, cream and yellow','Settings › Power & screens › Theme, seventeen: Yellow (the default, today’s look), Dark, Midnight blue, Dark purple, Dark red, Pink, Coffee, Mint, Retro green, Sunset, Candy, 16-bit, 16-bit Lavender, 32-bit, Sakura, Light, High contrast. Both screens and the Web dashboard; cards over a picture stay dark','new'],
+['A book’s page colours: Dark, Light, Sepia, Black','Text options','The same four, and Match theme first (the default): the page follows the app’s theme until you choose one','chg'],
 ['The bottom screen while reading','Stays on','Stays on; may dim to its lowest (Settings › Reading › Dim the controls while reading)','new'],
 ['About','START › About tab','Settings › About; START › About','mov'],
 ['Web dashboard page: QR, address, PIN, New PIN; the globe','Settings, Quick settings, the globe','Unchanged','same'],
@@ -170,24 +180,36 @@ document.getElementById('maptable').innerHTML='<tr><th>Feature</th><th>Today</th
 // ---------- components ----------
 {const TG={reuse:['same','REUSE'],variant:['chg','VARIANT'],new:['new','NEW']};let g='';
  document.getElementById('complist').innerHTML=COMPS.map((c,i)=>{const e=c.ex();const hd=c.g!=g?`<div class="eyebrow" style="margin-top:22px">${g=c.g}</div>`:'';
-  return hd+`<div class="comp" id="c-${i}"><div class="panel" style="aspect-ratio:640/${e.h}"><div class="s" style="height:${e.h}px">${e.inner}</div></div><div><h3>${c.n} <span class="tag ${TG[c.st][0]}">${TG[c.st][1]}</span></h3><dl><dt>Used</dt><dd>${c.use}</dd><dt>Anatomy</dt><dd>${c.an}</dd><dt>Inputs</dt><dd>${c.pr}</dd><dt>Keys, touch</dt><dd>${c.in}</dd><dt>Code</dt><dd>${c.maps}</dd></dl></div></div>`}).join('');
+  return hd+`<div class="comp" id="c-${i}"><div class="panel" style="aspect-ratio:640/${e.h}"><div class="s${c.g=='Top screen'?' top':''}" style="height:${e.h}px">${e.inner}</div></div><div><h3>${c.n} <span class="tag ${TG[c.st][0]}">${TG[c.st][1]}</span></h3><dl><dt>Used</dt><dd>${c.use}</dd><dt>Anatomy</dt><dd>${c.an}</dd><dt>Inputs</dt><dd>${c.pr}</dd><dt>Keys, touch</dt><dd>${c.in}</dd><dt>Code</dt><dd>${c.maps}</dd></dl></div></div>`}).join('');
  const n=k=>COMPS.filter(c=>c.st==k).length;
  document.getElementById('compcount').textContent=`${COMPS.length} components: ${n('reuse')} reuse, ${n('variant')} variant, ${n('new')} new.`;
+ document.getElementById('themetable').innerHTML='<tr><th>Theme</th><th>BG</th><th>SURFACE</th><th>ACCENT</th><th>TEXT</th><th>What it is</th></tr>'+THEMES.map(t=>`<tr><td class="k">${t[1]}</td>${[2,3,4,5].map(i=>`<td><span style="display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:6px;border:1px solid var(--line);background:#${t[i]}"></span><code>#${t[i]}</code></td>`).join('')}<td>${t[7]}</td></tr>`).join('');
  document.getElementById('forktable').innerHTML='<tr><th>What</th><th>Was drawn as</th><th>Every screen now uses</th><th>Status</th></tr>'+FORKS.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');}
+// ---------- the theme switch (page chrome): data-bp on <html>, which the stylesheet's theme blocks read ----------
+function setTheme(id){if(!THEMES.some(t=>t[0]==id))id='yellow';document.documentElement.dataset.bp=id;try{localStorage.setItem('bptheme',id)}catch(e){}
+ document.querySelectorAll('#themebar button').forEach(b=>b.classList.toggle('on',b.dataset.theme==id))}
+function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.dataset.bp);setTheme(THEMES[(i+1)%THEMES.length][0])}
+{const bar=document.getElementById('themebar');
+ bar.insertAdjacentHTML('beforeend',THEMES.map(t=>`<button data-theme="${t[0]}" title="${t[1]}"><i style="background:linear-gradient(90deg,#${t[2]} 50%,#${t[4]} 50%)"></i><b>${t[1]}</b></button>`).join(''));
+ bar.addEventListener('click',e=>{const b=e.target.closest('button[data-theme]');if(b)setTheme(b.dataset.theme)});
+ let t=(location.search.match(/[?&]theme=([a-z0-9]+)/)||[])[1];if(!t)try{t=localStorage.getItem('bptheme')}catch(e){}
+ setTheme(t||'dark')}
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);
-const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;
-const dev=s=>s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
+const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;
+// a phone's page beside the handheld: the dashboard at a phone's width (390 CSS px), and what the handheld shows meanwhile
+const devPhone=s=>`<div class="phonepair"><div class="pcol"><div class="lbl"><span>A phone’s browser</span><span>390 wide</span></div><div class="panel ph" data-w="390"><div class="s">${s.phone()}</div></div></div><div class="hcol"><div class="lbl"><span>Meanwhile, the handheld</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>${s.name}</span></div></div></div>`;
+const dev=s=>s.phone?devPhone(s):s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
 const kb=k=>k.split(' or ').map(p=>p.split('/').map(x=>`<kbd>${x}</kbd>`).join(' ')).join(' or ');
 const gal=document.getElementById('gallery'),nav=document.getElementById('navscreens');
 let lastG='';
 SCREENS.forEach(s=>{
 	if(s.group!=lastG){lastG=s.group;nav.insertAdjacentHTML('beforeend',`<h4>${s.group}</h4>`)}
 	nav.insertAdjacentHTML('beforeend',`<a href="#s-${s.id}">${s.name}${s.isNew?'<small>NEW</small>':''}</a>`);
-	const goes=[...new Set(s.keys.filter(k=>k[2]&&k[2]!='<').map(k=>k[2]))];
+	const goes=[...new Set(s.keys.map(k=>k[2]).concat(s.also.map(a=>a[1])).filter(g=>g&&g!='<'&&BY[g]))];
 	gal.insertAdjacentHTML('beforeend',`<article class="screen ${s.side?'wide':''}" id="s-${s.id}"><div class="device ${s.side?'side':''}" data-gal="${s.id}">${dev(s)}</div><div class="notes"><div class="eyebrow">${s.group}${s.isNew?' · <span class="tag new">NEW</span>':''}</div><h3>${s.name}</h3><p class="why">${s.why}</p>
 	<ul>${s.notes.map(n=>`<li><span class="tag ${n[0]}">${TAGN[n[0]]}</span> ${n[1]}</li>`).join('')}</ul>${s.extra?s.extra():''}
-	<div class="keys">${s.keys.map(k=>`${`<span>${kb(k[0])}</span>`}<span>${k[1]}</span>`).join('')}</div>
+	<div class="keys">${s.keys.map(k=>`${`<span>${kb(k[0])}</span>`}<span>${k[1]}</span>`).join('')}${s.also.map(a=>`<span><kbd>then</kbd></span><span>${a[0]}</span>`).join('')}</div>
 	<p class="goes"><a href="#proto" data-jump="${s.id}">Open in the walk-through</a>${goes.length?' · leads to '+goes.map(g=>`<a href="#s-${g}">${BY[g].name}</a>`).join(', '):''}</p></div></article>`);
 });
 
@@ -195,6 +217,7 @@ SCREENS.forEach(s=>{
 const P_={cur:'home',hist:[]};
 const pd=document.getElementById('protoDev'),pad=document.getElementById('protoPad');
 function show(id,push=true){
+	if(id=='theme:step'){stepTheme();return}
 	if(id=='<'){id=P_.hist.pop()||'home';push=false}
 	if(!BY[id])return;
 	if(push&&id!=P_.cur)P_.hist.push(P_.cur);
@@ -204,7 +227,7 @@ function show(id,push=true){
 	document.getElementById('protoName').textContent=s.name;
 	document.getElementById('protoGroup').textContent=s.group;
 	document.getElementById('protoWhy').textContent=s.why;
-	pad.innerHTML=s.keys.map((k,i)=>`<button data-k="${i}" ${k[2]?'':'disabled'}><kbd>${k[0]}</kbd><span>${k[1]}</span></button>`).join('');
+	pad.innerHTML=s.keys.map((k,i)=>`<button data-k="${i}" ${k[2]?'':'disabled'}><kbd>${k[0]}</kbd><span>${k[1]}</span></button>`).join('')+s.also.map(a=>`<button data-jump="${a[1]}"><kbd>then</kbd><span>${a[0]}</span></button>`).join('');
 }
 pad.addEventListener('click',e=>{const b=e.target.closest('button[data-k]');if(b){const k=BY[P_.cur].keys[+b.dataset.k];if(k[2])show(k[2])}});
 document.addEventListener('click',e=>{
@@ -224,7 +247,7 @@ document.addEventListener('keydown',e=>{
 });
 
 // ---------- scale each panel's 640x480 drawing to its box ----------
-function fit(){document.querySelectorAll('.panel').forEach(p=>p.style.setProperty('--k',p.clientWidth/(p.classList.contains('pt')?480:640)))}
+function fit(){document.querySelectorAll('.panel').forEach(p=>p.style.setProperty('--k',p.clientWidth/(+p.dataset.w||(p.classList.contains('pt')?480:640))))}
 new ResizeObserver(fit).observe(document.body);addEventListener('resize',fit);
 show('home',false);fit();
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
@@ -248,3 +271,15 @@ if(/[?&]sheet/.test(location.search)){const n=+((location.search.match(/cols=(\d
 if(/[?&]comps/.test(location.search)){const l=document.getElementById('complist');document.body.innerHTML=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px;align-items:start">${[...l.querySelectorAll('.comp')].map(c=>`<div><div style="font:600 12px Inter;color:#aaa;margin:2px">${c.querySelector('h3').textContent}</div>${c.querySelector('.panel').outerHTML}</div>`).join('')}</div>`;fit()}
 // ?only=id: one screen's card alone (for looking it over)
 {const m=location.search.match(/[?&]only=([\w-]+)/);if(m){const c=document.getElementById('s-'+m[1]);if(c){document.body.innerHTML='<main style="max-width:1240px;padding:20px">'+c.outerHTML+'</main>';fit()}}}
+
+// ---------- the Title marquee, moving (components.md › Title marquee) ----------
+// Measured here as the app will: it runs only if the text is wider than its box. Rest 1.5 s, move (48 units/s for type of 24 and more, 24 under),
+// rest 1.5 s, fade back. The app stops after two passes; the preview repeats so it can be seen.
+function mqRun(){document.querySelectorAll('.mq:not([data-mq])').forEach(b=>{const t=b.firstElementChild,w=b.clientWidth;if(!w)return;b.dataset.mq=1;
+	const d=t.offsetWidth-w;if(d<=0)return;b.classList.add('mqo');
+	const l=b.querySelector('.mql'),r=b.querySelector('.mqr'),sp=parseFloat(getComputedStyle(t).fontSize)>=24?48:24,m=d/sp*1000,T=1500+m+1500+300,a=1500/T,e=(1500+m)/T,f=(3000+m)/T,g=(3150+m)/T,o={duration:T,iterations:Infinity};
+	const X=x=>`translateX(${-x}px)`;
+	t.animate([{transform:X(0),opacity:1,offset:0},{transform:X(0),offset:a},{transform:X(d),offset:e},{transform:X(d),opacity:1,offset:f},{transform:X(d),opacity:0,offset:g},{transform:X(0),opacity:0,offset:g},{transform:X(0),opacity:1,offset:1}],o);
+	if(l)l.animate([{opacity:0,offset:0},{opacity:0,offset:a},{opacity:1,offset:Math.min(a+200/T,e)},{opacity:1,offset:g},{opacity:0,offset:g},{opacity:0,offset:1}],o);
+	if(r)r.animate([{opacity:1,offset:0},{opacity:1,offset:Math.max(e-200/T,a)},{opacity:0,offset:e},{opacity:0,offset:g},{opacity:1,offset:1}],o)})}
+{let q=0;const later=()=>{if(!q)q=setTimeout(()=>{q=0;mqRun()},60)};new MutationObserver(later).observe(document.body,{childList:true,subtree:true});addEventListener('click',later);addEventListener('resize',later);(document.fonts&&document.fonts.ready||Promise.resolve()).then(later)}
