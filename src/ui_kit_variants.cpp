@@ -6,6 +6,7 @@
 // As the rest of the kit: a Rect from kitlayout and a small struct in, pixels out, nothing kept; tokens only.
 #include "ui_kit.h"
 #include "artph.h"
+#include <algorithm>
 #include <cmath>
 
 namespace bp
@@ -26,6 +27,22 @@ namespace bp
 		}
 	}
 
+	std::string Ui::Kit::elided(const std::string& s, int font, int room) const
+	{
+		if (room <= 0) return "...";
+		if (textW(s, font) <= room) return s;
+		std::vector<size_t> starts;
+		for (size_t i = 0; i < s.size(); i++)
+			if (((unsigned char)s[i] & 0xC0) != 0x80) starts.push_back(i);
+		size_t lo = 0, hi = starts.size();	// prefixes of starts[0..n) chars: lo fits, hi doesn't
+		while (hi - lo > 1)
+		{
+			size_t mid = (lo + hi) / 2;
+			if (textW(s.substr(0, starts[mid]) + "...", font) <= room) lo = mid;
+			else hi = mid;
+		}
+		return s.substr(0, lo < starts.size() ? starts[lo] : s.size()) + "...";
+	}
 	// ---- status cluster and badges ----
 
 	int Ui::Kit::badge(int right, int cy, const Badge& b)
@@ -518,7 +535,38 @@ namespace bp
 		}
 		ui.drawTextMid(e.title, F_NORMAL, TEXT, l.title.x + l.title.w / 2, l.title.y + l.title.h / 2, l.title.w, 2);
 		for (size_t i = 0; i < e.lines.size(); i++)
-			ui.drawTextMid(e.lines[i], F_I14, DIM, l.lines.x + l.lines.w / 2, l.lines.y + 10 + (int)i * 20, l.lines.w, 2);
+		{
+			int cy = l.lines.y + 10 + (int)i * 20;
+			// the accent words in this line, as the preview marks a folder an empty page names ("Music",
+			// "Videos or Movies"); a range outside the line, or none given, draws the line plain
+			std::vector<Empty::AccentWord> words;
+			for (auto& w : e.accent)
+				if (w.line == (int)i && w.at >= 0 && w.len > 0 && w.at + w.len <= (int)e.lines[i].size()) words.push_back(w);
+			std::sort(words.begin(), words.end(), [](const Empty::AccentWord& a, const Empty::AccentWord& b) { return a.at < b.at; });
+			std::vector<std::pair<std::string, bool>> seg;
+			int at = 0;
+			for (auto& w : words)
+			{
+				if (w.at > at) seg.push_back({e.lines[i].substr(at, w.at - at), false});
+				seg.push_back({e.lines[i].substr(w.at, w.len), true});
+				at = w.at + w.len;
+			}
+			if (at < (int)e.lines[i].size()) seg.push_back({e.lines[i].substr(at), false});
+			int total = 0;
+			for (auto& s : seg) total += textW(s.first, F_I14);
+			if (words.empty() || total > l.lines.w)
+			{
+				ui.drawTextMid(e.lines[i], F_I14, DIM, l.lines.x + l.lines.w / 2, cy, l.lines.w, 2);
+				continue;
+			}
+			// the pieces drawn one after another, the whole run centred as one line
+			int x = l.lines.x + (l.lines.w - total) / 2;
+			for (auto& s : seg)
+			{
+				ui.drawTextMid(s.first, F_I14, s.second ? ACCENT : DIM, x, cy, l.lines.w, 0);
+				x += textW(s.first, F_I14);
+			}
+		}
 		if (l.keys >= 1 && !e.key1.empty())
 		{
 			Key k;
@@ -844,6 +892,151 @@ namespace bp
 		ui.drawTextMid(f.name, F_P16, off(f.focused ? ACCENT : TEXT, f.off), l.name.x, l.name.y + l.name.h / 2, l.name.w);
 		ui.drawTextMid(f.second, F_I12, off(f.focused ? DIM_ON : DIM, f.off), l.second.x, l.second.y + l.second.h / 2, l.second.w);
 	}
+
+	// ---- the library's pages: an album's and an artist's head, a track row, a Playlists row, the backdrop ----
+
+	void Ui::Kit::pageHead(const lay::PageHead& l, const PageHead& h)
+	{
+		if (h.art) h.art(l.art);
+		else if (h.disc)
+		{
+			// the initial's disc, as an artist's row has it at 40 (a badge's pair: the ACCENT's tint, ACCENT ink)
+			ui.fillRound(l.art, sdl(theme::mix(rgbOf(BUTTON), rgbOf(ACCENT), 17)), l.art.h / 2);
+			ui.drawTextMid(firstLetter(h.title), F_P28, ACCENT, l.art.x + l.art.w / 2, l.art.y + l.art.h / 2, l.art.w - 8, 2);
+		}
+		else artPlaceholder(l.art, h.artKey.empty() ? h.title : h.artKey, 5, false);
+		ui.drawTextMid(h.title, F_P28, TEXT, l.title.x, l.title.y + l.title.h / 2, l.title.w);
+		if (l.lines >= 1 && h.lines.size() >= 1)
+			ui.drawTextMid(h.lines[0], F_I14, DIM, l.line[0].x, l.line[0].y + l.line[0].h / 2, l.line[0].w);
+		if (l.lines >= 2 && h.lines.size() >= 2)
+			ui.drawTextMid(h.lines[1], F_I12, DIM, l.line[1].x, l.line[1].y + l.line[1].h / 2, l.line[1].w);
+		Key play;
+		play.glyph = &G_PLAY;
+		play.label = "Play";
+		play.key = h.hotkeys ? "A" : "";
+		play.tone = Tone::Primary;
+		play.focused = h.focused == 0;
+		play.pressed = h.pressed == 0;
+		key(l.key[0], play);
+		Key shuffle;
+		shuffle.glyph = &G_SHUFFLE;
+		shuffle.label = "Shuffle";
+		shuffle.key = h.hotkeys ? "Y" : "";
+		shuffle.focused = h.focused == 1;
+		shuffle.pressed = h.pressed == 1;
+		key(l.key[1], shuffle);
+		if (l.keys >= 3)
+		{
+			// Add is a key by touch only (its rows are in X · More by the buttons)
+			Key add;
+			add.glyph = &G_PLUS;
+			add.focused = h.focused == 2;
+			add.pressed = h.pressed == 2;
+			key(l.key[2], add);
+		}
+	}
+
+	void Ui::Kit::trackRow(const lay::TrackRow& l, const Track& t)
+	{
+		if (t.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
+		else if (t.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
+		int cy = l.row.y + l.row.h / 2;
+		// the number's place: the playing (or paused) mark, or its number right-aligned in its slot
+		if (t.playing || t.paused)
+			ui.drawGlyphMid(t.paused ? G_PAUSE : G_PLAY, l.number.x + l.number.w / 2, cy, off(ACCENT, t.off));
+		else if (!t.number.empty())
+			ui.drawTextMid(t.number, F_P14, off(DIM, t.off), l.number.x + l.number.w, cy, l.number.w, 1);
+		// the right end: the length, the heart before it, and the pill's room before that
+		int noteW = 0;
+		if (!t.note.empty())
+		{
+			noteW = std::min(l.row.w / 2, textW(t.note, F_I12));
+			ui.drawTextMid(t.note, F_I12, off(t.focused ? DIM_ON : DIM, t.off), l.right, cy, l.row.w / 2, 1);
+		}
+		int noteLeft = l.right - noteW;
+		if (t.heart) ui.drawGlyphMid(G_HEART_S, noteLeft - lay::SP6 - 7, cy, off(ACCENT, t.off));
+		int limit = t.heart ? noteLeft - lay::SP6 - 14 - lay::SP6 : noteLeft - lay::SP6;
+		int pw = t.pill.empty() ? 0 : pillW(t.pill);
+		int room = std::max(1, limit - (pw ? pw + lay::SP6 : 0) - l.name.x);
+		// the title, cut with "..." so the pill after it always fits, and the pill right after it (the mock-up
+		// has the VIDEO pill follow the title, not sit at the row's end)
+		std::string name = elided(t.name, F_SMALL, room);
+		int nameW = textW(name, F_SMALL);
+		SDL_Color ink = off(t.focused ? ACCENT : TEXT, t.off);
+		if (t.focused && !t.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, BUTTON, 1);
+		else ui.drawTextMid(name, F_SMALL, ink, l.name.x, cy, room);
+		if (pw) pill(l.name.x + nameW + lay::SP6 + pw, cy, t.pill, t.tone);
+	}
+
+	void Ui::Kit::playlistRow(const lay::PlaylistRow& l, const Playlist& p)
+	{
+		if (p.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
+		else if (p.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
+		int cy = l.row.y + l.row.h / 2;
+		// the lead: Liked's filled heart, or the row's own icon, ACCENT when lit (Liked's and the playing row's are)
+		const Glyph* g = p.liked ? &G_HEART : p.glyph;
+		if (g) ui.drawGlyphMid(*g, l.icon.x + l.icon.w / 2, cy, off(p.liked || p.lit || p.focused ? ACCENT : DIM_ON, p.off));
+		int noteW = 0;
+		if (!p.note.empty())
+		{
+			noteW = std::min(l.row.w / 2, textW(p.note, F_I12));
+			ui.drawTextMid(p.note, F_I12, off(p.focused ? DIM_ON : DIM, p.off), l.right, cy, l.row.w / 2, 1);
+		}
+		// the Now pill (a play mark and the word), held out of the name's room so it always shows after the name
+		int nowW = p.playing ? 16 + ui.glyphW(G_PLAY, 1) + 4 + textW("Playing", F_I11B) : 0;
+		int room = std::max(1, l.right - noteW - lay::SP8 - (nowW ? nowW + lay::SP6 : 0) - l.name.x);
+		std::string name = elided(p.name, F_SMALL, room);
+		int nameW = textW(name, F_SMALL);
+		SDL_Color ink = off(p.focused || p.lit ? ACCENT : TEXT, p.off);
+		if (p.focused && !p.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, BUTTON, 1);
+		else ui.drawTextMid(name, F_SMALL, ink, l.name.x, cy, room);
+		if (nowW)
+		{
+			Rect pr{l.name.x + nameW + lay::SP6, cy - 9, nowW, 17};
+			bool clean = theme::drawingClean();
+			SDL_Color pillInk = clean ? ACCENT : ON_ACCENT;
+			ui.fillRound(pr, clean ? sdl(theme::mix(rgbOf(BG), rgbOf(ACCENT), 17)) : ACCENT, theme::R_CAP);
+			ui.drawGlyphMid(G_PLAY, pr.x + 8 + ui.glyphW(G_PLAY, 1) / 2, cy, pillInk, 1);
+			ui.drawTextMid("Playing", F_I11B, pillInk, pr.x + 12 + ui.glyphW(G_PLAY, 1), cy);
+		}
+	}
+
+	void Ui::Kit::backdrop(Rect r, SDL_Texture* pic, const artbg::Backdrop& b)
+	{
+		if (r.w <= 0 || r.h <= 0) return;
+		if (b.fallback || !pic)
+		{
+			// no art in it: the charcoal a little lighter at the top down to BG (a light theme's fallback is its
+			// plain ground, the two ends one colour, so one fill)
+			if (b.top == b.bottom) ui.fill(r, sdl(b.top));
+			else for (int y = 0; y < r.h; y++)
+				ui.fill({r.x, r.y + y, r.w, 1}, sdl(theme::mix(b.top, b.bottom, r.h > 1 ? 100 * y / (r.h - 1) : 0)));
+			return;
+		}
+		SDL_SetTextureScaleMode(pic, SDL_ScaleModeLinear);	// the 160 x 120 picture, smooth at panel size
+		SDL_Rect d = ui.devRect(r);
+		SDL_RenderCopy(ui.ren, pic, nullptr, &d);
+		// the ground's veil: its opacity at each stop (artbg::STOP_Y down the panel, scaled to r), linear between
+		// them — drawn at run time, so the theme can change without re-reading the art. One fill a row; a page
+		// that draws it every frame may cache the ramp as a texture of its own (the kit keeps nothing)
+		for (int y = 0; y < r.h; y++)
+		{
+			double f = r.h > 1 ? (double)y / (r.h - 1) : 1.0;
+			int at = b.veil[4];
+			for (int i = 1; i < 5; i++)
+			{
+				double s0 = (double)artbg::STOP_Y[i - 1] / artbg::STOP_Y[4], s1 = (double)artbg::STOP_Y[i] / artbg::STOP_Y[4];
+				if (f <= s1)
+				{
+					double t = s1 > s0 ? std::max(0.0, (f - s0) / (s1 - s0)) : 0.0;
+					at = (int)std::lround(b.veil[i - 1] + t * (b.veil[i] - b.veil[i - 1]));
+					break;
+				}
+			}
+			if (at <= 0) continue;
+			ui.fill({r.x, r.y + y, r.w, 1}, sdl(b.ground, (Uint8)std::lround(255.0 * at / 100.0)));
+		}
+	}
 }
 
 namespace bp
@@ -853,7 +1046,17 @@ namespace bp
 	struct Ui::VariantsGallery : Ui::Overlay
 	{
 		int page;
+		// page 20's synthetic arts and their textures, made once (the blur is not cheap); they die with the overlay
+		bool artMade = false;
+		artbg::Art emberArt, greyArt;
+		SDL_Texture* emberTex = nullptr;
+		SDL_Texture* greyTex = nullptr;
 		explicit VariantsGallery(Ui& u, int pg) : Overlay(u), page(pg) {}
+		~VariantsGallery()
+		{
+			if (emberTex) SDL_DestroyTexture(emberTex);
+			if (greyTex) SDL_DestroyTexture(greyTex);
+		}
 		const char* name() const override { return "gallery"; }
 		bool key(Button b, Player&) override
 		{
@@ -1373,6 +1576,246 @@ namespace bp
 			k.hints({{"A", "Open"}, {"Y", "Edit"}, {"B", "Back"}});
 		}
 
+		// an album's page (screens.js music-album): the head with its art and the Play / Shuffle / Add keys, then
+		// the track rows — the playing mark in the number's place, a VIDEO pill, a heart, focus and pressed
+		void page15(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			lay::PageHead h = lay::pageHead({16, 0, 608, 450}, 2, 3);
+			Kit::PageHead v;
+			v.artKey = "Yellow Album";
+			v.title = "Yellow Album";
+			v.lines = {"The Plantains", "12 songs, 1 a video \xC2\xB7 48 min"};
+			v.focused = 0;
+			k.pageHead(h, v);
+			auto row = [&](int i, const char* number, const char* name, const char* note, const char* pill,
+				bool playing, bool heart, bool pressed, bool focused) {
+				Kit::Track t;
+				t.number = number;
+				t.name = name;
+				t.note = note;
+				t.pill = pill;
+				t.playing = playing;
+				t.heart = heart;
+				t.pressed = pressed;
+				t.focused = focused;
+				k.trackRow(lay::trackRow({16, h.content.y + i * lay::TRACK_ROW_H, 608, lay::TRACK_ROW_H}), t);
+			};
+			row(0, "", "Sunny Peel", "3:34", "", true, true, false, false);
+			row(1, "2", "Green at the Tips", "4:02", "", false, false, false, false);
+			row(2, "3", "Bunny Hop", "2:58", "VIDEO", false, false, true, false);
+			row(3, "4", "Ripe", "3:12", "", false, true, false, true);
+			row(4, "5", "Peel Slowly", "5:07", "", false, false, false, false);
+			k.hints({{"A", "Play"}, {"Y", "Shuffle"}, {"DOWN", "Songs"}, {"X", "More"}, {"B", "Albums"}});
+		}
+
+		// an artist's page (screens.js music-artist): the head with the initial's disc (the same head, one line),
+		// their albums as the grid (the artist pane's cells say the year and the count), then their songs
+		void page16(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			lay::PageHead h = lay::pageHead({16, 0, 608, 450}, 1, 3);
+			Kit::PageHead v;
+			v.disc = true;
+			v.title = "The Plantains";
+			v.lines = {"3 albums \xC2\xB7 34 songs \xC2\xB7 2 h 6 min"};
+			v.focused = 0;
+			k.pageHead(h, v);
+			Kit::SectionLine head;
+			head.caps = true;
+			head.text = "Albums \xC2\xB7 3";
+			k.sectionLine(lay::sectionLine({16, h.content.y, 608, lay::LINE_H}, false), head);
+			int gy = h.content.y + lay::LINE_H + lay::SP8;
+			lay::AlbumGrid grid = lay::albumGrid({16, gy, 608, 450 - gy}, 3);
+			const char* albums[3][2] = {{"Yellow Album", "2026 \xC2\xB7 12 songs"}, {"Grape", "2025 \xC2\xB7 11 songs"},
+				{"Wheel", "2023 \xC2\xB7 11 songs"}};
+			for (int i = 0; i < 3; i++)
+			{
+				Kit::Album a;
+				a.artKey = albums[i][0];
+				a.title = albums[i][0];
+				a.artist = albums[i][1];
+				a.focused = i == 0;
+				k.albumTile(lay::albumTile(grid.cell[i]), a);
+			}
+			head.text = "Songs \xC2\xB7 34";
+			k.sectionLine(lay::sectionLine({16, gy + lay::ALBUM_CELL_H + lay::SP12, 608, lay::LINE_H}, false), head);
+			Kit::Track t;
+			t.name = "Sunny Peel";
+			t.note = "Yellow Album \xC2\xB7 3:34";
+			t.focused = true;
+			k.trackRow(lay::trackRow({16, gy + lay::ALBUM_CELL_H + lay::SP12 + lay::LINE_H + lay::SP8, 608, lay::TRACK_ROW_H}), t);
+			k.hints({{"A", "Play"}, {"Y", "Shuffle"}, {"DOWN", "Albums, songs"}, {"X", "More"}, {"B", "Artists"}});
+		}
+
+		// Music's Playlists view (screens.js playlists): the view chips, then the rows — Liked's heart, the Now
+		// pill on the one that plays, the counts, the dimmed New playlist row
+		void page17(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			std::vector<Kit::FilterItem> views = {{"Albums", 148}, {"Artists", 61}, {"Playlists", 5}};
+			lay::MusicHeader mh = lay::musicHeader({16, 4, 608, 0}, k.filterWidths(views));
+			Kit::SectionLine line;
+			line.text = "5 playlists \xC2\xB7 Liked first";
+			k.sectionLine(lay::sectionLine(mh.line, true), line);
+			k.filters(mh.chips, views, 2);
+			int y = mh.strip.y + lay::CHIP_STRIP + lay::SP6;
+			auto row = [&](const Glyph* glyph, bool liked, const char* name, const char* note,
+				bool playing, bool focused, bool off) {
+				Kit::Playlist p;
+				p.glyph = glyph;
+				p.liked = liked;
+				p.name = name;
+				p.note = note;
+				p.playing = playing;
+				p.focused = focused;
+				p.off = off;
+				k.playlistRow(lay::playlistRow({16, y, 608, lay::PLAYLIST_ROW_H}), p);
+				y += lay::PLAYLIST_ROW_H;
+			};
+			row(nullptr, true, "Liked", "42 items", false, false, false);
+			row(&G_PLAYLIST, false, "Late night", "9 items", true, true, false);
+			row(&G_PLAYLIST, false, "Audiobooks", "3 items", false, false, false);
+			row(&G_PLAYLIST, false, "Road trip", "18 items \xC2\xB7 4 videos", false, false, false);
+			row(&G_PLAYLIST, false, "Workout", "27 items", false, false, false);
+			row(&G_PLUS, false, "New playlist", "", false, false, true);
+			k.hints({{"A", "Open"}, {"X", "More"}, {"L2/R2", "View"}, {"L3", "Search"}});
+		}
+
+		// the library's empty states (screens.js music-empty, videos-empty): the how-to names the folders — the
+		// folder's word in the accent — and Browse Files and the Web dashboard are the two keys
+		void page18(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			Kit::Empty m;
+			m.glyph = &G_NOTE;
+			m.title = "No music here yet";
+			m.lines = {"Put your music in a folder named Music on either",
+				"card. Musics counts too, in any capitals. Albums",
+				"and artists are made from the songs' tags."};
+			m.accent = {{0, 33, 5}, {1, 6, 6}};
+			m.key1 = "Browse Files";
+			m.glyph1 = &G_FOLDER;
+			m.key2 = "Web dashboard";
+			m.glyph2 = &G_WEB;
+			k.emptyState(lay::emptyState({16, 2, 608, 238}, 3, 2), m);
+			Kit::Empty v;
+			v.glyph = &G_FILM;
+			v.title = "No videos here yet";
+			v.lines = {"Put your videos in a folder named Videos or",
+				"Movies on either card. They are listed here by",
+				"name, with your place in each kept."};
+			v.accent = {{0, 34, 6}, {1, 0, 6}};
+			v.key1 = "Browse Files";
+			v.glyph1 = &G_FOLDER;
+			v.key2 = "Web dashboard";
+			v.glyph2 = &G_WEB;
+			k.emptyState(lay::emptyState({16, 240, 608, 240}, 3, 2), v);
+		}
+
+		// the library's first-read states (screens.js music-reading, videos-reading): the Notice row with its
+		// bar over the list that is filling in (a few albums, two videos: what is already there)
+		void page19(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			Kit::NoticeRow m;
+			m.glyph = &G_REFRESH;
+			m.text = "Reading Music on the second card";
+			m.second = "First time on this card \xC2\xB7 1,180 of about 1,900 songs \xC2\xB7 albums fill in as it goes";
+			m.share = 0.62;
+			k.notice(lay::notice({16, 4, 608, 0}, true, true, 0), m);
+			Kit::SectionLine line;
+			line.text = "From Music on both cards \xC2\xB7 41 albums so far";
+			k.sectionLine(lay::sectionLine({16, 60, 608, lay::LINE_H}, false), line);
+			lay::AlbumGrid grid = lay::albumGrid({16, 90, 608, 134}, 5);
+			const char* albums[5][2] = {{"Yellow Album", "The Plantains"}, {"Late Night", "The Carrots"},
+				{"Pixel Sea", "Harbor Cats"}, {"Steel", "Tin Roof"}, {"Grape", "The Plantains"}};
+			for (int i = 0; i < 5; i++)
+			{
+				Kit::Album a;
+				a.artKey = albums[i][0];
+				a.title = albums[i][0];
+				a.artist = albums[i][1];
+				a.focused = i == 0;
+				k.albumTile(lay::albumTile(grid.cell[i]), a);
+			}
+			Kit::NoticeRow v;
+			v.glyph = &G_REFRESH;
+			v.text = "Reading Videos on the second card";
+			v.second = "First time on this card \xC2\xB7 4 of 9 folders \xC2\xB7 the list fills in as it goes";
+			v.share = 0.44;
+			k.notice(lay::notice({16, 244, 608, 0}, true, true, 0), v);
+			// the rows already there: their lengths are blank until the length cache has them
+			Kit::Video r;
+			r.name = "Big Buck Bunny.mkv";
+			r.second = "Movies \xC2\xB7 2.1 GB \xC2\xB7 12 Nov";
+			r.focused = true;
+			k.videoRow(lay::videoRow({16, 306, 608, lay::VIDEO_ROW_H}), r);
+			r = Kit::Video();
+			r.name = "Caminandes 1.mkv";
+			r.second = "Shorts \xC2\xB7 148 MB \xC2\xB7 3 Nov";
+			k.videoRow(lay::videoRow({16, 372, 608, lay::VIDEO_ROW_H}), r);
+			k.hints({{"A", "Open"}, {"X", "More"}, {"L2/R2", "View"}, {"L3", "Search"}});
+		}
+
+		// Match album art's backdrop (screens.js dyn-art): a synthetic art through artBackdrop to a texture,
+		// drawn by Kit::backdrop in a dark and a light theme, and both fallbacks (a grey art gives no hue)
+		void page20(Kit& k)
+		{
+			if (!artMade)
+			{
+				artMade = true;
+				// two generated pictures (as every shot must be): a warm radial with a hue, and a grey one
+				std::vector<uint8_t> px(200 * 150 * 4);
+				for (int y = 0; y < 150; y++)
+					for (int x = 0; x < 200; x++)
+					{
+						uint8_t* p = px.data() + ((size_t)y * 200 + x) * 4;
+						double dx = (x - 64) / 150.0, dy = (y - 45) / 150.0, r = std::sqrt(dx * dx + dy * dy);
+						auto at = [&](double a, double b, double v0, double v1) {
+							return v0 + (v1 - v0) * std::clamp((r - a) / (b - a), 0.0, 1.0);
+						};
+						p[0] = (uint8_t)(r < 0.42 ? at(0, 0.42, 255, 232) : at(0.42, 0.82, 232, 58));
+						p[1] = (uint8_t)(r < 0.42 ? at(0, 0.42, 179, 69) : at(0.42, 0.82, 69, 13));
+						p[2] = (uint8_t)(r < 0.42 ? at(0, 0.42, 71, 44) : at(0.42, 0.82, 44, 18));
+						p[3] = 255;
+					}
+				emberArt = artbg::artBackdrop(px.data(), 200, 150);
+				for (int y = 0; y < 150; y++)
+					for (int x = 0; x < 200; x++)
+					{
+						uint8_t* p = px.data() + ((size_t)y * 200 + x) * 4;
+						unsigned char g = ((x + y) / 18) % 2 ? 0x9a : 0x6f;
+						p[0] = p[1] = p[2] = g;
+						p[3] = 255;
+					}
+				greyArt = artbg::artBackdrop(px.data(), 200, 150);
+				emberTex = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, artbg::W, artbg::H);
+				if (emberTex && !emberArt.rgb.empty())
+					SDL_UpdateTexture(emberTex, nullptr, emberArt.rgb.data(), artbg::W * 3);
+				greyTex = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, artbg::W, artbg::H);
+				if (greyTex && !greyArt.rgb.empty())
+					SDL_UpdateTexture(greyTex, nullptr, greyArt.rgb.data(), artbg::W * 3);
+			}
+			// the dark theme's colours from the theme in force; the light ones from the Light palette, so one
+			// page shows both branches
+			const artbg::ThemeColours dark{theme::current.BG, theme::current.SURFACE, theme::current.TEXT,
+				theme::current.DIM_ON, theme::current.ACCENT};
+			const artbg::ThemeColours light{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20},
+				{0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};
+			k.backdrop({0, 0, 320, 240}, emberTex, artbg::backdropFor(dark, emberArt));
+			k.backdrop({320, 0, 320, 240}, emberTex, artbg::backdropFor(light, emberArt));
+			k.backdrop({0, 240, 320, 240}, greyTex, artbg::backdropFor(dark, greyArt));
+			k.backdrop({320, 240, 320, 240}, greyTex, artbg::backdropFor(light, greyArt));
+			// the labels where the veil is at its deepest, so they read; the light quadrants take the light
+			// theme's ink (what its own text would be)
+			const theme::Rgb lightInk{0x1B, 0x1A, 0x20};
+			ui.drawTextMid("Dark \xC2\xB7 the art's hue", F_I12, TEXT, 8, 14, 200);
+			ui.drawTextMid("Light \xC2\xB7 the art's hue", F_I12, sdl(lightInk), 328, 14, 200);
+			ui.drawTextMid("Dark \xC2\xB7 the fallback", F_I12, TEXT, 8, 254, 200);
+			ui.drawTextMid("Light \xC2\xB7 the fallback", F_I12, sdl(lightInk), 328, 254, 200);
+		}
+
 		void draw(const Player&) override
 		{
 			Kit& k = *ui.kit;
@@ -1391,6 +1834,12 @@ namespace bp
 			case 12: page12(k); break;
 			case 13: page13(k); break;
 			case 14: page14(k); break;
+			case 15: page15(k); break;
+			case 16: page16(k); break;
+			case 17: page17(k); break;
+			case 18: page18(k); break;
+			case 19: page19(k); break;
+			case 20: page20(k); break;
 			default: page1(k); break;
 			}
 		}

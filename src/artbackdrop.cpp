@@ -96,12 +96,13 @@ namespace artbg
 			}
 		}
 
-		// the 95th percentile of the picture's relative luminance over a band of rows
-		int percentile95(std::vector<double> ys)
+		// a percentile of the picture's relative luminance over a band of rows (q 0..1: the 95th says how bright a
+		// dark theme's veil must be, the 5th how white a light theme's must be)
+		int percentile(std::vector<double> ys, double q)
 		{
 			if (ys.empty()) return 0;
 			std::sort(ys.begin(), ys.end());
-			size_t i = (size_t)std::ceil(0.95 * (double)ys.size()) - 1;
+			size_t i = (size_t)std::ceil(std::clamp(q, 0.0, 1.0) * (double)ys.size()) - 1;
 			return std::clamp((int)std::lround(ys[std::min(i, ys.size() - 1)] * 255), 0, 255);
 		}
 	}
@@ -258,7 +259,8 @@ namespace artbg
 					blurred[((size_t)y * W + x) * 3 + c] = sum;
 				}
 
-		// 6. the saturation to 55%, the luminances of the two bands (above and below y 168 on the panel)
+		// 6. the saturation to 55%, the 95th- and 5th-percentile luminances of the two bands (above and below y 168
+		// on the panel: the bands are 42 and 78 rows of the working size)
 		art.rgb.resize(PIXELS * 3);
 		std::vector<double> top, low;
 		top.reserve(42 * W);
@@ -275,28 +277,84 @@ namespace artbg
 				art.rgb[at + 2] = c.b;
 				(y < 42 ? top : low).push_back(relLum(c));
 			}
-		art.l95top = percentile95(top);
-		art.l95low = percentile95(low);
+		art.l95top = percentile(top, 0.95);
+		art.l95low = percentile(low, 0.95);
+		art.l5top = percentile(top, 0.05);
+		art.l5low = percentile(low, 0.05);
 		return art;
 	}
 
-	Backdrop backdropFor(const ThemeColours& t, int hue, int l95top, int l95low)
+	Backdrop backdropFor(const ThemeColours& t, int hue, int l95top, int l95low, int l5top, int l5low)
 	{
 		Backdrop b;
-		Rgb charcoal = mixRgb(t.bg, t.surface, 50);
+		// a light-bodied theme (its BG lighter than its TEXT: Light, Sakura, Gundam, the 16-bit ones) draws the
+		// light version on its own paper, and falls back to its plain ground
+		const bool light = relLum(t.bg) > relLum(t.text);
+		Rgb charcoal = mixRgb(t.bg, t.surface, 50);	// the dark ground's charcoal, the light one's paper
 		b.ground = charcoal;
-		b.top = mixRgb(charcoal, t.surface, 35);
-		b.bottom = t.bg;
+		if (light)
+		{
+			// the light fallback: the theme's plain ground, nothing over it (a gradient of one colour)
+			b.top = t.bg;
+			b.bottom = t.bg;
+		}
+		else
+		{
+			b.top = mixRgb(charcoal, t.surface, 35);
+			b.bottom = t.bg;
+		}
 		for (int i = 0; i < 5; i++) { b.stop[i] = charcoal; b.veil[i] = 0; }
 
-		// the accent clash: an accent with a colour of its own, 150..210 degrees from the art's hue, is the fallback
+		// the accent clash: an accent with a colour of its own, 150..210 degrees from the art's hue, is the
+		// fallback (in a light theme as in a dark one: the art must not fight the theme's one colour)
 		bool clash = false;
 		if (hue >= 0)
 		{
 			Hsl acc = toHsl(t.accent.r / 255.0, t.accent.g / 255.0, t.accent.b / 255.0);
 			if (acc.s >= 0.30 && hueGap(acc.h, hue) >= 150) clash = true;
 		}
-		if (hue < 0 || clash) return b;	// fallback: the neutral gradient, `top` to `bottom`
+		if (hue < 0 || clash) return b;	// fallback: the gradient (a light theme's plain BG)
+
+		if (light)
+		{
+			// the art's hue at S 22% / L 86%, blended 45% into the theme's paper
+			Hsl tintH;
+			tintH.h = hue;
+			tintH.s = 0.22;
+			tintH.l = 0.86;
+			b.ground = mixRgb(charcoal, fromHsl(tintH), 45);
+			b.fallback = false;
+			// the same five stops, whitened for a dark art: each stop's see-through is scaled until the picture's
+			// 5th-percentile luminance under it leaves the theme's TEXT, DIM_ON and ACCENT at 4.5:1
+			const int base[5] = {66, 60, 80, 90, 94};
+			const double pic[5] = {l5top / 255.0, l5top / 255.0, l5low / 255.0, l5low / 255.0, l5low / 255.0};
+			const double yGround = relLum(b.ground);
+			bool allHard = true;
+			for (int i = 0; i < 5; i++)
+			{
+				int need = 97;	// more than the cap: this stop would hide the picture
+				for (int p = base[i]; p <= 96; p++)
+				{
+					double under = yGround * (p / 100.0) + pic[i] * (1 - p / 100.0);
+					if (contrast(relLum(t.text), under) >= 4.5 && contrast(relLum(t.dimOn), under) >= 4.5 &&
+						contrast(relLum(t.accent), under) >= 4.5) { need = p; break; }
+				}
+				if (need <= 96) allHard = false;
+				b.stop[i] = b.ground;
+				b.veil[i] = std::min(need, 96);
+			}
+			if (allHard)
+			{
+				// nothing of the art would show: the theme's plain ground
+				Backdrop f;
+				f.ground = t.bg;
+				f.top = t.bg;
+				f.bottom = t.bg;
+				for (int i = 0; i < 5; i++) { f.stop[i] = t.bg; f.veil[i] = 0; }
+				return f;
+			}
+			return b;
+		}
 
 		// the art's hue at S 15% / L 13%, blended 45% into the theme's charcoal
 		Hsl tintH;
@@ -341,7 +399,7 @@ namespace artbg
 
 	Backdrop backdropFor(const ThemeColours& t, const Art& art)
 	{
-		return backdropFor(t, art.hasHue ? art.hue : -1, art.l95top, art.l95low);
+		return backdropFor(t, art.hasHue ? art.hue : -1, art.l95top, art.l95low, art.l5top, art.l5low);
 	}
 
 	uint64_t fnv64(const uint8_t* data, size_t n)
@@ -363,29 +421,33 @@ namespace artbg
 	std::vector<uint8_t> encode(const Art& art)
 	{
 		if (art.rgb.size() != PIXELS * 3 || art.hue < -1 || art.hue >= 360 || art.l95top < 0 || art.l95top > 255 ||
-			art.l95low < 0 || art.l95low > 255)
+			art.l95low < 0 || art.l95low > 255 || art.l5top < 0 || art.l5top > 255 || art.l5low < 0 || art.l5low > 255)
 			return {};
-		std::vector<uint8_t> out(5 + PIXELS * 3);
+		std::vector<uint8_t> out(7 + PIXELS * 3);
 		out[0] = CACHE_VERSION;
 		int hue = art.hasHue ? art.hue : 0xFFFF;
 		out[1] = (uint8_t)(hue & 0xFF);
 		out[2] = (uint8_t)(hue >> 8);
 		out[3] = (uint8_t)art.l95top;
 		out[4] = (uint8_t)art.l95low;
-		std::copy(art.rgb.begin(), art.rgb.end(), out.begin() + 5);
+		out[5] = (uint8_t)art.l5top;
+		out[6] = (uint8_t)art.l5low;
+		std::copy(art.rgb.begin(), art.rgb.end(), out.begin() + 7);
 		return out;
 	}
 
 	bool decode(const uint8_t* data, size_t n, Art& art)
 	{
-		if (!data || n != 5 + PIXELS * 3 || data[0] != CACHE_VERSION) return false;
+		if (!data || n != 7 + PIXELS * 3 || data[0] != CACHE_VERSION) return false;
 		int hue = data[1] | (data[2] << 8);
 		if (hue != 0xFFFF && hue >= 360) return false;
 		art.hasHue = hue != 0xFFFF;
 		art.hue = art.hasHue ? hue : 0;
 		art.l95top = data[3];
 		art.l95low = data[4];
-		art.rgb.assign(data + 5, data + 5 + PIXELS * 3);
+		art.l5top = data[5];
+		art.l5low = data[6];
+		art.rgb.assign(data + 7, data + 7 + PIXELS * 3);
 		return true;
 	}
 

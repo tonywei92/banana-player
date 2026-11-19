@@ -488,10 +488,11 @@ namespace bp
 			}
 			else if (p.keys == 3)
 			{
-				// the Add key is 64 wide (the mock-up's ＋): Play and Shuffle share what is left
+				// the Add key is 64 wide (the mock-up's ＋): Play and Shuffle share what is left equally, the
+				// odd unit going to the last of them (lay::cell's rule)
 				int addX = x + w - PL_ADD_W, rest = addX - GAP - x;
-				p.key[0] = {x, top, rest / 2, PL_KEYS_H};
-				p.key[1] = {x + rest / 2 + GAP, top, rest - rest / 2 - GAP, PL_KEYS_H};
+				p.key[0] = {x, top, (rest - GAP) / 2, PL_KEYS_H};
+				p.key[1] = {x + p.key[0].w + GAP, top, rest - GAP - p.key[0].w, PL_KEYS_H};
 				p.key[2] = {addX, top, PL_ADD_W, PL_KEYS_H};
 			}
 			p.rowsY = p.keys ? top + PL_KEYS_H + GAP : top;
@@ -958,6 +959,60 @@ namespace bp
 			y += 40 + 18;
 			e.key = {cx - EXT_EMPTY_KEY_W / 2, y, EXT_EMPTY_KEY_W, FORM_KEY_H};
 			return e;
+		}
+
+		// ==== the library's pages (kitlayout.h's 2026-11-19 third block) ====
+
+		PageHead pageHead(Box body, int lines, int keys)
+		{
+			PageHead h;
+			h.lines = std::clamp(lines, 0, 2);
+			h.keys = std::clamp(keys, 0, 3);
+			h.art = {body.x, body.y, PAGEHEAD_ART, PAGEHEAD_ART};
+			int tx = body.x + PAGEHEAD_ART + SP12, tw = std::max(1, body.x + body.w - tx);
+			h.title = {tx, body.y, tw, PAGEHEAD_TITLE_H};
+			h.line[0] = h.lines >= 1 ? Box{tx, body.y + PAGEHEAD_TITLE_H + SP4, tw, PAGEHEAD_LINE1_H} : Box{tx, body.y, tw, 0};
+			h.line[1] = h.lines >= 2 ? Box{tx, h.line[0].y + PAGEHEAD_LINE1_H + SP4, tw, PAGEHEAD_LINE2_H} : Box{tx, body.y, tw, 0};
+			// the keys, as lay::playlistPage lays its own: Play and Shuffle share what is left of the Add key
+			// equally, the odd unit going to the last of them
+			int ky = body.y + PAGEHEAD_ART + SP8, w = body.w;
+			if (h.keys == 3)
+			{
+				int addX = body.x + w - PL_ADD_W, rest = addX - GAP - body.x;
+				h.key[0] = {body.x, ky, (rest - GAP) / 2, PL_KEYS_H};
+				h.key[1] = {body.x + h.key[0].w + GAP, ky, rest - GAP - h.key[0].w, PL_KEYS_H};
+				h.key[2] = {addX, ky, PL_ADD_W, PL_KEYS_H};
+			}
+			else if (h.keys == 2)
+			{
+				h.key[0] = cell({body.x, ky, w, PL_KEYS_H}, 2, GAP, 0);
+				h.key[1] = cell({body.x, ky, w, PL_KEYS_H}, 2, GAP, 1);
+			}
+			else for (auto& k : h.key) k = {0, 0, 0, 0};
+			h.content = {body.x, ky + PL_KEYS_H + SP6, w, std::max(0, body.y + body.h - (ky + PL_KEYS_H + SP6))};
+			return h;
+		}
+
+		TrackRow trackRow(Box row)
+		{
+			TrackRow t;
+			t.row = row;
+			t.number = {row.x + SP12, row.y, 20, row.h};
+			int x = t.number.x + 20 + SP12;
+			t.name = {x, row.y, std::max(1, row.x + row.w - SP12 - x), row.h};
+			t.right = row.x + row.w - SP12;
+			return t;
+		}
+
+		PlaylistRow playlistRow(Box row)
+		{
+			PlaylistRow p;
+			p.row = row;
+			p.icon = {row.x + SP12, row.y + (row.h - 20) / 2, 20, 20};
+			int x = p.icon.x + p.icon.w + SP12;
+			p.name = {x, row.y, std::max(1, row.x + row.w - SP12 - x), row.h};
+			p.right = row.x + row.w - SP12;
+			return p;
 		}
 	}
 }

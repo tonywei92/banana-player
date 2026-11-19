@@ -10617,6 +10617,70 @@ static void testKitLayoutPages()
 	CHECK_EQ(searchPage({16, 4, 608, 440}, {0}, 0, false).clear.w, 0);
 }
 
+// ---- the library's pages (kitlayout.h's 2026-11-19 third block): an album's and an artist's page head, the
+// album's track row, the Playlists page's row ----
+static void testKitLayoutLibrary()
+{
+	using namespace lay;
+	// the page head: the art 120 square at the body's top left, the title and its lines beside it, the keys
+	// under them (Add 64 at the right), the content from under the keys to the body's foot
+	PageHead h = pageHead({16, 0, 608, 450}, 2, 3);
+	CHECK_EQ(h.lines, 2);
+	CHECK_EQ(h.keys, 3);
+	CHECK_EQ(h.art.w, PAGEHEAD_ART);
+	CHECK_EQ(h.art.h, PAGEHEAD_ART);
+	CHECK_EQ(h.title.x, 16 + PAGEHEAD_ART + SP12);
+	CHECK_EQ(h.title.h, PAGEHEAD_TITLE_H);
+	CHECK(h.line[0].y > h.title.y);
+	CHECK(h.line[1].y >= h.line[0].y + h.line[0].h);
+	CHECK(h.line[1].y + h.line[1].h <= h.art.y + h.art.h);
+	CHECK_EQ(h.key[0].y, PAGEHEAD_ART + SP8);
+	CHECK_EQ(h.key[0].h, PL_KEYS_H);
+	CHECK_EQ(h.key[2].w, PL_ADD_W);
+	CHECK_EQ(h.key[2].x + h.key[2].w, 624);
+	// Play and Shuffle share what is left of the Add key equally, the odd unit to the last (lay::cell's rule)
+	CHECK_EQ(h.key[0].x, 16);
+	CHECK_EQ(h.key[1].x, h.key[0].x + h.key[0].w + SP8);
+	CHECK_EQ(h.key[1].x + h.key[1].w, h.key[2].x - SP8);
+	CHECK(h.key[1].w >= h.key[0].w);
+	CHECK(h.key[1].w - h.key[0].w <= 1);
+	CHECK(h.key[0].w >= 44);
+	for (auto* b : {&h.art, &h.title, &h.line[0], &h.line[1], &h.key[0], &h.key[1], &h.key[2]})
+		CHECK(insidePanel(*b));
+	CHECK_EQ(h.content.y, PAGEHEAD_ART + SP8 + PL_KEYS_H + SP6);
+	CHECK_EQ(h.content.y + h.content.h, 450);
+	// an artist's: one line, and Liked's page has no Add key (Play and Shuffle halve the width)
+	PageHead artist = pageHead({90, 54, 538, 396}, 1, 3);
+	CHECK_EQ(artist.line[1].h, 0);
+	CHECK_EQ(artist.key[2].x + artist.key[2].w, 90 + 538);
+	PageHead liked = pageHead({16, 0, 608, 450}, 1, 2);
+	CHECK_EQ(liked.keys, 2);
+	CHECK_EQ(liked.key[1].x + liked.key[1].w, 624);
+	CHECK_EQ(liked.key[0].w, liked.key[1].w);
+	CHECK_EQ(pageHead({16, 0, 608, 450}, 2, 0).key[0].w, 0);
+
+	// a track row: the number's 20-wide slot 12 inside the row, the name after it, the right end 12 inside
+	TrackRow t = trackRow({16, 190, 608, TRACK_ROW_H});
+	CHECK_EQ(t.row.h, TRACK_ROW_H);
+	CHECK_EQ(t.number.x, 16 + SP12);
+	CHECK_EQ(t.number.w, 20);
+	CHECK(t.name.x >= t.number.x + 20);
+	CHECK(t.name.x + t.name.w <= t.right);
+	CHECK_EQ(t.right, 612);
+	CHECK(insidePanel(t.row));
+
+	// a Playlists row: 46 tall (a sheet's row), the icon's slot, the name after it, the counts at the right
+	PlaylistRow p = playlistRow({16, 84, 608, PLAYLIST_ROW_H});
+	CHECK_EQ(p.row.h, PLAYLIST_ROW_H);
+	CHECK_EQ(p.icon.w, 20);
+	CHECK_EQ(p.icon.h, 20);
+	CHECK(p.icon.y >= p.row.y);
+	CHECK(p.icon.y + p.icon.h <= p.row.y + p.row.h);
+	CHECK(p.name.x > p.icon.x + p.icon.w);
+	CHECK_EQ(p.right, 612);
+	CHECK(insidePanel(p.row));
+}
+
 // ---- kit-new's layouts (kitlayout.h's kit-new block): one named test each ----
 static bool kitInside(lay::Box b, int w, int h) { return b.x >= 0 && b.y >= 0 && b.x + b.w <= w && b.y + b.h <= h; }
 static bool kitApart(lay::Box a, lay::Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; }
@@ -13967,6 +14031,9 @@ static void testArtBackdrop()
 		CHECK_EQ((int)a.rgb.size(), W * H * 3);
 		CHECK_EQ(a.l95top, c[0] == 0 ? 0 : (c[0] == 255 ? 255 : a.l95top));
 		CHECK(a.l95low >= 0 && a.l95low <= 255);
+		// the 5th percentile rides along (a light theme's half of the protection)
+		CHECK(a.l5top >= 0 && a.l5top <= 255);
+		CHECK(a.l5low >= 0 && a.l5low <= 255);
 	}
 	// a black art's picture is black; a white one's is white (its saturation is nothing to scale)
 	{
@@ -13974,6 +14041,8 @@ static void testArtBackdrop()
 		Art a = artBackdrop(px.data(), 64, 48);
 		CHECK_EQ(a.l95top, 0);
 		CHECK_EQ(a.l95low, 0);
+		CHECK_EQ(a.l5top, 0);
+		CHECK_EQ(a.l5low, 0);
 		CHECK_EQ(a.rgb[0], 0);
 	}
 	{
@@ -13981,6 +14050,8 @@ static void testArtBackdrop()
 		Art a = artBackdrop(px.data(), 64, 48);
 		CHECK_EQ(a.l95top > 245, true);
 		CHECK_EQ(a.l95low > 245, true);
+		CHECK_EQ(a.l5top > 245, true);
+		CHECK_EQ(a.l5low > 245, true);
 	}
 	// a neon green is over 85% saturation: dropped like a grey
 	{
@@ -13996,6 +14067,9 @@ static void testArtBackdrop()
 		CHECK_EQ((int)a.rgb.size(), W * H * 3);
 		CHECK(a.l95top > 40 && a.l95top < 160);
 		CHECK(a.l95low > 40 && a.l95low < 160);
+		// the 5th percentile is never above the 95th over the same band
+		CHECK(a.l5top <= a.l95top);
+		CHECK(a.l5low <= a.l95low);
 	}
 	// a two-colour art: the larger share (70% red) gives the hue, and the blur mixes them where they meet
 	{
@@ -14010,6 +14084,9 @@ static void testArtBackdrop()
 		size_t mid = ((size_t)60 * W + 80) * 3;
 		CHECK(a.rgb[mid + 2] > 60);	// the blue side has reached the red
 		CHECK(a.rgb[mid] > 60);
+		// a two-tone art's darkest rows sit well under its brightest: both halves of the protection have work to do
+		CHECK(a.l5top < a.l95top);
+		CHECK(a.l5low < a.l95low);
 	}
 	// a tiny or empty art: the fallback, no picture
 	{
@@ -14024,7 +14101,7 @@ static void testArtBackdropTheme()
 	using namespace artbg;
 	const ThemeColours dark{{0, 0, 0}, {18, 17, 22}, {232, 226, 211}, {171, 165, 151}, {255, 210, 63}};
 	// a hue: the tinted ground, no fallback, five stops raised from the mock-up's 66 / 60 / 80 / 90 / 94
-	Backdrop b = backdropFor(dark, 26, 40, 70);
+	Backdrop b = backdropFor(dark, 26, 40, 70, 10, 20);
 	CHECK_EQ(b.fallback, false);
 	CHECK_EQ(b.stop[0], b.ground);
 	CHECK_EQ((int)b.stop[4].r, (int)b.ground.r);
@@ -14033,30 +14110,72 @@ static void testArtBackdropTheme()
 	CHECK(b.veil[2] >= 80 && b.veil[2] <= 96);
 	CHECK(b.veil[3] >= 90 && b.veil[3] <= 96);
 	CHECK(b.veil[4] >= 94 && b.veil[4] <= 96);
-	// a white picture needs a deeper veil under the bar than a dark one
-	Backdrop bright = backdropFor(dark, 26, 250, 250);
+	// a white picture needs a deeper veil under the bar than a dark one; the 5th percentile (a light theme's
+	// half) changes nothing here
+	Backdrop bright = backdropFor(dark, 26, 250, 250, 240, 240);
 	CHECK_EQ(bright.fallback, false);
 	CHECK(bright.veil[2] > b.veil[2]);
 	CHECK(bright.veil[4] >= b.veil[4]);
+	CHECK_EQ(bright.veil[0], backdropFor(dark, 26, 250, 250, 0, 0).veil[0]);
 	// no hue: the neutral gradient, the charcoal 35% to SURFACE at the top and BG at the foot
-	Backdrop f = backdropFor(dark, -1, 0, 0);
+	Backdrop f = backdropFor(dark, -1, 0, 0, 0, 0);
 	CHECK_EQ(f.fallback, true);
 	CHECK(f.top.r > dark.bg.r);
 	CHECK_EQ((int)f.bottom.r, (int)dark.bg.r);
 	CHECK_EQ(f.veil[0], 0);
 	// an accent with a colour of its own (blue) clashes with orange art: the fallback
 	const ThemeColours blue{{0, 0, 0}, {18, 17, 22}, {232, 226, 211}, {171, 165, 151}, {0, 80, 220}};
-	CHECK_EQ(backdropFor(blue, 26, 40, 70).fallback, true);
+	CHECK_EQ(backdropFor(blue, 26, 40, 70, 10, 20).fallback, true);
 	// a grey accent has no hue of its own: no clash
 	const ThemeColours grey{{0, 0, 0}, {18, 17, 22}, {232, 226, 211}, {171, 165, 151}, {128, 128, 128}};
-	CHECK_EQ(backdropFor(grey, 26, 40, 70).fallback, false);
+	CHECK_EQ(backdropFor(grey, 26, 40, 70, 10, 20).fallback, false);
 	// the art's own struct feeds the same function
 	Art a;
 	a.hasHue = true;
 	a.hue = 26;
 	a.l95top = 40;
 	a.l95low = 70;
+	a.l5top = 10;
+	a.l5low = 20;
 	CHECK_EQ(backdropFor(dark, a).fallback, false);
+
+	// the light version (components.md "Match album art"): the Light palette's own values
+	const ThemeColours light{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20}, {0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};
+	Backdrop lb = backdropFor(light, 26, 240, 220, 40, 30);
+	CHECK_EQ(lb.fallback, false);
+	// the ground is the paper with the art's hue at S 22% / L 86% blended in: light, not the dark charcoal
+	CHECK(lb.ground.r > 0xC0);
+	CHECK(lb.ground.r >= lb.ground.b);
+	CHECK_EQ(lb.stop[0], lb.ground);
+	CHECK(lb.veil[0] >= 66 && lb.veil[0] <= 96);
+	CHECK(lb.veil[2] >= 80 && lb.veil[2] <= 96);
+	CHECK(lb.veil[4] >= 94 && lb.veil[4] <= 96);
+	// a dark art is whitened: its stop behind the title rises past the base (protection the other way round,
+	// on the picture's 5th-percentile luminance), where a bright one leaves the base alone
+	CHECK(lb.veil[1] > 66);
+	CHECK(lb.veil[1] <= 96);
+	Backdrop lbBright = backdropFor(light, 26, 240, 220, 235, 228);
+	CHECK_EQ(lbBright.fallback, false);
+	CHECK_EQ(lbBright.veil[1], 60);
+	CHECK(lbBright.veil[2] <= lb.veil[2]);
+	// no hue: the fallback is the theme's plain ground (a gradient of one colour, so one fill)
+	Backdrop lf = backdropFor(light, -1, 0, 0, 0, 0);
+	CHECK_EQ(lf.fallback, true);
+	CHECK_EQ(lf.top, light.bg);
+	CHECK_EQ(lf.bottom, light.bg);
+	CHECK_EQ(lf.veil[0], 0);
+	// the clash rule holds in a light theme too: a blue accent, orange art, the plain ground
+	const ThemeColours lightBlue{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20}, {0x62, 0x5E, 0x56}, {0, 80, 220}};
+	Backdrop lc = backdropFor(lightBlue, 26, 240, 220, 40, 30);
+	CHECK_EQ(lc.fallback, true);
+	CHECK_EQ(lc.top, lightBlue.bg);
+	// a theme whose paper and text sit too close for any veil (a pathological one, to pin the rule): nothing
+	// of the art could show, so the plain ground
+	const ThemeColours mid{{0x78, 0x78, 0x78}, {0x7A, 0x7A, 0x7A}, {0x70, 0x70, 0x70}, {0x71, 0x71, 0x71}, {0x72, 0x72, 0x72}};
+	Backdrop lHard = backdropFor(mid, 26, 200, 200, 100, 100);
+	CHECK_EQ(lHard.fallback, true);
+	CHECK_EQ(lHard.top, mid.bg);
+	CHECK_EQ(lHard.bottom, mid.bg);
 }
 
 static void testArtBackdropCache()
@@ -14067,11 +14186,13 @@ static void testArtBackdropCache()
 	a.hue = 210;
 	a.l95top = 40;
 	a.l95low = 70;
+	a.l5top = 12;
+	a.l5low = 18;
 	a.rgb.assign(PIXELS * 3, 7);
 	a.rgb[0] = 1;
 	a.rgb[PIXELS * 3 - 1] = 200;
 	std::vector<uint8_t> bytes = encode(a);
-	CHECK_EQ((int)bytes.size(), 5 + (int)PIXELS * 3);
+	CHECK_EQ((int)bytes.size(), 7 + (int)PIXELS * 3);
 	CHECK_EQ((int)bytes[0], (int)CACHE_VERSION);
 	Art b;
 	CHECK_EQ(decode(bytes.data(), bytes.size(), b), true);
@@ -14079,6 +14200,8 @@ static void testArtBackdropCache()
 	CHECK_EQ(b.hue, 210);
 	CHECK_EQ(b.l95top, 40);
 	CHECK_EQ(b.l95low, 70);
+	CHECK_EQ(b.l5top, 12);
+	CHECK_EQ(b.l5low, 18);
 	CHECK_EQ(b.rgb.size(), a.rgb.size());
 	CHECK_EQ((int)b.rgb[0], 1);
 	CHECK_EQ((int)b.rgb[PIXELS * 3 - 1], 200);
@@ -14310,6 +14433,7 @@ int main()
 	testKitVariantBars();
 	testKitLayoutLists();
 	testKitLayoutPages();
+	testKitLayoutLibrary();
 	testKitNewSectionRail();
 	testKitNewPreviewPane();
 	testKitNewBookBar();

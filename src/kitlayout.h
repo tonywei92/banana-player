@@ -725,5 +725,45 @@ namespace bp
 			std::vector<Box> recent;
 		};
 		SearchPage searchPage(Box body, const std::vector<int>& groupRows, int recentCount = 0, bool clear = true);
+
+		// ==== the library's pages (2026-11-19: an album's and an artist's own page, and Music's Playlists view;
+		// docs/redesign/src/screens.js: music-album, music-artist, playlists) ====
+
+		// ---- an album's or an artist's page head: the art (or the artist's disc) at the left, the title and its
+		// lines beside it, the page's keys (Play, Shuffle, Add — the playlist keys' own measures) under them, then
+		// the page's own content (an album's track rows, an artist's albums) ----
+		constexpr int PAGEHEAD_ART = 120;	// the art's side: the artist pane's covers are 120 (components.md, Cover cell)
+		constexpr int PAGEHEAD_TITLE_H = 30, PAGEHEAD_LINE1_H = 18, PAGEHEAD_LINE2_H = 16;
+		struct PageHead
+		{
+			Box art;		// 120 square: the caller's picture, the Art placeholder, or the artist's initial disc
+			Box title;		// the album's or the artist's name (F_P28)
+			Box line[2];	// an album: its artist, then its counts; an artist: its counts alone (line[1].h 0)
+			int lines = 0;
+			int keys = 0;	// 3: Play, Shuffle, Add; 2: Play and Shuffle (Liked has no Add)
+			Box key[3];
+			Box content;	// where the page's rows or grid begin, and what is left of the body
+		};
+		PageHead pageHead(Box body, int lines, int keys);
+
+		// ---- a track of an album's page (screens.js music-album): its number or the playing mark, the title, a
+		// VIDEO pill when the track is a music video, a heart when liked, its length at the right ----
+		constexpr int TRACK_ROW_H = 52;
+		struct TrackRow
+		{
+			Box row, number, name;
+			int right = 0;	// where the length (and the heart before it) end, 12 inside the row
+		};
+		TrackRow trackRow(Box row);
+
+		// ---- the Playlists page's row (screens.js playlists): the list's icon or Liked's heart, the name, a Now
+		// pill when it is the one playing, its counts at the right; 46 tall, as a sheet's row ----
+		constexpr int PLAYLIST_ROW_H = 46;
+		struct PlaylistRow
+		{
+			Box row, icon, name;
+			int right = 0;	// where the counts end, 12 inside the row
+		};
+		PlaylistRow playlistRow(Box row);
 	}
 }
