@@ -456,10 +456,15 @@ namespace bp
 		}
 	}
 
+	int Ui::Kit::pillW(const std::string& text) const
+	{
+		return textW(text, F_I11B) + 12;
+	}
+
 	int Ui::Kit::pill(int right, int cy, const std::string& text, Pill tone)
 	{
 		if (text.empty() || tone == Pill::None) return 0;
-		int w = textW(text, F_I11B) + 12;
+		int w = pillW(text);
 		Rect r{right - w, cy - 9, w, 17};
 		SDL_Color fill = tone == Pill::Live ? ACCENT : tone == Pill::Fact ? TRACK : sdl(theme::mix(theme::BG, theme::DANGER, theme::TINT));
 		ui.fillRound(r, fill, theme::R_CAP);

@@ -428,6 +428,10 @@ namespace bp
 		m.pressed = ui.pressedBtn == MINI_BAR;
 		m.markPressed = ui.pressedBtn == MINI_PP;
 		m.progress = dur > 0 && pos >= 0 ? std::clamp(pos / dur, 0.0, 1.0) : 0;
+		// the same state pills Home's Now playing card shows (only what is away from normal); with them the bar
+		// drops the words "Now playing"
+		if (live)
+			for (auto& s : ui.kit->statePills(bp)) m.pills.push_back({s, Kit::Pill::Live});
 		if (ui.playHoldMini && ui.playHoldAt)
 			m.hold = std::min(1.0, (SDL_GetTicks() - ui.playHoldAt) / (double)PLAY_HOLD_MS);
 		m.key = bp.settings.buttonHotkeys && ui.selectToPlayer() ? "SELECT" : "";

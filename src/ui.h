@@ -434,7 +434,7 @@ namespace bp
 		struct MoreSpec;
 		struct MoreSheet;
 		void openMore(std::function<MoreSpec(const Player&)> build);
-		// test only: every ui_kit.h "KIT VARIANTS" piece on one page, for a `shot:` (--press gallery:variants[:PAGE], 1..8)
+		// test only: every ui_kit.h "KIT VARIANTS" piece on one page, for a `shot:` (--press gallery:variants[:PAGE], 1..10)
 		struct VariantsGallery;
 		// ---- the player screen (Page::Main: a video, a song; a photo's viewer is still here in Ui): an area,
 		// ui_player.h / ui_player.cpp ----

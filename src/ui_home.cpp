@@ -48,23 +48,6 @@ namespace bp
 			if (dot != std::string::npos && dot > 0) n.erase(dot);
 			return n;
 		}
-
-		// the mini bar's state pills, for Home's Now playing card (components.md: only what is away from normal, in
-		// yellow): speed, Repeat one (a video), Shuffle (a song), the EQ preset and the effect, and where a browser
-		// plays it
-		void homeStatePills(const Player& p, const Ui& ui, std::vector<std::string>& out)
-		{
-			const Settings& st = p.settings;
-			if (std::fabs(p.speed - 1.0) > 1e-6) out.push_back(speedLabel(p.speed));
-			if (p.playingAudio())
-			{
-				if (st.shuffle) out.push_back("Shuffle");
-				if (st.eqOn) out.push_back(st.eqPreset.empty() ? CUSTOM_NAME : st.eqPreset);
-				if (st.soundFx != SoundFx::None) out.push_back(FX_SHORT[std::clamp((int)st.soundFx, 0, SOUNDFX_COUNT - 1)]);
-			}
-			else if (st.loop == LOOP_ONE) out.push_back("Repeat one");
-			if (ui.pageIsOut() && !ui.pageName().empty()) out.push_back("Playing in " + ui.pageName());
-		}
 	}
 
 	// ---- listing Recent ----
@@ -368,7 +351,7 @@ namespace bp
 				c.note += " / " + formatTime(p.duration);
 				c.frac = std::clamp(pos / p.duration, 0.0, 1.0);
 			}
-			homeStatePills(p, ui, c.pills);
+			c.pills = ui.kit->statePills(p);
 			return c;
 		}
 		auto fromResume = [&](const ResumeEntry& e) {
@@ -1081,7 +1064,7 @@ namespace bp
 				int x = l.note.x + nw + (nw ? 8 : 0);
 				for (auto& pill : c.pills)
 				{
-					int w = k.textW(pill, F_I11B) + 12;
+					int w = k.pillW(pill);
 					if (x + w > right) break;	// the time and the ones that fit (the key's side is not covered)
 					k.pill(x + w, cy, pill, Kit::Pill::Live);
 					x += w + 5;

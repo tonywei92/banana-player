@@ -81,7 +81,7 @@ namespace bp
 		{
 			bool shown = false, live = false, stopped = false, paused = false;
 			std::string path, title, note, label, key, artKey;
-			std::vector<std::string> pills;	// all Live (yellow): away from normal, as the mini bar has them
+			std::vector<std::string> pills;	// all Live (yellow), the kit's statePills: away from normal, as the mini bar has them
 			const Glyph* kind = nullptr;
 			double frac = 0;
 		};
