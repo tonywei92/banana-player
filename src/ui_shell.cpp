@@ -78,19 +78,18 @@ namespace bp
 		h.search = true;
 		if (ui.page == Page::Settings)
 		{
-			// Settings is START's page, opened as a section: the tiles' title, or a group's with its neighbours in
-			// the right slot (SettingsPage draws those itself)
+			// Settings is START's page, opened as a section: its own title, crumb and hints; a group also has its
+			// neighbours in the right slot ("L2 Playback · Music R2", the spec's settings-group)
 			h.back = true;
 			h.more = false;
+			h.title = ui.settingsPage->title();
+			h.crumb = ui.settingsPage->crumb();
+			h.hints = ui.settingsPage->hints(p);
 			if (ui.setGroup >= 0)
 			{
-				h.title = GROUP_NAMES[ui.setGroup];
-				h.crumb = std::string("Settings") + DOT + std::to_string(ui.setGroup + 1) + " of " + std::to_string(GROUPS);
-				// a group's neighbours in the right slot: "L2 Playback · Music R2" (the spec's settings-group)
 				int prev = (ui.setGroup + GROUPS - 1) % GROUPS, next = (ui.setGroup + 1) % GROUPS;
-				// a group's name in the header's neighbour slot (the spec's "Music", "Screen": one line)
 				static const char* const SHORT_GROUP[] = {"Playback", "Subtitles", "Music", "Photos", "Reading", "Files",
-					"Screen", "Web", "Updates", "About"};
+					"Power", "Web", "Updates", "About"};
 				std::string prevName = SHORT_GROUP[prev], nextName = SHORT_GROUP[next];
 				Kit& k = *ui.kit;
 				h.rightW = k.capsW("L2") + 6 + k.textW(prevName, F_I12) + 14 + k.textW(nextName, F_I12) + 6 + k.capsW("R2");
@@ -108,34 +107,47 @@ namespace bp
 					return r - w;
 				};
 			}
-			else
-			{
-				h.title = "Settings";
-				h.crumb = std::string("Banana Player ") + BP_VERSION;
-			}
-			h.hints = {{"A", "Open"}, {"B", "Close"}, {"L/R", "Sections"}, {"L3", "Search"}};
 			return h;
 		}
 		const Browse& b = *ui.browse;
 		const std::string& dir = b.browseDir;
-		if (dir == HOMEDIR)
+		// the rebuilt views say what their header shows (title, crumb, hints, back, More); the rest keep the generic
+		// values until their screens are rebuilt too
+		if (b.atHome() || dir == RECENT)
 		{
-			h.title = "Home";
-			h.hints = {{"A", "Open"}, {"X", "Options"}, {"B", "Quit"}, {"L/R", "Sections"}, {"L3", "Search"}};
+			h.title = b.homeView->title();
+			h.crumb = b.homeView->crumb(p);
+			h.hints = b.homeView->hintList(p);
+			return h;
 		}
-		else if (dir == RECENT)
+		if (b.filesPage())
 		{
-			h.title = "Recent";
-			h.crumb = "Home";
-			h.hints = {{"A", "Play"}, {"Y", "Menu"}, {"L2/R2", "Kind"}, {"B", "Home"}, {"L/R", "Sections"}};
+			h.title = b.fileSel ? (b.fileSelCount() ? std::to_string(b.fileSelCount()) + " selected" : std::string("Select"))
+				: b.filesTitle();
+			h.crumb = b.filesCrumb();
+			h.hints = b.filesHints(p);
+			h.back = true;
+			h.more = !b.fileSel;	// (the old header hid More in select mode; X still opens it)
+			if (b.filesReadOnly())
+			{
+				// the read-only badge sits in the right slot, left of the status cluster (as the old header had it)
+				Kit& k = *ui.kit;
+				h.rightW = lay::badgeW(k.textW(lay::caps("Read only"), F_I11B), true);
+				h.right = [this](int right, int cy) {
+					return right - ui.kit->badge(right, cy, {&G_LOCK, "Read only"});
+				};
+			}
+			return h;
 		}
-		else if (dir == PLROOT || isPlDir(dir))
+		if (dir == PLROOT || isPlDir(dir))
 		{
-			h.title = dir == PLROOT ? "Playlists" : b.playlists->plCur.name;
-			h.crumb = dir == PLROOT ? "Home" : std::string("Playlists");
-			h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Select"}, {"B", "Home"}, {"L/R", "Sections"}};
+			h.title = b.playlists->plTitle(p);
+			h.crumb = b.playlists->plCrumb(p);
+			h.hints = b.playlists->plHints(p);
+			h.back = true;
+			return h;
 		}
-		else if (dir == NETROOT || dir == FORMDIR || dir == FINDNET || isNetPath(dir))
+		if (dir == NETROOT || dir == FORMDIR || dir == FINDNET || isNetPath(dir))
 		{
 			h.title = dir == NETROOT ? "Network" : dir == FORMDIR ? (b.formId.empty() ? "Add connection" : "Edit connection")
 				: dir == FINDNET ? "On your network" : baseName(dir);
@@ -333,15 +345,6 @@ namespace bp
 
 	// ---- the frame's drawing ----
 
-	void Ui::Shell::drawBrand(const lay::Rail& r)
-	{
-		// the spec's mark, where the bottom panel has room for it: above Settings, at the rail's foot (the top panel's
-		// preview panes carry the same drawing)
-		int top = r.capR.y + r.capR.h;
-		if (r.settings.y - top < 34) return;
-		ui.kit->brandMark((lay::RAIL_W - 1 - 22) / 2, r.settings.y - 28, 22);
-	}
-
 	void Ui::Shell::drawHeader(const ShellHead& h, const Player& p)
 	{
 		Kit& k = *ui.kit;
@@ -417,7 +420,6 @@ namespace bp
 		}
 		KitNew::RailItem settings{&G_GEAR, "Settings", false};
 		KitNew::rail(k, r, items, settings, activeIndex(cs, at), pressedFrame >= F_RAIL ? pressedFrame - F_RAIL : -1);
-		drawBrand(r);
 		drawHeader(h, p);
 		drawMini(s, p);
 		k.hints(s.hints, h.hints);
@@ -430,9 +432,24 @@ namespace bp
 		bodyPages.insert(pg);
 	}
 
+	void Ui::Shell::adoptBrowse()
+	{
+		browseBuilt = true;
+	}
+
 	bool Ui::Shell::adopted(Page pg) const
 	{
 		return bodyPages.count(pg) != 0;
+	}
+
+	bool Ui::Shell::adopted(const Player& p) const
+	{
+		// the browser's rebuilt views draw in the body box; Network, the Extensions drawer and the forms still draw
+		// the old full panel and keep the bridge
+		if (ui.page != Page::Browse) return adopted(ui.page);
+		if (!browseBuilt) return false;
+		const Browse& b = *ui.browse;
+		return b.atHome() || b.browseDir == RECENT || b.filesPage() || b.browseDir == PLROOT || isPlDir(b.browseDir);
 	}
 
 	Ui::Shell::Bridge Ui::Shell::bridgeFor(const Player& p) const
@@ -447,7 +464,7 @@ namespace bp
 		b.h = std::max(1, (int)std::lround(sh * sc));
 		b.x = s.body.x + (s.body.w - b.w) / 2;
 		b.y = s.body.y + (s.body.h - b.h) / 2;
-		b.on = !adopted(ui.page);
+		b.on = !adopted(p);
 		return b;
 	}
 
@@ -503,7 +520,7 @@ namespace bp
 
 	bool Ui::Shell::mapPoint(const Player& p, int& x, int& y) const
 	{
-		if (adopted(ui.page) || !bridge.on) return false;
+		if (adopted(p) || !bridge.on) return false;
 		Bridge b = bridgeFor(p);
 		if (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h) return false;
 		x = (x - b.x) * 640 / b.w;

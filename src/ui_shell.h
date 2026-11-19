@@ -49,12 +49,17 @@ namespace bp
 		// The old bodies draw the whole panel (their own header, hints and 640-wide rows). beginBody renders that
 		// into a texture; endBody copies the 0,54..450 part into layout().body and remembers the mapping so
 		// mapPoint() can send the page's touches where they were drawn. A page rebuilt on the kit calls adopt(pg)
-		// once (in its area's constructor) and draws directly in the body box: no texture, no mapping.
+		// once (in its area's constructor) and draws directly in the body box: no texture, no mapping. The browser's
+		// rebuilt views (Home, All recent, Files, Playlists) share Page::Browse with the pages still on the old
+		// drawing (Network, the Extensions drawer, the forms), so adoptBrowse() says the browser is rebuilt and
+		// adopted(p) tells its views from the rest.
 		bool beginBody(const Player& p);
 		void endBody(const Player& p);
 		bool mapPoint(const Player& p, int& x, int& y) const;
 		void adopt(Page pg);	// the page's body is drawn in layout().body (a screen rebuilt on the kit)
+		void adoptBrowse();	// the browser's rebuilt views: Home, All recent, Files, Playlists
 		bool adopted(Page pg) const;
+		bool adopted(const Player& p) const;	// the page shown draws its body itself (Browse: only its rebuilt views)
 
 		// frame keys and touches (Ui calls them while page() is true): L/R step the sections, L3 and the Search key
 		// say Search is coming, the rail's cells open a section, back is B, More is X
@@ -74,9 +79,9 @@ namespace bp
 		bool frameRects(const Player& p, const ShellHead& h, lay::Box& back, lay::Box& more, lay::Box& search) const;
 		void drawHeader(const ShellHead& h, const Player& p);
 		void drawMini(const lay::Shell& s, const Player& p);
-		void drawBrand(const lay::Rail& r);
 
 		std::set<Page> bodyPages;	// pages whose body is drawn in the shell's box (empty: the old full-panel bodies)
+		bool browseBuilt = false;	// the browser's rebuilt views are drawn in the shell's box
 		SDL_Texture* bodyTex = nullptr;
 		int bodyTexW = 0, bodyTexH = 0;
 		bool bodyTargetOn = false;

@@ -8,7 +8,8 @@
 // its folder (openFile, showInFolder), the mini bar and the playing file's chip (every page's), the settings mirrored
 // for drawing (showHidden, mangaOn) and the Home touches Ui::pointer takes before the area's point (the quit dialog
 // over every finger, a card's hold in progress), which call in here where they always were.
-// Until the shell lands, frame() is the one place Home's header and hint bar are drawn: the shell step replaces it.
+// Home draws only its body in lay::shell(mini).body; Ui::Shell draws the header and hint bar from title(), crumb(),
+// hintList() and draws the rail, the header's back and More keys and the mini bar.
 #pragma once
 #include "ui.h"
 
@@ -126,11 +127,14 @@ namespace bp
 		MoreSpec moreSpec(const Player& p);
 		const RecentItem* findRecent(const std::string& path) const;
 
-		// ---- the frame (the shell step swaps this one function) ----
-		void frame(const Player& p, const std::string& title, const std::string& crumb, const std::vector<Hint>& hints);
+		// ---- the shell's header (Ui::Shell::head asks these) ----
 		std::string title() const;
 		std::string crumb(const Player& p) const;
 		std::vector<Hint> hintList(const Player& p) const;
+		// the empty state's sentences, wrapped to the kit's 400-unit line width: as many lines as they need
+		std::vector<std::string> emptyText(const Player& p) const;
+		std::vector<std::string> recentEmptyText(const Player& p) const;
+		std::vector<std::string> wrapEmpty(const std::vector<std::string>& text) const;
 		// Home's drawing state (Ui::Browse::signature adds it): what draw() shows that Ui::signature doesn't hold
 		std::string sig(const Player& p) const;
 

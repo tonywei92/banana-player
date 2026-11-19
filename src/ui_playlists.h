@@ -152,11 +152,10 @@ namespace bp
 		void drawPlRow(int i, int mid, bool at);	// a playlist's item: its number, mark, name and where it is
 
 		// ---- the redesigned pages (docs/redesign: playlists, playlist, playlist-select, playlist-move, liked) ----
-		// The area's own drawing, inside lay::shell(mini).body only. Until the shell lands, frame() draws the page's
-		// header and hints (the merge swaps that one function for Ui::Shell).
+		// The area's own drawing, inside lay::shell(mini).body only; Ui::Shell draws the header and hints from
+		// plTitle, plCrumb and plHints.
 		bool onPage() const;	// the list of playlists, or a playlist's own page
 		lay::PlaylistPage pageLayout(const Player& p) const;
-		void frame(const Player& p);
 		void draw(const Player& p);
 		std::string plTitle(const Player& p) const;
 		std::string plCrumb(const Player& p) const;

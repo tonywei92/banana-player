@@ -632,7 +632,7 @@ namespace bp
 		std::vector<Kit::FilterItem> items;
 		for (int i = 0; i < 4; i++) items.push_back({FILTER_NAMES[i], recentCounts[i]});
 		lay::HomePage hp = lay::homePage(sh.body, c.shown, has, std::min(vis, HOME_RECENT_MAX), moreShown(), ui.kit->filterWidths(items));
-		lay::EmptyState es = lay::emptyState(sh.body, 2, 2);
+		lay::EmptyState es = lay::emptyState(sh.body, (int)wrapEmpty(emptyText(p)).size(), 2);
 		if (pt.kind == Pointer::Down)
 		{
 			homeTouch = true;
@@ -755,7 +755,7 @@ namespace bp
 		// its empty state's one key (Browse Files), as the key says
 		if (ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0))
 		{
-			lay::EmptyState es = lay::emptyState(sh.body, 2, 1);
+			lay::EmptyState es = lay::emptyState(sh.body, (int)wrapEmpty(recentEmptyText(p)).size(), 1);
 			if (es.key[0].hit(x, y)) ui.browse->openSection(TAB_LOCAL, p);
 			return false;
 		}
@@ -813,16 +813,27 @@ namespace bp
 		return h;
 	}
 
-	void Ui::Home::frame(const Player& p, const std::string& t, const std::string& cr, const std::vector<Hint>& h)
+	std::vector<std::string> Ui::Home::emptyText(const Player& p) const
 	{
-		// the old header and hint bar until the shell's own land (title, crumb, battery): the shell step swaps this
-		ui.drawHeader(t, p);
-		if (!cr.empty())
-		{
-			int x = ui.backIconShown(p) ? 72 : 16;
-			ui.drawTextMid(cr, F_I12, DIM, x, 46, 616 - x);
-		}
-		ui.drawHints(h);
+		return p.settings.keepHistory
+			? std::vector<std::string>{"What you play shows up here, so you can carry on.", "Start with the files on your card, or send some from a phone."}
+			: std::vector<std::string>{"What you play isn't kept, so there is nothing here to carry on from.", "Turn the history on in Settings \xE2\x80\xBA Files & history."};
+	}
+
+	std::vector<std::string> Ui::Home::recentEmptyText(const Player& p) const
+	{
+		return p.settings.keepHistory ? std::vector<std::string>{"What you play shows up here, so you can carry on."}
+			: std::vector<std::string>{"Play history is off (Settings \xE2\x80\xBA Files & history)."};
+	}
+
+	std::vector<std::string> Ui::Home::wrapEmpty(const std::vector<std::string>& text) const
+	{
+		// the empty state's lines are 400 wide at Inter 14; wrapping here lets lay::emptyState place the keys under
+		// however many lines the sentences take (the kit draws one line per string)
+		std::vector<std::string> out;
+		for (const auto& s : text)
+			for (auto& line : ui.wrapText(s, F_I14, 400, 99)) out.push_back(line);
+		return out;
 	}
 
 	std::string Ui::Home::sig(const Player& p) const
@@ -853,13 +864,11 @@ namespace bp
 		if (!has && !c.shown)
 		{
 			// home-first: nothing played yet (or the history off): what goes here and the two quickest ways to start
-			lay::EmptyState es = lay::emptyState(sh.body, 2, 2);
 			Kit::Empty e;
 			e.glyph = &G_HOME;
 			e.title = p.settings.keepHistory ? "Nothing played yet" : "Play history is off";
-			e.lines = p.settings.keepHistory
-				? std::vector<std::string>{"What you play shows up here, so you can carry on.", "Start with the files on your card, or send some from a phone."}
-				: std::vector<std::string>{"What you play isn't kept, so there is nothing here to carry on from.", "Turn the history on in Settings \xE2\x80\xBA Files & history."};
+			e.lines = wrapEmpty(emptyText(p));
+			lay::EmptyState es = lay::emptyState(sh.body, (int)e.lines.size(), 2);
 			e.key1 = "Browse Files";
 			e.key2 = "Web dashboard";
 			e.glyph1 = &G_CARD;
@@ -868,7 +877,6 @@ namespace bp
 			e.pressed1 = pressedEmptyKey == 0;
 			e.pressed2 = pressedEmptyKey == 1;
 			k.emptyState(es, e);
-			frame(p, title(), crumb(p), hintList(p));
 			if (quitOpen) drawQuitDialog(ui.nowPlayable(p));
 			return;
 		}
@@ -957,7 +965,6 @@ namespace bp
 				k.tile(hp.shortcut[i], t);
 			}
 		}
-		frame(p, title(), crumb(p), hintList(p));
 		if (quitOpen) drawQuitDialog(ui.nowPlayable(p));
 	}
 
@@ -983,18 +990,16 @@ namespace bp
 		if (ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0))
 		{
 			std::string msg = ui.browse->browseRows.empty() ? "" : ui.browse->browseRows[0].label;
-			lay::EmptyState es = lay::emptyState(sh.body, 2, 1);
 			Kit::Empty e;
 			e.glyph = &G_CLOCK;
 			e.title = msg.empty() || msg == "Nothing played yet" ? "Nothing played yet" : msg;
-			e.lines = p.settings.keepHistory ? std::vector<std::string>{"What you play shows up here, so you can carry on."}
-				: std::vector<std::string>{"Play history is off (Settings \xE2\x80\xBA Files & history)."};
+			e.lines = wrapEmpty(recentEmptyText(p));
+			lay::EmptyState es = lay::emptyState(sh.body, (int)e.lines.size(), 1);
 			e.key1 = "Browse Files";
 			e.glyph1 = &G_CARD;
 			e.hotkeys = p.settings.buttonHotkeys;
 			e.pressed1 = false;
 			k.emptyState(es, e);
-			frame(p, title(), crumb(p), hintList(p));
 			return;
 		}
 		for (int i = 0; i < lp.shown; i++)
@@ -1016,7 +1021,6 @@ namespace bp
 			row.lit = false;
 			k.row(lp.row(i), row);
 		}
-		frame(p, title(), crumb(p), hintList(p));
 	}
 
 	void Ui::Home::drawQuitDialog(bool quitPlaying)

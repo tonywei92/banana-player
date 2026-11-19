@@ -21,6 +21,7 @@
 #include "ui_browse.h"
 #include "ui_playlists.h"
 #include "ui_home.h"
+#include "ui_shell.h"
 
 namespace bp
 {
@@ -306,15 +307,6 @@ namespace bp
 		return h;
 	}
 
-	void Ui::Playlists::frame(const Player& p)
-	{
-		// the page's header and hint bar, in one place: the merge swaps this for the shared Ui::Shell
-		lay::Shell sh = lay::shell(ui.miniBarShown(p));
-		ui.drawTextMid(plTitle(p), F_P28, TEXT, sh.body.x + lay::MARGIN, 22, sh.main.w - 2 * lay::MARGIN);
-		ui.drawTextMid(plCrumb(p), F_I12, DIM, sh.body.x + lay::MARGIN, 44, sh.main.w - 2 * lay::MARGIN);
-		ui.kit->hints(plHints(p));
-	}
-
 	void Ui::Playlists::addSheet(Player& p)
 	{
 		// the Add key's two ways (docs/redesign "playlist": Add files… / Add folder…)
@@ -378,7 +370,6 @@ namespace bp
 		lay::PlaylistPage l = pageLayout(p);
 		rowsY = l.rowsY;
 		rowsShown = l.rows;
-		frame(p);
 		Kit& k = *ui.kit;
 		bool inPl = isPlDir(ui.browse->browseDir);
 
@@ -662,7 +653,8 @@ namespace bp
 			if (pt.kind == Pointer::Down) return true;
 			if (pt.kind != Pointer::Up) return false;
 			bool liked = ui.plIsLiked(plCur.file);
-			lay::EmptyState es = lay::emptyState(l.area, 2, liked ? 1 : 2);
+			// as draw() laid it out: a playlist that couldn't be read has no keys, an empty one has one or two
+			lay::EmptyState es = lay::emptyState(l.area, plLoaded ? 2 : 1, plLoaded ? (liked ? 1 : 2) : 0);
 			if (es.key[0].hit(x, y))
 			{
 				if (liked) ui.browse->openSection(TAB_LOCAL, p);
@@ -1872,7 +1864,10 @@ namespace bp
 
 	// ---- the browser owns the playlists ----
 
-	Ui::Browse::Browse(Ui& u) : Area(u), playlists(std::make_unique<Playlists>(u)), homeView(std::make_unique<Home>(u)) {}
+	Ui::Browse::Browse(Ui& u) : Area(u), playlists(std::make_unique<Playlists>(u)), homeView(std::make_unique<Home>(u))
+	{
+		u.shell->adoptBrowse();
+	}
 	Ui::Browse::~Browse() = default;
 
 	// ---- Ui's, out of ui.h (they read the playlists' state) ----

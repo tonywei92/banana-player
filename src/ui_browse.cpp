@@ -1271,31 +1271,6 @@ namespace bp
 		return h;
 	}
 
-	void Ui::Browse::frame(const Player& p)
-	{
-		// (until the shared shell lands: this page's header and hint bar; the merge swaps only this function)
-		lay::Shell s = lay::shell(ui.miniBarShown(p));
-		lay::FilesHeader h = lay::filesHeader(s.header);
-		Kit& k = *ui.kit;
-		k.iconKey(h.back, G_BACK, filesPressed == 200 || ui.pressedBtn == BACK_ICON, 2);
-		if (!fileSel) k.iconKey(h.more, G_MORE, filesPressed == 201, 2);
-		// the status cluster: what plays, the battery and the clock; the read-only badge left of them
-		Kit::Status st;
-		st.playing = ui.bgPlay && p.playing() && !p.playingPhoto();
-		st.battery = ui.battery.percent;
-		st.charging = ui.battery.charging;
-		st.clock = ui.clockText(p);
-		if (filesReadOnly()) st.badges.push_back({&G_LOCK, "Read only", false});
-		int right = k.status(h.more.x - 10, s.header.y + s.header.h / 2, st);
-		int room = std::max(40, right - 12 - h.title.x);
-		std::string title = fileSel ? (fileSelCount() ? std::to_string(fileSelCount()) + " selected" : std::string("Select")) : filesTitle();
-		ui.drawTextMid(title, F_P28, TEXT, h.title.x, h.title.y + h.title.h / 2, room);
-		std::string crumb = filesCrumb();
-		if (k.textW(crumb, F_I12) > room) crumb = ui.elideLeft(crumb, F_I12, room);
-		ui.drawTextMid(crumb, F_I12, DIM, h.crumb.x, h.crumb.y + h.crumb.h / 2, room);
-		k.hints(filesHints(p));
-	}
-
 	void Ui::Browse::drawFilesRow(int i, const lay::FilesPage& f, int onScreen, bool at, const Player& p)
 	{
 		Rect r = f.row(onScreen);
@@ -1390,7 +1365,6 @@ namespace bp
 		if (filesEmpty())
 		{
 			drawFilesEmpty(f, p);
-			frame(p);
 			return;
 		}
 		int scroll = filesScroll(p), n = (int)browseRows.size();
@@ -1411,7 +1385,6 @@ namespace bp
 		}
 		else if (f.footer.w > 0)
 			ui.drawTextMid(filesFooter(), F_I12, DIM, f.footer.x, f.footer.y + f.footer.h / 2, f.footer.w);
-		frame(p);
 	}
 
 	bool Ui::Browse::fileTickable(int row) const
@@ -2401,7 +2374,7 @@ namespace bp
 
 	bool Ui::backIconShown(const Player&) const
 	{
-		// Home has none; the redesigned Files page draws its own (frame), so the old one is not drawn nor hit
-		return !(page == Page::Browse && !inMenu && (browse->atHome() || browse->filesPage()));
+		// Home has none; every other page (Files included, now that the shell draws its header) has the way back
+		return !(page == Page::Browse && !inMenu && browse->atHome());
 	}
 }

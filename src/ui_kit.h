@@ -342,7 +342,7 @@ namespace bp
 		{
 			const Glyph* glyph = nullptr;
 			std::string title;
-			std::vector<std::string> lines;	// one or two (Inter 14 dim, at most 400 wide)
+			std::vector<std::string> lines;	// each a line (Inter 14 dim, at most 400 wide); a page wraps its sentences first
 			std::string key1, key2;	// A, Y ("" none)
 			const Glyph *glyph1 = nullptr, *glyph2 = nullptr;
 			bool pressed1 = false, pressed2 = false, hotkeys = true;

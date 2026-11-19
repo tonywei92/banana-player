@@ -2,8 +2,8 @@
 // docs/notes/ui-areas.md). Its keys, its touches, its drawing and the rows' stepping are here and in ui_settings.cpp.
 // The groups are the redesign's (docs/redesign/src/screens.js, "settings" and "settings-group"): Playback, Subtitles,
 // Music & sound, Photos, Reading, Files & history, Power & screens, Web dashboard, Updates, About; L2 / R2 step between
-// them. Its content is laid out in lay::shell(mini).body and its frame(p) draws the shell's header and hints until
-// Ui::Shell owns them (docs/notes/2026-11-19-redesign-settings.md). The manga reader's own settings page
+// them. Its content is laid out in lay::shell(mini).body; Ui::Shell draws the header and hints from title(), crumb()
+// and hints(p) (docs/notes/2026-11-19-redesign-settings.md). The manga reader's own settings page
 // (Page::MangaSettings) is Manga's, but its rows are drawn, stepped and
 // touched by this struct's settingsDown, drawSettingRow, settingHelp and changeSetting. Stayed Ui's: the group and row
 // ids (SetGroup, STYLE_ROW0..MANGA_JAVA_ROW), the list's measures (the lay::settingsRows layout), setGroup (the open
@@ -16,7 +16,7 @@ namespace bp
 {
 	struct Ui::SettingsPage : Ui::Area
 	{
-		explicit SettingsPage(Ui& u) : Area(u) {}
+		explicit SettingsPage(Ui& u);
 
 		// ---- the area ----
 		bool has(Page pg) const override { return pg == Page::Settings; }
@@ -28,9 +28,7 @@ namespace bp
 		std::string signature(const Player& p) const override;
 
 		// ---- the shared shell (lay::shell(mini)) ----
-		// The page's header and hint bar, drawn in the shell's own strips until Ui::Shell owns them; the merge swaps
-		// this function alone. The pieces it shows, for the shell to use then.
-		void frame(const Player& p);
+		// What Ui::Shell draws its header and hint bar from; the page draws only its body in lay::shell(mini).body.
 		std::string title() const;
 		std::string crumb() const;
 		std::vector<Hint> hints(const Player& p) const;
@@ -52,7 +50,6 @@ namespace bp
 		// a settings group's tile (Settings opens on them: two to a row, lay::settingsTile)
 		Rect groupRect(int g, bool mini) const { return lay::settingsTile(groupArea(mini), GROUPS, 2, g); }
 		bool styleFromSubs = false;	// the subtitle style opened from the Subtitles list: B goes back to it
-		bool backDown = false;	// the shell header's back key under a finger (the page draws it: Ui::Shell will own it)
 		// the top panel's Preview pane for the focused row (Ui::topPane): the Theme row's swatches; false: none
 		bool topPane(PaneSpec& out) const;
 
@@ -64,8 +61,6 @@ namespace bp
 		}
 		// the tile's live line ("Resume on · tracks remembered", "Off in incognito")
 		std::string groupSummary(int g, const Player& p) const;
-		// a group's name where the page's neighbours name it either side of the title ("Music", "Power")
-		std::string shortGroupName(int g) const;
 		void drawPreview(const SubStyle& st, Rect box);
 	};
 }

@@ -83,8 +83,6 @@ namespace bp
 		std::string filesTitle() const;
 		std::string filesCrumb() const;
 		std::vector<Hint> filesHints(const Player& p) const;
-		// (until the shared shell lands: the page's own header and hint bar, so the merge swaps only this)
-		void frame(const Player& p);
 		void drawFiles(const Player& p);
 		lay::FilesPage filesLayout(const Player& p) const;
 		int filesShown(const Player& p) const;
