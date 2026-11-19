@@ -9,6 +9,9 @@
 #include "ui_playlists.h"
 #include "ui_settings.h"
 #include "ui_manga.h"
+#include "ui_music.h"
+#include "ui_videos.h"
+#include "ui_books.h"
 #include "format.h"
 #include "netpath.h"
 #include <algorithm>
@@ -23,22 +26,28 @@ namespace bp
 
 	bool Ui::Shell::page(Page pg) const
 	{
-		// the shell's pages this step builds: the browser (Home, Files, Playlists, Network, All recent), the
-		// Extensions section's list and Settings. The redesigned bodies of these replace theirs one at a time;
-		// Manga's pages keep their own frame (their tabs are the top of the panel) until they are rebuilt too.
-		return pg == Page::Browse || pg == Page::ExtSection || pg == Page::Settings;
+		// the shell's pages: the browser (Home, Files, Playlists, Network, All recent), the Extensions section's
+		// list, Settings, and the library sections the index fills (Music, Videos, Books). The redesigned bodies of
+		// these replace theirs one at a time; Manga's pages keep their own frame (their tabs are the top of the
+		// panel) until they are rebuilt too.
+		return pg == Page::Browse || pg == Page::ExtSection || pg == Page::Settings || pg == Page::Music ||
+			pg == Page::Videos || pg == Page::Books;
 	}
 
 	std::vector<Ui::Shell::Cell> Ui::Shell::cells(const Player& p) const
 	{
-		// The spec's order: Home, Files, Music, Playlists, Books, Extensions, Network. Music is a later step, Books has
-		// no page in the app yet (books are files in Files). Extensions is one cell for every extension that is on
-		// (Manga reader is a row of its page), and it is always in the rail: opening it starts and stops nothing.
+		// The spec's order: Home, Files, Videos, Music, Books, Extensions, Network — seven sections, all in
+		// sight (the cells go 45 tall; lay::rail). Videos and Music are filled by themselves from the folders named
+		// Videos/Movies and Music on each card; Books from the doc places and the Books and Documents folders.
+		// Extensions is one cell for every extension that is on (Manga reader is a row of its page), and it is
+		// always in the rail: opening it starts and stops nothing.
 		(void)p;
 		return {
 			{Section::Home, &G_HOME, "Home"},
 			{Section::Files, &G_FOLDER, "Files"},
-			{Section::Playlists, &G_PLAYLIST, "Playlists"},
+			{Section::Videos, &G_FILM, "Videos"},
+			{Section::Music, &G_NOTE, "Music"},
+			{Section::Books, &G_BOOK, "Books"},
 			{Section::Extensions, &G_BLOCKS, "Extensions"},
 			{Section::Network, &G_NETWORK, "Network"},
 		};
@@ -47,6 +56,11 @@ namespace bp
 	Ui::Shell::Section Ui::Shell::section(const Player& p) const
 	{
 		if (ui.page == Page::Settings) return Section::Settings;
+		// the library sections, filled by themselves from the cards (Music's third view is the browser's own
+		// Playlists page, drawn under Music)
+		if (ui.page == Page::Music) return Section::Music;
+		if (ui.page == Page::Videos) return Section::Videos;
+		if (ui.page == Page::Books) return Section::Books;
 		// Manga is a page of Extensions: its own pages and Manage extensions keep the section's cell lit
 		if (ui.page == Page::ExtSection || ui.page == Page::Manga || ui.page == Page::MangaSeries || ui.page == Page::MangaRead ||
 			ui.page == Page::MangaSettings || ui.page == Page::MangaSources || ui.page == Page::Extensions)
@@ -54,7 +68,7 @@ namespace bp
 		if (ui.page != Page::Browse) return Section::Home;
 		const std::string& dir = ui.browse->browseDir;
 		if (dir == HOMEDIR || dir == RECENT) return Section::Home;
-		if (dir == PLROOT || isPlDir(dir)) return Section::Playlists;
+		if (dir == PLROOT || isPlDir(dir)) return Section::Music;		// Playlists: Music's third view
 		if (dir == NETROOT || dir == FORMDIR || dir == FINDNET || isNetPath(dir)) return Section::Network;
 		return Section::Files;
 	}
@@ -77,6 +91,10 @@ namespace bp
 		ShellHead h;
 		h.back = ui.backIconShown(p);
 		h.more = ui.page != Page::Settings;
+		// the library sections: their own areas say what their header shows (title, crumb, hints)
+		if (ui.page == Page::Music) return ui.music->head(p);
+		if (ui.page == Page::Videos) return ui.videos->head(p);
+		if (ui.page == Page::Books) return ui.books->head(p);
 		if (ui.page == Page::ExtSection)
 		{
 			// the Extensions section (docs/redesign: ext-section, ext-section-video, ext-section-empty): a list that
@@ -193,7 +211,6 @@ namespace bp
 
 	void Ui::Shell::openSection(Section s, Player& p)
 	{
-		if (s == Section::Music || s == Section::Books) return;	// (not in the rail yet)
 		if (s == Section::Settings)
 		{
 			// the rail and L/R open Settings as a section: B goes Home (not back to where START would)
@@ -205,6 +222,14 @@ namespace bp
 		// leaving Settings: it becomes the browser, whichever way it was opened (a section page now shows)
 		ui.settingsOver = false;
 		if (ui.page == Page::Settings) ui.page = Page::Browse;
+		// the library sections are the areas' own pages (the browser's is the only one left to set by hand)
+		switch (s)
+		{
+		case Section::Music: ui.music->open(p); return;
+		case Section::Videos: ui.videos->open(p); return;
+		case Section::Books: ui.books->open(p); return;
+		default: break;
+		}
 		// another section's page is the browser's (the Extensions page sets its own, in openExtensionsSection)
 		if (ui.page != Page::Browse && s != Section::Extensions) ui.page = Page::Browse;
 		switch (s)
@@ -213,7 +238,6 @@ namespace bp
 			if (!ui.browse->atHome()) ui.browse->enterFolder(HOMEDIR, p);
 			break;
 		case Section::Files: ui.browse->openSection(TAB_LOCAL, p); break;
-		case Section::Playlists: ui.browse->openSection(TAB_PLAYLISTS, p); break;
 		case Section::Network: ui.browse->openSection(TAB_NETWORK, p); break;
 		// Extensions: its list, or Manga again where it was left (and never opened by the rail itself, so arriving
 		// here starts and stops nothing)
@@ -246,9 +270,10 @@ namespace bp
 				br.homeView->stepRecentTab(b == Button::R2 ? 1 : -1, p);
 			return true;
 		}
-		// Search by the keys (L3), while browsing, on the Extensions page or on Settings: a note for now (not while a
-		// form, a selection or the picker has the page)
-		if (b == Button::L3 && (ui.page == Page::Settings || ui.page == Page::ExtSection || (ui.page == Page::Browse && !modal)))
+		// Search by the keys (L3), while browsing, on the Extensions page, on Settings or on a library page (the
+		// sections the index fills): a note for now (not while a form, a selection or the picker has the page)
+		if (b == Button::L3 && (ui.page == Page::Settings || ui.page == Page::ExtSection || ui.page == Page::Music ||
+			ui.page == Page::Videos || ui.page == Page::Books || (ui.page == Page::Browse && !modal)))
 		{
 			search(p);
 			return true;

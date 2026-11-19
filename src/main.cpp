@@ -28,6 +28,9 @@
 #include "ui_manga.h"
 #include "ui_browse.h"
 #include "ui_home.h"
+#include "ui_music.h"
+#include "ui_videos.h"
+#include "ui_books.h"
 #include "session_host.h"
 #include "updater.h"
 #include "idlesleep_host.h"
@@ -112,7 +115,8 @@ static void* glProc(void*, const char* name)
 	return SDL_GL_GetProcAddress(name);
 }
 
-static bool exists(const std::string& p)
+// (named apart from bp::exists, which the ui headers' own helper is: both are in view here)
+static bool pathThere(const std::string& p)
 {
 	struct stat st;
 	return !p.empty() && stat(p.c_str(), &st) == 0;
@@ -130,7 +134,7 @@ static std::string findFont()
 	for (std::string p : {base + "../share/banana-player/fonts/PixelifySans-Regular.ttf",
 			 base + "assets/fonts/PixelifySans-Regular.ttf",
 			 std::string(BP_ASSETS_DIR) + "/fonts/PixelifySans-Regular.ttf"})
-		if (exists(p)) return p;
+		if (pathThere(p)) return p;
 	return "";
 }
 
@@ -138,7 +142,7 @@ static std::string defaultStateDir()
 {
 	// a Store app's files go under /data/home (run-store-app sets XDG_CONFIG_HOME there)
 	if (const char* cfg = getenv("XDG_CONFIG_HOME")) return std::string(cfg) + "/banana-player";
-	if (exists("/data/banana")) return "/data/home/.config/banana-player";
+	if (pathThere("/data/banana")) return "/data/home/.config/banana-player";
 	if (const char* home = getenv("HOME")) return std::string(home) + "/.local/state/banana-player";
 	return "";
 }
@@ -292,7 +296,7 @@ int main(int argc, char** argv)
 	bool browserMode = file.empty();
 	// a file named "verbose" in the state folder (home/.config/banana-player on the card): mpv's verbose log, for a
 	// problem seen only on the handheld (it can't be given -v from the Ports shelf)
-	if (!opts.stateDir.empty() && exists(opts.stateDir + "/verbose")) opts.verbose = true;
+	if (!opts.stateDir.empty() && pathThere(opts.stateDir + "/verbose")) opts.verbose = true;
 	// the strip prototype from the Ports shelf (which passes no options): a manga-proto file in the state folder
 	// names the folder or CBZ to open (the test only; removed after it)
 	if (mangaDir.empty() && !opts.stateDir.empty())
@@ -510,7 +514,7 @@ int main(int argc, char** argv)
 				while (!base.empty() && base.back() == '/') base.pop_back();
 				if (base.size() > 4 && base.compare(base.size() - 4, 4, "/bin") == 0) pkg = base.substr(0, base.size() - 4);
 			}
-			if (!pkg.empty() && !exists(pkg + "/VERSION")) pkg.clear();
+			if (!pkg.empty() && !pathThere(pkg + "/VERSION")) pkg.clear();
 			updater.init(pkg, BP_VERSION);
 			ui.updater = &updater;
 		}
@@ -561,6 +565,11 @@ int main(int argc, char** argv)
 		});
 		indexWorker->configure(opts.stateDir);
 		indexWorker->start();
+		// the library sections read the worker's index: the generation in their signature() redraws them when a
+		// pass lands (nothing is read off the worker's thread)
+		ui.music->source = &indexWorker->index();
+		ui.videos->source = &indexWorker->index();
+		// (Books' shelf is the doc places and the cards' Books/Documents folders: src/mediaindex.h's own walk)
 		// the manga store's durable writes (a progress save's fsync on the card); never destroyed, its thread may be
 		// inside an fsync at exit
 		ui.manga->writer = new DurableWriter();
@@ -882,7 +891,7 @@ int main(int argc, char** argv)
 			SDL_Surface* t = captureTop();
 			SDL_Surface* bt = haveUi ? ui.capture(shown()) : nullptr;
 			std::string dir = getenv("BP_SCREENSHOTS") ? getenv("BP_SCREENSHOTS")
-							: exists("/data/screenshots") ? "/data/screenshots" : getenv("HOME") ? getenv("HOME") : ".";
+							: pathThere("/data/screenshots") ? "/data/screenshots" : getenv("HOME") ? getenv("HOME") : ".";
 			char name[64];
 			time_t now = time(nullptr);
 			strftime(name, sizeof name, "/Banana Player %Y-%m-%d %H-%M-%S.png", localtime(&now));
@@ -1343,8 +1352,8 @@ int main(int argc, char** argv)
 				else if (e.type == evIndex)
 				{
 					// the media index finished a pass: a new snapshot with a new generation is in indexWorker->index().
-					// Nothing reads it yet — Music, Videos and Search will (their signature() takes the generation,
-					// and they redraw here, on the main thread, never from the worker)
+					// Music, Videos and Search hold the generation in their signature(), so this pass's landing is
+					// drawn on the next loop pass, here on the main thread, never from the worker
 				}
 				else if (e.type == evMangaFetch) mangaNet->onFetchEvent();
 				else if (e.type == evMangaWorker) mangaNet->onWorkerEvent();
@@ -1883,6 +1892,19 @@ int main(int argc, char** argv)
 							if (player.playing())
 								printf(" under=%s t=%.1f paused=%d", player.currentPath().substr(player.currentPath().rfind('/') + 1).c_str(), player.position, player.paused);
 							printf("\n");
+						}
+						else if (std::string lib = ui.libPageName(); !lib.empty())
+						{
+							// the library sections' own state: the view (Music's three, Videos' three, a
+							// folder), the page below the views, the focus
+							if (lib == "music") printf("press %zu: music view=%d%s%s cursor=%d keyFocus=%d\n", pressed,
+								ui.music->view, ui.music->albumAt >= 0 ? " album" : "",
+								ui.music->artistAt >= 0 ? " artist" : "", ui.music->cursor, ui.music->keyFocus);
+							else if (lib == "videos") printf("press %zu: videos view=%d folder=%s cursor=%d rows=%zu\n", pressed,
+								ui.videos->view, ui.videos->folder.c_str(), ui.videos->cursor,
+								ui.videos->rowsFor(player).size());
+							else printf("press %zu: books reading=%zu shelf=%zu cursor=%d\n", pressed,
+								ui.books->reading.size(), ui.books->shelf.size(), ui.books->cursor);
 						}
 						else if (ui.extPageShown()) printf("press %zu: extensions\n", pressed);
 						else if (!player.playing()) printf("press %zu: settings (from the browser)\n", pressed);
