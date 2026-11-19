@@ -31,8 +31,8 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 ### Section rail (new)
 
 - **Used:** every shell screen (about 50)
-- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 56, radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. L and R key caps above the first and under the last section; Settings pinned at the foot. A red 11-unit mark on a cell that would stop what plays.
-- **Inputs:** sections (icon, label, shown or not), the active one, a warning mark per cell. The sections: Home, Files, Music, Playlists, Books, Manga (while the reader is on), Network. Six cells fit; with seven the rail scrolls so the active one is in view, L and R still stepping all of them
+- **Anatomy and states:** 78 wide, full height, background RAIL, a 1-unit rule on its right. Cell 68 × 56, radius 10: icon 22 over a label Inter 600 11.5. Active cell: yellow fill, black ink, 3-unit lip. L and R key caps above the first and under the last section; Settings pinned at the foot. No cell carries a warning: opening a section starts and stops nothing (Rules › Arriving stops nothing). “Extensions” is the longest label, 62 of the cell’s 68.
+- **Inputs:** sections (icon, label, shown or not), the active one. The sections: Home, Files, Music, Playlists, Books, Extensions, Network. Extensions is one cell for every extension: Manga reader is a row of its page (`ext-section`), not a cell, and every Manga page keeps the Extensions cell lit. Six cells fit; with seven the rail scrolls so the active one is in view, L and R still stepping all of them
 - **Keys and touch:** L / R step the sections (wrapping); a tap opens one. The D-pad never enters it.
 - **Code:** New. Replaces the four markers drawn by drawSectionHeader and Home’s tiles (drawHome). Belongs to Ui’s shell, drawn for every page of an area that is a section.
 
@@ -180,7 +180,7 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 
 ### Confirm sheet (exists, needs a variant)
 
-- **Used:** Quit, Delete, Manga + video, 120%, engine offer, updater, first-time notices, incognito with a browser signed in, the first-start lid question (13)
+- **Used:** Quit, Delete, Manga + video (Rules › Arriving stops nothing), 120%, engine offer, updater, first-time notices, incognito with a browser signed in, the first-start lid question (13)
 - **Anatomy and states:** A bottom sheet 240–320 tall: title, one or two sentences, two keys 56 tall side by side. The safe key is on the left, yellow, focused, and is B; the action is on the right, red ink when it destroys. An optional “don’t ask again” line.
 - **Inputs:** icon, title, text, safe label, action label, danger, foot
 - **Keys and touch:** LEFT / RIGHT choose, A does the focused one, B = the safe key.
@@ -416,6 +416,16 @@ Existing blocks referred to: `Ui::Overlay` (src/ui_overlay.cpp, docs/notes/overl
 - **Inputs:** lid shut, the setting, what plays
 - **Keys and touch:** As above. Touch is ignored.
 - **Code:** New. One filter in front of the key handling in main.cpp, fed by `SleepWatch::lidClosed()`; it sends the Session’s own intents (step, play / pause), so the page left open never sees a key. BananaOS repeats a held volume key, so while the lid is shut the player takes the volume keys’ input device (`gpio-keys-volume`, its own device, apart from Power and the lid switch; `EVIOCGRAB`, Linux-only, beside sleepwatch.*) and steps the volume itself through `/usr/libexec/banana/volume`; it lets go when the lid opens and on exit.
+
+### Arriving stops nothing (new)
+
+- **Used:** the rail, START’s menu, the Extensions page, Manga’s row, a comic opened from Files or Search
+- **Anatomy and states:** Opening a section, by a tap on the rail, by L / R or from START’s menu, shows a page and does nothing else: it starts no engine, takes no memory and leaves the top screen to what plays. A row that would stop what plays wears a DANGER pill with the Stop glyph and the words (“Stops the video”), at its right before the chevron, for as long as that is true. A on it (or a tap) opens a Confirm sheet: the safe key keeps what plays and is focused, the action names both halves (“Stop video & open Manga”), one sentence gives the reason and one says where the stopped thing waits. Nothing else asks: the rail, START’s menu, L / R and B only move. Drawn: `ext-section`, `ext-section-video`, `manga-guard`.
+- **When it asks:** only for a video (playing or paused): the handheld’s 1 GB cannot hold it and the manga engine together. A song or a photo goes on under Manga with its mini bar, and no pill or question shows. The stopped video’s place is kept as Stop keeps it; Home’s Continue card reads “Stopped for Manga”.
+- **Coming back:** the Extensions section returns to the page it was left on (Manga, where you were), as any section does, unless a video is playing: then it returns to its list, so the rule holds.
+- **Inputs:** what plays (a video, a song, nothing), what the row needs (the top screen, the memory)
+- **Keys and touch:** A or a tap on the row asks; B, or the safe key, stays. L / R and a tap on the rail never ask and never stop anything.
+- **Code:** New as a rule. Today openManga stops a playing video at once with a five-second note (“Video stopped: no video in the manga reader”, ui_manga_java.cpp). One check, asked by every way into an extension that takes the memory a video uses (its row, a comic opened from Files or Search, Home’s Recent, the first-time sheet’s Open Manga), in front of the Confirm sheet as an Overlay.
 
 ### Title marquee (new)
 
@@ -655,7 +665,7 @@ This table is the contract for the build. “Box” is `drawBox`: a fill, `edgeO
 |---|---|---|
 | Header | `Kit::header`, `Kit::iconKey` | BG ground; TEXT title; DIM crumb; keys: Box BUTTON / PRESSED, TEXT mark; ACCENT state (DANGER when it failed) |
 | Status cluster and badges | `drawBattery`, `drawWebIndicator` | DIM_ON marks and clock; ACCENT playing bars; badge: ACCENT on ACCENT at 17%; red badge and low battery: DANGER on DANGER at TINT |
-| Section rail | new | RAIL ground, RULE line; DIM_ON cells; active cell ACCENT with `lipOf(ACCENT)`, ON_ACCENT ink; caps ACCENT; warning mark DANGER |
+| Section rail | new | RAIL ground, RULE line; DIM_ON cells; active cell ACCENT with `lipOf(ACCENT)`, ON_ACCENT ink; caps ACCENT |
 | Hint bar | `Kit::hints`, `Kit::caps`, `drawHints` | BG ground, RULE line, DIM_ON words; caps: ACCENT outline and letter on their ground (ON_ACCENT on an accent key) |
 | Mini bar | `drawMiniBar` | SURFACE, ACCENT edge; play mark BUTTON with ACCENT glyph; TEXT title; DIM time; DIM_ON kind icon; pills as Pill; progress line ACCENT |
 | Key (button) | `Kit::key`, `drawBox`, `drawButton`, `drawKeyedLabel` | Box BUTTON, pressed PRESSED, TEXT; primary: Box ACCENT (pressed `lipOf(ACCENT)`), ON_ACCENT; danger: DANGER ink, or Box DANGER with ON_ACCENT (Quit); lit: ACCENT ink; Off |
