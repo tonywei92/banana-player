@@ -105,8 +105,10 @@ namespace bp
 	void Ui::Kit::hints(Rect bar, const std::vector<Hint>& list)
 	{
 		// a rule above; each item its caps then its word, the row centred in the box it was given
-		ui.fill(bar, BG);
-		ui.fill({bar.x, bar.y, bar.w, 1}, RULE);
+		const theme::Palette& th = theme::current;
+		SDL_Color ground = sdl(th.HINT_BAR), word = sdl(th.ON_HINT), capInk = th.strongKeys ? word : ACCENT;
+		ui.fill(bar, ground);
+		if (!th.strongKeys) ui.fill({bar.x, bar.y, bar.w, 1}, RULE);
 		std::vector<int> widths;
 		for (auto& h : list) widths.push_back(capsW(h.key) + (h.key.empty() || h.verb.empty() ? 0 : 5) + textW(h.verb, F_I12));
 		int left = bar.x + 8, right = bar.x + bar.w - 8;
@@ -115,8 +117,8 @@ namespace bp
 		for (size_t i = 0; i < list.size(); i++)
 		{
 			int x = xs[i];
-			if (!list[i].key.empty()) x += caps(list[i].key, x, cy) + 5;
-			ui.drawTextMid(list[i].verb, F_I12, DIM_ON, x, cy, std::max(1, right - x));
+			if (!list[i].key.empty()) x += caps(list[i].key, x, cy, capInk, ground) + 5;
+			ui.drawTextMid(list[i].verb, F_I12, word, x, cy, std::max(1, right - x));
 		}
 	}
 
@@ -196,11 +198,14 @@ namespace bp
 
 	void Ui::Kit::key(Rect r, const Key& k)
 	{
-		bool primary = k.tone == Tone::Primary;
-		SDL_Color fill = primary ? (k.pressed ? sdl(theme::lipOf(theme::ACCENT)) : ACCENT) : k.pressed ? PRESSED : BUTTON;
-		SDL_Color ink = primary ? ON_ACCENT : k.tone == Tone::Danger ? DANGER : k.lit ? ACCENT : TEXT;
-		SDL_Color capInk = primary ? ON_ACCENT : ACCENT;
-		SDL_Color edge = k.focused && !k.off ? ACCENT : edgeOf(fill);
+		const theme::Palette& th = theme::current;
+		bool primary = k.tone == Tone::Primary, strong = th.strongKeys;
+		// a strong theme's keys: dark fills (a danger key filled DANGER) with ON_KEY lettering, focus a KEY_FOCUS edge
+		theme::Rgb base = primary ? th.PRIMARY : strong && k.tone == Tone::Danger ? th.DANGER : th.KEY;
+		SDL_Color fill = primary || strong ? sdl(k.pressed ? theme::lipOf(base) : base) : k.pressed ? PRESSED : BUTTON;
+		SDL_Color ink = primary ? sdl(th.ON_PRIMARY) : strong ? sdl(th.ON_KEY) : k.tone == Tone::Danger ? DANGER : k.lit ? ACCENT : TEXT;
+		SDL_Color capInk = primary ? sdl(th.ON_PRIMARY) : strong ? sdl(th.ON_KEY) : ACCENT;
+		SDL_Color edge = k.focused && !k.off ? sdl(th.KEY_FOCUS) : edgeOf(fill);
 		ui.drawBox(r, off(fill, k.off), R_BUTTON, off(edge, k.off));
 		if (k.glow > 0 && !k.pressed)
 		{
@@ -208,7 +213,7 @@ namespace bp
 			glow.a = (Uint8)std::lround(90 * std::min(1.0, k.glow));
 			if (glow.a) ui.fillRound({r.x + 2, r.y + 2, r.w - 4, r.h - 6}, glow, R_BUTTON - 2);
 		}
-		if (k.focused && !k.off && !primary) ink = k.tone == Tone::Danger ? DANGER : ACCENT;
+		if (k.focused && !k.off && !primary && !strong) ink = k.tone == Tone::Danger ? DANGER : ACCENT;
 		ink = off(ink, k.off);
 		capInk = off(capInk, k.off);
 		SDL_Color ground = off(fill, k.off);
@@ -239,8 +244,9 @@ namespace bp
 
 	void Ui::Kit::transport(Rect r, const Transport& t)
 	{
-		SDL_Color fill = t.primary ? (t.pressed && t.hold < 0 ? sdl(theme::lipOf(theme::ACCENT)) : ACCENT) : t.pressed ? PRESSED : BUTTON;
-		SDL_Color ink = off(t.primary ? ON_ACCENT : TEXT, t.off), capInk = off(t.primary ? ON_ACCENT : ACCENT, t.off);
+		const theme::Palette& th = theme::current;
+		SDL_Color fill = t.primary ? sdl(t.pressed && t.hold < 0 ? theme::lipOf(th.PRIMARY) : th.PRIMARY) : t.pressed ? PRESSED : BUTTON;
+		SDL_Color ink = off(t.primary ? sdl(th.ON_PRIMARY) : TEXT, t.off), capInk = off(t.primary ? sdl(th.ON_PRIMARY) : ACCENT, t.off);
 		ui.drawBox(r, off(fill, t.off), R_BUTTON, off(edgeOf(fill), t.off));
 		if (t.hold >= 0)
 		{
@@ -269,8 +275,10 @@ namespace bp
 
 	void Ui::Kit::iconKey(Rect r, const Glyph& g, bool pressed, int cell)
 	{
-		ui.drawBox(r, pressed ? PRESSED : BUTTON, R_BUTTON);
-		ui.drawGlyphMid(g, r.x + r.w / 2, r.y + (r.h - theme::LIP) / 2 + 1, TEXT, cell);
+		const theme::Palette& th = theme::current;
+		SDL_Color fill = th.strongKeys ? sdl(pressed ? theme::lipOf(th.KEY) : th.KEY) : pressed ? PRESSED : BUTTON;
+		ui.drawBox(r, fill, R_BUTTON);
+		ui.drawGlyphMid(g, r.x + r.w / 2, r.y + (r.h - theme::LIP) / 2 + 1, sdl(th.ON_KEY), cell);
 	}
 
 	// ---- state chips and line keys ----

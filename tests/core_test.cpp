@@ -6759,15 +6759,21 @@ static void testThemes()
 			CHECK_EQ(hx(p.TOP_TITLE), "FF8FC7");
 			CHECK_EQ(p.page, 1);
 		}
-		// Gundam: white SURFACE, the palette's red deepened as ACCENT with its yellow lettering, blue-tinted keys, grey
-		// as given (DIM), DANGER a burnt amber; Dark red's top cards
+		// Gundam (the owner's mock-up): white tiles on a cool pale ground, navy keys with white lettering and a yellow
+		// focus edge, a red primary key, a blue accent (the bar, caps, Playing), a navy hint bar; other themes keep keys
+		// and hints as before
 		if (id == "gundam")
 		{
-			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "EDEDEFFFFFFFDDE3F3E5E5E8BF242B282931");
-			CHECK_EQ(hx(p.DIM) + hx(p.DANGER) + hx(p.ON_ACCENT), "5A5B6D8A4500FFF867");
-			CHECK_EQ(p.EDGE_MIX, 55);
-			CHECK_EQ(hx(p.TOP_TITLE), "FF6A6E");
+			CHECK_EQ(hx(p.BG) + hx(p.SURFACE) + hx(p.BUTTON) + hx(p.RAIL) + hx(p.ACCENT) + hx(p.TEXT), "E8ECF4FFFFFFF3F5FADFE4EE1A56C9141B33");
+			CHECK_EQ(hx(p.KEY) + hx(p.ON_KEY) + hx(p.KEY_FOCUS) + hx(p.HINT_BAR) + hx(p.PRIMARY) + hx(p.ON_PRIMARY), "1C3C8EFFFFFFFFF867172E6BD3222BFFFFFF");
+			CHECK_EQ(p.strongKeys, true);
+			CHECK_EQ(hx(p.TOP_TITLE), "8CC8FF");
 			CHECK_EQ(p.page, 1);
+		}
+		else
+		{
+			CHECK_EQ(p.strongKeys, false);
+			CHECK_EQ(hx(p.KEY) + hx(p.PRIMARY) + hx(p.HINT_BAR), hx(p.BUTTON) + hx(p.ACCENT) + hx(p.BG));
 		}
 	}
 	// Light: its own RAIL, edges darker than the fill (EDGE_MIX 55), Yellow's top cards; the spec's worked-out values

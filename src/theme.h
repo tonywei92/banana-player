@@ -34,6 +34,11 @@ namespace bp
 			Rgb TOP_CARD, TOP_EDGE, TOP_TITLE, TOP_TEXT, TOP_SUB, TOP_TRACK, TOP_SQUARE, TOP_DANGER;
 			int page;	// the reader's page for text-theme "Match theme": TXT_THEME_DARK, _LIGHT or _BLACK (textreader.h)
 			Rgb OK;	// the dashboard's green (something is on, or worked); the handheld has none
+			// a theme whose keys are dark with light lettering (Gundam's navy keys): Kit::key's fill and ink, its edge when
+			// focused, and the hint bar's ground and ink. Off (strongKeys false): BUTTON, TEXT, ACCENT, BG and DIM_ON, as before
+			bool strongKeys;
+			Rgb KEY, ON_KEY, KEY_FOCUS, HINT_BAR, ON_HINT;
+			Rgb PRIMARY, ON_PRIMARY;	// a primary key's fill and ink (Play, Pause, a dialog's first key): ACCENT, ON_ACCENT unless set
 		};
 
 		// the themes, in theme.cpp's order (LEFT / RIGHT steps through them): Yellow first. Adding one is a line there

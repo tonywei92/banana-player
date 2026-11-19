@@ -30,6 +30,8 @@ namespace bp
 				unsigned rail;
 				int top, page;
 				unsigned ok;
+				// optional (0: unset): dark keys with light lettering, and a primary key in its own colour (theme.h)
+				unsigned key = 0, onKey = 0, keyFocus = 0, hintBar = 0, onHint = 0, primary = 0, onPrimary = 0;
 			};
 			constexpr unsigned GREEN = 0x7BD88F;
 			// the values: one line a theme, in the stepper's order (written from docs/redesign/themes.py, which checks their
@@ -51,7 +53,8 @@ namespace bp
 				{"32-bit", "32-bit", 0xDEDEE1, 0xEFEFF2, 0xC8C8CE, 0xB0B0B8, 0xD0D0D6, 0xC0C0C7, 0x1E1E22, 0x595960, 0x4B4B52, 0x1F4E9E, 0xEFEFF2, 0x961C24, 55, 0xD3D3D8, 1, 1, 0x1F7A4D},
 				{"sakura", "Sakura", 0xFFE6E0, 0xFFF3EF, 0xE8B3CF, 0xC1839F, 0xFACFD8, 0xE8B3CF, 0x561F33, 0x8A5069, 0x6F3C55, 0x852A59, 0xFFE6E0, 0x7A3800, 55, 0xFACFD8, 5, 1, 0x1F7A4D},
 				// (white armour SURFACE, the blue ACCENT, the yellow ON_ACCENT, the grey DIM as given; the red deepened: 3.8 : 1 on white as given)
-				{"gundam", "Gundam", 0xEDEDEF, 0xFFFFFF, 0xDDE3F3, 0xBBC8E7, 0xDEDEE2, 0xCDCED3, 0x282931, 0x5A5B6D, 0x464755, 0xBF242B, 0xFFF867, 0x8A4500, 55, 0xE5E5E8, 4, 1, 0x1F7A4D},
+				{"gundam", "Gundam", 0xE8ECF4, 0xFFFFFF, 0xF3F5FA, 0xD5DDEE, 0xCDD4E3, 0xC3CBDB, 0x141B33, 0x5A5B6D, 0x464755, 0x1A56C9, 0xFFFFFF, 0xB81F28, 55, 0xDFE4EE, 2, 1, 0x1F7A4D,
+					0x1C3C8E, 0xFFFFFF, 0xFFF867, 0x172E6B, 0xFFFFFF, 0xD3222B, 0xFFFFFF},
 				{"light", "Light", 0xF7F4EC, 0xFFFDF8, 0xE6E0D2, 0xD0C9B8, 0xDED8C9, 0xD5CEBE, 0x1B1A20, 0x625E56, 0x55514A, 0x7A5200, 0xFFFDF8, 0xA3261D, 55, 0xECE7DB, 0, 1, 0x1F7A4D},
 				{"high-contrast", "High contrast", 0x000000, 0x0A0A0A, 0x1E1E1E, 0x3A3A3A, 0x2B2B2B, 0x5E5E5E, 0xFFFFFF, 0xC6C6C6, 0xD8D8D8, 0xFFE14D, 0x000000, 0xFF8A80, 50, 0, -1, 3, 0x8DF0A4},
 			};
@@ -74,6 +77,10 @@ namespace bp
 				p.TOP_SQUARE = hex(t.sf), p.TOP_DANGER = hex(t.dg);
 				p.page = b.page;
 				p.OK = hex(b.ok);
+				p.strongKeys = b.key != 0;
+				p.KEY = b.key ? hex(b.key) : p.BUTTON, p.ON_KEY = b.key ? hex(b.onKey) : p.TEXT, p.KEY_FOCUS = b.key ? hex(b.keyFocus) : p.ACCENT;
+				p.HINT_BAR = b.key ? hex(b.hintBar) : p.BG, p.ON_HINT = b.key ? hex(b.onHint) : p.DIM_ON;
+				p.PRIMARY = b.primary ? hex(b.primary) : p.ACCENT, p.ON_PRIMARY = b.primary ? hex(b.onPrimary) : p.ON_ACCENT;
 				return p;
 			}
 			struct Table

@@ -1,35 +1,25 @@
 # Gundam, the eighteenth theme (2026-11-19)
 
-Built from the owner's five colours: white #FFFFFF, yellow #FFF867, red #FB2F38, blue #2C52B3, grey #5A5B6D. Light-bodied,
-after Sakura in the stepper. One line in `src/theme.cpp`; the dashboard's CSS and the setting's choices come from that table.
+The owner's five colours (white #FFFFFF, yellow #FFF867, red #FB2F38, blue #2C52B3, grey #5A5B6D) and, the same day,
+a mock-up of the player in them, whose colours this follows (its cut corners, corner tabs and stripes were not asked
+for: colours only). Light-bodied, after Sakura in the stepper.
 
-| Role | Value | From |
+It is the first theme with **strong keys** (theme.h: `strongKeys`, `KEY`, `ON_KEY`, `KEY_FOCUS`, `HINT_BAR`, `ON_HINT`,
+`PRIMARY`, `ON_PRIMARY`; the optional tail of a `BASES` line). Unset, they are BUTTON, TEXT, ACCENT, BG, DIM_ON, ACCENT
+and ON_ACCENT, so every other theme draws as before (a test checks it). Set: `Kit::key` and `Kit::iconKey` are filled
+KEY with ON_KEY lettering and caps, a danger key is filled DANGER, a focused key has a KEY_FOCUS edge; a primary key
+(Kit::key's Primary tone and the player's Play/Pause) is PRIMARY; the hint bar is HINT_BAR with ON_HINT words and caps.
+The transport keys, tiles, rows, tabs and pills keep the ordinary roles (white keys with navy ink in the mock-up).
+
+| Role | Value | |
 |---|---|---|
-| SURFACE | #FFFFFF | white, as given (the armour: tiles, rows, sheets) |
-| ACCENT | #BF242B | the red 24% towards black (owner: a red accent; 24% is the least that holds 4.5 on BUTTON and on its badge tint) |
-| ON_ACCENT | #FFF867 | yellow, as given: lettering on the red keys |
-| DIM | #5A5B6D | grey, as given (5.7 on BG, 6.7 on white) |
-| DANGER | #8A4500 | a burnt amber (red is the accent now, so danger takes another hue, as in Dark red and Sakura) |
-| TEXT, DIM_ON | #282931, #464755 | the grey 55% and 22% towards black |
-| BG, RAIL, TRACK, RULE | #EDEDEF, #E5E5E8, #DEDEE2, #CDCED3 | white with 11, 16, 20, 30% of the grey |
-| BUTTON, PRESSED | #DDE3F3, #BBC8E7 | white with 16, 32% of the blue (where the blue stays) |
+| BG, SURFACE, BUTTON, PRESSED | #E8ECF4, #FFFFFF, #F3F5FA, #D5DDEE | a cool pale ground, white tiles |
+| TRACK, RULE, RAIL | #CDD4E3, #C3CBDB, #DFE4EE | |
+| TEXT, DIM, DIM_ON | #141B33, #5A5B6D, #464755 | navy-black; the grey as given |
+| ACCENT, ON_ACCENT | #1A56C9, #FFFFFF | the bar, caps, Playing, focus (5.0 on its badge tint) |
+| DANGER | #B81F28 | (4.6 on its pill tint) |
+| KEY, ON_KEY, KEY_FOCUS | #1C3C8E, #FFFFFF, #FFF867 | navy keys (10 : 1), the yellow as the chosen key's edge |
+| HINT_BAR, ON_HINT | #172E6B, #FFFFFF | (12.8 : 1) |
+| PRIMARY, ON_PRIMARY | #D3222B, #FFFFFF | the red, deepened until white holds 4.5 (5.2; #FB2F38 as given is 3.8) |
 
-EDGE_MIX 55, the Light page, Dark red's top cards.
-
-First built with the blue as ACCENT and the red as DANGER; the owner asked for a red accent the same day.
-
-What did not work as given:
-- Yellow on white is 1.1 : 1: no text, edge, bar or pressed fill on the light body. On the blue it is 6.4 : 1, so it is
-  ON_ACCENT, which is also where the suit wears it.
-- Red as given is 3.8 : 1 on white and 3.2 on BG; yellow on it is 3.4. DANGER needs 4.5 as text on BG, SURFACE, BUTTON
-  and its own 20% tint, so it is deepened; the tint pair is the one that sets how far (26% still fails at 4.47).
-
-`docs/redesign/themes.py` is on the `redesign-preview` branch, not on main. Its checks were run on a copy with this
-entry (all pass; lowest: DANGER on its tint 4.8, DANGER on BUTTON 5.3, ACCENT on its tint 5.5, DIM on BG 5.7; edges 3.5
-and 3.0). The entry to add there, in ORDER after `sakura`, with the Themes tables of components.md and the preview:
-
-```python
- 'gundam': dict(name='Gundam', what='From a five-colour palette: a white mobile suit. White surfaces on pale grey, a red accent with yellow lettering, blue-tinted keys, dark grey text; light-bodied; DANGER is burnt amber',
-                BG='EDEDEF', SF='FFFFFF', BT='DDE3F3', PR='BBC8E7', TR='DEDEE2', RU='CDCED3', TX='282931', DM='5A5B6D', DO='464755', AC='BF242B',
-                OA='FFF867', DG='8A4500', RA='E5E5E8', EM=55, PT=22, top='darkred', page='light'),
-```
+EDGE_MIX 55, the Light page, Midnight blue's top cards. Checked with themes.py's pairs on a copy (all pass).
