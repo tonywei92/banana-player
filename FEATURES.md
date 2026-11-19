@@ -56,11 +56,15 @@ asks to quit: **Quit Banana Player?** with **Quit** and **Cancel**, **Cancel** f
 While something plays it asks too, and says **What's playing stops** (**SELECT** still goes to what plays).
 **START** opens Settings.
 
-Inside a section the header reads its name with four markers beside it, the open one lit: **L/R** go to the section
-before or after, or tap a marker. Each section opens where you left it (its top if that folder or playlist is gone),
-from L/R, a marker or its tile on Home; the **Playlists** tile on Home always opens the list of playlists, the cursor on
-the one you were in. **B** goes up a folder, and from the section's top back to Home, on its
-tile.
+Every section now shares one frame: a **rail** down the left with **Home**, **Files**, **Playlists**, **Network**
+(and **Manga** while the Manga reader is on), and **Settings** pinned at the foot. **L/R** step the sections and wrap,
+or tap one; the D-pad stays in the page. Manga's cell shows a red mark while a video plays, since the two cannot share
+the memory. The header carries the back key, the section's title and where you are, the status marks, **X** (More) and
+a Search key; **L3** and that key say Search is coming in a later step. The bar along the foot says what the buttons do
+there.
+
+Inside a section the list opens where you left it (its top if that folder or playlist is gone); the **Playlists** rail
+cell opens the list of playlists, and **B** goes up a folder, and from the section's top back to Home.
 
 Folders come first, then files in natural order (episode 2 before episode 10). Each row has an icon (folder, video,
 song, photo), and each file shows its size. Songs and videos on the card show their length too (`3:34 · 3.5 MB`; a

@@ -27,6 +27,7 @@
 #include "ui_sound.h"
 #include "ui_web.h"
 #include "ui_player.h"
+#include "ui_shell.h"
 #include "durworker.h"
 
 namespace bp
@@ -85,6 +86,8 @@ namespace bp
 	// the areas: each made here and listed, which is all the wiring one needs (docs/notes/ui-areas.md)
 	Ui::Ui()
 	{
+		// first, so an area's constructor can tell it its body is drawn in the shell's box (Shell::adopt)
+		shell = std::make_unique<Shell>(*this);
 		pageReader = std::make_unique<PageReader>(*this);	// (not an area: no page of its own; Docs and Manga use it)
 		docs = std::make_unique<Docs>(*this);
 		areas.push_back(docs.get());
@@ -203,6 +206,8 @@ namespace bp
 		// Button hotkeys off: the buttons do nothing over a playing video (touch does it all); the pages opened from
 		// there by touch still take them
 		if (page == Page::Main && !p.settings.buttonHotkeys) return false;
+		// the shell's pages: L / R step the sections, L3 is Search (and All recent's tabs keep L2 / R2)
+		if (shell->page(page) && shell->key(b, p)) return false;
 		// L2/R2: the chapter before or after, over what plays and its two pages (the Chapters page's mark follows).
 		// Not in START's Settings, not over a photo (its keys are its own), and nothing with Button hotkeys off: they
 		// have no touch button to stand for. On Settings a group page takes them: the group before or after
@@ -502,6 +507,7 @@ namespace bp
 	bool Ui::pointer(const Pointer& pt, Player& p)
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
+		const int rawX = x, rawY = y;
 		webInputAt = SDL_GetTicks();
 		// a list's finger whose lift never came (a dialog took it): a new touch starts afresh
 		if (pt.kind == Pointer::Down) pageReader->mlist = PageReader::MangaListDrag();
@@ -516,6 +522,14 @@ namespace bp
 		mangaOn = p.settings.mangaOn;
 		if (fileJob) return fileJobPointer(pt, x, y);
 		if (browse->clipPointer(pt, x, y, p)) return false;
+		// the shell's rail, header and mini bar first (the page's body is under them)
+		if (shell->page(page) && shell->pointer(pt, x, y, p)) return false;
+		// a section page's old body is drawn scaled into the shell's body box: its touches are mapped back
+		if (shell->page(page))
+		{
+			int mx = x, my = y;
+			if (shell->mapPoint(p, mx, my)) { x = mx; y = my; }
+		}
 		// All recent's tabs: a tap on one shows that kind
 		if (page == Page::Browse && browse->browseDir == RECENT && !inMenu && !ctxOpen && p.settings.keepHistory && browse->homeView->recentCounts[0] && y < ROW_Y)
 		{
@@ -701,16 +715,19 @@ namespace bp
 				if (on && buttonRect(id).hit(x, y) && pageDrives(barPlayer(p))) toggleBrowser(barPlayer(p));
 				return false;
 			}
-			// let go off the button: nothing (a finger that slid away changed its mind)
+			// let go off the button: nothing (a finger that slid away changed its mind). The mini bar is the frame's,
+			// so its finger is in the panel's own units, not the body's mapped ones
+			bool mini = id == MINI_PP || id == MINI_BAR;
 			Rect r = id >= PHOTO_BTN && id < PHOTO_BTN + PHOTO_BTNS ? photoBtn(id - PHOTO_BTN, p) : buttonRect(id);
-			return r.hit(x, y) && act(id, p);
+			return r.hit(mini ? rawX : x, mini ? rawY : y) && act(id, p);
 		}
 		// the mini bar: acts as the finger lifts (a hold: its menu, tick()); its play mark while a page plays the file
 		// holds as Main's Play does (here instead). Its down is taken here for every page, the reader's included
-		if (pt.kind == Pointer::Down && miniBarShown(p) && MINI_BOX.hit(x, y))
+		if (pt.kind == Pointer::Down && miniBarShown(p) && miniBox(p).hit(rawX, rawY))
 		{
+			// (the shell's bar is right of the rail and its play mark is 56 wide; another page's is MINI_BOX's)
 			Player& bp = barPlayer(p);
-			pressedBtn = x < MINI_BOX.x + 44 ? MINI_PP : MINI_BAR;
+			pressedBtn = rawX < miniMarkRight(p) ? MINI_PP : MINI_BAR;
 			miniHoldAt = SDL_GetTicks();
 			// in fullscreen the bar is the controls sheet's: a touch on it shows the sheet 4 s more
 			if (page == Page::MangaRead && pageReader->readerStatus.fullscreen) manga->mangaCtrlUntil = SDL_GetTicks() + manga->MG_CTRL_MS;
@@ -857,6 +874,7 @@ namespace bp
 		if (browse->browseDir == EXTDIR && area() != manga.get()) photo += manga->extSignature();
 		// Files' copy or move: how far, and the file on its way; what's held for Copy / Move
 		photo += fileJobSignature();
+		photo += shell->signature(p);	// the rail's section and warning, the frame's pressed piece, the shell's mini bar
 		if (Area* a = area()) photo += a->signature(p);
 		return buf + photo + overlaySignature(p) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + manga->extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (inMenu ? "|menu" + std::to_string(menuTab) + "." + std::to_string(menuCursor) : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + sound->eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string((int)kbShift) + (kbSymbols ? "s" : "") + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");

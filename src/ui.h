@@ -417,6 +417,11 @@ namespace bp
 		struct Kit;
 		struct KitNew;	// kit-new's components, beside Kit (ui_kit.h's kit-new block)
 		std::unique_ptr<Kit> kit;
+		// the redesigned section pages' shared frame (ui_shell.h): the rail, the header, the hints and the mini bar.
+		// Not an Area of its pages (Browse and Settings keep their keys and touches): Ui asks it directly
+		struct Shell;
+		struct ShellHead;
+		std::unique_ptr<Shell> shell;
 		// the More sheet (ui_more.cpp): a bottom sheet of tiles and rows, fed a list each time it is drawn (MoreSpec,
 		// ui_kit.h), as an overlay. X on the player opens the player's (PlayerPage::moreSpec)
 		struct MoreItem;
@@ -1031,6 +1036,10 @@ namespace bp
 		static constexpr Rect MINI_BOX{16, 422, 608, 34};
 		static constexpr int MINI_PP = 560, MINI_BAR = 561;
 		bool miniBarShown(const Player& p) const;
+		// where the bar is now: the shell's own box on a section page (right of the rail), the old one elsewhere;
+		// and where its play mark ends (a tap left of it is the mark, the rest the bar)
+		Rect miniBox(const Player& p) const;
+		int miniMarkRight(const Player& p) const;
 		bool miniUp = false;	// shown in the last frame drawn (tileRect, the footer's line)
 		void drawMiniBar(const Player& p);
 		void miniToggle(Player& p);	// its play mark: play / pause what plays (a page's too)

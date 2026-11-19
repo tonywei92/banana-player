@@ -194,6 +194,8 @@ namespace bp
 			int cy = 0;
 		};
 		MiniBar miniBar();
+		// the same pieces inside `box` (the shell's mini bar sits right of the rail: lay::shell(mini).mini)
+		MiniBar miniBar(Box box);
 
 		// ---- filter chips used as filters: 40 tall in a 56-tall touch strip ----
 		constexpr int CHIP_H = 40, CHIP_STRIP = 56, CHIP_GAP = 6;

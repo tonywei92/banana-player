@@ -23,6 +23,7 @@
 #include "ui_reader.h"
 #include "ui_manga.h"
 #include "ui_player.h"
+#include "ui_shell.h"
 
 namespace bp
 {
@@ -591,11 +592,16 @@ namespace bp
 		setChip(p);
 		markAnim = false;
 		loaderShown = false;
+		// a section page's body: its old drawing goes into the shell's body box until the screen is rebuilt on the kit
+		bool shellPage = shell->page(page);
+		bool bridged = shellPage && shell->beginBody(p);
 		if (page == Page::Info || page == Page::About) drawInfo(p);
 		else if (page == Page::Menu) drawMenu(p);
 		else if (Area* a = area()) a->draw(p);
 		else drawTracks(p);	// (Page::Main is an area: PlayerPage::draw)
-		if (miniUp) drawMiniBar(p);
+		if (bridged) shell->endBody(p);
+		if (shellPage) shell->draw(shell->section(p), shell->head(p), p);
+		if (miniUp && !shellPage) drawMiniBar(p);
 		browse->drawClipBar();
 		if (ctxOpen) drawBrowseMenu(p);	// (the mini bar's hold menu opens on pages of its own too)
 		if (browse->playlists->pickerOpen) browse->playlists->drawPicker();

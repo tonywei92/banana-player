@@ -21,6 +21,7 @@
 #include "ui_playlists.h"
 #include "ui_home.h"
 #include "ui_sound.h"
+#include "ui_shell.h"
 
 namespace bp
 {
@@ -230,8 +231,20 @@ namespace bp
 		if (id == BUSY_CANCEL) return {152, 224, 336, 46};
 		if (id == WEB_NEWPIN) return {296, miniUp ? 368 : 384, 152, 52};
 		if (id == WEB_OFF) return {464, miniUp ? 368 : 384, 152, 52};
-		if (id == MINI_PP) return {MINI_BOX.x, MINI_BOX.y, 44, MINI_BOX.h};
-		if (id == MINI_BAR) return {MINI_BOX.x + 44, MINI_BOX.y, MINI_BOX.w - 44, MINI_BOX.h};
+		if (id == MINI_PP || id == MINI_BAR)
+		{
+			// the shell's bar sits right of the rail (its mark 56 wide); every other page's is the old one
+			Rect box = MINI_BOX;
+			int markEnd = MINI_BOX.x + 44;
+			if (shell && shell->page(page))
+			{
+				lay::MiniBar m = lay::miniBar(lay::shell(true).mini);
+				box = m.box;
+				markEnd = m.mark.x + m.mark.w;
+			}
+			if (id == MINI_PP) return {box.x, box.y, markEnd - box.x, box.h};
+			return {markEnd, box.y, box.x + box.w - markEnd, box.h};
+		}
 		if (id >= PHOTO_BTN) return {0, 0, 0, 0};	// photoBtn's: they move with the pan area
 		if (id == QUIT_BTN) return {468, miniUp ? 376 : 428, 148, 44};	// (a photo's Close: above the mini bar too)
 		if (id == EMPTY_BTN) return page == Page::Browse && browse->browseDir == NETROOT ? Rect{160, 300, 320, 52} : Rect{200, 300, 240, 52};	// (Find on the network: a longer label)

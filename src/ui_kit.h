@@ -52,6 +52,13 @@ namespace bp
 		int capsW(const std::string& keys) const;
 		int caps(const std::string& keys, int x, int cy, SDL_Color ink = ACCENT, SDL_Color ground = BG);
 		void hints(const std::vector<Hint>& list);	// (Ui::Hint: key, verb)
+		// the same bar inside `bar` (the shell's hint bar sits right of the rail: lay::shell().hints): it fills that
+		// box, rules its top edge and centres the items between its sides
+		void hints(Rect bar, const std::vector<Hint>& list);
+		// the app's mark (components.md "Brand mark"): the clapperboard on a 22 grid, `size` units square, from the
+		// theme's roles (BUTTON body, BG clapper bar with ACCENT stripes, SURFACE slate, ACCENT play, DIM/ACCENT/TEXT
+		// progress). One drawing, one state
+		void brandMark(int x, int y, int size = 22);
 
 		// ---- the header (every redesigned page has one) ----
 		// The strip a player layout gives the back key, the More key and the crumb, then the title under it (and the

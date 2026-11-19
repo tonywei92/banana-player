@@ -99,20 +99,52 @@ namespace bp
 
 	void Ui::Kit::hints(const std::vector<Hint>& list)
 	{
-		// 30 tall along the foot, a rule above; each item its caps then its word, the row centred
-		Rect bar{0, H - lay::HINTS_H, W, lay::HINTS_H};
+		hints({0, H - lay::HINTS_H, W, lay::HINTS_H}, list);
+	}
+
+	void Ui::Kit::hints(Rect bar, const std::vector<Hint>& list)
+	{
+		// a rule above; each item its caps then its word, the row centred in the box it was given
 		ui.fill(bar, BG);
-		ui.fill({0, bar.y, W, 1}, RULE);
+		ui.fill({bar.x, bar.y, bar.w, 1}, RULE);
 		std::vector<int> widths;
 		for (auto& h : list) widths.push_back(capsW(h.key) + (h.key.empty() || h.verb.empty() ? 0 : 5) + textW(h.verb, F_I12));
-		auto xs = lay::spread(widths, 15, 8, W - 8);
+		int left = bar.x + 8, right = bar.x + bar.w - 8;
+		auto xs = lay::spread(widths, 15, left, right);
 		int cy = bar.y + bar.h / 2 + 1;
 		for (size_t i = 0; i < list.size(); i++)
 		{
 			int x = xs[i];
 			if (!list[i].key.empty()) x += caps(list[i].key, x, cy) + 5;
-			ui.drawTextMid(list[i].verb, F_I12, DIM_ON, x, cy, std::max(1, W - 8 - x));
+			ui.drawTextMid(list[i].verb, F_I12, DIM_ON, x, cy, std::max(1, right - x));
 		}
+	}
+
+	void Ui::Kit::brandMark(int x, int y, int size)
+	{
+		// the spec's 22 grid, scaled by size / 22 (whole units at 22)
+		const double u = size / 22.0;
+		auto X = [&](double v) { return x + (int)std::lround(v * u); };
+		auto Y = [&](double v) { return y + (int)std::lround(v * u); };
+		auto S = [&](double v) { return std::max(1, (int)std::lround(v * u)); };
+		// the body, its 1-unit edgeOf(SURFACE) edge inside
+		ui.fillRound({x, y, size, size}, edgeOf(SURFACE), S(5));
+		int e = S(1);
+		ui.fillRound({x + e, y + e, size - 2 * e, size - 2 * e}, BUTTON, std::max(0, S(5) - e));
+		// the clapper bar: BG with four ACCENT stripes leaning left to right
+		ui.fillRound({X(3), Y(4), S(16), S(4)}, BG, S(1));
+		for (int i = 0; i < 4; i++)
+		{
+			int top = 5 + i * 4;
+			ui.fill({X(top), Y(4), S(2), S(2)}, ACCENT);
+			ui.fill({X(top - 1), Y(6), S(2), S(2)}, ACCENT);
+		}
+		// the slate, the play triangle and the progress bar
+		ui.fillRound({X(3), Y(9), S(16), S(10)}, SURFACE, S(1.5));
+		for (int i = 0; i < 4; i++) ui.fill({X(9), Y(10.5 + i), S(4.5 - i * 1.1), S(1.2)}, ACCENT);
+		ui.fill({X(5), Y(16), S(12), S(1)}, DIM);
+		ui.fill({X(5), Y(16), S(6), S(1)}, ACCENT);
+		ui.fill({X(10), Y(15.5), S(2), S(2)}, TEXT);
 	}
 
 	// ---- the header ----

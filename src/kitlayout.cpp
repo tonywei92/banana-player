@@ -394,14 +394,19 @@ namespace bp
 
 		MiniBar miniBar()
 		{
+			return miniBar({MINI_SIDE, PANEL_H - MINI_FOOT - MINI_H, PANEL_W - 2 * MINI_SIDE, MINI_H});
+		}
+
+		MiniBar miniBar(Box box)
+		{
 			MiniBar m;
-			m.box = {MINI_SIDE, PANEL_H - MINI_FOOT - MINI_H, PANEL_W - 2 * MINI_SIDE, MINI_H};
-			m.mark = {m.box.x + 5, m.box.y + (MINI_H - MINI_MARK_H) / 2, MINI_MARK_W, MINI_MARK_H};
-			m.line = {m.box.x + 2, m.box.y + MINI_H - 2 - 3, m.box.w - 4, 3};
-			m.cy = m.box.y + (MINI_H - 3) / 2;
+			m.box = box;
+			m.mark = {box.x + 5, box.y + (box.h - MINI_MARK_H) / 2, MINI_MARK_W, MINI_MARK_H};
+			m.line = {box.x + 2, box.y + box.h - 2 - 3, box.w - 4, 3};
+			m.cy = box.y + (box.h - 3) / 2;
 			m.kindX = m.mark.x + m.mark.w + 16;
 			m.textX = m.kindX + 8 + 10;
-			m.rightX = m.box.x + m.box.w - 12;
+			m.rightX = box.x + box.w - 12;
 			return m;
 		}
 

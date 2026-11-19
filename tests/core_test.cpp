@@ -10208,6 +10208,20 @@ static void testKitLayout()
 	sub.type = TrackType::Sub;	// (the same language in another kind of track doesn't count)
 	CHECK_EQ(chipTrack(en, 1, {en, sub}), std::string("English"));
 	CHECK_EQ(caps("Top screen 2"), std::string("TOP SCREEN 2"));
+
+	{	// the mini bar in the shell's own box: its mark, progress line and title stay inside it
+		Shell sh = shell(true);
+		MiniBar m = miniBar(sh.mini);
+		CHECK_EQ(m.box.x, sh.mini.x);
+		CHECK_EQ(m.box.y, sh.mini.y);
+		CHECK_EQ(m.box.w, sh.mini.w);
+		CHECK_EQ(m.box.h, sh.mini.h);
+		CHECK(m.mark.x >= m.box.x && m.mark.y >= m.box.y && m.mark.x + m.mark.w <= m.box.x + m.box.w);
+		CHECK(m.mark.y + m.mark.h <= m.box.y + m.box.h);
+		CHECK(m.line.x >= m.box.x && m.line.x + m.line.w <= m.box.x + m.box.w);
+		CHECK(m.line.y + m.line.h <= m.box.y + m.box.h);
+		CHECK(m.textX > m.mark.x + m.mark.w && m.textX < m.rightX);
+	}
 }
 
 // Session: nextPlace, what the player's "Next" line names (Step's own choice, read without stepping)
