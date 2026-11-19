@@ -250,6 +250,7 @@ cp /src/web/vendor/jassub/LICENSE.txt "$L/jassub-LICENSE.txt"
 cp /src/web/vendor/jassub/COPYRIGHT.txt "$L/jassub-COPYRIGHT.txt"
 cp /src/assets/fonts/licenses/PixelifySans-OFL.txt "$L/Pixelify-Sans-OFL.txt"
 cp /src/assets/fonts/licenses/Inter-LICENSE.txt "$L/Inter-LICENSE.txt"
+cp /src/assets/fonts/licenses/IBMPlexSans-OFL.txt "$L/IBM-Plex-Sans-OFL.txt"
 # the manga reader's: Lua and lexbor (compiled in), libjpeg-turbo (bundled, Debian's: its copyright file holds the
 # IJG and BSD licences)
 cp /src/third_party/lua/LICENSE "$L/Lua-LICENSE.txt"

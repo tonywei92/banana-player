@@ -20,13 +20,17 @@ foreach(rel IN LISTS web_files)
 endforeach()
 
 # the fonts are served from fonts/ under their own names; the licences under the names the web page links
-list(APPEND PATHS "fonts/PixelifySans-Regular.ttf" "fonts/Inter-Regular.ttf" "fonts/Inter-Bold.ttf" "fonts/OFL-Pixelify.txt" "fonts/OFL-Inter.txt")
+list(APPEND PATHS "fonts/PixelifySans-Regular.ttf" "fonts/Inter-Regular.ttf" "fonts/Inter-Bold.ttf" "fonts/OFL-Pixelify.txt" "fonts/OFL-Inter.txt"
+	"fonts/IBMPlexSans-Regular.ttf" "fonts/IBMPlexSans-SemiBold.ttf" "fonts/OFL-IBMPlexSans.txt")
 list(APPEND FILES
 	"${FONT_DIR}/PixelifySans-Regular.ttf"
 	"${FONT_DIR}/Inter-Regular.ttf"
 	"${FONT_DIR}/Inter-Bold.ttf"
 	"${FONT_DIR}/licenses/PixelifySans-OFL.txt"
-	"${FONT_DIR}/licenses/Inter-LICENSE.txt")
+	"${FONT_DIR}/licenses/Inter-LICENSE.txt"
+	"${FONT_DIR}/IBMPlexSans-Regular.ttf"
+	"${FONT_DIR}/IBMPlexSans-SemiBold.ttf"
+	"${FONT_DIR}/licenses/IBMPlexSans-OFL.txt")
 
 # the served type, by extension (the browser needs the right one for fonts and for the module scripts)
 function(bp_mime path out)
