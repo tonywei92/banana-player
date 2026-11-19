@@ -110,7 +110,7 @@ def back_of(s, out):
 	for k in s['keys']:
 		if 'B' in toks(k[0]) and k[2]:
 			return k[2]
-	m = re.search(r'class="btn bk"[^>]*data-go="([^"]+)"', s['bottom'])
+	m = re.search(r'class="btn(?: k)? bk"[^>]*data-go="([^"]+)"', s['bottom'])
 	return m.group(1) if m else NO_B.get(s['id'])
 
 def main():
