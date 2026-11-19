@@ -89,7 +89,8 @@ stopped part-way through shows where you left off. The line
 under the header shows where you are (`share / Movies`), and the bottom line shows what each button does there: the
 button's name in yellow, then what it does. See [Playlists](#playlists).
 
-Everything in a folder plays as one playlist: **L/R** go to the previous or next file, and the next one starts when
+Everything in a folder plays as one playlist: **L/R** go to the previous or next file (and play it, even when it was
+paused), and the next one starts when
 the current one ends. **Previous** on a **song**: 5 seconds or more in, it goes back to its start; before that, to the
 file before. **Previous** on a **video** always goes to the video before it, however far in it is; on the first video
 of the list it does nothing (the top screen says **This is the first one**) unless Repeat All is on, which goes round to

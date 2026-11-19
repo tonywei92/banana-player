@@ -426,7 +426,13 @@ namespace bp
 						did = true;
 						if (s.out.kind == OutKind::Handheld) effect(Effect::HhSeek, 0);
 					}
-					if (k == 0) return "";
+					// Next / Previous play, paused or not: a step is asking to hear that one (the owner, 2026-11-19)
+					if (k == 0)
+					{
+						// (not under a photo: it stays parked there until Play, I9)
+						if (!(s.parked && s.out.kind == OutKind::Handheld)) setPlaying(true);
+						return "";
+					}
 					int size = (int)s.queue.size();
 					int to = s.index + k;
 					bool round = false;
@@ -449,11 +455,10 @@ namespace bp
 						note(k < 0 ? "This is the first one" : "This is the last one", false);
 						return k < 0 ? "first" : "last";
 					}
-					bool wasError = !s.error.empty();
 					if (round) to = newRound();
 					newItem(to);
 					n.skipBack = k < 0;
-					if (wasError) setPlaying(true);	// stepping away from a file that failed: the next one plays
+					setPlaying(true);	// (also stepping away from a file that failed: the next one plays)
 					route();
 					loadHere();
 					return "";

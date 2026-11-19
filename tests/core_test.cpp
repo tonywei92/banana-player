@@ -10793,6 +10793,22 @@ static void testSessionNextPlace()
 static void testSessionNamed()
 {
 	{
+		// paused, Next and Previous play: a step asks to hear that one (the owner, 2026-11-19)
+		Sim m;
+		m.open(3, 0);
+		m.loaded();
+		m.toggle();
+		CHECK_EQ(m.s.playing, false);
+		m.step(1);
+		CHECK_EQ(m.s.index, 1);
+		CHECK_EQ(m.s.playing, true);
+		m.loaded();
+		m.toggle();
+		m.step(-1);
+		CHECK_EQ(m.s.index, 0);
+		CHECK_EQ(m.s.playing, true);
+	}
+	{
 		// the handheld can't play a file: picked, it stops there with its error; reached by Next, Previous or an
 		// end, it's skipped with a note (a folder's Up next never stalls on one); a list none of which plays stops
 		Sim m;
