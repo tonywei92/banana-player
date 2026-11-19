@@ -2,9 +2,9 @@
 // (docs/notes/ui-areas.md): its state and its handlers, drawn with the component kit (ui_kit.h) on the Rects of
 // lay::playerLayout (kitlayout.h), which its touches test too. Three tiers: the transport row (what is pressed all the
 // time), the state chips (what is set sometimes: each says its state, yellow when away from normal), and X's More
-// sheet for the rest (Lock, Screen off, Info, Stop, Like, Add to playlist, Show in folder, Play on). The row under the
-// transport is Like · Playlist · List · Stop; SELECT still opens View, and UP / DOWN do nothing here (the Next line is
-// a tap).
+// sheet for the rest (Lock, Screen off, Info, Stop, Like, Add to playlist, Show in folder, Play on, and View). The row
+// under the transport is Like · Playlist · List · Stop; SELECT and X both open More (its View row is the View sheet), and
+// UP / DOWN do nothing here (the Next line is a tap).
 // A photo is this page too (Player::playingPhoto): its viewer is unchanged and still Ui's (drawPhoto, photoKey,
 // photoPointer in ui_main.cpp); the area hands it the keys, the touches and the drawing.
 // Still Ui's, because other pages use them: Like (likeNow), the play mode's label (modeLabel), the hold that
@@ -54,7 +54,7 @@ namespace bp
 		// the chapter line and the Next line open it on theirs
 		int listTab = 0;
 		void openList(int tab, Player& p);
-		// View (SELECT): the View sheet (ui_player.cpp), opened on the tab last used. A video: Subtitles / Audio /
+		// View (More's View row): the View sheet (ui_player.cpp), opened on the tab last used. A video: Subtitles / Audio /
 		// Picture / Speed; the track chips open it on theirs, the Speed chip on Speed. A song: Display (the mode and the
 		// style on one page) / Equalizer / Effects / Speed; Sound opens Equalizer, Sound FX Effects, Display Display.
 		int viewTab = 0, songViewTab = 0;

@@ -1,6 +1,6 @@
 // Music's Sound page (the Equalizer and Effects tabs), the bottom panel's side: an area of Ui (Ui::Area, ui.h;
 // docs/notes/ui-areas.md). Its state, the preset dialogs and its handlers are here and in ui_sound.cpp. A song's
-// View sheet (SELECT) has Equalizer and Effects tabs of its own that call these same methods; this page stays for
+// View sheet (More's View row; SELECT or X opens More) has Equalizer and Effects tabs of its own that call these same methods; this page stays for
 // Settings' Music › Sound row.
 #pragma once
 #include "ui.h"

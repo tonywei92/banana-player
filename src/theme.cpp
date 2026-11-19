@@ -147,12 +147,23 @@ namespace bp
 					";--pressed:" + h(p.PRESSED) + ";--track:" + h(p.TRACK) + ";--rule:" + h(p.RULE) + ";";
 				css += "--cream:" + h(p.TEXT) + ";--dim:" + h(p.DIM) + ";--dim-btn:" + h(p.DIM_ON) + ";--yellow:" + h(p.ACCENT) + ";--red:" + h(p.DANGER) +
 					";--green:" + h(p.OK) + ";--on-accent:" + h(p.ON_ACCENT) + ";";
+				// (strong keys: Gundam's navy keys and red primary ones; unset, the button, accent and text roles they always were)
+				css += "--key:" + h(p.KEY) + ";--on-key:" + h(p.ON_KEY) + ";--key-focus:" + h(p.KEY_FOCUS) +
+					";--hint-bar:" + h(p.HINT_BAR) + ";--on-hint:" + h(p.ON_HINT) +
+					";--primary:" + h(p.PRIMARY) + ";--on-primary:" + h(p.ON_PRIMARY) + ";";
+				// (accent ink on a key: the accent, or on a strong theme's dark key its focus yellow)
+				css += "--key-lit:" + h(p.strongKeys ? p.KEY_FOCUS : p.ACCENT) + ";";
 				css += "--e-btn:" + e(p.BUTTON) + ";--e-pressed:" + e(p.PRESSED) + ";--e-surface:" + e(p.SURFACE) + ";--e-yellow:" + e(p.ACCENT) +
 					";--e-red:" + e(p.DANGER) + ";--e-track:" + e(p.TRACK) + ";";
 				css += "--l-btn:" + l(p.BUTTON) + ";--l-pressed:" + l(p.PRESSED) + ";--l-surface:" + l(p.SURFACE) + ";--l-yellow:" + l(p.ACCENT) +
 					";--l-red:" + l(p.DANGER) + ";";
+				css += "--e-key:" + e(p.KEY) + ";--l-key:" + l(p.KEY) + ";--e-primary:" + e(p.PRIMARY) + ";--l-primary:" + l(p.PRIMARY) + ";";
+				// (a strong theme's hover is its key moved towards the text, kept readable; every other theme's is PRESSED, as before)
+				Rgb keyHover = p.strongKeys ? over(p.KEY, p.TEXT, 40) : p.PRESSED;
+				css += "--key-hover:" + h(keyHover) + ";--e-key-hover:" + e(keyHover) + ";--l-key-hover:" + l(keyHover) + ";";
 				Rgb down{(unsigned char)(p.ACCENT.r * 88 / 100), (unsigned char)(p.ACCENT.g * 88 / 100), (unsigned char)(p.ACCENT.b * 88 / 100)};
 				css += "--yellow-hover:" + h(over(p.ACCENT, p.TEXT, 40)) + ";--yellow-down:" + h(down) + ";--picked:" + h(picked) + ";--e-picked:" + e(picked) + ";";
+				css += "--primary-hover:" + h(over(p.PRIMARY, p.TEXT, 40)) + ";";
 				css += "--dot:" + a(p.TEXT, 7) + ";--scrim:" + a(p.BG, 72) + ";--veil-sheet:" + a(p.BG, VEIL_SHEET) + ";";
 				// (style.css's own lines: a key cap's lip, a track's inner line, tiles' and placeholders' lines, a grip, a tip's edge)
 				auto to = [&](Rgb c, int percent) { return h(edgeOf(c, p.TEXT, percent)); };

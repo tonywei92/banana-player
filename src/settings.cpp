@@ -643,9 +643,9 @@ namespace bp
 		static const int VOLUME_TOPS[] = {100, 120, 150};
 		static const std::vector<SettingDef> table = {
 			D::choice("music-show", &Settings::musicShow, SHOW_IDS, SHOWS)
-				.page(SG_MUSIC, 10, "Music display", "What the top screen shows while a song plays (SELECT while playing).").shownAs(SHOW_LABELS).stepped(true),
+				.page(SG_MUSIC, 10, "Music display", "What the top screen shows while a song plays (More, then View, while playing).").shownAs(SHOW_LABELS).stepped(true),
 			D::choice("visualizer", &Settings::visualizer, VIS_IDS, VISUALIZERS)
-				.page(SG_MUSIC, 20, "Visualizer style", "Which visualizer is drawn: fifteen styles, from Peaks to Dance line (SELECT while playing).")
+				.page(SG_MUSIC, 20, "Visualizer style", "Which visualizer is drawn: fifteen styles, from Peaks to Dance line (More, then View, while playing).")
 				.shownAs(VIS_LABELS).stepped(true, stepVisualizer).afterRead(readVisualizer),
 			D::ints("visualizer-fps", &Settings::vizFps, VIZ_FPS, 3)
 				.page(SG_MUSIC, 30, "Visualizer frame rate", "How smoothly the visualizers move: 60 is smoothest, 30 lightest on the battery.")

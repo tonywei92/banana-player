@@ -14,6 +14,12 @@
 :root {
 	--bg: #000000; --surface: #121116; --raised: #19181E; --btn: #26242E; --pressed: #3E3B4A; --track: #1E1D24;
 	--cream: #E8E2D3; --dim: #8F8A80; --dim-btn: #ABA597; --yellow: #FFD23F; --red: #F0645A; --green: #7BD88F;
+	/* strong keys (theme.h's strongKeys): Gundam's navy keys and red primary ones; unset, the button and accent roles they
+	   always were, so every other theme draws as before */
+	--key: #26242E; --on-key: #E8E2D3; --key-focus: #FFD23F; --hint-bar: #000000; --on-hint: #ABA597;
+	--primary: #FFD23F; --on-primary: #000000; --key-lit: #FFD23F;
+	--e-key: #605D60; --l-key: #1B1920; --e-primary: #F8D76B; --l-primary: #B2932C;
+	--key-hover: #3E3B4A; --e-key-hover: #716D73; --l-key-hover: #2B2934; --primary-hover: #FFE68A;
 	/* edges: the fill 30% towards cream; lips: the fill x .7 */
 	--e-btn: #605D60; --e-pressed: #716D73; --e-surface: #52504F; --e-yellow: #F8D76B; --e-red: #EE8A7E; --e-track: #5B5858;
 	--l-btn: #1B1920; --l-pressed: #2B2934; --l-surface: #0D0C0F; --l-yellow: #B2932C; --l-red: #A8463F;
@@ -62,18 +68,18 @@ button:disabled, [aria-disabled="true"] { cursor: default; }
 .y { color: var(--yellow); }
 
 /* ================= the box ================= */
-.box, .btn { --f: var(--btn); --e: var(--e-btn); --l: var(--l-btn); background: var(--f); border: var(--bw) solid var(--e); box-shadow: inset 0 calc(-1 * var(--lip)) 0 var(--l); border-radius: var(--r-btn); color: var(--cream);
+.box, .btn { --f: var(--key); --e: var(--e-key); --l: var(--l-key); background: var(--f); border: var(--bw) solid var(--e); box-shadow: inset 0 calc(-1 * var(--lip)) 0 var(--l); border-radius: var(--r-btn); color: var(--on-key);
 	transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease), background-color var(--t-ui), border-color var(--t-ui), color var(--t-ui); }
-.box.surface { --f: var(--surface); --e: var(--e-surface); --l: var(--l-surface); border-radius: var(--r-card); }
-.box.yellow, .btn.primary { --f: var(--yellow); --e: var(--e-yellow); --l: var(--l-yellow); color: var(--on-accent); }
+.box.surface { --f: var(--surface); --e: var(--e-surface); --l: var(--l-surface); border-radius: var(--r-card); color: var(--cream); }
+.box.yellow, .btn.primary { --f: var(--primary); --e: var(--e-primary); --l: var(--l-primary); color: var(--on-primary); }
 .box.red, .btn.danger { --f: var(--red); --e: var(--e-red); --l: var(--l-red); color: var(--on-accent); }
-.box.focus, .box.sel { --e: var(--yellow); }
-.btn.ghost { --f: transparent; --l: transparent; }
+.box.focus, .box.sel { --e: var(--key-focus); }
+.btn.ghost { --f: transparent; --e: var(--e-btn); --l: transparent; color: var(--cream); }
 /* a press: the key goes down, its lip shrinks (the handheld's buttons) */
 button.box:active:not(:disabled), .btn:active:not(:disabled) { transform: translateY(2px); box-shadow: inset 0 -1px 0 var(--l); }
 @media (hover: hover) {
-	button.box:not(.yellow):not(.red):hover:not(:disabled), .btn:not(.primary):not(.danger):hover:not(:disabled) { --f: var(--pressed); --e: var(--e-pressed); --l: var(--l-pressed); }
-	button.box.yellow:hover:not(:disabled), .btn.primary:hover:not(:disabled) { --f: var(--yellow-hover); }
+	button.box:not(.yellow):not(.red):hover:not(:disabled), .btn:not(.primary):not(.danger):hover:not(:disabled) { --f: var(--key-hover); --e: var(--e-key-hover); --l: var(--l-key-hover); }
+	button.box.yellow:hover:not(:disabled), .btn.primary:hover:not(:disabled) { --f: var(--primary-hover); }
 }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: var(--hit); padding: 0 var(--s4) var(--lip); font: 400 17px/1 var(--pixel); white-space: nowrap; user-select: none; }
 .btn.sm { min-height: 36px; padding: 0 var(--s3) 2px; font-size: 15px; }
@@ -839,7 +845,7 @@ video::cue { font-size: var(--cue, 18px); color: #fff; background: rgba(0, 0, 0,
 	.pbar .right .ib.on { color: var(--yellow); }
 	.pbar .opt, .pbar .bar-vol { display: none; }
 	.devbtn { gap: 6px; }
-	.devbtn.hh { color: var(--yellow); }
+	.devbtn.hh { color: var(--key-lit); }
 	.devbtn .lbl { display: none; }
 	.phead { padding: var(--s7) 0 var(--s4); }
 	.phead h1 { font-size: 36px; }
@@ -1037,7 +1043,7 @@ input[type=range] { touch-action: pan-y; }
 .hm-hero .acts { display: flex; gap: var(--s2); flex-wrap: wrap; margin-top: 4px; }
 .hm-hero .acts .btn.primary { flex: 1 1 100%; min-height: 50px; font-size: 19px; }
 .hm-hero .acts .btn.start { flex: 1 1 auto; }
-.hm-hero .acts .btn.liked { color: var(--yellow); }
+.hm-hero .acts .btn.liked { color: var(--key-lit); }
 .hm-hero .plays { font-size: 13px; color: var(--dim); display: flex; align-items: center; gap: 7px; }
 .hm-now { display: flex; align-items: center; gap: 8px; }
 .hm-eq { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px; }

@@ -251,9 +251,9 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **L / R** | Previous / next file in the folder (a song 5 s or more in restarts first; a video always goes to the one before; on the first video: nothing, unless Repeat All) |
 | **L2 / R2** | Previous / next chapter (**F + L2** is still the screenshot) |
 | **UP / DOWN** | Nothing: the Next line is a tap, and the chips are touch only. (They no longer change the speed; that is the **Speed** chip or View's Speed tab) |
-| **X** | **More**: a sheet with **Lock touch**, **Screen off**, **Info** and **Stop** (in red) as its first four keys, then **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. The D-pad moves, **A** chooses, **X** or **B** closes |
+| **X** | **More**: a sheet with **Lock touch**, **Screen off**, **Info** and **Stop** (in red) as its first four keys, then **View** (what a video or song shows: the View sheet below), **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. The D-pad moves, **A** chooses, **X** or **B** closes |
 | **Y** | **List** (the **List** key): one sheet with **Up next** (the folder or playlist that plays, in its own order, the one playing marked **Now**) and **Chapters** (every chapter with its start; a file without chapters has only Up next), with **Shuffle**'s switch and **Repeat** (Off / All / One) in its header. **L / R** step the tabs, **UP / DOWN** move, **LEFT / RIGHT** page, **A** plays from the row, **L2 / R2** jump a chapter with the sheet open, **Y** or **B** closes |
-| **SELECT** | **View**, a sheet over the controls. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (Fit, Fill, Stretch) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Visualizer** (the fifteen styles as a grid), **Equalizer**, **Effects** and **Speed**. **L / R** switch tabs, **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's Display, **SELECT** steps the Show mode); it opens on the tab you used last |
+| **SELECT** | **More**, the same sheet **X** opens (the hint bar says **SELECT More**). Its first row, **View**, opens **View**, a sheet over the controls. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (Fit, Fill, Stretch) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Visualizer** (the fifteen styles as a grid), **Equalizer**, **Effects** and **Speed**. **L / R** switch tabs, **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's Display, **SELECT** steps the Show mode); it opens on the tab you used last. The rest of More is X's list |
 | **START** | **Settings**: the ten group tiles; **B** or **START** closes it back to where you were |
 | **L3** (press the stick, RG DS Plus) | Like / Unlike what plays |
 | **B** (or **Back**) | Back to the list: it keeps playing (see [Playing while you browse](#playing-while-you-browse)) |
@@ -275,8 +275,8 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 - **The transport row:** **Prev**, **5 s** back, **Play / Pause** (the wide yellow key), **10 s** forward, **Next**.
 - **The second row**, the same on a video and a song: **Like**, **Playlist** (Add to playlist…), **List** (Up next,
   **Y**) and **Stop** (at the right edge, in plain ink: it stops everywhere, the place kept; **X** › **More** has
-  the same Stop in red). **SELECT** opens **View** (a video's tracks and speed, or a song's display, visualizer,
-  equalizer and effects); the hint bar says **SELECT View**.
+  the same Stop in red). **SELECT** opens **More**, as **X** does: its first row, **View**, opens **View** (a video's
+  tracks and speed, or a song's display, visualizer, equalizer and effects); the hint bar says **SELECT More**.
 - **The chips** under them say how it is set, and a tap changes or opens each (they are touch only: the D-pad never
   lands on one). Five on both. A video: **Subtitles**, **Audio** and **Picture** (each opens its tab of View), **Speed**
   (View's Speed tab) and **Repeat**. A song: **Equalizer** (the equalizer's preset, opening View's Equalizer tab), **Sound
@@ -544,7 +544,7 @@ text viewer's sun gets a dot).
 
 ## Picture size
 
-On a video, **SELECT** › **View** › **Picture**: **A** chooses, the one in use has its radio filled.
+On a video, **More** (**X** or **SELECT**) › **View** › **Picture**: **A** chooses, the one in use has its radio filled.
 
 | | |
 |---|---|
@@ -556,7 +556,7 @@ On a video, **SELECT** › **View** › **Picture**: **A** chooses, the one in u
 
 Songs show their title, artist and album on the top screen. While a song plays:
 
-- **SELECT: View › Display** (View's tabs on a song: Display, Equalizer, Effects, Speed; the player's Display chip opens
+- **More › View › Display** (**SELECT** or **X** opens More; View's tabs on a song: Display, Equalizer, Effects, Speed; the player's Display chip opens
   it too). One page: under "Top screen shows", four tiles in a row, one always in use: **Album art only** (default),
   **Art + visualizer** (the art above the visualizer along the foot), **Visualizer only**, or **None** (just the title:
   the lightest on the battery). Under them the line "Visualizer · <style>" (with Album art only or None: "<style> · not
@@ -646,7 +646,7 @@ smoothly at 30, which leaves the handheld more time for the sound.
 ## Sound: equalizer and effects
 
 The equalizer and the sound effects change the sound of music: songs and audiobooks. Videos are never changed. Open
-them from **View**: **SELECT** then the **Equalizer** or **Effects** tab (the **Sound** chip opens View on Equalizer,
+them from **More** (**SELECT** or **X**) › **View** › the **Equalizer** or **Effects** tab (the **Sound** chip opens View on Equalizer,
 **Sound FX** on Effects). Settings › Music › **Sound FX** still opens the Sound page, whose two tabs are the same. In
 View's Equalizer and Effects tabs, **L / R** switch tabs, **LEFT / RIGHT** pick a band and **UP / DOWN** changes it,
 **L2 / R2** step the presets, **Y** turns the equalizer on or off, **A** saves, and **X** opens Options. On the Sound

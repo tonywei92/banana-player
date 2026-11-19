@@ -160,7 +160,7 @@ static void usage()
 		"                        (prints one of mpv's properties), BUTTON*N (N presses 80 ms apart),\n"
 		"                        BUTTON~MS (held MS ms, then let go)\n"
 		"buttons: A play/pause, LEFT -5 s, RIGHT +10 s, L/R previous/next file, L2/R2 chapters, DOWN the chips,\n"
-		"         X More (Lock, Screen off, Info, Stop...), Y the list, SELECT tracks or display, START menu, B back\n"
+		"         X or SELECT More (Lock, Screen off, Info, Stop, View...), Y the list, START menu, B back\n"
 		"keyboard: Enter, arrows, PgUp/PgDn (or Q/E), X, Y, Tab, Esc twice\n");
 }
 

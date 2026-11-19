@@ -1,7 +1,7 @@
 // The More sheet (docs/redesign/components.md, "More sheet (menu)"): a bottom sheet of tiles and rows over a page,
 // one overlay fed a list. What it lists is asked for each time it is drawn or pressed (build), so a row says what it
 // is now (Like / Liked, where it plays) and a row whose reason has gone (a browser that closed) goes with it.
-// X on the player opens the player's (Ui::PlayerPage::moreSpec, ui_player.cpp).
+// X (or SELECT) on the player opens the player's (Ui::PlayerPage::moreSpec, ui_player.cpp).
 #include "ui_kit.h"
 
 namespace bp
