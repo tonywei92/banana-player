@@ -43,7 +43,7 @@ JOURNEYS = [
 	('Search', 'home search search-results video; search-results music; search-results music-album; search-results reader; search-results search'),
 	('Network', 'home settings net-list net-find net-form keyboard; net-form net-list net-folder net-stream net-folder net-copy pdf; net-copy net-copy-fail net-copy; net-folder readonly alerts; net-list offline; net-list net-empty net-find; net-empty net-form'),
 	('Web dashboard', 'home-first web-page web-signin phone-home phone-files phone-playing music; web-page web-page-off web-page web-page-nowifi web-page; web-signin browser-play play-on music; browser-play browser-mini browser-play browser-lost music; quick web-page; home web-page'),
-	('Settings and Theme', 'home settings set-theme set-screen lid-keys settings set-playback settings-group set-music set-photos set-reading set-files set-screen web-page extensions manga-settings set-updates set-about settings home'),
+	('Settings and Theme', 'home settings set-theme set-screen lid-keys settings set-playback settings-group set-music set-photos set-reading set-files set-screen web-page set-updates set-about settings home'),
 	('Quick settings', 'home quick; video quick power-wake video; quick quit home; video vol-boost vol-warn vol-boost quick'),
 	('Incognito', 'quick incog-web-ask incog-web quick; set-screen incog-lid'),
 	('Lid and sleep', 'first-lid home-first; set-theme set-screen lid-keys; video power-dim power-wake video'),

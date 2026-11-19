@@ -174,6 +174,31 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
   controls stay the theme's; a neutral dark gradient when the art gives nothing, cannot be protected, or its hue is
   opposite the accent's. Cached by the art's hash as before. components.md › Match album art; `dyn-art`.
 
+- **Settings has no Extensions group and no Manga group** (owner; as built). An extension's settings live with the
+  extension: Manage extensions has one door, its row on the Extensions page; Manga settings is a page of Manga (X ·
+  More there, or X on its row in Manage extensions). Settings is ten groups: Playback, Subtitles, Music & sound,
+  Photos, Reading, Files & history, Power & screens, Web dashboard, Updates, About.
+
+- **The status cluster's taps** (as built): the globe opens the Web dashboard page; the rest of the cluster opens
+  Quick settings.
+- **No playing bars in the header on shell pages** (owner; built): the rail's Now playing key carries them. The
+  headers of the player, the readers and the photo viewer, which have no rail, keep theirs.
+
+- **Match album art in a light theme: both screens** (owner; it takes back “the top screen only”). Both
+  screens get a light version (a song's top screen is on the theme's ground too): the blurred art lifted onto the theme's light
+  ground (the hue at 22% saturation and 86% lightness in the theme's paper, a light vertical gradient, whitened for
+  a dark art until TEXT, DIM_ON and ACCENT hold 4.5); its fallback is the theme's plain ground. The theme's keys,
+  accent and text are untouched. themes.py checks the limit in every theme.
+
+- **Tags outside Music** (owner): tags are read only for songs in the Music folders, as drawn; a song elsewhere is
+  found by its file's name.
+
+- **Y in a playlist's select mode is Move** (owner, as drawn).
+- **Liked is newest first and can be reordered like a playlist** (owner, as drawn).
+- **An update ready while something plays waits** for a pause or the file's end, with a Note meanwhile (owner, as
+  drawn).
+- **Visualizers: Faders and Lanterns only** from the ten ideas, for now (owner); the fifteen stay as listed above.
+
 ## Decisions waiting on the owner
 
 Each was needed to draw a gap; the drawn one is the recommendation.
@@ -183,25 +208,13 @@ Each was needed to draw a gap; the drawn one is the recommendation.
   its place is kept empty when nothing plays, so the rail's cells never change height (45 tall with seven sections,
   52 with fewer; Settings 50). A tap opens the player; a hold opens the More of what plays (Stop, Like, Add…), as the
   mini bar's hold did. L / R pass it by; SELECT is its key. The header's status cluster still opens Quick settings,
-  and the header keeps its playing bars (a book and a photo have no rail). Or: under Search at the top; or a hold
+  and the header keeps its playing bars only where there is no rail (decided since: none on shell pages). Or: under Search at the top; or a hold
   that opens Quick settings; or no kept place (the cells would jump when playback starts).
-
-- **Match album art in a light theme.** Drawn: the top screen only (it is dark in every theme); the bottom screen
-  keeps the theme's light ground, with no backdrop, so the theme stays itself. Or: the player goes dark for a song,
-  on the theme's top-screen colours (its keys and accent would change: against the rule); or a pale wash of the art
-  over the light ground (possible, but the gradient has to pass 90% to keep dark text readable, so little shows).
 
 From the gaps:
 
 - **The brand mark's stripes:** ACCENT on BG (drawn: the strongest pair in every theme, crisp at 22), or ACCENT and
   TEXT as in the icon (purple and white there; in most themes two colours of the same lightness, so the bar goes flat).
-- **Tags outside Music:** read only for songs in the Music folders, so a song elsewhere is found by its file's name
-  (drawn: less reading, one rule), or read for every song so Search finds any song by its title tag.
-- **Y in a playlist's select mode is Move** (drawn: today's key, and the playlist's own job), or Y does nothing there
-  as in Files' select mode and Move is only on the bar and in More.
-- **Liked's order:** newest first, and it can be reordered like a playlist (drawn), or fixed newest first.
-- **An update that is ready while something plays:** the Restart question waits for a pause or the file's end, with a
-  Note meanwhile (drawn), or asks at once.
 
 ## Spacing audit (2026-11-19)
 

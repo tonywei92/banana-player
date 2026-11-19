@@ -81,6 +81,14 @@ def cr(a, b):
     x, y = sorted([lum(a), lum(b)], reverse=True)
     return (x + .05) / (y + .05)
 
+def grey(L):  # the grey whose luminance is L
+    v = L * 12.92 if L <= .0031308 else 1.055 * L ** (1 / 2.4) - .055
+    return hx([round(max(0, min(1, v)) * 255)] * 3)
+def artLimit(t):  # Match album art: how far the backdrop may go from BG before TEXT, DIM_ON or ACCENT drop under 4.5 on it (4.6 here, for rounding)
+    inks = [lum(t['TX']), lum(t['DO']), lum(t['AC'])]
+    if lum(t['BG']) > .5: return grey(max(4.6 * (l + .05) - .05 for l in inks))   # a light theme: the darkest the backdrop may be
+    return grey(min((l + .05) / 4.6 - .05 for l in inks))                           # a dark theme: the brightest
+
 def full(k):
     t = dict(T[k]); em = t.setdefault('EM', 30)
     t['KN'] = t['TX']; t['SC'] = t['BT']
@@ -124,6 +132,9 @@ def pairs(k):
          ('Clean style: BUTTON (a key, a card, a tile with no edge) against BG', t['BT'], t['BG'], C),
          ('Clean style: BUTTON against SURFACE (a key on a sheet)', t['BT'], t['SF'], C),
          ('Clean style: PRESSED against BUTTON', t['PR'], t['BT'], 1.2),
+         ] + ([] if k == 'contrast' else [('Match album art: TEXT on the backdrop at its limit', t['TX'], artLimit(t), 4.5),
+         ('Match album art: DIM_ON on the backdrop at its limit', t['DO'], artLimit(t), 4.5), ('Match album art: ACCENT on the backdrop at its limit', t['AC'], artLimit(t), 4.5),
+         ('Match album art: the limit against BG (room for the art to show)', artLimit(t), t['BG'], 1.15)]) + [
          ('ON_KEY on KEY (a named key)', t['OK_'], t['KEY'], 4.5), ('ON_PRIMARY on PRIMARY', t['OP'], t['PRI'], 4.5),
          ('ON_HINT on HINT_BAR', t['OH'], t['HB'], 4.5), ('ON_RAIL on RAIL', t['OR'], t['RA'], 4.5),
          ('The rail’s active cell: its ink on its fill', t['RI'], t['RN'], 4.5), ('KEY_FOCUS (a focused key’s edge) against KEY', t['KF'], t['KEY'], 3),
@@ -160,7 +171,7 @@ if __name__ == '__main__':
             pre = '' if k == 'yellow' else f':root[data-bp={k}] '
             print(f"{pre}.s{{{cssvars(full(k))}}}")
             print(f"{','.join(pre + x for x in scope)}{{{cssTop(top(k))}}}")
-        for k in ('dark', 'light', 'gundam', 'gundam0', 'dark0', 'darkb', 'darkc', 'blue'):  # a theme pinned to one drawing (the Clean style's side-by-side screens)
+        for k in ('dark', 'light', 'gundam', 'gundam0', 'dark0', 'darkb', 'darkc', 'blue', 'sakura'):  # a theme pinned to one drawing (the Clean style's side-by-side screens)
             print(f":root .s.t-{k}.t-{k}{{{cssvars(full(k))}}}")
         print(':root:not([data-bp]) .s .thv>em.t-yellow,' + ','.join(f':root[data-bp={k}] .s .thv>em.t-{k}' for k in ORDER) + '{display:inline}')
         print(','.join(f':root[data-bp={k}] .s .thsw.t-{k}' for k in ORDER) + '{border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}')
