@@ -325,9 +325,9 @@ namespace bp
 		constexpr int SHELL_HEAD = 54;
 		struct Shell
 		{
-			Box rail, main;	// the rail's strip; everything right of it
-			Box header, body, hints;
-			Box mini;	// the mini bar's box (w = 0 when nothing plays)
+			Box rail{}, main{};	// the rail's strip; everything right of it
+			Box header{}, body{}, hints{};
+			Box mini{0, 0, 0, 0};	// the mini bar's box (w = 0 when nothing plays)
 		};
 		Shell shell(bool mini);
 
