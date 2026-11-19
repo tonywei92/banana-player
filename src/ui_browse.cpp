@@ -236,6 +236,18 @@ namespace bp
 	void Ui::Browse::fitList()
 	{
 		int n = (int)browseRows.size(), first = listFirst();
+		// All recent's group headings are never the cursor (a page listed again may leave it on one)
+		if (browseDir == RECENT && ui.cursor >= 0 && ui.cursor < n && browseRows[ui.cursor].id == -3)
+		{
+			int c = ui.cursor;
+			while (c < n && browseRows[c].id == -3) c++;
+			if (c >= n)
+			{
+				c = ui.cursor;
+				while (c > first && browseRows[c].id == -3) c--;
+			}
+			ui.cursor = c;
+		}
 		ui.cursor = std::clamp(ui.cursor, first, std::max(first, n - 1));
 		// the cursor in the window, and no empty rows below the list's end while there are rows above
 		ui.scroll = std::clamp(ui.scroll, std::max(first, ui.cursor - ROWS_SHOWN + 1), std::min(ui.cursor, std::max(first, n - ROWS_SHOWN)));
@@ -394,9 +406,19 @@ namespace bp
 			}
 			// (a kind emptied meanwhile, its last one removed: back to All rather than an empty tab)
 			if (homeView->recentTab && !homeView->recentCounts[homeView->recentTab]) homeView->recentTab = 0;
+			// by day (docs/redesign, recent-all): a heading row (id -3, never chosen) before each group's items;
+			// an entry an older version kept (no time) is under Earlier
+			time_t now = time(nullptr);
+			int lastGroup = -1;
 			for (auto& it : homeView->recent)
 			{
 				if (homeView->recentTab && homeView->recentTab != PlayHistory::kindOf(it.path) + 1) continue;
+				int group = PlayHistory::dayGroup(p.history().timeOf(it.path), now);
+				if (group != lastGroup)
+				{
+					add(-3, PlayHistory::dayName(group), "", "");
+					lastGroup = group;
+				}
 				add(2, baseName(it.path), it.path, it.net ? fileNote(at(it.path), -1) : localNote(it.path));
 			}
 			if (homeView->recent.empty()) add(-1, "Nothing played yet", "", "");
@@ -836,7 +858,7 @@ namespace bp
 	{
 		int what = item >= 0 && item < (int)ctxItems.size() ? ctxItems[item] : CTX_CANCEL;
 		// Files' own: Copy..., Move..., Rename..., Delete (ui_fileops.cpp)
-		if (what == CTX_F_INFO) { ctxOpen = false; openFileInfo(ctxPath, ""); return; }
+		if (what == CTX_F_INFO) { ctxOpen = false; openFileInfo(ctxPath, "", {}, &p); return; }
 		if (what >= CTX_F_COPY && what <= CTX_F_DELETE) { browse->fileOpsAct(what, ctxPath, p); return; }
 		// (before the playlists' below: their numbers come after them)
 		if (what == CTX_WEB) { ctxOpen = false; openWeb(); return; }
@@ -1535,7 +1557,7 @@ namespace bp
 			m.rows.push_back(row({&G_PAGE, "Copy\xE2\x80\xA6", "", "", [this](Player& p) { filesSelAct(1, p); return false; }}));
 			m.rows.push_back(row({&G_MOVE, "Move\xE2\x80\xA6", ro ? "This folder is read only" : "", "", [this](Player& p) { filesSelAct(2, p); return false; }, false, ro}));
 			m.rows.push_back(row({&G_TRASH, "Delete", ro ? "This folder is read only" : "Asks first", "", [this](Player& p) { filesSelAct(3, p); return false; }, true, ro}));
-			MoreItem info{&G_INFO, "Info", "", "", [this](Player& p) { if (ui.cursor >= 0 && ui.cursor < (int)browsePaths.size()) ui.openFileInfo(browsePaths[ui.cursor], ""); return false; }};
+			MoreItem info{&G_INFO, "Info", "", "", [this](Player& p) { if (ui.cursor >= 0 && ui.cursor < (int)browsePaths.size()) ui.openFileInfo(browsePaths[ui.cursor], "", {}, &p); return false; }};
 			m.rows.push_back(info);
 			return m;
 		});
@@ -1679,7 +1701,7 @@ namespace bp
 			if (id == 2)
 				left.push_back(item(&G_FOLDER, "Show in folder", "", [this, path](Player& p) { ui.showInFolder(path, p); return false; }));
 			if (onRow)
-				left.push_back(item(&G_INFO, "Info", "", [this, path](Player& p) { ui.openFileInfo(path, ""); return false; }));
+				left.push_back(item(&G_INFO, "Info", "", [this, path](Player& p) { ui.openFileInfo(path, "", {}, &p); return false; }));
 			if (ops)
 			{
 				left.push_back(item(&G_PAGE, "Copy\xE2\x80\xA6", "", [this, path](Player& p) { fileOpsAct(CTX_F_COPY, path, p); return false; }));

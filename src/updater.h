@@ -26,6 +26,7 @@ namespace bp
 
 		void check();		// in the background; nothing while one runs
 		void download();	// the release check() found
+		void cancel();		// stop a download: the part files go, nothing was changed, and the release stays known
 		State state() const { return st; }
 		bool fromStore() const { return store; }
 		std::string current() const { return currentVersion; }
@@ -41,6 +42,7 @@ namespace bp
 		std::string pkgDir, parentDir, currentVersion;
 		bool store = false;
 		std::atomic<State> st{State::Off};
+		std::atomic<bool> cancelled{false};	// cancel(): the worker stops after its curl is killed
 		mutable std::mutex lock;
 		Release release;
 		std::string why, partPath;

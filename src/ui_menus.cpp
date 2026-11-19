@@ -835,9 +835,21 @@ namespace bp
 		switch (updater->state())
 		{
 		case Updater::State::Available: return {"Update now", "Later", "Not until tomorrow"};
-		case Updater::State::Downloading: return {"Hide"};
-		case Updater::State::Ready: return {"Restart now", "Later"};
-		default: return {"OK"};
+		case Updater::State::Downloading: return {"Hide", "Stop the download"};
+		case Updater::State::Ready: return {"Later", "Restart now"};
+		default: return {"Try again", "Close", "Details"};
+		}
+	}
+
+	// the index B answers with (and the safe key the sheet focuses)
+	int Ui::popupSafe() const
+	{
+		switch (updater->state())
+		{
+		case Updater::State::Available: return 1;	// Later
+		case Updater::State::Downloading: return 0;	// Hide
+		case Updater::State::Ready: return 0;	// Later
+		default: return 1;	// Close
 		}
 	}
 
@@ -857,62 +869,146 @@ namespace bp
 			s.updateRemindAfter = (long long)nextMidnight(time(nullptr));
 			p.setSettings(s);
 		}
-		if (st == Updater::State::Ready && item == 0)
+		if (st == Updater::State::Downloading && item == 1)
+		{
+			// Stop the download: nothing was changed, and it isn't asked again until the next check
+			updater->cancel();
+			popupClosed = true;
+			popupFollow = false;
+			popupCursor = 0;
+			return;
+		}
+		if (st == Updater::State::Ready && item == 1)
 		{
 			restartRequested = true;
 			return;
 		}
-		// Later, Hide, OK, and Not until tomorrow: closed for this time (a download goes on; a ready update is put in
-		// place at the next start)
+		if (st == Updater::State::Failed && item == 0)
+		{
+			// an update that failed to download can be asked for again (nothing was changed)
+			updater->download();
+			popupFollow = true;
+			popupCursor = 0;
+			popupDetails = false;
+			return;
+		}
+		if (st == Updater::State::Failed && item == 2)
+		{
+			// Details: unfolded in place (the sheet stays up)
+			popupDetails = !popupDetails;
+			return;
+		}
+		// Later, Hide, Close, and Not until tomorrow: closed for this time (a download goes on; a ready update is put
+		// in place at the next start)
 		popupClosed = true;
 		popupCursor = 0;
+		popupDetails = false;
+	}
+
+	// the sheet's key boxes for the state shown, from the same layouts the drawing uses
+	Ui::Rect Ui::popupRow(int item) const
+	{
+		auto box = [](lay::Box b) { return Rect{b.x, b.y, b.w, b.h}; };
+		switch (updater->state())
+		{
+		case Updater::State::Available:
+		{
+			lay::ConfirmSheet c = lay::confirmSheet(2, false, true);
+			return box(item == 0 ? c.safe : item == 1 ? c.action : c.third);
+		}
+		case Updater::State::Downloading:
+		{
+			lay::BusySheet b = lay::busySheet(true);
+			return box(item == 0 ? b.key : b.key2);
+		}
+		case Updater::State::Ready:
+		{
+			lay::ConfirmSheet c = lay::confirmSheet(2, false);
+			return box(item == 0 ? c.safe : c.action);
+		}
+		default:
+		{
+			lay::ConfirmSheet c = lay::confirmSheet(popupDetails ? 4 : 2, false, true);
+			return box(item == 0 ? c.safe : item == 1 ? c.action : c.third);
+		}
+		}
 	}
 
 	void Ui::drawUpdatePopup()
 	{
-		auto items = popupItems();
-		int top = 150, bottom = popupRow((int)items.size() - 1).y + 60;
-		drawDialog({112, top, 416, bottom - top}, "");
-		std::string title, sub;
-		switch (updater->state())
+		Kit& k = *kit;
+		Updater::State st = updater->state();
+		std::vector<Hint> hints;
+		std::string title, text, key, cap, key2, cap2;
+		if (st == Updater::State::Available)
 		{
-		case Updater::State::Available:
-			title = "Banana Player " + updater->available() + " is out";
-			sub = "You have " + updater->current();
-			break;
-		case Updater::State::Downloading:
+			lay::ConfirmSheet l = lay::confirmSheet(2, false, true);
+			Kit::ConfirmSpec c;
+			c.title = "Banana Player " + updater->available() + " is out";
+			c.safe = "Update now";
+			c.action = "Later";
+			c.third = "Not until tomorrow";
+			c.focus = std::clamp(popupCursor, 0, 2);
+			c.pressed = pressedBtn >= 200 ? pressedBtn - 200 : -1;
+			std::vector<std::string> lines = wrapText("You have " + updater->current() + ". Downloads the new version, then Restart now.",
+				F_I14, lay::PANEL_W - 2 * lay::SHEET_PAD - 4, 2);
+			k.confirmSheet(l, c, lines);
+			return;
+		}
+		if (st == Updater::State::Downloading)
 		{
+			lay::BusySheet l = lay::busySheet(true);
+			Kit::BusySpec b;
+			b.title = "Downloading " + updater->available();
+			b.file = updater->available();
 			int pct = updater->progress();
-			title = "Downloading " + updater->available() + "...";
-			sub = pct >= 0 ? std::to_string(pct) + "%" : "Starting";
-			break;
+			b.share = pct >= 0 ? pct / 100.0 : -1;
+			b.left = pct >= 0 ? std::to_string(pct) + "%" : "Starting";
+			b.right = "You can go on using it";
+			b.key = "Hide";
+			b.cap = "B";
+			b.primary = true;
+			b.pressed = popupCursor == 0;
+			b.key2 = "Stop the download";
+			b.cap2 = "Y";
+			b.pressed2 = popupCursor == 1 ? 1 : 0;
+			k.busySheet(l, b);
+			return;
 		}
-		case Updater::State::Ready:
-			title = updater->available() + " is ready";
-			sub = "Restart now, or it's in place next time";
-			break;
-		default:
-			title = "The update didn't work";
-			sub = updater->message();
-			break;
-		}
-		drawTextMid(title, 1, ACCENT, W / 2, top + 30, 392, 2);
-		drawTextMid(sub, 0, TEXT, W / 2, top + 62, 392, 2);
-		if (updater->state() == Updater::State::Downloading)
+		if (st == Updater::State::Ready)
 		{
-			// the bar
-			int pct = std::max(0, updater->progress());
-			drawLevel({156, top + 84, 328, 8}, 328 * pct / 100, TRACK);
+			lay::ConfirmSheet l = lay::confirmSheet(2, false);
+			Kit::ConfirmSpec c;
+			c.title = updater->available() + " is ready";
+			c.safe = "Later";	// the safe key: focused, and B
+			c.action = "Restart now";
+			c.focus = popupCursor == 1 ? 1 : 0;
+			c.pressed = pressedBtn >= 200 ? pressedBtn - 200 : -1;
+			std::vector<std::string> lines = wrapText("Checked against its checksum. Restart now, or it's put in place at the next start.",
+				F_I14, lay::PANEL_W - 2 * lay::SHEET_PAD - 4, 2);
+			k.confirmSheet(l, c, lines);
+			return;
 		}
-		for (int i = 0; i < (int)items.size(); i++)
+		// Failed: an alert's red title, the reason, and (Details) the whole of it; Try again, Close, Details
+		lay::ConfirmSheet l = lay::confirmSheet(popupDetails ? 4 : 2, false, true);
+		Kit::ConfirmSpec c;
+		c.title = "The update didn't work";
+		c.titleDanger = true;
+		c.safe = "Try again";
+		c.action = "Close";
+		c.third = "Details";
+		c.thirdKey = "Y";
+		c.focus = std::clamp(popupCursor, 0, 2);
+		c.pressed = pressedBtn >= 200 ? pressedBtn - 200 : -1;
+		std::vector<std::string> lines;
+		if (popupDetails)
 		{
-			Rect r = popupRow(i);
-			bool at = i == popupCursor;
-			if (pressedBtn == 200 + i) drawBox(r, PRESSED, R_BUTTON);
-			else if (at) drawFocus(r);
-			drawTextMid(items[i], 1, at ? ACCENT : TEXT, W / 2, r.y + r.h / 2, r.w - 10, 2);
+			lines = wrapText("What failed: " + updater->message() + " Nothing was changed: you have " + updater->current() +
+				", unchanged. Log: log.txt in the state folder.", F_I14, lay::PANEL_W - 2 * lay::SHEET_PAD - 4, 4);
 		}
-		drawHints({{"A", "Choose"}, {"B", items.size() > 1 ? "Later" : "Close"}});
+		else lines = wrapText(updater->message().empty() ? "Nothing was changed." : updater->message(), F_I14,
+			lay::PANEL_W - 2 * lay::SHEET_PAD - 4, 2);
+		k.confirmSheet(l, c, lines);
 	}
 
 	void Ui::drawBrowseMenu(const Player& p)

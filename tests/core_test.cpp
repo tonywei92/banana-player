@@ -47,6 +47,7 @@ extern "C"
 #include "backlight.h"
 #include "playlist.h"
 #include "playlists.h"
+#include "previewpane.h"
 #include "keyboard.h"
 #include "manga_names.h"
 #include "mangaservers.h"
@@ -7886,6 +7887,32 @@ static void testHistory()
 	PlayHistory back;
 	back.parse(h.serialize() + "/v/39\n");	// a repeat in the file is read once
 	CHECK_EQ(back.items() == h.items(), true);
+	// when each played (All recent's groups): a file an older version wrote has the path alone (no time)
+	struct tm tmv{};
+	tmv.tm_year = 2026 - 1900;
+	tmv.tm_mon = 10;
+	tmv.tm_mday = 20;
+	tmv.tm_hour = 12;
+	time_t now = mktime(&tmv);
+	PlayHistory timed;
+	timed.add("/v/today.mkv", now - 3600);
+	timed.add("/v/yesterday.mkv", now - 86400);
+	timed.add("/v/earlier.mkv", now - 5 * 86400);
+	timed.add("/v/old.mkv");
+	CHECK_EQ(timed.timeOf("/v/today.mkv"), now - 3600);
+	CHECK_EQ(timed.timeOf("/v/old.mkv"), PlayHistory::NO_TIME);
+	CHECK_EQ(timed.timeOf("/v/none.mkv"), PlayHistory::NO_TIME);
+	CHECK_EQ(PlayHistory::dayGroup(now - 3600, now), (int)PlayHistory::TODAY);
+	CHECK_EQ(PlayHistory::dayGroup(now - 86400, now), (int)PlayHistory::YESTERDAY);
+	CHECK_EQ(PlayHistory::dayGroup(now - 5 * 86400, now), (int)PlayHistory::EARLIER);
+	CHECK_EQ(PlayHistory::dayGroup(PlayHistory::NO_TIME, now), (int)PlayHistory::EARLIER);
+	CHECK_EQ(std::string(PlayHistory::dayName(PlayHistory::TODAY)), std::string("Today"));
+	PlayHistory reread;
+	reread.parse(timed.serialize() + "/v/oldline.mkv\n");
+	CHECK_EQ(reread.timeOf("/v/today.mkv"), now - 3600);
+	CHECK_EQ(reread.timeOf("/v/oldline.mkv"), PlayHistory::NO_TIME);
+	CHECK_EQ(reread.items().size(), (size_t)5);
+	CHECK_EQ(reread.items()[2], std::string("/v/yesterday.mkv"));
 	// Remove from Recent: that one, the rest in their order
 	CHECK_EQ(back.remove("/v/108"), true);
 	CHECK_EQ(back.remove("/v/108"), false);
@@ -10278,11 +10305,65 @@ static void testKitVariantConfirm()
 	CHECK(!overlaps(c.safe, c.action));
 	CHECK_EQ(c.action.x + c.action.w, 640 - SHEET_PAD);
 	CHECK(c.text.y + c.text.h <= c.safe.y);
+	// a third key: three of one width across the sheet, the spare unit to the last (197, 197, 198)
+	ConfirmSheet t = confirmSheet(2, false, true);
+	CHECK_EQ(t.safe.w, 197);
+	CHECK_EQ(t.action.w, 197);
+	CHECK_EQ(t.third.w, 198);
+	CHECK_EQ(t.safe.x, c.safe.x);
+	CHECK(!overlaps(t.safe, t.action) && !overlaps(t.action, t.third));
+	CHECK_EQ(t.third.x + t.third.w, 640 - SHEET_PAD);
+	CHECK_EQ(t.third.y, t.safe.y);
+	CHECK_EQ(t.safe.h, 56);
+	CHECK_EQ(t.text.y + t.text.h <= t.safe.y, true);
 	ConfirmSheet f = confirmSheet(2, true);
 	CHECK(f.foot.w > 0 && f.foot.y >= f.text.y + f.text.h);
 	CHECK(f.foot.y + f.foot.h <= f.safe.y + f.safe.h + 40);
 	CHECK(f.safe.y + f.safe.h <= f.foot.y);
 	CHECK(f.sheet.box.h >= c.sheet.box.h);
+}
+
+static void testKitLayoutReaders()
+{
+	using namespace lay;
+	// the readers' header: back at the left, the bookmark and More at the right, the title's room between them
+	ReaderHeader h = readerHeader({0, 0, PANEL_W, SHELL_HEAD}, true);
+	CHECK_EQ(h.back.x, 10);
+	CHECK_EQ(h.more.x + h.more.w, PANEL_W - 10);
+	CHECK(h.bookmark.x < h.more.x && h.bookmark.y + h.bookmark.h <= SHELL_HEAD);
+	CHECK(!overlaps(h.bookmark, h.more));
+	CHECK_EQ(h.bookmarkHit.hit(h.bookmark.x + 2, 10), true);
+	CHECK_EQ(h.moreHit.hit(h.more.x + 2, 10), true);
+	CHECK_EQ(h.title.x, 72);
+	CHECK_EQ(h.title.x + h.title.w, h.bookmark.x - SP8);
+	CHECK_EQ(h.crumb.y > h.title.y, true);
+	CHECK(h.title.y >= 0 && h.crumb.y + h.crumb.h <= SHELL_HEAD);
+	ReaderHeader p = readerHeader({0, 0, PANEL_W, SHELL_HEAD}, false);
+	CHECK_EQ(p.bookmark.w, 0);
+	CHECK_EQ(p.title.x + p.title.w, p.more.x - SP8);
+	CHECK_EQ(p.strip.more.x, h.strip.more.x);
+
+	// a download with two keys: Hide and Stop share the busy sheet's row
+	BusySheet one = busySheet();
+	CHECK_EQ(one.key.w, PANEL_W - 2 * SHEET_PAD);
+	CHECK_EQ(one.key2.w, 0);
+	BusySheet two = busySheet(true);
+	CHECK_EQ(two.key.y, two.key2.y);
+	CHECK_EQ(two.key.h, 56);
+	CHECK(!overlaps(two.key, two.key2));
+	CHECK_EQ(two.key2.x + two.key2.w, PANEL_W - SHEET_PAD);
+	CHECK_EQ(two.key.x, one.key.x);
+
+	// the Preview pane's cover picture: a real image (a decoded cover) or, with none, the cover's place
+	PaneSpec pane;
+	pane.cover = true;
+	CHECK_EQ(pane.coverArt.ok(), false);
+	pane.coverArt.w = 2;
+	pane.coverArt.h = 2;
+	pane.coverArt.rgba.assign(16, 255);
+	CHECK_EQ(pane.coverArt.ok(), true);
+	CHECK_EQ(previewPane(true).cover.w, 196);
+	CHECK_EQ(previewPane(true).cover.h, 278);
 }
 
 static void testKitVariantBusy()
@@ -14533,6 +14614,7 @@ int main()
 	testKitVariantNotice();
 	testKitVariantBars();
 	testKitLayoutLists();
+	testKitLayoutReaders();
 	testKitLayoutPages();
 	testKitLayoutLibrary();
 	testKitNewSectionRail();

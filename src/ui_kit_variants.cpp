@@ -254,23 +254,33 @@ namespace bp
 
 	void Ui::Kit::confirmSheet(const lay::ConfirmSheet& l, const ConfirmSpec& c, const std::vector<std::string>& lines)
 	{
-		sheet(l.sheet, {&G_ALERT, c.title, "", c.danger});
+		sheet(l.sheet, {&G_ALERT, c.title, "", c.danger || c.titleDanger});
 		for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], F_I14, TEXT, l.text.x, l.text.y + 10 + (int)i * 20, l.text.w);
 		// the safe key on the left: yellow, focused, B; the action on the right, red ink when it destroys
 		Key safe;
 		safe.label = c.safe;
-		safe.key = "B";
+		safe.key = l.third.w > 0 ? "A" : "B";
 		safe.tone = Tone::Primary;
 		safe.focused = c.focus == 0;
 		safe.pressed = c.pressed == 0;
 		key(l.safe, safe);
 		Key act;
 		act.label = c.action;
-		act.key = c.focus == 1 ? "A" : "";
+		act.key = l.third.w > 0 ? "B" : c.focus == 1 ? "A" : "";
 		act.tone = c.danger ? Tone::Danger : Tone::Normal;
 		act.focused = c.focus == 1;
 		act.pressed = c.pressed == 1;
 		key(l.action, act);
+		// a third key beside them (the update question's "Not until tomorrow": no cap of its own, chosen by touch)
+		if (l.third.w > 0 && !c.third.empty())
+		{
+			Key alt;
+			alt.label = c.third;
+			alt.key = c.thirdKey;
+			alt.focused = c.focus == 2;
+			alt.pressed = c.pressed == 2;
+			key(l.third, alt);
+		}
 		if (l.foot.w > 0)
 		{
 			int cy = l.foot.y + l.foot.h / 2;
@@ -284,7 +294,20 @@ namespace bp
 			}
 			ui.drawTextMid(c.foot, F_I12, DIM, l.foot.x + 30, cy, std::max(1, right - (l.foot.x + 30)));
 		}
-		std::vector<Hint> h = {{"LEFT/RIGHT", "Choose"}, {"A", c.focus == 0 ? c.safe : c.action}, {"B", c.safe}};
+		std::vector<Hint> h;
+		if (l.third.w > 0)
+		{
+			h.push_back({"LEFT/RIGHT", "Choose"});
+			h.push_back({"A", c.focus == 0 ? c.safe : c.focus == 1 ? c.action : c.third});
+			h.push_back({"B", c.action});
+			if (!c.thirdKey.empty()) h.push_back({c.thirdKey, c.third});
+		}
+		else
+		{
+			h.push_back({"LEFT/RIGHT", "Choose"});
+			h.push_back({"A", c.focus == 0 ? c.safe : c.action});
+			h.push_back({"B", c.safe});
+		}
 		if (!c.footKey.empty()) h.push_back({c.footKey, "Don't ask again"});
 		hints(h);
 	}
@@ -315,7 +338,19 @@ namespace bp
 		k.label = b.key;
 		k.key = b.cap;
 		k.pressed = b.pressed;
+		k.tone = b.primary ? Tone::Primary : Tone::Normal;
 		key(l.key, k);
+		if (l.key2.w > 0 && !b.key2.empty())
+		{
+			Key k2;
+			k2.label = b.key2;
+			k2.key = b.cap2;
+			k2.pressed = b.pressed2 == 1;
+			k2.focused = b.pressed2 == 1;
+			key(l.key2, k2);
+			hints({{b.cap, b.key}, {b.cap2, b.key2}});
+			return;
+		}
 		hints({{b.cap, b.key}});
 	}
 

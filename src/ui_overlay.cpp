@@ -378,7 +378,7 @@ namespace bp
 
 		void draw(const Player&) override { ui.drawFileInfo(); }
 
-		std::string signature(const Player&) const override { return "info" + ui.infoTitle + std::to_string(ui.infoRows.size()); }
+		std::string signature(const Player&) const override { return "info" + ui.infoTitle + std::to_string(ui.infoGroupLines()); }
 	};
 
 	void Ui::openInfo()

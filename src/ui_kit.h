@@ -85,7 +85,8 @@ namespace bp
 		// state and so no title row of their own. See docs/redesign/components.md "Header".
 		struct Header
 		{
-			std::string title, crumb;	// title in F_P28 (the title's own line); crumb in F_I12 (the strip)
+			std::string title, crumb;	// title in F_P28 (the title's own line, or titleFont); crumb in F_I12 (the strip)
+			int titleFont = F_P28;	// the readers' file name is 18 units (their own line, not the player's 28)
 			const Glyph* mark = nullptr;	// a small mark before the crumb (a heart, a folder)
 			bool back = true, backPressed = false, more = true, morePressed = false;
 			bool crumbEnd = false;	// keep the crumb's end (a folder's path), else cut its start (a playlist's name)
@@ -291,8 +292,12 @@ namespace bp
 		struct ConfirmSpec
 		{
 			std::string title, text, safe = "Cancel", action = "OK", foot;
+			// a third key (the update question's "Not until tomorrow", a failed update's "Details"): the three go
+			// across the sheet in this order (safe, action, third). B stays the action, as with two
+			std::string third, thirdKey;
 			bool danger = false;	// the action's ink red: it destroys
-			int focus = 0;	// 0 the safe key (yellow, focused, B), 1 the action
+			bool titleDanger = false;	// the title in red, the keys as they are (a failure, not a destroying action)
+			int focus = 0;	// 0 the safe key (yellow, focused, B), 1 the action, 2 the third
 			int pressed = -1;
 			bool footOn = false;	// the "don't ask again" line ticked
 			std::string footKey;	// the cap that ticks the line ("Y"); "" none
@@ -305,7 +310,10 @@ namespace bp
 			const Glyph* glyph = nullptr;	// the job's icon; none: the spinner
 			int tick = 0;	// the spinner's step
 			std::string key = "Cancel", cap = "B";
+			std::string key2, cap2;	// a second key beside it (the update's Stop), when the job has one ("" none)
+			int pressed2 = -1;
 			bool pressed = false;
+			bool primary = false;	// the one key is the sheet's action (a download's Hide), not a Cancel
 		};
 		void busySheet(const lay::BusySheet& l, const BusySpec& b);
 

@@ -220,9 +220,46 @@ namespace bp
 		d.text(PIXEL, 15, "Banana Player", l.brandName.x, l.brandName.y + (l.brandName.h - d.lineH(PIXEL, 15) / c.k) / 2, ACCENT);
 		if (s.cover)
 		{
-			// no picture here yet: the cover's place
+			// the cover's place, then the picture fitted inside it (none: the place alone, with the picture's mark)
 			d.flat(l.cover.x, l.cover.y, l.cover.w, l.cover.h, R_TILE, SURFACE, edgeOf(SURFACE));
-			d.glyph(G_PICTURE, 44, l.cover.x + (l.cover.w - 44) / 2.f, l.cover.y + (l.cover.h - 44) / 2.f, DIM);
+			if (s.coverArt.ok())
+			{
+				// a box filter at the picture's own rate (few taps: a cover is 196 x 278 units on the panel): the
+				// aspect is kept and the picture centred, so a tall book's cover shows whole
+				const PaneImage& img = s.coverArt;
+				float aw = img.w, ah = img.h, bw = l.cover.w - 2 * EDGE, bh = l.cover.h - 2 * EDGE;
+				float fit = std::min(bw / aw, bh / ah), dw = aw * fit, dh = ah * fit;
+				int dx = (int)std::lround(d.X(l.cover.x + EDGE + (bw - dw) / 2)), dy = (int)std::lround(d.Y(l.cover.y + EDGE + (bh - dh) / 2));
+				int pw = std::max(1, (int)std::lround(d.S(dw))), ph = std::max(1, (int)std::lround(d.S(dh)));
+				for (int y = 0; y < ph; y++)
+				{
+					int y0 = std::clamp((int)((y + 0.5f) * img.h / ph), 0, img.h - 1);
+					float fy = std::clamp((y + 0.5f) * img.h / ph - 0.5f, 0.f, (float)img.h - 1);
+					int y1 = std::min(img.h - 1, y0 + 1);
+					float ty = fy - y0;
+					for (int x = 0; x < pw; x++)
+					{
+						float fx = std::clamp((x + 0.5f) * img.w / pw - 0.5f, 0.f, (float)img.w - 1);
+						int x0 = (int)fx, x1 = std::min(img.w - 1, x0 + 1);
+						float tx = fx - x0;
+						const uint8_t* p00 = &img.rgba[((size_t)y0 * img.w + x0) * 4];
+						const uint8_t* p10 = &img.rgba[((size_t)y0 * img.w + x1) * 4];
+						const uint8_t* p01 = &img.rgba[((size_t)y1 * img.w + x0) * 4];
+						const uint8_t* p11 = &img.rgba[((size_t)y1 * img.w + x1) * 4];
+						uint8_t px[3];
+						for (int ch = 0; ch < 3; ch++)
+							px[ch] = (uint8_t)std::lround((p00[ch] * (1 - tx) + p10[ch] * tx) * (1 - ty) + (p01[ch] * (1 - tx) + p11[ch] * tx) * ty);
+						int sx = dx + x, sy = dy + y;
+						if (sx < 0 || sy < 0 || sx >= c.W || sy >= c.H) continue;
+						uint8_t* o = &c.v[((size_t)sy * c.W + sx) * 4];
+						o[0] = px[0];
+						o[1] = px[1];
+						o[2] = px[2];
+						o[3] = 255;
+					}
+				}
+			}
+			else d.glyph(G_PICTURE, 44, l.cover.x + (l.cover.w - 44) / 2.f, l.cover.y + (l.cover.h - 44) / 2.f, DIM);
 		}
 		// the column: label, title, sentence, then the block, the rows, the keys
 		float x = l.column.x, cw = l.column.w, y = s.extra == PaneSpec::THEMES ? l.column.y - 8 : l.column.y;

@@ -386,6 +386,30 @@ namespace bp
 			return l;
 		}
 
+		ReaderHeader readerHeader(Box main, bool bookmark)
+		{
+			ReaderHeader h;
+			h.strip.back = h.back = {main.x + 10, 3, 56, 48};
+			h.strip.backHit = h.backHit = {main.x, 0, 70, SHELL_HEAD};
+			h.strip.more = h.more = {main.x + main.w - 10 - 56, 3, 56, 48};
+			h.strip.moreHit = h.moreHit = {main.x + main.w - 70, 0, 70, SHELL_HEAD};
+			int right = h.more.x - SP8;
+			if (bookmark)
+			{
+				h.bookmark = {right - 44, 5, 44, 44};
+				h.bookmarkHit = {h.bookmark.x - 8, 0, h.bookmark.w + 8, SHELL_HEAD};
+				right = h.bookmark.x - SP8;
+			}
+			else h.bookmark = h.bookmarkHit = Box{0, 0, 0, 0};
+			// the inline title's room: from beside the back key to the leftmost key at the right
+			int x = main.x + 72;
+			h.title = {x, 4, std::max(0, right - x), 24};
+			h.crumb = {x, 26, std::max(0, right - x), 22};
+			h.strip.title = {x, 0, std::max(0, right - x), SHELL_HEAD};
+			h.strip.hints = {main.x, PANEL_H - HINTS_H, main.w, HINTS_H};
+			return h;
+		}
+
 		PlayerLayout playerLayout(int chips)
 		{
 			PlayerLayout l;
@@ -587,7 +611,7 @@ namespace bp
 			return a;
 		}
 
-		ConfirmSheet confirmSheet(int textLines, bool foot)
+		ConfirmSheet confirmSheet(int textLines, bool foot, bool third)
 		{
 			int textH = std::max(1, textLines) * 20, footH = foot ? 28 : 0;
 			ConfirmSheet c;
@@ -595,14 +619,16 @@ namespace bp
 			c.sheet = sheet({0, 0, 1, std::max(textH + 14 + FORM_KEY_H + footH, 240 - (11 + SHEET_HEAD + 8 + HINTS_H))});
 			int keysY = c.sheet.hints.y - 8 - FORM_KEY_H - footH;
 			Box area{SHEET_PAD, keysY, PANEL_W - 2 * SHEET_PAD, FORM_KEY_H};
-			c.safe = cell(area, 2, GAP, 0);
-			c.action = cell(area, 2, GAP, 1);
+			// three keys share the row (safe, action, third): the spare units to the last, as cell() does
+			c.safe = cell(area, third ? 3 : 2, GAP, 0);
+			c.action = cell(area, third ? 3 : 2, GAP, 1);
+			c.third = third ? cell(area, 3, GAP, 2) : Box{0, 0, 0, 0};
 			c.text = {SHEET_PAD + 2, c.sheet.bodyY + 4, PANEL_W - 2 * SHEET_PAD - 4, textH};
 			c.foot = foot ? Box{SHEET_PAD, c.sheet.hints.y - 8 - footH + 4, PANEL_W - 2 * SHEET_PAD, footH - 4} : Box{0, 0, 0, 0};
 			return c;
 		}
 
-		BusySheet busySheet()
+		BusySheet busySheet(bool twoKeys)
 		{
 			BusySheet b;
 			// the file line (20), the bar (12) 10 under it, the amounts (18) 8 under that, 14 clear, Cancel
@@ -611,7 +637,9 @@ namespace bp
 			b.file = {SHEET_PAD + 2, y, PANEL_W - 2 * SHEET_PAD - 4, 20};
 			b.bar = {SHEET_PAD + 2, y + 30, PANEL_W - 2 * SHEET_PAD - 4, 12};
 			b.amounts = {SHEET_PAD + 2, y + 50, PANEL_W - 2 * SHEET_PAD - 4, 18};
-			b.key = {SHEET_PAD, b.sheet.hints.y - 8 - FORM_KEY_H, PANEL_W - 2 * SHEET_PAD, FORM_KEY_H};
+			Box row{SHEET_PAD, b.sheet.hints.y - 8 - FORM_KEY_H, PANEL_W - 2 * SHEET_PAD, FORM_KEY_H};
+			b.key = twoKeys ? cell(row, 2, GAP, 0) : row;
+			b.key2 = twoKeys ? cell(row, 2, GAP, 1) : Box{0, 0, 0, 0};
 			return b;
 		}
 

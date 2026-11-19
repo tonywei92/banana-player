@@ -682,7 +682,7 @@ namespace bp
 		// photos aren't kept in Recent: fifty of them would push every video out
 		if (settings.keepHistory && !incognito && !isPhoto && (settings.keepNetHistory || !isNet))
 		{
-			played.add(path);
+			played.add(path, time(nullptr));
 			recentSer++;
 			if (!opts.stateDir.empty()) writeFile(opts.stateDir + "/history.tsv", played.serialize());
 		}
@@ -2328,7 +2328,7 @@ namespace bp
 	void Player::addRecent(const std::string& path)
 	{
 		if (!settings.keepHistory || incognito) return;
-		played.add(path);
+		played.add(path, time(nullptr));
 		recentSer++;
 		if (!opts.stateDir.empty()) writeFile(opts.stateDir + "/history.tsv", played.serialize());
 	}

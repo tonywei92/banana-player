@@ -2214,7 +2214,7 @@ namespace bp
 			{
 				const LocalSeries& s = mangaLocal[mListCursor];
 				int n = (int)s.chapters.size();
-				ui.openFileInfo(s.path, s.title, {{"Chapters", std::to_string(n)}});
+				ui.openFileInfo(s.path, s.title, {{"Chapters", std::to_string(n)}}, &p);
 			}
 			return false;
 		}

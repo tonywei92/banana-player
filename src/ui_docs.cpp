@@ -251,6 +251,8 @@ namespace bp
 		docPanTexPage = -1;
 		docPanTexSrc = nullptr;
 		docMenu = DOC_MENU_NONE;
+		docBookBar = false;
+		docBookBarPressed = -1;
 		docLive = false;
 		if (findJob) findJob->cancel = true;
 		findOn = false;
@@ -504,6 +506,20 @@ namespace bp
 		p.setSettings(s);
 	}
 
+	void Ui::Docs::docBookmarkHere(Player& p)
+	{
+		for (int i : docMarksHere())
+			if (docMarks[i].id == textStatus.place) { p.osd("There's a bookmark here already", 1500); return; }
+		DocMark m;
+		m.path = docPath;
+		m.id = textStatus.place;
+		m.frac = textStatus.fraction;
+		m.label = textStatus.snippet.empty() ? "Bookmark" : textStatus.snippet;
+		docMarks.push_back(m);
+		docMarksSave();
+		p.osd("Bookmarked", 1200);
+	}
+
 	void Ui::Docs::docMenuAct(Player& p)
 	{
 		if (docMenu == DOC_MENU_MARKS)
@@ -512,16 +528,7 @@ namespace bp
 			auto here = docMarksHere();
 			if (docMenuCursor == 0)
 			{
-				for (int i : here)
-					if (docMarks[i].id == textStatus.place) { p.osd("There's a bookmark here already", 1500); return; }
-				DocMark m;
-				m.path = docPath;
-				m.id = textStatus.place;
-				m.frac = textStatus.fraction;
-				m.label = textStatus.snippet.empty() ? "Bookmark" : textStatus.snippet;
-				docMarks.push_back(m);
-				docMarksSave();
-				p.osd("Bookmarked", 1200);
+				docBookmarkHere(p);
 				return;
 			}
 			int k = docMenuCursor - 1;
@@ -723,6 +730,8 @@ namespace bp
 		if (ui.page == Page::DocText && textStatus.book)
 		{
 			// held sideways: UP and DOWN point along the spread (as the manga reader's Book); the shoulders turn too
+			if (b == Button::Start) docBookBar = !docBookBar;
+			else docBookBar = false;	// any other key acts on the page, and the bar goes
 			switch (b)
 			{
 			case Button::Up: docBookTurn(-1, p); break;
@@ -730,7 +739,8 @@ namespace bp
 			case Button::L: textCmds.push_back({TextReader::BookTurn, -1, now}); break;
 			case Button::R: case Button::A: textCmds.push_back({TextReader::BookTurn, 1, now}); break;
 			case Button::X: docMarksOpen(); break;
-			case Button::Start: docMenu = DOC_MENU_OPTIONS; docMenuCursor = docMenuScroll = 0; break;
+			// START: the Book bar, upright as the panel is held (its Text key opens the options)
+			case Button::Start: break;
 			// SELECT or B: back to the scroll (B there closes the document)
 			case Button::Select: case Button::B: { Settings s = p.settings; s.txtBook = 0; p.setSettings(s); break; }
 			default: break;
@@ -948,8 +958,10 @@ namespace bp
 			}
 		if (ui.page == Page::DocText && textStatus.book)
 		{
+			// the bar, when it shows, takes the touches first
+			if (docBookBar) return docBookBarPointer(pt, x, y, p);
 			// the panel is a page: a swipe along the spread turns it (as the manga reader's Book); a tap near the
-			// top or the bottom of the panel turns the way UP or DOWN would, a tap in the middle opens Text options
+			// top or the bottom of the panel turns the way UP or DOWN would, a tap in the middle shows the Book bar
 			if (pt.kind == Pointer::Down)
 			{
 				docTouch = true;
@@ -967,7 +979,7 @@ namespace bp
 				{
 					if (y < H * 3 / 10) docBookTurn(-1, p);
 					else if (y > H * 7 / 10) docBookTurn(1, p);
-					else { docMenu = DOC_MENU_OPTIONS; docMenuCursor = docMenuScroll = 0; }
+					else docBookBar = true;	// the Book bar (its Text key opens the options)
 				}
 			}
 			return false;
@@ -976,6 +988,21 @@ namespace bp
 		{
 			docClose(p);
 			return false;
+		}
+		{
+			// the readers' header keys: a book's bookmark, and More (the options menu), as the header draws them
+			lay::ReaderHeader h = lay::readerHeader({0, 0, W, lay::SHELL_HEAD}, ui.page == Page::DocText);
+			if (pt.kind == Pointer::Down && h.moreHit.hit(x, y))
+			{
+				docMenu = DOC_MENU_OPTIONS;
+				docMenuCursor = docMenuScroll = 0;
+				return false;
+			}
+			if (pt.kind == Pointer::Down && ui.page == Page::DocText && h.bookmarkHit.hit(x, y))
+			{
+				docBookmarkHere(p);
+				return false;
+			}
 		}
 		bool text = ui.page == Page::DocText;
 		bool full = !text && ui.pageReader->readerStatus.fullscreen;
@@ -1151,8 +1178,92 @@ namespace bp
 		else drawDocPages(p);
 	}
 
+	void Ui::Docs::drawDocBookBar(const Player& p)
+	{
+		lay::BookBar b = lay::bookBar();
+		KitNew::BookSpec s;
+		s.title = !textStatus.title.empty() ? textStatus.title : fileName(docPath);
+		int pct = (int)std::lround(textStatus.fraction * 100);
+		s.value = std::to_string(pct) + "%";
+		// the chapter at the place (a TXT has none: the bar's own line stays empty)
+		int ci = -1;
+		for (int i = 0; i < (int)textStatus.contents.size(); i++)
+			if (textStatus.contents[i].second.first <= textStatus.place &&
+				(ci < 0 || textStatus.contents[i].second.first > textStatus.contents[ci].second.first)) ci = i;
+		if (ci >= 0) s.note = "Chapter " + std::to_string(ci + 1) + " of " + std::to_string((int)textStatus.contents.size());
+		s.share = textStatus.fraction;
+		s.keys[0] = {&G_CHAPTERS, "Contents", "Y", ""};
+		s.keys[1] = {&G_PAGE, "Text", "SELECT", ""};
+		s.keys[2] = {&G_SUN, "Light", "", ui.lightNote(p)};
+		s.keys[3] = {&G_SEARCH, "Find", "L3", ""};
+		s.leave = "Back to scrolling";
+		s.leaveKey = "B";
+		s.hints = {{"UP/DOWN", "Turn"}, {"A", "On"}, {"START", "Close"}};
+		s.topLeft = textStatus.book == MANGA_BOOK_LEFT;
+		s.pressed = docBookBarPressed;
+		KitNew::bookBar(*ui.kit, b, s);
+	}
+
+	bool Ui::Docs::docBookBarPointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		lay::BookBar b = lay::bookBar();
+		bool topLeft = textStatus.book == MANGA_BOOK_LEFT;
+		int ux = 0, uy = 0;
+		lay::uprightPoint(x, y, topLeft, ux, uy);
+		int at = lay::bookBarAt(b, ux, uy);
+		if (pt.kind == Pointer::Down)
+		{
+			docBookBarPressed = at >= 0 && at <= 4 ? at : -1;
+			if (at < 0) { docBookBar = false; docTouch = false; }	// a tap off the sheet puts it away
+			return false;
+		}
+		if (pt.kind == Pointer::Up)
+		{
+			int was = docBookBarPressed;
+			docBookBarPressed = -1;
+			if (was >= 0 && at == was) docBookBarAct(was, p);
+		}
+		return false;
+	}
+
+	void Ui::Docs::docBookBarAct(int which, Player& p)
+	{
+		docBookBar = false;
+		switch (which)
+		{
+		case 0:	// Contents: as Y
+			if (!textStatus.contents.empty())
+			{
+				docMenu = DOC_MENU_CONTENTS;
+				docMenuCursor = 0;
+				for (int i = 0; i < (int)textStatus.contents.size(); i++)
+					if (textStatus.contents[i].second.first <= textStatus.place &&
+						(i == 0 || textStatus.contents[i].second.first > textStatus.contents[docMenuCursor].second.first))
+						docMenuCursor = i;
+				docMenuScroll = std::max(0, docMenuCursor - 3);
+			}
+			else docMarksOpen();
+			break;
+		case 1:	// Text: the options (as the key row's)
+			docMenu = DOC_MENU_OPTIONS;
+			docMenuCursor = docMenuScroll = 0;
+			break;
+		case 2: ui.openLight(); break;
+		case 3: ui.openKeyboard(FIND_FIELD, findQuery); break;
+		case 4:	// Back to scrolling
+		{
+			Settings s = p.settings;
+			s.txtBook = 0;
+			p.setSettings(s);
+			break;
+		}
+		default: break;
+		}
+	}
+
 	void Ui::Docs::drawDocText(const Player& p)
 	{
+		Kit& k = *ui.kit;
 		if (textStatus.book && textStatus.bottom && docMenu == DOC_MENU_NONE)
 		{
 			// Book: this panel is the other page, already turned the way the handheld is held
@@ -1276,15 +1387,25 @@ namespace bp
 				}
 			}
 			drawFind();
+			if (docBookBar) drawDocBookBar(p);
 			return;
 		}
-		ui.drawBackIcon();
-		std::string title = !textStatus.title.empty() ? textStatus.title : fileName(docPath);
-		ui.drawTextMid(title, 1, TEXT, 72, 24, 540);
+		// the header (docs/redesign, reader): the book's name at the readers' 18 units beside the back key, its own
+		// line under it, and at the right the bookmark key and More
+		docBookBar = false;	// (a bar left open when Book went: the scroll view has no bar)
+		lay::ReaderHeader h = lay::readerHeader({0, 0, W, lay::SHELL_HEAD}, true);
+		Kit::Header hd;
+		hd.title = !textStatus.title.empty() ? textStatus.title : fileName(docPath);
 		int pct = (int)std::lround(textStatus.fraction * 100);
-		std::string sub = std::to_string(pct) + "%";
-		if (!textStatus.encoding.empty()) sub += "  \xC2\xB7  " + textStatus.encoding;
-		ui.drawTextMid(sub, 0, DIM, 72, 50, 540);
+		hd.crumb = std::to_string(pct) + "%";
+		if (!textStatus.encoding.empty()) hd.crumb += "  \xC2\xB7  " + textStatus.encoding;
+		hd.titleFont = F_SMALL;
+		hd.inlineTitle = true;
+		hd.more = true;
+		hd.right = [&](int, int) { return h.bookmark.x - lay::SP8; };
+		ui.kit->header(h.strip, hd);
+		ui.kit->iconKey(h.bookmark, G_BOOKMARK, docPressed == 200, 2, true);
+		ui.drawGlyphMid(G_BOOKMARK, h.bookmark.x + h.bookmark.w / 2, h.bookmark.y + h.bookmark.h / 2, ACCENT, 2);
 		{
 			// under a finger: where the finger has it (the text follows at once, its own figure a moment behind)
 			double share = ui.slideShare(SL_DOC, 0, textStatus.fraction);
@@ -1309,19 +1430,31 @@ namespace bp
 		bool hints = p.settings.buttonHotkeys;
 		for (int i = 0; i < 5; i++)
 		{
-			// a reader's key row: keys in Clean too (components.md "Clean style", rule 7)
-			Kit::ClassicHere classic;
+			// a reader's key row: keys in Clean too (components.md "Clean style", rule 7), drawn by the kit
 			Rect b = docBtn(i);
-			ui.drawBox(b, docPressed == i ? PRESSED : BUTTON, R_BUTTON);
+			Kit::Key kk;
+			kk.label = btns[i].label;
+			kk.key = hints ? btns[i].key : "";
+			kk.off = btns[i].off;
+			kk.pressed = docPressed == i;
 			if (i == 4)
 			{
-				// Brightness: its sun, lit with a dot while Extra dim or a filter is on
+				// Brightness: its sun, lit with a dot while Extra dim or a filter is on; the state under it when it fits
 				bool tweaked = !ui.lightNote(p).empty();
-				ui.drawGlyphMid(G_SUN, b.x + b.w / 2, b.y + b.h / 2, tweaked ? ACCENT : TEXT);
-				if (tweaked) ui.fillRound({b.x + b.w - 14, b.y + 6, 8, 8}, ACCENT, 4);
+				kk.label.clear();
+				kk.key.clear();
+				kk.glyph = &G_SUN;
+				kk.lit = tweaked;
+				k.key(b, kk);
+				if (tweaked)
+				{
+					ui.fillRound({b.x + b.w - 12, b.y + 5, 7, 7}, ACCENT, 3);
+					std::string note = ui.lightNote(p);
+					if (k.textW(note, F_I11B) <= b.w - 4) ui.drawTextMid(note, F_I11B, ACCENT, b.x + b.w / 2, b.y + b.h - 8, b.w - 4, 2);
+				}
 				continue;
 			}
-			ui.drawKeyedLabel(b, btns[i].label, hints ? btns[i].key : "", btns[i].off, b.w - 2);
+			k.key(b, kk);
 		}
 		if (findOn)
 		{
@@ -1331,11 +1464,12 @@ namespace bp
 			const char* keys[3] = {"L", "R", "B"};
 			for (int i = 0; i < 3; i++)
 			{
-				Kit::ClassicHere classic;	// Find's keys too
 				Rect r = docBtn(0);
 				Rect bb = rowCell({16, r.y, 608, r.h}, 3, 10, i);
-				ui.drawBox(bb, BUTTON, R_BUTTON);
-				ui.drawKeyedLabel(bb, labels[i], keys[i]);
+				Kit::Key kk;
+				kk.label = labels[i];
+				kk.key = keys[i];
+				k.key(bb, kk);
 			}
 			ui.drawTextMid("Find \u201C" + findQuery + "\u201D", 0, ACCENT, W / 2, docBtn(0).y + docBtn(0).h + 22, 560, 2);
 		}
@@ -1354,6 +1488,7 @@ namespace bp
 
 	void Ui::Docs::drawDocPages(const Player& p)
 	{
+		Kit& k = *ui.kit;
 		int filter = std::clamp(p.settings.pdfFilter, 0, DOC_FILTERS - 1);
 		if (ui.pageReader->mangaPages)
 		{
@@ -1371,12 +1506,21 @@ namespace bp
 			if (docMenu != DOC_MENU_NONE) drawDocMenu(p);
 			return;
 		}
-		ui.drawBackIcon();
-		std::string title = ui.pageReader->mangaReadChapterTitle.empty() ? fileName(docPath) : ui.pageReader->mangaReadChapterTitle;
-		ui.drawTextMid(title, 1, TEXT, 72, 24, 420);
+		// the header: the document's name at 18 units, its line under it (the page, the zoom), More at the right
+		lay::ReaderHeader h = lay::readerHeader({0, 0, W, lay::SHELL_HEAD}, false);
+		Kit::Header hd;
+		hd.title = ui.pageReader->mangaReadChapterTitle.empty() ? fileName(docPath) : ui.pageReader->mangaReadChapterTitle;
 		int pages = ui.pageReader->readerStatus.pages;
 		if (pages > 0)
-			ui.drawTextMid(std::to_string((ui.slideHeld(SL_DOC) ? (int)ui.slide.value : ui.pageReader->readerStatus.page) + 1) + " / " + std::to_string(pages), 1, TEXT, W - 24, 24, 160, 1);
+			hd.crumb = "Page " + std::to_string((ui.slideHeld(SL_DOC) ? (int)ui.slide.value : ui.pageReader->readerStatus.page) + 1) +
+				" of " + std::to_string(pages);
+		if (ui.pageReader->readerStatus.zoomPct != 100)
+			hd.crumb += std::string(hd.crumb.empty() ? "" : "  \xC2\xB7  ") + std::to_string(ui.pageReader->readerStatus.zoomPct) + "%";
+		if (hd.crumb.empty()) hd.crumb = fileName(docPath);
+		hd.titleFont = F_SMALL;
+		hd.inlineTitle = true;
+		hd.more = true;
+		ui.kit->header(h.strip, hd);
 		bool single = ui.pageReader->readerStatus.mode != MANGA_STRIP;
 		if (!ui.pageReader->readerStatus.error.empty())
 		{
@@ -1432,22 +1576,27 @@ namespace bp
 			bool hints = p.settings.buttonHotkeys;
 			for (int i = 0; i < 9; i++)
 			{
-				Kit::ClassicHere classic;	// the page reader's key row: keys in Clean too
+				// the page reader's key row: keys in Clean too, drawn by the kit
 				Rect b = docBtn(i);
-				ui.drawBox(b, docPressed == i ? PRESSED : BUTTON, R_BUTTON);
 				bool off = (i == 0 && ui.pageReader->readerStatus.page <= 0) || (i == 1 && ui.pageReader->readerStatus.page + 1 >= pages) ||
 					(i == 2 && ui.pageReader->readerStatus.zoomPct <= 100);
-				std::string label = labels[i];
+				Kit::Key kk;
+				kk.off = off;
+				kk.pressed = docPressed == i;
 				if (i == 5)
 				{
-					// Brightness: its sun, the word small under it (the label doesn't fit beside the others')
-					// (while Extra dim or a filter is on: lit, and what's on in place of the word)
+					// Brightness: its sun, the state under it while Extra dim or a filter is on
 					std::string note = ui.lightNote(p);
-					ui.drawGlyphMid(G_SUN, b.x + b.w / 2, b.y + 20, note.empty() ? TEXT : ACCENT);
-					ui.drawText(note.empty() ? labels[i] : note, 0, note.empty() ? TEXT : ACCENT, b.x + b.w / 2, b.y + 35, b.w - 6, 2);
+					kk.glyph = &G_SUN;
+					kk.lit = !note.empty();
+					k.key(b, kk);
+					if (!note.empty() && k.textW(note, F_I11B) <= b.w - 4)
+						ui.drawTextMid(note, F_I11B, ACCENT, b.x + b.w / 2, b.y + b.h - 8, b.w - 4, 2);
 					continue;
 				}
-				ui.drawKeyedLabel(b, label, hints || i == 4 ? keys[i] : "", off);	// (the fit's says which one is on)
+				kk.label = labels[i];
+				kk.key = (hints || i == 4) ? keys[i] : "";	// (the fit's says which one is on)
+				k.key(b, kk);
 			}
 			ui.drawHints({{"LEFT/RIGHT", "Page"}, {"UP/DOWN", "Zoom"}, {"A", "2x"}, {"B", "Close"}, {"START", "Settings"}});
 		}
@@ -1467,12 +1616,24 @@ namespace bp
 			bool hints = p.settings.buttonHotkeys;
 			for (int i = 0; i < 4; i++)
 			{
-				Kit::ClassicHere classic;	// the strip's key row: keys in Clean too
+				// the strip's key row: keys in Clean too, drawn by the kit
 				Rect b = docBtn(i);
-				ui.drawBox(b, docPressed == i ? PRESSED : BUTTON, R_BUTTON);
-				// (Brightness: what's on under it while Extra dim or a filter is)
-				std::string key = i == 2 ? ui.lightNote(p) : std::string(hints ? keys[i] : "");
-				ui.drawKeyedLabel(b, labels[i], key);
+				Kit::Key kk;
+				kk.pressed = docPressed == i;
+				if (i == 2)
+				{
+					// Brightness: its sun, with what's on under it while Extra dim or a filter is
+					std::string note = ui.lightNote(p);
+					kk.glyph = &G_SUN;
+					kk.lit = !note.empty();
+					k.key(b, kk);
+					if (!note.empty() && k.textW(note, F_I11B) <= b.w - 4)
+						ui.drawTextMid(note, F_I11B, ACCENT, b.x + b.w / 2, b.y + b.h - 8, b.w - 4, 2);
+					continue;
+				}
+				kk.label = labels[i];
+				kk.key = hints ? keys[i] : "";
+				k.key(b, kk);
 			}
 			ui.drawHints({{"UP/DOWN", "Zoom"}, {"LEFT/RIGHT", "Scroll"}, {"B", "Close"}, {"START", "Settings"}});
 		}
@@ -1492,6 +1653,7 @@ namespace bp
 		std::string s = b;
 		s += findSignature();
 		s += "|bk" + std::to_string(textStatus.book) + " " + std::to_string(textStatus.bottomGen) + (SDL_GetTicks() < docBookToastUntil ? "T" : "");
+		s += "|bb" + std::to_string(docBookBar) + "," + std::to_string(docBookBarPressed);
 		// (a turn: a frame each step of it)
 		if (docTurning()) s += "|turn" + std::to_string((SDL_GetTicks() - textStatus.turnAt) / 12) + " " + std::to_string((SDL_GetTicks() - textStatus.noticeAt) / 40);
 		s += textStatus.error + "|" + textStatus.encoding + "|" + textEncoding + "|" + ui.pageReader->readerStatus.error;

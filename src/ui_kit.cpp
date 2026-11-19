@@ -198,7 +198,7 @@ namespace bp
 			// same 54-tall strip). There is no title row under the strip, so the page below starts higher
 			int tx = x;
 			if (h.mark) { ui.drawGlyphMid(*h.mark, tx + 10, cy - 8, DIM); tx += 26; }
-			if (right > tx && !h.title.empty()) ui.drawTextMid(h.title, F_P28, TEXT, tx, cy - 8, right - tx);
+			if (right > tx && !h.title.empty()) ui.drawTextMid(h.title, h.titleFont, TEXT, tx, cy - 8, right - tx);
 			if (right > tx && !h.crumb.empty())
 				ui.drawTextMid(h.crumbEnd ? h.crumb : ui.elideLeft(h.crumb, F_I12, right - tx), F_I12, DIM, tx, cy + 12, right - tx);
 			return;
@@ -221,8 +221,8 @@ namespace bp
 		{
 			// the player's title (a song, a video): the Title marquee; another page's: cut with "…"
 			const int room = l.title.w - stW - 14;
-			if (h.marquee) ui.drawMarquee(h.titleFor ? h.titleFor(room) : h.title, F_P28, TEXT, l.title.x, titleY, room, BG);
-			else ui.drawTextMid(h.title, F_P28, TEXT, l.title.x, titleY, room);
+			if (h.marquee) ui.drawMarquee(h.titleFor ? h.titleFor(room) : h.title, h.titleFont, TEXT, l.title.x, titleY, room, BG);
+			else ui.drawTextMid(h.title, h.titleFont, TEXT, l.title.x, titleY, room);
 		}
 	}
 

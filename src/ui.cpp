@@ -315,7 +315,11 @@ namespace bp
 		case Button::Up: popupCursor = (popupCursor + n - 1) % n; break;
 		case Button::Down: popupCursor = (popupCursor + 1) % n; break;
 		case Button::A: choosePopup(popupCursor, p); break;
-		case Button::B: choosePopup(n > 1 ? 1 : 0, p); break;	// Later (or Hide, OK)
+		case Button::B: choosePopup(popupSafe(), p); break;
+		// a failed update's Details: unfolded in place (the sheet stays up)
+		case Button::Y:
+			if (updater->state() == Updater::State::Failed) choosePopup(2, p);
+			break;
 		default: break;
 		}
 		return false;
@@ -326,13 +330,28 @@ namespace bp
 		// (the browser's Up row is row -1: first; n counts it)
 		int first = browse->listFirst(), n = (int)rows(p).size() - first;
 		cursor = std::min(cursor, n - 1 + first);
+		// All recent's group headings are passed over: Up and Down land on an item
+		bool recent = page == Page::Browse && browse->browseDir == RECENT;
+		auto isHeading = [&](int i) { return recent && i >= 0 && i < (int)browse->browseRows.size() && browse->browseRows[i].id == -3; };
 		switch (b)
 		{
-		case Button::Up: cursor = (cursor - first + n - 1) % n + first; break;
-		case Button::Down: cursor = (cursor - first + 1) % n + first; break;
+		case Button::Up:
+			cursor = (cursor - first + n - 1) % n + first;
+			for (int g = 0; n > 1 && isHeading(cursor) && g < n; g++) cursor = (cursor - first + n - 1) % n + first;
+			break;
+		case Button::Down:
+			cursor = (cursor - first + 1) % n + first;
+			for (int g = 0; n > 1 && isHeading(cursor) && g < n; g++) cursor = (cursor - first + 1) % n + first;
+			break;
 		// a page at a time (the browser): LEFT/RIGHT, and L/R as BananaOS's lists jump
-		case Button::Left: cursor = std::max(first, cursor - ROWS_SHOWN); break;
-		case Button::Right: cursor = std::min(n - 1 + first, cursor + ROWS_SHOWN); break;
+		case Button::Left:
+			cursor = std::max(first, cursor - ROWS_SHOWN);
+			for (int g = 0; n > 1 && isHeading(cursor) && g < n && cursor > first; g++) cursor--;
+			break;
+		case Button::Right:
+			cursor = std::min(n - 1 + first, cursor + ROWS_SHOWN);
+			for (int g = 0; n > 1 && isHeading(cursor) && g < n && cursor < n - 1 + first; g++) cursor++;
+			break;
 		case Button::A: choose(cursor, p); break;
 		case Button::B: page = home(p); break;
 		default: break;
@@ -817,7 +836,7 @@ namespace bp
 		std::string upd;
 		if (updater)
 			upd += "|upd" + std::to_string((int)updater->state()) + " " + std::to_string(updater->progress()) + " " + updater->available() +
-				" " + std::to_string(popupShown(p)) + std::to_string(popupCursor) + std::to_string(pressedBtn);
+				" " + std::to_string(popupShown(p)) + std::to_string(popupCursor) + std::to_string(pressedBtn) + std::to_string(popupDetails);
 		// the chapters: the list, the one playing, the tab View asks rows() for (the chapter card follows the position)
 		photo += "|ch" + std::to_string(p.chapterSerial) + " " + std::to_string(p.chapters.size()) + " " +
 			std::to_string(shownChapter(p)) + " t" + std::to_string(tracksTab);

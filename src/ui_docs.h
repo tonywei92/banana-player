@@ -135,6 +135,7 @@ namespace bp
 		void docMarksSave();
 		std::vector<int> docMarksHere() const;	// this document's, in reading order (indexes into docMarks)
 		void docMarksOpen();
+		void docBookmarkHere(Player& p);	// the header's bookmark key: one tap marks the place
 		int docMenu = DOC_MENU_NONE, docMenuCursor = 0, docMenuScroll = 0;
 		std::vector<int> docMenuRows() const;
 		void docMenuStep(int dir, Player& p);
@@ -163,6 +164,13 @@ namespace bp
 		}
 		uint64_t docBookTexGen = 0;
 		Uint32 docBookToastUntil = 0;
+		// Book's sideways bar (docs/redesign: book-text-bar): a tap in the middle of the page shows it; its keys and
+		// "Back to scrolling" are its own, upright as the panel is held
+		bool docBookBar = false;
+		int docBookBarPressed = -1;
+		void drawDocBookBar(const Player& p);
+		bool docBookBarPointer(const Pointer& pt, int x, int y, Player& p);
+		void docBookBarAct(int which, Player& p);
 		int docBookHoldLast = 0;	// the way Book was last held (the View row turns it on so again)
 		void docBookTurn(int dpadDy, Player& p);
 		int docPanTexPage = -1;

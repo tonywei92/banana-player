@@ -489,12 +489,21 @@ namespace bp
 		static void runFileJob(FileJob* j);	// on the job's thread
 		std::string fileJobSignature() const;
 		int fileJobPressed = -1;
-		// Info (Files' Y menu, the manga reader's series menu): a sheet of what a file or folder is, any key closes it
-		// (the InfoSheet overlay: openFileInfo pushes it)
+		// Info (Files' Y menu, the manga reader's series menu): a page of what a file or folder is, in groups (File,
+		// then its Video / Audio / Subtitles tracks), scrolled; any key closes it (the FileInfoSheet overlay)
+		struct InfoGroup
+		{
+			std::string title;
+			std::vector<std::pair<std::string, std::string>> rows;	// a dim label, its value
+		};
 		std::string infoTitle;
-		std::vector<std::pair<std::string, std::string>> infoRows;
-		void openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra = {});
+		std::vector<InfoGroup> infoGroups;
+		// p (when the caller has one): the tracks of the file shown, if it is the one loaded
+		void openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra = {},
+			const Player* p = nullptr);
 		void drawFileInfo();
+		int infoGroupLines() const;	// the headings and rows, as the sheet's lines
+		void infoGroupLine(int i, std::string& head, std::string& label, std::string& value) const;
 	public:
 		// a file or folder moved (Files' Rename or Move here, the dashboard's): everything kept of it follows it, it and
 		// what's inside it — Recent and places to resume, playlists and Liked, a document's place and bookmarks, the
@@ -555,16 +564,18 @@ namespace bp
 		void openBrowseMenu(int row, MenuHow how);
 		void chooseBrowseMenu(int item, Player& p);
 		void drawBrowseMenu(const Player& p);
-		// the updater's pop-up over the file list: a release found (Update now, Later, Not until tomorrow), then the
-		// download's progress (Hide), then Restart now / Later, or what went wrong (OK)
+		// the updater's question over the file list: a release found (Update now, Later, Not until tomorrow), then
+		// the download (Hide, Stop the download), then Restart now / Later, or what went wrong (Try again, Details)
 		bool popupClosed = false, popupFollow = false;
 		int popupCursor = 0;
+		bool popupDetails = false;	// the failed state's Details (Y) unfolded
 		bool popupShown(const Player& p) const;
-		bool popupKey(Button b, Player& p);	// its keys (Browse's: the pop-up is over the file list)
+		bool popupKey(Button b, Player& p);	// its keys (Browse's: the question is over the file list)
 		std::vector<const char*> popupItems() const;
+		int popupSafe() const;	// the key B answers with (Later, Hide, Close): its row's index
 		void choosePopup(int item, Player& p);
 		void drawUpdatePopup();
-		Rect popupRow(int item) const { return {136, 252 + item * 50, 368, 44}; }
+		Rect popupRow(int item) const;	// a key's box, as the sheet draws it (the touches test this)
 		std::string updateStatus() const;	// Check now's value
 		// the battery's icon (and percent, a bolt while charging), its right edge at right; read every 10 s
 		BatteryState battery;

@@ -146,10 +146,25 @@ namespace bp
 		});
 	}
 
+	void Updater::cancel()
+	{
+		if (st != State::Downloading) return;
+		cancelled = true;
+		// the curl fetching the package carries the part file's path in its command line (and nothing else on the
+		// handheld does): killing it returns from system() at once, and the worker cleans up and stops
+		std::string path;
+		{
+			std::lock_guard<std::mutex> g(lock);
+			path = partPath;
+		}
+		if (!path.empty()) system(("pkill -f " + quote(path) + " >/dev/null 2>&1").c_str());
+	}
+
 	void Updater::download()
 	{
 		if (st != State::Available && !(st == State::Failed && !available().empty())) return;
 		join();
+		cancelled = false;
 		st = State::Downloading;
 		Release r;
 		{
@@ -167,7 +182,23 @@ namespace bp
 			};
 			clean();
 			if (r.shaUrl.empty()) { fail("The release has no checksum"); return; }
-			if (!fetchTo(r.shaUrl, sha) || !fetchTo(r.zipUrl, zip)) { clean(); fail("The download stopped (is Wi-Fi on?)"); return; }
+			auto stopped = [&] {
+				clean();
+				if (!cancelled) return false;
+				std::lock_guard<std::mutex> g(lock);
+				why.clear();
+				st = State::Idle;
+				return true;
+			};
+			if (!fetchTo(r.shaUrl, sha)) { if (stopped()) return; fail("The download stopped (is Wi-Fi on?)"); return; }
+			if (stopped()) return;
+			if (!fetchTo(r.zipUrl, zip))
+			{
+				if (stopped()) return;
+				fail("The download stopped (is Wi-Fi on?)");
+				return;
+			}
+			if (stopped()) return;
 			// the zip as published, or nothing changes
 			std::string want = parseSha256File(readText(sha)), got = sha256File(zip);
 			if (want.empty() || got != want) { clean(); fail("The download was damaged; nothing was changed"); return; }

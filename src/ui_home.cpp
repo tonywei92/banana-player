@@ -1095,6 +1095,15 @@ namespace bp
 			int idx = ui.scroll + i;
 			if (idx < 0 || idx >= (int)ui.browse->browseRows.size()) break;
 			const auto& br = ui.browse->browseRows[idx];
+			if (br.id == -3)
+			{
+				// a day's heading (Today, Yesterday, Earlier): a line, not a row (the cursor passes it)
+				lay::Box r = lp.row(i);
+				Kit::SectionLine head;
+				head.text = br.label;
+				k.sectionLine(lay::sectionLine({r.x, r.y + 12, r.w, 22}, false), head);
+				continue;
+			}
 			if (br.id < 0) continue;
 			const RecentItem* it = findRecent(ui.browse->browsePaths[idx]);
 			Kit::Row row;
@@ -1233,7 +1242,7 @@ namespace bp
 			}
 			{
 				MoreItem i = row(&G_INFO, "Info", "", "", false, false, false);
-				i.act = [this, path](Player&) { ui.openFileInfo(path, ""); return false; };
+				i.act = [this, path](Player& p) { ui.openFileInfo(path, "", {}, &p); return false; };
 				left.push_back(i);
 			}
 			{

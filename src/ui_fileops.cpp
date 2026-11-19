@@ -9,6 +9,7 @@
 #include "ui_docs.h"
 #include "ui_manga.h"
 #include "ui_kit.h"
+#include "tracks.h"
 #include "treecopy.h"
 #include "pagebook.h"
 #include "netpath.h"
@@ -841,7 +842,7 @@ namespace bp
 		bool scrolled = false;
 		explicit FileInfoSheet(Ui& u) : Overlay(u) {}
 		const char* name() const override { return "fileinfo"; }
-		int total() const { return 1 + (int)ui.infoRows.size(); }
+		int total() const { return ui.infoGroupLines(); }
 		int shown() const { return lay::fileInfoShown(lay::shell().body); }
 		void clampScroll() { scroll = std::clamp(scroll, 0, std::max(0, total() - shown())); }
 
@@ -899,11 +900,11 @@ namespace bp
 			lay::FilesHeader h = lay::filesHeader(s.header);
 			k.iconKey(h.back, G_BACK, pressed == 200, 2, true);
 			int cy = h.title.y + h.title.h / 2;
-			ui.drawTextMid("Info", F_P28, TEXT, h.title.x, cy, std::max(40, h.title.w - 10));
+			ui.drawTextMid("Info", F_P20, TEXT, h.title.x, cy, std::max(40, h.title.w - 10));
 			std::string crumb = ui.infoTitle;
 			if (k.textW(crumb, F_I12) > h.crumb.w) crumb = ui.elideLeft(crumb, F_I12, h.crumb.w);
 			ui.drawTextMid(crumb, F_I12, DIM, h.crumb.x, h.crumb.y + h.crumb.h / 2, h.crumb.w);
-			// one group heading, then the rows; scrolled
+			// a heading per group (Kit::sectionLine), its rows under it; scrolled
 			int shown = lay::fileInfoShown(s.body);
 			for (int k2 = 0; k2 < shown; k2++)
 			{
@@ -911,14 +912,18 @@ namespace bp
 				if (line >= total()) break;
 				lay::Box r = lay::fileInfoRow(s.body, k2);
 				int ry = r.y + r.h / 2;
-				if (line == 0)
+				std::string head, label, value;
+				ui.infoGroupLine(line, head, label, value);
+				if (!head.empty())
 				{
-					ui.drawTextMid("File", F_I11B, ACCENT, r.x, ry, r.w);
+					Kit::SectionLine sl;
+					sl.text = head;
+					sl.caps = false;
+					k.sectionLine(lay::sectionLine(r, false), sl);
 					continue;
 				}
-				const auto& row = ui.infoRows[line - 1];
-				ui.drawTextMid(row.first, F_I12, DIM, r.x, ry, 120);
-				ui.drawTextMid(row.second, F_I12, TEXT, r.x + 132, ry, std::max(1, r.w - 132));
+				ui.drawTextMid(label, F_I12, DIM, r.x, ry, 120);
+				ui.drawTextMid(value, F_I12, TEXT, r.x + 132, ry, std::max(1, r.w - 132));
 			}
 			k.hints({{"UP/DOWN", "Scroll"}, {"A/B", "Back"}});
 		}
@@ -928,9 +933,38 @@ namespace bp
 		}
 	};
 
-	void Ui::openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra)
+	int Ui::infoGroupLines() const
 	{
-		infoRows.clear();
+		int n = 0;
+		for (auto& g : infoGroups) n += 1 + (int)g.rows.size();
+		return n;
+	}
+
+	void Ui::infoGroupLine(int i, std::string& head, std::string& label, std::string& value) const
+	{
+		head.clear();
+		label.clear();
+		value.clear();
+		for (auto& g : infoGroups)
+		{
+			if (i == 0) { head = g.title; return; }
+			i--;
+			if (i < (int)g.rows.size())
+			{
+				label = g.rows[i].first;
+				value = g.rows[i].second;
+				return;
+			}
+			i -= (int)g.rows.size();
+		}
+	}
+
+	void Ui::openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra,
+		const Player* p)
+	{
+		infoGroups.clear();
+		InfoGroup file;
+		file.title = "File";
 		if (isNetPath(path))
 		{
 			// a network file or folder: what its folder's listing said
@@ -939,14 +973,15 @@ namespace bp
 			bool folder = browse->netSizes.find(path) == browse->netSizes.end();
 			std::string kind = folder ? "Folder" : isVideoFile(name) ? "Video" : isAudioFile(name) ? "Song" : isPhotoFile(name) ? "Photo"
 				: isComicName(name) ? "Comic" : isPdfName(name) ? "PDF" : isDocumentName(name) ? (strcasecmp(name.c_str() + name.size() - 5, ".epub") == 0 ? "Book (EPUB)" : "Text") : "File";
-			infoRows.push_back({"Name", name});
-			infoRows.push_back({"Kind", kind});
-			if (!folder && browse->netSizes[path] >= 0) infoRows.push_back({"Size", sizeText((uint64_t)browse->netSizes[path])});
-			for (auto& e : extra) infoRows.push_back(e);
-			infoRows.push_back({"Where", whereOf(netParent(path))});
-			infoRows.push_back({"Access", browse->netWritable ? "Read and write" : "Read only (for this account)"});
+			file.rows.push_back({"Name", name});
+			file.rows.push_back({"Kind", kind});
+			if (!folder && browse->netSizes[path] >= 0) file.rows.push_back({"Size", sizeText((uint64_t)browse->netSizes[path])});
+			for (auto& e : extra) file.rows.push_back(e);
+			file.rows.push_back({"Where", whereOf(netParent(path))});
+			file.rows.push_back({"Access", browse->netWritable ? "Read and write" : "Read only (for this account)"});
 			NetPath np;
-			if (parseNetPath(path, np)) infoRows.push_back({"Path", np.path});
+			if (parseNetPath(path, np)) file.rows.push_back({"Path", np.path});
+			infoGroups.push_back(std::move(file));
 			pushOverlay(std::make_unique<Browse::FileInfoSheet>(*this));
 			return;
 		}
@@ -960,22 +995,22 @@ namespace bp
 			: "File";
 		size_t dot = name.rfind('.');
 		if (!folder && kind == "File" && dot != std::string::npos && dot > 0) kind += " (." + name.substr(dot + 1) + ")";
-		infoRows.push_back({"Name", name});
-		infoRows.push_back({"Kind", kind});
-		if (!there) infoRows.push_back({"Size", "It isn't there any more"});
+		file.rows.push_back({"Name", name});
+		file.rows.push_back({"Kind", kind});
+		if (!there) file.rows.push_back({"Size", "It isn't there any more"});
 		else if (folder)
 		{
 			// (everything in it counted; a big folder takes a moment, on the card)
 			TreeInfo t;
 			scanTree(path, t);
-			infoRows.push_back({"Size", sizeText(t.bytes) + "  \xC2\xB7  " + std::to_string(t.files) + (t.files == 1 ? " file" : " files")});
+			file.rows.push_back({"Size", sizeText(t.bytes) + "  \xC2\xB7  " + std::to_string(t.files) + (t.files == 1 ? " file" : " files")});
 		}
-		else infoRows.push_back({"Size", sizeText((uint64_t)st.st_size)});
+		else file.rows.push_back({"Size", sizeText((uint64_t)st.st_size)});
 		double secs = 0;
 		if (!folder && (isVideoFile(name) || isAudioFile(name)) && cachedDuration(path, secs) && secs > 0)
-			infoRows.push_back({"Length", formatTime(secs)});
-		for (auto& e : extra) infoRows.push_back(e);
-		infoRows.push_back({"Where", whereOf(parentFolder(path))});
+			file.rows.push_back({"Length", formatTime(secs)});
+		for (auto& e : extra) file.rows.push_back(e);
+		file.rows.push_back({"Where", whereOf(parentFolder(path))});
 		if (there)
 		{
 			char when[64];
@@ -983,29 +1018,56 @@ namespace bp
 			time_t mt = st.st_mtime;
 			localtime_r(&mt, &tmv);
 			strftime(when, sizeof when, "%d %b %Y, %H:%M", &tmv);
-			infoRows.push_back({"Modified", when});
+			file.rows.push_back({"Modified", when});
 		}
-		infoRows.push_back({"Path", path});
+		file.rows.push_back({"Path", path});
+		infoGroups.push_back(std::move(file));
+		// its tracks, as the file's own player knows them (the one loaded): Video, Audio, Subtitles
+		if (p && !p->currentPath().empty() && p->currentPath() == path)
+		{
+			struct { const char* title; TrackType type; } kinds[] = {
+				{"Video", TrackType::Video}, {"Audio", TrackType::Audio}, {"Subtitles", TrackType::Sub}};
+			for (auto& kd : kinds)
+			{
+				auto list = p->tracksOf(kd.type);
+				if (list.empty()) continue;
+				InfoGroup g;
+				g.title = kd.title;
+				for (size_t i = 0; i < list.size(); i++)
+					g.rows.push_back({(kd.type == TrackType::Sub ? "Subtitle " : "Track ") + std::to_string(i + 1), trackLabel(list[i], (int)i + 1)});
+				infoGroups.push_back(std::move(g));
+			}
+		}
 		pushOverlay(std::make_unique<Browse::FileInfoSheet>(*this));
 	}
 
 	void Ui::drawFileInfo()
 	{
+		// (the older dialog: the Info overlay is FileInfoSheet; this keeps its flat list if ever drawn)
 		Rect box{32, 40, 576, 388};
 		drawDialog(box, infoTitle);
 		int y = box.y + 74;
-		for (auto& r : infoRows)
+		int n = infoGroupLines();
+		for (int i = 0; i < n; i++)
 		{
-			drawTextMid(r.first, 0, DIM, box.x + 28, y, 110);
-			// the path may be long: two lines, its middle kept out
-			if (r.first == "Path")
+			std::string head, label, value;
+			infoGroupLine(i, head, label, value);
+			if (!head.empty())
 			{
-				auto lines = wrapText(r.second, 0, box.w - 168, 3);
-				for (size_t i = 0; i < lines.size(); i++) drawTextMid(lines[i], 0, TEXT, box.x + 144, y + (int)i * 22, box.w - 168);
+				drawTextMid(head, 0, DIM, box.x + 28, y, 200);
+				y += 30;
+				continue;
+			}
+			drawTextMid(label, 0, DIM, box.x + 28, y, 110);
+			// the path may be long: two lines, its middle kept out
+			if (label == "Path")
+			{
+				auto lines = wrapText(value, 0, box.w - 168, 3);
+				for (size_t k = 0; k < lines.size(); k++) drawTextMid(lines[k], 0, TEXT, box.x + 144, y + (int)k * 22, box.w - 168);
 				y += 22 * (int)std::max<size_t>(1, lines.size()) + 12;
 				continue;
 			}
-			drawTextMid(r.second, 0, TEXT, box.x + 144, y, box.w - 168);
+			drawTextMid(value, 0, TEXT, box.x + 144, y, box.w - 168);
 			y += 36;
 		}
 		drawHints({{"A", "Close"}, {"B", "Close"}});

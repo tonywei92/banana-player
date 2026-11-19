@@ -290,6 +290,13 @@ namespace bp
 		int mangaBookFor(const std::string& seriesId) const;	// the series' own Book (MANGA_BOOK_*; off by default)
 		void mangaSetBook(int book, Player& p);	// on (held as book) or off, kept for the series
 		bool mangaBookKey(Button b, Player& p);	// the reader's keys while in Book
+		// Book's sideways bar (docs/redesign: book-comic-end): a tap, or START, shows it; its keys, the spread's
+		// slider and "One screen" are its own, upright as the panel is held
+		bool mangaBookBar = false;
+		int mangaBookBarPressed = -1;
+		void drawMangaBookBar(const Player& p);
+		bool mangaBookBarPointer(const Pointer& pt, int x, int y, Player& p);
+		void mangaBookBarAct(int which, Player& p);
 		void mangaCycleMode(Player& p);	// X while reading
 		// fullscreen's controls over the pages: a tap shows them 4 s (a drag or the 4 s hides them), and the finger that
 		// may still be a tap; the sheet's button under it (and its slider, which is the reading page's)

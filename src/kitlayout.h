@@ -256,15 +256,16 @@ namespace bp
 		struct ConfirmSheet
 		{
 			Sheet sheet;
-			Box text, safe, action, foot;	// foot: the "don't ask again" line (empty without one)
+			Box text, safe, action, third, foot;	// third.w 0: two keys; foot: the "don't ask again" line (empty without one)
 		};
-		ConfirmSheet confirmSheet(int textLines, bool foot);
+		ConfirmSheet confirmSheet(int textLines, bool foot, bool third = false);
 		struct BusySheet
 		{
 			Sheet sheet;
-			Box file, bar, amounts, key;	// the file name line, the 12-tall bar, "x of y" and the time left, Cancel
+			Box file, bar, amounts, key, key2;	// the file name line, the 12-tall bar, "x of y" and the time left, Cancel
+			// key2.w 0: one key across the sheet (Hide or Cancel); else the two share the row (Hide, Stop the download)
 		};
-		BusySheet busySheet();
+		BusySheet busySheet(bool twoKeys = false);
 
 		// ---- the keyboard: a field, a special row, three rows of letters, the bottom row ----
 		constexpr int KB_FIELD_H = 48, KB_KEY_W = 58, KB_KEY_H = 52, KB_GAP = 5, KB_BOTTOM_H = 56, KB_SPECIAL_H = 36;
@@ -425,6 +426,19 @@ namespace bp
 		// Kit::header's boxes on the shell's header strip: the back key at the main strip's left, the More key at its
 		// right, and the title's room between the margins (a page with no More has it to the right margin)
 		PlayerLayout shellHeader(Box main);
+
+		// ---- the readers' header (a book, a PDF, a comic) ----
+		// The back key at the left, the title beside it with the document's line under it (Kit::header's inline title:
+		// the file's name at the readers' 18 units), and at the right the bookmark key (a book's: one tap marks the
+		// place) and More. Their touch areas reach the panel's edges, as the shell header's do; the title and crumb
+		// stop 8 before the leftmost of them
+		struct ReaderHeader
+		{
+			Box back, backHit, bookmark, bookmarkHit, more, moreHit;
+			Box title, crumb;	// the title's line and the document's line, between the keys
+			PlayerLayout strip;	// the same boxes for Kit::header (back, more, title)
+		};
+		ReaderHeader readerHeader(Box main, bool bookmark = true);
 
 		// ---- Preview pane: the top screen with nothing playing (its own 640x480 units) ----
 		// The brand mark top left, then a text column (from 74, 44 from the sides) or, with a cover, the cover at

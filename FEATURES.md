@@ -53,7 +53,9 @@ Open Banana Player and the bottom screen shows **Home**:
   and a song's card shows its album art when it has one.
   The kind chips beside **Recent** are **All**, **Videos**, **Music** and **Books** with how many: tap one (the
   filters' keys come with the rail) or step them with **L2/R2** where the shell routes them. The chevron after the
-  cards, and **(All recent)**, open every card, with the same chips. Recent keeps the last 100 of each kind, so
+  cards, and **(All recent)**, open every card, with the same chips. All recent's rows are grouped under **Today**,
+  **Yesterday** and **Earlier** (an entry kept from before the player recorded times sits under Earlier). Recent keeps
+  the last 100 of each kind, so
   reading doesn't push your videos out, nor music your books. While Home or All recent shows, its order stays put (the
   next song starting doesn't move the cards); what you played comes to the front the next time you open it.
 - Three shortcuts: **Shuffle Liked** (**Browse Files** until something is liked), **Send from phone** (the Web
@@ -438,7 +440,9 @@ A network folder lists every file, each kind with its icon, as Files does:
   as one on the card does; a network that drops while you read takes nothing away. A copy opened before opens at once
   (the copies kept come to 2 GB at most, the oldest going first to make room for the next; one file bigger than
   that is kept alone).
-- **Y** (or **X**) on a file or folder: **Info** (its kind, size, where it is, and whether you can change it), **Copy**,
+- **Y** (or **X**) on a file or folder: **Info** (its kind, size, where it is, and whether you can change it; its lines
+  are grouped under **File**, then **Video**, **Audio** and **Subtitles** with each track's language and format, when it
+  is the file loaded), **Copy**,
   **Move**, **Rename**, **Delete**, as on the cards. Copy and Move go between the card and the network either way, and
   between network folders: open the folder it goes in (on the card or on a server) and press **SELECT**. A copy shows
   its progress until it ends, and nothing half-copied is left behind, on the card or on the server; a move deletes its
@@ -479,7 +483,8 @@ A `.txt` file, or an EPUB that is a book of text, is shown on the top screen as 
 bottom screen holds the controls: how far through you are (a bar: tap or drag it to go there), a big area to drag the
 text with your finger (let go while moving and it glides on; a tap on its upper half goes a screen back, on its lower
 half a screen on), and **Contents**, **Bookmarks**, **Options** (Text options) and **Book mode**, each with its key
-under it (Options has none: it is the touch key).
+under it (Options has none: it is the touch key). The header carries the book's name at 18 units, its line under it, and
+a bookmark key: one tap keeps the place (as Bookmarks › Add a bookmark here).
 
 | Button | What it does |
 |---|---|
@@ -489,14 +494,15 @@ under it (Options has none: it is the touch key).
 | **SELECT** | **Book mode** (below) |
 | **X** | **Bookmarks**: add one here, go to one, delete one |
 | **Y** | **Contents** (an EPUB's chapters): **A** goes to one |
-| **START** | **Settings**: **B** or **START** returns to the page you were reading. **Text options** is the Options button (by touch); held sideways, START is still Text options |
+| **START** | **Settings**: **B** or **START** returns to the page you were reading. **Text options** is the Options button (by touch); held sideways, START shows the **Book bar** |
 | **L3** (press the stick) | **Find** (below) |
 | **B** | Back to Files |
 
 **Book mode:** hold the handheld sideways like an open book, and each screen shows a page of text, upright, the text going
 on from the left page to the right one. **UP** and **DOWN** turn the pages the way they point as you hold it (as do **L**
 / **R** and **A**, and one push of the left stick up or down), or swipe along the bottom screen; a tap near either end of the bottom screen turns that way, a tap in
-its middle opens **Text options**. Each page shows how far through you are at its foot. **B** (or **SELECT**) goes back
+its middle (or **START**) shows the **Book bar**, upright as the pages are: the title, how far, then **Contents**,
+**Text**, **Light** and **Find**, and **Back to scrolling**. Each page shows how far through you are at its foot. **B** (or **SELECT**) goes back
 to the scroll; **B** there closes the document. Turn it on with **SELECT**, the **Book mode** button, or Text options › **View**; **Hold** says which side the top screen is on (left or
 right), and the D-pad follows it. Going back a page may split the text a little differently than going on did, as the
 pages are made from where you are, never from the start of the book. A turn folds the page at the spine, the hinge between the screens, as a page turns in a book: going on, the
@@ -527,7 +533,8 @@ come from the player's other fonts.
 ### PDF (and comics as EPUB)
 
 A PDF, or an EPUB that is a comic (a picture a page), opens a page at a time, sharp at any zoom: each page is drawn
-for the size it's shown at.
+for the size it's shown at. The header carries the file's name at 18 units with the page and zoom under it, and a
+**More** key that opens the options.
 
 - **Single page** (the first time): the bottom screen shows the page small, in the **pan area**, with a box around
   the part you see on top, as with a photo: drag the box to look around, tap the small page to look there, double-tap
@@ -1322,7 +1329,9 @@ screen is on (**Top screen left**, the buttons under your right hand, or **Top s
 reading mode: in Right to left the earlier page is on the right. The D-pad's **UP** and **DOWN** point left and right
 as held and turn the spread (two pages; Swap Left/Right turns that round); **L / R** move one page, to realign a
 spread (a cover on its own, a two-page picture split over the hinge); **X** switches Right to left and Left to right;
-a swipe along the bottom screen turns the spread and a tap shows the page numbers. The page numbers show for a moment
+a swipe along the bottom screen turns the spread and a tap (or **START**) shows the **Book bar**: the spread's page
+numbers on its slider, **Pages**, **View**, **Light**, **Next chapter**, and **One screen** to leave Book, upright as the
+pages are. The page numbers show for a moment
 after a turn, at the foot of the spread and upright as held; at the chapter's end they stay and say what comes next
 (turn once more for the next chapter). No zoom or page fit in Book: each page is shown whole. The menu and notices
 keep the screen's usual orientation. Book is kept for the series, as the reading mode is.
@@ -1380,9 +1389,12 @@ Banana Player updates itself when it's installed on the Ports shelf (from 0.2.3 
 
 - A few seconds after it starts, it looks for a new version in the background (turn this off in Settings › Updates ›
   **Check automatically**).
-- When there's one, the file list asks: **Update now**, **Later** or **Not until tomorrow**.
-- **Update now** downloads it and checks it against its published checksum (a damaged download changes nothing), then
-  offers **Restart now**. Otherwise it's put in place the next time you start Banana Player.
+- When there's one, the file list asks in a sheet: **Update now** (**A**), **Later** (**B**) or **Not until tomorrow**.
+- **Update now** downloads it and checks it against its published checksum (a damaged download changes nothing). While
+  it downloads the sheet shows how far it got, with **Hide** (**B**: the download goes on) and **Stop the download**
+  (**Y**: the part files go and nothing was changed). Then it
+  offers **Restart now** (or **Later**, and it's put in place the next time you start Banana Player). An update that
+  failed says why and changes nothing: **Try again** (**A**), **Close** (**B**) and **Details** (**Y**, the whole reason).
 - The version before is kept on the card as `roms/ports/BananaPlayer.old`.
 - Installed from the BananaOS Store, the Store updates it instead: open the Store to see an update.
 
