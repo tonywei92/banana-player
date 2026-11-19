@@ -1,6 +1,6 @@
 <div class="layout">
 <nav class="side" id="nav">
-	<div class="brand"><div class="logo"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></div><span>Handheld redesign</span></div>
+	<div class="brand"><div class="logo"><svg width="22" height="22" viewBox="0 0 22 22"><rect x="3" y="4" width="16" height="4" rx="1" fill="#000"/><path d="M5 4h2L5 8H3zM9 4h2L9 8H7zM13 4h2l-2 4h-2zM17 4h2l-2 4h-2z" fill="#fff"/><rect x="3" y="9" width="16" height="10" rx="1.5" fill="#000"/><path d="M9 10.5v4.5l4.5-2.25z" fill="#ffd23f"/><rect x="5" y="16" width="12" height="1" fill="#777"/><rect x="5" y="16" width="6" height="1" fill="#ffd23f"/></svg></div><span>Handheld redesign</span></div>
 	<h4>The case</h4>
 	<a href="#summary">Summary</a><a href="#problems">Problems today</a><a href="#principles">Principles</a><a href="#ia">The new map</a><a href="#keys">What each key does</a><a href="#states">State indicators</a><a href="#devices">Both devices</a><a href="#power">Power &amp; screens</a>
 	<h4>The design</h4>
@@ -110,7 +110,7 @@
 		<tr><td class="k">L / R</td><td>The one before / after</td><td>Section</td><td>File</td><td>Page / photo</td><td>The rail · Prev / Next keys</td></tr>
 		<tr><td class="k">L2 / R2</td><td>The part before / after</td><td>Tab inside a section</td><td>Chapter</td><td>Chapter</td><td>The tabs · chapter keys</td></tr>
 		<tr><td class="k">D-pad</td><td>Move / adjust</td><td>Move; ◀ ▶ page</td><td>◀ ▶ seek · ▲ ▼ nothing</td><td>Scroll / page · ▲ ▼ zoom</td><td>Drag</td></tr>
-		<tr><td class="k">L3</td><td>The screen’s one shortcut</td><td>Like what plays</td><td>Like</td><td>Find (text) · Rotate (photo, comic)</td><td>Its own key on screen</td></tr>
+		<tr><td class="k">L3</td><td>The screen’s one shortcut</td><td>Search</td><td>Like</td><td>Find (text) · Rotate (photo, comic)</td><td>Its own key on screen</td></tr>
 	</table></div>
 	<p class="sub" style="margin-top:12px">Inside a sheet the sheet owns the keys: <kbd>L</kbd> <kbd>R</kbd> step its tabs, the D-pad moves, <kbd>A</kbd> chooses, <kbd>B</kbd> or the key that opened it closes it (one kept exception: on a song’s Display tab, SELECT steps to the next Show mode, as it does today, and B closes). F + L2 (screenshot) and F + START (quit at once) stay.</p>
 </section>
@@ -152,7 +152,7 @@
 		<tr><td>Player transport, second row; reader and viewer rows; photo and PDF keys</td><td>74 / 56 / 64 / 62–84</td><td>unchanged · 7.1 mm or more</td><td>OK</td></tr>
 		<tr><td>List rows (Files, Playlists, Up next, Contents)</td><td>46 (5.8 mm); in sheets 40–42</td><td>52 in lists · 6.6 · 7.1; 46 in sheets · 5.8 · 6.3</td><td>Worst case kept: see below</td></tr>
 		<tr><td>More sheet’s two columns; settings rows in sheets</td><td>38 (4.8 mm)</td><td>44–48 · 5.6 to 6.1 · 6.0 to 6.6</td><td>Worst case kept: see below</td></tr>
-		<tr><td>Visualizer style tiles (5 × 4), look tiles</td><td>38 × 116 / 46</td><td>46 × 116 / 50 · 5.8 / 6.4 · 6.3 / 6.8</td><td>Short of 7 mm on the RG DS</td></tr>
+		<tr><td>Visualizer style tiles (5 × 3), look tiles</td><td>38 × 116 / 46</td><td>46 × 116 / 50 · 5.8 / 6.4 · 6.3 / 6.8</td><td>Short of 7 mm on the RG DS</td></tr>
 		<tr><td>Quick settings − / +, toggles; mini bar and its play mark</td><td>44 × 40; 50; 46 with a 40 × 36 mark</td><td>56 × 44; 54; 52 with a 56 × 42 mark · 5.6 to 6.9</td><td>OK, bar-height bound</td></tr>
 		<tr><td>“All recent” arrow on Home</td><td>34 wide (4.3 mm)</td><td>56 wide · 7.1 · 7.6</td><td>OK</td></tr>
 		<tr class="grp"><td colspan="4">Text</td></tr>
@@ -164,10 +164,10 @@
 		<tr><td>Scanlines, LCD grid</td><td>Drawn with a 4-unit period</td><td>Defined per panel in real pixels (2 + 2 on 480 lines, 3 + 3 on 768; grid cell 4 px / 6 px). The preview’s overlay only suggests it</td><td>A build rule; noted on the Picture screen</td></tr>
 		<tr><td>Look tiles’ samples (38 × 28)</td><td></td><td>Scanlines and LCD grid read at 38 px; Sharpen and Soften do not at either size: the name carries them, the top screen is the preview</td><td>OK</td></tr>
 		<tr class="grp"><td colspan="4">Resolution-dependent content</td></tr>
-		<tr><td>Visualizer</td><td></td><td>Peaks’ 64 bars: 6 px bars with 3 px gaps on 640, 10 + 5 on 1024; the pixel-art styles are drawn at one size and scaled, so they are chunkier, not different, on the Plus</td><td>OK</td></tr>
+		<tr><td>Visualizer</td><td></td><td>Peaks’ 64 bars: 6 px bars with 3 px gaps on 640, 10 + 5 on 1024; every style is drawn by the player in the panel’s own pixels, in the theme’s colours</td><td>OK</td></tr>
 		<tr><td>Reading text</td><td></td><td>Sizes are in units, so both show the same lines; “Large” is 20 px on the RG DS, sharp enough for the serif but with little to spare at “Small”. Suggest the RG DS opens on Medium at the smallest</td><td>OK, one default to choose</td></tr>
 		<tr><td>PDF and comic pages</td><td></td><td>A whole A4 page on 480 lines is not readable (today too): Page fit should default to Width on the RG DS. Covers at 96 × 136 show no legible title on either: the caption and top screen name them</td><td>One default to choose</td></tr>
-		<tr><td>Grids: Books 5 a row, Manga 5, Pages 6, styles 5 × 4</td><td></td><td>Cells are 96 units or more wide (12.2 mm on the RG DS); the same count on both</td><td>OK</td></tr>
+		<tr><td>Grids: Books 5 a row, Manga 5, Pages 6, styles 5 × 3</td><td></td><td>Cells are 96 units or more wide (12.2 mm on the RG DS); the same count on both</td><td>OK</td></tr>
 		<tr><td>Reader key rows and hint bars</td><td>Comic row: icon and key touching the edges</td><td>One rule for every reader row: icon and name on the first line, the key under it, 8 units of padding. Every hint bar fits in 640 units with room</td><td>Fixed</td></tr>
 	</table></div>
 	<p class="sub" style="margin-top:12px"><b>What still falls short of 7 mm on the RG DS:</b> rows inside sheets (5.6 to 6.1 mm tall, but half or full panel wide), the visualizer’s style tiles (5.8 mm) and list rows (6.6 mm; today’s are 6.1). All are also reached with the D-pad. Making them 56 units means six rows a screen instead of seven, a More sheet that scrolls, and a style grid that pages; that trade is an open question.</p>
