@@ -254,5 +254,155 @@ namespace bp
 					COVER_W, cellH});
 			return out;
 		}
+
+		// ---- an album, an artist, Music's head, a video and a folder, the Books shelf, Search's page ----
+
+		AlbumTile albumTile(Box box)
+		{
+			AlbumTile a;
+			a.box = box;
+			a.cover = {box.x, box.y, std::min(ALBUM_ART, box.w), ALBUM_ART};
+			a.title = {box.x, a.cover.y + a.cover.h + ALBUM_TITLE_GAP, box.w, ALBUM_TITLE_H};
+			a.artist = {box.x, a.title.y + a.title.h + ALBUM_ARTIST_GAP, box.w, ALBUM_ARTIST_H};
+			a.mark = {a.cover.x + a.cover.w - ALBUM_MARK_INSET - ALBUM_MARK, a.cover.y + ALBUM_MARK_INSET, ALBUM_MARK, ALBUM_MARK};
+			return a;
+		}
+
+		Box AlbumGrid::rowBox(int r) const
+		{
+			int w = cols > 0 ? cols * cellW + (cols - 1) * colGap : 0;
+			return {area.x, area.y + (r - first) * (cellH + rowGap), w, cellH};
+		}
+
+		AlbumGrid albumGrid(Box area, int albums, int first, int cols)
+		{
+			AlbumGrid g;
+			g.area = area;
+			g.cols = std::max(1, cols);
+			g.albums = std::max(0, albums);
+			g.rows = (g.albums + g.cols - 1) / g.cols;
+			const int pitch = g.cellH + g.rowGap;
+			// a row may hang over the area's foot (a scroll's next row is not shown), but at least one is laid
+			g.shown = std::max(1, (area.h + g.rowGap) / std::max(1, pitch));
+			g.first = std::clamp(first, 0, std::max(0, g.rows - g.shown));
+			g.cell.reserve(g.albums);
+			for (int i = 0; i < g.albums; i++)
+				g.cell.push_back({area.x + (i % g.cols) * (g.cellW + g.colGap),
+					area.y + (i / g.cols - g.first) * pitch, g.cellW, g.cellH});
+			return g;
+		}
+
+		ArtistRow artistRow(Box row)
+		{
+			ArtistRow a;
+			a.row = row;
+			a.art = {row.x + SP12, row.y + (row.h - ARTIST_ART) / 2, ARTIST_ART, ARTIST_ART};
+			a.right = row.x + row.w - SP12;
+			int x = a.art.x + a.art.w + ARTIST_ART_GAP;
+			a.name = {x, row.y + SP8, std::max(1, a.right - x), 22};
+			a.second = {x, row.y + row.h - SP8 - 18, std::max(1, a.right - x), 18};
+			a.chevronX = a.right - 7;	// the chevron's centre (10 wide)
+			return a;
+		}
+
+		MusicHeader musicHeader(Box body, const std::vector<int>& chipWidths)
+		{
+			MusicHeader h;
+			h.line = {body.x, body.y, body.w, LINE_H};
+			h.strip = {body.x, body.y + LINE_H + SP8, body.w, CHIP_STRIP};
+			h.chips = filterChips(h.strip, chipWidths);
+			return h;
+		}
+
+		VideoRow videoRow(Box row)
+		{
+			VideoRow v;
+			v.row = row;
+			v.thumb = {row.x + SP12, row.y + (row.h - VIDEO_THUMB_H) / 2, VIDEO_THUMB_W, VIDEO_THUMB_H};
+			v.right = row.x + row.w - SP12;
+			int x = v.thumb.x + v.thumb.w + SP12;
+			v.name = {x, row.y + SP8, std::max(1, v.right - x), 22};
+			v.note = {v.right - 160, row.y + SP8, 160, 22};
+			v.second = {x, row.y + row.h - SP8 - 18, std::max(1, v.right - x), 18};
+			// the resume line at the foot, from the title's left to the note's right (the mock-up's 3-unit `.ab` line)
+			v.bar = {x, row.y + row.h - SP6, std::max(1, v.right - x), VIDEO_BAR_H};
+			return v;
+		}
+
+		FolderRow folderRow(Box row)
+		{
+			FolderRow f;
+			f.row = row;
+			f.tile = {row.x + SP12, row.y + (row.h - FOLDER_TILE) / 2, FOLDER_TILE, FOLDER_TILE};
+			f.right = row.x + row.w - SP12;
+			int x = f.tile.x + f.tile.w + SP12;
+			f.name = {x, row.y + SP8, std::max(1, f.right - 10 - x), 22};
+			f.second = {x, row.y + row.h - SP8 - 18, std::max(1, f.right - 10 - x), 18};
+			f.chevron = {f.right - 14, row.y + row.h / 2 - 7, 14, 14};
+			return f;
+		}
+
+		BooksShelf booksShelf(Box body, int readingNow, int shelfCount, int first)
+		{
+			BooksShelf b;
+			b.area = body;
+			b.readingHead = {body.x, body.y, body.w, LINE_H};
+			b.readingStrip = {body.x, body.y + LINE_H + SHELF_HEAD_GAP, body.w, COVER_CELL_H};
+			b.reading = coverCells(b.readingStrip, std::min(std::max(0, readingNow), b.cols), b.cols, COVER_CELL_H);
+			b.shelfHead = {body.x, b.readingStrip.y + b.readingStrip.h + SHELF_GROUP_GAP, body.w, LINE_H};
+			int gridY = b.shelfHead.y + LINE_H + SHELF_HEAD_GAP;
+			b.shelfGrid = {body.x, gridY, body.w, std::max(0, body.y + body.h - gridY)};
+			b.rows = (std::max(0, shelfCount) + b.cols - 1) / b.cols;
+			const int pitch = SHELF_CELL_H + COVER_GAP;
+			b.shown = std::max(0, (b.shelfGrid.h + COVER_GAP) / std::max(1, pitch));
+			b.first = std::clamp(first, 0, std::max(0, b.rows - b.shown));
+			b.shelf.reserve(std::max(0, shelfCount));
+			for (int i = 0; i < std::max(0, shelfCount); i++)
+				b.shelf.push_back({body.x + (i % b.cols) * (COVER_W + COVER_GAP),
+					gridY + (i / b.cols - b.first) * pitch, COVER_W, SHELF_CELL_H});
+			return b;
+		}
+
+		SearchPage searchPage(Box body, const std::vector<int>& groupRows, int recentCount, bool clear)
+		{
+			SearchPage p;
+			p.area = body;
+			p.field = {body.x, body.y, body.w, SEARCH_FIELD_H};
+			int y = body.y + SEARCH_FIELD_H + SEARCH_GROUP_GAP;
+			for (int n : groupRows)
+			{
+				if (n <= 0) continue;	// a group with nothing is not shown
+				SearchGroup g;
+				g.head = {body.x, y, body.w, LINE_H};
+				y += LINE_H + SEARCH_HEAD_GAP;
+				g.firstRow = (int)p.row.size();
+				g.rows = n;
+				for (int i = 0; i < n; i++)
+				{
+					p.row.push_back({body.x, y, body.w, RESULT_ROW_H});
+					y += RESULT_ROW_H;
+				}
+				y += SEARCH_GROUP_GAP;
+				p.group.push_back(g);
+			}
+			if (recentCount > 0)
+			{
+				p.recentHead = {body.x, y, body.w, LINE_H};
+				y += LINE_H + SEARCH_HEAD_GAP;
+				for (int i = 0; i < recentCount; i++)
+				{
+					p.recent.push_back({body.x, y, body.w, SEARCH_RECENT_H});
+					y += SEARCH_RECENT_H;
+				}
+				if (clear)
+				{
+					y += SEARCH_CLEAR_GAP;
+					p.clear = {body.x, y, body.w, SEARCH_CLEAR_H};
+				}
+			}
+			if (p.recentHead.w == 0) p.recentHead = {body.x, y, 0, 0};
+			if (p.clear.w == 0) p.clear = {body.x, y, 0, 0};
+			return p;
+		}
 	}
 }

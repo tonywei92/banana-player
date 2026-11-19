@@ -60,9 +60,9 @@ const MAP=[
 ['Title, artist and album on the top screen','A setting, Song info on top: off, or written over the picture','Always there, no setting. With art: the art left (240 / 224 units), the three lines to its right, the pair centred; over a visualizer alone, top left; None is the title alone','chg'],
 ['A song with no album art','Album art falls back to the title alone; Art + visualizer falls back to the visualizer alone','The Art placeholder (a record in its sleeve, in the theme’s colours) in the art’s spot in both art modes; the layout and the chosen mode stay','chg'],
 ['SELECT again in the popup: the next Show mode','Display popup','Unchanged: SELECT in the Display sheet steps Show; B closes','same'],
-['Visualizer style (20 today; fifteen now: Peaks, Ribbon, Mirror bars, Pocket console, Horizon, Grid, Starfield, Strings, Helix, Sparks, Bouncy keys, Rocket, Rain check, Sleepy moon, Dance line)','Display popup, the Style row under Show; Settings › Music','The Display sheet, the grid of fifteen icon tiles, 5 × 3, under the four modes (one page, as the popup was); Settings › Music & sound › Visualizer. Kept and changeable when the mode has no visualizer: “not shown now”','chg'],
+['Visualizer style (20 today; fifteen now: Peaks, Ribbon, Mirror bars, Faders, Horizon, Grid, Starfield, Strings, Helix, Sparks, Bouncy keys, Rocket, Lanterns, Sleepy moon, Dance line)','Display popup, the Style row under Show; Settings › Music','The Display sheet, the grid of fifteen icon tiles, 5 × 3, under the four modes (one page, as the popup was); Settings › Music & sound › Visualizer. Kept and changeable when the mode has no visualizer: “not shown now”','chg'],
 ['Song info on top (the setting)','Settings › Music','Removed: the title, artist and album are always shown','chg'],
-['A song’s top screen: its ground','Black','The theme’s BG in Album art only, Art + visualizer and None, with the song’s text in the theme’s TEXT; in Art + visualizer the style is drawn straight over it, with no black strip. All fifteen styles are drawn by the player in the theme’s colours, alone too; Sparks, Starfield, Rain check and Sleepy moon fill the whole panel behind the art, with the art and its lines centred; Rocket’s stars fill the panel while the rocket stays in the band','chg'],
+['A song’s top screen: its ground','Black','The theme’s BG in Album art only, Art + visualizer and None, with the song’s text in the theme’s TEXT; in Art + visualizer the style is drawn straight over it, with no black strip. All fifteen styles are drawn by the player in the theme’s colours, alone too; Sparks, Starfield and Sleepy moon fill the whole panel behind the art, with the art and its lines centred; Rocket’s stars fill the panel while the rocket stays in the band','chg'],
 ['Visualizer frame rate (30 / 45 / 60)','Settings › Music','Settings › Music & sound','same'],
 ['Speed 0.5× to 2.5×','UP / DOWN, a key that shows it','The Speed chip’s sheet; the chip shows it','mov'],
 ['Audio and subtitle lines (tap for Tracks)','Two lines under the keys','Subtitles and Audio chips','chg'],
@@ -197,10 +197,10 @@ function stepTheme(){const i=THEMES.findIndex(t=>t[0]==document.documentElement.
  setTheme(t||'dark');
  // the Style switch: Classic (edges and lips) or Clean, on every drawing of the page that is not pinned to one
  bar.insertAdjacentHTML('beforeend','<button class="sty" id="stybtn"></button>');const sb=document.getElementById('stybtn');
- const setClean=c=>{if(c)document.documentElement.dataset.clean='1';else delete document.documentElement.dataset.clean;sb.textContent='Style: '+(c?'Clean':'Classic');try{localStorage.setItem('bpstyle',c?'clean':'classic')}catch(e){}};
+ const setClean=c=>{if(c)document.documentElement.dataset.clean='1';else delete document.documentElement.dataset.clean;sb.textContent=c?'Review: Clean (the app’s look)':'Review: Classic (High contrast’s look)';try{localStorage.setItem('bpstyle',c?'clean':'classic')}catch(e){}};
  sb.addEventListener('click',()=>setClean(!document.documentElement.dataset.clean));
- // Classic is the app's default style; ?clean (or the switch) draws Clean
- let c=/[?&]clean/.test(location.search);if(!c&&!/[?&]classic/.test(location.search))try{c=localStorage.getItem('bpstyle')=='clean'}catch(e){}
+ // Clean is the app's look. Classic is not a setting any more (it is High contrast's look): the switch stays here as a review aid
+ let c=!/[?&]classic/.test(location.search);if(c&&!/[?&]clean/.test(location.search))try{c=localStorage.getItem('bpstyle')!='classic'}catch(e){}
  setClean(c)}
 // ---------- rendering ----------
 const BY={};SCREENS.forEach(s=>BY[s.id]=s);

@@ -381,30 +381,41 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 
 ## Clean style
 
-A second way to draw the whole kit, beside Classic (the edges and lips everything above describes). Same sizes, places, touch areas, spacing scale, type and colour roles: a screen is laid out once and drawn either way. What changes is how a piece shows its shape and how loudly. Drawn: `clean-style`, and the page's Style switch redraws every screen.
+**Clean is the kit's look** (the owner, 2026-11-19). The edges and lips the components above describe are Classic: what a key still wears (rule 7), and what everything wears in the High contrast theme. There is no setting for it. Same sizes, places, touch areas, spacing scale, type and colour roles either way: a screen is laid out once. Drawn: `clean-style`; the preview's review switch redraws every screen in the other one.
 
-**The idea.** Classic boxes everything, so everything has the same voice. Clean gives each screen three voices and no more: plain text on the page (what you read), a quiet fill (what you press), and the accent, solid, for the one thing the screen is for. The only line left is the focus ring.
+**The idea.** Classic boxes everything, so everything has the same voice. Clean takes the boxes off the page (its rows, cards, tiles, chips, rail and header) and leaves them on the keys: what you read is plain, what you choose among is a quiet fill, and what you press to act is still a key (rule 7).
 
 **Rules, for every component**
 
-1. **No edges and no lips.** A fill carries the shape. Radius 12 on everything pressed (keys, cards, tiles, chips, tabs, rows, rail cells, the Now playing block), 6 on small tints (caps, pills, badges), 18 on a sheet's top corners.
+1. **No edges and no lips on the page’s pieces** (keys keep theirs: rule 7). A fill carries the shape. Radius 12 on everything pressed (keys, cards, tiles, chips, tabs, rows, rail cells, the Now playing block), 6 on small tints (caps, pills, badges), 18 on a sheet's top corners.
 2. **One fill for what is pressed: BUTTON,** on BG or on a sheet's SURFACE. A Clean card or tile is BUTTON too, not SURFACE: SURFACE stands off BG by as little as 1.06 and cannot carry a shape alone. Pressed is PRESSED.
-3. **Solid accent once.** The primary key (Resume, Pause, Play, Save) is the only solid ACCENT on a screen. What is merely selected (a chip, a tab, the rail's cell) is the accent's tint (17% over its ground) with ACCENT ink.
+3. **Solid accent once.** The primary key (Resume, Pause, Play, Save), a Classic key, is the only solid ACCENT on a screen. What is merely selected (a chip, a tab, the rail's cell) is the accent's tint (17% over its ground) with ACCENT ink.
 4. **Focus is the one ring:** 2 units of ACCENT on the thing under the cursor, its name in ACCENT; a focused row also takes BUTTON. No outer glow.
 5. **Text where a box said nothing.** An unselected chip, the player's state chips, its chapter line and Next line, the header's Back and More, the rail's Search: no ground at all, the same touch areas. The rail has no ground and no rule; the hint bar has no rule.
 6. **Tints for small marks.** Key caps, pills and badges are the accent's tint with ACCENT ink (red's for danger), not outlined or solid boxes.
-7. **What keeps a line:** the focus ring; a text field (2 units, edgeOf(SURFACE); ACCENT while typed in); a sheet's top hairline (1 unit, RULE), so it is told from what it covers; a slider's track is a fill as before. High contrast is always Classic.
+7. **Keys stay keys** (the owner’s choice): in Clean every labelled key keeps its Classic look. A key is a pressed piece, 44 tall or more, that does a thing and says which (a word, or a transport glyph), drawn by `Kit::key` / `Kit::iconKey`: BUTTON (KEY in a strong theme), 2-unit edge, 3-unit lip, radius 10, outlined caps; primary solid PRIMARY, danger as Classic. The list:
+   - the player: its transport row, its named row (Like, Playlist, List, Stop), and its setting chips (SURFACE and its edge), on its face and in its More;
+   - the photo viewer: Zoom −, Zoom +, Rotate, Fit, Previous, Next;
+   - Home: Resume / Pause (and Go to it) on its card, and the three shortcuts (Shuffle Liked, Send from phone, All recent: SURFACE and its edge, as Classic draws them);
+   - an Empty state’s keys (Browse Files, Web dashboard, Manage extensions…);
+   - every sheet’s and panel’s action keys: Cancel, Quit, Stay, Stop video & open Manga, Save, Test, Reset, Try again, Let it sleep; More’s four tiles (Lock touch, Screen off, Info, Stop); Quick settings’ Previous, Play / Pause, Next and Quit; an album’s Play, Shuffle and Add;
+   - the readers’ key rows (Contents, Text, Light, Find; Pages, View) and the Book bar’s keys;
+   - the keyboard, every key of it.
+
+   **Still Clean** (the page): rows and list items; cards and tiles that go somewhere or hold a value (Settings’ tiles, Quick settings’ switch tiles and its Now playing block’s ground, Recent’s and Continue’s cards); view and filter chips; tabs; the rail (its Search and Now playing keys too); the header’s Back and More; the player’s chapter and Next lines; a row’s − and + steppers; key caps and pills outside a key; the hint bar; a sheet’s own ground.
+8. **What keeps a line:** the focus ring; a text field (2 units, edgeOf(SURFACE); ACCENT while typed in); a sheet's top hairline (1 unit, RULE), so it is told from what it covers; a slider's track is a fill as before. High contrast is always Classic.
 
 | Component | Classic | Clean |
 |---|---|---|
-| Key, transport key, keyboard key | BUTTON, 2-unit edge, 3-unit lip | BUTTON, nothing else; primary: ACCENT, flat; danger: DANGER ink (Quit: DANGER fill) |
+| Key (any labelled key: the player’s, a sheet’s, an empty page’s, the readers’ rows, the keyboard) | BUTTON (KEY), 2-unit edge, 3-unit lip | the same as Classic (rule 7) |
 | Header keys (Back, More) | keys | the glyph alone, set to the column's edges; touch 60 × 56 as before; pressed: PRESSED |
 | Rail | RAIL ground, a rule, the active cell solid ACCENT with a lip | BG, no rule; the active cell the accent's tint, ACCENT ink; Search's key a glyph |
 | Row | no box; focused: BUTTON and the ring | the same |
 | Card, tile, notice row | SURFACE and its edge | BUTTON, no edge |
-| State chip (the player's), the chapter line, the Next line | SURFACE and its edge | no ground: label over value; a ring when focused (in More) |
+| State chip (the player's) | SURFACE and its edge | the same as Classic (rule 7) |
+| The player's chapter line and Next line | SURFACE and its edge | no ground: text |
 | Chip (a view, a filter) | TRACK off, solid ACCENT on | a word off; the tint with ACCENT ink on |
-| Tab | a key; solid ACCENT on | BUTTON; the tint on |
+| Tab | a key; solid ACCENT on | a quiet BUTTON fill, no edge; the tint on |
 | Pill, badge, key cap | solid ACCENT / an outlined box | the tint, ACCENT ink |
 | Now playing block | SURFACE, 2-unit ACCENT outline | BUTTON, no outline; the mark a glyph; the progress line stays |
 | Sheet | SURFACE, 2-unit edge | SURFACE, a 1-unit RULE hairline along its top, the veil |
@@ -414,35 +425,37 @@ A second way to draw the whole kit, beside Classic (the edges and lips everythin
 
 **Every theme.** `themes.py` checks what Clean leans on (the three “Clean style” rows of the pairs table): BUTTON against BG 1.16 to 1.50, BUTTON against SURFACE 1.17 to 1.64, PRESSED against BUTTON 1.24 to 1.68, floors 1.15, 1.15 and 1.2; and ACCENT on its tint, already 4.5 or more everywhere. The lowest are the 16-bit themes and Light on BG and Pink on a sheet: the reason Classic stays for anyone who wants more.
 
-**How it is offered** (decided): Settings › Power & screens › Style: Classic / Clean, the row under Theme. Classic is the default, Clean the option. One setting for the app, not a property of a theme.
+**How it is offered** (decided): it is not offered; it is how the app looks. No Style row in Settings. High contrast is drawn Classic; every other theme Clean.
 
-**Code.** One flag, `Settings::cleanStyle` (a `SettingDef`, `style`), read in three places of the kit and nowhere in a screen: `drawBox` / `fillRound` (no edge, no lip when clean), `Kit::flat` (BUTTON for a card or tile; nothing for a state chip, a line, a header key, an off chip), and `Kit::selected` (the tint, instead of solid ACCENT, for a chip, a tab, the rail's cell). Tokens: none new; the tint is `mix(ground, ACCENT, 17)` as a badge's already is, the hairline is RULE. Radii: one `KIT_R` (10 Classic, 12 Clean). `signature()` takes the flag. High contrast forces Classic.
+**Code.** No setting: `Kit::clean()` is `theme != High contrast` (the `style` `SettingDef`, if it was added, goes). It is read in three places of the kit; and rule 7 makes it simpler than it was: `Kit::key` and `Kit::iconKey` never read the flag at all (a key is always Classic), except the header’s Back and More and a row’s steppers, which pass a `quiet` tone; the player’s `chip[]` and Home’s shortcuts are drawn with the Classic flat piece whatever the flag: `drawBox` / `fillRound` (no edge, no lip when clean), `Kit::flat` (BUTTON for a card or tile; nothing for a state chip, a line, a header key, an off chip), and `Kit::selected` (the tint, instead of solid ACCENT, for a chip, a tab, the rail's cell). Tokens: none new; the tint is `mix(ground, ACCENT, 17)` as a badge's already is, the hairline is RULE. Radii: one `KIT_R` (10 Classic, 12 Clean). `signature()` already takes the theme.
 
 ## Match album art
 
-A song's own colours for the places that are about that song, worked out from its art. Drawn: `dyn-art` (four arts, Classic and Clean, the top screen, the Now playing block, Quick settings' block). The preview runs the rule itself (`dynPal` in `src/screens.js`).
+**Constrained adaptive theming** (the owner's direction): *the artwork influences the atmosphere, not the UI's identity.* The art tints the backdrop behind a song's player and the top screen. It never recolours the UI. Drawn: `dyn-art`.
 
-- **Where.** The song's player, the top screen while a song plays (its cards and the visualizer), the Now playing block, Quick settings' Now playing block. Nowhere else: every other page keeps the chosen theme. Never for a video or a photo, never in High contrast, and a song without art uses the chosen theme.
-- **Picking two colours.** From a 32 × 32 copy of the art, pixels are sorted into buckets of hue (12) and lightness (3). **dom** is the mean colour of the bucket that covers most of the picture. **viv** is the mean of the bucket with the largest (pixels × saturation) among those with a saturation of 25% or more; none, and the art is grey.
-- **The palette, always dark** (lightness and saturation are HSL's; H and S are dom's, S capped at 45%):
-
-| Role | Value |
+| Layer | Its colours |
 |---|---|
-| BG, SURFACE, TRACK, BUTTON, RULE, PRESSED | H at lightness 6, 10, 14, 17, 20, 25%; saturation S × 1, 0.9, 0.8, 0.8, 0.7, 0.7 |
-| TEXT | H, saturation min(S, 25%) × 0.6, lightness 90% |
-| DIM, DIM_ON | H, saturation min(S, 20%) × 0.5; lightness from 58% (DIM) and 70% (DIM_ON), raised 2% at a time until DIM is 4.5 on BG and SURFACE and DIM_ON 4.5 on BUTTON and TRACK |
-| ACCENT | viv's hue, its saturation held to 55–90%, lightness from 64%, raised 2% at a time (to 92% at most) until it is 7 on BG, 4.8 on BUTTON and 4.5 on its own 17% tint. A grey art: TEXT |
-| ON_ACCENT | BG |
-| DANGER | #F47067; #FFB224 when ACCENT's hue is within 28° of red |
-| edges, lips, RAIL | as a theme's: edgeOf at 40%, lipOf, RAIL 60% of the way from BG to SURFACE |
+| Background | the art, blurred and muted, under a gradient of the theme's charcoal tinted with one hue from the art |
+| Accent (primary and secondary) | the theme's |
+| Text | the theme's (its TEXT, and DIM_ON for secondary text on the backdrop) |
+| Controls (keys, chips, the bar, pills, the hint bar) | the theme's |
+| The album art itself | its own colours, wherever it is shown |
 
-  The fixed lightness of the ground is what makes every pair of `themes.py` hold for any art: TEXT is 14 or more on BG, and only DIM, DIM_ON and ACCENT ever need lifting.
-- **The backdrop** (the player only): the art shrunk to 64 × 48 and scaled up to the panel, smoothed (a blur for the cost of one small texture, made once a song), with BG laid over it at the opacity that puts the blur's 95th-percentile luminance at 0.045. Text straight on it is TEXT or DIM_ON, not DIM (DIM_ON is 4.5 or more there). The hint bar has no ground over it.
-- **The kit on it.** Classic: every piece as usual, solid. Clean: a fill is BUTTON at 70% over the backdrop; the rest as Clean.
-- **Changing.** When the next song's art has been read, the roles and the backdrop cross-fade in 0.5 s (each role's value mixed in sRGB). Until it has been read the colours stay; if there is no art, the fade goes to the chosen theme. Leaving the player keeps the palette on the Now playing block and in Quick settings' block.
-- **The top screen.** TOP_* take the palette (TOP_CARD from BG and SURFACE, TOP_TITLE the ACCENT), and the visualizers drawn by the player use its ACCENT on its BG, as they use a theme's.
-- **Offered as** a switch (decided): Settings › Music & sound › Match album art, and the same at the foot of the song's Display sheet.
-- **Code.** New. `artPalette(pixels32) → Palette` in bpcore, pure and tested (the four arts of the drawing, a white art, a black art, a one-colour art: every pair of the theme test passes). It runs on the worker that already decodes the art (never `Ui` or `Player` from there); the worker posts an SDL user event with the palette and the 64 × 48 backdrop. The main thread keeps `songPalette` beside the chosen theme and a fade start time; `theme()` for the song's surfaces returns `mix(from, to, t)`; `signature()` takes the fade's step (quantised to the frame), the palette's id and the backdrop's texture id, so the player redraws during the half second and not after. The backdrop is one texture, stretched by the GPU's linear filter.
+- **Where.** In a dark theme: the song's player (bottom screen) and the top screen while a song plays. In a light theme (the 16-bit ones, Sakura, Gundam, Light): the top screen only, which is dark in every theme; the bottom screen keeps the theme's light ground, because a light player turned dark for a song would stop being that theme. Never in High contrast. Never for a video or a photo. A song with no art: the plain ground. Quick settings' block, the rail's key and every other page are not touched.
+- **The pipeline**, on the worker that decodes the art, once per artwork:
+  1. **Quantise.** The 32 × 32 copy of the art, median cut into 8 colours, each with its share of the pixels.
+  2. **Filter.** Drop a colour whose lightness (HSL) is under 10% (near-black) or over 90% (near-white), whose saturation is over 85% (extreme), or whose share is under 5% (rare).
+  3. **The hue.** The largest colour left gives its hue. None left: the fallback.
+  4. **The tint.** That hue at a saturation of **15%** (within the owner's 10 to 20) and a lightness of 13%.
+  5. **The charcoal.** Fixed for the theme, the same for every song: half way from BG to SURFACE. The ground is the charcoal with the tint blended in at 45%.
+  6. **The backdrop picture.** The art cropped to 4 : 3 and box-filtered to **160 × 120**; a real Gaussian blur of **40 units at panel scale** (σ 10 pixels at the working size, separable, 61 taps, edges clamped); its saturation multiplied by 0.55.
+  7. **Contrast protection.** Over the picture, a dark vertical gradient of the ground: **66% at y 0, 60% at y 120, 80% at y 168, 90% at y 330, 94% at y 480.** Deepened for a bright art: each stop's see-through is scaled until the picture's 95th-percentile luminance under it leaves the theme's TEXT at 4.5 or more above y 168 and its DIM_ON at 4.5 or more below. Text straight on the backdrop is TEXT above the bar and TEXT or DIM_ON below it, never DIM. Drawn at run time, not baked in.
+  8. **Fallback: a neutral dark gradient** (the charcoal, from 35% of the way to SURFACE at the top down to BG at the foot; no art in it) when: nothing survives the filter (a grey, black, white or neon art); or the protection would need more than 96% at every stop (nothing of the art would show); or the art **clashes with the accent**: the theme's ACCENT has a colour of its own (saturation 30% or more) and the art's hue is 150° to 210° from it.
+  9. **Cache.** Key: FNV-1a (64 bits) of the art's encoded bytes, so a hit needs no decode. `<state dir>/artbg/<16 hex digits>.bg`: a version byte, the hue (or none), the two 95th-percentile luminances, then 160 × 120 RGB (57,600 bytes). 16 MB at most (about 270); a file's date is set when used, the oldest dropped first. The theme is not in the key: the ground, the stops and the clash test are worked out from the hue and the luminances when the theme is known.
+- **Changing.** The backdrop cross-fades in 0.5 s once the next art is ready; until then the old one stays. Nothing else on the screen changes, so nothing else redraws.
+- **Offered as** a switch (decided): Settings › Music & sound › Match album art, and at the foot of the song's Display sheet. Its help in a light theme: “On the top screen in this theme.”
+- **Cost on the RK3568,** off the main thread, once per new art: resize under 1 ms, median cut on 1,024 pixels under 1 ms, the two blur passes about 15 ms, the write 58 KB. A hit is one 58 KB read.
+- **Code.** New. `artBackdrop(pixels) → {hue, l95top, l95low, rgb160x120}` in bpcore, pure and tested (an art of each kind: one colour, grey, black, white, neon, two-colour; the filter and the luminances). It runs on the art worker (never `Ui` or `Player` from there), after a look in `artbg/` by the hash; the worker posts an SDL user event with the result. Main thread: one 160 × 120 texture for the player and one use of it on the top screen, stretched by the GPU's linear filter; `backdropFor(theme, hue, l95)` gives the ground, the five stops or the fallback. `signature()` takes the backdrop's id and the fade's step. No palette is swapped: `theme()` is untouched.
 
 ## Top screen
 
@@ -481,7 +494,7 @@ A song's own colours for the places that are about that song, worked out from it
 ### Song layout (exists, needs a variant)
 
 - **Used:** every song screen
-- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. The title is a Title marquee in its line’s box (the text column beside the art; the panel’s width less its margins in Visualizer only and None, where it is centred while it fits); artist and album are cut with “…”. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: the Art placeholder in the art’s place, at the art’s size (240, 224), in the same radius-8 box with the same 2-unit edgeOf(SURFACE) edge, keyed by the song’s album; the layout and the chosen mode stay. The player’s 30-unit thumbnail by the artist line is the same placeholder at 30. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Every style is drawn by the player in the theme’s colours (ACCENT and TEXT for its marks, DIM for what recedes); none keeps colours of its own. Visualizer only: the style on BG in the same colours, the three lines top left in TEXT, DIM_ON and DIM. Sparks, Starfield, Rain check and Sleepy moon fill the whole panel; in Art + visualizer they are drawn behind the art, and the art and its lines are centred in the panel as in Album art only. Rocket’s stars fill the panel while the rocket stays in the band.
+- **Anatomy and states:** Title, artist and album are always shown (28 / 17 / 14): there is no setting. The title is a Title marquee in its line’s box (the text column beside the art; the panel’s width less its margins in Visualizer only and None, where it is centred while it fits); artist and album are cut with “…”. Album art only: art 240 square left, the three lines right, the group centred on its real width with 40 margins, the text centred on the art. Art + visualizer: the same with art 224, in the space above the visualizer, which is drawn along the foot (about 150 tall) straight on the ground: no strip, no frame. Visualizer only: the style over the whole screen, the three lines top left over it. None: the title alone, centred, artist and album under it. No art: the Art placeholder in the art’s place, at the art’s size (240, 224), in the same radius-8 box with the same 2-unit edgeOf(SURFACE) edge, keyed by the song’s album; the layout and the chosen mode stay. The player’s 30-unit thumbnail by the artist line is the same placeholder at 30. Ground: BG, all the way down, in Album art only, Art + visualizer and None, with the lines in TEXT, DIM_ON and DIM and a 2-unit edgeOf(SURFACE) edge round the art. The visualizer over it is each style’s over-the-art drawing (only its marks, the ground showing between them), with BG where the art was. Every style is drawn by the player in the theme’s colours (ACCENT and TEXT for its marks, DIM for what recedes); none keeps colours of its own. Visualizer only: the style on BG in the same colours, the three lines top left in TEXT, DIM_ON and DIM. Sparks, Starfield and Sleepy moon fill the whole panel; in Art + visualizer they are drawn behind the art, and the art and its lines are centred in the panel as in Album art only. Rocket’s stars fill the panel while the rocket stays in the band.
 - **Inputs:** Show (Album art only / Art + visualizer / Visualizer only / None: four icon tiles on the Display sheet), the visualizer’s style (the fifteen icon tiles under them), art or none, title, artist, album. Show and the style are two inputs, set on one sheet (Display) and in two rows of Settings › Music & sound (Music display, Visualizer), and never written as one value. With Album art only or None the style is kept, can be changed, and is marked “not shown now”, not dimmed.
 - **Keys and touch:** SELECT steps Show (in the Display sheet).
 - **Code:** The music graph and the title lines in player.cpp (Player::shownMusic). A change to today’s layout: the lines always drawn (the Song info on top setting and its `SettingDef` go), and a ground in BG under the art.
@@ -734,8 +747,8 @@ Two cases, by what is under the drawing.
 
 | Style | Over BG in Art + visualizer | Alone (Visualizer only) |
 |---|---|---|
-| Peaks, Ribbon, Mirror bars, Pocket console, Horizon, Grid, Strings, Helix, Bouncy keys, Dance line | Drawn by the player in the theme's roles, in the band along the foot: marks ACCENT, caps and second marks TEXT, what recedes DIM (in Yellow they are today's yellow and cream) | The same, over the whole panel, on BG; the song's lines TEXT, DIM_ON, DIM, top left |
-| Sparks, Starfield, Rain check, Sleepy moon | The same roles, over the whole panel, behind the art; the art and its lines are centred in the panel (the layout of Album art only, art 224) | The same, with the lines top left |
+| Peaks, Ribbon, Mirror bars, Faders, Horizon, Grid, Strings, Helix, Bouncy keys, Lanterns, Dance line | Drawn by the player in the theme's roles, in the band along the foot: marks ACCENT, caps and second marks TEXT, what recedes DIM (in Yellow they are today's yellow and cream) | The same, over the whole panel, on BG; the song's lines TEXT, DIM_ON, DIM, top left |
+| Sparks, Starfield, Sleepy moon | The same roles, over the whole panel, behind the art; the art and its lines are centred in the panel (the layout of Album art only, art 224) | The same, with the lines top left |
 | Rocket | Its stars over the whole panel behind the art; the rocket stays in the band, and the art keeps its place above it | The same, on BG |
 
 The graph changes in one place for a theme: the colour of its ground source is BG, and the mark colours of every style are ACCENT and TEXT (DIM for what recedes). No frame is converted or keyed. One more case is app UI whatever plays: the theme's preview, while Settings › Power & screens › Theme is focused (Where it is changed).
@@ -852,7 +865,7 @@ The same table. Each theme is one block of the variables below (`:root[data-them
 ### Not verified
 
 - No theme was tried on the handheld's panels or in sunlight. The ratios are worked out, not measured. The lowest accent pairs are the ones to look at first: 32-bit's and 16-bit's accent on their BUTTON (4.8 and 5.1), and Dark red's (5.6).
-- The fifteen styles over a light ground were not looked at on the handheld: they take the theme's roles, so the ratios are the table's, but the four that fill the panel behind the art (Sparks, Starfield, Rain check, Sleepy moon) are the ones to try first on Light, Sakura and the 16-bit themes, for how busy they are beside the text.
+- The fifteen styles over a light ground were not looked at on the handheld: they take the theme's roles, so the ratios are the table's, but the three that fill the panel behind the art (Sparks, Starfield, Sleepy moon) are the ones to try first on Light, Sakura and the 16-bit themes, for how busy they are beside the text.
 - 16-bit and 32-bit were checked by their ratios and by the swatches; neither was looked at on a whole screen.
 - `web/style.css` was read at its `:root` only.
 - OK's three values for the dashboard were not checked for contrast.

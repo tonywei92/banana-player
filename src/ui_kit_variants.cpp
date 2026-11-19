@@ -5,6 +5,7 @@
 // field and result row, a Music/Videos row, a Books cover tile and a page's line (docs/notes/2026-11-19-kit-inventory.md).
 // As the rest of the kit: a Rect from kitlayout and a small struct in, pixels out, nothing kept; tokens only.
 #include "ui_kit.h"
+#include "artph.h"
 #include <cmath>
 
 namespace bp
@@ -13,6 +14,16 @@ namespace bp
 	{
 		theme::Rgb rgbOf(SDL_Color c) { return {c.r, c.g, c.b}; }
 		const char* const BOLT[7] = {"...##", "..##.", ".##..", "#####", "..##.", ".##..", "##..."};
+		// the first letter of a name, for an artist's disc (a whole UTF-8 character, capitalised when ASCII)
+		std::string firstLetter(const std::string& s)
+		{
+			if (s.empty()) return "";
+			unsigned char c = (unsigned char)s[0];
+			size_t n = c < 0x80 ? 1 : (c >> 5) == 6 ? 2 : (c >> 4) == 14 ? 3 : 4;
+			std::string out = s.substr(0, std::min(n, s.size()));
+			if (n == 1 && out[0] >= 'a' && out[0] <= 'z') out[0] = (char)(out[0] - 'a' + 'A');
+			return out;
+		}
 	}
 
 	// ---- status cluster and badges ----
@@ -651,7 +662,7 @@ namespace bp
 			ui.fillRound({l.cover.x - 2, l.cover.y - 2, l.cover.w + 4, l.cover.h + 4}, BG, 7);
 		}
 		if (c.picture) c.picture(l.cover);
-		else artPlaceholder(l.cover, c.key, 5, false);
+		else bookPlaceholder(l.cover, c.key, 5);
 		if (!c.badge.empty()) pill(l.cover.x + l.cover.w + 4, l.cover.y + 4, c.badge, Pill::Live);
 		if (l.title.h > 0) ui.drawTextMid(c.title, F_P13, off(c.focused ? ACCENT : TEXT, c.off), l.title.x, l.title.y + l.title.h / 2, l.title.w);
 		if (l.bar.h > 0 && c.progress >= 0)
@@ -669,6 +680,121 @@ namespace bp
 		else ui.drawTextMid(s.text, F_I12, DIM, l.line.x, cy, l.line.w);
 		if (l.note.w > 0 && !s.note.empty())
 			ui.drawTextMid(s.note, F_I12, DIM_ON, l.note.x + l.note.w, cy, 0, 1);
+	}
+
+	// ---- a book's drawn cover, an album cell, an artist's row, a video's and a folder's row ----
+
+	void Ui::Kit::bookPlaceholder(Rect r, const std::string& key, int rad)
+	{
+		// A book, not a record: the sleeve's ground, a spine down the left, and the title's blocks on the front.
+		// The widths come from the name's hash, so five books without covers are five different spines.
+		const uint32_t h = artph::hash(key);
+		ui.fillRound(r, BUTTON, rad);
+		int in = std::max(1, theme::EDGE);
+		int spine = std::max(8, r.w / 10);
+		// the spine stops short of the rounded corners so the fill keeps the box's shape
+		ui.fillRound({r.x + in, r.y + in + 3, spine, r.h - 2 * in - 6}, PRESSED, std::max(2, rad - in));
+		int sx = r.x + in;
+		// the ACCENT mark on the spine near its foot (the theme's one solid colour, as a label is on a record)
+		ui.fillRound({sx + spine / 2 - 1, r.y + r.h - 24, 3, 14}, ACCENT, 1);
+		// the front: two or three lines of type, their lengths keyed by the name
+		int left = r.x + in + spine + lay::SP12, right = r.x + r.w - lay::SP8;
+		int w = std::max(10, right - left);
+		int barH = std::max(3, r.h / 30), gap = std::max(3, barH + 2);
+		int y = r.y + r.h / 4;
+		int b1 = w * (52 + (int)(h % 28)) / 100;
+		int b2 = w * (34 + (int)((h >> 8) % 30)) / 100;
+		int b3 = w * (44 + (int)((h >> 16) % 24)) / 100;
+		ui.fillRound({left, y, b1, barH}, TEXT, 1);
+		ui.fillRound({left, y + barH + gap, b2, barH}, DIM, 1);
+		ui.fillRound({left, y + 2 * (barH + gap), b3, barH}, DIM, 1);
+	}
+
+	void Ui::Kit::albumTile(const lay::AlbumTile& l, const Album& a)
+	{
+		// focused: the Cover cell's 3-unit ACCENT outline 2 clear of the art
+		if (a.focused)
+		{
+			ui.fillRound({l.cover.x - 5, l.cover.y - 5, l.cover.w + 10, l.cover.h + 10}, ACCENT, 10);
+			ui.fillRound({l.cover.x - 2, l.cover.y - 2, l.cover.w + 4, l.cover.h + 4}, BG, 7);
+		}
+		if (a.art) a.art(l.cover);
+		else artPlaceholder(l.cover, a.artKey.empty() ? a.title : a.artKey, 5, false);
+		if (a.playing || a.paused)
+		{
+			ui.fillRound(l.mark, ACCENT, 6);
+			ui.drawGlyphMid(a.paused ? G_PAUSE : G_PLAY, l.mark.x + l.mark.w / 2, l.mark.y + l.mark.h / 2, ON_ACCENT, 1);
+		}
+		if (l.title.h > 0)
+			ui.drawTextMid(a.title, F_P13, off(a.focused ? ACCENT : TEXT, a.off), l.title.x, l.title.y + l.title.h / 2, l.title.w);
+		if (l.artist.h > 0)
+			ui.drawTextMid(a.artist, F_I12, off(a.focused ? DIM_ON : DIM, a.off), l.artist.x, l.artist.y + l.artist.h / 2, l.artist.w);
+	}
+
+	void Ui::Kit::artistRow(const lay::ArtistRow& l, const Artist& a)
+	{
+		if (a.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
+		else if (a.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
+		int cy = l.row.y + l.row.h / 2;
+		if (a.art) a.art(l.art);
+		else
+		{
+			// the initial's disc: the ACCENT's tint over BUTTON, the letter in ACCENT (a badge's pair)
+			ui.fillRound(l.art, off(sdl(theme::mix(rgbOf(BUTTON), rgbOf(ACCENT), 17)), a.off), l.art.h / 2);
+			ui.drawTextMid(firstLetter(a.name), F_P16, off(ACCENT, a.off), l.art.x + l.art.w / 2, cy, l.art.w - 4, 2);
+		}
+		ui.drawGlyphMid(G_RIGHT, l.chevronX, cy, off(a.focused ? ACCENT : DIM, a.off));
+		ui.drawTextMid(a.name, F_P16, off(a.focused ? ACCENT : TEXT, a.off), l.name.x, l.name.y + l.name.h / 2, l.name.w);
+		ui.drawTextMid(a.second, F_I12, off(a.focused ? DIM_ON : DIM, a.off), l.second.x, l.second.y + l.second.h / 2, l.second.w);
+	}
+
+	void Ui::Kit::videoRow(const lay::VideoRow& l, const Video& v)
+	{
+		if (v.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
+		else if (v.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
+		int cy = l.row.y + l.row.h / 2;
+		// the thumbnail: the caller's frame; else the kind's mark on TRACK (no thumbnails are made in the list)
+		if (v.art) v.art(l.thumb);
+		else
+		{
+			ui.fillRound(l.thumb, off(TRACK, v.off), 5);
+			const Glyph* g = v.glyph ? v.glyph : &G_FILM;
+			ui.drawGlyphMid(*g, l.thumb.x + l.thumb.w / 2, l.thumb.y + l.thumb.h / 2, off(DIM_ON, v.off));
+		}
+		// the right end, leftwards: the length, and a tick when the file is finished
+		int right = l.right;
+		if (!v.note.empty())
+		{
+			ui.drawTextMid(v.note, F_I12, off(v.focused ? DIM_ON : DIM, v.off), right, l.note.y + l.note.h / 2, 160, 1);
+			right -= std::min(160, textW(v.note, F_I12)) + 8;
+		}
+		if (v.done)
+		{
+			ui.drawGlyphMid(G_CHECK, right - 7, l.note.y + l.note.h / 2, off(v.focused ? ACCENT : DIM, v.off), 1);
+			right -= 14 + 8;
+		}
+		ui.drawTextMid(v.name, F_P16, off(v.focused ? ACCENT : TEXT, v.off), l.name.x, l.name.y + l.name.h / 2, std::max(1, right - l.name.x));
+		ui.drawTextMid(v.second, F_I12, off(v.focused ? DIM_ON : DIM, v.off), l.second.x, l.second.y + l.second.h / 2, l.second.w);
+		// the thin resume line at the foot (none when not started)
+		if (v.resume >= 0)
+		{
+			double share = std::clamp(v.resume, 0.0, 1.0);
+			ui.fillRound(l.bar, off(TRACK, v.off), 1);
+			int w = (int)std::lround(l.bar.w * share);
+			if (w > 0) ui.fillRound({l.bar.x, l.bar.y, w, l.bar.h}, off(ACCENT, v.off), 1);
+		}
+	}
+
+	void Ui::Kit::folderRow(const lay::FolderRow& l, const Folder& f)
+	{
+		if (f.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
+		else if (f.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
+		int cy = l.row.y + l.row.h / 2;
+		ui.fillRound(l.tile, off(TRACK, f.off), 10);
+		ui.drawGlyphMid(G_FOLDER, l.tile.x + l.tile.w / 2, cy, off(f.focused ? ACCENT : DIM_ON, f.off));
+		ui.drawGlyphMid(G_RIGHT, l.chevron.x + l.chevron.w / 2, cy, off(f.focused ? ACCENT : DIM, f.off));
+		ui.drawTextMid(f.name, F_P16, off(f.focused ? ACCENT : TEXT, f.off), l.name.x, l.name.y + l.name.h / 2, l.name.w);
+		ui.drawTextMid(f.second, F_I12, off(f.focused ? DIM_ON : DIM, f.off), l.second.x, l.second.y + l.second.h / 2, l.second.w);
 	}
 }
 
@@ -1049,6 +1175,156 @@ namespace bp
 			k.hints({{"L2/R2", "View"}, {"A", "Open"}, {"X", "More"}, {"L3", "Search"}});
 		}
 
+		// Music: the page's line and its view chips, the album grid (one playing), an artist's row
+		void page11(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			std::vector<Kit::FilterItem> views = {{"Albums", 148}, {"Artists", 61}, {"Playlists", 5}};
+			lay::MusicHeader mh = lay::musicHeader({16, 4, 608, 0}, k.filterWidths(views));
+			Kit::SectionLine line;
+			line.text = "From Music on both cards \xC2\xB7 148 albums \xC2\xB7 1,912 songs";
+			k.sectionLine(lay::sectionLine(mh.line, true), line);
+			k.filters(mh.chips, views, 0);
+			lay::AlbumGrid grid = lay::albumGrid({16, 90, 608, 300}, 10);
+			const char* albums[10][2] = {{"Yellow Album", "The Plantains"}, {"Late Night", "The Carrots"},
+				{"Pixel Sea", "Harbor Cats"}, {"Field Recordings", "Various"}, {"Steel", "Tin Roof"},
+				{"Grape", "The Plantains"}, {"Meadow", "Bunny Hop Band"}, {"Red Room", "Tin Roof"},
+				{"Honey", "The Carrots"}, {"Unknown album", "Unknown artist"}};
+			for (int i = 0; i < 10 && i < (int)grid.cell.size(); i++)
+			{
+				Kit::Album a;
+				a.artKey = albums[i][0];
+				a.title = albums[i][0];
+				a.artist = albums[i][1];
+				a.focused = i == 0;
+				a.playing = i == 2;
+				a.paused = i == 8;
+				k.albumTile(lay::albumTile(grid.cell[i]), a);
+			}
+			Kit::Artist artist;
+			artist.name = "The Plantains";
+			artist.second = "3 albums \xC2\xB7 34 songs \xC2\xB7 2 h 6 min";
+			artist.focused = true;
+			k.artistRow(lay::artistRow({16, 380, 608, lay::ARTIST_ROW_H}), artist);
+			k.hints({{"L2/R2", "View"}, {"A", "Open"}, {"X", "More"}, {"L3", "Search"}});
+		}
+
+		// Videos: a row left part way (its resume line), one finished (a tick), a fresh one, and a folder
+		void page12(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			Kit::Video v;
+			v.name = "Big Buck Bunny.mkv";
+			v.note = "6:12 / 9:56";
+			v.second = "Movies \xC2\xB7 2.1 GB \xC2\xB7 12 Nov";
+			v.resume = 0.62;
+			v.focused = true;
+			k.videoRow(lay::videoRow({16, 6, 608, lay::VIDEO_ROW_H}), v);
+			v = Kit::Video();
+			v.name = "Caminandes 1.mkv";
+			v.note = "1:30";
+			v.second = "Shorts \xC2\xB7 148 MB \xC2\xB7 3 Nov";
+			v.done = true;
+			k.videoRow(lay::videoRow({16, 72, 608, lay::VIDEO_ROW_H}), v);
+			v = Kit::Video();
+			v.name = "Sintel.mkv";
+			v.note = "4:12 / 14:48";
+			v.second = "Movies \xC2\xB7 1.4 GB \xC2\xB7 8 Nov";
+			v.resume = 0.28;
+			k.videoRow(lay::videoRow({16, 138, 608, lay::VIDEO_ROW_H}), v);
+			Kit::Folder f;
+			f.name = "Trip 2026";
+			f.second = "42 videos \xC2\xB7 6.2 GB";
+			f.note = "12 Nov";
+			k.folderRow(lay::folderRow({16, 204, 608, lay::FOLDER_ROW_H}), f);
+			Kit::SectionLine line;
+			line.text = "From Videos and Movies on both cards \xC2\xB7 86 videos \xC2\xB7 9 folders";
+			k.sectionLine(lay::sectionLine({16, 280, 608, lay::LINE_H}, false), line);
+			k.hints({{"L2/R2", "View"}, {"A", "Play"}, {"X", "More"}, {"LEFT/RIGHT", "Page"}});
+		}
+
+		// Books: the Reading now strip (title and progress) over the shelf's grid (title only), the book's own drawn cover
+		void page13(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			lay::BooksShelf sh = lay::booksShelf({16, 4, 608, 440}, 5, 10);
+			Kit::SectionLine head;
+			head.caps = true;
+			head.text = "Reading now \xC2\xB7 5";
+			k.sectionLine(lay::sectionLine(sh.readingHead, false), head);
+			const char* reading[5] = {"Alice's Adventures", "The Time Machine", "Handheld Field Guide", "Frankenstein", "Krazy Kat"};
+			const double progress[5] = {0.07, 0.58, 0.06, 0.33, 0.81};
+			for (int i = 0; i < 5 && i < (int)sh.reading.size(); i++)
+			{
+				Kit::Cover c;
+				c.key = reading[i];
+				c.title = reading[i];
+				c.focused = i == 0;
+				c.badge = i == 1 ? "3" : "";
+				c.progress = progress[i];
+				k.coverTile(lay::coverTile(sh.reading[i], true, true), c);
+			}
+			head.text = "Shelf \xC2\xB7 10";
+			k.sectionLine(lay::sectionLine(sh.shelfHead, false), head);
+			const char* shelf[10] = {"Frankenstein", "The Wind in the Willows", "Treasure Island", "Krazy Kat", "Notes",
+				"Alice's Adventures", "The Time Machine", "Field Guide", "Moby Dick", "The Yellow Kid"};
+			int last = std::min((int)sh.shelf.size(), (sh.first + sh.shown) * sh.cols);
+			for (int i = 0; i < last; i++)
+			{
+				Kit::Cover c;
+				c.key = shelf[i];
+				c.title = shelf[i];
+				k.coverTile(lay::coverTile(sh.shelf[i], true, false), c);
+			}
+			k.hints({{"A", "Open"}, {"X", "More"}, {"L2/R2", "Shelf"}, {"L3", "Search"}});
+		}
+
+		// Search: the field, two groups' headings and rows, Recent searches and its Clear row
+		void page14(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			lay::SearchPage p = lay::searchPage({16, 4, 608, 440}, {1, 1}, 2);
+			Kit::SearchFieldView f;
+			f.value = "bunn";
+			k.searchField(lay::searchField(p.field), f);
+			Kit::SectionLine head;
+			head.caps = true;
+			head.text = "Videos \xC2\xB7 2";
+			k.sectionLine(lay::sectionLine(p.group[0].head, false), head);
+			Kit::Result r;
+			r.glyph = &G_FILM;
+			r.name = "Big Buck Bunny.mkv";
+			r.note = "Videos / Movies \xC2\xB7 9:56";
+			r.matchAt = 9;
+			r.matchLen = 5;
+			r.focused = true;
+			k.resultRow(lay::resultRow(p.row[p.group[0].firstRow]), r);
+			head.text = "Music \xC2\xB7 4";
+			k.sectionLine(lay::sectionLine(p.group[1].head, false), head);
+			r = Kit::Result();
+			r.glyph = &G_NOTE;
+			r.name = "Bunny Hop";
+			r.note = "The Plantains \xC2\xB7 Yellow Album";
+			r.matchAt = 0;
+			r.matchLen = 5;
+			k.resultRow(lay::resultRow(p.row[p.group[1].firstRow]), r);
+			head.text = "Recent searches";
+			k.sectionLine(lay::sectionLine(p.recentHead, false), head);
+			const char* recent[2] = {"bunn", "late night"};
+			for (int i = 0; i < 2 && i < (int)p.recent.size(); i++)
+			{
+				r = Kit::Result();
+				r.glyph = &G_CLOCK;
+				r.name = recent[i];
+				k.resultRow(lay::resultRow(p.recent[i]), r);
+			}
+			r = Kit::Result();
+			r.glyph = &G_TRASH;
+			r.name = "Clear recent searches";
+			k.resultRow(lay::resultRow(p.clear), r);
+			k.hints({{"A", "Open"}, {"Y", "Edit"}, {"B", "Back"}});
+		}
+
 		void draw(const Player&) override
 		{
 			Kit& k = *ui.kit;
@@ -1063,6 +1339,10 @@ namespace bp
 			case 8: page8(k); break;
 			case 9: page9(k); break;
 			case 10: page10(k); break;
+			case 11: page11(k); break;
+			case 12: page12(k); break;
+			case 13: page13(k); break;
+			case 14: page14(k); break;
 			default: page1(k); break;
 			}
 		}
