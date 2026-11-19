@@ -439,7 +439,7 @@ namespace bp
 		st.clock = ui.clockText(p);
 		st.battery = ui.battery.percent;
 		st.charging = ui.battery.charging;
-		st.playing = ui.markW(p) && ui.markLive(p);
+		st.playing = false;	// (the rail's Now playing key shows the bars on a shell page: none in the header, the owner)
 		st.tick = (int)(SDL_GetTicks() / 166);
 		if (ui.incognito) st.badges.push_back({&G_INCOGNITO, ""});
 		if (ui.webIndicatorShown(p)) st.badges.push_back({&G_WEB, ""});
