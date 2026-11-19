@@ -397,10 +397,10 @@ namespace bp
 			bool last = recent.empty() || recent.front().path == e.path || !findRecent(e.path);
 			if (last && isVideoFile(e.path) && e.position > 0 && e.duration > 0 && worthResuming(e.position, e.duration)) return fromResume(e);
 		}
-		// else the newest thing not finished (played-through songs and films stay in Recent, not in Continue)
+		// else the last thing played, whatever it is (the owner, 2026-11-19: a half-read book further down must not
+		// stand in for the songs played since): Resume when it has a place to carry on from, else Play
 		for (auto& it : recent)
 		{
-			if (!(it.frac > 0.0 && it.frac < 1.0 - 1e-6)) continue;
 			c.shown = true;
 			c.path = it.path;
 			c.title = it.name;
@@ -409,8 +409,10 @@ namespace bp
 			c.frac = it.frac;
 			c.artKey = it.name;
 			c.stopped = !mangaStopped.empty() && mangaStopped == it.path;
-			c.label = c.stopped ? "Stopped for Manga" : "Continue";
-			c.key = "Resume";
+			bool part = it.frac > 0.0 && it.frac < 1.0 - 1e-6;
+			c.label = c.stopped ? "Stopped for Manga" : part ? "Continue" : "Last played";
+			c.key = part ? "Resume" : "Play";
+			if (!part) c.frac = 0;	// (a played-through one has no place to show)
 			return c;
 		}
 		// a card taken out with something older still in resume.tsv: its place is kept too

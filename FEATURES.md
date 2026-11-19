@@ -37,8 +37,9 @@ HEVC (x265), may drop frames. **Info** shows how it's keeping up.
 
 Open Banana Player and the bottom screen shows **Home**:
 
-- **Continue**: the newest thing you haven't finished, as a card with its picture, title, where it was left
-  (`6:12 / 9:56 · Videos`), a bar, and **Resume**. What plays now says **Now playing**, with a **NOW** mark on its
+- **Continue**: the last thing you played, as a card with its picture and title. Left in the middle, it says where
+  (`6:12 / 9:56 · Videos`), with a bar and **Resume**; played through (a song, a finished film), it is **Last played**
+  with **Play**. What plays now says **Now playing**, with a **NOW** mark on its
   picture, the time and its state pills after it, and **Pause** where **Resume** was (**Play** when paused); **A** or
   a tap on the card goes back to the player, and its key pauses and plays it without leaving Home (as **A** does on
   the player). Held, the key takes it over from a browser that plays it. A
