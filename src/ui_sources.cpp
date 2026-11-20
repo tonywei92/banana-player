@@ -54,7 +54,7 @@ namespace bp
 	Ui::MoreItem Ui::webDashboardRow(const Player& p)
 	{
 		MoreItem i;
-		i.glyph = &G_WEB;
+		i.glyph = &G_QR;
 		i.label = "Web dashboard";
 		// what it says about the dashboard: its address, "Off" (the page opens on its switch), or no Wi-Fi
 		std::string addr = webAddress();

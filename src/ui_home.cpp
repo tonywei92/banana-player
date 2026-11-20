@@ -903,7 +903,7 @@ namespace bp
 			e.key1 = "Browse Files";
 			e.key2 = "Web dashboard";
 			e.glyph1 = &G_CARD;
-			e.glyph2 = &G_WEB;
+			e.glyph2 = &G_QR;
 			e.hotkeys = p.settings.buttonHotkeys;
 			e.pressed1 = pressedEmptyKey == 0;
 			e.pressed2 = pressedEmptyKey == 1;
@@ -1009,7 +1009,7 @@ namespace bp
 		{
 			bool liked = ui.browse->playlists->plStore && ui.browse->playlists->plStore->likedCount() > 0;
 			const char* names[3] = {liked ? "Shuffle Liked" : "Browse Files", "Web dashboard", "All recent"};
-			const Glyph* glyphs[3] = {liked ? &G_HEART_S : &G_CARD, &G_WEB, &G_CLOCK};
+			const Glyph* glyphs[3] = {liked ? &G_HEART_S : &G_CARD, &G_QR, &G_CLOCK};
 			for (int i = 0; i < hp.shortcuts; i++)
 			{
 				Kit::Tile t;

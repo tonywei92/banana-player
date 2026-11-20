@@ -205,6 +205,10 @@ GLYPH(G_CHAPTERS, "###.#######", "###.#######", "...........", "###.#####..", "#
 	// the web dashboard: a globe (Settings' tile, its page, the header's indicator, the quick settings)
 	GLYPH(G_WEB, "..#####..", ".#..#..#.", "#..#.#..#", "#########", "#..#.#..#", "#########", "#..#.#..#", ".#..#..#.",
 		"..#####..")
+	// the way to the web dashboard (Home's tile, the libraries' empty pages and More rows, as the spec draws it):
+	// a QR code, since the dashboard's page is reached by scanning one; the globe stays the dashboard's state mark
+	GLYPH(G_QR, "####.####", "#..#.#..#", "#..#.#..#", "####.####", ".........", "####.#.#.", "#..#..#..", "#..#.#.#.",
+		"####....#")
 	GLYPH(G_SHUFFLE, ".........#.", "##.....####", "..#...#..#.", "...#.#.....", "....#......", "...#.#.....", "..#...#..#.",
 		"##.....####", ".........#.")
 	// Extensions: three blocks and a fourth to come; the manga reader's open book

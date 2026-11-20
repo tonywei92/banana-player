@@ -326,7 +326,7 @@ namespace bp
 			v.key1 = "Browse Files";
 			v.glyph1 = &G_FOLDER;
 			v.key2 = "Web dashboard";
-			v.glyph2 = &G_WEB;
+			v.glyph2 = &G_QR;
 			v.pressed1 = touch == T_EMPTY1 && !touchMoved;
 			v.pressed2 = touch == T_EMPTY2 && !touchMoved;
 			v.hotkeys = p.settings.buttonHotkeys;

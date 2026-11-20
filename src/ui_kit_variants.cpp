@@ -473,7 +473,9 @@ namespace bp
 			x += 22 + 10;
 		}
 		if (!t.mark.empty()) right -= pill(right, cy, t.mark) + 8;
-		ui.drawTextMid(t.name, F_P16, ink, x, t.note.empty() ? cy : cy - 9, std::max(1, right - x));
+		// a name too long for the tile at 16 takes 14 before it would be cut ("Web dashboard" in Home's third)
+		int nameFont = textW(t.name, F_P16) > right - x ? F_P14 : F_P16;
+		ui.drawTextMid(t.name, nameFont, ink, x, t.note.empty() ? cy : cy - 9, std::max(1, right - x));
 		if (!t.note.empty()) ui.drawTextMid(t.note, F_I12, noteInk, x, cy + 11, std::max(1, right - x));
 	}
 
