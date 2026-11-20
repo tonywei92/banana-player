@@ -65,3 +65,13 @@ cache file per art; each panel composes its half once per art and theme. The vei
 stops; the top panel's is the first stop, flat. The protection's luminance bands moved to the canvas (top band:
 picture rows 0..80, `BAND_ROW`; only the middle columns), so `CACHE_VERSION` is 3 and old `.bg` files are made again.
 The gallery's page 20 still draws a Whole (4:3) page.
+
+## 6. The browser's pages on the backdrop too
+
+While a song plays with the switch on, `Ui::renderPage` draws the same Lower page (`drawBackdrop`: one copy, the
+same cache, the same 0.5 s cross-fade) right after its clear, on every page but the player's own (which draws it in
+PlayerPage::draw) and the readers (DocText, DocPages, MangaRead) — `Ui::browserBackdrop`. `groundIsBackdrop` tells
+the shell's header to leave its BG fill out; the rail and the hint bar keep their own surfaces, as rows and cards
+do. `Ui::signature` takes the answer's hash and the fade's step on those pages. No extra veil step was needed: below
+the bottom panel's y 168 the Lower veil is already 84%+ (the list's DIM text there holds), and the header area is the
+protected TEXT band. A bridged old body (select / add modes) still clears its box to BG.

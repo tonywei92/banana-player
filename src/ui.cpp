@@ -906,6 +906,12 @@ namespace bp
 			photo += "|mq" + std::to_string(m.done ? -1 : m.step);
 		}
 		if (pageDrives(p)) photo += pagePlaying() ? "|pageplay" : "|pagepause";
+		// Match album art behind the browser: which answer, and the cross-fade's step while it runs
+		if (browserBackdrop(p))
+		{
+			photo += "|bg" + std::to_string(backdropHash());
+			if (backdropFading()) photo += "." + std::to_string((SDL_GetTicks() - backdropFadeAt()) / 33);
+		}
 		if (p.playingPhoto())
 		{
 			const Player::PhotoView& v = p.photo();

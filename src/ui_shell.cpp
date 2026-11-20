@@ -520,7 +520,7 @@ namespace bp
 		lay::Shell s = layout(p);
 		Kit& k = *ui.kit;
 		// the header's ground (the body is the page's; the rail covers its own 78 either way)
-		ui.fill({s.main.x, 0, s.main.w, lay::SHELL_HEAD}, BG);
+		if (!ui.groundIsBackdrop) ui.fill({s.main.x, 0, s.main.w, lay::SHELL_HEAD}, BG);	// (Match album art: the backdrop shows)
 		std::vector<Cell> cs = cells(p);
 		lay::Rail r = lay::rail((int)cs.size(), lay::PANEL_H, railScroll);
 		std::vector<KitNew::RailItem> items;
