@@ -308,8 +308,7 @@ namespace bp
 		MusicHeader musicHeader(Box body, const std::vector<int>& chipWidths)
 		{
 			MusicHeader h;
-			h.line = {body.x, body.y, body.w, LINE_H};
-			h.strip = {body.x, body.y + LINE_H + SP8, body.w, CHIP_STRIP};
+			h.strip = {body.x, body.y, body.w, CHIP_STRIP};
 			h.chips = filterChips(h.strip, chipWidths);
 			return h;
 		}
@@ -354,7 +353,9 @@ namespace bp
 			b.shelfGrid = {body.x, gridY, body.w, std::max(0, body.y + body.h - gridY)};
 			b.rows = (std::max(0, shelfCount) + b.cols - 1) / b.cols;
 			const int pitch = SHELF_CELL_H + COVER_GAP;
-			b.shown = std::max(0, (b.shelfGrid.h + COVER_GAP) / std::max(1, pitch));
+			// a row may hang over the grid's foot (over the hint bar, which paints after the page), but at least
+			// one is laid — the shelf's heading always has books under it, as the album grid guarantees its own
+			b.shown = std::max(1, (b.shelfGrid.h + COVER_GAP) / std::max(1, pitch));
 			b.first = std::clamp(first, 0, std::max(0, b.rows - b.shown));
 			b.shelf.reserve(std::max(0, shelfCount));
 			for (int i = 0; i < std::max(0, shelfCount); i++)

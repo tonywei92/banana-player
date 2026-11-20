@@ -969,13 +969,7 @@ namespace bp
 			k.emptyState(e, v);
 			return;
 		}
-		// the line under the title (nothing while the first read is on: the notice says it), then the chips
-		if (!reading)
-		{
-			Kit::SectionLine line;
-			line.text = fromLine(*snap);
-			k.sectionLine(lay::sectionLine(mh.line, false), line);
-		}
+		// the view chips (the "From …" line they sat under is the header's crumb, once drawn here as well)
 		k.filters(mh.chips, views, view, -1,
 			touch >= T_CHIP && touch < T_CHIP + 3 && !touchMoved ? touch - T_CHIP : -1);
 		if (reading)

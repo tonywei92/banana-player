@@ -14,10 +14,11 @@ page in the results).
 - **In:** the rail's Search key and `L3` from Home, Files, Playlists, Extensions, Network and Settings (the one
   `Shell::search` hook now calls `search->open`). A second press edits the query; `B` returns to the page it was opened
   from. In a document or the Manga reader L3 remains their Find / Like.
-- **Typing:** the kit's field and `Kit::keyboard` (`lay::keyboard` fitted into the shell's body, so the drawn boxes are
-  the touch boxes): three letter rows, a digits layer on `L3` / `SELECT`, Space on `Y`, delete on `X`, Done on
-  `START`, the D-pad over the keys. Up to 40 letters. The query is case- and accent-insensitive (the index's
-  `foldText`).
+- **Typing:** the kit's field and `Kit::keyboard` (`lay::keyboard` laid out inside the shell's body, so the drawn
+  boxes are the touch boxes — since 2026-11-20 an area of its own, not the panel's keyboard scaled to fit, which put
+  the letter rows past the body's right edge): three letter rows, a digits layer on `L3` / `SELECT`, Space on `Y`,
+  delete on `X`, Done on `START`, the D-pad over the keys. Up to 40 letters. The query is case- and
+  accent-insensitive (the index's `foldText`).
 - **Results:** `mediaSearch` over the cards' index (`Ui::mediaIndex`, main's `MediaIndexWorker`), grouped **Videos**,
   **Music**, **Files** with `Kit::sectionLine` and `Kit::resultRow`; a group with nothing is left out, the matched part
   is marked in ACCENT. Files are the non-media paths the index does not hold: the history and the folder Files is

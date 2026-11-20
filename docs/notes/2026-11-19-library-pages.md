@@ -49,9 +49,10 @@ The rail becomes **Home, Files, Videos, Music, Books, Extensions, Network**, the
 - **The first-read notice** (`music-reading`, `videos-reading`) shows while `generation() == 0`. The worker exposes
   no progress, so the row says "the list fills in as it goes" without a bar or a card name; it leaves when the pass
   lands (a half snapshot never shows, by the worker's own rule). The crumb says "Reading the cards".
-- **The from-line** lives in the body as the kit's `musicHeader` line box (the gallery's composition, page 11), with
-  the header's crumb empty on the views; the album, artist and folder pages carry their own crumbs as the mock-ups
-  have them.
+- **The from-line** lives in the header's crumb, as the spec draws it (`musicShell`'s crumb), the 2026-11-20 fix:
+  it was drawn twice (the crumb filled in later, the body line left in), and the body's copy went — the view chips
+  start at the body's top (`musicHeader` no longer reserves a line), the album, artist and folder pages keep their own
+  crumbs as the mock-ups have them.
 - **An artist's page** doesn't fit head + albums + songs in the 390-unit body (measured: 190 + 174 + 30 + rows), so
   it is two stacked zones: the keys and their albums as one strip (▼ from the keys), then their songs as the list
   (▼ again; ▲ returns). One content scroll follows the cursor.

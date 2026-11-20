@@ -31,6 +31,7 @@
 #include "ui_music.h"
 #include "ui_videos.h"
 #include "ui_books.h"
+#include "ui_search.h"
 #include "session_host.h"
 #include "updater.h"
 #include "idlesleep_host.h"
@@ -1877,6 +1878,11 @@ int main(int argc, char** argv)
 						const Track* a = player.selected(TrackType::Audio);
 						const Track* s = player.selected(TrackType::Sub);
 						if (ui.settingsPageOpen()) printf("press %zu: settings\n", pressed);
+						else if (ui.searchPageOpen())
+							// Search is its own page (once it fell through to the line below, printed as
+							// "settings"): its query, the cursor and whether the keyboard is up
+							printf("press %zu: search q=%s cursor=%d%s\n", pressed, ui.search->query.c_str(),
+								ui.search->cursor, ui.search->typing ? " typing" : "");
 						else if (ui.browsing())
 						{
 							std::string at = ui.browseSelection();

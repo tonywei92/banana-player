@@ -268,7 +268,10 @@ namespace bp
 		BusySheet busySheet(bool twoKeys = false);
 
 		// ---- the keyboard: a field, a special row, three rows of letters, the bottom row ----
-		constexpr int KB_FIELD_H = 48, KB_KEY_W = 58, KB_KEY_H = 52, KB_GAP = 5, KB_BOTTOM_H = 56, KB_SPECIAL_H = 36;
+		// Every key of a letter row is the same width, set by the widest row so it fits the area: the keys share
+		// the width the caller gives (the mock-up's 1fr grid), so a row never runs past the area's edge — the
+		// panel-wide 58 of a fixed key width did, on Search's narrower shell body.
+		constexpr int KB_FIELD_H = 48, KB_KEY_H = 52, KB_GAP = 5, KB_BOTTOM_H = 56, KB_SPECIAL_H = 36;
 		struct Keyboard
 		{
 			Box field, note;
@@ -276,8 +279,10 @@ namespace bp
 			std::vector<std::vector<Box>> rows;	// the letters, each row centred
 			std::vector<Box> bottom;	// layer keys, Space, backspace, Done
 		};
-		// specialW: each piece's width; counts: the keys in each row of letters; layers: how many layer keys open the bottom row
-		Keyboard keyboard(const std::vector<int>& specialW, const std::vector<int>& counts, int layers);
+		// area: the keyboard's own box (the field and the bottom row span it, the letters centred in it);
+		// specialW: each piece's width (empty: no special row); counts: the keys in each row of letters;
+		// layers: how many layer keys open the bottom row
+		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int layers);
 
 		// ---- the volume bar: the 100 mark, and where each colour ends ----
 		struct VolumeBar
@@ -674,12 +679,13 @@ namespace bp
 		};
 		ArtistRow artistRow(Box row);
 
-		// ---- Music's page head: the line under the title, then the view chips (Albums / Artists / Playlists) ----
-		// `chipWidths` is Kit::filterWidths' answer (the labels carry their counts); the chips are 44 tall, 8 under
-		// the line, and `chips` is the same lay::FilterChips the touches test.
+		// ---- Music's page head: the view chips (Albums / Artists / Playlists) at the top of the body ----
+		// `chipWidths` is Kit::filterWidths' answer (the labels carry their counts); the chips are a 44-tall strip,
+		// and `chips` is the same lay::FilterChips the touches test. No line over them: the "From …" line is the
+		// header's crumb (screens.js music-albums), which once sat in the body as well, drawn twice.
 		struct MusicHeader
 		{
-			Box line, strip;
+			Box strip;
 			FilterChips chips;
 		};
 		MusicHeader musicHeader(Box body, const std::vector<int>& chipWidths);
@@ -705,6 +711,8 @@ namespace bp
 		// ---- the Books shelf: a "Reading now" strip of cover cells, then the shelf's grid ----
 		// The strip is one row of lay::coverCells at COVER_CELL_H (title and progress bar); the shelf's cells are
 		// COVER_H + the title (no bar, as the mock-up's shelf), five to a row, 14 apart, `first` rows scrolled.
+		// With the strip shown the grid has less than a cell's height left, but at least one row is laid (as the
+		// album grid lays one): the heading always has books under it, the row hanging over the grid's foot.
 		constexpr int SHELF_HEAD_GAP = SP8, SHELF_GROUP_GAP = SP12;
 		constexpr int SHELF_CELL_H = COVER_H + COVER_TITLE_GAP + COVER_TITLE_H;
 		struct BooksShelf

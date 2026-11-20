@@ -643,30 +643,35 @@ namespace bp
 			return b;
 		}
 
-		Keyboard keyboard(const std::vector<int>& specialW, const std::vector<int>& counts, int layers)
+		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int layers)
 		{
 			Keyboard k;
-			int y = 66;
-			k.field = {MARGIN, y, PANEL_W - 2 * MARGIN, KB_FIELD_H};
+			int y = area.y;
+			k.field = {area.x, y, area.w, KB_FIELD_H};
 			y += KB_FIELD_H + 8;
-			int x = MARGIN;
+			int x = area.x;
 			for (int w : specialW)
 			{
 				k.special.push_back({x, y, w, KB_SPECIAL_H});
 				x += w + GAP;
 			}
-			y += KB_SPECIAL_H + 18;
+			// no pieces: no special row (the mock-up's Search page goes straight from the field to the letters)
+			if (!specialW.empty()) y += KB_SPECIAL_H + 18;
+			// the letters: every key the width the widest row fits in the area, so no row runs past its edge
+			int widest = 1;
+			for (int n : counts) widest = std::max(widest, n);
+			int keyW = (area.w - (widest - 1) * KB_GAP) / widest;
 			for (int n : counts)
 			{
 				std::vector<Box> row;
-				int w = n * KB_KEY_W + std::max(0, n - 1) * KB_GAP, x0 = (PANEL_W - w) / 2;
-				for (int i = 0; i < n; i++) row.push_back({x0 + i * (KB_KEY_W + KB_GAP), y, KB_KEY_W, KB_KEY_H});
+				int w = n * keyW + std::max(0, n - 1) * KB_GAP, x0 = area.x + (area.w - w) / 2;
+				for (int i = 0; i < n; i++) row.push_back({x0 + i * (keyW + KB_GAP), y, keyW, KB_KEY_H});
 				k.rows.push_back(row);
 				y += KB_KEY_H + KB_GAP;
 			}
 			y += 6;
-			// layer keys 64, then Space (the rest), backspace 76, Done 120: the row ends on the margin
-			int left = MARGIN, right = PANEL_W - MARGIN;
+			// layer keys 76, then Space (the rest), backspace 76, Done 120: the row ends on the area's right edge
+			int left = area.x, right = area.x + area.w;
 			int doneW = 120, backW = 76, layerW = 76;
 			int spaceW = right - left - layers * (layerW + KB_GAP) - (KB_GAP + backW) - (KB_GAP + doneW);
 			int bx = left;
@@ -680,7 +685,7 @@ namespace bp
 			k.bottom.push_back({bx, y, backW, KB_BOTTOM_H});
 			bx += backW + KB_GAP;
 			k.bottom.push_back({bx, y, right - bx, KB_BOTTOM_H});
-			k.note = {MARGIN, y + KB_BOTTOM_H + 8, PANEL_W - 2 * MARGIN, 20};
+			k.note = {area.x, y + KB_BOTTOM_H + 8, area.w, 20};
 			return k;
 		}
 

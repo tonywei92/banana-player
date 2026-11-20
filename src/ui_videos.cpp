@@ -346,8 +346,7 @@ namespace bp
 			}
 			return false;
 		}
-		int rowsShown = std::max(1, (inner.h - (lay::LINE_H + lay::SP8 + lay::CHIP_STRIP + lay::SP8)) /
-			lay::VIDEO_ROW_H);
+		int rowsShown = std::max(1, (inner.h - (lay::CHIP_STRIP + lay::SP8)) / lay::VIDEO_ROW_H);
 		if (!folder.empty()) rowsShown = std::max(1, inner.h / lay::VIDEO_ROW_H);
 		switch (b)
 		{
@@ -384,8 +383,7 @@ namespace bp
 		int n = (int)rows.size();
 		bool reading = !snapshot() || generation() == 0;
 		bool empty = !reading && snapshot()->videos.empty() && folder.empty();
-		int rowsShown = std::max(1, (inner.h - (lay::LINE_H + lay::SP8 + lay::CHIP_STRIP + lay::SP8)) /
-			lay::VIDEO_ROW_H);
+		int rowsShown = std::max(1, (inner.h - (lay::CHIP_STRIP + lay::SP8)) / lay::VIDEO_ROW_H);
 		if (!folder.empty()) rowsShown = std::max(1, inner.h / lay::VIDEO_ROW_H);
 		int top = inner.y;
 		if (folder.empty()) top = inner.y + lay::LINE_H + lay::SP8 + lay::CHIP_STRIP + lay::SP8;
@@ -483,8 +481,7 @@ namespace bp
 		bool empty = !reading && snap->videos.empty() && folder.empty();
 		const auto& rows = rowsFor(p);
 		int n = (int)rows.size();
-		int rowsShown = std::max(1, (inner.h - (lay::LINE_H + lay::SP8 + lay::CHIP_STRIP + lay::SP8)) /
-			lay::VIDEO_ROW_H);
+		int rowsShown = std::max(1, (inner.h - (lay::CHIP_STRIP + lay::SP8)) / lay::VIDEO_ROW_H);
 		int top = inner.y;
 		if (folder.empty())
 		{
@@ -513,12 +510,7 @@ namespace bp
 				k.emptyState(e, v);
 				return;
 			}
-			if (!reading)
-			{
-				Kit::SectionLine line;
-				line.text = fromLine(*snap);
-				k.sectionLine(lay::sectionLine(mh.line, false), line);
-			}
+			// the view chips (the "From …" line is the header's crumb, once drawn here as well)
 			k.filters(mh.chips, views, view, -1,
 				touch >= T_CHIP && touch < T_CHIP + 3 && !touchMoved ? touch - T_CHIP : -1);
 			if (reading)

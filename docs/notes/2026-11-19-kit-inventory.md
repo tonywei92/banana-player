@@ -79,7 +79,7 @@ cell, built here). The "section page header line" ("From Music on both cards · 
 | Search result row | `lay::resultRow` | `Kit::resultRow` | `screens.js` `srow2` (kind icon, name with the match in ACCENT, right note, optional pill) |
 | Music/Videos row | `lay::mediaRow` | `Kit::mediaRow` | `screens.js` `row2` (30 art, title, second line, kind pill, note) |
 | Books cover tile | `lay::coverTile`, `lay::coverCells` | `Kit::coverTile` | `screens.js` `bookCell` (96 × 136 cover, title, progress bar and percent, count pill) |
-| Page line / group heading | `lay::sectionLine` | `Kit::sectionLine` | `screens.js` `.gl` and the line under Music's title |
+| Page line / group heading | `lay::sectionLine` | `Kit::sectionLine` | `screens.js` `.gl`, an Info group's line, All recent's day headings (the line under Music's title became the header's crumb, 2026-11-20) |
 
 Sizes come from the spacing scale (2 / 4 / 6 / 8 / 12 / 16 / 24): rows 60 tall (52 + the second line's room),
 the search field 48, art 30, covers 96 × 136 with 14 between, and every touch target is a whole row or field

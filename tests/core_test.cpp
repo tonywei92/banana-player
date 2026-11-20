@@ -10444,22 +10444,31 @@ static void testKitVariantBusy()
 static void testKitVariantKeyboard()
 {
 	using namespace lay;
-	Keyboard k = keyboard({100, 90}, {10, 10, 9}, 2);
+	Keyboard k = keyboard({16, 66, 608, 384}, {100, 90}, {10, 10, 9}, 2);
 	CHECK_EQ(k.field.h, 48);
+	CHECK_EQ(k.field.x, 16);
+	CHECK_EQ(k.field.w, 608);
 	CHECK_EQ((int)k.rows.size(), 3);
-	CHECK_EQ(k.rows[0][0].w, 58);
+	CHECK_EQ(k.rows[0][0].w, (608 - 9 * KB_GAP) / 10);	// the widest row shares the area's width
 	CHECK_EQ(k.rows[0][0].h, 52);
-	CHECK_EQ(k.rows[0][1].x - (k.rows[0][0].x + k.rows[0][0].w), 5);
-	CHECK(insidePanel(k.rows[0][9]));
-	CHECK(std::abs(k.rows[0][0].x - (640 - (k.rows[0][9].x + k.rows[0][9].w))) <= 1);	// centred
+	CHECK_EQ(k.rows[0][1].x - (k.rows[0][0].x + k.rows[0][0].w), KB_GAP);
+	CHECK(k.rows[0][9].x + k.rows[0][9].w <= 16 + 608);	// no key past the area's right edge
+	CHECK(std::abs((k.rows[0][0].x - 16) - (16 + 608 - (k.rows[0][9].x + k.rows[0][9].w))) <= 1);	// centred
 	CHECK_EQ(k.rows[2][0].x - k.rows[0][0].x > 0, true);	// a shorter row is indented
 	CHECK_EQ((int)k.bottom.size(), 5);
 	CHECK_EQ(k.bottom[0].h, 56);
-	CHECK_EQ(k.bottom.back().x + k.bottom.back().w, 624);	// Done ends on the margin
+	CHECK_EQ(k.bottom.back().x + k.bottom.back().w, 16 + 608);	// Done ends on the area's right edge
 	CHECK(k.bottom[2].w > 100);	// Space takes the rest
 	CHECK(k.special[1].x == k.special[0].x + 100 + GAP);
 	CHECK(k.note.y + k.note.h <= 480 - HINTS_H);
 	for (auto& r : k.rows[1]) CHECK(!overlaps(r, k.bottom[0]));
+	// the shell's own body (Search's page): the keyboard fits it whole, and a key is a touch target still
+	Keyboard sk = keyboard({94, 64, 530, 382}, {}, {10, 9, 7}, 2);
+	CHECK(sk.special.empty());
+	CHECK(sk.rows[0][9].x + sk.rows[0][9].w <= 94 + 530);
+	CHECK(sk.rows[0][0].x >= 94);
+	CHECK(sk.rows[0][0].w >= 44);
+	CHECK(sk.note.y + sk.note.h <= 64 + 382);
 }
 
 static void testKitVariantVolume()
@@ -10689,10 +10698,9 @@ static void testKitLayoutPages()
 	CHECK(ar.second.y + ar.second.h <= ar.row.y + ar.row.h);
 	CHECK(ar.chevronX <= ar.right && ar.chevronX >= ar.right - 14);
 
-	// Music's head: the page's line 22, the chips' 44 strip 8 under it, the chips inside it
+	// Music's head: the chips' 44 strip at the body's top (the from-line is the header's crumb, not a body line)
 	MusicHeader mh = musicHeader({90, 60, 538, 300}, {84, 82, 96});
-	CHECK_EQ(mh.line.h, LINE_H);
-	CHECK_EQ(mh.strip.y, 60 + LINE_H + 8);
+	CHECK_EQ(mh.strip.y, 60);
 	CHECK_EQ(mh.strip.h, CHIP_STRIP);
 	CHECK_EQ((int)mh.chips.chip.size(), 3);
 	CHECK(mh.chips.chip[0].y >= mh.strip.y && mh.chips.chip[0].y + mh.chips.chip[0].h <= mh.strip.y + mh.strip.h);
@@ -10736,6 +10744,13 @@ static void testKitLayoutPages()
 	CHECK_EQ(b.first, 0);
 	CHECK_EQ(booksShelf({16, 4, 608, 440}, 5, 10, 9).first, 1);
 	CHECK_EQ((int)booksShelf({16, 4, 608, 440}, 3, 0).reading.size(), 3);
+	// the shell's own body (the rail at the left, the hints at the foot): with the strip shown, less than a
+	// shelf cell's height is left — one row is laid all the same, so the heading always has books under it
+	BooksShelf real = booksShelf({90, 60, 538, 390}, 5, 12);
+	CHECK(real.shelfGrid.h < SHELF_CELL_H);
+	CHECK_EQ(real.shown, 1);
+	CHECK_EQ((int)real.shelf.size(), 12);
+	CHECK(real.shelf[0].y + real.shelf[0].h > real.shelfGrid.y + real.shelfGrid.h);	// it hangs over the foot
 
 	// Search: the field 48, a heading and its rows, then Recent searches and Clear; an empty group is left out
 	SearchPage p = searchPage({16, 4, 608, 440}, {1, 1}, 2);

@@ -341,30 +341,9 @@ namespace bp
 
 	lay::Keyboard Ui::Search::keyboard(const lay::Box& b) const
 	{
-		// lay::keyboard's own keyboard (the panel's 640x480), fitted into the shell's body: the same boxes the touches
-		// test, and the kit's drawing (Kit::keyboard) draws them
-		lay::Keyboard base = lay::keyboard({}, {COUNTS[0], COUNTS[1], COUNTS[2]}, 2);
-		// the keyboard's own box: the field, the three rows, the bottom row and its note (lay::keyboard's 66..437)
-		lay::Box src{lay::MARGIN, 66, lay::PANEL_W - 2 * lay::MARGIN, 371};
-		double sc = std::min(b.w / (double)src.w, b.h / (double)src.h);
-		int w = (int)std::lround(src.w * sc), h = (int)std::lround(src.h * sc);
-		int ox = b.x + (b.w - w) / 2, oy = b.y + (b.h - h) / 2;
-		auto map = [&](const lay::Box& r) {
-			return lay::Box{ox + (int)std::lround((r.x - src.x) * sc), oy + (int)std::lround((r.y - src.y) * sc),
-				std::max(1, (int)std::lround(r.w * sc)), std::max(1, (int)std::lround(r.h * sc))};
-		};
-		lay::Keyboard k;
-		k.field = map(base.field);
-		for (auto& r : base.special) k.special.push_back(map(r));
-		for (auto& row : base.rows)
-		{
-			std::vector<lay::Box> out;
-			for (auto& r : row) out.push_back(map(r));
-			k.rows.push_back(out);
-		}
-		for (auto& r : base.bottom) k.bottom.push_back(map(r));
-		k.note = map(base.note);
-		return k;
+		// the kit's keyboard laid out inside the shell's body (the keys share its width, nothing fitted or
+		// scaled): the same boxes the touches test, and the kit's drawing (Kit::keyboard) draws them
+		return lay::keyboard(b, {}, {COUNTS[0], COUNTS[1], COUNTS[2]}, 2);
 	}
 
 	std::string Ui::Search::keyboardNote(const Player& p) const

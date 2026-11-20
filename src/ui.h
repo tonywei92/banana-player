@@ -258,6 +258,8 @@ namespace bp
 		bool touchIsLocked() const;	// (the player screen's lock: PlayerPage, ui_player.h)
 		// Settings open (START's page): for test runs
 		bool settingsPageOpen() const { return page == Page::Settings; }
+		// Search open (the rail's key or L3): for test runs (the state line says what it holds)
+		bool searchPageOpen() const { return page == Page::Search; }
 
 		// The web dashboard (BP_WEB builds): main's server, null till it's first turned on, and its switch (start or
 		// stop it, on the main thread). The routes reach the rest through WebPlayerGlue and WebPlaylistGlue

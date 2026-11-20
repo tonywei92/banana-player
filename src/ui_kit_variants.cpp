@@ -1311,7 +1311,8 @@ namespace bp
 			v.layerOn = 0;
 			v.bottomCaps = {"L3", "", "Y", "X", "START"};
 			v.cursor = 13;
-			lay::Keyboard l = lay::keyboard({100, 90, 80, 90}, {10, 10, 10}, 2);
+			lay::Keyboard l = lay::keyboard({lay::MARGIN, 66, lay::PANEL_W - 2 * lay::MARGIN, lay::PANEL_H - 66 - lay::HINTS_H},
+				{100, 90, 80, 90}, {10, 10, 10}, 2);
 			k.keyboard(l, v);
 			k.iconKey({16, 8, 56, 46}, G_BACK, false, 3, true);
 			ui.drawTextMid("Address", F_P28, TEXT, 84, 31, 400);
@@ -1461,17 +1462,15 @@ namespace bp
 			k.hints({{"L2/R2", "View"}, {"A", "Open"}, {"X", "More"}, {"L3", "Search"}});
 		}
 
-		// Music: the page's line and its view chips, the album grid (one playing), an artist's row
+		// Music: the view chips at the body's top (the from-line is the header's crumb), the album grid (one
+		// playing), an artist's row
 		void page11(Kit& k)
 		{
 			ui.fill({0, 0, W, H}, BG);
 			std::vector<Kit::FilterItem> views = {{"Albums", 148}, {"Artists", 61}, {"Playlists", 5}};
 			lay::MusicHeader mh = lay::musicHeader({16, 4, 608, 0}, k.filterWidths(views));
-			Kit::SectionLine line;
-			line.text = "From Music on both cards \xC2\xB7 148 albums \xC2\xB7 1,912 songs";
-			k.sectionLine(lay::sectionLine(mh.line, true), line);
 			k.filters(mh.chips, views, 0);
-			lay::AlbumGrid grid = lay::albumGrid({16, 90, 608, 300}, 10);
+			lay::AlbumGrid grid = lay::albumGrid({16, 56, 608, 310}, 10);
 			const char* albums[10][2] = {{"Yellow Album", "The Plantains"}, {"Late Night", "The Carrots"},
 				{"Pixel Sea", "Harbor Cats"}, {"Field Recordings", "Various"}, {"Steel", "Tin Roof"},
 				{"Grape", "The Plantains"}, {"Meadow", "Bunny Hop Band"}, {"Red Room", "Tin Roof"},
@@ -1684,15 +1683,13 @@ namespace bp
 		}
 
 		// Music's Playlists view (screens.js playlists): the view chips, then the rows — Liked's heart, the Now
-		// pill on the one that plays, the counts, the dimmed New playlist row
+		// pill on the one that plays, the counts, the dimmed New playlist row ("5 playlists · Liked first" is the
+		// header's crumb there, not a line in the body)
 		void page17(Kit& k)
 		{
 			ui.fill({0, 0, W, H}, BG);
 			std::vector<Kit::FilterItem> views = {{"Albums", 148}, {"Artists", 61}, {"Playlists", 5}};
 			lay::MusicHeader mh = lay::musicHeader({16, 4, 608, 0}, k.filterWidths(views));
-			Kit::SectionLine line;
-			line.text = "5 playlists \xC2\xB7 Liked first";
-			k.sectionLine(lay::sectionLine(mh.line, true), line);
 			k.filters(mh.chips, views, 2);
 			int y = mh.strip.y + lay::CHIP_STRIP + lay::SP6;
 			auto row = [&](const Glyph* glyph, bool liked, const char* name, const char* note,
