@@ -4,6 +4,11 @@
 #include "web/probe.h"
 #include <algorithm>
 #include <cstring>
+#include <ctime>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 namespace bp
 {
@@ -45,6 +50,60 @@ namespace bp
 			return decodePage((const uint8_t*)bytes.data(), bytes.size(), w);
 		}
 
+		// ---- Match album art's cache (artbackdrop.h: <dir>/artbg/<fnv64>.bg) ----
+		// The worker thread alone is here: a read (the file's date bumped, the oldest evicted past the cap), or
+		// a decode and the pure maths, then the write. Nothing of this touches Ui or Player.
+		std::vector<uint8_t> readCacheFile(const std::string& path)
+		{
+			std::vector<uint8_t> out;
+			FILE* f = fopen(path.c_str(), "rb");
+			if (!f) return out;
+			char buf[8192];
+			size_t n = 0;
+			while ((n = fread(buf, 1, sizeof buf, f)) > 0) out.insert(out.end(), buf, buf + n);
+			fclose(f);
+			return out;
+		}
+
+		void writeCacheFile(const std::string& path, const std::vector<uint8_t>& bytes)
+		{
+			FILE* f = fopen(path.c_str(), "wb");
+			if (!f) return;
+			fwrite(bytes.data(), 1, bytes.size(), f);
+			fclose(f);
+		}
+
+		// a file's date says when it was last used: bumped on a read, so the eviction's "oldest first" means
+		// "least recently shown", not "least recently added"
+		void touchCacheFile(const std::string& path)
+		{
+			struct stat st;
+			if (stat(path.c_str(), &st) != 0) return;
+			struct timeval times[2] = {};
+			times[0].tv_sec = st.st_atime;
+			times[1].tv_sec = time(nullptr);
+			utimes(path.c_str(), times);
+		}
+
+		void evictCache(const std::string& dir)
+		{
+			DIR* d = opendir(dir.c_str());
+			if (!d) return;
+			std::vector<artbg::CacheFile> files;
+			std::vector<std::string> names;
+			while (dirent* e = readdir(d))
+			{
+				std::string name = e->d_name;
+				if (name.size() != 20 || name.substr(16) != ".bg") continue;	// (only our own 16-hex names)
+				struct stat st;
+				if (stat((dir + "/" + name).c_str(), &st) != 0) continue;
+				files.push_back({name, (size_t)st.st_size, (uint64_t)st.st_mtime * 1000});
+				names.push_back(name);
+			}
+			closedir(d);
+			for (size_t i : artbg::evict(files)) unlink((dir + "/" + names[i]).c_str());
+		}
+
 		// The tile filled, never stretched: a picture wider than the tile's shape (decoded at the tile's width it
 		// would be too short) was decoded wider by the caller, and its middle columns are kept.
 		// A manga cover keeps its top rows (where a cover puts its title; the bottom of a chapter's first page is not
@@ -78,14 +137,19 @@ namespace bp
 		ask(key, path, w, h, true);
 	}
 
-	void CoverWorker::ask(const std::string& key, const std::string& source, int w, int h, bool song)
+	void CoverWorker::wantBackdrop(const std::string& key, const std::string& path)
+	{
+		ask(key, path, artbg::W, artbg::H, true, true);
+	}
+
+	void CoverWorker::ask(const std::string& key, const std::string& source, int w, int h, bool song, bool backdrop)
 	{
 		std::lock_guard<std::mutex> g(m);
 		if (stopping) return;
 		// the same cover asked again (a redraw, a scroll back) is the same picture: moved to the front, it is decoded
 		// next rather than twice
 		items.erase(std::remove_if(items.begin(), items.end(), [&](const Item& i) { return i.key == key; }), items.end());
-		items.push_back({key, source, std::max(1, w), std::max(1, h), song});
+		items.push_back({key, source, std::max(1, w), std::max(1, h), song, backdrop});
 		if (items.size() > kMaxWaiting) items.erase(items.begin(), items.begin() + (items.size() - kMaxWaiting));
 		if (!started)
 		{
@@ -133,6 +197,54 @@ namespace bp
 				cv.wait(g, [&] { return !stopping && !items.empty(); });
 				it = std::move(items.back());
 				items.pop_back();
+			}
+			// a song's backdrop: the cache by the art's own bytes, else the decode and the pure maths; one
+			// answer, no tile of it
+			if (it.backdrop)
+			{
+				Result r;
+				r.key = it.key;
+				r.backdrop = true;
+				std::string bytes, mime;
+				if (probeCover(it.source, bytes, mime) && !bytes.empty())
+				{
+					r.ok = true;
+					r.artHash = artbg::fnv64((const uint8_t*)bytes.data(), bytes.size());
+					std::string dir = stateDir.empty() ? std::string() : stateDir + "/artbg";
+					std::string file = dir.empty() ? std::string() : dir + "/" + artbg::cacheName(r.artHash);
+					bool fromCache = false;
+					if (!file.empty())
+					{
+						if (std::vector<uint8_t> data = readCacheFile(file); !data.empty() &&
+							artbg::decode(data.data(), data.size(), r.art))
+						{
+							touchCacheFile(file);
+							fromCache = true;
+						}
+					}
+					if (!fromCache)
+					{
+						// decoded at twice the picture's width: the crop to 4:3 and the box filter down have
+						// enough to work on, and the decode stays a few milliseconds
+						PageImage img = decodePage((const uint8_t*)bytes.data(), bytes.size(), 2 * artbg::W);
+						if (img.ok()) r.art = artbg::artBackdrop(img.rgba.data(), img.w, img.h);
+						if (!dir.empty())
+						{
+							if (std::vector<uint8_t> out = artbg::encode(r.art); !out.empty()) writeCacheFile(file, out);
+						}
+					}
+					if (!dir.empty()) evictCache(dir);
+				}
+				bool signal = false;
+				{
+					std::lock_guard<std::mutex> g(m);
+					if (stopping) continue;	// (a stop at quit: nothing more is handed out, and the loop parks)
+					results.push_back(std::move(r));
+					signal = !signalled;
+					signalled = true;
+				}
+				if (signal) ready();
+				continue;
 			}
 			auto page = [&](int width) { return it.song ? songPage(it.source, width) : coverPage(it.source, width); };
 			PageImage img = page(it.w);

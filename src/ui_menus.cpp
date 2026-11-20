@@ -289,6 +289,95 @@ namespace bp
 		}
 	}
 
+	// ---- Match album art's backdrop (ui.h's "bg" members; the worker's "bg:" answers) ----
+
+	bool Ui::backdropOn(const Player& shown) const
+	{
+		// the switch, a song (never a video, never a photo), the theme (High contrast keeps its plain ground), and
+		// an answer landed — until one has, the page is its usual self
+		return bgNow.answered && shown.settings.matchAlbumArt && shown.playingAudio() &&
+			theme::themeId(theme::currentTheme()) != "high-contrast";
+	}
+
+	void Ui::backdropTick(Player& p)
+	{
+		// the cross-fade's end: the slot it came from goes (its texture with it)
+		if (bgFadeAt && SDL_GetTicks() - bgFadeAt >= BG_FADE_MS)
+		{
+			bgFade = BackdropSlot{};
+			bgFadeAt = 0;
+			if (bgFadeTex) { SDL_DestroyTexture(bgFadeTex); bgFadeTex = nullptr; }
+		}
+		// one ask per playing song, on the worker's thread (a re-ask of the same art is one cache read); the
+		// switch off, a video or a photo, High contrast: the answer it holds goes
+		const Player& bp = barPlayer(p);
+		bool on = bp.playingAudio() && bp.settings.matchAlbumArt &&
+			theme::themeId(theme::currentTheme()) != "high-contrast";
+		std::string path = on ? bp.currentPath() : std::string();
+		if (path == bgAsked) return;
+		bgAsked = path;
+		if (path.empty()) { dropBackdrop(); return; }
+		if (CoverWorker* worker = manga ? manga->coverWorker : nullptr)
+			worker->wantBackdrop(BACKDROP_COVER_KEY + path, path);
+	}
+
+	void Ui::dropBackdrop()
+	{
+		bgNow = BackdropSlot{};
+		bgFade = BackdropSlot{};
+		bgFadeAt = 0;
+		if (bgTex) { SDL_DestroyTexture(bgTex); bgTex = nullptr; }
+		if (bgFadeTex) { SDL_DestroyTexture(bgFadeTex); bgFadeTex = nullptr; }
+	}
+
+	void Ui::backdropReady(const CoverWorker::Result& r)
+	{
+		if (!r.backdrop || (bgNow.answered && bgNow.hash == r.artHash && bgNow.hasArt == r.ok)) return;
+		// what was drawn becomes the fade's start (its texture moves with it); a first answer fades in from the
+		// plain ground, the fallback a song with no art draws
+		bgFade = std::move(bgNow);
+		if (!bgFade.answered) bgFade.answered = true;
+		bgFadeTex = bgTex;
+		bgTex = nullptr;
+		bgNow = BackdropSlot{};
+		bgNow.answered = true;
+		bgNow.hasArt = r.ok;
+		bgNow.hash = r.artHash;
+		bgNow.art = r.art;
+		bgFadeAt = SDL_GetTicks();
+		if (r.ok && r.art.rgb.size() == artbg::PIXELS * 3)
+		{
+			if (SDL_Texture* t = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, artbg::W, artbg::H))
+			{
+				SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+				SDL_UpdateTexture(t, nullptr, r.art.rgb.data(), artbg::W * 3);
+				bgTex = t;
+			}
+		}
+		fprintf(stderr, "backdrop: %s for %s\n", r.ok ? r.art.hasHue ? "the art's hue" : "no usable hue: the neutral ground"
+			: "no art: the plain ground", r.key.substr(std::strlen(BACKDROP_COVER_KEY)).c_str());
+	}
+
+	void Ui::drawBackdrop(const Player& shown)
+	{
+		// the player page's ground (its caller cleared the BG): the answer's backdrop, cross-fading over the one
+		// before it, the plain page under a first answer
+		if (!backdropOn(shown)) return;
+		Kit& k = *kit;
+		artbg::ThemeColours th;
+		th.bg = theme::current.BG;
+		th.surface = theme::current.SURFACE;
+		th.text = theme::current.TEXT;
+		th.dimOn = theme::current.DIM_ON;
+		th.accent = theme::current.ACCENT;
+		Rect all{0, 0, W, H};
+		if (bgFadeAt && bgFade.answered)
+			k.backdrop(all, bgFadeTex, artbg::backdropFor(th, bgFade.art));
+		Uint8 fade = 255;
+		if (bgFadeAt) fade = (Uint8)std::lround(255.0 * std::min<Uint32>(SDL_GetTicks() - bgFadeAt, BG_FADE_MS) / BG_FADE_MS);
+		k.backdrop(all, bgTex, artbg::backdropFor(th, bgNow.art), fade);
+	}
+
 	lay::QuickPanel Ui::quickLayout(const Player& p) const
 	{
 		// the panel's boxes from what quickRows() holds: the level rows first (their order in quickRows),

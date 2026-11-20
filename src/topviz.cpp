@@ -413,9 +413,14 @@ namespace bp
 		g.Disable(GL_SCISSOR_TEST_);
 		if (layered)
 		{
-			// the ground: the theme's BG (what mpv's picture had under the shapes)
-			g.ClearColor(theme::BG.r / 255.0f, theme::BG.g / 255.0f, theme::BG.b / 255.0f, 1);
-			g.Clear(GL_COLOR_BUFFER_BIT_);
+			// the ground: the theme's BG (what mpv's picture had under the shapes), or the song's backdrop under
+			// its veil when Match album art is on — its own pages drawn whole (the renderer clears the panel and
+			// draws them stretched; the cross-fade's pair while it runs, the newer one at the fade's alpha)
+			if (!bgUp || !bgReady || !drawBackdropPages(w, h))
+			{
+				g.ClearColor(theme::BG.r / 255.0f, theme::BG.g / 255.0f, theme::BG.b / 255.0f, 1);
+				g.Clear(GL_COLOR_BUFFER_BIT_);
+			}
 		}
 		std::vector<Run> runs;
 		if (withShapes)
@@ -607,8 +612,20 @@ namespace bp
 
 	void TopScreen::groundFrame(Player& shown, int w, int h)
 	{
-		// mpv's ground is clear (a song with a native visualizer) but the style isn't up yet or any more: its picture
-		// composed on the theme's ground, not on black
+		// mpv's ground is clear (a song with a native visualizer, or Match album art's backdrop) but the style
+		// isn't up yet or any more: its picture composed on the ground, not on black
 		nativeFrame(shown, w, h, true, false);
+	}
+
+	bool TopScreen::drawBackdropPages(int w, int h)
+	{
+		// the backdrop's pages into the panel (the context is current): what it fades from, then what plays at
+		// the cross-fade's alpha (bgFadeStep, set each pass from Ui's clock); false when nothing could be drawn
+		// (the theme's ground instead). The pages are 160 x 480, the panel's own shape: the stretch is the blur's
+		// own smoothing, linear filtered
+		std::vector<PageRenderer::Placed> placed;
+		if (bgFading) placed.push_back({0, 0, 0, (float)w, (float)h, false, false, 1, true});
+		placed.push_back({1, 0, 0, (float)w, (float)h, false, bgFadeStep < 1, bgFadeStep, true});
+		return bgRender.draw(placed, w, h);
 	}
 }

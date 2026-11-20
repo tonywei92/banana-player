@@ -75,6 +75,11 @@ namespace artbg
 	// degrees from a theme accent with a colour of its own.
 	Backdrop backdropFor(const ThemeColours& theme, int hue, int l95top, int l95low, int l5top, int l5low);
 	Backdrop backdropFor(const ThemeColours& theme, const Art& art);
+	// The backdrop as one page of RGBA (w x h, straight alpha — opaque), a panel drawing it stretched: the
+	// picture with the veil baked in per row, the theme's part applied to the art's own bytes never (the fallback
+	// a gradient page, a light theme's the one colour of its plain ground). The bottom panel draws the veil live
+	// instead (Kit::backdrop); this is the top panel's way, composed again only when the theme or the answer moves
+	std::vector<uint8_t> composePage(const Art& art, const Backdrop& b, int w, int h);
 
 	// ---- the cache: <state dir>/artbg/<fnv64>.bg, a 7-byte header then W * H * 3 RGB bytes ----
 	// The header: version (2), the hue as two little-endian bytes (0xFFFF: none), then the four luminances.

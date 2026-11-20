@@ -1354,17 +1354,26 @@ namespace bp
 			int show = std::clamp(p.settings.musicShow, 0, SHOWS - 1);
 			return show == SHOW_ART || show == SHOW_NONE;
 		}
-		// Display's tiles: the four modes, then the styles (VIS_SHOWN's order); the cursor is an index over both
+		// Display's tiles: the four modes, then the styles (VIS_SHOWN's order); the cursor is an index over both,
+		// and one past them all is the sheet's foot row (the Match album art switch)
 		static constexpr int DISPLAY_N = SHOWS + VIS_SHOWN_COUNT;
+		static constexpr int DISPLAY_FOOT = DISPLAY_N;	// the foot row's index in the cursor's range
 		static lay::DisplayPage displayLayout() { return lay::displayPage(VIS_SHOWN_COUNT); }
 		static int displayInUse(const Player& p, bool style)
 		{
 			return style ? SHOWS + visualizerSlot(p.settings.visualizer) : std::clamp((int)p.settings.musicShow, 0, SHOWS - 1);
 		}
 		// A on a tile (or a tap): the mode or the style set, and the top screen follows; a style is kept when the
-		// mode shows none ("not shown now")
+		// mode shows none ("not shown now"); the foot row is the switch, LEFT / RIGHT stepping it as A does
 		static void setTile(int i, Player& p)
 		{
+			if (i == DISPLAY_FOOT)
+			{
+				Settings s = p.settings;
+				s.matchAlbumArt = !s.matchAlbumArt;
+				p.setSettings(s);
+				return;
+			}
 			if (i < 0 || i >= DISPLAY_N) return;
 			if (i < SHOWS)
 			{
@@ -1405,7 +1414,7 @@ namespace bp
 		void settle(const Player& p)
 		{
 			if (drag) return;	// (a finger's own scroll, while it drags)
-			if (tab == TAB_SHOW) { cursor = std::clamp(cursor, 0, DISPLAY_N - 1); scroll = 0; return; }
+			if (tab == TAB_SHOW) { cursor = std::clamp(cursor, 0, DISPLAY_FOOT); scroll = 0; return; }
 			int n = isList() ? listCount(p) : count(p);
 			if (n <= 0) { cursor = scroll = 0; return; }
 			cursor = std::clamp(cursor, 0, n - 1);
@@ -1657,16 +1666,24 @@ namespace bp
 			}
 			return true;
 		}
-		// Display: the cursor moves over the modes and the styles (lay::displayMove) and changes nothing; A sets
+		// Display: the cursor moves over the modes and the styles (lay::displayMove) and changes nothing; the foot
+		// row is reached from the grid's last row and back (its middle), A sets what is under it
 		bool displayKey(Button b, Player& p)
 		{
 			lay::DisplayPage d = displayLayout();
 			switch (b)
 			{
-			case Button::Up: cursor = lay::displayMove(d, cursor, lay::Dir::Up); break;
-			case Button::Down: cursor = lay::displayMove(d, cursor, lay::Dir::Down); break;
-			case Button::Left: cursor = lay::displayMove(d, cursor, lay::Dir::Left); break;
-			case Button::Right: cursor = lay::displayMove(d, cursor, lay::Dir::Right); break;
+			case Button::Up:
+				cursor = cursor >= DISPLAY_N ? DISPLAY_N - lay::DISPLAY_COLS + lay::DISPLAY_COLS / 2 : lay::displayMove(d, cursor, lay::Dir::Up);
+				break;
+			case Button::Down:
+				if (cursor >= DISPLAY_N - lay::DISPLAY_COLS && cursor < DISPLAY_N) cursor = DISPLAY_FOOT;
+				else if (cursor < DISPLAY_N) cursor = lay::displayMove(d, cursor, lay::Dir::Down);
+				break;
+			case Button::Left: case Button::Right:
+				if (cursor == DISPLAY_FOOT) setTile(DISPLAY_FOOT, p);
+				else cursor = lay::displayMove(d, cursor, b == Button::Left ? lay::Dir::Left : lay::Dir::Right);
+				break;
 			case Button::A: setTile(cursor, p); break;
 			default: return false;
 			}
@@ -1727,7 +1744,7 @@ namespace bp
 		{
 			if (ui.touchIsLocked()) return false;
 			if (!p.playing() || p.playingPhoto() || !p.playingAudio() || ui.page != Page::Main) { close(); return false; }
-			// Display: a tile (a tap sets it, as A does)
+			// Display: a tile (a tap sets it, as A does), the foot row as one of them
 			if (tab == TAB_SHOW)
 			{
 				lay::DisplayPage d = displayLayout();
@@ -1737,6 +1754,7 @@ namespace bp
 					pressAt = -1;
 					if (!d.sheet.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
 					int at = lay::displayAt(d, x, y);
+					if (at < 0 && d.foot.w > 0 && d.foot.hit(x, y)) at = DISPLAY_FOOT;
 					if (at >= 0) { press = P_TILE; pressAt = at; cursor = at; }
 					return false;
 				}
@@ -1744,7 +1762,8 @@ namespace bp
 				int kind = press, at = pressAt;
 				press = P_NONE;
 				pressAt = -1;
-				if (kind == P_TILE && at >= 0 && lay::displayAt(d, x, y) == at) setTile(at, p);
+				bool onFoot = at == DISPLAY_FOOT;
+				if (kind == P_TILE && at >= 0 && (onFoot ? d.foot.hit(x, y) : lay::displayAt(d, x, y) == at)) setTile(at, p);
 				return false;
 			}
 			lay::ListSheet s = layout(p);
@@ -1893,7 +1912,8 @@ namespace bp
 			return b;
 		}
 
-		// Display: "Top screen shows", the four modes, the style's line, the fifteen styles (docs/redesign "music-view")
+		// Display: "Top screen shows", the four modes, the style's line, the fifteen styles, and the foot row
+		// (docs/redesign "music-view"; the switch: components.md "Match album art", offered here too)
 		void drawDisplay(const Player& p)
 		{
 			Kit& k = *ui.kit;
@@ -1932,6 +1952,19 @@ namespace bp
 			std::string line = visualizerLabel(p.settings.visualizer);
 			if (showHidesVisualizer(p)) line += std::string(" \xC2\xB7 not shown now: the top screen shows ") + musicShowLabel(show);
 			ui.drawTextMid(line, F_I12, DIM_ON, lx, cy, d.styleLine.x + d.styleLine.w - lx);
+			// the foot: Match album art's switch, as the Settings row is (a radio dot for on)
+			if (d.foot.w > 0)
+			{
+				Kit::Row row;
+				row.font = F_P16;
+				row.name = "Match album art";
+				row.note = p.settings.matchAlbumArt ? "On" : "Off";
+				row.focused = cursor == DISPLAY_FOOT;
+				row.pressed = press == P_TILE && pressAt == DISPLAY_FOOT;
+				row.radio = true;
+				row.radioOn = p.settings.matchAlbumArt;
+				k.row(d.foot, row);
+			}
 			k.hints({{"D-PAD", "Move"}, {"A", "Set"}, {"SELECT", "Next mode"}, {"B", "Close"}});
 		}
 
@@ -2174,6 +2207,9 @@ namespace bp
 			if (p.playing() && !p.playingPhoto()) listPulsedFor = pl ? p.source().id : std::string();
 		}
 		if (p.playingPhoto()) { ui.drawPhoto(p); return; }
+		// Match album art: the song's blurred art and its veil are the ground the page draws over (a video, a
+		// photo, the switch off or High contrast: the theme's own, as drawBackdrop says)
+		ui.drawBackdrop(p);
 
 		Kit& k = *ui.kit;
 		auto chipList = chips(p);
@@ -2392,6 +2428,12 @@ namespace bp
 			"|" + p.artist() + "|" + p.album() + (p.songArtMissing() ? "|ph" + p.artPlaceholderKey() : "");
 		if (touchLocked && lockHoldAt) sig += "|hold" + std::to_string((SDL_GetTicks() - lockHoldAt) / 50);
 		if (listPulseAt) sig += "|pulse" + std::to_string((SDL_GetTicks() - listPulseAt) / 33);
+		// Match album art's backdrop: which answer the page draws over, and (while it runs) the cross-fade's step
+		if (ui.backdropOn(p))
+		{
+			sig += "|bg" + std::to_string(ui.backdropHash());
+			if (ui.backdropFading()) sig += "." + std::to_string((SDL_GetTicks() - ui.backdropFadeAt()) / 33);
+		}
 		return sig;
 	}
 }

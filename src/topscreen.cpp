@@ -170,6 +170,69 @@ namespace bp
 		paneRender.draw(placed, w, h);
 	}
 
+	void TopScreen::composeBackdrop(const Ui& ui, const Player& shown)
+	{
+		// composed again when the answer, the theme or the fade's state moves (a fade's pages are two: what it
+		// fades from, and what plays at the fade's own alpha — the alpha is per draw, not per compose)
+		uint64_t hash = ui.backdropHash();
+		int theme = theme::currentTheme();
+		bool fading = ui.backdropFading() && ui.backdropFadeAnswered();
+		if (bgUp && hash == bgPageOf && theme == bgPageTheme && fading == bgFading) return;
+		// the fade just ended: what it faded from goes (the answer's page stays alone)
+		if (bgUp && !fading && bgFading)
+		{
+			SDL_GL_MakeCurrent(top, gl);
+			bgRender.keepOnly({1});
+			bgFading = false;
+		}
+		if (!bgReady)
+		{
+			SDL_GL_MakeCurrent(top, gl);
+	#ifdef BP_GLES
+			bgReady = bgRender.init([](const char* n) { return SDL_GL_GetProcAddress(n); }, true);
+	#else
+			bgReady = bgRender.init([](const char* n) { return SDL_GL_GetProcAddress(n); }, false);
+	#endif
+			if (bgReady)
+			{
+				bgRender.setUploadAll(true);	// (small pages: up in the frame that shows them)
+				fprintf(stderr, "backdrop: the top panel composes the song's ground\n");
+			}
+		}
+		if (!bgReady) return;
+		artbg::ThemeColours th;
+		th.bg = theme::current.BG;
+		th.surface = theme::current.SURFACE;
+		th.text = theme::current.TEXT;
+		th.dimOn = theme::current.DIM_ON;
+		th.accent = theme::current.ACCENT;
+		auto add = [&](int page, const artbg::Art& art) {
+			auto bytes = std::make_shared<const std::vector<uint8_t>>(artbg::composePage(art, artbg::backdropFor(th, art), artbg::W, 480));
+			if (!bytes->empty()) bgRender.addPage(page, artbg::W, 480, bytes);
+		};
+		if (fading) add(0, ui.backdropFadeArt());
+		add(1, ui.backdropArt());
+		SDL_GL_MakeCurrent(top, gl);
+		if (fading) bgRender.keepOnly({0, 1});
+		else bgRender.keepOnly({1});
+		bgUp = true;
+		bgFading = fading;
+		bgPageOf = hash;
+		bgPageTheme = theme;
+	}
+
+	void TopScreen::dropBackdropPages()
+	{
+		if (!bgUp && !bgFading && bgPageOf == 0) return;
+		SDL_GL_MakeCurrent(top, gl);
+		bgRender.keepOnly({});
+		bgRender.flushDead();
+		bgUp = false;
+		bgFading = false;
+		bgPageOf = 0;
+		bgPageTheme = -1;
+	}
+
 	void TopScreen::cardOnReader(const std::string& label, int percent, bool bar, int barTop, int ms)
 	{
 		int tw = 0, th = 0;
@@ -472,6 +535,14 @@ namespace bp
 			renderPending = true;	// (what plays: its picture at once, not at its next frame)
 			fprintf(stderr, "top: preview pane dropped%s\n", player.playing() || photos.playing() ? ": the picture of what plays is back" : "");
 		}
+		// Match album art's backdrop, the song's while it plays: composed again only when the answer, the theme
+		// or the fade moves (whatever else has the panel — the QR, the pane, a reader — draws over it), dropped
+		// with the song's end, the switch off or High contrast
+		if (ui.backdropOn(shown)) composeBackdrop(ui, shown);
+		else dropBackdropPages();
+		// the cross-fade's place this pass (bgFadeStep, as the pages draw it): over, unless one is running
+		bgFadeStep = ui.backdropFading() && ui.backdropFadeAnswered()
+			? (float)std::min(1.0, (double)(SDL_GetTicks() - ui.backdropFadeAt()) / Ui::BG_FADE_MS) : 1.0f;
 		if (qrNow)
 		{
 			// About's support QR, large: the panel's own picture, 1:1 (a still: drawn again when it changes, and
@@ -539,7 +610,8 @@ namespace bp
 		}
 		// (a photo is a still: mpv puts the level card on it later than the key's redraw, and asks for no frame
 		// after, so it's drawn again while the card is up, as with nothing playing)
-		else if (renderPending.exchange(false) || refresh || (!shown.playing() && (!topDark || levelUntil)) || (photos.playing() && levelUntil))
+		else if (renderPending.exchange(false) || refresh || (bgUp && bgFading) ||
+			(!shown.playing() && (!topDark || levelUntil)) || (photos.playing() && levelUntil))
 		{
 			SDL_GL_MakeCurrent(top, gl);
 			int w, h;
@@ -562,8 +634,9 @@ namespace bp
 						logNextTop ? " with the level card" : "");
 				logNextTop = false;
 			}
-			// a new frame, or the same one again (paused, or a refresh); a photo's over what plays
-			else if (shown.frameDue() || refresh)
+			// a new frame, or the same one again (paused, or a refresh); a photo's over what plays. The backdrop's
+			// cross-fade steps here too (mpv's picture needs no new frame for it: the layer it is composed from)
+			else if (shown.frameDue() || refresh || (bgUp && bgFading))
 			{
 				if (shown.groundClear()) groundFrame(shown, w, h);	// (a song's visualizer not up yet)
 				else shown.render(w, h);

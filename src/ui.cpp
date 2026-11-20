@@ -391,6 +391,7 @@ namespace bp
 		// a held slider whose target is told at a pace: a finger resting on a new value, sent when it's due
 		slideLive(p);
 		manga->mangaVideoGuard(p);
+		backdropTick(p);	// Match album art: the playing song's backdrop asked for once, or dropped
 		if (Area* a = area()) a->tick(p);
 		if (shell->page(page)) shell->tick(p);	// the rail's Now playing key's hold
 		fileJobTick(p);

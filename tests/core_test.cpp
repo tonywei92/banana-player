@@ -14221,7 +14221,8 @@ static void testKitDisplayPage()
 	// a finger: the tile under it, -1 between them
 	CHECK_EQ(displayAt(d, d.style[7].x + 5, d.style[7].y + 5), 11);
 	CHECK_EQ(displayAt(d, d.mode[0].x + d.mode[0].w + 3, d.mode[0].y + 10), -1);
-	// the final fifteen: three rows of five, inside the sheet over its hints
+	// the final fifteen: three rows of five, inside the sheet over its hints, and the foot row (the Match
+	// album art switch) under them, 10 below, clear of the hints
 	DisplayPage f = displayPage(VIS_SHOWN_COUNT);
 	CHECK_EQ(f.count(), 4 + 15);
 	CHECK_EQ(f.style[10].y - (f.style[5].y + f.style[5].h), 6); CHECK_EQ(f.style[14].x, f.style[4].x);
@@ -14231,6 +14232,12 @@ static void testKitDisplayPage()
 		CHECK_EQ(kitInside(f.item(i), PANEL_W, PANEL_H), true);
 		if (i) CHECK_EQ(kitApart(f.item(i), f.item(i - 1)), true);
 	}
+	CHECK_EQ(f.foot.w > 0, true);
+	CHECK_EQ(f.foot.h, DISPLAY_FOOT_H);
+	CHECK_EQ(f.foot.y - (f.style[14].y + f.style[14].h), DISPLAY_FOOT_GAP);
+	CHECK_EQ(f.foot.y + f.foot.h <= f.sheet.hints.y, true);
+	// twenty styles: the sheet is full, no room for the foot (the switch lives in Settings only)
+	CHECK_EQ(d.foot.w, 0);
 	CHECK_EQ(displayMove(f, 4 + 9, Dir::Down), 4 + 14);
 	CHECK_EQ(displayMove(f, 4 + 14, Dir::Down), 4 + 14);
 	CHECK_EQ(displayAt(f, f.style[14].x + 5, f.style[14].y + 5), 4 + 14);
@@ -14397,7 +14404,6 @@ static void testArtBackdropTheme()
 	a.l5top = 10;
 	a.l5low = 20;
 	CHECK_EQ(backdropFor(dark, a).fallback, false);
-
 	// the light version (components.md "Match album art"): the Light palette's own values
 	const ThemeColours light{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20}, {0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};
 	Backdrop lb = backdropFor(light, 26, 240, 220, 40, 30);
@@ -14435,6 +14441,48 @@ static void testArtBackdropTheme()
 	CHECK_EQ(lHard.fallback, true);
 	CHECK_EQ(lHard.top, mid.bg);
 	CHECK_EQ(lHard.bottom, mid.bg);
+}
+
+// the backdrop as the top panel's page (composePage): the veil baked per row, the fallback a gradient, always opaque
+static void testArtBackdropPage()
+{
+	using namespace artbg;
+	const ThemeColours dark{{0, 0, 0}, {18, 17, 22}, {232, 226, 211}, {171, 165, 151}, {255, 210, 63}};
+	// the fallback as a page: the neutral gradient, top to bottom, opaque
+	Backdrop f = backdropFor(dark, -1, 0, 0, 0, 0);
+	std::vector<uint8_t> pg = composePage(Art{}, f, W, 480);
+	CHECK_EQ((int)pg.size(), W * 480 * 4);
+	CHECK_EQ(pg[3], 255);
+	CHECK_EQ(pg[0], f.top.r);
+	size_t last = ((size_t)479 * W + W - 1) * 4;
+	CHECK_EQ(pg[last], f.bottom.r);
+	// the light theme's fallback is one colour all the way down (its plain ground)
+	const ThemeColours light{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20}, {0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};
+	Backdrop lf = backdropFor(light, -1, 0, 0, 0, 0);
+	std::vector<uint8_t> lpg = composePage(Art{}, lf, W, 480);
+	CHECK_EQ(lpg[0], lf.top.r);
+	CHECK_EQ(lpg[last], lf.top.r);
+	// a picture page: the veil's mix per row — the picture shows most at the top, the ground rules the foot
+	Art a;
+	a.hasHue = true;
+	a.hue = 26;
+	a.l95top = 60; a.l95low = 60; a.l5top = 50; a.l5low = 50;
+	for (size_t i = 0; i < PIXELS; i++) a.rgb.push_back(200), a.rgb.push_back(100), a.rgb.push_back(40);
+	Backdrop b = backdropFor(dark, a);
+	CHECK_EQ(b.fallback, false);
+	std::vector<uint8_t> ppg = composePage(a, b, W, 480);
+	CHECK_EQ((int)ppg.size(), W * 480 * 4);
+	CHECK_EQ(ppg[3], 255);
+	int expectTop = 200 + (b.ground.r - 200) * b.veil[0] / 100;
+	CHECK_EQ((int)ppg[0], expectTop);
+	int expectFoot = 200 + (b.ground.r - 200) * b.veil[4] / 100;
+	CHECK_EQ((int)ppg[((size_t)479 * W) * 4], expectFoot);
+	// a row in the middle: the same two colours mixed at a veil between the bar's stop and the chips'
+	int lo = 200 + (b.ground.r - 200) * b.veil[2] / 100, hi = 200 + (b.ground.r - 200) * b.veil[3] / 100;
+	int midRow = (int)ppg[((size_t)240 * W) * 4];
+	CHECK(midRow >= std::min(lo, hi) - 1 && midRow <= std::max(lo, hi) + 1);
+	// nothing to draw: no page
+	CHECK_EQ((int)composePage(a, b, 0, 480).size(), 0);
 }
 
 static void testArtBackdropCache()
@@ -14575,6 +14623,7 @@ int main()
 	testArtPlaceholder();
 	testArtBackdrop();
 	testArtBackdropTheme();
+	testArtBackdropPage();
 	testArtBackdropCache();
 	testArtBackdropSizes();
 	testVizTheme();

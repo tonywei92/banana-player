@@ -964,6 +964,39 @@ namespace bp
 		uint64_t artDrawn = 0;	// the LRU's order
 		int artSerial = 0;	// what signature()s follow: a cover arrived, the page draws it now
 		static constexpr size_t ART_KEEP = 12;
+		// ---- Match album art's backdrop (docs/redesign "Match album art") ----
+		// The same worker's "bg:" answers, asked once per playing song: the maths arrive on the main thread, one
+		// SDL texture here (the top screen uploads its own copy into its GL), and the player's page and the top
+		// panel both draw from the one answer. A song with no art answers with the fallback ground. A new answer
+		// cross-fades in over half a second; until it lands the previous one stays.
+		struct BackdropSlot
+		{
+			bool answered = false;	// an answer landed (else the slot is empty and never drawn)
+			uint64_t hash = 0;	// the art it was made from (0: none hashed — no art, or nothing asked)
+			bool hasArt = false;	// the song has an art (else the fallback ground is the answer)
+			artbg::Art art;		// the maths (its rgb empty when there is no picture)
+		};
+		BackdropSlot bgNow, bgFade;	// what is drawn, and what it fades from while the cross-fade runs
+		Uint32 bgFadeAt = 0;		// when the cross-fade began (0: none is running)
+		std::string bgAsked;		// the song the worker was last asked for ("" none: nothing plays)
+		SDL_Texture* bgTex = nullptr, *bgFadeTex = nullptr;	// the pictures, the bottom panel's own (the fade's goes first)
+		void backdropTick(Player& p);		// the ask (Ui::tick): once per song, off when the switch is off
+		void drawBackdrop(const Player& shown);		// the player page's ground (its own fade over the plain BG)
+		void dropBackdrop();
+	public:
+		// the top panel's half reads these (it composes its own GL pages from the same answer); the player
+		// page's signature takes the first two; main hands the worker's answers in here
+		void backdropReady(const CoverWorker::Result& r);
+		bool backdropOn(const Player& shown) const;		// the switch, the song, the theme: it is drawn at all
+		bool backdropFading() const { return bgFadeAt != 0 && SDL_GetTicks() - bgFadeAt < BG_FADE_MS + 50; }
+		static constexpr Uint32 BG_FADE_MS = 500;	// the cross-fade, as the spec draws it
+		uint64_t backdropHash() const { return bgNow.hash; }
+		const artbg::Art& backdropArt() const { return bgNow.art; }
+		bool backdropFadeAnswered() const { return bgFade.answered; }
+		uint64_t backdropFadeHash() const { return bgFade.hash; }
+		const artbg::Art& backdropFadeArt() const { return bgFade.art; }
+		Uint32 backdropFadeAt() const { return bgFadeAt; }
+	private:
 		// the placeholder, then the decoded art over it when it has arrived (the edge and the rounded corners
 		// stay the placeholder's); asks the worker once per key, never decodes here
 		void drawSongArt(const std::string& path, const std::string& key, Rect r, int rad);

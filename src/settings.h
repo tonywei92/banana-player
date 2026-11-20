@@ -138,6 +138,11 @@ namespace bp
 		// or a hand), the menus' and the browser's buttons still work
 		bool buttonHotkeys = true;
 		int musicShow = SHOW_ART, visualizer = VIS_PEAKS_BANANA, loop = LOOP_OFF;
+		// Match album art (Settings › Music & sound, and the foot of the song's Display sheet; docs/redesign
+		// "Match album art"): a song's art, blurred and muted, is the ground behind the player and the top
+		// screen — one hue from the art tinting the theme's own charcoal, never a colour of the UI. The theme's
+		// keys, chips, accent and text stay the theme's; High contrast keeps its plain ground whatever this says
+		bool matchAlbumArt = true;
 		// the visualizers' frame rate: 30, 45 (default: smooth, lighter than 60 on the battery) or 60; Peaks and Circle
 		// draw at 30 whatever it says
 		int vizFps = 45;

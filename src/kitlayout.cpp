@@ -245,10 +245,12 @@ namespace bp
 			styles = std::max(0, styles);
 			int lines = (styles + DISPLAY_COLS - 1) / DISPLAY_COLS;
 			int grid = lines * DISPLAY_TILE_H + std::max(0, lines - 1) * DISPLAY_STYLE_GAP;
-			// the label 16 and 4, the modes, 8, the style's line 16 and 4, the grid: as tall as the sheet leaves
+			// the label 16 and 4, the modes, 8, the style's line 16 and 4, the grid, then the foot row; as tall as
+			// the sheet leaves, what there is to spare split above and below
 			int body = DISPLAY_H - (11 + SHEET_HEAD + 8 + HINTS_H);
 			d.sheet = sheet({0, 0, 1, body});
-			int y = d.sheet.bodyY + std::max(0, (body - (16 + 4 + DISPLAY_TILE_H + 8 + 16 + 4 + grid)) / 2);
+			int content = 16 + 4 + DISPLAY_TILE_H + 8 + 16 + 4 + grid + DISPLAY_FOOT_GAP + DISPLAY_FOOT_H;
+			int y = d.sheet.bodyY + std::max(0, (body - content) / 2);
 			const int modesW = DISPLAY_MODES * DISPLAY_MODE_W + (DISPLAY_MODES - 1) * DISPLAY_MODE_GAP;
 			const int stylesW = DISPLAY_COLS * DISPLAY_STYLE_W + (DISPLAY_COLS - 1) * DISPLAY_STYLE_GAP;
 			const int mx = (PANEL_W - modesW) / 2, sx = (PANEL_W - stylesW) / 2;
@@ -261,6 +263,9 @@ namespace bp
 			for (int i = 0; i < styles; i++)
 				d.style.push_back({sx + (i % DISPLAY_COLS) * (DISPLAY_STYLE_W + DISPLAY_STYLE_GAP),
 					y + (i / DISPLAY_COLS) * (DISPLAY_TILE_H + DISPLAY_STYLE_GAP), DISPLAY_STYLE_W, DISPLAY_TILE_H});
+			y += grid + DISPLAY_FOOT_GAP;
+			// the foot row: the panel's own side margins (the modes' row is one unit wider either side of them)
+			d.foot = content <= body ? Box{SHEET_PAD, y, PANEL_W - 2 * SHEET_PAD, DISPLAY_FOOT_H} : Box{0, y, 0, 0};
 			return d;
 		}
 

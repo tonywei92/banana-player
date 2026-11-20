@@ -117,12 +117,14 @@ namespace bp
 		// 6 apart, five to a row, icon over the name). The cursor is one index: the modes first, then the styles
 		constexpr int DISPLAY_H = 452, DISPLAY_MODES = 4, DISPLAY_COLS = 5;
 		constexpr int DISPLAY_MODE_W = 147, DISPLAY_MODE_GAP = 8, DISPLAY_STYLE_W = 117, DISPLAY_STYLE_GAP = 6, DISPLAY_TILE_H = 56;
+		constexpr int DISPLAY_FOOT_H = 46, DISPLAY_FOOT_GAP = 10;	// the sheet's foot row (a switch: Match album art)
 		struct DisplayPage
 		{
 			Sheet sheet;	// the box, grab, tab strip (head) and hint bar
 			Box modesLabel, styleLine;
 			Box mode[DISPLAY_MODES];
 			std::vector<Box> style;
+			Box foot;	// the switch row under the grid (w 0: the sheet has no room for one)
 			int count() const { return DISPLAY_MODES + (int)style.size(); }
 			Box item(int i) const { return i < DISPLAY_MODES ? mode[i] : style[i - DISPLAY_MODES]; }
 		};

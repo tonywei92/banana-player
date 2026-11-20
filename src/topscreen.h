@@ -71,6 +71,15 @@ namespace bp
 		int paneW = 0, paneH = 0;
 		CardOverlay paneCard;	// the level card over the pane (mpv's is under it): cardOnReader puts it there
 		bool paneCardNew = false;
+		// Match album art's backdrop, the song's while it plays (docs/redesign "Match album art"; Ui holds the
+		// answer): its own GL pages as the QR's are, the picture with the theme's veil baked per row — composed
+		// again only when the answer, the theme or the fade changes, never per frame. Page 1 is what plays; page
+		// 0 what it fades from, kept only while the cross-fade runs
+		PageRenderer bgRender;
+		bool bgReady = false, bgUp = false, bgFading = false;
+		uint64_t bgPageOf = 0;
+		int bgPageTheme = -1;
+		float bgFadeStep = 1;	// the cross-fade's place (1: over), read as the pages draw
 		// the native visualizers (src/topviz.cpp): the style's levels and holds, when it last drew
 		VizStyleState nativeState;
 		Uint32 nativeAt = 0;
@@ -93,6 +102,13 @@ namespace bp
 		int nativeWaitMs(Player& shown);
 		// mpv's picture alone on the theme's ground while its own ground is clear (a song's visualizer not up yet)
 		void groundFrame(Player& shown, int w, int h);
+		// the song's backdrop pages composed from Ui's answer (its hash, the theme, the fade's state say when);
+		// dropped when the song ends, the switch goes off or High contrast is set
+		void composeBackdrop(const Ui& ui, const Player& shown);
+		void dropBackdropPages();
+		// the pages into the panel (the context current): the fade's pair while one runs; false when nothing
+		// could be drawn, so the theme's ground is cleared instead
+		bool drawBackdropPages(int w, int h);
 
 	private:
 		// the QR drawn 1:1 into the top window (the context made current here); false when it couldn't be composed

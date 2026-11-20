@@ -541,6 +541,8 @@ namespace bp
 		static const std::vector<SettingDef> table = {
 			D::choice("music-show", &Settings::musicShow, SHOW_IDS, SHOWS)
 				.page(SG_MUSIC, 10, "Music display", "What the top screen shows while a song plays (the Display chip, on the player or in More, while playing).").shownAs(SHOW_LABELS).stepped(true),
+			D::flag("match-album-art", &Settings::matchAlbumArt)
+				.page(SG_MUSIC, 15, "Match album art", "A song's art, blurred and tinted by the theme's own ground, lies behind the player and the top screen. Every key, chip and word keeps the theme's colours; a grey or clashing art falls back to the plain ground."),
 			D::choice("visualizer", &Settings::visualizer, VIS_IDS, VISUALIZERS)
 				.page(SG_MUSIC, 20, "Visualizer style", "Which visualizer is drawn: fifteen styles, from Peaks to Dance line (the Display chip, on the player or in More, while playing).")
 				.shownAs(VIS_LABELS).stepped(true, stepVisualizer).afterRead(readVisualizer),

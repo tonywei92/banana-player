@@ -554,6 +554,7 @@ int main(int argc, char** argv)
 			ev.type = evCover;
 			SDL_PushEvent(&ev);
 		});
+		coverWorker->setStateDir(opts.stateDir);	// (Match album art's cache: <state dir>/artbg, the worker's own)
 		ui.manga->coverWorker = coverWorker;
 		// the cards' media index (Music, Videos and Search read it; docs/redesign/components.md › "Search and
 		// Music: the index"): a pass on this thread at start and one when the cards change, never destroyed (its
@@ -1362,16 +1363,21 @@ int main(int argc, char** argv)
 				{
 					// a cover arrived: into a texture on this thread, and the page redraws (its serial is in signature).
 					// Main's one worker decodes Manga's covers and the songs' art: the "home:" keys are the song
-					// art cache's (Ui's: Home's cards, the rail's Now playing key, Quick settings' block)
+					// art cache's (Ui's: Home's cards, the rail's Now playing key, Quick settings' block), the
+					// "bg:" ones the Match-album-art cache's (the player's ground and the top screen's)
 					std::vector<CoverWorker::Result> results = coverWorker->take();
-					std::vector<CoverWorker::Result> home, manga;
-					const size_t prefix = std::strlen(HOME_COVER_KEY);
+					std::vector<CoverWorker::Result> home, manga, backdrops;
+					const size_t prefix = std::strlen(HOME_COVER_KEY), bprefix = std::strlen(BACKDROP_COVER_KEY);
 					for (auto& r : results)
-						(r.key.compare(0, prefix, HOME_COVER_KEY) == 0 ? home : manga).push_back(std::move(r));
+					{
+						if (r.key.compare(0, bprefix, BACKDROP_COVER_KEY) == 0) backdrops.push_back(std::move(r));
+						else (r.key.compare(0, prefix, HOME_COVER_KEY) == 0 ? home : manga).push_back(std::move(r));
+					}
 					if (haveUi)
 					{
 						if (!manga.empty()) ui.manga->coversReady(std::move(manga));
 						if (!home.empty()) ui.songCoversReady(std::move(home));
+						for (auto& r : backdrops) ui.backdropReady(r);
 					}
 					// (nothing draws them when !haveUi: dropped)
 				}

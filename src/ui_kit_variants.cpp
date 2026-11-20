@@ -1036,21 +1036,24 @@ namespace bp
 		}
 	}
 
-	void Ui::Kit::backdrop(Rect r, SDL_Texture* pic, const artbg::Backdrop& b)
+	void Ui::Kit::backdrop(Rect r, SDL_Texture* pic, const artbg::Backdrop& b, Uint8 fade)
 	{
 		if (r.w <= 0 || r.h <= 0) return;
 		if (b.fallback || !pic)
 		{
 			// no art in it: the charcoal a little lighter at the top down to BG (a light theme's fallback is its
 			// plain ground, the two ends one colour, so one fill)
-			if (b.top == b.bottom) ui.fill(r, sdl(b.top));
+			if (b.top == b.bottom) ui.fill(r, sdl(b.top, fade));
 			else for (int y = 0; y < r.h; y++)
-				ui.fill({r.x, r.y + y, r.w, 1}, sdl(theme::mix(b.top, b.bottom, r.h > 1 ? 100 * y / (r.h - 1) : 0)));
+				ui.fill({r.x, r.y + y, r.w, 1},
+					sdl(theme::mix(b.top, b.bottom, r.h > 1 ? 100 * y / (r.h - 1) : 0), fade));
 			return;
 		}
 		SDL_SetTextureScaleMode(pic, SDL_ScaleModeLinear);	// the 160 x 120 picture, smooth at panel size
+		SDL_SetTextureAlphaMod(pic, fade);		// (a cross-fade: the previous backdrop lies under this one)
 		SDL_Rect d = ui.devRect(r);
 		SDL_RenderCopy(ui.ren, pic, nullptr, &d);
+		SDL_SetTextureAlphaMod(pic, 255);
 		// the ground's veil: its opacity at each stop (artbg::STOP_Y down the panel, scaled to r), linear between
 		// them — drawn at run time, so the theme can change without re-reading the art. One fill a row; a page
 		// that draws it every frame may cache the ramp as a texture of its own (the kit keeps nothing)
@@ -1069,7 +1072,9 @@ namespace bp
 				}
 			}
 			if (at <= 0) continue;
-			ui.fill({r.x, r.y + y, r.w, 1}, sdl(b.ground, (Uint8)std::lround(255.0 * at / 100.0)));
+			Uint8 alpha = (Uint8)std::lround(255.0 * at / 100.0);
+			if (fade < 255) alpha = (Uint8)std::lround(alpha * fade / 255.0);
+			ui.fill({r.x, r.y + y, r.w, 1}, sdl(b.ground, alpha));
 		}
 	}
 }

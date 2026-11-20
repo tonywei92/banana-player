@@ -577,8 +577,9 @@ namespace bp
 		// 160 x 120 picture stretched over `r` with linear filtering, then the ground's five-stop vertical veil
 		// over it (the stops' places: artbg::STOP_Y, scaled to r). A fallback Backdrop draws no picture: the
 		// neutral gradient (a light theme's is its plain BG, the two ends one colour). `pic` null with a
-		// non-fallback Backdrop draws the veil alone, until the art's texture is decoded
-		void backdrop(Rect r, SDL_Texture* pic, const artbg::Backdrop& b);
+		// non-fallback Backdrop draws the veil alone, until the art's texture is decoded. `fade` under 255 draws
+		// the whole of it at that alpha (a cross-fade: the previous backdrop under it at full)
+		void backdrop(Rect r, SDL_Texture* pic, const artbg::Backdrop& b, Uint8 fade = 255);
 	};
 
 	// ---- the More sheet's list (Ui::openMore; ui_more.cpp) ----

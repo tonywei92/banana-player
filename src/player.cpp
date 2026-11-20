@@ -2832,8 +2832,15 @@ namespace bp
 		// (and Night city alone in a theme but Yellow: its sky is the theme's BG, docs/notes/2026-11-19-viz-theme.md)
 		const bool peaksAlone = show == SHOW_VIS && (visualizerOnGround(style) || (style == VIS_CITY && theme::currentTheme() != 0));
 		const bool themed = group || show == SHOW_NONE || peaksAlone;
+		// Match album art: with it on, a song's ground is drawn by the top panel — the blurred art under the
+		// theme's veil (docs/redesign "Match album art") — so mpv's own goes clear whatever the mode, and its
+		// picture is composed over it, as a native visualizer's is. The lines' inks stay the theme's below (the
+		// veil keeps their contrast); High contrast keeps its plain ground, and a top panel that could not make
+		// the layer falls back with the visualizer's (noLayer: the theme's ground again)
+		const bool backdrop = isAudio && settings.matchAlbumArt && !noLayer &&
+			std::string(theme::themeId(theme::currentTheme())) != "high-contrast";
 		// (a song with a native style shown: mpv's picture composed over the shapes, its ground clear)
-		setGround(themed, nullptr, themed && isAudio && nativeViz() && (show == SHOW_VIS || show == SHOW_BOTH) && !noLayer);
+		setGround(themed, nullptr, backdrop || (themed && nativeViz() && (show == SHOW_VIS || show == SHOW_BOTH) && !noLayer));
 		const std::string artKeyText = artPlaceholderKey();
 		const std::string INK = ass(TEXT), INK2 = ass(DIM_ON), INK3 = ass(DIM), MARK = ass(ACCENT), EDGE = ass(edgeOf(SURFACE)),
 			GROUND = ass(BG);

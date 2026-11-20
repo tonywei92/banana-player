@@ -402,6 +402,57 @@ namespace artbg
 		return backdropFor(t, art.hasHue ? art.hue : -1, art.l95top, art.l95low, art.l5top, art.l5low);
 	}
 
+	// the veil's opacity at a row of a page h tall (STOP_Y's stops, linear between them, as the panels draw it)
+	static int veilAt(const Backdrop& b, double f)
+	{
+		int at = b.veil[4];
+		for (int i = 1; i < 5; i++)
+		{
+			double s0 = (double)STOP_Y[i - 1] / STOP_Y[4], s1 = (double)STOP_Y[i] / STOP_Y[4];
+			if (f <= s1)
+			{
+				double t = s1 > s0 ? std::max(0.0, (f - s0) / (s1 - s0)) : 0.0;
+				return (int)std::lround(b.veil[i - 1] + t * (b.veil[i] - b.veil[i - 1]));
+			}
+		}
+		return at;
+	}
+
+	std::vector<uint8_t> composePage(const Art& art, const Backdrop& b, int w, int h)
+	{
+		// the backdrop as one page of RGBA (a panel draws it stretched, linearly filtered): the picture with the
+		// veil baked in per row — the theme's part applied here, on the main thread, so the theme can change
+		// without the art being read again (the cache holds the art's own bytes only). A fallback page is the
+		// gradient, opaque (a light theme's two ends are one colour: a plain page)
+		if (w <= 0 || h <= 0) return {};
+		std::vector<uint8_t> out((size_t)w * h * 4, 255);
+		bool picture = !b.fallback && art.rgb.size() == PIXELS * 3;
+		for (int y = 0; y < h; y++)
+		{
+			double f = h > 1 ? (double)y / (h - 1) : 1.0;
+			uint8_t* row = &out[(size_t)y * w * 4];
+			if (!picture)
+			{
+				Rgb c{(unsigned char)(b.top.r + (int)std::lround((b.bottom.r - b.top.r) * f)),
+					(unsigned char)(b.top.g + (int)std::lround((b.bottom.g - b.top.g) * f)),
+					(unsigned char)(b.top.b + (int)std::lround((b.bottom.b - b.top.b) * f))};
+				for (int x = 0; x < w; x++) row[x * 4] = c.r, row[x * 4 + 1] = c.g, row[x * 4 + 2] = c.b;
+				continue;
+			}
+			// the picture's row this page row covers (h a whole multiple of H: one row of the art each)
+			const uint8_t* src = &art.rgb[(size_t)(y * H / h) * W * 3];
+			int veil = veilAt(b, f);
+			for (int x = 0; x < w; x++)
+			{
+				int s = x * W / w;
+				row[x * 4] = (uint8_t)(src[s * 3] + (b.ground.r - src[s * 3]) * veil / 100);
+				row[x * 4 + 1] = (uint8_t)(src[s * 3 + 1] + (b.ground.g - src[s * 3 + 1]) * veil / 100);
+				row[x * 4 + 2] = (uint8_t)(src[s * 3 + 2] + (b.ground.b - src[s * 3 + 2]) * veil / 100);
+			}
+		}
+		return out;
+	}
+
 	uint64_t fnv64(const uint8_t* data, size_t n)
 	{
 		uint64_t h = 14695981039346656037ull;
