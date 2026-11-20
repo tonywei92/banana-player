@@ -80,6 +80,7 @@ namespace bp
 		// 0 what it fades from, kept only while the cross-fade runs
 		PageRenderer bgRender;
 		bool bgReady = false, bgUp = false, bgFading = false;
+		bool bgLeaving = false;	// the song stopped: its page fades out over mpv's idle picture (bgFadeStep falls to 0)
 		uint64_t bgPageOf = 0;
 		int bgPageTheme = -1;
 		float bgFadeStep = 1;	// the cross-fade's place (1: over), read as the pages draw
@@ -112,7 +113,8 @@ namespace bp
 		bool dropBackdropPages();
 		// the pages into the panel (the context current): the fade's pair while one runs; false when they
 		// could not be drawn (no GL program), so the theme's ground is cleared instead
-		bool drawBackdropPages(int w, int h);
+		bool drawBackdropPages(int w, int h, bool over = false);
+		bool keepLeavingPage();	// a leave keeps the song's page up (true: the pages changed)
 		// the newer page's bytes again for the native styles' ground ink (topviz.cpp: groundTexture), with a serial
 		// that moves when they change
 		std::shared_ptr<const std::vector<uint8_t>> bgGroundPage;

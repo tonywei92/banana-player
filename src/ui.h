@@ -144,7 +144,9 @@ namespace bp
 		Player* mainPlayer = nullptr;
 		// what plays stopped (any Stop, the end of the list): a page playing the file has nothing held here any more
 		// (the page plays on: not told)
-		void stopped() { playHoldAt = 0; }
+		// Stop ran: the hold ends, and the song's backdrop starts fading out now (the top panel, drawn before the
+		// next tick, would otherwise have dropped its pages first)
+		void stopped();
 		// Back from the player (B, "<", Back; its Stop; a photo closed): where it was opened from, as it was (the page,
 		// the folder, the cursor and the scroll; Home, a playlist, Settings...), what plays going on behind it. Never
 		// opened from there (started with a file), or Show in folder asked for: the browser on lastPlayed (showBrowser)

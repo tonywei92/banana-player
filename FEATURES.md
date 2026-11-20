@@ -750,7 +750,7 @@ Songs show their title, artist and album on the top screen. While a song plays:
   above). A song's art becomes the atmosphere behind the player page and the top screen: the art, blurred and muted,
   under a dark veil in the theme's own charcoal tinted by one hue from the art — deepened where the text sits, so
   every key, chip, bar and word keeps the theme's colours and its contrast. A new song's art cross-fades in over
-  half a second; until it is read the previous one stays. A grey, black, white or neon art, one whose hue sits
+  half a second, and fades out over half a second when the song stops (on both screens); until it is read the previous one stays. A grey, black, white or neon art, one whose hue sits
   opposite the theme's accent, or a song with no art at all, falls back to a plain ground (a light theme's its own
   background). The two screens share one picture, as if stacked into one tall portrait screen: the top screen shows
   the art's upper half, the bottom screen its lower half. While a song plays, the browser's pages (Home, Files, Music,
