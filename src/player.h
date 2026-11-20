@@ -8,6 +8,7 @@
 #include "settings.h"
 #include "tracks.h"
 #include "viztap.h"
+#include <algorithm>
 #include <mpv/client.h>
 #include <mpv/render_gl.h>
 #include <functional>
