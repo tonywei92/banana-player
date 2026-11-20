@@ -1597,13 +1597,6 @@ namespace bp
 		mpv_command_async(mpv, 0, cmd);
 	}
 
-	void Player::scrub(double fraction)
-	{
-		std::string s = std::to_string(fraction * 100.0);
-		const char* cmd[] = {"seek", s.c_str(), "absolute-percent+keyframes", nullptr};
-		mpv_command_async(mpv, 0, cmd);
-	}
-
 	void Player::seekFraction(double fraction)
 	{
 		std::string s = std::to_string(fraction * 100.0);

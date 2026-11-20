@@ -281,19 +281,18 @@ namespace bp
 			if (l.barHit.hit(x, y) && p.duration > 0 && p.error.empty())
 			{
 				// a trackpad's scrub: a slide moves the place on by the finger's travel, a tap jumps there as it lifts
-				// (drawBar shows slide.value while it's held). The picture follows too, keyframes only and no more often
-				// than the decoder keeps up with (SCRUB_MS); lifted, the exact seek to where it was left, and the bar
-				// held there until playback arrives (seekHeld)
+				// (drawBar shows slide.value and its time while it's held). Nothing seeks until the finger lifts (the
+				// owner): then the exact seek to where it was left, and the bar held there until playback arrives
+				// (seekHeld)
 				double pos = ui.shownPosition(p);
 				ui.slideGrab(SL_SEEK, 0, {l.bar, {0, 1, 0}, false, SCRUB_MS, seekHeld >= 0 ? seekHeld : pos >= 0 ? std::clamp(pos / p.duration, 0.0, 1.0) : 0}, x, y, p,
 					[this, scrubs = 0](double f, bool last, Player& p) mutable {
 						if (!last)
 						{
 							scrubs++;
-							p.scrub(f);
 							return;
 						}
-						fprintf(stderr, "seek bar: let go at %.4f after %d scrubs\n", f, scrubs);
+						fprintf(stderr, "seek bar: let go at %.4f after %d moves\n", f, scrubs);
 						p.seekFraction(f);
 						ui.noteSeek(p, f * p.duration);
 						seekHeld = f;

@@ -378,8 +378,8 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 
 **By touch:**
 - **Progress bar:** scrub it as on a trackpad: slide a finger along it (or just above or below it), from anywhere,
-  and the place moves on from where it was by how far the finger travels, the picture with it, until you lift, even
-  if the finger drifts off the bar. A tap jumps to the tapped place as you lift; a touch alone changes nothing. While
+  and the place moves on from where it was by how far the finger travels, until you lift, even if the finger drifts
+  off the bar; it seeks only when you lift (the picture and sound stay where they were while you slide). A tap jumps to the tapped place as you lift; a touch alone changes nothing. While
   you slide, the knob grows and the time shows over it (and the chapter's name under the bar).
 - **Every slider works this way** (this bar, the quick settings' Volume and Brightness, the readers' bars and page
   sliders, the Brightness sheet's bars, the equalizer's bands, which go up and down): slide anywhere in its row to

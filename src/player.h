@@ -175,7 +175,6 @@ namespace bp
 		// from any thread: the lid closed, the handheld slept
 		void pauseNow();
 		void seekRelative(double seconds);
-		void scrub(double fraction);		// fast (to a keyframe): while a finger drags the bar
 		void seekFraction(double fraction);	// to the frame
 		void setSpeed(double s);
 		// the Picture sheet's Adjust page: brightness, contrast, saturation and gamma (mpv's video equalizer, each
