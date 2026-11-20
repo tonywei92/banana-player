@@ -38,7 +38,7 @@ pure `lay::` function in `src/kitlayout.*`.
 | 23 | More sheet (menu) | `Ui::openMore` / `MoreSpec` (`src/ui_more.cpp`) on `Kit::sheet` | present |
 | 24 | Book bar (and sheets held sideways) | `KitNew::bookBar`; `lay::bookBar`, `sideways`, `uprightPoint`, `bookBarAt` | present (kit-new) |
 | 25 | Keyboard | `Kit::keyboard`; `lay::keyboard` | present |
-| 26 | Slider | `Ui::slideGrab` / `slideHeld` / `slideShare` (`src/slider.h`) with `Kit::progress` | reuse (Ui) |
+| 26 | Slider | `Ui::slideGrab` / `slideHeld` / `slideShare` (`src/slider.h`) with `Kit::progress` | reuse (Ui); in an overlay pass it as `owner` (2026-11-20-slider.md) |
 | 27 | Progress bar | `Kit::bar` (3, 6, 12) and `Kit::progress` (14, a slider) | present |
 | 28 | Volume bar | `Kit::volumeBar`, `volumeInk`; `lay::volumeBar`, `volumeX`, `volumeZone` | present |
 | 29 | Tile | `Kit::tile`, `Kit::choiceTile`, `Kit::settingTile`; `lay::tileCell` | present |

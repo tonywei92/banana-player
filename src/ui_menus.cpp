@@ -451,6 +451,8 @@ namespace bp
 
 	void Ui::quickSlide(int row, int x, int y, Player& p)
 	{
+		// (owner = the Quick sheet: without it slideStale() sees an overlay that isn't the grabber's and drops the
+		// slider on the first move, so a finger could tap the bar but never drag it)
 		// the row's bar under a finger: the volume in fives, a screen's brightness in tenths (never under 10%)
 		int which = quickRows()[row];
 		lay::QuickPanel q = quickLayout(p);
@@ -461,14 +463,14 @@ namespace bp
 			slideGrab(SL_QUICK, row, {bar, {0, (double)std::max(100, p.settings.volumeMax), 5}, false, 0, (double)volumeTotal(p)}, x, y, p, [this](double v, bool, Player& p) {
 				if ((int)v == volumeTotal(p)) return;
 				setVolumeTotal(p, (int)v, false);
-			});
+			}, findOverlay("quick"));
 			return;
 		}
 		Backlight::Panel panelOf = which == Q_BOTTOM ? Backlight::BOTTOM : Backlight::TOP;
 		slideGrab(SL_QUICK, row, {bar, {0, 1000, 100}, false, 0, (double)std::max(100, backlight.permille(panelOf))}, x, y, p, [this, panelOf](double v, bool, Player& p) {
 			int pm = std::max(100, (int)v);
 			if (pm != backlight.permille(panelOf)) setBrightness(panelOf, pm, p);
-		});
+		}, findOverlay("quick"));
 	}
 
 	void Ui::setIncognito(bool on, Player& p, bool note)
