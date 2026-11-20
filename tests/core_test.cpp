@@ -10506,6 +10506,28 @@ static void testKitLayoutReaders()
 	CHECK_EQ(pane.coverArt.ok(), true);
 	CHECK_EQ(previewPane(true).cover.w, 196);
 	CHECK_EQ(previewPane(true).cover.h, 278);
+	// the welcome: the app's icon 84 square at (44, 34), its text beside it, the ways to start from 142 on the margin
+	Pane wl = previewPane(false, true);
+	CHECK_EQ(wl.icon.w, 84);
+	CHECK_EQ(wl.icon.h, 84);
+	CHECK_EQ(wl.icon.x, 44);
+	CHECK_EQ(wl.column.x, wl.icon.x + wl.icon.w + 18);
+	CHECK_EQ(wl.below.y, 142);
+	CHECK(wl.below.y > wl.icon.y + wl.icon.h);
+	CHECK_EQ(wl.brandTile.w, 0);
+	CHECK_EQ(previewPane(false).icon.w, 0);
+	// the Brand mark: a 22 grid, scaled by size / 22, every edge on a whole unit at 22
+	BrandMark bm = brandMark(20, 16, 22);
+	CHECK_EQ((int)bm.body[2], 22);
+	CHECK_EQ((int)bm.bar[0], 23);
+	CHECK_EQ((int)bm.bar[3], 4);
+	CHECK_EQ((int)bm.slate[1], 25);
+	CHECK_EQ((int)bm.track[2], 12);
+	BrandMark big = brandMark(0, 0, 44);
+	CHECK_EQ((int)big.body[2], 44);
+	CHECK_EQ((int)big.bar[2], 32);
+	CHECK_EQ(big.stripe[1][0], 18.f);	// the second stripe's upper-left, 9 units in
+	CHECK_EQ(big.stripe[1][6], 14.f);	// leaning two units (four at double size) to the left at its foot
 }
 
 static void testKitVariantBusy()

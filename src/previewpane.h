@@ -27,6 +27,8 @@ namespace bp
 		bool labelDanger = false;
 		std::vector<std::pair<std::string, std::string>> rows;	// the two-column list: dim name, value
 		std::vector<std::pair<std::string, std::string>> keys;	// the key line: caps, then what they do
+		bool welcome = false;	// a fresh install's welcome: the app's icon (84) beside the label and title, in place of the brand mark
+		PaneImage icon;	// the welcome's icon picture; none: the brand mark drawn large
 		bool cover = false;	// the cover layout (the cover's place; the picture comes from coverArt)
 		// the cover's picture (a decoded cover: the caller's own, or the shared art cache's pixels), fitted inside
 		// the cover's box; none: the cover's place (SURFACE and the picture's mark)

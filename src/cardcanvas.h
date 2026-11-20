@@ -86,6 +86,31 @@ namespace bp
 						blend(x, y, c, std::clamp(0.5f - d, 0.f, 1.f) * alpha / 255.f);
 					}
 			}
+			// a convex polygon (pixels), edges smoothed by supersampling 4 x 4
+			void poly(const float* pt, int n, Rgb c)
+			{
+				float x0 = pt[0], x1 = pt[0], y0 = pt[1], y1 = pt[1];
+				for (int i = 1; i < n; i++) { x0 = std::min(x0, pt[2 * i]); x1 = std::max(x1, pt[2 * i]); y0 = std::min(y0, pt[2 * i + 1]); y1 = std::max(y1, pt[2 * i + 1]); }
+				for (int y = std::max(0, (int)std::floor(y0)); y < std::min(H, (int)std::ceil(y1)); y++)
+					for (int x = std::max(0, (int)std::floor(x0)); x < std::min(W, (int)std::ceil(x1)); x++)
+					{
+						int in = 0;
+						for (int sy = 0; sy < 4; sy++)
+							for (int sx = 0; sx < 4; sx++)
+							{
+								float px = x + (sx + 0.5f) / 4, py = y + (sy + 0.5f) / 4;
+								bool pos = false, neg = false;
+								for (int i = 0; i < n; i++)
+								{
+									int j = (i + 1) % n;
+									float cr = (pt[2 * j] - pt[2 * i]) * (py - pt[2 * i + 1]) - (pt[2 * j + 1] - pt[2 * i + 1]) * (px - pt[2 * i]);
+									if (cr > 0) pos = true; else if (cr < 0) neg = true;
+								}
+								if (!(pos && neg)) in++;
+							}
+						if (in) blend(x, y, c, in / 16.f);
+					}
+			}
 			// a box with an edge `t` thick (the key cap and the tile): the edge, then the fill inside it
 			void ring(float x0, float y0, float bw, float bh, float r, float t, Rgb edge, Rgb fill)
 			{
