@@ -572,6 +572,22 @@ namespace bp
 		}
 	}
 
+	void Ui::Kit::sliderRow(Rect row, Rect track, const SliderRow& s)
+	{
+		if (s.focused) flat(row, BUTTON, R_BUTTON, ACCENT);
+		int cy = row.y + 18;
+		ui.drawTextMid(s.label, F_P16, s.focused ? ACCENT : TEXT, row.x + 12, cy, row.w / 2);
+		ui.drawTextMid(s.value, F_I12, s.held || s.away ? ACCENT : DIM_ON, row.x + row.w - 12, cy, row.w / 2 - 12, 1);
+		progress(track, s.share, {}, s.held);
+	}
+
+	void Ui::Kit::choiceRow(Rect row, Rect seg, const std::string& label, const std::vector<std::string>& options, int on, bool focused)
+	{
+		if (focused) flat(row, BUTTON, R_BUTTON, ACCENT);
+		ui.drawTextMid(label, F_P16, focused ? ACCENT : TEXT, row.x + 12, row.y + 14, row.w - 24);
+		segment(seg, options, on);
+	}
+
 	int Ui::Kit::pillW(const std::string& text) const
 	{
 		return textW(text, F_I11B) + 12;

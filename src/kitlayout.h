@@ -310,6 +310,19 @@ namespace bp
 		// the colour's part: 0 to 100, 1 from 100 to 120, 2 past 120
 		int volumeZone(int value);
 
+		// ---- a sheet of settings controls (the readers' Brightness): rows of three kinds, top to bottom ----
+		// LC_SLIDER: its label and value on a line, the 14-tall track under (56); LC_SWITCH: a switch row (46);
+		// LC_CHOICE: its label, the segmented choice under (68). `row` is each row's box (the whole row is its touch
+		// target), `track` a slider's bar, `seg` a choice's area (lay::cell(seg, n, 6, k) is its k-th)
+		enum { LC_SLIDER, LC_SWITCH, LC_CHOICE };
+		constexpr int LC_SLIDER_H = 56, LC_CHOICE_H = 68;
+		struct ControlSheet
+		{
+			Sheet sheet;
+			std::vector<Box> row, track, seg;
+		};
+		ControlSheet controlSheet(const std::vector<int>& kinds);
+
 		// ---- tiles with a summary: n in `cols` columns, `h` tall, 8 apart, in `area` ----
 		Box tileCell(Box area, int n, int cols, int h, int i);
 
