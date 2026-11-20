@@ -25,24 +25,12 @@ Branch `redesign-2026-11-20` (= `redesign-impl` at the time of writing); the spe
 
 ## Next (in order)
 
-1. **Fixes seen in the last shots:** Music's and Videos' "From … on this card" line drawn twice; Books' shelf
-   heading with no books under it; Search's keyboard runs past the right margin; the state line logs the Search page
-   as "settings".
-2. **Check on the handheld** everything merged since the last push (it was offline): readers, Info, updates, All
-   recent, Search, Network, the Web page, Music / Videos / Books, the new rail.
-3. **Match album art:** wire the built pieces (artbackdrop maths, Kit::backdrop) to the song player and the top screen,
-   on the art worker, with the cache, the 0.5 s fade and the switch (Settings › Music & sound, the Display sheet).
-4. **Library pages, the rest:** real covers on album tiles (seen only with art-less test songs so far), Books' covers
-   (decoded, not drawn), Videos' More (Copy / Move / Rename / Delete / Sort), a progress bar on "reading the cards",
-   a playing mark on video rows.
-5. **The web dashboard's tabs:** Home, Files, Videos, Music (Playlists inside), Books, as the spec draws.
-6. **Manga's pages inside the shell** (today they keep their own frame; L / R still step Manga's tabs).
-7. **Settings' missing rows:** Picture look, Top screen off for music, Dim before off, Stay awake, Dim controls while
-   reading; the video looks (Sharpen, Scanlines…) and keeping the player's Adjust.
-8. **Smaller gaps:** Files' Play next; group copy / move to or from a server; Recent cards titled by the song's tag;
-   comics opened from Files / Recent should ask before stopping a video; the photo More's Slideshow / Copy / Move /
-   Delete; the top-screen song lines in Pixelify (mpv draws them in Inter).
-9. **Before a release:** tools/web-smoke.sh, the arm64 Docker check for Linux-only code, README pictures regenerated,
+Done since: items 1–8 (Manga fully on the kit, Settings' rows incl. Top screen off for music, Play next, Recent
+by tag, comics ask, photo More). Left:
+1. **Manga:** a source's keys (spec: Y Filters, X More); a source's and a server's pages untried (no source on desktop).
+   The browser's network folders still use the 0.88 scaling.
+2. **Server group copy / move** and **mpv's top-screen song lines font** (open decisions).
+3. **Before a release:** tools/web-smoke.sh, the arm64 Docker check for Linux-only code, README pictures regenerated,
    the owner's go.
 
 ## Decisions still open
