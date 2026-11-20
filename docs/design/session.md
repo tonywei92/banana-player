@@ -658,3 +658,12 @@ wrap) unless **Repeat All** is on, which goes round to the last as it always did
   at 2 s both go previous, the first video's Previous does nothing (the place kept, no seek), the first video with
   Repeat All wraps to the last — plus I17 on every apply of the fuzz. One scripted run on the Mac: two generated 10 s
   videos in a folder, L on the second at 6 s (the first), then L on the first (`time-pos` kept, no restart).
+
+## 18. Play next (2026-11-20)
+
+- `PlayNext {path}`: Files' More › Play next. The file goes into `queue` right after the item that plays; nothing
+  reloads, `source` stays. With Shuffle the new place also plays right after the item in the hidden order (I13 holds).
+  Refused when nothing plays (`nothing`: the page then just plays the file) and for a photo. A later edit of the playing
+  playlist whose list no longer has the opened length is not followed (the host's existing rule).
+- Tests: a named case (queued after, no reload, Next reaches it, photo and nothing refused, Shuffle) and `PlayNext` in
+  the fuzz (`fuzzPlayNext` must be reached).

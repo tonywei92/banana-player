@@ -1675,6 +1675,13 @@ namespace bp
 					}
 					return false;
 				}));
+			if (id == 2 && media)
+				left.push_back(item(&G_NEXT, "Play next", "After the one playing", [this, path](Player& p) {
+					// nothing playing (or a photo): there is no "after", so it simply plays
+					if (!p.playing() || p.playingPhoto() || !SessionHost::get().playNext(path)) { ui.openFile(path, p); return false; }
+					p.osd("Plays next", 1500);
+					return false;
+				}));
 			if (doc)
 				left.push_back(item(&G_FILE, "Open", "", [this, path](Player& p) { ui.openFile(path, p); return false; }));
 			if (id == 1 && onRow)

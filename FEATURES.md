@@ -1641,3 +1641,8 @@ combination instead.)
   minutes (a request or an upload), an update downloads, or the charger is in. `log.txt` says why it slept
   (`idle sleep: asking bananad…`) or what kept it awake (`idle sleep: … kept awake: …`, once per change). Waking
   leaves a paused video paused.
+
+### Files: Play next
+
+**X** on a song or video in Files has **Play next**: it queues that file right after the one playing (Shuffle too: it
+comes next in the shuffled order). With nothing playing it simply plays the file.
