@@ -828,7 +828,7 @@ namespace bp
 				int dir = 1;
 				if (set && !groups)
 				{
-					lay::SettingsRows l = page == Page::Settings ? lay::settingsRowsIn(lay::shell().body)
+					lay::SettingsRows l = page == Page::Settings || page == Page::MangaSettings ? lay::settingsRowsIn(lay::shell().body)
 						: lay::settingsRows();
 					lay::SettingStepper st = lay::settingStepper(l.row(cursor - scroll));
 					dir = lay::stepperBack(st, touchX) ? -1 : 1;

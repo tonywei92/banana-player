@@ -1,13 +1,16 @@
 #include "ui.h"
 #include "ui_internal.h"
+#include "format.h"
 #include "ui_settings.h"
 #include "ui_manga.h"
+#include "ui_kit.h"
 #include "manganet.h"
 
 namespace bp
 {
 	// six rows: a seventh would run under the help line (Settings' groups never have seven)
-	static constexpr int MSET_SHOWN = 6;
+	// the rows the shell's body holds, as Settings' groups (the list's finger in Ui::pointer counts the same)
+	static constexpr int MSET_SHOWN = lay::SET_ROWS;
 
 	static std::string javaMb(int64_t bytes)
 	{
@@ -140,20 +143,65 @@ namespace bp
 
 	void Ui::Manga::drawMangaSettings(const Player& p)
 	{
+		// the reader's own settings (screens.js manga-settings), as Settings draws a group: the kit's setting rows in
+		// the shell's body, the focused row's help under them
 		ui.drawHeader("Manga settings", p);
+		Kit& k = *ui.kit;
+		lay::SettingsRows l = lay::settingsRowsIn(lay::shell().body);
 		auto rows = mangaSettingRows();
 		int n = (int)rows.size();
 		if (ui.cursor >= n) ui.cursor = n - 1;
 		if (ui.scroll > n - MSET_SHOWN) ui.scroll = std::max(0, n - MSET_SHOWN);
-		// the rows as Settings draws its group's: the note last
 		for (int i = ui.scroll; i < n && i < ui.scroll + MSET_SHOWN; i++)
-			ui.settingsPage->drawSettingRow(rows[i], SET_Y + (i - ui.scroll) * SET_H, i == ui.cursor, p);
-		// what the row under the cursor does, in up to three lines above the footer
+		{
+			int row = rows[i];
+			bool at = i == ui.cursor;
+			Rect r = l.row(i - ui.scroll);
+			if (row == EXT_NOTE)
+			{
+				// a note, not a value: the info mark and its line (A does nothing there)
+				Kit::Row note;
+				note.under = BG;
+				note.glyph = &G_INFO;
+				note.name = "Repositories are added by you";
+				note.second = "Banana Player doesn\xE2\x80\x99t provide or check their content.";
+				note.focused = at;
+				note.off = true;
+				k.row(r, note);
+				continue;
+			}
+			Kit::SettingRow s;
+			s.focused = at;
+			s.pressed = ui.pressedBtn == 400 + row;
+			if (row == MANGA_CLEAR_ROW)
+			{
+				// the cache's Clear: an action (its size from the cache itself), asked twice
+				uint64_t size = mangaPageCache.size() + mangaNetCacheBytes;
+				s.label = "Clear cache";
+				s.value = mangaCacheAt ? "Press again to clear" : size ? "Clear \xC2\xB7 " + formatBytes((long long)size) : "Empty";
+				s.action = true;
+			}
+			else if (row == MANGA_JAVA_ROW)
+			{
+				s.label = "Extension support";
+				s.value = mangaJavaValue();
+				s.action = true;
+			}
+			else if (const SettingDef* d = rowDef(row))
+			{
+				s.label = d->label;
+				s.value = settingValueText(*d, p.settings);
+			}
+			k.settingRow(r, s);
+		}
+		if (n > MSET_SHOWN) ui.drawScrollBar(l.area.y, MSET_SHOWN * lay::SET_ROW_H - 4, ui.scroll, MSET_SHOWN, n);
+		// what the row under the cursor does, in a line or two above the hint bar
 		std::string help = ui.cursor >= 0 && ui.cursor < n ? ui.settingsPage->settingHelp(rows[ui.cursor]) : "";
-		auto lines = ui.wrapText(help, 0, 592, 3);
-		// a third line would reach into the footer: the block starts one step higher
-		int helpY = HELP_Y - (lines.size() > 2 ? 22 : 0);
-		for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, DIM, 24, helpY + (int)i * 22, 592);
+		if (l.help.w > 0)
+		{
+			auto lines = ui.wrapText(help, 0, l.help.w, 2);
+			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, DIM, l.help.x, l.help.y + (int)i * 22, l.help.w);
+		}
 		std::vector<Hint> hints = {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"B", "Back"}};
 		if (mangaNet && ui.cursor >= 0 && ui.cursor < n && rows[ui.cursor] == MANGA_JAVA_ROW)
 		{

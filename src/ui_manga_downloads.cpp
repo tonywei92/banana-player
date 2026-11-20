@@ -5,6 +5,7 @@
 #include "ui_internal.h"
 #include "ui_reader.h"
 #include "ui_manga.h"
+#include "ui_kit.h"	// MoreSpec: Downloads' X
 #include "cbz.h"
 #include "comicinfo.h"
 #include "mangaseriescache.h"
@@ -518,6 +519,112 @@ namespace bp
 	bool Ui::Manga::mangaDownloadsKey(Button b, Player& p)
 	{
 		mangaDlEnsureCard();
+		if (!mdlCardOpen)
+		{
+			int q = mangaDlQueueCount();
+			// Y: pause or resume the chapter under the cursor, or all on Pause all's row (the base's X)
+			if (b == Button::Y)
+			{
+				if (q > 0 && mdlCursor <= q) return mangaDlKeyBase(Button::X, p);
+				return false;
+			}
+			if (b == Button::X)
+			{
+				mangaDlMore(p);
+				return false;
+			}
+		}
+		return mangaDlKeyBase(b, p);
+	}
+
+	void Ui::Manga::mangaDlMore(Player& p)
+	{
+		(void)p;
+		mangaDlItemsRead();
+		int q = (int)mdlItems.size(), off = q + (q > 0 ? 1 : 0);
+		int at = mdlCursor;
+		fprintf(stderr, "manga: Downloads' More on row %d (%d queued, %zu on the card)\n", at, q, mdlCard.size());
+		if (q == 0 && mdlCard.empty()) return;	// (nothing to act on: no sheet)
+		std::string queueId = at < q ? mdlItems[at].id : "";
+		std::string cardPath = at >= off && at - off < (int)mdlCard.size() ? mdlCard[at - off].path : "";
+		ui.openMore([this, at, queueId, cardPath](const Player& pl) {
+			MoreSpec m;
+			mangaDlItemsRead();
+			int q = (int)mdlItems.size(), off = q + (q > 0 ? 1 : 0);
+			// what the sheet was opened on: gone (finished, deleted), the sheet closes itself
+			const DlItem* it = nullptr;
+			for (auto& x : mdlItems) if (x.id == queueId) it = &x;
+			const MangaDlCardSeries* series = nullptr;
+			for (auto& s : mdlCard) if (s.path == cardPath) series = &s;
+			if ((!queueId.empty() && !it) || (!cardPath.empty() && !series)) return m;
+			m.glyph = &G_DOWNLOAD;
+			m.title = it ? it->chapterTitle : series ? series->name : std::string("Downloads");
+			auto cursorTo = [this](const std::string& qid, const std::string& path) {
+				mangaDlItemsRead();
+				int q = (int)mdlItems.size(), off = q + (q > 0 ? 1 : 0);
+				for (int i = 0; i < q; i++) if (mdlItems[i].id == qid) mdlCursor = i;
+				for (int i = 0; i < (int)mdlCard.size(); i++) if (!path.empty() && mdlCard[i].path == path) mdlCursor = off + i;
+			};
+			if (it)
+			{
+				bool paused = it->state == DlItem::Paused;
+				m.rows.push_back({paused ? &G_PLAY : &G_PAUSE, paused ? "Resume" : "Pause", "", "Y", [this, cursorTo, queueId, cardPath](Player& p) {
+					cursorTo(queueId, "");
+					mangaDlKeyBase(Button::X, p);
+					return false;
+				}});
+				if (it->state == DlItem::Failed || it->state == DlItem::Waiting)
+				{
+					// asked: the first choice arms it (the row says so), the second removes
+					bool armed = mdlRemoveId == it->id && mdlRemoveAt && SDL_GetTicks() - mdlRemoveAt < QUIT_WINDOW_MS;
+					MoreItem r{&G_TRASH, armed ? "Choose again to remove" : "Remove from the queue", "", "", [this, cursorTo, queueId, cardPath](Player& p) {
+						cursorTo(queueId, "");
+						mangaDlKeyBase(Button::Y, p);
+						return false;
+					}};
+					r.danger = true;
+					r.stay = !armed;
+					m.rows.push_back(r);
+				}
+			}
+			if (series)
+			{
+				bool armed = mdlDeletePath == series->path && mdlDeleteAt && SDL_GetTicks() - mdlDeleteAt < QUIT_WINDOW_MS;
+				MoreItem r{&G_TRASH, armed ? "Choose again to delete it" : "Delete from the card", "", "", [this, cursorTo, queueId, cardPath](Player& p) {
+					cursorTo("", cardPath);
+					mangaDlKeyBase(Button::X, p);
+					return false;
+				}};
+				r.danger = true;
+				r.stay = !armed;
+				m.rows.push_back(r);
+			}
+			if (q > 0)
+			{
+				bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
+				m.rows.push_back({paused ? &G_PLAY : &G_PAUSE, paused ? "Resume all" : "Pause all", "", "", [this](Player& p) {
+					mangaDlItemsRead();
+					mdlCursor = (int)mdlItems.size();
+					mangaDlKeyBase(Button::X, p);
+					return false;
+				}});
+			}
+			if (int failed = mangaDlFailedCount())
+				m.rows.push_back({&G_TRASH, "Clear failed", std::to_string(failed), "", [this, off](Player& p) {
+					// (the base's Y off the queue's rows: the failed ones go)
+					mdlCursor = off;
+					mangaDlKeyBase(Button::Y, p);
+					return false;
+				}});
+			(void)pl;
+			(void)at;
+			return m;
+		});
+	}
+
+	bool Ui::Manga::mangaDlKeyBase(Button b, Player& p)
+	{
+		mangaDlEnsureCard();
 		if (mdlCardOpen)
 		{
 			if (mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size()) { mdlCardOpen = false; mdlCardAt = -1; return false; }
@@ -807,7 +914,6 @@ namespace bp
 			mdlCursor = i;
 			MangaRow m = mangaDlRowAt(i);
 			if (onKey && m.keyCap == "Y") mangaDownloadsKey(Button::Y, p);
-			else if (onKey && m.keyCap == "X") mangaDownloadsKey(Button::X, p);
 			else mangaDownloadsKey(Button::A, p);
 		});
 		return false;
@@ -1342,9 +1448,10 @@ namespace bp
 			m.second = std::to_string(it.done) + " / " + std::to_string(total) + " pages \xC2\xB7 " + state;
 			m.bar = total > 0 ? it.done / (double)total : 0;
 			m.barBad = it.state == DlItem::Failed;
-			// the row's key: what Y does on a failed or waiting one (Remove), else X (Pause / Resume)
-			if (removable) { m.keyLabel = "Remove"; m.keyCap = "Y"; }
-			else { m.keyLabel = it.state == DlItem::Paused ? "Resume" : "Pause"; m.keyCap = "X"; }
+			// the row's key: Y pauses or resumes it (a failed one tries again); Remove is in X · More
+			(void)removable;
+			m.keyLabel = it.state == DlItem::Paused ? "Resume" : it.state == DlItem::Failed ? "Retry" : "Pause";
+			m.keyCap = "Y";
 			return m;
 		}
 		if (q > 0 && i == q)
@@ -1352,8 +1459,7 @@ namespace bp
 			bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
 			m.glyph = paused ? &G_PLAY : &G_PAUSE;
 			m.name = paused ? "Resume all" : "Pause all";
-			if (mangaDlFailedCount()) { m.keyLabel = "Clear failed"; m.keyCap = "Y"; m.note = "Y clears the failed"; }
-			else m.note = paused ? "all paused" : "one at a time";
+			m.note = mangaDlFailedCount() ? "Clear failed is in X \xC2\xB7 More" : paused ? "all paused" : "one at a time";
 			return m;
 		}
 		int c = i - off;
@@ -1412,26 +1518,11 @@ namespace bp
 		if (mdlCursor < 0) mdlCursor = 0;
 		lay::RowList l = mangaRowsFit(p, total, mdlCursor, mdlScroll);
 		drawMangaRows(l, mdlCursor, [this](int i) { return mangaDlRowAt(i); });
-		int failed = mangaDlFailedCount();
+		// the spec's keys: Y pause / resume, X More (Remove, Pause all, Clear failed, Delete from the card: asked there)
 		bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
-		bool atRemovable = mdlCursor < q && (mdlItems[mdlCursor].state == DlItem::Failed || mdlItems[mdlCursor].state == DlItem::Waiting);
-		if (mdlRemoveAt) ui.drawFooterText("Press Y again to remove it", ACCENT);
-		else if (mdlDeleteAt && mdlDeletePath.find('/') != std::string::npos)
-			ui.drawFooterText("Press X again to delete it", ACCENT);
-		else if (mdlCursor < q)
-		{
-			if (atRemovable) ui.drawHints({{"X", "Pause / resume"}, {"Y", "Remove"}, {"B", "Back"}});
-			else if (failed) ui.drawHints({{"X", "Pause / resume"}, {"Y", "Clear failed"}, {"B", "Back"}});
-			else ui.drawHints({{"X", "Pause / resume"}, {"B", "Back"}});
-		}
-		else if (q > 0 && mdlCursor == q)
-		{
-			if (failed)
-				ui.drawHints({{"A", paused ? "Resume all" : "Pause all"}, {"Y", "Clear failed"}, {"B", "Back"}});
-			else ui.drawHints({{"A", paused ? "Resume all" : "Pause all"}, {"B", "Back"}});
-		}
-		else if (failed) ui.drawHints({{"A", "Chapters"}, {"X", "Delete"}, {"Y", "Clear failed"}, {"B", "Back"}});
-		else ui.drawHints({{"A", "Chapters"}, {"X", "Delete"}, {"B", "Back"}});
+		if (mdlCursor < q) ui.drawHints({{"Y", "Pause / resume"}, {"X", "More"}, {"B", "Back"}});
+		else if (q > 0 && mdlCursor == q) ui.drawHints({{"A", paused ? "Resume all" : "Pause all"}, {"X", "More"}, {"B", "Back"}});
+		else ui.drawHints({{"A", "Open"}, {"X", "More"}, {"B", "Back"}});
 	}
 
 	void Ui::Manga::drawMangaDlCardSeries(const Player& p)

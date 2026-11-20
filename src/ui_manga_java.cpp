@@ -11,6 +11,7 @@
 #include "ui_internal.h"
 #include "ui_reader.h"
 #include "ui_manga.h"
+#include "ui_kit.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -517,70 +518,48 @@ namespace bp
 
 	// ---- drawing the Java rows ----
 
-	void Ui::Manga::drawMangaJavaRow(int tab, int local, const Rect& r, bool at, bool focus, const Player& p)
+	Ui::Manga::MangaRow Ui::Manga::mangaJavaRowAt(int tab, int local, const Player& p) const
 	{
-		if (focus && at) ui.drawFocus(r);
-		int mid = r.y + r.h / 2;
-		SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
+		// an extension's row (Available's, the installed on top) or an extension repository's (Repositories')
+		MangaRow m;
+		if (!mangaNet || !mangaNet->started()) return m;
 		if (tab == MST_REPOSITORIES)
 		{
-			if (!mangaNet || !mangaNet->started()) return;
 			const auto& repos = mangaNet->javaSources().repos();
-			if (local < 0 || local >= (int)repos.size()) return;
+			if (local < 0 || local >= (int)repos.size()) return m;
 			const MangaJava::Repo& rp = repos[local];
-			ui.drawTextMid(rp.name.empty() ? rp.url : rp.name, 1, ink, 32, mid - 10, 450);
-			ui.drawTextMid(elideMiddle(rp.url, 0, 380), 0, soft, 32, mid + 10, 0);
-			if (rp.queued) ui.drawTextMid("Waits for the engine", 0, soft, 608, mid, 0, 1);
-			return;
+			m.glyph = &G_BLOCKS;
+			m.name = rp.name.empty() ? rp.url : rp.name;
+			m.second = elideMiddle(rp.url, F_I12, 380);
+			if (rp.queued) m.note = "Waits for the engine";
+			return m;
 		}
 		const SuwayomiExt* e = nullptr;
-		if (!mangaNet || !mangaNet->started()) return;
 		if (tab == MST_INSTALLED)
 		{
 			auto list = javaInstalledExtensions(mangaNet->javaSources());
-			if (local < 0 || local >= (int)list.size()) return;
+			if (local < 0 || local >= (int)list.size()) return m;
 			e = list[local];
 		}
 		else
 		{
 			auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); }, &mstAvOrder);
-			if (local < 0 || local >= (int)list.size()) return;
+			if (local < 0 || local >= (int)list.size()) return m;
 			e = list[local];
 		}
-		ui.drawTextMid(e->name.empty() ? e->pkgName : e->name, 1, ink, 32, mid - 10, 420);
-		int x = 32;
-		if (!e->lang.empty())
-		{
-			int cw = (int)std::lround(ui.textWidth(e->lang, 0) / sx) + 14;
-			ui.fillRound({x, mid + 3, cw, 18}, TRACK, R_CHIP);
-			ui.drawTextMid(e->lang, 0, at ? DIM_ON : TEXT, x + cw / 2, mid + 12, cw - 6, 2);
-			x += cw + 8;
-		}
-		ui.drawTextMid(javaExtVersion(*e), 0, soft, x, mid + 12, 200);
-		if (e->isNsfw) drawAdultChip(x + std::min(200, (int)std::lround(ui.textWidth(javaExtVersion(*e), 0) / sx)) + 8, mid + 12);
+		m.glyph = &G_WEB;
+		m.name = e->name.empty() ? e->pkgName : e->name;
+		std::string lang = e->lang;
+		for (char& c : lang) c = (char)std::toupper((unsigned char)c);
+		m.second = (lang.empty() ? "" : lang + " \xC2\xB7 ") + javaExtVersion(*e) + (e->isNsfw ? " \xC2\xB7 18+" : "");
 		auto busy = mstJavaBusy.find(e->pkgName);
-		if (busy != mstJavaBusy.end())
-			ui.drawTextMid(busy->second, 0, ACCENT, 520, mid, 0, 1);
-		else if (e->isInstalled && e->sourcesKnown && e->sources.empty())
-		{
-			// installed, but the engine couldn't load it (an extension built for a newer engine): it gives no sources
-			int w = (int)std::lround(ui.textWidth("Can't load", 0) / sx) + 16;
-			ui.drawBox({608 - w, mid - 10, w, 20}, TRACK, R_CHIP);
-			ui.drawTextMid("Can't load", 0, DANGER, 608 - w / 2, mid, w - 6, 2);
-		}
-		else if (e->isInstalled && e->hasUpdate)
-		{
-			int w = (int)std::lround(ui.textWidth("Update", 0) / sx) + 16;
-			ui.fillRound({608 - w, mid - 10, w, 20}, ACCENT, R_CHIP);
-			ui.drawTextMid("Update", 0, ON_ACCENT, 608 - w / 2, mid, w - 6, 2);
-		}
-		else if (tab == MST_AVAILABLE && e->isInstalled)
-		{
-			// (Available lists the installed on top: marked, so A's "up to date" isn't a surprise)
-			int w = (int)std::lround(ui.textWidth("Installed", 0) / sx) + 16;
-			ui.fillRound({608 - w, mid - 10, w, 20}, TRACK, R_CHIP);
-			ui.drawTextMid("Installed", 0, at ? DIM_ON : DIM, 608 - w / 2, mid, w - 6, 2);
-		}
+		if (busy != mstJavaBusy.end()) { m.pill = busy->second; m.pillLive = true; }
+		// installed, but the engine couldn't load it (an extension built for a newer engine): it gives no sources
+		else if (e->isInstalled && e->sourcesKnown && e->sources.empty()) { m.pill = "Can't load"; m.pillBad = true; }
+		else if (e->isInstalled && e->hasUpdate) { m.pill = "Update"; m.pillLive = true; }
+		// (Available lists the installed on top: marked, so A's "up to date" isn't a surprise)
+		else if (tab == MST_AVAILABLE && e->isInstalled) m.pill = "Installed";
+		return m;
 	}
 
 	int Ui::Manga::mangaJavaModalRows() const

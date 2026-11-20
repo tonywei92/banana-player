@@ -1263,9 +1263,16 @@ on the card (below).
 **Continue** key (**A**) on the row you're on; **Y** opens the series' page instead. A series that can't open now
 stays, dimmed, and says why (*source removed*, *not on a card*).
 
+A series' page has one row of keys (**Resume**, and for a source's series **Get**, **Check**, **Info** and the heart)
+over its chapters, each saying its own state (read, where Resume opens, the page, its download); the series' source
+and counts are the header's line. A source's catalogue steps **Popular / Latest / Search** with **L2/R2**; Sources'
+lists, a server's catalogue and form, and Manga settings are drawn the same way, in the rail's frame.
+
 **Browse** and **Downloads** are lists of rows: the row you're on carries its key (a server's **Edit**, a chapter's
 **Pause** / **Resume** or **Remove**), which a tap presses too; Downloads' storage line and Browse's place in a network
-folder are the header's line.
+folder are the header's line. In Downloads **Y** pauses or resumes the chapter (or all, on **Pause all**), and **X** is
+**More**: Pause / Resume, Remove from the queue, Delete from the card (choose it twice), Pause all, Clear failed. Browse ends its fixed rows with **Sources…** and **Add a server…** (the
+same form **Y** opens).
 
 **On the touch screen** every list and grid in the app scrolls with a finger: drag it up or down (Library's covers,
 History, Browse and its *On this handheld*, Downloads' queue, its series on the card and their chapters, Sources, a
@@ -1405,14 +1412,13 @@ chapter already here or queued is not picked twice, and a chapter on the card op
 network. The chapter list marks each one: **Queued**, its pages done (**12/40**), **Paused**, **Failed**, or **On
 card**.
 
-**Downloads.** The storage line says what the downloads take and the card's free space. While something is queued, the
-queue comes next: each chapter's series, chapter and pages done of total over a progress line, **X** pauses or resumes
-the one under the cursor, **Y** removes a failed or queued chapter after a second press, and a **Pause all / Resume all**
-row stops or starts the queue; its right end, **Clear failed**, takes every failed chapter and the partial pages it
-left (offered while one has failed). With nothing queued that room
-collapses to one dim **Nothing queued** line, and **On the card · N series** and its rows rise right under it, as many
-series as fit above the hints line. What is on the card is listed by series, with its chapters and size; **A** lists a
-series' chapters (and **A** on one reads it), **X** deletes a chapter or a series after a second press. Downloads need
+**Downloads.** The header's line says what the downloads take and the card's free space. The queue comes first: each
+chapter's series and chapter, pages done of total over a progress line, and on the row you're on its **Pause** /
+**Resume** key (**Y**, or a tap; a failed one **Retry**). A **Pause all / Resume all** row follows while anything is
+queued. Then what is on the card, by series, with its chapters and size; **A** lists a series' chapters (**A** on one
+reads it, **X** deletes it after a second press). **X** elsewhere is **More**: Pause / Resume, **Remove from the
+queue** (a failed or waiting chapter), **Delete from the card** (a series), **Pause all**, **Clear failed** (every
+failed chapter and the pages it left); Remove and Delete are chosen twice. Downloads need
 the network and resume where they stopped after a pause, a lost connection or a quit. A downloaded chapter and its
 online chapter share one place, read mark and History row, whichever way it is opened (Browse, Downloads or *On this
 handheld*).

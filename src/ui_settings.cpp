@@ -742,7 +742,9 @@ namespace bp
 	bool Ui::SettingsPage::settingsDown(int x, int y)
 	{
 		// the Settings page's list is inside the shell's body; the manga reader's own settings page keeps the old page
-		lay::SettingsRows l = ui.page == Page::Settings ? lay::settingsRowsIn(lay::shell().body) : lay::settingsRows();
+		// (the Manga settings page is in the shell too: the same rows in its body)
+		lay::SettingsRows l = ui.page == Page::Settings || ui.page == Page::MangaSettings ? lay::settingsRowsIn(lay::shell().body)
+			: lay::settingsRows();
 		bool groups = ui.page == Page::Settings && ui.setGroup < 0;
 		auto srows = groups ? std::vector<int>() : ui.page == Page::MangaSettings ? ui.manga->mangaSettingRows() : settingRows();
 		int n = groups ? GROUPS : (int)srows.size();

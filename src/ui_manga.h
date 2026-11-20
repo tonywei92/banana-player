@@ -74,12 +74,26 @@ namespace bp
 			double bar = -1;	// a progress line along the row's foot (a chapter downloading); -1 none
 			bool barBad = false;
 			std::string keyLabel, keyCap;	// the focused row's key ("" none)
+			bool pillLive = false;	// the pill yellow (Update, Recommended), not a fact
 		};
+		// where a Manga page's list or grid goes in the shell's body: under the app's tabs, a source's tabs or Sources'
+		// lists, under a series' keys, or the inner body (a server's catalogue, a network folder's series)
+		lay::Box mangaListArea(const Player& p) const;
+		std::vector<int> mangaSrcSlots() const;	// a source's tabs: Popular, Latest (when it has one), Search
+		lay::TabPage mangaSrcTabPage(const Player& p) const;
+		lay::TabPage mangaSourcesTabPage(const Player& p) const;	// Sources: Available · Repositories
+		// a cover grid in `area` (lay::coverGrid, Kit::coverTile): the source's and the server's catalogues
+		void drawMangaGrid(const lay::AlbumGrid& g, int cursor, const std::function<void(int, Rect)>& cover,
+			const std::function<std::string(int)>& title);
+		void mangaGridPointer(lay::Box area, int x, int y, std::function<int()> count, int* scroll, int* cursor,
+			std::function<void(int)> open, std::function<void()> scrolled = nullptr);
+		// a series page's keys (lay::seriesPage + lay::keyRow): their boxes for `widths`
+		std::vector<lay::Box> mangaSeriesKeys(const std::vector<int>& widths) const;
 		lay::RowList mangaRowsFit(const Player& p, int n, int cursor, int& scroll) const;
 		void drawMangaRows(const lay::RowList& l, int cursor, const std::function<MangaRow(int)>& at);
 		// a finger on the rows: a drag scrolls them (the cursor kept among those shown), a tap is tap(i, onKey)
 		void mangaRowsPointer(const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
-			std::function<MangaRow(int)> at, std::function<void(int, bool)> tap);
+			std::function<MangaRow(int)> at, std::function<void(int, bool)> tap, std::function<void()> scrolled = nullptr);
 		std::string tabCrumb;	// Browse's and Downloads' header line, set as they draw (where, the storage line)
 		MangaRow mangaBrowseRowAt(const Player& p, int i) const;
 		MangaRow mangaLocalRowAt(int i) const;
@@ -87,6 +101,8 @@ namespace bp
 		void drawMangaNetFoldersKit(const Player& p);	// Browse's network folder (Page::Manga), on the kit
 		MangaRow mangaDlRowAt(int i) const;
 		MangaRow mangaDlCardRowAt(int i) const;
+		// a series' chapter row (a card's, a source's, a server's, a network folder's): its read mark, Resume's, its page
+		MangaRow mangaChapterRow(const std::string& title, const std::string& progressId, bool resume, int pages) const;
 		mutable std::vector<DlItem> mdlItems;	// the queue's chapters not done, as the Downloads list last read them
 		void mangaDlItemsRead() const;
 		lay::AlbumGrid mangaLibGrid(const Player& p) const;
@@ -306,8 +322,7 @@ namespace bp
 		std::string mserSumKey;
 		std::string mserFocusChapter;
 		int mserBtn = 0;
-		int mserDragY = -1, mserDragScroll = 0, mserDragTap = -1;	// a finger on the series page's chapter list
-		bool mserDragMoved = false;	// the series page's button row: 0 Resume, 1 Download, 2 Refresh, 3 Library (LEFT/RIGHT)	// a chapter the series page puts its cursor on once its list shows (from History)
+		// the series page's button row: 0 Resume, 1 Download, 2 Refresh, 3 Library (LEFT/RIGHT)	// a chapter the series page puts its cursor on once its list shows (from History)
 		int mserSumUnread = 0;
 		MangaResumePoint mserSumResume;
 		// the extensions starting (about 25 s on the handheld), on every page: a pill at the top, its seconds counting,
@@ -492,8 +507,9 @@ namespace bp
 		bool mangaCoverOnFetched(MangaFetch::Result& r);	// true if the result was one of ours (a cover fetch)
 		// the grids' columns (Library's is lay::coverGrid on the kit; a source's and a server's keep the old covers)
 		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the old grids' covers, 124 apart
-		Rect mangaResumeRect() const { return {16, 84, 220, 52}; }
-		Rect mangaHeartRect() const { return {556, 84, 68, 52}; }
+		// a card series' keys (lay::keyRow on lay::seriesPage): Resume at the left, the heart at the right
+		Rect mangaResumeRect() const { return mangaSeriesKeys({150, 0, 64})[0]; }
+		Rect mangaHeartRect() const { return mangaSeriesKeys({150, 0, 64})[2]; }
 		// the reading page's own pieces
 		Rect mangaAreaRect() const { return {16, 70, 608, 260}; }	// (the page line below keeps 8 clear of it)
 		Rect mangaSliderRect() const { return {40, 352, 560, 22}; }
@@ -510,7 +526,6 @@ namespace bp
 		Rect mangaFullRect() const { return mangaChapterCell(1); }	// the Fullscreen button: what SELECT does
 		Rect mangaLightRect() const { return mangaChapterCell(2); }	// the Brightness sheet
 		Rect mangaNextRect() const { return mangaChapterCell(3); }
-		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
 		static constexpr int MG_ROWS = 6;	// the keys' page step on the old lists
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
 		static constexpr int MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101, MG_FULL = 3102, MG_LIGHT = 3103;
@@ -524,7 +539,7 @@ namespace bp
 		// (Installed is no tab of its own now: Available lists the installed on top; the segments are Available and
 		// Repositories, L1/R1 between them)
 		int mstTab = MST_AVAILABLE;
-		void drawMangaLuaInstalledRow(const MangaRepos::InstalledSource& s, Rect r, bool at);
+		MangaRow mangaSourcesRowAt(const Player& p, int k) const;	// Sources' row k of the list shown
 		int mstCursor[MANGA_SOURCES_TABS] = {}, mstScroll[MANGA_SOURCES_TABS] = {};
 		std::set<std::string> mstInstalling;		// full ids on their way (Installing… on the row), and Updating…
 		std::map<std::string, std::string> mstInstallName;	// full id -> its name, for the answer's toast
@@ -574,7 +589,7 @@ namespace bp
 		void mangaJavaInstalledAct(int local, Player& p);	// A/X on an installed extension
 		void mangaJavaAvailableAct(int local, Player& p);	// A: install
 		void mangaJavaRepoAct(int local, Player& p);		// A: the repository's sheet
-		void drawMangaJavaRow(int tab, int local, const Rect& r, bool at, bool focus, const Player& p);
+		MangaRow mangaJavaRowAt(int tab, int local, const Player& p) const;
 		bool mangaJavaModalKey(Button b, Player& p);
 		void mangaJavaModalAct(Player& p);
 		void mangaJavaModalClose();
@@ -633,7 +648,7 @@ namespace bp
 		// again: entering Sources, L1/R1 onto it, the Filter menu)
 		std::unordered_map<std::string, int> mstAvOrder;
 		void mangaAvFreeze(const Player& p);	// Filter › Installed only: Available lists only what is installed
-		void drawAdultChip(int x, int cy);	// "18+" after a source's version	// 0 none, 1 the menu, 2 the languages
+			// 0 none, 1 the menu, 2 the languages
 		std::vector<std::string> mstAvLangs;	// the languages the repositories offer, when the list was opened
 		static constexpr int MST_AV_SHOWN = 6;
 		bool mangaLangShown(const Player& p, const std::string& lang) const;
@@ -665,9 +680,7 @@ namespace bp
 		void drawMangaSources(const Player& p);
 		void drawMangaSourcesPage(const Player& p);	// its header ("Sources"), then the page
 		void drawMangaSourceModal(const Player& p);
-		static constexpr int MS_ROW_TOP = 102, MS_ROWS = 4, MS_ROW_H = 58;
-		Rect mangaSourcesSegRect(int i) const { return {16 + i * 306, 68, 302, 26}; }	// i: 0 Available, 1 Repositories	// under the header (a page of its own)
-		Rect mangaSourcesRowRect(int i) const { return {16, MS_ROW_TOP + i * MS_ROW_H, 608, MS_ROW_H - 4}; }
+		static constexpr int MS_ROWS = 5;	// the keys' paging (the list is the kit's rows)
 		Rect mangaSourcesModalBox() const
 		{
 			int rows = mangaSourcesModalRows();
@@ -711,8 +724,6 @@ namespace bp
 		std::map<std::string, SrcTabState> mangaSrcTabCache;
 		int mangaSrcCursor = 0, mangaSrcScroll = 0, mangaSrcPage = 0;
 		// a finger on the grid: where it went down, the scroll then, whether it has moved (a drag, not a tap)
-		int mangaSrcDragY = -1, mangaSrcDragScroll = 0, mangaSrcDragTap = -1;
-		bool mangaSrcDragMoved = false;
 		void mangaSourceMaybeMore();
 		// a series page's chapter rows shown: six down to the hint bar
 		bool mangaSourceEngineReady() const;	// an extension's series: the manga engine answering (Resume waits for it)
@@ -741,8 +752,6 @@ namespace bp
 		bool mangaSourceSeriesInLib() const;	// the series or its downloads folder in the Library
 		int mserRows() const { return 5; }
 		// the grid's foot: down to the hint bar
-		int mangaSrcClipBottom() const { return 448; }	// near the grid's end (cursor or scroll): its next page asked for
-		Rect mangaSrcStatusRect() const { return {436, 64, 188, 30}; }	// right of the tabs: Loading…, an error (tap: Try again)
 		bool mangaSrcMore = false, mangaSrcLoading = false;
 		std::string mangaSrcError;				// the source's one-line message, while it shows
 		int mangaSrcFailed = 0;					// what A asks again after an error: 0 none, 1 a list, 2 details, 3 a chapter
@@ -815,7 +824,7 @@ namespace bp
 		int mangaBrowseCount(const Player& p) const;	// On this handheld, the servers, the sources
 		const MangaSrcRow* mangaBrowseSourceAt(int i, const Player& p) const;	// i: the sources the setting shows
 		int mangaBrowseServerCount() const;				// the saved servers, as Browse lists them
-		int mangaBrowseSourceStart() const { return mangaNetFoldersCount() + mangaBrowseServerCount() + 2; }	// past the network folders, servers and Manage sources
+		int mangaBrowseSourceStart() const { return mangaNetFoldersCount() + mangaBrowseServerCount() + 3; }	// past the network folders, servers, Sources… and Add a server…
 		const MangaSrcRow* mangaSrcRowFor(const std::string& fullId) const;
 		bool mangaBrowseKey(Button b, Player& p);
 		bool mangaBrowsePointer(const Pointer& pt, int x, int y, Player& p);
@@ -898,7 +907,6 @@ namespace bp
 		bool mangaNetFoldersKey(Button b, Player& p);
 		bool mangaNetFoldersPointer(const Pointer& pt, int x, int y, Player& p);
 		void mangaNetFoldersTap(int i, Player& p);	// a tap on row i: what A does there
-		void drawMangaNetFolders(const Player& p);
 		bool mangaNetFoldersResult(MangaWorker::Result& r, const Player& p);
 		// ---- a source's filters (ui_manga_filters.cpp) ----
 		// filters() is asked once a run per source; SELECT opens its sheet, Apply runs search("", 1, values) on the
@@ -920,29 +928,14 @@ namespace bp
 		static constexpr int MF_ROW_TOP = 118, MF_ROWS = 8, MF_ROW_H = 36;
 		Rect mangaFilterBox() const { return {48, 64, 544, 372}; }
 		Rect mangaFilterRowRect(int i) const { return {64, MF_ROW_TOP + i * MF_ROW_H, 512, MF_ROW_H - 4}; }
-		Rect mangaSrcTabRect(int i) const { return {60 + i * 120, 64, 116, 30}; }
-		// two whole rows of covers with their titles, down to the hint bar (186 apart left a black band under them)
-		static constexpr int MG_SRC_TOP = 104, MG_SRC_STEP = 172, MG_SRC_SER_TOP = 200,
-			MG_SRC_STATUS_Y = 410;
-		// a source's series page: its buttons right under the details line, its chapters right under them
-		static constexpr int MG_SRC_BTN_Y = 104, MG_SRC_SERIES_TOP = 160;
-		// its chapters: 44 high (the app's lists are 48), six to a screen
-		static constexpr int MG_SRC_ROW_H = 44;
-		int mserSrcRows() const { return 6; }
-		Rect mangaSrcCoverRect(int i) const
-		{
-			int row = i / MG_COLS, col = i % MG_COLS;
-			return {16 + col * 124, MG_SRC_TOP + (row - mangaSrcScroll) * MG_SRC_STEP, MG_COVER_W, MG_COVER_H};
-		}
+		int mserSrcRows() const { return 5; }	// (the keys' paging; the list is the kit's rows)
+		static constexpr int MG_SER_ROWS = 5;	// a card series' chapter rows the body holds (lay::seriesPage, lay::rowList)
 		// a source series page's one buttons row, 48 high and single-line glyph + label each (the keys are in the
 		// hints): Resume (A), Download (R2), Refresh (L2), In library (Y); 608 wide with the page's margins
 		// a source series' row of five: Resume, Download, Refresh, Info, Library (mserBtn 0..4)
 		// (Info, its label short, narrower: the others get the room; "Download" at the small size needs 104 of them)
-		static Rect mangaSrcBtn(int i)
-		{
-			static const int X[5] = {16, 148, 280, 412, 500}, Wd[5] = {124, 124, 124, 80, 124};
-			return {X[i], MG_SRC_BTN_Y, Wd[i], 48};
-		}
+		// (screens.js seriesB: Resume 150, Get and Check sharing the rest, Info and the heart 64 each)
+		Rect mangaSrcBtn(int i) const { return mangaSeriesKeys({150, 0, 0, 64, 64})[i]; }
 		Rect mangaSrcResumeRect() const { return mangaSrcBtn(0); }
 		Rect mangaSrcRefreshRect() const { return mangaSrcBtn(2); }
 		Rect mangaSrcInfoRect() const { return mangaSrcBtn(3); }
@@ -1059,18 +1052,20 @@ namespace bp
 		bool mangaServerModalKey(Button b, Player& p);
 		void drawMangaServerModal(const Player& p);
 		std::string mangaServersSignature() const;
-		static constexpr int MGSRV_TOP = 104, MGSRV_STEP = 186, MGSRV_STATUS_Y = 410;
 		// a server's series page keeps its own Resume button: the cards' pages and a source's row differ (the source's
 		// shares its row with Download, Refresh and the heart)
-		Rect mangaServerResumeRect() const { return {16, 144, 220, 48}; }
+		Rect mangaServerResumeRect() const { return mangaSeriesKeys({150, 0})[0]; }
 		static constexpr int MGSRV_FORM_ROWS = 7;	// Kind, Name, Address, User, Password, Test, Save
-		static constexpr int MGSRV_GRID_ROWS_SHOWN = 2, MGSRV_CLIP_TOP = 96, MGSRV_CLIP_BOTTOM = 398;
-		Rect mangaSrvCoverRect(int i) const
+		static constexpr int MGSRV_GRID_ROWS_SHOWN = 2;	// (lay::coverGrid's whole rows in the body)
+		// the server form on the kit, in the shell's body: Kind…Password as form rows (lay::formRow), Test and Save the
+		// two keys at its foot (lay::keyRow), the note over them
+		Rect mangaSrvFormRowRect(int i) const
 		{
-			int row = i / MG_COLS, col = i % MG_COLS;
-			return {16 + col * 124, MGSRV_TOP + (row - mangaSrvScroll) * MGSRV_STEP, MG_COVER_W, MG_COVER_H};
+			lay::Box in = lay::seriesPage(lay::shell().body, false).inner;
+			if (i < 5) return {in.x, in.y + i * (lay::FORM_ROW + lay::SP2), in.w, lay::FORM_ROW};
+			auto keys = lay::keyRow({in.x, in.y + in.h - lay::KEY_ROW_H - lay::SP8, in.w, lay::KEY_ROW_H}, {0, 0});
+			return keys[i - 5];
 		}
-		Rect mangaSrvFormRowRect(int i) const { return {16, 74 + i * 40, 608, 36}; }
 		Rect mangaServerModalBox() const { return {112, 150, 416, 170}; }
 		// On this handheld's series menu: Open, Info, Delete
 		Rect mlocMenuBox() const { return {112, 126, 416, 218}; }
@@ -1157,7 +1152,12 @@ namespace bp
 		void mangaDownloadsOpen(Player& p);		// the tab opened: its lists read, finished queue items cleared
 		void mangaDownloadsReset();				// the app opened: an ask the last session left waits for the worker again
 		void mangaDownloadsTick(Player& p);		// the armed delete and the note time out; a lost worker answer resumes
+		// the spec's keys (screens.js manga-downloads): Y pauses or resumes the row (or all), X is More (Remove from the
+		// queue, Pause all / Resume all, Clear failed; on a series: Delete from the card, asked); a series' chapters
+		// keep theirs. mangaDlKeyBase is the list's own handling, by its older keys (X pause, Y remove)
 		bool mangaDownloadsKey(Button b, Player& p);
+		bool mangaDlKeyBase(Button b, Player& p);
+		void mangaDlMore(Player& p);
 		bool mangaDownloadsPointer(const Pointer& pt, int x, int y, Player& p);
 		bool mangaDownloadsBack();	// B: out of a card series' chapters (true when it went somewhere)
 		void drawMangaDownloads(const Player& p);

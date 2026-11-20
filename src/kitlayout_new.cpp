@@ -339,6 +339,37 @@ namespace bp
 			return {row.x + row.w - SP8 - keyW, row.y + (row.h - h) / 2, keyW, h};
 		}
 
+		std::vector<Box> keyRow(Box area, const std::vector<int>& widths, int gap)
+		{
+			std::vector<Box> out;
+			int n = (int)widths.size(), fixed = 0, flex = 0;
+			for (int w : widths)
+			{
+				if (w > 0) fixed += w;
+				else flex++;
+			}
+			int room = std::max(0, area.w - fixed - gap * std::max(0, n - 1));
+			int share = flex ? room / flex : 0, extra = flex ? room - share * flex : 0;
+			int x = area.x, h = std::min(KEY_ROW_H, area.h);
+			for (int i = 0; i < n; i++)
+			{
+				int w = widths[i] > 0 ? widths[i] : share + (extra-- > 0 ? 1 : 0);
+				out.push_back({x, area.y, w, h});
+				x += w + gap;
+			}
+			return out;
+		}
+
+		SeriesPage seriesPage(Box body, bool keys)
+		{
+			SeriesPage s;
+			s.inner = {body.x + SP12, body.y, std::max(1, body.w - 2 * SP12), body.h};
+			s.keys = keys ? Box{s.inner.x, s.inner.y, s.inner.w, KEY_ROW_H} : Box{s.inner.x, s.inner.y, s.inner.w, 0};
+			int top = keys ? s.keys.y + KEY_ROW_H + SP8 : s.inner.y;
+			s.rows = {s.inner.x, top, s.inner.w, std::max(0, body.y + body.h - top)};
+			return s;
+		}
+
 		ArtistRow artistRow(Box row)
 		{
 			ArtistRow a;
