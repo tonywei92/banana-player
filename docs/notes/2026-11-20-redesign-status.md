@@ -25,11 +25,11 @@ Branch `redesign-2026-11-20` (= `redesign-impl` at the time of writing); the spe
 
 ## Next (in order)
 
-Done since: items 1–8 (Manga fully on the kit, Settings' rows incl. Top screen off for music, Play next, Recent
-by tag, comics ask, photo More). Left:
-1. **Manga:** a source's keys (spec: Y Filters, X More); a source's and a server's pages untried (no source on desktop).
-   The browser's network folders still use the 0.88 scaling.
-2. **Server group copy / move** and **mpv's top-screen song lines font** (open decisions).
+Done since: items 1–8, then the old-UI sweep (dialogs, Sound, Brightness, Manga sheets, every row menu on More
+sheets, one shared keyboard), Network inside Files (L2/R2 rail, L1/R1 tabs), group copy/move with a server, Match
+album art across both panels and the browser pages, the transparent hint bar. web-smoke 202/202 and the Linux
+check pass (2026-11-20). Left: the owner's handheld pass over what was only seen in scripted runs (Manga menus and
+source/server pages, Docs options, server group copy, Top screen off, Picture looks, the reading veil, Slideshow).
 3. **Before a release:** tools/web-smoke.sh, the arm64 Docker check for Linux-only code, README pictures regenerated,
    the owner's go.
 
