@@ -191,7 +191,7 @@ book, five across, by name. **A** (or a tap) opens the book in its own reader �
 comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
 
 The shelf is filled from two places: the books you have opened from anywhere (their places are the readers' own), and
-the folders named **Books** or **Documents** (any capitals) at the top of each card. Every cover is decoded — an
+the folders named **Books**, **Ebook** or **Ebooks** (any capitals; not Documents, whose PDFs are opened from Files) at the top of each card. Every cover is decoded — an
 EPUB's own, a PDF's first page, a comic's first page — on the cover worker (the drawn sleeve, keyed by the name,
 stands in until the answer, and for good for a TXT, which has no picture of its own). **X** is
 **More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in folder**. **◀/▶** page the

@@ -436,20 +436,21 @@ static void testMediaIndex()
 	}
 
 	// ---- the Books shelves' folders, their walk, and the line's words
-	for (const char* n : {"Books", "BOOKS", "Documents", "documents"})
+	for (const char* n : {"Books", "BOOKS", "Ebook", "EBOOKS", "ebooks"})
 		CHECK_EQ(isBookFolderName(n), true);
-	for (const char* n : {"Book", "Docs", "My Books", "books "})
+	for (const char* n : {"Book", "Docs", "Documents", "My Books", "books "})
 		CHECK_EQ(isBookFolderName(n), false);
 	{
 		const char* hadIndex = getenv("BP_INDEX"), *hadBrowse = getenv("BP_BROWSE");
 		setenv("BP_INDEX", C.c_str(), 1);
 		mkdirAt(C + "/Books");
-		mkdirAt(C + "/Documents");
+		mkdirAt(C + "/Ebooks");
+		mkdirAt(C + "/Documents");	// (not a Books folder: Files opens what is there)
 		write(C + "/BOOKS", "a file named like a folder, not one\n");	// (never listed)
 		std::vector<std::string> bf = bookFolders();
 		CHECK_EQ(bf.size(), (size_t)2);
 		CHECK_EQ(bf[0], C + "/Books");
-		CHECK_EQ(bf[1], C + "/Documents");
+		CHECK_EQ(bf[1], C + "/Ebooks");
 		// the walk: every book file under them, however deep; hidden and dotted folders out; by name, natural
 		auto rowNameOf = [](const std::vector<MediaBook>& books, size_t i) {
 			std::string n = books[i].path.substr(books[i].path.rfind('/') + 1);
@@ -464,7 +465,8 @@ static void testMediaIndex()
 		write(C + "/Books/Deep/Paper 10.pdf", "p");	// (natural: 2 before 10)
 		write(C + "/Books/Comic.cbz", "c");
 		write(C + "/Books/cover.jpg", "no");			// (a book file only)
-		write(C + "/Documents/Manual.pdf", "m");
+		write(C + "/Ebooks/Manual.pdf", "m");
+		write(C + "/Documents/Brochure.pdf", "b");	// (never listed)
 		std::vector<MediaBook> books = listBooks(bf);
 		// (a build without pdfium, e.g. the plain Linux check, doesn't read PDFs: the three PDFs aren't books there)
 		if (!isDocumentName("x.pdf"))
@@ -487,7 +489,7 @@ static void testMediaIndex()
 		// the line's words: the folders' kinds as one phrase, and which cards hold them
 		CHECK_EQ(mediaFromWords({C + "/Music", C + "/Musics"}), "Music on this card");
 		CHECK_EQ(mediaFromWords({C + "/Videos", C + "/MOVIES"}), "Videos and Movies on this card");
-		CHECK_EQ(mediaFromWords({C + "/Books", C + "/Documents"}), "Books and Documents on this card");
+		CHECK_EQ(mediaFromWords({C + "/Books", C + "/Ebooks"}), "Books and Ebooks on this card");
 		CHECK_EQ(mediaFromWords({}), "");
 		CHECK_EQ(mediaCards().size(), (size_t)1);
 		// two cards: both words

@@ -242,16 +242,16 @@ namespace bp
 		if (folders.empty()) return "";
 		// the kinds the folders' names stand for, in a fixed order, each once ("Musics" is Music)
 		static const struct { const char* plain; const char* word; } KIND[] = {
-			{"music", "Music"}, {"videos", "Videos"}, {"movies", "Movies"}, {"books", "Books"}, {"documents", "Documents"}};
-		bool seen[5] = {};
+			{"music", "Music"}, {"videos", "Videos"}, {"movies", "Movies"}, {"books", "Books"}, {"ebook", "Ebook"}, {"ebooks", "Ebooks"}};
+		bool seen[6] = {};
 		for (auto& f : folders)
 		{
 			std::string n = lowerAscii(baseName(f));
-			for (int i = 0; i < 5; i++)
+			for (int i = 0; i < 6; i++)
 				if (n == KIND[i].plain) { seen[i] = true; break; }
 		}
 		std::string kinds;
-		for (int i = 0; i < 5; i++)
+		for (int i = 0; i < 6; i++)
 		{
 			if (!seen[i]) continue;
 			if (!kinds.empty()) kinds += " and ";
@@ -270,7 +270,8 @@ namespace bp
 	bool isBookFolderName(const std::string& name)
 	{
 		std::string n = lowerAscii(name);
-		return n == "books" || n == "documents";
+		// (not Documents: it holds brochures and forms as much as books; Files opens those)
+		return n == "books" || n == "ebook" || n == "ebooks";
 	}
 
 	std::vector<std::string> bookFolders()
@@ -278,7 +279,7 @@ namespace bp
 		std::vector<std::string> out;
 		for (auto& card : indexCards())
 		{
-			// every such folder at the top, all as one (a card may have Books and Documents)
+			// every such folder at the top, all as one (a card may have Books and Ebooks)
 			if (DIR* d = opendir(card.c_str()))
 			{
 				std::string prefix = card == "/" ? "/" : card + "/";
@@ -292,6 +293,7 @@ namespace bp
 				closedir(d);
 			}
 		}
+		std::sort(out.begin(), out.end());	// (readdir's order is the file system's)
 		return out;
 	}
 

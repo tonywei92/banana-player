@@ -1,5 +1,5 @@
 // Books (ui_books.h): the Reading now strip and the shelf, built from the readers' places store and the cards'
-// Books and Documents folders. Everything is drawn inside lay::shell().body (the shell draws the rail, the header
+// Books and Ebooks folders. Everything is drawn inside lay::shell().body (the shell draws the rail, the header
 // and the hints); the touches test the same Rects the drawing asked for.
 #include "ui_books.h"
 #include "ui_internal.h"
@@ -82,7 +82,7 @@ namespace bp
 			shelf.push_back({e->path, bookName(e->path), -1});
 			if (reading.size() < 5) reading.push_back({e->path, bookName(e->path), bookProgress(*e)});
 		}
-		// the cards' Books and Documents folders (mediaindex's own walk), merged with the places', by name
+		// the cards' Books and Ebook(s) folders (mediaindex's own walk), merged with the places', by name
 		for (auto& b : listBooks(bookFolders()))
 		{
 			if (!placed.insert(b.path).second) continue;
@@ -168,7 +168,7 @@ namespace bp
 		}
 		h.title = "Books";
 		h.more = true;
-		// the crumb: how much and where from ("21 books · Books and Documents on both cards")
+		// the crumb: how much and where from ("21 books · Books and Ebooks on both cards")
 		h.crumb = std::to_string(shelf.size()) + (shelf.size() == 1 ? " book" : " books") +
 			(fromWords.empty() ? "" : " \xC2\xB7 " + fromWords);
 		return h;
