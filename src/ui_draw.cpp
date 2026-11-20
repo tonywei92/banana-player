@@ -149,6 +149,7 @@ namespace bp
 		std::string k = key + s;
 		auto it = cache.find(k);
 		if (it != cache.end()) return it->second;
+		parts.textMisses++;
 		if (cache.size() > 256)
 		{
 			for (auto& t : cache) SDL_DestroyTexture(t.second);
@@ -667,6 +668,7 @@ namespace bp
 		if (!force && sig == drawn) return;
 		drawn = sig;
 
+		parts = FrameParts{};
 		const uint64_t costT0 = SDL_GetPerformanceCounter();
 		renderPage(p);
 		// the dark veil (ui.cpp's step): over everything, and a count of the seconds left when it warns of Screen off
@@ -681,7 +683,9 @@ namespace bp
 		}
 		const uint64_t costT1 = SDL_GetPerformanceCounter();
 		SDL_RenderPresent(ren);
-		noteDrawCost(p, costT0, costT1, SDL_GetPerformanceCounter());
+		const uint64_t costT2 = SDL_GetPerformanceCounter();
+		parts.present = (costT2 - costT1) * 1000.0 / (double)SDL_GetPerformanceFrequency();
+		noteDrawCost(p, costT0, costT1, costT2);
 	}
 
 	void Ui::noteDrawCost(const Player& p, uint64_t t0, uint64_t t1, uint64_t t2)
@@ -719,11 +723,19 @@ namespace bp
 		}
 		scrollTitles = p.settings.scrollTitles;
 		showHidden = p.settings.showHiddenFolders;
+		// (each part's cost, for the timing lines: Ui::parts)
+		uint64_t at = SDL_GetPerformanceCounter();
+		auto lap = [&at](double& part) {
+			uint64_t now = SDL_GetPerformanceCounter();
+			part += (now - at) * 1000.0 / (double)SDL_GetPerformanceFrequency();
+			at = now;
+		};
 		SDL_SetRenderDrawColor(ren, BG.r, BG.g, BG.b, 255);
 		SDL_RenderClear(ren);
 		// Match album art behind the browser: the canvas's lower half, one copy (the player page draws its own)
 		groundIsBackdrop = !galleryNew && browserBackdrop(p);
 		if (groundIsBackdrop) drawBackdrop(barPlayer(p), BG_LIST);
+		lap(parts.ground);
 		if (galleryNew) { statusHit = {0, 0, 0, 0}; drawGalleryNew(); return; }	// (test only: --press gallery:new)
 		webInd = {0, 0, 0, 0};	// (drawBattery puts it back where it draws it)
 		statusHit = {0, 0, 0, 0};
@@ -745,7 +757,9 @@ namespace bp
 		else if (Area* a = area()) a->draw(p);
 		hdrCapture = false;
 		if (mangaShell) manga->drawShellBody(p);
+		lap(parts.body);
 		if (shellPage) shell->draw(shell->section(p), shell->head(p), p);
+		lap(parts.shell);
 		if (mangaShell) manga->runLater();
 		manga->sheetsLater = false;
 		browse->drawClipBar();
@@ -758,6 +772,20 @@ namespace bp
 		if (kbOpen) drawKeyboard();
 		drawOverlays(p);
 		drawFileJob();	// (over everything: it holds the panel until it ends)
+		lap(parts.rest);
+	}
+
+	std::string Ui::partsLine() const
+	{
+		const FrameParts& f = parts;
+		char buf[240];
+		if (f.composed)
+			snprintf(buf, sizeof buf, "composed: list %.1f (%d rows drawn), present %.1f; %d text misses", f.list,
+				f.rowsDrawn, f.present, f.textMisses);
+		else
+			snprintf(buf, sizeof buf, "ground %.1f, body %.1f (list %.1f, %d rows drawn), shell %.1f, rest %.1f, present %.1f; "
+				"%d text misses", f.ground, f.body, f.list, f.rowsDrawn, f.shell, f.rest, f.present, f.textMisses);
+		return buf;
 	}
 
 	void Ui::drawLoader(int cx, int cy, const std::string& text)

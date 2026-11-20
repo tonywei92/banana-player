@@ -358,6 +358,19 @@ namespace bp
 
 		// redraws when what it would show changed since the last frame
 		void draw(const Player& p, bool force = false);
+		// What the last bottom frame cost, by part (ms by the performance counter): the ground (the clear and the
+		// backdrop), the page's body (and inside it a smooth list's rows), the shell (rail, header, hints), the rest
+		// drawn over them (overlays, the keyboard, the veil), the present; the text lines rendered afresh (a text cache
+		// miss goes through FreeType) and the list rows drawn afresh. main's "timing:" lines print it.
+		struct FrameParts
+		{
+			double ground = 0, body = 0, list = 0, shell = 0, rest = 0, present = 0;
+			int textMisses = 0, rowsDrawn = 0;
+			bool composed = false;	// a scroll frame: only the list's rows composed over the kept frame
+			double total() const { return ground + body + shell + rest + present; }
+		};
+		FrameParts parts;
+		std::string partsLine() const;	// "ground 3.1, body 12.0 (list 9.8, 4 rows drawn), shell 6.2, ..."
 		// the bottom panel's pixels (RGBA, ABGR8888), drawn afresh: screenshots; the caller frees it
 		SDL_Surface* capture(const Player& p);
 

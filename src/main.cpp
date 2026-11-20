@@ -2269,9 +2269,13 @@ int main(int argc, char** argv)
 				Uint32 t0 = SDL_GetTicks();
 				ui.draw(shown(), refresh);
 				Uint32 took = SDL_GetTicks() - t0;
-				if (took >= 30)
-					fprintf(stderr, "timing: bottom panel drawn in %u ms (%s)\n", (unsigned)took,
-						isNetPath(ui.browseFolder()) ? "network folder" : ui.browseFolder().empty() ? "player" : "browser");
+				// (BP_DRAW_TIMING: every frame's line, a computer's frames being far under 30 ms)
+				static const bool everyFrame = getenv("BP_DRAW_TIMING") != nullptr;
+				if (took >= 30 || (everyFrame && ui.parts.total() > 0))
+					fprintf(stderr, "timing: bottom panel drawn in %u ms (%s): %s\n", (unsigned)took,
+						isNetPath(ui.browseFolder()) ? "network folder" : ui.browseFolder().empty() ? "player" : "browser",
+						ui.partsLine().c_str());
+				ui.parts = Ui::FrameParts{};
 			}
 			FrameWatch::end(SDL_GetTicks());
 		}
