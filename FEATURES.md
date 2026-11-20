@@ -1651,3 +1651,9 @@ comes next in the shuffled order). With nothing playing it simply plays the file
 
 A song's card in Recent (Home and All recent) carries the title from its tags when the cards' index has read it (a song
 in a Music folder); any other file, and a song not read yet, keeps its file name.
+
+### Comics ask before stopping a video
+
+A comic (CBZ, CBR, a comic EPUB) opened from Files, Recent or a connection while a video plays or is paused asks first,
+as Manga's row does: **Stay** or **Stop video & open comic** (the video's place waits in Continue). **Don't ask again**
+(or Settings > Manga) stops the video at once. Music and photos are not affected.

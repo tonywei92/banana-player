@@ -1112,7 +1112,7 @@ namespace bp
 		// Opening Manga while a video plays (docs/redesign: manga-guard, ext-section-video): the confirm sheet that
 		// says the video stops, Stay focused and B, with "Don't ask again" (the manga-ask-video setting). Pushed by
 		// the Extensions page's Manga row (MangaGuard in ui_ext.cpp); a song or a photo is never asked about.
-		void askMangaGuard(const Player& p);
+		void askMangaGuard(const Player& p, std::string what = "Manga", std::function<void(Player&)> go = nullptr);
 		struct MangaGuard;
 	private:
 

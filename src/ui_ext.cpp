@@ -398,8 +398,13 @@ namespace bp
 		std::string title, at;	// the video and where it stops ("Sintel", "4:12")
 		int cursor = 0;			// 0 Stay (the safe key), 1 Stop video & open Manga
 		bool dontAsk = false;
+		// what the video stops for: Manga's row (go empty: extStopVideo), or a comic opened from Files / Recent
+		// (go: stops the video and opens it)
+		std::string what = "Manga";
+		std::function<void(Player&)> go;
 
-		MangaGuard(Ui& u, const Player& p) : Overlay(u)
+		MangaGuard(Ui& u, const Player& p, std::string w = "Manga", std::function<void(Player&)> g = nullptr)
+			: Overlay(u), what(std::move(w)), go(std::move(g))
 		{
 			title = videoName(p);
 			at = formatTime(ui.shownPosition(p));
@@ -408,7 +413,7 @@ namespace bp
 
 		std::vector<std::string> lines() const
 		{
-			std::vector<std::string> out = ui.kit->sheetText("Manga needs the memory the video is using, so the two can\xE2\x80\x99t run together.");
+			std::vector<std::string> out = ui.kit->sheetText(std::string(go ? "A comic" : "Manga") + " needs the memory the video is using, so the two can\xE2\x80\x99t run together.");
 			for (auto& l : ui.kit->sheetText(title + " stops at " + at + " and waits in Continue on Home. Music and photos are not affected."))
 				out.push_back(l);
 			return out;
@@ -425,7 +430,8 @@ namespace bp
 				p.setSettings(s);
 				fprintf(stderr, "extensions: Don't ask again, so a video stops without the question\n");
 			}
-			ui.manga->extStopVideo(p);
+			if (go) go(p);
+			else ui.manga->extStopVideo(p);
 		}
 		bool key(Button b, Player& p) override
 		{
@@ -447,9 +453,9 @@ namespace bp
 		void draw(const Player&) override
 		{
 			Kit::ConfirmSpec c;
-			c.title = "Stop the video to open Manga?";
+			c.title = "Stop the video to open " + what + "?";
 			c.safe = "Stay";
-			c.action = "Stop video & open Manga";
+			c.action = "Stop video & open " + (go ? std::string("comic") : what);
 			c.danger = true;	// (red ink: the video stops)
 			c.focus = cursor;
 			c.foot = "Don\xE2\x80\x99t ask again: stop the video without asking";
@@ -463,9 +469,9 @@ namespace bp
 		}
 	};
 
-	void Ui::askMangaGuard(const Player& p)
+	void Ui::askMangaGuard(const Player& p, std::string what, std::function<void(Player&)> go)
 	{
-		pushOverlay(std::make_unique<MangaGuard>(*this, p));
+		pushOverlay(std::make_unique<MangaGuard>(*this, p, std::move(what), std::move(go)));
 	}
 
 	void Ui::Manga::drawMangaIcon(Rect r)

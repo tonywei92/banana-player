@@ -104,6 +104,7 @@ namespace bp
 		std::unique_ptr<ResumeStore> docPlaces;	// (placeOf)
 		bool docPlacesDirty = false;
 		Uint32 docSavedAt = 0;
+		bool comicVideoOk = false;	// the video-stop question was answered (or turned off): the comic opens now
 		bool docLive = false;	// main has opened it (a close after that is the viewer closing)
 		void docPlacesLoad();
 		void docPlacesSave(bool now);
