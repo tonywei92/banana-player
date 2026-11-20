@@ -6,6 +6,7 @@
 // flag each in press/pointer/renderPage: the browser-check message, Files' Info card and the quick settings.
 #include "ui_internal.h"
 #include "ui_manga.h"
+#include "ui_kit.h"
 #include "session_host.h"
 #ifdef BP_WEB
 #include "web/server.h"
@@ -121,16 +122,10 @@ namespace bp
 				(v == LID_INCOGNITO_NOTHING ? "nothing" : v == LID_INCOGNITO_QUIT ? "quits" : "closes all") +
 				" (Settings \xE2\x80\xBA Power & screens).";
 		}
-		Rect box() const
+		int focus = 0, pressed = -1;	// 0 Cancel (the safe key), 1 Turn on
+		std::vector<std::string> lines(const Player& p) const
 		{
-			int lines = (int)ui.wrapText(sentence(), 0, 468 - 56, 4).size();
-			int h = 170 + lines * 24 + 30;
-			return {86, (H - h) / 2 - 10, 468, h};
-		}
-		Rect button(int i) const
-		{
-			Rect b = box();
-			return {b.x + 22 + i * 212, b.y + b.h - 64, 202, 46};
+			return ui.wrapText(sentence() + " " + lidLine(p), F_I14, lay::PANEL_W - 2 * lay::SHEET_PAD - 4, 5);
 		}
 		void turnOn(Player& p)
 		{
@@ -139,37 +134,42 @@ namespace bp
 		}
 		bool key(Button b, Player& p) override
 		{
-			if (b == Button::A) turnOn(p);
+			if (b == Button::Left || b == Button::Right) focus ^= 1;
+			else if (b == Button::A) { if (focus == 1) turnOn(p); else close(); }
 			else if (b == Button::B) close();
 			return false;
 		}
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override
 		{
+			lay::ConfirmSheet l = lay::confirmSheet((int)lines(p).size(), false);
+			if (pt.kind == Pointer::Down)
+			{
+				pressed = l.safe.hit(x, y) ? 0 : l.action.hit(x, y) ? 1 : -1;
+				if (!l.sheet.box.hit(x, y)) { close(); ui.swallowTouch = true; }
+				return false;
+			}
 			if (pt.kind != Pointer::Up) return false;
-			if (button(0).hit(x, y)) close();
-			else if (button(1).hit(x, y)) turnOn(p);
-			else if (!box().hit(x, y)) close();
+			int at = pressed;
+			pressed = -1;
+			if (at == 0 && l.safe.hit(x, y)) close();
+			else if (at == 1 && l.action.hit(x, y)) turnOn(p);
 			return false;
 		}
 		void draw(const Player& p) override
 		{
-			Rect b = box();
-			ui.drawDialog(b, "");
-			ui.drawGlyphMid(G_INCOGNITO, b.x + 40, b.y + 38, ACCENT);
-			ui.drawTextMid("Turn on incognito?", 1, TEXT, b.x + 64, b.y + 38, b.w - 88);
-			auto lines = ui.wrapText(sentence(), 0, b.w - 56, 4);
-			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, DIM_ON, b.x + 28, b.y + 78 + (int)i * 24, b.w - 56);
-			ui.drawTextMid(lidLine(p), 0, DIM, b.x + 28, b.y + 86 + (int)lines.size() * 24, b.w - 56);
-			// Cancel is the safe key: left, yellow, B; Turn on is A
-			for (int i = 0; i < 2; i++)
-			{
-				Rect r = button(i);
-				ui.drawBox(r, i == 0 ? ACCENT : BUTTON, R_BUTTON);
-				ui.drawTextMid(i == 0 ? "Cancel" : "Turn on", 1, i == 0 ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
-			}
-			ui.drawHints({{"B", "Cancel"}, {"A", "Turn on"}});
+			auto ls = lines(p);
+			Kit::ConfirmSpec c;
+			c.title = "Turn on incognito?";
+			c.safe = "Cancel";
+			c.action = "Turn on";
+			c.focus = focus;
+			c.pressed = pressed;
+			ui.kit->confirmSheet(lay::confirmSheet((int)ls.size(), false), c, ls);
 		}
-		std::string signature(const Player&) const override { return sentence() + "|" + std::to_string(ui.webClients()); }
+		std::string signature(const Player&) const override
+		{
+			return sentence() + "|" + std::to_string(ui.webClients()) + "|" + std::to_string(focus) + std::to_string(pressed);
+		}
 	};
 
 	void Ui::askIncognito() { pushOverlay(std::make_unique<IncognitoAsk>(*this)); }
@@ -182,20 +182,6 @@ namespace bp
 
 		AlertBox(Ui& u, const std::string& title, const std::string& text) : Overlay(u), title(title), text(text) {}
 		const char* name() const override { return "alert"; }
-
-		Rect box() const
-		{
-			// as tall as its words
-			int lines = text.empty() ? 0 : (int)ui.wrapText(text, 0, 448 - 56, 4).size();
-			int h = 150 + lines * 24;
-			return {96, (H - h) / 2 - 10, 448, h};
-		}
-
-		Rect okRect() const
-		{
-			Rect b = box();
-			return {W / 2 - 80, b.y + b.h - 66, 160, 46};
-		}
 
 		bool key(Button b, Player&) override
 		{
@@ -211,16 +197,11 @@ namespace bp
 
 		void draw(const Player&) override
 		{
-			Rect b = box();
-			ui.drawDialog(b, "");
-			ui.drawGlyphMid(G_ALERT, b.x + 40, b.y + 38, ACCENT);
-			ui.drawTextMid(title, 1, TEXT, b.x + 64, b.y + 38, b.w - 88);
-			auto lines = ui.wrapText(text, 0, b.w - 56, 4);
-			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, DIM_ON, b.x + 28, b.y + 80 + (int)i * 24, b.w - 56);
-			Rect ok = okRect();
-			ui.drawBox(ok, ACCENT, R_BUTTON);
-			ui.drawTextMid("OK", 1, ON_ACCENT, ok.x + ok.w / 2, ok.y + ok.h / 2, ok.w - 16, 2);
-			ui.drawHints({{"A", "OK"}, {"B", "Close"}});
+			auto lines = ui.kit->sheetText(text);
+			Kit::AlertSpec a;
+			a.title = title;
+			a.text = text;
+			ui.kit->alertSheet(lay::alertSheet((int)lines.size()), a, lines);
 		}
 
 		std::string signature(const Player&) const override { return title + "\n" + text; }
@@ -243,22 +224,14 @@ namespace bp
 				"Keep playing: the sound goes on with the lid shut. Then the power key pauses and plays, and holding a volume key skips.",
 				"Change it any time in Settings \xE2\x80\xBA Power & screens."};
 		}
-		int textHeight() const
+		std::vector<std::string> lines() const
 		{
-			int h = 0;
-			for (auto& t : paragraphs()) h += (int)ui.wrapText(t, 0, 480 - 56, 4).size() * 24 + 10;
-			return h - 10;
+			std::vector<std::string> out;
+			for (auto& t : paragraphs())
+				for (auto& l : ui.wrapText(t, F_I14, lay::PANEL_W - 2 * lay::SHEET_PAD - 4, 3)) out.push_back(l);
+			return out;
 		}
-		Rect box() const
-		{
-			int h = 160 + textHeight();
-			return {80, (H - h) / 2 - 10, 480, h};
-		}
-		Rect button(int i) const
-		{
-			Rect b = box();
-			return {b.x + 24 + i * 222, b.y + b.h - 70, 210, 48};
-		}
+		int pressed = -1;
 		void choose(int i, Player& p)
 		{
 			close();
@@ -277,39 +250,92 @@ namespace bp
 		}
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override
 		{
+			lay::ConfirmSheet l = lay::confirmSheet((int)lines().size(), false);
+			if (pt.kind == Pointer::Down)
+			{
+				pressed = l.safe.hit(x, y) ? 0 : l.action.hit(x, y) ? 1 : -1;
+				return false;
+			}
 			if (pt.kind != Pointer::Up) return false;
-			for (int i = 0; i < 2; i++)
-				if (button(i).hit(x, y)) { choose(i, p); return false; }
-			if (!box().hit(x, y)) choose(0, p);	// outside: as B
+			int at = pressed;
+			pressed = -1;
+			if (at == 0 && l.safe.hit(x, y)) choose(0, p);
+			else if (at == 1 && l.action.hit(x, y)) choose(1, p);
+			else if (at < 0 && !l.sheet.box.hit(x, y)) choose(0, p);	// outside: as B
 			return false;
 		}
 		void draw(const Player&) override
 		{
-			Rect b = box();
-			ui.drawDialog(b, "");
-			ui.drawGlyphMid(G_MOON, b.x + 40, b.y + 38, ACCENT);
-			ui.drawTextMid("When you close the lid", 1, TEXT, b.x + 64, b.y + 38, b.w - 88);
-			int y = b.y + 80;
-			for (auto& t : paragraphs())
-			{
-				for (auto& line : ui.wrapText(t, 0, b.w - 56, 4))
-				{
-					ui.drawTextMid(line, 0, DIM_ON, b.x + 28, y, b.w - 56);
-					y += 24;
-				}
-				y += 10;
-			}
-			for (int i = 0; i < 2; i++)
-			{
-				Rect r = button(i);
-				bool at = i == cursor;
-				ui.drawBox(r, at ? ACCENT : BUTTON, R_BUTTON);
-				ui.drawTextMid(i ? "Keep playing" : "Pause", 1, at ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
-			}
-			ui.drawHints({{"A", "Choose"}, {"B", "Pause"}});
+			auto ls = lines();
+			Kit::ConfirmSpec c;
+			c.title = "When you close the lid";
+			c.safe = "Pause";
+			c.action = "Keep playing";
+			c.focus = cursor;
+			c.pressed = pressed;
+			ui.kit->confirmSheet(lay::confirmSheet((int)ls.size(), false), c, ls);
 		}
-		std::string signature(const Player&) const override { return std::to_string(cursor); }
+		std::string signature(const Player&) const override { return std::to_string(cursor) + std::to_string(pressed); }
 	};
+
+	// Home's B: Cancel is the safe key (B, or a tap outside), Quit the red action
+	struct Ui::QuitAsk : Ui::Overlay
+	{
+		int focus = 0, pressed = -1;	// 0 Cancel, 1 Quit
+
+		explicit QuitAsk(Ui& u) : Overlay(u) {}
+		const char* name() const override { return "quitask"; }
+		std::vector<std::string> lines(const Player& p) const
+		{
+			return ui.kit->sheetText(ui.nowPlayable(p) ? "What's playing stops." : "Banana Player closes.");
+		}
+		void act()
+		{
+			close();
+			ui.quitRequested = true;
+		}
+		bool key(Button b, Player&) override
+		{
+			if (b == Button::Left || b == Button::Right || b == Button::Up || b == Button::Down) focus ^= 1;
+			else if (b == Button::A) { if (focus == 1) act(); else close(); }
+			else if (b == Button::B || b == Button::Start) close();
+			return false;
+		}
+		bool pointer(const Pointer& pt, int x, int y, Player& p) override
+		{
+			lay::ConfirmSheet l = lay::confirmSheet((int)lines(p).size(), false);
+			if (pt.kind == Pointer::Down)
+			{
+				pressed = l.safe.hit(x, y) ? 0 : l.action.hit(x, y) ? 1 : -1;
+				if (!l.sheet.box.hit(x, y)) { close(); ui.swallowTouch = true; }
+				return false;
+			}
+			if (pt.kind != Pointer::Up) return false;
+			int at = pressed;
+			pressed = -1;
+			if (at == 0 && l.safe.hit(x, y)) close();
+			else if (at == 1 && l.action.hit(x, y)) act();
+			return false;
+		}
+		void draw(const Player& p) override
+		{
+			auto ls = lines(p);
+			Kit::ConfirmSpec c;
+			c.title = "Quit Banana Player?";
+			c.safe = "Cancel";
+			c.action = "Quit";
+			c.danger = true;
+			c.focus = focus;
+			c.pressed = pressed;
+			ui.kit->confirmSheet(lay::confirmSheet((int)ls.size(), false), c, ls);
+		}
+		std::string signature(const Player& p) const override
+		{
+			return std::to_string(focus) + std::to_string(pressed) + std::to_string(ui.nowPlayable(p));
+		}
+	};
+
+	void Ui::askQuit() { pushOverlay(std::make_unique<QuitAsk>(*this)); }
 
 	void Ui::askLid()
 	{

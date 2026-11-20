@@ -239,7 +239,7 @@ namespace bp
 		if (id == SEL_CANCEL) return browse->playlists->selMode == SEL_PICK ? Rect{24, 428, 288, 44} : Rect{228, 428, 184, 44};
 		if (id == MOVE_CANCEL) return {24, 428, 288, 44};
 		if (id == MOVE_DONE) return {328, 428, 288, 44};
-		if (id == BUSY_CANCEL) return {152, 224, 336, 46};
+		if (id == BUSY_CANCEL) { lay::Box k = lay::busySheet().key; return {k.x, k.y, k.w, k.h}; }
 		if (id == WEB_NEWPIN) return {296, 384, 152, 52};
 		if (id == WEB_OFF) return {464, 384, 152, 52};
 		if (id >= PHOTO_BTN) return {0, 0, 0, 0};	// photoBtn's: they move with the pan area

@@ -347,8 +347,6 @@ namespace bp
 		// the error each asker last had a dialog for (0: a source's lists and series, 1: the reader's pages); forgotten
 		// once that asker's error clears (the source asked again), so the same error after a reopen is said again
 		std::string mangaErrFor[2], mangaErrText;
-		Rect mangaErrBox() const { return {96, 120, 448, 220}; }
-		Rect mangaErrOk() const { return {240, 280, 160, 44}; }
 		void mangaErrCheck(const std::string& error, bool anyError = false, int asker = 0);	// anyError: not only a browser check
 		void drawMangaErr();	// a video outside the reader asked the manga engine to stop (once)
 		void mangaVideoGuard(Player& p);	// (ui_manga_java.cpp)	// a video stopped because the extensions run: the notice says so a moment

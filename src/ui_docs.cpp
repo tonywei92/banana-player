@@ -364,12 +364,13 @@ namespace bp
 		// a search running: over everything, how far, B stops it
 		if (findJob)
 		{
-			Rect box{100, 170, 440, 140};
-			ui.drawDialog(box, "Finding\u2026");
-			ui.drawTextMid("\u201C" + findQuery + "\u201D", 1, TEXT, W / 2, box.y + 70, box.w - 40, 2);
-			Rect track{box.x + 30, box.y + 96, box.w - 60, 10};
-			ui.drawLevel(track, track.w * findJob->permille / 1000, TRACK, ACCENT);
-			ui.drawHints({{"B", "Stop"}});
+			Kit::BusySpec b;
+			b.title = "Finding\u2026";
+			b.file = "\u201C" + findQuery + "\u201D";
+			b.share = findJob->permille / 1000.0;
+			b.left = std::to_string(findJob->permille / 10) + "%";
+			b.key = "Stop";
+			ui.kit->busySheet(lay::busySheet(), b);
 		}
 	}
 

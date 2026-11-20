@@ -2636,8 +2636,6 @@ namespace bp
 			snprintf(hb, sizeof hb, "|home%d %d %d %ld %d %zu %d", homeView->homeZone, homeView->homeStrip, homeView->homeGrid, std::lround(homeView->stripOff), homeView->homePress,
 				homeView->recent.size(), ui.netStore ? ui.netStore->version() : -1);
 			s += hb;
-			// B's quit dialog over it, and the row it has the focus on
-			s += std::string("|quit") + std::to_string(homeView->quitOpen) + std::to_string(homeView->quitCursor);
 		}
 		// Home's and All recent's own new state (the kind filter, what a finger is on, the Continue card's words)
 		if (atHome() || browseDir == RECENT) s += homeView->sig(p);

@@ -1655,12 +1655,11 @@ namespace bp
 
 	void Ui::Playlists::drawBusy()
 	{
-		Rect box{136, 132, 368, 168};
-		ui.drawDialog(box, "Reading folder\xE2\x80\xA6");
-		ui.drawTextMid(folderName(addPending.dir), 0, DIM, W / 2, box.y + 64, 328, 2);
-		Rect c = ui.buttonRect(BUSY_CANCEL);
-		ui.drawDialogRow(c, &G_CROSS, "Cancel", true, ui.pressedBtn == BUSY_CANCEL, TEXT);
-		ui.drawHints({{"B", "Cancel"}});
+		Kit::BusySpec b;
+		b.title = "Reading folder\xE2\x80\xA6";
+		b.file = folderName(addPending.dir);
+		b.pressed = ui.pressedBtn == BUSY_CANCEL;
+		ui.kit->busySheet(lay::busySheet(), b);
 	}
 
 	// ---- playlists edited from the web dashboard ----

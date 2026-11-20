@@ -1152,6 +1152,8 @@ namespace bp
 		// the first start with no lid-close in settings.conf: what closing the lid does, asked once (Pause first);
 		// the answer is saved, so it isn't asked again (LidAskBox in ui_overlay.cpp)
 		void askLid();
+		void askQuit();	// Home's B: Quit Banana Player? (the kit's confirm sheet)
+		struct QuitAsk;
 		struct LidAskBox;
 		// Opening Manga while a video plays (docs/redesign: manga-guard, ext-section-video): the confirm sheet that
 		// says the video stops, Stay focused and B, with "Don't ask again" (the manga-ask-video setting). Pushed by

@@ -860,14 +860,11 @@ namespace bp
 
 	void Ui::Manga::drawMangaErr()
 	{
-		Rect b = mangaErrBox();
-		ui.drawDialog(b, "Can\xE2\x80\x99t open this");
-		std::vector<std::string> lines = ui.wrapText(mangaErrText, 0, b.w - 48, 4);
-		for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, TEXT, W / 2, b.y + 78 + (int)i * 22, b.w - 40, 2);
-		Rect ok = mangaErrOk();
-		ui.drawBox(ok, ACCENT, R_BUTTON);
-		ui.drawTextMid("OK", 1, ON_ACCENT, ok.x + ok.w / 2, ok.y + ok.h / 2, ok.w - 16, 2);
-		ui.drawHints({{"A", "OK"}});
+		std::vector<std::string> lines = ui.kit->sheetText(mangaErrText);
+		Kit::AlertSpec a;
+		a.title = "Can\xE2\x80\x99t open this";
+		a.text = mangaErrText;
+		ui.kit->alertSheet(lay::alertSheet((int)lines.size()), a, lines);
 	}
 
 	void Ui::Manga::mangaBrowsePoll(const Player& p)
