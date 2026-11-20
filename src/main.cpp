@@ -2052,6 +2052,8 @@ int main(int argc, char** argv)
 					}
 					Updater::State us = updater.state();
 					h.updating = us == Updater::State::Downloading;
+					// (Settings: Stay awake for copies and downloads: off, they no longer hold the sleep)
+					if (!player.settings.stayAwakeJobs) h.fileJob = h.mangaDownloads = h.mangaEngine = h.updating = false;
 #ifdef BP_WEB
 					h.browserOut = webServer && webServer->running() && ui.pageIsOut() && ui.pagePlaying();
 					h.webActive = webServer && webServer->running() && webServer->activeWithin(120000);

@@ -916,6 +916,10 @@ namespace bp
 		// the finger may shift this far along the track without moving the slider (landing, lifting)
 		static constexpr int SLIDE_SLACK = 6;
 		BottomPanel panel;
+		// the dark veil over the bottom panel (Settings: Dim before turning off, Dim the controls while reading): its
+		// alpha, the seconds the first still counts down (-1: none), and whether a press or touch only lifts it
+		int veilAlpha = 0, veilSecs = -1;
+		bool veilCancels = false;
 		bool swallowTouch = false;	// the touch that woke the panel: it presses nothing
 		int pressedBtn = -1;		// a touch button under the finger: it acts when the finger lifts on it
 		bool listTouch = false, listScrolled = false;	// a finger on a track list: a tap chooses, a drag scrolls

@@ -209,6 +209,7 @@ namespace bp
 			for (size_t i = 1; i <= o.stateDir.size(); i++)
 				if (i == o.stateDir.size() || o.stateDir[i] == '/') mkdir(o.stateDir.substr(0, i).c_str(), 0755);
 			settings = parseSettings(readFile(o.stateDir + "/settings.conf"));
+			for (int i = 0; i < 4; i++) videoAdj[i] = settings.videoAdjust[i];
 			resume.parse(readFile(o.stateDir + "/resume.tsv"));
 			if (settings.keepHistory) played.parse(readFile(o.stateDir + "/history.tsv"));
 		}
@@ -663,7 +664,8 @@ namespace bp
 		else
 		{
 			exif = ExifInfo();
-			prop("vf", "");
+			// the Settings' Picture look (a film only: a song's picture is its art or its visualizer)
+			prop("vf", isAudio ? "" : pictureLookFilter(settings.pictureLook));
 			for (auto& a : aspectProperties(aspect)) prop(a.first, a.second);
 			// the Picture sheet's Adjust, kept for every video while the app runs (0: the film as it is); never a
 			// song's album art or visualizer
@@ -1641,6 +1643,8 @@ namespace bp
 		i = std::clamp(i, 0, 3);
 		v = std::clamp(v, -100.0, 100.0);
 		videoAdj[i] = v;
+		settings.videoAdjust[i] = (int)std::lround(v);
+		if (!opts.stateDir.empty()) writeFile(opts.stateDir + "/settings.conf", serializeSettings(settings));	// (writeFile spaces a burst out)
 		static const char* NAMES[4] = {"brightness", "contrast", "saturation", "gamma"};
 		mpv_set_property_async(mpv, 0, NAMES[i], MPV_FORMAT_DOUBLE, &v);
 		fprintf(stderr, "video: adjust %s %.0f\n", NAMES[i], v);

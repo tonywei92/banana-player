@@ -194,7 +194,14 @@ namespace bp
 		// keys while it shows
 		// any key restarts Screen off's count, an overlay's too (Settings, a sheet): before, the B that closed Settings
 		// after a while in it left the count where it was, and the bottom panel went dark at once
+		// the dim before Screen off: a press only cancels it (the count restarts below)
+		bool veiled = veilCancels && veilAlpha > 0;
 		webInputAt = SDL_GetTicks();
+		if (veiled)
+		{
+			veilAlpha = 0;
+			return false;
+		}
 		if (topOverlay()) return overlayKey(b, p);
 		sameBrightness = p.settings.sameBrightness;
 		mangaOn = p.settings.mangaOn;
@@ -477,6 +484,27 @@ namespace bp
 		if (offSecs > 0 && panel.on() && p.playing() && !viewing && !p.paused && !p.loading() && p.error.empty() &&
 			!kbOpen && !topOverlay() && !popupShown(p) && !slide.on && SDL_GetTicks() - webInputAt >= (Uint32)offSecs * 1000)
 			panel.set(false);
+		// the veil: the last 5 s before that Screen off (a third of the brightness, counting down; a press only lifts
+		// it), or the reading's own dim after its idle time (a touch lifts it and still turns the page)
+		{
+			Uint32 idle = SDL_GetTicks() - webInputAt;
+			int a = 0, secs = -1;
+			bool cancels = false;
+			bool offWait = offSecs > 0 && panel.on() && p.playing() && !viewing && !p.paused && !p.loading() && p.error.empty() &&
+				!kbOpen && !topOverlay() && !popupShown(p) && !slide.on;
+			if (p.settings.dimBeforeOff && offWait && offSecs > 5 && idle + 5000 >= (Uint32)offSecs * 1000)
+			{
+				a = 170;
+				secs = std::max(1, (int)((Uint32)offSecs * 1000 - std::min(idle, (Uint32)offSecs * 1000) + 999) / 1000);
+				cancels = true;
+			}
+			else if (int rs = screenOffSeconds(p.settings.readDimAfter); rs > 0 && panel.on() &&
+				(pageReader->readerStatus.open || (docs && docs->textStatus.open)) && !kbOpen && !topOverlay() && idle >= (Uint32)rs * 1000)
+				a = 200;
+			veilAlpha = a;
+			veilSecs = secs;
+			veilCancels = cancels;
+		}
 		// a dragged row near the list's top or bottom: the list scrolls under it, a row each 150 ms
 		if (browse->playlists->plDrag.on && page == Page::Browse && isPlDir(browse->browseDir) && SDL_GetTicks() - browse->playlists->plDrag.scrollAt >= 150)
 		{
@@ -570,7 +598,14 @@ namespace bp
 	bool Ui::pointer(const Pointer& pt, Player& p)
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
+		bool veiled = veilCancels && veilAlpha > 0;
 		webInputAt = SDL_GetTicks();
+		if (veiled)
+		{
+			veilAlpha = 0;
+			if (pt.kind == Pointer::Down) swallowTouch = true;
+			return false;
+		}
 		// The shell's pages in the handheld's log: where a touch began and which section it did (the rebuilt pages log
 		// their drags and taps too, so a finger that does nothing leaves the line that says where it stopped)
 		if (pt.kind == Pointer::Down && shell->page(page))
@@ -917,7 +952,7 @@ namespace bp
 		photo += fileJobSignature();
 		photo += shell->signature(p);	// the rail's section and warning, the frame's pressed piece, the shell's mini bar
 		if (Area* a = area()) photo += a->signature(p);
-		return buf + photo + overlaySignature(p) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + manga->extNoticeText() + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (page == Page::Settings && settingsOver ? "|set1" : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
+		return buf + photo + overlaySignature(p) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + manga->extNoticeText() + "|veil" + std::to_string(veilAlpha) + "," + std::to_string(veilSecs) + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (page == Page::Settings && settingsOver ? "|set1" : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + sound->eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string((int)kbShift) + (kbSymbols ? "s" : "") + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");
 	}
 }

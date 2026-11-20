@@ -75,6 +75,11 @@ namespace bp
 	// the clock in the bottom panel's header
 	enum ClockMode { CLOCK_24, CLOCK_12, CLOCK_OFF, CLOCKS };
 	// the bottom panel dark by itself after that long without a touch or a button, while a song or video plays (never)
+	// the default picture look of every video (Settings > Playback > Picture look): a mpv filter on the film, none on a
+	// song or a photo
+	enum PictureLook { LOOK_OFF, LOOK_SHARPEN, LOOK_SOFTEN, LOOK_SCANLINES, LOOK_LCD, LOOK_RETRO, PICTURE_LOOKS };
+	// the mpv `vf` text of a look ("" for Off)
+	const char* pictureLookFilter(int look);
 	enum ScreenOffAfter { SOFF_NEVER, SOFF_15, SOFF_30, SOFF_60, SOFF_120, SOFF_300, SCREEN_OFFS };
 	int screenOffSeconds(int v);	// 0: never
 	const char* screenOffLabel(int v);	// "Never", "15 seconds", "1 minute"...
@@ -175,6 +180,16 @@ namespace bp
 		// the bottom panel off by itself (Settings › Power & screens) while a song or video plays and nothing is touched
 		int screenOffAfter = SOFF_30;		// while a song plays
 		int screenOffVideo = SOFF_30;		// while a video plays: a dark bottom panel keeps the eye on the film; Never for those who want its controls lit (issue #5)
+		// the bottom panel dimmed (not off) for the last 5 s before Screen off: a warning that a touch only cancels
+		bool dimBeforeOff = true;
+		// reading (a book, a comic, a document): the bottom panel veiled after that long untouched (a touch lifts it)
+		int readDimAfter = SOFF_60;
+		// a copy, a download or an update holds the handheld awake (the player's idle sleep: idlesleep.h)
+		bool stayAwakeJobs = true;
+		// the film's look, kept (Settings > Playback > Picture look)
+		int pictureLook = LOOK_OFF;
+		// the Picture sheet's Adjust: brightness, contrast, saturation, gamma (-100..100), kept between runs
+		int videoAdjust[4] = {0, 0, 0, 0};
 		// photos: the next one opens at the zoom (and the place in it) the last was left at; off: each at its size
 		bool keepPhotoZoom = true;
 		// the photo's pan area on the bottom panel: the left half (the default) or the right

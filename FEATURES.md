@@ -389,7 +389,7 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 - **Adjust** (a video's **Picture** sheet, last row): **Brightness**, **Contrast**, **Saturation** and **Gamma** for a
   film that is too dark, flat or loud in colour; **LEFT / RIGHT** change the focused one, **A** puts it back to 0,
   **X** resets all four, **B** or **‹** goes back to **Picture**. The film on the top screen changes as they move.
-  They stay for every video while the app runs, and never touch a photo.
+  They are kept in the settings file, for every video from one run to the next, and never touch a photo.
 - **The Next line** along the bottom names what plays after this: its length once the lists have probed it, else its
   place in the list ("2 of 7"; "shuffled" with Shuffle on), **A new shuffled round** at a round's end, **Nothing after
   this** at the end of a list played in order. A tap opens the List sheet on Up next, as **Y** does.
@@ -854,6 +854,7 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | **Playback** | Remember position | On | Reopening a video continues where you stopped (songs always start from the beginning) |
 | | Remember audio track | On | Keeps each file's audio track; a new file starts in the language you chose last |
 | | Remember subtitles | On | The same, for subtitles |
+| | Picture look | Off | A look on every video: Sharpen, Soften, Scanlines, LCD grid or Retro (a software filter, read when a film opens; songs and photos are left as they are) |
 | | Max volume | 120% | How far the volume keys (and the player's **UP / DOWN**) go on the handheld: 100%, 120% or 150%. Past 100% (the handheld's own top) the player turns the sound up itself, 5% a press, for films mixed quiet; the volume card marks 100% and shows the rest in yellow, red past 120%, and the first time past 120% a warning says it can damage your hearing and the speakers. Down takes that off first. It starts again at 100% each time the player opens. The web dashboard's handheld volume goes as far; a browser playing the sound itself keeps its own 0–100%. Two volumes, each its own: while a browser plays the sound, the handheld's volume keys turn that browser's volume (the card says **Browser volume**) and leave the handheld's as it was; the dashboard's volume shows both then (**Browser volume**, **Handheld volume**), and moving one never moves the other |
 | | Button hotkeys | On | Off: buttons can't pause, skip or close while something plays (touch still can) |
 | **Subtitles** | Font, size, colour, border, border colour, text encoding | Inter, Medium, White, Normal, Black, Auto | How plain subtitles (SRT, VTT…) look, with a live preview. Styled subtitles (ASS/SSA) keep their own look. **Text encoding** is how a subtitle file's letters are read, on the handheld and in the browser: Auto reads UTF-8, and guesses an older code page (a file named for its language, like `movie.sl.srt`, tries that language's first); if letters like š, č or ж still come out wrong, pick the file's: Central European (Windows-1250, ISO-8859-2, DOS 852), Cyrillic (Windows-1251, KOI8-R), Greek, Turkish, Baltic, Hebrew, Arabic or Western. A subtitle showing changes at once. |
@@ -864,6 +865,7 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | **Reading** | Font, Text size, Line spacing, Margins, Colours | Serif, Large, Normal, Normal, Match theme | The defaults for every TXT and EPUB; each book's own SELECT › Text sheet still overrides them for that book. Five text sizes; Medium is the smallest that reads comfortably on the handheld |
 | | Text opens as | Scroll | Scroll down the page, or Book: held sideways with a page on each screen |
 | | PDF opens as | Single page | Single page, or Strip: a PDF's pages one after another |
+| | Dim the controls while reading | 1 minute | A book, comic or document open: this screen dims after that long untouched; a touch lifts it and still turns the page. Never turns it off |
 | **Files & history** | Remember last folder | Off | The file list opens where you last were |
 | | Show hidden folders | Off | Shows folders you've hidden (they contain a `.hidden` file), so you can unhide them |
 | | Keep play history | On | Keeps Recent. Turning it off also deletes the history |
@@ -874,6 +876,8 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | | Same for both screens | On | One brightness for both screens; off, each its own |
 | | Screen off (music) | 30 seconds | While a song plays, the bottom screen turns off by itself after that long without a touch or a button: Never, 15 or 30 seconds, 1, 2 or 5 minutes. Not while paused, and never while a photo or a comic is shown. A touch or any button brings it back |
 | | Screen off (video) | 30 s | The same while a video plays; Never keeps its seek bar, tracks and subtitles lit and ready to touch |
+| | Dim before turning off | On | The last 5 seconds before Screen off: this screen drops to about a third and counts down; a press or touch then only cancels |
+| | Stay awake for copies and downloads | On | A copy, a move, a chapter download or an update holds off the handheld's own sleep until it is done |
 | | When the lid closes | Pause | What closing the lid does, with something playing or stopped. See [Lid and sleep](#controls) |
 | | Power key, lid shut | Play / pause | With the lid shut and **Keep playing**: Play / pause (a press plays or pauses, a 2 s hold sleeps) or Sleep (the key stays BananaOS's: a press sleeps, as with the lid open). At 45% with its reason while the lid is set to Pause |
 | | Volume keys, lid shut | Volume and skip | With the lid shut and **Keep playing**: a press is one volume step; Volume and skip holds 0.6 s for next (+) / previous (-), Volume only holds as with the lid open (the player never takes the keys). At 45% with its reason while the lid is set to Pause |

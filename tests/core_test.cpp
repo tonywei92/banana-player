@@ -7414,9 +7414,23 @@ static void testSettingsTable()
 	CHECK_EQ(std::string(defs[*(lid + 4)].key), "lid-incognito");
 	// the readers' choices moved to Reading from no page at all
 	auto reading = settingsOfGroup(SG_READING);
-	CHECK_EQ(reading.size(), (size_t)7);
+	CHECK_EQ(reading.size(), (size_t)8);
 	CHECK_EQ(std::string(defs[reading.front()].key), "text-font");
-	CHECK_EQ(std::string(defs[reading.back()].key), "pdf-view");
+	CHECK_EQ(std::string(defs[reading.back()].key), "read-dim-after");	// (Dim the controls while reading, last)
+	// the Picture sheet's Adjust and the picture look are kept in the file; a look is a filter, Off none
+	{
+		Settings a;
+		a.videoAdjust[1] = -15;
+		a.videoAdjust[3] = 20;
+		a.pictureLook = LOOK_SCANLINES;
+		Settings b = parseSettings(serializeSettings(a));
+		CHECK_EQ(b.videoAdjust[1], -15);
+		CHECK_EQ(b.videoAdjust[3], 20);
+		CHECK_EQ(b.pictureLook, (int)LOOK_SCANLINES);
+		CHECK_EQ(std::string(pictureLookFilter(LOOK_OFF)), "");
+		CHECK_EQ(std::string(pictureLookFilter(LOOK_SHARPEN)).empty(), false);
+		CHECK_EQ(serializeSettings(Settings()).find("video-adjust"), std::string::npos);	// (all 0: not written)
+	}
 	auto files = settingsOfGroup(SG_FILES);
 	CHECK_EQ(files.size(), (size_t)4);
 	CHECK_EQ(std::string(defs[files[1]].key), "show-hidden-folders");	// (not the file's order: its row's)

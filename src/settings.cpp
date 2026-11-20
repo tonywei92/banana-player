@@ -1,3 +1,4 @@
+#include <cstdio>
 #include "settings.h"
 #include "theme.h"
 #include "viz_more.h"
@@ -68,6 +69,37 @@ namespace bp
 	{
 		int k = v >= 0 && v < MANGA_CACHES ? v : MANGA_CACHE_DEFAULT;
 		return (uint64_t)MANGA_CACHE_MB[k] * 1024 * 1024;
+	}
+
+	static const char* LOOK_IDS[PICTURE_LOOKS] = {"off", "sharpen", "soften", "scanlines", "lcd-grid", "retro"};
+	static const char* LOOK_LABELS[PICTURE_LOOKS] = {"Off", "Sharpen", "Soften", "Scanlines", "LCD grid", "Retro"};
+
+	// One software filter each (decoding is software only, so no shader: a GLES 2 chip's GPU stays with the picture).
+	// The lines and cells are in the film's own pixels, so they are an approximation of the spec's panel pixels.
+	const char* pictureLookFilter(int look)
+	{
+		switch (look)
+		{
+		case LOOK_SHARPEN: return "lavfi=[unsharp=5:5:0.9:5:5:0.0]";
+		case LOOK_SOFTEN: return "lavfi=[unsharp=5:5:-0.7:5:5:0.0]";
+		case LOOK_SCANLINES: return "lavfi=[drawgrid=w=0:h=4:t=2:c=black@0.35]";
+		case LOOK_LCD: return "lavfi=[drawgrid=w=4:h=4:t=1:c=black@0.3]";
+		case LOOK_RETRO: return "lavfi=[drawgrid=w=0:h=4:t=2:c=black@0.3,eq=saturation=1.2:contrast=1.05]";
+		}
+		return "";
+	}
+
+	static void readVideoAdjust(Settings& s, const std::string& v)
+	{
+		int a[4];
+		if (sscanf(v.c_str(), "%d,%d,%d,%d", &a[0], &a[1], &a[2], &a[3]) == 4)
+			for (int i = 0; i < 4; i++) s.videoAdjust[i] = std::clamp(a[i], -100, 100);
+	}
+	static bool writeVideoAdjust(const Settings& s, std::string& v)
+	{
+		if (!s.videoAdjust[0] && !s.videoAdjust[1] && !s.videoAdjust[2] && !s.videoAdjust[3]) return false;
+		v = std::to_string(s.videoAdjust[0]) + "," + std::to_string(s.videoAdjust[1]) + "," + std::to_string(s.videoAdjust[2]) + "," + std::to_string(s.videoAdjust[3]);
+		return true;
 	}
 
 	int screenOffSeconds(int v)
@@ -637,6 +669,15 @@ namespace bp
 			// (not round: Never at one end, 5 minutes at the other)
 			D::choice("screen-off", &Settings::screenOffAfter, SCREEN_OFF_IDS, SCREEN_OFFS)
 				.page(SG_SCREEN, 40, "Screen off (music)", "While a song plays, this screen goes dark after that long untouched. A touch brings it back.").shownAs(SCREEN_OFF_LABELS),
+			D::flag("dim-before-off", &Settings::dimBeforeOff)
+				.page(SG_SCREEN, 55, "Dim before turning off", "For the last 5 seconds of Screen off's timer this screen drops to a third of its brightness and counts down. A press or a touch then only cancels. Turned off by hand: no warning."),
+			D::flag("stay-awake-jobs", &Settings::stayAwakeJobs)
+				.page(SG_SCREEN, 128, "Stay awake for copies and downloads", "A copy, a move, a chapter download or an update keeps the handheld from sleeping on its own until it is done. Off: it may sleep in the middle."),
+			D::choice("read-dim-after", &Settings::readDimAfter, SCREEN_OFF_IDS, SCREEN_OFFS)
+				.page(SG_READING, 90, "Dim the controls while reading", "While a book, a comic or a document is open, this screen dims after that long untouched. A touch brings it back, and is still a page turn.").shownAs(SCREEN_OFF_LABELS),
+			D::choice("picture-look", &Settings::pictureLook, LOOK_IDS, PICTURE_LOOKS)
+				.page(SG_PLAYBACK, 35, "Picture look", "A look on every video: Sharpen, Soften, Scanlines, LCD grid or Retro. Songs and photos are left as they are. Software filters: a heavy film may stutter.").shownAs(LOOK_LABELS).stepped(true),
+			D::custom("video-adjust", readVideoAdjust, writeVideoAdjust),
 			D::choice("screen-off-video", &Settings::screenOffVideo, SCREEN_OFF_IDS, SCREEN_OFFS)
 				.page(SG_SCREEN, 50, "Screen off (video)", "While a video plays, this screen goes dark after that long untouched. A touch brings it back.").shownAs(SCREEN_OFF_LABELS),
 			D::flag("lid-close", &Settings::lidKeepPlaying, "pause", "keep-playing")
