@@ -2212,13 +2212,17 @@ int main(int argc, char** argv)
 					indexWorker->refresh();
 				}
 			}
-			// the media index's walk waits out whatever has the card: a file opening (its seeks and its decode), a
-			// video's picture, the Manga engine while the reader is on. Music never stops it, and neither does a photo
+			// the media index's walk waits out whatever has the card: a file opening (its seeks and its decode) and a
+			// video's picture. Music never stops it, and neither does a photo. (Not the Manga switch: it is a lasting
+			// setting, so with Manga on the walk waited for ever and Videos / Music said "Reading …" with no end)
 			{
 				static bool indexBusy = false;
-				bool busy = player.loading() || player.settings.mangaOn ||
-					(player.playing() && !player.playingAudio() && !player.playingPhoto());
-				if (busy != indexBusy) indexWorker->setBusy(indexBusy = busy);
+				bool busy = player.loading() || (player.playing() && !player.playingAudio() && !player.playingPhoto());
+				if (busy != indexBusy)
+				{
+					indexWorker->setBusy(indexBusy = busy);
+					fprintf(stderr, "media index: walk %s\n", busy ? "waits (a file opening or a video)" : "goes on");
+				}
 			}
 #ifdef BP_WEB
 			// the cards changed (a second card put in or taken out): the dashboard's places follow
