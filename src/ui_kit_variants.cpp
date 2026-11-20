@@ -1181,7 +1181,7 @@ namespace bp
 			n2.second = "12 of 40 series";
 			n2.share = 0.3;
 			k.notice(lay::notice({324, 376, 300, 0}, true, true, 0), n2);
-			k.hints({{"L2/R2", "Filter"}, {"A", "Open"}, {"B", "Back"}});
+			k.hints({{"L/R", "Filter"}, {"A", "Open"}, {"B", "Back"}});
 		}
 
 		void page2(Kit& k)
@@ -1470,7 +1470,7 @@ namespace bp
 				c.progress = i == 0 ? 0.07 : i == 1 ? 0.58 : -1;
 				k.coverTile(lay::coverTile(cells[i], true, c.progress >= 0), c);
 			}
-			k.hints({{"L2/R2", "View"}, {"A", "Open"}, {"X", "More"}, {"L3", "Search"}});
+			k.hints({{"L/R", "View"}, {"A", "Open"}, {"X", "More"}, {"L3", "Search"}});
 		}
 
 		// Music: the view chips at the body's top (the from-line is the header's crumb), the album grid (one
@@ -1502,7 +1502,7 @@ namespace bp
 			artist.second = "3 albums \xC2\xB7 34 songs \xC2\xB7 2 h 6 min";
 			artist.focused = true;
 			k.artistRow(lay::artistRow({16, 380, 608, lay::ARTIST_ROW_H}), artist);
-			k.hints({{"L2/R2", "View"}, {"A", "Open"}, {"X", "More"}, {"L3", "Search"}});
+			k.hints({{"L/R", "View"}, {"A", "Open"}, {"X", "More"}, {"L3", "Search"}});
 		}
 
 		// Videos: a row left part way (its resume line), one finished (a tick), a fresh one, and a folder
@@ -1536,7 +1536,7 @@ namespace bp
 			Kit::SectionLine line;
 			line.text = "From Videos and Movies on both cards \xC2\xB7 86 videos \xC2\xB7 9 folders";
 			k.sectionLine(lay::sectionLine({16, 280, 608, lay::LINE_H}, false), line);
-			k.hints({{"L2/R2", "View"}, {"A", "Play"}, {"X", "More"}, {"LEFT/RIGHT", "Page"}});
+			k.hints({{"L/R", "View"}, {"A", "Play"}, {"X", "More"}, {"LEFT/RIGHT", "Page"}});
 		}
 
 		// Books: the Reading now strip (title and progress) over the shelf's grid (title only), the book's own drawn cover
@@ -1572,7 +1572,7 @@ namespace bp
 				c.title = shelf[i];
 				k.coverTile(lay::coverTile(sh.shelf[i], true, false), c);
 			}
-			k.hints({{"A", "Open"}, {"X", "More"}, {"L2/R2", "Shelf"}, {"L3", "Search"}});
+			k.hints({{"A", "Open"}, {"X", "More"}, {"L/R", "Shelf"}, {"L3", "Search"}});
 		}
 
 		// Search: the field, two groups' headings and rows, Recent searches and its Clear row
@@ -1722,7 +1722,7 @@ namespace bp
 			row(&G_PLAYLIST, false, "Road trip", "18 items \xC2\xB7 4 videos", false, false, false);
 			row(&G_PLAYLIST, false, "Workout", "27 items", false, false, false);
 			row(&G_PLUS, false, "New playlist", "", false, false, true);
-			k.hints({{"A", "Open"}, {"X", "More"}, {"L2/R2", "View"}, {"L3", "Search"}});
+			k.hints({{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}});
 		}
 
 		// the library's empty states (screens.js music-empty, videos-empty): the how-to names the folders — the
@@ -1798,7 +1798,7 @@ namespace bp
 			r.name = "Caminandes 1.mkv";
 			r.second = "Shorts \xC2\xB7 148 MB \xC2\xB7 3 Nov";
 			k.videoRow(lay::videoRow({16, 372, 608, lay::VIDEO_ROW_H}), r);
-			k.hints({{"A", "Open"}, {"X", "More"}, {"L2/R2", "View"}, {"L3", "Search"}});
+			k.hints({{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}});
 		}
 
 		// Match album art's backdrop (screens.js dyn-art): a synthetic art through artBackdrop to a texture,
@@ -1867,12 +1867,12 @@ namespace bp
 			std::vector<std::string> labels = {"Library", "History", "Browse", "Downloads 2"};
 			std::vector<int> widths;
 			for (auto& l : labels) widths.push_back(k.tabW(l));
-			lay::TabPage tp = lay::tabPage(lay::shell().body, widths, k.tabCapW("L2/R2"));
-			k.tabs(tp.strip.area, labels, 0, "L2/R2", BG);
+			lay::TabPage tp = lay::tabPage(lay::shell().body, widths, k.tabCapW("L/R"));
+			k.tabs(tp.strip.area, labels, 0, "L/R", BG);
 			ui.fill({tp.content.x, tp.content.y, tp.content.w, 1}, RULE);
 			ui.drawTextMid("content", F_I12, DIM, tp.content.x + 12, tp.content.y + 16, 200);
 			k.tabs({16, 300, 608, 54}, {"Up next", "Chapters"}, 1, "L/R", BG, 0);
-			k.hints({{"A", "Open"}, {"X", "More"}, {"L2/R2", "Tab"}, {"L/R", "Sections"}});
+			k.hints({{"A", "Open"}, {"X", "More"}, {"L/R", "Tab"}, {"L2/R2", "Sections"}});
 		}
 
 		void draw(const Player&) override

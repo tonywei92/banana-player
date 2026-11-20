@@ -276,33 +276,37 @@ namespace bp
 			if (!p.playingPhoto() && (b == Button::Up || b == Button::Down)) area()->key(b, p);
 			return false;
 		}
-		// the shell's pages: L / R step the sections, L3 is Search (and All recent's tabs keep L2 / R2)
+		// the shell's pages: L2 / R2 step the sections, L3 is Search
 		if (shell->page(page) && shell->key(b, p)) return false;
-		// L2/R2: the chapter before or after, over what plays and its two pages (the Chapters page's mark follows).
-		// Not in START's Settings, not over a photo (its keys are its own), and nothing with Button hotkeys off: they
-		// have no touch button to stand for. On Settings a group page takes them: the group before or after
-		// (the manga pages have their own: the reader's chapter before or after, the series page's Download)
-		if (b == Button::L2 || b == Button::R2)
+		// L / R step a shell page's tabs (the owner, 2026-11-20: a page's tabs are L / R everywhere, the sections L2 / R2).
+		// Settings and the Web page: the group before or after; Music's views (Albums / Artists / Playlists) and
+		// Videos' (All / Folders / Not finished); the pages below them (an album's, an artist's, a folder's) keep the
+		// keys. The rest (Manga's tabs, a source's, All recent, Files and Network) are their own areas' keys
+		if (b == Button::L || b == Button::R)
 		{
 			if (page == Page::Settings || page == Page::Web) { area()->key(b, p); return false; }
-			// Music's views (Albums / Artists / Playlists) and Videos' (All / Folders / Not finished): the
-			// shoulders step them; the pages below them (an album's, an artist's, a folder's) keep the keys
 			if (page == Page::Music || page == Page::Videos) { area()->key(b, p); return false; }
 			// Music's Playlists view (the browser's own page): back to Albums / Artists
 			if (page == Page::Browse && browse->browseDir == PLROOT && browse->playlists->selMode == SEL_NONE &&
 				!browse->playlists->moving && !browse->playlists->addPending.serial)
 			{
-				music->viewStep(b == Button::R2 ? 1 : -1, p);
+				music->viewStep(b == Button::R ? 1 : -1, p);
 				return false;
 			}
 			// About is a settings group too (its page its own): back to its neighbours
 			if (page == Page::About)
 			{
 				setGroup = GROUP_ABOUT;
-				settingsPage->stepGroup(b == Button::R2 ? 1 : -1, &p);
+				settingsPage->stepGroup(b == Button::R ? 1 : -1, &p);
 				aboutQr = false;
 				return false;
 			}
+		}
+		// L2/R2: the chapter before or after, over what plays and its two pages (the Chapters page's mark follows).
+		// Not in START's Settings, not over a photo (its keys are its own), and nothing with Button hotkeys off: they
+		// have no touch button to stand for (the manga reader has its own: the chapter before or after)
+		if (b == Button::L2 || b == Button::R2)
+		{
 			if (page != Page::Manga && page != Page::MangaSeries && page != Page::MangaRead && page != Page::MangaSources &&
 				page != Page::DocText && page != Page::DocPages)
 			{

@@ -471,8 +471,8 @@ namespace bp
 			rows[ui.cursor] == CLEAR_ROW || rows[ui.cursor] == SOUND_ROW);
 		if (action)
 			return {{"A", rows[ui.cursor] == CLEAR_ROW ? "Clear" : rows[ui.cursor] == CHECK_ROW ? "Check" : rows[ui.cursor] == SOUND_ROW ? "Open" : "Update"},
-				{"UP/DOWN", "Choose"}, {"L2/R2", "Group"}, {"B", "Back"}};
-		return {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"L2/R2", "Group"}, {"B", "Back"}};
+				{"UP/DOWN", "Choose"}, {"L/R", "Group"}, {"B", "Back"}};
+		return {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"L/R", "Group"}, {"B", "Back"}};
 	}
 
 	void Ui::SettingsPage::draw(const Player& p)
@@ -669,10 +669,10 @@ namespace bp
 		auto rows = settingRows();
 		int n = ui.setGroup < 0 ? GROUPS : (int)rows.size();
 		ui.cursor = std::min(ui.cursor, n - 1);	// a group's rows can change (the updater's)
-		// in a group: L2 / R2 to the group before / after (the mock-up's "L2/R2 Group")
-		if (ui.setGroup >= 0 && (b == Button::L2 || b == Button::R2))
+		// in a group: L / R to the group before / after (the mock-up's "L/R Group")
+		if (ui.setGroup >= 0 && (b == Button::L || b == Button::R))
 		{
-			stepGroup(b == Button::R2 ? 1 : -1, &p);
+			stepGroup(b == Button::R ? 1 : -1, &p);
 			return false;
 		}
 		// the groups: tiles two to a row, the cursor moved as on a grid

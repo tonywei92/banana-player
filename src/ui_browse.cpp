@@ -1277,16 +1277,16 @@ namespace bp
 			return {{"SELECT", "Put it here"}, {"X", "Cancel"}, {"A", "Open"}, {"B", "Up"}};
 		if (filesEmpty())
 		{
-			if (browseDir.empty()) return {{"L/R", "Sections"}};
+			if (browseDir.empty()) return {{"L2/R2", "Sections"}};
 			if (!browseRows.empty() && browseRows[0].label == "This folder can't be opened")
-				return {{"A/B", "Go up"}, {"X", "More"}, {"L/R", "Sections"}};
-			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L/R", "Sections"}};
+				return {{"A/B", "Go up"}, {"X", "More"}, {"L2/R2", "Sections"}};
+			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L2/R2", "Sections"}};
 		}
 		std::vector<Hint> h = {{"A", "Play / open"}, {"B", browseDir.empty() ? "Home" : "Up"}, {"X", "More"}, {"Y", "Select"}};
 		// the rail's Now playing key is the touch; SELECT its key (files-playing)
 		if (ui.nowPlayable(p)) h.push_back({"SELECT", "Now playing"});
 		else h.push_back({"LEFT/RIGHT", "Page"});
-		h.push_back({"L/R", "Sections"});
+		h.push_back({"L2/R2", "Sections"});
 		return h;
 	}
 
@@ -2079,22 +2079,22 @@ namespace bp
 		bool file = cursor >= 0 && cursor < n && (r[cursor].id == 2 || r[cursor].id == PL_ITEM);
 		// a book, a document, any file that doesn't play: A opens it (or says it can't)
 		const char* aFile = file && cursor < (int)browse->browsePaths.size() && !isMediaFile(browse->browsePaths[cursor]) ? "Open" : "Play";
-		if (cursor < 0 && browse->upRow()) drawHints({{"A", "Up"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+		if (cursor < 0 && browse->upRow()) drawHints({{"A", "Up"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
 		else if (form) drawHints({{"A", "Change"}, {"LEFT/RIGHT", "Choose"}, {"B", "Cancel"}});
 		else if (browse->browseDir == FINDNET) drawHints({{"A", "Add this one"}, {"B", "Back"}});
 		else if (browse->browseDir == RECENT && plEmpty) drawHints({{"B", "Home"}, {"X", "Options"}});
 		else if (browse->browseDir == RECENT) drawHints({{"A", file && cursor < (int)browse->browsePaths.size() && !isMediaFile(browse->browsePaths[cursor]) ? "Open" : "Play"}, {"Y", "Menu"}, {"L/R", "Kind"}, {"B", "Home"}, {"X", "Options"}});
-		else if (plEmpty && isPlDir(browse->browseDir) && plIsLiked(browse->playlists->plCur.file)) drawHints({{"B", back}, {"L/R", "Sections"}});
+		else if (plEmpty && isPlDir(browse->browseDir) && plIsLiked(browse->playlists->plCur.file)) drawHints({{"B", back}, {"L2/R2", "Sections"}});
 		else if (browse->browseDir == PLROOT && cursor >= 0 && cursor < n && r[cursor].id == PL_NEW)
-			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
 		else if (browse->emptyAction() && browse->browseDir == PLROOT)
-			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
-		else if (browse->emptyAction() && isPlDir(browse->browseDir)) drawHints({{"A", "Add files"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
+		else if (browse->emptyAction() && isPlDir(browse->browseDir)) drawHints({{"A", "Add files"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
 		else if (browse->emptyAction())
-			drawHints({{"A", "Find"}, {"Y", "Add connection"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
-		else if (plEmpty) drawHints({{"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
-		else if (yMenu) drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"Y", "Menu"}, {"L/R", "Sections"}});
-		else drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+			drawHints({{"A", "Find"}, {"Y", "Add connection"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
+		else if (plEmpty) drawHints({{"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
+		else if (yMenu) drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"Y", "Menu"}, {"L2/R2", "Sections"}});
+		else drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
 	}
 
 	void Ui::Browse::drawUpRow(int y, bool at)
@@ -2595,9 +2595,6 @@ namespace bp
 				if (p.settings.keepHistory && homeView->recentCounts[0]) homeView->stepRecentTab(b == Button::R ? 1 : -1, p);
 				return false;
 			}
-			// a section each way, no wrap, at its top (All recent is none's)
-			int t = browseTab + (b == Button::R ? 1 : -1);
-			if (browseDir != RECENT && t >= 0 && t < BROWSE_TABS) openSection(t, p);
 			return false;
 		}
 		// the browser's own keys below: B up a folder or Home, START the menu, the list's

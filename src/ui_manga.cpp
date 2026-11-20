@@ -1000,10 +1000,10 @@ namespace bp
 			else openExtList(p);
 			return false;
 		}
-		// L2 / R2 step the tabs, round (L / R are the shell's: the sections)
-		if (b == Button::L2 || b == Button::R2)
+		// L / R step the tabs, round (L2 / R2 are the shell's: the sections)
+		if (b == Button::L || b == Button::R)
 		{
-			mangaTabSet(mangaTab + (b == Button::R2 ? 1 : -1), p);
+			mangaTabSet(mangaTab + (b == Button::R ? 1 : -1), p);
 			return false;
 		}
 		switch (mangaTab)
@@ -1751,7 +1751,7 @@ namespace bp
 		Kit& k = *ui.kit;
 		std::vector<int> widths;
 		for (int i = 0; i < MANGA_TABS; i++) widths.push_back(k.tabW(mangaTabLabel(i)));
-		return lay::tabPage(lay::shell().body, widths, k.tabCapW("L2/R2"));
+		return lay::tabPage(lay::shell().body, widths, k.tabCapW("L/R"));
 	}
 
 	std::string Ui::Manga::mangaTabLabel(int i) const
@@ -1771,7 +1771,7 @@ namespace bp
 		lay::TabPage tp = mangaTabPage(p);
 		std::vector<std::string> labels;
 		for (int i = 0; i < MANGA_TABS; i++) labels.push_back(mangaTabLabel(i));
-		ui.kit->tabs(tp.strip.area, labels, mangaTab, "L2/R2", BG, mangaTabPressed);
+		ui.kit->tabs(tp.strip.area, labels, mangaTab, "L/R", BG, mangaTabPressed);
 	}
 
 	bool Ui::Manga::shellModal() const
@@ -1830,7 +1830,7 @@ namespace bp
 			h.hints = {{"A", "On / Off"}};
 			if (p.settings.mangaOn) h.hints.push_back({"X", "Its settings"});
 			h.hints.push_back({"B", "Back"});
-			h.hints.push_back({"L/R", "Sections"});
+			h.hints.push_back({"L2/R2", "Sections"});
 			return h;
 		}
 		h.hints = ui.capHints;
@@ -1864,8 +1864,8 @@ namespace bp
 					: std::vector<Hint>{{"A", "Continue"}, {"Y", "The series"}, {"X", "More"}, {"B", "Back"}};
 			// the tabs step with L2 / R2 (L / R are the sections, as on every shell page)
 			bool hasTab = false;
-			for (auto& x : h.hints) hasTab |= x.key == "L2/R2";
-			if (!hasTab) h.hints.push_back({"L2/R2", "Tab"});
+			for (auto& x : h.hints) hasTab |= x.key == "L/R";
+			if (!hasTab) h.hints.push_back({"L/R", "Tab"});
 			return h;
 		}
 		h.title = ui.capTitle.empty() ? std::string("Manga") : ui.capTitle;
@@ -2343,14 +2343,14 @@ namespace bp
 		static const char* NAMES[3] = {"Popular", "Latest", "Search"};
 		std::vector<int> widths;
 		for (int s : mangaSrcSlots()) widths.push_back(ui.kit->tabW(NAMES[s]));
-		return lay::tabPage(lay::shell().body, widths, ui.kit->tabCapW("L2/R2"));
+		return lay::tabPage(lay::shell().body, widths, ui.kit->tabCapW("L/R"));
 	}
 
 	lay::TabPage Ui::Manga::mangaSourcesTabPage(const Player& p) const
 	{
 		(void)p;
 		return lay::tabPage(lay::shell().body, {ui.kit->tabW("Available"), ui.kit->tabW("Repositories")},
-			ui.kit->tabCapW("L2/R2"));
+			ui.kit->tabCapW("L/R"));
 	}
 
 	void Ui::Manga::drawMangaGrid(const lay::AlbumGrid& g, int cursor, const std::function<void(int, Rect)>& cover,

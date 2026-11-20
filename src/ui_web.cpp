@@ -222,13 +222,13 @@ namespace bp
 		int v = ui.webView(p);
 		// the mini bar's right end says SELECT: back to what plays (the page has no SELECT of its own)
 		if (b == Button::Select && ui.nowPlayable(ui.barPlayer(p))) { ui.goNowPlaying(p); return false; }
-		// it is a settings group: L2 / R2 step to the one before / after, back on the Settings page's frame (the
+		// it is a settings group: L / R step to the one before / after, back on the Settings page's frame (the
 		// dashboard page was opened from a group or from elsewhere; this is the group navigation either way)
-		if (b == Button::L2 || b == Button::R2)
+		if (b == Button::L || b == Button::R)
 		{
 			ui.page = Page::Settings;
 			ui.setGroup = GROUP_WEB;
-			ui.settingsPage->stepGroup(b == Button::R2 ? 1 : -1, &p);
+			ui.settingsPage->stepGroup(b == Button::R ? 1 : -1, &p);
 			ui.cursor = ui.scroll = 0;
 			return false;
 		}
@@ -337,7 +337,7 @@ namespace bp
 			leave.key = "Y";
 			leave.pressed = ui.pressedBtn == EMPTY_BTN;
 			k.key(l.empty, leave);
-			k.hints({0, lay::PANEL_H - lay::HINTS_H, W, lay::HINTS_H}, {{"Y", "Leave incognito"}, {"L2/R2", "Group"}, {"B", "Back"}});
+			k.hints({0, lay::PANEL_H - lay::HINTS_H, W, lay::HINTS_H}, {{"Y", "Leave incognito"}, {"L/R", "Group"}, {"B", "Back"}});
 			return;
 		}
 		if (v != WEB_ON_VIEW)
@@ -368,7 +368,7 @@ namespace bp
 			again.pressed = ui.pressedBtn == EMPTY_BTN;
 			k.key(l.empty, again);
 			k.hints({0, lay::PANEL_H - lay::HINTS_H, W, lay::HINTS_H},
-				{{"A", "Try again"}, {"X", "Turn off"}, {"L2/R2", "Group"}, {"B", "Back"}});
+				{{"A", "Try again"}, {"X", "Turn off"}, {"L/R", "Group"}, {"B", "Back"}});
 			return;
 		}
 		std::string addr = ui.webAddress(), pin = ui.webPin();
@@ -482,6 +482,6 @@ namespace bp
 		off.pressed = ui.pressedBtn == WEB_OFF;
 		k.key(l.off, off);
 		k.hints({0, lay::PANEL_H - lay::HINTS_H, W, lay::HINTS_H},
-			{{"A", "On / off"}, {"Y", "New PIN"}, {"X", "Turn off"}, {"L2/R2", "Group"}, {"B", "Back"}});
+			{{"A", "On / off"}, {"Y", "New PIN"}, {"X", "Turn off"}, {"L/R", "Group"}, {"B", "Back"}});
 	}
 }

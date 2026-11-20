@@ -108,8 +108,8 @@ namespace bp
 			h.back = false;
 			h.more = false;
 			h.hints = p.settings.mangaOn
-				? std::vector<Hint>{{"A", "Open"}, {"B", "Home"}, {"L/R", "Sections"}, {"L3", "Search"}}
-				: std::vector<Hint>{{"A", "Manage extensions"}, {"B", "Home"}, {"L/R", "Sections"}, {"L3", "Search"}};
+				? std::vector<Hint>{{"A", "Open"}, {"B", "Home"}, {"L2/R2", "Sections"}, {"L3", "Search"}}
+				: std::vector<Hint>{{"A", "Manage extensions"}, {"B", "Home"}, {"L2/R2", "Sections"}, {"L3", "Search"}};
 			return h;
 		}
 		if (ui.page == Page::Settings)
@@ -128,18 +128,18 @@ namespace bp
 					"Power", "Web", "Updates", "About"};
 				std::string prevName = SHORT_GROUP[prev], nextName = SHORT_GROUP[next];
 				Kit& k = *ui.kit;
-				h.rightW = k.capsW("L2") + 6 + k.textW(prevName, F_I12) + 14 + k.textW(nextName, F_I12) + 6 + k.capsW("R2");
+				h.rightW = k.capsW("L") + 6 + k.textW(prevName, F_I12) + 14 + k.textW(nextName, F_I12) + 6 + k.capsW("R");
 				h.right = [this, prevName, nextName](int right, int cy) {
 					Kit& k = *ui.kit;
-					int r = right, w = k.capsW("R2");
-					k.caps("R2", r - w, cy, ACCENT, BG);
+					int r = right, w = k.capsW("R");
+					k.caps("R", r - w, cy, ACCENT, BG);
 					r -= w + 6;
 					ui.drawTextMid(nextName, F_I12, DIM, r, cy, 0, 1);
 					r -= k.textW(nextName, F_I12) + 14;
 					ui.drawTextMid(prevName, F_I12, DIM, r, cy, 0, 1);
 					r -= k.textW(prevName, F_I12) + 6;
-					w = k.capsW("L2");
-					k.caps("L2", r - w, cy, ACCENT, BG);
+					w = k.capsW("L");
+					k.caps("L", r - w, cy, ACCENT, BG);
 					return r - w;
 				};
 			}
@@ -195,11 +195,11 @@ namespace bp
 				: std::string("No connections")) : std::string("Network");
 			h.more = dir == NETROOT;
 			if (dir == NETROOT && b.emptyAction())
-				h.hints = {{"A", "Find on the network"}, {"Y", "Add connection"}, {"B", "Home"}, {"L/R", "Sections"}};
-			else if (dir == NETROOT) h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Add"}, {"B", "Home"}, {"L/R", "Sections"}};
+				h.hints = {{"A", "Find on the network"}, {"Y", "Add connection"}, {"B", "Home"}, {"L2/R2", "Sections"}};
+			else if (dir == NETROOT) h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Add"}, {"B", "Home"}, {"L2/R2", "Sections"}};
 			else if (dir == FORMDIR) h.hints = {{"A", "Edit"}, {"LEFT/RIGHT", "Change"}, {"Y", "Test"}, {"START", "Save"}, {"B", "Cancel"}};
 			else if (dir == FINDNET) h.hints = {{"A", "Add this one"}, {"B", "Back"}};
-			else h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Select"}, {"B", "Up"}, {"L/R", "Sections"}};
+			else h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Select"}, {"B", "Up"}, {"L2/R2", "Sections"}};
 		}
 		else
 		{
@@ -207,7 +207,7 @@ namespace bp
 			h.title = dir.empty() ? "Files" : baseName(dir);
 			std::string where = b.browseWhere();
 			h.crumb = dir.empty() ? "Your cards" : std::string("Files") + DOT + where;
-			h.hints = {{"A", "Open"}, {"B", "Up"}, {"X", "More"}, {"Y", "Select"}, {"L/R", "Sections"}};
+			h.hints = {{"A", "Open"}, {"B", "Up"}, {"X", "More"}, {"Y", "Select"}, {"L2/R2", "Sections"}};
 		}
 		return h;
 	}
@@ -276,12 +276,12 @@ namespace bp
 		// a Manga sheet, menu or the keyboard has the keys (it is drawn over the frame, as it always was)
 		if (ui.manga->shellPage(ui.page) && ui.manga->shellModal()) return false;
 		const Browse& br = *ui.browse;
-		bool modal = br.playlists->pickerOpen || br.playlists->selMode != SEL_NONE || br.playlists->addPending.serial;
-		// All recent's tabs keep a key: L2 / R2 (the spec moves them there, L / R being sections everywhere in the shell)
-		if ((b == Button::L2 || b == Button::R2) && ui.page == Page::Browse && br.browseDir == RECENT)
+		bool modal = br.playlists->moving || br.playlists->pickerOpen || br.playlists->selMode != SEL_NONE || br.playlists->addPending.serial;
+		// All recent's tabs: L / R (a page's tabs are L / R; L2 / R2 are the sections everywhere in the shell)
+		if ((b == Button::L || b == Button::R) && ui.page == Page::Browse && br.browseDir == RECENT)
 		{
 			if (p.settings.keepHistory && br.homeView->recentCounts[0])
-				br.homeView->stepRecentTab(b == Button::R2 ? 1 : -1, p);
+				br.homeView->stepRecentTab(b == Button::R ? 1 : -1, p);
 			return true;
 		}
 		// Search by the keys (L3), while browsing, on the Extensions page, on Settings or on a library page (the
@@ -302,16 +302,15 @@ namespace bp
 			ui.goNowPlaying(p);
 			return true;
 		}
-		if (b != Button::L && b != Button::R) return false;
-		// an open form's LEFT / RIGHT step its choices, a select mode and the picker keep theirs: the section step does
-		// not take those keys away
+		if (b != Button::L2 && b != Button::R2) return false;
+		// an open form, a select mode and the picker keep their keys: the section step does not take them away
 		if (ui.page == Page::Browse && (modal || br.browseDir == FORMDIR || br.browseDir == FINDNET))
 			return false;
 		std::vector<Cell> cs = cells(p);
 		if (cs.empty()) return false;
 		int n = (int)cs.size() + 1;	// + Settings, pinned at the foot and in the ring
 		int at = activeIndex(cs, section(p));
-		int next = ((at + (b == Button::R ? 1 : -1)) % n + n) % n;
+		int next = ((at + (b == Button::R2 ? 1 : -1)) % n + n) % n;
 		openSection(next == (int)cs.size() ? Section::Settings : cs[next].section, p);
 		return true;
 	}

@@ -53,7 +53,7 @@ Open Banana Player and the bottom screen shows **Home**:
   (`Played · 3:34`, `7% read`, `6:12 / 9:56`) and a bar; a liked file has a yellow heart, a server's a network mark,
   and a song's card shows its album art when it has one.
   The kind chips beside **Recent** are **All**, **Videos**, **Music** and **Books** with how many: tap one (the
-  filters' keys come with the rail) or step them with **L2/R2** where the shell routes them. The chevron after the
+  filters' keys come with the rail) or step them with **L/R**. The chevron after the
   cards, and **(All recent)**, open every card, with the same chips. All recent's rows are grouped under **Today**,
   **Yesterday** and **Earlier** (an entry kept from before the player recorded times sits under Earlier). Recent keeps
   the last 100 of each kind, so
@@ -80,7 +80,7 @@ settings, **L3** is Search, and About is Settings' last group.
 Every section now shares one frame: a **rail** down the left with a **Search** key pinned at its top, **Home**,
 **Files**, **Videos**, **Music**, **Books**, **Extensions**, **Network**, and at the foot the **Now playing key** over
 **Settings** (no START cap: START is Settings from every screen).
-**L/R** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
+**L2/R2** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
 52 units tall, 45 with seven sections so all show at once; when they still don't fit, a finger drag scrolls them
 (Search, the Now playing key and Settings stay put). Arriving at a section starts and stops nothing, and no cell
 carries a warning: **Extensions** is one section for every extension that is on, and the Manga reader is a row of its
@@ -118,7 +118,7 @@ its folder on that file.
 ## The Music section
 
 Songs by what they are, not where they are. The **Music** cell opens three views of the cards' index, stepped with
-**L2/R2** or tapped: **Albums**, **Artists** and **Playlists** (the same playlists as ever, drawn under Music; Liked
+**L/R** or tapped: **Albums**, **Artists** and **Playlists** (the same playlists as ever, drawn under Music; Liked
 first). The line under the title says where the list comes from and how much (`From Music on both cards · 148 albums ·
 1,912 songs`; `on this card` when one card has none). Albums and Artists fill by themselves from the folders named
 **Music** or **Musics** (any capitals) at the top of each card, plus BananaOS's own `/data/roms/music`; every such
@@ -133,7 +133,7 @@ plays the same, and Search finds it. There is no list of all songs.
   (or a tap) opens the album.
 - **Artists**: a row each (`3 albums · 34 songs`), the unknown artist last. **A** opens the artist.
 - **Playlists**: the browser's own Playlists pages, exactly as they were, with the Music cell kept lit (their keys
-  and touch are theirs; **L2** steps back to Artists, **R2** rounds to Albums).
+  and touch are theirs; **L** steps back to Artists, **R** rounds to Albums).
 
 An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
 (**A**), **Shuffle** (**Y**) and **+** (Add to playlist, touch only). Under them the songs in disc, track and name
@@ -149,7 +149,7 @@ of covers (**◀/▶** steps, **A** opens one), then every song of theirs with i
 there). **X** is the same **More** (theirs, or the song's). **B** is back to the list.
 
 With no Music folder on either card (or none with a song in it) the page says so — **No music here yet**, the folder's
-name in the accent, **Browse Files** (A) and **Web dashboard** (Y) — and **L2/R2** still reaches Playlists. While a
+name in the accent, **Browse Files** (A) and **Web dashboard** (Y) — and **L/R** still reaches Playlists. While a
 card is read the first time a notice row under the chips says the albums fill in as it goes, and the page shows them
 when the pass lands. A music video's tags are read as a song's are; without any it goes by its file's name, in its
 folder's album, exactly as an untagged song does.
@@ -158,7 +158,7 @@ folder's album, exactly as an untagged song does.
 
 The films on the cards in one list, without walking folders: filled by itself from the folders named **Videos** or
 **Movies** (any capitals) at the top of each card, plus BananaOS's own `/data/roms/videos`. Three views, stepped with
-**L2/R2** or tapped, with their counts:
+**L/R** or tapped, with their counts:
 
 - **All**: every video by name. A row shows its length (`9:56`), where it was left (`at 6:12 / 9:56` with a bar), a
   tick when played through, a **Playing** pill (or **Paused**) on the row that plays, and its folder, size and date
@@ -448,7 +448,7 @@ See [Photos](#photos) for the touch screen.
 | **B** or **Back** | Up one folder; at a section's top, back to Home. An empty folder's page offers **Go up** on **A** and **Send files** on **Y** |
 | **UP / DOWN** | Move |
 | **LEFT / RIGHT** | Page up / down |
-| **L / R** | Previous / next section: Home, Files, Playlists, Extensions, Network, Settings |
+| **L2 / R2** | Previous / next section: Home, Files, Videos, Music, Books, Extensions, Settings (**L / R** step Files and Network) |
 | **X** (or **⋯** in the header) | **More**: the focused file on the left (**Play from the start** / **Open**, **Add to playlist…**, **Like** / **Unlike**, **Go to album** / **Go to artist** for a song, **Info**, **Copy…**, **Move…**, **Rename…**, **Delete**), and the folder it is in on the right (**Select files**, **Play all N**, **Shuffle play**, **Add folder to playlist…**, **Refresh**, **Hide folder**, **Show hidden folders**). In Network: **Add connection**, **Find on the network**, **Refresh**, **Web dashboard…**. In Playlists: **New playlist…**. In All recent: Home's options |
 | **Hold** (touch screen) | On a file in Files or Network: starts selecting, with that file ticked |
 | **Y** | In Files: select mode (**A** tick, **SELECT** all / none, the bar for Playlist / Copy / Move / Delete, **X** More). On a network connection: **Edit connection**, **Test connection**, **Delete connection** (press twice) (or hold it on the touch screen). On a playlist or its item: see [Playlists](#playlists) |
@@ -484,7 +484,7 @@ tap opens one; in a group, **B** goes back to the tiles. **B** or **START** at t
 you were: the player, the page of a book, the folder. The hint bar there names **F Quick settings**, so Quit stays in
 reach; the Settings page itself teaches **B / START Back**, and the first-start pane says it too.
 
-Settings reached from the **rail** or **L/R** is a section instead: **B** goes Home. That is the whole difference: the
+Settings reached from the **rail** or **L2/R2** is a section instead: **B** goes Home. That is the whole difference: the
 same page, but it remembers which way it was opened.
 
 There is no START menu: its places are the rail's cells, **F** is Quick settings, **L3** is Search, About is Settings'
@@ -844,7 +844,7 @@ All three are remembered.
 open one with **A** or a tap, and **B** goes back to them; **B** or **START** at the tiles closes Settings, back to
 where you were. Settings and its groups have the kit's header: the back key at
 the left, then the page's title with its crumb (**Settings · 3 of 10**) under it on the same line, and a group's
-neighbours named either side of **L2** / **R2** at the right (those keys step the groups). Seven rows fit under that
+neighbours named either side of **L** / **R** at the right (those keys step the groups). Seven rows fit under that
 line. In a group, **UP/DOWN** chooses a row, **LEFT/RIGHT** changes it in place, and the
 line above the bottom says what the setting under the cursor does. **Subtitle style...** at the end of the **Subtitles** sheet
 opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
@@ -1215,8 +1215,8 @@ through.
 
 - A row for each extension that is on: the **Manga reader**'s mark, its name, a line of what is in it (the series
   read so far and downloads, once the reader has been opened) and a chevron; then a rule and **Manage extensions**.
-  **A** (or a tap) opens the row; **UP/DOWN** move; **B** goes Home; **L/R** step the sections; **L3** is Search, as
-  everywhere in the shell. Arriving on the page, by a tap on the rail or **L/R**, starts and stops nothing: a video
+  **A** (or a tap) opens the row; **UP/DOWN** move; **B** goes Home; **L2/R2** step the sections; **L3** is Search, as
+  everywhere in the shell. Arriving on the page, by a tap on the rail or **L2/R2**, starts and stops nothing: a video
   keeps playing, with the rail's Now playing key above Settings.
 - While a **video** plays (or is paused) the Manga row wears a red **Stops the video** pill, and **A** on it asks
   first: **Stop the video to open Manga?** with **Stay** (focused, and **B**) and **Stop video & open Manga**. The
@@ -1233,7 +1233,7 @@ through.
 
 - **Manage extensions** lists the reader with its mark, what it does and an **On/Off** switch. **A** (or a tap on the
   row) turns it on or off; **X** opens **Manga settings**, the reader's own settings page. It is a page of the
-  Extensions section: the rail stays, its header reads *Extensions › Manage extensions*, **L/R** step the sections.
+  Extensions section: the rail stays, its header reads *Extensions › Manage extensions*, **L2/R2** step the sections.
 - The first time the reader is turned on, a sheet comes over **Manage extensions**: it says the reader reads from your
   files and servers, and from sources in repositories you add, and that repositories are added by you: Banana Player
   doesn't provide or check their content. **Open Manga** opens the reader, **Done** closes the sheet.
@@ -1243,10 +1243,10 @@ through.
 
 The reader is an app of its own, inside the Extensions section: the rail stays at the left (its **Extensions** cell
 lit), the header names the page (*Manga*, with the tab and its count under it: *Library · 9 series*), and the hint bar
-is the shell's. It opens on **Library** and has four tabs, stepped with **L2/R2** (or a tap): **Library**, **History**,
-**Browse** and **Downloads** (*Downloads 2* while two are queued). **L/R** step the sections, as on every page of the
+is the shell's. It opens on **Library** and has four tabs, stepped with **L/R** (or a tap): **Library**, **History**,
+**Browse** and **Downloads** (*Downloads 2* while two are queued). **L2/R2** step the sections, as on every page of the
 rail, and coming back to Extensions lands on Manga where you left it (unless a video plays); **L3** is Search. A
-source's **Popular / Latest / Search** and the Sources page's **Available / Repositories** step with **L2/R2** too. A
+source's **Popular / Latest / Search** and the Sources page's **Available / Repositories** step with **L/R** too. A
 sheet or menu over a Manga page comes over the whole panel, rail included, and takes the keys until it closes.
 **B** goes back — out of Browse's list of series first, then to the **Extensions** page (it was Home before). Reading a
 chapter keeps the whole panel (no rail).
@@ -1265,7 +1265,7 @@ stays, dimmed, and says why (*source removed*, *not on a card*).
 
 A series' page has one row of keys (**Resume**, and for a source's series **Get**, **Check**, **Info** and the heart)
 over its chapters, each saying its own state (read, where Resume opens, the page, its download); the series' source
-and counts are the header's line. A source's catalogue steps **Popular / Latest / Search** with **L2/R2**; Sources'
+and counts are the header's line. A source's catalogue steps **Popular / Latest / Search** with **L/R**; Sources'
 lists, a server's catalogue and form, and Manga settings are drawn the same way, in the rail's frame.
 
 **Browse** and **Downloads** are lists of rows: the row you're on carries its key (a server's **Edit**, a chapter's
@@ -1336,7 +1336,7 @@ field (the kept address has `{key}` where the key was), put back only in the req
 `{key}` in every answer before it's read, so no list, link or page address holds it.
 
 **A source.** **A** on one opens it: **Popular**, **Latest** (when the source has one) and **Search** as tabs, stepped
-with **L2/R2** or a tap (**Y**, or the Search tab, asks for the words on the keyboard), and the results as a grid that
+with **L/R** or a tap (the Search tab, or **X** › Search this source, asks for the words on the keyboard; **Y** is the source's **Filters** and **X** its **More**), and the results as a grid that
 fills in as you move down it, each tile showing the series' real cover once it has come in (fetched with the source's
 own headers while the tile is on screen, kept in a cache on the card; a plain coloured one stands in until it arrives).
 **X** opens the **Filters** sheet, where the source has filters: its own sorts, selects, checks, include / exclude
@@ -1344,21 +1344,21 @@ lists (**A** cycles off → include → exclude), text fields and groups as rows
 **Reset** back to the defaults and **Apply** to run the search again from page 1 — the values stay with that source
 while the app runs. **A** opens a series, **B** goes back to Browse's rows, and an error under the grid
 offers **A: Try again**. A source's series page is laid out like a card series': **Resume** (**A**), **Download**
-(**R2**), **Refresh** (**L2**), **Info** and the heart (**Y**) in one row of buttons, then the chapters with their read marks,
+(**R**), **Refresh** (**L**), **Info** and the heart (**Y**) in one row of buttons, then the chapters with their read marks,
 **X** to mark one read or unread, **A** to read it. **Info** shows the series' description, author and status in a
 dialog (**A**, **B** or a touch closes it); the page itself keeps only the source, the counts and the author line. **Resume** keeps the series' own place, and the heart keeps it in
 your library — a source's series starts outside it.
 
 **A source series on the card.** The details and the chapter list are kept when they're fetched, under
 `manga/series/` in the state folder, named by the series' hashed id (never its address). Opening the series shows them
-at once and asks the source nothing; **L2 Refresh** is the only thing that asks again, and it replaces the kept list
+at once and asks the source nothing; **L Refresh** is the only thing that asks again, and it replaces the kept list
 when the answer comes. A check that fails keeps the list on screen and says so in a short note. Once the list is 6 hours
-old or more, the details line under the title ends **· Checked 7h ago · L2** (a fresh one adds nothing, and nothing is
+old or more, the details line under the title ends **· Checked 7h ago · L** (a fresh one adds nothing, and nothing is
 ever asked by itself). An extension's series doesn't start the manga engine when it opens either: that
 waits for **Resume** or a chapter; while a check runs it ends **Checking for new chapters…**.
 
 **Sources.** **X** on Browse opens its own page (its header says **Sources**; **B** goes back to Browse). Its lists step
-with **L2/R2** (**L/R** are the sections): **Installed**, **Available** and **Repositories**. **Y**
+with **L/R** (**L2/R2** are the sections): **Installed**, **Available** and **Repositories**. **Y**
 checks the repositories again, and the top screen says how it went: **Installed …**, **Updated …**, **Removed …**, or why
 it couldn't. With nothing yet they say where to start: *No sources yet* (add a repository, then install from
 **Available**) and *Nothing to install* (add a repository first).

@@ -271,3 +271,10 @@ For the builders (the build's screenshots of 2026-11-19 against this):
 More (X) on a playlist and its items, Liked, a song in Files, an album, an artist, a search result, a connection,
 select mode and a book on the shelf (lists in `keys`); Manga's chapter selection and a source's filters; the phone's
 Videos, Music (with Playlists) and Books tabs as phone pages.
+
+## Decided (owner, 2026-11-20)
+
+- **L2 / R2 step the rail's sections everywhere; L1 / R1 (L / R) step a page's tabs** (Manga's four, a source's, Sources', Music's and Videos' views, Settings' groups, All recent's kinds, Files › Network). The player and the reader keep L / R (file, page) and L2 / R2 (chapter).
+- **Network leaves the rail and is a tab of Files** (Files · Network). The rail's cell, its key and Search's / Home's links point to Files › Network; the Network pages behave as before.
+- **A Manga source's keys, as the spec draws them:** Y is Filters, X is More (Search this source, Load this list again); Search is the third tab.
+- **The browser's network folders are drawn on the kit** (Files' rows), not through the 0.88 scaling bridge; the bridge is deleted.
