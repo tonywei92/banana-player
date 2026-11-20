@@ -1040,6 +1040,13 @@ namespace bp
 		}
 	}
 
+	void Ui::openInfoGroups(const std::string& title, std::vector<InfoGroup> groups)
+	{
+		infoTitle = title;
+		infoGroups = std::move(groups);
+		pushOverlay(std::make_unique<Browse::FileInfoSheet>(*this));
+	}
+
 	void Ui::openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra,
 		const Player* p)
 	{

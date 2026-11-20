@@ -933,6 +933,20 @@ namespace bp
 		mdlSheetCursor = 0;
 		mdlChosen.clear();
 		mdlLocal++;
+		mangaDlMenuOpen();
+	}
+
+	// the menu (This chapter, Next 5 unread, All unread, Choose chapters): a More sheet over mdlSheet == MDLS_MENU; Choose
+	// chapters is a list, a List sheet the page draws
+	void Ui::Manga::mangaDlMenuOpen()
+	{
+		ui.openMore([this](const Player&) { return mangaDlMenuSpec(); }, "mangadl", [this] { return mdlSheet == MDLS_MENU; },
+			[this] { if (mdlSheet == MDLS_MENU) mangaDlSheetClose(); }, mdlSheetCursor);
+	}
+
+	lay::ListSheet Ui::Manga::mangaDlChooseSheet() const
+	{
+		return lay::listSheet(std::min(std::max((int)mangaSrcChapters.size(), 1), MDL_CHOOSE_ROWS));
 	}
 
 	void Ui::Manga::mangaDlSheetClose()
@@ -941,13 +955,6 @@ namespace bp
 		mdlSheetCursor = 0;
 		mdlChosen.clear();
 		mdlLocal++;
-	}
-
-	Ui::Rect Ui::Manga::mangaDlSheetRowRect(int i) const
-	{
-		Rect b = mangaDlSheetBox();
-		if (mdlSheet == MDLS_CHOOSE) return {b.x + 16, b.y + 66 + i * 40, b.w - 32, 36};
-		return {b.x + 16, b.y + 74 + i * 46, b.w - 32, 40};
 	}
 
 	std::vector<int> Ui::Manga::mangaDlUnreadFrom(int from, int limit) const
@@ -1205,9 +1212,9 @@ namespace bp
 		if (mdlSheet == MDLS_CHOOSE)
 		{
 			int n = (int)mangaSrcChapters.size();
-			if (n == 0) { mdlSheet = MDLS_MENU; return false; }
+			if (n == 0) { mdlSheet = MDLS_MENU; mangaDlMenuOpen(); return false; }
 			if (mdlChooseCursor >= n) mdlChooseCursor = n - 1;
-			if (b == Button::B) { mdlSheet = MDLS_MENU; mdlChosen.clear(); mdlLocal++; return false; }
+			if (b == Button::B) { mdlSheet = MDLS_MENU; mdlSheetCursor = 3; mdlChosen.clear(); mdlLocal++; mangaDlMenuOpen(); return false; }
 			if (b == Button::A)
 			{
 				if (mdlChosen.count(mdlChooseCursor)) mdlChosen.erase(mdlChooseCursor);
@@ -1239,68 +1246,54 @@ namespace bp
 			if (mdlChooseCursor >= mdlChooseScroll + MDL_CHOOSE_ROWS) mdlChooseScroll = mdlChooseCursor - MDL_CHOOSE_ROWS + 1;
 			return false;
 		}
-		// the menu: This chapter, Next 5 unread, All unread, Choose chapters…
-		if (b == Button::B) { mangaDlSheetClose(); return false; }
-		if (b == Button::A) { mangaDlSheetAct(p); return false; }
-		switch (b)
-		{
-		case Button::Up: mdlSheetCursor = (mdlSheetCursor + 3) % 4; mdlLocal++; break;
-		case Button::Down: mdlSheetCursor = (mdlSheetCursor + 1) % 4; mdlLocal++; break;
-		default: break;
-		}
+		// (the menu is a sheet that takes its own keys)
 		return false;
 	}
 
 	bool Ui::Manga::mangaDlSheetPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (pt.kind != Pointer::Down) return false;
-		if (mdlSheet == MDLS_MENU)
+		if (mdlSheet == MDLS_CHOOSE)
 		{
-			for (int i = 0; i < 4; i++)
-				if (mangaDlSheetRowRect(i).hit(x, y))
-				{
-					mdlSheetCursor = i;
-					mangaDlSheetAct(p);
-					return false;
-				}
-		}
-		else if (mdlSheet == MDLS_CHOOSE)
-		{
+			lay::ListSheet sh = mangaDlChooseSheet();
 			int n = (int)mangaSrcChapters.size();
 			for (int i = mdlChooseScroll; i < n && i < mdlChooseScroll + MDL_CHOOSE_ROWS; i++)
-				if (mangaDlSheetRowRect(i - mdlChooseScroll).hit(x, y))
+				if (sh.row(i - mdlChooseScroll).hit(x, y))
 				{
 					mdlChooseCursor = i;
 					mangaDlSheetKey(Button::A, p);
 					return false;
 				}
 		}
-		if (!mangaDlSheetBox().hit(x, y)) mangaDlSheetClose();
+		if (!mangaDlChooseSheet().box.hit(x, y)) mangaDlSheetClose();
 		return false;
+	}
+
+	namespace
+	{
+		// (a size the sheets quote: the card's pages and bytes say what one page of this source costs)
+		struct DlSize { uint64_t bytes = 0; int unknown = 0; };
 	}
 
 	void Ui::Manga::drawMangaDlSheet(const Player& p)
 	{
 		(void)p;
-		Rect box = mangaDlSheetBox();
-		if (mdlSheet == MDLS_CHOOSE)
-		{
-			ui.drawDialog(box, "Choose chapters");
-			int n = (int)mangaSrcChapters.size();
-			if (mdlChooseCursor >= n) mdlChooseCursor = std::max(0, n - 1);
-			// what is ticked, and the room it needs
-			int unknown = 0;
-			uint64_t bytes = 0;
-			uint64_t avg = 0;
-			uint64_t cardBytes = 0, cardPages = 0;
-			for (const auto& s : mdlCard)
-				for (const auto& c : s.chapters) { cardBytes += c.bytes; cardPages += (uint64_t)std::max(0, c.pages); }
-			// a chapter already partly here says what a page of this source costs too
-			if (mangaNet && mangaNet->started())
-				for (const auto& it : mangaNet->queue().items())
-					if (it.state != DlItem::Done && it.done > 0) { cardBytes += it.bytes; cardPages += (uint64_t)it.done; }
-			if (cardPages) avg = cardBytes / cardPages;
-			for (int i : mdlChosen)
+		// Choose chapters: a List sheet, a tick on each, the room it needs in its header
+		if (mdlSheet != MDLS_CHOOSE) return;
+		Kit& k = *ui.kit;
+		int n = (int)mangaSrcChapters.size();
+		if (mdlChooseCursor >= n) mdlChooseCursor = std::max(0, n - 1);
+		uint64_t cardBytes = 0, cardPages = 0, avg = 0;
+		for (const auto& s : mdlCard)
+			for (const auto& c : s.chapters) { cardBytes += c.bytes; cardPages += (uint64_t)std::max(0, c.pages); }
+		// a chapter already partly here says what a page of this source costs too
+		if (mangaNet && mangaNet->started())
+			for (const auto& it : mangaNet->queue().items())
+				if (it.state != DlItem::Done && it.done > 0) { cardBytes += it.bytes; cardPages += (uint64_t)it.done; }
+		if (cardPages) avg = cardBytes / cardPages;
+		auto sizeOf = [&](const std::vector<int>& list) {
+			DlSize out;
+			for (int i : list)
 			{
 				if (i < 0 || i >= n) continue;
 				std::string cid = sourceItemId(mangaSrcId, mangaSrcChapters[i].key);
@@ -1311,43 +1304,55 @@ namespace bp
 				if (pages < 0 && mangaStore)
 					if (const ChapterProgress* pr = mangaStore->progress(cid))
 						if (pr->pages > 0) pages = pr->pages;
-				if (pages > 0 && avg) bytes += (uint64_t)pages * avg;
-				else unknown++;
+				if (pages > 0 && avg) out.bytes += (uint64_t)pages * avg;
+				else out.unknown++;
 			}
-			std::string line;
-			if (mdlChosen.empty()) line = "Nothing ticked \xC2\xB7 " + formatBytes((long long)mangaDlFreeBytes()) + " free";
-			else
-			{
-				line = bytes ? "About " + formatBytes((long long)bytes) : "Size unknown";
-				if (unknown) line += " \xC2\xB7 " + std::to_string(unknown) + " unknown";
-				line += " \xC2\xB7 " + formatBytes((long long)mangaDlFreeBytes()) + " free";
-			}
-			ui.drawTextMid(line, 0, DIM, box.x + box.w / 2, box.y + 50, box.w - 36, 2);
-			if (mdlChooseScroll > std::max(0, n - MDL_CHOOSE_ROWS)) mdlChooseScroll = std::max(0, n - MDL_CHOOSE_ROWS);
-			if (mdlChooseCursor < mdlChooseScroll) mdlChooseScroll = mdlChooseCursor;
-			if (mdlChooseCursor >= mdlChooseScroll + MDL_CHOOSE_ROWS) mdlChooseScroll = mdlChooseCursor - MDL_CHOOSE_ROWS + 1;
-			for (int i = mdlChooseScroll; i < n && i < mdlChooseScroll + MDL_CHOOSE_ROWS; i++)
-			{
-				Rect r = mangaDlSheetRowRect(i - mdlChooseScroll);
-				bool at = i == mdlChooseCursor;
-				if (at) ui.drawFocus(r);
-				int mid = r.y + r.h / 2;
-				bool ticked = mdlChosen.count(i) != 0;
-				ui.drawGlyphMid(ticked ? G_BOX_ON : G_BOX, r.x + 22, mid, at ? ACCENT : ticked ? TEXT : DIM);
-				ui.drawTextMid(dlChapterName(mangaSrcChapters[i]), 1, at ? ACCENT : TEXT, r.x + 44, mid, r.w - 170);
-				MangaDlMark m = mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]);
-				drawMangaDlMark(m, r.x + r.w - 8, mid, at);
-			}
-			ui.drawScrollBar(box.y + 62, 7 * 40 - 4, mdlChooseScroll, MDL_CHOOSE_ROWS, n);
-			ui.drawHints({{"A", "Select"}, {"Y", "Download"}, {"B", "Back"}});
-			return;
+			return out;
+		};
+		std::string line;
+		if (mdlChosen.empty()) line = "Nothing ticked \xC2\xB7 " + formatBytes((long long)mangaDlFreeBytes()) + " free";
+		else
+		{
+			DlSize sz = sizeOf(std::vector<int>(mdlChosen.begin(), mdlChosen.end()));
+			line = sz.bytes ? "About " + formatBytes((long long)sz.bytes) : "Size unknown";
+			if (sz.unknown) line += " \xC2\xB7 " + std::to_string(sz.unknown) + " unknown";
+			line += " \xC2\xB7 " + formatBytes((long long)mangaDlFreeBytes()) + " free";
 		}
-		ui.drawDialog(box, "Download");
-		// the highlighted row's size, where known, and the card's room: the design's top-panel line
-		std::vector<int> picks;
-		if (mdlSheetCursor == 0 && mserCursor >= 0 && mserCursor < (int)mangaSrcChapters.size()) picks.push_back(mserCursor);
-		else if (mdlSheetCursor == 1) picks = mangaDlUnreadFrom(std::max(0, mserCursor), 5);
-		else if (mdlSheetCursor == 2) picks = mangaDlUnreadFrom(0, 0);
+		lay::ListSheet sh = mangaDlChooseSheet();
+		k.sheet(sh, {&G_DOWNLOAD, "Choose chapters", line, false});
+		if (mdlChooseScroll > std::max(0, n - MDL_CHOOSE_ROWS)) mdlChooseScroll = std::max(0, n - MDL_CHOOSE_ROWS);
+		if (mdlChooseCursor < mdlChooseScroll) mdlChooseScroll = mdlChooseCursor;
+		if (mdlChooseCursor >= mdlChooseScroll + MDL_CHOOSE_ROWS) mdlChooseScroll = mdlChooseCursor - MDL_CHOOSE_ROWS + 1;
+		for (int i = mdlChooseScroll; i < n && i < mdlChooseScroll + MDL_CHOOSE_ROWS; i++)
+		{
+			Kit::Row r;
+			r.font = F_P16;
+			r.glyph = mdlChosen.count(i) ? &G_BOX_ON : &G_BOX;
+			r.name = dlChapterName(mangaSrcChapters[i]);
+			r.focused = i == mdlChooseCursor;
+			MangaDlMark m = mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]);
+			switch (m.kind)
+			{
+			case MangaDlMark::Running: r.note = m.total > 0 ? std::to_string(m.done) + "/" + std::to_string(m.total) : "Downloading\xE2\x80\xA6"; break;
+			case MangaDlMark::Queued: r.note = "Queued"; break;
+			case MangaDlMark::Paused: r.note = "Paused"; break;
+			case MangaDlMark::Failed: r.note = "Failed"; r.danger = true; break;
+			case MangaDlMark::OnCard: r.note = "On card"; break;
+			default: break;
+			}
+			k.row(sh.row(i - mdlChooseScroll), r);
+		}
+		ui.drawScrollBar(sh.rowsY, std::min(n, MDL_CHOOSE_ROWS) * lay::LIST_ROW, mdlChooseScroll, MDL_CHOOSE_ROWS, n);
+		k.hints({{"A", "Select"}, {"Y", "Download"}, {"B", "Back"}});
+	}
+
+	Ui::MoreSpec Ui::Manga::mangaDlMenuSpec()
+	{
+		MoreSpec m;
+		if (mdlSheet != MDLS_MENU) return m;
+		m.glyph = &G_DOWNLOAD;
+		m.title = "Download";
+		// the card's room, and what a page of this source costs (the card's pages and bytes say)
 		uint64_t avg = 0, cardBytes = 0, cardPages = 0;
 		for (const auto& s : mdlCard)
 			for (const auto& c : s.chapters) { cardBytes += c.bytes; cardPages += (uint64_t)std::max(0, c.pages); }
@@ -1355,28 +1360,7 @@ namespace bp
 			for (const auto& it : mangaNet->queue().items())
 				if (it.state != DlItem::Done && it.done > 0) { cardBytes += it.bytes; cardPages += (uint64_t)it.done; }
 		if (cardPages) avg = cardBytes / cardPages;
-		uint64_t bytes = 0;
-		int unknown = 0;
-		for (int i : picks)
-		{
-			if (i < 0 || i >= (int)mangaSrcChapters.size()) continue;
-			std::string cid = sourceItemId(mangaSrcId, mangaSrcChapters[i].key);
-			int pages = -1;
-			if (mangaNet && mangaNet->started())
-				for (const auto& it : mangaNet->queue().items())
-					if (it.chapterId == cid && !it.pageUrls.empty()) { pages = (int)it.pageUrls.size(); break; }
-			if (pages < 0 && mangaStore)
-				if (const ChapterProgress* pr = mangaStore->progress(cid))
-					if (pr->pages > 0) pages = pr->pages;
-			if (pages > 0 && avg) bytes += (uint64_t)pages * avg;
-			else unknown++;
-		}
-		std::string top = picks.empty() ? "No size yet" : bytes ? "About " + formatBytes((long long)bytes) : "Size unknown";
-		if (unknown) top += " \xC2\xB7 " + std::to_string(unknown) + " unknown";
-		uint64_t free = mangaDlFreeBytes();
-		top += " \xC2\xB7 " + formatBytes((long long)free) + " free";
-		ui.drawTextMid(top, 0, free && free < MangaDownloader::kMinFreeBytes ? DANGER : DIM, box.x + box.w / 2, box.y + 54, box.w - 36, 2);
-		// the unread count for All unread
+		m.note = formatBytes((long long)mangaDlFreeBytes()) + " free";
 		int unread = 0;
 		if (mangaStore)
 			for (const auto& c : mangaSrcChapters)
@@ -1386,44 +1370,43 @@ namespace bp
 			}
 		for (int i = 0; i < 4; i++)
 		{
-			Rect r = mangaDlSheetRowRect(i);
-			bool at = i == mdlSheetCursor;
-			bool dim = (i == 0 && (mserCursor < 0 || mserCursor >= (int)mangaSrcChapters.size())) ||
-				(i == 1 && picks.empty() && i == mdlSheetCursor) || (i == 2 && unread == 0);
-			std::string label = MDL_NAMES[i];
-			if (i == 2) label += " (" + std::to_string(unread) + ")";
-			std::string note;
-			if (i == 3) note = "Pick";
-			else if (i == 0 && dim) note = "Pick a chapter";
+			MoreItem it;
+			it.glyph = i == 3 ? &G_CHAPTERS : &G_DOWNLOAD;
+			it.label = MDL_NAMES[i];
+			if (i == 2) it.label = "All unread (" + std::to_string(unread) + ")";
+			bool noPick = i == 0 && (mserCursor < 0 || mserCursor >= (int)mangaSrcChapters.size());
+			if (i == 3) it.note = "Pick";
+			else if (noPick) it.note = "Pick a chapter";
 			else
 			{
 				uint64_t rowBytes = 0;
 				int rowUnknown = 0;
-				std::vector<int> one = i == 0 && mserCursor >= 0 ? std::vector<int>{mserCursor}
+				std::vector<int> one = i == 0 ? std::vector<int>{mserCursor}
 					: i == 1 ? mangaDlUnreadFrom(std::max(0, mserCursor), 5) : mangaDlUnreadFrom(0, 0);
-				for (int k : one)
+				for (int c : one)
 				{
-					if (k < 0 || k >= (int)mangaSrcChapters.size()) continue;
-					std::string cid = sourceItemId(mangaSrcId, mangaSrcChapters[k].key);
+					if (c < 0 || c >= (int)mangaSrcChapters.size()) continue;
+					std::string cid = sourceItemId(mangaSrcId, mangaSrcChapters[c].key);
 					int pages = -1;
 					if (mangaNet && mangaNet->started())
-						for (const auto& it : mangaNet->queue().items())
-							if (it.chapterId == cid && !it.pageUrls.empty()) { pages = (int)it.pageUrls.size(); break; }
+						for (const auto& q : mangaNet->queue().items())
+							if (q.chapterId == cid && !q.pageUrls.empty()) { pages = (int)q.pageUrls.size(); break; }
 					if (pages < 0 && mangaStore)
 						if (const ChapterProgress* pr = mangaStore->progress(cid))
 							if (pr->pages > 0) pages = pr->pages;
 					if (pages > 0 && avg) rowBytes += (uint64_t)pages * avg;
 					else rowUnknown++;
 				}
-				if (one.empty()) note = "None";
-				else if (rowBytes) note = "~" + formatBytes((long long)rowBytes);
-				else note = "size unknown";
-				if (rowUnknown && rowBytes) note += " +" + std::to_string(rowUnknown);
+				if (one.empty()) it.note = "None";
+				else if (rowBytes) it.note = "~" + formatBytes((long long)rowBytes);
+				else it.note = "size unknown";
+				if (rowUnknown && rowBytes) it.note += " +" + std::to_string(rowUnknown);
 			}
-			const Glyph* g = i == 3 ? &G_CHAPTERS : &G_DOWNLOAD;
-			ui.drawDialogRow(r, g, label, at, false, dim ? DIM : TEXT, note, dim ? DIM : SDL_Color{0, 0, 0, 0});
+			it.stay = true;	// (the act closes it, or moves on to Choose chapters)
+			it.act = [this, i](Player& p) { mdlSheetCursor = i; mangaDlSheetAct(p); return false; };
+			m.rows.push_back(it);
 		}
-		ui.drawHints({{"A", "Choose"}, {"B", "Close"}});
+		return m;
 	}
 
 	// ---- the Downloads tab ----

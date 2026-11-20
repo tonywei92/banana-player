@@ -40,8 +40,6 @@ namespace bp
 	{
 		overlays.erase(std::remove_if(overlays.begin(), overlays.end(), [](const std::unique_ptr<Overlay>& o) { return o->done; }),
 			overlays.end());
-		// the browse menu is its sheet: closed by B or a tap off it, its state goes too
-		if (ctxOpen && !findOverlay("ctxmenu")) ctxOpen = false;
 	}
 
 	bool Ui::overlayKey(Button b, Player& p)

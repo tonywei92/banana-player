@@ -1307,6 +1307,8 @@ namespace bp
 		mangaSrvMenuCursor = 0;
 		mangaSrvDeleteArmed = false;
 		mangaSrvLocal++;
+		ui.openMore([this](const Player&) { return mangaServerSpec(); }, "mangasrv", [this] { return mangaSrvMenu; },
+			[this] { mangaSrvMenu = false; mangaSrvDeleteArmed = false; });
 	}
 
 	bool Ui::Manga::mangaServerModalKey(Button b, Player& p)
@@ -1359,26 +1361,28 @@ namespace bp
 		return false;
 	}
 
-	void Ui::Manga::drawMangaServerModal(const Player& p)
+	Ui::MoreSpec Ui::Manga::mangaServerSpec()
 	{
-		(void)p;
+		MoreSpec m;
+		if (!mangaSrvMenu) return m;
 		std::string name = mangaSrvMenuId;
 		if (mangaNet && mangaNet->started())
 			if (const MangaServer* s = mangaNet->servers().find(mangaSrvMenuId)) name = s->name;
-		Rect box = mangaServerModalBox();
-		ui.drawDialog(box, "Server");
-		ui.drawTextMid(elideMiddle(name, 0, box.w - 40), 0, DIM, box.x + box.w / 2, box.y + 62, box.w - 40, 2);
+		m.title = "Server";
+		m.note = mangaSrvDeleteArmed ? "Press A again to delete" : name;
 		for (int i = 0; i < 2; i++)
 		{
-			Rect r = mangaServerModalRowRect(i);
-			bool at = i == mangaSrvMenuCursor;
-			if (i == 0) ui.drawDialogRow(r, &G_PENCIL, "Edit", at, false, TEXT, "", {0, 0, 0, 0});
-			else
-				ui.drawDialogRow(r, &G_TRASH, "Delete", at, false, DANGER,
-					mangaSrvDeleteArmed ? "Press again" : "", ACCENT);
+			MoreItem it;
+			it.glyph = i == 0 ? &G_PENCIL : &G_TRASH;
+			it.label = i == 0 ? "Edit" : "Delete";
+			it.danger = i == 1;
+			it.lit = i == 1 && mangaSrvDeleteArmed;
+			it.note = i == 1 && mangaSrvDeleteArmed ? "Press again" : "";
+			it.stay = true;	// (Delete is asked twice: the keys' own handler ends the menu)
+			it.act = [this, i](Player& p) { mangaSrvMenuCursor = i; return mangaServerModalKey(Button::A, p); };
+			m.rows.push_back(it);
 		}
-		if (mangaSrvDeleteArmed) ui.drawFooterText("Press A again to delete", ACCENT);
-		else ui.drawHints({{"A", "Choose"}, {"B", "Close"}});
+		return m;
 	}
 
 	// ---- signature() ----

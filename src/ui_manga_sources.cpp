@@ -279,7 +279,6 @@ namespace bp
 	{
 		if (mstAvMenu) return mangaAvMenuKey(b, p);
 		if (mstJavaModal != MJM_NONE) return mangaJavaModalKey(b, p);
-		if (mstModal != MSM_NONE) return mangaSourcesModalKey(b, p);
 		// L2/R2 step between Available and Repositories (the cursor of each kept; L / R are the shell's sections);
 		// LEFT/RIGHT go a page up or down
 		if (b == Button::L || b == Button::R)
@@ -325,6 +324,7 @@ namespace bp
 					mstModalId = list[cur].fullId;
 					mstUninstallArmed = false;
 					mstLocal++;
+				mangaSourceSheetOpen();
 				}
 				else if (cur >= (int)list.size()) mangaJavaInstalledAct(cur - (int)list.size(), p);
 			}
@@ -341,6 +341,7 @@ namespace bp
 					mstModalId = list[cur].url;
 					mstUninstallArmed = false;
 					mstLocal++;
+				mangaSourceSheetOpen();
 				}
 				else if (cur >= lua && cur < lua + java)
 				{
@@ -373,6 +374,7 @@ namespace bp
 				mstModalId = list[cur].fullId;
 				mstUninstallArmed = false;
 				mstLocal++;
+			mangaSourceSheetOpen();
 			}
 			else if (cur >= (int)list.size()) mangaJavaInstalledAct(cur - (int)list.size(), p);
 			return;
@@ -391,6 +393,7 @@ namespace bp
 				mstModalId = inst[cur].fullId;
 				mstUninstallArmed = false;
 				mstLocal++;
+			mangaSourceSheetOpen();
 			}
 			else if (cur >= li && cur < li + jv) mangaJavaAvailableAct(cur - li, p);
 			else if (cur >= li + jv && cur - li - jv < (int)list.size())
@@ -415,6 +418,7 @@ namespace bp
 		mstModalId = list[cur].url;
 		mstUninstallArmed = false;
 		mstLocal++;
+	mangaSourceSheetOpen();
 	}
 
 	void Ui::Manga::mangaSourcesCloseModal()
@@ -424,24 +428,6 @@ namespace bp
 		mstModalId.clear();
 		mstUninstallArmed = false;
 		mstLocal++;
-	}
-
-	bool Ui::Manga::mangaSourcesModalKey(Button b, Player& p)
-	{
-		int n = mangaSourcesModalRows();
-		if (n <= 0) { mangaSourcesCloseModal(); return false; }
-		if (mstModalCursor >= n) mstModalCursor = n - 1;
-		switch (b)
-		{
-		case Button::Up: mstModalCursor = (mstModalCursor + n - 1) % n; break;
-		case Button::Down: mstModalCursor = (mstModalCursor + 1) % n; break;
-		case Button::Left: if (mstModal == MSM_REMOVE) mstModalCursor = std::max(0, mstModalCursor - 1); break;
-		case Button::Right: if (mstModal == MSM_REMOVE) mstModalCursor = std::min(n - 1, mstModalCursor + 1); break;
-		case Button::A: mangaSourcesModalAct(p); break;
-		case Button::B: mangaSourcesCloseModal(); break;
-		default: break;
-		}
-		return false;
 	}
 
 	void Ui::Manga::mangaSourcesModalAct(Player& p)
@@ -513,20 +499,6 @@ namespace bp
 		if (pt.kind != Pointer::Down) return false;
 		if (mstAvMenu) return mangaAvMenuPointer(x, y, p);
 		if (mstJavaModal != MJM_NONE) return mangaJavaModalPointer(pt, x, y, p);
-		if (mstModal != MSM_NONE)
-		{
-			int n = mangaSourcesModalRows();
-			for (int i = 0; i < n; i++)
-				if (mangaSourcesModalRowRect(i).hit(x, y))
-				{
-					mstModalCursor = i;
-					mangaSourcesModalAct(p);
-					return false;
-				}
-			// a tap outside the sheet closes it (the back icon is outside it too)
-			if (!mangaSourcesModalBox().hit(x, y)) mangaSourcesCloseModal();
-			return false;
-		}
 		// the two lists' tabs (the kit's, as drawMangaSources laid them out)
 		int t = lay::tabAt(mangaSourcesTabPage(p).strip, x, y);
 		if (t >= 0)
@@ -678,103 +650,73 @@ namespace bp
 			ui.drawHints({{"A", "Options"}, {"X", "Remove"}, {"L/R", "List"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Open"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 
-		if (mstModal != MSM_NONE) later([this, &p] { drawMangaSourceModal(p); });
 		if (mstJavaModal != MJM_NONE) later([this, &p] { drawMangaJavaModal(p); });
 		if (mstAvMenu) later([this, &p] { drawMangaAvMenu(p); });
 		if (mengSheet) later([this] { drawMangaEngineSheet(); });
 	}
 
-	void Ui::Manga::drawMangaSourceModal(const Player& p)
+	void Ui::Manga::mangaSourceSheetOpen()
 	{
-		(void)p;
+		ui.openMore([this](const Player&) { return mangaSourceSpec(); }, "mangasrc", [this] { return mstModal != MSM_NONE; },
+			[this] { if (mstModal != MSM_NONE) mangaSourcesCloseModal(); }, mstModalCursor);
+	}
+
+	Ui::MoreSpec Ui::Manga::mangaSourceSpec()
+	{
+		MoreSpec m;
+		m.focus = mstModalCursor;
 		auto installed = mangaSourcesInstalled();
 		const MangaRepos::InstalledSource* s = nullptr;
 		for (auto& one : installed)
 			if (one.fullId == mstModalId) { s = &one; break; }
-		if ((mstModal == MSM_DETAILS || mstModal == MSM_OPTIONS) && !s) { mstModal = MSM_NONE; return; }
+		if ((mstModal == MSM_DETAILS || mstModal == MSM_OPTIONS) && !s) return m;
+		if (mstModal == MSM_NONE) return m;
 		auto repos = mangaSourcesRepos();
 		std::string repoName;
 		if (s)
 			for (auto& r : repos)
 				if (r.url == s->repo) { repoName = r.name.empty() ? r.url : r.name; break; }
-		Rect box = mangaSourcesModalBox();
-		std::string title = mstModal == MSM_DETAILS ? sourceName(*s)
-			: mstModal == MSM_OPTIONS ? "Options"
-			: mstModal == MSM_REPO ? "Repository"
-			: "Remove repository";
-		ui.drawDialog(box, title);
-		int rows = mangaSourcesModalRows();
+		std::string rname;
+		for (auto& r : repos)
+			if (r.url == mstModalId) { rname = r.name.empty() ? r.url : r.name; break; }
+		m.title = mstModal == MSM_DETAILS ? sourceName(*s) : mstModal == MSM_OPTIONS ? "Options" : mstModal == MSM_REPO ? "Repository" : "Remove repository";
 		if (mstModal == MSM_DETAILS)
+			m.note = (repoName.empty() ? "Not in a repository" : repoName) + " \xC2\xB7 " + (s->version.empty() ? "unknown" : s->version) + " \xC2\xB7 " +
+				(s->lang.empty() ? "unknown" : s->lang);
+		else if (mstModal == MSM_OPTIONS) m.note = sourceName(*s);
+		else if (mstModal == MSM_REPO) m.note = elideMiddle(rname.empty() ? mstModalId : rname, 0, 360);
+		else m.note = "Remove its sources too? " + elideMiddle(rname.empty() ? mstModalId : rname, 0, 200);
+		if (mstUninstallArmed) m.note = "Press A again to uninstall";
+		auto row = [&](const Glyph* g, const std::string& label, const std::string& note, bool danger, bool lit) {
+			MoreItem it;
+			it.glyph = g;
+			it.label = label;
+			it.note = note;
+			it.danger = danger;
+			it.lit = lit;
+			it.stay = true;	// (the modal's own act ends it, or moves it to its next question)
+			int at = (int)m.rows.size();
+			it.act = [this, at](Player& p) { mstModalCursor = at; mangaSourcesModalAct(p); return false; };
+			m.rows.push_back(it);
+		};
+		if (mstModal == MSM_DETAILS || mstModal == MSM_OPTIONS)
 		{
-			auto line = [&](const char* label, const std::string& value, int y) {
-				ui.drawTextMid(label, 0, DIM, box.x + 24, y, 104);
-				ui.drawTextMid(value, 0, TEXT, box.x + 132, y, box.w - 156);
-			};
-			line("Repository", repoName.empty() ? "Not in a repository" : repoName, box.y + 58);
-			line("Version", s->version.empty() ? "unknown" : s->version, box.y + 80);
-			line("Language", s->lang.empty() ? "unknown" : s->lang, box.y + 102);
+			if (mstModal == MSM_OPTIONS || s->updateAvailable)
+				row(&G_REFRESH, "Update", mstInstalling.count(s->fullId) ? "Updating\xE2\x80\xA6" : !s->updateAvailable ? "Up to date" : "", false, false);
+			row(&G_TRASH, "Uninstall", mstUninstallArmed ? "Press again" : "", true, mstUninstallArmed);
 		}
-		else if (mstModal == MSM_OPTIONS)
-			ui.drawTextMid(sourceName(*s), 0, DIM, box.x + box.w / 2, box.y + 62, box.w - 40, 2);
 		else if (mstModal == MSM_REPO)
 		{
-			std::string name;
-			for (auto& r : repos)
-				if (r.url == mstModalId) { name = r.name.empty() ? r.url : r.name; break; }
-			ui.drawTextMid(elideMiddle(name.empty() ? mstModalId : name, 0, box.w - 40), 0, DIM, box.x + box.w / 2,
-				box.y + 62, 0, 2);
+			row(&G_REFRESH, "Refresh", "", false, false);
+			row(&G_TRASH, "Remove", "", true, false);
 		}
-		else if (mstModal == MSM_REMOVE)
+		else
 		{
-			std::string name;
-			for (auto& r : repos)
-				if (r.url == mstModalId) { name = r.name.empty() ? r.url : r.name; break; }
-			ui.drawTextMid("Remove its sources too?", 0, TEXT, box.x + box.w / 2, box.y + 64, box.w - 40, 2);
-			ui.drawTextMid(elideMiddle(name.empty() ? mstModalId : name, 0, box.w - 40), 0, DIM, box.x + box.w / 2,
-				box.y + 86, 0, 2);
+			row(&G_CHECK, "Yes", "its sources go too", true, false);
+			row(&G_CROSS, "No", "its sources stay", false, false);
+			row(&G_BACK, "Cancel", "", false, false);
 		}
-		bool updateRow = mstModal == MSM_OPTIONS || (s && s->updateAvailable);
-		int uninstallRow = updateRow ? 1 : 0;
-		for (int i = 0; i < rows; i++)
-		{
-			Rect r = mangaSourcesModalRowRect(i);
-			bool at = i == mstModalCursor;
-			const Glyph* g = nullptr;
-			std::string label, note;
-			bool dim = false;
-			if (mstModal == MSM_DETAILS || mstModal == MSM_OPTIONS)
-			{
-				if (updateRow && i == 0)
-				{
-					label = "Update";
-					g = &G_REFRESH;
-					dim = !s->updateAvailable;
-					if (mstInstalling.count(s->fullId)) note = "Updating\xE2\x80\xA6";
-					else if (dim) note = "Up to date";
-				}
-				else if (i == uninstallRow)
-				{
-					label = "Uninstall";
-					g = &G_TRASH;
-					if (mstUninstallArmed) note = "Press again";
-				}
-			}
-			else if (mstModal == MSM_REPO)
-			{
-				label = i == 0 ? "Refresh" : "Remove";
-				g = i == 0 ? &G_REFRESH : &G_TRASH;
-			}
-			else
-			{
-				if (i == 0) { label = "Yes"; note = "its sources go too"; }
-				else if (i == 1) { label = "No"; note = "its sources stay"; }
-				else label = "Cancel";
-			}
-			ui.drawDialogRow(r, g, label, at, false, dim ? DIM : TEXT, note, note == "Press again" ? ACCENT : SDL_Color{0, 0, 0, 0});
-		}
-		if (mstUninstallArmed) ui.drawFooterText("Press A again to uninstall", ACCENT);
-		else if (mstModal == MSM_REMOVE) ui.drawHints({{"A", "Choose"}, {"LEFT/RIGHT", "Move"}, {"B", "Cancel"}});
-		else ui.drawHints({{"A", "Choose"}, {"B", "Close"}});
+		return m;
 	}
 
 	// ---- Available's menu: Refresh, Languages ----
@@ -839,19 +781,40 @@ namespace bp
 		mstAvMenu = 1;
 		mstAvCursor = mstAvScroll = 0;
 		mstLocal++;
+		mangaAvSheetOpen();
 	}
 
-	Ui::Rect Ui::Manga::mangaAvBox() const
+	// Filter (X on Available): a More sheet over mstAvMenu == 1; Languages (2) is a list, a List sheet drawn by the page
+	void Ui::Manga::mangaAvSheetOpen()
 	{
-		int rows = mstAvMenu == 1 ? 3 : std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
-		int h = 70 + rows * 44;
-		return {112, (436 - h) / 2, 416, h};
+		ui.openMore([this](const Player& p) { return mangaAvSpec(p); }, "mangaav", [this] { return mstAvMenu == 1; },
+			[this] { if (mstAvMenu == 1) mstAvMenu = 0; }, mstAvCursor);
 	}
 
-	Ui::Rect Ui::Manga::mangaAvRow(int i) const
+	Ui::MoreSpec Ui::Manga::mangaAvSpec(const Player& p)
 	{
-		Rect b = mangaAvBox();
-		return {b.x + 16, b.y + 56 + i * 44, b.w - 32, 40};
+		MoreSpec m;
+		if (mstAvMenu != 1) return m;
+		m.title = "Filter";
+		const Glyph* G[3] = {&G_REFRESH, &G_WEB, &G_EYE};
+		const char* LABELS[3] = {"Refresh", "Languages", "Installed only"};
+		for (int i = 0; i < 3; i++)
+		{
+			MoreItem it;
+			it.glyph = G[i];
+			it.label = LABELS[i];
+			it.note = i == 1 ? mangaLangsSummary(p) : i == 2 ? (mstInstalledOnly ? "On" : "Off") : "";
+			it.lit = i == 2 && mstInstalledOnly;
+			it.stay = true;	// (the keys' own act ends it, moves to the languages, or flips the switch)
+			it.act = [this, i](Player& pl) { mstAvCursor = i; mangaAvMenuAct(pl); return false; };
+			m.rows.push_back(it);
+		}
+		return m;
+	}
+
+	lay::ListSheet Ui::Manga::mangaAvLangSheet() const
+	{
+		return lay::listSheet(std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1));
 	}
 
 	void Ui::Manga::mangaAvMenuAct(Player& p)
@@ -923,16 +886,18 @@ namespace bp
 
 	bool Ui::Manga::mangaAvMenuKey(Button b, Player& p)
 	{
-		int n = mstAvMenu == 1 ? 3 : (int)mstAvLangs.size() + 1;
+		// (the languages: the Filter menu is its own sheet, which takes its keys)
+		int n = (int)mstAvLangs.size() + 1;
 		switch (b)
 		{
 		case Button::Up: mstAvCursor = (mstAvCursor + n - 1) % n; break;
 		case Button::Down: mstAvCursor = (mstAvCursor + 1) % n; break;
 		case Button::A: mangaAvMenuAct(p); break;
 		case Button::B:
-			// the languages go back to the menu; the menu closes
-			if (mstAvMenu == 2) { mstAvMenu = 1; mstAvCursor = 1; }
-			else mstAvMenu = 0;
+			// back to the menu
+			mstAvMenu = 1;
+			mstAvCursor = 1;
+			mangaAvSheetOpen();
 			break;
 		case Button::X: mstAvMenu = 0; break;
 		default: break;
@@ -948,12 +913,13 @@ namespace bp
 
 	bool Ui::Manga::mangaAvMenuPointer(int x, int y, Player& p)
 	{
-		if (!mangaAvBox().hit(x, y)) { mstAvMenu = 0; mstLocal++; return false; }
-		int shown = mstAvMenu == 1 ? 3 : std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
+		lay::ListSheet sh = mangaAvLangSheet();
+		if (!sh.box.hit(x, y)) { mstAvMenu = 0; mstLocal++; return false; }
+		int shown = std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
 		for (int i = 0; i < shown; i++)
-			if (mangaAvRow(i).hit(x, y))
+			if (sh.row(i).hit(x, y))
 			{
-				mstAvCursor = (mstAvMenu == 2 ? mstAvScroll : 0) + i;
+				mstAvCursor = mstAvScroll + i;
 				mangaAvMenuAct(p);
 				return false;
 			}
@@ -962,37 +928,26 @@ namespace bp
 
 	void Ui::Manga::drawMangaAvMenu(const Player& p)
 	{
-		Rect b = mangaAvBox();
-		ui.drawDialog(b, mstAvMenu == 1 ? "Filter" : "Languages");
-		if (mstAvMenu == 1)
-		{
-			const char* LABELS[3] = {"Refresh", "Languages", "Installed only"};
-			for (int i = 0; i < 3; i++)
-			{
-				Rect r = mangaAvRow(i);
-				bool at = i == mstAvCursor;
-				if (at) ui.drawFocus(r);
-				ui.drawTextMid(LABELS[i], 1, at ? ACCENT : TEXT, r.x + 12, r.y + r.h / 2, 220);
-				if (i == 1) ui.drawTextMid(mangaLangsSummary(p), 0, at ? DIM_ON : DIM, r.x + r.w - 12, r.y + r.h / 2, 160, 1);
-				if (i == 2) ui.drawTextMid(mstInstalledOnly ? "On" : "Off", 0, mstInstalledOnly ? ACCENT : at ? DIM_ON : DIM, r.x + r.w - 12, r.y + r.h / 2, 0, 1);
-			}
-			ui.drawHints({{"A", "Choose"}, {"B", "Close"}});
-			return;
-		}
+		// the languages: a List sheet, a tick on each kept
+		if (mstAvMenu != 2) return;
+		Kit& k = *ui.kit;
+		lay::ListSheet sh = mangaAvLangSheet();
+		k.sheet(sh, {&G_WEB, "Languages", "", false});
 		auto chosen = splitLangs(p.settings.mangaLangs);
 		int n = (int)mstAvLangs.size() + 1;
 		for (int i = 0; i < MST_AV_SHOWN && mstAvScroll + i < n; i++)
 		{
-			int k = mstAvScroll + i;
-			Rect r = mangaAvRow(i);
-			bool at = k == mstAvCursor;
-			if (at) ui.drawFocus(r);
-			bool on = k == 0 ? chosen.empty()
-				: std::find(chosen.begin(), chosen.end(), mstAvLangs[k - 1]) != chosen.end();
-			ui.drawTextMid(k == 0 ? "All languages" : langName(mstAvLangs[k - 1]), 1, at ? ACCENT : TEXT, r.x + 12, r.y + r.h / 2, 300);
-			if (on) ui.drawGlyphMid(G_CHECK, r.x + r.w - 20, r.y + r.h / 2, at ? ACCENT : TEXT);
+			int at = mstAvScroll + i;
+			bool on = at == 0 ? chosen.empty() : std::find(chosen.begin(), chosen.end(), mstAvLangs[at - 1]) != chosen.end();
+			Kit::Row r;
+			r.font = F_P16;
+			r.glyph = on ? &G_CHECK : &G_BOX;
+			r.name = at == 0 ? "All languages" : langName(mstAvLangs[at - 1]);
+			r.note = on ? "On" : "";
+			r.focused = at == mstAvCursor;
+			k.row(sh.row(i), r);
 		}
-		if (n > MST_AV_SHOWN) ui.drawScrollBar(mangaAvRow(0).y, MST_AV_SHOWN * 44 - 4, mstAvScroll, MST_AV_SHOWN, n);
-		ui.drawHints({{"A", "Tick / untick"}, {"B", "Done"}});
+		if (n > MST_AV_SHOWN) ui.drawScrollBar(sh.rowsY, MST_AV_SHOWN * lay::LIST_ROW, mstAvScroll, MST_AV_SHOWN, n);
+		k.hints({{"A", "Tick / untick"}, {"B", "Done"}});
 	}
 }

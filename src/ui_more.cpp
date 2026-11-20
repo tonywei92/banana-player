@@ -10,7 +10,16 @@ namespace bp
 	{
 		std::function<MoreSpec(const Player&)> build;
 		const char* nm;
-		int cursor = 0, pressed = -1;
+		// a menu of the older kind that keeps its state in a member (a flag, an enum): alive() says it still stands (the sheet
+		// closes when it does not, as it asks it after each row), ended() resets it when the sheet closes
+		std::function<bool()> alive;
+		std::function<void()> ended;
+		int cursor = 0, pressed = -1, lastFocus = -1;
+		void follow(const MoreSpec& m)
+		{
+			if (m.focus >= 0 && m.focus != lastFocus) cursor = m.focus;
+			lastFocus = m.focus;
+		}
 
 		MoreSheet(Ui& u, std::function<MoreSpec(const Player&)> b, const char* n) : Overlay(u), build(std::move(b)), nm(n) {}
 		const char* name() const override { return nm; }
@@ -32,12 +41,28 @@ namespace bp
 			cursor = i;
 			if (it.off || !it.act) return false;
 			if (!it.stay) close();	// (first: what it does may open another sheet, which goes on top)
-			return it.act(p);
+			bool leave = it.act(p);
+			if (alive && !alive()) close();
+			return leave;
 		}
 
 		bool key(Button b, Player& p) override
 		{
+			bool leave = keyIn(b, p);
+			if (done && ended) ended();
+			return leave;
+		}
+		bool pointer(const Pointer& pt, int x, int y, Player& p) override
+		{
+			bool leave = pointerIn(pt, x, y, p);
+			if (done && ended) ended();
+			return leave;
+		}
+
+		bool keyIn(Button b, Player& p)
+		{
 			MoreSpec m = build(p);
+			follow(m);
 			lay::Sheet s = layout(m);
 			int n = s.count();
 			if (!n) { close(); return false; }
@@ -62,7 +87,7 @@ namespace bp
 			return false;
 		}
 
-		bool pointer(const Pointer& pt, int x, int y, Player& p) override
+		bool pointerIn(const Pointer& pt, int x, int y, Player& p)
 		{
 			// touch locked (the player's lock): the sheet is the buttons' until it is unlocked
 			if (ui.touchIsLocked()) return false;
@@ -88,10 +113,11 @@ namespace bp
 		void draw(const Player& p) override
 		{
 			MoreSpec m = build(p);
+			follow(m);
 			lay::Sheet s = layout(m);
 			Kit& k = *ui.kit;
 			// nothing to list any more (what it was about has gone: the last file ended under it): closed
-			if (!s.count()) { close(); return; }
+			if (!s.count()) { if (!done) { close(); if (ended) ended(); } return; }
 			cursor = std::clamp(cursor, 0, std::max(0, s.count() - 1));
 			k.sheet(s, {m.glyph, m.title, m.note, false});
 			for (int i = 0; i < (int)m.chips.size(); i++)
@@ -154,8 +180,12 @@ namespace bp
 		}
 	};
 
-	void Ui::openMore(std::function<MoreSpec(const Player&)> build, const char* name)
+	void Ui::openMore(std::function<MoreSpec(const Player&)> build, const char* name, std::function<bool()> alive, std::function<void()> ended, int at)
 	{
-		pushOverlay(std::make_unique<MoreSheet>(*this, std::move(build), name));
+		auto sheet = std::make_unique<MoreSheet>(*this, std::move(build), name);
+		sheet->cursor = at;
+		sheet->alive = std::move(alive);
+		sheet->ended = std::move(ended);
+		pushOverlay(std::move(sheet));
 	}
 }

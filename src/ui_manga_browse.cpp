@@ -244,14 +244,11 @@ namespace bp
 	{
 		// a network folder's page (its connections and a folder's series) takes the keys while it shows
 		if (mangaNetView != MNF_OFF) return mangaNetFoldersKey(b, p);
-		// the server row's Edit / Delete sheet takes the keys first (B closes it)
-		if (mangaSrvMenu) return mangaServerModalKey(b, p);
 		if (mBrowseList)
 		{
 			int n = (int)mangaLocal.size();
-			if (mlocSheet != MLS_NONE) return mangaLocalSheetKey(b, p);
 			// Y: the series' Open / Info / Delete; X: where to put manga for it to show here
-			if (b == Button::X) { mlocSheet = MLS_HELP; return false; }
+			if (b == Button::X) { mangaLocalHelpOpen(); return false; }
 			if (b == Button::Y)
 			{
 				if (n > 0)
@@ -259,6 +256,7 @@ namespace bp
 					mlocSheet = MLS_MENU;
 					mlocCursor = 0;
 					mlocDeleteArmed = false;
+					mangaLocalSheetOpen();
 				}
 				return false;
 			}
@@ -308,29 +306,8 @@ namespace bp
 		if (pt.kind != Pointer::Down) return false;
 		// a network folder's page is the whole list while it shows
 		if (mangaNetView != MNF_OFF) return mangaNetFoldersPointer(pt, x, y, p);
-		if (mangaSrvMenu)
-		{
-			if (mangaServerModalBox().hit(x, y))
-			{
-				for (int i = 0; i < 2; i++)
-					if (mangaServerModalRowRect(i).hit(x, y))
-					{
-						mangaSrvMenuCursor = i;
-						mangaServerModalKey(Button::A, p);
-						return false;
-					}
-			}
-			else
-			{
-				mangaSrvMenu = false;
-				mangaSrvDeleteArmed = false;
-				mangaSrvLocal++;
-			}
-			return false;
-		}
 		if (mBrowseList)
 		{
-			if (mlocSheet != MLS_NONE) return mangaLocalSheetPointer(x, y, p);
 			// the series follow a finger: a drag scrolls them, a tap (lifted where it went down) opens one
 			mangaRowsPointer(p, x, y, [this] { return (int)mangaLocal.size(); }, &mListScroll, &mListCursor,
 				[this](int i) { return mangaLocalRowAt(i); }, [this, &p](int i, bool) {
@@ -449,7 +426,6 @@ namespace bp
 		bool onServer = mbrowseCursor > nets && mbrowseCursor <= nets + mangaBrowseServerCount();
 		if (onServer) ui.drawHints({{"A", "Open"}, {"X", "Edit"}, {"Y", "Add server"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Open"}, {"X", "Sources"}, {"Y", "Add server"}, {"B", "Back"}});
-		if (mangaSrvMenu) later([this, &p] { drawMangaServerModal(p); });
 	}
 
 	// ---- a source's page: Popular · Latest · Search, a cover grid, Search ----
@@ -1388,7 +1364,6 @@ namespace bp
 		mangaSrcFailed = FAIL_NONE;
 		mangaSeriesId = id;
 		mangaSeriesFrom = from;
-		mangaSrcInfoShown = false;
 		mserCursor = -1;
 		mserBtn = 0;
 		mserScroll = 0;
@@ -1692,13 +1667,8 @@ namespace bp
 
 	bool Ui::Manga::mangaSourceSeriesKey(Button b, Player& p)
 	{
-		// the Download sheet takes the keys while it shows; Info's dialog closes on A or B
+		// the Download sheet takes the keys while it shows
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetKey(b, p);
-		if (mangaSrcInfoShown)
-		{
-			if (b == Button::A || b == Button::B) { mangaSrcInfoShown = false; mstJavaLocal++; }
-			return false;
-		}
 		if (b == Button::Start) { openMangaSettings(); return false; }
 		// R gets the chapters, L checks the source again (free on this page: L / R are the shell's sections)
 		if (b == Button::R) { mangaDlSheetOpen(p); return false; }
@@ -1728,7 +1698,7 @@ namespace bp
 			{
 				if (mserBtn == 1) mangaDlSheetOpen(p);
 				else if (mserBtn == 2) mangaSourceSeriesRefresh(p);
-				else if (mserBtn == 3) { mangaSrcInfoShown = true; mstJavaLocal++; }
+				else if (mserBtn == 3) mangaSrcInfoOpen();
 				else if (mserBtn == 4) mangaSourceSeriesInLibrary(p);
 				else mangaSourceSeriesResume(p);
 			}
@@ -1768,18 +1738,9 @@ namespace bp
 	{
 		if (pt.kind != Pointer::Down) return false;
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetPointer(pt, x, y, p);
-		// Info's dialog: a touch anywhere closes it (and presses nothing under it)
-		if (mangaSrcInfoShown)
-		{
-			mangaSrcInfoShown = false;
-			mstJavaLocal++;
-			ui.swallowTouch = true;
-			return false;
-		}
 		if (mangaSrcInfoRect().hit(x, y))
 		{
-			mangaSrcInfoShown = true;
-			mstJavaLocal++;
+			mangaSrcInfoOpen();
 			return false;
 		}
 		if (mangaDlButtonRect().hit(x, y))
@@ -1974,7 +1935,6 @@ namespace bp
 		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) ui.drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R", "Get"}, {"L", "Check"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) later([this, &p] { drawMangaDlSheet(p); });
-		if (mangaSrcInfoShown) later([this] { drawMangaSrcInfo(); });
 	}
 
 	// ---- signature() ----
@@ -2046,32 +2006,16 @@ namespace bp
 		return "/data/Manga";
 	}
 
-	bool Ui::Manga::mangaLocalSheetKey(Button b, Player& p)
+	// the series' menu (Y on On this handheld): a More sheet over mlocSheet; a row is A on it
+	void Ui::Manga::mangaLocalMenuAct(int row, Player& p)
 	{
-		if (mlocSheet == MLS_HELP)
-		{
-			// any of A, B, X closes it (it says, it asks nothing)
-			if (b == Button::A || b == Button::B || b == Button::X) mlocSheet = MLS_NONE;
-			return false;
-		}
-		if (b == Button::B || b == Button::Y)
-		{
-			mlocSheet = MLS_NONE;
-			mlocDeleteArmed = false;
-			return false;
-		}
-		if (b == Button::Up || b == Button::Down)
-		{
-			mlocCursor = (mlocCursor + (b == Button::Down ? 1 : 2)) % 3;
-			mlocDeleteArmed = false;
-			return false;
-		}
-		if (b != Button::A) return false;
+		if (mlocCursor != row) mlocDeleteArmed = false;
+		mlocCursor = row;
 		if (mlocCursor == 0)
 		{
 			mlocSheet = MLS_NONE;
 			mangaChoose(MT_BROWSE, mListCursor, p);
-			return false;
+			return;
 		}
 		if (mlocCursor == 1)
 		{
@@ -2083,7 +2027,7 @@ namespace bp
 				int n = (int)s.chapters.size();
 				ui.openFileInfo(s.path, s.title, {{"Chapters", std::to_string(n)}}, &p);
 			}
-			return false;
+			return;
 		}
 		// Delete: A again within the window takes the files off the card
 		Uint32 now = SDL_GetTicks();
@@ -2091,33 +2035,9 @@ namespace bp
 		{
 			mlocDeleteArmed = true;
 			mlocDeleteAt = now;
-			return false;
+			return;
 		}
 		mangaLocalDeleteNow(p);
-		return false;
-	}
-
-	bool Ui::Manga::mangaLocalSheetPointer(int x, int y, Player& p)
-	{
-		if (mlocSheet == MLS_HELP)
-		{
-			mlocSheet = MLS_NONE;
-			return false;
-		}
-		if (!mlocMenuBox().hit(x, y))
-		{
-			mlocSheet = MLS_NONE;
-			mlocDeleteArmed = false;
-			return false;
-		}
-		for (int i = 0; i < 3; i++)
-			if (mlocMenuRow(i).hit(x, y))
-			{
-				if (mlocCursor != i) mlocDeleteArmed = false;
-				mlocCursor = i;
-				mangaLocalSheetKey(Button::A, p);
-			}
-		return false;
 	}
 
 	void Ui::Manga::mangaLocalDeleteNow(Player& p)
@@ -2162,74 +2082,86 @@ namespace bp
 		else p.osd("Deleted " + s.title, 2500);
 	}
 
-	void Ui::Manga::drawMangaLocalSheet(const Player& p)
+	void Ui::Manga::mangaLocalSheetOpen()
 	{
-		(void)p;
-		if (mlocSheet == MLS_HELP)
-		{
-			Rect b = mangaLocalHelpBox();
-			ui.drawDialog(b, "Adding manga");
-			int x = b.x + 32, w = b.w - 64, y = b.y + 72;
-			ui.drawTextMid("Copy manga into this folder:", 0, TEXT, x, y, w);
-			ui.drawTextMid(elideMiddle(mangaLocalFolder(), 1, w), 1, ACCENT, x, y + 30, w);
-			// the second card: its own Manga folder is read too (Manga, manga or MANGA at its top)
-			ui.drawTextMid("or into a Manga folder at the top of the second card:", 0, TEXT, x, y + 60, w);
-			ui.drawTextMid("Card 2 \xE2\x80\xBA Manga", 1, ACCENT, x, y + 90, w);
-			ui.drawTextMid("A card set up on a Mac: choose Master Boot Record and", 0, DIM, x, y + 120, w);
-			ui.drawTextMid("exFAT (or FAT32), or the handheld may not see it.", 0, DIM, x, y + 144, w);
-			const char* rest[] = {
-				"Each series is a folder. Its chapters are .cbz files (or",
-				".cbr, .pdf), or folders of pictures (Chapter 1...).",
-				"Copy them with Files, the web dashboard's Files (Upload),",
-				"or with the card in a computer."};
-			for (int i = 0; i < 4; i++) ui.drawTextMid(rest[i], 0, DIM, x, y + 180 + i * 26, w);
-			ui.drawGlyphMid(G_INFO, x + 8, y + 300, DIM);
-			ui.drawTextMid("Downloaded chapters are kept there too.", 0, DIM, x + 24, y + 300, w - 24);
-			ui.drawHints({{"A", "OK"}});
-			return;
-		}
-		if (mListCursor < 0 || mListCursor >= (int)mangaLocal.size()) return;
+		ui.openMore([this](const Player&) { return mangaLocalSpec(); }, "mangaloc", [this] { return mlocSheet == MLS_MENU; },
+			[this] { mlocSheet = MLS_NONE; mlocDeleteArmed = false; });
+	}
+
+	Ui::MoreSpec Ui::Manga::mangaLocalSpec()
+	{
+		MoreSpec m;
+		if (mlocSheet != MLS_MENU || mListCursor < 0 || mListCursor >= (int)mangaLocal.size()) return m;
 		const LocalSeries& s = mangaLocal[mListCursor];
-		Rect box = mlocMenuBox();
-		// its name as the title (a line under it would sit on the first row); how much a delete takes, on its row
-		ui.drawDialog(box, s.title);
+		m.glyph = &G_FOLDER;
+		m.title = s.title;
+		m.note = mlocDeleteArmed ? "Press A again to delete its files" : "";
 		std::string count = std::to_string(s.chapters.size()) + (s.chapters.size() == 1 ? " chapter" : " chapters");
-		ui.drawDialogRow(mlocMenuRow(0), &G_PLAY, "Open", mlocCursor == 0, false, TEXT, "", {0, 0, 0, 0});
-		ui.drawDialogRow(mlocMenuRow(1), &G_INFO, "Info", mlocCursor == 1, false, TEXT, "", {0, 0, 0, 0});
-		ui.drawDialogRow(mlocMenuRow(2), &G_TRASH, "Delete", mlocCursor == 2, false, DANGER,
-			mlocDeleteArmed ? "Press again" : count, mlocDeleteArmed ? ACCENT : DIM);
-		if (mlocDeleteArmed) ui.drawFooterText("Press A again to delete its files", ACCENT);
-		else ui.drawHints({{"A", "Choose"}, {"B", "Close"}});
+		auto row = [&](const Glyph* g, const char* label, const std::string& note, bool danger, bool lit) {
+			MoreItem it;
+			it.glyph = g;
+			it.label = label;
+			it.note = note;
+			it.danger = danger;
+			it.lit = lit;
+			it.stay = true;
+			int at = (int)m.rows.size();
+			it.act = [this, at](Player& p) { mangaLocalMenuAct(at, p); return false; };
+			m.rows.push_back(it);
+		};
+		row(&G_PLAY, "Open", "", false, false);
+		row(&G_INFO, "Info", "", false, false);
+		row(&G_TRASH, "Delete", mlocDeleteArmed ? "Press again" : count, true, mlocDeleteArmed);
+		return m;
+	}
+
+	// X on On this handheld (and on its empty page): where to put manga, as Info's page
+	void Ui::Manga::mangaLocalHelpOpen()
+	{
+		auto lines = [&](InfoGroup& g, const std::string& text) {
+			for (auto& l : ui.wrapText(text, F_I12, 410, 6)) g.rows.push_back({"", l});
+		};
+		InfoGroup where;
+		where.title = "Copy manga into this folder";
+		where.rows.push_back({"", elideMiddle(mangaLocalFolder(), F_I12, 410)});
+		lines(where, "or into a Manga folder at the top of the second card (Manga, manga or MANGA):");
+		where.rows.push_back({"", "Card 2 \xE2\x80\xBA Manga"});
+		InfoGroup mac;
+		mac.title = "A card set up on a Mac";
+		lines(mac, "Choose Master Boot Record and exFAT (or FAT32), or the handheld may not see it.");
+		InfoGroup how;
+		how.title = "Each series is a folder";
+		lines(how, "Its chapters are .cbz files (or .cbr, .pdf), or folders of pictures (Chapter 1...).");
+		lines(how, "Copy them with Files, the web dashboard's Files (Upload), or with the card in a computer.");
+		lines(how, "Downloaded chapters are kept there too.");
+		std::vector<InfoGroup> groups;
+		groups.push_back(std::move(where));
+		groups.push_back(std::move(mac));
+		groups.push_back(std::move(how));
+		ui.openInfoGroups("Adding manga", std::move(groups));
 	}
 }
 
 namespace bp
 {
-	void Ui::Manga::drawMangaSrcInfo()
+	void Ui::Manga::mangaSrcInfoOpen()
 	{
-		// the series' details: its title, author and status, and the description the page no longer has room for
-		Rect box{32, 40, 576, 388};
+		// the series' details: Info's page (the one Files shows), its description in the lines it wraps to
 		std::string title = mangaSrcInfoOn && !mangaSrcInfo.title.empty() ? mangaSrcInfo.title : mangaSrcTitle;
-		ui.drawDialog(box, title.empty() ? "Series" : title);
-		std::string meta;
-		if (mangaSrcInfoOn && !mangaSrcInfo.author.empty()) meta = mangaSrcInfo.author;
-		if (mangaSrcInfoOn && !mangaSrcInfo.status.empty()) meta += (meta.empty() ? "" : " \xC2\xB7 ") + mangaSrcInfo.status;
+		InfoGroup g;
+		g.title = "Series";
+		if (mangaSrcInfoOn && !mangaSrcInfo.author.empty()) g.rows.push_back({"Author", mangaSrcInfo.author});
+		if (mangaSrcInfoOn && !mangaSrcInfo.status.empty()) g.rows.push_back({"Status", mangaSrcInfo.status});
 		std::string from = mangaSourceLabel(mangaSeriesId);
-		if (!from.empty()) meta = from + (meta.empty() ? "" : " \xC2\xB7 " + meta);
-		int y = box.y + 62;
-		if (!meta.empty())
-		{
-			ui.drawTextMid(meta, 0, DIM, W / 2, y, box.w - 48, 2);
-			y += 30;
-		}
+		if (!from.empty()) g.rows.push_back({"Source", from});
+		InfoGroup d;
+		d.title = "Description";
 		if (mangaSrcInfoOn && !mangaSrcInfo.description.empty())
-		{
-			// as many lines as the box holds (about 15), the last cut with "..."
-			int rows = (box.y + box.h - 24 - y) / 20;
-			std::vector<std::string> lines = ui.wrapText(mangaSrcInfo.description, 0, box.w - 48, rows);
-			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, TEXT, box.x + 24, y + (int)i * 20, box.w - 48);
-		}
-		else ui.drawTextMid(mangaSrcInfoOn ? "The source gives no description." : "No details yet: Refresh (L) asks the source.", 0, DIM, W / 2, y + 20, box.w - 48, 2);
-		ui.drawHints({{"B", "Close"}});
+			for (auto& line : ui.wrapText(mangaSrcInfo.description, F_I12, 410, 60)) d.rows.push_back({"", line});
+		else d.rows.push_back({"", mangaSrcInfoOn ? "The source gives no description." : "No details yet: Refresh (L) asks the source."});
+		std::vector<InfoGroup> groups;
+		if (!g.rows.empty()) groups.push_back(std::move(g));
+		groups.push_back(std::move(d));
+		ui.openInfoGroups(title.empty() ? "Series" : title, std::move(groups));
 	}
 }

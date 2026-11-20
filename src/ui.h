@@ -485,7 +485,8 @@ namespace bp
 		struct MoreItem;
 		struct MoreSpec;
 		struct MoreSheet;
-		void openMore(std::function<MoreSpec(const Player&)> build, const char* name = "more");
+		void openMore(std::function<MoreSpec(const Player&)> build, const char* name = "more",
+			std::function<bool()> alive = {}, std::function<void()> ended = {}, int at = 0);
 		// test only: every ui_kit.h "KIT VARIANTS" piece on one page, for a `shot:` (--press gallery:variants[:PAGE], 1..14)
 		struct VariantsGallery;
 		// ---- the player screen (Page::Main: a video, a song; a photo's viewer is still here in Ui): an area,
@@ -540,6 +541,8 @@ namespace bp
 		// p (when the caller has one): the tracks of the file shown, if it is the one loaded
 		void openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra = {},
 			const Player* p = nullptr);
+		// the same page for any groups (the manga series' details)
+		void openInfoGroups(const std::string& title, std::vector<InfoGroup> groups);
 		int infoGroupLines() const;	// the headings and rows, as the sheet's lines
 		void infoGroupLine(int i, std::string& head, std::string& label, std::string& value) const;
 	public:
@@ -723,11 +726,6 @@ namespace bp
 		// btn: the button's glyph (G_PLUS when none); sub: a line, or two apart by '\n'
 		void drawEmpty(const Glyph& g, const std::string& title, const std::string& sub, const char* action, const Glyph* btn = nullptr);
 		std::string elideLeft(const std::string& s, int size, int maxW) const;
-		// a dialog over the page (the Options menu, the update, quick settings), and one of its rows
-		void drawDialog(Rect box, const std::string& title);
-		// note: a value on the row's right ("On", "Press twice")
-		void drawDialogRow(Rect r, const Glyph* g, const std::string& label, bool at, bool pressed, SDL_Color ink,
-			const std::string& note = "", SDL_Color noteInk = {0, 0, 0, 0});
 		std::vector<std::string> wrapText(const std::string& text, int size, int maxW, int maxLines) const;
 		// a button's face: a glyph and a label side by side, the hardware button's name under them (key: none)
 		// Rows and grids of buttons: one function per row gives the rect, and drawing and touch both ask it.

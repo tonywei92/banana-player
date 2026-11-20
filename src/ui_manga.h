@@ -649,7 +649,7 @@ namespace bp
 		void mangaAvFreeze(const Player& p);	// Filter › Installed only: Available lists only what is installed
 			// 0 none, 1 the menu, 2 the languages
 		std::vector<std::string> mstAvLangs;	// the languages the repositories offer, when the list was opened
-		static constexpr int MST_AV_SHOWN = 6;
+		static constexpr int MST_AV_SHOWN = lay::LIST_ROWS;
 		bool mangaLangShown(const Player& p, const std::string& lang) const;
 		std::string mangaLangsSummary(const Player& p) const;
 		void mangaAvMenuOpen(Player& p);
@@ -657,9 +657,11 @@ namespace bp
 		void mangaAvMenuAct(Player& p);
 		bool mangaAvMenuPointer(int x, int y, Player& p);
 		void drawMangaAvMenu(const Player& p);
-		Rect mangaAvBox() const;
-		Rect mangaAvRow(int i) const;
-		bool mangaSourcesModalKey(Button b, Player& p);
+		void mangaAvSheetOpen();
+		MoreSpec mangaAvSpec(const Player& p);
+		lay::ListSheet mangaAvLangSheet() const;
+		void mangaSourceSheetOpen();
+		MoreSpec mangaSourceSpec();	// the source / repository modal is a More sheet over mstModal
 		void mangaSourcesModalAct(Player& p);
 		void mangaSourcesCloseModal();
 		void mangaSourcesAct(Player& p);				// A (or a tap) on the tab's cursor's row
@@ -678,21 +680,7 @@ namespace bp
 		std::string elideMiddle(const std::string& s, int size, int maxW) const;	// a URL: "...repository/index.json"
 		void drawMangaSources(const Player& p);
 		void drawMangaSourcesPage(const Player& p);	// its header ("Sources"), then the page
-		void drawMangaSourceModal(const Player& p);
 		static constexpr int MS_ROWS = 5;	// the keys' paging (the list is the kit's rows)
-		Rect mangaSourcesModalBox() const
-		{
-			int rows = mangaSourcesModalRows();
-			int h = mstModal == MSM_DETAILS ? 150 + rows * 50 : mstModal == MSM_REMOVE ? 130 + rows * 52 : 110 + rows * 52;
-			return {112, (436 - h) / 2, 416, h};
-		}
-		Rect mangaSourcesModalRowRect(int i) const
-		{
-			Rect b = mangaSourcesModalBox();
-			int top = mstModal == MSM_DETAILS ? b.y + 132 : mstModal == MSM_REMOVE ? b.y + 110 : b.y + 90;
-			int step = mstModal == MSM_DETAILS ? 50 : 52;
-			return {b.x + 16, top + i * step, b.w - 32, step - 6};
-		}
 		// ---- browsing a source (ui_manga_browse.cpp) ----
 		// Browse lists the saved servers and the installed sources after On this handheld; A opens one, with
 		// Popular · Latest · Search (L/R) and a cover grid. A source's page is a view of Page::Manga and its series
@@ -731,21 +719,17 @@ namespace bp
 		bool mlibMenu = false, mlibArmed = false;
 		std::vector<std::string> mangaMissing() const;
 		const LocalSeries* mangaSingleFile(const std::string& id) const;	// a local series that is one file, or null	// their ids
-		bool mangaLibMenuKey(Button b, Player& p);
+		void mangaLibSheetOpen();
+		MoreSpec mangaLibSpec();	// the Library and History menus are More sheets over mlibMenu / mhisMenu
 		void mangaLibMenuAct(Player& p);
-		void drawMangaLibMenu();
 		// two rows: Remove missing, Manga settings (START is Settings now: the app's settings are here and in History's)
 		int mlibMenuCursor = 0;
-		Rect mlibMenuBox() const { return {112, 120, 416, 236}; }
-		Rect mlibMenuRow(int i) const { return {128, 184 + i * 44, 384, 40}; }
 		bool mhisMenu = false;
 		int mhisMenuCursor = 0;
 		static constexpr int MHIS_MENU_ROWS = 6;	// Selected item, Last hour, Today, Last 24 hours, All, Manga settings
-		Rect mhisMenuBox() const { return {112, 80, 416, 70 + MHIS_MENU_ROWS * 44}; }
-		Rect mhisMenuRow(int i) const { return {128, 136 + i * 44, 384, 40}; }
-		bool mangaHisMenuKey(Button b, Player& p);
+		void mangaHisSheetOpen();
+		MoreSpec mangaHisSpec();
 		void mangaHisMenuAct(Player& p);
-		void drawMangaHisMenu();
 		std::string mangaSourceDownloadsId(const std::string& sourceSeriesId) const;
 		std::string mangaSourceLabel(const std::string& seriesId) const;	// its source by name ("" unknown)	// "local:<folder>" or ""
 		bool mangaSourceSeriesInLib() const;	// the series or its downloads folder in the Library
@@ -940,8 +924,7 @@ namespace bp
 		Rect mangaSrcInfoRect() const { return mangaSrcBtn(3); }
 		Rect mangaSrcHeartRect() const { return mangaSrcBtn(4); }
 		// Info: the series' details (its description) in a dialog, off the page (it took two lines above the row)
-		bool mangaSrcInfoShown = false;
-		void drawMangaSrcInfo();
+		void mangaSrcInfoOpen();	// the series' details: Info's page (Ui::openInfoGroups)
 
 		// ---- the saved servers (ui_manga_servers.cpp) ----
 		// Browse › Y opens the Add server form: kind, name, address, user, password; Test, Save. A server's
@@ -1005,10 +988,10 @@ namespace bp
 		int mlocSheet = MLS_NONE, mlocCursor = 0;
 		bool mlocDeleteArmed = false;
 		Uint32 mlocDeleteAt = 0;
-		Rect mangaLocalHelpBox() const { return {32, 20, 576, 410}; }
-		bool mangaLocalSheetKey(Button b, Player& p);
-		bool mangaLocalSheetPointer(int x, int y, Player& p);
-		void drawMangaLocalSheet(const Player& p);
+		void mangaLocalSheetOpen();
+		MoreSpec mangaLocalSpec();	// the series' menu: a More sheet over mlocSheet; the help is Info's page
+		void mangaLocalMenuAct(int row, Player& p);
+		void mangaLocalHelpOpen();
 		std::string mangaLocalFolder() const;	// the Manga folder to name: the first on the card, else the downloads'
 		void mangaLocalDeleteNow(Player& p);
 		int mangaSrvMenuCursor = 0;
@@ -1052,7 +1035,7 @@ namespace bp
 		void mangaServerCancel();
 		void mangaServerModalOpen(int row, Player& p);
 		bool mangaServerModalKey(Button b, Player& p);
-		void drawMangaServerModal(const Player& p);
+		MoreSpec mangaServerSpec();	// the Server menu is a More sheet over the flag mangaSrvMenu
 		std::string mangaServersSignature() const;
 		// a server's series page keeps its own Resume button: the cards' pages and a source's row differ (the source's
 		// shares its row with Download, Refresh and the heart)
@@ -1068,11 +1051,7 @@ namespace bp
 			auto keys = lay::keyRow({in.x, in.y + in.h - lay::KEY_ROW_H - lay::SP8, in.w, lay::KEY_ROW_H}, {0, 0});
 			return keys[i - 5];
 		}
-		Rect mangaServerModalBox() const { return {112, 150, 416, 170}; }
 		// On this handheld's series menu: Open, Info, Delete
-		Rect mlocMenuBox() const { return {112, 126, 416, 218}; }
-		Rect mlocMenuRow(int i) const { return {128, 190 + i * 48, 384, 40}; }
-		Rect mangaServerModalRowRect(int i) const { return {128, 214 + i * 48, 384, 40}; }
 		// ---- the dashboard's chapters for a source series (api_manga.cpp, ui_manga_web.cpp) ----
 		// The worker's answer is kept by series: the page polls while it comes (202), then reads it at once. The
 		// read marks and download states are filled in on every read, since the queue moves underneath the list.
@@ -1190,8 +1169,9 @@ namespace bp
 		std::vector<int> mangaDlUnreadFrom(int from, int limit) const;	// unread source chapters, in list order
 		// the Download sheet
 		Rect mangaDlButtonRect() const { return mangaSrcBtn(1); }
-		Rect mangaDlSheetBox() const { return mdlSheet == MDLS_CHOOSE ? Rect{16, 62, 608, 366} : Rect{100, 96, 440, 260}; }
-		Rect mangaDlSheetRowRect(int i) const;
+		void mangaDlMenuOpen();
+		MoreSpec mangaDlMenuSpec();	// the Download menu: a More sheet over mdlSheet == MDLS_MENU
+		lay::ListSheet mangaDlChooseSheet() const;	// Choose chapters: a List sheet the page draws
 		void mangaDlSheetOpen(Player& p);
 		void mangaDlSheetClose();
 		bool mangaDlSheetKey(Button b, Player& p);

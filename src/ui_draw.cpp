@@ -1064,35 +1064,6 @@ namespace bp
 		return "..." + t;
 	}
 
-	void Ui::drawDialog(Rect box, const std::string& title)
-	{
-		// over the page, dimmed: a panel, its title on top; the footer is the dialog's (its hints drawn after)
-		fill({0, 0, W, H}, sdl(theme::BG, (Uint8)(255 * theme::VEIL_SHEET / 100)));	// (the veil: BG, as a sheet's)
-		fill({0, 436, W, 44}, BG);	// the page's hints gone (as dark as the rest): the dialog's go there
-		drawBox(box, SURFACE, R_DIALOG);
-		if (!title.empty()) drawTextMid(title, 1, ACCENT, box.x + box.w / 2, box.y + 30, box.w - 40, 2);
-	}
-
-	void Ui::drawDialogRow(Rect r, const Glyph* g, const std::string& label, bool at, bool pressed, SDL_Color ink,
-		const std::string& note, SDL_Color noteInk)
-	{
-		if (pressed) drawBox(r, PRESSED, R_BUTTON);
-		else if (at) drawFocus(r);
-		SDL_Color c = at && ink.r == TEXT.r && ink.g == TEXT.g ? ACCENT : ink;
-		int x = r.x + 20, noteW = 0;
-		if (g)
-		{
-			drawGlyphMid(*g, x + 11, r.y + r.h / 2, c);
-			x += 36;
-		}
-		if (!note.empty())
-		{
-			drawTextMid(note, 0, noteInk.a ? noteInk : at ? DIM_ON : DIM, r.x + r.w - 14, r.y + r.h / 2, 0, 1);
-			noteW = (int)std::lround(textWidth(note, 0) / sx) + 20;
-		}
-		drawTextMid(label, 1, c, x, r.y + r.h / 2, r.x + r.w - x - 12 - noteW);
-	}
-
 	int Ui::glyphW(const Glyph& g, int cell) const
 	{
 		int w = 0;

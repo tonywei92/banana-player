@@ -844,12 +844,6 @@ namespace bp
 	bool Ui::Manga::mangaKey(Button b, Player& p)
 	{
 		if (ui.page == Page::Manga && mengSheet) return mangaEngineKey(b, p);
-		// On this handheld's help or series menu takes every key, B too (B below would leave the list under it,
-		// and the next A on On this handheld found the menu still open)
-		if (ui.page == Page::Manga && mangaTab == MT_BROWSE && mBrowseList && mangaView == 0 && mlocSheet != MLS_NONE)
-			return mangaLocalSheetKey(b, p);
-		if (ui.page == Page::Manga && mhisMenu) return mangaHisMenuKey(b, p);
-		if (ui.page == Page::Manga && mlibMenu) return mangaLibMenuKey(b, p);
 		// the worker's answers first: a source's list, a series' details, a chapter's pages (this page's or the
 		// reading page's next one)
 		mangaBrowsePoll(p);
@@ -1015,7 +1009,7 @@ namespace bp
 			int n = (int)mangaLib.size();
 			if (mlibGrid >= n) mlibGrid = std::max(0, n - 1);
 			// X: the Library's menu (Remove missing, Manga settings), empty or not
-			if (b == Button::X) { mlibMenu = true; mlibArmed = false; mlibMenuCursor = 0; break; }
+			if (b == Button::X) { mlibMenu = true; mlibArmed = false; mlibMenuCursor = 0; mangaLibSheetOpen(); break; }
 			if (!n) break;
 			if (b == Button::A) { mangaChoose(MT_LIBRARY, mlibGrid, p); break; }
 			int row = mlibGrid / MG_COLS, col = mlibGrid % MG_COLS, rows = (n + MG_COLS - 1) / MG_COLS;
@@ -1054,6 +1048,7 @@ namespace bp
 				// what to clear: a menu (the last hour, today, the last 24 hours, all)
 				mhisMenu = true;
 				mhisMenuCursor = 0;
+				mangaHisSheetOpen();
 				break;
 			}
 			if (b == Button::A) { mangaChoose(MT_HISTORY, mhisCursor, p); break; }
@@ -1351,21 +1346,6 @@ namespace bp
 			for (int i = 0; i < 2; i++)
 				if (mangaEngineRow(i).hit(x, y)) { mengCursor = i; mangaEngineChoose(i, p); return false; }
 			if (!mangaEngineBox().hit(x, y)) mengSheet = false;
-			return false;
-		}
-		if (ui.page == Page::Manga && mlibMenu)
-		{
-			if (pt.kind != Pointer::Down) return false;
-			if (!mlibMenuBox().hit(x, y)) { mlibMenu = false; mlibArmed = false; return false; }
-			for (int i = 0; i < 2; i++)
-				if (mlibMenuRow(i).hit(x, y)) { mlibMenuCursor = i; mangaLibMenuAct(p); }
-			return false;
-		}
-		if (ui.page == Page::Manga && mhisMenu)
-		{
-			if (!mhisMenuBox().hit(x, y)) { mhisMenu = false; return false; }
-			for (int i = 0; i < MHIS_MENU_ROWS; i++)
-				if (mhisMenuRow(i).hit(x, y)) { mhisMenuCursor = i; mangaHisMenuAct(p); }
 			return false;
 		}
 		if (ui.page == Page::MangaSources) return mangaSourcesPointer(pt, x, y, p);
@@ -1777,7 +1757,7 @@ namespace bp
 	bool Ui::Manga::shellModal() const
 	{
 		return ui.kbOpen || mlibMenu || mhisMenu || mengSheet || mlocSheet != MLS_NONE || mangaSourcesModal() ||
-			mangaFilterShown() || mdlSheet != MDLS_NONE || mangaSrcInfoShown || mangaSrvMenu ||
+			mangaFilterShown() || mdlSheet != MDLS_NONE || mangaSrvMenu ||
 			(ui.page == Page::Extensions && extSheet);
 	}
 
@@ -2439,7 +2419,6 @@ namespace bp
 			if (mangaScanning) drawMangaTabEmpty(p, G_BOOK, mangaReadingLine(), "The series on your card show up here in a moment.");
 			else drawMangaTabEmpty(p, G_BOOK, "Your library is empty",
 				"Put CBZ files (or CBR, PDF) or folders of pictures in a Manga folder on your card, or add series from Browse.");
-			if (mlibMenu) later([this] { drawMangaLibMenu(); });
 			return;
 		}
 		if (mlibGrid >= n) mlibGrid = n - 1;
@@ -2461,7 +2440,6 @@ namespace bp
 			k.coverTile(lay::coverTile(g.cell[i], true, false), c);
 		}
 		if (g.rows > g.shown) ui.drawScrollBar(g.area.y, g.area.h, g.first, g.shown, g.rows);
-		if (mlibMenu) later([this] { drawMangaLibMenu(); });
 	}
 
 	static bool isEpubPath(const std::string& path)
@@ -2497,14 +2475,6 @@ namespace bp
 		return out;
 	}
 
-	bool Ui::Manga::mangaLibMenuKey(Button b, Player& p)
-	{
-		if (b == Button::A) mangaLibMenuAct(p);
-		else if (b == Button::Up || b == Button::Down) { mlibMenuCursor = 1 - mlibMenuCursor; mlibArmed = false; }
-		else if (b == Button::B || b == Button::X) { mlibMenu = false; mlibArmed = false; }
-		return false;
-	}
-
 	void Ui::Manga::mangaLibMenuAct(Player& p)
 	{
 		(void)p;
@@ -2528,35 +2498,37 @@ namespace bp
 		mangaNotice("Removed " + std::to_string(gone.size()) + (gone.size() == 1 ? " missing series" : " missing series"), 2000);
 	}
 
-	void Ui::Manga::drawMangaLibMenu()
+	void Ui::Manga::mangaLibSheetOpen()
 	{
-		Rect b = mlibMenuBox();
-		ui.drawDialog(b, "Library");
-		auto gone = mangaMissing();
-		Rect r = mlibMenuRow(0);
-		if (mlibMenuCursor == 0) ui.drawFocus(r);
-		std::string note = gone.empty() ? "None" : mlibArmed ? "A again" : std::to_string(gone.size()) + " gone";
-		ui.drawDialogRow(r, &G_TRASH, "Remove missing", mlibMenuCursor == 0, false, gone.empty() ? DIM : DANGER, note, mlibArmed ? ACCENT : DIM);
-		Rect s = mlibMenuRow(1);
-		if (mlibMenuCursor == 1) ui.drawFocus(s);
-		ui.drawDialogRow(s, &G_GEAR, "Manga settings", mlibMenuCursor == 1, false, TEXT, "", DIM);
-		// (said under the rows: what Remove missing takes, and the card that may only be out)
-		ui.drawTextMid(gone.empty() ? "Every series is on a card" : "Series no longer on a card, and books Files now opens", 0, DIM, W / 2, 290, 380, 2);
-		if (mlibArmed) ui.drawFooterText("Their read marks go too. A card that's out? Put it back first", ACCENT);
-		else ui.drawHints({{"A", mlibMenuCursor ? "Open" : "Remove"}, {"B", "Close"}});
+		ui.openMore([this](const Player&) { return mangaLibSpec(); }, "mangalib", [this] { return mlibMenu; },
+			[this] { mlibMenu = false; mlibArmed = false; });
 	}
 
-	bool Ui::Manga::mangaHisMenuKey(Button b, Player& p)
+	Ui::MoreSpec Ui::Manga::mangaLibSpec()
 	{
-		switch (b)
-		{
-		case Button::Up: mhisMenuCursor = (mhisMenuCursor + MHIS_MENU_ROWS - 1) % MHIS_MENU_ROWS; break;
-		case Button::Down: mhisMenuCursor = (mhisMenuCursor + 1) % MHIS_MENU_ROWS; break;
-		case Button::A: mangaHisMenuAct(p); break;
-		case Button::B: case Button::X: mhisMenu = false; break;
-		default: break;
-		}
-		return false;
+		MoreSpec m;
+		if (!mlibMenu) return m;
+		m.title = "Library";
+		auto gone = mangaMissing();
+		// (said under the title: what Remove missing takes, and the card that may only be out)
+		m.note = mlibArmed ? "Their read marks go too. A card that's out? Put it back first"
+			: gone.empty() ? "Every series is on a card" : "Series no longer on a card, and books Files now opens";
+		MoreItem rm;
+		rm.glyph = &G_TRASH;
+		rm.label = "Remove missing";
+		rm.note = gone.empty() ? "None" : mlibArmed ? "A again" : std::to_string(gone.size()) + " gone";
+		rm.danger = !gone.empty();
+		rm.lit = mlibArmed;
+		rm.stay = true;	// (asked twice: the act ends the menu itself)
+		rm.act = [this](Player& p) { mlibMenuCursor = 0; mangaLibMenuAct(p); return false; };
+		m.rows.push_back(rm);
+		MoreItem st;
+		st.glyph = &G_GEAR;
+		st.label = "Manga settings";
+		st.stay = true;
+		st.act = [this](Player& p) { mlibMenuCursor = 1; mangaLibMenuAct(p); return false; };
+		m.rows.push_back(st);
+		return m;
 	}
 
 	void Ui::Manga::mangaHisMenuAct(Player& p)
@@ -2593,20 +2565,29 @@ namespace bp
 		mangaNotice(SAID[std::clamp(mhisMenuCursor, 0, 4)], 1500);
 	}
 
-	void Ui::Manga::drawMangaHisMenu()
+	void Ui::Manga::mangaHisSheetOpen()
 	{
-		Rect b = mhisMenuBox();
-		ui.drawDialog(b, "History");
+		ui.openMore([this](const Player&) { return mangaHisSpec(); }, "mangahis", [this] { return mhisMenu; }, [this] { mhisMenu = false; });
+	}
+
+	Ui::MoreSpec Ui::Manga::mangaHisSpec()
+	{
+		MoreSpec m;
+		if (!mhisMenu) return m;
+		m.title = "History";
 		static const char* ROWS[MHIS_MENU_ROWS] = {"Clear the selected item", "Clear the last hour", "Clear today",
 			"Clear the last 24 hours", "Clear all", "Manga settings"};
 		for (int i = 0; i < MHIS_MENU_ROWS; i++)
 		{
-			Rect r = mhisMenuRow(i);
-			bool at = i == mhisMenuCursor;
-			if (at) ui.drawFocus(r);
-			ui.drawTextMid(ROWS[i], 1, at ? ACCENT : i == 4 ? DANGER : TEXT, r.x + 12, r.y + r.h / 2, r.w - 24);
+			MoreItem it;
+			it.glyph = i == 5 ? &G_GEAR : &G_TRASH;
+			it.label = ROWS[i];
+			it.danger = i == 4;
+			it.stay = true;
+			it.act = [this, i](Player& p) { mhisMenuCursor = i; mangaHisMenuAct(p); return false; };
+			m.rows.push_back(it);
 		}
-		ui.drawHints({{"A", mhisMenuCursor == 5 ? "Open" : "Clear"}, {"B", "Close"}});
+		return m;
 	}
 
 	void Ui::Manga::drawMangaHistory(const Player& p)
@@ -2623,7 +2604,6 @@ namespace bp
 		if (n == 0)
 		{
 			drawMangaTabEmpty(p, G_CLOCK, "Nothing read yet", "Series you read show up here, newest first.");
-			if (mhisMenu) later([this] { drawMangaHisMenu(); });
 			return;
 		}
 		if (mhisCursor >= n) mhisCursor = n - 1;
@@ -2665,7 +2645,6 @@ namespace bp
 			}
 		}
 		if (n > l.shown) ui.drawScrollBar(l.area.y, l.area.h, l.first, l.shown, n);
-		if (mhisMenu) later([this] { drawMangaHisMenu(); });
 	}
 
 	Ui::Manga::MangaRow Ui::Manga::mangaLocalRowAt(int i) const
@@ -2699,7 +2678,6 @@ namespace bp
 			{
 				drawMangaTabEmpty(p, G_FOLDER, "No series found", "Copy manga into " + mangaLocalFolder() + ". X shows how.");
 				ui.drawHints({{"X", "How to add"}, {"B", "Back"}});
-				if (mlocSheet == MLS_HELP) later([this, &p] { drawMangaLocalSheet(p); });
 				return;
 			}
 			if (mListCursor >= n) mListCursor = n - 1;
@@ -2710,7 +2688,6 @@ namespace bp
 			// while the card is read the header says so (the list may still change); its keys work meanwhile
 			if (mangaScanning) tabCrumb = mangaReadingLine();
 			ui.drawHints({{"A", "Open"}, {"Y", "Options"}, {"X", "How to add"}, {"B", "Back"}});
-			if (mlocSheet != MLS_NONE) later([this, &p] { drawMangaLocalSheet(p); });
 			return;
 		}
 		// On this handheld, then the installed sources (and, still to come, the network's own)

@@ -1310,14 +1310,12 @@ namespace bp
 		if (i != ctxCursor) ctxArmed = false;
 		ctxCursor = i;
 		chooseBrowseMenu(i, p);
-		if (!ctxOpen)
-			if (Overlay* o = findOverlay("ctxmenu")) o->close();
 		return false;
 	}
 
 	void Ui::openBrowseSheet()
 	{
-		openMore([this](const Player& p) { return browseMenuSpec(p); }, "ctxmenu");
+		openMore([this](const Player& p) { return browseMenuSpec(p); }, "ctxmenu", [this] { return ctxOpen; }, [this] { ctxOpen = false; });
 	}
 
 	Ui::RowIcon Ui::rowIcon(int i) const

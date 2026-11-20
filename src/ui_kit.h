@@ -622,6 +622,7 @@ namespace bp
 		std::string title, note;
 		std::vector<MoreItem> chips, tiles, rows;	// a first row of state chips, a row of keys (four across), then the list
 		int cols = 1;	// the list's columns
+		int focus = -1;	// a menu of the older kind: the item its state wants lit; the cursor moves there when this changes
 	};
 
 	// ======== kit-new: Section rail, Book bar, Away-from-normal, Screen-off warning (ui_kit_new.cpp) ========

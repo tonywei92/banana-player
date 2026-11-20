@@ -24,9 +24,15 @@ Rects, Clean look, keys stay keys. One commit per group.
 
 ## Left, and why
 
-- `Ui::drawDialog` / `drawDialogRow` still draw: the Files context menu (`ui_menus.cpp`), Manga's Server, Source, Library,
-  History, series and download menus, the "Adding manga" help, the Files info box, `ui_docs.cpp`'s pads. They are
-  menus of rows, a next group of work (a `Kit::sheet` with `Kit::Row`s each, as the filters sheet now does).
+- Nothing draws with `drawDialog` / `drawDialogRow` any more (both deleted). The browse menu (Network, Recent, Playlists,
+  the mini bar's hold menu; ctxOpen / ctxItems / ctxCursor / ctxArmed stay as its state) and Manga's Server, Source /
+  repository, Library, History, series (Y) and Download menus are More sheets built each draw from that state
+  (`Ui::openMore(build, name, alive, ended, at)`: `alive` says the old state still stands, `ended` resets it when the sheet
+  closes; `MoreSpec::focus` moves the cursor when the state does). Rows keep the old act functions (cursor set, then A).
+  Lists too long for a sheet stay lists, on `lay::listSheet`: Manga's Languages and Download > Choose chapters.
+  Info texts are Info's page (`Ui::openInfoGroups`): Manga's series details and "Adding manga". The older flat Files info
+  dialog (`drawFileInfo`, `InfoSheet`) was dead and is deleted. Not seen in a screenshot: every Manga menu but Library's.
+  Changed on the way: Y no longer closes the browse menu (B and X do); a menu's armed state shows in the sheet's note.
 - Pan / scroll pads in `ui_docs.cpp` (`drawBox(pad, SURFACE...)`): the inventory's "Pan area" (reuse, not a control).
 - `ui_player.cpp`'s EQ band columns and the Match album art track, `ui_settings.cpp`'s subtitle preview box: content,
   not controls.
