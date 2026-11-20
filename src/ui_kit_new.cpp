@@ -39,17 +39,21 @@ namespace bp
 		};
 		auto cell = [&](Ui::Rect c, const RailItem& it, bool on, bool held) {
 			SDL_Color ink = on ? activeInk : sdl(theme::ON_RAIL);
+			// the lit cell runs from the panel's edge (under the bar) to the cell's right: bar and fill read as one
+			// shape, and every icon is centred in that span so the lit one doesn't look pushed off-centre
+			Ui::Rect span{r.area.x, c.y, c.x + c.w - r.area.x, c.h};
 			if (on)
 			{
-				lit(c);
+				if (strong || clean) ui.fillRound(span, activeFill, theme::kitRadius(R_BUTTON), ROUND_TR | ROUND_BR);
+				else lit(span);
 				// the active section's mark: a 3-unit bar flush to the panel's left edge, the cell's height less 8
 				// a side, in the accent (a strong theme's KEY_FOCUS: Gundam's yellow), the owner
 				ui.fillRound({r.area.x, c.y + 8, 3, std::max(4, c.h - 16)}, strong ? sdl(theme::KEY_FOCUS) : ACCENT, 1,
 					ROUND_TR | ROUND_BR);
 			}
-			else if (held) ui.fillRound(c, PRESSED, theme::kitRadius(R_BUTTON));
-			// icon 22 over the label, the pair centred in the cell (a seven-section rail's 50-tall cells sit closer)
-			int cx = c.x + c.w / 2, iconCy = c.h >= lay::RAIL_CELL_H ? c.y + 21 : c.y + 16;
+			else if (held) ui.fillRound(span, PRESSED, theme::kitRadius(R_BUTTON), ROUND_TR | ROUND_BR);
+			// icon 22 over the label, the pair centred in the span (a seven-section rail's 50-tall cells sit closer)
+			int cx = span.x + span.w / 2, iconCy = c.h >= lay::RAIL_CELL_H ? c.y + 21 : c.y + 16;
 			int labelY = c.h >= lay::RAIL_CELL_H ? c.y + 42 : c.y + 35;
 			if (it.glyph) ui.drawGlyphMid(*it.glyph, cx, iconCy, ink, 2);
 			ui.drawTextMid(it.label, F_I11B, ink, cx, labelY, c.w - 4, 2);
@@ -68,7 +72,8 @@ namespace bp
 			if (searchPressed) ui.fillRound(r.search, PRESSED, theme::kitRadius(R_BUTTON));
 		}
 		else ui.drawBox(r.search, searchPressed ? PRESSED : BUTTON, R_BUTTON);
-		ui.drawGlyphMid(G_SEARCH, r.search.x + r.search.w / 2, r.search.y + r.search.h / 2 + 1,
+		// (on the sections' axis: centred between the panel's edge and the cell's right, as they are)
+		ui.drawGlyphMid(G_SEARCH, (r.area.x + r.search.x + r.search.w) / 2, r.search.y + r.search.h / 2 + 1,
 			searchLit ? activeInk : clean ? sdl(theme::ON_RAIL) : TEXT, 2);
 		// the sections: only the part inside their view (a drag scrolls them under it)
 		SDL_Rect clip = ui.devRect(r.view), previous;
