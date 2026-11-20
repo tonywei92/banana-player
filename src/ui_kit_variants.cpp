@@ -1004,7 +1004,7 @@ namespace bp
 		std::string name = elided(t.name, F_SMALL, room);
 		int nameW = textW(name, F_SMALL);
 		SDL_Color ink = off(t.focused ? ACCENT : TEXT, t.off);
-		if (t.focused && !t.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, BUTTON, 1);
+		if (t.focused && !t.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, 1);
 		else ui.drawTextMid(name, F_SMALL, ink, l.name.x, cy, room);
 		if (pw) pill(l.name.x + nameW + lay::SP6 + pw, cy, t.pill, t.tone);
 	}
@@ -1029,7 +1029,7 @@ namespace bp
 		std::string name = elided(p.name, F_SMALL, room);
 		int nameW = textW(name, F_SMALL);
 		SDL_Color ink = off(p.focused || p.lit ? ACCENT : TEXT, p.off);
-		if (p.focused && !p.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, BUTTON, 1);
+		if (p.focused && !p.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, 1);
 		else ui.drawTextMid(name, F_SMALL, ink, l.name.x, cy, room);
 		if (nowW)
 		{
@@ -1042,46 +1042,27 @@ namespace bp
 		}
 	}
 
-	void Ui::Kit::backdrop(Rect r, SDL_Texture* pic, const artbg::Backdrop& b, Uint8 fade)
+	SDL_Texture* Ui::Kit::backdropPage(const artbg::Art& art, const artbg::Backdrop& b)
 	{
-		if (r.w <= 0 || r.h <= 0) return;
-		if (b.fallback || !pic)
-		{
-			// no art in it: the charcoal a little lighter at the top down to BG (a light theme's fallback is its
-			// plain ground, the two ends one colour, so one fill)
-			if (b.top == b.bottom) ui.fill(r, sdl(b.top, fade));
-			else for (int y = 0; y < r.h; y++)
-				ui.fill({r.x, r.y + y, r.w, 1},
-					sdl(theme::mix(b.top, b.bottom, r.h > 1 ? 100 * y / (r.h - 1) : 0), fade));
-			return;
-		}
-		SDL_SetTextureScaleMode(pic, SDL_ScaleModeLinear);	// the 160 x 120 picture, smooth at panel size
-		SDL_SetTextureAlphaMod(pic, fade);		// (a cross-fade: the previous backdrop lies under this one)
+		constexpr int PW = artbg::W, PH = 480;	// the panel's height in rows (the veil's stops are per row of it)
+		std::vector<uint8_t> px = artbg::composePage(art, b, PW, PH);
+		if (px.empty()) return nullptr;
+		SDL_Texture* t = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, PW, PH);
+		if (!t) return nullptr;
+		SDL_UpdateTexture(t, nullptr, px.data(), PW * 4);
+		SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);	// the blur's own smoothness at panel size
+		return t;
+	}
+
+	void Ui::Kit::backdrop(Rect r, SDL_Texture* page, Uint8 fade)
+	{
+		if (r.w <= 0 || r.h <= 0 || !page) return;
+		// opaque at full: no blending (the panel's widest copy, every redraw)
+		SDL_SetTextureBlendMode(page, fade < 255 ? SDL_BLENDMODE_BLEND : SDL_BLENDMODE_NONE);
+		SDL_SetTextureAlphaMod(page, fade);
 		SDL_Rect d = ui.devRect(r);
-		SDL_RenderCopy(ui.ren, pic, nullptr, &d);
-		SDL_SetTextureAlphaMod(pic, 255);
-		// the ground's veil: its opacity at each stop (artbg::STOP_Y down the panel, scaled to r), linear between
-		// them — drawn at run time, so the theme can change without re-reading the art. One fill a row; a page
-		// that draws it every frame may cache the ramp as a texture of its own (the kit keeps nothing)
-		for (int y = 0; y < r.h; y++)
-		{
-			double f = r.h > 1 ? (double)y / (r.h - 1) : 1.0;
-			int at = b.veil[4];
-			for (int i = 1; i < 5; i++)
-			{
-				double s0 = (double)artbg::STOP_Y[i - 1] / artbg::STOP_Y[4], s1 = (double)artbg::STOP_Y[i] / artbg::STOP_Y[4];
-				if (f <= s1)
-				{
-					double t = s1 > s0 ? std::max(0.0, (f - s0) / (s1 - s0)) : 0.0;
-					at = (int)std::lround(b.veil[i - 1] + t * (b.veil[i] - b.veil[i - 1]));
-					break;
-				}
-			}
-			if (at <= 0) continue;
-			Uint8 alpha = (Uint8)std::lround(255.0 * at / 100.0);
-			if (fade < 255) alpha = (Uint8)std::lround(alpha * fade / 255.0);
-			ui.fill({r.x, r.y + y, r.w, 1}, sdl(b.ground, alpha));
-		}
+		SDL_RenderCopy(ui.ren, page, nullptr, &d);
+		SDL_SetTextureAlphaMod(page, 255);
 	}
 }
 
@@ -1092,16 +1073,15 @@ namespace bp
 	struct Ui::VariantsGallery : Ui::Overlay
 	{
 		int page;
-		// page 20's synthetic arts and their textures, made once (the blur is not cheap); they die with the overlay
+		// page 20's synthetic arts' backdrop pages (an art in a dark and a light theme each), made once (the blur
+		// is not cheap); they die with the overlay
 		bool artMade = false;
-		artbg::Art emberArt, greyArt;
-		SDL_Texture* emberTex = nullptr;
-		SDL_Texture* greyTex = nullptr;
+		SDL_Texture* artPages[4] = {};
 		explicit VariantsGallery(Ui& u, int pg) : Overlay(u), page(pg) {}
 		~VariantsGallery()
 		{
-			if (emberTex) SDL_DestroyTexture(emberTex);
-			if (greyTex) SDL_DestroyTexture(greyTex);
+			for (SDL_Texture* t : artPages)
+				if (t) SDL_DestroyTexture(t);
 		}
 		const char* name() const override { return "gallery"; }
 		bool key(Button b, Player&) override
@@ -1801,7 +1781,7 @@ namespace bp
 			k.hints({{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}});
 		}
 
-		// Match album art's backdrop (screens.js dyn-art): a synthetic art through artBackdrop to a texture,
+		// Match album art's backdrop (screens.js dyn-art): a synthetic art through artBackdrop to a page,
 		// drawn by Kit::backdrop in a dark and a light theme, and both fallbacks (a grey art gives no hue)
 		void page20(Kit& k)
 		{
@@ -1823,7 +1803,7 @@ namespace bp
 						p[2] = (uint8_t)(r < 0.42 ? at(0, 0.42, 71, 44) : at(0.42, 0.82, 44, 18));
 						p[3] = 255;
 					}
-				emberArt = artbg::artBackdrop(px.data(), 200, 150);
+				artbg::Art emberArt = artbg::artBackdrop(px.data(), 200, 150);
 				for (int y = 0; y < 150; y++)
 					for (int x = 0; x < 200; x++)
 					{
@@ -1832,24 +1812,22 @@ namespace bp
 						p[0] = p[1] = p[2] = g;
 						p[3] = 255;
 					}
-				greyArt = artbg::artBackdrop(px.data(), 200, 150);
-				emberTex = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, artbg::W, artbg::H);
-				if (emberTex && !emberArt.rgb.empty())
-					SDL_UpdateTexture(emberTex, nullptr, emberArt.rgb.data(), artbg::W * 3);
-				greyTex = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, artbg::W, artbg::H);
-				if (greyTex && !greyArt.rgb.empty())
-					SDL_UpdateTexture(greyTex, nullptr, greyArt.rgb.data(), artbg::W * 3);
+				artbg::Art greyArt = artbg::artBackdrop(px.data(), 200, 150);
+				// the dark theme's colours from the theme in force; the light ones from the Light palette, so one
+				// page shows both branches
+				const artbg::ThemeColours dark{theme::current.BG, theme::current.SURFACE, theme::current.TEXT,
+					theme::current.DIM_ON, theme::current.ACCENT};
+				const artbg::ThemeColours light{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20},
+					{0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};
+				artPages[0] = k.backdropPage(emberArt, artbg::backdropFor(dark, emberArt));
+				artPages[1] = k.backdropPage(emberArt, artbg::backdropFor(light, emberArt));
+				artPages[2] = k.backdropPage(greyArt, artbg::backdropFor(dark, greyArt));
+				artPages[3] = k.backdropPage(greyArt, artbg::backdropFor(light, greyArt));
 			}
-			// the dark theme's colours from the theme in force; the light ones from the Light palette, so one
-			// page shows both branches
-			const artbg::ThemeColours dark{theme::current.BG, theme::current.SURFACE, theme::current.TEXT,
-				theme::current.DIM_ON, theme::current.ACCENT};
-			const artbg::ThemeColours light{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20},
-				{0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};
-			k.backdrop({0, 0, 320, 240}, emberTex, artbg::backdropFor(dark, emberArt));
-			k.backdrop({320, 0, 320, 240}, emberTex, artbg::backdropFor(light, emberArt));
-			k.backdrop({0, 240, 320, 240}, greyTex, artbg::backdropFor(dark, greyArt));
-			k.backdrop({320, 240, 320, 240}, greyTex, artbg::backdropFor(light, greyArt));
+			k.backdrop({0, 0, 320, 240}, artPages[0]);
+			k.backdrop({320, 0, 320, 240}, artPages[1]);
+			k.backdrop({0, 240, 320, 240}, artPages[2]);
+			k.backdrop({320, 240, 320, 240}, artPages[3]);
 			// the labels where the veil is at its deepest, so they read; the light quadrants take the light
 			// theme's ink (what its own text would be)
 			const theme::Rgb lightInk{0x1B, 0x1A, 0x20};

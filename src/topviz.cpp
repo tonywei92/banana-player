@@ -620,12 +620,14 @@ namespace bp
 	bool TopScreen::drawBackdropPages(int w, int h)
 	{
 		// the backdrop's pages into the panel (the context is current): what it fades from, then what plays at
-		// the cross-fade's alpha (bgFadeStep, set each pass from Ui's clock); false when nothing could be drawn
-		// (the theme's ground instead). The pages are 160 x 480, the panel's own shape: the stretch is the blur's
-		// own smoothing, linear filtered
+		// the cross-fade's alpha (bgFadeStep, set each pass from Ui's clock). The pages are 160 x 480, the panel's
+		// own shape: the stretch is the blur's own smoothing, linear filtered. (PageRenderer::draw's answer is
+		// "pages still uploading", not "drawn": taken as the latter, every mode cleared the backdrop away again.
+		// Its pages here go up whole in the frame that shows them, setUploadAll)
 		std::vector<PageRenderer::Placed> placed;
 		if (bgFading) placed.push_back({0, 0, 0, (float)w, (float)h, false, false, 1, true});
 		placed.push_back({1, 0, 0, (float)w, (float)h, false, bgFadeStep < 1, bgFadeStep, true});
-		return bgRender.draw(placed, w, h);
+		bgRender.draw(placed, w, h);
+		return true;
 	}
 }

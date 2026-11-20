@@ -14509,16 +14509,16 @@ static void testArtBackdropTheme()
 {
 	using namespace artbg;
 	const ThemeColours dark{{0, 0, 0}, {18, 17, 22}, {232, 226, 211}, {171, 165, 151}, {255, 210, 63}};
-	// a hue: the tinted ground, no fallback, five stops raised from the mock-up's 66 / 60 / 80 / 90 / 94
+	// a hue: the tinted ground, no fallback, five stops raised from VEIL_BASE
 	Backdrop b = backdropFor(dark, 26, 40, 70, 10, 20);
 	CHECK_EQ(b.fallback, false);
 	CHECK_EQ(b.stop[0], b.ground);
 	CHECK_EQ((int)b.stop[4].r, (int)b.ground.r);
-	CHECK(b.veil[0] >= 66 && b.veil[0] <= 96);
-	CHECK(b.veil[1] >= 60 && b.veil[1] <= 96);
-	CHECK(b.veil[2] >= 80 && b.veil[2] <= 96);
-	CHECK(b.veil[3] >= 90 && b.veil[3] <= 96);
-	CHECK(b.veil[4] >= 94 && b.veil[4] <= 96);
+	CHECK(b.veil[0] >= VEIL_BASE[0] && b.veil[0] <= 96);
+	CHECK(b.veil[1] >= VEIL_BASE[1] && b.veil[1] <= 96);
+	CHECK(b.veil[2] >= VEIL_BASE[2] && b.veil[2] <= 96);
+	CHECK(b.veil[3] >= VEIL_BASE[3] && b.veil[3] <= 96);
+	CHECK(b.veil[4] >= VEIL_BASE[4] && b.veil[4] <= 96);
 	// a white picture needs a deeper veil under the bar than a dark one; the 5th percentile (a light theme's
 	// half) changes nothing here
 	Backdrop bright = backdropFor(dark, 26, 250, 250, 240, 240);
@@ -14555,16 +14555,16 @@ static void testArtBackdropTheme()
 	CHECK(lb.ground.r > 0xC0);
 	CHECK(lb.ground.r >= lb.ground.b);
 	CHECK_EQ(lb.stop[0], lb.ground);
-	CHECK(lb.veil[0] >= 66 && lb.veil[0] <= 96);
-	CHECK(lb.veil[2] >= 80 && lb.veil[2] <= 96);
-	CHECK(lb.veil[4] >= 94 && lb.veil[4] <= 96);
+	CHECK(lb.veil[0] >= VEIL_BASE[0] && lb.veil[0] <= 96);
+	CHECK(lb.veil[2] >= VEIL_BASE[2] && lb.veil[2] <= 96);
+	CHECK(lb.veil[4] >= VEIL_BASE[4] && lb.veil[4] <= 96);
 	// a dark art is whitened: its stop behind the title rises past the base (protection the other way round,
 	// on the picture's 5th-percentile luminance), where a bright one leaves the base alone
-	CHECK(lb.veil[1] > 66);
+	CHECK(lb.veil[1] > VEIL_BASE[1]);
 	CHECK(lb.veil[1] <= 96);
 	Backdrop lbBright = backdropFor(light, 26, 240, 220, 235, 228);
 	CHECK_EQ(lbBright.fallback, false);
-	CHECK_EQ(lbBright.veil[1], 60);
+	CHECK_EQ(lbBright.veil[1], VEIL_BASE[1]);
 	CHECK(lbBright.veil[2] <= lb.veil[2]);
 	// no hue: the fallback is the theme's plain ground (a gradient of one colour, so one fill)
 	Backdrop lf = backdropFor(light, -1, 0, 0, 0, 0);

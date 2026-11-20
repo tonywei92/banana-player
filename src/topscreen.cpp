@@ -170,20 +170,21 @@ namespace bp
 		paneRender.draw(placed, w, h);
 	}
 
-	void TopScreen::composeBackdrop(const Ui& ui, const Player& shown)
+	bool TopScreen::composeBackdrop(const Ui& ui, const Player& shown)
 	{
 		// composed again when the answer, the theme or the fade's state moves (a fade's pages are two: what it
 		// fades from, and what plays at the fade's own alpha — the alpha is per draw, not per compose)
 		uint64_t hash = ui.backdropHash();
 		int theme = theme::currentTheme();
 		bool fading = ui.backdropFading() && ui.backdropFadeAnswered();
-		if (bgUp && hash == bgPageOf && theme == bgPageTheme && fading == bgFading) return;
+		if (bgUp && hash == bgPageOf && theme == bgPageTheme && fading == bgFading) return false;
 		// the fade just ended: what it faded from goes (the answer's page stays alone)
 		if (bgUp && !fading && bgFading)
 		{
 			SDL_GL_MakeCurrent(top, gl);
 			bgRender.keepOnly({1});
 			bgFading = false;
+			if (hash == bgPageOf && theme == bgPageTheme) return true;
 		}
 		if (!bgReady)
 		{
@@ -199,7 +200,7 @@ namespace bp
 				fprintf(stderr, "backdrop: the top panel composes the song's ground\n");
 			}
 		}
-		if (!bgReady) return;
+		if (!bgReady) return false;
 		artbg::ThemeColours th;
 		th.bg = theme::current.BG;
 		th.surface = theme::current.SURFACE;
@@ -219,11 +220,12 @@ namespace bp
 		bgFading = fading;
 		bgPageOf = hash;
 		bgPageTheme = theme;
+		return true;
 	}
 
-	void TopScreen::dropBackdropPages()
+	bool TopScreen::dropBackdropPages()
 	{
-		if (!bgUp && !bgFading && bgPageOf == 0) return;
+		if (!bgUp && !bgFading && bgPageOf == 0) return false;
 		SDL_GL_MakeCurrent(top, gl);
 		bgRender.keepOnly({});
 		bgRender.flushDead();
@@ -231,6 +233,7 @@ namespace bp
 		bgFading = false;
 		bgPageOf = 0;
 		bgPageTheme = -1;
+		return true;
 	}
 
 	void TopScreen::cardOnReader(const std::string& label, int percent, bool bar, int barTop, int ms)
@@ -538,8 +541,8 @@ namespace bp
 		// Match album art's backdrop, the song's while it plays: composed again only when the answer, the theme
 		// or the fade moves (whatever else has the panel — the QR, the pane, a reader — draws over it), dropped
 		// with the song's end, the switch off or High contrast
-		if (ui.backdropOn(shown)) composeBackdrop(ui, shown);
-		else dropBackdropPages();
+		if (ui.backdropOn(shown) ? composeBackdrop(ui, shown) : dropBackdropPages())
+			renderPending = true;	// (a still panel — Album art only, paused — shows it now, not at mpv's next frame)
 		// the cross-fade's place this pass (bgFadeStep, as the pages draw it): over, unless one is running
 		bgFadeStep = ui.backdropFading() && ui.backdropFadeAnswered()
 			? (float)std::min(1.0, (double)(SDL_GetTicks() - ui.backdropFadeAt()) / Ui::BG_FADE_MS) : 1.0f;

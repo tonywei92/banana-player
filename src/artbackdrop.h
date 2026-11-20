@@ -57,9 +57,13 @@ namespace artbg
 		Rgb top, bottom;	// the fallback's gradient ends (the charcoal 35% towards SURFACE, then BG)
 	};
 
-	// the stops' places down the panel, in its 640 x 480 units (components.md "Match album art": 66% at y 0, 60% at
-	// y 120, 80% at y 168, 90% at y 330, 94% at y 480); the renderer scales them to the Rect it draws
+	// the stops' places down the panel, in its 640 x 480 units (components.md "Match album art": 58% at y 0, 52% at
+	// y 120, 74% at y 168, 86% at y 330, 92% at y 480); the renderer scales them to the Rect it draws
 	constexpr int STOP_Y[5] = {0, 120, 168, 330, 480};
+	// the veil's opacity at each stop before the contrast protection raises it (percent): a step under the
+	// mock-up's 66 / 60 / 80 / 90 / 94 (2026-11-20, the owner: the art a little more visible), most at the top where
+	// the art shows most; the protection still deepens a stop until the theme's text holds 4.5:1
+	constexpr int VEIL_BASE[5] = {58, 52, 74, 86, 92};
 
 	// The art's encoded bytes, RGBA (the alpha is ignored: an art is opaque), w x h. A tiny or empty image gives no
 	// hue and an empty picture (the fallback).

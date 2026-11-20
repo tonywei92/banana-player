@@ -326,7 +326,7 @@ namespace artbg
 			b.fallback = false;
 			// the same five stops, whitened for a dark art: each stop's see-through is scaled until the picture's
 			// 5th-percentile luminance under it leaves the theme's TEXT, DIM_ON and ACCENT at 4.5:1
-			const int base[5] = {66, 60, 80, 90, 94};
+			const int* base = VEIL_BASE;
 			const double pic[5] = {l5top / 255.0, l5top / 255.0, l5low / 255.0, l5low / 255.0, l5low / 255.0};
 			const double yGround = relLum(b.ground);
 			bool allHard = true;
@@ -365,9 +365,9 @@ namespace artbg
 		b.ground = mixRgb(charcoal, tint, 45);
 		b.fallback = false;
 
-		// the five stops: the mock-up's 66 / 60 / 80 / 90 / 94, raised until the picture under them leaves the
+		// the five stops: VEIL_BASE, raised until the picture under them leaves the
 		// theme's TEXT 4.5:1 above y 168 and its DIM_ON 4.5:1 below. More than 96 at every stop: nothing shows.
-		const int base[5] = {66, 60, 80, 90, 94};
+		const int* base = VEIL_BASE;
 		const double pic[5] = {l95top / 255.0, l95top / 255.0, l95low / 255.0, l95low / 255.0, l95low / 255.0};
 		const double yGround = relLum(b.ground);
 		bool allHard = true;
@@ -439,15 +439,22 @@ namespace artbg
 				for (int x = 0; x < w; x++) row[x * 4] = c.r, row[x * 4 + 1] = c.g, row[x * 4 + 2] = c.b;
 				continue;
 			}
-			// the picture's row this page row covers (h a whole multiple of H: one row of the art each)
-			const uint8_t* src = &art.rgb[(size_t)(y * H / h) * W * 3];
+			// the picture's two rows this page row lies between, mixed by where it falls (a page taller than the
+			// picture is stretched smoothly, not in steps of whole rows: the GPU's filter then smooths across)
+			const int at256 = std::max(0, ((2 * y + 1) * H * 256) / (2 * h) - 128);
+			const int r0 = std::min(at256 >> 8, H - 1), r1 = std::min(r0 + 1, H - 1), t = at256 & 255;
+			const uint8_t* src0 = &art.rgb[(size_t)r0 * W * 3];
+			const uint8_t* src1 = &art.rgb[(size_t)r1 * W * 3];
 			int veil = veilAt(b, f);
+			const uint8_t ground[3] = {b.ground.r, b.ground.g, b.ground.b};
 			for (int x = 0; x < w; x++)
 			{
 				int s = x * W / w;
-				row[x * 4] = (uint8_t)(src[s * 3] + (b.ground.r - src[s * 3]) * veil / 100);
-				row[x * 4 + 1] = (uint8_t)(src[s * 3 + 1] + (b.ground.g - src[s * 3 + 1]) * veil / 100);
-				row[x * 4 + 2] = (uint8_t)(src[s * 3 + 2] + (b.ground.b - src[s * 3 + 2]) * veil / 100);
+				for (int c = 0; c < 3; c++)
+				{
+					int px = (src0[s * 3 + c] * (256 - t) + src1[s * 3 + c] * t + 128) >> 8;
+					row[x * 4 + c] = (uint8_t)(px + (ground[c] - px) * veil / 100);
+				}
 			}
 		}
 		return out;

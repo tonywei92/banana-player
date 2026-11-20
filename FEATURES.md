@@ -762,7 +762,7 @@ Songs show their title, artist and album on the top screen. While a song plays:
   List sheet (a video's **Repeat** chip steps it Off / All / One in place; a song's **Shuffle** chip turns Shuffle on or off).
 
 **Long titles move** (the Title marquee): a title too long for its place is drawn from its start, its end fading
-into the ground, and after 1.5 s moves left until its end shows, rests, fades back to its start and, 3 s later, does
+out (the text itself goes see-through, so the album-art backdrop or a card shows under it), and after 1.5 s moves left until its end shows, rests, fades back to its start and, 3 s later, does
 it once more; then it rests at its start. It does this for the player's title (a song or a video), the song's title on the top screen (every Show mode; artist and album stay cut with "…") and the focused row
 of a list (one pass, once the cursor has rested on it). Quick settings' Now playing block is the same marquee, in a
 panel. One title moves at a time on a screen; a sheet or menu over it
