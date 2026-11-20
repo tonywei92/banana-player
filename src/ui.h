@@ -1006,10 +1006,27 @@ namespace bp
 		BackdropSlot bgNow, bgFade;	// what is drawn, and what it fades from while the cross-fade runs
 		Uint32 bgFadeAt = 0;		// when the cross-fade began (0: none is running)
 		std::string bgAsked;		// the song the worker was last asked for ("" none: nothing plays)
-		SDL_Texture* bgTex = nullptr, *bgFadeTex = nullptr;	// the pictures, the bottom panel's own (the fade's goes first)
+		// the two slots' pages (Kit::backdropPage: the picture and the theme's veil composed once, one texture),
+		// the bottom panel's own (the fade's goes first); made when first drawn, again only for a new theme
+		SDL_Texture* bgTex = nullptr, *bgFadeTex = nullptr;
+		int bgTexTheme = -1;	// the theme the pages were composed for
+		SDL_Texture* groundPage = nullptr;	// this redraw's backdrop page (null: the plain ground), for fadeStrip
+		// a fade strip over text (the Title marquee's ends): the ground's colour at its alpha, or, on the backdrop,
+		// the backdrop's own pixels there at that alpha (a strip of the plain colour would show as a dark bar)
+		void fadeStrip(Rect part, SDL_Color ground);
 		void backdropTick(Player& p);		// the ask (Ui::tick): once per song, off when the switch is off
 		void drawBackdrop(const Player& shown);		// the player page's ground (its own fade over the plain BG)
 		void dropBackdrop();
+		// what the player page's redraws cost while the backdrop is on (the 5 s timing line: noteDrawCost)
+		struct DrawCost
+		{
+			uint64_t since = 0;	// (performance counter) the window's start
+			int draws = 0;
+			double pageMs = 0, presentMs = 0, groundMs = 0, maxMs = 0;
+		} drawCost;
+		int drawCostLogs = 0;	// lines written for this song's backdrop (three at most: the log stays short)
+		uint64_t drawCostOf = 0;
+		void noteDrawCost(const Player& p, uint64_t t0, uint64_t t1, uint64_t t2);
 	public:
 		// the top panel's half reads these (it composes its own GL pages from the same answer); the player
 		// page's signature takes the first two; main hands the worker's answers in here

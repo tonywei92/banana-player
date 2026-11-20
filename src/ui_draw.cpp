@@ -312,8 +312,8 @@ namespace bp
 		{
 			const Uint8 a = (Uint8)(255 * (k + 1) / 5);
 			SDL_Color g{ground.r, ground.g, ground.b, a};
-			if (m.fadeRight) fill({x + boxW - lay::MARQ_FADE_W + k * 4, box.y, 4, box.h}, g);
-			if (m.fadeLeft) fill({x + (3 - k) * 4, box.y, 4, box.h}, g);
+			if (m.fadeRight) fadeStrip({x + boxW - lay::MARQ_FADE_W + k * 4, box.y, 4, box.h}, g);
+			if (m.fadeLeft) fadeStrip({x + (3 - k) * 4, box.y, 4, box.h}, g);
 		}
 		SDL_RenderSetClipRect(ren, clipped ? &oldClip : nullptr);
 	}
@@ -642,6 +642,8 @@ namespace bp
 		if (!force && sig == drawn) return;
 		drawn = sig;
 
+		const uint64_t costT0 = SDL_GetPerformanceCounter();
+		groundPage = nullptr;	// (drawBackdrop sets it when this redraw's ground is the backdrop)
 		renderPage(p);
 		// the dark veil (ui.cpp's step): over everything, and a count of the seconds left when it warns of Screen off
 		if (veilAlpha > 0)
@@ -653,7 +655,30 @@ namespace bp
 			if (veilSecs > 0)
 				drawTextMid("Screen off in " + std::to_string(veilSecs) + " s", 0, TEXT, W / 2, H / 2, 612, 2);
 		}
+		const uint64_t costT1 = SDL_GetPerformanceCounter();
 		SDL_RenderPresent(ren);
+		noteDrawCost(p, costT0, costT1, SDL_GetPerformanceCounter());
+	}
+
+	void Ui::noteDrawCost(const Player& p, uint64_t t0, uint64_t t1, uint64_t t2)
+	{
+		// the player page's redraws with Match album art on, in the log every 5 s: what a marquee step or a slider
+		// frame costs the loop (the top panel's visualizer waits on it), so a slow handheld names its own number
+		if (page != Page::Main || !backdropOn(p)) { drawCost = DrawCost{}; return; }
+		const double f = 1000.0 / (double)SDL_GetPerformanceFrequency();
+		DrawCost& c = drawCost;
+		if (!c.since) c.since = t0;
+		c.draws++;
+		c.pageMs += (t1 - t0) * f;
+		c.presentMs += (t2 - t1) * f;
+		c.maxMs = std::max(c.maxMs, (t2 - t0) * f);
+		if ((t2 - c.since) * f < 5000) return;
+		if (drawCostOf != bgNow.hash) drawCostOf = bgNow.hash, drawCostLogs = 0;
+		if (drawCostLogs >= 3) { c = DrawCost{}; return; }
+		drawCostLogs++;
+		fprintf(stderr, "timing: player page %d redraws in 5 s with the backdrop: %.2f ms each (the ground %.2f, present %.2f), max %.2f\n",
+			c.draws, (c.pageMs + c.presentMs) / c.draws, c.groundMs / c.draws, c.presentMs / c.draws, c.maxMs);
+		c = DrawCost{};
 	}
 
 	void Ui::renderPage(const Player& p)

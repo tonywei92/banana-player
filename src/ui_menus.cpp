@@ -365,45 +365,62 @@ namespace bp
 		// plain ground, the fallback a song with no art draws
 		bgFade = std::move(bgNow);
 		if (!bgFade.answered) bgFade.answered = true;
-		bgFadeTex = bgTex;
-		bgTex = nullptr;
+		bgFadeTex = bgTex;	// (composed for the theme in force: the fade draws it as it was)
+		bgTex = nullptr;	// (this answer's page: composed when first drawn, drawBackdrop)
 		bgNow = BackdropSlot{};
 		bgNow.answered = true;
 		bgNow.hasArt = r.ok;
 		bgNow.hash = r.artHash;
 		bgNow.art = r.art;
 		bgFadeAt = SDL_GetTicks();
-		if (r.ok && r.art.rgb.size() == artbg::PIXELS * 3)
-		{
-			if (SDL_Texture* t = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_STATIC, artbg::W, artbg::H))
-			{
-				SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
-				SDL_UpdateTexture(t, nullptr, r.art.rgb.data(), artbg::W * 3);
-				bgTex = t;
-			}
-		}
 		fprintf(stderr, "backdrop: %s for %s\n", r.ok ? r.art.hasHue ? "the art's hue" : "no usable hue: the neutral ground"
 			: "no art: the plain ground", r.key.substr(std::strlen(BACKDROP_COVER_KEY)).c_str());
 	}
 
 	void Ui::drawBackdrop(const Player& shown)
 	{
-		// the player page's ground (its caller cleared the BG): the answer's backdrop, cross-fading over the one
-		// before it, the plain page under a first answer
+		// the player page's ground (its caller cleared the BG): the answer's page, cross-fading over the one
+		// before it, the plain page under a first answer. Each slot's page is composed once (its picture and the
+		// theme's veil in one texture) and drawn as one copy: a marquee step or a slider frame costs a copy, not
+		// the veil row by row
 		if (!backdropOn(shown)) return;
+		const uint64_t t0 = SDL_GetPerformanceCounter();
 		Kit& k = *kit;
+		const int themeNow = theme::currentTheme();
+		if (themeNow != bgTexTheme)
+		{
+			// a new theme: both pages again (the veil and the ground are the theme's)
+			if (bgTex) { SDL_DestroyTexture(bgTex); bgTex = nullptr; }
+			if (bgFadeTex) { SDL_DestroyTexture(bgFadeTex); bgFadeTex = nullptr; }
+			bgTexTheme = themeNow;
+		}
 		artbg::ThemeColours th;
 		th.bg = theme::current.BG;
 		th.surface = theme::current.SURFACE;
 		th.text = theme::current.TEXT;
 		th.dimOn = theme::current.DIM_ON;
 		th.accent = theme::current.ACCENT;
+		const bool fading = bgFadeAt && bgFade.answered;
+		if (fading && !bgFadeTex) bgFadeTex = k.backdropPage(bgFade.art, artbg::backdropFor(th, bgFade.art));
+		if (!bgTex)
+		{
+			bgTex = k.backdropPage(bgNow.art, artbg::backdropFor(th, bgNow.art));
+			fprintf(stderr, "backdrop: the player's page composed (%.1f ms)\n",
+				(SDL_GetPerformanceCounter() - t0) * 1000.0 / (double)SDL_GetPerformanceFrequency());
+		}
 		Rect all{0, 0, W, H};
-		if (bgFadeAt && bgFade.answered)
-			k.backdrop(all, bgFadeTex, artbg::backdropFor(th, bgFade.art));
+		if (fading) k.backdrop(all, bgFadeTex);
 		Uint8 fade = 255;
 		if (bgFadeAt) fade = (Uint8)std::lround(255.0 * std::min<Uint32>(SDL_GetTicks() - bgFadeAt, BG_FADE_MS) / BG_FADE_MS);
-		k.backdrop(all, bgTex, artbg::backdropFor(th, bgNow.art), fade);
+		k.backdrop(all, bgTex, fade);
+		groundPage = bgTex;	// (mid-fade too: the newer page is near enough under a strip 4 units wide)
+		drawCost.groundMs += (SDL_GetPerformanceCounter() - t0) * 1000.0 / (double)SDL_GetPerformanceFrequency();
+	}
+
+	void Ui::fadeStrip(Rect part, SDL_Color ground)
+	{
+		if (groundPage) kit->backdropStrip({0, 0, W, H}, groundPage, part, ground.a);
+		else fill(part, ground);
 	}
 
 	lay::QuickPanel Ui::quickLayout(const Player& p) const

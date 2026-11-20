@@ -583,13 +583,16 @@ namespace bp
 		};
 		void playlistRow(const lay::PlaylistRow& l, const Playlist& p);
 
-		// Match album art's backdrop (components.md "Match album art"; the maths: artbackdrop.h): the art's
-		// 160 x 120 picture stretched over `r` with linear filtering, then the ground's five-stop vertical veil
-		// over it (the stops' places: artbg::STOP_Y, scaled to r). A fallback Backdrop draws no picture: the
-		// neutral gradient (a light theme's is its plain BG, the two ends one colour). `pic` null with a
-		// non-fallback Backdrop draws the veil alone, until the art's texture is decoded. `fade` under 255 draws
-		// the whole of it at that alpha (a cross-fade: the previous backdrop under it at full)
-		void backdrop(Rect r, SDL_Texture* pic, const artbg::Backdrop& b, Uint8 fade = 255);
+		// Match album art's backdrop (components.md "Match album art"; the maths: artbackdrop.h). backdropPage
+		// composes it once — the art's picture with the theme's five-stop veil baked in per row (artbg::composePage),
+		// or the fallback's gradient — into one opaque 160 x 480 texture the caller keeps and destroys (null: none
+		// could be made); backdrop then draws that texture over `r`, stretched with linear filtering: one copy a
+		// frame, whatever else redraws (a marquee step, a slider frame). `fade` under 255 draws it at that alpha
+		// (a cross-fade: the previous backdrop under it at full). backdropStrip draws the part of it under `part`
+		// (in the same units as `r`) at `alpha`: what a fade over text lays down where the ground is the backdrop
+		SDL_Texture* backdropPage(const artbg::Art& art, const artbg::Backdrop& b);
+		void backdrop(Rect r, SDL_Texture* page, Uint8 fade = 255);
+		void backdropStrip(Rect r, SDL_Texture* page, Rect part, Uint8 alpha);
 	};
 
 	// ---- the More sheet's list (Ui::openMore; ui_more.cpp) ----

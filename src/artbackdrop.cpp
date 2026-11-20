@@ -439,15 +439,22 @@ namespace artbg
 				for (int x = 0; x < w; x++) row[x * 4] = c.r, row[x * 4 + 1] = c.g, row[x * 4 + 2] = c.b;
 				continue;
 			}
-			// the picture's row this page row covers (h a whole multiple of H: one row of the art each)
-			const uint8_t* src = &art.rgb[(size_t)(y * H / h) * W * 3];
+			// the picture's two rows this page row lies between, mixed by where it falls (a page taller than the
+			// picture is stretched smoothly, not in steps of whole rows: the GPU's filter then smooths across)
+			const int at256 = std::max(0, ((2 * y + 1) * H * 256) / (2 * h) - 128);
+			const int r0 = std::min(at256 >> 8, H - 1), r1 = std::min(r0 + 1, H - 1), t = at256 & 255;
+			const uint8_t* src0 = &art.rgb[(size_t)r0 * W * 3];
+			const uint8_t* src1 = &art.rgb[(size_t)r1 * W * 3];
 			int veil = veilAt(b, f);
+			const uint8_t ground[3] = {b.ground.r, b.ground.g, b.ground.b};
 			for (int x = 0; x < w; x++)
 			{
 				int s = x * W / w;
-				row[x * 4] = (uint8_t)(src[s * 3] + (b.ground.r - src[s * 3]) * veil / 100);
-				row[x * 4 + 1] = (uint8_t)(src[s * 3 + 1] + (b.ground.g - src[s * 3 + 1]) * veil / 100);
-				row[x * 4 + 2] = (uint8_t)(src[s * 3 + 2] + (b.ground.b - src[s * 3 + 2]) * veil / 100);
+				for (int c = 0; c < 3; c++)
+				{
+					int px = (src0[s * 3 + c] * (256 - t) + src1[s * 3 + c] * t + 128) >> 8;
+					row[x * 4 + c] = (uint8_t)(px + (ground[c] - px) * veil / 100);
+				}
 			}
 		}
 		return out;
