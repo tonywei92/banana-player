@@ -815,7 +815,7 @@ namespace bp
 		int mangaBrowseCount(const Player& p) const;	// On this handheld, the servers, the sources
 		const MangaSrcRow* mangaBrowseSourceAt(int i, const Player& p) const;	// i: the sources the setting shows
 		int mangaBrowseServerCount() const;				// the saved servers, as Browse lists them
-		int mangaBrowseSourceStart() const { return mangaNetFoldersCount() + mangaBrowseServerCount() + 2; }	// past the network folders, servers and Manage sources
+		int mangaBrowseSourceStart() const { return mangaNetFoldersCount() + mangaBrowseServerCount() + 3; }	// past the network folders, servers, Sources… and Add a server…
 		const MangaSrcRow* mangaSrcRowFor(const std::string& fullId) const;
 		bool mangaBrowseKey(Button b, Player& p);
 		bool mangaBrowsePointer(const Pointer& pt, int x, int y, Player& p);

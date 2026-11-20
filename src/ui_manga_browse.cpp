@@ -157,8 +157,8 @@ namespace bp
 
 	int Ui::Manga::mangaBrowseCount(const Player& p) const
 	{
-		// On this handheld, the network connections, the servers, Manage sources
-		int n = 2 + mangaNetFoldersCount() + mangaBrowseServerCount();
+		// On this handheld, the network connections, the servers, Sources…, Add a server…
+		int n = 3 + mangaNetFoldersCount() + mangaBrowseServerCount();
 		if (mangaSrcRows.empty()) n++;	// the Add sources row: A opens the Sources page
 		for (const auto& r : mangaSrcRows)
 			if (!r.adult || p.settings.mangaAdult) n++;
@@ -221,6 +221,12 @@ namespace bp
 		{
 			openMangaSources(p);
 			mstTab = MST_AVAILABLE;
+			return;
+		}
+		// Add a server… (screens.js manga-browse): the form Y opens
+		if (i == nets + servers + 2)
+		{
+			mangaServerAddOpen(p);
 			return;
 		}
 		// no source installed: the row after Manage sources is Add repository (A opens the Sources page on its
@@ -352,7 +358,7 @@ namespace bp
 		// Browse's rows (screens.js manga-browse): the card, the network folders, the servers, Sources, the sources
 		MangaRow m;
 		int nets = mangaNetFoldersCount(), servers = mangaBrowseServerCount();
-		int manageAt = nets + servers + 1, srcStart = manageAt + 1;
+		int manageAt = nets + servers + 1, srcStart = manageAt + 2;
 		if (i == 0)
 		{
 			// (the card's listing not in yet: what it has found so far, not a "0 series")
@@ -397,6 +403,13 @@ namespace bp
 			m.glyph = &G_GEAR;
 			m.name = "Sources\xE2\x80\xA6";
 			m.note = "install, update, repositories";
+			return m;
+		}
+		if (i == manageAt + 1)
+		{
+			m.glyph = &G_PLUS;
+			m.name = "Add a server\xE2\x80\xA6";
+			m.note = "Komga, Kavita, OPDS";
 			return m;
 		}
 		if (mangaSrcRows.empty() && i == srcStart)

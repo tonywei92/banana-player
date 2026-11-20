@@ -68,11 +68,13 @@ The reader (`Page::MangaRead`) is not: a comic's page keeps the whole panel, unc
   (`hdrCapture`), `drawHeader` / `drawHints` / `drawFooterText` only record. Gone: the band bridge (`shellBand`,
   `srcTop`), the old Downloads' and Library's geometry (MDL_*, mangaCoverRect, MG_LIB_*, MG_ROW_TOP).
 
+- **Browse's "Add a server…"** row sits under "Sources…" (`mangaBrowseCount` + 1, the sources start one later:
+  `mangaBrowseSourceStart`); A or a tap opens the same form as Y.
+
 ## Not done
 
 - A series, a source's and a server's pages, Sources and Manga settings are still bridged, scaled to 0.88. 
 - A sheet over the bridge keeps its old full-page place; any sheet placed by what is under it would be off by the
   scale (none seen, not every one checked).
-- Downloads keeps its keys (X Pause / resume, Y Remove); the spec moves Pause to Y and X to More. Browse's "Add a
-  server…" row isn't added (Y still adds one).
+- Downloads keeps its keys (X Pause / resume, Y Remove); the spec moves Pause to Y and X to More.
 - Not checked on the handheld (KMSDRM, the real panel); the scaled body's text is small at 0.88.

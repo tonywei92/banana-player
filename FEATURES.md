@@ -1260,7 +1260,8 @@ stays, dimmed, and says why (*source removed*, *not on a card*).
 
 **Browse** and **Downloads** are lists of rows: the row you're on carries its key (a server's **Edit**, a chapter's
 **Pause** / **Resume** or **Remove**), which a tap presses too; Downloads' storage line and Browse's place in a network
-folder are the header's line.
+folder are the header's line. Browse ends its fixed rows with **Sources…** and **Add a server…** (the
+same form **Y** opens).
 
 **On the touch screen** every list and grid in the app scrolls with a finger: drag it up or down (Library's covers,
 History, Browse and its *On this handheld*, Downloads' queue, its series on the card and their chapters, Sources, a
