@@ -511,7 +511,6 @@ namespace bp
 	{
 		syncInk();
 		if (listShown) listShown->release();
-		frameKept = false;
 		int dropped = 0;
 		cache.eraseIf([&dropped](const std::string& k) {
 			bool pin = k.compare(0, 4, "pin|") == 0;
@@ -662,7 +661,6 @@ namespace bp
 		if (list != listShown)
 		{
 			if (listShown) listShown->release();
-			dropFrame();
 			listShown = list;
 		}
 		if (list) list->step(SDL_GetTicks());
@@ -671,37 +669,25 @@ namespace bp
 			for (auto& l : infoLines) sig += l.label + "=" + l.text + ";";
 		std::string listSig = list ? std::to_string(list->shownPx()) : "";
 		if (!force && sig == drawn && listSig == drawnList) return;
-		// only the list moved since a frame kept whole: a scroll frame (the rows composed over it, nothing else drawn)
-		const bool scrollOnly = !force && sig == drawn && list && frameKept && list->canCompose();
 		drawn = sig;
 		drawnList = listSig;
 
+		// every frame is drawn whole, a smooth list's rows placed from their slots: no frame kept in a texture with
+		// only the rows composed over it (a texture copied into a texture is where GLES drivers turn pictures upside
+		// down, and the handheld's full frames fit the 16 ms anyway: 2026-11-21-smooth-scroll.md)
 		parts = FrameParts{};
 		frameAtMs = SDL_GetTicks();
 		const uint64_t costT0 = SDL_GetPerformanceCounter();
-		if (scrollOnly)
+		renderPage(p);
+		// the dark veil (ui.cpp's step): over everything, and a count of the seconds left when it warns of Screen off
+		if (veilAlpha > 0)
 		{
-			SDL_SetRenderTarget(ren, frameTex);
-			list->recompose();
-			endFrame();
-			parts.composed = true;
-		}
-		else
-		{
-			bool framed = list && beginFrame();
-			renderPage(p);
-			// the dark veil (ui.cpp's step): over everything, and a count of the seconds left when it warns of Screen off
-			if (veilAlpha > 0)
-			{
-				SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
-				SDL_SetRenderDrawColor(ren, 0, 0, 0, (Uint8)veilAlpha);
-				SDL_RenderFillRect(ren, nullptr);
-				SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
-				if (veilSecs > 0)
-					drawTextMid("Screen off in " + std::to_string(veilSecs) + " s", 0, TEXT, W / 2, H / 2, 612, 2);
-			}
-			if (framed) endFrame();
-			frameKept = framed && !drawnOverList(p);
+			SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+			SDL_SetRenderDrawColor(ren, 0, 0, 0, (Uint8)veilAlpha);
+			SDL_RenderFillRect(ren, nullptr);
+			SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+			if (veilSecs > 0)
+				drawTextMid("Screen off in " + std::to_string(veilSecs) + " s", 0, TEXT, W / 2, H / 2, 612, 2);
 		}
 		const uint64_t costT1 = SDL_GetPerformanceCounter();
 		SDL_RenderPresent(ren);
@@ -709,50 +695,6 @@ namespace bp
 		parts.present = (costT2 - costT1) * 1000.0 / (double)SDL_GetPerformanceFrequency();
 		noteDrawCost(p, costT0, costT1, costT2);
 		if (list) list->noteFrame(parts);
-	}
-
-	// ---- the smooth list's frames ----
-
-	bool Ui::beginFrame()
-	{
-		if (!SDL_RenderTargetSupported(ren)) return false;
-		int w = 0, h = 0;
-		SDL_GetRendererOutputSize(ren, &w, &h);
-		if (frameTex && (frameW != w || frameH != h)) dropFrame();
-		if (!frameTex)
-		{
-			frameTex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, w, h);
-			if (!frameTex) return false;
-			SDL_SetTextureBlendMode(frameTex, SDL_BLENDMODE_NONE);
-			frameW = w;
-			frameH = h;
-		}
-		if (SDL_SetRenderTarget(ren, frameTex) != 0) return false;
-		framing = true;
-		return true;
-	}
-
-	void Ui::endFrame()
-	{
-		SDL_SetRenderTarget(ren, nullptr);
-		framing = false;
-		SDL_RenderCopy(ren, frameTex, nullptr, nullptr);
-	}
-
-	void Ui::dropFrame()
-	{
-		if (frameTex) SDL_DestroyTexture(frameTex);
-		frameTex = nullptr;
-		frameKept = false;
-	}
-
-	bool Ui::drawnOverList(const Player& p) const
-	{
-		// what renderPage and draw put over the body after the area (the shell keeps to its rail, header and hints):
-		// while any shows, every frame is drawn whole. Files' pages (the clip bar, the update pop-up, the busy line)
-		// count as one, all of them
-		return veilAlpha > 0 || kbOpen || fileJob || topOverlay() || browse->playlists->pickerOpen ||
-			page == Page::Browse || popupShown(p) || !manga->extNoticeText().empty() || galleryNew;
 	}
 
 	int Ui::glideWaitMs() const
@@ -854,12 +796,8 @@ namespace bp
 	{
 		const FrameParts& f = parts;
 		char buf[240];
-		if (f.composed)
-			snprintf(buf, sizeof buf, "composed: list %.1f (%d rows drawn), present %.1f; %d text misses", f.list,
-				f.rowsDrawn, f.present, f.textMisses);
-		else
-			snprintf(buf, sizeof buf, "ground %.1f, body %.1f (list %.1f, %d rows drawn), shell %.1f, rest %.1f, present %.1f; "
-				"%d text misses", f.ground, f.body, f.list, f.rowsDrawn, f.shell, f.rest, f.present, f.textMisses);
+		snprintf(buf, sizeof buf, "ground %.1f, body %.1f (list %.1f, %d rows drawn), shell %.1f, rest %.1f, present %.1f; "
+			"%d text misses", f.ground, f.body, f.list, f.rowsDrawn, f.shell, f.rest, f.present, f.textMisses);
 		return buf;
 	}
 
@@ -1016,9 +954,7 @@ namespace bp
 	SDL_Surface* Ui::capture(const Player& p)
 	{
 		// drawn afresh and read back before it's shown (after a present, the frame's contents are gone)
-		bool framed = listShown && beginFrame();
 		renderPage(p);
-		if (framed) endFrame();
 		int w, h;
 		SDL_GetRendererOutputSize(ren, &w, &h);
 		SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ABGR8888);

@@ -367,7 +367,6 @@ namespace bp
 		{
 			double ground = 0, body = 0, list = 0, shell = 0, rest = 0, present = 0;
 			int textMisses = 0, rowsDrawn = 0;
-			bool composed = false;	// a scroll frame: only the list's rows composed over the kept frame
 			double total() const { return ground + body + shell + rest + present; }
 		};
 		FrameParts parts;
@@ -448,7 +447,7 @@ namespace bp
 			// its downs come late: after the header's "<" and the empty page's button (its moves and lifts
 			// still come where the others' do). Manga's pages took them so (asked per page: the reader's come early)
 			virtual bool pointerDownLate() const { return false; }
-			// its list that scrolls smoothly, while one shows (Ui::draw steps its glide and composes its scroll frames)
+			// its list that scrolls smoothly, while one shows (Ui::draw steps its glide and frees its slots when it goes)
 			virtual SmoothList* smoothList() { return nullptr; }
 		};
 		std::vector<Area*> areas;	// (each owned by its own member, `docs`, `manga`...; listed in Ui's constructor, ui.cpp)
@@ -895,21 +894,11 @@ namespace bp
 		mutable std::unordered_map<std::string, int> widthCache;
 		std::unordered_map<std::string, std::string> elideCache;
 		std::string drawn, fontsDir;
-		// ---- the smooth list's frames (ui_smoothlist.h) ----
-		// A page with a smooth list is drawn into frameTex, then onto the panel: while only the list moved since
-		// (frameKept), a frame is the kept one with the rows composed again (Ui::draw), nothing else drawn
+		// ---- the smooth list (ui_smoothlist.h) ----
 		SmoothList* listShown = nullptr;	// the shown area's (null: none)
 		std::string drawnList;			// its offset when last drawn, in device pixels
-		SDL_Texture* frameTex = nullptr;
-		int frameW = 0, frameH = 0;
-		bool framing = false;	// this frame is going into frameTex
-		bool frameKept = false;	// frameTex holds the last frame, nothing drawn over the list's view after it
 		uint32_t frameAtMs = 0;	// when the last bottom frame began (the glide's frame pacing)
 		uint32_t touchMs = 0;	// the finger's event time now (Ui::pointer, from pointerMs)
-		bool beginFrame();		// into frameTex (false: no render targets here)
-		void endFrame();		// frameTex onto the panel
-		void dropFrame();
-		bool drawnOverList(const Player& p) const;	// something over the body this frame (a sheet, the keyboard...)
 
 		Page page = Page::Main;
 		int cursor = 0, scroll = 0;
@@ -1014,7 +1003,7 @@ namespace bp
 		// Shared by Home's cards, the rail's Now playing key and Quick settings' Now playing block (it was
 		// Home's own, 2026-11-19-home-art.md; one cache, not a copy each). A texture is one picture decoded
 		// at one box's device pixels and rounded at upload, so its key holds the box too: the Continue
-		// card's 128 x 84 crop is not the block's 48 square. A handful at most, the least recently drawn
+		// card's 128 x 84 crop is not the block's 48 square. ART_KEEP at most, the least recently drawn
 		// freed. A path with no art (or an unreadable one) stays in artFailed: its placeholder is the
 		// answer, and it is never asked again.
 		struct ArtTex { SDL_Texture* tex = nullptr; uint64_t drawnAt = 0; };
@@ -1024,7 +1013,7 @@ namespace bp
 		std::unordered_set<std::string> artAsked, artFailed;
 		uint64_t artDrawn = 0;	// the LRU's order
 		int artSerial = 0;	// what signature()s follow: a cover arrived, the page draws it now
-		static constexpr size_t ART_KEEP = 12;
+		static constexpr size_t ART_KEEP = 48;	// (Music's grid shows up to 20 covers, its slots keep 20 more)
 		// ---- Match album art's backdrop (docs/redesign "Match album art") ----
 		// The same worker's "bg:" answers, asked once per playing song: the maths arrive on the main thread, one
 		// SDL texture here (the top screen uploads its own copy into its GL), and the player's page and the top
@@ -1089,7 +1078,7 @@ namespace bp
 		void drawSongArt(const std::string& path, const std::string& key, Rect r, int rad);
 		// what drawSongArt would show in `r` now: 0 the placeholder (asked, or not yet), 1 the picture, 2 none for
 		// good. A smooth list's row keys hold it, so a cover's arrival draws its row again
-		int songArtState(const std::string& path, Rect r, int rad) const;
+		int songArtState(const std::string& path, Rect r, int rad);
 		// what plays in an art's box, as Home's cards have it: a song's art (its placeholder while it decodes,
 		// or for good when it has none), a video's kind mark, a music mark when nothing plays
 		void drawNowArt(const Player& bp, Rect r, int rad);

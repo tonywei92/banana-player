@@ -814,7 +814,7 @@ namespace bp
 		Kit& k = *ui.kit;
 		bool reading = !snap || generation() == 0;
 		// the one the page plays (the mark in the number's place, the tile's corner). By value: the list's rows are
-		// drawn from these lambdas in later scroll frames too
+		// drawn from these lambdas in later frames too, when the list moved
 		const std::string nowPath = p.playing() && !p.playingPhoto() ? p.currentPath() : "";
 		const bool paused = p.paused;
 		auto plays = [nowPath](const std::string& path) { return !nowPath.empty() && nowPath == path; };
@@ -1059,10 +1059,12 @@ namespace bp
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
-			spec.key = [this, snap, cellOf, gen, n](int r) {
-				// each cell's state, and whether its cover is drawn yet (its arrival draws the row again)
+			spec.key = [this, snap, cellOf, gen, n, slotBox = Rect{0, 0, g.view.w, g.rowH}](int r) {
+				// each cell's state, and whether its cover is drawn yet (its arrival draws the row again). The covers'
+				// boxes are the slot's, as draw lays them: the cover's key holds its device size, which at the
+				// handheld's 1.6x depends on where the box starts
 				std::string key = "al" + gen + std::to_string(r);
-				lay::AlbumGrid row = gridRow({0, 0, 640, 0}, r, n);
+				lay::AlbumGrid row = gridRow(slotBox, r, n);
 				for (int c = 0; c < (int)row.cell.size(); c++)
 				{
 					int i = r * 5 + c;
@@ -1109,7 +1111,7 @@ namespace bp
 		// its base; a Like moves the store's serial, its |pl term, and so does the playlists' count), and the
 		// reading notice's step, so the bar moves while the first pass walks
 		char buf[160];
-		// (the list's offset is not here: Ui::draw follows it apart, so a scroll frame only composes the rows)
+		// (the list's offset is not here: Ui::draw follows it apart, and a frame that only moved draws no row again)
 		snprintf(buf, sizeof buf, "|mu%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.%d", view, albumAt, artistAt, cursor, touchMoved,
 			rowCursor, keyFocus, artistZone * 8 + artistAlbum, albumScroll, touch, (int)generation());
 		std::string s = buf;

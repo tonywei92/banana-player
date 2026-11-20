@@ -230,14 +230,20 @@ namespace bp
 		artAsked.insert(artKey);
 	}
 
-	int Ui::songArtState(const std::string& path, Rect r, int rad) const
+	int Ui::songArtState(const std::string& path, Rect r, int rad)
 	{
-		// (drawSongArt's own key: the inner box's device size and the radius)
+		// (drawSongArt's own key: the inner box's device size and the radius). A smooth list asks this for each row
+		// it shows, every frame, but draws a row's cover only once into its slot: the ask counts as drawn, or the
+		// covers on screen would be the least recently drawn, freed first, and the rows would swap between the
+		// cover and the placeholder as each freed one was asked for again
 		if (path.empty() || artFailed.count(path)) return 2;
 		SDL_Rect d = devRect({r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE});
 		std::string artKey = std::string(HOME_COVER_KEY) + path + "|" + std::to_string(d.w) + "x" + std::to_string(d.h) +
 			"r" + std::to_string(rad);
-		return artTex.count(artKey) ? 1 : 0;
+		auto it = artTex.find(artKey);
+		if (it == artTex.end()) return 0;
+		it->second.drawnAt = ++artDrawn;
+		return 1;
 	}
 
 	void Ui::drawNowArt(const Player& bp, Rect r, int rad)

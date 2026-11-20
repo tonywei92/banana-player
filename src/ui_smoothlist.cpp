@@ -1,5 +1,5 @@
 // Ui::SmoothList (ui_smoothlist.h): a list's rows drawn once into textures and placed at the scroll's offset by the
-// device pixel; the scroll frames that only compose them over the kept frame. The motion is lay::Scroller's.
+// device pixel, over a page drawn whole each frame. The motion is lay::Scroller's.
 #include "ui_smoothlist.h"
 #include "ui_internal.h"
 #include <algorithm>
@@ -22,29 +22,13 @@ namespace bp
 
 	void Ui::SmoothList::draw(Spec spec)
 	{
+		const uint64_t t0 = SDL_GetPerformanceCounter();
 		last = std::move(spec);
 		sc.setExtent((double)last.count * last.rowH, last.view.h);
-		compose(true);
-	}
-
-	void Ui::SmoothList::recompose()
-	{
-		// the ground the rows were last composed over, back under the view; then the rows at the offset now
-		SDL_Rect d = ui.devRect(last.view);
-		SDL_RenderCopy(ui.ren, ground, nullptr, &d);
-		compose(false);
-	}
-
-	void Ui::SmoothList::compose(bool full)
-	{
-		const uint64_t t0 = SDL_GetPerformanceCounter();
 		frame++;
 		const int rowH = std::max(1, last.rowH);
 		const int first = sc.firstRow(rowH);
 		const int end = first + sc.rowsTouched(rowH, last.count);
-		// a full frame drawn into Ui::frameTex keeps what is under the view, for the scroll frames after it
-		if (full) groundKept = false;
-		if (full && ui.framing) keepGround();
 		if (!SDL_RenderTargetSupported(ui.ren) || !last.draw)
 		{
 			drawDirect(first, end);
@@ -60,8 +44,8 @@ namespace bp
 			std::string key = last.key ? last.key(i) : "";
 			Slot* s = slotFor(i, first, end);
 			if (!s) break;
-			// a row that moves by itself ("" key) is drawn again on full frames only: a scroll frame keeps it
-			bool redraw = s->row != i || s->key != key || (key.empty() && full);
+			// a row that moves by itself ("" key) is drawn again every frame
+			bool redraw = s->row != i || s->key != key || key.empty();
 			if (redraw)
 			{
 				switched = true;
@@ -150,31 +134,6 @@ namespace bp
 		return true;
 	}
 
-	void Ui::SmoothList::keepGround()
-	{
-		// what the frame has under the view now (the page's ground, its backdrop), before any row is put on it
-		SDL_Texture* frameTex = SDL_GetRenderTarget(ui.ren);
-		if (!frameTex) return;
-		SDL_Rect src = ui.devRect(last.view);
-		if (ground && (groundW != src.w || groundH != src.h))
-		{
-			SDL_DestroyTexture(ground);
-			ground = nullptr;
-		}
-		if (!ground)
-		{
-			ground = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, src.w, src.h);
-			if (!ground) return;
-			SDL_SetTextureBlendMode(ground, SDL_BLENDMODE_NONE);
-			groundW = src.w;
-			groundH = src.h;
-		}
-		if (SDL_SetRenderTarget(ui.ren, ground) != 0) return;
-		SDL_RenderCopy(ui.ren, frameTex, &src, nullptr);
-		SDL_SetRenderTarget(ui.ren, frameTex);
-		groundKept = true;
-	}
-
 	void Ui::SmoothList::drawDirect(int first, int end)
 	{
 		SDL_Rect clip = ui.devRect(last.view);
@@ -192,9 +151,6 @@ namespace bp
 		for (auto& s : slots)
 			if (s->tex) SDL_DestroyTexture(s->tex);
 		slots.clear();
-		if (ground) SDL_DestroyTexture(ground);
-		ground = nullptr;
-		groundKept = false;
 	}
 
 	// ---- the finger and the cursor ----
@@ -251,7 +207,7 @@ namespace bp
 	void Ui::SmoothList::noteFrame(const FrameParts& f)
 	{
 		// the frames drawn while the list moves (a finger, a glide): where a fling's frames go on the handheld
-		// (composed: only the rows placed; full: the whole page drawn), and those that came late
+		// and those that came late
 		if (!sc.moving() && !sc.dragging()) return;
 		const uint64_t now = SDL_GetPerformanceCounter();
 		const double gap = motion.frames ? (now - motion.lastAt) * 1000.0 / (double)SDL_GetPerformanceFrequency() : 0;
@@ -259,7 +215,6 @@ namespace bp
 		if (gap > 25 && std::fabs(sc.speed()) > 0.1) motion.late++;
 		motion.lastAt = now;
 		motion.frames++;
-		motion.composed += f.composed;
 		motion.rows += f.rowsDrawn;
 		motion.misses += f.textMisses;
 		motion.ms += f.total();
@@ -274,9 +229,9 @@ namespace bp
 		double span = (m.lastAt - m.since) * 1000.0 / (double)SDL_GetPerformanceFrequency();
 		if (m.frames >= 5)
 			fprintf(stderr, "timing: list moved: %d frames in %.0f ms (%.0f a second), %.2f ms each (list %.2f), max %.2f, "
-				"%d late (over 25 ms apart while fast); %d composed, %d full; %d rows drawn, %d text misses\n", m.frames,
-				span, span > 0 ? (m.frames - 1) * 1000.0 / span : 0.0, m.ms / m.frames, m.listMs / m.frames, m.maxMs, m.late,
-				m.composed, m.frames - m.composed, m.rows, m.misses);
+				"%d late (over 25 ms apart while fast); %d rows drawn, %d text misses\n", m.frames, span,
+				span > 0 ? (m.frames - 1) * 1000.0 / span : 0.0, m.ms / m.frames, m.listMs / m.frames, m.maxMs, m.late,
+				m.rows, m.misses);
 		motion = Motion{};
 	}
 }

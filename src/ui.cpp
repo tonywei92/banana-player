@@ -130,7 +130,6 @@ namespace bp
 		if (photoTex) SDL_DestroyTexture(photoTex);
 		if (supportTex) SDL_DestroyTexture(supportTex);
 		cache.clear();
-		dropFrame();
 		if (listShown) listShown->release();	// (its rows' textures, before the renderer goes)
 		for (auto& c : manga->coverTex)
 			if (c.second.tex) SDL_DestroyTexture(c.second.tex);
