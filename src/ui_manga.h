@@ -53,6 +53,44 @@ namespace bp
 		// the Extensions page's and Manage extensions' part of the signature
 		std::string extSignature() const;
 
+		// ---- inside the shell (docs/notes/2026-11-20-manga-shell.md) ----
+		// Every page of the area but the reader's (Page::MangaRead keeps its own frame) is a shell page: the rail,
+		// the header and the hint bar are the shell's, Manage extensions and the four tabs are drawn on the kit, and
+		// the rest of each page's old 640-wide body is bridged into the shell's body (Shell::beginBody).
+		bool shellPage(Page pg) const { return has(pg) && pg != Page::MangaRead; }
+		// the app's tab view (Page::Manga, neither a source's nor a server's view): the kit's tabs over its body
+		bool tabView() const { return ui.page == Page::Manga && mangaView == 0; }
+		lay::TabPage mangaTabPage(const Player& p) const;
+		// the header the shell draws: the page's title, its crumb, the hints its old body drew (captured while it was
+		// bridged: Ui::capHints), plus L2 / R2 on the tabs
+		ShellHead head(const Player& p) const;
+		// where the old body is copied: its top in the old page (under the old tabs on the tab view) and the box
+		void shellBand(const Player& p, lay::Box& dst, int& srcTop) const;
+		// a sheet, a menu or the keyboard is up: keys and touches go to it as they always did, the old way (no
+		// sections on L / R, no mapping of the touches: the sheet is drawn at full size over the shell)
+		bool shellModal() const;
+		// the kit's part of the body (the tabs), drawn after the bridged body; its touches, before they are mapped
+		void drawShellBody(const Player& p);
+		bool shellPointer(const Pointer& pt, int x, int y, Player& p);
+		// a sheet over a shell page is drawn after the shell (full size, over its frame): the page's draw hands it
+		// here while sheetsLater is set, and renderPage runs them once the frame is drawn
+		bool sheetsLater = false;
+		std::vector<std::function<void()>> sheetQueue;
+		void later(std::function<void()> f)
+		{
+			if (sheetsLater) sheetQueue.push_back(std::move(f));
+			else f();
+		}
+		void runLater()
+		{
+			auto q = std::move(sheetQueue);
+			sheetQueue.clear();
+			sheetsLater = false;
+			for (auto& f : q) f();
+		}
+		int mangaTabPressed = -1;	// a finger on one of the kit's tabs
+		void mangaTabSet(int tab, Player& p);	// L2 / R2 or a tap: the tab shown
+
 		// ---- for main, the dashboard and the page reader ----
 		// the place inside a page kept for a chapter, and the series' own Book (PageReader::takeMangaRead fills them in)
 		float mangaWithinFor(const std::string& chapterId, int page) const;
@@ -155,9 +193,6 @@ namespace bp
 		// the touch ids: apart from the grid's, the buttons' and the pages'
 		static constexpr int EXT_ROW = 562, EXT_MANAGE_ROW = 567, EXT_EMPTY_KEY = 568, EXT_CHIP = 563, EXT_GEAR = 564,
 			EXT_OPEN = 565, EXT_DONE = 566;
-		Rect extRowRect() const { return {16, 88, 608, 70}; }
-		Rect extChipRect() const { return {548, 104, 64, 36}; }
-		Rect extGearRect() const { return {536, 104, 76, 36}; }
 		Rect extSheetBox() const { return {60, 90, 520, 300}; }
 		Rect extSheetBtn(int i) const { return {i ? 328 : 92, 310, 220, 50}; }
 		// the Extensions page (Page::ExtSection): its cursor over the rows (the extensions on, then Manage extensions),
@@ -385,7 +420,7 @@ namespace bp
 		void mangaSeriesResume(Player& p);				// A on Resume
 		bool mangaKey(Button b, Player& p);
 		bool mangaPointer(const Pointer& pt, int x, int y, Player& p);
-		void drawMangaTabs();
+		std::string mangaTabLabel(int i) const;	// the kit tab's label ("Downloads 2" while some are queued)
 		void drawMangaLibrary(const Player& p);
 		void drawMangaHistory(const Player& p);
 		void drawMangaBrowse(const Player& p);
@@ -423,7 +458,6 @@ namespace bp
 		void mangaCoverCancelAll();			// the page left: every in-flight cover fetch goes
 		bool mangaCoverOnFetched(MangaFetch::Result& r);	// true if the result was one of ours (a cover fetch)
 		// four tabs evenly across the room under the header's back icon: 24 each side, 8 between
-		Rect mangaTabRect(int i) const { return {24 + i * 150, 60, 142, 30}; }
 		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the grid's covers 124 apart
 		// the grid starts right under the tabs (their row ends at 90), its label on the line above it: with the
 		// Continue reading strip gone, a row more of covers shows

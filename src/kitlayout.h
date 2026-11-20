@@ -53,8 +53,21 @@ namespace bp
 			std::vector<Box> tab;
 		};
 		// a strip 44 tall: the left cap, each tab as wide as `widths` says, 6 apart, the right cap. The caps are
-		// their own boxes (19 wide, TAB_H tall, centred in the strip)
-		Tabs tabs(Box area, const std::vector<int>& widths, int gap = TAB_GAP);
+		// their own boxes (`capW` wide: 19 for "L" / "R", wider for "L2" / "R2"; TAB_CAP tall, centred in the strip)
+		Tabs tabs(Box area, const std::vector<int>& widths, int gap = TAB_GAP, int capW = TAB_CAP);
+		// A page whose body is tabs over a list (Manga's Library / History / Browse / Downloads, screens.js manga):
+		// the strip at the top of the inner body (SP12 in from the body's sides), stepped by L2 / R2 (L / R are the
+		// sections in the shell); the content under it, SP8 below the strip, to the body's foot. `capW` is the caps'
+		// width (Kit::capsW of "L2").
+		struct TabPage
+		{
+			Box inner;	// the body less its side padding
+			Tabs strip;
+			Box content;
+		};
+		TabPage tabPage(Box body, const std::vector<int>& widths, int capW);
+		// the tab under (x, y) in a strip (the gap between two goes to neither): -1 none
+		int tabAt(const Tabs& t, int x, int y);
 		// the List sheet: the grab mark, a header (the tabs and the two controls), `rows` rows 46 tall, the hint bar
 		constexpr int LIST_HEAD = 54, LIST_ROW = 46, LIST_ROWS = 7;
 		struct ListSheet

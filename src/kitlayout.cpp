@@ -81,21 +81,39 @@ namespace bp
 
 		// ---- tabs, and the List sheet ----
 
-		Tabs tabs(Box area, const std::vector<int>& widths, int gap)
+		Tabs tabs(Box area, const std::vector<int>& widths, int gap, int capW)
 		{
 			Tabs out;
 			out.area = area;
 			// the strip 44 tall in the header it is given (54), its caps 19 tall in the strip's middle
+			capW = std::max(TAB_CAP, capW);
 			int y = area.y + (area.h - TAB_H) / 2, cy = y + (TAB_H - TAB_CAP) / 2;
-			out.left = {area.x, cy, TAB_CAP, TAB_CAP};
-			int x = area.x + TAB_CAP + (widths.empty() ? 0 : gap);
+			out.left = {area.x, cy, capW, TAB_CAP};
+			int x = area.x + capW + (widths.empty() ? 0 : gap);
 			for (int w : widths)
 			{
 				out.tab.push_back({x, y, w, TAB_H});
 				x += w + gap;
 			}
-			out.right = {widths.empty() ? area.x + TAB_CAP + gap : x, cy, TAB_CAP, TAB_CAP};
+			out.right = {widths.empty() ? area.x + capW + gap : x, cy, capW, TAB_CAP};
 			return out;
+		}
+
+		TabPage tabPage(Box body, const std::vector<int>& widths, int capW)
+		{
+			TabPage t;
+			t.inner = {body.x + SP12, body.y, std::max(1, body.w - 2 * SP12), body.h};
+			t.strip = tabs({t.inner.x, t.inner.y, t.inner.w, TAB_H}, widths, TAB_GAP, capW);
+			int top = t.inner.y + TAB_H + SP8;
+			t.content = {t.inner.x, top, t.inner.w, std::max(0, body.y + body.h - top)};
+			return t;
+		}
+
+		int tabAt(const Tabs& t, int x, int y)
+		{
+			for (size_t i = 0; i < t.tab.size(); i++)
+				if (t.tab[i].hit(x, y)) return (int)i;
+			return -1;
 		}
 
 		// the boxes every list sheet shares: the grab mark, the header, the rows (or a body) and the hint bar

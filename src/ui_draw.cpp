@@ -681,12 +681,24 @@ namespace bp
 		loaderShown = false;
 		// a section page's body: its old drawing goes into the shell's body box until the screen is rebuilt on the kit
 		bool shellPage = shell->page(page);
+		// Manga's pages: their sheets wait for the frame (drawn full size over it), their old header's title and
+		// hints are caught for the shell's
+		bool mangaShell = shellPage && manga->shellPage(page);
+		manga->sheetsLater = mangaShell;
+		manga->sheetQueue.clear();
 		bool bridged = shellPage && shell->beginBody(p);
+		hdrCapture = bridged;
+		capTitle.clear();
+		capHints.clear();
 		if (page == Page::Info || page == Page::About) drawInfo(p);
 		else if (Area* a = area()) a->draw(p);
 		else drawTracks(p);	// (Page::Main is an area: PlayerPage::draw)
+		hdrCapture = false;
 		if (bridged) shell->endBody(p);
+		if (mangaShell) manga->drawShellBody(p);
 		if (shellPage) shell->draw(shell->section(p), shell->head(p), p);
+		if (mangaShell) manga->runLater();
+		manga->sheetsLater = false;
 		browse->drawClipBar();
 		if (ctxOpen) drawBrowseMenu(p);	// (the mini bar's hold menu opens on pages of its own too)
 		if (browse->playlists->pickerOpen) browse->playlists->drawPicker();
@@ -879,6 +891,7 @@ namespace bp
 
 	void Ui::drawHeader(const std::string& title, const Player& p, int titleRight)
 	{
+		if (hdrCapture && capTitle.empty()) capTitle = title;
 		// (Home has no "<": its title takes the place, lined up with the page's 16-unit margin)
 		bool back = backIconShown(p);
 		if (back) drawBackIcon();
@@ -906,6 +919,7 @@ namespace bp
 
 	void Ui::drawHints(const std::vector<Hint>& hints)
 	{
+		if (hdrCapture) capHints = hints;
 		// the button's name in yellow (as on the buttons), what it does in grey; centred along the bottom
 		auto w = [&](const std::string& t) { return t.empty() ? 0 : (int)std::lround(textWidth(t, 0) / sx); };
 		int gap = 24, total = 0;
@@ -927,6 +941,7 @@ namespace bp
 
 	void Ui::drawFooterText(const std::string& text, SDL_Color c)
 	{
+		if (hdrCapture) capHints = {{"", text}};
 		drawTextMid(text, 0, c, W / 2, footY(), 612, 2);
 	}
 

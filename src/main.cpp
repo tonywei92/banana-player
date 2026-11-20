@@ -1921,6 +1921,7 @@ int main(int argc, char** argv)
 								ui.books->reading.size(), ui.books->shelf.size(), ui.books->cursor);
 						}
 						else if (ui.extPageShown()) printf("press %zu: extensions\n", pressed);
+						else if (std::string mg = ui.mangaStateLine(); !mg.empty()) printf("press %zu: %s\n", pressed, mg.c_str());
 						else if (!player.playing()) printf("press %zu: settings (from the browser)\n", pressed);
 						else
 						{

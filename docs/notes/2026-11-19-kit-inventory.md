@@ -26,7 +26,7 @@ pure `lay::` function in `src/kitlayout.*`.
 | 11 | List row | `Kit::row` | present |
 | 12 | Pill (mark on a row or card) | `Kit::pill`, `Kit::pillW` | present |
 | 13 | Filter chips and segmented choice | `Kit::filters`, `Kit::segment`; `lay::filterChips`, `filterAt` | present |
-| 14 | Tabs | `Kit::tabs`, `Kit::tabRects`; `lay::tabs` | present |
+| 14 | Tabs | `Kit::tabs` (a page's ground: the `ground`/`pressed` overload; caps as wide as "L2"/"R2" need), `Kit::tabRects`, `Kit::tabW`, `Kit::tabCapW`; `lay::tabs` (`capW`), `lay::tabPage` (tabs over a body: Manga), `lay::tabAt`; gallery page 21 | present |
 | 15 | Switch | `Kit::toggle`, `Kit::Row::Trail::SwitchOn/Off` | present |
 | 16 | Tick and radio | `Kit::Row::tick`, `Kit::Row::radio` (glyphs) | present |
 | 17 | Settings row (stepper) | `Kit::settingRow`; `lay::settingStepper`, `stepperBack` | present |

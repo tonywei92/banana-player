@@ -158,6 +158,8 @@ namespace bp
 		std::vector<std::string> browseLabels() const;
 		// the Extensions section's page (Page::ExtSection): for test runs (the state line and nothing else)
 		bool extPageShown() const { return page == Page::ExtSection; }
+		// Manga's pages for test runs ("manga tab=1 view=0", "manage-extensions", …); "" on any other page
+		std::string mangaStateLine() const;
 		// the Info or About page's lines as they are drawn, for test runs
 		std::vector<std::string> pageLines() const
 		{
@@ -739,6 +741,11 @@ namespace bp
 		void drawHeader(const std::string& title, const Player& p, int titleRight = 0);	// titleRight: the title ends before it
 		void drawTab(Rect r, const char* name, bool active, int size = 1);
 		void drawHints(const std::vector<Hint>& hints);
+		// while an old body is bridged into the shell (renderPage): the title its drawHeader gave and the hints its
+		// drawHints (or footer line) gave, for the shell's header and hint bar (Manga::head)
+		bool hdrCapture = false;
+		std::string capTitle;
+		std::vector<Hint> capHints;
 		void drawFooterText(const std::string& text, SDL_Color c);
 		void drawFocus(Rect r);
 		void drawScrollBar(int top, int height, int first, int shown, int total);

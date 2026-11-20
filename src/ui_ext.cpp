@@ -78,8 +78,11 @@ namespace bp
 	void Ui::Manga::sectionLeft(Page from)
 	{
 		// Manga is where the Extensions section is left when a Manga page is the one being left: coming back lands
-		// there again. Left on its list, it comes back to the list.
-		extReturn = from == Page::Manga || from == Page::MangaSeries ? from : Page::ExtSection;
+		// there again (its Sources and its settings: the app). Left on its list or Manage extensions, it comes back to
+		// the list. Leaving another section changes nothing (once, Books → Extensions forgot Manga).
+		if (from == Page::Manga || from == Page::MangaSeries) extReturn = from;
+		else if (from == Page::MangaSources || from == Page::MangaSettings) extReturn = Page::Manga;
+		else if (from == Page::ExtSection || from == Page::Extensions) extReturn = Page::ExtSection;
 	}
 
 	void Ui::Manga::enterManga(Player& p)
@@ -122,6 +125,7 @@ namespace bp
 
 	void Ui::Manga::openExtensions(bool fromSettings)
 	{
+		ui.shell->adopt(Page::Extensions);	// drawn on the kit in the shell's body (not bridged)
 		ui.page = Page::Extensions;
 		ui.cursor = ui.scroll = 0;
 		extPressed = ui.pressedBtn = -1;
@@ -141,6 +145,7 @@ namespace bp
 		if (!first) return;
 		extSheet = true;
 		extSheetCursor = 0;
+		ui.shell->adopt(Page::Extensions);
 		ui.page = Page::Extensions;
 		ui.cursor = ui.scroll = 0;
 	}
@@ -190,6 +195,8 @@ namespace bp
 		switch (b)
 		{
 		case Button::A: extToggleManga(p); break;
+		// X: its settings (the extension's own page; B there comes back here)
+		case Button::X: if (p.settings.mangaOn) openExtSettings(); break;
 		case Button::Start: ui.openSettings(p, true); break;
 		case Button::B:
 			// back to the door it came through: the Extensions page's row, or Settings › Extensions
@@ -317,15 +324,14 @@ namespace bp
 					if (extSheetBtn(i).hit(x, y)) extPressed = EXT_OPEN + i;
 				return false;
 			}
-			if (extRowRect().hit(x, y)) extPressed = EXT_ROW;
-			if (extChipRect().hit(x, y)) extPressed = EXT_CHIP;
+			// the row, as drawExtensions laid it out (its switch is part of it)
+			if (lay::extPage(ui.shell->layout(p).body, 1).row[0].hit(x, y)) extPressed = EXT_ROW;
 			return false;
 		}
 		if (pt.kind != Pointer::Up || extPressed < 0) return false;
 		int id = extPressed;
 		extPressed = -1;
-		Rect r = id == EXT_ROW ? extRowRect() : id == EXT_CHIP ? extChipRect() : id == EXT_GEAR ? extGearRect()
-			: extSheetBtn(id - EXT_OPEN);
+		Rect r = id == EXT_ROW ? lay::extPage(ui.shell->layout(p).body, 1).row[0] : extSheetBtn(id - EXT_OPEN);
 		// a finger that slid away changed its mind
 		return r.hit(x, y) && extAct(id, p);
 	}
@@ -347,26 +353,33 @@ namespace bp
 
 	void Ui::Manga::drawExtensions(const Player& p)
 	{
-		ui.drawHeader("Manage extensions", p);
-		ui.drawTextMid("1 extension", 0, DIM, 16, 64);
-		// the extension's row: its mark, its name and what it does, its switch, its settings
-		Rect row = extRowRect();
-		ui.drawFocus(row);
-		drawMangaIcon({30, 100, 46, 46});
-		ui.drawTextMid("Manga reader", 1, ACCENT, 92, 110, 360);
-		ui.drawTextMid("Comics and manga from files and servers", 0, DIM, 92, 136, 360);
+		// Manage extensions (docs/redesign: extensions): one row per extension, on the kit in the shell's body (the
+		// header, "Extensions › Manage extensions", and the hints are the shell's: Manga::head). The row's switch is
+		// its trail; the whole row is the touch target (lay::extPage's first row, which extPointer tests).
+		Kit& k = *ui.kit;
+		lay::ExtPage page = lay::extPage(ui.shell->layout(p).body, 1);
 		bool on = p.settings.mangaOn;
-		Rect chip = extChipRect();
-		ui.fillRound(chip, on ? ACCENT : BUTTON, R_CHIP);
-		ui.drawTextMid(on ? "On" : "Off", 0, on ? ON_ACCENT : TEXT, chip.x + chip.w / 2, chip.y + chip.h / 2, chip.w - 8, 2);
-		// (on and off only: the extension's settings are its own, START inside it)
-		ui.drawTextMid("More extensions come with later versions.", 0, DIM, W / 2, 190, 560, 2);
-		if (extSheet)
+		Kit::Row row;
+		row.under = BG;
+		row.mark = [this](lay::Box m) { drawMangaIcon(m); };
+		row.name = "Manga reader";
+		row.second = "Comics and manga from files, servers and sources";
+		row.trail = on ? Kit::Trail::SwitchOn : Kit::Trail::SwitchOff;
+		row.focused = true;
+		row.pressed = extPressed == EXT_ROW;
+		k.row(page.row[0], row);
+		// what on and off do, and that the settings are the extension's own (X here, X · More in Manga)
+		std::string note = on ? "On: it is a row of Extensions, in the rail. X opens its settings."
+			: "Off: its row is gone from Extensions and nothing of it runs. Nothing is deleted.";
+		int y = page.row[0].y + page.row[0].h + lay::SP12;
+		for (auto& line : ui.wrapText(note, F_I12, page.area.w - 24, 2))
 		{
-			drawExtSheet(p);
-			return;
+			ui.drawTextMid(line, F_I12, DIM, page.area.x + 12, y, page.area.w - 24);
+			y += 18;
 		}
-		ui.drawHints({{"A", "On / Off"}, {"B", "Back"}});
+		ui.drawTextMid("More extensions come with later versions.", F_I12, DIM, page.area.x + 12, y + 8, page.area.w - 24);
+		// the first-time note: over the frame, at full size
+		if (extSheet) later([this, &p] { drawExtSheet(p); });
 	}
 
 	void Ui::Manga::drawExtSheet(const Player& p)

@@ -6,6 +6,7 @@
 #include "ui_settings.h"
 #include "ui_reader.h"
 #include "ui_kit.h"
+#include "ui_shell.h"
 #include "ui_manga.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
@@ -996,13 +997,10 @@ namespace bp
 			else openExtList(p);
 			return false;
 		}
-		if (b == Button::L || b == Button::R)
+		// L2 / R2 step the tabs, round (L / R are the shell's: the sections)
+		if (b == Button::L2 || b == Button::R2)
 		{
-			mangaTab = std::clamp(mangaTab + (b == Button::R ? 1 : -1), 0, (int)MANGA_TABS - 1);
-			mangaClearAt = 0;
-			mBrowseList = false;
-			mangaPressed = -1;
-			if (mangaTab == MT_DOWNLOADS) mangaDownloadsOpen(p);
+			mangaTabSet(mangaTab + (b == Button::R2 ? 1 : -1), p);
 			return false;
 		}
 		switch (mangaTab)
@@ -1349,15 +1347,7 @@ namespace bp
 			if (mangaView == 1) return mangaSourcePointer(pt, x, y, p);
 			// a saved server's catalogue or form (ui_manga_servers.cpp)
 			if (mangaView >= 2) return mangaServersPointer(pt, x, y, p);
-			for (int i = 0; i < MANGA_TABS; i++)
-				if (mangaTabRect(i).hit(x, y))
-				{
-					mangaTab = i;
-					mangaClearAt = 0;
-					mBrowseList = false;
-					if (i == MT_DOWNLOADS) mangaDownloadsOpen(p);
-					return false;
-				}
+			// (the tabs are the kit's, over the bridged body: shellPointer takes their touches before the mapping)
 			// the lists below follow a finger: a drag scrolls them, a tap (lifted where it went down) opens the row
 			if (mangaTab == MT_LIBRARY)
 			{
@@ -1717,13 +1707,156 @@ namespace bp
 		ui.drawGlyphMid(G_BOOK, in.x + in.w / 2, in.y + in.h / 2, DIM, bookCell);
 	}
 
-	void Ui::Manga::drawMangaTabs()
+	// ---- inside the shell: the kit's tabs, the header, the bridged body's band, the sheets over the frame ----
+
+	namespace
 	{
-		Rect first = mangaTabRect(0), last = mangaTabRect(MANGA_TABS - 1);
-		ui.drawTextMid("L", 0, ACCENT, first.x - 12, first.y + first.h / 2, 0, 2);
-		for (int i = 0; i < MANGA_TABS; i++)
-			ui.drawTab(mangaTabRect(i), MANGA_TAB_NAMES[i], i == mangaTab, 0);
-		ui.drawTextMid("R", 0, ACCENT, last.x + last.w + 12, last.y + last.h / 2, 0, 2);
+		const char* const SHELL_DOT = " \xE2\x80\xBA ";	// the crumb's separator (" › ")
+	}
+
+	std::string Ui::mangaStateLine() const
+	{
+		switch (page)
+		{
+		case Page::Extensions: return "manage-extensions";
+		case Page::Manga: return "manga tab=" + std::to_string(manga->mangaTab) + " view=" + std::to_string(manga->mangaView);
+		case Page::MangaSeries: return "manga-series " + manga->mangaSeriesId;
+		case Page::MangaRead: return "manga-read";
+		case Page::MangaSources: return "manga-sources tab=" + std::to_string(manga->mstTab);
+		case Page::MangaSettings: return "manga-settings";
+		default: return "";
+		}
+	}
+
+	lay::TabPage Ui::Manga::mangaTabPage(const Player& p) const
+	{
+		(void)p;
+		Kit& k = *ui.kit;
+		std::vector<int> widths;
+		for (int i = 0; i < MANGA_TABS; i++) widths.push_back(k.tabW(mangaTabLabel(i)));
+		return lay::tabPage(lay::shell().body, widths, k.tabCapW("L2/R2"));
+	}
+
+	std::string Ui::Manga::mangaTabLabel(int i) const
+	{
+		// Downloads carries what is queued ("Downloads 2", screens.js manga): the tab is where it is seen
+		if (i == MT_DOWNLOADS)
+		{
+			int n = mangaDlQueueCount();
+			return n ? std::string(MANGA_TAB_NAMES[i]) + " " + std::to_string(n) : std::string(MANGA_TAB_NAMES[i]);
+		}
+		return MANGA_TAB_NAMES[i];
+	}
+
+	void Ui::Manga::drawShellBody(const Player& p)
+	{
+		if (!tabView()) return;
+		lay::TabPage tp = mangaTabPage(p);
+		std::vector<std::string> labels;
+		for (int i = 0; i < MANGA_TABS; i++) labels.push_back(mangaTabLabel(i));
+		ui.kit->tabs(tp.strip.area, labels, mangaTab, "L2/R2", BG, mangaTabPressed);
+	}
+
+	void Ui::Manga::shellBand(const Player& p, lay::Box& dst, int& srcTop) const
+	{
+		lay::Box body = lay::shell().body;
+		dst = body;
+		srcTop = 54;
+		if (!tabView()) return;
+		// the tab view: the old body from under its old tabs (they ended at 90), under the kit's
+		lay::TabPage tp = mangaTabPage(p);
+		dst = {body.x, tp.content.y, body.w, body.y + body.h - tp.content.y};
+		srcTop = 94;
+	}
+
+	bool Ui::Manga::shellModal() const
+	{
+		return ui.kbOpen || mlibMenu || mhisMenu || mengSheet || mlocSheet != MLS_NONE || mangaSourcesModal() ||
+			mangaFilterShown() || mdlSheet != MDLS_NONE || mangaSrcInfoShown || mangaSrvMenu ||
+			(ui.page == Page::Extensions && extSheet);
+	}
+
+	void Ui::Manga::mangaTabSet(int tab, Player& p)
+	{
+		mangaTab = (tab % MANGA_TABS + MANGA_TABS) % MANGA_TABS;
+		mangaClearAt = 0;
+		mBrowseList = false;
+		mangaPressed = -1;
+		if (mangaTab == MT_DOWNLOADS) mangaDownloadsOpen(p);
+	}
+
+	bool Ui::Manga::shellPointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		if (!tabView()) return false;
+		lay::TabPage tp = mangaTabPage(p);
+		lay::Box body = lay::shell().body;
+		if (pt.kind == Pointer::Down)
+		{
+			mangaTabPressed = -1;
+			// the bridged body is the old page's (mapped); under the body is the hint bar: nothing there is pressed
+			if (y >= body.y + body.h) return true;
+			if (y >= tp.content.y) return false;
+			// the strip's row: a tab (the same Rects drawShellBody drew), or nothing
+			mangaTabPressed = lay::tabAt(tp.strip, x, y);
+			if (mangaTabPressed >= 0) fprintf(stderr, "touch: manga tab %d\n", mangaTabPressed);
+			return true;
+		}
+		if (mangaTabPressed < 0) return false;
+		if (pt.kind == Pointer::Up)
+		{
+			int t = mangaTabPressed;
+			mangaTabPressed = -1;
+			if (lay::tabAt(tp.strip, x, y) == t && t != mangaTab) mangaTabSet(t, p);
+		}
+		return true;
+	}
+
+	Ui::ShellHead Ui::Manga::head(const Player& p) const
+	{
+		ShellHead h;
+		h.back = true;
+		h.more = false;	// (X is each page's own: a menu, Sources, Options; the header's ⋯ would press it blind)
+		std::string ext = std::string("Extensions") + SHELL_DOT;
+		if (ui.page == Page::Extensions)
+		{
+			h.title = "Manage extensions";
+			h.crumb = ext + "Manage extensions";
+			if (extSheet) return h;
+			h.hints = {{"A", "On / Off"}};
+			if (p.settings.mangaOn) h.hints.push_back({"X", "Its settings"});
+			h.hints.push_back({"B", "Back"});
+			h.hints.push_back({"L/R", "Sections"});
+			return h;
+		}
+		h.hints = ui.capHints;
+		if (ui.page == Page::MangaSettings)
+		{
+			h.title = "Manga settings";
+			h.crumb = ext + "Manga" + SHELL_DOT + "Settings";
+			return h;
+		}
+		if (tabView())
+		{
+			// the tab and what is in it (screens.js manga: "Library · 9 series")
+			h.title = "Manga";
+			std::string what = MANGA_TAB_NAMES[mangaTab];
+			auto series = [](size_t n) { return std::to_string(n) + (n == 1 ? " series" : " series"); };
+			if (mangaTab == MT_LIBRARY && !mangaLib.empty()) what += " \xC2\xB7 " + series(mangaLib.size());
+			else if (mangaTab == MT_HISTORY && p.settings.mangaHistory && !mangaHistory.empty())
+				what += " \xC2\xB7 " + series(mangaHistory.size());
+			else if (mangaTab == MT_DOWNLOADS && mangaDlQueueCount())
+				what += " \xC2\xB7 " + std::to_string(mangaDlQueueCount()) + " queued";
+			h.crumb = what;
+			// the tabs step with L2 / R2 (L / R are the sections, as on every shell page)
+			bool hasTab = false;
+			for (auto& x : h.hints) hasTab |= x.key == "L2/R2";
+			if (!hasTab) h.hints.push_back({"L2/R2", "Tab"});
+			return h;
+		}
+		h.title = ui.capTitle.empty() ? std::string("Manga") : ui.capTitle;
+		h.crumb = ext + "Manga";
+		if (ui.page == Page::MangaSources) h.crumb += std::string(SHELL_DOT) + "Sources";
+		return h;
 	}
 
 	// ---- the area: Ui's press, pointer, tick, renderPage and signature while one of its pages shows ----
@@ -1804,6 +1937,8 @@ namespace bp
 		// Extensions: the page's cursor and a finger's row, the note's focus, the switch (the rows say it), a finger's
 		// button down on them (mangaOn is in the settings too: a change redraws anywhere)
 		if (ui.page == Page::ExtSection || ui.page == Page::Extensions || ui.page == Page::Manga) sig += extSignature();
+		// the kit's tabs over the app's body: a finger on one
+		if (ui.page == Page::Manga) sig += "|mtp" + std::to_string(mangaTabPressed);
 		// Manga: the tab, each page's cursors and scrolls, the store and the card's scan, the finger's article, the
 		// History's Clear armed; the reader's page when it shows (its status is main's answer)
 		if (ui.page == Page::Manga || ui.page == Page::MangaSeries || ui.page == Page::MangaRead || ui.page == Page::MangaSources)
@@ -1883,8 +2018,7 @@ namespace bp
 			drawMangaServers(p);
 			return;
 		}
-		ui.drawHeader("Manga", p);
-		drawMangaTabs();
+		// (the header and the tabs are the shell's and the kit's: drawShellBody; the title is caught for nothing)
 		switch (mangaTab)
 		{
 		case MT_LIBRARY: drawMangaLibrary(p); break;
@@ -1892,7 +2026,7 @@ namespace bp
 		case MT_BROWSE: drawMangaBrowse(p); break;
 		case MT_DOWNLOADS: drawMangaDownloads(p); break;
 		}
-		if (mengSheet) drawMangaEngineSheet();
+		if (mengSheet) later([this] { drawMangaEngineSheet(); });
 	}
 
 	// ---- entering without the manga engine: Download / Not now ----
@@ -2064,8 +2198,7 @@ namespace bp
 	{
 		(void)p;
 		mangaCache();
-		// the label on the line under the tabs, then the cover grid right below it (no Continue reading strip)
-		ui.drawTextMid("Library \xC2\xB7 " + std::to_string(mangaLib.size()) + " series", 0, DIM, 16, MG_LIB_TOP - 14);
+		// (the count is the shell header's crumb, "Library · 3 series": not drawn twice on the line under the tabs)
 		// the card read in the background: the grid is the library as last known until it ends, then updates in place
 		if (mangaScanning && !mangaLib.empty()) ui.drawTextMid(mangaReadingLine(), 0, DIM, 624, MG_LIB_TOP - 14, 360, 1);
 		int n = (int)mangaLib.size();
@@ -2110,7 +2243,7 @@ namespace bp
 		ui.drawScrollBar(MG_LIB_TOP, MG_LIB_BOTTOM - MG_LIB_TOP, mlibScroll,
 			std::max(1, (MG_LIB_BOTTOM - MG_LIB_TOP) / 186), rows);
 		ui.drawHints({{"D-PAD", "Move"}, {"A", "Open"}, {"X", "Options"}, {"B", "Back"}});
-		if (mlibMenu) drawMangaLibMenu();
+		if (mlibMenu) later([this] { drawMangaLibMenu(); });
 	}
 
 	static bool isEpubPath(const std::string& path)
@@ -2289,7 +2422,7 @@ namespace bp
 		ui.drawScrollBar(MG_ROW_TOP, MG_HIST_ROWS * MG_HIST_ROW_H - 4, mhisScroll, MG_HIST_ROWS, n);
 		if (mangaClearAt) ui.drawFooterText("Press X again to clear history", ACCENT);
 		else ui.drawHints({{"A", "Continue"}, {"X", "Clear\xE2\x80\xA6"}, {"B", "Back"}});
-		if (mhisMenu) drawMangaHisMenu();
+		if (mhisMenu) later([this] { drawMangaHisMenu(); });
 	}
 
 	void Ui::Manga::drawMangaBrowse(const Player& p)
@@ -2308,7 +2441,7 @@ namespace bp
 			{
 				ui.drawEmpty(G_FOLDER, "No series found", "Copy manga into " + mangaLocalFolder() + ". X shows how.", nullptr);
 				ui.drawHints({{"X", "How to add"}, {"B", "Back"}});
-				if (mlocSheet == MLS_HELP) drawMangaLocalSheet(p);
+				if (mlocSheet == MLS_HELP) later([this, &p] { drawMangaLocalSheet(p); });
 				return;
 			}
 			if (mListCursor >= n) mListCursor = n - 1;
@@ -2330,7 +2463,7 @@ namespace bp
 			// while the card is read the footer says so (the list may still change); its keys work meanwhile
 			if (mangaScanning) ui.drawFooterText(mangaReadingLine(), DIM);
 			else ui.drawHints({{"A", "Open"}, {"Y", "Options"}, {"X", "How to add"}, {"B", "Back"}});
-			if (mlocSheet != MLS_NONE) drawMangaLocalSheet(p);
+			if (mlocSheet != MLS_NONE) later([this, &p] { drawMangaLocalSheet(p); });
 			return;
 		}
 		// On this handheld, then the installed sources (and, still to come, the network's own)
