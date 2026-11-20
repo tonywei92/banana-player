@@ -96,3 +96,12 @@ page per slot (`Ui::bgTex[BG_LIST]`, composed once like the player's): `artbg::b
 95th (dark) / 5th (light) percentile — rows, cards and the rail bring their own surfaces. The test art: 44 44 69 69
 69 (the player's 58 52 84 86 92). The hint bar over the backdrop is HINT_BAR at 55% (`Kit::HINT_GLASS`); its keys keep
 their own caps. Still one copy a redraw.
+
+## 9. Stop fades the backdrop out
+
+Stop (or the switch off, a video, High contrast) used to drop the backdrop at once. `Ui::leaveBackdrop` now moves the
+drawn slot and its pages into `bgFade` and stamps `bgLeaveAt`; `drawBackdrop` draws that page over the plain ground at
+an alpha falling to nothing over `BG_FADE_MS` (0.5 s), on the player page and the browser's (`browserBackdrop` holds
+while it runs); `backdropTick` drops it at the end; a new song's answer meanwhile cancels the leave and fades in.
+The signatures take the fade's step (`|bgout`), `animating()` keeps the loop drawing. The top panel still drops its
+pages at once: on stop it goes back to mpv's idle picture, whose ground is opaque.

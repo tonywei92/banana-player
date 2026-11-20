@@ -330,7 +330,7 @@ namespace bp
 	bool Ui::browserBackdrop(const Player& p) const
 	{
 		if (page == Page::Main || page == Page::DocText || page == Page::DocPages || page == Page::MangaRead) return false;
-		return backdropOn(barPlayer(p));
+		return backdropOn(barPlayer(p)) || backdropLeaving();
 	}
 
 	void Ui::backdropTick(Player& p)
@@ -342,6 +342,8 @@ namespace bp
 			bgFadeAt = 0;
 			freePages(bgFadeTex);
 		}
+		// the fade out's end: the last backdrop goes
+		if (bgLeaveAt && SDL_GetTicks() - bgLeaveAt >= BG_FADE_MS) dropBackdrop();
 		// one ask per playing song, on the worker's thread (a re-ask of the same art is one cache read); the
 		// switch off, a video or a photo, High contrast: the answer it holds goes
 		const Player& bp = barPlayer(p);
@@ -350,9 +352,27 @@ namespace bp
 		std::string path = on ? bp.currentPath() : std::string();
 		if (path == bgAsked) return;
 		bgAsked = path;
-		if (path.empty()) { dropBackdrop(); return; }
+		if (path.empty()) { leaveBackdrop(); return; }
 		if (CoverWorker* worker = manga ? manga->coverWorker : nullptr)
 			worker->wantBackdrop(BACKDROP_COVER_KEY + path, path);
+	}
+
+	void Ui::leaveBackdrop()
+	{
+		// what is drawn fades out over the plain ground (half a second, the cross-fade's time), its pages with it;
+		// nothing drawn (no answer yet): nothing to fade
+		if (!bgNow.answered) { dropBackdrop(); return; }
+		freePages(bgFadeTex);
+		bgFade = std::move(bgNow);
+		for (int i = 0; i < 2; i++)
+		{
+			bgFadeTex[i] = bgTex[i];
+			bgTex[i] = nullptr;
+		}
+		bgNow = BackdropSlot{};
+		bgFadeAt = 0;
+		bgLeaveAt = SDL_GetTicks();
+		fprintf(stderr, "backdrop: fading out (the song stopped, or the switch went off)\n");
 	}
 
 	void Ui::dropBackdrop()
@@ -360,6 +380,7 @@ namespace bp
 		bgNow = BackdropSlot{};
 		bgFade = BackdropSlot{};
 		bgFadeAt = 0;
+		bgLeaveAt = 0;
 		freePages(bgTex);
 		freePages(bgFadeTex);
 	}
@@ -389,6 +410,7 @@ namespace bp
 		bgNow.hash = r.artHash;
 		bgNow.art = r.art;
 		bgFadeAt = SDL_GetTicks();
+		bgLeaveAt = 0;	// (a song again before the fade out ended: this one fades in from where that one was)
 		fprintf(stderr, "backdrop: %s for %s\n", r.ok ? r.art.hasHue ? "the art's hue" : "no usable hue: the neutral ground"
 			: "no art: the plain ground", r.key.substr(std::strlen(BACKDROP_COVER_KEY)).c_str());
 	}
@@ -398,7 +420,8 @@ namespace bp
 		// the page's ground: the answer's page, cross-fading over the one before it, the plain page under a first
 		// answer. Each slot's page is composed once (its picture and the theme's veil in one texture: the player's
 		// veil, or the browser's lighter one) and drawn as one copy: a marquee step or a slider frame costs a copy
-		if (!backdropOn(shown)) return;
+		const bool leaving = !backdropOn(shown) && backdropLeaving() && bgFade.answered;
+		if (!backdropOn(shown) && !leaving) return;
 		const uint64_t t0 = SDL_GetPerformanceCounter();
 		Kit& k = *kit;
 		const int themeNow = theme::currentTheme();
@@ -418,6 +441,15 @@ namespace bp
 		auto veilOf = [&](const artbg::Art& art) {
 			return kind == BG_LIST ? artbg::backdropForList(th, art) : artbg::backdropFor(th, art);
 		};
+		Rect all{0, 0, W, H};
+		if (leaving)
+		{
+			// the last backdrop over the plain ground, its alpha going to nothing
+			if (!bgFadeTex[kind]) bgFadeTex[kind] = k.backdropPage(bgFade.art, veilOf(bgFade.art), artbg::Half::Lower);
+			const Uint32 t = std::min<Uint32>(SDL_GetTicks() - bgLeaveAt, BG_FADE_MS);
+			k.backdrop(all, bgFadeTex[kind], (Uint8)std::lround(255.0 * (BG_FADE_MS - t) / BG_FADE_MS));
+			return;
+		}
 		const bool fading = bgFadeAt && bgFade.answered;
 		if (fading && !bgFadeTex[kind]) bgFadeTex[kind] = k.backdropPage(bgFade.art, veilOf(bgFade.art), artbg::Half::Lower);
 		if (!bgTex[kind])
@@ -428,7 +460,6 @@ namespace bp
 				(SDL_GetPerformanceCounter() - t0) * 1000.0 / (double)SDL_GetPerformanceFrequency(),
 				b.fallback ? "the fallback," : "the art under a", b.veil[0], b.veil[1], b.veil[2], b.veil[3], b.veil[4]);
 		}
-		Rect all{0, 0, W, H};
 		if (fading) k.backdrop(all, bgFadeTex[kind]);
 		Uint8 fade = 255;
 		if (bgFadeAt) fade = (Uint8)std::lround(255.0 * std::min<Uint32>(SDL_GetTicks() - bgFadeAt, BG_FADE_MS) / BG_FADE_MS);
