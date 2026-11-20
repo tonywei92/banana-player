@@ -404,9 +404,11 @@ namespace bp
 		if (fading && !bgFadeTex) bgFadeTex = k.backdropPage(bgFade.art, artbg::backdropFor(th, bgFade.art));
 		if (!bgTex)
 		{
-			bgTex = k.backdropPage(bgNow.art, artbg::backdropFor(th, bgNow.art));
-			fprintf(stderr, "backdrop: the player's page composed (%.1f ms)\n",
-				(SDL_GetPerformanceCounter() - t0) * 1000.0 / (double)SDL_GetPerformanceFrequency());
+			const artbg::Backdrop b = artbg::backdropFor(th, bgNow.art);
+			bgTex = k.backdropPage(bgNow.art, b);
+			fprintf(stderr, "backdrop: the player's page composed (%.1f ms; %s veil %d %d %d %d %d)\n",
+				(SDL_GetPerformanceCounter() - t0) * 1000.0 / (double)SDL_GetPerformanceFrequency(),
+				b.fallback ? "the fallback," : "the art under a", b.veil[0], b.veil[1], b.veil[2], b.veil[3], b.veil[4]);
 		}
 		Rect all{0, 0, W, H};
 		if (fading) k.backdrop(all, bgFadeTex);

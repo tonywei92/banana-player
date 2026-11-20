@@ -326,7 +326,7 @@ namespace artbg
 			b.fallback = false;
 			// the same five stops, whitened for a dark art: each stop's see-through is scaled until the picture's
 			// 5th-percentile luminance under it leaves the theme's TEXT, DIM_ON and ACCENT at 4.5:1
-			const int base[5] = {66, 60, 80, 90, 94};
+			const int* base = VEIL_BASE;
 			const double pic[5] = {l5top / 255.0, l5top / 255.0, l5low / 255.0, l5low / 255.0, l5low / 255.0};
 			const double yGround = relLum(b.ground);
 			bool allHard = true;
@@ -365,9 +365,9 @@ namespace artbg
 		b.ground = mixRgb(charcoal, tint, 45);
 		b.fallback = false;
 
-		// the five stops: the mock-up's 66 / 60 / 80 / 90 / 94, raised until the picture under them leaves the
+		// the five stops: VEIL_BASE, raised until the picture under them leaves the
 		// theme's TEXT 4.5:1 above y 168 and its DIM_ON 4.5:1 below. More than 96 at every stop: nothing shows.
-		const int base[5] = {66, 60, 80, 90, 94};
+		const int* base = VEIL_BASE;
 		const double pic[5] = {l95top / 255.0, l95top / 255.0, l95low / 255.0, l95low / 255.0, l95low / 255.0};
 		const double yGround = relLum(b.ground);
 		bool allHard = true;

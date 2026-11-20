@@ -38,3 +38,11 @@ Cost: the pages' one quad (two during the 0.5 s cross-fade) under mpv's layer, w
 
 **Not covered:** a graph visualizer (an mpv `lavfi-complex` style, or the network fallback) draws its own opaque
 ground over the whole panel; the backdrop can only show under the native styles and the art modes.
+
+## 3. The art a step more visible
+
+`artbg::VEIL_BASE` (one constant, both versions): 58 / 52 / 74 / 86 / 92 in place of 66 / 60 / 80 / 90 / 94. The
+contrast protection is unchanged, so a stop only goes lower where the theme's text still holds 4.5:1. With the
+generated orange test art: dark theme 66 66 90 90 94 → 60 60 90 90 92 (the head and title area show the art most;
+under the bar DIM_ON's protection keeps 90), Light 74 74 80 90 94 → 74 74 74 86 92. The `backdrop: the player's page
+composed` log line now prints the five veils.
