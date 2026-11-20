@@ -8,8 +8,9 @@ namespace bp
 {
 #define GLYPH(name, ...) inline const char* const name##_ROWS[] = {__VA_ARGS__}; \
 	inline const Ui::Glyph name{name##_ROWS, (int)(sizeof name##_ROWS / sizeof *name##_ROWS)};
-	GLYPH(G_CLOCK, "...#####...", ".#########.", ".####.####.", "#####.#####", "#####.#####", "#####...###", "###########",
-		".#########.", ".#########.", "...#####...")
+	// the spec's clock: a square face, its one hand turning from twelve to three
+	GLYPH(G_CLOCK, "###########", "#.........#", "#....#....#", "#....#....#", "#....#....#", "#....####.#", "#.........#",
+		"#.........#", "#.........#", "#.........#", "###########")
 	// Home (the web dashboard's first tab): a house, its door open
 	GLYPH(G_HOME, ".....#.....", "....###....", "...#####...", "..#######..", ".#########.", "###########", ".#########.",
 		".###...###.", ".###...###.", ".###...###.")
@@ -207,6 +208,9 @@ GLYPH(G_CHAPTERS, "###.#######", "###.#######", "...........", "###.#####..", "#
 		"..#####..")
 	// the way to the web dashboard (Home's tile, the libraries' empty pages and More rows, as the spec draws it):
 	// a QR code, since the dashboard's page is reached by scanning one; the globe stays the dashboard's state mark
+	// the status bar's Wi-Fi mark, as the spec draws it: two roofs and a dot (rows 0-2 and 4-5 are the outer and middle
+	// signal, row 7 the dot)
+	GLYPH(G_WIFI, "....###....", "..##...##..", "##.......##", "...........", "....###....", "..##...##..", "...........", ".....#.....")
 	GLYPH(G_QR, "####.####", "#..#.#..#", "#..#.#..#", "####.####", ".........", "####.#.#.", "#..#..#..", "#..#.#.#.",
 		"####....#")
 	GLYPH(G_SHUFFLE, ".........#.", "##.....####", "..#...#..#.", "...#.#.....", "....#......", "...#.#.....", "..#...#..#.",

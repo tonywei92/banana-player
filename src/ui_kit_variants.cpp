@@ -75,7 +75,7 @@ namespace bp
 			items.push_back({BATTERY, 24, 0});
 			if (s.charging) items.push_back({BOLTK, 10, 0});
 		}
-		if (s.wifi >= 0) items.push_back({WIFI, 16, 0});
+		if (s.wifi >= 0) items.push_back({WIFI, 22, 0});
 		if (s.playing) items.push_back({BARS, 13, 0});
 		for (size_t i = s.badges.size(); i-- > 0;)
 		{
@@ -110,10 +110,12 @@ namespace bp
 						if (BOLT[r][c] == '#') ui.fill({x + c * 2, cy - 7 + r * 2, 2, 2}, ACCENT);
 				break;
 			case WIFI:
-				for (int i2 = 0; i2 < 4; i2++)
+				// the spec's mark: the dot is one bar of signal, the middle roof two, the outer roof three or more
+				for (int r = 0; r < G_WIFI.h; r++)
 				{
-					int h = 4 + i2 * 3;
-					ui.fill({x + i2 * 4, cy + 7 - h, 3, h}, i2 < s.wifi ? DIM_ON : TRACK);
+					int need = r < 3 ? 3 : r < 6 ? 2 : 1;
+					for (int c = 0; c < 11; c++)
+						if (G_WIFI.rows[r][c] == '#') ui.fill({x + c * 2, cy - 8 + r * 2, 2, 2}, s.wifi >= need ? DIM_ON : TRACK);
 				}
 				break;
 			case BARS:
