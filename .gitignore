@@ -1,4 +1,5 @@
 build/
+.scratch/
 .DS_Store
 dist/
 .cache/
