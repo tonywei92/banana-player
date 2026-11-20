@@ -327,6 +327,12 @@ namespace bp
 			theme::themeId(theme::currentTheme()) != "high-contrast";
 	}
 
+	bool Ui::browserBackdrop(const Player& p) const
+	{
+		if (page == Page::Main || page == Page::DocText || page == Page::DocPages || page == Page::MangaRead) return false;
+		return backdropOn(barPlayer(p));
+	}
+
 	void Ui::backdropTick(Player& p)
 	{
 		// the cross-fade's end: the slot it came from goes (its texture with it)

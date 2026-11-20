@@ -1037,6 +1037,10 @@ namespace bp
 		// page's signature takes the first two; main hands the worker's answers in here
 		void backdropReady(const CoverWorker::Result& r);
 		bool backdropOn(const Player& shown) const;		// the switch, the song, the theme: it is drawn at all
+		// the browser's pages on it too (Home, Files, the sections, Settings, Search…): a song plays with the switch
+		// on, and the page is no reader (a book's, a comic's, Manga's pages) and not the player's own (which draws it)
+		bool browserBackdrop(const Player& p) const;
+		bool groundIsBackdrop = false;	// this redraw's ground is the backdrop (the shell's header leaves it showing)
 		bool backdropFading() const { return bgFadeAt != 0 && SDL_GetTicks() - bgFadeAt < BG_FADE_MS + 50; }
 		static constexpr Uint32 BG_FADE_MS = 500;	// the cross-fade, as the spec draws it
 		uint64_t backdropHash() const { return bgNow.hash; }

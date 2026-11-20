@@ -721,6 +721,9 @@ namespace bp
 		showHidden = p.settings.showHiddenFolders;
 		SDL_SetRenderDrawColor(ren, BG.r, BG.g, BG.b, 255);
 		SDL_RenderClear(ren);
+		// Match album art behind the browser: the canvas's lower half, one copy (the player page draws its own)
+		groundIsBackdrop = !galleryNew && browserBackdrop(p);
+		if (groundIsBackdrop) drawBackdrop(barPlayer(p));
 		if (galleryNew) { statusHit = {0, 0, 0, 0}; drawGalleryNew(); return; }	// (test only: --press gallery:new)
 		webInd = {0, 0, 0, 0};	// (drawBattery puts it back where it draws it)
 		statusHit = {0, 0, 0, 0};

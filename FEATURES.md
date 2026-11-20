@@ -745,7 +745,11 @@ Songs show their title, artist and album on the top screen. While a song plays:
   every key, chip, bar and word keeps the theme's colours and its contrast. A new song's art cross-fades in over
   half a second; until it is read the previous one stays. A grey, black, white or neon art, one whose hue sits
   opposite the theme's accent, or a song with no art at all, falls back to a plain ground (a light theme's its own
-  background). Videos, photos and the High contrast theme never get one, and no other page does. The maths runs on
+  background). The two screens share one picture, as if stacked into one tall portrait screen: the top screen shows
+  the art's upper half, the bottom screen its lower half. While a song plays, the browser's pages (Home, Files, Music,
+  Videos, Books, Extensions, Settings, Search…) sit on the same backdrop too, behind the rail, the header and the
+  list; rows and cards keep their own surfaces. A book's, comic's or Manga's pages, the photo viewer and a video
+  never get one, nor does the High contrast theme. The maths runs on
   the cover worker; each artwork is kept in `<state dir>/artbg/` by its hash (16 MB at most, the oldest dropped
   first), so a song seen before needs no decode.
 - **Y: List**, as on a video: **Up next**, and **Chapters** when the song or audiobook has them (**L2** / **R2** jump
