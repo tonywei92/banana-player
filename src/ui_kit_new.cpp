@@ -260,7 +260,7 @@ namespace bp
 
 	// ---- which Preview pane the top panel shows ----
 
-	bool Ui::topPane(PaneSpec& out) const
+	bool Ui::topPaneGallery(PaneSpec& out) const
 	{
 		if (galleryNew)
 		{
@@ -275,6 +275,16 @@ namespace bp
 				out.rows = {{"Kind", "SMB"}, {"Address", "nas.local / media"}, {"Last opened", "Today"}};
 				out.keys = {{"A", "Open"}, {"Y", "Edit"}, {"X", "More"}};
 			}
+			else if (galleryNew == 3)
+			{
+				out.welcome = true;
+				out.label = "Welcome";
+				out.title = "Banana Player";
+				out.text = "Videos, music, photos and books from your cards, on two screens.";
+				out.rows = {{"1. Play what is on the card", "Files lists every folder."}, {"2. Send files from your phone", "Web dashboard: scan the code."},
+					{"3. Play from a computer", "Network finds shared folders."}};
+				out.keys = {{"L/R", "Sections"}, {"START", "Settings"}, {"F", "Quick settings"}};
+			}
 			else
 			{
 				out.cover = true;
@@ -286,7 +296,6 @@ namespace bp
 			}
 			return true;
 		}
-		if (page == Page::Settings && settingsPage) return settingsPage->topPane(out);
 		return false;
 	}
 

@@ -150,7 +150,29 @@ namespace bp
 		if (!paneUp || key != paneKey || paneW != w || paneH != h)
 		{
 			Uint32 t0 = SDL_GetTicks();
-			PaneImage img = composePane(fontsDir, w, h, spec);
+			PaneSpec withIcon;
+			const PaneSpec* use = &spec;
+			if (spec.welcome)
+			{
+				// the app's icon (assets/icons/app.png beside the fonts), decoded at the panel's 84 units, kept
+				int px = std::max(1, (int)std::lround(84.0 * h / 480));
+				if (welcomeIconPx != px)
+				{
+					PageImage img = decodePageFile(fontsDir + "/../icons/app.png", px);
+					welcomeIcon = PaneImage{};
+					if (img.ok())
+					{
+						welcomeIcon.w = img.w;
+						welcomeIcon.h = img.h;
+						welcomeIcon.rgba = img.rgba;
+					}
+					welcomeIconPx = px;
+				}
+				withIcon = spec;
+				withIcon.icon = welcomeIcon;
+				use = &withIcon;
+			}
+			PaneImage img = composePane(fontsDir, w, h, *use);
 			// (a failure isn't tried again every pass: the key is taken; the 2 s refresh or a change asks again)
 			bool first = !paneUp;
 			paneKey = key;
@@ -544,7 +566,8 @@ namespace bp
 		// docs/redesign Themes › Where it is changed): a video or a song goes on under it, its frames taken unseen
 		// (drainUnder), its sound on. Not while a reader has the panel. Down again, mpv's picture is drawn once more
 		PaneSpec pane;
-		bool paneNow = !qrNow && !reader.isOpen() && !textReader.isOpen() && ui.topPane(pane);
+		bool idle = !shown.playing() && !photos.playing() && !player.topCardUp();
+		bool paneNow = !qrNow && !reader.isOpen() && !textReader.isOpen() && ui.topPane(pane, player, idle);
 		if (!paneNow && paneUp)
 		{
 			paneUp = false;

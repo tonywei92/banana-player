@@ -5,7 +5,6 @@
 #include "format.h"
 #include "levelcard.h"
 #include "webmedia.h"
-#include "logo.h"
 #include "pagedecode.h"
 #include "netpath.h"
 #include "netstore.h"
@@ -2019,84 +2018,7 @@ namespace bp
 		// nothing playing: app UI on the theme's ground (docs/redesign Themes › The top screen), as a song's modes;
 		// what plays next sets its own (a video, a photo: black; a song: its mode's)
 		if (on) setGround(true, "nothing plays");
-		if (!on)
-		{
-			const char* cmd[] = {"osd-overlay", "3", "none", "", nullptr};
-			mpv_command_async(mpv, 0, cmd);
-			const char* rm[] = {"overlay-remove", "0", nullptr};
-			mpv_command_async(mpv, 0, rm);
-			return;
-		}
-		// the icon as ASS drawings, a run of pixels a rectangle, one event a colour; on a 960x720 canvas
-		const int px = 6, x0 = 480 - 16 * px, y0 = 110;
-		std::string ev;
-		// the app's picture (assets/icons/app.png beside the fonts) as an mpv image overlay at the panel's own pixels,
-		// decoded once at that size (smooth, as drawn); the generated logo when it can't be read
-		bool picture = false;
-		{
-			const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
-			const int size = (int)std::lround(240.0 * ph / 720), ix = pw / 2 - size / 2, iy = (int)std::lround(84.0 * ph / 720);
-			if (idleIconPx != size && !opts.fontsDir.empty())
-			{
-				PageImage img = decodePageFile(opts.fontsDir + "/../icons/app.png", size);
-				if (img.ok() && img.w == size)
-				{
-					// mpv's overlay-add takes premultiplied BGRA from a file it maps: written once, kept while shown
-					std::vector<uint8_t> bgra((size_t)img.w * img.h * 4);
-					for (size_t p = 0; p < (size_t)img.w * img.h; p++)
-					{
-						const uint8_t* c = img.rgba.data() + p * 4;
-						uint8_t a = c[3];
-						bgra[p * 4 + 0] = (uint8_t)(c[2] * a / 255);
-						bgra[p * 4 + 1] = (uint8_t)(c[1] * a / 255);
-						bgra[p * 4 + 2] = (uint8_t)(c[0] * a / 255);
-						bgra[p * 4 + 3] = a;
-					}
-					idleIconFile = (opts.stateDir.empty() ? std::string("/tmp") : opts.stateDir) + "/.idle-icon.bgra";
-					if (FILE* f = fopen(idleIconFile.c_str(), "wb"))
-					{
-						bool ok = fwrite(bgra.data(), 1, bgra.size(), f) == bgra.size();
-						if (fclose(f) == 0 && ok) { idleIconPx = size; idleIconH = img.h; }
-					}
-				}
-			}
-			if (idleIconPx == size)
-			{
-				std::string xs = std::to_string(ix), ys = std::to_string(iy), ws = std::to_string(size), hs = std::to_string(idleIconH),
-					st = std::to_string(size * 4);
-				const char* add[] = {"overlay-add", "0", xs.c_str(), ys.c_str(), idleIconFile.c_str(), "0", "bgra", ws.c_str(), hs.c_str(),
-					st.c_str(), nullptr};
-				mpv_command_async(mpv, 0, add);
-				picture = true;
-			}
-		}
-		if (!picture)
-		{
-			const struct { char c; std::string colour; } inks[] = {{'.', ass(BUTTON)}, {'Y', ass(ACCENT)}, {'W', ass(TEXT)}};
-			for (auto& ink : inks)
-			{
-				std::string path;
-				for (int y = 0; y < 32; y++)
-					for (int x = 0; x < 32;)
-					{
-						if (LOGO[y][x] != ink.c) { x++; continue; }
-						int e = x;
-						while (e < 32 && LOGO[y][e] == ink.c) e++;
-						char r[96];
-						snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * px, y * px, e * px, y * px, e * px, (y + 1) * px, x * px, (y + 1) * px);
-						path += r;
-						x = e;
-					}
-				char head[128];
-				snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c%s\\p1}", x0, y0, ink.colour.c_str());
-				ev += head + path + "{\\p0}\n";
-			}
-		}
-		// in the main tokens, on BG (a light theme's top screen is light)
-		ev += "{\\an8\\pos(480,330)\\bord0\\shad0\\fnPixelify Sans\\fs72\\1c" + ass(ACCENT) + "}Banana Player\n";
-		ev += "{\\an8\\pos(480,420)\\bord0\\shad0\\fnInter\\fs30\\1c" + ass(DIM) + "}Pick a video or a song on the bottom screen";
-		const char* cmd[] = {"osd-overlay", "3", "ass-events", ev.c_str(), "960", "720", "0", "no", "no", nullptr};
-		mpv_command_async(mpv, 0, cmd);
+		// (the top panel's picture while nothing plays is the Preview pane, drawn by the app: topscreen.cpp)
 	}
 
 	void Player::showElsewhere(bool on, bool playing, const std::string& where, bool waiting, int hint, const char* const* glyph, int glyphH)
