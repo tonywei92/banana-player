@@ -2,6 +2,7 @@
 #include "manganet.h"
 #include "ui_internal.h"
 #include "ui_manga.h"
+#include "ui_kit.h"
 #include <algorithm>
 
 namespace bp
@@ -337,37 +338,26 @@ namespace bp
 		if (pt.kind != Pointer::Down) return false;
 		MangaFilterSession* f = mangaFilterSession();
 		if (!f || !f->open) return false;
-		if (!mangaFilterBox().hit(x, y))
+		const std::vector<MangaFilter>* defs = defsAt(f->defs, f->path);
+		if (!defs) return false;
+		bool check = f->checkAt >= 0;
+		std::vector<MFRow> rows;
+		if (check && f->checkAt >= (int)defs->size()) return false;
+		if (!check) rows = filterRows(*defs, f->path.empty());
+		int n = check ? (int)(*defs)[f->checkAt].options.size() : (int)rows.size();
+		int scroll = check ? f->checkScroll : f->scroll;
+		keepInView(check ? f->checkCursor : f->cursor, scroll, n, MF_ROWS);
+		lay::ListSheet sh = mangaFilterSheet(n);
+		if (!sh.box.hit(x, y))
 		{
 			mangaFilterClose();
 			return false;
 		}
-		const std::vector<MangaFilter>* defs = defsAt(f->defs, f->path);
-		if (!defs) return false;
-		if (f->checkAt >= 0)
-		{
-			if (f->checkAt >= (int)defs->size()) return false;
-			int n = (int)(*defs)[f->checkAt].options.size();
-			int scroll = f->checkScroll;
-			keepInView(f->checkCursor, scroll, n, MF_ROWS);
-			for (int i = scroll; i < n && i < scroll + MF_ROWS; i++)
-				if (mangaFilterRowRect(i - scroll).hit(x, y))
-				{
-					f->checkCursor = i;
-					mangaFilterKey(Button::A, p);
-					return false;
-				}
-			return false;
-		}
-		std::vector<MFRow> rows = filterRows(*defs, f->path.empty());
-		int n = (int)rows.size();
-		int scroll = f->scroll;
-		keepInView(f->cursor, scroll, n, MF_ROWS);
 		for (int i = scroll; i < n && i < scroll + MF_ROWS; i++)
-			if (mangaFilterRowRect(i - scroll).hit(x, y))
+			if (sh.row(i - scroll).hit(x, y))
 			{
-				f->cursor = i;
-				mangaFilterLocal++;
+				(check ? f->checkCursor : f->cursor) = i;
+				if (!check) mangaFilterLocal++;
 				mangaFilterKey(Button::A, p);
 				return false;
 			}
@@ -407,17 +397,18 @@ namespace bp
 			walk = &(*walk)[i].children;
 		}
 		if (f->checkAt >= 0 && f->checkAt < (int)defs->size()) title = (*defs)[f->checkAt].name;
-		ui.drawDialog(mangaFilterBox(), title);
-		// a scroll bar inside the sheet's right edge (drawScrollBar's own place is outside a dialog)
-		auto bar = [&](int first, int shown, int total) {
-			if (total <= shown || shown <= 0) return;
-			int height = MF_ROWS * MF_ROW_H - 8;
-			ui.fillRound({584, MF_ROW_TOP, 4, height}, TRACK, 2);
-			int h = std::max(16, height * shown / total);
-			int y = MF_ROW_TOP + (height - h) * first / std::max(1, total - shown);
-			ui.fillRound({584, y, 4, h}, DIM, 2);
+		Kit& k = *ui.kit;
+		// one row of the sheet: a mark, the name, a note (red for Exclude), the cursor's row lit
+		auto put = [&](const lay::ListSheet& sh, int slot, const Glyph* g, const std::string& name, const std::string& note, bool at, bool danger) {
+			Kit::Row r;
+			r.font = F_P16;
+			r.glyph = g;
+			r.name = name;
+			r.note = note;
+			r.focused = at;
+			r.danger = danger;
+			k.row(sh.row(slot), r);
 		};
-
 		if (f->checkAt >= 0 && f->checkAt < (int)defs->size())
 		{
 			const MangaFilter& d = (*defs)[f->checkAt];
@@ -425,11 +416,13 @@ namespace bp
 			int n = (int)d.options.size();
 			int cursor = f->checkCursor, scroll = f->checkScroll;
 			keepInView(cursor, scroll, n, MF_ROWS);
+			lay::ListSheet sh = mangaFilterSheet(n);
+			k.sheet(sh, {&G_SEARCH, title, "", false});
 			for (int i = scroll; i < n && i < scroll + MF_ROWS; i++)
 			{
 				const Glyph* g = nullptr;
 				std::string note;
-				SDL_Color noteInk{0, 0, 0, 0};
+				bool exclude = false;
 				if (d.type == "multi")
 				{
 					bool on = i < (int)v.multi.size() && v.multi[i];
@@ -441,12 +434,12 @@ namespace bp
 					int t = i < (int)v.tri.size() ? v.tri[i] : 0;
 					g = t == 1 ? &G_CHECK : t == 2 ? &G_CROSS : &G_BOX;
 					if (t == 1) note = "Include";
-					else if (t == 2) { note = "Exclude"; noteInk = DANGER; }
+					else if (t == 2) { note = "Exclude"; exclude = true; }
 				}
-				ui.drawDialogRow(mangaFilterRowRect(i - scroll), g, d.options[i].name, i == cursor, false, TEXT, note, noteInk);
+				put(sh, i - scroll, g, d.options[i].name, note, i == cursor, exclude);
 			}
-			bar(scroll, MF_ROWS, n);
-			ui.drawHints({{"A", d.type == "tri" ? "Off / In / Ex" : "Check"}, {"B", "Back"}});
+			ui.drawScrollBar(sh.rowsY, std::min(n, MF_ROWS) * lay::LIST_ROW, scroll, MF_ROWS, n);
+			k.hints({{"A", d.type == "tri" ? "Off / In / Ex" : "Check"}, {"B", "Back"}});
 			return;
 		}
 
@@ -454,41 +447,38 @@ namespace bp
 		int n = (int)rows.size();
 		int cursor = f->cursor, scroll = f->scroll;
 		keepInView(cursor, scroll, n, MF_ROWS);
+		lay::ListSheet sh = mangaFilterSheet(n);
+		k.sheet(sh, {&G_SEARCH, title, "", false});
 		for (int i = scroll; i < n && i < scroll + MF_ROWS; i++)
 		{
 			const MFRow& row = rows[i];
 			bool at = i == cursor;
 			if (row.kind == MFRowKind::Reset)
 			{
-				ui.drawDialogRow(mangaFilterRowRect(i - scroll), &G_CROSS, "Reset", at, false, TEXT, "Defaults",
-					SDL_Color{0, 0, 0, 0});
+				put(sh, i - scroll, &G_CROSS, "Reset", "Defaults", at, false);
 				continue;
 			}
 			if (row.kind == MFRowKind::Apply)
 			{
-				ui.drawDialogRow(mangaFilterRowRect(i - scroll), &G_CHECK, "Apply", at, false, TEXT, "",
-					SDL_Color{0, 0, 0, 0});
+				put(sh, i - scroll, &G_CHECK, "Apply", "", at, false);
 				continue;
 			}
 			if (row.kind == MFRowKind::Refresh)
 			{
 				static const char* TABS[3] = {"Popular", "Latest", "Search"};
-				ui.drawDialogRow(mangaFilterRowRect(i - scroll), &G_REFRESH, "Refresh", at, false, TEXT,
-					TABS[std::clamp(mangaSrcTab, 0, 2)], SDL_Color{0, 0, 0, 0});
+				put(sh, i - scroll, &G_REFRESH, "Refresh", TABS[std::clamp(mangaSrcTab, 0, 2)], at, false);
 				continue;
 			}
 			const MangaFilter& d = (*defs)[row.index];
 			const MangaFilterValue& v = (*levelValues)[row.index];
 			if (row.kind == MFRowKind::Direction)
 			{
-				ui.drawDialogRow(mangaFilterRowRect(i - scroll), v.sortAsc ? &G_UP : &G_DOWN, "Direction", at, false, TEXT,
-					v.sortAsc ? "Ascending" : "Descending", SDL_Color{0, 0, 0, 0});
+				put(sh, i - scroll, v.sortAsc ? &G_UP : &G_DOWN, "Direction", v.sortAsc ? "Ascending" : "Descending", at, false);
 				continue;
 			}
-			ui.drawDialogRow(mangaFilterRowRect(i - scroll), filterGlyph(d, v), d.name, at, false, TEXT,
-				mangaFilterSummary(d, v), SDL_Color{0, 0, 0, 0});
+			put(sh, i - scroll, filterGlyph(d, v), d.name, mangaFilterSummary(d, v), at, false);
 		}
-		bar(scroll, MF_ROWS, n);
-		ui.drawHints({{"A", "Choose"}, {"LEFT/RIGHT", "Change"}, {"B", "Back"}});
+		ui.drawScrollBar(sh.rowsY, std::min(n, MF_ROWS) * lay::LIST_ROW, scroll, MF_ROWS, n);
+		k.hints({{"A", "Choose"}, {"LEFT/RIGHT", "Change"}, {"B", "Back"}});
 	}
 }
