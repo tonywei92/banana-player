@@ -4,6 +4,7 @@ import { lsGet, lsSet, useStore } from './store.js';
 import { cmpName, dirName, fmtDate, fmtSize, fmtTime, plural } from './util.js';
 import { AppMenu, Art, Banner, Empty, Skeleton, coverUrl } from './components.js';
 import { Icon } from './icons.js';
+import { SectionUpload, uploadToSection } from './libupload.js';
 import { go } from './router.js';
 import { playHere, playPaths, view } from './browser-player.js';
 
@@ -61,9 +62,9 @@ export function Videos() {
 	const counts = { all: data.videos ? data.videos.length : 0, folders: nFolders, unfinished: vk === 'unfinished' ? rows.length : data.videos ? data.videos.filter(x => x.pos != null).length : 0 };
 	const now = s.snap && s.snap.path;
 	return html`<div class="page">
-		<div class="phead"><div class="row"><h1>Videos</h1><${AppMenu} /></div>
+		<div class="phead"><div class="row"><h1>Videos</h1><${SectionUpload} kind="videos" cards=${data.cards} /><${AppMenu} /></div>
 			<div class="chips" role="tablist" aria-label="Views">${VIEWS.map(w => html`<button class="chipbtn" role="tab" aria-pressed=${vk === w.k} onClick=${() => setView(w.k)}>${w.label}${counts[w.k] ? ' ' + counts[w.k] : ''}</button>`)}</div></div>
-		${empty ? html`<${Empty} icon="film" title="No videos here yet" sub="Videos and Movies folders at the top of either card are listed here." button="Open Files" onClick=${() => go('#/files')} />`
+		${empty ? html`<${Empty} icon="film" title="No videos here yet" sub="Videos and Movies folders at the top of either card are listed here. Upload into Videos and they appear here." button="Upload to Videos" onClick=${() => uploadToSection('videos', data.cards)} />`
 			: reading ? html`<${Banner} title="Reading the cards…" />`
 			: html`<div class="box surface listbox"><ul class="flist">${rows.map(x => {
 				const cur = x.p === now, part = x.pos != null;

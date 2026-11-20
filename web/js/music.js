@@ -4,9 +4,9 @@ import { lsGet, lsSet, useStore } from './store.js';
 import { fmtTime, plural } from './util.js';
 import { AppMenu, Art, Banner, Empty, Skeleton, coverUrl } from './components.js';
 import { Icon } from './icons.js';
+import { SectionUpload, uploadToSection } from './libupload.js';
 import { Playlists } from './playlists.js';
 import { playHere, playPaths } from './browser-player.js';
-import { entriesFromInput, startUpload } from './uploads.js';
 
 /* ================= music ================= */
 // The Music tab (docs/redesign "music-albums" and its web minis): the same three views the handheld has — the
@@ -64,17 +64,10 @@ export function Music() {
 	const reading = data.gen === 0;
 	const noFolder = !reading && !data.musicFrom;
 	const albums = data.albums || [], artists = data.artists || [];
-	// the empty Music page's upload: into the Music folder (the index's answer says which), a picker of the
-	// page's own (Files keeps its own input)
-	const upMusic = () => {
-		const inp = document.createElement('input');
-		inp.type = 'file';
-		inp.multiple = true;
-		inp.onchange = e => startUpload(entriesFromInput(e.target.files), data.musicDir);
-		inp.click();
-	};
+	// the empty Music page's upload: the same as the header's (the card is asked, the folder is made)
+	const upMusic = () => uploadToSection('music', data.cards);
 	return html`<div class="page">
-		<div class="phead"><div class="row"><h1>Music</h1><${AppMenu} /></div>
+		<div class="phead"><div class="row"><h1>Music</h1><${SectionUpload} kind="music" cards=${data.cards} /><${AppMenu} /></div>
 			<div class="chips" role="tablist" aria-label="Views">${VIEWS.map(w => html`<button class="chipbtn" role="tab" aria-pressed=${vk === w.k} onClick=${() => setView(w.k)}>${w.label} ${w.k === 'albums' ? albums.length : w.k === 'artists' ? artists.length : (s.pls || []).length}</button>`)}</div></div>
 		${noFolder ? html`<${Empty} icon="note" title="No music here yet" sub="Albums and artists come from a folder named Music at the top of either card. Upload into it and they appear here." button="Upload to Music" onClick=${upMusic} />`
 			: reading ? html`<${Banner} title="Reading the cards…" />`

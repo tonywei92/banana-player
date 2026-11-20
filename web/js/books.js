@@ -4,6 +4,7 @@ import { useStore } from './store.js';
 import { fmtDate, fmtSize } from './util.js';
 import { AppMenu, Banner, Empty, Skeleton } from './components.js';
 import { Icon } from './icons.js';
+import { SectionUpload, uploadToSection } from './libupload.js';
 import { openDoc } from './recent.js';
 
 /* ================= books ================= */
@@ -22,9 +23,9 @@ export function Books() {
 	const reading = data.gen === 0;
 	const books = data.books || [];
 	return html`<div class="page">
-		<div class="phead"><div class="row"><h1>Books</h1><${AppMenu} /></div></div>
+		<div class="phead"><div class="row"><h1>Books</h1><${SectionUpload} kind="books" cards=${data.cards} /><${AppMenu} /></div></div>
 		${reading ? html`<${Banner} title="Reading the cards…" />`
-			: !books.length ? html`<${Empty} icon="book" title="No books here yet" sub="Books, PDFs, comics and text files in a folder named Books or Documents at the top of either card are shelved here. Anything you open from Files joins the shelf too." />`
+			: !books.length ? html`<${Empty} icon="book" title="No books here yet" sub="Books, PDFs, comics and text files in a folder named Books, Ebook or Ebooks at the top of either card are shelved here. Anything you open from Files joins the shelf too." button="Upload to Books" onClick=${() => uploadToSection('books', data.cards)} />`
 			: html`<div class="box surface listbox"><ul class="flist">${books.map(b => html`<li class="frow" key=${b.p}>
 				<button class="main-btn" aria-label=${'Open on the handheld: ' + b.n} onClick=${() => openDoc({ p: b.p, title: b.n })}>
 					<span class="tile"><${Icon} n=${glyphOf(b.p)} k=${2} /></span>

@@ -184,7 +184,7 @@ dashboard** opens its page. The line under the title says where the list reads f
 cards · 86 videos`, three or more counted: `From 3 folders on both cards`; Books reads **Books**, **Ebook** and
 **Ebooks**). The first time the app starts, an empty **Videos**, **Music** and **Books** are made on the main card
 for each section with no folder of its names (once, never on a second card), so a card in a computer shows where
-things go; the Web dashboard's Videos, Music and Books tabs **Upload** into them. With no Videos folder on either
+things go; the Web dashboard's Videos, Music and Books tabs each have an **Upload** button that sends files into that section's folder: you pick the card first (**SD1**, **SD2**: only those that are there; the one that already has the folder is the default, else the main card) and the folder is made if it is missing. With no Videos folder on either
 card the page says so, with **Browse Files** (A) and **Web dashboard** (Y); while a card is first read a notice row
 says which card, how many folders are done, and a bar that follows them; the crumb counts what has been read so
 far. A video anywhere else on a card is not listed here: it is in Files, found by Search, kept in

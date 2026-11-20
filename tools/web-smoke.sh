@@ -138,6 +138,22 @@ post /api/delete --data-urlencode "p[]=0/$D/Sub/renamed.mp3" --data-urlencode "p
 get /api/ls --get --data-urlencode "p=0/$D"; jq_is "scratch holds only Sub" '[.items[].name] == ["Sub"]'
 post /api/delete --data-urlencode "p[]=0"; [ "$CODE" -ge 400 ]; check "delete a root refused ($CODE)" $?
 
+echo "== library: where an Upload on Videos, Music and Books goes"
+get /api/library; status_is "library" 200
+jq_is "library: each card named SD<n>, with its three section folders" '(.cards | length) >= 1 and .cards[0].name == "SD1" and (.cards[0] | has("videos", "music", "books"))'
+jq_is "library: the Music folder is there, as 0/Music" '.cards[0].music == "0/Music"'
+post "/api/library/folder?kind=music&card=0"; status_is "section folder: Music exists, so it is only named" 200
+jq_is "section folder: 0/Music, not made" '.p == "0/Music" and .made == false'
+post "/api/library/folder?kind=nope&card=0"; status_is "section folder: an unknown section" 400
+post "/api/library/folder?kind=music&card=9"; status_is "section folder: a card that isn't there" 404
+CODE=$(curl -s -o "$T/body" -w '%{http_code}' -X POST -b "$JAR" "$BASE/api/library/folder?kind=music&card=0"); status_is "section folder without X-BP" 403
+CODE=$(curl -s -o "$T/body" -w '%{http_code}' -X POST -b "$JAR" -H 'X-BP: 1' -H 'Origin: http://evil.example' "$BASE/api/library/folder?kind=music&card=0"); status_is "section folder with a foreign Origin" 403
+raw -X POST -H 'X-BP: 1' "$BASE/api/library/folder?kind=music&card=0"; status_is "section folder signed out" 401
+# the upload itself goes through /api/upload into the section's folder (resolveVirtual, the deny list, X-BP all apply)
+req PUT "/api/upload?dir=0/Music&name=$D-up.txt" --data-binary 'section upload'; status_is "upload into the Music folder" 200
+get /api/ls --get --data-urlencode "p=0/Music"; jq_is "the file is in Music" "[.items[].name] | index(\"$D-up.txt\") != null"
+post /api/delete --data-urlencode "p[]=0/Music/$D-up.txt"; status_is "delete the section upload" 200
+
 echo "== playlists"
 post /api/playlists/create --data-urlencode "name=Smoke $$"; status_is "create" 200; ID=$(jq -r .id "$T/body")
 [ -n "$ID" ] && [ "$ID" != null ]; check "create gives an id" $?

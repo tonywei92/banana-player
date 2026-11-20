@@ -18,6 +18,8 @@
 #include <cctype>
 #include <cstring>
 #include <map>
+#include <sys/stat.h>
+#include <errno.h>
 #include <string>
 #include <vector>
 
@@ -48,11 +50,71 @@ namespace bp
 			if (s.video) w.key("video").boolean(true);
 			w.end();
 		}
+
+		// Upload's targets: a section's folder on a card is the one already there by any of its names (the first,
+		// by path), else "Videos" / "Music" / "Books" to be made. Only the card's top level counts, as the index reads.
+		bool kindOf(const std::string& s, LibKind& kind)
+		{
+			if (s == "videos") kind = LibKind::Videos;
+			else if (s == "music") kind = LibKind::Music;
+			else if (s == "books") kind = LibKind::Books;
+			else return false;
+			return true;
+		}
+		std::string sectionFolderOn(const std::string& card, LibKind kind, bool& there)
+		{
+			for (auto& f : libraryFolders(kind))
+				if (f.compare(0, card.size() + 1, card + "/") == 0 && f.find('/', card.size() + 1) == std::string::npos)
+				{
+					there = true;
+					return f;
+				}
+			there = false;
+			const char* name = kind == LibKind::Videos ? "Videos" : kind == LibKind::Music ? "Music" : "Books";
+			return (card == "/" ? "" : card) + "/" + name;
+		}
+		// the card as the dashboard names it ("SD1", "SD2": the index's order) and its root's index there, -1 when the
+		// dashboard doesn't serve that card
+		int rootOf(WebServer& ws, const std::string& card)
+		{
+			auto roots = ws.roots();
+			for (size_t i = 0; i < roots.size(); i++)
+				if (roots[i].path == card) return (int)i;
+			return -1;
+		}
 	}
 
 	void registerLibraryRoutes(WebServer& ws)
 	{
 		httplib::Server& svr = ws.http();
+
+		// Upload's folder: made when it is missing (Videos / Music / Books at the top of the card), and its virtual path
+		// either way. A POST: the server's X-BP + Origin + session checks have already run for it
+		svr.Post("/api/library/folder", [&ws](const httplib::Request& req, httplib::Response& res) {
+			LibKind kind;
+			std::string k = req.get_param_value("kind"), c = req.get_param_value("card");
+			std::vector<std::string> cards = mediaCards();
+			if (!kindOf(k, kind) || c.empty() || c.find_first_not_of("0123456789") != std::string::npos || c.size() > 3)
+				return WebServer::fail(res, 400, "Unknown section or card");
+			size_t ci = (size_t)atoi(c.c_str());
+			if (ci >= cards.size() || rootOf(ws, cards[ci]) < 0) return WebServer::fail(res, 404, "No such card");
+			bool there = false;
+			std::string real = sectionFolderOn(cards[ci], kind, there), check;
+			if (!there)
+			{
+				// (resolve for create checks the parent is inside a root and not denied, as every upload does)
+				if (!ws.resolve(ws.toVirtual(real), check, true, res)) return;
+				if (mkdir(real.c_str(), 0755) != 0 && errno != EEXIST)
+					return WebServer::fail(res, 500, std::string("Couldn't make the folder: ") + strerror(errno));
+				fprintf(stderr, "library: made %s for an upload from the dashboard\n", real.c_str());
+				ws.post(WebCall::Kind::FsChanged, cards[ci]);
+			}
+			std::string v = ws.servedVirtual(real);
+			if (v.empty()) return WebServer::fail(res, 403, "That folder isn't served");
+			JsonWriter w;
+			w.obj().key("ok").boolean(true).key("p").str(v).key("made").boolean(!there).end();
+			WebServer::json(res, w.out());
+		});
 
 		// one answer for the three pages: the counts and the tiles; ?album=?artist= asks for that one's songs
 		svr.Get("/api/library", [&ws](const httplib::Request& req, httplib::Response& res) {
@@ -115,6 +177,27 @@ namespace bp
 				// there is none, or one it never serves)
 				std::string musicDir = mf.music.empty() ? std::string() : ws.servedVirtual(mf.music.front());
 				w.key("musicDir").str(musicDir);
+				// where Upload can send (the Videos, Music and Books tabs): each card the dashboard serves, named as the
+				// handheld's cards are, with the section folder already there ("" when there is none yet)
+				w.key("cards").arr();
+				{
+					std::vector<std::string> cards = mediaCards();
+					for (size_t c = 0; c < cards.size(); c++)
+					{
+						if (rootOf(ws, cards[c]) < 0) continue;
+						w.obj().key("card").num((int)c).key("name").str("SD" + std::to_string(c + 1));
+						for (const char* k : {"videos", "music", "books"})
+						{
+							LibKind kind;
+							kindOf(k, kind);
+							bool there = false;
+							std::string folder = sectionFolderOn(cards[c], kind, there);
+							w.key(k).str(there ? ws.servedVirtual(folder) : "");
+						}
+						w.end();
+					}
+				}
+				w.end();
 				w.key("videos").arr();
 				if (snap)
 				{
