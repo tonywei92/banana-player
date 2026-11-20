@@ -701,11 +701,13 @@ namespace bp
 		bool mangaLibMenuKey(Button b, Player& p);
 		void mangaLibMenuAct(Player& p);
 		void drawMangaLibMenu();
-		Rect mlibMenuBox() const { return {112, 150, 416, 170}; }
-		Rect mlibMenuRow() const { return {128, 214, 384, 40}; }
+		// two rows: Remove missing, Manga settings (START is Settings now: the app's settings are here and in History's)
+		int mlibMenuCursor = 0;
+		Rect mlibMenuBox() const { return {112, 120, 416, 236}; }
+		Rect mlibMenuRow(int i) const { return {128, 184 + i * 44, 384, 40}; }
 		bool mhisMenu = false;
 		int mhisMenuCursor = 0;
-		static constexpr int MHIS_MENU_ROWS = 5;	// Selected item, Last hour, Today, Last 24 hours, All
+		static constexpr int MHIS_MENU_ROWS = 6;	// Selected item, Last hour, Today, Last 24 hours, All, Manga settings
 		Rect mhisMenuBox() const { return {112, 80, 416, 70 + MHIS_MENU_ROWS * 44}; }
 		Rect mhisMenuRow(int i) const { return {128, 136 + i * 44, 384, 40}; }
 		bool mangaHisMenuKey(Button b, Player& p);

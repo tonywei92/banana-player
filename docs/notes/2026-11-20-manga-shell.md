@@ -37,10 +37,15 @@ The reader (`Page::MangaRead`) is not: a comic's page keeps the whole panel, unc
 - The state line (`--press`) prints Manga's pages: `manga tab=N view=V`, `manga-series ID`, `manga-sources tab=N`,
   `manga-settings`, `manage-extensions` (they printed "settings (from the browser)").
 
+## Follow-ups
+
+- **START** on Manga's shell pages is Settings (`Ui::startOpensSettings` asks `Manga::shellPage`); the reader keeps its
+  Reading menu. **Manga settings** is the last row of Library's X menu (Remove missing, Manga settings) and of
+  History's (the five clears, Manga settings); with the history off, X on History opens it straight away. Browse's,
+  Downloads' and a series' X are not menus (Sources, Edit, read / unread) and stay as they were.
+
 ## Not done
 
-- START on Manga's pages still opens Manga settings (the spec: Settings, with Manga settings under X · More; each
-  page's X menu would need the row).
 - The bodies (Library grid, History, Browse, Downloads, a series, a source's grid, servers, Sources, Manga settings)
   are bridged, scaled to 0.88: not yet drawn on the kit. History as the spec's two-line rows with a Continue key and
   the Library as `mcell` tiles are the next pieces (a cover tile like `lay::coverTile` with an unread badge).

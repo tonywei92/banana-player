@@ -1011,8 +1011,9 @@ namespace bp
 			// the cover grid only (the Continue reading cards are gone): A opens the series
 			int n = (int)mangaLib.size();
 			if (mlibGrid >= n) mlibGrid = std::max(0, n - 1);
+			// X: the Library's menu (Remove missing, Manga settings), empty or not
+			if (b == Button::X) { mlibMenu = true; mlibArmed = false; mlibMenuCursor = 0; break; }
 			if (!n) break;
-			if (b == Button::X) { mlibMenu = true; mlibArmed = false; break; }
 			if (b == Button::A) { mangaChoose(MT_LIBRARY, mlibGrid, p); break; }
 			int row = mlibGrid / MG_COLS, col = mlibGrid % MG_COLS, rows = (n + MG_COLS - 1) / MG_COLS;
 			switch (b)
@@ -1033,8 +1034,13 @@ namespace bp
 		case MT_HISTORY:
 		{
 			mangaCache();
-			// off: the list is empty by design (the History tab says so), so nothing there is chosen or cleared
-			if (!p.settings.mangaHistory) break;
+			// off: the list is empty by design (the History tab says so), so nothing there is chosen or cleared; X is
+			// where it is turned on (Manga settings)
+			if (!p.settings.mangaHistory)
+			{
+				if (b == Button::X) openMangaSettings();
+				break;
+			}
 			int n = (int)mangaHistory.size();
 			if (b == Button::X)
 			{
@@ -1330,7 +1336,8 @@ namespace bp
 		{
 			if (pt.kind != Pointer::Down) return false;
 			if (!mlibMenuBox().hit(x, y)) { mlibMenu = false; mlibArmed = false; return false; }
-			if (mlibMenuRow().hit(x, y)) mangaLibMenuAct(p);
+			for (int i = 0; i < 2; i++)
+				if (mlibMenuRow(i).hit(x, y)) { mlibMenuCursor = i; mangaLibMenuAct(p); }
 			return false;
 		}
 		if (ui.page == Page::Manga && mhisMenu)
@@ -2242,7 +2249,7 @@ namespace bp
 		SDL_RenderSetClipRect(ui.ren, nullptr);
 		ui.drawScrollBar(MG_LIB_TOP, MG_LIB_BOTTOM - MG_LIB_TOP, mlibScroll,
 			std::max(1, (MG_LIB_BOTTOM - MG_LIB_TOP) / 186), rows);
-		ui.drawHints({{"D-PAD", "Move"}, {"A", "Open"}, {"X", "Options"}, {"B", "Back"}});
+		ui.drawHints({{"D-PAD", "Move"}, {"A", "Open"}, {"X", "More"}, {"B", "Back"}});
 		if (mlibMenu) later([this] { drawMangaLibMenu(); });
 	}
 
@@ -2282,6 +2289,7 @@ namespace bp
 	bool Ui::Manga::mangaLibMenuKey(Button b, Player& p)
 	{
 		if (b == Button::A) mangaLibMenuAct(p);
+		else if (b == Button::Up || b == Button::Down) { mlibMenuCursor = 1 - mlibMenuCursor; mlibArmed = false; }
 		else if (b == Button::B || b == Button::X) { mlibMenu = false; mlibArmed = false; }
 		return false;
 	}
@@ -2289,6 +2297,12 @@ namespace bp
 	void Ui::Manga::mangaLibMenuAct(Player& p)
 	{
 		(void)p;
+		if (mlibMenuCursor == 1)
+		{
+			mlibMenu = mlibArmed = false;
+			openMangaSettings();
+			return;
+		}
 		auto gone = mangaMissing();
 		if (gone.empty()) { mlibMenu = false; mangaNotice("Nothing is missing", 1500); return; }
 		// twice: their places and read marks go with them
@@ -2308,14 +2322,17 @@ namespace bp
 		Rect b = mlibMenuBox();
 		ui.drawDialog(b, "Library");
 		auto gone = mangaMissing();
-		Rect r = mlibMenuRow();
-		ui.drawFocus(r);
+		Rect r = mlibMenuRow(0);
+		if (mlibMenuCursor == 0) ui.drawFocus(r);
 		std::string note = gone.empty() ? "None" : mlibArmed ? "A again" : std::to_string(gone.size()) + " gone";
-		ui.drawDialogRow(r, &G_TRASH, "Remove missing", true, false, gone.empty() ? DIM : DANGER, note, mlibArmed ? ACCENT : DIM);
-		// (said under the row: what goes with them, and the card that may only be out)
-		ui.drawTextMid(gone.empty() ? "Every series is on a card" : "Series no longer on a card, and books Files now opens", 0, DIM, W / 2, 278, 380, 2);
+		ui.drawDialogRow(r, &G_TRASH, "Remove missing", mlibMenuCursor == 0, false, gone.empty() ? DIM : DANGER, note, mlibArmed ? ACCENT : DIM);
+		Rect s = mlibMenuRow(1);
+		if (mlibMenuCursor == 1) ui.drawFocus(s);
+		ui.drawDialogRow(s, &G_GEAR, "Manga settings", mlibMenuCursor == 1, false, TEXT, "", DIM);
+		// (said under the rows: what Remove missing takes, and the card that may only be out)
+		ui.drawTextMid(gone.empty() ? "Every series is on a card" : "Series no longer on a card, and books Files now opens", 0, DIM, W / 2, 290, 380, 2);
 		if (mlibArmed) ui.drawFooterText("Their read marks go too. A card that's out? Put it back first", ACCENT);
-		else ui.drawHints({{"A", "Remove"}, {"B", "Close"}});
+		else ui.drawHints({{"A", mlibMenuCursor ? "Open" : "Remove"}, {"B", "Close"}});
 	}
 
 	bool Ui::Manga::mangaHisMenuKey(Button b, Player& p)
@@ -2334,6 +2351,8 @@ namespace bp
 	void Ui::Manga::mangaHisMenuAct(Player& p)
 	{
 		mhisMenu = false;
+		// the last row: the app's settings (START is Settings now)
+		if (mhisMenuCursor == 5) { openMangaSettings(); return; }
 		if (!mangaStore) return;
 		int64_t now = (int64_t)time(nullptr);
 		static const char* SAID[5] = {"Removed from History", "Cleared the last hour", "Cleared today", "Cleared the last 24 hours", "History cleared"};
@@ -2366,16 +2385,17 @@ namespace bp
 	void Ui::Manga::drawMangaHisMenu()
 	{
 		Rect b = mhisMenuBox();
-		ui.drawDialog(b, "Clear history");
-		static const char* ROWS[MHIS_MENU_ROWS] = {"Selected item", "Last hour", "Today", "Last 24 hours", "All"};
+		ui.drawDialog(b, "History");
+		static const char* ROWS[MHIS_MENU_ROWS] = {"Clear the selected item", "Clear the last hour", "Clear today",
+			"Clear the last 24 hours", "Clear all", "Manga settings"};
 		for (int i = 0; i < MHIS_MENU_ROWS; i++)
 		{
 			Rect r = mhisMenuRow(i);
 			bool at = i == mhisMenuCursor;
 			if (at) ui.drawFocus(r);
-			ui.drawTextMid(ROWS[i], 1, at ? ACCENT : i == MHIS_MENU_ROWS - 1 ? DANGER : TEXT, r.x + 12, r.y + r.h / 2, r.w - 24);
+			ui.drawTextMid(ROWS[i], 1, at ? ACCENT : i == 4 ? DANGER : TEXT, r.x + 12, r.y + r.h / 2, r.w - 24);
 		}
-		ui.drawHints({{"A", "Clear"}, {"B", "Close"}});
+		ui.drawHints({{"A", mhisMenuCursor == 5 ? "Open" : "Clear"}, {"B", "Close"}});
 	}
 
 	void Ui::Manga::drawMangaHistory(const Player& p)
@@ -2386,7 +2406,7 @@ namespace bp
 		{
 			// kept off: where it is turned on, and that the reading itself is still remembered
 			ui.drawEmpty(G_CLOCK, "Reading history is off",
-				"Turn it on in Manga settings (START). Your places and read\nmarks are kept either way.", nullptr);
+				"Turn it on in Manga settings (X). Your places and read\nmarks are kept either way.", nullptr);
 			ui.drawHints({{"B", "Back"}});
 			return;
 		}
@@ -2421,7 +2441,7 @@ namespace bp
 		}
 		ui.drawScrollBar(MG_ROW_TOP, MG_HIST_ROWS * MG_HIST_ROW_H - 4, mhisScroll, MG_HIST_ROWS, n);
 		if (mangaClearAt) ui.drawFooterText("Press X again to clear history", ACCENT);
-		else ui.drawHints({{"A", "Continue"}, {"X", "Clear\xE2\x80\xA6"}, {"B", "Back"}});
+		else ui.drawHints({{"A", "Continue"}, {"X", "More"}, {"B", "Back"}});
 		if (mhisMenu) later([this] { drawMangaHisMenu(); });
 	}
 
