@@ -75,3 +75,15 @@ the shell's header to leave its BG fill out; the rail and the hint bar keep thei
 do. `Ui::signature` takes the answer's hash and the fade's step on those pages. No extra veil step was needed: below
 the bottom panel's y 168 the Lower veil is already 84%+ (the list's DIM text there holds), and the header area is the
 protected TEXT band. A bridged old body (select / add modes) still clears its box to BG.
+
+## 7. Grid and Horizon over the backdrop (the native styles' VI_BG ink)
+
+Grid hides the rows behind each ridge with quads in VI_BG, and Horizon covers the sun under its line with a
+full-width VI_BG box to the foot: over the backdrop these were solid theme-BG patches and a black band at the bottom.
+VI_BG means "the ground", so when the backdrop is the ground (`groundArt` in `nativeFrame`) those shapes are now
+painted with the backdrop itself: the top panel keeps the newer page's bytes (`bgGroundPage`, a serial), topviz
+uploads them once into its own texture (`groundTexture`), and a second tiny program (`groundProg`: the page sampled
+at the vertex's panel position, the shape's alpha) draws the VI_BG runs (`Run::ground`, `useGroundProgram`). No extra
+pass: the same vertices, a program switch per ground run. Every other VI_BG use (Rocket's window, the faces' eyes)
+now cuts to the art as well, which is what "the ground" meant. No other style paints a fixed band (checked
+`box(out, 0, …, 640, 480, …)`). During the 0.5 s cross-fade the ground shapes show the newer page.

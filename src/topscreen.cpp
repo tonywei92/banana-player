@@ -210,6 +210,11 @@ namespace bp
 		auto add = [&](int page, const artbg::Art& art) {
 			auto bytes = std::make_shared<const std::vector<uint8_t>>(artbg::composePage(art, artbg::backdropFor(th, art), artbg::W, 480, artbg::Half::Upper));
 			if (!bytes->empty()) bgRender.addPage(page, artbg::W, 480, bytes);
+			if (page == 1)
+			{
+				bgGroundPage = bytes;
+				bgGroundSerial++;
+			}
 		};
 		if (fading) add(0, ui.backdropFadeArt());
 		add(1, ui.backdropArt());
