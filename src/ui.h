@@ -127,6 +127,13 @@ namespace bp
 		bool takeStopPressed() { bool r = stopPressed; stopPressed = false; return r; }
 		// The Stop the Manga guard asked for (ext-section-video): the page stays where it is (Manga), rather than
 		// going back to where the video was opened from. Once, as the stop itself.
+		// a photo deleted from its viewer: the viewer closes (once; main does it, as it does a Back press)
+		bool takeLeaveWanted() { bool r = leaveWanted; leaveWanted = false; return r; }
+		// the photo viewer's Slideshow (its More): the next photo every SLIDE_MS, until toggled off or the viewer closes
+		static constexpr uint32_t SLIDE_MS = 5000;
+		bool slideshow = false;
+		uint32_t slideAt = 0;
+		void slideshowTick(Player& p);
 		bool takeStopKeepsPage() { bool r = stopKeepsPage; stopKeepsPage = false; return r; }
 		// the rail's / Quick settings' tap over a photo: the photo closes and the player of what plays takes the
 		// screen (once; main does it: only it can close the photo viewer)
@@ -1116,7 +1123,7 @@ namespace bp
 		// Opening Manga while a video plays (docs/redesign: manga-guard, ext-section-video): the confirm sheet that
 		// says the video stops, Stay focused and B, with "Don't ask again" (the manga-ask-video setting). Pushed by
 		// the Extensions page's Manga row (MangaGuard in ui_ext.cpp); a song or a photo is never asked about.
-		void askMangaGuard(const Player& p);
+		void askMangaGuard(const Player& p, std::string what = "Manga", std::function<void(Player&)> go = nullptr);
 		struct MangaGuard;
 	private:
 
@@ -1124,6 +1131,7 @@ namespace bp
 		// the player left (B, "<", Back) while a song or video plays on: the browser is the base page; showPlayer ends it
 		bool bgPlay = false;
 		bool stopPressed = false;	// the player's own Stop (takeStopPressed)
+		bool leaveWanted = false;
 		bool stopKeepsPage = false;	// the Manga guard's Stop: the page shown stays (takeStopKeepsPage)
 		bool playerOverPhoto = false;	// the Now playing key's tap over a photo (takePlayerOverPhoto)
 		// the player shown (showPlayer) and not left since; back: where it was opened from (backFromPlayer)

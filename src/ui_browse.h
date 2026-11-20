@@ -107,7 +107,10 @@ namespace bp
 		void filesSelMore(Player& p);
 		void filesClipStart(int op, Player& p);
 		// the delete question (a Confirm sheet) and Info's page (an overlay of the browser's)
-		void filesDeleteAsk(std::vector<std::string> paths, Player& p);
+		// photoViewer: p is the photo viewer's player and the file is the photo it shows (deleting it closes the viewer)
+		void filesDeleteAsk(std::vector<std::string> paths, Player& p, bool photoViewer = false);
+		// the photo viewer's Copy / Move (the folder to go to is opened with the clipboard set) and Delete
+		void photoFileOp(int what, const std::string& path, Player& p);
 		struct FileDeleteAsk;
 		struct FileInfoSheet;
 		// a finger on the redesigned page: the header's keys, a row, the select bar, an empty page's keys

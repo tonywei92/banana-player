@@ -12574,6 +12574,44 @@ static void testSessionNamed()
 		CHECK_EQ(checkInvariants(f.s), std::string(""));
 	}
 	{
+		// PlayNext: a file queued right after the item that plays; with Shuffle it plays next in the hidden order too
+		Sim m;
+		Intent op = m.mk(IntentType::Open);
+		op.queue = {"/m/a.mp3", "/m/b.mp3", "/m/c.mp3"};
+		op.index = 1;
+		op.rnd = 9;
+		m.go(op);
+		m.loaded();
+		uint64_t load = m.s.load;
+		Intent pn = m.mk(IntentType::PlayNext);
+		pn.path = "/m/z.mp3";
+		CHECK_EQ(m.go(pn).reject, std::string(""));
+		CHECK_EQ(m.s.queue.size(), (size_t)4);
+		CHECK_EQ(m.s.queue[2], std::string("/m/z.mp3"));
+		CHECK_EQ(m.s.index, 1);
+		CHECK_EQ(m.s.load, load);	// nothing reloads
+		CHECK_EQ(nextPlace(m.s), 2);
+		CHECK_EQ(checkInvariants(m.s), std::string(""));
+		Intent ph = m.mk(IntentType::PlayNext);
+		ph.path = "/m/p.jpg";
+		CHECK_EQ(m.go(ph).reject, std::string("photo"));
+		Intent sf = m.mk(IntentType::SetShuffle);
+		sf.on = true;
+		sf.rnd = 7;
+		m.go(sf);
+		Intent pn2 = m.mk(IntentType::PlayNext);
+		pn2.path = "/m/y.mp3";
+		CHECK_EQ(m.go(pn2).reject, std::string(""));
+		CHECK_EQ(m.s.queue[2], std::string("/m/y.mp3"));
+		CHECK_EQ(m.s.order.size(), m.s.queue.size());
+		CHECK_EQ(m.s.order[shufflePlace(m.s) + 1], 2);
+		CHECK_EQ(checkInvariants(m.s), std::string(""));
+		Sim e;
+		Intent pe = e.mk(IntentType::PlayNext);
+		pe.path = "/m/a.mp3";
+		CHECK_EQ(e.go(pe).reject, std::string("nothing"));
+	}
+	{
 		// Requeue: a song added to the playlist that plays, its last song playing: Next reaches it, nothing reloads
 		Sim m;
 		Intent op = m.mk(IntentType::Open);
@@ -12943,6 +12981,7 @@ static void testSessionNamed()
 // renderers for the output, random intents of every kind; I1–I10 after every apply, liveness once it all settles
 static int fuzzEnded = 0;	// sessions the fuzz left with a finished list (it must get there to test it)
 static int fuzzShuffled = 0, fuzzUnshuffled = 0, fuzzRounds = 0;	// Shuffle turned on / off while playing; new rounds
+static int fuzzPlayNext = 0;	// Play next taken while an item played
 static int fuzzRequeued = 0;	// playlist edits taken while an item played (shuffled or not)
 static bool fuzzSession(uint32_t seed, int steps)
 {
@@ -12972,6 +13011,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 		if (!bad.empty() && why.empty()) why = bad + " (" + intentName(i.type) + " from " + i.origin + ", step " + std::to_string(at) + ")";
 		if (s.ended.index < 0 && r.s.ended.index >= 0) fuzzEnded++;
 		if (i.type == IntentType::Requeue && r.reject.empty() && !r.dup) fuzzRequeued++;
+		if (i.type == IntentType::PlayNext && r.reject.empty() && !r.dup) fuzzPlayNext++;
 		if (i.type == IntentType::SetShuffle && r.reject.empty() && !r.dup && s.index >= 0)
 			(r.s.shuffle ? fuzzShuffled : fuzzUnshuffled) += s.shuffle != r.s.shuffle;
 		// a shuffled round that went on past its end (Loop all: a new round)
@@ -12988,7 +13028,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 		static const IntentType KINDS[] = {IntentType::Open, IntentType::Play, IntentType::Pause, IntentType::Seek,
 			IntentType::SeekBy, IntentType::Step, IntentType::Step, IntentType::Step, IntentType::SetAudio, IntentType::SetSub,
 			IntentType::SetSpeed, IntentType::SetLoop, IntentType::SetOutput, IntentType::SetOutput, IntentType::Stop,
-			IntentType::PhotoPark, IntentType::PhotoResume, IntentType::FileGone, IntentType::SetShuffle, IntentType::Requeue};
+			IntentType::PhotoPark, IntentType::PhotoResume, IntentType::FileGone, IntentType::SetShuffle, IntentType::Requeue, IntentType::PlayNext};
 		i.type = KINDS[pick((int)(sizeof KINDS / sizeof KINDS[0]))];
 		switch (i.type)
 		{
@@ -13027,6 +13067,11 @@ static bool fuzzSession(uint32_t seed, int steps)
 		case IntentType::PhotoPark: if (pick(2)) { i.hasT = true; i.t = pick(300); } break;
 		case IntentType::SetShuffle: i.on = pick(3) == 0; i.rnd = rr(); break;
 		case IntentType::FileGone: i.path = pick(6) ? FILES[pick(7)] : "/m"; break;
+		case IntentType::PlayNext:
+			// (a growing list makes a round's end rarer, so most of these turn into a Step)
+			if (pick(4)) { i.type = IntentType::Step; i.n = 1; i.browserCan = true; i.rnd = rr(); break; }
+			i.path = pick(8) ? FILES[pick(7)] : "/m/x.jpg";
+			break;
 		case IntentType::Requeue:
 		{
 			// the list as a playlist edit leaves it: some gone (never the one playing), some added at the end
@@ -13200,6 +13245,7 @@ static void testSessionFuzz()
 	CHECK_EQ(fuzzShuffled > runs / 20 && fuzzUnshuffled > runs / 40, true);
 	CHECK_EQ(fuzzRounds > 0, true);
 	CHECK_EQ(fuzzRequeued > 0, true);
+	CHECK_EQ(fuzzPlayNext > 0, true);
 }
 
 // picture subtitles for the browser: the cue timing rules, the window a request may ask for, the paletted PNG

@@ -12,7 +12,7 @@ namespace bp
 	{
 		static const char* NAMES[] = {"Open", "Play", "Pause", "Seek", "SeekBy", "Step", "SetAudio", "SetSub", "SetSpeed",
 			"SetLoop", "SetOutput", "Stop", "PhotoPark", "PhotoResume", "FileGone", "Loaded", "Pos", "Ended", "CantPlay",
-			"Tick", "TabGone", "TabBack", "Slept", "Woke", "Blocked", "SetShuffle", "Requeue"};
+			"Tick", "TabGone", "TabBack", "Slept", "Woke", "Blocked", "SetShuffle", "Requeue", "PlayNext"};
 		return NAMES[(int)t];
 	}
 
@@ -607,6 +607,24 @@ namespace bp
 					n.order.clear();
 					for (int k : s.order)
 						if (k >= 0 && k < (int)to.size() && to[k] >= 0) n.order.push_back(to[k]);
+					return "";
+				}
+				case IntentType::PlayNext:
+				{
+					// Files' Play next: the file goes in after the item that plays; Next reaches it. A song that is
+					// already queued further on is another copy (the list is a list of plays)
+					if (s.index < 0) return "nothing";
+					if (i.path.empty() || isPhotoFile(i.path)) return "photo";
+					int at = s.index + 1;
+					n.queue.insert(n.queue.begin() + at, i.path);
+					if (!s.order.empty())
+					{
+						// the places after the item move up one; the new one plays right after the item in the hidden order
+						n.order.clear();
+						for (int k : s.order) n.order.push_back(k >= at ? k + 1 : k);
+						int pl = shufflePlace(s);
+						n.order.insert(n.order.begin() + (pl < 0 ? 0 : pl + 1), at);
+					}
 					return "";
 				}
 				case IntentType::Requeue:

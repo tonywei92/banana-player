@@ -1645,3 +1645,26 @@ combination instead.)
   minutes (a request or an upload), an update downloads, or the charger is in. `log.txt` says why it slept
   (`idle sleep: asking bananad…`) or what kept it awake (`idle sleep: … kept awake: …`, once per change). Waking
   leaves a paused video paused.
+
+### Files: Play next
+
+**X** on a song or video in Files has **Play next**: it queues that file right after the one playing (Shuffle too: it
+comes next in the shuffled order). With nothing playing it simply plays the file.
+
+### Recent: songs titled by their tag
+
+A song's card in Recent (Home and All recent) carries the title from its tags when the cards' index has read it (a song
+in a Music folder); any other file, and a song not read yet, keeps its file name.
+
+### Comics ask before stopping a video
+
+A comic (CBZ, CBR, a comic EPUB) opened from Files, Recent or a connection while a video plays or is paused asks first,
+as Manga's row does: **Stay** or **Stop video & open comic** (the video's place waits in Continue). **Don't ask again**
+(or Settings > Manga) stops the video at once. Music and photos are not affected.
+
+### Photo viewer's More: Slideshow, Copy, Move, Delete
+
+**X** (or SELECT) over a photo adds **Slideshow** (with more than one photo: the next photo every 5 s, **Stop slideshow**
+to end it; L / R still step, it ends at the last photo and when the viewer closes), **Copy...** and **Move...** (the
+viewer closes on the photo's folder with the clipboard set: open the folder it goes in, then SELECT, as in Files) and
+**Delete** (asks first, then the viewer closes). Not for a photo on a connection.

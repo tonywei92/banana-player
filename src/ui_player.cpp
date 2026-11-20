@@ -605,6 +605,19 @@ namespace bp
 			it.act = std::move(act);
 			return it;
 		};
+		if (p.count() > 1)
+		{
+			// the next photo every few seconds; L / R still step by hand, and it ends with the last photo
+			MoreItem it = row(&G_PLAY, u->slideshow ? "Stop slideshow" : "Slideshow", [u](Player& pl) {
+				u->slideshow = !u->slideshow;
+				u->slideAt = SDL_GetTicks();
+				pl.osd(u->slideshow ? "Slideshow: a photo every 5 s" : "Slideshow stopped", 1800);
+				return false;
+			});
+			it.note = u->slideshow ? "" : "A photo every 5 s";
+			it.lit = u->slideshow;
+			m.rows.push_back(it);
+		}
 		m.rows.push_back(row(&G_INFO, "Info", [u](Player&) {
 			u->page = Page::Info;
 			u->cursor = u->scroll = 0;
@@ -612,6 +625,16 @@ namespace bp
 			return false;
 		}));
 		m.rows.push_back(row(&G_FOLDER, "Show in folder", [u](Player& p) { u->showAfterLeave = p.currentPath(); return true; }));
+		if (!isNetPath(p.currentPath()))
+		{
+			// the file's own rows, as Files' More has them (the clipboard's flow is Files': the viewer leaves for the
+			// photo's folder; Delete asks first, then the viewer closes)
+			m.rows.push_back(row(&G_PAGE, "Copy\xE2\x80\xA6", [u](Player& pl) { u->browse->photoFileOp(CTX_F_COPY, pl.currentPath(), pl); return true; }));
+			m.rows.push_back(row(&G_MOVE, "Move\xE2\x80\xA6", [u](Player& pl) { u->browse->photoFileOp(CTX_F_MOVE, pl.currentPath(), pl); return true; }));
+			MoreItem del = row(&G_TRASH, "Delete", [u](Player& pl) { u->browse->photoFileOp(CTX_F_DELETE, pl.currentPath(), pl); return false; });
+			del.danger = true;
+			m.rows.push_back(del);
+		}
 		m.rows.push_back(row(&G_GEAR, "Photo settings", [u](Player& p) {
 			u->openSettings(p, true);	// (B or START comes back to the photo)
 			u->settingsPage->openGroup(GROUP_PHOTOS, &p);

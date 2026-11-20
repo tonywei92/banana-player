@@ -151,7 +151,7 @@ namespace bp
 	enum class IntentType
 	{
 		Open, Play, Pause, Seek, SeekBy, Step, SetAudio, SetSub, SetSpeed, SetLoop, SetOutput, Stop, PhotoPark,
-		PhotoResume, FileGone, Loaded, Pos, Ended, CantPlay, Tick, TabGone, TabBack, Slept, Woke, Blocked, SetShuffle, Requeue
+		PhotoResume, FileGone, Loaded, Pos, Ended, CantPlay, Tick, TabGone, TabBack, Slept, Woke, Blocked, SetShuffle, Requeue, PlayNext
 	};
 	const char* intentName(IntentType t);
 
@@ -192,6 +192,7 @@ namespace bp
 		// in it, at index, kept even if it was taken out); remap, each old place's new one (-1: gone); source, the
 		// list's (it must be the one playing). Nothing reloads
 		std::vector<int> remap;
+		// PlayNext: `path` goes in the queue right after the item that plays (nothing reloads)
 	};
 
 	struct Effect

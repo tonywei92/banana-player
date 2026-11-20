@@ -94,6 +94,21 @@ namespace bp
 			ui.alert("Comics need the Manga reader", "Turn it on in Extensions to read CBZ and CBR files.");
 			return true;
 		}
+		// a comic takes the memory a video uses (as Manga does): asked first, unless turned off (then the video stops)
+		if (comic && !comicVideoOk && p.playing() && !p.playingAudio() && !p.playingPhoto())
+		{
+			auto go = [this, path](Player& pl) {
+				ui.stopKeepsPage = true;	// (main's Stop must not take the page back to where the video was opened from)
+				ui.stopPressed = true;
+				comicVideoOk = true;
+				open(path, pl);
+				comicVideoOk = false;
+				fprintf(stderr, "docs: the video stopped for a comic\n");
+			};
+			if (p.settings.mangaAskVideo) ui.askMangaGuard(p, "the comic", go);
+			else go(p);
+			return true;
+		}
 		std::string e = extLower(path);
 		docPlacesLoad();
 		docMarksLoad();

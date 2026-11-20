@@ -728,7 +728,8 @@ namespace bp
 	{
 		std::vector<std::string> paths;
 		int focus = 0, pressed = -1;
-		FileDeleteAsk(Ui& u, std::vector<std::string> at) : Overlay(u), paths(std::move(at)) {}
+		bool viewer = false;	// the photo viewer's own photo: it is shown, not playing, and the viewer closes after
+		FileDeleteAsk(Ui& u, std::vector<std::string> at, bool v = false) : Overlay(u), paths(std::move(at)), viewer(v) {}
 		const char* name() const override { return "filedelete"; }
 
 		std::string title() const
@@ -749,7 +750,7 @@ namespace bp
 		void act(Player& p)
 		{
 			for (const std::string& path : paths)
-				if (p.playing() && (p.currentPath() == path || p.currentPath().rfind(path + "/", 0) == 0))
+				if (!viewer && p.playing() && (p.currentPath() == path || p.currentPath().rfind(path + "/", 0) == 0))
 				{
 					close();
 					ui.alert("It\xE2\x80\x99s playing", "Stop it first, then try again.");
@@ -763,6 +764,7 @@ namespace bp
 				if (lstat(path.c_str(), &st) != 0) done++;
 			}
 			close();
+			if (viewer && done > 0) { ui.leaveWanted = true; ui.slideshow = false; }
 			ui.browse->filesSelEnd(p);
 			if (ui.page == Page::Browse && ui.browse->filesPage()) ui.browse->filesRefresh(p);
 			// the cards' content changed: the index walks again (the library pages drop what was deleted)
@@ -824,16 +826,30 @@ namespace bp
 		}
 	};
 
-	void Ui::Browse::filesDeleteAsk(std::vector<std::string> paths, Player& p)
+	void Ui::Browse::photoFileOp(int what, const std::string& path, Player& p)
+	{
+		if (what == CTX_F_DELETE) { filesDeleteAsk({path}, p, true); return; }
+		// Copy / Move: the clipboard set, and the viewer leaves for the photo's folder, where SELECT pastes (what Files'
+		// own Copy does, with its folder opened for it)
+		clipOp = what == CTX_F_COPY ? CLIP_COPY : CLIP_MOVE;
+		clipPath = path;
+		clipPaths.clear();
+		ui.showAfterLeave = path;
+		ui.leaveWanted = true;
+		ui.slideshow = false;
+		p.osd(std::string(what == CTX_F_COPY ? "Copy" : "Move") + ": open the folder it goes in, then SELECT", 2500);
+	}
+
+	void Ui::Browse::filesDeleteAsk(std::vector<std::string> paths, Player& p, bool photoViewer)
 	{
 		if (paths.empty()) return;
 		for (const std::string& path : paths)
-			if (p.playing() && (p.currentPath() == path || p.currentPath().rfind(path + "/", 0) == 0))
+			if (!photoViewer && p.playing() && (p.currentPath() == path || p.currentPath().rfind(path + "/", 0) == 0))
 			{
 				ui.alert("It\xE2\x80\x99s playing", "Stop it first, then try again.");
 				return;
 			}
-		ui.pushOverlay(std::make_unique<FileDeleteAsk>(ui, std::move(paths)));
+		ui.pushOverlay(std::make_unique<FileDeleteAsk>(ui, std::move(paths), photoViewer));
 	}
 
 	// ---- Info: one scrolling page (docs/redesign: info) ----

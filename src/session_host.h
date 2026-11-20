@@ -97,6 +97,8 @@ namespace bp
 		// the playlist (its file) edited: paths, its items now; remap, each old place's new one (-1 gone). The
 		// session's list follows when that playlist plays (Next reaches what was added)
 		void playlistEdited(const std::string& id, const std::vector<std::string>& paths, const std::vector<int>& remap);
+		// Files' Play next: the file queued right after the item that plays; false when nothing plays (rejected)
+		bool playNext(const std::string& path);
 		void seek(double t, bool relative, const std::string& origin);
 		void woke();
 		// each pass of main's loop: the handheld's reports (as the output), its picks once it can take them, Tick, the

@@ -433,6 +433,13 @@ namespace bp
 		if (!r.reject.empty()) fprintf(stderr, "session: playlist edited, Requeue rejected (%s)\n", r.reject.c_str());
 	}
 
+	bool SessionHost::playNext(const std::string& path)
+	{
+		Intent i = make(IntentType::PlayNext);
+		i.path = path;
+		return submit(i, true).reject.empty();
+	}
+
 	void SessionHost::seek(double t, bool relative, const std::string& origin)
 	{
 		Intent i = make(relative ? IntentType::SeekBy : IntentType::Seek, origin);
