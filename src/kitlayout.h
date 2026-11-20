@@ -702,6 +702,18 @@ namespace bp
 		// a key at a row's right end (History's Continue on the focused row): keyW wide, 44 tall, SP8 in, centred
 		Box rowKey(Box row, int keyW);
 
+		// ---- a row of keys across an area (a series page's Resume · Get · Check · Info · ♥: screens.js seriesB) ----
+		// each key as wide as `widths` says, 0: an equal share of what the fixed ones leave; GAP apart, KEY_ROW_H tall
+		constexpr int KEY_ROW_H = 56;
+		std::vector<Box> keyRow(Box area, const std::vector<int>& widths, int gap = GAP);
+		// a series page (Manga's: a card series, a source's, a server's): the inner body (SP12 in), its row of keys at
+		// the top (none: keys false), the chapters' rows SP8 under it, to the body's foot
+		struct SeriesPage
+		{
+			Box inner, keys, rows;
+		};
+		SeriesPage seriesPage(Box body, bool keys);
+
 		// ---- an artist's row: a 40 disc (the first letter) or its art, the name, "3 albums · 34 songs" ----
 		// Rows are 60 tall, as a Music/Videos row is: the name and its line on the row's middle, a chevron at the right
 		constexpr int ARTIST_ROW_H = 60, ARTIST_ART = 40, ARTIST_ART_GAP = SP12;

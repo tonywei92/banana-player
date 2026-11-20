@@ -77,9 +77,30 @@ The reader (`Page::MangaRead`) is not: a comic's page keeps the whole panel, unc
   arming: the row turns into "Choose again…" and stays. They run the list's old handling (`mangaDlKeyBase`, its X
   and Y); a card series' chapters keep X Delete.
 
+- **Every Manga page is on the kit now** (`Shell::adopted` is true for all of `Manga::shellPage`; nothing of Manga
+  is bridged or scaled). New kit pieces: `lay::keyRow` (keys across an area, 0 widths sharing the rest) and
+  `lay::seriesPage` (the inner body, a row of keys, the rows under it), tested in core_test. `Manga::mangaListArea`
+  says where each page's list or grid goes; `mangaRowsFit` / `drawMangaRows` / `mangaRowsPointer` and the new
+  `drawMangaGrid` / `mangaGridPointer` draw and touch it. Pages:
+  - a series (a card's, a source's, a server's, a network folder's): the keys (Resume · A; a source's Resume, Get · R2,
+    Check · L2, Info, ♥; a card's Resume and ♥ · Y) on `mangaSeriesKeys` (the old `mangaResumeRect`,
+    `mangaSrcBtn`, `mangaServerResumeRect` now return those boxes, so their touches are unchanged), the chapters as
+    `mangaChapterRow`s (read ticked and dimmed, Resume's marked, the page, a source chapter's download as its pill);
+    the source and counts (and a check's age, an error) are the header's line;
+  - a source's catalogue: its tabs on `mangaSrcTabPage` (Kit::tabs, L2 / R2), the cover grid; a server's catalogue:
+    the grid in the inner body; the server form: `Kit::formRow` rows and Test / Save keys (`mangaSrvFormRowRect`
+    returns those boxes);
+  - Sources: Available / Repositories as kit tabs (`mangaSourcesTabPage`), rows from `mangaSourcesRowAt` /
+    `mangaJavaRowAt` (Update, Installed, Can't load, Recommended as pills), the note at the foot;
+  - Manga settings: `Kit::settingRow` in `lay::settingsRowsIn(body)` (its touches and the list's finger use the same
+    rows as Settings now), the repositories note as a dimmed row.
+- Gone: `drawMangaNetFolders`, `drawMangaJavaRow`, `drawMangaLuaInstalledRow`, `drawAdultChip`, the old grids' and
+  lists' geometry (MG_SRC_*, MGSRV_* but the paging count, MS_ROW_*, the drag state of the old grids).
+
 ## Not done
 
-- A series, a source's and a server's pages, Sources and Manga settings are still bridged, scaled to 0.88. 
-- A sheet over the bridge keeps its old full-page place; any sheet placed by what is under it would be off by the
-  scale (none seen, not every one checked).
-- Not checked on the handheld (KMSDRM, the real panel); the scaled body's text is small at 0.88.
+- The bridge (`Shell::beginBody` / `endBody` / `mapPoint`, the 0.88 scaling) stays: the browser's network folders
+  (`isNetPath`) still draw the old page through it. Nothing of Manga uses it.
+- Not checked on the handheld (KMSDRM, the real panel); a source's and a server's pages not run here (no source or
+  server on the desktop): drawn and touched by the same helpers as the tested ones.
+- A source's keys stay as they were (Y Search, X Filters); the spec moves Filters to Y and X to More.

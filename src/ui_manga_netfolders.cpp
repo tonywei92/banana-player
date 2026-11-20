@@ -6,6 +6,7 @@
 #include "ui_internal.h"
 #include "ui_reader.h"
 #include "ui_manga.h"
+#include "ui_kit.h"
 #include "treecopy.h"
 #include <sys/time.h>
 #include <algorithm>
@@ -589,8 +590,7 @@ namespace bp
 	bool Ui::Manga::mangaNetFoldersPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (pt.kind != Pointer::Down) return false;
-		// on Browse (Page::Manga) the rows are the kit's, as drawMangaNetFoldersKit laid them out
-		if (ui.page == Page::Manga)
+		// the rows are the kit's, as drawMangaNetFoldersKit laid them out (on Browse, and as a series' page)
 		{
 			mangaRowsPointer(p, x, y, [this] {
 				return mangaNetView == MNF_SERIES ? (int)mangaNetChapters.size() : (int)mangaNetRows.size();
@@ -598,18 +598,6 @@ namespace bp
 				[this, &p](int i, bool) { mangaNetFoldersTap(i, p); });
 			return false;
 		}
-		if (y < MNF_ROW_TOP || y >= MNF_ROW_TOP + MNF_ROWS * ROW_H) return false;
-		// the rows follow a finger: a drag scrolls them (the draw keeps the scroll on the cursor, so the cursor moves
-		// with the rows shown), a tap (lifted where it went down) is what A does on the row
-		int n = mangaNetView == MNF_SERIES ? (int)mangaNetChapters.size() : (int)mangaNetRows.size();
-		int i = mangaNetScroll + (y - MNF_ROW_TOP) / ROW_H;
-		ui.pageReader->mangaListBegin(x, y, mangaNetScroll, ROW_H, i < n ? i : -1, [this](int want) {
-			int n = mangaNetView == MNF_SERIES ? (int)mangaNetChapters.size() : (int)mangaNetRows.size();
-			mangaNetScroll = std::clamp(want, 0, std::max(0, n - MNF_ROWS));
-			mangaNetCursor = std::clamp(mangaNetCursor, mangaNetScroll, std::max(mangaNetScroll, std::min(n - 1, mangaNetScroll + MNF_ROWS - 1)));
-			return mangaNetScroll;
-		}, [this, &p](int i) { mangaNetFoldersTap(i, p); });
-		return false;
 	}
 
 	void Ui::Manga::mangaNetFoldersTap(int i, Player& p)
@@ -649,80 +637,6 @@ namespace bp
 		}
 	}
 
-	void Ui::Manga::drawMangaNetFolders(const Player& p)
-	{
-		if (mangaNetView == MNF_SERIES)
-		{
-			std::string title = mangaNetSeriesTitle.empty() ? netBaseName(mangaNetSeriesPath) : mangaNetSeriesTitle;
-			ui.drawHeader(title.empty() ? "Series" : title, p);
-			int n = (int)mangaNetChapters.size();
-			int unread = 0;
-			if (mangaStore)
-			{
-				std::vector<std::string> ids;
-				ids.reserve(n);
-				for (const auto& c : mangaNetChapters) ids.push_back(c.path);
-				unread = mangaStore->unread(mangaNetSeriesPath, ids);
-			}
-			ui.drawTextMid(std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " + std::to_string(unread) + " unread",
-				0, DIM, 16, 96, 592);
-			if (mangaNetCursor >= n) mangaNetCursor = n - 1;
-			if (mangaNetCursor < 0 && n) mangaNetCursor = 0;
-			if (mangaNetCursor < mangaNetScroll) mangaNetScroll = mangaNetCursor;
-			if (mangaNetCursor >= mangaNetScroll + MNF_ROWS) mangaNetScroll = mangaNetCursor - MNF_ROWS + 1;
-			for (int i = mangaNetScroll; i < n && i < mangaNetScroll + MNF_ROWS; i++)
-			{
-				const NetMangaChapter& c = mangaNetChapters[i];
-				int y = MNF_ROW_TOP + (i - mangaNetScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
-				bool at = i == mangaNetCursor;
-				if (at) ui.drawFocus({16, y, 608, ROW_H - 4});
-				const ChapterProgress* pr = mangaStore ? mangaStore->progress(c.path) : nullptr;
-				bool read = pr && pr->read;
-				ui.drawTextMid(c.title.empty() ? "Chapter" : c.title, 1, read ? DIM : at ? ACCENT : TEXT, 48, mid, 440);
-				if (read) ui.drawGlyphMid(G_CHECK, 596, mid, DIM);
-				else if (pr && (pr->pages > 0 || pr->page > 0))
-				{
-					std::string line = "p. " + std::to_string(pr->page + 1);
-					if (pr->pages > 0) line += "/" + std::to_string(pr->pages);
-					ui.drawTextMid(line, 0, at ? DIM_ON : DIM, 608, mid, 140, 1);
-				}
-				if (c.archive) ui.drawTextMid("CBZ", 0, at ? DIM_ON : DIM, 208, mid, 60, 1);
-			}
-			if (n) ui.drawScrollBar(MNF_ROW_TOP, MNF_ROWS * ROW_H - 4, mangaNetScroll, MNF_ROWS, n);
-			if (!mangaNetError.empty()) ui.drawTextMid(mangaNetError, 1, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
-			else if (mangaNetLoading) ui.drawTextMid("Fetching the chapter\xE2\x80\xA6", 0, DIM, W / 2, MG_SRC_STATUS_Y, 0, 2);
-			else if (n == 0) ui.drawTextMid("No chapters", 0, DIM, W / 2, MG_SRC_STATUS_Y, 0, 2);
-			ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"B", "Back"}});
-			return;
-		}
-		// a folder of the server: its path, then its folders and archives
-		const NetServer* sv = ui.netStore ? ui.netStore->find(mangaNetServerId) : nullptr;
-		std::string where = sv ? serverName(*sv) : "Network";
-		std::string path = netDecode(mangaNetDir);
-		if (!path.empty()) where += " \xC2\xB7 " + path;
-		ui.drawTextMid(where, 0, DIM, 16, 96, 592);
-		int n = (int)mangaNetRows.size();
-		if (mangaNetCursor >= n) mangaNetCursor = n - 1;
-		if (mangaNetCursor < 0 && n) mangaNetCursor = 0;
-		if (mangaNetCursor < mangaNetScroll) mangaNetScroll = mangaNetCursor;
-		if (mangaNetCursor >= mangaNetScroll + MNF_ROWS) mangaNetScroll = mangaNetCursor - MNF_ROWS + 1;
-		for (int i = mangaNetScroll; i < n && i < mangaNetScroll + MNF_ROWS; i++)
-		{
-			const MangaNetRow& row = mangaNetRows[i];
-			int y = MNF_ROW_TOP + (i - mangaNetScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
-			bool at = i == mangaNetCursor;
-			if (at) ui.drawFocus({16, y, 608, ROW_H - 4});
-			ui.drawTextMid(row.name, 1, at ? ACCENT : TEXT, 48, mid, 470);
-			ui.drawTextMid(row.dir ? "Folder" : "Archive", 0, at ? DIM_ON : DIM, 608, mid, 120, 1);
-		}
-		if (n) ui.drawScrollBar(MNF_ROW_TOP, MNF_ROWS * ROW_H - 4, mangaNetScroll, MNF_ROWS, n);
-		if (!mangaNetError.empty()) ui.drawTextMid(mangaNetError, 1, DANGER, W / 2, MG_SRC_STATUS_Y, 560, 2);
-		else if (mangaNetLoading) ui.drawTextMid("Loading\xE2\x80\xA6", 0, DIM, W / 2, MG_SRC_STATUS_Y, 0, 2);
-		else if (n == 0)
-			ui.drawTextMid("Nothing here", 0, DIM, W / 2, MG_SRC_STATUS_Y, 0, 2);
-		ui.drawHints({{"A", "Open"}, {"B", "Back"}});
-	}
-
 	Ui::Manga::MangaRow Ui::Manga::mangaNetRowAt(int i) const
 	{
 		MangaRow m;
@@ -748,7 +662,7 @@ namespace bp
 
 	void Ui::Manga::drawMangaNetFoldersKit(const Player& p)
 	{
-		// Browse's network folder on the kit (its series page, Page::MangaSeries, keeps drawMangaNetFolders): where it
+		// a network folder on the kit (on Browse, and a folder read as a series on Page::MangaSeries): where it
 		// is in the header's line, its folders and archives (or a series' chapters) as rows, what it is doing in the
 		// empty state or the header
 		bool series = mangaNetView == MNF_SERIES;

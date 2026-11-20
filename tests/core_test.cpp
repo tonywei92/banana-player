@@ -10994,6 +10994,18 @@ static void testKitLayout()
 		CHECK_EQ(rl.at(rl.row[2].x + 3, rl.row[2].y + 3), 11);
 		CHECK_EQ(rl.at(rl.row[0].x + 3, rl.row[0].y + 61), -1);
 		CHECK_EQ(rowList(tp.content, 2, 0).shown, 2);
+		// a series page: its keys (two fixed, the rest shared) across the inner body, its rows under them
+		SeriesPage sp = seriesPage(sh.body, true);
+		std::vector<Box> keys = keyRow(sp.keys, {150, 0, 0, 64, 64});
+		CHECK_EQ(keys[0].w, 150);
+		CHECK_EQ(keys[1].w, keys[2].w);
+		CHECK_EQ(keys[4].x + keys[4].w, sp.keys.x + sp.keys.w);
+		CHECK_EQ(keys[1].x, keys[0].x + 150 + 8);
+		CHECK_EQ(keys[0].h, 56);
+		CHECK_EQ(sp.rows.y, sh.body.y + 56 + 8);
+		CHECK_EQ(sp.rows.y + sp.rows.h, sh.body.y + sh.body.h);
+		CHECK_EQ(seriesPage(sh.body, false).rows.y, sh.body.y);
+		CHECK_EQ(rowList(sp.rows, 20, 0).shown, 5);
 		Box ck = rowKey(rl.row[0], 120);
 		CHECK_EQ(ck.x + ck.w, rl.row[0].x + rl.row[0].w - 8);
 		CHECK_EQ(ck.h, 44);

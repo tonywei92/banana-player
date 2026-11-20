@@ -558,8 +558,8 @@ namespace bp
 
 	bool Ui::Shell::adopted(const Player& p) const
 	{
-		// Manga's Library and History are drawn on the kit under its tabs (its other tabs are still bridged)
-		if (ui.manga->kitBody()) return true;
+		// Manga's pages are all drawn on the kit in the body (the reader is no shell page)
+		if (ui.manga->shellPage(ui.page)) return true;
 		// the browser's rebuilt views draw in the body box; Network and the forms still draw the old full panel and
 		// keep the bridge
 		if (ui.page != Page::Browse) return adopted(ui.page);
@@ -574,15 +574,14 @@ namespace bp
 		Bridge b;
 		lay::Shell s = layout(p);
 		// the old page is 640 x 480 with its own header (0..54) and hint bar (450..480): the body is the part between,
-		// scaled uniformly into the shell's body (centred, so nothing is cut). Manga's pages still bridged (a series,
-		// a source's and a server's pages, Sources, Manga settings) keep their top at the body's, so their lists start
-		// there; its four tabs are the kit's and never bridged
+		// scaled uniformly into the shell's body (centred, so nothing is cut). Only the browser's network folders are
+		// left on it; Manga's pages are all the kit's
 		const int sw = 640, sh = 396;
 		double sc = std::min(s.body.w / (double)sw, s.body.h / (double)sh);
 		b.w = std::max(1, (int)std::lround(sw * sc));
 		b.h = std::max(1, (int)std::lround(sh * sc));
 		b.x = s.body.x + (s.body.w - b.w) / 2;
-		b.y = ui.manga->shellPage(ui.page) ? s.body.y : s.body.y + (s.body.h - b.h) / 2;
+		b.y = s.body.y + (s.body.h - b.h) / 2;
 		b.on = !adopted(p);
 		return b;
 	}
