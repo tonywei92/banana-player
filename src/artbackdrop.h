@@ -57,6 +57,7 @@ namespace artbg
 	struct Backdrop
 	{
 		bool fallback = true;
+		bool lift = false;	// a light theme's: the picture lifted to a pastel (liftedArt) before the veil
 		Rgb ground;		// the tinted charcoal (or paper), the plain one for the fallback
 		Rgb stop[5];		// the veil's colour at each stop (always `ground`)
 		int veil[5] = {0, 0, 0, 0, 0};
@@ -89,6 +90,14 @@ namespace artbg
 	Backdrop backdropFor(const ThemeColours& theme, int hue, int l95top, int l95low, int l5top, int l5low);
 	Backdrop backdropFor(const ThemeColours& theme, const Art& art);
 	Backdrop backdropForList(const ThemeColours& theme, const Art& art);	// (the browser's: LIST_VEIL_BASE)
+	// A light theme lifts the art instead of burying it under a white veil: each pixel's lightness (HSL) mapped into
+	// LIFT_L0..LIFT_L1 and its saturation kept at LIFT_S, a pastel of the art, so a dark art needs a light veil, not a
+	// 96% one. The Art overloads above work the light theme's luminances out on the lifted picture
+	constexpr double LIFT_L0 = 0.70, LIFT_L1 = 0.92, LIFT_S = 0.85;
+	// the lifted picture's veil before the check raises it: low, as the pastel is light already (VEIL_BASE's
+	// 74..92 under the bar is what turned a light theme's page white)
+	constexpr int LIFT_VEIL_BASE[5] = {30, 30, 36, 42, 48};
+	std::vector<uint8_t> liftedArt(const Art& art);	// the picture, lifted (W * H * 3; empty with no picture)
 	// The backdrop as one page of RGBA (w x h, straight alpha — opaque), a panel drawing it stretched: the
 	// picture with the veil baked in per row, the theme's part applied to the art's own bytes never (the fallback
 	// a gradient page, a light theme's the one colour of its plain ground). The bottom panel draws the veil live

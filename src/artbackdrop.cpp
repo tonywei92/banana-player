@@ -286,7 +286,8 @@ namespace artbg
 
 	// the player's veil (VEIL_BASE, TEXT then DIM_ON at 4.5:1 down the panel) or, `list`, the browser's (LIST_VEIL_BASE:
 	// lighter, TEXT at 4.5:1 and DIM_ON at 3:1 at every stop — its rows and cards bring their own surfaces)
-	static Backdrop backdropOf(const ThemeColours& t, int hue, int l95top, int l95low, int l5top, int l5low, bool list)
+	static Backdrop backdropOf(const ThemeColours& t, int hue, int l95top, int l95low, int l5top, int l5low, bool list,
+		bool lift = false)
 	{
 		Backdrop b;
 		// a light-bodied theme (its BG lighter than its TEXT: Light, Sakura, Gundam, the 16-bit ones) draws the
@@ -329,7 +330,8 @@ namespace artbg
 			b.fallback = false;
 			// the same five stops, whitened for a dark art: each stop's see-through is scaled until the picture's
 			// 5th-percentile luminance under it leaves the theme's TEXT, DIM_ON and ACCENT at 4.5:1
-			const int* base = list ? LIST_VEIL_BASE : VEIL_BASE;
+			// (a lifted picture is light already: the veil starts low, LIFT_VEIL_BASE, and rises only as the check asks)
+			const int* base = lift ? LIFT_VEIL_BASE : list ? LIST_VEIL_BASE : VEIL_BASE;
 			const double pic[5] = {l5top / 255.0, l5top / 255.0, l5low / 255.0, l5low / 255.0, l5low / 255.0};
 			const double yGround = relLum(b.ground);
 			bool allHard = true;
@@ -408,14 +410,49 @@ namespace artbg
 		return backdropOf(t, hue, l95top, l95low, l5top, l5low, false);
 	}
 
+	std::vector<uint8_t> liftedArt(const Art& art)
+	{
+		if (art.rgb.size() != PIXELS * 3) return {};
+		std::vector<uint8_t> out(PIXELS * 3);
+		for (size_t i = 0; i < PIXELS; i++)
+		{
+			Hsl c = toHsl(art.rgb[i * 3] / 255.0, art.rgb[i * 3 + 1] / 255.0, art.rgb[i * 3 + 2] / 255.0);
+			c.l = LIFT_L0 + (LIFT_L1 - LIFT_L0) * c.l;
+			c.s *= LIFT_S;
+			Rgb r = fromHsl(c);
+			out[i * 3] = r.r, out[i * 3 + 1] = r.g, out[i * 3 + 2] = r.b;
+		}
+		return out;
+	}
+
+	// the light theme's part of an Art: the 5th-percentile luminances of the lifted picture (the canvas's two bands,
+	// as artBackdrop measures them), the veil worked out on those, and the page told to lift
+	static Backdrop backdropOfArt(const ThemeColours& t, const Art& art, bool list)
+	{
+		const int hue = art.hasHue ? art.hue : -1;
+		if (relLum(t.bg) <= relLum(t.text) || art.rgb.size() != PIXELS * 3)
+			return backdropOf(t, hue, art.l95top, art.l95low, art.l5top, art.l5low, list);
+		std::vector<uint8_t> up = liftedArt(art);
+		std::vector<double> top, low;
+		for (int y = 0; y < H; y++)
+			for (int x = CANVAS_X0; x < CANVAS_X0 + CANVAS_W; x++)
+			{
+				const uint8_t* p = &up[((size_t)y * W + x) * 3];
+				(y < BAND_ROW ? top : low).push_back(relLum(Rgb{p[0], p[1], p[2]}));
+			}
+		Backdrop b = backdropOf(t, hue, art.l95top, art.l95low, percentile(top, 0.05), percentile(low, 0.05), list, true);
+		b.lift = !b.fallback;
+		return b;
+	}
+
 	Backdrop backdropFor(const ThemeColours& t, const Art& art)
 	{
-		return backdropFor(t, art.hasHue ? art.hue : -1, art.l95top, art.l95low, art.l5top, art.l5low);
+		return backdropOfArt(t, art, false);
 	}
 
 	Backdrop backdropForList(const ThemeColours& t, const Art& art)
 	{
-		return backdropOf(t, art.hasHue ? art.hue : -1, art.l95top, art.l95low, art.l5top, art.l5low, true);
+		return backdropOfArt(t, art, true);
 	}
 
 	// the veil's opacity at a row of a page h tall (STOP_Y's stops, linear between them, as the panels draw it)
@@ -443,6 +480,8 @@ namespace artbg
 		if (w <= 0 || h <= 0) return {};
 		std::vector<uint8_t> out((size_t)w * h * 4, 255);
 		bool picture = !b.fallback && art.rgb.size() == PIXELS * 3;
+		const std::vector<uint8_t> up = picture && b.lift ? liftedArt(art) : std::vector<uint8_t>();
+		const std::vector<uint8_t>& pic = up.empty() ? art.rgb : up;	// (a light theme's: the pastel)
 		// a half of the tall canvas: its rows are those of a canvas twice as tall, the picture's middle columns
 		const bool canvas = half != Half::Whole;
 		const int rows = canvas ? 2 * h : h, first = half == Half::Lower ? h : 0;
@@ -466,8 +505,8 @@ namespace artbg
 			// picture is stretched smoothly, not in steps of whole rows: the GPU's filter then smooths across)
 			const int at256 = std::max(0, ((2 * (first + y) + 1) * H * 256) / (2 * rows) - 128);
 			const int r0 = std::min(at256 >> 8, H - 1), r1 = std::min(r0 + 1, H - 1), t = at256 & 255;
-			const uint8_t* src0 = &art.rgb[(size_t)r0 * W * 3];
-			const uint8_t* src1 = &art.rgb[(size_t)r1 * W * 3];
+			const uint8_t* src0 = &pic[(size_t)r0 * W * 3];
+			const uint8_t* src1 = &pic[(size_t)r1 * W * 3];
 			int veil = half == Half::Upper ? b.veil[0] : veilAt(b, f);
 			const uint8_t ground[3] = {b.ground.r, b.ground.g, b.ground.b};
 			for (int x = 0; x < w; x++)

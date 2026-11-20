@@ -105,3 +105,13 @@ an alpha falling to nothing over `BG_FADE_MS` (0.5 s), on the player page and th
 while it runs); `backdropTick` drops it at the end; a new song's answer meanwhile cancels the leave and fades in.
 The signatures take the fade's step (`|bgout`), `animating()` keeps the loop drawing. The top panel still drops its
 pages at once: on stop it goes back to mpv's idle picture, whose ground is opaque.
+
+## 10. Light themes lift a dark art to a pastel
+
+A dark saturated art (the owner's: mean L 0.26, S 0.51, red-orange) gave a light theme an almost white page: the
+veil's base under the bar (VEIL_BASE 74/86/92 of paper) buried it. Now a light theme lifts the picture first
+(`artbg::liftedArt`: HSL lightness mapped into 0.70..0.92, saturation x0.85 — a pastel of the art), measures its 5th
+percentiles on the lifted picture (`backdropOfArt`), and starts the veil from `LIFT_VEIL_BASE` 30/30/36/42/48, raised
+only as TEXT 4.5:1 and DIM_ON / ACCENT 3:1 ask. `Backdrop::lift` tells composePage to draw the pastel. Generated
+dark red-orange test cover, Light theme: 30 30 36 42 48 (was 58 52 74 86 92), the page a visible rose-orange. Dark
+themes untouched (core_test pins both). Same cache: the lift is applied at compose time, per theme.

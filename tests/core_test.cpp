@@ -14650,6 +14650,26 @@ static void testArtBackdropPage()
 	CHECK(up[0] > seamUp);	// (the picture's top is the canvas's top: lighter than the seam)
 	CHECK(lowp[((size_t)479 * W) * 4] < seamLow);
 	CHECK_EQ(BAND_ROW, 81);
+	// a light theme lifts a dark saturated art to a pastel instead of burying it: a dark red-orange (L 0.26, S 0.51)
+	// needs nearly the whole white veil as it is, far less once lifted, and the page keeps the art's hue
+	const ThemeColours lightT{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20}, {0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};
+	Art ember;
+	ember.hasHue = true;
+	ember.hue = 15;
+	for (size_t i = 0; i < PIXELS; i++) ember.rgb.push_back(100), ember.rgb.push_back(48), ember.rgb.push_back(33);
+	ember.l95top = ember.l95low = 20;
+	ember.l5top = ember.l5low = 18;	// (relative luminance x 255 of that colour, about)
+	Backdrop buried = backdropFor(lightT, ember.hue, ember.l95top, ember.l95low, ember.l5top, ember.l5low);
+	Backdrop lifted = backdropFor(lightT, ember);
+	CHECK_EQ(lifted.fallback, false);
+	CHECK(lifted.lift);
+	CHECK(lifted.veil[2] < buried.veil[2] && lifted.veil[4] < buried.veil[4]);	// (the base under the bar: 74 / 92 buried)
+	CHECK(lifted.veil[4] <= 70);
+	std::vector<uint8_t> lp = composePage(ember, lifted, W, 480, Half::Lower);
+	const uint8_t* mid = &lp[((size_t)240 * W + W / 2) * 4];
+	CHECK(mid[0] > mid[2] + 8);	// (still red-orange, not the paper's grey-white)
+	// a dark theme is untouched by the lift
+	CHECK(!backdropFor(dark, ember).lift);
 }
 
 static void testArtBackdropCache()
