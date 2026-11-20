@@ -70,6 +70,9 @@ namespace artbg
 	// mock-up's 66 / 60 / 80 / 90 / 94 (2026-11-20, the owner: the art a little more visible), most at the top where
 	// the art shows most; the protection still deepens a stop until the theme's text holds 4.5:1
 	constexpr int VEIL_BASE[5] = {58, 52, 74, 86, 92};
+	// the browser's pages (Home, Files, the sections, Settings…): their rows and cards have surfaces of their own, so
+	// the veil starts lighter and even, raised only until TEXT holds 4.5:1 (DIM_ON 3:1) over the picture
+	constexpr int LIST_VEIL_BASE[5] = {44, 44, 50, 54, 58};
 
 	// The art's encoded bytes, RGBA (the alpha is ignored: an art is opaque), w x h. A tiny or empty image gives no
 	// hue and an empty picture (the fallback).
@@ -85,6 +88,7 @@ namespace artbg
 	// degrees from a theme accent with a colour of its own.
 	Backdrop backdropFor(const ThemeColours& theme, int hue, int l95top, int l95low, int l5top, int l5low);
 	Backdrop backdropFor(const ThemeColours& theme, const Art& art);
+	Backdrop backdropForList(const ThemeColours& theme, const Art& art);	// (the browser's: LIST_VEIL_BASE)
 	// The backdrop as one page of RGBA (w x h, straight alpha — opaque), a panel drawing it stretched: the
 	// picture with the veil baked in per row, the theme's part applied to the art's own bytes never (the fallback
 	// a gradient page, a light theme's the one colour of its plain ground). The bottom panel draws the veil live

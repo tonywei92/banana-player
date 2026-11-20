@@ -911,6 +911,7 @@ namespace bp
 		{
 			photo += "|bg" + std::to_string(backdropHash());
 			if (backdropFading()) photo += "." + std::to_string((SDL_GetTicks() - backdropFadeAt()) / 33);
+			if (backdropLeaving()) photo += "|bgout" + std::to_string((SDL_GetTicks() - bgLeaveAt) / 33);
 		}
 		if (p.playingPhoto())
 		{

@@ -284,7 +284,9 @@ namespace artbg
 		return art;
 	}
 
-	Backdrop backdropFor(const ThemeColours& t, int hue, int l95top, int l95low, int l5top, int l5low)
+	// the player's veil (VEIL_BASE, TEXT then DIM_ON at 4.5:1 down the panel) or, `list`, the browser's (LIST_VEIL_BASE:
+	// lighter, TEXT at 4.5:1 and DIM_ON at 3:1 at every stop — its rows and cards bring their own surfaces)
+	static Backdrop backdropOf(const ThemeColours& t, int hue, int l95top, int l95low, int l5top, int l5low, bool list)
 	{
 		Backdrop b;
 		// a light-bodied theme (its BG lighter than its TEXT: Light, Sakura, Gundam, the 16-bit ones) draws the
@@ -327,7 +329,7 @@ namespace artbg
 			b.fallback = false;
 			// the same five stops, whitened for a dark art: each stop's see-through is scaled until the picture's
 			// 5th-percentile luminance under it leaves the theme's TEXT, DIM_ON and ACCENT at 4.5:1
-			const int* base = VEIL_BASE;
+			const int* base = list ? LIST_VEIL_BASE : VEIL_BASE;
 			const double pic[5] = {l5top / 255.0, l5top / 255.0, l5low / 255.0, l5low / 255.0, l5low / 255.0};
 			const double yGround = relLum(b.ground);
 			bool allHard = true;
@@ -369,7 +371,7 @@ namespace artbg
 
 		// the five stops: VEIL_BASE, raised until the picture under them leaves the
 		// theme's TEXT 4.5:1 above y 168 and its DIM_ON 4.5:1 below. More than 96 at every stop: nothing shows.
-		const int* base = VEIL_BASE;
+		const int* base = list ? LIST_VEIL_BASE : VEIL_BASE;
 		const double pic[5] = {l95top / 255.0, l95top / 255.0, l95low / 255.0, l95low / 255.0, l95low / 255.0};
 		const double yGround = relLum(b.ground);
 		bool allHard = true;
@@ -380,7 +382,9 @@ namespace artbg
 			for (int p = base[i]; p <= 96; p++)
 			{
 				double under = yGround * (p / 100.0) + pic[i] * (1 - p / 100.0);
-				if (contrast(ink, under) >= 4.5) { need = p; break; }
+				const bool holds = list ? contrast(relLum(t.text), under) >= 4.5 && contrast(relLum(t.dimOn), under) >= 3.0
+					: contrast(ink, under) >= 4.5;
+				if (holds) { need = p; break; }
 			}
 			if (need <= 96) allHard = false;
 			b.stop[i] = b.ground;
@@ -399,9 +403,19 @@ namespace artbg
 		return b;
 	}
 
+	Backdrop backdropFor(const ThemeColours& t, int hue, int l95top, int l95low, int l5top, int l5low)
+	{
+		return backdropOf(t, hue, l95top, l95low, l5top, l5low, false);
+	}
+
 	Backdrop backdropFor(const ThemeColours& t, const Art& art)
 	{
 		return backdropFor(t, art.hasHue ? art.hue : -1, art.l95top, art.l95low, art.l5top, art.l5low);
+	}
+
+	Backdrop backdropForList(const ThemeColours& t, const Art& art)
+	{
+		return backdropOf(t, art.hasHue ? art.hue : -1, art.l95top, art.l95low, art.l5top, art.l5low, true);
 	}
 
 	// the veil's opacity at a row of a page h tall (STOP_Y's stops, linear between them, as the panels draw it)

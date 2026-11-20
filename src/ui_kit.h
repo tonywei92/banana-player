@@ -590,6 +590,7 @@ namespace bp
 		// frame, whatever else redraws (a marquee step, a slider frame). `fade` under 255 draws it at that alpha
 		// (a cross-fade: the previous backdrop under it at full)
 		// (`half`: the bottom panel's is Lower, the tall canvas's lower half; the gallery's Whole)
+		static constexpr Uint8 HINT_GLASS = 140;	// the hint bar's alpha over the backdrop (55%)
 		SDL_Texture* backdropPage(const artbg::Art& art, const artbg::Backdrop& b, artbg::Half half = artbg::Half::Whole);
 		void backdrop(Rect r, SDL_Texture* page, Uint8 fade = 255);
 	};

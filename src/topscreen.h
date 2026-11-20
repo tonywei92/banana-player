@@ -113,6 +113,10 @@ namespace bp
 		// the pages into the panel (the context current): the fade's pair while one runs; false when they
 		// could not be drawn (no GL program), so the theme's ground is cleared instead
 		bool drawBackdropPages(int w, int h);
+		// the newer page's bytes again for the native styles' ground ink (topviz.cpp: groundTexture), with a serial
+		// that moves when they change
+		std::shared_ptr<const std::vector<uint8_t>> bgGroundPage;
+		uint64_t bgGroundSerial = 0;
 
 	private:
 		// the QR drawn 1:1 into the top window (the context made current here); false when it couldn't be composed

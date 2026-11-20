@@ -5,6 +5,7 @@
 // with no box round them. Then the panel is presented. Nothing else swaps the top window while the style is up, so
 // this path's own swap is what puts each frame on the glass (KMSDRM: Lite's lesson).
 #include "player.h"
+#include "artbackdrop.h"
 #include "settings.h"
 #include "theme.h"
 #include "topscreen.h"
@@ -26,7 +27,7 @@ namespace bp
 			GL_STREAM_DRAW_ = 0x88E0, GL_STATIC_DRAW_ = 0x88E4, GL_BLEND_ = 0x0BE2, GL_DEPTH_TEST_ = 0x0B71, GL_SCISSOR_TEST_ = 0x0C11,
 			GL_CULL_FACE_ = 0x0B44, GL_VERTEX_SHADER_ = 0x8B31, GL_FRAGMENT_SHADER_ = 0x8B30, GL_COMPILE_STATUS_ = 0x8B81,
 			GL_LINK_STATUS_ = 0x8B82, GL_ONE_ = 1, GL_SRC_ALPHA_ = 0x0302, GL_ONE_MINUS_SRC_ALPHA_ = 0x0303, GL_TEXTURE_2D_ = 0x0DE1,
-			GL_RGBA_ = 0x1908, GL_TEXTURE_MIN_FILTER_ = 0x2801, GL_TEXTURE_MAG_FILTER_ = 0x2800, GL_NEAREST_ = 0x2600,
+			GL_RGBA_ = 0x1908, GL_TEXTURE_MIN_FILTER_ = 0x2801, GL_TEXTURE_MAG_FILTER_ = 0x2800, GL_NEAREST_ = 0x2600, GL_LINEAR_ = 0x2601,
 			GL_TEXTURE_WRAP_S_ = 0x2802, GL_TEXTURE_WRAP_T_ = 0x2803, GL_CLAMP_TO_EDGE_ = 0x812F, GL_FRAMEBUFFER_ = 0x8D40,
 			GL_COLOR_ATTACHMENT0_ = 0x8CE0, GL_FRAMEBUFFER_COMPLETE_ = 0x8CD5, GL_COLOR_BUFFER_BIT_ = 0x4000, GL_TEXTURE0_ = 0x84C0;
 
@@ -45,6 +46,12 @@ namespace bp
 			// mpv's layer: its picture on a clear ground, composed over the shapes (lines over the visualizer)
 			unsigned layerProg = 0, layerVbo = 0, layerTex = 0, layerFbo = 0;
 			int lPos = -1, lTex = -1, layerW = 0, layerH = 0;
+			// Match album art's ground under the shapes: the backdrop page as a texture of the shapes' own, and a
+			// program that paints a shape with it at the shape's place on the panel (its VI_BG ink: what hides the
+			// rows behind Grid's ridges, the sun under Horizon's line) — the art shows there, not a band of BG
+			unsigned groundProg = 0, groundTex = 0;
+			int gPos = -1, gCol = -1, gTex = -1;
+			uint64_t groundOf = 0;	// the page's serial in the texture (0: none)
 			bool layerTried = false, layerOk = false, layerFresh = false;
 			// kept from frame to frame: nothing allocated a frame once they've grown
 			std::vector<VizRect> shapes;
@@ -200,11 +207,18 @@ namespace bp
 			const char* lvs = "#version 100\nattribute vec2 pos; varying vec2 uv;\nvoid main() { uv = pos * 0.5 + 0.5; gl_Position = vec4(pos, 0.0, 1.0); }\n";
 			const char* lfs = "#version 100\nprecision mediump float; varying vec2 uv; uniform sampler2D tex;\n"
 							  "void main() { gl_FragColor = texture2D(tex, uv); }\n";
+			const char* gvs = "#version 100\nattribute vec2 pos; attribute vec4 col; varying vec2 uv; varying float a;\n"
+							  "void main() { uv = vec2(pos.x * 0.5 + 0.5, 0.5 - pos.y * 0.5); a = col.a; gl_Position = vec4(pos, 0.0, 1.0); }\n";
+			const char* gfs = "#version 100\nprecision mediump float; varying vec2 uv; varying float a; uniform sampler2D tex;\n"
+							  "void main() { gl_FragColor = vec4(texture2D(tex, uv).rgb, a); }\n";
 #else
 			const char* vs = "#version 150\nin vec2 pos; in vec4 col; out vec4 c;\nvoid main() { c = col; gl_Position = vec4(pos, 0.0, 1.0); }\n";
 			const char* fs = "#version 150\nin vec4 c; out vec4 o;\nvoid main() { o = c; }\n";
 			const char* lvs = "#version 150\nin vec2 pos; out vec2 uv;\nvoid main() { uv = pos * 0.5 + 0.5; gl_Position = vec4(pos, 0.0, 1.0); }\n";
 			const char* lfs = "#version 150\nin vec2 uv; uniform sampler2D tex; out vec4 o;\nvoid main() { o = texture(tex, uv); }\n";
+			const char* gvs = "#version 150\nin vec2 pos; in vec4 col; out vec2 uv; out float a;\n"
+							  "void main() { uv = vec2(pos.x * 0.5 + 0.5, 0.5 - pos.y * 0.5); a = col.a; gl_Position = vec4(pos, 0.0, 1.0); }\n";
+			const char* gfs = "#version 150\nin vec2 uv; in float a; uniform sampler2D tex; out vec4 o;\nvoid main() { o = vec4(texture(tex, uv).rgb, a); }\n";
 #endif
 			g.prog = compileProgram(g, vs, fs);
 			if (!g.prog) return g;
@@ -213,6 +227,14 @@ namespace bp
 			g.GenBuffers(1, &g.vbo);
 			if (g.GenVertexArrays) g.GenVertexArrays(1, &g.vao);
 			g.ok = g.aPos >= 0 && g.aCol >= 0;
+			g.groundProg = compileProgram(g, gvs, gfs);
+			if (g.groundProg)
+			{
+				g.gPos = g.GetAttribLocation(g.groundProg, "pos");
+				g.gCol = g.GetAttribLocation(g.groundProg, "col");
+				g.gTex = g.GetUniformLocation(g.groundProg, "tex");
+				if (g.gPos < 0 || g.gCol < 0) g.groundProg = 0;
+			}
 			g.layerProg = compileProgram(g, lvs, lfs);
 			if (g.layerProg)
 			{
@@ -276,7 +298,45 @@ namespace bp
 		{
 			int first, count;
 			bool blend;
+			bool ground = false;	// painted with the backdrop's page (VizGl::groundProg), not its vertex colour
 		};
+
+		bool groundTexture(VizGl& g, const std::shared_ptr<const std::vector<uint8_t>>& page, uint64_t serial)
+		{
+			// the backdrop's newer page in the shapes' own texture, uploaded when it changed (a 160 x 480 page: once per
+			// art and theme); false when there is none or no program to paint with it
+			if (!g.groundProg || !page || page->size() != (size_t)artbg::W * 480 * 4) return false;
+			if (g.groundOf != serial)
+			{
+				if (!g.groundTex) g.GenTextures(1, &g.groundTex);
+				g.ActiveTexture(GL_TEXTURE0_);
+				g.BindTexture(GL_TEXTURE_2D_, g.groundTex);
+				g.TexParameteri(GL_TEXTURE_2D_, GL_TEXTURE_MIN_FILTER_, GL_LINEAR_);
+				g.TexParameteri(GL_TEXTURE_2D_, GL_TEXTURE_MAG_FILTER_, GL_LINEAR_);
+				g.TexParameteri(GL_TEXTURE_2D_, GL_TEXTURE_WRAP_S_, GL_CLAMP_TO_EDGE_);
+				g.TexParameteri(GL_TEXTURE_2D_, GL_TEXTURE_WRAP_T_, GL_CLAMP_TO_EDGE_);
+				g.TexImage2D(GL_TEXTURE_2D_, 0, GL_RGBA_, artbg::W, 480, 0, GL_RGBA_, GL_UNSIGNED_BYTE_, page->data());
+				g.BindTexture(GL_TEXTURE_2D_, 0);
+				g.groundOf = serial;
+			}
+			return true;
+		}
+
+		void useGroundProgram(VizGl& g, bool on)
+		{
+			// a ground run between the colour runs: its program, the same vertices (pos, and col for the alpha), the
+			// page bound; then the colour program back as it was
+			const unsigned prog = on ? g.groundProg : g.prog;
+			const int pos = on ? g.gPos : g.aPos, col = on ? g.gCol : g.aCol;
+			g.UseProgram(prog);
+			g.EnableVertexAttribArray((unsigned)pos);
+			g.EnableVertexAttribArray((unsigned)col);
+			g.VertexAttribPointer((unsigned)pos, 2, GL_FLOAT_, 0, sizeof(Vert), nullptr);
+			g.VertexAttribPointer((unsigned)col, 4, GL_UNSIGNED_BYTE_, 1, sizeof(Vert), (const void*)(2 * sizeof(float)));
+			g.ActiveTexture(GL_TEXTURE0_);
+			g.BindTexture(GL_TEXTURE_2D_, on ? g.groundTex : 0);
+			if (on) g.Uniform1i(g.gTex, 0);
+		}
 	}
 
 	int TopScreen::nativeWaitMs(Player& shown)
@@ -404,6 +464,7 @@ namespace bp
 			cost.mpvMs += (SDL_GetPerformanceCounter() - t0) * f, cost.mpvRenders++;
 		}
 		if (!g.ok) return;
+		bool groundArt = false;	// the backdrop is the ground: a VI_BG shape is painted with it (groundTexture)
 		const bool gpuTimed = getenv("BP_VIZ_GPU") != nullptr;	// (a debug run: the GPU's time, waited for)
 		if (gpuTimed) g.Finish();
 		const uint64_t t1 = SDL_GetPerformanceCounter();
@@ -421,6 +482,7 @@ namespace bp
 				g.ClearColor(theme::BG.r / 255.0f, theme::BG.g / 255.0f, theme::BG.b / 255.0f, 1);
 				g.Clear(GL_COLOR_BUFFER_BIT_);
 			}
+			else groundArt = groundTexture(g, bgGroundPage, bgGroundSerial);
 		}
 		std::vector<Run> runs;
 		if (withShapes)
@@ -529,7 +591,10 @@ namespace bp
 				// the runs: a translucent shape needs blending; an opaque one joins whatever run it follows unless it's
 				// large (then a run of its own with blending off)
 				const bool own = !opaque || area >= 3000 * sx * sy;	// (3000 px on the 640x480 panel)
-				if (runs.empty() || (own && runs.back().blend == opaque)) runs.push_back({first, count, !opaque});
+				// (the ground's shapes are runs of their own: another program draws them)
+				const bool ground = groundArt && r.ink == VI_BG;
+				if (runs.empty() || runs.back().ground != ground || (own && runs.back().blend == opaque))
+					runs.push_back({first, count, !opaque, ground});
 				else runs.back().count += count;
 			}
 			cost.verts += (long)v.size(), cost.vertsMax = std::max(cost.vertsMax, (int)v.size());
@@ -571,7 +636,9 @@ namespace bp
 				{
 					if (run.blend) g.Enable(GL_BLEND_);
 					else g.Disable(GL_BLEND_);
+					if (run.ground) useGroundProgram(g, true);
 					g.DrawArrays(GL_TRIANGLES_, run.first, run.count);
+					if (run.ground) useGroundProgram(g, false);
 					cost.draws++;
 				}
 			}

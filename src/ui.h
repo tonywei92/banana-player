@@ -1013,14 +1013,20 @@ namespace bp
 		};
 		BackdropSlot bgNow, bgFade;	// what is drawn, and what it fades from while the cross-fade runs
 		Uint32 bgFadeAt = 0;		// when the cross-fade began (0: none is running)
+		Uint32 bgLeaveAt = 0;		// when the song stopped and bgFade began to fade out over the plain ground (0: not)
 		std::string bgAsked;		// the song the worker was last asked for ("" none: nothing plays)
 		// the two slots' pages (Kit::backdropPage: the picture and the theme's veil composed once, one texture),
 		// the bottom panel's own (the fade's goes first); made when first drawn, again only for a new theme
-		SDL_Texture* bgTex = nullptr, *bgFadeTex = nullptr;
+		// Two kinds of each: the player page's veil ([BG_PLAYER]) and the browser's lighter one ([BG_LIST])
+		static constexpr int BG_PLAYER = 0, BG_LIST = 1;
+		SDL_Texture* bgTex[2] = {}, *bgFadeTex[2] = {};
 		int bgTexTheme = -1;	// the theme the pages were composed for
+		static void freePages(SDL_Texture* (&pages)[2]);
 		void backdropTick(Player& p);		// the ask (Ui::tick): once per song, off when the switch is off
-		void drawBackdrop(const Player& shown);		// the player page's ground (its own fade over the plain BG)
+		// the ground (its caller cleared the BG): `kind` BG_PLAYER for the player page, BG_LIST for the browser's
+		void drawBackdrop(const Player& shown, int kind = BG_PLAYER);
 		void dropBackdrop();
+		void leaveBackdrop();	// (the song stopped: the fade out, then dropBackdrop)
 		// what the player page's redraws cost while the backdrop is on (the 5 s timing line: noteDrawCost)
 		struct DrawCost
 		{
@@ -1041,6 +1047,9 @@ namespace bp
 		bool browserBackdrop(const Player& p) const;
 		bool groundIsBackdrop = false;	// this redraw's ground is the backdrop (the shell's header leaves it showing)
 		bool backdropFading() const { return bgFadeAt != 0 && SDL_GetTicks() - bgFadeAt < BG_FADE_MS + 50; }
+		// the song stopped (or the switch went off): the last backdrop fades out on the bottom panel's pages
+		bool backdropLeaving() const { return bgLeaveAt != 0 && SDL_GetTicks() - bgLeaveAt < BG_FADE_MS + 50; }
+		Uint32 backdropLeaveAt() const { return bgLeaveAt; }
 		static constexpr Uint32 BG_FADE_MS = 500;	// the cross-fade, as the spec draws it
 		uint64_t backdropHash() const { return bgNow.hash; }
 		const artbg::Art& backdropArt() const { return bgNow.art; }

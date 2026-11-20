@@ -2427,6 +2427,7 @@ namespace bp
 			sig += "|bg" + std::to_string(ui.backdropHash());
 			if (ui.backdropFading()) sig += "." + std::to_string((SDL_GetTicks() - ui.backdropFadeAt()) / 33);
 		}
+		else if (ui.backdropLeaving()) sig += "|bgout" + std::to_string((SDL_GetTicks() - ui.backdropLeaveAt()) / 33);
 		return sig;
 	}
 }
