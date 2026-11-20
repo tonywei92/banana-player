@@ -306,7 +306,7 @@ namespace bp
 			return h;
 		}
 		if (snap->videoFolders.empty()) { h.crumb = "No Videos or Movies folder on either card"; h.more = false; }
-		else if (snap->videos.empty()) { h.crumb = "Videos is empty"; h.more = false; }
+		else if (snap->videos.empty()) { h.crumb = mediaEmptyWords(snap->videoFolders); h.more = false; }
 		else h.crumb = fromLine(*snap);
 		return h;
 	}
@@ -318,7 +318,7 @@ namespace bp
 		if (row.folder) return;
 		std::string path = row.path, label = row.name;
 		// asked for its list each time it draws, so a Like row says what it is now
-		ui.openMore([this, path, label](const Player&) {
+		ui.openMore([this, path, label](const Player& pl) {
 			MoreSpec m;
 			m.glyph = &G_FILM;
 			m.title = label;
@@ -377,12 +377,16 @@ namespace bp
 				ui.browse->filesDeleteAsk(one, p);
 				return false;
 			}, true});
-			// the list's order, stepped in place (A cycles it); Not finished keeps the store's own newest-first
+			// the section's own column: the list's order, stepped in place (A cycles it; Not finished keeps the
+			// store's own newest-first), where it reads from, the Web dashboard
+			std::vector<MoreItem> section;
 			if (folder.empty() && view != 2)
-				m.rows.push_back({&G_DOWN, "Sort", "", "", [this](Player&) {
+				section.push_back({&G_DOWN, "Sort", "", "", [this](Player&) {
 					sortStep(1);
 					return false;
 				}, false, false, false, true, SORT_LABELS[sort]});
+			for (auto& r : ui.sourceMoreRows(LibKind::Videos, pl)) section.push_back(r);
+			ui.moreTwoColumns(m, section);
 			return m;
 		});
 	}

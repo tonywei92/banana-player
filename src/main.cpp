@@ -556,6 +556,8 @@ int main(int argc, char** argv)
 		});
 		coverWorker->setStateDir(opts.stateDir);	// (Match album art's cache: <state dir>/artbg, the worker's own)
 		ui.manga->coverWorker = coverWorker;
+		// the first start: an empty Videos, Music and Books on the main card where a section has no folder (once)
+		bp::makeLibraryFolders(opts.stateDir);
 		// the cards' media index (Music, Videos and Search read it; docs/redesign/components.md › "Search and
 		// Music: the index"): a pass on this thread at start and one when the cards change, never destroyed (its
 		// thread may be mid-probe at exit). Search reads the answer through ui.mediaIndex (Music and Videos later)

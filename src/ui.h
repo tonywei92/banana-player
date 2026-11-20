@@ -13,6 +13,7 @@
 #include "coverworker.h"
 #include "netstore.h"
 #include "networker.h"
+#include "mediaindex.h"
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <string>
@@ -489,6 +490,14 @@ namespace bp
 		struct MoreSheet;
 		void openMore(std::function<MoreSpec(const Player&)> build, const char* name = "more",
 			std::function<bool()> alive = {}, std::function<void()> ended = {}, int at = 0);
+		// ---- where Videos, Music and Books read from (ui_sources.cpp): the More sheets' right column ("Where videos come
+		// from", "Web dashboard") and the Sources sheet each opens (docs/notes/2026-11-20-library-sources.md) ----
+		// m.rows are the sheet's own (left); `section` goes in a right column beside them
+		void moreTwoColumns(MoreSpec& m, std::vector<MoreItem> section);
+		// the section's rows: where it reads from (its note the folder count), then the Web dashboard (its note live)
+		std::vector<MoreItem> sourceMoreRows(LibKind kind, const Player& p);
+		MoreItem webDashboardRow(const Player& p);
+		void openSources(LibKind kind);
 		// test only: every ui_kit.h "KIT VARIANTS" piece on one page, for a `shot:` (--press gallery:variants[:PAGE], 1..14)
 		struct VariantsGallery;
 		// ---- the player screen (Page::Main: a video, a song; a photo's viewer is still here in Ui): an area,

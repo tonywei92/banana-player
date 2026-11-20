@@ -502,9 +502,45 @@ static void testMediaIndex()
 			setenv("BP_INDEX", both.c_str(), 1);
 			MediaFolders f = mediaFolders();
 			CHECK_EQ(f.music.size(), (size_t)3);
-			CHECK_EQ(mediaFromWords(f.music), "Music on both cards");
+			CHECK_EQ(mediaFromWords(f.music), "3 folders on both cards");
 			CHECK_EQ(mediaCards().size(), (size_t)2);
 			rmrf(C2);
+		}
+		if (hadIndex) setenv("BP_INDEX", hadIndex, 1); else unsetenv("BP_INDEX");
+		if (hadBrowse) setenv("BP_BROWSE", hadBrowse, 1); else unsetenv("BP_BROWSE");
+	}
+
+	// ---- the libraries' sources: the count rule, the empty words, the first start's folders
+	{
+		const char* hadIndex = getenv("BP_INDEX"), *hadBrowse = getenv("BP_BROWSE");
+		char cardA[] = "/tmp/bp-src-a-XXXXXX", cardB[] = "/tmp/bp-src-b-XXXXXX", stateD[] = "/tmp/bp-src-s-XXXXXX";
+		if (mkdtemp(cardA) && mkdtemp(cardB) && mkdtemp(stateD))
+		{
+			std::string A = cardA, B = cardB, S = stateD;
+			auto isDirectory = [](const std::string& p) { struct stat st; return stat(p.c_str(), &st) == 0 && S_ISDIR(st.st_mode); };
+			std::string both = A + ":" + B;
+			setenv("BP_INDEX", both.c_str(), 1);
+			CHECK_EQ(mediaFromWords({A + "/Videos", A + "/Movies", B + "/Videos"}), "3 folders on both cards");
+			CHECK_EQ(mediaFromWords({A + "/Videos", A + "/Movies", A + "/roms/videos"}), "3 folders on this card");
+			CHECK_EQ(mediaEmptyWords({A + "/Videos"}), "Videos is empty on this card");
+			CHECK_EQ(mediaEmptyWords({A + "/Videos", B + "/Movies"}), "Videos and Movies are empty on both cards");
+			CHECK_EQ(mediaEmptyWords({}), "");
+			CHECK_EQ(cardWord(B + "/Music"), "Second card");
+			CHECK_EQ(sourceLabel(A + "/roms/videos"), "This card / roms / videos");
+			// first start: only the main card, only the sections with no folder of any of their names
+			mkdirAt(A + "/movies");
+			mkdirAt(B + "/Books");
+			CHECK_EQ(makeLibraryFolders(S), 2);			// Music and Books on A; Videos is "movies"
+			CHECK_EQ(isDirectory(A + "/Music"), true);
+			CHECK_EQ(isDirectory(A + "/Books"), true);
+			CHECK_EQ(isDirectory(A + "/Videos"), false);
+			CHECK_EQ(isDirectory(B + "/Music"), false);	// never on a second card
+			rmrf(A + "/Music");
+			CHECK_EQ(makeLibraryFolders(S), 0);			// once: a deleted folder stays deleted
+			CHECK_EQ(isDirectory(A + "/Music"), false);
+			rmrf(A);
+			rmrf(B);
+			rmrf(S);
 		}
 		if (hadIndex) setenv("BP_INDEX", hadIndex, 1); else unsetenv("BP_INDEX");
 		if (hadBrowse) setenv("BP_BROWSE", hadBrowse, 1); else unsetenv("BP_BROWSE");

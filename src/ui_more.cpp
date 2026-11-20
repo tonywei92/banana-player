@@ -160,7 +160,7 @@ namespace bp
 				row.key = it.key;
 				row.pressed = pressed == at;
 				row.focused = cursor == at;
-				row.off = it.off;
+				row.off = it.off || it.dim;
 				row.danger = it.danger;
 				row.lit = it.lit;
 				row.font = F_P16;
@@ -175,7 +175,7 @@ namespace bp
 			MoreSpec m = build(p);
 			std::string sig = std::to_string(cursor) + "," + std::to_string(pressed) + "," + std::to_string(ui.touchIsLocked()) + m.title + "|" + m.note;
 			for (auto* list : {&m.chips, &m.tiles, &m.rows})
-				for (auto& it : *list) sig += "|" + it.label + ":" + it.value + ":" + it.note + (it.off ? "o" : "") + (it.away ? "a" : "") + (it.lit ? "l" : "");
+				for (auto& it : *list) sig += "|" + it.label + ":" + it.value + ":" + it.note + (it.off ? "o" : "") + (it.dim ? "d" : "") + (it.away ? "a" : "") + (it.lit ? "l" : "");
 			return sig;
 		}
 	};

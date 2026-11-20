@@ -839,7 +839,7 @@ namespace bp
 	std::vector<std::string> Ui::Home::emptyText(const Player& p) const
 	{
 		return p.settings.keepHistory
-			? std::vector<std::string>{"What you play shows up here, so you can carry on.", "Start with the files on your card, or send some from a phone."}
+			? std::vector<std::string>{"What you play shows up here, so you can carry on.", "Folders named Videos, Music and Books fill those sections by themselves; or send files from a phone."}
 			: std::vector<std::string>{"What you play isn't kept, so there is nothing here to carry on from.", "Turn the history on in Settings \xE2\x80\xBA Files & history."};
 	}
 
@@ -1008,7 +1008,7 @@ namespace bp
 		if (hp.shortcuts > 0)
 		{
 			bool liked = ui.browse->playlists->plStore && ui.browse->playlists->plStore->likedCount() > 0;
-			const char* names[3] = {liked ? "Shuffle Liked" : "Browse Files", "Send from phone", "All recent"};
+			const char* names[3] = {liked ? "Shuffle Liked" : "Browse Files", "Web dashboard", "All recent"};
 			const Glyph* glyphs[3] = {liked ? &G_HEART_S : &G_CARD, &G_WEB, &G_CLOCK};
 			for (int i = 0; i < hp.shortcuts; i++)
 			{

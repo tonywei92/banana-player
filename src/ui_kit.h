@@ -615,6 +615,7 @@ namespace bp
 		bool stay = false;	// the sheet stays open (the row says what it is now: Like; a chip changed in place)
 		std::string value;	// a chip's state ("All", "Fit")
 		bool away = false;	// a chip away from its normal state (yellow, with a dot)
+		bool dim = false;	// drawn dim but still chosen (a folder that holds nothing: A still opens it)
 	};
 	struct Ui::MoreSpec
 	{

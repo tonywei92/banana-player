@@ -4,7 +4,7 @@
 //
 // Where the shelf comes from (the index holds songs and videos only): the readers' own places store
 // (<state>/doc-places.conf, the doc places — every book opened from anywhere, newest first, with its place) and the
-// folders named Books and Documents at the top of each card (src/mediaindex.h's bookFolders/listBooks, the same
+// folders named Books, Ebook and Ebooks at the top of each card (src/mediaindex.h's bookFolders/listBooks, the same
 // walk as the index's). The two are merged, by name; the places' ones carry their progress. Every cover is the
 // kit's drawn one (bookPlaceholder, keyed by the name) — the readers' own cover decoding is a later step.
 //
@@ -43,7 +43,7 @@ namespace bp
 		mutable std::vector<Shelf> reading;	// the doc places' books, newest first (the newest five are the strip)
 		mutable std::vector<Shelf> shelf;	// every book on the cards: the places' and the folders', by name
 		mutable std::string placesKey;	// the doc places as last built from (the front entries' words)
-		mutable std::string fromWords;	// "Books and Documents on both cards", as the folders were last read
+		mutable std::string fromWords;	// "Books and Ebooks on both cards", as the folders were last read
 		mutable int rootsSeen = -1;		// the roots serial the shelf was built at
 		void build() const;
 		std::string placesNow() const;

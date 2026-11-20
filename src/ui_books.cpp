@@ -115,7 +115,7 @@ namespace bp
 	void Ui::Books::openMoreSheet(const Shelf& book, Player&)
 	{
 		std::string path = book.path, label = book.name;
-		ui.openMore([this, path, label](const Player&) {
+		ui.openMore([this, path, label](const Player& pl) {
 			MoreSpec m;
 			m.glyph = &G_BOOK;
 			m.title = label;
@@ -130,6 +130,7 @@ namespace bp
 				ui.showInFolder(path, p);
 				return false;
 			}});
+			ui.moreTwoColumns(m, ui.sourceMoreRows(LibKind::Books, pl));
 			return m;
 		});
 	}
@@ -164,13 +165,14 @@ namespace bp
 		{
 			h.title = "Books";
 			h.more = false;
+			h.crumb = fromWords.empty() ? "No Books or Ebooks folder on either card" : mediaEmptyWords(bookFolders());
 			return h;
 		}
 		h.title = "Books";
 		h.more = true;
-		// the crumb: how much and where from ("21 books · Books and Ebooks on both cards")
-		h.crumb = std::to_string(shelf.size()) + (shelf.size() == 1 ? " book" : " books") +
-			(fromWords.empty() ? "" : " \xC2\xB7 " + fromWords);
+		// the crumb: where from and how much ("From Books and Ebooks on both cards · 21 books")
+		std::string count = std::to_string(shelf.size()) + (shelf.size() == 1 ? " book" : " books");
+		h.crumb = fromWords.empty() ? count : "From " + fromWords + " \xC2\xB7 " + count;
 		return h;
 	}
 

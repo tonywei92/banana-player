@@ -177,7 +177,14 @@ folder**, **Info**, then the file's own rows — **Copy…**, **Move…**, **Ren
 plays can't be moved, renamed or deleted until it's stopped) — and **Sort**, stepped in place: by **Name** (the
 usual), **Newest first** or **Biggest first** (Not finished always keeps its own newest-first). A delete, a rename
 or a move done, the index walks the cards again, so the list is true again a moment later. **◀/▶** page the list,
-**B** leaves a folder (or goes Home). With no Videos folder on either
+**B** leaves a folder (or goes Home). **X** also ends in two rows on the right, the same on Videos, Music and
+Books: **Where videos come from** opens the **Sources** sheet (each folder read now as card / folder with its count,
+**A** opens it in Files, one that holds nothing is dim; the Web dashboard's address; the naming rule) and **Web
+dashboard** opens its page. The line under the title says where the list reads from (`From Videos and Movies on both
+cards · 86 videos`, three or more counted: `From 3 folders on both cards`; Books reads **Books**, **Ebook** and
+**Ebooks**). The first time the app starts, an empty **Videos**, **Music** and **Books** are made on the main card
+for each section with no folder of its names (once, never on a second card), so a card in a computer shows where
+things go; the Web dashboard's Videos, Music and Books tabs **Upload** into them. With no Videos folder on either
 card the page says so, with **Browse Files** (A) and **Web dashboard** (Y); while a card is first read a notice row
 says which card, how many folders are done, and a bar that follows them; the crumb counts what has been read so
 far. A video anywhere else on a card is not listed here: it is in Files, found by Search, kept in

@@ -94,7 +94,7 @@ Unavailable, by the one rule: 45%, the reason in the note.
 | Settings › the Web dashboard tile | Summary “Off in incognito”. |
 | The Web dashboard page | The switch at 45% with “Off in incognito”. One sentence: “The Web dashboard is off while incognito is on. It comes back by itself when you leave incognito.” One key: **Leave incognito** (Y). No QR, address or PIN. |
 | The header | No globe. The hat-and-glasses badge. |
-| Home’s “Send from phone”, Books’ “Web dashboard” key, Network › X › Web dashboard… | Open the page above. |
+| Home’s “Web dashboard”, Books’ “Web dashboard” key, Network › X › Web dashboard… | Open the page above. |
 | X › More › Play on… | Not offered: no browser can be there. |
 
 ### Leaving incognito

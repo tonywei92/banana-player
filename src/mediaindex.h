@@ -77,6 +77,22 @@ namespace bp
 	// by the file's name less its extension, natural and case-insensitive
 	std::vector<MediaBook> listBooks(const std::vector<std::string>& folders);
 
+	// ---- where a library reads from (the Sources sheet, the first start's folders; docs/notes/2026-11-20-library-sources.md)
+
+	enum class LibKind { Videos, Music, Books };
+	// every folder the section reads, full paths, in card order
+	std::vector<std::string> libraryFolders(LibKind kind);
+	// "This card" for the first root, "Second card" for another ("" for a path under none)
+	std::string cardWord(const std::string& path);
+	// "This card / Videos", "Second card / Movies", "This card / roms / videos": the card, then the path under it
+	std::string sourceLabel(const std::string& folder);
+	// "Videos is empty on this card", "Videos and Movies are empty on both cards" ("" when there are no folders)
+	std::string mediaEmptyWords(const std::vector<std::string>& folders);
+	// At the first start: on the main card (the first root, never a second one), an empty Videos, Music and Books
+	// for each section that has no folder by any of its names there. Once: a marker in the state folder, written
+	// whatever the card held. Returns how many were made; each is logged to stderr (log.txt).
+	int makeLibraryFolders(const std::string& stateDir);
+
 	// ---- the folded word
 
 	// one case- and accent-insensitive form of a text, for matching only: lower-case, the Latin accents off

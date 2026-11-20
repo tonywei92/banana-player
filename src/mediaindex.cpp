@@ -7,6 +7,9 @@
 #include "playlist.h"
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
 #include <cstdlib>
 #include <dirent.h>
 #include <fstream>
@@ -240,6 +243,15 @@ namespace bp
 	std::string mediaFromWords(const std::vector<std::string>& folders)
 	{
 		if (folders.empty()) return "";
+		// one card's folders or both: the folders' card roots (a roms folder is the main card's)
+		std::set<std::string> on;
+		std::vector<std::string> cards = indexCards();
+		for (auto& f : folders)
+			for (auto& c : cards)
+				if (f == c || f.compare(0, c.size() + 1, c + "/") == 0) { on.insert(c); break; }
+		std::string where = on.size() > 1 ? " on both cards" : " on this card";
+		// three or more are counted, never cut short ("From 3 folders on both cards"); the Sources sheet lists them
+		if (folders.size() >= 3) return std::to_string(folders.size()) + " folders" + where;
 		// the kinds the folders' names stand for, in a fixed order, each once ("Musics" is Music)
 		static const struct { const char* plain; const char* word; } KIND[] = {
 			{"music", "Music"}, {"videos", "Videos"}, {"movies", "Movies"}, {"books", "Books"}, {"ebook", "Ebook"}, {"ebooks", "Ebooks"}};
@@ -258,13 +270,88 @@ namespace bp
 			kinds += KIND[i].word;
 		}
 		if (kinds.empty()) return "";
-		// one card's folders or both: the folders' card roots (a roms folder is the main card's)
-		std::set<std::string> on;
+		return kinds + where;
+	}
+
+	std::vector<std::string> libraryFolders(LibKind kind)
+	{
+		if (kind == LibKind::Books) return bookFolders();
+		MediaFolders mf = mediaFolders();
+		return kind == LibKind::Music ? mf.music : mf.videos;
+	}
+
+	std::string cardWord(const std::string& path)
+	{
 		std::vector<std::string> cards = indexCards();
-		for (auto& f : folders)
-			for (auto& c : cards)
-				if (f == c || f.compare(0, c.size() + 1, c + "/") == 0) { on.insert(c); break; }
-		return kinds + (on.size() > 1 ? " on both cards" : " on this card");
+		for (size_t i = 0; i < cards.size(); i++)
+			if (path == cards[i] || path.compare(0, cards[i].size() + 1, cards[i] + "/") == 0)
+				return i == 0 ? "This card" : "Second card";
+		return "";
+	}
+
+	std::string sourceLabel(const std::string& folder)
+	{
+		std::vector<std::string> cards = indexCards();
+		for (auto& c : cards)
+			if (folder.compare(0, c.size() + 1, c + "/") == 0)
+			{
+				std::string rest = folder.substr(c.size() + 1), out;
+				for (char ch : rest)
+					out += ch == '/' ? std::string(" / ") : std::string(1, ch);
+				return cardWord(folder) + " / " + out;
+			}
+		return folder;
+	}
+
+	std::string mediaEmptyWords(const std::vector<std::string>& folders)
+	{
+		std::string from = mediaFromWords(folders);
+		if (from.empty()) return "";
+		size_t at = from.find(" on ");
+		std::string kinds = from.substr(0, at), where = from.substr(at);
+		bool plural = kinds.find(" and ") != std::string::npos || kinds.find(" folders") != std::string::npos;
+		return kinds + (plural ? " are empty" : " is empty") + where;
+	}
+
+	int makeLibraryFolders(const std::string& stateDir)
+	{
+		std::vector<std::string> cards = indexCards();
+		if (cards.empty() || stateDir.empty()) return 0;
+		std::string marker = stateDir + "/library-folders-made";
+		struct stat st;
+		if (stat(marker.c_str(), &st) == 0) return 0;
+		const std::string& main = cards[0];
+		std::string prefix = main == "/" ? "/" : main + "/";
+		bool has[3] = {false, false, false};
+		if (DIR* d = opendir(main.c_str()))
+		{
+			while (dirent* e = readdir(d))
+			{
+				if (e->d_name[0] == '.') continue;
+				bool dir = e->d_type == DT_DIR;
+				if (e->d_type == DT_UNKNOWN || e->d_type == DT_LNK) dir = isDir(prefix + e->d_name);
+				if (!dir) continue;
+				if (isVideosFolderName(e->d_name)) has[0] = true;
+				if (isMusicFolderName(e->d_name)) has[1] = true;
+				if (isBookFolderName(e->d_name)) has[2] = true;
+			}
+			closedir(d);
+		}
+		else return 0;	// an unreadable card: try again at the next start
+		static const char* NAME[3] = {"Videos", "Music", "Books"};
+		int made = 0;
+		for (int i = 0; i < 3; i++)
+		{
+			if (has[i]) continue;
+			if (mkdir((prefix + NAME[i]).c_str(), 0755) == 0)
+			{
+				made++;
+				fprintf(stderr, "library: made %s%s on the main card (first start)\n", prefix.c_str(), NAME[i]);
+			}
+			else fprintf(stderr, "library: could not make %s%s: %s\n", prefix.c_str(), NAME[i], strerror(errno));
+		}
+		if (FILE* f = fopen(marker.c_str(), "w")) { fputs("1\n", f); fclose(f); }
+		return made;
 	}
 
 	bool isBookFolderName(const std::string& name)

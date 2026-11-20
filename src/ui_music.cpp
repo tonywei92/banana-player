@@ -307,7 +307,7 @@ namespace bp
 			}
 		}
 		else if (snap->musicFolders.empty()) h.crumb = "No Music folder on either card";
-		else if (snap->songs.empty()) h.crumb = "Music is empty";
+		else if (snap->songs.empty()) h.crumb = mediaEmptyWords(snap->musicFolders);
 		else { h.crumb = fromLine(*snap); h.more = true; }
 		return h;
 	}
@@ -347,7 +347,7 @@ namespace bp
 		else if (view == 0 && cursor >= 0 && cursor < (int)snap->albums.size()) album = cursor;
 		else if (view == 1 && cursor >= 0 && cursor < (int)snap->artists.size()) artist = cursor;
 		// asked for its list each time it draws, so a Like row says what it is now
-		ui.openMore([this, songPath, songTitle, album, artist](const Player&) {
+		ui.openMore([this, songPath, songTitle, album, artist](const Player& pl) {
 			MoreSpec m;
 			auto snap = this->snapshot();
 			if (!snap) { m.title = "Music"; return m; }
@@ -406,6 +406,7 @@ namespace bp
 						ui.showInFolder(path, p);
 						return false;
 					}));
+			ui.moreTwoColumns(m, ui.sourceMoreRows(LibKind::Music, pl));
 			return m;
 		});
 	}
