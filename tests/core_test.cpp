@@ -8620,38 +8620,26 @@ static void testNet()
 
 static void testKeyboard()
 {
-	auto keys = keyboardLayout(false, ShiftState::Off, 0, 200, 640, 260);
-	CHECK_EQ(keys.size(), (size_t)48);
-	// the rows tile the width exactly
-	for (int r = 0; r < 5; r++)
-	{
-		int left = 1 << 30, right = 0;
-		for (auto& k : keys)
-			if (k.row == r) { left = std::min(left, k.x); right = std::max(right, k.x + k.w); }
-		CHECK_EQ(left, 0);
-		CHECK_EQ(right, 640);
-	}
-	int q = keyboardHome(keys);
-	CHECK_EQ(keys[q].label, std::string("q"));
-	// right from q: w; left from q: round to the row's end (-)
-	CHECK_EQ(keys[keyboardMove(keys, q, 1, 0)].label, std::string("w"));
-	CHECK_EQ(keys[keyboardMove(keys, q, -1, 0)].label, std::string("-"));
-	// up from q: 1; up from 1: round to the bottom row's nearest (#+=, under it)
-	int one = keyboardMove(keys, q, 0, -1);
-	CHECK_EQ(keys[one].label, std::string("1"));
-	CHECK_EQ(keys[keyboardMove(keys, one, 0, -1)].label, std::string("#+="));
-	// down from b (row 3): Space
-	int b = -1;
-	for (int i = 0; i < (int)keys.size(); i++)
-		if (keys[i].label == "b") b = i;
-	CHECK_EQ(keys[keyboardMove(keys, b, 0, 1)].action == KeyAction::Space, true);
-	CHECK_EQ(keys[keyboardHit(keys, keys[b].x + 2, keys[b].y + 2)].label, std::string("b"));
-	CHECK_EQ(keyboardHit(keys, 5, 100), -1);
-	// shifted: capitals, typed as drawn
-	auto up = keyboardLayout(false, ShiftState::Once, 0, 200, 640, 260);
-	CHECK_EQ(up[keyboardHome(up)].text, std::string("Q"));
-	auto sym = keyboardLayout(true, ShiftState::Off, 0, 200, 640, 260);
-	CHECK_EQ(sym[11].text, std::string("!"));
+	// the kit's keyboard: three letter rows (10, 9, 7) and a bottom row of four layers, Space, Del, Done
+	lay::Keyboard k = lay::keyboard({16, 84, 608, 400}, {}, {10, 9, 7}, 4);
+	CHECK_EQ(lay::keyboardKeys(k), 26 + 7);
+	for (auto& row : k.rows)
+		for (auto& r : row) CHECK_EQ(r.x >= 16 && r.x + r.w <= 624, true);
+	CHECK_EQ(k.bottom.back().x + k.bottom.back().w, 624);
+	// a finger on a key: its number; on the field: none
+	CHECK_EQ(lay::keyboardHit(k, k.rows[0][0].x + 2, k.rows[0][0].y + 2), 0);
+	CHECK_EQ(lay::keyboardHit(k, k.rows[1][0].x + 2, k.rows[1][0].y + 2), 10);
+	CHECK_EQ(lay::keyboardHit(k, k.bottom.back().x + 2, k.bottom.back().y + 2), 32);
+	CHECK_EQ(lay::keyboardHit(k, k.field.x + 2, k.field.y + 2), -1);
+	// right from the row's last key: round to its first; left from the first: round to the last
+	CHECK_EQ(lay::keyboardMove(k, 9, 1, 0), 0);
+	CHECK_EQ(lay::keyboardMove(k, 0, -1, 0), 9);
+	// up from the first row stays; down from q lands on the key under it (a), down from the last row stays
+	CHECK_EQ(lay::keyboardMove(k, 0, 0, -1), 0);
+	CHECK_EQ(lay::keyboardMove(k, 0, 0, 1), 10);
+	CHECK_EQ(lay::keyboardMove(k, 32, 0, 1), 32);
+	// from the bottom row, up goes to the letters' last row
+	CHECK_EQ(lay::keyboardMove(k, 32, 0, -1) >= 19 && lay::keyboardMove(k, 32, 0, -1) < 26, true);
 
 	TextEdit t;
 	t.set("ab");

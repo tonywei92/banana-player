@@ -635,13 +635,12 @@ namespace bp
 		static constexpr int BATTERY_W = 110;	// what a title leaves for it
 
 		// the on-screen keyboard, over the bottom panel: a form's field typed in
-		bool kbOpen = false, kbSymbols = false;
-		ShiftState kbShift = ShiftState::Off;
-		int kbCursor = 0, kbField = 0, kbPressed = -1;
+		bool kbOpen = false;
+		int kbLayer = 0, kbCursor = 0, kbField = 0, kbPressed = -1;	// kbPressed: a key's number, -2 the back key
 		Uint32 kbActiveAt = 0;	// the last key: the caret shows steadily for a moment after it, then blinks
 		bool kbCaretShown() const;
 		TextEdit kbEdit;
-		std::vector<KeyDef> kbKeys() const;
+		lay::Keyboard kbLayout() const;	// the kit's keyboard over the panel (ui_keyboard.cpp)
 		void openKeyboard(int field, const std::string& text);
 		void kbPress(Button b);
 		void kbPointer(const Pointer& pt, int x, int y);

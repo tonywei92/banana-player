@@ -712,6 +712,60 @@ namespace bp
 			return k;
 		}
 
+		namespace
+		{
+			// each row of keys as a list of boxes: the specials, the letter rows, the bottom row
+			std::vector<const std::vector<Box>*> keyRows(const Keyboard& k)
+			{
+				std::vector<const std::vector<Box>*> rows;
+				if (!k.special.empty()) rows.push_back(&k.special);
+				for (auto& r : k.rows) rows.push_back(&r);
+				rows.push_back(&k.bottom);
+				return rows;
+			}
+		}
+
+		int keyboardKeys(const Keyboard& k)
+		{
+			int n = 0;
+			for (auto* r : keyRows(k)) n += (int)r->size();
+			return n;
+		}
+
+		int keyboardHit(const Keyboard& k, int x, int y)
+		{
+			int i = 0;
+			for (auto* r : keyRows(k))
+				for (const Box& b : *r)
+				{
+					if (b.hit(x, y)) return i;
+					i++;
+				}
+			return -1;
+		}
+
+		int keyboardMove(const Keyboard& k, int from, int dx, int dy)
+		{
+			auto rows = keyRows(k);
+			int start = 0, g = 0;
+			while (g + 1 < (int)rows.size() && from >= start + (int)rows[g]->size()) start += (int)rows[g++]->size();
+			int n = (int)rows[g]->size(), at = std::clamp(from - start, 0, n - 1);
+			if (dx) return start + ((at + dx) % n + n) % n;
+			if (!dy) return from;
+			int ng = std::clamp(g + dy, 0, (int)rows.size() - 1);
+			if (ng == g) return from;
+			const Box& cur = (*rows[g])[at];
+			int cx = cur.x + cur.w / 2, best = 0, bestD = 1 << 30, nstart = 0;
+			for (int r = 0; r < ng; r++) nstart += (int)rows[r]->size();
+			for (int i = 0; i < (int)rows[ng]->size(); i++)
+			{
+				const Box& b = (*rows[ng])[i];
+				int d = std::abs(b.x + b.w / 2 - cx);
+				if (d < bestD) { bestD = d; best = i; }
+			}
+			return nstart + best;
+		}
+
 		VolumeBar volumeBar(Box area, int max)
 		{
 			VolumeBar v;

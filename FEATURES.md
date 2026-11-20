@@ -81,6 +81,8 @@ Every section now shares one frame: a **rail** down the left with a **Search** k
 **Files**, **Videos**, **Music**, **Books**, **Extensions**, and at the foot the **Now playing key** over
 **Settings** (no START cap: START is Settings from every screen).
 **Network** is a tab of **Files**: the places and the connections' list each have a strip, **Files** | **Network**, stepped with **L / R** or a tap (the folders under them have none).
+
+**The on-screen keyboard** (a connection's fields, a name, a repository address, Find) is the same keyboard Search uses, over the whole panel, with four layers: **abc**, **ABC**, **123** and **#+=** (**Y** swaps abc and ABC, **SELECT** goes to 123 and back). **A** types, **B** deletes (on an empty field it closes, keeping what was there), **X** is a space, **L / R** move the caret, **START** is Done; a tap does the same on the keys. A password shows stars; a port takes digits only.
 **L2/R2** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
 52 units tall, 45 with six sections so all show at once; when they still don't fit, a finger drag scrolls them
 (Search, the Now playing key and Settings stay put). Arriving at a section starts and stops nothing, and no cell
