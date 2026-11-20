@@ -371,6 +371,12 @@ namespace bp
 		return e == "txt" || e == "epub" || isPdfName(name);
 	}
 
+	bool isBookName(const std::string& name)
+	{
+		// what Books shows: an EPUB, a PDF, a comic. Not a TXT (Files and the text viewer open those)
+		return extOf(name) == "epub" || isPdfName(name) || isComicName(name);
+	}
+
 	bool isPageBookName(const std::string& name)
 	{
 		std::string e = extOf(name);
