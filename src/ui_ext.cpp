@@ -51,8 +51,7 @@ namespace bp
 	{
 		// The rail's Extensions cell. Arriving starts and stops nothing: its list, or Manga again where it was left
 		// (docs/redesign "Arriving stops nothing"), except while a video plays: then the list, so a stray L / R can
-		// never stop a film. Adopted: the page draws in the shell's body on the kit (no bridged old body).
-		ui.shell->adopt(Page::ExtSection);
+		// never stop a film.
 		if (extReturn != Page::ExtSection && p.settings.mangaOn && !videoPlays(p))
 		{
 			ui.page = extReturn == Page::MangaSeries ? Page::MangaSeries : Page::Manga;
@@ -65,7 +64,6 @@ namespace bp
 
 	void Ui::Manga::openExtList(Player& p)
 	{
-		ui.shell->adopt(Page::ExtSection);
 		ui.page = Page::ExtSection;
 		ui.cursor = ui.scroll = 0;
 		extPageCursor = 0;
@@ -125,7 +123,6 @@ namespace bp
 
 	void Ui::Manga::openExtensions(bool fromSettings)
 	{
-		ui.shell->adopt(Page::Extensions);	// drawn on the kit in the shell's body (not bridged)
 		ui.page = Page::Extensions;
 		ui.cursor = ui.scroll = 0;
 		extPressed = ui.pressedBtn = -1;
@@ -145,7 +142,6 @@ namespace bp
 		if (!first) return;
 		extSheet = true;
 		extSheetCursor = 0;
-		ui.shell->adopt(Page::Extensions);
 		ui.page = Page::Extensions;
 		ui.cursor = ui.scroll = 0;
 	}

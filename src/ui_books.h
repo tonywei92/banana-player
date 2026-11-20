@@ -20,7 +20,7 @@ namespace bp
 {
 	struct Ui::Books : Ui::Area
 	{
-		explicit Books(Ui& u) : Area(u) { u.shell->adopt(Page::Books); }
+		explicit Books(Ui& u) : Area(u) {}
 
 		// ---- the area ----
 		bool has(Page pg) const override { return pg == Page::Books; }

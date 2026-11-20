@@ -4,7 +4,7 @@
 // rail has them). All recent is Home's own page: the same filters, every card in the history.
 // A plain struct owned by the browser's area (Ui::Browse::homeView, ui_browse.h; docs/notes/ui-areas.md): Home is a
 // folder of Page::Browse, not a page, so Browse's key and pointer hand it Home's keys and touches (homeKey, homePointer)
-// and drawTracks draws it (drawHome; recent-all: drawAllRecent). Stayed Ui's: what plays a recent file or shows it in
+// and Browse::draw draws it (drawHome; recent-all: drawAllRecent). Stayed Ui's: what plays a recent file or shows it in
 // its folder (openFile, showInFolder), the playing file's chip (every page's), the settings mirrored
 // for drawing (showHidden, mangaOn) and the Home touches Ui::pointer takes before the area's point (the quit dialog
 // over every finger, a card's hold in progress), which call in here where they always were.

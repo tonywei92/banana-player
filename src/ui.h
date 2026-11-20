@@ -735,7 +735,6 @@ namespace bp
 
 		void renderPage(const Player& p);	// the page into the renderer, not yet shown
 		void drawLeave(const Player& p);	// a photo's Close
-		void drawTracks(const Player& p);
 		// the pieces of a page: the header ("<", the title, the battery), a tab, the footer's hints (a button's name in
 		// yellow, what it does), the cursor's row, a list's scroll bar, a page with nothing to list
 		struct Hint { std::string key, verb; };

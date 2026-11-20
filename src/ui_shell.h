@@ -11,13 +11,13 @@
 namespace bp
 {
 	// What a page tells the shell about its header. The page supplies this and draws its body inside
-	// lay::shell().body; until a page is rebuilt on the kit the shell bridges its old full-panel drawing into the
-	// body box (see beginBody/endBody). `right` is the header's right slot (badges, a group's neighbours), drawn from
+	// lay::shell().body. `right` is the header's right slot (badges, a group's neighbours), drawn from
 	// `right` leftwards and returning its left edge; the title ends left of what it leaves. Search is the rail's key.
 	struct Ui::ShellHead
 	{
 		std::string title, crumb;
 		bool back = true, more = true;
+		bool cancel = false;	// the back key is a cross (adding files to a playlist: it leaves at once)
 		std::vector<Hint> hints;
 		std::function<int(int right, int cy)> right;
 		int rightW = 0;	// the room `right` needs, so the title ends before it
@@ -57,22 +57,6 @@ namespace bp
 		// tap on the rail both come here
 		void openSection(Section s, Player& p);
 
-		// The old bodies draw the whole panel (their own header, hints and 640-wide rows). beginBody renders that
-		// into a texture; endBody copies the 0,54..450 part into layout().body and remembers the mapping so
-		// mapPoint() can send the page's touches where they were drawn. A page rebuilt on the kit calls adopt(pg)
-		// once (in its area's constructor) and draws directly in the body box: no texture, no mapping. The browser's
-		// rebuilt views (Home, All recent, Files, Playlists) share Page::Browse with the pages still on the old
-		// drawing (Network, the forms), so adoptBrowse() says the browser is rebuilt and
-		// adopted(p) tells its views from the rest.
-		bool beginBody(const Player& p);
-		void endBody(const Player& p);
-		// any: a finger already down (a move, a lift) is mapped wherever it is, so a drag that leaves the box goes on
-		bool mapPoint(const Player& p, int& x, int& y, bool any = false) const;
-		void adopt(Page pg);	// the page's body is drawn in layout().body (a screen rebuilt on the kit)
-		void adoptBrowse();	// the browser's rebuilt views: Home, All recent, Files, Playlists
-		bool adopted(Page pg) const;
-		bool adopted(const Player& p) const;	// the page shown draws its body itself (Browse: only its rebuilt views)
-
 		// frame keys and touches (Ui calls them while page() is true): L/R step the sections (Search is passed by), L3
 		// and the rail's Search key open Search's page, the rail's cells open a section, back is B, More is X
 		bool key(Button b, Player& p) override;
@@ -95,17 +79,5 @@ namespace bp
 		int activeIndex(const std::vector<Cell>& cells, Section at) const;
 		bool frameRects(const Player& p, const ShellHead& h, lay::Box& back, lay::Box& more) const;
 		void drawHeader(const ShellHead& h, const Player& p);
-
-		std::set<Page> bodyPages;	// pages whose body is drawn in the shell's box (empty: the old full-panel bodies)
-		bool browseBuilt = false;	// the browser's rebuilt views are drawn in the shell's box
-		SDL_Texture* bodyTex = nullptr;
-		int bodyTexW = 0, bodyTexH = 0;
-		bool bodyTargetOn = false;
-		struct Bridge
-		{
-			bool on = false;
-			int x = 0, y = 0, w = 0, h = 0;	// in panel units
-		} bridge;
-		Bridge bridgeFor(const Player& p) const;
 	};
 }

@@ -1197,14 +1197,15 @@ namespace bp
 	{
 		// the cards' places and the folders under them; Home, All recent, the playlists and the network keep Ui's list
 		// (a folder on a connection too: the same rows, drawn the same way; its listing comes from the worker)
-		if (ui.page != Page::Browse || (playlists->selMode != SEL_NONE && !fileSel)) return false;
+		// (a select mode over the playlists' own pages is theirs: those folders are pseudo dirs)
+		if (ui.page != Page::Browse || playlists->selMode == SEL_EDIT) return false;
 		if (isNetPath(browseDir)) return browseTab == TAB_NETWORK;
 		return browseTab == TAB_LOCAL && (browseDir.empty() || !pseudoDir(browseDir));
 	}
 
 	bool Ui::Browse::tabsOn() const
 	{
-		return (filesPage() && browseDir.empty() && !fileSel) || browseDir == NETROOT;
+		return (filesPage() && browseDir.empty() && !fileSel && !pickMode()) || browseDir == NETROOT;
 	}
 
 	lay::TabPage Ui::Browse::browseTabPage() const
@@ -1305,7 +1306,7 @@ namespace bp
 	{
 		int n = (int)browseRows.size();
 		bool footer = !filesEmpty();
-		return lay::filesPage(tabsBody(), n, fileSel, footer);
+		return lay::filesPage(tabsBody(), n, selecting(), footer && !selecting(), barKeys());
 	}
 
 	int Ui::Browse::filesShown(const Player& p) const { return filesLayout(p).shown; }
@@ -1318,6 +1319,8 @@ namespace bp
 
 	std::vector<Ui::Hint> Ui::Browse::filesHints(const Player& p) const
 	{
+		if (addMode()) return {{"A", "Tick"}, {"SELECT", "All / none"}, {"Y", "Add"}, {"X", "Cancel"}, {"B", "Up"}};
+		if (pickMode()) return {{"A", "Open"}, {"Y", "Add this folder"}, {"X", "Cancel"}, {"B", "Up"}};
 		if (fileSel)
 			return {{"A", "Tick"}, {"SELECT", "All / none"}, {"X", "More"}, {"B", "Done"}};
 		if (clipOp != CLIP_NONE)
@@ -1342,16 +1345,21 @@ namespace bp
 		Rect r = f.row(onScreen);
 		Kit& k = *ui.kit;
 		int cy = r.y + r.h / 2;
-		bool ticked = fileTicked(i);
+		bool boxes = fileSel || addMode();
+		bool ticked = addMode() ? playlists->selTicked(i) : fileTicked(i);
+		// adding: a file a playlist can't take (and, picking a folder, every file) is shown but not for the choosing
+		bool inert = (addMode() || pickMode()) && i >= 0 && i < (int)browseRows.size() && browseRows[i].id == 2 &&
+			!(addMode() && playlists->selTickable(i));
 		if (at) k.flat(r, BUTTON, 10, ACCENT);
-		else if (fileSel && ticked) k.flat(r, SURFACE, 10, k.edgeOf(SURFACE));
-		SDL_Color ink = at ? ACCENT : TEXT;
+		else if (boxes && ticked) k.flat(r, SURFACE, 10, k.edgeOf(SURFACE));
+		SDL_Color ink = at ? ACCENT : inert ? DIM : TEXT;
 		SDL_Color soft = at ? DIM_ON : DIM;
 		int x = r.x + 12, right = r.x + r.w - 12;
-		if (fileSel)
+		if (boxes)
 		{
-			ui.drawGlyphMid(ticked ? G_BOX_ON : G_BOX, x + 11, cy, ticked ? ACCENT : soft);
-			x += 22 + 11;
+			bool tickable = addMode() ? playlists->selTickable(i) : fileTickable(i);
+			if (tickable) ui.drawGlyphMid(ticked ? G_BOX_ON : G_BOX, x + 11, cy, ticked ? ACCENT : soft);
+			if (tickable || addMode()) x += 22 + 11;	// (adding: the names line up whether or not a row has a box)
 		}
 		RowIcon icon = ui.rowIcon(i);
 		const Glyph* g = icon == ICON_RECENT ? &G_CLOCK : icon == ICON_PLACE ? &G_CARD : icon == ICON_FOLDER ? &G_FOLDER
@@ -1390,11 +1398,11 @@ namespace bp
 		}
 		int room = std::max(1, right - noteW - x);
 		std::string name = i >= 0 && i < (int)browseRows.size() ? browseRows[i].label : std::string();
-		if (!fileSel && at) ui.drawMarquee(name, F_SMALL, ink, x, cy, room, 1);
+		if (!boxes && at) ui.drawMarquee(name, F_SMALL, ink, x, cy, room, 1);
 		else
 		{
 			// a file's name keeps its ending when it is cut ("...Sintel.mkv"), as the browser always did
-			if (!fileSel && i >= 0 && i < (int)browseRows.size() && browseRows[i].id == 2) name = ui.elideLeft(name, F_SMALL, room);
+			if (!boxes && i >= 0 && i < (int)browseRows.size() && browseRows[i].id == 2) name = ui.elideLeft(name, F_SMALL, room);
 			ui.drawTextMid(name, F_SMALL, ink, x, cy, room);
 		}
 	}
@@ -1458,7 +1466,8 @@ namespace bp
 		}
 		int scroll = filesScroll(p), n = (int)browseRows.size();
 		for (int k = 0; k < f.shown && scroll + k < n; k++) drawFilesRow(scroll + k, f, k, scroll + k == ui.cursor, p);
-		if (fileSel)
+		if (addMode() || pickMode()) drawAddBar(f);
+		else if (fileSel)
 		{
 			int media = 0;
 			for (auto& path : fileSelOrder)
@@ -1474,6 +1483,73 @@ namespace bp
 		}
 		else if (f.footer.w > 0)
 			ui.drawTextMid(filesFooter(), F_I12, DIM, f.footer.x, f.footer.y + f.footer.h / 2, f.footer.w);
+	}
+
+	bool Ui::Browse::addMode() const { return !fileSel && playlists->selMode == SEL_ADD; }
+	bool Ui::Browse::pickMode() const { return !fileSel && playlists->selMode == SEL_PICK; }
+
+	void Ui::Browse::drawAddBar(const lay::FilesPage& f)
+	{
+		Playlists& pl = *playlists;
+		int n = pl.selCount();
+		Kit::BarKey keys[3];
+		if (addMode())
+		{
+			int ticked = 0, files = pl.selFolderFiles(ticked);
+			bool dropping = pl.dropArmed && SDL_GetTicks() - pl.dropArmed < QUIT_WINDOW_MS;
+			keys[0] = {&G_BOX_ON, files && ticked == files ? "None" : "All", "", Kit::Tone::Normal, filesPressed == 100, !addBarOn(0)};
+			keys[1] = {dropping ? nullptr : &G_CROSS, dropping ? "Again: drop " + std::to_string(n) : std::string("Cancel"), "",
+				Kit::Tone::Normal, filesPressed == 101, false};
+			keys[2] = {&G_PLUS, pl.selDest.empty() ? std::string("Add to\xE2\x80\xA6") : "Add " + std::to_string(n), "", Kit::Tone::Normal,
+				filesPressed == 102, !addBarOn(2)};
+			keys[2].primary = n > 0;
+		}
+		else
+		{
+			keys[0] = {&G_CROSS, "Cancel", "", Kit::Tone::Normal, filesPressed == 100, false};
+			keys[1] = {&G_FOLDER, "Add this folder", "", Kit::Tone::Normal, filesPressed == 101, !addBarOn(1)};
+			keys[1].primary = true;
+		}
+		ui.kit->selectBar(f.bar, keys, barKeys());
+	}
+
+	bool Ui::Browse::addBarOn(int i) const
+	{
+		Playlists& pl = *playlists;
+		if (pickMode()) return i == 0 || pl.pickable();
+		int ticked = 0, files = pl.selFolderFiles(ticked);
+		return i == 0 ? files > 0 : i == 1 || pl.selCount() > 0;
+	}
+
+	void Ui::Browse::addBarAct(int i, Player& p)
+	{
+		Playlists& pl = *playlists;
+		if (!addBarOn(i)) return;
+		bool cancel = addMode() ? i == 1 : i == 0;
+		if (addMode() && i == 0) pl.selKey(Button::Select, p);
+		else if (cancel) pl.selBack(p, false);	// (it shows X's key, so it asks twice as X does)
+		else
+		{
+			pl.dropArmed = 0;
+			pl.selAct(p);
+		}
+	}
+
+	bool Ui::Browse::addKey(Button b, Player& p)
+	{
+		int shown = std::max(1, filesShown(p));
+		switch (b)
+		{
+		case Button::Up: filesMove(ui.cursor - 1, p); return true;
+		case Button::Down: filesMove(ui.cursor + 1, p); return true;
+		case Button::Left: filesMove(ui.cursor - shown, p); return true;
+		case Button::Right: filesMove(ui.cursor + shown, p); return true;
+		case Button::A:
+			if (filesEmpty() || ui.cursor < 0 || ui.cursor >= (int)browseRows.size() || browseRows[ui.cursor].id < 0) browseUp(p);
+			else ui.choose(ui.cursor, p);	// (a file is ticked, a folder opens)
+			return true;
+		default: return playlists->selKey(b, p);	// All, Add, Cancel, up a folder, the tabs
+		}
 	}
 
 	bool Ui::Browse::fileTickable(int row) const
@@ -1832,6 +1908,7 @@ namespace bp
 
 	bool Ui::Browse::filesKey(Button b, Player& p)
 	{
+		if (addMode() || pickMode()) return addKey(b, p);
 		if (fileSel)
 		{
 			// the sentinel that keeps the mini bar away while ticking (a picker's selEnd may have cleared it)
@@ -1884,10 +1961,10 @@ namespace bp
 			filesScrolled = false;
 			// the header's keys
 			if (h.backHit.hit(x, y)) { filesPressed = 200; return false; }
-			if (!fileSel && h.moreHit.hit(x, y)) { filesPressed = 201; return false; }
-			if (fileSel)
+			if (!selecting() && h.moreHit.hit(x, y)) { filesPressed = 201; return false; }
+			if (selecting())
 			{
-				for (int i = 0; i < 4; i++)
+				for (int i = 0; i < barKeys(); i++)
 					if (f.bar[i].hit(x, y)) { filesPressed = 100 + i; return false; }
 			}
 			if (filesEmpty())
@@ -1934,13 +2011,19 @@ namespace bp
 		{
 			if (h.backHit.hit(x, y))
 			{
-				if (fileSel) filesSelEnd(p);
+				if (addMode() || pickMode()) playlists->selBack(p, true);	// (the cross leaves at once)
+				else if (fileSel) filesSelEnd(p);
 				else if (atFirstPage()) homeView->goHome(Home::HOME_GRID, browseTab, p);
 				else browseUp(p);
 			}
 			return false;
 		}
 		if (pressed == 201) { if (h.moreHit.hit(x, y)) filesOpenMore(p); return false; }
+		if (pressed >= 100 && pressed < 104 && (addMode() || pickMode()))
+		{
+			if (f.bar[pressed - 100].hit(x, y)) addBarAct(pressed - 100, p);
+			return false;
+		}
 		if (pressed >= 100 && pressed < 104)
 		{
 			int i = pressed - 100, media = 0;
@@ -1972,250 +2055,6 @@ namespace bp
 			else { ui.cursor = touch; ui.choose(touch, p); }
 		}
 		return false;
-	}
-
-	void Ui::drawTracks(const Player& p)
-	{
-		bool inBrowse = page == Page::Browse;
-		bool sel = inBrowse && browse->playlists->selMode != SEL_NONE;
-		if (inBrowse && !sel && browse->atHome()) { browse->homeView->drawHome(p); return; }
-		// All recent is Home's own page (its filter chips, every card, the kit's rows)
-		if (inBrowse && !sel && browse->browseDir == RECENT) { browse->homeView->drawAllRecent(p); return; }
-		if (sel) browse->playlists->drawSelHeader(p);
-		else if (inBrowse)
-		{
-			// All recent: a page of Home's; else a section's header (its markers in place of tabs)
-			if (browse->browseDir == RECENT)
-			{
-				// its tabs on the title's line when they fit (the line under it left as room above the list)
-				int titleW = (int)std::lround(textWidth("Recent", 2) / sx);
-				drawHeader("Recent", p, 72 + titleW + 20);
-				// (with the counts, else without them: a battery and two-digit counts don't leave room for both)
-				int tx = 72 + titleW + 20, right = statusLeft(p) - 12;
-				browse->homeView->recentTabsUp = p.settings.keepHistory && browse->homeView->recentCounts[0] && (browse->homeView->drawRecentTabs(tx, 32, right) || browse->homeView->drawRecentTabs(tx, 32, right, false));
-			}
-			else browse->drawSectionHeader(p);
-			// where it is, its end kept; the folder it's in brighter. A playlist: how many items, on the right. A
-			// section's top: what's in it
-			if (browse->atFirstPage())
-			{
-				int n = 0;
-				for (auto& row : browse->browseRows) n += row.id == PL_ROW || row.id == 4;
-				bool cards = false, videos = false;
-				for (auto& rt : roots)
-				{
-					cards = cards || rt.card;
-					videos = videos || rt.label == "Videos";
-				}
-				if (browse->browseDir == RECENT && p.settings.keepHistory && browse->homeView->recentCounts[0] && !browse->homeView->recentTabsUp) browse->homeView->drawRecentTabs(16, SUB_Y, 624);
-				std::string top = browse->browseDir == RECENT ? ""
-					: browse->browseDir.empty() ? (videos && cards ? "Videos and your cards" : cards ? "Your cards" : "Your folders")
-					: browse->browseDir == PLROOT ? (!browse->playlists->plStore ? "" : n <= 1 ? "Liked"
-						: "Liked \xC2\xB7 " + std::to_string(n - 1) + (n == 2 ? " playlist" : " playlists"))
-					: !n ? ""
-					: std::to_string(n) + (n == 1 ? " connection" : " connections");
-				if (!top.empty()) drawTextMid(top, 0, DIM, 16, SUB_Y);
-			}
-			else
-			{
-				int whereW = 600;
-				if (isPlDir(browse->browseDir) && browse->playlists->plLoaded && plIsLiked(browse->playlists->plCur.file))
-				{
-					// Liked: its order, and how many (empty: the page says so)
-					size_t n = browse->playlists->plCur.entries.size();
-					if (n) drawTextMid("Newest first \xC2\xB7 " + std::to_string(n) + (n == 1 ? " item" : " items"), 0, DIM, 16, SUB_Y);
-					whereW = 0;
-				}
-				else if (isPlDir(browse->browseDir) && browse->playlists->plLoaded)
-				{
-					size_t n = browse->playlists->plCur.entries.size();
-					std::string count = std::to_string(n) + (n == 1 ? " item" : " items");
-					drawTextMid(count, 0, DIM, 616, SUB_Y, 0, 1);
-					whereW -= (int)std::lround(textWidth(count, 0) / sx) + 24;
-				}
-				if (whereW) browse->drawWhere(16, whereW);
-			}
-		}
-		auto r = rows(p);
-		bool form = inBrowse && browse->browseDir == FORMDIR;
-		// ".." (up to the folder above): row -1, over the list (and over a message alone)
-		bool up = inBrowse && browse->upRow();
-		if (up && scroll < 0) browse->drawUpRow(ROW_Y, cursor < 0);
-		// a message alone (nothing here, loading, no connections): in the middle of the page, not as a row to choose
-		if (inBrowse && !form && r.size() == 1 && r[0].id < 0)
-		{
-			const std::string& m = r[0].label;
-			bool net = browse->browseDir == NETROOT || isNetPath(browse->browseDir);
-			bool pl = browse->browseDir == PLROOT || isPlDir(browse->browseDir);
-			const Glyph& g = net ? G_NETWORK : browse->browseDir == RECENT ? G_CLOCK : G_FOLDER;
-			std::string sub = m == "No connections yet" ? "Play from a computer or a NAS on your Wi-Fi"
-				: m == "Nothing played yet" ? "What you play or read shows up here, with where you left off"
-				: m == "Nothing to play here" ? "No videos, music or photos in this folder"
-				: m == "This folder can't be opened" ? "Is the card still in?"
-				: m == "Play history is off (Settings)" ? "Turn it on in Settings, Files" : "";
-			std::string title = m == "Play history is off (Settings)" ? "Play history is off" : m;
-			if (pl && isPlDir(browse->browseDir) && plIsLiked(browse->playlists->plCur.file) && browse->playlists->plLoaded)
-				drawEmpty(G_HEART_O, "Nothing liked yet", "Tap the heart at the top while a song or video plays,\n"
-					"or press START \xE2\x80\xBA Like. Liked things gather here.", nullptr);
-			else if (pl)
-				drawEmpty(G_PLAYLIST, title, m == "No playlists yet" ? "Gather videos and songs to play in your order"
-					: m == "Playlists aren't available" ? "There's no folder to keep them in"
-					: m == "This playlist can't be opened" ? "Was it deleted?" : "Add videos and songs from your cards or the network",
-					!browse->emptyAction() ? nullptr : isPlDir(browse->browseDir) ? "Add files" : "New playlist");
-			else if (browse->emptyAction() && browse->browseDir == NETROOT)
-				drawEmpty(g, title, "Find the computers sharing files on your Wi-Fi.\nOr Y: add one by its address", "Find on the network", &G_SEARCH);
-			else drawEmpty(g, title, sub, browse->emptyAction() ? "Add connection" : nullptr);
-		}
-		else
-			for (int i = std::max(0, scroll); i < (int)r.size() && i < scroll + ROWS_SHOWN; i++)
-			{
-				int y = ROW_Y + (i - scroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
-				bool at = i == cursor;
-				if (form && r[i].id == FORM_TEST) fill({32, y - 3, 576, 1}, RULE);
-				// selecting: a ticked row on a lighter ground; Move's block lit as the cursor is
-				bool block = sel && ((browse->playlists->moving && browse->playlists->plSel.count(i)) || (browse->playlists->plDrag.on && browse->playlists->dragSel.count(i)));
-				if (block) drawFocus({16, y, 608, ROW_H - 4});
-				// back from the player: the playing row lit a moment (still playing, here)
-				else if (at && inBrowse && landFlashUntil && rowChip(i)) drawBox({16, y, 608, ROW_H - 4}, PRESSED, R_BUTTON, true);
-				else if (at && !(sel && browse->playlists->plDrag.on)) drawFocus({16, y, 608, ROW_H - 4});
-				else if (sel && browse->playlists->selTicked(i)) drawBox({16, y, 608, ROW_H - 4}, SURFACE, R_BUTTON);
-				if (inBrowse && r[i].id == PL_ITEM)
-				{
-					browse->playlists->drawPlRow(i, mid, at || block);
-					continue;
-				}
-				int noteW = 0;
-				// Recent's Clear row says how it stands now (the list was made before the first press expired)
-				std::string note = inBrowse && r[i].id == 3 ? (clearArmed ? "Press again to clear" : "Press twice") : r[i].note;
-				bool placeholder = !note.empty() && note[0] == DIM_NOTE;
-				if (placeholder) note.erase(0, 1);
-				SDL_Color soft = at ? DIM_ON : DIM;
-				if (!note.empty())
-				{
-					// a resume time and a size, a count, a root's path: right-aligned and short; a form's value, longer
-					int w = form ? 380 : 260;
-					SDL_Color c = clearArmed && r[i].id == 3 ? ACCENT : form && !placeholder ? (r[i].id == FORM_TEST && note == "It works" ? ACCENT : TEXT) : soft;
-					// a path keeps its end
-					std::string shown = !form && note[0] == '/' ? elideLeft(note, 0, w) : note;
-					drawTextMid(shown, form ? 1 : 0, c, 608, mid, w, 1);
-					noteW = form ? std::min(w, (int)std::lround(textWidth(shown, 1) / sx)) + 20 : std::min(w, (int)std::lround(textWidth(shown, 0) / sx)) + 16;
-				}
-				int textX = 32;
-				// adding: a file's box (none for a photo: it can't go in, dimmed; nor a folder), the marks after it
-				bool boxes = sel && browse->playlists->selMode == SEL_ADD;
-				bool inert = sel && r[i].id == 2 && !browse->playlists->selTickable(i);
-				if (boxes && browse->playlists->selTickable(i)) drawGlyphMid(browse->playlists->selTicked(i) ? G_BOX_ON : G_BOX, 40, mid, browse->playlists->selTicked(i) ? ACCENT : DIM);
-				if (inBrowse)
-				{
-					// what the row is, as a mark before its name
-					RowIcon icon = rowIcon(i);
-					if (icon != ICON_NONE)
-					{
-						drawRowIcon(icon, boxes ? 60 : 32, mid - 10, icon == ICON_LIKED ? ACCENT : inert || (icon == ICON_NEW && !at) ? DIM
-							: at ? ACCENT : TEXT);
-						textX = boxes ? 94 : 66;
-					}
-					// a liked file: a small heart before its note
-					if (r[i].id == 2 && browse->playlists->plStore && i < (int)browse->browsePaths.size() && browse->playlists->plStore->isLiked(browse->browsePaths[i]))
-					{
-						drawGlyphMid(G_HEART_S, noteW ? 608 - noteW : 601, mid, ACCENT);
-						noteW += 22;
-					}
-					// the file that plays: its chip, as the dashboard's lists mark it
-					if (!sel)
-						if (int k = rowChip(i)) noteW += drawChip(608 - noteW, mid, k) + 10;
-				}
-				SDL_Color ink = r[i].id < 0 || inert ? soft : at ? ACCENT : r[i].id == PL_NEW ? DIM_ON : TEXT;
-				drawTextMid(r[i].label, 1, ink, textX, mid, 600 - textX - noteW);
-			}
-		// a dragged row: where it lands, a line in the gap (none while it would stay where it is)
-		if (sel && browse->playlists->plDrag.on && !browse->playlists->dragSel.empty() && browse->playlists->dragTarget() != *browse->playlists->dragSel.begin())
-		{
-			int slot = browse->playlists->dragSlot();
-			if (slot >= scroll && slot <= scroll + ROWS_SHOWN) fillRound({16, ROW_Y + (slot - scroll) * ROW_H - 3, 608, 2}, ACCENT, 1);
-		}
-		int n = (int)r.size(), first = browse->listFirst();
-		drawScrollBar(ROW_Y, ROWS_SHOWN * ROW_H - 4, scroll - first, ROWS_SHOWN, n - first);
-		if (sel) { browse->playlists->drawSelBar(); return; }
-		// B at a section's top goes Home; L/R to the sections either side
-		const char* back = browse->atFirstPage() ? "Home" : "Back";
-		bool plEmpty = r.size() == 1 && r[0].id < 0;
-		// a row with a menu of its own (Y): a folder, a connection, a playlist, its item
-		bool yMenu = cursor >= 0 && cursor < n && (browse->folderRow(cursor) || (browse->browseDir == NETROOT && r[cursor].id == 4) || r[cursor].id == PL_ROW ||
-			r[cursor].id == PL_ITEM || (isNetPath(browse->browseDir) && r[cursor].id == 1 && browse->playlists->plStore) || browse->fileOpsOn(cursor));
-		bool file = cursor >= 0 && cursor < n && (r[cursor].id == 2 || r[cursor].id == PL_ITEM);
-		// a book, a document, any file that doesn't play: A opens it (or says it can't)
-		const char* aFile = file && cursor < (int)browse->browsePaths.size() && !isMediaFile(browse->browsePaths[cursor]) ? "Open" : "Play";
-		if (cursor < 0 && browse->upRow()) drawHints({{"A", "Up"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
-		else if (form) drawHints({{"A", "Change"}, {"LEFT/RIGHT", "Choose"}, {"B", "Cancel"}});
-		else if (browse->browseDir == FINDNET) drawHints({{"A", "Add this one"}, {"B", "Back"}});
-		else if (browse->browseDir == RECENT && plEmpty) drawHints({{"B", "Home"}, {"X", "Options"}});
-		else if (browse->browseDir == RECENT) drawHints({{"A", file && cursor < (int)browse->browsePaths.size() && !isMediaFile(browse->browsePaths[cursor]) ? "Open" : "Play"}, {"Y", "Menu"}, {"L/R", "Kind"}, {"B", "Home"}, {"X", "Options"}});
-		else if (plEmpty && isPlDir(browse->browseDir) && plIsLiked(browse->playlists->plCur.file)) drawHints({{"B", back}, {"L2/R2", "Sections"}});
-		else if (browse->browseDir == PLROOT && cursor >= 0 && cursor < n && r[cursor].id == PL_NEW)
-			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
-		else if (browse->emptyAction() && browse->browseDir == PLROOT)
-			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
-		else if (browse->emptyAction() && isPlDir(browse->browseDir)) drawHints({{"A", "Add files"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
-		else if (browse->emptyAction())
-			drawHints({{"A", "Find"}, {"Y", "Add connection"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
-		else if (plEmpty) drawHints({{"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
-		else if (yMenu) drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"Y", "Menu"}, {"L2/R2", "Sections"}});
-		else drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
-	}
-
-	void Ui::Browse::drawUpRow(int y, bool at)
-	{
-		int mid = y + (ROW_H - 4) / 2;
-		if (at) ui.drawFocus({16, y, 608, ROW_H - 4});
-		ui.drawGlyphMid(G_UP, 43, mid, at ? ACCENT : DIM);
-		ui.drawTextMid("..", 1, at ? ACCENT : TEXT, 66, mid, 534);
-	}
-
-	void Ui::Playlists::drawPlRow(int i, int mid, bool at)
-	{
-		const std::string& path = ui.browse->browsePaths[i];
-		int miss = plMissingAt(i);
-		SDL_Color soft = at ? DIM_ON : DIM;
-		// selecting: its box where its number was, its grip on the right (Move's block: its arrows, yellow)
-		bool edit = selMode == SEL_EDIT;
-		bool block = edit && ((moving && plSel.count(i)) || (plDrag.on && dragSel.count(i)));
-		// (Liked has no numbers: its order is the likes', newest first)
-		bool liked = ui.plIsLiked(plCur.file);
-		if (edit) ui.drawGlyphMid(plSel.count(i) ? G_BOX_ON : G_BOX, 40, mid, plSel.count(i) ? ACCENT : soft);
-		else if (!liked) ui.drawTextMid(std::to_string(i + 1), 0, soft, 56, mid, 0, 1);
-		if (edit) ui.drawGlyphMid(block ? G_MOVE : G_GRIP, 600, mid, block ? ACCENT : soft);
-		int right = edit ? 572 : 608;
-		// its number in the playlist, its mark (an alert when it isn't there), its name, where it is
-		const Glyph& g = miss ? G_ALERT : isAudioFile(path) ? G_NOTE : G_FILM;
-		int gx = liked && !edit ? 43 : 64 + 11;
-		ui.drawGlyphMid(g, gx, mid, miss ? DIM : at ? ACCENT : TEXT);
-		// a missing one says so in its name, "[Gone]" (why: its menu's line), not on the right
-		std::string note = miss ? "" : ui.browse->browseRows[i].note;
-		int noteW = 0;
-		if (!note.empty())
-		{
-			ui.drawTextMid(note, 0, miss ? DANGER : soft, right, mid, 220, 1);
-			int w = std::min(220, (int)std::lround(ui.textWidth(note, 0) / sx));
-			noteW = w + 16;
-			// a network item: the server's name, marked as one
-			if (!miss && isNetPath(path))
-			{
-				ui.drawGlyphMid(G_NETWORK, right - w - 19, mid, DIM);
-				noteW += 30;
-			}
-		}
-		// the item that plays (this playlist playing): its chip
-		if (!edit)
-			if (int k = ui.rowChip(i)) noteW += ui.drawChip(right - noteW, mid, k) + 10;
-		int x = liked && !edit ? 66 : 96;
-		if (miss)
-		{
-			static const std::string GONE = "[Gone] ";
-			ui.drawTextMid(GONE, 1, DANGER, x, mid);
-			x += (int)std::lround(ui.textWidth(GONE, 1) / sx);
-		}
-		ui.drawTextMid(ui.browse->browseRows[i].label, 1, miss ? soft : at ? ACCENT : TEXT, x, mid, std::max(0, right - 8 - x - noteW));
 	}
 
 	void Ui::folderChanged(const std::string& dir, Player& p)
@@ -2763,8 +2602,9 @@ namespace bp
 		if ((browseDir == PLROOT || isPlDir(browseDir))) { playlists->draw(p); return; }
 		// Network, Find on the network and the form: kit pages in the shell's body (net-list, net-find, net-form)
 		if (netPage()) { drawNet(p); return; }
-		// the list's page, as the track lists' (drawTracks: Home, a section's header, the rows, the footer)
-		ui.drawTracks(p);
+		// Home and All recent: Home's own pages
+		if (atHome()) homeView->drawHome(p);
+		else if (browseDir == RECENT) homeView->drawAllRecent(p);
 	}
 
 	std::string Ui::Browse::signature(const Player& p) const
@@ -2777,6 +2617,8 @@ namespace bp
 		{
 			// Files' own: select mode and its ticks, the finger, the read-only mark, the footer's count and room,
 			// and a group Copy / Move held
+			s += "|add" + std::to_string(playlists->selMode) + "," + std::to_string(playlists->selSerial) + "," +
+				std::to_string(playlists->dropArmed != 0) + "," + playlists->selDest;
 			s += "|files" + std::to_string(fileSel) + ":" + std::to_string(filesPressed) + ":" + std::to_string(filesTouch) +
 				(filesReadOnly() ? "ro" : "") + "|" + filesFooter() + "|" + filesTitle();
 			for (auto& path : fileSelPaths) s += "|" + path;

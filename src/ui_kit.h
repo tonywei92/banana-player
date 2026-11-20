@@ -421,7 +421,7 @@ namespace bp
 			bool pressed = false, off = false, primary = false;
 		};
 		static Key barKey(const BarKey& b);
-		void selectBar(const lay::Box keys[4], const BarKey k[4]);
+		void selectBar(const lay::Box keys[4], const BarKey k[4], int n = 4);	// n keys (the others' boxes are empty)
 		struct Clip
 		{
 			std::string what, size;	// "3 files held" and how big

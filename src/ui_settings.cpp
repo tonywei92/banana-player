@@ -100,7 +100,6 @@ namespace bp
 
 	Ui::SettingsPage::SettingsPage(Ui& u) : Area(u)
 	{
-		u.shell->adopt(Page::Settings);
 	}
 
 	std::vector<int> Ui::SettingsPage::settingRows() const

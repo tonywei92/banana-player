@@ -658,9 +658,9 @@ namespace bp
 		return k;
 	}
 
-	void Ui::Kit::selectBar(const lay::Box keys[4], const BarKey k[4])
+	void Ui::Kit::selectBar(const lay::Box keys[4], const BarKey k[4], int n)
 	{
-		for (int i = 0; i < 4; i++) key(keys[i], barKey(k[i]));
+		for (int i = 0; i < n; i++) key(keys[i], barKey(k[i]));
 	}
 
 	void Ui::Kit::clipBar(const lay::ClipBar& l, const Clip& c)

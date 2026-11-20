@@ -3,7 +3,7 @@
 // touches, the list's state (the folder, its rows and paths, the section, the network listing), Files' own operations
 // (the clip, Rename, the network folders' actions) and the Network tab's form are here and in ui_browse.cpp,
 // ui_fileops.cpp and ui_forms.cpp.
-// Stayed Ui's: the shared list's drawing and keys (drawTracks, rows, choose, listKey, listDown), the cursor and the
+// Stayed Ui's: the shared list's drawing and keys (rows, choose, listKey, listDown), the cursor and the
 // scroll (every list page's; View's sheet asks rows and choose for a file's tracks), the Options menu (ctx*: the mini
 // bar's hold opens it on any
 // page), the updater's pop-up, the file job's card and Info's sheet (over any page), the places (roots, rootsCheck:
@@ -43,7 +43,6 @@ namespace bp
 		// the scroll can be (listFirst()), so nothing that counts, selects or plays rows ever sees it
 		bool upRow() const;
 		int listFirst() const { return upRow() ? -1 : 0; }
-		void drawUpRow(int y, bool at);
 		// the browser's cursor on a row and its window as full as the list allows (a list that came back shorter:
 		// a scroll from before would show its last rows only)
 		void fitList();
@@ -54,7 +53,6 @@ namespace bp
 		int firstCursor() const;	// where a folder opened afresh puts the cursor
 		void doEmptyAction(Player& p);
 		std::string browseWhere() const;
-		void drawWhere(int x, int maxW);	// the browser's where line: its end kept, the last folder brighter
 
 		// ---- the sections (Ui::BrowseTab) ----
 		int browseTab = TAB_LOCAL;
@@ -66,7 +64,6 @@ namespace bp
 		bool atHome() const;
 		// the section markers in a section's header (L, four marks, R), left of the battery (and the web's globe)
 		Rect pipRect(int k, const Player& p) const;
-		void drawSectionHeader(const Player& p);
 
 		// ---- a network folder listing: what's asked of the worker now, and what went wrong last ----
 		int netSerial = 0;
@@ -78,7 +75,7 @@ namespace bp
 
 		// ---- the Files page (docs/redesign: files, files-playing, select, actions, delete, empty-folder, info,
 		// readonly, files-music): the local folders only (the cards' places and the folders under them). It draws in
-		// lay::shell().body; Home, Playlists, Network and All recent keep Ui's list (drawTracks). ----
+		// lay::shell().body; the other views have their own pages. ----
 		bool filesPage() const;	// this page, a local folder (or the places), no menu
 		// Files' tabs (Files | Network): a strip on the two tops, the places and the connections' list; the folders
 		// under them and the form have none. L / R step them, a tap too (lay::tabPage, Kit::tabs)
@@ -107,6 +104,17 @@ namespace bp
 		// X, and a header's More: the More sheet (ui_more.cpp), built from the focused row and the folder it is in
 		void filesOpenMore(Player& p);
 		// Y: select mode (the Files one: any file or folder, for Playlist, Copy, Move, Delete)
+		// Adding files to a playlist (the Playlists area's SEL_ADD with a destination, SEL_PICK: a folder to add whole)
+		// is drawn here too, on the same rows and a bar of its own: its ticks are the playlists', across folders. The
+		// Files select mode (fileSel) also keeps SEL_PICK set as a sentinel, so these two tell them apart
+		bool addMode() const;
+		bool pickMode() const;
+		bool selecting() const { return fileSel || addMode() || pickMode(); }	// the bar takes the body's foot
+		int barKeys() const { return addMode() ? 3 : pickMode() ? 2 : 4; }
+		void drawAddBar(const lay::FilesPage& f);
+		bool addKey(Button b, Player& p);
+		void addBarAct(int i, Player& p);	// the bar's key i: All, Cancel, Add / Cancel, Add this folder
+		bool addBarOn(int i) const;
 		bool fileTickable(int row) const;
 		bool fileTicked(int row) const;
 		int fileSelCount() const { return (int)fileSelPaths.size(); }

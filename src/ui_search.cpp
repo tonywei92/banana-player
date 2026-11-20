@@ -66,7 +66,6 @@ namespace bp
 
 	Ui::Search::Search(Ui& u) : Area(u)
 	{
-		ui.shell->adopt(Page::Search);
 	}
 
 	lay::Box Ui::Search::body() const

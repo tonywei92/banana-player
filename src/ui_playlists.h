@@ -137,10 +137,6 @@ namespace bp
 		int addSerial = 1 << 29;
 		void cancelAdd(Player& p);
 		void drawBusy();
-		// the select mode's header (over the tabs), where line and bar (over the footer)
-		void drawSelHeader(const Player& p);
-		void drawSelBar();
-		void drawBarButton(int id, const Glyph* g, const std::string& label, const char* key, SDL_Color ink, bool filled, bool off);
 
 		void plDelete(const std::string& file, Player& p);
 		// naming a playlist on the keyboard (PL_NAME): New, or Rename (plRenameFile); a name refused keeps it up
@@ -153,7 +149,6 @@ namespace bp
 		std::string ctxPlFile;
 		int ctxPlItem = -1;
 
-		void drawPlRow(int i, int mid, bool at);	// a playlist's item: its number, mark, name and where it is
 
 		// ---- the redesigned pages (docs/redesign: playlists, playlist, playlist-select, playlist-move, liked) ----
 		// The area's own drawing, inside lay::shell().body only; Ui::Shell draws the header and hints from

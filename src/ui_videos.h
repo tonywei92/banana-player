@@ -19,7 +19,7 @@ namespace bp
 {
 	struct Ui::Videos : Ui::Area
 	{
-		explicit Videos(Ui& u) : Area(u) { u.shell->adopt(Page::Videos); }
+		explicit Videos(Ui& u) : Area(u) {}
 
 		// ---- the area ----
 		bool has(Page pg) const override { return pg == Page::Videos; }

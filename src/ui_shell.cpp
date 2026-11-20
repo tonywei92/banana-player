@@ -1,6 +1,6 @@
 // The redesign's shared frame (ui_shell.h): the rail, the header, the hint bar and the mini bar for every section
-// page, and the one step of it that is a key (L / R through the sections). The bodies stay their areas' until they
-// are rebuilt on the kit; beginBody/endBody bridge one into the body box meanwhile.
+// page, and the one step of it that is a key (L / R through the sections). Every body is its area's, drawn on the kit in the
+// body box.
 #include "ui_shell.h"
 #include "ui_internal.h"
 #include "ui_kit.h"
@@ -161,9 +161,18 @@ namespace bp
 			h.title = b.fileSel ? (b.fileSelCount() ? std::to_string(b.fileSelCount()) + " selected" : std::string("Select"))
 				: b.filesTitle();
 			h.crumb = b.filesCrumb();
+			if (b.addMode() || b.pickMode())
+			{
+				// adding files to a playlist: where, how many (the ticks go on across folders)
+				const Playlists& pl = *b.playlists;
+				int n = pl.selCount();
+				h.title = b.pickMode() ? "Add a folder to " + pl.selDestName : pl.selDest.empty() ? std::string("Select files") : "Add to " + pl.selDestName;
+				if (b.addMode()) h.crumb = (n ? std::to_string(n) + " selected" : std::string("None yet")) + " \xC2\xB7 " + h.crumb;
+				h.cancel = true;
+			}
 			h.hints = b.filesHints(p);
 			h.back = true;
-			h.more = !b.fileSel;	// (the old header hid More in select mode; X still opens it)
+			h.more = !b.selecting();	// (the old header hid More in select mode; X still opens it)
 			if (b.filesReadOnly())
 			{
 				// the read-only badge sits in the right slot, left of the status cluster (as the old header had it)
@@ -476,7 +485,7 @@ namespace bp
 		lay::Box back, more;
 		frameRects(p, h, back, more);
 		// the header's two ask for the quiet look: a glyph alone in Clean, the same touch area (rule 5)
-		if (h.back) k.iconKey(back, G_BACK, pressedFrame == F_BACK, 3, true);
+		if (h.back) k.iconKey(back, h.cancel ? G_CROSS : G_BACK, pressedFrame == F_BACK, h.cancel ? 2 : 3, true);
 		if (h.more) k.iconKey(more, G_MORE, pressedFrame == F_MORE, 2, true);
 		int cy = 27;
 		Kit::Status st;
@@ -535,112 +544,5 @@ namespace bp
 			searchLit, pressedFrame == F_SEARCH, live, live && bp.paused, npPicture);
 		drawHeader(h, p);
 		k.hints(s.hints, h.hints);
-	}
-
-	// ---- the old bodies, in the body box, until their screens are rebuilt ----
-
-	void Ui::Shell::adopt(Page pg)
-	{
-		bodyPages.insert(pg);
-	}
-
-	void Ui::Shell::adoptBrowse()
-	{
-		browseBuilt = true;
-	}
-
-	bool Ui::Shell::adopted(Page pg) const
-	{
-		return bodyPages.count(pg) != 0;
-	}
-
-	bool Ui::Shell::adopted(const Player& p) const
-	{
-		// Manga's pages are all drawn on the kit in the body (the reader is no shell page)
-		if (ui.manga->shellPage(ui.page)) return true;
-		// the browser's rebuilt views draw in the body box (Files, a connection's folders, Network and its forms
-		// included); a select / add mode over the old list keeps the bridge
-		if (ui.page != Page::Browse) return adopted(ui.page);
-		if (!browseBuilt) return false;
-		const Browse& b = *ui.browse;
-		return b.atHome() || b.browseDir == RECENT || b.filesPage() || b.browseDir == PLROOT || isPlDir(b.browseDir) ||
-			b.browseDir == NETROOT || b.browseDir == FORMDIR || b.browseDir == FINDNET;
-	}
-
-	Ui::Shell::Bridge Ui::Shell::bridgeFor(const Player& p) const
-	{
-		Bridge b;
-		lay::Shell s = layout(p);
-		// the old page is 640 x 480 with its own header (0..54) and hint bar (450..480): the body is the part between,
-		// scaled uniformly into the shell's body (centred, so nothing is cut). Only the browser's old select / add
-		// modes (a selection with a destination, the picker's folders) are left on it; every page is otherwise the kit's
-		const int sw = 640, sh = 396;
-		double sc = std::min(s.body.w / (double)sw, s.body.h / (double)sh);
-		b.w = std::max(1, (int)std::lround(sw * sc));
-		b.h = std::max(1, (int)std::lround(sh * sc));
-		b.x = s.body.x + (s.body.w - b.w) / 2;
-		b.y = s.body.y + (s.body.h - b.h) / 2;
-		b.on = !adopted(p);
-		return b;
-	}
-
-	bool Ui::Shell::beginBody(const Player& p)
-	{
-		bridge = bridgeFor(p);
-		if (!bridge.on) return false;
-		int ow, oh;
-		SDL_GetRendererOutputSize(ui.ren, &ow, &oh);
-		if (ow <= 0 || oh <= 0) return false;
-		if (!bodyTex || ow != bodyTexW || oh != bodyTexH)
-		{
-			if (bodyTex) SDL_DestroyTexture(bodyTex);
-			bodyTex = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, ow, oh);
-			bodyTexW = bodyTex ? ow : 0;
-			bodyTexH = bodyTex ? oh : 0;
-			static bool logged = false;
-			if (!bodyTex && !logged)
-			{
-				logged = true;
-				fprintf(stderr, "shell: no render target for a page's body (%s): drawn whole\n", SDL_GetError());
-			}
-		}
-		if (!bodyTex) return false;
-		if (SDL_SetRenderTarget(ui.ren, bodyTex) != 0)
-		{
-			bridge.on = false;
-			return false;
-		}
-		// the page's ground (the old page did not fill it: renderPage cleared the window's own BG before this)
-		SDL_SetRenderDrawBlendMode(ui.ren, SDL_BLENDMODE_NONE);
-		SDL_SetRenderDrawColor(ui.ren, BG.r, BG.g, BG.b, 255);
-		SDL_RenderClear(ui.ren);
-		bodyTargetOn = true;
-		return true;
-	}
-
-	void Ui::Shell::endBody(const Player& p)
-	{
-		if (!bodyTargetOn) return;
-		bodyTargetOn = false;
-		SDL_SetRenderTarget(ui.ren, nullptr);
-		SDL_RenderSetViewport(ui.ren, nullptr);
-		SDL_RenderSetClipRect(ui.ren, nullptr);
-		Bridge b = bridge;
-		// the source is the old page's body between its header and its hint bar, in the renderer's pixels
-		SDL_Rect src{0, (int)std::lround(54 * sy), (int)std::lround(640 * sx), (int)std::lround(396 * sy)};
-		SDL_Rect dst{(int)std::lround(b.x * sx), (int)std::lround(b.y * sy), (int)std::lround(b.w * sx), (int)std::lround(b.h * sy)};
-		SDL_SetTextureBlendMode(bodyTex, SDL_BLENDMODE_BLEND);
-		SDL_RenderCopy(ui.ren, bodyTex, &src, &dst);
-		(void)p;
-	}
-
-	bool Ui::Shell::mapPoint(const Player& p, int& x, int& y, bool any) const
-	{
-		if (adopted(p) || !bridge.on) return false;
-		Bridge b = bridgeFor(p);
-		if (!any && (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h)) return false;
-		x = (int)std::floor((x - b.x) * 640.0 / b.w);
-		y = 54 + (int)std::floor((y - b.y) * 396.0 / b.h);
-		return true;
 	}
 }

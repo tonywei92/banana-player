@@ -22,7 +22,7 @@ namespace bp
 {
 	struct Ui::Music : Ui::Area
 	{
-		explicit Music(Ui& u) : Area(u) { u.shell->adopt(Page::Music); }
+		explicit Music(Ui& u) : Area(u) {}
 
 		// ---- the area ----
 		bool has(Page pg) const override { return pg == Page::Music; }

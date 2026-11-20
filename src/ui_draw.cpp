@@ -728,22 +728,19 @@ namespace bp
 		setChip(p);
 		markAnim = false;
 		loaderShown = false;
-		// a section page's body: its old drawing goes into the shell's body box until the screen is rebuilt on the kit
+		// a section page's body is drawn by its area in the shell's body box
 		bool shellPage = shell->page(page);
 		// Manga's pages: their sheets wait for the frame (drawn full size over it), their old header's title and
 		// hints are caught for the shell's
 		bool mangaShell = shellPage && manga->shellPage(page);
 		manga->sheetsLater = mangaShell;
 		manga->sheetQueue.clear();
-		bool bridged = shellPage && shell->beginBody(p);
-		hdrCapture = bridged || mangaShell;
+		hdrCapture = mangaShell;
 		capTitle.clear();
 		capHints.clear();
 		if (page == Page::Info || page == Page::About) drawInfo(p);
 		else if (Area* a = area()) a->draw(p);
-		else drawTracks(p);	// (Page::Main is an area: PlayerPage::draw)
 		hdrCapture = false;
-		if (bridged) shell->endBody(p);
 		if (mangaShell) manga->drawShellBody(p);
 		if (shellPage) shell->draw(shell->section(p), shell->head(p), p);
 		if (mangaShell) manga->runLater();

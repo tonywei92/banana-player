@@ -90,7 +90,6 @@ namespace bp
 	// the areas: each made here and listed, which is all the wiring one needs (docs/notes/ui-areas.md)
 	Ui::Ui()
 	{
-		// first, so an area's constructor can tell it its body is drawn in the shell's box (Shell::adopt)
 		shell = std::make_unique<Shell>(*this);
 		pageReader = std::make_unique<PageReader>(*this);	// (not an area: no page of its own; Docs and Manga use it)
 		docs = std::make_unique<Docs>(*this);
@@ -585,6 +584,7 @@ namespace bp
 		// a photo's Close
 		if (id == QUIT_BTN) return p.playingPhoto();
 		// adding files: the header's key is a ✕ that cancels at once (B goes up a folder there)
+		if (id == BACK_ICON && page == Page::Browse && browse->fileSel) { browse->filesSelEnd(p); return false; }
 		if (id == BACK_ICON && page == Page::Browse && (browse->playlists->selMode == SEL_ADD || browse->playlists->selMode == SEL_PICK)) { browse->playlists->selBack(p, true); return false; }
 		if (id == BACK_ICON) return pressAnyway(Button::B, p);
 		if (id == EMPTY_BTN) { browse->doEmptyAction(p); return false; }
@@ -654,17 +654,9 @@ namespace bp
 			return browse->homeView->homePointer(pt, x, y, p);
 		// the shell's rail, header and mini bar first (the page's body is under them)
 		if (shell->page(page) && shell->pointer(pt, x, y, p)) return false;
-		// Manga's pages: the kit's tabs over the bridged body take their touches as drawn (before the mapping), and a
-		// sheet over the frame takes the finger at full size (no mapping)
+		// Manga's pages: the kit's tabs take their touches first, and a sheet over the frame takes the finger at full size
 		bool mangaSheet = manga->shellPage(page) && manga->shellModal();
 		if (shell->page(page) && manga->shellPage(page) && !mangaSheet && manga->shellPointer(pt, x, y, p)) return false;
-		// a section page's old body is drawn scaled into the shell's body box: its touches are mapped back (a finger
-		// already down wherever it goes, so a drag that leaves the box goes on)
-		if (shell->page(page) && !mangaSheet)
-		{
-			int mx = x, my = y;
-			if (shell->mapPoint(p, mx, my, pt.kind != Pointer::Down)) { x = mx; y = my; }
-		}
 		// All recent's tabs: a tap on one shows that kind
 		if (page == Page::Browse && browse->browseDir == RECENT && !ctxOpen && p.settings.keepHistory && browse->homeView->recentCounts[0] && y < ROW_Y)
 		{

@@ -275,7 +275,8 @@ folders. Playlists have a section of their own, between Files and Network.
 - The **Playlist** key adds the ticked videos and songs to a playlist (or **New playlist…**). **Copy** / **Move** hold
   all the ticked files and folders while you walk to the destination; **Delete** asks first, in a sheet.
 - Inside a playlist, **X** → **Add files…** opens the file list, and the files you tick are added to that playlist.
-  **Add folder…** adds a whole folder instead.
+  **Add folder…** adds a whole folder instead. Both are the Files page: its rows and bar (**All**, **Cancel**, **Add N**; or **Cancel**, **Add this folder**), with
+  a cross for the header's key; **Y** adds, **X** cancels (twice when files are ticked), **B** goes up a folder.
 - On any folder, **X** · More → **Add folder to playlist…** adds that folder's files (in Network, the folder's menu
   still has it).
 - A folder adds only the files directly in it, not those in its subfolders. Photos are skipped, and the note says how

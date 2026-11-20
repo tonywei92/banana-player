@@ -928,7 +928,7 @@ namespace bp
 
 		// ---- Files ----
 
-		FilesPage filesPage(Box body, int rows, bool select, bool footer)
+		FilesPage filesPage(Box body, int rows, bool select, bool footer, int barKeys)
 		{
 			FilesPage f{};
 			f.body = body;
@@ -938,7 +938,7 @@ namespace bp
 			if (select)
 			{
 				Box bar{inner.x, body.y + body.h - FILE_SELBAR_H, inner.w, FILE_SELBAR_H};
-				for (int i = 0; i < 4; i++) f.bar[i] = cell(bar, 4, GAP, i);
+				for (int i = 0; i < std::clamp(barKeys, 1, 4); i++) f.bar[i] = cell(bar, std::clamp(barKeys, 1, 4), GAP, i);
 				f.rows.h = bar.y - FILE_SELBAR_GAP - body.y;
 			}
 			if (footer && !select)

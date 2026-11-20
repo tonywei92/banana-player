@@ -554,9 +554,10 @@ namespace bp
 			int shown = 0;	// the rows that fit
 			Box row(int i) const { return {rows.x, rows.y + i * FILE_ROW_H, rows.w, FILE_ROW_H}; }
 		};
-		// rows: how many the list has (the ones that fit are shown); select: the bar takes the foot; footer: a
+		// rows: how many the list has (the ones that fit are shown); select: the bar takes the foot (barKeys keys: 4 for
+		// a selection, 3 adding to a playlist, 2 picking a folder); footer: a
 		// line under the rows (not with the bar: the caller leaves it out)
-		FilesPage filesPage(Box body, int rows, bool select, bool footer);
+		FilesPage filesPage(Box body, int rows, bool select, bool footer, int barKeys = 4);
 		// the header it draws before the shell lands: the back key, the More key, the crumb and title beside them
 		// (the mock-up's .hd .tt), and the room the status and the read-only badge leave at its right
 		struct FilesHeader

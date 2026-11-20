@@ -57,7 +57,7 @@ namespace bp
 		// ---- inside the shell (docs/notes/2026-11-20-manga-shell.md) ----
 		// Every page of the area but the reader's (Page::MangaRead keeps its own frame) is a shell page: the rail,
 		// the header and the hint bar are the shell's, Manage extensions and the four tabs are drawn on the kit, and
-		// the rest of each page's old 640-wide body is bridged into the shell's body (Shell::beginBody).
+		// the rest of each page's body is drawn in the shell's body.
 		bool shellPage(Page pg) const { return has(pg) && pg != Page::MangaRead; }
 		// the app's tab view (Page::Manga, neither a source's nor a server's view): the kit's tabs over its body
 		bool tabView() const { return ui.page == Page::Manga && mangaView == 0; }

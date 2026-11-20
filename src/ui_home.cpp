@@ -1419,25 +1419,6 @@ namespace bp
 		return {x0 + k * 40, 14, 36, 36};
 	}
 
-	void Ui::Browse::drawSectionHeader(const Player& p)
-	{
-		// "<", the section's name, its markers (L, Files Playlists Network Extensions, R: this one lit), the battery
-		ui.drawBackIcon();
-		Rect first = pipRect(0, p);
-		bool liked = isPlDir(browseDir) && ui.plIsLiked(plFileOf(browseDir));
-		ui.drawTextMid(liked ? PlaylistStore::LIKED_NAME : SECTION_NAMES[browseTab], 2, TEXT, 72, 32, std::max(40, first.x - 22 - 72));
-		ui.drawTextMid("L", 0, ACCENT, first.x - 10, 32, 0, 1);
-		for (int k = 0; k < BROWSE_TABS; k++)
-		{
-			Rect r = pipRect(k, p);
-			bool on = k == browseTab;
-			ui.drawBox(r, on ? ACCENT : SURFACE, R_BUTTON);
-			ui.drawGlyphMid(*SECTION_GLYPHS[k], r.x + r.w / 2, r.y + r.h / 2, on ? ON_ACCENT : DIM);
-		}
-		ui.drawTextMid("R", 0, ACCENT, first.x + 164, 32);
-		ui.drawBattery(616, 24, p);
-	}
-
 	// ---- what plays behind the browser: the playing row's chip, what a photo stopped ----
 
 	bool Ui::goNowPlaying(Player& p)

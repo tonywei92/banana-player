@@ -33,11 +33,14 @@ by tag, comics ask, photo More). Left:
 3. **Before a release:** tools/web-smoke.sh, the arm64 Docker check for Linux-only code, README pictures regenerated,
    the owner's go.
 
+## Decisions
+
+- mpv's top-screen song lines keep mpv's own font (owner, 2026-11-20).
+
 ## Decisions still open
 
 - The brand mark's stripes (ACCENT on BG, drawn; or ACCENT and TEXT).
 - The rail's Now playing key details (position above Settings, hold opens More, a kept slot): drawn, not confirmed.
-- Whether the top-screen song title and artist (mpv's lines) move to the UI's face.
 
 ## Where things are
 

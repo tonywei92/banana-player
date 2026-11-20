@@ -11390,6 +11390,15 @@ static void testKitLayout()
 		CHECK(sel.row(sel.shown - 1).y + sel.row(sel.shown - 1).h <= sel.bar[0].y);
 		for (int i = 1; i < 4; i++)
 			CHECK(sel.bar[i - 1].x + sel.bar[i - 1].w <= sel.bar[i].x || sel.bar[i].x + sel.bar[i].w <= sel.bar[i - 1].x);
+		// adding to a playlist: three keys, picking a folder: two, each across the same bar
+		for (int keys = 2; keys <= 3; keys++)
+		{
+			lay::FilesPage add = lay::filesPage(s.body, 40, true, true, keys);
+			CHECK_EQ(add.shown, sel.shown);
+			CHECK_EQ(add.bar[0].x, add.rows.x);
+			CHECK_EQ(add.bar[keys - 1].x + add.bar[keys - 1].w, add.rows.x + add.rows.w);
+			CHECK_EQ(add.bar[keys].w, 0);
+		}
 		// no rows, no negative boxes
 		lay::FilesPage none = lay::filesPage(s.body, 0, false, false);
 		CHECK_EQ(none.shown, 0);
