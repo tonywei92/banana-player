@@ -219,6 +219,35 @@ Each was needed to draw a gap; the drawn one is the recommendation.
   and the header keeps its playing bars only where there is no rail (decided since: none on shell pages). Or: under Search at the top; or a hold
   that opens Quick settings; or no kept place (the cells would jump when playback starts).
 
+- **Where Videos, Music and Books read from, and sending from a phone (proposal, 2026-11-20; drawn, waiting for the
+  owner).** Screens: `videos-more`, `videos-from`, `music-from`, `books-from`; changed: `videos-empty`, `music-empty`,
+  `books-empty`, `books`, `home-first`, `web-page`. components.md › Header (the source line), More sheet, Sources
+  sheet, Empty state.
+  - *The full page* says it in one quiet line and nothing else: the crumb, one grammar on all three (“From Videos and
+    Movies on both cards · 86 videos”; Books now reads “From Books and Documents on this card · 21 books”). It names
+    only folders that are there, and counts them from three up (“From 3 folders on both cards”).
+  - *More (X)*: the section's column has the same two rows on all three, “Where videos come from” (note: 3 folders)
+    and “Send from phone”. The first opens the Sources sheet: each folder read now as card / folder with its count,
+    A opens it in Files; then Send from phone with the dashboard's address; then the naming rule in two lines.
+  - *The empty page*: the Empty state, the same words three times: the folder names in the accent, the crumb saying
+    what was looked for, Browse Files on A and Send from phone on Y; the top screen's steps say “Y, then Videos ›
+    Upload on the phone: the folder is made”.
+  - *The first run*: Home's welcome names the three folders in its first step, and its Y key is Send from phone too.
+    The Web dashboard page opened from a section goes back to it on B and its top screen names the phone's tab.
+  - No banner, tip or badge is added to a library that has things in it.
+
+  The decisions:
+  1. **The Y key's name on the empty pages and on a fresh Home: “Send from phone”** (drawn, recommended: it says what
+     it does and is Home's tile's name; the page it opens stays “Web dashboard”), or keep “Web dashboard”.
+  2. **Make the folders at the first start?** Recommended: yes, on the main card only, an empty Videos, Music and
+     Books when no folder by any of that section's names is there, so a card in a computer shows where things go.
+     The empty page's crumb then reads “Videos is empty on this card”. Or: never make a folder until an upload does.
+  3. **Three or more folder names in the crumb: counted** (“From 3 folders on both cards”, drawn, recommended: it
+     never cuts with “…”, and the sheet lists them), or every name written out and cut where the header ends.
+  4. **Choosing other folders** (“Add a folder…” in the Sources sheet). Recommended: not now. The names are the whole
+     rule, which is what makes one line enough; a chosen folder needs a setting, a picker and a way to remove it.
+     If wanted later, the sheet's “Add more” group is where the row goes.
+
 From the gaps:
 
 - **The brand mark's stripes:** ACCENT on BG (drawn: the strongest pair in every theme, crisp at 22), or ACCENT and
