@@ -72,7 +72,7 @@ export function useStore() {
 export function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 export function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 
-/* ================= routes: #/home (also #/, and #/recent, where Recent used to be), #/playing, #/files/<vpath>, #/playlists[/<id>], #/manga[/<sub>] (the history bookkeeping is in router.js) ================= */
+/* ================= routes: #/home (also #/, and #/recent, where Recent used to be), #/playing, #/files/<vpath>, #/playlists[/<id>], #/videos, #/music, #/books, #/manga[/<sub>] (the history bookkeeping is in router.js) ================= */
 export function parseRoute() {
 	const h = location.hash.replace(/^#\/?/, '');
 	const [a, ...rest] = h.split('/');
@@ -81,5 +81,6 @@ export function parseRoute() {
 	if (a === 'playlists') return { page: 'playlists', id: tail };
 	if (a === 'manga') return { page: 'manga', sub: tail || 'library' };
 	if (a === 'playing') return { page: 'playing' };
+	if (a === 'videos' || a === 'music' || a === 'books') return { page: a };
 	return { page: 'home' };	// the landing page: no address, an old #/recent, anything unknown
 }

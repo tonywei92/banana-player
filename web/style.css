@@ -727,6 +727,16 @@ video::cue { font-size: var(--cue, 18px); color: #fff; background: rgba(0, 0, 0,
 .chipbtn { min-height: 34px; padding: 0 12px 1px; background: var(--track); border-radius: var(--r-chip); font: 400 14px/1 var(--pixel); color: var(--cream); transition: background-color var(--t-ui), color var(--t-ui); }
 .chipbtn[aria-checked="true"], .chipbtn[aria-pressed="true"] { background: var(--yellow); color: var(--on-accent); }
 @media (hover: hover) { .chipbtn:hover:not([aria-checked="true"]):not([aria-pressed="true"]):not(:disabled) { background: var(--btn); } }
+/* the dashboard's library tabs (Music's albums grid, an album's or an artist's page head) */
+.lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--s3); }
+.lib-tile { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; text-align: left; }
+.lib-tile .art-sq { width: 100%; aspect-ratio: 1; height: auto; box-shadow: inset 0 0 0 1.5px var(--line); }
+.lib-tile .lt { font: 400 13px/1.25 var(--pixel); color: var(--cream); }
+.lib-tile .lm { font: 400 11.5px/1.2 var(--inter); color: var(--dim); }
+@media (hover: hover) { .lib-tile:hover .lt { color: var(--yellow); } }
+.onehead { display: flex; gap: var(--s3); align-items: flex-start; padding: var(--s3); margin-bottom: var(--s3); }
+.onehead .art-lg { width: 128px; height: 128px; flex: none; }
+.tile.dim-tile { color: var(--dim); font: 400 13px/1 var(--pixel); }
 .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: var(--s2); max-width: 440px; }
 .sw { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 2px; font-size: 12px; color: var(--dim-btn); }
 .sw i { width: 36px; height: 36px; border: var(--bw) solid var(--pressed); display: block; border-radius: 8px; }

@@ -880,7 +880,7 @@ async function withFolder(p) {
 // ('always': a video too, Home's Now playing card showing it)
 const sv = (stay, p) => stay === 'always' || (stay && kindOfName(p || '') !== 'video');
 // stay: a row's tap plays and the page stays (the small player shows it); true when it plays
-export async function playPaths(paths, folderSet, target, stay) {
+export async function playPaths(paths, folderSet, target, stay, shuffle) {
 	if (!userTap()) return;
 	store.folderSet = folderSet;
 	target = target || store.target;
@@ -892,12 +892,18 @@ export async function playPaths(paths, folderSet, target, stay) {
 			if (!items.length) { toast('Nothing to play there'); return; }
 			src = { kind: 'playlist', title: paths.length === 1 ? baseName(paths[0]) : 'Selection' };
 		}
+		// a Shuffle play of a list of paths (the dashboard's Music): from a random one, the session's own Shuffle
+		// on so it lasts, as a playlist's Shuffle play does
+		if (shuffle && items.length > 1) {
+			if (!shuffleOn()) { if (store.snap) store.snap.shuffleMode = true; try { await intent('SetShuffle', { on: 1 }); } catch (e) {} }
+			idx = Math.floor(Math.random() * items.length);
+		}
 		if (!await browserPlay(items, idx, src, 0)) return false;
 		if (!sv(stay, items[idx] && items[idx].p)) go('#/playing');
 		return true;
 	} else {
 		const was = B.active && !el.paused; B.leaving = true; el.pause();
-		try { await post('/api/play', Object.assign(paths.length === 1 ? { p: paths[0] } : { p: paths }, hhChoice())); }
+		try { await post('/api/play', Object.assign(paths.length === 1 && !shuffle ? { p: paths[0] } : { p: paths }, shuffle ? { shuffle: 1 } : {}, hhChoice())); }
 		catch (e) { B.leaving = false; if (was && store.conn === 'ok') el.play().catch(() => {}); toast(e.status === 0 ? "Couldn't start it on your handheld" : errMsg(e)); return false; }
 		if (B.active) dropBrowser();
 		if (!sv(stay, paths.length === 1 && !folderSet.has(paths[0]) ? paths[0] : '')) go('#/playing');

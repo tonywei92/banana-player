@@ -936,16 +936,27 @@ that was playing stops, its place kept on the handheld. With a browser signed in
 
 ### In the browser
 
-Four sections: **Home**, **Playing**, **Files** and **Playlists**. The dashboard opens on **Home**. At the foot of Home,
+Five sections, as the handheld's rail has them: **Home**, **Files**, **Videos**, **Music** and **Books** (the reader's
+**Manga** joins while the Manga reader is on). The dashboard opens on **Home**. At the foot of Home,
 one dim line says the version: **Banana Player 0.7.27 · Source · Support Banana Player**, the last two plain links
 opening in a new tab (the repository, and ko-fi.com/tonysong; nothing is loaded from there and there is no QR on the
 page). On a phone they're the tab bar at the bottom, with a small
 player floating over it; on a tablet an icon rail on the left and a player bar at the bottom; on a computer a sidebar
 (the sections, a shortcut list of playlists, and a card with the handheld's battery, free space and **Sign out**) and
-the player bar. On a phone, **Sign out** is behind the handheld button at the top right of Home, Files and Playlists.
-A video playing in this browser goes on, picture and all, when you leave **Playing**: it plays in the small player's
-(or the player bar's) cover tile, without its subtitles; a tap on it opens **Playing** again, where it carries on
+the player bar. On a phone, **Sign out** is behind the handheld button at the top right of the sections. The player
+itself is not a tab: the small player and the player bar open it, and it keeps playing as you move around.
+A video playing in this browser goes on, picture and all, when you leave it: it plays in the small player's
+(or the player bar's) cover tile, without its subtitles; a tap on it opens the player again, where it carries on
 full size.
+
+**Videos** is the handheld's Videos page: the same three views (**All**, **Folders** — a folder row opens its files
+in the Files tab — and **Not finished**, newest first), the row's place and size on it, and the view's own list when
+you play one (in the browser or on the handheld, as from Files). **Music** is the handheld's three views: the
+**Albums** grid (a tap opens the album, with **Play** and **Shuffle**; a song's row plays from that song), the
+**Artists** list (a tap opens their songs, by album), and **Playlists** — the playlists live here now, not as a tab
+of their own (the sidebar's shortcut list still goes straight to one). With no Music folder on either card the page
+says so and offers **Upload to Music**. **Books** is the shelf: every EPUB, PDF, comic and text file from the
+Books and Documents folders; a row asks the handheld to open it (the dashboard itself doesn't read books).
 
 **Playing** controls the music or video. Where it plays is a two-part switch at the top (**Handheld** · **This
 browser**), and in the player bar a button that opens the same choice, saying what happens (for example "pauses the

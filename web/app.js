@@ -12,6 +12,9 @@ import { DevButton, LoopIcon, NowPlaying, TapToPlay, closePanel, loopName, showT
 import { cmpName, fmtTime, isIOS, throttled } from './js/util.js';
 import { Playlists } from './js/playlists.js';
 import { Home } from './js/home.js';
+import { Videos } from './js/videos.js';
+import { Music } from './js/music.js';
+import { Books } from './js/books.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
 import { Files, Lightbox, UploadFab } from './js/files.js';
 import { JobFab, jobOver, refreshJobs } from './js/jobs.js';
@@ -23,7 +26,11 @@ import { boot, signOut } from './js/session.js';
 import { toast } from './js/toasts.js';
 
 /* ================= shell ================= */
-const NAV = [['home', 'Home', 'home', '#/home'], ['playing', 'Playing', 'note', '#/playing'], ['files', 'Files', 'folder', '#/files'], ['playlists', 'Playlists', 'playlist', '#/playlists']];
+// the tabs, as the spec draws them (docs/redesign "videos" notes: five, so a phone's tab row still fits): Playlists
+// went into Music as its third view, Videos took Playlists' place, Books joined. The player is not a tab: the small
+// player and the bar are its way in
+const NAV = [['home', 'Home', 'home', '#/home'], ['files', 'Files', 'folder', '#/files'], ['videos', 'Videos', 'film', '#/videos'],
+	['music', 'Music', 'note', '#/music'], ['books', 'Books', 'book', '#/books']];
 // the Manga item is shown only while the reader is on (the handheld's setting)
 function navWithManga(mangaOn) {
 	const out = NAV.slice();
@@ -181,7 +188,9 @@ function Shell() {
 		};
 		addEventListener('keydown', key); return () => removeEventListener('keydown', key);
 	}, []);
-	const page = r.page === 'home' ? html`<${Home} />` : r.page === 'files' ? html`<${Files} />` : r.page === 'playlists' ? html`<${Playlists} />` : r.page === 'manga' ? html`<${Manga} />` : html`<${NowPlaying} />`;
+	const page = r.page === 'home' ? html`<${Home} />` : r.page === 'files' ? html`<${Files} />` : r.page === 'videos' ? html`<${Videos} />`
+		: r.page === 'music' ? html`<${Music} />` : r.page === 'books' ? html`<${Books} />` : r.page === 'playlists' ? html`<${Playlists} />`
+		: r.page === 'manga' ? html`<${Manga} />` : html`<${NowPlaying} />`;
 	const miniShown = !wide && v.has && r.page !== 'playing' && !s.selecting;
 	const fabShown = r.page !== 'playing' && !s.selecting && !s.pick && (s.upload.items.length > 0 || (r.page === 'files' && !!r.path) || s.jobs.some(j => !jobOver(j)));
 	const nav = (k, h) => go(k === 'files' ? filesHash(store.lastDir || '') : h);
