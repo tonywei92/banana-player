@@ -347,8 +347,6 @@ namespace bp
 		// the error each asker last had a dialog for (0: a source's lists and series, 1: the reader's pages); forgotten
 		// once that asker's error clears (the source asked again), so the same error after a reopen is said again
 		std::string mangaErrFor[2], mangaErrText;
-		Rect mangaErrBox() const { return {96, 120, 448, 220}; }
-		Rect mangaErrOk() const { return {240, 280, 160, 44}; }
 		void mangaErrCheck(const std::string& error, bool anyError = false, int asker = 0);	// anyError: not only a browser check
 		void drawMangaErr();	// a video outside the reader asked the manga engine to stop (once)
 		void mangaVideoGuard(Player& p);	// (ui_manga_java.cpp)	// a video stopped because the extensions run: the notice says so a moment
@@ -596,6 +594,7 @@ namespace bp
 		bool mangaJavaModalPointer(const Pointer& pt, int x, int y, Player& p);
 		void drawMangaJavaModal(const Player& p);
 		int mangaJavaModalRows() const;
+		lay::Sheet mangaJavaModalSheet() const;
 		Rect mangaJavaModalBox() const;
 		Rect mangaJavaModalRowRect(int i) const;
 		// a Java source's page (ui_manga_browse.cpp's hooks)
@@ -925,9 +924,9 @@ namespace bp
 		void drawMangaFilters(const Player& p);
 		std::string mangaSourceFiltersJson() const;				// what a Search job sends ("{}" without filters)
 		void mangaFilterTextTyped(const std::string& text);		// the keyboard's Done
-		static constexpr int MF_ROW_TOP = 118, MF_ROWS = 8, MF_ROW_H = 36;
-		Rect mangaFilterBox() const { return {48, 64, 544, 372}; }
-		Rect mangaFilterRowRect(int i) const { return {64, MF_ROW_TOP + i * MF_ROW_H, 512, MF_ROW_H - 4}; }
+		static constexpr int MF_ROWS = lay::LIST_ROWS;
+		// the sheet for a list of n rows (the kit's list sheet: its rows are the touches too)
+		lay::ListSheet mangaFilterSheet(int n) const { return lay::listSheet(std::min(std::max(n, 1), MF_ROWS)); }
 		int mserSrcRows() const { return 5; }	// (the keys' paging; the list is the kit's rows)
 		static constexpr int MG_SER_ROWS = 5;	// a card series' chapter rows the body holds (lay::seriesPage, lay::rowList)
 		// a source series page's one buttons row, 48 high and single-line glyph + label each (the keys are in the
@@ -990,8 +989,11 @@ namespace bp
 		int mengCursor = 0;
 		bool mengBusy = false;
 		bool mengUpgrade = false;	// the sheet offers the lighter runtime (an install on HotSpot), not the engine itself	// Download chosen: the sheet stays with its progress until it's done; Cancel only
-		Rect mangaEngineBox() const { return {64, 88, 512, 300}; }
-		Rect mangaEngineRow(int i) const { return {80, 268 + i * 48, 480, 40}; }
+		Rect mangaEngineBox() const;
+		Rect mangaEngineRow(int i) const;
+		std::vector<std::string> mangaEngineLines(bool& failed) const;
+		lay::BusySheet mangaEngineBusy() const;
+		lay::ConfirmSheet mangaEngineConfirm() const;
 		bool mangaEngineKey(Button b, Player& p);
 		void mangaEngineChoose(int i, Player& p);
 		void mangaEngineWatch(Player& p);

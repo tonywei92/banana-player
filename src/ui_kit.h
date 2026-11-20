@@ -210,6 +210,16 @@ namespace bp
 		int pill(int right, int cy, const std::string& text, Pill tone = Pill::Live);	// its width
 		int pillW(const std::string& text) const;	// the width `pill` draws (text + its 12 of padding), for laying a run out
 		void toggle(int x, int cy, bool on);	// 40 x 22, its left edge at x
+		// ---- a sheet of settings controls (lay::controlSheet) ----
+		struct SliderRow
+		{
+			std::string label, value;
+			double share = 0;
+			bool focused = false, held = false, away = false;	// away: the value in yellow (not at its normal)
+		};
+		void sliderRow(Rect row, Rect track, const SliderRow& s);	// the label and value on a line, the bar under
+		// a label over a segmented choice (Kit::segment): the row lit when focused
+		void choiceRow(Rect row, Rect seg, const std::string& label, const std::vector<std::string>& options, int on, bool focused);
 
 		// ---- the Settings page's pieces (docs/redesign/components.md: "Settings row (stepper)", "Settings tile") ----
 		// a row: the label left, the value in a stepper at the right (< value >), or an action's note and a chevron.

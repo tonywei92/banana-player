@@ -10626,6 +10626,26 @@ static void testKitVariantBars()
 
 // ---- the list and page pieces (kitlayout.h's 2026-11-19 block): a page's line, Search's field and result row,
 // a Music/Videos row and a Books cover tile ----
+static void testControlSheet()
+{
+	using namespace lay;
+	// the Brightness sheet's rows: two bars, the switch, a bar, the filters: stacked GAP apart inside the sheet, above
+	// the hint bar; a bar's track and a choice's area lie in their rows, and every row is a touch target of 44 or more
+	ControlSheet c = controlSheet({LC_SLIDER, LC_SLIDER, LC_SWITCH, LC_SLIDER, LC_CHOICE});
+	CHECK_EQ((int)c.row.size(), 5);
+	CHECK_EQ(c.row[0].y, c.sheet.bodyY + 4);
+	for (size_t i = 0; i < c.row.size(); i++)
+	{
+		CHECK(c.row[i].h >= 44);
+		CHECK(c.row[i].y + c.row[i].h <= c.sheet.hints.y);
+		if (i) CHECK_EQ(c.row[i].y, c.row[i - 1].y + c.row[i - 1].h + GAP);
+	}
+	CHECK(c.track[0].w > 0 && c.track[2].w == 0 && c.seg[4].w > 0 && c.seg[0].w == 0);
+	CHECK(c.track[0].y >= c.row[0].y && c.track[0].y + c.track[0].h <= c.row[0].y + c.row[0].h);
+	CHECK(c.seg[4].y + c.seg[4].h <= c.row[4].y + c.row[4].h);
+	CHECK(c.sheet.box.y >= PANEL_H - SHEET_MAX);
+}
+
 static void testKitLayoutLists()
 {
 	using namespace lay;
@@ -14985,6 +15005,7 @@ int main()
 	testKitVariantNotice();
 	testKitVariantBars();
 	testKitLayoutLists();
+	testControlSheet();
 	testKitLayoutReaders();
 	testKitLayoutPages();
 	testKitLayoutLibrary();

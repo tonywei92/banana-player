@@ -99,3 +99,9 @@ only, not running the player.
 ## Checked
 
 Desktop build and `./build/core-test` (the new `testKitLayoutLists` checks the layouts).
+
+## Update 2026-11-20 (old-UI sweep, docs/notes/2026-11-20-old-ui-sweep.md)
+
+New: `lay::controlSheet`, `Kit::sliderRow`, `Kit::choiceRow` (a settings sheet of bars, a switch and a choice: the
+Brightness sheet). The confirm / alert / busy sheets are now used by every ask on the panel (Quit, Incognito, lid,
+alert, manga check, Finding, Reading folder, the manga engine). Sound is the player's sheets, opened from Settings.

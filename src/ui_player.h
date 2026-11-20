@@ -69,6 +69,7 @@ namespace bp
 		// Equalizer / Effects / Display / Speed. No tabs: the sheet is the chip's subject. Speed opens the same sheet on
 		// both; Picture's last row opens Adjust, a page of that sheet.
 		void openView(int tab, Player& p);
+		void openSound(bool effects, Player& p);	// Settings' Equalizer / Sound effect rows: the song sheets, over Settings
 
 		// ---- X / SELECT: the More sheet's list, Play on's sheet, and a photo's own More ----
 		MoreSpec moreSpec(const Player& p) const;

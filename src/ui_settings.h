@@ -5,7 +5,7 @@
 // them. Its content is laid out in lay::shell().body; Ui::Shell draws the header and hints from title(), crumb()
 // and hints(p) (docs/notes/2026-11-19-redesign-settings.md). The manga reader's own settings page
 // (Page::MangaSettings) is Manga's, but its rows are drawn, stepped and
-// touched by this struct's settingsDown, drawSettingRow, settingHelp and changeSetting. Stayed Ui's: the group and row
+// touched by this struct's settingsDown, settingHelp and changeSetting. Stayed Ui's: the group and row
 // ids (SetGroup, STYLE_ROW0..MANGA_JAVA_ROW), the list's measures (the lay::settingsRows layout), setGroup (the open
 // group: the way-back records of showPlayer, the dashboard and Browse keep it), the lift of a list's touch in
 // Ui::pointer (one block for every list) and the Brightness rows' setBrightness (the quick settings' too).
@@ -42,7 +42,6 @@ namespace bp
 		std::string settingHelp(int row) const;	// what a setting does, under its rows
 		// one settings row at y (at: the cursor's): its label, arrows and value, an action's or the note's own look.
 		// Shared by Settings (draw) and the manga reader's own settings page (drawMangaSettings)
-		void drawSettingRow(int row, int y, bool at, const Player& p);
 		// a finger down on the settings' list (Settings', Manga's): its row, the touch begun
 		bool settingsDown(int x, int y);
 		void openGroup(int g, Player* p = nullptr);

@@ -95,7 +95,6 @@ namespace bp
 		docs = std::make_unique<Docs>(*this);
 		areas.push_back(docs.get());
 		sound = std::make_unique<Sound>(*this);
-		areas.push_back(sound.get());
 		webPage = std::make_unique<Web>(*this);
 		areas.push_back(webPage.get());
 		manga = std::make_unique<Manga>(*this);
@@ -168,8 +167,7 @@ namespace bp
 		{
 			if (browse->browseDir == FORMDIR || browse->browseDir == FINDNET) return false;
 			if (browse->playlists->selMode != SEL_NONE || browse->playlists->addPending.serial) return false;
-			// Home's quit question takes every key (START backs out of it, as B does)
-			return !(browse->atHome() && browse->homeView->quitOpen);
+			return true;
 		}
 		if (page == Page::DocText || page == Page::DocPages)
 		{
@@ -646,12 +644,6 @@ namespace bp
 		mangaOn = p.settings.mangaOn;
 		if (fileJob) return fileJobPointer(pt, x, y);
 		if (browse->clipPointer(pt, x, y, p)) return false;
-		// Home's quit question takes every finger, the shell's rail and header included: a row chooses as it lifts,
-		// outside it cancels (it sits in the main strip, so the rail is no longer under its panel to block them).
-		// Dark and the touch that woke the panel keep their turns, as they had when the question was a full panel.
-		if (page == Page::Browse && browse->atHome() && browse->homeView->quitOpen && !popupShown(p) &&
-			panel.on() && !swallowTouch && !kbOpen)
-			return browse->homeView->homePointer(pt, x, y, p);
 		// the shell's rail, header and mini bar first (the page's body is under them)
 		if (shell->page(page) && shell->pointer(pt, x, y, p)) return false;
 		// Manga's pages: the kit's tabs take their touches first, and a sheet over the frame takes the finger at full size
@@ -830,7 +822,7 @@ namespace bp
 					dir = lay::stepperBack(st, touchX) ? -1 : 1;
 				}
 				if (groups) settingsPage->openGroup(cursor, &p);
-				else if (set && page == Page::Settings && srows[cursor] == SOUND_ROW) sound->open(p, true);	// a page, not a value
+				else if (set && page == Page::Settings && (srows[cursor] == SOUND_ROW || srows[cursor] == SOUND_FX_ROW)) sound->open(p, srows[cursor] == SOUND_FX_ROW);	// a page, not a value
 				else if (set) settingsPage->changeSetting(srows[cursor], dir, p);
 				else choose(cursor, p);
 			}

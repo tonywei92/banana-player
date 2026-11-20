@@ -571,19 +571,25 @@ namespace bp
 		return e->hasUpdate ? 2 : 1;	// Update (if any), then Uninstall
 	}
 
+	// the kit's sheet: the lines under its title, then a row each (the rows are the touches too)
+	lay::Sheet Ui::Manga::mangaJavaModalSheet() const
+	{
+		lay::SheetSpec spec;
+		spec.rows = std::max(1, mangaJavaModalRows());
+		spec.body = mstJavaModal == MJM_DETAILS ? 3 * 22 + 8 : 28;
+		return lay::sheet(spec);
+	}
+
 	Ui::Rect Ui::Manga::mangaJavaModalBox() const
 	{
-		int rows = std::max(1, mangaJavaModalRows());
-		int h = mstJavaModal == MJM_DETAILS ? 132 + rows * 50 : 100 + rows * 52;
-		return {112, (436 - h) / 2, 416, h};
+		lay::Box b = mangaJavaModalSheet().box;
+		return {b.x, b.y, b.w, b.h};
 	}
 
 	Ui::Rect Ui::Manga::mangaJavaModalRowRect(int i) const
 	{
-		Rect b = mangaJavaModalBox();
-		int top = mstJavaModal == MJM_DETAILS ? b.y + 132 : b.y + 90;
-		int step = mstJavaModal == MJM_DETAILS ? 50 : 52;
-		return {b.x + 16, top + i * step, b.w - 32, step - 6};
+		lay::Box b = mangaJavaModalSheet().row(i);
+		return {b.x, b.y, b.w, b.h};
 	}
 
 	bool Ui::Manga::mangaJavaModalKey(Button b, Player& p)
@@ -695,28 +701,31 @@ namespace bp
 		if (mstJavaModal == MJM_NONE) return;
 		if (!mangaNet || !mangaNet->started()) { mstJavaModal = MJM_NONE; return; }
 		MangaJava& mgr = mangaNet->javaSources();
-		Rect box = mangaJavaModalBox();
+		Kit& k = *ui.kit;
+		lay::Sheet sh = mangaJavaModalSheet();
+		int bx = lay::SHEET_PAD + 2, bw = lay::PANEL_W - 2 * lay::SHEET_PAD - 4;
 		if (mstJavaModal == MJM_REPO)
 		{
 			const MangaJava::Repo* rp = nullptr;
 			for (const MangaJava::Repo& r : mgr.repos())
 				if (r.url == mstJavaModalId) { rp = &r; break; }
 			if (!rp) { mstJavaModal = MJM_NONE; return; }
-			ui.drawDialog(box, rp->name.empty() ? "Java repository" : rp->name);
-			ui.drawTextMid(elideMiddle(rp->url, 0, box.w - 40), 0, DIM, box.x + box.w / 2, box.y + 62, 0, 2);
+			k.sheet(sh, {&G_WEB, rp->name.empty() ? "Java repository" : rp->name, "", false});
+			ui.drawTextMid(elideMiddle(rp->url, F_I14, bw), F_I14, DIM_ON, bx, sh.bodyY + 14, bw);
 		}
 		else
 		{
 			const SuwayomiExt* e = mgr.extension(mstJavaModalId);
 			if (!e) { mstJavaModal = MJM_NONE; return; }
-			ui.drawDialog(box, e->name.empty() ? e->pkgName : e->name);
-			auto line = [&](const char* label, const std::string& value, int y) {
-				ui.drawTextMid(label, 0, DIM, box.x + 24, y, 104);
-				ui.drawTextMid(value, 0, TEXT, box.x + 132, y, box.w - 156);
+			k.sheet(sh, {&G_WEB, e->name.empty() ? e->pkgName : e->name, "", false});
+			auto line = [&](const char* label, const std::string& value, int i) {
+				int y = sh.bodyY + 14 + i * 22;
+				ui.drawTextMid(label, F_I12, DIM, bx, y, 90);
+				ui.drawTextMid(value, F_I14, TEXT, bx + 96, y, bw - 96);
 			};
-			line("Package", e->pkgName, box.y + 58);
-			line("Version", javaExtVersion(*e), box.y + 80);
-			line("Language", e->lang.empty() ? "unknown" : e->lang, box.y + 102);
+			line("Package", e->pkgName, 0);
+			line("Version", javaExtVersion(*e), 1);
+			line("Language", e->lang.empty() ? "unknown" : e->lang, 2);
 		}
 		int n = mangaJavaModalRows();
 		bool updateRow = false;
@@ -750,11 +759,18 @@ namespace bp
 				g = i == 0 ? &G_REFRESH : &G_TRASH;
 				if (i == 1 && mstJavaUninstallArmed) note = "Press again";
 			}
-			ui.drawDialogRow(mangaJavaModalRowRect(i), g, label, at, false, dim ? DIM : TEXT, note,
-				note == "Press again" ? ACCENT : SDL_Color{0, 0, 0, 0});
+			Kit::Row r;
+			r.font = F_P16;
+			r.glyph = g;
+			r.name = label;
+			r.note = note;
+			r.focused = at;
+			r.off = dim;
+			r.lit = note == "Press again";
+			k.row(sh.row(i), r);
 		}
-		if (mstJavaUninstallArmed) ui.drawFooterText("Press A again to remove", ACCENT);
-		else ui.drawHints({{"A", "Choose"}, {"B", "Close"}});
+		if (mstJavaUninstallArmed) k.hints({{"A", "Remove"}, {"B", "Close"}});
+		else k.hints({{"A", "Choose"}, {"B", "Close"}});
 	}
 
 	// ---- a Java source's page (the hooks in ui_manga_browse.cpp call these) ----

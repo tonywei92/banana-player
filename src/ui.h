@@ -359,7 +359,7 @@ namespace bp
 		friend struct WebPlayerGlue;
 		friend class SessionHost;
 		friend struct WebPlaylistGlue;
-		enum class Page { Main, Settings, Browse, Search, Info, About, Sound, Web, Manga, ExtSection, Extensions, MangaSeries,
+		enum class Page { Main, Settings, Browse, Search, Info, About, Web, Manga, ExtSection, Extensions, MangaSeries,
 			MangaRead, MangaSettings, MangaSources, DocText, DocPages, Music, Videos, Books };
 		using Rect = lay::Box;	// (kitlayout.h: the kit's layout maths give and take the same box)
 		// An overlay: a dialog or a sheet over the page (ui_overlay.cpp; docs/notes/overlay-stack.md). While it is on
@@ -706,7 +706,7 @@ namespace bp
 		bool pressAnyway(Button b, Player& p);
 		// what the top screen says as the play mode changes (the dashboard's labels too)
 		std::string modeLabel(const Player& p) const;
-		// Sound (music's): two tabs, Equalizer and Effects: an area (Area), ui_sound.h / ui_sound.cpp. The song's
+		// Sound (music's): the equalizer's and effects' actions, ui_sound.h / ui_sound.cpp. The song's
 		// Equalizer and Effects sheets (PlayerPage's SongViewSheet) call these same actions
 		struct Sound;
 		std::unique_ptr<Sound> sound;
@@ -774,7 +774,6 @@ namespace bp
 		}
 		// a button's label, with its key under it when there is one (the label moves up to make room); the label
 		// and key fit labelW/keyW units wide (0: the button less 6)
-		void drawKeyedLabel(Rect b, const std::string& label, const std::string& key, bool off = false, int labelW = 0, int keyW = 0);
 		void drawButton(Rect b, const Glyph* g, const std::string& label, const char* key, bool off, int size, bool lit = false);	// lit: the glyph and label in yellow (on, as the heart once liked)
 		static constexpr int FOOT_Y = 458, SUB_Y = 70;	// the footer's line, the browser's "where" line (their middles)
 		void drawInfo(const Player& p);
@@ -978,7 +977,7 @@ namespace bp
 		// EXT_NOTE is its note, no value
 		static constexpr int STYLE_ROW0 = 0, CLEAR_ROW = STYLE_KEYS, CHECK_ROW = CLEAR_ROW + 1, INSTALL_ROW = CHECK_ROW + 1,
 			TOP_LIGHT_ROW = INSTALL_ROW + 1, BOTTOM_LIGHT_ROW = TOP_LIGHT_ROW + 1, SOUND_ROW = BOTTOM_LIGHT_ROW + 1,
-			EXT_NOTE = SOUND_ROW + 1, MANGA_CLEAR_ROW = EXT_NOTE + 1, MANGA_JAVA_ROW = MANGA_CLEAR_ROW + 1;
+			EXT_NOTE = SOUND_ROW + 1, MANGA_CLEAR_ROW = EXT_NOTE + 1, MANGA_JAVA_ROW = MANGA_CLEAR_ROW + 1, SOUND_FX_ROW = MANGA_JAVA_ROW + 1;
 		// the panels' backlights (BananaOS's own levels: changed here as its menu changes them)
 		Backlight backlight;
 		bool sameBrightness = true;	// the setting's, kept here for settingRows (no Player there)
@@ -1104,9 +1103,8 @@ namespace bp
 			BUSY_CANCEL = 536, PICK_ROW = 900;
 		// the kept Menu of places (unreached): the Now playing line, the places' tiles (MENU_TILE + i), Quick settings and Quit
 		static constexpr int MENU_NOW = 560, MENU_TILE = 561, MENU_QUICK = 570, MENU_QUIT = 571;
-		// Sound's touch buttons, apart from the grid's and the photo's; its dialogs' rows from DLG_ROW
-		static constexpr int SOUND_TAB0 = 510, SOUND_TAB1 = 511, EQ_SWITCH = 520, EQ_PREV = 521, EQ_NEXT = 522, EQ_NAME_ZONE = 523,
-			EQ_RESET = 524, EQ_SAVE = 525, EQ_OPTIONS = 526, DLG_ROW = 700, FX_ROW = 800;
+		// the dialogs' rows from DLG_ROW
+		static constexpr int DLG_ROW = 700;
 		void drawBackIcon();
 		// the browser's rows' marks: what each row is
 		enum RowIcon { ICON_NONE, ICON_RECENT, ICON_PLACE, ICON_FOLDER, ICON_VIDEO, ICON_SONG, ICON_PHOTO, ICON_DOC, ICON_BOOK, ICON_FILE, ICON_PDF, ICON_EPUB, ICON_COMIC, ICON_NETWORK, ICON_REFRESH,
@@ -1161,6 +1159,8 @@ namespace bp
 		// the first start with no lid-close in settings.conf: what closing the lid does, asked once (Pause first);
 		// the answer is saved, so it isn't asked again (LidAskBox in ui_overlay.cpp)
 		void askLid();
+		void askQuit();	// Home's B: Quit Banana Player? (the kit's confirm sheet)
+		struct QuitAsk;
 		struct LidAskBox;
 		// Opening Manga while a video plays (docs/redesign: manga-guard, ext-section-video): the confirm sheet that
 		// says the video stops, Stay focused and B, with "Don't ask again" (the manga-ask-video setting). Pushed by

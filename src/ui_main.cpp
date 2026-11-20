@@ -224,22 +224,7 @@ namespace bp
 
 	Ui::Rect Ui::buttonRect(int id) const
 	{
-		// Sound's
-		if (id == SOUND_TAB0 || id == SOUND_TAB1) return sound->tabRect(id - SOUND_TAB0);
-		if (id == EQ_SWITCH) return {16, 70, 136, 52};
-		if (id == EQ_PREV) return {160, 70, 56, 52};
-		if (id == EQ_NEXT) return {568, 70, 56, 52};
-		if (id == EQ_NAME_ZONE) return {216, 70, 352, 52};
-		if (id == EQ_RESET || id == EQ_SAVE || id == EQ_OPTIONS) return rowCell({16, 400, 608, 32}, 3, 10, id - EQ_RESET);
-		if (id >= FX_ROW && id < FX_ROW + SOUNDFX_COUNT) return {16, ROW_Y + (id - FX_ROW) * ROW_H, 608, ROW_H - 4};
-		// the select mode's bar: three buttons (Edit, Add), two (Pick, Move)
-		if (id == SEL_ALL) return {24, 428, 184, 44};
-		if (id == SEL_MOVE) return {228, 428, 184, 44};
-		if (id == SEL_ACT) return browse->playlists->selMode == SEL_PICK ? Rect{328, 428, 288, 44} : Rect{432, 428, 184, 44};
-		if (id == SEL_CANCEL) return browse->playlists->selMode == SEL_PICK ? Rect{24, 428, 288, 44} : Rect{228, 428, 184, 44};
-		if (id == MOVE_CANCEL) return {24, 428, 288, 44};
-		if (id == MOVE_DONE) return {328, 428, 288, 44};
-		if (id == BUSY_CANCEL) return {152, 224, 336, 46};
+		if (id == BUSY_CANCEL) { lay::Box k = lay::busySheet().key; return {k.x, k.y, k.w, k.h}; }
 		if (id == WEB_NEWPIN) return {296, 384, 152, 52};
 		if (id == WEB_OFF) return {464, 384, 152, 52};
 		if (id >= PHOTO_BTN) return {0, 0, 0, 0};	// photoBtn's: they move with the pan area
@@ -319,8 +304,12 @@ namespace bp
 		for (int i = 0; i < PHOTO_BTNS; i++)
 		{
 			Rect b = photoBtn(i, p);
-			drawBox(b, pressedBtn == PHOTO_BTN + i ? PRESSED : BUTTON, R_BUTTON);
-			drawKeyedLabel(b, btns[i].label, hints ? btns[i].hint : "", btns[i].off);
+			Kit::Key key;
+			key.label = btns[i].label;
+			key.key = hints ? btns[i].hint : "";
+			key.off = btns[i].off;
+			key.pressed = pressedBtn == PHOTO_BTN + i;
+			kit->key(b, key);
 		}
 		if (p.count() > 1)
 		{
@@ -336,15 +325,12 @@ namespace bp
 	void Ui::drawLeave(const Player& p)
 	{
 		// a photo's Close, as B (a song's or a video's Stop is in X's More sheet: PlayerPage::moreSpec)
-		Rect q = buttonRect(QUIT_BTN);
-		drawBox(q, pressedBtn == QUIT_BTN ? PRESSED : BUTTON, R_BUTTON);
-		std::string t = "Close", key = p.settings.buttonHotkeys ? "B" : "";
-		const Glyph& g = G_CROSS;
-		int tw = (int)std::lround(textWidth(t, 0) / sx), gw = glyphW(g), kw = key.empty() ? 0 : (int)std::lround(textWidth(key, 0) / sx) + 10;
-		int x = q.x + q.w / 2 - (gw + 8 + tw + kw) / 2;
-		drawGlyphMid(g, x + gw / 2, q.y + q.h / 2, TEXT);
-		drawTextMid(t, 0, TEXT, x + gw + 8, q.y + q.h / 2);
-		if (!key.empty()) drawTextMid(key, 0, ACCENT, x + gw + 8 + tw + 10, q.y + q.h / 2);
+		Kit::Key key;
+		key.glyph = &G_CROSS;
+		key.label = "Close";
+		key.key = p.settings.buttonHotkeys ? "B" : "";
+		key.pressed = pressedBtn == QUIT_BTN;
+		kit->key(buttonRect(QUIT_BTN), key);
 	}
 
 	bool Ui::photoDown(int x, int y, Player& p)

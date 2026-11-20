@@ -49,7 +49,7 @@ namespace bp
 		// the menus' rows
 		enum { DT_FONT, DT_SIZE, DT_SPACING, DT_MARGINS, DT_THEME, DT_FILTER, DT_ENCODING, DT_GOTO, DP_VIEW, DP_FULL, DP_FILTER,
 			DP_FIT, DP_ZOOM, DP_PAGES, DT_VIEW, DT_HOLD, DT_MARKS, DT_TURN, DT_FIND };
-		constexpr int MENU_TOP = 72, MENU_ROW_H = 44;
+		constexpr int MENU_TOP = 72, MENU_ROW_H = 50;	// (the kit's rows are 46 tall)
 		constexpr Uint32 TAP_MS = 350;
 
 		// the reading filter as SDL's colour mod (the bottom panel's copies of the pages)
@@ -364,12 +364,13 @@ namespace bp
 		// a search running: over everything, how far, B stops it
 		if (findJob)
 		{
-			Rect box{100, 170, 440, 140};
-			ui.drawDialog(box, "Finding\u2026");
-			ui.drawTextMid("\u201C" + findQuery + "\u201D", 1, TEXT, W / 2, box.y + 70, box.w - 40, 2);
-			Rect track{box.x + 30, box.y + 96, box.w - 60, 10};
-			ui.drawLevel(track, track.w * findJob->permille / 1000, TRACK, ACCENT);
-			ui.drawHints({{"B", "Stop"}});
+			Kit::BusySpec b;
+			b.title = "Finding\u2026";
+			b.file = "\u201C" + findQuery + "\u201D";
+			b.share = findJob->permille / 1000.0;
+			b.left = std::to_string(findJob->permille / 10) + "%";
+			b.key = "Stop";
+			ui.kit->busySheet(lay::busySheet(), b);
 		}
 	}
 
@@ -587,7 +588,8 @@ namespace bp
 		// over the whole panel, its title where the page's was
 		ui.fill({0, 0, W, H}, BG);
 		ui.fill({0, 60, W, 2}, RULE);
-		ui.drawTextMid(marks ? "Bookmarks" : contents ? "Contents" : ui.page == Page::DocText ? "Text options" : "Options", 1, TEXT, 24, 32, 400);
+		Kit& k = *ui.kit;
+		ui.drawTextMid(marks ? "Bookmarks" : contents ? "Contents" : ui.page == Page::DocText ? "Text options" : "Options", F_P20, ACCENT, 24, 32, 400);
 		auto here = docMarksHere();
 		int shown = (H - MENU_TOP - 40) / MENU_ROW_H;
 		int n = marks ? (int)here.size() + 1 : contents ? (int)textStatus.contents.size() : (int)docMenuRows().size();
@@ -597,57 +599,53 @@ namespace bp
 		auto rows = docMenuRows();
 		for (int i = docMenuScroll; i < n && i < docMenuScroll + shown; i++)
 		{
-			Rect r{16, MENU_TOP + (i - docMenuScroll) * MENU_ROW_H, W - 32, MENU_ROW_H - 4};
+			Rect r = docMenuRowRect(i - docMenuScroll);
 			bool at = i == docMenuCursor;
-			if (at) ui.drawFocus(r);
-			int mid = r.y + r.h / 2;
-			SDL_Color ink = at ? ACCENT : TEXT;
-			if (marks)
+			if (marks || contents)
 			{
-				if (i == 0)
+				Kit::Row row;
+				row.font = F_P16;
+				row.under = BG;
+				row.focused = at;
+				if (marks && i == 0)
 				{
-					ui.drawGlyphMid(G_PLUS, 40, mid, ink);
-					ui.drawTextMid("Add a bookmark here", 1, ink, 64, mid, 520);
-					continue;
+					row.glyph = &G_PLUS;
+					row.name = "Add a bookmark here";
 				}
-				const DocMark& m = docMarks[here[i - 1]];
-				ui.drawGlyphMid(G_BOOKMARK, 40, mid, at ? ACCENT : DIM);
-				ui.drawTextMid(std::to_string((int)std::lround(m.frac * 100)) + "%", 1, ink, 64, mid, 70);
-				bool armedHere = at && docMarkArmed;
-				ui.drawTextMid(armedHere ? "X again to delete it" : m.label, 0, armedHere ? ACCENT : at ? TEXT : DIM, 140, mid, 470);
-				continue;
-			}
-			if (contents)
-			{
-				const auto& c = textStatus.contents[i];
-				ui.drawTextMid(c.first, 1, ink, 32 + std::min(c.second.second, 4) * 20, mid, 560 - std::min(c.second.second, 4) * 20);
+				else if (marks)
+				{
+					const DocMark& m = docMarks[here[i - 1]];
+					row.glyph = &G_BOOKMARK;
+					row.name = m.label;
+					row.note = std::to_string((int)std::lround(m.frac * 100)) + "%";
+					if (at && docMarkArmed) { row.note = "X again to delete it"; row.danger = true; }
+				}
+				else
+				{
+					const auto& c = textStatus.contents[i];
+					row.name = std::string(std::min(c.second.second, 4) * 2, ' ') + c.first;
+				}
+				k.row(r, row);
 				continue;
 			}
 			int id = rows[i];
 			static const char* LABELS[] = {"Font", "Text size", "Line spacing", "Margins", "Colours", "Brightness & filter", "Encoding",
 				"Go to", "View", "Fullscreen", "Brightness & filter", "Page fit", "Zoom", "Pages", "View", "Hold", "Bookmarks", "Page turn", "Find\u2026"};
-			ui.drawTextMid(LABELS[id], 1, ink, 32, mid, 300);
-			if (id == DT_FIND)
+			Kit::SettingRow sr;
+			sr.label = LABELS[id];
+			sr.focused = at;
+			if (id == DT_FIND || id == DP_PAGES || id == DT_MARKS || id == DT_FILTER || id == DP_FILTER)
 			{
-				if (!findQuery.empty()) ui.drawTextMid("\u201C" + findQuery + "\u201D", 0, at ? ACCENT : DIM, 580, mid, 220, 1);
-				ui.drawGlyphMid(G_RIGHT, 604, mid, at ? ACCENT : DIM);
-				continue;
-			}
-			if (id == DP_PAGES || id == DT_MARKS || id == DT_FILTER || id == DP_FILTER)
-			{
-				// Brightness & filter opens its sheet: the filter on now beside it
+				// an action: opens something (Brightness & filter its sheet: the filter on now beside it)
+				sr.action = true;
+				if (id == DT_FIND && !findQuery.empty()) sr.value = "\u201C" + findQuery + "\u201D";
 				if (id == DT_FILTER || id == DP_FILTER)
-					ui.drawTextMid(FILTER_NAMES[std::clamp(id == DT_FILTER ? p.settings.txtFilter : p.settings.pdfFilter, 0, DOC_FILTERS - 1)], 0,
-						at ? ACCENT : DIM, 580, mid, 160, 1);
-				if (id == DT_MARKS)
-				{
-					int nm = (int)docMarksHere().size();
-					ui.drawTextMid(nm ? std::to_string(nm) : "None yet", 0, at ? ACCENT : DIM, 580, mid, 160, 1);
-				}
-				ui.drawGlyphMid(G_RIGHT, 604, mid, at ? ACCENT : DIM);
+					sr.value = FILTER_NAMES[std::clamp(id == DT_FILTER ? p.settings.txtFilter : p.settings.pdfFilter, 0, DOC_FILTERS - 1)];
+				if (id == DT_MARKS) sr.value = docMarksHere().empty() ? "None yet" : std::to_string((int)docMarksHere().size());
+				k.settingRow(r, sr);
 				continue;
 			}
-			std::string v;
+			std::string& v = sr.value;
 			switch (id)
 			{
 			case DT_FONT: v = FONT_NAMES[std::clamp(p.settings.txtFont, 0, TXT_FONTS - 1)]; break;
@@ -655,8 +653,6 @@ namespace bp
 			case DT_SPACING: v = SPACING_NAMES[std::clamp(p.settings.txtSpacing, 0, TXT_SPACINGS - 1)]; break;
 			case DT_MARGINS: v = MARGIN_NAMES[std::clamp(p.settings.txtMargins, 0, TXT_MARGINS - 1)]; break;
 			case DT_THEME: v = THEME_NAMES[std::clamp(p.settings.txtTheme, 0, TXT_PAGES - 1)]; break;
-			case DT_FILTER: v = FILTER_NAMES[std::clamp(p.settings.txtFilter, 0, DOC_FILTERS - 1)]; break;
-			case DP_FILTER: v = FILTER_NAMES[std::clamp(p.settings.pdfFilter, 0, DOC_FILTERS - 1)]; break;
 			case DT_ENCODING: v = textEncoding.empty() ? "Auto (" + textStatus.encoding + ")" : textStatus.encoding; break;
 			case DT_GOTO: v = std::to_string((int)std::lround(textStatus.fraction * 100)) + "%"; break;
 			case DT_VIEW: v = p.settings.txtBook ? "Book mode" : "Scroll"; break;
@@ -668,14 +664,12 @@ namespace bp
 			case DP_ZOOM: v = std::to_string(ui.pageReader->readerStatus.zoomPct) + "%"; break;
 			default: break;
 			}
-			ui.drawTextMid("<", 1, at ? ACCENT : DIM, SET_ARROW_X, mid);
-			ui.drawTextMid(v, 1, ink, 490, mid, 196, 2);
-			ui.drawTextMid(">", 1, at ? ACCENT : DIM, 608, mid, 0, 1);
+			k.settingRow(r, sr);
 		}
 		if (n > shown) ui.drawScrollBar(MENU_TOP, shown * MENU_ROW_H, docMenuScroll, shown, n);
-		if (marks) ui.drawHints({{"A", docMenuCursor == 0 ? "Add" : "Go"}, {"X", "Delete"}, {"B", "Close"}});
-		else if (contents) ui.drawHints({{"A", "Go"}, {"Y/B", "Close"}});
-		else ui.drawHints({{"LEFT/RIGHT", "Change"}, {"START/B", "Close"}});
+		if (marks) k.hints({{"A", docMenuCursor == 0 ? "Add" : "Go"}, {"X", "Delete"}, {"B", "Close"}});
+		else if (contents) k.hints({{"A", "Go"}, {"Y/B", "Close"}});
+		else k.hints({{"LEFT/RIGHT", "Change"}, {"START/B", "Close"}});
 	}
 
 	// ---- the keys ----
@@ -948,10 +942,15 @@ namespace bp
 					docMenuCursor = std::clamp(docMenuCursor, docMenuScroll, std::min(n - 1, docMenuScroll + shown - 1));
 					return docMenuScroll;
 				},
-				[this, x, pp = &p](int row) {
+				[this, x, rowY = y, pp = &p](int row) {
 					docMenuCursor = row;
-					// a tap left of the value steps back, right of it on (as the settings' rows)
-					if (docMenu == DOC_MENU_OPTIONS && x >= SET_ARROW_X - 20) docMenuStep(x < 490 ? -1 : 1, *pp);
+					// a stepper row: a tap left of its value steps back, right of it on (lay::settingStepper, as the
+					// settings' rows); an action row, or anywhere else on the row, acts
+					auto ids = docMenuRows();
+					bool stepper = docMenu == DOC_MENU_OPTIONS && row >= 0 && row < (int)ids.size() && ids[row] != DT_FIND && ids[row] != DP_PAGES &&
+						ids[row] != DT_MARKS && ids[row] != DT_FILTER && ids[row] != DP_FILTER;
+					lay::SettingStepper st = lay::settingStepper(docMenuRowRect(row - docMenuScroll));
+					if (stepper && (st.back.hit(x, rowY) || st.fwd.hit(x, rowY))) docMenuStep(st.back.hit(x, rowY) ? -1 : 1, *pp);
 					else docMenuAct(*pp);
 				});
 			return false;

@@ -1,6 +1,7 @@
 // The top panel's page reader, the bottom panel's side (ui_reader.h): the seek and the zoom, Try again, fullscreen's
 // pages, the pages grid and the dragged lists, shared by Files' PDF/comic viewer (Ui::Docs) and the Manga reader.
 #include "ui_reader.h"
+#include "ui_kit.h"
 #include "ui_internal.h"
 #include "ui_manga.h"
 #include "textreader.h"
@@ -66,9 +67,12 @@ namespace bp
 	void Ui::PageReader::drawMangaRetry(bool full)
 	{
 		Rect r = mangaRetryRect(full);
-		ui.fillRound(r, ACCENT, R_TILE);
-		ui.drawTextMid("Try again", 1, ON_ACCENT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
-		ui.drawTextMid("A page didn\xE2\x80\x99t load \xC2\xB7 A", 0, full ? TEXT : DIM, W / 2, r.y + r.h + 18, 0, 2);
+		Kit::Key key;
+		key.label = "Try again";
+		key.key = "A";
+		key.tone = Kit::Tone::Primary;
+		ui.kit->key(r, key);
+		ui.drawTextMid("A page didn\xE2\x80\x99t load", F_I12, full ? TEXT : DIM, W / 2, r.y + r.h + 18, 0, 2);
 	}
 
 	void Ui::PageReader::mfFree()
@@ -176,9 +180,7 @@ namespace bp
 		else if (now < mfTagUntil && readerStatus.pages > 0)
 		{
 			std::string tag = std::to_string(readerStatus.page + 1) + " / " + std::to_string(readerStatus.pages);
-			int tw = (int)std::lround(ui.textWidth(tag, 0) / sx) + 16;
-			ui.fillRound({W - tw - 12, H - 36, tw, 26}, SURFACE, R_CHIP);
-			ui.drawTextMid(tag, 0, TEXT, W - 12 - tw / 2, H - 23, 0, 2);
+			ui.kit->pill(W - 12, H - 23, tag, Kit::Pill::Fact);
 		}
 		if (readerStatus.failedHere) drawMangaRetry(true);
 		// the controls, while they show (over the tag), then the first open's toast over both
@@ -362,8 +364,7 @@ namespace bp
 			if (r.y >= H - 44) break;
 			bool at = i == mangaPagesCursor;
 			// the focused thumbnail's ACCENT edge
-			if (at) ui.fillRound({r.x - 2, r.y - 2, r.w + 4, r.h + 4}, ACCENT, R_TILE);
-			ui.drawBox(r, SURFACE, R_TILE - 2);
+			ui.kit->flat(r, Kit::cardFill(SURFACE), R_TILE - 2, at ? ACCENT : Kit::edgeOf(SURFACE));
 			// look for the texture, or make one from the RGBA main handed us
 			auto it = mpTex.find(i);
 			if (it == mpTex.end() && !made)

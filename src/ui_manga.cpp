@@ -2059,7 +2059,7 @@ namespace bp
 		}
 		switch (b)
 		{
-		case Button::Up: case Button::Down: mengCursor = 1 - mengCursor; break;
+		case Button::Up: case Button::Down: case Button::Left: case Button::Right: mengCursor = 1 - mengCursor; break;
 		case Button::A: mangaEngineChoose(mengCursor, p); break;
 		case Button::B: mengSheet = false; break;
 		default: break;
@@ -2159,57 +2159,79 @@ namespace bp
 		h.want();	// on its way up for the sources
 	}
 
+	// what the offer says: the sentence, then the failure (or the note that cards work without it)
+	std::vector<std::string> Ui::Manga::mangaEngineLines(bool& failed) const
+	{
+		static const char* TEXT_ = "Most online sources need it: a one-time download, kept on the card. It runs only while "
+			"you use them.";
+		static const char* UP_ = "It uses about 70 MB less memory, so it keeps running while you read. A one-time "
+			"download; the engine you have works meanwhile.";
+		std::vector<std::string> lines = ui.wrapText(mengUpgrade ? UP_ : TEXT_, F_I14, lay::PANEL_W - 2 * lay::SHEET_PAD - 4, 3);
+		std::string err = !mangaNet ? "" : mengUpgrade
+			? (mangaNet->javaExt().upgrade() == JavaExtHost::Upgrade::Failed ? mangaNet->javaExt().upgradeError() : "")
+			: (mangaNet->javaExt().state() == JavaExtHost::State::Failed ? mangaNet->javaExt().error() : "");
+		failed = !err.empty();
+		if (failed)
+			for (auto& l : ui.wrapText(err, F_I14, lay::PANEL_W - 2 * lay::SHEET_PAD - 4, 2)) lines.push_back(l);
+		else if (!mengUpgrade) lines.push_back("Manga on your card works without it.");
+		return lines;
+	}
+
+	// the kit's busy sheet while it downloads, its confirm sheet for the offer (Not now is the safe key)
+	lay::BusySheet Ui::Manga::mangaEngineBusy() const { return lay::busySheet(); }
+	lay::ConfirmSheet Ui::Manga::mangaEngineConfirm() const
+	{
+		bool failed = false;
+		return lay::confirmSheet((int)mangaEngineLines(failed).size(), false);
+	}
+	Ui::Rect Ui::Manga::mangaEngineBox() const
+	{
+		lay::Box b = mengBusy ? mangaEngineBusy().sheet.box : mangaEngineConfirm().sheet.box;
+		return {b.x, b.y, b.w, b.h};
+	}
+	// 0 Download, 1 Not now (Cancel while it downloads)
+	Ui::Rect Ui::Manga::mangaEngineRow(int i) const
+	{
+		lay::Box b = mengBusy ? mangaEngineBusy().key : i == 0 ? mangaEngineConfirm().action : mangaEngineConfirm().safe;
+		return {b.x, b.y, b.w, b.h};
+	}
+
 	void Ui::Manga::drawMangaEngineSheet()
 	{
-		Rect b = mangaEngineBox();
+		Kit& k = *ui.kit;
 		if (mengBusy && mangaNet)
 		{
 			JavaExtHost& h = mangaNet->javaExt();
 			int64_t done = 0, total = 0;
 			h.progress(done, total);
 			if (total <= 0) total = mengUpgrade ? 58000000 : 241000000;
-			ui.drawDialog(b, mengUpgrade ? "Downloading the lighter engine" : "Downloading the manga engine");
-			double f = std::clamp((double)done / (double)total, 0.0, 1.0);
+			Kit::BusySpec b;
+			b.title = mengUpgrade ? "Downloading the lighter engine" : "Downloading the manga engine";
 			// what it's doing: the runtime, then (an install) the server; between them the runtime is unpacked, no
-			// bytes coming, so a ring says it's working where the bar would stand still
+			// bytes coming, so the spinner says it's working where the bar would stand still
 			auto step = h.step();
-			if (step == JavaExtHost::Step::Unpacking)
-			{
-				ui.drawLoader(b.x + b.w / 2, b.y + 118, "Unpacking the runtime\xE2\x80\xA6");
-			}
+			b.tick = (int)(SDL_GetTicks() / 120);
+			if (step == JavaExtHost::Step::Unpacking) b.file = "Unpacking the runtime\xE2\x80\xA6";
 			else
 			{
-				char line[96];
-				snprintf(line, sizeof line, "%s  \xC2\xB7  %lld of %lld MB",
-					step == JavaExtHost::Step::Server ? "Downloading the server" : "Downloading the runtime",
-					(long long)(done / 1000000), (long long)(total / 1000000));	// (MB as the offer counts them: 241, 58)
-				ui.drawTextMid(line, 1, TEXT, b.x + b.w / 2, b.y + 100, b.w - 64, 2);
-				ui.drawLevel({b.x + 32, b.y + 132, b.w - 64, 8}, (int)std::lround((b.w - 64) * f), TRACK, ACCENT);
+				b.file = step == JavaExtHost::Step::Server ? "Downloading the server" : "Downloading the runtime";
+				b.share = std::clamp((double)done / (double)total, 0.0, 1.0);
+				b.left = std::to_string((long long)(done / 1000000)) + " of " + std::to_string((long long)(total / 1000000)) + " MB";	// (MB as the offer counts them: 241, 58)
 			}
-			ui.drawTextMid("Keep Banana Player open until it's done.", 0, DIM, b.x + b.w / 2, b.y + 172, b.w - 64, 2);
-			ui.drawDialogRow(mangaEngineRow(1), &G_CROSS, "Cancel", true, false, DANGER, "", {0, 0, 0, 0});
-			ui.drawHints({{"A", "Cancel"}});
+			b.right = "Keep Banana Player open";
+			b.key = "Cancel";
+			k.busySheet(mangaEngineBusy(), b);
 			return;
 		}
-		ui.drawDialog(b, mengUpgrade ? "A lighter manga engine" : "Get the manga engine?");
-		static const char* TEXT_ = "Most online sources need it: a one-time download, kept on the card. It runs only while "
-			"you use them.";
-		static const char* UP_ = "It uses about 70 MB less memory, so it keeps running while you read. A one-time "
-			"download; the engine you have works meanwhile.";
-		auto lines = ui.wrapText(mengUpgrade ? UP_ : TEXT_, 0, b.w - 64, 3);
-		for (size_t i = 0; i < lines.size(); i++)
-			ui.drawTextMid(lines[i], 0, TEXT, b.x + 32, b.y + 84 + (int)i * 26, b.w - 64);
-		// a download that failed says why, in place of the note
-		std::string err = !mangaNet ? "" : mengUpgrade
-			? (mangaNet->javaExt().upgrade() == JavaExtHost::Upgrade::Failed ? mangaNet->javaExt().upgradeError() : "")
-			: (mangaNet->javaExt().state() == JavaExtHost::State::Failed ? mangaNet->javaExt().error() : "");
-		if (!err.empty())
-			ui.drawTextMid(err, 0, DANGER, b.x + 32, b.y + 84 + (int)lines.size() * 26 + 8, b.w - 64);
-		else if (!mengUpgrade)
-			ui.drawTextMid("Manga on your card works without it.", 0, DIM, b.x + 32, b.y + 84 + (int)lines.size() * 26 + 8, b.w - 64);
-		ui.drawDialogRow(mangaEngineRow(0), &G_DOWNLOAD, "Download", mengCursor == 0, false, TEXT, mengUpgrade ? "58 MB" : "241 MB", DIM);
-		ui.drawDialogRow(mangaEngineRow(1), nullptr, "Not now", mengCursor == 1, false, TEXT, "", {0, 0, 0, 0});
-		ui.drawHints({{"A", "Choose"}, {"B", "Not now"}});
+		bool failed = false;
+		std::vector<std::string> lines = mangaEngineLines(failed);
+		Kit::ConfirmSpec c;
+		c.title = mengUpgrade ? "A lighter manga engine" : "Get the manga engine?";
+		c.titleDanger = failed;
+		c.safe = "Not now";
+		c.action = std::string("Download ") + (mengUpgrade ? "58 MB" : "241 MB");
+		c.focus = mengCursor == 0 ? 1 : 0;
+		k.confirmSheet(lay::confirmSheet((int)lines.size(), false), c, lines);
 	}
 
 	lay::AlbumGrid Ui::Manga::mangaLibGrid(const Player& p) const

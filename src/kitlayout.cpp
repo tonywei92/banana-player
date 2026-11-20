@@ -729,6 +729,27 @@ namespace bp
 
 		int volumeZone(int value) { return value > 120 ? 2 : value > 100 ? 1 : 0; }
 
+		ControlSheet controlSheet(const std::vector<int>& kinds)
+		{
+			auto heightOf = [](int k) { return k == LC_SLIDER ? LC_SLIDER_H : k == LC_CHOICE ? LC_CHOICE_H : SHEET_ROW; };
+			int body = 4;
+			for (int k : kinds) body += heightOf(k) + GAP;
+			ControlSheet c;
+			SheetSpec spec;
+			spec.body = body;
+			c.sheet = sheet(spec);
+			int y = c.sheet.bodyY + 4, w = PANEL_W - 2 * SHEET_PAD;
+			for (int k : kinds)
+			{
+				Box r{SHEET_PAD, y, w, heightOf(k)};
+				c.row.push_back(r);
+				c.track.push_back(k == LC_SLIDER ? Box{r.x + 2, r.y + 32, r.w - 4, 14} : Box{0, 0, 0, 0});
+				c.seg.push_back(k == LC_CHOICE ? Box{r.x, r.y + 26, r.w, 40} : Box{0, 0, 0, 0});
+				y += r.h + GAP;
+			}
+			return c;
+		}
+
 		Box tileCell(Box area, int n, int cols, int h, int i)
 		{
 			cols = std::max(1, std::min(cols, std::max(1, n)));

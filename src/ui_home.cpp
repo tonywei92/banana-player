@@ -508,26 +508,10 @@ namespace bp
 
 	bool Ui::Home::homeKey(Button b, Player& p)
 	{
-		if (quitOpen)
-		{
-			// its own question: UP/DOWN the rows, A chooses, B (or START, as the Sound page's dialogs) backs out
-			switch (b)
-			{
-			case Button::Up: case Button::Down: quitCursor = (quitCursor + 1) % 2; break;
-			case Button::A:
-				if (quitCursor == 0) ui.quitRequested = true;
-				quitOpen = false;
-				break;
-			case Button::B: case Button::Start: quitOpen = false; break;
-			default: break;
-			}
-			return false;
-		}
 		if (b == Button::B)
 		{
 			// it asks first, playing or not (the dialog says what quitting stops); the cursor on Cancel
-			quitOpen = true;
-			quitCursor = 1;
+			ui.askQuit();
 			return false;
 		}
 		// (START is Settings, from Ui::press, on every screen)
@@ -621,34 +605,6 @@ namespace bp
 
 	bool Ui::Home::homePointer(const Pointer& pt, int x, int y, Player& p)
 	{
-		if (quitOpen)
-		{
-			// its rows act as the finger lifts; anywhere else cancels as it lands (its lift presses nothing)
-			if (pt.kind == Pointer::Down)
-			{
-				ui.pressedBtn = -1;
-				if (!quitBox().hit(x, y))
-				{
-					quitOpen = false;
-					ui.swallowTouch = true;
-					return false;
-				}
-				for (int i = 0; i < 2; i++)
-					if (quitRow(i).hit(x, y)) ui.pressedBtn = DLG_ROW + i;
-			}
-			else if (pt.kind == Pointer::Up && ui.pressedBtn >= DLG_ROW)
-			{
-				int i = ui.pressedBtn - DLG_ROW;
-				ui.pressedBtn = -1;
-				if (i < 2 && quitRow(i).hit(x, y))
-				{
-					quitCursor = i;
-					if (i == 0) ui.quitRequested = true;
-					quitOpen = false;
-				}
-			}
-			return false;
-		}
 		lay::Shell sh = lay::shell();
 		Continue c = continueOf(p);
 		int vis = visibleCount();
@@ -851,8 +807,6 @@ namespace bp
 
 	std::vector<Ui::Hint> Ui::Home::hintList(const Player& p) const
 	{
-		// the quit question's own keys: it has the panel until it closes
-		if (quitOpen) return {{"UP/DOWN", "Choose"}, {"A", "OK"}, {"B", "Cancel"}};
 		std::vector<Hint> h;
 		if (ui.browse->browseDir == RECENT)
 		{
@@ -954,7 +908,6 @@ namespace bp
 			e.pressed1 = pressedEmptyKey == 0;
 			e.pressed2 = pressedEmptyKey == 1;
 			k.emptyState(es, e);
-			if (quitOpen) drawQuitDialog(ui.nowPlayable(p));
 			return;
 		}
 		if (c.shown)
@@ -1069,7 +1022,6 @@ namespace bp
 				k.tile(hp.shortcut[i], t);
 			}
 		}
-		if (quitOpen) drawQuitDialog(ui.nowPlayable(p));
 	}
 
 	void Ui::Home::drawAllRecent(const Player& p)
@@ -1134,33 +1086,6 @@ namespace bp
 			row.lit = false;
 			k.row(lp.row(i), row);
 		}
-	}
-
-	void Ui::Home::drawQuitDialog(bool quitPlaying)
-	{
-		// the same sheet as Quick settings (F): its panel and title, Quit as its red button, Cancel a row as its rows
-		Rect box = quitBox();
-		ui.drawDialog(box, "");
-		ui.drawTextMid("Quit Banana Player?", 1, ACCENT, box.x + 24, box.y + 28);
-		if (quitPlaying) ui.drawTextMid("What's playing stops.", 0, DIM, box.x + box.w - 24, box.y + 28, 0, 1);
-		Rect q = quitRow(0);
-		bool down = ui.pressedBtn == DLG_ROW, at = quitCursor == 0;
-		{
-			// the dialog's action key: Classic in Clean too (the one red-filled key)
-			Kit::ClassicHere classic;
-			ui.drawBox(q, down ? PRESSED : DANGER, R_BUTTON, at);
-		}
-		SDL_Color ink = down ? TEXT : ON_ACCENT;	// black on the red, as Quick settings' Quit
-		int tw = (int)std::lround(ui.textWidth("Quit", 1) / sx), gw = ui.glyphW(G_POWER), x = q.x + q.w / 2 - (tw + gw + 12) / 2;
-		ui.drawGlyphMid(G_POWER, x + gw / 2, q.y + q.h / 2, ink);
-		ui.drawTextMid("Quit", 1, ink, x + gw + 12, q.y + q.h / 2);
-		Rect c = quitRow(1);
-		at = quitCursor == 1;
-		if (ui.pressedBtn == DLG_ROW + 1) ui.drawBox(c, PRESSED, R_BUTTON);
-		else if (at) ui.drawFocus(c);
-		ui.drawTextMid("Cancel", 1, at ? ACCENT : TEXT, c.x + c.w / 2, c.y + c.h / 2, 0, 2);
-		// its hints are Home::hintList's while the question is up: the shell draws them after this body (a full-panel
-		// hint bar here would be painted over, and over the rail with it)
 	}
 
 	// ---- the More sheet on a card (X or a hold), Home's own things beside it ----
