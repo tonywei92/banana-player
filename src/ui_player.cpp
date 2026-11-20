@@ -1323,7 +1323,14 @@ namespace bp
 		bool drag = false;
 		int dragY = 0, dragScroll = 0;
 
-		SongViewSheet(Ui& u, int at, const Player& p) : Overlay(u)
+		bool fromSettings = false;	// opened over Settings (Equalizer, Sound effect): nothing need play
+		bool gone(const Player& p) const
+		{
+			if (fromSettings) return ui.page != Page::Settings;
+			return !p.playing() || p.playingPhoto() || !p.playingAudio() || ui.page != Page::Main;
+		}
+
+		SongViewSheet(Ui& u, int at, const Player& p, bool fromSettings = false) : Overlay(u), fromSettings(fromSettings)
 		{
 			tab = std::clamp(at, 0, TABS - 1);
 			cursor = currentRow(p);
@@ -1684,8 +1691,14 @@ namespace bp
 		}
 		bool key(Button b, Player& p) override
 		{
+			bool r = keyImpl(b, p);
+			if (done && tab == TAB_EQ) p.commitEq();	// (the curve as it stands: what mpv keeps, and settings.conf)
+			return r;
+		}
+		bool keyImpl(Button b, Player& p)
+		{
 			// (the song has gone, it became a video, or the player was left under the sheet: closed)
-			if (!p.playing() || p.playingPhoto() || !p.playingAudio() || ui.page != Page::Main) { close(); return false; }
+			if (gone(p)) { close(); return false; }
 			settle(p);
 			// its own dialogs: B goes back a step, not out of the sheet; SELECT closes the sheet
 			if (tab == TAB_EQ && eqMode != EQ_MAIN)
@@ -1735,8 +1748,14 @@ namespace bp
 		// ---- touch ----
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override
 		{
+			bool r = pointerImpl(pt, x, y, p);
+			if (done && tab == TAB_EQ) p.commitEq();
+			return r;
+		}
+		bool pointerImpl(const Pointer& pt, int x, int y, Player& p)
+		{
 			if (ui.touchIsLocked()) return false;
-			if (!p.playing() || p.playingPhoto() || !p.playingAudio() || ui.page != Page::Main) { close(); return false; }
+			if (gone(p)) { close(); return false; }
 			// Display: a tile (a tap sets it, as A does), the foot row as one of them
 			if (tab == TAB_SHOW)
 			{
@@ -1963,7 +1982,7 @@ namespace bp
 
 		void draw(const Player& p) override
 		{
-			if (!p.playing() || p.playingPhoto() || !p.playingAudio() || ui.page != Page::Main) { close(); return; }
+			if (gone(p)) { close(); return; }
 			Kit& k = *ui.kit;
 			if (tab == TAB_SHOW)
 			{
@@ -2017,12 +2036,17 @@ namespace bp
 			std::string sig = std::to_string(tab) + "," + std::to_string(cursor) + "," + std::to_string(scroll) + "," +
 				std::to_string(press) + "," + std::to_string(pressAt) + "," + std::to_string(eqMode) + "," +
 				std::to_string(ui.sound->eqBand) + "," +
-				std::to_string(ui.sound->soundTab) + "," + std::to_string(p.eqPresetSerial()) + "," + std::to_string(p.playingAudio());
+				std::to_string(p.eqPresetSerial()) + "," + std::to_string(p.playingAudio());
 			// the presets the equalizer cycles through (the stash of a Custom one shows as Custom)
 			for (auto& c : ui.sound->eqCycle(p)) sig += "|" + c;
 			return sig;
 		}
 	};
+
+	void Ui::PlayerPage::openSound(bool effects, Player& p)
+	{
+		ui.pushOverlay(std::make_unique<SongViewSheet>(ui, effects ? SongViewSheet::TAB_FX : SongViewSheet::TAB_EQ, p, true));
+	}
 
 	void Ui::PlayerPage::openView(int tab, Player& p)
 	{

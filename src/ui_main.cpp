@@ -224,21 +224,6 @@ namespace bp
 
 	Ui::Rect Ui::buttonRect(int id) const
 	{
-		// Sound's
-		if (id == SOUND_TAB0 || id == SOUND_TAB1) return sound->tabRect(id - SOUND_TAB0);
-		if (id == EQ_SWITCH) return {16, 70, 136, 52};
-		if (id == EQ_PREV) return {160, 70, 56, 52};
-		if (id == EQ_NEXT) return {568, 70, 56, 52};
-		if (id == EQ_NAME_ZONE) return {216, 70, 352, 52};
-		if (id == EQ_RESET || id == EQ_SAVE || id == EQ_OPTIONS) return rowCell({16, 400, 608, 32}, 3, 10, id - EQ_RESET);
-		if (id >= FX_ROW && id < FX_ROW + SOUNDFX_COUNT) return {16, ROW_Y + (id - FX_ROW) * ROW_H, 608, ROW_H - 4};
-		// the select mode's bar: three buttons (Edit, Add), two (Pick, Move)
-		if (id == SEL_ALL) return {24, 428, 184, 44};
-		if (id == SEL_MOVE) return {228, 428, 184, 44};
-		if (id == SEL_ACT) return browse->playlists->selMode == SEL_PICK ? Rect{328, 428, 288, 44} : Rect{432, 428, 184, 44};
-		if (id == SEL_CANCEL) return browse->playlists->selMode == SEL_PICK ? Rect{24, 428, 288, 44} : Rect{228, 428, 184, 44};
-		if (id == MOVE_CANCEL) return {24, 428, 288, 44};
-		if (id == MOVE_DONE) return {328, 428, 288, 44};
 		if (id == BUSY_CANCEL) { lay::Box k = lay::busySheet().key; return {k.x, k.y, k.w, k.h}; }
 		if (id == WEB_NEWPIN) return {296, 384, 152, 52};
 		if (id == WEB_OFF) return {464, 384, 152, 52};

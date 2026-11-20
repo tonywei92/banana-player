@@ -119,7 +119,7 @@ namespace bp
 		}
 		// (Sound opens a page of its own; Clear play history is an action)
 		case GROUP_PLAYBACK: return pageRows(SG_PLAYBACK);
-		case GROUP_MUSIC: return pageRows(SG_MUSIC, {{50, SOUND_ROW}});
+		case GROUP_MUSIC: return pageRows(SG_MUSIC, {{50, SOUND_ROW}, {51, SOUND_FX_ROW}});
 		case GROUP_PHOTOS: return pageRows(SG_PHOTOS);
 		case GROUP_READING: return pageRows(SG_READING);
 		case GROUP_FILES: return pageRows(SG_FILES, {{50, CLEAR_ROW}});
@@ -177,7 +177,8 @@ namespace bp
 		if (row == MANGA_CLEAR_ROW) return "Empties the pages kept on the card. Press A twice.";
 		if (row == MANGA_JAVA_ROW)
 			return "Needed for repositories whose address ends in index.pb or index.min.json: a 241 MB download, and about 300 MB of memory while one of their sources is open.";
-		if (row == SOUND_ROW) return "Equalizer and effects for music (not videos). A opens it";
+		if (row == SOUND_ROW) return "The equalizer for music (not videos). A opens it";
+		if (row == SOUND_FX_ROW) return "A room or hall around music (not videos). A opens it";
 		if (row == CLEAR_ROW) return "Empties Recent. Press A twice. The places you stopped at are kept.";
 		if (row == TOP_LIGHT_ROW || row == BOTTOM_LIGHT_ROW) return "The backlight, 10% to 100%: the same levels as BananaOS's own settings.";
 		if (row == CHECK_ROW) return "Looks for a new version now.";
@@ -467,9 +468,9 @@ namespace bp
 		if (ui.setGroup < 0) return {{"D-PAD", "Move"}, {"A", "Open"}, {"F", "Quick settings"}, {"B/START", "Back"}};
 		auto rows = settingRows();
 		bool action = ui.cursor >= 0 && ui.cursor < (int)rows.size() && (rows[ui.cursor] == CHECK_ROW || rows[ui.cursor] == INSTALL_ROW ||
-			rows[ui.cursor] == CLEAR_ROW || rows[ui.cursor] == SOUND_ROW);
+			rows[ui.cursor] == CLEAR_ROW || rows[ui.cursor] == SOUND_ROW || rows[ui.cursor] == SOUND_FX_ROW);
 		if (action)
-			return {{"A", rows[ui.cursor] == CLEAR_ROW ? "Clear" : rows[ui.cursor] == CHECK_ROW ? "Check" : rows[ui.cursor] == SOUND_ROW ? "Open" : "Update"},
+			return {{"A", rows[ui.cursor] == CLEAR_ROW ? "Clear" : rows[ui.cursor] == CHECK_ROW ? "Check" : rows[ui.cursor] == SOUND_ROW || rows[ui.cursor] == SOUND_FX_ROW ? "Open" : "Update"},
 				{"UP/DOWN", "Choose"}, {"L/R", "Group"}, {"B", "Back"}};
 		return {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"L/R", "Group"}, {"B", "Back"}};
 	}
@@ -521,8 +522,14 @@ namespace bp
 			}
 			else if (row == SOUND_ROW)
 			{
-				r.label = "Sound";
-				value = soundSummary(p.settings);
+				r.label = "Equalizer";
+				value = !p.settings.eqOn ? "Off" : p.settings.eqPreset.empty() ? CUSTOM_NAME : p.settings.eqPreset;
+				action = true;
+			}
+			else if (row == SOUND_FX_ROW)
+			{
+				r.label = "Sound effect";
+				value = soundFxName(p.settings.soundFx);
 				action = true;
 			}
 			else if (row == CLEAR_ROW)
@@ -683,7 +690,7 @@ namespace bp
 			else if (b == Button::Right && ui.cursor % 2 == 0 && ui.cursor + 1 < n) ui.cursor++;
 			return false;
 		}
-		bool action = ui.setGroup >= 0 && ui.cursor < n && (rows[ui.cursor] == SOUND_ROW || rows[ui.cursor] == CLEAR_ROW ||
+		bool action = ui.setGroup >= 0 && ui.cursor < n && (rows[ui.cursor] == SOUND_ROW || rows[ui.cursor] == SOUND_FX_ROW || rows[ui.cursor] == CLEAR_ROW ||
 			rows[ui.cursor] == CHECK_ROW || rows[ui.cursor] == INSTALL_ROW);
 		switch (b)
 		{
@@ -696,7 +703,7 @@ namespace bp
 			break;
 		case Button::A:
 			if (ui.setGroup < 0) openGroup(ui.cursor, &p);
-			else if (rows[ui.cursor] == SOUND_ROW) { ui.sound->open(p, true); return false; }
+			else if (rows[ui.cursor] == SOUND_ROW || rows[ui.cursor] == SOUND_FX_ROW) { ui.sound->open(p, rows[ui.cursor] == SOUND_FX_ROW); return false; }
 			else changeSetting(rows[ui.cursor], 1, p);
 			break;
 		// SELECT: back to what plays (Settings has no SELECT of its own)

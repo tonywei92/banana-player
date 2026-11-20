@@ -95,7 +95,6 @@ namespace bp
 		docs = std::make_unique<Docs>(*this);
 		areas.push_back(docs.get());
 		sound = std::make_unique<Sound>(*this);
-		areas.push_back(sound.get());
 		webPage = std::make_unique<Web>(*this);
 		areas.push_back(webPage.get());
 		manga = std::make_unique<Manga>(*this);
@@ -823,7 +822,7 @@ namespace bp
 					dir = lay::stepperBack(st, touchX) ? -1 : 1;
 				}
 				if (groups) settingsPage->openGroup(cursor, &p);
-				else if (set && page == Page::Settings && srows[cursor] == SOUND_ROW) sound->open(p, true);	// a page, not a value
+				else if (set && page == Page::Settings && (srows[cursor] == SOUND_ROW || srows[cursor] == SOUND_FX_ROW)) sound->open(p, srows[cursor] == SOUND_FX_ROW);	// a page, not a value
 				else if (set) settingsPage->changeSetting(srows[cursor], dir, p);
 				else choose(cursor, p);
 			}
