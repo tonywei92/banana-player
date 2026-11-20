@@ -774,7 +774,6 @@ namespace bp
 		}
 		// a button's label, with its key under it when there is one (the label moves up to make room); the label
 		// and key fit labelW/keyW units wide (0: the button less 6)
-		void drawKeyedLabel(Rect b, const std::string& label, const std::string& key, bool off = false, int labelW = 0, int keyW = 0);
 		void drawButton(Rect b, const Glyph* g, const std::string& label, const char* key, bool off, int size, bool lit = false);	// lit: the glyph and label in yellow (on, as the heart once liked)
 		static constexpr int FOOT_Y = 458, SUB_Y = 70;	// the footer's line, the browser's "where" line (their middles)
 		void drawInfo(const Player& p);

@@ -1183,13 +1183,6 @@ namespace bp
 		return lines;
 	}
 
-	void Ui::drawKeyedLabel(Rect b, const std::string& label, const std::string& key, bool off, int labelW, int keyW)
-	{
-		bool hint = !key.empty();
-		drawText(label, 1, off ? DIM : TEXT, b.x + b.w / 2, b.y + (hint ? 5 : 15), labelW ? labelW : b.w - 6, 2);
-		if (hint) drawText(key, 0, off ? DIM : ACCENT, b.x + b.w / 2, b.y + 33, keyW ? keyW : b.w - 6, 2);
-	}
-
 	void Ui::drawButton(Rect b, const Glyph* g, const std::string& label, const char* key, bool off, int size, bool lit)
 	{
 		// a label (a glyph before it), the button that does the same under it in yellow (Button hotkeys on)

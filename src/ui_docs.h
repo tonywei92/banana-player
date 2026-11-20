@@ -139,6 +139,7 @@ namespace bp
 		void docBookmarkHere(Player& p);	// the header's bookmark key: one tap marks the place
 		int docMenu = DOC_MENU_NONE, docMenuCursor = 0, docMenuScroll = 0;
 		std::vector<int> docMenuRows() const;
+		Rect docMenuRowRect(int slot) const { return {16, 72 + slot * 50, 608, 46}; }	// (MENU_TOP, MENU_ROW_H: the kit's 46-tall rows)
 		void docMenuStep(int dir, Player& p);
 		void docMenuAct(Player& p);
 		void drawDocMenu(const Player& p);
