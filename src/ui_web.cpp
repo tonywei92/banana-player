@@ -200,6 +200,7 @@ namespace bp
 		}
 		ui.pinArmed = 0;
 		std::string pin = ui.web->newPin();
+		fprintf(stderr, "web: a new PIN from the handheld; every browser signed out\n");
 		if (ui.page != Page::Web) p.osd("New PIN: " + pin, 2000);
 #else
 		(void)p;
@@ -262,7 +263,8 @@ namespace bp
 		int v = ui.webView(p);
 		WebPageLayout l = webPageLayout();
 		lay::PlayerLayout header = lay::shellHeader({0, 0, W, lay::SHELL_HEAD});
-		auto on = [&](int id, const lay::Box& b) { return id == ui.pressedBtn && b.hit(x, y); };
+		// (the button the finger went down on is taken before pressedBtn is cleared at the lift, so it is not compared with it)
+		auto on = [&](int, const lay::Box& b) { return b.hit(x, y); };
 		if (pt.kind == Pointer::Down)
 		{
 			ui.pressedBtn = -1;
