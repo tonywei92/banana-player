@@ -7,7 +7,9 @@ screens; a veil to a third and "Screen off in N s" for the last 5 s; a press or 
 and downloads (Power & screens; gates the idle-sleep holds for file jobs, chapter downloads, the extension engine and
 updates), and the player's Adjust kept (`video-adjust`, written only when not all 0).
 
-Not done: Top screen off (music) needs the top panel's GL path to go black while mpv renders; the looks' Strength and
+Top screen off (music) came after: `TopScreen::draw` has a `topBlack` branch (a glClear to black once, mpv's frames taken unseen by drainUnder) for a playing, unpaused song idle past the delay (Ui::lastInputAt, or the song's start); a press, touch, pause or track change lifts it. Not tried on the handheld (the shot only shows the row).
+
+Not done: the looks' Strength and
 "Only this video"; the Picture chip's name and the top-screen note when a look is on.
 
 Unsure: the looks are software filters (decoding is software only) and are drawn in the film's pixels, not the panel's

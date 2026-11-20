@@ -669,6 +669,8 @@ namespace bp
 			// (not round: Never at one end, 5 minutes at the other)
 			D::choice("screen-off", &Settings::screenOffAfter, SCREEN_OFF_IDS, SCREEN_OFFS)
 				.page(SG_SCREEN, 40, "Screen off (music)", "While a song plays, this screen goes dark after that long untouched. A touch brings it back.").shownAs(SCREEN_OFF_LABELS),
+			D::choice("top-screen-off", &Settings::topScreenOff, SCREEN_OFF_IDS, SCREEN_OFFS)
+				.page(SG_SCREEN, 52, "Top screen off (music)", "While a song plays, the top screen goes black after that long without a press or touch. Any press or touch, or the next song, brings it back. Never keeps it lit.").shownAs(SCREEN_OFF_LABELS),
 			D::flag("dim-before-off", &Settings::dimBeforeOff)
 				.page(SG_SCREEN, 55, "Dim before turning off", "For the last 5 seconds of Screen off's timer this screen drops to a third of its brightness and counts down. A press or a touch then only cancels. Turned off by hand: no warning."),
 			D::flag("stay-awake-jobs", &Settings::stayAwakeJobs)

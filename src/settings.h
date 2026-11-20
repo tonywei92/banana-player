@@ -181,6 +181,7 @@ namespace bp
 		int screenOffAfter = SOFF_30;		// while a song plays
 		int screenOffVideo = SOFF_30;		// while a video plays: a dark bottom panel keeps the eye on the film; Never for those who want its controls lit (issue #5)
 		// the bottom panel dimmed (not off) for the last 5 s before Screen off: a warning that a touch only cancels
+		int topScreenOff = SOFF_NEVER;	// the top panel black while a song plays and nothing is pressed or touched (Never: on)
 		bool dimBeforeOff = true;
 		// reading (a book, a comic, a document): the bottom panel veiled after that long untouched (a touch lifts it)
 		int readDimAfter = SOFF_60;

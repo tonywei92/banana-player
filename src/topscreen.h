@@ -55,6 +55,9 @@ namespace bp
 		ReaderFetch readerFetch;	// a URL chapter's pages, kept coming while reader is open
 		bool readerReady = false;
 		Uint32 evReader = 0;	// a page decoded: the loop wakes and takes it
+		bool topBlack = false, topBlackDrawn = false;	// Top screen off (music): the panel black, drawn once
+		Uint32 topOffFrom = 0;
+		std::string topOffPath;
 		bool topDark = false;	// the top panel cleared while there's no video
 		int topDraws = 0;
 		bool logNextTop = false;

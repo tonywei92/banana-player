@@ -268,6 +268,7 @@ namespace bp
 
 		// the bottom panel's backlight: off from its button, on again at the next touch
 		bool screenOn() const { return panel.on(); }
+		Uint32 lastInputAt() const { return webInputAt; }	// the last press or touch (the top panel's Top screen off counts from it)
 		bool touchIsLocked() const;	// (the player screen's lock: PlayerPage, ui_player.h)
 		// Settings open (START's page): for test runs
 		bool settingsPageOpen() const { return page == Page::Settings; }

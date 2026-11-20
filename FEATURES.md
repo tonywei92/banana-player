@@ -876,6 +876,7 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | | Same for both screens | On | One brightness for both screens; off, each its own |
 | | Screen off (music) | 30 seconds | While a song plays, the bottom screen turns off by itself after that long without a touch or a button: Never, 15 or 30 seconds, 1, 2 or 5 minutes. Not while paused, and never while a photo or a comic is shown. A touch or any button brings it back |
 | | Screen off (video) | 30 s | The same while a video plays; Never keeps its seek bar, tracks and subtitles lit and ready to touch |
+| | Top screen off (music) | Never | While a song plays, the top screen goes black after that long without a press or touch; any press or touch, or the next song, brings it back. Drawn black: the backlight is untouched |
 | | Dim before turning off | On | The last 5 seconds before Screen off: this screen drops to about a third and counts down; a press or touch then only cancels |
 | | Stay awake for copies and downloads | On | A copy, a move, a chapter download or an update holds off the handheld's own sleep until it is done |
 | | When the lid closes | Pause | What closing the lid does, with something playing or stopped. See [Lid and sleep](#controls) |
