@@ -498,7 +498,7 @@ namespace bp
 		Ui* u = &ui;
 		PlayerPage* self = const_cast<PlayerPage*>(this);
 		std::string path = p.currentPath();
-		bool audio = p.playingAudio(), actions = ui.headerActions(p), liked = ui.likedNow(p);
+		bool audio = p.playingAudio();
 		m.glyph = audio ? &G_NOTE : &G_FILM;
 		m.title = !p.title.empty() ? p.title : entryTitle(path);
 		m.note = audio && !p.artist().empty() ? p.artist() + (p.album().empty() ? "" : " \xC2\xB7 " + p.album())
@@ -510,21 +510,7 @@ namespace bp
 			it.act = std::move(act);
 			return it;
 		};
-		// the first row: the player's own five chips, under the cursor. A opens that chip's sheet (and More closes);
-		// Repeat and Shuffle change in place and the sheet stays
-		for (auto& d : chips(p))
-		{
-			MoreItem it;
-			it.glyph = d.look.glyph;
-			it.label = d.look.label;
-			it.value = d.look.value;
-			it.away = d.look.away;
-			it.off = d.look.off;
-			it.stay = d.kind == C_MODE || d.kind == C_SHUFFLE;
-			it.act = [self, kind = d.kind](Player& p) { self->chipAct(kind, p); return false; };
-			m.chips.push_back(it);
-		}
-		// the tiles: what was the player's bottom row
+		// only what the player's page doesn't already show (its chips, Like, Playlist and Stop are on it)
 		m.tiles.push_back(item(&G_LOCK, touchLocked ? "Unlock touch" : "Lock touch", [self](Player& p) {
 			if (self->touchLocked) self->unlock();
 			else self->lock(p);
@@ -537,22 +523,6 @@ namespace bp
 			u->infoAt = 0;	// read at once
 			return false;
 		}));
-		// (main stops it, the place kept: B only leaves the player, it plays on)
-		m.tiles.push_back(item(&G_STOP, "Stop", [u](Player&) { u->stopPressed = true; return false; }));
-		m.tiles.back().danger = true;
-		// the rows: what START's Playing tab has
-		MoreItem like = item(liked ? &G_HEART : &G_HEART_O, liked ? "Liked" : "Like", [u](Player& p) { u->likeNow(p); return false; });
-		like.key = hasL3() ? "L3" : "";
-		like.lit = liked;
-		like.off = !actions;
-		like.stay = true;	// (the row says what it is now)
-		m.rows.push_back(like);
-		MoreItem add = item(&G_PLUS, "Add to playlist...", [u](Player& p) {
-			if (p.playing()) u->browse->playlists->openAddOne(p.currentPath(), p.title, p.loaded ? p.duration : -1, p);
-			return false;
-		});
-		add.off = !actions;
-		m.rows.push_back(add);
 		// its folder: the player left first (it plays on behind the browser), then the folder (showBrowser)
 		m.rows.push_back(item(&G_FOLDER, "Show in folder", [u](Player& p) { u->showAfterLeave = p.currentPath(); return true; }));
 		// while a dashboard page that can play is open, or one plays it
