@@ -105,7 +105,6 @@ namespace bp
 		{
 			bool on = false;
 			int x = 0, y = 0, w = 0, h = 0;	// in panel units
-			int srcTop = 54;	// the old page's part copied: srcTop..450 (Manga's tab view: under its old tabs)
 		} bridge;
 		Bridge bridgeFor(const Player& p) const;
 	};

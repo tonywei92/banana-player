@@ -677,7 +677,7 @@ namespace bp
 		manga->sheetsLater = mangaShell;
 		manga->sheetQueue.clear();
 		bool bridged = shellPage && shell->beginBody(p);
-		hdrCapture = bridged;
+		hdrCapture = bridged || mangaShell;
 		capTitle.clear();
 		capHints.clear();
 		if (page == Page::Info || page == Page::About) drawInfo(p);
@@ -881,7 +881,12 @@ namespace bp
 
 	void Ui::drawHeader(const std::string& title, const Player& p, int titleRight)
 	{
-		if (hdrCapture && capTitle.empty()) capTitle = title;
+		// (an old body in the shell: its title is the shell header's; nothing of the old header is drawn)
+		if (hdrCapture)
+		{
+			if (capTitle.empty()) capTitle = title;
+			return;
+		}
 		// (Home has no "<": its title takes the place, lined up with the page's 16-unit margin)
 		bool back = backIconShown(p);
 		if (back) drawBackIcon();
@@ -909,7 +914,11 @@ namespace bp
 
 	void Ui::drawHints(const std::vector<Hint>& hints)
 	{
-		if (hdrCapture) capHints = hints;
+		if (hdrCapture)
+		{
+			capHints = hints;	// (the shell's hint bar draws them)
+			return;
+		}
 		// the button's name in yellow (as on the buttons), what it does in grey; centred along the bottom
 		auto w = [&](const std::string& t) { return t.empty() ? 0 : (int)std::lround(textWidth(t, 0) / sx); };
 		int gap = 24, total = 0;
@@ -931,7 +940,11 @@ namespace bp
 
 	void Ui::drawFooterText(const std::string& text, SDL_Color c)
 	{
-		if (hdrCapture) capHints = {{"", text}};
+		if (hdrCapture)
+		{
+			capHints = {{"", text}};
+			return;
+		}
 		drawTextMid(text, 0, c, W / 2, footY(), 612, 2);
 	}
 
