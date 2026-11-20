@@ -45,6 +45,7 @@ namespace bp
 	bool isPdfName(const std::string& name);
 	// what Files opens in its document viewers: a TXT, an EPUB, a PDF (with pdfium)
 	bool isDocumentName(const std::string& name);
+	bool isBookName(const std::string& name);	// Books' shelf: EPUB, PDF, a comic (not TXT)
 	// a comic Files opens with the Manga reader on: a CBZ (or a renamed ZIP? no: a .zip is any archive) or a CBR
 	bool isComicName(const std::string& name);
 	// the name without its book extension ("Ch 3.cbr" -> "Ch 3"), else the name

@@ -406,7 +406,7 @@ namespace bp
 						if (!isHiddenFolder(path)) stack.push_back(path);
 						continue;
 					}
-					if (!isDocumentName(path) && !isComicName(path)) continue;
+					if (!isBookName(path)) continue;
 					struct stat st;
 					if (stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) continue;
 					out.push_back({path, (long long)st.st_size, (int64_t)st.st_mtime});

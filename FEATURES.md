@@ -192,8 +192,8 @@ Recent; and a video inside a Music folder belongs to Music.
 
 ## The Books section
 
-A shelf of the book files on the cards — EPUB, PDF, TXT, and comics (CBZ, CBR) — with the ones you are reading
-first. **Reading now** is the newest five with a place kept, each cover with how far in; **Shelf** under it is every
+A shelf of the book files on the cards — EPUB, PDF and comics (CBZ, CBR); not TXT, which Files opens in the text
+viewer — with the ones you are reading first. **Reading now** is the newest five with a place kept, each cover with how far in; **Shelf** under it is every
 book, five across, by name. **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
 comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
 

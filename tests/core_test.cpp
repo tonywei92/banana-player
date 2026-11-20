@@ -471,20 +471,18 @@ static void testMediaIndex()
 		// (a build without pdfium, e.g. the plain Linux check, doesn't read PDFs: the three PDFs aren't books there)
 		if (!isDocumentName("x.pdf"))
 		{
-			CHECK_EQ(books.size(), (size_t)3);
+			CHECK_EQ(books.size(), (size_t)2);	// (notes.txt: not a book)
 			CHECK_EQ(rowNameOf(books, 0), "Comic");
-			CHECK_EQ(rowNameOf(books, 1), "notes");
-			CHECK_EQ(rowNameOf(books, 2), "Novel");
+			CHECK_EQ(rowNameOf(books, 1), "Novel");
 		}
 		else
 		{
-		CHECK_EQ(books.size(), (size_t)6);
-		CHECK_EQ(rowNameOf(books, 0), "Comic");		// Comic, Manual, Novel, notes, Paper 2, Paper 10
+		CHECK_EQ(books.size(), (size_t)5);	// (notes.txt: not a book)
+		CHECK_EQ(rowNameOf(books, 0), "Comic");
 		CHECK_EQ(rowNameOf(books, 1), "Manual");
-		CHECK_EQ(rowNameOf(books, 2), "notes");	// (natural and case-insensitive: notes before Novel)
-		CHECK_EQ(rowNameOf(books, 3), "Novel");
-		CHECK_EQ(rowNameOf(books, 4), "Paper 2");
-		CHECK_EQ(rowNameOf(books, 5), "Paper 10");
+		CHECK_EQ(rowNameOf(books, 2), "Novel");
+		CHECK_EQ(rowNameOf(books, 3), "Paper 2");
+		CHECK_EQ(rowNameOf(books, 4), "Paper 10");
 		}
 		// the line's words: the folders' kinds as one phrase, and which cards hold them
 		CHECK_EQ(mediaFromWords({C + "/Music", C + "/Musics"}), "Music on this card");

@@ -2,6 +2,7 @@
 // Books and Ebooks folders. Everything is drawn inside lay::shell().body (the shell draws the rail, the header
 // and the hints); the touches test the same Rects the drawing asked for.
 #include "ui_books.h"
+#include "pagebook.h"
 #include "ui_internal.h"
 #include "ui_kit.h"
 #include "ui_browse.h"
@@ -71,8 +72,9 @@ namespace bp
 		// the readers' own places: every book opened from anywhere, newest first, its file still there
 		ui.docs->docPlacesLoad();
 		std::vector<const ResumeEntry*> places;
+		// (a TXT is not a book: a readme or a log read once stays in Files and Recent, not on the shelf; the owner)
 		for (auto& e : ui.docs->docPlaces->all())
-			if (exists(e.path)) places.push_back(&e);
+			if (exists(e.path) && isBookName(e.path)) places.push_back(&e);
 		// the places' books: the strip's newest five, and every one of them on the shelf too (a book opened from
 		// Files or a server joins the shelf, as the mock-up's rule has it)
 		std::set<std::string> placed;
