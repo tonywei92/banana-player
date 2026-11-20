@@ -60,6 +60,12 @@ namespace bp
 		bool shellPage(Page pg) const { return has(pg) && pg != Page::MangaRead; }
 		// the app's tab view (Page::Manga, neither a source's nor a server's view): the kit's tabs over its body
 		bool tabView() const { return ui.page == Page::Manga && mangaView == 0; }
+		// Library and History are drawn on the kit in the content box under the tabs (not bridged, not scaled):
+		// the cover grid (lay::coverGrid, Kit::coverTile) and the two-line rows (lay::rowList, Kit::row + a Continue key)
+		bool kitBody() const { return tabView() && (mangaTab == MT_LIBRARY || mangaTab == MT_HISTORY); }
+		lay::AlbumGrid mangaLibGrid(const Player& p) const;
+		lay::RowList mangaHisList(const Player& p) const;
+		void drawMangaTabEmpty(const Player& p, const Glyph& g, const std::string& title, const std::string& text);
 		lay::TabPage mangaTabPage(const Player& p) const;
 		// the header the shell draws: the page's title, its crumb, the hints its old body drew (captured while it was
 		// bridged: Ui::capHints), plus L2 / R2 on the tabs
@@ -457,16 +463,8 @@ namespace bp
 		void mangaCoverCancelOffScreen();	// cancel fetches for URLs that scrolled away
 		void mangaCoverCancelAll();			// the page left: every in-flight cover fetch goes
 		bool mangaCoverOnFetched(MangaFetch::Result& r);	// true if the result was one of ours (a cover fetch)
-		// four tabs evenly across the room under the header's back icon: 24 each side, 8 between
-		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the grid's covers 124 apart
-		// the grid starts right under the tabs (their row ends at 90), its label on the line above it: with the
-		// Continue reading strip gone, a row more of covers shows
-		static constexpr int MG_LIB_TOP = 118, MG_LIB_BOTTOM = 416;
-		Rect mangaCoverRect(int i) const
-		{
-			int row = i / MG_COLS, col = i % MG_COLS;
-			return {16 + col * 124, MG_LIB_TOP + (row - mlibScroll) * 186, MG_COVER_W, MG_COVER_H};
-		}
+		// the grids' columns (Library's is lay::coverGrid on the kit; a source's and a server's keep the old covers)
+		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the old grids' covers, 124 apart
 		Rect mangaResumeRect() const { return {16, 84, 220, 52}; }
 		Rect mangaHeartRect() const { return {556, 84, 68, 52}; }
 		// the reading page's own pieces
@@ -487,8 +485,6 @@ namespace bp
 		Rect mangaNextRect() const { return mangaChapterCell(3); }
 		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
 		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;
-		// History's rows hold two lines (series, then chapter and page): taller, so fewer
-		static constexpr int MG_HIST_ROW_H = 58, MG_HIST_ROWS = 5;	// the tabs end at 86: History's and Browse's rows below them
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
 		static constexpr int MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101, MG_FULL = 3102, MG_LIGHT = 3103;
 
@@ -701,11 +697,13 @@ namespace bp
 		bool mangaLibMenuKey(Button b, Player& p);
 		void mangaLibMenuAct(Player& p);
 		void drawMangaLibMenu();
-		Rect mlibMenuBox() const { return {112, 150, 416, 170}; }
-		Rect mlibMenuRow() const { return {128, 214, 384, 40}; }
+		// two rows: Remove missing, Manga settings (START is Settings now: the app's settings are here and in History's)
+		int mlibMenuCursor = 0;
+		Rect mlibMenuBox() const { return {112, 120, 416, 236}; }
+		Rect mlibMenuRow(int i) const { return {128, 184 + i * 44, 384, 40}; }
 		bool mhisMenu = false;
 		int mhisMenuCursor = 0;
-		static constexpr int MHIS_MENU_ROWS = 5;	// Selected item, Last hour, Today, Last 24 hours, All
+		static constexpr int MHIS_MENU_ROWS = 6;	// Selected item, Last hour, Today, Last 24 hours, All, Manga settings
 		Rect mhisMenuBox() const { return {112, 80, 416, 70 + MHIS_MENU_ROWS * 44}; }
 		Rect mhisMenuRow(int i) const { return {128, 136 + i * 44, 384, 40}; }
 		bool mangaHisMenuKey(Button b, Player& p);

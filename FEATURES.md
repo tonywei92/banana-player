@@ -1249,12 +1249,17 @@ source's **Popular / Latest / Search** and the Sources page's **Available / Repo
 sheet or menu over a Manga page comes over the whole panel, rail included, and takes the keys until it closes.
 **B** goes back — out of Browse's list of series first, then to the **Extensions** page (it was Home before). Reading a
 chapter keeps the whole panel (no rail).
-**START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page too); **B** there
-comes back where you were. Music keeps playing while you read: the pages take the top screen, and F's Now playing
+**START** opens Banana Player's **Settings**, as on every page of the rail (the reading page keeps its Reading menu).
+**Manga settings**, the reader's own settings page, is the last row of **X** on Library and on History (and **X** on
+Manage extensions); **B** there comes back where you were. Music keeps playing while you read: the pages take the top screen, and F's Now playing
 block is on every page, the reading page included (its **SELECT** opens what plays: a video shows on the top screen again, and
 **B** comes back to the pages). **Sources** is a page of its own, opened
 with **X** on Browse (below), where sources are installed from repositories you add; **Downloads** is the queue and what's
 on the card (below).
+
+**Library** is a grid of covers, five across, each with its title under it and its unread count at its top right;
+**History** is one row a series, newest first: its cover, its title, then the chapter, the page and when, with a
+**Continue** key (**A**) on the row you're on.
 
 **On the touch screen** every list and grid in the app scrolls with a finger: drag it up or down (Library's covers,
 History, Browse and its *On this handheld*, Downloads' queue, its series on the card and their chapters, Sources, a

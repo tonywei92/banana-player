@@ -493,6 +493,11 @@ namespace bp
 		return std::max(44, textW(label, F_P14) + 2 * lay::TAB_PAD);
 	}
 
+	int Ui::Kit::keyW(const std::string& label, const std::string& keys) const
+	{
+		return textW(label, F_P14) + (keys.empty() ? 0 : lay::SP6 + capsW(keys)) + 2 * lay::SP12;
+	}
+
 	int Ui::Kit::tabCapW(const std::string& keys) const
 	{
 		int w = lay::TAB_CAP;

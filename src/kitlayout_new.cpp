@@ -292,6 +292,53 @@ namespace bp
 			return g;
 		}
 
+		AlbumGrid coverGrid(Box area, int n, int first, int cols)
+		{
+			AlbumGrid g;
+			g.area = area;
+			g.cols = std::max(1, cols);
+			g.cellW = COVER_W;
+			g.cellH = COVER_GRID_CELL_H;
+			g.colGap = COVER_GAP;
+			g.rowGap = SP12;
+			g.albums = std::max(0, n);
+			g.rows = (g.albums + g.cols - 1) / g.cols;
+			const int pitch = g.cellH + g.rowGap;
+			g.shown = std::max(1, (area.h + g.rowGap) / pitch);
+			g.first = std::clamp(first, 0, std::max(0, g.rows - g.shown));
+			for (int i = 0; i < g.albums; i++)
+				g.cell.push_back({area.x + (i % g.cols) * (g.cellW + g.colGap), area.y + (i / g.cols - g.first) * pitch,
+					g.cellW, g.cellH});
+			return g;
+		}
+
+		RowList rowList(Box area, int n, int first, int rowH, int gap)
+		{
+			RowList l;
+			l.area = area;
+			l.n = std::max(0, n);
+			l.rowH = std::max(1, rowH);
+			l.gap = std::max(0, gap);
+			int fit = std::max(1, (area.h + l.gap) / (l.rowH + l.gap));
+			l.first = std::clamp(first, 0, std::max(0, l.n - fit));
+			l.shown = std::min(fit, l.n - l.first);
+			for (int k = 0; k < l.shown; k++) l.row.push_back({area.x, area.y + k * (l.rowH + l.gap), area.w, l.rowH});
+			return l;
+		}
+
+		int RowList::at(int x, int y) const
+		{
+			for (int k = 0; k < (int)row.size(); k++)
+				if (row[k].hit(x, y)) return first + k;
+			return -1;
+		}
+
+		Box rowKey(Box row, int keyW)
+		{
+			int h = std::min(44, row.h);
+			return {row.x + row.w - SP8 - keyW, row.y + (row.h - h) / 2, keyW, h};
+		}
+
 		ArtistRow artistRow(Box row)
 		{
 			ArtistRow a;

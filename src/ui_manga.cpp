@@ -497,7 +497,10 @@ namespace bp
 			if (mangaLib[i].id == atId)
 			{
 				mlibGrid = i;
-				int row = i / MG_COLS, shown = std::max(1, (MG_LIB_BOTTOM - MG_LIB_TOP) / 186);
+				// (the kit grid's whole rows under the tabs: lay::tabPage's content, lay::coverGrid's pitch)
+				lay::Box body = lay::shell().body;
+				int h = body.h - lay::TAB_H - lay::SP8;
+				int row = i / MG_COLS, shown = std::max(1, (h + lay::SP12) / (lay::COVER_GRID_CELL_H + lay::SP12));
 				if (row < mlibScroll) mlibScroll = row;
 				else if (row >= mlibScroll + shown) mlibScroll = row - shown + 1;
 				break;
@@ -1011,8 +1014,9 @@ namespace bp
 			// the cover grid only (the Continue reading cards are gone): A opens the series
 			int n = (int)mangaLib.size();
 			if (mlibGrid >= n) mlibGrid = std::max(0, n - 1);
+			// X: the Library's menu (Remove missing, Manga settings), empty or not
+			if (b == Button::X) { mlibMenu = true; mlibArmed = false; mlibMenuCursor = 0; break; }
 			if (!n) break;
-			if (b == Button::X) { mlibMenu = true; mlibArmed = false; break; }
 			if (b == Button::A) { mangaChoose(MT_LIBRARY, mlibGrid, p); break; }
 			int row = mlibGrid / MG_COLS, col = mlibGrid % MG_COLS, rows = (n + MG_COLS - 1) / MG_COLS;
 			switch (b)
@@ -1020,21 +1024,30 @@ namespace bp
 			case Button::Left: if (col > 0) mlibGrid--; break;
 			case Button::Right: if (col + 1 < MG_COLS && mlibGrid + 1 < n) mlibGrid++; break;
 			// up at the grid's first row does nothing: nothing sits above it any more
-			case Button::Up:
-				if (row > 0) { mlibGrid -= MG_COLS; mlibScroll = mlibGrid / MG_COLS; }
-				break;
+			case Button::Up: if (row > 0) mlibGrid -= MG_COLS; break;
 			case Button::Down:
-				if (row + 1 < rows) { mlibGrid += MG_COLS; mlibScroll = mlibGrid / MG_COLS; }
+				// the row below (its last cover when it is shorter)
+				if (row + 1 < rows) mlibGrid = std::min(n - 1, mlibGrid + MG_COLS);
 				break;
 			default: break;
+			}
+			{
+				// whole rows: the cursor's kept in sight
+				int shown = mangaLibGrid(p).shown, at = mlibGrid / MG_COLS;
+				mlibScroll = std::clamp(mlibScroll, std::max(0, at - shown + 1), at);
 			}
 			break;
 		}
 		case MT_HISTORY:
 		{
 			mangaCache();
-			// off: the list is empty by design (the History tab says so), so nothing there is chosen or cleared
-			if (!p.settings.mangaHistory) break;
+			// off: the list is empty by design (the History tab says so), so nothing there is chosen or cleared; X is
+			// where it is turned on (Manga settings)
+			if (!p.settings.mangaHistory)
+			{
+				if (b == Button::X) openMangaSettings();
+				break;
+			}
 			int n = (int)mangaHistory.size();
 			if (b == Button::X)
 			{
@@ -1049,12 +1062,15 @@ namespace bp
 			{
 			case Button::Up: mhisCursor = (mhisCursor + n - 1) % n; break;
 			case Button::Down: mhisCursor = (mhisCursor + 1) % n; break;
-			case Button::Left: mhisCursor = std::max(0, mhisCursor - MG_ROWS); break;
-			case Button::Right: mhisCursor = std::min(n - 1, mhisCursor + MG_ROWS); break;
+			case Button::Left: mhisCursor = std::max(0, mhisCursor - mangaHisList(p).shown); break;
+			case Button::Right: mhisCursor = std::min(n - 1, mhisCursor + mangaHisList(p).shown); break;
 			default: break;
 			}
-			if (mhisCursor < mhisScroll) mhisScroll = mhisCursor;
-			if (mhisCursor >= mhisScroll + MG_HIST_ROWS) mhisScroll = mhisCursor - MG_HIST_ROWS + 1;
+			{
+				int shown = std::max(1, mangaHisList(p).shown);
+				if (mhisCursor < mhisScroll) mhisScroll = mhisCursor;
+				if (mhisCursor >= mhisScroll + shown) mhisScroll = mhisCursor - shown + 1;
+			}
 			break;
 		}
 		case MT_BROWSE:
@@ -1330,7 +1346,8 @@ namespace bp
 		{
 			if (pt.kind != Pointer::Down) return false;
 			if (!mlibMenuBox().hit(x, y)) { mlibMenu = false; mlibArmed = false; return false; }
-			if (mlibMenuRow().hit(x, y)) mangaLibMenuAct(p);
+			for (int i = 0; i < 2; i++)
+				if (mlibMenuRow(i).hit(x, y)) { mlibMenuCursor = i; mangaLibMenuAct(p); }
 			return false;
 		}
 		if (ui.page == Page::Manga && mhisMenu)
@@ -1351,42 +1368,40 @@ namespace bp
 			// the lists below follow a finger: a drag scrolls them, a tap (lifted where it went down) opens the row
 			if (mangaTab == MT_LIBRARY)
 			{
+				// the kit's grid, in the panel's own units (not bridged): the cells drawMangaLibrary drew
 				mangaCache();
 				int n = (int)mangaLib.size();
-				if (!n || y < MG_LIB_TOP || y >= MG_LIB_BOTTOM) return false;
+				lay::AlbumGrid g = mangaLibGrid(p);
+				if (!n || !g.area.hit(x, y)) return false;
 				int hit = -1;
-				for (int i = mlibScroll * MG_COLS; i < n; i++)
-				{
-					Rect r = mangaCoverRect(i);
-					if (r.y >= MG_LIB_BOTTOM) break;
-					if (r.hit(x, y)) hit = i;
-				}
-				// the grid shows a row and the next one's top: the D-pad keeps its cursor on the first row shown,
-				// and so does the finger (same column)
-				ui.pageReader->mangaListBegin(x, y, mlibScroll, 186, hit, [this](int want) {
-					int n = (int)mangaLib.size(), rows = (n + MG_COLS - 1) / MG_COLS;
-					mlibScroll = std::clamp(want, 0, std::max(0, rows - 1));
-					if (n) mlibGrid = std::min(n - 1, mlibScroll * MG_COLS + mlibGrid % MG_COLS);
+				for (int i = g.first * g.cols; i < n && i < (g.first + g.shown) * g.cols; i++)
+					if (g.cell[i].hit(x, y)) hit = i;
+				// a drag scrolls whole rows (the D-pad keeps its column), a tap opens the cover
+				ui.pageReader->mangaListBegin(x, y, mlibScroll, g.cellH + g.rowGap, hit, [this, &p](int want) {
+					lay::AlbumGrid g = mangaLibGrid(p);
+					int n = (int)mangaLib.size();
+					mlibScroll = std::clamp(want, 0, std::max(0, g.rows - g.shown));
+					if (n) mlibGrid = std::min(n - 1, std::clamp(mlibGrid / MG_COLS, mlibScroll, mlibScroll + g.shown - 1) * MG_COLS + mlibGrid % MG_COLS);
 					return mlibScroll;
 				}, [this, &p](int i) {
 					if (i >= (int)mangaLib.size()) return;
 					mlibGrid = i;
-					mlibScroll = i / MG_COLS;
 					mangaChoose(MT_LIBRARY, i, p);
 				});
 				return false;
 			}
 			if (mangaTab == MT_HISTORY)
 			{
+				// the kit's rows (lay::rowList): a tap on a row (its Continue key included) continues it
 				mangaCache();
 				int n = (int)mangaHistory.size();
-				if (!n || !p.settings.mangaHistory || y < MG_ROW_TOP || y >= MG_ROW_TOP + MG_HIST_ROWS * MG_HIST_ROW_H)
-					return false;
-				int i = mhisScroll + (y - MG_ROW_TOP) / MG_HIST_ROW_H;
-				ui.pageReader->mangaListBegin(x, y, mhisScroll, MG_HIST_ROW_H, i < n ? i : -1, [this](int want) {
-					int n = (int)mangaHistory.size();
-					mhisScroll = std::clamp(want, 0, std::max(0, n - MG_HIST_ROWS));
-					mhisCursor = std::clamp(mhisCursor, mhisScroll, std::max(mhisScroll, std::min(n - 1, mhisScroll + MG_HIST_ROWS - 1)));
+				lay::RowList l = mangaHisList(p);
+				if (!n || !p.settings.mangaHistory || !l.area.hit(x, y)) return false;
+				int i = l.at(x, y);
+				ui.pageReader->mangaListBegin(x, y, mhisScroll, l.rowH + l.gap, i, [this, &p](int want) {
+					int n = (int)mangaHistory.size(), shown = std::max(1, mangaHisList(p).shown);
+					mhisScroll = std::clamp(want, 0, std::max(0, n - shown));
+					mhisCursor = std::clamp(mhisCursor, mhisScroll, std::max(mhisScroll, std::min(n - 1, mhisScroll + shown - 1)));
 					return mhisScroll;
 				}, [this, &p](int i) {
 					if (i >= (int)mangaHistory.size()) return;
@@ -1846,7 +1861,15 @@ namespace bp
 				what += " \xC2\xB7 " + series(mangaHistory.size());
 			else if (mangaTab == MT_DOWNLOADS && mangaDlQueueCount())
 				what += " \xC2\xB7 " + std::to_string(mangaDlQueueCount()) + " queued";
-			h.crumb = what;
+			h.crumb = mangaScanning && mangaTab == MT_LIBRARY ? mangaReadingLine() : what;
+			// Library and History are the kit's (no old hints to catch): their own, as the spec draws them
+			if (mangaTab == MT_LIBRARY)
+				h.hints = mangaLib.empty() ? std::vector<Hint>{{"X", "More"}, {"B", "Back"}}
+					: std::vector<Hint>{{"D-pad", "Move"}, {"A", "Open"}, {"X", "More"}, {"B", "Back"}};
+			else if (mangaTab == MT_HISTORY)
+				h.hints = !p.settings.mangaHistory ? std::vector<Hint>{{"X", "Manga settings"}, {"B", "Back"}}
+					: mangaHistory.empty() ? std::vector<Hint>{{"X", "More"}, {"B", "Back"}}
+					: std::vector<Hint>{{"A", "Continue"}, {"X", "More"}, {"B", "Back"}};
 			// the tabs step with L2 / R2 (L / R are the sections, as on every shell page)
 			bool hasTab = false;
 			for (auto& x : h.hints) hasTab |= x.key == "L2/R2";
@@ -2194,55 +2217,59 @@ namespace bp
 		ui.drawHints({{"A", "Choose"}, {"B", "Not now"}});
 	}
 
+	lay::AlbumGrid Ui::Manga::mangaLibGrid(const Player& p) const
+	{
+		return lay::coverGrid(mangaTabPage(p).content, (int)mangaLib.size(), mlibScroll, MG_COLS);
+	}
+
+	lay::RowList Ui::Manga::mangaHisList(const Player& p) const
+	{
+		int n = p.settings.mangaHistory ? (int)mangaHistory.size() : 0;
+		return lay::rowList(mangaTabPage(p).content, n, mhisScroll);
+	}
+
+	void Ui::Manga::drawMangaTabEmpty(const Player& p, const Glyph& g, const std::string& title, const std::string& text)
+	{
+		// the kit's Empty state in the content under the tabs (no key: X and B are in the hint bar)
+		Kit::Empty e;
+		e.glyph = &g;
+		e.title = title;
+		e.lines = ui.wrapText(text, F_I14, 400, 3);
+		ui.kit->emptyState(lay::emptyState(mangaTabPage(p).content, (int)e.lines.size(), 0), e);
+	}
+
 	void Ui::Manga::drawMangaLibrary(const Player& p)
 	{
-		(void)p;
 		mangaCache();
-		// (the count is the shell header's crumb, "Library · 3 series": not drawn twice on the line under the tabs)
-		// the card read in the background: the grid is the library as last known until it ends, then updates in place
-		if (mangaScanning && !mangaLib.empty()) ui.drawTextMid(mangaReadingLine(), 0, DIM, 624, MG_LIB_TOP - 14, 360, 1);
+		// (the count is the shell header's crumb, "Library · 3 series"; while the card is read, the crumb says so)
 		int n = (int)mangaLib.size();
-		if (n == 0 && mangaScanning)
-		{
-			ui.drawEmpty(G_BOOK, mangaReadingLine(), "The series on your card show up here in a moment.", nullptr);
-			ui.drawHints({{"B", "Back"}});
-			return;
-		}
 		if (n == 0)
 		{
-			ui.drawEmpty(G_BOOK, "Your library is empty",
-				"Put CBZ files (or CBR, PDF) or folders of pictures in a Manga folder on your card, or add series from Browse.", nullptr);
-			ui.drawHints({{"B", "Back"}});
+			if (mangaScanning) drawMangaTabEmpty(p, G_BOOK, mangaReadingLine(), "The series on your card show up here in a moment.");
+			else drawMangaTabEmpty(p, G_BOOK, "Your library is empty",
+				"Put CBZ files (or CBR, PDF) or folders of pictures in a Manga folder on your card, or add series from Browse.");
+			if (mlibMenu) later([this] { drawMangaLibMenu(); });
 			return;
 		}
-		int rows = (n + MG_COLS - 1) / MG_COLS;
 		if (mlibGrid >= n) mlibGrid = n - 1;
-		if (mlibScroll >= rows) mlibScroll = rows - 1;
-		// the grid, a row at a time: the next row peeks under this one, cut at the mini bar
-		SDL_Rect clip{0, (int)std::lround(MG_LIB_TOP * sy), (int)std::lround(W * sx),
-			(int)std::lround((MG_LIB_BOTTOM - MG_LIB_TOP) * sy)};
-		SDL_RenderSetClipRect(ui.ren, &clip);
-		for (int i = mlibScroll * MG_COLS; i < n; i++)
+		// the cover grid (screens.js manga: mcell): five across, the unread count a pill at a cover's top right, the
+		// focused one ringed; whole rows, scrolled by rows
+		lay::AlbumGrid g = mangaLibGrid(p);
+		mlibScroll = g.first;
+		Kit& k = *ui.kit;
+		for (int i = g.first * g.cols; i < n && i < (g.first + g.shown) * g.cols; i++)
 		{
-			Rect r = mangaCoverRect(i);
-			if (r.y >= MG_LIB_BOTTOM) break;
-			bool at = mlibGrid == i;
-			drawMangaCover(r, mangaLib[i].title, at, 4, mangaLib[i].id, mangaSeriesCoverUrl(mangaLib[i].id));
-			ui.drawTextMid(mangaLib[i].title, 0, at ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h + 13, r.w, 2);
+			Kit::Cover c;
+			c.key = c.title = mangaLib[i].title;
+			c.picture = [this, title = mangaLib[i].title, id = mangaLib[i].id](Rect r) {
+				drawMangaCover(r, title, false, 4, id, mangaSeriesCoverUrl(id));
+			};
 			int unread = i < (int)mangaLibUnread.size() ? mangaLibUnread[i] : 0;
-			if (unread > 0)
-			{
-				// its unread count, a chip at the cover's top right
-				std::string t = std::to_string(unread);
-				int tw = (int)std::lround(ui.textWidth(t, 0) / sx) + 14;
-				ui.fillRound({r.x + r.w - tw - 4, r.y + 4, tw, 20}, ACCENT, R_CHIP);
-				ui.drawTextMid(t, 0, ON_ACCENT, r.x + r.w - tw / 2 - 4, r.y + 14, tw - 6, 2);
-			}
+			if (unread > 0) c.badge = std::to_string(unread);
+			c.focused = i == mlibGrid;
+			k.coverTile(lay::coverTile(g.cell[i], true, false), c);
 		}
-		SDL_RenderSetClipRect(ui.ren, nullptr);
-		ui.drawScrollBar(MG_LIB_TOP, MG_LIB_BOTTOM - MG_LIB_TOP, mlibScroll,
-			std::max(1, (MG_LIB_BOTTOM - MG_LIB_TOP) / 186), rows);
-		ui.drawHints({{"D-PAD", "Move"}, {"A", "Open"}, {"X", "Options"}, {"B", "Back"}});
+		if (g.rows > g.shown) ui.drawScrollBar(g.area.y, g.area.h, g.first, g.shown, g.rows);
 		if (mlibMenu) later([this] { drawMangaLibMenu(); });
 	}
 
@@ -2282,6 +2309,7 @@ namespace bp
 	bool Ui::Manga::mangaLibMenuKey(Button b, Player& p)
 	{
 		if (b == Button::A) mangaLibMenuAct(p);
+		else if (b == Button::Up || b == Button::Down) { mlibMenuCursor = 1 - mlibMenuCursor; mlibArmed = false; }
 		else if (b == Button::B || b == Button::X) { mlibMenu = false; mlibArmed = false; }
 		return false;
 	}
@@ -2289,6 +2317,12 @@ namespace bp
 	void Ui::Manga::mangaLibMenuAct(Player& p)
 	{
 		(void)p;
+		if (mlibMenuCursor == 1)
+		{
+			mlibMenu = mlibArmed = false;
+			openMangaSettings();
+			return;
+		}
 		auto gone = mangaMissing();
 		if (gone.empty()) { mlibMenu = false; mangaNotice("Nothing is missing", 1500); return; }
 		// twice: their places and read marks go with them
@@ -2308,14 +2342,17 @@ namespace bp
 		Rect b = mlibMenuBox();
 		ui.drawDialog(b, "Library");
 		auto gone = mangaMissing();
-		Rect r = mlibMenuRow();
-		ui.drawFocus(r);
+		Rect r = mlibMenuRow(0);
+		if (mlibMenuCursor == 0) ui.drawFocus(r);
 		std::string note = gone.empty() ? "None" : mlibArmed ? "A again" : std::to_string(gone.size()) + " gone";
-		ui.drawDialogRow(r, &G_TRASH, "Remove missing", true, false, gone.empty() ? DIM : DANGER, note, mlibArmed ? ACCENT : DIM);
-		// (said under the row: what goes with them, and the card that may only be out)
-		ui.drawTextMid(gone.empty() ? "Every series is on a card" : "Series no longer on a card, and books Files now opens", 0, DIM, W / 2, 278, 380, 2);
+		ui.drawDialogRow(r, &G_TRASH, "Remove missing", mlibMenuCursor == 0, false, gone.empty() ? DIM : DANGER, note, mlibArmed ? ACCENT : DIM);
+		Rect s = mlibMenuRow(1);
+		if (mlibMenuCursor == 1) ui.drawFocus(s);
+		ui.drawDialogRow(s, &G_GEAR, "Manga settings", mlibMenuCursor == 1, false, TEXT, "", DIM);
+		// (said under the rows: what Remove missing takes, and the card that may only be out)
+		ui.drawTextMid(gone.empty() ? "Every series is on a card" : "Series no longer on a card, and books Files now opens", 0, DIM, W / 2, 290, 380, 2);
 		if (mlibArmed) ui.drawFooterText("Their read marks go too. A card that's out? Put it back first", ACCENT);
-		else ui.drawHints({{"A", "Remove"}, {"B", "Close"}});
+		else ui.drawHints({{"A", mlibMenuCursor ? "Open" : "Remove"}, {"B", "Close"}});
 	}
 
 	bool Ui::Manga::mangaHisMenuKey(Button b, Player& p)
@@ -2334,6 +2371,8 @@ namespace bp
 	void Ui::Manga::mangaHisMenuAct(Player& p)
 	{
 		mhisMenu = false;
+		// the last row: the app's settings (START is Settings now)
+		if (mhisMenuCursor == 5) { openMangaSettings(); return; }
 		if (!mangaStore) return;
 		int64_t now = (int64_t)time(nullptr);
 		static const char* SAID[5] = {"Removed from History", "Cleared the last hour", "Cleared today", "Cleared the last 24 hours", "History cleared"};
@@ -2366,62 +2405,68 @@ namespace bp
 	void Ui::Manga::drawMangaHisMenu()
 	{
 		Rect b = mhisMenuBox();
-		ui.drawDialog(b, "Clear history");
-		static const char* ROWS[MHIS_MENU_ROWS] = {"Selected item", "Last hour", "Today", "Last 24 hours", "All"};
+		ui.drawDialog(b, "History");
+		static const char* ROWS[MHIS_MENU_ROWS] = {"Clear the selected item", "Clear the last hour", "Clear today",
+			"Clear the last 24 hours", "Clear all", "Manga settings"};
 		for (int i = 0; i < MHIS_MENU_ROWS; i++)
 		{
 			Rect r = mhisMenuRow(i);
 			bool at = i == mhisMenuCursor;
 			if (at) ui.drawFocus(r);
-			ui.drawTextMid(ROWS[i], 1, at ? ACCENT : i == MHIS_MENU_ROWS - 1 ? DANGER : TEXT, r.x + 12, r.y + r.h / 2, r.w - 24);
+			ui.drawTextMid(ROWS[i], 1, at ? ACCENT : i == 4 ? DANGER : TEXT, r.x + 12, r.y + r.h / 2, r.w - 24);
 		}
-		ui.drawHints({{"A", "Clear"}, {"B", "Close"}});
+		ui.drawHints({{"A", mhisMenuCursor == 5 ? "Open" : "Clear"}, {"B", "Close"}});
 	}
 
 	void Ui::Manga::drawMangaHistory(const Player& p)
 	{
 		mangaCache();
-		if (mangaClearAt && SDL_GetTicks() - mangaClearAt >= QUIT_WINDOW_MS) mangaClearAt = 0;
 		if (!p.settings.mangaHistory)
 		{
 			// kept off: where it is turned on, and that the reading itself is still remembered
-			ui.drawEmpty(G_CLOCK, "Reading history is off",
-				"Turn it on in Manga settings (START). Your places and read\nmarks are kept either way.", nullptr);
-			ui.drawHints({{"B", "Back"}});
+			drawMangaTabEmpty(p, G_CLOCK, "Reading history is off",
+				"Turn it on in Manga settings (X). Your places and read marks are kept either way.");
 			return;
 		}
 		int n = (int)mangaHistory.size();
 		if (n == 0)
 		{
-			ui.drawEmpty(G_CLOCK, "Nothing read yet", "Series you read show up here.", nullptr);
-			ui.drawHints({{"B", "Back"}});
+			drawMangaTabEmpty(p, G_CLOCK, "Nothing read yet", "Series you read show up here, newest first.");
+			if (mhisMenu) later([this] { drawMangaHisMenu(); });
 			return;
 		}
 		if (mhisCursor >= n) mhisCursor = n - 1;
-		for (int i = mhisScroll; i < n && i < mhisScroll + MG_HIST_ROWS; i++)
+		// one row a series, newest first (screens.js manga-history): its cover, its title, then the chapter, the page
+		// and when; the focused row carries its Continue key (A), so the tap target is drawn
+		lay::RowList l = mangaHisList(p);
+		mhisScroll = l.first;
+		Kit& k = *ui.kit;
+		int64_t now = (int64_t)time(nullptr);
+		int keyW = k.keyW("Continue", "A");
+		for (int j = 0; j < l.shown; j++)
 		{
+			int i = l.first + j;
 			const ChapterProgress& cp = mangaHistory[i];
-			int y = MG_ROW_TOP + (i - mhisScroll) * MG_HIST_ROW_H, mid = y + (MG_HIST_ROW_H - 4) / 2;
-			bool at = i == mhisCursor;
-			if (at) ui.drawFocus({16, y, 608, MG_HIST_ROW_H - 4});
-			SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
-			// one row a series: its cover, its title, and the chapter it was last at
-			std::string title = mangaTitle(cp.seriesId);
-			drawMangaCover({28, mid - 23, 32, 46}, title, false, 1, cp.seriesId, mangaSeriesCoverUrl(cp.seriesId));
-			ui.drawTextMid(title, 1, ink, 72, mid - 10, 422);
+			std::string title = mangaTitle(cp.seriesId), from = mangaSourceLabel(cp.seriesId);
+			Kit::Row row;
+			row.under = BG;
+			row.mark = [this, title, id = cp.seriesId](Rect m) {
+				drawMangaCover({m.x + (m.w - 32) / 2, m.y, 32, m.h}, title, false, 1, id, mangaSeriesCoverUrl(id));
+			};
+			row.name = title;
+			row.second = (from.empty() ? "" : from + " \xC2\xB7 ") + chapterShort(cp.chapterTitle) + " \xC2\xB7 " +
+				chapterPageLine(cp.page, cp.pages) + " \xC2\xB7 " + mangaAgo(cp.at, now);
+			row.focused = i == mhisCursor;
+			k.row(l.row[j], row);
+			if (row.focused)
 			{
-				std::string from = mangaSourceLabel(cp.seriesId);
-				ui.drawTextMid((from.empty() ? "" : from + " \xC2\xB7 ") + chapterShort(cp.chapterTitle) + " \xC2\xB7 " + chapterPageLine(cp.page, cp.pages),
-					0, soft, 72, mid + 10, 422);
+				Kit::Key key;
+				key.label = "Continue";
+				key.key = "A";
+				k.key(lay::rowKey(l.row[j], keyW), key);
 			}
-			// how far into that chapter, a thin bar under the text (ACCENT always: it is the place read)
-			double frac = cp.pages > 0 ? std::clamp((cp.page + 1) / (double)cp.pages, 0.0, 1.0) : 0;
-			ui.drawLevel({72, y + MG_HIST_ROW_H - 13, 422, 3}, (int)std::lround(422 * frac), TRACK, ACCENT);
-			ui.drawTextMid(mangaAgo(cp.at, (int64_t)time(nullptr)), 0, soft, 604, mid, 120, 1);
 		}
-		ui.drawScrollBar(MG_ROW_TOP, MG_HIST_ROWS * MG_HIST_ROW_H - 4, mhisScroll, MG_HIST_ROWS, n);
-		if (mangaClearAt) ui.drawFooterText("Press X again to clear history", ACCENT);
-		else ui.drawHints({{"A", "Continue"}, {"X", "Clear\xE2\x80\xA6"}, {"B", "Back"}});
+		if (n > l.shown) ui.drawScrollBar(l.area.y, l.area.h, l.first, l.shown, n);
 		if (mhisMenu) later([this] { drawMangaHisMenu(); });
 	}
 

@@ -10993,6 +10993,25 @@ static void testKitLayout()
 		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[2].x + 1, tp.strip.tab[2].y + 1), 2);
 		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[1].x + tp.strip.tab[1].w + 2, tp.strip.tab[1].y + 10), -1);
 		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[0].x + 5, tp.content.y + 5), -1);
+		// Manga's Library under the tabs: five covers across fit the inner width, two rows the content's height
+		AlbumGrid cg = coverGrid(tp.content, 12, 0);
+		CHECK(cg.cell[4].x + cg.cell[4].w <= tp.content.x + tp.content.w);
+		CHECK_EQ(cg.shown, 2);
+		CHECK_EQ(cg.cell[5].y, tp.content.y + COVER_GRID_CELL_H + 12);
+		CHECK_EQ(coverGrid(tp.content, 12, 9).first, 1);	// (clamped: three rows, two shown)
+		CHECK_EQ(coverGrid(tp.content, 12, 1).cell[5].y, tp.content.y);
+		// History's rows: 60 tall, 2 apart, five in the content; the list ends at its last row; Continue at the right
+		RowList rl = rowList(tp.content, 14, 20);
+		CHECK_EQ(rl.shown, 5);
+		CHECK_EQ(rl.first, 9);
+		CHECK_EQ(rl.row[1].y, tp.content.y + 62);
+		CHECK_EQ(rl.at(rl.row[2].x + 3, rl.row[2].y + 3), 11);
+		CHECK_EQ(rl.at(rl.row[0].x + 3, rl.row[0].y + 61), -1);
+		CHECK_EQ(rowList(tp.content, 2, 0).shown, 2);
+		Box ck = rowKey(rl.row[0], 120);
+		CHECK_EQ(ck.x + ck.w, rl.row[0].x + rl.row[0].w - 8);
+		CHECK_EQ(ck.h, 44);
+		CHECK_EQ(ck.y, rl.row[0].y + 8);
 	}
 
 	// the List sheet: a header, seven rows 46 tall, the rows clear of the hint bar
