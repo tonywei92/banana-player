@@ -1058,6 +1058,17 @@ namespace bp
 			}
 			if (b == Button::A) { mangaChoose(MT_HISTORY, mhisCursor, p); break; }
 			if (!n) break;
+			// Y: the series' page (its chapters), not the page read last
+			if (b == Button::Y)
+			{
+				if (mhisCursor < 0 || mhisCursor >= n) break;
+				const ChapterProgress& cp = mangaHistory[mhisCursor];
+				std::string gone = mangaHisGone(cp);
+				if (!gone.empty()) { mangaNotice(gone == "source removed" ? "Its source isn\xE2\x80\x99t installed now" : "It\xE2\x80\x99s not on a card now", 2000); break; }
+				if (isServerId(cp.seriesId)) mangaServerSeriesOpenFromId(cp.seriesId, p);
+				else openMangaSeries(cp.seriesId, 2, p);
+				break;
+			}
 			switch (b)
 			{
 			case Button::Up: mhisCursor = (mhisCursor + n - 1) % n; break;
@@ -1869,7 +1880,7 @@ namespace bp
 			else if (mangaTab == MT_HISTORY)
 				h.hints = !p.settings.mangaHistory ? std::vector<Hint>{{"X", "Manga settings"}, {"B", "Back"}}
 					: mangaHistory.empty() ? std::vector<Hint>{{"X", "More"}, {"B", "Back"}}
-					: std::vector<Hint>{{"A", "Continue"}, {"X", "More"}, {"B", "Back"}};
+					: std::vector<Hint>{{"A", "Continue"}, {"Y", "The series"}, {"X", "More"}, {"B", "Back"}};
 			// the tabs step with L2 / R2 (L / R are the sections, as on every shell page)
 			bool hasTab = false;
 			for (auto& x : h.hints) hasTab |= x.key == "L2/R2";
@@ -2228,6 +2239,16 @@ namespace bp
 		return lay::rowList(mangaTabPage(p).content, n, mhisScroll);
 	}
 
+	std::string Ui::Manga::mangaHisGone(const ChapterProgress& cp) const
+	{
+		if (cp.seriesId.rfind("local:", 0) == 0) return mangaScanned && !mangaLocalById.count(cp.seriesId) ? "not on a card" : "";
+		// a source's series: its source not among those installed (asked only once the engine has said what it has,
+		// so a slow start doesn't dim the whole list)
+		if (isSourceId(cp.seriesId) && mangaNet && mangaNet->started() && mangaSourceLabel(cp.seriesId).empty())
+			return "source removed";
+		return "";
+	}
+
 	void Ui::Manga::drawMangaTabEmpty(const Player& p, const Glyph& g, const std::string& title, const std::string& text)
 	{
 		// the kit's Empty state in the content under the tabs (no key: X and B are in the hint bar)
@@ -2456,9 +2477,16 @@ namespace bp
 			row.name = title;
 			row.second = (from.empty() ? "" : from + " \xC2\xB7 ") + chapterShort(cp.chapterTitle) + " \xC2\xB7 " +
 				chapterPageLine(cp.page, cp.pages) + " \xC2\xB7 " + mangaAgo(cp.at, now);
+			// one that can't open now stays, dimmed, and says why (spec: manga-history)
+			std::string gone = mangaHisGone(cp);
+			if (!gone.empty())
+			{
+				row.off = true;
+				row.second = gone + " \xC2\xB7 " + chapterShort(cp.chapterTitle) + " \xC2\xB7 " + mangaAgo(cp.at, now);
+			}
 			row.focused = i == mhisCursor;
 			k.row(l.row[j], row);
-			if (row.focused)
+			if (row.focused && gone.empty())
 			{
 				Kit::Key key;
 				key.label = "Continue";

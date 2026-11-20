@@ -52,10 +52,14 @@ The reader (`Page::MangaRead`) is not: a comic's page keeps the whole panel, unc
   Empty states are `Kit::emptyState` in the content box. Touches test those same boxes (`mangaListBegin` with the
   grid's or the rows' pitch); their hints are set in `Manga::head` (nothing to catch). Tests next to the tab page's.
 
+- **History's Y** opens the series' page (`openMangaSeries(id, 2)`, a server's by `mangaServerSeriesOpenFromId`);
+  `Manga::mangaHisGone` dims a row (`Kit::Row::off`, no Continue key) whose source is no longer installed (asked only
+  once the engine is up) or whose card series the last scan didn't find, and says which in its second line.
+
 ## Not done
 
 - The other bodies (Browse, Downloads, a series, a source's grid, servers, Sources, Manga settings) are still bridged,
-  scaled to 0.88. History's Y (open the series) and its "source removed" dimming from the spec are not done.
+  scaled to 0.88. 
 - A sheet over the bridge keeps its old full-page place; any sheet placed by what is under it would be off by the
   scale (none seen, not every one checked).
 - Not checked on the handheld (KMSDRM, the real panel); the scaled body's text is small at 0.88.

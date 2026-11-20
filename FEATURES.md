@@ -1255,7 +1255,8 @@ on the card (below).
 
 **Library** is a grid of covers, five across, each with its title under it and its unread count at its top right;
 **History** is one row a series, newest first: its cover, its title, then the chapter, the page and when, with a
-**Continue** key (**A**) on the row you're on.
+**Continue** key (**A**) on the row you're on; **Y** opens the series' page instead. A series that can't open now
+stays, dimmed, and says why (*source removed*, *not on a card*).
 
 **On the touch screen** every list and grid in the app scrolls with a finger: drag it up or down (Library's covers,
 History, Browse and its *On this handheld*, Downloads' queue, its series on the card and their chapters, Sources, a

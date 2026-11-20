@@ -65,6 +65,9 @@ namespace bp
 		bool kitBody() const { return tabView() && (mangaTab == MT_LIBRARY || mangaTab == MT_HISTORY); }
 		lay::AlbumGrid mangaLibGrid(const Player& p) const;
 		lay::RowList mangaHisList(const Player& p) const;
+		// a History row whose series can't be opened now: "source removed" (a source no longer installed, once the
+		// sources are known), "not on a card" (a card series the last scan didn't find); "" when it can
+		std::string mangaHisGone(const ChapterProgress& cp) const;
 		void drawMangaTabEmpty(const Player& p, const Glyph& g, const std::string& title, const std::string& text);
 		lay::TabPage mangaTabPage(const Player& p) const;
 		// the header the shell draws: the page's title, its crumb, the hints its old body drew (captured while it was
