@@ -59,6 +59,10 @@ namespace bp
 		// answers without a decode; a miss decodes once and writes it. The key carries the "bg:" prefix, which
 		// is how main routes the answer to Ui's backdrop. No art in the file or beside it: ok false
 		void wantBackdrop(const std::string& key, const std::string& path);
+		// a book's cover, as wantSong is a song's: which page of it is the cover is decided on the worker's
+		// thread (a comic's first page, a PDF's, an EPUB's own cover image — a TXT has none, ok false). The key
+		// carries Home's "home:" prefix so the answer lands in the same cache as the song art's
+		void wantBook(const std::string& key, const std::string& path, int w, int h);
 		// the cache's folder, as main hands it in at start (empty: nothing is cached, the maths every time)
 		void setStateDir(std::string dir) { stateDir = std::move(dir); }
 		// the Manga app was read again: nothing of its queue is wanted any more (a decode under way finishes). Home's
@@ -76,8 +80,10 @@ namespace bp
 			int w = 0, h = 0;
 			bool song = false;	// source is a song file: its embedded art, else the cover beside it
 			bool backdrop = false;	// source is a song file: its backdrop (the cache, the maths), not a tile
+			bool book = false;	// source is a book: its cover page, kept from its top (as a manga cover's)
 		};
-		void ask(const std::string& key, const std::string& source, int w, int h, bool song, bool backdrop = false);
+		void ask(const std::string& key, const std::string& source, int w, int h, bool song, bool backdrop = false,
+			bool book = false);
 		void run();
 		std::function<void()> ready;
 		std::string stateDir;	// the artbg/ cache's folder (the worker thread alone walks it)

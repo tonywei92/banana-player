@@ -765,6 +765,8 @@ namespace bp
 			close();
 			ui.browse->filesSelEnd(p);
 			if (ui.page == Page::Browse && ui.browse->filesPage()) ui.browse->filesRefresh(p);
+			// the cards' content changed: the index walks again (the library pages drop what was deleted)
+			if (done > 0) ui.filesChanged++;
 			if (done == (int)paths.size())
 				p.osd("Deleted " + std::to_string(done) + (done == 1 ? " file" : " files"), 2000);
 			else if (done == 0) ui.alert("Couldn\xE2\x80\x99t delete it", "Is the card read only?");
@@ -1078,6 +1080,9 @@ namespace bp
 		if (from.empty() || to.empty() || from == to) return;
 		int moved = 0;
 		p.pathsMoved(from, to);
+		// the cards' content moved: the index walks again, so the library pages drop the old path at their next
+		// drawing (main watches filesSerial beside the roots serial)
+		filesChanged++;
 		// playlists and Liked (the edits waiting first, so none is written over the old paths)
 		if (browse->playlists->plStore)
 		{

@@ -566,6 +566,7 @@ int main(int argc, char** argv)
 		});
 		indexWorker->configure(opts.stateDir);
 		ui.mediaIndex = &indexWorker->index();	// Search (and Music, Videos) read its answers on this thread
+		ui.indexWorker = indexWorker;		// (their reading notice reads the pass's live counters)
 		indexWorker->start();
 		// the library sections read the worker's index: the generation in their signature() redraws them when a
 		// pass lands (nothing is read off the worker's thread)
@@ -2194,12 +2195,14 @@ int main(int argc, char** argv)
 				if (mangaWasOn && !player.settings.mangaOn) mangaNet->off();
 				mangaWasOn = player.settings.mangaOn;
 			}
-			// the cards changed (ui.rootsCheck every few seconds: one put in or taken out): the media index walks again
+			// the cards changed (ui.rootsCheck every few seconds: one put in or taken out): the media index walks again.
+			// A file op (a delete, a rename, a move from any page) says so too, the same way
 			{
-				static int indexRootsSeen = 0;
-				if (haveUi && ui.rootsSerial() != indexRootsSeen)
+				static int indexRootsSeen = 0, indexFilesSeen = 0;
+				if (haveUi && (ui.rootsSerial() != indexRootsSeen || ui.filesSerial() != indexFilesSeen))
 				{
 					indexRootsSeen = ui.rootsSerial();
+					indexFilesSeen = ui.filesSerial();
 					indexWorker->refresh();
 				}
 			}

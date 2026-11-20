@@ -166,6 +166,39 @@ namespace bp
 		return out;
 	}
 
+	std::string Epub::coverImage()
+	{
+		std::string pkg;
+		if (!readText(opf, pkg)) return "";
+		return epubCoverFromPackage(pkg, opf);
+	}
+
+	std::string epubCoverFromPackage(const std::string& pkg, const std::string& opfName)
+	{
+		HtmlDoc d;
+		d.parse(pkg);
+		// EPUB 3: the manifest item that carries properties="cover-image" (properties may name several: a look,
+		// not a split)
+		for (const HtmlNode& it : d.select("item"))
+			if (it.attr("properties").find("cover-image") != std::string::npos)
+			{
+				std::string r = epubResolve(opfName, it.attr("href"));
+				if (!r.empty()) return r;
+			}
+		// EPUB 2: <meta name="cover" content="id"> names the manifest item
+		std::string id;
+		for (const HtmlNode& m : d.select("meta"))
+			if (lower(m.attr("name")) == "cover") { id = m.attr("content"); break; }
+		if (!id.empty())
+			for (const HtmlNode& it : d.select("item"))
+				if (it.attr("id") == id)
+				{
+					std::string r = epubResolve(opfName, it.attr("href"));
+					if (!r.empty()) return r;
+				}
+		return "";
+	}
+
 	bool Epub::pictureBook()
 	{
 		if (picturesKnown >= 0) return picturesKnown == 1;

@@ -79,6 +79,13 @@ namespace bp
 		{
 			std::lock_guard<std::mutex> g(m);
 			dir = stateDir;
+			// this pass's counters, from nothing: the pages' reading notice reads them as the walk goes
+			reading = true;
+			live.card.store(-1);
+			live.foldersDone.store(0);
+			live.foldersKnown.store(0);
+			live.songs.store(0);
+			live.videos.store(0);
 		}
 		// the cache is this pass's alone: loaded, used, dropped with the walk's other working memory
 		MediaTagCache cache;
@@ -103,7 +110,11 @@ namespace bp
 			while (!stopping && busy.load()) std::this_thread::sleep_for(std::chrono::milliseconds(20));
 			return !stopping;
 		};
-		bool whole = walkMedia(folders, reader, cache, gate, walk);
+		bool whole = walkMedia(folders, reader, cache, gate, walk, &live);
+		{
+			std::lock_guard<std::mutex> g(m);
+			reading = false;		// (the counters stay for the notice's last drawing until the answer lands)
+		}
 		if (!whole) return;	// (stopped mid-way: not a whole answer)
 		for (auto& f : walk.failed) fprintf(stderr, "media index: couldn't read %s\n", f.c_str());
 		int musicVideos = 0;

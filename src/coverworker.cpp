@@ -1,4 +1,5 @@
 #include "coverworker.h"
+#include "epub.h"
 #include "pagebook.h"
 #include "pagedecode.h"
 #include "web/probe.h"
@@ -48,6 +49,35 @@ namespace bp
 			PageImage p;
 			if (!probeCover(path, bytes, mime)) return p;	// (error left empty: nothing to draw is the answer)
 			return decodePage((const uint8_t*)bytes.data(), bytes.size(), w);
+		}
+
+		// a book's cover page (Books' shelf, ui_books.h; docs/redesign "books"): a comic's first page, a PDF's,
+		// an EPUB's own cover image (else its first picture). A TXT has none — the drawn sleeve is its answer
+		PageImage bookCover(const std::string& path, int w)
+		{
+			std::string err;
+			if (isPageBookName(path))
+			{
+				auto book = openPageBook(path, err);
+				return book ? bookPage(*book, 0, w) : PageImage{};
+			}
+			std::string tail = path.size() > 5 ? path.substr(path.size() - 5) : "";
+			for (char& c : tail) c = (char)std::tolower((unsigned char)c);
+			if (tail == ".epub")
+			{
+				Epub e;
+				if (!e.open(path)) return {};
+				std::string name = e.coverImage();
+				if (name.empty())
+				{
+					auto pics = e.pictures();
+					if (!pics.empty()) name = pics.front();
+				}
+				std::vector<uint8_t> bytes;
+				if (name.empty() || !e.read(name, bytes)) return {};
+				return decodePage(bytes.data(), bytes.size(), w);
+			}
+			return {};
 		}
 
 		// ---- Match album art's cache (artbackdrop.h: <dir>/artbg/<fnv64>.bg) ----
@@ -142,14 +172,20 @@ namespace bp
 		ask(key, path, artbg::W, artbg::H, true, true);
 	}
 
-	void CoverWorker::ask(const std::string& key, const std::string& source, int w, int h, bool song, bool backdrop)
+	void CoverWorker::wantBook(const std::string& key, const std::string& path, int w, int h)
+	{
+		ask(key, path, w, h, false, false, true);
+	}
+
+	void CoverWorker::ask(const std::string& key, const std::string& source, int w, int h, bool song, bool backdrop,
+		bool book)
 	{
 		std::lock_guard<std::mutex> g(m);
 		if (stopping) return;
 		// the same cover asked again (a redraw, a scroll back) is the same picture: moved to the front, it is decoded
 		// next rather than twice
 		items.erase(std::remove_if(items.begin(), items.end(), [&](const Item& i) { return i.key == key; }), items.end());
-		items.push_back({key, source, std::max(1, w), std::max(1, h), song, backdrop});
+		items.push_back({key, source, std::max(1, w), std::max(1, h), song, backdrop, book});
 		if (items.size() > kMaxWaiting) items.erase(items.begin(), items.begin() + (items.size() - kMaxWaiting));
 		if (!started)
 		{
@@ -197,6 +233,22 @@ namespace bp
 				cv.wait(g, [&] { return !stopping && !items.empty(); });
 				it = std::move(items.back());
 				items.pop_back();
+			}
+			// a book's cover: its cover page (the source's own format decides which), kept from the top as a
+			// manga cover is — a book's title sits at a cover's head
+			if (it.book)
+			{
+				Result r = cropped(it.key, bookCover(it.source, it.w), it.w, it.h, false);
+				bool signal = false;
+				{
+					std::lock_guard<std::mutex> g(m);
+					if (stopping) continue;	// (a stop at quit: nothing more is handed out, and the loop parks)
+					results.push_back(std::move(r));
+					signal = !signalled;
+					signalled = true;
+				}
+				if (signal) ready();
+				continue;
 			}
 			// a song's backdrop: the cache by the art's own bytes, else the decode and the pure maths; one
 			// answer, no tile of it

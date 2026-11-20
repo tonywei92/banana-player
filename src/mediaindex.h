@@ -23,6 +23,7 @@
 #pragma once
 #include "mediacache.h"
 #include "mediatags.h"
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -54,6 +55,9 @@ namespace bp
 	// "Music on both cards", "Videos and Movies on this card": the folders' kinds as one phrase and which cards hold
 	// them ("" when there are none). Music folds "Musics" in; the kinds read in a fixed order, " and " between
 	std::string mediaFromWords(const std::vector<std::string>& folders);
+	// the card a pass is walking, as the reading notice names it ("" none): the roots' own order, the first "the
+	// card" and the removable one "the second card" (the mock-up's wording)
+	std::string walkCardName(int card);
 
 	// ---- the Books shelves' folders (the Books page, ui_books.h; the brief's rule: the cards' Books and Documents
 	// folders — the index holds songs and videos only, so the shelf lists these itself) ----
@@ -184,12 +188,22 @@ namespace bp
 	// between files: false stops the walk (a quit); it may sleep while the card is someone else's
 	using WalkGate = std::function<bool()>;
 
+	// the walk's live counters, for the reading notice's bar (docs/redesign "music-reading",
+	// "videos-reading"): written by the walk's thread, read by whoever shows them. The card is the roots' index
+	// (mediaCards()'s order) — its name the reader works out from the roots, so no string crosses threads
+	struct WalkCounters
+	{
+		std::atomic<int> card{-1};	// -1: none being read yet
+		std::atomic<int> foldersDone{0}, foldersKnown{0};
+		std::atomic<int> songs{0}, videos{0};	// read so far this pass
+	};
 	// one pass over the cards (gate called between every file). A Music file whose path, size and mtime the cache
 	// knows is not read again; a changed one has its tags read and the cache updated, so a second start reads only
 	// what changed. Nothing is thrown away on the way: a folder that can't be read is one line in failed, the rest
-	// go on. false: the walk was stopped (gate), so what it gathered is not a whole answer.
+	// go on. false: the walk was stopped (gate), so what it gathered is not a whole answer. `live`, when given, is
+	// the pass's counters, kept current as the walk goes
 	bool walkMedia(const MediaFolders& folders, const TagReader& tags, MediaTagCache& cache, const WalkGate& gate,
-		MediaWalk& out);
+		MediaWalk& out, WalkCounters* live = nullptr);
 
 	// the words a Music folder file is listed by: its tags', an empty title falling back to the file's own name
 	// (less its extension) and an empty album to its folder's (a rip puts an album in a folder; a music video with

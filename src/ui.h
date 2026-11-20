@@ -33,6 +33,7 @@ namespace bp
 	class WebServer;
 	class DurationWorker;
 	class MediaIndex;	// mediaindex.h (the cards' index: Music, Videos and Search)
+	class MediaIndexWorker;	// mediaworker.h (the index's thread: its live counters reach the reading notice)
 	struct PaneSpec;	// previewpane.h
 
 	// the on-screen keyboard's field for a repository's URL (Ui's Sources page; the form's are in ui_internal.h)
@@ -215,6 +216,9 @@ namespace bp
 		std::unique_ptr<Search> search;
 		// the cards' media index, as main's worker answers it (Music, Videos and Search read it; null: not built)
 		MediaIndex* mediaIndex = nullptr;
+		// the index's worker (main's): the pass's live counters, for the reading notice (null: none, as in none
+		// of its pages is drawn)
+		MediaIndexWorker* indexWorker = nullptr;
 		// a document from Files: opened in its viewer; false when the path isn't one
 		bool openDocument(const std::string& path, Player& p);
 		// started with no file: the video's Quit closes it (back to the browser)
@@ -924,9 +928,13 @@ namespace bp
 		// the dashboard its places again)
 		Uint32 rootsCheckedAt = 0;
 		int rootsChanged = 0;
+		int filesChanged = 0;		// a file op moved the cards' content: main re-walks the index
 		void rootsCheck(Player& p);
 	public:
 		int rootsSerial() const { return rootsChanged; }
+		// a file op changed what the cards hold (a delete, a rename or a move finished): main walks the index
+		// again, as it does when a card is swapped, so Music, Videos and Search keep true
+		int filesSerial() const { return filesChanged; }
 		const std::vector<BrowseRoot>& places() const { return roots; }
 		// main's lid-shut keys (docs/redesign/lid-and-incognito.md): the chapter before / after, on what plays
 		void chapterStepForLid(int dir, Player& p) { chapterStep(dir, p); }
@@ -1003,6 +1011,9 @@ namespace bp
 		// what plays in an art's box, as Home's cards have it: a song's art (its placeholder while it decodes,
 		// or for good when it has none), a video's kind mark, a music mark when nothing plays
 		void drawNowArt(const Player& bp, Rect r, int rad);
+		// a book's cover (Books' shelf cells): the drawn sleeve stands in until the worker's answer, and for
+		// good where there is none (a TXT, an unreadable one)
+		void drawBookCover(const std::string& path, const std::string& key, Rect r, int rad);
 		// ---- Quick settings (F): a panel centred on the whole bottom screen, over the rail ----
 		int quickCursor = 0;	// a row's index; -1: the Now playing block above Volume (the cursor opens on Volume)
 		enum QuickRow { Q_VOLUME, Q_BRIGHT, Q_BOTTOM, Q_SAME, Q_WEB, Q_INCOGNITO, Q_QUIT };

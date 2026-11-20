@@ -33,6 +33,29 @@ namespace bp
 		// what the UI reads (Music, Videos, Search): snapshot(), generation()
 		MediaIndex& index() { return shared; }
 
+		// the pass's live counters, for the reading notice's bar ("music-reading", "videos-reading"): a copy on
+		// the main thread whenever a page asks. reading: the pass is on (a second pass over an unchanged card
+		// spends its time in the opendir walk, so the bar moves there too)
+		struct Progress
+		{
+			bool reading = false;
+			int card = -1;		// mediaCards()'s index of the one being walked (-1 none)
+			int foldersDone = 0, foldersKnown = 0;
+			int songs = 0, videos = 0;	// read so far this pass
+		};
+		Progress progress()
+		{
+			std::lock_guard<std::mutex> g(m);
+			Progress p;
+			p.reading = reading;
+			p.card = live.card.load();
+			p.foldersDone = live.foldersDone.load();
+			p.foldersKnown = live.foldersKnown.load();
+			p.songs = live.songs.load();
+			p.videos = live.videos.load();
+			return p;
+		}
+
 	private:
 		void run();
 		void pass();
@@ -44,5 +67,7 @@ namespace bp
 		std::condition_variable cv;
 		bool started = false, again = false, stopping = false;
 		std::atomic<bool> busy{false};
+		bool reading = false;		// a pass is on (m's own, read by progress())
+		WalkCounters live;		// the walk's counters, this pass's
 	};
 }

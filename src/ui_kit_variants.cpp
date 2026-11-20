@@ -892,7 +892,8 @@ namespace bp
 			const Glyph* g = v.glyph ? v.glyph : &G_FILM;
 			ui.drawGlyphMid(*g, l.thumb.x + l.thumb.w / 2, l.thumb.y + l.thumb.h / 2, off(DIM_ON, v.off));
 		}
-		// the right end, leftwards: the length, and a tick when the file is finished
+		// the right end, leftwards: the length, a tick when the file is finished, then a Playing / Paused pill on
+		// the row that plays
 		int right = l.right;
 		if (!v.note.empty())
 		{
@@ -903,6 +904,11 @@ namespace bp
 		{
 			ui.drawGlyphMid(G_CHECK, right - 7, l.note.y + l.note.h / 2, off(v.focused ? ACCENT : DIM, v.off), 1);
 			right -= 14 + 8;
+		}
+		if (v.playing || v.paused)
+		{
+			right -= pill(right, l.note.y + l.note.h / 2, v.paused ? "Paused" : "Playing",
+				v.paused ? Pill::Fact : Pill::Live) + 8;
 		}
 		ui.drawTextMid(v.name, F_P16, off(v.focused ? ACCENT : TEXT, v.off), l.name.x, l.name.y + l.name.h / 2, std::max(1, right - l.name.x));
 		ui.drawTextMid(v.second, F_I12, off(v.focused ? DIM_ON : DIM, v.off), l.second.x, l.second.y + l.second.h / 2, l.second.w);

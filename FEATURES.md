@@ -122,7 +122,9 @@ Songs by what they are, not where they are. The **Music** cell opens three views
 first). The line under the title says where the list comes from and how much (`From Music on both cards · 148 albums ·
 1,912 songs`; `on this card` when one card has none). Albums and Artists fill by themselves from the folders named
 **Music** or **Musics** (any capitals) at the top of each card, plus BananaOS's own `/data/roms/music`; every such
-folder is read, however deep inside it everything counts. A song anywhere else is not listed here: it stays in Files,
+folder is read, however deep inside it everything counts. While a card is first read a notice row names the card
+and counts its folders under a bar that follows them, and the line under the title counts the songs read so far. A
+song anywhere else is not listed here: it stays in Files,
 plays the same, and Search finds it. There is no list of all songs.
 
 - **Albums**: a grid of covers, five across. The art is the album's own (the picture in the file, else `cover.*` /
@@ -159,7 +161,8 @@ The films on the cards in one list, without walking folders: filled by itself fr
 **L2/R2** or tapped, with their counts:
 
 - **All**: every video by name. A row shows its length (`9:56`), where it was left (`at 6:12 / 9:56` with a bar), a
-  tick when played through, and its folder, size and date (`Movies · 2.1 GB · 12 Nov`). No thumbnails are made for the
+  tick when played through, a **Playing** pill (or **Paused**) on the row that plays, and its folder, size and date
+  (`Movies · 2.1 GB · 12 Nov`). No thumbnails are made for the
   list; the top screen previews nothing here (the kind's mark stands in).
 - **Folders**: the folders directly inside the Videos folders, each with how much is under it (`42 videos`), then the
   loose files under them. **A** opens a folder's own list (everything under it, however deep).
@@ -167,9 +170,14 @@ The films on the cards in one list, without walking folders: filled by itself fr
 
 **A** plays from the place you left it, with the view's videos as the list (Next goes to the next row; a folder's
 list is the folder's). **X** is **More**: **Play from the start**, **Add to playlist…**, **Like / Unlike**, **Show in
-folder** and **Info**. **◀/▶** page the list, **B** leaves a folder (or goes Home). With no Videos folder on either
+folder**, **Info**, then the file's own rows — **Copy…**, **Move…**, **Rename…** and **Delete** (it asks first; what
+plays can't be moved, renamed or deleted until it's stopped) — and **Sort**, stepped in place: by **Name** (the
+usual), **Newest first** or **Biggest first** (Not finished always keeps its own newest-first). A delete, a rename
+or a move done, the index walks the cards again, so the list is true again a moment later. **◀/▶** page the list,
+**B** leaves a folder (or goes Home). With no Videos folder on either
 card the page says so, with **Browse Files** (A) and **Web dashboard** (Y); while a card is first read a notice row
-says the list fills in. A video anywhere else on a card is not listed here: it is in Files, found by Search, kept in
+says which card, how many folders are done, and a bar that follows them; the crumb counts what has been read so
+far. A video anywhere else on a card is not listed here: it is in Files, found by Search, kept in
 Recent; and a video inside a Music folder belongs to Music.
 
 ## The Books section
@@ -180,8 +188,9 @@ book, five across, by name. **A** (or a tap) opens the book in its own reader �
 comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
 
 The shelf is filled from two places: the books you have opened from anywhere (their places are the readers' own), and
-the folders named **Books** or **Documents** (any capitals) at the top of each card. Every cover is the drawn one (a
-sleeve with a spine, keyed by the name) until the readers' own cover decoding joins in — a later step. **X** is
+the folders named **Books** or **Documents** (any capitals) at the top of each card. Every cover is decoded — an
+EPUB's own, a PDF's first page, a comic's first page — on the cover worker (the drawn sleeve, keyed by the name,
+stands in until the answer, and for good for a TXT, which has no picture of its own). **X** is
 **More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in folder**. **◀/▶** page the
 shelf, **B** goes Home. With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
 Files still lists and opens every book, and Recent keeps its Books filter; comics still need the Manga reader turned

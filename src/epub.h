@@ -37,6 +37,11 @@ namespace bp
 		// with the depth of its nesting
 		struct Entry { std::string title, doc; int depth = 0; };
 		std::vector<Entry> toc();
+		// the package's own cover image, its entry name in the archive; "" when it declares none. EPUB 3 marks
+		// one with properties="cover-image" on its manifest item; EPUB 2 names the item in a
+		// <meta name="cover" content="id">. A book that declares neither may still have a first picture
+		// (pictures()): the caller falls back to it
+		std::string coverImage();
 
 	private:
 		Cbz zip;
@@ -52,6 +57,12 @@ namespace bp
 
 	// a chapter's XHTML read into the text viewer's blocks (pictures named as in the archive)
 	std::vector<TextBlock> epubBlocks(const std::string& xhtml, const std::string& docName);
+
+	// the package's own cover image, its entry name in the archive, as Epub::coverImage finds it: the manifest
+	// item with properties="cover-image" (EPUB 3), else the one <meta name="cover" content="id"> names (EPUB 2),
+	// resolved against `opfName`; "" when the package declares neither (the caller falls back to the first
+	// picture, or the drawn sleeve)
+	std::string epubCoverFromPackage(const std::string& pkg, const std::string& opfName);
 
 	// an EPUB for the text viewer; null with error set
 	std::unique_ptr<TextSource> openEpubText(const std::string& path, std::string& error);

@@ -504,8 +504,9 @@ namespace bp
 		void artistRow(const lay::ArtistRow& l, const Artist& a);
 
 		// A Videos row: a 64 x 36 thumbnail (the caller's frame, else the kind's mark on TRACK), the title and the
-		// length (right), a size/date line under it, a tick when finished, and a 3-unit resume bar at the foot when
-		// resume is 0..1. A folder row is the 44 tile, the folder's name and counts, and a chevron.
+		// length (right), a size/date line under it, a tick when finished, a Playing / Paused pill on the row that
+		// plays, and a 3-unit resume bar at the foot when resume is 0..1. A folder row is the 44 tile, the folder's
+		// name and counts, and a chevron.
 		struct Video
 		{
 			std::function<void(Rect)> art;
@@ -513,6 +514,7 @@ namespace bp
 			std::string name, note, second;
 			double resume = -1;	// -1: no bar (not started); 1: finished
 			bool done = false, focused = false, pressed = false, off = false;
+			bool playing = false, paused = false;	// the row that plays (the rail's key carries the bars)
 		};
 		void videoRow(const lay::VideoRow& l, const Video& v);
 		struct Folder

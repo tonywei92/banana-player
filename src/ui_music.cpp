@@ -7,6 +7,7 @@
 #include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
+#include "mediaworker.h"
 #include "session_host.h"
 #include <algorithm>
 #include <cmath>
@@ -287,7 +288,24 @@ namespace bp
 		}
 		h.title = "Music";
 		h.more = false;		// the empty page's keys are its own; the reading one has nothing to ask More of
-		if (!snap || generation() == 0) h.crumb = "Reading the cards";
+		if (!snap || generation() == 0)
+		{
+			// the first read's live line, as the mock-up draws it (music-reading): where from is known at once,
+			// how far is the pass's own counter ("From Music on both cards · 41 albums so far" — the songs are
+			// what the walk counts, so they are what the line says)
+			h.crumb = "Reading the cards";
+			if (ui.indexWorker)
+			{
+				auto pr = ui.indexWorker->progress();
+				if (pr.reading)
+				{
+					MediaFolders mf = mediaFolders();
+					std::string from = mediaFromWords(mf.music);
+					h.crumb = (from.empty() ? std::string("Reading the cards") : "From " + from) + " \xC2\xB7 " +
+						std::to_string(pr.songs) + (pr.songs == 1 ? " song so far" : " songs so far");
+				}
+			}
+		}
 		else if (snap->musicFolders.empty()) h.crumb = "No Music folder on either card";
 		else if (snap->songs.empty()) h.crumb = "Music is empty";
 		else { h.crumb = fromLine(*snap); h.more = true; }
@@ -974,15 +992,20 @@ namespace bp
 			touch >= T_CHIP && touch < T_CHIP + 3 && !touchMoved ? touch - T_CHIP : -1);
 		if (reading)
 		{
-			// the first read (the mock-up's music-reading): which card isn't known, nor how far — the row says the
-			// list fills in, and it goes when the pass lands (nothing needs pressing)
-			lay::Notice n = lay::notice({inner.x, mh.strip.y + lay::CHIP_STRIP + lay::SP8, inner.w, 0}, true, false, 0);
+			// the first read, as the spec draws it (music-reading): which card, how far, a bar over the folders
+			// (the tags are the slow part, so the bar rests between folders — better honest than clever)
+			lay::Notice n = lay::notice({inner.x, mh.strip.y + lay::CHIP_STRIP + lay::SP8, inner.w, 0}, true, true, 0);
 			Kit::NoticeRow row;
 			row.tone = Kit::NoticeTone::Working;
 			row.glyph = &G_REFRESH;
-			row.text = "Reading the Music folders";
-			row.second = "The first time on this card \xC2\xB7 the albums fill in as it goes";
-			row.share = -1;
+			auto pr = ui.indexWorker ? ui.indexWorker->progress() : MediaIndexWorker::Progress{};
+			std::string card = walkCardName(pr.card);
+			row.text = card.empty() ? "Reading the Music folders" : "Reading Music on " + card;
+			row.second = pr.foldersKnown > 0
+				? std::to_string(std::min(pr.foldersDone, pr.foldersKnown)) + " of " + std::to_string(pr.foldersKnown) +
+					" folders \xC2\xB7 " + std::to_string(pr.songs) + (pr.songs == 1 ? " song read" : " songs read")
+				: "the list lands when it's done";
+			row.share = pr.foldersKnown > 0 ? (double)pr.foldersDone / pr.foldersKnown : 0;
 			k.notice(n, row);
 			return;
 		}
@@ -1038,13 +1061,22 @@ namespace bp
 	std::string Ui::Music::signature(const Player&) const
 	{
 		// everything the drawing shows that Ui::signature doesn't already hold (the playing file and its pause are
-		// its base; a Like moves the store's serial, its |pl term, and so does the playlists' count)
+		// its base; a Like moves the store's serial, its |pl term, and so does the playlists' count), and the
+		// reading notice's step, so the bar moves while the first pass walks
 		char buf[160];
 		snprintf(buf, sizeof buf, "|mu%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.%d", view, albumAt, artistAt, cursor, scroll,
 			rowCursor, keyFocus, artistZone * 8 + artistAlbum, albumScroll, touch, (int)generation());
 		std::string s = buf;
+		if (!snapshot() || generation() == 0)
+		{
+			s += "R";
+			if (ui.indexWorker)
+			{
+				auto pr = ui.indexWorker->progress();
+				s += "." + std::to_string(pr.foldersDone + 1000 * pr.foldersKnown + pr.songs / 25 + pr.videos / 25);
+			}
+		}
 		s += "a" + std::to_string(ui.artSerial);		// an album's art arrived: the tiles draw it now
-		if (!snapshot() || generation() == 0) s += "R";
 		return s;
 	}
 }

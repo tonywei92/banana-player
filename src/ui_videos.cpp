@@ -6,6 +6,7 @@
 #include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
+#include "mediaworker.h"
 #include <algorithm>
 #include <cmath>
 #include <ctime>
@@ -17,6 +18,9 @@ namespace bp
 {
 	namespace
 	{
+		// Videos' sorts (More › Sort, stepped in place): the labels the row's value shows
+		const char* SORT_LABELS[Ui::Videos::SORTS] = {"Name", "Newest first", "Biggest first"};
+
 		// (the file-scope helpers name what they use in full: Ui's own names are private to it, and its nested
 		// types need the Ui:: prefix here)
 		lay::Box videosInner()
@@ -32,6 +36,13 @@ namespace bp
 			size_t dot = n.rfind('.');
 			if (dot != std::string::npos && dot > 0) n.resize(dot);
 			return n;
+		}
+
+		// the pass's counters, quantized for a page's signature: the bar's step (a folder), and the counts'
+		// (every 25 files, so a long card's read redraws about once a second and not a pass a file)
+		int progressStep(const MediaIndexWorker::Progress& pr)
+		{
+			return pr.foldersDone + 1000 * pr.foldersKnown + pr.songs / 25 + pr.videos / 25;
 		}
 
 		// "12 Nov" (the date column the mock-up's row carries)
@@ -78,6 +89,17 @@ namespace bp
 		auto snap = snapshot();
 		std::vector<Row> out;
 		if (!snap) return out;
+		// the file rows' order for the sorts the name order isn't (More › Sort): newest first, biggest first
+		auto orderFiles = [&](std::vector<Row>& rows) {
+			if (sort == SORT_NEWEST)
+				std::stable_sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+					return a.mtime != b.mtime ? a.mtime > b.mtime : naturalLess(a.name, b.name);
+				});
+			else if (sort == SORT_BIGGEST)
+				std::stable_sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+					return a.size != b.size ? a.size > b.size : naturalLess(a.name, b.name);
+				});
+		};
 		if (!folder.empty())
 		{
 			// the folder's own list: everything under it, however deep, in the snapshot's (name) order
@@ -85,6 +107,7 @@ namespace bp
 			for (auto& v : snap->videos)
 				if (v.path.compare(0, prefix.size(), prefix) == 0)
 					out.push_back({false, v.path, rowName(v.path), v.size, v.mtime, 0});
+			orderFiles(out);
 			return out;
 		}
 		if (view == 2)
@@ -108,8 +131,9 @@ namespace bp
 		}
 		if (view == 0)
 		{
-			// every video, by name (the snapshot's own order)
+			// every video, by name (the snapshot's own order) or as the sort asks
 			for (auto& v : snap->videos) out.push_back({false, v.path, rowName(v.path), v.size, v.mtime, 0});
+			orderFiles(out);
 			return out;
 		}
 		// Folders: the folders directly inside the Videos folders (each with how much is under it, however deep),
@@ -139,15 +163,16 @@ namespace bp
 			}
 		}
 		for (auto& [path, count] : inside) out.push_back({true, path, rowName(path), 0, 0, count});
+		orderFiles(loose);
 		out.insert(out.end(), loose.begin(), loose.end());
 		return out;
 	}
 
 	const std::vector<Ui::Videos::Row>& Ui::Videos::rowsFor(const Player& p) const
 	{
-		// kept until the index moves, the view changes, or what plays does (a place in the store moved with it)
+		// kept until the index moves, the view, the sort or what plays does (a place in the store moved with it)
 		char key[96];
-		snprintf(key, sizeof key, "%u|%d|%s|%s", generation(), view, folder.c_str(), p.currentPath().c_str());
+		snprintf(key, sizeof key, "%u|%d|%d|%s|%s", generation(), view, sort, folder.c_str(), p.currentPath().c_str());
 		if (rowsKey == key) return rowsCache;
 		rowsKey = key;
 		rowsCache = buildRows(p);
@@ -261,8 +286,26 @@ namespace bp
 			return h;
 		}
 		h.title = "Videos";
-		if (!snap || generation() == 0) { h.crumb = "Reading the cards"; h.more = false; }
-		else if (snap->videoFolders.empty()) { h.crumb = "No Videos or Movies folder on either card"; h.more = false; }
+		if (!snap || generation() == 0)
+		{
+			// the first read's live line, as the mock-up draws it: where from is known at once, how far is the
+			// pass's own counter ("From Videos and Movies on both cards · 31 videos so far")
+			h.crumb = "Reading the cards";
+			h.more = false;
+			if (ui.indexWorker)
+			{
+				auto pr = ui.indexWorker->progress();
+				if (pr.reading)
+				{
+					MediaFolders mf = mediaFolders();
+					std::string from = mediaFromWords(mf.videos);
+					h.crumb = (from.empty() ? std::string("Reading the cards") : "From " + from) + " \xC2\xB7 " +
+						std::to_string(pr.videos) + (pr.videos == 1 ? " video so far" : " videos so far");
+				}
+			}
+			return h;
+		}
+		if (snap->videoFolders.empty()) { h.crumb = "No Videos or Movies folder on either card"; h.more = false; }
 		else if (snap->videos.empty()) { h.crumb = "Videos is empty"; h.more = false; }
 		else h.crumb = fromLine(*snap);
 		return h;
@@ -315,8 +358,39 @@ namespace bp
 				return false;
 			}});
 			m.rows.push_back({&G_INFO, "Info", "", "", [this, path](Player& p) { ui.openFileInfo(path, ""); return false; }});
+			// the file's own rows, as Files' More has them (ui_fileops.cpp's fileOpsAct): the clipboard's flow is
+			// Files' (Copy: open the folder it goes in, then SELECT), Delete asks as it does there
+			m.rows.push_back({&G_PAGE, "Copy\xE2\x80\xA6", "", "", [this, path](Player& p) {
+				ui.browse->fileOpsAct(CTX_F_COPY, path, p);
+				return false;
+			}});
+			m.rows.push_back({&G_MOVE, "Move\xE2\x80\xA6", "", "", [this, path](Player& p) {
+				ui.browse->fileOpsAct(CTX_F_MOVE, path, p);
+				return false;
+			}});
+			m.rows.push_back({&G_PENCIL, "Rename\xE2\x80\xA6", "", "", [this, path](Player& p) {
+				ui.browse->fileOpsAct(CTX_F_RENAME, path, p);
+				return false;
+			}});
+			m.rows.push_back({&G_TRASH, "Delete", "", "", [this, path](Player& p) {
+				std::vector<std::string> one{path};
+				ui.browse->filesDeleteAsk(one, p);
+				return false;
+			}, true});
+			// the list's order, stepped in place (A cycles it); Not finished keeps the store's own newest-first
+			if (folder.empty() && view != 2)
+				m.rows.push_back({&G_DOWN, "Sort", "", "", [this](Player&) {
+					sortStep(1);
+					return false;
+				}, false, false, false, true, SORT_LABELS[sort]});
 			return m;
 		});
+	}
+
+	void Ui::Videos::sortStep(int dir)
+	{
+		sort = ((sort + dir) % SORTS + SORTS) % SORTS;
+		cursor = scroll = 0;
 	}
 
 	// ---- the keys ----
@@ -515,15 +589,21 @@ namespace bp
 				touch >= T_CHIP && touch < T_CHIP + 3 && !touchMoved ? touch - T_CHIP : -1);
 			if (reading)
 			{
-				// the first read (the mock-up's videos-reading): quicker than Music (no tags), the row says so
+				// the first read, as the spec draws it (videos-reading): which card, how far, a bar. Quicker than
+				// Music (no tags), so the folders are the measure
 				lay::Notice l = lay::notice({inner.x, mh.strip.y + lay::CHIP_STRIP + lay::SP8, inner.w, 0},
-					true, false, 0);
+					true, true, 0);
 				Kit::NoticeRow row;
 				row.tone = Kit::NoticeTone::Working;
 				row.glyph = &G_REFRESH;
-				row.text = "Reading the Videos folders";
-				row.second = "The first time on this card \xC2\xB7 the list fills in as it goes";
-				row.share = -1;
+				auto pr = ui.indexWorker ? ui.indexWorker->progress() : MediaIndexWorker::Progress{};
+				std::string card = walkCardName(pr.card);
+				row.text = card.empty() ? "Reading the Videos folders" : "Reading Videos on " + card;
+				row.second = pr.foldersKnown > 0
+					? std::to_string(std::min(pr.foldersDone, pr.foldersKnown)) + " of " + std::to_string(pr.foldersKnown) +
+						" folders \xC2\xB7 the list lands when it's done"
+					: "the list lands when it's done";
+				row.share = pr.foldersKnown > 0 ? (double)pr.foldersDone / pr.foldersKnown : 0;
 				k.notice(l, row);
 				return;
 			}
@@ -570,8 +650,10 @@ namespace bp
 			else if (secs > 0) v.note = formatTime(secs);
 			v.second = baseName(parentFolder(r.path)) + (r.size > 0 ? " \xC2\xB7 " + formatBytes(r.size) : "") +
 				(r.mtime ? " \xC2\xB7 " + rowDate(r.mtime) : "");
-			// (the kit's video row has no playing pill: the bar and the note carry the place, and what plays is the
-			// rail's Now playing key)
+			// the row that plays: the Playing pill (paused too), as the Playlists rows and Music's cells mark theirs
+			bool here = p.playing() && !p.playingPhoto() && p.currentPath() == r.path;
+			v.playing = here && !p.paused;
+			v.paused = here && p.paused;
 			v.focused = at == cursor;
 			v.pressed = touch == T_ROW + at && !touchMoved;
 			Rect box{inner.x, top + i * lay::VIDEO_ROW_H, inner.w, lay::VIDEO_ROW_H};
@@ -582,12 +664,21 @@ namespace bp
 	std::string Ui::Videos::signature(const Player& p) const
 	{
 		// everything the drawing shows that Ui::signature doesn't already hold (the playing file and its pause are
-		// its base; the resume store is read at the row, and what plays moved it — the rows' key holds that)
+		// its base; the resume store is read at the row, and what plays moved it — the rows' key holds that), and
+		// the reading notice's step, so the bar moves while the first pass walks
 		char buf[96];
 		snprintf(buf, sizeof buf, "|vd%d.%d.%s.%d.%d.%d.%u", view, cursor, folder.c_str(), scroll, touch,
 			(int)rowsFor(p).size(), generation());
 		std::string s = buf;
-		if (!snapshot() || generation() == 0) s += "R";
+		if (!snapshot() || generation() == 0)
+		{
+			s += "R";
+			if (ui.indexWorker)
+			{
+				auto pr = ui.indexWorker->progress();
+				s += std::to_string(progressStep(pr));
+			}
+		}
 		return s;
 	}
 }

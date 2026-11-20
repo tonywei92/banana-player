@@ -43,8 +43,10 @@ The rail becomes **Home, Files, Videos, Music, Books, Extensions, Network**, the
   progress) merged with the cards' Books and Documents folders, by name. A book opened from Files joins the shelf;
   a book being read is in both lists. **Kind chips** (All / Books / Comics / PDF / Text, the mock-up's L2/R2) are
   **not built**: the shelf is small and the brief's shelf is one list; the hint bar says so by not offering them.
-  **Covers are the kit's drawn one** (`Kit::bookPlaceholder`, keyed by the name) — the readers' cover decoding is a
-  later step. The shelf is built at the draw, when the places' front entries, the roots serial or the page's opening
+  **Covers are decoded since 2026-11-20** (the cover worker's `wantBook`: a comic's or a PDF's first page, an
+  EPUB's own cover image — `Epub::coverImage`, the package's declaration, else its first picture — a TXT keeps the
+  drawn sleeve `Kit::bookPlaceholder`): the drawn one stands in until the answer and for good where there is none.
+  The shelf is built at the draw, when the places' front entries, the roots serial or the page's opening
   say it moved.
 - **The first-read notice** (`music-reading`, `videos-reading`) shows while `generation() == 0`. The worker exposes
   no progress, so the row says "the list fills in as it goes" without a bar or a card name; it leaves when the pass

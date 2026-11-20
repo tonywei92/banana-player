@@ -580,7 +580,15 @@ static void testMediaIndex()
 		MediaTagCache cache;
 		CHECK_EQ(cache.load(cacheFile), true);
 		MediaWalk w;
-		CHECK_EQ(walkMedia(folders, fake, cache, go, w), true);
+		// the live counters, as the reading notice reads them: every folder done of every one seen, the files
+		// read, and no card being walked once the walk is over
+		WalkCounters live;
+		CHECK_EQ(walkMedia(folders, fake, cache, go, w, &live), true);
+		CHECK_EQ(live.foldersDone.load(), live.foldersKnown.load());
+		CHECK_EQ(live.foldersDone.load() >= 3, true);		// (Music's Album One, Videos, the roms stand-in as built)
+		CHECK_EQ(live.songs.load(), 3);
+		CHECK_EQ(live.videos.load(), 2);
+		CHECK_EQ(live.card.load(), -1);
 		CHECK_EQ(w.kept, 3);
 		CHECK_EQ(w.probed, 0);
 		CHECK_EQ(read, readBefore);
@@ -5642,8 +5650,28 @@ static void testEpub()
 	// a novel is no comic: the reader says to open it from Files
 	CHECK_EQ(openPageBook(B + "novel.epub", err) == nullptr && err.find("Files") != std::string::npos, true);
 
+	// the covers: neither fixture declares one in its package, so the fallback — the first picture — is the
+	// answer (comic.epub's first page, novel.epub's only inline picture). The declared kinds (EPUB 3's
+	// properties="cover-image", EPUB 2's <meta name="cover">) are read from the package when it has them
+	CHECK_EQ(c.coverImage(), std::string(""));
+	// the package's own declaration, both ways, resolved against the package's place in the archive
+	CHECK_EQ(epubCoverFromPackage(
+		"<package><manifest>"
+		"<item id=\"c1\" href=\"Text/c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
+		"<item id=\"cv\" href=\"Images/cov%65r.png\" media-type=\"image/png\" properties=\"cover-image\"/>"
+		"</manifest></package>", "OEBPS/content.opf"), std::string("OEBPS/Images/cover.png"));
+	CHECK_EQ(epubCoverFromPackage(
+		"<package><metadata><meta name=\"cover\" content=\"the-cover\"/></metadata>"
+		"<manifest>"
+		"<item id=\"the-cover\" href=\"../Cover.jpeg\" media-type=\"image/jpeg\"/>"
+		"</manifest></package>", "OEBPS/Text/p.opf"), std::string("OEBPS/Cover.jpeg"));
+	// a package with none of it: nothing to find (the caller's fallback takes over)
+	CHECK_EQ(epubCoverFromPackage("<package><manifest><item id=\"x\" href=\"a.xhtml\"/></manifest></package>", "p.opf"),
+		std::string(""));
+
 	Epub n;
 	CHECK_EQ(n.open(B + "novel.epub"), true);
+	CHECK_EQ(n.coverImage(), std::string(""));
 	CHECK_EQ(n.title(), std::string("Fixture & Book"));
 	CHECK_EQ(n.pictureBook(), false);
 	CHECK_EQ(n.spine(), (std::vector<std::string>{"OEBPS/Text/c1.xhtml", "OEBPS/Text/c 2.xhtml"}));

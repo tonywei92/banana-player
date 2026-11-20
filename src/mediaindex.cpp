@@ -231,6 +231,12 @@ namespace bp
 
 	std::vector<std::string> mediaCards() { return indexCards(); }
 
+	std::string walkCardName(int card)
+	{
+		if (card < 0) return "";
+		return card == 0 ? "the card" : "the second card";
+	}
+
 	std::string mediaFromWords(const std::vector<std::string>& folders)
 	{
 		if (folders.empty()) return "";
@@ -408,19 +414,22 @@ namespace bp
 
 	namespace
 	{
-		bool walkFolder(const std::string& dir, bool music, const TagReader& tags, MediaTagCache& cache,
-			const WalkGate& gate, MediaWalk& out, std::set<std::pair<uint64_t, uint64_t>>& seen)
+		bool walkFolder(const std::string& dir, int card, bool music, const TagReader& tags, MediaTagCache& cache,
+			const WalkGate& gate, MediaWalk& out, std::set<std::pair<uint64_t, uint64_t>>& seen, WalkCounters* live)
 		{
 			// hidden folders, while they are hidden, are not in it
 			if (isHiddenFolder(dir)) return true;
+			if (live) live->foldersKnown++;
 			if (!gate()) return false;
 			DIR* d = opendir(dir.c_str());
 			if (!d)
 			{
 				// counted and logged by the caller, never thrown: one card gone is no reason to lose the rest
 				out.failed.push_back(dir);
+				if (live) live->foldersDone++;
 				return true;
 			}
+			if (live) live->card.store(card);
 			std::string prefix = dir == "/" ? "/" : dir + "/";
 			bool whole = true;
 			while (dirent* e = readdir(d))
@@ -446,7 +455,7 @@ namespace bp
 					if (stated && st.st_ino != 0 &&
 						!seen.insert({(uint64_t)st.st_dev, (uint64_t)st.st_ino}).second)
 						continue;
-					if (!walkFolder(path, music, tags, cache, gate, out, seen))
+					if (!walkFolder(path, card, music, tags, cache, gate, out, seen, live))
 					{
 						whole = false;
 						break;
@@ -487,6 +496,7 @@ namespace bp
 					// and under its artist, without them by its file's name, in its folder's album
 					s.video = video;
 					out.songs.push_back(std::move(s));
+					if (live) live->songs++;
 				}
 				else
 				{
@@ -495,23 +505,33 @@ namespace bp
 					v.size = size;
 					v.mtime = mtime;
 					out.videos.push_back(std::move(v));
+					if (live) live->videos++;
 				}
 			}
 			closedir(d);
+			if (live) live->foldersDone++;
 			return whole;
 		}
 	}
 
 	bool walkMedia(const MediaFolders& folders, const TagReader& tags, MediaTagCache& cache, const WalkGate& gate,
-		MediaWalk& out)
+		MediaWalk& out, WalkCounters* live)
 	{
 		std::set<std::pair<uint64_t, uint64_t>> seen;
+		// the folder's card, for the notice's name: the roots' order (mediaCards()), a folder under one of them
+		auto roots = mediaCards();
+		auto cardOf = [&](const std::string& folder) {
+			for (int i = 0; i < (int)roots.size(); i++)
+				if (folder.rfind(roots[i] + "/", 0) == 0) return i;
+			return -1;
+		};
 		for (auto& f : folders.music)
-			if (!walkFolder(f, true, tags, cache, gate, out, seen)) return false;
+			if (!walkFolder(f, cardOf(f), true, tags, cache, gate, out, seen, live)) return false;
 		for (auto& f : folders.videos)
-			if (!walkFolder(f, false, tags, cache, gate, out, seen)) return false;
+			if (!walkFolder(f, cardOf(f), false, tags, cache, gate, out, seen, live)) return false;
 		out.musicFolders = folders.music;
 		out.videoFolders = folders.videos;
+		if (live) live->card.store(-1);
 		return true;
 	}
 

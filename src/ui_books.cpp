@@ -340,6 +340,10 @@ namespace bp
 				Kit::Cover c;
 				c.key = reading[i].name;
 				c.title = reading[i].name;
+				// the decoded cover over the drawn sleeve (a TXT's own cover, and until the answer)
+				c.picture = [this, path = reading[i].path, key = reading[i].name](Rect r) {
+					ui.drawBookCover(path, key, r, 5);
+				};
 				c.progress = reading[i].progress;
 				c.focused = i == cursor;
 				c.pressed = touch == T_READ + i && !touchMoved;
@@ -353,6 +357,9 @@ namespace bp
 			c.key = shelf[i].name;
 			c.title = shelf[i].name;
 			// the shelf's cells carry no bar: the strip's do (a book in progress is in both)
+			c.picture = [this, path = shelf[i].path, key = shelf[i].name](Rect r) {
+				ui.drawBookCover(path, key, r, 5);
+			};
 			c.focused = (int)reading.size() + i == cursor;
 			c.pressed = touch == T_SHELF + i && !touchMoved;
 			k.coverTile(lay::coverTile(b.shelf[i], true, false), c);
@@ -362,9 +369,11 @@ namespace bp
 	std::string Ui::Books::signature(const Player&) const
 	{
 		// everything the drawing shows that Ui::signature doesn't already hold (the doc places are read at the
-		// cell: the key holds their front entries, so a page turned redraws the strip's bars)
+		// cell: the key holds their front entries, so a page turned redraws the strip's bars), and the covers'
+		// serial: one decoded, the cells draw it now
 		char buf[96];
-		snprintf(buf, sizeof buf, "|bk%d.%d.%d.%zu.%zu", cursor, shelfScroll, touch, reading.size(), shelf.size());
+		snprintf(buf, sizeof buf, "|bk%d.%d.%d.%zu.%zu.%d", cursor, shelfScroll, touch, reading.size(), shelf.size(),
+			ui.artSerial);
 		return std::string(buf) + placesKey;
 	}
 }

@@ -244,6 +244,35 @@ namespace bp
 		drawGlyphMid(G_FILM, r.x + r.w / 2, r.y + r.h / 2, DIM_ON, cell);
 	}
 
+	void Ui::drawBookCover(const std::string& path, const std::string& key, Rect r, int rad)
+	{
+		// a book's cover, as a song's art above (docs/redesign "books": until one is decoded, the drawn sleeve
+		// stands in — and for good where there is none to decode, a TXT's own cover)
+		Kit& k = *kit;
+		k.bookPlaceholder(r, key, rad);
+		if (path.empty() || artFailed.count(path)) return;
+		Rect in{r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE};
+		SDL_Rect d = devRect(in);
+		// the "book|" mark tells the two caches' keys apart at a glance (a path is both a song's and a book's key
+		// base otherwise); the answer lands in the same texture cache, by key
+		std::string artKey = std::string(HOME_COVER_KEY) + "book|" + path + "|" + std::to_string(d.w) + "x" +
+			std::to_string(d.h) + "r" + std::to_string(rad);
+		auto it = artTex.find(artKey);
+		if (it != artTex.end())
+		{
+			it->second.drawnAt = ++artDrawn;
+			SDL_RenderCopy(ren, it->second.tex, nullptr, &d);
+			return;
+		}
+		if (artAsked.count(artKey)) return;
+		CoverWorker* worker = manga ? manga->coverWorker : nullptr;
+		if (!worker) return;
+		artPath[artKey] = path;
+		artRad[artKey] = rad;
+		worker->wantBook(artKey, path, d.w, d.h);
+		artAsked.insert(artKey);
+	}
+
 	void Ui::songCoversReady(std::vector<CoverWorker::Result> results)
 	{
 		for (auto& r : results)
@@ -290,7 +319,6 @@ namespace bp
 	}
 
 	// ---- Match album art's backdrop (ui.h's "bg" members; the worker's "bg:" answers) ----
-
 	bool Ui::backdropOn(const Player& shown) const
 	{
 		// the switch, a song (never a video, never a photo), the theme (High contrast keeps its plain ground), and
