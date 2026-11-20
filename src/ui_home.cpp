@@ -5,6 +5,7 @@
 #include "ui.h"
 #include "session_host.h"
 #include "format.h"
+#include "mediaindex.h"
 #include "playlist.h"
 #include "netpath.h"
 #include "theme.h"
@@ -13,6 +14,8 @@
 #include <cstdio>
 #include <cstring>
 #include <random>
+#include <unordered_map>
+#include <unordered_set>
 #include <ctime>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -57,6 +60,18 @@ namespace bp
 		recent.clear();
 		for (int& c : recentCounts) c = 0;
 		if (!p.settings.keepHistory) return;
+		// a song's card is titled by its tag when the cards' index has one (it knows the Music folders' songs only; any
+		// other file, and a song not read yet, keeps its file's name)
+		std::unordered_map<std::string, std::string> tagged;
+		if (auto snap = ui.mediaIndex ? ui.mediaIndex->snapshot() : nullptr)
+		{
+			std::unordered_set<std::string> want;
+			for (auto& path : p.history().items())
+				if (isAudioFile(path)) want.insert(path);
+			if (!want.empty())
+				for (auto& s : snap->songs)
+					if (want.count(s.path) && !snap->at(s.title).empty()) tagged[s.path] = snap->at(s.title);
+		}
 		for (auto& path : p.history().items())
 		{
 			// a file still there (on a card taken out: not), or a network one whose connection is still saved (whether
@@ -68,7 +83,8 @@ namespace bp
 			RecentItem it;
 			it.path = path;
 			it.net = net;
-			it.name = cardTitle(path);
+			auto tg = tagged.find(path);
+			it.name = tg != tagged.end() ? tg->second : cardTitle(path);
 			it.kind = isAudioFile(path) ? &G_NOTE : isPhotoFile(path) ? &G_PICTURE : &G_FILM;
 			if (isDocument(path))
 			{

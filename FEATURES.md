@@ -1646,3 +1646,8 @@ combination instead.)
 
 **X** on a song or video in Files has **Play next**: it queues that file right after the one playing (Shuffle too: it
 comes next in the shuffled order). With nothing playing it simply plays the file.
+
+### Recent: songs titled by their tag
+
+A song's card in Recent (Home and All recent) carries the title from its tags when the cards' index has read it (a song
+in a Music folder); any other file, and a song not read yet, keeps its file name.
