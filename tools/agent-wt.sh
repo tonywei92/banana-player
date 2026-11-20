@@ -14,7 +14,7 @@ mkdir -p "$W/.cache" && ln -sfn "$ROOT/.cache/mac" "$W/.cache/mac"
 cp "$ROOT/opencode.json" "$W/opencode.json"
 if git -C "$W" checkout redesign-preview -- docs/redesign 2>/dev/null && ! git -C "$W" diff --cached --quiet; then
 	git -C "$W" rm -rq --cached docs/redesign/__pycache__ 2>/dev/null || true
-	git -C "$W" commit -q -m "docs/redesign: the spec from redesign-preview"
+	git -C "$W" diff --cached --quiet || git -C "$W" commit -q -m "docs/redesign: the spec from redesign-preview"
 fi
 (cd "$W" && SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk cmake --build build -j >/dev/null 2>&1 && echo "built")
 echo "$W"
