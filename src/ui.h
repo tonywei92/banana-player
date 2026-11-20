@@ -372,6 +372,10 @@ namespace bp
 		};
 		FrameParts parts;
 		std::string partsLine() const;	// "ground 3.1, body 12.0 (list 9.8, 4 rows drawn), shell 6.2, ..."
+		// a smooth list gliding: the ms to wait for its next frame (-1: none moves). main's loop comes round then
+		int glideWaitMs() const;
+		// a finger's event time (main sets it before pointer(); 0: the harness's, taken as now)
+		uint32_t pointerMs = 0;
 		// the bottom panel's pixels (RGBA, ABGR8888), drawn afresh: screenshots; the caller frees it
 		SDL_Surface* capture(const Player& p);
 
@@ -421,6 +425,8 @@ namespace bp
 		// written in the area's own header and .cpp, and a new area is wired into those six nowhere. One is written
 		// as a struct nested in Ui (declared in ui.h by name only, defined in its own header), which lets it use
 		// Ui's drawing and state through `ui`; the Player comes with each call, as for every Ui method.
+		// a list that follows the finger and glides (ui_smoothlist.h; docs/notes/2026-11-21-smooth-scroll.md)
+		struct SmoothList;
 		struct Area
 		{
 			Ui& ui;
@@ -442,6 +448,8 @@ namespace bp
 			// its downs come late: after the header's "<" and the empty page's button (its moves and lifts
 			// still come where the others' do). Manga's pages took them so (asked per page: the reader's come early)
 			virtual bool pointerDownLate() const { return false; }
+			// its list that scrolls smoothly, while one shows (Ui::draw steps its glide and composes its scroll frames)
+			virtual SmoothList* smoothList() { return nullptr; }
 		};
 		std::vector<Area*> areas;	// (each owned by its own member, `docs`, `manga`...; listed in Ui's constructor, ui.cpp)
 		Area* area() const;	// the one whose page is shown (null: a page that is still Ui's own)
@@ -887,6 +895,21 @@ namespace bp
 		mutable std::unordered_map<std::string, int> widthCache;
 		std::unordered_map<std::string, std::string> elideCache;
 		std::string drawn, fontsDir;
+		// ---- the smooth list's frames (ui_smoothlist.h) ----
+		// A page with a smooth list is drawn into frameTex, then onto the panel: while only the list moved since
+		// (frameKept), a frame is the kept one with the rows composed again (Ui::draw), nothing else drawn
+		SmoothList* listShown = nullptr;	// the shown area's (null: none)
+		std::string drawnList;			// its offset when last drawn, in device pixels
+		SDL_Texture* frameTex = nullptr;
+		int frameW = 0, frameH = 0;
+		bool framing = false;	// this frame is going into frameTex
+		bool frameKept = false;	// frameTex holds the last frame, nothing drawn over the list's view after it
+		uint32_t frameAtMs = 0;	// when the last bottom frame began (the glide's frame pacing)
+		uint32_t touchMs = 0;	// the finger's event time now (Ui::pointer, from pointerMs)
+		bool beginFrame();		// into frameTex (false: no render targets here)
+		void endFrame();		// frameTex onto the panel
+		void dropFrame();
+		bool drawnOverList(const Player& p) const;	// something over the body this frame (a sheet, the keyboard...)
 
 		Page page = Page::Main;
 		int cursor = 0, scroll = 0;
@@ -1064,6 +1087,9 @@ namespace bp
 		// the placeholder, then the decoded art over it when it has arrived (the edge and the rounded corners
 		// stay the placeholder's); asks the worker once per key, never decodes here
 		void drawSongArt(const std::string& path, const std::string& key, Rect r, int rad);
+		// what drawSongArt would show in `r` now: 0 the placeholder (asked, or not yet), 1 the picture, 2 none for
+		// good. A smooth list's row keys hold it, so a cover's arrival draws its row again
+		int songArtState(const std::string& path, Rect r, int rad) const;
 		// what plays in an art's box, as Home's cards have it: a song's art (its placeholder while it decodes,
 		// or for good when it has none), a video's kind mark, a music mark when nothing plays
 		void drawNowArt(const Player& bp, Rect r, int rad);

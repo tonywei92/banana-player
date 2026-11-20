@@ -16,6 +16,7 @@
 #include <qrcodegen.hpp>
 #endif
 #include "ui_internal.h"
+#include "ui_smoothlist.h"
 #include "songlayout.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
@@ -509,6 +510,8 @@ namespace bp
 	void Ui::themeChanged()
 	{
 		syncInk();
+		if (listShown) listShown->release();
+		frameKept = false;
 		int dropped = 0;
 		cache.eraseIf([&dropped](const std::string& k) {
 			bool pin = k.compare(0, 4, "pin|") == 0;
@@ -654,30 +657,110 @@ namespace bp
 			}
 		}
 		browse->playlists->plCheckShown();
+		// the page's smooth list, its glide stepped to now (its offset is not in the signature: drawnList)
+		SmoothList* list = area() ? area()->smoothList() : nullptr;
+		if (list != listShown)
+		{
+			if (listShown) listShown->release();
+			dropFrame();
+			listShown = list;
+		}
+		if (list) list->step(SDL_GetTicks());
 		std::string sig = signature(p);
 		if (page == Page::Info || page == Page::About)
 			for (auto& l : infoLines) sig += l.label + "=" + l.text + ";";
-		if (!force && sig == drawn) return;
+		std::string listSig = list ? std::to_string(list->shownPx()) : "";
+		if (!force && sig == drawn && listSig == drawnList) return;
+		// only the list moved since a frame kept whole: a scroll frame (the rows composed over it, nothing else drawn)
+		const bool scrollOnly = !force && sig == drawn && list && frameKept && list->canCompose();
 		drawn = sig;
+		drawnList = listSig;
 
 		parts = FrameParts{};
+		frameAtMs = SDL_GetTicks();
 		const uint64_t costT0 = SDL_GetPerformanceCounter();
-		renderPage(p);
-		// the dark veil (ui.cpp's step): over everything, and a count of the seconds left when it warns of Screen off
-		if (veilAlpha > 0)
+		if (scrollOnly)
 		{
-			SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
-			SDL_SetRenderDrawColor(ren, 0, 0, 0, (Uint8)veilAlpha);
-			SDL_RenderFillRect(ren, nullptr);
-			SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
-			if (veilSecs > 0)
-				drawTextMid("Screen off in " + std::to_string(veilSecs) + " s", 0, TEXT, W / 2, H / 2, 612, 2);
+			SDL_SetRenderTarget(ren, frameTex);
+			list->recompose();
+			endFrame();
+			parts.composed = true;
+		}
+		else
+		{
+			bool framed = list && beginFrame();
+			renderPage(p);
+			// the dark veil (ui.cpp's step): over everything, and a count of the seconds left when it warns of Screen off
+			if (veilAlpha > 0)
+			{
+				SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
+				SDL_SetRenderDrawColor(ren, 0, 0, 0, (Uint8)veilAlpha);
+				SDL_RenderFillRect(ren, nullptr);
+				SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
+				if (veilSecs > 0)
+					drawTextMid("Screen off in " + std::to_string(veilSecs) + " s", 0, TEXT, W / 2, H / 2, 612, 2);
+			}
+			if (framed) endFrame();
+			frameKept = framed && !drawnOverList(p);
 		}
 		const uint64_t costT1 = SDL_GetPerformanceCounter();
 		SDL_RenderPresent(ren);
 		const uint64_t costT2 = SDL_GetPerformanceCounter();
 		parts.present = (costT2 - costT1) * 1000.0 / (double)SDL_GetPerformanceFrequency();
 		noteDrawCost(p, costT0, costT1, costT2);
+		if (list) list->noteFrame(parts);
+	}
+
+	// ---- the smooth list's frames ----
+
+	bool Ui::beginFrame()
+	{
+		if (!SDL_RenderTargetSupported(ren)) return false;
+		int w = 0, h = 0;
+		SDL_GetRendererOutputSize(ren, &w, &h);
+		if (frameTex && (frameW != w || frameH != h)) dropFrame();
+		if (!frameTex)
+		{
+			frameTex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, w, h);
+			if (!frameTex) return false;
+			SDL_SetTextureBlendMode(frameTex, SDL_BLENDMODE_NONE);
+			frameW = w;
+			frameH = h;
+		}
+		if (SDL_SetRenderTarget(ren, frameTex) != 0) return false;
+		framing = true;
+		return true;
+	}
+
+	void Ui::endFrame()
+	{
+		SDL_SetRenderTarget(ren, nullptr);
+		framing = false;
+		SDL_RenderCopy(ren, frameTex, nullptr, nullptr);
+	}
+
+	void Ui::dropFrame()
+	{
+		if (frameTex) SDL_DestroyTexture(frameTex);
+		frameTex = nullptr;
+		frameKept = false;
+	}
+
+	bool Ui::drawnOverList(const Player& p) const
+	{
+		// what renderPage and draw put over the body after the area (the shell keeps to its rail, header and hints):
+		// while any shows, every frame is drawn whole. Files' pages (the clip bar, the update pop-up, the busy line)
+		// count as one, all of them
+		return veilAlpha > 0 || kbOpen || fileJob || topOverlay() || browse->playlists->pickerOpen ||
+			page == Page::Browse || popupShown(p) || !manga->extNoticeText().empty() || galleryNew;
+	}
+
+	int Ui::glideWaitMs() const
+	{
+		if (!listShown || !listShown->moving() || !panel.on()) return -1;
+		// a frame every 16 ms from the last one's start (the loop's own work comes out of the wait, not on top)
+		uint32_t since = SDL_GetTicks() - frameAtMs;
+		return since >= 16 ? 0 : (int)(16 - since);
 	}
 
 	void Ui::noteDrawCost(const Player& p, uint64_t t0, uint64_t t1, uint64_t t2)
@@ -933,7 +1016,9 @@ namespace bp
 	SDL_Surface* Ui::capture(const Player& p)
 	{
 		// drawn afresh and read back before it's shown (after a present, the frame's contents are gone)
+		bool framed = listShown && beginFrame();
 		renderPage(p);
+		if (framed) endFrame();
 		int w, h;
 		SDL_GetRendererOutputSize(ren, &w, &h);
 		SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ABGR8888);

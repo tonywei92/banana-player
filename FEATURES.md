@@ -154,6 +154,12 @@ An artist's page: the same keys (everything of theirs, by album and track), then
 of covers (**◀/▶** steps, **A** opens one), then every song of theirs with its album and length (**A** plays from
 there). **X** is the same **More** (theirs, or the song's). **B** is back to the list.
 
+**Scrolling** (the Albums grid, Artists, an album's songs, an artist's songs) moves as a phone's lists do: the list
+follows the finger by the pixel, glides on after a flick and slows to a stop, gives a little past either end and
+springs back. A touch on a gliding list stops it there (and opens nothing); a finger that drifts less than 8 units is a
+tap. The **D-pad**'s cursor is kept in view by a short glide (held, it follows). A row half out of the list is cut at
+its edge. The other pages' lists still scroll by whole rows; they move onto this one by one.
+
 With no Music folder on either card (or none with a song in it) the page says so — **No music here yet**, the folder's
 name in the accent, **Browse Files** (A) and **Web dashboard** (Y) — and **L/R** still reaches Playlists. While a
 card is read the first time a notice row under the chips says the albums fill in as it goes, and the page shows them

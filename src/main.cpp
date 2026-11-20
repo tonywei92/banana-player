@@ -1033,6 +1033,11 @@ int main(int argc, char** argv)
 				const int nw = ts.nativeWaitMs(shown());
 				if (nw >= 0) waitMs = std::min(waitMs, nw);
 			}
+			// a list gliding on the bottom panel: its next frame 16 ms after the last began
+			{
+				const int gw = haveUi ? ui.glideWaitMs() : -1;
+				if (gw >= 0) waitMs = std::min(waitMs, gw);
+			}
 			bool got = SDL_WaitEventTimeout(&e, waitMs);
 			// the pass starts after the wait (the wait isn't a frame's work) and ends after both panels are drawn
 			FrameWatch::begin(SDL_GetTicks());
@@ -1419,6 +1424,7 @@ int main(int argc, char** argv)
 				else if (e.type == evTouch)
 				{
 					Pointer* pt = (Pointer*)e.user.data1;
+					ui.pointerMs = e.common.timestamp;	// (pushed by the touch thread as it read it)
 					if (ui.pointer(*pt, shown())) leave();
 					delete pt;
 				}
@@ -1459,6 +1465,7 @@ int main(int argc, char** argv)
 					{
 						pt.x = std::clamp(pt.x, 0.f, 1.f);
 						pt.y = std::clamp(pt.y, 0.f, 1.f);
+						ui.pointerMs = e.common.timestamp;
 						if (ui.pointer(pt, shown())) leave();
 					}
 				}

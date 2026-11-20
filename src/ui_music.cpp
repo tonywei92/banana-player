@@ -77,7 +77,8 @@ namespace bp
 	{
 		view = v;
 		albumAt = artistAt = -1;
-		cursor = scroll = 0;
+		cursor = 0;
+		list.top();
 		keyFocus = -1;
 		show(p);
 	}
@@ -87,7 +88,8 @@ namespace bp
 		auto snap = snapshot();
 		if (!snap || i < 0 || i >= (int)snap->albums.size()) return;
 		albumAt = i;
-		rowCursor = scroll = 0;
+		rowCursor = 0;
+		list.top();
 		keyFocus = 0;	// Play, focused on opening (the mock-up's two openings)
 	}
 
@@ -96,16 +98,74 @@ namespace bp
 		auto snap = snapshot();
 		if (!snap || i < 0 || i >= (int)snap->artists.size()) return;
 		artistAt = i;
-		rowCursor = scroll = 0;
+		rowCursor = 0;
+		list.top();
 		keyFocus = 0;
 		artistZone = 0;	// the keys, then their albums
 		artistAlbum = 0;
 	}
 
-	void Ui::Music::fitRows(int at, int rows)
+	// ---- the list shown ----
+
+	Ui::Music::ListGeom Ui::Music::listGeom() const
 	{
-		// the scroll that keeps row `at` in view (a list that came back shorter: at its end)
-		scroll = std::clamp(scroll, std::max(0, at - rows + 1), std::max(0, at));
+		// (the same boxes draw() lays out: the page head's content, or the strip under the view chips)
+		ListGeom g;
+		auto snap = snapshot();
+		if (!snap || generation() == 0 || snap->songs.empty()) return g;
+		Rect inner = musicInner();
+		if (albumAt >= 0 && albumAt < (int)snap->albums.size())
+		{
+			lay::PageHead h = lay::pageHead(inner, 2, 3);
+			g.view = h.content;
+			g.rowH = lay::TRACK_ROW_H;
+			g.count = (int)snap->albums[albumAt].songs.size();
+			g.cursor = keyFocus < 0 ? rowCursor : -1;
+			return g;
+		}
+		if (artistAt >= 0 && artistAt < (int)snap->artists.size())
+		{
+			// their songs show once ▼ went past the album strip
+			if (keyFocus >= 0 || artistZone != 1) return g;
+			lay::PageHead h = lay::pageHead(inner, 1, 3);
+			int top = h.content.y + lay::LINE_H + lay::SP6;
+			g.view = {inner.x, top, inner.w, h.content.y + h.content.h - top};
+			g.rowH = lay::MEDIA_ROW_H;
+			g.count = (int)artistEntries(artistAt).size();
+			g.cursor = rowCursor;
+			return g;
+		}
+		lay::MusicHeader mh = lay::musicHeader(inner, {});
+		int gy = mh.strip.y + lay::CHIP_STRIP + lay::SP8;
+		if (view == 0)
+		{
+			// the grid's rows, SP6 of room around each (a focused cover's ring reaches 5 past it)
+			g.view = {inner.x - lay::SP6, gy - lay::SP6, inner.w + 2 * lay::SP6, inner.y + inner.h - gy + lay::SP6};
+			g.rowH = lay::ALBUM_CELL_H + lay::ALBUM_ROW_GAP;
+			g.count = ((int)snap->albums.size() + 4) / 5;
+			g.cursor = cursor / 5;
+			return g;
+		}
+		if (view == 1)
+		{
+			g.view = {inner.x, gy, inner.w, inner.y + inner.h - gy};
+			g.rowH = lay::ARTIST_ROW_H;
+			g.count = (int)snap->artists.size();
+			g.cursor = cursor;
+		}
+		return g;
+	}
+
+	lay::AlbumGrid Ui::Music::gridRow(Rect row, int r, int n)
+	{
+		int inRow = std::clamp(n - r * 5, 0, 5);
+		return lay::albumGrid({row.x + lay::SP6, row.y + lay::SP6, row.w - 2 * lay::SP6, lay::ALBUM_CELL_H}, inRow, 0, 5);
+	}
+
+	void Ui::Music::keepCursorInView(bool glide)
+	{
+		ListGeom g = listGeom();
+		if (g.count > 0 && g.cursor >= 0) list.reveal(g.cursor, g.view, g.rowH, g.count, glide);
 	}
 
 	// ---- playing (the play request, as Files' Play all: main opens it and the Session takes it) ----
@@ -475,15 +535,16 @@ namespace bp
 				break;
 			case Button::Y: playAlbum(albumAt, 0, true, p); break;
 			case Button::B:
-				// back to the grid (the cursor never left the album's cell)
+				// back to the grid (the cursor never left the album's cell): shown at once
 				view = 0;
 				albumAt = -1;
 				keyFocus = -1;
-				scroll = 0;
-				break;
+				list.top();
+				keepCursorInView(false);
+				return false;
 			default: break;
 			}
-			if (keyFocus < 0) fitRows(rowCursor, rows);
+			if (keyFocus < 0) keepCursorInView();
 			return false;
 		}
 		// ---- an artist's page ----
@@ -505,9 +566,9 @@ namespace bp
 				if (keyFocus >= 0)
 				{
 					if (!albums.empty()) { keyFocus = -1; artistZone = 0; }
-					else if (!songs.empty()) { keyFocus = -1; artistZone = 1; rowCursor = 0; }
+					else if (!songs.empty()) { keyFocus = -1; artistZone = 1; rowCursor = 0; list.top(); }
 				}
-				else if (artistZone == 0 && !songs.empty()) { artistZone = 1; rowCursor = 0; }
+				else if (artistZone == 0 && !songs.empty()) { artistZone = 1; rowCursor = 0; list.top(); }
 				else if (artistZone == 1 && rowCursor < (int)songs.size() - 1) rowCursor++;
 				break;
 			case Button::Left:
@@ -531,15 +592,16 @@ namespace bp
 				break;
 			case Button::Y: playArtist(artistAt, 0, true, p); break;
 			case Button::B:
-				// back to the list (the cursor never left the artist's row)
+				// back to the list (the cursor never left the artist's row): shown at once
 				view = 1;
 				artistAt = -1;
 				keyFocus = -1;
-				scroll = 0;
-				break;
+				list.top();
+				keepCursorInView(false);
+				return false;
 			default: break;
 			}
-			if (keyFocus < 0 && artistZone == 1) fitRows(rowCursor, rows);
+			if (keyFocus < 0 && artistZone == 1) keepCursorInView();
 			return false;
 		}
 		// ---- the views ----
@@ -547,11 +609,6 @@ namespace bp
 		{
 			// the Albums grid: ◀/▶ a cell, ▲/▼ a row (the mock-up's "D-pad Move")
 			int n = (int)snap->albums.size(), cols = 5;
-			lay::MusicHeader mh = lay::musicHeader(inner, {});
-			int gy = mh.strip.y + lay::CHIP_STRIP + lay::SP8;
-			Rect gridArea{inner.x, gy, inner.w, inner.y + inner.h - gy};
-			lay::AlbumGrid g = lay::albumGrid(gridArea, n, scroll, cols);
-			int shown = g.shown;
 			switch (b)
 			{
 			case Button::Left: cursor = std::max(0, cursor - 1); break;
@@ -562,8 +619,8 @@ namespace bp
 			case Button::B: ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); break;
 			default: break;
 			}
-			// the grid scrolls by whole rows, the cursor's row kept in view
-			scroll = std::clamp(scroll, std::max(0, cursor / cols - (shown - 1)), std::max(0, cursor / cols));
+			// the cursor's row kept in view (a short glide)
+			keepCursorInView();
 			return false;
 		}
 		// the Artists list
@@ -581,7 +638,7 @@ namespace bp
 		case Button::B: ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); break;
 		default: break;
 		}
-		fitRows(cursor, rows);
+		keepCursorInView();
 		return false;
 	}
 
@@ -593,24 +650,25 @@ namespace bp
 		Rect inner = musicInner();
 		bool reading = !snap || generation() == 0;
 		bool empty = !reading && snap->songs.empty();
+		const float fy = pt.y * Ui::H;	// (by the fraction: the list follows the panel's pixels, not whole units)
 		if (pt.kind != Pointer::Down)
 		{
 			if (touch == T_NONE) return false;
 			if (pt.kind == Pointer::Move)
 			{
-				if (!touchMoved && std::abs(y - touchY) > 6) touchMoved = true;
-				if (touchMoved)
-				{
-					// a drag scrolls whatever the finger went down on, by that thing's own rows
-					scroll = lay::dragScroll(scrollStart, touchY, y, dragRow, 0, dragCount, dragShown);
-				}
+				// the list follows the finger once it is past the slop (lay::Scroller); elsewhere a drag only
+				// stops being a tap
+				if (onList) { if (list.move(fy)) touchMoved = true; }
+				else if (!touchMoved && std::abs(y - touchY) > 6) touchMoved = true;
 				return false;
 			}
-			// the lift: a tap if it never moved, on what it is still over
+			// the lift: the list glides on (or springs back from an end); a tap if it never moved, on what it is
+			// still over
+			if (onList) list.lift();
 			int t = touch;
-			bool moved = touchMoved;
+			bool moved = touchMoved || caught;
 			touch = T_NONE;
-			touchMoved = false;
+			touchMoved = onList = caught = false;
 			if (moved || t == T_NONE) return false;
 			switch (t)
 			{
@@ -626,29 +684,7 @@ namespace bp
 			if (t == T_GROUND) return false;		// the ground: a drag was its only meaning
 			if (t >= T_CHIP && t < T_CHIP + 3)
 			{
-				view = t - T_CHIP;
-				albumAt = artistAt = -1;
-				cursor = scroll = 0;
-				show(p);
-				return false;
-			}
-			if (t >= T_ALBUM && t < T_ARTIST)
-			{
-				// the Albums grid's cells, or the artist page's strip (the strip's first cell is off its left)
-				if (artistAt >= 0 && artistAt < (int)snap->artists.size() && keyFocus < 0 && artistZone == 0)
-				{
-					std::vector<uint32_t> albums = artistAlbumsByYear(artistAt);
-					int i = albumScroll + (t - T_ALBUM);
-					if (i >= albumScroll && i < (int)albums.size()) openAlbum((int)albums[i], p);
-					return false;
-				}
-				if (albumAt < 0 && artistAt < 0 && view == 0 && t - T_ALBUM < (int)snap->albums.size())
-					openAlbum(t - T_ALBUM, p);
-				return false;
-			}
-			if (t >= T_ARTIST && t < T_KEY)
-			{
-				if (artistAt < 0 && view == 1 && t - T_ARTIST < (int)snap->artists.size()) openArtist(t - T_ARTIST, p);
+				setView(t - T_CHIP, p);
 				return false;
 			}
 			if (t >= T_KEY && t < T_KEY + 3)
@@ -672,24 +708,40 @@ namespace bp
 				}
 				return false;
 			}
+			if (t >= T_ALBUM && t < T_ARTIST)
+			{
+				// the Albums grid's cells (by index), or the artist page's strip (the j-th cell shown)
+				if (artistAt >= 0 && artistAt < (int)snap->artists.size() && keyFocus < 0 && artistZone == 0)
+				{
+					std::vector<uint32_t> albums = artistAlbumsByYear(artistAt);
+					int i = albumScroll + (t - T_ALBUM);
+					if (i >= albumScroll && i < (int)albums.size()) openAlbum((int)albums[i], p);
+					return false;
+				}
+				if (albumAt < 0 && artistAt < 0 && view == 0 && t - T_ALBUM < (int)snap->albums.size())
+					openAlbum(t - T_ALBUM, p);
+				return false;
+			}
+			if (t >= T_ARTIST && t < T_TRACK)
+			{
+				if (artistAt < 0 && view == 1 && t - T_ARTIST < (int)snap->artists.size()) openArtist(t - T_ARTIST, p);
+				return false;
+			}
 			if (t >= T_TRACK && t < T_SONG && albumAt >= 0 && albumAt < (int)snap->albums.size())
 			{
 				int i = t - T_TRACK;
 				if (i < (int)snap->albums[albumAt].songs.size()) playAlbum(albumAt, i, false, p);
 				return false;
 			}
-			if (t >= T_SONG && artistAt >= 0 && artistAt < (int)snap->artists.size() && keyFocus < 0 && artistZone == 1)
+			if (t >= T_SONG && t < T_SONG + TOUCH_RANGE && artistAt >= 0 && artistAt < (int)snap->artists.size() &&
+				keyFocus < 0 && artistZone == 1)
 				playArtist(artistAt, t - T_SONG, false, p);
 			return false;
 		}
 		// the down: what is under the finger (the same Rects the drawing asked for)
 		touch = T_NONE;
-		touchMoved = false;
+		touchMoved = onList = caught = false;
 		touchY = y;
-		scrollStart = scroll;
-		dragRow = 60;
-		dragCount = 0;
-		dragShown = 1;
 		if (empty)
 		{
 			std::vector<std::string> lines = ui.wrapText(EMPTY_MUSIC_LINE, F_I14, 400, 99);
@@ -708,102 +760,48 @@ namespace bp
 			int chip = lay::filterAt(mh.chips, x, y);
 			if (chip >= 0) { touch = T_CHIP + chip; return false; }
 		}
-		// ---- an album's page ----
-		if (albumAt >= 0 && albumAt < (int)snap->albums.size())
+		// a page's keys
+		if ((albumAt >= 0 && albumAt < (int)snap->albums.size()) || (artistAt >= 0 && artistAt < (int)snap->artists.size()))
 		{
-			const MediaAlbum& a = snap->albums[albumAt];
-			lay::PageHead h = lay::pageHead(inner, 2, 3);
+			lay::PageHead h = lay::pageHead(inner, albumAt >= 0 ? 2 : 1, 3);
 			for (int i = 0; i < 3; i++)
 				if (h.key[i].w > 0 && h.key[i].hit(x, y)) { touch = T_KEY + i; return false; }
-			int rows = std::max(1, h.content.h / lay::TRACK_ROW_H);
-			dragRow = lay::TRACK_ROW_H;
-			dragCount = (int)a.songs.size();
-			dragShown = rows;
-			for (int i = 0; i < rows && scroll + i < (int)a.songs.size(); i++)
-			{
-				Rect r{inner.x, h.content.y + i * lay::TRACK_ROW_H, inner.w, lay::TRACK_ROW_H};
-				if (r.hit(x, y)) { touch = T_TRACK + scroll + i; rowCursor = scroll + i; return false; }
-			}
-			touch = T_GROUND;		// the page's own ground: a drag still scrolls the songs
-			return false;
 		}
-		// ---- an artist's page ----
-		if (artistAt >= 0 && artistAt < (int)snap->artists.size())
+		// an artist's album strip (one row of cells, no list under it while it has the focus)
+		if (artistAt >= 0 && artistAt < (int)snap->artists.size() && keyFocus < 0 && artistZone == 0)
 		{
 			std::vector<uint32_t> albums = artistAlbumsByYear(artistAt);
-			std::vector<PlaylistEntry> songs = artistEntries(artistAt);
 			lay::PageHead h = lay::pageHead(inner, 1, 3);
-			for (int i = 0; i < 3; i++)
-				if (h.key[i].w > 0 && h.key[i].hit(x, y)) { touch = T_KEY + i; return false; }
 			Rect strip{inner.x, h.content.y + lay::LINE_H + lay::SP6, inner.w, lay::ALBUM_CELL_H};
-			if (keyFocus < 0 && artistZone == 0 && strip.hit(x, y) && !albums.empty())
+			touch = T_GROUND;		// the strip's own ground: one row, a drag does nothing
+			if (!strip.hit(x, y) || albums.empty()) return false;
+			int per = std::min(5, (int)albums.size());
+			for (int j = 0; j < per; j++)
 			{
-				int per = std::min(5, (int)albums.size());
-				for (int j = 0; j < per; j++)
-				{
-					Rect cell{inner.x + j * (lay::ALBUM_ART + lay::ALBUM_COL_GAP), strip.y, lay::ALBUM_ART,
-						lay::ALBUM_CELL_H};
-					if (cell.hit(x, y)) { touch = T_ALBUM + j; return false; }
-				}
-				touch = T_GROUND;		// the strip's own ground: one row, a drag does nothing
-				return false;
-			}
-			Rect list{inner.x, h.content.y, inner.w, h.content.h};
-			if (keyFocus < 0 && artistZone == 1 && list.hit(x, y) && !songs.empty())
-			{
-				int rows = std::max(1, (h.content.h - lay::LINE_H - lay::SP6) / lay::MEDIA_ROW_H);
-				dragRow = lay::MEDIA_ROW_H;
-				dragCount = (int)songs.size();
-				dragShown = rows;
-				for (int i = 0; i < rows && scroll + i < (int)songs.size(); i++)
-				{
-					Rect r{inner.x, h.content.y + lay::LINE_H + lay::SP6 + i * lay::MEDIA_ROW_H, inner.w,
-						lay::MEDIA_ROW_H};
-					if (r.hit(x, y)) { touch = T_SONG + scroll + i; rowCursor = scroll + i; return false; }
-				}
-				touch = T_GROUND;
-				return false;
+				Rect cell{inner.x + j * (lay::ALBUM_ART + lay::ALBUM_COL_GAP), strip.y, lay::ALBUM_ART, lay::ALBUM_CELL_H};
+				if (cell.hit(x, y)) { touch = T_ALBUM + j; return false; }
 			}
 			return false;
 		}
-		// ---- the views ----
-		if (view == 0)
+		// the list shown: anywhere else on the page drives it (a touch on a gliding list only stops it)
+		ListGeom g = listGeom();
+		if (g.count <= 0) return false;
+		onList = true;
+		touch = T_GROUND;
+		caught = list.press(fy);
+		int r = caught ? -1 : list.rowAt(x, y);
+		if (r < 0) return false;
+		if (albumAt >= 0) { touch = T_TRACK + r; rowCursor = r; }
+		else if (artistAt >= 0) { touch = T_SONG + r; rowCursor = r; }
+		else if (view == 1) { touch = T_ARTIST + r; cursor = r; }
+		else
 		{
-			int n = (int)snap->albums.size(), cols = 5;
-			int gy = mh.strip.y + lay::CHIP_STRIP + lay::SP8;
-			Rect gridArea{inner.x, gy, inner.w, inner.y + inner.h - gy};
-			lay::AlbumGrid g = lay::albumGrid(gridArea, n, scroll, cols);
-			dragRow = lay::ALBUM_CELL_H + lay::ALBUM_ROW_GAP;
-			dragCount = (n + cols - 1) / cols;
-			dragShown = g.shown;
-			for (int i = g.first * cols; i < n && i < (g.first + g.shown) * cols; i++)
-				if (g.cell[i].hit(x, y))
-				{
-					touch = T_ALBUM + (i - g.first * cols);
-					cursor = i;
-					return false;
-				}
-			touch = T_GROUND;		// the grid's own ground: a drag still scrolls it
-			return false;
+			// the grid's row: the cell under the finger, if any (the gaps between are the ground)
+			int n = (int)snap->albums.size();
+			lay::AlbumGrid row = gridRow(list.rowBox(r), r, n);
+			for (int c = 0; c < (int)row.cell.size(); c++)
+				if (row.cell[c].hit(x, y)) { touch = T_ALBUM + r * 5 + c; cursor = r * 5 + c; }
 		}
-		// the Artists list
-		int n = (int)snap->artists.size();
-		int gy = mh.strip.y + lay::CHIP_STRIP + lay::SP8;
-		int rows = std::max(1, (inner.y + inner.h - gy) / lay::ARTIST_ROW_H);
-		dragRow = lay::ARTIST_ROW_H;
-		dragCount = n;
-		dragShown = rows;
-		for (int i = 0; i < rows && scroll + i < n; i++)
-		{
-			Rect r{inner.x, gy + i * lay::ARTIST_ROW_H, inner.w, lay::ARTIST_ROW_H};
-			if (r.hit(x, y))
-			{
-				touch = T_ARTIST + scroll + i;
-				cursor = scroll + i;
-				return false;
-			}
-		}
-		touch = T_GROUND;		// the list's own ground: a drag still scrolls it
 		return false;
 	}
 
@@ -815,10 +813,14 @@ namespace bp
 		Rect inner = musicInner();
 		Kit& k = *ui.kit;
 		bool reading = !snap || generation() == 0;
-		// the one the page plays (the mark in the number's place, the tile's corner)
-		auto plays = [&](const std::string& path) {
-			return p.playing() && !p.playingPhoto() && p.currentPath() == path;
-		};
+		// the one the page plays (the mark in the number's place, the tile's corner). By value: the list's rows are
+		// drawn from these lambdas in later scroll frames too
+		const std::string nowPath = p.playing() && !p.playingPhoto() ? p.currentPath() : "";
+		const bool paused = p.paused;
+		auto plays = [nowPath](const std::string& path) { return !nowPath.empty() && nowPath == path; };
+		auto* store = ui.browse->playlists->plStore.get();
+		const std::string gen = std::to_string(generation()) + (theme::drawingClean() ? "c" : "") + "|";
+		ListGeom g = listGeom();
 
 		// ---- an album's page ----
 		if (!reading && snap && albumAt >= 0 && albumAt < (int)snap->albums.size())
@@ -852,26 +854,35 @@ namespace bp
 			v.pressed = touch >= T_KEY && touch < T_KEY + 3 && !touchMoved ? touch - T_KEY : -1;
 			v.hotkeys = p.settings.buttonHotkeys;
 			k.pageHead(h, v);
-			int rows = std::max(1, h.content.h / lay::TRACK_ROW_H);
-			if (keyFocus < 0) fitRows(rowCursor, rows);
-			auto* store = ui.browse->playlists->plStore.get();
-			for (int i = 0; i < rows && scroll + i < (int)a.songs.size(); i++)
-			{
-				const MediaSong& s = snap->songs[a.songs[scroll + i]];
+			// the tracks: a smooth list (ui_smoothlist.h), each row's look its key
+			auto track = [=, focus = keyFocus < 0 ? rowCursor : -1, pressed = touchMoved ? -1 : touch - T_TRACK](int i) {
+				const MediaSong& s = snap->songs[snap->albums[albumAt].songs[i]];
 				Kit::Track t;
 				t.number = s.track ? std::to_string(s.track) : "";
 				bool here = plays(s.path);
-				t.playing = here && !p.paused;
-				t.paused = here && p.paused;
+				t.playing = here && !paused;
+				t.paused = here && paused;
 				t.name = snap->at(s.title);
 				if (s.video) t.pill = "VIDEO";
 				t.heart = store && store->isLiked(s.path);
 				t.note = songLength(*snap, s);
-				t.focused = keyFocus < 0 && scroll + i == rowCursor;
-				t.pressed = touch == T_TRACK + scroll + i && !touchMoved;
-				Rect r{inner.x, h.content.y + i * lay::TRACK_ROW_H, inner.w, lay::TRACK_ROW_H};
-				k.trackRow(lay::trackRow(r), t);
-			}
+				t.focused = i == focus;
+				t.pressed = i == pressed;
+				return t;
+			};
+			SmoothList::Spec spec;
+			spec.view = g.view;
+			spec.rowH = g.rowH;
+			spec.count = g.count;
+			spec.key = [track, gen](int i) {
+				Kit::Track t = track(i);
+				// (the focused one's title may scroll: drawn again each full frame)
+				if (t.focused) return std::string();
+				return "tr" + gen + std::to_string(i) + (t.playing ? "p" : "") + (t.paused ? "z" : "") +
+					(t.heart ? "h" : "") + (t.pressed ? "d" : "") + t.note;
+			};
+			spec.draw = [this, track](int i, Rect r) { ui.kit->trackRow(lay::trackRow(r), track(i)); };
+			list.draw(std::move(spec));
 			return;
 		}
 
@@ -902,7 +913,6 @@ namespace bp
 				line.text = text;
 				k.sectionLine(lay::sectionLine(box, false), line);
 			};
-			auto* store = ui.browse->playlists->plStore.get();
 			if (keyFocus >= 0 || artistZone == 0)
 			{
 				// their albums as one strip of cover cells (the focused one kept in view), the songs' line below
@@ -945,25 +955,31 @@ namespace bp
 					caps("Songs \xC2\xB7 " + std::to_string(songs.size()), {inner.x, below, inner.w, lay::LINE_H});
 				return;
 			}
-			// their songs (▼ from the albums): the list, the focused one kept in view
+			// their songs (▼ from the albums): a smooth list under their line
 			caps("Songs \xC2\xB7 " + std::to_string(songs.size()), {inner.x, h.content.y, inner.w, lay::LINE_H});
-			int rows = std::max(1, (h.content.h - lay::LINE_H - lay::SP6) / lay::MEDIA_ROW_H);
-			fitRows(rowCursor, rows);
-			for (int i = 0; i < rows && scroll + i < (int)songs.size(); i++)
-			{
-				const PlaylistEntry& e = songs[scroll + i];
+			auto song = [=, focus = rowCursor, pressed = touchMoved ? -1 : touch - T_SONG](int i) {
+				const PlaylistEntry& e = songs[i];
 				Kit::Media m;
 				m.glyph = &G_NOTE;
 				m.name = e.title;
 				m.note = e.duration > 0 ? formatTime(e.duration) : "";
-				bool here = plays(e.path);
-				if (here) { m.pill = "Now"; m.tone = Kit::Pill::Live; }
+				if (plays(e.path)) { m.pill = "Now"; m.tone = Kit::Pill::Live; }
 				m.heart = store && store->isLiked(e.path);
-				m.focused = scroll + i == rowCursor;
-				m.pressed = touch == T_SONG + scroll + i && !touchMoved;
-				Rect r{inner.x, h.content.y + lay::LINE_H + lay::SP6 + i * lay::MEDIA_ROW_H, inner.w, lay::MEDIA_ROW_H};
-				k.mediaRow(lay::mediaRow(r), m);
-			}
+				m.focused = i == focus;
+				m.pressed = i == pressed;
+				return m;
+			};
+			SmoothList::Spec spec;
+			spec.view = g.view;
+			spec.rowH = g.rowH;
+			spec.count = g.count;
+			spec.key = [song, gen, art = artistAt](int i) {
+				Kit::Media m = song(i);
+				return "so" + gen + std::to_string(art) + "." + std::to_string(i) + (m.pill.empty() ? "" : "p") +
+					(m.heart ? "h" : "") + (m.focused ? "f" : "") + (m.pressed ? "d" : "");
+			};
+			spec.draw = [this, song](int i, Rect r) { ui.kit->mediaRow(lay::mediaRow(r), song(i)); };
+			list.draw(std::move(spec));
 			return;
 		}
 
@@ -1017,13 +1033,9 @@ namespace bp
 		}
 		if (view == 0)
 		{
-			// the Albums grid
+			// the Albums grid, a smooth list of its rows of five (each row one slot: its covers drawn once)
 			int n = (int)snap->albums.size();
-			int gy = mh.strip.y + lay::CHIP_STRIP + lay::SP8;
-			Rect gridArea{inner.x, gy, inner.w, inner.y + inner.h - gy};
-			lay::AlbumGrid g = lay::albumGrid(gridArea, n, scroll, 5);
-			for (int i = g.first * 5; i < n && i < (g.first + g.shown) * 5; i++)
-			{
+			auto cellOf = [=, focus = cursor](int i) {
 				const MediaAlbum& a = snap->albums[i];
 				const std::string name = wordOr(*snap, a.name, "Unknown album");
 				Kit::Album cell;
@@ -1038,30 +1050,57 @@ namespace bp
 				bool here = false;
 				for (uint32_t si : a.songs)
 					if (plays(snap->songs[si].path)) { here = true; break; }
-				cell.playing = here && !p.paused;
-				cell.paused = here && p.paused;
-				cell.focused = i == cursor;
-				k.albumTile(lay::albumTile(g.cell[i]), cell);
-			}
+				cell.playing = here && !paused;
+				cell.paused = here && paused;
+				cell.focused = i == focus;
+				return cell;
+			};
+			SmoothList::Spec spec;
+			spec.view = g.view;
+			spec.rowH = g.rowH;
+			spec.count = g.count;
+			spec.key = [this, snap, cellOf, gen, n](int r) {
+				// each cell's state, and whether its cover is drawn yet (its arrival draws the row again)
+				std::string key = "al" + gen + std::to_string(r);
+				lay::AlbumGrid row = gridRow({0, 0, 640, 0}, r, n);
+				for (int c = 0; c < (int)row.cell.size(); c++)
+				{
+					int i = r * 5 + c;
+					Kit::Album cell = cellOf(i);
+					const MediaAlbum& a = snap->albums[i];
+					int art = a.songs.empty() ? 0 : ui.songArtState(snap->songs[a.songs.front()].path, lay::albumTile(row.cell[c]).cover, 5);
+					key += "." + std::to_string(art) + (cell.focused ? "f" : "") + (cell.playing ? "p" : "") + (cell.paused ? "z" : "");
+				}
+				return key;
+			};
+			spec.draw = [this, cellOf, n](int r, Rect box) {
+				lay::AlbumGrid row = gridRow(box, r, n);
+				for (int c = 0; c < (int)row.cell.size(); c++) ui.kit->albumTile(lay::albumTile(row.cell[c]), cellOf(r * 5 + c));
+			};
+			list.draw(std::move(spec));
 			return;
 		}
-		// the Artists list
-		int n = (int)snap->artists.size();
-		int gy = mh.strip.y + lay::CHIP_STRIP + lay::SP8;
-		int rows = std::max(1, (inner.y + inner.h - gy) / lay::ARTIST_ROW_H);
-		fitRows(cursor, rows);
-		for (int i = 0; i < rows && scroll + i < n; i++)
-		{
-			const MediaArtist& a = snap->artists[scroll + i];
+		// the Artists list, a smooth list
+		auto artistOf = [=, focus = cursor, pressed = touchMoved ? -1 : touch - T_ARTIST](int i) {
+			const MediaArtist& a = snap->artists[i];
 			Kit::Artist row;
 			row.name = wordOr(*snap, a.name, "Unknown artist");
 			row.second = std::to_string(a.albums.size()) + (a.albums.size() == 1 ? " album" : " albums") + " \xC2\xB7 " +
 				std::to_string(a.songs) + (a.songs == 1 ? " song" : " songs");
-			row.focused = scroll + i == cursor;
-			row.pressed = touch == T_ARTIST + scroll + i && !touchMoved;
-			Rect r{inner.x, gy + i * lay::ARTIST_ROW_H, inner.w, lay::ARTIST_ROW_H};
-			k.artistRow(lay::artistRow(r), row);
-		}
+			row.focused = i == focus;
+			row.pressed = i == pressed;
+			return row;
+		};
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = g.count;
+		spec.key = [artistOf, gen](int i) {
+			Kit::Artist a = artistOf(i);
+			return "ar" + gen + std::to_string(i) + (a.focused ? "f" : "") + (a.pressed ? "d" : "");
+		};
+		spec.draw = [this, artistOf](int i, Rect r) { ui.kit->artistRow(lay::artistRow(r), artistOf(i)); };
+		list.draw(std::move(spec));
 	}
 
 	std::string Ui::Music::signature(const Player&) const
@@ -1070,7 +1109,8 @@ namespace bp
 		// its base; a Like moves the store's serial, its |pl term, and so does the playlists' count), and the
 		// reading notice's step, so the bar moves while the first pass walks
 		char buf[160];
-		snprintf(buf, sizeof buf, "|mu%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.%d", view, albumAt, artistAt, cursor, scroll,
+		// (the list's offset is not here: Ui::draw follows it apart, so a scroll frame only composes the rows)
+		snprintf(buf, sizeof buf, "|mu%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.%d", view, albumAt, artistAt, cursor, touchMoved,
 			rowCursor, keyFocus, artistZone * 8 + artistAlbum, albumScroll, touch, (int)generation());
 		std::string s = buf;
 		if (!snapshot() || generation() == 0)

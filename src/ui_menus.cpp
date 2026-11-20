@@ -230,6 +230,16 @@ namespace bp
 		artAsked.insert(artKey);
 	}
 
+	int Ui::songArtState(const std::string& path, Rect r, int rad) const
+	{
+		// (drawSongArt's own key: the inner box's device size and the radius)
+		if (path.empty() || artFailed.count(path)) return 2;
+		SDL_Rect d = devRect({r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE});
+		std::string artKey = std::string(HOME_COVER_KEY) + path + "|" + std::to_string(d.w) + "x" + std::to_string(d.h) +
+			"r" + std::to_string(rad);
+		return artTex.count(artKey) ? 1 : 0;
+	}
+
 	void Ui::drawNowArt(const Player& bp, Rect r, int rad)
 	{
 		// a song asks for its art (the placeholder stands in until the answer, and for good when there is

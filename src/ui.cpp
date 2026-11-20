@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "ui_smoothlist.h"
 #include "session_host.h"
 #include "format.h"
 #include "playlist.h"
@@ -129,6 +130,8 @@ namespace bp
 		if (photoTex) SDL_DestroyTexture(photoTex);
 		if (supportTex) SDL_DestroyTexture(supportTex);
 		cache.clear();
+		dropFrame();
+		if (listShown) listShown->release();	// (its rows' textures, before the renderer goes)
 		for (auto& c : manga->coverTex)
 			if (c.second.tex) SDL_DestroyTexture(c.second.tex);
 		for (auto* t : corners)
@@ -605,6 +608,9 @@ namespace bp
 	bool Ui::pointer(const Pointer& pt, Player& p)
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
+		// the finger's time: the event's (a smooth list's speed comes from it), the harness's steps now
+		touchMs = pointerMs ? pointerMs : SDL_GetTicks();
+		pointerMs = 0;
 		bool veiled = veilCancels && veilAlpha > 0;
 		webInputAt = SDL_GetTicks();
 		if (veiled)

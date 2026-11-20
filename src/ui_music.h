@@ -16,6 +16,7 @@
 #include "ui.h"
 #include "ui_shell.h"
 #include "ui_kit.h"
+#include "ui_smoothlist.h"
 #include "mediaindex.h"
 
 namespace bp
@@ -51,12 +52,26 @@ namespace bp
 		void openArtist(int i, Player& p);
 
 		// ---- the focus, in whatever is shown ----
-		int cursor = 0, scroll = 0;		// the views' cell or row, and the first row shown
+		int cursor = 0;					// the views' cell or row
 		int rowCursor = 0;				// an album's tracks, an artist's songs
 		int keyFocus = -1;				// the head's keys (-1: the rows below them)
 		int artistZone = 0;				// an artist's page: 0 their albums, 1 their songs
 		int artistAlbum = 0, albumScroll = 0;	// the album strip's focus, and its first cell shown
-		void fitRows(int at, int rows);		// the scroll that keeps row `at` in view
+
+		// ---- the list shown: the Albums grid (by its rows of five), Artists, an album's tracks or an artist's
+		// songs. One smooth list (ui_smoothlist.h) serves whichever shows; a new one starts at its top ----
+		SmoothList list{ui};
+		SmoothList* smoothList() override { return listGeom().count > 0 ? &list : nullptr; }
+		// where the list shown is, its rows' pitch, how many, and the row the cursor is on (count 0: none shows)
+		struct ListGeom
+		{
+			Rect view{};
+			int rowH = 0, count = 0, cursor = -1;
+		};
+		ListGeom listGeom() const;
+		void keepCursorInView(bool glide = true);	// the cursor's row of the list shown: a short glide to it
+		// the Albums grid's row r of n albums, its cells inside the row's box (the focus ring's room around them)
+		static lay::AlbumGrid gridRow(Rect row, int r, int n);
 
 		// ---- playing (through the Session, as Files does: the play request, main opens it) ----
 		void play(const std::vector<std::string>& paths, int index, const std::string& title, bool shuffle, Player& p);
@@ -72,17 +87,18 @@ namespace bp
 		void openMoreSheet(Player& p);
 
 		// ---- a finger ----
-		// what it went down on: T_CHIP + i the views' chips, T_ALBUM + i a cell in the Albums grid or the artist's
-		// strip, T_ARTIST + i a row, T_KEY + i a head key, T_TRACK + i an album's track, T_SONG + i an artist's
-		// song, T_GROUND the page's own ground (a drag scrolls, a tap does nothing), T_EMPTY1 / T_EMPTY2 the
-		// empty page's keys
-		enum { T_NONE = -1, T_CHIP = 0, T_ALBUM = 10, T_ARTIST = 100, T_KEY = 200, T_TRACK = 300, T_SONG = 400,
-			T_GROUND = 499, T_EMPTY1 = 500, T_EMPTY2 = 501 };
+		// what it went down on: T_CHIP + i the views' chips, T_KEY + i a head key, T_EMPTY1 / T_EMPTY2 the empty
+		// page's keys, T_GROUND the page's own ground (a drag scrolls, a tap does nothing); then, each a range of
+		// TOUCH_RANGE: T_ALBUM + i an album in the grid (or + j the artist strip's j-th cell shown), T_ARTIST + i,
+		// T_TRACK + i an album's track, T_SONG + i an artist's song (their index in the whole list)
+		static constexpr int TOUCH_RANGE = 1 << 20;
+		enum { T_NONE = -1, T_CHIP = 0, T_KEY = 10, T_EMPTY1 = 20, T_EMPTY2 = 21, T_GROUND = 30, T_ALBUM = TOUCH_RANGE,
+			T_ARTIST = 2 * TOUCH_RANGE, T_TRACK = 3 * TOUCH_RANGE, T_SONG = 4 * TOUCH_RANGE };
 		int touch = T_NONE;
-		int touchY = 0, scrollStart = 0;
+		int touchY = 0;
 		bool touchMoved = false;
-		// what a drag scrolls: the thing under the finger's own rows
-		int dragRow = 60, dragCount = 0, dragShown = 1;
+		bool onList = false;	// the finger drives the list (it went down on the page's rows or its ground)
+		bool caught = false;	// it went down on a gliding list: it stopped it, and is no tap
 		Rect emptyKey[2]{};
 
 		// ---- the shell's header (Ui::Shell::head asks this) ----

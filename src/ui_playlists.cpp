@@ -1821,7 +1821,7 @@ namespace bp
 
 	// ---- Ui's, out of ui.h (they read the playlists' state) ----
 
-	bool Ui::animating() const { return (area() && area()->animating()) || marqueeMoving() || loaderShown || playHoldAt != 0 || flickAt != 0 || browse->playlists->plDrag.on || slideWaiting() || browse->homeView->stripT0 != 0 || likePopAt != 0 || addFlashUntil != 0 || landFlashUntil != 0 || backdropFading() || backdropLeaving(); }
+	bool Ui::animating() const { return (area() && area()->animating()) || marqueeMoving() || loaderShown || playHoldAt != 0 || flickAt != 0 || browse->playlists->plDrag.on || slideWaiting() || browse->homeView->stripT0 != 0 || likePopAt != 0 || addFlashUntil != 0 || landFlashUntil != 0 || backdropFading() || backdropLeaving() || glideWaitMs() >= 0; }
 	void Ui::flushPlaylist(Player& p) { browse->playlists->plFlush(p); }
 	int Ui::playlistSerial() const { return browse->playlists->plStore ? browse->playlists->plStore->serial() : -1; }
 	bool Ui::plIsLiked(const std::string& file) const { return browse->playlists->plStore && browse->playlists->plStore->isBuiltinFile(file); }
