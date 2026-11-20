@@ -135,15 +135,10 @@ namespace bp
 	void Ui::Kit::hints(Rect bar, const std::vector<Hint>& list)
 	{
 		// a rule above; each item its caps then its word, the row centred in the box it was given
-		const theme::Palette& th = theme::current;
-		SDL_Color ground = sdl(th.HINT_BAR), word = sdl(th.ON_HINT);
-		// on Match album art's backdrop (the browser's pages) the bar is a tinted glass, the art showing through it
-		// (its words keep their contrast: the bar's own colour still makes 55% of what lies under them, over the veiled art)
-		if (ui.groundIsBackdrop) ground.a = HINT_GLASS;
-		// (a strong theme's caps take its KEY_FOCUS: Gundam's yellow on the navy bar)
-		SDL_Color capInk = th.strongKeys ? sdl(th.KEY_FOCUS) : ACCENT;
-		ui.fill(bar, ground);
-		if (!th.strongKeys && !theme::drawingClean()) ui.fill({bar.x, bar.y, bar.w, 1}, RULE);
+		// no ground of its own in any theme (the owner): the hints lie on the page's ground (BG, or Match album
+		// art's backdrop), so their words and caps take the page's inks, not the old bar's ON_HINT / KEY_FOCUS
+		SDL_Color ground = BG, word = DIM_ON;
+		SDL_Color capInk = ACCENT;
 		std::vector<int> widths;
 		for (auto& h : list) widths.push_back(capsW(h.key) + (h.key.empty() || h.verb.empty() ? 0 : 5) + textW(h.verb, F_I12));
 		int left = bar.x + lay::SP8, right = bar.x + bar.w - lay::SP8;
