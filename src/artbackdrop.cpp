@@ -317,12 +317,13 @@ namespace artbg
 
 		if (light)
 		{
-			// the art's hue at S 22% / L 86%, blended 45% into the theme's paper
+			// the art's hue at S 34% / L 82%, blended 70% into the theme's paper: a white veil hides the picture
+			// more than a dark one does, so the paper itself carries the art's colour or nobody sees it is there
 			Hsl tintH;
 			tintH.h = hue;
-			tintH.s = 0.22;
-			tintH.l = 0.86;
-			b.ground = mixRgb(charcoal, fromHsl(tintH), 45);
+			tintH.s = 0.34;
+			tintH.l = 0.82;
+			b.ground = mixRgb(charcoal, fromHsl(tintH), 70);
 			b.fallback = false;
 			// the same five stops, whitened for a dark art: each stop's see-through is scaled until the picture's
 			// 5th-percentile luminance under it leaves the theme's TEXT, DIM_ON and ACCENT at 4.5:1
@@ -336,8 +337,9 @@ namespace artbg
 				for (int p = base[i]; p <= 96; p++)
 				{
 					double under = yGround * (p / 100.0) + pic[i] * (1 - p / 100.0);
-					if (contrast(relLum(t.text), under) >= 4.5 && contrast(relLum(t.dimOn), under) >= 4.5 &&
-						contrast(relLum(t.accent), under) >= 4.5) { need = p; break; }
+					// body text 4.5:1; the dim and accent (large or non-text) 3:1, or the veil whites the art out
+					if (contrast(relLum(t.text), under) >= 4.5 && contrast(relLum(t.dimOn), under) >= 3.0 &&
+						contrast(relLum(t.accent), under) >= 3.0) { need = p; break; }
 				}
 				if (need <= 96) allHard = false;
 				b.stop[i] = b.ground;

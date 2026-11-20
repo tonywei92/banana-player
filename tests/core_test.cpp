@@ -14551,7 +14551,7 @@ static void testArtBackdropTheme()
 	const ThemeColours light{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20}, {0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};
 	Backdrop lb = backdropFor(light, 26, 240, 220, 40, 30);
 	CHECK_EQ(lb.fallback, false);
-	// the ground is the paper with the art's hue at S 22% / L 86% blended in: light, not the dark charcoal
+	// the ground is the paper with the art's hue at S 34% / L 82% blended in: light, not the dark charcoal
 	CHECK(lb.ground.r > 0xC0);
 	CHECK(lb.ground.r >= lb.ground.b);
 	CHECK_EQ(lb.stop[0], lb.ground);
@@ -14560,7 +14560,8 @@ static void testArtBackdropTheme()
 	CHECK(lb.veil[4] >= VEIL_BASE[4] && lb.veil[4] <= 96);
 	// a dark art is whitened: its stop behind the title rises past the base (protection the other way round,
 	// on the picture's 5th-percentile luminance), where a bright one leaves the base alone
-	CHECK(lb.veil[1] > VEIL_BASE[1]);
+	Backdrop lbDark = backdropFor(light, 26, 240, 220, 4, 4);
+	CHECK(lbDark.veil[1] > VEIL_BASE[1]);
 	CHECK(lb.veil[1] <= 96);
 	Backdrop lbBright = backdropFor(light, 26, 240, 220, 235, 228);
 	CHECK_EQ(lbBright.fallback, false);
