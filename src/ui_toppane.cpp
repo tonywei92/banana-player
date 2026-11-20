@@ -186,7 +186,7 @@ namespace bp
 					out.rows = {{"1. Play what is on the card", "Files lists every folder."},
 						{"2. Send files from your phone", "Web dashboard: scan the code, then upload."},
 						{"3. Play from a computer", "Network finds shared folders on your Wi-Fi."}};
-					keys({{"L/R", "Sections"}, {"START", "Settings"}, {"F", "Quick settings"}});
+					keys({{"L2/R2", "Sections"}, {"START", "Settings"}, {"F", "Quick settings"}});
 					return true;
 				}
 				out.label = "Home";
@@ -206,7 +206,7 @@ namespace bp
 				out.title = "Banana Player";
 				out.text = "What you played is under Recent. The sections are in the rail, one L or R away.";
 				out.rows = {{"Recent", std::to_string(h.stripCards())}};
-				keys({{"L/R", "Sections"}, {"L3", "Search"}});
+				keys({{"L2/R2", "Sections"}, {"L3", "Search"}});
 				return true;
 			}
 			std::string sel = browseSelection();
