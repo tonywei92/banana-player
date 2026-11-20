@@ -1343,7 +1343,7 @@ namespace bp
 		}
 		int room = std::max(1, right - noteW - x);
 		std::string name = i >= 0 && i < (int)browseRows.size() ? browseRows[i].label : std::string();
-		if (!fileSel && at) ui.drawMarquee(name, F_SMALL, ink, x, cy, room, BUTTON, 1);
+		if (!fileSel && at) ui.drawMarquee(name, F_SMALL, ink, x, cy, room, 1);
 		else
 		{
 			// a file's name keeps its ending when it is cut ("...Sintel.mkv"), as the browser always did

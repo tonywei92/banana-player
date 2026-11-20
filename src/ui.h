@@ -800,13 +800,22 @@ namespace bp
 		void drawText(const std::string& s, int size, SDL_Color c, int x, int y, int maxW = 0, int align = 0);
 		// the same, the line's middle (its capitals') on cy: labels centred in their boxes at any panel size
 		void drawTextMid(const std::string& s, int size, SDL_Color c, int x, int cy, int maxW = 0, int align = 0);
-		void drawTextAt(const std::string& s, int size, SDL_Color c, int x, int y, int maxW, int align, bool middle);
+		// `fade` (the Title marquee's): the text's own alpha ramped to nothing over `w` units inside [x0, x1] at
+		// the sides it names, drawn as narrow slices of the same texture (no new texture, no colour laid over it)
+		struct EdgeFade
+		{
+			int x0 = 0, x1 = 0, w = 0;	// the box's edges and the ramp's width, in 640 x 480 units
+			bool left = false, right = false;
+		};
+		void drawTextAt(const std::string& s, int size, SDL_Color c, int x, int y, int maxW, int align, bool middle,
+			const EdgeFade* fade = nullptr);
+		void drawFaded(SDL_Texture* t, SDL_Rect dst, const EdgeFade& fade);	// (drawTextAt's slices)
 		// The Title marquee (docs/redesign/components.md; lay::marquee): a title too long for its box, drawn from its
-		// start with its last 16 units fading into `ground`, moving along twice (passes: 1 in a focused row), then
+		// start with its last 16 units fading out (the text's own alpha: any ground shows through), moving along twice (passes: 1 in a focused row), then
 		// resting at its start. One moves per panel at a time (the first drawn in a frame: a focused row before the mini
 		// bar); a sheet or menu over the page holds it at its start, and it starts again when it's gone, when the page
 		// changes or the panel wakes. Scroll long titles off: cut with "…" as before
-		void drawMarquee(const std::string& s, int size, SDL_Color c, int x, int cy, int boxW, SDL_Color ground, int passes = 2);
+		void drawMarquee(const std::string& s, int size, SDL_Color c, int x, int cy, int boxW, int passes = 2);
 		// the title of what plays as shown in a box boxW wide (Repeated start: shownTitle)
 		std::string playingTitle(const Player& p, const std::string& title, int size, int boxW) const;
 		bool scrollTitles = true;
@@ -1010,10 +1019,6 @@ namespace bp
 		// the bottom panel's own (the fade's goes first); made when first drawn, again only for a new theme
 		SDL_Texture* bgTex = nullptr, *bgFadeTex = nullptr;
 		int bgTexTheme = -1;	// the theme the pages were composed for
-		SDL_Texture* groundPage = nullptr;	// this redraw's backdrop page (null: the plain ground), for fadeStrip
-		// a fade strip over text (the Title marquee's ends): the ground's colour at its alpha, or, on the backdrop,
-		// the backdrop's own pixels there at that alpha (a strip of the plain colour would show as a dark bar)
-		void fadeStrip(Rect part, SDL_Color ground);
 		void backdropTick(Player& p);		// the ask (Ui::tick): once per song, off when the switch is off
 		void drawBackdrop(const Player& shown);		// the player page's ground (its own fade over the plain BG)
 		void dropBackdrop();

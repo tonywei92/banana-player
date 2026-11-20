@@ -1004,7 +1004,7 @@ namespace bp
 		std::string name = elided(t.name, F_SMALL, room);
 		int nameW = textW(name, F_SMALL);
 		SDL_Color ink = off(t.focused ? ACCENT : TEXT, t.off);
-		if (t.focused && !t.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, BUTTON, 1);
+		if (t.focused && !t.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, 1);
 		else ui.drawTextMid(name, F_SMALL, ink, l.name.x, cy, room);
 		if (pw) pill(l.name.x + nameW + lay::SP6 + pw, cy, t.pill, t.tone);
 	}
@@ -1029,7 +1029,7 @@ namespace bp
 		std::string name = elided(p.name, F_SMALL, room);
 		int nameW = textW(name, F_SMALL);
 		SDL_Color ink = off(p.focused || p.lit ? ACCENT : TEXT, p.off);
-		if (p.focused && !p.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, BUTTON, 1);
+		if (p.focused && !p.off) ui.drawMarquee(name, F_SMALL, ink, l.name.x, cy, room, 1);
 		else ui.drawTextMid(name, F_SMALL, ink, l.name.x, cy, room);
 		if (nowW)
 		{
@@ -1062,23 +1062,6 @@ namespace bp
 		SDL_SetTextureAlphaMod(page, fade);
 		SDL_Rect d = ui.devRect(r);
 		SDL_RenderCopy(ui.ren, page, nullptr, &d);
-		SDL_SetTextureAlphaMod(page, 255);
-	}
-
-	void Ui::Kit::backdropStrip(Rect r, SDL_Texture* page, Rect part, Uint8 alpha)
-	{
-		if (r.w <= 0 || r.h <= 0 || !page || part.w <= 0 || part.h <= 0) return;
-		int pw = 0, ph = 0;
-		SDL_QueryTexture(page, nullptr, nullptr, &pw, &ph);
-		// the page's texels under `part` (fractions of r, the page's own size), drawn where `part` is
-		SDL_FRect srcF{(float)(part.x - r.x) * pw / r.w, (float)(part.y - r.y) * ph / r.h, (float)part.w * pw / r.w,
-			(float)part.h * ph / r.h};
-		SDL_Rect src{(int)std::floor(srcF.x), (int)std::floor(srcF.y), std::max(1, (int)std::lround(srcF.w)),
-			std::max(1, (int)std::lround(srcF.h))};
-		SDL_SetTextureBlendMode(page, SDL_BLENDMODE_BLEND);
-		SDL_SetTextureAlphaMod(page, alpha);
-		SDL_Rect d = ui.devRect(part);
-		SDL_RenderCopy(ui.ren, page, &src, &d);
 		SDL_SetTextureAlphaMod(page, 255);
 	}
 }

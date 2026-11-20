@@ -221,7 +221,7 @@ namespace bp
 		{
 			// the player's title (a song, a video): the Title marquee; another page's: cut with "…"
 			const int room = l.title.w - stW - 14;
-			if (h.marquee) ui.drawMarquee(h.titleFor ? h.titleFor(room) : h.title, h.titleFont, TEXT, l.title.x, titleY, room, BG);
+			if (h.marquee) ui.drawMarquee(h.titleFor ? h.titleFor(room) : h.title, h.titleFont, TEXT, l.title.x, titleY, room);
 			else ui.drawTextMid(h.title, h.titleFont, TEXT, l.title.x, titleY, room);
 		}
 	}
@@ -700,7 +700,7 @@ namespace bp
 		if (!row.pill.empty()) right -= pill(right, cy, row.pill, row.tone) + 9;
 		// the focused row's name: the Title marquee, one pass (the cursor rested 1.5 s first: its rest)
 		int nameY = row.second.empty() ? cy : cy - 8;
-		if (row.focused && !row.off) ui.drawMarquee(row.name, row.font, ink, x, nameY, std::max(1, right - x), BUTTON, 1);
+		if (row.focused && !row.off) ui.drawMarquee(row.name, row.font, ink, x, nameY, std::max(1, right - x), 1);
 		else ui.drawTextMid(row.name, row.font, ink, x, nameY, std::max(1, right - x));
 		if (!row.second.empty())
 			ui.drawTextMid(row.second, F_I12, off(row.focused ? DIM_ON : DIM, row.off), x, cy + 9, std::max(1, right - x));

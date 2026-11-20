@@ -415,14 +415,7 @@ namespace bp
 		Uint8 fade = 255;
 		if (bgFadeAt) fade = (Uint8)std::lround(255.0 * std::min<Uint32>(SDL_GetTicks() - bgFadeAt, BG_FADE_MS) / BG_FADE_MS);
 		k.backdrop(all, bgTex, fade);
-		groundPage = bgTex;	// (mid-fade too: the newer page is near enough under a strip 4 units wide)
 		drawCost.groundMs += (SDL_GetPerformanceCounter() - t0) * 1000.0 / (double)SDL_GetPerformanceFrequency();
-	}
-
-	void Ui::fadeStrip(Rect part, SDL_Color ground)
-	{
-		if (groundPage) kit->backdropStrip({0, 0, W, H}, groundPage, part, ground.a);
-		else fill(part, ground);
 	}
 
 	lay::QuickPanel Ui::quickLayout(const Player& p) const

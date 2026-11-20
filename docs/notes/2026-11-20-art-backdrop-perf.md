@@ -46,3 +46,11 @@ contrast protection is unchanged, so a stop only goes lower where the theme's te
 generated orange test art: dark theme 66 66 90 90 94 → 60 60 90 90 92 (the head and title area show the art most;
 under the bar DIM_ON's protection keeps 90), Light 74 74 80 90 94 → 74 74 74 86 92. The `backdrop: the player's page
 composed` log line now prints the five veils.
+
+## 4. The marquee's edges: the text's own alpha, not a coloured band
+
+The Title marquee faded its ends by laying four strips of the ground's colour (BG, or BUTTON in a row) over the text:
+on anything but that plain colour (the backdrop, a card, a light theme's paper) it showed as a dark band. Now
+`drawTextAt` takes an `EdgeFade` and `Ui::drawFaded` draws the same cached text texture in vertical slices — whole
+between the ramps, 8 slices a 16-unit ramp at a falling alpha mod (times the marquee's own fade-in alpha). No texture
+is made per frame: 17 copies of one texture at most. `drawMarquee` lost its `ground` argument (five callers).

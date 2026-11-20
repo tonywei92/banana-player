@@ -588,11 +588,9 @@ namespace bp
 		// or the fallback's gradient — into one opaque 160 x 480 texture the caller keeps and destroys (null: none
 		// could be made); backdrop then draws that texture over `r`, stretched with linear filtering: one copy a
 		// frame, whatever else redraws (a marquee step, a slider frame). `fade` under 255 draws it at that alpha
-		// (a cross-fade: the previous backdrop under it at full). backdropStrip draws the part of it under `part`
-		// (in the same units as `r`) at `alpha`: what a fade over text lays down where the ground is the backdrop
+		// (a cross-fade: the previous backdrop under it at full)
 		SDL_Texture* backdropPage(const artbg::Art& art, const artbg::Backdrop& b);
 		void backdrop(Rect r, SDL_Texture* page, Uint8 fade = 255);
-		void backdropStrip(Rect r, SDL_Texture* page, Rect part, Uint8 alpha);
 	};
 
 	// ---- the More sheet's list (Ui::openMore; ui_more.cpp) ----
