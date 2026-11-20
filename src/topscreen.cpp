@@ -567,7 +567,10 @@ namespace bp
 		// (drainUnder), its sound on. Not while a reader has the panel. Down again, mpv's picture is drawn once more
 		PaneSpec pane;
 		bool idle = !shown.playing() && !photos.playing() && !player.topCardUp();
-		bool paneNow = !qrNow && !reader.isOpen() && !textReader.isOpen() && ui.topPane(pane, player, idle);
+		// the State card (Playing in your browser, Loading, Buffering) is the pane too, over what the cursor would show
+		const PaneSpec* stateCard = player.topState() ? player.topState() : photos.topState();
+		bool free = !qrNow && !reader.isOpen() && !textReader.isOpen();
+		bool paneNow = free && (stateCard ? (pane = *stateCard, true) : ui.topPane(pane, player, idle));
 		if (!paneNow && paneUp)
 		{
 			paneUp = false;

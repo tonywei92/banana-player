@@ -1363,22 +1363,22 @@ namespace bp
 		{
 			if (spinnerStep >= 0)
 			{
-				dropImage(OV_LOAD);
 				spinnerStep = -1;
+				topStateLoad = false;	// (the top panel drops the card at its next pass)
 			}
 			return;
 		}
 		int step = (int)(ticks() / 100 % 8) + (loading() ? 0 : 8);	// the word changes with the next step
 		if (step == spinnerStep) return;
 		spinnerStep = step;
-		// the state card (levelcard.h) with the spinner in its tile, over the middle (the last file's picture can still be up)
-		StateCardSpec spec;
-		spec.spinner = step % 8;
-		spec.title = loading() ? "Loading" : "Buffering";
-		spec.full = false;
-		const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
-		LevelCardImage card = drawStateCard(opts.fontsDir, pw, ph, spec);
-		putImage(OV_LOAD, card, (pw - card.w) / 2, (ph - card.h) / 2);
+		// the State card (previewpane.h) with the spinner in its tile: the top panel draws it (topscreen.cpp), over what
+		// is under it (the last file's picture can still be up)
+		topStateLoad = true;
+		topStateLoadSpec = PaneSpec{};
+		topStateLoadSpec.state = true;
+		topStateLoadSpec.spinner = step % 8;
+		topStateLoadSpec.title = loading() ? "Loading" : "Buffering";
+		topStateLoadSpec.key = std::string("load|") + topStateLoadSpec.title + "|" + std::to_string(step % 8);
 	}
 
 	void Player::checkPhoto()
@@ -1931,7 +1931,7 @@ namespace bp
 		auto px = std::make_shared<std::vector<uint8_t>>(premultipliedBgra(card));
 		uint64_t serial = ++levelSerial;
 		levelPixels[serial] = px;
-		if (!shownSerial[id] || id != OV_LOAD) fprintf(stderr, "card: show overlay %d %dx%d at %d,%d\n", id, card.w, card.h, x, y);
+		fprintf(stderr, "card: show overlay %d %dx%d at %d,%d\n", id, card.w, card.h, x, y);
 		shownSerial[id] = serial;
 		{
 			const float pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
@@ -1960,7 +1960,7 @@ namespace bp
 		// (its pixels go with this command's answer: an add still queued before it may read them)
 		uint64_t serial = ++levelSerial;
 		shownSerial[id] = 0;
-		if (id != OV_LOAD) fprintf(stderr, "card: drop overlay %d\n", id);
+		fprintf(stderr, "card: drop overlay %d\n", id);
 		mpv_command_async(mpv, LEVEL_REPLY + serial, rm);
 	}
 
@@ -2023,24 +2023,23 @@ namespace bp
 
 	void Player::showElsewhere(bool on, bool playing, const std::string& where, bool waiting, int hint, const char* const* glyph, int glyphH)
 	{
-		if (!on)
-		{
-			dropImage(OV_STATE);
-			return;
-		}
-		// the state card (levelcard.h), the whole top panel: the page's mark in the tile, who plays, what, and what to press
-		StateCardSpec spec;
-		spec.icon = {glyph, glyphH};
+		topStateElsewhere = on;
+		if (!on) return;
+		// the State card (previewpane.h): the page's mark in the tile, who plays, what, and what to press
+		PaneSpec& spec = topStateElsewhereSpec;
+		spec = PaneSpec{};
+		spec.state = true;
+		spec.iconRows = glyph;
+		spec.iconH = glyphH;
 		spec.title = std::string(waiting ? "Waiting for " : playing ? "Playing in " : "Paused in ") + where;
-		spec.line = waiting ? "Tap Play on that page to start the sound" : baseName(currentPath());
-		if (waiting) { spec.key = "B"; spec.hint = "play on the handheld instead"; }
+		spec.text = waiting ? "Tap Play on that page to start the sound" : baseName(currentPath());
 		// (only what works on the page shown below: A is the player's; elsewhere, where to go for it)
-		else if (hint == 1) { spec.key = "A"; spec.hint = "hold to play it here"; }
-		else if (hint == 2) spec.hint = "Go to the player to play it here";
+		if (waiting) spec.keys = {{"B", "play on the handheld instead"}};
+		else if (hint == 1) spec.keys = {{"A", "hold to play it here"}};
+		else if (hint == 2) spec.keys = {{"", "Go to the player to play it here"}};
 		// a song with the equalizer or an effect on: the browser plays it without them (they're the handheld's)
 		if (isAudio && (settings.eqOn || settings.soundFx != SoundFx::None)) spec.foot = "Your equalizer and effects don't apply in the browser";
-		const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
-		putImage(OV_STATE, drawStateCard(opts.fontsDir, pw, ph, spec), 0, 0);
+		spec.key = "else|" + spec.title + "|" + spec.text + "|" + (spec.keys.empty() ? "" : spec.keys[0].second) + "|" + spec.foot;
 	}
 
 	void Player::wakeOutput()

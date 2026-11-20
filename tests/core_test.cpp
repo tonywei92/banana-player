@@ -10517,6 +10517,22 @@ static void testKitLayoutReaders()
 	CHECK_EQ(wl.brandTile.w, 0);
 	CHECK_EQ(previewPane(false).icon.w, 0);
 	// the Brand mark: a 22 grid, scaled by size / 22, every edge on a whole unit at 22
+	// the State card: a centred column from 104, each part under the one before, nothing asked for takes no room
+	StateCard sc = stateCard(true, true, true, true);
+	CHECK_EQ(sc.tile.y, 104);
+	CHECK_EQ(sc.tile.w, 72);
+	CHECK_EQ(sc.tile.x * 2 + sc.tile.w, 640);
+	CHECK(sc.title.y >= sc.tile.y + sc.tile.h);
+	CHECK(sc.line.y >= sc.title.y + sc.title.h);
+	CHECK(sc.bar.y >= sc.line.y + sc.line.h);
+	CHECK(sc.time.y >= sc.bar.y + sc.bar.h);
+	CHECK(sc.hint.y >= sc.time.y + sc.time.h);
+	CHECK_EQ(sc.bottom, sc.hint.y + sc.hint.h);
+	StateCard bare = stateCard(false, false, false, false);
+	CHECK_EQ(bare.line.w, 0);
+	CHECK_EQ(bare.bar.w, 0);
+	CHECK_EQ(bare.hint.w, 0);
+	CHECK(bare.bottom < sc.bottom);
 	BrandMark bm = brandMark(20, 16, 22);
 	CHECK_EQ((int)bm.body[2], 22);
 	CHECK_EQ((int)bm.bar[0], 23);

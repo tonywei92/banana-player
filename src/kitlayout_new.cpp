@@ -81,6 +81,44 @@ namespace bp
 			return m;
 		}
 
+		StateCard stateCard(bool line, bool bar, bool time, bool hint)
+		{
+			StateCard c;
+			const int side = 40, colW = PANEL_W - 2 * side;
+			int y = STATE_TOP;
+			c.tile = {(PANEL_W - STATE_TILE) / 2, y, STATE_TILE, STATE_TILE};
+			y += STATE_TILE + 16;
+			c.title = {side, y, colW, 34};
+			y += 34;
+			c.line = c.bar = c.time = c.hint = {0, 0, 0, 0};
+			if (line)
+			{
+				y += 9;
+				c.line = {side, y, colW, 22};
+				y += 22;
+			}
+			if (bar)
+			{
+				y += 16;
+				c.bar = {(PANEL_W - STATE_BAR_W) / 2, y, STATE_BAR_W, 6};
+				y += 6;
+				if (time)
+				{
+					y += 8;
+					c.time = {side, y, colW, 16};
+					y += 16;
+				}
+			}
+			if (hint)
+			{
+				y += 18;
+				c.hint = {side, y, colW, 22};
+				y += 22;
+			}
+			c.bottom = y;
+			return c;
+		}
+
 		Pane previewPane(bool cover, bool welcome)
 		{
 			Pane p;

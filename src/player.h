@@ -4,6 +4,7 @@
 #include "history.h"
 #include "levelcard.h"
 #include "photo.h"
+#include "previewpane.h"
 #include "resume.h"
 #include "settings.h"
 #include "tracks.h"
@@ -265,7 +266,9 @@ namespace bp
 		void stop();
 		bool playing() const { return !playlist.empty(); }
 		// a Loading, state or note card of the player's is up on the top panel (the Preview pane waits for it to go)
-		bool topCardUp() const { return shownSerial[OV_LOAD] || shownSerial[OV_STATE] || shownSerial[OV_NOTE]; }
+		bool topCardUp() const { return shownSerial[OV_NOTE] != 0; }
+		// the State card the top panel draws: "Playing in your browser" first, else Loading / Buffering; null: none
+		const PaneSpec* topState() const { return topStateElsewhere ? &topStateElsewhereSpec : topStateLoad ? &topStateLoadSpec : nullptr; }
 		std::string currentPath() const { return playlist.empty() ? "" : playlist[current]; }
 		// the files it plays from, in their order (index(): the one playing)
 		const std::vector<std::string>& paths() const { return playlist; }
@@ -396,7 +399,9 @@ namespace bp
 		// the level card's pixels by the serial of the command that took them: mpv reads them when the command runs
 		// (and again while shown), so they live till its answer, the shown one till it's replaced or removed
 		// overlay-add's ids (the idle icon has 0): later ones are drawn over earlier ones
-		static constexpr int OV_LOAD = 2, OV_STATE = 3, OV_LEVEL = 4, OV_NOTE = 5, OV_COUNT = 6;	// 1: the song art (ART_OVERLAY), under every card
+		static constexpr int OV_LEVEL = 4, OV_NOTE = 5, OV_COUNT = 6;	// 1: the song art (ART_OVERLAY), under every card
+		bool topStateElsewhere = false, topStateLoad = false;
+		PaneSpec topStateElsewhereSpec, topStateLoadSpec;
 		std::map<uint64_t, std::shared_ptr<std::vector<uint8_t>>> levelPixels;
 		uint64_t levelSerial = 0, shownSerial[OV_COUNT] = {};
 		VizRect cardAt[OV_COUNT] = {};	// each card's box while it's up, in 640x480 units (the native bars leave it clear)

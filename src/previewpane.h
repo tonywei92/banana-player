@@ -27,6 +27,16 @@ namespace bp
 		bool labelDanger = false;
 		std::vector<std::pair<std::string, std::string>> rows;	// the two-column list: dim name, value
 		std::vector<std::pair<std::string, std::string>> keys;	// the key line: caps, then what they do
+		// the State card (lay::stateCard): the whole screen is a centred column: the tile with an icon (iconRows) or the
+		// spinner (>= 0: the lit dot), the title (label is unused), `text` the line, the bar (share >= 0) with timeLine,
+		// `keys[0]` the hint with its cap, `foot` at the foot. `danger`: the title and icon in DANGER
+		bool state = false;
+		int spinner = -1;
+		bool danger = false;
+		const char* const* iconRows = nullptr;
+		int iconH = 0;
+		float share = -1;
+		std::string timeLine, foot;
 		bool welcome = false;	// a fresh install's welcome: the app's icon (84) beside the label and title, in place of the brand mark
 		PaneImage icon;	// the welcome's icon picture; none: the brand mark drawn large
 		bool cover = false;	// the cover layout (the cover's place; the picture comes from coverArt)

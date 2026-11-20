@@ -191,6 +191,58 @@ namespace bp
 			bx(m.knob, 0, 0, TEXT);
 		}
 
+		// the State card: the app's own drawing of "Playing in your browser", Loading, Buffering (and a failure), in the
+		// main tokens on the theme's ground (docs/redesign/components.md, State card)
+		void stateCard(PaneDraw& d, const PaneSpec& s)
+		{
+			using namespace theme;
+			Canvas& c = d.c;
+			const bool hint = !s.keys.empty();
+			lay::StateCard l = lay::stateCard(!s.text.empty(), s.share >= 0, s.share >= 0 && !s.timeLine.empty(), hint);
+			const Rgb tone = s.danger ? DANGER : ACCENT;
+			d.flat(l.tile.x, l.tile.y, l.tile.w, l.tile.h, 18, SURFACE, edgeOf(SURFACE));
+			float cx = l.tile.x + l.tile.w / 2.f, cy = l.tile.y + l.tile.h / 2.f;
+			if (s.spinner >= 0)
+			{
+				// eight dots round the tile's middle, one lit going round, the ones behind it fading
+				for (int i = 0; i < 8; i++)
+				{
+					double a = i * 3.14159265358979 / 4;
+					float r = 18, dd = 7;
+					float dx = cx + (float)std::sin(a) * r, dy = cy - (float)std::cos(a) * r;
+					int age = (s.spinner % 8 - i + 8) % 8;
+					int alpha = age == 0 ? 255 : age == 1 ? 190 : age == 2 ? 125 : 70;
+					d.box(dx - dd / 2, dy - dd / 2, dd, dd, dd / 2, tone, alpha);
+				}
+			}
+			else if (s.iconRows)
+			{
+				float is = s.danger ? 30.f : 34.f;
+				c.glyph(CardGlyph{s.iconRows, s.iconH}, d.S(is), d.X(cx - is / 2), d.Y(cy - is / 2), tone);
+			}
+			auto centred = [&](Face f, float size, const std::string& t, const lay::Box& b, Rgb ink) {
+				std::string fit = c.fit(f, size, t, (int)d.S(b.w), f != PIXEL);
+				d.text(f, size, fit, b.x + (b.w - d.textW(f, size, fit)) / 2, b.y + (b.h - d.lineH(f, size) / c.k) / 2, ink);
+			};
+			centred(PIXEL, 28, s.title, l.title, tone);
+			if (l.line.w) centred(PIXEL, 15.5f, s.text, l.line, TEXT);
+			if (l.bar.w)
+			{
+				d.box(l.bar.x, l.bar.y, l.bar.w, l.bar.h, 3, TRACK);
+				if (s.share > 0) d.box(l.bar.x, l.bar.y, std::max(6.f, l.bar.w * std::min(1.f, s.share)), l.bar.h, 3, ACCENT);
+				if (l.time.w) centred(PIXEL, 13, s.timeLine, l.time, DIM);
+			}
+			if (hint)
+			{
+				const auto& k = s.keys[0];
+				float tw = d.textW(PIXEL, 14, k.second), capW = k.first.empty() ? 0 : std::max(19.f, d.textW(PIXEL, 12, k.first) + 10) + 7;
+				float at = l.hint.x + (l.hint.w - tw - capW) / 2, my = l.hint.y + l.hint.h / 2.f;
+				if (!k.first.empty()) at += d.cap(k.first, at, my, ACCENT, BG) + 7;
+				d.text(PIXEL, 14, k.second, at, my - d.lineH(PIXEL, 14) / c.k / 2, DIM_ON);
+			}
+			if (!s.foot.empty()) centred(PIXEL, 13, s.foot, {40, 480 - 30 - 16, 560, 16}, DIM);
+		}
+
 		// one theme's swatch: its BG, a SURFACE box with its edge, an ACCENT box, a TEXT line and an ACCENT line (the
 		// mock-up's thSwatch: a picture of that theme, whatever theme is drawn now)
 		void swatch(PaneDraw& d, lay::Box b, const theme::Palette& t, bool chosen)
@@ -287,6 +339,14 @@ namespace bp
 			px[1] = BG.g;
 			px[2] = BG.b;
 			px[3] = 255;
+		}
+		if (s.state)
+		{
+			stateCard(d, s);
+			out.w = w;
+			out.h = h;
+			out.rgba = std::move(c.v);
+			return out;
 		}
 		lay::Pane l = lay::previewPane(s.cover, s.welcome);
 		if (s.welcome)

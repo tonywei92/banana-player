@@ -41,18 +41,6 @@ namespace bp
 	// The note: one line in yellow (red for a failure) with an optional icon, and an optional second line
 	LevelCardImage drawNoteCard(const std::string& fontsDir, int panelH, CardGlyph icon, const std::string& line1,
 		const std::string& line2, bool danger);
-	// The state card: a centred column (a tile with an icon or the spinner, a title, a line, an optional bar and its
-	// time line, a hint with its key cap, a foot line). Whole panel (full) or just the column on a card
-	struct StateCardSpec
-	{
-		CardGlyph icon;
-		int spinner = -1;	// >= 0: the spinner's lit dot (0-7) in the tile instead of the icon
-		bool danger = false;
-		std::string title, line, hint, key, foot, timeLine;
-		float share = -1;	// the bar, 0..1; < 0: none
-		bool full = true;
-	};
-	LevelCardImage drawStateCard(const std::string& fontsDir, int panelW, int panelH, const StateCardSpec& spec);
 	// where a card goes on a panel pw x ph: the level, label and chapter cards top right (20 units from the edges), the
 	// note at the bottom centre (26 up)
 	void levelCardPos(int pw, int ph, const LevelCardImage& card, int& x, int& y);

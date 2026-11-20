@@ -44,7 +44,7 @@ pure `lay::` function in `src/kitlayout.*`.
 | 29 | Tile | `Kit::tile`, `Kit::choiceTile`, `Kit::settingTile`; `lay::tileCell` | present |
 | 30 | Cover cell | **was missing** | **built: `Kit::coverTile`; `lay::coverTile`, `coverCells`** |
 | 31 | Art placeholder | `Kit::artPlaceholder`; `artph.h` (`artph::shape`) | present |
-| 32 | Brand mark | `Kit::brandMark` | present |
+| 32 | Brand mark | `lay::brandMark` (geometry), `brand()` in `previewpane.cpp` | present (top panel) |
 | 33 | QR code | `src/ui_web.cpp`'s code; `lay::qrPanel` | reuse (Ui) |
 | 34 | Recent card and Continue card | `Kit::recentCard`, `Kit::continueCard`; `lay::recentCard`, `continueCard` | present |
 | 35 | Empty state | `Kit::emptyState`; `lay::emptyState` (older pages still `Ui::drawEmpty`) | present |
@@ -53,8 +53,8 @@ pure `lay::` function in `src/kitlayout.*`.
 | 38 | Pan area and drag area | the photo and document viewers (`ui_docs.cpp`, `drawPhoto`) | reuse (Ui) |
 | 39 | Level card | `src/levelcard.*` (`drawLevel`, chapter / EQ / note cards) | reuse (Ui) |
 | 40 | Note | `player.osd`, `showNoteCard`, `main`'s top-panel note | reuse (Ui) |
-| 41 | State card | `player.cpp` / `ui_main.cpp` top-panel cards | reuse (Ui) |
-| 42 | Preview pane | `Ui::TopPane` (`previewpane.h`); `lay::previewPane` | present (elsewhere) |
+| 41 | State card | `lay::stateCard`, `PaneSpec::state` (`previewpane.cpp`); `Player::topState()` | present (top panel; Playing in your browser, Loading, Buffering) |
+| 42 | Preview pane | `Ui::topPane` / `Ui::idlePane` (`ui_toppane.cpp`), `previewpane.h`; `lay::previewPane` | present: every shell section while nothing plays |
 | 43 | Song layout | `src/songlayout.*`; `player.cpp` | reuse (Ui) |
 | 44 | Focus | every `Kit` component's `focused` input (`drawFocus` on older pages) | present |
 | 45 | Away-from-normal mark | `KitNew::awayInk`, `KitNew::awayDot`; `lay::away`, `awayLevel` | present (kit-new) |

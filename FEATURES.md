@@ -1683,6 +1683,10 @@ combination instead.)
   unplugged while something plays pauses it, so the sound doesn't go on from the speakers. Plugging back in doesn't play
   (press play). `log.txt`: `audio: headphones out, paused` (or `Bluetooth headphones disconnected`, `USB sound card
   unplugged`).
+- **Top screen with nothing playing:** a Preview pane drawn by the app in the theme's colours: the brand mark and name, then
+  what the bottom screen's cursor is on (a Recent card on Home, a file's kind and size in Files, a video, an album, a
+  book, a setting's help, Search, Extensions). A fresh install shows the welcome: the app's icon, the name and three ways
+  to start. Loading, Buffering and "Playing in your browser" are one State card (tile with icon or spinner, title, line, key).
 - **Sleep:** when nothing plays, the handheld sleeps after BananaOS's idle minutes (its `autosleep_minutes`, 10 unless
   changed in `/data/banana/bananad.conf`; 0 is never), counted from the last button, touch or page turn in the player.
   The player asks bananad for the sleep as the menu's Sleep does. It stays awake while: a song or video plays (paused

@@ -502,6 +502,16 @@ namespace bp
 			float bodyRadius, barRadius, slateRadius;
 		};
 		BrandMark brandMark(float x, float y, float size);
+		// The State card (components.md): the whole top screen, a centred column from 104: a 72 tile (an icon, or the
+		// spinner), the title (34 tall), a line (22), an optional bar (6 wide 300) and its time (16), a hint line (22)
+		// with its key cap. A part that is not asked for has w 0 and takes no room
+		constexpr int STATE_TOP = 104, STATE_TILE = 72, STATE_BAR_W = 300;
+		struct StateCard
+		{
+			Box tile, title, line, bar, time, hint;
+			int bottom = 0;	// where the column ends
+		};
+		StateCard stateCard(bool line, bool bar, bool time, bool hint);
 		// the Theme row's swatches: n of 84 x 30 in rows of `perRow`, 9 apart, each with its name's line (14) under it
 		// and 9 between the rows, from (left, top): eighteen as three rows of six. The row is 6 * 84 + 5 * 9 = 549, inside the
 		// text column's 552
