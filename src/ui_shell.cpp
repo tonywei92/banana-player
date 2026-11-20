@@ -495,7 +495,7 @@ namespace bp
 		st.playing = false;	// (the rail's Now playing key shows the bars on a shell page: none in the header, the owner)
 		st.tick = (int)(SDL_GetTicks() / 166);
 		if (ui.incognito) st.badges.push_back({&G_INCOGNITO, ""});
-		if (ui.webIndicatorShown(p)) st.badges.push_back({&G_WEB, ""});
+		if (ui.webIndicatorShown(p)) st.badges.push_back({&G_QR, ""});
 		int left = k.status(more.x - lay::SP8, cy, st);
 		// the cluster is one touch target (F opens Quick settings): its mark, Wi-Fi, battery and clock
 		statusBox = left < more.x - lay::SP8 ? lay::Box{left - 8, 0, more.x - lay::SP8 - (left - 8), 54} : lay::Box{0, 0, 0, 0};

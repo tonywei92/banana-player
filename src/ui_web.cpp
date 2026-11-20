@@ -114,7 +114,7 @@ namespace bp
 	{
 		if (!webIndicatorShown(p)) return;
 		// dim while no browser watches, yellow with one; never blinking (it's a state, not news)
-		drawGlyphMid(G_WEB, right - 9, cy, webClients() > 0 ? ACCENT : DIM, 2);
+		drawGlyphMid(G_QR, right - 9, cy, webClients() > 0 ? ACCENT : DIM, 2);
 		webInd = {right - 31, cy - 24, 44, 48};
 	}
 
@@ -310,7 +310,7 @@ namespace bp
 			st.clock = ui.clockText(p);
 			st.battery = ui.battery.percent;
 			st.charging = ui.battery.charging;
-			if (ui.webIndicatorShown(p)) st.badges.push_back({&G_WEB, ""});
+			if (ui.webIndicatorShown(p)) st.badges.push_back({&G_QR, ""});
 			return ui.kit->status(right, cy, st);
 		};
 		k.header(header, hd);
@@ -459,7 +459,7 @@ namespace bp
 		}
 		int n = ui.webClients();
 		int cy = l.pin.y + l.pin.h + 14;
-		ui.drawGlyphMid(G_WEB, l.pin.x + 9, cy, n ? ACCENT : DIM);
+		ui.drawGlyphMid(G_QR, l.pin.x + 9, cy, n ? ACCENT : DIM);
 		if (n) ui.drawTextMid(std::to_string(n) + (n == 1 ? " browser connected" : " browsers connected"), F_I12, TEXT,
 			l.pin.x + 28, cy, l.pin.w - 28);
 		else ui.drawTextMid("No browser connected yet", F_I12, DIM, l.pin.x + 28, cy, l.pin.w - 28);

@@ -1117,7 +1117,7 @@ namespace bp
 			st.wifi = 3;
 			st.battery = 64;
 			st.clock = "9:41";
-			st.badges = {{&G_INCOGNITO, "Incognito", false}, {&G_WEB, "Chrome", false}};
+			st.badges = {{&G_INCOGNITO, "Incognito", false}, {&G_QR, "Chrome", false}};
 			int left = k.status(624, 22, st);
 			ui.drawTextMid("Header status", F_I12, DIM, 16, 22, left - 24);
 			Kit::Status low;
@@ -1722,7 +1722,7 @@ namespace bp
 			m.key1 = "Browse Files";
 			m.glyph1 = &G_FOLDER;
 			m.key2 = "Web dashboard";
-			m.glyph2 = &G_WEB;
+			m.glyph2 = &G_QR;
 			k.emptyState(lay::emptyState({16, 2, 608, 238}, 3, 2), m);
 			Kit::Empty v;
 			v.glyph = &G_FILM;
@@ -1734,7 +1734,7 @@ namespace bp
 			v.key1 = "Browse Files";
 			v.glyph1 = &G_FOLDER;
 			v.key2 = "Web dashboard";
-			v.glyph2 = &G_WEB;
+			v.glyph2 = &G_QR;
 			k.emptyState(lay::emptyState({16, 240, 608, 240}, 3, 2), v);
 		}
 

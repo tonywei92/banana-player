@@ -1791,7 +1791,7 @@ int main(int argc, char** argv)
 						{
 							// card:state|eq|note|like|fail: a top-panel card as its feature would show it (for a shot:)
 							std::string what = step.substr(5);
-							if (what == "state") player.showElsewhere(true, true, "Chrome on Mac", false, 1, G_WEB_ROWS, G_WEB.h);
+							if (what == "state") player.showElsewhere(true, true, "Chrome on Mac", false, 1, G_QR_ROWS, G_QR.h);
 							else if (what == "off") player.showElsewhere(false);
 							else if (what == "eq") player.showEqCard();
 							else if (what == "note") player.osd("Speed 1.5\xc3\x97");
@@ -1961,7 +1961,7 @@ int main(int argc, char** argv)
 					(player.loaded ? "|L|" : "|-|") + player.currentPath() : "";
 				if (shown != elsewhereShown)
 				{
-					player.showElsewhere(elsewhere, ui.pagePlaying(), name, waiting, hint, G_WEB_ROWS, G_WEB.h);
+					player.showElsewhere(elsewhere, ui.pagePlaying(), name, waiting, hint, G_QR_ROWS, G_QR.h);
 					elsewhereShown = shown;
 				}
 			}
