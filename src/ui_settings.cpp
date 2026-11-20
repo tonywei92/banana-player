@@ -391,7 +391,7 @@ namespace bp
 		if (ui.setGroup < 0)
 		{
 			// the groups as tiles, two to a row (the mock-up's Settings tile: a mark, a name, what it is set to now)
-			static const Glyph* MARKS[GROUPS] = {&G_PLAY, &G_CC, &G_NOTE, &G_PICTURE, &G_BOOK, &G_FOLDER, &G_SUN, &G_WEB,
+			static const Glyph* MARKS[GROUPS] = {&G_PLAY, &G_CC, &G_NOTE, &G_PICTURE, &G_BOOK, &G_FOLDER, &G_SUN, &G_QR,
 				&G_DOWNLOAD, &G_INFO};
 			for (int g = 0; g < GROUPS; g++)
 			{

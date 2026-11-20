@@ -527,7 +527,7 @@ namespace bp
 		// while a dashboard page that can play is open, or one plays it
 		if (ui.playOnShown())
 		{
-			m.rows.push_back(item(&G_WEB, "Play on...", [self](Player&) { self->openPlayOn(); return false; }));
+			m.rows.push_back(item(&G_QR, "Play on...", [self](Player&) { self->openPlayOn(); return false; }));
 			m.rows.back().note = ui.outputName();
 		}
 		m.cols = 2;
@@ -909,7 +909,7 @@ namespace bp
 				// the one playing: the play mark and its pill, as the old lists had it; the others their number
 				if (now)
 				{
-					row.glyph = ui.pageDrives(p) ? &G_WEB : p.paused ? &G_PAUSE : &G_PLAY;
+					row.glyph = ui.pageDrives(p) ? &G_QR : p.paused ? &G_PAUSE : &G_PLAY;
 					row.pill = ui.pageDrives(p) ? "Browser" : p.paused ? "Paused" : "Now";
 					row.tone = ui.pageDrives(p) || p.paused ? Kit::Pill::Fact : Kit::Pill::Live;
 				}
@@ -2137,7 +2137,7 @@ namespace bp
 			Kit& k = *ui.kit;
 			std::string title = !p.title.empty() ? p.title : entryTitle(p.currentPath());
 			double pos = ui.shownPosition(p);
-			k.sheet(s, {&G_WEB, "Play on", title + (pos >= 0 ? " \xC2\xB7 from " + formatTime(pos) : "")});
+			k.sheet(s, {&G_QR, "Play on", title + (pos >= 0 ? " \xC2\xB7 from " + formatTime(pos) : "")});
 			SessionHost& sh = SessionHost::get();
 			std::string cur = here();
 			for (int i = 0; i < s.spec.rows; i++)
@@ -2254,7 +2254,7 @@ namespace bp
 		else if (ui.predicting(p))
 		{
 			// a page plays it: where is the first thing to know
-			stMark = &G_WEB;
+			stMark = &G_QR;
 			state = (SessionHost::get().pageWaits() ? "Waiting for " : ui.pagePlaying() ? "In " : "Paused in ") + ui.pageName();
 		}
 		else if (p.paused)

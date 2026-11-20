@@ -960,7 +960,7 @@ namespace bp
 			}
 			else if (row == Q_WEB)
 			{
-				glyph = &G_WEB;
+				glyph = &G_QR;
 				name = "Web dashboard";
 				// incognito holds the dashboard off: the switch keeps its value, the tile says why, nothing changes
 				off = incognito;
@@ -1265,7 +1265,7 @@ namespace bp
 				: it == CTX_PL_NEW ? &G_PLUS : it == CTX_PL_PLAY || it == CTX_PL_HERE ? &G_PLAY : it == CTX_PL_SHUFFLE ? &G_SHUFFLE
 				: it == CTX_PL_RENAME ? &G_PENCIL : it == CTX_PL_DEDUP || it == CTX_PL_REMOVE ? &G_MINUS : it == CTX_PL_MISSING ? &G_TRASH : it == CTX_PL_SHOW ? &G_FOLDER
 				: it == CTX_PL_ADD_FILES ? &G_PLUS : it == CTX_PL_ADD_FOLDER ? &G_FOLDER : it == CTX_PL_SELECT || it == CTX_SELECT_FILES ? &G_BOX_ON
-				: it == CTX_PL_MOVE || it == CTX_F_MOVE ? &G_MOVE : it == CTX_ADD_TO ? &G_PLAYLIST : it == CTX_WEB ? &G_WEB
+				: it == CTX_PL_MOVE || it == CTX_F_MOVE ? &G_MOVE : it == CTX_ADD_TO ? &G_PLAYLIST : it == CTX_WEB ? &G_QR
 				: it == CTX_F_COPY ? &G_PLUS : it == CTX_F_RENAME ? &G_PENCIL : it == CTX_F_INFO ? &G_INFO : &G_CROSS;
 			// the mini bar's: what plays (or was stopped for a photo); main's player, also over a photo
 			if (it >= CTX_NP_NOW)
