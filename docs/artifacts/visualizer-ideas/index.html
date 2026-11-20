@@ -1,0 +1,607 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizer ideas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+	--bg: #f4f1ea; --card: #fffdf8; --ink: #1b1a20; --dim: #6a665e; --rule: #ddd6c6; --chip: #ebe6da; --on: #1b1a20; --on-ink: #fffdf8;
+	--ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+	--mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+	:root { --bg: #0e0e10; --card: #17171a; --ink: #e6e3dc; --dim: #96938c; --rule: #2c2c31; --chip: #222226; --on: #e8e4da; --on-ink: #0b0b0d; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 var(--ui); }
+header { max-width: 1180px; margin: 0 auto; padding: 44px 16px 8px; }
+h1 { font: 700 clamp(30px, 5vw, 46px)/1.05 var(--ui); letter-spacing: -0.025em; margin: 0 0 10px; }
+header p { margin: 0; max-width: 62ch; color: var(--dim); }
+.bar { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--rule); }
+.bar-in { max-width: 1180px; margin: 0 auto; padding: 10px 16px; display: flex; gap: 10px 18px; flex-wrap: wrap; align-items: center; }
+.grp { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.grp > span { font: 600 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); margin-right: 2px; }
+button { font: 500 13.5px/1 var(--ui); color: var(--ink); background: var(--chip); border: 1px solid transparent; border-radius: 999px; padding: 8px 12px; cursor: pointer; display: inline-flex; gap: 7px; align-items: center; }
+button:hover { border-color: var(--dim); }
+button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+button[aria-pressed="true"] { background: var(--on); color: var(--on-ink); }
+button i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1px rgba(128,128,128,.45); }
+main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 80px; display: grid; gap: 22px; }
+.card { background: var(--card); border: 1px solid var(--rule); border-radius: 18px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.screen { border-radius: 10px; overflow: hidden; line-height: 0; box-shadow: 0 0 0 1px var(--rule); }
+canvas { width: 100%; height: auto; aspect-ratio: 4 / 3; display: block; }
+.notes { padding: 6px 8px 6px 0; min-width: 0; }
+.kind { font: 600 11px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+h2 { font: 700 27px/1.1 var(--ui); letter-spacing: -0.02em; margin: 8px 0 6px; }
+h2 small { font: 600 12px/1 var(--mono); color: var(--dim); margin-right: 8px; letter-spacing: 0; vertical-align: 3px; }
+.what { margin: 0 0 14px; font-size: 16.5px; }
+dl { margin: 0; display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 7px 12px; font-size: 13.5px; line-height: 1.45; }
+dt { font: 600 11px/1.75 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); }
+dd { margin: 0; }
+footer { max-width: 1180px; margin: 0 auto; padding: 0 16px 60px; color: var(--dim); font-size: 13.5px; }
+@media (max-width: 860px) {
+	.card { grid-template-columns: 1fr; gap: 10px; padding: 10px; }
+	.notes { padding: 4px 6px 8px; }
+	header { padding-top: 28px; }
+	.bar-in { padding: 8px 12px; gap: 8px 12px; }
+	button { padding: 7px 10px; }
+}
+/* the contact sheet the screenshots are taken from: ?sheet */
+body.sheet header, body.sheet .bar, body.sheet footer, body.sheet .notes { display: none; }
+body.sheet main { max-width: none; padding: 6px; gap: 6px; grid-template-columns: repeat(2, 640px); }
+body.sheet .card { display: block; padding: 0; border: 0; border-radius: 0; }
+body.sheet .screen { border-radius: 0; box-shadow: none; }
+body.sheet canvas { width: 640px; }
+</style>
+</head>
+<body>
+<header>
+	<h1>Visualizer ideas</h1>
+	<p>Ten more styles for the top panel, drawn here as they would be on the handheld: 640 × 480, flat shapes, the theme's own colours. The music is synthetic (a kick on every beat, a snare, hats, a bass line and a tune, with a quiet stretch every sixteen bars), so every signal a style listens to can be seen moving.</p>
+</header>
+<div class="bar"><div class="bar-in">
+	<div class="grp" id="themes"><span>Theme</span></div>
+	<div class="grp" id="modes"><span>Layout</span>
+		<button data-mode="alone" aria-pressed="true">Alone</button>
+		<button data-mode="art" aria-pressed="false">With art</button>
+	</div>
+	<div class="grp"><span>Sound</span>
+		<button id="mute" aria-pressed="false">Silence</button>
+		<button id="pause" aria-pressed="false">Pause</button>
+	</div>
+</div></div>
+<main id="main"></main>
+<footer>Previews only: canvas 2D standing in for the player's SDL2 / GL shapes. Costs are estimates from the shape counts, against Pocket console's measured 1,420 vertices and 0 blended pixels.</footer>
+
+<script>
+'use strict';
+// ───────── themes: src/theme.cpp BASES (bg, surface, button, pressed, track, rule, text, dim, dim-on, accent, on-accent, danger)
+const BASES = [
+	['dark', 'Dark', 0x0B0B0D, 0x17171A, 0x2A2A2F, 0x424249, 0x222226, 0x2E2E34, 0xC2C4CA, 0x8A8C94, 0xA6A8B0, 0xE8E4DA, 0x0B0B0D, 0xF47067],
+	['light', 'Light', 0xF7F4EC, 0xFFFDF8, 0xE6E0D2, 0xD0C9B8, 0xDED8C9, 0xD5CEBE, 0x1B1A20, 0x625E56, 0x55514A, 0x7A5200, 0xFFFDF8, 0xA3261D],
+	['midnight-blue', 'Midnight blue', 0x040816, 0x0C142E, 0x1A2649, 0x2C3C6C, 0x131C3A, 0x202C52, 0xE1E7F5, 0x8893B0, 0xA5AFCA, 0x8CC8FF, 0x000000, 0xFF7A70],
+	['sakura', 'Sakura', 0xFFE6E0, 0xFFF3EF, 0xE8B3CF, 0xC1839F, 0xFACFD8, 0xE8B3CF, 0x561F33, 0x8A5069, 0x6F3C55, 0x852A59, 0xFFE6E0, 0x7A3800],
+	['gundam', 'Gundam', 0xE8ECF4, 0xFFFFFF, 0xF3F5FA, 0xD5DDEE, 0xCDD4E3, 0xC3CBDB, 0x141B33, 0x5A5B6D, 0x464755, 0x1A56C9, 0xFFFFFF, 0xB81F28],
+	['yellow', 'Yellow', 0x000000, 0x121116, 0x26242E, 0x3E3B4A, 0x1E1D24, 0x2A2833, 0xE8E2D3, 0x8F8A80, 0xABA597, 0xFFD23F, 0x000000, 0xF0645A],
+	['mint', 'Mint', 0x050D0C, 0x0D1917, 0x1A2E2B, 0x2A4642, 0x132321, 0x213734, 0xDDEBE7, 0x859A95, 0xA1B5B0, 0x6FE0C2, 0x050D0C, 0xFF7A70],
+	['16-bit', '16-bit', 0xE4E3EA, 0xF4F3F8, 0xCFCDDC, 0xB8B5CC, 0xD6D4E0, 0xC6C4D3, 0x26242E, 0x5E5B6B, 0x4F4C5C, 0x55429C, 0xF4F3F8, 0xA81E2A],
+	['high-contrast', 'High contrast', 0x000000, 0x0A0A0A, 0x1E1E1E, 0x3A3A3A, 0x2B2B2B, 0x5E5E5E, 0xFFFFFF, 0xC6C6C6, 0xD8D8D8, 0xFFE14D, 0x000000, 0xFF8A80],
+];
+const rgb = h => [h >> 16 & 255, h >> 8 & 255, h & 255];
+const css = c => 'rgb(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ')';
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const lum = c => { const f = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const THEMES = {};
+for (const b of BASES) {
+	const k = ['BG', 'SURFACE', 'BUTTON', 'PRESSED', 'TRACK', 'RULE', 'TEXT', 'DIM', 'DIM_ON', 'ACCENT', 'ON_ACCENT', 'DANGER'];
+	const P = { id: b[0], name: b[1] };
+	k.forEach((n, i) => P[n] = rgb(b[i + 2]));
+	P.light = lum(P.BG) > 0.4;
+	// the one derived ink every style shares (as pocketInks' inkOn): ACCENT, moved towards TEXT in 10% steps till 3:1 on BG
+	let ink = P.ACCENT;
+	for (let i = 1; i <= 10 && contrast(ink, P.BG) < 3; i++) ink = mix(P.ACCENT, P.TEXT, i / 10);
+	P.INK = ink;
+	// a quiet line that still shows on BG (RULE is very close to BG in the dark themes): RULE 35% towards DIM
+	P.LINE = mix(P.RULE, P.DIM, P.light ? 0.25 : 0.35);
+	P.tint = t => mix(P.BG, P.INK, t);	// an opaque wash of the ink on BG: nothing is blended
+	THEMES[P.id] = P;
+}
+
+// ───────── the song: a synthetic spectrum, 48 bands (as the player's widest), stereo, loudness, beats
+const BPM = 104, STEP = 60 / BPM / 4, NB = 48;
+const MEL = [0, 2, 4, -1, 7, 4, 2, -1, 4, 5, 7, 9, -1, 7, 4, 2, 0, -1, 4, 7, 9, 7, -1, 4, 5, 4, 2, 0, -1, 2, 4, -1];
+const hash = (a, b) => { let h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+function makeSig() {
+	const s = { t: 0, bands: new Float32Array(NB), L: new Float32Array(NB), R: new Float32Array(NB), peaks: new Float32Array(NB), hold: new Float32Array(NB),
+		bass: 0, mid: 0, high: 0, loud: 0, loudShown: 0, beats: 0, pulse: 0, lastBeat: -9, interval: STEP * 4, gain: 1, mute: false, lastQ: -1 };
+	const rl = new Float32Array(NB), rr = new Float32Array(NB);
+	const add = (c, w, a, pl, pr) => { for (let i = Math.max(0, Math.floor(c - 3 * w)); i <= Math.min(NB - 1, Math.ceil(c + 3 * w)); i++) { const g = a * Math.exp(-((i - c) / w) * ((i - c) / w)); rl[i] += g * pl; rr[i] += g * pr; } };
+	const last = (t, on) => { const k = Math.floor(t / STEP + 1e-6); for (let j = 0; j < 16; j++) { const q = k - j; if (q < 0) break; const a = on(q); if (a) return [t - q * STEP, q, a]; } return [9, -1, 0]; };
+	const bar = q => Math.floor(q / 16) % 16, st = q => q % 16;
+	const tacet = q => bar(q) == 15 && st(q) >= 8;	// half a bar of nothing at the end of the sixteen
+	const drums = q => bar(q) != 8 && bar(q) != 9 && !tacet(q);
+	s.step = dt => {
+		const t = s.t += dt;
+		rl.fill(0), rr.fill(0);
+		let e;
+		e = last(t, q => drums(q) && st(q) % 4 == 0); const kick = e;
+		add(2.6, 2.4, 1.15 * Math.exp(-e[0] * 9), 1, 1);
+		e = last(t, q => drums(q) && (st(q) == 4 || st(q) == 12));
+		add(17, 5, 0.5 * Math.exp(-e[0] * 11), 1, 1), add(30, 8, 0.42 * Math.exp(-e[0] * 14), 1, 1);
+		e = last(t, q => (drums(q) || bar(q) == 9) && q % 2 == 0 ? (q % 4 == 2 ? 0.85 : 0.45) : 0);
+		add(41.5, 4, e[2] * Math.exp(-e[0] * (st(e[1]) == 14 ? 7 : 22)), 0.6, 1);
+		e = last(t, q => !tacet(q) && [0, 3, 6, 8, 11, 14].includes(st(q)));
+		if (e[1] >= 0) add(6 + [0, 0, 3, 5][bar(e[1]) % 4] * 0.35, 1.5, 0.8 * Math.exp(-e[0] * 4.5), 1, 1);
+		e = last(t, q => !tacet(q) && q % 2 == 0 && MEL[(q >> 1) % 32] >= 0);
+		if (e[1] >= 0) { const n = MEL[(e[1] >> 1) % 32], a = (bar(e[1]) == 8 ? 0.6 : 0.85) * Math.exp(-e[0] * 3.6); add(21 + n * 0.95, 1.3, a, 1, 0.6), add(29.5 + n * 0.95, 1.2, a * 0.38, 1, 0.6); }
+		const padA = tacet(Math.floor(t / STEP)) ? 0 : 0.2 + 0.05 * Math.sin(t * 0.9);
+		add(13, 1.6, padA, 1, 1), add(16.5, 1.6, padA * 0.9, 1, 1), add(19.5, 1.6, padA * 0.8, 1, 1);
+		s.gain += ((s.mute ? 0 : 1) - s.gain) * (1 - Math.exp(-dt * 3.5));
+		if (s.gain < 0.003) s.gain = 0;
+		const f = Math.floor(t * 30), up = 1 - Math.exp(-dt * 45), dn = 1 - Math.exp(-dt * 7.5);
+		let lo = 0, mi = 0, hi = 0;
+		for (let i = 0; i < NB; i++) {
+			const j = 0.88 + 0.24 * hash(i, f);
+			const l = Math.min(1, rl[i] * j * s.gain), r = Math.min(1, rr[i] * j * s.gain), m = (l + r) / 2;
+			s.L[i] += (l - s.L[i]) * (l > s.L[i] ? up : dn);
+			s.R[i] += (r - s.R[i]) * (r > s.R[i] ? up : dn);
+			s.bands[i] += (m - s.bands[i]) * (m > s.bands[i] ? up : dn);
+			if (s.bands[i] < 0.002) s.bands[i] = s.L[i] = s.R[i] = 0;
+			if (s.bands[i] >= s.peaks[i]) s.peaks[i] = s.bands[i], s.hold[i] = 0.35;
+			else if ((s.hold[i] -= dt) < 0) s.peaks[i] = Math.max(s.bands[i], s.peaks[i] - dt * 0.55);
+			if (i < 9) lo += s.bands[i] / 9; else if (i >= 12 && i < 32) mi += s.bands[i] / 20; else if (i >= 34) hi += s.bands[i] / 14;
+		}
+		const ea = (v, to, a, d) => v + (to - v) * (1 - Math.exp(-dt * (to > v ? a : d)));
+		s.bass = Math.min(1, lo * 1.7), s.mid = Math.min(1, mi * 3.2), s.high = Math.min(1, hi * 3.4);
+		s.loud = Math.min(1, lo * 0.8 + mi * 1.3 + hi * 0.7);
+		s.loudShown = ea(s.loudShown, s.loud, 6, 1.6);
+		if (s.loudShown < 0.003) s.loudShown = 0;
+		if (kick[1] != s.lastQ && kick[1] >= 0) {
+			s.lastQ = kick[1];
+			if (s.gain > 0.25) { s.interval = Math.min(1.2, Math.max(0.25, t - s.lastBeat)), s.lastBeat = t, s.beats++; }
+		}
+		s.pulse = Math.max(0, 1 - (t - s.lastBeat) / 0.4);
+	};
+	return s;
+}
+// n bands out of the 48 (lo..hi): the mean and the loudest of each, half and half
+function group(a, n, lo, hi) {
+	lo = lo == null ? 0 : lo, hi = hi == null ? NB : hi;
+	const out = new Array(n);
+	for (let i = 0; i < n; i++) {
+		const x0 = Math.floor(lo + (hi - lo) * i / n), x1 = Math.max(x0 + 1, Math.floor(lo + (hi - lo) * (i + 1) / n));
+		let m = 0, mx = 0;
+		for (let j = x0; j < x1; j++) m += a[j], mx = Math.max(mx, a[j]);
+		out[i] = Math.pow(Math.min(1, 0.5 * m / (x1 - x0) + 0.5 * mx), 0.78);
+	}
+	return out;
+}
+
+// ───────── shapes
+const TAU = Math.PI * 2, clamp = (v, a, b) => v < a ? a : v > b ? b : v, lerp = (a, b, t) => a + (b - a) * t;
+function box(c, x, y, w, h, r, col) { c.fillStyle = css(col); if (!r) { c.fillRect(x, y, w, h); return; } c.beginPath(); c.roundRect(x, y, w, h, Math.min(r, w / 2, h / 2)); c.fill(); }
+function dot(c, x, y, r, col) { c.fillStyle = css(col); c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); }
+function seg(c, x1, y1, x2, y2, w, col, cap) { c.strokeStyle = css(col); c.lineWidth = w; c.lineCap = cap || 'round'; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); }
+function tri(c, p, col) { c.fillStyle = css(col); c.beginPath(); c.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) c.lineTo(p[i], p[i + 1]); c.closePath(); c.fill(); }
+
+// ───────── the ten. A = {band, y0, y1}: alone the whole panel (the song's lines top left), with art the band (rows 280..480)
+const VIZ = [
+{
+	name: 'Faders', kind: 'Minimal · geometric',
+	what: 'A mixing desk seen from above: sixteen thin rails, a knob riding each one at its band’s level.',
+	drives: 'The spectrum, 16 bands, bass at the left. A small tick holds each band’s recent peak and falls back.',
+	theme: 'Rails LINE (RULE towards DIM), the lit part of a rail and the peak tick DIM, knobs ACCENT. Three inks on BG; a strong accent only ever colours sixteen small pills.',
+	band: 'The same sixteen rails, 146 units tall, across the band.',
+	rest: 'All knobs sit on the floor in a row.',
+	cost: '16 rails + 16 lit parts + 16 pills + 16 ticks: about 450 vertices, 1 draw, nothing blended.',
+	init() { return {}; },
+	step() {},
+	draw(c, P, s, A) {
+		const n = 16, lv = group(s.bands, n, 1, 47), pk = group(s.peaks, n, 1, 47);
+		const top = A.band ? 310 : 150, bot = A.band ? 456 : 424, x0 = 76, x1 = 564;
+		for (let i = 0; i < n; i++) {
+			const x = lerp(x0, x1, i / (n - 1)), y = lerp(bot, top + 6, lv[i]), py = lerp(bot, top + 6, pk[i]);
+			box(c, x - 1.5, top, 3, bot - top, 1.5, P.LINE);
+			box(c, x - 1.5, y, 3, bot - y, 1.5, P.DIM);
+			if (py < y - 9) box(c, x - 6, py - 1, 12, 2, 1, P.DIM);
+			box(c, x - 12, y - 6, 24, 12, 6, P.INK);
+		}
+	},
+},
+{
+	name: 'Blinds', kind: 'Geometric · stereo',
+	what: 'Slats across the panel that thicken where the music is: a poster of stripes, the left half hearing the left channel and the right half the right.',
+	drives: 'The spectrum, 11 bands, bass at the bottom; each slat’s thickness is its level. Left and right halves from the two channels (a mono song: both the same).',
+	theme: 'One ink: ACCENT (made 3:1 on BG). At rest the slats are hairlines in LINE. The strongest read in a two-tone theme: pure accent stripes on the ground.',
+	band: 'Six slats in the band.',
+	rest: 'Even hairlines, like ruled paper.',
+	cost: '22 boxes (12 in the band): under 100 vertices, 1 draw, nothing blended. The lightest of the ten.',
+	init() { return {}; },
+	step() {},
+	draw(c, P, s, A) {
+		const n = A.band ? 6 : 11, L = group(s.L, n, 1, 46), R = group(s.R, n, 1, 46);
+		const top = A.band ? 296 : 122, bot = A.band ? 468 : 456, pitch = (bot - top) / n, gap = 10;
+		for (let i = 0; i < n; i++) {
+			const cy = bot - pitch * (i + 0.5);
+			for (const side of [0, 1]) {
+				const v = side ? R[i] : L[i], th = 2 + v * (pitch - 9), x = side ? 320 + gap : 44, w = 276 - gap;
+				box(c, x, cy - th / 2, w, th, Math.min(3, th / 2), v > 0.03 ? P.INK : P.LINE);
+			}
+		}
+	},
+},
+{
+	name: 'Metronome', kind: 'Minimal · the beat',
+	what: 'One arm keeping time: it swings from side to side beat by beat, wider as the song gets louder.',
+	drives: 'The beat (each one sends the arm to the other side, timed by the last gap between beats) and the loudness (how wide it swings). A dot marks the side each beat lands on.',
+	theme: 'Arm and pivot TEXT, the weight ACCENT, the scale of dots LINE with the reached ones DIM, the beat’s dot ACCENT.',
+	band: 'A shorter arm from the band’s foot; the scale flattens with it.',
+	rest: 'The arm stands upright and still; with sound but no beat it waits where it stopped.',
+	cost: 'An arm, a weight, 25 dots: about 500 vertices (dots as 16-gons), 1 draw, nothing blended.',
+	init() { return { side: 1, seen: 0, t0: -9, iv: 0.6, amp: 0, hit: 0, hitSide: 1 }; },
+	step(st, s, dt) {
+		if (s.beats != st.seen) st.seen = s.beats, st.side = -st.side, st.t0 = s.t, st.iv = s.interval, st.hitSide = -st.side, st.hit = 1;
+		st.hit = Math.max(0, st.hit - dt * 3);
+		const to = s.loudShown > 0.01 ? 0.2 + 0.46 * Math.min(1, s.loudShown * 1.2) : 0;
+		st.amp += (to - st.amp) * (1 - Math.exp(-dt * 3));
+	},
+	draw(c, P, s, A, st) {
+		const px = 320, py = A.band ? 462 : 432, len = A.band ? 158 : 292;
+		const p = clamp((s.t - st.t0) / st.iv, 0, 1), ang = st.amp * st.side * -Math.cos(Math.PI * p);
+		const R = len + 14;
+		for (let k = -12; k <= 12; k++) {
+			const a = k * 0.058, on = Math.abs(a) <= st.amp + 0.01 && st.amp > 0.02;
+			dot(c, px + Math.sin(a) * R, py - Math.cos(a) * R, k % 6 == 0 ? 3 : 2, on ? P.DIM : P.LINE);
+		}
+		if (st.hit > 0 && st.amp > 0.05) { const a = st.amp * st.hitSide; dot(c, px + Math.sin(a) * R, py - Math.cos(a) * R, 3 + 5 * st.hit, P.INK); }
+		box(c, px - 54, py + 12, 108, 4, 2, P.LINE);
+		const tx = px + Math.sin(ang) * len, ty = py - Math.cos(ang) * len;
+		seg(c, px, py, tx, ty, 5, P.TEXT);
+		c.save(); c.translate(px, py); c.rotate(ang);
+		const wy = -len * 0.6, ws = 1 + 0.12 * s.pulse;
+		box(c, -17 * ws, wy - 12 * ws, 34 * ws, 24 * ws, 6, P.INK);
+		c.restore();
+		dot(c, px, py, 10, P.TEXT); dot(c, px, py, 4, P.BG);
+	},
+},
+{
+	name: 'Tape', kind: 'Minimal · line',
+	what: 'A pen drawing the song’s loudness on paper that rolls by: the last eight seconds as one line, each beat ticked underneath.',
+	drives: 'The loudness (the pen’s height) and the beat (a tick on the paper’s edge). The paper only moves while there is sound.',
+	theme: 'The line ACCENT, the wash under it ACCENT 9% on BG (opaque), the pen TEXT, ticks DIM, the edge and the pen’s rail LINE.',
+	band: 'The same strip, 150 units tall, the pen at the right.',
+	rest: 'The paper stops; the line that was drawn stays, and the pen settles on the edge.',
+	cost: 'A 200-point strip twice (line and wash): about 1,000 vertices, 2 draws, nothing blended.',
+	init() { return { h: new Float32Array(200), b: new Uint8Array(200), acc: 0, seen: 0, v: 0, beat: 0 }; },
+	step(st, s, dt) {
+		st.v += (s.loud - st.v) * (1 - Math.exp(-dt * (s.loud > st.v ? 30 : 9)));
+		if (s.beats != st.seen) st.seen = s.beats, st.beat = 1;
+		if (s.loudShown <= 0.012) return;
+		st.acc += dt * 25;
+		while (st.acc >= 1) { st.acc -= 1; st.h.copyWithin(0, 1); st.b.copyWithin(0, 1); st.h[199] = st.v; st.b[199] = st.beat; st.beat = 0; }
+	},
+	draw(c, P, s, A, st) {
+		const top = A.band ? 310 : 170, base = A.band ? 448 : 408, xr = 566, dx = 2.62, n = 200;
+		const X = i => xr - (n - 1 - i + st.acc) * dx, Y = v => base - 4 - v * (base - top - 4);
+		const xl = X(0) + st.acc * dx;
+		c.save(); c.beginPath(); c.rect(xl, 0, xr - xl + 2, 480); c.clip();
+		c.beginPath(); c.moveTo(X(0), base);
+		for (let i = 0; i < n; i++) c.lineTo(X(i), Y(st.h[i]));
+		c.lineTo(xr, Y(st.v)); c.lineTo(xr, base); c.closePath(); c.fillStyle = css(P.tint(0.09)); c.fill();
+		c.beginPath(); c.moveTo(X(0), Y(st.h[0]));
+		for (let i = 1; i < n; i++) c.lineTo(X(i), Y(st.h[i]));
+		c.lineTo(xr, Y(st.v));
+		c.strokeStyle = css(P.INK); c.lineWidth = 3; c.lineJoin = 'round'; c.lineCap = 'round'; c.stroke();
+		for (let i = 0; i < n; i++) if (st.b[i]) box(c, X(i) - 1, base + 8, 2, 8, 0, P.DIM);
+		c.restore();
+		box(c, xl, base, xr - xl + 30, 2, 0, P.LINE);
+		box(c, xr - 1, top - 14, 2, base - top + 14, 0, P.LINE);
+		dot(c, xr, Y(st.v), 8, P.TEXT); dot(c, xr, Y(st.v), 3.5, P.BG);
+	},
+},
+{
+	name: 'Lotus', kind: 'Organic',
+	what: 'A flower on still water that opens as the song fills out and folds back to a bud when it goes quiet.',
+	drives: 'The loudness opens the petals. Three rings of them: the outer five lengthen with the bass, the middle four with the mids, the inner three with the highs. A beat widens the ripple under it.',
+	theme: 'Three opaque washes of ACCENT on BG: 28% (outer), 58% (middle), 100% (inner). The water line and ripples LINE. Pale-to-deep in a light theme, dim-to-lit in a dark one.',
+	band: 'The flower grows from the band’s foot, smaller; the water line spans the band.',
+	rest: 'A closed bud on flat water.',
+	cost: '12 petals as fans of 14 triangles: about 520 vertices, 1 draw, nothing blended (the washes are mixed colours).',
+	init() { return { open: 0, b: 0, m: 0, h: 0 }; },
+	step(st, s, dt) {
+		const e = (v, to, r) => v + (to - v) * (1 - Math.exp(-dt * r));
+		st.open = e(st.open, Math.min(1, s.loudShown * 1.25), 2.2);
+		st.b = e(st.b, s.bass, 5), st.m = e(st.m, s.mid, 5), st.h = e(st.h, s.high, 5);
+	},
+	draw(c, P, s, A, st) {
+		const cx = 320, by = A.band ? 452 : 404, S = A.band ? 150 : 232;
+		const petal = (a, len, wd, col) => {
+			c.save(); c.translate(cx, by); c.rotate(a);
+			c.fillStyle = css(col); c.beginPath(); c.moveTo(0, 0);
+			c.bezierCurveTo(-wd, -len * 0.3, -wd * 0.9, -len * 0.72, 0, -len);
+			c.bezierCurveTo(wd * 0.9, -len * 0.72, wd, -len * 0.3, 0, 0);
+			c.fill(); c.restore();
+		};
+		const o = st.open, rad = Math.PI / 180;
+		box(c, cx - (A.band ? 300 : 210), by + 5, A.band ? 600 : 420, 2, 1, P.LINE);
+		const rw = 46 + 30 * o + 26 * s.pulse;
+		box(c, cx - rw, by + 17, rw * 2, 2, 1, P.LINE);
+		box(c, cx - rw * 0.45, by + 29, rw * 0.9, 2, 1, P.LINE);
+		const sp1 = 32 * o * rad, sp2 = 29 * o * rad, sp3 = 25 * o * rad;
+		for (const k of [-2, 2, -1, 1, 0]) petal(k * sp1, S * (0.74 + 0.26 * st.b) * (1 - 0.05 * Math.abs(k)), S * 0.2, P.tint(0.28));
+		for (const k of [-1.5, 1.5, -0.5, 0.5]) petal(k * sp2, S * (0.56 + 0.26 * st.m), S * 0.17, P.tint(0.58));
+		for (const k of [-1, 1, 0]) petal(k * sp3, S * (0.36 + 0.26 * st.h), S * 0.13, P.INK);
+	},
+},
+{
+	name: 'Poster', kind: 'Minimal · typographic',
+	what: 'The song as three big numbers: low, mid and high, 00 to 99, set like a printed poster.',
+	drives: 'Bass, mids and highs as numbers (read ten times a second, so they tick rather than blur) and as a short bar on each column’s rule.',
+	theme: 'Numbers TEXT, the bars and the loudest column’s number ACCENT, labels DIM, rules LINE. All type: it takes any theme the way the rest of the interface does.',
+	band: 'The same three columns in the band, the numbers 112 units tall.',
+	rest: '00 00 00, bars empty.',
+	cost: 'Ten digits rendered once per theme into one small generated texture; a frame is 6 textured quads + 9 boxes: under 100 vertices.',
+	init() { return { v: [0, 0, 0], acc: 1 }; },
+	step(st, s, dt) {
+		st.acc += dt;
+		if (st.acc >= 0.1) { st.acc = 0; st.v = [s.bass, s.mid, s.high].map(x => Math.round(Math.min(0.99, x) * 100)); }
+	},
+	draw(c, P, s, A, st) {
+		const size = A.band ? 112 : 146, ry = A.band ? 300 : 172, lv = [s.bass, s.mid, s.high], names = ['LOW', 'MID', 'HIGH'];
+		const best = st.v.indexOf(Math.max(...st.v)), w = 168, cell = size * 0.52;
+		for (let i = 0; i < 3; i++) {
+			const x = 44 + i * 192;
+			box(c, x, ry, w, 2, 0, P.LINE);
+			box(c, x, ry - 2, Math.max(0, lv[i] * w), 6, 0, P.INK);
+			c.fillStyle = css(P.DIM); c.font = '600 13px "JetBrains Mono", ui-monospace, monospace'; c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+			c.letterSpacing = '2px'; c.fillText(names[i], x, ry + 26); c.letterSpacing = '0px';
+			c.fillStyle = css(st.v[i] > 0 && i == best ? P.INK : P.TEXT);
+			c.font = '800 ' + size + 'px "Big Shoulders Display", "Arial Narrow", "Helvetica Neue", sans-serif'; c.textAlign = 'center';
+			const txt = String(st.v[i]).padStart(2, '0'), by = A.band ? 462 : ry + 62 + size * 0.74;
+			c.fillText(txt[0], x + cell * 0.5 - 2, by); c.fillText(txt[1], x + cell * 1.5 - 2, by);
+		}
+		c.textAlign = 'left';
+	},
+},
+{
+	name: 'Typeset', kind: 'Typographic · pixel-grid',
+	what: 'A spectrum set in type: columns of characters on a fixed grid, like a meter printed by a terminal.',
+	drives: 'The spectrum, 20 bands. A column is a stack of “=” with one “+” above it, riding the band’s held peak: it lifts with a note and floats back down.',
+	theme: 'The “=” ACCENT, the “+” TEXT, the empty grid’s “·” LINE. Monospace, one size, three glyphs.',
+	band: 'Six rows of the same grid in the band.',
+	rest: 'A quiet field of middle dots.',
+	cost: 'Three glyphs in one generated texture; 20 × 10 textured quads: 800 vertices, 1 draw. Glyph edges are the only blended pixels.',
+	init() { return {}; },
+	step() {},
+	draw(c, P, s, A) {
+		const cols = 20, rows = A.band ? 6 : 10, cw = 28, ch = 30, x0 = 320 - cols * cw / 2, y0 = A.band ? 290 : 134;
+		const lv = group(s.bands, cols, 1, 47), pk = group(s.peaks, cols, 1, 47);
+		c.font = '700 23px "JetBrains Mono", ui-monospace, Menlo, monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+		for (let i = 0; i < cols; i++) {
+			const h = lv[i] * rows, full = Math.floor(h), fr = 0, pr = Math.min(rows - 1, Math.round(pk[i] * rows - 0.5));
+			for (let r = 0; r < rows; r++) {
+				let g = '·', col = P.LINE;
+				if (r < full - 1 || (r == full - 1 && fr <= 0.5 && full > 1)) g = '=', col = P.INK;
+				if (r == pr && pk[i] * rows >= 0.5) g = '+', col = P.TEXT;
+				c.fillStyle = css(col);
+				c.fillText(g, x0 + (i + 0.5) * cw, y0 + (rows - 1 - r + 0.5) * ch);
+			}
+		}
+		c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+	},
+},
+{
+	name: 'Stacker', kind: 'Pixel · playful',
+	what: 'Square blocks drop wherever a note lands and pile up; the piles sink back into the floor, so the picture is the last few seconds of the song.',
+	drives: 'Onsets per band (a band jumping above its own recent level drops a block in its column): kicks pile at the left, hats at the right, the tune walks about the middle.',
+	theme: 'Piles ACCENT, a falling block and one that has just landed TEXT, the floor DIM. Square corners, whole-cell steps: it reads as pixels in any theme.',
+	band: 'Sixteen narrower columns, five blocks high.',
+	rest: 'The piles sink away one row at a time and the floor is left bare.',
+	cost: 'At most about 80 boxes: 320 vertices, 1 draw, nothing blended.',
+	init(A) { const n = A.band ? 16 : 10; return { n, h: new Int8Array(n), slow: new Float32Array(n), cool: new Float32Array(n), sink: new Float32Array(n).fill(1.5), flash: new Float32Array(n), fall: [], rows: A.band ? 5 : 7 }; },
+	step(st, s, dt) {
+		const lv = group(s.bands, st.n, 0, 46);
+		for (let i = 0; i < st.n; i++) {
+			st.cool[i] -= dt; st.flash[i] = Math.max(0, st.flash[i] - dt * 5);
+			if (lv[i] > 0.42 && lv[i] - st.slow[i] > 0.2 && st.cool[i] <= 0) st.fall.push({ c: i, y: -1 }), st.cool[i] = 0.3;
+			st.slow[i] += (lv[i] - st.slow[i]) * (1 - Math.exp(-dt * 6));
+			if ((st.sink[i] -= dt) <= 0) { st.sink[i] = 1.25; if (st.h[i] > 0) st.h[i]--; }
+		}
+		for (const f of st.fall) {
+			f.y += dt * 16;
+			if (Math.floor(f.y) >= st.rows - st.h[f.c] - 1) { f.done = 1; if (st.h[f.c] < st.rows - 1) st.h[f.c]++; st.flash[f.c] = 1; st.sink[f.c] = 1.25; }
+		}
+		st.fall = st.fall.filter(f => !f.done);
+	},
+	draw(c, P, s, A, st) {
+		const pitch = A.band ? 34 : 48, sz = pitch - (A.band ? 4 : 6), floor = A.band ? 466 : 440, x0 = 320 - st.n * pitch / 2 + (pitch - sz) / 2;
+		box(c, x0 - 8, floor, st.n * pitch - (pitch - sz) + 16, 3, 0, P.DIM);
+		for (let i = 0; i < st.n; i++)
+			for (let r = 0; r < st.h[i]; r++)
+				box(c, x0 + i * pitch, floor - (pitch - sz) - sz - r * pitch, sz, sz, 0, r == st.h[i] - 1 && st.flash[i] > 0 ? P.TEXT : P.INK);
+		for (const f of st.fall) { const row = Math.floor(f.y); if (row >= 0) box(c, x0 + f.c * pitch, floor - (pitch - sz) - sz - (st.rows - 1 - row) * pitch, sz, sz, 0, P.TEXT); }
+	},
+},
+{
+	name: 'Pinwheels', kind: 'Playful · geometric',
+	what: 'Three paper pinwheels on sticks: the big one turns with the bass, the middle one with the mids, the little one with the highs.',
+	drives: 'Bass, mids and highs each blow on one wheel; a wheel has weight, so it spins up and coasts down rather than twitching. A beat gives the big one a small kick.',
+	theme: 'Each wheel is one colour and its own half-wash on BG (the folded side): ACCENT, TEXT, DANGER. Sticks DIM, pins BG, the ground LINE. Blue, navy and red in Gundam; bone, grey and coral in Dark.',
+	band: 'The three wheels smaller, standing on the band’s foot.',
+	rest: 'The wheels coast to a stop and stay where they stopped.',
+	cost: '24 triangles, 3 sticks, 3 pins: about 150 vertices, 1 draw, nothing blended.',
+	init() { return { a: [0.3, 0.9, 0.1], w: [0, 0, 0], seen: 0 }; },
+	step(st, s, dt) {
+		const lv = [s.bass, s.mid, s.high], top = [5.5, 7, 9];
+		if (s.beats != st.seen) st.seen = s.beats, st.w[0] += 1.1;
+		for (let i = 0; i < 3; i++) {
+			const to = top[i] * Math.pow(lv[i], 1.15);
+			st.w[i] += (to - st.w[i]) * (1 - Math.exp(-dt * (to > st.w[i] ? 2.6 : 1.1)));
+			if (st.w[i] < 0.02 && to == 0) st.w[i] = 0;
+			st.a[i] += st.w[i] * dt;
+		}
+	},
+	draw(c, P, s, A, st) {
+		const W = A.band ? [[150, 372, 62], [338, 384, 50], [500, 398, 38]] : [[170, 262, 112], [392, 250, 84], [546, 322, 60]];
+		const ground = A.band ? 472 : 446, cols = [P.INK, P.TEXT, P.DANGER];
+		box(c, 40, ground, 560, 2, 1, P.LINE);
+		W.forEach(([x, y, R], i) => {
+			seg(c, x, y, x, ground, R > 70 ? 6 : 5, P.DIM, 'butt');
+			c.save(); c.translate(x, y); c.rotate(st.a[i]);
+			for (let k = 0; k < 4; k++) {
+				c.rotate(Math.PI / 2);
+				tri(c, [0, 0, R, 0, R * 0.5, R * 0.5], cols[i]);
+				tri(c, [0, 0, R * 0.5, R * 0.5, 0, R * 0.5], mix(P.BG, cols[i], 0.5));
+			}
+			c.restore();
+			dot(c, x, y, R * 0.085 + 2, P.BG);
+		});
+	},
+},
+{
+	name: 'Lanterns', kind: 'Playful · organic',
+	what: 'A string of paper lanterns: each one lights up with its part of the song, and the whole string sways a little on the beat.',
+	drives: 'The spectrum, 7 bands: a lantern’s paper goes from unlit to full accent with its band. The beat nudges the string; the lanterns swing and settle on their own.',
+	theme: 'Unlit paper BUTTON, lit ACCENT (the colour between is mixed, opaque), a halo of ACCENT 10% on BG behind a bright one, caps and tassels DIM, the string LINE.',
+	band: 'Nine smaller lanterns on a string along the band’s top.',
+	rest: 'Unlit lanterns hanging straight and still.',
+	cost: 'Per lantern: a halo, a rounded body, two caps, a tassel: about 900 vertices for nine, 1 draw, nothing blended.',
+	init(A) { const n = A.band ? 9 : 7; return { n, a: new Float32Array(n), v: new Float32Array(n), seen: 0, lv: new Float32Array(n) }; },
+	step(st, s, dt) {
+		const lv = group(s.bands, st.n, 1, 46);
+		const hit = s.beats != st.seen; if (hit) st.seen = s.beats;
+		for (let i = 0; i < st.n; i++) {
+			if (hit) st.v[i] += (s.beats % 2 ? 1 : -1) * (0.5 + 0.35 * hash(i, 7)) * (0.4 + s.loudShown);
+			st.v[i] += (-22 * st.a[i] - 2.4 * st.v[i]) * dt; st.a[i] += st.v[i] * dt;
+			if (Math.abs(st.a[i]) < 0.0015 && Math.abs(st.v[i]) < 0.004) st.a[i] = st.v[i] = 0;
+			st.lv[i] += (Math.min(1, lv[i] * 1.25) - st.lv[i]) * (1 - Math.exp(-dt * (lv[i] > st.lv[i] ? 30 : 5)));
+		}
+	},
+	draw(c, P, s, A, st) {
+		const n = st.n, sy = A.band ? 290 : 128, sag = A.band ? 18 : 40, w = A.band ? 40 : 58, h = A.band ? 52 : 76;
+		const SY = x => sy + sag * (1 - Math.pow((x - 320) / 320, 2));
+		c.strokeStyle = css(P.LINE); c.lineWidth = 2; c.beginPath();
+		for (let x = 0; x <= 640; x += 16) c.lineTo(x, SY(x)); c.stroke();
+		const at = i => 320 + (i - (n - 1) / 2) * (A.band ? 66 : 84);
+		for (let pass = 0; pass < 2; pass++) for (let i = 0; i < n; i++) {
+			const x = at(i), y = SY(x), th = (i % 2 ? (A.band ? 34 : 86) : (A.band ? 12 : 22)), v = st.lv[i];
+			c.save(); c.translate(x, y); c.rotate(st.a[i] * 0.22);
+			if (!pass) { if (v > 0.3) dot(c, 0, th + 7 + h / 2, w * 0.62 + (v - 0.3) * w * 0.55, P.tint(0.1)); }
+			else {
+				box(c, -1, 0, 2, th, 0, P.DIM);
+				box(c, -w * 0.21, th, w * 0.42, 7, 2, P.DIM);
+				box(c, -w / 2, th + 7, w, h, w * 0.42, mix(P.BUTTON, P.INK, Math.pow(v, 0.8)));
+				box(c, -w * 0.21, th + 7 + h, w * 0.42, 7, 2, P.DIM);
+				box(c, -1, th + 14 + h, 2, A.band ? 9 : 14, 0, P.DIM);
+			}
+			c.restore();
+		}
+	},
+},
+];
+
+// ───────── the song's lines and the art, as the player lays them out
+function chrome(c, P, A) {
+	c.textBaseline = 'top'; c.textAlign = 'left';
+	const ui = '"Instrument Sans", system-ui, sans-serif';
+	if (!A.band) {
+		c.fillStyle = css(P.TEXT); c.font = '700 26px ' + ui; c.fillText('Morning Loop', 22, 18);
+		c.fillStyle = css(P.DIM_ON); c.font = '400 17px ' + ui; c.fillText('The Test Tones', 22, 54);
+		c.fillStyle = css(P.DIM); c.font = '400 14px ' + ui; c.fillText('Synthetic Signals', 22, 78);
+	} else {
+		const ax = 108, ay = 40, as = 208;
+		box(c, ax, ay, as, as, 8, P.BUTTON);
+		c.save(); c.beginPath(); c.roundRect(ax, ay, as, as, 8); c.clip();
+		dot(c, ax + 36, ay + as - 20, 104, P.PRESSED); dot(c, ax + as - 52, ay + 60, 30, P.INK);
+		c.restore();
+		const lx = ax + as + 28;
+		c.fillStyle = css(P.TEXT); c.font = '700 26px ' + ui; c.fillText('Morning Loop', lx, 100);
+		c.fillStyle = css(P.DIM_ON); c.font = '400 17px ' + ui; c.fillText('The Test Tones', lx, 136);
+		c.fillStyle = css(P.DIM); c.font = '400 14px ' + ui; c.fillText('Synthetic Signals', lx, 160);
+	}
+	c.textBaseline = 'alphabetic';
+}
+
+// ───────── the page
+const Q = new URLSearchParams(location.search), SHEET = Q.has('sheet');
+let theme = THEMES[Q.get('theme')] ? Q.get('theme') : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+let mode = Q.get('mode') == 'art' ? 'art' : 'alone', paused = false;
+const sig = makeSig();
+const main = document.getElementById('main'), cards = [];
+const layout = () => ({ band: mode == 'art' });
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+VIZ.forEach((v, i) => {
+	const el = document.createElement('section'); el.className = 'card';
+	el.innerHTML = '<div class="screen"><canvas width="1280" height="960" role="img" aria-label="' + esc(v.name) + ' preview"></canvas></div><div class="notes"><div class="kind">' + esc(v.kind) +
+		'</div><h2><small>' + String(i + 1).padStart(2, '0') + '</small>' + esc(v.name) + '</h2><p class="what">' + esc(v.what) + '</p><dl>' +
+		[['Driven by', v.drives], ['Theme', v.theme], ['With art', v.band], ['At rest', v.rest], ['Cost', v.cost]].map(r => '<dt>' + r[0] + '</dt><dd>' + esc(r[1]) + '</dd>').join('') + '</dl></div>';
+	main.appendChild(el);
+	const cv = el.querySelector('canvas');
+	if (SHEET) cv.width = 640, cv.height = 480;
+	cards.push({ v, cv, ctx: cv.getContext('2d'), st: v.init(layout()), vis: true });
+});
+if (SHEET) document.body.classList.add('sheet');
+const io = 'IntersectionObserver' in window && !SHEET ? new IntersectionObserver(es => es.forEach(e => { const k = cards.find(c => c.cv == e.target); if (k) k.vis = e.isIntersecting; }), { rootMargin: '120px' }) : null;
+if (io) cards.forEach(k => io.observe(k.cv));
+
+function stepAll(dt) { sig.step(dt); const A = layout(); for (const k of cards) k.v.step(k.st, sig, dt, A); }
+function drawAll() {
+	const P = THEMES[theme], A = layout();
+	for (const k of cards) {
+		if (!k.vis) continue;
+		const c = k.ctx, sc = k.cv.width / 640;
+		c.setTransform(sc, 0, 0, sc, 0, 0);
+		c.fillStyle = css(P.BG); c.fillRect(0, 0, 640, 480);
+		k.v.draw(c, P, sig, A, k.st);
+		chrome(c, P, A);
+	}
+}
+function reinit() { const A = layout(); for (const k of cards) k.st = k.v.init(A); }
+
+const tb = document.getElementById('themes');
+for (const id in THEMES) {
+	const b = document.createElement('button'), P = THEMES[id];
+	b.innerHTML = '<i style="background:linear-gradient(135deg,' + css(P.BG) + ' 50%,' + css(P.ACCENT) + ' 50%)"></i>' + P.name;
+	b.dataset.theme = id; b.setAttribute('aria-pressed', id == theme);
+	b.onclick = () => { theme = id; tb.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x.dataset.theme == id)); drawAll(); };
+	tb.appendChild(b);
+}
+document.querySelectorAll('#modes button').forEach(b => {
+	b.setAttribute('aria-pressed', b.dataset.mode == mode);
+	b.onclick = () => { mode = b.dataset.mode; document.querySelectorAll('#modes button').forEach(x => x.setAttribute('aria-pressed', x == b)); reinit(); drawAll(); };
+});
+const muteB = document.getElementById('mute'), pauseB = document.getElementById('pause');
+muteB.onclick = () => { sig.mute = !sig.mute; muteB.setAttribute('aria-pressed', sig.mute); };
+pauseB.onclick = () => { paused = !paused; pauseB.setAttribute('aria-pressed', paused); };
+
+// ?t=SECONDS: one still frame at that time of the song (the screenshots); ?mute=AT: silence from that second on
+const still = Q.has('t') ? parseFloat(Q.get('t')) : null, muteAt = Q.has('mute') ? parseFloat(Q.get('mute')) : Infinity;
+function warm(to) { while (sig.t < to) { if (sig.t >= muteAt) sig.mute = true; stepAll(1 / 60); } }
+if (still != null) {
+	warm(still); drawAll();
+	if (document.fonts && document.fonts.ready) Promise.all(['800 100px "Big Shoulders Display"', '700 23px "JetBrains Mono"', '600 13px "JetBrains Mono"', '700 26px "Instrument Sans"', '400 17px "Instrument Sans"'].map(f => document.fonts.load(f, '0=+·A'))).then(drawAll, drawAll);
+} else {
+	warm(2);	// start in the middle of things, not on an empty panel
+	let prev = performance.now(), acc = 0;
+	const frame = now => {
+		acc += Math.min(0.1, (now - prev) / 1000); prev = now;
+		if (paused) acc = 0;
+		let moved = false;
+		while (acc >= 1 / 60) { stepAll(1 / 60); acc -= 1 / 60; moved = true; }
+		if (moved || !paused) drawAll();
+		requestAnimationFrame(frame);
+	};
+	requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
+
+</body></html>

@@ -1,0 +1,1073 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Like on the handheld</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+	color-scheme: dark;
+	--page: #0F0E13; --bg: #17161C; --surface: #211F28; --screen: #3A3A44; --teal: #234346; --pressed: #3A6E72;
+	--cream: #F1EDE2; --dim: #8A867C; --dim-teal: #B4AFA3; --yellow: #F0B429; --red: #E05A4F; --bezel: #2B2A33;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--cream); font: 14px/1.5 Inter, system-ui, sans-serif; overflow-x: hidden; }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+h1 { font: 600 22px/1.2 "Pixelify Sans", Inter, sans-serif; color: var(--yellow); margin: 0 0 4px; letter-spacing: .3px; }
+.lede { color: var(--dim-teal); margin: 0 0 14px; }
+details.note { background: var(--surface); border-left: 4px solid var(--yellow); padding: 10px 14px; margin-bottom: 16px; }
+details.note summary { cursor: pointer; font-weight: 600; }
+details.note ol { margin: 8px 0 2px; padding-left: 20px; color: var(--dim-teal); }
+details.note li { margin: 3px 0; }
+details.note b { color: var(--cream); font-weight: 600; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 14px; }
+.seg { display: inline-flex; align-items: center; }
+.seg span { color: var(--dim); margin-right: 8px; font-size: 13px; }
+.seg button, .jump button { font: 400 14px/1 "Pixelify Sans", Inter, sans-serif; color: var(--cream); background: var(--teal); border: 0; border-radius: 0; padding: 8px 10px; cursor: pointer; margin-right: 2px; }
+.seg button[aria-pressed="true"] { background: var(--yellow); color: var(--bg); }
+.seg button:focus-visible, .jump button:focus-visible, .pad button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.jump { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; }
+.jump span { color: var(--dim); font-size: 13px; margin-right: 2px; }
+.jump button { background: var(--surface); }
+.jump button:hover, .seg button:hover { background: var(--pressed); color: var(--cream); }
+.device { background: var(--bezel); padding: 14px; max-width: calc(640px + 28px); margin: 0 auto; }
+.device.big { max-width: calc(1024px + 28px); }
+.panel { position: relative; background: #000; line-height: 0; }
+.panel + .caption { margin-bottom: 12px; }
+.hinge { height: 10px; margin: 0 -14px 12px; background: #24232b; }
+canvas { display: block; width: 100%; height: auto; touch-action: none; }
+#cv { cursor: pointer; }
+.caption { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; color: var(--dim); font-size: 12px; margin-top: 8px; }
+.caption b { color: var(--dim-teal); font-weight: 600; }
+.pad { margin-top: 14px; user-select: none; -webkit-user-select: none; }
+.shoulders { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.pad button { font: 400 16px/1 "Pixelify Sans", Inter, sans-serif; color: var(--cream); background: var(--teal); border: 0; border-radius: 0; cursor: pointer; touch-action: manipulation; }
+.pad button:active, .pad button.down { background: var(--pressed); }
+.shoulders button { width: 96px; height: 34px; }
+.padrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.dpad, .abxy { display: grid; grid-template-columns: repeat(3, 42px); grid-template-rows: repeat(3, 42px); gap: 2px; }
+.abxy button { border-radius: 50%; font-size: 18px; }
+.abxy button .k { color: var(--yellow); }
+.mid { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.mid button { padding: 9px 12px; font-size: 14px; min-width: 84px; }
+.mid button.l3 { background: var(--surface); color: var(--dim-teal); font-size: 13px; }
+.keys { color: var(--dim); font-size: 12px; margin-top: 12px; text-align: center; }
+.keys kbd { font: 12px/1 Inter, sans-serif; background: var(--surface); color: var(--dim-teal); padding: 2px 5px; }
+.status { font: 13px/1.4 "Pixelify Sans", Inter, sans-serif; color: var(--dim-teal); margin-top: 6px; text-align: center; min-height: 18px; }
+@media (max-width: 480px) {
+	.device { padding: 8px; }
+	.hinge { margin: 0 -8px 10px; }
+	.dpad, .abxy { grid-template-columns: repeat(3, 38px); grid-template-rows: repeat(3, 38px); }
+	.shoulders button { width: 76px; }
+	.mid button { min-width: 70px; }
+	h1 { font-size: 19px; }
+}
+</style>
+
+<div class="wrap">
+	<h1>Like &amp; Add to playlist: the handheld</h1>
+	<p class="lede">Both panels, drawn the way <code>ui.cpp</code> and the top panel's overlays draw them (the palette, the pixel font, the app's own glyphs, 640×480 layout units). Use the buttons, the keyboard, or click the bottom panel as if it were the touch screen.</p>
+
+	<details class="note" open>
+		<summary>Design notes and decisions</summary>
+		<ol>
+			<li><b>Where Like lives:</b> a <b>heart</b> in the header, right of the title, the way YouTube Music puts it. One tap toggles it. The header has room; the ten-button grid and the bottom row don't (every grid slot already belongs to a button, and a 5th bottom button would squeeze “Screen off”). There's no X Options menu on this page: X is Loop for a song and Audio &amp; Subtitles for a video.</li>
+			<li><b>Add to playlist</b> is the header's second square, left of the heart. The two sit together because both mean “keep this”. Both have fixed positions, so a thumb learns them, and they never move with the title's length.</li>
+			<li><b>With buttons:</b> START opens the menu on a new <b>Playing</b> tab (Like, Add to playlist…, Show in folder, Info), ahead of Settings · About · Quit. It's only there while a song or video plays. <b>L3</b> on the RG DS Plus is a shortcut for Like.</li>
+			<li><b>Feedback:</b> the heart turns yellow and pops. The top panel shows a card in the volume card's place: <b>Added to Liked</b> / <b>Removed from Liked</b>, with the title under it, so a Like pressed just as the song changes still says which song it was.</li>
+			<li><b>Add to playlist:</b> the existing “Add to…” picker. <b>New playlist…</b> comes first, then the last playlist you added to, then the rest. <b>Liked is never listed.</b> A playlist that already has it shows <b>✓ Added</b>. Choosing that one asks <b>Add again?</b> and a second A adds it again (playlists allow repeats; Liked doesn't).</li>
+			<li><b>Liked</b> is pinned first in Playlists, with a yellow heart. It can't be renamed or deleted, has no Add files…, Move or Remove duplicates, and Remove becomes <b>Unlike</b>. It's ordered newest first and can't be reordered, as on YouTube Music.</li>
+			<li><b>Photos:</b> no heart, no Add, no Playing tab. L3 still rotates. <b>Home:</b> Recent cards show a small heart, and a card's Y menu gains Like / Unlike. The Playlists tile reads “Liked · 3 playlists”.</li>
+		</ol>
+	</details>
+
+	<div class="bar">
+		<div class="seg" id="segMedia"><span>Playing</span><button data-v="song" aria-pressed="true">Song</button><button data-v="video" aria-pressed="false">Video</button><button data-v="photo" aria-pressed="false">Photo</button></div>
+		<div class="seg" id="segSize"><span>Panel</span><button data-v="640" aria-pressed="true">640×480</button><button data-v="1024" aria-pressed="false">1024×768</button></div>
+		<div class="seg" id="segPl"><span>Playlists</span><button data-v="3" aria-pressed="true">3</button><button data-v="12" aria-pressed="false">12</button></div>
+		<div class="seg" id="segLiked"><span>Liked</span><button data-v="1" aria-pressed="true">4 items</button><button data-v="0" aria-pressed="false">Empty</button></div>
+	</div>
+	<div class="jump" id="jump"><span>Jump to</span>
+		<button data-steps="go:main">Playing</button>
+		<button data-steps="go:main,tap:like">Tap the heart</button>
+		<button data-steps="go:main,R">A liked song</button>
+		<button data-steps="go:main,tap:add">Add to playlist</button>
+		<button data-steps="go:main,tap:add,Down,A">Already in it</button>
+		<button data-steps="go:main,tap:add,A">New playlist…</button>
+		<button data-steps="go:main,tap:add,A,type:Liked,START">Name “Liked”</button>
+		<button data-steps="go:main,START">START › Playing</button>
+		<button data-steps="media:video,go:main">Video</button>
+		<button data-steps="media:photo,go:main">Photo</button>
+		<button data-steps="go:pls">Playlists</button>
+		<button data-steps="go:pls,A">Inside Liked</button>
+		<button data-steps="go:pls,A,Y">Liked item menu</button>
+		<button data-steps="go:pls,Y">Liked's menu</button>
+		<button data-steps="liked:0,go:pls,A">Liked, empty</button>
+		<button data-steps="go:home">Home</button>
+		<button data-steps="go:home,Y">Recent card menu</button>
+		<button data-steps="go:files">Files</button>
+	</div>
+
+	<div class="device" id="device">
+		<div class="panel"><canvas id="top" width="640" height="480" aria-label="Top panel mockup"></canvas></div>
+		<div class="caption"><span><b>Top panel</b> · what plays, and the cards over it</span><span id="capTop"></span></div>
+		<div class="hinge"></div>
+		<div class="panel"><canvas id="cv" width="640" height="480" aria-label="Bottom panel mockup"></canvas></div>
+		<div class="caption"><span><b>Bottom panel</b> · touch screen · <span id="capSize">640×480</span></span><span>Tap the heart, or press <b>H</b>; the Add square, <b>P</b></span></div>
+		<div class="pad" id="pad">
+			<div class="shoulders"><button data-b="L">L</button><button data-b="R">R</button></div>
+			<div class="padrow">
+				<div class="dpad">
+					<span></span><button data-b="Up" aria-label="Up">▲</button><span></span>
+					<button data-b="Left" aria-label="Left">◀</button><span></span><button data-b="Right" aria-label="Right">▶</button>
+					<span></span><button data-b="Down" aria-label="Down">▼</button><span></span>
+				</div>
+				<div class="mid"><button data-b="START">START</button><button data-b="SELECT">SELECT</button><button data-b="L3" class="l3">L3 (Plus)</button></div>
+				<div class="abxy">
+					<span></span><button data-b="X"><span class="k">X</span></button><span></span>
+					<button data-b="Y"><span class="k">Y</span></button><span></span><button data-b="A"><span class="k">A</span></button>
+					<span></span><button data-b="B"><span class="k">B</span></button><span></span>
+				</div>
+			</div>
+			<div class="status" id="status"></div>
+			<div class="keys">Keyboard: <kbd>←↑↓→</kbd> D-pad · <kbd>Enter</kbd>/<kbd>A</kbd> · <kbd>Esc</kbd>/<kbd>B</kbd> · <kbd>X</kbd> <kbd>Y</kbd> · <kbd>Q</kbd>/<kbd>E</kbd> L/R · <kbd>S</kbd> START · <kbd>L</kbd> L3 · <kbd>H</kbd> tap the heart · <kbd>P</kbd> tap Add. On the on-screen keyboard, just type.</div>
+		</div>
+	</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const C = { BG: "#17161C", CREAM: "#F1EDE2", YELLOW: "#F0B429", TEAL: "#234346", DIM: "#8A867C", RED: "#E05A4F",
+	SCREEN: "#3A3A44", PRESSED: "#3A6E72", SURFACE: "#211F28", DIM_TEAL: "#B4AFA3", KEY2: "#1E3436" };
+const SIZES = [18, 24, 32], W = 640, H = 480, FOOT_Y = 458, SUB_Y = 70, ROW_Y = 84, ROW_H = 48, ROWS_SHOWN = 7;
+
+// ---- glyphs: rows of cells, '#' drawn. From ui.cpp, except HEART, HEART_O, HEART_S and PL_ADD (new) ----
+const G = {
+	BACK: ["....##", "...##.", "..##..", ".##...", "##....", ".##...", "..##..", "...##.", "....##"],
+	HEART: [".###...###.", "#####.#####", "###########", "###########", "###########", ".#########.", "..#######..", "...#####...", "....###....", ".....#....."],
+	HEART_O: [".###...###.", "#...#.#...#", "#....#....#", "#.........#", "#.........#", ".#.......#.", "..#.....#..", "...#...#...", "....#.#....", ".....#....."],
+	HEART_S: [".##.##.", "#######", "#######", ".#####.", "..###..", "...#..."],
+	PL_ADD: ["#######....", "...........", "#######....", "...........", "####....#..", "........#..", "......#####", "........#..", "........#.."],
+	CHECK: ["........#", ".......##", "#.....##.", "##...##..", ".##.##...", "..###....", "...#....."],
+	CLOCK: ["...#####...", ".#########.", ".####.####.", "#####.#####", "#####.#####", "#####...###", "###########", ".#########.", ".#########.", "...#####..."],
+	CARD: ["...#######", "..##.#.#.#", ".###.#.#.#", ".#########", ".#########", ".#########", ".#########", ".#########", ".#########", ".#########"],
+	FOLDER: ["#####......", "###########", "###########", "###########", "###########", "###########", "###########", "###########", "###########"],
+	FILM: ["###########", "#.#.#.#.#.#", "###########", "###########", "###########", "###########", "###########", "#.#.#.#.#.#", "###########"],
+	NOTE: ["......####", "......####", "......#..#", "......#...", "......#...", "......#...", "...####...", "..#####...", "..#####...", "...###...."],
+	PICTURE: ["###########", "#.........#", "#......##.#", "#......##.#", "#....#....#", "#...###...#", "#..#####..#", "#.#######.#", "#.........#", "###########"],
+	NETWORK: ["...#####...", "...#####...", "...#####...", ".....#.....", ".#########.", ".#.......#.", "###.....###", "###.....###", "###.....###"],
+	PLAYLIST: ["#######....", "...........", "#######.###", "........###", "#######.#..", "........#..", "####....#..", ".....####..", "....#####..", ".....###..."],
+	BLOCKS: ["#####.#####", "#####.#####", "#####.#####", "#####.#####", "#####.#####", "...........", "#####...#..", "#####...#..", "#####.#####", "#####...#..", "#####...#.."],
+	PLAY: ["##......", "####....", "######..", "########", "########", "######..", "####....", "##......"],
+	PAUSE: ["###..###", "###..###", "###..###", "###..###", "###..###", "###..###", "###..###", "###..###"],
+	PREV: ["##.....##", "##....###", "##..#####", "#########", "#########", "##..#####", "##....###", "##.....##"],
+	NEXT: ["##.....##", "###....##", "#####..##", "#########", "#########", "#####..##", "###....##", "##.....##"],
+	REFRESH: ["...#####.#", ".##.....##", "#.....####", "#.........", "#........#", "#........#", ".##....##.", "...####..."],
+	SHUFFLE: [".........#.", "##.....####", "..#...#..#.", "...#.#.....", "....#......", "...#.#.....", "..#...#..#.", "##.....####", ".........#."],
+	MINUS: ["#########", "#########", "#########"],
+	PLUS: ["...###...", "...###...", "...###...", "#########", "#########", "#########", "...###...", "...###...", "...###..."],
+	CROSS: ["##.....##", "###...###", ".###.###.", "..#####..", "...###...", "..#####..", ".###.###.", "###...###", "##.....##"],
+	GEAR: ["...###...", ".#.###.#.", "#########", ".###.###.", "###...###", ".###.###.", "#########", ".#.###.#.", "...###..."],
+	TRASH: ["...###...", "#########", ".........", ".#######.", ".#.#.#.#.", ".#.#.#.#.", ".#.#.#.#.", ".#.#.#.#.", ".#######."],
+	BOX_ON: ["#########", "#########", "#######.#", "######..#", "#.###..##", "#..#..###", "##...####", "###.#####", "#########"],
+	PENCIL: ["......###", ".....####", "....####.", "...####..", "..####...", ".####....", "####.....", "###......", "##......."],
+	INFO: ["..#####..", ".###.###.", "#########", "###..####", "####.####", "####.####", "####.####", ".##...##.", "..#####.."],
+	LOCK: ["..#####..", ".##...##.", ".#.....#.", ".#.....#.", "#########", "#########", "####.####", "####.####", "#########", "#########"],
+	MOON: ["...####..", ".####....", ".###.....", "###......", "###......", "###......", ".###....#", ".#######.", "...####.."],
+	SPEAKER: ["....#....", "...##..#.", "####.#..#", "####..#.#", "####..#.#", "####.#..#", "...##..#.", "....#...."],
+	CC: ["###########", "###########", "#.......###", "###########", "###########", "##.....##.#", "###########", "###########"],
+	POWER: ["....#....", ".#..#..#.", "#...#...#", "#...#...#", "#.......#", "#.......#", ".#.....#.", "..#####.."],
+	CHAPTERS: ["###.#######", "###.#######", "...........", "###.#####..", "###.#####..", "...........", "###.######.", "###.######."],
+	EQ: [".#...#...#.", ".#..###..#.", ".#..###..#.", "###..#...#.", "###..#...#.", ".#...#..###", ".#...#..###", ".#...#...#.", ".#...#...#."],
+	LOOP: [".......#...", ".########..", "#......#...", "#.........#", "#.........#", "...#......#", "..########.", "...#......."],
+	RIGHT: ["##...", ".##..", "..##.", "...##", "..##.", ".##..", "##..."],
+	SEARCH: ["..####...", ".##..##..", "##....##.", "##....##.", ".##..##..", "..######.", "......###", ".......##"],
+	BOOKMARK: ["#######", "#######", "#######", "#######", "#######", "#######", "#######", "###.###", "##...##", "#.....#"],
+	SUN: ["....#....", ".#.....#.", "...###...", "..#####..", "#.#####.#", "..#####..", "...###...", ".#.....#.", "....#...."],
+	DOWNLOAD: ["...###...", "...###...", "...###...", "#########", ".#######.", "..#####..", "...###...", "....#....", ".........", "#########"],
+	ALERT: [".....#.....", "....###....", "...##.##...", "...##.##...", "..###.###..", "..###.###..", ".#########.", ".####.####.", "###########"],
+	WEB: ["..#####..", ".#..#..#.", "#..#.#..#", "#########", "#..#.#..#", "#########", "#..#.#..#", ".#..#..#.", "..#####.."],
+};
+const gW = (g, cell = 2) => Math.max(...g.map(r => r.length)) * cell;
+
+// ---- media, liked, playlists ----
+const M = {
+	sunny: { title: "Sunny Peel", file: "01 Sunny Peel.mp3", kind: "NOTE", artist: "Banana Band", album: "Yellow Album", dur: 220, folder: ["This card", "Music", "Yellow Album"] },
+	split: { title: "Split Decision", file: "02 Split Decision.mp3", kind: "NOTE", artist: "Banana Band", album: "Yellow Album", dur: 194, folder: ["This card", "Music", "Yellow Album"] },
+	mellow: { title: "Mellow Yellow Morning", file: "03 Mellow Yellow Morning.mp3", kind: "NOTE", artist: "Banana Band", album: "Yellow Album", dur: 251, folder: ["This card", "Music", "Yellow Album"] },
+	sintel: { title: "Sintel", file: "Sintel (2010).mkv", kind: "FILM", dur: 888, folder: ["Videos", "Movies"], chapters: [["Opening", 0], ["The Dragon", 180], ["The Search", 420], ["Ending", 700]] },
+	orchard: { title: "Orchard Lullaby", file: "Orchard Lullaby.flac", kind: "NOTE", artist: "Juniper", dur: 192, folder: ["This card", "Music"] },
+	cosmos: { title: "Cosmos Laundromat", file: "Cosmos Laundromat.mkv", kind: "FILM", dur: 730, net: "Living room PC", folder: ["Living room PC", "Media"] },
+	olddemo: { title: "Old Demo", file: "Old Demo.mp3", kind: "NOTE", dur: 140, gone: true, folder: ["Second card", "Demos"] },
+	morning: { title: "Morning Market", file: "Morning Market.mp3", kind: "NOTE", dur: 178 },
+	harbour: { title: "Harbour Lights", file: "Harbour Lights.mp3", kind: "NOTE", dur: 252, net: "NAS" },
+	bigbanana: { title: "Big Banana Adventure", file: "Big Banana Adventure.mkv", kind: "FILM", dur: 5920, folder: ["Videos", "Movies"] },
+	photo: { title: "Sintel 02.jpg", file: "Sintel 02.jpg", kind: "PICTURE", folder: ["This card", "Photos", "Sintel"] },
+};
+const SONGS = ["sunny", "split", "mellow"];
+const LIKED0 = ["split", "cosmos", "orchard", "olddemo"];	// newest first
+const PL3 = () => [
+	{ name: "Road trip", items: ["sunny", "morning", "harbour"], count: 14, used: 3 },
+	{ name: "Sintel & friends", items: ["sintel", "bigbanana"], count: 3, used: 2 },
+	{ name: "Sleep", items: ["orchard"], count: 8, used: 1 },
+];
+const PL12 = () => PL3().concat(["Bike rides", "Cooking", "Focus", "Gym", "Kids' films", "Rainy day", "Summer 2026", "Workout", "Zen garden"]
+	.map((n, i) => ({ name: n, items: [], count: 5 + i * 3, used: 0 })));
+const RECENT = [
+	{ key: "split", at: "1:12", frac: .37 }, { key: "sintel", at: "3:02", frac: .2 }, { key: "cosmos", at: "4:51", frac: .4 },
+	{ key: "bigbanana", at: "1:02:15", frac: .63 }, { key: "orchard", at: null, frac: 1 },
+];
+const SECTIONS = [{ name: "Files", g: "CARD" }, { name: "Playlists", g: "PLAYLIST" }, { name: "Network", g: "NETWORK" }, { name: "Extensions", g: "BLOCKS" }];
+const GROUPS = [["Subtitles", "Font, size, colour", "CC"], ["Music", "Display, visualizer, sound", "NOTE"], ["Photos", "Zoom, pan area, drag", "PICTURE"],
+	["Remember", "Position, tracks", "BOOKMARK"], ["Files", "Folders, play history", "FOLDER"], ["Controls & screen", "Brightness, buttons", "SUN"],
+	["Updates", "New versions", "DOWNLOAD"], ["Web dashboard", "Off", "WEB"]];
+const songF = k => ({ g: "NOTE", name: M[k].file, key: k, play: true, note: fmt(M[k].dur) });
+const FILES = [
+	{ g: "FOLDER", name: "Videos", note: "roms/videos", kids: [{ g: "FOLDER", name: "Movies", kids: [
+		{ g: "FILM", name: M.bigbanana.file, key: "bigbanana", play: true, note: "at 1:02:15" }, { g: "FILM", name: M.sintel.file, key: "sintel", play: true, note: "at 3:02" }] }] },
+	{ g: "CARD", name: "This card", note: "21.4 GB free", kids: [{ g: "FOLDER", name: "Music", kids: [
+		{ g: "FOLDER", name: "Yellow Album", kids: [songF("sunny"), songF("split"), songF("mellow"), { g: "PICTURE", name: "cover.jpg", note: "212 KB" }] },
+		{ g: "NOTE", name: M.orchard.file, key: "orchard", play: true, note: fmt(M.orchard.dur) }] }] },
+	{ g: "CARD", name: "Second card", note: "88.0 GB free", kids: [] },
+];
+
+function fmt(s) { s = Math.round(s); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = String(s % 60).padStart(2, "0"); return h ? `${h}:${String(m).padStart(2, "0")}:${x}` : `${m}:${x}`; }
+
+// ---- state ----
+const S = {
+	size: 640, media: "song", song: 0, paused: false, pos: 59, from: "folder",
+	liked: LIKED0.slice(), pls: PL3(), plMode: "3",
+	view: "main", zone: "strip", strip: 0, grid: 0, lastCol: 0, section: 1, stack: [], cursor: 0, scroll: 0,
+	dialog: null, menu: null, picker: null, kb: null,
+	card: null, pop: 0, flash: 0, toast: null, pressed: null, quitUntil: 0, hold: false,
+};
+const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+const tcv = document.getElementById("top"), tctx = tcv.getContext("2d");
+let sx = 1, hits = [];
+
+const cur = () => S.media === "song" ? SONGS[S.song] : S.media === "video" ? "sintel" : "photo";
+const isLiked = k => S.liked.includes(k);
+const likable = k => M[k] && M[k].kind !== "PICTURE";
+const inPls = k => S.pls.filter(p => p.items.includes(k));
+
+// ---- drawing pieces ----
+const P = v => Math.round(v * sx);
+function fill(r, c) { ctx.fillStyle = c; ctx.fillRect(P(r.x), P(r.y), P(r.x + r.w) - P(r.x), P(r.y + r.h) - P(r.y)); }
+function border(r, c, t = 2) { fill({ x: r.x, y: r.y, w: r.w, h: t }, c); fill({ x: r.x, y: r.y + r.h - t, w: r.w, h: t }, c); fill({ x: r.x, y: r.y, w: t, h: r.h }, c); fill({ x: r.x + r.w - t, y: r.y, w: t, h: r.h }, c); }
+function font(size) { ctx.font = `${Math.round(SIZES[size] * sx)}px "Pixelify Sans"`; ctx.letterSpacing = "0.02px"; }	// (a hair of spacing: Pixelify's "fi" ligature reads as "A")
+function tw(s, size) { font(size); return ctx.measureText(s).width / sx; }
+function elide(s, size, maxW) {
+	if (!maxW || tw(s, size) <= maxW) return s;
+	let t = s; while (t.length && tw(t + "...", size) > maxW) t = t.slice(0, -1);
+	return t.trimEnd() + "...";
+}
+function text(s, size, c, x, cy, maxW = 0, align = 0) {
+	s = elide(s, size, maxW); font(size);
+	ctx.fillStyle = c; ctx.textBaseline = "middle"; ctx.textAlign = ["left", "right", "center"][align];
+	ctx.fillText(s, P(x), P(cy) + Math.round(1 * sx));
+	return tw(s, size);
+}
+function glyphOn(c2, g, x, y, c, cell = 2, scale = sx) {
+	const cs = Math.max(1, Math.round(cell * scale)), w = Math.max(...g.map(r => r.length));
+	const px = Math.round(x * scale) + Math.round((w * cell * scale - w * cs) / 2), py = Math.round(y * scale) + Math.round((g.length * cell * scale - g.length * cs) / 2);
+	c2.fillStyle = c;
+	g.forEach((row, r) => { for (let i = 0; i < row.length;) { if (row[i] !== "#") { i++; continue; } let j = i; while (row[j] === "#") j++; c2.fillRect(px + i * cs, py + r * cs, (j - i) * cs, cs); i = j; } });
+}
+const glyph = (g, x, y, c, cell = 2) => glyphOn(ctx, g, x, y, c, cell);
+const glyphMid = (g, cx, cy, c, cell = 2) => glyph(g, cx - gW(g, cell) / 2, cy - g.length * cell / 2, c, cell);
+const hit = (r, id, fn) => hits.push({ r, id, fn });
+const isPressed = id => S.pressed === id;
+
+function backIcon(armed) {
+	const b = { x: 8, y: 8, w: 48, h: 48 };
+	fill(b, isPressed("back") ? C.PRESSED : armed ? C.YELLOW : C.TEAL);
+	glyphMid(G.BACK, b.x + b.w / 2 - 1, b.y + b.h / 2, armed ? C.BG : C.CREAM, 3);
+	hit(b, "back", () => backTap());
+}
+// the header's right end: the battery, then the clock (statusLeft is about 522)
+function status() {
+	const bw = 30, bh = 16, x = 527, y = 24;
+	fill({ x, y, w: bw, h: bh }, C.CREAM); fill({ x: x + 2, y: y + 2, w: bw - 4, h: bh - 4 }, C.BG);
+	fill({ x: x + 3, y: y + 3, w: Math.round((bw - 6) * 0.82), h: bh - 6 }, C.CREAM); fill({ x: x + bw, y: y + 5, w: 3, h: bh - 10 }, C.CREAM);
+	text("21:10", 0, C.CREAM, 616, 32, 0, 1);
+}
+function header(title, room = 616 - 72 - 110) { backIcon(); text(title, 2, C.CREAM, 72, 32, room); status(); }
+function hints(list) {
+	const w = s => s ? tw(s, 0) : 0;
+	let gap = 24, total = 0;
+	for (const [k, v] of list) total += w(k) + (k ? 7 : 0) + w(v);
+	if (total + gap * (list.length - 1) > 612) gap = 14;
+	total += gap * (list.length - 1);
+	let x = W / 2 - total / 2;
+	for (const [k, v] of list) { if (k) { text(k, 0, C.YELLOW, x, FOOT_Y); x += w(k) + 7; } text(v, 0, C.DIM, x, FOOT_Y); x += w(v) + gap; }
+}
+function focusRow(r) { fill(r, C.TEAL); fill({ x: r.x, y: r.y, w: 4, h: r.h }, C.YELLOW); }
+function empty(g, title, subs) {
+	const cy = 216;
+	glyphMid(g, W / 2, cy - 40, C.DIM, 4);
+	text(title, 1, C.CREAM, W / 2, cy + 16, 560, 2);
+	subs.forEach((s, i) => text(s, 0, C.DIM, W / 2, cy + 46 + i * 24, 560, 2));
+}
+function scrollBar(top, height, first, shown, total, x = 630) {
+	if (total <= shown) return;
+	fill({ x, y: top, w: 4, h: height }, C.SCREEN);
+	const h = Math.max(16, height * shown / total), y = top + (height - h) * first / Math.max(1, total - shown);
+	fill({ x, y, w: 4, h }, C.DIM);
+}
+// a button of the grid: a label (a glyph before it), its key under it in yellow
+function button(b, g, label, key, off) {
+	const mid = b.y + b.h * 2 / 5, ink = off ? C.DIM : C.CREAM;
+	const t = label ? Math.min(b.w - 12, tw(label, 1)) : 0, gw = g ? gW(g) : 0, gap = g && t ? 8 : 0, x = b.x + b.w / 2 - (gw + gap + t) / 2;
+	if (g) glyphMid(g, x + gw / 2, mid, ink);
+	if (t) text(label, 1, ink, x + gw + gap, mid, b.w - 12 - gw - gap);
+	if (key) text(key, 0, off ? C.DIM : C.YELLOW, b.x + b.w / 2, b.y + b.h * 4 / 5 - 2, b.w - 6, 2);
+}
+function smallButton(r, id, g, label, fn, ink = C.CREAM) {
+	fill(r, isPressed(id) ? C.PRESSED : C.TEAL);
+	const t = tw(label, 0), gw = gW(g), x = r.x + r.w / 2 - (gw + 8 + t) / 2;
+	glyphMid(g, x + gw / 2, r.y + r.h / 2, ink); text(label, 0, ink, x + gw + 8, r.y + r.h / 2);
+	hit(r, id, fn);
+}
+
+// ---- Main: what plays ----
+const LIKE_BTN = { x: 460, y: 8, w: 48, h: 48 }, ADD_BTN = { x: 404, y: 8, w: 48, h: 48 };
+const BAR = { x: 24, y: 150, w: 592, h: 24 };
+function drawHeaderActions(k) {
+	// Add to playlist, then the heart (outermost: the right thumb's, and the one used most)
+	const now = performance.now(), flash = now < S.flash;
+	fill(ADD_BTN, isPressed("add") ? C.PRESSED : C.TEAL);
+	if (flash) glyphMid(G.CHECK, ADD_BTN.x + 24, ADD_BTN.y + 24, C.YELLOW, 3);
+	else glyphMid(G.PL_ADD, ADD_BTN.x + 25, ADD_BTN.y + 24, C.CREAM, 3);
+	hit(ADD_BTN, "add", () => openPicker(k));
+	const on = isLiked(k), popping = now - S.pop < 110;
+	fill(LIKE_BTN, isPressed("like") ? C.PRESSED : C.TEAL);
+	glyphMid(on ? G.HEART : G.HEART_O, LIKE_BTN.x + 24, LIKE_BTN.y + 24, on ? C.YELLOW : C.CREAM, popping ? 4 : 3);
+	hit(LIKE_BTN, "like", () => toggleLike(k, "touch"));
+}
+function drawSource(k) {
+	const m = M[k];
+	if (S.from === "liked") {
+		glyphMid(G.HEART, 35, SUB_Y, C.YELLOW);
+		text("Liked", 0, C.CREAM, 52, SUB_Y);
+		glyphMid(G.CARD, 616 - tw("Local", 0) - 18, SUB_Y, C.DIM);
+		text("Local", 0, C.DIM, 616, SUB_Y, 0, 1);
+		return;
+	}
+	glyphMid(G.CARD, 35, SUB_Y, C.DIM);
+	const f = (m.folder || ["This card"]).slice(), last = f.pop(), head = f.length ? f.join(" / ") + " / " : "";
+	const w = head ? text(head, 0, C.DIM, 52, SUB_Y) : 0;
+	text(last, 0, C.CREAM, 52 + w, SUB_Y);
+	text("Local", 0, C.DIM, 616, SUB_Y, 0, 1);
+}
+function drawMain() {
+	if (S.media === "photo") return drawPhoto();
+	const k = cur(), m = M[k], video = S.media === "video";
+	backIcon(quitArmed());
+	text(m.title, 2, C.CREAM, 72, 32, ADD_BTN.x - 12 - 72);
+	drawHeaderActions(k);
+	status();
+	drawSource(k);
+	// the status line
+	glyphMid(S.paused ? G.PAUSE : G.PLAY, 32, 100, C.YELLOW);
+	text(S.paused ? "Paused" : "Playing", 1, C.YELLOW, 52, 100, 330);
+	const count = video ? "1 / 1" : `${S.song + 1} / ${SONGS.length}`;
+	if (quitArmed()) text("Press B again to close", 0, C.YELLOW, 616, 100, 250, 1);
+	else {
+		text(count, 0, C.DIM, 616, 100, 0, 1);
+		if (video) {
+			let x = 616 - tw(count, 0) - 12; fill({ x, y: 92, w: 1, h: 16 }, C.SCREEN); x -= 12;
+			text(" Chapters", 0, C.DIM, x, 100, 0, 1); text("L2/R2", 0, C.YELLOW, x - tw(" Chapters", 0), 100, 0, 1);
+		}
+	}
+	const pos = S.pos, frac = Math.min(1, pos / m.dur);
+	if (video) {
+		const ch = m.chapters; let c = 0; ch.forEach((x, i) => { if (x[1] <= pos) c = i; });
+		glyphMid(G.CHAPTERS, 35, 126, C.DIM); text(ch[c][0], 0, C.CREAM, 52, 126, 540); glyphMid(G.RIGHT, 604, 126, C.DIM);
+	}
+	fill(BAR, C.TEAL); fill({ x: BAR.x, y: BAR.y, w: Math.round(BAR.w * frac), h: BAR.h }, C.YELLOW);
+	if (video) m.chapters.slice(1).forEach(c => fill({ x: BAR.x + Math.round(BAR.w * c[1] / m.dur) - 1, y: BAR.y, w: 2, h: BAR.h }, C.BG));
+	fill({ x: BAR.x + Math.round(BAR.w * frac) - 4, y: BAR.y - 6, w: 8, h: BAR.h + 12 }, C.CREAM);
+	text(fmt(pos), 1, C.CREAM, BAR.x, 196); text(fmt(m.dur), 1, C.DIM, BAR.x + BAR.w, 196, 0, 1);
+	text(fmt(m.dur - pos) + " left", 0, C.DIM, W / 2, 198, 0, 2);
+	// the two rows of buttons
+	const first = video || S.song === 0, last = video || S.song === SONGS.length - 1;
+	const grid = [
+		[["L", G.PREV, "Prev", first], ["Left", null, "-5s"], ["A", S.paused ? G.PLAY : G.PAUSE, S.paused ? "Play" : "Pause"], ["Right", null, "+10s"], ["R", G.NEXT, "Next", last]],
+		video ? [["X", "tracks"], ["Y", G.CHAPTERS, "2/4"], ["SELECT", null, "Fit"], ["Up", null, "1x"], ["START", null, "Menu"]]
+			: [["X", G.LOOP, "Off"], ["Y", "sound"], ["SELECT", G.PICTURE, "Art"], ["Up", null, "1x"], ["START", null, "Menu"]],
+	];
+	const KEY = { L: "L", Left: "LEFT", A: "A", Right: "RIGHT", R: "R", X: "X", Y: "Y", SELECT: "SELECT", Up: "UP/DOWN", START: "START" };
+	grid.forEach((row, r) => row.forEach(([b, g, label, off], c) => {
+		const rect = { x: 24 + c * 121, y: r ? 300 : 228, w: 108, h: 60 }, id = "g" + r + c;
+		fill(rect, isPressed(id) && !off ? C.PRESSED : C.TEAL);
+		if (g === "tracks") { glyphMid(G.SPEAKER, rect.x + 40, rect.y + 24, C.CREAM); glyphMid(G.CC, rect.x + 66, rect.y + 24, C.CREAM); text("X", 0, C.YELLOW, rect.x + 54, rect.y + 46, 0, 2); }
+		else if (g === "sound") { button({ x: rect.x, y: rect.y, w: rect.w, h: 48 }, G.EQ, "Off", null, true); text("Sound", 0, C.DIM, rect.x + 54, rect.y + 46, 0, 2); }
+		else button(rect, g, label, KEY[b], off);
+		hit(rect, id, () => { if (!off) press(b); });
+	}));
+	// the track lines
+	glyphMid(G.SPEAKER, 33, 378, C.DIM); text(video ? "Track 1 · AAC Stereo" : "Track 1 · MP3 Stereo", 0, C.CREAM, 52, 378, 420);
+	if (video) { glyphMid(G.RIGHT, 604, 378, C.DIM); glyphMid(G.CC, 33, 403, C.DIM); text("English", 0, C.CREAM, 52, 403); glyphMid(G.RIGHT, 604, 403, C.DIM); }
+	else {
+		text("EQ off", 0, C.DIM, 592, 378, 0, 1); glyphMid(G.EQ, 592 - tw("EQ off", 0) - 8 - 11, 378, C.DIM); glyphMid(G.RIGHT, 604, 378, C.DIM);
+		glyphMid(G.NOTE, 33, 403, C.DIM); text(`${m.artist} · ${m.album}`, 0, C.CREAM, 52, 403, 564);
+	}
+	// the bottom row, as today
+	smallButton({ x: 24, y: 428, w: 140, h: 44 }, "lock", G.LOCK, "Lock", () => toast("Lock (as today)", "LOCK"));
+	smallButton({ x: 172, y: 428, w: 140, h: 44 }, "info", G.INFO, "Info", () => toast("The Info page (as today)", "INFO"));
+	smallButton({ x: 320, y: 428, w: 140, h: 44 }, "scr", G.MOON, "Screen off", () => toast("Screen off (as today)", "MOON"));
+	const q = { x: 468, y: 428, w: 148, h: 44 };
+	fill(q, isPressed("quit") ? C.PRESSED : C.TEAL);
+	{ const t = quitArmed() ? "Again?" : "Close", key = quitArmed() ? "" : "B×2", tt = tw(t, 0), kw = key ? tw(key, 0) + 10 : 0, x = q.x + q.w / 2 - (18 + 8 + tt + kw) / 2, ink = quitArmed() ? C.YELLOW : C.CREAM;
+		glyphMid(G.CROSS, x + 9, q.y + 22, ink); text(t, 0, ink, x + 26, q.y + 22); if (key) text(key, 0, C.YELLOW, x + 26 + tt + 10, q.y + 22); }
+	hit(q, "quit", () => press("B"));
+}
+function drawPhoto() {
+	backIcon(quitArmed());
+	text(M.photo.title, 2, C.CREAM, 72, 32, 616 - 72 - 110);	// no heart, no Add: photos can't be liked
+	status();
+	glyphMid(G.CARD, 35, SUB_Y, C.DIM); text("This card / Photos / ", 0, C.DIM, 52, SUB_Y); text("Sintel", 0, C.CREAM, 52 + tw("This card / Photos / ", 0), SUB_Y);
+	text("2 / 6", 0, C.DIM, 616, SUB_Y, 0, 1);
+	const pan = { x: 24, y: 90, w: 592, h: 240 };
+	fill(pan, C.SURFACE); border(pan, C.SCREEN);
+	fill({ x: 200, y: 120, w: 240, h: 180 }, "#2f2b36"); border({ x: 200, y: 120, w: 240, h: 180 }, C.YELLOW);
+	glyphMid(G.PICTURE, W / 2, 210, C.DIM, 4);
+	const btns = [["Prev", "L", G.PREV], ["Next", "R", G.NEXT], ["Fit", "SELECT", null], ["Turn", "L3", G.REFRESH], ["Menu", "START", null]];
+	btns.forEach(([l, k, g], i) => { const r = { x: 24 + i * 121, y: 346, w: 108, h: 60 }; fill(r, C.TEAL); button(r, g, l, k); });
+	smallButton({ x: 24, y: 428, w: 140, h: 44 }, "lock", G.LOCK, "Lock", () => {});
+	smallButton({ x: 172, y: 428, w: 140, h: 44 }, "info", G.INFO, "Info", () => {});
+	smallButton({ x: 320, y: 428, w: 140, h: 44 }, "scr", G.MOON, "Screen off", () => {});
+	smallButton({ x: 468, y: 428, w: 148, h: 44 }, "quit", G.CROSS, "Close", () => press("B"));
+}
+
+// ---- the top panel: what plays, and the card (the volume card's place: osd-overlay 2) ----
+function drawTop() {
+	const t = tctx, s = S.size / 640, k = cur(), m = M[k];
+	t.fillStyle = "#000"; t.fillRect(0, 0, tcv.width, tcv.height);
+	const R = (x, y, w, h, c) => { t.fillStyle = c; t.fillRect(Math.round(x * s), Math.round(y * s), Math.round(w * s), Math.round(h * s)); };
+	const T = (str, px, c, x, y, weight = 400, align = "center") => { t.font = `${weight} ${Math.round(px * s)}px Inter`; t.fillStyle = c; t.textAlign = align; t.textBaseline = "middle"; t.fillText(str, x * s, y * s); };
+	if (S.view !== "main") {
+		// the browser: the idle logo
+		R(296, 196, 48, 48, C.YELLOW); glyphOn(t, G.PLAY, 310, 208, C.BG, 3, s);
+		T("Banana Player", 22, C.CREAM, 320, 272, 700);
+	} else if (S.media === "song") {
+		const g = t.createLinearGradient(160 * s, 40 * s, 480 * s, 360 * s); g.addColorStop(0, "#3a8fc7"); g.addColorStop(1, "#d9534f");
+		t.fillStyle = g; t.fillRect(170 * s, 30 * s, 300 * s, 300 * s);
+		T(m.title, 25, "#fff", 320, 380, 700); T(m.artist, 17, "#fff", 320, 410); T(m.album, 15, "#9a9a9a", 320, 434);
+	} else if (S.media === "video") {
+		const g = t.createLinearGradient(0, 60 * s, 0, 420 * s); g.addColorStop(0, "#f7c46c"); g.addColorStop(.4, "#e9875a"); g.addColorStop(.65, "#6b4a6e"); g.addColorStop(1, "#1d2337");
+		t.fillStyle = g; t.fillRect(0, 60 * s, 640 * s, 360 * s);
+		t.fillStyle = "#ffe08a"; t.beginPath(); t.arc(420 * s, 150 * s, 36 * s, 0, 7); t.fill();
+		t.fillStyle = "#26332a"; t.beginPath(); t.ellipse(180 * s, 420 * s, 300 * s, 120 * s, 0, Math.PI, 0); t.fill();
+		T("We have to reach the tree before dark.", 17, "#fff", 320, 392);
+	} else {
+		const g = t.createLinearGradient(0, 0, 640 * s, 480 * s); g.addColorStop(0, "#56708a"); g.addColorStop(1, "#2a2230");
+		t.fillStyle = g; t.fillRect(80 * s, 0, 480 * s, 480 * s);
+	}
+	const c = S.card;
+	if (c && (S.hold || performance.now() < c.until)) {
+		// 400×124 at (280, 300) in the overlay's 960×720: the volume card's box and colours
+		const bx = 187, by = 200, bw = 267, bh = 83;
+		t.fillStyle = "rgba(23,22,28,0.875)"; t.fillRect(bx * s, by * s, bw * s, bh * s);
+		glyphOn(t, G[c.g], bx + 18, by + 26, c.ink, 3, s);
+		T(c.line1, 19, "#F1EDE2", bx + 68, by + 30, 400, "left");
+		let l2 = c.line2; t.font = `400 ${Math.round(15 * s)}px Inter`; while (t.measureText(l2).width > 180 * s && l2.length > 2) l2 = l2.slice(0, -2) + "…";
+		T(l2, 15, "#8A867C", bx + 68, by + 56, 400, "left");
+	}
+	document.getElementById("capTop").textContent = c && (S.hold || performance.now() < c.until) ? "Card: 1.5 s, in the volume card's place" : "";
+}
+
+// ---- START menu: Playing (new, while a song or video plays) · Settings · About · Quit ----
+function menuTabs() { return S.view === "main" && S.media !== "photo" ? ["Playing", "Settings", "About", "Quit"] : ["Settings", "About", "Quit"]; }
+function tabRect(t) {
+	const names = menuTabs();
+	if (names.length === 3) return { x: 72 + t * 136, y: 10, w: 128, h: 44 };
+	const ws = [112, 120, 100, 84]; let x = 72; for (let i = 0; i < t; i++) x += ws[i] + 8;
+	return { x, y: 10, w: ws[t], h: 44 };
+}
+function playingRows() {
+	const k = cur(), on = isLiked(k), n = inPls(k);
+	return [
+		{ g: on ? "HEART" : "HEART_O", label: on ? "Liked" : "Like", note: on ? "In Liked" : "Adds it to Liked", ink: on ? C.YELLOW : null, act: () => toggleLike(k, "menu") },
+		{ g: "PL_ADD", label: "Add to playlist…", note: n.length === 1 ? "In " + n[0].name : n.length ? `In ${n.length} playlists` : "", act: () => openPicker(k) },
+		{ g: "FOLDER", label: "Show in folder", note: M[k].folder[M[k].folder.length - 1], act: () => showInFolder(k) },
+		{ g: "INFO", label: "Info", note: "Size, codecs, tags", act: () => toast("The Info page (as today)", "INFO") },
+	];
+}
+function drawMenu() {
+	const m = S.menu, names = menuTabs();
+	backIcon();
+	names.forEach((nm, t) => {
+		const r = tabRect(t), on = t === m.tab;
+		fill(r, isPressed("tab" + t) ? C.PRESSED : on ? C.YELLOW : C.TEAL);
+		text(nm, 1, on ? C.BG : C.CREAM, r.x + r.w / 2, r.y + r.h / 2, r.w - 8, 2);
+		hit(r, "tab" + t, () => { m.tab = t; m.cur = 0; });
+	});
+	status();
+	const name = names[m.tab];
+	if (name === "Playing") {
+		const k = cur(), it = M[k], card = { x: 16, y: 68, w: 608, h: 62 };
+		fill(card, C.SURFACE);
+		glyphMid(G[it.kind], 46, card.y + 31, C.DIM, 3);
+		text(it.title, 1, C.CREAM, 80, card.y + 20, 520);
+		text(it.artist ? `${it.artist} · ${it.album}` : it.folder.join(" / "), 0, C.DIM, 80, card.y + 45, 520);
+		playingRows().forEach((row, i) => {
+			const r = { x: 16, y: 142 + i * 54, w: 608, h: 50 }, at = i === m.cur;
+			if (isPressed("pr" + i)) fill(r, C.PRESSED); else if (at) focusRow(r);
+			const ink = row.ink || (at ? C.YELLOW : C.CREAM);
+			glyphMid(G[row.g], r.x + 31, r.y + r.h / 2, ink, i === 0 ? 2 : 2);
+			const nw = row.note ? tw(row.note, 0) + 24 : 0;
+			text(row.label, 1, at ? C.YELLOW : C.CREAM, r.x + 56, r.y + r.h / 2, r.w - 70 - nw);
+			if (row.note) text(row.note, 0, at ? C.DIM_TEAL : C.DIM, r.x + r.w - 14, r.y + r.h / 2, 0, 1);
+			hit(r, "pr" + i, () => { m.cur = i; press("A"); });
+		});
+		hints([["UP/DOWN", "Move"], ["A", "Choose"], ["B", "Close"], ["L/R", "Tabs"]]);
+	} else if (name === "Settings") {
+		GROUPS.forEach(([nm, about, g], i) => {
+			const t = { x: 16 + (i % 2) * 312, y: 70 + Math.floor(i / 2) * 86, w: 296, h: 78 }, at = i === m.cur;
+			fill(t, at ? C.TEAL : C.SURFACE); if (at) border(t, C.YELLOW);
+			glyphMid(G[g], t.x + 34, t.y + t.h / 2, at ? C.YELLOW : C.CREAM, 3);
+			text(nm, 1, at ? C.YELLOW : C.CREAM, t.x + 66, t.y + 27, t.w - 76);
+			text(about, 0, at ? C.DIM_TEAL : C.DIM, t.x + 66, t.y + 52, t.w - 76);
+		});
+		hints([["D-PAD", "Move"], ["A", "Open"], ["B", "Close"], ["L/R", "Tabs"]]);
+	} else if (name === "About") {
+		glyphMid(G.PLAY, W / 2, 140, C.YELLOW, 6);
+		text("Banana Player", 2, C.YELLOW, W / 2, 214, 0, 2);
+		text("As today", 0, C.DIM, W / 2, 250, 0, 2);
+		hints([["UP/DOWN", "Scroll"], ["B", "Close"], ["L/R", "Tabs"]]);
+	} else {
+		const r = { x: 170, y: 190, w: 300, h: 64 };
+		fill(r, C.TEAL); border(r, C.YELLOW);
+		const t = tw("Quit Banana Player", 1), x = r.x + r.w / 2 - (t + 30) / 2;
+		glyphMid(G.POWER, x + 9, r.y + 32, C.YELLOW); text("Quit Banana Player", 1, C.YELLOW, x + 30, r.y + 32);
+		hints([["A", "Quit"], ["B", "Close"], ["L/R", "Tabs"]]);
+	}
+}
+
+// ---- dialogs (Y menus, X options) ----
+function veil() {
+	fill({ x: 0, y: 0, w: W, h: H }, "rgba(0,0,0,0.667)");
+	fill({ x: 0, y: 436, w: W, h: 44 }, "#080709");
+}
+function dialogBox(box, title) {
+	veil();
+	fill(box, C.TEAL); fill({ x: box.x + 2, y: box.y + 2, w: box.w - 4, h: box.h - 4 }, C.SURFACE);
+	if (title) text(title, 1, C.YELLOW, box.x + box.w / 2, box.y + 30, box.w - 40, 2);
+}
+function drawDialog() {
+	const d = S.dialog, n = d.rows.length, h = 60 + n * 48 + 8, box = { x: 90, y: Math.max(12, Math.round((436 - h) / 2)), w: 460, h };
+	dialogBox(box, d.title);
+	hits = [{ r: { x: 0, y: 0, w: W, h: H }, id: "veil", fn: () => press("B") }, { r: box, id: "box", fn: () => {} }];
+	d.rows.forEach((row, i) => {
+		const r = { x: box.x + 8, y: box.y + 56 + i * 48, w: box.w - 16, h: 48 }, at = i === d.cur;
+		if (isPressed("d" + i)) fill(r, C.PRESSED); else if (at) focusRow(r);
+		const ink = row.red ? C.RED : row.ink ? row.ink : at ? C.YELLOW : C.CREAM;
+		glyphMid(G[row.g], r.x + 31, r.y + r.h / 2, ink);
+		const nw = row.note ? tw(row.note, 0) + 20 : 0;
+		text(row.label, 1, row.red ? C.RED : at ? C.YELLOW : C.CREAM, r.x + 56, r.y + r.h / 2, r.w - 70 - nw);
+		if (row.note) text(row.note, 0, at ? C.DIM_TEAL : C.DIM, r.x + r.w - 14, r.y + r.h / 2, 0, 1);
+		hits.push({ r, id: "d" + i, fn: () => { d.cur = i; press("A"); } });
+	});
+	hints([["UP/DOWN", "Move"], ["A", "Choose"], ["B", "Close"]]);
+}
+
+// ---- Add to…: the picker (Liked never in it) ----
+const SHOWN = 7;
+function pickerList() { return S.pls.slice().sort((a, b) => (b.used - a.used) || a.name.localeCompare(b.name)); }
+function pickerBox() { const n = Math.min(pickerList().length + 1, SHOWN), h = 66 + n * 46; return { x: 96, y: Math.round((436 - h) / 2), w: 448, h }; }
+function drawPicker() {
+	const p = S.picker, list = pickerList(), n = list.length + 1, box = pickerBox();
+	dialogBox(box, `Add “${M[p.key].title}” to…`);
+	hits = [{ r: { x: 0, y: 0, w: W, h: H }, id: "veil", fn: () => press("B") }, { r: box, id: "box", fn: () => {} }];
+	for (let i = p.scroll; i < n && i < p.scroll + SHOWN; i++) {
+		const r = { x: 112, y: box.y + 52 + (i - p.scroll) * 46, w: 416, h: 42 }, at = i === p.cur;
+		if (isPressed("pk" + i)) fill(r, C.PRESSED); else if (at) focusRow(r);
+		const ink = at ? C.YELLOW : C.CREAM, mid = r.y + r.h / 2;
+		hits.push({ r, id: "pk" + i, fn: () => { p.cur = i; press("A"); } });
+		if (i === 0) { glyphMid(G.PLUS, r.x + 31, mid, ink); text("New playlist…", 1, ink, r.x + 56, mid, r.w - 68); continue; }
+		const pl = list[i - 1], has = pl.items.includes(p.key), armed = p.armed === pl.name;
+		let right = 512;
+		if (armed) { const t = "Add again?"; text(t, 0, C.YELLOW, right, mid, 0, 1); right -= tw(t, 0); }
+		else if (has) { text("Added", 0, at ? C.DIM_TEAL : C.DIM, right, mid, 0, 1); right -= tw("Added", 0); glyphMid(G.CHECK, right - 14, mid, C.YELLOW); right -= 24; }
+		else { const t = `${pl.count} items`; text(t, 0, at ? C.DIM_TEAL : C.DIM, right, mid, 0, 1); right -= tw(t, 0); }
+		glyphMid(G.PLAYLIST, r.x + 31, mid, ink);
+		text(pl.name, 1, ink, r.x + 56, mid, right - 12 - (r.x + 56));
+	}
+	if (n > SHOWN) scrollBar(box.y + 52, SHOWN * 46 - 4, p.scroll, SHOWN, n, 532);
+	hints([["A", p.armed ? "Add again" : "Add"], ["B", "Cancel"]]);
+}
+
+// ---- the on-screen keyboard (as today): New playlist… names one, then it's added to ----
+const KB = [
+	[["1"], ["2"], ["3"], ["4"], ["5"], ["6"], ["7"], ["8"], ["9"], ["0"], ["Del", 1, 2]],
+	[["q"], ["w"], ["e"], ["r"], ["t"], ["y"], ["u"], ["i"], ["o"], ["p"], ["-"]],
+	[["a"], ["s"], ["d"], ["f"], ["g"], ["h"], ["j"], ["k"], ["l"], ["."], ["_"]],
+	[["Shift", 2, 2], ["z"], ["x"], ["c"], ["v"], ["b"], ["n"], ["m"], ["@"], ["\\"]],
+	[["#+=", 2, 2], ["<", 1, 2], ["Space", 4, 2], [">", 1, 2], ["Done", 3, 2]],
+];
+function kbRects() {
+	const out = [];
+	KB.forEach((row, r) => { let col = 0; row.forEach(([k, span = 1, dark]) => { const x = 11 + col * 56.9, w = span * 56.9 - 6.9; out.push({ k, r, col, x, y: 195 + r * 48, w, h: 42, dark: !!dark }); col += span; }); });
+	return out;
+}
+function drawKeyboard() {
+	const kb = S.kb;
+	backIcon(); text("Playlist name", 2, C.CREAM, 72, 32); status();
+	const f = { x: 16, y: 92, w: 608, h: 64 };
+	fill(f, C.SURFACE); border(f, C.YELLOW);
+	if (kb.sel && kb.text) { const w = tw(kb.text, 1); fill({ x: 30, y: 109, w: w + 4, h: 30 }, C.PRESSED); }
+	const w = text(kb.text, 1, C.CREAM, 32, 124, 570);
+	if (!kb.sel && Math.floor(performance.now() / 500) % 2 === 0) fill({ x: 33 + w, y: 110, w: 2, h: 28 }, C.YELLOW);
+	if (kb.err) { glyphMid(G.ALERT, 27, 175, C.RED); text(kb.err, 0, C.RED, 44, 176, 576); }
+	kbRects().forEach((key, i) => {
+		const at = i === kb.cur, r = { x: key.x, y: key.y, w: key.w, h: key.h };
+		fill(r, isPressed("k" + i) ? C.PRESSED : at ? C.YELLOW : key.dark ? C.KEY2 : C.TEAL);
+		const label = key.k.length === 1 && kb.shift ? key.k.toUpperCase() : key.k;
+		text(label, 1, at ? C.BG : C.CREAM, r.x + r.w / 2, r.y + r.h / 2, r.w - 4, 2);
+		hit(r, "k" + i, () => { kb.cur = i; kbType(key.k); });
+	});
+	hints([["A", "Type"], ["B", "Delete"], ["X", "Space"], ["Y", "Shift"], ["L/R", "Move"], ["START", "Done"]]);
+}
+
+// ---- Home (the approved layout, with the hearts) ----
+const STRIDE = 250, CARD_W = 240, CARD = { y: 84, h: 104 };
+const stripCount = () => RECENT.length + 1;
+function tileRect(g) { return { x: 16 + (g % 2) * 312, y: 200 + Math.floor(g / 2) * 118, w: 296, h: 110 }; }
+function tileSub(g) { return g === 0 ? "Videos · 2 cards" : g === 1 ? `Liked · ${S.pls.length} playlists` : g === 2 ? "Living room PC · NAS" : "Coming soon"; }
+function drawHome() {
+	header("Banana Player");
+	text("Recent", 0, C.DIM, 16, SUB_Y);
+	const off = Math.min(Math.max(0, 16 + stripCount() * STRIDE - 10 + 16 - W), Math.max(0, (S.strip - 1) * STRIDE));
+	ctx.save(); ctx.beginPath(); ctx.rect(0, P(80), P(W), P(116)); ctx.clip();
+	for (let i = 0; i < stripCount(); i++) {
+		const x = 16 + i * STRIDE - off; if (x + CARD_W < 0 || x > W) continue;
+		const r = { x, y: CARD.y, w: CARD_W, h: CARD.h }, at = S.zone === "strip" && S.strip === i && !S.dialog;
+		fill(r, isPressed("card" + i) ? C.PRESSED : at ? C.TEAL : C.SURFACE);
+		if (i < RECENT.length) {
+			const it = RECENT[i], m = M[it.key], ink = at ? C.YELLOW : C.CREAM, soft = at ? C.DIM_TEAL : C.DIM;
+			text(m.title, 1, ink, x + 14, CARD.y + 34, CARD_W - 28);
+			glyphMid(G[m.kind], x + 25, CARD.y + 78, soft);
+			const liked = isLiked(it.key), marks = (liked ? 22 : 0) + (m.net ? 30 : 0);
+			text(it.at ? `${it.at} / ${fmt(m.dur)}` : `Played · ${fmt(m.dur)}`, 0, soft, x + 44, CARD.y + 78, CARD_W - 58 - marks);
+			let mx = x + CARD_W - 22;
+			if (m.net) { glyphMid(G.NETWORK, mx - 3, CARD.y + 78, soft); mx -= 30; }
+			if (liked) glyphMid(G.HEART_S, mx, CARD.y + 78, C.YELLOW);
+			const bar = { x: x + 2, y: CARD.y + CARD.h - 6, w: CARD_W - 4, h: 4 };
+			fill(bar, at ? "#1A3134" : C.SCREEN); fill({ x: bar.x, y: bar.y, w: Math.round(bar.w * it.frac), h: 4 }, it.at ? C.YELLOW : C.DIM);
+		} else {
+			glyphMid(G.CLOCK, x + CARD_W / 2, CARD.y + 30, at ? C.YELLOW : C.DIM, 3);
+			text("All recent", 1, at ? C.YELLOW : C.CREAM, x + CARD_W / 2, CARD.y + 66, CARD_W - 20, 2);
+		}
+		if (at) border(r, C.YELLOW);
+		hit({ x: Math.max(0, x), y: r.y, w: Math.min(W, x + CARD_W) - Math.max(0, x), h: r.h }, "card" + i, () => { S.zone = "strip"; S.strip = i; press("A"); });
+	}
+	ctx.restore();
+	for (let g = 0; g < 4; g++) {
+		const t = tileRect(g), at = S.zone === "grid" && S.grid === g && !S.dialog;
+		fill(t, isPressed("tile" + g) ? C.PRESSED : at ? C.TEAL : C.SURFACE); if (at) border(t, C.YELLOW);
+		glyphMid(G[SECTIONS[g].g], t.x + 54, t.y + t.h / 2, at ? C.YELLOW : g === 3 ? C.DIM : C.CREAM, 4);
+		text(SECTIONS[g].name, 2, at ? C.YELLOW : C.CREAM, t.x + 104, t.y + t.h / 2 - 14, t.w - 114);
+		text(tileSub(g), 0, at ? C.DIM_TEAL : C.DIM, t.x + 104, t.y + t.h / 2 + 20, t.w - 114);
+		hit(t, "tile" + g, () => { S.zone = "grid"; S.grid = g; press("A"); });
+	}
+	hints(S.zone === "strip" ? [["A", "Play"], ["Y", "Menu"], ["X", "Options"], ["B", "Quit"], ["START", "Menu"]] : [["D-PAD", "Move"], ["A", "Open"], ["X", "Options"], ["B", "Quit"], ["START", "Menu"]]);
+}
+
+// ---- a section: Playlists (Liked pinned first), Files ----
+function rows() {
+	const top = S.stack[S.stack.length - 1];
+	if (S.section === 1) {
+		if (top && top.liked) return S.liked.map(k => ({ g: M[k].kind, key: k, name: M[k].gone ? `[Gone] ${M[k].file}` : M[k].title, note: M[k].gone ? "" : M[k].net ? M[k].net : fmt(M[k].dur), gone: M[k].gone, likedItem: true }));
+		if (top) return top.node.items.map(k => ({ g: M[k].kind, key: k, name: M[k].title, note: fmt(M[k].dur) }));
+		return [{ g: "HEART", name: "Liked", note: S.liked.length ? `${S.liked.length} items` : "Empty", liked: true }]
+			.concat(S.pls.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => ({ g: "PLAYLIST", name: p.name, note: `${p.count} items`, pl: p })),
+				[{ g: "PLUS", name: "New playlist", act: true }]);
+	}
+	if (S.section === 0) return top ? top.node.kids : FILES;
+	return [];
+}
+function pips() {
+	text("L", 0, C.YELLOW, 334, 32, 0, 1);
+	for (let k = 0; k < 4; k++) {
+		const r = { x: 344 + k * 40, y: 14, w: 36, h: 36 }, on = k === S.section;
+		fill(r, isPressed("pip" + k) ? C.PRESSED : on ? C.YELLOW : C.SURFACE);
+		glyphMid(G[SECTIONS[k].g], r.x + r.w / 2, r.y + r.h / 2, on ? C.BG : C.DIM);
+		hit(r, "pip" + k, () => goSection(k));
+	}
+	text("R", 0, C.YELLOW, 508, 32);
+}
+function drawSection() {
+	const top = S.stack[S.stack.length - 1], list = rows(), inLiked = top && top.liked;
+	backIcon(); text(inLiked ? "Liked" : top ? top.node.name : SECTIONS[S.section].name, 2, C.CREAM, 72, 32, 250); pips(); status();
+	if (S.section === 1 && !top) text(`Liked · ${S.pls.length} playlists`, 0, C.DIM, 16, SUB_Y);
+	else if (inLiked) text(S.liked.length ? `Newest first · ${S.liked.length} items` : "", 0, C.DIM, 16, SUB_Y);
+	else if (top) { const names = S.stack.map(s => s.node.name), last = names.pop(), pre = names.length ? names.join(" / ") + " / " : ""; const w = pre ? text(pre, 0, C.DIM, 16, SUB_Y) : 0; text(last, 0, C.CREAM, 16 + w, SUB_Y); }
+	else text("Videos and your cards", 0, C.DIM, 16, SUB_Y);
+	if (S.section >= 2) { empty(G[SECTIONS[S.section].g], `${SECTIONS[S.section].name}`, ["As today"]); hints([["B", "Home"], ["L/R", "Sections"]]); return; }
+	if (inLiked && !list.length) {
+		empty(G.HEART_O, "Nothing liked yet", ["Tap the heart at the top while a song or video plays,", "or press START › Like. Liked things gather here."]);
+		hints([["B", "Back"], ["L/R", "Sections"], ["START", "Menu"]]);
+		return;
+	}
+	for (let k = 0; k < ROWS_SHOWN && S.scroll + k < list.length; k++) {
+		const i = S.scroll + k, it = list[i], r = { x: 16, y: ROW_Y + k * ROW_H, w: 608, h: ROW_H }, at = i === S.cursor && !S.dialog;
+		if (isPressed("row" + i)) fill(r, C.PRESSED); else if (at) focusRow(r);
+		const ink = it.gone ? C.DIM : it.liked ? (at ? C.YELLOW : C.CREAM) : at ? C.YELLOW : C.CREAM;
+		glyphMid(G[it.g], 43, r.y + r.h / 2, it.liked ? C.YELLOW : it.act ? (at ? C.YELLOW : C.DIM) : it.gone ? C.DIM : ink);
+		let nw = it.note ? tw(it.note, 0) + 24 : 0;
+		const heart = it.key && !it.likedItem && isLiked(it.key);
+		if (heart) nw += 22;
+		text(it.name, 1, it.act && !at ? C.DIM_TEAL : ink, 66, r.y + r.h / 2, 608 - 66 - nw);
+		if (it.note) text(it.note, 0, at ? C.DIM_TEAL : C.DIM, 608, r.y + r.h / 2, 0, 1);
+		if (heart) glyphMid(G.HEART_S, 608 - (it.note ? tw(it.note, 0) + 16 : 0), r.y + r.h / 2, C.YELLOW);
+		hit(r, "row" + i, () => { S.cursor = i; press("A"); });
+	}
+	scrollBar(ROW_Y, ROWS_SHOWN * ROW_H, S.scroll, ROWS_SHOWN, list.length);
+	const it = list[S.cursor] || {};
+	if (inLiked) hints([["A", it.gone ? "Menu" : "Play"], ["B", "Back"], ["X", "Options"], ["Y", "Menu"], ["L/R", "Sections"]]);
+	else hints([["A", it.play ? "Play" : it.act ? "New playlist" : "Open"], ["B", top ? "Back" : "Home"], ["X", "Options"], ...(it.pl || it.liked ? [["Y", "Menu"]] : []), ["L/R", "Sections"]]);
+}
+
+function drawToast() {
+	if (!S.toast || performance.now() > S.toast.until) { S.toast = null; return; }
+	const t = S.toast.text, w = Math.min(600, tw(t, 0) + 64), r = { x: W / 2 - w / 2, y: 438, w, h: 40 };
+	fill({ x: 0, y: 436, w: W, h: 44 }, C.BG); fill(r, C.CREAM);
+	glyphMid(G[S.toast.g || "INFO"], r.x + 22, r.y + r.h / 2, C.BG);
+	text(t, 0, C.BG, r.x + 40, r.y + r.h / 2, w - 52);
+}
+
+function render() {
+	hits = [];
+	fill({ x: 0, y: 0, w: W, h: H }, C.BG);
+	if (S.kb) drawKeyboard();
+	else {
+		if (S.menu) drawMenu();
+		else if (S.view === "main") drawMain();
+		else if (S.view === "home") drawHome();
+		else drawSection();
+		if (S.dialog) drawDialog();
+		if (S.picker) drawPicker();
+	}
+	drawToast();
+	drawTop();
+	setStatus();
+	const now = performance.now();
+	if ((S.card && now < S.card.until) || now - S.pop < 200 || now < S.flash || S.toast || quitArmed() || S.kb) requestAnimationFrame(render);
+}
+function setStatus() {
+	let s;
+	if (S.kb) s = "On-screen keyboard: naming a new playlist";
+	else if (S.menu) s = "START menu › " + menuTabs()[S.menu.tab];
+	else if (S.view === "main") s = "Playing › " + M[cur()].title + (isLiked(cur()) ? " (liked)" : "");
+	else if (S.view === "home") s = "Home";
+	else s = SECTIONS[S.section].name + S.stack.map(x => " › " + (x.liked ? "Liked" : x.node.name)).join("");
+	if (S.picker) s += " · Add to…";
+	if (S.dialog) s += " · " + S.dialog.title;
+	document.getElementById("status").textContent = s;
+}
+
+// ---- behaviour ----
+const quitArmed = () => performance.now() < S.quitUntil;
+function toast(t, g) { S.toast = { text: t, g, until: performance.now() + 1800 }; }
+function card(g, ink, line1, line2) { S.card = { g, ink, line1, line2, until: performance.now() + 1500 }; }
+function toggleLike(k, how) {
+	if (!likable(k)) return;
+	if (isLiked(k)) { S.liked = S.liked.filter(x => x !== k); card("HEART_O", C.DIM, "Removed from Liked", M[k].title); }
+	else { S.liked.unshift(k); card("HEART", C.YELLOW, "Added to Liked", M[k].title); }
+	S.pop = performance.now();
+}
+function openPicker(k) { S.picker = { key: k, cur: 0, scroll: 0, armed: null }; }
+function addTo(pl, k, again) {
+	pl.items.push(k); pl.count++; pl.used = Date.now();
+	S.picker = null; S.flash = performance.now() + 1200;
+	card("PLAYLIST", C.CREAM, again ? `Added again to ${pl.name}` : `Added to ${pl.name}`, M[k].title);
+}
+function pickerPress(b) {
+	const p = S.picker, list = pickerList(), n = list.length + 1;
+	if (b === "Up") { p.cur = (p.cur + n - 1) % n; p.armed = null; }
+	else if (b === "Down") { p.cur = (p.cur + 1) % n; p.armed = null; }
+	else if (b === "Left") { p.cur = Math.max(0, p.cur - SHOWN); p.armed = null; }
+	else if (b === "Right") { p.cur = Math.min(n - 1, p.cur + SHOWN); p.armed = null; }
+	else if (b === "B") S.picker = null;
+	else if (b === "A") {
+		if (p.cur === 0) { S.kb = { text: "New playlist", sel: true, cur: 11, shift: false, err: "", key: p.key }; return; }
+		const pl = list[p.cur - 1];
+		if (pl.items.includes(p.key) && p.armed !== pl.name) { p.armed = pl.name; return; }
+		addTo(pl, p.key, pl.items.includes(p.key));
+	}
+	if (p.cur < p.scroll) p.scroll = p.cur;
+	if (p.cur >= p.scroll + SHOWN) p.scroll = p.cur - SHOWN + 1;
+}
+function kbType(k) {
+	const kb = S.kb; kb.err = "";
+	if (k === "Del") { kb.text = kb.sel ? "" : kb.text.slice(0, -1); kb.sel = false; }
+	else if (k === "Shift") kb.shift = !kb.shift;
+	else if (k === "#+=" || k === "<" || k === ">") kb.sel = false;
+	else if (k === "Done") kbDone();
+	else { const ch = k === "Space" ? " " : kb.shift ? k.toUpperCase() : k; kb.text = (kb.sel ? "" : kb.text) + ch; kb.sel = false; kb.shift = false; }
+}
+function kbDone() {
+	const kb = S.kb, n = kb.text.trim();
+	// the same notes as today's keyboard; Liked counts as a playlist you have
+	if (!n) { kb.err = "Type a name"; return; }
+	if (n.length > 40) { kb.err = "40 characters at most"; return; }
+	if (n.includes("/")) { kb.err = "A name can't have / in it"; return; }
+	const taken = n.toLowerCase() === "liked" ? "Liked" : (S.pls.find(p => p.name.toLowerCase() === n.toLowerCase()) || {}).name;
+	if (taken) { kb.err = `You have one called “${taken}”`; return; }
+	const pl = { name: n, items: [], count: 0, used: 0 }; S.pls.push(pl);
+	S.kb = null;
+	addTo(pl, kb.key);
+	S.card.line2 = "New playlist · " + M[kb.key].title;
+}
+function kbPress(b) {
+	const kb = S.kb, keys = kbRects(), at = keys[kb.cur];
+	const move = (dr, dc) => {
+		if (dr) { const r = Math.max(0, Math.min(4, at.r + dr)), cx = at.x + at.w / 2; let best = 0, bd = 1e9; keys.forEach((k, i) => { if (k.r === r) { const d = Math.abs(k.x + k.w / 2 - cx); if (d < bd) { bd = d; best = i; } } }); kb.cur = best; }
+		else { const row = keys.filter(k => k.r === at.r), j = row.indexOf(at), nj = (j + dc + row.length) % row.length; kb.cur = keys.indexOf(row[nj]); }
+	};
+	if (b === "Up") move(-1, 0); else if (b === "Down") move(1, 0); else if (b === "Left") move(0, -1); else if (b === "Right") move(0, 1);
+	else if (b === "A") kbType(at.k); else if (b === "B") kbType("Del"); else if (b === "X") kbType("Space"); else if (b === "Y") kbType("Shift");
+	else if (b === "START") kbDone();
+}
+function backTap() {
+	if (S.kb) { S.kb = null; return redraw(); }
+	if (S.menu) { S.menu = null; return redraw(); }
+	if (S.view === "main") { goHome(); return redraw(); }	// "<" over what plays closes it at once
+	press("B");
+}
+function goHome() { S.view = "home"; S.stack = []; S.dialog = null; S.zone = "strip"; S.strip = 0; }
+function goSection(k) { S.view = "section"; S.section = k; S.stack = []; S.cursor = 0; S.scroll = 0; S.dialog = null; }
+function keepVisible() { if (S.cursor < S.scroll) S.scroll = S.cursor; if (S.cursor >= S.scroll + ROWS_SHOWN) S.scroll = S.cursor - ROWS_SHOWN + 1; }
+function playKey(k, from) {
+	if (SONGS.includes(k)) { S.media = "song"; S.song = SONGS.indexOf(k); }
+	else if (k === "sintel") S.media = "video";
+	else { toast(`Plays ${M[k].title} (as today)`, "PLAY"); return; }
+	markMedia(S.media); S.from = from || "folder"; S.view = "main"; S.stack = []; S.pos = 59; S.paused = false;
+}
+function showInFolder(k) {
+	S.menu = null; S.dialog = null;
+	const f = M[k].folder;
+	goSection(f[0] === "Living room PC" ? 2 : 0);
+	if (S.section !== 0) return;
+	let list = FILES;
+	for (const name of f) { const node = list.find(n => n.name === name); if (!node) break; S.stack.push({ node, cursor: list.indexOf(node) }); list = node.kids; }
+	S.cursor = Math.max(0, list.findIndex(n => n.key === k)); keepVisible();
+}
+function unlikeRow(k) { toggleLike(k); S.cursor = Math.min(S.cursor, Math.max(0, S.liked.length - 1)); keepVisible(); }
+function sectionMenu(it) {
+	if (it.liked) S.dialog = { title: "Liked", cur: 0, rows: [
+		{ g: "PLAY", label: "Play", act: () => S.liked.length ? playKey(S.liked.find(k => !M[k].gone), "liked") : toast("Nothing liked yet", "HEART_O") },
+		{ g: "SHUFFLE", label: "Shuffle play", act: () => S.liked.length ? playKey("split", "liked") : toast("Nothing liked yet", "HEART_O") },
+		{ g: "CROSS", label: "Cancel", act: () => {} }] };
+	else if (it.pl) S.dialog = { title: it.name, cur: 0, rows: [{ g: "PLAY", label: "Play", act: () => {} }, { g: "SHUFFLE", label: "Shuffle play", act: () => {} },
+		{ g: "PENCIL", label: "Rename…", act: () => {} }, { g: "TRASH", label: "Delete playlist", red: true, act: () => {} }, { g: "CROSS", label: "Cancel", act: () => {} }] };
+	else if (it.likedItem) S.dialog = { title: it.name, cur: 0, rows: it.gone
+		? [{ g: "HEART_O", label: "Unlike", note: "It's gone from the card", act: () => unlikeRow(it.key) }, { g: "CROSS", label: "Cancel", act: () => {} }]
+		: [{ g: "PLAY", label: "Play from here", act: () => playKey(it.key, "liked") }, { g: "HEART_O", label: "Unlike", act: () => unlikeRow(it.key) },
+			{ g: "PL_ADD", label: "Add to playlist…", act: () => openPicker(it.key) }, { g: "FOLDER", label: "Show in folder", act: () => showInFolder(it.key) }, { g: "CROSS", label: "Cancel", act: () => {} }] };
+}
+function recentMenu(i) {
+	const it = RECENT[i], m = M[it.key], on = isLiked(it.key);
+	S.dialog = { title: m.title, cur: 0, rows: [
+		{ g: "PLAY", label: it.at ? `Resume from ${it.at}` : "Play", act: () => playKey(it.key) },
+		...(it.at ? [{ g: "REFRESH", label: "Play from the start", act: () => playKey(it.key) }] : []),
+		{ g: "FOLDER", label: "Show in folder", note: m.net || "This card", act: () => showInFolder(it.key) },
+		{ g: on ? "HEART_O" : "HEART", label: on ? "Unlike" : "Like", ink: on ? null : C.YELLOW, act: () => toggleLike(it.key) },
+		{ g: "PL_ADD", label: "Add to playlist…", act: () => openPicker(it.key) },
+		{ g: "MINUS", label: "Remove from Recent", act: () => {} }] };
+}
+
+function press(b) {
+	if (b !== "B") S.quitUntil = 0;
+	if (S.kb) { kbPress(b); return redraw(); }
+	if (S.picker) { pickerPress(b); return redraw(); }
+	if (S.dialog) {
+		const d = S.dialog;
+		if (b === "Up") d.cur = Math.max(0, d.cur - 1);
+		else if (b === "Down") d.cur = Math.min(d.rows.length - 1, d.cur + 1);
+		else if (b === "B" || b === "X" && d.title === "Options") S.dialog = null;
+		else if (b === "A") { const row = d.rows[d.cur]; S.dialog = null; row.act(); }
+		return redraw();
+	}
+	if (S.menu) {
+		const m = S.menu, n = menuTabs().length, name = menuTabs()[m.tab];
+		if (b === "B" || b === "START") S.menu = null;
+		else if (b === "L") { m.tab = Math.max(0, m.tab - 1); m.cur = 0; }
+		else if (b === "R") { m.tab = Math.min(n - 1, m.tab + 1); m.cur = 0; }
+		else if (name === "Playing") {
+			if (b === "Up") m.cur = Math.max(0, m.cur - 1);
+			else if (b === "Down") m.cur = Math.min(3, m.cur + 1);
+			else if (b === "A") playingRows()[m.cur].act();
+		} else if (name === "Settings") {
+			if (b === "Left" && m.cur % 2) m.cur--; else if (b === "Right" && m.cur % 2 === 0) m.cur++;
+			else if (b === "Up" && m.cur > 1) m.cur -= 2; else if (b === "Down" && m.cur < 6) m.cur += 2;
+		}
+		return redraw();
+	}
+	if (b === "START") { S.menu = { tab: 0, cur: 0 }; return redraw(); }
+	if (S.view === "main") mainPress(b);
+	else if (S.view === "home") homePress(b);
+	else sectionPress(b);
+	redraw();
+}
+function mainPress(b) {
+	const k = cur();
+	if (b === "B") { if (quitArmed()) { S.quitUntil = 0; goHome(); } else S.quitUntil = performance.now() + 2000; return; }
+	if (S.media === "photo") { if (b === "L3") toast("Turned 90° (photos: L3 rotates)", "REFRESH"); return; }
+	if (b === "L3") return toggleLike(k, "L3");
+	if (b === "A") S.paused = !S.paused;
+	else if (b === "Left") S.pos = Math.max(0, S.pos - 5);
+	else if (b === "Right") S.pos = Math.min(M[k].dur - 1, S.pos + 10);
+	else if (b === "L" && S.media === "song" && S.song > 0) { S.song--; S.pos = 0; }
+	else if (b === "R" && S.media === "song" && S.song < SONGS.length - 1) { S.song++; S.pos = 0; }
+	else if (b === "X") toast(S.media === "song" ? "Loop (as today)" : "Audio & Subtitles (as today)", S.media === "song" ? "LOOP" : "CC");
+	else if (b === "Y" && S.media === "video") toast("Chapters (as today)", "CHAPTERS");
+	else if (b === "SELECT") toast(S.media === "song" ? "Display (as today)" : "Aspect (as today)", "PICTURE");
+}
+function homePress(b) {
+	if (b === "B") return;
+	if (S.zone === "strip") {
+		if (b === "Left" && S.strip > 0) S.strip--;
+		else if (b === "Right" && S.strip < stripCount() - 1) S.strip++;
+		else if (b === "Down") { S.zone = "grid"; S.grid = S.lastCol; }
+		else if (b === "A" && S.strip < RECENT.length) playKey(RECENT[S.strip].key);
+		else if (b === "Y" && S.strip < RECENT.length) recentMenu(S.strip);
+	} else {
+		const g = S.grid;
+		if (b === "Left" && g % 2) S.grid--; else if (b === "Right" && g % 2 === 0) S.grid++;
+		else if (b === "Down" && g < 2) S.grid += 2; else if (b === "Up") { if (g >= 2) S.grid -= 2; else S.zone = "strip"; }
+		else if (b === "A") goSection(g);
+		S.lastCol = S.grid % 2;
+	}
+}
+function sectionPress(b) {
+	const list = rows(), top = S.stack[S.stack.length - 1], inLiked = top && top.liked;
+	if (b === "B") { if (S.stack.length) { const t = S.stack.pop(); S.cursor = t.cursor; S.scroll = 0; keepVisible(); } else { goHome(); S.zone = "grid"; S.grid = S.section; } return; }
+	if (b === "L" || b === "R") { const k = S.section + (b === "L" ? -1 : 1); if (k >= 0 && k < 4) goSection(k); return; }
+	if (b === "X") {
+		if (inLiked) S.dialog = { title: "Options", cur: 0, rows: [{ g: "PLAY", label: "Play all", act: () => S.liked.length && playKey("split", "liked") }, { g: "SHUFFLE", label: "Shuffle play", act: () => S.liked.length && playKey("split", "liked") },
+			{ g: "BOX_ON", label: "Select", note: "then Unlike", act: () => toast("Select mode: tick, then X › Unlike (press twice)", "BOX_ON") }] };
+		else if (S.section === 1 && !top) S.dialog = { title: "Options", cur: 0, rows: [{ g: "PLUS", label: "New playlist…", act: () => {} }, { g: "REFRESH", label: "Refresh", act: () => {} }] };
+		return;
+	}
+	if (!list.length) return;
+	if (b === "Up") S.cursor = Math.max(0, S.cursor - 1);
+	else if (b === "Down") S.cursor = Math.min(list.length - 1, S.cursor + 1);
+	else if (b === "A") {
+		const it = list[S.cursor];
+		if (it.liked) { S.stack.push({ liked: true, node: { name: "Liked" }, cursor: S.cursor }); S.cursor = 0; S.scroll = 0; }
+		else if (it.pl) { S.stack.push({ node: { name: it.name, items: it.pl.items }, cursor: S.cursor }); S.cursor = 0; S.scroll = 0; }
+		else if (it.kids) { S.stack.push({ node: it, cursor: S.cursor }); S.cursor = 0; S.scroll = 0; }
+		else if (it.likedItem) { if (it.gone) sectionMenu(it); else playKey(it.key, "liked"); }
+		else if (it.key) playKey(it.key);
+		else if (it.act) toast("New playlist… (keyboard, as today)", "PLUS");
+	} else if (b === "Y") { const it = list[S.cursor]; if (it) sectionMenu(it); }
+	keepVisible();
+}
+
+let raf = 0;
+function redraw() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+setInterval(() => { if (S.view === "main" && !S.paused && !S.menu && !S.picker && !S.kb && !S.dialog) { S.pos = Math.min(M[cur()].dur || 1, S.pos + 1); redraw(); } }, 1000);
+
+// ---- touch ----
+let down = null;
+function toLogical(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; }
+function hitAt(p) { for (let i = hits.length - 1; i >= 0; i--) { const h = hits[i], r = h.r; if (p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h) return h; } return null; }
+cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); const p = toLogical(e), h = hitAt(p); down = { h }; if (h) { S.pressed = h.id; redraw(); } });
+function endPointer(e, cancel) {
+	if (!down) return;
+	const d = down; down = null; S.pressed = null;
+	if (!cancel && d.h) { const h = hitAt(toLogical(e)); if (h && h.id === d.h.id) { if (S.view !== "main" || !["like", "add"].includes(h.id)) S.quitUntil = 0; h.fn(); } }
+	redraw();
+}
+cv.addEventListener("pointerup", e => endPointer(e, false));
+cv.addEventListener("pointercancel", e => endPointer(e, true));
+
+// ---- buttons and keys ----
+document.getElementById("pad").addEventListener("click", e => { const b = e.target.closest("button[data-b]"); if (b) press(b.dataset.b); });
+const KEYS = { ArrowUp: "Up", ArrowDown: "Down", ArrowLeft: "Left", ArrowRight: "Right", Enter: "A", a: "A", Escape: "B", Backspace: "B", b: "B", x: "X", y: "Y", q: "L", e: "R", s: "START", l: "L3" };
+document.addEventListener("keydown", e => {
+	if (e.metaKey || e.ctrlKey || e.altKey) return;
+	if (S.kb) {
+		// the on-screen keyboard: type straight into it
+		if (e.key.length === 1) { e.preventDefault(); const kb = S.kb; kb.err = ""; kb.text = (kb.sel ? "" : kb.text) + e.key; kb.sel = false; return redraw(); }
+		if (e.key === "Backspace") { e.preventDefault(); kbType("Del"); return redraw(); }
+		if (e.key === "Enter") { e.preventDefault(); kbDone(); return redraw(); }
+		if (e.key === "Escape") { e.preventDefault(); S.kb = null; return redraw(); }
+	}
+	if (S.view === "main" && !S.menu && !S.picker && !S.dialog && (e.key === "h" || e.key === "p")) {
+		e.preventDefault();
+		if (S.media === "photo") return;
+		if (e.key === "h") toggleLike(cur(), "touch"); else openPicker(cur());
+		return redraw();
+	}
+	const b = KEYS[e.key] || KEYS[e.key.toLowerCase()];
+	if (!b) return;
+	if (e.key === "Enter" && e.target.tagName === "BUTTON") return;
+	e.preventDefault();
+	const el = document.querySelector(`.pad button[data-b="${b}"]`);
+	if (el) { el.classList.add("down"); setTimeout(() => el.classList.remove("down"), 120); }
+	press(b);
+});
+
+// ---- the mockup's own controls ----
+function seg(id, fn) {
+	const el = document.getElementById(id);
+	el.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; mark(b.dataset.v); fn(b.dataset.v); redraw(); });
+	const mark = v => el.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v ? "true" : "false"));
+	return mark;
+}
+function setSize(v) {
+	S.size = +v; sx = S.size / 640;
+	cv.width = tcv.width = S.size; cv.height = tcv.height = S.size * 3 / 4;
+	document.getElementById("device").classList.toggle("big", S.size !== 640);
+	document.getElementById("capSize").textContent = S.size === 640 ? "640×480" : "1024×768 (RG DS Plus)";
+}
+const markMedia = seg("segMedia", v => { S.media = v; S.pos = 59; S.view = "main"; S.from = "folder"; S.menu = S.dialog = S.picker = S.kb = null; });
+const markSize = seg("segSize", setSize);
+const markPl = seg("segPl", v => { S.plMode = v; S.pls = v === "12" ? PL12() : PL3(); });
+const markLiked = seg("segLiked", v => { S.liked = v === "1" ? LIKED0.slice() : []; });
+function reset() {
+	S.dialog = S.menu = S.picker = S.kb = S.card = S.toast = null; S.quitUntil = 0; S.stack = []; S.pop = 0; S.flash = 0;
+	S.liked = document.querySelector('#segLiked [aria-pressed="true"]').dataset.v === "1" ? LIKED0.slice() : [];
+	S.pls = S.plMode === "12" ? PL12() : PL3();
+	S.song = 0; S.pos = 59; S.paused = false; S.from = "folder"; S.view = "main";
+	S.media = document.querySelector('#segMedia [aria-pressed="true"]').dataset.v;
+}
+function runSteps(steps) {
+	reset();
+	steps.split(",").filter(Boolean).forEach(s => {
+		const [k, v] = s.split(":");
+		if (k === "go") { if (v === "main") S.view = "main"; else if (v === "home") goHome(); else if (v === "pls") goSection(1); else if (v === "files") { goSection(0); showInFolder("split"); } }
+		else if (k === "media") { S.media = v; markMedia(v); }
+		else if (k === "liked") { S.liked = v === "1" ? LIKED0.slice() : []; markLiked(v); }
+		else if (k === "tap") { if (v === "like") toggleLike(cur(), "touch"); else openPicker(cur()); }
+		else if (k === "type") { S.kb.text = v; S.kb.sel = false; }
+		else press(s);
+	});
+	redraw();
+}
+document.getElementById("jump").addEventListener("click", e => { const b = e.target.closest("button"); if (b) runSteps(b.dataset.steps); });
+
+// a link can set it up: #size=1024&steps=go:main,tap:like&hold=1&notes=0&pl=12
+function fromHash() {
+	const q = new URLSearchParams(location.hash.slice(1));
+	if (q.get("size")) { setSize(q.get("size")); markSize(q.get("size")); }
+	if (q.get("pl")) { S.plMode = q.get("pl"); markPl(q.get("pl")); }
+	if (q.get("media")) markMedia(q.get("media"));
+	if (q.get("notes") === "0") document.querySelector("details.note").open = false;
+	runSteps(q.get("steps") || "go:main");
+	if (q.get("hold")) S.hold = true;
+	if (q.get("paused")) S.paused = true;
+}
+setSize(640);
+document.fonts.load('24px "Pixelify Sans"').then(() => document.fonts.load('19px Inter')).then(() => { fromHash(); render(); }, () => { fromHash(); render(); });
+setTimeout(() => render(), 600);
+})();
+</script>
+
+</body></html>

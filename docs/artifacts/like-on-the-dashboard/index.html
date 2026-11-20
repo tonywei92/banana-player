@@ -1,0 +1,144 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Like on the dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+	color-scheme: dark;
+	--page: #0F0E13; --bg: #17161C; --surface: #211F28; --teal: #234346; --pressed: #3A6E72; --cream: #F1EDE2;
+	--dim: #8A867C; --dim-teal: #B4AFA3; --yellow: #F0B429; --bezel: #2B2A33;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--cream); font: 14px/1.5 Inter, system-ui, sans-serif; overflow-x: hidden; }
+.wrap { max-width: 1340px; margin: 0 auto; padding: 20px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px)); }
+h1 { font: 600 22px/1.2 "Pixelify Sans", Inter, sans-serif; color: var(--yellow); margin: 0 0 4px; letter-spacing: .3px; }
+.lede { color: var(--dim-teal); margin: 0 0 14px; max-width: 900px; }
+details.note { background: var(--surface); border-left: 4px solid var(--yellow); padding: 10px 14px; margin-bottom: 16px; max-width: 1100px; }
+details.note summary { cursor: pointer; font-weight: 600; }
+details.note ol { margin: 8px 0 2px; padding-left: 20px; color: var(--dim-teal); }
+details.note li { margin: 3px 0; }
+details.note b { color: var(--cream); font-weight: 600; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-bottom: 10px; }
+.seg { display: inline-flex; align-items: center; }
+.seg span, .jump span { color: var(--dim); margin-right: 8px; font-size: 13px; }
+.seg button, .jump button, .sim { font: 400 14px/1 "Pixelify Sans", Inter, sans-serif; color: var(--cream); background: var(--teal); border: 0; border-radius: 0; padding: 8px 10px; cursor: pointer; margin-right: 2px; }
+.seg button[aria-pressed="true"], .jump button[aria-pressed="true"] { background: var(--yellow); color: var(--bg); }
+.jump { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; }
+.jump button { background: var(--surface); margin: 0; }
+.jump button:hover, .seg button:hover { background: var(--pressed); color: var(--cream); }
+.sim { background: var(--surface); border: 2px dashed var(--pressed); }
+button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.stage { background: var(--bezel); padding: 12px; margin: 0 auto; }
+.frame { position: relative; overflow: hidden; margin: 0 auto; background: #000; }
+iframe { border: 0; display: block; transform-origin: 0 0; background: #17161C; }
+.cap { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; color: var(--dim); font-size: 12px; margin-top: 8px; }
+.cap b { color: var(--dim-teal); font-weight: 600; }
+.why { color: var(--dim-teal); font-size: 13px; margin: 0 0 12px; min-height: 20px; max-width: 1100px; }
+.why b { color: var(--cream); font-weight: 600; }
+</style>
+
+<div class="wrap">
+	<h1>Like &amp; Add to playlist: the web dashboard</h1>
+	<p class="lede">The dashboard as it is today (its own <code>style.css</code> and pixel icons), with the new pieces in it. Pick a size and a scene, then click around: the heart, Add to playlist, the ⋯ menus, the Liked page.</p>
+	<details class="note" open>
+		<summary>Design notes and decisions</summary>
+		<ol>
+			<li><b>The heart sits next to the title,</b> as on YouTube Music. On a phone it's in the title row, beside the volume button. On a computer it's in the player bar after the title, so it's there on every page, with an <b>Add to playlist</b> button next to it.</li>
+			<li><b>Add to playlist</b> on a phone is the first item of the player's ⋯ menu (the title row has no room for a third button). It opens a sheet. On a computer it opens a popover over the bar.</li>
+			<li><b>The picker:</b> <b>New playlist</b> comes first, then the playlist you last added to, then the rest. A <b>Find</b> field appears once there are more than 7 playlists, and what you type can become the new playlist's name. <b>New playlist</b> turns into a name field right there, so there's no second dialog. <b>Liked is never listed.</b> A playlist that already has it reads <b>✓ Added</b>, and a click there asks to add it again.</li>
+			<li><b>Liking without playing: yes,</b> from a file's ⋯ menu (audio and video only, not folders or photos). YouTube Music lets you like any track from its menu, and here it's how you build Liked from the card without opening each file. Multi-select keeps <b>Add</b> (Liked excluded) and gets no Like: Liked stays one deliberate tap per thing.</li>
+			<li><b>Liked</b> is pinned above your playlists. Its ⋯ has no Rename or Delete. Its page has no Add files and no drag handles, because it's newest first. Each row's heart unlikes it, with <b>Undo</b>.</li>
+			<li><b>Feedback:</b> the heart's own change is the answer, so the heart shows no toast. Menu actions (Like in a file's ⋯, Unlike in a list) show a toast with Undo. A like on the handheld updates the heart here live, with the same pop, and a new row lights up on the Liked page.</li>
+		</ol>
+	</details>
+	<div class="bar">
+		<div class="seg" id="segSize"><span>Size</span><button data-v="390" aria-pressed="true">Phone 390</button><button data-v="1280" aria-pressed="false">Desktop 1280</button></div>
+		<div class="seg" id="segMany"><span>Playlists</span><button data-v="0" aria-pressed="true">3</button><button data-v="1" aria-pressed="false">14</button></div>
+		<button class="sim" id="sim" title="What arrives over the live connection when the heart is pressed on the handheld">Simulate: Like / Unlike on the handheld</button>
+	</div>
+	<div class="jump" id="jump"><span>Scene</span>
+		<button data-s="playing" aria-pressed="true">Playing</button>
+		<button data-s="liked">Liked (heart on)</button>
+		<button data-s="npmore">⋯ menu</button>
+		<button data-s="add">Add to playlist</button>
+		<button data-s="already">Already in it</button>
+		<button data-s="search" data-many="1">Find (14)</button>
+		<button data-s="newpl">New: name taken</button>
+		<button data-s="playlists">Playlists</button>
+		<button data-s="likedpage">Liked page</button>
+		<button data-s="likeditem">Liked item ⋯</button>
+		<button data-s="likedempty">Liked, empty</button>
+		<button data-s="files">Files</button>
+		<button data-s="filemenu">File ⋯ (Like)</button>
+		<button data-s="undo">Liked from ⋯</button>
+	</div>
+	<p class="why" id="why"></p>
+	<div class="stage" id="stage"><div class="frame" id="frame"><iframe id="app" title="Dashboard mockup"></iframe></div>
+		<div class="cap"><span><b id="capSize">Phone · 390×844</b> · scaled to fit when the window is narrower</span><span>Esc closes · Enter in Find adds to the first match</span></div></div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const WHY = {
+	playing: "The heart is in the title row (phone) or after the title in the bar (desktop). It's outlined until you like the song.",
+	liked: "Liked: the heart fills yellow and pops. There's no toast, because the heart is the answer.",
+	npmore: "On a phone, Add to playlist is the first item of the player's ⋯ menu. On a computer the bar has its own button.",
+	add: "New playlist first, then the last one used, then the rest. Liked isn't here: only the heart adds to it.",
+	already: "“Road trip” already has it: ✓ Added. One click arms <b>Add again</b>, and a second adds a second copy (playlists allow repeats).",
+	search: "With more than 7 playlists, a Find field. What you type can also become a new playlist's name.",
+	newpl: "New playlist is a name field right in the list. “Liked” is taken, as are your own playlists' names (capitals don't count).",
+	playlists: "Liked is pinned above your playlists. Its ⋯ menu has Play, Play here and Shuffle, and no Rename or Delete.",
+	likedpage: "Newest first. No drag handles and no Add files. Each row's heart unlikes it, with Undo. A network item says where it lives; a gone one says Gone.",
+	likeditem: "A network item: Play in this browser is off, because network files play on the handheld only. Show in Files is off too.",
+	likedempty: "Liked with nothing in it. It still stays pinned at the top of Playlists.",
+	files: "Files: a small heart after the name of each liked file.",
+	filemenu: "A file's ⋯ menu: Like / Unlike and Add to playlist…, for songs and videos. Photos and folders get neither.",
+	undo: "Liked from a menu: the row only gains a small heart, so a toast confirms it, with Undo.",
+};
+const st = { w: 390, s: "playing", many: "0" };
+const app = document.getElementById("app"), frame = document.getElementById("frame");
+function load() {
+	const h = st.w === 390 ? 844 : 800;
+	app.width = st.w; app.height = h;
+	app.src = `mock-like-web-app.html?r=${Date.now()}#scene=${st.s}${st.many === "1" ? "&many=1" : ""}`;
+	document.getElementById("capSize").textContent = st.w === 390 ? "Phone · 390×844" : "Desktop · 1280×800";
+	document.getElementById("why").innerHTML = WHY[st.s] || "";
+	fit();
+}
+function fit() {
+	const h = st.w === 390 ? 844 : 800, wrap = document.getElementById("stage").parentElement, cs = getComputedStyle(wrap), avail = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 24;
+	const k = Math.min(1, avail / st.w);
+	app.style.transform = `scale(${k})`;
+	frame.style.width = Math.floor(st.w * k) + "px"; frame.style.height = Math.floor(h * k) + "px";
+	document.getElementById("stage").style.maxWidth = Math.floor(st.w * k) + 24 + "px";
+}
+function seg(id, fn) {
+	const el = document.getElementById(id);
+	el.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; el.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false")); fn(b.dataset.v); load(); });
+	return v => el.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === v ? "true" : "false"));
+}
+seg("segSize", v => st.w = +v);
+const markMany = seg("segMany", v => st.many = v);
+document.getElementById("jump").addEventListener("click", e => {
+	const b = e.target.closest("button[data-s]"); if (!b) return;
+	document.querySelectorAll("#jump button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+	st.s = b.dataset.s;
+	if (b.dataset.many) { st.many = "1"; markMany("1"); }
+	load();
+});
+document.getElementById("sim").addEventListener("click", () => app.contentWindow.postMessage("remote-like", "*"));
+addEventListener("resize", fit);
+const q = new URLSearchParams(location.hash.slice(1));
+if (q.get("w")) { st.w = +q.get("w"); document.querySelectorAll("#segSize button").forEach(x => x.setAttribute("aria-pressed", x.dataset.v === q.get("w") ? "true" : "false")); }
+if (q.get("s")) { st.s = q.get("s"); document.querySelectorAll("#jump button").forEach(x => x.setAttribute("aria-pressed", x.dataset.s === st.s ? "true" : "false")); }
+if (q.get("many")) { st.many = q.get("many"); markMany(st.many); }
+load();
+})();
+</script>
+
+</body></html>

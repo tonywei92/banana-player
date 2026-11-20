@@ -1,0 +1,815 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ten Fun Visualizers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Pixelify+Sans:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+	--page: #F4F2EC;
+	--card: #FFFFFF;
+	--ink: #1B1A17;
+	--muted: #6A675F;
+	--line: #DEDAD0;
+	--chip: #EDEAE2;
+	--focus: #8A6A00;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		color-scheme: dark;
+		--page: #111114;
+		--card: #1A1A1F;
+		--ink: #ECE9E1;
+		--muted: #9A978F;
+		--line: #2C2C33;
+		--chip: #25252B;
+		--focus: #FFD23F;
+	}
+}
+:root[data-theme="dark"] {
+	color-scheme: dark;
+	--page: #111114;
+	--card: #1A1A1F;
+	--ink: #ECE9E1;
+	--muted: #9A978F;
+	--line: #2C2C33;
+	--chip: #25252B;
+	--focus: #FFD23F;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+	background: var(--page);
+	color: var(--ink);
+	font: 400 15px/1.5 Inter, system-ui, sans-serif;
+	overflow-x: hidden;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font: 600 34px/1.1 "Pixelify Sans", Inter, sans-serif; margin: 0 0 8px; letter-spacing: .01em; }
+.lede { color: var(--muted); max-width: 68ch; margin: 0 0 20px; }
+.bar {
+	position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+	background: var(--page);
+	padding: 10px 0 12px; margin-bottom: 14px;
+	border-bottom: 1px solid var(--line);
+	display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+}
+.bar .lab { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.themes { display: flex; flex-wrap: wrap; gap: 6px; }
+.themes button {
+	font: 500 14px Inter, sans-serif; color: var(--ink);
+	background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+	padding: 6px 12px 6px 8px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.themes button[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.themes button:focus-visible, .themes button:hover { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sw { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); display: inline-block; }
+.roles { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-left: auto; font-size: 12px; color: var(--muted); }
+.roles span { display: inline-flex; align-items: center; gap: 5px; }
+.roles i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); display: inline-block; }
+
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-width: 0; }
+.screen { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); line-height: 0; }
+canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.tag {
+	font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+	margin: 0 0 6px; line-height: 1.3;
+}
+.lower { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 14px; margin-top: 12px; }
+@media (max-width: 520px) { .lower { grid-template-columns: minmax(0, 1fr); } h1 { font-size: 28px; } .roles { margin-left: 0; } }
+h1, h2 { text-wrap: balance; }
+.where { font-size: 12px; color: var(--muted); margin: 6px 0 0; line-height: 1.35; }
+h2 { font: 600 24px/1.1 "Pixelify Sans", Inter, sans-serif; margin: 0 0 4px; }
+h2 small { font: 500 12px Inter, sans-serif; color: var(--muted); margin-left: 6px; }
+.what { margin: 0 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; padding: 0; list-style: none; }
+.chips li { background: var(--chip); border-radius: 6px; padding: 2px 7px; font-size: 12px; }
+.chips b { font-weight: 600; }
+dl { margin: 0; font-size: 13px; }
+dt { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 6px; }
+dd { margin: 0; overflow-wrap: anywhere; }
+code { font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.foot { color: var(--muted); font-size: 13px; margin-top: 24px; max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+	<h1>Ten Fun Visualizers</h1>
+	<p class="lede">Ten playful styles for the top panel: small characters and objects that move to the song. Each is flat shapes in two or three theme roles on the theme's background, so it recolours with all 17 themes; try Light and Sakura. The large frame is Visualizer only. The small one is Art + visualizer: six styles sit in the 200-tall band under the cover, four fill the panel behind it. The signal is simulated (a kick, a hat, two moving mid peaks, noise) and swells and quietens every few seconds so the quiet behaviour shows too.</p>
+
+	<div class="bar">
+		<span class="lab">Theme</span>
+		<div class="themes" id="themes" role="group" aria-label="Theme"></div>
+		<div class="roles" id="roles" aria-label="Theme roles"></div>
+	</div>
+
+	<div class="grid" id="grid"></div>
+
+	<p class="foot">Cost guesses are relative to Peaks and are estimates from vertex counts and blended area, not measurements: each style still has to be timed on the handheld. All ten read the band levels, loudness and beat hint the worker already produces. Every character is a handful of flat shapes or a 1-bit sprite tinted by a role: no fixed-colour art. Considered and left out: a tape deck and a heartbeat monitor (both close to meters already rejected), a lava lamp (needs a per-pixel shader to look right), a typewriter (reads as text, not music).</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const THEMES = {
+	'Yellow':      { BG: '#000000', ACCENT: '#FFD23F', TEXT: '#E8E2D3', DIM: '#8F8A80', BUTTON: '#26242E' },
+	'Dark':        { BG: '#0B0B0D', ACCENT: '#A9C4E6', TEXT: '#C2C4CA', DIM: '#8A8C94', BUTTON: '#2A2A2F' },
+	'Sakura':      { BG: '#FFE6E0', ACCENT: '#852A59', TEXT: '#561F33', DIM: '#8A5069', BUTTON: '#E8B3CF' },
+	'Retro green': { BG: '#0A0F08', ACCENT: '#A6D44A', TEXT: '#D9E4C8', DIM: '#8A9479', BUTTON: '#1E2A19' },
+	'Light':       { BG: '#F7F4EC', ACCENT: '#7A5200', TEXT: '#1B1A20', DIM: '#625E56', BUTTON: '#E6E0D2' },
+};
+let T = THEMES['Yellow'];
+const W = 640, H = 480, BAND = 200, FPS = 30;
+// Where the cover sits when a style fills the panel behind it.
+const COVER = { x: 210, y: 104, s: 220 };
+
+/* ---------- the simulated signal ---------- */
+const clamp = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const hash = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+function noise(i, t) {
+	const k = Math.floor(t), f = t - k, u = f * f * (3 - 2 * f);
+	return hash(i, k) * (1 - u) + hash(i, k + 1) * u;
+}
+const BPS = 1.8667;
+const kick = t => Math.exp(-((t * BPS) % 1) * 5);
+const hat = t => Math.exp(-((t * BPS * 2 + 0.5) % 1) * 9);
+// The song's sections: a loud passage, then a quiet one, about every 12 s.
+const sect = t => { const u = clamp(Math.sin(t * 0.5) * 1.5 + 0.5); return 0.28 + 0.72 * u * u * (3 - 2 * u); };
+// The level of the band at f (0 low … 1 high) at time t, 0…1.
+function level(f, t) {
+	const bass = Math.exp(-f * 11) * (0.3 + 0.7 * kick(t));
+	const m1 = 0.55 * Math.exp(-Math.pow(f - 0.32 - 0.1 * Math.sin(t * 0.45), 2) / 0.02) * (0.55 + 0.45 * Math.sin(t * 1.7));
+	const m2 = 0.42 * Math.exp(-Math.pow(f - 0.58 - 0.08 * Math.sin(t * 0.31 + 2), 2) / 0.012) * (0.5 + 0.5 * Math.sin(t * 1.1 + 1));
+	const hi = 0.5 * Math.exp(-Math.pow(f - 0.85, 2) / 0.02) * hat(t);
+	const floor = 0.1 * (1 - f * 0.5);
+	return clamp((bass + m1 + m2 + hi + floor) * (0.65 + 0.7 * noise(Math.round(f * 90), t * 7)) * sect(t));
+}
+// n bands, smoothed in the view's own state (fast up, slow down), as a meter would.
+function bands(st, key, n, t, up = 0.6, down = 0.16) {
+	let a = st[key];
+	if (!a || a.length !== n) a = st[key] = new Float32Array(n);
+	for (let i = 0; i < n; i++) {
+		const v = level(n === 1 ? 0 : i / (n - 1), t);
+		a[i] += (v - a[i]) * (v > a[i] ? up : down);
+	}
+	return a;
+}
+const loud = t => clamp((0.35 + 0.5 * kick(t) + 0.15 * Math.sin(t * 0.7)) * sect(t));
+// The beat hint: true on the frame a kick lands.
+function beat(st, t) { const k = kick(t), hit = k > (st._k || 0) + 0.4; st._k = k; return hit; }
+const ease = (st, key, v, k) => (st[key] = (st[key] || 0) + (v - (st[key] || 0)) * k);
+const avg = (a, i0, i1) => { let s = 0; for (let i = i0; i <= i1; i++) s += a[i]; return s / (i1 - i0 + 1); };
+
+/* ---------- drawing helpers ---------- */
+function curve(c, p, cont) {
+	const n = p.length / 2;
+	cont ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]);
+	for (let i = 1; i < n - 1; i++) c.quadraticCurveTo(p[i * 2], p[i * 2 + 1], (p[i * 2] + p[i * 2 + 2]) / 2, (p[i * 2 + 1] + p[i * 2 + 3]) / 2);
+	c.lineTo(p[n * 2 - 2], p[n * 2 - 1]);
+}
+const disc = (c, x, y, r) => { c.beginPath(); c.arc(x, y, Math.max(0, r), 0, 7); c.fill(); };
+const oval = (c, x, y, rx, ry) => { c.beginPath(); c.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, 7); c.fill(); };
+const line = (c, x0, y0, x1, y1) => { c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke(); };
+const tri = (c, a, b, d, e, f, g) => { c.beginPath(); c.moveTo(a, b); c.lineTo(d, e); c.lineTo(f, g); c.closePath(); c.fill(); };
+const box = (c, x, y, w, h, r) => { c.beginPath(); c.roundRect(x, y, w, Math.max(0, h), r); c.fill(); };
+
+/* ---------- the ten styles: step(st, t, w, h) moves state, draw(c, st, x, y, w, h) paints.
+   art: 'band' = the 200-tall band under the cover; 'full' = the whole panel behind it (st.art is set). ---------- */
+const STYLES = [
+{
+	name: 'Shelf cat',
+	art: 'band',
+	what: 'A cat sits on a shelf in front of the spectrum: its tail swings with the mids, its ears and whiskers twitch with the treble, its head nods with the bass and it blinks on every beat.',
+	roles: [['ACCENT', 'the cat'], ['DIM', 'bar caps, shelf, whiskers'], ['BUTTON', 'the bars behind']],
+	gl: 'Bars: 24 quads plus 24 cap quads, one batch. Cat: body and head are two round sprites scaled, ears two triangles, eyes two BG quads squashed to blink, tail a 12-point triangle strip bent by one sine. 2 draw calls, about 250 vertices.',
+	cost: '≈ 0.15× Peaks (fewer bars; the cat is a dozen shapes)',
+	step(st, t) {
+		const b = bands(st, 'b', 24, t, 0.55, 0.15);
+		ease(st, 'bass', avg(b, 0, 2), 0.4);
+		const mid = ease(st, 'mid', avg(b, 6, 14), 0.2);
+		ease(st, 'tre', avg(b, 18, 23), 0.5);
+		st.ph = (st.ph || 0) + 0.05 + 0.3 * mid;
+		st.sw = Math.sin(st.ph) * clamp(0.25 + 1.6 * mid);
+		st.bl = beat(st, t) && sect(t) > 0.35 ? 1 : (st.bl || 0) * 0.7;
+	},
+	draw(c, st, x, y, w, h) {
+		const small = h < 300, S = small ? 0.6 : 1, sill = y + h * (small ? 0.7 : 0.66), cx = x + w / 2;
+		const n = 24, bw = w / n;
+		for (let i = 0; i < n; i++) {
+			const bh = 6 + st.b[i] * h * 0.72;
+			c.fillStyle = T.BUTTON; c.fillRect(x + i * bw + 3, y + h - bh, bw - 6, bh);
+			c.fillStyle = T.DIM; c.fillRect(x + i * bw + 3, y + h - bh - 6, bw - 6, 4);
+		}
+		c.save(); c.translate(cx, sill); c.scale(S, S);
+		c.fillStyle = T.DIM; box(c, -170, 0, 340, 9, 4);
+		const sw = st.sw, bass = st.bass, tw = st.tre * 2.2, ry = 58 + 3 * bass, hy = -ry * 2 + 2 - 6 * bass;
+		c.strokeStyle = T.ACCENT; c.lineWidth = 17; c.lineCap = 'round';
+		c.beginPath(); c.moveTo(48, -20); c.bezierCurveTo(118, -14, 104 + sw * 46, 58, 86 + sw * 92, 104); c.stroke();
+		c.fillStyle = T.ACCENT;
+		oval(c, 0, -ry, 68, ry);
+		oval(c, 0, hy, 52, 45);
+		for (const s of [-1, 1]) tri(c, s * 48, hy - 14, s * (40 + tw * 7), hy - 66 - tw * 10, s * 8, hy - 38);
+		c.fillStyle = T.BG;
+		for (const s of [-1, 1]) oval(c, s * 19, hy - 3, 8, Math.max(1.6, 10 * (1 - st.bl)));
+		tri(c, -5, hy + 11, 5, hy + 11, 0, hy + 17);
+		c.strokeStyle = T.BG; c.lineWidth = 3;
+		for (const s of [-1, 1]) line(c, s * 14, -3, s * 14, -30);
+		c.strokeStyle = T.DIM; c.lineWidth = 2.5;
+		for (const s of [-1, 1]) for (const k of [-1, 1]) line(c, s * 30, hy + 14 + k * 3, s * 82, hy + 13 + k * (8 + tw * 9));
+		c.restore();
+	},
+},
+{
+	name: 'Dance line',
+	art: 'band',
+	what: 'Twelve tiny dancers, one per band from bass to treble: each jumps as high as its band is loud and throws its arms up, and the whole line sways in time, so a sweep through the song runs along them as a wave.',
+	roles: [['ACCENT', 'the dancers'], ['DIM', 'the floor tiles under them'], ['BUTTON', 'floor and shadows']],
+	gl: 'Lines and point sprites: each dancer is 5 thick lines (body, 2 arms, 2 legs: quads with round ends from one sprite) and a round head; a floor tile and a shadow each. One batch, about 400 vertices; per frame, 12 levels and one sine.',
+	cost: '≈ 0.15× Peaks (about 100 small quads, almost no fill)',
+	step(st, t) { bands(st, 'b', 12, t, 0.5, 0.22); st.t = t; },
+	draw(c, st, x, y, w, h) {
+		const small = h < 300, n = 12, S = small ? 0.62 : 1.1, floor = y + h * 0.84, gap = (w - 56) / n, t = st.t;
+		c.fillStyle = T.BUTTON; c.fillRect(x, floor + 3, w, 4);
+		c.lineCap = 'round'; c.lineJoin = 'round';
+		for (let i = 0; i < n; i++) {
+			const v = st.b[i], px0 = x + 28 + (i + 0.5) * gap, sway = Math.sin(t * Math.PI * BPS + i * 0.55);
+			c.globalAlpha = 0.25 + 0.75 * v; c.fillStyle = T.DIM; box(c, px0 - gap / 2 + 4, floor + 12, gap - 8, 7 + v * 10, 3);
+			c.globalAlpha = 1; c.fillStyle = T.BUTTON; oval(c, px0, floor + 3, (20 - 9 * v) * S, 4 * S);
+			const px = px0 + sway * 7 * S, fy = floor - v * h * 0.34, hip = fy - 36 * S, sh = fy - 70 * S;
+			c.strokeStyle = T.ACCENT; c.fillStyle = T.ACCENT; c.lineWidth = Math.max(3, 5.5 * S);
+			c.beginPath();
+			c.moveTo(px, hip); c.lineTo(px + sway * 3 * S, sh);
+			for (const s of [-1, 1]) {
+				c.moveTo(px, hip); c.lineTo(px + s * (7 + 13 * v) * S, fy);
+				const a = 1.0 - 2.3 * clamp(v * 1.3) + s * 0.35 * sway, sx = px + sway * 3 * S;
+				c.moveTo(sx, sh + 5 * S); c.lineTo(sx + s * Math.cos(a) * 30 * S, sh + 5 * S + Math.sin(a) * 30 * S);
+			}
+			c.stroke();
+			disc(c, px + sway * 4 * S, sh - 17 * S, 11.5 * S);
+		}
+	},
+},
+{
+	name: 'Bouncy keys',
+	art: 'band',
+	what: 'A keyboard whose keys rise with their bands, and a ball that hops from key to key, one hop per beat, always heading for a loud key: the key it lands on dips and lights up.',
+	roles: [['ACCENT', 'the ball, the lit key'], ['DIM', 'key tops, black keys, the trail'], ['BUTTON', 'the keys']],
+	gl: 'Quads: 14 keys, 14 tops, 10 black keys in one batch; the ball and its 8 trail dots are point sprites. The hop is a parabola between two key tops, timed by the beat hint. 2 draw calls, under 200 vertices.',
+	cost: '≈ 0.1× Peaks (40 quads and 9 points)',
+	step(st, t) {
+		const n = 14, b = bands(st, 'b', n, t, 0.55, 0.18);
+		const hit = st.hit || (st.hit = new Float32Array(n));
+		for (let i = 0; i < n; i++) hit[i] *= 0.86;
+		if (st.to === undefined) { st.from = 3; st.to = 8; st.hop = 0.6; }
+		const u = (t * BPS) % 1;
+		if (u < (st.u || 0)) {
+			hit[st.to] = 1; st.from = st.to;
+			let best = 0, bs = -1;
+			for (let i = 0; i < n; i++) {
+				if (i === st.from || Math.abs(i - st.from) > 7) continue;
+				const s = b[i] + Math.random() * 0.3;
+				if (s > bs) { bs = s; best = i; }
+			}
+			st.to = best; st.hop = 0.3 + 0.7 * loud(t);
+		}
+		st.u = u;
+	},
+	draw(c, st, x, y, w, h) {
+		const n = 14, kw = w / n, base = y + h, small = h < 300, r = small ? 11 : 17, u = st.u;
+		const top = i => base - h * (0.2 + 0.34 * st.b[i]) + 9 * st.hit[i];
+		for (let i = 0; i < n; i++) {
+			const ty = top(i);
+			c.fillStyle = T.BUTTON; box(c, x + i * kw + 2, ty, kw - 4, base - ty, [7, 7, 0, 0]);
+			c.fillStyle = T.DIM; box(c, x + i * kw + 2, ty, kw - 4, 6, [7, 7, 0, 0]);
+			if (st.hit[i] > 0.03) { c.globalAlpha = st.hit[i]; c.fillStyle = T.ACCENT; box(c, x + i * kw + 2, ty, kw - 4, base - ty, [7, 7, 0, 0]); c.globalAlpha = 1; }
+		}
+		c.fillStyle = T.DIM;
+		for (let i = 0; i < n - 1; i++) if ([1, 1, 0, 1, 1, 1, 0][i % 7]) c.fillRect(x + (i + 1) * kw - kw * 0.2, base - h * 0.11, kw * 0.4, h * 0.11);
+		const xa = x + (st.from + 0.5) * kw, xb = x + (st.to + 0.5) * kw;
+		const bx = xa + (xb - xa) * u, by = top(st.from) + (top(st.to) - top(st.from)) * u - 4 * u * (1 - u) * h * 0.42 * st.hop - r;
+		const tr = st.tr || (st.tr = []);
+		tr.unshift([bx, by]); if (tr.length > 9) tr.pop();
+		c.fillStyle = T.DIM;
+		for (let k = 2; k < tr.length; k++) { c.globalAlpha = 0.6 * (1 - k / tr.length); disc(c, tr[k][0], tr[k][1], r * (0.75 - k * 0.06)); }
+		c.globalAlpha = 1; c.fillStyle = T.ACCENT;
+		const sq = Math.max(0, 1 - Math.min(u, 1 - u) * 12) * 0.3;
+		oval(c, bx, by + r * sq, r * (1 + sq * 0.6), r * (1 - sq));
+	},
+},
+{
+	name: 'Flapjacks',
+	art: 'band',
+	what: 'Four pans on a stove, bass to treble: the burner flames under each pan are its band\'s level, and when the band jumps the pancake is tossed, higher for a louder hit, and lands the other side up.',
+	roles: [['ACCENT', 'flames, one side of each pancake'], ['TEXT', 'the other side'], ['DIM', 'the pans'], ['BUTTON', 'the stove']],
+	gl: 'Quads: 20 flame bars, 4 pans (a quad and a handle each), the stove one quad; each pancake is one round sprite scaled in y by |sin| of its flip angle and tinted by which side shows. One batch, about 150 vertices; the CPU runs four little throws.',
+	cost: '≈ 0.1× Peaks (about 35 quads)',
+	step(st, t) {
+		const b = bands(st, 'b', 4, t, 0.6, 0.2);
+		bands(st, 'f', 20, t, 0.6, 0.25);
+		const p = st.p || (st.p = [0, 1, 2, 3].map(() => ({ y: 0, vy: 0, rot: 0, vr: 0, side: 0, sq: 0, pv: 0 })));
+		const G = 0.012;
+		p.forEach((q, i) => {
+			q.sq *= 0.75;
+			if (q.y <= 0 && q.vy === 0 && b[i] > q.pv + 0.09 && b[i] > 0.16) {
+				q.vy = 0.05 + 0.055 * clamp(b[i] * 1.4);
+				const flips = b[i] > 0.6 ? 3 : 1;
+				q.vr = Math.PI * flips / (2 * q.vy / G);
+			}
+			q.pv += (b[i] - q.pv) * 0.25;
+			if (q.vy !== 0 || q.y > 0) {
+				q.y += q.vy; q.vy -= G; q.rot += q.vr;
+				if (q.y <= 0) { q.y = 0; q.vy = 0; q.rot = 0; q.side ^= 1; q.sq = 1; }
+			}
+		});
+	},
+	draw(c, st, x, y, w, h) {
+		const small = h < 300, S = small ? 0.6 : 1, slab = y + h * 0.9, py = slab - 58 * S;
+		c.fillStyle = T.BUTTON; c.fillRect(x, slab, w, y + h - slab);
+		for (let i = 0; i < 4; i++) {
+			const px = x + w * (i + 0.5) / 4 - 22 * S, q = st.p[i];
+			c.fillStyle = T.ACCENT;
+			for (let k = 0; k < 5; k++) {
+				const fh = (7 + st.f[i * 5 + k] * 40) * S;
+				box(c, px - 46 * S + k * 20 * S, slab - fh, 12 * S, fh, 5 * S);
+			}
+			c.fillStyle = T.DIM; box(c, px - 60 * S, py, 120 * S, 15 * S, [2, 2, 8 * S, 8 * S]);
+			c.strokeStyle = T.DIM; c.lineWidth = 9 * S; c.lineCap = 'round';
+			line(c, px + 58 * S, py + 5 * S, px + 92 * S, py - 9 * S);
+			const face = Math.cos(q.rot) >= 0 ? q.side : q.side ^ 1;
+			c.fillStyle = face ? T.TEXT : T.ACCENT;
+			const ry = (5 + 26 * Math.abs(Math.sin(q.rot))) * S * (1 - 0.3 * q.sq);
+			oval(c, px, py - 3 * S - ry - q.y * h * 0.9, 46 * S * (1 + 0.12 * q.sq), ry);
+		}
+	},
+},
+{
+	name: 'Fishbowl',
+	art: 'full',
+	what: 'The panel is a tank: the water\'s surface is the spectrum as a wave, bubbles rise from the floor where the music is (bigger for louder), and three fish cruise with the loudness and dart on each beat.',
+	roles: [['ACCENT', 'the surface line and bubbles'], ['TEXT', 'the fish'], ['DIM', 'the weed'], ['BUTTON', 'the water']],
+	gl: 'Surface: one 48-point triangle strip (water, BUTTON at part alpha) and a line strip. Bubbles: up to 120 point sprites from a ring texture. Fish: a body sprite and a tail triangle each. Weed: 7 short strips. 4 draw calls; the water is one blended full-panel quad\'s worth of fill.',
+	cost: '≈ 0.35× Peaks (one soft full-panel fill, about 600 vertices)',
+	step(st, t, w, h) {
+		const n = 24, b = bands(st, 'b', n, t, 0.4, 0.12);
+		const l = ease(st, 'l', loud(t), 0.2);
+		const bub = st.bub || (st.bub = []);
+		for (let i = 0; i < n; i++) if (bub.length < 120 && Math.random() < b[i] * b[i] * 0.18 + 0.004)
+			bub.push({ x: (i + Math.random()) / n * w, y: h + 10, r: 3 + b[i] * 10, vy: 1.3 + Math.random() * 1.6 + b[i] * 1.5, ph: Math.random() * 6.28 });
+		for (let i = bub.length - 1; i >= 0; i--) {
+			const q = bub[i];
+			q.y -= q.vy; q.x += Math.sin(q.ph + q.y * 0.04) * 0.6;
+			if (q.y < h * 0.2) bub.splice(i, 1);
+		}
+		const fish = st.fish || (st.fish = [{ x: 120, yy: 0.42, d: 1, s: 1 }, { x: 480, yy: 0.63, d: -1, s: 0.75 }, { x: 300, yy: 0.82, d: 1, s: 0.6 }]);
+		st.dart = beat(st, t) ? 3.5 * sect(t) : (st.dart || 0) * 0.88;
+		for (const f of fish) {
+			f.x += f.d * (0.5 + 3.2 * l + st.dart) * (1.3 - f.s * 0.5);
+			if (f.x > w + 70) f.x = -70; if (f.x < -70) f.x = w + 70;
+			f.ph = (f.ph || 0) + 0.18 + 0.5 * l;
+		}
+		st.t = t;
+	},
+	draw(c, st, x, y, w, h) {
+		const n = st.b.length, sy = y + h * 0.2, t = st.t, p = [];
+		for (let i = 0; i < n; i++) p.push(x + i / (n - 1) * w, sy - (st.b[i] - 0.15) * h * 0.13 + Math.sin(t * 2 + i * 0.5) * 3);
+		c.globalAlpha = 0.5; c.fillStyle = T.BUTTON;
+		c.beginPath(); c.moveTo(x, y + h); curve(c, p, true); c.lineTo(x + w, y + h); c.closePath(); c.fill();
+		c.globalAlpha = 1; c.strokeStyle = T.ACCENT; c.lineWidth = 3.5; c.lineJoin = c.lineCap = 'round';
+		c.beginPath(); curve(c, p); c.stroke();
+		c.strokeStyle = T.DIM; c.lineWidth = 7;
+		for (let j = 0; j < 7; j++) {
+			const x0 = x + w * (0.06 + j * 0.148 + hash(j, 4) * 0.04), len = 50 + hash(j, 9) * 90, q = [];
+			for (let k = 0; k <= 6; k++) q.push(x0 + Math.sin(t * 1.6 + k * 0.8 + j * 2) * k * (2 + 5 * st.l), y + h - k / 6 * len);
+			c.beginPath(); curve(c, q); c.stroke();
+		}
+		for (const f of st.fish) {
+			c.save(); c.translate(x + f.x, y + h * f.yy + Math.sin(f.ph * 0.3) * 8); c.scale(f.d * f.s * 1.25, f.s * 1.25);
+			const wag = Math.sin(f.ph) * 9;
+			c.fillStyle = T.TEXT;
+			oval(c, 0, 0, 32, 17);
+			tri(c, -24, 0, -52, -16 + wag, -52, 16 + wag);
+			tri(c, -6, -14, 8, -14, -10, -27);
+			c.fillStyle = T.BG; disc(c, 17, -4, 4);
+			c.restore();
+		}
+		c.strokeStyle = T.ACCENT; c.lineWidth = 2.2;
+		for (const q of st.bub) { c.globalAlpha = clamp((q.y - h * 0.2) / 40); c.beginPath(); c.arc(x + q.x, y + q.y, q.r, 0, 7); c.stroke(); }
+		c.globalAlpha = 1;
+	},
+},
+{
+	name: 'Rocket',
+	art: 'band',
+	what: 'A little rocket flying right: its flame grows with the bass, the smoke trail behind it is the spectrum (each puff one band, bass nearest the nozzle), and the stars streak past faster as the song gets louder.',
+	roles: [['TEXT', 'the rocket\'s body'], ['ACCENT', 'flame, fins, window'], ['DIM', 'smoke puffs and stars']],
+	gl: 'Point sprites: 16 puffs (round texture, size per vertex). Lines: 40 stars. Rocket: one 1-bit body sprite tinted TEXT plus fin/window shapes tinted ACCENT; the flame is two triangles whose tip follows the bass. 3 draw calls, about 150 vertices.',
+	cost: '≈ 0.15× Peaks (16 blended puffs are the only real fill)',
+	step(st, t, w, h) {
+		bands(st, 'b', 16, t, 0.5, 0.2);
+		const l = ease(st, 'l', loud(t), 0.25);
+		ease(st, 'bass', st.b[0], 0.6);
+		const s = st.s || (st.s = Array.from({ length: 40 }, (_, i) => ({ x: hash(i, 1) * w, y: hash(i, 2), sp: 0.4 + hash(i, 3) })));
+		st.v = 1.5 + 16 * l;
+		for (const q of s) { q.x -= st.v * q.sp; if (q.x < -30) { q.x = w + Math.random() * 30; q.y = Math.random(); } }
+		st.t = t;
+	},
+	draw(c, st, x, y, w, h) {
+		const small = h < 300, S = small ? 0.8 : 1.25, t = st.t, bass = st.bass;
+		const rx = x + w * 0.76, cy = y + h * 0.54 + Math.sin(t * 2.2) * h * 0.05;
+		c.strokeStyle = T.DIM; c.lineCap = 'round';
+		for (const q of st.s) { c.lineWidth = 1.5 + q.sp; c.globalAlpha = 0.35 + 0.4 * q.sp; line(c, x + q.x, y + 8 + q.y * (h - 16), x + q.x + 2 + st.v * q.sp * 1.6, y + 8 + q.y * (h - 16)); }
+		c.fillStyle = T.DIM;
+		const n = 16, x0 = rx - 96 * S, stepx = (x0 - x - 10) / n;
+		for (let i = n - 1; i >= 0; i--) {
+			const v = st.b[i];
+			c.globalAlpha = 0.3 + 0.5 * v;
+			disc(c, x0 - i * stepx, cy + Math.sin(t * 3.2 - i * 0.7) * (3 + i * 1.3) * S, 5 * S + v * h * 0.115);
+		}
+		c.globalAlpha = 1;
+		c.save(); c.translate(rx + (Math.random() - 0.5) * 3 * bass, cy + (Math.random() - 0.5) * 3 * bass); c.scale(S, S);
+		const L = 26 + 120 * bass, fl = Math.sin(t * 40) * 4;
+		c.fillStyle = T.ACCENT; tri(c, -56, -13, -56, 13, -56 - L, fl);
+		c.fillStyle = T.TEXT; tri(c, -56, -7, -56, 7, -56 - L * 0.5, -fl * 0.5);
+		c.fillStyle = T.ACCENT;
+		tri(c, -50, -14, -24, -14, -62, -38); tri(c, -50, 14, -24, 14, -62, 38);
+		c.fillStyle = T.TEXT;
+		c.beginPath(); c.moveTo(-52, -17); c.lineTo(18, -17); c.quadraticCurveTo(58, -11, 70, 0); c.quadraticCurveTo(58, 11, 18, 17); c.lineTo(-52, 17); c.closePath(); c.fill();
+		c.fillStyle = T.DIM; c.fillRect(-60, -11, 9, 22);
+		c.fillStyle = T.ACCENT; disc(c, 16, 0, 8.5);
+		c.fillStyle = T.BG; disc(c, 16, 0, 4.5);
+		c.restore();
+	},
+},
+{
+	name: 'Lily hop',
+	art: 'band',
+	what: 'Eight frogs on eight lily pads, bass to treble: a frog leaps when its band jumps, as high as the hit is loud, legs trailing, and leaves a ring on the water when it lands.',
+	roles: [['ACCENT', 'the frogs'], ['DIM', 'rings and pad edges'], ['BUTTON', 'the pads and water']],
+	gl: 'Sprites: one 1-bit frog sheet of two frames (sitting, leaping) tinted ACCENT, eyes cut out to BG; pads are 8 ellipse sprites; rings are ring sprites scaled with alpha falling. One batch, about 150 vertices; the CPU runs eight little jumps.',
+	cost: '≈ 0.1× Peaks (about 35 sprites)',
+	step(st, t) {
+		const n = 8, b = bands(st, 'b', n, t, 0.6, 0.2), G = 0.012;
+		const f = st.f || (st.f = Array.from({ length: n }, () => ({ y: 0, vy: 0, sq: 0, pv: 0 })));
+		const rings = st.rings || (st.rings = []);
+		f.forEach((q, i) => {
+			q.sq *= 0.75;
+			if (q.y <= 0 && q.vy === 0 && b[i] > q.pv + 0.08 && b[i] > 0.14) q.vy = 0.045 + 0.06 * clamp(b[i] * 1.4);
+			q.pv += (b[i] - q.pv) * 0.22;
+			if (q.vy !== 0 || q.y > 0) {
+				q.y += q.vy; q.vy -= G;
+				if (q.y <= 0) { q.y = 0; q.vy = 0; q.sq = 1; if (rings.length < 24) rings.push({ i, a: 0 }); }
+			}
+		});
+		for (let k = rings.length - 1; k >= 0; k--) if ((rings[k].a += 0.045) >= 1) rings.splice(k, 1);
+	},
+	draw(c, st, x, y, w, h) {
+		const n = 8, small = h < 300, S = small ? 0.72 : 1.15, wy = y + h * 0.82, gap = w / n;
+		c.fillStyle = T.BUTTON; c.globalAlpha = 0.5; c.fillRect(x, wy + 4, w, y + h - wy); c.globalAlpha = 1;
+		c.strokeStyle = T.DIM; c.lineWidth = 2;
+		for (const r of st.rings) {
+			c.globalAlpha = 1 - r.a;
+			c.beginPath(); c.ellipse(x + (r.i + 0.5) * gap, wy + 4, (30 + r.a * 26) * S, (9 + r.a * 8) * S, 0, 0, 7); c.stroke();
+		}
+		c.globalAlpha = 1;
+		for (let i = 0; i < n; i++) {
+			const px = x + (i + 0.5) * gap, q = st.f[i], up = q.y > 0;
+			c.fillStyle = T.BUTTON; oval(c, px, wy + 4, 31 * S, 9 * S);
+			c.strokeStyle = T.DIM; c.lineWidth = 2; c.beginPath(); c.ellipse(px, wy + 4, 31 * S, 9 * S, 0, 0.5, 6.0); c.stroke();
+			const fy = wy - 9 * S - q.y * h * 0.95, sq = q.sq;
+			c.fillStyle = T.ACCENT; c.strokeStyle = T.ACCENT; c.lineCap = 'round'; c.lineWidth = 5.5 * S;
+			if (up) for (const s of [-1, 1]) { c.beginPath(); c.moveTo(px + s * 12 * S, fy + 6 * S); c.lineTo(px + s * 20 * S, fy + 20 * S); c.lineTo(px + s * 13 * S, fy + 34 * S); c.stroke(); }
+			else for (const s of [-1, 1]) oval(c, px + s * 19 * S, fy + 7 * S, 10 * S, 6 * S);
+			oval(c, px, fy + 3 * S * sq, 21 * S * (1 + 0.15 * sq), (15 - 4 * sq) * S);
+			for (const s of [-1, 1]) disc(c, px + s * 11 * S, fy - 12 * S + 4 * S * sq, 7.5 * S);
+			c.fillStyle = T.BG;
+			for (const s of [-1, 1]) disc(c, px + s * 11 * S, fy - 13 * S + 4 * S * sq, 3.2 * S);
+		}
+	},
+},
+{
+	name: 'Rain check',
+	art: 'full',
+	what: 'Rain across the whole panel, falling where the music is: heavier under the loud bands, a drizzle in quiet passages. Full screen, someone waits it out under an umbrella that bobs with the bass; with album art, the rain bounces off the cover instead.',
+	roles: [['ACCENT', 'the rain, the umbrella'], ['TEXT', 'splashes, the figure'], ['DIM', 'puddle rings, the handle'], ['BUTTON', 'the ground']],
+	gl: 'Lines: up to 260 drops, two vertices each, one draw. Splashes: point sprites. Rings: ring sprites. Umbrella and figure: one 2-tone sprite (or a fan and three quads). 4 draw calls; the CPU moves 260 points and tests each against one circle or one edge.',
+	cost: '≈ 0.2× Peaks (about 700 vertices, almost no fill)',
+	step(st, t, w, h) {
+		const n = 20, b = bands(st, 'b', n, t, 0.6, 0.2);
+		const bass = ease(st, 'bass', b[0], 0.4);
+		const drops = st.drops || (st.drops = []), sp = st.sp || (st.sp = []), rings = st.rings || (st.rings = []);
+		for (let i = 0; i < n; i++) if (drops.length < 260 && Math.random() < 0.03 + b[i] * 0.95)
+			drops.push({ x: (i + Math.random()) / n * (w + 90), y: -20 - Math.random() * 30, v: 13 + Math.random() * 6 });
+		const ux = w / 2, uy = h - 150 - 6 * bass, R = 112, ground = h - 12;
+		st.uy = uy;
+		const splash = (px, py) => { for (const s of [-1, 1]) if (sp.length < 80) sp.push({ x: px, y: py, vx: s * (1 + Math.random() * 2.5), vy: -(2 + Math.random() * 3), life: 9 }); };
+		for (let i = drops.length - 1; i >= 0; i--) {
+			const d = drops[i];
+			d.y += d.v; d.x -= d.v * 0.2;
+			let hit = false;
+			if (st.art) hit = d.x > COVER.x && d.x < COVER.x + COVER.s && d.y >= COVER.y && d.y < COVER.y + 30;
+			else { const dx = d.x - ux, dy = d.y - uy; hit = dy < 0 && dx * dx + dy * dy < R * R; }
+			if (hit) { splash(d.x, st.art ? COVER.y : d.y); drops.splice(i, 1); }
+			else if (d.y >= ground) { if (rings.length < 40) rings.push({ x: d.x, a: 0 }); drops.splice(i, 1); }
+		}
+		for (let i = sp.length - 1; i >= 0; i--) { const q = sp[i]; q.x += q.vx; q.y += q.vy; q.vy += 0.6; if (--q.life <= 0) sp.splice(i, 1); }
+		for (let i = rings.length - 1; i >= 0; i--) if ((rings[i].a += 0.09) >= 1) rings.splice(i, 1);
+	},
+	draw(c, st, x, y, w, h) {
+		const ground = y + h - 12;
+		c.fillStyle = T.BUTTON; c.fillRect(x, ground, w, 12);
+		c.strokeStyle = T.DIM; c.lineWidth = 2;
+		for (const r of st.rings) { c.globalAlpha = 1 - r.a; c.beginPath(); c.ellipse(x + r.x, ground + 2, 4 + r.a * 16, 1.5 + r.a * 4, 0, 0, 7); c.stroke(); }
+		c.globalAlpha = 1;
+		c.strokeStyle = T.ACCENT; c.lineWidth = 2.5; c.lineCap = 'round';
+		c.beginPath();
+		for (const d of st.drops) { c.moveTo(x + d.x, y + d.y); c.lineTo(x + d.x + d.v * 0.2, y + d.y - d.v); }
+		c.stroke();
+		c.fillStyle = T.TEXT;
+		for (const q of st.sp) disc(c, x + q.x, y + q.y, 2.2);
+		if (st.art) return;
+		const ux = x + w / 2, uy = y + st.uy, R = 112, feet = ground;
+		c.strokeStyle = T.DIM; c.lineWidth = 5;
+		line(c, ux, uy - 4, ux, feet - 62);
+		c.fillStyle = T.TEXT; c.strokeStyle = T.TEXT; c.lineWidth = 9;
+		line(c, ux - 34, feet - 30, ux - 36, feet - 3); line(c, ux - 18, feet - 30, ux - 16, feet - 3);
+		box(c, ux - 44, feet - 92, 36, 66, 14);
+		disc(c, ux - 26, feet - 108, 15);
+		c.lineWidth = 7; line(c, ux - 14, feet - 76, ux + 1, feet - 64);
+		c.fillStyle = T.ACCENT;
+		c.beginPath(); c.arc(ux, uy, R, Math.PI, 0); c.closePath(); c.fill();
+		c.fillStyle = T.BG;
+		for (let k = 0; k < 4; k++) oval(c, ux - R + R / 4 + k * R / 2, uy + 2, R / 4 - 1, 13);
+		c.fillStyle = T.ACCENT; box(c, ux - 3, uy - R - 12, 6, 16, 3);
+	},
+},
+{
+	name: 'Sleepy moon',
+	art: 'full',
+	what: 'A moon that dozes through quiet passages, eyes shut, breathing out a line of Zs, and wakes up when the song gets loud: eyes open, grin, rays out, nodding on the beat. The stars twinkle with the treble and the cloud bank along the foot is the spectrum.',
+	roles: [['ACCENT', 'the moon and its rays'], ['TEXT', 'bright stars, the Zs'], ['DIM', 'stars, the far clouds'], ['BUTTON', 'the near clouds']],
+	gl: 'Moon: one round sprite plus a 2-frame 1-bit face (asleep, awake) drawn in BG. Rays: 12 lines. Stars: 36 point sprites from a 4-point star texture, size per vertex. Clouds: 40 round sprites in two rows. Zs: three sprites. 3 draw calls, about 400 vertices; awake is loudness averaged over a second, crossing a threshold.',
+	cost: '≈ 0.25× Peaks (the cloud discs overlap: modest blended fill at the foot)',
+	step(st, t) {
+		const b = bands(st, 'b', 20, t, 0.4, 0.12);
+		const g = st.g || (st.g = new Float32Array(20));
+		for (let i = 0; i < 20; i++) g[i] += (b[i] - g[i]) * 0.05;
+		const l = ease(st, 'l', loud(t), 0.3);
+		const a = ease(st, 'avg', loud(t), 0.035);
+		st.awake = a > (st.awake ? 0.24 : 0.31) ? 1 : 0;
+		ease(st, 'aw', st.awake, 0.12);
+		st.z = ((st.z || 0) + 0.011) % 1;
+		st.t = t; st.k = l;
+	},
+	draw(c, st, x, y, w, h) {
+		const art = st.art, R = art ? 56 : 98, aw = st.aw, t = st.t;
+		const mx = x + (art ? w - 92 : w * 0.66), my = y + (art ? 92 : h * 0.4) - aw * st.k * 12;
+		// stars
+		for (let i = 0; i < 36; i++) {
+			const sx = x + hash(i, 11) * w, sy = y + 16 + hash(i, 12) * h * 0.66;
+			if (Math.hypot(sx - mx, sy - my) < R * 1.5) continue;
+			const v = st.b[10 + i % 10], s = 2.5 + v * 16 * (0.5 + hash(i, 13)) + Math.sin(t * 3 + i) * 0.8;
+			c.strokeStyle = i % 3 ? T.DIM : T.TEXT; c.lineWidth = 2; c.lineCap = 'round';
+			c.beginPath(); c.moveTo(sx - s, sy); c.lineTo(sx + s, sy); c.moveTo(sx, sy - s); c.lineTo(sx, sy + s); c.stroke();
+		}
+		// clouds: the spectrum
+		const n = 20;
+		c.fillStyle = T.DIM; c.globalAlpha = 0.45;
+		for (let i = 0; i < n; i++) disc(c, x + (i + 0.5) / n * w + 14, y + h + 2, 30 + st.g[i] * h * 0.42);
+		c.globalAlpha = 1; c.fillStyle = T.BUTTON;
+		for (let i = 0; i < n; i++) disc(c, x + (i + 0.5) / n * w, y + h + 6, 24 + st.b[i] * h * 0.24);
+		// rays, when awake
+		if (aw > 0.03) {
+			c.strokeStyle = T.ACCENT; c.lineWidth = R * 0.07; c.globalAlpha = aw;
+			c.beginPath();
+			for (let k = 0; k < 12; k++) {
+				const a = k / 12 * 6.283 + t * 0.3, r0 = R * 1.16, r1 = R * (1.24 + 0.34 * st.k * aw + (k % 2) * 0.06);
+				c.moveTo(mx + Math.cos(a) * r0, my + Math.sin(a) * r0); c.lineTo(mx + Math.cos(a) * r1, my + Math.sin(a) * r1);
+			}
+			c.stroke(); c.globalAlpha = 1;
+		}
+		c.fillStyle = T.ACCENT; disc(c, mx, my, R);
+		c.fillStyle = T.BG; c.globalAlpha = 0.14;
+		disc(c, mx - R * 0.5, my - R * 0.52, R * 0.16); disc(c, mx + R * 0.55, my + R * 0.42, R * 0.2); disc(c, mx + R * 0.28, my - R * 0.66, R * 0.09);
+		c.globalAlpha = 1; c.strokeStyle = T.BG; c.lineWidth = R * 0.075; c.lineCap = 'round';
+		for (const s of [-1, 1]) {
+			const ex = mx + s * R * 0.34, ey = my - R * 0.1;
+			if (aw < 0.5) { c.beginPath(); c.arc(ex, ey - R * 0.05, R * 0.15, 0.15 * Math.PI, 0.85 * Math.PI); c.stroke(); }
+			else oval(c, ex, ey, R * 0.12, R * 0.17 * (aw - 0.5) * 2);
+		}
+		if (aw < 0.5) disc(c, mx, my + R * 0.32, R * (0.07 + 0.025 * Math.sin(t * 1.6)));
+		else { c.beginPath(); c.arc(mx, my + R * 0.16, R * (0.3 + 0.08 * st.k), 0.12 * Math.PI, 0.88 * Math.PI); c.stroke(); }
+		// Zs, while asleep
+		if (aw < 0.5) {
+			c.strokeStyle = T.TEXT; c.lineJoin = 'round';
+			for (let k = 0; k < 3; k++) {
+				const p = (st.z + k / 3) % 1, s = (7 + p * 13) * (art ? 0.8 : 1.2);
+				const zx = mx - R * 0.85 - p * R * 1.1, zy = my - R * 0.75 - p * R * 0.8 + Math.sin(p * 9) * 4;
+				c.globalAlpha = Math.sin(p * Math.PI) * (1 - aw * 2); c.lineWidth = 2 + p * 2;
+				c.beginPath(); c.moveTo(zx - s, zy - s); c.lineTo(zx + s, zy - s); c.lineTo(zx - s, zy + s); c.lineTo(zx + s, zy + s); c.stroke();
+			}
+			c.globalAlpha = 1;
+		}
+	},
+},
+{
+	name: 'Disco dots',
+	art: 'full',
+	what: 'A mirror ball made of dots, turning faster as the song gets louder and throwing spots of light across the whole panel: each spot swells with its band, and every beat flashes the lot.',
+	roles: [['ACCENT', 'the ball\'s dots, the light spots'], ['TEXT', 'one facet in four'], ['DIM', 'the cord'], ['BUTTON', 'the ball\'s body']],
+	gl: 'Point sprites: about 45 visible facets on the ball (a 7-row grid on a sphere: one sine and cosine each) and 28 light spots (soft-edged round texture, flat alpha, no additive blending so pale themes work); 28 faint lines for the beams. 3 draw calls, about 150 vertices.',
+	cost: '≈ 0.2× Peaks (28 blended spots, each small)',
+	step(st, t) {
+		bands(st, 'b', 16, t, 0.55, 0.18);
+		const l = ease(st, 'l', loud(t), 0.2);
+		st.rot = (st.rot || 0) + 0.008 + 0.05 * l;
+		st.fl = beat(st, t) ? sect(t) : (st.fl || 0) * 0.82;
+	},
+	draw(c, st, x, y, w, h) {
+		const art = st.art, R = art ? 38 : 80, cx = x + w / 2, cy = y + (art ? 50 : h * 0.34), rot = st.rot, fl = st.fl;
+		const spots = [];
+		for (let s = 0; s < 28; s++) {
+			const a = hash(s, 21) * 6.283 + rot * (0.7 + 0.3 * (s % 2)), face = Math.cos(a);
+			if (face < -0.25) continue;
+			const e = hash(s, 22), v = st.b[s % 16];
+			spots.push([cx + Math.sin(a) * w * 0.62, cy + R * 0.6 + e * (y + h - cy - R * 0.6 - 16) + face * 18 - (art ? 0 : (1 - e) * 60 * (1 - Math.abs(Math.sin(a)))), v, clamp(face + 0.25), s]);
+		}
+		c.strokeStyle = T.ACCENT; c.lineWidth = 1.5; c.globalAlpha = 0.07 + 0.12 * fl;
+		c.beginPath(); for (const p of spots) { c.moveTo(cx, cy); c.lineTo(p[0], p[1]); } c.stroke();
+		for (const p of spots) {
+			const r = (9 + 30 * p[2] + 8 * fl) * (0.55 + 0.45 * p[3]) * (art ? 0.85 : 1);
+			c.globalAlpha = clamp((0.16 + 0.55 * p[2] + 0.25 * fl) * p[3]);
+			c.fillStyle = p[4] % 4 === 0 ? T.TEXT : T.ACCENT;
+			oval(c, p[0], p[1], r, r * 0.72);
+		}
+		c.globalAlpha = 1;
+		c.strokeStyle = T.DIM; c.lineWidth = 3; line(c, cx, y, cx, cy - R);
+		c.fillStyle = T.BUTTON; disc(c, cx, cy, R);
+		for (let j = -3; j <= 3; j++) {
+			const phi = j * 0.41, cr = Math.cos(phi), m = Math.max(5, Math.round(14 * cr));
+			for (let k = 0; k < m; k++) {
+				const th = k / m * 6.283 + rot + j * 0.3, f = Math.cos(th);
+				if (f <= 0.05) continue;
+				const v = st.b[(k * 3 + j + 16) % 16], tx = (k + j + 8) % 4 === 0;
+				c.globalAlpha = clamp(0.35 + 0.65 * v + 0.4 * fl);
+				c.fillStyle = tx ? T.TEXT : T.ACCENT;
+				oval(c, cx + R * cr * Math.sin(th) * 0.93, cy + R * Math.sin(phi) * 0.93, R * 0.105 * f * (0.8 + 0.5 * v), R * 0.105 * (0.8 + 0.5 * v));
+			}
+		}
+		c.globalAlpha = 1;
+	},
+},
+];
+
+/* ---------- the page ---------- */
+const grid = document.getElementById('grid');
+const views = []; // one per canvas: {style, ctx, band, full, st, t, card}
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+STYLES.forEach((s, i) => {
+	const card = document.createElement('article');
+	card.className = 'card';
+	const full = s.art === 'full';
+	card.innerHTML =
+		'<p class="tag">Visualizer only</p>' +
+		'<div class="screen"><canvas width="640" height="480" role="img" aria-label="' + s.name + ', full screen"></canvas></div>' +
+		'<div class="lower"><div><p class="tag">Art + visualizer</p>' +
+		'<div class="screen"><canvas width="640" height="480" role="img" aria-label="' + s.name + (full ? ', filling the panel behind the album art' : ', as a band under the album art') + '"></canvas></div>' +
+		'<p class="where">' + (full ? 'Fills the panel behind the cover' : 'In the 200-tall band under the cover') + '</p></div>' +
+		'<div><h2>' + s.name + '<small>' + (i + 1) + ' / 10</small></h2><p class="what">' + esc(s.what) + '</p>' +
+		'<ul class="chips">' + s.roles.map(r => '<li><b>' + r[0] + '</b> ' + esc(r[1]) + '</li>').join('') + '</ul>' +
+		'<dl><dt>Drawn in GL</dt><dd>' + esc(s.gl) + '</dd><dt>Cost guess</dt><dd>' + esc(s.cost) + '</dd></dl></div></div>';
+	grid.appendChild(card);
+	card.querySelectorAll('canvas').forEach((cv, k) => {
+		views.push({ style: s, ctx: cv.getContext('2d'), band: k === 1 && !full, full: k === 1 && full, st: {}, t: i * 3.1, card, on: false });
+	});
+});
+
+function drawCover(c, x, y, sz, edge) {
+	c.fillStyle = T.BUTTON;
+	c.beginPath(); c.roundRect(x, y, sz, sz, 10); c.fill();
+	if (edge) { c.strokeStyle = T.DIM; c.lineWidth = 2; c.stroke(); }
+	const cx = x + sz / 2;
+	c.strokeStyle = T.DIM; c.lineWidth = 6; c.lineCap = 'round';
+	c.beginPath(); c.arc(cx, y + sz / 2, sz * 0.19, 0, 7); c.stroke();
+	c.fillStyle = T.DIM;
+	c.beginPath(); c.arc(cx, y + sz / 2, 8, 0, 7); c.fill();
+}
+function drawTitles(c, y) {
+	c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+	c.fillStyle = T.TEXT; c.font = '600 24px Inter, system-ui, sans-serif';
+	c.fillText('Song title', W / 2, y);
+	c.fillStyle = T.DIM; c.font = '400 18px Inter, system-ui, sans-serif';
+	c.fillText('Artist · Album', W / 2, y + 26);
+}
+
+function step(v) {
+	v.t += 1 / FPS;
+	v.style.step(v.st, v.t, W, v.band ? BAND : H);
+}
+function paint(v) {
+	const c = v.ctx;
+	c.globalAlpha = 1;
+	c.fillStyle = T.BG; c.fillRect(0, 0, W, H);
+	const y = v.band ? H - BAND : 0, h = v.band ? BAND : H;
+	if (v.band) { drawCover(c, W / 2 - 88, 18, 176, false); drawTitles(c, H - BAND - 44); }
+	c.save();
+	c.beginPath(); c.rect(0, y, W, h); c.clip();
+	v.style.draw(c, v.st, 0, y, W, h);
+	c.restore();
+	c.globalAlpha = 1;
+	if (v.full) { drawCover(c, COVER.x, COVER.y, COVER.s, true); drawTitles(c, COVER.y + COVER.s + 36); }
+	if (!v.band && !v.full) {
+		// The song title sits top-left over a full-screen style.
+		c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+		c.fillStyle = T.TEXT; c.font = '600 22px Inter, system-ui, sans-serif';
+		c.fillText('Song title', 20, 38);
+	}
+}
+// Run a view forward unseen so a first (or a still) frame is already full of history.
+function warm(v) {
+	v.st = { art: v.full };
+	for (let i = 0; i < 170; i++) step(v);
+	paint(v);
+}
+
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+let raf = 0, last = 0;
+function tick(now) {
+	raf = requestAnimationFrame(tick);
+	if (now - last < 1000 / FPS - 2) return;
+	last = now;
+	for (const v of views) if (v.on) { step(v); paint(v); }
+}
+function run() {
+	cancelAnimationFrame(raf); raf = 0;
+	if (!still.matches && !document.hidden) raf = requestAnimationFrame(tick);
+}
+still.addEventListener('change', run);
+document.addEventListener('visibilitychange', run);
+
+if ('IntersectionObserver' in window) {
+	const io = new IntersectionObserver(es => {
+		for (const e of es) for (const v of views) if (v.card === e.target) v.on = e.isIntersecting;
+	}, { rootMargin: '80px' });
+	STYLES.forEach((_, i) => io.observe(views[i * 2].card));
+} else views.forEach(v => v.on = true);
+
+/* theme switch */
+const tb = document.getElementById('themes'), rolesEl = document.getElementById('roles');
+function setTheme(name) {
+	T = THEMES[name];
+	tb.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === name));
+	rolesEl.innerHTML = ['BG', 'ACCENT', 'TEXT', 'DIM', 'BUTTON'].map(r => '<span><i style="background:' + T[r] + '"></i>' + r + '</span>').join('');
+	views.forEach(warm);
+	try { localStorage.setItem('viz-theme', name); } catch (e) {}
+}
+Object.keys(THEMES).forEach(name => {
+	const b = document.createElement('button');
+	b.type = 'button'; b.dataset.t = name;
+	b.innerHTML = '<span class="sw" style="background:linear-gradient(135deg,' + THEMES[name].ACCENT + ' 50%,' + THEMES[name].BG + ' 50%)"></span>' + name;
+	b.addEventListener('click', () => setTheme(name));
+	tb.appendChild(b);
+});
+let start = 'Yellow';
+try { const s = localStorage.getItem('viz-theme'); if (s && THEMES[s]) start = s; } catch (e) {}
+const q = new URLSearchParams(location.search);
+if (THEMES[q.get('theme')]) start = q.get('theme');
+setTheme(start);
+// The band's title is canvas text: paint again once Inter has loaded.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => views.forEach(paint));
+run();
+
+// ?test: every style, both layouts, in every theme, 12 s each; the result goes in <body data-test>.
+if (q.has('test')) {
+	const out = [];
+	for (const name of Object.keys(THEMES)) {
+		setTheme(name);
+		for (const v of views) {
+			const id = name + '/' + v.style.name + (v.band ? '/band' : v.full ? '/full' : '');
+			try {
+				for (let i = 0; i < 360; i++) { step(v); if (i % 30 === 0) paint(v); }
+				paint(v);
+				const d = v.ctx.getImageData(0, 0, W, H).data, bg = [d[4 * 3], d[4 * 3 + 1], d[4 * 3 + 2]];
+				let ink = 0;
+				for (let k = 0; k < d.length; k += 16) if (Math.abs(d[k] - bg[0]) + Math.abs(d[k + 1] - bg[1]) + Math.abs(d[k + 2] - bg[2]) > 24) ink++;
+				if (ink < 600) out.push(id + ': nearly blank (' + ink + ')');
+				for (const key in v.st) { const a = v.st[key]; if (typeof a === 'number' && !isFinite(a)) out.push(id + ': ' + key + ' is not finite'); }
+			} catch (e) { out.push(id + ': ' + e.message); }
+		}
+	}
+	setTheme(start);
+	document.body.setAttribute('data-test', out.length ? out.join(' | ') : 'ok ' + views.length * Object.keys(THEMES).length + ' runs');
+}
+})();
+</script>
+</body>
+</html>
+
+</body></html>

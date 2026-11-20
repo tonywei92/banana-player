@@ -1,0 +1,382 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Visualizer Reel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Inter:wght@400;600&display=swap">
+<style>
+/* Layout: a header with the demo-music switch, then the three styles as cards, each a live 4:3 "top screen".
+   One dark look on purpose (the handheld's own theme.h colours), like the player itself. */
+:root {
+	--bg: #0b0a0d;        /* TOP_CARD */
+	--surface: #121116;   /* SURFACE */
+	--button: #26242e;    /* BUTTON */
+	--rule: #2a2833;      /* RULE */
+	--accent: #ffd23f;    /* ACCENT */
+	--text: #e8e2d3;      /* TEXT */
+	--dim: #8f8a80;       /* DIM */
+	--f-pix: "Pixelify Sans", ui-monospace, monospace;
+	--f-ui: "Inter", system-ui, sans-serif;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--f-ui); line-height: 1.5;
+	padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; }
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+h1 { font-family: var(--f-pix); font-weight: 600; font-size: 2rem; margin: 0; color: var(--accent); text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--dim); max-width: 62ch; }
+button { font: 600 .95rem var(--f-ui); color: #000; background: var(--accent); border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--button); color: var(--text); }
+button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; display: grid; min-width: 0; }
+canvas { width: 100%; aspect-ratio: 4 / 3; display: block; background: #000; max-width: 100%; }
+.about { padding: 14px 16px 16px; display: grid; gap: 4px; }
+.about h2 { margin: 0; font: 600 1.1rem var(--f-pix); color: var(--text); }
+.about p { margin: 0; color: var(--dim); font-size: .92rem; }
+.cost { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); font-family: var(--f-pix); }
+@media (prefers-reduced-motion: reduce) { .note-motion { display: block; } }
+</style>
+
+<style>
+.reel { display: grid; gap: 16px; justify-items: center; }
+.reel canvas { width: min(100%, 1040px, calc((100vh - 200px) * 4 / 3)); aspect-ratio: 4 / 3; border-radius: 6px; background: #000; display: block; max-width: 100%; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.tabs button { background: var(--button); color: var(--text); }
+.tabs button[aria-pressed="true"] { background: var(--accent); color: #000; }
+.bar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: center; color: var(--dim); }
+.bar label { display: flex; gap: 8px; align-items: center; cursor: pointer; color: var(--text); }
+#music[aria-pressed="true"] { background: var(--button); color: var(--text); }
+</style>
+<main class="reel">
+	<canvas id="stage" width="640" height="480" aria-label="The visualizer, animated"></canvas>
+	<div class="tabs" id="tabs"></div>
+	<div class="bar">
+		<button id="music" type="button" aria-pressed="false">▶ Play demo music</button>
+		<label><input type="checkbox" id="cycle"> Change style every 10 s</label>
+		<span>Keys: ← → change style, Space music</span>
+	</div>
+</main>
+
+<script>
+(() => {
+	const STYLES = [
+		{ id: 'pocket', name: 'Pocket console' }, { id: 'city', name: 'Night city' }, { id: 'fire', name: 'Campfire' },
+		{ id: 'ocean', name: 'Pixel sea' }, { id: 'fishbowl', name: 'Fishbowl' },
+	];
+	const stage = document.getElementById('stage'), sg = stage.getContext('2d');
+	let cur = 0;
+	const tabs = document.getElementById('tabs');
+	STYLES.forEach((s, i) => {
+		const b = document.createElement('button');
+		b.type = 'button'; b.textContent = s.name; b.onclick = () => pick(i);
+		tabs.appendChild(b);
+	});
+	function pick(i) { cur = (i + STYLES.length) % STYLES.length; [...tabs.children].forEach((b, k) => b.setAttribute('aria-pressed', String(k === cur))); }
+	pick(0);
+	const ctx = new Proxy({}, { get: () => sg });
+	/* ---------- the "music": made-up by default, or a real synth through an analyser ---------- */
+	const BANDS = 16;
+	let audio = null, analyser = null, freq = null, wave = null, playing = false;
+	const fake = t => {
+		const beat = (t * 2) % 1, kick = Math.exp(-beat * 7), hat = Math.exp(-((t * 8) % 1) * 18);
+		const b = [];
+		for (let i = 0; i < BANDS; i++) {
+			const low = Math.max(0, 1 - i / 5), high = Math.max(0, (i - 9) / 7);
+			const mid = 0.45 + 0.25 * Math.sin(t * 1.7 + i * 0.7) * Math.sin(t * 0.6 + i);
+			b.push(Math.min(1, low * (0.35 + 0.65 * kick) + (1 - low - high) * mid * 0.8 + high * (0.15 + 0.5 * hat) + 0.04 * Math.random()));
+		}
+		const w = [];
+		for (let i = 0; i < 256; i++) {
+			const x = i / 256;
+			w.push((0.55 * kick + 0.2) * Math.sin(2 * Math.PI * (x * 3 + t * 0.3)) + 0.25 * Math.sin(2 * Math.PI * (x * 11 + t)) * (0.4 + 0.6 * hat) + 0.08 * Math.sin(2 * Math.PI * x * 37));
+		}
+		return { bands: b, wave: w, kick };
+	};
+	function real() {
+		analyser.getByteFrequencyData(freq);
+		analyser.getFloatTimeDomainData(wave);
+		const b = [];
+		const n = freq.length;
+		for (let i = 0; i < BANDS; i++) {
+			const a = Math.floor(Math.pow(n, i / BANDS)), z = Math.max(a + 1, Math.floor(Math.pow(n, (i + 1) / BANDS)));
+			let m = 0;
+			for (let k = a; k < z && k < n; k++) m = Math.max(m, freq[k]);
+			b.push(m / 255);
+		}
+		const w = [];
+		const step = Math.floor(wave.length / 256);
+		for (let i = 0; i < 256; i++) w.push(wave[i * step] * 2.2);
+		return { bands: b, wave: w, kick: b[0] * b[1] };
+	}
+	function startSynth() {
+		audio = new (window.AudioContext || window.webkitAudioContext)();
+		analyser = audio.createAnalyser();
+		analyser.fftSize = 2048;
+		analyser.smoothingTimeConstant = 0.55;
+		freq = new Uint8Array(analyser.frequencyBinCount);
+		wave = new Float32Array(analyser.fftSize);
+		const out = audio.createGain();
+		out.gain.value = 0.35;
+		out.connect(analyser);
+		analyser.connect(audio.destination);
+		const noise = audio.createBuffer(1, audio.sampleRate * 0.2, audio.sampleRate);
+		const nd = noise.getChannelData(0);
+		for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+		const bass = [41.2, 41.2, 55, 49], chords = [[220, 261.6, 329.6], [196, 246.9, 293.7], [174.6, 220, 261.6], [196, 246.9, 293.7]];
+		let next = audio.currentTime + 0.05, step = 0;
+		const beat = 0.25;	// 120 bpm, eighths
+		function tick() {
+			if (!playing) return;
+			while (next < audio.currentTime + 0.2) {
+				const bar = Math.floor(step / 8) % 4, pos = step % 8;
+				if (pos % 2 === 0) {	// kick on the beat
+					const o = audio.createOscillator(), g = audio.createGain();
+					o.frequency.setValueAtTime(140, next); o.frequency.exponentialRampToValueAtTime(40, next + 0.12);
+					g.gain.setValueAtTime(1, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.25);
+					o.connect(g).connect(out); o.start(next); o.stop(next + 0.26);
+				}
+				{	// hats on every eighth
+					const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+					s.buffer = noise; f.type = 'highpass'; f.frequency.value = 7000;
+					g.gain.setValueAtTime(pos % 2 ? 0.35 : 0.18, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.05);
+					s.connect(f).connect(g).connect(out); s.start(next); s.stop(next + 0.06);
+				}
+				{	// bass, a saw
+					const o = audio.createOscillator(), g = audio.createGain();
+					o.type = 'sawtooth'; o.frequency.value = bass[bar] * (pos === 3 || pos === 7 ? 2 : 1);
+					g.gain.setValueAtTime(0.25, next); g.gain.exponentialRampToValueAtTime(0.001, next + beat * 0.9);
+					o.connect(g).connect(out); o.start(next); o.stop(next + beat);
+				}
+				if (pos === 0)	// a chord a bar
+					for (const fq of chords[bar]) {
+						const o = audio.createOscillator(), g = audio.createGain();
+						o.type = 'triangle'; o.frequency.value = fq;
+						g.gain.setValueAtTime(0.0001, next); g.gain.linearRampToValueAtTime(0.09, next + 0.08); g.gain.exponentialRampToValueAtTime(0.001, next + beat * 7.5);
+						o.connect(g).connect(out); o.start(next); o.stop(next + beat * 8);
+					}
+				next += beat; step++;
+			}
+			setTimeout(tick, 50);
+		}
+		tick();
+	}
+	const btn = document.getElementById('music');
+	btn.addEventListener('click', () => {
+		playing = !playing;
+		btn.setAttribute('aria-pressed', String(playing));
+		btn.textContent = playing ? '■ Stop demo music' : '▶ Play demo music';
+		if (playing) {
+			if (!audio) startSynth();
+			else { audio.resume(); startSynthLoop(); }
+		} else if (audio) audio.suspend();
+	});
+	function startSynthLoop() { /* the scheduler restarts on resume */ const a = audio; audio = null; a.close(); startSynth(); }
+
+	/* ---------- shared state: falling caps ---------- */
+	const caps = {};
+	const fall = (key, v, dt, speed = 0.45) => { const c = caps[key] || 0; const n = Math.max(v, c - speed * dt); caps[key] = n; return n; };
+
+
+	/* the stronger contrast, as the player would apply it: each band pushed away from its neighbours */
+	function contrast(b) {
+		return b.map((v, i) => {
+			const y = (b[Math.max(0, i - 1)] + v + b[Math.min(b.length - 1, i + 1)]) / 3;
+			return Math.max(0, Math.min(1, 0.67 + 1.3 * (v - 0.67) + 3 * (v - y)));
+		});
+	}
+	const eased = {};
+	const ease = (key, v, dt) => { const c = eased[key] || 0; const n = Math.max(v, c - dt / 0.15); eased[key] = n; return n; };
+	// a fixed pseudo-random noise field, like a still the graph would read
+	const NOISE = (() => { let seed = 7; const a = new Float32Array(80 * 120); for (let i = 0; i < a.length; i++) { seed = (seed * 16807) % 2147483647; a[i] = seed / 2147483647; } return a; })();
+	const noise = (x, y) => NOISE[((y % 120 + 120) % 120) * 80 + ((x % 80) + 80) % 80];
+	const title = (g, ink, y = 46) => { g.textAlign = 'center'; g.fillStyle = ink; g.font = '600 28px Inter, sans-serif'; g.fillText('Midnight Arcade', 320, y); };
+	let T = 0;
+
+
+	const avg = (lv, a, b) => { let s = 0; for (let i = a; i <= b; i++) s += lv[i]; return s / (b - a + 1); };
+	const P = 8;
+	const mk = g => (x, y, c) => { g.fillStyle = c; g.fillRect(Math.round(x) * P, Math.round(y) * P, P, P); };
+
+	const BUILDINGS = (() => {
+		const out = [];
+		let x = 0, seed = 7;
+		const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+		while (x < 640) { const w = 50 + Math.floor(rnd() * 40), h = 140 + Math.floor(rnd() * 200); out.push({ x, w, h }); x += w + 4; }
+		return out;
+	})();
+	const STARS = Array.from({ length: 60 }, (_, i) => ({ x: (i * 97) % 640, y: (i * 53) % 150, r: (i % 3) + 1 }));
+	function city(g, d) {
+		const sky = g.createLinearGradient(0, 0, 0, 480); sky.addColorStop(0, '#060b24'); sky.addColorStop(1, '#1b2a5c');
+		g.fillStyle = sky; g.fillRect(0, 0, 640, 480);
+		g.fillStyle = '#c9d6ff'; STARS.forEach(s => g.fillRect(s.x, s.y + 60, s.r, s.r));
+		g.fillStyle = '#f4f1d0'; g.beginPath(); g.arc(560, 110, 26, 0, Math.PI * 2); g.fill();
+		g.fillStyle = '#1b2a5c'; g.beginPath(); g.arc(572, 102, 24, 0, Math.PI * 2); g.fill();
+		BUILDINGS.forEach((b, bi) => {
+			const top = 480 - b.h;
+			g.fillStyle = '#0b0f22'; g.fillRect(b.x, top, b.w, b.h);
+			const band = d.bands[Math.min(BANDS - 1, Math.floor((b.x + b.w / 2) / 640 * BANDS))];
+			for (let wy = top + 12; wy < 470; wy += 18) for (let wx = b.x + 8; wx < b.x + b.w - 10; wx += 14) {
+				const rank = ((wx * 7 + wy * 13 + bi * 31) % 100) / 100;	// each window its own threshold
+				const lit = rank < band * 0.95;
+				g.fillStyle = lit ? (rank < band * 0.4 ? '#ffd23f' : '#ffb347') : '#1a2142';
+				g.fillRect(wx, wy, 7, 9);
+			}
+		});
+		title(g, '#ffffff');
+	}
+
+	/* ---------- Campfire: 80x60 pixels of 8 ---------- */
+	const FIRE = ['#1a0505', '#5c0d06', '#a8200a', '#e04a10', '#f78a1d', '#ffc23a', '#fff1a8'];
+	function fire(g, d, dt) {
+		const P = 8, N = 16;
+		g.fillStyle = '#07060c'; g.fillRect(0, 0, 640, 480);
+		// stars
+		for (let i = 0; i < 40; i++) { const x = Math.floor(NOISE[i * 7] * 80), y = Math.floor(NOISE[i * 13] * 22) + 7; g.fillStyle = NOISE[i * 3] > 0.5 ? '#3a3550' : '#26233a'; g.fillRect(x * P, y * P, P - 1, P - 1); }
+		const lv = contrast(d.bands).map((v, i) => ease('f' + i, v, dt));
+		const scroll = Math.floor(T * 24);	// the noise rises 24 pixels a second: the flicker
+		const x0 = 16, w = 48, base = 50;
+		for (let x = 0; x < w; x++) {
+			const band = Math.min(N - 1, Math.floor(x / (w / N)));
+			// the flames lean in towards the middle and taper at the sides
+			const shape = 1 - Math.pow(Math.abs(x - w / 2 + 0.5) / (w / 2), 2) * 0.55;
+			const h = (6 + 36 * lv[band]) * shape;
+			for (let y = 0; y < 46; y++) {
+				const up = base - y;	// rows above the logs
+				const heat = (h - y) / Math.max(1, h) + 0.55 * (noise(x0 + x, up + scroll) - 0.5);
+				if (heat <= 0) continue;
+				const c = FIRE[Math.min(FIRE.length - 1, Math.floor(heat * 7.5))];
+				g.fillStyle = c; g.fillRect((x0 + x) * P, (up - 1) * P, P - 1, P - 1);
+			}
+		}
+		// sparks: the treble throws them up
+		const treble = (lv[12] + lv[13] + lv[14] + lv[15]) / 4;
+		for (let i = 0; i < 18; i++) {
+			if (NOISE[i * 11] > treble * 1.4) continue;
+			const life = ((T * 0.7 + NOISE[i * 5]) % 1), x = x0 + 8 + Math.floor(NOISE[i * 17] * 32 + Math.sin(T * 3 + i) * 2), y = Math.floor(base - 20 - life * 30);
+			g.fillStyle = life < 0.5 ? '#ffd76a' : '#e0661e'; g.fillRect(x * P, y * P, P - 1, P - 1);
+		}
+		// the logs
+		const LOG = '#4a2a14', BARK = '#2c170b';
+		for (let x = 12; x < 68; x++) for (let y = 50; y < 55; y++) { if ((x + y) % 23 === 0 || y === 54) { g.fillStyle = BARK; } else g.fillStyle = (y === 50 || (x - 12) % 9 === 0) ? BARK : LOG; if (y < 52 || (x > 14 && x < 66)) g.fillRect(x * P, y * P, P - 1, P - 1); }
+		for (let x = 10; x < 70; x++) { g.fillStyle = '#16100c'; g.fillRect(x * P, 55 * P, P - 1, P - 1); }
+		title(g, '#ffcf7a');
+	}
+
+	/* ---------- Pixel sea: 160x120, x4 ---------- */
+	function ocean(g, d, dt) {
+		const lv = contrast(d.bands).map((v, i) => ease('o' + i, v, dt));
+		const bass = (lv[0] + lv[1] + lv[2]) / 3, mid = (lv[5] + lv[6] + lv[7] + lv[8]) / 4, treble = (lv[12] + lv[13] + lv[14] + lv[15]) / 4;
+		const S = 4;
+		g.fillStyle = '#141a3a'; g.fillRect(0, 0, 640, 480);
+		g.fillStyle = '#20285a'; g.fillRect(0, 160, 640, 120);
+		g.fillStyle = '#fff3c4'; g.beginPath(); g.arc(470, 120, 34, 0, 7); g.fill();
+		g.fillStyle = '#141a3a'; g.beginPath(); g.arc(485, 110, 30, 0, 7); g.fill();
+		const surf = x => 300 - (12 + 50 * bass) * (0.5 + 0.5 * Math.sin(x * 0.025 - T * 1.6)) - (4 + 14 * mid) * Math.sin(x * 0.09 + T * 3.1);
+		for (let x = 0; x < 640; x += S) {
+			const y0 = Math.round(surf(x) / S) * S;
+			for (let y = y0; y < 480; y += S) {
+				const depth = (y - y0) / 180;
+				g.fillStyle = depth < 0.02 ? (treble > 0.35 && NOISE[(x / S + Math.floor(T * 10)) % NOISE.length] > 0.5 ? '#ffffff' : '#9fd8ff') : `rgb(${20 + 30 * (1 - depth)}, ${70 + 70 * (1 - depth)}, ${140 + 60 * (1 - depth)})`;
+				g.fillRect(x, y, S, S);
+			}
+			if ((x / S) % 7 === 0 && NOISE[(x / S + 5) % NOISE.length] > 0.4) { g.fillStyle = 'rgba(255,243,196,0.5)'; g.fillRect(x, y0 + 20 + (x % 30), S * 3, S); }
+		}
+		// the boat rides the surface
+		const bx = 260, by = surf(bx + 30), tilt = (surf(bx + 50) - surf(bx + 10)) / 40;
+		g.save(); g.translate(bx + 30, by - 4); g.rotate(Math.atan(tilt));
+		g.fillStyle = '#7a3e1c'; g.beginPath(); g.moveTo(-34, -10); g.lineTo(34, -10); g.lineTo(22, 6); g.lineTo(-22, 6); g.fill();
+		g.fillStyle = '#d8d2c0'; g.fillRect(-2, -58, 4, 48);
+		g.fillStyle = '#ffd23f'; g.beginPath(); g.moveTo(3, -56); g.lineTo(30, -16); g.lineTo(3, -16); g.fill();
+		g.restore();
+		title(g, '#fff3c4');
+	}
+	const FISH = ['..##....', '.####.##', '########', '.####.##', '..##....'];
+	function fishbowl(g, d, dt) {
+		const px = mk(g), lv = contrast(d.bands).map((v, i) => ease('f' + i, v, dt));
+		const mid = avg(lv, 4, 9), treble = avg(lv, 11, 15);
+		g.fillStyle = '#2b1f3a'; g.fillRect(0, 0, 640, 480);
+		// the table
+		for (let y = 52; y < 60; y++) for (let x = 0; x < 80; x++) px(x, y, y === 52 ? '#a0703c' : '#7a5230');
+		const cx = 40, cy = 32, R = 19;
+		// the water, the bowl's rim, the gravel
+		for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) {
+			const dd = (x - cx) ** 2 + (y - cy) ** 2;
+			if (dd > R * R) continue;
+			if (y < cy - R + 6) { if (dd > (R - 1) ** 2) px(x, y, '#c9e6ff55'); continue; }
+			px(x, y, dd > (R - 1) ** 2 ? '#bfe3ff' : y > cy + R - 5 ? ((x + y) % 3 ? '#e0b070' : '#c08850') : y === cy - R + 6 ? '#9fd8ff' : '#3a8fd0');
+		}
+		for (let x = cx - 9; x <= cx + 9; x++) px(x, cy - R, '#d8efff');
+		// weed swaying with the mids
+		for (const [wx, h] of [[cx - 10, 14], [cx + 11, 11]]) for (let i = 0; i < h; i++) px(wx + Math.round(Math.sin(T * 2 + i * 0.4) * (0.5 + mid * 2) * i / h), cy + R - 5 - i, '#3fbf6a');
+		// three goldfish: each rises with its band group and wiggles its tail
+		const groups = [[0, 3], [5, 9], [10, 15]], cols = ['#ff8a3d', '#ffb347', '#ff6b6b'];
+		groups.forEach(([a, b], k) => {
+			const v = avg(lv, a, b), dir = k === 1 ? -1 : 1;
+			const fx = cx - 4 + Math.round(Math.sin(T * (0.5 + k * 0.2) + k * 2) * 9), fy = cy + 10 - Math.round(v * 16) - k * 2;
+			const wig = Math.floor(T * (4 + v * 10)) % 2;
+			FISH.forEach((row, r) => [...row].forEach((ch, c) => {
+				if (ch === '.') return;
+				const cc = dir > 0 ? c : 7 - c, tail = dir > 0 ? c >= 6 : c <= 1;
+				px(fx + cc, fy + r + (tail && wig ? (r < 2 ? 1 : r > 2 ? -1 : 0) : 0), cols[k]);
+			}));
+			px(fx + (dir > 0 ? 1 : 6), fy + 1, '#1a1020');
+		});
+		// bubbles on the treble
+		for (let i = 0; i < 10; i++) {
+			if (NOISE[i * 19] > 0.15 + treble) continue;
+			const life = (T * 0.5 + NOISE[i * 7]) % 1, bx = cx - 8 + Math.floor(NOISE[i * 23] * 16), by = Math.round(cy + R - 6 - life * (2 * R - 12));
+			px(bx, by, '#e8f6ff');
+		}
+		title(g, '#ffd9a0');
+	}
+
+
+	/* ---------- Pocket console: an old handheld's screen, 80x60 chunky dots in four greens ---------- */
+	const PK = { dark: '#0f380f', mid: '#306230', bar: '#0f380f', screen: '#9bbc0f', grid: '#93b20e' };
+	const pkCaps = new Array(15).fill(0), pkBars = new Array(15).fill(0);
+	function pocket(g, d, dt) {
+		const lv = contrast(d.bands);
+		g.fillStyle = PK.screen; g.fillRect(0, 0, 640, 480);
+		// the LCD's grid: each dot's own cell a hair darker at its edges
+		g.fillStyle = PK.grid;
+		for (let x = 0; x < 80; x++) g.fillRect(x * 8 + 7, 0, 1, 480);
+		for (let y = 0; y < 60; y++) g.fillRect(0, y * 8 + 7, 640, 1);
+		const dot = (x, y, c) => { g.fillStyle = c; g.fillRect(x * 8, y * 8, 7, 7); };
+		// 15 bars of 4 dots and a 1-dot gap from x 2; rows 14..58, the floor on the last
+		const T0 = 14, BH = 45;
+		for (let i = 0; i < 15; i++) {
+			const v = lv[Math.min(15, Math.round(i * 16 / 15))];
+			pkBars[i] = Math.max(v, pkBars[i] - dt / 0.15);
+			pkCaps[i] = Math.max(pkBars[i], pkCaps[i] - dt / 2.4);
+			const h = Math.round(pkBars[i] * (BH - 2)), cap = Math.round(pkCaps[i] * (BH - 2)) + 1, x0 = 2 + i * 5;
+			for (let k = 0; k < h; k++) for (let c = 0; c < 4; c++) dot(x0 + c, T0 + BH - 1 - k, k > h * 0.66 ? PK.mid : PK.dark);
+			for (let c = 0; c < 4; c++) dot(x0 + c, T0 + BH - 1 - cap, PK.mid);
+		}
+		for (let x = 2; x < 76; x++) dot(x, 59, PK.mid);
+		g.textAlign = 'center'; g.fillStyle = PK.dark; g.font = '30px "Pixelify Sans", monospace'; g.fillText('MIDNIGHT ARCADE', 320, 50);
+		g.font = '20px "Pixelify Sans", monospace'; g.fillStyle = PK.mid; g.fillText('Cassette Coast · Night Drive', 320, 80);
+	}
+
+	const DRAW = { pocket, city, fire, ocean, fishbowl };
+	let last = performance.now(), t0 = last, shownAt = last;
+	document.getElementById('cycle').onchange = () => { shownAt = performance.now(); };
+	document.addEventListener('keydown', e => {
+		if (e.key === 'ArrowRight') pick(cur + 1);
+		else if (e.key === 'ArrowLeft') pick(cur - 1);
+		else if (e.key === ' ') { e.preventDefault(); document.getElementById('music').click(); }
+	});
+	function frame(now) {
+		const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+		last = now; T = Math.max(0, (now - t0) / 1000);
+		if (document.getElementById('cycle').checked && now - shownAt > 10000) { shownAt = now; pick(cur + 1); }
+		const d = playing && analyser ? real() : fake(T);
+		DRAW[STYLES[cur].id](sg, d, dt);
+		requestAnimationFrame(frame);
+	}
+	T = 0.37;
+	DRAW[STYLES[cur].id](sg, fake(0.37), 0.016);
+	requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

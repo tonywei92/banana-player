@@ -1,0 +1,895 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Manga Reader Mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pixelify+Sans:wght@400&display=swap" rel="stylesheet">
+<style>
+:root { color-scheme: dark; --page: #0b0a0e; --ink: #E8E2D3; --mute: #8F8A80; --line: #2A2833; --acc: #FFD23F; }
+html, body { background: var(--page); color: var(--ink); }
+* { box-sizing: border-box; }
+*, *::before, *::after { font-variant-ligatures: none; font-feature-settings: "liga" 0, "clig" 0, "dlig" 0; }
+.doc { font: 400 15px/1.5 Inter, system-ui, sans-serif; max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; background: var(--page); color: var(--ink); }
+.doc h1 { font: 400 30px/1.15 "Pixelify Sans", monospace; color: var(--acc); margin: 0 0 6px; }
+.doc h2 { font: 400 21px/1.2 "Pixelify Sans", monospace; margin: 0 0 4px; color: var(--ink); }
+.doc p { margin: 6px 0; }
+.lead { color: var(--mute); max-width: 860px; }
+.lead b { color: var(--ink); font-weight: 600; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); gap: 36px 28px; margin-top: 26px; }
+.shot { min-width: 0; }
+.shot .what { color: var(--mute); font-size: 13.5px; margin-bottom: 10px; }
+.dev { background: #26242E; border-radius: 14px; padding: 10px; display: grid; gap: 10px; }
+.frame { width: 100%; aspect-ratio: 4 / 3; position: relative; overflow: hidden; background: #000; border-radius: 3px; }
+.frame .lbl { position: absolute; right: 6px; top: 4px; z-index: 9; font: 600 10px/1 Inter, sans-serif; color: #ffffff55; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
+.panel { position: absolute; left: 0; top: 0; width: 640px; height: 480px; transform-origin: 0 0; overflow: hidden; background: #000; font-family: "Pixelify Sans", monospace; letter-spacing: .02px; color: #E8E2D3; }
+.panel .a { position: absolute; white-space: nowrap; }
+.panel .bx { position: absolute; border: 2px solid; }
+.panel svg { display: block; position: absolute; }
+.panel .inter { font-family: Inter, sans-serif; }
+.keys { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13.5px; }
+.keys td { padding: 4px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.keys td:first-child { font: 400 14px/1.4 "Pixelify Sans", monospace; color: var(--acc); white-space: nowrap; width: 1%; }
+.note { margin-top: 10px; color: var(--mute); font-size: 13px; }
+.note b { color: var(--ink); font-weight: 600; }
+.new { display: inline-block; font: 600 10.5px/1 Inter, sans-serif; letter-spacing: .06em; text-transform: uppercase; background: var(--acc); color: #000; padding: 3px 6px; border-radius: 4px; vertical-align: 3px; margin-left: 6px; }
+
+/* the web dashboard screen (h) */
+.web { border: 2px solid #52504F; border-radius: 12px; overflow: hidden; background: #000; display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 560px; font: 400 15px/1.45 Inter, sans-serif; }
+.web .side { background: #000; border-right: 1px solid #1E1D24; padding: 18px 12px; }
+.web .logo { display: flex; align-items: center; gap: 10px; font: 400 19px/1 "Pixelify Sans", monospace; color: var(--acc); margin: 0 6px 22px; }
+.web .nav { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; font: 400 17px/1 "Pixelify Sans", monospace; color: #ABA597; margin-bottom: 6px; border: 2px solid transparent; }
+.web .nav.on { color: var(--acc); background: #26242E; border-color: var(--acc); }
+.web .nav svg, .web .ic { fill: currentColor; flex: none; }
+.web .main { padding: 22px 26px 30px; min-width: 0; }
+.web .crumb { color: var(--mute); font: 400 14px/1 "Pixelify Sans", monospace; margin-bottom: 10px; }
+.web h3 { font: 400 30px/1.1 "Pixelify Sans", monospace; margin: 0 0 14px; color: var(--ink); }
+.web .seg { display: inline-flex; border: 2px solid #605D60; border-radius: 8px; overflow: hidden; margin-bottom: 18px; }
+.web .seg span { padding: 8px 14px; font: 400 15px/1 "Pixelify Sans", monospace; background: #26242E; color: var(--ink); }
+.web .seg span + span { border-left: 2px solid #605D60; }
+.web .seg span.on { background: var(--acc); color: #000; }
+.web .card { background: #121116; border: 2px solid #52504F; border-radius: 12px; box-shadow: inset 0 -3px 0 #0D0C0F; padding: 16px; margin-bottom: 18px; }
+.web .card h4 { margin: 0 0 4px; font: 400 18px/1.2 "Pixelify Sans", monospace; color: var(--ink); }
+.web .sub { color: var(--mute); font-size: 13.5px; }
+.web .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.web .field { flex: 1 1 260px; min-width: 0; display: flex; align-items: center; gap: 10px; background: #000; border: 2px solid var(--acc); border-radius: 8px; padding: 9px 12px; color: var(--ink); font: 400 15px/1.2 Inter, sans-serif; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.web .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 8px; border: 2px solid #605D60; background: #26242E; box-shadow: inset 0 -3px 0 #1B1920; font: 400 15px/1 "Pixelify Sans", monospace; color: var(--ink); white-space: nowrap; }
+.web .btn.primary { background: var(--acc); color: #000; border-color: #F8D76B; box-shadow: inset 0 -3px 0 #B2932C; }
+.web .btn.sm { padding: 6px 10px; font-size: 14px; }
+.web .list { margin-top: 12px; border-top: 1px solid #2A2833; }
+.web .item { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 2px; border-bottom: 1px solid #2A2833; }
+.web .item .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.web .item .m { color: var(--mute); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.web .sq { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; fill: #fff; }
+.web .chip { display: inline-block; font: 400 12px/1 "Pixelify Sans", monospace; padding: 3px 6px; border-radius: 5px; background: #26242E; color: #ABA597; margin-left: 6px; vertical-align: 1px; }
+.web .chip.y { background: var(--acc); color: #000; }
+.web .acts { display: flex; gap: 8px; }
+.web .legal { display: flex; gap: 10px; align-items: flex-start; color: var(--mute); font-size: 13.5px; margin-top: 4px; }
+.web .legal svg { fill: var(--mute); flex: none; margin-top: 3px; }
+@media (max-width: 720px) {
+	.web { grid-template-columns: 1fr; }
+	.web .side { display: flex; gap: 6px; overflow-x: auto; padding: 10px; border-right: 0; border-bottom: 1px solid #1E1D24; }
+	.web .logo { display: none; }
+	.web .nav { margin: 0; padding: 8px 10px; font-size: 15px; }
+	.web .main { padding: 16px 14px 22px; }
+	.web .item { grid-template-columns: 36px minmax(0, 1fr); }
+	.web .item .acts { grid-column: 2; }
+	.web .sq { width: 36px; height: 36px; }
+}
+</style>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="g-alert" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="5" y="0" width="1" height="1"/><rect x="4" y="1" width="3" height="1"/><rect x="3" y="2" width="2" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="6" y="3" width="2" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="6" y="4" width="3" height="1"/><rect x="2" y="5" width="3" height="1"/><rect x="6" y="5" width="3" height="1"/><rect x="1" y="6" width="9" height="1"/><rect x="1" y="7" width="4" height="1"/><rect x="6" y="7" width="4" height="1"/><rect x="0" y="8" width="11" height="1"/></symbol>
+<symbol id="g-back" viewBox="0 0 6 9" shape-rendering="crispEdges"><rect x="4" y="0" width="2" height="1"/><rect x="3" y="1" width="2" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="1" y="3" width="2" height="1"/><rect x="0" y="4" width="2" height="1"/><rect x="1" y="5" width="2" height="1"/><rect x="2" y="6" width="2" height="1"/><rect x="3" y="7" width="2" height="1"/><rect x="4" y="8" width="2" height="1"/></symbol>
+<symbol id="g-blocks" viewBox="0 0 11 11" shape-rendering="crispEdges"><rect x="0" y="0" width="5" height="1"/><rect x="6" y="0" width="5" height="1"/><rect x="0" y="1" width="5" height="1"/><rect x="6" y="1" width="5" height="1"/><rect x="0" y="2" width="5" height="1"/><rect x="6" y="2" width="5" height="1"/><rect x="0" y="3" width="5" height="1"/><rect x="6" y="3" width="5" height="1"/><rect x="0" y="4" width="5" height="1"/><rect x="6" y="4" width="5" height="1"/><rect x="0" y="6" width="5" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="0" y="7" width="5" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="0" y="8" width="5" height="1"/><rect x="6" y="8" width="5" height="1"/><rect x="0" y="9" width="5" height="1"/><rect x="8" y="9" width="1" height="1"/><rect x="0" y="10" width="5" height="1"/><rect x="8" y="10" width="1" height="1"/></symbol>
+<symbol id="g-bookmark" viewBox="0 0 7 10" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="0" y="1" width="7" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="0" y="3" width="7" height="1"/><rect x="0" y="4" width="7" height="1"/><rect x="0" y="5" width="7" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="4" y="7" width="3" height="1"/><rect x="0" y="8" width="2" height="1"/><rect x="5" y="8" width="2" height="1"/><rect x="0" y="9" width="1" height="1"/><rect x="6" y="9" width="1" height="1"/></symbol>
+<symbol id="g-box" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="0" y="0" width="9" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="8" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="0" y="8" width="9" height="1"/></symbol>
+<symbol id="g-card" viewBox="0 0 10 10" shape-rendering="crispEdges"><rect x="3" y="0" width="7" height="1"/><rect x="2" y="1" width="2" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="1" y="2" width="3" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="1" y="3" width="9" height="1"/><rect x="1" y="4" width="9" height="1"/><rect x="1" y="5" width="9" height="1"/><rect x="1" y="6" width="9" height="1"/><rect x="1" y="7" width="9" height="1"/><rect x="1" y="8" width="9" height="1"/><rect x="1" y="9" width="9" height="1"/></symbol>
+<symbol id="g-check" viewBox="0 0 9 7" shape-rendering="crispEdges"><rect x="8" y="0" width="1" height="1"/><rect x="7" y="1" width="2" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="0" y="3" width="2" height="1"/><rect x="5" y="3" width="2" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="4" y="4" width="2" height="1"/><rect x="2" y="5" width="3" height="1"/><rect x="3" y="6" width="1" height="1"/></symbol>
+<symbol id="g-clock" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="3" y="0" width="5" height="1"/><rect x="1" y="1" width="9" height="1"/><rect x="1" y="2" width="4" height="1"/><rect x="6" y="2" width="4" height="1"/><rect x="0" y="3" width="5" height="1"/><rect x="6" y="3" width="5" height="1"/><rect x="0" y="4" width="5" height="1"/><rect x="6" y="4" width="5" height="1"/><rect x="0" y="5" width="5" height="1"/><rect x="8" y="5" width="3" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="1" y="7" width="9" height="1"/><rect x="1" y="8" width="9" height="1"/><rect x="3" y="9" width="5" height="1"/></symbol>
+<symbol id="g-cross" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="7" y="0" width="2" height="1"/><rect x="0" y="1" width="3" height="1"/><rect x="6" y="1" width="3" height="1"/><rect x="1" y="2" width="3" height="1"/><rect x="5" y="2" width="3" height="1"/><rect x="2" y="3" width="5" height="1"/><rect x="3" y="4" width="3" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="1" y="6" width="3" height="1"/><rect x="5" y="6" width="3" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="6" y="7" width="3" height="1"/><rect x="0" y="8" width="2" height="1"/><rect x="7" y="8" width="2" height="1"/></symbol>
+<symbol id="g-down" viewBox="0 0 9 5" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="7" y="0" width="2" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="6" y="1" width="2" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="5" y="2" width="2" height="1"/><rect x="3" y="3" width="3" height="1"/><rect x="4" y="4" width="1" height="1"/></symbol>
+<symbol id="g-download" viewBox="0 0 9 10" shape-rendering="crispEdges"><rect x="3" y="0" width="3" height="1"/><rect x="3" y="1" width="3" height="1"/><rect x="3" y="2" width="3" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="1" y="4" width="7" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="0" y="9" width="9" height="1"/></symbol>
+<symbol id="g-eye" viewBox="0 0 11 7" shape-rendering="crispEdges"><rect x="3" y="0" width="5" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="8" y="1" width="2" height="1"/><rect x="0" y="2" width="2" height="1"/><rect x="4" y="2" width="3" height="1"/><rect x="9" y="2" width="2" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="3" y="3" width="5" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="2" height="1"/><rect x="4" y="4" width="3" height="1"/><rect x="9" y="4" width="2" height="1"/><rect x="1" y="5" width="2" height="1"/><rect x="8" y="5" width="2" height="1"/><rect x="3" y="6" width="5" height="1"/></symbol>
+<symbol id="g-film" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="11" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="2" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="11" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="0" y="5" width="11" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="6" y="7" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="0" y="8" width="11" height="1"/></symbol>
+<symbol id="g-folder" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="5" height="1"/><rect x="0" y="1" width="11" height="1"/><rect x="0" y="2" width="11" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="0" y="5" width="11" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="0" y="7" width="11" height="1"/><rect x="0" y="8" width="11" height="1"/></symbol>
+<symbol id="g-gear" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="3" y="0" width="3" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="3" y="1" width="3" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="1" y="3" width="3" height="1"/><rect x="5" y="3" width="3" height="1"/><rect x="0" y="4" width="3" height="1"/><rect x="6" y="4" width="3" height="1"/><rect x="1" y="5" width="3" height="1"/><rect x="5" y="5" width="3" height="1"/><rect x="0" y="6" width="9" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="3" y="7" width="3" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="3" y="8" width="3" height="1"/></symbol>
+<symbol id="g-heart" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="1" y="0" width="3" height="1"/><rect x="7" y="0" width="3" height="1"/><rect x="0" y="1" width="5" height="1"/><rect x="6" y="1" width="5" height="1"/><rect x="0" y="2" width="11" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="1" y="5" width="9" height="1"/><rect x="2" y="6" width="7" height="1"/><rect x="3" y="7" width="5" height="1"/><rect x="4" y="8" width="3" height="1"/><rect x="5" y="9" width="1" height="1"/></symbol>
+<symbol id="g-info" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="2" y="0" width="5" height="1"/><rect x="1" y="1" width="3" height="1"/><rect x="5" y="1" width="3" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="5" y="3" width="4" height="1"/><rect x="0" y="4" width="4" height="1"/><rect x="5" y="4" width="4" height="1"/><rect x="0" y="5" width="4" height="1"/><rect x="5" y="5" width="4" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="5" y="6" width="4" height="1"/><rect x="1" y="7" width="2" height="1"/><rect x="6" y="7" width="2" height="1"/><rect x="2" y="8" width="5" height="1"/></symbol>
+<symbol id="g-laptop" viewBox="0 0 11 7" shape-rendering="crispEdges"><rect x="1" y="0" width="9" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="9" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="1" y="5" width="9" height="1"/><rect x="0" y="6" width="11" height="1"/></symbol>
+<symbol id="g-left" viewBox="0 0 5 7" shape-rendering="crispEdges"><rect x="3" y="0" width="2" height="1"/><rect x="2" y="1" width="2" height="1"/><rect x="1" y="2" width="2" height="1"/><rect x="0" y="3" width="2" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="2" y="5" width="2" height="1"/><rect x="3" y="6" width="2" height="1"/></symbol>
+<symbol id="g-moon" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="3" y="0" width="4" height="1"/><rect x="1" y="1" width="4" height="1"/><rect x="1" y="2" width="3" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="0" y="4" width="3" height="1"/><rect x="0" y="5" width="3" height="1"/><rect x="1" y="6" width="3" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="1" y="7" width="7" height="1"/><rect x="3" y="8" width="4" height="1"/></symbol>
+<symbol id="g-network" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="3" y="0" width="5" height="1"/><rect x="3" y="1" width="5" height="1"/><rect x="3" y="2" width="5" height="1"/><rect x="5" y="3" width="1" height="1"/><rect x="1" y="4" width="9" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="9" y="5" width="1" height="1"/><rect x="0" y="6" width="3" height="1"/><rect x="8" y="6" width="3" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="8" y="7" width="3" height="1"/><rect x="0" y="8" width="3" height="1"/><rect x="8" y="8" width="3" height="1"/></symbol>
+<symbol id="g-note" viewBox="0 0 10 10" shape-rendering="crispEdges"><rect x="6" y="0" width="4" height="1"/><rect x="6" y="1" width="4" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="3" y="6" width="4" height="1"/><rect x="2" y="7" width="5" height="1"/><rect x="2" y="8" width="5" height="1"/><rect x="3" y="9" width="3" height="1"/></symbol>
+<symbol id="g-pause" viewBox="0 0 8 8" shape-rendering="crispEdges"><rect x="0" y="0" width="3" height="1"/><rect x="5" y="0" width="3" height="1"/><rect x="0" y="1" width="3" height="1"/><rect x="5" y="1" width="3" height="1"/><rect x="0" y="2" width="3" height="1"/><rect x="5" y="2" width="3" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="5" y="3" width="3" height="1"/><rect x="0" y="4" width="3" height="1"/><rect x="5" y="4" width="3" height="1"/><rect x="0" y="5" width="3" height="1"/><rect x="5" y="5" width="3" height="1"/><rect x="0" y="6" width="3" height="1"/><rect x="5" y="6" width="3" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="5" y="7" width="3" height="1"/></symbol>
+<symbol id="g-picture" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="0" y="0" width="11" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="7" y="2" width="2" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="7" y="3" width="2" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="4" y="5" width="3" height="1"/><rect x="10" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="3" y="6" width="5" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="7" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="0" y="8" width="1" height="1"/><rect x="10" y="8" width="1" height="1"/><rect x="0" y="9" width="11" height="1"/></symbol>
+<symbol id="g-play" viewBox="0 0 8 8" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="0" y="1" width="4" height="1"/><rect x="0" y="2" width="6" height="1"/><rect x="0" y="3" width="8" height="1"/><rect x="0" y="4" width="8" height="1"/><rect x="0" y="5" width="6" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="0" y="7" width="2" height="1"/></symbol>
+<symbol id="g-playlist" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="8" y="2" width="3" height="1"/><rect x="8" y="3" width="3" height="1"/><rect x="0" y="4" width="7" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="5" y="7" width="4" height="1"/><rect x="4" y="8" width="5" height="1"/><rect x="5" y="9" width="3" height="1"/></symbol>
+<symbol id="g-plus" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="3" y="0" width="3" height="1"/><rect x="3" y="1" width="3" height="1"/><rect x="3" y="2" width="3" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="0" y="5" width="9" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="3" y="7" width="3" height="1"/><rect x="3" y="8" width="3" height="1"/></symbol>
+<symbol id="g-refresh" viewBox="0 0 10 8" shape-rendering="crispEdges"><rect x="3" y="0" width="5" height="1"/><rect x="9" y="0" width="1" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="8" y="1" width="2" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="6" y="2" width="4" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="9" y="5" width="1" height="1"/><rect x="1" y="6" width="2" height="1"/><rect x="7" y="6" width="2" height="1"/><rect x="3" y="7" width="4" height="1"/></symbol>
+<symbol id="g-right" viewBox="0 0 5 7" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="2" y="4" width="2" height="1"/><rect x="1" y="5" width="2" height="1"/><rect x="0" y="6" width="2" height="1"/></symbol>
+<symbol id="g-search" viewBox="0 0 9 8" shape-rendering="crispEdges"><rect x="2" y="0" width="4" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="5" y="1" width="2" height="1"/><rect x="0" y="2" width="2" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="0" y="3" width="2" height="1"/><rect x="6" y="3" width="2" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="5" y="4" width="2" height="1"/><rect x="2" y="5" width="6" height="1"/><rect x="6" y="6" width="3" height="1"/><rect x="7" y="7" width="2" height="1"/></symbol>
+<symbol id="g-sun" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="4" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="3" y="2" width="3" height="1"/><rect x="2" y="3" width="5" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="5" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="4" y="8" width="1" height="1"/></symbol>
+<symbol id="g-trash" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="3" y="0" width="3" height="1"/><rect x="0" y="1" width="9" height="1"/><rect x="1" y="3" width="7" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="7" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="3" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="7" y="5" width="1" height="1"/><rect x="1" y="6" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="7" y="6" width="1" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="3" y="7" width="1" height="1"/><rect x="5" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="1" y="8" width="7" height="1"/></symbol>
+<symbol id="g-web" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="2" y="0" width="5" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="0" y="5" width="9" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="2" y="8" width="5" height="1"/></symbol>
+<symbol id="g-book" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="1" height="1"/><rect x="1" y="0" width="1" height="1"/><rect x="2" y="0" width="1" height="1"/><rect x="8" y="0" width="1" height="1"/><rect x="9" y="0" width="1" height="1"/><rect x="10" y="0" width="1" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="2" y="1" width="1" height="1"/><rect x="3" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="2" y="3" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="7" y="3" width="1" height="1"/><rect x="8" y="3" width="1" height="1"/><rect x="9" y="3" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="2" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="7" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="2" y="5" width="1" height="1"/><rect x="3" y="5" width="1" height="1"/><rect x="4" y="5" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="7" y="5" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="9" y="5" width="1" height="1"/><rect x="10" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="1" y="6" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="4" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/><rect x="7" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="9" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="2" y="7" width="1" height="1"/><rect x="3" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="6" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="9" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="3" y="8" width="1" height="1"/><rect x="4" y="8" width="1" height="1"/><rect x="6" y="8" width="1" height="1"/><rect x="7" y="8" width="1" height="1"/><rect x="8" y="8" width="1" height="1"/></symbol>
+</svg>
+<div class="doc">
+	<h1>Manga reader · screens</h1>
+	<p class="lead">A proposal, nothing built. Each screen is both panels of the handheld, drawn on the bottom panel's 640×480 layout with the Midnight palette, Pixelify Sans and the app's own glyphs. The extension is <b>off by default</b>; every screen here exists only once Manga reader is turned on in Manage extensions. Titles, authors, sources and repositories are invented; covers are generated (gradient plus a motif), and the page art is drawn shapes. The design text is <b>docs/design/manga.md</b>.</p>
+	<div class="grid" id="shots"></div>
+</div>
+<script>
+(function () {
+const C = { bg: '#000', surface: '#121116', button: '#26242E', pressed: '#3E3B4A', acc: '#FFD23F', text: '#E8E2D3', dim: '#8F8A80', dimOn: '#ABA597', red: '#F0645A', screen: '#26242E', track: '#1E1D24', rule: '#2A2833', topCard: '#0B0A0D' };
+const mix = (a, b, t) => { const p = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); const x = p(a), y = p(b); return '#' + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+const edgeOf = f => mix(f, C.text, .3), lipOf = f => mix(f, '#000000', .3);
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+// a box as drawBox draws it: fill, an edge 30% towards the text (the accent when focused), a darker lip
+function box(x, y, w, h, o = {}) {
+	const fill = o.sel ? C.acc : o.fill || (o.focus ? C.button : C.button);
+	const r = o.r ?? 10, edge = o.focus ? C.acc : o.edge || edgeOf(fill);
+	const lip = o.lip === false ? '' : `box-shadow: inset 0 -3px 0 ${lipOf(fill)};`;
+	return `<div class="bx" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${r}px;background:${fill};border-color:${o.noedge ? fill : edge};${lip}${o.css || ''}"></div>`;
+}
+const tile = (x, y, w, h, o = {}) => box(x, y, w, h, Object.assign({ fill: o.focus ? C.button : C.surface, r: 14 }, o));
+// text: y is the top of the line box (size * 1.2 tall)
+function tx(x, y, s, o = {}) {
+	const size = o.size || 16, col = o.color || C.text;
+	const fam = o.inter ? 'font-family:Inter,sans-serif;' : '';
+	let pos = `left:${x}px;`;
+	if (o.anchor === 'c') pos = `left:${x - 400}px;width:800px;text-align:center;`;
+	if (o.anchor === 'r') pos = `left:${x - 800}px;width:800px;text-align:right;`;
+	const wrap = o.w ? `width:${o.w}px;white-space:normal;` : '';
+	const clip = o.clip ? `width:${o.clip}px;overflow:hidden;text-overflow:ellipsis;` : '';
+	return `<div class="a" style="${pos}top:${y}px;font-size:${size}px;line-height:${o.lh || Math.round(size * 1.2)}px;color:${col};${fam}${o.bold ? 'font-weight:600;' : ''}${wrap}${clip}${o.css || ''}">${o.html ? s : esc(s)}</div>`;
+}
+// a glyph from the sprite, at a cell size, snapped
+const VB = {};
+function glyph(n, x, y, cell, col) {
+	if (!VB[n]) { const s = document.getElementById('g-' + n); const v = s.getAttribute('viewBox').split(' ').map(Number); VB[n] = [v[2], v[3]]; }
+	const [w, h] = VB[n];
+	return `<svg style="left:${x}px;top:${y}px" width="${w * cell}" height="${h * cell}" fill="${col || C.text}" shape-rendering="crispEdges"><use href="#g-${n}"/></svg>`;
+}
+const gw = (n, cell) => { glyph(n, 0, 0, 1); return VB[n][0] * cell; };
+
+// the shared page pieces: back icon, title, clock, the footer's hints, the section markers
+function header(title, o = {}) {
+	let s = box(8, 8, 47, 47, { r: 10 }) + glyph('back', 25, 20, 3, C.text);
+	if (title) s += tx(73, 15, title, { size: 28, clip: o.clip || 400 });
+	s += tx(615, 22, '18:42', { size: 15, anchor: 'r' });
+	return s;
+}
+function markers(on) {
+	const gs = ['card', 'playlist', 'network', 'blocks'];
+	let s = tx(328, 22, 'L', { size: 15, color: C.acc });
+	gs.forEach((g, i) => {
+		const x = 344 + i * 40;
+		s += box(x, 14, 36, 36, { r: 10, sel: i === on, fill: C.button });
+		s += glyph(g, x + 18 - gw(g, 2) / 2, 21, 2, i === on ? '#000' : C.text);
+	});
+	return s + tx(508, 22, 'R', { size: 15, color: C.acc });
+}
+function hints(list, y = 450) {
+	const parts = list.map(([k, v]) => `<span style="color:${C.acc}">${esc(k)}</span>&nbsp;<span style="color:${C.dim}">${esc(v)}</span>`).join('<span style="display:inline-block;width:22px"></span>');
+	return tx(320, y, parts, { size: 14, anchor: 'c', html: true });
+}
+function tabs(names, on, y = 64, x0 = 44, x1 = 596, k = ['L', 'R']) {
+	const n = names.length, gap = 8, w = (x1 - x0 - gap * (n - 1)) / n;
+	let s = tx(22, y + 6, k[0], { size: 13, color: C.acc }) + tx(618, y + 6, k[1], { size: 13, color: C.acc, anchor: 'r' });
+	names.forEach((t, i) => {
+		const x = x0 + i * (w + gap);
+		s += box(x, y, w, 30, { r: 10, sel: i === on });
+		s += tx(x + w / 2, y + 5, t, { size: 15, anchor: 'c', color: i === on ? '#000' : C.text });
+	});
+	return s;
+}
+const chip = (x, y, t, o = {}) => `<div class="a" style="left:${x}px;top:${y}px;padding:2px 6px;border-radius:6px;font-size:${o.size || 12}px;line-height:${(o.size || 12) + 3}px;background:${o.bg || C.track};color:${o.color || C.dimOn}">${esc(t)}</div>`;
+
+// generated covers: the dashboard's gradients and a motif, a pixel title plate
+const PAL = [['#E8823A', '#6B1E4A'], ['#3AA7A0', '#18234F'], ['#F2C14E', '#B0413E'], ['#6C5CE7', '#120F2E'], ['#2E86AB', '#0B1E2D'], ['#D96C9A', '#2B193D'], ['#7BBF6A', '#1C3A2E'], ['#F0645A', '#2A0E14']];
+const MOT = ['moon', 'sun', 'heart', 'eye', 'note', 'picture', 'bookmark', 'clock'];
+function cover(x, y, w, h, i, title, o = {}) {
+	const [a, b] = PAL[i % PAL.length], m = o.motif || MOT[(i * 3 + 1) % MOT.length];
+	const cell = Math.max(2, Math.round(w / 28));
+	let s = `<div class="bx" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:${o.r ?? 8}px;border-color:${o.focus ? C.acc : '#00000000'};border-width:${o.focus ? 2 : 0}px;background:linear-gradient(150deg,${a},${b});overflow:hidden">`;
+	// stripes and a horizon: something like a cover's composition, nothing real
+	s += `<div style="position:absolute;left:0;right:0;bottom:0;height:${Math.round(h * .42)}px;background:linear-gradient(0deg,#000000aa,#00000000)"></div>`;
+	s += `<div style="position:absolute;left:${-w * .2}px;top:${h * .52}px;width:${w * 1.4}px;height:${h * .5}px;border-radius:50%;background:#00000033"></div>`;
+	s += '</div>';
+	s += glyph(m, Math.round(x + w / 2 - gw(m, cell) / 2), Math.round(y + h * .2), cell, '#ffffffd0');
+	if (title && w >= 60) s += tx(x + 6, y + h - Math.round(w / 9) - 12, title, { size: Math.max(9, Math.round(w / 10)), color: '#fff', w: w - 12, lh: Math.round(w / 9) + 1, css: 'text-shadow:0 1px 0 #0008' });
+	if (o.badge) s += chip(x + w - 8 - String(o.badge).length * 7 - 12, y + 6, o.badge, { bg: C.acc, color: '#000', size: 12 });
+	return s;
+}
+function bar(x, y, w, t, o = {}) {
+	return `<div class="bx" style="left:${x}px;top:${y}px;width:${w}px;height:${o.h || 6}px;border:0;border-radius:${o.r ?? 3}px;background:${C.track};overflow:hidden"><div style="width:${t * 100}%;height:100%;background:${C.acc}"></div></div>`;
+}
+
+// the top panel's idle look (the logo, the title, the line under it)
+function idleTop() {
+	let s = `<div class="bx" style="left:256px;top:72px;width:128px;height:128px;border:0;border-radius:24px;background:${C.surface}"></div>`;
+	s += `<div class="bx" style="left:278px;top:94px;width:84px;height:84px;border:9px solid ${C.acc};border-radius:50%;border-right-color:transparent;transform:rotate(-30deg)"></div>`;
+	s += `<svg style="left:306px;top:116px" width="34" height="40"><path d="M0 0 L34 20 L0 40 Z" fill="${C.text}"/></svg>`;
+	s += tx(320, 226, 'Banana Player', { size: 38, color: C.acc, anchor: 'c' });
+	s += tx(320, 286, 'Pick a video or a song on the bottom screen', { size: 17, color: C.dim, anchor: 'c', inter: true });
+	return s;
+}
+// a top-panel series card: the cover and what the series is
+function seriesTop(i, title, by, status, src, synopsis, progress, o = {}) {
+	let s = '';
+	if (o.blur) s += `<div class="bx" style="left:-40px;top:-40px;width:720px;height:560px;border:0;background:linear-gradient(150deg,${PAL[i][0]},${PAL[i][1]});filter:blur(30px);opacity:.35"></div>`;
+	s += cover(36, 48, 236, 336, i, title, { r: 10 });
+	s += tx(300, 52, title, { size: 32, w: 320, lh: 36 });
+	const ty = 52 + (title.length > 16 ? 76 : 40);
+	s += tx(300, ty, by, { size: 17, color: C.dim, inter: true });
+	let cx = 300;
+	for (const c of [status, src]) { s += chip(cx, ty + 30, c, { size: 13, bg: C.button, color: C.text }); cx += c.length * 7.4 + 22; }
+	s += tx(300, ty + 64, synopsis, { size: 16, color: C.text, inter: true, w: 312, lh: 23 });
+	if (progress) {
+		s += tx(36, 404, progress[0], { size: 17 });
+		s += tx(604, 404, progress[1], { size: 15, color: C.dim, anchor: 'r' });
+		s += bar(36, 432, 568, progress[2], { h: 8, r: 4 });
+	}
+	return s;
+}
+
+// ---- a fake manga page: panels, screentone, a lantern, bubbles; no real art -------------------------------------
+function mangaPage(x, y, w, h, alt) {
+	const k = w / 330;
+	return `<svg style="left:${x}px;top:${y}px" width="${w}" height="${h}" viewBox="0 0 330 480"><g ${alt ? 'transform="translate(330 0) scale(-1 1)"' : ''}>
+	<defs>
+		<pattern id="tone" width="4" height="4" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".9" fill="#222"/></pattern>
+		<pattern id="tone2" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r=".7" fill="#333"/></pattern>
+		<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c1c1c"/><stop offset="1" stop-color="#9a9a9a"/></linearGradient>
+	</defs>
+	<rect width="330" height="480" fill="#F4F1EA"/>
+	<!-- panel 1: night roofs and a moon -->
+	<rect x="14" y="14" width="302" height="150" fill="url(#sky)" stroke="#111" stroke-width="2.5"/>
+	<circle cx="250" cy="58" r="26" fill="#F4F1EA"/>
+	<rect x="14" y="14" width="302" height="150" fill="url(#tone)" opacity=".35"/>
+	<path d="M14 164 L14 118 L48 96 L80 118 L80 104 L118 82 L156 104 L156 124 L196 100 L236 124 L236 112 L276 94 L316 116 L316 164 Z" fill="#111"/>
+	<g fill="#F4F1EA"><rect x="40" y="128" width="6" height="8"/><rect x="128" y="112" width="6" height="8"/><rect x="206" y="128" width="6" height="8"/><rect x="290" y="132" width="6" height="8"/></g>
+	<!-- the caption box -->
+	<rect x="24" y="24" width="96" height="40" fill="#F4F1EA" stroke="#111" stroke-width="1.5"/>
+	<g fill="#555"><rect x="32" y="33" width="78" height="4"/><rect x="32" y="42" width="64" height="4"/><rect x="32" y="51" width="70" height="4"/></g>
+	<!-- panel 2: a paper lantern on a string, speed lines -->
+	<rect x="14" y="174" width="140" height="150" fill="#F4F1EA" stroke="#111" stroke-width="2.5"/>
+	<g stroke="#bbb" stroke-width="1">${Array.from({ length: 14 }, (_, i) => `<line x1="${84}" y1="249" x2="${14 + i * 11}" y2="${i % 2 ? 174 : 324}"/>`).join('')}</g>
+	<line x1="84" y1="174" x2="84" y2="214" stroke="#111" stroke-width="2"/>
+	<rect x="72" y="212" width="24" height="6" fill="#111"/>
+	<ellipse cx="84" cy="250" rx="30" ry="34" fill="#F4F1EA" stroke="#111" stroke-width="2.5"/>
+	<ellipse cx="84" cy="250" rx="30" ry="34" fill="url(#tone2)"/>
+	<g fill="none" stroke="#111" stroke-width="1.5"><path d="M56 236 Q84 228 112 236"/><path d="M54 250 Q84 244 114 250"/><path d="M56 264 Q84 258 112 264"/></g>
+	<rect x="72" y="282" width="24" height="6" fill="#111"/>
+	<!-- panel 3: a figure from behind, looking up -->
+	<rect x="164" y="174" width="152" height="150" fill="url(#tone)" stroke="#111" stroke-width="2.5"/>
+	<rect x="164" y="174" width="152" height="150" fill="#d8d4cb" opacity=".55"/>
+	<circle cx="240" cy="236" r="24" fill="#111"/>
+	<path d="M200 324 Q206 270 240 262 Q274 270 280 324 Z" fill="#111"/>
+	<path d="M222 222 Q240 204 262 222" fill="none" stroke="#F4F1EA" stroke-width="2"/>
+	<!-- bubble with text bars -->
+	<ellipse cx="200" cy="200" rx="34" ry="20" fill="#fff" stroke="#111" stroke-width="1.5"/>
+	<g fill="#555"><rect x="182" y="192" width="36" height="3.5"/><rect x="186" y="199" width="28" height="3.5"/><rect x="184" y="206" width="32" height="3.5"/></g>
+	<!-- panel 4: wide, two faces as shapes, two bubbles -->
+	<rect x="14" y="334" width="302" height="132" fill="#F4F1EA" stroke="#111" stroke-width="2.5"/>
+	<rect x="14" y="420" width="302" height="46" fill="url(#tone)" opacity=".6"/>
+	<path d="M30 466 Q40 380 96 372 Q150 380 160 466 Z" fill="#2a2a2a"/>
+	<circle cx="96" cy="372" r="30" fill="#111"/>
+	<path d="M190 466 Q200 392 246 386 Q292 392 300 466 Z" fill="#555"/>
+	<circle cx="246" cy="384" r="26" fill="#333"/>
+	<ellipse cx="174" cy="366" rx="44" ry="24" fill="#fff" stroke="#111" stroke-width="1.5"/>
+	<path d="M150 384 L136 398 L160 388 Z" fill="#fff" stroke="#111" stroke-width="1.5"/>
+	<g fill="#555"><rect x="150" y="355" width="48" height="3.5"/><rect x="146" y="362" width="56" height="3.5"/><rect x="152" y="369" width="44" height="3.5"/></g>
+	<ellipse cx="282" cy="352" rx="26" ry="14" fill="#fff" stroke="#111" stroke-width="1.5"/>
+	<g fill="#555"><rect x="268" y="348" width="28" height="3.5"/><rect x="272" y="355" width="20" height="3.5"/></g>
+	</g><text x="300" y="474" font-family="Pixelify Sans" font-size="9" fill="#555" text-anchor="end">${alt ? 15 : 14}</text>
+	</svg>`;
+}
+// a webtoon stretch, at the panel's width: the end of one panel, a bubble on white, the start of the next
+function webtoonStrip() {
+	return `<svg style="left:0;top:0" width="640" height="480" viewBox="0 0 640 480">
+	<defs><linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2E86AB"/><stop offset=".7" stop-color="#E8823A"/><stop offset="1" stop-color="#6B1E4A"/></linearGradient>
+	<linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#18234F"/><stop offset="1" stop-color="#3AA7A0"/></linearGradient></defs>
+	<rect width="640" height="480" fill="#FAF8F2"/>
+	<rect x="0" y="0" width="640" height="190" fill="url(#dusk)"/>
+	<circle cx="470" cy="150" r="46" fill="#FFD9A0" opacity=".9"/>
+	<path d="M0 190 L0 120 L60 120 L60 90 L110 90 L110 130 L180 130 L180 70 L220 70 L220 120 L300 120 L300 100 L360 100 L360 150 L430 150 L430 110 L520 110 L520 140 L640 140 L640 190 Z" fill="#2B193D"/>
+	<g fill="#FFD23F"><rect x="74" y="100" width="8" height="8"/><rect x="192" y="84" width="8" height="8"/><rect x="314" y="112" width="8" height="8"/><rect x="450" y="122" width="8" height="8"/></g>
+	<ellipse cx="320" cy="262" rx="150" ry="44" fill="#fff" stroke="#222" stroke-width="2"/>
+	<g fill="#666"><rect x="216" y="248" width="208" height="7"/><rect x="236" y="262" width="168" height="7"/></g>
+	<rect x="0" y="340" width="640" height="140" fill="url(#sea)"/>
+	<path d="M0 400 Q80 380 160 400 T320 400 T480 400 T640 400 L640 480 L0 480 Z" fill="#0B1E2D" opacity=".6"/>
+	<path d="M300 340 L300 300 L340 300 L340 340" fill="none" stroke="#222" stroke-width="3"/>
+	<rect x="628" y="96" width="6" height="140" rx="3" fill="#ffffff55"/>
+	</svg>`;
+}
+
+// a finger on the touch surface, with its trail
+function finger(x, y, dir) {
+	let s = '';
+	for (let i = 1; i <= 4; i++) { const dx = dir === 'right' ? -i * 16 : 0, dy = dir === 'up' ? i * 16 : 0; s += `<div class="bx" style="left:${x + dx - 5 + i}px;top:${y + dy - 5 + i}px;width:${10 - i * 2}px;height:${10 - i * 2}px;border:0;border-radius:50%;background:#ffffff${['', 'aa', '77', '55', '33'][i]}"></div>`; }
+	s += `<div class="bx" style="left:${x - 17}px;top:${y - 17}px;width:34px;height:34px;border:3px solid #fff;border-radius:50%;background:#ffffff40;box-shadow:0 0 0 4px #00000055"></div>`;
+	return s;
+}
+
+// ---- the screens --------------------------------------------------------------------------------------------------
+const S = [];
+
+// (a) Home: the fourth tile is always Extensions; a manga card in Recent opens at the page
+S.push({ id: 'a', name: '(a) Home', what: 'The fourth tile is always Extensions; its second line counts what is on. The book being read shows in Recent like a video, and A on it opens the page you left.', top: idleTop(), bottom: (() => {
+	let s = header('Banana Player') + tx(16, 64, 'Recent', { size: 14, color: C.dim });
+	s += tile(16, 84, 240, 103) + cover(30, 98, 50, 72, 2, '', { r: 6 }) + tx(92, 104, 'Ember Lantern', { size: 18, clip: 156 });
+	s += glyph('book', 92, 140, 2, C.dim) + tx(118, 136, 'Ch. 12 · p. 14', { size: 14, color: C.dim });
+	s += `<div class="bx" style="left:18px;top:179px;width:236px;height:4px;border:0;border-radius:0 0 12px 12px;background:${C.track}"><div style="width:37%;height:100%;background:${C.dim}"></div></div>`;
+	s += tile(266, 84, 240, 103) + tx(280, 104, 'Paper Boats', { size: 18 }) + glyph('film', 280, 152, 2, C.dim) + tx(306, 148, 'Played', { size: 14, color: C.dim });
+	s += tile(516, 84, 240, 103) + glyph('clock', 572, 98, 3, C.dim) + tx(580, 134, 'All recent', { size: 18 });
+	const T = [['card', 'Files', 'lib'], ['playlist', 'Playlists', 'Liked'], ['network', 'Network', 'Living room NAS'], ['blocks', 'Extensions', '1 on · Manga reader']];
+	T.forEach(([g, t, sub], i) => {
+		const x = i % 2 ? 328 : 16, y = i < 2 ? 200 : 318, f = i === 3;
+		s += tile(x, y, 296, 108, { focus: f });
+		s += glyph(g, x + 52 - gw(g, 4) / 2, y + 32, 4, f ? C.acc : C.text);
+		s += tx(x + 104, y + 24, t, { size: 26, color: f ? C.acc : C.text });
+		s += tx(x + 104, y + 66, sub, { size: 14, color: f ? C.dimOn : C.dim, clip: 182 });
+	});
+	return s + hints([['A', 'Open'], ['Y', 'Menu'], ['X', 'Options'], ['B', 'Quit'], ['START', 'Menu']]);
+})(), keys: [['A', 'Open the Extensions drawer (on the Recent card: the chapter at its page)'], ['L / R', 'Sections, unchanged: Files, Playlists, Network, Extensions'], ['X / Y', 'Options / the card\'s menu, as today'], ['Nothing on', 'The tile reads "None on · START to manage"; no manga cards in Recent']] });
+
+// (a2) the drawer
+S.push({ id: 'a2', name: '(a2) Extensions · the drawer', what: 'A grid of the extensions that are on, as icon tiles (v1: only Manga reader). It is the Extensions section\'s top, so L/R and B work as in the other sections.', top: (() => {
+	let s = `<div class="bx" style="left:40px;top:44px;width:560px;height:392px;border-color:${edgeOf(C.topCard)};border-radius:18px;background:${C.topCard}"></div>`;
+	s += `<div class="bx" style="left:72px;top:76px;width:84px;height:84px;border:0;border-radius:16px;background:${C.button}"></div>` + glyph('book', 87, 99, 5, C.acc);
+	s += tx(178, 82, 'Manga reader', { size: 32 }) + tx(178, 126, 'On · 9 series · 3 unread', { size: 16, color: C.dim, inter: true });
+	s += tx(72, 190, 'Comics and manga from your files, your Komga, Kavita or OPDS server, and sources you add.', { size: 18, inter: true, w: 500, lh: 26 });
+	s += tx(72, 284, 'Continue reading', { size: 15, color: C.dim, inter: true }) + tx(72, 308, 'Ember Lantern · Ch. 12, p. 14 of 38', { size: 18, inter: true });
+	s += bar(72, 344, 496, 14 / 38, { h: 6, r: 3 });
+	return s;
+})(), bottom: (() => {
+	let s = header('Extensions') + markers(3);
+	s += tx(16, 64, '1 on', { size: 14, color: C.dim });
+	s += tile(16, 88, 144, 150, { focus: true });
+	s += `<div class="bx" style="left:46px;top:104px;width:84px;height:72px;border:0;border-radius:12px;background:${C.track}"></div>` + glyph('book', 60, 122, 5, C.acc);
+	s += tx(88, 186, 'Manga reader', { size: 16, color: C.acc, anchor: 'c' }) + tx(88, 208, '3 unread', { size: 13, color: C.dimOn, anchor: 'c' });
+	for (const x of [170, 324, 478]) s += `<div class="bx" style="left:${x}px;top:88px;width:144px;height:150px;border:2px dashed ${C.rule};border-radius:14px;background:transparent"></div>`;
+	s += tx(320, 270, 'Turn more on in Manage extensions (START).', { size: 14, color: C.dim, anchor: 'c' });
+	return s + hints([['A', 'Open'], ['START', 'Manage extensions'], ['B', 'Home'], ['L/R', 'Sections']]);
+})(), keys: [['A', 'Open the extension (Manga reader opens on Library, or where you left it)'], ['START', 'Manage extensions'], ['X', 'Opens Manga settings (the Manga app\'s own page); B comes back here'], ['B · L/R', 'Home · sections, as every section']], note: 'The dashed places are only in the mock, to show the grid; on the handheld the grid holds just the tiles.' });
+
+// (a3) the empty drawer
+S.push({ id: 'a3', name: '(a3) Extensions · none on', what: 'Nothing is on (the default): one friendly line and the way to turn something on.', top: idleTop(), bottom: (() => {
+	let s = header('Extensions') + markers(3);
+	s += glyph('blocks', 320 - gw('blocks', 6) / 2, 120, 6, C.dim);
+	s += tx(320, 206, 'No extensions are on', { size: 24, anchor: 'c' });
+	s += tx(320, 244, 'Extensions add to Banana Player, like a manga reader.', { size: 14, color: C.dim, anchor: 'c' });
+	s += tx(320, 264, 'Nothing of one shows or runs until you turn it on.', { size: 14, color: C.dim, anchor: 'c' });
+	s += box(190, 304, 260, 48, { focus: true }) + tx(320, 316, 'Manage extensions', { size: 19, color: C.acc, anchor: 'c' });
+	return s + hints([['START', 'Manage extensions'], ['B', 'Home'], ['L/R', 'Sections']]);
+})(), keys: [['START (or A on the button)', 'Manage extensions'], ['B · L/R', 'Home · sections']] });
+
+// (a4) Manage extensions
+S.push({ id: 'a4', name: '(a4) Manage extensions', what: 'START in the drawer (and a card in the web dashboard). Every extension with what it does and On/Off. Off hides it and stops it; nothing is deleted.', top: (() => {
+	let s = `<div class="bx" style="left:40px;top:44px;width:560px;height:392px;border-color:${edgeOf(C.topCard)};border-radius:18px;background:${C.topCard}"></div>`;
+	s += tx(72, 76, 'Manga reader', { size: 32 }) + chip(330, 88, 'On', { bg: C.acc, color: '#000', size: 14 });
+	s += tx(72, 130, 'Read comics and manga: CBZ, CBR and CB7 files and folders of pictures on the card or a network folder, your Komga, Kavita or OPDS server, and sources from repositories you add.', { size: 17, inter: true, w: 500, lh: 25 });
+	s += tx(72, 262, 'Turning it off', { size: 15, color: C.dim, inter: true });
+	s += tx(72, 286, 'hides it and stops it. Your library, history and sources stay for when it comes back.', { size: 17, inter: true, w: 500, lh: 25 });
+	s += tx(72, 370, 'X: its settings (reading mode, page cache…)', { size: 15, color: C.dim, inter: true });
+	return s;
+})(), bottom: (() => {
+	let s = header('Manage extensions');
+	s += tx(16, 64, '1 extension', { size: 14, color: C.dim });
+	s += box(16, 88, 608, 70, { focus: true });
+	s += `<div class="bx" style="left:30px;top:100px;width:46px;height:46px;border:0;border-radius:10px;background:${C.track}"></div>` + glyph('book', 42, 114, 2, C.acc);
+	s += tx(92, 98, 'Manga reader', { size: 20, color: C.acc }) + tx(92, 126, 'Comics and manga from files, servers, sources', { size: 13, color: C.dimOn });
+	s += box(464, 104, 64, 36, { r: 10, sel: true }) + tx(496, 111, 'On', { size: 17, color: '#000', anchor: 'c' });
+	s += box(536, 104, 76, 36, { r: 10 }) + glyph('gear', 550, 115, 2, C.text) + tx(598, 111, 'X', { size: 14, color: C.acc, anchor: 'r' });
+	s += tx(320, 190, 'More extensions come with later versions.', { size: 14, color: C.dim, anchor: 'c' });
+	return s + hints([['A', 'On / Off'], ['X', 'Settings'], ['B', 'Back']]);
+})(), keys: [['A', 'On / Off (the first time on: the sheet in a5)'], ['X or Right', 'Manga settings, the Manga app\'s own page; B returns here'], ['B', 'Back to the drawer']] });
+
+// (a5) the first time on
+S.push({ id: 'a5', name: '(a5) Turned on, the first time', what: 'A one-time sheet over Manage extensions, with the neutral note about repositories.', top: (() => {
+	let s = `<div class="bx" style="left:40px;top:44px;width:560px;height:392px;border-color:${edgeOf(C.topCard)};border-radius:18px;background:${C.topCard}"></div>`;
+	s += glyph('book', 320 - gw('book', 8) / 2, 92, 8, C.acc);
+	s += tx(320, 182, 'Manga reader is on', { size: 32, anchor: 'c' });
+	s += tx(320, 236, 'Find it in Home › Extensions.', { size: 18, inter: true, anchor: 'c' });
+	s += tx(320, 270, 'Put CBZ files or folders of pictures in a Manga folder,', { size: 16, color: C.dim, inter: true, anchor: 'c' });
+	s += tx(320, 294, 'or add your server or a repository in Browse.', { size: 16, color: C.dim, inter: true, anchor: 'c' });
+	return s;
+})(), bottom: (() => {
+	let s = header('Manage extensions') + tx(16, 64, '1 extension', { size: 14, color: C.dim });
+	s += box(16, 88, 608, 70, {}) + tx(92, 98, 'Manga reader', { size: 20 });
+	s += `<div class="bx" style="left:0;top:0;width:640px;height:480px;border:0;border-radius:0;background:rgba(0,0,0,.67)"></div>`;
+	s += box(60, 90, 520, 300, { fill: C.surface, r: 18 });
+	s += glyph('book', 92, 120, 3, C.acc) + tx(136, 114, 'Manga reader is on', { size: 24 });
+	s += tx(92, 164, 'It reads from your files and servers, and from', { size: 15 });
+	s += tx(92, 186, 'sources in repositories you add.', { size: 15 });
+	s += tx(92, 222, 'Repositories are added by you. Banana Player', { size: 15, color: C.dim });
+	s += tx(92, 244, 'doesn\'t provide or check their content.', { size: 15, color: C.dim });
+	s += box(92, 310, 220, 50, { sel: true }) + tx(202, 322, 'Open Manga', { size: 19, color: '#000', anchor: 'c' });
+	s += box(328, 310, 220, 50, {}) + tx(438, 322, 'Done', { size: 19, anchor: 'c' });
+	return s + hints([['A', 'Choose'], ['LEFT/RIGHT', 'Move'], ['B', 'Done']]);
+})(), keys: [['Open Manga', 'Opens the reader on Library'], ['Done / B', 'Back to Manage extensions; never shown again']] });
+
+// (b) Library
+S.push({ id: 'b', name: '(b) Manga › Library', what: 'The Manga reader opened from the drawer: its own header, its four pages on L/R. Continue reading first, then the library as covers (unread counts on yellow). The top panel describes the focused series.', top: seriesTop(2, 'Ember Lantern', 'Mira Okabe', 'Ongoing', 'Home server', 'A lamplighter\'s apprentice keeps the last gas lanterns of a harbour town burning, and finds that each one remembers a night someone wants forgotten.', ['Read 11 of 48', 'Ch. 12 · p. 14 of 38', 11.4 / 48]), bottom: (() => {
+	let s = header('Manga') + tabs(['Library', 'History', 'Browse', 'Sources', 'Downloads'], 0);
+	s += tx(16, 102, 'Continue reading', { size: 13, color: C.dim });
+	const CR = [[2, 'Ember Lantern', 'Ch. 12 · p. 14/38', .37], [4, 'The Salt Courier', 'Ch. 3 · p. 2/41', .05], [6, 'Kite Season', 'Ch. 31 · 62%', .62]];
+	CR.forEach(([c, t, sub, p], i) => {
+		const x = 16 + i * 206;
+		s += tile(x, 120, 196, 62, { focus: false });
+		s += cover(x + 8, 127, 34, 46, c, '', { r: 4 });
+		s += tx(x + 50, 128, t, { size: 15, clip: 138 }) + tx(x + 50, 150, sub, { size: 12, color: C.dim });
+		s += bar(x + 50, 168, 136, p, { h: 4, r: 2 });
+	});
+	s += tx(16, 194, 'Library · 9 series', { size: 13, color: C.dim }) + tx(624, 194, 'Unread first', { size: 13, color: C.dim, anchor: 'r' });
+	const L = [[2, 'Ember Lantern', 3], [3, 'Moth & Meridian', 12], [0, 'Nine Bells Station', 0], [5, 'Glasswing', 1], [1, 'Hollow Orchard', 0], [7, 'Starling Post', 0], [4, 'The Salt Courier', 38], [6, 'Kite Season', 4], [3, 'Driftglass', 0], [0, 'Lantern Row', 0]];
+	L.forEach(([c, t, u], i) => {
+		const x = 16 + (i % 5) * 124, y = 212 + Math.floor(i / 5) * 186;
+		s += cover(x, y, 112, 150, c, '', { focus: i === 1, badge: u || '' });
+		s += tx(x + 2, y + 154, t, { size: 13, color: i === 1 ? C.acc : C.text, clip: 110 });
+	});
+	s += `<div class="bx" style="left:0;top:430px;width:640px;height:50px;border:0;background:linear-gradient(0deg,#000 60%,#0000)"></div>`;
+	return s + hints([['A', 'Open'], ['X', 'Options'], ['Y', 'Search'], ['L/R', 'Pages'], ['B', 'Extensions']]);
+})(), keys: [['D-pad', 'Move through Continue reading and the grid (Up from the grid reaches the strip)'], ['A', 'A card: read on at its page; a cover: the series page'], ['X', 'Options: remove from library, mark all read, refresh, sort (unread first, title, last read, added)'], ['Y', 'Search the library (keyboard)'], ['L / R', 'Library · History · Browse · Sources · Downloads'], ['B', 'Back to the Extensions drawer']] });
+
+// (c) Series page
+S.push({ id: 'c', name: '(c) A series', what: 'Resume is where A goes first; Download offers this chapter, the next unread, all unread or a choice. Read chapters are dimmed with a check; each row shows its download state (waiting, in progress, on the card).', top: seriesTop(2, 'Ember Lantern', 'Mira Okabe', 'Ongoing', 'Komga', 'A lamplighter\'s apprentice keeps the last gas lanterns of a harbour town burning, and finds that each one remembers a night someone wants forgotten.', ['48 chapters · updated Nov 8', 'Drama · Mystery · Slice of life', 11.4 / 48], { blur: true }), bottom: seriesBottom() , keys: [['A', 'On Resume or a chapter: open the reader at its page; on Download: the sheet (c2)'], ['Y', 'In library on / off (the heart)'], ['X', 'Options on a chapter: download / delete download, mark read / unread, mark all below read, refresh, sort, the series\' reading mode'], ['Marks', 'Clock: waiting · %: downloading · card: on the card (reads offline)'], ['B', 'Back to where you came from']] });
+function seriesBottom(focusRow = 2) {
+	let s = header('Ember Lantern');
+	s += tx(16, 64, 'Mira Okabe · Ongoing · Komga › Home server', { size: 14, color: C.dim });
+	s += box(16, 88, 300, 48, { focus: focusRow === 2 }) + glyph('play', 34, 104, 2, C.acc) + tx(58, 99, 'Resume · Ch. 12, p. 14', { size: 18, color: focusRow === 2 ? C.acc : C.text }) + tx(300, 102, 'A', { size: 14, color: C.acc, anchor: 'r' });
+	s += box(326, 88, 160, 48) + glyph('heart', 342, 105, 2, C.acc) + tx(368, 99, 'In library', { size: 17 }) + tx(476, 102, 'Y', { size: 14, color: C.acc, anchor: 'r' });
+	s += box(496, 88, 128, 48, { focus: focusRow === -1 }) + glyph('download', 510, 102, 2, focusRow === -1 ? C.acc : C.text) + tx(536, 99, 'Download', { size: 16, color: focusRow === -1 ? C.acc : C.text });
+	s += tx(16, 148, '48 chapters · 37 unread · 12 on the card', { size: 13, color: C.dim }) + tx(624, 148, 'Newest first', { size: 13, color: C.dim, anchor: 'r' });
+	const R = [['Ch. 14', 'The Harbour Bell', 'Oct 25', 'new', 'wait'], ['Ch. 13', 'The Night Market', 'Oct 11', 'new', 45], ['Ch. 12', 'Lanterns Over Ash', 'Sep 27', 'p. 14 / 38', 'card'], ['Ch. 11', 'A Wick for Two', 'Sep 13', 'read', 'card'], ['Ch. 10', 'Salt in the Oil', 'Aug 30', 'read', 'card'], ['Ch. 9', 'The Keeper\'s Ledger', 'Aug 16', 'read', '']];
+	R.forEach(([n, t, d, st, dl], i) => {
+		const y = 166 + i * 44, f = i === 2 && focusRow === 2, read = st === 'read';
+		if (f) s += box(16, y, 608, 42, { focus: true });
+		const ink = f ? C.acc : read ? C.dim : C.text;
+		if (st === 'new') s += `<div class="bx" style="left:30px;top:${y + 17}px;width:8px;height:8px;border:0;border-radius:2px;background:${C.acc}"></div>`;
+		if (read) s += glyph('check', 26, y + 14, 2, C.dim);
+		if (i === 2) s += glyph('bookmark', 28, y + 12, 2, C.acc);
+		s += tx(52, y + 10, n, { size: 17, color: ink }) + tx(128, y + 10, t, { size: 17, color: ink, clip: 260 });
+		if (dl === 'wait') s += glyph('clock', 406, y + 12, 2, C.dim);
+		else if (dl === 'card') s += glyph('card', 406, y + 12, 2, f ? C.acc : C.dim);
+		else if (dl) s += tx(426, y + 11, dl + '%', { size: 13, color: C.acc, anchor: 'r' }) + bar(398, y + 30, 30, dl / 100, { h: 3, r: 2 });
+		s += tx(612, y + 11, i === 2 ? st : d, { size: 14, color: f ? C.dimOn : C.dim, anchor: 'r' });
+		if (i === 2) s += bar(456, y + 32, 156, 14 / 38, { h: 3, r: 2 });
+	});
+	return s + hints([['A', 'Read'], ['Y', 'Library'], ['X', 'Options'], ['B', 'Back'], ['L/R', 'Chapter pages']]);
+}
+
+// (c2) the Download sheet
+S.push({ id: 'c2', name: '(c2) A series › Download', what: 'What to save for offline reading. Chapters go into the queue on the Downloads page and are saved as CBZ files in the Manga downloads folder.', top: seriesTop(2, 'Ember Lantern', 'Mira Okabe', 'Ongoing', 'Komga', 'Downloads go to Manga/Ember Lantern/ on the card, one CBZ file per chapter, and read with no network.', ['12 chapters on the card · 312 MB', '18.4 GB free', 12 / 48], { blur: true }), bottom: (() => {
+	let s = seriesBottom(-1);
+	s += `<div class="bx" style="left:0;top:0;width:640px;height:480px;border:0;border-radius:0;background:rgba(0,0,0,.67)"></div>`;
+	s += box(60, 60, 520, 360, { fill: C.surface, r: 18 });
+	s += glyph('download', 90, 86, 3, C.acc) + tx(130, 80, 'Download', { size: 24 });
+	const R = [['This chapter', 'Ch. 12 · 38 pages · ~25 MB'], ['Next 5 unread', 'Ch. 13 – 17 · ~120 MB'], ['All unread (37)', '~0.9 GB'], ['Choose chapters…', 'select in the list']];
+	R.forEach(([t, sub], i) => {
+		const y = 128 + i * 56, f = i === 1;
+		s += box(84, y, 472, 48, { focus: f });
+		s += tx(102, y + 6, t, { size: 18, color: f ? C.acc : C.text }) + tx(102, y + 28, sub, { size: 12, color: f ? C.dimOn : C.dim });
+	});
+	s += tx(320, 360, 'To Manga/ on the card · 18.4 GB free', { size: 13, color: C.dim, anchor: 'c' });
+	s += tx(320, 382, 'Already on the card are skipped', { size: 13, color: C.dim, anchor: 'c' });
+	return s + hints([['A', 'Download'], ['B', 'Cancel']]);
+})(), keys: [['A', 'Queue them (a card on top says how many); the row marks change at once'], ['Choose chapters…', 'The chapter list in select mode (as the file list\'s Select): A ticks, START downloads'], ['B', 'Cancel']] });
+
+// (d) The reader, paged (right to left), mid-swipe
+S.push({ id: 'd', name: '(d) Reading · paged, right to left, mid-swipe', what: 'The reader\'s own renderer on the top panel (mpv isn\'t used for pages; music plays on). The finger drags on the bottom panel and the page follows 1:1, the next page sliding in from the left (right to left); let go and it snaps to a page.', top: mangaPage(345, 0, 330, 480) + mangaPage(1, 0, 330, 480, true), bottom: (() => {
+	let s = header('Ch. 12 · Lanterns Over Ash', { clip: 470 });
+	s += tx(16, 64, 'Ember Lantern', { size: 14, color: C.dim }) + chip(530, 64, 'Right to left', { size: 12 });
+	// the touch surface: the pages under the finger, mirrored small
+	s += box(16, 88, 336, 252, { fill: C.screen, noedge: true, lip: false, r: 4, css: 'overflow:hidden' });
+	s += `<div class="bx" style="left:16px;top:88px;width:336px;height:252px;border:0;border-radius:4px;overflow:hidden;background:${C.screen}">${mangaPage(0, 10, 160, 232, true).replace('left:0px', 'left:4px')}${mangaPage(0, 10, 160, 232).replace('left:0px', 'left:176px')}</div>`;
+	s += finger(300, 200, 'right');
+	s += `<div class="bx" style="left:60px;top:308px;width:248px;height:24px;border:0;border-radius:12px;background:#000000c0"></div>` + tx(184, 312, 'Swipe here · the page follows your finger', { size: 12, color: '#fff', anchor: 'c' });
+	const B = [['< Back', 'LEFT'], ['Forward >', 'RIGHT'], ['Zoom -', 'touch'], ['Zoom +', 'touch'], ['< Chapter', 'L2'], ['Chapter >', 'R2'], ['Mode', 'X'], ['Pages', 'Y']];
+	B.forEach(([t, k], i) => {
+		const x = 372 + (i % 2) * 130, y = 88 + Math.floor(i / 2) * 64;
+		s += box(x, y, 122, 56);
+		s += tx(x + 61, y + 6, t, { size: 19, anchor: 'c' }) + tx(x + 61, y + 31, k, { size: 12, color: C.acc, anchor: 'c' });
+	});
+	s += tx(16, 350, 'p. 14 → 15  ·  Fit page', { size: 15 }) + tx(624, 350, 'Ch. 12 of 48', { size: 14, color: C.dim, anchor: 'r' });
+	s += `<div class="bx" style="left:16px;top:380px;width:608px;height:12px;border:0;border-radius:6px;background:${C.track};overflow:hidden"><div style="margin-left:${608 - 608 * 14 / 38}px;width:${608 * 14 / 38}px;height:100%;background:${C.acc}"></div></div>`;
+	s += `<div class="bx" style="left:${16 + 608 - 608 * 14 / 38 - 3}px;top:375px;width:7px;height:22px;border:0;border-radius:2px;background:${C.text}"></div>`;
+	s += tx(16, 400, 'A flick turns the page; a slow drag past half does too', { size: 13, color: C.dim });
+	s += tx(16, 446, `<span style="color:${C.acc}">A</span>&nbsp; <span style="color:${C.dim}">Zoom to 2x, or the fit</span>`, { size: 14, html: true });
+	s += box(488, 428, 136, 42) + glyph('cross', 506, 441, 2, C.text) + tx(530, 438, 'Close', { size: 16 }) + tx(606, 440, 'B', { size: 14, color: C.acc, anchor: 'r' });
+	return s;
+})(), keys: [['Drag · flick', 'The page follows the finger; release snaps to a page (speed decides). A zoomed page pans first, then carries on into the next'], ['Up / Down', 'Zoom in / out: 100, 150, 200, 300, 400, 600, 800 %, as in the photo viewer'], ['A · double-tap', 'Zoom 200 % / back to the fit'], ['Left / Right', 'A screenful back / forward through a zoomed or tall page, animated, then the page turns (Right is forward unless Swap Left/Right is on). Held: repeats'], ['R / L', 'Whole pages, straight away'], ['Stick', 'Pan within a zoomed page'], ['L2 / R2', 'Previous / next chapter (a card with its name on the top panel)'], ['X · Y', 'Mode (right to left, left to right, strip; kept per series) · Pages'], ['SELECT', 'Fullscreen on both panels (d3, d4)'], ['START', 'The Reading menu (d6): Fullscreen, Mode, Fit, Zoom, Hinge gap, Swap Left/Right, All Manga settings…'], ['L3', 'Turn the page 90°'], ['B', 'Leaves fullscreen if on, then closes the reader, progress kept']] });
+
+// (d2) The reader, webtoon: one continuous strip
+S.push({ id: 'd2', name: '(d2) Reading · webtoon, one continuous strip', what: 'Pages stitched into one strip at full width: page 9 ends and page 10 begins at the middle of the screen with no seam (the tick on the right edge marks it here only). The strip follows the finger 1:1 and glides on after a flick.', top: webtoonStrip() + `<div class="bx" style="left:612px;top:338px;width:10px;height:2px;border:0;background:#ffffffaa"></div>` + tx(606, 324, 'p. 10', { size: 11, color: '#ffffffcc', anchor: 'r', inter: true }), bottom: (() => {
+	let s = header('Ch. 31 · Salt and Static', { clip: 470 });
+	s += tx(16, 64, 'Kite Season', { size: 14, color: C.dim }) + chip(560, 64, 'Webtoon', { size: 12 });
+	// the touch surface: the chapter as one strip, the window on it, a finger flicking up
+	s += `<div class="bx" style="left:16px;top:88px;width:300px;height:330px;border:0;border-radius:4px;overflow:hidden;background:${C.screen}">`;
+	const cols = [[4, 60], [0, 74], [1, 66], [2, 30], [5, 58], [6, 46], [7, 70], [3, 50]];
+	let y = -6;
+	for (const [c, h] of cols) { s += `<div style="position:absolute;left:96px;top:${y}px;width:108px;height:${h}px;background:linear-gradient(180deg,${PAL[c][0]},${PAL[c][1]})"></div>`; y += h; }
+	s += `</div><div class="bx" style="left:104px;top:206px;width:124px;height:86px;border-color:${C.acc};border-radius:3px"></div>`;
+	s += finger(258, 250, 'up');
+	s += `<div class="bx" style="left:66px;top:388px;width:200px;height:24px;border:0;border-radius:12px;background:#000000c0"></div>` + tx(166, 392, 'Drag or flick anywhere here', { size: 12, color: '#fff', anchor: 'c' });
+	const B = [['Screen up', 'LEFT'], ['Screen down', 'RIGHT'], ['< Chapter', 'L2'], ['Chapter >', 'R2'], ['Width / 2x', 'A'], ['Mode', 'X']];
+	B.forEach(([t, k], i) => {
+		const x = 334 + (i % 2) * 148, y = 88 + Math.floor(i / 2) * 64;
+		s += box(x, y, 140, 56);
+		s += tx(x + 70, y + 6, t, { size: 17, anchor: 'c' }) + tx(x + 70, y + 31, k, { size: 12, color: C.acc, anchor: 'c' });
+	});
+	s += tx(334, 290, '62% · page 9 → 10 of 14', { size: 16 });
+	s += bar(334, 318, 290, .62, { h: 10, r: 5 });
+	s += tx(334, 342, 'Gliding · tap to stop', { size: 13, color: C.acc });
+	s += tx(334, 364, 'The next chapter follows', { size: 13, color: C.dim }) + tx(334, 382, 'with no seam', { size: 13, color: C.dim });
+	return s + hints([['RIGHT/LEFT', 'Screen'], ['UP/DOWN', 'Zoom'], ['L2/R2', 'Chapter'], ['Y', 'Pages'], ['B', 'Close']]);
+})(), keys: [['Drag · flick', 'The strip moves 1:1 with the finger; a flick keeps gliding and slows by friction; a tap stops it; the chapter ends rubber-band'], ['Up / Down', 'Zoom in / out (100 to 800 %)'], ['A', 'Zoom 200 % / back to width'], ['Left / Right', 'A screenful up / down, animated (held: repeats)'], ['R / L', 'Whole pages'], ['Stick', 'Scroll smoothly (faster the longer it is held)'], ['L2 / R2 · X · Y', 'Chapter · mode · pages'], ['SELECT · START', 'Fullscreen (d3) · the Reading menu (d6)'], ['B', 'Leaves fullscreen if on, then closes']], note: '<b>Prototype first:</b> drag, flick and decoding keeping up are measured on the handheld before the rest is built on the renderer.' });
+
+// ---- fullscreen reading: the page is one view across both panels, with the hinge gap skipped -------------------------
+const GAP = 36; // screen pixels the hinge hides (a setting; measured on the handheld)
+// the strip's second half, as the bottom panel shows it: strip rows 480+GAP .. 960+GAP
+function stripBottom() {
+	const o = 480 + GAP;
+	return `<svg style="left:0;top:0" width="640" height="480" viewBox="0 ${o} 640 480">
+	<defs><linearGradient id="nightFs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#120F2E"/><stop offset="1" stop-color="#3A2A6B"/></linearGradient></defs>
+	<rect x="0" y="480" width="640" height="80" fill="#3AA7A0"/><rect x="0" y="480" width="640" height="80" fill="#0B1E2D" opacity=".6"/>
+	<rect x="0" y="560" width="640" height="200" fill="#FAF8F2"/>
+	<ellipse cx="190" cy="636" rx="128" ry="40" fill="#fff" stroke="#222" stroke-width="2"/>
+	<g fill="#666"><rect x="104" y="620" width="172" height="7"/><rect x="118" y="634" width="144" height="7"/><rect x="132" y="648" width="116" height="7"/></g>
+	<ellipse cx="470" cy="700" rx="74" ry="26" fill="#fff" stroke="#222" stroke-width="2"/>
+	<g fill="#666"><rect x="430" y="692" width="80" height="7"/><rect x="442" y="705" width="56" height="7"/></g>
+	<rect x="0" y="760" width="640" height="240" fill="url(#nightFs)"/>
+	<circle cx="110" cy="830" r="30" fill="#F4F1EA"/><circle cx="122" cy="824" r="26" fill="#1c1840"/>
+	<g fill="#FFD23F"><rect x="300" y="800" width="4" height="4"/><rect x="540" y="790" width="4" height="4"/><rect x="220" y="870" width="4" height="4"/><rect x="580" y="900" width="4" height="4"/></g>
+	<path d="M430 830 L470 870 L430 930 L390 870 Z" fill="#F0645A" stroke="#222" stroke-width="2"/>
+	<path d="M430 830 L430 930 M390 870 L470 870" stroke="#222" stroke-width="1.5"/>
+	<path d="M430 930 Q400 960 420 980 T400 1010" fill="none" stroke="#E8E2D3" stroke-width="2"/>
+	<path d="M0 1000 L0 962 Q120 930 220 962 L260 1000 Z" fill="#0B0A0D"/>
+	</svg>`;
+}
+// one page across both panels: scaled to the two panels' height plus the hinge (about 2x), the blank margin trimmed a little
+function pagePart(bottom) {
+	const s = mangaPage(-22, bottom ? -(480 + GAP) : 0, 684, 960 + GAP);
+	return s.replace('viewBox="0 0 330 480"', 'viewBox="0 0 330 480" preserveAspectRatio="xMidYMid slice"');
+}
+// mock only: the hinge, drawn on each panel's edge
+const hingeTop = `<div class="bx" style="left:0;top:477px;width:640px;height:0;border:0;border-top:2px dashed ${C.acc}"></div>` + tx(630, 458, 'hinge: the next ' + GAP + ' px are skipped', { size: 11, anchor: 'r', inter: true, color: C.acc, css: 'text-shadow:0 1px 2px #000' });
+const hingeBot = `<div class="bx" style="left:0;top:1px;width:640px;height:0;border:0;border-top:2px dashed ${C.acc}"></div>` + tx(630, 8, 'continues here', { size: 11, anchor: 'r', inter: true, color: C.acc, css: 'text-shadow:0 1px 2px #000' });
+const pill = (x, y, t) => chip(x, y, t, { bg: '#000000b0', color: '#fff', size: 12 });
+
+// (d3) fullscreen, strip
+S.push({ id: 'd3', name: '(d3) Reading · fullscreen, both screens', what: `Fullscreen: both panels are the page, no controls. In Strip mode the strip runs on from the top panel into the bottom one as one tall view, and the finger drags it right there on the bottom panel. Only a thin page tag shows, and it fades after a moment. (The dashed lines mark the hinge here only.)`,
+	top: webtoonStrip() + hingeTop,
+	bottom: stripBottom() + hingeBot + finger(380, 300, 'up') + pill(552, 448, '10 / 14'),
+	keys: [['Drag · flick', 'On the bottom panel: the strip moves 1:1 across both panels; a flick keeps gliding; a tap stops it first'], ['Left / Right', 'A screenful up / down, animated: both panels\' height less a 60 px overlap so the last line stays in view'], ['R / L', 'Whole pages'], ['Up / Down', 'Zoom in / out (100 to 800 %)'], ['Stick', 'Scroll smoothly'], ['A', 'Zoom 200 % / back to width'], ['Tap in the middle', 'The controls come back for a few seconds (d5)'], ['L2 / R2 · X', 'Chapter (its name shows for a second across the top) · mode'], ['START', 'The Reading menu over the lower half (d6)'], ['SELECT · B', 'Leave fullscreen; B pressed again closes the reader']],
+	note: `<b>The hinge:</b> the strip skips ${GAP} px where the hinge is, so a picture lines up physically across the gap, as a page seen through a window frame does. A straight continuation would make every line, face and circle jump at the hinge. The cost is ${GAP} px of strip you never see at one position, about 5% of a screen; a screenful step overlaps by 60 px, so no line is lost while reading. The gap is a Manga setting (default ${GAP}, to be measured on the handheld). The music mini bar is hidden here and comes back on leaving.` });
+
+// (d4) fullscreen, paged
+S.push({ id: 'd4', name: '(d4) Reading · fullscreen, paged (right to left)', what: `One page across both panels, not two pages side by side. A manga page is tall (2:3); on one 4:3 panel it fills the height and leaves a black bar each side, and a spread of two would be small. Spread over both panels the page is twice as big and fills the width, so the text is the size of a printed page. You read top then bottom. Swipe on the bottom panel; the next page slides in from the left.`,
+	top: pagePart(false) + hingeTop,
+	bottom: pagePart(true) + hingeBot + finger(420, 260, 'right') + pill(552, 448, '14 / 38'),
+	keys: [['Drag · flick', 'The page follows the finger 1:1; release snaps to a page (speed decides), as in the normal paged view'], ['Left / Right', 'A screenful through a zoomed page, then the page turns (Right is forward in right to left; Swap Left/Right still applies)'], ['R / L', 'Next / previous page straight away'], ['Up / Down', 'Zoom in / out (100 to 800 %)'], ['A · double-tap', 'Zoom 200 % / back to the fit; a zoomed page pans first, then turns'], ['Wide page (a spread)', 'Fit to the width and centred across the hinge, so it reads as one picture'], ['L2 / R2 · X', 'Chapter · mode (fullscreen stays on)'], ['START', 'The Reading menu over the lower half (d6)'], ['SELECT · B', 'Leave fullscreen; B pressed again closes the reader']],
+	note: `<b>Why not one page per screen:</b> two 2:3 pages would each leave a third of a panel on black bars, and the hinge would sit in the middle of the reading order. <b>The page fills both panels</b> with the same ${GAP} px skip as the strip, and its blank margin is trimmed by about 3% at the sides. Page 14 here is invented art.` });
+
+// (d5) fullscreen, the controls back
+S.push({ id: 'd5', name: '(d5) Reading · fullscreen, controls back', what: `A tap in the middle of the bottom panel (anywhere that is not a drag) puts the controls back over the page for 4 seconds: a title bar on the top panel, and a sheet on the bottom panel with the slider, the chapter buttons and the way out. The page stays visible behind it. A drag hides them at once and scrolls.`,
+	top: webtoonStrip() + `<div class="bx" style="left:0;top:0;width:640px;height:64px;border:0;background:linear-gradient(180deg,#000000d0,#00000000)"></div>` + tx(16, 14, 'Ch. 31 · Salt and Static', { size: 20, color: '#fff' }) + tx(624, 16, 'p. 10 / 14   18:42', { size: 15, anchor: 'r', color: '#ffffffcc' }),
+	bottom: (() => {
+		let s = stripBottom() + `<div class="bx" style="left:0;top:0;width:640px;height:480px;border:0;background:#00000066"></div>`;
+		s += finger(320, 112) + tx(320, 140, 'Tap', { size: 12, anchor: 'c', color: '#fff' });
+		s += `<div class="bx" style="left:0;top:226px;width:640px;height:254px;border:0;border-top:2px solid ${C.rule};border-radius:18px 18px 0 0;background:#0B0A0Df2"></div>`;
+		s += tx(16, 240, 'Kite Season', { size: 14, color: C.dim }) + tx(624, 240, 'Page 9 → 10 of 14', { size: 16, anchor: 'r' });
+		s += `<div class="bx" style="left:16px;top:274px;width:608px;height:12px;border:0;border-radius:6px;background:${C.track};overflow:hidden"><div style="width:${608 * .62}px;height:100%;background:${C.acc}"></div></div>`;
+		s += `<div class="bx" style="left:${16 + 608 * .62 - 3}px;top:269px;width:7px;height:22px;border:0;border-radius:2px;background:${C.text}"></div>`;
+		const B = [['< Chapter', 'L2', 16, 130], ['Chapter >', 'R2', 154, 130], ['Leave fullscreen', 'SELECT', 292, 214], ['Close', 'B', 514, 110]];
+		B.forEach(([t, k, x, w]) => { s += box(x, 308, w, 56) + tx(x + w / 2, 314, t, { size: 18, anchor: 'c' }) + tx(x + w / 2, 340, k, { size: 12, color: C.acc, anchor: 'c' }); });
+		s += tx(16, 380, 'Hides in 4 s · drag to hide now', { size: 13, color: C.dim });
+		return s + hints([['SELECT', 'Leave'], ['B', 'Leave'], ['START', 'Menu'], ['Y', 'Pages']]);
+	})(),
+	keys: [['SELECT', 'Fullscreen on / off. Fit page / width / fill is in the Reading menu (fullscreen fixes the fit: width for a strip, both panels for a page)'], ['B', 'In fullscreen: leaves fullscreen, back to the normal reader. Pressed again: closes the reader, progress kept. The first B never closes'], ['Tap in the middle', 'Shows these controls for 4 s (each touch inside them restarts the time). A tap during a glide only stops it'], ['Drag', 'Hides the controls and scrolls'], ['START', 'The Reading menu (d6), over the lower half'], ['Slider', 'Drag to a page, as in the normal reader'], ['First time', 'A toast for 2 s: "Fullscreen · SELECT or B to leave"']],
+	note: `<b>Remembered:</b> fullscreen stays on across chapters and modes while the reader is open. The next time a book opens it is normal, unless Manga settings › Open fullscreen is on. Leaving the reader is B twice, so a stray B never throws you out of a page. <b>SELECT conflicts</b> with the current Fit toggle in the paged reader; this proposal moves Fit into the Menu (the owner to confirm). Music keeps playing; the mini bar is hidden while fullscreen.` });
+
+
+// (d6) the Reading menu (START)
+S.push({ id: 'd6', name: '(d6) Reading › the Reading menu (START)', what: 'START while reading, normal or fullscreen, opens a small sheet over the bottom panel. The pages stay on the top panel and show behind it (in fullscreen the sheet slides up over the lower half of the page). Each row changes in place with LEFT/RIGHT, A flips a switch, and the focused row has a help line. B or START closes it and the reading goes on exactly where it was. Shown here from the normal reader, so Hinge gap is dimmed.', top: mangaPage(345, 0, 330, 480) + mangaPage(1, 0, 330, 480, true), bottom: (() => {
+	let s = header('Ch. 12 · Lanterns Over Ash', { clip: 470 });
+	s += tx(16, 64, 'Ember Lantern', { size: 14, color: C.dim }) + chip(530, 64, 'Right to left', { size: 12 });
+	s += `<div class="bx" style="left:16px;top:88px;width:336px;height:40px;border:0;border-radius:4px;background:${C.screen}"></div>`;
+	s += `<div class="bx" style="left:0;top:0;width:640px;height:480px;border:0;background:#000000a8"></div>`;
+	s += `<div class="bx" style="left:0;top:112px;width:640px;height:368px;border:0;border-top:2px solid ${C.rule};border-radius:18px 18px 0 0;background:#0B0A0Df6"></div>`;
+	s += tx(16, 124, 'Reading', { size: 20, color: C.acc }) + tx(624, 128, 'START · B  Close', { size: 13, color: C.dim, anchor: 'r' });
+	const R = [['Fullscreen', 'Off', 'sw'], ['Reading mode', 'Right to left'], ['Page fit', 'Page'], ['Zoom', '100%'], ['Hinge gap', '36 px', 'off'], ['Swap Left/Right', 'Off', 'sw'], ['All Manga settings…', '', 'go']];
+	R.forEach(([t, v, k], i) => {
+		const y = 152 + i * 40, f = i === 3, dim = k === 'off';
+		if (f) s += box(12, y, 616, 38, { focus: true });
+		const ink = f ? C.acc : dim ? C.dim : C.text;
+		s += tx(28, y + 8, t, { size: 19, color: ink });
+		if (k === 'go') { s += glyph('right', 598, y + 12, 2, C.dim); return; }
+		if (dim) { s += tx(588, y + 9, 'Fullscreen only', { size: 14, color: C.dim, anchor: 'r' }); return; }
+		if (k === 'sw') { const on = v === 'On'; s += box(528, y + 6, 60, 26, { r: 13, sel: on, fill: on ? C.acc : C.track }) + `<div class="bx" style="left:${on ? 562 : 533}px;top:${y + 11}px;width:16px;height:16px;border:0;border-radius:8px;background:${on ? '#000' : C.dim}"></div>`; return; }
+		s += glyph('left', 392, y + 12, 2, f ? C.acc : C.dim) + tx(500, y + 9, v, { size: 19, color: ink, anchor: 'c' }) + glyph('right', 598, y + 12, 2, f ? C.acc : C.dim);
+	});
+	s += tx(28, 440, '100 · 150 · 200 · 300 · 400 · 600 · 800 %. UP/DOWN zoom while reading; A: 200 %.', { size: 12, color: C.dim, inter: true });
+	return s + hints([['UP/DOWN', 'Row'], ['LEFT/RIGHT', 'Change'], ['A', 'Switch / Open'], ['B', 'Close']], 458);
+})(), keys: [['Up / Down', 'Move between rows'], ['Left / Right', 'Change the value in place: it applies at once, behind the sheet'], ['A', 'Flips a switch (Fullscreen, Swap Left/Right); on "All Manga settings…" opens that page'], ['Fullscreen', 'On / Off, the same as SELECT: changing it enters or leaves at once. In fullscreen the sheet slides over the lower half of the page'], ['Reading mode', 'Right to left / Left to right / Strip, for this series, as X does'], ['Page fit', 'Page / Width / Fill (fullscreen fixes it: see d3, d4)'], ['Zoom', '100 – 800%, the same steps as UP/DOWN in the reader (100, 150, 200, 300, 400, 600, 800)'], ['Hinge gap', '0 – 80 px, only in fullscreen; the page moves as you change it'], ['Swap Left/Right', 'Off / On'], ['All Manga settings…', 'Opens (g) Manga › Settings; B there comes back to this page, the Reading menu closed'], ['B · START', 'Close; the reading goes on exactly where it was']], note: '<b>Compact on purpose:</b> seven rows, no tabs, nothing that is not changed often. Every row applies the moment it changes, so there is no Apply and no leaving the book. The rest of the Manga settings stay on their own page.' });
+
+// (e) Browse: the sources
+S.push({ id: 'e', name: '(e) Manga › Browse', what: 'Every place to read from in one list: the card, network folders, your servers, and sources you installed. A source opens on Popular.', top: (() => {
+	let s = `<div class="bx" style="left:40px;top:44px;width:560px;height:392px;border-color:${edgeOf(C.topCard)};border-radius:18px;background:${C.topCard}"></div>`;
+	s += `<div class="bx" style="left:72px;top:76px;width:72px;height:72px;border:0;border-radius:14px;background:linear-gradient(150deg,${PAL[4][0]},${PAL[4][1]})"></div>` + glyph('web', 90, 94, 4, '#fff');
+	s += tx(166, 78, 'Example Reader', { size: 30 }) + tx(166, 118, 'English · v1.2.0 · from Example repository', { size: 16, color: C.dim, inter: true });
+	s += tx(72, 176, 'Popular, Latest and Search. Last used yesterday; 2 series from it in your library.', { size: 18, inter: true, w: 500, lh: 26 });
+	s += tx(72, 250, 'Installed from', { size: 15, color: C.dim, inter: true }) + tx(72, 272, 'https://example.org/bp-sources/index.json', { size: 16, inter: true });
+	s += tx(72, 312, 'Checked', { size: 15, color: C.dim, inter: true }) + tx(72, 334, 'SHA-256 matches the repository\'s index', { size: 16, inter: true });
+	s += tx(72, 384, 'Runs sandboxed: web requests only, no files.', { size: 15, color: C.dim, inter: true });
+	return s;
+})(), bottom: (() => {
+	let s = header('Manga') + tabs(['Library', 'History', 'Browse', 'Sources', 'Downloads'], 2);
+	const R = [['card', 'On this handheld', 'Manga folders · 6 series'], ['network', 'Living room NAS', 'SMB · Comics'], ['laptop', 'Home server', 'Komga · 3 libraries'], ['web', 'Example Reader', 'EN · Example repository'], ['web', 'Sample Scans', 'ES · Example repository'], ['plus', 'Add a server…', 'Komga, Kavita, OPDS']];
+	R.forEach(([g, t, sub], i) => {
+		const y = 106 + i * 54, f = i === 3, ink = f ? C.acc : i === 5 ? C.dim : C.text;
+		if (f) s += box(16, y, 608, 50, { focus: true });
+		s += glyph(g, 34, y + 16, 2, ink);
+		s += tx(70, y + 12, t, { size: 19, color: ink });
+		s += tx(612, y + 15, sub, { size: 14, color: f ? C.dimOn : C.dim, anchor: 'r' });
+		if (i < 5) s += `<div class="bx" style="left:24px;top:${y + 52}px;width:592px;height:1px;border:0;background:${C.rule}"></div>`;
+	});
+	return s + hints([['A', 'Open'], ['Y', 'Search all'], ['X', 'Options'], ['L/R', 'Pages'], ['B', 'Extensions']]);
+})(), keys: [['A', 'Open: a source on Popular; a server on its libraries; the card on its series'], ['Y', 'Search every source at once (results grouped by source)'], ['X', 'Options: the source\'s preferences, pin to top, hide; a server: edit, remove'], ['L / R', 'Library · History · Browse · Sources · Downloads']] });
+
+// (e2) Browse: a search
+S.push({ id: 'e2', name: '(e2) A source › Search', what: 'Popular / Latest / Search as tabs; results as covers, loading two rows ahead. The top panel fills in the focused series\' details once it rests there.', top: seriesTop(5, 'Glasswing', 'Ren Ashford', 'Completed', 'Example Reader', 'Two couriers carry letters across a city of glass bridges, where every message read aloud changes the weather.', null), bottom: (() => {
+	let s = header('Example Reader', { clip: 400 });
+	s += tabs(['Popular', 'Latest', 'Search'], 2, 64, 44, 360);
+	s += box(370, 64, 254, 30, { fill: C.track, noedge: true, lip: false, r: 4, css: `outline:2px solid ${C.acc};outline-offset:-2px;` }) + glyph('search', 380, 72, 2, C.dim) + tx(404, 69, 'glass', { size: 16 });
+	s += tx(16, 104, '24 results for "glass"', { size: 13, color: C.dim });
+	const G = [[5, 'Glasswing'], [3, 'Driftglass'], [1, 'Glass Harbour Diaries'], [7, 'The Glassblower\'s Ward'], [4, 'Stained & Bright'], [0, 'Half-Silvered'], [6, 'Lens of Morrow'], [2, 'Prism Street'], [5, 'Quartz Hours'], [3, 'Sea Glass Summer']];
+	G.forEach(([c, t], i) => {
+		const x = 16 + (i % 5) * 124, y = 122 + Math.floor(i / 5) * 186;
+		s += cover(x, y, 112, 150, c, '', { focus: i === 0 });
+		if (i === 3) s += chip(x + 6, y + 6, 'In library', { bg: C.acc, color: '#000', size: 11 });
+		s += tx(x + 2, y + 154, t, { size: 13, color: i === 0 ? C.acc : C.text, clip: 110 });
+	});
+	s += `<div class="bx" style="left:0;top:430px;width:640px;height:50px;border:0;background:linear-gradient(0deg,#000 60%,#0000)"></div>`;
+	return s + hints([['A', 'Open'], ['X', 'Add to library'], ['Y', 'Filter'], ['L/R', 'Popular · Latest · Search']]);
+})(), keys: [['A', 'The series page (details and chapters load there)'], ['X', 'Add to / remove from the library without opening it'], ['Y', 'Filter: the source\'s own filters (e3)'], ['Up · tap the field', 'The keyboard, for a new search'], ['L / R', 'Popular · Latest · Search'], ['B', 'Back to Browse']] });
+
+// (e3) the Filter sheet of a source (5.2.1)
+S.push({ id: 'e3', name: '(e3) A source › Filter', what: 'Y in a source: its own filters, drawn from what the script declares (5.2.1). Each row shows its value; Apply runs the search with them, remembered for the source.', top: (() => {
+	let s = `<div class="bx" style="left:40px;top:44px;width:560px;height:392px;border-color:${edgeOf(C.topCard)};border-radius:18px;background:${C.topCard}"></div>`;
+	s += tx(72, 72, 'Example Reader · filters', { size: 26 });
+	s += tx(72, 118, 'Popular first, any status', { size: 18, inter: true });
+	s += tx(72, 160, 'Genres', { size: 15, color: C.dim, inter: true });
+	s += glyph('check', 72, 190, 2, C.acc) + tx(100, 184, 'Fantasy, Adventure', { size: 18, inter: true });
+	s += glyph('cross', 72, 222, 2, C.red) + tx(100, 216, 'Romance', { size: 18, inter: true });
+	s += tx(72, 270, 'Author', { size: 15, color: C.dim, inter: true }) + tx(72, 294, 'any', { size: 18, inter: true });
+	s += tx(72, 370, 'The list of genres comes from the site, through the source.', { size: 15, color: C.dim, inter: true });
+	return s;
+})(), bottom: (() => {
+	let s = header('Filter');
+	s += tx(16, 64, 'Example Reader', { size: 14, color: C.dim });
+	const R = [['Sort', 'Popular, most first'], ['Status', 'Any'], ['Genres', null], ['Type', 'Any'], ['Author', '—']];
+	R.forEach(([t, v, d], i) => {
+		const y = 92 + i * 50, f = i === 2;
+		if (f) s += box(16, y, 608, 46, { focus: true });
+		s += tx(32, y + 12, t, { size: 19, color: f ? C.acc : C.text });
+		if (v) s += tx(586, y + 12, v, { size: 18, color: f ? C.acc : C.dimOn, anchor: 'r' });
+		else s += glyph('check', 488, y + 16, 2, C.acc) + tx(510, y + 12, '2', { size: 18, color: C.acc }) + glyph('cross', 542, y + 16, 2, C.red) + tx(564, y + 12, '1', { size: 18, color: C.red });
+		s += glyph('right', 600, y + 16, 2, f ? C.acc : C.dim);
+	});
+	s += box(16, 360, 296, 50) + tx(164, 372, 'Reset', { size: 19, anchor: 'c' }) + tx(296, 375, 'X', { size: 14, color: C.acc, anchor: 'r' });
+	s += box(328, 360, 296, 50, { sel: true }) + tx(476, 372, 'Apply', { size: 19, color: '#000', anchor: 'c' }) + tx(608, 375, 'START', { size: 13, color: '#000', anchor: 'r' });
+	return s + hints([['A', 'Change'], ['X', 'Reset'], ['START', 'Apply'], ['B', 'Cancel']]);
+})(), keys: [['A', 'A list (Sort, Status) opens its choices; a checklist (Genres) opens e4; Author opens the keyboard'], ['X', 'Reset to the source\'s defaults'], ['START', 'Apply: the grid shows the filtered results (Search tab, no query)'], ['B', 'Cancel, nothing changed']] });
+
+// (e4) the Genres checklist: off / include / exclude
+S.push({ id: 'e4', name: '(e4) Filter › Genres', what: 'A tri-state checklist: A cycles off → include (✓) → exclude (✗). A long list is narrowed by typing (X), as the file list\'s filter.', top: (() => {
+	let s = `<div class="bx" style="left:40px;top:44px;width:560px;height:392px;border-color:${edgeOf(C.topCard)};border-radius:18px;background:${C.topCard}"></div>`;
+	s += tx(72, 72, 'Genres', { size: 30 }) + tx(72, 116, '124 from Example Reader', { size: 16, color: C.dim, inter: true });
+	const L = [[C.acc, 'check', 'Include', 'only series with it'], [C.red, 'cross', 'Exclude', 'no series with it'], [C.track, null, 'Off', 'doesn\'t matter']];
+	L.forEach(([bg, g, t, sub], i) => {
+		const y = 168 + i * 62;
+		s += `<div class="bx" style="left:72px;top:${y}px;width:36px;height:36px;border:0;border-radius:6px;background:${bg}"></div>` + (g ? glyph(g, 81, y + 9, 2, '#000') : '');
+		s += tx(126, y + 2, t, { size: 20 }) + tx(230, y + 6, sub, { size: 16, color: C.dim, inter: true });
+	});
+	s += tx(72, 372, 'The source decides how include and exclude are sent to the site.', { size: 15, color: C.dim, inter: true });
+	return s;
+})(), bottom: (() => {
+	let s = header('Genres');
+	s += tx(16, 64, '✓ 2  ✗ 1', { size: 14, color: C.dim }) + tx(624, 64, 'X Filter the list', { size: 13, color: C.dim, anchor: 'r' });
+	const G = [['Action', 0], ['Adventure', 1], ['Comedy', 0], ['Drama', 0], ['Fantasy', 1], ['Historical', 0], ['Romance', 2], ['Slice of life', 0]];
+	G.forEach(([t, st], i) => {
+		const y = 88 + i * 42, f = i === 6;
+		if (f) s += box(16, y, 608, 40, { focus: true });
+		const bg = st === 1 ? C.acc : st === 2 ? C.red : C.track;
+		s += `<div class="bx" style="left:30px;top:${y + 8}px;width:24px;height:24px;border:${st ? 0 : 2}px solid #5B5858;border-radius:6px;background:${bg}"></div>`;
+		if (st) s += glyph(st === 1 ? 'check' : 'cross', 35, y + 13, 2, '#000');
+		s += tx(70, y + 9, t, { size: 18, color: f ? C.acc : C.text });
+		if (st) s += tx(612, y + 11, st === 1 ? 'Include' : 'Exclude', { size: 14, color: f ? C.dimOn : st === 1 ? C.acc : C.red, anchor: 'r' });
+	});
+	return s + hints([['A', 'Off / ✓ / ✗'], ['X', 'Filter'], ['START', 'Apply'], ['B', 'Back']]);
+})(), keys: [['A', 'Off → include → exclude → off'], ['X', 'The keyboard, to narrow the list ("rom" → Romance, Romcom)'], ['START', 'Apply the whole filter'], ['B', 'Back to the Filter sheet, choices kept']] });
+
+// (f) Sources: available, installed
+S.push({ id: 'f', name: '(f) Manga › Sources', what: 'The Sources page of the section: Installed, Available and Repositories, stepped with LEFT/RIGHT (X stays Options, as everywhere in the browser). Available lists each repository\'s sources with Install or Update.', top: (() => {
+	let s = `<div class="bx" style="left:40px;top:44px;width:560px;height:392px;border-color:${edgeOf(C.topCard)};border-radius:18px;background:${C.topCard}"></div>`;
+	s += `<div class="bx" style="left:72px;top:76px;width:72px;height:72px;border:0;border-radius:14px;background:linear-gradient(150deg,${PAL[1][0]},${PAL[1][1]})"></div>` + glyph('web', 90, 94, 4, '#fff');
+	s += tx(166, 78, 'Sample Scans', { size: 30 }) + tx(166, 118, 'Spanish · v0.9.4 · 18 KB', { size: 16, color: C.dim, inter: true });
+	s += tx(72, 176, 'From Example repository. Popular, Latest and Search with filters (genre, status).', { size: 18, inter: true, w: 500, lh: 26 });
+	s += tx(72, 262, 'Install downloads one small script, checks it against the repository\'s list, and runs it sandboxed: it can fetch web pages, nothing on your card or your network.', { size: 16, color: C.dim, inter: true, w: 500, lh: 23 });
+	s += tx(72, 370, 'Repositories are added by you. Banana Player doesn\'t provide or check their content.', { size: 15, color: C.dim, inter: true, w: 500, lh: 21 });
+	return s;
+})(), bottom: (() => {
+	let s = header('Manga') + tabs(['Library', 'History', 'Browse', 'Sources', 'Downloads'], 3);
+	s += box(16, 102, 150, 28, { r: 10 }) + glyph('left', 28, 111, 2, C.text) + tx(156, 106, 'Installed', { size: 14, anchor: 'r' });
+	s += tx(320, 104, 'Available', { size: 19, color: C.acc, anchor: 'c' });
+	s += box(474, 102, 150, 28, { r: 10 }) + tx(484, 106, 'Repositories', { size: 14 }) + glyph('right', 602, 111, 2, C.text);
+	s += tx(16, 138, 'Example repository · 4 sources · checked 5 min ago', { size: 13, color: C.dim });
+	const R = [[4, 'Example Reader', 'EN · 1.2.0', 'inst'], [1, 'Sample Scans', 'ES · 0.9.4', 'install'], [6, 'Demo Library', 'EN · 2.0.1 → 2.1.0', 'update'], [3, 'Test Pages', 'FR · 1.0.0', 'install']];
+	R.forEach(([c, t, sub, st], i) => {
+		const y = 156 + i * 52, f = i === 1;
+		if (f) s += box(16, y, 608, 48, { focus: true });
+		s += `<div class="bx" style="left:28px;top:${y + 8}px;width:32px;height:32px;border:0;border-radius:8px;background:linear-gradient(150deg,${PAL[c][0]},${PAL[c][1]})"></div>` + glyph('web', 35, y + 15, 2, '#fff');
+		s += tx(74, y + 4, t, { size: 18, color: f ? C.acc : C.text }) + tx(74, y + 27, sub, { size: 13, color: f ? C.dimOn : C.dim });
+		if (st === 'inst') s += glyph('check', 498, y + 17, 2, C.dim) + tx(612, y + 14, 'Installed', { size: 15, color: C.dim, anchor: 'r' });
+		if (st === 'install') s += box(500, y + 8, 112, 32, { r: 10, sel: f }) + tx(556, y + 13, f ? 'Install  A' : 'Install', { size: 15, anchor: 'c', color: f ? '#000' : C.text });
+		if (st === 'update') s += box(500, y + 8, 112, 32, { r: 10 }) + glyph('download', 514, y + 16, 2, C.acc) + tx(538, y + 13, 'Update', { size: 15, color: C.acc });
+	});
+	s += tx(16, 370, 'Second repository · 2 sources', { size: 13, color: C.dim });
+	s += `<div class="bx" style="left:16px;top:390px;width:608px;height:40px;border:0;border-radius:10px;background:${C.surface}"></div>` + glyph('alert', 30, 402, 2, C.dim) + tx(60, 400, 'Couldn\'t reach it; its last list is kept. X › Refresh', { size: 15, color: C.dim });
+	return s + hints([['A', 'Install'], ['X', 'Options'], ['LEFT/RIGHT', 'Tabs'], ['L/R', 'Pages'], ['B', 'Extensions']]);
+})(), keys: [['A', 'Install / Update the focused source (a card on top says when it\'s ready)'], ['Left / Right', 'Installed · Available · Repositories'], ['X (Options)', 'Uninstall, the source\'s preferences, refresh the repository'], ['On Installed', 'A: open it in Browse; Update shown on any with a newer version']] });
+
+// (i) Downloads
+S.push({ id: 'i', name: '(i) Manga › Downloads', what: 'The app\'s fifth page: the queue with progress, then what is on the card by series. Its size is its own, apart from the page cache.', top: seriesTop(2, 'Ember Lantern', 'Mira Okabe', 'Ongoing', 'Komga', 'On the card: chapters 1 – 12, read with no network. Chapters 13 and 14 are downloading.', ['12 chapters on the card', '312 MB', 12 / 48]), bottom: (() => {
+	let s = header('Manga') + tabs(['Library', 'History', 'Browse', 'Sources', 'Downloads'], 4);
+	s += tx(16, 104, 'Downloads 1.2 GB', { size: 14 }) + tx(624, 104, '18.4 GB free on the card', { size: 13, color: C.dim, anchor: 'r' });
+	s += `<div class="bx" style="left:16px;top:124px;width:608px;height:6px;border:0;border-radius:3px;background:${C.track};overflow:hidden"><div style="width:42%;height:100%;background:${C.dim}"></div><div style="position:absolute;left:${608 * .42}px;top:0;width:${608 * .04}px;height:100%;background:${C.acc}"></div></div>`;
+	s += tx(16, 140, 'Downloading · 2 waiting', { size: 13, color: C.dim }) + tx(624, 140, 'Y Pause all', { size: 13, color: C.dim, anchor: 'r' });
+	const Q = [[2, 'Ember Lantern', 'Ch. 13 · 17 of 38 pages', .45, 'pause'], [2, 'Ember Lantern', 'Ch. 14 · waiting', 0, ''], [5, 'Glasswing', 'Ch. 2 · paused', .2, 'play']];
+	Q.forEach(([c, t, sub, p, g], i) => {
+		const y = 158 + i * 50, f = i === 0;
+		if (f) s += box(16, y, 608, 46, { focus: true });
+		s += cover(28, y + 5, 26, 36, c, '', { r: 3 });
+		s += tx(66, y + 4, t, { size: 17, color: f ? C.acc : C.text }) + tx(66, y + 25, sub, { size: 12, color: f ? C.dimOn : C.dim });
+		if (p) s += bar(380, y + 20, 180, p, { h: 6, r: 3 });
+		if (g) s += glyph(g, 588, y + 16, 2, f ? C.acc : C.dim);
+	});
+	s += tx(16, 312, 'On the card', { size: 13, color: C.dim });
+	const L = [[2, 'Ember Lantern', '12 chapters', '312 MB'], [6, 'Kite Season', '4 chapters', '220 MB'], [3, 'Moth & Meridian', '21 chapters', '690 MB']];
+	L.forEach(([c, t, n, mb], i) => {
+		const y = 330 + i * 38;
+		s += cover(28, y + 3, 22, 30, c, '', { r: 3 }) + tx(62, y + 8, t, { size: 16 }) + tx(470, y + 10, n, { size: 13, color: C.dim, anchor: 'r' }) + tx(612, y + 10, mb, { size: 13, color: C.dim, anchor: 'r' });
+	});
+	return s + hints([['A', 'Open'], ['X', 'Options'], ['Y', 'Pause all'], ['L/R', 'Pages'], ['B', 'Extensions']]);
+})(), keys: [['A', 'A queued chapter: pause / resume; a series on the card: its page'], ['X', 'Options: delete (a chapter, a series), cancel, move up in the queue'], ['Y', 'Pause / resume all'], ['Line on top', 'Downloads\' size (yellow: what\'s coming) and the card\'s free space; the queue stops under 500 MB free']] });
+
+// (f2) Add a repository: the keyboard with a URL layout
+S.push({ id: 'f2', name: '(f2) Repositories › Add repository', what: 'The on-screen keyboard as the connection form uses it, with a URL layout: / and : where @ and \\ are. Or paste the URL in the web dashboard.', top: (() => {
+	let s = `<div class="bx" style="left:40px;top:60px;width:560px;height:360px;border-color:${edgeOf(C.topCard)};border-radius:18px;background:${C.topCard}"></div>`;
+	s += tx(320, 92, 'Add a repository', { size: 30, anchor: 'c' });
+	s += tx(320, 146, 'The address of a repository\'s index (a .json file). Its sources then show under Available.', { size: 17, inter: true, anchor: 'c', w: 0, css: 'white-space:normal;width:480px;left:80px;' });
+	s += tx(320, 226, 'Easier on a phone or computer:', { size: 16, color: C.dim, inter: true, anchor: 'c' });
+	s += tx(320, 252, 'Web dashboard › Manga › Sources', { size: 20, color: C.acc, anchor: 'c' });
+	s += tx(320, 290, 'http://192.168.1.23:8080', { size: 17, inter: true, anchor: 'c' });
+	s += tx(320, 352, 'Repositories are added by you. Banana Player doesn\'t provide or check their content.', { size: 14, color: C.dim, inter: true, anchor: 'c', css: 'white-space:normal;width:460px;left:90px;' });
+	return s;
+})(), bottom: (() => {
+	let s = header('Add repository');
+	s += `<div class="bx" style="left:16px;top:92px;width:608px;height:62px;border-color:${C.acc};border-radius:4px;background:${C.surface}"></div>`;
+	s += tx(32, 112, 'https://example.org/bp-sources/index.json', { size: 18 }) + `<div class="bx" style="left:466px;top:110px;width:2px;height:24px;border:0;background:${C.acc}"></div>`;
+	const rows = [['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'Del'], ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '-'], ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '.', '_'], ['Shift', null, 'z', 'x', 'c', 'v', 'b', 'n', 'm', '/', ':']];
+	rows.forEach((r, j) => {
+		for (let i = 0; i < 11; i++) {
+			const k = r[i]; if (k === null) continue;
+			const wide = k === 'Shift', x = 11 + i * 57, y = 195 + j * 48, w = wide ? 107 : 50;
+			const spec = k === 'Del' || k === 'Shift', on = j === 3 && i === 9;
+			s += `<div class="bx" style="left:${x}px;top:${y}px;width:${w}px;height:42px;border:0;border-radius:4px;background:${on ? C.acc : spec ? C.track : C.button}"></div>`;
+			s += tx(x + w / 2, y + 10, k, { size: 18, anchor: 'c', color: on ? '#000' : C.text });
+		}
+	});
+	const last = [['#+=', 11, 107, 1], ['<', 125, 50, 1], ['Space', 182, 221, 0], ['>', 410, 50, 1], ['Done', 466, 164, 1]];
+	for (const [k, x, w, sp] of last) { s += `<div class="bx" style="left:${x}px;top:387px;width:${w}px;height:42px;border:0;border-radius:4px;background:${sp ? C.track : C.button}"></div>` + tx(x + w / 2, 397, k, { size: 18, anchor: 'c' }); }
+	return s + hints([['A', 'Type'], ['B', 'Delete'], ['X', 'Space'], ['Y', 'Shift'], ['L/R', 'Move'], ['START', 'Done']]);
+})(), keys: [['START / Done', 'Fetch the index; a bad address or a list that isn\'t a repository is said in one line, the text kept'], ['A · B · X · Y', 'Type · delete · space · shift (the keyboard as today)'], ['After adding', 'Its sources appear in Available; nothing is installed by itself']] });
+
+// (g) Manga › Settings
+S.push({ id: 'g', name: '(g) Manga › Settings', what: 'The Manga app\'s own settings page, with its own header. START opens it from anywhere in the Manga app (Library, History, Browse, Sources, Downloads, a series); while reading, START opens the Reading menu, whose last row, "All Manga settings…", leads here. Also X on Manga reader in Manage extensions. It is not part of Banana Player\'s Settings. B goes back to the page it was opened from. The top panel previews the reading mode.', top: (() => {
+	let s = tx(320, 40, 'Right to left', { size: 30, color: C.acc, anchor: 'c' });
+	s += tx(320, 84, 'Pages slide this way, as printed manga', { size: 17, color: C.dim, inter: true, anchor: 'c' });
+	for (const [x, n, on] of [[330, '14', 1], [170, '15', 0]]) {
+		s += `<div class="bx" style="left:${x}px;top:130px;width:140px;height:200px;border-color:${on ? C.acc : '#605D60'};border-radius:4px;background:#F4F1EA"></div>`;
+		s += `<div class="bx" style="left:${x + 12}px;top:142px;width:116px;height:70px;border:2px solid #111;border-radius:0;background:#bbb"></div><div class="bx" style="left:${x + 12}px;top:220px;width:54px;height:96px;border:2px solid #111;border-radius:0;background:#F4F1EA"></div><div class="bx" style="left:${x + 74}px;top:220px;width:54px;height:96px;border:2px solid #111;border-radius:0;background:#888"></div>`;
+		s += tx(x + 70, 340, 'p. ' + n, { size: 16, anchor: 'c', color: on ? C.acc : C.dim });
+	}
+	s += `<svg style="left:236px;top:384px" width="168" height="24"><path d="M0 12 L22 0 L22 8 L168 8 L168 16 L22 16 L22 24 Z" fill="${C.acc}"/></svg>`;
+	s += tx(320, 420, 'RIGHT: forward (Swap Left/Right: Off)', { size: 15, color: C.dim, anchor: 'c' });
+	return s;
+})(), bottom: (() => {
+	let s = header('Manga settings');
+	const R = [['Reading mode', 'Right to left'], ['Page fit', 'Page'], ['Swap Left/Right', 'Off'], ['Hinge gap', '36 px'], ['Open fullscreen', 'Off'], ['Preload', '3 pages'], ['Page cache', '300 MB'], ['Clear cache', '214 MB']];
+	R.forEach(([t, v], i) => {
+		const y = 66 + i * 38, f = i === 0, act = i === 7;
+		if (f) s += box(16, y, 592, 36, { focus: true });
+		const ink = f ? C.acc : C.text;
+		s += tx(32, y + 8, t, { size: 19, color: ink });
+		if (act) s += tx(588, y + 8, v, { size: 17, color: C.dim, anchor: 'r' });
+		else s += glyph('left', 392, y + 11, 2, f ? C.acc : C.dim) + tx(500, y + 8, v, { size: 19, color: ink, anchor: 'c' }) + glyph('right', 568, y + 11, 2, f ? C.acc : C.dim);
+	});
+	// the list goes on below (Downloads folder, Adult sources, Reading history, In Recent on Home): a scroll bar
+	s += `<div class="bx" style="left:620px;top:66px;width:6px;height:300px;border:0;border-radius:3px;background:${C.track}"><div style="width:100%;height:62%;border-radius:3px;background:${C.dim}"></div></div>`;
+	s += tx(24, 372, 'How a new series opens; X in the reader changes it for that series.', { size: 13, color: C.dim });
+	s += `<div class="bx" style="left:16px;top:394px;width:608px;height:44px;border:0;border-radius:10px;background:${C.surface}"></div>` + glyph('info', 30, 407, 2, C.dim);
+	s += tx(58, 398, 'Repositories are added by you. Banana Player doesn\'t', { size: 13, color: C.dim }) + tx(58, 416, 'provide or check their content.', { size: 13, color: C.dim });
+	return s + hints([['UP/DOWN', 'Choose'], ['LEFT/RIGHT', 'Change'], ['A', 'Run'], ['B', 'Back']], 452);
+})(), keys: [['Left / Right', 'Change the value (as every settings row)'], ['A', 'On the action rows: Clear cache · 214 MB, Downloads folder (Manga/ on the card)'], ['Down past these', 'Downloads folder, Adult sources (Hidden), Reading history, In Recent on Home'], ['START', 'Opens this page from any Manga page; in the reader, the Reading menu opens first (Fullscreen, Mode, Fit, Zoom, Hinge gap, Swap Left/Right, then "All Manga settings…")'], ['X', 'In Manage extensions, on Manga reader: opens this page; B returns there'], ['B', 'Back to the page it was opened from']], note: '<b>Not here:</b> turning Manga reader on or off. That is only in Home › Extensions › Manage extensions (START in the drawer); Banana Player\'s own Settings has no Extensions tile.' });
+
+// ---- draw them ----------------------------------------------------------------------------------------------------
+const root = document.getElementById('shots');
+for (const s of S) {
+	const el = document.createElement('section');
+	el.className = 'shot';
+	el.innerHTML = `<h2>${s.name}</h2><div class="what">${s.what}</div>
+		<div class="dev"><div class="frame"><div class="panel">${s.top}</div></div><div class="frame"><div class="panel">${s.bottom}</div></div></div>
+		<table class="keys">${s.keys.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>${s.note ? `<div class="note">${s.note}</div>` : ''}`;
+	root.appendChild(el);
+}
+// (h) the web dashboard
+const ico = (n, k) => { glyph(n, 0, 0, 1); const [w, h] = VB[n]; return `<svg class="ic" width="${w * k}" height="${h * k}" shape-rendering="crispEdges"><use href="#g-${n}"/></svg>`; };
+const web = document.createElement('section');
+web.className = 'shot';
+web.style.gridColumn = '1 / -1';
+const srcRow = (c, t, m, acts) => `<div class="item"><span class="sq" style="background:linear-gradient(150deg,${PAL[c][0]},${PAL[c][1]})">${ico('web', 2)}</span><div style="min-width:0"><div class="t">${t}</div><div class="m">${m}</div></div><div class="acts">${acts}</div></div>`;
+web.innerHTML = `<h2>(h) Web dashboard › Manga › Sources</h2><div class="what">A Manga item in the dashboard (only while the reader is on), with three pages: Library, Sources (repositories on top, their sources below) and Downloads (the queue and what is on the card). Paste a repository's URL here instead of typing it on the handheld; install, update and remove sources. Reading stays on the handheld in v1.</div>
+<div class="web">
+	<div class="side">
+		<div class="logo"><svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#FFD23F" stroke-width="3" stroke-dasharray="48 12"/><path d="M10 8 L18 13 L10 18 Z" fill="#E8E2D3"/></svg>Banana Player</div>
+		<div class="nav">${ico('note', 2)}Playing</div><div class="nav">${ico('folder', 2)}Files</div><div class="nav">${ico('playlist', 2)}Playlists</div><div class="nav on">${ico('book', 2)}Manga</div><div class="nav">${ico('gear', 2)}Settings</div>
+	</div>
+	<div class="main">
+		<div class="crumb">Manga</div>
+		<h3>Sources</h3>
+		<div class="seg"><span>Library</span><span class="on">Sources</span><span>Downloads</span></div>
+		<div class="card">
+			<h4>Add a repository</h4>
+			<div class="sub" style="margin-bottom:10px">The address of a repository's index (.json). Its sources show below; nothing is installed by itself.</div>
+			<div class="row"><div class="field">https://example.org/bp-sources/index.json</div><span class="btn primary">${ico('plus', 2)}Add</span></div>
+			<div class="list">
+				<div class="item"><span class="sq" style="background:#26242E">${ico('blocks', 2)}</span><div style="min-width:0"><div class="t">Example repository</div><div class="m">example.org · 4 sources · checked 5 min ago</div></div><div class="acts"><span class="btn sm">${ico('refresh', 2)}Refresh</span><span class="btn sm">${ico('trash', 2)}Remove</span></div></div>
+				<div class="item"><span class="sq" style="background:#26242E">${ico('blocks', 2)}</span><div style="min-width:0"><div class="t">Second repository</div><div class="m">example.net · 2 sources · <span style="color:#F0645A">couldn't reach it (last list kept)</span></div></div><div class="acts"><span class="btn sm">${ico('refresh', 2)}Refresh</span><span class="btn sm">${ico('trash', 2)}Remove</span></div></div>
+			</div>
+			<div class="legal" style="margin-top:12px">${ico('info', 2)}<span>Repositories are added by you. Banana Player doesn't provide or check their content.</span></div>
+		</div>
+		<div class="card">
+			<h4>Sources</h4>
+			<div class="sub">Installed first. Adult sources are hidden (Manga settings on the handheld).</div>
+			<div class="list">
+				${srcRow(4, 'Example Reader<span class="chip">EN</span><span class="chip">1.2.0</span>', 'Example repository · installed · 2 series in your library', `<span class="btn sm">${ico('trash', 2)}Uninstall</span>`)}
+				${srcRow(6, 'Demo Library<span class="chip">EN</span><span class="chip y">2.1.0 available</span>', 'Example repository · installed 2.0.1', `<span class="btn sm primary">${ico('download', 2)}Update</span><span class="btn sm">${ico('trash', 2)}Uninstall</span>`)}
+				${srcRow(1, 'Sample Scans<span class="chip">ES</span><span class="chip">0.9.4</span>', 'Example repository · 18 KB', `<span class="btn sm">${ico('plus', 2)}Install</span>`)}
+				${srcRow(3, 'Test Pages<span class="chip">FR</span><span class="chip">1.0.0</span>', 'Example repository · 12 KB', `<span class="btn sm">${ico('plus', 2)}Install</span>`)}
+			</div>
+		</div>
+	</div>
+</div>
+<table class="keys"><tr><td>Add</td><td>The handheld fetches the index (it's the one on the network); a bad address shows under the field</td></tr><tr><td>Install / Update</td><td>Same check as on the handheld (SHA-256 against the index); the handheld shows a card when it's done</td></tr><tr><td>Library tab</td><td>Covers, unread counts, remove, mark read; covers come from the handheld's cache</td></tr></table>`;
+root.appendChild(web);
+const web2 = document.createElement('section');
+web2.className = 'shot';
+web2.style.gridColumn = '1 / -1';
+web2.innerHTML = `<h2>(h2) Web dashboard › Settings › Manage extensions</h2><div class="what">The same switches as the handheld's Manage extensions. The page sends the setting; the handheld applies it (and shows the first-time sheet there). The Manga item in the sidebar appears only while it is on.</div>
+<div class="web" style="min-height:0"><div class="side"><div class="logo"><svg width="26" height="26" viewBox="0 0 26 26"><circle cx="13" cy="13" r="10" fill="none" stroke="#FFD23F" stroke-width="3" stroke-dasharray="48 12"/><path d="M10 8 L18 13 L10 18 Z" fill="#E8E2D3"/></svg>Banana Player</div><div class="nav">${ico('note', 2)}Playing</div><div class="nav">${ico('folder', 2)}Files</div><div class="nav">${ico('book', 2)}Manga</div><div class="nav on">${ico('gear', 2)}Settings</div></div>
+<div class="main"><div class="crumb">Settings</div><h3>Extensions</h3>
+<div class="card"><h4>Manage extensions</h4><div class="sub">Turned off, an extension is hidden and stopped; nothing of it is deleted.</div>
+<div class="list"><div class="item"><span class="sq" style="background:#26242E;fill:#FFD23F">${ico('book', 2)}</span><div style="min-width:0"><div class="t">Manga reader</div><div class="m">Comics and manga from your files, your servers and sources you add</div></div><div class="acts"><span class="btn sm">${ico('gear', 2)}Settings</span><span class="btn sm primary">On</span></div></div></div>
+<div class="legal" style="margin-top:12px">${ico('info', 2)}<span>Repositories are added by you. Banana Player doesn't provide or check their content.</span></div></div></div></div>`;
+root.appendChild(web2);
+
+// scale each 640x480 panel to its frame
+function fit() { document.querySelectorAll('.frame').forEach(f => { const p = f.querySelector('.panel'); p.style.transform = `scale(${f.clientWidth / 640})`; }); }
+fit();
+if (typeof ResizeObserver !== 'undefined') new ResizeObserver(fit).observe(document.body); else addEventListener('resize', fit);
+})();
+</script>
+
+</body></html>

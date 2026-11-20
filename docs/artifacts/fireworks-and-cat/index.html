@@ -1,0 +1,300 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Fireworks and Cat</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Inter:wght@400;600&display=swap">
+<style>
+/* Layout: a header with the demo-music switch, then the three styles as cards, each a live 4:3 "top screen".
+   One dark look on purpose (the handheld's own theme.h colours), like the player itself. */
+:root {
+	--bg: #0b0a0d;        /* TOP_CARD */
+	--surface: #121116;   /* SURFACE */
+	--button: #26242e;    /* BUTTON */
+	--rule: #2a2833;      /* RULE */
+	--accent: #ffd23f;    /* ACCENT */
+	--text: #e8e2d3;      /* TEXT */
+	--dim: #8f8a80;       /* DIM */
+	--f-pix: "Pixelify Sans", ui-monospace, monospace;
+	--f-ui: "Inter", system-ui, sans-serif;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--f-ui); line-height: 1.5;
+	padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; }
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+h1 { font-family: var(--f-pix); font-weight: 600; font-size: 2rem; margin: 0; color: var(--accent); text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--dim); max-width: 62ch; }
+button { font: 600 .95rem var(--f-ui); color: #000; background: var(--accent); border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--button); color: var(--text); }
+button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; display: grid; min-width: 0; }
+canvas { width: 100%; aspect-ratio: 4 / 3; display: block; background: #000; max-width: 100%; }
+.about { padding: 14px 16px 16px; display: grid; gap: 4px; }
+.about h2 { margin: 0; font: 600 1.1rem var(--f-pix); color: var(--text); }
+.about p { margin: 0; color: var(--dim); font-size: .92rem; }
+.cost { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); font-family: var(--f-pix); }
+@media (prefers-reduced-motion: reduce) { .note-motion { display: block; } }
+</style>
+
+<main>
+	<header>
+		<div>
+			<h1>Two more visualizer styles</h1>
+			<p class="lede">Moving to made-up music; press the button to drive them with a synth tune instead.</p>
+		</div>
+		<button id="music" type="button" aria-pressed="false">▶ Play demo music</button>
+	</header>
+	<div class="grid" id="grid"></div>
+</main>
+
+<script>
+(() => {
+	const STYLES = [
+		{ id: 'fireworks', name: 'Fireworks', about: 'A night over a pixel harbour: a rocket goes up on each beat and bursts into sparks, its colour and size the part of the music that set it off; the sparks fall and fade, and the water below catches their light.', cost: 'Cheap · a few bursts drawn once, chosen and lit by the music' },
+		{ id: 'cat', name: 'Vibing cat', about: 'A pixel cat with headphones on a windowsill at night: its head bobs on the bass, its tail swishes with the mids, its eyes close happily when it gets loud, and little notes float up on the treble.', cost: 'Cheap · a few poses in one still' },
+	];
+	const grid = document.getElementById('grid');
+	const ctx = {};
+	for (const s of STYLES) {
+		const card = document.createElement('section');
+		card.className = 'card';
+		card.innerHTML = `<canvas width="640" height="480" aria-label="${s.name}, animated preview"></canvas>
+			<div class="about"><span class="cost">${s.cost}</span><h2>${s.name}</h2><p>${s.about}</p></div>`;
+		grid.appendChild(card);
+		ctx[s.id] = card.querySelector('canvas').getContext('2d');
+	}
+	/* ---------- the "music": made-up by default, or a real synth through an analyser ---------- */
+	const BANDS = 16;
+	let audio = null, analyser = null, freq = null, wave = null, playing = false;
+	const fake = t => {
+		const beat = (t * 2) % 1, kick = Math.exp(-beat * 7), hat = Math.exp(-((t * 8) % 1) * 18);
+		const b = [];
+		for (let i = 0; i < BANDS; i++) {
+			const low = Math.max(0, 1 - i / 5), high = Math.max(0, (i - 9) / 7);
+			const mid = 0.45 + 0.25 * Math.sin(t * 1.7 + i * 0.7) * Math.sin(t * 0.6 + i);
+			b.push(Math.min(1, low * (0.35 + 0.65 * kick) + (1 - low - high) * mid * 0.8 + high * (0.15 + 0.5 * hat) + 0.04 * Math.random()));
+		}
+		const w = [];
+		for (let i = 0; i < 256; i++) {
+			const x = i / 256;
+			w.push((0.55 * kick + 0.2) * Math.sin(2 * Math.PI * (x * 3 + t * 0.3)) + 0.25 * Math.sin(2 * Math.PI * (x * 11 + t)) * (0.4 + 0.6 * hat) + 0.08 * Math.sin(2 * Math.PI * x * 37));
+		}
+		return { bands: b, wave: w, kick };
+	};
+	function real() {
+		analyser.getByteFrequencyData(freq);
+		analyser.getFloatTimeDomainData(wave);
+		const b = [];
+		const n = freq.length;
+		for (let i = 0; i < BANDS; i++) {
+			const a = Math.floor(Math.pow(n, i / BANDS)), z = Math.max(a + 1, Math.floor(Math.pow(n, (i + 1) / BANDS)));
+			let m = 0;
+			for (let k = a; k < z && k < n; k++) m = Math.max(m, freq[k]);
+			b.push(m / 255);
+		}
+		const w = [];
+		const step = Math.floor(wave.length / 256);
+		for (let i = 0; i < 256; i++) w.push(wave[i * step] * 2.2);
+		return { bands: b, wave: w, kick: b[0] * b[1] };
+	}
+	function startSynth() {
+		audio = new (window.AudioContext || window.webkitAudioContext)();
+		analyser = audio.createAnalyser();
+		analyser.fftSize = 2048;
+		analyser.smoothingTimeConstant = 0.55;
+		freq = new Uint8Array(analyser.frequencyBinCount);
+		wave = new Float32Array(analyser.fftSize);
+		const out = audio.createGain();
+		out.gain.value = 0.35;
+		out.connect(analyser);
+		analyser.connect(audio.destination);
+		const noise = audio.createBuffer(1, audio.sampleRate * 0.2, audio.sampleRate);
+		const nd = noise.getChannelData(0);
+		for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+		const bass = [41.2, 41.2, 55, 49], chords = [[220, 261.6, 329.6], [196, 246.9, 293.7], [174.6, 220, 261.6], [196, 246.9, 293.7]];
+		let next = audio.currentTime + 0.05, step = 0;
+		const beat = 0.25;	// 120 bpm, eighths
+		function tick() {
+			if (!playing) return;
+			while (next < audio.currentTime + 0.2) {
+				const bar = Math.floor(step / 8) % 4, pos = step % 8;
+				if (pos % 2 === 0) {	// kick on the beat
+					const o = audio.createOscillator(), g = audio.createGain();
+					o.frequency.setValueAtTime(140, next); o.frequency.exponentialRampToValueAtTime(40, next + 0.12);
+					g.gain.setValueAtTime(1, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.25);
+					o.connect(g).connect(out); o.start(next); o.stop(next + 0.26);
+				}
+				{	// hats on every eighth
+					const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+					s.buffer = noise; f.type = 'highpass'; f.frequency.value = 7000;
+					g.gain.setValueAtTime(pos % 2 ? 0.35 : 0.18, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.05);
+					s.connect(f).connect(g).connect(out); s.start(next); s.stop(next + 0.06);
+				}
+				{	// bass, a saw
+					const o = audio.createOscillator(), g = audio.createGain();
+					o.type = 'sawtooth'; o.frequency.value = bass[bar] * (pos === 3 || pos === 7 ? 2 : 1);
+					g.gain.setValueAtTime(0.25, next); g.gain.exponentialRampToValueAtTime(0.001, next + beat * 0.9);
+					o.connect(g).connect(out); o.start(next); o.stop(next + beat);
+				}
+				if (pos === 0)	// a chord a bar
+					for (const fq of chords[bar]) {
+						const o = audio.createOscillator(), g = audio.createGain();
+						o.type = 'triangle'; o.frequency.value = fq;
+						g.gain.setValueAtTime(0.0001, next); g.gain.linearRampToValueAtTime(0.09, next + 0.08); g.gain.exponentialRampToValueAtTime(0.001, next + beat * 7.5);
+						o.connect(g).connect(out); o.start(next); o.stop(next + beat * 8);
+					}
+				next += beat; step++;
+			}
+			setTimeout(tick, 50);
+		}
+		tick();
+	}
+	const btn = document.getElementById('music');
+	btn.addEventListener('click', () => {
+		playing = !playing;
+		btn.setAttribute('aria-pressed', String(playing));
+		btn.textContent = playing ? '■ Stop demo music' : '▶ Play demo music';
+		if (playing) {
+			if (!audio) startSynth();
+			else { audio.resume(); startSynthLoop(); }
+		} else if (audio) audio.suspend();
+	});
+	function startSynthLoop() { /* the scheduler restarts on resume */ const a = audio; audio = null; a.close(); startSynth(); }
+
+	/* ---------- shared state: falling caps ---------- */
+	const caps = {};
+	const fall = (key, v, dt, speed = 0.45) => { const c = caps[key] || 0; const n = Math.max(v, c - speed * dt); caps[key] = n; return n; };
+
+
+	/* the stronger contrast, as the player would apply it: each band pushed away from its neighbours */
+	function contrast(b) {
+		return b.map((v, i) => {
+			const y = (b[Math.max(0, i - 1)] + v + b[Math.min(b.length - 1, i + 1)]) / 3;
+			return Math.max(0, Math.min(1, 0.67 + 1.3 * (v - 0.67) + 3 * (v - y)));
+		});
+	}
+	const eased = {};
+	const ease = (key, v, dt) => { const c = eased[key] || 0; const n = Math.max(v, c - dt / 0.15); eased[key] = n; return n; };
+	// a fixed pseudo-random noise field, like a still the graph would read
+	const NOISE = (() => { let seed = 7; const a = new Float32Array(80 * 120); for (let i = 0; i < a.length; i++) { seed = (seed * 16807) % 2147483647; a[i] = seed / 2147483647; } return a; })();
+	const noise = (x, y) => NOISE[((y % 120 + 120) % 120) * 80 + ((x % 80) + 80) % 80];
+	const title = (g, ink, y = 46) => { g.textAlign = 'center'; g.fillStyle = ink; g.font = '600 28px Inter, sans-serif'; g.fillText('Midnight Arcade', 320, y); };
+	let T = 0;
+
+
+	const avg = (lv, a, b) => { let s = 0; for (let i = a; i <= b; i++) s += lv[i]; return s / (b - a + 1); };
+	const P = 8;
+	const mk = g => (x, y, c) => { g.fillStyle = c; g.fillRect(Math.round(x) * P, Math.round(y) * P, P, P); };
+
+
+	/* ---------- Fireworks ---------- */
+	const HUE = [330, 300, 270, 240, 210, 190, 170, 140, 110, 80, 60, 45, 30, 15, 0, 350];
+	const bursts = [];	// {x, y, band, born, size}
+	const rockets = [];	// {x, band, born, top}
+	let lastFire = -1, lastBass = 0;
+	function fireworks(g, d, dt) {
+		const px = mk(g), lv = contrast(d.bands).map((v, i) => ease('fw' + i, v, dt));
+		const bass = avg(lv, 0, 2);
+		g.fillStyle = '#05061a'; g.fillRect(0, 0, 640, 480);
+		for (let i = 0; i < 40; i++) px(Math.floor(NOISE[i * 7] * 80), Math.floor(NOISE[i * 11] * 30), NOISE[i * 3] > 0.6 ? '#4a4f80' : '#2a2d55');
+		// a rocket on each beat (the bass rising past a mark), for the loudest band of the moment
+		if (bass > 0.55 && lastBass <= 0.55 && T - lastFire > 0.25) {
+			let best = 3; for (let i = 3; i < 16; i++) if (lv[i] > lv[best]) best = i;
+			const x = 10 + Math.floor(NOISE[Math.floor(T * 37) % 900] * 60);
+			rockets.push({ x, band: best, born: T, top: 10 + Math.floor(NOISE[Math.floor(T * 53) % 900] * 14) });
+			lastFire = T;
+		}
+		lastBass = bass;
+		// rockets climb, then burst
+		for (let i = rockets.length - 1; i >= 0; i--) {
+			const r = rockets[i], y = Math.round(44 - (T - r.born) * 70);
+			if (y <= r.top) { bursts.push({ x: r.x, y: r.top, band: r.band, born: T, size: 6 + lv[r.band] * 8 }); rockets.splice(i, 1); continue; }
+			px(r.x, y, '#ffe9a8'); px(r.x, y + 1, 'rgba(255,180,90,0.6)'); px(r.x, y + 2, 'rgba(255,140,60,0.3)');
+		}
+		// bursts: 16 sparks flying out, falling a little, fading over 1.4 s
+		const water = 44;
+		for (let i = bursts.length - 1; i >= 0; i--) {
+			const b = bursts[i], age = T - b.born;
+			if (age > 1.4) { bursts.splice(i, 1); continue; }
+			const k = 1 - age / 1.4, r = b.size * Math.min(1, age * 3);
+			for (let s = 0; s < 16; s++) {
+				const a = s / 16 * Math.PI * 2, x = b.x + Math.cos(a) * r, y = b.y + Math.sin(a) * r + age * age * 6;
+				if (y >= water) continue;
+				const c = `hsla(${HUE[b.band]} 100% ${55 + 25 * k}% / ${k})`;
+				px(x, y, c);
+				px(b.x + Math.cos(a) * r * 0.6, b.y + Math.sin(a) * r * 0.6 + age * age * 6, `hsla(${HUE[b.band]} 100% 80% / ${k * 0.5})`);
+				// the water's reflection: a dim, wobbling copy under the line
+				const ry = water + (water - y) * 0.35 + 1;
+				if (ry < 60) px(x + Math.round(Math.sin(T * 6 + s) * 0.6), ry, `hsla(${HUE[b.band]} 90% 50% / ${k * 0.35})`);
+			}
+		}
+		// the harbour skyline and the water line
+		for (let x = 0; x < 80; x++) {
+			const h = [3, 5, 4, 7, 6, 3, 8, 5, 4, 6][Math.floor(x / 8)] + (x % 8 === 0 ? 1 : 0);
+			for (let y = water - h; y < water; y++) px(x, y, '#0c0d24');
+			if (x % 3 === 1 && NOISE[x * 5] > 0.6) px(x, water - h + 1 + Math.floor(NOISE[x] * (h - 1)), '#ffcf6a');
+			px(x, water, '#1a2350');
+		}
+		for (let x = 0; x < 80; x++) for (let y = water + 1; y < 60; y++) if ((x + y * 3 + Math.floor(T * 4)) % 11 === 0) px(x, y, '#141b40');
+		title(g, '#ffe9a8');
+	}
+
+	/* ---------- Vibing cat ---------- */
+	function cat(g, d, dt) {
+		const px = mk(g), lv = contrast(d.bands).map((v, i) => ease('ct' + i, v, dt));
+		const bass = avg(lv, 0, 2), mid = avg(lv, 4, 9), treble = avg(lv, 11, 15), loud = avg(lv, 0, 15);
+		g.fillStyle = '#1b1430'; g.fillRect(0, 0, 640, 480);
+		// the window: night sky, moon, frame
+		for (let y = 6; y < 40; y++) for (let x = 12; x < 68; x++) px(x, y, x === 12 || x === 67 || y === 6 || x === 39 || y === 22 ? '#6a4a3a' : '#1f2a5a');
+		for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) if (x * x + y * y <= 10 && (x - 1) * (x - 1) + y * y > 6) px(58 + x, 13 + y, '#fff3c4');
+		for (let i = 0; i < 10; i++) px(14 + Math.floor(NOISE[i * 9] * 24), 8 + Math.floor(NOISE[i * 4] * 12), '#8a96d0');
+		// the sill and a little plant
+		for (let x = 6; x < 74; x++) { px(x, 40, '#8a5a3a'); px(x, 41, '#6a4228'); }
+		for (let y = 34; y < 40; y++) for (let x = 60; x < 65; x++) px(x, y, y < 36 ? '#3fbf6a' : '#c0603a');
+		// the cat, sitting: body, then the head bobbing down on the bass (0..2 rows)
+		const C = '#f2a25a', D = '#c87a38', W = '#fff2e0';
+		const bob = Math.round(bass * 2.2);
+		for (let y = 28; y < 40; y++) { const w = y < 31 ? 4 : 6; for (let x = -w; x <= w; x++) px(30 + x, y, x === -w || x === w ? D : (y > 35 && Math.abs(x) < 3 ? W : C)); }
+		const hy = 19 + bob;
+		for (let y = 0; y < 9; y++) { const w = y < 1 ? 4 : y > 7 ? 4 : 5; for (let x = -w; x <= w; x++) px(30 + x, hy + y, Math.abs(x) === w ? D : C); }
+		// ears, the left one twitching on the treble
+		const tw = treble > 0.55 ? 1 : 0;
+		for (const [ex, flip] of [[-4, tw], [4, 0]]) { px(30 + ex, hy - 1 - flip, D); px(30 + ex + Math.sign(ex), hy - 1, D); px(30 + ex, hy - 2 - flip, D); }
+		// headphones: a band over the head, pads on the sides
+		for (let x = -6; x <= 6; x++) px(30 + x, hy - 2 - (Math.abs(x) < 4 ? 1 : 0), '#e8463c');
+		for (let y = 2; y < 6; y++) { px(24, hy + y, '#e8463c'); px(36, hy + y, '#e8463c'); px(23, hy + y, '#b02e26'); px(37, hy + y, '#b02e26'); }
+		// eyes: open, or happy closed arcs when it's loud
+		if (loud > 0.5) { for (const ex of [27, 32]) { px(ex, hy + 4, '#2a1a10'); px(ex + 1, hy + 3, '#2a1a10'); px(ex + 2, hy + 4, '#2a1a10'); } }
+		else { for (const ex of [28, 32]) { px(ex, hy + 3, '#2a1a10'); px(ex, hy + 4, '#2a1a10'); } }
+		px(30, hy + 5, '#ff8fa8'); px(29, hy + 6, '#2a1a10'); px(31, hy + 6, '#2a1a10');
+		// the tail, swishing with the mids
+		const sw = Math.sin(T * (3 + mid * 6)) * (1 + mid * 3);
+		for (let i = 0; i < 9; i++) px(37 + i, 38 - Math.round(i * 0.6 + Math.sin(i * 0.5) * sw * i / 9), i > 6 ? D : C);
+		// notes floating up on the treble
+		for (let i = 0; i < 4; i++) {
+			if (treble < 0.2 + i * 0.12) continue;
+			const life = (T * 0.5 + i * 0.25) % 1, nx = 42 + i * 4 + Math.round(Math.sin(T * 2 + i) * 2), ny = Math.round(26 - life * 18);
+			const c = `rgba(255,214,110,${1 - life})`;
+			px(nx, ny, c); px(nx, ny - 1, c); px(nx, ny - 2, c); px(nx + 1, ny - 2, c); px(nx - 1, ny + 1, c);
+		}
+		title(g, '#ffd28a');
+	}
+
+	const DRAW = { fireworks, cat };
+	let last = performance.now(), t0 = last;
+	function frame(now) {
+		const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+		last = now; T = Math.max(0, (now - t0) / 1000);
+		const d = playing && analyser ? real() : fake(T);
+		for (const s of STYLES) DRAW[s.id](ctx[s.id], d, dt);
+		requestAnimationFrame(frame);
+	}
+	T = 0.37;
+	const first = fake(0.37);
+	for (let k = 0; k < 8; k++) for (const s of STYLES) DRAW[s.id](ctx[s.id], first, 0.016);
+	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

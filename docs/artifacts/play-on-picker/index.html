@@ -1,0 +1,172 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Play On Picker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Pixelify+Sans:wght@400&display=swap" rel="stylesheet">
+<style>
+/* layout: a short brief, then the handheld's two panels per step (640x480 units, scaled), the browser's side last.
+   Colours are Midnight's (src/theme.h); one committed dark look, as the handheld */
+:root {
+	--bg: #000; --surface: #121116; --button: #26242E; --pressed: #3E3B4A; --accent: #FFD23F; --text: #E8E2D3;
+	--dim: #8F8A80; --dimon: #ABA597; --danger: #F06458; --rule: #2A2833; --page: #0b0a0e; --line: #24222b;
+	--pixel: "Pixelify Sans", "Courier New", monospace; --body: Inter, system-ui, -apple-system, sans-serif;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--text); font: 400 15px/1.5 var(--body); margin: 0;
+	padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 28px; }
+h1 { font: 400 32px/1.1 var(--pixel); margin: 0; color: var(--accent); text-wrap: balance; }
+h2 { font: 400 22px/1.2 var(--pixel); margin: 0; text-wrap: balance; }
+p { margin: 0; max-width: 68ch; }
+.lede { color: var(--dimon); }
+.step { display: grid; gap: 12px; padding-top: 22px; border-top: 1px solid var(--line); }
+.step .why { color: var(--dim); font-size: 14px; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+.cap { font: 600 11px/1 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+.panel { width: 100%; max-width: 100%; aspect-ratio: 4 / 3; display: block; background: var(--bg); border-radius: 10px; outline: 1px solid var(--line); }
+.panel text { font-family: var(--pixel); }
+.panel .i { font-family: var(--body); }
+.phone { max-width: 360px; width: 100%; border-radius: 28px; background: #0d0c10; padding: 10px; outline: 1px solid var(--line); }
+.phone svg { display: block; width: 100%; height: auto; border-radius: 20px; }
+.rules { display: grid; gap: 8px; padding-left: 18px; margin: 0; color: var(--dimon); max-width: 80ch; }
+.rules b { color: var(--text); font-weight: 600; }
+.k { color: var(--accent); font-family: var(--pixel); }
+@media (prefers-reduced-motion: no-preference) { .blink { animation: b 1.2s steps(2) infinite; } @keyframes b { 50% { opacity: .35; } } }
+</style>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="g-card" viewBox="0 0 10 10" shape-rendering="crispEdges"><rect x="3" y="0" width="7" height="1"/><rect x="2" y="1" width="2" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="1" y="2" width="3" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="1" y="3" width="9" height="1"/><rect x="1" y="4" width="9" height="1"/><rect x="1" y="5" width="9" height="1"/><rect x="1" y="6" width="9" height="1"/><rect x="1" y="7" width="9" height="1"/><rect x="1" y="8" width="9" height="1"/><rect x="1" y="9" width="9" height="1"/></symbol>
+<symbol id="g-check" viewBox="0 0 9 7" shape-rendering="crispEdges"><rect x="8" y="0" width="1" height="1"/><rect x="7" y="1" width="2" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="0" y="3" width="2" height="1"/><rect x="5" y="3" width="2" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="4" y="4" width="2" height="1"/><rect x="2" y="5" width="3" height="1"/><rect x="3" y="6" width="1" height="1"/></symbol>
+<symbol id="g-film" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="11" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="2" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="11" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="0" y="5" width="11" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="6" y="7" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="0" y="8" width="11" height="1"/></symbol>
+<symbol id="g-folder" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="5" height="1"/><rect x="0" y="1" width="11" height="1"/><rect x="0" y="2" width="11" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="0" y="5" width="11" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="0" y="7" width="11" height="1"/><rect x="0" y="8" width="11" height="1"/></symbol>
+<symbol id="g-heart-o" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="1" y="0" width="3" height="1"/><rect x="7" y="0" width="3" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="9" y="5" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="3" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="4" y="8" width="1" height="1"/><rect x="6" y="8" width="1" height="1"/><rect x="5" y="9" width="1" height="1"/></symbol>
+<symbol id="g-info" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="2" y="0" width="5" height="1"/><rect x="1" y="1" width="3" height="1"/><rect x="5" y="1" width="3" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="5" y="3" width="4" height="1"/><rect x="0" y="4" width="4" height="1"/><rect x="5" y="4" width="4" height="1"/><rect x="0" y="5" width="4" height="1"/><rect x="5" y="5" width="4" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="5" y="6" width="4" height="1"/><rect x="1" y="7" width="2" height="1"/><rect x="6" y="7" width="2" height="1"/><rect x="2" y="8" width="5" height="1"/></symbol>
+<symbol id="g-laptop" viewBox="0 0 11 7" shape-rendering="crispEdges"><rect x="1" y="0" width="9" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="9" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="1" y="5" width="9" height="1"/><rect x="0" y="6" width="11" height="1"/></symbol>
+<symbol id="g-left" viewBox="0 0 5 7" shape-rendering="crispEdges"><rect x="3" y="0" width="2" height="1"/><rect x="2" y="1" width="2" height="1"/><rect x="1" y="2" width="2" height="1"/><rect x="0" y="3" width="2" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="2" y="5" width="2" height="1"/><rect x="3" y="6" width="2" height="1"/></symbol>
+<symbol id="g-play" viewBox="0 0 8 8" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="0" y="1" width="4" height="1"/><rect x="0" y="2" width="6" height="1"/><rect x="0" y="3" width="8" height="1"/><rect x="0" y="4" width="8" height="1"/><rect x="0" y="5" width="6" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="0" y="7" width="2" height="1"/></symbol>
+<symbol id="g-pl-add" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="0" y="4" width="4" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="6" y="6" width="5" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="8" y="8" width="1" height="1"/></symbol>
+<symbol id="g-radio" viewBox="0 0 7 7" shape-rendering="crispEdges"><rect x="2" y="0" width="3" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="2" y="6" width="3" height="1"/></symbol>
+<symbol id="g-radio-on" viewBox="0 0 7 7" shape-rendering="crispEdges"><rect x="2" y="0" width="3" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="2" y="3" width="3" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="2" y="6" width="3" height="1"/></symbol>
+<symbol id="g-right" viewBox="0 0 5 7" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="2" y="4" width="2" height="1"/><rect x="1" y="5" width="2" height="1"/><rect x="0" y="6" width="2" height="1"/></symbol>
+<symbol id="g-stop" viewBox="0 0 8 8" shape-rendering="crispEdges"><rect x="0" y="0" width="8" height="1"/><rect x="0" y="1" width="8" height="1"/><rect x="0" y="2" width="8" height="1"/><rect x="0" y="3" width="8" height="1"/><rect x="0" y="4" width="8" height="1"/><rect x="0" y="5" width="8" height="1"/><rect x="0" y="6" width="8" height="1"/><rect x="0" y="7" width="8" height="1"/></symbol>
+<symbol id="g-web" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="2" y="0" width="5" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="0" y="5" width="9" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="2" y="8" width="5" height="1"/></symbol>
+</svg>
+<div class="wrap">
+	<header style="display:grid;gap:10px">
+		<h1>Play on: choose where it plays, from the handheld</h1>
+		<p class="lede">A mock for approval. Today the handheld can only take the sound back (hold A); a dashboard page has to send it to itself. This adds the other way: the handheld picks the output, Handheld or any connected browser.</p>
+	</header>
+
+	<section class="step">
+		<h2>1. START › Playing gets a Play on row</h2>
+		<p class="why">Shown only while at least one dashboard page that can play is open. Its note says where it plays now. A opens the picker.</p>
+		<div class="pair">
+			<div><div class="cap">Bottom panel · START › Playing</div><svg class="panel" id="s1" viewBox="0 0 640 480"></svg></div>
+			<div><div class="cap">No browser connected: the row isn't there (as today)</div><svg class="panel" id="s1b" viewBox="0 0 640 480"></svg></div>
+		</div>
+	</section>
+
+	<section class="step">
+		<h2>2. The picker</h2>
+		<p class="why">The handheld first, then each open page by its browser and device ("Chrome on Mac", "Safari on iPhone"; a second one of the same kind gets "2"). The one playing now is ticked. Up/Down move, A picks, B closes. Picking moves the file, its place, and the audio and subtitle choice, as the dashboard's switch does.</p>
+		<div class="pair">
+			<div><div class="cap">Bottom panel · Play on</div><svg class="panel" id="s2" viewBox="0 0 640 480"></svg></div>
+			<div><div class="cap">Top panel, unchanged behind it</div><svg class="panel" id="s2t" viewBox="0 0 640 480"></svg></div>
+		</div>
+	</section>
+
+	<section class="step">
+		<h2>3. After picking Chrome on Mac</h2>
+		<p class="why">The picker closes on the playing screen. The top panel names where it plays. A plays and pauses the browser, hold A brings it back here, as today.</p>
+		<div class="pair">
+			<div><div class="cap">Top panel</div><svg class="panel" id="s3t" viewBox="0 0 640 480"></svg></div>
+			<div><div class="cap">Bottom panel</div><svg class="panel" id="s3" viewBox="0 0 640 480"></svg></div>
+		</div>
+	</section>
+
+	<section class="step">
+		<h2>4. When the browser won't start sound by itself</h2>
+		<p class="why">Safari, and Chrome on a page nobody has tapped yet, refuse to start sound that a tap didn't ask for. The page then shows one big button; the handheld says it's waiting. B on the handheld (or Handheld in the picker) gives up and plays here instead.</p>
+		<div class="pair">
+			<div><div class="cap">Top panel, waiting</div><svg class="panel" id="s4t" viewBox="0 0 640 480"></svg></div>
+			<div style="display:grid;justify-items:start"><div class="cap">The phone's dashboard</div><div class="phone"><svg id="s4p" viewBox="0 0 390 520"></svg></div></div>
+		</div>
+	</section>
+
+	<section class="step">
+		<h2>Rules</h2>
+		<ul class="rules">
+			<li><b>Which pages are listed:</b> signed-in dashboard pages that are open now and able to play (pages hidden in a background tab count; a page closed for 10 s drops off, as the Session's tab rule).</li>
+			<li><b>Names</b> come from the browser's own description (no setting to type); unknown ones read "Browser".</li>
+			<li><b>Photos</b> stay on the handheld: the row isn't shown while a photo is open.</li>
+			<li><b>Nothing else moves the output:</b> as today, only an explicit choice (this picker, the dashboard's switch, hold A).</li>
+			<li><b>Quick settings (F)</b> could later get the same row; START only for now.</li>
+		</ul>
+	</section>
+</div>
+<script>
+const C = { bg: '#000', surface: '#121116', button: '#26242E', accent: '#FFD23F', text: '#E8E2D3', dim: '#8F8A80', dimon: '#ABA597', danger: '#F06458', rule: '#2A2833', on: '#000' };
+const G = { 'heart-o': [11, 10], 'pl-add': [11, 9], folder: [11, 9], info: [9, 9], laptop: [11, 7], card: [10, 10], check: [9, 7], left: [5, 7], stop: [8, 8], film: [11, 9], right: [5, 7], play: [8, 8], web: [9, 9], 'radio': [7, 7], 'radio-on': [7, 7] };
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const glyph = (n, cx, cy, fill, k = 2) => { const [w, h] = G[n]; return `<use href="#g-${n}" x="${cx - w * k / 2}" y="${cy - h * k / 2}" width="${w * k}" height="${h * k}" fill="${fill}"/>`; };
+const rr = (x, y, w, h, r, fill, stroke) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="${fill}"${stroke ? ` stroke="${stroke}" stroke-width="2"` : ''}/>`;
+const t = (x, y, s, size, fill, anchor = 'start', cls = '') => `<text${cls ? ` class="${cls}"` : ''} x="${x}" y="${y}" font-size="${size}" fill="${fill}" text-anchor="${anchor}" dominant-baseline="middle">${esc(s)}</text>`;
+const hints = list => { let x = 320, parts = list.map(([k, l]) => [k, l, k.length * 9 + l.length * 8.6 + 14]); const total = parts.reduce((a, p) => a + p[2] + 18, -18); x = 320 - total / 2; return parts.map(([k, l, w]) => { const s = t(x, 458, k, 15, C.accent) + t(x + k.length * 9 + 6, 458, l, 15, C.dim); x += w + 18; return s; }).join(''); };
+function header(tab) {
+	let s = rr(8, 8, 48, 48, 10, C.button, C.rule) + glyph('left', 32, 32, C.text, 3);
+	[['Playing', 72, 128], ['Settings', 208, 128], ['About', 344, 128]].forEach(([l, x, w]) => { const on = l === tab; s += rr(x, 10, w, 44, 10, on ? C.accent : C.button, on ? null : C.rule) + t(x + w / 2, 33, l, 22, on ? C.on : C.text, 'middle'); });
+	return s + t(616, 32, '12:41', 16, C.text, 'end');
+}
+function card() { return rr(16, 68, 608, 62, 14, C.surface, C.rule) + glyph('film', 47, 99, C.dim, 3) + t(80, 89, 'Sintel', 22, C.text) + t(84, 113, 'Movies / Sintel (trailer).mkv', 14, C.dim); }
+function rows(list, focus, top = 150, step = 49) {
+	return list.map(([g, l, note, col], i) => { const y = top + i * step, on = i === focus; let s = '';
+		if (on) s += rr(16, y - 22, 608, 46, 10, C.button, C.accent);
+		s += glyph(g, 47, y, col || (on ? C.accent : C.text), 2) + t(72, y + 1, l, 20, col || (on ? C.accent : C.text));
+		if (note) s += t(608, y + 1, note, 15, on ? C.dimon : C.dim, 'end');
+		return s; }).join('');
+}
+const START = [['heart-o', 'Like', 'Adds it to Liked'], ['pl-add', 'Add to playlist…', ''], ['laptop', 'Play on', 'Handheld ›'], ['folder', 'Show in folder', 'Movies'], ['info', 'Info', 'Size, codecs, tags'], ['stop', 'Stop', '', C.danger]];
+document.getElementById('s1').innerHTML = header('Playing') + card() + rows(START, 2) + hints([['UP/DOWN', 'Move'], ['A', 'Choose'], ['B', 'Close'], ['L/R', 'Tabs']]);
+document.getElementById('s1b').innerHTML = header('Playing') + card() + rows(START.filter(r => r[1] !== 'Play on'), 0, 160, 54) + hints([['UP/DOWN', 'Move'], ['A', 'Choose'], ['B', 'Close'], ['L/R', 'Tabs']]);
+
+// 2: the picker, a dialog over the dimmed menu
+let s2 = header('Playing') + card() + rows(START, 2) + `<rect width="640" height="480" fill="#000" opacity=".72"/>`;
+s2 += rr(70, 74, 500, 290, 18, C.surface, C.rule) + t(320, 108, 'Play on', 24, C.accent, 'middle') + t(320, 134, 'Where Sintel plays. Its place and tracks come along.', 14, C.dim, 'middle', 'i');
+const OUT = [['card', 'Handheld', 'Playing now', true], ['laptop', 'Chrome on Mac', '', false], ['laptop', 'Safari on iPhone', '', false]];
+OUT.forEach(([g, l, note, cur], i) => { const y = 186 + i * 62, on = i === 1;
+	if (on) s2 += rr(90, y - 26, 460, 52, 10, C.button, C.accent);
+	s2 += glyph(g, 122, y, on ? C.accent : C.text, 2) + t(150, y + 1, l, 21, on ? C.accent : C.text);
+	if (note) s2 += t(150, y + 22, note, 12, C.dim, 'start', 'i');
+	if (cur) s2 += glyph('check', 522, y, C.accent, 3); });
+s2 += hints([['UP/DOWN', 'Move'], ['A', 'Play there'], ['B', 'Back']]);
+document.getElementById('s2').innerHTML = s2;
+
+// top panels
+const sintelTop = `<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a066"/><stop offset=".55" stop-color="#7a4a3a"/><stop offset="1" stop-color="#1b1414"/></linearGradient></defs><rect x="0" y="60" width="640" height="360" fill="url(#sky)"/><path d="M0 330 L120 300 L210 320 L330 280 L450 310 L640 290 L640 420 L0 420Z" fill="#2a1e1c"/>` + t(320, 402, 'Almost there.', 20, '#fff', 'middle', 'i');
+document.getElementById('s2t').innerHTML = sintelTop;
+const topBrowser = (l1, l2, l3, blink) => rr(0, 0, 640, 480, 0, C.bg) + glyph('laptop', 320, 168, C.accent, 6) + `<g${blink ? ' class="blink"' : ''}>` + t(320, 236, l1, 30, C.accent, 'middle') + `</g>` + t(320, 276, l2, 17, C.text, 'middle', 'i') + t(320, 306, l3, 15, C.dim, 'middle', 'i');
+document.getElementById('s3t').innerHTML = topBrowser('Playing in Chrome on Mac', 'Sintel · 0:24 / 0:52', 'A pauses it there · hold A to play here', false);
+document.getElementById('s4t').innerHTML = topBrowser('Waiting for Chrome on Mac', 'Tap Play here on that page to start the sound', 'B: play on the handheld instead', true);
+
+// 3: the playing screen with the browser as output
+let s3 = rr(8, 8, 48, 48, 10, C.button, C.rule) + glyph('left', 32, 32, C.text, 3) + t(72, 26, 'Sintel', 22, C.text) + t(616, 26, '12:42', 16, C.text, 'end');
+s3 += glyph('laptop', 82, 54, C.accent, 1.6) + t(98, 55, 'Playing in Chrome on Mac', 15, C.accent);
+s3 += rr(16, 92, 608, 12, 6, '#1E1D24') + rr(16, 92, 280, 12, 6, C.accent) + rr(290, 86, 12, 24, 2, C.text) + t(16, 128, '0:24', 15, C.text) + t(624, 128, '0:52', 15, C.text, 'end');
+[['Prev', 'L'], ['Like', 'L3'], ['Pause', 'A'], ['Add', 'Playlist'], ['Next', 'R']].forEach(([l, k], i) => { const x = 16 + i * 123; s3 += rr(x, 150, 113, 58, 10, C.button, C.rule) + t(x + 56, 172, l, 18, C.text, 'middle') + t(x + 56, 195, k, 12, C.accent, 'middle'); });
+[['Audio', 'X'], ['3/4', 'Y'], ['Fit', 'SELECT'], ['1x', 'UP/DOWN'], ['Menu', 'START']].forEach(([l, k], i) => { const x = 16 + i * 123; s3 += rr(x, 220, 113, 58, 10, C.button, C.rule) + t(x + 56, 242, l, 18, C.text, 'middle') + t(x + 56, 265, k, 12, C.accent, 'middle'); });
+s3 += t(16, 306, 'English · AAC Stereo', 14, C.dim) + t(16, 330, 'English · SRT', 14, C.dim);
+[['Lock'], ['Info'], ['Screen off'], ['Stop']].forEach(([l], i) => { const x = 16 + i * 153; s3 += rr(x, 410, 143, 40, 10, C.button, C.rule) + t(x + 71, 431, l, 16, l === 'Stop' ? C.danger : C.text, 'middle'); });
+document.getElementById('s3').innerHTML = s3;
+
+// 4: the phone's dashboard asking for a tap
+let p = `<rect width="390" height="520" fill="${C.bg}"/>` + rr(120, 18, 150, 40, 12, '#17161b', C.rule) + rr(124, 22, 60, 32, 9, 'transparent') + glyph('card', 154, 38, C.dim, 2) + rr(196, 22, 70, 32, 9, C.accent) + glyph('laptop', 231, 38, C.on, 2);
+p += `<rect x="0" y="80" width="390" height="220" fill="#3b2a24"/><path d="M0 240 L90 215 L170 230 L260 200 L390 222 L390 300 L0 300Z" fill="#1f1716"/>`;
+p += `<rect x="0" y="80" width="390" height="220" fill="#000" opacity=".55"/>` + rr(95, 160, 200, 60, 16, C.accent) + glyph('play', 132, 190, C.on, 3) + t(212, 191, 'Tap to play', 19, C.on, 'middle');
+p += t(195, 252, 'The handheld sent Sintel here', 14, C.text, 'middle', 'i') + t(195, 274, 'Your browser needs one tap to start the sound', 12, C.dim, 'middle', 'i');
+p += t(24, 336, 'Sintel', 22, C.text) + t(24, 362, 'Durian Open Movie Team', 13, C.dim, 'start', 'i') + rr(24, 392, 342, 8, 4, '#1E1D24') + rr(24, 392, 158, 8, 4, C.accent) + t(24, 418, '0:24', 12, C.dim, 'start', 'i') + t(366, 418, '0:52', 12, C.dim, 'end', 'i');
+p += rr(163, 440, 64, 64, 18, C.accent) + glyph('play', 195, 472, C.on, 3);
+document.getElementById('s4p').innerHTML = p;
+</script>
+
+</body></html>

@@ -1,0 +1,186 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Playing Screen Buttons</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap">
+<style>
+:root {
+	--bg: #1a1a1f; --frame: #2a2931; --screen: #1a1a1f; --teal: #233f44; --teal-hi: #2d5258;
+	--cream: #f2ede1; --dim: #7c7a80; --dim-teal: #8fa9a9; --yellow: #f0b72e; --pressed: #3b6a70;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--cream); font: 15px/1.45 system-ui, -apple-system, sans-serif;
+	padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 24px 40px; }
+.wrap { max-width: 1400px; margin: 0 auto; }
+h1 { font: 600 22px 'Pixelify Sans', system-ui, sans-serif; color: var(--yellow); margin: 0 0 4px; text-wrap: balance; }
+p.lead { color: var(--dim-teal); margin: 0 0 18px; max-width: 70ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; align-items: center; }
+.bar span { color: var(--dim); font-size: 13px; margin-right: 4px; }
+.seg { display: inline-flex; border: 1px solid var(--teal-hi); }
+.seg button { background: transparent; color: var(--cream); border: 0; padding: 7px 12px; font: 600 14px 'Pixelify Sans', system-ui, sans-serif; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--yellow); color: #1a1a1f; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 28px; }
+.opt h2 { font: 600 18px 'Pixelify Sans', system-ui, sans-serif; margin: 0 0 4px; }
+.opt h2 b { color: var(--yellow); }
+.opt p { margin: 0 0 10px; color: var(--dim-teal); font-size: 14px; min-height: 3em; }
+.case { background: var(--frame); padding: 14px; max-width: 668px; }
+/* the bottom panel at its 640x480 layout, scaled to the column */
+.panel { position: relative; width: 100%; aspect-ratio: 4 / 3; background: var(--screen); container-type: inline-size; overflow: hidden; }
+.panel > * { position: absolute; }
+.u { --u: calc(100cqw / 640); }
+.px { font-family: 'Pixelify Sans', system-ui, sans-serif; }
+.back { left: calc(8 * var(--u)); top: calc(8 * var(--u)); width: calc(48 * var(--u)); height: calc(48 * var(--u)); background: var(--teal); display: grid; place-items: center; }
+.title { left: calc(72 * var(--u)); top: calc(8 * var(--u)); height: calc(48 * var(--u)); display: flex; align-items: center; font-size: calc(26 * var(--u)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.clock { right: calc(16 * var(--u)); top: calc(8 * var(--u)); height: calc(48 * var(--u)); display: flex; align-items: center; font-size: calc(16 * var(--u)); }
+.crumb { left: calc(24 * var(--u)); top: calc(62 * var(--u)); font-size: calc(15 * var(--u)); color: var(--dim); }
+.crumb b { color: var(--cream); font-weight: 400; }
+.src { right: calc(16 * var(--u)); top: calc(62 * var(--u)); font-size: calc(15 * var(--u)); color: var(--dim); }
+.status { left: calc(24 * var(--u)); top: calc(88 * var(--u)); font-size: calc(22 * var(--u)); color: var(--yellow); display: flex; align-items: center; gap: calc(10 * var(--u)); }
+.count { right: calc(16 * var(--u)); top: calc(92 * var(--u)); font-size: calc(16 * var(--u)); color: var(--dim); }
+.track { left: calc(24 * var(--u)); top: calc(150 * var(--u)); width: calc(592 * var(--u)); height: calc(24 * var(--u)); background: var(--teal); }
+.fill { left: calc(24 * var(--u)); top: calc(150 * var(--u)); width: calc(112 * var(--u)); height: calc(24 * var(--u)); background: var(--yellow); }
+.knob { left: calc(132 * var(--u)); top: calc(144 * var(--u)); width: calc(8 * var(--u)); height: calc(36 * var(--u)); background: var(--cream); }
+.t0, .t1, .tl { top: calc(184 * var(--u)); font-size: calc(18 * var(--u)); }
+.t0 { left: calc(24 * var(--u)); } .t1 { right: calc(24 * var(--u)); color: var(--dim); }
+.tl { left: 50%; transform: translateX(-50%); color: var(--dim); font-size: calc(14 * var(--u)); top: calc(188 * var(--u)); }
+.btn { width: calc(108 * var(--u)); height: calc(60 * var(--u)); background: var(--teal); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(3 * var(--u)); cursor: pointer; user-select: none; border: 0; color: var(--cream); padding: 0; font-family: 'Pixelify Sans', system-ui, sans-serif; }
+.btn:active { background: var(--pressed); }
+.btn .l { display: flex; align-items: center; gap: calc(7 * var(--u)); font-size: calc(19 * var(--u)); }
+.btn .k { font-size: calc(12 * var(--u)); color: var(--yellow); letter-spacing: .04em; min-height: 1.2em; }
+.btn .k.dim { color: var(--dim-teal); }
+.btn.off .l { color: var(--dim); } .btn.off .k { color: var(--dim); }
+.btn.new { outline: calc(2 * var(--u)) dashed rgba(240, 183, 46, .55); outline-offset: calc(-4 * var(--u)); }
+.btn.liked .l { color: var(--yellow); }
+.info1, .info2 { left: calc(24 * var(--u)); font-size: calc(15 * var(--u)); display: flex; align-items: center; gap: calc(10 * var(--u)); }
+.info1 { top: calc(370 * var(--u)); } .info2 { top: calc(396 * var(--u)); }
+.info1r { right: calc(16 * var(--u)); top: calc(370 * var(--u)); font-size: calc(14 * var(--u)); color: var(--dim); }
+.row3 { height: calc(48 * var(--u)); background: var(--teal); display: flex; align-items: center; justify-content: center; gap: calc(8 * var(--u)); font-size: calc(17 * var(--u)); top: calc(428 * var(--u)); }
+.row3 .y { color: var(--yellow); }
+.ic { width: calc(var(--s, 14) * var(--u)); height: calc(var(--s, 14) * var(--u)); fill: currentColor; shape-rendering: crispEdges; flex: none; }
+.note { margin-top: 26px; background: var(--frame); padding: 16px 18px; max-width: 80ch; }
+.note h3 { margin: 0 0 8px; font: 600 16px 'Pixelify Sans', system-ui, sans-serif; color: var(--yellow); }
+.note ul { margin: 0; padding-left: 20px; } .note li { margin: 4px 0; }
+kbd { font: 600 13px 'Pixelify Sans', system-ui, sans-serif; color: var(--yellow); }
+</style>
+
+<div class="wrap">
+	<h1>Playing screen: Like and Add in the button grid</h1>
+	<p class="lead">−5s and +10s leave the grid (LEFT / RIGHT still seek). Their two slots take Like and Add to playlist, so the header's two squares go and the title gets the full width. Dashed outlines mark the two new buttons. Tap them to see their states.</p>
+
+	<div class="bar">
+		<span>Playing</span>
+		<div class="seg" id="kind"><button aria-pressed="true" data-v="song">Song</button><button aria-pressed="false" data-v="video">Video</button></div>
+		<span style="margin-left:12px">Handheld</span>
+		<div class="seg" id="model"><button aria-pressed="true" data-v="plus">RG DS Plus (has L3)</button><button aria-pressed="false" data-v="ds">RG DS</button></div>
+	</div>
+
+	<div class="grid">
+		<section class="opt">
+			<h2><b>A</b> · Play stays in the middle (recommended)</h2>
+			<p>Prev · Like · Play · Add · Next. Prev and Next stay at the edges, under the L and R shoulders they answer to, and A's Play stays centred.</p>
+			<div class="case"><div class="panel u" id="pA"></div></div>
+		</section>
+		<section class="opt">
+			<h2><b>B</b> · Transport together</h2>
+			<p>Prev · Play · Next · Like · Add. The three transport buttons sit side by side, but Play moves off centre and R's Next is no longer at the right edge.</p>
+			<div class="case"><div class="panel u" id="pB"></div></div>
+		</section>
+	</div>
+
+	<div class="note">
+		<h3>Details either way</h3>
+		<ul>
+			<li><b>Like</b>: outlined heart and "Like"; once liked, a filled yellow heart and "Liked". Its key label is <kbd>L3</kbd> on the RG DS Plus; the RG DS has no L3, so the label is left empty there (START › Playing still has Like).</li>
+			<li><b>Add</b>: "Add" with "Playlist" under it in the dim key colour (it has no button of its own, like Sound). It opens the same "Add to…" picker as now. After adding, a check shows on it for a moment.</li>
+			<li><b>Seeking</b>: LEFT −5 s and RIGHT +10 s keep working as before, and the bar can still be dragged. They'd go in the easy-to-read guide page you mentioned.</li>
+			<li><b>Header</b>: back to the title and clock only. Long titles get about 100 px more.</li>
+			<li>Photos are unchanged.</li>
+		</ul>
+	</div>
+</div>
+
+<script>
+const G = {
+	prev: ['#...#', '##.##', '#####', '##.##', '#...#'],
+	next: ['#...#', '##.##', '#####', '##.##', '#...#'].map(r => r.split('').reverse().join('')),
+	pause: ['##.##', '##.##', '##.##', '##.##', '##.##'],
+	play: ['#....', '###..', '#####', '###..', '#....'],
+	heartO: ['.##.##.', '#..#..#', '#.....#', '.#...#.', '..#.#..', '...#...'],
+	heart: ['.##.##.', '#######', '#######', '.#####.', '..###..', '...#...'],
+	add: ['#####...', '........', '#####...', '......#.', '###..###', '......#.'],
+	check: ['.......#', '......##', '#....##.', '##..##..', '.####...', '..##....'],
+	loop: ['.#####.', '#.....#', '#.....#', '.###.#.', '...##..'],
+	eq: ['#.#.#', '#.#.#', '###.#', '#.###', '#.#.#'],
+	art: ['#######', '#.....#', '#..#..#', '#.###.#', '#######'],
+	cc: ['#######', '#.....#', '#.##..#', '#.....#', '#######'],
+	speaker: ['..#', '.##', '###', '.##', '..#'],
+	note: ['..##', '..#.', '..#.', '###.', '##..'],
+	lock: ['.###.', '#...#', '#####', '##.##', '#####'],
+	info: ['.###.', '##.##', '#####', '##.##', '.###.'],
+	moon: ['.###', '##..', '#...', '##..', '.###'],
+	quit: ['..#..', '#.#.#', '#...#', '#...#', '.###.'],
+	card: ['####.', '#####', '#####', '#####', '#####'],
+	back: ['...#', '..#.', '.#..', '..#.', '...#'],
+};
+function ic(name, s) {
+	const g = G[name], w = g[0].length, h = g.length; let r = '';
+	g.forEach((row, y) => [...row].forEach((c, x) => { if (c === '#') r += `<rect x="${x}" y="${y}" width="1" height="1"/>`; }));
+	return `<svg class="ic" style="--s:${s || 14};width:calc(${(s || 14) * w / h} * var(--u))" viewBox="0 0 ${w} ${h}" aria-hidden="true">${r}</svg>`;
+}
+const st = { kind: 'song', model: 'plus', liked: false, added: false };
+const pos = (i, row) => `left:calc(${24 + i * 121} * var(--u));top:calc(${row ? 296 : 222} * var(--u))`;
+function btn(i, row, label, icon, key, extra = '', id = '') {
+	return `<button class="btn ${extra}" ${id ? `data-act="${id}"` : ''} style="${pos(i, row)}"><span class="l">${icon ? ic(icon, 15) : ''}${label}</span><span class="k ${key && key.dim ? 'dim' : ''}">${key ? (key.t || key) : ''}</span></button>`;
+}
+function draw(el, order) {
+	const song = st.kind === 'song';
+	const like = { label: st.liked ? 'Liked' : 'Like', icon: st.liked ? 'heart' : 'heartO', key: st.model === 'plus' ? 'L3' : '', cls: 'new' + (st.liked ? ' liked' : ''), act: 'like' };
+	const add = { label: 'Add', icon: st.added ? 'check' : 'add', key: { t: 'Playlist', dim: true }, cls: 'new', act: 'add' };
+	const T = { prev: { label: 'Prev', icon: 'prev', key: 'L', cls: 'off' }, play: { label: 'Pause', icon: 'pause', key: 'A' }, next: { label: 'Next', icon: 'next', key: 'R' }, like, add };
+	const row1 = order.map((k, i) => { const b = T[k]; return btn(i, 0, b.label, b.icon, b.key, b.cls || '', b.act || ''); }).join('');
+	const row2 = song
+		? btn(0, 1, 'Off', 'loop', 'X') + btn(1, 1, 'FX', 'eq', { t: 'Sound', dim: true }) + btn(2, 1, 'Both', 'art', 'SELECT') + btn(3, 1, '1x', '', 'UP/DOWN') + btn(4, 1, 'Menu', '', 'START')
+		: btn(0, 1, '', 'speaker', 'X') + btn(1, 1, '', 'cc', 'Y') + btn(2, 1, 'Fit', '', 'SELECT') + btn(3, 1, '1x', '', 'UP/DOWN') + btn(4, 1, 'Menu', '', 'START');
+	const title = song ? 'Sunny Peel — a very long title that now has the room' : 'Sintel (trailer)';
+	el.innerHTML = `
+		<div class="back" style="color:var(--cream)">${ic('back', 20)}</div>
+		<div class="title px" style="right:calc(84 * var(--u))">${title}</div>
+		<div class="clock px">22:34</div>
+		<div class="crumb px">${ic('card', 13)} wlib / ${song ? 'Music / <b>Yellow Album</b>' : '<b>Movies</b>'}</div>
+		<div class="src px">Local</div>
+		<div class="status px">${ic('play', 16)}Playing</div>
+		<div class="count px">${song ? '1 / 3' : '4 / 4'}</div>
+		<div class="track"></div><div class="fill"></div><div class="knob"></div>
+		<div class="t0 px">0:11</div><div class="tl px">0:48 left</div><div class="t1 px">1:00</div>
+		${row1}${row2}
+		<div class="info1 px" style="color:var(--dim-teal)">${ic('speaker', 13)}<span style="color:var(--cream)">${song ? 'Track 1 · MP3 Mono' : 'English · AAC Stereo'}</span></div>
+		${song ? `<div class="info1r px">${ic('eq', 12)} EQ off ›</div>` : ''}
+		<div class="info2 px" style="color:var(--dim-teal)">${ic(song ? 'note' : 'cc', 13)}<span style="color:var(--cream)">${song ? 'Banana Band · Yellow Album' : 'English · SRT'}</span></div>
+		<div class="row3 px" style="left:calc(24 * var(--u));width:calc(140 * var(--u))">${ic('lock', 14)}Lock</div>
+		<div class="row3 px" style="left:calc(172 * var(--u));width:calc(140 * var(--u))">${ic('info', 14)}Info</div>
+		<div class="row3 px" style="left:calc(320 * var(--u));width:calc(140 * var(--u))">${ic('moon', 14)}Screen off</div>
+		<div class="row3 px" style="left:calc(468 * var(--u));width:calc(148 * var(--u))">${ic('quit', 14)}${song ? 'Quit' : 'Close'} <span class="y">B×2</span></div>`;
+}
+function render() {
+	draw(document.getElementById('pA'), ['prev', 'like', 'play', 'add', 'next']);
+	draw(document.getElementById('pB'), ['prev', 'play', 'next', 'like', 'add']);
+}
+document.addEventListener('click', e => {
+	const b = e.target.closest('[data-act]');
+	if (b) {
+		if (b.dataset.act === 'like') st.liked = !st.liked;
+		if (b.dataset.act === 'add') { st.added = true; render(); setTimeout(() => { st.added = false; render(); }, 1200); return; }
+		render(); return;
+	}
+	const s = e.target.closest('.seg button');
+	if (s) {
+		const g = s.parentElement; [...g.children].forEach(x => x.setAttribute('aria-pressed', x === s));
+		st[g.id] = s.dataset.v; render();
+	}
+});
+render();
+</script>
+
+</body></html>

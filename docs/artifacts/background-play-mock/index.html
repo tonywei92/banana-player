@@ -1,0 +1,746 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Background Play Mock</title>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000;--surface:#121116;--btn:#26242E;--pressed:#3E3B4A;--y:#FFD23F;--cream:#E8E2D3;--dim:#8F8A80;--dimt:#ABA597;--red:#F0645A;--track:#1E1D24;--edge:#605D60;--edges:#52504F;--edgey:#F8D76B;--page:#2B2933}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--page:#2B2933}}
+:root[data-theme="dark"]{--page:#2B2933}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--cream);font-family:Inter,system-ui,sans-serif;font-size:14px}
+.wrap{display:flex;gap:20px;padding:16px;align-items:flex-start;flex-wrap:wrap}
+.device{background:#2B2933;padding:10px;border-radius:14px;flex:none}
+.scr{width:640px;height:480px;position:relative;overflow:hidden;background:#000;transform-origin:0 0}
+.scrbox{width:calc(640px*var(--k));height:calc(480px*var(--k));overflow:hidden;margin-bottom:10px}
+.scrbox:last-child{margin-bottom:0}
+.scrbox .scr{transform:scale(var(--k))}
+#bot{font-family:'Pixelify Sans',monospace;cursor:pointer;user-select:none}
+#bot *{position:absolute}
+#bot span,#bot u,#bot b{position:static}
+.box{background:var(--btn);border:2px solid var(--edge);border-radius:10px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.38)}
+.box.s{background:var(--surface);border-color:var(--edges)}
+.box.f{border-color:var(--y)}
+.box.t{border-radius:14px}
+.box.pr{background:var(--pressed)}
+.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1}
+.c{color:var(--cream)}.d{color:var(--dim)}.y{color:var(--y)}.r{color:var(--red)}.dt{color:var(--dimt)}
+.mid{transform:translateY(-50%)}
+.side{flex:1;min-width:320px;max-width:560px}
+.card{background:#121116;border:1px solid #3a3842;border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font-size:13px;color:var(--y);text-transform:uppercase;letter-spacing:.06em}
+.scenes button{font:inherit;font-size:13px;background:var(--btn);color:var(--cream);border:1px solid var(--edge);border-radius:8px;padding:6px 9px;margin:0 6px 6px 0;cursor:pointer}
+.scenes button:hover{border-color:var(--y)}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+kbd{font-family:'Pixelify Sans',monospace;background:var(--btn);border:1px solid var(--edge);border-radius:5px;padding:0 5px;color:var(--y)}
+.pad button{font-family:'Pixelify Sans',monospace;background:var(--btn);color:var(--y);border:1px solid var(--edge);border-radius:7px;padding:5px 8px;margin:0 4px 4px 0;cursor:pointer;min-width:38px}
+#log{font-size:12.5px;color:var(--dimt);min-height:3.2em}
+#why{font-size:13px;line-height:1.45}
+/* dashboard frame */
+.dash{background:#000;border-radius:16px;border:1px solid #3a3842;padding:10px;font-family:Inter,system-ui,sans-serif}
+.dash .top{font-size:12px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:8px}
+.dash .list{background:#121116;border-radius:10px;padding:8px 10px;color:var(--dim);font-size:12px;height:58px}
+.mini{display:flex;align-items:center;gap:10px;margin-top:10px;background:#121116;border:1px solid #52504F;border-radius:12px;padding:8px 10px;position:relative;overflow:hidden}
+.mini .art{width:38px;height:38px;border-radius:7px;background:#2b4b4c;flex:none}
+.mini .meta{flex:1;min-width:0}.mini .tt{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .m{font-size:12px;color:var(--dim)}
+.mini .pp{width:38px;height:38px;border-radius:50%;background:var(--y);color:#000;border:0;font-size:15px;cursor:pointer;flex:none}
+.mini .bar{position:absolute;left:0;bottom:0;height:2px;background:var(--y)}
+.mini.idle{justify-content:center;color:var(--dim);font-size:13px;height:56px}
+.strip{margin-top:8px;font-size:12px;background:#26242E;border-radius:8px;padding:6px 8px;display:none}
+</style></head>
+<body>
+<div class="wrap">
+	<div class="device" id="device">
+		<div class="scrbox"><canvas class="scr" id="top" width="640" height="480"></canvas></div>
+		<div class="scrbox"><div class="scr" id="bot"></div></div>
+	</div>
+	<div class="side">
+		<div class="card scenes"><h3>Scenes</h3><div id="scenes"></div><div id="why"></div></div>
+		<div class="card"><h3>Web dashboard (a phone)</h3>
+			<div class="dash"><div class="top"><span>Banana Player · Files</span><span id="dconn">● connected</span></div>
+			<div class="list">wlib / Music / Yellow Album<br>Sunny Peel.mp3 · Split Second.mp3 · Bunch.mp3</div>
+			<div id="dmini"></div><div class="strip" id="dstrip"></div></div>
+			<div style="font-size:12px;color:var(--dim);margin-top:6px">Its mini player follows the handheld's state live (SSE). Its play button acts where it plays: "On handheld" drives the handheld, "In this browser" the page.</div>
+		</div>
+		<div class="card"><h3>Keys</h3>
+			<div class="keys"><span><kbd>←↑→↓</kbd></span><span>D-pad</span><span><kbd>K</kbd> <kbd>Space</kbd></span><span>A (east, confirm)</span><span><kbd>J</kbd> <kbd>Esc</kbd> <kbd>Bksp</kbd></span><span>B (south, back)</span><span><kbd>I</kbd> / <kbd>U</kbd></span><span>X / Y</span><span><kbd>Q</kbd> / <kbd>E</kbd></span><span>L / R</span><span><kbd>S</kbd></span><span>SELECT (back to now playing)</span><span><kbd>Enter</kbd></span><span>START</span><span><kbd>L</kbd></span><span>L3 (Like)</span></div>
+			<div class="pad" style="margin-top:8px" id="pad"></div>
+			<div style="font-size:12px;color:var(--dim)">Click the bottom screen to touch it. Hold the mini bar (half a second) for its menu.</div>
+		</div>
+		<div class="card"><h3>What just happened</h3><div id="log"></div></div>
+	</div>
+</div>
+<script>
+'use strict';
+// ---------- library ----------
+const FS = {
+	'Files': ['Movies', 'Music', 'Photos'],
+	'Files/Movies': ['Big Banana Adventure.mkv', 'ch.mkv', 'Night Garden.mp4', 'Sintel (trailer).mkv'],
+	'Files/Music': ['Green Album', 'Yellow Album'],
+	'Files/Music/Yellow Album': ['Bunch.mp3', 'Split Second.mp3', 'Sunny Peel.mp3'],
+	'Files/Music/Green Album': ['Lime Light.mp3', 'Moss.mp3'],
+	'Files/Photos': ['Dragon.jpg', 'Dunes.jpg', 'Sunset.jpg'],
+	'Playlists': ['Liked', 'Road trip'],
+	'Playlists/Liked': ['Files/Music/Yellow Album/Sunny Peel.mp3'],
+	'Playlists/Road trip': ['Files/Music/Yellow Album/Sunny Peel.mp3', 'Files/Music/Green Album/Lime Light.mp3', 'Files/Music/Yellow Album/Bunch.mp3'],
+	'Network': ['nas'],
+	'Network/nas': ['Shows'],
+	'Network/nas/Shows': ['Episode 1.mkv', 'Episode 2.mkv'],
+	'Extensions': [],
+};
+const META = {
+	'Sunny Peel.mp3': {dur: 60, size: '2.3 MB', artist: 'Banana Band', art: '#2b4b4c'},
+	'Split Second.mp3': {dur: 134, size: '4.1 MB', artist: 'Banana Band', art: '#2b4b4c'},
+	'Bunch.mp3': {dur: 185, size: '5.6 MB', artist: 'Banana Band', art: '#2b4b4c'},
+	'Lime Light.mp3': {dur: 151, size: '4.8 MB', artist: 'Green Things', art: '#3d5a2a'},
+	'Moss.mp3': {dur: 203, size: '6.2 MB', artist: 'Green Things', art: '#3d5a2a'},
+	'Big Banana Adventure.mkv': {dur: 1260, size: '34.2 MB'}, 'ch.mkv': {dur: 300, size: '6.0 MB'},
+	'Night Garden.mp4': {dur: 192, size: '5.9 MB'}, 'Sintel (trailer).mkv': {dur: 52, size: '13.9 MB'},
+	'Episode 1.mkv': {dur: 1500, size: '410 MB'}, 'Episode 2.mkv': {dur: 1480, size: '402 MB'},
+	'Dragon.jpg': {size: '1.2 MB'}, 'Dunes.jpg': {size: '0.9 MB'}, 'Sunset.jpg': {size: '1.4 MB'},
+};
+const SECTIONS = ['Files', 'Playlists', 'Network', 'Extensions'];
+const base = p => p.split('/').pop();
+const parent = p => p.split('/').slice(0, -1).join('/');
+const kindOf = p => /\.(mp3|flac|ogg)$/.test(p) ? 'song' : /\.(mkv|mp4)$/.test(p) ? 'video' : /\.jpg$/.test(p) ? 'photo' : 'dir';
+const isDir = p => p in FS;
+const sectionOf = p => p.split('/')[0];
+const isPl = d => d.startsWith('Playlists/');
+const fmt = s => { s = Math.max(0, Math.floor(s)); const m = Math.floor(s / 60), x = s % 60; return m + ':' + String(x).padStart(2, '0'); };
+const title = p => base(p).replace(/\.[^.]+$/, '');
+// a folder's rows as paths ('..' first below a section's top); a playlist's rows are its items
+function rowsOf(dir) {
+	const kids = (FS[dir] || []).map(n => isPl(dir) ? n : dir + '/' + n);
+	const dirs = kids.filter(isDir), files = kids.filter(k => !isDir(k));
+	return (SECTIONS.includes(dir) ? [] : ['..']).concat(isPl(dir) ? kids : dirs.concat(files));
+}
+
+// ---------- state ----------
+let S;
+function fresh() {
+	return {
+		mode: 'browser',	// browser | player | photo
+		dir: 'HOME', cursor: 0, scroll: 0,
+		home: {zone: 'strip', card: 0, tile: 0},
+		last: {},	// each section's last folder
+		now: null,	// what plays on the handheld: {list, i, from, pos, paused, held, stopped}
+		page: null,	// what the dashboard page plays itself: {path, pos, paused}
+		menu: null, pop: null, photo: null, toast: null, quitAt: 0, speed: 1,
+		liked: new Set(['Files/Music/Yellow Album/Sunny Peel.mp3']),
+		history: ['Files/Movies/Sintel (trailer).mkv', 'Files/Movies/Night Garden.mp4', 'Files/Music/Green Album/Lime Light.mp3'],
+		resume: {'Files/Movies/Sintel (trailer).mkv': 27},
+	};
+}
+S = fresh();
+const cur = () => S.now && S.now.list[S.now.i];
+const curKind = () => cur() ? kindOf(cur()) : null;
+function log(t) { document.getElementById('log').innerHTML = t; }
+function toast(t, ms = 1600) { S.toast = {t, until: Date.now() + ms}; }
+
+// ---------- actions ----------
+function play(list, i, from, opts = {}) {
+	S.now = {list, i, from, pos: opts.pos ?? (S.resume[list[i]] || 0), paused: false, held: false, stopped: false};
+	S.history = [list[i]].concat(S.history.filter(h => h !== list[i]));
+	// the page's own copy keeps playing? No: the handheld playing aloud tells the page to pause (handheld-play), as today
+	if (S.page && !S.page.paused) { S.page.paused = true; dstrip('Your handheld is playing <b>' + title(list[i]) + '</b> <u>Continue here</u>'); }
+	S.mode = 'player';
+}
+function openFile(path, dir) {
+	const k = kindOf(path);
+	if (k === 'photo') return openPhoto(path, dir);
+	if (S.now && cur() === path && !S.now.stopped) { S.mode = 'player'; log('A on the file that plays: back to it, not from the start.'); return; }
+	let list, i;
+	if (isPl(dir)) { list = FS[dir].slice(); i = list.indexOf(path); }
+	else { list = rowsOf(dir).filter(r => r !== '..' && (kindOf(r) === 'song' || kindOf(r) === 'video')); i = list.indexOf(path); }
+	const was = cur();
+	play(list, i, dir);
+	log(was ? 'Another file opened: it replaces <b>' + title(was) + '</b> at once (its place saved), no confirmation.' : 'Playing <b>' + title(path) + '</b>.');
+}
+function openPhoto(path, dir) {
+	S.photo = {path, dir};
+	S.mode = 'photo';
+	if (S.now && !S.now.stopped) {
+		if (S.now.held) { S.now = null; log('A photo on the handheld releases its paused copy of the browser\'s file; the browser keeps playing.'); }
+		else { S.resume[cur()] = S.now.pos; S.now.stopped = true; S.now.paused = true; toast(title(cur()) + ' stopped · kept at ' + fmt(S.now.pos), 2400);
+			log('One mpv: a photo replaces the song. The song stops with its place kept; the mini bar offers it back after the photos.'); }
+	}
+}
+function toPlayer() {
+	if (!S.now) return;
+	if (S.now.stopped) { S.now.stopped = false; S.now.paused = false; log('The stopped song reopened where it was.'); }
+	else log('Back to now playing.');
+	S.mode = 'player'; S.menu = null; S.pop = null;
+}
+// the player left (B, "<"): it keeps playing; the browser opens on its folder, the file under the cursor
+function leavePlayer() {
+	S.mode = 'browser'; S.menu = null;
+	land();
+	log('Left the player: <b>' + title(cur()) + '</b> keeps ' + (S.now.held ? 'its place for the browser (which plays on)' : S.now.paused ? 'its place (paused)' : 'playing') + '. The list opens on its folder with it under the cursor, whatever folder you browsed last.');
+}
+function land() {
+	if (!S.now) return;
+	const dir = S.now.from, rows = rowsOf(dir);
+	S.dir = dir; S.last[sectionOf(dir)] = dir;
+	S.cursor = Math.max(0, rows.indexOf(cur()));
+	keepInView(rows.length);
+	flashUntil = Date.now() + 900;
+}
+function stop(from) {
+	if (!S.now) return;
+	const was = cur(), held = S.now.held;
+	S.resume[was] = S.now.pos;
+	const go = S.mode === 'player';
+	S.now = null; S.menu = null; S.pop = null;
+	if (go) { S.mode = 'browser'; S.dir = parent(was); S.cursor = Math.max(0, rowsOf(S.dir).indexOf(was)); keepInView(rowsOf(S.dir).length); }
+	toast('Stopped · ' + title(was), 1400);
+	log('Stopped (' + from + '). Place saved for Recent. ' + (held ? 'The handheld only let go of its paused copy: the <b>browser plays on</b>, untouched.' : 'The dashboard shows "Nothing playing".'));
+}
+function step(d) {
+	const n = S.now; if (!n) return;
+	if (n.i + d < 0 || n.i + d >= n.list.length) return;
+	n.i += d; n.pos = 0; n.paused = false;
+	S.history = [cur()].concat(S.history.filter(h => h !== cur()));
+}
+function togglePause() {
+	const n = S.now; if (!n) return;
+	if (n.held && S.page) { S.page.paused = !S.page.paused; log('Handheld A over the browser\'s file: the <b>page</b> ' + (S.page.paused ? 'pauses' : 'plays') + ' (hold A to take it over here).'); return; }
+	if (n.stopped) { n.stopped = false; n.paused = false; log('Resumed in the background.'); return; }
+	n.paused = !n.paused;
+}
+function like() {
+	const p = cur(); if (!p) return;
+	if (S.liked.has(p)) { S.liked.delete(p); toast('Unliked'); } else { S.liked.add(p); toast('Liked ♥'); }
+}
+function keepInView(n) {
+	if (S.cursor < S.scroll) S.scroll = S.cursor;
+	if (S.cursor >= S.scroll + 7) S.scroll = S.cursor - 6;
+	S.scroll = Math.max(0, Math.min(S.scroll, Math.max(0, n - 7)));
+}
+function openSection(name) {
+	const d = S.last[name] || name;
+	S.dir = d; S.cursor = rowsOf(d).length && !SECTIONS.includes(d) ? 1 : 0; S.scroll = 0;
+}
+function up() {
+	if (S.dir === 'HOME') return;
+	if (SECTIONS.includes(S.dir)) { S.home.zone = 'grid'; S.home.tile = SECTIONS.indexOf(S.dir); S.dir = 'HOME'; return; }
+	const from = S.dir, p = isPl(from) ? 'Playlists' : parent(from);
+	S.dir = p; S.last[sectionOf(p)] = p;
+	S.cursor = Math.max(0, rowsOf(p).indexOf(from)); keepInView(rowsOf(p).length);
+}
+
+// ---------- keys ----------
+function press(b) {
+	if (Date.now() - S.quitAt > 1500) S.quitAt = S.quitAt && b !== 'B' ? 0 : S.quitAt;
+	if (b === 'L3' && S.mode !== 'photo') { like(); return render(); }
+	if (S.pop) return popKey(b), render();
+	if (S.menu) return menuKey(b), render();
+	if (S.mode === 'player') playerKey(b);
+	else if (S.mode === 'photo') photoKey(b);
+	else if (S.dir === 'HOME') homeKey(b);
+	else listKey(b);
+	render();
+}
+function playerKey(b) {
+	switch (b) {
+		case 'A': togglePause(); break;
+		case 'B': leavePlayer(); break;
+		case 'L': step(-1); break;
+		case 'R': step(1); break;
+		case 'Left': S.now.pos = Math.max(0, S.now.pos - 5); break;
+		case 'Right': S.now.pos += 10; break;
+		case 'Up': S.speed = Math.min(2.5, S.speed + .5); break;
+		case 'Down': S.speed = Math.max(.5, S.speed - .5); break;
+		case 'Start': S.menu = {tab: 0, cur: 0}; break;
+		case 'X': toast(curKind() === 'song' ? 'Loop all' : 'Audio & subtitles'); break;
+		case 'Y': toast('Chapters'); break;
+		case 'Select': toast(curKind() === 'song' ? 'Display' : 'Fill'); break;
+	}
+}
+function photoKey(b) {
+	const list = rowsOf(S.photo.dir).filter(r => kindOf(r) === 'photo'), i = list.indexOf(S.photo.path);
+	if (b === 'B') { S.mode = 'browser'; S.dir = S.photo.dir; S.cursor = rowsOf(S.dir).indexOf(S.photo.path); keepInView(rowsOf(S.dir).length); S.photo = null;
+		log('A photo closes on B (one press: nothing to lose), back on it in its folder. The stopped song waits in the mini bar.'); }
+	else if ((b === 'Right' || b === 'R') && i < list.length - 1) S.photo.path = list[i + 1];
+	else if ((b === 'Left' || b === 'L') && i > 0) S.photo.path = list[i - 1];
+	else if (b === 'Start') toast('Menu');
+}
+function listKey(b) {
+	const rows = rowsOf(S.dir);
+	switch (b) {
+		case 'Up': if (S.cursor > 0) S.cursor--; break;
+		case 'Down': if (S.cursor < rows.length - 1) S.cursor++; break;
+		case 'Left': S.cursor = Math.max(0, S.cursor - 7); break;
+		case 'Right': S.cursor = Math.min(rows.length - 1, S.cursor + 7); break;
+		case 'A': {
+			const r = rows[S.cursor]; if (!r) break;
+			if (r === '..') { up(); break; }
+			if (isDir(r)) { S.dir = r; S.last[sectionOf(r)] = r; S.cursor = rowsOf(r)[0] === '..' && rowsOf(r).length > 1 ? 1 : 0; S.scroll = 0; break; }
+			openFile(r, S.dir); break;
+		}
+		case 'B': up(); break;
+		case 'L': case 'R': { const i = SECTIONS.indexOf(sectionOf(S.dir)); openSection(SECTIONS[(i + (b === 'R' ? 1 : 3)) % 4]); break; }
+		case 'Select': if (S.now) toPlayer(); else toast('Nothing playing'); break;
+		case 'Start': S.menu = {tab: 0, cur: 0}; break;
+		case 'X': toast('Options: Refresh, Select files… (unchanged)'); break;
+		case 'Y': toast('Add to playlist… (unchanged)'); break;
+	}
+	keepInView(rows.length);
+}
+function homeCards() { return S.history.slice(0, 6); }
+function homeKey(b) {
+	const h = S.home, cards = homeCards();
+	switch (b) {
+		case 'Up': h.zone = 'strip'; break;
+		case 'Down': h.zone = 'grid'; break;
+		case 'Left': if (h.zone === 'strip') h.card = Math.max(0, h.card - 1); else if (h.tile % 2) h.tile--; break;
+		case 'Right': if (h.zone === 'strip') h.card = Math.min(cards.length, h.card + 1); else if (!(h.tile % 2)) h.tile++; break;
+		case 'A':
+			if (h.zone === 'grid') { openSection(SECTIONS[h.tile]); break; }
+			if (h.card >= cards.length) { toast('All recent'); break; }
+			{ const p = cards[h.card]; if (S.now && cur() === p) { toPlayer(); break; } openFile(p, parent(p)); }
+			break;
+		case 'B':
+			if (S.now) { toPlayer(); log('B at Home with something playing: back to it (quitting is F + START or quick settings).'); break; }
+			if (S.quitAt && Date.now() - S.quitAt < 1500) { toast('(would quit)'); S.quitAt = 0; break; }
+			S.quitAt = Date.now(); toast('Press B again to quit'); break;
+		case 'Select': if (S.now) toPlayer(); break;
+		case 'Start': S.menu = {tab: 0, cur: 0}; break;
+		case 'L': openSection('Extensions'); break;
+		case 'R': openSection('Files'); break;
+		case 'Y': toast('Card menu (unchanged)'); break;
+		case 'X': toast('Clear Recent, Show hidden folders, Settings'); break;
+	}
+}
+function menuTabs() { return (S.now ? ['Playing'] : []).concat(['Settings', 'About']); }
+function menuRows() {
+	if (menuTabs()[S.menu.tab] !== 'Playing') return [];
+	const p = cur(), r = [];
+	if (S.mode !== 'player') r.push(['now', S.now.stopped ? 'Resume ' + title(p) : 'Now playing', 'y']);
+	r.push(['like', S.liked.has(p) ? 'Liked ♥' : 'Like', 'c'], ['add', 'Add to playlist…', 'c'], ['show', 'Show in folder', 'c'], ['info', 'Info', 'c'], ['stop', 'Stop', 'r']);
+	return r;
+}
+function menuKey(b) {
+	const tabs = menuTabs(), rows = menuRows();
+	if (b === 'B' || b === 'Start') { S.menu = null; return; }
+	if (b === 'L') S.menu.tab = (S.menu.tab + tabs.length - 1) % tabs.length, S.menu.cur = 0;
+	if (b === 'R') S.menu.tab = (S.menu.tab + 1) % tabs.length, S.menu.cur = 0;
+	if (b === 'Up') S.menu.cur = Math.max(0, S.menu.cur - 1);
+	if (b === 'Down') S.menu.cur = Math.min(rows.length - 1, S.menu.cur + 1);
+	if (b === 'A' && rows[S.menu.cur]) menuAct(rows[S.menu.cur][0]);
+}
+function menuAct(id) {
+	S.menu = null; S.pop = null;
+	if (id === 'now') toPlayer();
+	else if (id === 'like') like();
+	else if (id === 'stop') stop(S.mode === 'player' ? 'the menu, on the player' : 'the menu, while browsing');
+	else if (id === 'show') { S.mode = 'browser'; land(); }
+	else if (id === 'pp') togglePause();
+	else toast(id === 'add' ? 'Add to playlist…' : 'Info');
+}
+function popRows() { return [['now', 'Now playing', 'y'], ['pp', S.now.paused || S.now.stopped ? 'Play' : 'Pause', 'c'], ['like', S.liked.has(cur()) ? 'Liked ♥' : 'Like', 'c'], ['add', 'Add to playlist…', 'c'], ['show', 'Show in folder', 'c'], ['stop', 'Stop', 'r']]; }
+function popKey(b) {
+	const rows = popRows();
+	if (b === 'B') S.pop = null;
+	if (b === 'Up') S.pop.cur = Math.max(0, S.pop.cur - 1);
+	if (b === 'Down') S.pop.cur = Math.min(rows.length - 1, S.pop.cur + 1);
+	if (b === 'A') menuAct(rows[S.pop.cur][0]);
+}
+
+// ---------- drawing (bottom) ----------
+let flashUntil = 0;
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const el = (x, y, w, h, cls, inner = '', extra = '') => `<div class="${cls}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;${extra}">${inner}</div>`;
+const txt = (x, y, s, size, cls, w = 560, extra = '') => `<div class="t mid ${cls}" style="left:${x}px;top:${y}px;font-size:${size}px;max-width:${w}px;${extra}">${s}</div>`;
+const hit = (x, y, w, h, act) => `<div data-act="${act}" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;z-index:5"></div>`;
+const clock = '21:59';
+function status(x0 = 615) {
+	// the right end of every header: a playing mark (animated while it plays), the battery, the clock
+	let s = txt(x0 - 42, 32, clock, 17, 'c');
+	if (S.now && S.mode !== 'player' && !S.now.stopped) {
+		const on = !(S.now.held ? S.page && S.page.paused : S.now.paused);
+		const t = Date.now() / 160;
+		for (let i = 0; i < 3; i++) {
+			const h = on ? 5 + Math.abs(Math.sin(t + i * 1.7)) * 11 : 5;
+			s += el(x0 - 70 + i * 7, 40 - h, 4, h, '', '', `background:${on ? '#FFD23F' : '#8F8A80'};border-radius:1px`);
+		}
+	}
+	return s;
+}
+function header(t, opt = {}) {
+	let s = el(8, 8, 48, 48, 'box', `<div class="c" style="left:13px;top:6px;font-size:28px">‹</div>`) + hit(8, 8, 48, 48, 'back');
+	s += txt(72, 33, esc(t), 27, 'c', opt.markers ? 240 : 420);
+	if (opt.markers) {
+		const at = SECTIONS.indexOf(sectionOf(S.dir));
+		s += txt(331, 33, 'L', 14, 'y');
+		const g = ['▤', '≣', '⌂', '▦'];
+		for (let i = 0; i < 4; i++) {
+			s += el(345 + i * 40, 15, 36, 36, 'box' + (i === at ? ' f' : ''), `<div style="left:0;top:7px;width:32px;text-align:center;font-size:16px" class="${i === at ? 'y' : 'c'}">${g[i]}</div>`, i === at ? 'background:#FFD23F33' : '');
+			s += hit(345 + i * 40, 15, 36, 36, 'sec:' + i);
+		}
+		s += txt(508, 33, 'R', 14, 'y');
+	}
+	return s + status();
+}
+function hints(list, y = 458) {
+	const inner = list.map(([k, v]) => `<span class="y">${k}</span>&nbsp;<span class="d">${v}</span>`).join('&nbsp;&nbsp;&nbsp;&nbsp;');
+	return `<div class="t" style="left:0;top:${y - 9}px;width:640px;text-align:center;font-size:15px">${inner}</div>`;
+}
+// the mini bar: between the list's last row (420) and the hints (moved to 468)
+function minibar() {
+	const n = S.now; if (!n) return '';
+	const p = cur(), k = kindOf(p), m = META[base(p)] || {};
+	const flash = Date.now() < flashUntil;
+	let s = el(16, 422, 608, 34, 'box s' + (flash ? ' f' : ''), '', 'border-radius:10px;overflow:hidden') ;
+	// the page's own position when the browser plays it
+	const pos = n.held && S.page ? S.page.pos : n.pos, dur = m.dur || 1;
+	s += el(20, 449, Math.max(4, 600 * Math.min(1, pos / dur)), 3, '', '', 'background:' + (n.stopped ? '#8F8A80' : '#FFD23F') + ';border-radius:2px');
+	// play/pause: its own tap zone
+	const playingNow = n.held ? S.page && !S.page.paused : !n.paused && !n.stopped;
+	s += el(20, 425, 36, 28, '', `<div class="y" style="left:0;top:3px;width:36px;text-align:center;font-size:17px">${playingNow ? '❚❚' : '▶'}</div>`);
+	s += el(58, 428, 2, 22, '', '', 'background:#52504F');
+	const kg = k === 'song' ? '♪' : '▦';
+	s += txt(70, 439, kg, 15, 'dt');
+	let sub;
+	if (n.held) sub = '<span class="y">◍ ' + (S.page && !S.page.paused ? 'Playing' : 'Paused') + ' in your browser</span>';
+	else if (n.stopped) sub = 'stopped at ' + fmt(n.pos);
+	else sub = fmt(n.pos) + ' / ' + fmt(dur) + (n.paused ? ' · paused' : '');
+	s += txt(90, 439, `<span class="c">${esc(title(p))}</span><span class="d" style="font-size:14px">&nbsp;&nbsp;${sub}</span>`, 17, '', 380);
+	s += txt(470, 439, '<span class="y">SELECT</span> <span class="d">Now playing</span>', 14, '');
+	s += txt(612, 439, '›', 18, 'd');
+	s += hit(16, 422, 44, 34, 'mini-pp') + hit(60, 422, 564, 34, 'mini');
+	s = s.replace("style=\"left:470px", "style=\"left:470px");
+	return s;
+}
+function toastHtml() {
+	if (!S.toast || Date.now() > S.toast.until) return '';
+	const y = S.now && S.mode === 'browser' ? 392 : S.mode === 'player' ? 210 : 420;
+	return `<div class="t" style="left:50%;transform:translateX(-50%);top:${y - 16}px;padding:8px 14px;background:#26242E;border:2px solid #605D60;border-radius:10px;font-size:15px;z-index:9;color:#E8E2D3">${esc(S.toast.t)}</div>`;
+}
+function drawList() {
+	const rows = rowsOf(S.dir);
+	const top = SECTIONS.includes(S.dir);
+	let s = header(top ? S.dir : S.dir === 'Playlists' ? 'Playlists' : sectionOf(S.dir), {markers: true});
+	const where = isPl(S.dir) ? '≣ ' + base(S.dir) : S.dir.split('/').slice(1).map((x, i, a) => i === a.length - 1 ? `<span class="c">${esc(x)}</span>` : esc(x)).join(' <span class="d">/</span> ');
+	s += txt(16, 70, sectionOf(S.dir) === 'Network' ? '<span class="d">' + esc(S.dir.split('/').slice(1).join(' / ') || 'Your servers') + '</span>' : (where ? '<span class="d">wlib / </span>' + where : '<span class="d">Your cards</span>'), 15, 'd');
+	if (!rows.length) s += txt(320, 250, 'Coming in a later version', 17, 'd', 600, 'text-align:center;transform:translate(-50%,-50%)');
+	const playing = cur();
+	for (let r = 0; r < 7 && S.scroll + r < rows.length; r++) {
+		const i = S.scroll + r, row = rows[i], y = 84 + r * 48, f = i === S.cursor;
+		const isNow = S.now && row === playing && (S.dir === S.now.from || !isPl(S.dir));
+		if (f) s += el(16, y + 2, 608, 44, 'box f', '', Date.now() < flashUntil && isNow ? 'background:#3E3B4A' : '');
+		const ink = f ? 'y' : 'c';
+		if (row === '..') { s += txt(52, y + 24, '⌃', 18, 'd') + txt(86, y + 24, '..', 20, ink); }
+		else {
+			const k = isDir(row) ? (row.startsWith('Playlists/') ? '≣' : '▰') : kindOf(row) === 'song' ? '♪' : kindOf(row) === 'video' ? '▦' : '▣';
+			s += txt(50, y + 24, row === 'Playlists/Liked' ? '♥' : k, 17, f ? 'y' : 'c');
+			const nm = isPl(S.dir) && !isDir(row) ? title(row) : base(row);
+			s += txt(86, y + 24, esc(nm), 20, ink, isNow ? 330 : 420);
+			const m = META[base(row)];
+			let right = m ? m.size : isDir(row) ? (FS[row] || []).length + ' items' : '';
+			if (S.resume[row] && !isNow) right = 'at ' + fmt(S.resume[row]) + ' · ' + right;
+			s += `<div class="t mid d" style="right:24px;top:${y + 24}px;font-size:15px">${right}</div>`;
+			if (isNow) {
+				// the file that plays: a lit mark in its row, as the dashboard's lists do
+				const on = !S.now.paused && !S.now.stopped;
+				s += `<div class="t mid" style="right:${right ? 36 + right.length * 8.6 : 24}px;top:${y + 24}px;font-size:13px;padding:3px 7px;border-radius:6px;background:${S.now.stopped ? '#26242E' : '#FFD23F'};color:${S.now.stopped ? '#8F8A80' : '#000'};line-height:1">${S.now.held ? '◍ In browser' : S.now.stopped ? 'Stopped' : on ? '▶ Playing' : '❚❚ Paused'}</div>`;
+			}
+		}
+		s += hit(16, y + 2, 608, 44, 'row:' + i);
+	}
+	s += minibar();
+	const h = isPl(S.dir) ? [['A', 'Play'], ['B', 'Back'], ['X', 'Options'], ['Y', 'Item'], ['L/R', 'Sections']] : [['A', rows[S.cursor] && isDir(rows[S.cursor]) ? 'Open' : 'Play'], ['B', 'Back'], ['X', 'Options'], ['L/R', 'Sections']];
+	s += hints(h, S.now ? 468 : 458);
+	return s;
+}
+function drawHome() {
+	let s = header('Banana Player');
+	const cards = homeCards(), h = S.home;
+	s += txt(16, 70, 'Recent', 15, 'd');
+	const off = Math.max(0, h.card - 1) * 250;
+	for (let i = 0; i <= cards.length; i++) {
+		const x = 16 + i * 250 - off; if (x > 640 || x < -250) continue;
+		const at = h.zone === 'strip' && h.card === i;
+		if (i === cards.length) {
+			s += el(x, 84, 240, 104, 'box t' + (at ? ' f' : ' s'), `<div class="${at ? 'y' : 'd'}" style="left:0;top:16px;width:236px;text-align:center;font-size:28px">◷</div><div class="${at ? 'y' : 'c'}" style="left:0;top:56px;width:236px;text-align:center;font-size:19px">All recent</div><div class="d" style="left:0;top:80px;width:236px;text-align:center;font-size:14px">${cards.length + 7} played</div>`);
+			s += hit(x, 84, 240, 104, 'card:' + i); continue;
+		}
+		const p = cards[i], isNow = S.now && cur() === p, m = META[base(p)] || {};
+		const pos = isNow ? S.now.pos : S.resume[p];
+		const sub = isNow ? fmt(pos) + ' / ' + fmt(m.dur) : pos ? fmt(pos) + ' / ' + fmt(m.dur) : 'Played · ' + fmt(m.dur);
+		let inner = `<div class="t ${at ? 'y' : 'c'}" style="left:12px;top:22px;font-size:19px;max-width:${isNow ? 130 : 210}px">${esc(title(p))}</div>`;
+		inner += `<div class="${at ? 'y' : 'dt'}" style="left:14px;top:66px;font-size:15px">${kindOf(p) === 'song' ? '♪' : '▦'}</div><div class="t d" style="left:36px;top:68px;font-size:14px">${sub}</div>`;
+		if (S.liked.has(p)) inner += `<div class="y" style="right:12px;top:66px;font-size:14px">♥</div>`;
+		if (isNow) inner += `<div style="right:8px;top:8px;padding:4px 7px;border-radius:6px;background:${S.now.stopped ? '#26242E' : '#FFD23F'};color:${S.now.stopped ? '#8F8A80' : '#000'};font-size:13px;line-height:1">${S.now.held ? '◍ Browser' : S.now.stopped ? 'Stopped' : S.now.paused ? '❚❚ Paused' : '▶ Now'}</div>`;
+		if (pos) inner += `<div style="left:0;bottom:0;height:4px;width:${Math.min(236, 236 * pos / m.dur)}px;background:#FFD23F"></div>`;
+		s += el(x, 84, 240, 104, 'box t' + (at ? ' f' : ' s'), inner, 'overflow:hidden' + (isNow && !at ? ';border-color:#8a7a3a' : ''));
+		s += hit(x, 84, 240, 104, 'card:' + i);
+	}
+	const T = [['Files', '▰', 'Videos, This card'], ['Playlists', '≣', 'Liked and 1 more'], ['Network', '⌂', '1 server'], ['Extensions', '▦', 'Coming later']];
+	for (let i = 0; i < 4; i++) {
+		const x = 16 + (i % 2) * 312, y = 204 + Math.floor(i / 2) * 106, at = h.zone === 'grid' && h.tile === i;
+		s += el(x, y, 296, 96, 'box t' + (at ? ' f' : ' s'), `<div class="${at ? 'y' : 'c'}" style="left:16px;top:18px;font-size:24px">${T[i][1]}</div><div class="${at ? 'y' : 'c'}" style="left:54px;top:20px;font-size:21px">${T[i][0]}</div><div class="d" style="left:18px;top:58px;font-size:14px">${T[i][2]}</div>`);
+		s += hit(x, y, 296, 96, 'tile:' + i);
+	}
+	s += minibar();
+	s += hints(h.zone === 'strip' ? [['A', 'Play'], ['Y', 'Menu'], ['X', 'Options'], ['START', 'Menu']] : [['A', 'Open'], ['X', 'Options'], ['L/R', 'Sections'], ['START', 'Menu']], S.now ? 468 : 458);
+	return s;
+}
+function btn(x, y, w, h, label, key, act, opt = {}) {
+	return el(x, y, w, h, 'box' + (opt.lit ? ' f' : ''), `<div class="t ${opt.dis ? 'd' : opt.red ? 'r' : 'c'}" style="left:0;top:${key ? 10 : 11}px;width:${w - 4}px;text-align:center;font-size:19px">${label}</div>` + (key ? `<div class="t ${opt.dis ? 'd' : 'y'}" style="left:0;top:36px;width:${w - 4}px;text-align:center;font-size:12px">${key}</div>` : '')) + hit(x, y, w, h, act);
+}
+function drawPlayer() {
+	const n = S.now, p = cur(), k = kindOf(p), m = META[base(p)] || {};
+	let s = header(title(p));
+	const where = isPl(n.from) ? '≣ ' + base(n.from) : 'wlib / ' + n.from.split('/').slice(1).join(' / ');
+	s += txt(26, 70, (isPl(n.from) ? '' : '▤ ') + esc(where), 15, 'd') + `<div class="t mid d" style="right:24px;top:70px;font-size:15px">${sectionOf(p) === 'Network' ? 'nas' : 'Local'}</div>`;
+	const pageOn = n.held && S.page && !S.page.paused;
+	const st = n.held ? (pageOn ? 'Playing in your browser' : 'Paused in your browser') : n.paused ? 'Paused' : 'Playing';
+	s += txt(24, 100, (n.paused && !pageOn ? '❚❚' : '▶') + '&nbsp;&nbsp;' + st, 20, 'y');
+	s += `<div class="t mid d" style="right:24px;top:100px;font-size:15px">${n.i + 1} / ${n.list.length}</div>`;
+	const pos = n.held && S.page ? S.page.pos : n.pos, f = Math.min(1, pos / (m.dur || 1));
+	s += el(24, 150, 592, 24, '', '', 'background:#1E1D24;border-radius:6px') + el(24, 150, Math.max(10, 592 * f), 24, '', '', 'background:#FFD23F;border-radius:6px 0 0 6px') + el(18 + 592 * f, 147, 8, 30, '', '', 'background:#E8E2D3;border-radius:2px');
+	s += txt(24, 197, fmt(pos), 17, 'c') + txt(270, 197, fmt((m.dur - pos) / S.speed) + ' left', 14, 'd') + `<div class="t mid c" style="right:24px;top:197px;font-size:17px">${fmt(m.dur)}</div>`;
+	const X = i => 24 + i * 121;
+	const liked = S.liked.has(p);
+	s += btn(X(0), 228, 108, 60, '⏮ Prev', 'L', 'k:L', {dis: n.i === 0});
+	s += btn(X(1), 228, 108, 60, (liked ? '♥' : '♡') + ' Like', 'L3', 'k:L3');
+	s += btn(X(2), 228, 108, 60, (n.paused && !pageOn ? '▶ Play' : '❚❚ Pause'), 'A', 'k:A');
+	s += btn(X(3), 228, 108, 60, '≡+ Add', 'Playlist', 'add');
+	s += btn(X(4), 228, 108, 60, '⏭ Next', 'R', 'k:R', {dis: n.i === n.list.length - 1});
+	if (k === 'song') {
+		s += btn(X(0), 300, 108, 60, '⟲ Off', 'X', 'k:X') + btn(X(1), 300, 108, 60, '⫶ FX', 'Sound', 'fx') + btn(X(2), 300, 108, 60, '☼ Both', 'SELECT', 'k:Select');
+		s += txt(26, 378, '◖ Track 1 · MP3 Stereo', 15, 'c') + txt(26, 403, '♪ ' + esc(m.artist || '') + ' · Yellow Album', 15, 'c');
+	} else {
+		s += btn(X(0), 300, 108, 60, '◖ ▭', 'X', 'k:X') + btn(X(1), 300, 108, 60, '☰ 3/4', 'Y', 'k:Y') + btn(X(2), 300, 108, 60, 'Fit', 'SELECT', 'k:Select');
+		s += txt(26, 378, '◖ English · AAC Stereo', 15, 'c') + txt(26, 403, '▭ English · SRT', 15, 'c');
+	}
+	s += btn(X(3), 300, 108, 60, S.speed + 'x', 'UP/DOWN', 'k:Up', {lit: S.speed !== 1}) + btn(X(4), 300, 108, 60, 'Menu', 'START', 'k:Start');
+	// the bottom row: Close (B×2) becomes Stop, one tap (B only leaves now)
+	s += btn(24, 428, 140, 42, '🔒︎ Lock', '', 'lock') + btn(172, 428, 140, 42, 'ⓘ Info', '', 'info') + btn(320, 428, 140, 42, '☾ Screen off', '', 'soff');
+	s += btn(468, 428, 148, 42, '■ Stop', '', 'stop', {red: true});
+	return s;
+}
+function drawPhoto() {
+	let s = header(base(S.photo.path));
+	s += txt(16, 70, '<span class="d">wlib / </span><span class="c">Photos</span>', 15, '');
+	const list = rowsOf(S.photo.dir).filter(r => kindOf(r) === 'photo');
+	s += `<div class="t mid d" style="right:24px;top:70px;font-size:15px">${list.indexOf(S.photo.path) + 1} / ${list.length}</div>`;
+	s += el(152, 92, 336, 252, 'box s', `<div class="d" style="left:0;top:110px;width:332px;text-align:center;font-size:15px">pan area · drag, pinch</div>`, 'border-radius:14px');
+	const L = [['◀', 'L'], ['▶', 'R'], ['−', 'DOWN'], ['+', 'UP'], ['⟳', 'L3'], ['Fit', 'SELECT'], ['', ''], ['Menu', 'START']];
+	for (let i = 0; i < 8; i++) if (L[i][0]) s += btn(24 + i * 75, 360, 68, 52, L[i][0], L[i][1], 'k:' + (['L', 'R', 'Down', 'Up', 'L3', 'Select', '', 'Start'][i]));
+	if (S.now && S.now.stopped) s += txt(320, 440, '♪ ' + esc(title(cur())) + ' stopped at ' + fmt(S.now.pos) + ' · it waits in the list', 14, 'd', 600, 'transform:translate(-50%,-50%);text-align:center');
+	s += hints([['B', 'Close'], ['A', 'Zoom']], 466);
+	return s;
+}
+function drawMenu() {
+	const tabs = menuTabs();
+	let s = el(0, 0, 640, 480, '', '', 'background:#000');
+	s += el(8, 8, 48, 48, 'box', `<div class="c" style="left:13px;top:6px;font-size:28px">‹</div>`) + hit(8, 8, 48, 48, 'back');
+	tabs.forEach((t, i) => { const at = i === S.menu.tab; s += el(72 + i * 150, 12, 140, 40, 'box' + (at ? ' f' : ''), `<div class="${at ? '' : 'c'}" style="left:0;top:10px;width:136px;text-align:center;font-size:18px;${at ? 'color:#000' : ''}">${t}</div>`, at ? 'background:#FFD23F' : '') + hit(72 + i * 150, 12, 140, 40, 'tab:' + i); });
+	s += status();
+	if (tabs[S.menu.tab] === 'Playing') {
+		s += txt(24, 76, '<span class="d">' + (curKind() === 'song' ? '♪' : '▦') + '&nbsp;</span><span class="c">' + esc(title(cur())) + '</span>', 17, '');
+		menuRows().forEach((r, i) => { const y = 96 + i * 48, f = i === S.menu.cur;
+			if (f) s += el(16, y + 2, 608, 44, 'box f');
+			s += txt(40, y + 24, r[1], 20, f ? 'y' : r[2]);
+			if (r[0] === 'now') s += `<div class="t mid d" style="right:30px;top:${y + 24}px;font-size:14px">also SELECT, from any list</div>`;
+			if (r[0] === 'stop') s += `<div class="t mid d" style="right:30px;top:${y + 24}px;font-size:14px">place kept in Recent</div>`;
+			s += hit(16, y + 2, 608, 44, 'mrow:' + i); });
+	} else s += txt(320, 240, '(' + tabs[S.menu.tab] + ', unchanged)', 17, 'd', 600, 'transform:translate(-50%,-50%)');
+	s += hints([['A', 'Choose'], ['B', 'Close'], ['L/R', 'Tabs']]);
+	return s;
+}
+function drawPop() {
+	const rows = popRows();
+	let s = el(0, 0, 640, 480, '', '', 'background:rgba(0,0,0,.67);z-index:6');
+	const h = 60 + rows.length * 44;
+	s += el(150, 240 - h / 2, 340, h, 'box s', '', 'border-radius:18px;z-index:7');
+	s += txt(170, 240 - h / 2 + 28, '<span class="c">' + esc(title(cur())) + '</span>', 18, '', 300, 'z-index:8');
+	rows.forEach((r, i) => { const y = 240 - h / 2 + 48 + i * 44, f = i === S.pop.cur;
+		if (f) s += el(162, y, 316, 40, 'box f', '', 'z-index:8');
+		s += txt(182, y + 20, r[1], 18, f ? 'y' : r[2], 280, 'z-index:9');
+		s += hit(162, y, 316, 40, 'prow:' + i).replace('z-index:5', 'z-index:10'); });
+	return s;
+}
+function render() {
+	let s;
+	if (S.menu) s = drawMenu();
+	else if (S.mode === 'player') s = drawPlayer();
+	else if (S.mode === 'photo') s = drawPhoto();
+	else s = S.dir === 'HOME' ? drawHome() : drawList();
+	if (S.pop) s += drawPop();
+	s += toastHtml();
+	document.getElementById('bot').innerHTML = s;
+	drawDash();
+}
+
+// ---------- touch ----------
+const bot = document.getElementById('bot');
+let holdT = 0, held = false;
+function actAt(e) {
+	const t = e.target.closest('[data-act]'); return t ? t.dataset.act : null;
+}
+bot.addEventListener('pointerdown', e => {
+	held = false; const a = actAt(e);
+	if (a === 'mini' || a === 'mini-pp') holdT = setTimeout(() => { held = true; S.pop = {cur: 0}; render(); log('Held the mini bar: its menu (Now playing, Play/Pause, Like, Add to playlist…, Show in folder, Stop).'); }, 500);
+});
+bot.addEventListener('pointerup', e => {
+	clearTimeout(holdT); if (held) return;
+	const a = actAt(e); if (!a) return;
+	const [k, v] = a.split(':'), i = +v;
+	if (S.pop && k !== 'prow') { S.pop = null; return render(); }
+	if (k === 'back') return press('B');
+	if (k === 'k') return press(v);
+	if (k === 'stop') { stop('the player\'s Stop button'); return render(); }
+	if (k === 'mini') { toPlayer(); return render(); }
+	if (k === 'mini-pp') { togglePause(); return render(); }
+	if (k === 'sec') { openSection(SECTIONS[i]); return render(); }
+	if (k === 'row') { S.cursor = i; return press('A'); }
+	if (k === 'card') { S.home.zone = 'strip'; S.home.card = i; return press('A'); }
+	if (k === 'tile') { S.home.zone = 'grid'; S.home.tile = i; return press('A'); }
+	if (k === 'tab') { S.menu.tab = i; S.menu.cur = 0; return render(); }
+	if (k === 'mrow') { S.menu.cur = i; return press('A'); }
+	if (k === 'prow') { S.pop.cur = i; return press('A'); }
+	toast(a); render();
+});
+
+// ---------- keyboard ----------
+const KEYS = {ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', k: 'A', ' ': 'A', j: 'B', Escape: 'B', Backspace: 'B', i: 'X', u: 'Y', q: 'L', e: 'R', s: 'Select', Enter: 'Start', l: 'L3'};
+addEventListener('keydown', e => { const b = KEYS[e.key] || KEYS[e.key.toLowerCase()]; if (!b) return; e.preventDefault(); press(b); });
+document.getElementById('pad').innerHTML = ['Up', 'Down', 'Left', 'Right', 'A', 'B', 'X', 'Y', 'L', 'R', 'Select', 'Start', 'L3'].map(b => `<button data-b="${b}">${b}</button>`).join('');
+document.getElementById('pad').addEventListener('click', e => { const b = e.target.dataset.b; if (b) press(b); });
+
+// ---------- the dashboard frame ----------
+function dstrip(h) { const d = document.getElementById('dstrip'); d.innerHTML = h; d.style.display = h ? 'block' : 'none'; }
+function drawDash() {
+	const d = document.getElementById('dmini');
+	let p, sub, on, pos, dur, here = false;
+	if (S.page) { p = S.page.path; here = true; on = !S.page.paused; pos = S.page.pos; sub = 'In this browser'; }
+	else if (S.now && !S.now.stopped) { p = cur(); on = !S.now.paused; pos = S.now.pos; sub = '<span style="color:#FFD23F">On handheld</span>' + (S.mode !== 'player' ? ' · <span style="color:#8F8A80">in the background</span>' : ''); }
+	if (!p) { d.className = 'mini idle'; d.innerHTML = S.now && S.now.stopped ? 'Nothing playing · ' + esc(title(cur())) + ' stopped at ' + fmt(S.now.pos) : 'Nothing playing'; return; }
+	dur = (META[base(p)] || {}).dur || 1;
+	d.className = 'mini';
+	d.innerHTML = `<div class="art" style="background:${(META[base(p)] || {}).art || '#5a3a1a'}"></div><div class="meta"><div class="tt">${esc(title(p))}</div><div class="m">${sub}</div></div><button class="pp" id="dpp">${on ? '❚❚' : '▶'}</button><div class="bar" style="width:${100 * Math.min(1, pos / dur)}%"></div>`;
+	document.getElementById('dpp').onclick = () => {
+		if (here) {
+			S.page.paused = !S.page.paused;
+			// the page playing again announces itself: the handheld (if it has something) pauses and holds the page's file
+			if (!S.page.paused && S.now && !S.now.held && !S.now.paused) { S.now = {list: [S.page.path], i: 0, from: parent(S.page.path), pos: S.page.pos, paused: true, held: true, stopped: false}; }
+			log('Dashboard play/pause: the <b>page</b> ' + (S.page.paused ? 'pauses' : 'plays') + '.');
+		} else { S.now.paused = !S.now.paused; log('Dashboard play/pause drives the handheld, which plays on in the background either way.'); }
+		render();
+	};
+}
+
+// ---------- the clock ----------
+setInterval(() => {
+	if (S.now && !S.now.paused && !S.now.stopped && !S.now.held) {
+		S.now.pos += 0.1 * S.speed;
+		const dur = (META[base(cur())] || {}).dur || 1e9;
+		if (S.now.pos >= dur) {
+			if (S.now.i < S.now.list.length - 1) { step(1); if (S.mode === 'browser') log('The next file started by itself; the mini bar (and where B from the player lands) follow it.'); }
+			else { const was = cur(), inPlayer = S.mode === 'player'; S.resume[was] = 0; S.now = null;
+				if (inPlayer) { S.mode = 'browser'; S.dir = parent(was); S.cursor = rowsOf(S.dir).indexOf(was); }
+				toast('Finished'); log('The last file ended: playback stops. ' + (inPlayer ? 'On the player: back to the list, on it.' : 'While browsing: the mini bar folds away; the list stays where you are.')); }
+		}
+	}
+	if (S.page && !S.page.paused) { S.page.pos += 0.1; const dur = (META[base(S.page.path)] || {}).dur; if (S.page.pos >= dur) S.page.pos = 0; }
+	render();
+}, 100);
+
+// ---------- the top panel ----------
+const cv = document.getElementById('top'), g = cv.getContext('2d');
+function topFrame() {
+	g.fillStyle = '#000'; g.fillRect(0, 0, 640, 480);
+	if (S.mode === 'photo') { drawPhotoTop(S.photo.path); }
+	else if (S.now && !S.now.stopped) {
+		const k = curKind(), pos = S.now.held && S.page ? S.page.pos : S.now.pos;
+		if (k === 'video') drawVideo(pos); else drawViz(pos, !S.now.paused || (S.now.held && S.page && !S.page.paused));
+		if (S.now.held) heldCard();
+	} else drawIdle();
+	requestAnimationFrame(topFrame);
+}
+function drawIdle() {
+	g.save(); g.translate(320, 160);
+	g.fillStyle = '#121116'; round(-60, -60, 120, 120, 18); g.fill();
+	g.strokeStyle = '#FFD23F'; g.lineWidth = 10; g.beginPath(); g.arc(0, 0, 38, -1.9, 3.6); g.stroke();
+	g.fillStyle = '#E8E2D3'; g.beginPath(); g.moveTo(-12, -18); g.lineTo(20, 0); g.lineTo(-12, 18); g.fill();
+	g.restore();
+	g.fillStyle = '#FFD23F'; g.font = '40px "Pixelify Sans"'; g.textAlign = 'center'; g.fillText('Banana Player', 320, 268);
+	g.fillStyle = '#8F8A80'; g.font = '16px Inter'; g.fillText('Pick a video or a song on the bottom screen', 320, 312);
+}
+function drawVideo(pos) {
+	const y0 = 104, h = 272;
+	const sky = g.createLinearGradient(0, y0, 0, y0 + h); sky.addColorStop(0, '#d9a06a'); sky.addColorStop(.6, '#f0c48a'); sky.addColorStop(1, '#a8673c');
+	g.fillStyle = sky; g.fillRect(0, y0, 640, h);
+	g.fillStyle = 'rgba(255,240,200,.8)'; g.beginPath(); g.arc(470, y0 + 90, 34, 0, 7); g.fill();
+	g.fillStyle = 'rgba(255,255,255,.25)'; for (let i = 0; i < 3; i++) { g.beginPath(); g.ellipse((pos * 14 + i * 230) % 760 - 60, y0 + 60 + i * 35, 90, 18, 0, 0, 7); g.fill(); }
+	g.fillStyle = '#5a321e'; g.beginPath(); g.moveTo(0, y0 + h); g.quadraticCurveTo(200, y0 + 170, 640, y0 + 210); g.lineTo(640, y0 + h); g.fill();
+	const bx = 120 + (pos * 23) % 420, by = y0 + 120 + Math.sin(pos * 2) * 20, w = Math.sin(pos * 8) * 14;
+	g.strokeStyle = '#2a160c'; g.lineWidth = 4; g.beginPath(); g.moveTo(bx - 26, by - w); g.lineTo(bx, by); g.lineTo(bx + 26, by - w); g.stroke();
+	g.fillStyle = '#fff'; g.font = '13px Inter'; g.textAlign = 'center';
+}
+function drawViz(pos, on) {
+	const p = cur(), m = META[base(p)] || {};
+	g.textAlign = 'center'; g.fillStyle = '#fff'; g.font = 'bold 22px Inter'; g.fillText(title(p), 320, 50);
+	g.font = '16px Inter'; g.fillText(m.artist || '', 320, 73); g.fillStyle = '#FFD23F'; g.font = '13px Inter'; g.fillText('Yellow Album', 320, 92);
+	const cx = 320, cy = 300, n = 36;
+	for (let i = 0; i < n; i++) {
+		const a = -Math.PI / 2 + (i - n / 2) / n * Math.PI * 1.6;
+		const v = on ? 10 + Math.abs(Math.sin(pos * 3.1 + i * .7) * Math.cos(pos * 1.3 + i * .23)) * 70 : 10;
+		g.strokeStyle = `hsl(${190 + i * 4},90%,${55 + (i % 3) * 5}%)`; g.lineWidth = 6;
+		g.beginPath(); g.moveTo(cx + Math.cos(a) * 82, cy + Math.sin(a) * 82); g.lineTo(cx + Math.cos(a) * (82 + v), cy + Math.sin(a) * (82 + v)); g.stroke();
+	}
+	g.strokeStyle = '#cfe'; g.lineWidth = 3; g.beginPath(); g.arc(cx, cy, 76, 0, 7); g.stroke();
+	g.fillStyle = m.art || '#2b4b4c'; g.fillRect(cx - 48, cy - 48, 96, 96);
+	g.fillStyle = '#122'; g.font = 'bold 17px Inter'; g.fillText(base(parent(p)).split(' ')[0].toUpperCase(), cx, cy + 6);
+}
+function heldCard() {
+	g.fillStyle = 'rgba(11,10,13,.82)'; round(120, 380, 400, 76, 18); g.fill();
+	g.fillStyle = '#FFD23F'; g.font = '22px "Pixelify Sans"'; g.textAlign = 'center';
+	g.fillText((S.page && !S.page.paused ? 'Playing' : 'Paused') + ' in your browser', 320, 412);
+	g.fillStyle = '#8F8A80'; g.font = '15px Inter'; g.fillText('Hold A to play here', 320, 438);
+}
+function drawPhotoTop(p) {
+	const hue = {'Dragon.jpg': 20, 'Dunes.jpg': 38, 'Sunset.jpg': 330}[base(p)] || 0;
+	const gr = g.createLinearGradient(0, 0, 0, 480); gr.addColorStop(0, `hsl(${hue},60%,70%)`); gr.addColorStop(1, `hsl(${hue + 20},50%,30%)`);
+	g.fillStyle = gr; g.fillRect(0, 0, 640, 480);
+	g.fillStyle = `hsl(${hue + 10},45%,22%)`; g.beginPath(); g.moveTo(0, 480); g.lineTo(180, 260); g.lineTo(330, 380); g.lineTo(470, 230); g.lineTo(640, 400); g.lineTo(640, 480); g.fill();
+}
+function round(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
+requestAnimationFrame(topFrame);
+
+// ---------- scenes ----------
+const SONG = 'Files/Music/Yellow Album/Sunny Peel.mp3', ALBUM = 'Files/Music/Yellow Album';
+const albumList = () => rowsOf(ALBUM).filter(r => r !== '..' && !isDir(r));
+const SCENES = [
+	['1 · Playing a song', 'The playing screen. B (or "<") now only leaves it: the song plays on. The bottom-right button is Stop (one tap), no more "Quit B×2". Press B.', () => { play(albumList(), albumList().indexOf(SONG), ALBUM, {pos: 11}); }],
+	['2 · B → the list, song plays on', 'Landed on the song\'s folder with the song under the cursor (lit "▶ Playing" chip). The mini bar sits between the last row and the hints: tap it or press SELECT to go back; tap ▶/❚❚ to pause; hold it for its menu. The header\'s mark beside the battery moves while it plays.', () => { play(albumList(), albumList().indexOf(SONG), ALBUM, {pos: 14}); leavePlayer(); }],
+	['3 · A video in the background', 'B from a video: the top panel keeps the video, full size, nothing drawn over it (the top screen is the screen; a card would sit on the picture). The bottom is a list again.', () => { const l = rowsOf('Files/Movies').filter(r => r !== '..'); play(l, 3, 'Files/Movies', {pos: 9}); leavePlayer(); }],
+	['4 · Browsing elsewhere', 'Wandered off to Photos while the song plays. B goes up a folder as always (nothing playing or not); the mini bar is the way back.', () => { play(albumList(), albumList().indexOf(SONG), ALBUM, {pos: 20}); S.mode = 'browser'; S.dir = 'Files/Photos'; S.cursor = 2; S.last.Files = 'Files/Photos'; }],
+	['5 · Back to now playing', 'From scene 4: press SELECT (or tap the bar, or START › Playing › Now playing, or B at Home). Then press B: you land back on the song in its album, not in Photos.', () => { play(albumList(), albumList().indexOf(SONG), ALBUM, {pos: 20}); S.mode = 'browser'; S.dir = 'Files/Photos'; S.cursor = 2; toPlayer(); }],
+	['6 · Home with the mini bar', 'Home: the Recent strip\'s first card is what plays, marked "▶ Now" with its live time. A on it returns to it (never restarts). B at Home returns to it too (no quit while something plays).', () => { play(albumList(), albumList().indexOf(SONG), ALBUM, {pos: 25}); S.mode = 'browser'; S.dir = 'HOME'; S.home = {zone: 'strip', card: 0, tile: 0}; }],
+	['7 · Stopping', 'START › Playing (opens on it) lists Now playing… and Stop at the end. Also: the player\'s Stop button, the mini bar\'s hold menu. Choose Stop.', () => { play(albumList(), albumList().indexOf(SONG), ALBUM, {pos: 30}); S.mode = 'browser'; S.dir = 'Files/Movies'; S.cursor = 2; S.menu = {tab: 0, cur: 5}; }],
+	['8 · A photo while music plays', 'A photo replaces the song (one mpv): the song stops, its place kept. Press B: back in Photos, the mini bar holds the song as "stopped at 0:33"; ▶ resumes it in the background, SELECT reopens it.', () => { play(albumList(), albumList().indexOf(SONG), ALBUM, {pos: 33}); S.mode = 'browser'; openPhoto('Files/Photos/Sunset.jpg', 'Files/Photos'); }],
+	['9 · Playlist in the background', 'Playing Road trip: B lands on the playlist page on the item. The next song starts by itself and the mini bar follows.', () => { play(FS['Playlists/Road trip'].slice(), 0, 'Playlists/Road trip', {pos: 52}); leavePlayer(); }],
+	['10 · The browser plays it (web)', 'The dashboard plays Sunny Peel in the phone\'s browser; the handheld holds it paused ("Playing in your browser" on top). B on the handheld leaves the player and the page plays on. The mini bar says so; its ▶/❚❚ (and A on the player) drives the page. Try the dashboard\'s button, then the handheld\'s Stop: the page plays on.', () => { S.page = {path: SONG, pos: 18, paused: false}; S.now = {list: albumList(), i: albumList().indexOf(SONG), from: ALBUM, pos: 18, paused: true, held: true, stopped: false}; S.mode = 'player'; }],
+	['11 · Dashboard while the handheld plays in the background', 'The handheld plays a video in the background: the dashboard\'s mini player still says "On handheld" and its controls still drive it. Use its ▶/❚❚.', () => { const l = rowsOf('Files/Movies').filter(r => r !== '..'); play(l, 2, 'Files/Movies', {pos: 40}); leavePlayer(); S.dir = 'Files/Music'; S.cursor = 1; }],
+];
+document.getElementById('scenes').innerHTML = SCENES.map((s, i) => `<button data-i="${i}">${s[0]}</button>`).join('');
+document.getElementById('scenes').addEventListener('click', e => {
+	const i = e.target.dataset.i; if (i == null) return;
+	S = fresh(); dstrip(''); SCENES[i][2](); flashUntil = 0;
+	document.getElementById('why').innerHTML = '<p style="margin:8px 0 0">' + SCENES[i][1] + '</p>';
+	log('Scene ' + SCENES[i][0]); render();
+});
+
+// scale both panels to the window
+function fit() { const k = Math.max(.45, Math.min(1, (innerHeight - 52) / 970, (innerWidth - 40) / 660)); document.documentElement.style.setProperty('--k', innerWidth < 1000 ? Math.min(k, (innerWidth - 40) / 660) : k); }
+addEventListener('resize', fit); fit();
+{ const n = +(location.hash.slice(1)) || 0; S = fresh(); SCENES[n][2](); } document.getElementById('why').innerHTML = '<p style="margin:8px 0 0">' + SCENES[+(location.hash.slice(1)) || 0][1] + '</p>';
+render();
+</script>
+</body></html>
+
+</body></html>

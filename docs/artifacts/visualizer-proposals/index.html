@@ -1,0 +1,446 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizer Proposals</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Pixelify+Sans:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+	--page: #F4F2EC;
+	--card: #FFFFFF;
+	--ink: #1B1A17;
+	--muted: #6A675F;
+	--line: #DEDAD0;
+	--chip: #EDEAE2;
+	--focus: #8A6A00;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--page: #111114;
+		--card: #1A1A1F;
+		--ink: #ECE9E1;
+		--muted: #9A978F;
+		--line: #2C2C33;
+		--chip: #25252B;
+		--focus: #FFD23F;
+	}
+}
+:root[data-theme="dark"] {
+	--page: #111114;
+	--card: #1A1A1F;
+	--ink: #ECE9E1;
+	--muted: #9A978F;
+	--line: #2C2C33;
+	--chip: #25252B;
+	--focus: #FFD23F;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+	background: var(--page);
+	color: var(--ink);
+	font: 400 15px/1.5 Inter, system-ui, sans-serif;
+	overflow-x: hidden;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 28px 16px 64px; }
+h1 { font: 600 34px/1.1 "Pixelify Sans", Inter, sans-serif; margin: 0 0 8px; letter-spacing: .01em; }
+.lede { color: var(--muted); max-width: 68ch; margin: 0 0 20px; }
+.bar {
+	position: sticky; top: 0; z-index: 5;
+	background: var(--page);
+	padding: 10px 0 12px; margin-bottom: 14px;
+	border-bottom: 1px solid var(--line);
+	display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center;
+}
+.bar .lab { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.themes { display: flex; flex-wrap: wrap; gap: 6px; }
+.themes button {
+	font: 500 14px Inter, sans-serif; color: var(--ink);
+	background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+	padding: 6px 12px 6px 8px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.themes button[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.themes button:focus-visible, .themes button:hover { outline: 2px solid var(--focus); outline-offset: 2px; }
+.sw { width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--line); display: inline-block; }
+.roles { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-left: auto; font-size: 12px; color: var(--muted); }
+.roles span { display: inline-flex; align-items: center; gap: 5px; }
+.roles i { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); display: inline-block; }
+
+.grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; min-width: 0; }
+.screen { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); line-height: 0; }
+canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.tag {
+	font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+	margin: 0 0 6px; line-height: 1.3;
+}
+.lower { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 14px; margin-top: 12px; }
+@media (max-width: 520px) { .lower { grid-template-columns: minmax(0, 1fr); } h1 { font-size: 28px; } .roles { margin-left: 0; } }
+h2 { font: 600 24px/1.1 "Pixelify Sans", Inter, sans-serif; margin: 0 0 4px; }
+h2 small { font: 500 12px Inter, sans-serif; color: var(--muted); margin-left: 6px; }
+.what { margin: 0 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 8px; padding: 0; list-style: none; }
+.chips li { background: var(--chip); border-radius: 6px; padding: 2px 7px; font-size: 12px; }
+.chips b { font-weight: 600; }
+dl { margin: 0; font-size: 13px; }
+dt { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 6px; }
+dd { margin: 0; overflow-wrap: anywhere; }
+code { font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.foot { color: var(--muted); font-size: 13px; margin-top: 24px; max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+	<h1>Visualizer Proposals</h1>
+	<p class="lede">Six clean styles for the top panel, each drawn in two or three theme roles on the theme's background. The large frame is Visualizer only; the small one is Art + visualizer, with the style as a 200-tall band along the foot. The signal is simulated (a kick, a hat, two moving mid peaks, noise).</p>
+
+	<div class="bar">
+		<span class="lab">Theme</span>
+		<div class="themes" id="themes" role="group" aria-label="Theme"></div>
+		<div class="roles" id="roles" aria-label="Theme roles"></div>
+	</div>
+
+	<div class="grid" id="grid"></div>
+
+	<p class="foot">Cost guesses are relative to Peaks and are estimates from the filter chain, not measurements: each graph still has to be timed on the handheld. All six are drawn grey by the audio filter and coloured by the palette lookup the theme styles already use, so no per-frame colour conversion is added. Also considered and left out: a VU needle pair (a rotation per frame, costly), a constellation (lines between moving points have no cheap filter) and a heatmap grid (too close to Dots).</p>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+const THEMES = {
+	'Yellow':      { BG: '#000000', ACCENT: '#FFD23F', TEXT: '#E8E2D3', DIM: '#8F8A80', BUTTON: '#26242E' },
+	'Dark':        { BG: '#0B0B0D', ACCENT: '#A9C4E6', TEXT: '#C2C4CA', DIM: '#8A8C94', BUTTON: '#2A2A2F' },
+	'Sakura':      { BG: '#FFE6E0', ACCENT: '#852A59', TEXT: '#561F33', DIM: '#8A5069', BUTTON: '#E8B3CF' },
+	'Retro green': { BG: '#0A0F08', ACCENT: '#A6D44A', TEXT: '#D9E4C8', DIM: '#8A9479', BUTTON: '#1E2A19' },
+};
+let T = THEMES['Yellow'];
+const W = 640, H = 480, BAND = 200, FPS = 30;
+
+/* ---------- the simulated signal ---------- */
+const clamp = v => v < 0 ? 0 : v > 1 ? 1 : v;
+const hash = (a, b) => { const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+function noise(i, t) {
+	const k = Math.floor(t), f = t - k, u = f * f * (3 - 2 * f);
+	return hash(i, k) * (1 - u) + hash(i, k + 1) * u;
+}
+const kick = t => Math.exp(-((t * 1.8667) % 1) * 5);
+const hat = t => Math.exp(-((t * 3.7333 + 0.5) % 1) * 9);
+// The level of the band at f (0 low … 1 high) at time t, 0…1.
+function level(f, t) {
+	const bass = Math.exp(-f * 11) * (0.3 + 0.7 * kick(t));
+	const m1 = 0.55 * Math.exp(-Math.pow(f - 0.32 - 0.1 * Math.sin(t * 0.45), 2) / 0.02) * (0.55 + 0.45 * Math.sin(t * 1.7));
+	const m2 = 0.42 * Math.exp(-Math.pow(f - 0.58 - 0.08 * Math.sin(t * 0.31 + 2), 2) / 0.012) * (0.5 + 0.5 * Math.sin(t * 1.1 + 1));
+	const hi = 0.5 * Math.exp(-Math.pow(f - 0.85, 2) / 0.02) * hat(t);
+	const floor = 0.1 * (1 - f * 0.5);
+	return clamp((bass + m1 + m2 + hi + floor) * (0.65 + 0.7 * noise(Math.round(f * 90), t * 7)));
+}
+// n bands, smoothed in the view's own state (fast up, slow down), as a meter would.
+function bands(st, key, n, t, up = 0.6, down = 0.16) {
+	let a = st[key];
+	if (!a || a.length !== n) a = st[key] = new Float32Array(n);
+	for (let i = 0; i < n; i++) {
+		const v = level(n === 1 ? 0 : i / (n - 1), t);
+		a[i] += (v - a[i]) * (v > a[i] ? up : down);
+	}
+	return a;
+}
+
+/* ---------- the six styles: step(st, t, w, h) moves state, draw(c, st, x, y, w, h) paints ---------- */
+const STYLES = [
+{
+	name: 'Waterfall',
+	what: 'A scrolling spectrogram: time runs right to left, pitch bottom to top, loudness is how much accent a cell takes.',
+	roles: [['ACCENT', 'cells, by loudness'], ['BUTTON', 'octave lines'], ['DIM', 'the "now" edge']],
+	filters: 'showspectrum=slide=scroll:scale=cbrt at 160×60 (160×25 in the band) → scale=flags=neighbor → palette lut; lines as a still overlay',
+	cost: '≈ 0.8× Peaks (a small frame, one new column per pass)',
+	step(st, t, w, h) {
+		const cols = w / 4, rows = Math.round(h / 8);
+		if (!st.off) {
+			st.off = document.createElement('canvas');
+			st.off.width = cols; st.off.height = rows;
+			st.o = st.off.getContext('2d');
+		}
+		const o = st.o, b = bands(st, 'b', rows, t, 0.8, 0.35);
+		o.globalCompositeOperation = 'copy';
+		o.drawImage(st.off, -1, 0);
+		o.globalCompositeOperation = 'source-over';
+		o.clearRect(cols - 1, 0, 1, rows);
+		o.fillStyle = T.ACCENT;
+		for (let r = 0; r < rows; r++) {
+			o.globalAlpha = Math.pow(b[r], 1.4);
+			o.fillRect(cols - 1, rows - 1 - r, 1, 1);
+		}
+		o.globalAlpha = 1;
+	},
+	draw(c, st, x, y, w, h) {
+		c.fillStyle = T.BUTTON;
+		for (let i = 1; i < 4; i++) c.fillRect(x, y + Math.round(h * i / 4), w, 2);
+		c.imageSmoothingEnabled = false;
+		c.drawImage(st.off, x, y, w, h);
+		c.fillStyle = T.DIM;
+		c.fillRect(x + w - 2, y, 2, h);
+	},
+},
+{
+	name: 'Scope',
+	what: 'A stereo vectorscope: left against right as one glowing figure that widens with the stereo image and swells on the beat.',
+	roles: [['ACCENT', 'the trace'], ['BUTTON', 'the dial'], ['DIM', 'the L/R axes']],
+	filters: 'avectorscope=mode=lissajous:draw=line with its own fade (rf/gf/bf) → palette lut; dial and axes as a still overlay',
+	cost: '≈ 0.6× Peaks (no FFT; lines only)',
+	step(st, t) {
+		const N = 260, p = new Float32Array(N * 2), A = 0.4 + 0.6 * kick(t), ph = 0.9 * Math.sin(t * 0.8), TAU = Math.PI * 2;
+		for (let k = 0; k < N; k++) {
+			const u = t + k / N * 0.045;
+			const L = A * (0.62 * Math.sin(TAU * 90 * u) + 0.3 * Math.sin(TAU * 222 * u + t) + 0.1 * (Math.random() - 0.5));
+			const R = A * (0.62 * Math.sin(TAU * 90 * u + ph) + 0.3 * Math.sin(TAU * 301 * u) + 0.1 * (Math.random() - 0.5));
+			p[k * 2] = (R - L) * 0.75; p[k * 2 + 1] = -(L + R) * 0.55;
+		}
+		(st.trail = st.trail || []).unshift(p);
+		if (st.trail.length > 4) st.trail.pop();
+	},
+	draw(c, st, x, y, w, h) {
+		const cx = x + w / 2, cy = y + h / 2, rx = w * 0.46, ry = h * 0.46, r = Math.min(rx, ry);
+		c.fillStyle = T.BUTTON;
+		c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, 7); c.fill();
+		c.strokeStyle = T.DIM; c.lineWidth = 1.5; c.globalAlpha = 0.6;
+		c.beginPath();
+		c.moveTo(cx - rx * 0.7, cy - ry * 0.7); c.lineTo(cx + rx * 0.7, cy + ry * 0.7);
+		c.moveTo(cx + rx * 0.7, cy - ry * 0.7); c.lineTo(cx - rx * 0.7, cy + ry * 0.7);
+		c.stroke();
+		c.strokeStyle = T.ACCENT; c.lineWidth = 2; c.lineJoin = 'round';
+		const tr = st.trail || [];
+		for (let j = tr.length - 1; j >= 0; j--) {
+			const p = tr[j];
+			c.globalAlpha = [1, 0.45, 0.22, 0.1][j];
+			c.beginPath();
+			for (let k = 0; k < p.length; k += 2) {
+				const px = cx + p[k] * rx, py = cy + p[k + 1] * ry;
+				k ? c.lineTo(px, py) : c.moveTo(px, py);
+			}
+			c.stroke();
+		}
+		c.globalAlpha = 1;
+		void r;
+	},
+},
+{
+	name: 'Rings',
+	what: 'Ten concentric rings, bass at the centre and treble at the rim; each ring thickens with its band, so a kick ripples outward.',
+	roles: [['ACCENT', 'the rings'], ['BUTTON', 'ring guides'], ['TEXT', 'the centre dot']],
+	filters: 'showspectrum (one column, slide=replace) or showfreqs at 10 px → remap through a polar map kept as two still PGM inputs → palette lut',
+	cost: '≈ 1.3× Peaks (the remap touches every pixel)',
+	step(st, t) { bands(st, 'b', 10, t, 0.55, 0.14); },
+	draw(c, st, x, y, w, h) {
+		const b = st.b, n = b.length, cx = x + w / 2, cy = y + h / 2;
+		const maxR = Math.max(Math.min(w, h) * 0.47, w * 0.36), r0 = 22, gap = (maxR - r0) / n;
+		c.lineWidth = 1.5; c.strokeStyle = T.BUTTON;
+		for (let i = 0; i < n; i++) { c.beginPath(); c.arc(cx, cy, r0 + gap * (i + 0.5), 0, 7); c.stroke(); }
+		c.strokeStyle = T.ACCENT;
+		for (let i = 0; i < n; i++) {
+			const v = b[i];
+			if (v < 0.04) continue;
+			c.lineWidth = 1 + v * gap * 0.82;
+			c.globalAlpha = 0.35 + 0.65 * v;
+			c.beginPath(); c.arc(cx, cy, r0 + gap * (i + 0.5), 0, 7); c.stroke();
+		}
+		c.globalAlpha = 1;
+		c.fillStyle = T.TEXT;
+		c.beginPath(); c.arc(cx, cy, 5 + b[0] * 11, 0, 7); c.fill();
+	},
+},
+{
+	name: 'Barcode',
+	what: 'Ninety-six hairlines across the panel; each one lights from faint to full accent with its band. Nothing moves but brightness.',
+	roles: [['ACCENT', 'lit lines'], ['BUTTON', 'unlit lines']],
+	filters: 'showspectrum=s=96x1-style strip (slide=replace, one row) → scale=flags=neighbor to full height → masked by a still stripe pattern → palette lut',
+	cost: '≈ 0.5× Peaks (the cheapest: a 96-pixel strip stretched)',
+	step(st, t) { bands(st, 'b', 96, t, 0.7, 0.2); },
+	draw(c, st, x, y, w, h) {
+		const b = st.b, n = b.length, pitch = w / n, m = Math.round(h * 0.1);
+		for (let i = 0; i < n; i++) {
+			const px = Math.round(x + i * pitch + (pitch - 3) / 2);
+			c.fillStyle = T.BUTTON; c.fillRect(px, y + m, 3, h - 2 * m);
+			c.globalAlpha = Math.pow(b[i], 0.9);
+			c.fillStyle = T.ACCENT; c.fillRect(px, y + m, 3, h - 2 * m);
+			c.globalAlpha = 1;
+		}
+	},
+},
+{
+	name: 'Horizon',
+	what: 'The spectrum as a skyline: bass rises in the middle, treble falls away to the sides, with a striped reflection under the horizon and a low sun behind.',
+	roles: [['ACCENT', 'the skyline'], ['BUTTON', 'the sun'], ['DIM', 'horizon and reflection']],
+	filters: 'showfreqs=mode=bar:ascale=sqrt at half width → hflip + hstack (the mirror) → vflip, squashed and line-masked for the reflection → vstack → palette lut; sun as a still',
+	cost: '≈ 1.2× Peaks (one FFT, two flips, two stacks)',
+	step(st, t) { bands(st, 'b', 40, t, 0.5, 0.12); },
+	draw(c, st, x, y, w, h) {
+		const b = st.b, n = b.length, hy = y + Math.round(h * 0.62), up = h * 0.52, dn = h - (hy - y);
+		const cx = x + w / 2, bw = w / 2 / n;
+		c.fillStyle = T.BUTTON;
+		c.beginPath(); c.arc(cx, hy, Math.min(h * 0.42, w * 0.2), Math.PI, 0); c.fill();
+		const ridge = flip => {
+			c.beginPath(); c.moveTo(x, hy);
+			for (let i = n - 1; i >= 0; i--) c.lineTo(cx - (i + 0.5) * bw, hy - flip * b[i] * up * (flip > 0 ? 1 : 0.55 * dn / up * 1.4));
+			for (let i = 0; i < n; i++) c.lineTo(cx + (i + 0.5) * bw, hy - flip * b[i] * up * (flip > 0 ? 1 : 0.55 * dn / up * 1.4));
+			c.lineTo(x + w, hy); c.closePath();
+		};
+		c.fillStyle = T.ACCENT; ridge(1); c.fill();
+		// The reflection: the same ridge flipped, kept only on lines that spread apart with depth.
+		c.save();
+		c.beginPath();
+		for (let d = 5, g = 3; d < dn; d += g, g += 1.2) c.rect(x, hy + d, w, 2);
+		c.clip();
+		c.fillStyle = T.DIM; c.globalAlpha = 0.8; ridge(-1); c.fill();
+		c.restore();
+		c.fillStyle = T.DIM; c.fillRect(x, hy - 1, w, 2);
+	},
+},
+{
+	name: 'Steps',
+	what: 'A staircase: twenty flat-topped bands joined into one outline, filled faintly beneath, with a slow second line that remembers the peaks.',
+	roles: [['ACCENT', 'the outline'], ['BUTTON', 'the fill'], ['DIM', 'the peak line']],
+	filters: 'showfreqs=mode=bar at 20 px wide → scale=flags=neighbor; fill = that mask, outline = the mask minus itself shifted (blend=difference), peak line from lagfun → palette lut',
+	cost: '≈ 1.1× Peaks (one FFT at low width, one blend, one lagfun)',
+	step(st, t) {
+		const b = bands(st, 'b', 20, t, 0.6, 0.18);
+		const p = st.p || (st.p = new Float32Array(20));
+		for (let i = 0; i < 20; i++) p[i] = Math.max(b[i], p[i] - 0.006);
+	},
+	draw(c, st, x, y, w, h) {
+		const b = st.b, p = st.p, n = b.length, sw = w / n, base = y + h - Math.round(h * 0.08), top = h * 0.8;
+		const path = (a, close) => {
+			c.beginPath();
+			if (close) c.moveTo(x, base);
+			for (let i = 0; i < n; i++) {
+				const yy = Math.round(base - 3 - a[i] * top);
+				i || close ? c.lineTo(x + i * sw, yy) : c.moveTo(x + i * sw, yy);
+				c.lineTo(x + (i + 1) * sw, yy);
+			}
+			if (close) { c.lineTo(x + w, base); c.closePath(); }
+		};
+		c.fillStyle = T.BUTTON; path(b, true); c.fill();
+		c.lineJoin = 'miter';
+		c.strokeStyle = T.DIM; c.lineWidth = 2; c.globalAlpha = 0.8; path(p, false); c.stroke();
+		c.globalAlpha = 1;
+		c.strokeStyle = T.ACCENT; c.lineWidth = 3; path(b, false); c.stroke();
+		c.fillStyle = T.BUTTON; c.fillRect(x, base, w, 2);
+	},
+},
+];
+
+/* ---------- the page ---------- */
+const grid = document.getElementById('grid');
+const views = []; // one per canvas: {style, ctx, band, st, t, card}
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+STYLES.forEach((s, i) => {
+	const card = document.createElement('article');
+	card.className = 'card';
+	card.innerHTML =
+		'<p class="tag">Visualizer only</p>' +
+		'<div class="screen"><canvas width="640" height="480" role="img" aria-label="' + s.name + ', full screen"></canvas></div>' +
+		'<div class="lower"><div><p class="tag">Art + visualizer</p>' +
+		'<div class="screen"><canvas width="640" height="480" role="img" aria-label="' + s.name + ', as a band under the album art"></canvas></div></div>' +
+		'<div><h2>' + s.name + '<small>' + (i + 1) + ' / 6</small></h2><p class="what">' + esc(s.what) + '</p>' +
+		'<ul class="chips">' + s.roles.map(r => '<li><b>' + r[0] + '</b> ' + esc(r[1]) + '</li>').join('') + '</ul>' +
+		'<dl><dt>Filters</dt><dd><code>' + esc(s.filters) + '</code></dd><dt>Cost guess</dt><dd>' + esc(s.cost) + '</dd></dl></div></div>';
+	grid.appendChild(card);
+	card.querySelectorAll('canvas').forEach((cv, k) => {
+		views.push({ style: s, ctx: cv.getContext('2d'), band: k === 1, st: {}, t: i * 3.1, card, on: false });
+	});
+});
+
+function drawArt(c) {
+	// The Art + visualizer page above the band: a cover placeholder and the title.
+	const top = H - BAND, sz = 176, cx = W / 2, x = cx - sz / 2, y = 18;
+	c.fillStyle = T.BUTTON;
+	c.beginPath(); c.roundRect(x, y, sz, sz, 10); c.fill();
+	c.strokeStyle = T.DIM; c.lineWidth = 6; c.lineCap = 'round';
+	c.beginPath(); c.arc(cx, y + sz / 2, 34, 0, 7); c.stroke();
+	c.fillStyle = T.DIM;
+	c.beginPath(); c.arc(cx, y + sz / 2, 8, 0, 7); c.fill();
+	c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+	c.fillStyle = T.TEXT; c.font = '600 24px Inter, system-ui, sans-serif';
+	c.fillText('Song title', cx, top - 44);
+	c.fillStyle = T.DIM; c.font = '400 18px Inter, system-ui, sans-serif';
+	c.fillText('Artist · Album', cx, top - 18);
+}
+
+function step(v) {
+	v.t += 1 / FPS;
+	v.style.step(v.st, v.t, W, v.band ? BAND : H);
+}
+function paint(v) {
+	const c = v.ctx;
+	c.globalAlpha = 1;
+	c.fillStyle = T.BG; c.fillRect(0, 0, W, H);
+	const y = v.band ? H - BAND : 0, h = v.band ? BAND : H;
+	if (v.band) drawArt(c);
+	c.save();
+	c.beginPath(); c.rect(0, y, W, h); c.clip();
+	v.style.draw(c, v.st, 0, y, W, h);
+	c.restore();
+}
+// Run a view forward unseen so a first (or a still) frame is already full of history.
+function warm(v) {
+	v.st = {};
+	for (let i = 0; i < 170; i++) step(v);
+	paint(v);
+}
+
+const still = matchMedia('(prefers-reduced-motion: reduce)');
+let raf = 0, last = 0;
+function tick(now) {
+	raf = requestAnimationFrame(tick);
+	if (now - last < 1000 / FPS - 2) return;
+	last = now;
+	for (const v of views) if (v.on) { step(v); paint(v); }
+}
+function run() {
+	cancelAnimationFrame(raf); raf = 0;
+	if (!still.matches && !document.hidden) raf = requestAnimationFrame(tick);
+}
+still.addEventListener('change', run);
+document.addEventListener('visibilitychange', run);
+
+if ('IntersectionObserver' in window) {
+	const io = new IntersectionObserver(es => {
+		for (const e of es) for (const v of views) if (v.card === e.target) v.on = e.isIntersecting;
+	}, { rootMargin: '80px' });
+	STYLES.forEach((_, i) => io.observe(views[i * 2].card));
+} else views.forEach(v => v.on = true);
+
+/* theme switch */
+const tb = document.getElementById('themes'), rolesEl = document.getElementById('roles');
+function setTheme(name) {
+	T = THEMES[name];
+	tb.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === name));
+	rolesEl.innerHTML = ['BG', 'ACCENT', 'TEXT', 'DIM', 'BUTTON'].map(r => '<span><i style="background:' + T[r] + '"></i>' + r + '</span>').join('');
+	views.forEach(warm);
+	try { localStorage.setItem('viz-theme', name); } catch (e) {}
+}
+Object.keys(THEMES).forEach(name => {
+	const b = document.createElement('button');
+	b.type = 'button'; b.dataset.t = name;
+	b.innerHTML = '<span class="sw" style="background:linear-gradient(135deg,' + THEMES[name].ACCENT + ' 50%,' + THEMES[name].BG + ' 50%)"></span>' + name;
+	b.addEventListener('click', () => setTheme(name));
+	tb.appendChild(b);
+});
+let start = 'Yellow';
+try { const s = localStorage.getItem('viz-theme'); if (s && THEMES[s]) start = s; } catch (e) {}
+setTheme(start);
+// The band's title is canvas text: paint again once Inter has loaded.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => views.forEach(paint));
+run();
+})();
+</script>
+</body>
+</html>
+
+</body></html>

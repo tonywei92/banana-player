@@ -1,0 +1,446 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Absurd Visualizers</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Inter:wght@400;600&display=swap">
+<style>
+/* Layout: a header with the demo-music switch, then the three styles as cards, each a live 4:3 "top screen".
+   One dark look on purpose (the handheld's own theme.h colours), like the player itself. */
+:root {
+	--bg: #0b0a0d;        /* TOP_CARD */
+	--surface: #121116;   /* SURFACE */
+	--button: #26242e;    /* BUTTON */
+	--rule: #2a2833;      /* RULE */
+	--accent: #ffd23f;    /* ACCENT */
+	--text: #e8e2d3;      /* TEXT */
+	--dim: #8f8a80;       /* DIM */
+	--f-pix: "Pixelify Sans", ui-monospace, monospace;
+	--f-ui: "Inter", system-ui, sans-serif;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--f-ui); line-height: 1.5;
+	padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; }
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+h1 { font-family: var(--f-pix); font-weight: 600; font-size: 2rem; margin: 0; color: var(--accent); text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--dim); max-width: 62ch; }
+button { font: 600 .95rem var(--f-ui); color: #000; background: var(--accent); border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--button); color: var(--text); }
+button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; display: grid; min-width: 0; }
+canvas { width: 100%; aspect-ratio: 4 / 3; display: block; background: #000; max-width: 100%; }
+.about { padding: 14px 16px 16px; display: grid; gap: 4px; }
+.about h2 { margin: 0; font: 600 1.1rem var(--f-pix); color: var(--text); }
+.about p { margin: 0; color: var(--dim); font-size: .92rem; }
+.cost { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); font-family: var(--f-pix); }
+@media (prefers-reduced-motion: reduce) { .note-motion { display: block; } }
+</style>
+
+<main>
+	<header>
+		<div>
+			<h1>Ten absurd visualizer styles</h1>
+			<p class="lede">Silly pixel scenes, moving to made-up music; press the button to drive them with a synth tune instead.</p>
+		</div>
+		<button id="music" type="button" aria-pressed="false">▶ Play demo music</button>
+	</header>
+	<div class="grid" id="grid"></div>
+</main>
+
+<script>
+(() => {
+	const STYLES = [
+		{ id: 'popcorn', name: 'Popcorn machine', about: 'A cinema popcorn cart: each beat pops kernels that fly up and pile in the glass, louder bands throw them higher, and the lid rattles on the bass.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'pigeons', name: 'Headbanging pigeons', about: 'Five pigeons on a wire, each headbanging to its own part of the music. The bass pigeon goes hardest; the treble one just bobs politely.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'jelly', name: 'Jelly wobble', about: 'A strawberry jelly on a plate with a worried face: it squashes and wobbles with the bass, its eyes get wider when it gets loud.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'socks', name: 'Sock choir', about: 'Six sock puppets in a row, each one a slice of the music, mouths flapping open as their part plays. The one on the end is slightly out of time.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'chicken', name: 'Screaming chicken', about: 'A rubber chicken that screams with the music: its beak opens wider the louder it gets, its eyes bulge, and little "AAA" letters fly out on the peaks.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'tubeman', name: 'Tube man', about: 'An inflatable tube man outside a car lot, flailing wildly with the mids, flopping down in quiet bits and shooting up on every beat.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'toaster', name: 'Toaster cannon', about: 'A toaster that fires toast: each beat launches two slices sky-high, their height the bass; they flip, fall back in, and the lever clunks down again.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'longcat', name: 'Long cat', about: 'A long tabby cat with its paws up: the sky slides down past it so it seems to grow forever, faster the louder the music, while a rainbow light along its edges glows with each band (bass at the bottom, treble at the ears). Clouds come by at random, and a counter keeps track of its length.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'moai', name: 'Stone choir', about: 'Five stone heads on an island, each singing a part of the music: their mouths open with their band, and the sun sets behind them very slowly.', cost: 'Cheap · sprites and stills, a few chosen by the music' },
+		{ id: 'washer', name: 'Washing machine', about: 'A washing machine on spin, shaking across the floor with the bass, socks and a rubber duck tumbling round the window with the mids.', cost: 'Cheap · sprites and stills, a few chosen by the music' }
+	];
+	const grid = document.getElementById('grid');
+	const ctx = {};
+	for (const s of STYLES) {
+		const card = document.createElement('section');
+		card.className = 'card';
+		card.innerHTML = `<canvas width="640" height="480" aria-label="${s.name}, animated preview"></canvas>
+			<div class="about"><span class="cost">${s.cost}</span><h2>${s.name}</h2><p>${s.about}</p></div>`;
+		grid.appendChild(card);
+		ctx[s.id] = card.querySelector('canvas').getContext('2d');
+	}
+	/* ---------- the "music": made-up by default, or a real synth through an analyser ---------- */
+	const BANDS = 16;
+	let audio = null, analyser = null, freq = null, wave = null, playing = false;
+	const fake = t => {
+		const beat = (t * 2) % 1, kick = Math.exp(-beat * 7), hat = Math.exp(-((t * 8) % 1) * 18);
+		const b = [];
+		for (let i = 0; i < BANDS; i++) {
+			const low = Math.max(0, 1 - i / 5), high = Math.max(0, (i - 9) / 7);
+			const mid = 0.45 + 0.25 * Math.sin(t * 1.7 + i * 0.7) * Math.sin(t * 0.6 + i);
+			b.push(Math.min(1, low * (0.35 + 0.65 * kick) + (1 - low - high) * mid * 0.8 + high * (0.15 + 0.5 * hat) + 0.04 * Math.random()));
+		}
+		const w = [];
+		for (let i = 0; i < 256; i++) {
+			const x = i / 256;
+			w.push((0.55 * kick + 0.2) * Math.sin(2 * Math.PI * (x * 3 + t * 0.3)) + 0.25 * Math.sin(2 * Math.PI * (x * 11 + t)) * (0.4 + 0.6 * hat) + 0.08 * Math.sin(2 * Math.PI * x * 37));
+		}
+		return { bands: b, wave: w, kick };
+	};
+	function real() {
+		analyser.getByteFrequencyData(freq);
+		analyser.getFloatTimeDomainData(wave);
+		const b = [];
+		const n = freq.length;
+		for (let i = 0; i < BANDS; i++) {
+			const a = Math.floor(Math.pow(n, i / BANDS)), z = Math.max(a + 1, Math.floor(Math.pow(n, (i + 1) / BANDS)));
+			let m = 0;
+			for (let k = a; k < z && k < n; k++) m = Math.max(m, freq[k]);
+			b.push(m / 255);
+		}
+		const w = [];
+		const step = Math.floor(wave.length / 256);
+		for (let i = 0; i < 256; i++) w.push(wave[i * step] * 2.2);
+		return { bands: b, wave: w, kick: b[0] * b[1] };
+	}
+	function startSynth() {
+		audio = new (window.AudioContext || window.webkitAudioContext)();
+		analyser = audio.createAnalyser();
+		analyser.fftSize = 2048;
+		analyser.smoothingTimeConstant = 0.55;
+		freq = new Uint8Array(analyser.frequencyBinCount);
+		wave = new Float32Array(analyser.fftSize);
+		const out = audio.createGain();
+		out.gain.value = 0.35;
+		out.connect(analyser);
+		analyser.connect(audio.destination);
+		const noise = audio.createBuffer(1, audio.sampleRate * 0.2, audio.sampleRate);
+		const nd = noise.getChannelData(0);
+		for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+		const bass = [41.2, 41.2, 55, 49], chords = [[220, 261.6, 329.6], [196, 246.9, 293.7], [174.6, 220, 261.6], [196, 246.9, 293.7]];
+		let next = audio.currentTime + 0.05, step = 0;
+		const beat = 0.25;	// 120 bpm, eighths
+		function tick() {
+			if (!playing) return;
+			while (next < audio.currentTime + 0.2) {
+				const bar = Math.floor(step / 8) % 4, pos = step % 8;
+				if (pos % 2 === 0) {	// kick on the beat
+					const o = audio.createOscillator(), g = audio.createGain();
+					o.frequency.setValueAtTime(140, next); o.frequency.exponentialRampToValueAtTime(40, next + 0.12);
+					g.gain.setValueAtTime(1, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.25);
+					o.connect(g).connect(out); o.start(next); o.stop(next + 0.26);
+				}
+				{	// hats on every eighth
+					const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+					s.buffer = noise; f.type = 'highpass'; f.frequency.value = 7000;
+					g.gain.setValueAtTime(pos % 2 ? 0.35 : 0.18, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.05);
+					s.connect(f).connect(g).connect(out); s.start(next); s.stop(next + 0.06);
+				}
+				{	// bass, a saw
+					const o = audio.createOscillator(), g = audio.createGain();
+					o.type = 'sawtooth'; o.frequency.value = bass[bar] * (pos === 3 || pos === 7 ? 2 : 1);
+					g.gain.setValueAtTime(0.25, next); g.gain.exponentialRampToValueAtTime(0.001, next + beat * 0.9);
+					o.connect(g).connect(out); o.start(next); o.stop(next + beat);
+				}
+				if (pos === 0)	// a chord a bar
+					for (const fq of chords[bar]) {
+						const o = audio.createOscillator(), g = audio.createGain();
+						o.type = 'triangle'; o.frequency.value = fq;
+						g.gain.setValueAtTime(0.0001, next); g.gain.linearRampToValueAtTime(0.09, next + 0.08); g.gain.exponentialRampToValueAtTime(0.001, next + beat * 7.5);
+						o.connect(g).connect(out); o.start(next); o.stop(next + beat * 8);
+					}
+				next += beat; step++;
+			}
+			setTimeout(tick, 50);
+		}
+		tick();
+	}
+	const btn = document.getElementById('music');
+	btn.addEventListener('click', () => {
+		playing = !playing;
+		btn.setAttribute('aria-pressed', String(playing));
+		btn.textContent = playing ? '■ Stop demo music' : '▶ Play demo music';
+		if (playing) {
+			if (!audio) startSynth();
+			else { audio.resume(); startSynthLoop(); }
+		} else if (audio) audio.suspend();
+	});
+	function startSynthLoop() { /* the scheduler restarts on resume */ const a = audio; audio = null; a.close(); startSynth(); }
+
+	/* ---------- shared state: falling caps ---------- */
+	const caps = {};
+	const fall = (key, v, dt, speed = 0.45) => { const c = caps[key] || 0; const n = Math.max(v, c - speed * dt); caps[key] = n; return n; };
+
+
+	/* the stronger contrast, as the player would apply it: each band pushed away from its neighbours */
+	function contrast(b) {
+		return b.map((v, i) => {
+			const y = (b[Math.max(0, i - 1)] + v + b[Math.min(b.length - 1, i + 1)]) / 3;
+			return Math.max(0, Math.min(1, 0.67 + 1.3 * (v - 0.67) + 3 * (v - y)));
+		});
+	}
+	const eased = {};
+	const ease = (key, v, dt) => { const c = eased[key] || 0; const n = Math.max(v, c - dt / 0.15); eased[key] = n; return n; };
+	// a fixed pseudo-random noise field, like a still the graph would read
+	const NOISE = (() => { let seed = 7; const a = new Float32Array(80 * 120); for (let i = 0; i < a.length; i++) { seed = (seed * 16807) % 2147483647; a[i] = seed / 2147483647; } return a; })();
+	const noise = (x, y) => NOISE[((y % 120 + 120) % 120) * 80 + ((x % 80) + 80) % 80];
+	const title = (g, ink, y = 46) => { g.textAlign = 'center'; g.fillStyle = ink; g.font = '600 28px Inter, sans-serif'; g.fillText('Midnight Arcade', 320, y); };
+	let T = 0;
+
+
+	const avg = (lv, a, b) => { let s = 0; for (let i = a; i <= b; i++) s += lv[i]; return s / (b - a + 1); };
+	const P = 8;
+	const mk = g => (x, y, c) => { g.fillStyle = c; g.fillRect(Math.round(x) * P, Math.round(y) * P, P, P); };
+
+
+	const L = (d, dt, k) => contrast(d.bands).map((v, i) => ease(k + i, v, dt));
+	const rect = (px, x0, y0, w, h, c) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) px(x, y, c); };
+	const disc = (px, cx, cy, r, c) => { for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r) px(cx + x, cy + y, c); };
+	const text = (g, s, x, y, c, size = 28) => { g.textAlign = 'center'; g.fillStyle = c; g.font = `700 ${size}px "Pixelify Sans", monospace`; g.fillText(s, x, y); };
+
+	/* ---------- Popcorn machine ---------- */
+	const kernels = []; let pcLast = 0, pcBass = 0;
+	function popcorn(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'pc'), bass = avg(lv, 0, 2);
+		g.fillStyle = '#2a0f14'; g.fillRect(0, 0, 640, 480);
+		rect(px, 18, 50, 44, 8, '#b8202a'); rect(px, 22, 58, 4, 2, '#7a121a'); rect(px, 54, 58, 4, 2, '#7a121a');
+		rect(px, 20, 14, 40, 36, 'rgba(200,230,255,0.10)');
+		for (let y = 14; y < 50; y++) { px(20, y, '#d8e8f8'); px(59, y, '#d8e8f8'); }
+		const lid = bass > 0.6 ? Math.round(Math.sin(T * 40)) : 0;
+		rect(px, 18, 10 + lid, 44, 4, '#e8322e'); rect(px, 30, 6 + lid, 20, 4, '#ffd23f'); text(g, 'POP', 320, 72 + lid * 8, '#7a121a', 22);
+		// the pile, growing and settling
+		const pile = 6 + Math.round(avg(lv, 0, 15) * 8);
+		for (let x = 21; x < 59; x++) for (let y = 49 - pile - Math.round(Math.sin(x * 0.7) * 1.5); y < 50; y++) px(x, y, (x * 7 + y * 3) % 5 ? '#fff4d6' : '#ffd58a');
+		// pops on the beat: kernels fly, their height the loudest band
+		if (bass > 0.5 && pcBass <= 0.5 && T - pcLast > 0.15) { pcLast = T; for (let i = 0; i < 6; i++) kernels.push({ x: 30 + NOISE[(Math.floor(T * 97) + i * 13) % 900] * 20, y: 30, vx: (NOISE[(Math.floor(T * 31) + i) % 900] - 0.5) * 30, vy: -20 - lv[3 + i] * 40, born: T }); }
+		pcBass = bass;
+		for (let i = kernels.length - 1; i >= 0; i--) { const k = kernels[i]; k.vy += 80 * dt; k.x += k.vx * dt; k.y += k.vy * dt; if (k.y > 44 || T - k.born > 2) { kernels.splice(i, 1); continue; } px(k.x, k.y, '#fff4d6'); px(k.x + 1, k.y, '#ffd58a'); px(k.x, k.y + 1, '#fff4d6'); }
+		title(g, '#ffd23f');
+	}
+
+	/* ---------- Headbanging pigeons ---------- */
+	function pigeons(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'pg');
+		g.fillStyle = '#9fc6e8'; g.fillRect(0, 0, 640, 480);
+		for (let x = 0; x < 80; x++) px(x, 34 + Math.round(Math.sin(x / 79 * Math.PI) * 3), '#2a2a2a');
+		rect(px, 0, 22, 2, 38, '#5a4030'); rect(px, 78, 22, 2, 38, '#5a4030');
+		const groups = [[0, 2], [3, 5], [6, 8], [9, 11], [12, 15]];
+		groups.forEach(([a, b], k) => {
+			const v = avg(lv, a, b), x0 = 8 + k * 15, wire = 34 + Math.round(Math.sin((x0 + 3) / 79 * Math.PI) * 3);
+			const bang = Math.round(Math.abs(Math.sin(T * (4 + v * 8) + k)) * v * (5 - k * 0.7));
+			rect(px, x0, wire - 7, 7, 6, '#8a8aa0'); rect(px, x0 + 1, wire - 4, 5, 2, '#a8a8c0');
+			px(x0 + 2, wire, '#e08040'); px(x0 + 4, wire, '#e08040');
+			for (let i = 0; i < 3; i++) px(x0 - 1 - i, wire - 5 + i, '#6a6a80');
+			const hx = x0 + 6, hy = wire - 10 + bang;
+			for (let i = 0; i < 4; i++) px(x0 + 5, wire - 7 - i + Math.round(bang * i / 4), '#5a9a7a');
+			rect(px, hx, hy, 4, 3, '#7a7a90'); px(hx + 2, hy, '#ff7a20'); px(hx + 2, hy + 1, '#1a1a1a'); px(hx + 4, hy + 2, '#e8a040');
+			if (bang > 2) { px(hx + 6, hy - 1, '#ffffff'); px(hx + 7, hy - 2, '#ffffff'); }
+		});
+		title(g, '#1a2a3a');
+	}
+
+	/* ---------- Jelly wobble ---------- */
+	function jelly(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'jw'), bass = avg(lv, 0, 2), loud = avg(lv, 0, 15);
+		g.fillStyle = '#fbe3d6'; g.fillRect(0, 0, 640, 480);
+		rect(px, 0, 46, 80, 14, '#e8b49a');
+		for (let x = 18; x < 62; x++) px(x, 46, '#ffffff'), px(x, 47, '#dfe6ee');
+		const squash = bass * 6, wob = Math.sin(T * 12) * bass * 3;
+		for (let y = 0; y < 22; y++) {
+			const k = y / 22, h = 22 - squash, yy = 46 - Math.round(k * h);
+			const half = 14 + squash * 0.8 - k * 4 + Math.sin(k * 3 + T * 12) * wob * k;
+			for (let x = -Math.round(half); x <= Math.round(half); x++) px(40 + x + Math.round(wob * k), yy, x < -half + 2 ? '#c4182a' : x > half - 3 ? '#ff6a7a' : '#e82a3c');
+		}
+		const top = 46 - Math.round(22 - squash);
+		for (let x = -6; x <= 6; x++) px(40 + x + Math.round(wob), top, '#ffffff');
+		disc(px, 40 + Math.round(wob), top - 2, 2, '#c4182a'); px(41 + Math.round(wob), top - 5, '#3fbf6a');
+		const ey = top + 7, er = loud > 0.55 ? 2 : 1, ex = 40 + Math.round(wob * 0.6);
+		disc(px, ex - 5, ey, er, '#ffffff'); disc(px, ex + 5, ey, er, '#ffffff'); px(ex - 5, ey, '#1a1a1a'); px(ex + 5, ey, '#1a1a1a');
+		for (let x = -3; x <= 3; x++) px(ex + x, ey + 6 + (Math.abs(x) === 3 ? -1 : 0), '#7a0a14');
+		if (loud > 0.6) { px(ex + 9, ey - 3, '#7fd0ff'); px(ex + 9, ey - 2, '#7fd0ff'); }
+		title(g, '#a8202a');
+	}
+
+	/* ---------- Sock choir ---------- */
+	const SOCKS = ['#ff6a8a', '#ffd23f', '#5ad1ff', '#9b7bff', '#5ae07a', '#ff9a3d'];
+	function socks(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'sk');
+		g.fillStyle = '#3a1a2a'; g.fillRect(0, 0, 640, 480);
+		rect(px, 0, 44, 80, 16, '#7a2a3a'); for (let x = 0; x < 80; x += 4) px(x, 44, '#a83a4a');
+		for (let k = 0; k < 6; k++) {
+			const band = Math.min(15, Math.floor(k * 16 / 6) + (k === 5 ? 0 : 1)), v = k === 5 ? lv[Math.max(0, (Math.floor(T * 60) - 9) % 16)] * 0.9 : lv[band];
+			const x0 = 4 + k * 13, open = Math.round(v * 6), c = SOCKS[k];
+			rect(px, x0 + 2, 30, 7, 14, c); for (let x = x0 + 2; x < x0 + 9; x += 2) px(x, 32, 'rgba(255,255,255,0.35)');
+			rect(px, x0, 22 - open, 11, 5, c);
+			rect(px, x0 + 1, 27 - open, 9, open, '#1a0a10'); if (open > 2) rect(px, x0 + 3, 26, 5, 1, '#e83a5a');
+			rect(px, x0, 27, 11, 4, c);
+			px(x0 + 3, 23 - open, '#ffffff'); px(x0 + 7, 23 - open, '#ffffff'); px(x0 + 3, 24 - open, '#1a1a1a'); px(x0 + 7, 24 - open, '#1a1a1a');
+			if (open > 3) { px(x0 + 5, 16 - open, '#ffd23f'); px(x0 + 6, 15 - open, '#ffd23f'); }
+		}
+		title(g, '#ffd8e4');
+	}
+
+	/* ---------- Screaming chicken ---------- */
+	const aaa = []; let chPeak = 0;
+	function chicken(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'ch'), loud = avg(lv, 0, 15), bass = avg(lv, 0, 2);
+		g.fillStyle = '#5ac8fa'; g.fillRect(0, 0, 640, 480);
+		const shake = loud > 0.55 ? Math.round(Math.sin(T * 50)) : 0;
+		const cx = 34 + shake, open = Math.round(loud * 10);
+		rect(px, cx - 4, 34, 8, 26, '#ffe14a'); rect(px, cx - 3, 34, 2, 26, '#f2c81a');
+		rect(px, cx - 7, 18, 14, 16, '#ffe14a');
+		rect(px, cx - 3, 13, 2, 5, '#e8322e'); rect(px, cx, 12, 2, 6, '#e8322e'); rect(px, cx + 3, 14, 2, 4, '#e8322e');
+		const er = loud > 0.5 ? 3 : 2;
+		disc(px, cx - 2, 22, er, '#ffffff'); px(cx - 2, 22, '#1a1a1a');
+		rect(px, cx + 7, 24 - Math.round(open / 2), 8, 2, '#ff8a1a'); rect(px, cx + 7, 26 + Math.round(open / 2), 7, 2, '#ff8a1a');
+		rect(px, cx + 7, 26 - Math.round(open / 2), 6, open, '#8a1a1a');
+		rect(px, cx - 1, 30, 4, 4, '#e8322e');
+		if (loud > 0.65 && T - chPeak > 0.2) { chPeak = T; aaa.push({ x: cx + 16, y: 24, born: T, s: 18 + loud * 18 }); }
+		for (let i = aaa.length - 1; i >= 0; i--) { const a = aaa[i], age = T - a.born; if (age > 1.2) { aaa.splice(i, 1); continue; } text(g, 'AAA', (a.x + age * 22) * P, (a.y - age * 6) * P, `rgba(255,255,255,${1 - age / 1.2})`, a.s); }
+		title(g, '#1a3a5a');
+	}
+
+	/* ---------- Tube man ---------- */
+	function tubeman(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'tm'), bass = avg(lv, 0, 2), mid = avg(lv, 4, 9);
+		g.fillStyle = '#9ad8ff'; g.fillRect(0, 0, 640, 480);
+		rect(px, 0, 48, 80, 12, '#7a7a80'); for (let x = 0; x < 80; x += 8) rect(px, x, 52, 4, 1, '#ffffff');
+		text(g, 'SALE!', 520, 120, '#e8322e', 40);
+		rect(px, 36, 46, 8, 3, '#3a3a40');
+		const height = 10 + bass * 26, flail = 2 + mid * 9;
+		let x = 40, y = 46;
+		for (let i = 0; i < height; i++) {
+			const k = i / height, bend = Math.sin(T * (5 + mid * 8) + k * 4) * flail * k;
+			const xx = 40 + Math.round(bend), yy = 46 - i;
+			rect(px, xx - 2, yy, 5, 1, k > 0.75 ? '#ff4a8a' : '#e8322e');
+			if (Math.abs(k - 0.65) < 0.02) { for (let a = 1; a < 9; a++) { px(xx - 2 - a, yy - Math.round(Math.sin(T * 9 + a * 0.6) * a * 0.6 * (0.5 + mid)), '#ff7a1a'); px(xx + 2 + a, yy + Math.round(Math.sin(T * 9 + a * 0.6 + 1) * a * 0.6 * (0.5 + mid)), '#ff7a1a'); } }
+			x = xx; y = yy;
+		}
+		rect(px, x - 2, y - 3, 5, 3, '#ffd23f'); px(x - 1, y - 2, '#1a1a1a'); px(x + 1, y - 2, '#1a1a1a'); px(x, y - 1, '#1a1a1a');
+		title(g, '#1a3a5a');
+	}
+
+	/* ---------- Toaster cannon ---------- */
+	let tsBorn = -9, tsBass = 0, tsH = 0;
+	function toaster(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'ts'), bass = avg(lv, 0, 2);
+		g.fillStyle = '#ffe9c8'; g.fillRect(0, 0, 640, 480);
+		rect(px, 0, 48, 80, 12, '#c89a6a'); for (let x = 0; x < 80; x++) px(x, 48, '#a87a4a');
+		if (bass > 0.55 && tsBass <= 0.55 && T - tsBorn > 0.6) { tsBorn = T; tsH = 20 + bass * 26; }
+		tsBass = bass;
+		const age = T - tsBorn, up = age < 0.8 ? Math.max(0, tsH * Math.sin(age / 0.8 * Math.PI)) : 0;
+		for (const [sx, flip] of [[30, 1], [44, -1]]) {
+			const yy = 30 - Math.round(up), spin = Math.floor(age * 10 * flip) % 4;
+			const w = spin % 2 ? 3 : 8, ox = sx + (8 - w) / 2;
+			rect(px, Math.round(ox), yy, w, 9, '#d8964a'); rect(px, Math.round(ox) + 1, yy + 1, Math.max(1, w - 2), 7, '#f2c27a');
+		}
+		rect(px, 24, 34, 32, 14, '#c8ccd4'); rect(px, 24, 34, 32, 2, '#e8ecf4'); rect(px, 27, 33, 10, 2, '#2a2a2a'); rect(px, 43, 33, 10, 2, '#2a2a2a');
+		rect(px, 57, up > 1 ? 36 : 42, 3, 2, '#2a2a2a');
+		px(30, 42, '#e8322e'); px(31, 42, up > 1 ? '#ff6a2a' : '#5a1a1a');
+		title(g, '#7a4a1a');
+	}
+
+	/* ---------- Long cat: the camera rising up a cat that never ends ---------- */
+	const LC_CLOUDS = []; let lcRise = 0;
+	const lcCloud = (y) => ({ x: Math.floor(Math.random() * 70) - 5, y, w: 6 + Math.floor(Math.random() * 9), h: 2 + Math.floor(Math.random() * 2), side: Math.random() < 0.5 });
+	for (let i = 0; i < 6; i++) LC_CLOUDS.push(lcCloud(-10 + i * 12));
+	function longcat(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'lc'), loud = avg(lv, 0, 15), bass = avg(lv, 0, 2);
+		// the sky, paler lower down
+		const sky = g.createLinearGradient(0, 0, 0, 480); sky.addColorStop(0, '#5aa8f0'); sky.addColorStop(1, '#bfe2ff');
+		g.fillStyle = sky; g.fillRect(0, 0, 640, 480);
+		// the climb: rows a second, faster with the music (and a kick on the bass)
+		const speed = 3 + loud * 22 + bass * 8;
+		lcRise += speed * dt;
+		// clouds slide down; one that leaves the bottom comes back at the top at a new random place and size
+		for (const c of LC_CLOUDS) {
+			c.y += speed * dt;
+			if (c.y > 62) Object.assign(c, lcCloud(c.y - 74));
+			const y = Math.round(c.y);
+			for (let r = 0; r < c.h; r++) { const inset = r === 0 ? 2 : 0; rect(px, c.x + inset, y + r, c.w - inset * 2, 1, r === c.h - 1 ? '#e2f0ff' : '#ffffff'); }
+		}
+		// the cat (the owner's AI-made tall tabby, parsed with the owner's settings: a 53x72 grid of 20.25x20 px cells,
+		// offset 2.5,5, sampled at 55%/44% of each cell; 34 columns of it drawn at 8 px a pixel): its head, paws, collar and the top of its body as drawn, then 7 rows of its own body (its stripes and
+		// spots, which tile) repeated down past the screen's bottom, sliding down as it "grows"
+		const HEAD = ["                                  ", "         aaaa       aaaa          ", "        aaaaa       aaaa          ", "       aallllaa   aallllaa        ", "       aallllaa   aallllaa        ", "       aalplllaaaaallpplaa        ", "       aapppplmmmmmmppppaaa       ", "       aapppplmllmmmpppplla       ", "  y   aaap....mllmmllppplla       ", " yyy  aa......mllmmllllllla       ", " ay   aa.......llllllllmmma    y  ", "    aa..............lllllllaa yyy ", "    aa....aa......aalllllllaa  y  ", "    aa....aa......aa.llllllaa     ", "    aamm..aa......aa...mmmmaa     ", "    aamm.....a..a.......lllaa     ", "    aa........aa..........laaa    ", "      aaa............aaaaallma    ", "    aa...aa.........a......lma    ", "   aaa...aa.........a......lma    ", "   aa.....karrrrrrra....kkalma    ", "   aa...kkkaaayyyaaa...kkkalma    ", "   aa..kkaaaaa.yyama..kkaaalla    ", "   aa..kkaalmayyyala..kkaallla    ", "     aaaaa....aaa...aaaallllla    ", "     aaa a..........llllllllla    "], TILE = ["        aa..........llllllllla    ", "        aa............llmmmmma    ", "        aa............llmmmmma    ", "        aa...k........llllllla    ", "        aa...k........llllllla    ", "        aa............llllllla    ", "        aa........kk..llllllla    ", "        aa........kk..llmmmmma    ", "        aa............llmmmmma    ", "        aa............llllllla    ", "        aa............llllllla    ", "        aa....k........lllllla    ", "        aa.............lllmmma    ", "        aa.............lllmmma    ", "        aa.............lllmmma    ", "        aa........kk...lllllla    ", "        aa.............lllllla    ", "        aa.............lllllla    "], CPAL = {"a": "#2a1e24", ".": "#fafafa", "l": "#cdcbd4", "m": "#888496", "p": "#f0828c", "r": "#d63a40", "y": "#ecba28", "k": "#f6d6be"};
+		const S = 8, OX = 320 - 17 * S, OY = 40;
+		const rise = Math.floor(lcRise / 1.5);
+		const rowAt = r => r < HEAD.length ? HEAD[r] : TILE[(((r - HEAD.length - rise) % TILE.length) + TILE.length) % TILE.length];
+		const last = Math.ceil((480 - OY) / S);
+		// the music: a light along the cat's edges, both sides, each row a band (the bass at the bottom, the treble at
+		// the ears), thicker and brighter as it plays, its colours drifting up the cat as it climbs
+		for (let r = 0; r < last; r++) {
+			const row = rowAt(r), l = row.search(/\S/), rr = row.length - 1 - [...row].reverse().join('').search(/\S/);
+			if (l < 0) continue;
+			const band = Math.max(0, Math.min(15, Math.floor((1 - r / last) * 16))), v = lv[band];
+			const hue = (band * 24 + lcRise * 3) % 360, w = Math.round(3 + v * 12);
+			g.fillStyle = `hsla(${hue} 95% ${45 + v * 25}% / ${0.25 + v * 0.75})`;
+			g.fillRect(OX + l * S - w, OY + r * S, w, S);
+			g.fillRect(OX + (rr + 1) * S, OY + r * S, w, S);
+		}
+		for (let r = 0; r < last; r++) [...rowAt(r)].forEach((ch, c) => { if (ch !== ' ') { g.fillStyle = CPAL[ch]; g.fillRect(OX + c * S, OY + r * S, S, S); } });
+		// how long it is now
+		const metres = Math.floor(lcRise / 8);
+		text(g, metres + ' m', 560, 460, 'rgba(255,255,255,0.85)', 26);
+		title(g, '#1a3a6a');
+	}
+
+	/* ---------- Stone choir ---------- */
+	function moai(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'mo');
+		const sun = 30 + ((T * 0.3) % 30);
+		const sky = g.createLinearGradient(0, 0, 0, 480); sky.addColorStop(0, '#ff9a6a'); sky.addColorStop(1, '#6a3a8a');
+		g.fillStyle = sky; g.fillRect(0, 0, 640, 480);
+		disc(px, 40, Math.round(sun), 7, '#ffe08a');
+		rect(px, 0, 48, 80, 12, '#3a6a4a'); for (let x = 0; x < 80; x++) px(x, 48, '#5a8a5a');
+		const groups = [[0, 2], [3, 5], [6, 8], [9, 11], [12, 15]];
+		groups.forEach(([a, b], k) => {
+			const v = avg(lv, a, b), x0 = 4 + k * 15, open = Math.round(v * 5);
+			rect(px, x0, 18, 11, 30, '#7a7068'); rect(px, x0 - 1, 16, 13, 4, '#6a6058'); rect(px, x0 + 9, 22, 2, 26, '#5a5048');
+			rect(px, x0 + 2, 24, 3, 2, '#3a3430'); rect(px, x0 + 6, 24, 3, 2, '#3a3430');
+			rect(px, x0 + 4, 26, 3, 8, '#8a8078');
+			rect(px, x0 + 3, 36, 5, 1 + open, '#2a2420');
+			if (open > 2) { px(x0 + 12, 30 - open, '#ffffff'); px(x0 + 13, 29 - open, '#ffffff'); px(x0 + 13, 28 - open, '#ffffff'); }
+		});
+		title(g, '#3a1a3a');
+	}
+
+	/* ---------- Washing machine ---------- */
+	function washer(g, d, dt) {
+		const px = mk(g), lv = L(d, dt, 'wm'), bass = avg(lv, 0, 2), mid = avg(lv, 4, 9);
+		g.fillStyle = '#d8e4ec'; g.fillRect(0, 0, 640, 480);
+		for (let x = 0; x < 80; x += 6) for (let y = 0; y < 48; y += 6) px(x + (y / 6 % 2) * 3, y, '#c8d6e0');
+		rect(px, 0, 50, 80, 10, '#9aa8b4'); for (let x = 0; x < 80; x += 5) px(x, 50, '#b8c4d0');
+		const walk = Math.sin(T * 0.6) * 10 * bass, shake = Math.round(Math.sin(T * 45) * bass * 1.5), jump = Math.round(Math.abs(Math.sin(T * 22)) * bass * 2);
+		const x0 = 24 + Math.round(walk) + shake, y0 = 16 - jump;
+		rect(px, x0, y0, 32, 34, '#f4f6f8'); rect(px, x0, y0, 32, 6, '#e0e4ea'); disc(px, x0 + 25, y0 + 3, 1, '#5ad1ff'); rect(px, x0 + 3, y0 + 2, 10, 2, '#9aa8b4');
+		disc(px, x0 + 16, y0 + 20, 11, '#9aa8b4'); disc(px, x0 + 16, y0 + 20, 9, '#3a7ab8');
+		const turn = T * (2 + mid * 10);
+		const items = [['#ff6a8a', 0], ['#ffd23f', 2.1], ['#ffffff', 4.2]];
+		items.forEach(([c, ph], i) => { const a = turn + ph, r = 5; const ix = x0 + 16 + Math.round(Math.cos(a) * r), iy = y0 + 20 + Math.round(Math.sin(a) * r); if (i === 1) { disc(px, ix, iy, 2, c); px(ix + 2, iy, '#ff8a1a'); px(ix - 1, iy - 1, '#1a1a1a'); } else { rect(px, ix - 1, iy - 2, 3, 4, c); rect(px, ix + 1, iy + 1, 2, 1, c); } });
+		for (let i = 0; i < 6; i++) px(x0 + 16 + Math.round(Math.cos(turn * 1.3 + i) * 7), y0 + 20 + Math.round(Math.sin(turn * 1.3 + i) * 7), 'rgba(255,255,255,0.6)');
+		rect(px, x0 + 2, y0 + 34, 4, 2, '#5a6a78'); rect(px, x0 + 26, y0 + 34, 4, 2, '#5a6a78');
+		if (bass > 0.6) { text(g, 'thunk', (x0 - 6) * P, (y0 + 4) * P, '#5a6a78', 20); }
+		title(g, '#3a4a5a');
+	}
+
+	const DRAW = { popcorn, pigeons, jelly, socks, chicken, tubeman, toaster, longcat, moai, washer };
+	let last = performance.now(), t0 = last;
+	function frame(now) {
+		const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+		last = now; T = Math.max(0, (now - t0) / 1000);
+		const d = playing && analyser ? real() : fake(T);
+		for (const s of STYLES) DRAW[s.id](ctx[s.id], d, dt);
+		requestAnimationFrame(frame);
+	}
+	T = 0.37;
+	const first = fake(0.37);
+	for (let k = 0; k < 8; k++) for (const s of STYLES) DRAW[s.id](ctx[s.id], first, 0.016);
+	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

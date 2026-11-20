@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Banana Player artifacts</title>
+<style>
+:root{--bg:#f7f4ec;--fg:#1b1a20;--dim:#625e56;--line:#ddd6c6;--accent:#7a5200}
+@media (prefers-color-scheme:dark){:root{--bg:#0b0b0d;--fg:#e8e4da;--dim:#8a8c94;--line:#2e2e34;--accent:#e8e4da}}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;padding:24px 16px}
+main{max-width:820px;margin:0 auto}h1{font-size:24px;margin:0 0 4px}p{color:var(--dim);margin:0 0 16px}
+ul{list-style:none;padding:0;margin:0}li{display:flex;gap:12px;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line)}
+a{color:var(--accent)}span{color:var(--dim)}
+</style></head><body><main>
+<h1>Banana Player artifacts</h1>
+<p>Local copies, downloaded 2026-11-20. Each opens from this folder; the online link is beside it.</p>
+<ul id="list"></ul></main>
+<script>
+const ITEMS=[
+["handheld-redesign","The redesign spec (current)","4w5L4teT492GdeeGVPEFhS"],
+["handheld-redesign-2026-11-17","The first redesign proposal","AKpoEv8xQyNCHPjHKmhx9K"],
+["visualizer-ideas","Ten visualizer ideas (Faders, Lanterns built)","SBFWxGYtRhR7u7tWhmwUrF"],
+["ten-more-visualizers","Ten more visualizers","Ky1BgRb5u4HzMz2NCL664i"],
+["ten-fun-visualizers","Ten fun visualizers","W2a6q3Tue8p1HTcH4DY2QT"],
+["visualizer-proposals","Visualizer proposals","HK6EpG3f3oxnBfY7eqcb48"],
+["absurd-visualizers","Absurd visualizers","JWzFvjHK8kgrBGmaFWguL7"],
+["visualizer-reel","Visualizer reel","1UpzDPWrrJZRzAvRrc3ifw"],
+["seven-more-visualizers","Seven more visualizers","F34RrAhsNicTfJhEqocBxS"],
+["eight-more-visualizers","Eight more visualizers","GxRkzdCtvwchCqS9NHeCrs"],
+["visualizer-styles","Six visualizer styles","DquNMXfADMjH7vRbqgtoVb"],
+["fireworks-and-cat","Fireworks and Cat","63PzauJA8idrYWRbkWegiJ"],
+["guided-reading","Manga guided reading","9p9NCEcWTmp7dtXi5TmUWe"],
+["manga-book-mode","Manga book mode","NNccPG2GpkRvftWLVRQLHJ"],
+["manga-reader-mock","Manga reader mock","R1Pr53sgAZUB8uP3p3LNuW"],
+["dashboard-home-mock","Web dashboard Home mock","WwbroUJsxMSkR4g5y6tUe8"],
+["dashboard-overhaul-mock","Web dashboard overhaul","Byx1gU1dXjinE9RiHNwpw2"],
+["play-on-picker","Play on picker","U9dXWM6iHDt3SWzygef56H"],
+["handheld-home-grid","Handheld home grid","8WjbiHqcrwvur5sc2hG5us"],
+["background-play-mock","Background play","Sqyt3R7kjrSEPdr57gowxs"],
+["playing-screen-buttons","Playing screen buttons","B68vkPu8godkp9YbydcJvs"],
+["playing-redesign","Playing screen redesign","Wr8FrLJA3Gf5wzH3uwevqa"],
+["like-on-the-handheld","Like on the handheld","7XkCRaLU2xB3n7n6Borvh6"],
+["like-on-the-dashboard","Like on the dashboard","WzpxypEg6k1KYjcXb66rDC"]];
+document.getElementById('list').innerHTML=ITEMS.map(([d,t,id])=>`<li><a href="${d}/index.html">${t}</a><span><a href="https://claude.ai/artifact/${id}">online</a></span></li>`).join('');
+</script></body></html>

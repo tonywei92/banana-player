@@ -1,0 +1,809 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Overhaul Mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pixelify+Sans&display=swap" rel="stylesheet">
+<style>
+/* ============ tokens (Midnight, docs/design/midnight.md, + the web's additions) ============ */
+:root {
+	--bg: #000; --surface: #121116; --raised: #19181E; --btn: #26242E; --pressed: #3E3B4A; --track: #1E1D24;
+	--cream: #E8E2D3; --dim: #8F8A80; --dim-btn: #ABA597; --yellow: #FFD23F; --red: #F0645A; --green: #7BD88F;
+	/* edge = fill 30% towards cream; lip = fill * .7 */
+	--e-btn: #605D60; --e-pressed: #716D73; --e-surface: #52504F; --e-yellow: #F8D76B; --e-red: #EE8A7E; --e-track: #5B5858;
+	--l-btn: #1B1920; --l-pressed: #2B2934; --l-surface: #0D0C0F; --l-yellow: #B2932C; --l-red: #A8463F;
+	--yellow-hover: #FFE68A; --yellow-down: #E0B937;
+	--dot: rgba(232, 226, 211, .07);
+	--scrim: rgba(0, 0, 0, .72);
+	--r-chip: 6px; --r-field: 6px; --r-btn: 10px; --r-card: 14px; --r-dialog: 20px; --r-track: 5px;
+	--bw: 2px; --lip: 3px;
+	--s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s7: 32px; --s8: 40px; --s9: 56px;
+	--hit: 44px;
+	--pixel: "Pixelify Sans", ui-monospace, monospace;
+	--text: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--ease: cubic-bezier(.2, .8, .2, 1); --t-press: 90ms; --t-ui: 160ms; --t-sheet: 260ms;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { background: #0A0A0C; color: var(--cream); font: 400 16px/1.45 var(--text); -webkit-font-smoothing: antialiased; }
+*, *::before, *::after { font-variant-ligatures: none; font-feature-settings: "liga" 0, "clig" 0; }
+button, input { font: inherit; color: inherit; letter-spacing: inherit; }
+button { background: none; border: 0; cursor: pointer; text-align: inherit; -webkit-tap-highlight-color: transparent; }
+:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+.ic { fill: currentColor; flex: none; display: block; shape-rendering: crispEdges; }
+.pixel { font-family: var(--pixel); font-weight: 400; }
+.dim { color: var(--dim); }
+.ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grow { flex: 1; min-width: 0; }
+.num { font-family: var(--pixel); font-variant-numeric: tabular-nums; }
+
+/* ============ mock viewer chrome (not part of the design) ============ */
+.viewer { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 12px 16px; position: sticky; top: 0; z-index: 100; background: #0A0A0Cee; backdrop-filter: blur(8px); border-bottom: 1px solid #222; }
+.viewer h1 { font: 400 18px var(--pixel); color: var(--yellow); margin-right: 8px; }
+.viewer .grp { display: flex; gap: 4px; flex-wrap: wrap; }
+.viewer button { font: 500 13px var(--text); padding: 6px 10px; border-radius: 8px; background: #1A1920; color: #cfc9bb; border: 1px solid #2c2a33; }
+.viewer button[aria-pressed="true"] { background: var(--yellow); color: #000; border-color: var(--yellow); }
+.viewer .lbl { font: 500 11px var(--text); text-transform: uppercase; letter-spacing: .1em; color: #6d6960; }
+.stage { padding: 24px 16px 64px; display: flex; justify-content: center; }
+.frame { position: relative; overflow: hidden; container: app / size; background: var(--bg); border-radius: 28px; box-shadow: 0 0 0 1px #2a2830, 0 0 0 10px #121116, 0 0 0 11px #2a2830, 0 30px 80px #000; flex: none; transform: translateZ(0); }
+.frame.desktop { border-radius: 12px; }
+
+/* ============ app ============ */
+.app { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr; grid-template-rows: 1fr auto auto; background: var(--bg) radial-gradient(var(--dot) 1px, transparent 1.4px) 0 0 / 6px 6px; overflow: hidden; }
+.app.bare { display: block; }
+.main { overflow-y: auto; overflow-x: hidden; position: relative; scrollbar-width: thin; scrollbar-color: #3a3842 transparent; }
+
+/* the box: BananaOS's edged, lipped rounded box. Fill, edge and lip come in as variables */
+.box { --f: var(--btn); --e: var(--e-btn); --l: var(--l-btn); background: var(--f); border: var(--bw) solid var(--e); box-shadow: inset 0 calc(-1 * var(--lip)) 0 var(--l); border-radius: var(--r-btn); transition: transform var(--t-press) var(--ease), box-shadow var(--t-press) var(--ease), background var(--t-ui), border-color var(--t-ui); }
+.box.surface { --f: var(--surface); --e: var(--e-surface); --l: var(--l-surface); border-radius: var(--r-card); }
+.box.yellow { --f: var(--yellow); --e: var(--e-yellow); --l: var(--l-yellow); color: #000; }
+.box.red { --f: var(--red); --e: var(--e-red); --l: var(--l-red); color: #000; }
+.box.focus, .box.sel { --e: var(--yellow); }
+/* a press: the key goes down, its lip shrinks: the handheld's buttons in 90 ms */
+button.box:active { transform: translateY(2px); box-shadow: inset 0 -1px 0 var(--l); }
+@media (hover: hover) { button.box:not(.yellow):not(.red):hover { --f: var(--pressed); --e: var(--e-pressed); --l: var(--l-pressed); } button.box.yellow:hover { --f: var(--yellow-hover); } }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); min-height: var(--hit); padding: 0 var(--s4) var(--lip); font: 400 17px/1 var(--pixel); white-space: nowrap; }
+.btn.sm { min-height: 36px; padding: 0 var(--s3) 2px; font-size: 15px; }
+.btn.icon { width: var(--hit); padding: 0 0 var(--lip); }
+.ib { display: inline-flex; align-items: center; justify-content: center; width: var(--hit); height: var(--hit); flex: none; color: var(--cream); border-radius: var(--r-btn); transition: background var(--t-ui), color var(--t-ui), transform var(--t-press); }
+.ib:active { transform: scale(.92); }
+@media (hover: hover) { .ib:hover { background: var(--btn); } }
+.ib.on { color: var(--yellow); }
+
+/* keycap: BananaOS's footer hint key (cream cap, black letter) */
+.key { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px 1px; border-radius: 5px; background: var(--cream); color: #000; font: 400 12px/1 var(--pixel); box-shadow: inset 0 -2px 0 #A29E94; }
+.kicker { font: 400 13px/1 var(--pixel); text-transform: uppercase; letter-spacing: .14em; color: var(--dim); }
+.chip { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px 1px; border-radius: var(--r-chip); background: var(--track); color: var(--cream); font: 400 13px/1 var(--pixel); white-space: nowrap; }
+.chip.y { background: var(--yellow); color: #000; }
+.chip.r { background: var(--red); color: #000; }
+.chip.ghost { background: transparent; box-shadow: inset 0 0 0 1.5px var(--e-btn); color: var(--dim-btn); }
+
+/* the band: BananaOS's section header (title, a short rule, the right-hand hint) */
+.band { display: flex; align-items: center; gap: var(--s3); }
+.band .rule { flex: 1; height: 2px; background: linear-gradient(90deg, var(--e-surface), transparent); border-radius: 1px; }
+
+/* ============ navigation ============ */
+.side { display: none; }
+.tabbar { display: flex; justify-content: space-around; padding: 6px 8px calc(6px + 18px); background: var(--surface); border-top: var(--bw) solid var(--e-surface); position: relative; z-index: 5; }
+.tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 6px 0; color: var(--dim); font: 400 13px/1 var(--pixel); border-radius: var(--r-btn); position: relative; }
+.tabbar button[aria-current="page"] { color: var(--yellow); }
+.tabbar button[aria-current="page"]::before { content: ""; position: absolute; top: -8px; left: 50%; width: 28px; height: 4px; margin-left: -14px; background: var(--yellow); border-radius: 0 0 3px 3px; }
+
+/* the page's head */
+.phead { padding: var(--s6) var(--s5) var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+.phead .row { display: flex; align-items: flex-end; gap: var(--s3); }
+.phead h1 { font: 400 30px/1.1 var(--pixel); color: var(--cream); }
+.phead .sub { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
+.crumbs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: 400 14px/1 var(--pixel); color: var(--dim); }
+.crumbs button { color: var(--dim); padding: 4px 0; display: inline-flex; align-items: center; gap: 6px; }
+.crumbs button:hover { color: var(--cream); }
+.crumbs .ic { opacity: .6; }
+.content { padding: 0 var(--s5) calc(var(--s9) + 80px); }
+
+/* ============ lists ============ */
+.list { display: flex; flex-direction: column; gap: 2px; padding: 4px; }
+.row { display: flex; align-items: center; gap: var(--s3); min-height: 60px; padding: 6px var(--s2) 6px 8px; border-radius: var(--r-btn); border: var(--bw) solid transparent; position: relative; transition: background var(--t-ui), border-color var(--t-ui); animation: rise .28s var(--ease) both; }
+.row:nth-child(2) { animation-delay: 20ms } .row:nth-child(3) { animation-delay: 40ms } .row:nth-child(4) { animation-delay: 60ms } .row:nth-child(5) { animation-delay: 80ms } .row:nth-child(6) { animation-delay: 100ms } .row:nth-child(n+7) { animation-delay: 120ms }
+@keyframes glowin { 0% { background: #3a3110; } 100% { background: transparent; } }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+@media (hover: hover) { .row:hover { background: var(--raised); } }
+.row.cur { background: var(--btn); border-color: var(--yellow); box-shadow: inset 0 -3px 0 var(--l-btn); }
+.row.cur .t { color: var(--yellow); }
+.row.picked { background: #2A2618; border-color: #6B5A22; }
+.row .t { font: 500 15px/1.25 var(--text); }
+.row .m { font: 400 13px/1.3 var(--text); color: var(--dim); display: flex; gap: 6px; align-items: center; }
+.row .heart-s { color: var(--yellow); display: inline-block; vertical-align: -1px; margin-left: 4px; } .row .heart-s .ic { display: inline; }
+@container app (max-width: 699px) { .plrows .dur { display: none; } }
+.row .end { display: flex; align-items: center; gap: 2px; color: var(--dim); }
+.row .dur { font: 400 13px var(--pixel); color: var(--dim); margin-right: 4px; }
+/* the row's glyph sits in a small tile, as BananaOS's system icons do */
+.tile { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--track); box-shadow: inset 0 0 0 1.5px #3A3840, inset 0 -3px 0 #141318; color: var(--cream); overflow: hidden; position: relative; }
+.tile.folder { color: var(--yellow); }
+.tile img, .tile svg.cover { width: 100%; height: 100%; display: block; }
+.check { width: 26px; height: 26px; flex: none; border-radius: 7px; border: 2px solid var(--e-btn); display: grid; place-items: center; transition: background var(--t-ui), border-color var(--t-ui), transform var(--t-press); }
+.check.on { background: var(--yellow); border-color: var(--yellow); color: #000; animation: pop .2s var(--ease); }
+@keyframes pop { 50% { transform: scale(1.15); } }
+.grip { color: #4c4a52; cursor: grab; padding: 0 4px; }
+
+/* ============ cards ============ */
+.card { padding: var(--s4); }
+.cardh { display: flex; align-items: center; gap: var(--s2); margin-bottom: var(--s3); }
+.cardh h2 { font: 400 17px/1.1 var(--pixel); }
+
+/* ============ mini player and bottom bar ============ */
+.mini { margin: 0 10px 8px; display: flex; align-items: center; gap: var(--s3); padding: 8px 8px 11px 8px; position: relative; overflow: hidden; z-index: 6; cursor: pointer; }
+.mini .prog { position: absolute; left: 10px; right: 10px; bottom: 5px; height: 3px; border-radius: 2px; background: var(--track); }
+.mini .prog i { display: block; height: 100%; width: 42%; background: var(--yellow); border-radius: 2px; }
+.mini .t { font: 600 14px/1.2 var(--text); } .mini .m { font: 400 12px/1.2 var(--text); color: var(--dim); }
+.mini .tile { width: 42px; height: 42px; border-radius: 8px; }
+.pbar { display: none; }
+
+/* ============ the player ============ */
+.np { display: flex; flex-direction: column; gap: var(--s4); padding: 10px var(--s5) var(--s4); min-height: 100%; position: relative; isolation: isolate; }
+.np .glow { position: absolute; inset: -40px -40px auto; height: 420px; z-index: -1; filter: blur(60px) saturate(1.2); opacity: .38; pointer-events: none; }
+.np-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); }
+.art { width: 100%; aspect-ratio: 1; border-radius: var(--r-card); overflow: hidden; box-shadow: 0 0 0 2px #ffffff14, 0 24px 60px -20px #000; position: relative; }
+.art svg { width: 100%; height: 100%; display: block; }
+.art.video { aspect-ratio: 16 / 9; background: #000; }
+.sub-line { position: absolute; left: 0; right: 0; bottom: 10%; text-align: center; }
+.sub-line span { background: #000b; padding: 3px 8px; border-radius: 4px; font: 600 15px/1.4 var(--text); }
+.np-title { font: 400 26px/1.15 var(--pixel); }
+.np-meta { color: var(--dim); font: 400 15px/1.35 var(--text); }
+.np-from { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font: 400 13px/1 var(--pixel); }
+.np-from b { color: var(--cream); font-weight: 400; }
+.seek { position: relative; height: 22px; display: flex; align-items: center; cursor: pointer; }
+.seek .tr { position: absolute; left: 0; right: 0; height: 8px; border-radius: var(--r-track); background: var(--track); box-shadow: inset 0 0 0 1.5px #2e2c35; overflow: hidden; }
+.seek .fl { position: absolute; left: 0; height: 8px; border-radius: var(--r-track) 0 0 var(--r-track); background: var(--yellow); }
+.seek .ch { position: absolute; top: 7px; width: 2px; height: 8px; background: #000; }
+.seek .kn { position: absolute; width: 6px; height: 20px; margin-left: -3px; border-radius: 2px; background: var(--cream); box-shadow: 0 0 0 2px #000; transition: transform var(--t-press); }
+.seek:active .kn { transform: scaleY(1.2); }
+.times { display: flex; justify-content: space-between; align-items: center; font: 400 14px var(--pixel); color: var(--dim); margin-top: -6px; }
+.transport { display: flex; align-items: center; justify-content: space-between; }
+.transport .ib { width: 52px; height: 52px; }
+.playbtn { width: 76px; height: 76px; border-radius: 22px; display: grid; place-items: center; padding-bottom: var(--lip); }
+.np-tabs { display: flex; gap: var(--s2); margin-top: auto; }
+.np-tabs button { flex: 1; min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; font: 400 15px var(--pixel); }
+
+/* the device switch: a segmented control with the two places it can play */
+.dev { display: inline-flex; padding: 3px; gap: 3px; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 2px var(--e-surface); }
+.dev button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px 1px; border-radius: 9px; font: 400 14px/1 var(--pixel); color: var(--dim); transition: background var(--t-ui), color var(--t-ui); }
+.dev button[aria-pressed="true"] { background: var(--yellow); color: #000; box-shadow: inset 0 -2px 0 var(--l-yellow); }
+
+/* sheet (phone) / side panel (desktop) */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 40; animation: fade var(--t-sheet) var(--ease); }
+@keyframes fade { from { opacity: 0; } }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 82%; z-index: 41; display: flex; flex-direction: column; border-radius: var(--r-dialog) var(--r-dialog) 0 0; border-bottom: 0; padding-bottom: 18px; animation: up var(--t-sheet) var(--ease); }
+@keyframes up { from { transform: translateY(100%); } }
+.sheet .handle { width: 40px; height: 5px; border-radius: 3px; background: var(--e-btn); margin: 10px auto 4px; flex: none; }
+.ptabs { display: flex; gap: 4px; padding: 6px 12px 10px; overflow-x: auto; scrollbar-width: none; flex: none; }
+.ptabs button { padding: 0 12px 2px; min-height: 36px; font: 400 15px/1 var(--pixel); border-radius: 9px; color: var(--dim); white-space: nowrap; }
+.ptabs button[aria-selected="true"] { background: var(--yellow); color: #000; box-shadow: inset 0 -3px 0 var(--l-yellow); }
+.pbody { overflow-y: auto; padding: 0 12px 12px; display: flex; flex-direction: column; gap: var(--s3); }
+
+/* equalizer */
+.eq { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; align-items: end; height: 150px; padding-top: 4px; }
+.eqb { display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.eqb .slot { flex: 1; width: 10px; border-radius: 5px; background: var(--track); position: relative; box-shadow: inset 0 0 0 1.5px #2e2c35; }
+.eqb .slot::after { content: ""; position: absolute; left: -1px; right: -1px; top: 50%; height: 2px; background: #3a3842; }
+.eqb .lvl { position: absolute; left: 0; right: 0; background: var(--yellow); border-radius: 5px; }
+.eqb .knob { position: absolute; left: -5px; width: 20px; height: 10px; border-radius: 3px; background: var(--cream); box-shadow: 0 0 0 2px #000; z-index: 1; }
+.eqb small { font: 400 11px var(--pixel); color: var(--dim); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chips .chip { height: 32px; padding: 0 12px 1px; font-size: 14px; cursor: pointer; }
+.slider { display: flex; align-items: center; gap: var(--s3); }
+.slider .tr { flex: 1; height: 8px; border-radius: 5px; background: var(--track); position: relative; box-shadow: inset 0 0 0 1.5px #2e2c35; }
+.slider .tr i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--yellow); border-radius: 5px 0 0 5px; }
+.slider .tr b { position: absolute; top: -6px; width: 8px; height: 20px; margin-left: -4px; background: var(--cream); border-radius: 2px; box-shadow: 0 0 0 2px #000; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 14px; }
+.kv dt { font: 400 13px/1.4 var(--pixel); color: var(--dim); }
+.radio { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: var(--r-btn); font-size: 15px; }
+.radio.on { background: var(--btn); box-shadow: inset 0 0 0 2px var(--yellow), inset 0 -3px 0 var(--l-btn); color: var(--yellow); }
+
+/* ============ files ============ */
+.toolbar { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; margin-bottom: var(--s4); }
+.toolbar .search { flex: 1; min-width: 160px; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-radius: var(--r-btn); background: var(--surface); box-shadow: inset 0 0 0 2px var(--e-surface); color: var(--dim); font-size: 15px; }
+.storage { display: flex; align-items: center; gap: 8px; }
+.meter { width: 90px; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--cream); }
+.drop { display: none; }
+.selbar { position: absolute; left: 10px; right: 10px; z-index: 30; padding: 8px; display: flex; flex-direction: column; gap: 8px; --e: var(--yellow) !important; animation: up2 var(--t-sheet) var(--ease); }
+@keyframes up2 { from { transform: translateY(30px); opacity: 0; } }
+.selbar .top { display: flex; align-items: center; gap: 8px; padding: 0 4px; }
+.selbar .acts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.selbar .acts button { flex-direction: column; gap: 5px; min-height: 58px; font-size: 13px; }
+.uploads { margin-bottom: var(--s4); padding: var(--s3) var(--s4); }
+.up { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 8px 0; border-top: 1px solid #222128; font-size: 14px; }
+.up:first-of-type { border-top: 0; }
+.up .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+.up .bar i { display: block; height: 100%; background: var(--yellow); position: relative; overflow: hidden; }
+.up .bar i::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, #fff6, transparent); animation: shimmer 1.2s linear infinite; }
+@keyframes shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.up.done .bar i { background: var(--green); } .up.done .bar i::after { display: none; }
+.up.wait .bar i { background: var(--e-btn); width: 0; }
+
+/* ============ playlists ============ */
+.plgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s3); }
+.plcard { display: flex; flex-direction: column; gap: 10px; padding: 10px 10px 13px; text-align: left; border-radius: var(--r-card); }
+.plcard .cv { aspect-ratio: 1; border-radius: 9px; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; }
+.plcard .cv svg { width: 100%; height: 100%; display: block; }
+.plcard .cv.one { grid-template-columns: 1fr; }
+.plcard .n { font: 400 16px/1.15 var(--pixel); }
+.plcard .c { font: 400 13px/1 var(--text); color: var(--dim); }
+.plcard.liked { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: var(--s4); }
+.plcard.liked .cv { width: 76px; flex: none; background: linear-gradient(135deg, #3b2f0b, #110f08); place-items: center; color: var(--yellow); grid-template-columns: 1fr; }
+.plcard.new { place-items: center; justify-content: center; border-style: dashed; color: var(--dim); min-height: 120px; }
+.plhero { display: flex; gap: var(--s5); align-items: flex-end; padding: var(--s5) var(--s5) var(--s4); flex-wrap: wrap; }
+.plhero .cv { width: 132px; aspect-ratio: 1; border-radius: var(--r-card); overflow: hidden; flex: none; display: grid; place-items: center; box-shadow: 0 0 0 2px #ffffff14, 0 20px 50px -18px #000; }
+.plhero .cv.liked { background: radial-gradient(circle at 30% 20%, #5a4610, #120f07 70%); color: var(--yellow); }
+.plhero h1 { font: 400 34px/1.05 var(--pixel); }
+.plhero .acts { display: flex; gap: var(--s2); width: 100%; }
+.plhero .acts .btn { flex: 1; }
+
+.pltools { position: sticky; top: 0; z-index: 4; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding: 10px 0; margin-bottom: 6px; background: var(--bg); }
+.pltools .search { flex: 1 1 200px; min-width: 0; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-radius: var(--r-btn); background: var(--surface); box-shadow: inset 0 0 0 2px var(--e-surface); color: var(--dim); font-size: 15px; }
+.seg { display: inline-flex; padding: 3px; gap: 3px; border-radius: 12px; background: var(--surface); box-shadow: inset 0 0 0 2px var(--e-surface); }
+.seg button { height: 34px; padding: 0 10px 1px; border-radius: 9px; font: 400 14px/1 var(--pixel); color: var(--dim); display: inline-flex; align-items: center; gap: 6px; }
+.seg button[aria-pressed="true"] { background: var(--btn); color: var(--yellow); box-shadow: inset 0 0 0 2px var(--yellow), inset 0 -3px 0 var(--l-btn); }
+.strip { display: grid; grid-auto-flow: column; grid-auto-columns: 132px; gap: 10px; overflow-x: auto; padding: 2px 2px 10px; scrollbar-width: none; scroll-snap-type: x mandatory; }
+.strip .plcard { scroll-snap-align: start; }
+.letter { position: sticky; top: 118px; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 8px 12px 4px; background: var(--surface); font: 400 15px var(--pixel); color: var(--yellow); }
+.letter::after { content: ""; flex: 1; height: 2px; background: #222128; }
+.mosaic { display: grid; grid-template-columns: 1fr 1fr; }
+.mosaic svg { width: 100%; height: 100%; display: block; }
+.azrail { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 1px; font: 400 10px/1 var(--pixel); color: var(--dim); z-index: 3; }
+.azrail span { padding: 1px 4px; } .azrail span.on { color: var(--yellow); }
+/* upload FAB: a round BananaOS key; while sending, a ring around it */
+.fabwrap { position: absolute; right: 16px; bottom: 164px; width: 80px; height: 80px; z-index: 35; display: grid; place-items: center; }
+.fab { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; padding-bottom: var(--lip); }
+.fabwrap.busy .fab, .fabwrap.error .fab { --f: var(--btn); }
+.fab .cnt { font: 400 15px/1 var(--pixel); color: var(--cream); }
+.fabwrap .ring { position: absolute; inset: 0; width: 80px; height: 80px; pointer-events: none; }
+.fabwrap .arc { transition: stroke-dashoffset .4s var(--ease); }
+.fabwrap.done .fab { animation: pop .35s var(--ease); }
+.files-content { padding-bottom: 140px !important; }
+.fbadge { position: absolute; top: 2px; right: 0; display: inline-flex; align-items: center; gap: 3px; height: 20px; padding: 0 6px 1px; border-radius: 10px; background: var(--red); color: #000; font: 400 12px/1 var(--pixel); box-shadow: 0 0 0 2px #000; }
+.fabwrap.picking { z-index: 45; }
+.fabpick { position: absolute; right: 26px; bottom: 246px; z-index: 46; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; animation: dlg2 var(--t-ui) var(--ease); }
+.fabpick .btn { min-width: 120px; justify-content: flex-start; }
+.uppop { position: absolute; right: 24px; bottom: 210px; width: 400px; max-height: 60%; z-index: 41; display: flex; flex-direction: column; border-radius: var(--r-dialog); animation: dlg2 var(--t-ui) var(--ease); }
+.up.err { color: var(--red); }
+.ib.sm { width: 30px; height: 30px; }
+/* ============ dialog, menu, toast, bubble ============ */
+.dialog { position: absolute; z-index: 41; left: 50%; top: 50%; width: min(440px, calc(100% - 24px)); max-height: 80%; transform: translate(-50%, -50%); border-radius: var(--r-dialog); display: flex; flex-direction: column; animation: dlg var(--t-sheet) var(--ease); }
+@keyframes dlg { from { opacity: 0; transform: translate(-50%, -46%) scale(.97); } }
+.dh { padding: var(--s5) var(--s5) var(--s3); display: flex; flex-direction: column; gap: 6px; }
+.dh h2 { font: 400 22px/1.1 var(--pixel); }
+.db { overflow-y: auto; padding: 0 var(--s3); }
+.df { padding: var(--s3) var(--s5) var(--s5); display: flex; gap: var(--s2); justify-content: flex-end; }
+.field { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border-radius: var(--r-field); background: #000; box-shadow: inset 0 0 0 2px var(--e-btn); color: var(--cream); margin: 0 var(--s5) var(--s3); }
+.field.f { box-shadow: inset 0 0 0 2px var(--yellow); }
+.field .caret { width: 2px; height: 20px; background: var(--yellow); animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.menu { position: absolute; z-index: 41; min-width: 230px; padding: 6px; border-radius: var(--r-card); animation: dlg2 var(--t-ui) var(--ease); }
+@keyframes dlg2 { from { opacity: 0; transform: translateY(-6px) scale(.98); } }
+.menu button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 12px; border-radius: 8px; font-size: 15px; }
+.menu button:hover { background: var(--btn); }
+.menu hr { border: 0; height: 2px; background: #222128; margin: 4px 6px; }
+.menu .danger { color: var(--red); }
+/* toast: a BananaOS bubble with its notch */
+.toast { position: absolute; z-index: 60; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: var(--s3); padding: 8px 8px 11px 14px; border-radius: var(--r-card); min-width: 280px; max-width: calc(100% - 24px); animation: toast .34s var(--ease); }
+@keyframes toast { from { opacity: 0; transform: translate(-50%, 16px) scale(.96); } }
+.toast::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 14px; height: 14px; margin-left: -7px; background: var(--btn); border-right: 2px solid var(--e-btn); border-bottom: 2px solid var(--e-btn); transform: rotate(45deg); border-radius: 0 0 3px 0; }
+.toast .ttl { font: 500 14px/1.3 var(--text); }
+.toast .ring { width: 22px; height: 22px; flex: none; }
+.bubble { position: absolute; z-index: 42; padding: 6px; border-radius: var(--r-card); min-width: 260px; animation: dlg2 var(--t-ui) var(--ease); }
+.bubble::before { content: ""; position: absolute; top: -9px; left: 40px; width: 14px; height: 14px; background: var(--surface); border-left: 2px solid var(--e-surface); border-top: 2px solid var(--e-surface); transform: rotate(45deg); border-radius: 3px 0 0 0; }
+.bubble.below::before { top: auto; left: auto; right: 90px; bottom: -9px; transform: rotate(225deg); }
+.bubble .radio { min-height: 58px; text-align: left; line-height: 1.3; margin-top: 2px; }
+
+/* ============ sign-in and down ============ */
+.center { min-height: 100%; display: grid; place-items: center; padding: var(--s7) var(--s5); }
+.signin { width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: center; gap: var(--s5); text-align: center; }
+.brand { display: flex; align-items: center; gap: 12px; font: 400 26px var(--pixel); color: var(--yellow); }
+.pins { display: flex; gap: 10px; }
+.pin { width: 62px; height: 74px; display: grid; place-items: center; font: 400 34px var(--pixel); border-radius: 12px; padding-bottom: var(--lip); }
+.pin.f .caret { width: 3px; height: 34px; background: var(--yellow); animation: blink 1s steps(1) infinite; }
+.how { display: grid; grid-template-columns: auto 1fr; gap: var(--s4); text-align: left; align-items: center; padding: var(--s4); width: 100%; }
+.dsmini { width: 92px; flex: none; }
+.or { display: flex; align-items: center; gap: 12px; width: 100%; color: var(--dim); font: 400 13px var(--pixel); letter-spacing: .14em; }
+.or::before, .or::after { content: ""; flex: 1; height: 2px; background: #222128; }
+.note { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--dim); }
+.down { max-width: 460px; display: flex; flex-direction: column; align-items: center; gap: var(--s4); text-align: center; }
+.down h1 { font: 400 26px/1.15 var(--pixel); }
+.zz { position: relative; }
+.zz span { position: absolute; font: 400 18px var(--pixel); color: var(--yellow); animation: zz 2.4s ease-in-out infinite; }
+@keyframes zz { 0% { opacity: 0; transform: translate(0, 6px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(10px, -22px); } }
+.dots i { display: inline-block; width: 6px; height: 6px; background: var(--yellow); margin: 0 3px; animation: dot 1.2s steps(1) infinite; }
+.dots i:nth-child(2) { animation-delay: .4s } .dots i:nth-child(3) { animation-delay: .8s }
+@keyframes dot { 0%, 66% { opacity: .2 } 33% { opacity: 1 } }
+
+/* ======================= tablet: 700 – 1099 ======================= */
+@container app (min-width: 700px) {
+	.letter { top: 64px; }
+	.fabwrap { right: 24px; bottom: 150px; }
+	.fabpick { right: 34px; bottom: 236px; }
+	.uppop { bottom: 240px; }
+	.app { grid-template-columns: 84px minmax(0, 1fr); grid-template-rows: 1fr auto; }
+	.app > .main { grid-column: 2; grid-row: 1; }
+	.tabbar, .mini { display: none; }
+	.side { display: flex; flex-direction: column; gap: 6px; grid-row: 1 / span 2; grid-column: 1; padding: 14px 10px; background: var(--surface); border-right: var(--bw) solid var(--e-surface); z-index: 6; }
+	.side .logo { display: flex; align-items: center; gap: 10px; padding: 4px 6px 14px; }
+	.side .logo b { display: none; font: 400 20px var(--pixel); color: var(--yellow); white-space: nowrap; }
+	.side .nav { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 6px; min-height: 60px; padding: 8px 4px; border-radius: var(--r-btn); color: var(--dim); font: 400 12px/1 var(--pixel); border: var(--bw) solid transparent; }
+	.side .nav[aria-current="page"] { color: var(--yellow); background: var(--btn); border-color: var(--yellow); box-shadow: inset 0 -3px 0 var(--l-btn); }
+	.side .foot { margin-top: auto; display: none; }
+	.side .hh-mini { margin-top: auto; display: grid; place-items: center; gap: 4px; font: 400 12px var(--pixel); color: var(--dim); }
+	.pbar { display: grid; grid-column: 2; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--s4); padding: 10px 16px 12px; background: var(--surface); border-top: var(--bw) solid var(--e-surface); position: relative; z-index: 5; }
+	.pbar .prog { position: absolute; left: 0; right: 0; top: -2px; height: 4px; background: var(--track); }
+	.pbar .prog i { display: block; height: 100%; width: 42%; background: var(--yellow); }
+	.pbar .prog b { position: absolute; top: -4px; left: 42%; width: 4px; height: 12px; margin-left: -2px; background: var(--cream); border-radius: 1px; box-shadow: 0 0 0 2px #000; }
+	.pbar .tx { display: flex; align-items: center; gap: 4px; }
+	.pbar .tx .play { width: 50px; height: 50px; border-radius: 14px; display: grid; place-items: center; padding-bottom: var(--lip); }
+	.pbar .now { display: flex; align-items: center; gap: 12px; min-width: 0; cursor: pointer; }
+	.pbar .now .t { font: 600 15px/1.2 var(--text); } .pbar .now .m { font: 400 13px/1.2 var(--text); color: var(--dim); }
+	.pbar .right { display: flex; align-items: center; gap: 4px; }
+	.pbar .vol, .pbar .ptime, .pbar .opt { display: none; }
+	.phead { padding: var(--s7) var(--s7) var(--s4); }
+	.phead h1 { font-size: 36px; }
+	.content { padding: 0 var(--s7) var(--s7); }
+	.plgrid { grid-template-columns: repeat(3, 1fr); }
+	.plgrid.l { grid-template-columns: repeat(3, 1fr); }
+	.selbar { left: 50%; right: auto; width: 560px; transform: translateX(-50%); bottom: 96px !important; }
+	@keyframes up2 { from { transform: translate(-50%, 30px); opacity: 0; } }
+	.selbar .acts button { flex-direction: row; min-height: 44px; }
+	.drop { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; margin-bottom: var(--s4); border-radius: var(--r-card); border: 2px dashed #3a3842; color: var(--dim); font-size: 14px; }
+	.np.wide { display: grid; grid-template-columns: 300px 1fr; column-gap: var(--s6); padding: var(--s6) var(--s7); align-content: start; min-height: auto; }
+	.np.wide .np-top { grid-column: 1 / -1; }
+	.np.wide .art { grid-row: span 6; }
+	.np.wide.vid { grid-template-columns: 1fr; }
+	.np.wide.vid .art { grid-row: auto; }
+	.np-tabs { display: none; }
+	.inline-panel { grid-column: 1 / -1; margin-top: var(--s5); }
+	.sheet { left: auto; right: 0; top: 0; bottom: 0; width: 400px; max-height: none; border-radius: var(--r-dialog) 0 0 var(--r-dialog); animation-name: inl; }
+	@keyframes inl { from { transform: translateX(100%); } }
+	.sheet .handle { display: none; }
+	.toast { bottom: 100px !important; }
+}
+/* ======================= desktop: ≥ 1100 ======================= */
+@container app (min-width: 1100px) {
+	.app { grid-template-columns: 236px minmax(0, 1fr); }
+	.side { padding: 18px 14px; gap: 4px; }
+	.side .logo b { display: block; }
+	.side .logo { padding: 2px 8px 22px; }
+	.side .nav { flex-direction: row; justify-content: flex-start; gap: 12px; min-height: 46px; padding: 0 12px 2px; font-size: 16px; }
+	.side .hh-mini { display: none; }
+	.side .foot { display: flex; flex-direction: column; gap: 10px; }
+	.side .lbl { padding: 18px 12px 6px; }
+	.side .plnav { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 12px; border-radius: 8px; color: var(--dim-btn); font-size: 14px; }
+	.side .plhead { display: flex; align-items: center; gap: 8px; padding: 18px 4px 4px 12px; }
+	.side .plnav.all { color: var(--yellow); font: 400 14px var(--pixel); margin-top: 2px; }
+	.side .plnav:hover { background: var(--btn); color: var(--cream); }
+	.pbar { grid-template-columns: auto minmax(0, 1fr) auto; }
+	.pbar .ptime, .pbar .opt { display: inline-flex; }
+	.pbar .vol { display: flex; align-items: center; gap: 8px; width: 130px; margin-left: 6px; }
+	.selbar { left: calc(50% + 118px); }
+	.fabwrap { right: 32px; bottom: 150px; }
+	.fabpick { right: 42px; bottom: 236px; }
+	.uppop { right: 32px; bottom: 240px; }
+	.pbar .center { display: flex; justify-content: center; }
+	.plgrid { grid-template-columns: repeat(4, 1fr); }
+	.np.wide { grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto 1fr; column-gap: 0; padding: 0; height: 100%; }
+	.np.wide .np-top { grid-column: 1; padding: var(--s5) var(--s7) 0; }
+	.np.wide .stagecol { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: var(--s5); padding: var(--s4) var(--s7) var(--s7); min-height: 0; }
+	.np.wide .stagecol .art { width: min(420px, 100%); grid-row: auto; }
+	.np.wide.vid .stagecol .art { width: 100%; max-width: 760px; }
+	.np.wide .stagecol .meta { width: min(560px, 100%); text-align: center; }
+	.inline-panel { grid-column: 2; grid-row: 1 / span 2; margin: 0; border-radius: 0; border-width: 0 0 0 var(--bw); box-shadow: none; display: flex; flex-direction: column; min-height: 0; padding-top: 14px; }
+	.inline-panel .pbody { flex: 1; }
+	.sheet.inpanel { display: none; }
+	.content { padding: 0 var(--s8) var(--s8); }
+	.phead { padding: var(--s8) var(--s8) var(--s5); }
+	.selbar { bottom: 100px !important; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; } }
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+<symbol id="g-alert" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="5" y="0" width="1" height="1"/><rect x="4" y="1" width="3" height="1"/><rect x="3" y="2" width="2" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="6" y="3" width="2" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="6" y="4" width="3" height="1"/><rect x="2" y="5" width="3" height="1"/><rect x="6" y="5" width="3" height="1"/><rect x="1" y="6" width="9" height="1"/><rect x="1" y="7" width="4" height="1"/><rect x="6" y="7" width="4" height="1"/><rect x="0" y="8" width="11" height="1"/></symbol>
+<symbol id="g-artviz" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="0" y="0" width="11" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="7" y="2" width="2" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="7" y="3" width="2" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="10" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="6" y="7" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="0" y="8" width="1" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="4" y="8" width="1" height="1"/><rect x="6" y="8" width="1" height="1"/><rect x="8" y="8" width="1" height="1"/><rect x="10" y="8" width="1" height="1"/><rect x="0" y="9" width="11" height="1"/></symbol>
+<symbol id="g-back" viewBox="0 0 6 9" shape-rendering="crispEdges"><rect x="4" y="0" width="2" height="1"/><rect x="3" y="1" width="2" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="1" y="3" width="2" height="1"/><rect x="0" y="4" width="2" height="1"/><rect x="1" y="5" width="2" height="1"/><rect x="2" y="6" width="2" height="1"/><rect x="3" y="7" width="2" height="1"/><rect x="4" y="8" width="2" height="1"/></symbol>
+<symbol id="g-blocks" viewBox="0 0 11 11" shape-rendering="crispEdges"><rect x="0" y="0" width="5" height="1"/><rect x="6" y="0" width="5" height="1"/><rect x="0" y="1" width="5" height="1"/><rect x="6" y="1" width="5" height="1"/><rect x="0" y="2" width="5" height="1"/><rect x="6" y="2" width="5" height="1"/><rect x="0" y="3" width="5" height="1"/><rect x="6" y="3" width="5" height="1"/><rect x="0" y="4" width="5" height="1"/><rect x="6" y="4" width="5" height="1"/><rect x="0" y="6" width="5" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="0" y="7" width="5" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="0" y="8" width="5" height="1"/><rect x="6" y="8" width="5" height="1"/><rect x="0" y="9" width="5" height="1"/><rect x="8" y="9" width="1" height="1"/><rect x="0" y="10" width="5" height="1"/><rect x="8" y="10" width="1" height="1"/></symbol>
+<symbol id="g-bookmark" viewBox="0 0 7 10" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="0" y="1" width="7" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="0" y="3" width="7" height="1"/><rect x="0" y="4" width="7" height="1"/><rect x="0" y="5" width="7" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="4" y="7" width="3" height="1"/><rect x="0" y="8" width="2" height="1"/><rect x="5" y="8" width="2" height="1"/><rect x="0" y="9" width="1" height="1"/><rect x="6" y="9" width="1" height="1"/></symbol>
+<symbol id="g-box" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="0" y="0" width="9" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="8" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="0" y="8" width="9" height="1"/></symbol>
+<symbol id="g-box-on" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="0" y="0" width="9" height="1"/><rect x="0" y="1" width="9" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="3" width="6" height="1"/><rect x="8" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="7" y="4" width="2" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="3" y="5" width="1" height="1"/><rect x="6" y="5" width="3" height="1"/><rect x="0" y="6" width="2" height="1"/><rect x="5" y="6" width="4" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="4" y="7" width="5" height="1"/><rect x="0" y="8" width="9" height="1"/></symbol>
+<symbol id="g-card" viewBox="0 0 10 10" shape-rendering="crispEdges"><rect x="3" y="0" width="7" height="1"/><rect x="2" y="1" width="2" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="1" y="2" width="3" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="1" y="3" width="9" height="1"/><rect x="1" y="4" width="9" height="1"/><rect x="1" y="5" width="9" height="1"/><rect x="1" y="6" width="9" height="1"/><rect x="1" y="7" width="9" height="1"/><rect x="1" y="8" width="9" height="1"/><rect x="1" y="9" width="9" height="1"/></symbol>
+<symbol id="g-cc" viewBox="0 0 11 8" shape-rendering="crispEdges"><rect x="0" y="0" width="11" height="1"/><rect x="0" y="1" width="11" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="8" y="2" width="3" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="0" y="5" width="2" height="1"/><rect x="7" y="5" width="2" height="1"/><rect x="10" y="5" width="1" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="0" y="7" width="11" height="1"/></symbol>
+<symbol id="g-chapters" viewBox="0 0 11 8" shape-rendering="crispEdges"><rect x="0" y="0" width="3" height="1"/><rect x="4" y="0" width="7" height="1"/><rect x="0" y="1" width="3" height="1"/><rect x="4" y="1" width="7" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="4" y="3" width="5" height="1"/><rect x="0" y="4" width="3" height="1"/><rect x="4" y="4" width="5" height="1"/><rect x="0" y="6" width="3" height="1"/><rect x="4" y="6" width="6" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="4" y="7" width="6" height="1"/></symbol>
+<symbol id="g-check" viewBox="0 0 9 7" shape-rendering="crispEdges"><rect x="8" y="0" width="1" height="1"/><rect x="7" y="1" width="2" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="0" y="3" width="2" height="1"/><rect x="5" y="3" width="2" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="4" y="4" width="2" height="1"/><rect x="2" y="5" width="3" height="1"/><rect x="3" y="6" width="1" height="1"/></symbol>
+<symbol id="g-clock" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="3" y="0" width="5" height="1"/><rect x="1" y="1" width="9" height="1"/><rect x="1" y="2" width="4" height="1"/><rect x="6" y="2" width="4" height="1"/><rect x="0" y="3" width="5" height="1"/><rect x="6" y="3" width="5" height="1"/><rect x="0" y="4" width="5" height="1"/><rect x="6" y="4" width="5" height="1"/><rect x="0" y="5" width="5" height="1"/><rect x="8" y="5" width="3" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="1" y="7" width="9" height="1"/><rect x="1" y="8" width="9" height="1"/><rect x="3" y="9" width="5" height="1"/></symbol>
+<symbol id="g-cross" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="7" y="0" width="2" height="1"/><rect x="0" y="1" width="3" height="1"/><rect x="6" y="1" width="3" height="1"/><rect x="1" y="2" width="3" height="1"/><rect x="5" y="2" width="3" height="1"/><rect x="2" y="3" width="5" height="1"/><rect x="3" y="4" width="3" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="1" y="6" width="3" height="1"/><rect x="5" y="6" width="3" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="6" y="7" width="3" height="1"/><rect x="0" y="8" width="2" height="1"/><rect x="7" y="8" width="2" height="1"/></symbol>
+<symbol id="g-down" viewBox="0 0 9 5" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="7" y="0" width="2" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="6" y="1" width="2" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="5" y="2" width="2" height="1"/><rect x="3" y="3" width="3" height="1"/><rect x="4" y="4" width="1" height="1"/></symbol>
+<symbol id="g-download" viewBox="0 0 9 10" shape-rendering="crispEdges"><rect x="3" y="0" width="3" height="1"/><rect x="3" y="1" width="3" height="1"/><rect x="3" y="2" width="3" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="1" y="4" width="7" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="0" y="9" width="9" height="1"/></symbol>
+<symbol id="g-eq" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="1" y="0" width="1" height="1"/><rect x="5" y="0" width="1" height="1"/><rect x="9" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="3" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="4" y="2" width="3" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="5" y="3" width="1" height="1"/><rect x="9" y="3" width="1" height="1"/><rect x="0" y="4" width="3" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="8" y="5" width="3" height="1"/><rect x="1" y="6" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="8" y="6" width="3" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="5" y="7" width="1" height="1"/><rect x="9" y="7" width="1" height="1"/><rect x="1" y="8" width="1" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="9" y="8" width="1" height="1"/></symbol>
+<symbol id="g-eye" viewBox="0 0 11 7" shape-rendering="crispEdges"><rect x="3" y="0" width="5" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="8" y="1" width="2" height="1"/><rect x="0" y="2" width="2" height="1"/><rect x="4" y="2" width="3" height="1"/><rect x="9" y="2" width="2" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="3" y="3" width="5" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="2" height="1"/><rect x="4" y="4" width="3" height="1"/><rect x="9" y="4" width="2" height="1"/><rect x="1" y="5" width="2" height="1"/><rect x="8" y="5" width="2" height="1"/><rect x="3" y="6" width="5" height="1"/></symbol>
+<symbol id="g-film" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="11" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="2" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="11" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="0" y="5" width="11" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="6" y="7" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="0" y="8" width="11" height="1"/></symbol>
+<symbol id="g-folder" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="5" height="1"/><rect x="0" y="1" width="11" height="1"/><rect x="0" y="2" width="11" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="0" y="5" width="11" height="1"/><rect x="0" y="6" width="11" height="1"/><rect x="0" y="7" width="11" height="1"/><rect x="0" y="8" width="11" height="1"/></symbol>
+<symbol id="g-fullscreen" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="0" y="0" width="3" height="1"/><rect x="6" y="0" width="3" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="0" y="8" width="3" height="1"/><rect x="6" y="8" width="3" height="1"/></symbol>
+<symbol id="g-fullscreen-exit" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="2" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="2" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="0" y="2" width="3" height="1"/><rect x="6" y="2" width="3" height="1"/><rect x="0" y="6" width="3" height="1"/><rect x="6" y="6" width="3" height="1"/><rect x="2" y="7" width="1" height="1"/><rect x="6" y="7" width="1" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="6" y="8" width="1" height="1"/></symbol>
+<symbol id="g-gear" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="3" y="0" width="3" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="3" y="1" width="3" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="1" y="3" width="3" height="1"/><rect x="5" y="3" width="3" height="1"/><rect x="0" y="4" width="3" height="1"/><rect x="6" y="4" width="3" height="1"/><rect x="1" y="5" width="3" height="1"/><rect x="5" y="5" width="3" height="1"/><rect x="0" y="6" width="9" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="3" y="7" width="3" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="3" y="8" width="3" height="1"/></symbol>
+<symbol id="g-grip" viewBox="0 0 9 5" shape-rendering="crispEdges"><rect x="0" y="0" width="9" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="0" y="4" width="9" height="1"/></symbol>
+<symbol id="g-heart" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="1" y="0" width="3" height="1"/><rect x="7" y="0" width="3" height="1"/><rect x="0" y="1" width="5" height="1"/><rect x="6" y="1" width="5" height="1"/><rect x="0" y="2" width="11" height="1"/><rect x="0" y="3" width="11" height="1"/><rect x="0" y="4" width="11" height="1"/><rect x="1" y="5" width="9" height="1"/><rect x="2" y="6" width="7" height="1"/><rect x="3" y="7" width="5" height="1"/><rect x="4" y="8" width="3" height="1"/><rect x="5" y="9" width="1" height="1"/></symbol>
+<symbol id="g-heart-o" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="1" y="0" width="3" height="1"/><rect x="7" y="0" width="3" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="9" y="5" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="3" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="4" y="8" width="1" height="1"/><rect x="6" y="8" width="1" height="1"/><rect x="5" y="9" width="1" height="1"/></symbol>
+<symbol id="g-heart-s" viewBox="0 0 7 6" shape-rendering="crispEdges"><rect x="1" y="0" width="2" height="1"/><rect x="4" y="0" width="2" height="1"/><rect x="0" y="1" width="7" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="1" y="3" width="5" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="3" y="5" width="1" height="1"/></symbol>
+<symbol id="g-info" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="2" y="0" width="5" height="1"/><rect x="1" y="1" width="3" height="1"/><rect x="5" y="1" width="3" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="5" y="3" width="4" height="1"/><rect x="0" y="4" width="4" height="1"/><rect x="5" y="4" width="4" height="1"/><rect x="0" y="5" width="4" height="1"/><rect x="5" y="5" width="4" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="5" y="6" width="4" height="1"/><rect x="1" y="7" width="2" height="1"/><rect x="6" y="7" width="2" height="1"/><rect x="2" y="8" width="5" height="1"/></symbol>
+<symbol id="g-laptop" viewBox="0 0 11 7" shape-rendering="crispEdges"><rect x="1" y="0" width="9" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="9" y="3" width="1" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="1" y="5" width="9" height="1"/><rect x="0" y="6" width="11" height="1"/></symbol>
+<symbol id="g-left" viewBox="0 0 5 7" shape-rendering="crispEdges"><rect x="3" y="0" width="2" height="1"/><rect x="2" y="1" width="2" height="1"/><rect x="1" y="2" width="2" height="1"/><rect x="0" y="3" width="2" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="2" y="5" width="2" height="1"/><rect x="3" y="6" width="2" height="1"/></symbol>
+<symbol id="g-lock" viewBox="0 0 9 10" shape-rendering="crispEdges"><rect x="2" y="0" width="5" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="6" y="1" width="2" height="1"/><rect x="1" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="1" y="3" width="1" height="1"/><rect x="7" y="3" width="1" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="0" y="5" width="9" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="5" y="6" width="4" height="1"/><rect x="0" y="7" width="4" height="1"/><rect x="5" y="7" width="4" height="1"/><rect x="0" y="8" width="9" height="1"/><rect x="0" y="9" width="9" height="1"/></symbol>
+<symbol id="g-loop" viewBox="0 0 11 8" shape-rendering="crispEdges"><rect x="7" y="0" width="1" height="1"/><rect x="1" y="1" width="8" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="7" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="3" y="5" width="1" height="1"/><rect x="10" y="5" width="1" height="1"/><rect x="2" y="6" width="8" height="1"/><rect x="3" y="7" width="1" height="1"/></symbol>
+<symbol id="g-minus" viewBox="0 0 9 3" shape-rendering="crispEdges"><rect x="0" y="0" width="9" height="1"/><rect x="0" y="1" width="9" height="1"/><rect x="0" y="2" width="9" height="1"/></symbol>
+<symbol id="g-moon" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="3" y="0" width="4" height="1"/><rect x="1" y="1" width="4" height="1"/><rect x="1" y="2" width="3" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="0" y="4" width="3" height="1"/><rect x="0" y="5" width="3" height="1"/><rect x="1" y="6" width="3" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="1" y="7" width="7" height="1"/><rect x="3" y="8" width="4" height="1"/></symbol>
+<symbol id="g-move" viewBox="0 0 7 9" shape-rendering="crispEdges"><rect x="3" y="0" width="1" height="1"/><rect x="2" y="1" width="3" height="1"/><rect x="1" y="2" width="5" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="3" y="5" width="1" height="1"/><rect x="1" y="6" width="5" height="1"/><rect x="2" y="7" width="3" height="1"/><rect x="3" y="8" width="1" height="1"/></symbol>
+<symbol id="g-network" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="3" y="0" width="5" height="1"/><rect x="3" y="1" width="5" height="1"/><rect x="3" y="2" width="5" height="1"/><rect x="5" y="3" width="1" height="1"/><rect x="1" y="4" width="9" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="9" y="5" width="1" height="1"/><rect x="0" y="6" width="3" height="1"/><rect x="8" y="6" width="3" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="8" y="7" width="3" height="1"/><rect x="0" y="8" width="3" height="1"/><rect x="8" y="8" width="3" height="1"/></symbol>
+<symbol id="g-next" viewBox="0 0 9 8" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="7" y="0" width="2" height="1"/><rect x="0" y="1" width="3" height="1"/><rect x="7" y="1" width="2" height="1"/><rect x="0" y="2" width="5" height="1"/><rect x="7" y="2" width="2" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="0" y="5" width="5" height="1"/><rect x="7" y="5" width="2" height="1"/><rect x="0" y="6" width="3" height="1"/><rect x="7" y="6" width="2" height="1"/><rect x="0" y="7" width="2" height="1"/><rect x="7" y="7" width="2" height="1"/></symbol>
+<symbol id="g-note" viewBox="0 0 10 10" shape-rendering="crispEdges"><rect x="6" y="0" width="4" height="1"/><rect x="6" y="1" width="4" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="6" y="5" width="1" height="1"/><rect x="3" y="6" width="4" height="1"/><rect x="2" y="7" width="5" height="1"/><rect x="2" y="8" width="5" height="1"/><rect x="3" y="9" width="3" height="1"/></symbol>
+<symbol id="g-pause" viewBox="0 0 8 8" shape-rendering="crispEdges"><rect x="0" y="0" width="3" height="1"/><rect x="5" y="0" width="3" height="1"/><rect x="0" y="1" width="3" height="1"/><rect x="5" y="1" width="3" height="1"/><rect x="0" y="2" width="3" height="1"/><rect x="5" y="2" width="3" height="1"/><rect x="0" y="3" width="3" height="1"/><rect x="5" y="3" width="3" height="1"/><rect x="0" y="4" width="3" height="1"/><rect x="5" y="4" width="3" height="1"/><rect x="0" y="5" width="3" height="1"/><rect x="5" y="5" width="3" height="1"/><rect x="0" y="6" width="3" height="1"/><rect x="5" y="6" width="3" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="5" y="7" width="3" height="1"/></symbol>
+<symbol id="g-pencil" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="6" y="0" width="3" height="1"/><rect x="5" y="1" width="4" height="1"/><rect x="4" y="2" width="4" height="1"/><rect x="3" y="3" width="4" height="1"/><rect x="2" y="4" width="4" height="1"/><rect x="1" y="5" width="4" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="0" y="7" width="3" height="1"/><rect x="0" y="8" width="2" height="1"/></symbol>
+<symbol id="g-picture" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="0" y="0" width="11" height="1"/><rect x="0" y="1" width="1" height="1"/><rect x="10" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="7" y="2" width="2" height="1"/><rect x="10" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="7" y="3" width="2" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="10" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="4" y="5" width="3" height="1"/><rect x="10" y="5" width="1" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="3" y="6" width="5" height="1"/><rect x="10" y="6" width="1" height="1"/><rect x="0" y="7" width="1" height="1"/><rect x="2" y="7" width="7" height="1"/><rect x="10" y="7" width="1" height="1"/><rect x="0" y="8" width="1" height="1"/><rect x="10" y="8" width="1" height="1"/><rect x="0" y="9" width="11" height="1"/></symbol>
+<symbol id="g-play" viewBox="0 0 8 8" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="0" y="1" width="4" height="1"/><rect x="0" y="2" width="6" height="1"/><rect x="0" y="3" width="8" height="1"/><rect x="0" y="4" width="8" height="1"/><rect x="0" y="5" width="6" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="0" y="7" width="2" height="1"/></symbol>
+<symbol id="g-playlist" viewBox="0 0 11 10" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="8" y="2" width="3" height="1"/><rect x="8" y="3" width="3" height="1"/><rect x="0" y="4" width="7" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="0" y="6" width="4" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="5" y="7" width="4" height="1"/><rect x="4" y="8" width="5" height="1"/><rect x="5" y="9" width="3" height="1"/></symbol>
+<symbol id="g-plug" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="2" y="0" width="1" height="1"/><rect x="6" y="0" width="1" height="1"/><rect x="2" y="1" width="1" height="1"/><rect x="6" y="1" width="1" height="1"/><rect x="0" y="2" width="9" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="1" y="4" width="7" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="4" y="8" width="1" height="1"/></symbol>
+<symbol id="g-plus" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="3" y="0" width="3" height="1"/><rect x="3" y="1" width="3" height="1"/><rect x="3" y="2" width="3" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="0" y="5" width="9" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="3" y="7" width="3" height="1"/><rect x="3" y="8" width="3" height="1"/></symbol>
+<symbol id="g-pl-add" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="0" y="0" width="7" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="0" y="4" width="4" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="6" y="6" width="5" height="1"/><rect x="8" y="7" width="1" height="1"/><rect x="8" y="8" width="1" height="1"/></symbol>
+<symbol id="g-power" viewBox="0 0 9 8" shape-rendering="crispEdges"><rect x="4" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="4" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="4" y="3" width="1" height="1"/><rect x="8" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="1" y="6" width="1" height="1"/><rect x="7" y="6" width="1" height="1"/><rect x="2" y="7" width="5" height="1"/></symbol>
+<symbol id="g-prev" viewBox="0 0 9 8" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="7" y="0" width="2" height="1"/><rect x="0" y="1" width="2" height="1"/><rect x="6" y="1" width="3" height="1"/><rect x="0" y="2" width="2" height="1"/><rect x="4" y="2" width="5" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="0" y="5" width="2" height="1"/><rect x="4" y="5" width="5" height="1"/><rect x="0" y="6" width="2" height="1"/><rect x="6" y="6" width="3" height="1"/><rect x="0" y="7" width="2" height="1"/><rect x="7" y="7" width="2" height="1"/></symbol>
+<symbol id="g-radio" viewBox="0 0 7 7" shape-rendering="crispEdges"><rect x="2" y="0" width="3" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="2" y="6" width="3" height="1"/></symbol>
+<symbol id="g-radio-on" viewBox="0 0 7 7" shape-rendering="crispEdges"><rect x="2" y="0" width="3" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="2" y="2" width="3" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="2" y="3" width="3" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="3" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="2" y="6" width="3" height="1"/></symbol>
+<symbol id="g-refresh" viewBox="0 0 10 8" shape-rendering="crispEdges"><rect x="3" y="0" width="5" height="1"/><rect x="9" y="0" width="1" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="8" y="1" width="2" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="6" y="2" width="4" height="1"/><rect x="0" y="3" width="1" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="0" y="5" width="1" height="1"/><rect x="9" y="5" width="1" height="1"/><rect x="1" y="6" width="2" height="1"/><rect x="7" y="6" width="2" height="1"/><rect x="3" y="7" width="4" height="1"/></symbol>
+<symbol id="g-right" viewBox="0 0 5 7" shape-rendering="crispEdges"><rect x="0" y="0" width="2" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="2" y="4" width="2" height="1"/><rect x="1" y="5" width="2" height="1"/><rect x="0" y="6" width="2" height="1"/></symbol>
+<symbol id="g-search" viewBox="0 0 9 8" shape-rendering="crispEdges"><rect x="2" y="0" width="4" height="1"/><rect x="1" y="1" width="2" height="1"/><rect x="5" y="1" width="2" height="1"/><rect x="0" y="2" width="2" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="0" y="3" width="2" height="1"/><rect x="6" y="3" width="2" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="5" y="4" width="2" height="1"/><rect x="2" y="5" width="6" height="1"/><rect x="6" y="6" width="3" height="1"/><rect x="7" y="7" width="2" height="1"/></symbol>
+<symbol id="g-shuffle" viewBox="0 0 11 9" shape-rendering="crispEdges"><rect x="9" y="0" width="1" height="1"/><rect x="0" y="1" width="2" height="1"/><rect x="7" y="1" width="4" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="6" y="2" width="1" height="1"/><rect x="9" y="2" width="1" height="1"/><rect x="3" y="3" width="1" height="1"/><rect x="5" y="3" width="1" height="1"/><rect x="4" y="4" width="1" height="1"/><rect x="3" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="2" y="6" width="1" height="1"/><rect x="6" y="6" width="1" height="1"/><rect x="9" y="6" width="1" height="1"/><rect x="0" y="7" width="2" height="1"/><rect x="7" y="7" width="4" height="1"/><rect x="9" y="8" width="1" height="1"/></symbol>
+<symbol id="g-speaker" viewBox="0 0 9 8" shape-rendering="crispEdges"><rect x="4" y="0" width="1" height="1"/><rect x="3" y="1" width="2" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="0" y="2" width="4" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="3" width="4" height="1"/><rect x="6" y="3" width="1" height="1"/><rect x="8" y="3" width="1" height="1"/><rect x="0" y="4" width="4" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="0" y="5" width="4" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="8" y="5" width="1" height="1"/><rect x="3" y="6" width="2" height="1"/><rect x="7" y="6" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/></symbol>
+<symbol id="g-sun" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="4" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="3" y="2" width="3" height="1"/><rect x="2" y="3" width="5" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="2" y="4" width="5" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="2" y="5" width="5" height="1"/><rect x="3" y="6" width="3" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="4" y="8" width="1" height="1"/></symbol>
+<symbol id="g-title-only" viewBox="0 0 9 6" shape-rendering="crispEdges"><rect x="0" y="0" width="9" height="1"/><rect x="0" y="1" width="9" height="1"/><rect x="1" y="3" width="7" height="1"/><rect x="2" y="5" width="5" height="1"/></symbol>
+<symbol id="g-trash" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="3" y="0" width="3" height="1"/><rect x="0" y="1" width="9" height="1"/><rect x="1" y="3" width="7" height="1"/><rect x="1" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="7" y="4" width="1" height="1"/><rect x="1" y="5" width="1" height="1"/><rect x="3" y="5" width="1" height="1"/><rect x="5" y="5" width="1" height="1"/><rect x="7" y="5" width="1" height="1"/><rect x="1" y="6" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="7" y="6" width="1" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="3" y="7" width="1" height="1"/><rect x="5" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="1" y="8" width="7" height="1"/></symbol>
+<symbol id="g-up" viewBox="0 0 9 5" shape-rendering="crispEdges"><rect x="4" y="0" width="1" height="1"/><rect x="3" y="1" width="3" height="1"/><rect x="2" y="2" width="2" height="1"/><rect x="5" y="2" width="2" height="1"/><rect x="1" y="3" width="2" height="1"/><rect x="6" y="3" width="2" height="1"/><rect x="0" y="4" width="2" height="1"/><rect x="7" y="4" width="2" height="1"/></symbol>
+<symbol id="g-vis-bars" viewBox="0 0 11 8" shape-rendering="crispEdges"><rect x="9" y="0" width="2" height="1"/><rect x="3" y="1" width="2" height="1"/><rect x="9" y="1" width="2" height="1"/><rect x="3" y="2" width="2" height="1"/><rect x="6" y="2" width="2" height="1"/><rect x="9" y="2" width="2" height="1"/><rect x="3" y="3" width="2" height="1"/><rect x="6" y="3" width="2" height="1"/><rect x="9" y="3" width="2" height="1"/><rect x="0" y="4" width="2" height="1"/><rect x="3" y="4" width="2" height="1"/><rect x="6" y="4" width="2" height="1"/><rect x="9" y="4" width="2" height="1"/><rect x="0" y="5" width="2" height="1"/><rect x="3" y="5" width="2" height="1"/><rect x="6" y="5" width="2" height="1"/><rect x="9" y="5" width="2" height="1"/><rect x="0" y="6" width="2" height="1"/><rect x="3" y="6" width="2" height="1"/><rect x="6" y="6" width="2" height="1"/><rect x="9" y="6" width="2" height="1"/><rect x="0" y="7" width="2" height="1"/><rect x="3" y="7" width="2" height="1"/><rect x="6" y="7" width="2" height="1"/><rect x="9" y="7" width="2" height="1"/></symbol>
+<symbol id="g-vis-circle" viewBox="0 0 11 11" shape-rendering="crispEdges"><rect x="5" y="0" width="1" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="5" y="1" width="1" height="1"/><rect x="9" y="1" width="1" height="1"/><rect x="2" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="4" y="3" width="3" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="7" y="4" width="1" height="1"/><rect x="0" y="5" width="2" height="1"/><rect x="3" y="5" width="1" height="1"/><rect x="7" y="5" width="1" height="1"/><rect x="9" y="5" width="2" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="7" y="6" width="1" height="1"/><rect x="4" y="7" width="3" height="1"/><rect x="2" y="8" width="1" height="1"/><rect x="8" y="8" width="1" height="1"/><rect x="1" y="9" width="1" height="1"/><rect x="5" y="9" width="1" height="1"/><rect x="9" y="9" width="1" height="1"/><rect x="5" y="10" width="1" height="1"/></symbol>
+<symbol id="g-vis-spectrum" viewBox="0 0 11 6" shape-rendering="crispEdges"><rect x="3" y="0" width="1" height="1"/><rect x="2" y="1" width="3" height="1"/><rect x="8" y="1" width="1" height="1"/><rect x="2" y="2" width="4" height="1"/><rect x="7" y="2" width="3" height="1"/><rect x="1" y="3" width="9" height="1"/><rect x="1" y="4" width="10" height="1"/><rect x="0" y="5" width="11" height="1"/></symbol>
+<symbol id="g-vis-waves" viewBox="0 0 11 6" shape-rendering="crispEdges"><rect x="2" y="0" width="2" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="5" y="3" width="1" height="1"/><rect x="10" y="3" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="9" y="4" width="1" height="1"/><rect x="7" y="5" width="2" height="1"/></symbol>
+<symbol id="g-web" viewBox="0 0 9 9" shape-rendering="crispEdges"><rect x="2" y="0" width="5" height="1"/><rect x="1" y="1" width="1" height="1"/><rect x="4" y="1" width="1" height="1"/><rect x="7" y="1" width="1" height="1"/><rect x="0" y="2" width="1" height="1"/><rect x="3" y="2" width="1" height="1"/><rect x="5" y="2" width="1" height="1"/><rect x="8" y="2" width="1" height="1"/><rect x="0" y="3" width="9" height="1"/><rect x="0" y="4" width="1" height="1"/><rect x="3" y="4" width="1" height="1"/><rect x="5" y="4" width="1" height="1"/><rect x="8" y="4" width="1" height="1"/><rect x="0" y="5" width="9" height="1"/><rect x="0" y="6" width="1" height="1"/><rect x="3" y="6" width="1" height="1"/><rect x="5" y="6" width="1" height="1"/><rect x="8" y="6" width="1" height="1"/><rect x="1" y="7" width="1" height="1"/><rect x="4" y="7" width="1" height="1"/><rect x="7" y="7" width="1" height="1"/><rect x="2" y="8" width="5" height="1"/></symbol>
+</svg>
+<div class="viewer">
+	<h1>Dashboard mock</h1>
+	<span class="lbl">Frame</span><div class="grp" id="frames"></div>
+	<span class="lbl">Screen</span><div class="grp" id="screens"></div>
+</div>
+<div class="stage"><div class="frame" id="frame"><div id="app"></div></div></div>
+<script>
+const LOGO = `<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges"><rect x="4" y="0" width="24" height="1" fill="#141318"/><rect x="2" y="1" width="28" height="1" fill="#141318"/><rect x="1" y="2" width="13" height="1" fill="#141318"/><rect x="18" y="2" width="13" height="1" fill="#141318"/><rect x="14" y="2" width="4" height="1" fill="#F8C21C"/><rect x="1" y="3" width="9" height="1" fill="#141318"/><rect x="21" y="3" width="10" height="1" fill="#141318"/><rect x="10" y="3" width="11" height="1" fill="#F8C21C"/><rect x="0" y="4" width="9" height="1" fill="#141318"/><rect x="15" y="4" width="6" height="1" fill="#141318"/><rect x="24" y="4" width="8" height="1" fill="#141318"/><rect x="9" y="4" width="6" height="1" fill="#F8C21C"/><rect x="21" y="4" width="3" height="1" fill="#F8C21C"/><rect x="0" y="5" width="7" height="1" fill="#141318"/><rect x="13" y="5" width="5" height="1" fill="#141318"/><rect x="20" y="5" width="3" height="1" fill="#141318"/><rect x="25" y="5" width="7" height="1" fill="#141318"/><rect x="7" y="5" width="6" height="1" fill="#F8C21C"/><rect x="18" y="5" width="2" height="1" fill="#F8C21C"/><rect x="23" y="5" width="2" height="1" fill="#F8C21C"/><rect x="0" y="6" width="6" height="1" fill="#141318"/><rect x="11" y="6" width="7" height="1" fill="#141318"/><rect x="23" y="6" width="2" height="1" fill="#141318"/><rect x="26" y="6" width="6" height="1" fill="#141318"/><rect x="6" y="6" width="5" height="1" fill="#F8C21C"/><rect x="18" y="6" width="5" height="1" fill="#F8C21C"/><rect x="25" y="6" width="1" height="1" fill="#F8C21C"/><rect x="0" y="7" width="5" height="1" fill="#141318"/><rect x="10" y="7" width="8" height="1" fill="#141318"/><rect x="24" y="7" width="8" height="1" fill="#141318"/><rect x="5" y="7" width="5" height="1" fill="#F8C21C"/><rect x="18" y="7" width="6" height="1" fill="#F8C21C"/><rect x="0" y="8" width="5" height="1" fill="#141318"/><rect x="9" y="8" width="11" height="1" fill="#141318"/><rect x="25" y="8" width="7" height="1" fill="#141318"/><rect x="5" y="8" width="4" height="1" fill="#F8C21C"/><rect x="20" y="8" width="5" height="1" fill="#F8C21C"/><rect x="0" y="9" width="4" height="1" fill="#141318"/><rect x="8" y="9" width="14" height="1" fill="#141318"/><rect x="26" y="9" width="6" height="1" fill="#141318"/><rect x="4" y="9" width="4" height="1" fill="#F8C21C"/><rect x="22" y="9" width="4" height="1" fill="#F8C21C"/><rect x="0" y="10" width="4" height="1" fill="#141318"/><rect x="8" y="10" width="15" height="1" fill="#141318"/><rect x="27" y="10" width="5" height="1" fill="#141318"/><rect x="4" y="10" width="4" height="1" fill="#F8C21C"/><rect x="23" y="10" width="4" height="1" fill="#F8C21C"/><rect x="0" y="11" width="4" height="1" fill="#141318"/><rect x="7" y="11" width="5" height="1" fill="#141318"/><rect x="15" y="11" width="9" height="1" fill="#141318"/><rect x="28" y="11" width="4" height="1" fill="#141318"/><rect x="4" y="11" width="3" height="1" fill="#F8C21C"/><rect x="24" y="11" width="4" height="1" fill="#F8C21C"/><rect x="12" y="11" width="3" height="1" fill="#F7F4EA"/><rect x="0" y="12" width="3" height="1" fill="#141318"/><rect x="7" y="12" width="5" height="1" fill="#141318"/><rect x="16" y="12" width="8" height="1" fill="#141318"/><rect x="28" y="12" width="4" height="1" fill="#141318"/><rect x="3" y="12" width="4" height="1" fill="#F8C21C"/><rect x="24" y="12" width="4" height="1" fill="#F8C21C"/><rect x="12" y="12" width="4" height="1" fill="#F7F4EA"/><rect x="0" y="13" width="3" height="1" fill="#141318"/><rect x="7" y="13" width="5" height="1" fill="#141318"/><rect x="18" y="13" width="7" height="1" fill="#141318"/><rect x="28" y="13" width="4" height="1" fill="#141318"/><rect x="3" y="13" width="4" height="1" fill="#F8C21C"/><rect x="25" y="13" width="3" height="1" fill="#F8C21C"/><rect x="12" y="13" width="6" height="1" fill="#F7F4EA"/><rect x="0" y="14" width="3" height="1" fill="#141318"/><rect x="7" y="14" width="5" height="1" fill="#141318"/><rect x="20" y="14" width="5" height="1" fill="#141318"/><rect x="29" y="14" width="3" height="1" fill="#141318"/><rect x="3" y="14" width="4" height="1" fill="#F8C21C"/><rect x="25" y="14" width="4" height="1" fill="#F8C21C"/><rect x="12" y="14" width="8" height="1" fill="#F7F4EA"/><rect x="0" y="15" width="3" height="1" fill="#141318"/><rect x="7" y="15" width="5" height="1" fill="#141318"/><rect x="22" y="15" width="3" height="1" fill="#141318"/><rect x="29" y="15" width="3" height="1" fill="#141318"/><rect x="3" y="15" width="4" height="1" fill="#F8C21C"/><rect x="25" y="15" width="4" height="1" fill="#F8C21C"/><rect x="12" y="15" width="10" height="1" fill="#F7F4EA"/><rect x="0" y="16" width="3" height="1" fill="#141318"/><rect x="7" y="16" width="5" height="1" fill="#141318"/><rect x="22" y="16" width="3" height="1" fill="#141318"/><rect x="29" y="16" width="3" height="1" fill="#141318"/><rect x="3" y="16" width="4" height="1" fill="#F8C21C"/><rect x="25" y="16" width="4" height="1" fill="#F8C21C"/><rect x="12" y="16" width="10" height="1" fill="#F7F4EA"/><rect x="0" y="17" width="3" height="1" fill="#141318"/><rect x="7" y="17" width="5" height="1" fill="#141318"/><rect x="20" y="17" width="5" height="1" fill="#141318"/><rect x="29" y="17" width="3" height="1" fill="#141318"/><rect x="3" y="17" width="4" height="1" fill="#F8C21C"/><rect x="25" y="17" width="4" height="1" fill="#F8C21C"/><rect x="12" y="17" width="8" height="1" fill="#F7F4EA"/><rect x="0" y="18" width="4" height="1" fill="#141318"/><rect x="7" y="18" width="5" height="1" fill="#141318"/><rect x="18" y="18" width="7" height="1" fill="#141318"/><rect x="29" y="18" width="3" height="1" fill="#141318"/><rect x="4" y="18" width="3" height="1" fill="#F8C21C"/><rect x="25" y="18" width="4" height="1" fill="#F8C21C"/><rect x="12" y="18" width="6" height="1" fill="#F7F4EA"/><rect x="0" y="19" width="4" height="1" fill="#141318"/><rect x="8" y="19" width="4" height="1" fill="#141318"/><rect x="16" y="19" width="9" height="1" fill="#141318"/><rect x="29" y="19" width="3" height="1" fill="#141318"/><rect x="4" y="19" width="4" height="1" fill="#F8C21C"/><rect x="25" y="19" width="4" height="1" fill="#F8C21C"/><rect x="12" y="19" width="4" height="1" fill="#F7F4EA"/><rect x="0" y="20" width="4" height="1" fill="#141318"/><rect x="8" y="20" width="4" height="1" fill="#141318"/><rect x="15" y="20" width="10" height="1" fill="#141318"/><rect x="28" y="20" width="4" height="1" fill="#141318"/><rect x="4" y="20" width="4" height="1" fill="#F8C21C"/><rect x="25" y="20" width="3" height="1" fill="#F8C21C"/><rect x="12" y="20" width="3" height="1" fill="#F7F4EA"/><rect x="0" y="21" width="5" height="1" fill="#141318"/><rect x="9" y="21" width="15" height="1" fill="#141318"/><rect x="28" y="21" width="4" height="1" fill="#141318"/><rect x="5" y="21" width="4" height="1" fill="#F8C21C"/><rect x="24" y="21" width="4" height="1" fill="#F8C21C"/><rect x="0" y="22" width="6" height="1" fill="#141318"/><rect x="10" y="22" width="14" height="1" fill="#141318"/><rect x="28" y="22" width="4" height="1" fill="#141318"/><rect x="6" y="22" width="4" height="1" fill="#F8C21C"/><rect x="24" y="22" width="4" height="1" fill="#F8C21C"/><rect x="0" y="23" width="7" height="1" fill="#141318"/><rect x="12" y="23" width="11" height="1" fill="#141318"/><rect x="27" y="23" width="5" height="1" fill="#141318"/><rect x="7" y="23" width="5" height="1" fill="#F8C21C"/><rect x="23" y="23" width="4" height="1" fill="#F8C21C"/><rect x="0" y="24" width="8" height="1" fill="#141318"/><rect x="14" y="24" width="8" height="1" fill="#141318"/><rect x="27" y="24" width="5" height="1" fill="#141318"/><rect x="8" y="24" width="6" height="1" fill="#F8C21C"/><rect x="22" y="24" width="5" height="1" fill="#F8C21C"/><rect x="0" y="25" width="6" height="1" fill="#141318"/><rect x="7" y="25" width="2" height="1" fill="#141318"/><rect x="14" y="25" width="7" height="1" fill="#141318"/><rect x="26" y="25" width="6" height="1" fill="#141318"/><rect x="6" y="25" width="1" height="1" fill="#F8C21C"/><rect x="9" y="25" width="5" height="1" fill="#F8C21C"/><rect x="21" y="25" width="5" height="1" fill="#F8C21C"/><rect x="0" y="26" width="7" height="1" fill="#141318"/><rect x="9" y="26" width="3" height="1" fill="#141318"/><rect x="14" y="26" width="5" height="1" fill="#141318"/><rect x="25" y="26" width="7" height="1" fill="#141318"/><rect x="7" y="26" width="2" height="1" fill="#F8C21C"/><rect x="12" y="26" width="2" height="1" fill="#F8C21C"/><rect x="19" y="26" width="6" height="1" fill="#F8C21C"/><rect x="0" y="27" width="8" height="1" fill="#141318"/><rect x="11" y="27" width="6" height="1" fill="#141318"/><rect x="23" y="27" width="9" height="1" fill="#141318"/><rect x="8" y="27" width="3" height="1" fill="#F8C21C"/><rect x="17" y="27" width="6" height="1" fill="#F8C21C"/><rect x="1" y="28" width="10" height="1" fill="#141318"/><rect x="22" y="28" width="9" height="1" fill="#141318"/><rect x="11" y="28" width="11" height="1" fill="#F8C21C"/><rect x="1" y="29" width="13" height="1" fill="#141318"/><rect x="18" y="29" width="13" height="1" fill="#141318"/><rect x="14" y="29" width="4" height="1" fill="#F8C21C"/><rect x="2" y="30" width="28" height="1" fill="#141318"/><rect x="4" y="31" width="24" height="1" fill="#141318"/></svg>`;
+const VB = {};
+document.querySelectorAll('symbol').forEach(s => { const v = s.getAttribute('viewBox').split(' '); VB[s.id.slice(2)] = [+v[2], +v[3]]; });
+const ic = (n, k = 2, cls = '') => { const [w, h] = VB[n] || [9, 9]; return `<svg class="ic ${cls}" width="${w * k}" height="${h * k}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><use href="#g-${n}"/></svg>`; };
+const dots = (k = 2) => `<svg class="ic" width="${11 * k}" height="${3 * k}" viewBox="0 0 11 3" aria-hidden="true"><rect x="0" y="1" width="2" height="2"/><rect x="4" y="1" width="2" height="2"/><rect x="8" y="1" width="2" height="2"/></svg>`;
+
+/* covers: a gradient and a pixel motif, no artwork */
+const MOTIF = {
+	sun: ['..####..', '.######.', '########', '########', '........', '##.##.##', '........', '.##.##.#'],
+	banana: ['......#.', '.....##.', '.....##.', '....###.', '...###..', '.####...', '###.....', '.#......'],
+	wave: ['........', '..##....', '.#..#..#', '#....##.', '........', '..##....', '.#..#..#', '#....##.'],
+	moon: ['..###...', '.##.....', '##......', '##......', '##......', '.##...#.', '..####..', '........'],
+	note: ['....####', '....#..#', '....#..#', '....#..#', '..###.##', '.####.##', '.###....', '........'],
+	bus: ['.######.', '#.#..#.#', '#.#..#.#', '########', '########', '#......#', '.##..##.', '........'],
+	star: ['...#....', '...#....', '.#####..', '..###...', '.##.##..', '........', '......#.', '........'],
+};
+const PAL = [['#E8823A', '#6B1E4A'], ['#3AA7A0', '#18234F'], ['#F2C14E', '#B0413E'], ['#6C5CE7', '#120F2E'], ['#2E86AB', '#0B1E2D'], ['#D96C9A', '#2B193D'], ['#7BBF6A', '#1C3A2E'], ['#F0645A', '#2A0E14']];
+function cover(i, m, cls = 'cover') {
+	const [a, b] = PAL[i % PAL.length]; const id = 'g' + Math.random().toString(36).slice(2, 7);
+	const px = (MOTIF[m] || MOTIF.note).map((r, y) => [...r].map((c, x) => c === '#' ? `<rect x="${6 + x}" y="${6 + y}" width="1" height="1"/>` : '').join('')).join('');
+	return `<svg class="${cls}" viewBox="0 0 20 20" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="20" height="20" fill="url(#${id})"/><g fill="#fff" opacity=".85">${px}</g></svg>`;
+}
+/* the video's picture: a generated dusk scene (no stills) */
+const SCENE = `<svg viewBox="0 0 160 90" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2a4a"/><stop offset=".6" stop-color="#c4643f"/><stop offset="1" stop-color="#f2b25a"/></linearGradient></defs><rect width="160" height="90" fill="url(#sky)"/><circle cx="112" cy="58" r="12" fill="#ffd27a"/><path d="M0 70 L20 52 L34 62 L52 40 L70 60 L88 46 L108 66 L130 50 L160 68 V90 H0Z" fill="#2b1b2e"/><path d="M0 80 L30 70 L60 78 L95 68 L125 78 L160 72 V90 H0Z" fill="#140c17"/><rect x="40" y="64" width="2" height="6" fill="#140c17"/><rect x="38" y="60" width="6" height="5" fill="#140c17"/></svg>`;
+
+/* the handheld, drawn small: two panels, the bottom one showing the QR or asleep */
+function handheld(mode) {
+	let bottom = '';
+	if (mode === 'qr') { const q = ['1111101011111', '1000101010001', '1011101110101', '1011100011101', '1000101010001', '1111101011111', '0000000100000', '1011011101101', '0110100010110', '1111101101011', '1000100110100', '1011101011011', '1111101101111']; bottom = q.map((r, y) => [...r].map((c, x) => c === '1' ? `<rect x="${33 + x * 1.6}" y="${46.5 + y * 1.6}" width="1.6" height="1.6" fill="#000"/>` : '').join('')).join(''); bottom = `<rect x="31" y="44.5" width="25" height="25" rx="1" fill="#fff"/>` + bottom + `<rect x="60" y="48" width="18" height="2" fill="#FFD23F"/><rect x="60" y="53" width="14" height="2" fill="#8F8A80"/><rect x="60" y="58" width="16" height="3" rx=".5" fill="#26242E"/>`; }
+	const top = mode === 'sleep' ? `<rect x="14" y="8" width="64" height="28" fill="#060608"/>` : `<rect x="14" y="8" width="64" height="28" fill="#000"/><rect x="36" y="14" width="20" height="2" fill="#FFD23F"/><rect x="30" y="20" width="32" height="2" fill="#E8E2D3"/><rect x="34" y="26" width="24" height="2" fill="#8F8A80"/>`;
+	return `<svg viewBox="0 0 92 84" class="dsmini" shape-rendering="crispEdges" aria-hidden="true"><rect x="8" y="2" width="76" height="38" rx="6" fill="#26242E" stroke="#605D60" stroke-width="1.5"/>${top}<rect x="20" y="40" width="52" height="3" fill="#1B1920"/><rect x="8" y="42" width="76" height="40" rx="6" fill="#26242E" stroke="#605D60" stroke-width="1.5"/><rect x="14" y="43" width="64" height="35" fill="${mode === 'sleep' ? '#060608' : '#000'}"/>${bottom}</svg>`;
+}
+
+/* ================= data ================= */
+const QUEUE = [
+	['Sunrise on Route 9', 'The Peel Brothers', '3:41', 0, 'sun'], ['Banana Bread Blues', 'The Peel Brothers', '3:28', 2, 'banana'],
+	['Tin Can Telephone', 'Marisol Vega', '2:56', 1, 'wave'], ['Pixel Harbor', 'Low Tide Club', '4:12', 4, 'star'],
+	['Night Bus to Lisbon', 'Odette & the Trams', '5:03', 5, 'bus'], ['Slow Fade Coast', 'Low Tide Club', '3:37', 3, 'moon']];
+const FILES = [
+	['folder', 'Highway Slow', '12 items', '', 0], ['folder', 'Live at the Pier', '9 items', '', 0],
+	['song', '01 Sunrise on Route 9.flac', '28.4 MB', '3:41', 0, 'sun', true], ['song', '02 Banana Bread Blues.flac', '26.1 MB', '3:28', 2, 'banana', true],
+	['song', 'Tin Can Telephone (demo).mp3', '4.7 MB', '2:56', 1, 'wave'], ['video', 'Pier session.mp4', '412 MB', '18:05', 4, 'wave'],
+	['photo', 'cover.jpg', '1.2 MB', '', 3, 'star'], ['sub', 'Pier session.en.srt', '24 KB', '']];
+const PLS = [['Road trip', 6, [0, 2, 1, 4], ['sun', 'banana', 'wave', 'bus']], ['Rainy Sunday', 14, [3, 4, 5, 1], ['moon', 'wave', 'note', 'star']], ['Workout mix', 32, [7, 2, 0, 6], ['star', 'sun', 'note', 'banana']], ["Kids' cartoons", 8, [6, 2, 1, 0], ['star', 'banana', 'sun', 'note']], ['Late night', 11, [3, 5, 4, 3], ['moon', 'bus', 'wave', 'moon']], ['Lisbon trip', 19, [5, 4, 2, 1], ['bus', 'wave', 'sun', 'star']]];
+const MANY = (() => {
+	const hand = ['Road trip', 'Rainy Sunday', 'Workout mix', "Kids' cartoons", 'Late night', 'Lisbon trip', 'Lo-fi to study to', 'Sunday pancakes', 'Wedding dance floor', 'Commute (morning)', 'Commute (evening)', 'Jazz for cooking', 'Running 5k', 'Running 10k', 'Summer 2024', 'Summer 2025', 'Summer 2026', 'Winter cabin', 'Bossa nova', 'Film scores', 'Anime openings', 'Chiptune', 'Synthwave drive', 'Piano only', 'Sleep', 'Focus', 'Deep focus', 'Mum\'s favourites', 'Dad rock', 'Karaoke night', 'Camping 2025', 'Beach day', 'Rainy window', 'Gym: legs', 'Gym: push', 'Gym: pull', 'Yoga', 'Meditation', 'Podcasts to finish', 'Audiobooks', 'Learn Spanish', 'Learn Japanese', 'Cartoons (Sat)', 'Movie night', 'Concert films', 'Live at the Pier', 'B-sides', 'Covers I like', 'One-hit wonders', '90s', '80s', '70s soul', 'Motown', 'Blues standards', 'Delta blues', 'Indie folk', 'Shoegaze', 'Post-rock', 'Math rock', 'City pop', 'J-pop', 'K-pop', 'Afrobeat', 'Highlife', 'Fado', 'Flamenco', 'Tango', 'Salsa', 'Reggae', 'Dub', 'Drum & bass', 'House', 'Techno', 'Ambient', 'Classical: Bach', 'Classical: Chopin', 'Opera arias', 'Choir', 'Christmas', 'Halloween', 'Birthday party', 'Road trip 2', 'Train to Porto', 'Flight mode', 'Airport waits', 'Coffee shop', 'Rainy Tuesday', 'Cleaning the flat', 'Cooking dinner', 'Gaming soundtracks', 'Zelda covers', 'Pokémon', 'Retro TV', 'Kids: bedtime', 'Kids: car', 'Driving at night', 'Sad songs', 'Happy songs', 'Dance', 'New this week'];
+	return hand.slice(0, 100).map((n, i) => [n, 3 + (i * 37) % 60, [(i) % 8, (i + 3) % 8, (i + 5) % 8, (i + 1) % 8], [['sun', 'banana', 'wave', 'bus'], ['moon', 'note', 'star', 'wave'], ['star', 'sun', 'note', 'banana']][i % 3]]);
+})();
+const RECENT = ['Lisbon trip', 'Late night', 'Running 5k', 'Synthwave drive', 'Sunday pancakes'];
+const LIKED = [['Banana Bread Blues', 'The Peel Brothers', '3:28', 2, 'banana', 'now'], ['Pier session', 'Video · Music/The Peel Brothers', '18:05', 4, 'wave', '2 h ago'], ['Night Bus to Lisbon', 'Odette & the Trams', '5:03', 5, 'bus', 'yesterday'], ['Sunrise on Route 9', 'The Peel Brothers', '3:41', 0, 'sun', 'Nov 2'], ['Moonlit Ferry', 'Network · Living room PC', '4:44', 3, 'moon', 'Oct 28', 'net'], ['Old voice memo', 'Gone from the card', '1:12', 7, 'note', 'Oct 3', 'gone']];
+
+/* ================= state ================= */
+const S = { frame: 'phone', route: 'playing', kind: 'song', playing: true, liked: true, dev: 'handheld', panel: null, ptab: 'queue', select: false, picked: new Set([2, 3, 5]), uploads: true, menu: null, picker: false, toast: null, down: false, pl: null, bubble: false, pinN: 2, up: 'idle', upSheet: false, upPick: false, many: false, plView: 'list' };
+const FRAMES = { phone: [390, 844], tablet: [820, 1180], desktop: [1280, 800] };
+const SCREENS = [
+	['Sign-in', { route: 'signin' }], ['Playing: song', { route: 'playing', kind: 'song', panel: null }], ['Playing: video', { route: 'playing', kind: 'video', panel: null }],
+	['Queue panel', { route: 'playing', kind: 'song', panel: 'open', ptab: 'queue' }], ['Sound panel', { route: 'playing', kind: 'song', panel: 'open', ptab: 'sound' }], ['Details panel', { route: 'playing', kind: 'song', panel: 'open', ptab: 'details' }],
+	['Files + upload', { route: 'files', select: false, up: 'busy' }], ['Upload: idle', { route: 'files', select: false, up: 'idle' }], ['Upload: pick', { route: 'files', select: false, up: 'idle', upPick: true }], ['Upload: done', { route: 'files', select: false, up: 'done' }], ['Upload: error', { route: 'files', select: false, up: 'error' }], ['Upload sheet', { route: 'files', select: false, up: 'busy', upSheet: true }], ['Files: select', { route: 'files', select: true, uploads: false }], ['Files: ⋯ menu', { route: 'files', select: false, uploads: false, menu: 'file' }],
+	['Playlists', { route: 'playlists', pl: null, many: false }], ['Playlists ×100', { route: 'playlists', pl: null, many: true }], ['Liked', { route: 'playlist', pl: 'liked' }], ['A playlist', { route: 'playlist', pl: 'road' }],
+	['Add to playlist', { route: 'files', select: false, uploads: false, picker: true }], ['Device switch', { route: 'files', uploads: false, bubble: true }], ['Asleep', { down: true }], ['Toast', { route: 'playlist', pl: 'liked', toast: 'unlike' }]];
+
+const set = p => { Object.assign(S, p); render(); };
+const isPhone = () => S.frame === 'phone';
+const wide = () => S.frame !== 'phone';
+
+/* ================= pieces ================= */
+const kindIcon = k => ({ folder: 'folder', song: 'note', video: 'film', photo: 'picture', sub: 'cc' })[k];
+function devSwitch(small) {
+	return `<div class="dev" role="group" aria-label="Plays on">
+		<button aria-pressed="${S.dev === 'handheld'}" data-a="dev:handheld">${ic('card', 2)}${small ? '' : 'Handheld'}</button>
+		<button aria-pressed="${S.dev === 'browser'}" data-a="dev:browser">${ic('laptop', 2)}${small ? '' : 'This browser'}</button></div>`;
+}
+const seek = (pct = 42, chapters = []) => `<div class="seek" role="slider" aria-label="Seek" aria-valuenow="${pct}"><div class="tr"></div><div class="fl" style="width:${pct}%"></div>${chapters.map(c => `<i class="ch" style="left:${c}%"></i>`).join('')}<div class="kn" style="left:${pct}%"></div></div>`;
+const NOW = () => S.kind === 'video' ? { t: 'Sintel', m: 'Blender Foundation · 2010', d: '14:48', p: '6:12', r: '−8:36', i: 4, mo: 'wave' } : { t: 'Banana Bread Blues', m: 'The Peel Brothers · Highway Slow', d: '3:28', p: '1:27', r: '−2:01', i: 2, mo: 'banana' };
+
+function transport() {
+	return `<div class="transport">
+		<button class="ib" aria-label="Shuffle">${ic('shuffle', 2)}</button>
+		<button class="ib" aria-label="Previous">${ic('prev', 3)}</button>
+		<button class="box yellow playbtn" data-a="toggle" aria-label="${S.playing ? 'Pause' : 'Play'}">${ic(S.playing ? 'pause' : 'play', 4)}</button>
+		<button class="ib" aria-label="Next">${ic('next', 3)}</button>
+		<button class="ib on" aria-label="Loop all">${ic('loop', 2)}</button></div>`;
+}
+function heart(sz = 2) { return `<button class="ib ${S.liked ? 'on' : ''}" data-a="like" aria-label="${S.liked ? 'Unlike' : 'Like'}">${ic(S.liked ? 'heart' : 'heart-o', sz)}</button>`; }
+
+function panelBody() {
+	const t = S.ptab;
+	if (t === 'queue') { const VQ = [['Big Buck Bunny', 'Videos', '9:56', 6, 'star'], ['Sintel', 'Videos', '14:48', 4, 'wave'], ['Elephants Dream', 'Videos', '10:54', 3, 'moon'], ['Pier session', 'Music › The Peel Brothers', '18:05', 1, 'wave']]; const Q = S.kind === 'video' ? VQ : QUEUE; return `<div class="band"><span class="kicker">${S.kind === 'video' ? 'From Videos' : 'From Road trip'}</span><span class="rule"></span><span class="num dim" style="font-size:13px">${S.kind === 'video' ? '03 / 09' : '02 / 06'}</span></div>
+		<div class="list" style="padding:0">${Q.map((q, i) => `<div class="row ${i === 1 ? 'cur' : ''}" style="min-height:56px"><div class="tile" style="width:40px;height:40px">${cover(q[3], q[4])}</div><div class="grow"><div class="t ell">${q[0]}</div><div class="m ell">${i === 1 ? `<span class="chip y" style="height:18px;font-size:11px">${ic('play', 1)} Now</span>` : ''}${q[1]}</div></div><span class="dur">${q[2]}</span>${i > 1 ? `<span class="grip">${ic('grip', 2)}</span>` : ''}</div>`).join('')}</div>`; }
+	if (t === 'chapters') return `<div class="list" style="padding:0">${['Opening', 'The dragon', 'Snow', 'The market', 'Searching', 'Lair'].map((c, i) => `<div class="row ${i === 2 ? 'cur' : ''}" style="min-height:50px"><span class="num dim" style="width:26px">${String(i + 1).padStart(2, '0')}</span><div class="grow t">${c}</div><span class="dur">${['0:00', '1:42', '4:55', '7:30', '10:02', '12:40'][i]}</span></div>`).join('')}</div>`;
+	if (t === 'sound') {
+		const g = [3, 2, 1, 0, -1, 0, 1, 2, 3, 2];
+		return `${S.dev === 'browser' ? '' : ''}<div class="box surface card"><div class="cardh"><h2>Volume</h2><span class="grow"></span><span class="chip ghost">${ic('card', 1)} handheld</span></div><div class="slider">${ic('speaker', 2)}<div class="tr"><i style="width:64%"></i><b style="left:64%"></b></div><span class="num" style="width:30px">64</span></div></div>
+		<div class="box surface card"><div class="cardh"><h2>Equalizer</h2><span class="grow"></span><button class="ib" style="width:36px;height:36px" aria-label="Turn off">${ic('box-on', 2)}</button></div>
+		<div class="chips" style="margin-bottom:14px">${['Flat', 'Bass', 'Vocal', 'Treble', 'Loudness', 'Custom'].map(p => `<span class="chip ${p === 'Loudness' ? 'y' : ''}">${p}</span>`).join('')}</div>
+		<div class="eq">${[31, 62, 125, 250, 500, '1k', '2k', '4k', '8k', '16k'].map((b, i) => { const v = g[i]; const top = 50 - v * 7; return `<div class="eqb"><div class="slot"><div class="lvl" style="top:${Math.min(top, 50)}%;bottom:${100 - Math.max(top, 50)}%"></div><div class="knob" style="top:calc(${top}% - 5px)"></div></div><small>${b}</small></div>`; }).join('')}</div></div>
+		<div class="box surface card"><div class="cardh"><h2>Effect</h2></div><div class="chips">${['None', 'Room', 'Concert hall', 'Church', 'Cave', 'Wide stereo', 'Headphones'].map(p => `<span class="chip ${p === 'Room' ? 'y' : ''}">${p}</span>`).join('')}</div></div>`;
+	}
+	if (t === 'tracks') return `<div class="box surface card"><div class="cardh">${ic('speaker', 2)}<h2>Audio</h2></div>${['English · stereo', 'Español · 5.1'].map((a, i) => `<div class="radio ${i ? '' : 'on'}">${ic(i ? 'radio' : 'radio-on', 2)}${a}</div>`).join('')}</div>
+		<div class="box surface card"><div class="cardh">${ic('cc', 2)}<h2>Subtitles</h2></div>${['Off', 'English (Pier session.en.srt)', 'Français'].map((a, i) => `<div class="radio ${i === 1 ? 'on' : ''}">${ic(i === 1 ? 'radio-on' : 'radio', 2)}${a}</div>`).join('')}</div>`;
+	return `<div class="box surface card"><dl class="kv"><dt>File</dt><dd>02 Banana Bread Blues.flac</dd><dt>Folder</dt><dd>Music › The Peel Brothers › Highway Slow</dd><dt>Format</dt><dd>FLAC · 44.1 kHz · 16-bit · stereo</dd><dt>Bit rate</dt><dd>1,006 kb/s</dd><dt>Size</dt><dd>26.1 MB</dd><dt>Added</dt><dd>Nov 2, 2026</dd></dl></div>
+		<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="box btn sm">${ic('folder', 2)}Show in Files</button><button class="box btn sm">${ic('download', 2)}Download</button><button class="box btn sm">${ic('pl-add', 2)}Add to playlist</button></div>`;
+}
+function panelTabs() {
+	const tabs = S.kind === 'video' ? [['queue', 'Up next'], ['chapters', 'Chapters'], ['tracks', 'Tracks'], ['sound', 'Sound'], ['details', 'Details']] : [['queue', 'Up next'], ['sound', 'Sound'], ['details', 'Details']];
+	return `<div class="ptabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" aria-selected="${S.ptab === k}" data-a="ptab:${k}">${l}</button>`).join('')}</div>`;
+}
+
+/* ================= pages ================= */
+function playing() {
+	const n = NOW(); const vid = S.kind === 'video';
+	const art = vid ? `<div class="art video">${SCENE}<div class="sub-line"><span>Who are you looking for?</span></div><button class="ib" style="position:absolute;right:6px;bottom:6px;background:#0008" aria-label="Full screen">${ic('fullscreen', 2)}</button></div>` : `<div class="art">${cover(n.i, n.mo)}</div>`;
+	const meta = `<div class="meta" style="display:flex;flex-direction:column;gap:8px">
+		<div style="display:flex;align-items:flex-start;gap:8px"><div class="grow"><div class="np-title">${n.t}</div><div class="np-meta">${n.m}</div></div>${isPhone() ? heart(2) + `<button class="ib" data-a="picker" aria-label="More">${dots(2)}</button>` : ''}</div>
+		<div class="np-from" style="${wide() && S.frame === 'desktop' ? 'justify-content:center' : ''}">${ic(vid ? 'film' : 'playlist', 2)}${vid ? 'From <b>Videos</b> · 3 / 9' : 'From <b>Road trip</b> · 2 / 6'}${vid ? '<span class="chip">CC EN</span>' : ''}</div></div>`;
+	const ctl = `<div style="display:flex;flex-direction:column;gap:12px;width:100%">${seek(vid ? 42 : 42, vid ? [11, 33, 51, 68, 86] : [])}<div class="times"><span>${n.p}</span><span style="display:flex;gap:6px"><button class="box btn sm" style="min-height:30px;font-size:13px">−5 s</button><button class="box btn sm" style="min-height:30px;font-size:13px">+10 s</button></span><span>${n.r}</span></div>${transport()}</div>`;
+	const top = `<div class="np-top">${isPhone() ? `<button class="ib" aria-label="Close player" data-a="go:files">${ic('down', 3)}</button>` : `<span class="kicker">Now playing</span>`}${devSwitch(isPhone())}${isPhone() ? `<button class="ib" aria-label="Volume">${ic('speaker', 2)}</button>` : `<span style="width:44px"></span>`}</div>`;
+	const glow = vid ? '' : `<div class="glow" style="background:radial-gradient(closest-side, ${PAL[n.i][0]}, transparent)"></div>`;
+	if (isPhone()) {
+		return `<div class="np">${glow}${top}${art}${meta}${ctl}<div class="np-tabs">${(S.kind === 'video' ? [['queue', 'Up next', 'playlist'], ['chapters', 'Chapters', 'chapters'], ['tracks', 'Tracks', 'cc']] : [['queue', 'Up next', 'playlist'], ['sound', 'Sound', 'eq'], ['details', 'Details', 'info']]).map(([k, l, g]) => `<button class="box" data-a="panel:${k}">${ic(g, 2)}${l}</button>`).join('')}</div></div>`;
+	}
+	if (S.frame === 'desktop') return `<div class="np wide ${vid ? 'vid' : ''}">${glow}${top}<div class="stagecol">${art}${meta}</div><aside class="inline-panel box surface">${panelTabs()}<div class="pbody">${panelBody()}</div></aside></div>`;
+	// tablet: cover beside the title and controls, the panel below
+	return `<div class="np wide ${vid ? 'vid' : ''}">${glow}${top}${art}${vid ? `<div style="display:flex;flex-direction:column;gap:16px;margin-top:16px">${meta}${ctl}</div>` : `${meta}<div style="margin-top:auto">${ctl}</div>`}<section class="inline-panel box surface" style="padding-top:8px">${panelTabs()}<div class="pbody">${panelBody()}</div></section></div>`;
+}
+
+function files() {
+	const sel = S.select;
+	const rows = FILES.map((f, i) => {
+		const [k, name, size, dur, ci, mo, liked] = f; const on = S.picked.has(i);
+		const lead = sel ? `<span class="check ${on ? 'on' : ''}">${on ? ic('check', 2) : ''}</span>` : '';
+		const tile = (k === 'song' || k === 'video' || k === 'photo') && mo ? `<div class="tile">${cover(ci, mo)}${k === 'video' ? `<span style="position:absolute;right:3px;bottom:3px;color:#fff">${ic('film', 1)}</span>` : ''}</div>` : `<div class="tile ${k}">${ic(kindIcon(k), 2)}</div>`;
+		const cur = i === 3 && !sel;
+		return `<div class="row ${cur ? 'cur' : ''} ${sel && on ? 'picked' : ''}" data-a="${sel ? 'pick:' + i : ''}">${lead}${tile}<div class="grow"><div class="t ell">${name}${liked ? ` <span class="heart-s">${ic('heart-s', 2)}</span>` : ''}</div><div class="m">${cur ? `<span class="chip y" style="height:18px;font-size:11px">${ic('play', 1)} Playing</span>` : ''}${k === 'folder' ? size : `${size}${dur ? ' · ' + dur : ''}`}${wide() && k !== 'folder' ? ' · Nov 2' : ''}</div></div><div class="end">${!sel && k !== 'folder' && k !== 'sub' && wide() ? `<button class="ib" aria-label="Play">${ic('play', 2)}</button>` : ''}${!sel ? `<button class="ib" data-a="menu:${i}" aria-label="More">${dots(2)}</button>` : ''}${k === 'folder' && !sel ? ic('right', 2) : ''}</div></div>`;
+	}).join('');
+	const up = '';
+	const tools = sel ? '' : `<div class="toolbar">${wide() ? `<button class="box btn">${ic('plus', 2)}New folder</button>` : `<button class="box btn icon" aria-label="New folder">${ic('plus', 2)}</button>`}<button class="box btn" data-a="select">${ic('box-on', 2)}Select</button>${S.frame === 'desktop' ? `<div class="search">${ic('search', 2)}Filter this folder <span class="grow"></span><span class="key">/</span></div>` : ''}</div>`;
+	const head = sel ? `<div class="phead"><div class="row"><button class="ib" data-a="unselect" aria-label="Done">${ic('cross', 2)}</button><h1 class="grow" style="font-size:26px">${S.picked.size} selected</h1><button class="box btn sm">All</button></div></div>`
+		: `<div class="phead"><div class="crumbs"><button>This card</button>${ic('right', 1)}<button>Music</button>${ic('right', 1)}</div><div class="row"><h1 class="grow">The Peel Brothers</h1></div><div class="sub"><span class="chip">${ic('folder', 1)} 2 folders</span><span class="chip">${ic('note', 1)} 3 songs</span><span class="chip">${ic('film', 1)} 1 video</span><span class="grow"></span><span class="storage dim" style="font-size:13px"><span class="meter"><i style="width:61%"></i></span><span class="num">12.4 GB free</span></span></div></div>`;
+	const selbar = sel ? `<div class="box selbar" style="bottom:${isPhone() ? '96px' : '100px'}"><div class="acts">${[['play', 'Play'], ['pl-add', 'Add'], ['move', 'Move'], ['download', 'Download'], ['trash', 'Delete']].map(([g, l]) => `<button class="box btn sm ${g === 'trash' ? 'red' : g === 'play' ? 'yellow' : ''}">${ic(g, 2)}${l}</button>`).join('')}</div></div>` : '';
+	return `${head}<div class="content files-content">${tools}${up}${!sel && wide() ? `<div class="drop">${ic('up', 2)}Drop files or folders here · they go to <b style="color:var(--cream)">The Peel Brothers</b></div>` : ''}<div class="box surface" style="padding:0"><div class="list">${rows}</div></div></div>${selbar}`;
+}
+
+function playlistsMany() {
+	const byName = [...MANY].sort((a, b) => a[0].localeCompare(b[0]));
+	const recent = RECENT.map(n => MANY.find(p => p[0] === n));
+	const card = ([n, c, is, ms]) => `<button class="box surface plcard" data-a="pl:road"><div class="cv">${is.map((i, j) => cover(i, ms[j])).join('')}</div><div><div class="n ell">${n}</div><div class="c">${c} items</div></div></button>`;
+	let rows = '', last = '';
+	for (const p of byName) {
+		const L = /[a-z]/i.test(p[0][0]) ? p[0][0].toUpperCase() : '#';
+		if (L !== last) { rows += `<div class="letter" id="L${L}">${L}</div>`; last = L; }
+		rows += `<div class="row" style="min-height:56px;margin:0 4px" data-a="pl:road"><div class="tile mosaic" style="width:40px;height:40px">${p[2].map((i, j) => cover(i, p[3][j])).join('')}</div><div class="grow"><div class="t ell">${p[0]}</div><div class="m">${p[1]} items</div></div>${wide() ? `<button class="ib" aria-label="Play">${ic('play', 2)}</button>` : ''}<button class="ib" aria-label="More">${dots(2)}</button></div>`;
+	}
+	const grid = S.plView === 'grid';
+	return `<div class="phead"><div class="row"><h1 class="grow">Playlists</h1><button class="box btn ${isPhone() ? 'icon' : ''}">${ic('plus', 2)}${isPhone() ? '' : 'New playlist'}</button></div><div class="sub"><span class="kicker">100 playlists · shared with the handheld</span></div></div>
+	<div class="content">
+		<button class="box surface plcard liked" data-a="pl:liked" style="width:100%;margin-bottom:18px"><div class="cv">${ic('heart', 4)}</div><div class="grow"><div class="kicker" style="color:var(--yellow);margin-bottom:6px">Pinned</div><div class="n" style="font-size:22px">Liked</div><div class="c">24 items · newest first</div></div><span class="box yellow btn icon" style="border-radius:50%;width:52px;height:52px" aria-label="Play Liked">${ic('play', 3)}</span></button>
+		<div class="band" style="margin-bottom:10px"><span class="kicker">Recent</span><span class="rule"></span><span class="dim" style="font-size:12px">played or added to</span></div>
+		<div class="strip" style="margin-bottom:14px">${recent.map(card).join('')}</div>
+		<div class="pltools"><div class="search">${ic('search', 2)}Find a playlist<span class="grow"></span>${S.frame === 'desktop' ? '<span class="key">/</span>' : ''}</div>
+			<div class="seg" role="group" aria-label="Sort">${['A–Z', 'Recent', 'Size'].map((l, i) => `<button aria-pressed="${i === 0}">${l}</button>`).join('')}</div>
+			<div class="seg" role="group" aria-label="View"><button aria-pressed="${!grid}" data-a="plview:list" aria-label="List">${ic('playlist', 2)}</button><button aria-pressed="${grid}" data-a="plview:grid" aria-label="Grid">${ic('blocks', 2)}</button></div></div>
+		${grid ? `<div class="plgrid">${byName.slice(0, 24).map(card).join('')}</div>` : `<div class="box surface" style="padding:0 0 6px;position:relative;overflow:clip">${rows}${isPhone() ? '' : ''}</div>`}
+	</div>`;
+}
+function playlists() {
+	if (S.many) return playlistsMany();
+	const cards = PLS.map(([n, c, is, ms]) => `<button class="box surface plcard" data-a="pl:road"><div class="cv">${is.map((i, j) => cover(i, ms[j])).join('')}</div><div><div class="n ell">${n}</div><div class="c">${c} items</div></div></button>`).join('');
+	return `<div class="phead"><div class="row"><h1 class="grow">Playlists</h1><button class="box btn ${isPhone() ? 'icon' : ''}">${ic('plus', 2)}${isPhone() ? '' : 'New playlist'}</button></div><div class="sub"><span class="kicker">7 playlists · shared with the handheld</span></div></div>
+	<div class="content"><div class="plgrid">
+		<button class="box surface plcard liked" data-a="pl:liked"><div class="cv">${ic('heart', 4)}</div><div class="grow"><div class="kicker" style="color:var(--yellow);margin-bottom:6px">Pinned</div><div class="n" style="font-size:22px">Liked</div><div class="c">24 items · newest first</div></div><span class="box yellow btn icon" style="border-radius:50%;width:52px;height:52px" aria-label="Play Liked">${ic('play', 3)}</span></button>
+		${cards}</div></div>`;
+}
+
+function playlistPage() {
+	const liked = S.pl === 'liked';
+	const items = liked ? LIKED : QUEUE.map(q => [q[0], q[1], q[2], q[3], q[4]]);
+	const rows = items.map((it, i) => {
+		const [t, a, d, ci, mo, when, flag] = it; const cur = (liked && i === 0) || (!liked && i === 1);
+		const fresh = liked && i === 0 && S.toast !== 'unlike';
+		if (liked && i === 1 && S.toast === 'unlike') return '';
+		return `<div class="row ${cur ? 'cur' : ''}" ${fresh ? 'style="animation:rise .3s var(--ease) both, glowin 1.6s ease-out"' : ''}>${liked ? '' : `<span class="grip">${ic('grip', 2)}</span>`}<div class="tile" style="${flag === 'gone' ? 'opacity:.4' : ''}">${cover(ci, mo)}</div><div class="grow"><div class="t ell" style="${flag === 'gone' ? 'color:var(--dim)' : ''}">${t}</div><div class="m ell">${flag === 'gone' ? '<span class="chip r" style="height:18px;font-size:11px">Gone</span>' : flag === 'net' ? `<span class="chip" style="height:18px;font-size:11px">${ic('network', 1)} handheld only</span>` : ''}${a}${when ? ' · ' + when : ''}</div></div><span class="dur">${d}</span>${liked ? `<button class="ib on" data-a="unlike" aria-label="Unlike">${ic('heart', 2)}</button>` : ''}<button class="ib" aria-label="More">${dots(2)}</button></div>`;
+	}).join('');
+	return `<div class="phead" style="padding-bottom:0"><div class="crumbs"><button data-a="go:playlists">${ic('left', 1)} Playlists</button></div></div>
+	<div class="plhero"><div class="cv ${liked ? 'liked' : ''}">${liked ? ic('heart', 6) : `<div style="display:grid;grid-template-columns:1fr 1fr;width:100%;height:100%">${[0, 2, 1, 4].map((i, j) => cover(i, ['sun', 'banana', 'wave', 'bus'][j])).join('')}</div>`}</div>
+	<div class="grow" style="min-width:200px"><div class="kicker" style="margin-bottom:8px;${liked ? 'color:var(--yellow)' : ''}">${liked ? 'Built in · newest first' : 'Playlist'}</div><h1>${liked ? 'Liked' : 'Road trip'}</h1><div class="dim" style="margin-top:6px;font-size:14px">${liked ? '24 items · 1 h 38 min' : '6 items · 23 min'}</div></div>
+	<div class="acts"><button class="box yellow btn">${ic('play', 2)}Play</button><button class="box btn">${ic('shuffle', 2)}Shuffle</button><button class="box btn icon" aria-label="More">${dots(2)}</button></div></div>
+	<div class="content"><div class="box surface" style="padding:0"><div class="list plrows">${rows}</div></div></div>`;
+}
+
+function signin() {
+	const filled = ['K', '7'];
+	const pins = [0, 1, 2, 3].map(i => `<div class="box pin ${i === filled.length ? 'f focus' : i < filled.length ? '' : ''}" style="${i < filled.length ? '' : '--f:var(--surface);--e:' + (i === filled.length ? 'var(--yellow)' : 'var(--e-surface)') + ';--l:var(--l-surface)'}">${i < filled.length ? filled[i] : i === filled.length ? '<span class="caret"></span>' : ''}</div>`).join('');
+	return `<div class="center"><div class="signin">
+		<div class="brand"><span style="width:44px;height:44px">${LOGO}</span>Banana Player</div>
+		<div class="box surface how"><div>${handheld('qr')}</div><div><div class="kicker" style="color:var(--yellow);margin-bottom:6px">Quickest</div><div style="font:400 18px/1.25 var(--pixel)">Scan the QR on your handheld</div><div class="dim" style="font-size:14px;margin-top:4px">Point your phone's camera at its bottom screen. It signs you in.</div></div></div>
+		<div class="or">OR TYPE THE PIN</div>
+		<div class="pins" role="group" aria-label="PIN">${pins}</div>
+		<div class="dim" style="font-size:14px">On the handheld: <span class="key">START</span> › Settings › Web dashboard</div>
+		<div class="note">${ic('lock', 1)} Not encrypted: use it on your home Wi-Fi only.</div></div></div>`;
+}
+
+function down() {
+	return `<div class="center"><div class="down">
+		<div class="zz">${handheld('sleep')}<span style="right:-6px;top:-4px">z</span><span style="right:-18px;top:-14px;animation-delay:.8s">Z</span></div>
+		<div class="kicker">Disconnected</div><h1>Your handheld is asleep</h1><p class="dim">Open its lid to carry on. This page reconnects by itself.</p>
+		<div class="box surface" style="display:flex;gap:12px;align-items:center;padding:12px 14px;text-align:left;width:100%"><div class="tile">${cover(2, 'banana')}</div><div class="grow"><div style="font:600 14px var(--text)">Banana Bread Blues</div><div class="dim" style="font-size:13px">Was playing here · stopped at <span class="num">1:27</span></div></div></div>
+		<div style="display:flex;align-items:center;gap:12px"><span class="dots"><i></i><i></i><i></i></span><span class="num dim">Next try in 0:04</span></div>
+		<button class="box btn">${ic('refresh', 2)}Try again</button></div></div>`;
+}
+
+/* ================= shell ================= */
+function shell(inner) {
+	const nav = [['playing', 'Playing', 'note'], ['files', 'Files', 'folder'], ['playlists', 'Playlists', 'playlist']];
+	const cur = S.route === 'playlist' ? 'playlists' : S.route;
+	const n = NOW();
+	const side = `<nav class="side" aria-label="Sections"><div class="logo"><span style="width:36px;height:36px;flex:none">${LOGO}</span><b>Banana Player</b></div>
+		${nav.map(([k, l, g]) => `<button class="nav" aria-current="${cur === k ? 'page' : 'false'}" data-a="go:${k}">${ic(g, 2)}${l}</button>`).join('')}
+		<div class="foot"><div class="plhead"><span class="kicker">Playlists</span><span class="num dim" style="font-size:12px">${S.many ? 100 : 6}</span><span class="grow"></span><button class="ib" style="width:30px;height:30px" aria-label="New playlist">${ic('plus', 1)}</button></div>
+			<button class="plnav" data-a="pl:liked"><span style="color:var(--yellow)">${ic('heart', 1)}</span>Liked</button>${S.many ? `<div class="kicker" style="font-size:10px;padding:8px 12px 2px">Recent</div>` + RECENT.map(n => `<button class="plnav" data-a="pl:road">${ic('playlist', 1)}<span class="ell">${n}</span></button>`).join('') + `<button class="plnav all" data-a="go:playlists">All 100 playlists<span class="grow"></span>${ic('right', 1)}</button>` : PLS.map(p => `<button class="plnav" data-a="pl:road">${ic('playlist', 1)}${p[0]}</button>`).join('')}
+			<div class="box surface" style="padding:12px;margin-top:14px;display:flex;flex-direction:column;gap:10px"><div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;background:var(--green);border-radius:2px"></span><span style="font:400 14px var(--pixel)">RG DS Plus</span><span class="grow"></span><span class="num dim" style="font-size:13px">82%</span><span class="dim">${ic('plug', 1)}</span></div><div class="storage dim" style="font-size:12px"><span class="meter" style="flex:1"><i style="width:61%"></i></span><span class="num">12.4 GB free</span></div><button class="box btn sm" style="min-height:32px;font-size:13px">Sign out</button></div></div>
+		<div class="hh-mini"><span style="width:8px;height:8px;background:var(--green);border-radius:2px"></span><span class="num">82%</span></div></nav>`;
+	const showMini = isPhone() && S.route !== 'playing' && !S.select;
+	const mini = showMini ? `<div class="box surface mini" data-a="go:playing"><div class="tile">${cover(n.i, n.mo)}</div><div class="grow"><div class="t ell">${n.t}</div><div class="m ell">${S.dev === 'handheld' ? '<span style="color:var(--yellow)">On handheld</span> · ' : ''}The Peel Brothers</div></div>${heart(2)}<button class="ib" data-a="toggle" aria-label="Play">${ic(S.playing ? 'pause' : 'play', 2)}</button><div class="prog"><i></i></div></div>` : '';
+	const tabbar = isPhone() && S.route !== 'playing' ? `<nav class="tabbar">${nav.map(([k, l, g]) => `<button aria-current="${cur === k ? 'page' : 'false'}" data-a="go:${k}">${ic(g, 2)}${l}</button>`).join('')}</nav>` : '';
+	const pbar = wide() ? `<footer class="pbar"><div class="prog"><i></i><b></b></div>
+		<div class="tx"><button class="ib">${ic('prev', 2)}</button><button class="box yellow play" data-a="toggle" aria-label="Play">${ic(S.playing ? 'pause' : 'play', 3)}</button><button class="ib">${ic('next', 2)}</button><span class="num dim ptime" style="font-size:13px;margin-left:6px">${n.p} / ${n.d}</span></div>
+		<div class="center"><div class="now" data-a="go:playing"><div class="tile" style="width:46px;height:46px">${S.kind === 'video' ? `<div style="width:100%;height:100%">${SCENE}</div>` : cover(n.i, n.mo)}</div><div style="min-width:0"><div class="t ell">${n.t}</div><div class="m ell">${n.m}</div></div>${heart(2)}<button class="ib" data-a="picker" aria-label="Add to playlist">${ic('pl-add', 2)}</button></div></div>
+		<div class="right"><button class="ib opt">${ic('shuffle', 2)}</button><button class="ib on opt">${ic('loop', 2)}</button><button class="box btn sm" data-a="bubble" style="gap:6px;color:${S.dev === 'handheld' ? 'var(--yellow)' : 'var(--cream)'}">${ic(S.dev === 'handheld' ? 'card' : 'laptop', 2)}${S.frame === 'desktop' ? (S.dev === 'handheld' ? 'Handheld' : 'Browser') : ''}${ic('down', 1)}</button><div class="vol">${ic('speaker', 2)}<div class="slider grow"><div class="tr"><i style="width:64%"></i><b style="left:64%"></b></div></div></div></div></footer>` : '';
+	return `<div class="app">${wide() ? side : ''}<main class="main">${inner}</main>${mini}${tabbar}${pbar}${overlays()}</div>`;
+}
+
+function fab() {
+	if (S.select || S.route === 'playing' || (S.route !== 'files' && S.up === 'idle')) return '';
+	const st = S.up, C = 2 * Math.PI * 35;
+	const pct = st === 'busy' || st === 'error' ? .4 : st === 'done' ? 1 : 0;
+	const ring = st === 'idle' ? '' : `<svg class="ring" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="35" fill="none" stroke="var(--e-track)" stroke-width="4"/><circle cx="40" cy="40" r="35" fill="none" stroke="${st === 'done' ? 'var(--green)' : 'var(--yellow)'}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}" transform="rotate(-90 40 40)" class="arc"/>${st === 'error' ? `<circle cx="40" cy="40" r="35" fill="none" stroke="var(--red)" stroke-width="4" stroke-dasharray="${C * .08} ${C}" stroke-dashoffset="${-C * .44}" transform="rotate(-90 40 40)"/>` : ''}</svg>`;
+	const inner = st === 'idle' ? ic(S.upPick ? 'cross' : 'up', 3) : st === 'done' ? ic('check', 3) : `<span class="cnt">5/12</span>`;
+	const badge = st === 'error' ? `<span class="fbadge">${ic('alert', 1)}1</span>` : '';
+	const label = { idle: 'Upload', busy: 'Uploading 5 of 12, 40%. Show uploads', done: 'Uploads done', error: '1 upload failed. Show uploads' }[st];
+	const pick = S.upPick ? `<div class="scrim" data-a="close" style="background:#0007"></div><div class="fabpick"><button class="box btn">${ic('note', 2)}Files</button><button class="box btn">${ic('folder', 2)}Folder</button></div>` : '';
+	return `${pick}<div class="fabwrap ${st} ${S.upPick ? 'picking' : ''}">${ring}<button class="box fab ${st === 'idle' || st === 'done' ? 'yellow' : ''}" data-a="fab" aria-label="${label}">${inner}</button>${badge}</div>`;
+}
+function upSheet() {
+	if (!S.upSheet) return '';
+	const rows = [['01 Sunrise on Route 9.flac', 'done'], ['02 Banana Bread Blues.flac', 'done'], ['03 Tin Can Telephone.flac', 'done'], ['04 Pixel Harbor.flac', 'done'], ['05 Night Bus to Lisbon.flac', 62], ['live/Pier session.mp4', 'error'], ['06 Slow Fade Coast.flac', 'wait'], ['07 Moonlit Ferry.flac', 'wait']];
+	const r = rows.map(([n, s]) => `<div class="up ${s === 'done' ? 'done' : s === 'wait' ? 'wait' : s === 'error' ? 'err' : ''}"><span class="ell ${s === 'wait' ? 'dim' : ''}">${n}</span><span style="display:flex;align-items:center;gap:6px">${s === 'done' ? `<span class="num dim" style="display:flex;gap:4px;align-items:center">${ic('check', 1)}done</span>` : s === 'wait' ? `<span class="num dim">waiting</span><button class="ib sm" aria-label="Cancel">${ic('cross', 1)}</button>` : s === 'error' ? `<span class="num" style="color:var(--red)">No space left</span><button class="box btn sm" style="min-height:28px;font-size:13px">Retry</button>` : `<span class="num" style="color:var(--yellow)">${s}%</span><button class="ib sm" aria-label="Cancel">${ic('cross', 1)}</button>`}</span>${s === 'error' ? '' : `<div class="bar"><i style="width:${s === 'done' ? 100 : s === 'wait' ? 0 : s}%"></i></div>`}</div>`).join('');
+	const head = `<div class="dh" style="padding-bottom:8px"><div class="kicker" style="color:var(--yellow)">Uploading to The Peel Brothers</div><div style="display:flex;align-items:baseline;gap:10px"><h2 class="grow">5 of 12</h2><span class="num dim" style="font-size:13px">41 of 102 MB · 40%</span></div><div class="up" style="padding:4px 0 0"><div class="bar"><i style="width:40%"></i></div></div></div>`;
+	const foot = `<div class="df" style="justify-content:space-between"><button class="box btn sm">Pause</button><button class="box btn sm red">Cancel all</button></div>`;
+	return `<div class="scrim" data-a="close" style="${isPhone() ? '' : 'background:transparent'}"></div><div class="box surface ${isPhone() ? 'sheet' : 'uppop'}" role="dialog" aria-label="Uploads">${isPhone() ? '<div class="handle"></div>' : ''}${head}<div class="db" style="padding:0 20px">${r}</div>${foot}</div>`;
+}
+function overlays() {
+	let o = fab() + upSheet();
+	if (S.panel && (isPhone())) o += `<div class="scrim" data-a="close"></div><div class="box surface sheet" role="dialog" aria-label="Now playing panel"><div class="handle"></div>${panelTabs()}<div class="pbody">${panelBody()}</div></div>`;
+	if (S.menu !== null) {
+		const f = FILES[S.menu] || FILES[3];
+		const pos = isPhone() ? 'left:12px;right:12px;bottom:12px' : 'right:56px;top:300px';
+		o += `<div class="scrim" data-a="close" style="${isPhone() ? '' : 'background:transparent'}"></div><div class="box surface menu" style="${pos}"><div style="display:flex;gap:10px;align-items:center;padding:8px 10px 10px"><div class="tile" style="width:36px;height:36px">${cover(f[4], f[5] || 'note')}</div><div class="grow"><div class="ell" style="font:600 14px var(--text)">${f[1]}</div><div class="dim" style="font-size:12px">${f[2]}</div></div></div><hr>
+		<button>${ic('card', 2)}Play on handheld</button><button>${ic('laptop', 2)}Play in this browser</button><hr><button style="color:var(--yellow)">${ic('heart', 2)}Unlike</button><button data-a="picker">${ic('pl-add', 2)}Add to playlist…</button><hr><button>${ic('pencil', 2)}Rename</button><button>${ic('move', 2)}Move…</button><button>${ic('download', 2)}Download</button><button class="danger">${ic('trash', 2)}Delete…</button></div>`;
+	}
+	if (S.picker) {
+		const rows = [['Road trip', '6 items', 'added', 0], ['Late night', '11 items', '', 3], ['Rainy Sunday', '14 items', '', 4], ['Workout mix', '32 items', '', 7], ["Kids' cartoons", '8 items', '', 6], ['Lisbon trip', '19 items', '', 5]];
+		const body = `<div class="field f">${ic('search', 2)}<span>Ro</span><span class="caret"></span><span class="grow"></span><span class="key">Enter</span></div><div class="db"><div class="list" style="padding:0 0 4px">
+			<div class="row" style="min-height:52px"><div class="tile" style="width:40px;height:40px;color:var(--yellow)">${ic('plus', 2)}</div><div class="grow t">New playlist “Ro”</div></div>
+			${rows.map(([n, c, st, ci], i) => `<div class="row ${i === 0 ? 'cur' : ''}" style="min-height:56px;${i > 1 ? 'opacity:.45' : ''}"><div class="tile" style="width:40px;height:40px">${cover(ci, 'note')}</div><div class="grow"><div class="t">${n}</div><div class="m">${i < 2 ? '<span class="kicker" style="font-size:10px">Recent</span> · ' : ''}${c}</div></div>${st ? `<span class="chip ghost">${ic('check', 1)} Added</span>` : ''}</div>`).join('')}</div></div>`;
+		const head = `<div class="dh"><div class="kicker">Add to playlist</div><h2 class="ell">Banana Bread Blues</h2></div>`;
+		o += `<div class="scrim" data-a="close"></div>` + (isPhone() ? `<div class="box surface sheet"><div class="handle"></div>${head}${body}</div>` : `<div class="box surface dialog">${head}${body}<div class="df"><button class="box btn" data-a="close">Cancel</button></div></div>`);
+	}
+	if (S.bubble) {
+		const pos = isPhone() ? 'left:12px;right:12px;top:150px' : 'right:16px;bottom:96px';
+		o += `<div class="scrim" data-a="close" style="background:transparent"></div><div class="box surface bubble ${isPhone() ? '' : 'below'}" style="${pos}">
+			<div class="kicker" style="padding:8px 10px 6px">Play on</div>
+			<button class="radio ${S.dev === 'handheld' ? 'on' : ''}" data-a="dev:handheld" style="width:100%">${ic('card', 2)}<span class="grow"><b style="font-weight:600">Handheld</b><br><span class="dim" style="font-size:12px">RG DS Plus · speakers</span></span></button>
+			<button class="radio ${S.dev === 'browser' ? 'on' : ''}" data-a="dev:browser" style="width:100%">${ic('laptop', 2)}<span class="grow"><b style="font-weight:600">This browser</b><br><span class="dim" style="font-size:12px">pauses the handheld, carries on at 1:27</span></span></button></div>`;
+	}
+	if (S.toast) {
+		const b = isPhone() ? (S.route === 'playing' ? 24 : 160) : 110;
+		o += `<div class="box toast" role="status" style="bottom:${b}px"><span style="color:var(--yellow)">${ic('heart-o', 2)}</span><div class="grow ttl">Unliked <b>Pier session</b></div><button class="box yellow btn sm" data-a="undo">Undo</button><svg class="ring" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9" fill="none" stroke="#3a3842" stroke-width="3"/><circle cx="11" cy="11" r="9" fill="none" stroke="#FFD23F" stroke-width="3" stroke-dasharray="56.5" stroke-dashoffset="20" transform="rotate(-90 11 11)"/></svg></div>`;
+	}
+	return o;
+}
+
+function render() {
+	const [w, h] = FRAMES[S.frame];
+	const fr = document.getElementById('frame'); fr.style.width = w + 'px'; fr.style.height = h + 'px'; fr.className = 'frame ' + S.frame;
+	let html;
+	if (S.route === 'signin') html = `<div class="app bare"><main class="main" style="height:100%">${signin()}</main></div>`;
+	else if (S.down) html = `<div class="app bare"><main class="main" style="height:100%">${down()}</main></div>`;
+	else html = shell(S.route === 'playing' ? playing() : S.route === 'files' ? files() : S.route === 'playlists' ? playlists() : playlistPage());
+	document.getElementById('app').innerHTML = html;
+	document.getElementById('frames').innerHTML = Object.keys(FRAMES).map(k => `<button aria-pressed="${S.frame === k}" data-f="${k}">${k[0].toUpperCase() + k.slice(1)} ${FRAMES[k][0]}</button>`).join('');
+	document.getElementById('screens').innerHTML = SCREENS.map(([l], i) => `<button aria-pressed="${S.scr === i}" data-s="${i}">${l}</button>`).join('') + `<span class="lbl" style="margin-left:8px">Data</span><button aria-pressed="${S.many}" data-m="1">100 playlists</button>`;
+}
+
+const RESET = { menu: null, picker: false, toast: null, down: false, bubble: false, panel: null, upSheet: false, upPick: false };
+document.addEventListener('click', e => {
+	const f = e.target.closest('[data-f]'); if (f) return set({ frame: f.dataset.f });
+	const m = e.target.closest('[data-m]'); if (m) return set({ many: !S.many });
+	const s = e.target.closest('[data-s]'); if (s) { const i = +s.dataset.s; return set({ ...RESET, select: false, ...SCREENS[i][1], scr: i }); }
+	const el = e.target.closest('[data-a]'); if (!el || !el.dataset.a) return;
+	e.stopPropagation();
+	const [a, v] = el.dataset.a.split(':');
+	if (a === 'go') set({ ...RESET, route: v, panel: null, select: false, scr: null });
+	else if (a === 'toggle') set({ playing: !S.playing });
+	else if (a === 'like') set({ liked: !S.liked, toast: null });
+	else if (a === 'unlike') { set({ toast: 'unlike' }); }
+	else if (a === 'undo') set({ toast: null });
+	else if (a === 'dev') set({ dev: v, bubble: false });
+	else if (a === 'panel') set({ panel: 'open', ptab: v });
+	else if (a === 'ptab') set({ ptab: v });
+	else if (a === 'close') set({ ...RESET, panel: null });
+	else if (a === 'select') set({ select: true, uploads: false });
+	else if (a === 'unselect') set({ select: false });
+	else if (a === 'pick') { const i = +v; S.picked.has(i) ? S.picked.delete(i) : S.picked.add(i); render(); }
+	else if (a === 'menu') set({ menu: +v });
+	else if (a === 'picker') set({ menu: null, picker: true });
+	else if (a === 'bubble') set({ bubble: true });
+	else if (a === 'fab') set(S.up === 'idle' ? { upPick: !S.upPick } : S.up === 'done' ? { up: 'idle' } : { upSheet: true });
+	else if (a === 'plview') set({ plView: v });
+	else if (a === 'pl') set({ route: 'playlist', pl: v, toast: null });
+});
+S.scr = 1; render();
+</script>
+</body>
+</html>
+
+</body></html>

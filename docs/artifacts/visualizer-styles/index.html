@@ -1,0 +1,341 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Visualizer Styles</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Inter:wght@400;600&display=swap">
+<style>
+/* Layout: a header with the demo-music switch, then the six styles as cards, each a live 4:3 "top screen".
+   One dark look on purpose (the handheld's own theme.h colours), like the player itself. */
+:root {
+	--bg: #0b0a0d;        /* TOP_CARD */
+	--surface: #121116;   /* SURFACE */
+	--button: #26242e;    /* BUTTON */
+	--rule: #2a2833;      /* RULE */
+	--accent: #ffd23f;    /* ACCENT */
+	--text: #e8e2d3;      /* TEXT */
+	--dim: #8f8a80;       /* DIM */
+	--f-pix: "Pixelify Sans", ui-monospace, monospace;
+	--f-ui: "Inter", system-ui, sans-serif;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--f-ui); line-height: 1.5;
+	padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 56px; }
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 24px; }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+h1 { font-family: var(--f-pix); font-weight: 600; font-size: 2rem; margin: 0; color: var(--accent); text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--dim); max-width: 62ch; }
+button { font: 600 .95rem var(--f-ui); color: #000; background: var(--accent); border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
+button[aria-pressed="true"] { background: var(--button); color: var(--text); }
+button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.card { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; display: grid; min-width: 0; }
+canvas { width: 100%; aspect-ratio: 4 / 3; display: block; background: #000; max-width: 100%; }
+.about { padding: 14px 16px 16px; display: grid; gap: 4px; }
+.about h2 { margin: 0; font: 600 1.1rem var(--f-pix); color: var(--text); }
+.about p { margin: 0; color: var(--dim); font-size: .92rem; }
+.cost { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); font-family: var(--f-pix); }
+@media (prefers-reduced-motion: reduce) { .note-motion { display: block; } }
+</style>
+
+<main>
+	<header>
+		<div>
+			<h1>Six new visualizer styles</h1>
+			<p class="lede">A preview of how each would look on the top screen. They're moving to made-up music; press the button to drive them with a little synth tune instead.</p>
+		</div>
+		<button id="music" type="button" aria-pressed="false">▶ Play demo music</button>
+	</header>
+	<div class="grid" id="grid"></div>
+</main>
+
+<script>
+(() => {
+	const STYLES = [
+		{ id: 'led', name: 'Retro hi-fi LED meter', about: 'Segmented bars like an old stereo: green, then yellow, then red at the top, a lit peak that holds.', cost: 'Cheap · like Peaks' },
+		{ id: 'synth', name: 'Synthwave', about: 'Neon bars, pink to cyan, on a glowing grid floor under a striped sunset sun.', cost: 'Cheap · the scene is drawn once' },
+		{ id: 'banana', name: 'Banana stack', about: 'Each bar is a column of pixel bananas; the top banana bounces as the cap.', cost: 'Cheap · a still banana mask' },
+		{ id: 'city', name: 'Night city', about: 'A pixel skyline: windows light up with the music, bass in the left buildings, treble on the right.', cost: 'Cheap · windows switch on and off' },
+		{ id: 'scope', name: 'Phosphor oscilloscope', about: 'The waveform in green on an old lab scope, leaving a fading trail.', cost: 'Cheap · a wave and a fade' },
+		{ id: 'heart', name: 'Heartbeat', about: 'One line that spikes on the beat and scrolls across, like a heart monitor.', cost: 'Cheap · a scrolling line' },
+	];
+	const grid = document.getElementById('grid');
+	const ctx = {};
+	for (const s of STYLES) {
+		const card = document.createElement('section');
+		card.className = 'card';
+		card.innerHTML = `<canvas width="640" height="480" aria-label="${s.name}, animated preview"></canvas>
+			<div class="about"><span class="cost">${s.cost}</span><h2>${s.name}</h2><p>${s.about}</p></div>`;
+		grid.appendChild(card);
+		ctx[s.id] = card.querySelector('canvas').getContext('2d');
+	}
+
+	/* ---------- the "music": made-up by default, or a real synth through an analyser ---------- */
+	const BANDS = 16;
+	let audio = null, analyser = null, freq = null, wave = null, playing = false;
+	const fake = t => {
+		const beat = (t * 2) % 1, kick = Math.exp(-beat * 7), hat = Math.exp(-((t * 8) % 1) * 18);
+		const b = [];
+		for (let i = 0; i < BANDS; i++) {
+			const low = Math.max(0, 1 - i / 5), high = Math.max(0, (i - 9) / 7);
+			const mid = 0.45 + 0.25 * Math.sin(t * 1.7 + i * 0.7) * Math.sin(t * 0.6 + i);
+			b.push(Math.min(1, low * (0.35 + 0.65 * kick) + (1 - low - high) * mid * 0.8 + high * (0.15 + 0.5 * hat) + 0.04 * Math.random()));
+		}
+		const w = [];
+		for (let i = 0; i < 256; i++) {
+			const x = i / 256;
+			w.push((0.55 * kick + 0.2) * Math.sin(2 * Math.PI * (x * 3 + t * 0.3)) + 0.25 * Math.sin(2 * Math.PI * (x * 11 + t)) * (0.4 + 0.6 * hat) + 0.08 * Math.sin(2 * Math.PI * x * 37));
+		}
+		return { bands: b, wave: w, kick };
+	};
+	function real() {
+		analyser.getByteFrequencyData(freq);
+		analyser.getFloatTimeDomainData(wave);
+		const b = [];
+		const n = freq.length;
+		for (let i = 0; i < BANDS; i++) {
+			const a = Math.floor(Math.pow(n, i / BANDS)), z = Math.max(a + 1, Math.floor(Math.pow(n, (i + 1) / BANDS)));
+			let m = 0;
+			for (let k = a; k < z && k < n; k++) m = Math.max(m, freq[k]);
+			b.push(m / 255);
+		}
+		const w = [];
+		const step = Math.floor(wave.length / 256);
+		for (let i = 0; i < 256; i++) w.push(wave[i * step] * 2.2);
+		return { bands: b, wave: w, kick: b[0] * b[1] };
+	}
+	function startSynth() {
+		audio = new (window.AudioContext || window.webkitAudioContext)();
+		analyser = audio.createAnalyser();
+		analyser.fftSize = 2048;
+		analyser.smoothingTimeConstant = 0.55;
+		freq = new Uint8Array(analyser.frequencyBinCount);
+		wave = new Float32Array(analyser.fftSize);
+		const out = audio.createGain();
+		out.gain.value = 0.35;
+		out.connect(analyser);
+		analyser.connect(audio.destination);
+		const noise = audio.createBuffer(1, audio.sampleRate * 0.2, audio.sampleRate);
+		const nd = noise.getChannelData(0);
+		for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+		const bass = [41.2, 41.2, 55, 49], chords = [[220, 261.6, 329.6], [196, 246.9, 293.7], [174.6, 220, 261.6], [196, 246.9, 293.7]];
+		let next = audio.currentTime + 0.05, step = 0;
+		const beat = 0.25;	// 120 bpm, eighths
+		function tick() {
+			if (!playing) return;
+			while (next < audio.currentTime + 0.2) {
+				const bar = Math.floor(step / 8) % 4, pos = step % 8;
+				if (pos % 2 === 0) {	// kick on the beat
+					const o = audio.createOscillator(), g = audio.createGain();
+					o.frequency.setValueAtTime(140, next); o.frequency.exponentialRampToValueAtTime(40, next + 0.12);
+					g.gain.setValueAtTime(1, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.25);
+					o.connect(g).connect(out); o.start(next); o.stop(next + 0.26);
+				}
+				{	// hats on every eighth
+					const s = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+					s.buffer = noise; f.type = 'highpass'; f.frequency.value = 7000;
+					g.gain.setValueAtTime(pos % 2 ? 0.35 : 0.18, next); g.gain.exponentialRampToValueAtTime(0.001, next + 0.05);
+					s.connect(f).connect(g).connect(out); s.start(next); s.stop(next + 0.06);
+				}
+				{	// bass, a saw
+					const o = audio.createOscillator(), g = audio.createGain();
+					o.type = 'sawtooth'; o.frequency.value = bass[bar] * (pos === 3 || pos === 7 ? 2 : 1);
+					g.gain.setValueAtTime(0.25, next); g.gain.exponentialRampToValueAtTime(0.001, next + beat * 0.9);
+					o.connect(g).connect(out); o.start(next); o.stop(next + beat);
+				}
+				if (pos === 0)	// a chord a bar
+					for (const fq of chords[bar]) {
+						const o = audio.createOscillator(), g = audio.createGain();
+						o.type = 'triangle'; o.frequency.value = fq;
+						g.gain.setValueAtTime(0.0001, next); g.gain.linearRampToValueAtTime(0.09, next + 0.08); g.gain.exponentialRampToValueAtTime(0.001, next + beat * 7.5);
+						o.connect(g).connect(out); o.start(next); o.stop(next + beat * 8);
+					}
+				next += beat; step++;
+			}
+			setTimeout(tick, 50);
+		}
+		tick();
+	}
+	const btn = document.getElementById('music');
+	btn.addEventListener('click', () => {
+		playing = !playing;
+		btn.setAttribute('aria-pressed', String(playing));
+		btn.textContent = playing ? '■ Stop demo music' : '▶ Play demo music';
+		if (playing) {
+			if (!audio) startSynth();
+			else { audio.resume(); startSynthLoop(); }
+		} else if (audio) audio.suspend();
+	});
+	function startSynthLoop() { /* the scheduler restarts on resume */ const a = audio; audio = null; a.close(); startSynth(); }
+
+	/* ---------- shared state: falling caps ---------- */
+	const caps = {};
+	const fall = (key, v, dt, speed = 0.45) => { const c = caps[key] || 0; const n = Math.max(v, c - speed * dt); caps[key] = n; return n; };
+	const title = (g, ink, font, y = 46) => {
+		g.textAlign = 'center';
+		g.fillStyle = ink;
+		g.font = font;
+		g.fillText('Midnight Arcade', 320, y);
+	};
+
+	/* ---------- 1. Retro hi-fi LED meter ---------- */
+	function led(g, d, dt) {
+		g.fillStyle = '#050505'; g.fillRect(0, 0, 640, 480);
+		const SEG = 14, cols = BANDS, cw = 30, gap = 8, x0 = (640 - (cols * cw + (cols - 1) * gap)) / 2, base = 440, sh = 16, sg = 6;
+		for (let i = 0; i < cols; i++) {
+			const lit = Math.round(d.bands[i] * SEG), peak = Math.round(fall('led' + i, d.bands[i], dt, 0.5) * SEG);
+			for (let s = 0; s < SEG; s++) {
+				const col = s >= SEG - 2 ? ['#ff3b30', '#3a0d0b'] : s >= SEG - 5 ? ['#ffd60a', '#3a3005'] : ['#30d158', '#0b2a14'];
+				const on = s < lit || s === peak - 1;
+				g.fillStyle = on ? col[0] : col[1];
+				g.fillRect(x0 + i * (cw + gap), base - (s + 1) * (sh + sg), cw, sh);
+			}
+		}
+		title(g, '#e8e2d3', '600 28px Inter, sans-serif', 44);
+		g.fillStyle = '#8f8a80'; g.font = '13px Inter, sans-serif';
+		['31', '125', '500', '2k', '8k', '16k'].forEach((l, k) => g.fillText(l, x0 + (k * 3) * (cw + gap) + cw / 2, 466));
+	}
+
+	/* ---------- 2. Synthwave ---------- */
+	let gridPhase = 0;
+	function synth(g, d, dt) {
+		const sky = g.createLinearGradient(0, 0, 0, 300);
+		sky.addColorStop(0, '#1a0b2e'); sky.addColorStop(0.6, '#5b1a6e'); sky.addColorStop(1, '#c2307a');
+		g.fillStyle = sky; g.fillRect(0, 0, 640, 300);
+		// the sun, striped
+		g.save(); g.beginPath(); g.arc(320, 250, 110, 0, Math.PI * 2); g.clip();
+		const sun = g.createLinearGradient(0, 140, 0, 360); sun.addColorStop(0, '#ffe066'); sun.addColorStop(1, '#ff4f8b');
+		g.fillStyle = sun; g.fillRect(200, 140, 240, 220);
+		g.fillStyle = '#5b1a6e'; for (let k = 0; k < 6; k++) g.fillRect(200, 230 + k * 14, 240, 3 + k * 1.5);
+		g.restore();
+		// the floor and its grid, rolling toward you
+		g.fillStyle = '#12061f'; g.fillRect(0, 300, 640, 180);
+		g.strokeStyle = '#ff4fd8'; g.lineWidth = 2; g.globalAlpha = 0.85;
+		gridPhase = (gridPhase + dt * 0.6) % 1;
+		for (let k = 0; k < 9; k++) { const z = (k + gridPhase) / 9, y = 300 + 180 * z * z; g.beginPath(); g.moveTo(0, y); g.lineTo(640, y); g.stroke(); }
+		for (let k = -8; k <= 8; k++) { g.beginPath(); g.moveTo(320 + k * 20, 300); g.lineTo(320 + k * 120, 480); g.stroke(); }
+		g.globalAlpha = 1;
+		// neon bars on the horizon
+		const n = BANDS, bw = 24, gap = 10, x0 = (640 - (n * bw + (n - 1) * gap)) / 2;
+		for (let i = 0; i < n; i++) {
+			const h = 20 + d.bands[i] * 200, x = x0 + i * (bw + gap);
+			const bar = g.createLinearGradient(0, 300 - h, 0, 300); bar.addColorStop(0, '#5ef2ff'); bar.addColorStop(1, '#ff4fd8');
+			g.shadowColor = '#ff4fd8'; g.shadowBlur = 14; g.fillStyle = bar; g.fillRect(x, 300 - h, bw, h); g.shadowBlur = 0;
+			const c = fall('syn' + i, d.bands[i], dt); g.fillStyle = '#ffffff'; g.fillRect(x, 300 - 20 - c * 200 - 8, bw, 4);
+		}
+		title(g, '#ffffff', '600 28px Inter, sans-serif', 44);
+	}
+
+	/* ---------- 3. Banana stack ---------- */
+	const BANANA = ['....##', '...#Y#', '..#YY#', '.#YY#.', '#YY#..', '#Y#...', '.##...'];	// 6 x 7 pixel art, # outline, Y yellow
+	function drawBanana(g, x, y, s) {
+		for (let r = 0; r < BANANA.length; r++) for (let c = 0; c < 6; c++) {
+			const ch = BANANA[r][c];
+			if (ch === '.') continue;
+			g.fillStyle = ch === '#' ? '#5a3a00' : '#ffd23f';
+			g.fillRect(x + c * s, y + r * s, s, s);
+		}
+	}
+	let bounceT = 0;
+	function banana(g, d, dt) {
+		g.fillStyle = '#16121f'; g.fillRect(0, 0, 640, 480);
+		g.fillStyle = '#211b2e'; for (let y = 100; y < 480; y += 36) g.fillRect(0, y, 640, 1);
+		bounceT += dt;
+		const n = 12, s = 4, cell = 30, bw = 6 * s, gap = 22, x0 = (640 - (n * bw + (n - 1) * gap)) / 2, base = 450, maxStack = 10;
+		for (let i = 0; i < n; i++) {
+			const v = d.bands[Math.floor(i * BANDS / n)], k = Math.max(1, Math.round(v * maxStack));
+			const x = x0 + i * (bw + gap);
+			for (let j = 0; j < k; j++) drawBanana(g, x, base - (j + 1) * cell, s);
+			const cap = fall('ban' + i, v, dt, 0.35), hop = Math.abs(Math.sin(bounceT * 9 + i)) * 6 * v;
+			drawBanana(g, x, base - (Math.max(1, Math.round(cap * maxStack)) + 1) * cell - hop, s);
+		}
+		title(g, '#ffd23f', '600 30px "Pixelify Sans", monospace', 46);
+	}
+
+	/* ---------- 4. Night city ---------- */
+	const BUILDINGS = (() => {
+		const out = [];
+		let x = 0, seed = 7;
+		const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+		while (x < 640) { const w = 50 + Math.floor(rnd() * 40), h = 140 + Math.floor(rnd() * 200); out.push({ x, w, h }); x += w + 4; }
+		return out;
+	})();
+	const STARS = Array.from({ length: 60 }, (_, i) => ({ x: (i * 97) % 640, y: (i * 53) % 150, r: (i % 3) + 1 }));
+	function city(g, d) {
+		const sky = g.createLinearGradient(0, 0, 0, 480); sky.addColorStop(0, '#060b24'); sky.addColorStop(1, '#1b2a5c');
+		g.fillStyle = sky; g.fillRect(0, 0, 640, 480);
+		g.fillStyle = '#c9d6ff'; STARS.forEach(s => g.fillRect(s.x, s.y + 60, s.r, s.r));
+		g.fillStyle = '#f4f1d0'; g.beginPath(); g.arc(560, 110, 26, 0, Math.PI * 2); g.fill();
+		g.fillStyle = '#1b2a5c'; g.beginPath(); g.arc(572, 102, 24, 0, Math.PI * 2); g.fill();
+		BUILDINGS.forEach((b, bi) => {
+			const top = 480 - b.h;
+			g.fillStyle = '#0b0f22'; g.fillRect(b.x, top, b.w, b.h);
+			const band = d.bands[Math.min(BANDS - 1, Math.floor((b.x + b.w / 2) / 640 * BANDS))];
+			for (let wy = top + 12; wy < 470; wy += 18) for (let wx = b.x + 8; wx < b.x + b.w - 10; wx += 14) {
+				const rank = ((wx * 7 + wy * 13 + bi * 31) % 100) / 100;	// each window its own threshold
+				const lit = rank < band * 0.95;
+				g.fillStyle = lit ? (rank < band * 0.4 ? '#ffd23f' : '#ffb347') : '#1a2142';
+				g.fillRect(wx, wy, 7, 9);
+			}
+		});
+		title(g, '#ffffff', '600 28px Inter, sans-serif', 44);
+	}
+
+	/* ---------- 5. Phosphor oscilloscope ---------- */
+	function scope(g, d) {
+		g.fillStyle = 'rgba(2, 12, 4, 0.28)'; g.fillRect(0, 0, 640, 480);	// the fade: the old frames linger
+		g.strokeStyle = 'rgba(80, 200, 120, 0.12)'; g.lineWidth = 1;
+		for (let x = 0; x <= 640; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 480); g.stroke(); }
+		for (let y = 0; y <= 480; y += 60) { g.beginPath(); g.moveTo(0, y); g.lineTo(640, y); g.stroke(); }
+		g.strokeStyle = '#7dff9e'; g.lineWidth = 2.5; g.shadowColor = '#3cff7a'; g.shadowBlur = 12;
+		g.beginPath();
+		d.wave.forEach((v, i) => { const x = i / (d.wave.length - 1) * 640, y = 260 - v * 150; i ? g.lineTo(x, y) : g.moveTo(x, y); });
+		g.stroke(); g.shadowBlur = 0;
+		g.fillStyle = 'rgba(2, 12, 4, 1)'; g.fillRect(0, 0, 640, 70);
+		title(g, '#7dff9e', '600 28px "Pixelify Sans", monospace', 46);
+	}
+
+	/* ---------- 6. Heartbeat ---------- */
+	const trace = new Array(320).fill(0);
+	let lastKick = 0, pulse = 0;
+	function heart(g, d, dt) {
+		// a spike drawn when the bass jumps; the line scrolls left
+		if (d.kick > 0.55 && d.kick > lastKick + 0.05) pulse = 1;
+		lastKick = d.kick;
+		const shape = [0, -0.15, 0.1, -1, 0.75, -0.25, 0.05, 0];
+		for (let k = 0; k < 2; k++) {
+			let v = 0;
+			if (pulse > 0) { const p = Math.floor((1 - pulse) * shape.length); v = shape[Math.min(shape.length - 1, p)]; pulse = Math.max(0, pulse - 0.14); }
+			trace.shift(); trace.push(v + (Math.random() - 0.5) * 0.02);
+		}
+		g.fillStyle = '#05080a'; g.fillRect(0, 0, 640, 480);
+		g.strokeStyle = 'rgba(255, 80, 100, 0.08)'; g.lineWidth = 1;
+		for (let x = 0; x <= 640; x += 32) { g.beginPath(); g.moveTo(x, 80); g.lineTo(x, 480); g.stroke(); }
+		for (let y = 80; y <= 480; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(640, y); g.stroke(); }
+		const n = trace.length;
+		for (let i = 1; i < n; i++) {
+			const a = i / n;	// older to the left, dimmer
+			g.strokeStyle = `rgba(255, 90, 110, ${0.15 + 0.85 * a})`; g.lineWidth = 3; g.shadowColor = '#ff3b5c'; g.shadowBlur = a > 0.95 ? 14 : 0;
+			g.beginPath(); g.moveTo((i - 1) * 2, 290 + trace[i - 1] * 140); g.lineTo(i * 2, 290 + trace[i] * 140); g.stroke();
+		}
+		g.shadowBlur = 0;
+		g.fillStyle = '#ff5a6e'; g.beginPath(); g.arc(638, 290 + trace[n - 1] * 140, 5, 0, Math.PI * 2); g.fill();
+		title(g, '#ff8a98', '600 28px Inter, sans-serif', 44);
+	}
+
+	const DRAW = { led, synth, banana, city, scope, heart };
+	let last = performance.now(), t0 = last;
+	function frame(now) {
+		const dt = Math.min(0.05, (now - last) / 1000);
+		last = now;
+		const d = playing && analyser ? real() : fake((now - t0) / 1000);
+		for (const s of STYLES) DRAW[s.id](ctx[s.id], d, dt);
+		requestAnimationFrame(frame);
+	}
+	// a still first frame (thumbnails, reduced motion), then the motion
+	const first = fake(0.37);
+	for (const s of STYLES) DRAW[s.id](ctx[s.id], first, 0.016);
+	if (!matchMedia('(prefers-reduced-motion: reduce)').matches) requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>

@@ -1,0 +1,322 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Manga Book Mode</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: the handheld drawn as it's held sideways (hinge running down the middle), the controls of the mock
+   beside it, then what each key does. Colours are the player's own theme.h; one dark look on purpose. */
+:root {
+	--bg: #0b0a0d;          /* TOP_CARD: the page around the device */
+	--shell: #e9e3cf;       /* the handheld's cream plastic */
+	--shell-edge: #cfc7ae;
+	--screen: #000000;      /* BG */
+	--surface: #121116;     /* SURFACE */
+	--button: #26242e;      /* BUTTON */
+	--accent: #ffd23f;      /* ACCENT */
+	--text: #e8e2d3;        /* TEXT */
+	--dim: #8f8a80;         /* DIM */
+	--rule: #2a2833;        /* RULE */
+	--paper: #f6f3ea;
+	--ink: #17161b;
+	--f-ui: "Pixelify Sans", ui-monospace, monospace;
+	--f-text: "Inter", system-ui, sans-serif;
+	color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--f-text); line-height: 1.5;
+	padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 48px; }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 28px; }
+h1 { font-family: var(--f-ui); font-weight: 600; font-size: 1.9rem; margin: 0; color: var(--accent); text-wrap: balance; }
+h2 { font-family: var(--f-ui); font-weight: 600; font-size: 1.15rem; margin: 0 0 10px; color: var(--text); }
+p { margin: 0; max-width: 68ch; color: var(--text); }
+.lede { color: var(--dim); }
+.eyebrow { font-family: var(--f-ui); font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+
+/* the mock's own switches */
+.switches { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.seg { display: inline-flex; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 3px; gap: 3px; }
+.seg button { font: 500 .85rem var(--f-text); color: var(--dim); background: transparent; border: 0; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--button); color: var(--text); }
+.seg button:focus-visible, .key:focus-visible, .scr:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch-label { font-size: .8rem; color: var(--dim); margin-right: 4px; }
+
+/* the handheld, held sideways */
+.stage { overflow-x: auto; padding: 8px 0; }
+.device { --u: min(1px, calc((100vw - 40px) / 720)); display: flex; align-items: center; gap: calc(14 * var(--u)); width: max-content; margin: 0 auto; }
+.device.flip { flex-direction: row-reverse; }
+.device.flip .half.bottom { flex-direction: row-reverse; }
+.half { background: var(--shell); border: calc(3 * var(--u)) solid var(--shell-edge); border-radius: calc(26 * var(--u)); padding: calc(26 * var(--u)) calc(22 * var(--u)); display: flex; align-items: center; gap: calc(18 * var(--u)); }
+.device .half.top { flex-direction: row; }
+.scr { position: relative; width: calc(240 * var(--u)); height: calc(320 * var(--u)); background: var(--screen); border-radius: calc(4 * var(--u)); overflow: hidden; box-shadow: inset 0 0 0 calc(5 * var(--u)) #1a1a1a; }
+.hinge { width: calc(26 * var(--u)); height: calc(250 * var(--u)); background: var(--shell-edge); border-radius: calc(12 * var(--u)); }
+.label-scr { position: absolute; top: calc(-22 * var(--u)); left: 0; font: calc(11 * var(--u)) var(--f-ui); color: #6b6455; }
+.controls { display: grid; gap: calc(26 * var(--u)); justify-items: center; }
+.dpad { position: relative; width: calc(84 * var(--u)); height: calc(84 * var(--u)); }
+.key { position: absolute; font: 600 calc(11 * var(--u)) var(--f-ui); color: #3a3630; background: #d9d2bb; border: calc(2 * var(--u)) solid var(--shell-edge); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.dpad .key { width: calc(28 * var(--u)); height: calc(28 * var(--u)); border-radius: calc(5 * var(--u)); }
+.dpad .k-l { left: 0; top: calc(28 * var(--u)); } .dpad .k-r { right: 0; top: calc(28 * var(--u)); }
+.dpad .k-u { left: calc(28 * var(--u)); top: 0; } .dpad .k-d { left: calc(28 * var(--u)); bottom: 0; }
+.dpad .hub { position: absolute; left: calc(28 * var(--u)); top: calc(28 * var(--u)); width: calc(28 * var(--u)); height: calc(28 * var(--u)); background: #d9d2bb; }
+.row-keys { position: relative; display: flex; gap: calc(10 * var(--u)); }
+.row-keys .key { position: static; height: calc(26 * var(--u)); padding: 0 calc(10 * var(--u)); border-radius: calc(13 * var(--u)); }
+.key.hit { background: var(--accent); color: var(--ink); }
+.shoulder { width: calc(16 * var(--u)); align-self: stretch; display: flex; flex-direction: column; justify-content: space-between; padding: calc(8 * var(--u)) 0; }
+.shoulder .key { position: static; width: calc(16 * var(--u)); height: calc(54 * var(--u)); border-radius: calc(6 * var(--u)); font-size: calc(9 * var(--u)); writing-mode: vertical-rl; }
+
+/* a page: generated panels, never anyone's art */
+.page { position: absolute; inset: 0; background: var(--paper); display: grid; padding: 7%; gap: 4%; transition: transform .28s ease, opacity .28s ease; }
+.page.p-a { grid-template: 1.2fr 1fr .8fr / 1fr 1fr; }
+.page.p-b { grid-template: 1fr 1.4fr / 1.3fr 1fr; }
+.page.p-c { grid-template: .9fr 1fr 1fr / 1fr; }
+.page .pn { border: calc(2 * var(--u)) solid var(--ink); border-radius: 2px; position: relative; overflow: hidden; background: #fff; }
+.page .pn::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(135deg, transparent 0 9px, rgba(23,22,27,.07) 9px 10px); }
+.page .pn.wide { grid-column: 1 / -1; }
+.page .bubble { position: absolute; background: #fff; border: calc(1.5 * var(--u)) solid var(--ink); border-radius: 50%; width: 40%; height: 26%; top: 8%; right: 6%; z-index: 1; }
+.page .folio { position: absolute; bottom: 2.2%; left: 0; right: 0; text-align: center; font: 600 calc(10 * var(--u)) var(--f-text); color: var(--ink); }
+.page.cover { background: #2b3b63; padding: 0; display: grid; place-items: center; }
+.page.cover .ttl { font: 600 calc(22 * var(--u)) var(--f-ui); color: var(--accent); text-align: center; line-height: 1.1; }
+.page.cover .ttl small { display: block; font-size: .5em; color: var(--paper); margin-top: 6px; }
+.endcard { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font: calc(13 * var(--u)) var(--f-ui); color: var(--text); padding: 12%; background: var(--screen); }
+.endcard b { color: var(--accent); font-weight: 400; display: block; margin-bottom: 6px; }
+.out-l { transform: translateX(-30%); opacity: 0; } .out-r { transform: translateX(30%); opacity: 0; }
+
+/* the panel's own frame (640x480, as the bottom screen always draws): only the pages turn with the hold; the menu and
+   the page tag stay in this frame, so held sideways they read sideways */
+.devframe { position: absolute; left: 50%; top: 50%; width: calc(320 * var(--u)); height: calc(240 * var(--u)); transform: translate(-50%, -50%) rotate(-90deg); z-index: 3; pointer-events: none; }
+.device.flip .devframe { transform: translate(-50%, -50%) rotate(90deg); }
+/* the page tag, where the bottom screen shows it */
+.tag { position: absolute; bottom: calc(10 * var(--u)); left: 50%; transform: translateX(-50%); font: calc(12 * var(--u)) var(--f-ui); color: var(--text); background: rgba(18,17,22,.92); border-radius: calc(6 * var(--u)); padding: calc(3 * var(--u)) calc(8 * var(--u)); white-space: nowrap; transition: opacity .25s; z-index: 3; }
+.tag[data-on="false"] { opacity: 0; }
+
+/* the Reading menu, turned to match the hold */
+.menu { position: absolute; inset: calc(8 * var(--u)); gap: 0; background: var(--surface); border-radius: calc(14 * var(--u)); padding: calc(12 * var(--u)) calc(10 * var(--u)); display: grid; align-content: start; gap: calc(2 * var(--u)); z-index: 4; font: calc(12 * var(--u)) var(--f-ui); }
+.menu h3 { grid-column: 1 / -1; margin: 0 0 calc(4 * var(--u)); font: 600 calc(13 * var(--u)) var(--f-ui); color: var(--accent); }
+.menu .r { display: flex; justify-content: space-between; gap: 6px; padding: calc(4 * var(--u)) calc(6 * var(--u)); font-size: calc(10 * var(--u)); border-radius: calc(7 * var(--u)); color: var(--text); }
+.menu .r span:last-child { color: var(--dim); }
+.menu .r.at { background: var(--button); }
+.menu .r.at span:last-child { color: var(--accent); }
+.menu .r.off { color: var(--dim); }
+.menu .foot { grid-column: 1 / -1; margin-top: calc(4 * var(--u)); color: var(--dim); font-size: calc(10 * var(--u)); }
+
+/* below the device */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 22px; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 18px 20px; min-width: 0; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: 7px 8px 7px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--dim); font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; }
+td:first-child { font-family: var(--f-ui); color: var(--accent); white-space: nowrap; }
+ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+li { max-width: 68ch; }
+.now { font-family: var(--f-ui); color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .page, .tag { transition: none; } }
+</style>
+
+<main>
+	<header style="display:grid;gap:8px">
+		<div class="eyebrow">Banana Player · Manga reader · issue #7 · mock for approval</div>
+		<h1>Book mode</h1>
+		<p class="lede">Hold the RG DS sideways like a book: one page on each screen, the D-pad's sideways press turns the spread. Click the keys on the drawing (or press ← → on your keyboard) to try it.</p>
+	</header>
+
+	<div class="switches" role="group" aria-label="Mock settings">
+		<span><span class="switch-label">Book</span>
+			<span class="seg" id="hold"><button id="hold-left" aria-pressed="true">Top screen left</button><button id="hold-right" aria-pressed="false">Top screen right</button></span></span>
+		<span><span class="switch-label">Reading mode</span>
+			<span class="seg" id="dir"><button id="dir-rtl" aria-pressed="true">Right to left</button><button id="dir-ltr" aria-pressed="false">Left to right</button></span></span>
+	</div>
+
+	<div class="stage">
+		<div class="device" id="device">
+			<div class="half top" id="half-top"><div class="scr" id="scr-top"><span class="label-scr">top screen</span></div></div>
+			<div class="hinge" aria-hidden="true"></div>
+			<div class="half bottom" id="half-bot">
+				<div class="scr" id="scr-bot" tabindex="0" aria-label="Bottom screen: drag sideways to turn"><span class="label-scr">bottom (touch)</span></div>
+				<div class="controls" id="ctl">
+					<div class="dpad" aria-label="D-pad">
+						<span class="hub"></span>
+						<button class="key k-u" id="k-vu" title="">▲</button>
+						<button class="key k-l" id="k-vl">◀</button>
+						<button class="key k-r" id="k-vr">▶</button>
+						<button class="key k-d" id="k-vd">▼</button>
+					</div>
+					<div class="row-keys"><button class="key" id="k-L">L</button><button class="key" id="k-R">R</button></div>
+					<div class="row-keys"><button class="key" id="k-start">START</button><button class="key" id="k-b">B</button></div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<p class="lede" style="text-align:center;max-width:none" id="status"></p>
+
+	<div class="cols">
+		<section class="panel">
+			<h2>Keys in Book mode</h2>
+			<table>
+				<thead><tr><th>Key</th><th>What it does</th></tr></thead>
+				<tbody id="keys"></tbody>
+			</table>
+		</section>
+		<section class="panel">
+			<h2>How it behaves</h2>
+			<ul>
+				<li><b>Turning it on:</b> the Reading menu (<span class="now">START</span>) gets a <b>Book</b> row: Off, Top screen left, Top screen right. SELECT stays Fullscreen. Book is kept for the series, like the reading mode.</li>
+				<li><b>One page a screen,</b> turned a quarter turn and fitted whole. Both screens show their page at once, so a spread reads like an open book.</li>
+				<li><b>The order follows the reading mode.</b> Right to left: the earlier page on the right. Left to right: on the left. A series in Strip opens Book in Right to left.</li>
+				<li><b>By spread:</b> a sideways press turns two pages. <b>L / R</b> move one, for a cover on its own or a two-page picture that landed split.</li>
+				<li><b>The pages and their numbers turn.</b> The page numbers show for a moment after a turn, at the foot of the spread, upright as you hold it. Everything else on the bottom screen (the Reading menu, notices) is drawn as always, in the screen's own orientation: held sideways it reads sideways, and you turn the handheld back to use the menu.</li>
+				<li><b>Touch:</b> drag sideways on the bottom screen to turn; a tap shows the page numbers. No zoom in Book (the D-pad's other axis does nothing).</li>
+				<li><b>Leaving:</b> <b>B</b> leaves Book (as it leaves Fullscreen), then closes the reader. When Book is turned on, a notice on both screens says which way to turn the handheld.</li>
+			</ul>
+		</section>
+	</div>
+</main>
+
+<script>
+(function () {
+	const PAGES = 24;
+	const state = { hold: "left", dir: "rtl", s: 0, menu: false, tagUntil: 0 };
+	const $ = (id) => document.getElementById(id);
+	const layouts = ["p-a", "p-b", "p-c"];
+
+	function pageEl(i) {
+		if (i >= PAGES) {
+			const e = document.createElement("div");
+			e.className = "endcard";
+			e.innerHTML = "<div><b>End of chapter</b>" + (state.dir === "rtl" ? "◀" : "▶") + " for the next</div>";
+			return e;
+		}
+		const e = document.createElement("div");
+		if (i === 0) {
+			e.className = "page cover";
+			e.innerHTML = '<div class="ttl">The Tide Clock<small>Chapter 3</small></div>';
+			return e;
+		}
+		const l = layouts[i % 3];
+		e.className = "page " + l;
+		const n = l === "p-a" ? 5 : l === "p-b" ? 4 : 3;
+		let h = "";
+		for (let k = 0; k < n; k++) {
+			const wide = (l === "p-a" && k === 0) || (l === "p-b" && k === 3);
+			h += '<div class="pn' + (wide ? " wide" : "") + '">' + (k === 0 ? '<span class="bubble"></span>' : "") + "</div>";
+		}
+		e.innerHTML = h + '<div class="folio">' + (i + 1) + "</div>";
+		return e;
+	}
+
+	// which screen sits on the reader's left as held
+	function leftScreen() { return state.hold === "left" ? "top" : "bot"; }
+	function render(anim) {
+		const dev = $("device");
+		dev.classList.toggle("flip", state.hold === "right");
+		const left = leftScreen(), right = left === "top" ? "bot" : "top";
+		// the earlier page: on the right in Right to left, on the left in Left to right
+		const earlier = state.dir === "rtl" ? right : left, later = earlier === "top" ? "bot" : "top";
+		fill(earlier, state.s, anim);
+		fill(later, state.s + 1, anim);
+		// the tag at the foot of the spread: on the bottom screen
+		const scrb = $("scr-bot");
+		let scr = scrb.querySelector(".devframe");
+		if (!scr) { scr = document.createElement("div"); scr.className = "devframe"; scrb.appendChild(scr); }
+		// the page numbers turn with the pages (upright as held, at the foot of the spread); the menu doesn't
+		let tag = scrb.querySelector(":scope > .tag");
+		if (!tag) { tag = document.createElement("div"); tag.className = "tag"; scrb.appendChild(tag); }
+		const a = state.s + 1, b = Math.min(state.s + 2, PAGES);
+		tag.textContent = (a > PAGES ? "End" : (a === b ? a : a + "–" + b)) + " / " + PAGES;
+		tag.dataset.on = String(Date.now() < state.tagUntil);
+		// the menu
+		let m = scr.querySelector(".menu");
+		if (state.menu && !m) { m = menuEl(); scr.appendChild(m); }
+		if (!state.menu && m) m.remove();
+		// the D-pad as held: which physical key points where
+		const held = state.hold === "left"
+			? { vu: "RIGHT", vl: "UP", vr: "DOWN", vd: "LEFT" }
+			: { vu: "LEFT", vl: "DOWN", vr: "UP", vd: "RIGHT" };
+		for (const k of ["vu", "vl", "vr", "vd"]) $("k-" + k).title = "the handheld's " + held[k];
+		keysTable(held);
+		$("status").textContent = "Showing pages " + (state.s + 1) + (state.s + 2 <= PAGES ? " and " + (state.s + 2) : "") + " · " + (state.hold === "left" ? "top screen on the left, the buttons under your right hand" : "top screen on the right, the buttons under your left hand");
+	}
+	function fill(which, i, anim) {
+		const scr = $("scr-" + which);
+		const old = scr.querySelector(".page, .endcard");
+		const el = pageEl(i);
+		if (old) old.remove();
+		scr.insertBefore(el, scr.querySelector(".devframe"));
+		if (anim) {
+			el.classList.add(anim);
+			requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove(anim)));
+		}
+	}
+	function menuEl() {
+		const m = document.createElement("div");
+		m.className = "menu";
+		const rows = [
+			["Fullscreen", "Off", "off"],
+			["Book", state.hold === "left" ? "◀ Top screen left ▶" : "◀ Top screen right ▶", "at"],
+			["Reading mode", state.dir === "rtl" ? "Right to left" : "Left to right", ""],
+			["Page fit", "Page", "off"],
+			["Zoom", "100 %", "off"],
+			["Swap Left/Right", "Off", ""],
+			["Pages", "", ""],
+			["All Manga settings…", "", ""],
+		];
+		m.innerHTML = "<h3>Reading</h3>" + rows.map(r => '<div class="r ' + r[2] + '"><span>' + r[0] + "</span><span>" + r[1] + "</span></div>").join("") +
+			'<div class="foot">◀ ▶ change · B or START closes</div>';
+		return m;
+	}
+	function keysTable(held) {
+		const fwd = state.dir === "rtl" ? "vl" : "vr", back = fwd === "vl" ? "vr" : "vl";
+		const rows = [
+			[held[fwd] + " (◀▶ as held)", "Next spread: two pages on"],
+			[held[back], "Previous spread"],
+			["L / R", "One page back / on (to realign a spread)"],
+			[held.vu + " / " + held.vd, "Nothing in Book (zoom is off)"],
+			["X", "Reading mode: Right to left ⇄ Left to right"],
+			["Y", "The Pages grid"],
+			["START", "The Reading menu, in the screen's usual orientation"],
+			["SELECT", "Fullscreen (turns Book off)"],
+			["B", "Leave Book, then close the reader"],
+		];
+		$("keys").innerHTML = rows.map(r => "<tr><td>" + r[0] + "</td><td>" + r[1] + "</td></tr>").join("");
+	}
+	function flash(id) { const k = $(id); k.classList.add("hit"); setTimeout(() => k.classList.remove("hit"), 160); }
+	function showTag() { state.tagUntil = Date.now() + 1500; render(); setTimeout(render, 1550); }
+	function turn(visual) {	// visual: "l" or "r", as the reader sees it
+		if (state.menu) return;
+		const forward = (state.dir === "rtl") === (visual === "l");
+		const next = forward ? Math.min(state.s + 2, PAGES) : Math.max(state.s - 2, 0);
+		if (next === state.s) return;
+		state.s = next;
+		state.tagUntil = Date.now() + 1500;
+		render(visual === "l" ? "out-l" : "out-r");
+		setTimeout(render, 1550);
+	}
+	function shift(d) { if (state.menu) return; const n = Math.max(0, Math.min(PAGES - 1, state.s + d)); if (n !== state.s) { state.s = n; showTag(); } }
+
+	$("k-vl").onclick = () => { flash("k-vl"); turn("l"); };
+	$("k-vr").onclick = () => { flash("k-vr"); turn("r"); };
+	$("k-vu").onclick = () => flash("k-vu");
+	$("k-vd").onclick = () => flash("k-vd");
+	$("k-L").onclick = () => { flash("k-L"); shift(-1); };
+	$("k-R").onclick = () => { flash("k-R"); shift(1); };
+	$("k-start").onclick = () => { flash("k-start"); state.menu = !state.menu; render(); };
+	$("k-b").onclick = () => { flash("k-b"); if (state.menu) { state.menu = false; render(); } };
+	$("scr-bot").onclick = () => { if (!state.menu) showTag(); };
+	let downX = null;
+	$("scr-bot").addEventListener("pointerdown", e => { downX = e.clientX; });
+	$("scr-bot").addEventListener("pointerup", e => { if (downX !== null && Math.abs(e.clientX - downX) > 30) turn(e.clientX < downX ? "r" : "l"); downX = null; });
+	document.addEventListener("keydown", e => {
+		if (e.key === "ArrowLeft") { e.preventDefault(); flash("k-vl"); turn("l"); }
+		else if (e.key === "ArrowRight") { e.preventDefault(); flash("k-vr"); turn("r"); }
+	});
+	function seg(a, b, key, va, vb) {
+		$(a).onclick = () => { state[key] = va; $(a).setAttribute("aria-pressed", "true"); $(b).setAttribute("aria-pressed", "false"); render(); };
+		$(b).onclick = () => { state[key] = vb; $(b).setAttribute("aria-pressed", "true"); $(a).setAttribute("aria-pressed", "false"); render(); };
+	}
+	seg("hold-left", "hold-right", "hold", "left", "right");
+	seg("dir-rtl", "dir-ltr", "dir", "rtl", "ltr");
+	state.tagUntil = Date.now() + 1500;
+	render();
+	setTimeout(render, 1550);
+})();
+</script>
+
+</body></html>
