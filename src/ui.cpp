@@ -652,6 +652,7 @@ namespace bp
 					return false;
 				}
 		}
+		if (!kbOpen && kbClosedAt && SDL_GetTicks() - kbClosedAt < 400) return false;
 		if (kbOpen && panel.on())
 		{
 			kbPointer(pt, x, y);

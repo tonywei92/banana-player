@@ -2164,6 +2164,14 @@ int main(int argc, char** argv)
 					if (readerWasOnTop && reader.isOpen()) reader.redrawSoon();
 				}
 			}
+			{
+				static Uint32 kbClosedSeen = 0;
+				if (haveUi && ui.keyboardClosedAt() != kbClosedSeen)
+				{
+					kbClosedSeen = ui.keyboardClosedAt();
+					freshUntil = std::max(freshUntil, now + 1000);
+				}
+			}
 			bool refresh = now - refreshedAt >= (now < freshUntil ? 100u : 2000u);
 			if (refresh)
 			{

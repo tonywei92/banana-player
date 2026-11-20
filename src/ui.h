@@ -258,6 +258,7 @@ namespace bp
 		void songCoversReady(std::vector<CoverWorker::Result> results);
 		// the on-screen keyboard is up: its caret blinks (the loop wakes often enough to draw it)
 		bool typing() const { return kbOpen; }
+		Uint32 keyboardClosedAt() const { return kbClosedAt; }
 		// Find on the network: discovery runs here, its hosts sent to hostFound (on the main thread: main forwards them)
 		Discovery* discovery = nullptr;
 		std::function<void(const FoundHost&)> onFound;
@@ -652,6 +653,10 @@ namespace bp
 		// the on-screen keyboard, over the bottom panel: a form's field typed in
 		bool kbOpen = false;
 		int kbLayer = 0, kbCursor = 0, kbField = 0, kbPressed = -1;	// kbPressed: a key's number, -2 the back key
+		// when the keyboard last closed: main redraws the panels for a second after it (the handheld can drop the
+		// frame that takes the keyboard away), and a touch in the next 400 ms is let go (a finger still typing on the
+		// keys it sees would land on the page under them: the rail's Music and Extensions, the owner found)
+		Uint32 kbClosedAt = 0;
 		Uint32 kbActiveAt = 0;	// the last key: the caret shows steadily for a moment after it, then blinks
 		bool kbCaretShown() const;
 		TextEdit kbEdit;

@@ -89,6 +89,7 @@ namespace bp
 		{
 			// Find: Done searches on from the place; B keeps the last query as it was
 			kbOpen = false;
+		kbClosedAt = SDL_GetTicks();
 			kbPressed = -1;
 			std::string q = trimmed(kbEdit.text);
 			if (keep && !q.empty()) docs->findTyped(q);
@@ -111,6 +112,7 @@ namespace bp
 		{
 			// Done runs the source's search at once; B (a cancelled one) keeps the query that was there
 			kbOpen = false;
+		kbClosedAt = SDL_GetTicks();
 			kbPressed = -1;
 			if (keep) manga->mangaSourceSearch(kbEdit.text);
 			else browse->browseVersion++;
@@ -120,12 +122,14 @@ namespace bp
 		{
 			// Done writes the text filter and the sheet is under it again; B keeps the value that was there
 			kbOpen = false;
+		kbClosedAt = SDL_GetTicks();
 			kbPressed = -1;
 			if (keep) manga->mangaFilterTextTyped(kbEdit.text);
 			else browse->browseVersion++;
 			return;
 		}
 		kbOpen = false;
+		kbClosedAt = SDL_GetTicks();
 		kbPressed = -1;
 		if (!keep) { browse->browseVersion++; return; }
 		std::string t = kbEdit.text;
