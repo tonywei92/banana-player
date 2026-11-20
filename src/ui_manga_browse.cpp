@@ -637,24 +637,18 @@ namespace bp
 	{
 		// the filter sheet takes every key while it shows
 		if (mangaFilterShown()) return mangaFilterKey(b, p);
-		// X, the page's own action: 5.2.1 named Y, but Y is the grid's Search, and SELECT goes to Now Playing
-		// whenever something plays (music usually does while reading)
-		if (b == Button::X && mangaFilterAvailable())
+		// the spec's keys (screens.js manga-source): Y is Filters (when the source has them), X is More; Search is the
+		// third tab, asked for by A on it or by More
+		if (b == Button::Y && mangaFilterAvailable())
 		{
 			mangaFilterShow(p);
 			return false;
 		}
+		if (b == Button::X) { mangaSourceMore(p); return false; }
 		if (b == Button::B) { mangaSourceBack(p); return false; }
-		// Y, and the Search tab, ask for the query; Done is the keyboard's START
-		if (b == Button::Y)
-		{
-			if (mangaSrcTab == SRC_SEARCH) ui.openKeyboard(MANGA_SEARCH_FIELD, mangaSrcQuery);
-			else mangaSourceTabSet(SRC_SEARCH, p);
-			return false;
-		}
-		// its tabs step with L2 / R2 (L / R are the shell's sections)
-		if (b == Button::L2) { mangaSourceTabStep(-1, p); return false; }
-		if (b == Button::R2) { mangaSourceTabStep(1, p); return false; }
+		// its tabs step with L / R (L2 / R2 are the shell's sections)
+		if (b == Button::L) { mangaSourceTabStep(-1, p); return false; }
+		if (b == Button::R) { mangaSourceTabStep(1, p); return false; }
 		if (b == Button::A && !mangaSrcError.empty())
 		{
 			// the error is what A can do something about, before the grid means anything (the hints say so)
@@ -682,6 +676,26 @@ namespace bp
 		mangaSrcScroll = std::max(0, mangaSrcCursor / MG_COLS - (SRC_ROWS_SHOWN - 1));
 		mangaSourceMaybeMore();
 		return false;
+	}
+
+	void Ui::Manga::mangaSourceMore(Player& p)
+	{
+		(void)p;
+		ui.openMore([this](const Player&) {
+			MoreSpec m;
+			m.glyph = &G_BOOK;
+			m.title = mangaSrcName.empty() ? std::string("Source") : mangaSrcName;
+			m.rows.push_back({&G_SEARCH, "Search this source", "", "", [this](Player& p) {
+				if (mangaSrcTab == SRC_SEARCH) ui.openKeyboard(MANGA_SEARCH_FIELD, mangaSrcQuery);
+				else mangaSourceTabSet(SRC_SEARCH, p);
+				return false;
+			}});
+			m.rows.push_back({&G_REFRESH, "Load this list again", "", "", [this](Player& p) {
+				mangaSourceRetry(p);
+				return false;
+			}});
+			return m;
+		});
 	}
 
 	void Ui::Manga::mangaSourceMaybeMore()
@@ -724,7 +738,7 @@ namespace bp
 	void Ui::Manga::drawMangaSource(const Player& p)
 	{
 		// a source's catalogue (screens.js manga-source): its name the header's title, where it is in the crumb, the
-		// tabs (L2 / R2), and a cover grid that fills as you move
+		// tabs (L / R), and a cover grid that fills as you move
 		ui.drawHeader(mangaSrcName.empty() ? "Source" : mangaSrcName, p);
 		static const char* NAMES[3] = {"Popular", "Latest", "Search"};
 		std::vector<int> slots = mangaSrcSlots();
@@ -736,7 +750,7 @@ namespace bp
 			labels.push_back(NAMES[slots[i]]);
 			if (slots[i] == mangaSrcTab) on = (int)i;
 		}
-		ui.kit->tabs(tp.strip.area, labels, on, "L2/R2", BG);
+		ui.kit->tabs(tp.strip.area, labels, on, "L/R", BG);
 		int n = (int)mangaSrcItems.size();
 		if (n && mangaSrcCursor >= n) mangaSrcCursor = n - 1;
 		// whole rows, the cursor's kept in sight
@@ -771,15 +785,15 @@ namespace bp
 				browserCheckText(mangaSrcError) ? "A: try again" : mangaSrcError + ". A: try again");
 		else if (n == 0 && javaStatus.empty())
 			drawMangaTabEmpty(p, G_SEARCH, mangaSrcTab == SRC_SEARCH ? (mangaSrcQuery.empty() ? "Search this source" : "No results")
-				: "Nothing here yet", mangaSrcTab == SRC_SEARCH && mangaSrcQuery.empty() ? "Y asks for the words." : "Try another tab.");
+				: "Nothing here yet", mangaSrcTab == SRC_SEARCH && mangaSrcQuery.empty() ? "A asks for the words." : "Try another tab.");
 		if (!mangaSrcError.empty())
 		{
-			if (mangaFilterAvailable()) ui.drawHints({{"A", "Try again"}, {"X", "Filters"}, {"L2/R2", "Tab"}, {"B", "Back"}});
-			else ui.drawHints({{"A", "Try again"}, {"L2/R2", "Tab"}, {"B", "Back"}});
+			if (mangaFilterAvailable()) ui.drawHints({{"A", "Try again"}, {"Y", "Filters"}, {"X", "More"}, {"L/R", "Tab"}, {"B", "Back"}});
+			else ui.drawHints({{"A", "Try again"}, {"X", "More"}, {"L/R", "Tab"}, {"B", "Back"}});
 		}
 		else if (mangaFilterAvailable())
-			ui.drawHints({{"A", "Open"}, {"Y", "Search"}, {"X", "Filters"}, {"L2/R2", "Tab"}, {"B", "Back"}});
-		else ui.drawHints({{"A", "Open"}, {"Y", "Search"}, {"L2/R2", "Tab"}, {"B", "Back"}});
+			ui.drawHints({{"A", "Open"}, {"Y", "Filters"}, {"X", "More"}, {"L/R", "Tab"}, {"B", "Back"}});
+		else ui.drawHints({{"A", "Open"}, {"X", "More"}, {"L/R", "Tab"}, {"B", "Back"}});
 		if (mangaFilterShown()) later([this, &p] { drawMangaFilters(p); });
 	}
 
@@ -1407,7 +1421,7 @@ namespace bp
 			mangaSave();
 		}
 		// the card's copy first (design 6): the page opens with its details and chapters at once, and nothing is asked
-		// of the source; only Refresh (L2) does that (a Java source's host starts then, not for a kept list)
+		// of the source; only Refresh (L) does that (a Java source's host starts then, not for a kept list)
 		mangaSrcFetchedAt = 0;
 		mangaSrcRefreshing = mangaSrcHadList = false;
 		mangaSrcFetchDetailsOk = mangaSrcFetchChaptersOk = false;
@@ -1689,9 +1703,9 @@ namespace bp
 			return false;
 		}
 		if (b == Button::Start) { openMangaSettings(); return false; }
-		if (b == Button::R2) { mangaDlSheetOpen(p); return false; }
-		// L2 checks the source again (it is free on this page: the reader's L2 steps chapters, not this page)
-		if (b == Button::L2) { mangaSourceSeriesRefresh(p); return false; }
+		// R gets the chapters, L checks the source again (free on this page: L / R are the shell's sections)
+		if (b == Button::R) { mangaDlSheetOpen(p); return false; }
+		if (b == Button::L) { mangaSourceSeriesRefresh(p); return false; }
 		if (b == Button::B)
 		{
 			// back to where it was opened: the source's grid, the Library or History (a chapter still coming goes)
@@ -1889,19 +1903,19 @@ namespace bp
 		{
 			int64_t a = std::max<int64_t>(0, now - mangaSrcFetchedAt);
 			line += (line.empty() ? "" : " \xC2\xB7 ") + std::string("Checked ") +
-				(a < 86400 ? std::to_string(a / 3600) + " h" : std::to_string(a / 86400) + " d") + " ago \xC2\xB7 L2 checks again";
+				(a < 86400 ? std::to_string(a / 3600) + " h" : std::to_string(a / 86400) + " d") + " ago \xC2\xB7 L checks again";
 		}
 		tabCrumb = crumb + (line.empty() ? "" : " \xC2\xB7 " + line);
 		MangaResumePoint resume = mserSumResume;
-		// one row of keys (screens.js seriesB): Resume (A), Get (R2), Check (L2), Info, the heart. The row is one stop
+		// one row of keys (screens.js seriesB): Resume (A), Get (R), Check (L), Info, the heart. The row is one stop
 		// for UP/DOWN; LEFT/RIGHT light each key in turn (mserBtn)
 		Kit& k = *ui.kit;
 		bool onRow = mserCursor < 0;
 		bool engineWait = !mangaSourceEngineReady() && !mangaJavaCheckPending;	// (Resume is what starts it)
 		bool inLib = mangaSourceSeriesInLib();
 		struct K { const Glyph* g; const char* label; const char* cap; bool off, lit; };
-		const K keys[5] = {{&G_PLAY, "Resume", "A", n == 0 || engineWait, false}, {&G_DOWNLOAD, "Get", "R2", n == 0, false},
-			{&G_REFRESH, mangaSrcRefreshing ? "Checking" : "Check", "L2", mangaSrcRefreshing, false}, {&G_INFO, "", "", false, false},
+		const K keys[5] = {{&G_PLAY, "Resume", "A", n == 0 || engineWait, false}, {&G_DOWNLOAD, "Get", "R", n == 0, false},
+			{&G_REFRESH, mangaSrcRefreshing ? "Checking" : "Check", "L", mangaSrcRefreshing, false}, {&G_INFO, "", "", false, false},
 			{inLib ? &G_HEART : &G_HEART_O, "", "", false, inLib}};
 		for (int i = 0; i < 5; i++)
 		{
@@ -1922,14 +1936,14 @@ namespace bp
 			{
 				drawMangaTabEmpty(p, G_WEB, browserCheckText(mangaSrcError) ? "This source is behind a browser check" : "Couldn\xE2\x80\x99t load it",
 					"The list you had is kept. A: try again");
-				ui.drawHints({{"A", "Try again"}, {"L2", "Check"}, {"B", "Back"}});
+				ui.drawHints({{"A", "Try again"}, {"L", "Check"}, {"B", "Back"}});
 			}
 			else
 			{
 				lay::Box a = mangaListArea(p);
 				if (!mangaSrcLoading) drawMangaTabEmpty(p, G_BOOK, "No chapters", "");
 				else ui.drawLoader(a.x + a.w / 2, a.y + a.h / 2, "Loading chapters\xE2\x80\xA6");
-				ui.drawHints({{"L2", "Check"}, {"B", "Back"}});
+				ui.drawHints({{"L", "Check"}, {"B", "Back"}});
 			}
 			return;
 		}
@@ -1949,7 +1963,7 @@ namespace bp
 				break;
 			case MangaDlMark::Queued: m.pill = "Queued"; m.pillLive = false; break;
 			case MangaDlMark::Paused: m.pill = "Paused"; m.pillLive = false; break;
-			case MangaDlMark::Failed: m.pill = "Failed \xC2\xB7 R2 retries"; m.pillBad = true; m.pillLive = false; break;
+			case MangaDlMark::Failed: m.pill = "Failed \xC2\xB7 R retries"; m.pillBad = true; m.pillLive = false; break;
 			case MangaDlMark::OnCard: m.pill = "On card"; m.pillLive = false; break;
 			default: break;
 			}
@@ -1961,7 +1975,7 @@ namespace bp
 			ui.drawHints({{"A", ROW[std::clamp(mserBtn, 0, 4)]}, {"LEFT/RIGHT", "Keys"}, {"DOWN", "Chapters"}, {"B", "Back"}});
 		}
 		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) ui.drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
-		else ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R2", "Get"}, {"L2", "Check"}, {"B", "Back"}});
+		else ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R", "Get"}, {"L", "Check"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) later([this, &p] { drawMangaDlSheet(p); });
 		if (mangaSrcInfoShown) later([this] { drawMangaSrcInfo(); });
 	}
@@ -2218,7 +2232,7 @@ namespace bp
 			std::vector<std::string> lines = ui.wrapText(mangaSrcInfo.description, 0, box.w - 48, rows);
 			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, TEXT, box.x + 24, y + (int)i * 20, box.w - 48);
 		}
-		else ui.drawTextMid(mangaSrcInfoOn ? "The source gives no description." : "No details yet: Refresh (L2) asks the source.", 0, DIM, W / 2, y + 20, box.w - 48, 2);
+		else ui.drawTextMid(mangaSrcInfoOn ? "The source gives no description." : "No details yet: Refresh (L) asks the source.", 0, DIM, W / 2, y + 20, box.w - 48, 2);
 		ui.drawHints({{"B", "Close"}});
 	}
 }

@@ -553,10 +553,10 @@ namespace bp
 			else openHomeOptions();
 			return false;
 		}
-		if (b == Button::L2 || b == Button::R2)
+		if (b == Button::L || b == Button::R)
 		{
-			// (a step of the kind; the shared L2/R2 handler sends these here once the shell owns the rail)
-			setRecentFilter((recentTab + (b == Button::R2 ? 1 : 3) + 4) % 4);
+			// (a step of the kind: a page's tabs are L / R, L2 / R2 being the shell's sections)
+			setRecentFilter((recentTab + (b == Button::R ? 1 : 3) + 4) % 4);
 			return false;
 		}
 		if (homeZone == HOME_EMPTY)
@@ -857,13 +857,13 @@ namespace bp
 		if (ui.browse->browseDir == RECENT)
 		{
 			bool empty = ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0);
-			h = empty ? std::vector<Hint>{{"A", "Browse Files"}, {"B", "Home"}, {"L/R", "Sections"}}
-				: std::vector<Hint>{{"A", "Resume"}, {"X", "More"}, {"B", "Home"}, {"L/R", "Sections"}};
+			h = empty ? std::vector<Hint>{{"A", "Browse Files"}, {"B", "Home"}, {"L2/R2", "Sections"}}
+				: std::vector<Hint>{{"A", "Resume"}, {"X", "More"}, {"B", "Home"}, {"L2/R2", "Sections"}};
 			return h;
 		}
 		if (recent.empty() && !continueOf(p).shown)
 		{
-			h = {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"B", "Quit"}, {"L/R", "Sections"}};
+			h = {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"B", "Quit"}, {"L2/R2", "Sections"}};
 			return h;
 		}
 		Continue c = continueOf(p);
@@ -878,7 +878,7 @@ namespace bp
 		if (c.live) h.push_back({"SELECT", "Now playing"});
 		h.push_back({"X", "More"});
 		h.push_back({"B", "Quit"});
-		h.push_back({"L/R", "Sections"});
+		h.push_back({"L2/R2", "Sections"});
 		return h;
 	}
 

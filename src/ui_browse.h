@@ -80,6 +80,16 @@ namespace bp
 		// readonly, files-music): the local folders only (the cards' places and the folders under them). It draws in
 		// lay::shell().body; Home, Playlists, Network and All recent keep Ui's list (drawTracks). ----
 		bool filesPage() const;	// this page, a local folder (or the places), no menu
+		// Files' tabs (Files | Network): a strip on the two tops, the places and the connections' list; the folders
+		// under them and the form have none. L / R step them, a tap too (lay::tabPage, Kit::tabs)
+		bool filesBroken() const;	// the empty page is a folder that can't be shown, not an empty one
+		int filesEmptyKeys() const;	// the empty page's keys: 0 (the places), 1 (Go up), 2 (and Send files)
+		bool tabsOn() const;
+		lay::TabPage browseTabPage() const;
+		lay::Box tabsBody() const;	// the shell's body less the strip when it shows
+		void drawBrowseTabs();
+		bool tabsPointer(const Pointer& pt, int x, int y, Player& p);
+		int browseTabPressed = -1;
 		std::string filesTitle() const;
 		std::string filesCrumb() const;
 		std::vector<Hint> filesHints(const Player& p) const;

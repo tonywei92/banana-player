@@ -1418,7 +1418,7 @@ namespace bp
 			// Y puts the code up large on the top panel (a tap on the small one does too); while it is up, B and Y
 			// put it down
 			if (aboutQrUp()) kit->hints({{"B", "Close"}, {"Y", "Close"}});
-			else kit->hints({{"UP/DOWN", "Scroll"}, {"Y", "QR"}, {"L2/R2", "Group"}, {"B", "Back"}});
+			else kit->hints({{"UP/DOWN", "Scroll"}, {"Y", "QR"}, {"L/R", "Group"}, {"B", "Back"}});
 			return;
 		}
 		drawHints({{"UP/DOWN", "Scroll"}, {"A/B", "Back"}});

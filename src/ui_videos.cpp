@@ -255,7 +255,7 @@ namespace bp
 	std::vector<Ui::Hint> Ui::Videos::hintList(const Player&) const
 	{
 		if (!folder.empty()) return {{"A", "Play"}, {"X", "More"}, {"\xE2\x97\x80/\xE2\x96\xB6", "Page"}, {"B", "Videos"}};
-		return {{"A", "Play / open"}, {"X", "More"}, {"L2/R2", "View"}, {"\xE2\x97\x80/\xE2\x96\xB6", "Page"}, {"B", "Home"}};
+		return {{"A", "Play / open"}, {"X", "More"}, {"L/R", "View"}, {"\xE2\x97\x80/\xE2\x96\xB6", "Page"}, {"B", "Home"}};
 	}
 
 	void Ui::Videos::accentFirst(Kit::Empty& e, const std::vector<std::string>& lines, const char* word) const
@@ -401,9 +401,9 @@ namespace bp
 		const auto& rows = rowsFor(p);
 		int n = (int)rows.size();
 		// the views' step (L2 / R2), not a folder's own list (the mock-up gives that none)
-		if ((b == Button::L2 || b == Button::R2) && folder.empty())
+		if ((b == Button::L || b == Button::R) && folder.empty())
 		{
-			viewStep(b == Button::R2 ? 1 : -1, p);
+			viewStep(b == Button::R ? 1 : -1, p);
 			return false;
 		}
 		bool reading = !snapshot() || generation() == 0;

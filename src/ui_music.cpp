@@ -246,7 +246,7 @@ namespace bp
 		if (albumAt >= 0) return {{"A", "Play"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Keys, songs"}, {"X", "More"}, {"B", "Albums"}};
 		if (artistAt >= 0) return {{"A", "Play / open"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Albums, songs"}, {"X", "More"}, {"B", "Artists"}};
 		// the views (the mock-up's music-albums and music-artists)
-		return {{"A", "Open"}, {"X", "More"}, {"L2/R2", "View"}, {"L3", "Search"}, {"B", "Home"}};
+		return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", "Home"}};
 	}
 
 	Ui::ShellHead Ui::Music::head(const Player& p) const
@@ -418,9 +418,9 @@ namespace bp
 		Rect inner = musicInner();
 		// the views' step (L2 / R2) works everywhere in the section, the empty page too (Playlists needs no Music
 		// folder); the pages below it don't take it (the mock-up gives them none)
-		if (b == Button::L2 || b == Button::R2)
+		if (b == Button::L || b == Button::R)
 		{
-			if (albumAt < 0 && artistAt < 0) viewStep(b == Button::R2 ? 1 : -1, p);
+			if (albumAt < 0 && artistAt < 0) viewStep(b == Button::R ? 1 : -1, p);
 			return false;
 		}
 		// an empty page (no Music folder, or none with a song in it): its two keys, and B Home

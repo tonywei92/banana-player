@@ -1196,8 +1196,56 @@ namespace bp
 	bool Ui::Browse::filesPage() const
 	{
 		// the cards' places and the folders under them; Home, All recent, the playlists and the network keep Ui's list
-		return ui.page == Page::Browse && (playlists->selMode == SEL_NONE || fileSel) && browseTab == TAB_LOCAL &&
-			(browseDir.empty() || (!pseudoDir(browseDir) && !isNetPath(browseDir)));
+		// (a folder on a connection too: the same rows, drawn the same way; its listing comes from the worker)
+		if (ui.page != Page::Browse || (playlists->selMode != SEL_NONE && !fileSel)) return false;
+		if (isNetPath(browseDir)) return browseTab == TAB_NETWORK;
+		return browseTab == TAB_LOCAL && (browseDir.empty() || !pseudoDir(browseDir));
+	}
+
+	bool Ui::Browse::tabsOn() const
+	{
+		return (filesPage() && browseDir.empty() && !fileSel) || browseDir == NETROOT;
+	}
+
+	lay::TabPage Ui::Browse::browseTabPage() const
+	{
+		Kit& k = *ui.kit;
+		return lay::tabPage(lay::shell().body, {k.tabW("Files"), k.tabW("Network")}, k.tabCapW("L/R"));
+	}
+
+	lay::Box Ui::Browse::tabsBody() const
+	{
+		lay::Box b = lay::shell().body;
+		if (!tabsOn()) return b;
+		int top = browseTabPage().content.y;
+		return {b.x, top, b.w, b.y + b.h - top};
+	}
+
+	void Ui::Browse::drawBrowseTabs()
+	{
+		if (!tabsOn()) return;
+		ui.kit->tabs(browseTabPage().strip.area, {"Files", "Network"}, browseDir == NETROOT ? 1 : 0, "L/R", BG, browseTabPressed);
+	}
+
+	bool Ui::Browse::tabsPointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		if (!tabsOn()) { browseTabPressed = -1; return false; }
+		lay::TabPage tp = browseTabPage();
+		if (pt.kind == Pointer::Down)
+		{
+			browseTabPressed = -1;
+			if (y < tp.strip.area.y || y >= tp.content.y) return false;
+			browseTabPressed = lay::tabAt(tp.strip, x, y);
+			return true;
+		}
+		if (browseTabPressed < 0) return false;
+		if (pt.kind == Pointer::Up)
+		{
+			int t = browseTabPressed;
+			browseTabPressed = -1;
+			if (lay::tabAt(tp.strip, x, y) == t && (t == 1) != (browseDir == NETROOT)) openSection(t == 1 ? TAB_NETWORK : TAB_LOCAL, p);
+		}
+		return true;
 	}
 
 	bool Ui::Browse::filesEmpty() const
@@ -1222,7 +1270,7 @@ namespace bp
 	{
 		if (browseDir.empty()) return "Your folders";
 		std::string where = ui.whereOf(browseDir);
-		std::string out = "Files \xE2\x80\xBA ";
+		std::string out = isNetPath(browseDir) ? "Files \xE2\x80\xBA Network \xE2\x80\xBA " : "Files \xE2\x80\xBA ";
 		for (size_t i = 0; i < where.size(); i++)
 		{
 			if (where.compare(i, 3, " / ") == 0) { out += " \xE2\x80\xBA "; i += 2; }
@@ -1255,10 +1303,9 @@ namespace bp
 
 	lay::FilesPage Ui::Browse::filesLayout(const Player& p) const
 	{
-		lay::Shell s = lay::shell();
 		int n = (int)browseRows.size();
 		bool footer = !filesEmpty();
-		return lay::filesPage(s.body, n, fileSel, footer);
+		return lay::filesPage(tabsBody(), n, fileSel, footer);
 	}
 
 	int Ui::Browse::filesShown(const Player& p) const { return filesLayout(p).shown; }
@@ -1277,16 +1324,16 @@ namespace bp
 			return {{"SELECT", "Put it here"}, {"X", "Cancel"}, {"A", "Open"}, {"B", "Up"}};
 		if (filesEmpty())
 		{
-			if (browseDir.empty()) return {{"L/R", "Sections"}};
-			if (!browseRows.empty() && browseRows[0].label == "This folder can't be opened")
-				return {{"A/B", "Go up"}, {"X", "More"}, {"L/R", "Sections"}};
-			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L/R", "Sections"}};
+			if (browseDir.empty()) return {{"L/R", "Tab"}, {"L2/R2", "Sections"}};
+			if (filesEmptyKeys() == 1) return {{"A/B", "Go up"}, {"X", "More"}, {"L2/R2", "Sections"}};
+			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L2/R2", "Sections"}};
 		}
 		std::vector<Hint> h = {{"A", "Play / open"}, {"B", browseDir.empty() ? "Home" : "Up"}, {"X", "More"}, {"Y", "Select"}};
 		// the rail's Now playing key is the touch; SELECT its key (files-playing)
 		if (ui.nowPlayable(p)) h.push_back({"SELECT", "Now playing"});
 		else h.push_back({"LEFT/RIGHT", "Page"});
-		h.push_back({"L/R", "Sections"});
+		if (browseDir.empty()) h.push_back({"L/R", "Tab"});
+		h.push_back({"L2/R2", "Sections"});
 		return h;
 	}
 
@@ -1352,13 +1399,35 @@ namespace bp
 		}
 	}
 
+	bool Ui::Browse::filesBroken() const
+	{
+		// a folder that can't be shown: a card gone, a connection gone or without support (not "Nothing to play here")
+		if (browseRows.empty() || browseRows[0].id >= 0) return false;
+		if (isNetPath(browseDir)) return browseRows[0].label != "Nothing to play here";
+		return browseRows[0].label == "This folder can't be opened";
+	}
+
+	int Ui::Browse::filesEmptyKeys() const
+	{
+		// Go up, and Send files (the dashboard) on a card's folder; a connection's folder has Go up only
+		if (browseDir.empty()) return 0;
+		return filesBroken() || isNetPath(browseDir) ? 1 : 2;
+	}
+
 	void Ui::Browse::drawFilesEmpty(const lay::FilesPage& f, const Player& p)
 	{
 		bool folder = !browseDir.empty();
-		bool broken = !browseRows.empty() && browseRows[0].label == "This folder can't be opened";
+		bool broken = filesBroken();
+		// a connection's first listing: the loader, as every wait on the kit
+		if (netLoading && isNetPath(browseDir))
+		{
+			ui.drawLoader(f.rows.x + f.rows.w / 2, f.rows.y + f.rows.h / 2, "Loading\xE2\x80\xA6");
+			return;
+		}
 		std::string title = !browseRows.empty() ? browseRows[0].label : "Nothing to play here";
-		std::string line = broken ? "Is the card still in?" : folder ? "No videos, music or photos in this folder." : "No cards or folders to show.";
-		int keys = folder ? (broken ? 1 : 2) : 0;
+		std::string line = broken ? (isNetPath(browseDir) ? "Go up to try another folder." : "Is the card still in?")
+			: folder ? "No videos, music or photos in this folder." : "No cards or folders to show.";
+		int keys = filesEmptyKeys();
 		lay::EmptyState l = lay::emptyState(f.rows, 1, keys);
 		Kit::Empty e;
 		e.glyph = broken ? &G_ALERT : &G_FOLDER;
@@ -1381,6 +1450,7 @@ namespace bp
 	void Ui::Browse::drawFiles(const Player& p)
 	{
 		lay::FilesPage f = filesLayout(p);
+		drawBrowseTabs();
 		if (filesEmpty())
 		{
 			drawFilesEmpty(f, p);
@@ -1780,8 +1850,7 @@ namespace bp
 			default: return true;	// (START, L/R: nothing while ticking)
 			}
 		}
-		if (b == Button::Y && filesEmpty() && !browseDir.empty() &&
-			(browseRows.empty() || browseRows[0].label != "This folder can't be opened")) { ui.openWeb(); return true; }
+		if (b == Button::Y && filesEmpty() && filesEmptyKeys() == 2) { ui.openWeb(); return true; }
 		int shown = std::max(1, filesShown(p));
 		switch (b)
 		{
@@ -1806,9 +1875,7 @@ namespace bp
 		lay::FilesPage f = filesLayout(p);
 		int n = (int)browseRows.size(), scroll = filesScroll(p);
 		auto emptyKeys = [&](int& keys) {
-			bool folder = !browseDir.empty();
-			bool broken = !browseRows.empty() && browseRows[0].label == "This folder can't be opened";
-			keys = folder ? (broken ? 1 : 2) : 0;
+			keys = filesEmptyKeys();
 			return lay::emptyState(f.rows, 1, keys);
 		};
 		if (pt.kind == Pointer::Down)
@@ -2079,22 +2146,22 @@ namespace bp
 		bool file = cursor >= 0 && cursor < n && (r[cursor].id == 2 || r[cursor].id == PL_ITEM);
 		// a book, a document, any file that doesn't play: A opens it (or says it can't)
 		const char* aFile = file && cursor < (int)browse->browsePaths.size() && !isMediaFile(browse->browsePaths[cursor]) ? "Open" : "Play";
-		if (cursor < 0 && browse->upRow()) drawHints({{"A", "Up"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+		if (cursor < 0 && browse->upRow()) drawHints({{"A", "Up"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
 		else if (form) drawHints({{"A", "Change"}, {"LEFT/RIGHT", "Choose"}, {"B", "Cancel"}});
 		else if (browse->browseDir == FINDNET) drawHints({{"A", "Add this one"}, {"B", "Back"}});
 		else if (browse->browseDir == RECENT && plEmpty) drawHints({{"B", "Home"}, {"X", "Options"}});
 		else if (browse->browseDir == RECENT) drawHints({{"A", file && cursor < (int)browse->browsePaths.size() && !isMediaFile(browse->browsePaths[cursor]) ? "Open" : "Play"}, {"Y", "Menu"}, {"L/R", "Kind"}, {"B", "Home"}, {"X", "Options"}});
-		else if (plEmpty && isPlDir(browse->browseDir) && plIsLiked(browse->playlists->plCur.file)) drawHints({{"B", back}, {"L/R", "Sections"}});
+		else if (plEmpty && isPlDir(browse->browseDir) && plIsLiked(browse->playlists->plCur.file)) drawHints({{"B", back}, {"L2/R2", "Sections"}});
 		else if (browse->browseDir == PLROOT && cursor >= 0 && cursor < n && r[cursor].id == PL_NEW)
-			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
 		else if (browse->emptyAction() && browse->browseDir == PLROOT)
-			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
-		else if (browse->emptyAction() && isPlDir(browse->browseDir)) drawHints({{"A", "Add files"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+			drawHints({{"A", "New playlist"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
+		else if (browse->emptyAction() && isPlDir(browse->browseDir)) drawHints({{"A", "Add files"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
 		else if (browse->emptyAction())
-			drawHints({{"A", "Find"}, {"Y", "Add connection"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
-		else if (plEmpty) drawHints({{"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
-		else if (yMenu) drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"Y", "Menu"}, {"L/R", "Sections"}});
-		else drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"L/R", "Sections"}});
+			drawHints({{"A", "Find"}, {"Y", "Add connection"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
+		else if (plEmpty) drawHints({{"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
+		else if (yMenu) drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"Y", "Menu"}, {"L2/R2", "Sections"}});
+		else drawHints({{"A", file ? (rowChip(cursor) ? "Go to it" : aFile) : "Open"}, {"B", back}, {"X", "Options"}, {"L2/R2", "Sections"}});
 	}
 
 	void Ui::Browse::drawUpRow(int y, bool at)
@@ -2178,9 +2245,9 @@ namespace bp
 	Ui::Browse::NetPageLayout Ui::Browse::netLayout(const Player& p) const
 	{
 		(void)p;
-		lay::Shell sh = lay::shell();
+		lay::Box sb = tabsBody();
 		NetPageLayout l;
-		l.body = {sh.body.x + 8, sh.body.y + 4, sh.body.w - 16, sh.body.h - 8};
+		l.body = {sb.x + 8, sb.y + 4, sb.w - 16, sb.h - 8};
 		l.list = l.body;
 		l.rowsY = l.body.y;
 		int x = l.body.x, w = l.body.w, y = l.body.y, h = l.body.h;
@@ -2304,6 +2371,7 @@ namespace bp
 
 	void Ui::Browse::drawNet(const Player& p)
 	{
+		drawBrowseTabs();
 		if (browseDir == NETROOT) drawNetList(p);
 		else if (browseDir == FORMDIR) drawNetForm(p);
 		else drawNetFind(p);
@@ -2595,9 +2663,8 @@ namespace bp
 				if (p.settings.keepHistory && homeView->recentCounts[0]) homeView->stepRecentTab(b == Button::R ? 1 : -1, p);
 				return false;
 			}
-			// a section each way, no wrap, at its top (All recent is none's)
-			int t = browseTab + (b == Button::R ? 1 : -1);
-			if (browseDir != RECENT && t >= 0 && t < BROWSE_TABS) openSection(t, p);
+			// Files' and Network's tabs (the tops of each)
+			if (tabsOn()) openSection(b == Button::R ? TAB_NETWORK : TAB_LOCAL, p);
 			return false;
 		}
 		// the browser's own keys below: B up a folder or Home, START the menu, the list's
@@ -2622,6 +2689,8 @@ namespace bp
 	{
 		// the redesigned playlist pages: their rows, keys and bars test the Rects their draw used
 		if (playlists->onPage() && playlists->pointer(pt, x, y, p)) return false;
+		// Files' tabs, on the places and the connections' list
+		if (tabsPointer(pt, x, y, p)) return false;
 		// the Network pages' own boxes (netLayout: the same Rects their draw used)
 		if (netPage()) return netPointer(pt, x, y, p);
 		// (its downs come late: after the header's "<" and the empty page's button; the rest where the readers' do)
@@ -2701,7 +2770,7 @@ namespace bp
 	std::string Ui::Browse::signature(const Player& p) const
 	{
 		// the section and its listing; what Copy / Move holds (the bar along the foot); Home's focus and strip
-		std::string s = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "");
+		std::string s = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "") + "|bt" + std::to_string(browseTabPressed);
 		if (netPage()) s += "|net" + std::to_string(netFoot) + "," + std::to_string(netPressed) + "," +
 			std::to_string(netFinger) + "," + std::to_string(netFingerMoved) + "," + browseDir;
 		if (filesPage())

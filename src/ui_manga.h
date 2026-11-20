@@ -1158,6 +1158,7 @@ namespace bp
 		bool mangaDownloadsKey(Button b, Player& p);
 		bool mangaDlKeyBase(Button b, Player& p);
 		void mangaDlMore(Player& p);
+		void mangaSourceMore(Player& p);	// a source page's X: Search this source, Load this list again
 		bool mangaDownloadsPointer(const Pointer& pt, int x, int y, Player& p);
 		bool mangaDownloadsBack();	// B: out of a card series' chapters (true when it went somewhere)
 		void drawMangaDownloads(const Player& p);
