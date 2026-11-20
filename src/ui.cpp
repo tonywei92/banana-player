@@ -237,20 +237,6 @@ namespace bp
 			browse->playlists->pickerKey(b, p);
 			return false;
 		}
-		// a menu (the Options one, a row's hold, the mini bar's) takes the buttons first, on whatever page it is over
-		// (the mini bar's opens on pages whose own keys would otherwise eat them)
-		if (ctxOpen)
-		{
-			switch (b)
-			{
-			case Button::Up: ctxCursor = (ctxCursor + (int)ctxItems.size() - 1) % (int)ctxItems.size(); ctxArmed = false; break;
-			case Button::Down: ctxCursor = (ctxCursor + 1) % (int)ctxItems.size(); ctxArmed = false; break;
-			case Button::A: chooseBrowseMenu(ctxCursor, p); break;
-			case Button::B: case Button::X: case Button::Y: ctxOpen = false; break;
-			default: break;
-			}
-			return false;
-		}
 		// a page the output waits for a tap there to start the sound (the top panel says so): B plays here instead
 		if (b == Button::B && (page == Page::Main || page == Page::Browse) && SessionHost::get().pageWaits() &&
 			!ctxOpen && !browse->playlists->pickerOpen && !popupShown(p) && browse->playlists->selMode == SEL_NONE && !browse->playlists->addPending.serial)
@@ -699,26 +685,6 @@ namespace bp
 			{
 				webIndDown = false;
 				if (webInd.hit(x, y) && page != Page::Web) openWeb();
-			}
-			return false;
-		}
-		if (ctxOpen)
-		{
-			// the folder's menu: a row tapped (as the finger lifts), anywhere else closes it
-			if (pt.kind == Pointer::Down)
-			{
-				pressedBtn = -1;
-				for (int i = 0; i < (int)ctxItems.size(); i++)
-					if (ctxRow(i).hit(x, y)) pressedBtn = 100 + i;
-				if (pressedBtn < 0) ctxOpen = false;
-			}
-			else if (pt.kind == Pointer::Up && pressedBtn >= 100)
-			{
-				int item = pressedBtn - 100;
-				pressedBtn = -1;
-				if (item != ctxCursor) ctxArmed = false;
-				ctxCursor = item;
-				if (ctxRow(item).hit(x, y)) chooseBrowseMenu(item, p);
 			}
 			return false;
 		}

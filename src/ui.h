@@ -485,7 +485,7 @@ namespace bp
 		struct MoreItem;
 		struct MoreSpec;
 		struct MoreSheet;
-		void openMore(std::function<MoreSpec(const Player&)> build);
+		void openMore(std::function<MoreSpec(const Player&)> build, const char* name = "more");
 		// test only: every ui_kit.h "KIT VARIANTS" piece on one page, for a `shot:` (--press gallery:variants[:PAGE], 1..14)
 		struct VariantsGallery;
 		// ---- the player screen (Page::Main: a video, a song; a photo's viewer is still here in Ui): an area,
@@ -502,14 +502,12 @@ namespace bp
 		// (an overlay: LightSheet, pushed by openLight)
 		struct LightSheet;
 		void openLight();
-		// the same kind (ui_overlay.cpp): the browser-check message ("mangaerr", from Ui::Manga's mangaErrCheck),
-		// Files' Info card ("info", from openFileInfo) and the quick settings ("quick", from toggleQuick). Each is a thin
-		// overlay over the code it had (drawMangaErr, drawFileInfo, quickKey/quickPointer/drawQuick)
+		// the same kind (ui_overlay.cpp): the browser-check message ("mangaerr", from Ui::Manga's mangaErrCheck)
+		// and the quick settings ("quick", from toggleQuick). Each is a thin
+		// overlay over the code it had (drawMangaErr, quickKey/quickPointer/drawQuick)
 		struct MangaErrDialog;
-		struct InfoSheet;
 		struct QuickSheet;
 		void openMangaErr();
-		void openInfo();
 		void openQuick();
 		int& lightFilter(Settings& s) const;	// the reader's own filter: the text viewer's, the PDF/comic viewer's, Manga's
 		// what the reader's Brightness button says while Extra dim or a filter is on ("Warm · 30%"); empty: neither
@@ -542,7 +540,6 @@ namespace bp
 		// p (when the caller has one): the tracks of the file shown, if it is the one loaded
 		void openFileInfo(const std::string& path, const std::string& title, std::vector<std::pair<std::string, std::string>> extra = {},
 			const Player* p = nullptr);
-		void drawFileInfo();
 		int infoGroupLines() const;	// the headings and rows, as the sheet's lines
 		void infoGroupLine(int i, std::string& head, std::string& label, std::string& value) const;
 	public:
@@ -604,7 +601,11 @@ namespace bp
 		Uint32 holdAt = 0;	// a finger down on a row, for the hold that opens it
 		void openBrowseMenu(int row, MenuHow how);
 		void chooseBrowseMenu(int item, Player& p);
-		void drawBrowseMenu(const Player& p);
+		// the browse menu (Files, Home, Playlists, Network, the mini bar's hold menu) is a More sheet named "ctxmenu": its
+		// state stays ctxOpen/ctxItems/ctxCursor/ctxArmed, its list is built from them each time (ui_menus.cpp)
+		MoreSpec browseMenuSpec(const Player& p);
+		bool pickBrowseMenu(int i, Player& p);
+		void openBrowseSheet();
 		// the updater's question over the file list: a release found (Update now, Later, Not until tomorrow), then
 		// the download (Hide, Stop the download), then Restart now / Later, or what went wrong (Try again, Details)
 		bool popupClosed = false, popupFollow = false;
@@ -629,36 +630,6 @@ namespace bp
 		std::string clockText(const Player& p) const;
 		int statusLeft(const Player& p) const;
 		static constexpr int BATTERY_W = 110;	// what a title leaves for it
-		// the menu's box, in the middle of the panel, as tall as its items
-		// (a connection's has a line under its title for Test's answer)
-		// A long menu (a playlist's eight) steps its rows closer, 52, 48 or 44 apart, to fit above the footer; one that
-		// still doesn't leaves its line out (a playlist's count: the page shows it)
-		int ctxStep() const
-		{
-			int n = (int)ctxItems.size(), extra = ctxServer.empty() && ctxNote.empty() ? 0 : 34;
-			for (int step : {52, 48})
-				if (80 + extra + n * step <= 436) return step;
-			return 44;
-		}
-		int ctxExtra() const
-		{
-			if (ctxServer.empty() && ctxNote.empty()) return 0;
-			return 80 + 34 + (int)ctxItems.size() * ctxStep() <= 436 ? 34 : 0;
-		}
-		// Home's (a recent file's, Options) wider: their rows have a value on the right
-		bool ctxWide() const { return !ctxItems.empty() && ctxItems[0] >= CTX_R_PLAY; }
-		Rect ctxBox() const
-		{
-			int h = 80 + ctxExtra() + (int)ctxItems.size() * ctxStep();
-			return ctxWide() ? Rect{90, (436 - h) / 2, 460, h} : Rect{112, (436 - h) / 2, 416, h};
-		}
-		Rect ctxRow(int item) const
-		{
-			Rect b = ctxBox();
-			int inset = ctxWide() ? 8 : 16;
-			return {b.x + inset, b.y + 62 + ctxExtra() + item * ctxStep(), b.w - 2 * inset, ctxStep() - 6};
-		}
-
 
 		// the on-screen keyboard, over the bottom panel: a form's field typed in
 		bool kbOpen = false, kbSymbols = false;

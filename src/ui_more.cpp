@@ -9,10 +9,11 @@ namespace bp
 	struct Ui::MoreSheet : Ui::Overlay
 	{
 		std::function<MoreSpec(const Player&)> build;
+		const char* nm;
 		int cursor = 0, pressed = -1;
 
-		MoreSheet(Ui& u, std::function<MoreSpec(const Player&)> b) : Overlay(u), build(std::move(b)) {}
-		const char* name() const override { return "more"; }
+		MoreSheet(Ui& u, std::function<MoreSpec(const Player&)> b, const char* n) : Overlay(u), build(std::move(b)), nm(n) {}
+		const char* name() const override { return nm; }
 
 		static lay::Sheet layout(const MoreSpec& m)
 		{
@@ -153,8 +154,8 @@ namespace bp
 		}
 	};
 
-	void Ui::openMore(std::function<MoreSpec(const Player&)> build)
+	void Ui::openMore(std::function<MoreSpec(const Player&)> build, const char* name)
 	{
-		pushOverlay(std::make_unique<MoreSheet>(*this, std::move(build)));
+		pushOverlay(std::make_unique<MoreSheet>(*this, std::move(build), name));
 	}
 }

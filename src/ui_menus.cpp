@@ -1191,9 +1191,10 @@ namespace bp
 		k.confirmSheet(l, c, lines);
 	}
 
-	void Ui::drawBrowseMenu(const Player& p)
+	Ui::MoreSpec Ui::browseMenuSpec(const Player& p)
 	{
-		Rect box = ctxBox();
+		MoreSpec spec;
+		if (!ctxOpen || ctxItems.empty()) return spec;
 		// its title: the connection, the folder Hide is for, else the place it's over
 		const NetServer* sv = netStore && !ctxServer.empty() ? netStore->find(ctxServer) : nullptr;
 		std::string name = !ctxTitle.empty() ? ctxTitle : sv ? serverName(*sv) : !ctxPath.empty() ? baseName(ctxPath)
@@ -1201,16 +1202,14 @@ namespace bp
 			: browse->browseDir == RECENT ? std::string("Recent")
 			: isNetPath(browse->browseDir) && netBaseName(browse->browseDir).empty() ? std::string("Shares")
 			: isNetPath(browse->browseDir) ? netBaseName(browse->browseDir) : baseName(browse->browseDir);
-		drawDialog(box, name);
+		spec.title = name;
 		// a playlist's Delete, pressed once: what it doesn't do
 		bool plArmed = ctxArmed && ctxCursor < (int)ctxItems.size() && ctxItems[ctxCursor] == CTX_PL_DELETE;
 		bool missArmed = ctxArmed && ctxCursor < (int)ctxItems.size() && ctxItems[ctxCursor] == CTX_PL_MISSING;
-		if (ctxExtra() && (!ctxNote.empty() || plArmed || missArmed))
-			drawTextMid(missArmed ? "A card that\xE2\x80\x99s out? Put it back first" : plArmed ? "Your files stay where they are" : ctxNote, 0,
-				plArmed || missArmed ? ACCENT : DIM, W / 2, box.y + 60, 368, 2);
-		else if (ctxExtra())
-			drawTextMid(ctxStatus.empty() ? std::string(sv ? std::string(netTypeLabel(sv->type)) + "  " + sv->host : "") : ctxStatus, 0,
-				ctxStatus == "It works" ? ACCENT : DIM, W / 2, box.y + 60, 368, 2);
+		if (!ctxNote.empty() || plArmed || missArmed)
+			spec.note = missArmed ? "A card that\xE2\x80\x99s out? Put it back first" : plArmed ? "Your files stay where they are" : ctxNote;
+		else
+			spec.note = ctxStatus.empty() ? std::string(sv ? std::string(netTypeLabel(sv->type)) + "  " + sv->host : "") : ctxStatus;
 		for (int i = 0; i < (int)ctxItems.size(); i++)
 		{
 			int it = ctxItems[i];
@@ -1220,19 +1219,16 @@ namespace bp
 			for (auto& x : browse->homeView->recent)
 				if (x.path == browse->homeView->ctxRecent) ri = &x;
 			std::string note;
-			SDL_Color noteInk = i == ctxCursor ? DIM_ON : DIM;
 			if (it == CTX_R_SHOW && ri) note = ri->where;
 			if (it == CTX_HIDDEN) note = showHidden ? "On" : "Off";
 			if (it == CTX_PL_MISSING && ctxArmed && i == ctxCursor)
 			{
 				note = "Press again: " + std::to_string(ctxMissing);
-				noteInk = ACCENT;
 			}
 			if (it == CTX_CLEAR_RECENT)
 			{
 				bool armedClear = ctxArmed && i == ctxCursor;
 				note = browse->homeView->recent.empty() ? "Empty" : armedClear ? "Press again to clear" : "Press twice";
-				if (armedClear) noteInk = ACCENT;
 			}
 			bool docR = isDocumentName(browse->homeView->ctxRecent) || isComicName(browse->homeView->ctxRecent);	// (a document is read, at a page)
 			std::string resume = ri && !ri->at.empty() ? (docR ? "Resume at " : "Resume from ") + ri->at : docR ? "Open" : "Play";
@@ -1281,19 +1277,47 @@ namespace bp
 					: it == CTX_NP_LIKE ? (liked ? &G_HEART : &G_HEART_O) : it == CTX_NP_ADD ? &G_PL_ADD
 					: it == CTX_NP_SHOW ? &G_FOLDER : &G_STOP;
 				std::string npNote = it == CTX_NP_SHOW ? where : it == CTX_NP_NOW && np.settings.buttonHotkeys ? "SELECT" : "";
-				drawDialogRow(ctxRow(i), ng, npLabel, i == ctxCursor, pressedBtn == 100 + i,
-					it == CTX_NP_STOP ? DANGER : it == CTX_NP_NOW || (it == CTX_NP_LIKE && liked) ? ACCENT : TEXT, npNote, noteInk);
+				MoreItem mi;
+				mi.glyph = ng;
+				mi.label = npLabel;
+				mi.note = npNote;
+				mi.danger = it == CTX_NP_STOP;
+				mi.lit = it == CTX_NP_NOW || (it == CTX_NP_LIKE && liked);
+				mi.stay = true;
+				mi.act = [this, i](Player& pl) { return pickBrowseMenu(i, pl); };
+				spec.rows.push_back(mi);
 				continue;
 			}
 			// a read-only network folder's Move, Rename, Delete: dim, and why on the right
 			bool ro = isNetPath(ctxPath) && !browse->netWritable && (it == CTX_F_MOVE || it == CTX_F_RENAME || it == CTX_F_DELETE);
-			if (ro) { note = "Read only"; noteInk = DIM; }
-			drawDialogRow(ctxRow(i), g, label, i == ctxCursor, pressedBtn == 100 + i, ro ? DIM : del ? (armed ? ACCENT : DANGER) : it == CTX_CANCEL ? DIM
-				: it == CTX_R_LIKE && likedR ? ACCENT : TEXT, note, noteInk);	// (the heart lit only when it is liked)
+			if (ro) note = "Read only";
+			MoreItem mi;
+			mi.glyph = g;
+			mi.label = label;
+			mi.note = note;
+			mi.danger = del;
+			mi.off = ro;
+			mi.lit = (it == CTX_R_LIKE && likedR) || (del && armed);	// (the heart lit only when it is liked)
+			mi.stay = true;	// (the row may only arm: pickBrowseMenu closes the sheet when the menu ends)
+			mi.act = [this, i](Player& pl) { return pickBrowseMenu(i, pl); };
+			spec.rows.push_back(mi);
 		}
-		// a menu too long for its line (a playlist's): Delete's word on the footer instead
-		if (plArmed && !ctxExtra()) drawFooterText("Your files stay where they are", ACCENT);
-		else drawHints({{"A", "Choose"}, {"B", "Close"}});
+		return spec;
+	}
+
+	bool Ui::pickBrowseMenu(int i, Player& p)
+	{
+		if (i != ctxCursor) ctxArmed = false;
+		ctxCursor = i;
+		chooseBrowseMenu(i, p);
+		if (!ctxOpen)
+			if (Overlay* o = findOverlay("ctxmenu")) o->close();
+		return false;
+	}
+
+	void Ui::openBrowseSheet()
+	{
+		openMore([this](const Player& p) { return browseMenuSpec(p); }, "ctxmenu");
 	}
 
 	Ui::RowIcon Ui::rowIcon(int i) const

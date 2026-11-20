@@ -795,6 +795,7 @@ namespace bp
 			ctxNote = note;
 			browse->playlists->ctxPlFile = file;
 			browse->playlists->ctxPlItem = item;
+			openBrowseSheet();
 			return;
 		}
 		ctxTitle.clear();
@@ -854,6 +855,7 @@ namespace bp
 		ctxStatus.clear();
 		ctxArmed = false;
 		ctxPath = (folder || fileOps || infoX) && id.empty() ? browse->browsePaths[row] : "";
+		openBrowseSheet();
 	}
 
 	void Ui::chooseBrowseMenu(int item, Player& p)

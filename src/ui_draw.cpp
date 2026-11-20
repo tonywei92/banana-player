@@ -749,7 +749,8 @@ namespace bp
 		if (mangaShell) manga->runLater();
 		manga->sheetsLater = false;
 		browse->drawClipBar();
-		if (ctxOpen) drawBrowseMenu(p);	// (the mini bar's hold menu opens on pages of its own too)
+		// (the browse menu is a More sheet: drawn with the overlays)
+			// (the mini bar's hold menu opens on pages of its own too)
 		if (browse->playlists->pickerOpen) browse->playlists->drawPicker();
 		if (browse->playlists->addPending.serial && page == Page::Browse) browse->playlists->drawBusy();
 		if (popupShown(p)) drawUpdatePopup();

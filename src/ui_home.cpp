@@ -1392,6 +1392,7 @@ namespace bp
 		ctxNote.clear();
 		browse->playlists->ctxPlFile.clear();
 		browse->playlists->ctxPlItem = -1;
+		openBrowseSheet();
 	}
 
 	void Ui::setChip(const Player& p)

@@ -1122,38 +1122,6 @@ namespace bp
 		pushOverlay(std::make_unique<Browse::FileInfoSheet>(*this));
 	}
 
-	void Ui::drawFileInfo()
-	{
-		// (the older dialog: the Info overlay is FileInfoSheet; this keeps its flat list if ever drawn)
-		Rect box{32, 40, 576, 388};
-		drawDialog(box, infoTitle);
-		int y = box.y + 74;
-		int n = infoGroupLines();
-		for (int i = 0; i < n; i++)
-		{
-			std::string head, label, value;
-			infoGroupLine(i, head, label, value);
-			if (!head.empty())
-			{
-				drawTextMid(head, 0, DIM, box.x + 28, y, 200);
-				y += 30;
-				continue;
-			}
-			drawTextMid(label, 0, DIM, box.x + 28, y, 110);
-			// the path may be long: two lines, its middle kept out
-			if (label == "Path")
-			{
-				auto lines = wrapText(value, 0, box.w - 168, 3);
-				for (size_t k = 0; k < lines.size(); k++) drawTextMid(lines[k], 0, TEXT, box.x + 144, y + (int)k * 22, box.w - 168);
-				y += 22 * (int)std::max<size_t>(1, lines.size()) + 12;
-				continue;
-			}
-			drawTextMid(value, 0, TEXT, box.x + 144, y, box.w - 168);
-			y += 36;
-		}
-		drawHints({{"A", "Close"}, {"B", "Close"}});
-	}
-
 	void Ui::pathMoved(const std::string& from, const std::string& to, Player& p)
 	{
 		if (from.empty() || to.empty() || from == to) return;

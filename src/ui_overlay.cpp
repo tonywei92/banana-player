@@ -40,6 +40,8 @@ namespace bp
 	{
 		overlays.erase(std::remove_if(overlays.begin(), overlays.end(), [](const std::unique_ptr<Overlay>& o) { return o->done; }),
 			overlays.end());
+		// the browse menu is its sheet: closed by B or a tap off it, its state goes too
+		if (ctxOpen && !findOverlay("ctxmenu")) ctxOpen = false;
 	}
 
 	bool Ui::overlayKey(Button b, Player& p)
@@ -376,40 +378,6 @@ namespace bp
 	void Ui::openMangaErr()
 	{
 		pushOverlay(std::make_unique<MangaErrDialog>(*this));
-	}
-
-	// Info: what a file or folder is (Files' Y menu, the manga reader's series menu). Any key or a tap closes it.
-	struct Ui::InfoSheet : Ui::Overlay
-	{
-		explicit InfoSheet(Ui& u) : Overlay(u) {}
-		const char* name() const override { return "info"; }
-
-		bool key(Button, Player&) override
-		{
-			// dark (Screen off, or off by itself): the key brings the panel back, as it does on a page
-			if (!ui.panel.on())
-			{
-				ui.panel.set(true);
-				return false;
-			}
-			close();
-			return false;
-		}
-
-		bool pointer(const Pointer& pt, int, int, Player&) override
-		{
-			if (pt.kind == Pointer::Up) close();
-			return false;
-		}
-
-		void draw(const Player&) override { ui.drawFileInfo(); }
-
-		std::string signature(const Player&) const override { return "info" + ui.infoTitle + std::to_string(ui.infoGroupLines()); }
-	};
-
-	void Ui::openInfo()
-	{
-		pushOverlay(std::make_unique<InfoSheet>(*this));
 	}
 
 	// The quick settings: F's rows (volume, the screens' brightness, Same for both screens, the web dashboard, incognito
