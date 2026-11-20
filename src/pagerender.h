@@ -41,6 +41,8 @@ namespace bp
 		void setTint(float r, float g, float b) { tint[0] = r; tint[1] = g; tint[2] = b; }
 		// all waiting tiles up in one draw, not one a draw (the text viewer's rows: small, and wanted at once)
 		void setUploadAll(bool on) { uploadAll = on; }
+		// draw over what the screen holds (mpv's picture) instead of clearing it first: for a page that is blended in
+		void setKeepScreen(bool on) { keepScreen = on; }
 		// the ring's step (the caller's clock: one step a frame it asks for), and whether the last draw showed one
 		void setSpinStep(int s) { spinStep = s; }
 		bool spun() const { return spunLast; }
@@ -80,6 +82,7 @@ namespace bp
 		int spinStep = 0;
 		float tint[3] = {1, 1, 1};
 		bool uploadAll = false;
+		bool keepScreen = false;
 		int ooms = 0;
 		std::set<int> onScreen;	// the pages the last draw placed (an out-of-memory upload frees the rest)
 		bool spunLast = false;

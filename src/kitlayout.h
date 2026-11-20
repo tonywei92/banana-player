@@ -298,6 +298,13 @@ namespace bp
 		// specialW: each piece's width (empty: no special row); counts: the keys in each row of letters;
 		// layers: how many layer keys open the bottom row
 		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int layers);
+		// the keys in the order the kit draws and numbers them: the specials, the letters row by row, the bottom row
+		int keyboardKeys(const Keyboard& k);
+		// the key a finger is on, -1 none
+		int keyboardHit(const Keyboard& k, int x, int y);
+		// where a D-pad press goes from key `from`: along its row (round at the ends), or to the row above or below
+		// (not round) on the key whose centre is nearest the one it left
+		int keyboardMove(const Keyboard& k, int from, int dx, int dy);
 
 		// ---- the volume bar: the 100 mark, and where each colour ends ----
 		struct VolumeBar

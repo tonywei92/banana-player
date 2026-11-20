@@ -357,6 +357,12 @@ namespace bp
 			worker->wantBackdrop(BACKDROP_COVER_KEY + path, path);
 	}
 
+	void Ui::stopped()
+	{
+		playHoldAt = 0;
+		if (!bgAsked.empty()) { bgAsked.clear(); leaveBackdrop(); }
+	}
+
 	void Ui::leaveBackdrop()
 	{
 		// what is drawn fades out over the plain ground (half a second, the cross-fade's time), its pages with it;

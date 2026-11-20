@@ -103,8 +103,8 @@ Stop (or the switch off, a video, High contrast) used to drop the backdrop at on
 drawn slot and its pages into `bgFade` and stamps `bgLeaveAt`; `drawBackdrop` draws that page over the plain ground at
 an alpha falling to nothing over `BG_FADE_MS` (0.5 s), on the player page and the browser's (`browserBackdrop` holds
 while it runs); `backdropTick` drops it at the end; a new song's answer meanwhile cancels the leave and fades in.
-The signatures take the fade's step (`|bgout`), `animating()` keeps the loop drawing. The top panel still drops its
-pages at once: on stop it goes back to mpv's idle picture, whose ground is opaque.
+The signatures take the fade's step (`|bgout`), `animating()` keeps the loop drawing. The top panel fades too (item 3 of 2026-11-20-keyboard.md): its page stays up over mpv's idle picture, blended in at
+the same alpha (`TopScreen::bgLeaving`, `PageRenderer::setKeepScreen`: one quad a frame, no clear first).
 
 ## 10. Light themes lift a dark art to a pastel
 

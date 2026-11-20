@@ -386,8 +386,11 @@ namespace bp
 		// the screen's: mpv may have left its hidden target bound (what plays under the reader goes on there)
 		gl->BindFramebuffer(0x8D40 /* GL_FRAMEBUFFER */, 0);
 		gl->Viewport(0, 0, w, h);
-		gl->ClearColor(0, 0, 0, 1);
-		gl->Clear(COLOR_BUFFER_BIT);
+		if (!keepScreen)
+		{
+			gl->ClearColor(0, 0, 0, 1);
+			gl->Clear(COLOR_BUFFER_BIT);
+		}
 		gl->Disable(BLEND);	// pages are opaque; a transparent PNG shows on black as it would on paper's absence
 		gl->UseProgram(prog);
 		if (vao) gl->BindVertexArray(vao);

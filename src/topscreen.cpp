@@ -91,7 +91,11 @@ namespace bp
 		else if (textReader.isOpen() && readerOnTop) textReader.draw(w, h);	// a document's text
 		else if (shown.nativeShown() && nativeUp) nativeFrame(shown, w, h, true, true);	// the native visualizer and mpv's layer over it
 		else if (shown.groundClear()) groundFrame(shown, w, h);	// a song's picture before its visualizer is up
-		else shown.render(w, h);	// a video, a photo, or the icon with nothing playing
+		else
+		{
+			shown.render(w, h);	// a video, a photo, or the icon with nothing playing
+			if (bgLeaving && bgUp && bgReady) drawBackdropPages(w, h, true);	// (a song just stopped: its page, part way out)
+		}
 		std::vector<unsigned char> rgba((size_t)w * h * 4);
 		readPixels(0, 0, w, h, 0x1908 /* GL_RGBA */, 0x1401 /* GL_UNSIGNED_BYTE */, rgba.data());
 		SDL_Surface* s = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ABGR8888);
@@ -225,6 +229,16 @@ namespace bp
 		bgFading = fading;
 		bgPageOf = hash;
 		bgPageTheme = theme;
+		return true;
+	}
+
+	bool TopScreen::keepLeavingPage()
+	{
+		// the song's own page is page 1; a cross-fade that was running loses the page it came from
+		if (!bgFading) return false;
+		SDL_GL_MakeCurrent(top, gl);
+		bgRender.keepOnly({1});
+		bgFading = false;
 		return true;
 	}
 
@@ -546,11 +560,18 @@ namespace bp
 		// Match album art's backdrop, the song's while it plays: composed again only when the answer, the theme
 		// or the fade moves (whatever else has the panel — the QR, the pane, a reader — draws over it), dropped
 		// with the song's end, the switch off or High contrast
-		if (ui.backdropOn(shown) ? composeBackdrop(ui, shown) : dropBackdropPages())
+		// A song that stopped: its last page stays up over mpv's idle picture while it fades out (the bottom panel's
+		// half second, Ui::BG_FADE_MS); one textured quad a frame, at an alpha falling to nothing
+		bgLeaving = !ui.backdropOn(shown) && ui.backdropLeaving() && ui.backdropFadeAnswered() && bgUp;
+		if (ui.backdropOn(shown) ? composeBackdrop(ui, shown) : bgLeaving ? keepLeavingPage() : dropBackdropPages())
 			renderPending = true;	// (a still panel — Album art only, paused — shows it now, not at mpv's next frame)
-		// the cross-fade's place this pass (bgFadeStep, as the pages draw it): over, unless one is running
-		bgFadeStep = ui.backdropFading() && ui.backdropFadeAnswered()
-			? (float)std::min(1.0, (double)(SDL_GetTicks() - ui.backdropFadeAt()) / Ui::BG_FADE_MS) : 1.0f;
+		// the cross-fade's place this pass (bgFadeStep, as the pages draw it): over, unless one is running; a leave
+		// runs it the other way, from over to gone
+		if (bgLeaving)
+			bgFadeStep = 1.0f - (float)std::min(1.0, (double)(SDL_GetTicks() - ui.backdropLeaveAt()) / Ui::BG_FADE_MS);
+		else
+			bgFadeStep = ui.backdropFading() && ui.backdropFadeAnswered()
+				? (float)std::min(1.0, (double)(SDL_GetTicks() - ui.backdropFadeAt()) / Ui::BG_FADE_MS) : 1.0f;
 		// Top screen off (music): a song playing, no press or touch for the delay (a new song counts from its start)
 		{
 			int secs = screenOffSeconds(shown.settings.topScreenOff);
@@ -661,7 +682,7 @@ namespace bp
 		}
 		// (a photo is a still: mpv puts the level card on it later than the key's redraw, and asks for no frame
 		// after, so it's drawn again while the card is up, as with nothing playing)
-		else if (renderPending.exchange(false) || refresh || (bgUp && bgFading) ||
+		else if (renderPending.exchange(false) || refresh || (bgUp && bgFading) || bgLeaving ||
 			(!shown.playing() && (!topDark || levelUntil)) || (photos.playing() && levelUntil))
 		{
 			SDL_GL_MakeCurrent(top, gl);
@@ -673,7 +694,11 @@ namespace bp
 				// clear for a moment after a song's visualizer: on the theme's ground
 				int r = 0;
 				if (player.groundClear()) groundFrame(player, w, h);
-				else r = player.render(w, h);
+				else
+				{
+					r = player.render(w, h);
+					if (bgLeaving && bgUp && bgReady) drawBackdropPages(w, h, true);	// the song's page, fading out over the idle picture
+				}
 				if (r < 0 && topDraws < 5) fprintf(stderr, "top: mpv couldn't draw (%d) at %u ms\n", r, SDL_GetTicks());
 				SDL_GL_SwapWindow(top);
 				player.reportSwap();

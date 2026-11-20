@@ -81,6 +81,8 @@ Every section now shares one frame: a **rail** down the left with a **Search** k
 **Files**, **Videos**, **Music**, **Books**, **Extensions**, and at the foot the **Now playing key** over
 **Settings** (no START cap: START is Settings from every screen).
 **Network** is a tab of **Files**: the places and the connections' list each have a strip, **Files** | **Network**, stepped with **L / R** or a tap (the folders under them have none).
+
+**The on-screen keyboard** (a connection's fields, a name, a repository address, Find) is the same keyboard Search uses, over the whole panel, with four layers: **abc**, **ABC**, **123** and **#+=** (**Y** swaps abc and ABC, **SELECT** goes to 123 and back). **A** types, **B** deletes (on an empty field it closes, keeping what was there), **X** is a space, **L / R** move the caret, **START** is Done; a tap does the same on the keys. A password shows stars; a port takes digits only.
 **L2/R2** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
 52 units tall, 45 with six sections so all show at once; when they still don't fit, a finger drag scrolls them
 (Search, the Now playing key and Settings stay put). Arriving at a section starts and stops nothing, and no cell
@@ -748,7 +750,7 @@ Songs show their title, artist and album on the top screen. While a song plays:
   above). A song's art becomes the atmosphere behind the player page and the top screen: the art, blurred and muted,
   under a dark veil in the theme's own charcoal tinted by one hue from the art — deepened where the text sits, so
   every key, chip, bar and word keeps the theme's colours and its contrast. A new song's art cross-fades in over
-  half a second; until it is read the previous one stays. A grey, black, white or neon art, one whose hue sits
+  half a second, and fades out over half a second when the song stops (on both screens); until it is read the previous one stays. A grey, black, white or neon art, one whose hue sits
   opposite the theme's accent, or a song with no art at all, falls back to a plain ground (a light theme's its own
   background). The two screens share one picture, as if stacked into one tall portrait screen: the top screen shows
   the art's upper half, the bottom screen its lower half. While a song plays, the browser's pages (Home, Files, Music,
