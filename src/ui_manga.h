@@ -1157,7 +1157,12 @@ namespace bp
 		void mangaDownloadsOpen(Player& p);		// the tab opened: its lists read, finished queue items cleared
 		void mangaDownloadsReset();				// the app opened: an ask the last session left waits for the worker again
 		void mangaDownloadsTick(Player& p);		// the armed delete and the note time out; a lost worker answer resumes
+		// the spec's keys (screens.js manga-downloads): Y pauses or resumes the row (or all), X is More (Remove from the
+		// queue, Pause all / Resume all, Clear failed; on a series: Delete from the card, asked); a series' chapters
+		// keep theirs. mangaDlKeyBase is the list's own handling, by its older keys (X pause, Y remove)
 		bool mangaDownloadsKey(Button b, Player& p);
+		bool mangaDlKeyBase(Button b, Player& p);
+		void mangaDlMore(Player& p);
 		bool mangaDownloadsPointer(const Pointer& pt, int x, int y, Player& p);
 		bool mangaDownloadsBack();	// B: out of a card series' chapters (true when it went somewhere)
 		void drawMangaDownloads(const Player& p);

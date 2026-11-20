@@ -71,10 +71,15 @@ The reader (`Page::MangaRead`) is not: a comic's page keeps the whole panel, unc
 - **Browse's "Add a server…"** row sits under "Sources…" (`mangaBrowseCount` + 1, the sources start one later:
   `mangaBrowseSourceStart`); A or a tap opens the same form as Y.
 
+- **Downloads' keys** are the spec's: Y pauses or resumes the row (Retry on a failed one; Pause all's row: all), X
+  opens a More sheet (`Manga::mangaDlMore` on `Ui::openMore`): Pause / Resume, Remove from the queue (a failed or
+  waiting one), Delete from the card (a series), Pause all / Resume all, Clear failed. Remove and Delete ask by
+  arming: the row turns into "Choose again…" and stays. They run the list's old handling (`mangaDlKeyBase`, its X
+  and Y); a card series' chapters keep X Delete.
+
 ## Not done
 
 - A series, a source's and a server's pages, Sources and Manga settings are still bridged, scaled to 0.88. 
 - A sheet over the bridge keeps its old full-page place; any sheet placed by what is under it would be off by the
   scale (none seen, not every one checked).
-- Downloads keeps its keys (X Pause / resume, Y Remove); the spec moves Pause to Y and X to More.
 - Not checked on the handheld (KMSDRM, the real panel); the scaled body's text is small at 0.88.
