@@ -55,11 +55,86 @@ namespace bp
 
 		// ---- Preview pane ----
 
-		Pane previewPane(bool cover)
+		BrandMark brandMark(float x, float y, float size)
+		{
+			const float u = size / 22.f;
+			BrandMark m{};
+			auto box = [&](float* o, float bx, float by, float bw, float bh) { o[0] = x + bx * u; o[1] = y + by * u; o[2] = bw * u; o[3] = bh * u; };
+			box(m.body, 0, 0, 22, 22);
+			box(m.bar, 3, 4, 16, 4);
+			box(m.slate, 3, 9, 16, 10);
+			box(m.track, 5, 16, 12, 1);
+			box(m.fill, 5, 16, 6, 1);
+			box(m.knob, 10, 15.5f, 2, 2);
+			// the stripes lean 2 units: top edge 4 -> 6 wide at x0 .. x0 + 2, foot 2 to the left
+			for (int i = 0; i < 4; i++)
+			{
+				float x0 = 5 + 4 * i;	// top left of the stripe's upper edge
+				float pts[8] = {x0, 4, x0 + 2, 4, x0, 8, x0 - 2, 8};
+				for (int k = 0; k < 8; k++) m.stripe[i][k] = (k % 2 ? y : x) + pts[k] * u;
+			}
+			const float pl[6] = {9, 10.5f, 9, 15, 13.5f, 12.75f};
+			for (int k = 0; k < 6; k++) m.play[k] = (k % 2 ? y : x) + pl[k] * u;
+			m.bodyRadius = 5 * u;
+			m.barRadius = u;
+			m.slateRadius = 1.5f * u;
+			return m;
+		}
+
+		StateCard stateCard(bool line, bool bar, bool time, bool hint)
+		{
+			StateCard c;
+			const int side = 40, colW = PANEL_W - 2 * side;
+			int y = STATE_TOP;
+			c.tile = {(PANEL_W - STATE_TILE) / 2, y, STATE_TILE, STATE_TILE};
+			y += STATE_TILE + 16;
+			c.title = {side, y, colW, 34};
+			y += 34;
+			c.line = c.bar = c.time = c.hint = {0, 0, 0, 0};
+			if (line)
+			{
+				y += 9;
+				c.line = {side, y, colW, 22};
+				y += 22;
+			}
+			if (bar)
+			{
+				y += 16;
+				c.bar = {(PANEL_W - STATE_BAR_W) / 2, y, STATE_BAR_W, 6};
+				y += 6;
+				if (time)
+				{
+					y += 8;
+					c.time = {side, y, colW, 16};
+					y += 16;
+				}
+			}
+			if (hint)
+			{
+				y += 18;
+				c.hint = {side, y, colW, 22};
+				y += 22;
+			}
+			c.bottom = y;
+			return c;
+		}
+
+		Pane previewPane(bool cover, bool welcome)
 		{
 			Pane p;
 			p.brandTile = {20, 16, 22, 22};
 			p.brandName = {50, 16, 220, 22};
+			p.icon = {0, 0, 0, 0};
+			p.below = {0, 0, 0, 0};
+			if (welcome)
+			{
+				p.brandTile = p.brandName = {0, 0, 0, 0};
+				p.icon = {44, 34, 84, 84};
+				p.cover = {0, 0, 0, 0};
+				p.column = {44 + 84 + 18, 34, PANEL_W - 44 - 146, 100};
+				p.below = {44, 142, PANEL_W - 88, PANEL_H - 142 - 20};
+				return p;
+			}
 			if (cover)
 			{
 				p.cover = {36, 66, 196, 278};

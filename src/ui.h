@@ -119,7 +119,11 @@ namespace bp
 		static lay::Box aboutQrRect() { return {24, 352, 84, 84}; }	// the small code at About's foot (drawAboutSupport)
 		// kit-new (ui_kit_new.cpp): the Preview pane the top panel shows while nothing plays (previewpane.h), false
 		// for none: the Theme row's (Settings › Power & screens), the test gallery's. topscreen.cpp asks every pass
-		bool topPane(PaneSpec& out) const;
+		// idle: nothing plays and no card of the player's is up (the pane is the whole top screen then, ui_toppane.cpp);
+		// else only the Theme row's pane (over what plays)
+		bool topPane(PaneSpec& out, const Player& p, bool idle) const;
+		bool topPaneGallery(PaneSpec& out) const;	// the test gallery's (ui_kit_new.cpp)
+		bool idlePane(PaneSpec& out, const Player& p) const;	// ui_toppane.cpp
 		// test only (--press gallery:new, gallery:new:2): kit-new's components drawn in place of the page (0: off)
 		int galleryNew = 0;
 		void drawGalleryNew();

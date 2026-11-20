@@ -488,8 +488,30 @@ namespace bp
 			Box brandTile, brandName;	// the 22-unit tile and the name's line beside it
 			Box column;	// the text: label, title, sentence, rows, keys, top down
 			Box cover;	// w 0: the text layout
+			Box icon;	// the welcome's app icon (84, radius 20); w 0 on every other pane
+			Box below;	// the welcome: where the rows and keys start (under the icon and its text)
 		};
-		Pane previewPane(bool cover);
+		Pane previewPane(bool cover, bool welcome = false);
+		// The Brand mark (components.md: one drawing on a 22 grid, scaled by size / 22): boxes as {x, y, w, h}, the four
+		// stripes as four points each, the play triangle as three, all in the same units as x, y
+		struct BrandMark
+		{
+			float body[4], bar[4], slate[4], track[4], fill[4], knob[4];
+			float stripe[4][8];
+			float play[6];
+			float bodyRadius, barRadius, slateRadius;
+		};
+		BrandMark brandMark(float x, float y, float size);
+		// The State card (components.md): the whole top screen, a centred column from 104: a 72 tile (an icon, or the
+		// spinner), the title (34 tall), a line (22), an optional bar (6 wide 300) and its time (16), a hint line (22)
+		// with its key cap. A part that is not asked for has w 0 and takes no room
+		constexpr int STATE_TOP = 104, STATE_TILE = 72, STATE_BAR_W = 300;
+		struct StateCard
+		{
+			Box tile, title, line, bar, time, hint;
+			int bottom = 0;	// where the column ends
+		};
+		StateCard stateCard(bool line, bool bar, bool time, bool hint);
 		// the Theme row's swatches: n of 84 x 30 in rows of `perRow`, 9 apart, each with its name's line (14) under it
 		// and 9 between the rows, from (left, top): eighteen as three rows of six. The row is 6 * 84 + 5 * 9 = 549, inside the
 		// text column's 552

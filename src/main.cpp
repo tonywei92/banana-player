@@ -1811,7 +1811,7 @@ int main(int argc, char** argv)
 						{
 							// gallery:new (gallery:new:2 with the Screen-off warning over it, gallery:off): kit-new's
 							// components drawn in place of the page, and a Preview pane on the top panel (for a shot:)
-							ui.galleryNew = step == "gallery:new" ? 1 : step == "gallery:new:2" ? 2 : 0;
+							ui.galleryNew = step == "gallery:new" ? 1 : step == "gallery:new:2" ? 2 : step == "gallery:new:3" ? 3 : 0;
 							renderPending = true;
 						}
 						else if (step.rfind("shot:", 0) == 0)

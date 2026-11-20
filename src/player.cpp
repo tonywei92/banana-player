@@ -5,7 +5,6 @@
 #include "format.h"
 #include "levelcard.h"
 #include "webmedia.h"
-#include "logo.h"
 #include "pagedecode.h"
 #include "netpath.h"
 #include "netstore.h"
@@ -1364,22 +1363,22 @@ namespace bp
 		{
 			if (spinnerStep >= 0)
 			{
-				dropImage(OV_LOAD);
 				spinnerStep = -1;
+				topStateLoad = false;	// (the top panel drops the card at its next pass)
 			}
 			return;
 		}
 		int step = (int)(ticks() / 100 % 8) + (loading() ? 0 : 8);	// the word changes with the next step
 		if (step == spinnerStep) return;
 		spinnerStep = step;
-		// the state card (levelcard.h) with the spinner in its tile, over the middle (the last file's picture can still be up)
-		StateCardSpec spec;
-		spec.spinner = step % 8;
-		spec.title = loading() ? "Loading" : "Buffering";
-		spec.full = false;
-		const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
-		LevelCardImage card = drawStateCard(opts.fontsDir, pw, ph, spec);
-		putImage(OV_LOAD, card, (pw - card.w) / 2, (ph - card.h) / 2);
+		// the State card (previewpane.h) with the spinner in its tile: the top panel draws it (topscreen.cpp), over what
+		// is under it (the last file's picture can still be up)
+		topStateLoad = true;
+		topStateLoadSpec = PaneSpec{};
+		topStateLoadSpec.state = true;
+		topStateLoadSpec.spinner = step % 8;
+		topStateLoadSpec.title = loading() ? "Loading" : "Buffering";
+		topStateLoadSpec.key = std::string("load|") + topStateLoadSpec.title + "|" + std::to_string(step % 8);
 	}
 
 	void Player::checkPhoto()
@@ -1932,7 +1931,7 @@ namespace bp
 		auto px = std::make_shared<std::vector<uint8_t>>(premultipliedBgra(card));
 		uint64_t serial = ++levelSerial;
 		levelPixels[serial] = px;
-		if (!shownSerial[id] || id != OV_LOAD) fprintf(stderr, "card: show overlay %d %dx%d at %d,%d\n", id, card.w, card.h, x, y);
+		fprintf(stderr, "card: show overlay %d %dx%d at %d,%d\n", id, card.w, card.h, x, y);
 		shownSerial[id] = serial;
 		{
 			const float pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
@@ -1961,7 +1960,7 @@ namespace bp
 		// (its pixels go with this command's answer: an add still queued before it may read them)
 		uint64_t serial = ++levelSerial;
 		shownSerial[id] = 0;
-		if (id != OV_LOAD) fprintf(stderr, "card: drop overlay %d\n", id);
+		fprintf(stderr, "card: drop overlay %d\n", id);
 		mpv_command_async(mpv, LEVEL_REPLY + serial, rm);
 	}
 
@@ -2019,106 +2018,28 @@ namespace bp
 		// nothing playing: app UI on the theme's ground (docs/redesign Themes › The top screen), as a song's modes;
 		// what plays next sets its own (a video, a photo: black; a song: its mode's)
 		if (on) setGround(true, "nothing plays");
-		if (!on)
-		{
-			const char* cmd[] = {"osd-overlay", "3", "none", "", nullptr};
-			mpv_command_async(mpv, 0, cmd);
-			const char* rm[] = {"overlay-remove", "0", nullptr};
-			mpv_command_async(mpv, 0, rm);
-			return;
-		}
-		// the icon as ASS drawings, a run of pixels a rectangle, one event a colour; on a 960x720 canvas
-		const int px = 6, x0 = 480 - 16 * px, y0 = 110;
-		std::string ev;
-		// the app's picture (assets/icons/app.png beside the fonts) as an mpv image overlay at the panel's own pixels,
-		// decoded once at that size (smooth, as drawn); the generated logo when it can't be read
-		bool picture = false;
-		{
-			const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
-			const int size = (int)std::lround(240.0 * ph / 720), ix = pw / 2 - size / 2, iy = (int)std::lround(84.0 * ph / 720);
-			if (idleIconPx != size && !opts.fontsDir.empty())
-			{
-				PageImage img = decodePageFile(opts.fontsDir + "/../icons/app.png", size);
-				if (img.ok() && img.w == size)
-				{
-					// mpv's overlay-add takes premultiplied BGRA from a file it maps: written once, kept while shown
-					std::vector<uint8_t> bgra((size_t)img.w * img.h * 4);
-					for (size_t p = 0; p < (size_t)img.w * img.h; p++)
-					{
-						const uint8_t* c = img.rgba.data() + p * 4;
-						uint8_t a = c[3];
-						bgra[p * 4 + 0] = (uint8_t)(c[2] * a / 255);
-						bgra[p * 4 + 1] = (uint8_t)(c[1] * a / 255);
-						bgra[p * 4 + 2] = (uint8_t)(c[0] * a / 255);
-						bgra[p * 4 + 3] = a;
-					}
-					idleIconFile = (opts.stateDir.empty() ? std::string("/tmp") : opts.stateDir) + "/.idle-icon.bgra";
-					if (FILE* f = fopen(idleIconFile.c_str(), "wb"))
-					{
-						bool ok = fwrite(bgra.data(), 1, bgra.size(), f) == bgra.size();
-						if (fclose(f) == 0 && ok) { idleIconPx = size; idleIconH = img.h; }
-					}
-				}
-			}
-			if (idleIconPx == size)
-			{
-				std::string xs = std::to_string(ix), ys = std::to_string(iy), ws = std::to_string(size), hs = std::to_string(idleIconH),
-					st = std::to_string(size * 4);
-				const char* add[] = {"overlay-add", "0", xs.c_str(), ys.c_str(), idleIconFile.c_str(), "0", "bgra", ws.c_str(), hs.c_str(),
-					st.c_str(), nullptr};
-				mpv_command_async(mpv, 0, add);
-				picture = true;
-			}
-		}
-		if (!picture)
-		{
-			const struct { char c; std::string colour; } inks[] = {{'.', ass(BUTTON)}, {'Y', ass(ACCENT)}, {'W', ass(TEXT)}};
-			for (auto& ink : inks)
-			{
-				std::string path;
-				for (int y = 0; y < 32; y++)
-					for (int x = 0; x < 32;)
-					{
-						if (LOGO[y][x] != ink.c) { x++; continue; }
-						int e = x;
-						while (e < 32 && LOGO[y][e] == ink.c) e++;
-						char r[96];
-						snprintf(r, sizeof r, "m %d %d l %d %d %d %d %d %d ", x * px, y * px, e * px, y * px, e * px, (y + 1) * px, x * px, (y + 1) * px);
-						path += r;
-						x = e;
-					}
-				char head[128];
-				snprintf(head, sizeof head, "{\\an7\\pos(%d,%d)\\bord0\\shad0\\1c%s\\p1}", x0, y0, ink.colour.c_str());
-				ev += head + path + "{\\p0}\n";
-			}
-		}
-		// in the main tokens, on BG (a light theme's top screen is light)
-		ev += "{\\an8\\pos(480,330)\\bord0\\shad0\\fnPixelify Sans\\fs72\\1c" + ass(ACCENT) + "}Banana Player\n";
-		ev += "{\\an8\\pos(480,420)\\bord0\\shad0\\fnInter\\fs30\\1c" + ass(DIM) + "}Pick a video or a song on the bottom screen";
-		const char* cmd[] = {"osd-overlay", "3", "ass-events", ev.c_str(), "960", "720", "0", "no", "no", nullptr};
-		mpv_command_async(mpv, 0, cmd);
+		// (the top panel's picture while nothing plays is the Preview pane, drawn by the app: topscreen.cpp)
 	}
 
 	void Player::showElsewhere(bool on, bool playing, const std::string& where, bool waiting, int hint, const char* const* glyph, int glyphH)
 	{
-		if (!on)
-		{
-			dropImage(OV_STATE);
-			return;
-		}
-		// the state card (levelcard.h), the whole top panel: the page's mark in the tile, who plays, what, and what to press
-		StateCardSpec spec;
-		spec.icon = {glyph, glyphH};
+		topStateElsewhere = on;
+		if (!on) return;
+		// the State card (previewpane.h): the page's mark in the tile, who plays, what, and what to press
+		PaneSpec& spec = topStateElsewhereSpec;
+		spec = PaneSpec{};
+		spec.state = true;
+		spec.iconRows = glyph;
+		spec.iconH = glyphH;
 		spec.title = std::string(waiting ? "Waiting for " : playing ? "Playing in " : "Paused in ") + where;
-		spec.line = waiting ? "Tap Play on that page to start the sound" : baseName(currentPath());
-		if (waiting) { spec.key = "B"; spec.hint = "play on the handheld instead"; }
+		spec.text = waiting ? "Tap Play on that page to start the sound" : baseName(currentPath());
 		// (only what works on the page shown below: A is the player's; elsewhere, where to go for it)
-		else if (hint == 1) { spec.key = "A"; spec.hint = "hold to play it here"; }
-		else if (hint == 2) spec.hint = "Go to the player to play it here";
+		if (waiting) spec.keys = {{"B", "play on the handheld instead"}};
+		else if (hint == 1) spec.keys = {{"A", "hold to play it here"}};
+		else if (hint == 2) spec.keys = {{"", "Go to the player to play it here"}};
 		// a song with the equalizer or an effect on: the browser plays it without them (they're the handheld's)
 		if (isAudio && (settings.eqOn || settings.soundFx != SoundFx::None)) spec.foot = "Your equalizer and effects don't apply in the browser";
-		const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
-		putImage(OV_STATE, drawStateCard(opts.fontsDir, pw, ph, spec), 0, 0);
+		spec.key = "else|" + spec.title + "|" + spec.text + "|" + (spec.keys.empty() ? "" : spec.keys[0].second) + "|" + spec.foot;
 	}
 
 	void Player::wakeOutput()

@@ -10504,6 +10504,44 @@ static void testKitLayoutReaders()
 	CHECK_EQ(pane.coverArt.ok(), true);
 	CHECK_EQ(previewPane(true).cover.w, 196);
 	CHECK_EQ(previewPane(true).cover.h, 278);
+	// the welcome: the app's icon 84 square at (44, 34), its text beside it, the ways to start from 142 on the margin
+	Pane wl = previewPane(false, true);
+	CHECK_EQ(wl.icon.w, 84);
+	CHECK_EQ(wl.icon.h, 84);
+	CHECK_EQ(wl.icon.x, 44);
+	CHECK_EQ(wl.column.x, wl.icon.x + wl.icon.w + 18);
+	CHECK_EQ(wl.below.y, 142);
+	CHECK(wl.below.y > wl.icon.y + wl.icon.h);
+	CHECK_EQ(wl.brandTile.w, 0);
+	CHECK_EQ(previewPane(false).icon.w, 0);
+	// the Brand mark: a 22 grid, scaled by size / 22, every edge on a whole unit at 22
+	// the State card: a centred column from 104, each part under the one before, nothing asked for takes no room
+	StateCard sc = stateCard(true, true, true, true);
+	CHECK_EQ(sc.tile.y, 104);
+	CHECK_EQ(sc.tile.w, 72);
+	CHECK_EQ(sc.tile.x * 2 + sc.tile.w, 640);
+	CHECK(sc.title.y >= sc.tile.y + sc.tile.h);
+	CHECK(sc.line.y >= sc.title.y + sc.title.h);
+	CHECK(sc.bar.y >= sc.line.y + sc.line.h);
+	CHECK(sc.time.y >= sc.bar.y + sc.bar.h);
+	CHECK(sc.hint.y >= sc.time.y + sc.time.h);
+	CHECK_EQ(sc.bottom, sc.hint.y + sc.hint.h);
+	StateCard bare = stateCard(false, false, false, false);
+	CHECK_EQ(bare.line.w, 0);
+	CHECK_EQ(bare.bar.w, 0);
+	CHECK_EQ(bare.hint.w, 0);
+	CHECK(bare.bottom < sc.bottom);
+	BrandMark bm = brandMark(20, 16, 22);
+	CHECK_EQ((int)bm.body[2], 22);
+	CHECK_EQ((int)bm.bar[0], 23);
+	CHECK_EQ((int)bm.bar[3], 4);
+	CHECK_EQ((int)bm.slate[1], 25);
+	CHECK_EQ((int)bm.track[2], 12);
+	BrandMark big = brandMark(0, 0, 44);
+	CHECK_EQ((int)big.body[2], 44);
+	CHECK_EQ((int)big.bar[2], 32);
+	CHECK_EQ(big.stripe[1][0], 18.f);	// the second stripe's upper-left, 9 units in
+	CHECK_EQ(big.stripe[1][6], 14.f);	// leaning two units (four at double size) to the left at its foot
 }
 
 static void testKitVariantBusy()

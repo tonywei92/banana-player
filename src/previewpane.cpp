@@ -116,6 +116,133 @@ namespace bp
 			void glyph(const Ui::Glyph& g, float size, float x, float y, Rgb ink) { c.glyph(cg(g), S(size), X(x), Y(y), ink); }
 		};
 
+		// a picture fitted inside the box (units), the aspect kept, centred; a box filter at the picture's own rate (few
+		// taps: a cover is 196 x 278 units on the panel); radius > 0 rounds its corners (the welcome's icon)
+		void paintImage(PaneDraw& d, const PaneImage& img, float bx, float by, float bw, float bh, float radius)
+		{
+			Canvas& c = d.c;
+			float aw = img.w, ah = img.h;
+			float fit = std::min(bw / aw, bh / ah), dw = aw * fit, dh = ah * fit;
+			int dx = (int)std::lround(d.X(bx + (bw - dw) / 2)), dy = (int)std::lround(d.Y(by + (bh - dh) / 2));
+			int pw = std::max(1, (int)std::lround(d.S(dw))), ph = std::max(1, (int)std::lround(d.S(dh)));
+			float r = d.S(radius);
+			for (int y = 0; y < ph; y++)
+			{
+				int y0 = std::clamp((int)((y + 0.5f) * img.h / ph), 0, img.h - 1);
+				float fy = std::clamp((y + 0.5f) * img.h / ph - 0.5f, 0.f, (float)img.h - 1);
+				int y1 = std::min(img.h - 1, y0 + 1);
+				float ty = fy - y0;
+				for (int x = 0; x < pw; x++)
+				{
+					float fx = std::clamp((x + 0.5f) * img.w / pw - 0.5f, 0.f, (float)img.w - 1);
+					int x0 = (int)fx, x1 = std::min(img.w - 1, x0 + 1);
+					float tx = fx - x0;
+					const uint8_t* p00 = &img.rgba[((size_t)y0 * img.w + x0) * 4];
+					const uint8_t* p10 = &img.rgba[((size_t)y0 * img.w + x1) * 4];
+					const uint8_t* p01 = &img.rgba[((size_t)y1 * img.w + x0) * 4];
+					const uint8_t* p11 = &img.rgba[((size_t)y1 * img.w + x1) * 4];
+					uint8_t px[3];
+					for (int ch = 0; ch < 3; ch++)
+						px[ch] = (uint8_t)std::lround((p00[ch] * (1 - tx) + p10[ch] * tx) * (1 - ty) + (p01[ch] * (1 - tx) + p11[ch] * tx) * ty);
+					float a = 1;
+					if (r > 0)
+					{
+						float qx = std::abs(x + 0.5f - pw / 2.f) - (pw / 2.f - r), qy = std::abs(y + 0.5f - ph / 2.f) - (ph / 2.f - r);
+						float sd = std::hypot(std::max(qx, 0.f), std::max(qy, 0.f)) + std::min(std::max(qx, qy), 0.f) - r;
+						a = std::clamp(0.5f - sd, 0.f, 1.f);
+						// the icon's own alpha too
+						a *= (p00[3] * (1 - tx) + p10[3] * tx) / 255.f;
+					}
+					int sx = dx + x, sy = dy + y;
+					if (sx < 0 || sy < 0 || sx >= c.W || sy >= c.H || a <= 0) continue;
+					uint8_t* o = &c.v[((size_t)sy * c.W + sx) * 4];
+					o[0] = (uint8_t)std::lround(px[0] * a + o[0] * (1 - a));
+					o[1] = (uint8_t)std::lround(px[1] * a + o[1] * (1 - a));
+					o[2] = (uint8_t)std::lround(px[2] * a + o[2] * (1 - a));
+					o[3] = 255;
+				}
+			}
+		}
+
+		// the Brand mark (lay::brandMark: the clapperboard on a 22 grid) at (x, y) in units, `size` wide
+		void brand(PaneDraw& d, float x, float y, float size)
+		{
+			using namespace theme;
+			lay::BrandMark m = lay::brandMark(x, y, size);
+			auto bx = [&](const float* b, float inset, float r, Rgb fill) {
+				d.box(b[0] + inset, b[1] + inset, b[2] - 2 * inset, b[3] - 2 * inset, std::max(0.f, r - inset), fill);
+			};
+			bx(m.body, 0, m.bodyRadius, edgeOf(SURFACE));
+			bx(m.body, size / 22.f, m.bodyRadius, BUTTON);
+			bx(m.bar, 0, m.barRadius, BG);
+			Canvas& c = d.c;
+			for (int i = 0; i < 4; i++)
+			{
+				float pt[8];
+				for (int k = 0; k < 8; k++) pt[k] = k % 2 ? d.Y(m.stripe[i][k]) : d.X(m.stripe[i][k]);
+				c.poly(pt, 4, ACCENT);
+			}
+			bx(m.slate, 0, m.slateRadius, SURFACE);
+			float pt[6];
+			for (int k = 0; k < 6; k++) pt[k] = k % 2 ? d.Y(m.play[k]) : d.X(m.play[k]);
+			c.poly(pt, 3, ACCENT);
+			bx(m.track, 0, 0, DIM);
+			bx(m.fill, 0, 0, ACCENT);
+			bx(m.knob, 0, 0, TEXT);
+		}
+
+		// the State card: the app's own drawing of "Playing in your browser", Loading, Buffering (and a failure), in the
+		// main tokens on the theme's ground (docs/redesign/components.md, State card)
+		void stateCard(PaneDraw& d, const PaneSpec& s)
+		{
+			using namespace theme;
+			Canvas& c = d.c;
+			const bool hint = !s.keys.empty();
+			lay::StateCard l = lay::stateCard(!s.text.empty(), s.share >= 0, s.share >= 0 && !s.timeLine.empty(), hint);
+			const Rgb tone = s.danger ? DANGER : ACCENT;
+			d.flat(l.tile.x, l.tile.y, l.tile.w, l.tile.h, 18, SURFACE, edgeOf(SURFACE));
+			float cx = l.tile.x + l.tile.w / 2.f, cy = l.tile.y + l.tile.h / 2.f;
+			if (s.spinner >= 0)
+			{
+				// eight dots round the tile's middle, one lit going round, the ones behind it fading
+				for (int i = 0; i < 8; i++)
+				{
+					double a = i * 3.14159265358979 / 4;
+					float r = 18, dd = 7;
+					float dx = cx + (float)std::sin(a) * r, dy = cy - (float)std::cos(a) * r;
+					int age = (s.spinner % 8 - i + 8) % 8;
+					int alpha = age == 0 ? 255 : age == 1 ? 190 : age == 2 ? 125 : 70;
+					d.box(dx - dd / 2, dy - dd / 2, dd, dd, dd / 2, tone, alpha);
+				}
+			}
+			else if (s.iconRows)
+			{
+				float is = s.danger ? 30.f : 34.f;
+				c.glyph(CardGlyph{s.iconRows, s.iconH}, d.S(is), d.X(cx - is / 2), d.Y(cy - is / 2), tone);
+			}
+			auto centred = [&](Face f, float size, const std::string& t, const lay::Box& b, Rgb ink) {
+				std::string fit = c.fit(f, size, t, (int)d.S(b.w), f != PIXEL);
+				d.text(f, size, fit, b.x + (b.w - d.textW(f, size, fit)) / 2, b.y + (b.h - d.lineH(f, size) / c.k) / 2, ink);
+			};
+			centred(PIXEL, 28, s.title, l.title, tone);
+			if (l.line.w) centred(PIXEL, 15.5f, s.text, l.line, TEXT);
+			if (l.bar.w)
+			{
+				d.box(l.bar.x, l.bar.y, l.bar.w, l.bar.h, 3, TRACK);
+				if (s.share > 0) d.box(l.bar.x, l.bar.y, std::max(6.f, l.bar.w * std::min(1.f, s.share)), l.bar.h, 3, ACCENT);
+				if (l.time.w) centred(PIXEL, 13, s.timeLine, l.time, DIM);
+			}
+			if (hint)
+			{
+				const auto& k = s.keys[0];
+				float tw = d.textW(PIXEL, 14, k.second), capW = k.first.empty() ? 0 : std::max(19.f, d.textW(PIXEL, 12, k.first) + 10) + 7;
+				float at = l.hint.x + (l.hint.w - tw - capW) / 2, my = l.hint.y + l.hint.h / 2.f;
+				if (!k.first.empty()) at += d.cap(k.first, at, my, ACCENT, BG) + 7;
+				d.text(PIXEL, 14, k.second, at, my - d.lineH(PIXEL, 14) / c.k / 2, DIM_ON);
+			}
+			if (!s.foot.empty()) centred(PIXEL, 13, s.foot, {40, 480 - 30 - 16, 560, 16}, DIM);
+		}
+
 		// one theme's swatch: its BG, a SURFACE box with its edge, an ACCENT box, a TEXT line and an ACCENT line (the
 		// mock-up's thSwatch: a picture of that theme, whatever theme is drawn now)
 		void swatch(PaneDraw& d, lay::Box b, const theme::Palette& t, bool chosen)
@@ -213,51 +340,33 @@ namespace bp
 			px[2] = BG.b;
 			px[3] = 255;
 		}
-		lay::Pane l = lay::previewPane(s.cover);
-		// the brand mark: the play tile and the name
-		d.box(l.brandTile.x, l.brandTile.y, l.brandTile.w, l.brandTile.h, 6, ACCENT);
-		d.glyph(G_PLAY, 12, l.brandTile.x + 5, l.brandTile.y + 5, ON_ACCENT);
-		d.text(PIXEL, 15, "Banana Player", l.brandName.x, l.brandName.y + (l.brandName.h - d.lineH(PIXEL, 15) / c.k) / 2, ACCENT);
+		if (s.state)
+		{
+			stateCard(d, s);
+			out.w = w;
+			out.h = h;
+			out.rgba = std::move(c.v);
+			return out;
+		}
+		lay::Pane l = lay::previewPane(s.cover, s.welcome);
+		if (s.welcome)
+		{
+			// the app's icon (84, radius 20) beside the name, in place of the small mark
+			if (s.icon.ok()) paintImage(d, s.icon, l.icon.x, l.icon.y, l.icon.w, l.icon.h, 20);
+			else brand(d, l.icon.x, l.icon.y, l.icon.w);
+		}
+		else
+		{
+			brand(d, l.brandTile.x, l.brandTile.y, l.brandTile.w);
+			d.text(PIXEL, 15, "Banana Player", l.brandName.x, l.brandName.y + (l.brandName.h - d.lineH(PIXEL, 15) / c.k) / 2, ACCENT);
+		}
 		if (s.cover)
 		{
 			// the cover's place, then the picture fitted inside it (none: the place alone, with the picture's mark)
 			d.flat(l.cover.x, l.cover.y, l.cover.w, l.cover.h, R_TILE, SURFACE, edgeOf(SURFACE));
 			if (s.coverArt.ok())
 			{
-				// a box filter at the picture's own rate (few taps: a cover is 196 x 278 units on the panel): the
-				// aspect is kept and the picture centred, so a tall book's cover shows whole
-				const PaneImage& img = s.coverArt;
-				float aw = img.w, ah = img.h, bw = l.cover.w - 2 * EDGE, bh = l.cover.h - 2 * EDGE;
-				float fit = std::min(bw / aw, bh / ah), dw = aw * fit, dh = ah * fit;
-				int dx = (int)std::lround(d.X(l.cover.x + EDGE + (bw - dw) / 2)), dy = (int)std::lround(d.Y(l.cover.y + EDGE + (bh - dh) / 2));
-				int pw = std::max(1, (int)std::lround(d.S(dw))), ph = std::max(1, (int)std::lround(d.S(dh)));
-				for (int y = 0; y < ph; y++)
-				{
-					int y0 = std::clamp((int)((y + 0.5f) * img.h / ph), 0, img.h - 1);
-					float fy = std::clamp((y + 0.5f) * img.h / ph - 0.5f, 0.f, (float)img.h - 1);
-					int y1 = std::min(img.h - 1, y0 + 1);
-					float ty = fy - y0;
-					for (int x = 0; x < pw; x++)
-					{
-						float fx = std::clamp((x + 0.5f) * img.w / pw - 0.5f, 0.f, (float)img.w - 1);
-						int x0 = (int)fx, x1 = std::min(img.w - 1, x0 + 1);
-						float tx = fx - x0;
-						const uint8_t* p00 = &img.rgba[((size_t)y0 * img.w + x0) * 4];
-						const uint8_t* p10 = &img.rgba[((size_t)y0 * img.w + x1) * 4];
-						const uint8_t* p01 = &img.rgba[((size_t)y1 * img.w + x0) * 4];
-						const uint8_t* p11 = &img.rgba[((size_t)y1 * img.w + x1) * 4];
-						uint8_t px[3];
-						for (int ch = 0; ch < 3; ch++)
-							px[ch] = (uint8_t)std::lround((p00[ch] * (1 - tx) + p10[ch] * tx) * (1 - ty) + (p01[ch] * (1 - tx) + p11[ch] * tx) * ty);
-						int sx = dx + x, sy = dy + y;
-						if (sx < 0 || sy < 0 || sx >= c.W || sy >= c.H) continue;
-						uint8_t* o = &c.v[((size_t)sy * c.W + sx) * 4];
-						o[0] = px[0];
-						o[1] = px[1];
-						o[2] = px[2];
-						o[3] = 255;
-					}
-				}
+				paintImage(d, s.coverArt, l.cover.x + EDGE, l.cover.y + EDGE, l.cover.w - 2 * EDGE, l.cover.h - 2 * EDGE, 0);
 			}
 			else d.glyph(G_PICTURE, 44, l.cover.x + (l.cover.w - 44) / 2.f, l.cover.y + (l.cover.h - 44) / 2.f, DIM);
 		}
@@ -286,6 +395,13 @@ namespace bp
 				d.text(INTER, 14.5f, t, x, y, DIM_ON);
 				y += 14.5f * 1.5f;
 			}
+		}
+		if (s.welcome)
+		{
+			// the ways to start sit under the icon, from the sides' margin
+			x = l.below.x;
+			cw = l.below.w;
+			y = l.below.y - 18;
 		}
 		if (s.extra == PaneSpec::THEMES) y = themesBlock(d, s, x, y + 12, cw);
 		if (!s.rows.empty())

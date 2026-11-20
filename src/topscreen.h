@@ -4,6 +4,7 @@
 // decisions; the panel's own state lives here so the loop reads it by name.
 #include "reader.h"
 #include "readerfetch.h"
+#include "previewpane.h"
 #include "textreader.h"
 #include "viznative.h"
 #include <SDL.h>
@@ -72,6 +73,8 @@ namespace bp
 		bool paneReady = false, paneUp = false;
 		std::string paneKey;
 		int paneW = 0, paneH = 0;
+		PaneImage welcomeIcon;	// the welcome's app icon, decoded at welcomeIconPx
+		int welcomeIconPx = 0;
 		CardOverlay paneCard;	// the level card over the pane (mpv's is under it): cardOnReader puts it there
 		bool paneCardNew = false;
 		// Match album art's backdrop, the song's while it plays (docs/redesign "Match album art"; Ui holds the
