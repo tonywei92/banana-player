@@ -5,6 +5,7 @@
 // Runs on a thread of its own (the Ui's file job): the backends are made here, never shared with the browser's.
 #pragma once
 #include "net.h"
+#include "xfergroup.h"
 #include <atomic>
 #include <cstdint>
 #include <functional>
@@ -19,14 +20,6 @@ namespace bp
 		std::string path;
 		NetServer server;
 		std::string password;
-	};
-
-	struct XferProgress
-	{
-		std::atomic<uint64_t>* done = nullptr;
-		std::atomic<uint64_t>* total = nullptr;
-		const std::atomic<bool>* cancel = nullptr;
-		std::function<void(const std::string&)> current;	// the file being written, from the top's folder
 	};
 
 	// src copied (move: then removed) into the folder dest as `name` (taken: "name (2)"...; the name used is put

@@ -231,7 +231,7 @@ namespace bp
 		}
 		uint64_t total = 0, biggest = 0;
 		for (const Item& i : items) { total += i.size; biggest = std::max(biggest, i.size); }
-		if (pr.total) *pr.total = total;
+		if (pr.total) *pr.total = pr.totalBase + total;
 
 		// one server, a move: a rename does it at once (within one SMB share)
 		if (move && src.net && dest.net && src.server.id == dest.server.id)
@@ -239,7 +239,7 @@ namespace bp
 			NetResult r = freeNetName(*db, dest.path, name, topDir);
 			if (!r.ok()) return netFail(r);
 			r = db->rename(src.path, joinRel(dest.path, name));
-			if (r.ok()) { if (pr.done) *pr.done = total; return ""; }
+			if (r.ok()) { if (pr.done) *pr.done = pr.doneBase + total; return ""; }
 			if (r.error != NetError::Other) return netFail(r);
 		}
 

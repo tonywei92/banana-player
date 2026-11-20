@@ -1678,6 +1678,8 @@ namespace bp
 		if ((what == 1 || what == 2) && fileSelCount())
 		{
 			if (what == 2 && filesReadOnly()) { p.osd("This folder is read only"); return; }
+			// a server's folder the account can't write to: Copy out of it, not Move
+			if (what == 2 && netReadOnlySaid(browseDir, p)) return;
 			if (what == 2)
 				for (auto& path : fileSelOrder)
 					if (p.playing() && (p.currentPath() == path || p.currentPath().rfind(path + "/", 0) == 0))

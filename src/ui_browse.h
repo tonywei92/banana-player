@@ -15,6 +15,8 @@
 
 namespace bp
 {
+	struct XferEnd;
+
 	struct Ui::Browse : Ui::Area
 	{
 		explicit Browse(Ui& u);
@@ -167,6 +169,8 @@ namespace bp
 		// a network that drops while reading takes nothing away
 		void netOpenCopy(const std::string& path, Player& p);
 		void startNetJob(int op, const std::string& src, const std::string& dest, const std::string& name, Player& p);
+		void startNetGroupJob(int op, const std::vector<std::string>& srcs, const std::string& dest, Player& p);
+		bool netEnd(const std::string& path, XferEnd& e) const;
 		void fileOpsAct(int what, const std::string& path, Player& p);
 		bool clipKey(Button b, Player& p);	// SELECT pastes here, X lets the clip go
 		bool clipPointer(const Pointer& pt, int x, int y, Player& p);

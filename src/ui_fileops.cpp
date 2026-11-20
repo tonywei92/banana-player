@@ -45,6 +45,9 @@ namespace bp
 		std::string newName, openAfter;
 		// a group Copy / Move (the select bar's): every source, and what landed (for pathMoved), under m
 		std::vector<std::string> srcs;
+		// a group with a server at one end: each source's end and the name it asks for there (net, srcs)
+		std::vector<XferEnd> srcEnds;
+		std::vector<std::string> names;
 		std::vector<std::pair<std::string, std::string>> moved;
 		std::atomic<uint64_t> done{0}, total{0};
 		std::atomic<bool> cancel{false}, finished{false};
@@ -112,6 +115,38 @@ namespace bp
 				std::lock_guard<std::mutex> l(j->m);
 				j->error = e;
 			};
+			if (j->net && !j->srcs.empty())
+			{
+				// a group Copy / Move with a server at one end: one transfer a source (xfergroup.h), the bytes carried
+				// across them. Each is whole or not at all, so a stop leaves the ones before it done, and says so
+				XferProgress pr;
+				pr.done = &j->done;
+				pr.total = &j->total;
+				pr.cancel = &j->cancel;
+				pr.current = [j](const std::string& rel) {
+					std::lock_guard<std::mutex> l(j->m);
+					j->current = rel;
+				};
+				XferGroupResult r = xferGroup(j->names, pr, [j](size_t i, std::string& name, XferProgress& p) {
+					{
+						std::lock_guard<std::mutex> l(j->m);
+						j->name = j->names[i];
+						j->current = j->names[i];
+					}
+					return xferCopy(j->srcEnds[i], j->destEnd, name, j->op == CLIP_MOVE, p);
+				});
+				std::string of = std::to_string(r.landed.size()) + " of " + std::to_string(j->srcs.size());
+				{
+					std::lock_guard<std::mutex> l(j->m);
+					for (auto& l : r.landed)
+						j->moved.push_back({j->srcs[l.first], isNetPath(j->dest) ? netJoin(j->dest, l.second) : j->dest + "/" + l.second});
+				}
+				if (r.cancelled) fail(r.landed.empty() ? "Cancelled: nothing was changed" : "Cancelled: " + of + " were done");
+				else if (!r.error.empty()) fail(r.landed.empty() ? r.error : r.error + " (" + of + " were done)");
+				fprintf(stderr, "files: network group %s: %s of %zu\n", j->op == CLIP_MOVE ? "move" : "copy", std::to_string(r.landed.size()).c_str(), j->srcs.size());
+				j->finished = true;
+				return;
+			}
 			if (j->net)
 			{
 				std::string err;
@@ -294,20 +329,49 @@ namespace bp
 		return true;
 	}
 
+	// one end of a transfer from a path: a card's as it is, a server's with what logs in to it (never in the path)
+	bool Ui::Browse::netEnd(const std::string& path, XferEnd& e) const
+	{
+		e = XferEnd();
+		if (!isNetPath(path)) { e.path = path; return true; }
+		NetPath np;
+		const NetServer* sv = ui.netStore && parseNetPath(path, np) ? ui.netStore->find(np.server) : nullptr;
+		if (!sv) return false;
+		e.net = true;
+		e.server = *sv;
+		e.password = ui.netStore->password(*sv);
+		e.path = np.path;
+		return true;
+	}
+
+	// Group Copy / Move with a server at one end (the select bar's): the sources are all on one side (one folder)
+	void Ui::Browse::startNetGroupJob(int op, const std::vector<std::string>& srcs, const std::string& dest, Player& p)
+	{
+		auto j = std::make_shared<FileJob>();
+		j->op = op;
+		j->net = true;
+		j->src = srcs.front();
+		j->dest = dest;
+		j->srcs = srcs;
+		bool gone = !netEnd(dest, j->destEnd);
+		for (const std::string& s : srcs)
+		{
+			XferEnd e;
+			gone = gone || !netEnd(s, e);
+			j->srcEnds.push_back(e);
+			j->names.push_back(isNetPath(s) ? netBaseName(s) : nameOf(s));
+		}
+		if (gone) { ui.alert("This connection is gone", "It was deleted. Add it again in Network."); return; }
+		ui.fileJob = j;
+		ui.fileJobPressed = -1;
+		fprintf(stderr, "files: network group %s %zu files -> %s\n", op == CLIP_COPY ? "copy" : "move", srcs.size(), dest.c_str());
+		FileJob* raw = j.get();
+		j->t = std::thread([raw] { runFileJob(raw); });
+	}
+
 	void Ui::Browse::startNetJob(int op, const std::string& src, const std::string& dest, const std::string& name, Player& p)
 	{
-		auto end = [&](const std::string& path, XferEnd& e) {
-			e = XferEnd();
-			if (!isNetPath(path)) { e.path = path; return true; }
-			NetPath np;
-			const NetServer* sv = ui.netStore && parseNetPath(path, np) ? ui.netStore->find(np.server) : nullptr;
-			if (!sv) return false;
-			e.net = true;
-			e.server = *sv;
-			e.password = ui.netStore->password(*sv);
-			e.path = np.path;
-			return true;
-		};
+		auto end = [&](const std::string& path, XferEnd& e) { return netEnd(path, e); };
 		auto j = std::make_shared<FileJob>();
 		j->op = op;
 		j->net = true;
@@ -503,11 +567,7 @@ namespace bp
 		auto letGo = [this] { clipOp = CLIP_NONE; clipPath.clear(); clipPaths.clear(); };
 		if (cardOut(dest)) { ui.alert("The second card is out", "Put it back in, then try again.");; return; }
 		bool group = srcs.size() > 1;
-		if (group && (isNetPath(dest) || isNetPath(srcs.front())))
-		{
-			ui.alert("One at a time", "A server takes one file at a time: pick them one by one.");
-			return;
-		}
+		// (a group is one folder's, so all on a card or all on one server; a server to a server goes one by one too)
 		// a move of what is already here is nothing; the others still go
 		if (clipOp == CLIP_MOVE)
 			srcs.erase(std::remove_if(srcs.begin(), srcs.end(), [&](const std::string& s) { return parentFolder(s) == dest || (isNetPath(s) && netParent(s) == dest); }), srcs.end());
@@ -530,13 +590,14 @@ namespace bp
 			}
 		}
 		std::string src = srcs.front();
-		// a network folder at one end (or both), one file: xfer.h's job
+		// a network folder at one end (or both): xfer.h's job, one file, or a group (xfergroup.h)
 		if (isNetPath(src) || isNetPath(dest))
 		{
 			bool srcNet = isNetPath(src);
 			int op = clipOp;
 			letGo();
-			startNetJob(op, src, dest, srcNet ? netBaseName(src) : nameOf(src), p);
+			if (group) startNetGroupJob(op, srcs, dest, p);
+			else startNetJob(op, src, dest, srcNet ? netBaseName(src) : nameOf(src), p);
 			return;
 		}
 		bool folder = isDirPath(src);
@@ -599,7 +660,9 @@ namespace bp
 				std::lock_guard<std::mutex> l(j->m);
 				moved.swap(j->moved);
 			}
-			for (auto& m : moved) pathMoved(m.first, m.second, p);
+			// (a copy is new files: nothing that points at the originals follows them)
+			if (!copy)
+				for (auto& m : moved) pathMoved(m.first, m.second, p);
 			fprintf(stderr, "files: %s %zu files: %s\n", copy ? "copy" : "move", j->srcs.size(), err.empty() ? "done" : err.c_str());
 			if (err.empty()) p.osd(std::string(copy ? "Copied " : "Moved ") + std::to_string(moved.size()) + (moved.size() == 1 ? " file" : " files"), 2500);
 			else if (err.rfind("Cancelled", 0) == 0) p.osd(err, 2000);

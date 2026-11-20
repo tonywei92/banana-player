@@ -89,6 +89,7 @@ extern "C"
 #include "webpath.h"
 #include "webstate.h"
 #include "treecopy.h"
+#include "xfergroup.h"
 #include <dirent.h>
 #include <sys/time.h>
 #include <chrono>
@@ -14730,6 +14731,63 @@ static void testArtBackdropSizes()
 	CHECK_EQ((int)s.rgb.size(), W * H * 3);
 }
 
+// a group Copy / Move to or from a server: the job's logic with a stand-in for the one transfer
+static void testXferGroup()
+{
+	std::vector<std::string> names = {"a.mkv", "b.mkv", "c.mkv"};
+	const uint64_t sizes[3] = {100, 50, 25};
+	std::atomic<uint64_t> done{0}, total{0};
+	std::atomic<bool> cancel{false};
+	XferProgress pr;
+	pr.done = &done;
+	pr.total = &total;
+	pr.cancel = &cancel;
+	// the stand-in: measures its item (the total grows by it), copies it, and asks "b" to be named "b (2)"
+	auto one = [&](size_t i, std::string& name, XferProgress& p) {
+		*p.total = p.totalBase + sizes[i];
+		CHECK_EQ(p.doneBase, i == 0 ? 0u : i == 1 ? 100u : 150u);	// the bytes before it
+		*p.done += sizes[i];
+		if (i == 1) name = "b (2)";
+		return std::string();
+	};
+	XferGroupResult r = xferGroup(names, pr, one);
+	CHECK(r.error.empty());
+	CHECK(!r.cancelled);
+	CHECK_EQ(r.landed.size(), 3u);
+	CHECK_EQ(r.landed[1].second, std::string("b (2)"));
+	CHECK_EQ(done.load(), 175u);
+	CHECK_EQ(total.load(), 175u);
+	// a failure at the second stops there: the first stays, the third is not tried
+	done = 0; total = 0;
+	int tried = 0;
+	r = xferGroup(names, pr, [&](size_t i, std::string& name, XferProgress& p) {
+		tried++;
+		if (i == 1) return std::string("The connection was lost: nothing was changed");
+		return one(i, name, p);
+	});
+	CHECK_EQ(tried, 2);
+	CHECK_EQ(r.landed.size(), 1u);
+	CHECK(!r.error.empty());
+	CHECK(!r.cancelled);
+	// a cancel between items (what the Cancel key sets) stops before the next, and says so
+	done = 0; total = 0;
+	r = xferGroup(names, pr, [&](size_t i, std::string& name, XferProgress& p) {
+		std::string e = one(i, name, p);
+		if (i == 0) cancel = true;
+		return e;
+	});
+	CHECK(r.cancelled);
+	CHECK(r.error.empty());
+	CHECK_EQ(r.landed.size(), 1u);
+	// a cancel inside an item (the transfer answers "Cancelled...") is a cancel, not a failure
+	cancel = false; done = 0; total = 0;
+	r = xferGroup(names, pr, [&](size_t i, std::string&, XferProgress&) { return i == 0 ? std::string() : std::string("Cancelled: nothing was changed"); });
+	CHECK(r.cancelled);
+	CHECK_EQ(r.landed.size(), 1u);
+	// nothing to do is done
+	CHECK(xferGroup({}, pr, one).landed.empty());
+}
+
 static void testSongLayout()
 {
 	// the title lines are always on (no setting): Album art only, a long title: art 240 at the 40 margin, the text to 600
@@ -14786,6 +14844,7 @@ int main()
 {
 	testSlider();
 	testSongLayout();
+	testXferGroup();
 	testArtPlaceholder();
 	testArtBackdrop();
 	testArtBackdropTheme();
