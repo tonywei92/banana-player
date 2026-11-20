@@ -24,7 +24,13 @@ namespace artbg
 	constexpr int BLUR_RADIUS = 30;	// 61 taps each way: sigma 10 at this size (40 units on the panel)
 	constexpr size_t PIXELS = (size_t)W * H;
 	constexpr size_t CACHE_CAP = 16u * 1024u * 1024u;	// at most this much in artbg/ (about 270 files)
-	constexpr uint8_t CACHE_VERSION = 2;	// (2: the 5th-percentile luminances joined the header)
+	constexpr uint8_t CACHE_VERSION = 3;	// (2: the 5th-percentile luminances joined the header; 3: the bands are the tall canvas's)
+	// The two panels stacked are one tall canvas (640 x 960 units, 2:3): the picture's middle 80 columns (2:3 of its
+	// 120 rows) run down both, the top panel showing its upper half and the bottom panel its lower half, as one
+	// picture behind both. The luminance bands are the canvas's: above the bottom panel's y 168 (rows 0..80 of the
+	// picture: the whole top panel and the bottom's head) and below it
+	constexpr int CANVAS_X0 = 40, CANVAS_W = 80;
+	constexpr int BAND_ROW = (480 + 168) * H / 960;	// 81
 
 	// What the art gives: one hue (or none), the picture's 95th- and 5th-percentile luminances over the two bands of
 	// the panel (relative luminance x 255: the rows above y 168 and those below — the 95th says how bright a dark
@@ -83,7 +89,11 @@ namespace artbg
 	// picture with the veil baked in per row, the theme's part applied to the art's own bytes never (the fallback
 	// a gradient page, a light theme's the one colour of its plain ground). The bottom panel draws the veil live
 	// instead (Kit::backdrop); this is the top panel's way, composed again only when the theme or the answer moves
-	std::vector<uint8_t> composePage(const Art& art, const Backdrop& b, int w, int h);
+	// Which part of the backdrop a page is: Whole (the 4:3 picture on one panel, the veil's stops down it: the
+	// gallery's), or a half of the tall canvas — Upper (the top panel: the veil flat at the first stop, which the
+	// protection set for the top band) and Lower (the bottom panel: the five stops down it, as the text needs)
+	enum class Half { Whole, Upper, Lower };
+	std::vector<uint8_t> composePage(const Art& art, const Backdrop& b, int w, int h, Half half = Half::Whole);
 
 	// ---- the cache: <state dir>/artbg/<fnv64>.bg, a 7-byte header then W * H * 3 RGB bytes ----
 	// The header: version (2), the hue as two little-endian bytes (0xFFFF: none), then the four luminances.

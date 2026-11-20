@@ -14627,6 +14627,19 @@ static void testArtBackdropPage()
 	CHECK(midRow >= std::min(lo, hi) - 1 && midRow <= std::max(lo, hi) + 1);
 	// nothing to draw: no page
 	CHECK_EQ((int)composePage(a, b, 0, 480).size(), 0);
+	// the tall canvas: the top panel's page (Upper) and the bottom's (Lower) are one picture — a picture that
+	// darkens row by row meets itself across the seam, and the top's veil is flat at the first stop
+	Art ramp = a;
+	for (int y = 0; y < H; y++)
+		for (int x = 0; x < W; x++)
+			for (int c = 0; c < 3; c++) ramp.rgb[((size_t)y * W + x) * 3 + c] = (uint8_t)(240 - 2 * y);
+	Backdrop rb = backdropFor(dark, ramp);
+	std::vector<uint8_t> up = composePage(ramp, rb, W, 480, Half::Upper), lowp = composePage(ramp, rb, W, 480, Half::Lower);
+	int seamUp = up[((size_t)479 * W) * 4], seamLow = lowp[0];
+	CHECK(std::abs(seamUp - seamLow) <= 1);
+	CHECK(up[0] > seamUp);	// (the picture's top is the canvas's top: lighter than the seam)
+	CHECK(lowp[((size_t)479 * W) * 4] < seamLow);
+	CHECK_EQ(BAND_ROW, 81);
 }
 
 static void testArtBackdropCache()

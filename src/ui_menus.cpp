@@ -401,11 +401,11 @@ namespace bp
 		th.dimOn = theme::current.DIM_ON;
 		th.accent = theme::current.ACCENT;
 		const bool fading = bgFadeAt && bgFade.answered;
-		if (fading && !bgFadeTex) bgFadeTex = k.backdropPage(bgFade.art, artbg::backdropFor(th, bgFade.art));
+		if (fading && !bgFadeTex) bgFadeTex = k.backdropPage(bgFade.art, artbg::backdropFor(th, bgFade.art), artbg::Half::Lower);
 		if (!bgTex)
 		{
 			const artbg::Backdrop b = artbg::backdropFor(th, bgNow.art);
-			bgTex = k.backdropPage(bgNow.art, b);
+			bgTex = k.backdropPage(bgNow.art, b, artbg::Half::Lower);	// (the top panel draws the upper half)
 			fprintf(stderr, "backdrop: the player's page composed (%.1f ms; %s veil %d %d %d %d %d)\n",
 				(SDL_GetPerformanceCounter() - t0) * 1000.0 / (double)SDL_GetPerformanceFrequency(),
 				b.fallback ? "the fallback," : "the art under a", b.veil[0], b.veil[1], b.veil[2], b.veil[3], b.veil[4]);

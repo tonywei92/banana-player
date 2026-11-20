@@ -54,3 +54,14 @@ on anything but that plain colour (the backdrop, a card, a light theme's paper) 
 `drawTextAt` takes an `EdgeFade` and `Ui::drawFaded` draws the same cached text texture in vertical slices — whole
 between the ramps, 8 slices a 16-unit ramp at a falling alpha mod (times the marquee's own fade-in alpha). No texture
 is made per frame: 17 copies of one texture at most. `drawMarquee` lost its `ground` argument (five callers).
+
+## 5. One picture down both panels
+
+The owner: both panels showed the same backdrop. Now they are one tall canvas (640 x 960, 2:3): `composePage` takes a
+`Half` — Upper for the top panel's pages (TopScreen::composeBackdrop), Lower for the bottom's (Ui::drawBackdrop) —
+and samples the picture's middle 80 columns over twice the panel's height, so the top shows the art's upper half and
+the bottom its lower half, meeting at the seam (core_test: a row ramp meets itself within 1). Still one blur and one
+cache file per art; each panel composes its half once per art and theme. The veil: the bottom panel keeps its five
+stops; the top panel's is the first stop, flat. The protection's luminance bands moved to the canvas (top band:
+picture rows 0..80, `BAND_ROW`; only the middle columns), so `CACHE_VERSION` is 3 and old `.bg` files are made again.
+The gallery's page 20 still draws a Whole (4:3) page.

@@ -259,12 +259,12 @@ namespace artbg
 					blurred[((size_t)y * W + x) * 3 + c] = sum;
 				}
 
-		// 6. the saturation to 55%, the 95th- and 5th-percentile luminances of the two bands (above and below y 168
-		// on the panel: the bands are 42 and 78 rows of the working size)
+		// 6. the saturation to 55%, the 95th- and 5th-percentile luminances of the two bands of the tall canvas the
+		// panels share (its middle CANVAS_W columns; above and below the bottom panel's y 168: BAND_ROW)
 		art.rgb.resize(PIXELS * 3);
 		std::vector<double> top, low;
-		top.reserve(42 * W);
-		low.reserve((H - 42) * W);
+		top.reserve(BAND_ROW * CANVAS_W);
+		low.reserve((H - BAND_ROW) * CANVAS_W);
 		for (int y = 0; y < H; y++)
 			for (int x = 0; x < W; x++)
 			{
@@ -275,7 +275,7 @@ namespace artbg
 				art.rgb[at] = c.r;
 				art.rgb[at + 1] = c.g;
 				art.rgb[at + 2] = c.b;
-				(y < 42 ? top : low).push_back(relLum(c));
+				if (x >= CANVAS_X0 && x < CANVAS_X0 + CANVAS_W) (y < BAND_ROW ? top : low).push_back(relLum(c));
 			}
 		art.l95top = percentile(top, 0.95);
 		art.l95low = percentile(low, 0.95);
@@ -420,7 +420,7 @@ namespace artbg
 		return at;
 	}
 
-	std::vector<uint8_t> composePage(const Art& art, const Backdrop& b, int w, int h)
+	std::vector<uint8_t> composePage(const Art& art, const Backdrop& b, int w, int h, Half half)
 	{
 		// the backdrop as one page of RGBA (a panel draws it stretched, linearly filtered): the picture with the
 		// veil baked in per row — the theme's part applied here, on the main thread, so the theme can change
@@ -429,29 +429,36 @@ namespace artbg
 		if (w <= 0 || h <= 0) return {};
 		std::vector<uint8_t> out((size_t)w * h * 4, 255);
 		bool picture = !b.fallback && art.rgb.size() == PIXELS * 3;
+		// a half of the tall canvas: its rows are those of a canvas twice as tall, the picture's middle columns
+		const bool canvas = half != Half::Whole;
+		const int rows = canvas ? 2 * h : h, first = half == Half::Lower ? h : 0;
+		const int x0 = canvas ? CANVAS_X0 : 0, cols = canvas ? CANVAS_W : W;
 		for (int y = 0; y < h; y++)
 		{
+			// f: down this panel (the veil's stops are the bottom panel's); g: down the whole canvas (the fallback's
+			// gradient runs over both panels)
 			double f = h > 1 ? (double)y / (h - 1) : 1.0;
+			double g = rows > 1 ? (double)(first + y) / (rows - 1) : 1.0;
 			uint8_t* row = &out[(size_t)y * w * 4];
 			if (!picture)
 			{
-				Rgb c{(unsigned char)(b.top.r + (int)std::lround((b.bottom.r - b.top.r) * f)),
-					(unsigned char)(b.top.g + (int)std::lround((b.bottom.g - b.top.g) * f)),
-					(unsigned char)(b.top.b + (int)std::lround((b.bottom.b - b.top.b) * f))};
+				Rgb c{(unsigned char)(b.top.r + (int)std::lround((b.bottom.r - b.top.r) * g)),
+					(unsigned char)(b.top.g + (int)std::lround((b.bottom.g - b.top.g) * g)),
+					(unsigned char)(b.top.b + (int)std::lround((b.bottom.b - b.top.b) * g))};
 				for (int x = 0; x < w; x++) row[x * 4] = c.r, row[x * 4 + 1] = c.g, row[x * 4 + 2] = c.b;
 				continue;
 			}
 			// the picture's two rows this page row lies between, mixed by where it falls (a page taller than the
 			// picture is stretched smoothly, not in steps of whole rows: the GPU's filter then smooths across)
-			const int at256 = std::max(0, ((2 * y + 1) * H * 256) / (2 * h) - 128);
+			const int at256 = std::max(0, ((2 * (first + y) + 1) * H * 256) / (2 * rows) - 128);
 			const int r0 = std::min(at256 >> 8, H - 1), r1 = std::min(r0 + 1, H - 1), t = at256 & 255;
 			const uint8_t* src0 = &art.rgb[(size_t)r0 * W * 3];
 			const uint8_t* src1 = &art.rgb[(size_t)r1 * W * 3];
-			int veil = veilAt(b, f);
+			int veil = half == Half::Upper ? b.veil[0] : veilAt(b, f);
 			const uint8_t ground[3] = {b.ground.r, b.ground.g, b.ground.b};
 			for (int x = 0; x < w; x++)
 			{
-				int s = x * W / w;
+				int s = x0 + x * cols / w;
 				for (int c = 0; c < 3; c++)
 				{
 					int px = (src0[s * 3 + c] * (256 - t) + src1[s * 3 + c] * t + 128) >> 8;

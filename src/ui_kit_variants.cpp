@@ -1042,10 +1042,10 @@ namespace bp
 		}
 	}
 
-	SDL_Texture* Ui::Kit::backdropPage(const artbg::Art& art, const artbg::Backdrop& b)
+	SDL_Texture* Ui::Kit::backdropPage(const artbg::Art& art, const artbg::Backdrop& b, artbg::Half half)
 	{
 		constexpr int PW = artbg::W, PH = 480;	// the panel's height in rows (the veil's stops are per row of it)
-		std::vector<uint8_t> px = artbg::composePage(art, b, PW, PH);
+		std::vector<uint8_t> px = artbg::composePage(art, b, PW, PH, half);
 		if (px.empty()) return nullptr;
 		SDL_Texture* t = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, PW, PH);
 		if (!t) return nullptr;
