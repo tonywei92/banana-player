@@ -464,7 +464,7 @@ namespace bp
 		bool onServer = mbrowseCursor > nets && mbrowseCursor <= nets + (int)servers.size();
 		if (onServer) ui.drawHints({{"A", "Open"}, {"X", "Edit"}, {"Y", "Add server"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Open"}, {"X", "Sources"}, {"Y", "Add server"}, {"B", "Back"}});
-		if (mangaSrvMenu) drawMangaServerModal(p);
+		if (mangaSrvMenu) later([this, &p] { drawMangaServerModal(p); });
 	}
 
 	// ---- a source's page: Popular · Latest · Search, a cover grid, Search ----
@@ -667,8 +667,9 @@ namespace bp
 			else mangaSourceTabSet(SRC_SEARCH, p);
 			return false;
 		}
-		if (b == Button::L) { mangaSourceTabStep(-1, p); return false; }
-		if (b == Button::R) { mangaSourceTabStep(1, p); return false; }
+		// its tabs step with L2 / R2 (L / R are the shell's sections)
+		if (b == Button::L2) { mangaSourceTabStep(-1, p); return false; }
+		if (b == Button::R2) { mangaSourceTabStep(1, p); return false; }
 		if (b == Button::A && !mangaSrcError.empty())
 		{
 			// the error is what A can do something about, before the grid means anything (the hints say so)
@@ -802,9 +803,9 @@ namespace bp
 		slots[count++] = SRC_SEARCH;
 		static const char* NAMES[3] = {"Popular", "Latest", "Search"};
 		Rect first = mangaSrcTabRect(0), last = mangaSrcTabRect(count - 1);
-		ui.drawTextMid("L", 0, ACCENT, first.x - 12, first.y + first.h / 2, 0, 2);
+		ui.drawTextMid("L2", 0, ACCENT, first.x - 16, first.y + first.h / 2, 0, 2);
 		for (int i = 0; i < count; i++) ui.drawTab(mangaSrcTabRect(i), NAMES[slots[i]], mangaSrcTab == slots[i], 0);
-		ui.drawTextMid("R", 0, ACCENT, last.x + last.w + 12, last.y + last.h / 2, 0, 2);
+		ui.drawTextMid("R2", 0, ACCENT, last.x + last.w + 16, last.y + last.h / 2, 0, 2);
 		int n = (int)mangaSrcItems.size();
 		int rows = (n + MG_COLS - 1) / MG_COLS;
 		if (n && mangaSrcCursor >= n) mangaSrcCursor = n - 1;
@@ -860,13 +861,13 @@ namespace bp
 		}
 		if (!mangaSrcError.empty())
 		{
-			if (mangaFilterAvailable()) ui.drawHints({{"A", "Try again"}, {"X", "Filters"}, {"L/R", "Tabs"}, {"B", "Back"}});
-			else ui.drawHints({{"A", "Try again"}, {"L/R", "Tabs"}, {"B", "Back"}});
+			if (mangaFilterAvailable()) ui.drawHints({{"A", "Try again"}, {"X", "Filters"}, {"L2/R2", "Tabs"}, {"B", "Back"}});
+			else ui.drawHints({{"A", "Try again"}, {"L2/R2", "Tabs"}, {"B", "Back"}});
 		}
 		else if (mangaFilterAvailable())
-			ui.drawHints({{"A", "Open"}, {"Y", "Search"}, {"X", "Filters"}, {"L/R", "Tabs"}, {"B", "Back"}});
-		else ui.drawHints({{"A", "Open"}, {"Y", "Search"}, {"L/R", "Tabs"}, {"B", "Back"}});
-		if (mangaFilterShown()) drawMangaFilters(p);
+			ui.drawHints({{"A", "Open"}, {"Y", "Search"}, {"X", "Filters"}, {"L2/R2", "Tabs"}, {"B", "Back"}});
+		else ui.drawHints({{"A", "Open"}, {"Y", "Search"}, {"L2/R2", "Tabs"}, {"B", "Back"}});
+		if (mangaFilterShown()) later([this, &p] { drawMangaFilters(p); });
 	}
 
 	void Ui::Manga::mangaSourceOpenSeriesAt(int i, Player& p)
@@ -2106,8 +2107,8 @@ namespace bp
 		}
 		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) ui.drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R2", "Download"}, {"L2", "Refresh"}, {"B", "Back"}});
-		if (mdlSheet != MDLS_NONE) drawMangaDlSheet(p);
-		if (mangaSrcInfoShown) drawMangaSrcInfo();
+		if (mdlSheet != MDLS_NONE) later([this, &p] { drawMangaDlSheet(p); });
+		if (mangaSrcInfoShown) later([this] { drawMangaSrcInfo(); });
 	}
 
 	// ---- signature() ----

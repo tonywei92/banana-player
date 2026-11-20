@@ -1226,8 +1226,9 @@ through.
 
 ### Manage extensions
 
-- **Manage extensions** lists the reader with its mark, what it does and an **On/Off** switch. **A** turns it on or off;
-  **X** (or the gear) opens **Manga settings**, the reader's own settings page.
+- **Manage extensions** lists the reader with its mark, what it does and an **On/Off** switch. **A** (or a tap on the
+  row) turns it on or off; **X** opens **Manga settings**, the reader's own settings page. It is a page of the
+  Extensions section: the rail stays, its header reads *Extensions › Manage extensions*, **L/R** step the sections.
 - The first time the reader is turned on, a sheet comes over **Manage extensions**: it says the reader reads from your
   files and servers, and from sources in repositories you add, and that repositories are added by you: Banana Player
   doesn't provide or check their content. **Open Manga** opens the reader, **Done** closes the sheet.
@@ -1235,9 +1236,15 @@ through.
 
 ### The Manga reader
 
-The reader is an app of its own. It opens on **Library** and has four tabs, stepped with **L/R**: **Library**,
-**History**, **Browse** and **Downloads**. **B** goes back — out of Browse's list of series first, then to the
-**Extensions** page (it was Home before).
+The reader is an app of its own, inside the Extensions section: the rail stays at the left (its **Extensions** cell
+lit), the header names the page (*Manga*, with the tab and its count under it: *Library · 9 series*), and the hint bar
+is the shell's. It opens on **Library** and has four tabs, stepped with **L2/R2** (or a tap): **Library**, **History**,
+**Browse** and **Downloads** (*Downloads 2* while two are queued). **L/R** step the sections, as on every page of the
+rail, and coming back to Extensions lands on Manga where you left it (unless a video plays); **L3** is Search. A
+source's **Popular / Latest / Search** and the Sources page's **Available / Repositories** step with **L2/R2** too. A
+sheet or menu over a Manga page comes over the whole panel, rail included, and takes the keys until it closes.
+**B** goes back — out of Browse's list of series first, then to the **Extensions** page (it was Home before). Reading a
+chapter keeps the whole panel (no rail).
 **START** opens **Manga settings**, the reader's own settings page, on any of its pages (a series page too); **B** there
 comes back where you were. Music keeps playing while you read: the pages take the top screen, and F's Now playing
 block is on every page, the reading page included (its **SELECT** opens what plays: a video shows on the top screen again, and
@@ -1307,7 +1314,7 @@ field (the kept address has `{key}` where the key was), put back only in the req
 `{key}` in every answer before it's read, so no list, link or page address holds it.
 
 **A source.** **A** on one opens it: **Popular**, **Latest** (when the source has one) and **Search** as tabs, stepped
-with **L/R** or a tap (**Y**, or the Search tab, asks for the words on the keyboard), and the results as a grid that
+with **L2/R2** or a tap (**Y**, or the Search tab, asks for the words on the keyboard), and the results as a grid that
 fills in as you move down it, each tile showing the series' real cover once it has come in (fetched with the source's
 own headers while the tile is on screen, kept in a cache on the card; a plain coloured one stands in until it arrives).
 **X** opens the **Filters** sheet, where the source has filters: its own sorts, selects, checks, include / exclude
@@ -1328,8 +1335,8 @@ old or more, the details line under the title ends **· Checked 7h ago · L2** (
 ever asked by itself). An extension's series doesn't start the manga engine when it opens either: that
 waits for **Resume** or a chapter; while a check runs it ends **Checking for new chapters…**.
 
-**Sources.** **X** on Browse opens its own page (its header says **Sources**; **B** goes back to Browse). Three lists,
-stepped with **LEFT/RIGHT** (**L/R** still step the app's tabs): **Installed**, **Available** and **Repositories**. **Y**
+**Sources.** **X** on Browse opens its own page (its header says **Sources**; **B** goes back to Browse). Its lists step
+with **L2/R2** (**L/R** are the sections): **Installed**, **Available** and **Repositories**. **Y**
 checks the repositories again, and the top screen says how it went: **Installed …**, **Updated …**, **Removed …**, or why
 it couldn't. With nothing yet they say where to start: *No sources yet* (add a repository, then install from
 **Available**) and *Nothing to install* (add a repository first).

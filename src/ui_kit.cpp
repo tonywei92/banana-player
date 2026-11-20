@@ -488,10 +488,22 @@ namespace bp
 
 	// ---- tabs and a segmented choice ----
 
+	int Ui::Kit::tabW(const std::string& label) const
+	{
+		return std::max(44, textW(label, F_P14) + 2 * lay::TAB_PAD);
+	}
+
+	int Ui::Kit::tabCapW(const std::string& keys) const
+	{
+		int w = lay::TAB_CAP;
+		for (auto& k : capNames(keys)) w = std::max(w, capsW(k));
+		return w;
+	}
+
 	std::vector<Ui::Rect> Ui::Kit::tabRects(Rect area, const std::vector<std::string>& labels, bool caps) const
 	{
 		std::vector<int> widths;
-		for (auto& l : labels) widths.push_back(std::max(44, textW(l, F_P14) + 2 * lay::TAB_PAD));
+		for (auto& l : labels) widths.push_back(tabW(l));
 		lay::Tabs t = lay::tabs(area, widths);
 		int shift = caps ? 0 : lay::TAB_CAP + lay::TAB_GAP;
 		for (auto& b : t.tab) b.x -= shift;
@@ -500,10 +512,17 @@ namespace bp
 
 	void Ui::Kit::tabs(Rect area, const std::vector<std::string>& labels, int on, const std::string& keys)
 	{
+		tabs(area, labels, on, keys, SURFACE);
+	}
+
+	void Ui::Kit::tabs(Rect area, const std::vector<std::string>& labels, int on, const std::string& keys, SDL_Color ground,
+		int pressed)
+	{
 		std::vector<int> widths;
-		for (auto& l : labels) widths.push_back(std::max(44, textW(l, F_P14) + 2 * lay::TAB_PAD));
-		lay::Tabs t = lay::tabs(area, widths);
-		int shift = keys.empty() ? lay::TAB_CAP + lay::TAB_GAP : 0;
+		for (auto& l : labels) widths.push_back(tabW(l));
+		int capW = keys.empty() ? lay::TAB_CAP : tabCapW(keys);
+		lay::Tabs t = lay::tabs(area, widths, lay::TAB_GAP, capW);
+		int shift = keys.empty() ? capW + lay::TAB_GAP : 0;
 		for (size_t i = 0; i < t.tab.size(); i++)
 		{
 			Rect r = t.tab[i];
@@ -512,21 +531,21 @@ namespace bp
 			if (theme::drawingClean())
 			{
 				// BUTTON, and the chosen one the accent's tint with ACCENT ink (not a solid accent)
-				SDL_Color fill = at ? sdl(theme::tintOf(rgb(BUTTON))) : BUTTON;
+				SDL_Color fill = (int)i == pressed ? PRESSED : at ? sdl(theme::tintOf(rgb(BUTTON))) : BUTTON;
 				ui.fillRound(r, fill, theme::kitRadius(R_BUTTON));
 				ui.drawTextMid(labels[i], F_P14, at ? ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 8, 2);
 				continue;
 			}
 			// (off: a button; on: yellow with its lip, as the mock-up's tab)
-			ui.drawBox(r, at ? ACCENT : BUTTON, R_BUTTON);
+			ui.drawBox(r, (int)i == pressed ? PRESSED : at ? ACCENT : BUTTON, R_BUTTON);
 			ui.drawTextMid(labels[i], F_P14, at ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 8, 2);
 		}
 		if (keys.empty()) return;
-		// the caps that step it: the first name at the left end, the last at the right
+		// the caps that step it: the first name at the left end, the last at the right (each centred in its box)
 		auto names = capNames(keys);
 		int cy = area.y + area.h / 2;
-		if (!names.empty()) caps(names.front(), t.left.x, cy, ACCENT, SURFACE);
-		if (names.size() > 1) caps(names.back(), t.right.x, cy, ACCENT, SURFACE);
+		if (!names.empty()) caps(names.front(), t.left.x + (t.left.w - capsW(names.front())) / 2, cy, ACCENT, ground);
+		if (names.size() > 1) caps(names.back(), t.right.x + (t.right.w - capsW(names.back())) / 2, cy, ACCENT, ground);
 	}
 
 	void Ui::Kit::segment(Rect area, const std::vector<std::string>& options, int on)

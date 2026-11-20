@@ -279,11 +279,12 @@ namespace bp
 		if (mstAvMenu) return mangaAvMenuKey(b, p);
 		if (mstJavaModal != MJM_NONE) return mangaJavaModalKey(b, p);
 		if (mstModal != MSM_NONE) return mangaSourcesModalKey(b, p);
-		// L1/R1 step between Available and Repositories (the cursor of each kept); LEFT/RIGHT go a page up or down
-		if (b == Button::L || b == Button::R)
+		// L2/R2 step between Available and Repositories (the cursor of each kept; L / R are the shell's sections);
+		// LEFT/RIGHT go a page up or down
+		if (b == Button::L2 || b == Button::R2)
 		{
 			int was = mstTab;
-			mstTab = b == Button::R ? MST_REPOSITORIES : MST_AVAILABLE;
+			mstTab = b == Button::R2 ? MST_REPOSITORIES : MST_AVAILABLE;
 			if (mstTab == MST_AVAILABLE && was != MST_AVAILABLE) mangaAvFreeze(p);
 			if (mstTab != was) mstLocal++;
 			return false;
@@ -605,8 +606,8 @@ namespace bp
 			ui.drawBox(r, at ? ACCENT : SURFACE, R_CHIP);
 			ui.drawTextMid(MST_NAMES[tab], 0, at ? ON_ACCENT : TEXT, r.x + r.w / 2, r.y + r.h / 2, r.w - 16, 2);
 		}
-		ui.drawTextMid("L", 0, ACCENT, 8, mangaSourcesSegRect(0).y + 13, 0, 2);
-		ui.drawTextMid("R", 0, ACCENT, 632, mangaSourcesSegRect(1).y + 13, 0, 2);
+		ui.drawTextMid("L2", 0, ACCENT, 12, mangaSourcesSegRect(0).y + 13, 0, 2);
+		ui.drawTextMid("R2", 0, ACCENT, 628, mangaSourcesSegRect(1).y + 13, 0, 2);
 		int n = mangaSourcesRows(p);
 		int& cur = mstCursor[mstTab], &sc = mstScroll[mstTab];
 		if (n > 0 && cur >= n) cur = n - 1;
@@ -769,17 +770,17 @@ namespace bp
 		for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, DIM, 40, 396 + (int)i * 20, 552);
 
 		if (mstTab == MST_INSTALLED)
-			ui.drawHints({{"A", "Details"}, {"X", "Options"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+			ui.drawHints({{"A", "Details"}, {"X", "Options"}, {"L2/R2", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 		else if (mstTab == MST_AVAILABLE)
-			ui.drawHints({{"A", "Install"}, {"X", "Filter"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+			ui.drawHints({{"A", "Install"}, {"X", "Filter"}, {"L2/R2", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 		else if (mstCursor[MST_REPOSITORIES] < (int)mangaSourcesRepos().size() + mangaJavaRepoRows())
-			ui.drawHints({{"A", "Options"}, {"X", "Remove"}, {"L/R", "List"}, {"B", "Back"}});
-		else ui.drawHints({{"A", "Open"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+			ui.drawHints({{"A", "Options"}, {"X", "Remove"}, {"L2/R2", "List"}, {"B", "Back"}});
+		else ui.drawHints({{"A", "Open"}, {"L2/R2", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
 
-		if (mstModal != MSM_NONE) drawMangaSourceModal(p);
-		if (mstJavaModal != MJM_NONE) drawMangaJavaModal(p);
-		if (mstAvMenu) drawMangaAvMenu(p);
-		if (mengSheet) drawMangaEngineSheet();
+		if (mstModal != MSM_NONE) later([this, &p] { drawMangaSourceModal(p); });
+		if (mstJavaModal != MJM_NONE) later([this, &p] { drawMangaJavaModal(p); });
+		if (mstAvMenu) later([this, &p] { drawMangaAvMenu(p); });
+		if (mengSheet) later([this] { drawMangaEngineSheet(); });
 	}
 
 	void Ui::Manga::drawMangaSourceModal(const Player& p)

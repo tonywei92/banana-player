@@ -10956,6 +10956,30 @@ static void testKitLayout()
 	CHECK_EQ(strip.right.y, strip.left.y);
 	CHECK_EQ(tabs({0, 0, 100, 44}, {30}).tab[0].x, 25);
 	CHECK_EQ(tabs({0, 0, 100, 44}, {}).tab.size(), (size_t)0);
+	// wider caps ("L2" / "R2"): the tabs start after them, the right cap after the last tab; never under 19
+	Tabs wide = tabs({16, 60, 608, 44}, {80, 100}, 6, 27);
+	CHECK_EQ(wide.left.w, 27);
+	CHECK_EQ(wide.tab[0].x, 16 + 27 + 6);
+	CHECK_EQ(wide.right.x, wide.tab[1].x + 100 + 6);
+	CHECK_EQ(wide.right.w, 27);
+	CHECK_EQ(tabs({0, 0, 100, 44}, {30}, 6, 5).tab[0].x, 25);
+	// a tab page (Manga's four tabs in the shell's body): the strip on the inner body's top, the content 8 under it,
+	// to the body's foot; a touch finds the tab it is on, the gaps none
+	{
+		Shell sh = shell();
+		TabPage tp = tabPage(sh.body, {84, 80, 80, 104}, 27);
+		CHECK_EQ(tp.inner.x, sh.body.x + 12);
+		CHECK_EQ(tp.inner.w, sh.body.w - 24);
+		CHECK_EQ(tp.strip.tab[0].y, sh.body.y);
+		CHECK_EQ(tp.strip.tab[0].h, 44);
+		CHECK_EQ(tp.strip.tab[0].x, tp.inner.x + 27 + 6);
+		CHECK(tp.strip.right.x + tp.strip.right.w <= tp.inner.x + tp.inner.w);
+		CHECK_EQ(tp.content.y, sh.body.y + 44 + 8);
+		CHECK_EQ(tp.content.y + tp.content.h, sh.body.y + sh.body.h);
+		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[2].x + 1, tp.strip.tab[2].y + 1), 2);
+		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[1].x + tp.strip.tab[1].w + 2, tp.strip.tab[1].y + 10), -1);
+		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[0].x + 5, tp.content.y + 5), -1);
+	}
 
 	// the List sheet: a header, seven rows 46 tall, the rows clear of the hint bar
 	ListSheet ls = listSheet(7);

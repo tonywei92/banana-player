@@ -66,7 +66,8 @@ namespace bp
 		// adopted(p) tells its views from the rest.
 		bool beginBody(const Player& p);
 		void endBody(const Player& p);
-		bool mapPoint(const Player& p, int& x, int& y) const;
+		// any: a finger already down (a move, a lift) is mapped wherever it is, so a drag that leaves the box goes on
+		bool mapPoint(const Player& p, int& x, int& y, bool any = false) const;
 		void adopt(Page pg);	// the page's body is drawn in layout().body (a screen rebuilt on the kit)
 		void adoptBrowse();	// the browser's rebuilt views: Home, All recent, Files, Playlists
 		bool adopted(Page pg) const;
@@ -104,6 +105,7 @@ namespace bp
 		{
 			bool on = false;
 			int x = 0, y = 0, w = 0, h = 0;	// in panel units
+			int srcTop = 54;	// the old page's part copied: srcTop..450 (Manga's tab view: under its old tabs)
 		} bridge;
 		Bridge bridgeFor(const Player& p) const;
 	};

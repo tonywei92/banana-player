@@ -28,10 +28,11 @@ namespace bp
 	bool Ui::Shell::page(Page pg) const
 	{
 		// the shell's pages: the browser (Home, Files, Playlists, Network, All recent), the Extensions section's
-		// list, Settings, Search, and the library sections the index fills (Music, Videos, Books). Manga's pages keep
-		// their own frame (their tabs are the top of the panel) until they are rebuilt too.
+		// list, Settings, Search, the library sections the index fills (Music, Videos, Books), and Manga's pages
+		// (Manage extensions, the four tabs, a series, Sources, Manga settings) but the reader's, which keeps its
+		// own frame (a comic's page needs the whole panel).
 		return pg == Page::Browse || pg == Page::ExtSection || pg == Page::Settings || pg == Page::Search ||
-			pg == Page::Music || pg == Page::Videos || pg == Page::Books;
+			pg == Page::Music || pg == Page::Videos || pg == Page::Books || (ui.manga && ui.manga->shellPage(pg));
 	}
 
 	std::vector<Ui::Shell::Cell> Ui::Shell::cells(const Player& p) const
@@ -95,6 +96,8 @@ namespace bp
 		if (ui.page == Page::Music) return ui.music->head(p);
 		if (ui.page == Page::Videos) return ui.videos->head(p);
 		if (ui.page == Page::Books) return ui.books->head(p);
+		// Manga's pages (Manage extensions, the app's tabs and pages): the area says
+		if (ui.page != Page::ExtSection && ui.manga->shellPage(ui.page)) return ui.manga->head(p);
 		if (ui.page == Page::ExtSection)
 		{
 			// the Extensions section (docs/redesign: ext-section, ext-section-video, ext-section-empty): a list that
@@ -270,6 +273,8 @@ namespace bp
 	bool Ui::Shell::key(Button b, Player& p)
 	{
 		if (!page(ui.page)) return false;
+		// a Manga sheet, menu or the keyboard has the keys (it is drawn over the frame, as it always was)
+		if (ui.manga->shellPage(ui.page) && ui.manga->shellModal()) return false;
 		const Browse& br = *ui.browse;
 		bool modal = br.playlists->pickerOpen || br.playlists->selMode != SEL_NONE || br.playlists->addPending.serial;
 		// All recent's tabs keep a key: L2 / R2 (the spec moves them there, L / R being sections everywhere in the shell)
@@ -281,7 +286,7 @@ namespace bp
 		}
 		// Search by the keys (L3), while browsing, on the Extensions page, on Settings or on a library page (the
 		// sections the index fills): a note for now (not while a form, a selection or the picker has the page)
-		if (b == Button::L3 && (ui.page == Page::Settings || ui.page == Page::ExtSection || ui.page == Page::Music ||
+		if (b == Button::L3 && (ui.page == Page::Settings || ui.manga->shellPage(ui.page) || ui.page == Page::Music ||
 			ui.page == Page::Videos || ui.page == Page::Books || (ui.page == Page::Browse && !modal)))
 		{
 			search(p);
@@ -324,6 +329,8 @@ namespace bp
 	bool Ui::Shell::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (!page(ui.page)) return false;
+		// a Manga sheet over the frame takes the finger, the rail and the header under it included
+		if (ui.manga->shellPage(ui.page) && ui.manga->shellModal()) return false;
 		lay::Shell s = layout(p);
 		std::vector<Cell> cs = cells(p);
 		lay::Rail r = lay::rail((int)cs.size(), lay::PANEL_H, railScroll);
@@ -565,13 +572,23 @@ namespace bp
 		Bridge b;
 		lay::Shell s = layout(p);
 		// the old page is 640 x 480 with its own header (0..54) and hint bar (450..480): the body is the part between,
-		// scaled uniformly into the shell's body (centred, so nothing is cut)
-		const int sw = 640, sh = 396;
-		double sc = std::min(s.body.w / (double)sw, s.body.h / (double)sh);
+		// scaled uniformly into the shell's body (centred, so nothing is cut). Manga's pages say which part and where
+		// (its tab view: the part under its old tabs, under the kit's tabs; the top kept, so the lists start there)
+		lay::Box dst = s.body;
+		int srcTop = 54;
+		bool top = false;
+		if (ui.manga->shellPage(ui.page))
+		{
+			ui.manga->shellBand(p, dst, srcTop);
+			top = true;
+		}
+		const int sw = 640, sh = 450 - srcTop;
+		double sc = std::min(dst.w / (double)sw, dst.h / (double)sh);
 		b.w = std::max(1, (int)std::lround(sw * sc));
 		b.h = std::max(1, (int)std::lround(sh * sc));
-		b.x = s.body.x + (s.body.w - b.w) / 2;
-		b.y = s.body.y + (s.body.h - b.h) / 2;
+		b.x = dst.x + (dst.w - b.w) / 2;
+		b.y = top ? dst.y : dst.y + (dst.h - b.h) / 2;
+		b.srcTop = srcTop;
 		b.on = !adopted(p);
 		return b;
 	}
@@ -619,20 +636,21 @@ namespace bp
 		SDL_RenderSetClipRect(ui.ren, nullptr);
 		Bridge b = bridge;
 		// the source is the old page's body between its header and its hint bar, in the renderer's pixels
-		SDL_Rect src{0, (int)std::lround(54 * sy), (int)std::lround(640 * sx), (int)std::lround(396 * sy)};
+		SDL_Rect src{0, (int)std::lround(b.srcTop * sy), (int)std::lround(640 * sx), (int)std::lround((450 - b.srcTop) * sy)};
 		SDL_Rect dst{(int)std::lround(b.x * sx), (int)std::lround(b.y * sy), (int)std::lround(b.w * sx), (int)std::lround(b.h * sy)};
 		SDL_SetTextureBlendMode(bodyTex, SDL_BLENDMODE_BLEND);
 		SDL_RenderCopy(ui.ren, bodyTex, &src, &dst);
 		(void)p;
 	}
 
-	bool Ui::Shell::mapPoint(const Player& p, int& x, int& y) const
+	bool Ui::Shell::mapPoint(const Player& p, int& x, int& y, bool any) const
 	{
 		if (adopted(p) || !bridge.on) return false;
 		Bridge b = bridgeFor(p);
-		if (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h) return false;
-		x = (x - b.x) * 640 / b.w;
-		y = 54 + (y - b.y) * 396 / b.h;
+		if (!any && (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h)) return false;
+		int sh = 450 - b.srcTop;
+		x = (int)std::floor((x - b.x) * 640.0 / b.w);
+		y = b.srcTop + (int)std::floor((y - b.y) * (double)sh / b.h);
 		return true;
 	}
 }

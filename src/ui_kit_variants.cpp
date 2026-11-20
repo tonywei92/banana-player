@@ -1859,11 +1859,28 @@ namespace bp
 			ui.drawTextMid("Light \xC2\xB7 the fallback", F_I12, sdl(lightInk), 328, 254, 200);
 		}
 
+		// a tab page (lay::tabPage; screens.js manga): the tabs stepped by L2 / R2 over a body, in the shell's body,
+		// then the same strip with L / R caps as a sheet draws it
+		void page21(Kit& k)
+		{
+			ui.fill({0, 0, W, H}, BG);
+			std::vector<std::string> labels = {"Library", "History", "Browse", "Downloads 2"};
+			std::vector<int> widths;
+			for (auto& l : labels) widths.push_back(k.tabW(l));
+			lay::TabPage tp = lay::tabPage(lay::shell().body, widths, k.tabCapW("L2/R2"));
+			k.tabs(tp.strip.area, labels, 0, "L2/R2", BG);
+			ui.fill({tp.content.x, tp.content.y, tp.content.w, 1}, RULE);
+			ui.drawTextMid("content", F_I12, DIM, tp.content.x + 12, tp.content.y + 16, 200);
+			k.tabs({16, 300, 608, 54}, {"Up next", "Chapters"}, 1, "L/R", BG, 0);
+			k.hints({{"A", "Open"}, {"X", "More"}, {"L2/R2", "Tab"}, {"L/R", "Sections"}});
+		}
+
 		void draw(const Player&) override
 		{
 			Kit& k = *ui.kit;
 			switch (page)
 			{
+			case 21: page21(k); break;
 			case 2: page2(k); break;
 			case 3: page3(k); break;
 			case 4: page4(k); break;

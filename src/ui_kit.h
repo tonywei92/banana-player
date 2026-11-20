@@ -173,6 +173,12 @@ namespace bp
 		std::vector<Rect> tabRects(Rect area, const std::vector<std::string>& labels, bool caps = true) const;
 		// keys: the caps at its ends ("L/R" in a sheet); on: the open tab (-1 none)
 		void tabs(Rect area, const std::vector<std::string>& labels, int on, const std::string& keys = "L/R");
+		// the same on a page's ground (BG, not a sheet's SURFACE): the caps' ground, the pressed tab (-1 none)
+		void tabs(Rect area, const std::vector<std::string>& labels, int on, const std::string& keys, SDL_Color ground,
+			int pressed = -1);
+		// a tab's width for its label (F_P14 plus its padding), and the caps' width for `keys` ("L2/R2": the wider)
+		int tabW(const std::string& label) const;
+		int tabCapW(const std::string& keys) const;
 		// options shared across `area` 6 apart, 40 tall (the caller's area): the chosen one yellow with black ink
 		void segment(Rect area, const std::vector<std::string>& options, int on);
 		enum class Pill { None, Live, Fact, Bad };	// yellow: live or wants attention; neutral: a fact; red: failed

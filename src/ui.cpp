@@ -293,7 +293,7 @@ namespace bp
 				aboutQr = false;
 				return false;
 			}
-			if (page != Page::Manga && page != Page::MangaSeries && page != Page::MangaRead &&
+			if (page != Page::Manga && page != Page::MangaSeries && page != Page::MangaRead && page != Page::MangaSources &&
 				page != Page::DocText && page != Page::DocPages)
 			{
 				if (p.settings.buttonHotkeys && p.playing() && !p.playingPhoto() && p.error.empty() && page == Page::Main)
@@ -596,11 +596,16 @@ namespace bp
 			return browse->homeView->homePointer(pt, x, y, p);
 		// the shell's rail, header and mini bar first (the page's body is under them)
 		if (shell->page(page) && shell->pointer(pt, x, y, p)) return false;
-		// a section page's old body is drawn scaled into the shell's body box: its touches are mapped back
-		if (shell->page(page))
+		// Manga's pages: the kit's tabs over the bridged body take their touches as drawn (before the mapping), and a
+		// sheet over the frame takes the finger at full size (no mapping)
+		bool mangaSheet = manga->shellPage(page) && manga->shellModal();
+		if (shell->page(page) && manga->shellPage(page) && !mangaSheet && manga->shellPointer(pt, x, y, p)) return false;
+		// a section page's old body is drawn scaled into the shell's body box: its touches are mapped back (a finger
+		// already down wherever it goes, so a drag that leaves the box goes on)
+		if (shell->page(page) && !mangaSheet)
 		{
 			int mx = x, my = y;
-			if (shell->mapPoint(p, mx, my)) { x = mx; y = my; }
+			if (shell->mapPoint(p, mx, my, pt.kind != Pointer::Down)) { x = mx; y = my; }
 		}
 		// All recent's tabs: a tap on one shows that kind
 		if (page == Page::Browse && browse->browseDir == RECENT && !ctxOpen && p.settings.keepHistory && browse->homeView->recentCounts[0] && y < ROW_Y)
