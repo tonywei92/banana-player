@@ -37,7 +37,7 @@ namespace bp
 
 	std::vector<Ui::Shell::Cell> Ui::Shell::cells(const Player& p) const
 	{
-		// The spec's order: Home, Files, Videos, Music, Books, Extensions, Network — seven sections, all in
+		// The spec's order: Home, Files, Videos, Music, Books, Extensions — six sections (Network is a tab of Files), all in
 		// sight (the cells go 45 tall; lay::rail). Videos and Music are filled by themselves from the folders named
 		// Videos/Movies and Music on each card; Books from the doc places and the Books and Documents folders.
 		// Extensions is one cell for every extension that is on (Manga reader is a row of its page), and it is
@@ -50,7 +50,6 @@ namespace bp
 			{Section::Music, &G_NOTE, "Music"},
 			{Section::Books, &G_BOOK, "Books"},
 			{Section::Extensions, &G_BLOCKS, "Extensions"},
-			{Section::Network, &G_NETWORK, "Network"},
 		};
 	}
 
@@ -70,7 +69,6 @@ namespace bp
 		const std::string& dir = ui.browse->browseDir;
 		if (dir == HOMEDIR || dir == RECENT) return Section::Home;
 		if (dir == PLROOT || isPlDir(dir)) return Section::Music;		// Playlists: Music's third view
-		if (dir == NETROOT || dir == FORMDIR || dir == FINDNET || isNetPath(dir)) return Section::Network;
 		return Section::Files;
 	}
 
@@ -191,12 +189,14 @@ namespace bp
 				: dir == FINDNET ? "Find on the network" : baseName(dir);
 			int servers = 0;
 			for (auto& row : b.browseRows) servers += row.id == 4;
-			h.crumb = dir == NETROOT ? (servers ? std::to_string(servers) + (servers == 1 ? " connection" : " connections")
-				: std::string("No connections")) : std::string("Network");
+			// Network is a tab of Files: its crumb names Files first
+			std::string files = std::string("Files") + DOT + "Network";
+			h.crumb = dir == NETROOT ? files + " \xC2\xB7 " + (servers ? std::to_string(servers) + (servers == 1 ? " connection" : " connections")
+				: std::string("No connections")) : files;
 			h.more = dir == NETROOT;
 			if (dir == NETROOT && b.emptyAction())
-				h.hints = {{"A", "Find on the network"}, {"Y", "Add connection"}, {"B", "Home"}, {"L2/R2", "Sections"}};
-			else if (dir == NETROOT) h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Add"}, {"B", "Home"}, {"L2/R2", "Sections"}};
+				h.hints = {{"A", "Find on the network"}, {"Y", "Add connection"}, {"B", "Home"}, {"L/R", "Tab"}, {"L2/R2", "Sections"}};
+			else if (dir == NETROOT) h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Add"}, {"B", "Home"}, {"L/R", "Tab"}, {"L2/R2", "Sections"}};
 			else if (dir == FORMDIR) h.hints = {{"A", "Edit"}, {"LEFT/RIGHT", "Change"}, {"Y", "Test"}, {"START", "Save"}, {"B", "Cancel"}};
 			else if (dir == FINDNET) h.hints = {{"A", "Add this one"}, {"B", "Back"}};
 			else h.hints = {{"A", "Open"}, {"X", "More"}, {"Y", "Select"}, {"B", "Up"}, {"L2/R2", "Sections"}};
@@ -250,7 +250,6 @@ namespace bp
 			if (!ui.browse->atHome()) ui.browse->enterFolder(HOMEDIR, p);
 			break;
 		case Section::Files: ui.browse->openSection(TAB_LOCAL, p); break;
-		case Section::Network: ui.browse->openSection(TAB_NETWORK, p); break;
 		// Extensions: its list, or Manga again where it was left (and never opened by the rail itself, so arriving
 		// here starts and stops nothing)
 		case Section::Extensions: ui.manga->openExtensionsSection(p); break;

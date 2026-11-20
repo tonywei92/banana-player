@@ -1200,6 +1200,52 @@ namespace bp
 			(browseDir.empty() || (!pseudoDir(browseDir) && !isNetPath(browseDir)));
 	}
 
+	bool Ui::Browse::tabsOn() const
+	{
+		return (filesPage() && browseDir.empty() && !fileSel) || browseDir == NETROOT;
+	}
+
+	lay::TabPage Ui::Browse::browseTabPage() const
+	{
+		Kit& k = *ui.kit;
+		return lay::tabPage(lay::shell().body, {k.tabW("Files"), k.tabW("Network")}, k.tabCapW("L/R"));
+	}
+
+	lay::Box Ui::Browse::tabsBody() const
+	{
+		lay::Box b = lay::shell().body;
+		if (!tabsOn()) return b;
+		int top = browseTabPage().content.y;
+		return {b.x, top, b.w, b.y + b.h - top};
+	}
+
+	void Ui::Browse::drawBrowseTabs()
+	{
+		if (!tabsOn()) return;
+		ui.kit->tabs(browseTabPage().strip.area, {"Files", "Network"}, browseDir == NETROOT ? 1 : 0, "L/R", BG, browseTabPressed);
+	}
+
+	bool Ui::Browse::tabsPointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		if (!tabsOn()) { browseTabPressed = -1; return false; }
+		lay::TabPage tp = browseTabPage();
+		if (pt.kind == Pointer::Down)
+		{
+			browseTabPressed = -1;
+			if (y < tp.strip.area.y || y >= tp.content.y) return false;
+			browseTabPressed = lay::tabAt(tp.strip, x, y);
+			return true;
+		}
+		if (browseTabPressed < 0) return false;
+		if (pt.kind == Pointer::Up)
+		{
+			int t = browseTabPressed;
+			browseTabPressed = -1;
+			if (lay::tabAt(tp.strip, x, y) == t && (t == 1) != (browseDir == NETROOT)) openSection(t == 1 ? TAB_NETWORK : TAB_LOCAL, p);
+		}
+		return true;
+	}
+
 	bool Ui::Browse::filesEmpty() const
 	{
 		return browseRows.empty() || (browseRows.size() == 1 && browseRows[0].id < 0);
@@ -1255,10 +1301,9 @@ namespace bp
 
 	lay::FilesPage Ui::Browse::filesLayout(const Player& p) const
 	{
-		lay::Shell s = lay::shell();
 		int n = (int)browseRows.size();
 		bool footer = !filesEmpty();
-		return lay::filesPage(s.body, n, fileSel, footer);
+		return lay::filesPage(tabsBody(), n, fileSel, footer);
 	}
 
 	int Ui::Browse::filesShown(const Player& p) const { return filesLayout(p).shown; }
@@ -1277,7 +1322,7 @@ namespace bp
 			return {{"SELECT", "Put it here"}, {"X", "Cancel"}, {"A", "Open"}, {"B", "Up"}};
 		if (filesEmpty())
 		{
-			if (browseDir.empty()) return {{"L2/R2", "Sections"}};
+			if (browseDir.empty()) return {{"L/R", "Tab"}, {"L2/R2", "Sections"}};
 			if (!browseRows.empty() && browseRows[0].label == "This folder can't be opened")
 				return {{"A/B", "Go up"}, {"X", "More"}, {"L2/R2", "Sections"}};
 			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L2/R2", "Sections"}};
@@ -1286,6 +1331,7 @@ namespace bp
 		// the rail's Now playing key is the touch; SELECT its key (files-playing)
 		if (ui.nowPlayable(p)) h.push_back({"SELECT", "Now playing"});
 		else h.push_back({"LEFT/RIGHT", "Page"});
+		if (browseDir.empty()) h.push_back({"L/R", "Tab"});
 		h.push_back({"L2/R2", "Sections"});
 		return h;
 	}
@@ -1381,6 +1427,7 @@ namespace bp
 	void Ui::Browse::drawFiles(const Player& p)
 	{
 		lay::FilesPage f = filesLayout(p);
+		drawBrowseTabs();
 		if (filesEmpty())
 		{
 			drawFilesEmpty(f, p);
@@ -2178,9 +2225,9 @@ namespace bp
 	Ui::Browse::NetPageLayout Ui::Browse::netLayout(const Player& p) const
 	{
 		(void)p;
-		lay::Shell sh = lay::shell();
+		lay::Box sb = tabsBody();
 		NetPageLayout l;
-		l.body = {sh.body.x + 8, sh.body.y + 4, sh.body.w - 16, sh.body.h - 8};
+		l.body = {sb.x + 8, sb.y + 4, sb.w - 16, sb.h - 8};
 		l.list = l.body;
 		l.rowsY = l.body.y;
 		int x = l.body.x, w = l.body.w, y = l.body.y, h = l.body.h;
@@ -2304,6 +2351,7 @@ namespace bp
 
 	void Ui::Browse::drawNet(const Player& p)
 	{
+		drawBrowseTabs();
 		if (browseDir == NETROOT) drawNetList(p);
 		else if (browseDir == FORMDIR) drawNetForm(p);
 		else drawNetFind(p);
@@ -2595,6 +2643,8 @@ namespace bp
 				if (p.settings.keepHistory && homeView->recentCounts[0]) homeView->stepRecentTab(b == Button::R ? 1 : -1, p);
 				return false;
 			}
+			// Files' and Network's tabs (the tops of each)
+			if (tabsOn()) openSection(b == Button::R ? TAB_NETWORK : TAB_LOCAL, p);
 			return false;
 		}
 		// the browser's own keys below: B up a folder or Home, START the menu, the list's
@@ -2619,6 +2669,8 @@ namespace bp
 	{
 		// the redesigned playlist pages: their rows, keys and bars test the Rects their draw used
 		if (playlists->onPage() && playlists->pointer(pt, x, y, p)) return false;
+		// Files' tabs, on the places and the connections' list
+		if (tabsPointer(pt, x, y, p)) return false;
 		// the Network pages' own boxes (netLayout: the same Rects their draw used)
 		if (netPage()) return netPointer(pt, x, y, p);
 		// (its downs come late: after the header's "<" and the empty page's button; the rest where the readers' do)
@@ -2698,7 +2750,7 @@ namespace bp
 	std::string Ui::Browse::signature(const Player& p) const
 	{
 		// the section and its listing; what Copy / Move holds (the bar along the foot); Home's focus and strip
-		std::string s = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "");
+		std::string s = "|tab" + std::to_string(browseTab) + (netLoading ? "L" : "") + "|bt" + std::to_string(browseTabPressed);
 		if (netPage()) s += "|net" + std::to_string(netFoot) + "," + std::to_string(netPressed) + "," +
 			std::to_string(netFinger) + "," + std::to_string(netFingerMoved) + "," + browseDir;
 		if (filesPage())

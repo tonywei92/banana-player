@@ -33,7 +33,7 @@ namespace bp
 		// the spec's sections, in the rail's order (docs/redesign/components.md, Section rail): Home, Files, Videos,
 		// Music, Books, Extensions, Network, then Settings pinned at the foot. Playlists is not one: it is Music's
 		// third view (L2 / R2 or its chip)
-		enum class Section { Home, Files, Videos, Music, Books, Extensions, Network, Settings };
+		enum class Section { Home, Files, Videos, Music, Books, Extensions, Settings };
 		struct Cell
 		{
 			Section section;

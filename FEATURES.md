@@ -78,10 +78,11 @@ While something plays it asks too, and says **What's playing stops** (**SELECT**
 settings, **L3** is Search, and About is Settings' last group.
 
 Every section now shares one frame: a **rail** down the left with a **Search** key pinned at its top, **Home**,
-**Files**, **Videos**, **Music**, **Books**, **Extensions**, **Network**, and at the foot the **Now playing key** over
+**Files**, **Videos**, **Music**, **Books**, **Extensions**, and at the foot the **Now playing key** over
 **Settings** (no START cap: START is Settings from every screen).
+**Network** is a tab of **Files**: the places and the connections' list each have a strip, **Files** | **Network**, stepped with **L / R** or a tap (the folders under them have none).
 **L2/R2** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
-52 units tall, 45 with seven sections so all show at once; when they still don't fit, a finger drag scrolls them
+52 units tall, 45 with six sections so all show at once; when they still don't fit, a finger drag scrolls them
 (Search, the Now playing key and Settings stay put). Arriving at a section starts and stops nothing, and no cell
 carries a warning: **Extensions** is one section for every extension that is on, and the Manga reader is a row of its
 page. The header carries the back key, the section's title and where you are, the status marks and **X** (More); its
@@ -1339,7 +1340,7 @@ field (the kept address has `{key}` where the key was), put back only in the req
 with **L/R** or a tap (the Search tab, or **X** › Search this source, asks for the words on the keyboard; **Y** is the source's **Filters** and **X** its **More**), and the results as a grid that
 fills in as you move down it, each tile showing the series' real cover once it has come in (fetched with the source's
 own headers while the tile is on screen, kept in a cache on the card; a plain coloured one stands in until it arrives).
-**X** opens the **Filters** sheet, where the source has filters: its own sorts, selects, checks, include / exclude
+**Y** opens the **Filters** sheet, where the source has filters: its own sorts, selects, checks, include / exclude
 lists (**A** cycles off → include → exclude), text fields and groups as rows, each showing its current value, with
 **Reset** back to the defaults and **Apply** to run the search again from page 1 — the values stay with that source
 while the app runs. **A** opens a series, **B** goes back to Browse's rows, and an error under the grid
