@@ -629,6 +629,17 @@ namespace bp
 		if (topOverlay()) return overlayPointer(pt, x, y, p);
 		mangaOn = p.settings.mangaOn;
 		if (fileJob) return fileJobPointer(pt, x, y);
+		// the keyboard covers the whole panel: it takes the finger before the shell's rail and header under it (its
+		// left keys sit over the rail: q, a and z were switching sections). A touch just after it closes is let go
+		if (!kbOpen && kbClosedAt && SDL_GetTicks() - kbClosedAt < 400) return false;
+		if (kbOpen && panel.on())
+		{
+			kbPointer(pt, x, y);
+			if (sound->eqNameSubmit) sound->nameDone(p);
+			if (browse->playlists->plNameSubmit) browse->playlists->plNameDone(p);
+			if (browse->fileNameSubmit) browse->fileRenameDone(p);
+			return false;
+		}
 		if (browse->clipPointer(pt, x, y, p)) return false;
 		// the shell's rail, header and mini bar first (the page's body is under them)
 		if (shell->page(page) && shell->pointer(pt, x, y, p)) return false;
@@ -651,15 +662,6 @@ namespace bp
 					}
 					return false;
 				}
-		}
-		if (!kbOpen && kbClosedAt && SDL_GetTicks() - kbClosedAt < 400) return false;
-		if (kbOpen && panel.on())
-		{
-			kbPointer(pt, x, y);
-			if (sound->eqNameSubmit) sound->nameDone(p);
-			if (browse->playlists->plNameSubmit) browse->playlists->plNameDone(p);
-			if (browse->fileNameSubmit) browse->fileRenameDone(p);
-			return false;
 		}
 		// dark: a touch anywhere brings the panel back, and does nothing else (the finger can't see what's there)
 		if (!panel.on())
