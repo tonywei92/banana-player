@@ -87,3 +87,12 @@ at the vertex's panel position, the shape's alpha) draws the VI_BG runs (`Run::g
 pass: the same vertices, a program switch per ground run. Every other VI_BG use (Rocket's window, the faces' eyes)
 now cuts to the art as well, which is what "the ground" meant. No other style paints a fixed band (checked
 `box(out, 0, …, 640, 480, …)`). During the 0.5 s cross-fade the ground shapes show the newer page.
+
+## 8. The browser's pages: a lighter veil, a glass hint bar
+
+The browser pages drew the player's page (veil 84%+ below y 168: the art barely showed). They now have their own
+page per slot (`Ui::bgTex[BG_LIST]`, composed once like the player's): `artbg::backdropForList` starts from
+`LIST_VEIL_BASE` 44/44/50/54/58 and raises a stop only until TEXT holds 4.5:1 and DIM_ON 3:1 over the picture's
+95th (dark) / 5th (light) percentile — rows, cards and the rail bring their own surfaces. The test art: 44 44 69 69
+69 (the player's 58 52 84 86 92). The hint bar over the backdrop is HINT_BAR at 55% (`Kit::HINT_GLASS`); its keys keep
+their own caps. Still one copy a redraw.

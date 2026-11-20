@@ -137,6 +137,9 @@ namespace bp
 		// a rule above; each item its caps then its word, the row centred in the box it was given
 		const theme::Palette& th = theme::current;
 		SDL_Color ground = sdl(th.HINT_BAR), word = sdl(th.ON_HINT);
+		// on Match album art's backdrop (the browser's pages) the bar is a tinted glass, the art showing through it
+		// (its words keep their contrast: the bar's own colour still makes 55% of what lies under them, over the veiled art)
+		if (ui.groundIsBackdrop) ground.a = HINT_GLASS;
 		// (a strong theme's caps take its KEY_FOCUS: Gundam's yellow on the navy bar)
 		SDL_Color capInk = th.strongKeys ? sdl(th.KEY_FOCUS) : ACCENT;
 		ui.fill(bar, ground);

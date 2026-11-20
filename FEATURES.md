@@ -753,7 +753,8 @@ Songs show their title, artist and album on the top screen. While a song plays:
   background). The two screens share one picture, as if stacked into one tall portrait screen: the top screen shows
   the art's upper half, the bottom screen its lower half. While a song plays, the browser's pages (Home, Files, Music,
   Videos, Books, Extensions, Settings, Search…) sit on the same backdrop too, behind the rail, the header and the
-  list; rows and cards keep their own surfaces. A book's, comic's or Manga's pages, the photo viewer and a video
+  list, under a lighter veil than the player's (still 4.5:1 for text on the bare ground), with the hint bar a
+  tinted glass the art shows through; rows and cards keep their own surfaces. A book's, comic's or Manga's pages, the photo viewer and a video
   never get one, nor does the High contrast theme. The maths runs on
   the cover worker; each artwork is kept in `<state dir>/artbg/` by its hash (16 MB at most, the oldest dropped
   first), so a song seen before needs no decode.

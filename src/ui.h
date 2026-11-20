@@ -1016,10 +1016,14 @@ namespace bp
 		std::string bgAsked;		// the song the worker was last asked for ("" none: nothing plays)
 		// the two slots' pages (Kit::backdropPage: the picture and the theme's veil composed once, one texture),
 		// the bottom panel's own (the fade's goes first); made when first drawn, again only for a new theme
-		SDL_Texture* bgTex = nullptr, *bgFadeTex = nullptr;
+		// Two kinds of each: the player page's veil ([BG_PLAYER]) and the browser's lighter one ([BG_LIST])
+		static constexpr int BG_PLAYER = 0, BG_LIST = 1;
+		SDL_Texture* bgTex[2] = {}, *bgFadeTex[2] = {};
 		int bgTexTheme = -1;	// the theme the pages were composed for
+		static void freePages(SDL_Texture* (&pages)[2]);
 		void backdropTick(Player& p);		// the ask (Ui::tick): once per song, off when the switch is off
-		void drawBackdrop(const Player& shown);		// the player page's ground (its own fade over the plain BG)
+		// the ground (its caller cleared the BG): `kind` BG_PLAYER for the player page, BG_LIST for the browser's
+		void drawBackdrop(const Player& shown, int kind = BG_PLAYER);
 		void dropBackdrop();
 		// what the player page's redraws cost while the backdrop is on (the 5 s timing line: noteDrawCost)
 		struct DrawCost
