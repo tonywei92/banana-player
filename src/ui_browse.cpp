@@ -1468,7 +1468,7 @@ namespace bp
 		}
 		int scroll = filesScroll(p), n = (int)browseRows.size();
 		for (int k = 0; k < f.shown && scroll + k < n; k++) drawFilesRow(scroll + k, f, k, scroll + k == ui.cursor, p);
-		if (addMode() || pickMode()) drawAddBar(f);
+		if (addMode() || pickMode()) drawAddBar(f.bar);
 		else if (fileSel)
 		{
 			int media = 0;
@@ -1490,7 +1490,7 @@ namespace bp
 	bool Ui::Browse::addMode() const { return !fileSel && playlists->selMode == SEL_ADD; }
 	bool Ui::Browse::pickMode() const { return !fileSel && playlists->selMode == SEL_PICK; }
 
-	void Ui::Browse::drawAddBar(const lay::FilesPage& f)
+	void Ui::Browse::drawAddBar(const lay::Box* bar)
 	{
 		Playlists& pl = *playlists;
 		int n = pl.selCount();
@@ -1512,7 +1512,7 @@ namespace bp
 			keys[1] = {&G_FOLDER, "Add this folder", "", Kit::Tone::Normal, filesPressed == 101, !addBarOn(1)};
 			keys[1].primary = true;
 		}
-		ui.kit->selectBar(f.bar, keys, barKeys());
+		ui.kit->selectBar(bar, keys, barKeys());
 	}
 
 	bool Ui::Browse::addBarOn(int i) const
@@ -2097,6 +2097,13 @@ namespace bp
 		if (browseDir == NETROOT)
 		{
 			// the two ways in at the foot (the spec's rows after the connections): 44 each, a finger's size
+			// adding or picking: the same bar as in the folders takes the foot, the two rows above it
+			if (addMode() || pickMode())
+			{
+				lay::FilesPage bf = lay::filesPage(tabsBody(), 0, true, false, barKeys());
+				for (int i = 0; i < 4; i++) l.bar[i] = bf.bar[i];
+				h = bf.bar[0].y - lay::FILE_SELBAR_GAP - y;
+			}
 			l.add = {x, y + h - 44, w, 44};
 			l.find = {x, l.add.y - 48, w, 44};
 			l.list = {x, y, w, std::max(0, l.find.y - 6 - y)};
@@ -2136,6 +2143,7 @@ namespace bp
 	{
 		Kit& k = *ui.kit;
 		NetPageLayout l = netLayout(p);
+		if (addMode() || pickMode()) drawAddBar(l.bar);
 		if (browseRows.size() == 1 && browseRows[0].id < 0)
 		{
 			// no connections yet: Find on the network on A, Add by address on Y (the spec's empty state)
@@ -2302,6 +2310,24 @@ namespace bp
 	bool Ui::Browse::netPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		NetPageLayout l = netLayout(p);
+		// the add / pick bar at the connections' foot: its keys are the folders' (addBarAct)
+		if (browseDir == NETROOT && (addMode() || pickMode()))
+		{
+			if (pt.kind == Pointer::Down)
+			{
+				filesPressed = -1;
+				for (int i = 0; i < barKeys(); i++)
+					if (l.bar[i].hit(x, y)) filesPressed = 100 + i;
+				if (filesPressed >= 0) return false;
+			}
+			else if (pt.kind == Pointer::Up && filesPressed >= 100)
+			{
+				int i = filesPressed - 100;
+				filesPressed = -1;
+				if (l.bar[i].hit(x, y)) addBarAct(i, p);
+				return false;
+			}
+		}
 		if (pt.kind == Pointer::Down)
 		{
 			netPressed = -1;

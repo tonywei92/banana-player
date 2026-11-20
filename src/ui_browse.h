@@ -113,7 +113,7 @@ namespace bp
 		bool pickMode() const;
 		bool selecting() const { return fileSel || addMode() || pickMode(); }	// the bar takes the body's foot
 		int barKeys() const { return addMode() ? 3 : pickMode() ? 2 : 4; }
-		void drawAddBar(const lay::FilesPage& f);
+		void drawAddBar(const lay::Box* bar);	// the select bar's keys (lay::FilesPage::bar, or NetPageLayout::bar)
 		bool addKey(Button b, Player& p);
 		void addBarAct(int i, Player& p);	// the bar's key i: All, Cancel, Add / Cancel, Add this folder
 		bool addBarOn(int i) const;
@@ -191,6 +191,7 @@ namespace bp
 			int rowsY = 0, rowH = 60, shown = 0;
 			Rect find, add;		// NETROOT's foot rows (w 0: none)
 			Rect test, save;	// FORMDIR's two keys
+			Rect bar[4];		// NETROOT adding or picking: the add / pick bar's keys (w 0: none)
 		};
 		NetPageLayout netLayout(const Player& p) const;
 		void drawNet(const Player& p);

@@ -7,7 +7,7 @@
   sentinel, so `fileSel` tells the two apart. The header's key is a cross (`ShellHead::cancel`).
 - Deleted: Shell's beginBody/endBody/mapPoint (the 0.88 texture bridge), adopt()/adoptBrowse(), Ui::drawTracks and the
   old select header / bar / playlist row / section header / where line that only it called.
-- Not covered: add mode on the connections' list (NETROOT) still draws the kit's list without a bar (keys work; B / X leave).
+- Add / pick mode on the connections' list (NETROOT) has the same bar (`NetPageLayout::bar`, `drawAddBar`, touches in `netPointer` through `addBarAct`); Find and Add connection sit above it.
 
 # Group Copy / Move to or from a server
 
