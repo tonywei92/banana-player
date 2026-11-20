@@ -10,6 +10,7 @@
 #include "volume.h"
 #include "slider.h"
 #include "kitlayout.h"
+#include "lrucache.h"
 #include "coverworker.h"
 #include "netstore.h"
 #include "networker.h"
@@ -878,7 +879,9 @@ namespace bp
 		std::vector<std::pair<TTF_Font*, std::string>> runs(const std::string& s, int size) const;
 		std::vector<std::pair<TTF_Font*, std::string>> shapeRuns(const std::string& s, int size) const;
 		int textWidth(const std::string& s, int size) const;
-		std::unordered_map<std::string, SDL_Texture*> cache;
+		// the rendered text lines, by size, colour and text: when full the line drawn longest ago goes (lrucache.h)
+		LruCache<SDL_Texture*> cache{TEXT_CACHE, [](SDL_Texture* t) { if (t) SDL_DestroyTexture(t); }};
+		static constexpr size_t TEXT_CACHE = 384;
 		// measured widths and shortened ("...") strings, by size and text: a long line is shortened once, not
 		// re-measured a character at a time on every redraw (the handheld's cores made lists lag)
 		mutable std::unordered_map<std::string, int> widthCache;

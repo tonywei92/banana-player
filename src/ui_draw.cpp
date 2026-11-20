@@ -147,14 +147,8 @@ namespace bp
 		char key[32];
 		snprintf(key, sizeof key, "%d %02x%02x%02x|", size, c.r, c.g, c.b);
 		std::string k = key + s;
-		auto it = cache.find(k);
-		if (it != cache.end()) return it->second;
+		if (SDL_Texture** hit = cache.find(k)) return *hit;
 		parts.textMisses++;
-		if (cache.size() > 256)
-		{
-			for (auto& t : cache) SDL_DestroyTexture(t.second);
-			cache.clear();
-		}
 		// each piece in its font, side by side on one baseline
 		std::vector<SDL_Surface*> parts;
 		int w = 0, ascent = 0, below = 0;
@@ -188,7 +182,7 @@ namespace bp
 		if (!surf) return nullptr;
 		SDL_Texture* t = SDL_CreateTextureFromSurface(ren, surf);
 		SDL_FreeSurface(surf);
-		cache[k] = t;
+		cache.put(k, t);
 		return t;
 	}
 
@@ -516,13 +510,11 @@ namespace bp
 	{
 		syncInk();
 		int dropped = 0;
-		for (auto it = cache.begin(); it != cache.end();)
-		{
-			if (it->first.compare(0, 4, "pin|") != 0) { ++it; continue; }
-			if (it->second) SDL_DestroyTexture(it->second);
-			it = cache.erase(it);
-			dropped++;
-		}
+		cache.eraseIf([&dropped](const std::string& k) {
+			bool pin = k.compare(0, 4, "pin|") == 0;
+			dropped += pin;
+			return pin;
+		});
 		if (supportTex)
 		{
 			SDL_DestroyTexture(supportTex);

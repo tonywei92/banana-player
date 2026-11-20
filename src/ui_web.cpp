@@ -439,13 +439,12 @@ namespace bp
 			if (i >= (int)pin.size() || !ui.pinFont) continue;
 			std::string key = "pin|" + pin.substr(i, 1);
 			SDL_Texture* t = nullptr;
-			auto it = ui.cache.find(key);
-			if (it != ui.cache.end()) t = it->second;
+			if (SDL_Texture** hit = ui.cache.find(key)) t = *hit;
 			else if (SDL_Surface* sf = TTF_RenderUTF8_Blended(ui.pinFont, pin.substr(i, 1).c_str(), TEXT))
 			{
 				t = SDL_CreateTextureFromSurface(ui.ren, sf);
 				SDL_FreeSurface(sf);
-				ui.cache[key] = t;
+				ui.cache.put(key, t);
 			}
 			if (!t) continue;
 			int tw, th;

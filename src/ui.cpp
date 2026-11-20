@@ -128,7 +128,7 @@ namespace bp
 	{
 		if (photoTex) SDL_DestroyTexture(photoTex);
 		if (supportTex) SDL_DestroyTexture(supportTex);
-		for (auto& c : cache) SDL_DestroyTexture(c.second);
+		cache.clear();
 		for (auto& c : manga->coverTex)
 			if (c.second.tex) SDL_DestroyTexture(c.second.tex);
 		for (auto* t : corners)

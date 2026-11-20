@@ -73,6 +73,8 @@ extern "C"
 #include "session.h"
 #include "settings.h"
 #include "stickscroll.h"
+#include "scroller.h"
+#include "lrucache.h"
 #include "volumestep.h"
 #include "theme.h"
 #include "strip.h"
@@ -3431,6 +3433,194 @@ static void testMangaFilters()
 }
 
 // the left stick's speed curve (issue 16): a dead zone round the middle, then squared, up to a panel's height a second
+// lay::Scroller (scroller.h): a list that follows the finger, glides, bands at its ends and keeps the cursor in view
+static void testScroller()
+{
+	using lay::Scroller;
+	auto fresh = [] {
+		Scroller s;
+		s.setExtent(3000, 300);	// 50 rows of 60 in a view of 300: offsets 0..2700
+		return s;
+	};
+	// a tap: the finger's drift under the slop moves nothing, and the lift starts nothing
+	{
+		Scroller s = fresh();
+		CHECK_EQ(s.press(200, 0), false);
+		CHECK_EQ(s.move(205, 16), false);
+		CHECK_EQ(s.offset(), 0.0);
+		s.release(32);
+		CHECK_EQ(s.moving(), false);
+	}
+	// a drag follows the finger unit for unit (fractions kept), from where it passed the slop: no jump
+	{
+		Scroller s = fresh();
+		s.jump(500);
+		s.press(300, 0);
+		CHECK_EQ(s.move(290, 10), true);	// past the slop: the drag starts here
+		CHECK_EQ(s.offset(), 500.0);
+		s.move(250.5, 20);
+		CHECK_EQ(s.offset(), 539.5);
+		s.move(260.5, 30);
+		CHECK_EQ(s.offset(), 529.5);
+		CHECK_EQ(s.dragging(), true);
+	}
+	// a flick glides on in its direction, slows, and stops by itself; a 5 ms and a 50 ms stepper agree
+	{
+		Scroller a = fresh(), b = fresh();
+		for (Scroller* s : {&a, &b})
+		{
+			s->jump(1000);
+			s->press(400, 0);
+			for (int i = 1; i <= 10; i++) s->move(400 - 15.0 * i, 10 * i);	// 1.5 units a ms, upward: down the list
+			s->release(100);
+		}
+		CHECK_EQ(a.moving(), true);
+		CHECK_EQ(a.speed() > 1.4 && a.speed() < 1.6, true);
+		double before = a.offset();
+		for (int t = 105; t <= 400; t += 5) a.step(t);
+		for (int t = 150; t <= 400; t += 50) b.step(t);
+		CHECK_EQ(a.offset() > before + 200, true);
+		CHECK_EQ(std::fabs(a.offset() - b.offset()) < 0.01, true);
+		for (int t = 400; t < 5000; t += 16) a.step(t);
+		CHECK_EQ(a.moving(), false);
+		// it went about speed x tau further than the lift, and stopped inside the list
+		CHECK_EQ(a.offset() > before + 400 && a.offset() < before + 500, true);
+	}
+	// a finger that rested before its lift leaves the list where it is
+	{
+		Scroller s = fresh();
+		s.jump(1000);
+		s.press(400, 0);
+		for (int i = 1; i <= 5; i++) s.move(400 - 20.0 * i, 10 * i);
+		s.release(250);	// still for 200 ms
+		CHECK_EQ(s.moving(), false);
+	}
+	// a touch on a gliding list catches it: it stops there, and that touch is no tap
+	{
+		Scroller s = fresh();
+		s.jump(1000);
+		s.press(400, 0);
+		for (int i = 1; i <= 10; i++) s.move(400 - 20.0 * i, 10 * i);
+		s.release(100);
+		s.step(150);
+		double at = s.offset();
+		CHECK_EQ(s.press(200, 150), true);
+		CHECK_EQ(s.moving(), false);
+		CHECK_EQ(s.offset(), at);
+		s.release(160);
+		CHECK_EQ(s.moving(), false);
+	}
+	// pulled past the top: the content gives less than the finger (a rubber band), then springs back to 0 and stays
+	{
+		Scroller s = fresh();
+		s.press(100, 0);
+		s.move(120, 10);
+		s.move(220, 500);	// 100 past the top, slowly
+		CHECK_EQ(s.offset() < -30 && s.offset() > -100, true);
+		s.release(1000);
+		CHECK_EQ(s.moving(), true);
+		bool under = true;
+		for (int t = 1000; t < 3000; t += 16)
+		{
+			s.step(t);
+			if (s.offset() > 0.001) under = false;
+		}
+		CHECK_EQ(under, true);	// back without passing the end
+		CHECK_EQ(s.offset(), 0.0);
+		CHECK_EQ(s.moving(), false);
+	}
+	// a glide that meets the end runs on a little past it, then settles exactly on it
+	{
+		Scroller s = fresh();
+		s.jump(2500);
+		s.press(400, 0);
+		for (int i = 1; i <= 10; i++) s.move(400 - 30.0 * i, 10 * i);	// 3 units a ms
+		s.release(100);
+		double most = 0;
+		for (int t = 100; t < 4000; t += 16)
+		{
+			s.step(t);
+			most = std::max(most, s.offset());
+		}
+		CHECK_EQ(most > 2700 && most < 2700 + 80, true);
+		CHECK_EQ(s.offset(), 2700.0);
+		CHECK_EQ(s.moving(), false);
+	}
+	// the cursor kept in view: a row below the view glides up into it, a row in view moves nothing
+	{
+		Scroller s = fresh();
+		s.reveal(120, 60, 0);
+		CHECK_EQ(s.moving(), false);
+		s.reveal(400, 60, 0);	// rows 400..460 in a 300 view: offset 160
+		CHECK_EQ(s.moving(), true);
+		for (int t = 0; t < 2000; t += 16) s.step(t);
+		CHECK_EQ(s.offset(), 160.0);
+		// keys held: each step adds to the glide's target, not to where it is now
+		s.reveal(460, 60, 2000);
+		s.step(2016);
+		s.reveal(520, 60, 2016);
+		for (int t = 2016; t < 4000; t += 16) s.step(t);
+		CHECK_EQ(s.offset(), 280.0);
+		// up past the top of the view
+		s.reveal(60, 60, 4000);
+		for (int t = 4000; t < 6000; t += 16) s.step(t);
+		CHECK_EQ(s.offset(), 60.0);
+	}
+	// the rows under a finger with the list at a pixel offset; outside the view or past the last: none
+	{
+		Scroller s = fresh();
+		s.jump(30);
+		CHECK_EQ(s.rowAt(100, 100, 300, 60, 50), 0);
+		CHECK_EQ(s.rowAt(135, 100, 300, 60, 50), 1);
+		CHECK_EQ(s.rowAt(99, 100, 300, 60, 50), -1);
+		CHECK_EQ(s.rowAt(400, 100, 300, 60, 50), -1);
+		CHECK_EQ(s.rowAt(390, 100, 300, 60, 5), -1);	// row 6 of 5
+		CHECK_EQ(s.firstRow(60), 0);
+		CHECK_EQ(s.rowsTouched(60, 50), 6);	// 30..330: rows 0 to 5
+		s.jump(60);
+		CHECK_EQ(s.rowsTouched(60, 50), 5);
+	}
+	// a list that came back shorter is at its new end; one that fits can't scroll
+	{
+		Scroller s = fresh();
+		s.jump(2700);
+		s.setExtent(600, 300);
+		CHECK_EQ(s.offset(), 300.0);
+		s.setExtent(200, 300);
+		CHECK_EQ(s.offset(), 0.0);
+		s.press(100, 0);
+		s.move(50, 10);
+		s.move(0, 20);
+		CHECK_EQ(s.offset() > 0, true);	// (the band, either way)
+		s.release(1000);
+		for (int t = 1000; t < 3000; t += 16) s.step(t);
+		CHECK_EQ(s.offset(), 0.0);
+	}
+}
+
+// LruCache (lrucache.h): the text cache's eviction, the least recently used first, each one dropped through its deleter
+static void testLruCache()
+{
+	std::vector<int> dropped;
+	LruCache<int> c(3, [&](int v) { dropped.push_back(v); });
+	c.put("a", 1);
+	c.put("b", 2);
+	c.put("c", 3);
+	CHECK_EQ(*c.find("a"), 1);	// a used: b is now the oldest
+	c.put("d", 4);
+	CHECK_EQ(dropped, std::vector<int>{2});
+	CHECK_EQ(c.find("b") == nullptr, true);
+	CHECK_EQ(c.size(), (size_t)3);
+	c.put("a", 5);	// a replaced: the old value is dropped
+	CHECK_EQ(dropped, (std::vector<int>{2, 1}));
+	CHECK_EQ(*c.find("a"), 5);
+	c.eraseIf([](const std::string& k) { return k == "c"; });
+	CHECK_EQ(dropped, (std::vector<int>{2, 1, 3}));
+	c.clear();
+	CHECK_EQ(c.size(), (size_t)0);
+	CHECK_EQ(dropped.size(), (size_t)5);
+}
+
 static void testStickScroll()
 {
 	auto near = [](double a, double b, double eps = 0.001) { return std::fabs(a - b) <= eps; };
@@ -15071,6 +15261,8 @@ int main()
 	testMangaSeriesCache();
 	testMangaFilters();
 	testStickScroll();
+	testScroller();
+	testLruCache();
 	testVolumeStep();
 	testPaged();
 	testMangaStore();

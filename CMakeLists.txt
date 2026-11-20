@@ -77,6 +77,7 @@ target_include_directories(bpcore PUBLIC src)
 target_sources(bpcore PRIVATE src/xfergroup.cpp)
 target_sources(bpcore PRIVATE src/kitlayout_new.cpp)	# kit-new's layout (its own line: see target_sources(banana-player) below)
 target_sources(bpcore PRIVATE src/stickscroll.cpp)	# the left stick's scrolling speed (issue 16)
+target_sources(bpcore PRIVATE src/scroller.cpp)	# a list that follows the finger and glides (smooth scrolling)
 target_sources(bpcore PRIVATE src/volumestep.cpp)	# the volume keys' step, and a hold's stop at 100%
 target_sources(bpcore PRIVATE src/mediaindex.cpp src/mediacache.cpp)	# the cards' media index (its walk, grouping and query; the tag cache)
 # PFFFT (third_party/pffft, BSD-like): the native visualizers' spectrum (src/viznative.h); NEON on aarch64, SSE on x86
