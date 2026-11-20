@@ -558,6 +558,8 @@ namespace bp
 
 	bool Ui::Shell::adopted(const Player& p) const
 	{
+		// Manga's Library and History are drawn on the kit under its tabs (its other tabs are still bridged)
+		if (ui.manga->kitBody()) return true;
 		// the browser's rebuilt views draw in the body box; Network and the forms still draw the old full panel and
 		// keep the bridge
 		if (ui.page != Page::Browse) return adopted(ui.page);

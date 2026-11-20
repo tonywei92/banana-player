@@ -1253,6 +1253,10 @@ block is on every page, the reading page included (its **SELECT** opens what pla
 with **X** on Browse (below), where sources are installed from repositories you add; **Downloads** is the queue and what's
 on the card (below).
 
+**Library** is a grid of covers, five across, each with its title under it and its unread count at its top right;
+**History** is one row a series, newest first: its cover, its title, then the chapter, the page and when, with a
+**Continue** key (**A**) on the row you're on.
+
 **On the touch screen** every list and grid in the app scrolls with a finger: drag it up or down (Library's covers,
 History, Browse and its *On this handheld*, Downloads' queue, its series on the card and their chapters, Sources, a
 server's catalogue, a network folder, a series' chapters). A tap without a drag does what **A** does on that row or

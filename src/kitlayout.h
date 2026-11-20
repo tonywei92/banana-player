@@ -683,6 +683,24 @@ namespace bp
 			Box rowBox(int r) const;
 		};
 		AlbumGrid albumGrid(Box area, int albums, int first = 0, int cols = 5);
+		// Manga's Library (screens.js manga: mcell): the same grid of COVER_W x COVER_H covers with their title under
+		// (no bar), five across, 14 apart, rows SP12 apart; `first` is the top row (clamped)
+		constexpr int COVER_GRID_CELL_H = COVER_H + COVER_TITLE_GAP + COVER_TITLE_H;
+		AlbumGrid coverGrid(Box area, int n, int first = 0, int cols = 5);
+
+		// ---- a list of rows (Manga's History: screens.js manga-history's row2, 60 tall, 2 apart) ----
+		// `first` the top row (clamped so the list ends at its last row); row[k] is row first + k, those that fit
+		constexpr int ROW2_H = 60, ROW2_GAP = SP2;
+		struct RowList
+		{
+			Box area;
+			int n = 0, first = 0, shown = 0, rowH = ROW2_H, gap = ROW2_GAP;
+			std::vector<Box> row;
+			int at(int x, int y) const;	// the row (its index in the list) under (x, y), -1 none
+		};
+		RowList rowList(Box area, int n, int first, int rowH = ROW2_H, int gap = ROW2_GAP);
+		// a key at a row's right end (History's Continue on the focused row): keyW wide, 44 tall, SP8 in, centred
+		Box rowKey(Box row, int keyW);
 
 		// ---- an artist's row: a 40 disc (the first letter) or its art, the name, "3 albums · 34 songs" ----
 		// Rows are 60 tall, as a Music/Videos row is: the name and its line on the row's middle, a chevron at the right

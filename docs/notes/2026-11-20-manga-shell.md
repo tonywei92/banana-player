@@ -44,11 +44,18 @@ The reader (`Page::MangaRead`) is not: a comic's page keeps the whole panel, unc
   History's (the five clears, Manga settings); with the history off, X on History opens it straight away. Browse's,
   Downloads' and a series' X are not menus (Sources, Edit, read / unread) and stay as they were.
 
+- **Library and History on the kit** (no bridge, no scaling: `Manga::kitBody()` makes `Shell::adopted` true for
+  them): Library is `lay::coverGrid` (new: 96 x 136 covers with their titles, five across, rows SP12 apart, scrolled by
+  whole rows) drawn with `Kit::coverTile` (unread count as its badge pill, the focused cover ringed); History is
+  `lay::rowList` (new: rows 60 tall, 2 apart, clamped to end at the last) drawn with `Kit::row` (the cover in its mark,
+  the title, "Ch. · page · when"), the focused row carrying a Continue key at `lay::rowKey` (`Kit::keyW` for its width).
+  Empty states are `Kit::emptyState` in the content box. Touches test those same boxes (`mangaListBegin` with the
+  grid's or the rows' pitch); their hints are set in `Manga::head` (nothing to catch). Tests next to the tab page's.
+
 ## Not done
 
-- The bodies (Library grid, History, Browse, Downloads, a series, a source's grid, servers, Sources, Manga settings)
-  are bridged, scaled to 0.88: not yet drawn on the kit. History as the spec's two-line rows with a Continue key and
-  the Library as `mcell` tiles are the next pieces (a cover tile like `lay::coverTile` with an unread badge).
+- The other bodies (Browse, Downloads, a series, a source's grid, servers, Sources, Manga settings) are still bridged,
+  scaled to 0.88. History's Y (open the series) and its "source removed" dimming from the spec are not done.
 - A sheet over the bridge keeps its old full-page place; any sheet placed by what is under it would be off by the
   scale (none seen, not every one checked).
 - Not checked on the handheld (KMSDRM, the real panel); the scaled body's text is small at 0.88.

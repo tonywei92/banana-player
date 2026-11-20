@@ -178,6 +178,8 @@ namespace bp
 			int pressed = -1);
 		// a tab's width for its label (F_P14 plus its padding), and the caps' width for `keys` ("L2/R2": the wider)
 		int tabW(const std::string& label) const;
+		// a key's width for its label and its cap (a row's Continue · A): F_P14 and the cap, SP12 each side
+		int keyW(const std::string& label, const std::string& keys) const;
 		int tabCapW(const std::string& keys) const;
 		// options shared across `area` 6 apart, 40 tall (the caller's area): the chosen one yellow with black ink
 		void segment(Rect area, const std::vector<std::string>& options, int on);
