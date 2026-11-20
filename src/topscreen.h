@@ -107,10 +107,11 @@ namespace bp
 		void groundFrame(Player& shown, int w, int h);
 		// the song's backdrop pages composed from Ui's answer (its hash, the theme, the fade's state say when);
 		// dropped when the song ends, the switch goes off or High contrast is set
-		void composeBackdrop(const Ui& ui, const Player& shown);
-		void dropBackdropPages();
-		// the pages into the panel (the context current): the fade's pair while one runs; false when nothing
-		// could be drawn, so the theme's ground is cleared instead
+		// (both: true when the pages changed, so a still panel — Album art only — is drawn again)
+		bool composeBackdrop(const Ui& ui, const Player& shown);
+		bool dropBackdropPages();
+		// the pages into the panel (the context current): the fade's pair while one runs; false when they
+		// could not be drawn (no GL program), so the theme's ground is cleared instead
 		bool drawBackdropPages(int w, int h);
 
 	private:
