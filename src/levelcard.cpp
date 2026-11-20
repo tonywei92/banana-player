@@ -64,7 +64,7 @@ namespace bp
 		std::string third;
 		if (volume)
 			third = percent > 120 ? "Very loud: can harm hearing and the speakers"
-				: percent > 100 ? "Boosted \xc2\xb7 Volume \xe2\x88\x92 takes it off first" : "";	// (up to 100: no line, the owner)
+				: percent > 100 ? "Boosted" : "";	// (up to 100: no line, the owner)
 		const int padX = c.px(18), padY = c.px(14), w = c.px(bar ? 290 : 200);
 		const int line1 = std::max(c.lineH(PIXEL, NAME_SIZE), c.px(20)), line3 = c.lineH(INTER, SMALL);
 		int h = padY * 2 + line1 + (bar ? c.px(12) + c.px(8) : 0) + (!third.empty() ? c.px(9) + line3 : 0);
