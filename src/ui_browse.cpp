@@ -2194,8 +2194,21 @@ namespace bp
 		int n = (int)browseRows.size();
 		for (int i = ui.scroll; i < n && i < ui.scroll + l.shown; i++)
 		{
-			if (browseRows[i].id < 0) continue;	// (Searching… is the busy sheet's)
 			Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
+			if (browseRows[i].id < 0)
+			{
+				// still searching: a Working notice in the list's own place (the computers found so far stay
+				// readable and choosable around it; B goes back as on any page)
+				lay::Notice nl = lay::notice({r.x, r.y + (r.h - lay::notice({0, 0, r.w, 0}, true, false, 0).row.h) / 2,
+					r.w, 0}, true, false, 0);
+				Kit::NoticeRow row;
+				row.tone = Kit::NoticeTone::Working;
+				row.glyph = &G_REFRESH;
+				row.text = "Searching\xE2\x80\xA6";
+				row.second = "Computers sharing files nearby";
+				k.notice(nl, row);
+				continue;
+			}
 			Kit::Row row;
 			row.glyph = browseRows[i].id == R_FOUND ? &G_NETWORK : browseRows[i].id == R_SEARCH ? &G_REFRESH : &G_PENCIL;
 			row.name = browseRows[i].label;
@@ -2205,18 +2218,6 @@ namespace bp
 			row.pressed = netPressed == i;
 			row.under = BG;
 			k.row(r, row);
-		}
-		if (ui.discovery && ui.discovery->running())
-		{
-			lay::BusySheet bs = lay::busySheet();
-			Kit::BusySpec b;
-			b.title = "Searching\xE2\x80\xA6";
-			b.file = "Computers sharing files nearby";
-			b.share = -1;
-			b.key = "Back";
-			b.cap = "B";
-			b.pressed = netPressed == 200;
-			k.busySheet(bs, b);
 		}
 	}
 
@@ -2360,12 +2361,6 @@ namespace bp
 			}
 			if (browseDir == FINDNET)
 			{
-				if (ui.discovery && ui.discovery->running())
-				{
-					lay::BusySheet bs = lay::busySheet();
-					if (bs.key.hit(x, y)) { netPressed = 200; return false; }
-					if (bs.sheet.box.hit(x, y)) return false;
-				}
 				for (int i = ui.scroll; i < (int)browseRows.size() && i < ui.scroll + l.shown; i++)
 				{
 					Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
