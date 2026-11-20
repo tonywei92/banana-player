@@ -19,4 +19,4 @@ cmake --build build -j 2>&1 | grep -E " error" | head -5
 git branch -f redesign-2026-11-20 redesign-impl 2>/dev/null || true
 [ "$2" = "--no-push" ] && exit 0
 packaging/build-bundle.sh --quick 2>&1 | tail -1
-ssh -o ConnectTimeout=8 root@192.168.1.50 'killall -TERM banana-player 2>/dev/null; sleep 3; true' && tools/push-handheld.sh root@192.168.1.50 2>&1 | tail -1 || echo "handheld offline: bundle ready, push later"
+ssh -o ConnectTimeout=8 root@192.168.1.50 'killall -TERM banana-player 2>/dev/null; sleep 6; true' && tools/push-handheld.sh root@192.168.1.50 2>&1 | tail -1 || echo "handheld offline: bundle ready, push later"

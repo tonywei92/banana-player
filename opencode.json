@@ -31,7 +31,30 @@
       "unzip -l *": "allow",
       "od *": "allow",
       "xxd *": "allow",
-      "file *": "allow"
+      "file *": "allow",
+      "git add *": "allow",
+      "git commit *": "allow",
+      "git push*": "deny",
+      "git merge*": "deny",
+      "git reset*": "deny",
+      "git checkout*": "deny",
+      "git rebase*": "deny",
+      "git stash*": "deny",
+      "ssh root@192.168.1.50 *": "allow",
+      "ssh -o ConnectTimeout=* root@192.168.1.50 *": "allow",
+      "tools/push-handheld.sh root@192.168.1.50": "allow",
+      "tools/push-handheld.sh root@192.168.1.50 *": "allow",
+      "packaging/build-bundle.sh*": "allow",
+      "BP_SHOTS=* ./build/banana-player*": "allow",
+      "./build/banana-player*": "allow",
+      "ffmpeg *": "allow",
+      "ffmpeg": "allow",
+      "mkdir *": "allow",
+      "kill *": "allow",
+      "killall ffmpeg": "allow",
+      "killall banana-player": "allow",
+      "killall -TERM banana-player": "allow",
+      "npx skills *": "allow"
     }
   }
 }
