@@ -155,6 +155,11 @@ namespace bp
 		// plTitle, plCrumb and plHints.
 		bool onPage() const;	// the list of playlists, or a playlist's own page
 		lay::PlaylistPage pageLayout(const Player& p) const;
+		lay::PlaylistsRoot rootLayout() const;	// the list of playlists: Music's chips, then 46-tall rows
+		void syncRows(const Player& p);	// rowsY and rowsShown from whichever page shows
+		void drawRoot(const Player& p);
+		bool rootPointer(const Pointer& pt, int x, int y, Player& p);
+		int chipPress = -1;	// the view chip under a finger
 		void draw(const Player& p);
 		std::string plTitle(const Player& p) const;
 		std::string plCrumb(const Player& p) const;

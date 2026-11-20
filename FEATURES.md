@@ -45,7 +45,8 @@ Open Banana Player and the bottom screen shows **Home**:
   a tap on the card goes back to the player, and its key pauses and plays it without leaving Home (as **A** does on
   the player). Held, the key takes it over from a browser that plays it. A
   video the Manga reader stopped says **Stopped for Manga** until it plays again or something else is played. With
-  everything played through there is no Continue card and **Recent** moves to the top. A song's picture is its real
+  everything played through there is no Continue card and **Recent** moves to the top. The pictures on the Continue and
+  Recent cards are square (1:1), as Music's album art. A song's picture is its real
   album art: the picture in the file, else `cover.*`, `folder.*` or `front.*` beside it (its title is the title tag
   when it has one, not the file's name). A song without any keeps the drawn record. The card is Home's one place for
   what plays. Home's Recent and shortcuts stay where they are either way.
@@ -135,8 +136,10 @@ plays the same, and Search finds it. There is no list of all songs.
   and its artist. An album that plays carries a yellow play mark on its cover, the one paused a pause mark. **A**
   (or a tap) opens the album.
 - **Artists**: a row each (`3 albums · 34 songs`), the unknown artist last. **A** opens the artist.
-- **Playlists**: the browser's own Playlists pages, exactly as they were, with the Music cell kept lit (their keys
-  and touch are theirs; **L** steps back to Artists, **R** rounds to Albums).
+- **Playlists**: the list of playlists is Music's third view: the same chips over it (a tap on **Albums** or
+  **Artists** goes there), then a 46-tall row each (Liked first, **New playlist** last, a **Playing** mark on the
+  one that plays). A playlist's own page, its select and move modes and the Add to... picker are the browser's, as
+  they were, with the Music cell kept lit (**L** steps back to Artists, **R** rounds to Albums).
 
 An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
 (**A**), **Shuffle** (**Y**) and **+** (Add to playlist, touch only). Under them the songs in disc, track and name

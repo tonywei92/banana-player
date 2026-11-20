@@ -2650,7 +2650,7 @@ namespace bp
 			for (auto& path : clipPaths) s += "|c" + path;
 		}
 		// the playlist pages' focus over the rows (the keys row, a bar's key under a finger)
-		s += "|plf" + std::to_string(playlists->keyFocus) + "," + std::to_string(playlists->barPress) + "," + std::to_string(playlists->keyPress);
+		s += "|plf" + std::to_string(playlists->keyFocus) + "," + std::to_string(playlists->barPress) + "," + std::to_string(playlists->keyPress) + "," + std::to_string(playlists->chipPress) + "," + std::to_string(playlists->plPressRow);
 		if (clipOp != CLIP_NONE) s += "|clip" + std::to_string(clipOp) + clipPath + (clipCanPaste() ? "p" : "");
 		// Home: the focus, the strip's scroll, a finger on a card or a tile, the tiles' lines (the connections)
 		if (atHome())

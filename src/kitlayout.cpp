@@ -816,9 +816,11 @@ namespace bp
 		{
 			RecentCard r;
 			r.box = box;
-			r.pic = {box.x + 4, box.y + 4, box.w - 8, 48};
-			r.title = {box.x + 8, box.y + 57, box.w - 16, 18};
-			r.note = {box.x + 8, box.y + 75, box.w - 16, 14};
+			// square, as Music's album art, centred over the card's width
+			r.pic = {box.x + (box.w - RECENT_PIC) / 2, box.y + 4, RECENT_PIC, RECENT_PIC};
+			int under = r.pic.y + r.pic.h + 5;
+			r.title = {box.x + 8, under, box.w - 16, 18};
+			r.note = {box.x + 8, under + 18, box.w - 16, 14};
 			r.line = {box.x + 6, box.y + box.h - 8, box.w - 12, 3};
 			return r;
 		}
@@ -827,7 +829,7 @@ namespace bp
 		{
 			ContinueCard c;
 			c.box = box;
-			c.pic = {box.x + 12, box.y + (box.h - 84) / 2, 128, 84};
+			c.pic = {box.x + 12, box.y + (box.h - CONTINUE_PIC) / 2, CONTINUE_PIC, CONTINUE_PIC};	// square
 			c.key = {box.x + box.w - 12 - 118, box.y + (box.h - 52) / 2, 118, 52};
 			int x = c.pic.x + c.pic.w + 14, w = std::max(0, c.key.x - 12 - x);
 			c.label = {x, box.y + 14, w, 14};

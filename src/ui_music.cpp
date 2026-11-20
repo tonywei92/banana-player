@@ -70,7 +70,12 @@ namespace bp
 	void Ui::Music::viewStep(int dir, Player& p)
 	{
 		// L2 / R2 and the chips: the three views, wrapping (Albums · Artists · Playlists)
-		view = ((view + dir) % 3 + 3) % 3;
+		setView(((view + dir) % 3 + 3) % 3, p);
+	}
+
+	void Ui::Music::setView(int v, Player& p)
+	{
+		view = v;
 		albumAt = artistAt = -1;
 		cursor = scroll = 0;
 		keyFocus = -1;

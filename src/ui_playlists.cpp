@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "session_host.h"
 #include "format.h"
+#include "ui_music.h"
 #include "playlist.h"
 #include "netpath.h"
 #include "theme.h"
@@ -217,6 +218,28 @@ namespace bp
 		return lay::playlistPage(sh.body, keys, bar);
 	}
 
+	lay::PlaylistsRoot Ui::Playlists::rootLayout() const
+	{
+		return lay::playlistsRoot(lay::shell().body, ui.kit->filterWidths(ui.music->viewItems()));
+	}
+
+	void Ui::Playlists::syncRows(const Player& p)
+	{
+		// the rows the page shows now (the list of playlists' 46-tall ones, or a playlist's 52-tall ones)
+		if (isPlDir(ui.browse->browseDir))
+		{
+			lay::PlaylistPage l = pageLayout(p);
+			rowsY = l.rowsY;
+			rowsShown = l.rows;
+		}
+		else
+		{
+			lay::PlaylistsRoot r = rootLayout();
+			rowsY = r.rowsY;
+			rowsShown = r.rows;
+		}
+	}
+
 	void Ui::Playlists::syncFocus(const Player& p)
 	{
 		// the page it was left on keeps its cursor; a playlist opened afresh: its playing row if it plays from
@@ -298,7 +321,7 @@ namespace bp
 			if (moving) return {{"UP/DOWN", "Move"}, {"LEFT/RIGHT", "Page"}, {"L2/R2", "Top/bottom"}, {"A", "Put here"}, {"B", "Cancel"}};
 			return {{"A", "Tick"}, {"SELECT", "All"}, {"Y", "Move"}, {"X", "More"}, {"B", "Done"}};
 		}
-		if (ui.browse->browseDir == PLROOT) return {{"A", "Open"}, {"X", "More"}, {"B", "Home"}, {"L2/R2", "Sections"}};
+		if (ui.browse->browseDir == PLROOT) return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", "Home"}};
 		if (!plLoaded || plCur.entries.empty())
 			return ui.plIsLiked(plCur.file) ? std::vector<Hint>{{"A", "Browse Files"}, {"B", "Playlists"}, {"L2/R2", "Sections"}}
 				: std::vector<Hint>{{"A", "Add files"}, {"Y", "Add folder"}, {"B", "Playlists"}, {"L2/R2", "Sections"}};
@@ -363,56 +386,52 @@ namespace bp
 		}
 	}
 
+	void Ui::Playlists::drawRoot(const Player& p)
+	{
+		Kit& k = *ui.kit;
+		lay::PlaylistsRoot l = rootLayout();
+		k.filters(l.head.chips, ui.music->viewItems(), 2, -1, chipPress);
+		int n = (int)ui.browse->browseRows.size();
+		if (n == 0 || (n == 1 && ui.browse->browseRows[0].id < 0))
+		{
+			lay::EmptyState es = lay::emptyState(l.below, 1, plStore ? 1 : 0);
+			Kit::Empty e;
+			e.glyph = &G_PLAYLIST;
+			e.title = plStore ? "No playlists yet" : "Playlists aren't available";
+			e.lines = {plStore ? "Gather videos and songs to play in your order." : "There's no folder to keep them in."};
+			e.key1 = plStore ? "New playlist" : "";
+			e.glyph1 = &G_PLUS;
+			e.hotkeys = p.settings.buttonHotkeys;
+			k.emptyState(es, e);
+			return;
+		}
+		ui.scroll = std::clamp(ui.scroll, 0, std::max(0, n - l.rows));
+		for (int i = ui.scroll; i < n && i < ui.scroll + l.rows; i++)
+		{
+			const auto& row = ui.browse->browseRows[i];
+			const std::string& file = i < (int)ui.browse->browsePaths.size() ? ui.browse->browsePaths[i] : std::string();
+			Kit::Playlist r;
+			r.name = row.label;
+			r.note = row.id == PL_NEW ? "" : row.note;
+			r.focused = ui.cursor == i;
+			r.pressed = plPressRow == i && !plTouchScrolled;
+			if (row.id == PL_NEW) { r.glyph = &G_PLUS; r.off = true; }
+			else if (ui.plIsLiked(file)) r.liked = true;
+			else r.glyph = &G_PLAYLIST;
+			r.playing = row.id == PL_ROW && p.playing() && p.source().kind == SourceKind::Playlist && p.source().id == file;
+			k.playlistRow(lay::playlistRow(l.row(i - ui.scroll)), r);
+		}
+	}
+
 	void Ui::Playlists::draw(const Player& p)
 	{
 		if (!onPage()) return;
 		syncFocus(p);
-		lay::PlaylistPage l = pageLayout(p);
-		rowsY = l.rowsY;
-		rowsShown = l.rows;
+		syncRows(p);
 		Kit& k = *ui.kit;
 		bool inPl = isPlDir(ui.browse->browseDir);
-
-		if (!inPl)
-		{
-			int n = (int)ui.browse->browseRows.size();
-			if (n == 0 || (n == 1 && ui.browse->browseRows[0].id < 0))
-			{
-				lay::EmptyState es = lay::emptyState(l.area, 1, plStore ? 1 : 0);
-				Kit::Empty e;
-				e.glyph = &G_PLAYLIST;
-				e.title = plStore ? "No playlists yet" : "Playlists aren't available";
-				e.lines = {plStore ? "Gather videos and songs to play in your order." : "There's no folder to keep them in."};
-				e.key1 = plStore ? "New playlist" : "";
-				e.glyph1 = &G_PLUS;
-				e.hotkeys = p.settings.buttonHotkeys;
-				k.emptyState(es, e);
-				return;
-			}
-			ui.scroll = std::clamp(ui.scroll, 0, std::max(0, n - l.rows));
-			for (int i = ui.scroll; i < n && i < ui.scroll + l.rows; i++)
-			{
-				const auto& row = ui.browse->browseRows[i];
-				const std::string& file = i < (int)ui.browse->browsePaths.size() ? ui.browse->browsePaths[i] : std::string();
-				Kit::Row r;
-				r.font = F_SMALL;
-				r.under = BG;
-				r.name = row.label;
-				r.note = row.note;
-				r.focused = ui.cursor == i;
-				if (row.id == PL_NEW) { r.glyph = &G_PLUS; r.lit = false; }
-				else if (ui.plIsLiked(file)) r.glyph = &G_HEART;
-				else r.glyph = &G_PLAYLIST;
-				if (row.id == PL_ROW && p.playing() && p.source().kind == SourceKind::Playlist && p.source().id == file)
-				{
-					r.pill = "Playing";
-					r.tone = Kit::Pill::Live;
-				}
-				if (row.id == PL_NEW) r.note.clear();
-				k.row(l.row(i - ui.scroll), r);
-			}
-			return;
-		}
+		if (!inPl) { drawRoot(p); return; }
+		lay::PlaylistPage l = pageLayout(p);
 
 		if (!plLoaded)
 		{
@@ -550,9 +569,7 @@ namespace bp
 	bool Ui::Playlists::key(Button b, Player& p)
 	{
 		if (!onPage()) return false;
-		lay::PlaylistPage l = pageLayout(p);
-		rowsY = l.rowsY;
-		rowsShown = l.rows;
+		syncRows(p);
 		bool inPl = isPlDir(ui.browse->browseDir);
 		int n = inPl ? (int)plCur.entries.size() : (int)ui.browse->browseRows.size();
 		if (n == 1 && !inPl && ui.browse->browseRows[0].id < 0) n = 0;
@@ -638,14 +655,65 @@ namespace bp
 		return true;
 	}
 
+	bool Ui::Playlists::rootPointer(const Pointer& pt, int x, int y, Player& p)
+	{
+		lay::PlaylistsRoot l = rootLayout();
+		int n = (int)ui.browse->browseRows.size();
+		bool empty = n == 0 || (n == 1 && ui.browse->browseRows[0].id < 0);
+		if (pt.kind == Pointer::Down)
+		{
+			plPressRow = chipPress = -1;
+			plTouchScrolled = false;
+			chipPress = lay::filterAt(l.head.chips, x, y);
+			if (chipPress >= 0 || empty) return true;
+			if (y >= l.rowsY && y < l.rowsY + l.rows * lay::PLAYLIST_ROW_H)
+			{
+				int at = ui.scroll + (y - l.rowsY) / lay::PLAYLIST_ROW_H;
+				if (at >= 0 && at < n)
+				{
+					plPressRow = at;
+					plTouchY = y;
+					plScrollStart = ui.scroll;
+					ui.cursor = at;
+					ui.dropTouch();
+				}
+			}
+			return true;	// (nothing else on the page answers a fresh finger)
+		}
+		if (pt.kind == Pointer::Move && plPressRow >= 0)
+		{
+			if (!plTouchScrolled && std::abs(y - plTouchY) > 12) plTouchScrolled = true;
+			if (plTouchScrolled) ui.scroll = lay::dragScroll(plScrollStart, plTouchY, y, lay::PLAYLIST_ROW_H, 0, n, l.rows);
+			return true;
+		}
+		if (pt.kind != Pointer::Up) return false;
+		int chip = chipPress, at = plPressRow;
+		chipPress = plPressRow = -1;
+		if (chip >= 0)
+		{
+			// Albums / Artists: Music's own views (this page is its third)
+			if (lay::filterAt(l.head.chips, x, y) == chip && chip != 2) ui.music->setView(chip, p);
+			return true;
+		}
+		if (empty)
+		{
+			if (plStore && lay::emptyState(l.below, 1, 1).key[0].hit(x, y)) plNameOpen(false, "", "");
+			return true;
+		}
+		if (plTouchScrolled || at < 0 || at >= n) return true;
+		if (at >= ui.scroll && at < ui.scroll + l.rows && !l.row(at - ui.scroll).hit(x, y)) return true;
+		ui.choose(at, p);
+		return true;
+	}
+
 	bool Ui::Playlists::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		if (!onPage()) return false;
-		lay::PlaylistPage l = pageLayout(p);
-		rowsY = l.rowsY;
-		rowsShown = l.rows;
+		syncRows(p);
 		bool inPl = isPlDir(ui.browse->browseDir);
-		int n = inPl ? (int)plCur.entries.size() : (int)ui.browse->browseRows.size();
+		if (!inPl) return rootPointer(pt, x, y, p);
+		lay::PlaylistPage l = pageLayout(p);
+		int n = (int)plCur.entries.size();
 
 		// the empty page's keys
 		if (inPl && (!plLoaded || plCur.entries.empty()))
@@ -667,15 +735,6 @@ namespace bp
 			}
 			return true;
 		}
-		if (!inPl && (n == 0 || (n == 1 && ui.browse->browseRows[0].id < 0)))
-		{
-			if (pt.kind == Pointer::Down) return true;
-			if (pt.kind != Pointer::Up || !plStore) return false;
-			lay::EmptyState es = lay::emptyState(l.area, 1, 1);
-			if (es.key[0].hit(x, y)) plNameOpen(false, "", "");
-			return true;
-		}
-
 		// the select / move bar
 		if (l.barKeys)
 		{

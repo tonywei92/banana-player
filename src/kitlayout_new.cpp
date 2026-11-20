@@ -466,6 +466,20 @@ namespace bp
 			return h;
 		}
 
+		PlaylistsRoot playlistsRoot(Box body, const std::vector<int>& chipWidths)
+		{
+			// the same inner box as Music's own views (12 in from the body's sides)
+			Box inner{body.x + SP12, body.y, body.w - 2 * SP12, body.h};
+			PlaylistsRoot r;
+			r.head = musicHeader(inner, chipWidths);
+			r.rowsY = r.head.strip.y + CHIP_STRIP + SP6;
+			int room = std::max(0, body.y + body.h - r.rowsY);
+			r.rows = std::max(1, room / PLAYLIST_ROW_H);
+			r.list = {inner.x, r.rowsY, inner.w, r.rows * PLAYLIST_ROW_H};
+			r.below = {inner.x, r.rowsY, inner.w, room};
+			return r;
+		}
+
 		VideoRow videoRow(Box row)
 		{
 			VideoRow v;

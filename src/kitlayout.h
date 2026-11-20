@@ -333,8 +333,8 @@ namespace bp
 		// ---- tiles with a summary: n in `cols` columns, `h` tall, 8 apart, in `area` ----
 		Box tileCell(Box area, int n, int cols, int h, int i);
 
-		// ---- the Recent card (112 x 100) and the Continue card (108 tall) ----
-		constexpr int RECENT_W = 112, RECENT_H = 100, CONTINUE_H = 108;
+		// ---- the Recent card (112 x 116) and the Continue card (108 tall); their pictures are square (1:1) ----
+		constexpr int RECENT_W = 112, RECENT_PIC = 64, RECENT_H = 116, CONTINUE_H = 108, CONTINUE_PIC = 84;
 		struct RecentCard
 		{
 			Box box, pic, title, note, line;
@@ -349,7 +349,7 @@ namespace bp
 		// ======== Home and All recent (docs/redesign: home, home-first, home-stopped, recent-all) ========
 		// The content column inside lay::shell().body: 12 from its sides, 6 under the header. The screens draw
 		// inside these boxes only; their touches test the same ones.
-		constexpr int HOME_PAD = SP12, HOME_CONTINUE_H = 108, HOME_CARD_ROW_H = 100, HOME_SHORTCUT_H = 56;
+		constexpr int HOME_PAD = SP12, HOME_CONTINUE_H = 108, HOME_CARD_ROW_H = RECENT_H, HOME_SHORTCUT_H = 56;
 		constexpr int HOME_CARDS_MAX = 4;
 		struct HomePage
 		{
@@ -908,5 +908,16 @@ namespace bp
 			int right = 0;	// where the counts end, 12 inside the row
 		};
 		PlaylistRow playlistRow(Box row);
+
+		// ---- The list of playlists (screens.js playlists): Music's view chips at the top of the body, then 46-tall
+		// rows (Liked first, New playlist last) that run to the hint bar; `below` is what the empty state centres in ----
+		struct PlaylistsRoot
+		{
+			MusicHeader head;
+			Box list, below;
+			int rowsY = 0, rows = 0;
+			Box row(int i) const { return {list.x, rowsY + i * PLAYLIST_ROW_H, list.w, PLAYLIST_ROW_H}; }
+		};
+		PlaylistsRoot playlistsRoot(Box body, const std::vector<int>& chipWidths);
 	}
 }

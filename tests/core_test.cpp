@@ -10620,13 +10620,14 @@ static void testKitVariantCards()
 {
 	using namespace lay;
 	RecentCard r = recentCard({16, 282, RECENT_W, RECENT_H});
-	CHECK_EQ(r.pic.h, 48);
+	CHECK_EQ(r.pic.w, r.pic.h);	// square, as Music's album art
+	CHECK(r.pic.x >= r.box.x && r.pic.x + r.pic.w <= r.box.x + r.box.w);
 	CHECK(r.pic.y + r.pic.h <= r.title.y);
 	CHECK(r.note.y + r.note.h <= r.line.y);
 	CHECK_EQ(r.line.h, 3);
 	CHECK(r.line.y + r.line.h <= r.box.y + r.box.h);
 	ContinueCard c = continueCard({16, 166, 608, CONTINUE_H});
-	CHECK_EQ(c.pic.w, 128);
+	CHECK_EQ(c.pic.w, c.pic.h);	// square
 	CHECK_EQ(c.pic.h, 84);
 	CHECK_EQ(c.key.w, 118);
 	CHECK_EQ(c.key.h, 52);
@@ -11567,6 +11568,26 @@ static void testKitLayout()
 		CHECK_EQ(m.key[1].x + m.key[1].w, m.list.x + m.list.w);
 		// the list of playlists: no keys and no bar: seven rows
 		CHECK_EQ(playlistPage(body, 0, 0).rows, 7);
+	}
+	// the list of playlists: Music's chips, then 46-tall rows to the hint bar; every row inside the body, none over
+	// another, the chips over the first row
+	{
+		Box body = lay::shell().body;
+		PlaylistsRoot r = playlistsRoot(body, {90, 90, 110});
+		CHECK_EQ((int)r.head.chips.chip.size(), 3);
+		CHECK_EQ(r.head.strip.x, body.x + SP12);
+		CHECK_EQ(r.rowsY, r.head.strip.y + CHIP_STRIP + SP6);
+		CHECK(r.rows >= 6);
+		for (int i = 0; i < r.rows; i++)
+		{
+			Box b = r.row(i);
+			CHECK_EQ(b.h, PLAYLIST_ROW_H);
+			CHECK(b.x >= body.x && b.x + b.w <= body.x + body.w);
+			CHECK(b.y >= r.head.strip.y + CHIP_STRIP && b.y + b.h <= body.y + body.h);
+			if (i) CHECK_EQ(b.y, r.row(i - 1).y + PLAYLIST_ROW_H);
+		}
+		CHECK(r.below.y + r.below.h <= body.y + body.h);
+		CHECK_EQ(r.below.y, r.rowsY);
 	}
 	// Settings inside the shared shell: the header strip's boxes stay in the main strip, and the page's tiles and
 	// rows stay in the body, with the help under the seventh row

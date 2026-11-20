@@ -43,6 +43,7 @@ namespace bp
 		void open(Player& p);			// the rail's way in: the view as it was left
 		void show(Player& p);			// to `view` (Playlists: the browser's playlists page)
 		void viewStep(int dir, Player& p);	// L2 / R2 and the chips: the views, wrapping
+		void setView(int v, Player& p);	// to one view (a chip on the Playlists page)
 		// a page below the views: the album or the artist open, an index into the snapshot's list (-1 none).
 		// `cursor` stays the views' own (the cell or row B comes back to); `rowCursor` is the page's rows
 		int albumAt = -1, artistAt = -1;
