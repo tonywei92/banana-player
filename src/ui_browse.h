@@ -82,6 +82,8 @@ namespace bp
 		bool filesPage() const;	// this page, a local folder (or the places), no menu
 		// Files' tabs (Files | Network): a strip on the two tops, the places and the connections' list; the folders
 		// under them and the form have none. L / R step them, a tap too (lay::tabPage, Kit::tabs)
+		bool filesBroken() const;	// the empty page is a folder that can't be shown, not an empty one
+		int filesEmptyKeys() const;	// the empty page's keys: 0 (the places), 1 (Go up), 2 (and Send files)
 		bool tabsOn() const;
 		lay::TabPage browseTabPage() const;
 		lay::Box tabsBody() const;	// the shell's body less the strip when it shows

@@ -512,6 +512,8 @@ named Music, Videos and Movies on either card, and the files you have played or 
 
 ## Network folders
 
+A connection's folders are the Files page: the same rows, keys, select mode and **More** as a card's folder (header: *Files › Network › server › path*), with a loader while the first listing comes in.
+
 Play videos, music and photos straight from a computer or a NAS on your Wi-Fi, over **SMB** (Windows file sharing,
 most NAS boxes, Samba) or **FTP** (and FTPS). What plays isn't copied to the card.
 

@@ -1196,8 +1196,10 @@ namespace bp
 	bool Ui::Browse::filesPage() const
 	{
 		// the cards' places and the folders under them; Home, All recent, the playlists and the network keep Ui's list
-		return ui.page == Page::Browse && (playlists->selMode == SEL_NONE || fileSel) && browseTab == TAB_LOCAL &&
-			(browseDir.empty() || (!pseudoDir(browseDir) && !isNetPath(browseDir)));
+		// (a folder on a connection too: the same rows, drawn the same way; its listing comes from the worker)
+		if (ui.page != Page::Browse || (playlists->selMode != SEL_NONE && !fileSel)) return false;
+		if (isNetPath(browseDir)) return browseTab == TAB_NETWORK;
+		return browseTab == TAB_LOCAL && (browseDir.empty() || !pseudoDir(browseDir));
 	}
 
 	bool Ui::Browse::tabsOn() const
@@ -1268,7 +1270,7 @@ namespace bp
 	{
 		if (browseDir.empty()) return "Your folders";
 		std::string where = ui.whereOf(browseDir);
-		std::string out = "Files \xE2\x80\xBA ";
+		std::string out = isNetPath(browseDir) ? "Files \xE2\x80\xBA Network \xE2\x80\xBA " : "Files \xE2\x80\xBA ";
 		for (size_t i = 0; i < where.size(); i++)
 		{
 			if (where.compare(i, 3, " / ") == 0) { out += " \xE2\x80\xBA "; i += 2; }
@@ -1323,8 +1325,7 @@ namespace bp
 		if (filesEmpty())
 		{
 			if (browseDir.empty()) return {{"L/R", "Tab"}, {"L2/R2", "Sections"}};
-			if (!browseRows.empty() && browseRows[0].label == "This folder can't be opened")
-				return {{"A/B", "Go up"}, {"X", "More"}, {"L2/R2", "Sections"}};
+			if (filesEmptyKeys() == 1) return {{"A/B", "Go up"}, {"X", "More"}, {"L2/R2", "Sections"}};
 			return {{"A/B", "Go up"}, {"Y", "Send files"}, {"X", "More"}, {"L2/R2", "Sections"}};
 		}
 		std::vector<Hint> h = {{"A", "Play / open"}, {"B", browseDir.empty() ? "Home" : "Up"}, {"X", "More"}, {"Y", "Select"}};
@@ -1398,13 +1399,35 @@ namespace bp
 		}
 	}
 
+	bool Ui::Browse::filesBroken() const
+	{
+		// a folder that can't be shown: a card gone, a connection gone or without support (not "Nothing to play here")
+		if (browseRows.empty() || browseRows[0].id >= 0) return false;
+		if (isNetPath(browseDir)) return browseRows[0].label != "Nothing to play here";
+		return browseRows[0].label == "This folder can't be opened";
+	}
+
+	int Ui::Browse::filesEmptyKeys() const
+	{
+		// Go up, and Send files (the dashboard) on a card's folder; a connection's folder has Go up only
+		if (browseDir.empty()) return 0;
+		return filesBroken() || isNetPath(browseDir) ? 1 : 2;
+	}
+
 	void Ui::Browse::drawFilesEmpty(const lay::FilesPage& f, const Player& p)
 	{
 		bool folder = !browseDir.empty();
-		bool broken = !browseRows.empty() && browseRows[0].label == "This folder can't be opened";
+		bool broken = filesBroken();
+		// a connection's first listing: the loader, as every wait on the kit
+		if (netLoading && isNetPath(browseDir))
+		{
+			ui.drawLoader(f.rows.x + f.rows.w / 2, f.rows.y + f.rows.h / 2, "Loading\xE2\x80\xA6");
+			return;
+		}
 		std::string title = !browseRows.empty() ? browseRows[0].label : "Nothing to play here";
-		std::string line = broken ? "Is the card still in?" : folder ? "No videos, music or photos in this folder." : "No cards or folders to show.";
-		int keys = folder ? (broken ? 1 : 2) : 0;
+		std::string line = broken ? (isNetPath(browseDir) ? "Go up to try another folder." : "Is the card still in?")
+			: folder ? "No videos, music or photos in this folder." : "No cards or folders to show.";
+		int keys = filesEmptyKeys();
 		lay::EmptyState l = lay::emptyState(f.rows, 1, keys);
 		Kit::Empty e;
 		e.glyph = broken ? &G_ALERT : &G_FOLDER;
@@ -1827,8 +1850,7 @@ namespace bp
 			default: return true;	// (START, L/R: nothing while ticking)
 			}
 		}
-		if (b == Button::Y && filesEmpty() && !browseDir.empty() &&
-			(browseRows.empty() || browseRows[0].label != "This folder can't be opened")) { ui.openWeb(); return true; }
+		if (b == Button::Y && filesEmpty() && filesEmptyKeys() == 2) { ui.openWeb(); return true; }
 		int shown = std::max(1, filesShown(p));
 		switch (b)
 		{
@@ -1853,9 +1875,7 @@ namespace bp
 		lay::FilesPage f = filesLayout(p);
 		int n = (int)browseRows.size(), scroll = filesScroll(p);
 		auto emptyKeys = [&](int& keys) {
-			bool folder = !browseDir.empty();
-			bool broken = !browseRows.empty() && browseRows[0].label == "This folder can't be opened";
-			keys = folder ? (broken ? 1 : 2) : 0;
+			keys = filesEmptyKeys();
 			return lay::emptyState(f.rows, 1, keys);
 		};
 		if (pt.kind == Pointer::Down)

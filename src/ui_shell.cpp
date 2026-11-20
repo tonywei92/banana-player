@@ -558,8 +558,8 @@ namespace bp
 	{
 		// Manga's pages are all drawn on the kit in the body (the reader is no shell page)
 		if (ui.manga->shellPage(ui.page)) return true;
-		// the browser's rebuilt views draw in the body box; Network and the forms still draw the old full panel and
-		// keep the bridge
+		// the browser's rebuilt views draw in the body box (Files, a connection's folders, Network and its forms
+		// included); a select / add mode over the old list keeps the bridge
 		if (ui.page != Page::Browse) return adopted(ui.page);
 		if (!browseBuilt) return false;
 		const Browse& b = *ui.browse;
@@ -572,8 +572,8 @@ namespace bp
 		Bridge b;
 		lay::Shell s = layout(p);
 		// the old page is 640 x 480 with its own header (0..54) and hint bar (450..480): the body is the part between,
-		// scaled uniformly into the shell's body (centred, so nothing is cut). Only the browser's network folders are
-		// left on it; Manga's pages are all the kit's
+		// scaled uniformly into the shell's body (centred, so nothing is cut). Only the browser's old select / add
+		// modes (a selection with a destination, the picker's folders) are left on it; every page is otherwise the kit's
 		const int sw = 640, sh = 396;
 		double sc = std::min(s.body.w / (double)sw, s.body.h / (double)sh);
 		b.w = std::max(1, (int)std::lround(sw * sc));
