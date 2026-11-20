@@ -1541,6 +1541,7 @@ int main(int argc, char** argv)
 			if (player.quit || ui.quitRequested || ui.restartRequested) running = false;
 			// the player's own Stop: the session's (everywhere: a page playing it too); what the session doesn't have (a
 			// photo) stops here alone. The web's Stop of a photo, or of a file deleted under it, likewise
+			if (ui.takeLeaveWanted() && photos.playing()) leave();
 			if (ui.takeStopPressed() && !shadow.stop("hh").reject.empty()) stopPlaying(StopWhy::Handheld);
 			if (ui.takeStopRequest()) stopPlaying(StopWhy::Web);
 			// the mini bar tapped over a photo: the photo closes and the player of what plays takes the screen (the top

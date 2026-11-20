@@ -1657,3 +1657,10 @@ in a Music folder); any other file, and a song not read yet, keeps its file name
 A comic (CBZ, CBR, a comic EPUB) opened from Files, Recent or a connection while a video plays or is paused asks first,
 as Manga's row does: **Stay** or **Stop video & open comic** (the video's place waits in Continue). **Don't ask again**
 (or Settings > Manga) stops the video at once. Music and photos are not affected.
+
+### Photo viewer's More: Slideshow, Copy, Move, Delete
+
+**X** (or SELECT) over a photo adds **Slideshow** (with more than one photo: the next photo every 5 s, **Stop slideshow**
+to end it; L / R still step, it ends at the last photo and when the viewer closes), **Copy...** and **Move...** (the
+viewer closes on the photo's folder with the clipboard set: open the folder it goes in, then SELECT, as in Files) and
+**Delete** (asks first, then the viewer closes). Not for a photo on a connection.

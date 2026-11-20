@@ -386,11 +386,27 @@ namespace bp
 		return false;
 	}
 
+	void Ui::slideshowTick(Player& p)
+	{
+		if (!slideshow) return;
+		// over when the viewer is not what shows (closed, or the player of what plays took the screen)
+		if (!p.playingPhoto() || page != Page::Main) { slideshow = false; return; }
+		uint32_t now = SDL_GetTicks();
+		if (now - slideAt < SLIDE_MS) return;
+		slideAt = now;
+		if (!p.next())
+		{
+			slideshow = false;
+			p.osd("End of the slideshow", 2000);
+		}
+	}
+
 	void Ui::tick(Player& p)
 	{
 		// a held slider whose target is told at a pace: a finger resting on a new value, sent when it's due
 		slideLive(p);
 		manga->mangaVideoGuard(p);
+		slideshowTick(p);
 		backdropTick(p);	// Match album art: the playing song's backdrop asked for once, or dropped
 		if (Area* a = area()) a->tick(p);
 		if (shell->page(page)) shell->tick(p);	// the rail's Now playing key's hold
