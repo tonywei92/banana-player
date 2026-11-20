@@ -20,6 +20,7 @@
 #include "mangastore.h"
 #include "writequeue.h"	// DurableWriter: the store's saves off the main thread
 #include "mangaworker.h"
+#include "dlqueue.h"	// DlItem: the Downloads list's rows
 #include "mangafetch.h"
 #include "pagecache.h"
 #include "coverworker.h"
@@ -62,16 +63,42 @@ namespace bp
 		bool tabView() const { return ui.page == Page::Manga && mangaView == 0; }
 		// Library and History are drawn on the kit in the content box under the tabs (not bridged, not scaled):
 		// the cover grid (lay::coverGrid, Kit::coverTile) and the two-line rows (lay::rowList, Kit::row + a Continue key)
-		bool kitBody() const { return tabView() && (mangaTab == MT_LIBRARY || mangaTab == MT_HISTORY); }
+		bool kitBody() const { return tabView(); }	// (all four tabs, Browse's and Downloads' own pages included)
+		// Browse's and Downloads' lists (screens.js manga-browse, manga-downloads): rows of the kit (lay::rowList,
+		// Kit::row) in the content under the tabs; the row under the cursor may carry a key (Edit · X, Pause · X)
+		struct MangaRow
+		{
+			const Glyph* glyph = nullptr;
+			std::string name, second, note, pill;
+			bool off = false, pillBad = false;
+			double bar = -1;	// a progress line along the row's foot (a chapter downloading); -1 none
+			bool barBad = false;
+			std::string keyLabel, keyCap;	// the focused row's key ("" none)
+		};
+		lay::RowList mangaRowsFit(const Player& p, int n, int cursor, int& scroll) const;
+		void drawMangaRows(const lay::RowList& l, int cursor, const std::function<MangaRow(int)>& at);
+		// a finger on the rows: a drag scrolls them (the cursor kept among those shown), a tap is tap(i, onKey)
+		void mangaRowsPointer(const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
+			std::function<MangaRow(int)> at, std::function<void(int, bool)> tap);
+		std::string tabCrumb;	// Browse's and Downloads' header line, set as they draw (where, the storage line)
+		MangaRow mangaBrowseRowAt(const Player& p, int i) const;
+		MangaRow mangaLocalRowAt(int i) const;
+		MangaRow mangaNetRowAt(int i) const;
+		void drawMangaNetFoldersKit(const Player& p);	// Browse's network folder (Page::Manga), on the kit
+		MangaRow mangaDlRowAt(int i) const;
+		MangaRow mangaDlCardRowAt(int i) const;
+		mutable std::vector<DlItem> mdlItems;	// the queue's chapters not done, as the Downloads list last read them
+		void mangaDlItemsRead() const;
 		lay::AlbumGrid mangaLibGrid(const Player& p) const;
 		lay::RowList mangaHisList(const Player& p) const;
+		// a History row whose series can't be opened now: "source removed" (a source no longer installed, once the
+		// sources are known), "not on a card" (a card series the last scan didn't find); "" when it can
+		std::string mangaHisGone(const ChapterProgress& cp) const;
 		void drawMangaTabEmpty(const Player& p, const Glyph& g, const std::string& title, const std::string& text);
 		lay::TabPage mangaTabPage(const Player& p) const;
 		// the header the shell draws: the page's title, its crumb, the hints its old body drew (captured while it was
 		// bridged: Ui::capHints), plus L2 / R2 on the tabs
 		ShellHead head(const Player& p) const;
-		// where the old body is copied: its top in the old page (under the old tabs on the tab view) and the box
-		void shellBand(const Player& p, lay::Box& dst, int& srcTop) const;
 		// a sheet, a menu or the keyboard is up: keys and touches go to it as they always did, the old way (no
 		// sections on L / R, no mapping of the touches: the sheet is drawn at full size over the shell)
 		bool shellModal() const;
@@ -484,7 +511,7 @@ namespace bp
 		Rect mangaLightRect() const { return mangaChapterCell(2); }	// the Brightness sheet
 		Rect mangaNextRect() const { return mangaChapterCell(3); }
 		static constexpr int MG_SER_ROWS = 5, MG_SER_TOP = 140;	// Page::MangaSeries' chapter rows
-		static constexpr int MG_ROW_TOP = 102, MG_ROWS = 6;
+		static constexpr int MG_ROWS = 6;	// the keys' page step on the old lists
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
 		static constexpr int MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101, MG_FULL = 3102, MG_LIGHT = 3103;
 
@@ -1172,18 +1199,9 @@ namespace bp
 		// the Downloads tab's rows: the queue (up to 3), Pause all, then the card's series (up to 2). With nothing
 		// queued the queue's room goes to the card: one dim line, then the series from MDL_CARD_TOP_C down to the
 		// hint line, as many as fit
-		static constexpr int MDL_TOP = 138, MDL_QROW = 58, MDL_QSHOWN = 3, MDL_ALL_Y = 316, MDL_CARD_TOP = 368,
-			MDL_CROW = 38, MDL_CSHOWN = 2;
-		static constexpr int MDL_NOTE_Y = 122, MDL_CARD_LABEL_C = 142, MDL_CARD_TOP_C = 156;
-		int mdlCardRows() const
-		{
-			if (mangaDlQueueCount() > 0) return MDL_CSHOWN;
-			return std::max(1, (ui.footY() - 16 - MDL_CARD_TOP_C) / MDL_CROW);
-		}
-		int mdlCardTop() const { return mangaDlQueueCount() > 0 ? MDL_CARD_TOP : MDL_CARD_TOP_C; }
-		// a failed or queued row's right end removes it (Y, or a tap there); the Pause all row's right end clears failed
-		static Rect mdlRemoveRect(const Rect& row) { return {row.x + row.w - 92, row.y, 92, row.h}; }
-		static Rect mdlClearFailedRect() { return {512, MDL_ALL_Y, 112, 32}; }
+		// the keys' paging of the queue and the card's series (the list itself is the kit's: lay::rowList, five rows)
+		static constexpr int MDL_QSHOWN = 3;
+		int mdlCardRows() const { return 5; }
 
 		// ---- the manga reader's settings (ui_manga_settings.cpp) ----
 		// A page of the app's own, not a group of Banana Player's Settings: START on the app's pages (any tab) or over

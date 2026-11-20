@@ -783,95 +783,33 @@ namespace bp
 	{
 		if (pt.kind != Pointer::Down) return false;
 		mangaDlEnsureCard();
-		// each list follows a finger: a drag scrolls the one it went down on, a tap (lifted where it went down) is A
-		// on the row, as before. The cursor stays among the rows shown, as the D-pad keeps it
+		// the kit's rows, as the draw laid them out: a drag scrolls, a tap is A on the row, a tap on the focused
+		// row's key is that key (Pause / Resume X, Remove or Clear failed Y)
 		if (mdlCardOpen)
 		{
 			if (mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size()) { mdlCardOpen = false; mdlCardAt = -1; return false; }
-			int n = (int)mdlCard[mdlCardAt].chapters.size();
-			if (!n || y < 138 || y >= 138 + 6 * 44) return false;
-			int i = mdlCardScroll + (y - 138) / 44;
-			// (the row's gap is no tap, as before)
-			if (i < n && (y - 138) % 44 >= 40) i = -1;
-			ui.pageReader->mangaListBegin(x, y, mdlCardScroll, 44, i < n ? i : -1, [this](int want) {
-				int n = mdlCardOpen && mdlCardAt >= 0 && mdlCardAt < (int)mdlCard.size() ? (int)mdlCard[mdlCardAt].chapters.size() : 0;
-				mdlCardScroll = std::clamp(want, 0, std::max(0, n - 6));
-				mdlCardCursor = std::clamp(mdlCardCursor, mdlCardScroll, std::max(mdlCardScroll, std::min(n - 1, mdlCardScroll + 5)));
-				return mdlCardScroll;
-			}, [this, &p](int i) {
+			mangaRowsPointer(p, x, y, [this] {
+				return mdlCardOpen && mdlCardAt >= 0 && mdlCardAt < (int)mdlCard.size() ? (int)mdlCard[mdlCardAt].chapters.size() : 0;
+			}, &mdlCardScroll, &mdlCardCursor, [this](int i) { return mangaDlCardRowAt(i); }, [this, &p](int i, bool) {
 				if (!mdlCardOpen || mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size()) return;
-				if (i >= (int)mdlCard[mdlCardAt].chapters.size()) return;
+				if (i < 0 || i >= (int)mdlCard[mdlCardAt].chapters.size()) return;
 				mdlCardCursor = i;
 				mangaDlOpenCardAt(mdlCardAt, i, p);
 			});
 			return false;
 		}
-		int q = mangaDlQueueCount(), c = (int)mdlCard.size();
-		if (q > 0 && y >= MDL_TOP && y < MDL_TOP + MDL_QSHOWN * MDL_QROW)
-		{
-			int i = mdlScroll + (y - MDL_TOP) / MDL_QROW;
-			if (i < q && (y - MDL_TOP) % MDL_QROW >= MDL_QROW - 4) i = -1;
-			// the end of a failed or queued row is its Remove (the rest of the row is still A, or a drag)
-			if (i >= 0 && i < q)
-			{
-				Rect row{16, MDL_TOP + (i - mdlScroll) * MDL_QROW, 608, MDL_QROW - 4};
-				if (mdlRemoveRect(row).hit(x, y))
-				{
-					auto items = mangaNet && mangaNet->started() ? mangaNet->queue().items() : std::vector<DlItem>();
-					int at = 0;
-					for (auto& it : items)
-					{
-						if (it.state == DlItem::Done) continue;
-						if (at++ != i) continue;
-						if (it.state == DlItem::Failed || it.state == DlItem::Waiting)
-						{
-							mdlCursor = i;
-							mangaDownloadsKey(Button::Y, p);
-							return false;
-						}
-						break;
-					}
-				}
-			}
-			ui.pageReader->mangaListBegin(x, y, mdlScroll, MDL_QROW, i < q ? i : -1, [this](int want) {
-				int q = mangaDlQueueCount();
-				mdlScroll = std::clamp(want, 0, std::max(0, q - MDL_QSHOWN));
-				if (mdlCursor < q) mdlCursor = std::clamp(mdlCursor, mdlScroll, std::max(mdlScroll, std::min(q - 1, mdlScroll + MDL_QSHOWN - 1)));
-				return mdlScroll;
-			}, [this, &p](int i) {
-				if (i >= mangaDlQueueCount()) return;
-				mdlCursor = i;
-				mangaDownloadsKey(Button::A, p);
-			});
-			return false;
-		}
-		if (q > 0 && Rect{16, MDL_ALL_Y, 608, 32}.hit(x, y))
-		{
-			mdlCursor = q;
-			// the row's right end is Clear failed, while something has failed
-			if (mangaDlFailedCount() > 0 && mdlClearFailedRect().hit(x, y)) mangaDownloadsKey(Button::Y, p);
+		mangaDlItemsRead();
+		mangaRowsPointer(p, x, y, [this] {
+			int q = (int)mdlItems.size();
+			return q + (q > 0 ? 1 : 0) + (int)mdlCard.size();
+		}, &mdlScroll, &mdlCursor, [this](int i) { return mangaDlRowAt(i); }, [this, &p](int i, bool onKey) {
+			if (i < 0) return;
+			mdlCursor = i;
+			MangaRow m = mangaDlRowAt(i);
+			if (onKey && m.keyCap == "Y") mangaDownloadsKey(Button::Y, p);
+			else if (onKey && m.keyCap == "X") mangaDownloadsKey(Button::X, p);
 			else mangaDownloadsKey(Button::A, p);
-			return false;
-		}
-		// the card's rows: right under the summary line when nothing is queued, their number following the room
-		int top = mdlCardTop(), shown = mdlCardRows();
-		if (c > 0 && y >= top && y < top + shown * MDL_CROW)
-		{
-			int i = mdlCardScroll + (y - top) / MDL_CROW;
-			if (i < c && (y - top) % MDL_CROW >= MDL_CROW - 4) i = -1;
-			ui.pageReader->mangaListBegin(x, y, mdlCardScroll, MDL_CROW, i < c ? i : -1, [this](int want) {
-				int q = mangaDlQueueCount(), c = (int)mdlCard.size(), off = q + (q > 0 ? 1 : 0), rows = mdlCardRows();
-				mdlCardScroll = std::clamp(want, 0, std::max(0, c - rows));
-				if (mdlCursor >= off && c > 0)
-					mdlCursor = off + std::clamp(mdlCursor - off, mdlCardScroll, std::max(mdlCardScroll, std::min(c - 1, mdlCardScroll + rows - 1)));
-				return mdlCardScroll;
-			}, [this, &p](int i) {
-				int q = mangaDlQueueCount();
-				if (i >= (int)mdlCard.size()) return;
-				mdlCursor = q + (q > 0 ? 1 : 0) + i;
-				mangaDownloadsKey(Button::A, p);
-			});
-		}
+		});
 		return false;
 	}
 
@@ -1384,105 +1322,99 @@ namespace bp
 
 	// ---- the Downloads tab ----
 
-	void Ui::Manga::drawMangaDownloads(const Player& p)
+	Ui::Manga::MangaRow Ui::Manga::mangaDlRowAt(int i) const
 	{
-		(void)p;
-		if (mdlCardOpen) { drawMangaDlCardSeries(p); return; }
-		mangaDlEnsureCard();
-		mangaDlAskPump();
-		// the storage line: what the downloads take, and what the card has left
-		uint64_t bytes = mangaDlCardBytes(), free = mangaDlFreeBytes();
-		std::string line = "Downloads " + formatBytes((long long)bytes) + " \xC2\xB7 " + formatBytes((long long)free) + " free";
-		ui.drawTextMid(line, 0, free && free < MangaDownloader::kMinFreeBytes ? DANGER : DIM, 16, 108, 592);
-		int q = mangaDlQueueCount(), c = (int)mdlCard.size();
-		if (q == 0 && c == 0)
+		// the Downloads list (screens.js manga-downloads): the queue (each chapter's pages over a progress line), Pause
+		// all / Resume all while anything is queued, then what is on the card by series. The queue is mdlItems, as
+		// the draw or the finger last read it
+		MangaRow m;
+		int q = (int)mdlItems.size(), off = q + (q > 0 ? 1 : 0);
+		if (i < q)
 		{
-			ui.drawEmpty(G_DOWNLOAD, "Nothing downloaded yet",
-				"R2 on a source\xE2\x80\x99s series page downloads it to read offline.",
-				nullptr);
-			ui.drawHints({{"B", "Back"}});
-			return;
-		}
-		// the queue's slot, then Pause all (only while something is queued), then the card's series
-		int off = q + (q > 0 ? 1 : 0), total = off + c;
-		if (mdlCursor >= total) mdlCursor = total - 1;
-		if (mdlCursor < 0) mdlCursor = 0;
-		// a chapter that finished leaves the window where it is valid; with nothing queued the card's rows take
-		// the room the queue had, so their window is that many rows deep
-		int cardRows = mdlCardRows(), cardTop = mdlCardTop();
-		if (mdlScroll > std::max(0, q - MDL_QSHOWN)) mdlScroll = std::max(0, q - MDL_QSHOWN);
-		if (mdlCardScroll > std::max(0, c - cardRows)) mdlCardScroll = std::max(0, c - cardRows);
-		// a page list that failed says so where the queue's label would be; with nothing queued that line says so
-		if (!mdlNote.empty()) ui.drawTextMid(ui.elideLeft(mdlNote, 0, 592), 0, DANGER, 16, MDL_NOTE_Y, 592);
-		else if (q == 0) ui.drawTextMid("Nothing queued", 0, DIM, 16, MDL_NOTE_Y);
-		else
-			ui.drawTextMid("Queue \xC2\xB7 " + std::to_string(q) + (q == 1 ? " chapter" : " chapters"),
-				0, DIM, 16, MDL_NOTE_Y);
-		// the queue: series, chapter, pages done of total, a progress line
-		auto items = mangaNet && mangaNet->started() ? mangaNet->queue().items() : std::vector<DlItem>();
-		int failed = mangaDlFailedCount();
-		bool atRemovable = false;
-		int shown = 0;
-		for (const auto& it : items)
-		{
-			if (it.state == DlItem::Done) continue;
-			if (shown < mdlScroll || shown >= mdlScroll + MDL_QSHOWN) { shown++; continue; }
-			int y = MDL_TOP + (shown - mdlScroll) * MDL_QROW;
-			Rect r{16, y, 608, MDL_QROW - 4};
-			bool at = shown == mdlCursor;
-			if (at) ui.drawFocus(r);
-			int mid = r.y + r.h / 2;
-			std::string title = it.seriesTitle.empty() ? it.seriesId : it.seriesTitle;
-			int totalPages = (int)it.pageUrls.size();
+			const DlItem& it = mdlItems[i];
+			int total = (int)it.pageUrls.size();
 			bool removable = it.state == DlItem::Failed || it.state == DlItem::Waiting;
-			if (at) atRemovable = removable;
+			m.glyph = &G_DOWNLOAD;
+			m.name = (it.seriesTitle.empty() ? it.seriesId : it.seriesTitle) + " \xC2\xB7 " + it.chapterTitle;
 			std::string state = it.state == DlItem::Paused ? "Paused"
 				: it.state == DlItem::Failed ? (it.error.empty() ? "Failed" : it.error)
 				: it.state == DlItem::Running ? "Downloading" : "Queued";
-			ui.drawTextMid(title, 1, at ? ACCENT : TEXT, 32, mid - 10, removable ? 470 : 520);
-			if (removable)
-			{
-				Rect rr = mdlRemoveRect(r);
-				ui.drawTextMid("Remove", 0, at ? DIM_ON : DIM, rr.x + rr.w - 8, mid - 10, rr.w - 8, 1);
-			}
-			ui.drawTextMid(it.chapterTitle + " \xC2\xB7 " + std::to_string(it.done) + "/" + std::to_string(totalPages) +
-				" pages \xC2\xB7 " + state, 0, it.state == DlItem::Failed ? DANGER : at ? DIM_ON : DIM,
-				32, mid + 10, 556);
-			int w = totalPages > 0 ? (int)std::lround(560.0 * it.done / totalPages) : 0;
-			ui.drawLevel({32, r.y + r.h - 8, 560, 3}, w, TRACK, it.state == DlItem::Failed ? DANGER : at ? ACCENT : DIM);
-			shown++;
+			m.second = std::to_string(it.done) + " / " + std::to_string(total) + " pages \xC2\xB7 " + state;
+			m.bar = total > 0 ? it.done / (double)total : 0;
+			m.barBad = it.state == DlItem::Failed;
+			// the row's key: what Y does on a failed or waiting one (Remove), else X (Pause / Resume)
+			if (removable) { m.keyLabel = "Remove"; m.keyCap = "Y"; }
+			else { m.keyLabel = it.state == DlItem::Paused ? "Resume" : "Pause"; m.keyCap = "X"; }
+			return m;
 		}
-		ui.drawScrollBar(MDL_TOP, MDL_QSHOWN * MDL_QROW - 4, mdlScroll, MDL_QSHOWN, q);
-		// Pause all / Resume all, while anything is queued (after the last finishes there's nothing to pause)
+		if (q > 0 && i == q)
+		{
+			bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
+			m.glyph = paused ? &G_PLAY : &G_PAUSE;
+			m.name = paused ? "Resume all" : "Pause all";
+			if (mangaDlFailedCount()) { m.keyLabel = "Clear failed"; m.keyCap = "Y"; m.note = "Y clears the failed"; }
+			else m.note = paused ? "all paused" : "one at a time";
+			return m;
+		}
+		int c = i - off;
+		if (c < 0 || c >= (int)mdlCard.size()) return m;
+		const MangaDlCardSeries& s = mdlCard[c];
+		int n = (int)s.chapters.size();
+		m.glyph = &G_BOOK;
+		m.name = s.name;
+		m.second = "On the card \xC2\xB7 " + std::to_string(n) + (n == 1 ? " chapter" : " chapters");
+		m.note = formatBytes((long long)s.bytes);
+		return m;
+	}
+
+	Ui::Manga::MangaRow Ui::Manga::mangaDlCardRowAt(int i) const
+	{
+		MangaRow m;
+		if (mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size()) return m;
+		const MangaDlCardSeries& s = mdlCard[mdlCardAt];
+		if (i < 0 || i >= (int)s.chapters.size()) return m;
+		m.glyph = &G_COMIC;
+		m.name = s.chapters[i].title;
+		m.note = formatBytes((long long)s.chapters[i].bytes);
+		return m;
+	}
+
+	void Ui::Manga::mangaDlItemsRead() const
+	{
+		mdlItems.clear();
+		if (!mangaNet || !mangaNet->started()) return;
+		for (auto& it : mangaNet->queue().items())
+			if (it.state != DlItem::Done) mdlItems.push_back(it);
+	}
+
+	void Ui::Manga::drawMangaDownloads(const Player& p)
+	{
+		tabCrumb = "Downloads";
+		if (mdlCardOpen) { drawMangaDlCardSeries(p); return; }
+		mangaDlEnsureCard();
+		mangaDlAskPump();
+		mangaDlItemsRead();
+		// the storage line is the header's (screens.js: "Downloads · 412 MB on the card · 21 GB free"); a page list
+		// that failed says so there instead
+		uint64_t bytes = mangaDlCardBytes(), free = mangaDlFreeBytes();
+		tabCrumb = "Downloads \xC2\xB7 " + formatBytes((long long)bytes) + " on the card \xC2\xB7 " + formatBytes((long long)free) + " free";
+		if (free && free < MangaDownloader::kMinFreeBytes) tabCrumb = "Low on card space \xC2\xB7 " + formatBytes((long long)free) + " free";
+		if (!mdlNote.empty()) tabCrumb = mdlNote;
+		int q = (int)mdlItems.size(), c = (int)mdlCard.size();
+		if (q == 0 && c == 0)
+		{
+			drawMangaTabEmpty(p, G_DOWNLOAD, "Nothing downloaded yet", "R2 on a source\xE2\x80\x99s series page downloads it to read offline.");
+			ui.drawHints({{"B", "Back"}});
+			return;
+		}
+		int off = q + (q > 0 ? 1 : 0), total = off + c;
+		if (mdlCursor >= total) mdlCursor = total - 1;
+		if (mdlCursor < 0) mdlCursor = 0;
+		lay::RowList l = mangaRowsFit(p, total, mdlCursor, mdlScroll);
+		drawMangaRows(l, mdlCursor, [this](int i) { return mangaDlRowAt(i); });
+		int failed = mangaDlFailedCount();
 		bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
-		if (q > 0)
-		{
-			Rect all{16, MDL_ALL_Y, 608, 32};
-			bool onAll = mdlCursor == q;
-			if (onAll) ui.drawFocus(all);
-			ui.drawGlyphMid(paused ? G_PLAY : G_PAUSE, 40, all.y + all.h / 2, onAll ? ACCENT : DIM);
-			ui.drawTextMid(paused ? "Resume all" : "Pause all", 1, onAll ? ACCENT : TEXT, 62, all.y + all.h / 2, 400);
-			// its right end is Clear failed while one has failed, else what the queue is doing
-			if (failed) ui.drawTextMid("Clear failed", 0, onAll ? ACCENT : DIM, 608, all.y + all.h / 2, 0, 1);
-			else ui.drawTextMid(paused ? "all paused" : "one at a time", 0, onAll ? DIM_ON : DIM, 608, all.y + all.h / 2, 0, 1);
-		}
-		// what is on the card, by series: right under the summary when nothing is queued, as many rows as fit
-		ui.drawTextMid("On the card" + (c ? " \xC2\xB7 " + std::to_string(c) + " series" : ""),
-			0, DIM, 16, q > 0 ? 354 : MDL_CARD_LABEL_C);
-		for (int i = mdlCardScroll; i < c && i < mdlCardScroll + cardRows; i++)
-		{
-			Rect r{16, cardTop + (i - mdlCardScroll) * MDL_CROW, 608, MDL_CROW - 4};
-			bool at = mdlCursor == off + i;
-			if (at) ui.drawFocus(r);
-			int mid = r.y + r.h / 2;
-			const MangaDlCardSeries& s = mdlCard[i];
-			ui.drawGlyphMid(G_DOWNLOAD, 38, mid, at ? ACCENT : DIM, 1);
-			ui.drawTextMid(s.name, 1, at ? ACCENT : TEXT, 56, mid, 400);
-			int n = (int)s.chapters.size();
-			ui.drawTextMid(std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " +
-				formatBytes((long long)s.bytes), 0, at ? DIM_ON : DIM, 608, mid, 180, 1);
-		}
-		ui.drawScrollBar(cardTop, cardRows * MDL_CROW - 4, mdlCardScroll, cardRows, c);
+		bool atRemovable = mdlCursor < q && (mdlItems[mdlCursor].state == DlItem::Failed || mdlItems[mdlCursor].state == DlItem::Waiting);
 		if (mdlRemoveAt) ui.drawFooterText("Press Y again to remove it", ACCENT);
 		else if (mdlDeleteAt && mdlDeletePath.find('/') != std::string::npos)
 			ui.drawFooterText("Press X again to delete it", ACCENT);
@@ -1504,7 +1436,6 @@ namespace bp
 
 	void Ui::Manga::drawMangaDlCardSeries(const Player& p)
 	{
-		(void)p;
 		mangaDlEnsureCard();
 		if (mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size())
 		{
@@ -1513,24 +1444,14 @@ namespace bp
 			drawMangaDownloads(p);
 			return;
 		}
+		// a series on the card: its chapters as rows; its name, count and size are the header's line
 		const MangaDlCardSeries& s = mdlCard[mdlCardAt];
-		ui.drawTextMid(s.name, 1, TEXT, 16, 104, 560);
 		int n = (int)s.chapters.size();
-		ui.drawTextMid(std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " +
-			formatBytes((long long)s.bytes) + " \xC2\xB7 on the card", 0, DIM, 16, 124, 592);
+		tabCrumb = s.name + " \xC2\xB7 " + std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " +
+			formatBytes((long long)s.bytes) + " on the card";
 		if (mdlCardCursor >= n) mdlCardCursor = std::max(0, n - 1);
-		if (mdlCardScroll > std::max(0, n - 6)) mdlCardScroll = std::max(0, n - 6);
-		for (int i = mdlCardScroll; i < n && i < mdlCardScroll + 6; i++)
-		{
-			Rect r{16, 138 + (i - mdlCardScroll) * 44, 608, 40};
-			bool here = i == mdlCardCursor;
-			if (here) ui.drawFocus(r);
-			int mid = r.y + r.h / 2;
-			const MangaDlCardChapter& c = s.chapters[i];
-			ui.drawTextMid(c.title, 1, here ? ACCENT : TEXT, 32, mid, 460);
-			ui.drawTextMid(formatBytes((long long)c.bytes), 0, here ? DIM_ON : DIM, 608, mid, 120, 1);
-		}
-		ui.drawScrollBar(138, 6 * 44 - 4, mdlCardScroll, 6, n);
+		lay::RowList l = mangaRowsFit(p, n, mdlCardCursor, mdlCardScroll);
+		drawMangaRows(l, mdlCardCursor, [this](int i) { return mangaDlCardRowAt(i); });
 		if (mdlDeleteAt) ui.drawFooterText("Press X again to delete it", ACCENT);
 		else ui.drawHints({{"A", "Read"}, {"X", "Delete"}, {"B", "Back"}});
 	}

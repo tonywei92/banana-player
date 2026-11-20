@@ -324,46 +324,97 @@ namespace bp
 		}
 		if (mBrowseList)
 		{
-			int n = (int)mangaLocal.size();
 			if (mlocSheet != MLS_NONE) return mangaLocalSheetPointer(x, y, p);
 			// the series follow a finger: a drag scrolls them, a tap (lifted where it went down) opens one
-			if (n && y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
-			{
-				int i = mListScroll + (y - MG_ROW_TOP) / ROW_H;
-				ui.pageReader->mangaListBegin(x, y, mListScroll, ROW_H, i < n ? i : -1, [this](int want) {
-					int n = (int)mangaLocal.size();
-					mListScroll = std::clamp(want, 0, std::max(0, n - MG_ROWS));
-					mListCursor = std::clamp(mListCursor, mListScroll, std::max(mListScroll, std::min(n - 1, mListScroll + MG_ROWS - 1)));
-					return mListScroll;
-				}, [this, &p](int i) {
-					if (i >= (int)mangaLocal.size()) return;
+			mangaRowsPointer(p, x, y, [this] { return (int)mangaLocal.size(); }, &mListScroll, &mListCursor,
+				[this](int i) { return mangaLocalRowAt(i); }, [this, &p](int i, bool) {
+					if (i < 0 || i >= (int)mangaLocal.size()) return;
 					mListCursor = i;
 					mangaChoose(MT_BROWSE, i, p);
 				});
-			}
 			return false;
 		}
 		mangaBrowseRepos(p);
-		int n = mangaBrowseCount(p);
-		if (n && y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H)
-		{
-			// the rows follow a finger as On this handheld's do (the draw keeps the scroll on the cursor: it moves too)
-			int i = mbrowseScroll + (y - MG_ROW_TOP) / ROW_H;
-			ui.pageReader->mangaListBegin(x, y, mbrowseScroll, ROW_H, i < n ? i : -1, [this, &p](int want) {
-				int n = mangaBrowseCount(p);
-				mbrowseScroll = std::clamp(want, 0, std::max(0, n - MG_ROWS));
-				mbrowseCursor = std::clamp(mbrowseCursor, mbrowseScroll, std::max(mbrowseScroll, std::min(n - 1, mbrowseScroll + MG_ROWS - 1)));
-				return mbrowseScroll;
-			}, [this, &p, x](int i) {
-				if (i >= mangaBrowseCount(p)) return;
+		// the rows follow a finger (the kit's rows, as drawMangaBrowseRows laid them out); a server's Edit key is its X
+		mangaRowsPointer(p, x, y, [this, &p] { return mangaBrowseCount(p); }, &mbrowseScroll, &mbrowseCursor,
+			[this, &p](int i) { return mangaBrowseRowAt(p, i); }, [this, &p](int i, bool onKey) {
+				if (i < 0 || i >= mangaBrowseCount(p)) return;
 				int nets = mangaNetFoldersCount();
 				mbrowseCursor = i;
-				// the pencil at a server row's end is its X (Edit / Delete); anywhere else on it opens the server
-				if (i > nets && i <= nets + mangaBrowseServerCount() && x >= 570) mangaServerModalOpen(i - nets, p);
+				if (onKey && i > nets && i <= nets + mangaBrowseServerCount()) mangaServerModalOpen(i - nets, p);
 				else mangaBrowseChoose(i, p);
 			});
-		}
 		return false;
+	}
+
+	Ui::Manga::MangaRow Ui::Manga::mangaBrowseRowAt(const Player& p, int i) const
+	{
+		// Browse's rows (screens.js manga-browse): the card, the network folders, the servers, Sources, the sources
+		MangaRow m;
+		int nets = mangaNetFoldersCount(), servers = mangaBrowseServerCount();
+		int manageAt = nets + servers + 1, srcStart = manageAt + 1;
+		if (i == 0)
+		{
+			// (the card's listing not in yet: what it has found so far, not a "0 series")
+			int count = mangaScanning && !mangaScanned ? (int)mangaScanCount : (int)mangaLocal.size();
+			m.glyph = &G_CARD;
+			m.name = "On this handheld";
+			m.note = mangaScanning && !mangaScanned && count == 0 ? std::string("Reading\xE2\x80\xA6") :
+				count == 1 ? "1 series" : std::to_string(count) + " series";
+			return m;
+		}
+		if (i <= nets)
+		{
+			// a saved network connection: its name and what kind it is (SMB · host)
+			std::vector<NetServer> ns = mangaNetFoldersServers();
+			if (i - 1 < (int)ns.size())
+			{
+				m.glyph = &G_NETWORK;
+				m.name = serverName(ns[i - 1]);
+				m.note = std::string(netTypeLabel(ns[i - 1].type)) + " \xC2\xB7 " + ns[i - 1].host;
+			}
+			return m;
+		}
+		if (i <= nets + servers)
+		{
+			// a saved server: its name and kind; its Edit is X, a key on the focused row
+			std::vector<MangaServer> sv;
+			if (mangaNet && mangaNet->started()) sv = mangaNet->servers().list();
+			if (i - nets - 1 < (int)sv.size())
+			{
+				const MangaServer& s = sv[i - nets - 1];
+				m.glyph = &G_LAPTOP;
+				m.name = s.name;
+				m.note = s.kind;
+				if (!m.note.empty()) m.note[0] = (char)std::toupper((unsigned char)m.note[0]);
+				m.keyLabel = "Edit";
+				m.keyCap = "X";
+			}
+			return m;
+		}
+		if (i == manageAt)
+		{
+			m.glyph = &G_GEAR;
+			m.name = "Sources\xE2\x80\xA6";
+			m.note = "install, update, repositories";
+			return m;
+		}
+		if (mangaSrcRows.empty() && i == srcStart)
+		{
+			// no source installed: where they come from (A opens it)
+			m.glyph = &G_PLUS;
+			m.name = "Add repository";
+			m.note = "sources come from repositories you add";
+			return m;
+		}
+		if (const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p))
+		{
+			m.glyph = &G_WEB;
+			m.name = r->name;
+			m.note = r->lang;
+			for (char& c : m.note) c = (char)std::toupper((unsigned char)c);
+		}
+		return m;
 	}
 
 	void Ui::Manga::drawMangaBrowseRows(const Player& p)
@@ -371,97 +422,18 @@ namespace bp
 		// a network folder's own page (its folders, or a folder read as a series) draws in its place
 		if (mangaNetView != MNF_OFF)
 		{
-			drawMangaNetFolders(p);
+			drawMangaNetFoldersKit(p);
 			return;
 		}
 		mangaBrowseRepos(p);
 		int n = mangaBrowseCount(p);
 		if (mbrowseCursor >= n) mbrowseCursor = n - 1;
 		if (mbrowseCursor < 0) mbrowseCursor = 0;
-		if (mbrowseCursor < mbrowseScroll) mbrowseScroll = mbrowseCursor;
-		if (mbrowseCursor >= mbrowseScroll + MG_ROWS) mbrowseScroll = mbrowseCursor - MG_ROWS + 1;
-		auto rowY = [&](int i) { return MG_ROW_TOP + (i - mbrowseScroll) * ROW_H; };
-		auto inView = [&](int y) { return y >= MG_ROW_TOP && y < MG_ROW_TOP + MG_ROWS * ROW_H; };
-		std::vector<NetServer> netServers = mangaNetFoldersServers();
-		int nets = (int)netServers.size();
-		std::vector<MangaServer> servers;
-		if (mangaNet && mangaNet->started()) servers = mangaNet->servers().list();
-		int manageAt = nets + (int)servers.size() + 1, srcStart = manageAt + 1;
-		for (int i = mbrowseScroll; i < n && i < mbrowseScroll + MG_ROWS; i++)
-		{
-			int y = rowY(i), mid = y + (ROW_H - 4) / 2;
-			bool at = i == mbrowseCursor;
-			if (at) ui.drawFocus({16, y, 608, ROW_H - 4});
-			// each row's kind at its left: the card, a network folder, a server, a source
-			SDL_Color ic = at ? ACCENT : DIM;
-			if (i == 0)
-			{
-				// (the card's listing not in yet: what it has found so far, not a "0 series")
-				int count = mangaScanning && !mangaScanned ? (int)mangaScanCount : (int)mangaLocal.size();
-				ui.drawGlyphMid(G_CARD, 44, mid, ic);
-				ui.drawTextMid("On this handheld", 1, at ? ACCENT : TEXT, 68, mid, 434);
-				ui.drawTextMid(mangaScanning && !mangaScanned && count == 0 ? std::string("Reading\xE2\x80\xA6") :
-					count == 1 ? "1 series" : std::to_string(count) + " series", 0, at ? DIM_ON : DIM, 608, mid, 160, 1);
-				continue;
-			}
-			if (i <= nets)
-			{
-				// a saved network connection: its name and what kind it is (SMB · host, FTP · host)
-				const NetServer& s = netServers[i - 1];
-				ui.drawGlyphMid(G_NETWORK, 44, mid, ic);
-				ui.drawTextMid(serverName(s), 1, at ? ACCENT : TEXT, 68, mid, 394);
-				ui.drawTextMid(std::string(netTypeLabel(s.type)) + "  " + s.host, 0, at ? DIM_ON : DIM, 608, mid, 180, 1);
-				continue;
-			}
-			if (i <= nets + (int)servers.size())
-			{
-				// a saved server: its name, what kind it is, and the pencil its X (or a tap there) opens
-				const MangaServer& s = servers[i - nets - 1];
-				ui.drawGlyphMid(G_LAPTOP, 44, mid, ic);
-				ui.drawTextMid(s.name, 1, at ? ACCENT : TEXT, 68, mid, 414);
-				std::string kind = s.kind;
-				for (char& c : kind) c = (char)std::toupper((unsigned char)c);
-				int tw = (int)std::lround(ui.textWidth(kind, 0) / sx) + 14;
-				ui.fillRound({562 - tw, mid - 10, tw, 20}, TRACK, R_CHIP);
-				ui.drawTextMid(kind, 0, at ? ACCENT : DIM_ON, 562 - tw / 2, mid, tw - 6, 2);
-				ui.drawGlyphMid(G_PENCIL, 600, mid, at ? ACCENT : DIM);
-				continue;
-			}
-			if (i == manageAt)
-			{
-				ui.drawGlyphMid(G_GEAR, 44, mid, ic);
-				ui.drawTextMid("Manage sources", 1, at ? ACCENT : TEXT, 68, mid, 434);
-				continue;
-			}
-			if (mangaSrcRows.empty() && i == srcStart)
-			{
-				// no source installed: the row after the servers says where they come from, and A (or a tap) opens it
-				ui.drawGlyphMid(G_PLUS, 44, mid, ic);
-				ui.drawTextMid("Add repository", 1, at ? ACCENT : TEXT, 68, mid, 540);
-				continue;
-			}
-			const MangaSrcRow* r = mangaBrowseSourceAt(i - srcStart, p);
-			if (!r) continue;
-			ui.drawGlyphMid(G_BLOCKS, 44, mid, ic);
-			ui.drawTextMid(r->name, 1, at ? ACCENT : TEXT, 68, mid, 434);
-			// its language, a chip at the row's end (as a cover's unread count is)
-			int right = 608;
-			std::string lang = r->lang;
-			for (char& c : lang) c = (char)std::toupper((unsigned char)c);
-			if (!lang.empty())
-			{
-				int tw = (int)std::lround(ui.textWidth(lang, 0) / sx) + 14;
-				ui.fillRound({right - tw, mid - 10, tw, 20}, TRACK, R_CHIP);
-				ui.drawTextMid(lang, 0, at ? ACCENT : DIM_ON, right - tw / 2, mid, tw - 6, 2);
-			}
-		}
-		// no saved connection: where they would be (the Files browser's Network adds one)
-		if (nets == 0 && inView(rowY(n)))
-		{
-			ui.drawGlyphMid(G_NETWORK, 44, rowY(n) + (ROW_H - 4) / 2, DIM);
-			ui.drawTextMid("Network folders \xC2\xB7 none saved", 1, DIM, 68, rowY(n) + (ROW_H - 4) / 2, 540);
-		}
-		bool onServer = mbrowseCursor > nets && mbrowseCursor <= nets + (int)servers.size();
+		tabCrumb = "Browse";
+		lay::RowList l = mangaRowsFit(p, n, mbrowseCursor, mbrowseScroll);
+		drawMangaRows(l, mbrowseCursor, [this, &p](int i) { return mangaBrowseRowAt(p, i); });
+		int nets = mangaNetFoldersCount();
+		bool onServer = mbrowseCursor > nets && mbrowseCursor <= nets + mangaBrowseServerCount();
 		if (onServer) ui.drawHints({{"A", "Open"}, {"X", "Edit"}, {"Y", "Add server"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Open"}, {"X", "Sources"}, {"Y", "Add server"}, {"B", "Back"}});
 		if (mangaSrvMenu) later([this, &p] { drawMangaServerModal(p); });

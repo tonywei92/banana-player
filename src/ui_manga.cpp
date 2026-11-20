@@ -1058,6 +1058,17 @@ namespace bp
 			}
 			if (b == Button::A) { mangaChoose(MT_HISTORY, mhisCursor, p); break; }
 			if (!n) break;
+			// Y: the series' page (its chapters), not the page read last
+			if (b == Button::Y)
+			{
+				if (mhisCursor < 0 || mhisCursor >= n) break;
+				const ChapterProgress& cp = mangaHistory[mhisCursor];
+				std::string gone = mangaHisGone(cp);
+				if (!gone.empty()) { mangaNotice(gone == "source removed" ? "Its source isn\xE2\x80\x99t installed now" : "It\xE2\x80\x99s not on a card now", 2000); break; }
+				if (isServerId(cp.seriesId)) mangaServerSeriesOpenFromId(cp.seriesId, p);
+				else openMangaSeries(cp.seriesId, 2, p);
+				break;
+			}
 			switch (b)
 			{
 			case Button::Up: mhisCursor = (mhisCursor + n - 1) % n; break;
@@ -1772,18 +1783,6 @@ namespace bp
 		ui.kit->tabs(tp.strip.area, labels, mangaTab, "L2/R2", BG, mangaTabPressed);
 	}
 
-	void Ui::Manga::shellBand(const Player& p, lay::Box& dst, int& srcTop) const
-	{
-		lay::Box body = lay::shell().body;
-		dst = body;
-		srcTop = 54;
-		if (!tabView()) return;
-		// the tab view: the old body from under its old tabs (they ended at 90), under the kit's
-		lay::TabPage tp = mangaTabPage(p);
-		dst = {body.x, tp.content.y, body.w, body.y + body.h - tp.content.y};
-		srcTop = 94;
-	}
-
 	bool Ui::Manga::shellModal() const
 	{
 		return ui.kbOpen || mlibMenu || mhisMenu || mengSheet || mlocSheet != MLS_NONE || mangaSourcesModal() ||
@@ -1862,6 +1861,8 @@ namespace bp
 			else if (mangaTab == MT_DOWNLOADS && mangaDlQueueCount())
 				what += " \xC2\xB7 " + std::to_string(mangaDlQueueCount()) + " queued";
 			h.crumb = mangaScanning && mangaTab == MT_LIBRARY ? mangaReadingLine() : what;
+			// Browse's and Downloads' own line (where a folder is, the storage line), set as they drew
+			if ((mangaTab == MT_BROWSE || mangaTab == MT_DOWNLOADS) && !tabCrumb.empty()) h.crumb = tabCrumb;
 			// Library and History are the kit's (no old hints to catch): their own, as the spec draws them
 			if (mangaTab == MT_LIBRARY)
 				h.hints = mangaLib.empty() ? std::vector<Hint>{{"X", "More"}, {"B", "Back"}}
@@ -1869,7 +1870,7 @@ namespace bp
 			else if (mangaTab == MT_HISTORY)
 				h.hints = !p.settings.mangaHistory ? std::vector<Hint>{{"X", "Manga settings"}, {"B", "Back"}}
 					: mangaHistory.empty() ? std::vector<Hint>{{"X", "More"}, {"B", "Back"}}
-					: std::vector<Hint>{{"A", "Continue"}, {"X", "More"}, {"B", "Back"}};
+					: std::vector<Hint>{{"A", "Continue"}, {"Y", "The series"}, {"X", "More"}, {"B", "Back"}};
 			// the tabs step with L2 / R2 (L / R are the sections, as on every shell page)
 			bool hasTab = false;
 			for (auto& x : h.hints) hasTab |= x.key == "L2/R2";
@@ -2228,6 +2229,90 @@ namespace bp
 		return lay::rowList(mangaTabPage(p).content, n, mhisScroll);
 	}
 
+	std::string Ui::Manga::mangaHisGone(const ChapterProgress& cp) const
+	{
+		if (cp.seriesId.rfind("local:", 0) == 0) return mangaScanned && !mangaLocalById.count(cp.seriesId) ? "not on a card" : "";
+		// a source's series: its source not among those installed (asked only once the engine has said what it has,
+		// so a slow start doesn't dim the whole list)
+		if (isSourceId(cp.seriesId) && mangaNet && mangaNet->started() && mangaSourceLabel(cp.seriesId).empty())
+			return "source removed";
+		return "";
+	}
+
+	lay::RowList Ui::Manga::mangaRowsFit(const Player& p, int n, int cursor, int& scroll) const
+	{
+		lay::Box c = mangaTabPage(p).content;
+		int shown = lay::rowList(c, n, 0).shown;
+		if (shown > 0 && cursor >= 0)
+			scroll = std::clamp(scroll, std::max(0, cursor - shown + 1), cursor);
+		lay::RowList l = lay::rowList(c, n, scroll);
+		scroll = l.first;
+		return l;
+	}
+
+	void Ui::Manga::drawMangaRows(const lay::RowList& l, int cursor, const std::function<MangaRow(int)>& at)
+	{
+		Kit& k = *ui.kit;
+		for (int j = 0; j < l.shown; j++)
+		{
+			int i = l.first + j;
+			MangaRow m = at(i);
+			bool focused = i == cursor;
+			bool key = focused && !m.keyLabel.empty();
+			Kit::Row row;
+			row.under = BG;
+			row.glyph = m.glyph;
+			row.name = m.name;
+			row.second = m.second;
+			// (the focused row's key takes the right end: its note and pill would sit under it)
+			if (!key) row.note = m.note;
+			if (!key) row.pill = m.pill;
+			row.tone = m.pillBad ? Kit::Pill::Bad : Kit::Pill::Fact;
+			row.off = m.off;
+			row.focused = focused;
+			k.row(l.row[j], row);
+			if (m.bar >= 0)
+			{
+				lay::Box r = l.row[j];
+				int x = r.x + 52, w = r.w - 52 - lay::SP12 - (key ? k.keyW(m.keyLabel, m.keyCap) + lay::SP8 : 0);
+				ui.drawLevel({x, r.y + r.h - 7, std::max(1, w), 3}, (int)std::lround(std::max(1, w) * std::clamp(m.bar, 0.0, 1.0)),
+					TRACK, m.barBad ? DANGER : focused ? ACCENT : DIM);
+			}
+			if (key)
+			{
+				Kit::Key kk;
+				kk.label = m.keyLabel;
+				kk.key = m.keyCap;
+				k.key(lay::rowKey(l.row[j], k.keyW(m.keyLabel, m.keyCap)), kk);
+			}
+		}
+		if (l.n > l.shown) ui.drawScrollBar(l.area.y, l.area.h, l.first, l.shown, l.n);
+	}
+
+	void Ui::Manga::mangaRowsPointer(const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
+		std::function<MangaRow(int)> at, std::function<void(int, bool)> tap)
+	{
+		int n = count();
+		lay::RowList l = lay::rowList(mangaTabPage(p).content, n, *scroll);
+		if (!n || !l.area.hit(x, y)) return;
+		int i = l.at(x, y);
+		// the focused row's key, where it was drawn: its own action (the rest of the row is A)
+		bool onKey = false;
+		if (i >= 0 && i == *cursor)
+		{
+			MangaRow m = at(i);
+			if (!m.keyLabel.empty())
+				onKey = lay::rowKey(l.row[i - l.first], ui.kit->keyW(m.keyLabel, m.keyCap)).hit(x, y);
+		}
+		ui.pageReader->mangaListBegin(x, y, *scroll, l.rowH + l.gap, i, [this, &p, count, scroll, cursor](int want) {
+			int n = count();
+			lay::RowList l = lay::rowList(mangaTabPage(p).content, n, want);
+			*scroll = l.first;
+			if (n) *cursor = std::clamp(*cursor, l.first, std::max(l.first, l.first + l.shown - 1));
+			return *scroll;
+		}, [tap, onKey](int i) { tap(i, onKey); });
+	}
+
 	void Ui::Manga::drawMangaTabEmpty(const Player& p, const Glyph& g, const std::string& title, const std::string& text)
 	{
 		// the kit's Empty state in the content under the tabs (no key: X and B are in the hint bar)
@@ -2456,9 +2541,16 @@ namespace bp
 			row.name = title;
 			row.second = (from.empty() ? "" : from + " \xC2\xB7 ") + chapterShort(cp.chapterTitle) + " \xC2\xB7 " +
 				chapterPageLine(cp.page, cp.pages) + " \xC2\xB7 " + mangaAgo(cp.at, now);
+			// one that can't open now stays, dimmed, and says why (spec: manga-history)
+			std::string gone = mangaHisGone(cp);
+			if (!gone.empty())
+			{
+				row.off = true;
+				row.second = gone + " \xC2\xB7 " + chapterShort(cp.chapterTitle) + " \xC2\xB7 " + mangaAgo(cp.at, now);
+			}
 			row.focused = i == mhisCursor;
 			k.row(l.row[j], row);
-			if (row.focused)
+			if (row.focused && gone.empty())
 			{
 				Kit::Key key;
 				key.label = "Continue";
@@ -2470,44 +2562,48 @@ namespace bp
 		if (mhisMenu) later([this] { drawMangaHisMenu(); });
 	}
 
+	Ui::Manga::MangaRow Ui::Manga::mangaLocalRowAt(int i) const
+	{
+		MangaRow m;
+		if (i < 0 || i >= (int)mangaLocal.size()) return m;
+		const LocalSeries& s = mangaLocal[i];
+		// what its chapters are: comics (CBZ, CBR), PDFs, or folders of pictures
+		m.glyph = &G_PICTURE;
+		if (!s.chapters.empty() && s.chapters[0].archive) m.glyph = isPdfName(s.chapters[0].path) ? &G_PDF : &G_COMIC;
+		m.name = s.title;
+		m.note = std::to_string(s.chapters.size()) + (s.chapters.size() == 1 ? " chapter" : " chapters");
+		return m;
+	}
+
 	void Ui::Manga::drawMangaBrowse(const Player& p)
 	{
+		tabCrumb.clear();
 		mangaCache();
 		int n = (int)mangaLocal.size();
 		if (mBrowseList)
 		{
+			tabCrumb = "On this handheld";
 			if (n == 0 && mangaScanning)
 			{
-				ui.drawEmpty(G_FOLDER, mangaReadingLine(), "The series on your card show up here in a moment.", nullptr);
+				drawMangaTabEmpty(p, G_FOLDER, mangaReadingLine(), "The series on your card show up here in a moment.");
 				ui.drawHints({{"B", "Back"}});
 				return;
 			}
 			if (n == 0)
 			{
-				ui.drawEmpty(G_FOLDER, "No series found", "Copy manga into " + mangaLocalFolder() + ". X shows how.", nullptr);
+				drawMangaTabEmpty(p, G_FOLDER, "No series found", "Copy manga into " + mangaLocalFolder() + ". X shows how.");
 				ui.drawHints({{"X", "How to add"}, {"B", "Back"}});
 				if (mlocSheet == MLS_HELP) later([this, &p] { drawMangaLocalSheet(p); });
 				return;
 			}
 			if (mListCursor >= n) mListCursor = n - 1;
-			for (int i = mListScroll; i < n && i < mListScroll + MG_ROWS; i++)
-			{
-				const LocalSeries& s = mangaLocal[i];
-				int y = MG_ROW_TOP + (i - mListScroll) * ROW_H, mid = y + (ROW_H - 4) / 2;
-				bool at = i == mListCursor;
-				if (at) ui.drawFocus({16, y, 608, ROW_H - 4});
-				// what its chapters are: comics (CBZ, CBR), PDFs, or folders of pictures
-				const Glyph* g = &G_PICTURE;
-				if (!s.chapters.empty() && s.chapters[0].archive) g = isPdfName(s.chapters[0].path) ? &G_PDF : &G_COMIC;
-				ui.drawGlyphMid(*g, 44, mid, at ? ACCENT : DIM);
-				ui.drawTextMid(s.title, 1, at ? ACCENT : TEXT, 64, mid, 440);
-				ui.drawTextMid(std::to_string(s.chapters.size()) + (s.chapters.size() == 1 ? " chapter" : " chapters"),
-					0, at ? DIM_ON : DIM, 608, mid, 160, 1);
-			}
-			ui.drawScrollBar(MG_ROW_TOP, MG_ROWS * ROW_H - 4, mListScroll, MG_ROWS, n);
-			// while the card is read the footer says so (the list may still change); its keys work meanwhile
-			if (mangaScanning) ui.drawFooterText(mangaReadingLine(), DIM);
-			else ui.drawHints({{"A", "Open"}, {"Y", "Options"}, {"X", "How to add"}, {"B", "Back"}});
+			// the card's series as the kit's rows: their kind, their name, how many chapters
+			tabCrumb = "On this handheld \xC2\xB7 " + mangaLocalFolder();
+			lay::RowList l = mangaRowsFit(p, n, mListCursor, mListScroll);
+			drawMangaRows(l, mListCursor, [this](int i) { return mangaLocalRowAt(i); });
+			// while the card is read the header says so (the list may still change); its keys work meanwhile
+			if (mangaScanning) tabCrumb = mangaReadingLine();
+			ui.drawHints({{"A", "Open"}, {"Y", "Options"}, {"X", "How to add"}, {"B", "Back"}});
 			if (mlocSheet != MLS_NONE) later([this, &p] { drawMangaLocalSheet(p); });
 			return;
 		}

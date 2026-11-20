@@ -574,23 +574,15 @@ namespace bp
 		Bridge b;
 		lay::Shell s = layout(p);
 		// the old page is 640 x 480 with its own header (0..54) and hint bar (450..480): the body is the part between,
-		// scaled uniformly into the shell's body (centred, so nothing is cut). Manga's pages say which part and where
-		// (its tab view: the part under its old tabs, under the kit's tabs; the top kept, so the lists start there)
-		lay::Box dst = s.body;
-		int srcTop = 54;
-		bool top = false;
-		if (ui.manga->shellPage(ui.page))
-		{
-			ui.manga->shellBand(p, dst, srcTop);
-			top = true;
-		}
-		const int sw = 640, sh = 450 - srcTop;
-		double sc = std::min(dst.w / (double)sw, dst.h / (double)sh);
+		// scaled uniformly into the shell's body (centred, so nothing is cut). Manga's pages still bridged (a series,
+		// a source's and a server's pages, Sources, Manga settings) keep their top at the body's, so their lists start
+		// there; its four tabs are the kit's and never bridged
+		const int sw = 640, sh = 396;
+		double sc = std::min(s.body.w / (double)sw, s.body.h / (double)sh);
 		b.w = std::max(1, (int)std::lround(sw * sc));
 		b.h = std::max(1, (int)std::lround(sh * sc));
-		b.x = dst.x + (dst.w - b.w) / 2;
-		b.y = top ? dst.y : dst.y + (dst.h - b.h) / 2;
-		b.srcTop = srcTop;
+		b.x = s.body.x + (s.body.w - b.w) / 2;
+		b.y = ui.manga->shellPage(ui.page) ? s.body.y : s.body.y + (s.body.h - b.h) / 2;
 		b.on = !adopted(p);
 		return b;
 	}
@@ -638,7 +630,7 @@ namespace bp
 		SDL_RenderSetClipRect(ui.ren, nullptr);
 		Bridge b = bridge;
 		// the source is the old page's body between its header and its hint bar, in the renderer's pixels
-		SDL_Rect src{0, (int)std::lround(b.srcTop * sy), (int)std::lround(640 * sx), (int)std::lround((450 - b.srcTop) * sy)};
+		SDL_Rect src{0, (int)std::lround(54 * sy), (int)std::lround(640 * sx), (int)std::lround(396 * sy)};
 		SDL_Rect dst{(int)std::lround(b.x * sx), (int)std::lround(b.y * sy), (int)std::lround(b.w * sx), (int)std::lround(b.h * sy)};
 		SDL_SetTextureBlendMode(bodyTex, SDL_BLENDMODE_BLEND);
 		SDL_RenderCopy(ui.ren, bodyTex, &src, &dst);
@@ -650,9 +642,8 @@ namespace bp
 		if (adopted(p) || !bridge.on) return false;
 		Bridge b = bridgeFor(p);
 		if (!any && (x < b.x || y < b.y || x >= b.x + b.w || y >= b.y + b.h)) return false;
-		int sh = 450 - b.srcTop;
 		x = (int)std::floor((x - b.x) * 640.0 / b.w);
-		y = b.srcTop + (int)std::floor((y - b.y) * (double)sh / b.h);
+		y = 54 + (int)std::floor((y - b.y) * 396.0 / b.h);
 		return true;
 	}
 }

@@ -52,10 +52,27 @@ The reader (`Page::MangaRead`) is not: a comic's page keeps the whole panel, unc
   Empty states are `Kit::emptyState` in the content box. Touches test those same boxes (`mangaListBegin` with the
   grid's or the rows' pitch); their hints are set in `Manga::head` (nothing to catch). Tests next to the tab page's.
 
+- **History's Y** opens the series' page (`openMangaSeries(id, 2)`, a server's by `mangaServerSeriesOpenFromId`);
+  `Manga::mangaHisGone` dims a row (`Kit::Row::off`, no Continue key) whose source is no longer installed (asked only
+  once the engine is up) or whose card series the last scan didn't find, and says which in its second line.
+
+- **Browse and Downloads on the kit** too, so all four tabs are (`kitBody()` is `tabView()`): their lists are
+  `Manga::MangaRow`s drawn by `drawMangaRows` on `lay::rowList` (the focused row's key at `lay::rowKey`: a server's
+  Edit · X, a queued chapter's Pause / Resume · X or Remove · Y, Clear failed · Y) and touched by `mangaRowsPointer`
+  (a tap is A, a tap on the key is that key). Rows: Browse's (`mangaBrowseRowAt`), On this handheld's
+  (`mangaLocalRowAt`), a network folder on Browse (`mangaNetRowAt`, `drawMangaNetFoldersKit`; its series page on
+  Page::MangaSeries keeps the old `drawMangaNetFolders`), Downloads' queue + Pause all + the card's series
+  (`mangaDlRowAt`, the queue read once per draw into `mdlItems`) and a card series' chapters (`mangaDlCardRowAt`).
+  The lines they drew over their lists (the storage line, where a folder is, the card being read, an error) are the
+  header's crumb (`tabCrumb`). Their hints still come from their old `drawHints` calls: while a Manga page draws
+  (`hdrCapture`), `drawHeader` / `drawHints` / `drawFooterText` only record. Gone: the band bridge (`shellBand`,
+  `srcTop`), the old Downloads' and Library's geometry (MDL_*, mangaCoverRect, MG_LIB_*, MG_ROW_TOP).
+
 ## Not done
 
-- The other bodies (Browse, Downloads, a series, a source's grid, servers, Sources, Manga settings) are still bridged,
-  scaled to 0.88. History's Y (open the series) and its "source removed" dimming from the spec are not done.
+- A series, a source's and a server's pages, Sources and Manga settings are still bridged, scaled to 0.88. 
 - A sheet over the bridge keeps its old full-page place; any sheet placed by what is under it would be off by the
   scale (none seen, not every one checked).
+- Downloads keeps its keys (X Pause / resume, Y Remove); the spec moves Pause to Y and X to More. Browse's "Add a
+  server…" row isn't added (Y still adds one).
 - Not checked on the handheld (KMSDRM, the real panel); the scaled body's text is small at 0.88.
