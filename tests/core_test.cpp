@@ -466,6 +466,16 @@ static void testMediaIndex()
 		write(C + "/Books/cover.jpg", "no");			// (a book file only)
 		write(C + "/Documents/Manual.pdf", "m");
 		std::vector<MediaBook> books = listBooks(bf);
+		// (a build without pdfium, e.g. the plain Linux check, doesn't read PDFs: the three PDFs aren't books there)
+		if (!isDocumentName("x.pdf"))
+		{
+			CHECK_EQ(books.size(), (size_t)3);
+			CHECK_EQ(rowNameOf(books, 0), "Comic");
+			CHECK_EQ(rowNameOf(books, 1), "notes");
+			CHECK_EQ(rowNameOf(books, 2), "Novel");
+		}
+		else
+		{
 		CHECK_EQ(books.size(), (size_t)6);
 		CHECK_EQ(rowNameOf(books, 0), "Comic");		// Comic, Manual, Novel, notes, Paper 2, Paper 10
 		CHECK_EQ(rowNameOf(books, 1), "Manual");
@@ -473,6 +483,7 @@ static void testMediaIndex()
 		CHECK_EQ(rowNameOf(books, 3), "Novel");
 		CHECK_EQ(rowNameOf(books, 4), "Paper 2");
 		CHECK_EQ(rowNameOf(books, 5), "Paper 10");
+		}
 		// the line's words: the folders' kinds as one phrase, and which cards hold them
 		CHECK_EQ(mediaFromWords({C + "/Music", C + "/Musics"}), "Music on this card");
 		CHECK_EQ(mediaFromWords({C + "/Videos", C + "/MOVIES"}), "Videos and Movies on this card");
