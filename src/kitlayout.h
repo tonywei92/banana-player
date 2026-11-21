@@ -537,6 +537,11 @@ namespace bp
 			Box bar;	// the place slider's row
 			Box pad;	// drag to scroll, tap a half to page
 			Box row[READER_TEXT_KEYS];	// Contents, Bookmarks, Options, Book mode, Brightness (narrow)
+			// while Find is on: its three keys (Previous, Next, Done) in the row's place, and its line (the word looked
+			// for) in the hint bar's place, which is not drawn then: the line never lies over the hints
+			Box findCover;	// the ground painted over the row and the hint bar
+			Box findKeys[3];
+			Box findLine;
 		};
 		ReaderText readerText();
 		// ---- the Manga reader's own page (docs/redesign: manga-read): readerPage's strip skeleton in every reading mode

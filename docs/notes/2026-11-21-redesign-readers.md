@@ -153,7 +153,7 @@ Owner: "the Drag to scroll pad can be taller; there's wasted space". The readers
 / PDF, Manga) and 54 units (the text reader) above the hint bar. Now every row ends one gap above the hint bar
 (`READER_ROW_Y` is derived: 378) and the pad ends one gap above the row: the strip's and Manga's surface 98–370 (was
 –358), one page's pan 274 tall with its slider at 342, the text reader's pad 104–378 (was –332). The text reader's
-boxes moved from numbers in ui_docs.cpp to `lay::readerText()` (same keys, 56 tall); Find's line now lies where the
-hint bar is. `testKitLayoutReaders` pins "pad bottom = keys' top − GAP" and "keys' bottom = hint bar − GAP" for all
+boxes moved from numbers in ui_docs.cpp to `lay::readerText()` (same keys, 56 tall); Find's line takes the hint bar's place
+(`findLine`, `findKeys`, `findCover`: the hints are not drawn while Find is on, the cover paints over the row and bar). `testKitLayoutReaders` pins "pad bottom = keys' top − GAP" and "keys' bottom = hint bar − GAP" for all
 four. Spec: `reader`, `pdf`, `manga-read` in screens.js. Checked: `--press` shots of a generated EPUB and a CBZ strip
 from Files. Not driven: one page's pan, the Manga reader, Find's bar, the handheld's panel.

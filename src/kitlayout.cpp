@@ -536,6 +536,9 @@ namespace bp
 			// four across 554, then Brightness's sun (50, 4 clear of them, ending on the margin)
 			for (int i = 0; i < 4; i++) l.row[i] = cell({MARGIN, rowY, 554, READER_TEXT_KEY_H}, 4, 6, i);
 			l.row[4] = {PANEL_W - MARGIN - 50, rowY, 50, READER_TEXT_KEY_H};
+			l.findCover = {0, rowY - SP4, PANEL_W, PANEL_H - (rowY - SP4)};
+			for (int i = 0; i < 3; i++) l.findKeys[i] = cell({MARGIN, rowY, PANEL_W - 2 * MARGIN, READER_TEXT_KEY_H}, 3, 10, i);
+			l.findLine = {SP24 + SP16, PANEL_H - HINTS_H, PANEL_W - 2 * (SP24 + SP16), HINTS_H};
 			return l;
 		}
 

@@ -1053,9 +1053,7 @@ namespace bp
 		if (ui.page == Page::DocText && findOn && !textStatus.book && pt.kind == Pointer::Up)
 			for (int i = 0; i < 3; i++)
 			{
-				Rect r = docBtn(0);
-				Rect bb{16 + i * 206, r.y, 196, r.h};
-				if (bb.hit(x, y))
+				if (Rect(lay::readerText().findKeys[i]).hit(x, y))
 				{
 					if (i < 2) key(i == 0 ? Button::L : Button::R, p);
 					else findOn = false;
@@ -1567,19 +1565,20 @@ namespace bp
 		if (findOn)
 		{
 			// Find: its bar over the buttons, the query and how to go on
-			ui.fill({0, docBtn(0).y - 4, W, H - docBtn(0).y + 4}, BG);
+			// (the line takes the hint bar's place: the hints are not drawn while Find is on)
+			lay::ReaderText fl = lay::readerText();
+			ui.fill(fl.findCover, BG);
 			const char* labels[3] = {"Previous", "Next", "Done"};
 			const char* keys[3] = {"L", "R", "B"};
 			for (int i = 0; i < 3; i++)
 			{
-				Rect r = docBtn(0);
-				Rect bb = rowCell({16, r.y, 608, r.h}, 3, 10, i);
+				Rect bb = fl.findKeys[i];
 				Kit::Key kk;
 				kk.label = labels[i];
 				kk.key = keys[i];
 				k.key(bb, kk);
 			}
-			ui.drawTextMid("Find \u201C" + findQuery + "\u201D", 0, ACCENT, W / 2, docBtn(0).y + docBtn(0).h + 22, 560, 2);
+			ui.drawTextMid("Find \u201C" + findQuery + "\u201D", 0, ACCENT, fl.findLine.x + fl.findLine.w / 2, fl.findLine.y + fl.findLine.h / 2, fl.findLine.w, 2);
 		}
 		// (the buttons above say their own keys: START the options, SELECT Book mode)
 		else ui.drawHints({{"UP/DOWN", "Scroll"}, {"L/R", "Page"}, {"L3", "Find"}, {"B", "Close"}});

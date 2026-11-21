@@ -11534,6 +11534,20 @@ static void testKitLayoutReaders()
 			if (i > 0) CHECK(!overlaps(t.row[i - 1], t.row[i]));
 		}
 		CHECK_EQ(t.row[0].w, 134);
+		// Find: its keys where the row is, its line in the hint bar's place (under the keys, clear of them and the
+		// pad), and the ground over both the row and the hint bar, so neither shows under it
+		CHECK(insidePanel(t.findLine) && t.findLine.y >= t.findKeys[0].y + t.findKeys[0].h + GAP);
+		CHECK_EQ(t.findLine.y, PANEL_H - HINTS_H);
+		CHECK_EQ(t.findLine.y + t.findLine.h, PANEL_H);
+		CHECK(t.findCover.y > t.pad.y + t.pad.h && t.findCover.y <= t.row[0].y && t.findCover.y + t.findCover.h == PANEL_H);
+		CHECK(t.findCover.x == 0 && t.findCover.w == PANEL_W);
+		for (int i = 0; i < 3; i++)
+		{
+			CHECK(t.findKeys[i].y == t.row[0].y && t.findKeys[i].h == READER_TEXT_KEY_H && !overlaps(t.findKeys[i], t.findLine));
+			if (i > 0) CHECK(!overlaps(t.findKeys[i - 1], t.findKeys[i]));
+		}
+		CHECK_EQ(t.findKeys[0].x, MARGIN);
+		CHECK_EQ(t.findKeys[2].x + t.findKeys[2].w, PANEL_W - MARGIN);
 	}
 
 	// Fullscreen's navigation: a sheet on the panel's lower part, everything inside it and nothing over another; with
