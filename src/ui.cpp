@@ -132,6 +132,11 @@ namespace bp
 		cache.clear();
 		if (listShown) listShown->release();	// (its rows' textures, before the renderer goes)
 		undim();	// (the quit: the bottom panel's level as it was)
+		// and a list drawn under the Add to… picker (the page's, while the picker's is the one shown), and the picker's
+		for (Area* a : areas)
+			if (SmoothList* l = a->smoothList()) l->release();
+		browse->list.release();
+		if (browse->playlists->pickerRows) browse->playlists->pickerRows->release();
 		for (auto& c : manga->coverTex)
 			if (c.second.tex) SDL_DestroyTexture(c.second.tex);
 		for (auto* t : corners)
@@ -973,7 +978,7 @@ namespace bp
 			char sb[200];
 			snprintf(sb, sizeof sb, "|sel%d %d %d %d %d,%d %d %d,%d %d %d %d %d %d %d", browse->playlists->selMode, browse->playlists->selCount(), browse->playlists->selSerial, browse->playlists->moving,
 				browse->playlists->plSel.empty() ? -1 : *browse->playlists->plSel.begin(), (int)browse->playlists->plSel.size(), browse->playlists->plDrag.on, browse->playlists->plDrag.on ? browse->playlists->dragSlot() : -1, browse->playlists->plDrag.y / 8, browse->playlists->pickerOpen,
-				browse->playlists->pickerCursor, browse->playlists->pickerScroll, browse->playlists->removeArmed, browse->playlists->dropArmed != 0, browse->playlists->addPending.serial);
+				browse->playlists->pickerCursor, (int)browse->playlists->pickerScrolled, browse->playlists->removeArmed, browse->playlists->dropArmed != 0, browse->playlists->addPending.serial);
 			photo += sb + browse->playlists->selDest;
 		}
 		// Main: what it plays from, and whether the file is a server's (a playlist's item says where it comes from)

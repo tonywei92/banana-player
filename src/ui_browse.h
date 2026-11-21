@@ -12,6 +12,7 @@
 // call in here where they always were.
 #pragma once
 #include "ui.h"
+#include "ui_smoothlist.h"
 
 namespace bp
 {
@@ -56,6 +57,38 @@ namespace bp
 		void doEmptyAction(Player& p);
 		std::string browseWhere() const;
 
+		// ---- the list shown: Files' rows, the Network tab's connections and Find, All recent, the playlists' pages
+		// (the list of them and a playlist's items). One smooth list (ui_smoothlist.h; docs/notes/
+		// 2026-11-21-smooth-scroll.md) serves whichever shows; its offset is the truth while it shows, and ui.scroll
+		// (the first row shown) follows it, for what still counts in rows (each folder's place, the durations asked
+		// for, the playlists' moves). A connection's form and Home don't scroll this way ----
+		SmoothList list{ui};
+		SmoothList* smoothList() override;
+		bool listPage() const;	// one of the pages above, with rows to show
+		struct ListGeom
+		{
+			Rect view{};
+			int rowH = 0, count = 0;
+			std::string id;		// which list (a new one: its place from ui.scroll, the cursor's row in view)
+		};
+		ListGeom listGeom(const Player& p) const;
+		// at a page's draw, before list.draw: a new list (or one come back to) placed at ui.scroll with the cursor's
+		// row shown; else a cursor that moved (a key, a refresh: not a finger) glides into view, and a scroll the
+		// row-counting code moved (a dragged row at an edge, a move's block) glides there
+		void listBegin(const ListGeom& g);
+		void listEnd(const ListGeom& g);	// after list.draw: ui.scroll follows the offset
+		std::string listId;
+		int listCursor = -1, listScroll = 0;
+		int listReveal = -1;	// a row to show instead of the cursor's at the next draw (a moved block's far end)
+		bool listCaught = false;	// a finger went down on a gliding list: it stopped it, and is no tap
+		bool listOnFinger = false;	// a finger went down on the list's view: its moves drive it
+		// a finger on the list (each page's pointer calls these for its rows): down on the view presses it (true;
+		// `row` the row under it, -1 none or a glide it caught), a move drags it (true once past the slop), the lift
+		// lets it glide on (true when the finger was the list's)
+		bool listPress(const ListGeom& g, const Pointer& pt, int x, int y, int& row);
+		bool listMove(const Pointer& pt);
+		bool listLift();
+
 		// ---- the sections (Ui::BrowseTab) ----
 		int browseTab = TAB_LOCAL;
 		std::string tabDir[BROWSE_TABS];
@@ -95,7 +128,6 @@ namespace bp
 		void drawFiles(const Player& p);
 		lay::FilesPage filesLayout(const Player& p) const;
 		int filesShown(const Player& p) const;
-		int filesScroll(const Player& p) const;	// the scroll that keeps the cursor in view
 		bool filesEmpty() const;
 		bool filesReadOnly() const;	// the folder can't be written by this account
 		std::string filesFooter() const;	// "7 items · 21 GB free"
@@ -142,13 +174,13 @@ namespace bp
 		std::vector<std::string> fileSelOrder;
 		std::vector<std::string> clipPaths;	// a group Copy / Move (empty: clipPath alone)
 		int filesTouch = -1, filesPressed = -1;
-		int filesTouchY = 0, filesScrollStart = 0;
 		bool filesScrolled = false;
 		mutable std::string filesFooterCache, filesFooterDir;
 		mutable Uint32 filesFooterAt = 0;
 		void filesMove(int to, Player& p);
 		void filesTickRow(int row);
-		void drawFilesRow(int i, const lay::FilesPage& f, int onScreen, bool at, const Player& p);
+		void drawFilesRow(int i, Rect r, bool at, const Player& p);	// row i in its box r
+		std::string filesRowKey(int i) const;	// what row i shows (the smooth list's key; "" the focused one's marquee)
 		void drawFilesEmpty(const lay::FilesPage& f, const Player& p);
 
 		// ---- Files' own file operations (ui_fileops.cpp; the job's card and Info's sheet are Ui's) ----
@@ -205,7 +237,7 @@ namespace bp
 		int netFoot = -1;	// NETROOT: -1 the list, 0 Find on the network, 1 Add connection
 		int netPressed = -1;	// a finger on a row, a foot row or a form key
 		bool netFinger = false;
-		int netFingerY = 0, netFingerScroll = 0;
+		int netFingerY = 0, netFingerScroll = 0;	// (the form's rows: they still step)
 		bool netFingerMoved = false;
 
 		// ---- the Network tab's other pages (ui_forms.cpp), as the browser's (browseDir FORMDIR, FINDNET) ----

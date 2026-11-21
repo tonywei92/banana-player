@@ -98,7 +98,11 @@ namespace bp
 		void homeOpen(Player& p);	// A: what the focus is on (kept for the browser's callers)
 		bool homeKey(Button b, Player& p);	// true: Quit chosen in B's dialog, leave
 		bool homePointer(const Pointer& pt, int x, int y, Player& p);
-		bool recentPointer(const Pointer& pt, int x, int y, Player& p);	// All recent's rows (its chips are Ui::pointer's)
+		// All recent's rows, on the browser's smooth list (its chips are Ui::pointer's): a drag scrolls, a tap on a
+		// row opens it as the finger lifts there
+		bool recentPointer(const Pointer& pt, int x, int y, Player& p);
+		int recentTouch = -1;	// the row the finger went down on (-1: none, or the list's ground)
+		bool recentMoved = false;
 		void homeFocusFromPointer();	// a touch never shows the focus; it moves with what was touched
 
 		// a finger on Home: on a card (a tap plays, a hold opens its More sheet) or a shortcut; the old drag fields

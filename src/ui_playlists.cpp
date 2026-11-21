@@ -405,11 +405,15 @@ namespace bp
 			k.emptyState(es, e);
 			return;
 		}
-		ui.scroll = std::clamp(ui.scroll, 0, std::max(0, n - l.rows));
-		for (int i = ui.scroll; i < n && i < ui.scroll + l.rows; i++)
-		{
-			const auto& row = ui.browse->browseRows[i];
-			const std::string& file = i < (int)ui.browse->browsePaths.size() ? ui.browse->browsePaths[i] : std::string();
+		// the playlists: the browser's smooth list, each row's look its key
+		Browse& br = *ui.browse;
+		Browse::ListGeom g = br.listGeom(p);
+		br.listBegin(g);
+		const Player* pp = &p;
+		auto rowOf = [this, pp](int i) {
+			const Browse& b = *ui.browse;
+			const auto& row = b.browseRows[i];
+			const std::string& file = i < (int)b.browsePaths.size() ? b.browsePaths[i] : std::string();
 			Kit::Playlist r;
 			r.name = row.label;
 			r.note = row.id == PL_NEW ? "" : row.note;
@@ -418,9 +422,27 @@ namespace bp
 			if (row.id == PL_NEW) { r.glyph = &G_PLUS; r.off = true; }
 			else if (ui.plIsLiked(file)) r.liked = true;
 			else r.glyph = &G_PLAYLIST;
-			r.playing = row.id == PL_ROW && p.playing() && p.source().kind == SourceKind::Playlist && p.source().id == file;
-			k.playlistRow(lay::playlistRow(l.row(i - ui.scroll)), r);
-		}
+			r.playing = row.id == PL_ROW && pp->playing() && pp->source().kind == SourceKind::Playlist && pp->source().id == file;
+			return r;
+		};
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = g.count;
+		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + "|";
+		spec.key = [this, rowOf, gen](int i) -> std::string {
+			if (i < 0 || i >= (int)ui.browse->browseRows.size()) return "-";
+			Kit::Playlist r = rowOf(i);
+			if (r.focused) return "";	// (the focused name's marquee: drawn again each frame)
+			return "pr" + gen + std::to_string(i) + "|" + r.name + "|" + r.note + (r.liked ? "l" : "") + (r.off ? "o" : "") +
+				(r.playing ? "p" : "") + (r.pressed ? "d" : "");
+		};
+		spec.draw = [this, rowOf](int i, Rect box) {
+			if (i < 0 || i >= (int)ui.browse->browseRows.size()) return;
+			ui.kit->playlistRow(lay::playlistRow(box), rowOf(i));
+		};
+		br.list.draw(std::move(spec));
+		br.listEnd(g);
 	}
 
 	void Ui::Playlists::draw(const Player& p)
@@ -474,21 +496,18 @@ namespace bp
 			k.key(l.key[i], key);
 		}
 
-		int n = (int)plCur.entries.size();
-		ui.scroll = std::clamp(ui.scroll, 0, std::max(0, n - l.rows));
+		// the items: the browser's smooth list, each row's look its key (a lifted one moves: drawn each frame)
+		Browse& br = *ui.browse;
+		Browse::ListGeom g = br.listGeom(p);
+		br.listBegin(g);
 		bool likedPl = ui.plIsLiked(plCur.file);
 		bool sel = selMode == SEL_EDIT;
-		for (int i = ui.scroll; i < n && i < ui.scroll + l.rows; i++)
-		{
+		const Player* pp = &p;
+		const int rowW = l.list.w;
+		auto rowOf = [this, pp, likedPl, sel](int i) {
+			const Player& pl = *pp;
 			const PlaylistEntry& e = plCur.entries[i];
-			Rect r = l.row(i - ui.scroll);
 			bool lifted = moving && plSel.count(i);
-			if (lifted)
-			{
-				// the block, set in 10 units: a shadow under it, a lifted ground, the grips in yellow
-				ui.fillRound({r.x + 12, r.y + 5, r.w - 2, r.h}, PRESSED, R_BUTTON);
-				r.x += 10;
-			}
 			Kit::Row row;
 			row.font = F_SMALL;
 			row.under = BG;
@@ -506,9 +525,8 @@ namespace bp
 				static const char* NOW[] = {"", "Now", "Paused", "In browser", "Stopped"};
 				row.pill = NOW[std::clamp(chip, 0, 4)];
 				row.tone = chip == 1 ? Kit::Pill::Live : Kit::Pill::Fact;
-				const PlaylistEntry& e2 = plCur.entries[i];
-				double len = e2.duration > 0 ? e2.duration : p.duration;
-				row.note = formatTime(ui.shownPosition(p)) + " / " + (len > 0 ? formatTime(len) : std::string("\xE2\x80\x93"));
+				double len = e.duration > 0 ? e.duration : pl.duration;
+				row.note = formatTime(ui.shownPosition(pl)) + " / " + (len > 0 ? formatTime(len) : std::string("\xE2\x80\x93"));
 			}
 			else if (miss)
 			{
@@ -527,14 +545,41 @@ namespace bp
 				row.trail = Kit::Trail::Grip;
 			}
 			else if (likedPl) row.trail = Kit::Trail::Heart;
-			k.row(r, row);
-		}
-		// the drag's landing line
+			return row;
+		};
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = g.count;
+		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + "|" + plCur.file + "|";
+		spec.key = [this, rowOf, gen](int i) -> std::string {
+			if (i < 0 || i >= (int)plCur.entries.size()) return "-";
+			Kit::Row r = rowOf(i);
+			if (r.focused) return "";	// (the focused name's marquee, a lifted row's place: drawn again each frame)
+			char b[48];
+			snprintf(b, sizeof b, "|%d%d%d%d%d%d%d", r.heart, r.tick, r.tickOn, (int)r.trail, r.off, (int)r.tone,
+				r.leadGlyph != nullptr);
+			return "pe" + gen + std::to_string(i) + "|" + plCur.entries[i].path + "|" + r.name + "|" + r.note + "|" + r.pill + b;
+		};
+		spec.draw = [this, rowOf, rowW](int i, Rect box) {
+			if (i < 0 || i >= (int)plCur.entries.size()) return;
+			Rect r{box.x, box.y, rowW, lay::PL_ROW_H};
+			if (moving && plSel.count(i))
+			{
+				// the block, set in 10 units: a shadow under it, a lifted ground, the grips in yellow
+				ui.fillRound({r.x + 12, r.y + 5, r.w - 2, r.h}, PRESSED, R_BUTTON);
+				r.x += 10;
+			}
+			ui.kit->row(r, rowOf(i));
+		};
+		br.list.draw(std::move(spec));
+		br.listEnd(g);
+		// the drag's landing line (over the rows, where the gap is at the list's offset now)
 		if (sel && plDrag.on && !dragSel.empty() && dragTarget() != *dragSel.begin())
 		{
-			int slot = dragSlot();
-			if (slot >= ui.scroll && slot <= ui.scroll + l.rows)
-				ui.fillRound({l.list.x, rowsY + (slot - ui.scroll) * lay::PL_ROW_PITCH - 3, l.list.w, 2}, ACCENT, 1);
+			int y = g.view.y + dragSlot() * lay::PL_ROW_PITCH - (int)std::lround(br.list.sc.offset()) - 3;
+			if (y >= g.view.y - 3 && y <= g.view.y + g.view.h)
+				ui.fillRound({l.list.x, y, l.list.w, 2}, ACCENT, 1);
 		}
 
 		// the select / move bar
@@ -666,29 +711,25 @@ namespace bp
 			plTouchScrolled = false;
 			chipPress = lay::filterAt(l.head.chips, x, y);
 			if (chipPress >= 0 || empty) return true;
-			if (y >= l.rowsY && y < l.rowsY + l.rows * lay::PLAYLIST_ROW_H)
+			// the rows: anywhere on the list drives it (a touch on a gliding list only stops it)
+			int at = -1;
+			if (ui.browse->listPress(ui.browse->listGeom(p), pt, x, y, at) && at >= 0 && at < n)
 			{
-				int at = ui.scroll + (y - l.rowsY) / lay::PLAYLIST_ROW_H;
-				if (at >= 0 && at < n)
-				{
-					plPressRow = at;
-					plTouchY = y;
-					plScrollStart = ui.scroll;
-					ui.cursor = at;
-					ui.dropTouch();
-				}
+				plPressRow = at;
+				ui.cursor = at;
+				ui.dropTouch();
 			}
 			return true;	// (nothing else on the page answers a fresh finger)
 		}
-		if (pt.kind == Pointer::Move && plPressRow >= 0)
+		if (pt.kind == Pointer::Move)
 		{
-			if (!plTouchScrolled && std::abs(y - plTouchY) > 12) plTouchScrolled = true;
-			if (plTouchScrolled) ui.scroll = lay::dragScroll(plScrollStart, plTouchY, y, lay::PLAYLIST_ROW_H, 0, n, l.rows);
+			if (ui.browse->listMove(pt)) plTouchScrolled = true;
 			return true;
 		}
 		if (pt.kind != Pointer::Up) return false;
 		int chip = chipPress, at = plPressRow;
 		chipPress = plPressRow = -1;
+		if (ui.browse->listLift() && ui.browse->listCaught) at = -1;
 		if (chip >= 0)
 		{
 			// Albums / Artists: Music's own views (this page is its third)
@@ -701,7 +742,7 @@ namespace bp
 			return true;
 		}
 		if (plTouchScrolled || at < 0 || at >= n) return true;
-		if (at >= ui.scroll && at < ui.scroll + l.rows && !l.row(at - ui.scroll).hit(x, y)) return true;
+		if (ui.browse->list.rowAt(x, y) != at) return true;	// (slid off the row: it changed its mind)
 		ui.choose(at, p);
 		return true;
 	}
@@ -777,40 +818,45 @@ namespace bp
 			plPressRow = -1;
 			plTouchScrolled = false;
 			keyFocus = -1;
-			if (y >= rowsY && y < rowsY + l.rows * lay::PL_ROW_PITCH)
+			Browse& br = *ui.browse;
+			Browse::ListGeom g = br.listGeom(p);
+			// a row's grip in Edit (a list at rest): the row is dragged at once, the list not pressed
+			int under = g.view.hit(x, y) && !br.list.moving() ? br.list.rowAt(x, y) : -1;
+			if (selMode == SEL_EDIT && under >= 0 && under < n && x >= l.list.x + l.list.w - 34 && x < l.list.x + l.list.w &&
+				selTickable(under))
 			{
-				int at = ui.scroll + (y - rowsY) / lay::PL_ROW_PITCH;
-				if (at >= 0 && at < n && (y - rowsY) % lay::PL_ROW_PITCH < lay::PL_ROW_H)
-				{
-					plPressRow = at;
-					plTouchY = y;
-					plScrollStart = ui.scroll;
-					ui.cursor = at;
-					if (selMode == SEL_EDIT && x >= l.list.x + l.list.w - 34 && selTickable(at)) { dragBegin(at, y, p); return true; }
-					ui.dropTouch();
-				}
+				ui.cursor = under;
+				dragBegin(under, y, p);
+				return true;
+			}
+			// the rows: anywhere on the list drives it; a row is the one under the finger (not the gap below it)
+			int at = -1;
+			if (br.listPress(g, pt, x, y, at) && at >= 0 && at < n && y < br.list.rowBox(at).y + lay::PL_ROW_H)
+			{
+				plPressRow = at;
+				ui.cursor = at;
+				ui.dropTouch();
 			}
 			return true;	// (nothing else on the page answers a fresh finger)
 		}
-		if (pt.kind == Pointer::Move && plPressRow >= 0)
+		if (pt.kind == Pointer::Move && ui.browse->listOnFinger)
 		{
-			bool started = !plTouchScrolled;
-			if (!plTouchScrolled && std::abs(y - plTouchY) > 12) plTouchScrolled = true;
-			if (plTouchScrolled)
+			if (ui.browse->listMove(pt) && !plTouchScrolled)
 			{
-				ui.scroll = lay::dragScroll(plScrollStart, plTouchY, y, lay::PL_ROW_PITCH, 0, n, l.rows);
-				if (started) fprintf(stderr, "touch: playlist drag y %d -> %d, scroll %d -> %d of %d\n", plTouchY, y,
-					plScrollStart, ui.scroll, n);
+				plTouchScrolled = true;
+				fprintf(stderr, "touch: playlist drag from row %d of %d\n", plPressRow, n);
 			}
 			return true;
 		}
-		if (pt.kind == Pointer::Up && plPressRow >= 0)
+		if (pt.kind == Pointer::Up && ui.browse->listOnFinger)
 		{
 			int at = plPressRow;
 			plPressRow = -1;
+			if (ui.browse->listLift() && ui.browse->listCaught) return true;
 			if (plTouchScrolled || at < 0 || at >= n) return true;
-			Rect r = l.row(at - ui.scroll);
-			if (at >= ui.scroll && at < ui.scroll + l.rows && !r.hit(x, y)) return true;
+			Rect r = ui.browse->list.rowBox(at);
+			r.w = l.list.w;
+			if (!r.hit(x, y)) return true;	// (slid off the row: it changed its mind)
 			if (inPl && ui.plIsLiked(plCur.file) && x >= r.x + r.w - 34)
 			{
 				// a Liked row's heart: unlike (L3's job on the player)
@@ -1215,6 +1261,8 @@ namespace bp
 	{
 		if (plSel.empty()) return;
 		int first = *plSel.begin(), last = *plSel.rbegin(), n = (int)ui.browse->browseRows.size();
+		// the smooth list shows the block's far end in the way it went (its first row going up, its last going down)
+		ui.browse->listReveal = first > ui.cursor ? last : first;
 		ui.cursor = first;
 		if (last >= ui.scroll + ROWS_SHOWN) ui.scroll = last - ROWS_SHOWN + 1;
 		if (first < ui.scroll) ui.scroll = first;
@@ -1306,8 +1354,10 @@ namespace bp
 
 	int Ui::Playlists::dragSlot() const
 	{
+		// (the finger's place in the list at its offset now)
 		int n = (int)ui.browse->browseRows.size();
-		return std::clamp(ui.scroll + (int)std::lround((plDrag.y - rowsY) / (double)lay::PL_ROW_PITCH), 0, n);
+		double off = ui.browse->list.sc.offset();
+		return std::clamp((int)std::lround((plDrag.y - rowsY + off) / (double)lay::PL_ROW_PITCH), 0, n);
 	}
 
 	int Ui::Playlists::dragTarget() const
@@ -1377,7 +1427,8 @@ namespace bp
 		// none yet: the one to make is the only choice
 		if (pickerList.empty() && !one) { pickerNew(p); return; }
 		pickerOpen = true;
-		pickerCursor = pickerScroll = 0;
+		pickerCursor = 0;
+		pickerSmooth().top();
 		ui.pressedBtn = -1;
 	}
 
@@ -1409,7 +1460,8 @@ namespace bp
 		// none yet: the one to make is the only choice (named after the album or the artist)
 		if (pickerList.empty()) { pickerNew(p); return; }
 		pickerOpen = true;
-		pickerCursor = pickerScroll = 0;
+		pickerCursor = 0;
+		pickerSmooth().top();
 		ui.pressedBtn = -1;
 	}
 
@@ -1483,44 +1535,48 @@ namespace bp
 		case Button::B: pickerOpen = false; return true;
 		default: return true;
 		}
-		if (pickerCursor < pickerScroll) pickerScroll = pickerCursor;
-		if (pickerCursor >= pickerScroll + shown) pickerScroll = pickerCursor - shown + 1;
+		pickerReveal(true);
 		return true;
 	}
 
 	bool Ui::Playlists::pickerPointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		int n = (int)pickerList.size() + 1;
-		int shown = pickerShown();
+		SmoothList& list = pickerSmooth();
 		if (pt.kind == Pointer::Down)
 		{
-			// outside the box: closed; on a row, chosen as the finger lifts there (a drag scrolls)
+			// outside the box: closed; on a row, chosen as the finger lifts there (a drag scrolls, a touch on a
+			// gliding list only stops it)
 			if (!pickerBox().hit(x, y)) { pickerOpen = false; ui.swallowTouch = true; return false; }
 			ui.pressedBtn = -1;
-			for (int i = pickerScroll; i < n && i < pickerScroll + shown; i++)
-				if (pickerRow(i).hit(x, y)) ui.pressedBtn = PICK_ROW + i;
-			pickerTouchY = y;
-			pickerScrollStart = pickerScroll;
-			pickerScrolled = false;
+			pickerScrolled = pickerCaught = false;
+			if (!pickerView().hit(x, y)) return false;
+			pickerCaught = list.press(pt.y * Ui::H);
+			int r = pickerCaught ? -1 : list.rowAt(x, y);
+			if (r >= 0 && r < n) ui.pressedBtn = PICK_ROW + r;
+			pickerScrolled = pickerCaught;
 			return false;
 		}
-		if (pt.kind == Pointer::Move && (pickerScrolled || std::abs(y - pickerTouchY) > 12))
+		if (pt.kind == Pointer::Move)
 		{
-			pickerScrolled = true;
-			ui.pressedBtn = -1;
-			pickerScroll = std::clamp(pickerScrollStart + (int)std::lround((pickerTouchY - y) / 46.0), 0, std::max(0, n - shown));
-			pickerCursor = std::clamp(pickerCursor, pickerScroll, pickerScroll + shown - 1);
+			if (list.move(pt.y * Ui::H))
+			{
+				pickerScrolled = true;
+				ui.pressedBtn = -1;
+			}
 			return false;
 		}
 		if (pt.kind == Pointer::Up)
 		{
 			int id = ui.pressedBtn;
 			ui.pressedBtn = -1;
-			if (!pickerScrolled && id >= PICK_ROW && pickerRow(id - PICK_ROW).hit(x, y))
+			list.lift();
+			if (!pickerScrolled && id >= PICK_ROW && list.rowAt(x, y) == id - PICK_ROW)
 			{
 				pickerCursor = id - PICK_ROW;
 				pickerChoose(pickerCursor, p);
 			}
+			pickerScrolled = pickerCaught = false;
 		}
 		return false;
 	}
@@ -1650,11 +1706,22 @@ namespace bp
 		return {s.box.x, s.box.y, s.box.w, s.box.h};
 	}
 
-	Ui::Rect Ui::Playlists::pickerRow(int i) const
+	Ui::Rect Ui::Playlists::pickerView() const
 	{
 		lay::Sheet s = lay::sheet({0, (int)pickerList.size() + 1, 1, 0});
-		lay::Box b = s.row(i - pickerScroll);
-		return {b.x, b.y, b.w, b.h};
+		lay::Box first = s.row(0);
+		return {first.x, first.y, first.w, std::max(lay::SHEET_ROW, s.hints.y - first.y)};
+	}
+
+	Ui::SmoothList& Ui::Playlists::pickerSmooth()
+	{
+		if (!pickerRows) pickerRows = std::make_unique<SmoothList>(ui);
+		return *pickerRows;
+	}
+
+	void Ui::Playlists::pickerReveal(bool glide)
+	{
+		pickerSmooth().reveal(pickerCursor, pickerView(), lay::SHEET_ROW, (int)pickerList.size() + 1, glide);
 	}
 
 	int Ui::Playlists::pickerShown() const
@@ -1673,10 +1740,11 @@ namespace bp
 			: pickerFolder.empty() ? "Add " + std::to_string(picked.size()) + " to\xE2\x80\xA6"
 			: "Add " + quoted(folderName(pickerFolder)) + " to\xE2\x80\xA6";
 		ui.kit->sheet(sh, {&G_PLUS, title, ""});
-		int n = (int)pickerList.size() + 1, shown = pickerShown();
-		for (int i = pickerScroll; i < n && i < pickerScroll + shown; i++)
-		{
-			Rect r = pickerRow(i);
+		// the rows: their own smooth list (Ui::draw steps it while the picker is open), each row's look its key
+		int n = (int)pickerList.size() + 1;
+		SmoothList& list = pickerSmooth();
+		Rect view = pickerView();
+		auto rowOf = [this](int i) {
 			Kit::Row row;
 			row.font = F_P16;
 			row.under = SURFACE;
@@ -1686,27 +1754,42 @@ namespace bp
 			{
 				row.glyph = &G_PLUS;
 				row.name = "New playlist\xE2\x80\xA6";
+				return row;
 			}
-			else
-			{
-				auto& pl = pickerList[i - 1];
-				bool has = i - 1 < (int)pickerHas.size() && pickerHas[i - 1], armed = pickerArmed == i;
-				row.glyph = &G_PLAYLIST;
-				row.name = pl.name;
-				row.note = std::to_string(pl.count) + (pl.count == 1 ? " item" : " items");
-				if (armed) { row.pill = "Add again?"; row.tone = Kit::Pill::Live; }
-				else if (has) { row.pill = "Added"; row.tone = Kit::Pill::Fact; }
-			}
-			ui.kit->row(r, row);
-		}
+			auto& pl = pickerList[i - 1];
+			bool has = i - 1 < (int)pickerHas.size() && pickerHas[i - 1], armed = pickerArmed == i;
+			row.glyph = &G_PLAYLIST;
+			row.name = pl.name;
+			row.note = std::to_string(pl.count) + (pl.count == 1 ? " item" : " items");
+			if (armed) { row.pill = "Add again?"; row.tone = Kit::Pill::Live; }
+			else if (has) { row.pill = "Added"; row.tone = Kit::Pill::Fact; }
+			return row;
+		};
+		SmoothList::Spec spec;
+		spec.view = view;
+		spec.rowH = lay::SHEET_ROW;
+		spec.count = n;
+		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + "|";
+		spec.key = [this, rowOf, gen, n](int i) -> std::string {
+			if (i < 0 || i >= n) return "-";
+			Kit::Row r = rowOf(i);
+			if (r.focused) return "";	// (the focused name's marquee: drawn again each frame)
+			return "pk" + gen + std::to_string(i) + "|" + r.name + "|" + r.note + "|" + r.pill + (r.pressed ? "d" : "");
+		};
+		spec.draw = [this, rowOf, n](int i, Rect r) {
+			if (i < 0 || i >= n) return;
+			ui.kit->row(r, rowOf(i));
+		};
+		list.draw(std::move(spec));
 		// where the list is, when it's longer than the box
-		if (n > shown)
+		double maxOff = list.sc.maxOffset();
+		if (maxOff > 0)
 		{
-			Rect first = pickerRow(pickerScroll), last = pickerRow(pickerScroll + shown - 1);
-			int top = first.y, height = last.y + last.h - top;
+			int top = view.y, height = view.h;
 			ui.fillRound({sh.box.x + sh.box.w - 12, top, 4, height}, SCREEN, 2);
-			int h = std::max(16, height * shown / n);
-			ui.fillRound({sh.box.x + sh.box.w - 12, top + (height - h) * pickerScroll / std::max(1, n - shown), 4, h}, DIM, 2);
+			int h = std::max(16, (int)((double)height * view.h / ((double)n * lay::SHEET_ROW)));
+			double at = std::clamp(list.sc.offset() / maxOff, 0.0, 1.0);
+			ui.fillRound({sh.box.x + sh.box.w - 12, top + (int)std::lround((height - h) * at), 4, h}, DIM, 2);
 		}
 		ui.kit->hints({{"A", pickerArmed > 0 ? "Add again" : "Add"}, {"B", "Close"}});
 	}

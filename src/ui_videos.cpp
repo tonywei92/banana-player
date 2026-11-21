@@ -75,13 +75,72 @@ namespace bp
 		// L2 / R2 and the chips: the three views, wrapping (All · Folders · Not finished)
 		view = ((view + dir) % 3 + 3) % 3;
 		folder.clear();
-		cursor = scroll = 0;
+		cursor = 0;
+		list.top();
 	}
 
 	void Ui::Videos::openFolder(const std::string& path)
 	{
 		folder = path;
-		cursor = scroll = 0;
+		cursor = 0;
+		list.top();
+	}
+
+	// ---- the list shown ----
+
+	Ui::Videos::ListGeom Ui::Videos::listGeom() const
+	{
+		// (the same boxes draw() lays out: the rows under the view chips, or a folder's from the body's top)
+		ListGeom g;
+		auto snap = snapshot();
+		if (!snap || generation() == 0) return g;
+		if (snap->videos.empty() && folder.empty()) return g;
+		Rect inner = videosInner();
+		int top = inner.y;
+		if (folder.empty()) top = lay::musicHeader(inner, {}).strip.y + lay::CHIP_STRIP + lay::SP8;
+		g.view = {inner.x, top, inner.w, inner.y + inner.h - top};
+		g.rowH = lay::VIDEO_ROW_H;
+		// (the rows as last built: draw and the keys build them first for the Player they have)
+		g.count = (int)rowsCache.size();
+		return g;
+	}
+
+	void Ui::Videos::keepCursorInView(bool glide)
+	{
+		ListGeom g = listGeom();
+		if (g.count > 0 && cursor >= 0 && cursor < g.count) list.reveal(cursor, g.view, g.rowH, g.count, glide);
+	}
+
+	Ui::Kit::Video Ui::Videos::videoOf(const Row& r, int i, const Player& p) const
+	{
+		// a video's place and length, read here from the stores that hold them (keyed by the path)
+		Kit::Video v;
+		v.name = r.name;
+		const ResumeEntry* e = p.resumeStore().find(r.path);
+		double secs = -1;
+		cachedDuration(r.path, secs);
+		if (e && e->position >= 0)
+		{
+			// "at 6:12 / 9:56" and the bar under it
+			double dur = e->duration > 0 ? e->duration : secs;
+			v.note = formatTime(e->position) + " / " + (dur > 0 ? formatTime(dur) : "--:--");
+			v.resume = dur > 0 ? std::clamp(e->position / dur, 0.0, 1.0) : 0;
+		}
+		else if (e && e->position < 0 && e->duration > 0)
+		{
+			v.note = formatTime(e->duration);
+			v.done = true;		// played through (or as good as): the tick, no place kept
+		}
+		else if (secs > 0) v.note = formatTime(secs);
+		v.second = baseName(parentFolder(r.path)) + (r.size > 0 ? " \xC2\xB7 " + formatBytes(r.size) : "") +
+			(r.mtime ? " \xC2\xB7 " + rowDate(r.mtime) : "");
+		// the row that plays: the Playing pill (paused too), as the Playlists rows and Music's cells mark theirs
+		bool here = p.playing() && !p.playingPhoto() && p.currentPath() == r.path;
+		v.playing = here && !p.paused;
+		v.paused = here && p.paused;
+		v.focused = i == cursor;
+		v.pressed = touch == T_ROW + i && !touchMoved;
+		return v;
 	}
 
 	std::vector<Ui::Videos::Row> Ui::Videos::buildRows(const Player& p) const
@@ -394,14 +453,14 @@ namespace bp
 	void Ui::Videos::sortStep(int dir)
 	{
 		sort = ((sort + dir) % SORTS + SORTS) % SORTS;
-		cursor = scroll = 0;
+		cursor = 0;
+		list.top();
 	}
 
 	// ---- the keys ----
 
 	bool Ui::Videos::key(Button b, Player& p)
 	{
-		Rect inner = videosInner();
 		const auto& rows = rowsFor(p);
 		int n = (int)rows.size();
 		// the views' step (L2 / R2), not a folder's own list (the mock-up gives that none)
@@ -424,8 +483,8 @@ namespace bp
 			}
 			return false;
 		}
-		int rowsShown = std::max(1, (inner.h - (lay::CHIP_STRIP + lay::SP8)) / lay::VIDEO_ROW_H);
-		if (!folder.empty()) rowsShown = std::max(1, inner.h / lay::VIDEO_ROW_H);
+		ListGeom g = listGeom();
+		int rowsShown = std::max(1, g.view.h / lay::VIDEO_ROW_H);
 		switch (b)
 		{
 		case Button::Up: if (n) cursor = (cursor + n - 1) % n; break;
@@ -443,12 +502,12 @@ namespace bp
 			if (cursor >= 0 && cursor < n) openMoreSheet(rows[cursor], p);
 			break;
 		case Button::B:
-			if (!folder.empty()) { folder.clear(); cursor = scroll = 0; }
+			if (!folder.empty()) { folder.clear(); cursor = 0; list.top(); }
 			else { ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); }
 			break;
 		default: break;
 		}
-		fitRows(cursor, rowsShown);
+		if (ui.page == Page::Videos) keepCursorInView();
 		return false;
 	}
 
@@ -461,23 +520,25 @@ namespace bp
 		int n = (int)rows.size();
 		bool reading = !snapshot() || generation() == 0;
 		bool empty = !reading && snapshot()->videos.empty() && folder.empty();
-		int rowsShown = std::max(1, (inner.h - (lay::CHIP_STRIP + lay::SP8)) / lay::VIDEO_ROW_H);
-		if (!folder.empty()) rowsShown = std::max(1, inner.h / lay::VIDEO_ROW_H);
-		int top = inner.y;
-		if (folder.empty()) top = inner.y + lay::LINE_H + lay::SP8 + lay::CHIP_STRIP + lay::SP8;
+		const float fy = pt.y * Ui::H;	// (by the fraction: the list follows the panel's pixels, not whole units)
 		if (pt.kind != Pointer::Down)
 		{
 			if (touch == T_NONE) return false;
 			if (pt.kind == Pointer::Move)
 			{
-				if (!touchMoved && std::abs(y - touchY) > 6) touchMoved = true;
-				if (touchMoved) scroll = lay::dragScroll(scrollStart, touchY, y, lay::VIDEO_ROW_H, 0, n, rowsShown);
+				// the list follows the finger once it is past the slop (lay::Scroller); elsewhere a drag only
+				// stops being a tap
+				if (onList) { if (list.move(fy)) touchMoved = true; }
+				else if (!touchMoved && std::abs(y - touchY) > 6) touchMoved = true;
 				return false;
 			}
+			// the lift: the list glides on (or springs back from an end); a tap if it never moved, on what it is
+			// still over
+			if (onList) list.lift();
 			int t = touch;
-			bool moved = touchMoved;
+			bool moved = touchMoved || caught;
 			touch = T_NONE;
-			touchMoved = false;
+			touchMoved = onList = caught = false;
 			if (moved || t == T_NONE) return false;
 			switch (t)
 			{
@@ -495,27 +556,23 @@ namespace bp
 				if (folder.empty())
 				{
 					view = t - T_CHIP;
-					cursor = scroll = 0;
+					cursor = 0;
+					list.top();
 				}
 				return false;
 			}
-			if (t >= T_ROW && t - T_ROW < n)
+			if (t >= T_ROW && t - T_ROW < n && list.rowAt(x, y) == t - T_ROW)
 			{
-				Rect r{inner.x, top + (t - T_ROW - scroll) * lay::VIDEO_ROW_H, inner.w, lay::VIDEO_ROW_H};
-				if (r.hit(x, y))
-				{
-					cursor = t - T_ROW;
-					if (rows[cursor].folder) openFolder(rows[cursor].path);
-					else play(rows[cursor], p);
-				}
+				cursor = t - T_ROW;
+				if (rows[cursor].folder) openFolder(rows[cursor].path);
+				else play(rows[cursor], p);
 			}
 			return false;
 		}
 		// the down: what is under the finger (the same Rects the drawing asked for)
 		touch = T_NONE;
-		touchMoved = false;
+		touchMoved = onList = caught = false;
 		touchY = y;
-		scrollStart = scroll;
 		if (empty)
 		{
 			std::vector<std::string> lines = ui.wrapText(EMPTY_VIDEOS_LINE, F_I14, 400, 99);
@@ -534,17 +591,18 @@ namespace bp
 			int chip = lay::filterAt(mh.chips, x, y);
 			if (chip >= 0) { touch = T_CHIP + chip; return false; }
 		}
-		for (int i = 0; i < rowsShown && scroll + i < n; i++)
+		// the list: anywhere in its view drives it (a touch on a gliding list only stops it)
+		ListGeom g = listGeom();
+		if (g.count <= 0 || !g.view.hit(x, y)) return false;
+		onList = true;
+		touch = T_GROUND;
+		caught = list.press(fy);
+		int r = caught ? -1 : list.rowAt(x, y);
+		if (r >= 0 && r < n)
 		{
-			Rect r{inner.x, top + i * lay::VIDEO_ROW_H, inner.w, lay::VIDEO_ROW_H};
-			if (r.hit(x, y))
-			{
-				touch = T_ROW + scroll + i;
-				cursor = scroll + i;
-				return false;
-			}
+			touch = T_ROW + r;
+			cursor = r;
 		}
-		touch = T_GROUND;		// the list's own ground: a drag still scrolls it
 		return false;
 	}
 
@@ -559,8 +617,6 @@ namespace bp
 		bool empty = !reading && snap->videos.empty() && folder.empty();
 		const auto& rows = rowsFor(p);
 		int n = (int)rows.size();
-		int rowsShown = std::max(1, (inner.h - (lay::CHIP_STRIP + lay::SP8)) / lay::VIDEO_ROW_H);
-		int top = inner.y;
 		if (folder.empty())
 		{
 			// the views: the line under the title, the chips, then the rows
@@ -611,58 +667,45 @@ namespace bp
 				k.notice(l, row);
 				return;
 			}
-			top = mh.strip.y + lay::CHIP_STRIP + lay::SP8;
 		}
-		else
-		{
-			rowsShown = std::max(1, inner.h / lay::VIDEO_ROW_H);
-		}
-		// the rows (a video's place and length read here, from the stores that hold them, keyed by the path)
-		fitRows(cursor, rowsShown);
-		for (int i = 0; i < rowsShown && scroll + i < n; i++)
-		{
-			const Row& r = rows[scroll + i];
-			int at = scroll + i;
+		// the rows: a smooth list (ui_smoothlist.h), each row's look its key. The lambdas run inside list.draw, this
+		// frame: the rows and the Player are read there
+		ListGeom g = listGeom();
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = std::min(g.count, n);
+		const std::string gen = std::to_string(generation()) + (theme::drawingClean() ? "c" : "") + "|" + folder + "|" +
+			std::to_string(view) + "." + std::to_string(sort) + "|";
+		const Player* pp = &p;
+		spec.key = [this, pp, gen](int i) -> std::string {
+			if (i < 0 || i >= (int)rowsCache.size()) return "-";
+			const Row& r = rowsCache[i];
+			if (r.folder)
+				return "vf" + gen + std::to_string(i) + r.path + "." + std::to_string(r.videos) + (i == cursor ? "f" : "") +
+					(touch == T_ROW + i && !touchMoved ? "d" : "");
+			Kit::Video v = videoOf(r, i, *pp);
+			char b[64];
+			snprintf(b, sizeof b, "%.3f", v.resume);
+			return "vv" + gen + std::to_string(i) + r.path + "|" + v.note + "|" + b + (v.done ? "t" : "") +
+				(v.playing ? "p" : "") + (v.paused ? "z" : "") + (v.focused ? "f" : "") + (v.pressed ? "d" : "");
+		};
+		spec.draw = [this, pp](int i, Rect box) {
+			if (i < 0 || i >= (int)rowsCache.size()) return;
+			const Row& r = rowsCache[i];
 			if (r.folder)
 			{
 				Kit::Folder f;
 				f.name = r.name;
 				f.second = std::to_string(r.videos) + (r.videos == 1 ? " video" : " videos");
-				f.focused = at == cursor;
-				f.pressed = touch == T_ROW + at && !touchMoved;
-				Rect box{inner.x, top + i * lay::VIDEO_ROW_H, inner.w, lay::VIDEO_ROW_H};
-				k.folderRow(lay::folderRow(box), f);
-				continue;
+				f.focused = i == cursor;
+				f.pressed = touch == T_ROW + i && !touchMoved;
+				ui.kit->folderRow(lay::folderRow(box), f);
+				return;
 			}
-			Kit::Video v;
-			v.name = r.name;
-			const ResumeEntry* e = p.resumeStore().find(r.path);
-			double secs = -1;
-			cachedDuration(r.path, secs);
-			if (e && e->position >= 0)
-			{
-				// "at 6:12 / 9:56" and the bar under it
-				double dur = e->duration > 0 ? e->duration : secs;
-				v.note = formatTime(e->position) + " / " + (dur > 0 ? formatTime(dur) : "--:--");
-				v.resume = dur > 0 ? std::clamp(e->position / dur, 0.0, 1.0) : 0;
-			}
-			else if (e && e->position < 0 && e->duration > 0)
-			{
-				v.note = formatTime(e->duration);
-				v.done = true;		// played through (or as good as): the tick, no place kept
-			}
-			else if (secs > 0) v.note = formatTime(secs);
-			v.second = baseName(parentFolder(r.path)) + (r.size > 0 ? " \xC2\xB7 " + formatBytes(r.size) : "") +
-				(r.mtime ? " \xC2\xB7 " + rowDate(r.mtime) : "");
-			// the row that plays: the Playing pill (paused too), as the Playlists rows and Music's cells mark theirs
-			bool here = p.playing() && !p.playingPhoto() && p.currentPath() == r.path;
-			v.playing = here && !p.paused;
-			v.paused = here && p.paused;
-			v.focused = at == cursor;
-			v.pressed = touch == T_ROW + at && !touchMoved;
-			Rect box{inner.x, top + i * lay::VIDEO_ROW_H, inner.w, lay::VIDEO_ROW_H};
-			k.videoRow(lay::videoRow(box), v);
-		}
+			ui.kit->videoRow(lay::videoRow(box), videoOf(r, i, *pp));
+		};
+		list.draw(std::move(spec));
 	}
 
 	std::string Ui::Videos::signature(const Player& p) const
@@ -671,7 +714,7 @@ namespace bp
 		// its base; the resume store is read at the row, and what plays moved it — the rows' key holds that), and
 		// the reading notice's step, so the bar moves while the first pass walks
 		char buf[96];
-		snprintf(buf, sizeof buf, "|vd%d.%d.%s.%d.%d.%d.%u", view, cursor, folder.c_str(), scroll, touch,
+		snprintf(buf, sizeof buf, "|vd%d.%d.%s.%d.%d.%d.%u", view, cursor, folder.c_str(), touchMoved, touch,
 			(int)rowsFor(p).size(), generation());
 		std::string s = buf;
 		if (!snapshot() || generation() == 0)

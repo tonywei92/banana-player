@@ -14,6 +14,7 @@
 #include "ui.h"
 #include "ui_shell.h"
 #include "ui_kit.h"
+#include "ui_smoothlist.h"
 #include "mediaindex.h"
 
 namespace bp
@@ -49,21 +50,37 @@ namespace bp
 		std::string placesNow() const;
 
 		// ---- the focus: one cursor over the strip, then the shelf ----
-		int cursor = 0, shelfScroll = 0;
+		int cursor = 0;
 		void open(Player& p);		// the rail's way in
-		// the kit's own shelf layout (the strip, the grid, its scroll), with the strip's space dropped when
-		// nothing is reading — one place for the drawing and the touches to ask
+		// the kit's own shelf layout (the strip, the grid's place), with the strip's space dropped when nothing
+		// is reading — one place for the drawing and the touches to ask (its shelf cells are not used: the grid
+		// is the smooth list's)
 		lay::BooksShelf layout() const;
+
+		// ---- the shelf's grid: a smooth list of rows of five (ui_smoothlist.h), as Music's Albums grid ----
+		SmoothList list{ui};
+		SmoothList* smoothList() override { return listGeom().count > 0 ? &list : nullptr; }
+		struct ListGeom
+		{
+			Rect view{};
+			int rowH = 0, count = 0, cols = 5;
+		};
+		ListGeom listGeom() const;
+		void keepCursorInView(bool glide = true);	// the cursor's shelf row: a short glide to it (the strip stays)
+		// the grid's row r: its cells inside the row's box (the focus ring's room around them)
+		std::vector<lay::Box> shelfRow(Rect row, int r) const;
 		// the More sheet (X): what a book has (Read from the start, Info, Show in folder)
 		void openMoreSheet(const Shelf& book, Player& p);
 
 		// ---- a finger ----
-		// what it went down on: T_READ + i the strip's cell, T_SHELF + i a shelf cell, T_EMPTY1 / T_EMPTY2 the
-		// empty page's keys
-		enum { T_NONE = -1, T_READ = 0, T_SHELF = 10, T_GROUND = 499, T_EMPTY1 = 500, T_EMPTY2 = 501 };
+		// what it went down on: T_READ + i the strip's cell, T_GROUND the shelf's ground (a drag scrolls), T_EMPTY1 /
+		// T_EMPTY2 the empty page's keys, T_SHELF + i a shelf cell (its index in the whole shelf)
+		enum { T_NONE = -1, T_READ = 0, T_GROUND = 7, T_EMPTY1 = 8, T_EMPTY2 = 9, T_SHELF = 10 };
 		int touch = T_NONE;
-		int touchY = 0, scrollStart = 0;
+		int touchY = 0;
 		bool touchMoved = false;
+		bool onList = false;	// the finger drives the shelf (it went down on the grid)
+		bool caught = false;	// it went down on a gliding shelf: it stopped it, and is no tap
 		Rect emptyKey[2]{};
 
 		// ---- the shell's header (Ui::Shell::head asks this) ----

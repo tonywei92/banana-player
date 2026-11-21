@@ -656,10 +656,12 @@ namespace bp
 			}
 		}
 		browse->playlists->plCheckShown();
-		// the top sheet's smooth list, else the page's, its glide stepped to now (its offset is not in the signature:
-		// drawnList). A page's list under a sheet stays still: its slots are let go and drawn again once
+		// the top sheet's smooth list, else the Add to… picker's while it is open over the page, else the page's, its
+		// glide stepped to now (its offset is not in the signature: drawnList). A page's list under a sheet stays
+		// still: its slots are let go and drawn again once
 		Overlay* top = topOverlay();
 		SmoothList* list = top ? top->smoothList() : nullptr;
+		if (!list && browse->playlists->pickerOpen) list = &browse->playlists->pickerSmooth();
 		if (!list && area()) list = area()->smoothList();
 		if (list != listShown)
 		{

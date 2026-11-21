@@ -246,6 +246,19 @@ namespace bp
 		return 1;
 	}
 
+	int Ui::bookCoverState(const std::string& path, Rect r, int rad)
+	{
+		// (drawBookCover's own key; the ask counts as drawn, as songArtState's does)
+		if (path.empty() || artFailed.count(path)) return 2;
+		SDL_Rect d = devRect({r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE});
+		std::string artKey = std::string(HOME_COVER_KEY) + "book|" + path + "|" + std::to_string(d.w) + "x" +
+			std::to_string(d.h) + "r" + std::to_string(rad);
+		auto it = artTex.find(artKey);
+		if (it == artTex.end()) return 0;
+		it->second.drawnAt = ++artDrawn;
+		return 1;
+	}
+
 	void Ui::drawNowArt(const Player& bp, Rect r, int rad)
 	{
 		// a song asks for its art (the placeholder stands in until the answer, and for good when there is
