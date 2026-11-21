@@ -435,8 +435,15 @@ namespace bp
 		// what was played last: the card follows Recent's rules. Its file missing or its card out: the card says so
 		// (dimmed) and opening it offers Remove from Recent; one removed from Recent is gone for good (its place in
 		// resume.tsv does not bring the card back), and the card falls back to the next item in Recent
+		// (a song or a video only: a book or a comic is Continue reading's and Recent's, never this card's)
+		auto playable = [](const RecentItem* it) { return it && (isAudioFile(it->path) || isVideoFile(it->path)); };
 		const RecentItem* subject = lastLive.empty() ? nullptr : findRecent(lastLive);
-		if (!subject && !recent.empty()) subject = &recent.front();
+		if (!playable(subject))
+		{
+			subject = nullptr;
+			for (auto& it : recent)
+				if (playable(&it)) { subject = &it; break; }
+		}
 		if (!subject) return c;
 		const ResumeEntry* e = p.resumeStore().find(subject->path);
 		if (e && isVideoFile(e->path) && e->position > 0 && e->duration > 0 && worthResuming(e->position, e->duration))
