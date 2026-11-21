@@ -11,6 +11,9 @@
 // Ui::pointer (one block for every list) and the Brightness rows' setBrightness (the quick settings' too).
 #pragma once
 #include "ui.h"
+#include "ui_kit.h"
+#include "ui_smoothlist.h"
+#include <memory>
 
 namespace bp
 {
@@ -26,6 +29,8 @@ namespace bp
 		bool pointerDownLate() const override { return true; }
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
+		// a group's rows glide (ui_smoothlist.h); the tiles don't scroll
+		SmoothList* smoothList() override { return ui.setGroup >= 0 ? &list : nullptr; }
 
 		// ---- the shared shell (lay::shell()) ----
 		// What Ui::Shell draws its header and hint bar from; the page draws only its body in lay::shell().body.
@@ -43,11 +48,17 @@ namespace bp
 		// one settings row at y (at: the cursor's): its label, arrows and value, an action's or the note's own look.
 		// Shared by Settings (draw) and the manga reader's own settings page (drawMangaSettings)
 		// a finger down on the settings' list (Settings', Manga's): its row, the touch begun
-		bool settingsDown(int x, int y);
+		bool settingsDown(const Pointer& pt, int x, int y);
 		void openGroup(int g, Player* p = nullptr);
 		void stepGroup(int dir, Player* p = nullptr);	// to the settings group before (-1) or after (1), round
 		// a settings group's tile (Settings opens on them: two to a row, lay::settingsTile)
 		Rect groupRect(int g) const { return lay::settingsTile(groupArea(), GROUPS, 2, g); }
+		// the rows' lists: a group's, and the Manga settings' (Manga draws them with drawRows; their touches
+		// begin in rowsDown and go on in Ui::pointer's listTouch block)
+		SmoothList list{ui}, mangaList{ui};
+		bool rowsCaught = false;	// the finger stopped a gliding list: its lift is no tap
+		static Rect rowsView();
+		void drawRows(SmoothList& list, Rect view, std::shared_ptr<std::vector<Kit::SettingRow>> looks);
 		bool styleFromSubs = false;	// the subtitle style opened from the Subtitles list: B goes back to it
 		// the top panel's Preview pane for the focused row (Ui::topPane): the Theme row's swatches; false: none
 		bool topPane(PaneSpec& out) const;
@@ -61,5 +72,7 @@ namespace bp
 		// the tile's live line ("Resume on · tracks remembered", "Off in incognito")
 		std::string groupSummary(int g, const Player& p) const;
 		void drawPreview(const SubStyle& st, Rect box);
+		int shownGroup = -2;	// the group the list shows (another: back to its top)
+		bool rowsDown(const Pointer& pt, int x, int y, int n);
 	};
 }

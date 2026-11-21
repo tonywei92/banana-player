@@ -1878,7 +1878,7 @@ namespace bp
 		{
 			if (ui.page == Page::ExtSection || ui.page == Page::Extensions || ui.page == Page::Manga) return extPointer(pt, x, y, p);
 			if (ui.page == Page::MangaSeries || ui.page == Page::MangaSources) return mangaPointer(pt, x, y, p);
-			if (ui.page == Page::MangaSettings) return ui.settingsPage->settingsDown(x, y);
+			if (ui.page == Page::MangaSettings) return ui.settingsPage->settingsDown(pt, x, y);
 			return false;
 		}
 		// the reader's page: its drag area and slider take the finger's moves too (the mini bar's taken before)

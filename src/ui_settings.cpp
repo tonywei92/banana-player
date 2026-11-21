@@ -408,7 +408,14 @@ namespace bp
 		// the group's rows: the layout starts under the header's strip (the title is in it, beside the back key)
 		lay::SettingsRows l = lay::settingsRowsIn(shell.body);
 		auto rows = settingRows();
-		for (int i = ui.scroll; i < (int)rows.size() && i < ui.scroll + SET_SHOWN; i++)
+		// a new group at its top; back on the page, the cursor in view at once
+		Rect view = rowsView();
+		bool fresh = list.takeFresh();
+		if (shownGroup != ui.setGroup) { shownGroup = ui.setGroup; list.top(); fresh = true; }
+		if (fresh && ui.cursor >= 0) list.reveal(ui.cursor, view, lay::SET_ROW_H, (int)rows.size(), false);
+		// every row's look first (a few dozen at most): the smooth list's rows are drawn from these copies
+		auto looks = std::make_shared<std::vector<Kit::SettingRow>>();
+		for (int i = 0; i < (int)rows.size(); i++)
 		{
 			int row = rows[i];
 			bool at = i == ui.cursor;
@@ -476,10 +483,13 @@ namespace bp
 			}
 			r.value = value;
 			r.action = action;
-			k.settingRow(l.row(i - ui.scroll), r);
+			r.pressed = r.pressed && !list.dragging();
+			looks->push_back(r);
 		}
+		drawRows(list, view, looks);
 		// more rows than the page holds (Power & screens with its brightness rows): a bar says so
-		if ((int)rows.size() > SET_SHOWN) ui.drawScrollBar(l.area.y, SET_SHOWN * lay::SET_ROW_H - 4, ui.scroll, SET_SHOWN, (int)rows.size());
+		if ((int)rows.size() > SET_SHOWN) ui.drawScrollBar(l.area.y, SET_SHOWN * lay::SET_ROW_H - 4,
+			(int)std::lround(list.sc.offset() / lay::SET_ROW_H), SET_SHOWN, (int)rows.size());
 		// what the row under the cursor does, in a line or two above the footer
 		std::string help = l.help.w > 0 && ui.cursor >= 0 && ui.cursor < (int)rows.size() ? settingHelp(rows[ui.cursor]) : "";
 		SDL_Color helpInk = DIM;
@@ -514,6 +524,49 @@ namespace bp
 			auto lines = ui.wrapText(help, 0, l.help.w, 2);
 			for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], 0, helpInk, l.help.x, l.help.y + (int)i * 22, l.help.w);
 		}
+	}
+
+	Ui::Rect Ui::SettingsPage::rowsView()
+	{
+		// the rows' window: SET_SHOWN rows of the layout's area (the help or the style's preview under it)
+		lay::SettingsRows l = lay::settingsRowsIn(lay::shell().body);
+		return {l.area.x, l.area.y, l.area.w, SET_SHOWN * lay::SET_ROW_H};
+	}
+
+	void Ui::SettingsPage::drawRows(SmoothList& list, Rect view, std::shared_ptr<std::vector<Kit::SettingRow>> looks)
+	{
+		// a smooth list (ui_smoothlist.h): a row's key is everything Kit::settingRow shows of it
+		Kit* k = ui.kit.get();
+		SmoothList::Spec spec;
+		spec.view = view;
+		spec.rowH = lay::SET_ROW_H;
+		spec.count = (int)looks->size();
+		spec.key = [looks](int i) {
+			const Kit::SettingRow& r = (*looks)[i];
+			return r.label + "\x1f" + r.value + "\x1f" + std::to_string(r.focused) + std::to_string(r.pressed) +
+				std::to_string(r.off) + std::to_string(r.action);
+		};
+		spec.draw = [k, looks](int i, Rect box) { k->settingRow({box.x, box.y, box.w, lay::SET_ROW_H - 2}, (*looks)[i]); };
+		list.draw(std::move(spec));
+	}
+
+	bool Ui::SettingsPage::rowsDown(const Pointer& pt, int x, int y, int n)
+	{
+		// a finger on a group's rows (or Manga settings'): a gliding list caught (no tap), else the row under it
+		// the cursor; the list's moves and lift are Ui::pointer's (its listTouch block)
+		SmoothList& l = ui.page == Page::MangaSettings ? mangaList : list;
+		Rect v = l.spec().count ? l.spec().view : rowsView();
+		if (!v.hit(x, y)) return false;
+		rowsCaught = l.press(pt.y * Ui::H);
+		int row = rowsCaught ? -1 : l.rowAt(x, y);
+		if (row >= n) row = -1;
+		if (!rowsCaught && row < 0) return false;
+		if (row >= 0) ui.cursor = row;
+		ui.listTouch = true;
+		ui.listScrolled = false;
+		ui.touchStartY = y;
+		ui.touchX = x;
+		return false;
 	}
 
 	// a line in the chosen font, colour and border over a stand-in for the picture, at the size it has on the top
@@ -626,12 +679,9 @@ namespace bp
 		case Button::Start: ui.closeSettings(p); break;
 		default: break;
 		}
-		// (a group's rows scroll; the tiles and the pages of their own keep their own scroll)
-		if (ui.page == Page::Settings && ui.setGroup >= 0)
-		{
-			if (ui.cursor < ui.scroll) ui.scroll = ui.cursor;
-			if (ui.cursor >= ui.scroll + SET_SHOWN) ui.scroll = ui.cursor - SET_SHOWN + 1;
-		}
+		// (a group's rows glide to the cursor; the tiles and the pages of their own keep their own scroll)
+		if (ui.page == Page::Settings && ui.setGroup >= 0 && ui.setGroup == shownGroup)
+			list.reveal(ui.cursor, rowsView(), lay::SET_ROW_H, (int)settingRows().size());
 		return false;
 	}
 
@@ -639,7 +689,7 @@ namespace bp
 	// shell's header owns the back key, so the page sees only the body.
 	bool Ui::SettingsPage::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
-		if (pt.kind == Pointer::Down) return settingsDown(x, y);
+		if (pt.kind == Pointer::Down) return settingsDown(pt, x, y);
 		return false;
 	}
 
@@ -654,25 +704,19 @@ namespace bp
 
 	// a finger down on the settings' list (Settings' groups or a group's rows, the Manga settings' rows): the row it
 	// is on, and the list's touch begun (its lift acts, its moves scroll)
-	bool Ui::SettingsPage::settingsDown(int x, int y)
+	bool Ui::SettingsPage::settingsDown(const Pointer& pt, int x, int y)
 	{
-		// the Settings page's list is inside the shell's body; the manga reader's own settings page keeps the old page
-		// (the Manga settings page is in the shell too: the same rows in its body)
-		lay::SettingsRows l = ui.page == Page::Settings || ui.page == Page::MangaSettings ? lay::settingsRowsIn(lay::shell().body)
-			: lay::settingsRows();
+		// the rows (Settings' and the Manga settings', both in the shell's body) are smooth lists; the tiles a grid
 		bool groups = ui.page == Page::Settings && ui.setGroup < 0;
 		auto srows = groups ? std::vector<int>() : ui.page == Page::MangaSettings ? ui.manga->mangaSettingRows() : settingRows();
 		int n = groups ? GROUPS : (int)srows.size();
-		int row = ui.scroll + (y - l.area.y) / lay::SET_ROW_H;
-		if (groups)
-		{
-			// a tile
-			row = -1;
-			for (int g = 0; g < GROUPS; g++)
-				if (groupRect(g).hit(x, y)) row = g;
-			if (row < 0) return false;
-		}
-		else if (y < l.area.y || y >= l.area.y + SET_SHOWN * lay::SET_ROW_H || row >= n) return false;
+		if (!groups) return rowsDown(pt, x, y, n);
+		// a tile
+		int row = -1;
+		for (int g = 0; g < GROUPS; g++)
+			if (groupRect(g).hit(x, y)) row = g;
+		if (row < 0) return false;
+		rowsCaught = false;
 		ui.cursor = row;
 		ui.listTouch = true;
 		ui.listScrolled = false;

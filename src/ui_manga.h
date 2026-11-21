@@ -51,6 +51,8 @@ namespace bp
 		void tick(Player& p) override;
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
+		// the shown page's smooth list (Manga settings': SettingsPage's mangaList)
+		SmoothList* smoothList() override;
 		// the Extensions page's and Manage extensions' part of the signature
 		std::string extSignature() const;
 

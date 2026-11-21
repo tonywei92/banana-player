@@ -763,7 +763,25 @@ namespace bp
 			int n = groups ? GROUPS : set ? (int)srows.size() : info ? (int)infoLines.size() : (int)rows(p).size();
 			int rowH = groups ? lay::SET_TILE_H + lay::SET_TILE_GAP : set ? SET_H : info ? INFO_H : ROW_H,
 				shown = groups ? GROUPS : set ? SET_SHOWN : info ? INFO_SHOWN : ROWS_SHOWN;
-			if (pt.kind == Pointer::Move && (listScrolled || std::abs(y - touchStartY) > 12))
+			// a settings group's rows (and the Manga settings'): a smooth list (ui_smoothlist.h) that follows the
+			// finger by the pixel and glides on after the lift; a tap acts as below, on the row the finger went down on
+			SmoothList* smooth = set && !groups ? (page == Page::MangaSettings ? &settingsPage->mangaList : &settingsPage->list) : nullptr;
+			if (smooth && pt.kind == Pointer::Move)
+			{
+				if (smooth->move(pt.y * H) && !listScrolled)
+				{
+					listScrolled = true;
+					holdAt = 0;
+					fprintf(stderr, "touch: list drag page %d y %d -> %d (smooth)\n", (int)page, touchStartY, y);
+				}
+				return false;
+			}
+			if (smooth && pt.kind == Pointer::Up)
+			{
+				smooth->lift();
+				if (settingsPage->rowsCaught) listScrolled = true;	// (it stopped a glide: no tap)
+			}
+			if (!smooth && pt.kind == Pointer::Move && (listScrolled || std::abs(y - touchStartY) > 12))
 			{
 				bool started = !listScrolled;
 				listScrolled = true;
@@ -792,7 +810,9 @@ namespace bp
 				{
 					lay::SettingsRows l = page == Page::Settings || page == Page::MangaSettings ? lay::settingsRowsIn(lay::shell().body)
 						: lay::settingsRows();
-					lay::SettingStepper st = lay::settingStepper(l.row(cursor - scroll));
+					Rect box = smooth ? smooth->rowBox(cursor) : Rect(l.row(cursor - scroll));
+					box.h = lay::SET_ROW_H - 2;
+					lay::SettingStepper st = lay::settingStepper(box);
 					dir = lay::stepperBack(st, touchX) ? -1 : 1;
 				}
 				if (groups) settingsPage->openGroup(cursor, &p);

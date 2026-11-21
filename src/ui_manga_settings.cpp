@@ -5,6 +5,9 @@
 #include "ui_manga.h"
 #include "ui_kit.h"
 #include "manganet.h"
+#include "ui_smoothlist.h"
+#include <cmath>
+#include <memory>
 
 namespace bp
 {
@@ -26,6 +29,12 @@ namespace bp
 		return rows;
 	}
 
+	Ui::SmoothList* Ui::Manga::smoothList()
+	{
+		if (ui.page == Page::MangaSettings) return &ui.settingsPage->mangaList;
+		return nullptr;
+	}
+
 	void Ui::Manga::openMangaSettings()
 	{
 		// where it came from, and on the app the tab it was on (and Browse's list): B goes back to both. From the
@@ -35,6 +44,7 @@ namespace bp
 		mangaSettingsList = mBrowseList;
 		ui.page = Page::MangaSettings;
 		ui.cursor = ui.scroll = 0;
+		ui.settingsPage->mangaList.top();
 		ui.pressedBtn = mangaPressed = -1;
 		mangaCacheAt = 0;
 		mangaJavaAt = 0;
@@ -67,8 +77,8 @@ namespace bp
 		case Button::B: closeMangaSettings(); return false;
 		default: break;
 		}
-		if (ui.cursor < ui.scroll) ui.scroll = ui.cursor;
-		if (ui.cursor >= ui.scroll + MSET_SHOWN) ui.scroll = ui.cursor - MSET_SHOWN + 1;
+		lay::SettingsRows l = lay::settingsRowsIn(lay::shell().body);
+		ui.settingsPage->mangaList.reveal(ui.cursor, {l.area.x, l.area.y, l.area.w, MSET_SHOWN * lay::SET_ROW_H}, lay::SET_ROW_H, n);
 		return false;
 	}
 
@@ -151,28 +161,21 @@ namespace bp
 		auto rows = mangaSettingRows();
 		int n = (int)rows.size();
 		if (ui.cursor >= n) ui.cursor = n - 1;
-		if (ui.scroll > n - MSET_SHOWN) ui.scroll = std::max(0, n - MSET_SHOWN);
-		for (int i = ui.scroll; i < n && i < ui.scroll + MSET_SHOWN; i++)
+		// the rows as a smooth list (ui_smoothlist.h), the cursor in view at once when the page comes back
+		SmoothList& list = ui.settingsPage->mangaList;
+		Rect view{l.area.x, l.area.y, l.area.w, MSET_SHOWN * lay::SET_ROW_H};
+		if (list.takeFresh() && ui.cursor >= 0) list.reveal(ui.cursor, view, lay::SET_ROW_H, n, false);
+		// each row's look first: the note's (a Kit::Row) or a setting's
+		struct Look { bool note = false; Kit::SettingRow s; };
+		auto looks = std::make_shared<std::vector<Look>>();
+		for (int i = 0; i < n; i++)
 		{
 			int row = rows[i];
-			bool at = i == ui.cursor;
-			Rect r = l.row(i - ui.scroll);
-			if (row == EXT_NOTE)
-			{
-				// a note, not a value: the info mark and its line (A does nothing there)
-				Kit::Row note;
-				note.under = BG;
-				note.glyph = &G_INFO;
-				note.name = "Repositories are added by you";
-				note.second = "Banana Player doesn\xE2\x80\x99t provide or check their content.";
-				note.focused = at;
-				note.off = true;
-				k.row(r, note);
-				continue;
-			}
-			Kit::SettingRow s;
-			s.focused = at;
-			s.pressed = ui.pressedBtn == 400 + row;
+			Look lk;
+			lk.note = row == EXT_NOTE;
+			Kit::SettingRow& s = lk.s;
+			s.focused = i == ui.cursor;
+			s.pressed = ui.pressedBtn == 400 + row && !list.dragging();
 			if (row == MANGA_CLEAR_ROW)
 			{
 				// the cache's Clear: an action (its size from the cache itself), asked twice
@@ -192,9 +195,38 @@ namespace bp
 				s.label = d->label;
 				s.value = settingValueText(*d, p.settings);
 			}
-			k.settingRow(r, s);
+			looks->push_back(lk);
 		}
-		if (n > MSET_SHOWN) ui.drawScrollBar(l.area.y, MSET_SHOWN * lay::SET_ROW_H - 4, ui.scroll, MSET_SHOWN, n);
+		SmoothList::Spec spec;
+		spec.view = view;
+		spec.rowH = lay::SET_ROW_H;
+		spec.count = n;
+		spec.key = [looks](int i) {
+			const Look& lk = (*looks)[i];
+			return std::to_string(lk.note) + lk.s.label + "\x1f" + lk.s.value + "\x1f" + std::to_string(lk.s.focused) +
+				std::to_string(lk.s.pressed) + std::to_string(lk.s.action);
+		};
+		spec.draw = [&k, looks](int i, Rect box) {
+			const Look& lk = (*looks)[i];
+			Rect r{box.x, box.y, box.w, lay::SET_ROW_H - 2};
+			if (lk.note)
+			{
+				// a note, not a value: the info mark and its line (A does nothing there)
+				Kit::Row note;
+				note.under = BG;
+				note.glyph = &G_INFO;
+				note.name = "Repositories are added by you";
+				note.second = "Banana Player doesn\xE2\x80\x99t provide or check their content.";
+				note.focused = lk.s.focused;
+				note.off = true;
+				k.row(r, note);
+				return;
+			}
+			k.settingRow(r, lk.s);
+		};
+		list.draw(std::move(spec));
+		if (n > MSET_SHOWN) ui.drawScrollBar(l.area.y, MSET_SHOWN * lay::SET_ROW_H - 4,
+			(int)std::lround(list.sc.offset() / lay::SET_ROW_H), MSET_SHOWN, n);
 		// what the row under the cursor does, in a line or two above the hint bar
 		std::string help = ui.cursor >= 0 && ui.cursor < n ? ui.settingsPage->settingHelp(rows[ui.cursor]) : "";
 		if (l.help.w > 0)
