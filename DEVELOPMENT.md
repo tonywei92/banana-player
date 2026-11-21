@@ -198,6 +198,10 @@ Dated write-ups of investigations (cause, numbers, what was ruled out, how to ve
 
 ## Roadmap
 
+- [ ] **Backlog (owner, 2026-11-21): the player freezes about 10 s while the Manga Java engine is unpacked** after its
+      download (the first Manga open on a fresh state). The unpack (or the write of ~440 MB to the card) blocks the main
+      thread or starves it: move it to the worker, at low priority, with progress on the engine sheet and the UI live.
+
 - [x] Video on the top panel, controls on the bottom, by buttons and touch
 - [x] Audio and subtitle tracks, subtitle style, Fit / Fill / Stretch, speed, live scrubbing
 - [x] Playlist per folder, resume, remember options, file browser, play history, media info, about
