@@ -380,7 +380,8 @@ namespace bp
 				for (auto& e : p.resumeStore().all())
 					if (isVideoFile(e.path)) { mangaStopped = e.path; break; }
 		}
-		if (p.playing() && !p.playingPhoto())
+		// Now playing is what plays: a song, a video (a photo, a book or a comic is not; Continue and Recent carry those)
+		if (p.playing() && !p.playingPhoto() && (isAudioFile(p.currentPath()) || isVideoFile(p.currentPath()) || p.playingAudio()))
 		{
 			c.shown = c.live = true;
 			c.path = p.currentPath();

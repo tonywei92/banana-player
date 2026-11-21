@@ -933,6 +933,12 @@ int main(int argc, char** argv)
 		// (what plays, a photo, the idle screen), and over a reader's pages when a reader draws the panel (mpv's
 		// would be under them). Every volume, brightness and zoom card comes through here. "Zoom": the reader's, on the reader
 		// only (the line alone)
+		// the sleep timer's last-minute card: re-put each second, so it lasts a little over that; dropped, it ends now
+		player.sleepCardOnTop = [&](const LevelCardImage* c) {
+			if (!haveUi || !(readerOnTop() || ts.paneUp)) return;
+			if (c) ts.cardImageOnReader(*c, 1600);
+			else ts.cardImageOnReader(LevelCardImage{std::make_shared<std::vector<uint8_t>>(4, 0), 1, 1}, 1);
+		};
 		auto showLevelCard = [&](const std::string& label, int percent, int ms) {
 			bool bar = label != "Zoom";
 			if (bar) shown().showLevel(label, percent);

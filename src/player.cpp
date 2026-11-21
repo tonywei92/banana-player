@@ -2223,9 +2223,14 @@ namespace bp
 		}
 		else noteCardPos(pw, ph, card, x, y, false);
 		putImage(OV_SLEEP, card, x, y);
+		if (sleepCardOnTop) sleepCardOnTop(&card);
 	}
 
-	void Player::dropSleepCard() { dropImage(OV_SLEEP); }
+	void Player::dropSleepCard()
+	{
+		dropImage(OV_SLEEP);
+		if (sleepCardOnTop) sleepCardOnTop(nullptr);
+	}
 
 	void Player::showSleepMark(const char* const* rows, int h, const std::string& text)
 	{

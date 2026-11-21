@@ -282,7 +282,11 @@ namespace bp
 	{
 		int tw = 0, th = 0;
 		SDL_GL_GetDrawableSize(top, &tw, &th);
-		LevelCardImage c = drawLevelCard(fontsDir, th, label, percent, barTop, levelIcon(label));
+		cardImageOnReader(drawLevelCard(fontsDir, th, label, percent, barTop, levelIcon(label)), ms);
+	}
+
+	void TopScreen::cardImageOnReader(const LevelCardImage& c, int ms)
+	{
 		SDL_GL_MakeCurrent(top, gl);
 		int64_t until = (int64_t)SDL_GetTicks() + ms;
 		if (c.ok() && paneUp)

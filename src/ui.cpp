@@ -553,7 +553,8 @@ namespace bp
 			}
 			else
 			{
-				undim();
+				// (the sleep timer's last minute keeps a dimmed bottom screen dimmed: keys still work, the card is the way out)
+				if (!(dimmed() && findOverlay("sleepwarn"))) undim();
 				if (int rs = screenOffSeconds(p.settings.readDimAfter); rs > 0 && panel.on() &&
 					(pageReader->readerStatus.open || (docs && docs->textStatus.open)) && !kbOpen && !topOverlay() && idle >= (Uint32)rs * 1000)
 					a = 200;

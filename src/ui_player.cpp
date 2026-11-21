@@ -545,7 +545,7 @@ namespace bp
 		// a song: Keep playing (Music rail lists play on past their last song), switched here in place
 		if (audio)
 		{
-			m.rows.push_back(item(&G_SHUFFLE, "Keep playing", [](Player& p) {
+			m.rows.push_back(item(&G_SHUFFLE, "Autoplay", [](Player& p) {
 				Settings st = p.settings;
 				st.keepPlaying = !st.keepPlaying;
 				p.setSettings(st);
@@ -773,7 +773,7 @@ namespace bp
 		}
 		int rowCount(const Player& p) const { return sections(p).rows(); }
 		int shown(const Player& p) const { return std::min(std::max(1, rowCount(p)), lay::LIST_ROWS); }
-		static constexpr const char* HEADING_ON = "Keep playing \xC2\xB7 songs picked for you", *HEADING_OFF = "Songs picked for you";
+		static constexpr const char* HEADING_ON = "Autoplay \xC2\xB7 songs picked for you", *HEADING_OFF = "Songs picked for you";
 		static std::string headingAction(const Player& p) { return p.settings.keepPlaying ? "Turn off" : "Turn on"; }
 		// Keep playing on or off (the heading's chip, X): the setting; what it added stays in the list
 		void toggleKeepPlaying(Player& p)
@@ -781,7 +781,7 @@ namespace bp
 			Settings st = p.settings;
 			st.keepPlaying = !st.keepPlaying;
 			p.setSettings(st);
-			p.osd(st.keepPlaying ? "Keep playing on" : "Keep playing off");
+			p.osd(st.keepPlaying ? "Autoplay on" : "Autoplay off");
 			fprintf(stderr, "ui: keep playing %s (Up next)\n", st.keepPlaying ? "on" : "off");
 		}
 		lay::ListSheet layout(const Player& p) const { return lay::listSheet(shown(p)); }
@@ -870,7 +870,7 @@ namespace bp
 				MoreSpec m;
 				m.glyph = &G_NOTE;
 				m.title = entryTitle(path);
-				m.note = added ? "Picked by Keep playing" : "Row " + std::to_string(i + 1) + " of Up next";
+				m.note = added ? "Picked by Autoplay" : "Row " + std::to_string(i + 1) + " of Up next";
 				if (!now)
 				{
 					MoreItem play;
@@ -892,7 +892,7 @@ namespace bp
 				{
 					MoreItem kp;
 					kp.glyph = &G_SHUFFLE;
-					kp.label = pl.settings.keepPlaying ? "Turn Keep playing off" : "Turn Keep playing on";
+					kp.label = pl.settings.keepPlaying ? "Turn Autoplay off" : "Turn Autoplay on";
 					kp.note = "Songs it added stay in the list";
 					kp.act = [this](Player& p) { toggleKeepPlaying(p); return false; };
 					m.rows.push_back(kp);

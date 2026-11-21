@@ -224,8 +224,10 @@ namespace bp
 			out.spec.cols = std::max(1, s.cols);
 			int lines = (s.rows + out.spec.cols - 1) / out.spec.cols;
 			// the grab mark's 11, the header, the content, 8 clear of the hint bar
-			int h = 11 + SHEET_HEAD + s.body + (s.chips ? SHEET_CHIP_H + GAP : 0) + (s.tiles ? SHEET_TILE + GAP : 0) +
-				lines * SHEET_ROW + 8 + HINTS_H;
+			int fixed = 11 + SHEET_HEAD + s.body + (s.chips ? SHEET_CHIP_H + GAP : 0) + (s.tiles ? SHEET_TILE + GAP : 0) + 8 + HINTS_H;
+			// many rows (a file's More): closer together rather than under the hint bar
+			if (lines > 0) out.rowH = std::clamp((SHEET_MAX - fixed) / lines, 34, (int)SHEET_ROW);
+			int h = fixed + lines * out.rowH;
 			h = std::clamp(h, SHEET_MIN, SHEET_MAX);
 			out.box = {0, PANEL_H - h, PANEL_W, h};
 			out.grab = {PANEL_W / 2 - 22, out.box.y + 7, 44, 4};
@@ -251,7 +253,8 @@ namespace bp
 		Box Sheet::row(int i) const
 		{
 			Box c = cell({SHEET_PAD, rowsY, PANEL_W - 2 * SHEET_PAD, SHEET_ROW}, spec.cols, SHEET_PAD, i % spec.cols);
-			c.y += i / spec.cols * SHEET_ROW;
+			c.h = rowH;
+			c.y += i / spec.cols * rowH;
 			return c;
 		}
 

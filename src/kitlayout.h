@@ -124,6 +124,7 @@ namespace bp
 			SheetSpec spec;
 			Box box, grab, head, hints;
 			int bodyY = 0, chipsY = 0, tilesY = 0, rowsY = 0;
+			int rowH = SHEET_ROW;	// the rows' height: SHEET_ROW, less (down to 34) when the lines would not fit under SHEET_MAX
 			Box chip(int i) const;
 			Box tile(int i) const;
 			Box row(int i) const;

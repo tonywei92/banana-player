@@ -226,6 +226,8 @@ namespace bp
 		// second with the time left), over every other card; and, while one runs over a song, its quiet mark top right
 		void showSleepCard(const char* const* rows, int h, const std::string& line1, const std::string& line2);
 		void dropSleepCard();
+		// main's: the sleep card over a reader's pages or the Preview pane (mpv's own is under them); null: it goes
+		std::function<void(const LevelCardImage*)> sleepCardOnTop;
 		void showSleepMark(const char* const* rows, int h, const std::string& text);
 		void dropSleepMark();
 		// a short note, one line (a failure's, "Couldn't ...", in red); ms at least 3 s

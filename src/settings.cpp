@@ -578,7 +578,7 @@ namespace bp
 			D::flag("match-album-art", &Settings::matchAlbumArt)
 				.page(SG_MUSIC, 15, "Match album art", "A song's art, blurred and tinted by the theme's own ground, lies behind the player and the top screen. Every key, chip and word keeps the theme's colours; a grey or clashing art falls back to the plain ground."),
 			D::flag("keep-playing", &Settings::keepPlaying)
-				.page(SG_MUSIC, 17, "Keep playing", "Music you start from the Music pages (an album, an artist, a folder, Play random) plays on past its last song: 10 more songs from your library are added to Up next, under \"Picked for you\". Not for playlists, or with Repeat on."),
+				.page(SG_MUSIC, 17, "Autoplay", "Music you start from the Music pages (an album, an artist, a folder, Play random) plays on past its last song: 10 more songs from your library are added to Up next, under \"Picked for you\". Not for playlists, or with Repeat on."),
 			D::choice("visualizer", &Settings::visualizer, VIS_IDS, VISUALIZERS)
 				.page(SG_MUSIC, 20, "Visualizer style", "Which visualizer is drawn: fifteen styles, from Peaks to Dance line (the Display chip, on the player or in More, while playing).")
 				.shownAs(VIS_LABELS).stepped(true, stepVisualizer).afterRead(readVisualizer),

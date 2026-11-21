@@ -53,8 +53,8 @@ then a key wakes the screens, it stays paused and the note shows.
   the real speaker, the 640×480 panel's look of the badge and the warning card.
 - The lid shut with Keep playing (Power's snooze), a page as the output at End of this song (its end is read from the
   Session's item changing in its last 3 s), End of this chapter (read from mpv's chapter and position).
-- The top screen's card and quiet mark are mpv image overlays: over a reader's pages or the Preview pane they are not
-  seen. The spec's "a dimmed bottom screen stays dimmed through the last minute" is not done: the warning is an
-  overlay, so Screen off's dim is lifted while it shows.
+- The top screen's last-minute card now also goes over a reader's pages and the Preview pane (Player::sleepCardOnTop ->
+  TopScreen::cardImageOnReader, put again each second); the quiet mark still is an mpv overlay only. A dimmed bottom
+  screen stays dimmed through the last minute (Ui: no undim while "sleepwarn" shows). Not looked at on the handheld.
 - The web page only by `curl` (set, a refused length, snooze, end, off, the state's field) and a headless load of the
   app (the modules load); the row, the sheet and the card were not looked at in a browser.

@@ -2,6 +2,7 @@
 // The top panel: its window and GL context, and what main draws on it besides mpv (the manga reader, Files' text
 // viewer, the frame taken from mpv under their pages, its screenshots). main.cpp keeps the loop and the panels'
 // decisions; the panel's own state lives here so the loop reads it by name.
+#include "levelcard.h"
 #include "reader.h"
 #include "readerfetch.h"
 #include "previewpane.h"
@@ -37,6 +38,8 @@ namespace bp
 		// the level card (levelcard.h: one picture, the same on every screen) over a reader's pages or the Theme row's
 		// preview pane, mpv's own being under them; barTop: the bar's whole (levelTop), 0 for the label alone (the reader's zoom)
 		void cardOnReader(const std::string& label, int percent, bool bar, int barTop, int ms);
+		// a finished card (the sleep timer's last minute) over a reader's pages or the pane, the same way
+		void cardImageOnReader(const LevelCardImage& c, int ms);
 		// the manga reader and Files' text viewer: what the bottom panel asked for, its commands, what they show back
 		void syncReaders(Ui& ui, Player& player, MangaNet* mangaNet, const std::string& stateDir, Uint32 now, bool woke, bool haveUi,
 			const std::function<void(const std::string&, int, int)>& showLevelCard, std::atomic<bool>& renderPending);

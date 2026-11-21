@@ -64,9 +64,9 @@ Open Banana Player and the bottom screen shows **Home**:
   reading doesn't push your videos out, nor music your books. While Home or All recent shows, its order stays put (the
   next song starting doesn't move the cards); what you played comes to the front the next time you open it.
 - **A song plays in its list again**: a song of Recent remembers the list it played from (a playlist, by its name; an
-  album, an artist, a Music folder, **Play random** with what **Keep playing** added; a folder of Files). Opening it
-  plays it in that list, in the same order (Keep playing applies only if it was a Music list): the songs Keep playing
-  had added come back with it, under their heading in Up next, and Keep playing (as it is set now) goes on from its
+  album, an artist, a Music folder, **Play random** with what **Autoplay** added; a folder of Files). Opening it
+  plays it in that list, in the same order (Autoplay applies only if it was a Music list): the songs Autoplay
+  had added come back with it, under their heading in Up next, and Autoplay (as it is set now) goes on from its
   last song. A song of the library with no list kept (played before this) plays in its Music folder's list.
   **Stop** and **B** go back to the page the player was opened from (Home, All recent), never to a section you
   didn't come from. A list gone since (the playlist deleted or renamed, the album or folder gone) plays the song
@@ -172,18 +172,18 @@ plays the same, and Search finds it. There is no list of all songs.
 50 songs of the whole library (music videos left out) in a random order, none twice, as a new list named **Random**.
 On the dashboard's Music page, **Play random** (beside the chips) does the same, playing where picks go.
 
-**Keep playing** (Settings › Music, on by default; also **X** · More on the song player, Up next's heading, and the
+**Autoplay** (Settings › Music, on by default; also **X** · More on the song player, Up next's heading, and the
 dashboard): music started from the Music section (an album, an artist, a folder, Play random; on the dashboard its
 Music page) plays on past its end. When the list's last song starts, 10 more songs from the library that aren't in
 the list yet are added after it, in a random order, so the music goes on without a gap (and again at their last).
-Up next shows them under a heading, **Keep playing · songs picked for you**, with a **Turn off** key (a tap; or a
+Up next shows them under a heading, **Autoplay · songs picked for you**, with a **Turn off** key (a tap; or a
 row's **More**); turned off, the heading says **Songs picked for you** and offers **Turn on**, and the list ends at
 its last song as any list does. Turning it off never takes the added songs out (they stay until you remove them);
 turned on while the last song plays, the 10 are added at once. Playlists, Files and Videos never get songs added, nor
 a list with Repeat All or One. Picking a row of the list in Up next keeps the added songs marked.
 
 **Remove from list**: in Up next, **X** (or a row held) opens the row's **More**: **Play from here**, **Remove from
-list**, and Keep playing on / off. Removing takes the song out of the list that plays (a playlist's own file is
+list**, and Autoplay on / off. Removing takes the song out of the list that plays (a playlist's own file is
 unchanged: the row says so); removing the one that plays goes on to the next (nothing after it: it stops).
 
 An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
@@ -1841,7 +1841,7 @@ combination instead.)
   **Screen off (video)**).
 - **Lid:** closing it pauses; opening it keeps it paused until you press play. Settings › Power & screens › **When
   the lid closes: Pause / Keep playing** (Pause by default; the first start without the setting asks, Pause
-  first, and says where to change it). With **Keep playing**, while the web dashboard is on (a browser may be playing from it), and while a song or a video plays on the
+  first, and says where to change it). With **Autoplay**, while the web dashboard is on (a browser may be playing from it), and while a song or a video plays on the
   handheld (playing or paused, not stopped, not a dashboard page playing it), the player switches BananaOS's own *Closing the
   lid* setting to stay awake (the `lid_sleep` line of `/data/banana/bananad.conf` set to `no`, nothing else in the file
   touched) and puts it back a few seconds after playing stops or ends (a pause keeps it, so the power key can play again), or when the player quits. If the lid is
