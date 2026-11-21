@@ -968,7 +968,7 @@ namespace bp
 			}
 			if (t == T_RANDOM)
 			{
-				if (lay::musicHeader(inner, {}, true).random.hit(x, y)) playRandom(p);
+				if (lay::musicHeader(inner, ui.kit->filterWidths(viewItems()), true).random.hit(x, y)) playRandom(p);
 				return false;
 			}
 			if (t >= T_KEY && t < T_KEY + 3)
@@ -1342,12 +1342,12 @@ namespace bp
 		// the view chips (the "From …" line they sat under is the header's crumb, once drawn here as well)
 		k.filters(mh.chips, views, view, -1,
 			touch >= T_CHIP && touch < T_CHIP + VIEWS && !touchMoved ? touch - T_CHIP : -1);
-		if (!reading)
+		if (!reading && mh.random.w > 0)
 		{
-			// Play random: 50 songs of the whole library, a new list (Y)
+			// Play random: 50 songs of the whole library, a new list (Y). A compact key, the glyph and its cap: the
+			// hint bar's "Y Random" names it
 			Kit::Key rk;
 			rk.glyph = &G_SHUFFLE;
-			rk.label = "Random";
 			rk.key = p.settings.buttonHotkeys ? "Y" : "";
 			rk.pressed = touch == T_RANDOM && !touchMoved;
 			k.key(mh.random, rk);

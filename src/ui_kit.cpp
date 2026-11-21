@@ -285,7 +285,7 @@ namespace bp
 		// a key's caps are outlined whatever the page is: the rule that keeps a key a key
 		ClassicHere classic;
 		if (capW && under) caps(k.key, cx - capW / 2, cy + 14, capInk, ground);
-		else if (capW) caps(k.key, x + tw + lay::SP8, y, capInk, ground);
+		else if (capW) caps(k.key, x + (tw ? tw + lay::SP8 : 0), y, capInk, ground);	// (no word: the glyph's gap is the only one)
 	}
 
 	void Ui::Kit::transport(Rect r, const Transport& t)

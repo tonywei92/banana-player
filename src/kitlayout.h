@@ -892,8 +892,11 @@ namespace bp
 		// `chipWidths` is Kit::filterWidths' answer (the labels carry their counts); the chips are a 44-tall strip,
 		// and `chips` is the same lay::FilterChips the touches test. No line over them: the "From …" line is the
 		// header's crumb (screens.js music-albums), which once sat in the body as well, drawn twice.
-		// `random`: Play random's key at the strip's right end (MUSIC_RANDOM_W wide, a chip's height), when asked for
-		constexpr int MUSIC_RANDOM_W = 148;
+		// `random`: Play random's key at the strip's right end, when asked for: a compact key (the shuffle glyph and
+		// its Y cap, no word: four chips with 4-digit counts leave no room for one, and the labelled key sat on
+		// them). It never touches a chip: where the chips leave less than CHIP_GAP + MUSIC_RANDOM_W it is left out
+		// (w 0; Y still plays random)
+		constexpr int MUSIC_RANDOM_W = 64;
 		struct MusicHeader
 		{
 			Box strip;
