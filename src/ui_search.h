@@ -6,6 +6,7 @@
 #pragma once
 #include "ui.h"
 #include "ui_shell.h"
+#include "ui_smoothlist.h"
 #include "keyboard.h"
 
 namespace bp
@@ -20,6 +21,8 @@ namespace bp
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override;
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
+		// the results (or Recent searches) while they show: a smooth list (ui_smoothlist.h)
+		SmoothList* smoothList() override { return !typing && !rows.empty() ? &list : nullptr; }
 
 		// ---- the rest of Ui ----
 		// from the rail's key, L3 or Shell::search: the page, on its last query; a second press edits it
@@ -34,17 +37,16 @@ namespace bp
 		Page backPage = Page::Browse;
 		bool backSettingsOver = false;
 		int backSetGroup = -1;
-		// the page's own: the query it keeps, the keyboard's text while it types, the cursor and the scroll (units)
+		// the page's own: the query it keeps, the keyboard's text while it types, the cursor (in `selectable`)
 		std::string query;
 		bool typing = false;
 		TextEdit edit;
-		int cursor = 0, scroll = 0;
+		int cursor = 0;
 		Uint32 kbSince = 0;
 		int kbCursor = 0, kbPressed = -1, kbLayer = 0;
 		int pressRow = -1, pressEmpty = -1;	// a finger on a row, an empty state's key
-		bool finger = false;
-		int fingerY = 0, fingerScroll = 0;
-		bool fingerMoved = false;
+		bool finger = false;	// a finger down on the list: its moves scroll it, its lift may choose
+		bool fingerMoved = false, caught = false;	// (caught: it stopped a glide, and chooses nothing)
 		// Recent searches: the last eight, kept in the state dir (not while incognito); Clear empties it
 		std::vector<std::string> recent;
 		bool recentLoaded = false;
@@ -71,16 +73,14 @@ namespace bp
 		mutable int builtRecent = -1;
 		void rebuild(const Player& p) const;
 		std::string crumb(const Player& p) const;
-		// the page's model, laid out (the scroll applied); the caller draws or hits these boxes
-		struct Place
-		{
-			lay::Box field;
-			lay::Box head;		// the notice row's box while the index reads (w 0: none)
-			std::vector<lay::Box> row;	// beside rows
-			lay::Box notice;
-			lay::Box clear;
-		};
-		Place layout(const Player& p) const;
+		// the rows as a smooth list: every row (a group's heading too) one pitch tall, under the field and the notice
+		// row while the index reads. listFor: the query the list was last shown for (a new one starts at the top)
+		static constexpr int ROW_PITCH = lay::RESULT_ROW_H;
+		SmoothList list{ui};
+		std::string listFor = "\x01";
+		lay::Box listView(const Player& p) const;
+		lay::Box noticeBox(const Player& p) const;	// (w 0: none)
+		void drawRow(const Row& row, lay::Box box, bool at, bool pressed);
 		// the field empty with no recent, or a query nothing matched: the empty state's page
 		bool emptyPage(const Player& p) const;
 		lay::EmptyState emptyLayout(const Player& p) const;
@@ -94,7 +94,7 @@ namespace bp
 		void kbMove(int dx, int dy);
 		int keyCount() const;
 		void moveCursor(int dir, int page);
-		void ensureCursor(const Player& p);
+		void ensureCursor(const Player& p, bool glide = true);
 		void chooseRow(int i, Player& p);
 		void clearRecent();
 		void browseFiles(Player& p);

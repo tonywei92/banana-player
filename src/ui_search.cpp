@@ -116,7 +116,7 @@ namespace bp
 		recent.clear();
 		saveRecent();
 		built = false;
-		cursor = scroll = 0;
+		cursor = 0;
 	}
 
 	void Ui::Search::open(Player& p)
@@ -135,7 +135,7 @@ namespace bp
 		ui.page = Page::Search;
 		ui.ctxOpen = false;
 		ui.pressedBtn = -1;
-		cursor = scroll = 0;
+		cursor = 0;
 		// with nothing searched yet it opens on the keyboard; a kept query shows its results
 		if (query.empty()) openKeyboard();
 	}
@@ -170,7 +170,7 @@ namespace bp
 		pressRow = pressEmpty = -1;
 		if (!keep) return;
 		query = trimmed(text);
-		cursor = scroll = 0;
+		cursor = 0;
 		built = false;
 		if (!query.empty()) remember(query);
 	}
@@ -440,19 +440,13 @@ namespace bp
 		else if (page) cursor = std::clamp(cursor + page * 5, 0, n - 1);
 	}
 
-	void Ui::Search::ensureCursor(const Player& p)
+	void Ui::Search::ensureCursor(const Player& p, bool glide)
 	{
 		rebuild(p);
-		if (selectable.empty()) { cursor = 0; scroll = 0; return; }
+		if (selectable.empty()) { cursor = 0; return; }
 		cursor = std::clamp(cursor, 0, (int)selectable.size() - 1);
-		Place pl = layout(p);
-		lay::Box b = body();
-		int top = b.y + lay::SEARCH_FIELD_H + lay::SEARCH_GROUP_GAP, bottom = b.y + b.h;
-		int rowIndex = selectable[cursor];
-		if (rowIndex < 0 || rowIndex >= (int)pl.row.size()) return;
-		lay::Box r = pl.row[rowIndex];
-		if (r.y < top) scroll = std::max(0, scroll - (top - r.y));
-		else if (r.y + r.h > bottom) scroll += r.y + r.h - bottom;
+		lay::Box v = listView(p);
+		list.reveal(selectable[cursor], v, ROW_PITCH, (int)rows.size(), glide);
 	}
 
 	void Ui::Search::chooseRow(int i, Player& p)
@@ -463,7 +457,7 @@ namespace bp
 		if (r.kind == RECENT)
 		{
 			query = r.path;
-			cursor = scroll = 0;
+			cursor = 0;
 			built = false;
 			remember(query);
 			return;
@@ -477,29 +471,55 @@ namespace bp
 		ui.shell->openSection(Ui::Shell::Section::Files, p);
 	}
 
-	Ui::Search::Place Ui::Search::layout(const Player& p) const
+	lay::Box Ui::Search::noticeBox(const Player& p) const
 	{
-		rebuild(p);
-		Place pl;
+		if (query.empty() || (ui.mediaIndex && ui.mediaIndex->generation() != 0)) return {0, 0, 0, 0};
 		lay::Box b = body();
-		pl.field = {b.x, b.y, b.w, lay::SEARCH_FIELD_H};
-		int top = b.y + lay::SEARCH_FIELD_H + lay::SEARCH_GROUP_GAP;
-		int y = top - scroll;
-		pl.notice = {0, 0, 0, 0};
-		if (!query.empty() && (!ui.mediaIndex || ui.mediaIndex->generation() == 0))
+		// the index is still reading the cards: the notice row over what has been found so far
+		return lay::notice({b.x, b.y + lay::SEARCH_FIELD_H + lay::SEARCH_GROUP_GAP, b.w}, true, true, 0).row;
+	}
+
+	lay::Box Ui::Search::listView(const Player& p) const
+	{
+		// from just under the field (or the notice) to the body's foot; a group's heading sits at the foot of its
+		// row's pitch, so the first one lands a gap under the field
+		lay::Box b = body(), n = noticeBox(p);
+		int top = n.w > 0 ? n.y + n.h + lay::SP4 : b.y + lay::SEARCH_FIELD_H + lay::SP4;
+		return {b.x, top, b.w, std::max(0, b.y + b.h - top)};
+	}
+
+	void Ui::Search::drawRow(const Row& row, lay::Box box, bool at, bool pressed)
+	{
+		Kit& k = *ui.kit;
+		if (row.kind == HEAD)
 		{
-			// the index is still reading the cards: the notice row over what has been found so far
-			lay::Notice n = lay::notice({b.x, top, b.w}, true, true, 0);
-			pl.notice = n.row;
-			y = n.row.y + n.row.h + 8 - scroll;
+			lay::Box r{box.x, box.y + ROW_PITCH - lay::LINE_H - lay::SEARCH_HEAD_GAP, box.w, lay::LINE_H};
+			Kit::SectionLine s;
+			s.text = lay::caps(row.text) + " \xC2\xB7 " + std::to_string(row.count);
+			s.caps = true;
+			k.sectionLine(lay::sectionLine(r, true), s);
+			return;
 		}
-		for (auto& r : rows)
+		if (row.kind == CLEAR)
 		{
-			int h = r.kind == HEAD ? lay::LINE_H : r.kind == CLEAR ? lay::SEARCH_CLEAR_H : lay::RESULT_ROW_H;
-			pl.row.push_back({b.x, y, b.w, h});
-			y += h + (r.kind == HEAD ? lay::SEARCH_HEAD_GAP : r.kind == CLEAR ? 0 : 0);
+			Kit::Row kr;
+			kr.glyph = row.glyph;
+			kr.name = row.text;
+			kr.focused = at;
+			kr.pressed = pressed;
+			k.row({box.x, box.y + ROW_PITCH - lay::SEARCH_CLEAR_H, box.w, lay::SEARCH_CLEAR_H}, kr);
+			return;
 		}
-		return pl;
+		Kit::Result rr;
+		rr.glyph = row.glyph;
+		rr.name = row.text;
+		rr.note = row.note;
+		rr.pill = row.pill;
+		rr.matchAt = row.matchAt;
+		rr.matchLen = row.matchLen;
+		rr.focused = at;
+		rr.pressed = pressed;
+		k.resultRow(lay::resultRow({box.x, box.y, box.w, lay::RESULT_ROW_H}), rr);
 	}
 
 	void Ui::Search::draw(const Player& p)
@@ -562,65 +582,51 @@ namespace bp
 			k.emptyState(e, empty);
 			return;
 		}
-		ensureCursor(p);
-		Place pl = layout(p);
-		int top = b.y + lay::SEARCH_FIELD_H + lay::SEARCH_GROUP_GAP, bottom = b.y + b.h;
-		if (pl.notice.w > 0)
+		rebuild(p);
+		lay::Box nb = noticeBox(p);
+		if (nb.w > 0)
 		{
 			Kit::NoticeRow n;
 			n.tone = Kit::NoticeTone::Working;
 			n.glyph = &G_REFRESH;
 			n.text = "Reading the cards";
 			n.second = "Results fill in as it goes";
-			k.notice(lay::notice({b.x, pl.notice.y, b.w}, true, true, 0), n);
+			k.notice(lay::notice({b.x, nb.y, b.w}, true, true, 0), n);
 		}
-		int sel = selectable.empty() ? -1 : selectable[std::clamp(cursor, 0, (int)selectable.size() - 1)];
-		for (size_t i = 0; i < rows.size() && i < pl.row.size(); i++)
+		if (rows.empty()) return;
+		// a new query starts at its top; the list come back (the page left, the theme changed): the cursor in view
+		bool fresh = list.takeFresh();
+		if (query != listFor)
 		{
-			lay::Box r = pl.row[i];
-			if (r.y + r.h <= top || r.y >= bottom) continue;
-			if (r.y < top || r.y + r.h > bottom) continue;	// a partial row: scrolled out
-			const Row& row = rows[i];
-			bool at = (int)i == sel;
-			if (row.kind == HEAD)
-			{
-				lay::SectionLine sl = lay::sectionLine(r, true);
-				Kit::SectionLine s;
-				s.text = lay::caps(row.text) + " \xC2\xB7 " + std::to_string(row.count);
-				s.caps = true;
-				k.sectionLine(sl, s);
-				continue;
-			}
-			if (row.kind == CLEAR)
-			{
-				Kit::Row kr;
-				kr.glyph = row.glyph;
-				kr.name = row.text;
-				kr.focused = at;
-				kr.pressed = pressRow == (int)i;
-				k.row(r, kr);
-				continue;
-			}
-			lay::ResultRow rl = lay::resultRow(r);
-			Kit::Result rr;
-			rr.glyph = row.glyph;
-			rr.name = row.text;
-			rr.note = row.note;
-			rr.pill = row.pill;
-			rr.matchAt = row.matchAt;
-			rr.matchLen = row.matchLen;
-			rr.focused = at;
-			rr.pressed = pressRow == (int)i;
-			k.resultRow(rl, rr);
+			listFor = query;
+			list.top();
+			fresh = true;
 		}
+		if (fresh) ensureCursor(p, false);
+		int sel = selectable.empty() ? -1 : selectable[std::clamp(cursor, 0, (int)selectable.size() - 1)];
+		// the rows (a snapshot: the lambdas may outlive this draw), each one's look its key
+		auto shown = std::make_shared<const std::vector<Row>>(rows);
+		int pressed = fingerMoved ? -1 : pressRow;
+		SmoothList::Spec spec;
+		spec.view = listView(p);
+		spec.rowH = ROW_PITCH;
+		spec.count = (int)rows.size();
+		spec.key = [shown, sel, pressed](int i) {
+			const Row& r = (*shown)[i];
+			return std::to_string((int)r.kind) + "|" + r.text + "|" + r.note + "|" + r.pill + "|" +
+				std::to_string(r.matchAt) + "," + std::to_string(r.matchLen) + "," + std::to_string(r.count) + "," +
+				std::to_string(i == sel) + std::to_string(i == pressed);
+		};
+		spec.draw = [this, shown, sel, pressed](int i, Rect box) { drawRow((*shown)[i], box, i == sel, i == pressed); };
+		list.draw(std::move(spec));
 	}
 
 	std::string Ui::Search::signature(const Player& p) const
 	{
 		rebuild(p);
 		char b[160];
-		snprintf(b, sizeof b, "|sr%d,%d,%d,%d,%d,%d,%d,%d|", (int)backPage, (int)typing, cursor, scroll, kbCursor, kbPressed,
-			kbLayer, pressRow * 10 + pressEmpty);
+		snprintf(b, sizeof b, "|sr%d,%d,%d,%d,%d,%d,%d,%d|", (int)backPage, (int)typing, cursor, (int)fingerMoved, kbCursor,
+			kbPressed, kbLayer, pressRow * 10 + pressEmpty);
 		std::string s = b;
 		s += query + "|" + builtQuery + "|" + std::to_string(rows.size()) + "|" + std::to_string(builtGen);
 		for (auto& q : recent) s += "|r" + q;
@@ -698,20 +704,19 @@ namespace bp
 					if (e.key[i].hit(x, y)) pressEmpty = i + 1;
 				return false;
 			}
-			Place pl = layout(p);
-			int top = b.y + lay::SEARCH_FIELD_H + lay::SEARCH_GROUP_GAP, bottom = b.y + b.h;
-			for (size_t i = 0; i < pl.row.size() && i < rows.size(); i++)
-				if (pl.row[i].hit(x, y) && pl.row[i].y >= top && pl.row[i].y + pl.row[i].h <= bottom && rows[i].kind != HEAD)
-				{
-					pressRow = (int)i;
-					for (size_t j = 0; j < selectable.size(); j++)
-						if (selectable[j] == (int)i) cursor = (int)j;
-					finger = true;
-					fingerY = y;
-					fingerScroll = scroll;
-					fingerMoved = false;
-					break;
-				}
+			// the list: a touch on a gliding one only stops it; else the row under the finger (a heading: none)
+			lay::Box v = listView(p);
+			if (rows.empty() || !v.hit(x, y)) return false;
+			finger = true;
+			fingerMoved = false;
+			caught = list.press(pt.y * Ui::H);
+			int r = caught ? -1 : list.rowAt(x, y);
+			if (r >= 0 && r < (int)rows.size() && rows[r].kind != HEAD)
+			{
+				pressRow = r;
+				for (size_t j = 0; j < selectable.size(); j++)
+					if (selectable[j] == r) cursor = (int)j;
+			}
 			return false;
 		}
 		if (typing)
@@ -726,25 +731,20 @@ namespace bp
 		}
 		if (finger)
 		{
+			// the list follows the finger past the slop (the press's look let go); the lift glides, or chooses
 			if (pt.kind == Pointer::Move)
 			{
-				int dy = y - fingerY;
-				if (!fingerMoved && std::abs(dy) > 8) fingerMoved = true;
-				if (fingerMoved)
-				{
-					int old = scroll;
-					scroll = std::max(0, fingerScroll - dy);
-					pressRow = -1;
-					if (scroll != old) ensureCursor(p);
-				}
+				if (list.move(pt.y * Ui::H)) { fingerMoved = true; pressRow = -1; }
 				return false;
 			}
 			if (pt.kind == Pointer::Up)
 			{
+				list.lift();
 				finger = false;
 				int was = pressRow;
 				pressRow = -1;
-				if (was >= 0 && !fingerMoved) chooseRow(was, p);
+				if (was >= 0 && !fingerMoved && !caught) chooseRow(was, p);
+				fingerMoved = caught = false;
 			}
 			return false;
 		}
