@@ -550,6 +550,15 @@ namespace bp
 		return s ? (int)s->chapters.size() : 0;
 	}
 
+	std::string Ui::Manga::mangaReadChapterName(int index) const
+	{
+		if (index < 0 || index >= mangaReadChapterTotal()) return "";
+		if (isServerId(ui.pageReader->mangaReadSeriesId)) return mangaSrvChapters[index].name;
+		if (isSourceId(ui.pageReader->mangaReadSeriesId)) return mangaReadSrcChapters[index].name;
+		const LocalSeries* s = mangaLocalSeries(ui.pageReader->mangaReadSeriesId);
+		return s ? s->chapters[index].title : "";
+	}
+
 	float Ui::Manga::mangaWithinFor(const std::string& chapterId, int page) const
 	{
 		// the place inside the page, only when it opens at the page that place was kept for
@@ -2976,8 +2985,12 @@ namespace bp
 				drawMangaSeries(p);
 				return;
 			}
-			ui.pageReader->drawMangaPages(p);
-			return;
+			// over Fullscreen and Book the sheet lies on the plain ground; over one screen, on the reader's page
+			if (ui.pageReader->readerStatus.fullscreen || ui.pageReader->readerStatus.book)
+			{
+				ui.pageReader->drawMangaPages(p);
+				return;
+			}
 		}
 		// out of fullscreen: this panel's copies of the pages, its controls and the first open's toast go
 		mangaCtrlUntil = mangaToastUntil = 0;
@@ -2988,6 +3001,7 @@ namespace bp
 		Kit::Header hd;
 		hd.title = ui.pageReader->mangaReadChapterTitle;
 		hd.crumb = mangaTitle(ui.pageReader->mangaReadSeriesId);
+		if (ui.pageReader->readerStatus.atEnd) hd.crumb += std::string(hd.crumb.empty() ? "" : " \xC2\xB7 ") + "the end";
 		hd.titleFont = F_SMALL;
 		hd.inlineTitle = true;
 		hd.more = true;
@@ -3015,9 +3029,15 @@ namespace bp
 		// its chapters' ends, and where it goes next
 		int ci = mangaReadChapterIndex();
 		bool prev = ci > 0, next = ci >= 0 && ci + 1 < mangaReadChapterTotal();
+		// the chapter's end: what comes next by name, or that there is nothing after it (docs/redesign: manga-end)
 		if (ui.pageReader->readerStatus.atEnd)
-			ui.drawTextMid(next ? std::string("End of chapter \xC2\xB7 R2 or ") + (p.settings.mangaSwapLR ? "LEFT" : "RIGHT") + " for the next"
-				: "You\xE2\x80\x99re caught up", 0, next ? ACCENT : DIM, W / 2, 384, 560, 2);
+		{
+			std::string nextName = next ? mangaReadChapterName(ci + 1) : "";
+			if (next)
+				ui.drawTextMid(std::string("End of chapter \xC2\xB7 R2 or ") + (p.settings.mangaSwapLR ? "LEFT" : "RIGHT") + " for " +
+					(nextName.empty() ? "the next" : nextName), F_I14, ACCENT, W / 2, 384, 600, 2);
+			else ui.drawTextMid("You\xE2\x80\x99re caught up \xC2\xB7 that was the last chapter", F_I14, DIM, W / 2, 384, 600, 2);
+		}
 		Rect pb = mangaPrevRect(), fb = mangaFullRect(), nb = mangaNextRect();
 		// each with its key under it (Button hotkeys on), as the player's buttons: the kit draws the keys
 		bool keys = p.settings.buttonHotkeys;
@@ -3061,6 +3081,7 @@ namespace bp
 		// button is on the row above, so SELECT needn't be named
 		ui.drawHints({{"UP/DOWN", "Zoom"}, {"L/R", "Page"}, {"START", "Menu"}, {"B", "Close"}});
 		if (mangaMenu) drawMangaReadingMenu(p);
+		if (ui.pageReader->mangaPages) ui.pageReader->drawMangaPages(p);
 	}
 
 	int Ui::Manga::mangaModeFor(const std::string& seriesId, const Player& p) const
@@ -3527,7 +3548,9 @@ namespace bp
 		{
 			int ci = mangaReadChapterIndex();
 			bool next = ci >= 0 && ci + 1 < mangaReadChapterTotal();
-			tag += next ? " \xC2\xB7 End of chapter: turn once more for the next" : " \xC2\xB7 You\xE2\x80\x99re caught up";
+			std::string nextName = next ? mangaReadChapterName(ci + 1) : "";
+			tag += next ? " \xC2\xB7 End of chapter: turn once more for " + (nextName.empty() ? std::string("the next") : nextName)
+				: " \xC2\xB7 You\xE2\x80\x99re caught up";
 		}
 		SDL_Texture* t = ui.text(tag, 0, TEXT);
 		if (!t) return;

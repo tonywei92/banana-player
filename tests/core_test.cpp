@@ -11209,6 +11209,54 @@ static void testKitLayoutReaders()
 		CHECK_EQ(st.pill.x + st.pill.w / 2, area.x + area.w / 2);
 	}
 
+	// a PDF's page reader: every box on the panel, between the header and the hints, none over another; the keys'
+	// row and the slider's row ending on the margins
+	for (bool strip : {false, true})
+	{
+		ReaderPage l = readerPage(strip);
+		std::vector<Box> all = {l.from, l.track, l.to, l.row[0], l.row[1], l.row[2]};
+		if (strip) all.push_back(l.surface);
+		else
+		{
+			all.insert(all.end(), {l.pan, l.keys[0], l.keys[1], l.keys[2], l.keys[3], l.fit, l.help});
+			CHECK_EQ(l.surface.w, 0);
+			CHECK_EQ(l.keys[1].x + l.keys[1].w, PANEL_W - MARGIN);
+			CHECK_EQ(l.fit.x + l.fit.w, PANEL_W - MARGIN);
+			CHECK(l.keys[0].y == l.keys[1].y && l.keys[2].y > l.keys[0].y);
+			CHECK(l.track.y > l.pan.y + l.pan.h);
+		}
+		if (strip) CHECK_EQ(l.pan.w, 0);
+		for (size_t i = 0; i < all.size(); i++)
+		{
+			CHECK(insidePanel(all[i]) && all[i].w > 0 && all[i].y >= SHELL_HEAD && all[i].y + all[i].h <= PANEL_H - HINTS_H);
+			for (size_t j = i + 1; j < all.size(); j++) CHECK(!overlaps(all[i], all[j]));
+		}
+		CHECK_EQ(l.row[0].x, MARGIN);
+		CHECK_EQ(l.row[2].x + l.row[2].w, PANEL_W - MARGIN);
+		CHECK_EQ(l.to.x + l.to.w, PANEL_W - MARGIN);
+		CHECK(l.sliderHit.hit(l.track.x + 5, l.track.y + 5) && !overlaps(l.sliderHit, l.row[0]));
+		CHECK(strip ? !overlaps(l.sliderHit, l.surface) : !overlaps(l.sliderHit, l.pan));
+	}
+
+	// the Pages sheet: three rows of six a screenful, the cells spread from the view's left to its right, none over
+	// another, the picture and its number inside the cell
+	{
+		PagesSheet ps = pagesSheet();
+		CHECK(ps.view.h >= 3 * PAGES_ROW_H && ps.view.y >= ps.sheet.rowsY && ps.view.y + ps.view.h <= ps.sheet.hints.y);
+		Box row{ps.view.x, ps.view.y, ps.view.w, PAGES_ROW_H};
+		for (int c = 0; c < PAGES_COLS; c++)
+		{
+			PagesCell pc = pagesCell(row, c);
+			CHECK(pc.cell.h <= PAGES_ROW_H && pc.thumb.x >= pc.cell.x && pc.thumb.x + pc.thumb.w <= pc.cell.x + pc.cell.w);
+			CHECK(pc.number.y >= pc.thumb.y + pc.thumb.h && pc.number.y + pc.number.h <= pc.cell.y + pc.cell.h);
+			if (c > 0) CHECK(!overlaps(pc.cell, pagesCell(row, c - 1).cell));
+		}
+		CHECK_EQ(pagesCell(row, 0).cell.x, ps.view.x);
+		CHECK_EQ(pagesCell(row, PAGES_COLS - 1).cell.x + PAGES_CELL_W, ps.view.x + ps.view.w);
+		Box vc = viewChoices(ps.sheet.row(0));
+		CHECK(vc.x > ps.sheet.row(0).x + 100 && vc.x + vc.w <= ps.sheet.row(0).x + ps.sheet.row(0).w);
+	}
+
 	// a download with two keys: Hide and Stop share the busy sheet's row
 	BusySheet one = busySheet();
 	CHECK_EQ(one.key.w, PANEL_W - 2 * SHEET_PAD);

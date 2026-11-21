@@ -15,6 +15,8 @@
 #include "ui_settings.h"
 #include "ui_videos.h"
 #include "ui_mediaart.h"
+#include "ui_manga.h"
+#include "ui_glyphs.h"
 #include "durations.h"
 #include "resume.h"
 #include "videocache.h"
@@ -56,6 +58,7 @@ namespace bp
 	{
 		if (topPaneGallery(out)) return true;
 		if (page == Page::Settings && settingsPage && settingsPage->topPane(out)) return true;
+		if (page == Page::MangaRead && manga && manga->waitingPane(out)) return true;
 		return idle && idlePane(out, p);
 	}
 

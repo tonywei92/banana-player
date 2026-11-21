@@ -112,12 +112,14 @@ namespace bp
 		void mfFree();
 		int readFilterNow = 0, readDimNow = 0;	// (Ui::draw: the reading filter and Extra dim as the pages are drawn)
 
-		// ---- the pages grid (Y in the reader) ----
-		// the chapter's thumbnails 6 wide, the D-pad moves the cursor, A jumps and closes, B or Y closes; the top panel
-		// keeps showing the reader, moved to the page under the cursor (a Seek as the slider sends). the thumbnails
+		// ---- the pages grid (Y in the reader): a sheet over the reader (docs/redesign: pdf-pages) ----
+		// the chapter's thumbnails six to a row (lay::pagesSheet), the D-pad moves the cursor, L2 / R2 a screenful, A
+		// jumps and closes, B or Y (or a tap above the sheet) closes; the page it opened on is marked Here. The top panel
+		// keeps showing the reader, moved to the page under the cursor (a Seek as the slider sends). The thumbnails
 		// are made by the reader as each page decodes
 		bool mangaPages = false;	// the grid is open
 		int mangaPagesCursor = 0;	// the page under the cursor (0-based)
+		int mangaPagesHere = 0;	// the page it was opened on (Here)
 		int mangaPagesScroll = 0;	// the first row shown
 		bool mangaPagesTouch = false;
 		bool mangaPagesMoved = false;	// the finger moved far enough to be a drag: lifting it then doesn't open a page
@@ -126,7 +128,7 @@ namespace bp
 		// the grid on a smooth list (ui_smoothlist.h): a row of thumbnails a row of it; mangaPagesScroll follows it
 		SmoothList pagesList{ui};
 		bool pagesMoving = false;	// it moved last frame (its stop puts the cursor among the rows shown)
-		Rect mangaPagesView() const { return {0, MPG_TOP, W, H - MPG_TOP - 44}; }	// (44: the hints footer)
+		Rect mangaPagesView() const { return lay::pagesSheet().view; }
 		SDL_Texture* mpThumb(int i);	// page i's thumbnail texture (one made a frame), marked as drawn now
 		// the grid's own textures: one SDL_Texture per decoded page, made a few per frame so a turn never stalls
 		struct ThumbTex { SDL_Texture* tex = nullptr; int w = 0, h = 0; Uint32 used = 0; };
@@ -139,18 +141,9 @@ namespace bp
 		bool mangaPagesKey(Button b, Player& p);
 		bool mangaPagesPointer(const Pointer& pt, int x, int y, Player& p);
 		void mpFree();
-		// 6 columns of 96 px wide thumbnails, 6 px gap, centred in the 640-wide panel; each row is 130 px (thumb +
-		// page number), the grid starts below the header and ends above the hints
-		static constexpr int MPG_COLS = 6, MPG_THUMB_W = 96, MPG_GAP = 6, MPG_ROW_H = 130;
-		static constexpr int MPG_LEFT = (W - (MPG_COLS * MPG_THUMB_W + (MPG_COLS - 1) * MPG_GAP)) / 2;
-		static constexpr int MPG_TOP = 72;
-		Rect mangaPageRect(int i) const	// i: 0-based page index; the rect in the 640x480 panel, at the grid's offset now
-		{
-			int col = i % MPG_COLS;
-			Rect row = pagesList.rowBox(i / MPG_COLS);
-			return {MPG_LEFT + col * (MPG_THUMB_W + MPG_GAP), row.y, MPG_THUMB_W, MPG_ROW_H - MPG_GAP};
-		}
-		static constexpr int MPG_THUMB = 4000;	// touch id base for the thumbnails (mangaPointer)
+		static constexpr int MPG_COLS = lay::PAGES_COLS, MPG_ROW_H = lay::PAGES_ROW_H;
+		// page i's cell (0-based), at the grid's offset now: what draw and the finger both use
+		lay::PagesCell mangaPageCell(int i) const { return lay::pagesCell(pagesList.rowBox(i / MPG_COLS), i % MPG_COLS); }
 
 		// ---- the dragged lists ----
 		// a finger on one of the app's lists or grids (Library, History, Browse, Downloads, Sources, a server's, a

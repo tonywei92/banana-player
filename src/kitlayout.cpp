@@ -488,6 +488,67 @@ namespace bp
 			return r;
 		}
 
+		ReaderPage readerPage(bool strip)
+		{
+			ReaderPage l;
+			Box zero{0, 0, 0, 0};
+			l.pan = l.fit = l.help = l.surface = zero;
+			for (Box& k : l.keys) k = zero;
+			int sliderY, sliderH;
+			if (strip)
+			{
+				// the slider under the header, the surface under it down to 8 above the row
+				sliderY = READER_TOP;
+				sliderH = 30;
+				l.surface = {MARGIN, sliderY + sliderH + GAP, PANEL_W - 2 * MARGIN, READER_ROW_Y - GAP - (sliderY + sliderH + GAP)};
+			}
+			else
+			{
+				l.pan = {MARGIN, READER_TOP, 388, 262};
+				Box side{l.pan.x + l.pan.w + SP12, READER_TOP, PANEL_W - MARGIN - (l.pan.x + l.pan.w + SP12), 0};
+				for (int r = 0; r < 2; r++)
+					for (int c = 0; c < 2; c++)
+						l.keys[r * 2 + c] = cell({side.x, side.y + r * (62 + GAP), side.w, 62}, 2, GAP, c);
+				l.fit = {side.x, side.y + 2 * (62 + GAP), side.w, 56};
+				l.help = {side.x + SP4, l.fit.y + l.fit.h + SP6, side.w - SP8, l.pan.y + l.pan.h - (l.fit.y + l.fit.h + SP6)};
+				sliderY = l.pan.y + l.pan.h + GAP;
+				sliderH = 28;
+			}
+			l.from = {MARGIN, sliderY, 40, sliderH};
+			l.to = {PANEL_W - MARGIN - 40, sliderY, 40, sliderH};
+			l.track = {l.from.x + l.from.w + SP12, sliderY + (sliderH - 10) / 2, l.to.x - SP12 - (l.from.x + l.from.w + SP12), 10};
+			l.sliderHit = {MARGIN, sliderY - SP6, PANEL_W - 2 * MARGIN, sliderH + 2 * SP6};
+			for (int i = 0; i < 3; i++) l.row[i] = cell({MARGIN, READER_ROW_Y, PANEL_W - 2 * MARGIN, READER_ROW_H}, 3, GAP, i);
+			return l;
+		}
+
+		PagesSheet pagesSheet()
+		{
+			PagesSheet p;
+			// the tallest sheet: three rows a screenful under the header
+			p.sheet = listSheetBody(SHEET_MAX);
+			int top = p.sheet.rowsY + SP4, bottom = p.sheet.hints.y - SP8;
+			p.view = {SHEET_PAD, top, PANEL_W - 2 * SHEET_PAD, bottom - top};
+			return p;
+		}
+
+		PagesCell pagesCell(Box row, int col)
+		{
+			// the six cells spread across the row: the first at its left, the last at its right
+			int spare = row.w - PAGES_COLS * PAGES_CELL_W;
+			int x = row.x + (col * spare) / (PAGES_COLS - 1) + col * PAGES_CELL_W;
+			PagesCell c;
+			c.thumb = {x + (PAGES_CELL_W - PAGES_THUMB_W) / 2, row.y + SP4, PAGES_THUMB_W, PAGES_THUMB_H};
+			c.number = {x, c.thumb.y + c.thumb.h + SP2, PAGES_CELL_W, 16};
+			c.cell = {x, row.y, PAGES_CELL_W, c.number.y + c.number.h - row.y};
+			return c;
+		}
+
+		Box viewChoices(Box row)
+		{
+			return {row.x + 150, row.y + 3, row.w - 150 - SP8, row.h - 6};
+		}
+
 		PlayerLayout playerLayout(int chips, bool repeatMark)
 		{
 			PlayerLayout l;

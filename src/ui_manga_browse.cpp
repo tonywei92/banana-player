@@ -7,6 +7,8 @@
 #include "ui_reader.h"
 #include "ui_manga.h"
 #include "ui_kit.h"
+#include "ui_glyphs.h"
+#include "previewpane.h"
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -1130,23 +1132,63 @@ namespace bp
 
 	void Ui::Manga::drawMangaReadWaiting()
 	{
-		ui.drawBackIcon();
-		ui.drawTextMid(ui.pageReader->mangaReadChapterTitle, 1, TEXT, 72, 24, 540);
-		ui.drawTextMid(mangaTitle(ui.pageReader->mangaReadSeriesId), 0, DIM, 72, 50, 540);
+		// the reader's header (back, the chapter, the series under it) over its surface, which says what it waits for;
+		// the top panel says it large (waitingPane)
+		lay::ReaderHeader h = lay::readerHeader({0, 0, W, lay::SHELL_HEAD}, false);
+		Kit::Header hd;
+		hd.title = ui.pageReader->mangaReadChapterTitle;
+		hd.crumb = mangaTitle(ui.pageReader->mangaReadSeriesId);
+		hd.titleFont = F_SMALL;
+		hd.inlineTitle = true;
+		ui.kit->header(h.strip, hd);
 		Rect area = mangaAreaRect();
-		ui.drawBox(area, SURFACE, R_TILE);
+		bool failed = !mangaSrcLoading && !mangaSrcError.empty();
+		ui.kit->readerSurface(area, true, "", "", failed);
 		int mid = area.y + area.h / 2;
-		if (!mangaSrcLoading && !mangaSrcError.empty())
+		if (failed)
 		{
-			ui.drawTextMid("The chapter didn\xE2\x80\x99t open", 1, DANGER, W / 2, mid - 14, 560, 2);
-			ui.drawTextMid(mangaSrcError, 0, DIM, W / 2, mid + 16, 560, 2);
-			ui.drawHints({{"A", "Try again"}, {"B", "Back"}});
+			ui.drawTextMid("The chapter didn\xE2\x80\x99t open", F_P20, DANGER, W / 2, mid - 14, 560, 2);
+			ui.drawTextMid(mangaSrcError, F_I14, TEXT, W / 2, mid + 18, 560, 2);
+			ui.kit->hints({{"A", "Try again"}, {"B", "Back"}});
 		}
 		else
 		{
-			ui.drawLoader(W / 2, mid, "Loading chapter\xE2\x80\xA6");
-			ui.drawHints({{"B", "Back"}});
+			ui.drawLoader(W / 2, mid - 10, "Getting the chapter\xE2\x80\xA6");
+			ui.drawTextMid("Asking the source for its pages", F_I12, DIM, W / 2, mid + 52, 560, 2);
+			ui.kit->hints({{"B", "Back"}});
 		}
+	}
+
+	bool Ui::Manga::waitingPane(PaneSpec& out) const
+	{
+		// the top panel while a source's chapter is asked for (docs/redesign: manga-end, "Waiting for a chapter"): the
+		// State card with the spinner, or the failure with its reason and A; not while a chapter still reads up there
+		if (!mangaReadWaiting || ui.page != Page::MangaRead) return false;
+		bool failed = !mangaSrcLoading && !mangaSrcError.empty();
+		out = PaneSpec{};
+		out.state = true;
+		std::string what = mangaTitle(ui.pageReader->mangaReadSeriesId);
+		if (!ui.pageReader->mangaReadChapterTitle.empty())
+			what += (what.empty() ? "" : " \xC2\xB7 ") + ui.pageReader->mangaReadChapterTitle;
+		if (failed)
+		{
+			out.danger = true;
+			out.iconRows = G_NETWORK_ROWS;
+			out.iconH = G_NETWORK.h;
+			out.title = "The chapter didn\xE2\x80\x99t open";
+			out.text = mangaSrcError;
+			out.keys = {{"A", "Try again"}};
+		}
+		else
+		{
+			int step = (int)(SDL_GetTicks() / 100 % 8);
+			out.spinner = step;
+			out.title = "Getting the chapter\xE2\x80\xA6";
+			out.text = what;
+			out.keys = {{"B", "Back"}};
+		}
+		out.key = "mangawait|" + out.title + "|" + out.text + "|" + std::to_string(out.spinner);
+		return true;
 	}
 
 	void Ui::Manga::mangaSourcePagesAsk(Player& p)

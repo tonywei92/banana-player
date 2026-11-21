@@ -512,6 +512,39 @@ namespace bp
 		};
 		ReaderSurface readerSurface(Box area, bool strip);
 
+		// ---- a PDF's or a comic's page reader in Files (docs/redesign: pdf; a strip on manga-read's skeleton) ----
+		// One page: the small page to drag at the left (388 x 262), the hand's keys at its right two by two (Page L / R,
+		// Zoom out / in), the Page fit stepper and two lines of help under them, then the page slider. Vertical scroll:
+		// the slider under the header, the drag surface under it. Both end on one row of sheets: Pages, View, Light
+		constexpr int READER_TOP = 60, READER_ROW_Y = 366, READER_ROW_H = 64;
+		struct ReaderPage
+		{
+			Box pan, keys[4], fit, help;	// one page (w 0 on a strip): keys are Page back, Page on, Zoom out, Zoom in
+			Box surface;	// a strip's drag surface (w 0 on a page)
+			Box from, track, to;	// the slider's row: the page shown's number, the bar, the last page's
+			Box sliderHit;	// where a finger takes the bar (its row and a little round it)
+			Box row[3];	// Pages, View, Light
+		};
+		ReaderPage readerPage(bool strip);
+		// Pages (Y): every page small in a sheet (docs/redesign: pdf-pages), six to a row of PAGES_ROW_H; `view` is
+		// where the rows scroll. A cell is 92 wide (the picture 72 x 96 over its number), spread across the sheet
+		constexpr int PAGES_COLS = 6, PAGES_CELL_W = 92, PAGES_THUMB_W = 72, PAGES_THUMB_H = 96, PAGES_ROW_H = 120;
+		struct PagesSheet
+		{
+			ListSheet sheet;
+			Box view;
+		};
+		PagesSheet pagesSheet();
+		// column `col`'s cell in a row whose box is `row` (the smooth list's), its picture and its number line
+		struct PagesCell
+		{
+			Box cell, thumb, number;
+		};
+		PagesCell pagesCell(Box row, int col);
+		// a View sheet's row of choices (Layout: One page / Vertical scroll / Fullscreen): the label's room at the left,
+		// the chips at the right of a 46-tall sheet row
+		Box viewChoices(Box row);
+
 		// ---- Preview pane: the top screen with nothing playing (its own 640x480 units) ----
 		// The brand mark top left, then a text column (from 74, 44 from the sides) or, with a cover, the cover at
 		// 36, 66 (196 x 278) and the text column from 262

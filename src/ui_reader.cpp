@@ -194,7 +194,7 @@ namespace bp
 		(void)p;
 		if (!readerStatus.open || readerStatus.pages <= 0) return;
 		mangaPages = true;
-		mangaPagesCursor = std::clamp(readerStatus.page, 0, readerStatus.pages - 1);
+		mangaPagesCursor = mangaPagesHere = std::clamp(readerStatus.page, 0, readerStatus.pages - 1);
 		// the cursor's row centred in the grid, there at once
 		int row = mangaPagesCursor / MPG_COLS;
 		int rows = (readerStatus.pages + MPG_COLS - 1) / MPG_COLS;
@@ -232,12 +232,16 @@ namespace bp
 		int cur = mangaPagesCursor;
 		int row = cur / MPG_COLS, col = cur % MPG_COLS;
 		int rows = (pages + MPG_COLS - 1) / MPG_COLS;
+		const int SCREEN_ROWS = std::max(1, mangaPagesView().h / MPG_ROW_H);
 		switch (b)
 		{
 		case Button::Left: if (col > 0) cur--; break;
 		case Button::Right: if (col + 1 < MPG_COLS && cur + 1 < pages) cur++; break;
 		case Button::Up: if (row > 0) cur -= MPG_COLS; break;
 		case Button::Down: if (row + 1 < rows) cur = std::min(cur + MPG_COLS, pages - 1); break;
+		// a screenful of rows back or on, the column kept
+		case Button::L2: cur = std::max(col, cur - SCREEN_ROWS * MPG_COLS); break;
+		case Button::R2: if (row + 1 < rows) cur = std::min(cur + SCREEN_ROWS * MPG_COLS, pages - 1); break;
 		case Button::A:
 			// jump to the page under the cursor and close the grid
 			mangaSeek(cur);
@@ -269,7 +273,7 @@ namespace bp
 			int r = pagesList.rowAt(px, py);
 			if (r < 0) return -1;
 			for (int i = r * MPG_COLS; i < pages && i < (r + 1) * MPG_COLS; i++)
-				if (mangaPageRect(i).hit(px, py)) return i;
+				if (mangaPageCell(i).cell.hit(px, py)) return i;
 			return -1;
 		};
 		const float fy = pt.y * H;	// (by the fraction: the grid follows the panel's pixels)
@@ -278,8 +282,13 @@ namespace bp
 			mangaPagesTouch = false;
 			mangaPagesMoved = false;
 			mangaPagesPressed = -1;
-			// the back icon: same as B (close the grid)
-			if (ui.buttonRect(BACK_ICON).hit(x, y)) { mangaPagesClose(p); return false; }
+			// above the sheet: it closes, as B (the touch goes no further)
+			if (!lay::pagesSheet().sheet.box.hit(x, y))
+			{
+				mangaPagesClose(p);
+				ui.swallowTouch = true;
+				return false;
+			}
 			// anywhere on the grid, a thumbnail too: a drag or a tap, told apart when the finger lifts (a thumbnail
 			// opening on the touch left nothing to start a drag from: the grid is all thumbnails)
 			if (mangaPagesView().hit(x, y))
@@ -347,19 +356,23 @@ namespace bp
 
 	void Ui::PageReader::drawMangaPages(const Player& p)
 	{
-		(void)p;
 		int pages = readerStatus.pages;
 		if (pages <= 0) { mangaPagesClose(const_cast<Player&>(p)); return; }
 		// the chapter changed: the old textures go
 		if (readerThumbs.gen != mpGen) { mpFree(); mpGen = readerThumbs.gen; }
-		ui.drawBackIcon();
-		ui.drawTextMid("Pages", 1, TEXT, 72, 24, 540);
-		ui.drawTextMid(std::to_string(mangaPagesCursor + 1) + " / " + std::to_string(pages), 0, DIM, 72, 50, 540);
-		// the grid: thumbnails with numbered placeholders for pages not decoded yet, a row of them a row of a smooth
+		// the sheet over the reader: its title with the count, where the reader was at its right
+		Kit& k = *ui.kit;
+		lay::PagesSheet ps = lay::pagesSheet();
+		Kit::SheetHead head;
+		head.glyph = &G_BLOCKS;
+		head.title = "Pages " + std::to_string(pages);
+		head.note = "You are on page " + std::to_string(mangaPagesHere + 1);
+		k.sheet(ps.sheet, head);
+		// the grid: thumbnails with numbered places for pages not decoded yet, a row of them a row of a smooth
 		// list. At most one texture made a frame (mpThumb), so a turn never stalls the panel
 		mpMade = 0;
 		int rows = (pages + MPG_COLS - 1) / MPG_COLS;
-		Rect view = mangaPagesView();
+		Rect view = ps.view;
 		int shown = view.h / MPG_ROW_H;
 		pagesList.sc.setExtent((double)rows * MPG_ROW_H, view.h);
 		// a motion over (a fling, a drag let go): the cursor among the whole rows shown, and the top panel there
@@ -381,50 +394,41 @@ namespace bp
 		spec.view = view;
 		spec.rowH = MPG_ROW_H;
 		spec.count = rows;
-		spec.key = [this, pages, cursor = mangaPagesCursor](int r) {
-			std::string k;
+		spec.key = [this, pages, cursor = mangaPagesCursor, here = mangaPagesHere](int r) {
+			std::string key;
 			for (int i = r * MPG_COLS; i < pages && i < (r + 1) * MPG_COLS; i++)
-				k += mpThumb(i) ? (i == cursor ? "T" : "t") : (i == cursor ? "N" : "n");
-			return k;
+				key += mpThumb(i) ? (i == cursor ? "T" : "t") : (i == cursor ? "N" : "n");
+			return key + (here / MPG_COLS == r ? std::to_string(here) : "");
 		};
-		spec.draw = [this, pages, cursor = mangaPagesCursor](int r, Rect box) {
+		spec.draw = [this, pages, cursor = mangaPagesCursor, here = mangaPagesHere](int r, Rect box) {
+			Kit& k = *ui.kit;
+			ui.fill(box, SURFACE);	// (the slot is the sheet's ground)
 			for (int i = r * MPG_COLS; i < pages && i < (r + 1) * MPG_COLS; i++)
 			{
-				Rect rc{MPG_LEFT + (i % MPG_COLS) * (MPG_THUMB_W + MPG_GAP), box.y, MPG_THUMB_W, MPG_ROW_H - MPG_GAP};
+				lay::PagesCell c = lay::pagesCell(box, i % MPG_COLS);
 				bool at = i == cursor;
-				// the focused thumbnail's ACCENT edge
-				ui.kit->flat(rc, Kit::cardFill(SURFACE), R_TILE - 2, at ? ACCENT : Kit::edgeOf(SURFACE));
+				// the page's place: the thumbnail fitted inside it (aspect kept), or its number while it isn't decoded
+				Rect t = c.thumb;
+				ui.fillRound(t, BUTTON, theme::R_GRIP);
 				auto it = mpTex.find(i);
-				if (it != mpTex.end() && it->second.tex)
+				if (it != mpTex.end() && it->second.tex && it->second.w > 0 && it->second.h > 0)
 				{
-					// the thumbnail drawn inside the box, aspect kept (centred)
-					int bw = rc.w - 4, bh = rc.h - 24;	// 24: room for the page number below
-					int sw = it->second.w, sh = it->second.h;
-					int dw = bw, dh = bh;
-					if (sw > 0 && sh > 0)
-					{
-						double aspect = (double)sw / sh;
-						if (aspect > (double)bw / bh) { dw = bw; dh = (int)(bw / aspect + 0.5); }
-						else { dh = bh; dw = (int)(bh * aspect + 0.5); }
-					}
-					SDL_Rect dst{(int)std::lround((rc.x + 2 + (bw - dw) / 2) * sx), (int)std::lround((rc.y + 2 + (bh - dh) / 2) * sy),
+					double aspect = (double)it->second.w / it->second.h;
+					int dw = t.w, dh = t.h;
+					if (aspect > (double)t.w / t.h) dh = (int)std::lround(t.w / aspect);
+					else dw = (int)std::lround(t.h * aspect);
+					SDL_Rect dst{(int)std::lround((t.x + (t.w - dw) / 2) * sx), (int)std::lround((t.y + (t.h - dh) / 2) * sy),
 						(int)std::lround(dw * sx), (int)std::lround(dh * sy)};
 					SDL_RenderCopy(ui.ren, it->second.tex, nullptr, &dst);
 				}
-				else
-				{
-					// not decoded yet: a numbered placeholder
-					ui.drawTextMid(std::to_string(i + 1), 0, at ? ACCENT : DIM, rc.x + rc.w / 2, rc.y + rc.h / 2, 0, 2);
-					continue;	// the number is the placeholder: none again underneath
-				}
-				// the page number under the thumbnail, inside the box's bottom strip (the 24 kept for it above)
-				ui.drawTextMid(std::to_string(i + 1), 0, at ? ACCENT : DIM, rc.x + rc.w / 2, rc.y + rc.h - 11, 0, 2);
+				// the cursor: the accent outline 2 clear of the picture
+				if (at) k.ring({t.x - 4, t.y - 4, t.w + 8, t.h + 8}, theme::R_GRIP + 2, ACCENT);
+				if (i == here) k.pill(t.x + 3 + k.pillW("Here"), t.y + 13, "Here", Kit::Pill::Fact);
+				ui.drawTextMid(std::to_string(i + 1), F_I12, at ? ACCENT : DIM, c.number.x + c.number.w / 2, c.number.y + c.number.h / 2, 0, 2);
 			}
 		};
 		pagesList.draw(std::move(spec));
 		mangaPagesScroll = std::clamp((int)std::ceil((pagesList.sc.offset() - 2) / MPG_ROW_H), 0, std::max(0, rows - shown));
-		// the scrollbar
-		ui.drawScrollBar(MPG_TOP, shown * MPG_ROW_H - 4, mangaPagesScroll, shown, rows);
 		// at most 60 thumbnails kept: the ones not drawn longest go (a 200-page chapter keeps 60 at a time)
 		while (mpTex.size() > 60)
 		{
@@ -434,7 +438,7 @@ namespace bp
 			if (old->second.tex) SDL_DestroyTexture(old->second.tex);
 			mpTex.erase(old);
 		}
-		ui.drawHints({{"D-PAD", "Move"}, {"A", "Go to page"}, {"B", "Close"}});
+		k.hints({{"D-PAD", "Move"}, {"A", "Go"}, {"L2/R2", "A screenful"}, {"Y/B", "Close"}});
 	}
 
 	void Ui::PageReader::FollowList::follow(Rect view, int rowH, int n, int cols, int& scroll, int* cursor)

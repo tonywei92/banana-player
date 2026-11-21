@@ -208,8 +208,28 @@ namespace bp
 		// where a finger takes the bar: from under the header's lines down to the drag area
 		Rect docBarHit() const { return {16, 60, W - 32, 44}; }
 		Rect docPadRect() const;
-		Rect docPanRect() const { return {16, 80, PAN_W, PAN_H}; }
-		Rect docBtn(int i) const;
+		Rect docPanRect() const { return pagesLayout().pan; }
+		Rect docBtn(int i) const;	// the text reader's row of keys
 		Rect docPanThumb() const;
+		// ---- the page reader's screen (a PDF, a comic: docs/redesign pdf): lay::readerPage's boxes, drawn and touched
+		// alike. The keys by id (docPressed while a finger is on one) ----
+		enum { DP_KEY_BACK, DP_KEY_ON, DP_KEY_OUT, DP_KEY_IN, DP_KEY_FIT, DP_KEY_PAGES, DP_KEY_VIEW, DP_KEY_LIGHT, DP_KEYS };
+		lay::ReaderPage pagesLayout() const { return lay::readerPage(ui.pageReader->readerStatus.mode == MANGA_STRIP); }
+		int pagesShown() const;	// the page the header and the slider say (the finger's on the slider)
+		Rect pagesKeyRect(int id) const;
+		bool pagesKeyOff(int id) const;
+		void pagesKeyAct(int id, Player& p);
+		void drawPagesPan(const Player& p, const lay::ReaderPage& l);
+		void drawPagesSlider(const lay::ReaderPage& l);
+		void drawPagesKeys(const Player& p);
+		void stepPagesFit(int dir, Player& p);	// Page / Width
+		void stepPagesTurn(int dir);	// a quarter turn of the page
+		// View's Layout: 0 Single page, 1 Vertical scroll, 2 Fullscreen (the strip over both panels)
+		int pagesLayoutNow() const;
+		void setPagesLayout(int layout, Player& p);
+		// X · More (pdf-more) and SELECT · View (pdf-view, an overlay of its own)
+		void openPagesMore(Player& p);
+		struct PagesView;
+		void openPagesView();
 	};
 }

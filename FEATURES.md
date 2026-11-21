@@ -773,16 +773,25 @@ come from the player's other fonts.
 ### PDF (and comics as EPUB)
 
 A PDF, or an EPUB that is a comic (a picture a page), opens a page at a time, sharp at any zoom: each page is drawn
-for the size it's shown at. The header carries the file's name at 18 units with the page and zoom under it, and a
-**More** key that opens the options.
+for the size it's shown at. The header carries the file's name at 18 units with the page, the zoom and the fit under
+it, and a **More** key (as **X**). A comic (CBZ, CBR) from Files reads the same way.
 
 - **Single page** (the first time): the bottom screen shows the page small, in the **pan area**, with a box around
   the part you see on top, as with a photo: drag the box to look around, tap the small page to look there, double-tap
-  to zoom to 200% or back. Beside it: **Prev**, **Next**, **Zoom −**, **Zoom +**, **Page fit** (Page or Width), **Brightness**,
-  **Pages** and **Options**, and under them **Vertical scroll** (**X**), to change to the other view.
+  to zoom to 200% or back. Beside it the hand's keys: **Page** back and on (**L**/**R**), **Zoom** out and in
+  (**DOWN**/**UP**), and **Page fit** (Page or Width: a tap changes it). Under them a **page slider** (the page shown
+  at its left, the last at its right: drag it to go far).
 - **Vertical scroll**: the pages one under the other, scrolled with a finger on the bottom screen's big area, or a
-  screenful at a time with **LEFT/RIGHT** (and **A**).
-  **SELECT** (or **Fullscreen**) shows the strip across both screens; **SELECT** or **B** goes back to one.
+  screenful at a time with **LEFT/RIGHT** (and **A**); the page slider is under the header.
+- Both end on one row: **Pages** (**Y**), **View** (**SELECT**) and **Light** (Brightness & filter; what's on in its
+  place while Extra dim or a filter is).
+- **View** (**SELECT**) is a sheet: **Layout** (Single page, Vertical scroll, Fullscreen: the strip across both screens),
+  **Page fit**, **Zoom**, **Turn** (a quarter at a time, for a scan on its side; Single page only) and **Light & filter**.
+  **UP/DOWN** choose, **LEFT/RIGHT** change it at once (the page above follows), **SELECT** or **B** close; a tap on a
+  choice or a side of a value changes it. The layout and the fit are kept for the next PDF. Going Fullscreen closes the
+  sheet; there **B** goes back to one screen and **SELECT** opens View again.
+- **More** (**X**): a browser's page while it differs from this one, **Info**, **Show in folder**, **Light & filter**
+  and **Reading settings**.
 
 | Button | What it does |
 |---|---|
@@ -791,9 +800,10 @@ for the size it's shown at. The header carries the file's name at 18 units with 
 | **UP** / **DOWN** | Zoom in / out (both views, as in the manga reader and the photo viewer) |
 | **Left stick** (any way) | Vertical scroll: scrolls smoothly while held. Single page: pans a page that is zoomed, wide or taller than the screen, sideways too |
 | **A** | Single page: 200% or back to the whole page. Vertical scroll: on |
-| **X** | Single page or Vertical scroll (kept for the next PDF) |
+| **X** | **More** |
+| **SELECT** | **View**: the layout (Single page, Vertical scroll, Fullscreen), the fit, the zoom, the turn |
 | **Y** | **Pages**: every page small; **A** goes to one |
-| **START** | **Settings**: **B** or **START** returns to the page you were on. **Options** (View, Fullscreen (Vertical scroll), Brightness & filter, Page fit (Page or Width), Zoom, Pages) is the button (by touch) |
+| **START** | **Settings**: **B** or **START** returns to the page you were on |
 | **B** | Back to Files |
 
 A PDF locked with a password says so and doesn't open.
@@ -1616,8 +1626,12 @@ to scroll* in **Vertical scroll**), a line along its foot naming double-tap and 
 - The **page fit** is a setting (below): **Page** (the whole page on the screen), **Width** (as wide as the screen, read
   down a screenful at a time) or **Fill** (the page covers the screen: it's cropped, and the overshoot pans in reading
   order). It applies at once to the chapter you're reading.
-- At the end of a chapter the screen says **End of chapter · R2 or RIGHT for the next** (**LEFT** with **Swap
-  Left/Right** on), and the forward key (or **R2**) opens the next one. The last chapter says **You're caught up**.
+- At the end of a chapter the screen says **End of chapter · R2 or RIGHT for** the next chapter by its name (**LEFT**
+  with **Swap Left/Right** on), and the forward key (or **R2**) opens it; the header's line says *the end*. The last
+  chapter says **You're caught up · that was the last chapter**. In Book the page numbers say *turn once more for* the
+  next chapter by name.
+- A source's chapter that is still being asked for shows *Getting the chapter…* on both screens (the top one large,
+  with the spinner, the series and the chapter); **B** goes back. One that didn't open says why, and **A** tries again.
 - **Scrolling is the finger's and the left stick's**: the D-pad's **UP/DOWN** zoom, they never scroll. The stick
   scrolls while held, up or down, with a dead zone at rest and a speed that follows the push. **By touch**: drag in the big
   area on the bottom screen to turn the page — it follows your finger and snaps to a page when you let go (a quick
@@ -1668,10 +1682,12 @@ and fullscreen stays, so the next chapter opens in it too.
 The page number shows for a moment after the page changes. A tap puts the controls bar over the lower part of the
 view; a tap anywhere outside it puts it away again and does nothing else (no page turn, no drag).
 
-**The Pages grid.** **Y** while reading (or the Reading menu's **Pages**) opens the chapter's thumbnails, six to a
-row, each with its page number in its cell, on the page you're reading. Pages not decoded yet show their number alone
-until they arrive. **UP/DOWN/LEFT/RIGHT** move the cursor and the top screen follows it, **A** jumps there and closes
-the grid, **B** or **Y** closes it; on the touch screen, tap a thumbnail to jump, or drag to scroll.
+**The Pages grid.** **Y** while reading (or the Reading menu's **Pages**) opens the chapter's thumbnails in a sheet
+over the reader (a PDF's **Pages** is the same sheet), six to a row with each page's number under it, on the page
+you're reading, marked **Here** ("You are on page N" at the top). Pages not decoded yet show an empty place until they
+arrive. **UP/DOWN/LEFT/RIGHT** move the cursor and the top screen follows it, **L2/R2** move a screenful, **A** jumps
+there and closes the grid, **B** or **Y** closes it; on the touch screen, tap a thumbnail to jump, drag to scroll, or
+tap above the sheet to close it.
 
 ### Manga settings
 

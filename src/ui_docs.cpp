@@ -9,6 +9,7 @@
 #include "json.h"
 #include "ui_kit.h"
 #include "ui_reader.h"
+#include "ui_settings.h"
 #include "filesave.h"
 #include "manga_ui_logic.h"
 #include "epub.h"
@@ -50,8 +51,8 @@ namespace bp
 		const char* FILTER_NAMES[DOC_FILTERS] = {"Off", "Warm", "Warmer", "Dim"};
 
 		// the menus' rows
-		enum { DT_FONT, DT_SIZE, DT_SPACING, DT_MARGINS, DT_THEME, DT_FILTER, DT_ENCODING, DT_GOTO, DP_VIEW, DP_FULL, DP_FILTER,
-			DP_FIT, DP_ZOOM, DP_PAGES, DT_VIEW, DT_HOLD, DT_MARKS, DT_TURN, DT_FIND, DP_THERE };
+		enum { DT_FONT, DT_SIZE, DT_SPACING, DT_MARGINS, DT_THEME, DT_FILTER, DT_ENCODING, DT_GOTO, DT_VIEW, DT_HOLD, DT_MARKS,
+			DT_TURN, DT_FIND };
 		constexpr int MENU_TOP = 72, MENU_ROW_H = 50;	// (the kit's rows are 46 tall)
 		constexpr Uint32 TAP_MS = 350;
 
@@ -537,22 +538,11 @@ namespace bp
 
 	std::vector<int> Ui::Docs::docMenuRows() const
 	{
-		if (ui.page == Page::DocText)
-		{
-			std::vector<int> r = {DT_FIND, DT_MARKS, DT_VIEW};
-			if (textStatus.book) { r.push_back(DT_HOLD); r.push_back(DT_TURN); }
-			for (int id : {DT_FONT, DT_SIZE, DT_SPACING, DT_MARGINS, DT_THEME, DT_FILTER}) r.push_back(id);
-			if (!textStatus.encoding.empty()) r.push_back(DT_ENCODING);
-			return r;
-		}
-		bool strip = ui.pageReader->readerStatus.mode == MANGA_STRIP;
-		std::vector<int> r;
-		if (foreignShown()) r.push_back(DP_THERE);	// a browser's page first, while it differs
-		r.push_back(DP_VIEW);
-		if (strip) r.push_back(DP_FULL);
-		r.push_back(DP_FILTER);
-		if (!strip) { r.push_back(DP_FIT); r.push_back(DP_ZOOM); }
-		r.push_back(DP_PAGES);
+		// the text viewer's options (a PDF's are its View and More sheets: below, "the page reader")
+		std::vector<int> r = {DT_FIND, DT_MARKS, DT_VIEW};
+		if (textStatus.book) { r.push_back(DT_HOLD); r.push_back(DT_TURN); }
+		for (int id : {DT_FONT, DT_SIZE, DT_SPACING, DT_MARGINS, DT_THEME, DT_FILTER}) r.push_back(id);
+		if (!textStatus.encoding.empty()) r.push_back(DT_ENCODING);
 		return r;
 	}
 
@@ -570,7 +560,7 @@ namespace bp
 		case DT_SPACING: s.txtSpacing = std::clamp(s.txtSpacing + dir, 0, TXT_SPACINGS - 1); break;
 		case DT_MARGINS: s.txtMargins = std::clamp(s.txtMargins + dir, 0, TXT_MARGINS - 1); break;
 		case DT_THEME: cyc(s.txtTheme, TXT_PAGES); break;
-		case DT_FILTER: case DP_FILTER: docMenu = DOC_MENU_NONE; ui.openLight(); return;	// the Brightness sheet
+		case DT_FILTER: docMenu = DOC_MENU_NONE; ui.openLight(); return;	// the Brightness sheet
 		case DT_VIEW:
 			// Scroll or Book, held as Book was last (the top panel on the left the first time)
 			s.txtBook = s.txtBook ? 0 : (docBookHoldLast ? docBookHoldLast : MANGA_BOOK_LEFT);
@@ -602,25 +592,6 @@ namespace bp
 		case DT_GOTO:
 			textCmds.push_back({TextReader::Jump, std::clamp(textStatus.fraction + dir * 0.05, 0.0, 1.0), (int64_t)SDL_GetTicks()});
 			return;
-		case DP_VIEW:
-		{
-			bool strip = ui.pageReader->readerStatus.mode != MANGA_STRIP;
-			// (each view opens at its fit: a page's zoom would cut a strip's lines at both edges)
-			if (ui.pageReader->readerStatus.zoomPct != 100) ui.pageReader->mangaZoomTo(1.0);
-			if (!strip && ui.pageReader->readerStatus.fullscreen) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, 0, (int64_t)SDL_GetTicks()});
-			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Mode, (double)(strip ? MANGA_STRIP : MANGA_LTR), (int64_t)SDL_GetTicks()});
-			s.pdfStrip = strip;
-			break;
-		}
-		case DP_FULL:
-			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, ui.pageReader->readerStatus.fullscreen ? 0.0 : 1.0, (int64_t)SDL_GetTicks(), (double)p.settings.mangaHinge});
-			if (!ui.pageReader->readerStatus.fullscreen) docFullTagUntil = SDL_GetTicks() + 2500;
-			return;
-		case DP_FIT:
-			cyc(s.mangaFit, 2);	// Page and Width (Fill crops a document's margins away)
-			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fit, (double)s.mangaFit, (int64_t)SDL_GetTicks()});
-			break;
-		case DP_ZOOM: ui.pageReader->mangaZoomStep(dir); return;
 		default: return;
 		}
 		p.setSettings(s);
@@ -669,17 +640,6 @@ namespace bp
 		}
 		auto rows = docMenuRows();
 		int id = docMenuCursor >= 0 && docMenuCursor < (int)rows.size() ? rows[docMenuCursor] : -1;
-		if (id == DP_THERE)
-		{
-			foreignGo();
-			return;
-		}
-		if (id == DP_PAGES)
-		{
-			docMenu = DOC_MENU_NONE;
-			ui.pageReader->mangaPagesOpen(p);
-			return;
-		}
 		if (id == DT_MARKS)
 		{
 			docMarksOpen();
@@ -714,7 +674,7 @@ namespace bp
 		ui.fill({0, 0, W, H}, BG);
 		ui.fill({0, 60, W, 2}, RULE);
 		Kit& k = *ui.kit;
-		ui.drawTextMid(marks ? "Bookmarks" : contents ? "Contents" : ui.page == Page::DocText ? "Text options" : "Options", F_P20, ACCENT, 24, 32, 400);
+		ui.drawTextMid(marks ? "Bookmarks" : contents ? "Contents" : "Text options", F_P20, ACCENT, 24, 32, 400);
 		auto here = docMarksHere();
 		int shown = (H - MENU_TOP - 40) / MENU_ROW_H;
 		int n = marks ? (int)here.size() + 1 : contents ? contentsCount() : (int)docMenuRows().size();
@@ -759,17 +719,16 @@ namespace bp
 			{
 				int id = rows[i];
 				static const char* LABELS[] = {"Font", "Text size", "Line spacing", "Margins", "Colours", "Brightness & filter", "Encoding",
-					"Go to", "View", "Fullscreen", "Brightness & filter", "Page fit", "Zoom", "Pages", "View", "Hold", "Bookmarks", "Page turn", "Find\u2026", ""};
+					"Go to", "View", "Hold", "Bookmarks", "Page turn", "Find\u2026"};
 				m.setting = true;
-				m.name = id == DP_THERE ? foreignLabel() : LABELS[id];
+				m.name = LABELS[id];
 				std::string& v = m.value;
-				if (id == DT_FIND || id == DP_PAGES || id == DT_MARKS || id == DT_FILTER || id == DP_FILTER || id == DP_THERE)
+				if (id == DT_FIND || id == DT_MARKS || id == DT_FILTER)
 				{
 					// an action: opens something (Brightness & filter its sheet: the filter on now beside it)
 					m.action = true;
 					if (id == DT_FIND && !findQuery.empty()) v = "\u201C" + findQuery + "\u201D";
-					if (id == DT_FILTER || id == DP_FILTER)
-						v = FILTER_NAMES[std::clamp(id == DT_FILTER ? p.settings.txtFilter : p.settings.pdfFilter, 0, DOC_FILTERS - 1)];
+					if (id == DT_FILTER) v = FILTER_NAMES[std::clamp(p.settings.txtFilter, 0, DOC_FILTERS - 1)];
 					if (id == DT_MARKS) v = docMarksHere().empty() ? "None yet" : std::to_string((int)docMarksHere().size());
 				}
 				else switch (id)
@@ -784,10 +743,6 @@ namespace bp
 				case DT_VIEW: v = p.settings.txtBook ? "Book mode" : "Scroll"; break;
 				case DT_TURN: v = p.settings.txtTurn ? "Off" : "Fold"; break;
 				case DT_HOLD: v = p.settings.txtBook == MANGA_BOOK_RIGHT ? "Top screen right" : "Top screen left"; break;
-				case DP_VIEW: v = ui.pageReader->readerStatus.mode == MANGA_STRIP ? "Vertical scroll" : "Single page"; break;
-				case DP_FULL: v = ui.pageReader->readerStatus.fullscreen ? "On" : "Off"; break;
-				case DP_FIT: v = p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page"; break;
-				case DP_ZOOM: v = std::to_string(ui.pageReader->readerStatus.zoomPct) + "%"; break;
 				default: break;
 				}
 			}
@@ -956,7 +911,8 @@ namespace bp
 		// the PDF viewer
 		if (ui.pageReader->mangaPages) return ui.pageReader->mangaPagesKey(b, p);
 		bool strip = ui.pageReader->readerStatus.mode == MANGA_STRIP;
-		if (ui.pageReader->readerStatus.fullscreen && (b == Button::B || b == Button::Select))
+		// B in Fullscreen: back to one screen (SELECT opens View there too, whose Layout says so)
+		if (ui.pageReader->readerStatus.fullscreen && b == Button::B)
 		{
 			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, 0, now});
 			return false;
@@ -975,26 +931,10 @@ namespace bp
 			else if (strip) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Step, 1, now});
 			else ui.pageReader->mangaZoomToggle();
 			break;
-		case Button::X:
-		{
-			// Single page and Strip, as the menu's View row (the first)
-			docMenuCursor = 0;
-			docMenuStep(1, p);
-			break;
-		}
-		case Button::Select:
-			if (strip)
-			{
-				ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, 1, now, (double)p.settings.mangaHinge});
-				docFullTagUntil = SDL_GetTicks() + 2500;
-			}
-			break;
+		// X: More, as everywhere; SELECT: View (the layout, the fit, the zoom); START is Settings (Ui::press)
+		case Button::X: openPagesMore(p); break;
+		case Button::Select: openPagesView(); break;
 		case Button::Y: ui.pageReader->mangaPagesOpen(p); break;
-		// START is Settings (Ui::press), except held sideways: there it is the Book bar's own key
-		case Button::Start:
-			if (ui.pageReader->readerStatus.book) docMenu = DOC_MENU_OPTIONS;
-			docMenuCursor = docMenuScroll = 0;
-			break;
 		case Button::B: docClose(p); break;
 		default: break;
 		}
@@ -1047,16 +987,9 @@ namespace bp
 	Ui::Rect Ui::Docs::docPadRect() const { return {16, 104, W - 32, 396 - 104 - 64}; }
 	Ui::Rect Ui::Docs::docBtn(int i) const
 	{
-		if (ui.page == Page::DocPages && ui.pageReader->readerStatus.mode != MANGA_STRIP)
-		{
-			// beside the pan area, as the photo viewer's; the ninth, wide under them: the other view
-			if (i == 8) return {368, 336, 248, 52};
-			return gridCell({368, 80, 120, 56}, 2, 8, 8, i);
-		}
+		// the text reader's row: four across 554, then Brightness's sun (50, 4 clear of them, ending at 624)
 		int y = 396 - 56;
-		// the text reader: four across 554, then Brightness's sun (50, 4 clear of them, ending at 624)
-		if (ui.page == Page::DocText) return i == 4 ? Rect{574, y, 50, 56} : rowCell({16, y, 554, 56}, 4, 6, i);
-		return rowCell({16, y, 608, 56}, 4, 8, i);
+		return i == 4 ? Rect{574, y, 50, 56} : rowCell({16, y, 554, 56}, 4, 6, i);
 	}
 
 	Ui::Rect Ui::Docs::docPanThumb() const
@@ -1091,8 +1024,8 @@ namespace bp
 					// a stepper row: a tap left of its value steps back, right of it on (lay::settingStepper, as the
 					// settings' rows); an action row, or anywhere else on the row, acts
 					auto ids = docMenuRows();
-					bool stepper = docMenu == DOC_MENU_OPTIONS && row >= 0 && row < (int)ids.size() && ids[row] != DT_FIND && ids[row] != DP_PAGES && ids[row] != DP_THERE &&
-						ids[row] != DT_MARKS && ids[row] != DT_FILTER && ids[row] != DP_FILTER;
+					bool stepper = docMenu == DOC_MENU_OPTIONS && row >= 0 && row < (int)ids.size() && ids[row] != DT_FIND &&
+						ids[row] != DT_MARKS && ids[row] != DT_FILTER;
 					lay::SettingStepper st = lay::settingStepper(docMenuRowRect(row));
 					if (stepper && (st.back.hit(x, rowY) || st.fwd.hit(x, rowY))) docMenuStep(st.back.hit(x, rowY) ? -1 : 1, *pp);
 					else docMenuAct(*pp);
@@ -1150,10 +1083,15 @@ namespace bp
 		{
 			// the readers' header keys: a book's bookmark, and More (the options menu), as the header draws them
 			lay::ReaderHeader h = lay::readerHeader({0, 0, W, lay::SHELL_HEAD}, ui.page == Page::DocText);
-			if (pt.kind == Pointer::Down && h.moreHit.hit(x, y))
+			if (pt.kind == Pointer::Down && h.moreHit.hit(x, y) && !(ui.page == Page::DocPages && ui.pageReader->readerStatus.fullscreen))
 			{
-				docMenu = DOC_MENU_OPTIONS;
-				docMenuCursor = docMenuScroll = 0;
+				// the text's options; a PDF's More, as X
+				if (ui.page == Page::DocPages) openPagesMore(p);
+				else
+				{
+					docMenu = DOC_MENU_OPTIONS;
+					docMenuCursor = docMenuScroll = 0;
+				}
 				return false;
 			}
 			if (pt.kind == Pointer::Down && ui.page == Page::DocText && h.bookmarkHit.hit(x, y))
@@ -1165,7 +1103,7 @@ namespace bp
 		bool text = ui.page == Page::DocText;
 		bool full = !text && ui.pageReader->readerStatus.fullscreen;
 		bool single = !text && ui.pageReader->readerStatus.mode != MANGA_STRIP;
-		int nBtn = text ? 5 : single ? 9 : 4;
+		lay::ReaderPage pl = pagesLayout();	// (a PDF's boxes; the text's are docBtn and docPadRect)
 		if (pt.kind == Pointer::Down)
 		{
 			docPressed = -1;
@@ -1177,7 +1115,7 @@ namespace bp
 			docVel = 0;
 			docTouchX = pt.x;
 			docTouchY = pt.y;
-			if (full || (!text && !single && docPadRect().hit(x, y)))
+			if (full || (!text && !single && pl.surface.hit(x, y)))
 			{
 				// the strip under the finger, as the manga reader's
 				docTouch = true;
@@ -1190,18 +1128,21 @@ namespace bp
 				textCmds.push_back({TextReader::Hold, 0, (int64_t)now});
 				return false;
 			}
-			if ((text || !single) && docBarHit().hit(x, y))
+			// the bar: the text goes with the finger; the pages (decoded as they come) at the scrub's pace, the page it's
+			// let go on always
+			if (text && docBarHit().hit(x, y))
 			{
-				// the bar: the text goes with the finger; the pages (decoded as they come) at the scrub's pace, the
-				// page it's let go on always
-				if (text)
-					ui.slideGrab(SL_DOC, 0, {docBarTrack(), {0, 1, 0}, false, 0, textStatus.fraction}, x, y, p, [this](double f, bool, Player&) {
-						textCmds.push_back({TextReader::Jump, f, (int64_t)SDL_GetTicks()});
-					});
-				else if (ui.pageReader->readerStatus.pages > 1)
+				ui.slideGrab(SL_DOC, 0, {docBarTrack(), {0, 1, 0}, false, 0, textStatus.fraction}, x, y, p, [this](double f, bool, Player&) {
+					textCmds.push_back({TextReader::Jump, f, (int64_t)SDL_GetTicks()});
+				});
+				return false;
+			}
+			if (!text && pl.sliderHit.hit(x, y))
+			{
+				if (ui.pageReader->readerStatus.pages > 1)
 				{
 					ui.pageReader->mangaSliderPage = -1;
-					ui.slideGrab(SL_DOC, 0, {docBarTrack(), {0, (double)(ui.pageReader->readerStatus.pages - 1), 1}, false, SCRUB_MS, (double)ui.pageReader->readerStatus.page}, x, y, p,
+					ui.slideGrab(SL_DOC, 0, {pl.track, {0, (double)(ui.pageReader->readerStatus.pages - 1), 1}, false, SCRUB_MS, (double)ui.pageReader->readerStatus.page}, x, y, p,
 						[this](double v, bool, Player&) { ui.pageReader->mangaSeek((int)v); });
 				}
 				return false;
@@ -1213,8 +1154,14 @@ namespace bp
 				docPanStartY = (docPan.y0 + docPan.y1) / 2;
 				return false;
 			}
-			for (int i = 0; i < nBtn; i++)
-				if (docBtn(i).hit(x, y)) docPressed = i;
+			if (text)
+			{
+				for (int i = 0; i < 5; i++)
+					if (docBtn(i).hit(x, y)) docPressed = i;
+			}
+			else
+				for (int id = 0; id < DP_KEYS; id++)
+					if (pagesKeyRect(id).hit(x, y) && !pagesKeyOff(id)) docPressed = id;
 			return false;
 		}
 		if (pt.kind == Pointer::Move)
@@ -1289,41 +1236,21 @@ namespace bp
 		}
 		int i = docPressed;
 		docPressed = -1;
-		if (i < 0 || !docBtn(i).hit(x, y)) return false;
-		int64_t ms = now;
-		if (text)
+		if (i < 0) return false;
+		if (!text)
 		{
-			switch (i)
-			{
-			case 0: key(Button::Y, p); break;	// Contents
-			case 1: docMarksOpen(); break;	// Bookmarks
-			case 2: key(Button::Start, p); break;	// Text options
-			case 3: key(Button::Select, p); break;	// Book
-			case 4: ui.openLight(); break;	// Brightness
-			}
+			// a PDF's key: acted on where the finger lifts, as long as it is still on it
+			if (pagesKeyRect(i).hit(x, y)) pagesKeyAct(i, p);
 			return false;
 		}
-		if (single)
-		{
-			// (4: the page fit, saying its value; 5: Brightness; 8, under them: Vertical scroll, as X)
-			static const Button KEYS[9] = {Button::L, Button::R, Button::Down, Button::Up, Button::None, Button::None, Button::Y, Button::Start, Button::X};
-			if (i == 5) ui.openLight();
-			else if (i == 4)
-			{
-				Settings s = p.settings;
-				s.mangaFit = s.mangaFit == MANGA_FIT_WIDTH ? MANGA_FIT_PAGE : MANGA_FIT_WIDTH;
-				ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fit, (double)s.mangaFit, (int64_t)SDL_GetTicks()});
-				p.setSettings(s);
-			}
-			else key(KEYS[i], p);
-			return false;
-		}
+		if (!docBtn(i).hit(x, y)) return false;
 		switch (i)
 		{
-		case 0: key(Button::X, p); break;	// Single page
-		case 1: key(Button::Select, p); break;	// Fullscreen
-		case 2: ui.openLight(); break;	// Brightness
-		case 3: key(Button::Y, p); break;	// Pages
+		case 0: key(Button::Y, p); break;	// Contents
+		case 1: docMarksOpen(); break;	// Bookmarks
+		case 2: key(Button::Start, p); break;	// Text options
+		case 3: key(Button::Select, p); break;	// Book
+		case 4: ui.openLight(); break;	// Brightness
 		}
 		return false;
 	}
@@ -1641,155 +1568,427 @@ namespace bp
 	void Ui::Docs::drawDocPages(const Player& p)
 	{
 		Kit& k = *ui.kit;
-		int filter = std::clamp(p.settings.pdfFilter, 0, DOC_FILTERS - 1);
-		if (ui.pageReader->mangaPages)
-		{
-			ui.pageReader->drawMangaPages(p);
-			return;
-		}
 		if (ui.pageReader->readerStatus.fullscreen && ui.pageReader->readerBottom.on)
 		{
+			// the pages on this panel too; the Pages sheet over them lies on the plain ground
+			if (ui.pageReader->mangaPages)
+			{
+				ui.pageReader->drawMangaPages(p);
+				return;
+			}
 			ui.pageReader->drawMangaFull();
 			if (SDL_GetTicks() < docFullTagUntil)
 			{
-				ui.fillRound({170, 420, 300, 40}, BG, R_CHIP);
-				ui.drawTextMid("SELECT or B: one screen", 0, TEXT, W / 2, 440, 0, 2);
+				ui.fillRound({150, 420, 340, 40}, BG, R_CHIP);
+				ui.drawTextMid("B: one screen \xC2\xB7 SELECT: View", 0, TEXT, W / 2, 440, 0, 2);
 			}
-			if (docMenu != DOC_MENU_NONE) drawDocMenu(p);
 			return;
 		}
-		// the header: the document's name at 18 units, its line under it (the page, the zoom), More at the right
+		// the header: the document's name at 18 units, its line under it (the page, the zoom, the fit), More at the right
 		lay::ReaderHeader h = lay::readerHeader({0, 0, W, lay::SHELL_HEAD}, false);
 		Kit::Header hd;
 		hd.title = ui.pageReader->mangaReadChapterTitle.empty() ? fileName(docPath) : ui.pageReader->mangaReadChapterTitle;
 		int pages = ui.pageReader->readerStatus.pages;
+		bool strip = ui.pageReader->readerStatus.mode == MANGA_STRIP;
 		if (pages > 0)
-			hd.crumb = "Page " + std::to_string((ui.slideHeld(SL_DOC) ? (int)ui.slide.value : ui.pageReader->readerStatus.page) + 1) +
-				" of " + std::to_string(pages);
+			hd.crumb = "Page " + std::to_string(pagesShown() + 1) + " of " + std::to_string(pages);
 		if (ui.pageReader->readerStatus.zoomPct != 100)
 			hd.crumb += std::string(hd.crumb.empty() ? "" : "  \xC2\xB7  ") + std::to_string(ui.pageReader->readerStatus.zoomPct) + "%";
+		if (!strip && pages > 0) hd.crumb += std::string("  \xC2\xB7  ") + (p.settings.mangaFit == MANGA_FIT_WIDTH ? "Fit width" : "Fit page");
 		if (hd.crumb.empty()) hd.crumb = fileName(docPath);
 		hd.titleFont = F_SMALL;
 		hd.inlineTitle = true;
 		hd.more = true;
 		ui.kit->header(h.strip, hd);
-		bool single = ui.pageReader->readerStatus.mode != MANGA_STRIP;
 		if (!ui.pageReader->readerStatus.error.empty())
 		{
 			ui.drawTextMid(ui.pageReader->readerStatus.error, 1, DANGER, W / 2, 200, 560, 2);
-			ui.drawHints({{"B", "Close"}});
+			k.hints({{"B", "Close"}});
 			return;
 		}
-		if (single)
-		{
-			Rect pan = docPanRect();
-			ui.fill(pan, SCREEN);
-			if (docPan.page >= 0 && docPan.rgba && docPan.w > 0)
-			{
-				if (docPanTexPage != docPan.page || docPanTexSrc != docPan.rgba.get())
-				{
-					if (docPanTex) SDL_DestroyTexture(docPanTex);
-					docPanTex = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, docPan.w, docPan.h);
-					if (docPanTex)
-					{
-						SDL_UpdateTexture(docPanTex, nullptr, docPan.rgba->data(), docPan.w * 4);
-						SDL_SetTextureScaleMode(docPanTex, SDL_ScaleModeLinear);
-					}
-					docPanTexPage = docPan.page;
-					docPanTexSrc = docPan.rgba.get();
-				}
-				Rect tr = docPanThumb();
-				if (docPanTex)
-				{
-					tintTexture(docPanTex, filter, p.settings.readDim);
-					SDL_Rect dst{(int)std::lround(tr.x * sx), (int)std::lround(tr.y * sy), (int)std::lround(tr.w * sx), (int)std::lround(tr.h * sy)};
-					SDL_RenderCopy(ui.ren, docPanTex, nullptr, &dst);
-				}
-				// the part on the top panel, boxed (all of it shown: no box)
-				if (docPan.x1 - docPan.x0 < 0.995f || docPan.y1 - docPan.y0 < 0.995f)
-				{
-					int bx = tr.x + (int)std::lround(tr.w * docPan.x0), by = tr.y + (int)std::lround(tr.h * docPan.y0);
-					int bw = std::max(4, (int)std::lround(tr.w * (docPan.x1 - docPan.x0)));
-					int bh = std::max(4, (int)std::lround(tr.h * (docPan.y1 - docPan.y0)));
-					ui.fill({bx, by, bw, 2}, ACCENT);
-					ui.fill({bx, by + bh - 2, bw, 2}, ACCENT);
-					ui.fill({bx, by, 2, bh}, ACCENT);
-					ui.fill({bx + bw - 2, by, 2, bh}, ACCENT);
-				}
-			}
-			else ui.drawText(ui.pageReader->readerStatus.loading || !ui.pageReader->readerStatus.open ? "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.') : "",
-				1, DIM, pan.x + pan.w / 2, pan.y + pan.h / 2 - 12, 0, 2);
-			ui.drawText("Zoom " + std::to_string(ui.pageReader->readerStatus.zoomPct) + "%", 0, TEXT, pan.x, pan.y + pan.h + 10, pan.w);
-			ui.drawText(ui.pageReader->readerStatus.zoomPct > 100 ? "Drag the box \xC2\xB7 double-tap: zoom out" : "Double-tap: zoom in", 0, DIM, pan.x,
-				pan.y + pan.h + 36, pan.w);
-			const char* labels[9] = {"Prev", "Next", "Zoom -", "Zoom +", "Page fit", "Brightness", "Pages", "Options", "Vertical scroll"};
-			const char* keys[9] = {"L", "R", "DOWN", "UP", p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page", "", "Y",
-				"", "X"};
-			bool hints = p.settings.buttonHotkeys;
-			for (int i = 0; i < 9; i++)
-			{
-				// the page reader's key row: keys in Clean too, drawn by the kit
-				Rect b = docBtn(i);
-				bool off = (i == 0 && ui.pageReader->readerStatus.page <= 0) || (i == 1 && ui.pageReader->readerStatus.page + 1 >= pages) ||
-					(i == 2 && ui.pageReader->readerStatus.zoomPct <= 100);
-				Kit::Key kk;
-				kk.off = off;
-				kk.pressed = docPressed == i;
-				if (i == 5)
-				{
-					// Brightness: its sun, the state under it while Extra dim or a filter is on
-					std::string note = ui.lightNote(p);
-					kk.glyph = &G_SUN;
-					kk.lit = !note.empty();
-					k.key(b, kk);
-					if (!note.empty() && k.textW(note, F_I11B) <= b.w - 4)
-						ui.drawTextMid(note, F_I11B, ACCENT, b.x + b.w / 2, b.y + b.h - 8, b.w - 4, 2);
-					continue;
-				}
-				kk.label = labels[i];
-				kk.key = (hints || i == 4) ? keys[i] : "";	// (the fit's says which one is on)
-				k.key(b, kk);
-			}
-			ui.drawHints({{"LEFT/RIGHT", "Page"}, {"UP/DOWN", "Zoom"}, {"A", "2x"}, {"B", "Close"}, {"START", "Settings"}});
-		}
+		lay::ReaderPage l = pagesLayout();
+		if (!strip) drawPagesPan(p, l);
 		else
 		{
-			// under a finger: the page the finger is at (the pages themselves come at the reader's pace)
-			ui.drawSlider(docBarTrack(), ui.slideShare(SL_DOC, 0, pages > 1 ? ui.pageReader->readerStatus.page / (double)(pages - 1) : 0), ui.slideHeld(SL_DOC),
-				ui.slideHeld(SL_DOC) ? "Page " + std::to_string((int)ui.slide.value + 1) + " / " + std::to_string(pages) : "");
-			Rect pad = docPadRect();
-			ui.kit->readerSurface(pad, true, ui.pageReader->readerStatus.failedHere ? "" : "Drag to scroll");
-			if (ui.pageReader->readerStatus.failedHere) ui.drawTextMid("A page couldn't be shown \xC2\xB7 A: try again", 1, DANGER, W / 2, pad.y + pad.h / 2, 560, 2);
+			// the drag surface: the strip goes with the finger; a page that failed says so with Try again
+			ui.kit->readerSurface(l.surface, true, ui.pageReader->readerStatus.failedHere ? "" : "Drag to scroll");
+			if (ui.pageReader->readerStatus.failedHere)
+				ui.drawTextMid("A page didn\xE2\x80\x99t load \xC2\xB7 A: try again", 1, DANGER, W / 2, l.surface.y + l.surface.h / 2, 560, 2);
 			else if (ui.pageReader->readerStatus.loading)
-				ui.drawTextMid("Loading" + std::string(SDL_GetTicks() / 400 % 4, '.'), 1, DIM, W / 2, pad.y + pad.h / 2 + 40, 0, 2);
-			// each with its key under it, as the single page's
-			const char* labels[4] = {"Single page", "Fullscreen", "Brightness", "Pages"};
-			const char* keys[4] = {"X", "SELECT", "", "Y"};
-			bool hints = p.settings.buttonHotkeys;
-			for (int i = 0; i < 4; i++)
-			{
-				// the strip's key row: keys in Clean too, drawn by the kit
-				Rect b = docBtn(i);
-				Kit::Key kk;
-				kk.pressed = docPressed == i;
-				if (i == 2)
-				{
-					// Brightness: its sun, with what's on under it while Extra dim or a filter is
-					std::string note = ui.lightNote(p);
-					kk.glyph = &G_SUN;
-					kk.lit = !note.empty();
-					k.key(b, kk);
-					if (!note.empty() && k.textW(note, F_I11B) <= b.w - 4)
-						ui.drawTextMid(note, F_I11B, ACCENT, b.x + b.w / 2, b.y + b.h - 8, b.w - 4, 2);
-					continue;
-				}
-				kk.label = labels[i];
-				kk.key = hints ? keys[i] : "";
-				k.key(b, kk);
-			}
-			ui.drawHints({{"UP/DOWN", "Zoom"}, {"LEFT/RIGHT", "Scroll"}, {"B", "Close"}, {"START", "Settings"}});
+				ui.drawTextMid("Loading" + std::string(SDL_GetTicks() / 400 % 4, '.'), 1, DIM, W / 2, l.surface.y + l.surface.h / 2 + 40, 0, 2);
 		}
-		if (docMenu != DOC_MENU_NONE) drawDocMenu(p);
+		drawPagesSlider(l);
+		drawPagesKeys(p);
+		if (strip) k.hints({{"LEFT/RIGHT", "Scroll"}, {"L/R", "Page"}, {"UP/DOWN", "Zoom"}, {"X", "More"}, {"B", "Close"}});
+		else k.hints({{"LEFT/RIGHT", "Through the page"}, {"L/R", "Page"}, {"UP/DOWN", "Zoom"}, {"A", "200%"}, {"X", "More"}, {"B", "Close"}});
+		// the Pages sheet over all of it
+		if (ui.pageReader->mangaPages) ui.pageReader->drawMangaPages(p);
+	}
+
+	// ---- the page reader: a PDF, a comic (docs/redesign: pdf, pdf-view, pdf-more, pdf-pages) ----
+
+	int Ui::Docs::pagesShown() const
+	{
+		// under a finger on the slider: the page the finger is at (the pages come at the reader's pace)
+		return ui.slideHeld(SL_DOC) ? (int)ui.slide.value : ui.pageReader->readerStatus.page;
+	}
+
+	Ui::Rect Ui::Docs::pagesKeyRect(int id) const
+	{
+		lay::ReaderPage l = pagesLayout();
+		switch (id)
+		{
+		case DP_KEY_BACK: case DP_KEY_ON: case DP_KEY_OUT: case DP_KEY_IN: return l.keys[id - DP_KEY_BACK];
+		case DP_KEY_FIT: return l.fit;
+		case DP_KEY_PAGES: return l.row[0];
+		case DP_KEY_VIEW: return l.row[1];
+		case DP_KEY_LIGHT: return l.row[2];
+		default: return {0, 0, 0, 0};
+		}
+	}
+
+	bool Ui::Docs::pagesKeyOff(int id) const
+	{
+		const PageReader::ReaderStatus& st = ui.pageReader->readerStatus;
+		switch (id)
+		{
+		case DP_KEY_BACK: return st.page <= 0;
+		case DP_KEY_ON: return st.page + 1 >= st.pages;
+		case DP_KEY_OUT: return st.zoomPct <= 100;
+		case DP_KEY_PAGES: return st.pages <= 0;
+		default: return false;
+		}
+	}
+
+	void Ui::Docs::pagesKeyAct(int id, Player& p)
+	{
+		switch (id)
+		{
+		case DP_KEY_BACK: key(Button::L, p); break;
+		case DP_KEY_ON: key(Button::R, p); break;
+		case DP_KEY_OUT: key(Button::Down, p); break;
+		case DP_KEY_IN: key(Button::Up, p); break;
+		case DP_KEY_FIT: stepPagesFit(1, p); break;
+		case DP_KEY_PAGES: key(Button::Y, p); break;
+		case DP_KEY_VIEW: key(Button::Select, p); break;
+		case DP_KEY_LIGHT: ui.openLight(); break;
+		default: break;
+		}
+	}
+
+	void Ui::Docs::drawPagesPan(const Player& p, const lay::ReaderPage& l)
+	{
+		// the page small, the part on the top panel boxed: a finger drags the box
+		int filter = std::clamp(p.settings.pdfFilter, 0, DOC_FILTERS - 1);
+		Rect pan = l.pan;
+		ui.fillRound(pan, BUTTON, R_TILE);
+		if (docPan.page >= 0 && docPan.rgba && docPan.w > 0)
+		{
+			if (docPanTexPage != docPan.page || docPanTexSrc != docPan.rgba.get())
+			{
+				if (docPanTex) SDL_DestroyTexture(docPanTex);
+				docPanTex = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, docPan.w, docPan.h);
+				if (docPanTex)
+				{
+					SDL_UpdateTexture(docPanTex, nullptr, docPan.rgba->data(), docPan.w * 4);
+					SDL_SetTextureScaleMode(docPanTex, SDL_ScaleModeLinear);
+				}
+				docPanTexPage = docPan.page;
+				docPanTexSrc = docPan.rgba.get();
+			}
+			Rect tr = docPanThumb();
+			if (docPanTex)
+			{
+				tintTexture(docPanTex, filter, p.settings.readDim);
+				SDL_Rect dst{(int)std::lround(tr.x * sx), (int)std::lround(tr.y * sy), (int)std::lround(tr.w * sx), (int)std::lround(tr.h * sy)};
+				SDL_RenderCopy(ui.ren, docPanTex, nullptr, &dst);
+			}
+			// the part on the top panel, boxed (all of it shown: no box)
+			if (docPan.x1 - docPan.x0 < 0.995f || docPan.y1 - docPan.y0 < 0.995f)
+			{
+				int bx = tr.x + (int)std::lround(tr.w * docPan.x0), by = tr.y + (int)std::lround(tr.h * docPan.y0);
+				int bw = std::max(4, (int)std::lround(tr.w * (docPan.x1 - docPan.x0)));
+				int bh = std::max(4, (int)std::lround(tr.h * (docPan.y1 - docPan.y0)));
+				ui.kit->ring({bx, by, bw, bh}, theme::R_GRIP, ACCENT);
+			}
+		}
+		else ui.drawTextMid(ui.pageReader->readerStatus.loading || !ui.pageReader->readerStatus.open ? "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.') : "",
+			1, DIM, pan.x + pan.w / 2, pan.y + pan.h / 2, 0, 2);
+		if (ui.pageReader->readerStatus.failedHere)
+			ui.drawTextMid("A page didn\xE2\x80\x99t load \xC2\xB7 A: try again", F_I12, DANGER, pan.x + pan.w / 2, pan.y + pan.h - 16, pan.w - 16, 2);
+		// how the finger works it, under the keys
+		ui.drawTextMid("Drag the box to look around.", F_I12, DIM, l.help.x, l.help.y + 10, l.help.w);
+		ui.drawTextMid("Double-tap: 200% and back.", F_I12, DIM, l.help.x, l.help.y + 30, l.help.w);
+	}
+
+	void Ui::Docs::drawPagesSlider(const lay::ReaderPage& l)
+	{
+		int pages = ui.pageReader->readerStatus.pages;
+		if (pages <= 0) return;
+		int at = pagesShown();
+		double share = ui.slideShare(SL_DOC, 0, pages > 1 ? at / (double)(pages - 1) : 0);
+		ui.drawTextMid(std::to_string(at + 1), F_SMALL, TEXT, l.from.x + l.from.w / 2, l.from.y + l.from.h / 2, l.from.w, 2);
+		ui.kit->progress(l.track, share, {}, ui.slideHeld(SL_DOC), ui.slideHeld(SL_DOC) ? "Page " + std::to_string(at + 1) : "");
+		ui.drawTextMid(std::to_string(pages), F_SMALL, DIM, l.to.x + l.to.w / 2, l.to.y + l.to.h / 2, l.to.w, 2);
+	}
+
+	void Ui::Docs::drawPagesKeys(const Player& p)
+	{
+		Kit& k = *ui.kit;
+		bool caps = p.settings.buttonHotkeys;
+		bool strip = ui.pageReader->readerStatus.mode == MANGA_STRIP;
+		auto keyOf = [&](int id, const Glyph* g, const char* label, const char* cap) {
+			Kit::Key kk;
+			kk.glyph = g;
+			kk.label = label;
+			kk.key = caps ? cap : "";
+			kk.off = pagesKeyOff(id);
+			kk.pressed = docPressed == id;
+			k.key(pagesKeyRect(id), kk);
+		};
+		if (!strip)
+		{
+			// the hand's keys beside the page, then the fit: its value stepped by a tap
+			keyOf(DP_KEY_BACK, &G_LEFT, "Page", "L");
+			keyOf(DP_KEY_ON, &G_RIGHT, "Page", "R");
+			keyOf(DP_KEY_OUT, &G_MINUS, "Zoom", "DOWN");
+			keyOf(DP_KEY_IN, &G_PLUS, "Zoom", "UP");
+			Rect f = pagesKeyRect(DP_KEY_FIT);
+			k.flat(f, docPressed == DP_KEY_FIT ? PRESSED : BUTTON, R_BUTTON, Kit::edgeOf(BUTTON));
+			int cy = f.y + f.h / 2, right = f.x + f.w - 12;
+			ui.drawTextMid("Page fit", F_P16, DIM, f.x + 12, cy, 90);
+			ui.drawGlyphMid(G_LEFT, right - 76, cy, DIM);
+			ui.drawTextMid(p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page", F_P16, TEXT, right - 40, cy, 56, 2);
+			ui.drawGlyphMid(G_RIGHT, right - 4, cy, DIM);
+		}
+		keyOf(DP_KEY_PAGES, &G_BLOCKS, "Pages", "Y");
+		keyOf(DP_KEY_VIEW, &G_EYE, "View", "SELECT");
+		// Light: its sun; while Extra dim or a filter is on, what's on in place of the name
+		std::string note = ui.lightNote(p);
+		Kit::Key light;
+		light.glyph = &G_SUN;
+		light.label = note.empty() ? "Light" : note;
+		light.lit = !note.empty();
+		light.pressed = docPressed == DP_KEY_LIGHT;
+		k.key(pagesKeyRect(DP_KEY_LIGHT), light);
+	}
+
+	void Ui::Docs::stepPagesFit(int dir, Player& p)
+	{
+		// Page and Width (Fill would crop a document's margins away); the page under the view kept
+		(void)dir;
+		Settings s = p.settings;
+		s.mangaFit = s.mangaFit == MANGA_FIT_WIDTH ? MANGA_FIT_PAGE : MANGA_FIT_WIDTH;
+		ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fit, (double)s.mangaFit, (int64_t)SDL_GetTicks()});
+		p.setSettings(s);
+	}
+
+	void Ui::Docs::stepPagesTurn(int dir)
+	{
+		// each Rotate turns a quarter clockwise: back a quarter is three of them
+		int n = dir > 0 ? 1 : 3;
+		for (int i = 0; i < n; i++) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Rotate, 0, (int64_t)SDL_GetTicks()});
+	}
+
+	int Ui::Docs::pagesLayoutNow() const
+	{
+		const PageReader::ReaderStatus& st = ui.pageReader->readerStatus;
+		return st.fullscreen ? 2 : st.mode == MANGA_STRIP ? 1 : 0;
+	}
+
+	void Ui::Docs::setPagesLayout(int layout, Player& p)
+	{
+		layout = std::clamp(layout, 0, 2);
+		if (layout == pagesLayoutNow()) return;
+		int64_t now = SDL_GetTicks();
+		PageReader& r = *ui.pageReader;
+		bool strip = layout >= 1, full = layout == 2;
+		// Fullscreen is the strip over both panels: off first, then the mode, then on again if asked
+		if (!full && r.readerStatus.fullscreen) r.readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, 0, now});
+		if (strip != (r.readerStatus.mode == MANGA_STRIP))
+		{
+			// (each view opens at its fit: a page's zoom would cut a strip's lines at both edges)
+			if (r.readerStatus.zoomPct != 100) r.mangaZoomTo(1.0);
+			r.readerCmds.push_back({PageReader::ReaderCmd::Mode, (double)(strip ? MANGA_STRIP : MANGA_LTR), now});
+			Settings s = p.settings;
+			s.pdfStrip = strip;
+			p.setSettings(s);
+		}
+		if (full && !r.readerStatus.fullscreen)
+		{
+			r.readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, 1, now, (double)p.settings.mangaHinge});
+			docFullTagUntil = SDL_GetTicks() + 2500;
+		}
+	}
+
+	void Ui::Docs::openPagesMore(Player&)
+	{
+		std::string path = docPath;
+		ui.openMore([this, path](const Player& pl) {
+			MoreSpec m;
+			// (the document closed under it: nothing left to say)
+			if (ui.page != Page::DocPages || docPath != path) return m;
+			m.glyph = isPdfName(path) ? &G_PDF : &G_COMIC;
+			m.title = ui.pageReader->mangaReadChapterTitle.empty() ? fileName(path) : ui.pageReader->mangaReadChapterTitle;
+			if (ui.pageReader->readerStatus.pages > 0) m.note = std::to_string(ui.pageReader->readerStatus.pages) + " pages";
+			// a browser's page first, while it differs from this one
+			if (foreignShown()) m.rows.push_back({&G_BOOKMARK, foreignLabel(), "", "", [this](Player&) { foreignGo(); return false; }});
+			m.rows.push_back({&G_INFO, "Info", "", "", [this, path](Player&) { ui.openFileInfo(path, ""); return false; }});
+			m.rows.push_back({&G_FOLDER, "Show in folder", "", "", [this, path](Player& p) {
+				docClose(p);
+				ui.showInFiles(path, p);
+				return false;
+			}});
+			std::string light = ui.lightNote(pl);
+			m.rows.push_back({&G_SUN, "Light & filter", light.empty() ? "Off" : light, "", [this](Player&) { ui.openLight(); return false; }});
+			m.rows.push_back({&G_GEAR, "Reading settings", "", "", [this](Player& p) {
+				ui.openSettings(p, true);	// (B comes back to the page)
+				ui.settingsPage->openGroup(GROUP_READING, &p);
+				return false;
+			}});
+			return m;
+		}, "pdfmore");
+	}
+
+	// View (SELECT): how the page is shown, one sheet (docs/redesign: pdf-view). Layout first (Single page, Vertical
+	// scroll, Fullscreen: the strip over both panels), then the fit, the zoom, the turn, and Light & filter. UP / DOWN
+	// choose a row, LEFT / RIGHT change it at once (the page above follows), A steps it on (Light opens its sheet), SELECT
+	// or B close; a tap on a chip or a stepper's side changes it, outside the sheet closes. Going Fullscreen closes the
+	// sheet: the screen under it has become the page.
+	struct Ui::Docs::PagesView : Ui::Overlay
+	{
+		enum { ROW_LAYOUT, ROW_FIT, ROW_ZOOM, ROW_TURN, ROW_LIGHT, ROWS };
+		int cursor = ROW_LAYOUT;
+		explicit PagesView(Ui& u) : Overlay(u) {}
+		const char* name() const override { return "pdfview"; }
+		static lay::ListSheet layout() { return lay::listSheet(ROWS); }
+		Docs& docs() const { return *ui.docs; }
+		bool gone() const { return ui.page != Page::DocPages || !ui.pageReader->readerStatus.open; }
+		bool strip() const { return ui.pageReader->readerStatus.mode == MANGA_STRIP; }
+		bool rowOff(int row) const { return (row == ROW_FIT || row == ROW_TURN) && strip(); }
+		void change(int row, int dir, Player& p)
+		{
+			if (rowOff(row)) return;
+			switch (row)
+			{
+			case ROW_LAYOUT:
+			{
+				int to = std::clamp(docs().pagesLayoutNow() + dir, 0, 2);
+				docs().setPagesLayout(to, p);
+				if (to == 2) close();
+				break;
+			}
+			case ROW_FIT: docs().stepPagesFit(dir, p); break;
+			case ROW_ZOOM: ui.pageReader->mangaZoomStep(dir); break;
+			case ROW_TURN: docs().stepPagesTurn(dir); break;
+			case ROW_LIGHT: close(); ui.openLight(); break;
+			default: break;
+			}
+		}
+		bool key(Button b, Player& p) override
+		{
+			if (gone()) { close(); return false; }
+			switch (b)
+			{
+			case Button::Up: cursor = (cursor + ROWS - 1) % ROWS; break;
+			case Button::Down: cursor = (cursor + 1) % ROWS; break;
+			case Button::Left: change(cursor, -1, p); break;
+			case Button::Right: change(cursor, 1, p); break;
+			case Button::A:
+				// Layout steps round; the zoom goes to 200% or back, as A on the page
+				if (cursor == ROW_LAYOUT) { int to = (docs().pagesLayoutNow() + 1) % 3; docs().setPagesLayout(to, p); if (to == 2) close(); }
+				else if (cursor == ROW_ZOOM) ui.pageReader->mangaZoomToggle();
+				else change(cursor, 1, p);
+				break;
+			case Button::B: case Button::Select: close(); break;
+			default: break;
+			}
+			return false;
+		}
+		bool pointer(const Pointer& pt, int x, int y, Player& p) override
+		{
+			if (gone()) { close(); return false; }
+			lay::ListSheet s = layout();
+			if (pt.kind != Pointer::Down) return false;
+			if (!s.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
+			for (int row = 0; row < ROWS; row++)
+			{
+				Rect r = s.row(row);
+				if (!r.hit(x, y)) continue;
+				cursor = row;
+				if (row == ROW_LAYOUT)
+				{
+					Rect seg = lay::viewChoices(r);
+					for (int i = 0; i < 3; i++)
+						if (lay::cell(seg, 3, 6, i).hit(x, y))
+						{
+							docs().setPagesLayout(i, p);
+							if (i == 2) close();
+						}
+				}
+				else if (row == ROW_LIGHT) change(row, 1, p);
+				else
+				{
+					lay::SettingStepper st = lay::settingStepper(r);
+					if (st.back.hit(x, y) || st.fwd.hit(x, y)) change(row, st.back.hit(x, y) ? -1 : 1, p);
+				}
+			}
+			return false;
+		}
+		void draw(const Player& p) override
+		{
+			if (gone()) { close(); return; }
+			Kit& k = *ui.kit;
+			lay::ListSheet s = layout();
+			Kit::SheetHead head;
+			head.glyph = &G_EYE;
+			head.title = "View";
+			head.note = "Kept for the next document";
+			k.sheet(s, head);
+			const PageReader::ReaderStatus& st = ui.pageReader->readerStatus;
+			{
+				// Layout: its label, the three choices as chips
+				Rect r = s.row(ROW_LAYOUT);
+				Kit::Row row;
+				row.font = F_P16;
+				row.name = "Layout";
+				row.focused = cursor == ROW_LAYOUT;
+				k.row(r, row);
+				k.segment(lay::viewChoices(r), {"Single page", "Vertical scroll", "Fullscreen"}, docs().pagesLayoutNow());
+			}
+			auto stepper = [&](int id, const char* label, const std::string& value) {
+				Kit::SettingRow sr;
+				sr.label = label;
+				sr.off = rowOff(id);
+				sr.value = sr.off ? "Single page only" : value;
+				sr.focused = cursor == id;
+				k.settingRow(s.row(id), sr);
+			};
+			stepper(ROW_FIT, "Page fit", p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page");
+			stepper(ROW_ZOOM, "Zoom", std::to_string(st.zoomPct) + "%");
+			stepper(ROW_TURN, "Turn", std::to_string(st.rotation) + "\xC2\xB0");
+			Kit::SettingRow light;
+			light.label = "Light & filter";
+			std::string note = ui.lightNote(p);
+			light.value = note.empty() ? "Off" : note;
+			light.action = true;
+			light.focused = cursor == ROW_LIGHT;
+			k.settingRow(s.row(ROW_LIGHT), light);
+			k.hints(s.hints, {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"SELECT/B", "Close"}});
+		}
+		std::string signature(const Player&) const override
+		{
+			const PageReader::ReaderStatus& st = ui.pageReader->readerStatus;
+			char b[96];
+			snprintf(b, sizeof b, "%d|%d %d %d %d", cursor, st.mode, (int)st.fullscreen, st.zoomPct, st.rotation);
+			return b;
+		}
+	};
+
+	void Ui::Docs::openPagesView()
+	{
+		if (!ui.pageReader->readerStatus.open) return;
+		ui.pushOverlay(std::make_unique<PagesView>(ui));
 	}
 
 	std::string Ui::Docs::signature(const Player&) const

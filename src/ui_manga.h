@@ -379,6 +379,8 @@ namespace bp
 		std::string extNoticeText() const;
 		void drawExtNotice();
 		void drawMangaReadWaiting();
+		// the top panel's State card while a source's chapter is asked for (Ui::topPane); false: not waiting
+		bool waitingPane(PaneSpec& out) const;
 		void mangaReadWaitCancel();
 		int mangaProgPage = -1, mangaProgPages = -1;
 		float mangaProgWithin = 0;	// the place inside that page last kept (Vertical scroll)
@@ -877,6 +879,7 @@ namespace bp
 		void mangaSourceChapterReady(const Player& p);	// its pages are known: the read request, the reader page
 		void mangaSourceChapterStep(int dir, Player& p);
 		int mangaReadChapterTotal() const;
+		std::string mangaReadChapterName(int index) const;	// that chapter's title ("": not known)
 		std::string mangaNetSignature() const;			// this part of the page for signature()
 		// ---- the network folders (ui_manga_netfolders.cpp) ----
 		// Browse lists the saved connections; A on one lists its folders through the worker. A folder laid out as a
