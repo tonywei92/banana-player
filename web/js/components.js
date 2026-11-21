@@ -131,6 +131,8 @@ function observeNear(el, fn) {
 	return () => { nearFns.delete(el); nearObs.unobserve(el); };
 }
 export const coverUrl = p => p && !p.startsWith('bpnet://') ? '/api/cover?p=' + encodeURIComponent(p) : '';	// (a network file's art: the handheld's only)
+export const vthumbUrl = p => p && !p.startsWith('bpnet://') ? '/api/vthumb?p=' + encodeURIComponent(p) : '';	// the handheld's cached list thumbnail
+export const bookCoverUrl = p => p ? '/api/bookcover?p=' + encodeURIComponent(p) : '';
 export function Art({ src, seed, kind, k }) {
 	const [st, setSt] = useState(''), [near, setNear] = useState(false), gc = useRef(null);
 	useEffect(() => setSt(''), [src]);

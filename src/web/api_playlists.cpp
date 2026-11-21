@@ -535,14 +535,21 @@ namespace bp
 		});
 
 		// Open on handheld (p: a Recent row's path): a book, document or comic, at its place, on the handheld's screens
-		// (a network one is copied to the card first, with its progress there). Only Recent's own rows
+		// (a network one is copied to the card first, with its progress there). Recent's own rows, and the Books shelf's
+		// (a book on a card, resolved through the same guards as any file the web serves)
 		s.Post("/api/recent/open", [w](const httplib::Request& req, httplib::Response& res) {
 			std::string v = value(req, "p");
 			int status = 200;
-			std::string body = w->call([w, v](Player& p, Ui& u) {
+			std::string onCard;
+			{
+				httplib::Response quiet;	// (a refusal here only means "not a card's book": the history is asked next)
+				if (!isNetPath(v) && w->resolve(v, onCard, false, quiet) && !isBookName(onCard)) onCard.clear();
+			}
+			std::string body = w->call([w, v, onCard](Player& p, Ui& u) {
 				std::string path;
 				for (auto& h : p.history().items())
 					if (isNetPath(h) ? h == v : w->servedVirtual(h) == v) path = h;
+				if (path.empty()) path = onCard;
 				if (path.empty() || !(isDocumentName(path) || isComicName(path)))
 				{
 					WebCall::setStatus(404);

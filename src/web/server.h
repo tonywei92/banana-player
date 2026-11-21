@@ -158,6 +158,8 @@ namespace bp
 		std::string toVirtual(const std::string& real) const;
 		// toVirtual, but "" for what the web never serves (a denied folder, a hidden part): for lists it makes itself
 		std::string servedVirtual(const std::string& real) const;
+		// the state folder (set at start, never changed): where the web reads the handheld's caches from
+		std::string stateDir() const { return cfg.stateDir; }
 		// a real path (resolved) in a denied folder: a copy walking through a folder stops there
 		bool denies(const std::string& real) const;
 

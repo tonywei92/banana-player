@@ -13,11 +13,18 @@
 #include "mediaindex.h"
 #include "resume.h"
 #include "format.h"
+#include "playlist.h"
+#include "pagebook.h"
+#include "pagedecode.h"
+#include "epub.h"
+#include "videocache.h"
+#include "ui_docs.h"
 #include "httplib.h"
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <map>
+#include <set>
 #include <sys/stat.h>
 #include <errno.h>
 #include <string>
@@ -49,6 +56,70 @@ namespace bp
 			if (s.duration > 0) w.key("dur").num(s.duration);
 			if (s.video) w.key("video").boolean(true);
 			w.end();
+		}
+
+
+		// an image's type by its first bytes (the covers are sent as they are in the book)
+		std::string sniffMime(const std::string& b)
+		{
+			if (b.size() >= 4 && (unsigned char)b[0] == 0x89 && b[1] == 'P') return "image/png";
+			if (b.size() >= 6 && !memcmp(b.data(), "GIF8", 4)) return "image/gif";
+			if (b.size() >= 12 && !memcmp(b.data(), "RIFF", 4) && !memcmp(b.data() + 8, "WEBP", 4)) return "image/webp";
+			return "image/jpeg";
+		}
+
+		// a PDF's first page, drawn small, as a 24-bit BMP (the browser shows one; no encoder is linked in)
+		std::string bmpOf(const PageImage& img)
+		{
+			std::string out;
+			uint32_t row = ((uint32_t)img.w * 3 + 3) & ~3u, size = 54 + row * (uint32_t)img.h;
+			auto le = [&](uint32_t v, int n) { for (int i = 0; i < n; i++) out += (char)((v >> (8 * i)) & 0xFF); };
+			out += "BM"; le(size, 4); le(0, 4); le(54, 4); le(40, 4); le((uint32_t)img.w, 4); le((uint32_t)img.h, 4);
+			le(1, 2); le(24, 2); le(0, 4); le(row * (uint32_t)img.h, 4); le(2835, 4); le(2835, 4); le(0, 4); le(0, 4);
+			for (int y = img.h - 1; y >= 0; y--)
+			{
+				const uint8_t* px = &img.rgba[(size_t)y * img.w * 4];
+				for (int x = 0; x < img.w; x++) { out += (char)px[x * 4 + 2]; out += (char)px[x * 4 + 1]; out += (char)px[x * 4]; }
+				for (uint32_t pad = (uint32_t)img.w * 3; pad < row; pad++) out += '\0';
+			}
+			return out;
+		}
+
+		// a book's cover as the file holds it: an EPUB's own image (else its first picture), a comic's first page, a
+		// PDF's first page drawn. false: the book has none (the page keeps its drawn sleeve)
+		bool bookCoverBytes(const std::string& path, std::string& bytes, std::string& mime)
+		{
+			std::string low = path.substr(path.rfind('.') == std::string::npos ? path.size() : path.rfind('.'));
+			for (char& c : low) c = (char)tolower((unsigned char)c);
+			std::vector<uint8_t> b;
+			if (low == ".epub")
+			{
+				Epub e;
+				if (!e.open(path)) return false;
+				std::string name = e.coverImage();
+				if (name.empty()) { auto pics = e.pictures(); if (!pics.empty()) name = pics.front(); }
+				if (name.empty() || !e.read(name, b)) return false;
+			}
+			else if (isPageBookName(path))
+			{
+				std::string err;
+				auto book = openPageBook(path, err);
+				if (!book || book->pages().empty()) return false;
+				if (book->rendered())
+				{
+					PageImage img = book->render(0, 240, 2000000);
+					if (!img.ok()) return false;
+					bytes = bmpOf(img);
+					mime = "image/bmp";
+					return true;
+				}
+				if (!book->read(book->pages()[0], b)) return false;
+			}
+			else return false;
+			if (b.empty() || b.size() > (size_t)16 << 20) return false;
+			bytes.assign((const char*)b.data(), b.size());
+			mime = sniffMime(bytes);
+			return true;
 		}
 
 		// Upload's targets: a section's folder on a card is the one already there by any of its names (the first,
@@ -116,6 +187,103 @@ namespace bp
 			WebServer::json(res, w.out());
 		});
 
+
+		// a video's list thumbnail from the handheld's cache (<state>/cache/videos, keyed by path + size + mtime, as
+		// videoartworker writes it). 404 until the handheld has made one; the key changes with the file, so it
+		// is cacheable and answers If-None-Match
+		svr.Get("/api/vthumb", [&ws](const httplib::Request& req, httplib::Response& res) {
+			std::string real;
+			if (!ws.resolve(req.get_param_value("p"), real, false, res)) return;
+			struct stat st;
+			if (stat(real.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) return WebServer::fail(res, 404, "no thumbnail");
+			std::string name = videoCacheName(real, (long long)st.st_size, (int64_t)st.st_mtime);
+			std::string etag = "\"" + name + "\"";
+			if (req.get_header_value("If-None-Match") == etag) { res.status = 304; res.set_header("ETag", etag); return; }
+			VideoCacheFiles f = videoCacheFiles(ws.stateDir() + "/cache/videos", name);
+			std::string bytes;
+			if (FILE* fp = fopen(f.small.c_str(), "rb"))
+			{
+				char buf[8192];
+				size_t n;
+				while ((n = fread(buf, 1, sizeof buf, fp)) > 0 && bytes.size() < ((size_t)1 << 20)) bytes.append(buf, n);
+				fclose(fp);
+			}
+			if (bytes.empty()) return WebServer::fail(res, 404, "no thumbnail");
+			res.set_header("Cache-Control", "private, max-age=86400");
+			res.set_header("ETag", etag);
+			res.set_header("X-Content-Type-Options", "nosniff");
+			res.set_content(bytes, "image/jpeg");
+		});
+
+		// a book's cover (Books' tiles): as the file holds it; 404 for one with none
+		svr.Get("/api/bookcover", [&ws](const httplib::Request& req, httplib::Response& res) {
+			std::string real, bytes, mime;
+			if (!ws.resolve(req.get_param_value("p"), real, false, res)) return;
+			if (!isBookName(real) || !bookCoverBytes(real, bytes, mime)) return WebServer::fail(res, 404, "no cover");
+			res.set_header("Cache-Control", "private, max-age=3600");
+			res.set_header("X-Content-Type-Options", "nosniff");
+			res.set_content(bytes, mime);
+		});
+
+		// Music's Folders view: with no ?dir the music folders on the cards; with one, that folder's subfolders (with
+		// the songs under each) and the songs directly in it, from the index. Only under a music folder
+		svr.Get("/api/library/music", [&ws](const httplib::Request& req, httplib::Response& res) {
+			std::string dir = req.get_param_value("dir"), real;
+			if (!dir.empty() && !ws.resolve(dir, real, false, res)) return;
+			int status = 200;
+			std::string body = ws.call([&](Player&, Ui& u) {
+				JsonWriter w;
+				w.obj();
+				auto snap = u.mediaIndex ? u.mediaIndex->snapshot() : nullptr;
+				MediaFolders mf = mediaFolders();
+				if (!snap) { w.key("reading").boolean(true).end(); return w.out(); }
+				auto parentOf = [](const std::string& p) { size_t i = p.rfind('/'); return i == std::string::npos ? std::string() : p.substr(0, i); };
+				std::vector<std::string> rootsReal = mf.music;
+				if (dir.empty())
+				{
+					w.key("dir").str("").key("folders").arr();
+					for (auto& r : rootsReal)
+					{
+						std::string v = ws.servedVirtual(r);
+						if (v.empty()) continue;
+						int n = 0;
+						for (auto& s : snap->songs) if (s.path.compare(0, r.size() + 1, r + "/") == 0) n++;
+						w.obj().key("p").str(v).key("n").str(r.substr(r.rfind('/') + 1)).key("count").num(n).end();
+					}
+					w.end().key("songs").arr().end().end();
+					return w.out();
+				}
+				// the folder must be one of the music folders or inside one
+				std::string root;
+				for (auto& r : rootsReal)
+					if (real == r || real.compare(0, r.size() + 1, r + "/") == 0) root = r;
+				if (root.empty()) { WebCall::setStatus(404); return std::string("{\"error\":\"Not a music folder\"}"); }
+				std::map<std::string, int> sub;
+				std::vector<const MediaSong*> here;
+				for (auto& s : snap->songs)
+				{
+					if (s.path.compare(0, real.size() + 1, real + "/") != 0) continue;
+					std::string rest = s.path.substr(real.size() + 1);
+					size_t slash = rest.find('/');
+					if (slash == std::string::npos) here.push_back(&s);
+					else sub[rest.substr(0, slash)]++;
+				}
+				std::string up = real == root ? "" : ws.servedVirtual(parentOf(real));
+				w.key("dir").str(dir).key("up").str(up).key("name").str(real.substr(real.rfind('/') + 1)).key("folders").arr();
+				for (auto& kv : sub)
+				{
+					std::string v = ws.servedVirtual(real + "/" + kv.first);
+					if (!v.empty()) w.obj().key("p").str(v).key("n").str(kv.first).key("count").num(kv.second).end();
+				}
+				w.end().key("songs").arr();
+				std::sort(here.begin(), here.end(), [&](const MediaSong* a, const MediaSong* b) { return naturalLess(a->path, b->path); });
+				for (const MediaSong* s : here) songJson(w, *snap, *s, ws, true);
+				w.end().end();
+				return w.out();
+			}, 4000, status);
+			WebServer::json(res, body, status);
+		});
+
 		// one answer for the three pages: the counts and the tiles; ?album=?artist= asks for that one's songs
 		svr.Get("/api/library", [&ws](const httplib::Request& req, httplib::Response& res) {
 			int album = atoi(req.get_param_value("album").c_str());
@@ -177,6 +345,13 @@ namespace bp
 				// there is none, or one it never serves)
 				std::string musicDir = mf.music.empty() ? std::string() : ws.servedVirtual(mf.music.front());
 				w.key("musicDir").str(musicDir);
+				w.key("videoDirs").arr();
+				for (auto& d : mf.videos)
+				{
+					std::string v = ws.servedVirtual(d);
+					if (!v.empty()) w.str(v);
+				}
+				w.end();
 				// where Upload can send (the Videos, Music and Books tabs): each card the dashboard serves, named as the
 				// handheld's cards are, with the section folder already there ("" when there is none yet)
 				w.key("cards").arr();
@@ -262,14 +437,46 @@ namespace bp
 					}
 				}
 				w.end().key("books").arr();
-				for (auto& b : listBooks(bookFolders()))
 				{
-					std::string bp = ws.servedVirtual(b.path);
-					if (bp.empty()) continue;
-					w.obj().key("p").str(bp).key("n").str(nameOf(b.path));
-					if (b.size > 0) w.key("size").num(b.size);
-					if (b.mtime) w.key("mtime").num(b.mtime);
-					w.end();
+					// the handheld's own shelf: every book opened from anywhere (its place kept, newest first) and the
+					// cards' Books folders, merged (ui_books.cpp's build); a TXT is not a book
+					struct Shelf { std::string path; long long size = 0; int64_t mtime = 0; int at = -1; };
+					std::vector<Shelf> shelf;
+					std::set<std::string> seen;
+					u.docs->docPlacesLoad();
+					int at = 0;
+					for (auto& e : u.docs->docPlaces->all())
+					{
+						at++;
+						struct stat st;
+						if (!isBookName(e.path) || stat(e.path.c_str(), &st) != 0 || !seen.insert(e.path).second) continue;
+						shelf.push_back({e.path, (long long)st.st_size, (int64_t)st.st_mtime, at});
+					}
+					for (auto& b : listBooks(bookFolders()))
+						if (seen.insert(b.path).second) shelf.push_back({b.path, b.size, b.mtime, -1});
+					for (auto& b : shelf)
+					{
+						std::string bp = ws.servedVirtual(b.path);
+						if (bp.empty()) continue;
+						w.obj().key("p").str(bp).key("n").str(nameOf(b.path));
+						if (b.size > 0) w.key("size").num(b.size);
+						if (b.mtime) w.key("mtime").num(b.mtime);
+						if (b.at > 0) w.key("at").num(b.at);
+						// how far: a paged book (PDF, comic) a page of so many, an EPUB the share (as the Recent cards)
+						const ResumeEntry* e = u.docs->placeOf(b.path);
+						if (e && e->position > 0)
+						{
+							bool paged = e->aid == 2 || (e->aid != 1 && e->duration > 1);
+							w.key("started").boolean(true);
+							if (paged)
+							{
+								w.key("page").num((int)e->position + 1).key("pages").num((int)e->duration);
+								w.key("frac").num(e->duration > 0 ? std::clamp((e->position + 1) / e->duration, 0.0, 1.0) : 0.0);
+							}
+							else w.key("frac").num(std::clamp(e->duration, 0.0, 1.0));
+						}
+						w.end();
+					}
 				}
 				w.end().end();
 				return w.out();

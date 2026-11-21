@@ -1228,3 +1228,9 @@ input[type=range] { touch-action: pan-y; }
 @media (min-width: 700px) and (min-height: 521px), (min-width: 700px) and (hover: hover) {
 	.sleep-warn { left: auto; right: 16px; bottom: 96px; width: 440px; }
 }
+
+/* the Videos and Books lists' progress: a thin bar under the line (the yellow fill of the small player's) and a wider video tile */
+.mprog { display: block; height: 3px; margin-top: 6px; max-width: 220px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.mprog i { display: block; height: 100%; background: var(--yellow); border-radius: 2px; }
+.tile.wide { width: 64px; height: 36px; border-radius: 6px; }
+.tile.cover { width: 40px; height: 56px; border-radius: 4px; }

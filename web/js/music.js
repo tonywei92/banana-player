@@ -16,6 +16,7 @@ import { playHere, playPaths, view } from './browser-player.js';
 const VIEWS = [
 	{ k: 'albums', label: 'Albums' },
 	{ k: 'artists', label: 'Artists' },
+	{ k: 'folders', label: 'Folders' },
 	{ k: 'playlists', label: 'Playlists' },
 ];
 
@@ -50,6 +51,34 @@ function OneList({ data, kind, index, onBack }) {
 	</div>`;
 }
 
+// the Folders view: the music folders on the cards, then folders inside folders, then the songs (the handheld's
+// Music > Folders); a song plays with the folder's songs as the list
+function MusicFolders() {
+	const s = useStore();
+	const [dir, setDir] = useState(lsGet('lib.mdir') || ''), [page, setPage] = useState(null), [err, setErr] = useState('');
+	const go = d => { lsSet('lib.mdir', d); setDir(d); };
+	useEffect(() => {
+		setErr('');
+		get('/api/library/music', dir ? { dir } : null, { quiet: true }).then(setPage).catch(e => { if (dir) go(''); else setErr(errMsg(e)); });
+	}, [dir, s.epoch]);
+	if (err) return html`<div class="banner box surface">${err}</div>`;
+	if (!page) return html`<${Skeleton} />`;
+	if (page.reading) return html`<${Banner} title="Reading the cards…" />`;
+	const now = s.snap && s.snap.path, songs = (page.songs || []).filter(x => !x.gone);
+	const label = f => dir ? f.n : (page.folders.length > 1 ? 'SD' + (+f.p.split('/')[0] + 1) + ' \u00b7 ' : '') + f.n;
+	if (!page.folders.length && !songs.length) return html`<${Empty} icon="note" title="No music here" sub=${dir ? 'This folder has no songs.' : 'Music folders at the top of either card are listed here.'} />`;
+	return html`<div class="box surface listbox"><ul class="flist">
+		${dir && html`<li class="frow"><button class="main-btn" aria-label="Up one folder" onClick=${() => go(page.up || '')}><span class="tile folder"><${Icon} n="left" k=${2} /></span><span class="grow"><div class="fn ell">${page.name}</div><div class="fm">Up</div></span></button></li>`}
+		${page.folders.map(f => html`<li class="frow" key=${f.p}><button class="main-btn" aria-label=${'Open ' + f.n} onClick=${() => go(f.p)}>
+			<span class="tile folder"><${Icon} n="folder" k=${2} /></span>
+			<span class="grow"><div class="fn ell">${label(f)}</div><div class="fm">${plural(f.count, 'song', 'songs')}</div></span></button><${Icon} n="right" k=${2} cls="chev" /></li>`)}
+		${songs.map((x, i) => html`<li class=${'frow' + (x.p === now ? ' cur' : '')} key=${x.p}><button class="main-btn" aria-label=${'Play ' + x.title} onClick=${() => playList(songs.map(y => y.p), i, false)}>
+			<span class="tile xs dim-tile">${x.track || ''}</span>
+			<span class="grow"><div class="fn ell">${x.title}${x.video && html` <span class="chip tiny">VIDEO</span>`}</div>${x.album && html`<div class="fm ell">${x.album}</div>`}</span>
+			<span class="dur">${x.dur > 0 ? fmtTime(x.dur) : ''}</span></button></li>`)}
+	</ul></div>`;
+}
+
 export function Music() {
 	const s = useStore();
 	const [data, setData] = useState(null), [err, setErr] = useState('');
@@ -68,7 +97,7 @@ export function Music() {
 	const upMusic = () => uploadToSection('music', data.cards);
 	return html`<div class="page">
 		<div class="phead"><div class="row"><h1>Music</h1><${SectionUpload} kind="music" cards=${data.cards} /><${AppMenu} /></div>
-			<div class="chips" role="tablist" aria-label="Views">${VIEWS.map(w => html`<button class="chipbtn" role="tab" aria-pressed=${vk === w.k} onClick=${() => setView(w.k)}>${w.label} ${w.k === 'albums' ? albums.length : w.k === 'artists' ? artists.length : (s.pls || []).length}</button>`)}</div></div>
+			<div class="chips" role="tablist" aria-label="Views">${VIEWS.map(w => html`<button class="chipbtn" role="tab" aria-pressed=${vk === w.k} onClick=${() => setView(w.k)}>${w.label} ${w.k === 'albums' ? albums.length : w.k === 'artists' ? artists.length : w.k === 'folders' ? '' : (s.pls || []).length}</button>`)}</div></div>
 		${noFolder ? html`<${Empty} icon="note" title="No music here yet" sub="Albums and artists come from a folder named Music at the top of either card. Upload into it and they appear here." button="Upload to Music" onClick=${upMusic} />`
 			: reading ? html`<${Banner} title="Reading the cards…" />`
 			: vk === 'albums' ? html`<div class="lib-grid">${albums.map((a, i) => html`<button class="lib-tile" key=${a.i} onClick=${() => setOne({ kind: 'album', index: a.i })} aria-label=${'Open ' + a.name}>
@@ -79,6 +108,7 @@ export function Music() {
 						<span class="tile"><${Art} src="" seed=${a.name} kind="audio" /></span>
 						<span class="grow"><div class="fn ell">${a.name}</div><div class="fm">${plural(a.albums, 'album', 'albums')} \u00b7 ${plural(a.songs, 'song', 'songs')}</div></span></button>
 					<${Icon} n="right" k=${2} cls="chev" /></li>`)}</ul></div>`
+			: vk === 'folders' ? html`<${MusicFolders} />`
 			: html`<${Playlists} />`}
 	</div>`;
 }
