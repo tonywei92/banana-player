@@ -3474,8 +3474,8 @@ static void testTextFlick()
 	CHECK_EQ(drag(0.4, 0), 0.0);	// an ordinary drag (0.4 units a ms): stops at the lift
 	CHECK_EQ(drag(0.85, 0), 0.0);	// just under the threshold
 	double v = drag(2.0, 0);	// a flick, finger going up: the text glides on, at the gain's share
-	CHECK_EQ(v > 1.19 && v < 1.21, true);
-	CHECK_EQ(drag(-2.0, 0) < -1.19, true);	// and the other way
+	CHECK_EQ(v > 1.59 && v < 1.61, true);
+	CHECK_EQ(drag(-2.0, 0) < -1.59, true);	// and the other way
 	CHECK_EQ(drag(2.0, 60), 0.0);	// a flick that rested before the lift: none
 	CHECK_EQ(drag(50, 0) <= lay::Scroller::MAX_SPEED * Flick::GAIN + 1e-9, true);	// capped
 	Flick tap;

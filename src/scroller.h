@@ -104,7 +104,7 @@ namespace bp
 		{
 		public:
 			static constexpr double MIN_SPEED = 0.9;	// units per ms over the last 100 ms: a slower lift doesn't glide
-			static constexpr double GAIN = 0.6;	// the glide starts at this share of the finger's speed
+			static constexpr double GAIN = 0.8;	// the glide starts at this share of the finger's speed
 			static constexpr int64_t REST_MS = 40;	// a finger still this long before the lift: no glide
 			static constexpr double TAU_MS = 250;	// the text's glide: its speed falls by e every TAU_MS (a list's: 325)
 
