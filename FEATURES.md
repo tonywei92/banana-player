@@ -156,7 +156,7 @@ plays the same, and Search finds it. There is no list of all songs.
   4 songs`). **X** · More on a folder adds all its songs to a playlist or shows it in Files; on a song it is the
   song's own sheet. Only the index's songs are listed: a file the index doesn't read is in Files.
 
-**Play random**: the **Random** key at the right of the view chips (or **Y** on Albums, Artists and Folders) plays
+**Play random**: the shuffle key at the right of the view chips (or **Y** on Albums, Artists and Folders) plays
 50 songs of the whole library (music videos left out) in a random order, none twice, as a new list named **Random**.
 On the dashboard's Music page, **Play random** (beside the chips) does the same, playing where picks go.
 

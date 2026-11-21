@@ -11699,6 +11699,22 @@ static void testKitLayoutPages()
 	CHECK_EQ(mh.strip.h, CHIP_STRIP);
 	CHECK_EQ((int)mh.chips.chip.size(), 3);
 	CHECK(mh.chips.chip[0].y >= mh.strip.y && mh.chips.chip[0].y + mh.chips.chip[0].h <= mh.strip.y + mh.strip.h);
+	CHECK_EQ(mh.random.w, 0);	// not asked for
+	// Play random's key: at the strip's right end, clear of the last chip by a gap or more, whatever the counts
+	// (the handheld's inner box, 538 wide; four chips, the widths 4- and 5-digit counts give and wider)
+	for (int grow = 0; grow <= 80; grow += 4)
+	{
+		Box in{90, 60, 538, 300};
+		MusicHeader r = musicHeader(in, {118 + grow, 116 + grow, 126 + grow, 80}, true);
+		const Box& last = r.chips.chip.back();
+		if (r.random.w == 0) { CHECK(last.x + last.w + CHIP_GAP + MUSIC_RANDOM_W > in.x + in.w); continue; }
+		CHECK_EQ(r.random.w, MUSIC_RANDOM_W);
+		CHECK_EQ(r.random.x + r.random.w, in.x + in.w);
+		CHECK(r.random.x >= last.x + last.w + CHIP_GAP);
+		CHECK(r.random.y >= r.strip.y && r.random.y + r.random.h <= r.strip.y + r.strip.h);
+		for (const Box& hit : r.chips.hit) CHECK(hit.x + hit.w <= r.random.x || hit.x >= r.random.x + r.random.w);
+	}
+	CHECK(musicHeader({90, 60, 538, 300}, {118, 116, 126, 80}, true).random.w > 0);	// 4-digit counts: it shows
 
 	// a video: a 64 x 36 (16:9) thumb, the title, the length at the right, the second line, the bar at the foot
 	VideoRow v = videoRow({16, 100, 608, VIDEO_ROW_H});

@@ -575,7 +575,12 @@ namespace bp
 			MusicHeader h;
 			h.strip = {body.x, body.y, body.w, CHIP_STRIP};
 			h.chips = filterChips(h.strip, chipWidths);
-			if (random) h.random = {body.x + body.w - MUSIC_RANDOM_W, body.y + (CHIP_STRIP - CHIP_H) / 2, MUSIC_RANDOM_W, CHIP_H};
+			if (random)
+			{
+				int chipsEnd = h.chips.chip.empty() ? body.x : h.chips.chip.back().x + h.chips.chip.back().w + CHIP_GAP;
+				int x = body.x + body.w - MUSIC_RANDOM_W;
+				if (x >= chipsEnd) h.random = {x, body.y + (CHIP_STRIP - CHIP_H) / 2, MUSIC_RANDOM_W, CHIP_H};
+			}
 			return h;
 		}
 

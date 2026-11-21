@@ -21,3 +21,13 @@ Checked: core-test (named case, fuzz, Sections), a `--press` run (Music › Y, R
 Up next's heading; with `set:keep-playing=no` the list stopped at its last song), one headless Chrome run (the Music
 page's Play random → a rail list of 50; a page's Step to the end → 10 added; the queue's heading; Turn off → the
 setting off).
+
+## Play random's key: compact, at the chips' right (same day)
+
+The first key said "Random" and was 148 wide: on the handheld the four chips with their counts ran under it. It is
+now the shuffle glyph and its Y cap, 64 wide (`lay::MUSIC_RANDOM_W`), still at the strip's right end; the hint bar's
+"Y Random" names it. `lay::musicHeader` places it only where the last chip ends a `CHIP_GAP` or more before it, else
+leaves it out (w 0, Y still plays), so it can never sit on a chip; the release tests the same Rect with the real chip
+widths (it once passed none). Measured with 1234 albums / 1100 artists: the chips end near x 485 of 628. Not chosen:
+a first row over the list (Albums is a grid, and it would scroll away), More (two presses for the page's one verb).
+`Kit::key` with a glyph, a cap and no word drew the cap 8 right of centre (two gaps counted); fixed.
