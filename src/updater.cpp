@@ -182,19 +182,22 @@ namespace bp
 			};
 			clean();
 			if (r.shaUrl.empty()) { fail("The release has no checksum"); return; }
+			// cancelled: clean up and go back to idle. Not cancelled: nothing is touched (the files fetched so far are
+			// the next step's: cleaning here threw the checksum away, and every update said "damaged")
 			auto stopped = [&] {
-				clean();
 				if (!cancelled) return false;
+				clean();
 				std::lock_guard<std::mutex> g(lock);
 				why.clear();
 				st = State::Idle;
 				return true;
 			};
-			if (!fetchTo(r.shaUrl, sha)) { if (stopped()) return; fail("The download stopped (is Wi-Fi on?)"); return; }
+			if (!fetchTo(r.shaUrl, sha)) { if (stopped()) return; clean(); fail("The download stopped (is Wi-Fi on?)"); return; }
 			if (stopped()) return;
 			if (!fetchTo(r.zipUrl, zip))
 			{
 				if (stopped()) return;
+				clean();
 				fail("The download stopped (is Wi-Fi on?)");
 				return;
 			}
