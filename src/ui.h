@@ -191,7 +191,8 @@ namespace bp
 		std::string takeOpenRequest() { std::string r; r.swap(openRequest); return r; }
 		// a playlist picked in the browser (an item, Play, Shuffle play), once: the caller opens it (openPlaylist)
 		// names: a network folder's listing (open's folderNames); stay: opened behind the browser, not on the player
-		struct PlayRequest { std::vector<std::string> paths; int index = 0; PlaySource source; std::vector<std::string> names; bool stay = false; };
+		// rail: from the Music rail (Keep playing may add to it)
+		struct PlayRequest { std::vector<std::string> paths; int index = 0; PlaySource source; std::vector<std::string> names; bool stay = false; bool rail = false; };
 		bool takePlayRequest(PlayRequest& out)
 		{
 			if (playRequest.paths.empty()) return false;
@@ -491,6 +492,8 @@ namespace bp
 		// reorders nothing shown), the one playing marked; A plays a row as a pick from that list does (the Session's
 		// Open: Shuffle and Loop stay as set)
 		std::vector<std::string> upNextList(const Player& p, int& current) const;
+		// Up next's first song Keep playing added (its heading goes before it), -1 none
+		int upNextAddedFrom(const Player& p) const;
 		void playUpNext(int i, Player& p);
 		// the same chapter step, for main's lid-shut keys: they act on what plays, never on the page left open
 		// (public: main calls it; see the public block by places())

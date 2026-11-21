@@ -713,6 +713,9 @@ video::cue { font-size: var(--cue, 18px); color: #fff; background: rgba(0, 0, 0,
 .line .tm { font: 400 13px/1 var(--pixel); color: var(--dim); font-variant-numeric: tabular-nums; }
 .line.past .tt { color: var(--dim-btn); }
 .queue-band { margin: 2px 0 4px; }
+.list-head { display: flex; align-items: center; gap: var(--s3); margin: var(--s3) 0 var(--s1); padding: 0 var(--s2); }
+.list-head .lh-label { font: 400 13px/1.2 var(--pixel); color: var(--dim); }
+.list-head .rule { flex: 1; height: 2px; background: linear-gradient(90deg, var(--e-surface), transparent); border-radius: 1px; }
 .queue-band .num { font-size: 13px; color: var(--dim); }
 .radios { display: flex; flex-direction: column; gap: 2px; }
 .radio { display: flex; align-items: center; gap: 10px; min-height: var(--hit); padding: 0 var(--s3); text-align: left; border-radius: var(--r-btn); font-size: 15px; width: 100%; transition: background-color var(--t-ui); }

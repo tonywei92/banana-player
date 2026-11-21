@@ -109,6 +109,48 @@ namespace bp
 			return t;
 		}
 
+		int Sections::headRow(int k) const { return k < 0 || k >= (int)before.size() ? -1 : before[k] + k; }
+
+		bool Sections::isHead(int r) const
+		{
+			for (int k = 0; k < (int)before.size(); k++)
+				if (headRow(k) == r) return true;
+			return false;
+		}
+
+		int Sections::item(int r) const
+		{
+			if (r < 0 || r >= rows() || isHead(r)) return -1;
+			int heads = 0;
+			for (int k = 0; k < (int)before.size(); k++)
+				if (headRow(k) < r) heads++;
+			return r - heads;
+		}
+
+		int Sections::row(int i) const
+		{
+			if (i < 0 || i >= items) return -1;
+			int heads = 0;
+			for (int b : before)
+				if (b <= i) heads++;
+			return i + heads;
+		}
+
+		int Sections::step(int r, int dir, bool wrap) const
+		{
+			int n = rows();
+			if (items <= 0 || n <= 0) return -1;
+			dir = dir < 0 ? -1 : 1;
+			for (int k = 1; k <= n; k++)
+			{
+				int to = r + dir * k;
+				if (wrap) to = ((to % n) + n) % n;
+				else if (to < 0 || to >= n) return item(r) >= 0 ? r : step(r, -dir, false);
+				if (!isHead(to)) return to;
+			}
+			return -1;
+		}
+
 		int tabAt(const Tabs& t, int x, int y)
 		{
 			for (size_t i = 0; i < t.tab.size(); i++)

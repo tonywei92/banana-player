@@ -100,12 +100,12 @@ export async function probe1(p) {
 export const fileUrl = p => '/api/file?p=' + encodeURIComponent(p);
 // items: [{p}] picked in this page to play here: the session's Open (this tab the output, and where picks go), and the
 // renderer loads it as the answer comes (onSession). One this browser can't play plays on the handheld, said so
-export async function browserPlay(items, index, source, pos) {
+export async function browserPlay(items, index, source, pos, rail) {
 	if (store.conn !== 'ok') return false;
 	if (NO_HERE) { toast(NO_HERE_WHY + ': it plays on the handheld'); return false; }
 	const src = source || {};
 	try {
-		const r = await intent('Open', { q: items.map(x => x.p), index, t: (pos || 0).toFixed(2), skind: src.kind || 'folder', stitle: src.title || '', sid: src.id || '', to: 'browser' });
+		const r = await intent('Open', Object.assign({ q: items.map(x => x.p), index, t: (pos || 0).toFixed(2), skind: src.kind || 'folder', stitle: src.title || '', sid: src.id || '', to: 'browser' }, rail ? { rail: 1 } : {}));
 		return !!r && !r.rejected;
 	} catch (e) { toast(e.status === 0 ? "Couldn't reach your handheld" : errMsg(e)); return false; }
 }
@@ -880,7 +880,8 @@ async function withFolder(p) {
 // ('always': a video too, Home's Now playing card showing it)
 const sv = (stay, p) => stay === 'always' || (stay && kindOfName(p || '') !== 'video');
 // stay: a row's tap plays and the page stays (the small player shows it); true when it plays
-export async function playPaths(paths, folderSet, target, stay, shuffle) {
+// rail: from the Music page (Keep playing may add to the list)
+export async function playPaths(paths, folderSet, target, stay, shuffle, rail) {
 	if (!userTap()) return;
 	store.folderSet = folderSet;
 	target = target || store.target;
@@ -898,12 +899,12 @@ export async function playPaths(paths, folderSet, target, stay, shuffle) {
 			if (!shuffleOn()) { if (store.snap) store.snap.shuffleMode = true; try { await intent('SetShuffle', { on: 1 }); } catch (e) {} }
 			idx = Math.floor(Math.random() * items.length);
 		}
-		if (!await browserPlay(items, idx, src, 0)) return false;
+		if (!await browserPlay(items, idx, src, 0, rail)) return false;
 		if (!sv(stay, items[idx] && items[idx].p)) go('#/playing');
 		return true;
 	} else {
 		const was = B.active && !el.paused; B.leaving = true; el.pause();
-		try { await post('/api/play', Object.assign(paths.length === 1 && !shuffle ? { p: paths[0] } : { p: paths }, shuffle ? { shuffle: 1 } : {}, hhChoice())); }
+		try { await post('/api/play', Object.assign(paths.length === 1 && !shuffle ? { p: paths[0] } : { p: paths }, shuffle ? { shuffle: 1 } : {}, rail ? { rail: 1 } : {}, hhChoice())); }
 		catch (e) { B.leaving = false; if (was && store.conn === 'ok') el.play().catch(() => {}); toast(e.status === 0 ? "Couldn't start it on your handheld" : errMsg(e)); return false; }
 		if (B.active) dropBrowser();
 		if (!sv(stay, paths.length === 1 && !folderSet.has(paths[0]) ? paths[0] : '')) go('#/playing');
@@ -960,6 +961,16 @@ export async function whereToPlay(p, playable) {
 	const yes = await ask("This browser can't play it", baseName(p) + ' plays on your handheld only. Play it there?',
 		{ buttons: [{ label: 'Play on handheld', value: true }, { label: 'Cancel', value: null, cls: 'primary', focus: true }] });
 	return yes ? 'handheld' : null;
+}
+// Play random (the Music page): 50 songs of the whole library, drawn by the handheld, a new list where picks go
+export async function playRandom() {
+	if (!userTap()) return;
+	const target = store.target === 'browser' && !NO_HERE ? 'browser' : 'handheld';
+	try {
+		const r = await intent('Open', { random: 1, index: 0, t: '0', skind: 'folder', stitle: 'Random', sid: '', to: target });
+		if (r && r.rejected) { toast(r.reason === 'empty' ? 'No songs in the library yet' : "Couldn't play it: try again"); return; }
+		go('#/playing');
+	} catch (e) { toast(e.status === 0 ? "Couldn't reach your handheld" : errMsg(e)); }
 }
 // a list from one of its items, on the handheld (Up next's row of a file this browser can't play, said yes to)
 export async function playListOnHandheld(paths, index, src) {

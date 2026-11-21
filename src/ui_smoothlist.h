@@ -42,6 +42,9 @@ namespace bp
 			// PULL_REFRESH shows "Release to refresh"; its lift calls this (main's player) and the list rests a
 			// "Refreshing" row down for REFRESH_HOLD_MS
 			std::function<void(Player&)> refresh;
+			// row i is a section heading (lay::Sections; null: none): drawn as any row, at the same pitch, but no
+			// tap lands on it (rowAt says -1). The area's cursor, an item, never stops on one
+			std::function<bool(int)> heading;
 		};
 		static constexpr uint32_t REFRESH_HOLD_MS = 700;
 		// the list in the page's frame: its extent set, the rows shown drawn into slots where they changed, placed
@@ -64,7 +67,7 @@ namespace bp
 		bool takeFresh() { bool f = fresh; fresh = false; return f; }
 
 		// ---- where things are ----
-		// the row under (x, y) on the panel (-1: outside the view, or past the last row)
+		// the row under (x, y) on the panel (-1: outside the view, past the last row, or a heading)
 		int rowAt(int x, int y) const;
 		// row i's box on the panel at the offset now (whole units: what a touch tests)
 		Rect rowBox(int i) const;

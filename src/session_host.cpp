@@ -319,9 +319,10 @@ namespace bp
 	}
 
 	void SessionHost::open(const std::vector<std::string>& paths, int index, int sourceKind, const std::string& title,
-		const std::string& origin, const Output* out, double t, bool live, const std::string& sourceId)
+		const std::string& origin, const Output* out, double t, bool live, const std::string& sourceId, bool rail)
 	{
 		Intent i = make(IntentType::Open, origin);
+		i.rail = rail;
 		i.queue = paths;
 		i.index = index;
 		i.source.kind = sourceKind;
@@ -456,10 +457,30 @@ namespace bp
 		return k == SourceKind::Playlist ? 2 : k == SourceKind::NetFolder ? 1 : 0;
 	}
 
+	void SessionHost::keepPlaying(const Player& p)
+	{
+		// (§19) a Music rail list playing its last song: songs drawn from the library go on after it, once per song, so
+		// the music goes on with no gap and Up next shows them a song ahead
+		if (!p.settings.keepPlaying || !s.playing || !extendable(s) || extendedLoad == s.load || !songPool) return;
+		extendedLoad = s.load;
+		std::random_device rd;
+		Intent i = make(IntentType::Extend);
+		i.queue = drawSongs(songPool(), s.queue, KEEP_PLAYING_ADD, ((uint64_t)rd() << 32) ^ rd());
+		if (i.queue.empty())
+		{
+			fprintf(stderr, "session: keep playing: every song of the library is in the list already\n");
+			return;
+		}
+		Result r = submit(i, true);
+		fprintf(stderr, "session: keep playing: %zu songs added after the last (%s)\n", i.queue.size(),
+			r.reject.empty() ? "ok" : r.reject.c_str());
+	}
+
 	void SessionHost::pass(Player& p, Ui& u, const std::function<bool(const std::string&)>& tabUp,
 		const std::function<bool(const std::string&)>& tabBye)
 	{
 		uint32_t now = SDL_GetTicks();
+		keepPlaying(p);
 		// the handheld as the output: its reports (it is the clock)
 		if (s.index >= 0 && s.out.kind == OutKind::Handheld && !s.parked && holdsItem())
 		{

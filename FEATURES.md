@@ -156,6 +156,19 @@ plays the same, and Search finds it. There is no list of all songs.
   4 songs`). **X** · More on a folder adds all its songs to a playlist or shows it in Files; on a song it is the
   song's own sheet. Only the index's songs are listed: a file the index doesn't read is in Files.
 
+**Play random**: the **Random** key at the right of the view chips (or **Y** on Albums, Artists and Folders) plays
+50 songs of the whole library (music videos left out) in a random order, none twice, as a new list named **Random**.
+On the dashboard's Music page, **Play random** (beside the chips) does the same, playing where picks go.
+
+**Keep playing** (Settings › Music, on by default; also **X** · More on the song player, Up next's heading, and the
+dashboard): music started from the Music section (an album, an artist, a folder, Play random; on the dashboard its
+Music page) plays on past its end. When the list's last song starts, 10 more songs from the library that aren't in
+the list yet are added after it, in a random order, so the music goes on without a gap (and again at their last).
+Up next shows them under a heading, **Keep playing · songs picked for you**, with a **Turn off** key (a tap; **X**
+while the List sheet is open); turned off, the heading says **Songs picked for you** and offers **Turn on**, and the
+list ends at its last song as any list does. Playlists, Files, Videos and Recent never get songs added, nor a list
+with Repeat All or One. Picking a row of the list in Up next keeps the added songs marked.
+
 An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
 (**A**), **Shuffle** (**Y**) and **+** (Add to playlist, touch only). Under them the songs in disc, track and name
 order — a music video sits among them with a **VIDEO** pill and plays as one item of the album's list (Next goes on

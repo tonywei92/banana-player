@@ -1411,6 +1411,17 @@ namespace bp
 		return p.paths();
 	}
 
+	int Ui::upNextAddedFrom(const Player& p) const
+	{
+		int cur = -1;
+		auto list = upNextList(p, cur);
+		const Session& s = SessionHost::get().session();
+		if (s.added.empty() || list != s.queue) return -1;
+		for (int k = 0; k < (int)list.size(); k++)
+			if (std::find(s.added.begin(), s.added.end(), list[k]) != s.added.end()) return k;
+		return -1;
+	}
+
 	void Ui::playUpNext(int i, Player& p)
 	{
 		int cur = -1;
@@ -1430,6 +1441,9 @@ namespace bp
 			playRequest.source.kind = s.source.kind == 2 ? SourceKind::Playlist : s.source.kind == 1 ? SourceKind::NetFolder : SourceKind::Folder;
 			playRequest.source.title = s.source.title;
 		}
+		// (a row of a Music rail list: still one, what Keep playing added still marked)
+		const Session& ss = SessionHost::get().session();
+		playRequest.rail = ss.rail && list == ss.queue;
 		if (isNetPath(list[i])) playRequest.names = netFolderNames(netParent(list[i]));
 		fprintf(stderr, "ui: up next, row %d of %d (%s)\n", i + 1, (int)list.size(), entryTitle(list[i]).c_str());
 	}

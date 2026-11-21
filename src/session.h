@@ -128,6 +128,11 @@ namespace bp
 		std::string goneTab;
 		bool goneBye = false;	// the gone tab said goodbye (TabGone with on): its grace is TAB_BYE_GRACE_MS
 		std::vector<OriginSeen> seen;	// the last SEEN_MAX origins, least recently used first
+		// the list came from the Music rail (its views, folders, albums, artists, Play random; not a playlist, Files or
+		// Videos): Keep playing may add to it (Extend, §19). Set by Open, gone with the list
+		bool rail = false;
+		// the songs Keep playing added (each in queue): Up next shows them under their own heading
+		std::vector<std::string> added;
 	};
 
 	// with Shuffle: where the item is in the hidden order (-1 none). Next has somewhere to go (either mode)
@@ -138,6 +143,11 @@ namespace bp
 	// choice (apply): along the hidden order with Shuffle, round with a Loop, else the next of the list
 	constexpr int NEXT_NONE = -1, NEXT_ROUND = -2;
 	int nextPlace(const Session& s);
+	// Keep playing may add songs now: a Music rail list on its last item in the order it plays, Loop off (§19)
+	bool extendable(const Session& s);
+	// up to n of pool's songs not in `exclude` (nor twice), in a random order drawn from rnd: Play random's list and
+	// Keep playing's additions (the host's random number: the result is a function of its arguments)
+	std::vector<std::string> drawSongs(const std::vector<std::string>& pool, const std::vector<std::string>& exclude, int n, uint64_t rnd);
 	// where it has got to by now: pos, run on while it plays on a loaded output (not one waiting for a tap), within the
 	// item's length
 	double posNow(const Session& s, int64_t now);
@@ -151,7 +161,7 @@ namespace bp
 	enum class IntentType
 	{
 		Open, Play, Pause, Seek, SeekBy, Step, SetAudio, SetSub, SetSpeed, SetLoop, SetOutput, Stop, PhotoPark,
-		PhotoResume, FileGone, Loaded, Pos, Ended, CantPlay, Tick, TabGone, TabBack, Slept, Woke, Blocked, SetShuffle, Requeue, PlayNext
+		PhotoResume, FileGone, Loaded, Pos, Ended, CantPlay, Tick, TabGone, TabBack, Slept, Woke, Blocked, SetShuffle, Requeue, PlayNext, Extend
 	};
 	const char* intentName(IntentType t);
 
@@ -193,6 +203,9 @@ namespace bp
 		// list's (it must be the one playing). Nothing reloads
 		std::vector<int> remap;
 		// PlayNext: `path` goes in the queue right after the item that plays (nothing reloads)
+		// Open: the list comes from the Music rail (Keep playing may add to it). Extend: queue, the songs the host drew
+		// at random from the library, appended (those already in the list left out; nothing reloads)
+		bool rail = false;
 	};
 
 	struct Effect

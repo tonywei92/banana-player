@@ -209,8 +209,13 @@ namespace bp
 			// counts), as the mock-up's ext-section row has them. The name moves up to leave the line its room.
 			std::function<void(Rect)> mark;
 			std::string second;
+			// a section heading (lay::Sections): `name` small and dim over a rule, `key` an optional action chip at
+			// the right (headingAction is its box, what a tap tests); never focused, never chosen
+			bool heading = false;
 		};
 		void row(Rect r, const Row& row);
+		void heading(Rect r, const Row& row);	// (row() draws a heading row through it)
+		Rect headingAction(Rect r, const std::string& action) const;	// the action chip's box in a heading row
 		int pill(int right, int cy, const std::string& text, Pill tone = Pill::Live);	// its width
 		int pillW(const std::string& text) const;	// the width `pill` draws (text + its 12 of padding), for laying a run out
 		void toggle(int x, int cy, bool on);	// 40 x 22, its left edge at x

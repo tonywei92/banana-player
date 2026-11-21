@@ -47,7 +47,7 @@ namespace bp
 		j.key("clients").num(s.clients);
 		if (s.session.empty()) j.key("session").obj().key("boot").num(s.sessionBoot).key("v").num(s.sessionV).end();
 		else j.key("session").raw(s.session);
-		j.key("playlistSerial").num(s.playlistSerial).key("liked").boolean(s.liked).key("showHiddenFolders").boolean(s.showHiddenFolders);
+		j.key("playlistSerial").num(s.playlistSerial).key("liked").boolean(s.liked).key("showHiddenFolders").boolean(s.showHiddenFolders).key("keepPlaying").boolean(s.keepPlaying);
 		j.key("mangaOn").boolean(s.mangaOn);
 		j.key("incognito").boolean(s.incognito);
 		j.key("theme").str(s.theme).key("themeBg").str(s.themeBg);
@@ -65,7 +65,7 @@ namespace bp
 			a.duration != b.duration || a.speed != b.speed || a.volume != b.volume || a.volumeMax != b.volumeMax || a.eqOn != b.eqOn ||
 			a.eqPreset != b.eqPreset || a.eqGains != b.eqGains || a.fx != b.fx || a.loop != b.loop || a.shuffleMode != b.shuffleMode ||
 			a.shuffled != b.shuffled || a.chapter != b.chapter || a.sessionV != b.sessionV || a.sessionBoot != b.sessionBoot ||
-			a.clients != b.clients || a.playlistSerial != b.playlistSerial || a.liked != b.liked || a.showHiddenFolders != b.showHiddenFolders || a.mangaOn != b.mangaOn || a.incognito != b.incognito || a.theme != b.theme || a.chapters.size() != b.chapters.size() ||
+			a.clients != b.clients || a.playlistSerial != b.playlistSerial || a.liked != b.liked || a.showHiddenFolders != b.showHiddenFolders || a.keepPlaying != b.keepPlaying || a.mangaOn != b.mangaOn || a.incognito != b.incognito || a.theme != b.theme || a.chapters.size() != b.chapters.size() ||
 			a.hasTracks != b.hasTracks || a.audioTracks != b.audioTracks || a.subTracks != b.subTracks || a.aid != b.aid ||
 			a.sid != b.sid || a.sleepKind != b.sleepKind || a.sleepLabel != b.sleepLabel || a.sleepWarn != b.sleepWarn ||
 			a.sleepAt != b.sleepAt || a.sleepMinutes != b.sleepMinutes || a.sleepSnooze != b.sleepSnooze || a.sleepWord != b.sleepWord)

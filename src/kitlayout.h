@@ -93,6 +93,22 @@ namespace bp
 		// Outside the rows it is the nearest one (above them the first shown, below them the last), and always in 0..n-1
 		int rowAt(int y, int rowsY, int scroll, int shown, int n);
 
+		// ---- section headings among a list's rows (a labelled divider row, the row pitch of the others, that no key
+		// or tap lands on: Up next's "Keep playing" heading). The rows are the items with the headings put in; a
+		// cursor is an item, so keys never stop on a heading, and a row is mapped back to its item (-1: a heading) ----
+		struct Sections
+		{
+			int items = 0;
+			std::vector<int> before;	// the item each heading goes before, ascending (items: after the last)
+			int rows() const { return items + (int)before.size(); }
+			int headRow(int k) const;	// the k-th heading's row
+			bool isHead(int row) const;
+			int item(int row) const;	// the item on that row (-1: a heading, or outside the rows)
+			int row(int item) const;	// the row an item is on
+			// from `row`, the next row in `dir` (+1 / -1) that is an item, wrapping round or kept at the ends (-1: none)
+			int step(int row, int dir, bool wrap) const;
+		};
+
 		// ---- the bottom sheet (the More sheet: tiles, then rows in one or two columns) ----
 		constexpr int SHEET_HEAD = 54, SHEET_PAD = SP16, SHEET_ROW = 46, SHEET_TILE = 60, SHEET_CHIP_H = 52, SHEET_MIN = 226, SHEET_MAX = 470;
 		struct SheetSpec
@@ -843,12 +859,15 @@ namespace bp
 		// `chipWidths` is Kit::filterWidths' answer (the labels carry their counts); the chips are a 44-tall strip,
 		// and `chips` is the same lay::FilterChips the touches test. No line over them: the "From …" line is the
 		// header's crumb (screens.js music-albums), which once sat in the body as well, drawn twice.
+		// `random`: Play random's key at the strip's right end (MUSIC_RANDOM_W wide, a chip's height), when asked for
+		constexpr int MUSIC_RANDOM_W = 148;
 		struct MusicHeader
 		{
 			Box strip;
 			FilterChips chips;
+			Box random{};
 		};
-		MusicHeader musicHeader(Box body, const std::vector<int>& chipWidths);
+		MusicHeader musicHeader(Box body, const std::vector<int>& chipWidths, bool random = false);
 
 		// ---- a Videos row: a 64 x 36 (16:9) thumbnail or the kind's mark, the title, the length at the right, a
 		// size/date line under it, and a thin resume bar along the row's foot ----

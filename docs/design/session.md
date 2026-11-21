@@ -247,6 +247,7 @@ New route: `POST /api/intent` (JSON `{origin, seq, basis, type, …}`) → `{ok,
 | I15 | `picked ⇒ index ≥ 0` | `Open` sets it, `newItem` clears it |
 | I16 | `Ended` on the last song of a list with Loop off keeps that song: same `index`, same `load`, `pos == 0`, `!playing`, no `HhUnload`; a song with one after it goes on to it (`load` bumped, `pos == 0`, no `HhUnload`) (§16) | the reducer's `Ended` branch; checked by `checkTransition` (the named case and the fuzz) |
 | I17 | An applied `Step(n<0)` on a video never leaves it on the same item: it moves to another one or is rejected (§17) | the reducer's `Step` branch (only a song restarts); checked by `checkTransition` (the named cases and the fuzz) |
+| I18 | `added` (Keep playing's songs) are each in `queue`, and only a Music rail list (`rail`) has any; `rail ⇒ index ≥ 0`. An applied `Extend` keeps the item and its `load`, the list before it, and appends only new songs, all marked `added` (§19) | `Extend` (origin "hh" only) only at `extendable(s)`; `Open` sets `rail` (keeps `added` for the same rail list), a stop clears both; `FileGone`/`Requeue` prune `added`; checked by `checkTransition` |
 
 ### Failure modes
 
@@ -667,3 +668,25 @@ wrap) unless **Repeat All** is on, which goes round to the last as it always did
   playlist whose list no longer has the opened length is not followed (the host's existing rule).
 - Tests: a named case (queued after, no reload, Next reaches it, photo and nothing refused, Shuffle) and `PlayNext` in
   the fuzz (`fuzzPlayNext` must be reached).
+
+## 19. Play random and Keep playing (2026-11-21)
+
+- **The list's origin**: `Open` carries `rail` (the Music rail: its views, folders, albums, artists, Play random; the
+  dashboard's Music page). It is session state (`s.rail`), published (`rail`), gone with the list (a stop, the end of
+  a video list). A row picked in Up next of the same rail list opens it again with `rail` and keeps `added`.
+- **`Extend {queue}`** (the host's word only, origin "hh"): the songs the host drew at random from the library
+  (`drawSongs`, its random number in, so the reducer stays pure) go on after the last item. Applied only at
+  `extendable(s)`: a rail list on its last item in the order it plays (Shuffle's hidden order too), Loop off. Songs
+  already in the list, photos and repeats are left out (`none` when nothing is left); nothing reloads; with Shuffle the
+  new places go at the hidden order's end. Refused: `nothing`, `not-rail`, `loop`, `not-last`, `origin`.
+- **The host** (`SessionHost::keepPlaying`, each pass): the setting `keep-playing` on, the session playing and
+  `extendable`, once per `load`: `KEEP_PLAYING_ADD` (10) songs from `songPool` (main: the Music index's songs, music
+  videos left out). Done when the last song *starts*, so the next one follows with no gap and Up next shows them a
+  song ahead. Turned off, nothing is sent and the list ends as §16 says.
+- **`added`**: the songs Extend appended (published as virtual paths). Up next (the List sheet, the dashboard's queue)
+  puts a section heading before the first of them (`lay::Sections`, Kit's heading row, the web's `ListHead`).
+- **Play random**: `drawSongs(pool, {}, 50, rnd)` on the handheld (Music's Random key, Y) or in `/api/intent`'s
+  `Open` with `random=1` (the dashboard; the queue drawn on the main thread). Both are rail lists.
+- Tests: the named case (mid-list refused, a page's refused, the drawn songs appended less those in the list, no
+  reload, Next reaches them, `none`, the same list's row keeps the marks, Loop refused, a playlist refused, Stop clears)
+  and `Extend` in the fuzz (`fuzzExtended` must be reached), with I18 on every apply.

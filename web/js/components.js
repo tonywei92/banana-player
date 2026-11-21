@@ -145,6 +145,11 @@ export function PlArt({ p, k }) {
 	return html`<span class="mosaic gc">${[0, 1, 2, 3].map(i => html`<span><${GenCover} seed=${p.id + '/' + i} kind="audio" k=${k ? Math.max(1, k - 1) : 1} /></span>`)}</span>`;
 }
 
+// a section heading among a list's rows (the handheld's Kit heading row): a label over a rule, an optional action at the
+// right; not a row of the list (no tap plays it). Up next's "Keep playing" heading
+export function ListHead({ label, action, onAction }) {
+	return html`<div class="list-head" role="separator" aria-label=${label}><span class="lh-label">${label}</span><span class="rule"></span>${action && html`<button class="btn sm" onClick=${onAction}>${action}</button>`}</div>`;
+}
 export function Banner({ title, sub, children, cls }) {
 	return html`<div class="banner box surface ${cls || ''}" role="status"><div class="grow"><div class="bt">${title}</div>${sub && html`<div class="bs">${sub}</div>`}</div>${children}</div>`;
 }

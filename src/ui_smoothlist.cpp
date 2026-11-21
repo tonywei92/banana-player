@@ -217,7 +217,8 @@ namespace bp
 	int Ui::SmoothList::rowAt(int x, int y) const
 	{
 		if (x < last.view.x || x >= last.view.x + last.view.w) return -1;
-		return sc.rowAt(y, last.view.y, last.view.h, last.rowH, last.count);
+		int r = sc.rowAt(y, last.view.y, last.view.h, last.rowH, last.count);
+		return r >= 0 && last.heading && last.heading(r) ? -1 : r;
 	}
 
 	Ui::Rect Ui::SmoothList::rowBox(int i) const
