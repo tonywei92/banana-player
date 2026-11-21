@@ -1129,9 +1129,7 @@ namespace bp
 			docMoved = false;
 			docDownX = x;
 			docDownY = y;
-			docLastY = y;
-			docLastAt = now;
-			docVel = 0;
+			docFlick.press(pt.y * H, ui.touchMs);
 			docTouchX = pt.x;
 			docTouchY = pt.y;
 			// Fullscreen's navigation, while it is up: the sheet takes the finger (the rest of the panel is the page),
@@ -1198,10 +1196,7 @@ namespace bp
 				double dy = pt.y - docTouchY;
 				docTouchY = pt.y;
 				if (docMoved && dy != 0) textCmds.push_back({TextReader::Scroll, -dy, (int64_t)now});
-				Uint32 dt = std::max<Uint32>(1, now - docLastAt);
-				docVel = 0.6 * (-(y - docLastY) / (double)H / dt) + 0.4 * docVel;
-				docLastY = y;
-				docLastAt = now;
+				docFlick.move(pt.y * H, ui.touchMs);
 			}
 			else if (docTouch)
 			{
@@ -1223,8 +1218,10 @@ namespace bp
 		if (docTouch && text)
 		{
 			docTouch = false;
-			if (docMoved && now - docLastAt < 80 && std::abs(docVel) > 0.0002)
-				textCmds.push_back({TextReader::Fling, docVel, (int64_t)now});
+			// only a deliberate flick glides on (a share of the panel a ms, as the scroll's moves); a drag stops there
+			const double flick = docFlick.lift(ui.touchMs);
+			if (docMoved && flick != 0)
+				textCmds.push_back({TextReader::Fling, flick / H, (int64_t)now});
 			else if (!docMoved)
 			{
 				// a tap: the upper half a screen back, the lower half a screen on

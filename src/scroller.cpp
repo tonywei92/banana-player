@@ -229,5 +229,33 @@ namespace bp
 			int end = std::min(n, (int)std::ceil((off + view) / rowH));
 			return std::max(0, end - first);
 		}
+
+		// ---- the text reader's lift ----
+
+		void Flick::press(double y, int64_t ms)
+		{
+			samples.assign(1, {y, ms});
+		}
+
+		void Flick::move(double y, int64_t ms)
+		{
+			samples.push_back({y, ms});
+			size_t drop = 0;
+			while (drop + 2 < samples.size() && samples[drop].ms < ms - 2 * Scroller::VELOCITY_WINDOW_MS) drop++;
+			if (drop) samples.erase(samples.begin(), samples.begin() + drop);
+		}
+
+		double Flick::lift(int64_t ms)
+		{
+			std::vector<Sample> s;
+			s.swap(samples);
+			if (s.size() < 2 || ms - s.back().ms > REST_MS) return 0;
+			size_t first = 0;
+			while (first < s.size() && s[first].ms < ms - Scroller::VELOCITY_WINDOW_MS) first++;
+			if (first + 1 >= s.size() || s.back().ms <= s[first].ms) return 0;
+			double speed = -(s.back().y - s[first].y) / (double)(s.back().ms - s[first].ms);
+			if (std::fabs(speed) < MIN_SPEED) return 0;
+			return std::clamp(speed, -Scroller::MAX_SPEED, Scroller::MAX_SPEED) * GAIN;
+		}
 	}
 }

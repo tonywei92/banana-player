@@ -13,6 +13,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include <map>
+#include <set>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -126,6 +127,9 @@ namespace bp
 		bool nextRow(Pos& p);	// false at the end
 		bool prevRow(Pos& p);	// false at the start
 		int rowH(const Pos& p);
+		// the drawn rows within a screen past the view's end (down) or above its top, kept for the next frames
+		void keepNear(Pos p, bool more, double y, int h, bool down, std::map<std::pair<uint64_t, int>, int>& keep,
+			std::set<int>& shown);
 		bool scrollBy(double px);	// false when the text didn't move (its start or end)
 		int heightBelow(Pos p, int limit);	// the rows' height from p down, up to limit
 		// Book: a page's rows from p, as many as fit in height (at least one); false in ended: the text ran out

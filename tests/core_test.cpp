@@ -3445,6 +3445,33 @@ static void testMangaFilters()
 
 // the left stick's speed curve (issue 16): a dead zone round the middle, then squared, up to a panel's height a second
 // lay::Scroller (scroller.h): a list that follows the finger, glides, bands at its ends and keeps the cursor in view
+// the text reader's lift (lay::Flick): a drag at a reading pace stops where it lifts; only a deliberate flick glides
+static void testTextFlick()
+{
+	using lay::Flick;
+	auto drag = [](double speed, int64_t restMs) {
+		Flick f;
+		f.press(400, 0);
+		double y = 400;
+		for (int64_t t = 8; t <= 200; t += 8)
+		{
+			y -= speed * 8;
+			f.move(y, t);
+		}
+		return f.lift(200 + restMs);
+	};
+	CHECK_EQ(drag(0.4, 0), 0.0);	// an ordinary drag (0.4 units a ms): stops at the lift
+	CHECK_EQ(drag(0.85, 0), 0.0);	// just under the threshold
+	double v = drag(2.0, 0);	// a flick, finger going up: the text glides on, at the gain's share
+	CHECK_EQ(v > 1.19 && v < 1.21, true);
+	CHECK_EQ(drag(-2.0, 0) < -1.19, true);	// and the other way
+	CHECK_EQ(drag(2.0, 60), 0.0);	// a flick that rested before the lift: none
+	CHECK_EQ(drag(50, 0) <= lay::Scroller::MAX_SPEED * Flick::GAIN + 1e-9, true);	// capped
+	Flick tap;
+	tap.press(300, 0);
+	CHECK_EQ(tap.lift(50), 0.0);	// no moves at all
+}
+
 static void testScroller()
 {
 	using lay::Scroller;
@@ -16603,6 +16630,7 @@ int main()
 	testMangaFilters();
 	testStickScroll();
 	testScroller();
+	testTextFlick();
 	testLruCache();
 	testVolumeStep();
 	testPaged();
