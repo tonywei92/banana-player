@@ -921,6 +921,7 @@ namespace bp
 	{
 		int scroll = 0, pressed = -1, touchY = 0, startScroll = 0;
 		bool scrolled = false;
+		bool sawDown = false;	// (a press seen since it opened)
 		explicit FileInfoSheet(Ui& u) : Overlay(u) {}
 		const char* name() const override { return "fileinfo"; }
 		int total() const { return ui.infoGroupLines(); }
@@ -949,6 +950,7 @@ namespace bp
 			lay::FilesHeader h = lay::filesHeader(s.header);
 			if (pt.kind == Pointer::Down)
 			{
+				sawDown = true;
 				pressed = -1;
 				scrolled = false;
 				touchY = y;
@@ -967,6 +969,8 @@ namespace bp
 				return false;
 			}
 			if (pt.kind != Pointer::Up) return false;
+			// the lift of the touch that opened it (an Info key acting on the press): not a tap on the sheet
+			if (!sawDown) return false;
 			int at = pressed;
 			pressed = -1;
 			if (at == 200 && h.backHit.hit(x, y)) close();
