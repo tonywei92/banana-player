@@ -114,3 +114,35 @@ drag:30:329:420:329` → "reader: jump 2 -> 4", the Page key, a second middle ta
 itself after 4 s) and as a Manga chapter (`BP_BROWSE` on a folder with `Manga/<series>/`: the slider, a top-edge tap
 "tap (edge: turned)" with it up, a middle tap "closed the navigation"), and History's row in a shot. Not driven: a
 paged comic's side taps with the sheet up, Button hotkeys off, the handheld's panel and touch.
+
+## The Manga reader on the kit: View, More, bookmarks, the end card (2026-11-21, c-mangaui)
+
+Spec: `manga-read`, `comic-view`, `comic-more`, `manga-end`, `pdf-pages`' Bookmarks tab. This closes "Not done" above
+but for View's "Pan area" row.
+
+- **The reading page** (`lay::mangaReadPage`, drawn by `Manga::drawMangaRead`): the series over "chapter · Page N of M
+  · mode", the slider under the header, the pad, a row of six (`lay::MRK_*`; `mangaReadKeyRect` / `Off` / `Act` are
+  what draw and the finger both ask). The chapter keys are 64 wide (mark and cap) so Fullscreen keeps its key: the
+  spec's five had dropped it, against "switching to fullscreen should be easy". The slider is not mirrored for right
+  to left (`SlideSpec` has no reversed track).
+- **View** (`Manga::ComicView`, an overlay, ui_manga_reading.cpp) replaces the Reading menu (`mangaMenu`, `MGM_*`
+  gone). The sheet closes when Layout changes; its rows are ids, so the cursor keeps its row between Book's five and the
+  others' seven. **X is More** (`mangaOpenReadMore`, two columns by `moreTwoColumns`); the reading mode X stepped is
+  View's row. "Get this chapter" asks `mangaDlMarkFor` and queues with `mangaDlQueueChapters`, a source's chapter only.
+- **Bookmarks:** `ChapterProgress::marks`, a tenth column of `progress.tsv` written only when there are any (an older
+  build still reads the line); `MangaStore::toggleBookmark` / `bookmarks`; `setProgress` never touches them, a link's
+  merge keeps both sides'. A mark on a chapter with no place yet makes a hidden record (not in History). Files' PDFs and
+  comics use `doc-bookmarks.conf` with the page as the place (`Docs::pagesBookmarkToggle`). The grid counts **slots**
+  (`mpCount` / `mpPage`): a page on Pages, the i-th bookmark on Bookmarks, so its keys, finger and rows are one code.
+- **The top panel's notes:** `CardOverlay` takes a key and a foot place; `MangaReader::showNote` is a second card beside
+  the level card. `PageReader::topNote` is what the bottom panel asks ("Page 4 bookmarked": mpv's note would be under
+  the pages); `TopScreen::notesOnReader` shows it and the end card (`Manga::mangaEndCard`, `drawEndCard`) once each time
+  the end is reached. It is a 4 s card at the foot, not the spec's page of its own: `atEnd` is true while the last
+  page is still being read. Log lines: "reader: note (…)", "reader: end card (…)".
+
+Checked: build, `core-test` (`testKitLayoutReaders`, `testMangaStoreBookmarks`), `--press` on a generated two-chapter
+CBZ series opened from Manga › Browse › On this handheld (`…,A,B,R,R,A,A,A`: B puts the engine's sheet away first): the
+page, View (Reading mode stepped, Layout to Book from Fullscreen), More, a bookmark made (the note, the grid's mark, the
+Bookmarks tab, `progress.tsv`), the end card and line, R2 to the next chapter; Files' comic has the More row.
+Not driven: Get this chapter and Info on a source's chapter, the last chapter's "You're caught up" card, touches on
+the new row and tabs, Book's View rows, the handheld's panel (the card's size at 640x480, its fade over KMSDRM).

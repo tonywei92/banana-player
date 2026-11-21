@@ -29,6 +29,7 @@ namespace bp
 		bool hidden = false;		// cleared from the History; where to resume stays
 		float within = 0;	// Vertical scroll: how far into the page (0..1), so a tall page (a PDF's) resumes where it was
 		int64_t at = 0;	// when it was last here
+		std::vector<int> marks;	// the pages bookmarked (0-based, ascending): the reader's More and the Pages grid's tab
 	};
 
 	class MangaStore
@@ -85,6 +86,12 @@ namespace bp
 		std::vector<ChapterProgress> historyBySeries(int max) const;
 		// Read or unread for the chapters given; a chapter never opened becomes a record of, so it counts as unread.
 		void markRead(const std::string& seriesId, const std::vector<std::string>& chapterIds, bool read);
+		// A page's bookmark, put or taken away (true: it is bookmarked now). They are kept with the chapter's place,
+		// which a chapter never opened gets for them (hidden from the History, as markRead's), and setProgress never
+		// touches them: at most MAX_MARKS a chapter.
+		static constexpr size_t MAX_MARKS = 200;
+		bool toggleBookmark(const std::string& seriesId, const std::string& chapterId, int page);
+		std::vector<int> bookmarks(const std::string& chapterId) const;	// ascending; none: empty
 		// The reading history: every chapter is hidden from the History, the reading progress stays (the read
 		// marks and the page to resume).
 		void clearHistory();

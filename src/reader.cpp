@@ -435,6 +435,7 @@ namespace bp
 			for (int b : bandsWanted(i)) keys.insert(bandKey(i, b));
 		}
 		if (card.up()) keys.insert(CardOverlay::KEY);	// (the level card, while it's up)
+		if (note.up()) keys.insert(note.key);
 		pr.keepOnly(keys);
 		wantKeep.clear();
 		for (int k : keys)
@@ -1171,6 +1172,8 @@ namespace bp
 		bool ended = false;
 		if (card.frame(now, ended)) need = true;
 		if (ended) want();
+		if (note.frame(now, ended)) need = true;
+		if (ended) want();
 		spinNow = now;
 		// a loading ring on screen turns: a frame each step
 		if (pr.spun() && (int)(now / SPIN_MS) != lastSpin)
@@ -1188,6 +1191,15 @@ namespace bp
 		redrawSoon(2);	// (a card replaced while one is fully up: frame() alone wouldn't ask)
 	}
 
+	void MangaReader::showNote(std::shared_ptr<const std::vector<uint8_t>> rgba, int w, int h, int64_t untilMs)
+	{
+		if (!opened) return;
+		note.key = CardOverlay::KEY + 1;
+		note.foot = true;
+		note.show(pr, std::move(rgba), w, h, untilMs);
+		redrawSoon(2);
+	}
+
 	void MangaReader::draw(int w, int h)
 	{
 		if (!opened) return;
@@ -1196,6 +1208,7 @@ namespace bp
 			placed.push_back({b.page, b.x, b.y, b.w, b.h, !pr.has(b.page) && !failed.count(keyPage(b.page))});
 		// the level card over them while it's up (its texture goes with the next want() once it's down)
 		card.place(pr, placed, w, h, spinNow);
+		note.place(pr, placed, w, h, spinNow);
 		pr.setSpinStep((int)(spinNow / SPIN_MS));
 		uploads = pr.draw(placed, w, h);
 		if (forceFrames > 0) forceFrames--;

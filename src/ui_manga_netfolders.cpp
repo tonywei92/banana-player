@@ -399,7 +399,6 @@ namespace bp
 		mangaReadLive = false;
 		ui.pageReader->mangaSliderPage = -1;
 		mangaCtrlUntil = 0;
-		mangaMenu = false;
 		ui.pageReader->mangaZoomAsked = 100;
 		ui.pageReader->mangaPages = false;
 		ui.page = Page::MangaRead;

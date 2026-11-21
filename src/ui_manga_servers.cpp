@@ -1018,7 +1018,6 @@ namespace bp
 		mangaReadLive = false;
 		ui.pageReader->mangaSliderPage = -1;
 		mangaCtrlUntil = 0;
-		mangaMenu = false;
 		ui.pageReader->mangaZoomAsked = 100;
 		ui.page = Page::MangaRead;
 		if (p.settings.mangaOpenFull)

@@ -137,6 +137,9 @@ namespace bp
 		// a card over the pages (the level card, levelcard.h: the volume, brightness or zoom while reading), RGBA,
 		// until untilMs
 		void showOverlay(std::shared_ptr<const std::vector<uint8_t>> rgba, int w, int h, int64_t untilMs);
+		// a note over the pages' foot, centred (a bookmark made, the chapter's end: levelcard.h's note and end cards),
+		// beside the level card and until untilMs the same way
+		void showNote(std::shared_ptr<const std::vector<uint8_t>> rgba, int w, int h, int64_t untilMs);
 		// a few frames more (KMSDRM drops the first after a start or a wake)
 		void redrawSoon(int n = 5) { forceFrames = std::max(forceFrames, n); }
 		// a page still loading shows a turning ring: main wakes this often to draw its next step
@@ -169,7 +172,7 @@ namespace bp
 		void applyZoom();
 		void setFullscreen(bool on, int hinge480);
 		// the hinge's gap as it applies: only the Strip skips it (a picture runs on across the fold); the paged modes
-		// and Book put the panels edge to edge (the Reading menu shows Hinge gap for a fullscreen Strip only)
+		// and Book put the panels edge to edge (View's Hinge gap row is a fullscreen Strip's only)
 		int hingeGap() const { return readMode == MANGA_STRIP ? gapPx : 0; }
 		int layoutH() const { return full ? viewH * 2 + hingeGap() : viewH; }
 		int decodeW() const;	// the width wanted now: z times the view's, up to 2048 (decodePage's 2x cap still applies)
@@ -234,6 +237,7 @@ namespace bp
 		int bookS = 0;		// Book: the spread's first page
 		int bookPrevAngle = 0;	// the turn (L3) Book took over, given back when it ends
 		CardOverlay card;	// the level card over the pages
+		CardOverlay note;	// the note at their foot (showNote gives it its own texture key and place)
 		int gapPx = 0;
 		float tint[3] = {1, 1, 1};
 		struct Pix { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };

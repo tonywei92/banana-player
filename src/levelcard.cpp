@@ -156,6 +156,26 @@ namespace bp
 		return finish(c);
 	}
 
+	LevelCardImage drawEndCard(const std::string& fontsDir, int panelH, const std::string& label, const std::string& title,
+		const std::string& line)
+	{
+		Canvas c(fontsDir, panelH);
+		const float BIG = 26;
+		const int padX = c.px(22), padY = c.px(16), maxW = c.px(520), gap = c.px(8);
+		std::string a = c.fit(INTER, SMALL, label, maxW - 2 * padX, true);
+		std::string b = c.fit(PIXEL, BIG, title, maxW - 2 * padX);
+		std::string d = c.fit(INTER, 14, line, maxW - 2 * padX, true);
+		const int ha = a.empty() ? 0 : c.lineH(INTER, SMALL) + gap, hb = c.lineH(PIXEL, BIG), hd = d.empty() ? 0 : gap + c.lineH(INTER, 14);
+		int w = std::max({c.textW(INTER, SMALL, a), c.textW(PIXEL, BIG, b), c.textW(INTER, 14, d), c.px(200)}) + 2 * padX;
+		int h = padY * 2 + ha + hb + hd;
+		c.size(w, h);
+		c.box(0, 0, (float)w, (float)h, (float)c.px(R_TOP_CARD), TOP_CARD, CARD_ALPHA);
+		if (!a.empty()) c.text(INTER, SMALL, a, (w - c.textW(INTER, SMALL, a)) / 2, padY, TOP_SUB);
+		c.text(PIXEL, BIG, b, (w - c.textW(PIXEL, BIG, b)) / 2, padY + ha, TOP_TITLE);
+		if (!d.empty()) c.text(INTER, 14, d, (w - c.textW(INTER, 14, d)) / 2, padY + ha + hb + gap, TOP_SUB);
+		return finish(c);
+	}
+
 	LevelCardImage drawQuietMark(const std::string& fontsDir, int panelH, CardGlyph icon, const std::string& text)
 	{
 		// no card of its own: a faint ground just big enough to keep the words readable over a visualizer

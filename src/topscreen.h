@@ -53,6 +53,11 @@ namespace bp
 		// the manga reader: its pages on the top panel while a chapter is open (Ui asks for it: takeMangaRead)
 		MangaReader reader;
 		uint64_t zoomShownGen = 0;	// the chapter the zoom card follows (a new chapter opens at 100%: no card for that)
+		// the reader's notes at its pages' foot: what the bottom panel asked (PageReader::topNote), and the card at a
+		// chapter's end (Ui::Manga::mangaEndCard), shown once each time the end is reached
+		void notesOnReader(Ui& ui, const Player& player, Uint32 now);
+		bool endCardShown = false;
+		uint64_t endCardGen = 0;
 		// Files' text viewer (TXT, EPUB): its rows on the top panel while a document is open (Ui asks: takeTextRead)
 		TextReader textReader;
 		bool textReady = false;

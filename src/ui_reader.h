@@ -98,6 +98,11 @@ namespace bp
 		void mangaRetry() { readerCmds.push_back({ReaderCmd::Retry, 0, (int64_t)SDL_GetTicks()}); }
 		void drawMangaRetry(bool full);
 
+		// a note over the pages on the top panel (a line, an optional second: "Page 4 bookmarked"), asked by the bottom
+		// panel: main shows it for `ms` and clears this (mpv's note would be under the reader's pages)
+		struct TopNote { std::string line1, line2; int ms = 0; };
+		TopNote topNote;
+
 		// ---- fullscreen: the pages on this panel too ----
 		// the pages' textures on this panel (a page in slices of at most 2048 rows), the chapter they belong to, how
 		// many still wait to be made, when the page tag fades
@@ -147,6 +152,16 @@ namespace bp
 		SmoothList pagesList{ui};
 		bool pagesMoving = false;	// it moved last frame (its stop puts the cursor among the rows shown)
 		Rect mangaPagesView() const { return lay::pagesSheet().view; }
+		// its two tabs: every page, or the bookmarked ones alone (L / R, a tap on a tab). The cursor, the rows and the
+		// cells count slots: slot i is page i on Pages, the i-th bookmark on Bookmarks
+		int mangaPagesTab = 0;
+		std::vector<int> pageMarks;	// the bookmarked pages, ascending, as the grid opened (marksNow)
+		std::vector<int> marksNow() const;	// asked of the reader's owner: the Manga store's, or Docs' for a file
+		int mpCount() const { return mangaPagesTab ? (int)pageMarks.size() : readerStatus.pages; }
+		int mpPage(int slot) const { return !mangaPagesTab ? slot : slot >= 0 && slot < (int)pageMarks.size() ? pageMarks[slot] : 0; }
+		std::vector<std::string> mangaPagesTabLabels() const;
+		void mangaPagesTabSet(int tab);
+		void mpCentre();	// the cursor's row in the grid's middle, there at once
 		SDL_Texture* mpThumb(int i);	// page i's thumbnail texture (one made a frame), marked as drawn now
 		// the grid's own textures: one SDL_Texture per decoded page, made a few per frame so a turn never stalls
 		struct ThumbTex { SDL_Texture* tex = nullptr; int w = 0, h = 0; Uint32 used = 0; };

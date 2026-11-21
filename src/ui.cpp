@@ -198,7 +198,7 @@ namespace bp
 		if (page == Page::Settings || page == Page::About || page == Page::Main || page == Page::ExtSection ||
 			page == Page::Extensions || page == Page::Music || page == Page::Videos || page == Page::Books)
 			return true;
-		// Manga's pages in the shell (not the reader, whose START is its Reading menu): Settings, as everywhere;
+		// Manga's pages in the shell (not the reader, whose START is its View sheet): Settings, as everywhere;
 		// Manga settings is a row of their X menus and X on Manage extensions
 		if (manga->shellPage(page)) return true;
 		// Search: START is Done to the results while typing, and its page's own key otherwise

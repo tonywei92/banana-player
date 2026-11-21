@@ -409,7 +409,6 @@ namespace bp
 		void drawMangaBookBar(const Player& p);
 		bool mangaBookBarPointer(const Pointer& pt, int x, int y, Player& p);
 		void mangaBookBarAct(int which, Player& p);
-		void mangaCycleMode(Player& p);	// X while reading
 		// fullscreen's navigation over the pages (lay::readerFullNav, PageReader::drawFullNav: the Files reader's too): a
 		// tap in the middle shows it 4 s (a drag, the 4 s or another such tap hides it), and the finger that may still
 		// be a tap; the sheet's key under it (mangaCtrlPressed: a PageReader::FN_* id) and its slider
@@ -426,31 +425,32 @@ namespace bp
 		// finger). the first tap is recorded; a second tap within 300 ms and 20 units sends a ZoomPoint command
 		Uint32 mangaLastTapAt = 0;
 		int mangaLastTapX = 0, mangaLastTapY = 0;
-		// START while reading: the Reading menu, a compact sheet over the page (over the lower part of the fullscreen
-		// view): its cursor, and its keys (UP/DOWN move, LEFT/RIGHT change, A toggles / opens the last row, B or
-		// START close). Reading goes on behind it
-		bool mangaMenu = false;
-		int mangaMenuCursor = 0;
-		static constexpr int MGM_ROWS = 8, MGM_ROW_H = 34, MGM_TOP = 164;	// at most 8 rows, above the help line (452)
-		// the rows a menu may have, in order; mangaMenuRows() lists the ones that mean something now (the cursor is
-		// one of these ids, so it stays on its row as others come and go)
-		enum { MGM_VIEW, MGM_HOLD, MGM_MODE, MGM_FIT, MGM_ZOOM, MGM_HINGE, MGM_SWAP, MGM_LIGHT, MGM_PAGES, MGM_SETTINGS, MGM_COUNT };
-		// the View row: the pages on one screen, on both as one tall view (fullscreen), or Book (held sideways)
+		// ---- the reader's sheets, bookmarks and end card (ui_manga_reading.cpp) ----
+		// START while reading: View (docs/redesign: comic-view), a sheet over the page (over the pages in Fullscreen and
+		// Book, upright). Its Layout row: the pages on one screen, on both as one tall view (fullscreen), or Book
 		enum { MV_ONE, MV_FULL, MV_BOOK, MV_COUNT };
-		int mangaViewAsked = -1, mangaHoldAsked = 0;	// what the menu just asked, till the reader's status says it
-		int mangaHoldLast = MANGA_BOOK_LEFT;	// how Book is held when the View row turns it on
+		int mangaHoldLast = MANGA_BOOK_LEFT;	// how Book is held when the Layout row turns it on
 		int mangaViewNow() const;
-		int mangaHoldNow() const;
-		std::vector<int> mangaMenuRows() const;
 		void mangaSetView(int v, Player& p);
-		Rect mangaMenuRect() const { return {0, 132, W, H - 132}; }
-		Rect mangaMenuRowRect(int i) const { return {16, MGM_TOP + i * MGM_ROW_H, 608, MGM_ROW_H - 4}; }
-		void mangaOpenReadingMenu();
-		bool mangaMenuKey(Button b, Player& p);
-		void mangaMenuStep(int dir, Player& p);
-		void mangaMenuAct(Player& p);
-		void drawMangaReadingMenu(const Player& p);
-		void mangaSetMode(int m, Player& p);	// this series' reading mode (X and the menu)
+		struct ComicView;
+		void mangaOpenView();
+		// X (and the header's key): More (comic-more): this chapter at the left, the series and the app at the right
+		void mangaOpenReadMore();
+		bool mangaReadIsRead() const;
+		void mangaReadMarkRead();	// Mark read / Mark unread
+		// Get this chapter: what the row says (`note`), and false when there is nothing to get (on the card, queued,
+		// not a source's)
+		bool mangaReadCanGet(std::string& note) const;
+		void mangaReadGet(Player& p);
+		void mangaReadInfo();
+		// the page bookmarks of the chapter open (the store's, kept with its place), and the one on this page
+		std::vector<int> mangaMarksHere() const;
+		bool mangaPageMarked() const;
+		void mangaBookmarkToggle(Player& p);
+		// the top panel's card at a chapter's end (docs/redesign: manga-end): false while there is none to show
+		struct EndCard { std::string label, title, line; };
+		bool mangaEndCard(EndCard& out, const Player& p) const;
+		void mangaSetMode(int m, Player& p);	// this series' reading mode (View's row)
 		// the first fullscreen ever: a toast in the panel's middle for 2 s (mangaFullSeen remembers it)
 		Uint32 mangaToastUntil = 0;
 		int mangaBookToast = 0;	// MANGA_BOOK_*: the toast says how to hold the handheld for Book (0: how to leave fullscreen)
@@ -537,24 +537,20 @@ namespace bp
 		Rect mangaResumeRect() const { return mangaSeriesKeys({150, 0, 64})[0]; }
 		Rect mangaHeartRect() const { return mangaSeriesKeys({150, 0, 64})[2]; }
 		// the reading page's own pieces
-		Rect mangaAreaRect() const { return {16, 70, 608, 260}; }	// (the page line below keeps 8 clear of it)
-		Rect mangaSliderRect() const { return {40, 352, 560, 22}; }
-		Rect mangaSliderTrack() const { Rect r = mangaSliderRect(); return {r.x, r.y + 8, r.w, 10}; }
-		// where a finger takes it: the panel's width, from the page line's foot to the chapter row (8 more than the
-		// slider's own 22 above; below, what the row leaves)
-		Rect mangaSliderHit() const { Rect r = mangaSliderRect(); return {16, r.y - 4, 608, r.h + 14}; }
+		// (lay::mangaReadPage: the slider under the header, the finger's surface, the row of six)
+		Rect mangaAreaRect() const { return lay::mangaReadPage().surface; }
+		Rect mangaSliderTrack() const { return lay::mangaReadPage().track; }
+		Rect mangaSliderHit() const { return lay::mangaReadPage().sliderHit; }
 		void mangaSlide(int x, int y, Player& p);	// the slider grabbed (the reading page's, fullscreen's sheet's)
 		void drawMangaSlider();
-		// the chapter row: four buttons of one size across the panel's 608 (146 wide, 8 apart: 16 to 624)
-		// (52 tall: room for the key under the label, Button hotkeys on)
-		Rect mangaChapterCell(int i) const { return rowCell({16, 396, 608, 52}, 4, 8, i); }	// four of 146
-		Rect mangaPrevRect() const { return mangaChapterCell(0); }
-		Rect mangaFullRect() const { return mangaChapterCell(1); }	// the Fullscreen button: what SELECT does
-		Rect mangaLightRect() const { return mangaChapterCell(2); }	// the Brightness sheet
-		Rect mangaNextRect() const { return mangaChapterCell(3); }
+		// the row's keys (lay::MRK_*): what draw and the finger both ask; off: nothing to do there now
+		Rect mangaReadKeyRect(int k) const { return lay::mangaReadPage().row[k]; }
+		bool mangaReadKeyOff(int k) const;
+		void mangaReadKeyAct(int k, Player& p);
+		void drawMangaReadKeys(const Player& p);
 		static constexpr int MG_ROWS = 6;	// the keys' page step on the old lists
 		// the touch ids: their own space (mangaPointer acts on them; act() never sees them)
-		static constexpr int MG_RESUME = 3080, MG_HEART = 3081, MG_PREV = 3100, MG_NEXT = 3101, MG_FULL = 3102, MG_LIGHT = 3103;
+		static constexpr int MG_RESUME = 3080, MG_HEART = 3081, MG_READ_KEY = 3100;	// MG_READ_KEY + lay::MRK_*
 
 		// ---- the manga reader's Sources page (ui_manga_sources.cpp) ----
 		// Installed / Available / Repositories, three sub-lists of a page of its own (X on Browse): LEFT/RIGHT step

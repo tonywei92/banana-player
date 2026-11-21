@@ -4556,6 +4556,45 @@ static void testMangaStoreLinkedDownloads()
 	}
 }
 
+static void testMangaStoreBookmarks()
+{
+	// a page's bookmark is put and taken away, kept in order, saved with the chapter's place and left alone by it
+	std::string dir = "/tmp/bp-test-manga-marks-" + std::to_string((long)getpid());
+	const std::string sid = "local:/sd/Manga/Ember", cid = "/sd/Manga/Ember/Chapter 1.cbz";
+	{
+		MangaStore m;
+		CHECK_EQ(m.load(dir), true);
+		CHECK_EQ(m.bookmarks(cid).size(), (size_t)0);
+		CHECK_EQ(m.toggleBookmark(sid, cid, 7), true);	// (before any place was saved)
+		CHECK_EQ(m.toggleBookmark(sid, cid, 2), true);
+		CHECK_EQ(m.toggleBookmark(sid, cid, 11), true);
+		CHECK_EQ(m.toggleBookmark(sid, cid, 7), false);
+		CHECK_EQ(m.toggleBookmark(sid, "", 1), false);
+		CHECK_EQ(m.bookmarks(cid).size(), (size_t)2);
+		CHECK_EQ(m.bookmarks(cid)[0], 2);
+		CHECK_EQ(m.bookmarks(cid)[1], 11);
+		CHECK_EQ(m.history(10).size(), (size_t)0);	// a mark alone is not a chapter read
+		ChapterProgress p;
+		p.seriesId = sid;
+		p.chapterId = cid;
+		p.page = 5;
+		p.pages = 20;
+		p.at = 100;
+		m.setProgress(p);
+		CHECK_EQ(m.bookmarks(cid).size(), (size_t)2);
+		CHECK_EQ(m.save(), true);
+	}
+	{
+		MangaStore m;
+		CHECK_EQ(m.load(dir), true);
+		CHECK_EQ(m.progress(cid)->page, 5);
+		CHECK_EQ(m.bookmarks(cid).size(), (size_t)2);
+		CHECK_EQ(m.bookmarks(cid)[1], 11);
+	}
+	std::string rm = "rm -rf '" + dir + "'";
+	(void)!system(rm.c_str());
+}
+
 static void testMangaStore()
 {
 	// an extension's series found again under a new id: its entry, heart and chapters' places move over
@@ -11347,6 +11386,29 @@ static void testKitVariantConfirm()
 static void testKitLayoutReaders()
 {
 	using namespace lay;
+	{
+		// the Manga reader's page: the slider under the header, the surface, the row of six; nothing overlaps and
+		// everything stays above the hint bar
+		MangaReadPage m = mangaReadPage();
+		CHECK_EQ(m.from.y, READER_TOP);
+		CHECK(m.sliderHit.y + m.sliderHit.h <= m.surface.y + SP6);
+		CHECK(m.surface.y + m.surface.h <= READER_ROW_Y - GAP);
+		CHECK(m.end.y >= m.surface.y && m.end.y + m.end.h <= m.surface.y + m.surface.h);
+		CHECK_EQ(m.row[MRK_PREV].x, MARGIN);
+		CHECK_EQ(m.row[MRK_NEXT].x + m.row[MRK_NEXT].w, PANEL_W - MARGIN);
+		for (int i = 0; i + 1 < MANGA_READ_KEYS; i++)
+		{
+			CHECK(!overlaps(m.row[i], m.row[i + 1]));
+			CHECK(m.row[i].w >= (i == MRK_PREV ? MANGA_READ_END_W : 100));
+		}
+		CHECK(m.row[0].y + m.row[0].h <= PANEL_H - HINTS_H);
+		CHECK_EQ(m.row[MRK_VIEW].hit(m.row[MRK_VIEW].x + 4, READER_ROW_Y + 4), true);
+		// the Pages sheet's tabs sit in its header, clear of the grid
+		PagesSheet ps = pagesSheet();
+		Box t = pagesTabs(ps);
+		CHECK(t.y >= ps.sheet.box.y && t.y + t.h <= ps.view.y);
+		CHECK(t.x + t.w < PANEL_W - SHEET_PAD - 150);
+	}
 	// the readers' header: back at the left, the bookmark and More at the right, the title's room between them
 	ReaderHeader h = readerHeader({0, 0, PANEL_W, SHELL_HEAD}, true);
 	CHECK_EQ(h.back.x, 10);
@@ -16546,6 +16608,7 @@ int main()
 	testPaged();
 	testMangaStore();
 	testMangaStoreLinkedDownloads();
+	testMangaStoreBookmarks();
 	testMangaLocal();
 	testMangaNetFolders();
 	testComicInfo();
