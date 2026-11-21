@@ -1474,8 +1474,8 @@ online chapter share one place, read mark and History row, whichever way it is o
 handheld*).
 
 **Reading.** A chapter opens on the top screen; the bottom screen holds the controls: the chapter and the series, the
-page number, the slider, the two chapter buttons and the mode. The big area says *Swipe here to turn the page* (or *Drag
-here to scroll* in **Vertical scroll**), and *Loading…* shows beside the page number while a page is decoded.
+page number, the slider, the two chapter buttons and the mode. The big area is a bordered pad: *Swipe here to turn the page* between two turn marks (or *Drag
+to scroll* in **Vertical scroll**), a line along its foot naming double-tap and the mode, and *Loading…* shows beside the page number while a page is decoded.
 
 | Button | What it does |
 |---|---|

@@ -776,4 +776,22 @@ namespace bp
 		ui.drawTextMid(held > 0 ? "Keep holding..." : "Touch is locked", F_P20, ACCENT, cx, key.y + key.h + 26, W - 32, 2);
 		ui.drawTextMid("Hold the lock 1 s to unlock \xC2\xB7 the buttons still work", F_I14, DIM_ON, cx, key.y + key.h + 54, W - 32, 2);
 	}
+
+	void Ui::Kit::readerSurface(Rect area, bool strip, const std::string& label, const std::string& note, bool isOff)
+	{
+		lay::ReaderSurface l = lay::readerSurface(area, strip);
+		flat(area, SURFACE, R_TILE, RULE);
+		SDL_Color ink = off(DIM_ON, isOff);
+		if (!strip)
+		{
+			ui.drawGlyphMid(G_LEFT, l.chevL.x + l.chevL.w / 2, l.chevL.y + l.chevL.h / 2, DIM, 2);
+			ui.drawGlyphMid(G_RIGHT, l.chevR.x + l.chevR.w / 2, l.chevR.y + l.chevR.h / 2, DIM, 2);
+		}
+		// the label sits on its own pill so a mark behind it never crosses the words
+		int lw = std::min(l.pill.w, textW(label, F_SMALL) + 2 * lay::SP12);
+		Rect pill{l.pill.x + (l.pill.w - lw) / 2, l.pill.y, lw, l.pill.h};
+		ui.fillRound(pill, SURFACE, 0);
+		ui.drawTextMid(label, F_SMALL, ink, pill.x + pill.w / 2, pill.y + pill.h / 2, pill.w, 2);
+		if (!note.empty()) ui.drawTextMid(note, F_I12, DIM, area.x + area.w / 2, l.note.y + l.note.h / 2, area.w - 16, 2);
+	}
 }

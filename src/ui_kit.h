@@ -58,6 +58,9 @@ namespace bp
 		static SDL_Color cardFill(SDL_Color c);	// Clean: SURFACE becomes BUTTON (a fill carries a card or tile's shape)
 		void ring(Rect r, int rad, SDL_Color c);	// a 2-unit outline (the focus ring), the inside left alone
 		void flat(Rect r, SDL_Color fill, int rad, SDL_Color edge);
+		// a reader's page surface (components.md: the finger's pad): SURFACE with a RULE edge, its label centred on a
+		// SURFACE pill; a page (not a strip) has its turn chevrons either side and a line along the foot
+		void readerSurface(Rect area, bool strip, const std::string& label, const std::string& note = "", bool off = false);
 		// the art placeholder: a record in its sleeve in the theme's roles (artph.h), r a square; key: the album's name,
 		// else the title, else the file's name. rad: the art box's radius; edge: a 1-unit edgeOf(BUTTON) edge inside the
 		// square (where the art has no edge of its own; a Cover cell has none)

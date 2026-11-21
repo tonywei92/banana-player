@@ -433,6 +433,19 @@ namespace bp
 			return h;
 		}
 
+		ReaderSurface readerSurface(Box area, bool strip)
+		{
+			ReaderSurface r;
+			r.area = area;
+			int cy = area.y + area.h / 2;
+			r.pill = {area.x + SP24, cy - 20, area.w - 2 * SP24, 40};
+			r.chevL = {area.x + SP24, cy - 12, 24, 24};
+			r.chevR = {area.x + area.w - SP24 - 24, cy - 12, 24, 24};
+			if (strip) r.chevL = r.chevR = Box{0, 0, 0, 0};
+			r.note = {area.x, area.y + area.h - 36, area.w, 24};
+			return r;
+		}
+
 		PlayerLayout playerLayout(int chips)
 		{
 			PlayerLayout l;

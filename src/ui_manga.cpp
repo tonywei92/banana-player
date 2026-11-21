@@ -2988,16 +2988,14 @@ namespace bp
 		hd.inlineTitle = true;
 		hd.more = true;
 		ui.kit->header(h.strip, hd);
-		// the big surface: it shows the pages' place and takes the finger's drag
-		ui.drawBox(mangaAreaRect(), SURFACE, R_TILE);
+		// the big surface: it shows the pages' place and takes the finger's drag (the redesign's pad: a strip says
+		// "Drag to scroll", a page its turn chevrons and the double-tap)
 		static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Vertical scroll"};
 		int m = ui.pageReader->readerStatus.mode >= 0 && ui.pageReader->readerStatus.mode < MANGA_MODES ? ui.pageReader->readerStatus.mode : 0;
+		bool strip = m == MANGA_STRIP;
+		ui.kit->readerSurface(mangaAreaRect(), strip, strip ? "Drag to scroll" : "Swipe here to turn the page",
+			ui.pageReader->readerStatus.failedHere ? "" : "Double-tap: 200% \xC2\xB7 " + std::string(MODES[m]) + " \xC2\xB7 X to change");
 		if (ui.pageReader->readerStatus.failedHere) ui.pageReader->drawMangaRetry(false);
-		else
-		{
-			ui.drawTextMid(m == MANGA_STRIP ? "Drag here to scroll" : "Swipe here to turn the page", 0, DIM, W / 2, 190, 0, 2);
-			ui.drawTextMid(std::string(MODES[m]) + " \xC2\xB7 X to change", 0, DIM_ON, W / 2, 216, 0, 2);
-		}
 		int pages = ui.pageReader->readerStatus.pages;
 		if (!ui.pageReader->readerStatus.error.empty())
 			ui.drawTextMid(ui.pageReader->readerStatus.error, 1, DANGER, W / 2, 340, 560, 2);

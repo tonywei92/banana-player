@@ -480,6 +480,17 @@ namespace bp
 		};
 		ReaderHeader readerHeader(Box main, bool bookmark = true);
 
+		// the page surface under a comic's or PDF's header (the finger's pad): the redesign's "Drag to scroll" pill
+		// centred on a strip (pill), or the two turn chevrons with the line and the double-tap note under (a page)
+		struct ReaderSurface
+		{
+			Box area;	// the surface itself
+			Box pill;	// the centred label's room (a strip: the pill; a page: between the chevrons)
+			Box chevL, chevR;	// a page's turn marks, 36 from each side
+			Box note;	// a page's line along the foot
+		};
+		ReaderSurface readerSurface(Box area, bool strip);
+
 		// ---- Preview pane: the top screen with nothing playing (its own 640x480 units) ----
 		// The brand mark top left, then a text column (from 74, 44 from the sides) or, with a cover, the cover at
 		// 36, 66 (196 x 278) and the text column from 262

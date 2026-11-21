@@ -1661,10 +1661,10 @@ namespace bp
 			ui.drawSlider(docBarTrack(), ui.slideShare(SL_DOC, 0, pages > 1 ? ui.pageReader->readerStatus.page / (double)(pages - 1) : 0), ui.slideHeld(SL_DOC),
 				ui.slideHeld(SL_DOC) ? "Page " + std::to_string((int)ui.slide.value + 1) + " / " + std::to_string(pages) : "");
 			Rect pad = docPadRect();
-			ui.drawBox(pad, SURFACE, R_TILE);
+			ui.kit->readerSurface(pad, true, ui.pageReader->readerStatus.failedHere ? "" : "Drag to scroll");
 			if (ui.pageReader->readerStatus.failedHere) ui.drawTextMid("A page couldn't be shown \xC2\xB7 A: try again", 1, DANGER, W / 2, pad.y + pad.h / 2, 560, 2);
-			else ui.drawTextMid(ui.pageReader->readerStatus.loading ? "Loading" + std::string(SDL_GetTicks() / 400 % 4, '.') : "Drag here to scroll", 1, DIM, W / 2,
-				pad.y + pad.h / 2, 0, 2);
+			else if (ui.pageReader->readerStatus.loading)
+				ui.drawTextMid("Loading" + std::string(SDL_GetTicks() / 400 % 4, '.'), 1, DIM, W / 2, pad.y + pad.h / 2 + 40, 0, 2);
 			// each with its key under it, as the single page's
 			const char* labels[4] = {"Single page", "Fullscreen", "Brightness", "Pages"};
 			const char* keys[4] = {"X", "SELECT", "", "Y"};

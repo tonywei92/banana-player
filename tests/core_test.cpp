@@ -10684,6 +10684,18 @@ static void testKitLayoutReaders()
 	CHECK_EQ(p.title.x + p.title.w, p.more.x - SP8);
 	CHECK_EQ(p.strip.more.x, h.strip.more.x);
 
+	// the comic's page surface: its label, chevrons and note inside it, the chevrons at its sides, a strip has none
+	{
+		Box area{16, 70, 608, 260};
+		ReaderSurface pg = readerSurface(area, false), st = readerSurface(area, true);
+		for (const Box* b : {&pg.pill, &pg.chevL, &pg.chevR, &pg.note})
+			CHECK(b->x >= area.x && b->x + b->w <= area.x + area.w && b->y >= area.y && b->y + b->h <= area.y + area.h);
+		CHECK(!overlaps(pg.chevL, pg.chevR) && !overlaps(pg.chevL, pg.note) && !overlaps(pg.chevR, pg.note));
+		CHECK(pg.chevL.x < pg.chevR.x);
+		CHECK_EQ(st.chevL.w, 0);
+		CHECK_EQ(st.pill.x + st.pill.w / 2, area.x + area.w / 2);
+	}
+
 	// a download with two keys: Hide and Stop share the busy sheet's row
 	BusySheet one = busySheet();
 	CHECK_EQ(one.key.w, PANEL_W - 2 * SHEET_PAD);
