@@ -694,6 +694,11 @@ namespace bp
 			ui.drawGlyphMid(*row.glyph, x + 10, cy, ink);
 			x += 20 + lay::SP12;
 		}
+		else if (row.dot)
+		{
+			if (row.dotOn) ui.fillRound({x, cy - 4, 8, 8}, off(ACCENT, row.off), 4);
+			x += 8 + lay::SP12;
+		}
 		else if (row.radio || !row.lead.empty())
 		{
 			// a list's place, in the icon's slot ("17"), dim as the mock-up's numbers; a choice's radio, yellow

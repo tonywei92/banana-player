@@ -1499,9 +1499,10 @@ on the card (below).
 The row itself continues (**A** or a tap); **Y** opens the series' page instead and **X** is More. A series that can't open now
 stays, dimmed, and says why (*source removed*, *not on a card*).
 
-A series' page has one row of keys (**Resume**, and for a source's series **Get**, **Check**, **Info** and the heart)
-over its chapters, each saying its own state (read, where Resume opens, the page, its download); the series' source
-and counts are the header's line. A source's catalogue steps **Popular / Latest / Search** with **L/R**; Sources'
+A series' page has one row of keys (**Resume**, and for a source's series **Get**, **Info** and the heart)
+over its chapters, each saying its own state (a dot on the one Resume opens, read ones dimmed, the page, its
+download); the series' source and counts are the header's line. Pulling the chapters down past the top checks a
+source for new chapters (**L** does the same), and reads the Manga folders again for a series on the handheld. A source's catalogue steps **Popular / Latest / Search** with **L/R**; Sources'
 lists, a server's catalogue and form, and Manga settings are drawn the same way, in the rail's frame.
 
 **Browse** and **Downloads** are lists of rows: the row you're on carries its key (a server's **Edit**, a chapter's

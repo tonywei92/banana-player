@@ -81,6 +81,7 @@ namespace bp
 			bool barBad = false;
 			std::string keyLabel, keyCap;	// the focused row's key ("" none)
 			bool pillLive = false;	// the pill yellow (Update, Recommended), not a fact
+			bool dot = false, dotOn = false;	// a chapter's row: no icon, a dot on the one Resume opens (Kit::Row::dot)
 		};
 		// where a Manga page's list or grid goes in the shell's body: under the app's tabs, a source's tabs or Sources'
 		// lists, under a series' keys, or the inner body (a server's catalogue, a network folder's series)
@@ -857,7 +858,7 @@ namespace bp
 		bool mangaSourceSeriesPointer(const Pointer& pt, int x, int y, Player& p);
 		void drawMangaSourceSeries(const Player& p);
 		void mangaSourceSeriesLoad(Player& p, bool refresh = false);
-		void mangaSourceSeriesRefresh(Player& p);		// L2: ask the source again; a failure keeps what shows
+		void mangaSourceSeriesRefresh(Player& p);		// L, or the chapters pulled down: ask the source again; a failure keeps what shows
 		void mangaSourceSeriesFetched();				// both halves are in: save, or keep the list and toast
 		void mangaSourceSeriesFail(const std::string& why);	// before the jobs: what shows stays
 		bool mangaSourceSeriesCacheLoad();				// the card's copy into the page; false: none to show
@@ -940,16 +941,18 @@ namespace bp
 		lay::ListSheet mangaFilterSheet(int n) const { return lay::listSheet(std::min(std::max(n, 1), MF_ROWS)); }
 		int mserSrcRows() const { return 5; }	// (the keys' paging; the list is the kit's rows)
 		static constexpr int MG_SER_ROWS = 5;	// a card series' chapter rows the body holds (lay::seriesPage, lay::rowList)
-		// a source series page's one buttons row, 48 high and single-line glyph + label each (the keys are in the
-		// hints): Resume (A), Download (R2), Refresh (L2), In library (Y); 608 wide with the page's margins
-		// a source series' row of five: Resume, Download, Refresh, Info, Library (mserBtn 0..4)
-		// (Info, its label short, narrower: the others get the room; "Download" at the small size needs 104 of them)
-		// (screens.js seriesB: Resume 150, Get and Check sharing the rest, Info and the heart 64 each)
-		Rect mangaSrcBtn(int i) const { return mangaSeriesKeys({150, 0, 0, 64, 64})[i]; }
+		// a source series' row of four: Resume, Get, Info, Library (mserBtn 0..3). screens.js seriesB: Resume 150, Info
+		// and the heart 64 each at the right; Get as wide as Resume, the room between them left open (checking for
+		// new chapters is a pull on the list and L, not a key here: its label was cut at the handheld's size)
+		static constexpr int MG_SRC_KEYS = 4;
+		Rect mangaSrcBtn(int i) const
+		{
+			static const int BOX[MG_SRC_KEYS] = {0, 1, 3, 4};	// (box 2 is the open room)
+			return mangaSeriesKeys({150, 150, 0, 64, 64})[BOX[std::clamp(i, 0, MG_SRC_KEYS - 1)]];
+		}
 		Rect mangaSrcResumeRect() const { return mangaSrcBtn(0); }
-		Rect mangaSrcRefreshRect() const { return mangaSrcBtn(2); }
-		Rect mangaSrcInfoRect() const { return mangaSrcBtn(3); }
-		Rect mangaSrcHeartRect() const { return mangaSrcBtn(4); }
+		Rect mangaSrcInfoRect() const { return mangaSrcBtn(2); }
+		Rect mangaSrcHeartRect() const { return mangaSrcBtn(3); }
 		// Info: the series' details (its description) in a dialog, off the page (it took two lines above the row)
 		void mangaSrcInfoOpen();	// the series' details: Info's page (Ui::openInfoGroups)
 
