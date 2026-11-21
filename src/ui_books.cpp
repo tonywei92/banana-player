@@ -108,8 +108,40 @@ namespace bp
 		Rect inner = booksInner();
 		// with nothing reading, the strip's space is dropped and the shelf starts at the page's own top
 		int drop = reading.empty() ? lay::LINE_H + lay::SHELF_HEAD_GAP + lay::COVER_CELL_H + lay::SHELF_GROUP_GAP : 0;
-		return lay::booksShelf({inner.x, inner.y - drop, inner.w, inner.h + drop}, (int)reading.size(),
-			(int)shelf.size(), shelfScroll);
+		return lay::booksShelf({inner.x, inner.y - drop, inner.w, inner.h + drop}, (int)reading.size(), 0);
+	}
+
+	// ---- the shelf's grid ----
+
+	Ui::Books::ListGeom Ui::Books::listGeom() const
+	{
+		// the grid from its place under the shelf's heading to the body's foot, SP6 of room around each row (a
+		// focused cover's ring reaches 5 past it)
+		ListGeom g;
+		if (shelf.empty()) return g;
+		lay::BooksShelf b = layout();
+		Rect inner = booksInner();
+		g.cols = b.cols;
+		g.view = {b.shelfGrid.x - lay::SP6, b.shelfGrid.y - lay::SP6, b.shelfGrid.w + 2 * lay::SP6,
+			inner.y + inner.h - b.shelfGrid.y + lay::SP6};
+		g.rowH = lay::SHELF_CELL_H + lay::COVER_GAP;
+		g.count = ((int)shelf.size() + g.cols - 1) / g.cols;
+		return g;
+	}
+
+	std::vector<lay::Box> Ui::Books::shelfRow(Rect row, int r) const
+	{
+		int cols = layout().cols;
+		int inRow = std::clamp((int)shelf.size() - r * cols, 0, cols);
+		return lay::coverCells({row.x + lay::SP6, row.y + lay::SP6, row.w - 2 * lay::SP6, lay::SHELF_CELL_H}, inRow, cols,
+			lay::SHELF_CELL_H);
+	}
+
+	void Ui::Books::keepCursorInView(bool glide)
+	{
+		ListGeom g = listGeom();
+		if (g.count <= 0 || cursor < (int)reading.size()) return;
+		list.reveal((cursor - (int)reading.size()) / g.cols, g.view, g.rowH, g.count, glide);
 	}
 
 	// ---- the More sheet (X): what a book has ----
@@ -217,8 +249,7 @@ namespace bp
 		default: break;
 		}
 		// the shelf's row in view (the strip never scrolls)
-		int row = std::max(0, cursor - (int)reading.size()) / cols;
-		shelfScroll = std::clamp(shelfScroll, std::max(0, row - (sh.shown - 1)), row);
+		if (ui.page == Page::Books) keepCursorInView();
 		return false;
 	}
 
@@ -228,23 +259,23 @@ namespace bp
 	{
 		Rect inner = booksInner();
 		lay::BooksShelf sh = layout();
-		int cols = sh.cols;
 		int n = (int)(reading.size() + shelf.size());
+		const float fy = pt.y * Ui::H;	// (by the fraction: the shelf follows the panel's pixels, not whole units)
 		if (pt.kind != Pointer::Down)
 		{
 			if (touch == T_NONE) return false;
 			if (pt.kind == Pointer::Move)
 			{
-				if (!touchMoved && std::abs(y - touchY) > 6) touchMoved = true;
-				if (touchMoved)
-					shelfScroll = lay::dragScroll(scrollStart, touchY, y, lay::SHELF_CELL_H + lay::COVER_GAP,
-						0, (int)((shelf.size() + cols - 1) / cols), sh.shown);
+				// the shelf follows the finger once it is past the slop; elsewhere a drag only stops being a tap
+				if (onList) { if (list.move(fy)) touchMoved = true; }
+				else if (!touchMoved && std::abs(y - touchY) > 6) touchMoved = true;
 				return false;
 			}
+			if (onList) list.lift();
 			int t = touch;
-			bool moved = touchMoved;
+			bool moved = touchMoved || caught;
 			touch = T_NONE;
-			touchMoved = false;
+			touchMoved = onList = caught = false;
 			if (moved || t == T_NONE) return false;
 			switch (t)
 			{
@@ -257,24 +288,28 @@ namespace bp
 			default: break;
 			}
 			if (t == T_GROUND) return false;		// the ground: a drag was its only meaning
-			if (t >= T_READ && t < T_SHELF && t - T_READ < (int)sh.reading.size())
+			if (t >= T_READ && t < T_GROUND && t - T_READ < (int)sh.reading.size())
 			{
 				if (sh.reading[t - T_READ].hit(x, y)) ui.openDocument(reading[t - T_READ].path, p);
 				return false;
 			}
 			if (t >= T_SHELF && t - T_SHELF < (int)shelf.size())
 			{
-				int i = t - T_SHELF;
-				if (sh.shelf[i].hit(x, y)) ui.openDocument(shelf[i].path, p);
+				// still on the same cover (the row under the finger, the cell in it)
+				int i = t - T_SHELF, cols = sh.cols, r = list.rowAt(x, y);
+				if (r == i / cols)
+				{
+					std::vector<lay::Box> cells = shelfRow(list.rowBox(r), r);
+					if (i % cols < (int)cells.size() && cells[i % cols].hit(x, y)) ui.openDocument(shelf[i].path, p);
+				}
 				return false;
 			}
 			return false;
 		}
 		// the down: what is under the finger (the same Rects the drawing asked for)
 		touch = T_NONE;
-		touchMoved = false;
+		touchMoved = onList = caught = false;
 		touchY = y;
-		scrollStart = shelfScroll;
 		if (n == 0)
 		{
 			std::vector<std::string> lines = ui.wrapText(EMPTY_BOOKS_LINE, F_I14, 400, 99);
@@ -287,9 +322,21 @@ namespace bp
 		}
 		for (int i = 0; i < (int)sh.reading.size(); i++)
 			if (sh.reading[i].hit(x, y)) { touch = T_READ + i; cursor = i; return false; }
-		for (int i = sh.first * cols; i < (int)shelf.size() && i < (sh.first + sh.shown) * cols; i++)
-			if (sh.shelf[i].hit(x, y)) { touch = T_SHELF + i; cursor = (int)reading.size() + i; return false; }
-		touch = T_GROUND;		// the shelf's own ground: a drag still scrolls it
+		// the shelf: anywhere on its grid drives it (a touch on a gliding shelf only stops it)
+		ListGeom g = listGeom();
+		if (g.count <= 0 || !g.view.hit(x, y)) return false;
+		onList = true;
+		touch = T_GROUND;
+		caught = list.press(fy);
+		int r = caught ? -1 : list.rowAt(x, y);
+		if (r < 0) return false;
+		std::vector<lay::Box> cells = shelfRow(list.rowBox(r), r);
+		for (int c = 0; c < (int)cells.size(); c++)
+			if (cells[c].hit(x, y))
+			{
+				touch = T_SHELF + r * g.cols + c;
+				cursor = (int)reading.size() + r * g.cols + c;
+			}
 		return false;
 	}
 
@@ -355,19 +402,44 @@ namespace bp
 			}
 		}
 		caps("Shelf \xC2\xB7 " + std::to_string(shelf.size()), b.shelfHead);
-		for (int i = b.first * b.cols; i < (int)shelf.size() && i < (b.first + b.shown) * b.cols; i++)
-		{
+		// the grid: a smooth list of rows of five, each row's look its key (each cover's state in it: its arrival
+		// draws the row again). The covers' boxes in the key are the slot's, as draw lays them (a cover's cached
+		// size is its device size, which at the handheld's 1.6x depends on where its box starts)
+		ListGeom g = listGeom();
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = g.count;
+		const int cols = g.cols, first = (int)reading.size();
+		auto coverOf = [this, cols, first](int i) {
 			Kit::Cover c;
 			c.key = shelf[i].name;
 			c.title = shelf[i].name;
 			// the shelf's cells carry no bar: the strip's do (a book in progress is in both)
-			c.picture = [this, path = shelf[i].path, key = shelf[i].name](Rect r) {
-				ui.drawBookCover(path, key, r, 5);
-			};
-			c.focused = (int)reading.size() + i == cursor;
+			c.picture = [this, path = shelf[i].path, key = shelf[i].name](Rect r) { ui.drawBookCover(path, key, r, 5); };
+			c.focused = first + i == cursor;
 			c.pressed = touch == T_SHELF + i && !touchMoved;
-			k.coverTile(lay::coverTile(b.shelf[i], true, false), c);
-		}
+			return c;
+		};
+		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + "|";
+		spec.key = [this, coverOf, gen, cols, slotBox = Rect{0, 0, g.view.w, g.rowH}](int r) {
+			std::string key = "bk" + gen + std::to_string(r);
+			std::vector<lay::Box> cells = shelfRow(slotBox, r);
+			for (int c = 0; c < (int)cells.size(); c++)
+			{
+				int i = r * cols + c;
+				Kit::Cover cell = coverOf(i);
+				int art = ui.bookCoverState(shelf[i].path, lay::coverTile(cells[c], true, false).cover, 5);
+				key += "." + shelf[i].path + ":" + std::to_string(art) + (cell.focused ? "f" : "") + (cell.pressed ? "d" : "");
+			}
+			return key;
+		};
+		spec.draw = [this, coverOf, cols](int r, Rect box) {
+			std::vector<lay::Box> cells = shelfRow(box, r);
+			for (int c = 0; c < (int)cells.size(); c++)
+				ui.kit->coverTile(lay::coverTile(cells[c], true, false), coverOf(r * cols + c));
+		};
+		list.draw(std::move(spec));
 	}
 
 	std::string Ui::Books::signature(const Player&) const
@@ -376,7 +448,7 @@ namespace bp
 		// cell: the key holds their front entries, so a page turned redraws the strip's bars), and the covers'
 		// serial: one decoded, the cells draw it now
 		char buf[96];
-		snprintf(buf, sizeof buf, "|bk%d.%d.%d.%zu.%zu.%d", cursor, shelfScroll, touch, reading.size(), shelf.size(),
+		snprintf(buf, sizeof buf, "|bk%d.%d.%d.%zu.%zu.%d", cursor, touchMoved, touch, reading.size(), shelf.size(),
 			ui.artSerial);
 		return std::string(buf) + placesKey;
 	}

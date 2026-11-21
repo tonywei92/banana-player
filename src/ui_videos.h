@@ -13,6 +13,7 @@
 #include "ui.h"
 #include "ui_shell.h"
 #include "ui_kit.h"
+#include "ui_smoothlist.h"
 #include "mediaindex.h"
 
 namespace bp
@@ -68,8 +69,22 @@ namespace bp
 		std::vector<Kit::FilterItem> viewItems(const Player& p) const;
 
 		// ---- the focus ----
-		int cursor = 0, scroll = 0;
-		void fitRows(int at, int rows) { scroll = std::clamp(scroll, std::max(0, at - rows + 1), std::max(0, at)); }
+		int cursor = 0;
+
+		// ---- the rows: a smooth list (ui_smoothlist.h; docs/notes/2026-11-21-smooth-scroll.md), a new view or
+		// folder at its top ----
+		SmoothList list{ui};
+		SmoothList* smoothList() override { return listGeom().count > 0 ? &list : nullptr; }
+		// where the rows are, their pitch and how many (count 0: none show: the empty page, the first read)
+		struct ListGeom
+		{
+			Rect view{};
+			int rowH = 0, count = 0;
+		};
+		ListGeom listGeom() const;
+		void keepCursorInView(bool glide = true);	// the cursor's row: a short glide to it
+		// row i's look (its key in the list, and what its draw shows), from the rows as built and the stores
+		Kit::Video videoOf(const Row& r, int i, const Player& p) const;
 
 		// ---- playing (the play request, as Files' Play all: main opens it and the Session takes it) ----
 		void play(const Row& r, const Player& p) const;
@@ -78,11 +93,14 @@ namespace bp
 		void openMoreSheet(const Row& row, Player& p);
 
 		// ---- a finger ----
-		// what it went down on: T_CHIP + i the chips, T_ROW + i a row, T_EMPTY1 / T_EMPTY2 the empty page's keys
-		enum { T_NONE = -1, T_CHIP = 0, T_ROW = 10, T_GROUND = 499, T_EMPTY1 = 500, T_EMPTY2 = 501 };
+		// what it went down on: T_CHIP + i the chips, T_EMPTY1 / T_EMPTY2 the empty page's keys, T_GROUND the list's
+		// own ground (a drag scrolls, a tap does nothing), T_ROW + i a row (its index in the whole list)
+		enum { T_NONE = -1, T_CHIP = 0, T_GROUND = 5, T_EMPTY1 = 6, T_EMPTY2 = 7, T_ROW = 10 };
 		int touch = T_NONE;
-		int touchY = 0, scrollStart = 0;
+		int touchY = 0;
 		bool touchMoved = false;
+		bool onList = false;	// the finger drives the list (it went down on the rows or their ground)
+		bool caught = false;	// it went down on a gliding list: it stopped it, and is no tap
 		Rect emptyKey[2]{};
 
 		// ---- the shell's header (Ui::Shell::head asks this) ----

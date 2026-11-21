@@ -1313,12 +1313,6 @@ namespace bp
 
 	int Ui::Browse::filesShown(const Player& p) const { return filesLayout(p).shown; }
 
-	int Ui::Browse::filesScroll(const Player& p) const
-	{
-		int n = (int)browseRows.size(), shown = filesShown(p);
-		return lay::listScroll(std::max(0, ui.cursor), ui.scroll, shown, n);
-	}
-
 	std::vector<Ui::Hint> Ui::Browse::filesHints(const Player& p) const
 	{
 		if (addMode()) return {{"A", "Tick"}, {"SELECT", "All / none"}, {"Y", "Add"}, {"X", "Cancel"}, {"B", "Up"}};
@@ -1342,9 +1336,28 @@ namespace bp
 		return h;
 	}
 
-	void Ui::Browse::drawFilesRow(int i, const lay::FilesPage& f, int onScreen, bool at, const Player& p)
+	std::string Ui::Browse::filesRowKey(int i) const
 	{
-		Rect r = f.row(onScreen);
+		// everything drawFilesRow reads: the row, its icon's path, the pill, the heart, the ticks and the mode
+		if (i < 0 || i >= (int)browseRows.size()) return "-";
+		bool boxes = fileSel || addMode();
+		bool at = i == ui.cursor;
+		if (at && !boxes) return "";	// (the focused name's marquee: drawn again each frame)
+		const Row& row = browseRows[i];
+		const std::string& path = i < (int)browsePaths.size() ? browsePaths[i] : std::string();
+		bool liked = row.id == 2 && playlists->plStore && playlists->plStore->isLiked(path);
+		bool ticked = addMode() ? playlists->selTicked(i) : fileTicked(i);
+		bool tickable = addMode() ? playlists->selTickable(i) : fileTickable(i);
+		char b[64];
+		snprintf(b, sizeof b, "|%lld.%d.%d%d%d%d%d%d%d", (long long)row.id, ui.rowChip(i), liked, ticked, tickable, boxes,
+			addMode(), pickMode(), at);
+		return "fi" + std::string(theme::drawingClean() ? "c" : "") + std::to_string(i) + "|" + path + "|" + row.label +
+			"|" + row.note + b;
+	}
+
+	void Ui::Browse::drawFilesRow(int i, Rect r, bool at, const Player& p)
+	{
+		(void)p;
 		Kit& k = *ui.kit;
 		int cy = r.y + r.h / 2;
 		bool boxes = fileSel || addMode();
@@ -1409,6 +1422,145 @@ namespace bp
 		}
 	}
 
+	// ---- the list shown (Files, the Network tab's lists, All recent, the playlists' pages): one smooth list ----
+
+	bool Ui::Browse::listPage() const
+	{
+		if (ui.page != Page::Browse || atHome()) return false;
+		if (filesPage()) return !filesEmpty();
+		if (playlists->onPage()) return true;
+		return browseDir == NETROOT || browseDir == FINDNET || browseDir == RECENT;
+	}
+
+	Ui::SmoothList* Ui::Browse::smoothList()
+	{
+		// (Ui::draw asks this each frame, before it notes the list shown: a list come back to from another page or
+		// from the picker over it is placed again from ui.scroll, which the browser's way back restored)
+		if (!listPage()) { listId.clear(); return nullptr; }
+		if (ui.listShown != &list) listId.clear();
+		return &list;
+	}
+
+	Ui::Browse::ListGeom Ui::Browse::listGeom(const Player& p) const
+	{
+		// (the same boxes each page's draw lays out; count 0: no rows to show, an empty page's state instead)
+		ListGeom g;
+		int n = (int)browseRows.size();
+		bool message = n == 1 && browseRows[0].id < 0;	// a list that is one line saying why it's empty
+		if (filesPage())
+		{
+			lay::FilesPage f = filesLayout(p);
+			g.view = f.rows;
+			g.rowH = lay::FILE_ROW_H;
+			g.count = filesEmpty() ? 0 : n;
+			g.id = "files|" + std::to_string(browseTab) + "|" + browseDir;
+			return g;
+		}
+		if (playlists->onPage())
+		{
+			if (isPlDir(browseDir))
+			{
+				lay::PlaylistPage l = playlists->pageLayout(p);
+				int end = l.barKeys ? l.bar.y - lay::PL_FOOT_GAP : l.area.y + l.area.h;
+				// 12 of room at the right: a lifted row (Move) sits 10 to the right of its place
+				g.view = {l.list.x, l.rowsY, l.list.w + 12, std::max(0, end - l.rowsY)};
+				g.rowH = lay::PL_ROW_PITCH;
+				g.count = playlists->plLoaded ? (int)playlists->plCur.entries.size() : 0;
+				g.id = "pl|" + browseDir;
+				return g;
+			}
+			lay::PlaylistsRoot r = playlists->rootLayout();
+			g.view = {r.list.x, r.rowsY, r.list.w, r.below.h};
+			g.rowH = lay::PLAYLIST_ROW_H;
+			g.count = message ? 0 : n;
+			g.id = "plroot";
+			return g;
+		}
+		if (browseDir == NETROOT || browseDir == FINDNET)
+		{
+			NetPageLayout l = netLayout(p);
+			g.view = l.list;
+			g.rowH = l.rowH;
+			g.count = browseDir == NETROOT && emptyAction() ? 0 : n;
+			g.id = browseDir;
+			return g;
+		}
+		if (browseDir == RECENT)
+		{
+			lay::AllRecentPage lp = lay::allRecentPage(lay::shell().body);
+			g.view = {lp.inner.x, lp.rowY, lp.inner.w, std::max(0, lp.inner.y + lp.inner.h - lp.rowY)};
+			g.rowH = lp.rowH;
+			g.count = n == 0 || message ? 0 : n;
+			g.id = "recent";
+		}
+		return g;
+	}
+
+	void Ui::Browse::listBegin(const ListGeom& g)
+	{
+		if (g.count <= 0 || g.rowH <= 0) return;
+		const int shown = std::max(1, g.view.h / g.rowH), last = g.count - 1;
+		auto inList = [&](int i) { return i >= 0 && i <= last; };
+		if (g.id != listId)
+		{
+			// a new list, or one come back to: where ui.scroll has it, the cursor's row shown, nothing moving
+			listId = g.id;
+			list.sc.setExtent((double)g.count * g.rowH, g.view.h);
+			list.sc.jump((double)std::clamp(ui.scroll, 0, std::max(0, g.count - shown)) * g.rowH);
+			if (inList(ui.cursor)) list.reveal(ui.cursor, g.view, g.rowH, g.count, false);
+		}
+		else if (listReveal >= 0 || (ui.cursor != listCursor && !list.sc.held()))
+		{
+			// the cursor moved by a key or a refresh (a finger's row is where the finger is): a short glide to it
+			int at = listReveal >= 0 ? std::min(listReveal, last) : ui.cursor;
+			if (inList(at)) list.reveal(at, g.view, g.rowH, g.count);
+		}
+		else if (ui.scroll != listScroll && !list.sc.held())
+		{
+			// what still counts in rows moved the window (a row dragged by its grip near an edge): a glide that
+			// shows the row it moved to, at the top going up, at the foot going down
+			int to = std::clamp(ui.scroll, 0, std::max(0, g.count - shown));
+			if (to < listScroll) list.reveal(to, g.view, g.rowH, g.count);
+			else list.reveal(std::min(last, to + shown - 1), g.view, g.rowH, g.count);
+		}
+		listReveal = -1;
+		listCursor = ui.cursor;
+	}
+
+	void Ui::Browse::listEnd(const ListGeom& g)
+	{
+		if (g.count <= 0 || g.rowH <= 0) return;
+		// the first row shown, inside the rows a full window can start at (a rubber band's give is not a row)
+		const int shown = std::max(1, g.view.h / g.rowH);
+		int top = (int)std::floor(std::max(0.0, list.sc.offset()) / g.rowH);
+		ui.scroll = std::clamp(top, 0, std::max(0, g.count - shown));
+		listScroll = ui.scroll;
+	}
+
+	bool Ui::Browse::listPress(const ListGeom& g, const Pointer& pt, int x, int y, int& row)
+	{
+		row = -1;
+		listOnFinger = listCaught = false;
+		if (g.count <= 0 || !g.view.hit(x, y)) return false;
+		listOnFinger = true;
+		listCaught = list.press(pt.y * Ui::H);	// (by the fraction: the list follows the panel's pixels)
+		if (!listCaught) row = list.rowAt(x, y);
+		return true;
+	}
+
+	bool Ui::Browse::listMove(const Pointer& pt) { return listOnFinger && list.move(pt.y * Ui::H); }
+
+	bool Ui::Browse::listLift()
+	{
+		if (!listOnFinger) return false;
+		list.lift();
+		listOnFinger = false;
+		// the cursor the finger put on its row is no key's move: no glide back to it (a flick can be down and up
+		// between two frames)
+		listCursor = ui.cursor;
+		return true;
+	}
+
 	bool Ui::Browse::filesBroken() const
 	{
 		// a folder that can't be shown: a card gone, a connection gone or without support (not "Nothing to play here")
@@ -1466,8 +1618,18 @@ namespace bp
 			drawFilesEmpty(f, p);
 			return;
 		}
-		int scroll = filesScroll(p), n = (int)browseRows.size();
-		for (int k = 0; k < f.shown && scroll + k < n; k++) drawFilesRow(scroll + k, f, k, scroll + k == ui.cursor, p);
+		// the rows: the smooth list, each row's look its key (the lambdas run inside list.draw, this frame)
+		ListGeom g = listGeom(p);
+		listBegin(g);
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = g.count;
+		spec.key = [this](int i) { return filesRowKey(i); };
+		const Player* pp = &p;
+		spec.draw = [this, pp](int i, Rect box) { drawFilesRow(i, box, i == ui.cursor, *pp); };
+		list.draw(std::move(spec));
+		listEnd(g);
 		if (addMode() || pickMode()) drawAddBar(f.bar);
 		else if (fileSel)
 		{
@@ -1954,7 +2116,7 @@ namespace bp
 		lay::Shell sh = lay::shell();
 		lay::FilesHeader h = lay::filesHeader(sh.header);
 		lay::FilesPage f = filesLayout(p);
-		int n = (int)browseRows.size(), scroll = filesScroll(p);
+		int n = (int)browseRows.size();
 		auto emptyKeys = [&](int& keys) {
 			keys = filesEmptyKeys();
 			return lay::emptyState(f.rows, 1, keys);
@@ -1979,31 +2141,22 @@ namespace bp
 					if (e.key[i].hit(x, y)) { filesPressed = 300 + i; return false; }
 				return false;
 			}
-			if (y >= f.rows.y && y < f.rows.y + f.rows.h)
+			// the rows: anywhere on the list drives it (a touch on a gliding list only stops it)
+			int row = -1;
+			if (listPress(listGeom(p), pt, x, y, row) && row >= 0 && row < n)
 			{
-				int k = (y - f.rows.y) / lay::FILE_ROW_H;
-				if (k >= 0 && k < f.shown && scroll + k < n)
-				{
-					ui.cursor = scroll + k;
-					filesTouch = ui.cursor;
-					filesTouchY = y;
-					filesScrollStart = scroll;
-					return false;
-				}
+				ui.cursor = row;
+				filesTouch = row;
 			}
 			return false;
 		}
-		if (pt.kind == Pointer::Move && filesPressed < 0 && filesTouch >= 0)
+		if (pt.kind == Pointer::Move && filesPressed < 0)
 		{
-			if (filesScrolled || std::abs(y - filesTouchY) > 12)
+			// the list follows the finger past the slop, and the touch is no longer the tap its lift would be
+			if (listMove(pt) && !filesScrolled)
 			{
-				// a drag scrolls the list (lay::dragScroll: one row a row) and never becomes the tap its lift would be
-				bool started = !filesScrolled;
 				filesScrolled = true;
-				ui.scroll = lay::dragScroll(filesScrollStart, filesTouchY, y, lay::FILE_ROW_H, 0, n, f.shown);
-				ui.cursor = std::clamp(ui.cursor, ui.scroll, ui.scroll + std::max(0, f.shown - 1));
-				if (started) fprintf(stderr, "touch: files drag y %d -> %d, scroll %d -> %d of %d\n", filesTouchY, y,
-					filesScrollStart, ui.scroll, n);
+				fprintf(stderr, "touch: files drag from row %d of %d\n", filesTouch, n);
 			}
 			return false;
 		}
@@ -2011,6 +2164,7 @@ namespace bp
 		int pressed = filesPressed, touch = filesTouch;
 		filesPressed = -1;
 		filesTouch = -1;
+		if (listLift() && listCaught) touch = -1;
 		if (pressed == 200)
 		{
 			if (h.backHit.hit(x, y))
@@ -2052,8 +2206,7 @@ namespace bp
 		}
 		if (touch >= 0 && !filesScrolled && touch < n)
 		{
-			Rect r = f.row(touch - scroll);
-			if (filesScrolled || !r.hit(x, y)) return false;
+			if (list.rowAt(x, y) != touch) return false;	// (slid off the row: it changed its mind)
 			fprintf(stderr, "touch: files tap row %d of %d at %d,%d\n", touch, n, x, y);
 			if (fileSel) filesTickRow(touch);
 			else { ui.cursor = touch; ui.choose(touch, p); }
@@ -2161,18 +2314,30 @@ namespace bp
 			k.emptyState(e, empty);
 			return;
 		}
-		int n = (int)browseRows.size();
-		for (int i = ui.scroll; i < n && i < ui.scroll + l.shown; i++)
-		{
-			Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
+		// the connections: the smooth list, each row's look its key
+		ListGeom g = listGeom(p);
+		listBegin(g);
+		auto connection = [this](int i) {
 			Kit::Media m;
 			m.glyph = &G_NETWORK;
 			m.name = browseRows[i].label;
 			m.second = browseRows[i].note;
 			m.focused = i == ui.cursor && netFoot < 0;
 			m.pressed = netPressed == i;
-			k.mediaRow(lay::mediaRow(r), m);
-		}
+			return m;
+		};
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = g.count;
+		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + "|";
+		spec.key = [connection, gen](int i) {
+			Kit::Media m = connection(i);
+			return "nc" + gen + std::to_string(i) + "|" + m.name + "|" + m.second + (m.focused ? "f" : "") + (m.pressed ? "d" : "");
+		};
+		spec.draw = [this, connection](int i, Rect box) { ui.kit->mediaRow(lay::mediaRow(box), connection(i)); };
+		list.draw(std::move(spec));
+		listEnd(g);
 		auto foot = [&](Rect r, const Glyph& g, const std::string& name, const std::string& note, int which) {
 			Kit::Row row;
 			row.glyph = &g;
@@ -2189,12 +2354,24 @@ namespace bp
 
 	void Ui::Browse::drawNetFind(const Player& p)
 	{
-		Kit& k = *ui.kit;
-		NetPageLayout l = netLayout(p);
-		int n = (int)browseRows.size();
-		for (int i = ui.scroll; i < n && i < ui.scroll + l.shown; i++)
-		{
-			Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
+		// the hosts found (and the search's notice in a row's place): the smooth list, each row's look its key
+		ListGeom g = listGeom(p);
+		listBegin(g);
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = g.count;
+		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + "|";
+		spec.key = [this, gen](int i) -> std::string {
+			if (i < 0 || i >= (int)browseRows.size()) return "-";
+			// (the search's notice, and the focused name's marquee: drawn again each frame)
+			if (browseRows[i].id < 0 || i == ui.cursor) return "";
+			return "nf" + gen + std::to_string(i) + "|" + std::to_string((long long)browseRows[i].id) + browseRows[i].label +
+				"|" + browseRows[i].note + (netPressed == i ? "d" : "");
+		};
+		spec.draw = [this](int i, Rect r) {
+			Kit& k = *ui.kit;
+			if (i < 0 || i >= (int)browseRows.size()) return;
 			if (browseRows[i].id < 0)
 			{
 				// still searching: a Working notice in the list's own place (the computers found so far stay
@@ -2207,7 +2384,7 @@ namespace bp
 				row.text = "Searching\xE2\x80\xA6";
 				row.second = "Computers sharing files nearby";
 				k.notice(nl, row);
-				continue;
+				return;
 			}
 			Kit::Row row;
 			row.glyph = browseRows[i].id == R_FOUND ? &G_NETWORK : browseRows[i].id == R_SEARCH ? &G_REFRESH : &G_PENCIL;
@@ -2218,7 +2395,9 @@ namespace bp
 			row.pressed = netPressed == i;
 			row.under = BG;
 			k.row(r, row);
-		}
+		};
+		list.draw(std::move(spec));
+		listEnd(g);
 	}
 
 	void Ui::Browse::drawNet(const Player& p)
@@ -2359,37 +2538,29 @@ namespace bp
 				}
 				return false;
 			}
-			if (browseDir == FINDNET)
+			// NETROOT: Find / Add at the foot first
+			if (browseDir == NETROOT && l.find.hit(x, y)) { netFoot = 0; netPressed = 100; return false; }
+			if (browseDir == NETROOT && l.add.hit(x, y)) { netFoot = 1; netPressed = 101; return false; }
+			// the list (the connections, the hosts found): anywhere on it drives it, a row is chosen as the finger
+			// lifts (the search's notice is no row to choose)
+			int row = -1;
+			if (!listPress(listGeom(p), pt, x, y, row)) return false;
+			netFinger = true;
+			netFingerY = y;
+			if (row >= 0 && row < (int)browseRows.size() && browseRows[row].id >= 0)
 			{
-				for (int i = ui.scroll; i < (int)browseRows.size() && i < ui.scroll + l.shown; i++)
-				{
-					Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
-					if (r.hit(x, y) && browseRows[i].id >= 0)
-					{
-						ui.cursor = i;
-						netPressed = i;
-						netFinger = true;
-						netFingerY = y;
-						netFingerScroll = ui.scroll;
-						break;
-					}
-				}
-				return false;
+				ui.cursor = row;
+				if (browseDir == NETROOT) netFoot = -1;
+				netPressed = row;
 			}
-			// NETROOT: a connection, or Find / Add at the foot
-			if (l.find.hit(x, y)) { netFoot = 0; netPressed = 100; return false; }
-			if (l.add.hit(x, y)) { netFoot = 1; netPressed = 101; return false; }
-			for (int i = ui.scroll; i < (int)browseRows.size() && i < ui.scroll + l.shown; i++)
+			return false;
+		}
+		if (netFinger && pt.kind == Pointer::Move && browseDir != FORMDIR)
+		{
+			if (listMove(pt))
 			{
-				Rect r{l.list.x, l.rowsY + (i - ui.scroll) * l.rowH, l.list.w, l.rowH};
-				if (!r.hit(x, y)) continue;
-				ui.cursor = i;
-				netFoot = -1;
-				netPressed = i;
-				netFinger = true;
-				netFingerY = y;
-				netFingerScroll = ui.scroll;
-				break;
+				netFingerMoved = true;
+				netPressed = -1;
 			}
 			return false;
 		}
@@ -2410,6 +2581,7 @@ namespace bp
 			netFinger = false;
 			int was = netPressed;
 			netPressed = -1;
+			if (listLift() && listCaught) was = -1;
 			if (!netFingerMoved && was >= 0)
 			{
 				if (browseDir == FORMDIR)
@@ -2564,6 +2736,8 @@ namespace bp
 			// its lift is the tap. Without this its downs were the only events it ever saw, so a finger on a row set
 			// the cursor but never opened it, and a drag never scrolled.
 			if (filesPage()) return filesPointer(pt, x, y, p);
+			// All recent's rows keep their finger too (the smooth list's drag and the lift's tap)
+			if (browseDir == RECENT) return homeView->recentPointer(pt, x, y, p);
 			return false;
 		}
 		// the Files page: its rows, header keys, select bar and empty page's keys

@@ -656,8 +656,10 @@ namespace bp
 			}
 		}
 		browse->playlists->plCheckShown();
-		// the page's smooth list, its glide stepped to now (its offset is not in the signature: drawnList)
-		SmoothList* list = area() ? area()->smoothList() : nullptr;
+		// the page's smooth list, its glide stepped to now (its offset is not in the signature: drawnList); the Add
+		// to… picker's own while it is open over the page (the one a finger or a key moves then)
+		SmoothList* list = browse->playlists->pickerOpen ? &browse->playlists->pickerSmooth()
+			: area() ? area()->smoothList() : nullptr;
 		if (list != listShown)
 		{
 			if (listShown) listShown->release();

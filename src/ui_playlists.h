@@ -12,6 +12,7 @@
 // bar, not a dialog over it.
 #pragma once
 #include "ui.h"
+#include "ui_smoothlist.h"
 
 namespace bp
 {
@@ -96,8 +97,12 @@ namespace bp
 		void dragEnd(Player& p);
 		// adding: "Add to..." (the playlists, New playlist... first), then the files or a folder's media added
 		bool pickerOpen = false;
-		int pickerCursor = 0, pickerScroll = 0, pickerTouchY = 0, pickerScrollStart = 0;
-		bool pickerScrolled = false;
+		int pickerCursor = 0;
+		bool pickerScrolled = false, pickerCaught = false;
+		// its rows: a smooth list of their own (ui_smoothlist.h), the one Ui::draw steps while the picker is open
+		std::unique_ptr<SmoothList> pickerRows;
+		SmoothList& pickerSmooth();
+		void pickerReveal(bool glide);	// the cursor's row in view
 		std::vector<PlaylistStore::Info> pickerList;
 		std::string pickerFolder;	// a folder's media ("Add to playlist..." on a folder); "" the ticked files
 		// Music's Add to playlist… (an album's or an artist's songs): these very entries into a playlist chosen
@@ -121,7 +126,7 @@ namespace bp
 		// the picker's sheet: lay::sheet over the page, 46-tall rows; the header names what goes where
 		static constexpr int PICKER_SHOWN = 7;
 		Rect pickerBox() const;
-		Rect pickerRow(int i) const;
+		Rect pickerView() const;	// where the rows are (the box's rows, to the hints)
 		bool plNameThenAdd = false;	// the name typed is a new playlist to add to (pickerFolder's, the one file, or the ticked files)
 		bool pickerNewOne = false;	// the playlist added to was just made (the card says so)
 		std::string plNameAddFolder;
@@ -168,8 +173,6 @@ namespace bp
 		int keyPress = -1;	// the key under a finger
 		int barPress = -1;	// the select / move bar's key under a finger
 		int plPressRow = -1;	// the row under a finger
-		int plTouchY = 0;
-		int plScrollStart = 0;
 		bool plTouchScrolled = false;
 		int rowsY = 0, rowsShown = 0;	// the last layout's rows (the drag's maths)
 		std::string focusFor;	// the playlist the focus was put in (a playing one opens on its row)

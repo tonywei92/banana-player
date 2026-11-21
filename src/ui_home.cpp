@@ -765,28 +765,41 @@ namespace bp
 
 	bool Ui::Home::recentPointer(const Pointer& pt, int x, int y, Player& p)
 	{
-		// All recent's rows: the generic list's pointers take over from here (its Up chooses the cursor this sets)
-		if (pt.kind != Pointer::Down) return false;
-		lay::Shell sh = lay::shell();
-		lay::AllRecentPage lp = lay::allRecentPage(sh.body);
-		// its empty state's one key (Browse Files), as the key says
-		if (ui.browse->browseRows.empty() || (ui.browse->browseRows.size() == 1 && ui.browse->browseRows[0].id < 0))
+		Browse& br = *ui.browse;
+		int n = (int)br.browseRows.size();
+		auto choosable = [&](int i) { return i >= 0 && i < n && br.browseRows[i].id >= 0; };
+		if (pt.kind == Pointer::Move)
 		{
-			lay::EmptyState es = lay::emptyState(sh.body, (int)wrapEmpty(recentEmptyText(p)).size(), 1);
-			if (es.key[0].hit(x, y)) ui.browse->openSection(TAB_LOCAL, p);
+			if (br.listMove(pt)) recentMoved = true;
 			return false;
 		}
-		for (int i = 0; i < lp.shown; i++)
+		if (pt.kind == Pointer::Up)
 		{
-			int idx = ui.scroll + i;
-			if (!lp.row(i).hit(x, y)) continue;
-			if (idx < 0 || idx >= (int)ui.browse->browseRows.size() || ui.browse->browseRows[idx].id < 0) return false;
-			ui.cursor = idx;
-			ui.listTouch = true;
-			ui.listScrolled = false;
-			ui.touchStartY = y;
-			ui.scrollStart = ui.scroll;
+			int was = recentTouch;
+			recentTouch = -1;
+			if (br.listLift() && br.listCaught) was = -1;
+			// a tap: the row it went down on, still under it (as the list's lift chose the cursor)
+			if (!recentMoved && choosable(was) && br.list.rowAt(x, y) == was) ui.choose(was, p);
+			recentMoved = false;
 			return false;
+		}
+		if (pt.kind != Pointer::Down) return false;
+		recentTouch = -1;
+		recentMoved = false;
+		lay::Shell sh = lay::shell();
+		// its empty state's one key (Browse Files), as the key says
+		if (br.browseRows.empty() || (br.browseRows.size() == 1 && br.browseRows[0].id < 0))
+		{
+			lay::EmptyState es = lay::emptyState(sh.body, (int)wrapEmpty(recentEmptyText(p)).size(), 1);
+			if (es.key[0].hit(x, y)) br.openSection(TAB_LOCAL, p);
+			return false;
+		}
+		// the rows: anywhere on the list drives it (a day's heading is ground: it scrolls, it isn't chosen)
+		int row = -1;
+		if (br.listPress(br.listGeom(p), pt, x, y, row) && choosable(row))
+		{
+			ui.cursor = row;
+			recentTouch = row;
 		}
 		return false;
 	}
@@ -1058,34 +1071,59 @@ namespace bp
 			k.emptyState(es, e);
 			return;
 		}
-		for (int i = 0; i < lp.shown; i++)
-		{
-			int idx = ui.scroll + i;
-			if (idx < 0 || idx >= (int)ui.browse->browseRows.size()) break;
-			const auto& br = ui.browse->browseRows[idx];
-			if (br.id == -3)
-			{
-				// a day's heading (Today, Yesterday, Earlier): a line, not a row (the cursor passes it)
-				lay::Box r = lp.row(i);
-				Kit::SectionLine head;
-				head.text = br.label;
-				k.sectionLine(lay::sectionLine({r.x, r.y + 12, r.w, 22}, false), head);
-				continue;
-			}
-			if (br.id < 0) continue;
-			const RecentItem* it = findRecent(ui.browse->browsePaths[idx]);
+		// the rows: the browser's smooth list, each row's look its key
+		Browse& br = *ui.browse;
+		Browse::ListGeom g = br.listGeom(p);
+		br.listBegin(g);
+		auto rowOf = [this](int i) {
+			const Browse& b = *ui.browse;
+			const RecentItem* it = i < (int)b.browsePaths.size() ? findRecent(b.browsePaths[i]) : nullptr;
+			const auto& r = b.browseRows[i];
 			Kit::Row row;
 			row.font = F_SMALL;
 			row.under = BG;
 			row.glyph = it ? it->kind : &G_FILM;
-			row.name = it ? it->name : br.label;
-			row.note = it ? it->sub : br.note;
+			row.name = it ? it->name : r.label;
+			row.note = it ? it->sub : r.note;
 			if (it && !it->where.empty()) { row.pill = it->where; row.tone = Kit::Pill::Fact; }
 			else if (it && it->net) { row.pill = "Network"; row.tone = Kit::Pill::Fact; }
-			row.focused = ui.cursor == idx;
+			row.focused = ui.cursor == i;
 			row.lit = false;
-			k.row(lp.row(i), row);
-		}
+			return row;
+		};
+		SmoothList::Spec spec;
+		spec.view = g.view;
+		spec.rowH = g.rowH;
+		spec.count = g.count;
+		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + "|";
+		spec.key = [this, rowOf, gen](int i) -> std::string {
+			const Browse& b = *ui.browse;
+			if (i < 0 || i >= (int)b.browseRows.size()) return "-";
+			const auto& r = b.browseRows[i];
+			if (r.id == -3) return "rh" + gen + std::to_string(i) + r.label;
+			if (r.id < 0) return "rx" + std::to_string(i);
+			Kit::Row row = rowOf(i);
+			if (row.focused) return "";		// (the focused name's marquee: drawn again each frame)
+			return "rr" + gen + std::to_string(i) + "|" + row.name + "|" + row.note + "|" + row.pill +
+				std::to_string(reinterpret_cast<uintptr_t>(row.glyph));
+		};
+		spec.draw = [this, rowOf](int i, Rect r) {
+			const Browse& b = *ui.browse;
+			if (i < 0 || i >= (int)b.browseRows.size()) return;
+			const auto& br = b.browseRows[i];
+			if (br.id == -3)
+			{
+				// a day's heading (Today, Yesterday, Earlier): a line, not a row (the cursor passes it)
+				Kit::SectionLine head;
+				head.text = br.label;
+				ui.kit->sectionLine(lay::sectionLine({r.x, r.y + 12, r.w, 22}, false), head);
+				return;
+			}
+			if (br.id < 0) return;
+			ui.kit->row(r, rowOf(i));
+		};
+		br.list.draw(std::move(spec));
+		br.listEnd(g);
 	}
 
 	// ---- the More sheet on a card (X or a hold), Home's own things beside it ----

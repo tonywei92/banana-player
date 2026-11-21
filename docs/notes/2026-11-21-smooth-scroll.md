@@ -3,7 +3,7 @@
 The owner's goal: lists scroll as on a phone — the content follows the finger by the pixel, glides on after the lift
 and slows by friction, gives a little past the ends, and does it at 60 frames a second on the RG DS (RK3568, SDL2's
 GLES2 renderer on KMSDRM), where a bottom-panel frame took 30–55 ms. This step: one shared component, used by Music's
-four lists only (the Albums grid, Artists, an album's tracks, an artist's songs). Every other list still scrolls by
+four lists only (the Albums grid, Artists, an album's tracks, an artist's songs; more since: "Adopters" below). Every other list still scrolls by
 whole rows (`lay::listScroll` / `lay::dragScroll` / `lay::rowAt`).
 
 ## Where a frame went
@@ -60,6 +60,39 @@ rows already drawn. The handheld's first log: 59 a second, ~13 ms a frame, compo
 7. **signature()**: drop the scroll from it; keep the cursor, the pressed row, `touchMoved`.
 
 A list inside a sheet (an overlay) gets the same: the slots, the glide and the pixel offset.
+
+## Adopters (2026-11-21, second step)
+
+| List | Where | How |
+|---|---|---|
+| Music: the Albums grid, Artists, an album's tracks, an artist's songs | `ui_music.cpp` | the worked example above |
+| Videos (the three views, a folder's list) | `ui_videos.cpp` | `Videos::list`, `listGeom()`, `videoOf()` (the row's look is its key: the place and length from the stores) |
+| The Books shelf (rows of five; the Reading now strip stays put) | `ui_books.cpp` | as Music's grid; `Ui::bookCoverState` is `songArtState` for a book's cover (`ui_menus.cpp`) |
+| Files and a connection's folders, the Network tab's connections and Find, All recent, the list of playlists, a playlist's items (plain, Edit, Move, the grip's drag) | `ui_browse.cpp`, `ui_home.cpp`, `ui_playlists.cpp` | **one** `Browse::list` for all of them (below) |
+| The Add to… picker | `ui_playlists.cpp` | `Playlists::pickerSmooth()`; `Ui::draw` steps it while the picker is open (it is drawn over any page, not an area's) |
+
+Not on it: a connection's form (a few rows, still `ui.scroll`), Home (nothing there scrolls), and the lists another agent
+moves (Settings, Manga, Extensions, Search, the sheets).
+
+**The browser's one list.** The browser's pages share `ui.cursor` and `ui.scroll`, and much code still counts in rows
+(each folder's place in `placeIn`, the durations asked for the rows on screen, the playlists' Move and the grip's
+edge scroll, the way back from the player or Settings). So the list's offset is the truth while it shows and
+`ui.scroll` follows it: each page's draw calls `Browse::listBegin(g)` before `list.draw` and `listEnd(g)` after.
+`ListGeom::id` names the list (`files|tab|dir`, `pl|dir`, `plroot`, `recent`, NETROOT, FINDNET): a new id (or the list
+come back to from another page or the picker: `smoothList()` sees `ui.listShown` isn't it) is placed at `ui.scroll`
+with the cursor's row shown; else a cursor moved by anything but a finger glides into view (`listReveal` asks for
+another row: Move shows the block's far end), and a `ui.scroll` the row-counting code moved glides there. A finger
+goes through `listPress` / `listMove` / `listLift` (the lift marks the cursor the finger set as seen: a flick can be
+down and up between two frames, and the glide must not turn back to the row it went down on).
+
+The lambdas run only inside `list.draw` (every frame is drawn whole), so these adopters read the area's members through
+`this` and the Player through a pointer taken in draw; step 4 above was written for the kept frames, since dropped.
+
+Mac at the handheld's scale (`BP_BOTTOM_SIZE=1024x768 SDL_RENDER_DRIVER=opengl`, generated media), one flick each:
+Videos 57-58 a second (~3 ms a frame), Books 58-61 (~3.4 ms; one cover decode per book), Files 57-58 (1.7-2.9 ms),
+All recent 57, the list of playlists 55-59, a playlist 57, the picker 44 (its Down*8 burst 15: the harness waits 80 ms
+between presses on the main thread, as noted for Music). Not run: the Network tab's lists (no connection in the
+harness), and the handheld.
 
 ## Traps
 
