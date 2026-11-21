@@ -66,6 +66,19 @@ namespace bp
 		return out;
 	}
 
+	bool Ui::PlayerPage::repeatMarkShown(const Player& p) const
+	{
+		return p.playing() && p.playingAudio();
+	}
+
+	void Ui::PlayerPage::stepRepeat(Player& p)
+	{
+		// Off -> All -> One -> Off: the List sheet's own setting (the Session follows the settings' loop)
+		Settings st = p.settings;
+		st.loop = (st.loop + 1) % LOOPS;
+		p.setSettings(st);
+	}
+
 	bool Ui::PlayerPage::listAct(Player& p)
 	{
 		// List: a playlist's song opens that playlist's own page (its edits, its order), what plays going on behind;
@@ -182,13 +195,7 @@ namespace bp
 		case C_SPEED: openView(3, p); break;
 		// Repeat steps Off -> All -> One -> Off in place (the List sheet's own setting, through the Session); a song's
 		// Shuffle turns on and off in place. No sheet and no note: the chip's word and its yellow say it
-		case C_MODE:
-		{
-			Settings st = p.settings;
-			st.loop = (st.loop + 1) % LOOPS;
-			p.setSettings(st);
-			break;
-		}
+		case C_MODE: stepRepeat(p); break;
 		case C_SHUFFLE:
 			SessionHost::get().setShuffle(!p.settings.shuffle);
 			break;
@@ -206,6 +213,7 @@ namespace bp
 		if (id >= T_LIKE && id <= T_STOP) return l.keys[id - T_LIKE];
 		if (id >= T_CHIP0 && id < T_CHIP0 + l.chips) return l.chip[id - T_CHIP0];
 		if (id == T_NEXTLINE) return l.next;
+		if (id == T_REPEAT) return l.repeat;
 		return {0, 0, 0, 0};
 	}
 
@@ -217,6 +225,7 @@ namespace bp
 		case T_LINE: return chapterLineShown(p);
 		// a file that didn't open: only what leads elsewhere (the next file, the list, More), and Like / Add
 		case T_REW: case T_FF: return !err && p.duration > 0;
+		case T_REPEAT: return !err;
 		case T_PLAY: return !err || p.errorNet;	// (the network dropped it: Retry)
 		// Like and Add work on a file that didn't open too (it's still a file)
 		case T_LIKE: case T_ADD: return ui.headerActions(p);
@@ -251,6 +260,11 @@ namespace bp
 			return false;
 		case T_SLEEP: ui.sleep->openSheet(); return false;
 		case T_NEXTLINE: openList(0, p); return false;
+		// the mark has no word of its own: the top screen names what it is now ("Loop all", with Shuffle's)
+		case T_REPEAT:
+			stepRepeat(p);
+			p.osd(ui.modeLabel(p));
+			return false;
 		// Stop, the same flag the More sheet's Stop tile sets: the Session stops it everywhere, the place kept
 		case T_STOP: ui.stopPressed = true; return false;
 		default: break;
@@ -272,7 +286,7 @@ namespace bp
 			if (ui.buttonRect(BACK_ICON).hit(x, y)) { ui.pressedBtn = BACK_ICON; return false; }
 			return ui.photoDown(x, y, p);
 		}
-		lay::PlayerLayout l = lay::playerLayout((int)chips(p).size());
+		lay::PlayerLayout l = lay::playerLayout((int)chips(p).size(), repeatMarkShown(p));
 		if (pt.kind == Pointer::Down)
 		{
 			pressed = T_NONE;
@@ -2232,7 +2246,7 @@ namespace bp
 
 		Kit& k = *ui.kit;
 		auto chipList = chips(p);
-		lay::PlayerLayout l = lay::playerLayout((int)chipList.size());
+		lay::PlayerLayout l = lay::playerLayout((int)chipList.size(), repeatMarkShown(p));
 		bool err = !p.error.empty(), hotkeys = p.settings.buttonHotkeys, audio = p.playingAudio();
 		auto capOf = [&](const char* key) { return std::string(hotkeys ? key : ""); };
 		if (ui.roots.empty()) ui.roots = browseRoots();	// (started with a file: the browser never read them)
@@ -2419,6 +2433,13 @@ namespace bp
 				line.text = entryTitle(nx.path);
 				line.note = nx.note;
 			}
+			else if (p.settings.loop != LOOP_OFF)
+			{
+				// one item under a Repeat: it has no next, and it doesn't end either
+				line.glyph = p.settings.loop == LOOP_ONE ? &G_LOOP_ONE : &G_LOOP;
+				line.text = audio ? "This song again" : "This video again";
+				line.note = loopLabel(p.settings.loop);
+			}
 			else
 			{
 				line.text = "Nothing after this";
@@ -2426,6 +2447,17 @@ namespace bp
 				line.dim = true;
 			}
 			k.line(l.next, line);
+		}
+
+		// ---- a song's Repeat mark, at the Next line's end: dim while Off, the accent and a dot on All and One ----
+		if (l.repeat.w > 0)
+		{
+			Kit::Chip c;
+			c.glyph = p.settings.loop == LOOP_ONE ? &G_LOOP_ONE : &G_LOOP;
+			c.away = p.settings.loop != LOOP_OFF;
+			c.off = err;
+			c.pressed = pressed == T_REPEAT;
+			k.chip(l.repeat, c);
 		}
 
 		k.hints(hintList(p, !p.chapters.empty() && !err));
@@ -2442,6 +2474,7 @@ namespace bp
 		NextUp nx = nextUp(p);
 		std::string sig = "|pp" + std::to_string(pressed) + "," +
 			std::to_string(touchLocked) + "," + std::to_string(seekHeld >= 0) + "|" + nx.path + "|" + nx.note + (nx.round ? "r" : "") + (nx.any ? "a" : "") +
+			"|rp" + std::to_string(p.settings.loop) + (repeatMarkShown(p) ? "m" : "") +
 			"|" + p.artist() + "|" + p.album() + (p.songArtMissing() ? "|ph" + p.artPlaceholderKey() : "");
 		if (touchLocked && lockHoldAt) sig += "|hold" + std::to_string((SDL_GetTicks() - lockHoldAt) / 50);
 		// Match album art's backdrop: which answer the page draws over, and (while it runs) the cross-fade's step

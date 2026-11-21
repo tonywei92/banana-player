@@ -11917,6 +11917,18 @@ static void testKitLayout()
 		CHECK(l.barHit.hit(l.bar.x, l.bar.y) && l.barHit.hit(l.times.x + 4, l.times.y + 4));
 	}
 	CHECK_EQ(playerLayout(9).chips, PLAYER_CHIPS_MAX);
+	// a song's Repeat mark: the Next row's right end, a finger's size, the line a gap short of it; none on a video
+	{
+		PlayerLayout v = playerLayout(5), s = playerLayout(5, true);
+		CHECK_EQ(v.repeat.w, 0);
+		CHECK_EQ(v.next.x + v.next.w, 624);
+		CHECK_EQ(s.repeat.x + s.repeat.w, 624);
+		CHECK(s.repeat.w >= 44 && s.repeat.h >= 44);
+		CHECK_EQ(s.repeat.y, s.next.y);
+		CHECK_EQ(s.repeat.h, s.next.h);
+		CHECK_EQ(s.repeat.x - (s.next.x + s.next.w), 8);
+		CHECK_EQ(s.next.x, v.next.x);
+	}
 
 	// the D-pad's UP / DOWN are the volume on the player (a key, not a layout): LEFT / RIGHT are the seek's
 

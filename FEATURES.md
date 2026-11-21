@@ -443,6 +443,11 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 - **The Next line** along the bottom names what plays after this: its length once the lists have probed it, else its
   place in the list ("2 of 7"; "shuffled" with Shuffle on), **A new shuffled round** at a round's end, **Nothing after
   this** at the end of a list played in order. A tap opens the List sheet on Up next, as **Y** does.
+- **A song's Repeat mark** ends the Next line's row, so Repeat can't go unnoticed (a video has its **Repeat** chip):
+  the loop mark, dim while Repeat is **Off**, in the accent with a dot on **All**, and the repeat-one mark on **One**. A
+  tap steps **Off → All → One → Off**, the same setting as the List sheet's, and the top screen names the new state.
+  While Repeat is All or One the top screen wears the same mark in its top right corner, in every Show mode. One item
+  under a Repeat reads **This song again** on the Next line.
 - **Chapters:** tap the chapter line above the progress bar (`2 / 8 · its name`) for the List sheet on Chapters.
 - **Lists:** tap to choose, drag to scroll. A drag moves only the highlight, to the row under your finger when you lift
   it (it never plays); a tap still plays.
