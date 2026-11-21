@@ -90,6 +90,9 @@ namespace bp
 		std::function<void(Rect)> pictureFor(const std::string& path, const Glyph* kind, const std::string& artKey, int rad) const;
 		mutable std::string mangaStopped;	// a video Manga stopped (the Continue card says why); cleared when it plays again
 		mutable Uint32 mangaStopSeen = 0;
+		// the last song or video that played: Recent keeps a card where it was when it is played from there, so after Stop
+		// the card is this one, not whatever heads Recent
+		mutable std::string lastLive;
 
 		// ---- a song's real album art (the Continue card and the Recent cards) ----
 		// The cache is Ui's now (ui.h, "a song's album art"): one set of textures shared with the rail's
