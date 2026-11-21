@@ -319,10 +319,12 @@ namespace bp
 		if (before.empty()) return;
 		std::unordered_map<std::string, size_t> at;
 		for (size_t i = 0; i < before.size(); i++) at.emplace(before[i], i);
-		std::vector<RecentItem> kept;
-		for (auto& it : recent)
-			if (at.count(it.path)) kept.push_back(it);
+		// what is new (played since it was listed) comes first, as listRecent has it: dropping it left the song just
+		// played out of Home's Recent until it was listed again with the order free
+		std::vector<RecentItem> kept, fresh;
+		for (auto& it : recent) (at.count(it.path) ? kept : fresh).push_back(it);
 		std::stable_sort(kept.begin(), kept.end(), [&](const RecentItem& a, const RecentItem& b) { return at[a.path] < at[b.path]; });
+		kept.insert(kept.begin(), fresh.begin(), fresh.end());
 		recent = std::move(kept);
 	}
 
