@@ -72,6 +72,10 @@ namespace bp
 		void keepCursorInView(bool glide = true);	// the cursor's row of the list shown: a short glide to it
 		// the Albums grid's row r of n albums, its cells inside the row's box (the focus ring's room around them)
 		static lay::AlbumGrid gridRow(Rect row, int r, int n);
+		// an artist's page: whether its album strip shows (the head's keys or the strip focused; their songs' list
+		// takes its place once the cursor went below), and the strip's j-th cell shown — draw() and the touches ask both
+		bool artistStripShown(const MediaSnapshot& snap) const;
+		Rect artistStripCell(int j) const;
 
 		// ---- playing (through the Session, as Files does: the play request, main opens it) ----
 		void play(const std::vector<std::string>& paths, int index, const std::string& title, bool shuffle, Player& p);

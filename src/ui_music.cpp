@@ -156,6 +156,18 @@ namespace bp
 		return g;
 	}
 
+	bool Ui::Music::artistStripShown(const MediaSnapshot& snap) const
+	{
+		return albumAt < 0 && artistAt >= 0 && artistAt < (int)snap.artists.size() && (keyFocus >= 0 || artistZone == 0);
+	}
+
+	Ui::Rect Ui::Music::artistStripCell(int j) const
+	{
+		lay::PageHead h = lay::pageHead(musicInner(), 1, 3);
+		return {h.content.x + j * (lay::ALBUM_ART + lay::ALBUM_COL_GAP), h.content.y + lay::LINE_H + lay::SP6,
+			lay::ALBUM_ART, lay::ALBUM_CELL_H};
+	}
+
 	lay::AlbumGrid Ui::Music::gridRow(Rect row, int r, int n)
 	{
 		int inRow = std::clamp(n - r * 5, 0, 5);
@@ -711,11 +723,12 @@ namespace bp
 			if (t >= T_ALBUM && t < T_ARTIST)
 			{
 				// the Albums grid's cells (by index), or the artist page's strip (the j-th cell shown)
-				if (artistAt >= 0 && artistAt < (int)snap->artists.size() && keyFocus < 0 && artistZone == 0)
+				if (artistStripShown(*snap))
 				{
+					// (still on the cell it went down on: a slide off it lets go)
 					std::vector<uint32_t> albums = artistAlbumsByYear(artistAt);
-					int i = albumScroll + (t - T_ALBUM);
-					if (i >= albumScroll && i < (int)albums.size()) openAlbum((int)albums[i], p);
+					int j = t - T_ALBUM, i = albumScroll + j;
+					if (i < (int)albums.size() && artistStripCell(j).hit(x, y)) openAlbum((int)albums[i], p);
 					return false;
 				}
 				if (albumAt < 0 && artistAt < 0 && view == 0 && t - T_ALBUM < (int)snap->albums.size())
@@ -767,20 +780,22 @@ namespace bp
 			for (int i = 0; i < 3; i++)
 				if (h.key[i].w > 0 && h.key[i].hit(x, y)) { touch = T_KEY + i; return false; }
 		}
-		// an artist's album strip (one row of cells, no list under it while it has the focus)
-		if (artistAt >= 0 && artistAt < (int)snap->artists.size() && keyFocus < 0 && artistZone == 0)
+		// an artist's album strip (one row of cells, no list under it). It shows while the head's keys have the
+		// focus too — as the page opens — so the test is the drawing's own (artistStripShown): it used to ask
+		// for the strip's focus, and a finger could open no album until the D-pad had moved onto the strip
+		if (artistStripShown(*snap))
 		{
-			std::vector<uint32_t> albums = artistAlbumsByYear(artistAt);
-			lay::PageHead h = lay::pageHead(inner, 1, 3);
-			Rect strip{inner.x, h.content.y + lay::LINE_H + lay::SP6, inner.w, lay::ALBUM_CELL_H};
+			int per = std::min(5, (int)artistAlbumsByYear(artistAt).size());
 			touch = T_GROUND;		// the strip's own ground: one row, a drag does nothing
-			if (!strip.hit(x, y) || albums.empty()) return false;
-			int per = std::min(5, (int)albums.size());
 			for (int j = 0; j < per; j++)
-			{
-				Rect cell{inner.x + j * (lay::ALBUM_ART + lay::ALBUM_COL_GAP), strip.y, lay::ALBUM_ART, lay::ALBUM_CELL_H};
-				if (cell.hit(x, y)) { touch = T_ALBUM + j; return false; }
-			}
+				if (artistStripCell(j).hit(x, y))
+				{
+					// the finger's cell takes the focus (as a row under a finger does)
+					touch = T_ALBUM + j;
+					keyFocus = -1;
+					artistZone = 0;
+					artistAlbum = albumScroll + j;
+				}
 			return false;
 		}
 		// the list shown: anywhere else on the page drives it (a touch on a gliding list only stops it)
@@ -913,7 +928,7 @@ namespace bp
 				line.text = text;
 				k.sectionLine(lay::sectionLine(box, false), line);
 			};
-			if (keyFocus >= 0 || artistZone == 0)
+			if (artistStripShown(*snap))
 			{
 				// their albums as one strip of cover cells (the focused one kept in view), the songs' line below
 				caps("Albums \xC2\xB7 " + std::to_string(albums.size()), {inner.x, h.content.y, inner.w, lay::LINE_H});
@@ -921,7 +936,7 @@ namespace bp
 				// the strip's first cell: the focused one kept in view, and never past the strip's end
 				albumScroll = std::clamp(albumScroll, std::max(0, artistAlbum - per + 1),
 					std::max(0, std::min(artistAlbum, (int)albums.size() - per)));
-				Rect strip{inner.x, h.content.y + lay::LINE_H + lay::SP6, inner.w, lay::ALBUM_CELL_H};
+				Rect strip = artistStripCell(0);
 				for (int j = 0; j < per; j++)
 				{
 					const MediaAlbum& al = snap->albums[albums[albumScroll + j]];
@@ -945,9 +960,7 @@ namespace bp
 					cell.playing = here && !p.paused;
 					cell.paused = here && p.paused;
 					cell.focused = keyFocus < 0 && artistZone == 0 && albumScroll + j == artistAlbum;
-					Rect box{inner.x + j * (lay::ALBUM_ART + lay::ALBUM_COL_GAP), strip.y, lay::ALBUM_ART,
-						lay::ALBUM_CELL_H};
-					k.albumTile(lay::albumTile(box), cell);
+					k.albumTile(lay::albumTile(artistStripCell(j)), cell);
 				}
 				// the songs' line under the strip, when the room for it is there
 				int below = strip.y + strip.h + lay::SP12;
