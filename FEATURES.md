@@ -553,6 +553,14 @@ and the **Videos** shortcut with the storage it is on. A storage's card shows it
 what is used, and `43 GB used of 64 GB` under it. Nearly full (under a tenth free, or under 1 GB) the bar and the
 free line turn red and the line says `nearly full`. Sizes are the ones on a card's box (1000s).
 
+**A storage on the top screen.** With the cursor on a place, the top screen shows that storage (for the **Videos**
+shortcut, the storage it is on): its name, where it is and its filesystem (`/run/sd2 · exFAT`, and `Read-only` when
+it is), the free room in large figures with `43 GB used of 64 GB` beside it, and a bar of what is used cut into
+**what fills it**: **Videos**, **Music** and **Books** (how many, and how much room they take), then **Other** for
+the rest (photos and everything else). The kinds come from what your library already lists, so nothing is searched
+for it: before the library has been read the bar is in one piece, and Books joins once the Books section was opened.
+Nearly full, the label, the figure and the bar turn red. A card taken out before the list caught up reads `Card out`.
+
 | Button | What it does |
 |---|---|
 | **A** (or tap it) | Open the folder, play the file (or open a document), or open the playlist. Files lists every file of the cards; one nothing here opens says so |

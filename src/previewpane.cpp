@@ -361,6 +361,83 @@ namespace bp
 			}
 			return y + h;
 		}
+
+		// the key line: each key's cap, then what it does; cy its middle
+		void keyLine(PaneDraw& d, const std::vector<std::pair<std::string, std::string>>& keys, float x, float cy)
+		{
+			using namespace theme;
+			float at = x;
+			for (auto& k : keys)
+			{
+				if (!k.first.empty()) at += d.cap(k.first, at, cy, ACCENT, BG) + 5;
+				at += d.text(INTER, 12.5f, k.second, at, cy - d.lineH(INTER, 12.5f) / d.c.k / 2, DIM_ON) + 15;
+			}
+		}
+
+		// a kind's colour in the storage pane's bar and beside its name: the tone (ACCENT; DANGER nearly full) at
+		// full strength for the first kind and fainter for each after it, and DIM for what no kind accounts for
+		Rgb kindInk(const StorageKind& k, int nth, bool full)
+		{
+			using namespace theme;
+			static const int strength[] = {100, 66, 40};
+			if (k.other) return DIM;
+			return mix(BG, full ? DANGER : ACCENT, strength[std::min(nth, 2)]);
+		}
+
+		// the storage pane (lay::storagePane; docs/redesign/src/screens.js: files-place-top)
+		void storagePane(PaneDraw& d, const PaneSpec& s)
+		{
+			using namespace theme;
+			Canvas& c = d.c;
+			lay::StoragePane l = lay::storagePane((int)s.fill.size());
+			auto mid = [&](Face f, float size, const lay::Box& b) { return b.y + (b.h - d.lineH(f, size) / c.k) / 2; };
+			auto fit = [&](Face f, float size, const std::string& t, float w) { return c.fit(f, size, t, (int)d.S(w)); };
+			brand(d, l.brandTile.x, l.brandTile.y, l.brandTile.w);
+			d.text(PIXEL, 15, "Banana Player", l.brandName.x, mid(PIXEL, 15, l.brandName), ACCENT);
+			d.spaced(INTER_BOLD, 11, lay::caps(s.label), l.label.x, mid(INTER_BOLD, 11, l.label), s.labelDanger ? DANGER : ACCENT);
+			d.text(PIXEL, 28, fit(PIXEL, 28, s.title, l.title.w), l.title.x, mid(PIXEL, 28, l.title), TEXT);
+			d.text(INTER, 14.5f, fit(INTER, 14.5f, s.text, l.where.w), l.where.x, mid(INTER, 14.5f, l.where), DIM_ON);
+			// the room: the free figure large (DANGER nearly full, as the place's card), the rest in words at the right
+			d.text(PIXEL, 36, s.room.free, l.figure.x, mid(PIXEL, 36, l.figure), s.room.full ? DANGER : TEXT);
+			std::string words = fit(INTER, 14.5f, s.room.detail, l.words.w);
+			d.text(INTER, 14.5f, words, l.words.x + l.words.w - d.textW(INTER, 14.5f, words), mid(INTER, 14.5f, l.words), DIM_ON);
+			// the bar: what is used cut into its kinds; nothing known of them: one segment of all that is used
+			d.box(l.bar.x, l.bar.y, l.bar.w, l.bar.h, 6, TRACK);
+			std::vector<double> shares;
+			for (auto& k : s.fill) shares.push_back(k.share);
+			if (shares.empty()) shares.push_back(s.room.used);
+			std::vector<lay::Box> seg = lay::storageSegments(l.bar, shares);
+			int nth = 0;
+			for (size_t i = 0; i < seg.size(); i++)
+			{
+				Rgb ink = s.fill.empty() ? (s.room.full ? DANGER : ACCENT) : kindInk(s.fill[i], nth, s.room.full);
+				if (!s.fill.empty() && !s.fill[i].other) nth++;
+				if (seg[i].w > 0) d.box(seg[i].x, seg[i].y, seg[i].w, seg[i].h, std::min(6.f, seg[i].w / 2.f), ink);
+			}
+			if (l.head.w) d.spaced(INTER_BOLD, 11, "WHAT FILLS IT", l.head.x, mid(INTER_BOLD, 11, l.head), DIM);
+			nth = 0;
+			for (size_t i = 0; i < s.fill.size() && i < l.kinds.size(); i++)
+			{
+				const StorageKind& k = s.fill[i];
+				const lay::Box& b = l.kinds[i];
+				d.box(b.x, b.y + (b.h - 12) / 2.f, 12, 12, 3, kindInk(k, nth, s.room.full));
+				if (!k.other) nth++;
+				float sw = d.textW(INTER, 13.5f, k.size);
+				d.text(INTER, 13.5f, k.size, b.x + b.w - sw, mid(INTER, 13.5f, b), TEXT);
+				float at = b.x + 22, room = b.w - 22 - sw - 12;
+				std::string name = fit(PIXEL, 15, k.name, room);
+				float nw = d.text(PIXEL, 15, name, at, mid(PIXEL, 15, b), TEXT);
+				if (!k.count.empty() && room - nw - 10 > 40)
+					d.text(INTER, 12.5f, fit(INTER, 12.5f, k.count, room - nw - 10), at + nw + 10, mid(INTER, 12.5f, b), DIM);
+			}
+			float y = l.note.y;
+			for (auto& t : d.wrap(INTER, 12.5f, s.note, l.note.w, 2))
+			{
+				d.text(INTER, 12.5f, t, l.note.x, y, DIM);
+				y += 12.5f * 1.5f;
+			}
+			if (!s.keys.empty()) keyLine(d, s.keys, l.keys.x, l.keys.y + l.keys.h / 2.f);
+		}
 	}
 
 	PaneImage composePane(const std::string& fontsDir, int w, int h, const PaneSpec& s)
@@ -383,6 +460,14 @@ namespace bp
 		if (s.state)
 		{
 			stateCard(d, s);
+			out.w = w;
+			out.h = h;
+			out.rgba = std::move(c.v);
+			return out;
+		}
+		if (s.storage)
+		{
+			storagePane(d, s);
 			out.w = w;
 			out.h = h;
 			out.rgba = std::move(c.v);
@@ -492,12 +577,7 @@ namespace bp
 		if (!s.keys.empty())
 		{
 			y += 18;
-			float at = x, cy = y + 10;
-			for (auto& k : s.keys)
-			{
-				if (!k.first.empty()) at += d.cap(k.first, at, cy, ACCENT, BG) + 5;
-				at += d.text(INTER, 12.5f, k.second, at, cy - d.lineH(INTER, 12.5f) / c.k / 2, DIM_ON) + 15;
-			}
+			keyLine(d, s.keys, x, y + 10);
 		}
 		if (s.extra == PaneSpec::THEMES)
 		{

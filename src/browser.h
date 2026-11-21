@@ -46,10 +46,44 @@ namespace bp
 		bool known = false, full = false;
 		double used = 0;	// 0..1
 		std::string free, detail;
+		uint64_t freeBytes = 0, totalBytes = 0;	// as read (free clamped to total): the top screen's storage pane counts in them
 	};
 	Capacity capacityOf(uint64_t freeBytes, uint64_t totalBytes);
 	// a card's size as its box says it: "64 GB", "7.4 GB", "512 MB" (1000s; one decimal under 10)
 	std::string capacityWords(uint64_t bytes);
+
+	// What is mounted where a path is, from the kernel's list (/proc/mounts' text: "device where type options ..." a
+	// line): the mount whose place holds the path (the longest one; the last line wins a tie, as the kernel shows the
+	// newest mount). found false: no line holds it. A place's "\040" is a space.
+	struct MountFacts
+	{
+		bool found = false, readOnly = false;
+		std::string fs;	// the kernel's own word: "exfat", "vfat", "ext4"
+	};
+	MountFacts mountFactsFrom(const std::string& mountsText, const std::string& path);
+	// the same, read now (/proc/mounts; a Mac asks statfs): a small read of a file kept in memory
+	MountFacts mountFacts(const std::string& path);
+	// a filesystem as people write it: "exfat" -> "exFAT", "vfat" -> "FAT32", "ext4" stays; "" stays ""
+	std::string fsLabel(const std::string& fs);
+
+	// What fills a storage, by kind, for the top screen's storage pane: each kind the library knows there (its files
+	// counted, their sizes summed), then "Other": the used room no kind accounts for (photos, games, the system).
+	// A kind with no files is left out; a share is of the whole storage (the bar's segment), never more than is used.
+	struct KindUse
+	{
+		const char* name;	// "Videos"
+		const char* one;	// "video"
+		const char* many;	// "videos"
+		uint64_t bytes = 0;
+		int files = 0;
+	};
+	struct StorageKind
+	{
+		std::string name, count, size;	// "Videos", "42 videos", "31 GB"; Other has no count
+		double share = 0;	// 0..1 of the storage
+		bool other = false;
+	};
+	std::vector<StorageKind> storageFill(uint64_t usedBytes, uint64_t totalBytes, const std::vector<KindUse>& kinds);
 
 	// where the browser starts: the handheld's folders, or a computer's home; BP_BROWSE (folders separated by ':')
 	// settles it (BP_BROWSE_CARDS=N: the first N of them stand in for storages). `card` says a place is a storage of its

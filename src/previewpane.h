@@ -6,6 +6,7 @@
 // once per change (its key) at the panel's own pixels and shows it 1:1, as About's support QR is shown.
 // Its first use: Settings › Power & screens › Theme (the fifteen swatches and the theme's pieces as they look).
 // While a video, a song or a photo plays the top screen is the picture: no pane.
+#include "browser.h"
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -49,6 +50,13 @@ namespace bp
 		// ground, the column over the fade and the rows two to a line; no frame: the band in SURFACE with the film mark
 		bool hero = false;
 		std::shared_ptr<const PaneImage> heroArt;
+		// the storage pane (lay::storagePane): Files' first page with the cursor on a place. label, title and keys are
+		// the pane's own; `text` is the one line of where it is; `room` the storage's (known), `fill` what fills it
+		// (browser.h's storageFill), `note` the quiet line under the kinds
+		bool storage = false;
+		Capacity room;
+		std::vector<StorageKind> fill;
+		std::string note;
 		// a block of the pane's own under the sentence: THEMES, every theme's swatch and the pieces as they look now
 		enum Extra { NONE, THEMES } extra = NONE;
 		int chosen = 0;	// THEMES: the theme outlined (the one in use)

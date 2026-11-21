@@ -4,6 +4,7 @@
 // and a Books cover tile (testKitLayoutLists).
 #include "kitlayout.h"
 #include <algorithm>
+#include <cmath>
 
 namespace bp
 {
@@ -154,6 +155,63 @@ namespace bp
 				p.column = {44, 74, PANEL_W - 88, PANEL_H - 74 - 20};
 			}
 			return p;
+		}
+
+		StoragePane storagePane(int kinds)
+		{
+			StoragePane p;
+			const int x = 44, w = PANEL_W - 88, gap = 20, cell = (w - gap) / 2;
+			p.brandTile = {20, 16, 22, 22};
+			p.brandName = {50, 16, 220, 22};
+			p.label = {x, 74, w, 12};
+			p.title = {x, 92, w, 34};
+			p.where = {x, 132, w, 20};
+			p.figure = {x, 166, 300, 42};
+			p.words = {x + 300, 186, w - 300, 20};
+			p.bar = {x, 218, w, STORAGE_BAR_H};
+			int y = p.bar.y + p.bar.h + 18;
+			p.head = {0, 0, 0, 0};
+			if (kinds > 0)
+			{
+				p.head = {x, y, w, 12};
+				y += 12 + 10;
+				for (int i = 0; i < kinds; i++)
+					p.kinds.push_back({x + (i % 2) * (cell + gap), y + (i / 2) * STORAGE_KIND_PITCH, cell, STORAGE_KIND_H});
+				y += (kinds + 1) / 2 * STORAGE_KIND_PITCH + 4;
+			}
+			p.note = {x, y, w, 38};
+			p.keys = {x, y + 38 + 12, w, 22};
+			return p;
+		}
+
+		std::vector<Box> storageSegments(Box bar, const std::vector<double>& shares)
+		{
+			std::vector<Box> out(shares.size(), Box{bar.x, bar.y, 0, bar.h});
+			int shown = 0, widest = -1, sum = 0;
+			for (size_t i = 0; i < shares.size(); i++)
+			{
+				if (!(shares[i] > 0)) continue;
+				out[i].w = std::max(STORAGE_SEG_MIN, (int)std::lround(std::min(1.0, shares[i]) * bar.w));
+				sum += out[i].w;
+				shown++;
+				if (widest < 0 || out[i].w > out[widest].w) widest = (int)i;
+			}
+			// the gaps come out of the widest (the used room's end stays where it is), and so does whatever the
+			// small ones' floor pushed past the bar's end
+			int gaps = shown > 1 ? (shown - 1) * STORAGE_SEG_GAP : 0;
+			if (widest >= 0)
+			{
+				int take = gaps + std::max(0, sum - bar.w);
+				out[widest].w = std::max(STORAGE_SEG_MIN, out[widest].w - take);
+			}
+			int at = bar.x;
+			for (auto& b : out)
+			{
+				if (b.w <= 0) continue;
+				b.x = at;
+				at += b.w + STORAGE_SEG_GAP;
+			}
+			return out;
 		}
 
 		std::vector<Box> swatches(int n, int left, int top, int perRow)

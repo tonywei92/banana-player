@@ -584,6 +584,7 @@ namespace bp
 					// tagged or not, a video in a Music folder is part of Music: with tags it sits in its album
 					// and under its artist, without them by its file's name, in its folder's album
 					s.video = video;
+					s.kb = (uint32_t)std::min<long long>(size / 1000, UINT32_MAX);
 					out.songs.push_back(std::move(s));
 					if (live) live->songs++;
 				}

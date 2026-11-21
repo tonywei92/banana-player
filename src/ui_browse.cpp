@@ -22,6 +22,8 @@
 #include "ui_home.h"
 #include "ui_music.h"
 #include "ui_videos.h"
+#include "ui_books.h"
+#include "previewpane.h"
 #include "ui_docs.h"
 #include "ui_manga.h"
 #include "ui_kit.h"
@@ -1321,12 +1323,14 @@ namespace bp
 		if (placeRoomFor != places || !placeRoomAt || now - placeRoomAt >= 2000)
 		{
 			placeRoomCache.assign(browsePaths.size(), Capacity{});
+			placeMountCache.assign(browsePaths.size(), MountFacts{});
 			for (size_t i = 0; i < browsePaths.size(); i++)
 			{
 				const BrowseRoot* r = placeOf((int)i);
 				struct statvfs vs;
 				if (r && r->card && statvfs(r->path.c_str(), &vs) == 0)
 					placeRoomCache[i] = capacityOf((uint64_t)vs.f_bavail * vs.f_frsize, (uint64_t)vs.f_blocks * vs.f_frsize);
+				if (r && r->card) placeMountCache[i] = mountFacts(r->path);
 			}
 			placeRoomFor = places;
 			placeRoomAt = now ? now : 1;
@@ -1344,6 +1348,96 @@ namespace bp
 			key += "|" + c.free + "," + c.detail + (c.full ? "!" : "");
 		}
 		return key;
+	}
+
+	const std::vector<StorageKind>& Ui::Browse::placeFill(const BrowseRoot& storage, const Capacity& room) const
+	{
+		auto snap = ui.videos ? ui.videos->snapshot() : nullptr;
+		size_t shelf = ui.books ? ui.books->shelf.size() : 0;
+		char mark[64];
+		snprintf(mark, sizeof mark, "|%p|%zu|", (const void*)snap.get(), shelf);
+		std::string key = storage.path + mark + room.detail;
+		if (key == placeFillFor) return placeFillCache;
+		placeFillFor = key;
+		placeFillRead = snap != nullptr;
+		const std::string in = storage.path + "/";
+		KindUse videos{"Videos", "video", "videos"}, songs{"Music", "song", "songs"}, books{"Books", "book", "books"};
+		auto add = [&](KindUse& k, const std::string& path, uint64_t bytes) {
+			if (path.compare(0, in.size(), in) != 0) return;
+			k.bytes += bytes;
+			k.files++;
+		};
+		if (snap)
+		{
+			for (auto& v : snap->videos) add(videos, v.path, (uint64_t)std::max(0LL, v.size));
+			for (auto& s : snap->songs) add(songs, s.path, (uint64_t)s.kb * 1000);
+		}
+		if (ui.books)
+			for (auto& b : ui.books->shelf) add(books, b.path, (uint64_t)std::max(0LL, b.size));
+		placeFillCache = storageFill(room.totalBytes - room.freeBytes, room.totalBytes, {videos, songs, books});
+		return placeFillCache;
+	}
+
+	bool Ui::Browse::placePane(PaneSpec& out, int row) const
+	{
+		const BrowseRoot* place = placesPage() ? placeOf(row) : nullptr;
+		if (!place) return false;
+		// the storage it is, or the one that holds it (a folder's: the deepest)
+		const BrowseRoot* on = nullptr;
+		int at = -1;
+		for (int i = 0; i < (int)browsePaths.size(); i++)
+		{
+			const BrowseRoot* r = placeOf(i);
+			if (!r || !r->card || (r != place && place->path.compare(0, r->path.size() + 1, r->path + "/") != 0)) continue;
+			if (on && r->path.size() <= on->path.size()) continue;
+			on = r;
+			at = i;
+		}
+		if (!on) return false;
+		const char* const MID = " \xC2\xB7 ";
+		const bool folder = on != place;
+		out.title = place->label;
+		struct stat there;
+		if (cardOut(on->path) || stat(on->path.c_str(), &there) != 0 || !S_ISDIR(there.st_mode))
+		{
+			// taken out, and the places not yet read again (they refresh by themselves): said, not scolded
+			out.key = "place|out|" + place->path;
+			out.label = "Card out";
+			out.labelDanger = true;
+			out.text = "This card isn\xE2\x80\x99t in the handheld. Its folders come back when it\xE2\x80\x99s in again.";
+			out.rows = {{"Was at", on->path}};
+			return true;
+		}
+		Capacity room = placeRoom(at);
+		MountFacts mount = at < (int)placeMountCache.size() ? placeMountCache[at] : MountFacts{};
+		std::string where = folder ? placeWhere(ui.roots, *place) : place->path;
+		if (!mount.fs.empty()) where += MID + fsLabel(mount.fs);
+		if (mount.readOnly) where += std::string(MID) + "Read-only";
+		out.label = folder ? "Folder on " + on->label : "Storage";
+		out.text = where;
+		out.keys = {{"A", "Open"}, {"X", "More"}};
+		if (!room.known)
+		{
+			out.key = "place|?|" + place->path + "|" + where;
+			out.rows = {{"Room", "Can\xE2\x80\x99t read its size"}};
+			return true;
+		}
+		out.storage = true;
+		out.room = room;
+		if (room.full)
+		{
+			out.label += std::string(MID) + "nearly full";
+			out.labelDanger = true;
+		}
+		out.fill = placeFill(*on, room);
+		bool kinds = false;
+		for (auto& k : out.fill) kinds = kinds || !k.other;
+		out.note = !placeFillRead ? "What fills it shows here once your library has been read."
+			: kinds ? "Videos, Music and Books as your library lists them. Photos and everything else are in Other."
+			: "None of your library\xE2\x80\x99s videos, music or books are on it.";
+		out.key = "place|" + place->path + "|" + out.label + "|" + where + "|" + room.free + "|" + room.detail + "|" + out.note;
+		for (auto& k : out.fill) out.key += "|" + k.name + "," + k.count + "," + k.size;
+		return true;
 	}
 
 	void Ui::Browse::drawPlaceRow(int i, Rect r, bool at)
