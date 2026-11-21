@@ -1,11 +1,15 @@
 #include "tagtext.h"
 #include <cerrno>
 #include <cstdint>
-#include <iconv.h>
+#include <mutex>
+#include <zlib.h>
 #include <vector>
 
 namespace bp
 {
+	extern const unsigned char CJK_cp932[], CJK_gbk[], CJK_big5[];
+	extern const size_t CJK_cp932_LEN, CJK_gbk_LEN, CJK_big5_LEN;
+
 	namespace
 	{
 		// next code point of valid UTF-8 at i (advances i), or -1 when it isn't well formed
@@ -40,43 +44,64 @@ namespace bp
 				(cp >= 0xFF00 && cp <= 0xFFEF) || (cp >= 0x2000 && cp <= 0x206F) || (cp >= 0x2190 && cp <= 0x25FF);
 		}
 
-		bool convert(iconv_t cd, const std::string& in, std::string& out)
+		void put(std::string& o, long cp)
 		{
-			iconv(cd, nullptr, nullptr, nullptr, nullptr);
-			std::vector<char> buf(in.size() * 4 + 8);
-			char* ip = const_cast<char*>(in.data());
-			size_t il = in.size();
-			char* op = buf.data();
-			size_t ol = buf.size();
-			if (iconv(cd, &ip, &il, &op, &ol) == (size_t)-1 || il != 0) return false;
-			out.assign(buf.data(), op - buf.data());
-			return true;
+			if (cp < 0x80) o += (char)cp;
+			else if (cp < 0x800) { o += (char)(0xC0 | (cp >> 6)); o += (char)(0x80 | (cp & 0x3F)); }
+			else { o += (char)(0xE0 | (cp >> 12)); o += (char)(0x80 | ((cp >> 6) & 0x3F)); o += (char)(0x80 | (cp & 0x3F)); }
 		}
 
-		// the bytes read as `charset`, accepted only when they come back identical and read as CJK text
-		bool tryCharset(const char* charset, const std::string& s, std::string& out)
+		// one table (rows: lead 0x81..0xFE, columns: trail 0x40..0xFE), inflated once on first use
+		const std::vector<uint16_t>& table(int which)
 		{
-			iconv_t dec = iconv_open("UTF-8", charset);
-			if (dec == (iconv_t)-1) return false;
-			iconv_t enc = iconv_open(charset, "UTF-8");
-			bool ok = false;
-			std::string u, back;
-			if (enc != (iconv_t)-1 && convert(dec, s, u) && validUtf8(u) && convert(enc, u, back) && back == s)
+			static std::vector<uint16_t> t[3];
+			static std::once_flag once[3];
+			std::call_once(once[which], [&] {
+				const unsigned char* z = which == 0 ? CJK_cp932 : which == 1 ? CJK_gbk : CJK_big5;
+				size_t zl = which == 0 ? CJK_cp932_LEN : which == 1 ? CJK_gbk_LEN : CJK_big5_LEN;
+				uLongf n = 126 * 191 * 2;
+				std::vector<unsigned char> raw(n);
+				if (uncompress(raw.data(), &n, z, (uLong)zl) != Z_OK || n != raw.size()) return;
+				t[which].resize(n / 2);
+				for (size_t i = 0; i < t[which].size(); i++) t[which][i] = (uint16_t)(raw[i * 2] | (raw[i * 2 + 1] << 8));
+			});
+			return t[which];
+		}
+
+		// the bytes read as table `which` (0 CP932, 1 GBK, 2 Big5), accepted only when every byte decodes and the
+		// result is mostly CJK or kana
+		bool tryTable(int which, const std::string& s, std::string& out)
+		{
+			const std::vector<uint16_t>& t = table(which);
+			if (t.empty()) return false;
+			std::string u;
+			int wide = 0, hit = 0;
+			for (size_t i = 0; i < s.size();)
 			{
-				int wide = 0, hit = 0;
-				for (size_t i = 0; i < u.size();)
+				unsigned char c = (unsigned char)s[i];
+				long cp;
+				if (c < 0x80) { cp = c; i++; }
+				else if (which == 0 && c >= 0xA1 && c <= 0xDF) { cp = 0xFF61 + (c - 0xA1); i++; }
+				else
 				{
-					long cp = next(u, i);
-					if (cp < 0x80) continue;
+					if (c < 0x81 || c > 0xFE || i + 1 >= s.size()) return false;
+					unsigned char d = (unsigned char)s[i + 1];
+					if (d < 0x40) return false;
+					cp = t[(size_t)(c - 0x81) * 191 + (d - 0x40)];
+					if (!cp) return false;
+					i += 2;
+				}
+				// half-width kana is neutral: it is how most Big5 and GBK text reads as CP932
+				if (cp >= 0x80 && !(cp >= 0xFF61 && cp <= 0xFF9F))
+				{
 					wide++;
 					if (cjk(cp)) hit++;
 				}
-				ok = wide > 0 && hit * 10 >= wide * 8;
+				put(u, cp);
 			}
-			if (enc != (iconv_t)-1) iconv_close(enc);
-			iconv_close(dec);
-			if (ok) out = u;
-			return ok;
+			if (wide == 0 || hit * 10 < wide * 8) return false;
+			out = u;
+			return true;
 		}
 	}
 
@@ -84,8 +109,8 @@ namespace bp
 	{
 		if (validUtf8(s)) return s;
 		std::string out;
-		for (const char* cs : {"CP932", "GBK", "BIG5"})
-			if (tryCharset(cs, s, out)) return out;
+		for (int which = 0; which < 3; which++)
+			if (tryTable(which, s, out)) return out;
 		out.clear();
 		for (unsigned char c : s)
 		{

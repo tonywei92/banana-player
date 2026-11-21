@@ -79,7 +79,12 @@ target_sources(bpcore PRIVATE src/kitlayout_new.cpp)	# kit-new's layout (its own
 target_sources(bpcore PRIVATE src/stickscroll.cpp)	# the left stick's scrolling speed (issue 16)
 target_sources(bpcore PRIVATE src/scroller.cpp)	# a list that follows the finger and glides (smooth scrolling)
 target_sources(bpcore PRIVATE src/volumestep.cpp)	# the volume keys' step, and a hold's stop at 100%
-target_sources(bpcore PRIVATE src/tagtext.cpp src/mediaindex.cpp src/mediacache.cpp)	# the cards' media index (its walk, grouping and query; the tag cache)
+# the CJK code page tables (src/cjk/*.bin, from tools/make-cjk-tables.py) compiled in
+add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/cjk_tables.cpp
+	COMMAND ${CMAKE_COMMAND} -DROOT=${CMAKE_SOURCE_DIR} -DOUT=${CMAKE_BINARY_DIR}/cjk_tables.cpp -P ${CMAKE_SOURCE_DIR}/cmake/EmbedCjk.cmake
+	DEPENDS ${CMAKE_SOURCE_DIR}/cmake/EmbedCjk.cmake ${CMAKE_SOURCE_DIR}/src/cjk/cp932.bin ${CMAKE_SOURCE_DIR}/src/cjk/gbk.bin ${CMAKE_SOURCE_DIR}/src/cjk/big5.bin
+	VERBATIM)
+target_sources(bpcore PRIVATE ${CMAKE_BINARY_DIR}/cjk_tables.cpp src/tagtext.cpp src/mediaindex.cpp src/mediacache.cpp)	# the cards' media index (its walk, grouping and query; the tag cache)
 target_sources(bpcore PRIVATE src/videocache.cpp)	# the videos' cache: its names, the facts' text, the top screen's labels
 # PFFFT (third_party/pffft, BSD-like): the native visualizers' spectrum (src/viznative.h); NEON on aarch64, SSE on x86
 add_library(pffft_static STATIC third_party/pffft/pffft.c)

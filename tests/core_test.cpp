@@ -16136,6 +16136,9 @@ static void testTagText()
 	CHECK_EQ(cleanTagText("Caf\xE9 Del Mar"), std::string("Caf\xC3\xA9 Del Mar"));	// Latin-1
 	CHECK_EQ(cleanTagText("Caf\xC3\xA9 \xE3\x82\xA6"), std::string("Caf\xC3\xA9 \xE3\x82\xA6"));	// UTF-8 stays
 	CHECK_EQ(cleanTagText("plain"), std::string("plain"));
+	CHECK_EQ(cleanTagText("\xB0\xA1\xB5\xD8\xC4\xE3"), std::string("\xE5\x95\x8A\xE5\x9C\xB0\xE4\xBD\xA0"));	// GBK (own tables)
+	CHECK_EQ(cleanTagText("\xBB\x4F\xC6\x57\xAD\xB5\xBC\xD6"), std::string("\xE8\x87\xBA\xE7\x81\xA3\xE9\x9F\xB3\xE6\xA8\x82"));	// Big5
+	CHECK_EQ(cleanTagText("\x8B\x65\xB1\xB6"), std::string("\xE8\x8F\x8A\xEF\xBD\xB1\xEF\xBD\xB6"));	// kanji + half-width katakana
 	CHECK_EQ(cleanTagText("\xFF\xFE"), std::string("\xC3\xBF\xC3\xBE"));	// never invalid out
 }
 

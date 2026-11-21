@@ -5,7 +5,7 @@
 
 namespace bp
 {
-	// Valid UTF-8 stays. Otherwise Shift-JIS (CP932), GBK, then Big5, the first that decodes and gives back the same
-	// bytes when encoded again and is mostly CJK or kana; else the bytes as Latin-1. Always valid UTF-8.
+	// Valid UTF-8 stays. Otherwise Shift-JIS (CP932), GBK, then Big5 (our own tables, src/cjk: no iconv), the first that decodes whole and
+	//  is mostly CJK or kana; else the bytes as Latin-1. Always valid UTF-8.
 	std::string cleanTagText(const std::string& s);
 }
