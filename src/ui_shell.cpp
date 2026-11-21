@@ -93,7 +93,7 @@ namespace bp
 		{
 		// Settings is a section's home only as the rail or L2/R2 opened it: from START, B goes back to where it was
 		case Page::Settings: return !ui.settingsOver && ui.setGroup < 0;
-		case Page::Music: return ui.music->albumAt < 0 && ui.music->artistAt < 0;
+		case Page::Music: return ui.music->albumAt < 0 && ui.music->artistAt < 0 && ui.music->folderAt.empty();
 		case Page::Videos: return ui.videos->folder.empty();
 		case Page::Books: return true;
 		case Page::ExtSection: return true;
@@ -143,8 +143,10 @@ namespace bp
 			if (ui.page == Page::Browse) { browseTop(PLROOT); break; }	// the Playlists view, or a playlist's page
 			{
 				Music& m = *ui.music;
-				bool page = m.albumAt >= 0 || m.artistAt >= 0;
+				bool page = m.albumAt >= 0 || m.artistAt >= 0 || !m.folderAt.empty();
 				m.albumAt = m.artistAt = -1;
+				m.folderAt.clear();
+				m.folderCursors.clear();
 				m.keyFocus = -1;
 				m.cursor = 0;
 				if (page) m.list.top();
