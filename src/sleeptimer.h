@@ -13,7 +13,9 @@ namespace bp
 	// Running, then its last minute (the card, and for Minutes the fade), then paused and dark until the sleep
 	enum class SleepPhase { Off, Running, Warning, Dark };
 	constexpr uint64_t SLEEP_WARN_MS = 60000;
-	constexpr uint64_t SLEEP_DARK_MS = 10000;	// paused and dark this long, then the sleep
+	// paused and dark this long, then the sleep: a short grace (a key in it calls the sleep off; the pause lands and the
+	// place is saved), not a wait the owner sees as "it only turned the screen off"
+	constexpr uint64_t SLEEP_DARK_MS = 3000;
 
 	struct SleepTimer
 	{
@@ -37,7 +39,7 @@ namespace bp
 	struct SleepOut
 	{
 		bool pause = false;	// it ran out: pause now (the phase is Dark from here)
-		bool sleep = false;	// the dark's 10 s are over: the sleep (the timer is Off after)
+		bool sleep = false;	// the dark's grace is over: the sleep (the timer is Off after)
 		double fade = 1;	// the player's volume factor: the Minutes' last minute goes 1 down to 0
 	};
 
@@ -52,6 +54,10 @@ namespace bp
 	SleepOut sleepTick(SleepTimer& t, const SleepIn& in);
 
 	inline bool sleepRunning(const SleepTimer& t) { return t.phase == SleepPhase::Running || t.phase == SleepPhase::Warning; }
+	// ms until the next moment the rule changes something (the last minute begins, it runs out, the dark's grace ends),
+	// so main's loop wakes for it however idle it is; -1: nothing timed ahead (off, or End of this song, which follows
+	// what plays)
+	int64_t sleepNextMs(const SleepTimer& t, uint64_t now);
 	// ms left while it runs; -1: unknown (End of this song before the song's length is known); 0 when it doesn't run
 	int64_t sleepLeftMs(const SleepTimer& t, const SleepIn& in);
 	// what the key, the badge and the page say: "24 min"; "0:48" in the last minute; itemWord ("Song") for End of this

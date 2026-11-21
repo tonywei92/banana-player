@@ -992,6 +992,7 @@ namespace bp
 		// the finger may shift this far along the track without moving the slider (landing, lifting)
 		static constexpr int SLIDE_SLACK = 6;
 		BottomPanel panel;
+		TopPanel topPanel;	// the top's backlight: off only in the sleep timer's dark (Ui::Sleep)
 		// the dark veil over the bottom panel (Dim the controls while reading; before Screen off where there's no
 		// backlight to lower: a computer), and whether a press or touch only lifts it
 		int veilAlpha = 0;

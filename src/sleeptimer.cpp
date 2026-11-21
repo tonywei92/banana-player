@@ -85,6 +85,16 @@ namespace bp
 		return o;
 	}
 
+	int64_t sleepNextMs(const SleepTimer& t, uint64_t now)
+	{
+		uint64_t at;
+		if (t.phase == SleepPhase::Dark) at = t.darkAt + SLEEP_DARK_MS;
+		else if (t.kind != SleepKind::Minutes || !sleepRunning(t)) return -1;
+		else if (t.phase == SleepPhase::Running && t.deadline > SLEEP_WARN_MS && t.deadline - SLEEP_WARN_MS > now) at = t.deadline - SLEEP_WARN_MS;
+		else at = t.deadline;
+		return at > now ? (int64_t)(at - now) : 0;
+	}
+
 	int64_t sleepLeftMs(const SleepTimer& t, const SleepIn& in)
 	{
 		if (!sleepRunning(t)) return 0;

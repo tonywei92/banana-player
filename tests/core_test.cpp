@@ -8644,6 +8644,29 @@ static void testHistory()
 
 // the sleep timer's pure rule (sleeptimer.h): the count, its last minute and fade, the snooze, the end of a song, the
 // list ending first, the dark before the sleep
+// main's loop wakes for each of the timer's moments, however idle (the handheld's loop waits on events: the dark's
+// grace once went by unseen)
+static void testSleepNextMs()
+{
+	const uint64_t MIN = 60000;
+	SleepTimer t;
+	CHECK_EQ(sleepNextMs(t, 0), (int64_t)-1);	// off: nothing ahead
+	sleepSet(t, 30, 30 * MIN, 1000);
+	CHECK_EQ(sleepNextMs(t, 1000), (int64_t)(29 * MIN));	// to the last minute
+	SleepIn in;
+	in.now = 1000 + 29 * MIN + 500;
+	in.loaded = true;
+	sleepTick(t, in);
+	CHECK_EQ(sleepNextMs(t, in.now), (int64_t)(MIN - 500));	// in it: to the end
+	in.now = 1000 + 30 * MIN;
+	CHECK_EQ(sleepTick(t, in).pause, true);
+	CHECK_EQ(sleepNextMs(t, in.now), (int64_t)SLEEP_DARK_MS);	// dark: to the sleep
+	CHECK_EQ(sleepNextMs(t, in.now + SLEEP_DARK_MS + 5), (int64_t)0);	// late: at once
+	CHECK(SLEEP_DARK_MS <= 5000);	// a short grace, not a wait
+	sleepSetItemEnd(t);
+	CHECK_EQ(sleepNextMs(t, 0), (int64_t)-1);	// End of this song follows what plays
+}
+
 static void testSleepTimer()
 {
 	const uint64_t MIN = 60000;
@@ -8675,7 +8698,7 @@ static void testSleepTimer()
 	CHECK_EQ(o.fade, 0.5);
 	CHECK_EQ(sleepLabel(t, at(1000 + 29 * MIN + 12000), "Song"), std::string("0:48"));
 	CHECK_EQ(sleepLabel(t, at(1000 + 30 * MIN - 1), "Song"), std::string("0:01"));
-	// 0:00: pause, dark, fade at 0; then 10 s later the sleep, and the timer is off
+	// 0:00: pause, dark, fade at 0; then the grace's few seconds later the sleep, and the timer is off
 	o = sleepTick(t, at(1000 + 30 * MIN));
 	CHECK_EQ(o.pause, true);
 	CHECK_EQ(o.fade, 0.0);
@@ -16457,6 +16480,7 @@ int main()
 	testBattery();
 	testIdleSleep();
 	testSleepTimer();
+	testSleepNextMs();
 	testSleepLayout();
 	testIncognitoLid();
 	testLidSleepConf();

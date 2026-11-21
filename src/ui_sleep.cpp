@@ -137,7 +137,9 @@ namespace bp
 			double left = itemLeft();
 			if (left >= 0 && left < 2) return 50;
 		}
-		return -1;
+		// the timer's own next moment (its last minute, its end, the dark's grace over): the loop wakes for it
+		int64_t next = sleepNextMs(t, SDL_GetTicks());
+		return next < 0 ? -1 : (int)std::min<int64_t>(next + 1, 250);
 	}
 
 	void Ui::Sleep::note(const std::string& l1, const std::string& l2, int ms)
@@ -211,6 +213,13 @@ namespace bp
 		if (!player) return false;
 		Player& p = pl();
 		SleepIn in = now();
+		// the top's backlight is off only while its dark lasts: whatever ended the dark (a key, a Stop, a wake, the
+		// page's Timer off) has it back
+		if (!darkWait && !ui.topPanel.on()) ui.topPanel.set(true);
+		// (a pass that comes round late in the dark is said: the handheld once never reached the sleep)
+		if (t.phase == SleepPhase::Dark && lastTickAt && in.now - lastTickAt > 1000)
+			fprintf(stderr, "sleep timer: the loop came round after %llu ms in the dark\n", (unsigned long long)(in.now - lastTickAt));
+		lastTickAt = in.now;
 		in.itemEnded = seenEnd(in) || endedNow;
 		endedNow = false;
 		SleepPhase was = shown;
@@ -287,6 +296,7 @@ namespace bp
 		darkWait = true;
 		ui.undim();
 		ui.panel.set(false);
+		ui.topPanel.set(false);	// off, not only drawn black (the top's picture is black too where there's no backlight)
 	}
 
 	void Ui::Sleep::endWarning(bool ramp)
@@ -329,6 +339,7 @@ namespace bp
 		sleepOff(t);
 		shown = SleepPhase::Off;
 		ui.panel.set(true);
+		ui.topPanel.set(true);
 		fprintf(stderr, "sleep timer: a key in its dark: the screens back%s; it stays paused\n", due ? ", the sleep called off" : "");
 		note("Paused by the sleep timer", "A plays", 24 * 3600 * 1000);
 		noteKept = true;
@@ -349,6 +360,7 @@ namespace bp
 		darkWait = false;
 		if (!mine) return;
 		ui.panel.set(true);
+		ui.topPanel.set(true);
 		note("Paused by the sleep timer", "A plays", 24 * 3600 * 1000);
 		noteKept = true;
 	}

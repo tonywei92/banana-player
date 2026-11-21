@@ -58,3 +58,15 @@ then a key wakes the screens, it stays paused and the note shows.
   overlay, so Screen off's dim is lifted while it shows.
 - The web page only by `curl` (set, a refused length, snooze, end, off, the state's field) and a headless load of the
   app (the modules load); the row, the sheet and the card were not looked at in a browser.
+
+## The end that didn't sleep (2026-11-21, c-sleepfix)
+
+On the handheld the log stopped at "ran out: paused, both screens off" / "top: black (the sleep timer)": no "the sleep
+is due", no request to bananad, and the top panel stayed lit (drawn black, backlight on). The 10 s step did run on the
+Mac, idle or scripted (`BP_RUN_DIR=<tmp> BP_SLEEP_SECONDS=2`, the timer set through `POST /api/sleep`: `sleep-now`
+written), so the handheld's cause is not pinned. Now: the grace is 3 s (`SLEEP_DARK_MS`), the timer's next moment
+wakes the loop (`sleepNextMs` → `Ui::Sleep::waitMs`; `testSleepNextMs`), the top panel's backlight goes off too
+(`TopPanel`, backlight1's `bl_power`, on again at a key, a wake, a quit, a crash, or whenever the dark ends), and a pass
+that comes round over 1 s late in the dark is logged ("the loop came round after N ms in the dark"). The log says
+"sleep timer: asked BananaOS to sleep" or why not. If the next handheld log still lacks "the sleep is due", the loop
+itself stalled (look at the late-pass line) or something cleared the dark silently.

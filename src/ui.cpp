@@ -44,6 +44,7 @@ namespace bp
 	{
 		fontsDir = dir;
 		panel.init();
+		topPanel.init();
 		// tests: a fake /sys/class/backlight and /data/banana/backlight
 		if (const char* d = getenv("BP_BACKLIGHT_DIR")) backlight.sysDir = d;
 		if (const char* f = getenv("BP_BACKLIGHT_STORE")) backlight.store = f;

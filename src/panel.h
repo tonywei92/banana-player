@@ -20,4 +20,20 @@ namespace bp
 		bool isOn = true;
 		std::string backlight;	// /sys/class/backlight/<bottom>; empty: none
 	};
+
+	// The top panel's backlight (backlight1, as bananad has it) switched off by bl_power 4 while the sleep timer's dark
+	// waits for the sleep (or is held awake): a black picture alone leaves the panel lit. Only this player turns it off,
+	// so it is on again at the first key, at a wake, at a quit and (from a signal handler) at a crash
+	class TopPanel
+	{
+	public:
+		void init();
+		void set(bool on);
+		bool on() const { return isOn; }
+		~TopPanel() { set(true); }
+
+	private:
+		bool isOn = true;
+		bool present = false;
+	};
 }

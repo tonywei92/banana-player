@@ -2157,7 +2157,7 @@ int main(int argc, char** argv)
 					idleSleep.tick(now, h, [&] { incognitoBeforeSleep("idle sleep"); });
 				}
 			}
-			// the sleep timer (ui_sleep.h): its fade, its cards, its end, each pass; then, 10 s paused and dark, the sleep
+			// the sleep timer (ui_sleep.h): its fade, its cards, its end, each pass (its moments wake the loop: Ui::Sleep::waitMs); then, a few seconds paused and dark, the sleep
 			// asked of BananaOS as its menu's Sleep does. Only a copy, a move or a download holds it (Stay awake for
 			// copies and downloads): a browser signed in, or playing, doesn't (the timer was someone's own choice)
 			if (haveUi && ui.sleep->tick())
@@ -2174,7 +2174,8 @@ int main(int argc, char** argv)
 					if (webServer && webServer->running()) webServer->notify("bye", "{\"reason\":\"sleeptimer\"}");
 #endif
 					bool asked = askBananadSleep();
-					fprintf(stderr, "sleep timer: the sleep %s\n", asked ? "asked of BananaOS" : "not asked (no /run/banana: not BananaOS)");
+					if (asked) fprintf(stderr, "sleep timer: asked BananaOS to sleep\n");
+					else fprintf(stderr, "sleep timer: no sleep: can't write the sleep-now file (not BananaOS?)\n");
 				}
 			}
 			// When the lid closes: Keep playing. BananaOS's lid sleep off while something plays here, back after; and the

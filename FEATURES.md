@@ -549,9 +549,9 @@ Fall asleep to a song or a film: it pauses at the time you choose, quietly, and 
   back within a second. **UP / DOWN** are still the volume; no other key does anything there. End of this song has no
   fade: the card shows for its last minute ("Sleeping after this song · 0:48") and the song ends as it was made.
 - **At its end:** it pauses (never stops: the list and the place are kept, back where the fade began, so nothing heard
-  at a whisper is missed), both screens turn off, and 10 s later the handheld sleeps (the setting **When the sleep timer
+  at a whisper is missed), both screens turn off (the top panel's backlight too), and 3 s later the handheld sleeps (the setting **When the sleep timer
   ends**: Sleep, or Pause to stay awake). A copy, a move or a download in progress keeps it awake, paused and dark; a
-  browser signed in to the dashboard doesn't. A key or a touch in those 10 s wakes the screens and calls the sleep off.
+  browser signed in to the dashboard doesn't. A key or a touch in those 3 s wakes the screens and calls the sleep off.
   On waking: "Paused by the sleep timer" and "A plays" on the top screen until the first key.
 - **Stop** (anywhere) turns it off ("Sleep timer off"); so does any sleep (the lid, the power key, the idle sleep). If
   the list ends first, its last minute starts then, with nothing to fade. With the lid shut and **Keep playing**, the
