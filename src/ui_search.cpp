@@ -16,9 +16,6 @@ namespace bp
 {
 	namespace
 	{
-		const char* const LETTERS = "qwertyuiopasdfghjklzxcvbnm";
-		const char* const DIGITS = "1234567890!@#$%^&*(-_=+[]{}";
-		const int COUNTS[3] = {10, 9, 7};
 		const int MAX_QUERY = 40;
 		const char* const RECENT_FILE = "/search-recent";
 
@@ -66,6 +63,7 @@ namespace bp
 
 	Ui::Search::Search(Ui& u) : Area(u)
 	{
+		pad.more = false;	// a name needs no brackets: Shift, 123, Space, Clear, Del, Done
 	}
 
 	lay::Box Ui::Search::body() const
@@ -152,6 +150,14 @@ namespace bp
 		ui.pressedBtn = -1;
 	}
 
+	void Ui::Search::back(Player& p)
+	{
+		// the header's < and B on an empty field: the keyboard lets go of what was typed (the results as they
+		// were); with nothing searched yet, or from the results, back to the page Search was opened from
+		if (typing && !query.empty()) typed(edit.text, false);
+		else close(p);
+	}
+
 	void Ui::Search::openKeyboard()
 	{
 		typing = true;
@@ -159,7 +165,8 @@ namespace bp
 		kbSince = SDL_GetTicks();
 		kbCursor = 0;
 		kbPressed = -1;
-		kbLayer = 0;
+		pad.shift = false;
+		pad.layer = 0;
 		ui.pressedBtn = -1;
 	}
 
@@ -299,7 +306,7 @@ namespace bp
 		h.title = "Search";
 		h.crumb = crumb(p);
 		if (typing)
-			h.hints = {{"A", "Type"}, {"X", "Delete"}, {"Y", "Space"}, {"START", "Done"}, {"B", "Close"}};
+			h.hints = {{"A", "Type"}, {"B", edit.text.empty() ? "Close" : "Delete"}, {"L/R", "Move"}, {"START", "Done"}};
 		else if (query.empty() && recent.empty())
 			h.hints = {{"A", "Type"}, {"Y", "Browse Files"}, {"B", "Back"}};
 		else if (emptyPage(p))
@@ -342,94 +349,13 @@ namespace bp
 	{
 		// the kit's keyboard laid out inside the shell's body (the keys share its width, nothing fitted or
 		// scaled): the same boxes the touches test, and the kit's drawing (Kit::keyboard) draws them
-		return lay::keyboard(b, {}, {COUNTS[0], COUNTS[1], COUNTS[2]}, 2);
-	}
-
-	std::string Ui::Search::keyboardNote(const Player& p) const
-	{
-		(void)p;
-		if (!ui.mediaIndex || ui.mediaIndex->generation() == 0) return "Reading the cards";
-		auto snap = ui.mediaIndex->snapshot();
-		size_t n = snap ? snap->songs.size() + snap->videos.size() : 0;
-		return "Both cards \xC2\xB7 " + std::to_string(n) + " names";
-	}
-
-	int Ui::Search::keyCount() const
-	{
-		return COUNTS[0] + COUNTS[1] + COUNTS[2] + 5;
-	}
-
-	int Ui::Search::kbAt(int x, int y) const
-	{
-		lay::Keyboard k = keyboard(body());
-		int i = 0;
-		for (auto& row : k.rows)
-			for (auto& r : row)
-			{
-				if (r.hit(x, y)) return i;
-				i++;
-			}
-		for (auto& r : k.bottom)
-		{
-			if (r.hit(x, y)) return i;
-			i++;
-		}
-		return -1;
-	}
-
-	void Ui::Search::kbMove(int dx, int dy)
-	{
-		int starts[4] = {0, COUNTS[0], COUNTS[0] + COUNTS[1], COUNTS[0] + COUNTS[1] + COUNTS[2]};
-		int sizes[4] = {COUNTS[0], COUNTS[1], COUNTS[2], 5};
-		lay::Keyboard k = keyboard(body());
-		auto centre = [&](int idx) {
-			int i = 0;
-			for (auto& row : k.rows)
-				for (auto& r : row) { if (i == idx) return r.x + r.w / 2; i++; }
-			for (auto& r : k.bottom) { if (i == idx) return r.x + r.w / 2; i++; }
-			return 0;
-		};
-		int g = 0;
-		while (g < 3 && kbCursor >= starts[g + 1]) g++;
-		int at = std::clamp(kbCursor - starts[g], 0, sizes[g] - 1);
-		if (dx)
-		{
-			at = ((at + dx) % sizes[g] + sizes[g]) % sizes[g];
-			kbCursor = starts[g] + at;
-			return;
-		}
-		if (!dy) return;
-		int ng = std::clamp(g + dy, 0, 3), cx = centre(kbCursor), best = 0, bestD = 1 << 30;
-		for (int i = 0; i < sizes[ng]; i++)
-		{
-			int d = std::abs(centre(starts[ng] + i) - cx);
-			if (d < bestD) { bestD = d; best = i; }
-		}
-		kbCursor = starts[ng] + best;
+		return lay::keyboard(b, {}, {KeyPad::ROWS[0], KeyPad::ROWS[1], KeyPad::ROWS[2]}, pad.toggles());
 	}
 
 	void Ui::Search::kbPressKey(int i)
 	{
-		if (i < 0 || i >= keyCount()) return;
 		kbSince = SDL_GetTicks();
-		int letters = COUNTS[0] + COUNTS[1] + COUNTS[2];
-		if (i < letters)
-		{
-			if (edit.text.size() < (size_t)MAX_QUERY)
-			{
-				char c = (kbLayer == 0 ? LETTERS : DIGITS)[i];
-				edit.insert(std::string(1, c));
-			}
-			return;
-		}
-		switch (i - letters)
-		{
-		case 0: case 1: kbLayer = i - letters; break;
-		case 2: if (edit.text.size() < (size_t)MAX_QUERY) edit.insert(" "); break;
-		case 3: edit.backspace(); break;
-		case 4: typed(edit.text, true); break;
-		default: break;
-		}
+		if (pad.press(i, edit, MAX_QUERY)) typed(edit.text, true);
 	}
 
 	void Ui::Search::moveCursor(int dir, int page)
@@ -543,19 +469,9 @@ namespace bp
 				size_t n = snap ? snap->songs.size() + snap->videos.size() : 0;
 				v.note = "Both cards \xC2\xB7 " + std::to_string(n) + " names";
 			}
-			const char* rows[3] = {LETTERS, LETTERS + 10, LETTERS + 19};
-			const char* drows[3] = {DIGITS, DIGITS + 10, DIGITS + 19};
-			for (int r = 0; r < 3; r++)
-			{
-				std::vector<std::string> line;
-				for (int i = 0; i < COUNTS[r]; i++) line.emplace_back(1, (kbLayer == 0 ? rows[r] : drows[r])[i]);
-				v.rows.push_back(line);
-			}
-			v.layers = {"abc", "123"};
-			v.bottomCaps = {"L3", "SELECT", "Y", "X", "START"};
+			v.keys(pad, edit.text.empty());
 			v.cursor = kbCursor;
 			v.pressed = kbPressed;
-			v.layerOn = kbLayer;
 			k.keyboard(l, v);
 			return;
 		}
@@ -626,7 +542,7 @@ namespace bp
 		rebuild(p);
 		char b[160];
 		snprintf(b, sizeof b, "|sr%d,%d,%d,%d,%d,%d,%d,%d|", (int)backPage, (int)typing, cursor, (int)fingerMoved, kbCursor,
-			kbPressed, kbLayer, pressRow * 10 + pressEmpty);
+			kbPressed, pad.layer * 2 + pad.shift, pressRow * 10 + pressEmpty);
 		std::string s = b;
 		s += query + "|" + builtQuery + "|" + std::to_string(rows.size()) + "|" + std::to_string(builtGen);
 		for (auto& q : recent) s += "|r" + q;
@@ -640,17 +556,22 @@ namespace bp
 		{
 			switch (b)
 			{
+			// the keys are the field's keyboard's (ui_keyboard.cpp), button for button: each bottom key's cap says its own
 			case Button::A: kbPressKey(kbCursor); break;
-			// close: the results as they were; with nothing searched yet, back to the page it was opened from
-			case Button::B: if (query.empty() && edit.text.empty()) close(p); else typed(edit.text, false); break;
-			case Button::X: edit.backspace(); kbSince = SDL_GetTicks(); break;
-			case Button::Y: if (edit.text.size() < (size_t)MAX_QUERY) edit.insert(" "); break;
+			// B deletes; with nothing left to delete it closes (the results as they were)
+			case Button::B:
+				if (edit.text.empty()) back(p);
+				else kbPressKey(pad.keyOf(KeyPad::Delete));
+				break;
+			case Button::X: kbPressKey(pad.keyOf(KeyPad::Space)); break;
+			case Button::Y: kbPressKey(pad.keyOf(KeyPad::Shift)); break;
+			case Button::L2: kbPressKey(pad.keyOf(KeyPad::Clear)); break;
+			case Button::L3: case Button::Select: pad.stepLayer(); break;
 			case Button::Start: typed(edit.text, true); break;
-			case Button::L3: case Button::Select: kbLayer = kbLayer ? 0 : 1; break;
-			case Button::Up: kbMove(0, -1); break;
-			case Button::Down: kbMove(0, 1); break;
-			case Button::Left: kbMove(-1, 0); break;
-			case Button::Right: kbMove(1, 0); break;
+			case Button::Up: kbCursor = lay::keyboardMove(keyboard(body()), kbCursor, 0, -1); break;
+			case Button::Down: kbCursor = lay::keyboardMove(keyboard(body()), kbCursor, 0, 1); break;
+			case Button::Left: kbCursor = lay::keyboardMove(keyboard(body()), kbCursor, -1, 0); break;
+			case Button::Right: kbCursor = lay::keyboardMove(keyboard(body()), kbCursor, 1, 0); break;
 			case Button::L: edit.left(); break;
 			case Button::R: edit.right(); break;
 			default: break;
@@ -658,7 +579,7 @@ namespace bp
 			return false;
 		}
 		rebuild(p);
-		if (b == Button::B) { close(p); return false; }
+		if (b == Button::B) { back(p); return false; }
 		if (b == Button::Start) { ui.openSettings(p, true); return false; }
 		bool empty = emptyPage(p);
 		if (b == Button::Y)
@@ -691,7 +612,7 @@ namespace bp
 			if (typing)
 			{
 				kbSince = SDL_GetTicks();
-				kbPressed = kbAt(x, y);
+				kbPressed = lay::keyboardHit(keyboard(b), x, y);
 				if (kbPressed >= 0) kbCursor = kbPressed;
 				return false;
 			}
@@ -725,7 +646,7 @@ namespace bp
 			{
 				int was = kbPressed;
 				kbPressed = -1;
-				if (was >= 0 && kbAt(x, y) == was) kbPressKey(was);
+				if (was >= 0 && lay::keyboardHit(keyboard(b), x, y) == was) kbPressKey(was);
 			}
 			return false;
 		}

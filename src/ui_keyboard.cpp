@@ -1,7 +1,8 @@
 // The on-screen keyboard over the bottom panel: a form's field, a name, a query typed in. Built on the redesign's kit
-// keyboard (lay::keyboard laid out, Kit::keyboard drawn, the touches tested on the same boxes). Four layers (abc, ABC,
-// 123, #+=) so a host name, a share or a password needs no key the keyboard lacks; Search's own keyboard (ui_search.cpp)
-// is the same kit piece with two layers.
+// keyboard (lay::keyboard laid out, Kit::keyboard drawn, the touches tested on the same boxes). Its keys are a KeyPad
+// (keyboard.h): Shift a toggle that stays lit, 123 and #+= the same (so a host name, a share or a password needs no
+// key the keyboard lacks), Space, Clear, Del and Done. Search's own keyboard (ui_search.cpp) is the same pad and the
+// same kit piece, less #+=.
 #include "ui.h"
 #include "format.h"
 #include "netpath.h"
@@ -19,18 +20,6 @@ namespace bp
 {
 	namespace
 	{
-		constexpr int KB_LAYERS = 4;	// abc, ABC, 123, #+=
-		// the three letter rows of each layer: 10, 9 and 7 keys
-		const int KB_COUNTS[3] = {10, 9, 7};
-		const char* const KB_CHARS[KB_LAYERS] = {
-			"qwertyuiopasdfghjklzxcvbnm",
-			"QWERTYUIOPASDFGHJKLZXCVBNM",
-			"1234567890-_./:@#&+=?!%*,~",
-			"()[]{}<>;:'\"$^\\|`~,/_-+*&@",
-		};
-		const char* const KB_LAYER_NAMES[KB_LAYERS] = {"abc", "ABC", "123", "#+="};
-		constexpr int KB_LETTERS = 26;	// the keys before the bottom row
-
 		const char* fieldName(int f)
 		{
 			switch (f)
@@ -62,7 +51,7 @@ namespace bp
 
 	lay::Keyboard Ui::kbLayout() const
 	{
-		return lay::keyboard({16, 84, 608, 330}, {}, {KB_COUNTS[0], KB_COUNTS[1], KB_COUNTS[2]}, KB_LAYERS);
+		return lay::keyboard({16, 84, 608, 330}, {}, {KeyPad::ROWS[0], KeyPad::ROWS[1], KeyPad::ROWS[2]}, kbPad.toggles());
 	}
 
 	void Ui::openKeyboard(int field, const std::string& text)
@@ -71,7 +60,7 @@ namespace bp
 		kbOpen = true;
 		kbField = field;
 		kbEdit.set(text);
-		kbLayer = 0;
+		kbPad = KeyPad{};
 		kbCursor = 0;
 		kbPressed = -1;
 		pressedBtn = -1;
@@ -170,23 +159,10 @@ namespace bp
 		return (SDL_GetTicks() - kbActiveAt) % 1060 < 530;
 	}
 
-	// a key's number: the letters first, then the layer keys, Space, Del and Done
+	// a key's number: the pad's (the letters first, then the bottom row); a port takes digits only
 	void Ui::kbKey(int i)
 	{
-		if (i < 0 || i >= lay::keyboardKeys(kbLayout())) return;
-		if (i < KB_LETTERS)
-		{
-			char c = KB_CHARS[kbLayer][i];
-			// a port: digits only
-			if (kbField == FORM_PORT && !isdigit((unsigned char)c)) return;
-			kbEdit.insert(std::string(1, c));
-			return;
-		}
-		int bottom = i - KB_LETTERS;
-		if (bottom < KB_LAYERS) kbLayer = bottom;
-		else if (bottom == KB_LAYERS) { if (kbField != FORM_PORT) kbEdit.insert(" "); }
-		else if (bottom == KB_LAYERS + 1) kbEdit.backspace();
-		else kbClose(true);
+		if (kbPad.press(i, kbEdit, 0, kbField == FORM_PORT)) kbClose(true);
 	}
 
 	void Ui::kbPress(Button b)
@@ -205,11 +181,13 @@ namespace bp
 			if (kbEdit.text.empty()) kbClose(false);
 			else kbEdit.backspace();
 			break;
-		case Button::X: kbKey(KB_LETTERS + KB_LAYERS); break;
-		case Button::Y: kbLayer = kbLayer == 0 ? 1 : 0; break;
+		// the bottom row's keys by their buttons (each key's cap says which)
+		case Button::X: kbKey(kbPad.keyOf(KeyPad::Space)); break;
+		case Button::Y: kbKey(kbPad.keyOf(KeyPad::Shift)); break;
+		case Button::L2: kbKey(kbPad.keyOf(KeyPad::Clear)); break;
+		case Button::L3: case Button::Select: kbPad.stepLayer(); break;	// letters, 123, #+=, round
 		case Button::L: kbEdit.left(); break;
 		case Button::R: kbEdit.right(); break;
-		case Button::Select: kbLayer = kbLayer < 2 ? 2 : 0; break;
 		case Button::Start: kbClose(true); break;
 		default: break;
 		}
@@ -254,19 +232,11 @@ namespace bp
 		else if (kbField == FILE_NAME) v.note = browse->fileNameNote;
 		// both kinds of repository take a plain address: a Lua one's, or an extensions' index (index.pb, index.min.json)
 		else if (kbField == SRC_URL_FIELD) v.note = "Any repository URL, including ones ending in index.pb or index.min.json";
-		for (int r = 0; r < 3; r++)
-		{
-			int from = r == 0 ? 0 : r == 1 ? KB_COUNTS[0] : KB_COUNTS[0] + KB_COUNTS[1];
-			std::vector<std::string> line;
-			for (int i = 0; i < KB_COUNTS[r]; i++) line.emplace_back(1, KB_CHARS[kbLayer][from + i]);
-			v.rows.push_back(line);
-		}
-		for (const char* name : KB_LAYER_NAMES) v.layers.push_back(name);
-		v.bottomCaps = {"Y", "", "", "", "", "B", "START"};
+		v.keys(kbPad, kbEdit.text.empty());
 		v.cursor = kbCursor;
 		v.pressed = kbPressed;
-		v.layerOn = kbLayer;
 		kit->keyboard(l, v);
-		drawHints({{"A", "Type"}, {"B", "Delete"}, {"X", "Space"}, {"Y", "Shift"}, {"L/R", "Move"}, {"START", "Done"}});
+		// the kit's hint bar: what the bottom row's caps don't already say (Shift, 123, Space and Clear carry theirs)
+		kit->hints({{"A", "Type"}, {"B", kbEdit.text.empty() ? "Close" : "Delete"}, {"L/R", "Move"}, {"START", "Done"}});
 	}
 }

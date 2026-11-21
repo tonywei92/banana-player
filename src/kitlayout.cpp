@@ -666,7 +666,7 @@ namespace bp
 			return b;
 		}
 
-		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int layers)
+		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int toggles)
 		{
 			Keyboard k;
 			int y = area.y;
@@ -693,20 +693,22 @@ namespace bp
 				y += KB_KEY_H + KB_GAP;
 			}
 			y += 6;
-			// layer keys 76, then Space (the rest), backspace 76, Done 120: the row ends on the area's right edge
+			// the toggles, then Space (the rest), Clear, Del and Done: the row ends on the area's right edge
 			int left = area.x, right = area.x + area.w;
-			int doneW = 120, backW = 76, layerW = 76;
-			int spaceW = right - left - layers * (layerW + KB_GAP) - (KB_GAP + backW) - (KB_GAP + doneW);
+			int spaceW = right - left - toggles * (KB_TOGGLE_W + KB_GAP) - 2 * (KB_GAP + KB_TOGGLE_W) - (KB_GAP + KB_DONE_W);
 			int bx = left;
-			for (int i = 0; i < layers; i++)
+			for (int i = 0; i < toggles; i++)
 			{
-				k.bottom.push_back({bx, y, layerW, KB_BOTTOM_H});
-				bx += layerW + KB_GAP;
+				k.bottom.push_back({bx, y, KB_TOGGLE_W, KB_BOTTOM_H});
+				bx += KB_TOGGLE_W + KB_GAP;
 			}
 			k.bottom.push_back({bx, y, spaceW, KB_BOTTOM_H});
 			bx += spaceW + KB_GAP;
-			k.bottom.push_back({bx, y, backW, KB_BOTTOM_H});
-			bx += backW + KB_GAP;
+			for (int i = 0; i < 2; i++)
+			{
+				k.bottom.push_back({bx, y, KB_TOGGLE_W, KB_BOTTOM_H});
+				bx += KB_TOGGLE_W + KB_GAP;
+			}
 			k.bottom.push_back({bx, y, right - bx, KB_BOTTOM_H});
 			k.note = {area.x, y + KB_BOTTOM_H + 8, area.w, 20};
 			return k;

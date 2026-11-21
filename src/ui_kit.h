@@ -29,6 +29,7 @@
 #pragma once
 #include "ui_internal.h"
 #include "artbackdrop.h"
+#include "keyboard.h"
 #include <functional>
 
 namespace bp
@@ -335,7 +336,8 @@ namespace bp
 		};
 		void busySheet(const lay::BusySheet& l, const BusySpec& b);
 
-		// ---- the keyboard (the variant: a special row per field, Done yellow) ----
+		// ---- the keyboard (the variant: a special row per field, Done yellow; the bottom row's keys each say
+		// what they are and which button does the same, and a toggle that is on stays lit) ----
 		struct KeyboardView
 		{
 			std::string title, value, note;
@@ -343,11 +345,18 @@ namespace bp
 			bool secret = false, caretOn = true;
 			std::vector<std::string> special;	// the field's pieces ("https://", ".json")
 			std::vector<std::vector<std::string>> rows;	// the letters, by row
-			std::vector<std::string> layers;	// the layer keys' labels ("abc", "123")
-			std::vector<std::string> bottomCaps;	// the buttons of: each layer key, Space, backspace, Done ("L3", "Y", "X", "START")
+			// the bottom row, a key per box of lay::Keyboard::bottom: its word, its button's cap ("" none), lit (a
+			// toggle that is on: Shift, 123), primary (Done), off (Clear on an empty field)
+			struct BottomKey
+			{
+				std::string label, cap;
+				bool lit = false, primary = false, off = false;
+			};
+			std::vector<BottomKey> bottom;
 			int cursor = -1;	// the focused key: the specials, then the letters row by row, then the bottom row
 			int pressed = -1;
-			int layerOn = -1;	// the layer key that is the open one
+			// rows and bottom as a KeyPad has them now (keyboard.h): what both keyboards of the app show
+			void keys(const KeyPad& pad, bool empty);
 		};
 		void keyboard(const lay::Keyboard& l, const KeyboardView& v);
 

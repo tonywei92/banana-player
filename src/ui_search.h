@@ -28,6 +28,7 @@ namespace bp
 		// from the rail's key, L3 or Shell::search: the page, on its last query; a second press edits it
 		void open(Player& p);
 		void close(Player& p);
+		void back(Player& p);	// B and the header's <: out of the keyboard, else out of Search
 		// the shell's header for this page (Shell::head asks it): title, the query's line, the keys
 		ShellHead head(const Player& p) const;
 		// the keyboard's Done (keep): the query shown; B: back to the results as they were
@@ -43,7 +44,8 @@ namespace bp
 		TextEdit edit;
 		int cursor = 0;
 		Uint32 kbSince = 0;
-		int kbCursor = 0, kbPressed = -1, kbLayer = 0;
+		int kbCursor = 0, kbPressed = -1;
+		KeyPad pad;	// the keyboard's keys (keyboard.h): the field's keyboard's own, less #+=
 		int pressRow = -1, pressEmpty = -1;	// a finger on a row, an empty state's key
 		bool finger = false;	// a finger down on the list: its moves scroll it, its lift may choose
 		bool fingerMoved = false, caught = false;	// (caught: it stopped a glide, and chooses nothing)
@@ -87,12 +89,8 @@ namespace bp
 		std::vector<std::string> emptyLines(const Player& p) const;
 		lay::Box body() const;
 		lay::Keyboard keyboard(const lay::Box& body) const;
-		std::string keyboardNote(const Player& p) const;
 		void openKeyboard();
 		void kbPressKey(int i);
-		int kbAt(int x, int y) const;
-		void kbMove(int dx, int dy);
-		int keyCount() const;
 		void moveCursor(int dir, int page);
 		void ensureCursor(const Player& p, bool glide = true);
 		void chooseRow(int i, Player& p);

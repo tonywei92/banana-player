@@ -8857,9 +8857,103 @@ static void testNet()
 
 static void testKeyboard()
 {
-	// the kit's keyboard: three letter rows (10, 9, 7) and a bottom row of four layers, Space, Del, Done
-	lay::Keyboard k = lay::keyboard({16, 84, 608, 400}, {}, {10, 9, 7}, 4);
+	// the kit's keyboard: three letter rows (10, 9, 7) and a bottom row of three toggles (Shift, 123, #+=), Space,
+	// Clear, Del, Done
+	lay::Keyboard k = lay::keyboard({16, 84, 608, 400}, {}, {10, 9, 7}, 3);
 	CHECK_EQ(lay::keyboardKeys(k), 26 + 7);
+	// the bottom row: left edge to right edge, 5 apart, none over another; a toggle, Clear and Del one width (their
+	// word and a cap fit), Space what is left and no narrower than they. Search's (two toggles, in the shell's body) the same
+	for (int toggles = 2; toggles <= 3; toggles++)
+	{
+		lay::Box area = toggles == 3 ? lay::Box{16, 84, 608, 400} : lay::Box{lay::shell().body.x + 16, 58, lay::shell().body.w - 32, 400};
+		lay::Keyboard kb = lay::keyboard(area, {}, {10, 9, 7}, toggles);
+		CHECK_EQ((int)kb.bottom.size(), toggles + 4);
+		CHECK_EQ(kb.bottom.front().x, area.x);
+		CHECK_EQ(kb.bottom.back().x + kb.bottom.back().w, area.x + area.w);
+		for (size_t i = 1; i < kb.bottom.size(); i++)
+			CHECK_EQ(kb.bottom[i].x, kb.bottom[i - 1].x + kb.bottom[i - 1].w + lay::KB_GAP);
+		for (int i = 0; i < toggles; i++) CHECK_EQ(kb.bottom[i].w, lay::KB_TOGGLE_W);
+		CHECK_EQ(kb.bottom[toggles + 1].w, lay::KB_TOGGLE_W);
+		CHECK_EQ(kb.bottom[toggles + 2].w, lay::KB_TOGGLE_W);
+		CHECK_EQ(kb.bottom[toggles].w >= lay::KB_TOGGLE_W, true);	// Space: never the narrowest
+		CHECK_EQ(kb.bottom.back().w, lay::KB_DONE_W);
+		for (auto& row : kb.rows)
+			for (auto& r : row) CHECK_EQ(r.x >= area.x && r.x + r.w <= area.x + area.w, true);
+	}
+
+	// the key pad both keyboards share: Shift is a toggle that stays on, not a layer
+	KeyPad pad;
+	TextEdit typed;
+	CHECK_EQ(pad.keys(), 26 + 7);
+	CHECK_EQ(pad.keys(), lay::keyboardKeys(k));
+	CHECK_EQ(pad.label(0), std::string("q"));
+	int shift = pad.keyOf(KeyPad::Shift), marks = pad.keyOf(KeyPad::Symbols), more = pad.keyOf(KeyPad::More);
+	CHECK_EQ(shift, 26);
+	CHECK_EQ(pad.lit(shift), false);
+	pad.press(shift, typed);
+	CHECK_EQ(pad.lit(shift), true);
+	CHECK_EQ(pad.label(0), std::string("Q"));
+	pad.press(0, typed);
+	pad.press(1, typed);	// still on after a letter: a toggle, not a one-shot
+	CHECK_EQ(typed.text, std::string("QW"));
+	CHECK_EQ(pad.lit(shift), true);
+	pad.press(shift, typed);
+	pad.press(2, typed);
+	CHECK_EQ(typed.text, std::string("QWe"));
+	// 123 and #+= toggle too, one at a time; again: the letters. Shift from the marks: the letters, in capitals
+	pad.press(marks, typed);
+	CHECK_EQ(pad.lit(marks), true);
+	CHECK_EQ(pad.label(0), std::string("1"));
+	pad.press(more, typed);
+	CHECK_EQ(pad.lit(marks), false);
+	CHECK_EQ(pad.lit(more), true);
+	CHECK_EQ(pad.label(0), std::string("("));
+	pad.press(more, typed);
+	CHECK_EQ(pad.label(0), std::string("q"));
+	pad.press(marks, typed);
+	pad.press(shift, typed);
+	CHECK_EQ(pad.label(0), std::string("Q"));
+	pad.press(shift, typed);
+	// Space, Del, Clear, Done; every bottom key has a word, and all but #+= a button
+	pad.press(pad.keyOf(KeyPad::Space), typed);
+	CHECK_EQ(typed.text, std::string("QWe "));
+	pad.press(pad.keyOf(KeyPad::Delete), typed);
+	CHECK_EQ(typed.text, std::string("QWe"));
+	CHECK_EQ(pad.press(pad.keyOf(KeyPad::Clear), typed), false);
+	CHECK_EQ(typed.text, std::string(""));
+	CHECK_EQ(typed.caret, (size_t)0);
+	CHECK_EQ(pad.press(pad.keyOf(KeyPad::Done), typed), true);
+	for (int i = 26; i < pad.keys(); i++)
+	{
+		CHECK_EQ(pad.label(i).empty(), false);
+		CHECK_EQ(std::string(pad.button(i)).empty(), pad.role(i) == KeyPad::More);
+	}
+	CHECK_EQ(std::string(pad.button(pad.keyOf(KeyPad::Clear))), std::string("L2"));
+	// a length limit, a port's digits, and the layers by L3 (round)
+	typed.set("abc");
+	pad.press(0, typed, 3);
+	pad.press(pad.keyOf(KeyPad::Space), typed, 3);
+	CHECK_EQ(typed.text, std::string("abc"));
+	typed.set("");
+	pad.press(0, typed, 0, true);
+	pad.press(pad.keyOf(KeyPad::Space), typed, 0, true);
+	pad.press(marks, typed);
+	pad.press(0, typed, 0, true);
+	CHECK_EQ(typed.text, std::string("1"));
+	pad.stepLayer();
+	CHECK_EQ(pad.layer, 2);
+	pad.stepLayer();
+	CHECK_EQ(pad.layer, 0);
+	// Search's: no #+= key, the rest in the same order
+	KeyPad two;
+	two.more = false;
+	CHECK_EQ(two.keys(), 26 + 6);
+	CHECK_EQ(two.keyOf(KeyPad::More), -1);
+	CHECK_EQ(two.role(28), KeyPad::Space);
+	CHECK_EQ(two.role(31), KeyPad::Done);
+	two.stepLayer();
+	two.stepLayer();
+	CHECK_EQ(two.layer, 0);
 	for (auto& row : k.rows)
 		for (auto& r : row) CHECK_EQ(r.x >= 16 && r.x + r.w <= 624, true);
 	CHECK_EQ(k.bottom.back().x + k.bottom.back().w, 624);
@@ -10761,7 +10855,7 @@ static void testKitVariantKeyboard()
 	CHECK(k.rows[0][9].x + k.rows[0][9].w <= 16 + 608);	// no key past the area's right edge
 	CHECK(std::abs((k.rows[0][0].x - 16) - (16 + 608 - (k.rows[0][9].x + k.rows[0][9].w))) <= 1);	// centred
 	CHECK_EQ(k.rows[2][0].x - k.rows[0][0].x > 0, true);	// a shorter row is indented
-	CHECK_EQ((int)k.bottom.size(), 5);
+	CHECK_EQ((int)k.bottom.size(), 6);	// two toggles, Space, Clear, Del, Done
 	CHECK_EQ(k.bottom[0].h, 56);
 	CHECK_EQ(k.bottom.back().x + k.bottom.back().w, 16 + 608);	// Done ends on the area's right edge
 	CHECK(k.bottom[2].w > 100);	// Space takes the rest
