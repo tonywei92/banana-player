@@ -11147,13 +11147,12 @@ static void testKitVariantTile()
 static void testKitVariantCards()
 {
 	using namespace lay;
-	RecentCard r = recentCard({16, 282, RECENT_W, RECENT_H});
-	CHECK_EQ(r.pic.w, r.pic.h);	// square, as Music's album art
-	CHECK(r.pic.x >= r.box.x && r.pic.x + r.pic.w <= r.box.x + r.box.w);
-	CHECK(r.pic.y + r.pic.h <= r.title.y);
-	CHECK(r.note.y + r.note.h <= r.line.y);
-	CHECK_EQ(r.line.h, 3);
-	CHECK(r.line.y + r.line.h <= r.box.y + r.box.h);
+	// Home's Recent tile is Music's album tile: the square picture, the title and the note under it, all inside
+	AlbumTile r = albumTile({16, 282, RECENT_W, RECENT_H});
+	CHECK_EQ(r.cover.w, r.cover.h);
+	CHECK_EQ(r.cover.w, ALBUM_ART);
+	CHECK(r.cover.y + r.cover.h <= r.title.y);
+	CHECK_EQ(r.artist.y + r.artist.h, r.box.y + r.box.h);
 	ContinueCard c = continueCard({16, 166, 608, CONTINUE_H});
 	CHECK_EQ(c.pic.w, c.pic.h);	// square
 	CHECK_EQ(c.pic.h, 84);
@@ -12000,6 +11999,8 @@ static void testKitLayout()
 		CHECK_EQ(h.cards, 4);
 		CHECK(!overlaps(h.card[0], h.card[1]));
 		CHECK(h.more.x >= h.card[3].x + RECENT_W + GAP);
+		CHECK_EQ(h.card[1].x - h.card[0].x, ALBUM_ART + ALBUM_COL_GAP);	// the albums grid's pitch
+		CHECK_EQ(h.card[0].h, ALBUM_CELL_H);
 		CHECK_EQ(h.more.x + h.more.w, h.inner.x + h.inner.w);
 		CHECK_EQ(h.shortcuts, 3);
 		CHECK_EQ(h.shortcut[2].x + h.shortcut[2].w, h.inner.x + h.inner.w);

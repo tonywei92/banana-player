@@ -8,6 +8,8 @@
 #include "mediaindex.h"
 #include "playlist.h"
 #include "netpath.h"
+#include "pagebook.h"
+#include "ui_mediaart.h"
 #include "theme.h"
 #include <algorithm>
 #include <cmath>
@@ -873,7 +875,8 @@ namespace bp
 			(int)pressedContinue, (int)pressedResume, pressedCard, pressedShortcut, pressedChip, pressedEmptyKey, recent.size(),
 			clearArmedAt && SDL_GetTicks() < clearArmedAt ? 1 : 0);
 		std::string s = b;
-		s += "|ha" + std::to_string(ui.artSerial);	// a song's art arrived: the cards draw it now
+		s += "|ha" + std::to_string(ui.artSerial) + "." + std::to_string(ui.mediaArt ? ui.mediaArt->serial : 0);	// a song's art,
+		// a book's cover or a video's thumbnail arrived: the cards draw it now
 		if (c.shown)
 		{
 			s += "|hc" + c.label + c.path + std::to_string((int)std::lround(c.frac * 100)) + c.key + (c.paused ? "p" : "");
@@ -881,6 +884,22 @@ namespace bp
 		}
 		if (!morePath.empty()) s += "|mp" + morePath;
 		return s;
+	}
+
+	std::function<void(Ui::Rect)> Ui::Home::pictureFor(const std::string& path, const Glyph* kind, const std::string& artKey,
+		int rad) const
+	{
+		if (path.empty()) return nullptr;
+		if (kind == &G_NOTE) return [this, path, artKey, rad](Rect r) { ui.drawSongArt(path, artKey, r, rad); };
+		if (isNetPath(path) || kind == &G_PICTURE) return nullptr;
+		if (isDocumentName(path) || isComicName(path))
+			return [this, path, artKey, rad](Rect r) { ui.drawBookCover(path, artKey, r, rad); };
+		// a video: its list thumbnail (the videos' cache, made once in the background), the middle of it in the square
+		if (!ui.mediaArt || ui.mediaArt->thumbState(path) != 1) return nullptr;
+		return [this, path, rad](Rect r) {
+			ui.fillRound(r, TRACK, rad);
+			ui.mediaArt->drawThumbCrop(path, {r.x, r.y, r.w, r.h});
+		};
 	}
 
 	// ---- a song's real art ----
@@ -930,10 +949,11 @@ namespace bp
 			card.focused = homeZone == HOME_CONTINUE;
 			card.pressed = pressedContinue;
 			card.keyPressed = pressedResume;
-			card.picture = [this, &k, c](Rect r) {
-				// a song's real art (its placeholder while it decodes, or forever when it has none); a video's and a
-				// book's kind mark
-				if (c.kind == &G_NOTE) ui.drawSongArt(c.path, c.artKey.empty() ? c.title : c.artKey, r, 10);
+			auto art = pictureFor(c.path, c.kind, c.artKey.empty() ? c.title : c.artKey, 10);
+			card.picture = [this, &k, c, art](Rect r) {
+				// a song's real art (its placeholder while it decodes, or forever when it has none), a book's cover, a
+				// video's thumbnail; else the kind's mark
+				if (art) art(r);
 				else
 				{
 					Kit::Card plain;
@@ -989,7 +1009,7 @@ namespace bp
 			int idx = nthVisible(i);
 			if (idx < 0) continue;
 			const RecentItem& it = recent[idx];
-			lay::RecentCard l = lay::recentCard(hp.card[i]);
+			lay::AlbumTile l = lay::albumTile(hp.card[i]);
 			Kit::Card card;
 			card.kind = it.kind;
 			card.title = it.name;
@@ -997,13 +1017,13 @@ namespace bp
 			card.progress = it.frac;
 			card.focused = homeZone == HOME_CARDS && homeStrip == idx;
 			card.pressed = pressedCard == idx;
-			if (it.kind == &G_NOTE) card.picture = [this, path = it.path, key = it.name](Rect r) { ui.drawSongArt(path, key, r, 8); };
-			k.recentCard(l, card);
-			// a liked one's heart and a network one's mark, over the picture's right corner (as the strip had them)
-			int rx = l.pic.x + l.pic.w - 9;
-			if (it.net) { ui.drawGlyphMid(G_NETWORK, rx, l.pic.y + l.pic.h - 10, DIM_ON); rx -= 15; }
+			card.picture = pictureFor(it.path, it.kind, it.name, 5);
+			k.recentTile(l, card);
+			// a liked one's heart and a network one's mark, over the picture's top right corner (the bar is at its foot)
+			int rx = l.cover.x + l.cover.w - 11;
+			if (it.net) { ui.drawGlyphMid(G_NETWORK, rx, l.cover.y + 13, DIM_ON); rx -= 15; }
 			if (ui.browse->playlists->plStore && ui.browse->playlists->plStore->isLiked(it.path))
-				ui.drawGlyphMid(G_HEART_S, rx, l.pic.y + l.pic.h - 10, ACCENT);
+				ui.drawGlyphMid(G_HEART_S, rx, l.cover.y + 13, ACCENT);
 		}
 		if (moreShown())
 		{

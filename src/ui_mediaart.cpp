@@ -66,6 +66,21 @@ namespace bp
 		SDL_RenderCopy(ui.ren, it->second.tex, nullptr, &d);
 	}
 
+	void Ui::MediaArt::drawThumbCrop(const std::string& path, Rect r)
+	{
+		auto it = videos.find(path);
+		if (it == videos.end() || !it->second.tex || r.w <= 0 || r.h <= 0) return;
+		it->second.texUsed = ++clock;
+		int tw = 0, th = 0;
+		SDL_QueryTexture(it->second.tex, nullptr, nullptr, &tw, &th);
+		// the widest middle part of the frame at the box's aspect
+		SDL_Rect src{0, 0, tw, th};
+		if ((long)tw * r.h > (long)th * r.w) { src.w = (int)((long)th * r.w / r.h); src.x = (tw - src.w) / 2; }
+		else { src.h = (int)((long)tw * r.h / r.w); src.y = (th - src.h) / 2; }
+		SDL_Rect d = ui.devRect(r);
+		SDL_RenderCopy(ui.ren, it->second.tex, &src, &d);
+	}
+
 	const VideoMeta* Ui::MediaArt::meta(const std::string& path)
 	{
 		auto it = videos.find(path);

@@ -46,7 +46,10 @@ Open Banana Player and the bottom screen shows **Home**:
   the player). Held, the key takes it over from a browser that plays it. A
   video the Manga reader stopped says **Stopped for Manga** until it plays again or something else is played. With
   everything played through there is no Continue card and **Recent** moves to the top. The pictures on the Continue and
-  Recent cards are square (1:1), as Music's album art. A song's picture is its real
+  Recent cards are square (1:1), as Music's album art, and each Recent item is laid as an album tile is (the square
+  picture with its title and second line under it, the albums grid's sizes). A video's picture is its list thumbnail
+  (the middle of it), a book's its cover, once read; until then, and for a photo or a network file, the kind's mark.
+  A song's picture is its real
   album art: the picture in the file, else `cover.*`, `folder.*` or `front.*` beside it (its title is the title tag
   when it has one, not the file's name). A song without any keeps the drawn record. The card is Home's one place for
   what plays. Home's Recent and shortcuts stay where they are either way.

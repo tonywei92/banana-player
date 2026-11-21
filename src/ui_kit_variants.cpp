@@ -554,20 +554,25 @@ namespace bp
 		if (c.kind) ui.drawGlyphMid(*c.kind, r.x + r.w / 2, r.y + r.h / 2, off(DIM_ON, c.off), 3);
 	}
 
-	void Ui::Kit::recentCard(const lay::RecentCard& l, const Card& c)
+	void Ui::Kit::recentTile(const lay::AlbumTile& l, const Card& c)
 	{
-		flat(l.box, off(c.pressed ? PRESSED : cardFill(SURFACE), c.off), 12, c.focused && !c.off ? ACCENT : off(edgeOf(SURFACE), c.off));
-		pictureOf(l.pic, c, 8);
+		// focused: the album tile's 3-unit ACCENT outline 2 clear of the picture; pressed: a PRESSED rim in its place
+		if (c.focused || c.pressed)
+		{
+			ui.fillRound({l.cover.x - 5, l.cover.y - 5, l.cover.w + 10, l.cover.h + 10}, c.focused ? ACCENT : PRESSED, 10);
+			ui.fillRound({l.cover.x - 2, l.cover.y - 2, l.cover.w + 4, l.cover.h + 4}, BG, 7);
+		}
+		pictureOf(l.cover, c, 5);
 		// the kind's mark over the picture: a dark chip, light ink in every theme
 		if (c.kind && c.picture)
 		{
-			Rect m{l.pic.x + 4, l.pic.y + l.pic.h - 20, 22, 16};
+			Rect m{l.cover.x + 5, l.cover.y + 5, 22, 16};
 			ui.fillRound(m, sdl(theme::TOP_CARD, 200), 5);
 			ui.drawGlyphMid(*c.kind, m.x + m.w / 2, m.y + m.h / 2, sdl(theme::TOP_TITLE), 1);
 		}
-		ui.drawTextMid(c.title, F_P14, off(c.focused ? ACCENT : TEXT, c.off), l.title.x, l.title.y + l.title.h / 2, l.title.w);
-		ui.drawTextMid(c.note, F_I12, off(DIM, c.off), l.note.x, l.note.y + l.note.h / 2, l.note.w);
-		if (c.progress >= 0) bar(l.line, c.progress);
+		if (c.progress >= 0) bar({l.cover.x + 6, l.cover.y + l.cover.h - 9, l.cover.w - 12, 3}, c.progress);
+		ui.drawTextMid(c.title, F_P13, off(c.focused ? ACCENT : TEXT, c.off), l.title.x, l.title.y + l.title.h / 2, l.title.w);
+		ui.drawTextMid(c.note, F_I12, off(c.focused ? DIM_ON : DIM, c.off), l.artist.x, l.artist.y + l.artist.h / 2, l.artist.w);
 	}
 
 	void Ui::Kit::continueCard(const lay::ContinueCard& l, const Card& c)
@@ -1244,7 +1249,7 @@ namespace bp
 				r.note = i % 2 ? "Song" : "Video";
 				r.progress = i == 3 ? -1 : 0.25 * (i + 1) - 0.1;
 				r.focused = i == 1;
-				k.recentCard(lay::recentCard({16 + i * (lay::RECENT_W + 8), 278, lay::RECENT_W, lay::RECENT_H}), r);
+				k.recentTile(lay::albumTile({16 + i * (lay::RECENT_W + lay::RECENT_GAP), 278, lay::RECENT_W, lay::RECENT_H}), r);
 			}
 			// the clip bar over the select bar's place (a held file and, below, select mode's four keys)
 			Kit::Clip clip;

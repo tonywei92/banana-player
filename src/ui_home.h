@@ -83,6 +83,9 @@ namespace bp
 			double frac = 0;
 		};
 		Continue continueOf(const Player& p) const;
+		// the picture a Recent tile or the Continue card draws for a file: a song's album art, a book's cover, a video's
+		// list thumbnail once made (asked here); null: the kind's mark (a photo, a network file, a video not yet read)
+		std::function<void(Rect)> pictureFor(const std::string& path, const Glyph* kind, const std::string& artKey, int rad) const;
 		mutable std::string mangaStopped;	// a video Manga stopped (the Continue card says why); cleared when it plays again
 		mutable Uint32 mangaStopSeen = 0;
 
