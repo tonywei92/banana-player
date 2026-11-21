@@ -7570,7 +7570,7 @@ static void testThemes()
 	CHECK_EQ(light > 0 && contrast > 0 && dark > 0, true);
 	const Palette& L = palette(light);
 	CHECK_EQ(hx(L.RAIL) + hx(edgeOf(L.BUTTON, L.TEXT, L.EDGE_MIX)) + hx(edgeOf(L.SURFACE, L.TEXT, L.EDGE_MIX)), "ECE7DB767370828081");
-	CHECK_EQ(hx(edgeOf(L.ACCENT, L.TEXT, L.EDGE_MIX)) + hx(lipOf(L.ACCENT)) + hx(edgeOf(L.DANGER, L.TEXT, L.EDGE_MIX)), "463312553900581F1F");
+	CHECK_EQ(hx(edgeOf(L.ACCENT, L.TEXT, L.EDGE_MIX)) + hx(lipOf(L.ACCENT)) + hx(edgeOf(L.DANGER, L.TEXT, L.EDGE_MIX)), "2B2E362C3139581F1F");
 	CHECK_EQ(hx(L.TOP_CARD) + hx(L.TOP_TITLE), "0B0A0DFFD23F");
 	const Palette& K = palette(dark);
 	CHECK_EQ(hx(K.RAIL) + hx(K.TOP_CARD) + hx(edgeOf(K.BUTTON, K.TEXT, K.EDGE_MIX)) + hx(lipOf(K.ACCENT)), "12121512121567686DA2A099");
@@ -7600,7 +7600,7 @@ static void testThemes()
 	// strong keys: Gundam's navy keys and red primary; a theme without them keeps the button and accent roles
 	CHECK_EQ(css.find("--key:#2c52b3;--on-key:#ffffff;--key-focus:#fff867;--hint-bar:#172e6b;--on-hint:#ffffff;--primary:#d3222b;--on-primary:#ffffff;--on-rail:#c9d3ee;") != std::string::npos, true);
 	CHECK_EQ(css.find(":root[data-theme=\"light\"]{color-scheme:light;--bg:#f7f4ec;--surface:#fffdf8;") != std::string::npos, true);
-	CHECK_EQ(css.find("--key:#e6e0d2;--on-key:#1b1a20;--key-focus:#7a5200;--hint-bar:#f7f4ec;--on-hint:#55514a;--primary:#7a5200;--on-primary:#fffdf8;") != std::string::npos, true);
+	CHECK_EQ(css.find("--key:#e6e0d2;--on-key:#1b1a20;--key-focus:#3f4652;--hint-bar:#f7f4ec;--on-hint:#55514a;--primary:#3f4652;--on-primary:#fffdf8;") != std::string::npos, true);
 	// the Clean style's selected tint: ACCENT 17% over the ground (Yellow is current here)
 	CHECK_EQ(hx(theme::tintOf(theme::palette(0).BG)), "2B230A");
 	CHECK_EQ(hx(theme::tintOf(theme::palette(0).SURFACE)), "3A311C");
@@ -15543,7 +15543,7 @@ static void testSongLayout()
 		std::string l = visualizerGraphMarked(VIS_PEAKS_BANANA, false, "");
 		theme::setTheme(0);
 		CHECK_EQ(l != y, true);
-		CHECK_EQ(l.find("lt(y,253),88,") != std::string::npos, true);
+		CHECK_EQ(l.find("lt(y,253),75,") != std::string::npos, true);
 		CHECK_EQ(visualizerGraphMarked(VIS_PEAKS_BANANA, false, "") == y, true);
 		theme::setTheme(was);
 	}
