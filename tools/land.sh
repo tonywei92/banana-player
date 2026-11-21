@@ -7,6 +7,10 @@ B=$1; [ -n "$B" ] || { echo "usage: $0 BRANCH [--no-push]"; exit 2; }
 ROOT=$(git rev-parse --path-format=absolute --git-common-dir)/..; ROOT=$(cd "$ROOT" && pwd)
 W=$ROOT/.claude/worktrees/$B; R=$ROOT/.claude/worktrees/rd-base
 export SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.sdk
+# an unfinished merge or revert in the agent's tree stops here (its conflict markers were once committed as "leftovers")
+if [ -d "$W" ] && { git -C "$W" status --short | grep -q '^\(UU\|AA\|DU\|UD\)' || git -C "$W" grep -qE '^(<<<<<<<|>>>>>>>) ' -- src web tests docs; }; then
+	echo "UNRESOLVED conflict in $W: finish it first"; exit 1
+fi
 if [ -d "$W" ] && [ -n "$(git -C "$W" status --short -- . ':!opencode.json' ':!docs/redesign/__pycache__')" ]; then
 	git -C "$W" add -A -- . ':!opencode.json' ':!docs/redesign/__pycache__'
 	git -C "$W" commit -q -m "$B: the agent's work (committed by land.sh)"; echo "committed leftovers in $B"
