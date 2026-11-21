@@ -964,10 +964,11 @@ namespace bp
 		});
 
 		// a page's intent (docs/design/session.md §3): type, tab (its origin), seq, basis, and the type's fields.
-		// Open (q[]: the queue's virtual paths, index, t, skind folder|playlist, stitle, sid; to=browser|handheld when
+		// Open (q[]: the queue's virtual paths, index, t, skind folder|playlist, stitle, sid, rail, added[]; to=browser|handheld when
 		// the pick says where), Step (n), SetOutput (to=handheld|browser, at), SetAudio / SetSub (a pick: ord, of, lang,
 		// label, external; off=1 subtitles off), and the reports Loaded (load, dur), Ended (load), CantPlay (load,
-		// reason) and Blocked (load, t: its play() refused without a tap; it waits for one). The answer:
+		// reason), Blocked (load, t: its play() refused without a tap; it waits for one) and Remove (index, p: a row of the
+		// published queue). The answer:
 		// {ok|rejected|dup, reason, v, session}
 		s.Post("/api/intent", [w](const httplib::Request& req, httplib::Response& res) {
 			std::string type = value(req, "type"), tab = value(req, "tab");
@@ -975,7 +976,8 @@ namespace bp
 				{"Ended", IntentType::Ended}, {"Pos", IntentType::Pos}, {"Play", IntentType::Play}, {"Pause", IntentType::Pause},
 				{"Stop", IntentType::Stop}, {"SetOutput", IntentType::SetOutput},
 				{"SetAudio", IntentType::SetAudio}, {"SetSub", IntentType::SetSub}, {"Loaded", IntentType::Loaded},
-				{"CantPlay", IntentType::CantPlay}, {"Blocked", IntentType::Blocked}, {"SetShuffle", IntentType::SetShuffle}};
+				{"CantPlay", IntentType::CantPlay}, {"Blocked", IntentType::Blocked}, {"SetShuffle", IntentType::SetShuffle},
+				{"Remove", IntentType::Remove}};
 			Intent i;
 			bool known = false;
 			for (auto& t : TYPES)
@@ -1009,6 +1011,8 @@ namespace bp
 			{
 				i.rail = value(req, "rail") == "1" || random;
 				if (!random && !resolveAll(*w, values(req, "q"), i.queue, res, true)) return;
+				// (a rail list played again from Recent: the songs Keep playing had added, as the handheld's Open sends them)
+				if (i.rail && !random && !resolveAll(*w, values(req, "added"), i.added, res, true)) return;
 				i.index = atoi(value(req, "index").c_str());
 				i.t = std::max(0.0, atof(value(req, "t").c_str()));
 				std::string kind = value(req, "skind");
@@ -1023,6 +1027,10 @@ namespace bp
 				}
 			}
 			if (i.type == IntentType::SetShuffle) i.on = value(req, "on") == "1";
+			// Remove (Up next's Remove from list): index and p are the row as the session's published queue shows it
+			// (its unserved files left out): turned into the session's own row on the main thread, below
+			std::string removeV = i.type == IntentType::Remove ? value(req, "p") : "";
+			if (i.type == IntentType::Remove) i.index = atoi(value(req, "index").c_str());
 			if (i.type == IntentType::Step) i.n = std::clamp(atoi(value(req, "n").c_str()), -1000, 1000);
 			if (i.type == IntentType::SetOutput)
 			{
@@ -1052,9 +1060,23 @@ namespace bp
 				(i.type == IntentType::SetAudio ? i.audio : i.sub) = k;
 			}
 			int status = 200;
-			std::string body = w->call([w, i, random](Player&, Ui& u) {
+			std::string body = w->call([w, i, random, removeV](Player&, Ui& u) {
 				SessionHost& sh = SessionHost::get();
 				Intent in = i;
+				if (in.type == IntentType::Remove)
+				{
+					const auto& q = sh.session().queue;
+					int real = -1;
+					for (int k = 0, n = 0; k < (int)q.size() && real < 0; k++)
+					{
+						std::string v = isNetPath(q[k]) ? q[k] : w->servedVirtual(q[k]);
+						if (v.empty()) continue;
+						if (n++ == in.index && v == removeV) real = k;
+					}
+					// (a row that moved since the page drew it: refused as the reducer's own "stale")
+					in.path = real >= 0 ? q[real] : std::string();
+					in.index = real;
+				}
 				if (random)
 				{
 					std::random_device rd;

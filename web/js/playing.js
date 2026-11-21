@@ -695,12 +695,33 @@ function UpNext({ v }) {
 	const added = !fin && S.s && S.s.added && S.s.added.length ? new Set(S.s.added) : null;
 	const headAt = added ? items.findIndex(it => added.has(it.p)) : -1, keepOn = !sn || sn.keepPlaying !== false;
 	const toggleKeep = () => post('/api/setting', { key: 'keepPlaying', value: keepOn ? 0 : 1 }).then(() => { if (store.snap) store.snap.keepPlaying = !keepOn; notify(); }).catch(errToast);
+	// a row's ⋯, as the handheld's Up next X: Play from here, Remove from list (the session's Remove: its row of the
+	// published queue, which this list is, or the same file nearest it), Keep playing off / on
+	const rowOf = i => {
+		const q = !fin && S.s && S.s.queue || [];
+		if (q[i] === items[i].p) return i;
+		let best = -1;
+		q.forEach((p, k) => { if (p === items[i].p && (best < 0 || Math.abs(k - i) < Math.abs(best - i))) best = k; });
+		return best;
+	};
+	const remove = async i => {
+		const row = rowOf(i);
+		try { const r = await intent('Remove', { index: row, p: items[i].p }); if (r && r.rejected) toast(r.reason === 'stale' ? 'The list changed: try again' : "Couldn't remove it"); } catch (e) { toast(errMsg(e)); }
+	};
+	const rowMenu = (i, anchor) => {
+		const it = items[i], now = i === idx, picked = !!(added && added.has(it.p)), fromPl = sn && sn.source && sn.source.kind === 'playlist' || S.s && S.s.source && S.s.source.kind === 'playlist';
+		openSheet(it.title, 'note', [
+			!now && { label: 'Play from here', icon: 'play', fn: () => play(i) },
+			rowOf(i) >= 0 && { label: 'Remove from list', icon: 'minus', sub: now ? 'The next song plays' : fromPl ? 'The playlist itself is unchanged' : '', fn: () => remove(i) },
+			headAt >= 0 && { label: keepOn ? 'Turn Keep playing off' : 'Turn Keep playing on', icon: 'shuffle', sub: 'Songs it added stay in the list', fn: toggleKeep }
+		], { anchor, seed: it.p, kind: kindOfName(it.p), cover: kindOfName(it.p) === 'audio' ? coverUrl(it.p) : '', sub: picked ? 'Picked by Keep playing' : 'Row ' + (i + 1) + ' of Up next' });
+	};
 	return html`<section aria-label="Queue"><div class="band queue-band"><span class="kicker ell" style="max-width:70%">${src ? 'From ' + src : 'Up next'}</span><span class="rule"></span><span class="num">${pad(idx + 1)} / ${pad(items.length)}</span></div>
 		<div class="upnext list-lines" ref=${box}>
-		${items.map((it, i) => { const d = it.duration > 0 ? it.duration : durationOf(it.p); return html`${i === headAt && html`<${ListHead} label=${keepOn ? 'Keep playing \u00B7 songs picked for you' : 'Songs picked for you'} action=${keepOn ? 'Turn off' : 'Turn on'} onAction=${toggleKeep} />`}<button class="line ${i === idx ? 'cur' : ''} ${i < idx ? 'past' : ''}" data-dur=${!d && durable(it.p) ? it.p : undefined} onClick=${() => play(i)} aria-current=${i === idx ? 'true' : undefined}>
+		${items.map((it, i) => { const d = it.duration > 0 ? it.duration : durationOf(it.p); return html`${i === headAt && html`<${ListHead} label=${keepOn ? 'Keep playing \u00B7 songs picked for you' : 'Songs picked for you'} action=${keepOn ? 'Turn off' : 'Turn on'} onAction=${toggleKeep} />`}<div class="qrow"><button class="line ${i === idx ? 'cur' : ''} ${i < idx ? 'past' : ''}" data-dur=${!d && durable(it.p) ? it.p : undefined} onClick=${() => play(i)} onContextMenu=${fin ? undefined : e => { e.preventDefault(); rowMenu(i, { x: e.clientX, y: e.clientY }); }} aria-current=${i === idx ? 'true' : undefined}>
 			<span class="tile sm"><${Art} src=${kindOfName(it.p) === 'audio' ? coverUrl(it.p) : ''} seed=${it.p} kind=${kindOfName(it.p)} k=${1} /></span>
 			<span class="tt"><span class="ell" style="display:block">${it.title}</span>${i === idx && html`<span class="m">${fin ? html`<span class="chip tiny">Finished</span>` : html`<span class="chip y tiny"><${Icon} n="play" k=${1} />Now</span>`}</span>`}</span>
-			${d > 0 && html`<span class="tm">${fmtTime(d)}</span>`}</button>`; })}</div></section>`;
+			${d > 0 && html`<span class="tm">${fmtTime(d)}</span>`}</button>${!fin && html`<button class="ib more" aria-label=${'More about ' + it.title} aria-haspopup="dialog" onClick=${e => rowMenu(i, e.currentTarget)}><${MoreDots} /></button>`}</div>`; })}</div></section>`;
 }
 
 /* ---- audio and subtitles ---- */

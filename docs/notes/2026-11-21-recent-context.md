@@ -53,4 +53,10 @@
   "6 of 14, 10 Keep playing had added", no new ones at its end; off at recording, on when reopened → 10 added; turned
   on during the last song → added at once; Remove of an added row, of a row before, of the playing one; Recent → Stop
   → Home; a legacy Files-folder entry → "Folder · Anime" → Stop → Home; Music › Folders → play → Stop → Music ›
-  Folders. Not checked: the dashboard (its Recent list doesn't send `added` yet; no Remove on the page), the handheld.
+  Folders. Not checked: the handheld.
+- **The dashboard** (later, branch c-webq): `/api/recent/list` answers `added` and the page's Open sends it back
+  (`added[]`, a rail list only); Up next's rows have a ⋯ (Play from here, Remove from list, Keep playing) and the
+  page's `Remove {index, p}` names a row of the *published* queue (unserved files left out), turned into the
+  session's own row on the main thread, refused as `stale` when it moved; `fromPage` then drops it from the player's
+  list too, as `removeFromList`. Checked in headless Chrome: Keep playing's heading, Remove of an added row and of the
+  one playing (the next plays), Recent's song in this browser with its 3 added songs under the heading.

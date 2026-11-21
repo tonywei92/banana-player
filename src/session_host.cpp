@@ -259,6 +259,13 @@ namespace bp
 		if ((i.type == IntentType::SetOutput || i.type == IntentType::Open) && i.hasOut && i.out.kind == OutKind::Handheld) showHere = true;
 		Result r = submit(i, true);
 		if (!r.reject.empty()) showHere = false;
+		// Up next's Remove from a page: the handheld's own list follows, as removeFromList's
+		if (i.type == IntentType::Remove)
+		{
+			bool dropped = r.reject.empty() && player && player->dropEntry(i.path, i.index);
+			fprintf(stderr, "session: a page removed row %d from the list (%s%s)\n", i.index + 1, r.reject.empty() ? "ok" : r.reject.c_str(),
+				dropped ? ", the player's list too" : "");
+		}
 		// a pick for the handheld: on its file even where the session's item lags behind today's (steps c-e)
 		// and one made in a page that is the output: the handheld's held copy takes it too, so its Audio & Subtitles
 		// shows what plays and a hand-off back finds it set

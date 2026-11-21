@@ -33,7 +33,7 @@ export async function playRecent(it, target) {
 	try { r = await get('/api/recent/list', { p: it.p }, { quiet: true }); } catch (e) {}
 	if (r && r.list && r.why) { toast(r.why + ': playing the song alone'); return browserPlay([{ p: it.p }], 0, { kind: 'folder', title: it.title }, pos); }
 	if (!r || !r.list || !r.q || !r.q.length) return playAt(it.p, pos, target, 'always');
-	return browserPlay(r.q.map(p => ({ p })), r.index, { kind: r.skind, title: r.stitle, id: r.sid }, pos, r.rail);
+	return browserPlay(r.q.map(p => ({ p })), r.index, { kind: r.skind, title: r.stitle, id: r.sid }, pos, r.rail, r.added);
 }
 // the same from its beginning. /api/play has no "from the start": the handheld opens it at its place, and is sent
 // back to 0 once it shows the file

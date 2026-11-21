@@ -712,6 +712,8 @@ video::cue { font-size: var(--cue, 18px); color: #fff; background: rgba(0, 0, 0,
 .line .tt .m { display: flex; align-items: center; gap: 6px; font: 400 13px/1.3 var(--text); color: var(--dim); margin-top: 2px; }
 .line .tm { font: 400 13px/1 var(--pixel); color: var(--dim); font-variant-numeric: tabular-nums; }
 .line.past .tt { color: var(--dim-btn); }
+.qrow { display: flex; align-items: center; gap: 2px; } .qrow .line { flex: 1; min-width: 0; } .qrow .more { color: var(--dim-btn); }
+.qrow { display: flex; align-items: center; gap: 2px; } .qrow .line { flex: 1; min-width: 0; } .qrow .more { color: var(--dim-btn); }
 .queue-band { margin: 2px 0 4px; }
 .list-head { display: flex; align-items: center; gap: var(--s3); margin: var(--s3) 0 var(--s1); padding: 0 var(--s2); }
 .list-head .lh-label { font: 400 13px/1.2 var(--pixel); color: var(--dim); }

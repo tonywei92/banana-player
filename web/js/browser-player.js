@@ -100,12 +100,13 @@ export async function probe1(p) {
 export const fileUrl = p => '/api/file?p=' + encodeURIComponent(p);
 // items: [{p}] picked in this page to play here: the session's Open (this tab the output, and where picks go), and the
 // renderer loads it as the answer comes (onSession). One this browser can't play plays on the handheld, said so
-export async function browserPlay(items, index, source, pos, rail) {
+// added: of a rail list played again from Recent, the songs Keep playing had added (Up next's section again)
+export async function browserPlay(items, index, source, pos, rail, added) {
 	if (store.conn !== 'ok') return false;
 	if (NO_HERE) { toast(NO_HERE_WHY + ': it plays on the handheld'); return false; }
 	const src = source || {};
 	try {
-		const r = await intent('Open', Object.assign({ q: items.map(x => x.p), index, t: (pos || 0).toFixed(2), skind: src.kind || 'folder', stitle: src.title || '', sid: src.id || '', to: 'browser' }, rail ? { rail: 1 } : {}));
+		const r = await intent('Open', Object.assign({ q: items.map(x => x.p), index, t: (pos || 0).toFixed(2), skind: src.kind || 'folder', stitle: src.title || '', sid: src.id || '', to: 'browser' }, rail ? { rail: 1 } : {}, added && added.length ? { added } : {}));
 		return !!r && !r.rejected;
 	} catch (e) { toast(e.status === 0 ? "Couldn't reach your handheld" : errMsg(e)); return false; }
 }

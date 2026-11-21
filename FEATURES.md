@@ -67,7 +67,7 @@ Open Banana Player and the bottom screen shows **Home**:
   album, an artist, a Music folder, **Play random** with what **Keep playing** added; a folder of Files). Opening it
   plays it in that list, in the same order (Keep playing applies only if it was a Music list): the songs Keep playing
   had added come back with it, under their heading in Up next, and Keep playing (as it is set now) goes on from its
-  last song. A song of the library with no list kept (played before this) plays in its Music folder's list.
+  last song (from the web dashboard's Recent too, in the browser or on the handheld). A song of the library with no list kept (played before this) plays in its Music folder's list.
   **Stop** and **B** go back to the page the player was opened from (Home, All recent), never to a section you
   didn't come from. A list gone since (the playlist deleted or renamed, the album or folder gone) plays the song
   alone and says why. Videos and books open as before.
@@ -184,7 +184,9 @@ a list with Repeat All or One. Picking a row of the list in Up next keeps the ad
 
 **Remove from list**: in Up next, **X** (or a row held) opens the row's **More**: **Play from here**, **Remove from
 list**, and Keep playing on / off. Removing takes the song out of the list that plays (a playlist's own file is
-unchanged: the row says so); removing the one that plays goes on to the next (nothing after it: it stops).
+unchanged: the row says so); removing the one that plays goes on to the next (nothing after it: it stops). The web
+dashboard's Up next has the same: each row's **⋯** (or a right-click) opens Play from here, Remove from list and Keep
+playing on / off, through the session (`/api/intent` `Remove`), whoever plays.
 
 An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
 (**A**), **Shuffle** (**Y**) and **+** (Add to playlist, touch only). Under them the songs in disc, track and name
