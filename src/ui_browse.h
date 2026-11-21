@@ -35,6 +35,10 @@ namespace bp
 		// ---- the folder shown ----
 		// HOMEDIR Home, "" the cards (Files' top), RECENT the recent videos (All recent)
 		std::string browseDir;
+		// Show in Files from a library page: B in the folder it opened (backDir) goes back to that page, not up
+		// (cleared by any other B and by the rail)
+		Page backPage = Page::Browse;
+		std::string backDir;
 		std::vector<Row> browseRows;
 		std::vector<std::string> browsePaths;	// beside browseRows: what each row opens
 		std::map<std::string, std::pair<int, int>> placeIn;	// each folder's cursor and scroll, for coming back

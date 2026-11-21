@@ -179,9 +179,8 @@ namespace bp
 				return false;
 			}});
 			m.rows.push_back({&G_INFO, "Info", "", "", [this, path](Player& p) { ui.openFileInfo(path, ""); return false; }});
-			m.rows.push_back({&G_FOLDER, "Show in folder", "", "", [this, path](Player& p) {
-				ui.page = Page::Browse;
-				ui.showInFolder(path, p);
+			m.rows.push_back({&G_FOLDER, "Show in Files", "", "", [this, path](Player& p) {
+				ui.showInFiles(path, p);
 				return false;
 			}});
 			ui.moreTwoColumns(m, ui.sourceMoreRows(LibKind::Books, pl));

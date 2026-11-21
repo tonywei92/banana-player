@@ -2705,6 +2705,14 @@ namespace bp
 		// the browser's own keys below: B up a folder or Home, START the menu, the list's
 		if (b == Button::B)
 		{
+			// opened by a library page's Show in Files: back to that page (from the folder it opened only)
+			bool back = !backDir.empty() && browseDir == backDir;
+			backDir.clear();
+			if (back)
+			{
+				ui.page = backPage;
+				return false;
+			}
 			// a section's top: Home, on its tile (All recent: on its card)
 			if (atFirstPage())
 			{

@@ -162,7 +162,7 @@ order — a music video sits among them with a **VIDEO** pill and plays as one i
 to the next song); the one playing shows its mark in the number's place, a liked one its heart, each its length.
 **A** on Play plays the album from its first song; **A** on a song plays from that song; **Y** anywhere plays it
 shuffled; **DOWN** steps from the keys into the songs. **X** is **More**: **Add to playlist…** (the album's songs into
-one of yours; New playlist… starts from the album's name), **Show in folder**, and on a song **Like / Unlike** too.
+one of yours; New playlist… starts from the album's name), **Show in Files**, and on a song **Like / Unlike** too.
 **B** is back to the grid.
 
 An artist's page: the same keys (everything of theirs, by album and track), then their albums newest first as a strip
@@ -209,7 +209,8 @@ The films on the cards in one list, without walking folders: filled by itself fr
 
 **A** plays from the place you left it, with the view's videos as the list (Next goes to the next row; a folder's
 list is the folder's). **X** is **More**: **Play from the start**, **Add to playlist…**, **Like / Unlike**, **Show in
-folder**, **Info**, then the file's own rows — **Copy…**, **Move…**, **Rename…** and **Delete** (it asks first; what
+Files** (Files at its folder with the cursor on it, to rename, move or delete it there; **B** in that folder comes
+back here; Music's and Books' More have it too), **Info**, then the file's own rows — **Copy…**, **Move…**, **Rename…** and **Delete** (it asks first; what
 plays can't be moved, renamed or deleted until it's stopped) — and **Sort**, stepped in place: by **Name** (the
 usual), **Newest first** or **Biggest first** (Not finished always keeps its own newest-first). A delete, a rename
 or a move done, the index walks the cards again, so the list is true again a moment later. **◀/▶** page the list,
@@ -238,8 +239,8 @@ The shelf is filled from two places: the books you have opened from anywhere (th
 the folders named **Books**, **Ebook** or **Ebooks** (any capitals; not Documents, whose PDFs are opened from Files) at the top of each card. Every cover is decoded — an
 EPUB's own, a PDF's first page, a comic's first page — on the cover worker (the drawn sleeve, keyed by the name,
 stands in until the answer, and for good for a TXT, which has no picture of its own). **X** is
-**More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in folder**. **◀/▶** page the
-shelf; **B** does nothing (it is the section's home). With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
+**More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in Files**. **◀/▶** move along the
+covers; **B** does nothing (it is the section's home). With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
 Files still lists and opens every book, and Recent keeps its Books filter; comics still need the Manga reader turned
 on, and say so when it isn't.
 

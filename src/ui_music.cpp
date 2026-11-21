@@ -689,10 +689,9 @@ namespace bp
 						return false;
 					}, liked, true));
 			if (!entries.empty())
-				m.rows.push_back(row(&G_FOLDER, "Show in folder", "",
+				m.rows.push_back(row(&G_FOLDER, "Show in Files", "",
 					[this, path = !songPath.empty() || folder.empty() ? entries.front().path : folder](Player& p) {
-						ui.page = Page::Browse;
-						ui.showInFolder(path, p);
+						ui.showInFiles(path, p);
 						return false;
 					}));
 			ui.moreTwoColumns(m, ui.sourceMoreRows(LibKind::Music, pl));

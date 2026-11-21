@@ -1385,6 +1385,15 @@ namespace bp
 		browse->fitList();
 	}
 
+	void Ui::showInFiles(const std::string& path, Player& p)
+	{
+		Page from = page;
+		page = Page::Browse;
+		showInFolder(path, p);
+		browse->backPage = from;
+		browse->backDir = browse->browseDir;
+	}
+
 	Ui::Rect Ui::Browse::pipRect(int k, const Player& p) const
 	{
 		// as the mock-up has them (x 344..500, R at 508), moved left only when the battery, the web's globe and the
