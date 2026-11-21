@@ -61,6 +61,29 @@ rows already drawn. The handheld's first log: 59 a second, ~13 ms a frame, compo
 
 A list inside a sheet (an overlay) gets the same: the slots, the glide and the pixel offset.
 
+## Adopters (2026-11-21, second step)
+
+- **Music**: the Albums grid, Artists, an album's tracks, an artist's songs (the worked example, `ui_music.cpp`).
+- **Settings**: a group's rows and Manga settings' rows (`SettingsPage::list` / `mangaList`, drawn from copies of each
+  row's look; the down is `rowsDown`, the moves and lift Ui::pointer's listTouch block; a group changed starts at its top).
+- **Search**: the results, one 50-unit pitch, a group's heading at the foot of its row (`ui_search.cpp`).
+- **The player's sheets** (`Overlay::smoothList`, the top sheet's before the page's): List (Up next, Chapters), View
+  (Subtitles, Audio, Picture, Speed), the song sheet's lists, through one helper `Ui::SheetRows` (`ui_player.cpp`).
+  After a drag the cursor stays where it was (it used to jump to the row under the lift).
+- **Manga**: Library grid, History, Browse, On this handheld, network folders, Downloads (queue, card chapters), the
+  chapter lists, Sources' tabs, a source's and a server's cover grids, Filters and its check lists, Choose chapters,
+  Languages; the reader's pages grid (Docs and Manga) and Docs' Options/Contents/Bookmarks menu. Each is a
+  `PageReader::FollowList` (`ui_reader.h`): the page keeps its int scroll and cursor (its keys unchanged), `follow()`
+  turns a cursor move into a glide and a scroll set elsewhere into a jump, `sync()` writes the first whole row back
+  (the load-more checks read it); a fling's stop moves the cursor into view. Filters and Choose chapters now act on
+  the lift (they acted on the down and had no drag). Covers and thumbnails are in the row's key (`coverReady()`).
+- `SmoothList::takeFresh()`: true once after the slots went (the page came back, the theme changed): the area puts
+  its cursor in view at once.
+- **Not moved**: the More sheet and ui_overlay.cpp's dialogs (all their items show at once, nothing scrolls), the
+  Sound/EQ page (no list), Play on's sheet (a few rows), Extensions / Manage extensions (one or two rows), the
+  Settings tiles. Fling timings (Mac, 1024x768, opengl): Settings 54/s, Search 56–58/s, Up next 65/s, Manga
+  Library 60/s, On this handheld 58/s; 2.5–4 ms a frame. None on the handheld yet.
+
 ## Traps
 
 - **Touch indices**: Music's `T_ARTIST + i` ranges were 100 wide, and the grid's lift opened its cell's index counted
