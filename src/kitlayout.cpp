@@ -518,8 +518,25 @@ namespace bp
 			l.to = {PANEL_W - MARGIN - 40, sliderY, 40, sliderH};
 			l.track = {l.from.x + l.from.w + SP12, sliderY + (sliderH - 10) / 2, l.to.x - SP12 - (l.from.x + l.from.w + SP12), 10};
 			l.sliderHit = {MARGIN, sliderY - SP6, PANEL_W - 2 * MARGIN, sliderH + 2 * SP6};
-			for (int i = 0; i < 3; i++) l.row[i] = cell({MARGIN, READER_ROW_Y, PANEL_W - 2 * MARGIN, READER_ROW_H}, 3, GAP, i);
+			for (int i = 0; i < 4; i++) l.row[i] = cell({MARGIN, READER_ROW_Y, PANEL_W - 2 * MARGIN, READER_ROW_H}, 4, GAP, i);
 			return l;
+		}
+
+		ReaderFullBar readerFullBar()
+		{
+			ReaderFullBar f;
+			// where the reader's row of keys was, so the thumb finds the way out where the way in is
+			f.bar = {MARGIN, READER_ROW_Y + SP8, PANEL_W - 2 * MARGIN, READER_ROW_H};
+			f.leave = {f.bar.x + f.bar.w - SP6 - 200, f.bar.y + SP6, 200, f.bar.h - 2 * SP6};
+			f.note = {f.bar.x + SP12, f.bar.y, f.leave.x - SP12 - (f.bar.x + SP12), f.bar.h};
+			return f;
+		}
+
+		int readerFullTap(int x, int y, bool sideways)
+		{
+			int at = sideways ? x : y, len = sideways ? PANEL_W : PANEL_H;
+			int edge = len * FULL_TAP_EDGE_PCT / 100;
+			return at < edge ? -1 : at >= len - edge ? 1 : 0;
 		}
 
 		PagesSheet pagesSheet()

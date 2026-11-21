@@ -265,6 +265,7 @@ int main(int argc, char** argv)
 				bool held = tilde != std::string::npos && buttonFromName(step.substr(0, tilde)) != Button::None && atoi(step.c_str() + tilde + 1) > 0;
 				bool ok = burst || held || buttonFromName(step) != Button::None || step == "info" || step == "page" || step == "update" || step == "web" || step == "F" || step == "rows" || step == "screenshot" || step == "volup" || step == "voldown" || step.rfind("prop:", 0) == 0 || step.rfind("shot:", 0) == 0 || step.rfind("level:", 0) == 0 || step.rfind("set:", 0) == 0 || step.rfind("flip:", 0) == 0 || step.rfind("card:", 0) == 0 || step.rfind("gallery:", 0) == 0 ||
 					(sscanf(step.c_str(), "tap:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
+					(sscanf(step.c_str(), "stick:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "dtap:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "hold:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "down:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
@@ -1790,6 +1791,12 @@ int main(int argc, char** argv)
 						else if (sscanf(step.c_str(), "down:%f:%f", &v[0], &v[1]) == 2) at(Pointer::Down, v[0], v[1]);
 						else if (sscanf(step.c_str(), "move:%f:%f", &v[0], &v[1]) == 2) at(Pointer::Move, v[0], v[1]);
 						else if (sscanf(step.c_str(), "up:%f:%f", &v[0], &v[1]) == 2) at(Pointer::Up, v[0], v[1]);
+						// the left stick held at LEFTX:LEFTY (-32768 … 32767) until another stick: step (stick:0:0 lets go)
+						else if (sscanf(step.c_str(), "stick:%f:%f", &v[0], &v[1]) == 2)
+						{
+							stickX = (int)v[0];
+							stickY = (int)v[1];
+						}
 						else if (sscanf(step.c_str(), "tap:%f:%f", &v[0], &v[1]) == 2)
 						{
 							at(Pointer::Down, v[0], v[1]);

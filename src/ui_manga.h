@@ -393,7 +393,10 @@ namespace bp
 		int stickDir = 0;
 		void drawMangaControls();
 		void drawMangaToast();
-		void mangaFullscreen(bool on, Player& p);	// SELECT, and B while fullscreen
+		// fullscreen's tap at an edge (lay::readerFullTap): the page turned, true; false in the middle (the bar's)
+		bool mangaFullTapTurn(int x, int y, Player& p);
+		// SELECT and the Fullscreen key (asked: the toast says how to leave, every time), and a chapter opening in it
+		void mangaFullscreen(bool on, Player& p, bool asked = false);
 		int mangaModeFor(const std::string& seriesId, const Player& p) const;	// the series' own, else the setting's
 		int mangaBookFor(const std::string& seriesId) const;	// the series' own Book (MANGA_BOOK_*; off by default)
 		void mangaSetBook(int book, Player& p);	// on (held as book) or off, kept for the series

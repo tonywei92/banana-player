@@ -907,7 +907,7 @@ namespace bp
 			case Button::L2: mangaChapterStep(-1, p); break;
 			case Button::R2: mangaChapterStep(1, p); break;
 			// SELECT: fullscreen on / off; B leaves fullscreen first, and only then closes the reader
-			case Button::Select: mangaFullscreen(!ui.pageReader->readerStatus.fullscreen, p); break;
+			case Button::Select: mangaFullscreen(!ui.pageReader->readerStatus.fullscreen, p, true); break;
 			// START: the Reading menu over the page (over the fullscreen view's lower part), not the settings page
 			case Button::Start: mangaOpenReadingMenu(); break;
 			case Button::Y: ui.pageReader->mangaPagesOpen(p); break;
@@ -1306,6 +1306,9 @@ namespace bp
 						mangaCtrlUntil = 0;	// the bar its first tap raised goes with the zoom
 						verdict = "double-tap";
 					}
+					// fullscreen, the bar down: a tap at an edge turns the way the pages run (a strip's top and bottom,
+					// a page's sides, as LEFT and RIGHT do); only the middle's raises the bar
+					else if (full && !mangaTapDismiss && mangaFullTapTurn(mangaTapX, mangaTapY, p)) verdict = "tap (edge: turned)";
 					// the bar was up and this tap was outside it: it goes, and the tap does nothing else
 					else if (mangaTapDismiss)
 					{
@@ -1334,7 +1337,7 @@ namespace bp
 				mangaPressed = -1;
 				if (id == MG_PREV && mangaPrevRect().hit(x, y)) mangaChapterStep(-1, p);
 				else if (id == MG_NEXT && mangaNextRect().hit(x, y)) mangaChapterStep(1, p);
-				else if (id == MG_FULL && mangaFullRect().hit(x, y)) mangaFullscreen(!ui.pageReader->readerStatus.fullscreen, p);
+				else if (id == MG_FULL && mangaFullRect().hit(x, y)) mangaFullscreen(!ui.pageReader->readerStatus.fullscreen, p, true);
 				else if (id == MG_LIGHT && mangaLightRect().hit(x, y)) ui.openLight();
 			}
 			return false;
@@ -3523,20 +3526,33 @@ namespace bp
 		ui.drawTextMid(help, 0, DIM, 24, 452, 592);
 	}
 
-	void Ui::Manga::mangaFullscreen(bool on, Player& p)
+	bool Ui::Manga::mangaFullTapTurn(int x, int y, Player& p)
+	{
+		bool strip = ui.pageReader->readerStatus.mode == MANGA_STRIP;
+		int edge = lay::readerFullTap(x, y, !strip);
+		if (!edge) return false;
+		// a page's sides are LEFT and RIGHT themselves (Swap Left/Right and the chapter's end as the keys have them);
+		// down a strip the bottom is forward, whichever key that is
+		bool right = strip ? (edge > 0) != p.settings.mangaSwapLR : edge > 0;
+		mangaKey(right ? Button::Right : Button::Left, p);
+		return true;
+	}
+
+	void Ui::Manga::mangaFullscreen(bool on, Player& p, bool asked)
 	{
 		Uint32 now = SDL_GetTicks();
 		ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, on ? 1.0 : 0.0, (int64_t)now, (double)p.settings.mangaHinge});
 		ui.pageReader->mfTagUntil = on ? now + 2500 : 0;
 		mangaBookToast = 0;
 		if (!on) mangaCtrlUntil = 0;
-		// the first fullscreen ever says how to leave it, here in the panel's middle; remembered so it says it once
+		// how to leave it, here in the panel's middle: each time SELECT or the Fullscreen key turns it on (the panel
+		// is all page then, so the way back is said), and the first time ever a chapter opens in it by itself
+		if (on && (asked || !p.settings.mangaFullSeen)) mangaToastUntil = now + MG_TOAST_MS;
 		if (on && !p.settings.mangaFullSeen)
 		{
 			Settings s = p.settings;
 			s.mangaFullSeen = true;
 			p.setSettings(s);
-			mangaToastUntil = now + MG_TOAST_MS;
 		}
 	}
 
@@ -3585,13 +3601,13 @@ namespace bp
 			ui.drawBox(b, mangaCtrlPressed == i ? PRESSED : BUTTON, R_BUTTON);
 			ui.drawButton(b, nullptr, LABELS[i], KEYS[i], false, 0);
 		}
-		ui.drawTextMid("Hides in 4 s \xC2\xB7 drag to hide now", 0, DIM, W / 2, 460);
+		ui.drawTextMid("Tap the edges to turn \xC2\xB7 hides in 4 s", 0, DIM, W / 2, 460);
 	}
 
 	void Ui::Manga::drawMangaToast()
 	{
 		// how to leave fullscreen, the first time it opens: a box in the panel's middle for 2 s
-		std::string text = "Fullscreen \xC2\xB7 SELECT to leave";
+		std::string text = "Fullscreen \xC2\xB7 SELECT leaves \xC2\xB7 tap the middle: controls";
 		if (mangaBookToast)
 			text = std::string("Book \xC2\xB7 turn the handheld: top screen on the ") +
 				(mangaBookToast == MANGA_BOOK_RIGHT ? "right" : "left");

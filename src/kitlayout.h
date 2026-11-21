@@ -515,7 +515,7 @@ namespace bp
 		// ---- a PDF's or a comic's page reader in Files (docs/redesign: pdf; a strip on manga-read's skeleton) ----
 		// One page: the small page to drag at the left (388 x 262), the hand's keys at its right two by two (Page L / R,
 		// Zoom out / in), the Page fit stepper and two lines of help under them, then the page slider. Vertical scroll:
-		// the slider under the header, the drag surface under it. Both end on one row of sheets: Pages, View, Light
+		// the slider under the header, the drag surface under it. Both end on one row: Pages, View, Fullscreen, Light
 		constexpr int READER_TOP = 60, READER_ROW_Y = 366, READER_ROW_H = 64;
 		struct ReaderPage
 		{
@@ -523,9 +523,21 @@ namespace bp
 			Box surface;	// a strip's drag surface (w 0 on a page)
 			Box from, track, to;	// the slider's row: the page shown's number, the bar, the last page's
 			Box sliderHit;	// where a finger takes the bar (its row and a little round it)
-			Box row[3];	// Pages, View, Light
+			Box row[4];	// Pages, View, Fullscreen, Light
 		};
 		ReaderPage readerPage(bool strip);
+		// Fullscreen's bar, over the pages that fill the panel there: up for a moment on the way in and after a tap,
+		// so the way out is always one tap or one press away. What leaves at the left, the key that does it at the right
+		struct ReaderFullBar
+		{
+			Box bar, note, leave;
+		};
+		ReaderFullBar readerFullBar();
+		// Fullscreen's taps, the panel being all page: the middle shows the bar (the way out is on it), the edges turn
+		// the way the pages run: a strip's top and bottom a screenful back and on, a paged comic's left and right
+		// sides (sideways) as LEFT and RIGHT. -1 the edge before (top / left), 0 the middle, 1 the edge after
+		constexpr int FULL_TAP_EDGE_PCT = 28;
+		int readerFullTap(int x, int y, bool sideways);
 		// Pages (Y): every page small in a sheet (docs/redesign: pdf-pages), six to a row of PAGES_ROW_H; `view` is
 		// where the rows scroll. A cell is 92 wide (the picture 72 x 96 over its number), spread across the sheet
 		constexpr int PAGES_COLS = 6, PAGES_CELL_W = 92, PAGES_THUMB_W = 72, PAGES_THUMB_H = 96, PAGES_ROW_H = 120;

@@ -731,8 +731,10 @@ namespace bp
 
 	double MangaReader::stickSpeedXNow() const
 	{
-		// only a paged page wider than the view pans sideways (the Strip's column fits its width; Book turns spreads)
-		if (!opened || stickValueX == 0 || bookHold || readMode == MANGA_STRIP || !paged.canPanH()) return 0;
+		// what is wider than the view pans sideways: a paged page, or the Strip's column zoomed in (on one screen and
+		// in fullscreen); Book turns spreads
+		if (!opened || stickValueX == 0 || bookHold) return 0;
+		if (readMode == MANGA_STRIP ? !strip.canPan() : !paged.canPanH()) return 0;
 		return stickScrollSpeed(stickValueX, viewW);
 	}
 
@@ -754,14 +756,16 @@ namespace bp
 			{
 				stickAt = ms;
 				// one line each way, with the value, so a handheld's log reads the stick's range and dead zone
-				fprintf(stderr, "reader: stick scroll on (value %d, %.0f px/s) in %s\n", stickValue, stickSpeedNow(),
-					modeName());
+				fprintf(stderr, "reader: stick scroll on (value %d, %.0f px/s; across %d, %.0f px/s) in %s\n", stickValue,
+					stickSpeedNow(), stickValueX, stickSpeedXNow(), modeName());
 				redrawSoon(1);
 			}
 			else if (!on && was)
 			{
 				stickAt = 0;
-				fprintf(stderr, "reader: stick scroll off (value %d)\n", stickValue);
+				// (where it was left across: a handheld's log shows whether LEFTX panned a zoomed page)
+				fprintf(stderr, "reader: stick scroll off (value %d), across %.0f px in %s at %d%%\n", stickValue,
+					readMode == MANGA_STRIP ? strip.pan() : paged.hscroll(), modeName(), zoomPct());
 			}
 			return;
 		}
@@ -1100,7 +1104,8 @@ namespace bp
 				{
 					double was = strip.offset();
 					strip.scrollBy(step);
-					stickMoved = strip.offset() != was;
+					bool across = stepX != 0 && strip.panBy(stepX);
+					stickMoved = strip.offset() != was || across;
 				}
 				else stickMoved = paged.panBy(step, stepX);
 				stickCanMove = stickMoved;

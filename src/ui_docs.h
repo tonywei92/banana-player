@@ -213,7 +213,7 @@ namespace bp
 		Rect docPanThumb() const;
 		// ---- the page reader's screen (a PDF, a comic: docs/redesign pdf): lay::readerPage's boxes, drawn and touched
 		// alike. The keys by id (docPressed while a finger is on one) ----
-		enum { DP_KEY_BACK, DP_KEY_ON, DP_KEY_OUT, DP_KEY_IN, DP_KEY_FIT, DP_KEY_PAGES, DP_KEY_VIEW, DP_KEY_LIGHT, DP_KEYS };
+		enum { DP_KEY_BACK, DP_KEY_ON, DP_KEY_OUT, DP_KEY_IN, DP_KEY_FIT, DP_KEY_PAGES, DP_KEY_VIEW, DP_KEY_FULL, DP_KEY_LIGHT, DP_KEYS };
 		lay::ReaderPage pagesLayout() const { return lay::readerPage(ui.pageReader->readerStatus.mode == MANGA_STRIP); }
 		int pagesShown() const;	// the page the header and the slider say (the finger's on the slider)
 		Rect pagesKeyRect(int id) const;
@@ -228,6 +228,14 @@ namespace bp
 		int pagesLayoutNow() const;
 		std::string pagesPath;	// the PDF or comic the page reader has open (its layout is kept per kind)
 		void setPagesLayout(int layout, Player& p);
+		// Fullscreen in one step (L3, the Fullscreen key; B leaves too): on from either layout, and off back to the
+		// layout it was turned on from
+		void togglePagesFull(Player& p);
+		int docFullFrom = 1;	// the layout Fullscreen was entered from (0 Single page, 1 Vertical scroll)
+		// Fullscreen's bar (lay::readerFullBar): up while docFullTagUntil runs, on the way in and after a tap
+		static constexpr Uint32 FULL_BAR_IN_MS = 3000, FULL_BAR_TAP_MS = 4000;
+		bool pagesFullBarShown() const;
+		void drawPagesFullBar(const Player& p);
 		// X · More (pdf-more) and SELECT · View (pdf-view, an overlay of its own)
 		void openPagesMore(Player& p);
 		struct PagesView;

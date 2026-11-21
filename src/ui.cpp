@@ -178,9 +178,10 @@ namespace bp
 		}
 		else stickPhotoAt = 0;
 		// one reader at a time; the other gets a 0, so a stick held as its page closes stops it at once
-		if (page == Page::DocText || page == Page::DocPages) docs->stickAxis(value, p);
+		// (both axes: a page or a strip zoomed wider than the screen pans sideways under LEFTX)
+		if (page == Page::DocText || page == Page::DocPages) docs->stickAxis(value, p, valueX);
 		else docs->stickAxis(0, p);
-		if (page == Page::MangaRead) manga->stickAxis(value, p);
+		if (page == Page::MangaRead) manga->stickAxis(value, p, valueX);
 		else manga->stickAxis(0, p);
 	}
 
