@@ -895,7 +895,7 @@ namespace bp
 		if (mdlCardOpen)
 		{
 			if (mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size()) { mdlCardOpen = false; mdlCardAt = -1; return false; }
-			mangaRowsPointer(p, x, y, [this] {
+			mangaRowsPointer(mlDlCard, p, x, y, [this] {
 				return mdlCardOpen && mdlCardAt >= 0 && mdlCardAt < (int)mdlCard.size() ? (int)mdlCard[mdlCardAt].chapters.size() : 0;
 			}, &mdlCardScroll, &mdlCardCursor, [this](int i) { return mangaDlCardRowAt(i); }, [this, &p](int i, bool) {
 				if (!mdlCardOpen || mdlCardAt < 0 || mdlCardAt >= (int)mdlCard.size()) return;
@@ -906,7 +906,7 @@ namespace bp
 			return false;
 		}
 		mangaDlItemsRead();
-		mangaRowsPointer(p, x, y, [this] {
+		mangaRowsPointer(mlDl, p, x, y, [this] {
 			int q = (int)mdlItems.size();
 			return q + (q > 0 ? 1 : 0) + (int)mdlCard.size();
 		}, &mdlScroll, &mdlCursor, [this](int i) { return mangaDlRowAt(i); }, [this, &p](int i, bool onKey) {
@@ -1499,8 +1499,7 @@ namespace bp
 		int off = q + (q > 0 ? 1 : 0), total = off + c;
 		if (mdlCursor >= total) mdlCursor = total - 1;
 		if (mdlCursor < 0) mdlCursor = 0;
-		lay::RowList l = mangaRowsFit(p, total, mdlCursor, mdlScroll);
-		drawMangaRows(l, mdlCursor, [this](int i) { return mangaDlRowAt(i); });
+		mangaRows(mlDl, p, total, mdlScroll, mdlCursor, [this](int i) { return mangaDlRowAt(i); });
 		// the spec's keys: Y pause / resume, X More (Remove, Pause all, Clear failed, Delete from the card: asked there)
 		bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
 		if (mdlCursor < q) ui.drawHints({{"Y", "Pause / resume"}, {"X", "More"}, {"B", "Back"}});
@@ -1524,8 +1523,7 @@ namespace bp
 		tabCrumb = s.name + " \xC2\xB7 " + std::to_string(n) + (n == 1 ? " chapter" : " chapters") + " \xC2\xB7 " +
 			formatBytes((long long)s.bytes) + " on the card";
 		if (mdlCardCursor >= n) mdlCardCursor = std::max(0, n - 1);
-		lay::RowList l = mangaRowsFit(p, n, mdlCardCursor, mdlCardScroll);
-		drawMangaRows(l, mdlCardCursor, [this](int i) { return mangaDlCardRowAt(i); });
+		mangaRows(mlDlCard, p, n, mdlCardScroll, mdlCardCursor, [this](int i) { return mangaDlCardRowAt(i); });
 		if (mdlDeleteAt) ui.drawFooterText("Press X again to delete it", ACCENT);
 		else ui.drawHints({{"A", "Read"}, {"X", "Delete"}, {"B", "Back"}});
 	}

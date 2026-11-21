@@ -8,6 +8,7 @@
 // few files of Ui that ask the area something (Settings' Extensions group, the keyboard's fields, Files' moves).
 #pragma once
 #include "ui.h"
+#include "ui_smoothlist.h"
 #include "javaext.h"
 #include "mangafilters.h"
 #include "mangajava.h"
@@ -53,6 +54,16 @@ namespace bp
 		std::string signature(const Player& p) const override;
 		// the shown page's smooth list (Manga settings': SettingsPage's mangaList)
 		SmoothList* smoothList() override;
+		// the Manga pages' own: the last list a page drew (a sheet's over its page's), null on a page with none
+		SmoothList* mangaPageList() { return shownList; }
+		struct MList
+		{
+			MList(Ui& u) : list(u) {}
+			SmoothList list;
+			int synced = -1, cursorWas = -2;
+			bool wasMoving = false;
+			std::function<void()> scrolled;	// a finger's: the next page asked near the end (the grids', the chapters')
+		};
 		// the Extensions page's and Manage extensions' part of the signature
 		std::string extSignature() const;
 
@@ -85,16 +96,29 @@ namespace bp
 		lay::TabPage mangaSrcTabPage(const Player& p) const;
 		lay::TabPage mangaSourcesTabPage(const Player& p) const;	// Sources: Available · Repositories
 		// a cover grid in `area` (lay::coverGrid, Kit::coverTile): the source's and the server's catalogues
-		void drawMangaGrid(const lay::AlbumGrid& g, int cursor, const std::function<void(int, Rect)>& cover,
-			const std::function<std::string(int)>& title);
-		void mangaGridPointer(lay::Box area, int x, int y, std::function<int()> count, int* scroll, int* cursor,
+		// a grid row is one smooth row: its view SP6 wider than `area` all round but the foot (the focus ring), cover(i)
+		// the picture's key ("" none yet) asked as the row's key is (a cover asked counts as drawn: Music's fix)
+		struct GridCell { std::string title, badge, coverKey; std::function<void(Rect)> picture; };
+		void drawMangaGrid(MList& m, lay::Box area, int n, int& scroll, int& cursor, const std::function<GridCell(int)>& cell);
+		Rect mangaGridView(lay::Box area) const;
+		void mangaGridPointer(MList& m, lay::Box area, int x, int y, std::function<int()> count, int* scroll, int* cursor,
 			std::function<void(int)> open, std::function<void()> scrolled = nullptr);
 		// a series page's keys (lay::seriesPage + lay::keyRow): their boxes for `widths`
 		std::vector<lay::Box> mangaSeriesKeys(const std::vector<int>& widths) const;
-		lay::RowList mangaRowsFit(const Player& p, int n, int cursor, int& scroll) const;
-		void drawMangaRows(const lay::RowList& l, int cursor, const std::function<MangaRow(int)>& at);
-		// a finger on the rows: a drag scrolls them (the cursor kept among those shown), a tap is tap(i, onKey)
-		void mangaRowsPointer(const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
+		// ---- the lists on smooth lists (ui_smoothlist.h; docs/notes/2026-11-21-smooth-scroll.md) ----
+		// One per list. The pages keep their int scroll (the first whole row shown) and cursor, which their keys set
+		// as they always did: mlFollow turns a change of either into the list's motion (the cursor kept in sight by
+		// a glide, a scroll set elsewhere a jump there), mlSync writes the first whole row shown back after it drew
+		void mlFollow(MList& m, Rect view, int rowH, int n, int cols, int& scroll, int* cursor);
+		void mlSync(MList& m, int& scroll);
+		SmoothList* frameList = nullptr;	// the list the page drew this frame (the last one drawn: a sheet's)
+		SmoothList* shownList = nullptr;	// last frame's: the one Ui steps
+		MList mlLib{ui}, mlHis{ui}, mlBrowse{ui}, mlLocal{ui}, mlNet{ui}, mlDl{ui}, mlDlCard{ui}, mlChapters{ui},
+			mlSrcGrid{ui}, mlSrvGrid{ui}, mlSrcAv{ui}, mlFilter{ui}, mlFilterCheck{ui}, mlDlChoose{ui};
+		// a page's kit rows (lay::rowList's pitch) in mangaListArea: drawn on `m`, the cursor's row focused
+		void mangaRows(MList& m, const Player& p, int n, int& scroll, int& cursor, const std::function<MangaRow(int)>& at);
+		// a finger on the rows: a drag moves them by the pixel and glides, a tap is tap(i, onKey)
+		void mangaRowsPointer(MList& m, const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
 			std::function<MangaRow(int)> at, std::function<void(int, bool)> tap, std::function<void()> scrolled = nullptr);
 		std::string tabCrumb;	// Browse's and Downloads' header line, set as they draw (where, the storage line)
 		MangaRow mangaBrowseRowAt(const Player& p, int i) const;
@@ -480,6 +504,9 @@ namespace bp
 		// the series' real cover once it arrived, null until then (and for one that couldn't be read): the first draw
 		// asks the worker once. Keyed by the series id
 		SDL_Texture* coverOf(const std::string& seriesId);
+		// a cover's state for a row's key ("c" the real one): asked as a draw asks, so it counts as drawn
+		std::string coverReady(const std::string& seriesId, const std::string& coverUrl = "",
+			const std::vector<std::pair<std::string, std::string>>* coverHeaders = nullptr);
 		// a cover by its URL (a source's or a server's): the bytes in the cover cache, decoded by the worker, turned
 		// into a texture on the main thread. Fetched only when the card is on screen; cancelled when it scrolls away.
 		// A cover already in the cache is used with no fetch. headers: the source's image headers, or the server's
@@ -541,6 +568,7 @@ namespace bp
 		int mstTab = MST_AVAILABLE;
 		MangaRow mangaSourcesRowAt(const Player& p, int k) const;	// Sources' row k of the list shown
 		int mstCursor[MANGA_SOURCES_TABS] = {}, mstScroll[MANGA_SOURCES_TABS] = {};
+		MList mlSources[MANGA_SOURCES_TABS]{{ui}, {ui}, {ui}};
 		std::set<std::string> mstInstalling;		// full ids on their way (Installing… on the row), and Updating…
 		std::map<std::string, std::string> mstInstallName;	// full id -> its name, for the answer's toast
 		std::map<std::string, std::string> mstRepoError;		// repository URL -> its last failure

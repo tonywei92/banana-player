@@ -592,7 +592,7 @@ namespace bp
 		if (pt.kind != Pointer::Down) return false;
 		// the rows are the kit's, as drawMangaNetFoldersKit laid them out (on Browse, and as a series' page)
 		{
-			mangaRowsPointer(p, x, y, [this] {
+			mangaRowsPointer(mlNet, p, x, y, [this] {
 				return mangaNetView == MNF_SERIES ? (int)mangaNetChapters.size() : (int)mangaNetRows.size();
 			}, &mangaNetScroll, &mangaNetCursor, [this](int i) { return mangaNetRowAt(i); },
 				[this, &p](int i, bool) { mangaNetFoldersTap(i, p); });
@@ -682,8 +682,7 @@ namespace bp
 		else if (n == 0) drawMangaTabEmpty(p, G_FOLDER, series ? "No chapters" : "Nothing here", "No folders or archives of pictures.");
 		else
 		{
-			lay::RowList l = mangaRowsFit(p, n, mangaNetCursor, mangaNetScroll);
-			drawMangaRows(l, mangaNetCursor, [this](int i) { return mangaNetRowAt(i); });
+			mangaRows(mlNet, p, n, mangaNetScroll, mangaNetCursor, [this](int i) { return mangaNetRowAt(i); });
 			if (!mangaNetError.empty()) tabCrumb = mangaNetError;
 			else if (mangaNetLoading) tabCrumb = series ? "Fetching the chapter\xE2\x80\xA6" : "Loading\xE2\x80\xA6";
 		}

@@ -309,7 +309,7 @@ namespace bp
 		if (mBrowseList)
 		{
 			// the series follow a finger: a drag scrolls them, a tap (lifted where it went down) opens one
-			mangaRowsPointer(p, x, y, [this] { return (int)mangaLocal.size(); }, &mListScroll, &mListCursor,
+			mangaRowsPointer(mlLocal, p, x, y, [this] { return (int)mangaLocal.size(); }, &mListScroll, &mListCursor,
 				[this](int i) { return mangaLocalRowAt(i); }, [this, &p](int i, bool) {
 					if (i < 0 || i >= (int)mangaLocal.size()) return;
 					mListCursor = i;
@@ -319,7 +319,7 @@ namespace bp
 		}
 		mangaBrowseRepos(p);
 		// the rows follow a finger (the kit's rows, as drawMangaBrowseRows laid them out); a server's Edit key is its X
-		mangaRowsPointer(p, x, y, [this, &p] { return mangaBrowseCount(p); }, &mbrowseScroll, &mbrowseCursor,
+		mangaRowsPointer(mlBrowse, p, x, y, [this, &p] { return mangaBrowseCount(p); }, &mbrowseScroll, &mbrowseCursor,
 			[this, &p](int i) { return mangaBrowseRowAt(p, i); }, [this, &p](int i, bool onKey) {
 				if (i < 0 || i >= mangaBrowseCount(p)) return;
 				int nets = mangaNetFoldersCount();
@@ -420,8 +420,7 @@ namespace bp
 		if (mbrowseCursor >= n) mbrowseCursor = n - 1;
 		if (mbrowseCursor < 0) mbrowseCursor = 0;
 		tabCrumb = "Browse";
-		lay::RowList l = mangaRowsFit(p, n, mbrowseCursor, mbrowseScroll);
-		drawMangaRows(l, mbrowseCursor, [this, &p](int i) { return mangaBrowseRowAt(p, i); });
+		mangaRows(mlBrowse, p, n, mbrowseScroll, mbrowseCursor, [this, &p](int i) { return mangaBrowseRowAt(p, i); });
 		int nets = mangaNetFoldersCount();
 		bool onServer = mbrowseCursor > nets && mbrowseCursor <= nets + mangaBrowseServerCount();
 		if (onServer) ui.drawHints({{"A", "Open"}, {"X", "Edit"}, {"Y", "Add server"}, {"B", "Back"}});
@@ -702,7 +701,7 @@ namespace bp
 		// an error in the empty grid: a tap is Try again (A)
 		if (!mangaSrcError.empty() && mangaSrcItems.empty() && tp.content.hit(x, y)) { mangaSourceRetry(p); return false; }
 		// the grid: a drag scrolls it by rows (the next page asked near its end), a tap opens the cover's series
-		mangaGridPointer(tp.content, x, y, [this] { return (int)mangaSrcItems.size(); }, &mangaSrcScroll, &mangaSrcCursor,
+		mangaGridPointer(mlSrcGrid, tp.content, x, y, [this] { return (int)mangaSrcItems.size(); }, &mangaSrcScroll, &mangaSrcCursor,
 			[this, &p](int i) {
 				if (i < 0 || i >= (int)mangaSrcItems.size()) return;
 				mangaSrcCursor = i;
@@ -729,16 +728,18 @@ namespace bp
 		ui.kit->tabs(tp.strip.area, labels, on, "L/R", BG);
 		int n = (int)mangaSrcItems.size();
 		if (n && mangaSrcCursor >= n) mangaSrcCursor = n - 1;
-		// whole rows, the cursor's kept in sight
-		int shown = lay::coverGrid(tp.content, n, 0, MG_COLS).shown, row = mangaSrcCursor / MG_COLS;
-		mangaSrcScroll = std::clamp(mangaSrcScroll, std::max(0, row - shown + 1), row);
-		lay::AlbumGrid g = lay::coverGrid(tp.content, n, mangaSrcScroll, MG_COLS);
-		mangaSrcScroll = g.first;
+		// a smooth grid (a row of covers a row of the list), the cursor's row kept in sight
 		// covers are fetched only while their card is on screen and cancelled when it scrolls away
 		mangaCoverOnScreen.clear();
-		drawMangaGrid(g, mangaSrcCursor, [this](int i, Rect r) {
-			drawMangaCover(r, mangaSrcItems[i].title, false, 4, "", mangaSrcItems[i].cover, &mangaSrcCoverHeaders);
-		}, [this](int i) { return mangaSrcItems[i].title; });
+		drawMangaGrid(mlSrcGrid, tp.content, n, mangaSrcScroll, mangaSrcCursor, [this](int i) {
+			GridCell c;
+			c.title = mangaSrcItems[i].title;
+			c.coverKey = coverReady("", mangaSrcItems[i].cover, &mangaSrcCoverHeaders);
+			c.picture = [this, title = c.title, cover = mangaSrcItems[i].cover](Rect r) {
+				drawMangaCover(r, title, false, 4, "", cover, &mangaSrcCoverHeaders);
+			};
+			return c;
+		});
 		mangaCoverCancelOffScreen();
 		// the line under the title: where it is, then what it is doing (an error, loading, the query Search ran)
 		std::string javaStatus = mangaJavaStatusLine();
@@ -1765,7 +1766,7 @@ namespace bp
 			return false;
 		}
 		// the chapters (the kit's rows): a drag scrolls them, a tap reads the row
-		mangaRowsPointer(p, x, y, [this] { return (int)mangaSrcChapters.size(); }, &mserScroll, &mserCursor,
+		mangaRowsPointer(mlChapters, p, x, y, [this] { return (int)mangaSrcChapters.size(); }, &mserScroll, &mserCursor,
 			[](int) { return MangaRow(); }, [this, &p](int i, bool) {
 				if (i < 0 || i >= (int)mangaSrcChapters.size()) return;
 				mserCursor = i;
@@ -1907,8 +1908,7 @@ namespace bp
 		}
 		if (mserCursor >= n) mserCursor = n - 1;
 		// the chapters, each carrying its own state: read, Resume's, the page, its download (Queued, 12 / 40, On card)
-		lay::RowList l = mangaRowsFit(p, n, mserCursor, mserScroll);
-		drawMangaRows(l, mserCursor, [this, rc = resume.chapter](int i) {
+		mangaRows(mlChapters, p, n, mserScroll, mserCursor, [this, rc = resume.chapter](int i) {
 			const MangaChapter& c = mangaSrcChapters[i];
 			MangaRow m = mangaChapterRow(chapterName(c), sourceItemId(mangaSrcId, c.key), i == rc, -1);
 			MangaDlMark dm = mangaDlMarkFor(mangaSrcId, mangaSeriesId, c);

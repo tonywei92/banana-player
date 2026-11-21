@@ -161,10 +161,16 @@ namespace bp
 			int rowH = 1, item = -1;	// the list's row height; the row under the finger (-1: none, only a drag)
 			std::function<int(int)> scrollTo;
 			std::function<void(int)> tap;
+			// a list on a SmoothList (ui_smoothlist.h): it follows the finger by the pixel and glides on the lift
+			// (scrollTo unused); caught: the finger stopped it moving, so its lift is no tap
+			SmoothList* smooth = nullptr;
+			bool caught = false;
 		};
 		MangaListDrag mlist;
 		void mangaListBegin(int x, int y, int scroll, int rowH, int item, std::function<int(int)> scrollTo,
 			std::function<void(int)> tap);
+		// the same on a smooth list: `item` the row (or cell) under the finger, found by the list's own boxes
+		void mangaListSmooth(SmoothList& list, int x, int y, int item, std::function<void(int)> tap);
 		bool mangaListPointer(const Pointer& pt, int x, int y);
 	};
 }

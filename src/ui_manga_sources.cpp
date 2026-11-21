@@ -512,7 +512,7 @@ namespace bp
 		}
 		// the rows (the kit's): a drag scrolls them, a tap acts as A on its row
 		int tab = mstTab;
-		mangaRowsPointer(p, x, y, [this, &p] { return mangaSourcesRows(p); }, &mstScroll[tab], &mstCursor[tab],
+		mangaRowsPointer(mlSources[tab], p, x, y, [this, &p] { return mangaSourcesRows(p); }, &mstScroll[tab], &mstCursor[tab],
 			[this, &p](int i) { return mangaSourcesRowAt(p, i); }, [this, &p, tab](int i, bool) {
 				if (mstTab != tab || i < 0 || i >= mangaSourcesRows(p)) return;
 				mstCursor[tab] = i;
@@ -635,8 +635,7 @@ namespace bp
 		}
 		if (n > 0)
 		{
-			lay::RowList l = mangaRowsFit(p, n, cur, sc);
-			drawMangaRows(l, cur, [this, &p](int i) { return mangaSourcesRowAt(p, i); });
+			mangaRows(mlSources[mstTab], p, n, sc, cur, [this, &p](int i) { return mangaSourcesRowAt(p, i); });
 		}
 		// the note at the foot of both lists
 		auto lines = ui.wrapText(NOTE, F_I12, area.w - 28, 2);

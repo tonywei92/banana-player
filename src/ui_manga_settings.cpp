@@ -32,7 +32,7 @@ namespace bp
 	Ui::SmoothList* Ui::Manga::smoothList()
 	{
 		if (ui.page == Page::MangaSettings) return &ui.settingsPage->mangaList;
-		return nullptr;
+		return mangaPageList();
 	}
 
 	void Ui::Manga::openMangaSettings()

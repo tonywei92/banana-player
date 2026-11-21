@@ -2,6 +2,7 @@
 // pages, the pages grid and the dragged lists, shared by Files' PDF/comic viewer (Ui::Docs) and the Manga reader.
 #include "ui_reader.h"
 #include "ui_kit.h"
+#include "ui_smoothlist.h"
 #include "ui_internal.h"
 #include "ui_manga.h"
 #include "textreader.h"
@@ -441,9 +442,39 @@ namespace bp
 		mlist.tap = std::move(tap);
 	}
 
+	void Ui::PageReader::mangaListSmooth(SmoothList& list, int x, int y, int item, std::function<void(int)> tap)
+	{
+		mlist = MangaListDrag();
+		mlist.on = true;
+		mlist.downX = x;
+		mlist.downY = mlist.fromY = y;
+		mlist.smooth = &list;
+		mlist.caught = list.press((float)y);
+		mlist.item = mlist.caught ? -1 : item;
+		mlist.tap = std::move(tap);
+	}
+
 	bool Ui::PageReader::mangaListPointer(const Pointer& pt, int x, int y)
 	{
 		if (!mlist.on) return false;
+		if (mlist.smooth)
+		{
+			// a smooth list: the content follows the finger past the scroller's slop, and glides on from the lift
+			if (pt.kind == Pointer::Move)
+			{
+				if (mlist.smooth->move(pt.y * Ui::H)) mlist.moved = true;
+				if (!mlist.moved && std::abs(x - mlist.downX) > MG_LIST_SLOP) mlist.item = -1;
+				return false;
+			}
+			if (pt.kind == Pointer::Up)
+			{
+				MangaListDrag d = std::move(mlist);
+				mlist = MangaListDrag();
+				d.smooth->lift();
+				if (!d.moved && !d.caught && d.item >= 0 && d.tap && std::abs(x - d.downX) <= MG_LIST_SLOP) d.tap(d.item);
+			}
+			return false;
+		}
 		if (pt.kind == Pointer::Move)
 		{
 			// past the slop (as the pages grid's, about 0.03 of the panel) it's a drag, and the lift is no tap

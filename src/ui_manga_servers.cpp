@@ -582,7 +582,7 @@ namespace bp
 		// the grid (the kit's, as drawMangaServers laid it out): a drag scrolls it by rows (the next page asked near
 		// the end, as the D-pad asks it), a tap opens the cover; an error in the empty grid: a tap is Try again
 		if (!mangaSrvError.empty() && mangaSrvItems.empty() && mangaListArea(p).hit(x, y)) { mangaServerReload(); return false; }
-		mangaGridPointer(mangaListArea(p), x, y, [this] { return (int)mangaSrvItems.size(); }, &mangaSrvScroll, &mangaSrvCursor,
+		mangaGridPointer(mlSrvGrid, mangaListArea(p), x, y, [this] { return (int)mangaSrvItems.size(); }, &mangaSrvScroll, &mangaSrvCursor,
 			[this, &p](int i) {
 				if (i < 0 || i >= (int)mangaSrvItems.size()) return;
 				mangaSrvCursor = i;
@@ -625,15 +625,17 @@ namespace bp
 		}
 		// the catalogue as the kit's cover grid in the body (the place it is in, the header's line)
 		lay::Box area = mangaListArea(p);
-		int shown = lay::coverGrid(area, n, 0, MG_COLS).shown, row = mangaSrvCursor / MG_COLS;
-		mangaSrvScroll = std::clamp(mangaSrvScroll, std::max(0, row - shown + 1), row);
-		lay::AlbumGrid g = lay::coverGrid(area, n, mangaSrvScroll, MG_COLS);
-		mangaSrvScroll = g.first;
 		mangaCoverOnScreen.clear();
 		// a generated cover until the real one arrives; the grid never waits on a server
-		drawMangaGrid(g, mangaSrvCursor, [this, &srvCoverHeaders](int i, Rect r) {
-			drawMangaCover(r, mangaSrvItems[i].title, false, 4, "", mangaSrvItems[i].cover, &srvCoverHeaders);
-		}, [this](int i) { return mangaSrvItems[i].title; });
+		drawMangaGrid(mlSrvGrid, area, n, mangaSrvScroll, mangaSrvCursor, [this, &srvCoverHeaders](int i) {
+			GridCell c;
+			c.title = mangaSrvItems[i].title;
+			c.coverKey = coverReady("", mangaSrvItems[i].cover, &srvCoverHeaders);
+			c.picture = [this, title = c.title, cover = mangaSrvItems[i].cover, &srvCoverHeaders](Rect r) {
+				drawMangaCover(r, title, false, 4, "", cover, &srvCoverHeaders);
+			};
+			return c;
+		});
 		mangaCoverCancelOffScreen();
 		coverFetchUrl = nullptr;
 		tabCrumb = mangaSrvName + " \xC2\xB7 " + kindName(mangaSrvKind);
@@ -845,7 +847,7 @@ namespace bp
 		}
 		// the chapters (the kit's rows): a drag scrolls them (the next book page asked near the end, as the D-pad
 		// asks it), a tap reads the row
-		mangaRowsPointer(p, x, y, [this] { return (int)mangaSrvChapters.size(); }, &mserScroll, &mserCursor,
+		mangaRowsPointer(mlChapters, p, x, y, [this] { return (int)mangaSrvChapters.size(); }, &mserScroll, &mserCursor,
 			[](int) { return MangaRow(); }, [this, &p](int i, bool) {
 				if (i < 0 || i >= (int)mangaSrvChapters.size()) return;
 				mserCursor = i;
@@ -908,8 +910,7 @@ namespace bp
 			return;
 		}
 		if (mserCursor >= n) mserCursor = n - 1;
-		lay::RowList l = mangaRowsFit(p, n, mserCursor, mserScroll);
-		drawMangaRows(l, mserCursor, [this, rc = resume.chapter](int i) {
+		mangaRows(mlChapters, p, n, mserScroll, mserCursor, [this, rc = resume.chapter](int i) {
 			const RemoteChapter& c = mangaSrvChapters[i];
 			return mangaChapterRow(chapterLabel(c), serverItemId(mangaSrvId, c.key), i == rc, c.pages);
 		});

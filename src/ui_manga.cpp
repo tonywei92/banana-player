@@ -16,6 +16,7 @@
 #include "manga_ui_logic.h"
 #include "stickscroll.h"
 #include <algorithm>
+#include <map>
 #include <cmath>
 #include <cstdio>
 #include <ctime>
@@ -1362,23 +1363,14 @@ namespace bp
 				// the kit's grid, in the panel's own units (not bridged): the cells drawMangaLibrary drew
 				mangaCache();
 				int n = (int)mangaLib.size();
-				lay::AlbumGrid g = mangaLibGrid(p);
-				if (!n || !g.area.hit(x, y)) return false;
-				int hit = -1;
-				for (int i = g.first * g.cols; i < n && i < (g.first + g.shown) * g.cols; i++)
-					if (g.cell[i].hit(x, y)) hit = i;
-				// a drag scrolls whole rows (the D-pad keeps its column), a tap opens the cover
-				ui.pageReader->mangaListBegin(x, y, mlibScroll, g.cellH + g.rowGap, hit, [this, &p](int want) {
-					lay::AlbumGrid g = mangaLibGrid(p);
-					int n = (int)mangaLib.size();
-					mlibScroll = std::clamp(want, 0, std::max(0, g.rows - g.shown));
-					if (n) mlibGrid = std::min(n - 1, std::clamp(mlibGrid / MG_COLS, mlibScroll, mlibScroll + g.shown - 1) * MG_COLS + mlibGrid % MG_COLS);
-					return mlibScroll;
-				}, [this, &p](int i) {
-					if (i >= (int)mangaLib.size()) return;
-					mlibGrid = i;
-					mangaChoose(MT_LIBRARY, i, p);
-				});
+				// a drag moves the rows by the pixel and glides on (the D-pad keeps its column), a tap opens the cover
+				mangaGridPointer(mlLib, mangaTabPage(p).content, x, y, [this] { return (int)mangaLib.size(); }, &mlibScroll,
+					&mlibGrid, [this, &p](int i) {
+						if (i < 0 || i >= (int)mangaLib.size()) return;
+						mlibGrid = i;
+						mangaChoose(MT_LIBRARY, i, p);
+					});
+				(void)n;
 				return false;
 			}
 			if (mangaTab == MT_HISTORY)
@@ -1388,14 +1380,10 @@ namespace bp
 				int n = (int)mangaHistory.size();
 				lay::RowList l = mangaHisList(p);
 				if (!n || !p.settings.mangaHistory || !l.area.hit(x, y)) return false;
-				int i = l.at(x, y);
-				ui.pageReader->mangaListBegin(x, y, mhisScroll, l.rowH + l.gap, i, [this, &p](int want) {
-					int n = (int)mangaHistory.size(), shown = std::max(1, mangaHisList(p).shown);
-					mhisScroll = std::clamp(want, 0, std::max(0, n - shown));
-					mhisCursor = std::clamp(mhisCursor, mhisScroll, std::max(mhisScroll, std::min(n - 1, mhisScroll + shown - 1)));
-					return mhisScroll;
-				}, [this, &p](int i) {
-					if (i >= (int)mangaHistory.size()) return;
+				int i = mlHis.list.rowAt(x, y);
+				if (i >= n) i = -1;
+				ui.pageReader->mangaListSmooth(mlHis.list, x, y, i, [this, &p](int i) {
+					if (i < 0 || i >= (int)mangaHistory.size()) return;
 					mhisCursor = i;
 					mangaChoose(MT_HISTORY, i, p);
 				});
@@ -1428,7 +1416,7 @@ namespace bp
 			return false;
 		}
 		// the chapters (the kit's rows): a drag scrolls them (the cursor, unless on Resume, stays among them), a tap reads
-		mangaRowsPointer(p, x, y, [this] {
+		mangaRowsPointer(mlChapters, p, x, y, [this] {
 			const LocalSeries* s = mangaLocalSeries(mangaSeriesId);
 			return s ? (int)s->chapters.size() : 0;
 		}, &mserScroll, &mserCursor, [](int) { return MangaRow(); }, [this, &p](int i, bool) {
@@ -1651,6 +1639,20 @@ namespace bp
 			if (oldest->second.tex) SDL_DestroyTexture(oldest->second.tex);
 			coverTex.erase(oldest);
 		}
+	}
+
+	std::string Ui::Manga::coverReady(const std::string& seriesId, const std::string& coverUrl,
+		const std::vector<std::pair<std::string, std::string>>* coverHeaders)
+	{
+		// what drawMangaCover would find, asked as it asks (so a cover in a row's slot is "drawn" every frame and
+		// fetched while on screen): "c" the real one, "" the generated one for now
+		if (coverOf(seriesId)) return "c";
+		if (coverUrl.empty()) return "";
+		mangaCoverOnScreen.insert(mangaCoverKey(coverUrl));
+		int pw = std::max(1, (int)std::lround(MG_COVER_W * sx));
+		int ph = std::max(1, (int)std::lround(MG_COVER_H * sy));
+		const std::vector<std::pair<std::string, std::string>> empty;
+		return coverOfUrl(coverUrl, pw, ph, coverHeaders ? *coverHeaders : empty) ? "c" : "";
 	}
 
 	void Ui::Manga::drawMangaCover(Rect r, const std::string& title, bool focus, int bookCell, const std::string& seriesId,
@@ -1906,6 +1908,7 @@ namespace bp
 	void Ui::Manga::draw(const Player& p)
 	{
 		tabCrumb.clear();	// (each page's draw says its line again)
+		frameList = nullptr;	// (the lists drawn say which, mlSync; Ui steps it from the next pass)
 		if (ui.page == Page::ExtSection) drawExtSection(p);
 		else if (ui.page == Page::Extensions) drawExtensions(p);
 		else if (ui.page == Page::Manga) drawManga(p);
@@ -1913,6 +1916,7 @@ namespace bp
 		else if (ui.page == Page::MangaRead) drawMangaRead(p);
 		else if (ui.page == Page::MangaSettings) drawMangaSettings(p);
 		else if (ui.page == Page::MangaSources) drawMangaSourcesPage(p);
+		shownList = frameList;
 	}
 
 	std::string Ui::Manga::extSignature() const
@@ -2235,24 +2239,82 @@ namespace bp
 		return "";
 	}
 
-	lay::RowList Ui::Manga::mangaRowsFit(const Player& p, int n, int cursor, int& scroll) const
+	// ---- the smooth lists ----
+
+	void Ui::Manga::mlFollow(MList& m, Rect view, int rowH, int n, int cols, int& scroll, int* cursor)
 	{
-		lay::Box c = mangaListArea(p);
-		int shown = lay::rowList(c, n, 0).shown;
-		if (shown > 0 && cursor >= 0)
-			scroll = std::clamp(scroll, std::max(0, cursor - shown + 1), cursor);
-		lay::RowList l = lay::rowList(c, n, scroll);
-		scroll = l.first;
-		return l;
+		SmoothList& l = m.list;
+		cols = std::max(1, cols);
+		rowH = std::max(1, rowH);
+		const int rows = (std::max(0, n) + cols - 1) / cols;
+		l.sc.setExtent((double)rows * rowH, view.h);
+		const int crow = cursor && *cursor >= 0 && *cursor < n ? *cursor / cols : -1;
+		const bool fresh = l.takeFresh();
+		const bool cursorMoved = cursor && *cursor != m.cursorWas;
+		if (scroll != m.synced)
+		{
+			// the page set its scroll: its keys keeping the cursor in sight (a glide there), or a place of its own (a
+			// list opened, one put back where it was: there at once)
+			if (crow >= 0 && cursorMoved && m.synced >= 0 && !(scroll == 0 && crow == 0)) l.reveal(crow, view, rowH, rows, !fresh);
+			else l.sc.jump((double)scroll * rowH);
+		}
+		else if (crow >= 0 && (cursorMoved || fresh)) l.reveal(crow, view, rowH, rows, cursorMoved && !fresh);
+		// a motion over (a fling, a drag let go): the cursor among the whole rows shown, its column kept, as the
+		// old drag kept it (so the D-pad goes on from what is in sight)
+		const bool moving = l.moving() || l.dragging();
+		if (m.wasMoving && !moving && crow >= 0 && rows > 0)
+		{
+			const double off = l.sc.offset();
+			int first = std::clamp((int)std::ceil((off - 2) / rowH), 0, rows - 1);
+			int last = std::clamp((int)std::floor((off + view.h + 2) / rowH) - 1, first, rows - 1);
+			int r = std::clamp(crow, first, last);
+			if (r != crow) *cursor = std::min(n - 1, r * cols + *cursor % cols);
+		}
+		m.wasMoving = moving;
+		if (cursor) m.cursorWas = *cursor;
 	}
 
-	void Ui::Manga::drawMangaRows(const lay::RowList& l, int cursor, const std::function<MangaRow(int)>& at)
+	void Ui::Manga::mlSync(MList& m, int& scroll)
 	{
-		Kit& k = *ui.kit;
-		for (int j = 0; j < l.shown; j++)
-		{
-			int i = l.first + j;
-			MangaRow m = at(i);
+		const SmoothList::Spec& sp = m.list.spec();
+		const int rowH = std::max(1, sp.rowH);
+		const int fit = std::max(1, sp.view.h / rowH);
+		int first = (int)std::ceil((m.list.sc.offset() - 2) / rowH);
+		first = std::clamp(first, 0, std::max(0, sp.count - fit));
+		bool changed = first != m.synced && m.synced >= 0;
+		scroll = m.synced = first;
+		frameList = &m.list;
+		// a finger's list moved a row: the page's own follow-up (the next page asked near the end)
+		if (changed && m.scrolled) m.scrolled();
+		if (!m.list.moving() && !m.list.dragging()) m.scrolled = nullptr;
+	}
+
+	void Ui::Manga::mangaRows(MList& m, const Player& p, int n, int& scroll, int& cursor, const std::function<MangaRow(int)>& at)
+	{
+		lay::Box area = mangaListArea(p);
+		const int pitch = lay::ROW2_H + lay::ROW2_GAP;
+		mlFollow(m, area, pitch, n, 1, scroll, &cursor);
+		// each row's look once a frame (the key and the draw ask the same)
+		auto rows = std::make_shared<std::map<int, MangaRow>>();
+		auto rowAt = [rows, at](int i) -> const MangaRow& {
+			auto it = rows->find(i);
+			if (it == rows->end()) it = rows->emplace(i, at(i)).first;
+			return it->second;
+		};
+		SmoothList::Spec spec;
+		spec.view = area;
+		spec.rowH = pitch;
+		spec.count = n;
+		spec.key = [rowAt, cursor](int i) {
+			const MangaRow& m = rowAt(i);
+			char b[96];
+			snprintf(b, sizeof b, "|%p|%d%d%d%d%d|%.3f|", (const void*)m.glyph, m.off, m.pillBad, m.barBad, m.pillLive, i == cursor, m.bar);
+			return m.name + "|" + m.second + "|" + m.note + "|" + m.pill + "|" + m.keyLabel + "|" + m.keyCap + b;
+		};
+		spec.draw = [this, rowAt, cursor](int i, Rect box) {
+			Kit& k = *ui.kit;
+			const MangaRow& m = rowAt(i);
+			lay::Box r{box.x, box.y, box.w, lay::ROW2_H};
 			bool focused = i == cursor;
 			bool key = focused && !m.keyLabel.empty();
 			Kit::Row row;
@@ -2266,10 +2328,9 @@ namespace bp
 			row.tone = m.pillBad ? Kit::Pill::Bad : m.pillLive ? Kit::Pill::Live : Kit::Pill::Fact;
 			row.off = m.off;
 			row.focused = focused;
-			k.row(l.row[j], row);
+			k.row(r, row);
 			if (m.bar >= 0)
 			{
-				lay::Box r = l.row[j];
 				int x = r.x + 52, w = r.w - 52 - lay::SP12 - (key ? k.keyW(m.keyLabel, m.keyCap) + lay::SP8 : 0);
 				ui.drawLevel({x, r.y + r.h - 7, std::max(1, w), 3}, (int)std::lround(std::max(1, w) * std::clamp(m.bar, 0.0, 1.0)),
 					TRACK, m.barBad ? DANGER : focused ? ACCENT : DIM);
@@ -2279,36 +2340,34 @@ namespace bp
 				Kit::Key kk;
 				kk.label = m.keyLabel;
 				kk.key = m.keyCap;
-				k.key(lay::rowKey(l.row[j], k.keyW(m.keyLabel, m.keyCap)), kk);
+				k.key(lay::rowKey(r, k.keyW(m.keyLabel, m.keyCap)), kk);
 			}
-		}
-		if (l.n > l.shown) ui.drawScrollBar(l.area.y, l.area.h, l.first, l.shown, l.n);
+		};
+		m.list.draw(std::move(spec));
+		mlSync(m, scroll);
+		int fit = std::max(1, (area.h + lay::ROW2_GAP) / pitch);
+		if (n > fit) ui.drawScrollBar(area.y, area.h, scroll, fit, n);
 	}
 
-	void Ui::Manga::mangaRowsPointer(const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
+	void Ui::Manga::mangaRowsPointer(MList& m, const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
 		std::function<MangaRow(int)> at, std::function<void(int, bool)> tap, std::function<void()> scrolled)
 	{
+		(void)scroll;
 		int n = count();
-		lay::RowList l = lay::rowList(mangaListArea(p), n, *scroll);
-		if (!n || !l.area.hit(x, y)) return;
-		int i = l.at(x, y);
+		if (!n || !mangaListArea(p).hit(x, y)) return;
+		int i = m.list.rowAt(x, y);
+		if (i >= n) i = -1;
 		// the focused row's key, where it was drawn: its own action (the rest of the row is A)
 		bool onKey = false;
 		if (i >= 0 && i == *cursor)
 		{
-			MangaRow m = at(i);
-			if (!m.keyLabel.empty())
-				onKey = lay::rowKey(l.row[i - l.first], ui.kit->keyW(m.keyLabel, m.keyCap)).hit(x, y);
+			MangaRow r = at(i);
+			Rect b = m.list.rowBox(i);
+			if (!r.keyLabel.empty())
+				onKey = lay::rowKey({b.x, b.y, b.w, lay::ROW2_H}, ui.kit->keyW(r.keyLabel, r.keyCap)).hit(x, y);
 		}
-		ui.pageReader->mangaListBegin(x, y, *scroll, l.rowH + l.gap, i, [this, &p, count, scroll, cursor, scrolled](int want) {
-			int n = count();
-			lay::RowList l = lay::rowList(mangaListArea(p), n, want);
-			*scroll = l.first;
-			// (a cursor on the page's keys, -1, stays there)
-			if (n && *cursor >= 0) *cursor = std::clamp(*cursor, l.first, std::max(l.first, l.first + l.shown - 1));
-			if (scrolled) scrolled();
-			return *scroll;
-		}, [tap, onKey](int i) { tap(i, onKey); });
+		m.scrolled = std::move(scrolled);
+		ui.pageReader->mangaListSmooth(m.list, x, y, i, [tap, onKey](int i) { tap(i, onKey); });
 	}
 
 	lay::Box Ui::Manga::mangaListArea(const Player& p) const
@@ -2355,43 +2414,76 @@ namespace bp
 			ui.kit->tabCapW("L/R"));
 	}
 
-	void Ui::Manga::drawMangaGrid(const lay::AlbumGrid& g, int cursor, const std::function<void(int, Rect)>& cover,
-		const std::function<std::string(int)>& title)
+	Ui::Rect Ui::Manga::mangaGridView(lay::Box area) const
 	{
-		Kit& k = *ui.kit;
-		for (int i = g.first * g.cols; i < g.albums && i < (g.first + g.shown) * g.cols; i++)
-		{
-			Kit::Cover c;
-			c.key = c.title = title(i);
-			c.picture = [&cover, i](Rect r) { cover(i, r); };
-			c.focused = i == cursor;
-			k.coverTile(lay::coverTile(g.cell[i], true, false), c);
-		}
-		if (g.rows > g.shown) ui.drawScrollBar(g.area.y, g.area.h, g.first, g.shown, g.rows);
+		// SP6 of room around the covers (a focused cover's ring reaches 5 past it); the foot stays the area's
+		return {area.x - lay::SP6, area.y - lay::SP6, area.w + 2 * lay::SP6, area.h + lay::SP6};
 	}
 
-	void Ui::Manga::mangaGridPointer(lay::Box area, int x, int y, std::function<int()> count, int* scroll, int* cursor,
+	void Ui::Manga::drawMangaGrid(MList& m, lay::Box area, int n, int& scroll, int& cursor, const std::function<GridCell(int)>& cell)
+	{
+		lay::AlbumGrid g0 = lay::coverGrid(area, n, 0, MG_COLS);
+		const int pitch = g0.cellH + g0.rowGap, cols = g0.cols;
+		Rect view = mangaGridView(area);
+		mlFollow(m, view, pitch, n, cols, scroll, &cursor);
+		auto cells = std::make_shared<std::map<int, GridCell>>();
+		auto cellAt = [cells, cell](int i) -> const GridCell& {
+			auto it = cells->find(i);
+			if (it == cells->end()) it = cells->emplace(i, cell(i)).first;
+			return it->second;
+		};
+		SmoothList::Spec spec;
+		spec.view = view;
+		spec.rowH = pitch;
+		spec.count = g0.rows;
+		spec.key = [cellAt, cursor, cols, n](int r) {
+			std::string k;
+			for (int i = r * cols; i < n && i < (r + 1) * cols; i++)
+			{
+				const GridCell& c = cellAt(i);
+				k += c.title + "|" + c.badge + "|" + c.coverKey + (i == cursor ? "|*|" : "||");
+			}
+			return k;
+		};
+		spec.draw = [this, cellAt, cursor, cols, n, g0](int r, Rect box) {
+			for (int i = r * cols; i < n && i < (r + 1) * cols; i++)
+			{
+				const GridCell& gc = cellAt(i);
+				Kit::Cover c;
+				c.key = c.title = gc.title;
+				c.badge = gc.badge;
+				c.picture = gc.picture;
+				c.focused = i == cursor;
+				lay::Box b{box.x + lay::SP6 + (i % cols) * (g0.cellW + g0.colGap), box.y + lay::SP6, g0.cellW, g0.cellH};
+				ui.kit->coverTile(lay::coverTile(b, true, false), c);
+			}
+		};
+		m.list.draw(std::move(spec));
+		mlSync(m, scroll);
+		if (g0.rows > g0.shown) ui.drawScrollBar(area.y, area.h, scroll, g0.shown, g0.rows);
+	}
+
+	void Ui::Manga::mangaGridPointer(MList& m, lay::Box area, int x, int y, std::function<int()> count, int* scroll, int* cursor,
 		std::function<void(int)> open, std::function<void()> scrolled)
 	{
+		(void)scroll;
+		(void)cursor;
 		int n = count();
-		lay::AlbumGrid g = lay::coverGrid(area, n, *scroll, MG_COLS);
 		if (!n || !area.hit(x, y)) return;
-		int hit = -1;
-		for (int i = g.first * g.cols; i < n && i < (g.first + g.shown) * g.cols; i++)
-			if (g.cell[i].hit(x, y)) hit = i;
-		// a drag scrolls whole rows (the cursor kept on a row shown, its column kept), a tap opens the cover
-		ui.pageReader->mangaListBegin(x, y, *scroll, g.cellH + g.rowGap, hit, [area, count, scroll, cursor, scrolled](int want) {
-			int n = count();
-			lay::AlbumGrid g = lay::coverGrid(area, n, want, MG_COLS);
-			*scroll = g.first;
-			if (n)
+		// the cover under the finger, in the row's box as the grid laid it (the gaps between are no cover)
+		int hit = -1, r = m.list.rowAt(x, y);
+		if (r >= 0)
+		{
+			lay::AlbumGrid g0 = lay::coverGrid(area, n, 0, MG_COLS);
+			Rect box = m.list.rowBox(r);
+			for (int i = r * g0.cols; i < n && i < (r + 1) * g0.cols; i++)
 			{
-				int row = std::clamp(*cursor / MG_COLS, g.first, g.first + g.shown - 1);
-				*cursor = std::min(n - 1, row * MG_COLS + *cursor % MG_COLS);
+				Rect c{box.x + lay::SP6 + (i % g0.cols) * (g0.cellW + g0.colGap), box.y + lay::SP6, g0.cellW, g0.cellH};
+				if (c.hit(x, y)) hit = i;
 			}
-			if (scrolled) scrolled();
-			return *scroll;
-		}, [open](int i) { open(i); });
+		}
+		m.scrolled = std::move(scrolled);
+		ui.pageReader->mangaListSmooth(m.list, x, y, hit, [open](int i) { open(i); });
 	}
 
 	std::vector<lay::Box> Ui::Manga::mangaSeriesKeys(const std::vector<int>& widths) const
@@ -2423,23 +2515,19 @@ namespace bp
 		}
 		if (mlibGrid >= n) mlibGrid = n - 1;
 		// the cover grid (screens.js manga: mcell): five across, the unread count a pill at a cover's top right, the
-		// focused one ringed; whole rows, scrolled by rows
-		lay::AlbumGrid g = mangaLibGrid(p);
-		mlibScroll = g.first;
-		Kit& k = *ui.kit;
-		for (int i = g.first * g.cols; i < n && i < (g.first + g.shown) * g.cols; i++)
-		{
-			Kit::Cover c;
-			c.key = c.title = mangaLib[i].title;
-			c.picture = [this, title = mangaLib[i].title, id = mangaLib[i].id](Rect r) {
-				drawMangaCover(r, title, false, 4, id, mangaSeriesCoverUrl(id));
-			};
+		// focused one ringed; a row of covers a row of the smooth list
+		drawMangaGrid(mlLib, mangaTabPage(p).content, n, mlibScroll, mlibGrid, [this](int i) {
+			GridCell c;
+			const std::string id = mangaLib[i].id;
+			c.title = mangaLib[i].title;
 			int unread = i < (int)mangaLibUnread.size() ? mangaLibUnread[i] : 0;
 			if (unread > 0) c.badge = std::to_string(unread);
-			c.focused = i == mlibGrid;
-			k.coverTile(lay::coverTile(g.cell[i], true, false), c);
-		}
-		if (g.rows > g.shown) ui.drawScrollBar(g.area.y, g.area.h, g.first, g.shown, g.rows);
+			c.coverKey = coverReady(id, mangaSeriesCoverUrl(id));
+			c.picture = [this, title = c.title, id](Rect r) {
+				drawMangaCover(r, title, false, 4, id, mangaSeriesCoverUrl(id));
+			};
+			return c;
+		});
 	}
 
 	static bool isEpubPath(const std::string& path)
@@ -2608,43 +2696,66 @@ namespace bp
 		}
 		if (mhisCursor >= n) mhisCursor = n - 1;
 		// one row a series, newest first (screens.js manga-history): its cover, its title, then the chapter, the page
-		// and when; the focused row carries its Continue key (A), so the tap target is drawn
+		// and when; the focused row carries its Continue key (A), so the tap target is drawn. A smooth list
 		lay::RowList l = mangaHisList(p);
-		mhisScroll = l.first;
-		Kit& k = *ui.kit;
+		const int pitch = l.rowH + l.gap;
+		mlFollow(mlHis, l.area, pitch, n, 1, mhisScroll, &mhisCursor);
+		struct HisRow { std::string id, title, second, cover; bool off = false; };
+		auto rows = std::make_shared<std::map<int, HisRow>>();
 		int64_t now = (int64_t)time(nullptr);
-		int keyW = k.keyW("Continue", "A");
-		for (int j = 0; j < l.shown; j++)
-		{
-			int i = l.first + j;
+		auto rowAt = [this, rows, now](int i) -> const HisRow& {
+			auto it = rows->find(i);
+			if (it != rows->end()) return it->second;
 			const ChapterProgress& cp = mangaHistory[i];
-			std::string title = mangaTitle(cp.seriesId), from = mangaSourceLabel(cp.seriesId);
-			Kit::Row row;
-			row.under = BG;
-			row.mark = [this, title, id = cp.seriesId](Rect m) {
-				drawMangaCover({m.x + (m.w - 32) / 2, m.y, 32, m.h}, title, false, 1, id, mangaSeriesCoverUrl(id));
-			};
-			row.name = title;
-			row.second = (from.empty() ? "" : from + " \xC2\xB7 ") + chapterShort(cp.chapterTitle) + " \xC2\xB7 " +
+			HisRow h;
+			h.id = cp.seriesId;
+			h.title = mangaTitle(cp.seriesId);
+			std::string from = mangaSourceLabel(cp.seriesId);
+			h.second = (from.empty() ? "" : from + " \xC2\xB7 ") + chapterShort(cp.chapterTitle) + " \xC2\xB7 " +
 				chapterPageLine(cp.page, cp.pages) + " \xC2\xB7 " + mangaAgo(cp.at, now);
 			// one that can't open now stays, dimmed, and says why (spec: manga-history)
 			std::string gone = mangaHisGone(cp);
 			if (!gone.empty())
 			{
-				row.off = true;
-				row.second = gone + " \xC2\xB7 " + chapterShort(cp.chapterTitle) + " \xC2\xB7 " + mangaAgo(cp.at, now);
+				h.off = true;
+				h.second = gone + " \xC2\xB7 " + chapterShort(cp.chapterTitle) + " \xC2\xB7 " + mangaAgo(cp.at, now);
 			}
-			row.focused = i == mhisCursor;
-			k.row(l.row[j], row);
-			if (row.focused && gone.empty())
+			h.cover = coverReady(h.id, mangaSeriesCoverUrl(h.id));
+			return rows->emplace(i, std::move(h)).first->second;
+		};
+		SmoothList::Spec spec;
+		spec.view = l.area;
+		spec.rowH = pitch;
+		spec.count = n;
+		spec.key = [rowAt, cursor = mhisCursor](int i) {
+			const HisRow& h = rowAt(i);
+			return h.title + "|" + h.second + "|" + h.cover + (h.off ? "|o" : "|") + (i == cursor ? "*" : "");
+		};
+		spec.draw = [this, rowAt, cursor = mhisCursor, rowH = l.rowH](int i, Rect box) {
+			Kit& k = *ui.kit;
+			const HisRow& h = rowAt(i);
+			lay::Box r{box.x, box.y, box.w, rowH};
+			Kit::Row row;
+			row.under = BG;
+			row.mark = [this, title = h.title, id = h.id](Rect m) {
+				drawMangaCover({m.x + (m.w - 32) / 2, m.y, 32, m.h}, title, false, 1, id, mangaSeriesCoverUrl(id));
+			};
+			row.name = h.title;
+			row.second = h.second;
+			row.off = h.off;
+			row.focused = i == cursor;
+			k.row(r, row);
+			if (row.focused && !h.off)
 			{
 				Kit::Key key;
 				key.label = "Continue";
 				key.key = "A";
-				k.key(lay::rowKey(l.row[j], keyW), key);
+				k.key(lay::rowKey(r, k.keyW("Continue", "A")), key);
 			}
-		}
-		if (n > l.shown) ui.drawScrollBar(l.area.y, l.area.h, l.first, l.shown, n);
+		};
+		mlHis.list.draw(std::move(spec));
+		mlSync(mlHis, mhisScroll);
+		if (n > l.shown) ui.drawScrollBar(l.area.y, l.area.h, mhisScroll, l.shown, n);
 	}
 
 	Ui::Manga::MangaRow Ui::Manga::mangaLocalRowAt(int i) const
@@ -2683,8 +2794,7 @@ namespace bp
 			if (mListCursor >= n) mListCursor = n - 1;
 			// the card's series as the kit's rows: their kind, their name, how many chapters
 			tabCrumb = "On this handheld \xC2\xB7 " + mangaLocalFolder();
-			lay::RowList l = mangaRowsFit(p, n, mListCursor, mListScroll);
-			drawMangaRows(l, mListCursor, [this](int i) { return mangaLocalRowAt(i); });
+			mangaRows(mlLocal, p, n, mListScroll, mListCursor, [this](int i) { return mangaLocalRowAt(i); });
 			// while the card is read the header says so (the list may still change); its keys work meanwhile
 			if (mangaScanning) tabCrumb = mangaReadingLine();
 			ui.drawHints({{"A", "Open"}, {"Y", "Options"}, {"X", "How to add"}, {"B", "Back"}});
@@ -2771,8 +2881,7 @@ namespace bp
 		k.key(mangaHeartRect(), hk);
 		if (n == 0) { ui.drawHints({{"B", "Back"}}); return; }
 		if (mserCursor >= n) mserCursor = n - 1;
-		lay::RowList l = mangaRowsFit(p, n, mserCursor, mserScroll);
-		drawMangaRows(l, mserCursor, [this, s, rc = resume.chapter](int i) { return mangaChapterRow(s->chapters[i].title, s->chapters[i].path, i == rc, -1); });
+		mangaRows(mlChapters, p, n, mserScroll, mserCursor, [this, s, rc = resume.chapter](int i) { return mangaChapterRow(s->chapters[i].title, s->chapters[i].path, i == rc, -1); });
 		ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"Y", "In library"}, {"B", "Back"}});
 	}
 
