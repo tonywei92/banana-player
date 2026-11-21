@@ -540,6 +540,7 @@ namespace bp
 		struct SongViewSheet;	// (ui_player.cpp: a song's chip's sheet, a table of it too)
 		std::unique_ptr<PlayerPage> playerPage;
 		struct PlayOnSheet;
+		struct SheetRows;	// (ui_player.cpp: List's, View's and a song's sheets' rows on a smooth list)
 		struct ListSheet;
 		struct ViewSheet;
 		struct AdjustSheet;	// (ui_player.cpp: Picture's Adjust page)

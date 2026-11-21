@@ -5,6 +5,7 @@
 #include "ui_playlists.h"
 #include "ui_settings.h"
 #include "ui_sound.h"
+#include "ui_smoothlist.h"
 #include "session_host.h"
 #include "volumestep.h"
 #ifdef BP_WEB
@@ -617,6 +618,79 @@ namespace bp
 		ui.openMore([this](const Player& p) { return photoMoreSpec(p); });
 	}
 
+	// A sheet's rows (List, View, a song's sheets) on a smooth list (ui_smoothlist.h): the rows' window under the sheet's
+	// header, the finger (a drag scrolls, a tap chooses, a touch on a glide only stops it), the cursor kept in view, and
+	// the list put on its cursor at once when it shows other rows (a tab, a dialog) or comes back from under a page.
+	struct Ui::SheetRows
+	{
+		explicit SheetRows(Ui& u) : list(u) {}
+		SmoothList list;
+		bool onList = false, caught = false, moved = false;
+		std::string shownFor = "\x01";	// what the rows were (a tab, a dialog): another one is put on its cursor
+
+		static Rect view(const lay::ListSheet& s, int shown)
+		{
+			lay::Box r0 = s.row(0);
+			return {r0.x, s.rowsY, r0.w, shown * lay::LIST_ROW};
+		}
+		// the cursor kept in view by a short glide (a key moved it)
+		void reveal(int cursor, Rect v, int n) { if (n > 0) list.reveal(cursor, v, lay::LIST_ROW, n); }
+		// before the rows are drawn: rows of another kind (`what`) are put with `above` rows over the cursor where the
+		// list allows; the same rows come back (from under a page): the least move that shows the cursor
+		void settleOn(const std::string& what, int cursor, Rect v, int n, int above)
+		{
+			bool fresh = list.takeFresh();
+			if (what != shownFor)
+			{
+				shownFor = what;
+				list.sc.setExtent((double)n * lay::LIST_ROW, v.h);
+				list.sc.jump((double)std::max(0, cursor - above) * lay::LIST_ROW);
+				fresh = true;
+			}
+			if (fresh && n > 0) list.reveal(cursor, v, lay::LIST_ROW, n, false);
+		}
+		// a finger down: the row under it (-1: none, outside the rows, or it only stopped a glide)
+		int down(const Pointer& pt, int x, int y, Rect v)
+		{
+			moved = caught = false;
+			onList = v.hit(x, y);
+			if (!onList) return -1;
+			caught = list.press(pt.y * H);
+			return caught ? -1 : list.rowAt(x, y);
+		}
+		void move(const Pointer& pt) { if (onList && list.move(pt.y * H)) moved = true; }
+		// the lift: the glide (or the band's spring); true when it was a tap on the rows
+		bool up()
+		{
+			bool tap = onList && !moved && !caught;
+			if (onList) list.lift();
+			onList = false;
+			return tap;
+		}
+		// the first row shown, for the scroll bar
+		int first() const { return (int)std::lround(list.sc.offset() / lay::LIST_ROW); }
+		// a Kit row's look as its key ("": a focused one, whose name's marquee moves by itself)
+		static std::string key(const Kit::Row& r)
+		{
+			if (r.focused && !r.off) return "";
+			char b[96];
+			snprintf(b, sizeof b, "%p,%d,%d,%d,%d,%d,%d,%d,%d|", (const void*)r.glyph, (int)r.tone, (int)r.trail, r.pressed, r.off,
+				r.radio, r.radioOn, r.font, (int)r.under.r);
+			return b + r.lead + "|" + r.name + "|" + r.note + "|" + r.pill;
+		}
+		// the rows drawn: row(i) gives each one's look (it may outlive this draw: what it needs, by value)
+		void draw(Ui& ui, Rect v, int n, std::function<Kit::Row(int)> row)
+		{
+			SmoothList::Spec spec;
+			spec.view = v;
+			spec.rowH = lay::LIST_ROW;
+			spec.count = n;
+			spec.key = [row](int i) { return key(row(i)); };
+			spec.draw = [&ui, row](int i, Rect box) { ui.kit->row(box, row(i)); };
+			list.draw(std::move(spec));
+		}
+	};
+
 	// List (Y): what is in this file and what comes after it, side by side (docs/redesign, "video-list" and
 	// "video-chapters-long"). Two tabs, by lay::tabs: Up next (ui.upNextList, A = ui.playUpNext) and Chapters
 	// (p.chapters, A as the Chapters page chooses). Shuffle and Repeat sit in its header, above the list they change.
@@ -624,10 +698,10 @@ namespace bp
 	struct Ui::ListSheet : Ui::Overlay
 	{
 		enum Press { P_NONE, P_ROW, P_TAB, P_SHUFFLE, P_REPEAT };
-		int tab = 0, cursor = 0, scroll = 0, press = P_NONE, pressAt = -1;
-		// a finger dragging the rows scrolls them; a tap (no drag) still chooses
-		bool drag = false;
-		int dragY = 0, dragScroll = 0;
+		int tab = 0, cursor = 0, press = P_NONE, pressAt = -1;
+		// the rows: a finger's drag scrolls them, a tap (no drag) still chooses
+		SheetRows rows{ui};
+		SmoothList* smoothList() override { return &rows.list; }
 
 		ListSheet(Ui& u, int at, const Player& p) : Overlay(u)
 		{
@@ -635,7 +709,6 @@ namespace bp
 			// opened on what plays, three rows above it showing where the list allows (as the old page did)
 			int n = count(p), cur = current(p);
 			cursor = std::clamp(cur, 0, std::max(0, n - 1));
-			scroll = lay::listScroll(cursor, std::max(0, cursor - 3), shown(p), n);
 			ui.playerPage->listTab = tab;
 		}
 		const char* name() const override { return "list"; }
@@ -656,6 +729,7 @@ namespace bp
 		}
 		int shown(const Player& p) const { return std::min(std::max(1, count(p)), lay::LIST_ROWS); }
 		lay::ListSheet layout(const Player& p) const { return lay::listSheet(shown(p)); }
+		Rect rowsView(const Player& p) const { return SheetRows::view(layout(p), shown(p)); }
 
 		// what plays in the tab shown: Up next's row, or the chapter playing (none before the first)
 		int current(const Player& p) const
@@ -667,18 +741,14 @@ namespace bp
 		}
 		void settle(const Player& p)
 		{
-			if (drag) return;	// (the finger's own scroll, until it lifts)
 			int n = count(p);
-			if (n <= 0) { cursor = scroll = 0; return; }
-			cursor = std::clamp(cursor, 0, n - 1);
-			scroll = lay::listScroll(cursor, scroll, shown(p), n);
+			cursor = n <= 0 ? 0 : std::clamp(cursor, 0, n - 1);
 		}
 		void openTab(int t, const Player& p)
 		{
 			tab = std::clamp(t, 0, tabCount(p) - 1);
 			int n = count(p), cur = current(p);
 			cursor = std::clamp(cur, 0, std::max(0, n - 1));
-			scroll = lay::listScroll(cursor, std::max(0, cursor - 3), shown(p), n);
 			ui.playerPage->listTab = tab;
 		}
 
@@ -753,6 +823,7 @@ namespace bp
 			int n = count(p);
 			if (n <= 0) { close(); return false; }
 			settle(p);
+			const int was = cursor;
 			switch (b)
 			{
 			case Button::Up: cursor = (cursor + n - 1) % n; break;
@@ -770,7 +841,7 @@ namespace bp
 				if (p.settings.buttonHotkeys && p.error.empty())
 				{
 					ui.chapterStep(b == Button::L2 ? -1 : 1, p);
-					if (tab == 1) { cursor = std::clamp(ui.shownChapter(p), 0, n - 1); scroll = lay::listScroll(cursor, scroll, shown(p), n); }
+					if (tab == 1) cursor = std::clamp(ui.shownChapter(p), 0, n - 1);
 				}
 				break;
 			case Button::Y:
@@ -778,6 +849,7 @@ namespace bp
 			default: break;
 			}
 			settle(p);
+			if (cursor != was && !done) rows.reveal(cursor, rowsView(p), count(p));
 			return false;
 		}
 
@@ -795,7 +867,6 @@ namespace bp
 			{
 				press = P_NONE;
 				pressAt = -1;
-				drag = false;
 				// the veil: closed (the lift that follows presses nothing)
 				if (!s.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
 				auto tabs = tabRects(p, h);
@@ -805,45 +876,22 @@ namespace bp
 				auto rep = repeatRects(h);
 				for (int i = 0; i < 3; i++)
 					if (rep[i].hit(x, y)) { press = P_REPEAT; pressAt = i; return false; }
-				for (int i = scroll; i < n && i < scroll + shown(p); i++)
-					if (s.row(i - scroll).hit(x, y))
-					{
-						press = P_ROW;
-						pressAt = i;
-						cursor = i;
-						dragY = y;
-						dragScroll = scroll;
-						return false;
-					}
+				int r = rows.down(pt, x, y, rowsView(p));
+				if (r >= 0 && r < n) { press = P_ROW; pressAt = r; cursor = r; }
 				return false;
 			}
 			if (pt.kind == Pointer::Move)
 			{
-				// a finger dragging the rows scrolls them (a tap still chooses); undone by settle when it lifts
-				if (press == P_ROW && !drag && std::abs(y - dragY) > 12) drag = true;
-				if (drag)
-				{
-					int maxScroll = std::max(0, n - shown(p));
-					scroll = std::clamp(dragScroll + (int)std::lround((dragY - y) / (double)lay::LIST_ROW), 0, maxScroll);
-				}
+				rows.move(pt);	// (the rows follow the finger past the slop; a tap still chooses)
 				return false;
 			}
 			if (pt.kind != Pointer::Up) return false;
 			int kind = press, at = pressAt;
 			press = P_NONE;
 			pressAt = -1;
-			bool dragged = drag;
-			drag = false;
-			if (dragged)
-			{
-				// the finger scrolled: nothing chosen; the highlight goes to the row under it at the lift (the finger's
-				// own place, not one row per scroll step: rounding and a clamped end would land beside it)
-				cursor = lay::rowAt(y, s.rowsY, scroll, shown(p), n);
-				settle(p);
-				return false;
-			}
-			// let go off it: nothing (a finger that slid away changed its mind)
-			if (kind == P_ROW && at >= scroll && at < n && s.row(at - scroll).hit(x, y)) choose(at, p);
+			bool tap = rows.up();
+			// a drag or a caught glide chooses nothing; let go off its row: nothing (the finger changed its mind)
+			if (kind == P_ROW) { if (tap && rows.list.rowAt(x, y) == at) choose(at, p); }
 			else if (kind == P_TAB)
 			{
 				auto tabs = tabRects(p, h);
@@ -880,43 +928,49 @@ namespace bp
 			ui.drawGlyphMid(G_LOOP, h.repeatGlyph.x + 8, cy, DIM_ON);
 			k.segment(h.repeatArea, {"Off", "All", "One"}, std::clamp(st.loop, 0, LOOPS - 1));
 
-			// the rows: Up next (its own order under Shuffle) or every chapter with its start
-			std::vector<std::string> list;
+			// the rows: Up next (its own order under Shuffle) or every chapter with its start, each row's look made
+			// from a copy of what it shows (the list may draw a row after this draw)
+			auto paths = std::make_shared<std::vector<std::string>>();
 			int cur = current(p);
-			if (tab == 0) list = ui.upNextList(p, cur);
-			int first = scroll, last = std::min(n, scroll + shown(p));
-			for (int i = first; i < last; i++)
-			{
+			if (tab == 0) *paths = ui.upNextList(p, cur);
+			auto chapters = std::make_shared<std::vector<Chapter>>(tab == 1 ? p.chapters : std::vector<Chapter>{});
+			const bool drives = ui.pageDrives(p), paused = p.paused;
+			const double nowDur = p.duration;
+			const int focus = cursor, pressed = press == P_ROW && !rows.moved ? pressAt : -1, t = tab;
+			auto rowOf = [paths, chapters, cur, drives, paused, nowDur, focus, pressed, t](int i) {
 				Kit::Row row;
 				row.font = F_P16;
-				row.focused = i == cursor;
-				row.pressed = press == P_ROW && pressAt == i;
+				row.focused = i == focus;
+				row.pressed = i == pressed;
 				bool now = i == cur;
-				if (tab == 0)
+				if (t == 0)
 				{
-					const std::string& path = list[i];
+					const std::string& path = (*paths)[i];
 					row.name = entryTitle(path);
-					double d = now && p.duration > 0 ? p.duration : -1;
+					double d = now && nowDur > 0 ? nowDur : -1;
 					if (d <= 0 && !isNetPath(path)) cachedDuration(path, d);
 					if (d > 0) row.note = formatTime(d);
 				}
 				else
 				{
-					const Chapter& c = p.chapters[i];
+					const Chapter& c = (*chapters)[i];
 					row.name = chapterLabel(c, i + 1);
 					row.note = formatTime(c.time);
 				}
 				// the one playing: the play mark and its pill, as the old lists had it; the others their number
 				if (now)
 				{
-					row.glyph = ui.pageDrives(p) ? &G_QR : p.paused ? &G_PAUSE : &G_PLAY;
-					row.pill = ui.pageDrives(p) ? "Browser" : p.paused ? "Paused" : "Now";
-					row.tone = ui.pageDrives(p) || p.paused ? Kit::Pill::Fact : Kit::Pill::Live;
+					row.glyph = drives ? &G_QR : paused ? &G_PAUSE : &G_PLAY;
+					row.pill = drives ? "Browser" : paused ? "Paused" : "Now";
+					row.tone = drives || paused ? Kit::Pill::Fact : Kit::Pill::Live;
 				}
 				else row.lead = std::to_string(i + 1);
-				k.row(s.row(i - first), row);
-			}
-			ui.drawScrollBar(s.rowsY, shown(p) * lay::LIST_ROW, scroll, shown(p), n);
+				return row;
+			};
+			Rect v = SheetRows::view(s, shown(p));
+			rows.settleOn(std::to_string(tab), cursor, v, n, 3);
+			rows.draw(ui, v, n, rowOf);
+			ui.drawScrollBar(s.rowsY, shown(p) * lay::LIST_ROW, rows.first(), shown(p), n);
 
 			std::vector<Hint> hints{{"UP/DOWN", "Move"}, {"LEFT/RIGHT", "Page"}, {"A", "Play from here"}};
 			if (hasChapters(p)) hints.push_back({"L/R", "Tab"});
@@ -930,7 +984,7 @@ namespace bp
 			// the tab, the cursor and the finger here; the lists, what plays and the two settings (Settings' own are
 			// Ui::signature's, but the Session's queue is not)
 			int n = count(p), cur = current(p);
-			std::string sig = std::to_string(tab) + "," + std::to_string(cursor) + "," + std::to_string(scroll) + "," +
+			std::string sig = std::to_string(tab) + "," + std::to_string(cursor) + "," + std::to_string(rows.moved) + "," +
 				std::to_string(press) + "," + std::to_string(pressAt) + "," + std::to_string(n) + "," + std::to_string(cur) + "," +
 				std::to_string(SessionHost::get().version()) + "," + std::to_string(p.paused) + std::to_string(ui.pageDrives(p));
 			if (tab == 0)
@@ -1074,10 +1128,10 @@ namespace bp
 		enum Tab { TAB_SUBS, TAB_AUDIO, TAB_PICTURE, TAB_SPEED, TABS };
 		enum Press { P_NONE, P_ROW };
 		static constexpr int64_t ADJUST_ROW = -3;	// Picture's last row: the Adjust page
-		int tab = 0, cursor = 0, scroll = 0, press = P_NONE, pressAt = -1;
-		// a finger dragging the rows scrolls them; a tap (no drag) still chooses
-		bool drag = false;
-		int dragY = 0, dragScroll = 0;
+		int tab = 0, cursor = 0, press = P_NONE, pressAt = -1;
+		// the rows: a finger's drag scrolls them, a tap (no drag) still chooses
+		SheetRows rows{ui};
+		SmoothList* smoothList() override { return &rows.list; }
 
 		ViewSheet(Ui& u, int at, const Player& p) : Overlay(u)
 		{
@@ -1085,7 +1139,6 @@ namespace bp
 			// opened on what is in use: the chosen track (Off among the subtitles too), the size, the speed
 			int n = count(p), cur = current(p);
 			cursor = std::clamp(cur, 0, std::max(0, n - 1));
-			scroll = lay::listScroll(cursor, std::max(0, cursor - 3), shown(p), n);
 		}
 		const char* name() const override { return "view"; }
 
@@ -1125,13 +1178,11 @@ namespace bp
 		}
 		int shown(const Player& p) const { return std::min(std::max(1, count(p)), lay::LIST_ROWS); }
 		lay::ListSheet layout(const Player& p) const { return lay::listSheet(shown(p)); }
+		Rect rowsView(const Player& p) const { return SheetRows::view(layout(p), shown(p)); }
 		void settle(const Player& p)
 		{
-			if (drag) return;	// (the finger's own scroll, until it lifts)
 			int n = count(p);
-			if (n <= 0) { cursor = scroll = 0; return; }
-			cursor = std::clamp(cursor, 0, n - 1);
-			scroll = lay::listScroll(cursor, scroll, shown(p), n);
+			cursor = n <= 0 ? 0 : std::clamp(cursor, 0, n - 1);
 		}
 		// what the header says under its title (on the right): how many there are to choose
 		std::string headNote(const Player& p) const
@@ -1178,6 +1229,7 @@ namespace bp
 			int n = count(p);
 			if (n <= 0) { close(); return false; }
 			settle(p);
+			const int was = cursor;
 			switch (b)
 			{
 			case Button::Up: cursor = (cursor + n - 1) % n; break;
@@ -1192,6 +1244,7 @@ namespace bp
 			default: break;
 			}
 			settle(p);
+			if (cursor != was && !done) rows.reveal(cursor, rowsView(p), count(p));
 			return false;
 		}
 
@@ -1208,48 +1261,24 @@ namespace bp
 			{
 				press = P_NONE;
 				pressAt = -1;
-				drag = false;
 				// the veil: closed (the lift that follows presses nothing)
 				if (!s.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
-				for (int i = scroll; i < n && i < scroll + shown(p); i++)
-					if (s.row(i - scroll).hit(x, y))
-					{
-						press = P_ROW;
-						pressAt = i;
-						cursor = i;
-						dragY = y;
-						dragScroll = scroll;
-						return false;
-					}
+				int r = rows.down(pt, x, y, rowsView(p));
+				if (r >= 0 && r < n) { press = P_ROW; pressAt = r; cursor = r; }
 				return false;
 			}
 			if (pt.kind == Pointer::Move)
 			{
-				// a finger dragging the rows scrolls them (a tap still chooses)
-				if (press == P_ROW && !drag && std::abs(y - dragY) > 12) drag = true;
-				if (drag)
-				{
-					int maxScroll = std::max(0, n - shown(p));
-					scroll = std::clamp(dragScroll + (int)std::lround((dragY - y) / (double)lay::LIST_ROW), 0, maxScroll);
-				}
+				rows.move(pt);	// (the rows follow the finger past the slop; a tap still chooses)
 				return false;
 			}
 			if (pt.kind != Pointer::Up) return false;
 			int kind = press, at = pressAt;
 			press = P_NONE;
 			pressAt = -1;
-			bool dragged = drag;
-			drag = false;
-			if (dragged)
-			{
-				// the finger scrolled: nothing chosen; the highlight goes to the row under it at the lift (the finger's
-				// own place, not one row per scroll step: rounding and a clamped end would land beside it)
-				cursor = lay::rowAt(y, s.rowsY, scroll, shown(p), n);
-				settle(p);
-				return false;
-			}
-			// let go off it: nothing (a finger that slid away changed its mind)
-			if (kind == P_ROW && at >= scroll && at < n && s.row(at - scroll).hit(x, y)) choose(at, p);
+			bool tap = rows.up();
+			// a drag or a caught glide chooses nothing; let go off its row: nothing (the finger changed its mind)
+			if (kind == P_ROW && tap && rows.list.rowAt(x, y) == at) choose(at, p);
 			return false;
 		}
 
@@ -1264,26 +1293,29 @@ namespace bp
 			Kit& k = *ui.kit;
 			k.sheet(s, {glyphFor(tab), labels()[tab], headNote(p), false});
 
-			// a choice a row: its radio (the track in use, the size, the speed) and its note
-			auto list = rowsFor(tab, p);
-			int first = scroll, last = std::min(n, scroll + shown(p));
-			for (int i = first; i < last; i++)
-			{
-				const Row& r = list[i];
+			// a choice a row: its radio (the track in use, the size, the speed) and its note (made from a copy: the list
+			// may draw a row after this draw)
+			auto list = std::make_shared<std::vector<Row>>(rowsFor(tab, p));
+			const int focus = cursor, pressed = press == P_ROW && !rows.moved ? pressAt : -1;
+			auto rowOf = [list, focus, pressed](int i) {
+				const Row& r = (*list)[i];
 				Kit::Row row;
 				row.font = F_P16;
 				row.name = r.label;
 				row.note = r.note;
-				row.focused = i == cursor;
-				row.pressed = press == P_ROW && pressAt == i;
+				row.focused = i == focus;
+				row.pressed = i == pressed;
 				// (a message row — "No audio in this file" — is no choice: no radio, and dim)
 				row.radio = r.id >= 0;
 				row.radioOn = row.radio && r.selected;
 				row.trail = r.id == STYLE_ROW || r.id == ADJUST_ROW ? Kit::Trail::Chevron : Kit::Trail::None;
 				row.off = r.id < 0 && r.id != STYLE_ROW && r.id != ADJUST_ROW;
-				k.row(s.row(i - first), row);
-			}
-			ui.drawScrollBar(s.rowsY, shown(p) * lay::LIST_ROW, scroll, shown(p), n);
+				return row;
+			};
+			Rect v = SheetRows::view(s, shown(p));
+			rows.settleOn(std::to_string(tab), cursor, v, n, 3);
+			rows.draw(ui, v, n, rowOf);
+			ui.drawScrollBar(s.rowsY, shown(p) * lay::LIST_ROW, rows.first(), shown(p), n);
 
 			std::vector<Hint> hints{{"UP/DOWN", "Move"}};
 			if (n > shown(p)) hints.push_back({"LEFT/RIGHT", "Page"});
@@ -1296,7 +1328,7 @@ namespace bp
 		{
 			// the tab, the cursor and the finger here; the rows (their names and notes arrive with the file's
 			// tracks), what is in use and the lock. Settings' own, the speed and the chosen ids are Ui::signature's
-			std::string sig = std::to_string(tab) + "," + std::to_string(cursor) + "," + std::to_string(scroll) + "," +
+			std::string sig = std::to_string(tab) + "," + std::to_string(cursor) + "," + std::to_string(rows.moved) + "," +
 				std::to_string(press) + "," + std::to_string(pressAt) + "," + std::to_string(ui.touchIsLocked()) + "," +
 				std::to_string(p.playingAudio());
 			for (auto& r : rowsFor(tab, p))
@@ -1317,10 +1349,11 @@ namespace bp
 		enum Tab { TAB_SHOW, TAB_EQ, TAB_FX, TAB_SPEED, TABS };
 		enum Press { P_NONE, P_ROW, P_PREV, P_NEXT, P_NAME, P_ON, P_SAVE, P_TILE };
 		enum EqMode { EQ_MAIN, EQ_OPTIONS, EQ_LIST, EQ_DELETE };
-		int tab = 0, cursor = 0, scroll = 0, press = P_NONE, pressAt = -1;
-		int eqMode = EQ_MAIN;	// (its lists are the sheet's rows: cursor and scroll)
-		bool drag = false;
-		int dragY = 0, dragScroll = 0;
+		int tab = 0, cursor = 0, press = P_NONE, pressAt = -1;
+		int eqMode = EQ_MAIN;	// (its lists are the sheet's rows: the cursor, and the rows' smooth list)
+		SheetRows rows{ui};
+		SmoothList* smoothList() override { return tab != TAB_SHOW && isList() ? &rows.list : nullptr; }
+		std::string rowsKind() const { return std::to_string(tab) + "," + std::to_string(eqMode); }
 
 		bool fromSettings = false;	// opened over Settings (Equalizer, Sound effect): nothing need play
 		bool gone(const Player& p) const
@@ -1333,7 +1366,6 @@ namespace bp
 		{
 			tab = std::clamp(at, 0, TABS - 1);
 			cursor = currentRow(p);
-			scroll = tab == TAB_SHOW ? 0 : lay::listScroll(cursor, 0, shown(p), count(p));
 		}
 		const char* name() const override { return "songview"; }
 
@@ -1409,15 +1441,13 @@ namespace bp
 				return lay::listSheetBody(lay::SHEET_MAX - 11 - lay::LIST_HEAD - 8 - lay::HINTS_H);
 			return lay::listSheet(shown(p));
 		}
+		Rect rowsView(const Player& p) const { return SheetRows::view(layout(p), shown(p)); }
 		bool isList() const { return (tab != TAB_EQ && tab != TAB_SHOW) || eqMode == EQ_OPTIONS || eqMode == EQ_LIST || eqMode == EQ_DELETE; }
 		void settle(const Player& p)
 		{
-			if (drag) return;	// (a finger's own scroll, while it drags)
-			if (tab == TAB_SHOW) { cursor = std::clamp(cursor, 0, DISPLAY_FOOT); scroll = 0; return; }
+			if (tab == TAB_SHOW) { cursor = std::clamp(cursor, 0, DISPLAY_FOOT); return; }
 			int n = isList() ? listCount(p) : count(p);
-			if (n <= 0) { cursor = scroll = 0; return; }
-			cursor = std::clamp(cursor, 0, n - 1);
-			scroll = lay::listScroll(cursor, scroll, shown(p), n);
+			cursor = n <= 0 ? 0 : std::clamp(cursor, 0, n - 1);
 		}
 
 		// ---- Display and the two lists into rows ----
@@ -1519,13 +1549,12 @@ namespace bp
 						auto e = ui.sound->eqEntries(p);
 						cursor = std::max(0, currentRow(p));
 						if (cursor < (int)e.size() && e[cursor].kind == 0) cursor++;	// (never on a section's name)
-						scroll = lay::listScroll(cursor, 0, shown(p), (int)e.size());
 					}
 					break;
 				case Sound::EQO_SAVE_TO: ui.sound->eqSave(p); break;
 				case Sound::EQO_SAVE_AS: ui.sound->eqNameOpen(false, p); break;
 				case Sound::EQO_RENAME: ui.sound->eqNameOpen(true, p); break;
-				case Sound::EQO_DELETE: eqMode = EQ_DELETE; cursor = scroll = 0; break;
+				case Sound::EQO_DELETE: eqMode = EQ_DELETE; cursor = 0; break;
 				case Sound::EQO_RESET: ui.sound->eqReset(p); break;
 				default: break;
 				}
@@ -1636,7 +1665,7 @@ namespace bp
 			case Button::Y: ui.sound->eqToggle(p); break;
 			case Button::A: ui.sound->eqSave(p); break;
 			// the preset options (they were START on the old page)
-			case Button::X: eqMode = EQ_OPTIONS; cursor = scroll = 0; break;
+			case Button::X: eqMode = EQ_OPTIONS; cursor = 0; break;
 			default: return false;
 			}
 			return true;
@@ -1690,7 +1719,12 @@ namespace bp
 		}
 		bool key(Button b, Player& p) override
 		{
+			const int was = cursor;
+			const std::string kind = rowsKind();
 			bool r = keyImpl(b, p);
+			// the cursor moved in the same rows: kept in view by a glide (other rows are put on it as they draw)
+			if (!done && tab != TAB_SHOW && isList() && cursor != was && rowsKind() == kind)
+				rows.reveal(cursor, rowsView(p), listCount(p));
 			if (done && tab == TAB_EQ) p.commitEq();	// (the curve as it stands: what mpv keeps, and settings.conf)
 			return r;
 		}
@@ -1782,7 +1816,6 @@ namespace bp
 			{
 				press = P_NONE;
 				pressAt = -1;
-				drag = false;
 				// the veil: closed (the lift that follows presses nothing)
 				if (!s.box.hit(x, y)) { close(); ui.swallowTouch = true; return false; }
 				if (tab == TAB_EQ && eqMode == EQ_MAIN)
@@ -1799,49 +1832,23 @@ namespace bp
 					return false;
 				}
 				int n = isList() ? listCount(p) : count(p);
-				int shownN = shown(p);
-				for (int i = scroll; i < n && i < scroll + shownN; i++)
-				{
-					// (the section names of the preset list are no choice)
-					if (eqMode == EQ_LIST && lineAt(i, p).off) continue;
-					if (s.row(i - scroll).hit(x, y))
-					{
-						press = P_ROW;
-						pressAt = i;
-						cursor = i;
-						dragY = y;
-						dragScroll = scroll;
-						return false;
-					}
-				}
+				int r = rows.down(pt, x, y, rowsView(p));
+				// (the section names of the preset list are no choice)
+				if (r >= 0 && r < n && !(eqMode == EQ_LIST && lineAt(r, p).off)) { press = P_ROW; pressAt = r; cursor = r; }
 				return false;
 			}
 			if (pt.kind == Pointer::Move)
 			{
-				// a finger dragging the rows scrolls them (a tap still chooses)
-				if (press == P_ROW && !drag && std::abs(y - dragY) > 12) drag = true;
-				if (!drag) return false;
-				int n = listCount(p);
-				int maxScroll = std::max(0, n - shown(p));
-				scroll = std::clamp(dragScroll + (int)std::lround((dragY - y) / (double)lay::LIST_ROW), 0, maxScroll);
+				rows.move(pt);	// (the rows follow the finger past the slop; a tap still chooses)
 				return false;
 			}
 			if (pt.kind != Pointer::Up) return false;
 			int kind = press, at = pressAt;
 			press = P_NONE;
 			pressAt = -1;
-			bool dragged = drag;
-			drag = false;
-			if (dragged)
-			{
-				// the finger scrolled: nothing chosen; the highlight goes to the row under it at the lift (the finger's
-				// own place, not one row per scroll step: rounding and a clamped end would land beside it)
-				int n = listCount(p), shownN = shown(p);
-				cursor = lay::rowAt(y, s.rowsY, scroll, shownN, n);
-				settle(p);
-				return false;
-			}
-			if (kind == P_ROW && at >= scroll && at < listCount(p) && s.row(at - scroll).hit(x, y)) choose(at, p);
+			bool tap = rows.up();
+			if (kind == P_ROW && !tap) { settle(p); return false; }	// (a drag or a caught glide: nothing chosen)
+			if (kind == P_ROW && at < listCount(p) && rows.list.rowAt(x, y) == at) choose(at, p);
 			else if (kind == P_SAVE && eqLayout(s).save.hit(x, y)) ui.sound->eqSave(p);
 			else if (kind == P_ON && Rect{eqLayout(s).toggleX, eqLayout(s).cy - 11, 40, 22}.hit(x, y)) ui.sound->eqToggle(p);
 			else if (kind == P_PREV && (eqLayout(s).prevCap.hit(x, y) || eqLayout(s).prevArrow.hit(x, y))) ui.sound->eqStep(-1, p);
@@ -1852,7 +1859,6 @@ namespace bp
 				auto e = ui.sound->eqEntries(p);
 				cursor = std::max(0, currentRow(p));
 				if (cursor < (int)e.size() && e[cursor].kind == 0) cursor++;
-				scroll = lay::listScroll(cursor, 0, shown(p), (int)e.size());
 			}
 			settle(p);
 			return false;
@@ -2000,22 +2006,28 @@ namespace bp
 			int n = listCount(p);
 			if (n <= 0) { close(); return; }
 			settle(p);
-			int shownN = shown(p), first = scroll, last = std::min(n, scroll + shownN);
-			for (int i = first; i < last; i++)
-			{
-				Line l = lineAt(i, p);
+			int shownN = shown(p);
+			// each row's look from a copy of its line (the list may draw a row after this draw)
+			auto lines = std::make_shared<std::vector<Line>>();
+			for (int i = 0; i < n; i++) lines->push_back(lineAt(i, p));
+			const int focus = cursor, pressed = press == P_ROW && !rows.moved ? pressAt : -1;
+			auto rowOf = [lines, focus, pressed](int i) {
+				const Line& l = (*lines)[i];
 				Kit::Row row;
 				row.font = F_P16;
 				row.name = l.name;
 				row.note = l.note;
-				row.focused = i == cursor;
-				row.pressed = press == P_ROW && pressAt == i;
+				row.focused = i == focus;
+				row.pressed = i == pressed;
 				row.radio = !l.off;
 				row.radioOn = !l.off && l.on;
 				row.off = l.off;
-				k.row(s.row(i - first), row);
-			}
-			ui.drawScrollBar(s.rowsY, shownN * lay::LIST_ROW, scroll, shownN, n);
+				return row;
+			};
+			Rect v = SheetRows::view(s, shownN);
+			rows.settleOn(rowsKind(), cursor, v, n, 0);
+			rows.draw(ui, v, n, rowOf);
+			ui.drawScrollBar(s.rowsY, shownN * lay::LIST_ROW, rows.first(), shownN, n);
 			if (eqMode == EQ_LIST) k.hints({{"UP/DOWN", "Move"}, {"A", "Choose"}, {"B", "Back"}});
 			else if (eqMode == EQ_DELETE) k.hints({{"UP/DOWN", "Move"}, {"A", "Choose"}, {"B", "Cancel"}});
 			else if (eqMode == EQ_OPTIONS) k.hints({{"UP/DOWN", "Move"}, {"A", "Choose"}, {"B", "Back"}});
@@ -2032,7 +2044,7 @@ namespace bp
 		std::string signature(const Player& p) const override
 		{
 			// the tab, the rows and the finger; the equalizer's mode and preset; the settings' own are Ui's
-			std::string sig = std::to_string(tab) + "," + std::to_string(cursor) + "," + std::to_string(scroll) + "," +
+			std::string sig = std::to_string(tab) + "," + std::to_string(cursor) + "," + std::to_string(rows.moved) + "," +
 				std::to_string(press) + "," + std::to_string(pressAt) + "," + std::to_string(eqMode) + "," +
 				std::to_string(ui.sound->eqBand) + "," +
 				std::to_string(p.eqPresetSerial()) + "," + std::to_string(p.playingAudio());
