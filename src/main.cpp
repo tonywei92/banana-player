@@ -636,8 +636,11 @@ int main(int argc, char** argv)
 			WebConfig wc;
 			wc.stateDir = opts.stateDir;
 			// the browser's places, the whole card ("/", a computer's) left out
-			for (auto& r : browseRoots())
-				if (r.path != "/") wc.roots.push_back({r.label, r.path});
+			{
+				std::vector<BrowseRoot> places = browseRoots();
+				for (auto& r : places)
+					if (r.path != "/") wc.roots.push_back({r.label, r.path, r.card, r.card ? "" : placeWhere(places, r)});
+			}
 			wc.eventType = evWeb;
 			WebServer* ws = webServer;
 			wc.snapshot = [ws](Player& p, Ui& u) { return webSnapshotJson(webSnapshot(*ws, p, u), u); };
@@ -2330,7 +2333,7 @@ int main(int argc, char** argv)
 					rootsSeen = ui.rootsSerial();
 					std::vector<WebRoot> wr;
 					for (auto& r : ui.places())
-						if (r.path != "/") wr.push_back({r.label, r.path});
+						if (r.path != "/") wr.push_back({r.label, r.path, r.card, r.card ? "" : placeWhere(ui.places(), r)});
 					webServer->setRoots(wr);
 				}
 			}

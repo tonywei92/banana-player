@@ -533,6 +533,12 @@ See [Photos](#photos) for the touch screen.
 
 ### In the file list
 
+**Files' places.** Files' first page lists where your files can be, each a card: **Internal storage** (the system's
+own storage; **SD card 1** when BananaOS itself runs from a card), **SD card 2** when a card is in the second slot,
+and the **Videos** shortcut with the storage it is on. A storage's card shows its free room (`21 GB free`), a bar of
+what is used, and `43 GB used of 64 GB` under it. Nearly full (under a tenth free, or under 1 GB) the bar and the
+free line turn red and the line says `nearly full`. Sizes are the ones on a card's box (1000s).
+
 | Button | What it does |
 |---|---|
 | **A** (or tap it) | Open the folder, play the file (or open a document), or open the playlist. Files lists every file of the cards; one nothing here opens says so |
@@ -1052,7 +1058,8 @@ one dim line says the version: **Banana Player 0.7.27 · Source · Support Banan
 opening in a new tab (the repository, and ko-fi.com/tonysong; nothing is loaded from there and there is no QR on the
 page). On a phone they're the tab bar at the bottom, with a small
 player floating over it; on a tablet an icon rail on the left and a player bar at the bottom; on a computer a sidebar
-(the sections, a shortcut list of playlists, and a card with the handheld's battery, free space and **Sign out**) and
+(the sections, a shortcut list of playlists, and a card with the handheld's battery, every storage it has (the
+internal one and each card in it: free room, a bar of what is used, used of total, red when nearly full) and **Sign out**) and
 the player bar. On a phone, **Sign out** is behind the handheld button at the top right of the sections. The player
 itself is not a tab: the small player and the player bar open it, and it keeps playing as you move around.
 A video playing in this browser goes on, picture and all, when you leave it: it plays in the small player's
@@ -1190,9 +1197,12 @@ handheld, carries on at 1:27"):
   cancel one, **Retry** a failed one, **Pause** (what's on its way starts again from the beginning), **Cancel all**.
   When all are up, the key ticks and a note says where they went, with **Show**. Uploads carry on while you move
   between pages, and the key stays on every page (not over the player) while they run or failed.
+- **Files' first page** lists every place the handheld has, as its own Files does: each storage with its free room, a
+  bar of what is used and `used of total` (red when nearly full), and the Videos shortcut with where it is. A card
+  put in or taken out shows within a couple of seconds, without a reload.
 - **New folder**, **Rename**, **Move**, **Copy**, **Download**, and **Delete** (permanent: it asks first and can't be undone).
 - **Move…** and **Copy…** (a row's **⋯**, or the selection's band) open a folder picker. With a second card in, a
-  choice at its top switches between the handheld's places (**This card**, **Card 2**), so files and folders go
+  choice at its top switches between the handheld's places (**Internal storage**, **SD card 2**), so files and folders go
   from one card to the other. Nothing is ever replaced: an item whose name is taken there is left where it was, and
   **Copy here** is off in the item's own folder. A move on one card is instant. A copy, or a move to the other card,
   runs on the handheld and carries on with the page closed: a round key at the bottom right fills by the bytes copied

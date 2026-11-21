@@ -1,6 +1,16 @@
 /* ================= helpers ================= */
 export const fmtTime = s => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
 export function fmtSize(b) { if (b == null) return ''; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1000 && i < 4) { b /= 1000; i++; } return (i > 1 ? b.toFixed(1) : Math.round(b)) + ' ' + u[i]; }
+// a storage place's room as the handheld's Files says it (src/browser.cpp, capacityOf): sizes as a card's box says
+// them, the share used (the bar), and full (the bar and the free line in --red) under a tenth or under 1 GB
+export function capWords(b) { const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 999.5 && i < 4) { b /= 1000; i++; } return (i >= 3 && b < 9.95 ? b.toFixed(1) : Math.round(b)) + ' ' + u[i]; }
+export function capacity(free, total) {
+	if (!(total > 0)) return null;
+	free = Math.min(Math.max(0, free || 0), total);
+	return { used: (total - free) / total, full: free < total / 10 || free < 1e9, free: capWords(free) + ' free', detail: capWords(total - free) + ' used of ' + capWords(total) };
+}
+// the storages among the places (the handheld's own, each card in it); a computer's test folders: the first place
+export const storages = roots => { const c = (roots || []).filter(r => r.card); return c.length ? c : (roots || []).slice(0, 1); };
 export function fmtDate(t) { return t ? new Date(t * 1000).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : ''; }
 export const baseName = p => p.split('/').pop();
 // a network file (bpnet://<connection>/<path>): the handheld plays it, never this browser (it has no address the page can load)

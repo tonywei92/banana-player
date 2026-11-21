@@ -5,7 +5,7 @@ import { durable, durationOf, useDurations } from './durations.js';
 import { baseName, cmpName, dirName, fmtDate, fmtSize, fmtTime, isIOS, itemsText, joinPath, plural, titleFor, touchOnly } from './util.js';
 import { addToPlaylist, isLiked, nameDialog, plEdit, setLike } from './plshared.js';
 import { ask, openModal, toast } from './toasts.js';
-import { AppMenu, Art, Empty, Modal, MoreDots, Skeleton, Storage, openSheet, useLater, useMedia } from './components.js';
+import { AppMenu, Art, Empty, Modal, MoreDots, Place, Skeleton, Storage, openSheet, useLater, useMedia } from './components.js';
 import { Icon } from './icons.js';
 import { cancelAllUploads, cancelUpload, clearDone, dirLabel, doneTimer, entriesFromDrop, markFresh, pauseUploads, retryUpload, startUpload } from './uploads.js';
 import { filesHash, go, replaceHash } from './router.js';
@@ -221,7 +221,7 @@ export function Files() {
 	if (!path) {
 		if (!roots) return html`<div class="page"><${Skeleton} /></div>`;
 		return html`<div class="page"><div class="phead"><div class="row"><h1>Files</h1><${AppMenu} /></div></div>
-			<div class="box surface listbox"><ul class="flist">${roots.map(r => html`<li class="frow"><button class="main-btn" onClick=${() => go(filesHash(r.path))}><span class="tile folder"><${Icon} n="card" k=${2} /></span><span class="grow"><div class="fn ell">${r.name}</div><div class="fm">${fmtSize(r.free)} free</div></span></button><${Icon} n="right" k=${2} cls="chev" /></li>`)}</ul></div></div>`;
+			<div class="box surface listbox"><ul class="flist">${roots.map(r => html`<li class="frow placerow"><button class="main-btn" onClick=${() => go(filesHash(r.path))}><span class="tile folder"><${Icon} n=${r.card ? 'card' : 'folder'} k=${2} /></span>${r.card ? html`<${Place} root=${r} />` : html`<span class="grow"><div class="fn ell">${r.name}</div><div class="fm">${r.where || 'Folder'}</div></span>`}</button><${Icon} n="right" k=${2} cls="chev" /></li>`)}</ul></div></div>`;
 	}
 	const addPick = async () => {
 		try { await plEdit(pick.id, 'add', { p: selected }); toast('Added to ' + pick.name); const id = pick.id; set({ pick: null, sel: new Set() }); go('#/playlists/' + encodeURIComponent(id)); }

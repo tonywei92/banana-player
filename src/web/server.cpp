@@ -250,8 +250,12 @@ namespace bp
 
 	void WebServer::setRoots(const std::vector<WebRoot>& r)
 	{
-		std::lock_guard<std::mutex> g(lock);
-		cfg.roots = r;
+		{
+			std::lock_guard<std::mutex> g(lock);
+			cfg.roots = r;
+		}
+		// the open pages read their places again (a card put in or taken out shows without a reload)
+		notify("fs", "{\"dir\":\"\",\"roots\":true}");
 	}
 
 	std::vector<WebRoot> WebServer::roots() const

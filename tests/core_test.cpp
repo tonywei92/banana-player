@@ -6040,6 +6040,45 @@ static void testHistoryPerKind()
 	CHECK_EQ(again.items().size(), (size_t)205);
 }
 
+static void testStorage()
+{
+	// the names follow BananaOS's mounts: /data by the device under it, the second slot always a card
+	CHECK_EQ(storageLabel("/data", "SD"), "SD card 1");
+	CHECK_EQ(storageLabel("/data", "MMC"), "Internal storage");
+	CHECK_EQ(storageLabel("/data", ""), "Internal storage");
+	CHECK_EQ(storageLabel("/run/sd2", "SD"), "SD card 2");
+	CHECK_EQ(storageLabel("/run/sd1", "SD"), "SD card 1");
+	// a folder among the places says the storage it is on
+	{
+		std::vector<BrowseRoot> roots = {{"Videos", "/data/roms/videos"}, {"Internal storage", "/data", true}, {"SD card 2", "/run/sd2", true}};
+		CHECK_EQ(placeWhere(roots, roots[0]), "Internal storage / roms / videos");
+		CHECK_EQ(placeWhere(roots, {"Films", "/run/sd2/Films"}), "SD card 2 / Films");
+		CHECK_EQ(placeWhere(roots, {"Home", "/Users/x"}), "/Users/x");
+		CHECK_EQ(placeWhere(roots, {"Data 2", "/data2/x"}), "/data2/x");	// (a name that only starts the same)
+	}
+	// sizes as a card's box says them
+	CHECK_EQ(capacityWords(64000000000ull), "64 GB");
+	CHECK_EQ(capacityWords(7400000000ull), "7.4 GB");
+	CHECK_EQ(capacityWords(512000000ull), "512 MB");
+	CHECK_EQ(capacityWords(999900000ull), "1.0 GB");
+	CHECK_EQ(capacityWords(0), "0 B");
+	// the row's words, the bar's share, and DANGER when little is left
+	Capacity c = capacityOf(21000000000ull, 64000000000ull);
+	CHECK(c.known && !c.full);
+	CHECK_EQ(c.free, "21 GB free");
+	CHECK_EQ(c.detail, "43 GB used of 64 GB");
+	CHECK(c.used > 0.67 && c.used < 0.68);
+	CHECK(capacityOf(6000000000ull, 64000000000ull).full);	// under a tenth
+	CHECK(!capacityOf(6500000000ull, 64000000000ull).full);
+	CHECK(capacityOf(900000000ull, 4000000000ull).full);	// under 1 GB
+	Capacity full = capacityOf(0, 64000000000ull);
+	CHECK(full.full && full.used == 1.0);
+	CHECK_EQ(full.free, "0 B free");
+	CHECK_EQ(capacityOf(99, 10).used, 0.0);	// (more free than there is: clamped)
+	CHECK(!capacityOf(5, 0).known);	// nothing read
+	CHECK_EQ(capacityOf(5, 0).free, "");
+}
+
 static void testPathMoved()
 {
 	std::string n;
@@ -12068,6 +12107,40 @@ static void testKitLayout()
 			CHECK_EQ(add.bar[keys - 1].x + add.bar[keys - 1].w, add.rows.x + add.rows.w);
 			CHECK_EQ(add.bar[keys].w, 0);
 		}
+		// the places (Files' first page): 84-pitch rows, each a 76-tall card; a storage's name, free room, bar and
+		// "used of total" inside it without touching; a folder's two lines
+		lay::FilesPage pl = lay::filesPage(s.body, 3, false, true, 4, lay::PLACE_ROW_H);
+		CHECK_EQ(pl.shown, 3);
+		CHECK_EQ(lay::filesPage(s.body, 40, false, true, 4, lay::PLACE_ROW_H).shown, 4);	// (396 - 24) / 84
+		for (int i = 0; i < pl.shown; i++)
+		{
+			CHECK_EQ(pl.row(i).h, lay::PLACE_ROW_H);
+			if (i) CHECK_EQ(pl.row(i).y, pl.row(i - 1).y + lay::PLACE_ROW_H);
+			CHECK(pl.row(i).y + pl.row(i).h <= pl.footer.y);
+			for (int cap = 0; cap < 2; cap++)
+			{
+				lay::PlaceRow r = lay::placeRow(pl.row(i), cap == 1);
+				auto inside = [&](lay::Box b) {
+					return b.x >= r.card.x && b.x + b.w <= r.card.x + r.card.w && b.y >= r.card.y && b.y + b.h <= r.card.y + r.card.h;
+				};
+				CHECK_EQ(r.card.h, lay::PLACE_CARD_H);
+				CHECK(r.card.y >= pl.row(i).y && r.card.y + r.card.h <= pl.row(i).y + pl.row(i).h);
+				CHECK(r.card.h >= 44);	// a touch target
+				CHECK(inside(r.icon) && inside(r.name) && inside(r.detail));
+				CHECK(r.name.x >= r.icon.x + r.icon.w + lay::SP8);
+				CHECK(r.name.y + r.name.h <= r.detail.y);
+				if (cap)
+				{
+					CHECK(inside(r.free) && inside(r.bar));
+					CHECK(r.name.x + r.name.w <= r.free.x);
+					CHECK_EQ(r.bar.h, lay::PLACE_BAR_H);
+					CHECK(r.name.y + r.name.h <= r.bar.y && r.bar.y + r.bar.h <= r.detail.y);
+					CHECK_EQ(r.bar.x, r.name.x);
+					CHECK_EQ(r.bar.x + r.bar.w, r.free.x + r.free.w);
+				}
+				else CHECK(r.free.w == 0 && r.bar.w == 0);
+			}
+		}
 		// no rows, no negative boxes
 		lay::FilesPage none = lay::filesPage(s.body, 0, false, false);
 		CHECK_EQ(none.shown, 0);
@@ -15752,6 +15825,7 @@ int main()
 	testEpub();
 	testMangaSkipsBooks();
 	testTextFind();
+	testStorage();
 	testPathMoved();
 	testHistoryPerKind();
 	testMangaWithin();

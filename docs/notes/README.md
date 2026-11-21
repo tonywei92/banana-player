@@ -7,6 +7,7 @@ Write the way the rest of the repo does: plain and precise, with the why. Say wh
 
 ## Index
 
+- [2026-11-21 Files' places: storage cards](2026-11-21-storage-places.md): each storage a card with its room and a bar (`lay::placeRow`, `capacityOf`, `storageLabel`), the same on the dashboard (`/api/roots` `card` / `where`, `Place`), and the sidebar lists every storage.
 - [2026-11-21 smooth scrolling](2026-11-21-smooth-scroll.md): Music's lists follow the finger by the pixel, glide and band at the ends (`lay::Scroller`, `Ui::SmoothList`: row slots, scroll frames composed over a kept frame, an LRU text cache); the frame's cost by part in the timing lines; how to move another list onto it.
 - [2026-11-19 the Now playing key and Quick settings' block](2026-11-19-np-rail-quick.md): the mini bar leaves every page (`lay::shell()` loses its box); the rail's 68 × 44 Now playing key (art at 30, bars, a pause mark, its slot kept) with tap / hold / SELECT; Quick settings' 592-wide panel heads with an always-present Now playing block; the header's status cluster opens the panel; the tests and what was not done.
 - [2026-11-19 the player's chips open their own sheets](2026-11-19-player-sheets.md): no View sheet or tabs (each chip opens a titled sheet), Repeat steps and Shuffle toggles in place, More's first row is the chips, Picture's Adjust page, and a photo's SELECT More; `G_LOOP_ONE`, the sheet chip row, `--press` shots.
