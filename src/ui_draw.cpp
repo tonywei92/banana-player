@@ -3,6 +3,7 @@
 #include "playlist.h"
 #include "netpath.h"
 #include "theme.h"
+#include "stickscroll.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -669,6 +670,19 @@ namespace bp
 			listShown = list;
 		}
 		if (list) list->step(SDL_GetTicks());
+		// the left stick scrolls a list (a full push is the view's height a second); a finger on it wins
+		{
+			double sv = list && !list->sc.held() ? stickScrollSpeed(stickLY, list->spec().view.h) : 0;
+			Uint32 now = SDL_GetTicks();
+			if (sv != 0)
+			{
+				Uint32 dt = stickListAt ? std::min<Uint32>(now - stickListAt, 50) : 16;
+				stickListAt = now;
+				list->sc.jump(list->sc.offset() + sv * dt / 1000.0);
+			}
+			else stickListAt = 0;
+			stickListOn = sv != 0;
+		}
 		std::string sig = signature(p);
 		if (page == Page::Info || page == Page::About)
 			for (auto& l : infoLines) sig += l.label + "=" + l.text + ";";

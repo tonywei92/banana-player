@@ -637,23 +637,29 @@ namespace bp
 		land(i, vTo, hTo);
 	}
 
-	bool Paged::panBy(double dy)
+	bool Paged::panBy(double dy, double dx)
 	{
 		int i = current();
-		if (i < 0 || dy == 0) return false;
-		double vmax = vMax(i);
-		if (vmax <= 0)
-		{
-			// a page that fits the view has nothing to pan: the stick leaves paged modes alone (issue 16)
-			v = 0;
-			return false;
-		}
-		double to = clampD(v + dy, 0, vmax);
-		if (to == v) return false;
+		if (i < 0 || (dy == 0 && dx == 0)) return false;
+		double vmax = vMax(i), hmax = hMax(i);
+		// a page that fits the view has nothing to pan: the stick leaves paged modes alone (issue 16)
+		if (vmax <= 0) v = 0;
+		if (hmax <= 0) h = 0;
+		double vTo = vmax > 0 ? clampD(v + dy, 0, vmax) : v;
+		double hTo = hmax > 0 ? clampD(h + dx * (rtl ? -1.0 : 1.0), 0, hmax) : h;
+		if (vTo == v && hTo == h) return false;
 		stopAnim();
-		v = to;
+		v = vTo;
+		h = hTo;
 		vbase[i] = v;
+		hbase[i] = h;
 		return true;
+	}
+
+	bool Paged::canPanH() const
+	{
+		int i = current();
+		return i >= 0 && hMax(i) > 0;
 	}
 
 	bool Paged::canPanV() const

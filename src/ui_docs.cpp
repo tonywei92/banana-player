@@ -898,7 +898,7 @@ namespace bp
 		return false;
 	}
 
-	void Ui::Docs::stickAxis(int value, Player& p)
+	void Ui::Docs::stickAxis(int value, Player& p, int valueX)
 	{
 		int64_t now = SDL_GetTicks();
 		bool text = ui.page == Page::DocText && textStatus.open && docMenu == DOC_MENU_NONE && !findJob;
@@ -928,7 +928,7 @@ namespace bp
 		// every pass while it is the stick's own reader: a chapter or a page that opens under a held stick is
 		// picked up at once, and the reader ignores the same value as before
 		if (target == 1) textCmds.push_back({TextReader::Stick, (double)value, now});
-		else if (target == 2) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, (double)value, now});
+		else if (target == 2) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, (double)value, now, (double)valueX});
 	}
 
 	void Ui::Docs::docBookTurn(int dpadDy, Player& p)

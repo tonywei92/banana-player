@@ -5,6 +5,7 @@
 #include "playlist.h"
 #include "netpath.h"
 #include "theme.h"
+#include "stickscroll.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -149,8 +150,28 @@ namespace bp
 		if (ren) SDL_DestroyRenderer(ren);
 	}
 
-	void Ui::stickAxis(int value, Player& p)
+	void Ui::stickAxis(int value, Player& p, int valueX)
 	{
+		stickLY = value;
+		stickLX = valueX;
+		// a zoomed photo pans under the stick (a full push is a panel's width or height a second); lists scroll in draw()
+		Uint32 now = SDL_GetTicks();
+		double sx = stickScrollSpeed(valueX, 1.0), sy = stickScrollSpeed(value, 1.0);
+		if ((sx != 0 || sy != 0) && page == Page::Main && p.playingPhoto() && !topOverlay() && !panTouch)
+		{
+			Uint32 dt = stickPhotoAt ? std::min<Uint32>(now - stickPhotoAt, 50) : 16;
+			stickPhotoAt = now;
+			PhotoScale sc = p.photoScaleNow();
+			const Player::PhotoView& v = p.photo();
+			if (dt && (sc.x > 1.001 || sc.y > 1.001))
+			{
+				flickAt = 0;
+				// the view moves toward the push, so the photo (mpv's pan) goes the other way
+				p.setPhotoView(v.zoom, v.panX - (sc.x > 1.001 ? sx * dt / 1000.0 / sc.x : 0),
+					v.panY - (sc.y > 1.001 ? sy * dt / 1000.0 / sc.y : 0));
+			}
+		}
+		else stickPhotoAt = 0;
 		// one reader at a time; the other gets a 0, so a stick held as its page closes stops it at once
 		if (page == Page::DocText || page == Page::DocPages) docs->stickAxis(value, p);
 		else docs->stickAxis(0, p);

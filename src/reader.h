@@ -70,8 +70,8 @@ namespace bp
 		// Step turns a spread, Page moves one page (to realign it); zoom, fit, the turn (L3) and the finger's drag
 		// are the Ui's to leave out (the reader ignores them). A Strip opens it in right to left.
 		// Pan: the paged modes' page shown centred on (v, v2), shares of the page (the PDF viewer's pan area)
-		// Stick: v the left stick's LEFTY (-32768 up … 32767 down): the Strip scrolls, a paged page with room pans,
-		// every frame while held (issue 16)
+		// Stick: v the left stick's LEFTY (-32768 up … 32767 down), v2 its LEFTX (-32768 left … 32767 right): the Strip
+		// scrolls (up/down), a paged page with room pans both ways, every frame while held (issue 16)
 		void command(int kind, double v, int64_t ms, double v2 = 0, double v3 = 0);
 		// a paged mode's page in view and the part of it shown, as shares of the page; false in the Strip
 		bool panBox(int& page, float& x0, float& y0, float& x1, float& y1) const;
@@ -96,7 +96,7 @@ namespace bp
 		// still moving or uploading: main keeps its loop at the display's rate
 		bool busy() const
 		{
-			return strip.moving() || paged.moving() || uploads || forceFrames > 0 || (stickSpeedNow() != 0 && stickCanMove);
+			return strip.moving() || paged.moving() || uploads || forceFrames > 0 || (stickActive() && stickCanMove);
 		}
 		int mode() const { return readMode; }
 		// the Strip's place inside page() (Strip::within); 0 in the paged modes
@@ -153,6 +153,8 @@ namespace bp
 		void decodeLoop();
 		// the stick's speed now (0 at rest, inside its dead zone, in Book, or on a paged page that fits the view)
 		double stickSpeedNow() const;
+		double stickSpeedXNow() const;
+		bool stickActive() const { return stickSpeedNow() != 0 || stickSpeedXNow() != 0; }
 		// files is ready: the models, the page and the first want()
 		bool begin(const std::string& label, int page, int w, int h, int m, int f);
 		void want();
@@ -220,7 +222,7 @@ namespace bp
 		int viewW = 0, viewH = 0, forceFrames = 0;
 		// the left stick (issue 16): its last LEFTY value, when the last scrolling frame ran, and whether that
 		// frame could still move the view (at an end it can't: main's loop needn't spin until the value changes)
-		int stickValue = 0;
+		int stickValue = 0, stickValueX = 0;
 		int64_t stickAt = 0;
 		bool stickCanMove = false;
 		int lastSpin = -1;

@@ -3852,6 +3852,30 @@ static void testPaged()
 	r.release(1340);
 	CHECK_EQ(r.moving(), false);
 
+	// the stick's sideways pan (LEFTX): a page wider than the view pans, stopped at its edges; a fitting one stays
+	{
+		Paged sx;
+		sx.setView(400, 600);
+		sx.setPages(3, 0.6);
+		sx.setFit(Paged::FitFill);	// 1000 wide: 600 over sideways
+		CHECK_EQ(sx.canPanH(), true);
+		CHECK_EQ(sx.panBy(0, 80), true);
+		CHECK_EQ(near(sx.hscroll(), 80), true);
+		CHECK_EQ(sx.panBy(0, 1000), true);
+		CHECK_EQ(near(sx.hscroll(), 600), true);
+		CHECK_EQ(sx.panBy(0, 10), false);
+		CHECK_EQ(sx.panBy(0, -1000), true);
+		CHECK_EQ(sx.hscroll(), 0.0);
+		sx.setRtl(true);	// the offset runs with the reading order: right is back
+		sx.panBy(0, -50);
+		CHECK_EQ(near(sx.hscroll(), 50), true);
+		Paged fit;
+		fit.setView(400, 600);
+		fit.setPages(3, 1.5);
+		fit.setFit(Paged::FitWidth);
+		CHECK_EQ(fit.canPanH(), false);
+		CHECK_EQ(fit.panBy(0, 50), false);
+	}
 	// a tall page at fit Width scrolls inside before it turns, and Right opens the next page at the top
 	Paged t;
 	t.setView(400, 600);
