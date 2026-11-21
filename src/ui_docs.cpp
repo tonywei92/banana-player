@@ -3,6 +3,7 @@
 // viewer's pan area, or down a strip (fullscreen across both panels). Each document's place is kept in
 // doc-places.conf (the state folder), so it opens where it was left.
 #include "ui_internal.h"
+#include <map>
 #include "ui_docs.h"
 #include "ui_kit.h"
 #include "ui_reader.h"
@@ -582,6 +583,19 @@ namespace bp
 		docMenuStep(1, p);
 	}
 
+	Ui::Rect Ui::Docs::docMenuView(int n) const
+	{
+		int shown = (H - MENU_TOP - 40) / MENU_ROW_H;
+		return {16, MENU_TOP, 608, std::min(n, shown) * MENU_ROW_H};
+	}
+
+	Ui::SmoothList* Ui::Docs::smoothList()
+	{
+		if (docMenu != DOC_MENU_NONE) return &menuList.list;
+		if (ui.page == Page::DocPages && ui.pageReader->mangaPages) return &ui.pageReader->pagesList;
+		return nullptr;
+	}
+
 	void Ui::Docs::drawDocMenu(const Player& p)
 	{
 		bool contents = docMenu == DOC_MENU_CONTENTS, marks = docMenu == DOC_MENU_MARKS;
@@ -593,79 +607,112 @@ namespace bp
 		auto here = docMarksHere();
 		int shown = (H - MENU_TOP - 40) / MENU_ROW_H;
 		int n = marks ? (int)here.size() + 1 : contents ? (int)textStatus.contents.size() : (int)docMenuRows().size();
-		if (docMenuCursor < docMenuScroll) docMenuScroll = docMenuCursor;
-		if (docMenuCursor >= docMenuScroll + shown) docMenuScroll = docMenuCursor - shown + 1;
-		docMenuScroll = std::clamp(docMenuScroll, 0, std::max(0, n - shown));
 		auto rows = docMenuRows();
-		for (int i = docMenuScroll; i < n && i < docMenuScroll + shown; i++)
-		{
-			Rect r = docMenuRowRect(i - docMenuScroll);
+		// a smooth list (ui_smoothlist.h): another menu starts it again where its cursor is, at once
+		if (menuListKind != docMenu) { menuList.synced = -1; menuListKind = docMenu; }
+		docMenuScroll = std::clamp(docMenuScroll, 0, std::max(0, n - shown));
+		Rect view = docMenuView(n);
+		menuList.follow(view, MENU_ROW_H, n, 1, docMenuScroll, &docMenuCursor);
+		// each row's look: a plain row (Bookmarks, Contents) or a setting's (Options)
+		struct MenuRow { bool setting = false; const Glyph* glyph = nullptr; std::string name, note, value; bool danger = false, action = false; };
+		auto look = std::make_shared<std::map<int, MenuRow>>();
+		auto rowAt = [this, look, marks, contents, here, rows, &p](int i) -> const MenuRow& {
+			auto it = look->find(i);
+			if (it != look->end()) return it->second;
+			MenuRow m;
 			bool at = i == docMenuCursor;
-			if (marks || contents)
+			if (marks && i == 0)
+			{
+				m.glyph = &G_PLUS;
+				m.name = "Add a bookmark here";
+			}
+			else if (marks)
+			{
+				const DocMark& dm = docMarks[here[i - 1]];
+				m.glyph = &G_BOOKMARK;
+				m.name = dm.label;
+				m.note = std::to_string((int)std::lround(dm.frac * 100)) + "%";
+				if (at && docMarkArmed) { m.note = "X again to delete it"; m.danger = true; }
+			}
+			else if (contents)
+			{
+				const auto& c = textStatus.contents[i];
+				m.name = std::string(std::min(c.second.second, 4) * 2, ' ') + c.first;
+			}
+			else
+			{
+				int id = rows[i];
+				static const char* LABELS[] = {"Font", "Text size", "Line spacing", "Margins", "Colours", "Brightness & filter", "Encoding",
+					"Go to", "View", "Fullscreen", "Brightness & filter", "Page fit", "Zoom", "Pages", "View", "Hold", "Bookmarks", "Page turn", "Find\u2026"};
+				m.setting = true;
+				m.name = LABELS[id];
+				std::string& v = m.value;
+				if (id == DT_FIND || id == DP_PAGES || id == DT_MARKS || id == DT_FILTER || id == DP_FILTER)
+				{
+					// an action: opens something (Brightness & filter its sheet: the filter on now beside it)
+					m.action = true;
+					if (id == DT_FIND && !findQuery.empty()) v = "\u201C" + findQuery + "\u201D";
+					if (id == DT_FILTER || id == DP_FILTER)
+						v = FILTER_NAMES[std::clamp(id == DT_FILTER ? p.settings.txtFilter : p.settings.pdfFilter, 0, DOC_FILTERS - 1)];
+					if (id == DT_MARKS) v = docMarksHere().empty() ? "None yet" : std::to_string((int)docMarksHere().size());
+				}
+				else switch (id)
+				{
+				case DT_FONT: v = FONT_NAMES[std::clamp(p.settings.txtFont, 0, TXT_FONTS - 1)]; break;
+				case DT_SIZE: v = SIZE_NAMES[std::clamp(p.settings.txtSize, 0, TXT_SIZES - 1)]; break;
+				case DT_SPACING: v = SPACING_NAMES[std::clamp(p.settings.txtSpacing, 0, TXT_SPACINGS - 1)]; break;
+				case DT_MARGINS: v = MARGIN_NAMES[std::clamp(p.settings.txtMargins, 0, TXT_MARGINS - 1)]; break;
+				case DT_THEME: v = THEME_NAMES[std::clamp(p.settings.txtTheme, 0, TXT_PAGES - 1)]; break;
+				case DT_ENCODING: v = textEncoding.empty() ? "Auto (" + textStatus.encoding + ")" : textStatus.encoding; break;
+				case DT_GOTO: v = std::to_string((int)std::lround(textStatus.fraction * 100)) + "%"; break;
+				case DT_VIEW: v = p.settings.txtBook ? "Book mode" : "Scroll"; break;
+				case DT_TURN: v = p.settings.txtTurn ? "Off" : "Fold"; break;
+				case DT_HOLD: v = p.settings.txtBook == MANGA_BOOK_RIGHT ? "Top screen right" : "Top screen left"; break;
+				case DP_VIEW: v = ui.pageReader->readerStatus.mode == MANGA_STRIP ? "Vertical scroll" : "Single page"; break;
+				case DP_FULL: v = ui.pageReader->readerStatus.fullscreen ? "On" : "Off"; break;
+				case DP_FIT: v = p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page"; break;
+				case DP_ZOOM: v = std::to_string(ui.pageReader->readerStatus.zoomPct) + "%"; break;
+				default: break;
+				}
+			}
+			return look->emplace(i, std::move(m)).first->second;
+		};
+		SmoothList::Spec spec;
+		spec.view = view;
+		spec.rowH = MENU_ROW_H;
+		spec.count = n;
+		spec.key = [rowAt, cursor = docMenuCursor](int i) {
+			const MenuRow& m = rowAt(i);
+			char b[64];
+			snprintf(b, sizeof b, "|%p|%d%d%d%d", (const void*)m.glyph, m.setting, m.danger, m.action, i == cursor);
+			return m.name + "|" + m.note + "|" + m.value + b;
+		};
+		spec.draw = [this, rowAt, cursor = docMenuCursor](int i, Rect box) {
+			Kit& k = *ui.kit;
+			const MenuRow& m = rowAt(i);
+			Rect r{box.x, box.y, box.w, 46};
+			if (!m.setting)
 			{
 				Kit::Row row;
 				row.font = F_P16;
 				row.under = BG;
-				row.focused = at;
-				if (marks && i == 0)
-				{
-					row.glyph = &G_PLUS;
-					row.name = "Add a bookmark here";
-				}
-				else if (marks)
-				{
-					const DocMark& m = docMarks[here[i - 1]];
-					row.glyph = &G_BOOKMARK;
-					row.name = m.label;
-					row.note = std::to_string((int)std::lround(m.frac * 100)) + "%";
-					if (at && docMarkArmed) { row.note = "X again to delete it"; row.danger = true; }
-				}
-				else
-				{
-					const auto& c = textStatus.contents[i];
-					row.name = std::string(std::min(c.second.second, 4) * 2, ' ') + c.first;
-				}
+				row.focused = i == cursor;
+				row.glyph = m.glyph;
+				row.name = m.name;
+				row.note = m.note;
+				row.danger = m.danger;
 				k.row(r, row);
-				continue;
+				return;
 			}
-			int id = rows[i];
-			static const char* LABELS[] = {"Font", "Text size", "Line spacing", "Margins", "Colours", "Brightness & filter", "Encoding",
-				"Go to", "View", "Fullscreen", "Brightness & filter", "Page fit", "Zoom", "Pages", "View", "Hold", "Bookmarks", "Page turn", "Find\u2026"};
 			Kit::SettingRow sr;
-			sr.label = LABELS[id];
-			sr.focused = at;
-			if (id == DT_FIND || id == DP_PAGES || id == DT_MARKS || id == DT_FILTER || id == DP_FILTER)
-			{
-				// an action: opens something (Brightness & filter its sheet: the filter on now beside it)
-				sr.action = true;
-				if (id == DT_FIND && !findQuery.empty()) sr.value = "\u201C" + findQuery + "\u201D";
-				if (id == DT_FILTER || id == DP_FILTER)
-					sr.value = FILTER_NAMES[std::clamp(id == DT_FILTER ? p.settings.txtFilter : p.settings.pdfFilter, 0, DOC_FILTERS - 1)];
-				if (id == DT_MARKS) sr.value = docMarksHere().empty() ? "None yet" : std::to_string((int)docMarksHere().size());
-				k.settingRow(r, sr);
-				continue;
-			}
-			std::string& v = sr.value;
-			switch (id)
-			{
-			case DT_FONT: v = FONT_NAMES[std::clamp(p.settings.txtFont, 0, TXT_FONTS - 1)]; break;
-			case DT_SIZE: v = SIZE_NAMES[std::clamp(p.settings.txtSize, 0, TXT_SIZES - 1)]; break;
-			case DT_SPACING: v = SPACING_NAMES[std::clamp(p.settings.txtSpacing, 0, TXT_SPACINGS - 1)]; break;
-			case DT_MARGINS: v = MARGIN_NAMES[std::clamp(p.settings.txtMargins, 0, TXT_MARGINS - 1)]; break;
-			case DT_THEME: v = THEME_NAMES[std::clamp(p.settings.txtTheme, 0, TXT_PAGES - 1)]; break;
-			case DT_ENCODING: v = textEncoding.empty() ? "Auto (" + textStatus.encoding + ")" : textStatus.encoding; break;
-			case DT_GOTO: v = std::to_string((int)std::lround(textStatus.fraction * 100)) + "%"; break;
-			case DT_VIEW: v = p.settings.txtBook ? "Book mode" : "Scroll"; break;
-			case DT_TURN: v = p.settings.txtTurn ? "Off" : "Fold"; break;
-			case DT_HOLD: v = p.settings.txtBook == MANGA_BOOK_RIGHT ? "Top screen right" : "Top screen left"; break;
-			case DP_VIEW: v = ui.pageReader->readerStatus.mode == MANGA_STRIP ? "Vertical scroll" : "Single page"; break;
-			case DP_FULL: v = ui.pageReader->readerStatus.fullscreen ? "On" : "Off"; break;
-			case DP_FIT: v = p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page"; break;
-			case DP_ZOOM: v = std::to_string(ui.pageReader->readerStatus.zoomPct) + "%"; break;
-			default: break;
-			}
+			sr.label = m.name;
+			sr.value = m.value;
+			sr.action = m.action;
+			sr.focused = i == cursor;
 			k.settingRow(r, sr);
-		}
+		};
+		menuList.list.draw(std::move(spec));
+		menuList.sync(docMenuScroll);
 		if (n > shown) ui.drawScrollBar(MENU_TOP, shown * MENU_ROW_H, docMenuScroll, shown, n);
 		if (marks) k.hints({{"A", docMenuCursor == 0 ? "Add" : "Go"}, {"X", "Delete"}, {"B", "Close"}});
 		else if (contents) k.hints({{"A", "Go"}, {"Y/B", "Close"}});
@@ -931,17 +978,11 @@ namespace bp
 			if (pt.kind != Pointer::Down) return ui.pageReader->mangaListPointer(pt, x, y);
 			int n = docMenu == DOC_MENU_MARKS ? (int)docMarksHere().size() + 1
 				: docMenu == DOC_MENU_CONTENTS ? (int)textStatus.contents.size() : (int)docMenuRows().size();
-			int shown = std::max(1, (H - MENU_TOP - 40) / MENU_ROW_H);
-			int r = (y - MENU_TOP) / MENU_ROW_H + docMenuScroll;
 			if (y < 60) { docMenu = DOC_MENU_NONE; return false; }
-			if (y < MENU_TOP || r < 0 || r >= n) r = -1;
-			ui.pageReader->mangaListBegin(x, y, docMenuScroll, MENU_ROW_H, r,
-				[this, n, shown](int want) {
-					docMenuScroll = std::clamp(want, 0, std::max(0, n - shown));
-					// the cursor stays among the rows shown (the drawing keeps it in view, and would pull the list back)
-					docMenuCursor = std::clamp(docMenuCursor, docMenuScroll, std::min(n - 1, docMenuScroll + shown - 1));
-					return docMenuScroll;
-				},
+			// the list follows a finger by the pixel and glides on (a smooth list); a tap acts on its row
+			int r = menuList.list.rowAt(x, y);
+			if (r >= n) r = -1;
+			ui.pageReader->mangaListSmooth(menuList.list, x, y, r,
 				[this, x, rowY = y, pp = &p](int row) {
 					docMenuCursor = row;
 					// a stepper row: a tap left of its value steps back, right of it on (lay::settingStepper, as the
@@ -949,7 +990,7 @@ namespace bp
 					auto ids = docMenuRows();
 					bool stepper = docMenu == DOC_MENU_OPTIONS && row >= 0 && row < (int)ids.size() && ids[row] != DT_FIND && ids[row] != DP_PAGES &&
 						ids[row] != DT_MARKS && ids[row] != DT_FILTER && ids[row] != DP_FILTER;
-					lay::SettingStepper st = lay::settingStepper(docMenuRowRect(row - docMenuScroll));
+					lay::SettingStepper st = lay::settingStepper(docMenuRowRect(row));
 					if (stepper && (st.back.hit(x, rowY) || st.fwd.hit(x, rowY))) docMenuStep(st.back.hit(x, rowY) ? -1 : 1, *pp);
 					else docMenuAct(*pp);
 				});

@@ -8,7 +8,7 @@
 // few files of Ui that ask the area something (Settings' Extensions group, the keyboard's fields, Files' moves).
 #pragma once
 #include "ui.h"
-#include "ui_smoothlist.h"
+#include "ui_reader.h"
 #include "javaext.h"
 #include "mangafilters.h"
 #include "mangajava.h"
@@ -56,14 +56,7 @@ namespace bp
 		SmoothList* smoothList() override;
 		// the Manga pages' own: the last list a page drew (a sheet's over its page's), null on a page with none
 		SmoothList* mangaPageList() { return shownList; }
-		struct MList
-		{
-			MList(Ui& u) : list(u) {}
-			SmoothList list;
-			int synced = -1, cursorWas = -2;
-			bool wasMoving = false;
-			std::function<void()> scrolled;	// a finger's: the next page asked near the end (the grids', the chapters')
-		};
+		using MList = PageReader::FollowList;	// one per list (ui_reader.h)
 		// the Extensions page's and Manage extensions' part of the signature
 		std::string extSignature() const;
 
@@ -106,9 +99,8 @@ namespace bp
 		// a series page's keys (lay::seriesPage + lay::keyRow): their boxes for `widths`
 		std::vector<lay::Box> mangaSeriesKeys(const std::vector<int>& widths) const;
 		// ---- the lists on smooth lists (ui_smoothlist.h; docs/notes/2026-11-21-smooth-scroll.md) ----
-		// One per list. The pages keep their int scroll (the first whole row shown) and cursor, which their keys set
-		// as they always did: mlFollow turns a change of either into the list's motion (the cursor kept in sight by
-		// a glide, a scroll set elsewhere a jump there), mlSync writes the first whole row shown back after it drew
+		// One per list (MList: the pages keep their int scroll and cursor, which their keys set as they always did;
+		// follow and sync turn those into the list's motion and back)
 		void mlFollow(MList& m, Rect view, int rowH, int n, int cols, int& scroll, int* cursor);
 		void mlSync(MList& m, int& scroll);
 		SmoothList* frameList = nullptr;	// the list the page drew this frame (the last one drawn: a sheet's)
@@ -117,6 +109,13 @@ namespace bp
 			mlSrcGrid{ui}, mlSrvGrid{ui}, mlSrcAv{ui}, mlFilter{ui}, mlFilterCheck{ui}, mlDlChoose{ui};
 		// a page's kit rows (lay::rowList's pitch) in mangaListArea: drawn on `m`, the cursor's row focused
 		void mangaRows(MList& m, const Player& p, int n, int& scroll, int& cursor, const std::function<MangaRow(int)>& at);
+		// a sheet's rows (lay::ListSheet, LIST_ROW apart, `shown` of them in sight): row(i) without its focus, drawn on `m`
+		Rect mangaSheetView(const lay::ListSheet& sh, int n, int shown) const;
+		struct SheetRow { const Glyph* glyph = nullptr; std::string name, note; bool danger = false; };
+		void mangaSheetRows(MList& m, const lay::ListSheet& sh, int n, int shown, int& scroll, int& cursor,
+			const std::function<SheetRow(int)>& row);
+		// a finger down on them: true when it is in their view (the touch begun: a drag, or a tap on row i)
+		bool mangaSheetPointer(MList& m, const lay::ListSheet& sh, int n, int shown, int x, int y, std::function<void(int)> tap);
 		// a finger on the rows: a drag moves them by the pixel and glides, a tap is tap(i, onKey)
 		void mangaRowsPointer(MList& m, const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
 			std::function<MangaRow(int)> at, std::function<void(int, bool)> tap, std::function<void()> scrolled = nullptr);

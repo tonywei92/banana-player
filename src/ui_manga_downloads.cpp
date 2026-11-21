@@ -1255,15 +1255,15 @@ namespace bp
 		if (pt.kind != Pointer::Down) return false;
 		if (mdlSheet == MDLS_CHOOSE)
 		{
+			// the rows follow a finger (a smooth list); a tap ticks its row, as A
 			lay::ListSheet sh = mangaDlChooseSheet();
 			int n = (int)mangaSrcChapters.size();
-			for (int i = mdlChooseScroll; i < n && i < mdlChooseScroll + MDL_CHOOSE_ROWS; i++)
-				if (sh.row(i - mdlChooseScroll).hit(x, y))
-				{
-					mdlChooseCursor = i;
-					mangaDlSheetKey(Button::A, p);
-					return false;
-				}
+			if (mangaSheetPointer(mlDlChoose, sh, n, MDL_CHOOSE_ROWS, x, y, [this, &p](int i) {
+				if (mdlSheet != MDLS_CHOOSE || i < 0 || i >= (int)mangaSrcChapters.size()) return;
+				mdlChooseCursor = i;
+				mangaDlSheetKey(Button::A, p);
+			}))
+				return false;
 		}
 		if (!mangaDlChooseSheet().box.hit(x, y)) mangaDlSheetClose();
 		return false;
@@ -1320,16 +1320,10 @@ namespace bp
 		}
 		lay::ListSheet sh = mangaDlChooseSheet();
 		k.sheet(sh, {&G_DOWNLOAD, "Choose chapters", line, false});
-		if (mdlChooseScroll > std::max(0, n - MDL_CHOOSE_ROWS)) mdlChooseScroll = std::max(0, n - MDL_CHOOSE_ROWS);
-		if (mdlChooseCursor < mdlChooseScroll) mdlChooseScroll = mdlChooseCursor;
-		if (mdlChooseCursor >= mdlChooseScroll + MDL_CHOOSE_ROWS) mdlChooseScroll = mdlChooseCursor - MDL_CHOOSE_ROWS + 1;
-		for (int i = mdlChooseScroll; i < n && i < mdlChooseScroll + MDL_CHOOSE_ROWS; i++)
-		{
-			Kit::Row r;
-			r.font = F_P16;
+		mangaSheetRows(mlDlChoose, sh, n, MDL_CHOOSE_ROWS, mdlChooseScroll, mdlChooseCursor, [this](int i) {
+			SheetRow r;
 			r.glyph = mdlChosen.count(i) ? &G_BOX_ON : &G_BOX;
 			r.name = dlChapterName(mangaSrcChapters[i]);
-			r.focused = i == mdlChooseCursor;
 			MangaDlMark m = mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]);
 			switch (m.kind)
 			{
@@ -1340,9 +1334,8 @@ namespace bp
 			case MangaDlMark::OnCard: r.note = "On card"; break;
 			default: break;
 			}
-			k.row(sh.row(i - mdlChooseScroll), r);
-		}
-		ui.drawScrollBar(sh.rowsY, std::min(n, MDL_CHOOSE_ROWS) * lay::LIST_ROW, mdlChooseScroll, MDL_CHOOSE_ROWS, n);
+			return r;
+		});
 		k.hints({{"A", "Select"}, {"Y", "Download"}, {"B", "Back"}});
 	}
 

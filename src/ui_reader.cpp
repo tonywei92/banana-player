@@ -195,11 +195,15 @@ namespace bp
 		if (!readerStatus.open || readerStatus.pages <= 0) return;
 		mangaPages = true;
 		mangaPagesCursor = std::clamp(readerStatus.page, 0, readerStatus.pages - 1);
-		// the cursor's row centred in the grid
+		// the cursor's row centred in the grid, there at once
 		int row = mangaPagesCursor / MPG_COLS;
 		int rows = (readerStatus.pages + MPG_COLS - 1) / MPG_COLS;
-		int shown = (H - MPG_TOP - 44) / MPG_ROW_H;	// 44: the hints footer
+		Rect view = mangaPagesView();
+		int shown = view.h / MPG_ROW_H;
 		mangaPagesScroll = std::clamp(row - shown / 2, 0, std::max(0, rows - shown));
+		pagesList.sc.setExtent((double)rows * MPG_ROW_H, view.h);
+		pagesList.sc.jump((double)mangaPagesScroll * MPG_ROW_H);
+		pagesMoving = false;
 		mangaPagesTouch = false;
 		mangaPagesPressed = -1;
 		mpMade = 0;
@@ -250,11 +254,8 @@ namespace bp
 			mangaPagesCursor = cur;
 			// the top panel follows the cursor: a Seek, as the slider sends
 			mangaSeek(cur);
-			// keep the cursor's row in view
-			row = cur / MPG_COLS;
-			int shown = (H - MPG_TOP - 44) / MPG_ROW_H;
-			if (row < mangaPagesScroll) mangaPagesScroll = row;
-			if (row >= mangaPagesScroll + shown) mangaPagesScroll = row - shown + 1;
+			// keep the cursor's row in view (a short glide)
+			pagesList.reveal(cur / MPG_COLS, mangaPagesView(), MPG_ROW_H, rows);
 		}
 		return false;
 	}
@@ -263,18 +264,15 @@ namespace bp
 	{
 		int pages = readerStatus.pages;
 		if (pages <= 0) { mangaPagesClose(p); return false; }
-		int rows = (pages + MPG_COLS - 1) / MPG_COLS;
-		int shown = std::max(1, (H - MPG_TOP - 44) / MPG_ROW_H);
-		// the thumbnail under a point, -1 for none
+		// the thumbnail under a point, -1 for none (in the grid's view, at its offset now)
 		auto thumbAt = [&](int px, int py) {
-			for (int i = mangaPagesScroll * MPG_COLS; i < pages; i++)
-			{
-				Rect r = mangaPageRect(i);
-				if (r.y >= H - 44) break;	// below the hints
-				if (r.hit(px, py)) return i;
-			}
+			int r = pagesList.rowAt(px, py);
+			if (r < 0) return -1;
+			for (int i = r * MPG_COLS; i < pages && i < (r + 1) * MPG_COLS; i++)
+				if (mangaPageRect(i).hit(px, py)) return i;
 			return -1;
 		};
+		const float fy = pt.y * H;	// (by the fraction: the grid follows the panel's pixels)
 		if (pt.kind == Pointer::Down)
 		{
 			mangaPagesTouch = false;
@@ -284,53 +282,33 @@ namespace bp
 			if (ui.buttonRect(BACK_ICON).hit(x, y)) { mangaPagesClose(p); return false; }
 			// anywhere on the grid, a thumbnail too: a drag or a tap, told apart when the finger lifts (a thumbnail
 			// opening on the touch left nothing to start a drag from: the grid is all thumbnails)
-			if (y >= MPG_TOP && y < H - 44)
+			if (mangaPagesView().hit(x, y))
 			{
 				mangaPagesTouch = true;
-				mangaPagesTouchY = mangaPagesTouchStartY = pt.y;
-				mangaPagesPressed = thumbAt(x, y);
+				mangaPagesCaught = pagesList.press(fy);
+				mangaPagesPressed = mangaPagesCaught ? -1 : thumbAt(x, y);
 			}
 			return false;
 		}
 		if (pt.kind == Pointer::Move && mangaPagesTouch)
 		{
-			// past a small slop it's a drag (pt.y is in panel heights: 0.03 is about 14 px)
-			if (!mangaPagesMoved && std::fabs(pt.y - mangaPagesTouchStartY) > 0.03)
+			// past the scroller's slop it's a drag: the grid follows the finger by the pixel (the cursor is put
+			// among the rows shown when it comes to rest: drawMangaPages)
+			if (pagesList.move(fy))
 			{
 				mangaPagesMoved = true;
 				mangaPagesPressed = -1;
-			}
-			if (!mangaPagesMoved) return false;
-			// the grid follows the finger, a row per row's height of drag (pt.y is in panel heights). What's under a
-			// whole row stays owed (the finger's place moves on only by the rows taken), so a slow drag scrolls too;
-			// the small epsilon keeps a drag of exactly one row from rounding down to none
-			const double rowH = (double)MPG_ROW_H / H;
-			double owed = -(pt.y - mangaPagesTouchY) / rowH;
-			int shift = (int)(owed + (owed > 0 ? 1e-6 : -1e-6));
-			if (shift != 0)
-			{
-				int was = mangaPagesScroll;
-				mangaPagesScroll = std::clamp(mangaPagesScroll + shift, 0, std::max(0, rows - shown));
-				mangaPagesTouchY -= shift * rowH;
-				if (mangaPagesScroll != was)
-				{
-					// the cursor follows if it was left behind
-					if (mangaPagesCursor < mangaPagesScroll * MPG_COLS)
-						mangaPagesCursor = std::clamp(mangaPagesScroll * MPG_COLS, 0, pages - 1);
-					if (mangaPagesCursor >= (mangaPagesScroll + shown) * MPG_COLS)
-						mangaPagesCursor = std::clamp((mangaPagesScroll + shown - 1) * MPG_COLS + MPG_COLS - 1, 0, pages - 1);
-					mangaSeek(mangaPagesCursor);
-				}
 			}
 			return false;
 		}
 		if (pt.kind == Pointer::Up && mangaPagesTouch)
 		{
 			mangaPagesTouch = false;
+			pagesList.lift();
 			// a tap (no drag) that lifts on the thumbnail it touched: that page, and the grid closes
 			int i = mangaPagesPressed;
 			mangaPagesPressed = -1;
-			if (!mangaPagesMoved && i >= 0 && thumbAt(x, y) == i)
+			if (!mangaPagesMoved && !mangaPagesCaught && i >= 0 && thumbAt(x, y) == i)
 			{
 				mangaSeek(i);
 				mangaPagesClose(p);
@@ -338,6 +316,33 @@ namespace bp
 			return false;
 		}
 		return false;
+	}
+
+	SDL_Texture* Ui::PageReader::mpThumb(int i)
+	{
+		auto it = mpTex.find(i);
+		if (it == mpTex.end() && mpMade < 1)
+		{
+			// made from the RGBA main handed us, one a frame so a turn never stalls the panel
+			for (auto& th : readerThumbs.pages)
+			{
+				if (th.page != i || !th.rgba || th.w <= 0 || th.h <= 0) continue;
+				SDL_Texture* t = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, th.w, th.h);
+				if (t)
+				{
+					SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);	// scaled to its tile: smooth, not jagged
+					SDL_UpdateTexture(t, nullptr, th.rgba->data(), th.w * 4);
+					SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+				}
+				mpTex[i] = {t, th.w, th.h, SDL_GetTicks()};
+				it = mpTex.find(i);
+				mpMade++;
+				break;
+			}
+		}
+		if (it == mpTex.end()) return nullptr;
+		it->second.used = SDL_GetTicks();	// (asked by a row's key: drawn now, whether its slot is drawn again or not)
+		return it->second.tex;
 	}
 
 	void Ui::PageReader::drawMangaPages(const Player& p)
@@ -350,70 +355,74 @@ namespace bp
 		ui.drawBackIcon();
 		ui.drawTextMid("Pages", 1, TEXT, 72, 24, 540);
 		ui.drawTextMid(std::to_string(mangaPagesCursor + 1) + " / " + std::to_string(pages), 0, DIM, 72, 50, 540);
-		// the grid: thumbnails with numbered placeholders for pages not decoded yet. at most a few textures per
-		// frame so a turn never stalls the panel (the same pattern as drawMangaFull)
-		bool made = false;
+		// the grid: thumbnails with numbered placeholders for pages not decoded yet, a row of them a row of a smooth
+		// list. At most one texture made a frame (mpThumb), so a turn never stalls the panel
+		mpMade = 0;
 		int rows = (pages + MPG_COLS - 1) / MPG_COLS;
-		int shown = (H - MPG_TOP - 44) / MPG_ROW_H;
-		mangaPagesScroll = std::clamp(mangaPagesScroll, 0, std::max(0, rows - shown));
-		SDL_Rect clip{0, (int)std::lround(MPG_TOP * sy), (int)std::lround(W * sx),
-			(int)std::lround((H - MPG_TOP - 44) * sy)};
-		SDL_RenderSetClipRect(ui.ren, &clip);
-		for (int i = mangaPagesScroll * MPG_COLS; i < pages; i++)
+		Rect view = mangaPagesView();
+		int shown = view.h / MPG_ROW_H;
+		pagesList.sc.setExtent((double)rows * MPG_ROW_H, view.h);
+		// a motion over (a fling, a drag let go): the cursor among the whole rows shown, and the top panel there
+		bool moving = pagesList.moving() || pagesList.dragging();
+		if (pagesMoving && !moving)
 		{
-			Rect r = mangaPageRect(i);
-			if (r.y >= H - 44) break;
-			bool at = i == mangaPagesCursor;
-			// the focused thumbnail's ACCENT edge
-			ui.kit->flat(r, Kit::cardFill(SURFACE), R_TILE - 2, at ? ACCENT : Kit::edgeOf(SURFACE));
-			// look for the texture, or make one from the RGBA main handed us
-			auto it = mpTex.find(i);
-			if (it == mpTex.end() && !made)
+			double off = pagesList.sc.offset();
+			int first = std::clamp((int)std::ceil((off - 2) / MPG_ROW_H), 0, rows - 1);
+			int last = std::clamp((int)std::floor((off + view.h + 2) / MPG_ROW_H) - 1, first, rows - 1);
+			int row = std::clamp(mangaPagesCursor / MPG_COLS, first, last);
+			if (row != mangaPagesCursor / MPG_COLS)
 			{
-				for (auto& th : readerThumbs.pages)
-				{
-					if (th.page != i || !th.rgba || th.w <= 0 || th.h <= 0) continue;
-					SDL_Texture* t = SDL_CreateTexture(ui.ren, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, th.w, th.h);
-					if (t)
-					{
-						SDL_SetTextureScaleMode(t, SDL_ScaleModeLinear);	// scaled to its tile: smooth, not jagged
-						SDL_UpdateTexture(t, nullptr, th.rgba->data(), th.w * 4);
-						SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
-					}
-					mpTex[i] = {t, th.w, th.h, SDL_GetTicks()};
-					it = mpTex.find(i);
-					made = true;	// one per frame
-					break;
-				}
+				mangaPagesCursor = std::clamp(row * MPG_COLS + mangaPagesCursor % MPG_COLS, 0, pages - 1);
+				mangaSeek(mangaPagesCursor);
 			}
-			if (it != mpTex.end() && it->second.tex)
-			{
-				// the thumbnail drawn inside the box, aspect kept (centred)
-				int bw = r.w - 4, bh = r.h - 24;	// 24: room for the page number below
-				int sw = it->second.w, sh = it->second.h;
-				int dw = bw, dh = bh;
-				if (sw > 0 && sh > 0)
-				{
-					double aspect = (double)sw / sh;
-					if (aspect > (double)bw / bh) { dw = bw; dh = (int)(bw / aspect + 0.5); }
-					else { dh = bh; dw = (int)(bh * aspect + 0.5); }
-				}
-				SDL_Rect dst{(int)std::lround((r.x + 2 + (bw - dw) / 2) * sx), (int)std::lround((r.y + 2 + (bh - dh) / 2) * sy),
-					(int)std::lround(dw * sx), (int)std::lround(dh * sy)};
-				SDL_RenderCopy(ui.ren, it->second.tex, nullptr, &dst);
-				it->second.used = SDL_GetTicks();
-			}
-			else
-			{
-				// not decoded yet: a numbered placeholder
-				std::string num = std::to_string(i + 1);
-				ui.drawTextMid(num, 0, at ? ACCENT : DIM, r.x + r.w / 2, r.y + r.h / 2, 0, 2);
-				continue;	// the number is the placeholder: none again underneath
-			}
-			// the page number under the thumbnail, inside the box's bottom strip (the 24 kept for it above)
-			ui.drawTextMid(std::to_string(i + 1), 0, at ? ACCENT : DIM, r.x + r.w / 2, r.y + r.h - 11, 0, 2);
 		}
-		SDL_RenderSetClipRect(ui.ren, nullptr);
+		pagesMoving = moving;
+		SmoothList::Spec spec;
+		spec.view = view;
+		spec.rowH = MPG_ROW_H;
+		spec.count = rows;
+		spec.key = [this, pages, cursor = mangaPagesCursor](int r) {
+			std::string k;
+			for (int i = r * MPG_COLS; i < pages && i < (r + 1) * MPG_COLS; i++)
+				k += mpThumb(i) ? (i == cursor ? "T" : "t") : (i == cursor ? "N" : "n");
+			return k;
+		};
+		spec.draw = [this, pages, cursor = mangaPagesCursor](int r, Rect box) {
+			for (int i = r * MPG_COLS; i < pages && i < (r + 1) * MPG_COLS; i++)
+			{
+				Rect rc{MPG_LEFT + (i % MPG_COLS) * (MPG_THUMB_W + MPG_GAP), box.y, MPG_THUMB_W, MPG_ROW_H - MPG_GAP};
+				bool at = i == cursor;
+				// the focused thumbnail's ACCENT edge
+				ui.kit->flat(rc, Kit::cardFill(SURFACE), R_TILE - 2, at ? ACCENT : Kit::edgeOf(SURFACE));
+				auto it = mpTex.find(i);
+				if (it != mpTex.end() && it->second.tex)
+				{
+					// the thumbnail drawn inside the box, aspect kept (centred)
+					int bw = rc.w - 4, bh = rc.h - 24;	// 24: room for the page number below
+					int sw = it->second.w, sh = it->second.h;
+					int dw = bw, dh = bh;
+					if (sw > 0 && sh > 0)
+					{
+						double aspect = (double)sw / sh;
+						if (aspect > (double)bw / bh) { dw = bw; dh = (int)(bw / aspect + 0.5); }
+						else { dh = bh; dw = (int)(bh * aspect + 0.5); }
+					}
+					SDL_Rect dst{(int)std::lround((rc.x + 2 + (bw - dw) / 2) * sx), (int)std::lround((rc.y + 2 + (bh - dh) / 2) * sy),
+						(int)std::lround(dw * sx), (int)std::lround(dh * sy)};
+					SDL_RenderCopy(ui.ren, it->second.tex, nullptr, &dst);
+				}
+				else
+				{
+					// not decoded yet: a numbered placeholder
+					ui.drawTextMid(std::to_string(i + 1), 0, at ? ACCENT : DIM, rc.x + rc.w / 2, rc.y + rc.h / 2, 0, 2);
+					continue;	// the number is the placeholder: none again underneath
+				}
+				// the page number under the thumbnail, inside the box's bottom strip (the 24 kept for it above)
+				ui.drawTextMid(std::to_string(i + 1), 0, at ? ACCENT : DIM, rc.x + rc.w / 2, rc.y + rc.h - 11, 0, 2);
+			}
+		};
+		pagesList.draw(std::move(spec));
+		mangaPagesScroll = std::clamp((int)std::ceil((pagesList.sc.offset() - 2) / MPG_ROW_H), 0, std::max(0, rows - shown));
 		// the scrollbar
 		ui.drawScrollBar(MPG_TOP, shown * MPG_ROW_H - 4, mangaPagesScroll, shown, rows);
 		// at most 60 thumbnails kept: the ones not drawn longest go (a 200-page chapter keeps 60 at a time)
@@ -428,18 +437,48 @@ namespace bp
 		ui.drawHints({{"D-PAD", "Move"}, {"A", "Go to page"}, {"B", "Close"}});
 	}
 
-	void Ui::PageReader::mangaListBegin(int x, int y, int scroll, int rowH, int item, std::function<int(int)> scrollTo,
-		std::function<void(int)> tap)
+	void Ui::PageReader::FollowList::follow(Rect view, int rowH, int n, int cols, int& scroll, int* cursor)
 	{
-		mlist = MangaListDrag();
-		mlist.on = true;
-		mlist.downX = x;
-		mlist.downY = mlist.fromY = y;
-		mlist.fromScroll = scroll;
-		mlist.rowH = std::max(1, rowH);
-		mlist.item = item;
-		mlist.scrollTo = std::move(scrollTo);
-		mlist.tap = std::move(tap);
+		SmoothList& l = list;
+		cols = std::max(1, cols);
+		rowH = std::max(1, rowH);
+		const int rows = (std::max(0, n) + cols - 1) / cols;
+		l.sc.setExtent((double)rows * rowH, view.h);
+		const int crow = cursor && *cursor >= 0 && *cursor < n ? *cursor / cols : -1;
+		const bool fresh = l.takeFresh();
+		const bool cursorMoved = cursor && *cursor != cursorWas;
+		if (scroll != synced)
+		{
+			// the page set its scroll: its keys keeping the cursor in sight (a glide there), or a place of its own (a
+			// list opened, one put back where it was: there at once)
+			if (crow >= 0 && cursorMoved && synced >= 0 && !(scroll == 0 && crow == 0)) l.reveal(crow, view, rowH, rows, !fresh);
+			else l.sc.jump((double)scroll * rowH);
+		}
+		else if (crow >= 0 && (cursorMoved || fresh)) l.reveal(crow, view, rowH, rows, cursorMoved && !fresh);
+		// a motion over (a fling, a drag let go): the cursor among the whole rows shown, its column kept
+		const bool moving = l.moving() || l.dragging();
+		if (wasMoving && !moving && crow >= 0 && rows > 0)
+		{
+			const double off = l.sc.offset();
+			int first = std::clamp((int)std::ceil((off - 2) / rowH), 0, rows - 1);
+			int last = std::clamp((int)std::floor((off + view.h + 2) / rowH) - 1, first, rows - 1);
+			int r = std::clamp(crow, first, last);
+			if (r != crow) *cursor = std::min(n - 1, r * cols + *cursor % cols);
+		}
+		wasMoving = moving;
+		if (cursor) cursorWas = *cursor;
+	}
+
+	bool Ui::PageReader::FollowList::sync(int& scroll)
+	{
+		const SmoothList::Spec& sp = list.spec();
+		const int rowH = std::max(1, sp.rowH);
+		const int fit = std::max(1, sp.view.h / rowH);
+		int first = (int)std::ceil((list.sc.offset() - 2) / rowH);
+		first = std::clamp(first, 0, std::max(0, sp.count - fit));
+		bool changed = first != synced && synced >= 0;
+		scroll = synced = first;
+		return changed;
 	}
 
 	void Ui::PageReader::mangaListSmooth(SmoothList& list, int x, int y, int item, std::function<void(int)> tap)
@@ -447,7 +486,7 @@ namespace bp
 		mlist = MangaListDrag();
 		mlist.on = true;
 		mlist.downX = x;
-		mlist.downY = mlist.fromY = y;
+		mlist.downY = y;
 		mlist.smooth = &list;
 		mlist.caught = list.press((float)y);
 		mlist.item = mlist.caught ? -1 : item;
@@ -456,41 +495,13 @@ namespace bp
 
 	bool Ui::PageReader::mangaListPointer(const Pointer& pt, int x, int y)
 	{
-		if (!mlist.on) return false;
-		if (mlist.smooth)
-		{
-			// a smooth list: the content follows the finger past the scroller's slop, and glides on from the lift
-			if (pt.kind == Pointer::Move)
-			{
-				if (mlist.smooth->move(pt.y * Ui::H)) mlist.moved = true;
-				if (!mlist.moved && std::abs(x - mlist.downX) > MG_LIST_SLOP) mlist.item = -1;
-				return false;
-			}
-			if (pt.kind == Pointer::Up)
-			{
-				MangaListDrag d = std::move(mlist);
-				mlist = MangaListDrag();
-				d.smooth->lift();
-				if (!d.moved && !d.caught && d.item >= 0 && d.tap && std::abs(x - d.downX) <= MG_LIST_SLOP) d.tap(d.item);
-			}
-			return false;
-		}
+		if (!mlist.on || !mlist.smooth) return false;
+		// the content follows the finger past the scroller's slop, and glides on from the lift
 		if (pt.kind == Pointer::Move)
 		{
-			// past the slop (as the pages grid's, about 0.03 of the panel) it's a drag, and the lift is no tap
-			if (!mlist.moved && std::abs(y - mlist.downY) > MG_LIST_SLOP) mlist.moved = true;
-			// a finger that slid sideways off its cover changed its mind: no tap (and no scroll: the lists go up and down)
+			if (mlist.smooth->move(pt.y * Ui::H)) mlist.moved = true;
+			// a finger that slid sideways off its row changed its mind: no tap
 			if (!mlist.moved && std::abs(x - mlist.downX) > MG_LIST_SLOP) mlist.item = -1;
-			if (!mlist.moved || !mlist.scrollTo) return false;
-			// counted from where the finger went down, so a slow drag loses nothing to rounding move by move
-			int want = mlist.fromScroll + (int)std::lround((mlist.fromY - y) / (double)mlist.rowH);
-			int took = mlist.scrollTo(want);
-			// stopped at an end: the count starts again here, so the way back moves the list at once
-			if (took != want)
-			{
-				mlist.fromScroll = took;
-				mlist.fromY = y;
-			}
 			return false;
 		}
 		if (pt.kind == Pointer::Up)
@@ -498,9 +509,8 @@ namespace bp
 			// (moved out first: the tap may open a page that starts another list's finger)
 			MangaListDrag d = std::move(mlist);
 			mlist = MangaListDrag();
-			if (!d.moved && d.item >= 0 && d.tap && std::abs(x - d.downX) <= MG_LIST_SLOP &&
-				std::abs(y - d.downY) <= MG_LIST_SLOP)
-				d.tap(d.item);
+			d.smooth->lift();
+			if (!d.moved && !d.caught && d.item >= 0 && d.tap && std::abs(x - d.downX) <= MG_LIST_SLOP) d.tap(d.item);
 		}
 		return false;
 	}

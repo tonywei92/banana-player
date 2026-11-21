@@ -6,6 +6,7 @@
 // or drive the reader.
 #pragma once
 #include "ui.h"
+#include "ui_smoothlist.h"
 
 namespace bp
 {
@@ -119,9 +120,14 @@ namespace bp
 		int mangaPagesCursor = 0;	// the page under the cursor (0-based)
 		int mangaPagesScroll = 0;	// the first row shown
 		bool mangaPagesTouch = false;
-		double mangaPagesTouchY = 0, mangaPagesTouchStartY = 0;	// the finger's last place the scroll took, and where it went down
 		bool mangaPagesMoved = false;	// the finger moved far enough to be a drag: lifting it then doesn't open a page
+		bool mangaPagesCaught = false;	// the finger stopped the grid moving: its lift opens nothing
 		int mangaPagesPressed = -1;	// the thumbnail under the finger (-1: none)
+		// the grid on a smooth list (ui_smoothlist.h): a row of thumbnails a row of it; mangaPagesScroll follows it
+		SmoothList pagesList{ui};
+		bool pagesMoving = false;	// it moved last frame (its stop puts the cursor among the rows shown)
+		Rect mangaPagesView() const { return {0, MPG_TOP, W, H - MPG_TOP - 44}; }	// (44: the hints footer)
+		SDL_Texture* mpThumb(int i);	// page i's thumbnail texture (one made a frame), marked as drawn now
 		// the grid's own textures: one SDL_Texture per decoded page, made a few per frame so a turn never stalls
 		struct ThumbTex { SDL_Texture* tex = nullptr; int w = 0, h = 0; Uint32 used = 0; };
 		std::map<int, ThumbTex> mpTex;
@@ -138,38 +144,47 @@ namespace bp
 		static constexpr int MPG_COLS = 6, MPG_THUMB_W = 96, MPG_GAP = 6, MPG_ROW_H = 130;
 		static constexpr int MPG_LEFT = (W - (MPG_COLS * MPG_THUMB_W + (MPG_COLS - 1) * MPG_GAP)) / 2;
 		static constexpr int MPG_TOP = 72;
-		Rect mangaPageRect(int i) const	// i: 0-based page index; the rect in the 640x480 panel
+		Rect mangaPageRect(int i) const	// i: 0-based page index; the rect in the 640x480 panel, at the grid's offset now
 		{
-			int row = i / MPG_COLS, col = i % MPG_COLS;
-			return {MPG_LEFT + col * (MPG_THUMB_W + MPG_GAP), MPG_TOP + (row - mangaPagesScroll) * MPG_ROW_H,
-				MPG_THUMB_W, MPG_ROW_H - MPG_GAP};
+			int col = i % MPG_COLS;
+			Rect row = pagesList.rowBox(i / MPG_COLS);
+			return {MPG_LEFT + col * (MPG_THUMB_W + MPG_GAP), row.y, MPG_THUMB_W, MPG_ROW_H - MPG_GAP};
 		}
 		static constexpr int MPG_THUMB = 4000;	// touch id base for the thumbnails (mangaPointer)
 
 		// ---- the dragged lists ----
 		// a finger on one of the app's lists or grids (Library, History, Browse, Downloads, Sources, a server's, a
-		// network folder's, a series' chapters; a reader's menu): it goes down on a row (mangaListBegin); past a small
-		// slop it's a drag that scrolls the list a row per row's height (scrollTo asks the list for a first row and
-		// answers the one it took, the list keeping its cursor among its rows shown); lifted without one, on the spot
-		// it went down, it's a tap on that row (tap). Ui::pointer sends it the moves and the lift while it's on
-		static constexpr int MG_LIST_SLOP = 14;	// a finger that moves more is a drag (mangaListPointer)
+		// network folder's, a series' chapters, the sheets' lists; Docs' menu), each a smooth list (ui_smoothlist.h):
+		// it goes down on a row (mangaListSmooth; a list still gliding is only caught); past the scroller's slop the
+		// content follows the finger by the pixel and glides on from the lift; lifted without one, near where it went
+		// down, it's a tap on that row (tap). Ui::pointer sends it the moves and the lift while it's on
+		static constexpr int MG_LIST_SLOP = 14;	// a finger that slides sideways more is no tap (mangaListPointer)
 		struct MangaListDrag
 		{
 			bool on = false, moved = false;
 			int downX = 0, downY = 0;	// where the finger went down (640x480)
-			int fromY = 0, fromScroll = 0;	// the finger's place and the list's first row the scroll counts from
-			int rowH = 1, item = -1;	// the list's row height; the row under the finger (-1: none, only a drag)
-			std::function<int(int)> scrollTo;
+			int item = -1;	// the row under the finger (-1: none, only a drag)
 			std::function<void(int)> tap;
-			// a list on a SmoothList (ui_smoothlist.h): it follows the finger by the pixel and glides on the lift
-			// (scrollTo unused); caught: the finger stopped it moving, so its lift is no tap
 			SmoothList* smooth = nullptr;
-			bool caught = false;
+			bool caught = false;	// the finger stopped the list moving: its lift is no tap
 		};
 		MangaListDrag mlist;
-		void mangaListBegin(int x, int y, int scroll, int rowH, int item, std::function<int(int)> scrollTo,
-			std::function<void(int)> tap);
-		// the same on a smooth list: `item` the row (or cell) under the finger, found by the list's own boxes
+		// A list (Manga's pages, Docs' menu) on a smooth list whose page keeps an int scroll (its first whole row shown)
+		// and a cursor, which its keys set as they always did: follow() before it draws turns a change of either into
+		// the list's motion (the cursor kept in sight by a glide; a scroll set elsewhere, a list opened or put back,
+		// there at once), and at the end of a fling puts the cursor among the rows shown (its column kept, as the old
+		// drags did); sync() after it drew writes the first whole row shown back
+		struct FollowList
+		{
+			FollowList(Ui& u) : list(u) {}
+			SmoothList list;
+			int synced = -1, cursorWas = -2;
+			bool wasMoving = false;
+			std::function<void()> scrolled;	// a finger's: the next page asked near the end (Manga's grids, chapters)
+			void follow(Rect view, int rowH, int n, int cols, int& scroll, int* cursor);
+			bool sync(int& scroll);	// true: the first whole row changed
+		};
+		// `item`: the row (or cell) under the finger, found by the list's own boxes
 		void mangaListSmooth(SmoothList& list, int x, int y, int item, std::function<void(int)> tap);
 		bool mangaListPointer(const Pointer& pt, int x, int y);
 	};

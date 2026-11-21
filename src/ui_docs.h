@@ -4,6 +4,7 @@
 // files of Ui that ask the readers something (a place forgotten, a file moved, Find's keyboard).
 #pragma once
 #include "ui.h"
+#include "ui_reader.h"	// PageReader::FollowList: the menu's smooth list
 #include "writequeue.h"	// DurableWriter: a document's place off the main thread
 
 namespace bp
@@ -23,6 +24,8 @@ namespace bp
 		void tick(Player& p) override;
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
+		// the menu's smooth list while it shows, else the pages grid's (PageReader's) while that shows
+		SmoothList* smoothList() override;
 		// Book's page turn and its notice: a frame each step
 		bool animating() const override { return docTurning(); }
 
@@ -139,7 +142,11 @@ namespace bp
 		void docBookmarkHere(Player& p);	// the header's bookmark key: one tap marks the place
 		int docMenu = DOC_MENU_NONE, docMenuCursor = 0, docMenuScroll = 0;
 		std::vector<int> docMenuRows() const;
-		Rect docMenuRowRect(int slot) const { return {16, 72 + slot * 50, 608, 46}; }	// (MENU_TOP, MENU_ROW_H: the kit's 46-tall rows)
+		// the menu's rows on a smooth list (16, 72; 50 apart, the kit's 46-tall rows): the view, and row i's box now
+		PageReader::FollowList menuList{ui};
+		int menuListKind = DOC_MENU_NONE;	// the menu it last drew (another: its list starts again, at once)
+		Rect docMenuView(int n) const;
+		Rect docMenuRowRect(int i) const { Rect b = menuList.list.rowBox(i); return {b.x, b.y, b.w, 46}; }
 		void docMenuStep(int dir, Player& p);
 		void docMenuAct(Player& p);
 		void drawDocMenu(const Player& p);

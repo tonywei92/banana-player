@@ -914,14 +914,12 @@ namespace bp
 	{
 		lay::ListSheet sh = mangaAvLangSheet();
 		if (!sh.box.hit(x, y)) { mstAvMenu = 0; mstLocal++; return false; }
-		int shown = std::min(MST_AV_SHOWN, (int)mstAvLangs.size() + 1);
-		for (int i = 0; i < shown; i++)
-			if (sh.row(i).hit(x, y))
-			{
-				mstAvCursor = mstAvScroll + i;
-				mangaAvMenuAct(p);
-				return false;
-			}
+		// the rows follow a finger (a smooth list); a tap is A on its row
+		mangaSheetPointer(mlSrcAv, sh, (int)mstAvLangs.size() + 1, MST_AV_SHOWN, x, y, [this, &p](int i) {
+			if (mstAvMenu != 2 || i < 0 || i > (int)mstAvLangs.size()) return;
+			mstAvCursor = i;
+			mangaAvMenuAct(p);
+		});
 		return false;
 	}
 
@@ -934,19 +932,14 @@ namespace bp
 		k.sheet(sh, {&G_WEB, "Languages", "", false});
 		auto chosen = splitLangs(p.settings.mangaLangs);
 		int n = (int)mstAvLangs.size() + 1;
-		for (int i = 0; i < MST_AV_SHOWN && mstAvScroll + i < n; i++)
-		{
-			int at = mstAvScroll + i;
+		mangaSheetRows(mlSrcAv, sh, n, MST_AV_SHOWN, mstAvScroll, mstAvCursor, [this, &chosen](int at) {
 			bool on = at == 0 ? chosen.empty() : std::find(chosen.begin(), chosen.end(), mstAvLangs[at - 1]) != chosen.end();
-			Kit::Row r;
-			r.font = F_P16;
+			SheetRow r;
 			r.glyph = on ? &G_CHECK : &G_BOX;
 			r.name = at == 0 ? "All languages" : langName(mstAvLangs[at - 1]);
 			r.note = on ? "On" : "";
-			r.focused = at == mstAvCursor;
-			k.row(sh.row(i), r);
-		}
-		if (n > MST_AV_SHOWN) ui.drawScrollBar(sh.rowsY, MST_AV_SHOWN * lay::LIST_ROW, mstAvScroll, MST_AV_SHOWN, n);
+			return r;
+		});
 		k.hints({{"A", "Tick / untick"}, {"B", "Done"}});
 	}
 }

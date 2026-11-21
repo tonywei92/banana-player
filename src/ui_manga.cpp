@@ -1916,6 +1916,8 @@ namespace bp
 		else if (ui.page == Page::MangaRead) drawMangaRead(p);
 		else if (ui.page == Page::MangaSettings) drawMangaSettings(p);
 		else if (ui.page == Page::MangaSources) drawMangaSourcesPage(p);
+		// the reader's pages grid (PageReader's: the Docs viewer shows it too)
+		if (ui.page == Page::MangaRead && ui.pageReader->mangaPages) frameList = &ui.pageReader->pagesList;
 		shownList = frameList;
 	}
 
@@ -2243,46 +2245,12 @@ namespace bp
 
 	void Ui::Manga::mlFollow(MList& m, Rect view, int rowH, int n, int cols, int& scroll, int* cursor)
 	{
-		SmoothList& l = m.list;
-		cols = std::max(1, cols);
-		rowH = std::max(1, rowH);
-		const int rows = (std::max(0, n) + cols - 1) / cols;
-		l.sc.setExtent((double)rows * rowH, view.h);
-		const int crow = cursor && *cursor >= 0 && *cursor < n ? *cursor / cols : -1;
-		const bool fresh = l.takeFresh();
-		const bool cursorMoved = cursor && *cursor != m.cursorWas;
-		if (scroll != m.synced)
-		{
-			// the page set its scroll: its keys keeping the cursor in sight (a glide there), or a place of its own (a
-			// list opened, one put back where it was: there at once)
-			if (crow >= 0 && cursorMoved && m.synced >= 0 && !(scroll == 0 && crow == 0)) l.reveal(crow, view, rowH, rows, !fresh);
-			else l.sc.jump((double)scroll * rowH);
-		}
-		else if (crow >= 0 && (cursorMoved || fresh)) l.reveal(crow, view, rowH, rows, cursorMoved && !fresh);
-		// a motion over (a fling, a drag let go): the cursor among the whole rows shown, its column kept, as the
-		// old drag kept it (so the D-pad goes on from what is in sight)
-		const bool moving = l.moving() || l.dragging();
-		if (m.wasMoving && !moving && crow >= 0 && rows > 0)
-		{
-			const double off = l.sc.offset();
-			int first = std::clamp((int)std::ceil((off - 2) / rowH), 0, rows - 1);
-			int last = std::clamp((int)std::floor((off + view.h + 2) / rowH) - 1, first, rows - 1);
-			int r = std::clamp(crow, first, last);
-			if (r != crow) *cursor = std::min(n - 1, r * cols + *cursor % cols);
-		}
-		m.wasMoving = moving;
-		if (cursor) m.cursorWas = *cursor;
+		m.follow(view, rowH, n, cols, scroll, cursor);
 	}
 
 	void Ui::Manga::mlSync(MList& m, int& scroll)
 	{
-		const SmoothList::Spec& sp = m.list.spec();
-		const int rowH = std::max(1, sp.rowH);
-		const int fit = std::max(1, sp.view.h / rowH);
-		int first = (int)std::ceil((m.list.sc.offset() - 2) / rowH);
-		first = std::clamp(first, 0, std::max(0, sp.count - fit));
-		bool changed = first != m.synced && m.synced >= 0;
-		scroll = m.synced = first;
+		bool changed = m.sync(scroll);
 		frameList = &m.list;
 		// a finger's list moved a row: the page's own follow-up (the next page asked near the end)
 		if (changed && m.scrolled) m.scrolled();
@@ -2347,6 +2315,59 @@ namespace bp
 		mlSync(m, scroll);
 		int fit = std::max(1, (area.h + lay::ROW2_GAP) / pitch);
 		if (n > fit) ui.drawScrollBar(area.y, area.h, scroll, fit, n);
+	}
+
+	Ui::Rect Ui::Manga::mangaSheetView(const lay::ListSheet& sh, int n, int shown) const
+	{
+		lay::Box r0 = sh.row(0);
+		return {r0.x, sh.rowsY, r0.w, std::min(n, shown) * lay::LIST_ROW};
+	}
+
+	void Ui::Manga::mangaSheetRows(MList& m, const lay::ListSheet& sh, int n, int shown, int& scroll, int& cursor,
+		const std::function<SheetRow(int)>& row)
+	{
+		Rect view = mangaSheetView(sh, n, shown);
+		mlFollow(m, view, lay::LIST_ROW, n, 1, scroll, &cursor);
+		auto rows = std::make_shared<std::map<int, SheetRow>>();
+		auto rowAt = [rows, row](int i) -> const SheetRow& {
+			auto it = rows->find(i);
+			if (it == rows->end()) it = rows->emplace(i, row(i)).first;
+			return it->second;
+		};
+		SmoothList::Spec spec;
+		spec.view = view;
+		spec.rowH = lay::LIST_ROW;
+		spec.count = n;
+		spec.key = [rowAt, cursor](int i) {
+			const SheetRow& r = rowAt(i);
+			char b[64];
+			snprintf(b, sizeof b, "|%p|%d%d", (const void*)r.glyph, r.danger, i == cursor);
+			return r.name + "|" + r.note + b;
+		};
+		spec.draw = [this, rowAt, cursor](int i, Rect box) {
+			const SheetRow& s = rowAt(i);
+			Kit::Row r;
+			r.font = F_P16;
+			r.glyph = s.glyph;
+			r.name = s.name;
+			r.note = s.note;
+			r.danger = s.danger;
+			r.focused = i == cursor;
+			ui.kit->row({box.x, box.y, box.w, lay::LIST_ROW}, r);
+		};
+		m.list.draw(std::move(spec));
+		mlSync(m, scroll);
+		if (n > shown) ui.drawScrollBar(sh.rowsY, std::min(n, shown) * lay::LIST_ROW, scroll, shown, n);
+	}
+
+	bool Ui::Manga::mangaSheetPointer(MList& m, const lay::ListSheet& sh, int n, int shown, int x, int y, std::function<void(int)> tap)
+	{
+		if (n <= 0 || !mangaSheetView(sh, n, shown).hit(x, y)) return false;
+		int i = m.list.rowAt(x, y);
+		if (i >= n) i = -1;
+		m.scrolled = nullptr;
+		ui.pageReader->mangaListSmooth(m.list, x, y, i, std::move(tap));
+		return true;
 	}
 
 	void Ui::Manga::mangaRowsPointer(MList& m, const Player& p, int x, int y, std::function<int()> count, int* scroll, int* cursor,
