@@ -656,8 +656,11 @@ namespace bp
 			}
 		}
 		browse->playlists->plCheckShown();
-		// the page's smooth list, its glide stepped to now (its offset is not in the signature: drawnList)
-		SmoothList* list = area() ? area()->smoothList() : nullptr;
+		// the top sheet's smooth list, else the page's, its glide stepped to now (its offset is not in the signature:
+		// drawnList). A page's list under a sheet stays still: its slots are let go and drawn again once
+		Overlay* top = topOverlay();
+		SmoothList* list = top ? top->smoothList() : nullptr;
+		if (!list && area()) list = area()->smoothList();
 		if (list != listShown)
 		{
 			if (listShown) listShown->release();

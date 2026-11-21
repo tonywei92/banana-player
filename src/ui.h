@@ -392,6 +392,8 @@ namespace bp
 		// of them, the oldest first) and has its state in signature(): press, pointer, renderPage and signature ask
 		// the stack, so a new dialog is wired in nowhere else. One is written as a struct nested in Ui (declared
 		// here, defined in its own .cpp), which lets it use Ui's drawing and state through `ui`.
+		// a list that follows the finger and glides (ui_smoothlist.h; docs/notes/2026-11-21-smooth-scroll.md)
+		struct SmoothList;
 		struct Overlay
 		{
 			Ui& ui;
@@ -407,6 +409,8 @@ namespace bp
 			// everything draw() shows that Settings doesn't hold (the cursor, a level read from elsewhere): the
 			// panel is drawn again only when this changes
 			virtual std::string signature(const Player& p) const = 0;
+			// its list that scrolls smoothly, while one shows (the top sheet's comes before the page's in Ui::draw)
+			virtual SmoothList* smoothList() { return nullptr; }
 			void close() { done = true; }
 		};
 		std::vector<std::unique_ptr<Overlay>> overlays;	// the stack: the last is on top
@@ -424,8 +428,6 @@ namespace bp
 		// written in the area's own header and .cpp, and a new area is wired into those six nowhere. One is written
 		// as a struct nested in Ui (declared in ui.h by name only, defined in its own header), which lets it use
 		// Ui's drawing and state through `ui`; the Player comes with each call, as for every Ui method.
-		// a list that follows the finger and glides (ui_smoothlist.h; docs/notes/2026-11-21-smooth-scroll.md)
-		struct SmoothList;
 		struct Area
 		{
 			Ui& ui;

@@ -151,6 +151,7 @@ namespace bp
 		for (auto& s : slots)
 			if (s->tex) SDL_DestroyTexture(s->tex);
 		slots.clear();
+		fresh = true;
 	}
 
 	// ---- the finger and the cursor ----

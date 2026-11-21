@@ -54,6 +54,9 @@ namespace bp
 		// false: a page opened on it). The list's geometry is passed: a key can come before the list's next draw
 		void reveal(int i, Rect view, int rowH, int count, bool glide = true);
 		void top() { sc.jump(0); }		// a new list: at its top, nothing moving
+		// true once after its slots were let go (the page left and came back, the theme changed) and when new: the
+		// area puts its cursor back in view then (reveal(..., false)), a list shared by pages or groups at its top
+		bool takeFresh() { bool f = fresh; fresh = false; return f; }
 
 		// ---- where things are ----
 		// the row under (x, y) on the panel (-1: outside the view, or past the last row)
@@ -74,6 +77,7 @@ namespace bp
 
 	private:
 		Spec last;
+		bool fresh = true;
 		struct Slot
 		{
 			SDL_Texture* tex = nullptr;
