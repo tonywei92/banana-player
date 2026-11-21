@@ -31,29 +31,7 @@
       "unzip -l *": "allow",
       "od *": "allow",
       "xxd *": "allow",
-      "file *": "allow",
-      "yt-dlp *": "allow",
-      "yt-dlp": "allow",
-      "export SDKROOT=*": "allow",
-      "./build/banana-player *": "allow",
-      "BP_* ./build/banana-player *": "allow",
-      "timeout * ./build/banana-player *": "allow",
-      "ffmpeg *": "allow",
-      "mkdir *": "allow",
-      "rm -rf .scratch*": "allow",
-      "git add *": "allow",
-      "git commit *": "allow",
-      "git push*": "deny",
-      "git merge*": "deny",
-      "git reset*": "deny",
-      "git checkout*": "deny",
-      "git rebase*": "deny",
-      "git stash*": "deny",
-      "ssh root@192.168.1.50 *": "allow",
-      "ssh -o ConnectTimeout=* root@192.168.1.50 *": "allow",
-      "tools/push-handheld.sh root@192.168.1.50": "allow",
-      "tools/push-handheld.sh root@192.168.1.50 *": "allow",
-      "packaging/build-bundle.sh*": "allow"
+      "file *": "allow"
     }
   }
 }
