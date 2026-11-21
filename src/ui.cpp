@@ -504,6 +504,9 @@ namespace bp
 		}
 		if (!quickShown()) quickHoldAt = 0;
 		if (landFlashUntil && SDL_GetTicks() >= landFlashUntil) landFlashUntil = 0;
+		// the last song or video that played, noted whatever page shows (Home's card after Stop)
+		if (p.playing() && !p.playingPhoto() && (isAudioFile(p.currentPath()) || isVideoFile(p.currentPath()) || p.playingAudio()))
+			browse->homeView->lastLive = p.currentPath();
 		// Home's Recent: listed again when what plays changes (the next song started by itself: its card comes first)
 		if (page == Page::Browse && browse->atHome() && !browse->homeView->homeTouch && !ctxOpen && p.currentPath() != browse->homeView->homeListedFor)
 		{

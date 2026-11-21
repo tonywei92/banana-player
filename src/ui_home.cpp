@@ -385,6 +385,7 @@ namespace bp
 		{
 			c.shown = c.live = true;
 			c.path = p.currentPath();
+			lastLive = c.path;
 			c.label = "Now playing";
 			// a page the output: the session's wish is the state shown (the player's pause follows it)
 			c.paused = ui.predicting(p) ? !ui.pagePlaying() : p.paused;
@@ -434,17 +435,20 @@ namespace bp
 		// what was played last, if it was left in the middle: this is the one to carry on, even when its card has been
 		// taken out and its file has gone from Recent (the place is kept in resume.tsv)
 		const std::vector<ResumeEntry>& all = p.resumeStore().all();
+		const RecentItem* lastIt = lastLive.empty() ? nullptr : findRecent(lastLive);
+		const std::string lastPlayed = lastIt ? lastLive : recent.empty() ? std::string() : recent.front().path;
 		if (!all.empty())
 		{
 			const ResumeEntry& e = all.front();
 			// the last thing played, or one whose file has gone (a card out): not an older video after a book was read
-			bool last = recent.empty() || recent.front().path == e.path || !listedThere(e.path);
+			bool last = recent.empty() || lastPlayed == e.path || !listedThere(e.path);
 			if (last && isVideoFile(e.path) && e.position > 0 && e.duration > 0 && worthResuming(e.position, e.duration)) return fromResume(e);
 		}
 		// else the last thing played, whatever it is (the owner, 2026-11-19: a half-read book further down must not
 		// stand in for the songs played since): Resume when it has a place to carry on from, else Play
 		for (auto& it : recent)
 		{
+			if (lastIt && &it != lastIt) continue;
 			if (!it.missing.empty()) continue;	// (its card in Recent says why; Continue is for what can go on)
 			c.shown = true;
 			c.path = it.path;
