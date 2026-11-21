@@ -226,6 +226,7 @@ namespace bp
 		void stepPagesTurn(int dir);	// a quarter turn of the page
 		// View's Layout: 0 Single page, 1 Vertical scroll, 2 Fullscreen (the strip over both panels)
 		int pagesLayoutNow() const;
+		std::string pagesPath;	// the PDF or comic the page reader has open (its layout is kept per kind)
 		void setPagesLayout(int layout, Player& p);
 		// X · More (pdf-more) and SELECT · View (pdf-view, an overlay of its own)
 		void openPagesMore(Player& p);

@@ -7839,7 +7839,7 @@ static void testSettingsTable()
 	CHECK_EQ(std::string(defs[*(lid + 6)].key), "sleep-snooze");
 	// the readers' choices moved to Reading from no page at all
 	auto reading = settingsOfGroup(SG_READING);
-	CHECK_EQ(reading.size(), (size_t)8);
+	CHECK_EQ(reading.size(), (size_t)9);	// (with Comics open as)
 	CHECK_EQ(std::string(defs[reading.front()].key), "text-font");
 	CHECK_EQ(std::string(defs[reading.back()].key), "read-dim-after");	// (Dim the controls while reading, last)
 	// the Picture sheet's Adjust and the picture look are kept in the file; a look is a filter, Off none

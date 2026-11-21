@@ -613,6 +613,8 @@ namespace bp
 			D::choice("text-turn", &Settings::txtTurn, TXT_TURN_IDS, 2),
 			D::flag("pdf-view", &Settings::pdfStrip, "page", "strip")
 				.page(SG_READING, 80, "PDF opens as", "Single page, or Strip: the pages one after another.").shownAs(PDF_VIEW_LABELS),
+			D::flag("comic-view", &Settings::comicStrip, "page", "strip")
+				.page(SG_READING, 81, "Comics open as", "Strip: the pages one after another, read down (the default). Single page: one at a time.").shownAs(PDF_VIEW_LABELS),
 			D::ints("manga-preload", &Settings::mangaPreload, MANGA_PRELOADS, MANGA_PRELOAD_COUNT)
 				.page(SG_MANGA, 60, "Preload", "More: smoother on a slow server, more data.").shownAs(nullptr, " pages").stepped(true).digitsOnly(),
 			// 0 to 200 in steps of 4 (a value a file kept from before may sit off the step: it snaps onto one on the page)

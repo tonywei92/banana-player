@@ -240,6 +240,7 @@ namespace bp
 		// lowest backlight (0-80 percent darker: the pages' colours scaled down)
 		int mangaFilter = 0, readDim = 0;
 		bool pdfStrip = false;
+		bool comicStrip = true;	// a comic (CBZ, CBR, a comic EPUB) opens as one strip: read down, as most are now
 		// Off: RIGHT is forward on the reader's page. On: LEFT is (to match a right-to-left book)
 		bool mangaSwapLR = false;
 		// pages decoded ahead of the one read: 2, 3 or 6

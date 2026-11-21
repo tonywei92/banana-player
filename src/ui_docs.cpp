@@ -26,6 +26,14 @@
 
 namespace bp
 {
+	static bool isPdfPath(const std::string& path)
+	{
+		size_t dot = path.rfind('.');
+		std::string e = dot == std::string::npos ? "" : path.substr(dot);
+		for (char& c : e) c = (char)tolower((unsigned char)c);
+		return e == ".pdf";
+	}
+
 	namespace
 	{
 		std::string extLower(const std::string& path)
@@ -144,7 +152,10 @@ namespace bp
 			return true;
 		}
 		int page0 = kept && kept->position > 0 ? (int)kept->position : 0;
-		ui.pageReader->mangaRead = {"", name, "", name, path, true, page0, p.settings.pdfStrip ? MANGA_STRIP : MANGA_LTR, MANGA_FIT_PAGE};
+		// a PDF and a comic each keep their own way in (a comic's default is the strip)
+		const bool strip = isPdfPath(path) ? p.settings.pdfStrip : p.settings.comicStrip;
+		pagesPath = path;
+		ui.pageReader->mangaRead = {"", name, "", name, path, true, page0, strip ? MANGA_STRIP : MANGA_LTR, MANGA_FIT_PAGE};
 		ui.pageReader->mangaReadSeriesId.clear();
 		ui.pageReader->mangaReadChapterId.clear();
 		ui.pageReader->mangaReadChapterTitle = name;
@@ -1811,7 +1822,7 @@ namespace bp
 			if (r.readerStatus.zoomPct != 100) r.mangaZoomTo(1.0);
 			r.readerCmds.push_back({PageReader::ReaderCmd::Mode, (double)(strip ? MANGA_STRIP : MANGA_LTR), now});
 			Settings s = p.settings;
-			s.pdfStrip = strip;
+			(isPdfPath(pagesPath) ? s.pdfStrip : s.comicStrip) = strip;
 			p.setSettings(s);
 		}
 		if (full && !r.readerStatus.fullscreen)
