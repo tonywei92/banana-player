@@ -1899,8 +1899,8 @@ int main(int argc, char** argv)
 						else if (ui.searchPageOpen())
 							// Search is its own page (once it fell through to the line below, printed as
 							// "settings"): its query, the cursor and whether the keyboard is up
-							printf("press %zu: search q=%s cursor=%d%s\n", pressed, ui.search->query.c_str(),
-								ui.search->cursor, ui.search->typing ? " typing" : "");
+							printf("press %zu: search q=%s cursor=%d tab=%d found=%s%s\n", pressed, ui.search->query.c_str(),
+								ui.search->cursor, ui.search->tab, ui.search->stateCounts().c_str(), ui.search->typing ? " typing" : "");
 						else if (ui.browsing())
 						{
 							std::string at = ui.browseSelection();

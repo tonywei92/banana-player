@@ -19,9 +19,10 @@ namespace bp
 
 	// The on-screen keyboard's keys and what each does, with no window: the one model of the two keyboards (a
 	// field's, over the whole panel: ui_keyboard.cpp; Search's, in the shell's body: ui_search.cpp), so both have
-	// the same keys, captions and buttons. Three rows of characters (10, 9, 7), then the bottom row:
+	// the same keys, captions and buttons. A row of the digits 1–0, always there whatever else shows (the owner:
+	// a number never needs a layer), three rows of characters (10, 9, 7), then the bottom row:
 	//   Shift  a toggle: capitals while it is on (lit), until it is pressed again. Not a layer to pick
-	//   123    a toggle: the digits and marks while on (lit); again, the letters
+	//   123    a toggle: the marks while on (lit); again, the letters (its name is the key's usual one)
 	//   #+=    (a field's keyboard only) the brackets and rarer marks, the same way
 	//   Space, Clear (empties the field), Del (the character before the caret), Done
 	// The keys are numbered as lay::keyboard lays them and Kit::keyboard draws them: the characters row by row,
@@ -29,11 +30,12 @@ namespace bp
 	struct KeyPad
 	{
 		enum Role { Char, Shift, Symbols, More, Space, Clear, Delete, Done };
-		static constexpr int CHARS = 26;
-		static constexpr int ROWS[3] = {10, 9, 7};
+		static constexpr int DIGITS = 10, CHARS = 36;	// the keys before the bottom row: the digits, then a layer's 26
+		static constexpr int ROWS[4] = {10, 10, 9, 7};
+		static std::vector<int> rows() { return {ROWS[0], ROWS[1], ROWS[2], ROWS[3]}; }	// (lay::keyboard's counts)
 		bool more = true;		// has the #+= key (Search's has not: a name needs no brackets)
 		bool shift = false;
-		int layer = 0;			// 0 letters, 1 the digits and marks (123), 2 the rarer marks (#+=)
+		int layer = 0;			// 0 letters, 1 the marks (123), 2 the rarer marks (#+=)
 
 		int toggles() const { return more ? 3 : 2; }	// the toggle keys that open the bottom row
 		int keys() const { return CHARS + toggles() + 4; }

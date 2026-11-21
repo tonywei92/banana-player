@@ -51,7 +51,7 @@ namespace bp
 
 	lay::Keyboard Ui::kbLayout() const
 	{
-		return lay::keyboard({16, 84, 608, 330}, {}, {KeyPad::ROWS[0], KeyPad::ROWS[1], KeyPad::ROWS[2]}, kbPad.toggles());
+		return lay::keyboard({16, 84, 608, 330}, {}, KeyPad::rows(), kbPad.toggles());
 	}
 
 	void Ui::openKeyboard(int field, const std::string& text)

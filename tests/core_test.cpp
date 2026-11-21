@@ -8857,16 +8857,21 @@ static void testNet()
 
 static void testKeyboard()
 {
-	// the kit's keyboard: three letter rows (10, 9, 7) and a bottom row of three toggles (Shift, 123, #+=), Space,
-	// Clear, Del, Done
-	lay::Keyboard k = lay::keyboard({16, 84, 608, 400}, {}, {10, 9, 7}, 3);
-	CHECK_EQ(lay::keyboardKeys(k), 26 + 7);
+	// the kit's keyboard: the number row (10), three letter rows (10, 9, 7) and a bottom row of three toggles
+	// (Shift, 123, #+=), Space, Clear, Del, Done. The field's own area (ui_keyboard.cpp): all of it, the note's
+	// line too, above the hint bar
+	lay::Keyboard k = lay::keyboard({16, 84, 608, 330}, {}, KeyPad::rows(), 3);
+	CHECK_EQ(lay::keyboardKeys(k), 36 + 7);
+	CHECK_EQ((int)k.rows.size(), 4);
+	CHECK_EQ((int)k.rows[0].size(), 10);
+	CHECK_EQ(k.note.y + k.note.h <= lay::PANEL_H - lay::HINTS_H, true);
+	CHECK_EQ(k.rows[0][0].h >= 44, true);
 	// the bottom row: left edge to right edge, 5 apart, none over another; a toggle, Clear and Del one width (their
 	// word and a cap fit), Space what is left and no narrower than they. Search's (two toggles, in the shell's body) the same
 	for (int toggles = 2; toggles <= 3; toggles++)
 	{
 		lay::Box area = toggles == 3 ? lay::Box{16, 84, 608, 400} : lay::Box{lay::shell().body.x + 16, 58, lay::shell().body.w - 32, 400};
-		lay::Keyboard kb = lay::keyboard(area, {}, {10, 9, 7}, toggles);
+		lay::Keyboard kb = lay::keyboard(area, {}, KeyPad::rows(), toggles);
 		CHECK_EQ((int)kb.bottom.size(), toggles + 4);
 		CHECK_EQ(kb.bottom.front().x, area.x);
 		CHECK_EQ(kb.bottom.back().x + kb.bottom.back().w, area.x + area.w);
@@ -8881,65 +8886,86 @@ static void testKeyboard()
 			for (auto& r : row) CHECK_EQ(r.x >= area.x && r.x + r.w <= area.x + area.w, true);
 	}
 
-	// the key pad both keyboards share: Shift is a toggle that stays on, not a layer
+	// the key pad both keyboards share: the number row on every layer; Shift a toggle that stays on, not a layer
 	KeyPad pad;
 	TextEdit typed;
-	CHECK_EQ(pad.keys(), 26 + 7);
+	const int Q = KeyPad::DIGITS;	// the letters' first key
+	CHECK_EQ(pad.keys(), 36 + 7);
 	CHECK_EQ(pad.keys(), lay::keyboardKeys(k));
-	CHECK_EQ(pad.label(0), std::string("q"));
+	CHECK_EQ(pad.label(0), std::string("1"));
+	CHECK_EQ(pad.label(9), std::string("0"));
+	CHECK_EQ(pad.label(Q), std::string("q"));
 	int shift = pad.keyOf(KeyPad::Shift), marks = pad.keyOf(KeyPad::Symbols), more = pad.keyOf(KeyPad::More);
-	CHECK_EQ(shift, 26);
+	CHECK_EQ(shift, 36);
 	CHECK_EQ(pad.lit(shift), false);
 	pad.press(shift, typed);
 	CHECK_EQ(pad.lit(shift), true);
-	CHECK_EQ(pad.label(0), std::string("Q"));
-	pad.press(0, typed);
-	pad.press(1, typed);	// still on after a letter: a toggle, not a one-shot
+	CHECK_EQ(pad.label(Q), std::string("Q"));
+	CHECK_EQ(pad.label(0), std::string("1"));	// a digit has no capital
+	pad.press(Q, typed);
+	pad.press(Q + 1, typed);	// still on after a letter: a toggle, not a one-shot
 	CHECK_EQ(typed.text, std::string("QW"));
 	CHECK_EQ(pad.lit(shift), true);
 	pad.press(shift, typed);
-	pad.press(2, typed);
-	CHECK_EQ(typed.text, std::string("QWe"));
-	// 123 and #+= toggle too, one at a time; again: the letters. Shift from the marks: the letters, in capitals
+	pad.press(Q + 2, typed);
+	pad.press(6, typed);
+	CHECK_EQ(typed.text, std::string("QWe7"));
+	// 123 and #+= toggle too, one at a time; again: the letters. The digits stay where they are under both, and
+	// neither layer repeats them. Shift from the marks: the letters, in capitals
 	pad.press(marks, typed);
 	CHECK_EQ(pad.lit(marks), true);
+	CHECK_EQ(pad.label(Q), std::string("-"));
 	CHECK_EQ(pad.label(0), std::string("1"));
+	for (int i = Q; i < KeyPad::CHARS; i++) CHECK_EQ(isdigit((unsigned char)pad.label(i)[0]) != 0, false);
 	pad.press(more, typed);
 	CHECK_EQ(pad.lit(marks), false);
 	CHECK_EQ(pad.lit(more), true);
-	CHECK_EQ(pad.label(0), std::string("("));
+	CHECK_EQ(pad.label(Q), std::string("{"));
+	CHECK_EQ(pad.label(9), std::string("0"));
 	pad.press(more, typed);
-	CHECK_EQ(pad.label(0), std::string("q"));
+	CHECK_EQ(pad.label(Q), std::string("q"));
+	// every printable ASCII mark is on one of the two marks layers (a password's)
+	{
+		std::string all;
+		for (int layer = 1; layer <= 2; layer++)
+		{
+			pad.layer = layer;
+			for (int i = Q; i < KeyPad::CHARS; i++) all += pad.label(i);
+		}
+		pad.layer = 0;
+		for (char c = '!'; c <= '~'; c++)
+			if (!isalnum((unsigned char)c)) CHECK_EQ(all.find(c) != std::string::npos, true);
+	}
 	pad.press(marks, typed);
 	pad.press(shift, typed);
-	CHECK_EQ(pad.label(0), std::string("Q"));
+	CHECK_EQ(pad.label(Q), std::string("Q"));
 	pad.press(shift, typed);
 	// Space, Del, Clear, Done; every bottom key has a word, and all but #+= a button
 	pad.press(pad.keyOf(KeyPad::Space), typed);
-	CHECK_EQ(typed.text, std::string("QWe "));
+	CHECK_EQ(typed.text, std::string("QWe7 "));
 	pad.press(pad.keyOf(KeyPad::Delete), typed);
-	CHECK_EQ(typed.text, std::string("QWe"));
+	CHECK_EQ(typed.text, std::string("QWe7"));
 	CHECK_EQ(pad.press(pad.keyOf(KeyPad::Clear), typed), false);
 	CHECK_EQ(typed.text, std::string(""));
 	CHECK_EQ(typed.caret, (size_t)0);
 	CHECK_EQ(pad.press(pad.keyOf(KeyPad::Done), typed), true);
-	for (int i = 26; i < pad.keys(); i++)
+	for (int i = KeyPad::CHARS; i < pad.keys(); i++)
 	{
 		CHECK_EQ(pad.label(i).empty(), false);
 		CHECK_EQ(std::string(pad.button(i)).empty(), pad.role(i) == KeyPad::More);
 	}
 	CHECK_EQ(std::string(pad.button(pad.keyOf(KeyPad::Clear))), std::string("L2"));
-	// a length limit, a port's digits, and the layers by L3 (round)
+	// a length limit, a port's digits (the number row, no layer needed), and the layers by L3 (round)
 	typed.set("abc");
-	pad.press(0, typed, 3);
+	pad.press(Q, typed, 3);
 	pad.press(pad.keyOf(KeyPad::Space), typed, 3);
 	CHECK_EQ(typed.text, std::string("abc"));
 	typed.set("");
-	pad.press(0, typed, 0, true);
+	pad.press(Q, typed, 0, true);
 	pad.press(pad.keyOf(KeyPad::Space), typed, 0, true);
-	pad.press(marks, typed);
 	pad.press(0, typed, 0, true);
 	CHECK_EQ(typed.text, std::string("1"));
+	pad.stepLayer();
 	pad.stepLayer();
 	CHECK_EQ(pad.layer, 2);
 	pad.stepLayer();
@@ -8947,30 +8973,27 @@ static void testKeyboard()
 	// Search's: no #+= key, the rest in the same order
 	KeyPad two;
 	two.more = false;
-	CHECK_EQ(two.keys(), 26 + 6);
+	CHECK_EQ(two.keys(), 36 + 6);
 	CHECK_EQ(two.keyOf(KeyPad::More), -1);
-	CHECK_EQ(two.role(28), KeyPad::Space);
-	CHECK_EQ(two.role(31), KeyPad::Done);
+	CHECK_EQ(two.role(38), KeyPad::Space);
+	CHECK_EQ(two.role(41), KeyPad::Done);
 	two.stepLayer();
 	two.stepLayer();
 	CHECK_EQ(two.layer, 0);
-	for (auto& row : k.rows)
-		for (auto& r : row) CHECK_EQ(r.x >= 16 && r.x + r.w <= 624, true);
-	CHECK_EQ(k.bottom.back().x + k.bottom.back().w, 624);
 	// a finger on a key: its number; on the field: none
 	CHECK_EQ(lay::keyboardHit(k, k.rows[0][0].x + 2, k.rows[0][0].y + 2), 0);
 	CHECK_EQ(lay::keyboardHit(k, k.rows[1][0].x + 2, k.rows[1][0].y + 2), 10);
-	CHECK_EQ(lay::keyboardHit(k, k.bottom.back().x + 2, k.bottom.back().y + 2), 32);
+	CHECK_EQ(lay::keyboardHit(k, k.bottom.back().x + 2, k.bottom.back().y + 2), 42);
 	CHECK_EQ(lay::keyboardHit(k, k.field.x + 2, k.field.y + 2), -1);
 	// right from the row's last key: round to its first; left from the first: round to the last
 	CHECK_EQ(lay::keyboardMove(k, 9, 1, 0), 0);
 	CHECK_EQ(lay::keyboardMove(k, 0, -1, 0), 9);
-	// up from the first row stays; down from q lands on the key under it (a), down from the last row stays
+	// up from the number row stays; down from 1 lands on the key under it (q), down from the last row stays
 	CHECK_EQ(lay::keyboardMove(k, 0, 0, -1), 0);
 	CHECK_EQ(lay::keyboardMove(k, 0, 0, 1), 10);
-	CHECK_EQ(lay::keyboardMove(k, 32, 0, 1), 32);
+	CHECK_EQ(lay::keyboardMove(k, 42, 0, 1), 42);
 	// from the bottom row, up goes to the letters' last row
-	CHECK_EQ(lay::keyboardMove(k, 32, 0, -1) >= 19 && lay::keyboardMove(k, 32, 0, -1) < 26, true);
+	CHECK_EQ(lay::keyboardMove(k, 42, 0, -1) >= 29 && lay::keyboardMove(k, 42, 0, -1) < 36, true);
 
 	TextEdit t;
 	t.set("ab");
@@ -10844,27 +10867,30 @@ static void testKitVariantBusy()
 static void testKitVariantKeyboard()
 {
 	using namespace lay;
-	Keyboard k = keyboard({16, 66, 608, 384}, {100, 90}, {10, 10, 9}, 2);
+	Keyboard k = keyboard({16, 60, 608, 390}, {100, 90}, {10, 10, 10, 9}, 2);
 	CHECK_EQ(k.field.h, 48);
 	CHECK_EQ(k.field.x, 16);
 	CHECK_EQ(k.field.w, 608);
-	CHECK_EQ((int)k.rows.size(), 3);
+	CHECK_EQ((int)k.rows.size(), 4);	// the number row, then the letters'
 	CHECK_EQ(k.rows[0][0].w, (608 - 9 * KB_GAP) / 10);	// the widest row shares the area's width
-	CHECK_EQ(k.rows[0][0].h, 52);
+	CHECK_EQ(k.rows[0][0].h, 44);	// a finger's least target, so four rows fit
+	CHECK_EQ(k.rows[1][0].y, k.rows[0][0].y + 44 + KB_GAP);
 	CHECK_EQ(k.rows[0][1].x - (k.rows[0][0].x + k.rows[0][0].w), KB_GAP);
 	CHECK(k.rows[0][9].x + k.rows[0][9].w <= 16 + 608);	// no key past the area's right edge
 	CHECK(std::abs((k.rows[0][0].x - 16) - (16 + 608 - (k.rows[0][9].x + k.rows[0][9].w))) <= 1);	// centred
-	CHECK_EQ(k.rows[2][0].x - k.rows[0][0].x > 0, true);	// a shorter row is indented
+	CHECK_EQ(k.rows[3][0].x - k.rows[0][0].x > 0, true);	// a shorter row is indented
 	CHECK_EQ((int)k.bottom.size(), 6);	// two toggles, Space, Clear, Del, Done
 	CHECK_EQ(k.bottom[0].h, 56);
 	CHECK_EQ(k.bottom.back().x + k.bottom.back().w, 16 + 608);	// Done ends on the area's right edge
 	CHECK(k.bottom[2].w > 100);	// Space takes the rest
 	CHECK(k.special[1].x == k.special[0].x + 100 + GAP);
 	CHECK(k.note.y + k.note.h <= 480 - HINTS_H);
-	for (auto& r : k.rows[1]) CHECK(!overlaps(r, k.bottom[0]));
+	for (auto& r : k.rows[3]) CHECK(!overlaps(r, k.bottom[0]));
 	// the shell's own body (Search's page): the keyboard fits it whole, and a key is a touch target still
-	Keyboard sk = keyboard({94, 64, 530, 382}, {}, {10, 9, 7}, 2);
+	Keyboard sk = keyboard({94, 64, 530, 382}, {}, {10, 10, 9, 7}, 2);
 	CHECK(sk.special.empty());
+	CHECK_EQ((int)sk.rows.size(), 4);
+	CHECK(sk.rows[3][0].y + sk.rows[3][0].h <= sk.bottom[0].y);
 	CHECK(sk.rows[0][9].x + sk.rows[0][9].w <= 94 + 530);
 	CHECK(sk.rows[0][0].x >= 94);
 	CHECK(sk.rows[0][0].w >= 44);
@@ -11194,6 +11220,40 @@ static void testKitLayoutPages()
 	CHECK(p.clear.y + p.clear.h <= 444);
 	CHECK_EQ(searchPage({16, 4, 608, 440}, {0, 2}, 0).group.size(), 1);
 	CHECK_EQ(searchPage({16, 4, 608, 440}, {0}, 0, false).clear.w, 0);
+
+	// Search's results under their kind tabs (All / Music / Videos / Books): the field, the strip under it with the
+	// L / R caps at its ends, the list to the body's foot; a notice row between them while the index reads; no
+	// strip over Recent searches
+	{
+		Box body{lay::shell().body.x + 16, lay::shell().body.y + 4, lay::shell().body.w - 32, lay::shell().body.h - 8};
+		std::vector<int> widths{64, 80, 84, 76};
+		SearchResults r = searchResults(body, widths, TAB_CAP, true, false);
+		CHECK_EQ(r.field.y, body.y);
+		CHECK_EQ(r.field.h, SEARCH_FIELD_H);
+		CHECK_EQ((int)r.strip.tab.size(), 4);
+		CHECK_EQ(r.strip.tab[0].y, body.y + SEARCH_FIELD_H + SP6);
+		CHECK_EQ(r.strip.tab[0].h, TAB_H);	// a touch target
+		CHECK_EQ(r.strip.left.x, body.x);
+		for (size_t i = 0; i < r.strip.tab.size(); i++)
+		{
+			CHECK_EQ(r.strip.tab[i].w, widths[i]);
+			if (i) CHECK_EQ(r.strip.tab[i].x, r.strip.tab[i - 1].x + r.strip.tab[i - 1].w + TAB_GAP);
+			CHECK_EQ(tabAt(r.strip, r.strip.tab[i].x + 2, r.strip.tab[i].y + 2), (int)i);
+		}
+		CHECK(r.strip.right.x + r.strip.right.w <= body.x + body.w);	// the four tabs and both caps fit the shell's body
+		CHECK_EQ(tabAt(r.strip, r.strip.tab[0].x + r.strip.tab[0].w + 2, r.strip.tab[0].y + 2), -1);	// the gap: neither
+		CHECK_EQ(r.notice.w, 0);
+		CHECK_EQ(r.list.y, r.strip.tab[0].y + TAB_H + SP4);
+		CHECK_EQ(r.list.y + r.list.h, body.y + body.h);
+		CHECK(r.list.h >= 4 * RESULT_ROW_H);
+		SearchResults n = searchResults(body, widths, TAB_CAP, true, true);
+		CHECK_EQ(n.notice.y, n.strip.tab[0].y + TAB_H + SP6);
+		CHECK_EQ(n.list.y, n.notice.y + n.notice.h + SP4);
+		CHECK(!overlaps(n.notice, n.list));
+		SearchResults recent = searchResults(body, {}, TAB_CAP, false, false);
+		CHECK_EQ((int)recent.strip.tab.size(), 0);
+		CHECK_EQ(recent.list.y, body.y + SEARCH_FIELD_H + SP4);
+	}
 }
 
 // ---- the library's pages (kitlayout.h's 2026-11-19 third block): an album's and an artist's page head, the

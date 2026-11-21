@@ -12,11 +12,14 @@ namespace bp
 
 	namespace
 	{
-		// each layer's 26 characters, in the rows' order (10, 9, 7)
+		// the number row, on every layer
+		const char* const PAD_DIGITS = "1234567890";
+		// each layer's 26 characters, in the rows' order (10, 9, 7). The digits being always there, 123 is every
+		// common mark and #+= the six left (braces, backslash, bar, caret, backtick) with the address marks again
 		const char* const PAD_CHARS[3] = {
 			"qwertyuiopasdfghjklzxcvbnm",
-			"1234567890-_./:@#&+=?!%*,~",
-			"()[]{}<>;:'\"$^\\|`~,/_-+*&@",
+			"-_./:@#&+=?!%*,~()'\"$;<>[]",
+			"{}\\|^`<>[]()'\";:,./_-+*&@~",
 		};
 	}
 
@@ -45,7 +48,8 @@ namespace bp
 		case Char:
 		{
 			if (key < 0) return "";
-			char c = PAD_CHARS[std::clamp(layer, 0, 2)][key];
+			if (key < DIGITS) return std::string(1, PAD_DIGITS[key]);
+			char c = PAD_CHARS[std::clamp(layer, 0, 2)][key - DIGITS];
 			if (layer == 0 && shift) c = (char)toupper((unsigned char)c);
 			return std::string(1, c);
 		}

@@ -1325,11 +1325,11 @@ namespace bp
 			v.caret = v.value.size();
 			v.note = "Any address, with or without http://";
 			v.special = {"https://", "http://", ".json", ".local"};
-			v.rows = {{"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"}, {"a", "s", "d", "f", "g", "h", "j", "k", "l", "-"}, {"z", "x", "c", "v", "b", "n", "m", ".", "/", ":"}};
+			v.rows = {{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"}, {"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"}, {"a", "s", "d", "f", "g", "h", "j", "k", "l", "-"}, {"z", "x", "c", "v", "b", "n", "m", ".", "/", ":"}};
 			v.bottom = {{"Shift", "Y", true}, {"123", "L3"}, {"Space", "X"}, {"Clear", "L2"}, {"Del", "B"}, {"Done", "START", false, true}};
-			v.cursor = 13;
-			lay::Keyboard l = lay::keyboard({lay::MARGIN, 66, lay::PANEL_W - 2 * lay::MARGIN, lay::PANEL_H - 66 - lay::HINTS_H},
-				{100, 90, 80, 90}, {10, 10, 10}, 2);
+			v.cursor = 23;
+			lay::Keyboard l = lay::keyboard({lay::MARGIN, 60, lay::PANEL_W - 2 * lay::MARGIN, lay::PANEL_H - 60 - lay::HINTS_H},
+				{100, 90, 80, 90}, {10, 10, 10, 10}, 2);
 			k.keyboard(l, v);
 			k.iconKey({16, 8, 56, 46}, G_BACK, false, 3, true);
 			ui.drawTextMid("Address", F_P28, TEXT, 84, 31, 400);

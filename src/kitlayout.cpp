@@ -666,6 +666,26 @@ namespace bp
 			return b;
 		}
 
+		SearchResults searchResults(Box body, const std::vector<int>& tabWidths, int capW, bool withTabs, bool withNotice)
+		{
+			SearchResults s;
+			s.field = {body.x, body.y, body.w, SEARCH_FIELD_H};
+			int y = body.y + SEARCH_FIELD_H;
+			if (withTabs)
+			{
+				s.strip = tabs({body.x, y + SP6, body.w, TAB_H}, tabWidths, TAB_GAP, capW);
+				y += SP6 + TAB_H;
+			}
+			if (withNotice)
+			{
+				s.notice = notice({body.x, y + SP6, body.w, 0}, true, true, 0).row;
+				y = s.notice.y + s.notice.h;
+			}
+			y += SP4;
+			s.list = {body.x, y, body.w, std::max(0, body.y + body.h - y)};
+			return s;
+		}
+
 		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int toggles)
 		{
 			Keyboard k;
@@ -679,7 +699,7 @@ namespace bp
 				x += w + GAP;
 			}
 			// no pieces: no special row (the mock-up's Search page goes straight from the field to the letters)
-			if (!specialW.empty()) y += KB_SPECIAL_H + 18;
+			if (!specialW.empty()) y += KB_SPECIAL_H + 10;	// (10, not the mock-up's 18: the number row needs the room)
 			// the letters: every key the width the widest row fits in the area, so no row runs past its edge
 			int widest = 1;
 			for (int n : counts) widest = std::max(widest, n);

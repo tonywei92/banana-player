@@ -70,9 +70,9 @@ namespace bp
 		if (page == Page::Search && search)
 		{
 			out.key = "search|" + search->query;
-			out.label = "Search" + std::string(MID) + "both cards";
+			out.label = "Search library";
 			out.title = search->query.empty() ? "Search" : "\xE2\x80\x9C" + search->query + "\xE2\x80\x9D";
-			out.text = search->query.empty() ? "Find a video, a song, a book, a playlist or a folder by its name." : "The list changes with every letter.";
+			out.text = search->query.empty() ? "Find a song, a video or a book in your library by its name." : "Music, Videos and Books: L / R choose a kind.";
 			keys({{"B", "Close"}});
 			return true;
 		}
