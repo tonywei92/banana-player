@@ -241,7 +241,9 @@ video's list while the playing screen was up; a song's list ending keeps the son
   it for its menu: **Now playing**, **Play** / **Pause**, **Like**, **Add to playlist…**, **Show in folder**, **Stop**.
   **SELECT** is its key on any section page. Quick settings' **Now playing block** (F, on every screen, the player
   included) is the one place to play, pause and skip without leaving the page; its **Play** held takes playback over
-  from a browser. There is no bar at the foot of any page any more (the owner, 2026-11-19): the body has that room.
+  from a browser. It is the panel's lead: taller than its rows, on the accent's tint while something plays, with the
+  art, **Now playing** or **Paused** over the title, artist and time over a progress line, and Play / Pause in the accent.
+  There is no bar at the foot of any page any more (the owner, 2026-11-19): the body has that room.
 - **The header** shows three small yellow bars left of the clock while something plays behind the list (dim and still
   when it's paused), and the status cluster (those bars, Wi-Fi, the battery and the clock) is one touch target:
   **F**'s panel, Quick settings, anywhere. The globe inside it keeps its own tap.

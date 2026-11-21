@@ -818,44 +818,57 @@ namespace bp
 		const Player& bp = barPlayer(p);
 		bool live = nowPlayable(bp);
 		bool err = live && !bp.error.empty();
+		bool at = quickCursor < 0 && live;	// (the block is passed by when idle)
 		Rect card = q.now;
-		// a card: focused while the cursor is on it (only while something plays: the block is passed by when idle)
-		if (quickCursor < 0 && live) kit->flat(card, BUTTON, 12, ACCENT);
-		else kit->flat(card, SURFACE, 12, kit->edgeOf(SURFACE));
+		// the panel's lead (the owner, 2026-11-21): while something plays its ground carries the accent's tint,
+		// so it is the one coloured surface in the panel; the cursor on it adds the focus ring. Idle it is a
+		// plain well. High contrast (Classic) keeps its own grounds: SURFACE and its edge, BUTTON under the cursor
+		SDL_Color ground = !live ? SURFACE : theme::drawingClean() ? sdl(theme::tintOf(theme::current.SURFACE)) : at ? BUTTON : SURFACE;
+		kit->flat(card, ground, 12, at ? ACCENT : kit->edgeOf(SURFACE));
 		Rect art = q.nowArt;
-		if (live) drawNowArt(bp, art, 6);
+		if (live) drawNowArt(bp, art, 8);
 		else
 		{
-			fillRound(art, TRACK, 6);
-			drawGlyphMid(G_NOTE, art.x + art.w / 2, art.y + art.h / 2, DIM);
+			fillRound(art, TRACK, 8);
+			drawGlyphMid(G_NOTE, art.x + art.w / 2, art.y + art.h / 2, DIM, 2);
 		}
-		int x0 = art.x + art.w + 12, xr = q.nowPrev.x - 12, room = std::max(1, xr - x0);
+		Rect words = q.nowText;
 		if (!live)
 		{
-			drawTextMid("Nothing playing", F_P14, DIM, x0, card.y + 24, room);
-			drawTextMid("What you play shows here", F_I12, DIM, x0, card.y + 44, room);
+			drawTextMid("Nothing playing", F_P16, DIM, words.x, words.y + 18, words.w);
+			drawTextMid("What you play shows here", F_I12, DIM, words.x, words.y + 40, words.w);
 		}
 		else
 		{
+			// three lines beside the art: the state in small capitals (ACCENT), the title a size up from every
+			// other row's words, then artist and time; the progress line closes the column, level with the art
+			drawTextMid(err ? "CAN'T PLAY" : bp.paused ? "PAUSED" : "NOW PLAYING", F_I11B, err ? DANGER : ACCENT, words.x, words.y + 6, words.w);
 			std::string title = !bp.title.empty() ? bp.title : entryTitle(bp.currentPath());
-			drawTextMid(title, F_P14, TEXT, x0, card.y + 22, room);
+			drawTextMid(title, F_P16, TEXT, words.x, words.y + 24, words.w);
 			// artist and time, then the state marks the mini bar's pills said, in ACCENT
 			std::string line = bp.artist();
 			if (!line.empty()) line += " \xC2\xB7 ";
 			line += err ? "Couldn't read" : formatTime(shownPosition(bp)) + " / " + formatTime(bp.duration);
-			SDL_Color ink = err ? DANGER : DIM;
-			drawTextMid(line, F_I12, ink, x0, card.y + 44, room);
-			int px = x0 + kit->textW(line, F_I12);
+			SDL_Color ink = err ? DANGER : DIM_ON;
+			drawTextMid(line, F_I12, ink, words.x, words.y + 42, words.w);
+			int px = words.x + kit->textW(line, F_I12), xr = words.x + words.w;
 			for (auto& s : kit->statePills(bp))
 			{
 				std::string t = " \xC2\xB7 " + s;
 				int tw = kit->textW(t, F_I12);
 				if (px + tw > xr) break;
-				drawTextMid(t, F_I12, ACCENT, px, card.y + 44, tw + 1);
+				drawTextMid(t, F_I12, ACCENT, px, words.y + 42, tw + 1);
 				px += tw;
 			}
+			if (!err && bp.duration > 0)
+			{
+				Rect l = q.nowLine;
+				double f = std::clamp(shownPosition(bp) / bp.duration, 0.0, 1.0);
+				fillRound(l, TRACK, l.h / 2);
+				if (f > 0) fillRound({l.x, l.y, std::max(l.h, (int)std::lround(l.w * f)), l.h}, ACCENT, l.h / 2);
+			}
 		}
-		// the three keys: Previous 52 x 48, Play / Pause 68 x 48 (the primary), Next 52 x 48; dimmed when idle
+		// the three keys: Previous 52 x 56, Play / Pause 68 x 56 (the primary: the accent), Next 52 x 56; dimmed when idle
 		auto key = [&](Rect r, int id, const Glyph* g, bool primary) {
 			bool down = pressedBtn == id;
 			bool off = !live;
@@ -867,13 +880,7 @@ namespace bp
 		key(q.nowPrev, QUICK_NOW_PREV, &G_PREV, false);
 		key(q.nowPlay, QUICK_NOW_PLAY, live && bp.paused ? &G_PLAY : &G_PAUSE, true);
 		key(q.nowNext, QUICK_NOW_NEXT, &G_NEXT, false);
-		// the progress line along its foot (the mini bar's own piece); held Play fills the hold as the player's does
-		lay::MiniBar m = lay::miniBar(card);
-		if (live && !err && bp.duration > 0)
-		{
-			double f = std::clamp(shownPosition(bp) / bp.duration, 0.0, 1.0);
-			if (f > 0) fillRound({m.line.x, m.line.y, (int)std::lround(m.line.w * f), m.line.h}, ACCENT, 1);
-		}
+		// held Play fills the hold as the player's does
 		if (quickHoldAt && pressedBtn == QUICK_NOW_PLAY)
 		{
 			Rect r = q.nowPlay;

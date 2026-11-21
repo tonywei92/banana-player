@@ -1114,10 +1114,13 @@ namespace bp
 			int x = q.box.x + QUICK_PAD, w = q.box.w - 2 * QUICK_PAD;
 			q.title = {x, q.box.y + QUICK_PAD, w, QUICK_TITLE_H};
 			q.now = {x, q.title.y + q.title.h + QUICK_GAP, w, QUICK_NOW_H};
-			q.nowArt = {q.now.x + SP8, q.now.y + SP8, 48, 48};
-			q.nowNext = {q.now.x + q.now.w - SP8 - 52, q.now.y + SP8, 52, 48};
-			q.nowPlay = {q.nowNext.x - SP8 - 68, q.now.y + SP8, 68, 48};
-			q.nowPrev = {q.nowPlay.x - SP8 - 52, q.now.y + SP8, 52, 48};
+			q.nowArt = {q.now.x + SP8, q.now.y + SP8, QUICK_NOW_ART, QUICK_NOW_ART};
+			q.nowNext = {q.now.x + q.now.w - SP8 - QUICK_NOW_STEP_W, q.now.y + SP8, QUICK_NOW_STEP_W, QUICK_NOW_KEY_H};
+			q.nowPlay = {q.nowNext.x - SP8 - QUICK_NOW_PLAY_W, q.now.y + SP8, QUICK_NOW_PLAY_W, QUICK_NOW_KEY_H};
+			q.nowPrev = {q.nowPlay.x - SP8 - QUICK_NOW_STEP_W, q.now.y + SP8, QUICK_NOW_STEP_W, QUICK_NOW_KEY_H};
+			int textX = q.nowArt.x + q.nowArt.w + SP12;
+			q.nowText = {textX, q.nowArt.y, q.nowPrev.x - SP12 - textX, q.nowArt.h};
+			q.nowLine = {textX, q.nowArt.y + q.nowArt.h - QUICK_NOW_LINE_H, q.nowText.w, QUICK_NOW_LINE_H};
 			int y = q.now.y + q.now.h + QUICK_GAP;
 			q.level.resize(levels);
 			for (int i = 0; i < levels; i++)
