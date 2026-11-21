@@ -7,8 +7,9 @@
 // loose files under them; Not finished, what was started and left, newest first, from the resume store. A folder
 // row opens the folder's own list (the videos under it, however deep). A plays from the place — the file's own
 // start= comes from resume.tsv as it always does — with the view's videos as the list, as a folder's files play
-// with their folder (the spec: Play makes the view the list). No tags are read and no thumbnails made: a name, a
-// size, a date, the length from the durations cache, the place from the resume store.
+// with their folder (the spec: Play makes the view the list). No tags are read here: a name, a size, a date, the
+// length from the durations cache, the place from the resume store, the thumbnail from the videos' cache (made once
+// in the background: ui_mediaart.h).
 #pragma once
 #include "ui.h"
 #include "ui_shell.h"

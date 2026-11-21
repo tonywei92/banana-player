@@ -15,6 +15,7 @@ namespace bp
 		TrackType type = TrackType::Other;
 		std::string title, lang, codec;
 		int channels = 0;
+		int w = 0, h = 0;	// a video track's picture size (mpv's demux-w / demux-h); 0 unknown
 		bool selected = false, isDefault = false, forced = false, external = false, albumArt = false;
 	};
 

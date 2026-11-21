@@ -2,6 +2,7 @@
 // drawn inside lay::shell().body (the shell draws the rail, the header and the hints); the touches test the same
 // Rects the drawing asked for.
 #include "ui_videos.h"
+#include "ui_mediaart.h"
 #include "ui_internal.h"
 #include "ui_kit.h"
 #include "ui_browse.h"
@@ -132,6 +133,9 @@ namespace bp
 			v.done = true;		// played through (or as good as): the tick, no place kept
 		}
 		else if (secs > 0) v.note = formatTime(secs);
+		// its thumbnail from the videos' cache (made once in the background: ui_mediaart.h), else the kind's mark
+		v.thumb = ui.mediaArt->thumbState(r.path);
+		if (v.thumb == 1) v.art = [this, path = r.path](Rect box) { ui.mediaArt->drawThumb(path, box); };
 		v.second = baseName(parentFolder(r.path)) + (r.size > 0 ? " \xC2\xB7 " + formatBytes(r.size) : "") +
 			(r.mtime ? " \xC2\xB7 " + rowDate(r.mtime) : "");
 		// the row that plays: the Playing pill (paused too), as the Playlists rows and Music's cells mark theirs
@@ -687,7 +691,7 @@ namespace bp
 			Kit::Video v = videoOf(r, i, *pp);
 			char b[64];
 			snprintf(b, sizeof b, "%.3f", v.resume);
-			return "vv" + gen + std::to_string(i) + r.path + "|" + v.note + "|" + b + (v.done ? "t" : "") +
+			return "vv" + gen + std::to_string(i) + r.path + "|" + v.note + "|" + b + "|" + std::to_string(v.thumb) + (v.done ? "t" : "") +
 				(v.playing ? "p" : "") + (v.paused ? "z" : "") + (v.focused ? "f" : "") + (v.pressed ? "d" : "");
 		};
 		spec.draw = [this, pp](int i, Rect box) {
@@ -712,10 +716,10 @@ namespace bp
 	{
 		// everything the drawing shows that Ui::signature doesn't already hold (the playing file and its pause are
 		// its base; the resume store is read at the row, and what plays moved it — the rows' key holds that), and
-		// the reading notice's step, so the bar moves while the first pass walks
+		// the reading notice's step, so the bar moves while the first pass walks; a thumbnail landing (mediaArt's serial)
 		char buf[96];
-		snprintf(buf, sizeof buf, "|vd%d.%d.%s.%d.%d.%d.%u", view, cursor, folder.c_str(), touchMoved, touch,
-			(int)rowsFor(p).size(), generation());
+		snprintf(buf, sizeof buf, "|vd%d.%d.%s.%d.%d.%d.%u.%d", view, cursor, folder.c_str(), touchMoved, touch,
+			(int)rowsFor(p).size(), generation(), ui.mediaArt->serial);
 		std::string s = buf;
 		if (!snapshot() || generation() == 0)
 		{

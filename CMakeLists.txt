@@ -80,6 +80,7 @@ target_sources(bpcore PRIVATE src/stickscroll.cpp)	# the left stick's scrolling 
 target_sources(bpcore PRIVATE src/scroller.cpp)	# a list that follows the finger and glides (smooth scrolling)
 target_sources(bpcore PRIVATE src/volumestep.cpp)	# the volume keys' step, and a hold's stop at 100%
 target_sources(bpcore PRIVATE src/mediaindex.cpp src/mediacache.cpp)	# the cards' media index (its walk, grouping and query; the tag cache)
+target_sources(bpcore PRIVATE src/videocache.cpp)	# the videos' cache: its names, the facts' text, the top screen's labels
 # PFFFT (third_party/pffft, BSD-like): the native visualizers' spectrum (src/viznative.h); NEON on aarch64, SSE on x86
 add_library(pffft_static STATIC third_party/pffft/pffft.c)
 set_target_properties(pffft_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -148,7 +149,7 @@ target_link_libraries(bpmanga PUBLIC bpcore PRIVATE lua_static)
 # libavformat (FFmpeg: libmpv's own dependency) for the file lists' durations; the web dashboard's probe uses it too,
 # and the media index's tag reader (src/mediatags.cpp)
 pkg_check_modules(AV REQUIRED IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
-add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp src/mediatags.cpp)
+add_library(bpprobe STATIC src/durprobe.cpp src/pagedecode.cpp src/mediatags.cpp src/videoframe.cpp)
 target_link_libraries(bpprobe PUBLIC bpcore PkgConfig::AV)
 # libjpeg (libjpeg-turbo's jpeg_skip_scanlines) and libpng: a long strip page's bands, decoded without the whole
 # picture in memory (pagedecode.cpp's decodeBand); FFmpeg's decoders only give whole frames
@@ -165,6 +166,7 @@ target_sources(banana-player PRIVATE src/ui_kit_new.cpp src/ui_shell.cpp src/pre
 target_sources(banana-player PRIVATE src/mediaworker.cpp)
 # the rail's library sections (Music, Videos, Books), filled by themselves from the index (their own line too)
 target_sources(banana-player PRIVATE src/ui_music.cpp src/ui_videos.cpp src/ui_books.cpp src/ui_smoothlist.cpp)
+target_sources(banana-player PRIVATE src/videoartworker.cpp src/ui_mediaart.cpp)	# the videos' thumbnails, frames and facts; the pane's covers
 # the native visualizers' second decode of a song (src/viztap.h): libswresample (FFmpeg's, libmpv's own) for mono 32 kHz
 pkg_check_modules(SWR REQUIRED IMPORTED_TARGET libswresample)
 target_sources(banana-player PRIVATE src/viztap.cpp src/topviz.cpp)

@@ -530,6 +530,7 @@ namespace bp
 			std::function<void(Rect)> art;
 			const Glyph* glyph = nullptr;	// the kind's mark (G_FILM when none is given)
 			std::string name, note, second;
+			int thumb = 0;	// the thumbnail's state (Ui::MediaArt::thumbState): in the row's key, not drawn from
 			double resume = -1;	// -1: no bar (not started); 1: finished
 			bool done = false, focused = false, pressed = false, off = false;
 			bool playing = false, paused = false;	// the row that plays (the rail's key carries the bars)

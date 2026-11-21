@@ -49,6 +49,8 @@ namespace bp
 			t.lang = str(m, "lang");
 			t.codec = str(m, "codec");
 			t.channels = (int)num(m, "demux-channel-count");
+			t.w = (int)num(m, "demux-w");
+			t.h = (int)num(m, "demux-h");
 			t.selected = flag(m, "selected");
 			t.isDefault = flag(m, "default");
 			t.forced = flag(m, "forced");

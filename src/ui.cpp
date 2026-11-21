@@ -32,6 +32,7 @@
 #include "ui_search.h"
 #include "ui_music.h"
 #include "ui_videos.h"
+#include "ui_mediaart.h"
 #include "ui_books.h"
 #include "durworker.h"
 
@@ -111,6 +112,7 @@ namespace bp
 		areas.push_back(videos.get());
 		books = std::make_unique<Books>(*this);
 		areas.push_back(books.get());
+		mediaArt = std::make_unique<MediaArt>(*this);
 		kit = std::make_unique<Kit>(*this);	// (not an area: the redesign's components, drawn by the areas rebuilt on them)
 		search = std::make_unique<Search>(*this);	// (its constructor adopts Page::Search: drawn in the shell's body)
 		areas.push_back(search.get());
@@ -130,6 +132,7 @@ namespace bp
 		if (photoTex) SDL_DestroyTexture(photoTex);
 		if (supportTex) SDL_DestroyTexture(supportTex);
 		cache.clear();
+		mediaArt.reset();	// (its thumbnails' textures, before the renderer goes)
 		if (listShown) listShown->release();	// (its rows' textures, before the renderer goes)
 		undim();	// (the quit: the bottom panel's level as it was)
 		// and a list drawn under the Add to… picker (the page's, while the picker's is the one shown), and the picker's

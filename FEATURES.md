@@ -178,8 +178,16 @@ The films on the cards in one list, without walking folders: filled by itself fr
 
 - **All**: every video by name. A row shows its length (`9:56`), where it was left (`at 6:12 / 9:56` with a bar), a
   tick when played through, a **Playing** pill (or **Paused**) on the row that plays, and its folder, size and date
-  (`Movies · 2.1 GB · 12 Nov`). No thumbnails are made for the
-  list; the top screen previews nothing here (the kind's mark stands in).
+  (`Movies · 2.1 GB · 12 Nov`), with a thumbnail: a frame from a tenth of the way in (a third if that one is
+  black), made once in the background and kept (the kind's mark stands in until it lands, and for a file with no
+  picture). The top screen shows the video under the cursor: a larger frame of it across the top, fading into the
+  page, then where it was left (`Video · left at 6:12 of 9:56`, `watched`, `not played yet`), its name and its facts
+  two to a line — **Length** (with its chapters), **Size**, **Picture** (`H.264 · 1920 × 816`), **Changed**,
+  **Audio** (`English 5.1, Italian`), **Subtitles** (`English, Spanish + 6`) and its folder. The frames and facts are
+  kept in the state folder's `cache/videos` (96 MB at most, the least recently looked at going first; a file changed
+  on the card is read again), so a second visit shows them at once. Nothing is made while a video plays or a file
+  opens; what is kept still shows. Playing a video writes what the player found in it over the kept facts (a
+  subtitle file put beside it, the exact length), so the top screen shows the change next time.
 - **Folders**: the folders directly inside the Videos folders, each with how much is under it (`42 videos`), then the
   loose files under them. **A** opens a folder's own list (everything under it, however deep).
 - **Not finished**: what you started and left, newest first, with its place.
@@ -1697,8 +1705,9 @@ combination instead.)
   (press play). `log.txt`: `audio: headphones out, paused` (or `Bluetooth headphones disconnected`, `USB sound card
   unplugged`).
 - **Top screen with nothing playing:** a Preview pane drawn by the app in the theme's colours: the brand mark and name, then
-  what the bottom screen's cursor is on (a Recent card on Home, a file's kind and size in Files, a video, an album, a
-  book, a setting's help, Search, Extensions). A fresh install shows the welcome: the app's icon, the name and three ways
+  what the bottom screen's cursor is on (a Recent card on Home, a file's kind and size in Files, a video with its frame
+  and facts, an album with its art, a book with its cover, a setting's help, Search, Extensions). The art and covers
+  are decoded off the main thread; the cover's place shows until they land, and for good where there is none. A fresh install shows the welcome: the app's icon, the name and three ways
   to start. Loading, Buffering and "Playing in your browser" are one State card (tile with icon or spinner, title, line, key).
 - **Sleep:** when nothing plays, the handheld sleeps after BananaOS's idle minutes (its `autosleep_minutes`, 10 unless
   changed in `/data/banana/bananad.conf`; 0 is never), counted from the last button, touch or page turn in the player.

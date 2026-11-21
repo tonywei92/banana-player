@@ -125,6 +125,9 @@ namespace bp
 		bool topPane(PaneSpec& out, const Player& p, bool idle) const;
 		bool topPaneGallery(PaneSpec& out) const;	// the test gallery's (ui_kit_new.cpp)
 		bool idlePane(PaneSpec& out, const Player& p) const;	// ui_toppane.cpp
+		// a video's pane (ui_toppane.cpp): its frame, its place, its facts
+		void videoPane(PaneSpec& out, const std::string& path, const std::string& name, long long size, int64_t mtime,
+			const Player& p) const;
 		// test only (--press gallery:new, gallery:new:2): kit-new's components drawn in place of the page (0: off)
 		int galleryNew = 0;
 		void drawGalleryNew();
@@ -223,6 +226,9 @@ namespace bp
 		std::unique_ptr<Videos> videos;
 		struct Books;
 		std::unique_ptr<Books> books;
+		// the videos' thumbnails, frames and info, and the top pane's covers as pixels (ui_mediaart.h; not an area)
+		struct MediaArt;
+		std::unique_ptr<MediaArt> mediaArt;
 		// the playlists: a plain struct the browser owns (browse->playlists), ui_playlists.h / ui_playlists.cpp
 		struct Playlists;
 		// Home and All recent: a plain struct the browser owns (browse->homeView), ui_home.h / ui_home.cpp

@@ -7,6 +7,7 @@
 // Its first use: Settings › Power & screens › Theme (the fifteen swatches and the theme's pieces as they look).
 // While a video, a song or a photo plays the top screen is the picture: no pane.
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -40,9 +41,14 @@ namespace bp
 		bool welcome = false;	// a fresh install's welcome: the app's icon (84) beside the label and title, in place of the brand mark
 		PaneImage icon;	// the welcome's icon picture; none: the brand mark drawn large
 		bool cover = false;	// the cover layout (the cover's place; the picture comes from coverArt)
-		// the cover's picture (a decoded cover: the caller's own, or the shared art cache's pixels), fitted inside
-		// the cover's box; none: the cover's place (SURFACE and the picture's mark)
-		PaneImage coverArt;
+		bool coverSquare = false;	// an album's art: the cover's place square
+		// the cover's picture (a decoded cover, held by the caller's cache: shared, never copied per pass), fitted
+		// inside the cover's box; none: the cover's place (SURFACE and the picture's mark)
+		std::shared_ptr<const PaneImage> coverArt;
+		// a video's layout (lay::previewPane's hero): its frame across the top, cropped to fill and fading into the
+		// ground, the column over the fade and the rows two to a line; no frame: the band in SURFACE with the film mark
+		bool hero = false;
+		std::shared_ptr<const PaneImage> heroArt;
 		// a block of the pane's own under the sentence: THEMES, every theme's swatch and the pieces as they look now
 		enum Extra { NONE, THEMES } extra = NONE;
 		int chosen = 0;	// THEMES: the theme outlined (the one in use)
