@@ -451,7 +451,7 @@ namespace bp
 		void drawMangaBookTag();
 		// the left stick (issue 16): the pages scroll or pan while it is held; Book turns a spread the way its D-pad
 		// points (one push, one turn)
-		void stickAxis(int value, Player& p);
+		void stickAxis(int value, Player& p, int valueX = 0);
 	// the page numbers, turned as the pages are, at the foot of the spread
 		static constexpr Uint32 MG_TAP_MS = 250, MG_CTRL_MS = 4000, MG_TOAST_MS = 2000;
 		static constexpr int MG_TAP_UNITS = 12;	// a finger that moves less (640x480 units) may still be a tap

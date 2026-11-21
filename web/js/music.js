@@ -6,7 +6,7 @@ import { AppMenu, Art, Banner, Empty, Skeleton, coverUrl } from './components.js
 import { Icon } from './icons.js';
 import { SectionUpload, uploadToSection } from './libupload.js';
 import { Playlists } from './playlists.js';
-import { playHere, playPaths } from './browser-player.js';
+import { playHere, playPaths, view } from './browser-player.js';
 
 /* ================= music ================= */
 // The Music tab (docs/redesign "music-albums" and its web minis): the same three views the handheld has — the

@@ -41,7 +41,7 @@ namespace bp
 		// the keyboard's Done on Find's field: searched on from the place
 		void findTyped(const std::string& query);
 		// the left stick (issue 16): the text scrolls, the pages pan; Book turns a spread the way its D-pad points
-		void stickAxis(int value, Player& p);
+		void stickAxis(int value, Player& p, int valueX = 0);
 		// the place now, queued, and the writer waited for (quit: at most a second)
 		void docFlush();
 		// main creates it once and never destroys it (its thread may be inside an fsync at exit)

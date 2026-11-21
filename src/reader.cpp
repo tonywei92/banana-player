@@ -290,7 +290,7 @@ namespace bp
 		onCard.clear();
 		errPage = -1;
 		opened = fingerDown = false;
-		stickValue = 0;
+		stickValue = stickValueX = 0;
 		stickAt = 0;
 		stickCanMove = false;
 	}
@@ -729,16 +729,24 @@ namespace bp
 		return stickScrollSpeed(stickValue, viewH);
 	}
 
+	double MangaReader::stickSpeedXNow() const
+	{
+		// only a paged page wider than the view pans sideways (the Strip's column fits its width; Book turns spreads)
+		if (!opened || stickValueX == 0 || bookHold || readMode == MANGA_STRIP || !paged.canPanH()) return 0;
+		return stickScrollSpeed(stickValueX, viewW);
+	}
+
 	void MangaReader::command(int kind, double v, int64_t ms, double v2, double v3)
 	{
 		if (!opened) return;
 		if (kind == Stick)
 		{
 			// the left stick is read as a value; frame() turns it into pixels, so the speed is the same at any rate
-			bool was = stickSpeedNow() != 0;
-			bool changed = stickValue != (int)v;
+			bool was = stickActive();
+			bool changed = stickValue != (int)v || stickValueX != (int)v2;
 			stickValue = (int)v;
-			bool on = stickSpeedNow() != 0;
+			stickValueX = (int)v2;
+			bool on = stickActive();
 			// a new value after the view stopped at an end can move it again (a same value every pass leaves it)
 			if (on && (changed || !was)) stickCanMove = true;
 			if (!on) stickCanMove = false;
@@ -1080,12 +1088,13 @@ namespace bp
 		// the left stick (issue 16): every frame while held, by the time since the last one (not per event), so the
 		// speed is the same at any frame rate; released, its command stops it at once
 		bool stickMoved = false;
-		if (double sv = stickSpeedNow(); sv != 0)
+		if (stickActive())
 		{
+			double sv = stickSpeedNow(), sx = stickSpeedXNow();
 			double dt = stickAt ? std::clamp<double>((double)(now - stickAt), 0, 50) : 16;
 			stickAt = now;
-			double step = sv * dt / 1000.0;
-			if (step != 0)
+			double step = sv * dt / 1000.0, stepX = sx * dt / 1000.0;
+			if (step != 0 || stepX != 0)
 			{
 				if (readMode == MANGA_STRIP)
 				{
@@ -1093,7 +1102,7 @@ namespace bp
 					strip.scrollBy(step);
 					stickMoved = strip.offset() != was;
 				}
-				else stickMoved = paged.panBy(step);
+				else stickMoved = paged.panBy(step, stepX);
 				stickCanMove = stickMoved;
 			}
 			// (a zero-length frame says nothing about an end: the next one tries again)

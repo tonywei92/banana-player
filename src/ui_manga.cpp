@@ -3111,7 +3111,7 @@ namespace bp
 		ui.pageReader->mfTagUntil = now + 1500;
 	}
 
-	void Ui::Manga::stickAxis(int value, Player& p)
+	void Ui::Manga::stickAxis(int value, Player& p, int valueX)
 	{
 		bool reading = ui.page == Page::MangaRead && ui.pageReader->readerStatus.open && !mangaMenu &&
 			!ui.pageReader->mangaPages && !mangaReadWaiting && ui.pageReader->readerStatus.error.empty();
@@ -3138,11 +3138,11 @@ namespace bp
 			stickSent = false;
 			return;
 		}
-		if (value != 0)
+		if (value != 0 || valueX != 0)
 		{
 			// the reader scrolls the Strip, or pans a paged page with room (issue 16); every pass, so a chapter
 			// opened under a held stick starts at once (the same value changes nothing)
-			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, (double)value, (int64_t)SDL_GetTicks()});
+			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, (double)value, (int64_t)SDL_GetTicks(), (double)valueX});
 			stickSent = true;
 		}
 		else if (stickSent)

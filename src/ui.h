@@ -79,7 +79,9 @@ namespace bp
 		void tick(Player& p);
 		// the left stick's up/down push (SDL_CONTROLLER_AXIS_LEFTY, -32768 up … 32767 down), every pass while a
 		// reader is open: the text viewer or the pages scroll or pan while it is held; elsewhere it does nothing
-		void stickAxis(int value, Player& p);
+		// (valueX: LEFTX, -32768 left … 32767 right: a zoomed photo or page pans sideways too; a photo pans, and a
+		// list scrolls, by it as well)
+		void stickAxis(int value, Player& p, int valueX = 0);
 		// something moves by itself (a flick, a playlist's rows scrolling under a dragged one): the loop should come
 		// round often
 		bool animating() const;
@@ -756,6 +758,11 @@ namespace bp
 		int panDownX = 0, panDownY = 0, lastX = 0, lastY = 0, tapX = 0, tapY = 0;
 		double panStartX = 0, panStartY = 0, flickVX = 0, flickVY = 0;	// the flick's speed: units a millisecond
 		Uint32 lastAt = 0, flickAt = 0, tapAt = 0;
+		// the left stick as last read (LEFTY, LEFTX), when a photo or a list last moved by it, and whether a list is
+		// moving by it now (animating() keeps the loop turning)
+		int stickLY = 0, stickLX = 0;
+		Uint32 stickPhotoAt = 0, stickListAt = 0;
+		bool stickListOn = false;
 		SDL_Texture* photoTex = nullptr;
 		int photoTexId = -1;
 		static constexpr int PAN_W = 336, PAN_H = 252, PHOTO_BTN = 20, PHOTO_BTNS = 8;

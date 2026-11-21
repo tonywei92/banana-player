@@ -960,7 +960,7 @@ int main(int argc, char** argv)
 		bool& logNextTop = ts.logNextTop;
 
 		Button held = Button::None;	// a pad's button held down: repeated as a key is
-		int stickY = 0;	// the left stick's LEFTY (-32768 up … 32767 down): the readers scroll while it is held
+		int stickY = 0, stickX = 0;	// the left stick's LEFTY (-32768 up … 32767 down): the readers scroll while it is held
 		Uint32 heldNext = 0, savedAt = SDL_GetTicks();
 		// Both panels drawn again and again for a while after the start and a wake, and every few seconds after: on
 		// the handheld (SDL's KMSDRM) the first frames presented don't reach the panels, and a page that doesn't
@@ -1007,7 +1007,7 @@ int main(int argc, char** argv)
 			};
 			// under the lid the stick is one of the keys ignored (and its held value must not keep a reader moving
 			// with both panels dark: no event comes to stop it)
-			if (lidKeysNow()) stickY = 0;
+			if (lidKeysNow()) stickY = stickX = 0;
 			Uint32 lidShoulderAt[4] = {0, 0, 0, 0};
 			bool lidShoulderDone[4] = {false, false, false, false}, lidShoulderStuck[4] = {false, false, false, false};
 			auto lidStep = [&](int dir) {
@@ -1159,13 +1159,13 @@ int main(int argc, char** argv)
 				else if (e.type == SDL_CONTROLLERDEVICEADDED || e.type == SDL_CONTROLLERDEVICEREMOVED)
 				{
 					handlePadHotplug(e);
-					if (e.type == SDL_CONTROLLERDEVICEREMOVED) stickY = 0;	// a stick held as the pad goes must not keep scrolling
+					if (e.type == SDL_CONTROLLERDEVICEREMOVED) stickY = stickX = 0;	// a stick held as the pad goes must not keep scrolling
 				}
-				else if (e.type == SDL_CONTROLLERAXISMOTION && e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY)
+				else if (e.type == SDL_CONTROLLERAXISMOTION && (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY || e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX))
 				{
 					// the readers' analog scroll (issue 16): the value is read here and turned into pixels by the
 					// readers each frame, so their speed doesn't depend on how often the pad sends events
-					stickY = e.caxis.value;
+					(e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY ? stickY : stickX) = e.caxis.value;
 				}
 				else if (scripted && (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP || e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERBUTTONUP || e.type == evTouch ||
 							 (e.type >= SDL_MOUSEMOTION && e.type <= SDL_MOUSEWHEEL) || (e.type >= SDL_FINGERDOWN && e.type <= SDL_FINGERMOTION) || e.type == SDL_CONTROLLERAXISMOTION))
@@ -1608,7 +1608,7 @@ int main(int argc, char** argv)
 			if (woke)
 			{
 				freshUntil = SDL_GetTicks() + 2000;	// the panels back from a sleep: drawn again
-				stickY = 0;	// a stick held as the handheld slept must not start a reader at the wake
+				stickY = stickX = 0;	// a stick held as the handheld slept must not start a reader at the wake
 				ui.undim();	// (slept in the dim before Screen off: the bottom panel's level back)
 			}
 #ifdef BP_WEB
@@ -2296,7 +2296,7 @@ int main(int argc, char** argv)
 			{
 				// the left stick's push reaches whichever reader is being read (nothing elsewhere), then its
 				// commands are applied below
-				ui.stickAxis(stickY, player);
+				ui.stickAxis(stickY, player, stickX);
 				FrameWatchScope fw("reader sync");
 				ts.syncReaders(ui, player, mangaNet, opts.stateDir, now, woke, haveUi, showLevelCard, renderPending);
 			}

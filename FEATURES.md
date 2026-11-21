@@ -475,6 +475,7 @@ you hold it). A song's fifth chip is **Shuffle**; a video's fifth is **Repeat**.
 | **LEFT / RIGHT** or **L / R** | Previous / next photo (hold to keep going) |
 | **UP / DOWN** | Zoom in / out: 100%, 150%, 200%, 300%, 400%, 600%, 800% |
 | **A** | Zoom to 200%, or back to the whole photo |
+| **Left stick** (any way) | Pans a zoomed photo while held, faster the further it is pushed (a full push is about a screen a second) |
 | **L3** (press the stick) | Rotate a quarter turn |
 | **SELECT** or **X** | **More**: four chips changed in place (**Shown**: Fit / Fill, **Keep zoom**, **Pan area**, **A drag moves**), then **Info**, **Show in folder** and **Photo settings**. The **Fit** key on the photo's face steps Fit / Fill in place |
 | **START** | Settings |
@@ -633,7 +634,7 @@ a bookmark key: one tap keeps the place (as Bookmarks › Add a bookmark here).
 | Button | What it does |
 |---|---|
 | **UP** / **DOWN** | A few lines up or down |
-| **Left stick** (up / down) | Scrolls smoothly while it is held: a small push crawls, a full push is about a screen a second |
+| **Left stick** (any way) | Scrolls smoothly while it is held: a small push crawls, a full push is about a screen a second (up / down; lists, menus and the text viewer scroll, left / right do nothing there) |
 | **LEFT** / **RIGHT**, **L** / **R**, **A** | A screen back or on |
 | **SELECT** | **Book mode** (below) |
 | **X** | **Bookmarks**: add one here, go to one, delete one |
@@ -693,7 +694,7 @@ for the size it's shown at. The header carries the file's name at 18 units with 
 | **LEFT** / **RIGHT** | Back / on: through a zoomed page first, then to the page before or after |
 | **L** / **R** | The page before / after, straight to it |
 | **UP** / **DOWN** | Zoom in / out (both views, as in the manga reader and the photo viewer) |
-| **Left stick** (up / down) | Vertical scroll: scrolls smoothly while held. Single page: pans a page that is zoomed or taller than the screen |
+| **Left stick** (any way) | Vertical scroll: scrolls smoothly while held. Single page: pans a page that is zoomed, wide or taller than the screen, sideways too |
 | **A** | Single page: 200% or back to the whole page. Vertical scroll: on |
 | **X** | Single page or Vertical scroll (kept for the next PDF) |
 | **Y** | **Pages**: every page small; **A** goes to one |
@@ -1481,7 +1482,7 @@ to scroll* in **Vertical scroll**), a line along its foot naming double-tap and 
 |---|---|
 | **RIGHT** / **LEFT** | Forward / back: a screenful down the page, then the next page; back goes a screenful up it, then to the page before (in **Vertical scroll**, a screenful down or up). With **Swap Left/Right** on, **LEFT** is forward |
 | **UP** / **DOWN** | Zoom in / out, in small steps: 100, 110, 125, 140, 160, 180, 200, 225, 250, 300, 350, 400, 500, 600, 700, 800 %. The new zoom shows on the page a moment, then fades. **A** zooms to 200 % or back to the fit |
-| **Left stick** (up / down) | **Vertical scroll**: scrolls smoothly while held, faster the further it is pushed. Paged modes: pans a page that is zoomed or taller than the screen; a page that fits does not move. **Book**: one push turns a spread, the way its D-pad points |
+| **Left stick** (any way) | **Vertical scroll**: scrolls smoothly while held, faster the further it is pushed. Paged modes: pans a page that is zoomed, wide or taller than the screen, up, down, left and right; a page that fits does not move. **Book**: one push turns a spread, the way its D-pad points |
 | **L / R** | Previous / next page, straight to it |
 | **X** | The reading mode: Right to left → Left to right → Vertical scroll (kept for that series) |
 | **Y** | The Pages grid (below) |
