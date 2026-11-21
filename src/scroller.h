@@ -96,5 +96,26 @@ namespace bp
 			void glide(double speed, int64_t ms);
 			void springTo(double to, double speed, double k, int64_t ms);
 		};
+
+		// A finger's lift on the text reader (Docs' TXT/EPUB view): whether it glides on, and how fast. Stricter than
+		// a list's: a drag that ends at a reading pace stops where the finger lifts; only a deliberate flick glides,
+		// at a share of the finger's speed. Positions in the panel's units, time in ms.
+		class Flick
+		{
+		public:
+			static constexpr double MIN_SPEED = 0.9;	// units per ms over the last 100 ms: a slower lift doesn't glide
+			static constexpr double GAIN = 0.6;	// the glide starts at this share of the finger's speed
+			static constexpr int64_t REST_MS = 40;	// a finger still this long before the lift: no glide
+			static constexpr double TAU_MS = 250;	// the text's glide: its speed falls by e every TAU_MS (a list's: 325)
+
+			void press(double y, int64_t ms);
+			void move(double y, int64_t ms);
+			// the glide's start speed (units per ms, the content's way: positive when the finger went up), 0 for none
+			double lift(int64_t ms);
+
+		private:
+			struct Sample { double y; int64_t ms; };
+			std::vector<Sample> samples;
+		};
 	}
 }

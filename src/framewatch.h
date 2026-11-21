@@ -6,6 +6,7 @@
 // Main thread only: the counters are plain statics, as the loop is the only writer.
 #include <SDL.h>
 #include <cstdio>
+#include <cstdlib>
 
 namespace bp
 {
@@ -40,8 +41,10 @@ namespace bp
 		static void end(Uint32 now)
 		{
 			Uint32 total = now - started;
-			// (at most a line a second: a stutter that lasts shows one frame, not every frame of it)
-			if (total < 30 || now - lastLog < 1000) return;
+			// (at most a line a second: a stutter that lasts shows one frame, not every frame of it; BP_FRAME_TIMING=1:
+			// every pass that did something, for a test run's numbers)
+			static const bool every = getenv("BP_FRAME_TIMING") != nullptr;
+			if (every ? count == 0 : total < 30 || now - lastLog < 1000) return;
 			lastLog = now;
 			char line[256];
 			int n = snprintf(line, sizeof line, "timing: frame %u ms", (unsigned)total);

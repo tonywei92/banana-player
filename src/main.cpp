@@ -68,6 +68,7 @@
 #include <cstring>
 #include <ctime>
 #include <string>
+#include <thread>
 #include <sstream>
 #include <sys/stat.h>
 #include <vector>
@@ -271,7 +272,8 @@ int main(int argc, char** argv)
 					(sscanf(step.c_str(), "down:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "move:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "up:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
-					(sscanf(step.c_str(), "drag:%f:%f:%f:%f%n", &v[0], &v[1], &v[2], &v[3], &n) == 4 && n == (int)step.size());
+					(sscanf(step.c_str(), "drag:%f:%f:%f:%f%n", &v[0], &v[1], &v[2], &v[3], &n) == 4 && n == (int)step.size()) ||
+					(sscanf(step.c_str(), "swipe:%f:%f:%f:%f%n", &v[0], &v[1], &v[2], &v[3], &n) == 4 && n == (int)step.size());
 				if (!ok) { fprintf(stderr, "unknown step: %s\n", step.c_str()); return 2; }
 				steps.push_back(step);
 			}
@@ -795,6 +797,15 @@ int main(int argc, char** argv)
 			SDL_PushEvent(&ev);
 		});
 		SDL_FingerID finger = -1;	// SDL's touches: the one finger that drives
+		if (ownTouch)
+		{
+			// SDL reads the same touchscreen and makes each finger move a mouse move too, which on KMSDRM moves its
+			// cursor: a legacy cursor ioctl that can wait for the panel's next flip, inside SDL_PollEvent. Nothing here
+			// uses SDL's copy of the touch (the thread above is the finger), so no mouse from it and no cursor
+			SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+			SDL_ShowCursor(SDL_DISABLE);
+			fprintf(stderr, "touch: own reader; SDL's touch-to-mouse and cursor off\n");
+		}
 
 		// the videos beside it are the playlist: L and R, and the next one plays when this one ends
 		bool running = true;
@@ -1110,6 +1121,16 @@ int main(int argc, char** argv)
 			// the pass starts after the wait (the wait isn't a frame's work) and ends after both panels are drawn
 			FrameWatch::begin(SDL_GetTicks());
 			Uint32 eventsAt = SDL_GetTicks();
+			// SDL's pump (reading the devices: on KMSDRM a touch's mouse copy can move a cursor plane, a commit that
+			// waits on the panel) timed apart from the handling, so a slow "events" names which it is
+			Uint64 pumpTicks = 0;
+			int eventCount = 0;
+			auto pollNext = [&] {
+				Uint64 t0 = SDL_GetPerformanceCounter();
+				bool more = SDL_PollEvent(&e) != 0;
+				pumpTicks += SDL_GetPerformanceCounter() - t0;
+				return more;
+			};
 			while (got)
 			{
 				// a button, a touch or the stick moved (past drift): the idle sleep's clock starts again
@@ -1154,7 +1175,7 @@ int main(int argc, char** argv)
 						}
 					}
 					// (the face keys, D-pad, START, SELECT, F, the stick and the touch: swallowed)
-					got = SDL_PollEvent(&e);
+					got = pollNext();
 					continue;
 				}
 				// the volume keys past 100% (Max volume 120 or 150): bananad sets the handheld's level and stops at 100; the
@@ -1223,7 +1244,7 @@ int main(int argc, char** argv)
 					// readers each frame, so their speed doesn't depend on how often the pad sends events
 					(e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY ? stickY : stickX) = e.caxis.value;
 				}
-				else if (scripted && (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP || e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERBUTTONUP || e.type == evTouch ||
+				else if (scripted && !(e.type == evTouch && e.user.data2) && (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP || e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERBUTTONUP || e.type == evTouch ||
 							 (e.type >= SDL_MOUSEMOTION && e.type <= SDL_MOUSEWHEEL) || (e.type >= SDL_FINGERDOWN && e.type <= SDL_FINGERMOTION) || e.type == SDL_CONTROLLERAXISMOTION))
 				{
 					// a test run takes only its own steps: the windows can take the keyboard's focus while someone
@@ -1415,7 +1436,7 @@ int main(int argc, char** argv)
 					{
 						if (haveUi) ui.keepHandheldVolume(handheldVolKept);
 						delete what;
-						got = SDL_PollEvent(&e);	// (the loop's next event: a bare continue would take this one again)
+						got = pollNext();	// (the loop's next event: a bare continue would take this one again)
 						continue;
 					}
 					// bananad's word on a volume key the player took past 100% (its 100, or the 95 its Down set before the
@@ -1506,8 +1527,13 @@ int main(int argc, char** argv)
 				else if (e.type == evTouch)
 				{
 					Pointer* pt = (Pointer*)e.user.data1;
+					// a move with a later move of the same finger already queued is stale: only the last of a pass's
+					// moves goes to the Ui (the touchscreen reports faster than a frame; each move is a redraw's worth)
+					SDL_Event later;
+					bool stale = pt->kind == Pointer::Move && SDL_PeepEvents(&later, 1, SDL_PEEKEVENT, evTouch, evTouch) == 1 &&
+						((Pointer*)later.user.data1)->kind == Pointer::Move;
 					ui.pointerMs = e.common.timestamp;	// (pushed by the touch thread as it read it)
-					if (ui.pointer(*pt, shown())) leave();
+					if (!stale && ui.pointer(*pt, shown())) leave();
 					delete pt;
 				}
 				else if (haveUi && !ownTouch)
@@ -1551,9 +1577,16 @@ int main(int argc, char** argv)
 						if (ui.pointer(pt, shown())) leave();
 					}
 				}
-				got = SDL_PollEvent(&e);
+				eventCount++;
+				got = pollNext();
 			}
-			FrameWatch::add("events", SDL_GetTicks() - eventsAt);
+			{
+				const Uint32 pumpMs = (Uint32)(pumpTicks * 1000 / SDL_GetPerformanceFrequency());
+				const Uint32 allMs = SDL_GetTicks() - eventsAt;
+				FrameWatch::add("event pump", pumpMs);
+				FrameWatch::add("events", allMs > pumpMs ? allMs - pumpMs : 0);
+				FrameWatch::add("event count", (Uint32)eventCount);
+			}
 			// the shoulder keys' hold: one step at 0.6 s; a key down 5 s is stuck and ignored until let go; not lit
 			// anymore (the lid opened, Stop) releases them all
 			if (!lidKeysNow())
@@ -1819,6 +1852,29 @@ int main(int argc, char** argv)
 								ui.draw(shown());
 							}
 							at(Pointer::Up, v[0], v[1]);
+						}
+						else if (sscanf(step.c_str(), "swipe:%f:%f:%f:%f", &v[0], &v[1], &v[2], &v[3]) == 4)
+						{
+							// a finger as the handheld's touch thread sends it: queued events, a move every 8 ms for
+							// 600 ms, taken by the loop's passes as they come (marked, so a test run doesn't drop them)
+							const float x1 = v[0] / Ui::W, y1 = v[1] / Ui::H, x2 = v[2] / Ui::W, y2 = v[3] / Ui::H;
+							std::thread([x1, y1, x2, y2] {
+								auto send = [](Pointer::Kind k, float x, float y) {
+									SDL_Event ev{};
+									ev.type = evTouch;
+									ev.user.data1 = new Pointer{k, x, y};
+									ev.user.data2 = (void*)1;
+									SDL_PushEvent(&ev);
+								};
+								send(Pointer::Down, x1, y1);
+								for (int i = 1; i <= 75; i++)
+								{
+									SDL_Delay(8);
+									send(Pointer::Move, x1 + (x2 - x1) * i / 75, y1 + (y2 - y1) * i / 75);
+								}
+								SDL_Delay(8);
+								send(Pointer::Up, x2, y2);
+							}).detach();
 						}
 						else if (sscanf(step.c_str(), "drag:%f:%f:%f:%f", &v[0], &v[1], &v[2], &v[3]) == 4)
 						{

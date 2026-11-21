@@ -751,7 +751,7 @@ open the same way as a PDF, with the Manga reader turned on (Extensions); withou
 
 A `.txt` file, or an EPUB that is a book of text, is shown on the top screen as a page of text that you scroll. The
 bottom screen holds the controls: how far through you are (a bar: tap or drag it to go there), a big area to drag the
-text with your finger (let go while moving and it glides on; a tap on its upper half goes a screen back, on its lower
+text with your finger (a drag stops where you lift your finger, only a quick flick glides on; a tap on its upper half goes a screen back, on its lower
 half a screen on), and **Contents**, **Bookmarks**, **Options** (Text options) and **Book mode**, each with its key
 under it (Options has none: it is the touch key). The header carries the book's name at 18 units, its line under it, and
 a bookmark key: one tap keeps the place (as Bookmarks › Add a bookmark here).

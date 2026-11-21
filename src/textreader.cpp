@@ -2,6 +2,7 @@
 #include "pagedecode.h"
 #include "textdoc.h"
 #include "settings.h"
+#include "scroller.h"
 #include <SDL.h>
 #include <algorithm>
 #include <cmath>
@@ -578,7 +579,7 @@ namespace bp
 		if (flingV != 0)
 		{
 			scrollBy(flingV * dt);
-			flingV *= std::exp(-dt / 325.0);
+			flingV *= std::exp(-dt / lay::Flick::TAU_MS);
 			if (std::abs(flingV) < 0.02) flingV = 0;
 			moved = true;
 		}
@@ -803,13 +804,41 @@ namespace bp
 				more = nextRow(p);
 			}
 			endShown = !more && y <= h + 1;
+			// rows already drawn within a screen of the view are kept: a drag back and forth (a finger's small moves)
+			// draws none of them again (each new row is FreeType and an upload: ~30 ms a frame on the handheld)
+			keepNear(p, more, y, h, true, keep, shown);
+			Pos above = top;
+			if (prevRow(above)) keepNear(above, true, -yoff - rowH(above), h, false, keep, shown);
 		}
-		// the rows gone from view are let go (they're quick to draw again)
+		// the rows further off are let go (they're quick to draw again)
 		keys = std::move(keep);
 		placeCard(placed, shown, w, h);
 		pr.keepOnly(shown);
 		pr.draw(placed, w, h);
 		if (forceFrames > 0) forceFrames--;
+	}
+
+	void TextReader::keepNear(Pos p, bool more, double y, int h, bool down, std::map<std::pair<uint64_t, int>, int>& keep,
+		std::set<int>& shown)
+	{
+		// (stops at the first row not drawn: nothing is drawn or laid out ahead here)
+		while (more && (down ? y < 2.0 * h : y > -1.0 * h))
+		{
+			auto it = keys.find({p.block, p.row});
+			if (it == keys.end()) return;
+			keep[it->first] = it->second;
+			shown.insert(it->second);
+			if (down)
+			{
+				y += rowH(p);
+				more = nextRow(p);
+			}
+			else
+			{
+				more = prevRow(p);
+				if (more) y -= rowH(p);
+			}
+		}
 	}
 
 	double TextReader::fraction() const

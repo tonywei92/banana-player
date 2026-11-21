@@ -6,6 +6,7 @@
 #include "ui.h"
 #include "ui_reader.h"	// PageReader::FollowList: the menu's smooth list
 #include "writequeue.h"	// DurableWriter: a document's place off the main thread
+#include "scroller.h"	// lay::Flick: the text drag's lift
 #include "bookplace.h"	// PlaceWrite: the dashboard's reader writes the same place
 
 namespace bp
@@ -174,9 +175,10 @@ namespace bp
 		int stickTarget = 0, stickDir = 0;
 		// the finger: on the text's scroll pad, the progress bar, the pan area, a button
 		bool docTouch = false, docPanTouch = false, docMoved = false;
-		int docDownX = 0, docDownY = 0, docLastY = 0, docPressed = -1;
-		Uint32 docLastAt = 0, docTapAt = 0;
-		double docVel = 0, docPanStartX = 0, docPanStartY = 0;
+		int docDownX = 0, docDownY = 0, docPressed = -1;
+		Uint32 docTapAt = 0;
+		double docPanStartX = 0, docPanStartY = 0;
+		lay::Flick docFlick;	// the text's drag: whether its lift glides on
 		float docTouchY = 0, docTouchX = 0;
 		Uint32 docFullTagUntil = 0, docFullToastUntil = 0;	// fullscreen's navigation, and the line on the way in
 		SDL_Texture* docPanTex = nullptr;
