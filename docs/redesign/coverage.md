@@ -120,6 +120,6 @@ no hint-bar key unlisted, 23 journeys walked. A phone’s page is a screen with 
 
 1. More (X) on a playlist and its items, Liked, a song in Files, an album, an artist, a search result, a connection, select mode and a book on the shelf: lists in `keys` (one pattern, `moreS()`; the table on “A playlist: its items” has the playlist ones).
 2. Manga: selecting chapters, a source’s filters.
-3. The phone’s Music, Playlists and Books tabs as phone pages (Music is drawn as desktop-width minis).
+3. The phone’s Music and Playlists tabs as phone pages (Music is drawn as desktop-width minis). Books is drawn: web-books.md.
 4. The one song player drawing says “Playlist · Late night” whichever list it was opened from (an album, an artist, a folder): the crumb is text, the layout is the same.
 5. Shared sheets are drawn over one screen each (the picker and Info over a video, the keyboard over Files). Opened from elsewhere they show that screen behind them; B returns to where you were. Nothing to fix.
