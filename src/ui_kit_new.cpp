@@ -65,13 +65,17 @@ namespace bp
 				ui.fillRound(m, DANGER, 3);
 			}
 		};
-		// Search, pinned at the top: the magnifier alone; the accent while Search shows (Clean: a glyph, no ground)
-		if (searchLit) lit(r.search);
-		else if (clean)
+		// Search, pinned at the top: the magnifier alone, lit and pressed in the sections' own shape (from the panel's
+		// edge, with the bar), so it reads as one of them and its glyph sits centred in what's lit
+		Ui::Rect searchSpan{r.area.x, r.search.y, r.search.x + r.search.w - r.area.x, r.search.h};
+		if (searchLit)
 		{
-			if (searchPressed) ui.fillRound(r.search, PRESSED, theme::kitRadius(R_BUTTON));
+			if (strong || clean) ui.fillRound(searchSpan, activeFill, theme::kitRadius(R_BUTTON), ROUND_TR | ROUND_BR);
+			else lit(searchSpan);
+			ui.fillRound({r.area.x, r.search.y + 8, 3, std::max(4, r.search.h - 16)}, strong ? sdl(theme::KEY_FOCUS) : ACCENT, 1,
+				ROUND_TR | ROUND_BR);
 		}
-		else ui.drawBox(r.search, searchPressed ? PRESSED : BUTTON, R_BUTTON);
+		else if (searchPressed) ui.fillRound(searchSpan, PRESSED, theme::kitRadius(R_BUTTON), ROUND_TR | ROUND_BR);
 		// (on the sections' axis: centred between the panel's edge and the cell's right, as they are)
 		ui.drawGlyphMid(G_SEARCH, (r.area.x + r.search.x + r.search.w) / 2, r.search.y + r.search.h / 2 + 1,
 			searchLit ? activeInk : clean ? sdl(theme::ON_RAIL) : TEXT, 2);
