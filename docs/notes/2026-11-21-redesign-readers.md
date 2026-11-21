@@ -71,3 +71,23 @@ and `MangaReader::want()` queues those with no thumbnail as jobs of their own (`
 view's pages; `thumbBusy` / `thumbFailed` apart from the view's sets, so they never count in the decoded budget or
 become textures). Checked on a generated 40-page CBZ: 18 of 18 in view, and after a drag the next rows filled.
 Left: a source's page not yet on the card is not fetched for its thumbnail; a turned page's grid-only thumb is unturned.
+
+## One key map for the readers (2026-11-21, later still)
+
+Owner: "SELECT should be Fullscreen across all readers". The table and its reasons: `docs/redesign/README.md`, "The
+readers' keys". This replaces what the sections above say about SELECT · View and L3 · Fullscreen.
+
+- **Files' comic / PDF:** SELECT `togglePagesFull`, START `openPagesView` (START or B closes it; SELECT in the sheet
+  closes it and goes Fullscreen), L3 `stepPagesTurn(1)` in Single page. The row's captions and `pagesKeyAct` follow;
+  the entry bar reads "SELECT or B: one screen".
+- **START is no longer Settings in a reader** (`Ui::startOpensSettings` drops DocText / DocPages): the page reader
+  has X · More › Reading settings; the text reader's START opens its options (`DOC_MENU_OPTIONS`), whose on-screen
+  Options key now wears the START cap (it sends `key(Start)`, which `Docs::key` had no case for outside a menu).
+- **Manga reader:** keys unchanged (SELECT, START, L3 were already these); its line reads "SELECT: one screen". B
+  still closes the reader from Fullscreen (Files' B leaves Fullscreen first): kept, a chapter may open in Fullscreen.
+- **Book bars:** the View / Text keys had a SELECT cap that was wrong (SELECT there leaves Book); no cap now.
+
+Checked: build, `core-test`, `--press` on a generated 6-page CBZ (`A,Select,shot,Select,Start,shot,Start,L3,B`): the
+log's "docs: fullscreen on / off", the bar's wording and the View sheet's "START B Close" in the shots. Not driven:
+the text reader's START, the Manga reader's toast (needs a library), the handheld.
+

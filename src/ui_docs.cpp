@@ -898,7 +898,11 @@ namespace bp
 			case Button::Left: case Button::L: textCmds.push_back({TextReader::Page, -1, now}); break;
 			case Button::Right: case Button::R: case Button::A: textCmds.push_back({TextReader::Page, 1, now}); break;
 			case Button::X: docMarksOpen(); break;
-			// (START is Settings, from Ui::press; the options are the on-screen Options key)
+			// START: how the text looks (the options), as View in the page reader; SELECT below is the full view
+			case Button::Start:
+				docMenu = DOC_MENU_OPTIONS;
+				docMenuCursor = docMenuScroll = 0;
+				break;
 			case Button::Y:
 				if (contentsCount() > 0)
 				{
@@ -922,7 +926,7 @@ namespace bp
 		// the PDF viewer
 		if (ui.pageReader->mangaPages) return ui.pageReader->mangaPagesKey(b, p);
 		bool strip = ui.pageReader->readerStatus.mode == MANGA_STRIP;
-		// B in Fullscreen: back to one screen, as L3 (SELECT opens View there too, whose Layout says so)
+		// B in Fullscreen: back to one screen, as SELECT (START opens View there too, whose Layout says so)
 		if (ui.pageReader->readerStatus.fullscreen && b == Button::B)
 		{
 			togglePagesFull(p);
@@ -942,11 +946,13 @@ namespace bp
 			else if (strip) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Step, 1, now});
 			else ui.pageReader->mangaZoomToggle();
 			break;
-		// X: More, as everywhere; SELECT: View (the layout, the fit, the zoom); START is Settings (Ui::press)
+		// X: More, as everywhere (Reading settings is its row). The readers' three keys, the same in the Manga reader:
+		// SELECT is Fullscreen on and off in one press, START is View (the layout, the fit, the zoom), L3 turns the
+		// page a quarter (paged only: the strip shows it unturned)
 		case Button::X: openPagesMore(p); break;
-		case Button::Select: openPagesView(); break;
-		// L3: Fullscreen on and off in one press (the one button the page reader had free)
-		case Button::L3: togglePagesFull(p); break;
+		case Button::Select: togglePagesFull(p); break;
+		case Button::Start: openPagesView(); break;
+		case Button::L3: if (!strip) stepPagesTurn(1); break;
 		case Button::Y: ui.pageReader->mangaPagesOpen(p); break;
 		case Button::B: docClose(p); break;
 		default: break;
@@ -1307,7 +1313,8 @@ namespace bp
 		if (ci >= 0) s.note = "Chapter " + std::to_string(ci + 1) + " of " + std::to_string((int)textStatus.contents.size());
 		s.share = textStatus.fraction;
 		s.keys[0] = {&G_CHAPTERS, "Contents", "Y", ""};
-		s.keys[1] = {&G_PAGE, "Text", "SELECT", ""};
+		// (Text has no button here: START is this bar, and SELECT goes back to scrolling)
+		s.keys[1] = {&G_PAGE, "Text", "", ""};
 		s.keys[2] = {&G_SUN, "Light", "", ui.lightNote(p)};
 		s.keys[3] = {&G_SEARCH, "Find", "L3", ""};
 		s.leave = "Back to scrolling";
@@ -1533,7 +1540,7 @@ namespace bp
 		}
 		// each with its key under it (as the photo viewer's), so Book is seen to be there
 		struct { const char* label; const char* key; bool off; } btns[5] = {
-			{"Contents", "Y", textStatus.contents.empty()}, {"Bookmarks", "X", false}, {"Options", "", false},
+			{"Contents", "Y", textStatus.contents.empty()}, {"Bookmarks", "X", false}, {"Options", "START", false},
 			{"Book mode", "SELECT", false}, {"Brightness", "", false}};
 		bool hints = p.settings.buttonHotkeys;
 		for (int i = 0; i < 5; i++)
@@ -1581,8 +1588,8 @@ namespace bp
 			}
 			ui.drawTextMid("Find \u201C" + findQuery + "\u201D", 0, ACCENT, W / 2, docBtn(0).y + docBtn(0).h + 22, 560, 2);
 		}
-		// (the buttons above say their own keys; START is Settings, as the redesign's text reader has it)
-		else ui.drawHints({{"UP/DOWN", "Scroll"}, {"L/R", "Page"}, {"L3", "Find"}, {"B", "Close"}, {"START", "Settings"}});
+		// (the buttons above say their own keys: START the options, SELECT Book mode)
+		else ui.drawHints({{"UP/DOWN", "Scroll"}, {"L/R", "Page"}, {"L3", "Find"}, {"B", "Close"}});
 		// Find's word (found, not found), over the scroll area a moment
 		if (!docNote.empty() && SDL_GetTicks() - docNoteAt < 2000)
 		{
@@ -1697,8 +1704,8 @@ namespace bp
 		case DP_KEY_IN: key(Button::Up, p); break;
 		case DP_KEY_FIT: stepPagesFit(1, p); break;
 		case DP_KEY_PAGES: key(Button::Y, p); break;
-		case DP_KEY_VIEW: key(Button::Select, p); break;
-		case DP_KEY_FULL: key(Button::L3, p); break;
+		case DP_KEY_VIEW: key(Button::Start, p); break;
+		case DP_KEY_FULL: key(Button::Select, p); break;
 		case DP_KEY_LIGHT: ui.openLight(); break;
 		default: break;
 		}
@@ -1790,8 +1797,8 @@ namespace bp
 			ui.drawGlyphMid(G_RIGHT, right - 4, cy, DIM);
 		}
 		keyOf(DP_KEY_PAGES, &G_BLOCKS, "Pages", "Y");
-		keyOf(DP_KEY_VIEW, &G_EYE, "View", "SELECT");
-		keyOf(DP_KEY_FULL, &G_FULL, "Fullscreen", "L3");
+		keyOf(DP_KEY_VIEW, &G_EYE, "View", "START");
+		keyOf(DP_KEY_FULL, &G_FULL, "Fullscreen", "SELECT");
 		// Light: its sun; while Extra dim or a filter is on, what's on in place of the name
 		std::string note = ui.lightNote(p);
 		Kit::Key light;
@@ -1869,11 +1876,11 @@ namespace bp
 		Kit& k = *ui.kit;
 		k.flat(f.bar, SURFACE, R_BUTTON, Kit::edgeOf(SURFACE));
 		ui.drawTextMid("Fullscreen", F_P16, TEXT, f.note.x, f.note.y + 21, f.note.w);
-		ui.drawTextMid("L3 or B leaves \xC2\xB7 tap top / bottom: scroll", F_I12, DIM, f.note.x, f.note.y + 43, f.note.w);
+		ui.drawTextMid("SELECT or B: one screen \xC2\xB7 tap top / bottom: scroll", F_I12, DIM, f.note.x, f.note.y + 43, f.note.w);
 		Kit::Key leave;
 		leave.glyph = &G_FULL;
 		leave.label = "One screen";
-		leave.key = p.settings.buttonHotkeys ? "L3" : "";
+		leave.key = p.settings.buttonHotkeys ? "SELECT" : "";
 		leave.pressed = docPressed == DP_KEY_FULL;
 		k.key(pagesKeyRect(DP_KEY_FULL), leave);
 	}
@@ -1907,9 +1914,9 @@ namespace bp
 		}, "pdfmore");
 	}
 
-	// View (SELECT): how the page is shown, one sheet (docs/redesign: pdf-view). Layout first (Single page, Vertical
+	// View (START): how the page is shown, one sheet (docs/redesign: pdf-view). Layout first (Single page, Vertical
 	// scroll, Fullscreen: the strip over both panels), then the fit, the zoom, the turn, and Light & filter. UP / DOWN
-	// choose a row, LEFT / RIGHT change it at once (the page above follows), A steps it on (Light opens its sheet), SELECT
+	// choose a row, LEFT / RIGHT change it at once (the page above follows), A steps it on (Light opens its sheet), START
 	// or B close; a tap on a chip or a stepper's side changes it, outside the sheet closes. Going Fullscreen closes the
 	// sheet: the screen under it has become the page.
 	struct Ui::Docs::PagesView : Ui::Overlay
@@ -1964,7 +1971,9 @@ namespace bp
 				else if (cursor == ROW_ZOOM) ui.pageReader->mangaZoomToggle();
 				else change(cursor, 1, p);
 				break;
-			case Button::B: case Button::Select: close(); break;
+			case Button::B: case Button::Start: close(); break;
+			// SELECT under the sheet is still Fullscreen: the sheet goes, as when its Layout row turns it on
+			case Button::Select: close(); docs().togglePagesFull(p); break;
 			default: break;
 			}
 			return false;
@@ -2039,7 +2048,7 @@ namespace bp
 			light.action = true;
 			light.focused = cursor == ROW_LIGHT;
 			k.settingRow(s.row(ROW_LIGHT), light);
-			k.hints(s.hints, {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"SELECT/B", "Close"}});
+			k.hints(s.hints, {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"START/B", "Close"}});
 		}
 		std::string signature(const Player& p) const override
 		{

@@ -30,3 +30,19 @@ The proposed redesign of the handheld UI, kept for when it gets built.
 - `today/`: screenshots of the current app (top and bottom panels) for comparison.
 
 Mock content (names, addresses) is made up; pictures are *Big Buck Bunny* (CC BY 3.0) or generated.
+
+## The readers' keys (owner, 2026-11-21: "SELECT should be Fullscreen across all readers")
+
+One rule for every reader: **SELECT is the full view, in and out in one press; START is "how this is shown"; L3 is the
+reader's one shortcut.** It replaces "SELECT · View" inside the readers only (lists, the player and photos keep theirs).
+
+| Key | Files' comic / PDF | Manga reader | Text (EPUB / TXT) | Why |
+|---|---|---|---|---|
+| SELECT | Fullscreen on / off | Fullscreen on / off | Book mode on / off | The view over both screens is the one thing changed many times a sitting: one press, the same button, both ways. Book mode is the text's full view (both screens, a page each), so it keeps SELECT rather than the Text sheet. |
+| START | View (the sheet) | Reading menu (View, once on the kit) | Text (the options) | The sheet is opened rarely; START was already the Manga reader's. START or B closes it. Settings moves to X · More › Reading settings. |
+| L3 | Turn a quarter (Single page) | Turn a quarter (paged) | Find | Fullscreen left L3 for SELECT, so Files' reader takes the Manga reader's Turn; a text has nothing to turn, and Find is its shortcut. |
+| B | Fullscreen: one screen; else close | Close (fullscreen is kept for the next chapter) | Book: back to scrolling; else close | The one difference left: a chapter that opens in Fullscreen must close in one press. |
+| Held sideways (Book) | n/a | START: the Book bar; SELECT: Fullscreen, upright | START: the Book bar; SELECT: back to scrolling | The bar's View / Text keys wear no cap there. |
+
+On the way into Fullscreen the bar says "SELECT or B: one screen" (Files) / "SELECT: one screen" (Manga). In the View
+sheet SELECT still goes Fullscreen (the sheet closes).

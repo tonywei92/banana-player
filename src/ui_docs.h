@@ -228,7 +228,7 @@ namespace bp
 		int pagesLayoutNow() const;
 		std::string pagesPath;	// the PDF or comic the page reader has open (its layout is kept per kind)
 		void setPagesLayout(int layout, Player& p);
-		// Fullscreen in one step (L3, the Fullscreen key; B leaves too): on from either layout, and off back to the
+		// Fullscreen in one step (SELECT, the Fullscreen key; B leaves too): on from either layout, and off back to the
 		// layout it was turned on from
 		void togglePagesFull(Player& p);
 		int docFullFrom = 1;	// the layout Fullscreen was entered from (0 Single page, 1 Vertical scroll)
@@ -236,7 +236,7 @@ namespace bp
 		static constexpr Uint32 FULL_BAR_IN_MS = 3000, FULL_BAR_TAP_MS = 4000;
 		bool pagesFullBarShown() const;
 		void drawPagesFullBar(const Player& p);
-		// X · More (pdf-more) and SELECT · View (pdf-view, an overlay of its own)
+		// X · More (pdf-more) and START · View (pdf-view, an overlay of its own)
 		void openPagesMore(Player& p);
 		struct PagesView;
 		void openPagesView();

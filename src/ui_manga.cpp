@@ -3232,7 +3232,8 @@ namespace bp
 		}
 		s.note = pages > 0 ? "of " + std::to_string(pages) : "";
 		s.keys[0] = {&G_PAGE, "Pages", "Y", ""};
-		s.keys[1] = {&G_EYE, "View", "SELECT", ""};
+		// (View has no button here: START is this bar, and SELECT is Fullscreen)
+		s.keys[1] = {&G_EYE, "View", "", ""};
 		s.keys[2] = {&G_SUN, "Light", "", ui.lightNote(p)};
 		s.keys[3] = {&G_NEXT, "Next chapter", "R2", ""};
 		s.leave = "One screen";
@@ -3607,7 +3608,7 @@ namespace bp
 	void Ui::Manga::drawMangaToast()
 	{
 		// how to leave fullscreen, the first time it opens: a box in the panel's middle for 2 s
-		std::string text = "Fullscreen \xC2\xB7 SELECT leaves \xC2\xB7 tap the middle: controls";
+		std::string text = "Fullscreen \xC2\xB7 SELECT: one screen \xC2\xB7 tap the middle: controls";
 		if (mangaBookToast)
 			text = std::string("Book \xC2\xB7 turn the handheld: top screen on the ") +
 				(mangaBookToast == MANGA_BOOK_RIGHT ? "right" : "left");

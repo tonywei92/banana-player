@@ -753,7 +753,7 @@ a bookmark key: one tap keeps the place (as Bookmarks › Add a bookmark here).
 | **SELECT** | **Book mode** (below) |
 | **X** | **Bookmarks**: add one here, go to one, delete one |
 | **Y** | **Contents** (an EPUB's chapters): **A** goes to one |
-| **START** | **Settings**: **B** or **START** returns to the page you were reading. **Text options** is the Options button (by touch); held sideways, START shows the **Book bar** |
+| **START** | **Text options** (the Options button): how the text looks; **START** or **B** closes them. Held sideways, START shows the **Book bar**. (In every reader **SELECT** is the full view and **START** is how it is shown) |
 | **L3** (press the stick) | **Find** (below) |
 | **B** | Back to Files |
 
@@ -802,19 +802,19 @@ it, and a **More** key (as **X**). A comic (CBZ, CBR) from Files reads the same 
   at its left, the last at its right: drag it to go far).
 - **Vertical scroll**: the pages one under the other, scrolled with a finger on the bottom screen's big area, or a
   screenful at a time with **LEFT/RIGHT** (and **A**); the page slider is under the header.
-- Both end on one row: **Pages** (**Y**), **View** (**SELECT**), **Fullscreen** (**L3**) and **Light** (Brightness &
+- Both end on one row: **Pages** (**Y**), **View** (**START**), **Fullscreen** (**SELECT**) and **Light** (Brightness &
   filter; what's on in its place while Extra dim or a filter is).
-- **Fullscreen** in one step: **L3** (press the stick) or the **Fullscreen** key puts the pages over both screens as
-  one tall strip, from either layout; **L3** or **B** goes back to the layout you came from. On the way in a bar says
+- **Fullscreen** in one step: **SELECT** (as in the Manga reader) or the **Fullscreen** key puts the pages over both screens as
+  one tall strip, from either layout; **SELECT** or **B** goes back to the layout you came from. On the way in a bar says
   so for a few seconds, with a **One screen** key for the finger. In fullscreen a tap in the middle of the bottom
   screen shows that bar again (a second tap puts it away), a tap near the top or the bottom goes a screenful back or
   on, and a drag scrolls.
-- **View** (**SELECT**) is a sheet: **Layout** (Single page, Vertical scroll, Fullscreen: the strip across both screens),
+- **View** (**START**) is a sheet: **Layout** (Single page, Vertical scroll, Fullscreen: the strip across both screens),
   **Hinge gap** (in Fullscreen: the part of the page skipped under the hinge, the Manga reader's setting; the pages
   above move as you change it), **Page fit**, **Zoom**, **Turn** (a quarter at a time, for a scan on its side; Single page only) and **Light & filter**.
-  **UP/DOWN** choose, **LEFT/RIGHT** change it at once (the page above follows), **SELECT** or **B** close; a tap on a
+  **UP/DOWN** choose, **LEFT/RIGHT** change it at once (the page above follows), **START** or **B** close (**SELECT** there goes Fullscreen); a tap on a
   choice or a side of a value changes it. The layout and the fit are kept for the next PDF. Going Fullscreen closes the
-  sheet; there **L3** or **B** goes back to one screen and **SELECT** opens View again.
+  sheet; there **SELECT** or **B** goes back to one screen and **START** opens View again.
 - **More** (**X**): a browser's page while it differs from this one, **Info**, **Show in folder**, **Light & filter**
   and **Reading settings**.
 
@@ -824,12 +824,12 @@ it, and a **More** key (as **X**). A comic (CBZ, CBR) from Files reads the same 
 | **L** / **R** | The page before / after, straight to it |
 | **UP** / **DOWN** | Zoom in / out (both views, as in the manga reader and the photo viewer) |
 | **Left stick** (any way) | Vertical scroll (and Fullscreen): scrolls smoothly while held, and pans a zoomed strip left and right. Single page: pans a page that is zoomed, wide or taller than the screen, sideways too |
-| **L3** (press the stick) | **Fullscreen** on / off |
+| **L3** (press the stick) | Turn the page a quarter turn (Single page; as in the Manga reader) |
 | **A** | Single page: 200% or back to the whole page. Vertical scroll: on |
 | **X** | **More** |
-| **SELECT** | **View**: the layout (Single page, Vertical scroll, Fullscreen), the fit, the zoom, the turn |
+| **SELECT** | **Fullscreen** on / off |
 | **Y** | **Pages**: every page small; **A** goes to one |
-| **START** | **Settings**: **B** or **START** returns to the page you were on |
+| **START** | **View**: the layout (Single page, Vertical scroll, Fullscreen), the fit, the zoom, the turn. (Settings: **X** › Reading settings) |
 | **B** | Back to Files |
 
 A PDF locked with a password says so and doesn't open.
@@ -1044,7 +1044,7 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | **Photos** | Keep zoom between photos | On | The next photo opens at the same zoom and place. Off: each opens whole |
 | | Pan area | Left | Which side of the bottom screen the photo's pan area is on |
 | | Drag moves | The box | A drag in the pan area moves the box over the small photo, or the photo itself (like a phone) |
-| **Reading** | Font, Text size, Line spacing, Margins, Colours | Serif, Large, Normal, Normal, Match theme | The defaults for every TXT and EPUB; each book's own SELECT › Text sheet still overrides them for that book. Five text sizes; Medium is the smallest that reads comfortably on the handheld |
+| **Reading** | Font, Text size, Line spacing, Margins, Colours | Serif, Large, Normal, Normal, Match theme | The defaults for every TXT and EPUB; each book's own Text options (START) still overrides them for that book. Five text sizes; Medium is the smallest that reads comfortably on the handheld |
 | | Text opens as | Scroll | Scroll down the page, or Book: held sideways with a page on each screen |
 | | PDF opens as | Single page | Single page, or Strip: a PDF's pages one after another |
 | | Dim the controls while reading | 1 minute | A book, comic or document open: this screen dims after that long untouched; a touch lifts it and still turns the page. Never turns it off |
@@ -1708,7 +1708,7 @@ keep the screen's usual orientation. Book is kept for the series, as the reading
 between **Prev chapter** and **Next chapter** on the reading page. The two panels become one tall view and
 the gap under the hinge is skipped, so the art lines up across the fold; the bottom panel draws its share of the pages
 from the pages the reader has already decoded. The gap's size is a setting of its own, **Hinge gap** in **Manga
-settings**: **36** of the panel's 480 lines by default. **SELECT** leaves fullscreen (a line says so each time you turn it on); **B** goes back to the chapters
+settings**: **36** of the panel's 480 lines by default. **SELECT** leaves fullscreen (a line says so each time you turn it on: “SELECT: one screen”); **B** goes back to the chapters
 and fullscreen stays, so the next chapter opens in it too.
 The page number shows for a moment after the page changes. A tap puts the controls bar over the lower part of the
 view; a tap anywhere outside it puts it away again and does nothing else (no page turn, no drag).

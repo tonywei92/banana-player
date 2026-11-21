@@ -185,9 +185,11 @@ namespace bp
 		else manga->stickAxis(0, p);
 	}
 
-	// START opens Settings everywhere in the shell, on the player and in the text and PDF readers. The exceptions are
-	// the places where START is a page's own key: a form's Save/Done (and Find on the network), the Book bar while a
-	// page is held sideways, a document's open menu, the on-screen keyboard (taken before this) and Manga's own pages.
+	// START opens Settings everywhere in the shell and on the player. The exceptions are the places where START is a
+	// page's own key: a form's Save/Done (and Find on the network), the on-screen keyboard (taken before this), and
+	// every reader, where START is how the page is shown (Files' View, the text's options, the Manga reader's Reading
+	// menu; the Book bar while it is held sideways): SELECT there is the full view (docs/redesign/README.md,
+	// "The readers' keys").
 	bool Ui::startOpensSettings(const Player& p) const
 	{
 		if (page == Page::Settings || page == Page::About || page == Page::Main || page == Page::ExtSection ||
@@ -203,11 +205,6 @@ namespace bp
 			if (browse->browseDir == FORMDIR || browse->browseDir == FINDNET) return false;
 			if (browse->playlists->selMode != SEL_NONE || browse->playlists->addPending.serial) return false;
 			return true;
-		}
-		if (page == Page::DocText || page == Page::DocPages)
-		{
-			bool book = page == Page::DocText ? docs->textStatus.book : pageReader->readerStatus.book;
-			return !book && docs->docMenu == Docs::DOC_MENU_NONE;	// (a menu's START closes the menu)
 		}
 		(void)p;
 		return false;
