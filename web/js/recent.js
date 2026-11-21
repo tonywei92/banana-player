@@ -1,7 +1,7 @@
 import { useEffect } from '../vendor/htm-preact-standalone.module.js';
 import { set, store, useStore } from './store.js';
 import { errMsg, errToast, get, post } from './api.js';
-import { playAt } from './browser-player.js';
+import { browserPlay, playAt } from './browser-player.js';
 import { ask, toast } from './toasts.js';
 
 /* ================= Recent: the handheld's history, newest first, with the places kept (Home shows it: home.js) ================= */
@@ -22,7 +22,19 @@ export function useRecent() {
 }
 // a song or a video, from where it was left (the handheld finds its own place; this browser is told it)
 // (from Home: it plays in Home's Now playing card, the page staying, a video too)
-export const playRecent = (it, target) => playAt(it.p, it.played ? 0 : it.position, target, 'always');
+// A song played in the list it played from (a playlist, an album, a folder, Play random): the handheld finds it
+// again itself (recent=1); this browser asks for it and plays it as that list. A list gone since: the song alone, said
+export async function playRecent(it, target) {
+	const pos = it.played ? 0 : it.position;
+	target = target || store.target;
+	if (it.kind !== 'audio' || it.net || !it.list) return playAt(it.p, pos, target, 'always');
+	if (target !== 'browser') return playAt(it.p, pos, target, 'always', { recent: 1 });
+	let r = null;
+	try { r = await get('/api/recent/list', { p: it.p }, { quiet: true }); } catch (e) {}
+	if (r && r.list && r.why) { toast(r.why + ': playing the song alone'); return browserPlay([{ p: it.p }], 0, { kind: 'folder', title: it.title }, pos); }
+	if (!r || !r.list || !r.q || !r.q.length) return playAt(it.p, pos, target, 'always');
+	return browserPlay(r.q.map(p => ({ p })), r.index, { kind: r.skind, title: r.stitle, id: r.sid }, pos, r.rail);
+}
 // the same from its beginning. /api/play has no "from the start": the handheld opens it at its place, and is sent
 // back to 0 once it shows the file
 export async function playFromStart(it, target) {
@@ -57,6 +69,10 @@ export function removeRecent(it) {
 	toast('Removed from Recent', { label: 'Undo', fn: () => { clearTimeout(waiting[p]); delete waiting[p]; hide(p, false); } }, 6000);
 }
 addEventListener('pagehide', () => Object.keys(waiting).forEach(flush));
+// Clear missing: the files deleted or moved away (a card's that is only out stays), on the handheld too
+export async function clearMissing() {
+	try { const r = await post('/api/recent/clear-missing', {}); toast(r && r.n ? 'Removed ' + r.n + (r.n === 1 ? ' missing file' : ' missing files') : 'Nothing missing in Recent'); loadRecent(); } catch (e) { errToast(e); }
+}
 export async function clearRecent() {
 	if (!await ask('Clear Recent?', 'The places your videos were left at are kept.', { buttons: [{ label: 'Cancel', value: null }, { label: 'Clear', value: true, cls: 'danger' }] })) return;
 	try { await post('/api/recent/clear', {}); toast('Recent cleared'); loadRecent(); } catch (e) { errToast(e); }

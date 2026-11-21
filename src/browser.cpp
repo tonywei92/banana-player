@@ -108,6 +108,13 @@ namespace bp
 		return on && !mounted(sd2);
 	}
 
+	std::vector<RemovableCard> removableCards()
+	{
+		if (const char* d = getenv("BP_CARD2")) return {{d, "Card 2", isDir(d)}};
+		if (!isDir("/data/banana")) return {};
+		return {{"/run/sd2", "Card 2", mounted("/run/sd2")}};
+	}
+
 	// the kind of device mounted at `at`, from the kernel ("SD", "MMC"; "" when it isn't an mmc device or can't be read)
 	static std::string mountDeviceType(const std::string& at)
 	{

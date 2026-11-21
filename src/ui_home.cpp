@@ -31,6 +31,7 @@
 #include "ui_browse.h"
 #include "ui_playlists.h"
 #include "ui_home.h"
+#include "ui_music.h"
 #include "ui_sound.h"
 #include "ui_docs.h"
 #include "ui_reader.h"
@@ -74,6 +75,7 @@ namespace bp
 				for (auto& s : snap->songs)
 					if (want.count(s.path) && !snap->at(s.title).empty()) tagged[s.path] = snap->at(s.title);
 		}
+		std::vector<RemovableCard> cards = removableCards();
 		for (auto& path : p.history().items())
 		{
 			// a file still there (on a card taken out: not), or a network one whose connection is still saved (whether
@@ -81,13 +83,31 @@ namespace bp
 			bool net = isNetPath(path);
 			NetPath np;
 			const NetServer* sv = net && ui.netStore && parseNetPath(path, np) ? ui.netStore->find(np.server) : nullptr;
-			if (net ? !sv : !exists(path) || (!p.settings.showHiddenFolders && insideHiddenFolder(path))) continue;
+			if (net ? !sv : !p.settings.showHiddenFolders && insideHiddenFolder(path)) continue;
 			RecentItem it;
 			it.path = path;
 			it.net = net;
 			auto tg = tagged.find(path);
 			it.name = tg != tagged.end() ? tg->second : cardTitle(path);
 			it.kind = isAudioFile(path) ? &G_NOTE : isPhotoFile(path) ? &G_PICTURE : &G_FILM;
+			// a file deleted or moved, or on a card taken out: listed dimmed with why, never dropped unasked (Remove
+			// from Recent, Clear missing); its card back in, it's listed as before
+			if (!net) it.missing = recentMissing(path, exists(path), cards);
+			it.gone = !it.missing.empty() && recentMissing(path, false, {}) == it.missing;
+			if (!it.missing.empty())
+			{
+				if (isDocument(path))
+				{
+					bool epub = path.size() > 5 && strcasecmp(path.c_str() + path.size() - 5, ".epub") == 0;
+					it.kind = isComicName(path) ? &G_COMIC : epub ? &G_EPUB : isPdfName(path) ? &G_PDF : &G_PAGE;
+				}
+				it.sub = it.missing;
+				it.frac = -1;
+				recent.push_back(it);
+				recentCounts[0]++;
+				recentCounts[PlayHistory::kindOf(path) + 1]++;
+				continue;
+			}
 			if (isDocument(path))
 			{
 				// a document: the page it's at (a PDF, a comic) or how far through (a TXT, a book), from its own places
@@ -147,6 +167,26 @@ namespace bp
 		for (auto& it : recent)
 			if (it.path == path) return &it;
 		return nullptr;
+	}
+
+	bool Ui::Home::listedThere(const std::string& path) const
+	{
+		const RecentItem* it = findRecent(path);
+		return it && it->missing.empty();
+	}
+
+	int Ui::Home::missingCount() const
+	{
+		int n = 0;
+		for (auto& it : recent) n += !it.missing.empty();
+		return n;
+	}
+
+	int Ui::Home::goneCount() const
+	{
+		int n = 0;
+		for (auto& it : recent) n += it.gone;
+		return n;
 	}
 
 	bool Ui::Home::matchesFilter(int i) const
@@ -395,13 +435,14 @@ namespace bp
 		{
 			const ResumeEntry& e = all.front();
 			// the last thing played, or one whose file has gone (a card out): not an older video after a book was read
-			bool last = recent.empty() || recent.front().path == e.path || !findRecent(e.path);
+			bool last = recent.empty() || recent.front().path == e.path || !listedThere(e.path);
 			if (last && isVideoFile(e.path) && e.position > 0 && e.duration > 0 && worthResuming(e.position, e.duration)) return fromResume(e);
 		}
 		// else the last thing played, whatever it is (the owner, 2026-11-19: a half-read book further down must not
 		// stand in for the songs played since): Resume when it has a place to carry on from, else Play
 		for (auto& it : recent)
 		{
+			if (!it.missing.empty()) continue;	// (its card in Recent says why; Continue is for what can go on)
 			c.shown = true;
 			c.path = it.path;
 			c.title = it.name;
@@ -420,7 +461,7 @@ namespace bp
 		for (auto& e : all)
 		{
 			if (!isVideoFile(e.path) || e.position <= 0 || e.duration <= 0) continue;
-			if (!worthResuming(e.position, e.duration) || findRecent(e.path)) continue;
+			if (!worthResuming(e.position, e.duration) || listedThere(e.path)) continue;
 			return fromResume(e);
 		}
 		return c;
@@ -431,7 +472,155 @@ namespace bp
 		if (!c.shown || c.path.empty()) return;
 		// what plays: the card is its way back to the player; nothing loaded: the place it was left at
 		if (c.live) { ui.showPlayer(); return; }
-		ui.openFile(c.path, p);
+		openRecent(c.path, p);
+	}
+
+	void Ui::Home::openRecent(const std::string& path, Player& p)
+	{
+		if (const RecentItem* it = findRecent(path); it && !it->missing.empty())
+		{
+			// it can't open: said, with Remove from Recent at hand (its sheet's first key)
+			fprintf(stderr, "recent: %s can't open: %s\n", baseName(path).c_str(), it->missing.c_str());
+			openRecentMenu(path);
+			return;
+		}
+		if (playInList(path, p)) return;
+		ui.openFile(path, p);
+	}
+
+	bool Ui::Home::pickList(const std::string& path, const Player& p, ListPick& out) const
+	{
+		out = ListPick();
+		if (!isAudioFile(path)) return false;
+		const RecentContext& ctx = p.history().contextOf(path);
+		if (ctx.kind == RecentContext::NONE) return false;
+		out.kind = ctx.kind;
+		out.title = ctx.title();
+		auto quoted = [](const std::string& w) { return "\xE2\x80\x9C" + w + "\xE2\x80\x9D"; };
+		if (ctx.kind == RecentContext::PLAYLIST)
+		{
+			PlaylistStore* store = ui.browse->playlists->plStore.get();
+			int skipped = 0;
+			std::string shown = ctx.name == PlaylistStore::LIKED_ID ? PlaylistStore::LIKED_NAME : ctx.name;
+			out.plName = ctx.name;
+			out.title = shown;
+			if (!store || !store->load(store->dir() + "/" + ctx.name + ".m3u", out.pl, skipped))
+			{
+				out.why = "The playlist " + quoted(shown) + " is gone";
+				return true;
+			}
+			for (auto& e : out.pl.entries) out.paths.push_back(e.path);
+			out.index = playingRow(out.paths, ctx.index, path);
+			if (out.index < 0) out.why = "It\xE2\x80\x99s no longer in " + quoted(shown);
+			return true;
+		}
+		if (ctx.kind == RecentContext::FOLDER)
+		{
+			// a Files folder: the files beside it, as Files plays a song (openFile lists them itself)
+			if (!isNetPath(ctx.name) && !exists(ctx.name)) out.why = "Its folder " + quoted(baseName(ctx.name)) + " is gone";
+			else out.paths = {path};
+			return true;
+		}
+		// a list of the Music rail: as it played, less its songs gone since
+		const Music& m = *ui.music;
+		out.album = ctx.kind == RecentContext::ALBUM ? m.albumNamed(ctx.name, path) : -2;
+		out.artist = ctx.kind == RecentContext::ARTIST ? m.artistNamed(ctx.name) : -2;
+		if (out.album == -1) { out.why = "The album " + quoted(ctx.name) + " is gone"; return true; }
+		if (out.artist == -1) { out.why = "The artist " + quoted(ctx.name) + " is gone"; return true; }
+		if (ctx.kind == RecentContext::MUSIC_FOLDER)
+		{
+			out.folder = ctx.name;
+			if (!exists(ctx.name)) { out.why = "Its folder " + quoted(baseName(ctx.name)) + " is gone"; return true; }
+		}
+		out.index = -1;
+		for (int i = 0; i < (int)ctx.list.size(); i++)
+		{
+			const std::string& q = ctx.list[i];
+			if (!isNetPath(q) && !exists(q)) continue;
+			if (i == ctx.index) out.index = (int)out.paths.size();
+			out.paths.push_back(q);
+		}
+		if (out.index < 0) out.index = playingRow(out.paths, -1, path);
+		if (out.index < 0) out.why = "Its list is gone";
+		return true;
+	}
+
+	bool Ui::Home::playInList(const std::string& path, Player& p, std::string* note)
+	{
+		ListPick lp;
+		if (!pickList(path, p, lp)) return false;
+		// what plays: back to it, as openFile does (never from its start)
+		if (p.playing() && !p.playingPhoto() && p.currentPath() == path) { ui.showPlayer(); return true; }
+		if (!lp.why.empty())
+		{
+			// the list is gone: the song by itself, and why
+			fprintf(stderr, "recent: %s plays alone: %s\n", baseName(path).c_str(), lp.why.c_str());
+			std::string text = lp.why + ": playing the song alone";
+			if (note) *note = text;
+			p.osd(text, 3000);
+			ui.playRequest = {};
+			ui.playRequest.paths = {path};
+			ui.playRequest.index = 0;
+			ui.playRequest.source.kind = SourceKind::Folder;
+			ui.playRequest.source.title = cardTitle(path);
+			return true;
+		}
+		ui.backNext = PlayerBack();
+		ui.backNext.set = true;
+		ui.backNext.page = Page::Main;	// (backFromPlayer: the source's own page, the playlist's or the folder's in Files)
+		if (lp.kind == RecentContext::PLAYLIST)
+		{
+			fprintf(stderr, "recent: %s plays in the playlist \"%s\" (item %d)\n", baseName(path).c_str(), lp.title.c_str(), lp.index + 1);
+			ui.browse->playlists->plPlay(lp.pl, lp.index, false, p);
+			return true;
+		}
+		if (lp.kind == RecentContext::FOLDER)
+		{
+			ui.openFile(path, p);
+			return true;
+		}
+		// the Music rail's: the page it came from under the player (B goes back to it)
+		fprintf(stderr, "recent: %s plays in \"%s\" (%d of %zu)\n", baseName(path).c_str(), lp.title.c_str(), lp.index + 1, lp.paths.size());
+		Music& m = *ui.music;
+		m.play(lp.paths, lp.index, lp.title, false, p);
+		if (lp.album >= 0)
+		{
+			m.view = Music::V_ALBUMS;
+			m.artistAt = -1;
+			m.folderAt.clear();
+			m.openAlbum(lp.album, p);
+		}
+		else if (lp.artist >= 0)
+		{
+			m.view = Music::V_ARTISTS;
+			m.albumAt = -1;
+			m.folderAt.clear();
+			m.openArtist(lp.artist, p);
+		}
+		else if (!lp.folder.empty())
+		{
+			m.view = Music::V_FOLDERS;
+			m.albumAt = m.artistAt = -1;
+			m.folderCursors.clear();
+			m.openFolder(lp.folder);
+		}
+		ui.backNext.page = Page::Music;
+		ui.backNext.browseDir = ui.browse->browseDir;
+		ui.backNext.browseTab = ui.browse->browseTab;
+		return true;
+	}
+
+	void Ui::Home::clearMissing(Player& p)
+	{
+		// the files deleted or moved away; a card's that is only out stays (it comes back with the card)
+		std::vector<std::string> gone;
+		for (auto& it : recent)
+			if (it.gone) gone.push_back(it.path);
+		int n = p.removeFromHistory(gone);
+		fprintf(stderr, "recent: clear missing took out %d\n", n);
+		p.osd(n ? "Removed " + std::to_string(n) + (n == 1 ? " missing file from Recent" : " missing files from Recent") : "Nothing missing in Recent");
+		ui.browse->enterFolder(ui.browse->browseDir, p);
+		if (ui.browse->browseDir == HOMEDIR) homeStrip = std::max(0, std::min(homeStrip, (int)recent.size()));
 	}
 
 	void Ui::Home::openCard(int i, Player& p)
@@ -441,7 +630,7 @@ namespace bp
 			ui.browse->enterFolder(RECENT, p);
 			return;
 		}
-		ui.openFile(recent[i].path, p);
+		openRecent(recent[i].path, p);
 	}
 
 	void Ui::Home::openShortcut(int i, Player& p)
@@ -883,6 +1072,7 @@ namespace bp
 			for (auto& pill : c.pills) s += "|hp" + pill;	// a speed, Repeat or EQ changed: the note line draws anew
 		}
 		if (!morePath.empty()) s += "|mp" + morePath;
+		s += "|hx" + std::to_string(missingCount());	// (a card back in: its files no longer dimmed)
 		return s;
 	}
 
@@ -1017,7 +1207,8 @@ namespace bp
 			card.progress = it.frac;
 			card.focused = homeZone == HOME_CARDS && homeStrip == idx;
 			card.pressed = pressedCard == idx;
-			card.picture = pictureFor(it.path, it.kind, it.name, 5);
+			card.off = !it.missing.empty();
+			card.picture = card.off ? nullptr : pictureFor(it.path, it.kind, it.name, 5);
 			k.recentTile(l, card);
 			// a liked one's heart and a network one's mark, over the picture's top right corner (the bar is at its foot)
 			int rx = l.cover.x + l.cover.w - 11;
@@ -1102,6 +1293,7 @@ namespace bp
 			else if (it && it->net) { row.pill = "Network"; row.tone = Kit::Pill::Fact; }
 			row.focused = ui.cursor == i;
 			row.lit = false;
+			row.off = it && !it->missing.empty();
 			return row;
 		};
 		SmoothList::Spec spec;
@@ -1184,58 +1376,64 @@ namespace bp
 				i.stay = stay;
 				return i;
 			};
+			// a file that can't open: why (the sheet's note), and the way to take it out
+			bool missing = !it->missing.empty();
+			if (missing) m.note = it->missing;
+			if (!missing)
 			{
-				MoreItem i = row(&G_PLAY, playing ? "Go to it" : "Resume", it->at, "", false, false, false);
-				i.act = [this, path](Player& pl) { ui.openFile(path, pl); return false; };
-				left.push_back(i);
-			}
-			{
-				MoreItem i = row(&G_REFRESH, "Play from the start", "", "", false, false, false);
-				i.act = [this, path, doc, playing](Player& pl) {
-					if (doc) ui.docs->forgetPlace(path);
-					if (playing)
-					{
-						pl.seekFraction(0);
-						if (!ui.pageIsOut()) pl.unpause();
-						else ui.noteSeek(pl, 0);
-						ui.showPlayer();
-					}
-					else
-					{
-						pl.forgetPosition(path);
-						ui.openFile(path, pl);
-					}
-					return false;
-				};
-				left.push_back(i);
-			}
-			{
-				MoreItem i = row(&G_CARD, "Show in folder", "", "", false, false, false);
-				i.act = [this, path](Player& pl) { ui.showInFolder(path, pl); return false; };
-				left.push_back(i);
-			}
-			{
-				MoreItem i = row(&G_PLUS, "Add to playlist\xE2\x80\xA6", doc ? "Songs and videos" : "", "", false, doc, false);
-				i.act = [this, path, title](Player& pl) {
-					if (ui.browse->playlists->plStore) ui.browse->playlists->openAddOne(path, title, -1, pl);
-					return false;
-				};
-				left.push_back(i);
-			}
-			{
-				MoreItem i = row(liked ? &G_HEART : &G_HEART_O, liked ? "Unlike" : "Like", doc ? "Songs and videos" : "", "L3", false, doc, true);
-				i.lit = liked;
-				i.act = [this, path, title, liked](Player& pl) {
-					if (!ui.browse->playlists->plStore) return false;
-					if (ui.setLikedPath(pl, path, title, -1, !liked) != liked) ui.likeCard(pl, !liked, title);
-					return false;
-				};
-				left.push_back(i);
-			}
-			{
-				MoreItem i = row(&G_INFO, "Info", "", "", false, false, false);
-				i.act = [this, path](Player& p) { ui.openFileInfo(path, "", {}, &p); return false; };
-				left.push_back(i);
+				{
+					MoreItem i = row(&G_PLAY, playing ? "Go to it" : "Resume", it->at, "", false, false, false);
+					i.act = [this, path](Player& pl) { openRecent(path, pl); return false; };
+					left.push_back(i);
+				}
+				{
+					MoreItem i = row(&G_REFRESH, "Play from the start", "", "", false, false, false);
+					i.act = [this, path, doc, playing](Player& pl) {
+						if (doc) ui.docs->forgetPlace(path);
+						if (playing)
+						{
+							pl.seekFraction(0);
+							if (!ui.pageIsOut()) pl.unpause();
+							else ui.noteSeek(pl, 0);
+							ui.showPlayer();
+						}
+						else
+						{
+							pl.forgetPosition(path);
+							openRecent(path, pl);
+						}
+						return false;
+					};
+					left.push_back(i);
+				}
+				{
+					MoreItem i = row(&G_CARD, "Show in folder", "", "", false, false, false);
+					i.act = [this, path](Player& pl) { ui.showInFolder(path, pl); return false; };
+					left.push_back(i);
+				}
+				{
+					MoreItem i = row(&G_PLUS, "Add to playlist\xE2\x80\xA6", doc ? "Songs and videos" : "", "", false, doc, false);
+					i.act = [this, path, title](Player& pl) {
+						if (ui.browse->playlists->plStore) ui.browse->playlists->openAddOne(path, title, -1, pl);
+						return false;
+					};
+					left.push_back(i);
+				}
+				{
+					MoreItem i = row(liked ? &G_HEART : &G_HEART_O, liked ? "Unlike" : "Like", doc ? "Songs and videos" : "", "L3", false, doc, true);
+					i.lit = liked;
+					i.act = [this, path, title, liked](Player& pl) {
+						if (!ui.browse->playlists->plStore) return false;
+						if (ui.setLikedPath(pl, path, title, -1, !liked) != liked) ui.likeCard(pl, !liked, title);
+						return false;
+					};
+					left.push_back(i);
+				}
+				{
+					MoreItem i = row(&G_INFO, "Info", "", "", false, false, false);
+					i.act = [this, path](Player& p) { ui.openFileInfo(path, "", {}, &p); return false; };
+					left.push_back(i);
+				}
 			}
 			{
 				MoreItem i = row(&G_MINUS, "Remove from Recent", "", "", false, false, false);
@@ -1278,6 +1476,15 @@ namespace bp
 				ui.browse->enterFolder(ui.browse->browseDir, pl);
 				return false;
 			};
+			right.push_back(i);
+		}
+		if (int gone = goneCount())
+		{
+			MoreItem i;
+			i.glyph = &G_MINUS;
+			i.label = "Clear missing";
+			i.note = std::to_string(gone);
+			i.act = [this](Player& pl) { clearMissing(pl); return false; };
 			right.push_back(i);
 		}
 		{

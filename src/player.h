@@ -286,6 +286,10 @@ namespace bp
 		void clearHistory();
 		// Home's Recent: one taken out of the play history; one played from its start next time (its tracks kept)
 		void removeFromHistory(const std::string& path);
+		// several taken out at once (Clear missing, Home's and the dashboard's): how many were there
+		int removeFromHistory(const std::vector<std::string>& paths);
+		// where a song of Recent played from (main, as the Session's list settles): written only when it changed
+		void setRecentContext(const std::string& path, const RecentContext& ctx);
 		// a document opened from Files (a TXT, EPUB, PDF, a comic): in Recent as a video is (history off or
 		// incognito: not)
 		void addRecent(const std::string& path);

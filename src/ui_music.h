@@ -108,6 +108,10 @@ namespace bp
 		// ---- playing (through the Session, as Files does: the play request, main opens it) ----
 		void play(const std::vector<std::string>& paths, int index, const std::string& title, bool shuffle, Player& p);
 		void playAlbum(int album, int fromSong, bool shuffle, Player& p);
+		// a list of Recent's (RecentContext) found again: the album of that title (as play() titles it) holding the
+		// song, the artist of that title; -1: not in the library (or it isn't read yet: no snapshot, -2)
+		int albumNamed(const std::string& name, const std::string& song) const;
+		int artistNamed(const std::string& name) const;
 		// Play random: RANDOM_SONGS songs of the whole library in a random order, none twice, as a new list
 		static constexpr int RANDOM_SONGS = 50;
 		void playRandom(Player& p);

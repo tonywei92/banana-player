@@ -459,6 +459,28 @@ namespace bp
 		play(paths, fromSong, "Album \xC2\xB7 " + wordOr(*snap, snap->albums[album].name, "Unknown album"), shuffle, p);
 	}
 
+	int Ui::Music::albumNamed(const std::string& name, const std::string& song) const
+	{
+		auto snap = snapshot();
+		if (!snap) return -2;
+		for (int a = 0; a < (int)snap->albums.size(); a++)
+		{
+			if (wordOr(*snap, snap->albums[a].name, "Unknown album") != name) continue;
+			for (uint32_t si : snap->albums[a].songs)
+				if (snap->songs[si].path == song) return a;
+		}
+		return -1;
+	}
+
+	int Ui::Music::artistNamed(const std::string& name) const
+	{
+		auto snap = snapshot();
+		if (!snap) return -2;
+		for (int a = 0; a < (int)snap->artists.size(); a++)
+			if (wordOr(*snap, snap->artists[a].name, "Unknown artist") == name) return a;
+		return -1;
+	}
+
 	void Ui::Music::playArtist(int artist, int fromSong, bool shuffle, Player& p)
 	{
 		auto snap = snapshot();

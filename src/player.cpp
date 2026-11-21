@@ -2329,6 +2329,26 @@ namespace bp
 		if (!opts.stateDir.empty()) writeFile(opts.stateDir + "/history.tsv", played.serialize());
 	}
 
+	int Player::removeFromHistory(const std::vector<std::string>& paths)
+	{
+		int n = 0;
+		for (auto& path : paths) n += played.remove(path);
+		if (!n) return 0;
+		recentSer++;
+		if (!opts.stateDir.empty()) writeFile(opts.stateDir + "/history.tsv", played.serialize());
+		return n;
+	}
+
+	void Player::setRecentContext(const std::string& path, const RecentContext& ctx)
+	{
+		if (!played.setContext(path, ctx)) return;
+		recentSer++;	// (the dashboard's Recent offers the list)
+		fprintf(stderr, "recent: %s played from %s \"%s\"%s\n", path.substr(path.rfind('/') + 1).c_str(),
+			ctx.kind == RecentContext::NONE ? "no list" : ctx.rail() ? "the Music rail's" : ctx.kind == RecentContext::PLAYLIST ? "the playlist" : "the folder",
+			ctx.title().c_str(), ctx.rail() ? (" (" + std::to_string(ctx.list.size()) + " songs)").c_str() : "");
+		if (!opts.stateDir.empty()) writeFile(opts.stateDir + "/history.tsv", played.serialize());
+	}
+
 	void Player::forgetPosition(const std::string& path)
 	{
 		const ResumeEntry* e = resume.find(path);

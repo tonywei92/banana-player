@@ -10,7 +10,7 @@ import { Icon } from './icons.js';
 import { DevSwitch, useVideoSlot } from './playing.js';
 import { GLYPH } from './files.js';
 import { playFromPl } from './playlists.js';
-import { clearRecent, loadRecent, openDoc, playFromStart, playRecent, removeRecent, useRecent } from './recent.js';
+import { clearMissing, clearRecent, loadRecent, openDoc, playFromStart, playRecent, removeRecent, useRecent } from './recent.js';
 
 /* ================= Home: the landing page. Continue (the newest thing played or read, on the handheld or here), then
    the rest of Recent. A book, a PDF or a comic opens on the handheld only, and a network file plays there only: the
@@ -30,10 +30,14 @@ const noteOf = it => isDoc(it)
 // where it is: its folder (the connection's name for a network file; the card's at its top)
 const whereOf = it => { if (it.net) return it.where; const d = dirName(it.p); return d.includes('/') ? baseName(d) : it.where; };
 const likable = it => !isDoc(it) && !it.net && !it.gone;
+// why a file of Recent can't open ("Card 2 is out", "Not on this handheld any more"); its chip: Card out / Gone
+const goneWhy = it => it.why || 'Not on this handheld any more';
+const goneChip = it => it.out ? 'Card out' : 'Gone';
 
 // a tap: what the item can do. A document goes to the handheld; a network file plays there whatever is chosen
 function act(it) {
-	if (it.gone) return toast(it.net ? 'That file is gone from its network folder' : 'That file is gone from the card');
+	// (one that can't open: why, and Remove from Recent, in its sheet)
+	if (it.gone) return menu(it);
 	if (isDoc(it)) return openDoc(it);
 	if (it.net) { if (store.target === 'browser') toast(NET_WHY); return playRecent(it, 'handheld'); }
 	return playHere(t => playRecent(it, t), it.p);
@@ -41,7 +45,7 @@ function act(it) {
 const fromStart = it => it.net ? playFromStart(it, 'handheld') : playHere(t => playFromStart(it, t), it.p);
 function menu(it, anchor) {
 	const doc = isDoc(it), part = inProg(it), liked = isLiked(it.p), verb = part ? 'Resume' : 'Play';
-	const rm = { label: 'Remove from Recent', icon: 'minus', sub: it.gone ? 'The file is gone' : doc ? 'Its page is kept' : 'The place it was left at is kept', fn: () => removeRecent(it) };
+	const rm = { label: 'Remove from Recent', icon: 'minus', sub: it.gone ? 'It can’t open' : doc ? 'Its page is kept' : 'The place it was left at is kept', fn: () => removeRecent(it) };
 	const items = it.gone ? [rm] : doc ? [
 		{ label: 'Open on handheld', icon: 'card', sub: noteOf(it), fn: () => openDoc(it) },
 		!it.net && { label: 'Show in Files', icon: 'folder', fn: () => showInFiles(it.p) }, '-', rm]
@@ -52,7 +56,7 @@ function menu(it, anchor) {
 		!it.net && { label: liked ? 'Unlike' : 'Like', icon: liked ? 'heart-o' : 'heart', fn: () => setLike(it.p, !liked, 'menu') },
 		!it.net && { label: 'Add to playlist…', icon: 'pl-add', fn: () => addToPlaylist([it.p], it.title) },
 		!it.net && { label: 'Show in Files', icon: 'folder', fn: () => showInFiles(it.p) }, '-', rm];
-	openSheet(it.title, GLYPH[it.kind] || 'note', items, { anchor, sub: KIND[it.kind] + ' · ' + noteOf(it), seed: it.p, kind: it.kind, cover: it.gone || doc ? '' : coverUrl(it.p) });
+	openSheet(it.title, GLYPH[it.kind] || 'note', items, { anchor, sub: KIND[it.kind] + ' · ' + (it.gone ? goneWhy(it) : noteOf(it)) + (it.list ? ' · from ' + it.list : ''), seed: it.p, kind: it.kind, cover: it.gone || doc ? '' : coverUrl(it.p) });
 }
 const onCtx = it => e => { if (!touchOnly) { e.preventDefault(); menu(it, { x: e.clientX, y: e.clientY }); } };
 
@@ -65,7 +69,7 @@ function Cover({ it, k, frac, children }) {
 		${f > 0 && html`<span class="bar" aria-hidden="true"><i style=${'width:' + (Math.min(1, f) * 100).toFixed(1) + '%'}></i></span>`}</span>`;
 }
 // what a row can't do, said on it
-const Tags = ({ it, cur, short }) => html`${cur && html`<span class="chip y tiny"><${Icon} n="play" k=${1} />Playing</span>`}${it.gone && html`<span class="chip red tiny">Gone</span>`}
+const Tags = ({ it, cur, short }) => html`${cur && html`<span class="chip y tiny"><${Icon} n="play" k=${1} />Playing</span>`}${it.gone && html`<span class="chip red tiny">${goneChip(it)}</span>`}
 	${isDoc(it) && !it.gone && html`<span class="chip ghost tiny" title=${DOC_WHY}><${Icon} n="card" k=${1} />${short ? 'Handheld' : 'Opens on handheld'}</span>`}
 	${it.net && html`<span class="chip ghost tiny" title=${NET_WHY}><${Icon} n="network" k=${1} />Network</span>`}`;
 const Heart = ({ it }) => likable(it) && isLiked(it.p) ? html` <span class="likemark" role="img" aria-label="Liked"><${Icon} n="heart" k=${1} /></span>` : null;
@@ -106,10 +110,10 @@ const verbOf = it => isDoc(it) ? 'Open' : inProg(it) ? 'Resume' : 'Play';
 function Card({ it, cur }) {
 	return html`<div class=${'hm-card box surface' + (it.gone ? ' gone' : '') + (cur ? ' cur' : '')} role="listitem">
 		<button class="hit" aria-label=${verbOf(it) + ' ' + it.title} onClick=${() => cur ? go('#/playing') : act(it)} onContextMenu=${onCtx(it)}>
-			<${Cover} it=${it} k=${4}>${(it.gone || cur) && html`<span class="tl">${cur ? html`<span class="chip y tiny"><${Icon} n="play" k=${1} />Playing</span>` : html`<span class="chip red tiny">Gone</span>`}</span>`}${!it.gone && html`<span class="ov" aria-hidden="true"><span><${Icon} n=${isDoc(it) ? 'card' : 'play'} k=${2} /></span></span>`}</${Cover}>
+			<${Cover} it=${it} k=${4}>${(it.gone || cur) && html`<span class="tl">${cur ? html`<span class="chip y tiny"><${Icon} n="play" k=${1} />Playing</span>` : html`<span class="chip red tiny">${goneChip(it)}</span>`}</span>`}${!it.gone && html`<span class="ov" aria-hidden="true"><span><${Icon} n=${isDoc(it) ? 'card' : 'play'} k=${2} /></span></span>`}</${Cover}>
 			<span class="body"><span class="ttl clamp2">${it.title}<${Heart} it=${it} /></span>
 				<span class="where"><${Icon} n=${GLYPH[it.kind] || 'note'} k=${1} /><span class="ell">${whereOf(it) || KIND[it.kind]}</span></span>
-				<span class="note"><span class=${inProg(it) ? 'y' : ''}>${noteOf(it)}</span>${!it.gone && html`<${Tags} it=${it} short=${true} />`}</span></span></button>
+				<span class="note"><span class=${inProg(it) ? 'y' : ''}>${it.gone ? goneWhy(it) : noteOf(it)}</span>${!it.gone && html`<${Tags} it=${it} short=${true} />`}</span></span></button>
 		<button class="ib more" aria-label=${'More about ' + it.title} aria-haspopup="dialog" onClick=${e => menu(it, e.currentTarget)}><${MoreDots} /></button></div>`;
 }
 function Row({ it, cur }) {
@@ -117,7 +121,7 @@ function Row({ it, cur }) {
 		<button class="main-btn" onClick=${() => cur ? go('#/playing') : act(it)} onContextMenu=${onCtx(it)}><${Cover} it=${it} k=${2} />
 			<span class="grow"><div class="fn ell">${it.title}<${Heart} it=${it} /></div>
 				<div class="fm"><${Tags} it=${it} cur=${cur} short=${true} /><${Icon} n=${GLYPH[it.kind] || 'note'} k=${1} /><span class="ell">${whereOf(it) || KIND[it.kind]}</span></div></span>
-			<span class=${'dur' + (inProg(it) ? ' y' : '')}>${noteOf(it)}</span></button>
+			<span class=${'dur' + (inProg(it) ? ' y' : '')}>${it.gone ? goneWhy(it) : noteOf(it)}</span></button>
 		<button class="ib more" aria-label=${'More about ' + it.title} aria-haspopup="dialog" onClick=${e => menu(it, e.currentTarget)}><${MoreDots} /></button></div>`;
 }
 
@@ -192,7 +196,7 @@ export function Home() {
 	const ver = s.snap && s.snap.version;
 	const foot = html`<footer class="hm-foot">Banana Player${ver ? ' ' + ver : ''} · <a href="https://github.com/tonywei92/banana-player" target="_blank" rel="noopener">Source</a> · <a href="https://ko-fi.com/tonysong" target="_blank" rel="noopener">Support Banana Player</a></footer>`;
 	const head = html`<div class="phead hm-head"><div class="row"><h1>Home</h1>${has && wide && playOn}
-		${has && html`<button class="btn icon" aria-label="More about Recent" aria-haspopup="dialog" onClick=${e => openSheet('Recent', 'clock', [{ label: 'Clear Recent…', icon: 'trash', danger: true, sub: 'On the handheld too', fn: clearRecent }], { anchor: e.currentTarget, sub: plural(items.length, 'item', 'items') + ' · kept on the handheld' })}><${MoreDots} /></button>`}<${AppMenu} /></div>
+		${has && html`<button class="btn icon" aria-label="More about Recent" aria-haspopup="dialog" onClick=${e => openSheet('Recent', 'clock', [items.some(it => it.gone && !it.out) && { label: 'Clear missing', icon: 'minus', sub: plural(items.filter(it => it.gone && !it.out).length, 'file', 'files') + ' no longer on the handheld', fn: clearMissing }, { label: 'Clear Recent…', icon: 'trash', danger: true, sub: 'On the handheld too', fn: clearRecent }], { anchor: e.currentTarget, sub: plural(items.length, 'item', 'items') + ' · kept on the handheld' })}><${MoreDots} /></button>`}<${AppMenu} /></div>
 		${has && !wide && playOn}</div>`;
 	if (r && r.error) return html`<div class="page hm">${head}<${Empty} icon="alert" title="Couldn't load Home" sub=${r.error} button="Try again" onClick=${loadRecent} />${foot}</div>`;
 	if (!r) return html`<div class="page hm">${head}${slow ? html`<${Skeleton} />` : null}${foot}</div>`;

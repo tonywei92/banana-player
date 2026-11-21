@@ -543,11 +543,14 @@ namespace bp
 					answer(res, error("That isn't something the player plays", "type"), 415);
 					return;
 				}
+				bool recent = value(req, "recent") == "1";	// (Recent's song: in the list it played from)
 				int status = 200;
 				std::string body = w->call([=](Player& p, Ui& u) {
 					if (toHandheld && !(p.playing() && p.currentPath() == path)) WebPlayerGlue::handheldChosen(p, u, tab);
-					WebPlayerGlue::openFile(p, u, path, t, handBack);
-					return std::string("{\"ok\":true}");
+					std::string note;
+					bool here = p.playing() && p.currentPath() == path;	// (playing already: as any pick of it)
+					if (!(recent && !here && u.browse->homeView->playInList(path, p, &note))) WebPlayerGlue::openFile(p, u, path, t, handBack);
+					return JsonWriter().obj().key("ok").boolean(true).key("note").str(note).end().out();
 				}, 2000, status);
 				answer(res, body, status);
 				return;

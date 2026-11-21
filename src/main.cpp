@@ -2090,6 +2090,24 @@ int main(int argc, char** argv)
 				// the session stopped its item (a Stop, the end of the list, its file deleted): the handheld lets go too
 				if (int u = shadow.takeUnload()) stopPlaying(u == 2 ? StopWhy::End : StopWhy::Web);
 			}
+			// a song of Recent: the list it plays in, as the Session has it (a pick, Next, Keep playing's songs; a page's
+			// play too), checked when the session or the history moved
+			{
+				static uint64_t ctxV = 0;
+				static int ctxSer = -1;
+				const Session& ss = shadow.session();
+				if (ss.v != ctxV || player.recentSerial() != ctxSer)
+				{
+					ctxV = ss.v;
+					ctxSer = player.recentSerial();
+					const auto& items = player.history().items();
+					if (ss.index >= 0 && ss.index < (int)ss.queue.size() && isAudioFile(ss.queue[ss.index]) && !items.empty() && items[0] == ss.queue[ss.index])
+					{
+						player.setRecentContext(items[0], recentContextOf(items[0], ss.queue, ss.index, ss.source.kind, ss.source.title, ss.source.id, ss.rail));
+						ctxSer = player.recentSerial();
+					}
+				}
+			}
 			Uint32 now = SDL_GetTicks();
 			// the sound output opened again after an amplifier didn't start (3 times a minute at most: a chip that never
 			// starts isn't helped by more)

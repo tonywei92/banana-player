@@ -123,7 +123,8 @@ namespace bp
 			else
 			{
 				if (browse->browseDir != RECENT) p.setLastFolder(browse->browseDir);
-				openFile(path, p);
+				if (browse->browseDir == RECENT) browse->homeView->openRecent(path, p);
+				else openFile(path, p);
 			}
 			return;
 		}
