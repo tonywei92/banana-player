@@ -438,22 +438,21 @@ namespace bp
 				}
 				w.end().key("books").arr();
 				{
-					// the handheld's own shelf: every book opened from anywhere (its place kept, newest first) and the
-					// cards' Books folders, merged (ui_books.cpp's build); a TXT is not a book
+					// the cards' Books folders only (the section-membership rule, mediaindex.h): a book opened from Files
+					// elsewhere is not shelved; `at` is the reading places' order (newest first). A TXT is not a book
 					struct Shelf { std::string path; long long size = 0; int64_t mtime = 0; int at = -1; };
 					std::vector<Shelf> shelf;
-					std::set<std::string> seen;
 					u.docs->docPlacesLoad();
-					int at = 0;
-					for (auto& e : u.docs->docPlaces->all())
+					std::map<std::string, int> order;
 					{
-						at++;
-						struct stat st;
-						if (!isBookName(e.path) || stat(e.path.c_str(), &st) != 0 || !seen.insert(e.path).second) continue;
-						shelf.push_back({e.path, (long long)st.st_size, (int64_t)st.st_mtime, at});
+						int at = 0;
+						for (auto& e : u.docs->docPlaces->all()) { at++; order.emplace(e.path, at); }
 					}
 					for (auto& b : listBooks(bookFolders()))
-						if (seen.insert(b.path).second) shelf.push_back({b.path, b.size, b.mtime, -1});
+					{
+						auto o = order.find(b.path);
+						shelf.push_back({b.path, b.size, b.mtime, o == order.end() ? -1 : o->second});
+					}
 					for (auto& b : shelf)
 					{
 						std::string bp = ws.servedVirtual(b.path);

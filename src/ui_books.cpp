@@ -69,33 +69,17 @@ namespace bp
 		shelf.clear();
 		placesKey = placesNow();
 		fromWords = mediaFromWords(bookFolders());
-		// the readers' own places: every book opened from anywhere, newest first, its file still there
+		// the shelf is the cards' Books folders only (the section-membership rule, mediaindex.h): a book opened
+		// from Files elsewhere stays in Recent and Files. Reading now: the readers' places inside those folders
+		auto folders = bookFolders();
 		ui.docs->docPlacesLoad();
-		std::vector<const ResumeEntry*> places;
 		// (a TXT is not a book: a readme or a log read once stays in Files and Recent, not on the shelf; the owner)
-		for (auto& e : ui.docs->docPlaces->all())
-			if (exists(e.path) && isBookName(e.path)) places.push_back(&e);
-		// the places' books: Reading now, and every one of them on the shelf too (a book opened from Files or a
-		// server joins the shelf, as the mock-up's rule has it)
 		std::set<std::string> placed;
-		for (auto* e : places)
-		{
-			if (!placed.insert(e->path).second) continue;
-			shelf.push_back({e->path, bookName(e->path), -1});
-			reading.push_back({e->path, bookName(e->path), bookProgress(*e)});
-		}
-		// the cards' Books and Ebook(s) folders (mediaindex's own walk), merged with the places', by name
-		for (auto& b : listBooks(bookFolders()))
-		{
-			if (!placed.insert(b.path).second)
-			{
-				// (a book of the places' that is in a folder too: the walk knows its size)
-				for (auto& have : shelf)
-					if (have.path == b.path) have.size = b.size;
-				continue;
-			}
+		for (auto& e : ui.docs->docPlaces->all())
+			if (isBookName(e.path) && pathUnderFolders(e.path, folders) && exists(e.path) && placed.insert(e.path).second)
+				reading.push_back({e.path, bookName(e.path), bookProgress(e)});
+		for (auto& b : listBooks(folders))
 			shelf.push_back({b.path, bookName(b.path), -1, b.size});
-		}
 		std::stable_sort(shelf.begin(), shelf.end(), [](const Shelf& a, const Shelf& b) {
 			return naturalLess(a.name, b.name);
 		});

@@ -371,6 +371,17 @@ static void testDurationFile()
 // the fold, the walk with its tag cache, the grouping into albums and artists, and the query
 static void testMediaIndex()
 {
+	// ---- section membership: only a file under the section's own folders belongs to it (a book opened from
+	// Files elsewhere stays out of Books; the same rule for songs and videos)
+	{
+		std::vector<std::string> f = {"/mnt/sd/Books", "/mnt/sd2/Ebooks/"};
+		CHECK_EQ(pathUnderFolders("/mnt/sd/Books/a.epub", f), true);
+		CHECK_EQ(pathUnderFolders("/mnt/sd2/Ebooks/x/y.pdf", f), true);
+		CHECK_EQ(pathUnderFolders("/mnt/sd/Downloads/a.epub", f), false);
+		CHECK_EQ(pathUnderFolders("/mnt/sd/Books2/a.epub", f), false);
+		CHECK_EQ(pathUnderFolders("/mnt/sd/Books", f), false);
+		CHECK_EQ(pathUnderFolders("/mnt/sd/Books/a.epub", {}), false);
+	}
 	// ---- the folders' names, any capitals
 	for (const char* n : {"Music", "music", "MUSIC", "Musics", "mUsIcS"})
 		CHECK_EQ(isMusicFolderName(n), true);

@@ -1445,7 +1445,11 @@ int main(int argc, char** argv)
 				{
 					// the media index finished a pass: a new snapshot with a new generation is in indexWorker->index().
 					// Music, Videos and Search hold the generation in their signature(), so this pass's landing is
-					// drawn on the next loop pass, here on the main thread, never from the worker
+					// drawn on the next loop pass, here on the main thread, never from the worker. The dashboard's
+					// Music, Videos and Books pages list again (an upload's new file shows without a reload)
+#ifdef BP_WEB
+					if (webServer && webServer->running()) webServer->notify("library", "{}");
+#endif
 				}
 				else if (e.type == evMangaFetch) mangaNet->onFetchEvent();
 				else if (e.type == evMangaWorker) mangaNet->onWorkerEvent();
@@ -1497,7 +1501,7 @@ int main(int argc, char** argv)
 					};
 					if (!c) {}
 					else if (c->kind == WebCall::Kind::Call) c->run(player, ui);
-					else if (c->kind == WebCall::Kind::FsChanged) ui.folderChanged(c->arg, player);
+					else if (c->kind == WebCall::Kind::FsChanged) { ui.folderChanged(c->arg, player); indexWorker->refresh(); }	// (an upload or a dashboard file op: the index walks again)
 					else if (c->kind == WebCall::Kind::ClientConnected) toast("Web dashboard: a browser signed in");
 					else if (c->kind == WebCall::Kind::PinRotated) toast("PIN changed after too many wrong tries");
 					else if (c->kind == WebCall::Kind::ClientsChanged) webForce = true;
