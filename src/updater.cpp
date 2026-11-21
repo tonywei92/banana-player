@@ -2,9 +2,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <spawn.h>
+#include <sys/wait.h>
 #include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
+
+extern char** environ;
 
 namespace bp
 {
@@ -157,7 +161,13 @@ namespace bp
 			std::lock_guard<std::mutex> g(lock);
 			path = partPath;
 		}
-		if (!path.empty()) system(("pkill -f " + quote(path) + " >/dev/null 2>&1").c_str());
+		// posix_spawn, not system(): macOS serializes system() calls, and the worker's is the curl being killed
+		if (!path.empty())
+		{
+			pid_t pid;
+			char* argv[] = {(char*)"pkill", (char*)"-f", (char*)path.c_str(), nullptr};
+			if (posix_spawnp(&pid, "pkill", nullptr, nullptr, argv, environ) == 0) waitpid(pid, nullptr, 0);
+		}
 	}
 
 	void Updater::download()

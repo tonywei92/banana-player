@@ -1,5 +1,6 @@
 // The parts without a window: aspect modes, track labels, mpv's track-list, times.
 #include "kitlayout.h"
+#include "updater.h"
 #include "songlayout.h"
 #include "artph.h"
 #include "artbackdrop.h"
@@ -16579,8 +16580,100 @@ static void testTagText()
 	CHECK_EQ(cleanTagText("\xFF\xFE"), std::string("\xC3\xBF\xC3\xBE"));	// never invalid out
 }
 
+// The updater end to end on files (curl reads file:// URLs): a download that is checked, unpacked and staged, a damaged
+// one, a cancelled one. 0.9.0 deleted the .sha256 between steps, so every real update failed "damaged"; nothing ran it
+static bool updWait(bp::Updater& u, std::initializer_list<bp::Updater::State> want)
+{
+	for (int i = 0; i < 1000; i++)
+	{
+		for (auto w : want) if (u.state() == w) return true;
+		usleep(10000);
+	}
+	return false;
+}
+
+static bool updExists(const std::string& p) { return access(p.c_str(), F_OK) == 0; }
+
+static void testUpdaterDownload()
+{
+	char tmpl[] = "/tmp/bp-updtest-XXXXXX";
+	std::string root = mkdtemp(tmpl);
+	std::string pkg = root + "/BananaPlayer", src = root + "/src", rel = root + "/rel";
+	auto sh = [&](const std::string& c) { return system(c.c_str()); };
+	sh("mkdir -p '" + pkg + "' '" + src + "/BananaPlayer/bin' '" + rel + "'");
+	sh("echo 0.0.1 > '" + pkg + "/VERSION'");
+	sh("echo 9.9.9 > '" + src + "/BananaPlayer/VERSION'; echo x > '" + src + "/BananaPlayer/bin/banana-player'; echo x > '" + src + "/BananaPlayer/launch.sh'; echo x > '" + src + "/Banana Player.sh'");
+	std::string zip = rel + "/BananaPlayer-9.9.9-aarch64.zip";
+	CHECK_EQ(sh("cd '" + src + "' && zip -q -r '" + zip + "' BananaPlayer 'Banana Player.sh'"), 0);
+	std::string good = bp::sha256File(zip);
+	auto writeSha = [&](const std::string& h) { sh("echo '" + h + "  BananaPlayer-9.9.9-aarch64.zip' > '" + zip + ".sha256'"); };
+	writeSha(good);
+	std::string json = "{\"tag_name\":\"v9.9.9\",\"assets\":[{\"name\":\"BananaPlayer-9.9.9-aarch64.zip\",\"size\":1,\"browser_download_url\":\"file://" + zip +
+		"\"},{\"name\":\"BananaPlayer-9.9.9-aarch64.zip.sha256\",\"size\":1,\"browser_download_url\":\"file://" + zip + ".sha256\"}]}";
+	{ std::ofstream(rel + "/latest.json") << json; }
+	setenv("BP_UPDATE_URL", ("file://" + rel + "/latest.json").c_str(), 1);
+
+	std::string part = root + "/BananaPlayer-update.zip.part", staged = root + "/BananaPlayer.update";
+	auto leftovers = [&] { return updExists(part) || updExists(part + ".sha256") || updExists(root + "/BananaPlayer.update.part"); };
+	using S = bp::Updater::State;
+	auto prime = [&](bp::Updater& u) {
+		u.init(pkg, "0.0.1");
+		CHECK(u.state() == S::Idle);
+		u.check();
+		CHECK(updWait(u, {S::Available, S::Failed}));
+		CHECK(u.state() == S::Available);
+		CHECK_EQ(u.available(), std::string("9.9.9"));
+	};
+	{	// good: staged whole, the part files gone
+		bp::Updater u;
+		prime(u);
+		u.download();
+		CHECK(updWait(u, {S::Ready, S::Failed}));
+		CHECK(u.state() == S::Ready);
+		CHECK_EQ(u.message(), std::string());
+		CHECK(updExists(staged + "/BananaPlayer/VERSION"));
+		CHECK(updExists(staged + "/BananaPlayer/bin/banana-player"));
+		CHECK(!leftovers());
+	}
+	sh("rm -rf '" + staged + "'");
+	{	// damaged: a wrong checksum stages nothing
+		writeSha(std::string(64, '0'));
+		bp::Updater u;
+		prime(u);
+		u.download();
+		CHECK(updWait(u, {S::Ready, S::Failed}));
+		CHECK(u.state() == S::Failed);
+		CHECK(u.message().find("damaged") != std::string::npos);
+		CHECK(!updExists(staged));
+		CHECK(!leftovers());
+		writeSha(good);
+	}
+	{	// cancelled: the zip's URL is a FIFO nobody writes, so its curl waits; cancel (as the page does) kills it
+		std::string fifo = rel + "/slow.zip";
+		sh("mkfifo '" + fifo + "'");
+		std::string slow = json;
+		for (size_t at; (at = slow.find("file://" + zip + "\"")) != std::string::npos;) slow.replace(at, ("file://" + zip).size(), "file://" + fifo);
+		{ std::ofstream(rel + "/slow.json") << slow; }
+		setenv("BP_UPDATE_URL", ("file://" + rel + "/slow.json").c_str(), 1);
+		bp::Updater u;
+		prime(u);
+		u.download();
+		for (int i = 0; i < 100 && u.state() == S::Downloading; i++)
+		{
+			usleep(100000);
+			u.cancel();
+		}
+		CHECK(u.state() == S::Idle);
+		CHECK(!leftovers());
+		CHECK(!updExists(staged));
+	}
+	unsetenv("BP_UPDATE_URL");
+	sh("rm -rf '" + root + "'");
+}
+
 int main()
 {
+	testUpdaterDownload();
 	testVideoCache();
 	testSlider();
 	testSongLayout();
