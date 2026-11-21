@@ -146,3 +146,14 @@ page, View (Reading mode stepped, Layout to Book from Fullscreen), More, a bookm
 Bookmarks tab, `progress.tsv`), the end card and line, R2 to the next chapter; Files' comic has the More row.
 Not driven: Get this chapter and Info on a source's chapter, the last chapter's "You're caught up" card, touches on
 the new row and tabs, Book's View rows, the handheld's panel (the card's size at 640x480, its fade over KMSDRM).
+
+## The pad takes the free height (2026-11-21, d-pad)
+
+Owner: "the Drag to scroll pad can be taller; there's wasted space". The readers' key rows stood 20 units (Files' comic
+/ PDF, Manga) and 54 units (the text reader) above the hint bar. Now every row ends one gap above the hint bar
+(`READER_ROW_Y` is derived: 378) and the pad ends one gap above the row: the strip's and Manga's surface 98–370 (was
+–358), one page's pan 274 tall with its slider at 342, the text reader's pad 104–378 (was –332). The text reader's
+boxes moved from numbers in ui_docs.cpp to `lay::readerText()` (same keys, 56 tall); Find's line now lies where the
+hint bar is. `testKitLayoutReaders` pins "pad bottom = keys' top − GAP" and "keys' bottom = hint bar − GAP" for all
+four. Spec: `reader`, `pdf`, `manga-read` in screens.js. Checked: `--press` shots of a generated EPUB and a CBZ strip
+from Files. Not driven: one page's pan, the Manga reader, Find's bar, the handheld's panel.

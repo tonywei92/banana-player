@@ -514,10 +514,12 @@ namespace bp
 		ReaderSurface readerSurface(Box area, bool strip);
 
 		// ---- a PDF's or a comic's page reader in Files (docs/redesign: pdf; a strip on manga-read's skeleton) ----
-		// One page: the small page to drag at the left (388 x 262), the hand's keys at its right two by two (Page L / R,
+		// One page: the small page to drag at the left (388 wide), the hand's keys at its right two by two (Page L / R,
 		// Zoom out / in), the Page fit stepper and two lines of help under them, then the page slider. Vertical scroll:
-		// the slider under the header, the drag surface under it. Both end on one row: Pages, View, Fullscreen, Light
-		constexpr int READER_TOP = 60, READER_ROW_Y = 366, READER_ROW_H = 64;
+		// the slider under the header, the drag surface under it. Both end on one row: Pages, View, Fullscreen, Light.
+		// The row stands one gap above the hint bar, and the pad (or the page and its slider) takes all the height
+		// down to one gap above the row: no band of plain ground is left under the keys
+		constexpr int READER_TOP = 60, READER_ROW_H = 64, READER_ROW_Y = PANEL_H - HINTS_H - GAP - READER_ROW_H;
 		struct ReaderPage
 		{
 			Box pan, keys[4], fit, help;	// one page (w 0 on a strip): keys are Page back, Page on, Zoom out, Zoom in
@@ -527,6 +529,16 @@ namespace bp
 			Box row[4];	// Pages, View, Fullscreen, Light
 		};
 		ReaderPage readerPage(bool strip);
+		// ---- the text reader's page (a TXT, an EPUB): the place slider under the header, the finger's pad, the row of
+		// keys (four and Brightness's sun) one gap above the hint bar; the pad takes all the height between
+		constexpr int READER_TEXT_KEYS = 5, READER_TEXT_KEY_H = 56;
+		struct ReaderText
+		{
+			Box bar;	// the place slider's row
+			Box pad;	// drag to scroll, tap a half to page
+			Box row[READER_TEXT_KEYS];	// Contents, Bookmarks, Options, Book mode, Brightness (narrow)
+		};
+		ReaderText readerText();
 		// ---- the Manga reader's own page (docs/redesign: manga-read): readerPage's strip skeleton in every reading mode
 		// (the page slider under the header, the finger's surface under it: a paged chapter is swiped there), ending on
 		// a row of six: the chapter before (narrow), Pages, View, Fullscreen, Light, the chapter after (narrow)

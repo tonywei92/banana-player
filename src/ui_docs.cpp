@@ -1002,14 +1002,10 @@ namespace bp
 
 	// ---- the finger ----
 
-	Ui::Rect Ui::Docs::docBarRect() const { return {24, 66, W - 48, 30}; }
-	Ui::Rect Ui::Docs::docPadRect() const { return {16, 104, W - 32, 396 - 104 - 64}; }
-	Ui::Rect Ui::Docs::docBtn(int i) const
-	{
-		// the text reader's row: four across 554, then Brightness's sun (50, 4 clear of them, ending at 624)
-		int y = 396 - 56;
-		return i == 4 ? Rect{574, y, 50, 56} : rowCell({16, y, 554, 56}, 4, 6, i);
-	}
+	// the text reader's boxes are lay::readerText's: the pad takes all the height between the slider and the keys
+	Ui::Rect Ui::Docs::docBarRect() const { return lay::readerText().bar; }
+	Ui::Rect Ui::Docs::docPadRect() const { return lay::readerText().pad; }
+	Ui::Rect Ui::Docs::docBtn(int i) const { return lay::readerText().row[i]; }
 
 	Ui::Rect Ui::Docs::docPanThumb() const
 	{

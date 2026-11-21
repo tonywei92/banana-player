@@ -11430,7 +11430,10 @@ static void testKitLayoutReaders()
 		MangaReadPage m = mangaReadPage();
 		CHECK_EQ(m.from.y, READER_TOP);
 		CHECK(m.sliderHit.y + m.sliderHit.h <= m.surface.y + SP6);
-		CHECK(m.surface.y + m.surface.h <= READER_ROW_Y - GAP);
+		// the pad takes all the height: it ends one gap above the keys, and the keys one gap above the hint bar
+		CHECK_EQ(m.surface.y + m.surface.h, m.row[MRK_PAGES].y - GAP);
+		CHECK_EQ(m.row[MRK_PAGES].y + m.row[MRK_PAGES].h, PANEL_H - HINTS_H - GAP);
+		CHECK_EQ(m.row[MRK_PAGES].h, 64);
 		CHECK(m.end.y >= m.surface.y && m.end.y + m.end.h <= m.surface.y + m.surface.h);
 		CHECK_EQ(m.row[MRK_PREV].x, MARGIN);
 		CHECK_EQ(m.row[MRK_NEXT].x + m.row[MRK_NEXT].w, PANEL_W - MARGIN);
@@ -11504,6 +11507,33 @@ static void testKitLayoutReaders()
 		CHECK_EQ(l.to.x + l.to.w, PANEL_W - MARGIN);
 		CHECK(l.sliderHit.hit(l.track.x + 5, l.track.y + 5) && !overlaps(l.sliderHit, l.row[0]));
 		CHECK(strip ? !overlaps(l.sliderHit, l.surface) : !overlaps(l.sliderHit, l.pan));
+		// no dead band: the keys one gap above the hint bar, and above them one gap to the pad (a strip) or to the
+		// slider's row under the page (one page); the keys keep their size
+		CHECK_EQ(l.row[0].y + l.row[0].h, PANEL_H - HINTS_H - GAP);
+		CHECK_EQ(l.row[0].h, 64);
+		if (strip) CHECK_EQ(l.surface.y + l.surface.h, l.row[0].y - GAP);
+		else
+		{
+			CHECK_EQ(l.from.y + l.from.h, l.row[0].y - GAP);
+			CHECK_EQ(l.pan.y + l.pan.h, l.from.y - GAP);
+			CHECK(l.help.y + l.help.h <= l.pan.y + l.pan.h && l.help.h >= 36);
+		}
+	}
+	// the text reader: the slider, the pad down to one gap above the keys, the keys one gap above the hint bar
+	{
+		ReaderText t = readerText();
+		CHECK(t.bar.y >= SHELL_HEAD && t.pad.y == t.bar.y + t.bar.h + GAP);
+		CHECK_EQ(t.pad.y + t.pad.h, t.row[0].y - GAP);
+		CHECK_EQ(t.row[0].y + t.row[0].h, PANEL_H - HINTS_H - GAP);
+		CHECK_EQ(t.pad.x, MARGIN);
+		CHECK_EQ(t.pad.x + t.pad.w, PANEL_W - MARGIN);
+		CHECK_EQ(t.row[4].x + t.row[4].w, PANEL_W - MARGIN);
+		for (int i = 0; i < READER_TEXT_KEYS; i++)
+		{
+			CHECK(insidePanel(t.row[i]) && t.row[i].h == READER_TEXT_KEY_H && t.row[i].y == t.row[0].y);
+			if (i > 0) CHECK(!overlaps(t.row[i - 1], t.row[i]));
+		}
+		CHECK_EQ(t.row[0].w, 134);
 	}
 
 	// Fullscreen's navigation: a sheet on the panel's lower part, everything inside it and nothing over another; with

@@ -507,7 +507,9 @@ namespace bp
 			}
 			else
 			{
-				l.pan = {MARGIN, READER_TOP, 388, 262};
+				// the page to drag: down to the slider's row (28) and a gap above the keys
+				sliderH = 28;
+				l.pan = {MARGIN, READER_TOP, 388, READER_ROW_Y - GAP - sliderH - GAP - READER_TOP};
 				Box side{l.pan.x + l.pan.w + SP12, READER_TOP, PANEL_W - MARGIN - (l.pan.x + l.pan.w + SP12), 0};
 				for (int r = 0; r < 2; r++)
 					for (int c = 0; c < 2; c++)
@@ -515,13 +517,25 @@ namespace bp
 				l.fit = {side.x, side.y + 2 * (62 + GAP), side.w, 56};
 				l.help = {side.x + SP4, l.fit.y + l.fit.h + SP6, side.w - SP8, l.pan.y + l.pan.h - (l.fit.y + l.fit.h + SP6)};
 				sliderY = l.pan.y + l.pan.h + GAP;
-				sliderH = 28;
 			}
 			l.from = {MARGIN, sliderY, 40, sliderH};
 			l.to = {PANEL_W - MARGIN - 40, sliderY, 40, sliderH};
 			l.track = {l.from.x + l.from.w + SP12, sliderY + (sliderH - 10) / 2, l.to.x - SP12 - (l.from.x + l.from.w + SP12), 10};
 			l.sliderHit = {MARGIN, sliderY - SP6, PANEL_W - 2 * MARGIN, sliderH + 2 * SP6};
 			for (int i = 0; i < 4; i++) l.row[i] = cell({MARGIN, READER_ROW_Y, PANEL_W - 2 * MARGIN, READER_ROW_H}, 4, GAP, i);
+			return l;
+		}
+
+		ReaderText readerText()
+		{
+			ReaderText l;
+			l.bar = {SP24, 66, PANEL_W - 2 * SP24, 30};
+			int rowY = PANEL_H - HINTS_H - GAP - READER_TEXT_KEY_H;
+			int padY = l.bar.y + l.bar.h + GAP;
+			l.pad = {MARGIN, padY, PANEL_W - 2 * MARGIN, rowY - GAP - padY};
+			// four across 554, then Brightness's sun (50, 4 clear of them, ending on the margin)
+			for (int i = 0; i < 4; i++) l.row[i] = cell({MARGIN, rowY, 554, READER_TEXT_KEY_H}, 4, 6, i);
+			l.row[4] = {PANEL_W - MARGIN - 50, rowY, 50, READER_TEXT_KEY_H};
 			return l;
 		}
 
