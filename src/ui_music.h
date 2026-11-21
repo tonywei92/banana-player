@@ -1,7 +1,9 @@
 // Music, the rail's section (Page::Music; docs/redesign/src/screens.js: music-albums, music-artists, music-album,
 // music-artist, music-empty, music-reading, and the rule in docs/redesign/components.md "Search and Music: the
-// index"). An area of Ui (Ui::Area, docs/notes/ui-areas.md): three views of the cards' media index — Albums, Artists,
-// and Playlists — read through MediaIndex::snapshot() (src/mediaindex.h; the worker's, handed in by main).
+// index"). An area of Ui (Ui::Area, docs/notes/ui-areas.md): four views of the cards' media index — Albums, Artists,
+// Playlists and Folders — read through MediaIndex::snapshot() (src/mediaindex.h; the worker's, handed in by main).
+// Folders is the index's songs by where their files lie: the Music folders (one per card: the index's roots), each
+// walked as folders down to its songs, on the same list rows (lay::mediaRow).
 //
 // The third view is not drawn here: it is the browser's own playlists pages (browseDir PLROOT, and a playlist's own
 // below it), opened by show() and drawn under this section (Shell::section maps them here); all their behaviour is
@@ -39,7 +41,8 @@ namespace bp
 		std::shared_ptr<const MediaSnapshot> snapshot() const;
 		uint32_t generation() const { return source ? source->generation() : 0; }
 
-		// ---- the three views: 0 Albums, 1 Artists, 2 Playlists (the browser's own page) ----
+		// ---- the four views: 0 Albums, 1 Artists, 2 Playlists (the browser's own page), 3 Folders ----
+		static constexpr int VIEWS = 4, V_ALBUMS = 0, V_ARTISTS = 1, V_PLAYLISTS = 2, V_FOLDERS = 3;
 		int view = 0;
 		void open(Player& p);			// the rail's way in: the view as it was left
 		void show(Player& p);			// to `view` (Playlists: the browser's playlists page)
@@ -50,6 +53,28 @@ namespace bp
 		int albumAt = -1, artistAt = -1;
 		void openAlbum(int i, Player& p);
 		void openArtist(int i, Player& p);
+
+		// ---- the Folders view: the Music folders, then a folder's own folders and songs ----
+		// the folder open ("": the Music folders themselves — or, when there is only one, that folder's inside:
+		// folderShown() says which), and the cursor each folder above it was left on (B comes back to it)
+		std::string folderAt;
+		std::vector<int> folderCursors;
+		struct FolderRow
+		{
+			bool dir = false;
+			std::string path, name, second;	// a folder's path and name (a root: its card), or the song's file and title
+			int songs = 0;					// a folder: the songs under it, however deep
+			uint32_t song = 0;				// a song: its index in the snapshot
+		};
+		// the folder open, by its path ("": the list of the Music folders), and its rows: the folders by name, then
+		// the songs by their files' names. Built once per folder and index generation (the rows' lambdas share it)
+		std::string folderShown(const MediaSnapshot& snap) const;
+		std::shared_ptr<const std::vector<FolderRow>> folderRows() const;
+		void openFolder(const std::string& path);
+		bool folderUp();		// to the folder above (false: it was the top)
+		// the songs straight in the folder open (what A on one of them plays), and every song under a folder
+		void playFolder(int row, Player& p);
+		std::vector<PlaylistEntry> folderEntries(const std::string& folder) const;
 
 		// ---- the focus, in whatever is shown ----
 		int cursor = 0;					// the views' cell or row
@@ -94,10 +119,11 @@ namespace bp
 		// what it went down on: T_CHIP + i the views' chips, T_KEY + i a head key, T_EMPTY1 / T_EMPTY2 the empty
 		// page's keys, T_GROUND the page's own ground (a drag scrolls, a tap does nothing); then, each a range of
 		// TOUCH_RANGE: T_ALBUM + i an album in the grid (or + j the artist strip's j-th cell shown), T_ARTIST + i,
-		// T_TRACK + i an album's track, T_SONG + i an artist's song (their index in the whole list)
+		// T_TRACK + i an album's track, T_SONG + i an artist's song, T_FOLDER + i a row of the folder open (their
+		// index in the whole list)
 		static constexpr int TOUCH_RANGE = 1 << 20;
 		enum { T_NONE = -1, T_CHIP = 0, T_KEY = 10, T_EMPTY1 = 20, T_EMPTY2 = 21, T_GROUND = 30, T_ALBUM = TOUCH_RANGE,
-			T_ARTIST = 2 * TOUCH_RANGE, T_TRACK = 3 * TOUCH_RANGE, T_SONG = 4 * TOUCH_RANGE };
+			T_ARTIST = 2 * TOUCH_RANGE, T_TRACK = 3 * TOUCH_RANGE, T_SONG = 4 * TOUCH_RANGE, T_FOLDER = 5 * TOUCH_RANGE };
 		int touch = T_NONE;
 		int touchY = 0;
 		bool touchMoved = false;
@@ -113,6 +139,11 @@ namespace bp
 		std::vector<Hint> hintList(const Player&) const;
 		// (the file's own small helpers, defined in ui_music.cpp: they name Kit, which is Ui's)
 		std::vector<Kit::FilterItem> viewItems() const;		// the views' chips (the counts as far as they're known)
+	private:
+		mutable std::shared_ptr<const std::vector<FolderRow>> folderList;	// folderRows()' last answer
+		mutable std::string folderListFor = "\x01";
+		mutable uint32_t folderListGen = 0;
+	public:
 		void accentFirst(Kit::Empty& e, const std::vector<std::string>& lines, const char* word) const;
 	};
 }

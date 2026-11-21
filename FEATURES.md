@@ -121,9 +121,9 @@ its folder on that file.
 
 ## The Music section
 
-Songs by what they are, not where they are. The **Music** cell opens three views of the cards' index, stepped with
-**L/R** or tapped: **Albums**, **Artists** and **Playlists** (the same playlists as ever, drawn under Music; Liked
-first). The line under the title says where the list comes from and how much (`From Music on both cards · 148 albums ·
+Songs by what they are, not where they are. The **Music** cell opens four views of the cards' index, stepped with
+**L/R** or tapped: **Albums**, **Artists**, **Playlists** (the same playlists as ever, drawn under Music; Liked
+first) and **Folders** (the same songs by where their files lie). The line under the title says where the list comes from and how much (`From Music on both cards · 148 albums ·
 1,912 songs`; `on this card` when one card has none). Albums and Artists fill by themselves from the folders named
 **Music** or **Musics** (any capitals) at the top of each card, plus BananaOS's own `/data/roms/music`; every such
 folder is read, however deep inside it everything counts. While a card is first read a notice row names the card
@@ -139,7 +139,15 @@ plays the same, and Search finds it. There is no list of all songs.
 - **Playlists**: the list of playlists is Music's third view: the same chips over it (a tap on **Albums** or
   **Artists** goes there), then a 46-tall row each (Liked first, **New playlist** last, a **Playing** mark on the
   one that plays). A playlist's own page, its select and move modes and the Add to... picker are the browser's, as
-  they were, with the Music cell kept lit (**L** steps back to Artists, **R** rounds to Albums).
+  they were, with the Music cell kept lit (**L** steps back to Artists, **R** goes on to Folders).
+- **Folders**: the Music folders as folders, for music kept in order by hand. With a Music folder on each card the
+  view opens on the two of them (each named with its card); with one it opens inside it. A folder's row says how many
+  songs are under it, however deep; under the folders come the songs lying in the folder itself, by file name, with
+  their artist, length, heart and a **Now** pill on the one that plays. **A** (or a tap) opens a folder or plays a
+  song with the folder's songs as the list; **B** goes up a folder (the cursor back on the one you left) and, at the
+  top, Home; **LEFT/RIGHT** move a screenful; the line under the title says where you are (`Music › The Plantains ·
+  4 songs`). **X** · More on a folder adds all its songs to a playlist or shows it in Files; on a song it is the
+  song's own sheet. Only the index's songs are listed: a file the index doesn't read is in Files.
 
 An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
 (**A**), **Shuffle** (**Y**) and **+** (Add to playlist, touch only). Under them the songs in disc, track and name

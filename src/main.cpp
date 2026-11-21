@@ -1921,9 +1921,11 @@ int main(int argc, char** argv)
 						{
 							// the library sections' own state: the view (Music's three, Videos' three, a
 							// folder), the page below the views, the focus
-							if (lib == "music") printf("press %zu: music view=%d%s%s cursor=%d keyFocus=%d\n", pressed,
+							if (lib == "music") printf("press %zu: music view=%d%s%s cursor=%d keyFocus=%d folder=%s rows=%zu\n", pressed,
 								ui.music->view, ui.music->albumAt >= 0 ? " album" : "",
-								ui.music->artistAt >= 0 ? " artist" : "", ui.music->cursor, ui.music->keyFocus);
+								ui.music->artistAt >= 0 ? " artist" : "", ui.music->cursor, ui.music->keyFocus,
+								baseName(ui.music->folderAt).c_str(),
+								ui.music->view == Ui::Music::V_FOLDERS ? ui.music->folderRows()->size() : (size_t)0);
 							else if (lib == "videos") printf("press %zu: videos view=%d folder=%s cursor=%d rows=%zu\n", pressed,
 								ui.videos->view, ui.videos->folder.c_str(), ui.videos->cursor,
 								ui.videos->rowsFor(player).size());
