@@ -545,7 +545,19 @@ namespace bp
 				httplib::Response quiet;	// (a refusal here only means "not a card's book": the history is asked next)
 				if (!isNetPath(v) && w->resolve(v, onCard, false, quiet) && !isBookName(onCard)) onCard.clear();
 			}
-			std::string body = w->call([w, v, onCard](Player& p, Ui& u) {
+			// a reader's place (the page's Open on handheld): written first, as the browser's, so the book opens there
+			PlaceWrite pw;
+			bool placed = req.has_param("t");
+			if (placed)
+			{
+				pw.kind = value(req, "t") == "pages" ? PLACE_PAGES : PLACE_TEXT;
+				pw.position = std::max(0.0, strtod(value(req, "pos").c_str(), nullptr));
+				pw.share = strtod(value(req, "share").c_str(), nullptr);
+				pw.force = true;
+				pw.by = w->tabName(value(req, "tab"));
+				pw.when = (int64_t)time(nullptr);
+			}
+			std::string body = w->call([w, v, onCard, placed, pw](Player& p, Ui& u) mutable {
 				std::string path;
 				for (auto& h : p.history().items())
 					if (isNetPath(h) ? h == v : w->servedVirtual(h) == v) path = h;
@@ -554,6 +566,12 @@ namespace bp
 				{
 					WebCall::setStatus(404);
 					return error("Not a book or document in Recent", "missing");
+				}
+				if (placed)
+				{
+					pw.path = path;
+					ResumeEntry out;
+					u.docs->webPlace(pw, out);
 				}
 				WebPlaylistGlue::open(p, u, path);
 				return JsonWriter().obj().key("ok").boolean(true).end().out();

@@ -6,6 +6,7 @@
 #include "ui.h"
 #include "ui_reader.h"	// PageReader::FollowList: the menu's smooth list
 #include "writequeue.h"	// DurableWriter: a document's place off the main thread
+#include "bookplace.h"	// PlaceWrite: the dashboard's reader writes the same place
 
 namespace bp
 {
@@ -38,6 +39,12 @@ namespace bp
 		void forgetPlace(const std::string& path);
 		// a file or folder renamed or moved: its place, its bookmarks and the document shown follow it
 		void pathMoved(const std::string& from, const std::string& to);
+		// the dashboard's reader (api_books.cpp, through WebServer::call): its place written against the stored one
+		// (bookplace.h), the event sent, and a reader open on that book told (foreignPlace); out: what is stored now
+		PlaceVerdict webPlace(const PlaceWrite& w, ResumeEntry& out);
+		// the dashboard's bookmarks: one added at a place, one removed (false: none there)
+		void webMarkAdd(const std::string& path, uint64_t id, double frac, const std::string& label);
+		bool webMarkRemove(const std::string& path, uint64_t id);
 		// the keyboard's Done on Find's field: searched on from the place
 		void findTyped(const std::string& query);
 		// the left stick (issue 16): the text scrolls, the pages pan; Book turns a spread the way its D-pad points
@@ -109,6 +116,18 @@ namespace bp
 		Uint32 docSavedAt = 0;
 		bool comicVideoOk = false;	// the video-stop question was answered (or turned off): the comic opens now
 		bool docLive = false;	// main has opened it (a close after that is the viewer closing)
+		// the place this reader last wrote (another device's write since is not this reader's move: rule 3-4)
+		ResumeEntry docOwnLast;
+		// a browser's place in the book shown, while it differs from this reader's: the first row of Contents (Y) in a
+		// text, of the options in a book of pages; no note over the page (the owner's call, 2026-11-21)
+		ResumeEntry foreignPlace;
+		bool foreignShown() const;
+		std::string foreignLabel() const;
+		void foreignGo();
+		void contentsOpen();
+		int contentsCount() const { return (int)textStatus.contents.size() + (foreignShown() ? 1 : 0); }
+		// a place written (the handheld's or a browser's): the dashboard's pages hear it ("book-place")
+		void docPlaceSent(const ResumeEntry& e);
 		void docPlacesLoad();
 		void docPlacesSave(bool now);
 		void docRemember();

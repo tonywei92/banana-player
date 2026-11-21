@@ -61,6 +61,8 @@ export function openSSE() {
 	on('manga', () => set({ mangaTick: (store.mangaTick || 0) + 1 }));
 	// the handheld's history changed (played, removed, cleared, here or there): Recent loads again
 	on('recent', () => set({ recentTick: (store.recentTick || 0) + 1 }));
+	// a book's place written (the handheld, a browser): an open reader hears it (bookplace.js), the shelf reloads
+	on('book-place', d => { dispatchEvent(new CustomEvent('bp-book-place', { detail: d })); set({ bookTick: (store.bookTick || 0) + 1 }); });
 	// the handheld's volume keys while this tab plays the sound: this tab's own volume (the handheld's stays as it was)
 	on('volume', d => { if (d.tab === TAB_ID && d.v >= 0) setBrowserVol(d.v, true); });
 	// a Copy or Move job started or ended on the handheld (jobs.js asks how they stand)

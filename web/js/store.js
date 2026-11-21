@@ -81,6 +81,8 @@ export function parseRoute() {
 	if (a === 'playlists') return { page: 'playlists', id: tail };
 	if (a === 'manga') return { page: 'manga', sub: tail || 'library' };
 	if (a === 'playing') return { page: 'playing' };
+	// a book read here: #/books/read?p=<vpath> (the browser's Back leaves the reader; a reload opens it again)
+	if (a === 'books' && rest[0] && rest[0].startsWith('read') && h.indexOf('?') >= 0) return { page: 'books', read: new URLSearchParams(h.slice(h.indexOf('?') + 1)).get('p') || '' };
 	if (a === 'videos' || a === 'music' || a === 'books') return { page: a };
 	return { page: 'home' };	// the landing page: no address, an old #/recent, anything unknown
 }

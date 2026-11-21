@@ -16,6 +16,7 @@ import { Home } from './js/home.js';
 import { Videos } from './js/videos.js';
 import { Music } from './js/music.js';
 import { Books } from './js/books.js';
+import { Reader } from './js/reader.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
 import { Files, Lightbox, UploadFab } from './js/files.js';
 import { JobFab, jobOver, refreshJobs } from './js/jobs.js';
@@ -168,7 +169,7 @@ function Shell() {
 	useEffect(() => {
 		const key = e => {
 			const t = e.target, tag = t.tagName, role = t.getAttribute && t.getAttribute('role');
-			if (e.ctrlKey || e.metaKey || e.altKey || store.modals.length || store.lightbox) return;
+			if (e.ctrlKey || e.metaKey || e.altKey || store.modals.length || store.lightbox || store.route.read) return;	// (the reader has its own keys)
 			if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag) && !(tag === 'INPUT' && t.type === 'range')) return;	// typing
 			const slider = role === 'slider' || t.type === 'range';	// arrows belong to a focused slider
 			const button = tag === 'BUTTON' || tag === 'A';	// Space belongs to a focused button
@@ -191,7 +192,7 @@ function Shell() {
 		addEventListener('keydown', key); return () => removeEventListener('keydown', key);
 	}, []);
 	const page = r.page === 'home' ? html`<${Home} />` : r.page === 'files' ? html`<${Files} />` : r.page === 'videos' ? html`<${Videos} />`
-		: r.page === 'music' ? html`<${Music} />` : r.page === 'books' ? html`<${Books} />` : r.page === 'playlists' ? html`<${Playlists} />`
+		: r.page === 'music' ? html`<${Music} />` : r.page === 'books' ? (r.read ? html`<${Reader} p=${r.read} key=${r.read} />` : html`<${Books} />`) : r.page === 'playlists' ? html`<${Playlists} />`
 		: r.page === 'manga' ? html`<${Manga} />` : html`<${NowPlaying} />`;
 	const miniShown = !wide && v.has && r.page !== 'playing' && !s.selecting;
 	const fabShown = r.page !== 'playing' && !s.selecting && !s.pick && (s.upload.items.length > 0 || (r.page === 'files' && !!r.path) || s.jobs.some(j => !jobOver(j)));

@@ -14,6 +14,11 @@ namespace bp
 		int64_t aid = -1;		// mpv's track id; -1: not kept
 		int64_t sid = -1;		// 0: subtitles off; -1: not kept
 		double duration = -1;	// its length as last played (Home's Recent cards: "0:27 / 0:52"); < 0: not known
+		// a document's place only (doc-places.conf, bookplace.h): bumped on every write, when (the handheld's clock,
+		// seconds) and who wrote it ("the handheld", "Safari on iPhone"); 0 / "": from before the web could read
+		uint64_t rev = 0;
+		int64_t when = 0;
+		std::string by;
 	};
 
 	class ResumeStore
