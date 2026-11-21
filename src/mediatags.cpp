@@ -3,6 +3,7 @@
 #include "mediatags.h"
 #include "durations.h"
 #include "webmedia.h"
+#include "tagtext.h"
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -36,7 +37,7 @@ namespace bp
 		{
 			if (!d) return "";
 			AVDictionaryEntry* e = av_dict_get(d, key, nullptr, 0);
-			return e && e->value ? e->value : "";
+			return e && e->value ? cleanTagText(e->value) : "";
 		}
 
 		// "3/12" and "3" both: the number before the slash (the index keeps a track's place, not the count)

@@ -89,8 +89,8 @@ namespace bp
 		}
 		// the cache is this pass's alone: loaded, used, dropped with the walk's other working memory
 		MediaTagCache cache;
-		if (!dir.empty() && !cache.load(dir + "/media-index.tsv"))
-			fprintf(stderr, "media index: %s/media-index.tsv couldn't be written\n", dir.c_str());
+		if (!dir.empty() && !cache.load(dir + "/media-index2.tsv"))
+			fprintf(stderr, "media index: %s/media-index2.tsv couldn't be written\n", dir.c_str());
 		MediaFolders folders = mediaFolders();
 		MediaWalk walk;
 		// the walk's two helpers, both this thread's:

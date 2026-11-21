@@ -1,4 +1,4 @@
-// The media index's tag cache, <state>/media-index.tsv: what the Music folders' files are called (their tags), kept
+// The media index's tag cache, <state>/media-index2.tsv: what the Music folders' files are called (their tags), kept
 // across runs and keyed by each file's path, size and mtime, so a second start reads only what changed (a walk
 // without it would open every song on the card again). One line a file, appended as the walk learns it — a quit
 // mid-pass keeps what was read — the last line a path wins, and the file is compacted at load when it has grown well
@@ -20,7 +20,7 @@ namespace bp
 	{
 	public:
 		~MediaTagCache();
-		// The state folder's media-index.tsv, kept across runs. False: the file couldn't be opened for appending
+		// The state folder's media-index2.tsv, kept across runs. False: the file couldn't be opened for appending
 		// (the walk goes on; nothing it learns is kept).
 		bool load(const std::string& file);
 		// true when the file as it is now is already known — its path, size and mtime match an entry: its tags are

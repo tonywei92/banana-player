@@ -757,6 +757,18 @@ namespace bp
 				if (allIn(name, "", "")) hits.files.push_back(i);
 			}
 		}
+		// a song whose tags don't hold the words but whose file name does ("gaia" in Ultramangaia_ED2_Beat_on_Dream.mp3):
+		// after the tag matches. The name's _ - . read as spaces
+		for (uint32_t i = 0; i < snap.songs.size(); i++)
+		{
+			const MediaSong& s = snap.songs[i];
+			if (allIn(snap.at(s.foldTitle), snap.at(s.foldArtist), snap.at(s.foldAlbum))) continue;
+			std::string n = baseNameLessExt(s.path);
+			for (char& c : n)
+				if (c == '_' || c == '-' || c == '.') c = ' ';
+			std::string all = foldText(n) + " " + snap.at(s.foldTitle) + " " + snap.at(s.foldArtist) + " " + snap.at(s.foldAlbum);
+			if (allIn(all, "", "")) hits.songs.push_back(i);
+		}
 		return hits;
 	}
 }

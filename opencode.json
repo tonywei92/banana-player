@@ -32,6 +32,15 @@
       "od *": "allow",
       "xxd *": "allow",
       "file *": "allow",
+      "yt-dlp *": "allow",
+      "yt-dlp": "allow",
+      "export SDKROOT=*": "allow",
+      "./build/banana-player *": "allow",
+      "BP_* ./build/banana-player *": "allow",
+      "timeout * ./build/banana-player *": "allow",
+      "ffmpeg *": "allow",
+      "mkdir *": "allow",
+      "rm -rf .scratch*": "allow",
       "git add *": "allow",
       "git commit *": "allow",
       "git push*": "deny",
@@ -44,17 +53,7 @@
       "ssh -o ConnectTimeout=* root@192.168.1.50 *": "allow",
       "tools/push-handheld.sh root@192.168.1.50": "allow",
       "tools/push-handheld.sh root@192.168.1.50 *": "allow",
-      "packaging/build-bundle.sh*": "allow",
-      "BP_SHOTS=* ./build/banana-player*": "allow",
-      "./build/banana-player*": "allow",
-      "ffmpeg *": "allow",
-      "ffmpeg": "allow",
-      "mkdir *": "allow",
-      "kill *": "allow",
-      "killall ffmpeg": "allow",
-      "killall banana-player": "allow",
-      "killall -TERM banana-player": "allow",
-      "npx skills *": "allow"
+      "packaging/build-bundle.sh*": "allow"
     }
   }
 }
