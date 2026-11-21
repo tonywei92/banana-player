@@ -2,7 +2,7 @@ import { html, useState, useEffect, useMemo } from '../vendor/htm-preact-standal
 import { errMsg, get } from './api.js';
 import { lsGet, lsSet, useStore } from './store.js';
 import { cmpName, dirName, fmtDate, fmtSize, fmtTime, plural } from './util.js';
-import { AppMenu, Art, Banner, Empty, Skeleton, vthumbUrl } from './components.js';
+import { AppMenu, Art, Banner, Empty, Skeleton, FileMore, vthumbUrl } from './components.js';
 import { Icon } from './icons.js';
 import { SectionUpload, uploadToSection } from './libupload.js';
 import { playHere, playPaths, view } from './browser-player.js';
@@ -84,7 +84,7 @@ export function Videos() {
 							<div class="fm">${x.folder ? '' : part ? (x.dur > 0 ? fmtTime(Math.max(0, x.dur - x.pos)) + ' left' : fmtTime(x.pos)) : x.mtime ? fmtDate(x.mtime) : ''}</div>
 							${part && x.dur > 0 && html`<span class="mprog" aria-hidden="true"><i style=${'width:' + Math.round(100 * Math.min(1, x.pos / x.dur)) + '%'}></i></span>`}</span>
 						<span class=${'dur' + (part ? ' y' : '')}>${x.folder ? plural(x.count, 'video', 'videos') : x.size ? fmtSize(x.size) : ''}</span></button>
-					${x.folder && html`<${Icon} n="right" k=${2} cls="chev" />`}</li>`;
+					${x.folder ? html`<${Icon} n="right" k=${2} cls="chev" />` : html`<${FileMore} p=${x.p} name=${x.n} glyph="film" />`}</li>`;
 			})}</ul></div>`}
 	</div>`;
 }

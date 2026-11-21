@@ -2,7 +2,7 @@ import { html, useState, useEffect } from '../vendor/htm-preact-standalone.modul
 import { errMsg, get } from './api.js';
 import { lsGet, lsSet, useStore } from './store.js';
 import { fmtTime, plural } from './util.js';
-import { AppMenu, Art, Banner, Empty, Skeleton, coverUrl } from './components.js';
+import { AppMenu, Art, Banner, Empty, Skeleton, FileMore, coverUrl } from './components.js';
 import { Icon } from './icons.js';
 import { SectionUpload, uploadToSection } from './libupload.js';
 import { Playlists } from './playlists.js';
@@ -47,7 +47,7 @@ function OneList({ data, kind, index, onBack }) {
 				<span class="tile xs dim-tile">${x.track || ''}</span>
 				<span class="grow"><div class="fn ell">${x.title}${x.video && html` <span class="chip tiny">VIDEO</span>`}</div>
 					${kind === 'artist' && x.album && html`<div class="fm ell">${x.album}</div>`}</span>
-				<span class="dur">${x.dur > 0 ? fmtTime(x.dur) : ''}</span></button></li>`)}</ul></div>`}
+				<span class="dur">${x.dur > 0 ? fmtTime(x.dur) : ''}</span></button><${FileMore} p=${x.p} name=${x.title} glyph="note" /></li>`)}</ul></div>`}
 	</div>`;
 }
 
@@ -75,7 +75,7 @@ function MusicFolders() {
 		${songs.map((x, i) => html`<li class=${'frow' + (x.p === now ? ' cur' : '')} key=${x.p}><button class="main-btn" aria-label=${'Play ' + x.title} onClick=${() => playList(songs.map(y => y.p), i, false)}>
 			<span class="tile xs dim-tile">${x.track || ''}</span>
 			<span class="grow"><div class="fn ell">${x.title}${x.video && html` <span class="chip tiny">VIDEO</span>`}</div>${x.album && html`<div class="fm ell">${x.album}</div>`}</span>
-			<span class="dur">${x.dur > 0 ? fmtTime(x.dur) : ''}</span></button></li>`)}
+			<span class="dur">${x.dur > 0 ? fmtTime(x.dur) : ''}</span></button><${FileMore} p=${x.p} name=${x.title} glyph="note" /></li>`)}
 	</ul></div>`;
 }
 

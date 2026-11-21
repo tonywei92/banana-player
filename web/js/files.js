@@ -168,6 +168,8 @@ export function Files() {
 	// a song's or video's length first, once it's known (asked as its row comes into view)
 	const metaOf = it => { const d = it.dir ? 0 : durationOf(full(it.name)); return it.dir ? itemsText(it.items, it.itemsMore) : (d ? fmtTime(d) + ' · ' : '') + fmtSize(it.size) + (wide && it.mtime ? ' · ' + fmtDate(it.mtime) : ''); };
 	const listRef = useRef();
+	// Show in Files: the lit row scrolled into view
+	useEffect(() => { const li = listRef.current && listRef.current.querySelector('li.fresh'); if (li && li.scrollIntoView) li.scrollIntoView({ block: 'center' }); }, [data, s.fresh]);
 	useDurations(listRef, [data, f, path]);
 
 	// a row's ⋯: where it plays · Like, Add · Rename, Move, Copy, Download, Delete

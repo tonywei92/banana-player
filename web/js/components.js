@@ -2,7 +2,7 @@ import { html, useState, useEffect, useRef } from '../vendor/htm-preact-standalo
 import { view } from './browser-player.js';
 import { capacity, chapterTitle, fmtSize, fmtTime, storages } from './util.js';
 import { Icon } from './icons.js';
-import { LIKED_ID } from './plshared.js';
+import { LIKED_ID, showInFiles } from './plshared.js';
 import { Q_WIDE, phoneNow, store } from './store.js';
 import { openModal } from './toasts.js';
 import { signOut } from './session.js';
@@ -154,6 +154,10 @@ export function Empty({ icon, title, sub, button, onClick }) {
 export const Skeleton = () => html`<div aria-hidden="true">${[1, 2, 3, 4, 5, 6].map(() => html`<div class="skel"></div>`)}</div>`;
 export function useLater(loading, ms) { const [s, setS] = useState(false); useEffect(() => { if (!loading) { setS(false); return; } const t = setTimeout(() => setS(true), ms); return () => clearTimeout(t); }, [loading]); return s; }
 
+// a library row's ⋯ (Music, Videos, Books): Show in Files, the folder with the file lit, to rename, move or delete it there
+export function FileMore({ p, name, glyph }) {
+	return html`<button class="ib more" aria-label=${'More about ' + name} aria-haspopup="dialog" onClick=${e => openSheet(name, glyph, [{ label: 'Show in Files', icon: 'folder', fn: () => showInFiles(p) }], { anchor: e.currentTarget, seed: p })}><${MoreDots} /></button>`;
+}
 export function MoreDots() { return html`<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>`; }
 export function Storage({ free, total }) {
 	const cls = free < 200e6 ? 'crit' : free < 1e9 ? 'low' : '';

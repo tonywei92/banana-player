@@ -235,6 +235,7 @@ far. A video anywhere else on a card is not listed here: it is in Files, found b
 Recent; and a video inside a Music folder belongs to Music.
 
 - **Web dashboard, Videos / Music / Books pages.** Music has a **Folders** view (the music folders on each card, then the folders inside, then the songs; a song plays with its folder as the list). Videos' **Folders** opens folders in place, every video row shows the handheld's cached thumbnail (`/api/vthumb`, from `<state>/cache/videos`, cacheable) and **Not finished** shows a bar and the time left. Books lists the handheld's own shelf: the cards' Books folders plus every EPUB, PDF or comic opened from anywhere (it was empty for anyone who opens books from Files), with covers (`/api/bookcover`) and reading progress; a tap opens it on the handheld.
+  Every song, video and book row there (folder views and Books included) has a **⋯** with **Show in Files**: the dashboard's Files page at its folder, the file lit and scrolled into view, ready to rename, move or delete; Back returns to the page.
 
 ## The Books section
 

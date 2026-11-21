@@ -3,7 +3,7 @@ import { errMsg, get } from './api.js';
 import { useStore } from './store.js';
 import { cmpName } from './util.js';
 import { fmtDate, fmtSize } from './util.js';
-import { AppMenu, Art, Banner, Empty, Skeleton, bookCoverUrl } from './components.js';
+import { AppMenu, Art, Banner, Empty, Skeleton, FileMore, bookCoverUrl } from './components.js';
 import { Icon } from './icons.js';
 import { SectionUpload, uploadToSection } from './libupload.js';
 import { openDoc } from './recent.js';
@@ -35,6 +35,7 @@ export function Books() {
 						<div class="fm">${progress(b) || (b.size ? fmtSize(b.size) : '')}${b.mtime && !b.started ? ' \u00b7 ' + fmtDate(b.mtime) : ''}</div>
 						${b.started && b.frac > 0 && html`<span class="mprog" aria-hidden="true"><i style=${'width:' + Math.round(100 * b.frac) + '%'}></i></span>`}</span>
 					<span class="dur"><${Icon} n="card" k=${1} />Opens on handheld</span></button>
+				<${FileMore} p=${b.p} name=${b.n} glyph=${kindOf(b.p)} />
 			</li>`)}</ul></div>`}
 	</div>`;
 }
