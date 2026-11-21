@@ -3020,8 +3020,8 @@ namespace bp
 
 	void Ui::showPlayer()
 	{
-		if (!onPlayer) playerBack = backNext.set ? backNext : PlayerBack{true, page, setGroup, cursor, scroll, browse->browseDir, browse->browseTab};
-		backNext = PlayerBack();
+		// (the page it was opened from: Stop and B go back there, whatever list plays)
+		if (!onPlayer) playerBack = PlayerBack{true, page, setGroup, cursor, scroll, browse->browseDir, browse->browseTab};
 		onPlayer = true;
 		page = Page::Main;
 		settingsOver = false;

@@ -460,6 +460,24 @@ namespace bp
 		return true;
 	}
 
+	bool Player::dropEntry(const std::string& path, int hint)
+	{
+		int best = -1;
+		for (int i = 0; i < (int)playlist.size(); i++)
+			if (i != current && i != ghost && playlist[i] == path && (best < 0 || std::abs(i - hint) < std::abs(best - hint))) best = i;
+		if (best < 0)
+		{
+			// the one playing: it leaves the list as the next one takes over (moveTo), as a ghost does
+			if (ghost >= 0 || current < 0 || current >= (int)playlist.size() || playlist[current] != path) return false;
+			ghost = current;
+			return true;
+		}
+		playlist.erase(playlist.begin() + best);
+		if (current > best) current--;
+		if (ghost > best) ghost--;
+		return true;
+	}
+
 	bool Player::back()
 	{
 		if (!playingPhoto() && loaded && position >= RESTART_S)

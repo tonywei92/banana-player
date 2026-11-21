@@ -73,10 +73,11 @@ namespace bp
 		std::function<std::vector<std::string>()> songPool;
 		static constexpr int KEEP_PLAYING_ADD = 10;	// the songs Keep playing adds each time
 		// a pick (handheld or web) as Open; sourceKind 0 folder, 1 network, 2 playlist. out: given when the picker says
-		// where (the page's Play here / Play in this browser); else the session's pref decides
+		// where (the page's Play here / Play in this browser); else the session's pref decides. added: a rail list's songs
+		// Keep playing had added (Recent's list played again)
 		void open(const std::vector<std::string>& paths, int index, int sourceKind, const std::string& title,
 			const std::string& origin, const Output* out, double t, bool live = false, const std::string& sourceId = "",
-			bool rail = false);
+			bool rail = false, const std::vector<std::string>& added = {});
 		// Shuffle on or off (the handheld's mode key, a page's Shuffle, a Shuffle play): the setting (it lasts, as
 		// Loop: every list from now) and the session's (what plays plays on; Next follows a hidden random order)
 		void setShuffle(bool on, const std::string& origin = "hh");
@@ -103,6 +104,8 @@ namespace bp
 		void playlistEdited(const std::string& id, const std::vector<std::string>& paths, const std::vector<int>& remap);
 		// Files' Play next: the file queued right after the item that plays; false when nothing plays (rejected)
 		bool playNext(const std::string& path);
+		// Up next's Remove from list: the row (index, path as shown) out of the list that plays; false: refused
+		bool removeFromList(int index, const std::string& path);
 		void seek(double t, bool relative, const std::string& origin);
 		void woke();
 		// each pass of main's loop: the handheld's reports (as the output), its picks once it can take them, Tick, the

@@ -13,7 +13,7 @@ namespace bp
 	{
 		static const char* NAMES[] = {"Open", "Play", "Pause", "Seek", "SeekBy", "Step", "SetAudio", "SetSub", "SetSpeed",
 			"SetLoop", "SetOutput", "Stop", "PhotoPark", "PhotoResume", "FileGone", "Loaded", "Pos", "Ended", "CantPlay",
-			"Tick", "TabGone", "TabBack", "Slept", "Woke", "Blocked", "SetShuffle", "Requeue", "PlayNext", "Extend"};
+			"Tick", "TabGone", "TabBack", "Slept", "Woke", "Blocked", "SetShuffle", "Requeue", "PlayNext", "Extend", "Remove"};
 		return NAMES[(int)t];
 	}
 
@@ -401,7 +401,15 @@ namespace bp
 					n.queue = q;
 					n.source = i.source;
 					n.rail = i.rail;
-					if (!same) n.added.clear();
+					if (!same)
+					{
+						// (a rail list of Recent's: what Keep playing had added marked again, I18: only songs of the list)
+						n.added.clear();
+						if (i.rail)
+							for (auto& a : i.added)
+								if (std::find(q.begin(), q.end(), a) != q.end() && std::find(n.added.begin(), n.added.end(), a) == n.added.end())
+									n.added.push_back(a);
+					}
 					newItem(index);
 					n.picked = true;
 					newOrder();	// (Shuffle: a new hidden order, from the item picked)
@@ -690,6 +698,43 @@ namespace bp
 						n.added.push_back(q);
 					}
 					if (n.queue.size() == s.queue.size()) return "none";
+					return "";
+				}
+				case IntentType::Remove:
+				{
+					// Up next's Remove from list: the row out of the list that plays (a playlist's file is untouched; a
+					// song Keep playing added stays only until this). The one that plays: the next one plays instead
+					if (s.index < 0) return "nothing";
+					if (i.index < 0 || i.index >= (int)s.queue.size() || s.queue[i.index] != i.path) return "stale";
+					int to = -1;	// (the item that plays removed: the place it goes on to, in the old list)
+					if (i.index == s.index)
+					{
+						int np = nextPlace(s);
+						if (np == NEXT_ROUND)
+							for (int k : s.order)
+								if (k != s.index) { to = k; break; }
+						if (np >= 0) to = np;
+						if (to < 0)
+						{
+							stopItem();
+							note("Removed: nothing after it");
+							return "";
+						}
+					}
+					n.queue.erase(n.queue.begin() + i.index);
+					keepAdded();
+					auto shifted = [&](int k) { return k > i.index ? k - 1 : k; };
+					n.order.clear();
+					for (int k : s.order)
+						if (k != i.index) n.order.push_back(shifted(k));
+					if (to < 0)
+					{
+						n.index = shifted(s.index);
+						return "";
+					}
+					newItem(shifted(to));
+					route();
+					loadHere();
 					return "";
 				}
 				case IntentType::Requeue:
@@ -1097,6 +1142,19 @@ namespace bp
 			for (size_t k = old.queue.size(); k < r.s.queue.size(); k++)
 				if (std::find(old.queue.begin(), old.queue.end(), r.s.queue[k]) != old.queue.end()) return "I18: Extend added a song already in the list";
 			if (r.s.added.size() != old.added.size() + (r.s.queue.size() - old.queue.size())) return "I18: Extend's songs not marked added";
+		}
+		// I19: an applied Remove takes out that one row only: the rest in their order; the item stays unless it was the
+		// one removed (then the next one, or nothing)
+		if (i.type == IntentType::Remove && r.reject.empty() && !r.dup)
+		{
+			if (r.s.index >= 0)
+			{
+				std::vector<std::string> want = old.queue;
+				want.erase(want.begin() + i.index);
+				if (r.s.queue != want) return "I19: Remove changed more than its row";
+				if (i.index != old.index && r.s.queue[r.s.index] != old.queue[old.index]) return "I19: Remove moved the item";
+			}
+			else if (old.index != i.index) return "I19: Remove of another row stopped the list";
 		}
 		bool report = i.type == IntentType::Loaded || i.type == IntentType::Pos || i.type == IntentType::Ended ||
 			i.type == IntentType::CantPlay || i.type == IntentType::Blocked;

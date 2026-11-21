@@ -8535,6 +8535,18 @@ static void testRecentContext()
 	grow.setContext("/m/z.mp3", recentContextOf("/m/z.mp3", r2, 2, 0, "Random", "", true));
 	CHECK_EQ(grow.contextOf("/m/x.mp3").list == r2, true);
 	CHECK_EQ(grow.contextOf("/m/x.mp3").index, 0);
+	// what Keep playing added: where it begins, kept with the list (grown from a shorter one too) and read back
+	std::vector<std::string> r3 = {"/m/x.mp3", "/m/y.mp3", "/m/z.mp3", "/m/w.mp3"};
+	RecentContext kp = recentContextOf("/m/w.mp3", r3, 3, 0, "Album " + DOT + "Blue", "", true, {"/m/z.mp3", "/m/w.mp3"});
+	CHECK_EQ(kp.addedAt, 2);
+	grow.add("/m/w.mp3");
+	grow.setContext("/m/w.mp3", kp);
+	CHECK_EQ(grow.contextOf("/m/x.mp3").addedAt, 2);
+	PlayHistory growBack;
+	growBack.parse(grow.serialize());
+	CHECK_EQ(growBack.contextOf("/m/x.mp3") == grow.contextOf("/m/x.mp3"), true);
+	CHECK_EQ(growBack.contextOf("/m/w.mp3").addedAt, 2);
+	CHECK_EQ(growBack.contextOf("/m/w.mp3").list == r3, true);
 	// a folder moved: the songs' folders and lists follow
 	PlayHistory mv;
 	mv.add("/m/A/1.mp3");
@@ -13953,6 +13965,70 @@ static void testSessionNamed()
 		CHECK_EQ(drawSongs(pool, {}, 2, 7).size(), (size_t)2);
 	}
 	{
+		// Recent's rail list played again keeps what Keep playing added (Open's added: only songs of the list, only on
+		// the rail); a playlist's Open drops them
+		Sim m;
+		Intent op = m.mk(IntentType::Open);
+		op.queue = {"/m/a.mp3", "/m/b.mp3", "/m/x.mp3", "/m/y.mp3"};
+		op.index = 1;
+		op.rail = true;
+		op.added = {"/m/x.mp3", "/m/y.mp3", "/m/gone.mp3", "/m/x.mp3"};
+		m.go(op);
+		CHECK_EQ(m.s.added.size(), (size_t)2);
+		CHECK_EQ(checkInvariants(m.s), std::string(""));
+		Intent pl = m.mk(IntentType::Open);
+		pl.queue = op.queue;
+		pl.added = op.added;
+		pl.source = {2, "Mix", "Mix"};
+		m.go(pl);
+		CHECK_EQ(m.s.added.empty(), true);
+	}
+	{
+		// Remove from list (Up next): a row out, the item kept; a stale row refused; the playing one removed: the next
+		// plays; an added song removed stays out of added; the last one left removed: stopped (I19)
+		Sim m;
+		Intent op = m.mk(IntentType::Open);
+		op.queue = {"/m/a.mp3", "/m/b.mp3", "/m/c.mp3", "/m/x.mp3"};
+		op.index = 1;
+		op.rail = true;
+		op.added = {"/m/x.mp3"};
+		m.go(op);
+		m.loaded();
+		Intent st = m.mk(IntentType::Remove);
+		st.index = 0;
+		st.path = "/m/b.mp3";
+		CHECK_EQ(m.go(st).reject, std::string("stale"));
+		Intent r0 = m.mk(IntentType::Remove);
+		r0.index = 0;
+		r0.path = "/m/a.mp3";
+		uint64_t load = m.s.load;
+		CHECK_EQ(m.go(r0).reject, std::string(""));
+		CHECK_EQ(m.s.queue.size(), (size_t)3);
+		CHECK_EQ(m.s.index, 0);
+		CHECK_EQ(m.s.queue[0], std::string("/m/b.mp3"));
+		CHECK_EQ(m.s.load, load);	// (nothing reloads)
+		Intent rx = m.mk(IntentType::Remove);
+		rx.index = 2;
+		rx.path = "/m/x.mp3";
+		CHECK_EQ(m.go(rx).reject, std::string(""));
+		CHECK_EQ(m.s.added.empty(), true);
+		Intent rn = m.mk(IntentType::Remove);
+		rn.index = 0;
+		rn.path = "/m/b.mp3";
+		CHECK_EQ(m.go(rn).reject, std::string(""));
+		CHECK_EQ(m.s.queue.size(), (size_t)1);
+		CHECK_EQ(m.s.queue[0], std::string("/m/c.mp3"));
+		CHECK_EQ(m.s.index, 0);
+		CHECK_EQ(m.s.load != load, true);	// (the next one loads)
+		CHECK_EQ(checkInvariants(m.s), std::string(""));
+		Intent rl = m.mk(IntentType::Remove);
+		rl.index = 0;
+		rl.path = "/m/c.mp3";
+		CHECK_EQ(m.go(rl).reject, std::string(""));
+		CHECK_EQ(m.s.index, -1);
+		CHECK_EQ(m.s.rail, false);
+	}
+	{
 		// Requeue: a song added to the playlist that plays, its last song playing: Next reaches it, nothing reloads
 		Sim m;
 		Intent op = m.mk(IntentType::Open);
@@ -14325,6 +14401,7 @@ static int fuzzShuffled = 0, fuzzUnshuffled = 0, fuzzRounds = 0;	// Shuffle turn
 static int fuzzPlayNext = 0;	// Play next taken while an item played
 static int fuzzRequeued = 0;	// playlist edits taken while an item played (shuffled or not)
 static int fuzzExtended = 0;	// Keep playing's songs added at a Music rail list's end
+static int fuzzRemoved = 0, fuzzRemovedNow = 0;	// Up next's rows removed; of them, the one that played
 static bool fuzzSession(uint32_t seed, int steps)
 {
 	std::mt19937 rng(seed);
@@ -14355,6 +14432,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 		if (i.type == IntentType::Requeue && r.reject.empty() && !r.dup) fuzzRequeued++;
 		if (i.type == IntentType::PlayNext && r.reject.empty() && !r.dup) fuzzPlayNext++;
 		if (i.type == IntentType::Extend && r.reject.empty() && !r.dup) fuzzExtended++;
+		if (i.type == IntentType::Remove && r.reject.empty() && !r.dup) { fuzzRemoved++; if (i.index == s.index) fuzzRemovedNow++; }
 		if (i.type == IntentType::SetShuffle && r.reject.empty() && !r.dup && s.index >= 0)
 			(r.s.shuffle ? fuzzShuffled : fuzzUnshuffled) += s.shuffle != r.s.shuffle;
 		// a shuffled round that went on past its end (Loop all: a new round)
@@ -14371,7 +14449,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 		static const IntentType KINDS[] = {IntentType::Open, IntentType::Play, IntentType::Pause, IntentType::Seek,
 			IntentType::SeekBy, IntentType::Step, IntentType::Step, IntentType::Step, IntentType::SetAudio, IntentType::SetSub,
 			IntentType::SetSpeed, IntentType::SetLoop, IntentType::SetOutput, IntentType::SetOutput, IntentType::Stop,
-			IntentType::PhotoPark, IntentType::PhotoResume, IntentType::FileGone, IntentType::SetShuffle, IntentType::Requeue, IntentType::PlayNext, IntentType::Extend};
+			IntentType::PhotoPark, IntentType::PhotoResume, IntentType::FileGone, IntentType::SetShuffle, IntentType::Requeue, IntentType::PlayNext, IntentType::Extend, IntentType::Remove};
 		i.type = KINDS[pick((int)(sizeof KINDS / sizeof KINDS[0]))];
 		switch (i.type)
 		{
@@ -14384,6 +14462,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 			i.browserCan = pick(5) != 0;
 			i.rnd = rr();
 			i.rail = pick(2) == 0;
+			if (pick(3) == 0) i.added = {FILES[pick(7)], "/m/r" + std::to_string(pick(20)) + ".mp3"};
 			if (pick(2))
 			{
 				i.hasOut = true;
@@ -14415,6 +14494,11 @@ static bool fuzzSession(uint32_t seed, int steps)
 			// (a growing list makes a round's end rarer, so most of these turn into a Step)
 			if (pick(4)) { i.type = IntentType::Step; i.n = 1; i.browserCan = true; i.rnd = rr(); break; }
 			i.path = pick(8) ? FILES[pick(7)] : "/m/x.jpg";
+			break;
+		case IntentType::Remove:
+			// Up next's Remove from list: a row as shown (now and then one that moved: stale)
+			i.index = s.queue.empty() ? 0 : pick((int)s.queue.size() + 1) - (pick(10) == 0 ? 1 : 0);
+			i.path = i.index >= 0 && i.index < (int)s.queue.size() && pick(10) ? s.queue[i.index] : FILES[pick(7)];
 			break;
 		case IntentType::Extend:
 			// (the host's: Keep playing at a Music rail list's end)
@@ -14595,6 +14679,7 @@ static void testSessionFuzz()
 	CHECK_EQ(fuzzRequeued > 0, true);
 	CHECK_EQ(fuzzPlayNext > 0, true);
 	CHECK_EQ(fuzzExtended > 0, true);
+	CHECK_EQ(fuzzRemoved > 0 && fuzzRemovedNow > 0, true);
 }
 
 // picture subtitles for the browser: the cue timing rules, the window a request may ask for, the paletted PNG

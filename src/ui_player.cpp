@@ -732,6 +732,8 @@ namespace bp
 	{
 		enum Press { P_NONE, P_ROW, P_TAB, P_SHUFFLE, P_REPEAT, P_HEADING };
 		int tab = 0, cursor = 0, press = P_NONE, pressAt = -1;
+		Uint32 pressTicks = 0;	// when the finger came down on a row (held ROW_HOLD_MS and let go: the row's menu)
+		static constexpr Uint32 ROW_HOLD_MS = 500;
 		// the rows: a finger's drag scrolls them, a tap (no drag) still chooses
 		SheetRows rows{ui};
 		SmoothList* smoothList() override { return &rows.list; }
@@ -852,6 +854,54 @@ namespace bp
 			p.osd(ui.modeLabel(p));
 		}
 
+		// Up next's row menu (X, or a row held): Play from here (not on the one playing), Remove from list, Keep playing on / off. Remove goes
+		// through the Session (Remove): the list that plays loses the row; a playlist's own file is untouched
+		void openRowMenu(int i, const Player& p)
+		{
+			int cur = -1;
+			auto list = ui.upNextList(p, cur);
+			if (tab != 0 || i < 0 || i >= (int)list.size()) return;
+			std::string path = list[i];
+			const Session& s = SessionHost::get().session();
+			bool fromPlaylist = s.source.kind == 2;
+			bool added = std::find(s.added.begin(), s.added.end(), path) != s.added.end();
+			bool now = i == cur, hasSection = !sections(p).before.empty();
+			ui.openMore([this, i, path, fromPlaylist, added, now, hasSection](const Player& pl) {
+				MoreSpec m;
+				m.glyph = &G_NOTE;
+				m.title = entryTitle(path);
+				m.note = added ? "Picked by Keep playing" : "Row " + std::to_string(i + 1) + " of Up next";
+				if (!now)
+				{
+					MoreItem play;
+					play.glyph = &G_PLAY;
+					play.label = "Play from here";
+					play.act = [this, i](Player& p) { choose(i, p); return false; };
+					m.rows.push_back(play);
+				}
+				MoreItem rm;
+				rm.glyph = &G_MINUS;
+				rm.label = "Remove from list";
+				rm.note = now ? "The next song plays" : fromPlaylist ? "The playlist itself is unchanged" : "";
+				rm.act = [i, path](Player&) {
+					SessionHost::get().removeFromList(i, path);
+					return false;
+				};
+				m.rows.push_back(rm);
+				if (hasSection)
+				{
+					MoreItem kp;
+					kp.glyph = &G_SHUFFLE;
+					kp.label = pl.settings.keepPlaying ? "Turn Keep playing off" : "Turn Keep playing on";
+					kp.note = "Songs it added stay in the list";
+					kp.act = [this](Player& p) { toggleKeepPlaying(p); return false; };
+					m.rows.push_back(kp);
+				}
+				return m;
+			}, "upnext-row");
+			fprintf(stderr, "ui: up next, row %d's menu\n", i + 1);
+		}
+
 		void choose(int i, Player& p)
 		{
 			if (i < 0) return;	// (a heading)
@@ -890,7 +940,7 @@ namespace bp
 			case Button::L: if (tab > 0) openTab(tab - 1, p); break;
 			case Button::R: if (tab + 1 < tabCount(p)) openTab(tab + 1, p); break;
 			case Button::A: choose(cursor, p); break;
-			case Button::X: if (tab == 0 && !sections(p).before.empty()) toggleKeepPlaying(p); break;
+			case Button::X: if (tab == 0) openRowMenu(cursor, p); break;
 			// the chapter step over the sheet (Button hotkeys says whether they work at all)
 			case Button::L2:
 			case Button::R2:
@@ -940,7 +990,7 @@ namespace bp
 					if (ui.kit->headingAction(hb, headingAction(p)).hit(x, y)) { rows.down(pt, x, y, rowsView(p)); press = P_HEADING; pressAt = 0; return false; }
 				}
 				int r = sc.item(rows.down(pt, x, y, rowsView(p)));
-				if (r >= 0 && r < n) { press = P_ROW; pressAt = r; cursor = r; }
+				if (r >= 0 && r < n) { press = P_ROW; pressAt = r; cursor = r; pressTicks = SDL_GetTicks(); }
 				return false;
 			}
 			if (pt.kind == Pointer::Move)
@@ -954,7 +1004,15 @@ namespace bp
 			pressAt = -1;
 			bool tap = rows.up();
 			// a drag or a caught glide chooses nothing; let go off its row: nothing (the finger changed its mind)
-			if (kind == P_ROW) { if (tap && sections(p).item(rows.list.rowAt(x, y)) == at) choose(at, p); }
+			if (kind == P_ROW)
+			{
+				if (tap && sections(p).item(rows.list.rowAt(x, y)) == at)
+				{
+					// held, then let go: the row's menu (Remove from list); a tap plays from it
+					if (tab == 0 && SDL_GetTicks() - pressTicks >= ROW_HOLD_MS) openRowMenu(at, p);
+					else choose(at, p);
+				}
+			}
 			else if (kind == P_HEADING)
 			{
 				lay::Sections sc = sections(p);
@@ -1056,7 +1114,7 @@ namespace bp
 			ui.drawScrollBar(s.rowsY, shown(p) * lay::LIST_ROW, rows.first(), shown(p), nr);
 
 			std::vector<Hint> hints{{"UP/DOWN", "Move"}, {"LEFT/RIGHT", "Page"}, {"A", "Play from here"}};
-			if (!sc.before.empty()) hints.push_back({"X", keepOn ? "Keep playing off" : "Keep playing on"});
+			if (tab == 0) hints.push_back({"X", "More"});
 			if (hasChapters(p)) hints.push_back({"L/R", "Tab"});
 			if (tab == 1) hints.push_back({"L2/R2", "Chapter"});
 			hints.push_back({"Y/B", "Close"});

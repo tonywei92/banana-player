@@ -248,6 +248,7 @@ New route: `POST /api/intent` (JSON `{origin, seq, basis, type, …}`) → `{ok,
 | I16 | `Ended` on the last song of a list with Loop off keeps that song: same `index`, same `load`, `pos == 0`, `!playing`, no `HhUnload`; a song with one after it goes on to it (`load` bumped, `pos == 0`, no `HhUnload`) (§16) | the reducer's `Ended` branch; checked by `checkTransition` (the named case and the fuzz) |
 | I17 | An applied `Step(n<0)` on a video never leaves it on the same item: it moves to another one or is rejected (§17) | the reducer's `Step` branch (only a song restarts); checked by `checkTransition` (the named cases and the fuzz) |
 | I18 | `added` (Keep playing's songs) are each in `queue`, and only a Music rail list (`rail`) has any; `rail ⇒ index ≥ 0`. An applied `Extend` keeps the item and its `load`, the list before it, and appends only new songs, all marked `added` (§19) | `Extend` (origin "hh" only) only at `extendable(s)`; `Open` sets `rail` (keeps `added` for the same rail list), a stop clears both; `FileGone`/`Requeue` prune `added`; checked by `checkTransition` |
+| I19 | An applied `Remove` takes out only its row (`index`, which must be `path`): the rest keep their order and the item stays, unless it was the row removed: then the next place plays (`nextPlace`; none: stopped). `added` loses the song too | `Remove` (Up next's Remove from list; a moved row: `stale`); checked by `checkTransition` and the fuzz (`fuzzRemoved`, `fuzzRemovedNow`) |
 
 ### Failure modes
 
@@ -685,6 +686,12 @@ wrap) unless **Repeat All** is on, which goes round to the last as it always did
   song ahead. Turned off, nothing is sent and the list ends as §16 says.
 - **`added`**: the songs Extend appended (published as virtual paths). Up next (the List sheet, the dashboard's queue)
   puts a section heading before the first of them (`lay::Sections`, Kit's heading row, the web's `ListHead`).
+- **Recent's list again** (2026-11-21): `Open` carries `added` (with `rail`): the songs Keep playing had added, marked
+  again (only those in the queue; I18). The history keeps where they begin in the list (`RecentContext::addedAt`).
+  The golden rule: the added songs stay until the user removes them (`Remove`); turning Keep playing off never removes
+  them, and turned on at a last song the host adds at once (it marks a load as tried only when the setting is on).
+- **Remove** (`{index, path}`, I19): Up next's Remove from list. The handheld's own list follows (`Player::dropEntry`:
+  the row, or the playing one as the ghost that leaves when the next takes over).
 - **Play random**: `drawSongs(pool, {}, 50, rnd)` on the handheld (Music's Random key, Y) or in `/api/intent`'s
   `Open` with `random=1` (the dashboard; the queue drawn on the main thread). Both are rail lists.
 - Tests: the named case (mid-list refused, a page's refused, the drawn songs appended less those in the list, no

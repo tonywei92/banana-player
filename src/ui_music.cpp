@@ -361,7 +361,7 @@ namespace bp
 	// ---- playing (the play request, as Files' Play all: main opens it and the Session takes it) ----
 
 	void Ui::Music::play(const std::vector<std::string>& paths, int index, const std::string& title, bool shuffle,
-		Player& p)
+		Player& p, const std::vector<std::string>& added)
 	{
 		if (paths.empty()) return;
 		if (shuffle)
@@ -378,6 +378,28 @@ namespace bp
 		ui.playRequest.source.kind = SourceKind::Folder;
 		ui.playRequest.source.title = title;
 		ui.playRequest.rail = true;	// (the Music rail's: Keep playing may add to it)
+		ui.playRequest.added = added;
+	}
+
+	bool Ui::Music::hasSong(const std::string& path) const
+	{
+		auto snap = snapshot();
+		if (!snap) return false;
+		for (auto& s : snap->songs)
+			if (!s.video && s.path == path) return true;
+		return false;
+	}
+
+	std::vector<std::string> Ui::Music::folderSongs(const std::string& folder) const
+	{
+		// (as folderRows lists a folder's own songs: by their file names)
+		std::vector<std::string> out;
+		auto snap = snapshot();
+		if (!snap) return out;
+		for (auto& s : snap->songs)
+			if (!s.video && parentFolder(s.path) == folder) out.push_back(s.path);
+		std::sort(out.begin(), out.end(), [](const std::string& a, const std::string& b) { return naturalLess(baseName(a), baseName(b)); });
+		return out;
 	}
 
 	std::vector<std::string> Ui::Music::songPaths() const

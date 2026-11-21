@@ -80,6 +80,9 @@ namespace bp
 		// to that file of the list as it plays (the one nearest hint when it's there twice; the Session's Step and
 		// Ended): false when the list hasn't it
 		bool jumpTo(const std::string& path, int hint);
+		// a file out of the list (Up next's Remove from list): the entry nearest hint that isn't the one playing; the
+		// one playing leaves as the next takes over (the ghost). False: none
+		bool dropEntry(const std::string& path, int hint);
 		// at a file's end: the next one, or (Loop all) the first again; false when that's all
 		bool advance();
 		bool playingAudio() const { return isAudio && !playlist.empty(); }

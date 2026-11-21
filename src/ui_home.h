@@ -146,7 +146,7 @@ namespace bp
 		// a file that's gone: its More sheet says why and offers Remove; a song: in the list it played from
 		// (RecentContext); else as Files opens it
 		void openRecent(const std::string& path, Player& p);
-		// the song in the list it played from, B from the player going back to that list; false: no list kept (the
+		// the song in the list it played from (Stop and B go back to the page it was opened from); false: no list kept (the
 		// caller opens the file alone). note: why the list couldn't be had ("" none), said on the handheld too
 		bool playInList(const std::string& path, Player& p, std::string* note = nullptr);
 		// that list found again (no play): false, no list kept. why: it's gone (the song plays alone). The dashboard's
@@ -156,11 +156,15 @@ namespace bp
 			RecentContext::Kind kind = RecentContext::NONE;
 			std::string why, title, plName, folder;	// plName: a playlist's (its file's name less .m3u)
 			std::vector<std::string> paths;	// the list (FOLDER: the song; openFile lists the folder)
+			std::vector<std::string> added;	// a rail list's songs Keep playing had added (its section in Up next)
 			int index = 0;
 			Playlist pl;
 			int album = -2, artist = -2;	// the Music page under the player: an album's, an artist's
 		};
 		bool pickList(const std::string& path, const Player& p, ListPick& out) const;
+		// a song of the library with no list kept, or one a Files folder kept: its Music folder's songs, as Music ›
+		// Folders plays them (a Music rail list: Keep playing applies, Stop and B go back to Music › Folders)
+		bool musicFolderPick(const std::string& path, ListPick& out) const;
 		void clearMissing(Player& p);
 
 		// ---- the shell's header (Ui::Shell::head asks these) ----

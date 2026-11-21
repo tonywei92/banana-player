@@ -18,17 +18,22 @@ namespace bp
 		std::string name;
 		std::vector<std::string> list;	// the rail's kinds: the list as it played (else empty)
 		int index = -1;	// the song's place in the list that played (a song listed twice: this one)
+		// the rail's kinds: the first of the list's songs Keep playing added (they run to its end; Up next's heading goes
+		// before it), -1 none
+		int addedAt = -1;
 		bool rail() const { return kind == ALBUM || kind == ARTIST || kind == MUSIC_FOLDER || kind == RANDOM; }
 		// the list's title, as the Session's source had it ("Album \xC2\xB7 Blue"); FOLDER, PLAYLIST: name's last part
 		std::string title() const;
-		bool operator==(const RecentContext& o) const { return kind == o.kind && name == o.name && list == o.list && index == o.index; }
+		bool operator==(const RecentContext& o) const { return kind == o.kind && name == o.name && list == o.list && index == o.index && addedAt == o.addedAt; }
 		bool operator!=(const RecentContext& o) const { return !(*this == o); }
 		static constexpr size_t LIST_MAX = 400;	// a rail list kept to this many around the song (Keep playing grows it)
 	};
 	// the context of `song` from what the Session plays: its queue and index, its source (kind 0 folder, 1 network
-	// folder, 2 playlist; title; id: a playlist's name) and rail. NONE for a list of no folder (a selection)
+	// folder, 2 playlist; title; id: a playlist's name), rail, and the songs Keep playing added (the Session's added).
+	// NONE for a list of no folder (a selection)
 	RecentContext recentContextOf(const std::string& song, const std::vector<std::string>& queue, int index,
-		int sourceKind, const std::string& title, const std::string& sourceId, bool rail);
+		int sourceKind, const std::string& title, const std::string& sourceId, bool rail,
+		const std::vector<std::string>& added = {});
 
 	// why a file of Recent can't open: "" it's there. A card that can be taken out (its mount point and its name)
 	struct RemovableCard

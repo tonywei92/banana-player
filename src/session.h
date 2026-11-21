@@ -161,7 +161,7 @@ namespace bp
 	enum class IntentType
 	{
 		Open, Play, Pause, Seek, SeekBy, Step, SetAudio, SetSub, SetSpeed, SetLoop, SetOutput, Stop, PhotoPark,
-		PhotoResume, FileGone, Loaded, Pos, Ended, CantPlay, Tick, TabGone, TabBack, Slept, Woke, Blocked, SetShuffle, Requeue, PlayNext, Extend
+		PhotoResume, FileGone, Loaded, Pos, Ended, CantPlay, Tick, TabGone, TabBack, Slept, Woke, Blocked, SetShuffle, Requeue, PlayNext, Extend, Remove
 	};
 	const char* intentName(IntentType t);
 
@@ -203,9 +203,14 @@ namespace bp
 		// list's (it must be the one playing). Nothing reloads
 		std::vector<int> remap;
 		// PlayNext: `path` goes in the queue right after the item that plays (nothing reloads)
+		// Remove (Up next's Remove from list): the row at `index`, which must be `path`, out of the list; the item that
+		// plays removed: the next one plays (none: stopped)
 		// Open: the list comes from the Music rail (Keep playing may add to it). Extend: queue, the songs the host drew
 		// at random from the library, appended (those already in the list left out; nothing reloads)
 		bool rail = false;
+		// Open of a rail list: those of its songs Keep playing had added (Recent's list played again: Up next shows them
+		// under their heading again); each kept only if in the queue
+		std::vector<std::string> added;
 	};
 
 	struct Effect

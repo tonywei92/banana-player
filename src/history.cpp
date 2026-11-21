@@ -69,10 +69,12 @@ namespace bp
 			}
 		}
 
-		// a list's id in the file: FNV-1a over its paths (the same list, played from by several songs, written once)
-		std::string listId(const std::vector<std::string>& list)
+		// a list's id in the file: FNV-1a over its paths (and where Keep playing's songs begin) (the same list, played from by several songs, written once)
+		std::string listId(const std::vector<std::string>& list, int addedAt)
 		{
 			uint64_t h = 1469598103934665603ull;
+			// (the same songs marked otherwise are another list)
+			if (addedAt >= 0) { h ^= (uint64_t)addedAt + 1; h *= 1099511628211ull; }
 			for (auto& p : list)
 			{
 				for (unsigned char c : p) { h ^= c; h *= 1099511628211ull; }
@@ -110,7 +112,8 @@ namespace bp
 	}
 
 	RecentContext recentContextOf(const std::string& song, const std::vector<std::string>& queue, int index,
-		int sourceKind, const std::string& title, const std::string& sourceId, bool rail)
+		int sourceKind, const std::string& title, const std::string& sourceId, bool rail,
+		const std::vector<std::string>& added)
 	{
 		RecentContext c;
 		if (index < 0 || index >= (int)queue.size() || queue[index] != song) return c;
@@ -142,6 +145,9 @@ namespace bp
 			}
 			c.list.assign(queue.begin() + (long)from, queue.begin() + (long)to);
 			c.index = index - (int)from;
+			// (Keep playing's songs go on after the list's own: the first of them marks where its heading goes)
+			for (int k = 0; k < (int)c.list.size() && c.addedAt < 0; k++)
+				if (std::find(added.begin(), added.end(), c.list[k]) != added.end()) c.addedAt = k;
 			return c;
 		}
 		// a folder's files (Files, a network folder): every one in the song's folder, else a selection (none)
@@ -167,6 +173,7 @@ namespace bp
 		ats.clear();
 		ctxs.clear();
 		std::unordered_map<std::string, std::vector<std::string>> lists;
+		std::unordered_map<std::string, int> listAdded;	// each list's first song Keep playing added (-1 none)
 		std::vector<std::string> listOf;	// each entry's list id
 		std::istringstream in(text);
 		std::string line;
@@ -176,7 +183,15 @@ namespace bp
 			if (line.compare(0, 6, "#list\t") == 0)
 			{
 				auto f = splitTabs(line);
-				if (f.size() >= 2) lists[f[1]].assign(f.begin() + 2, f.end());
+				// (where Keep playing's songs begin, "added=N", before the paths: a path never starts so)
+				size_t first = 2;
+				int at = -1;
+				if (f.size() > 2 && f[2].compare(0, 6, "added=") == 0) { at = atoi(f[2].c_str() + 6); first = 3; }
+				if (f.size() >= 2)
+				{
+					lists[f[1]].assign(f.begin() + (long)std::min(first, f.size()), f.end());
+					listAdded[f[1]] = at;
+				}
 				continue;
 			}
 			if (line.empty() || line[0] == '#') continue;
@@ -204,7 +219,12 @@ namespace bp
 			if (!ctxs[i].rail()) continue;
 			auto l = lists.find(listOf[i]);
 			if (l == lists.end() || ctxs[i].index < 0 || ctxs[i].index >= (int)l->second.size()) ctxs[i] = RecentContext();
-			else ctxs[i].list = l->second;
+			else
+			{
+				ctxs[i].list = l->second;
+				int at = listAdded[listOf[i]];
+				ctxs[i].addedAt = at >= 0 && at < (int)l->second.size() ? at : -1;
+			}
 		}
 		trim();
 	}
@@ -245,12 +265,13 @@ namespace bp
 			if (at || c) out += "\t" + (at ? std::to_string((long long)ats[i]) : std::string());
 			if (c)
 			{
-				std::string id = c->rail() ? listId(c->list) : "";
+				std::string id = c->rail() ? listId(c->list, c->addedAt) : "";
 				out += std::string("\t") + KIND_WORDS[c->kind] + "\t" + c->name + "\t" + id + "\t" + std::to_string(c->index);
 				if (!id.empty() && std::find(written.begin(), written.end(), id) == written.end())
 				{
 					written.push_back(id);
 					listLines += "#list\t" + id;
+					if (c->addedAt >= 0) listLines += "\tadded=" + std::to_string(c->addedAt);
 					for (auto& p : c->list) listLines += "\t" + p;
 					listLines += "\n";
 				}
@@ -283,7 +304,11 @@ namespace bp
 		// a list grown from one others played from (Keep playing): theirs is this one now, their places unchanged
 		if (ctx.rail())
 			for (auto& c : ctxs)
-				if (c.rail() && isPrefix(c.list, ctx.list)) c.list = ctx.list;
+				if (c.rail() && isPrefix(c.list, ctx.list))
+				{
+					c.list = ctx.list;
+					c.addedAt = ctx.addedAt;
+				}
 		ctxs[i] = std::move(ctx);
 		return true;
 	}

@@ -14,7 +14,7 @@
   skips `#` lines; if it rewrites the file the lists are gone and the songs fall back to no context. A list Keep
   playing grew replaces the shorter one it began as for every song (`setContext`), and one longer than 400 is kept
   as the 400 around the song: the file stays small.
-- **Opening** (`Ui::Home::pickList` / `playInList`): a playlist loaded again by name (`playingRow` with the kept index
+- **Opening** (`Ui::Home::pickList` / `playInList`; the way back changed the same day, below): a playlist loaded again by name (`playingRow` with the kept index
   for a song listed twice); a rail list less its files gone, with Music's album/artist/folder set under the player so
   B lands there (`Ui::backNext`, used once by `showPlayer`); a Files folder through `openFile` (siblings), B to it
   (page Main makes `backFromPlayer` take `showBrowser`'s source path). An album or artist no longer in the library, a
@@ -30,3 +30,27 @@
   a `BP_CARD2` card out dimmed with their reasons, the sheet); one headless Chrome run (`/api/recent`'s why/list, the
   gone row's sheet, Play in this browser as the album's list less the deleted song). Not checked: the handheld's real
   `/run/sd2` unmount, Safari.
+
+## Keep playing's songs, the way back, Remove from list (same day, second pass)
+
+- **The owner's "the list is gone"**: the song opened from Recent was one Keep playing had added (of another album), and
+  `pickList` found the album by *that* song (`albumNamed(name, song)`): -1, "The album is gone", the song alone as a
+  Files-kind list. That play was then kept as a Files folder ("played from the folder …"), and its next open from
+  Recent went through `openFile` with B/Stop to Files: the owner's second report. Now the album is found by the list's
+  own songs (those before `addedAt`).
+- **What Keep playing added** is kept: `RecentContext::addedAt` (the first added song's place; they run to the end),
+  written as `added=N` on the `#list` line (and in its id). Played again, `Open.added` marks them (Up next's heading).
+- **A library song with no list, or one kept as a Files folder**: its Music folder's own songs (`musicFolderPick`), a
+  rail list, so Keep playing applies. A real Files play of a song in a Music folder is opened this way too (accepted:
+  the same folder, in Music).
+- **The way back** (owner, 2026-11-21): Stop and B go to the page the player was opened from (Home, All recent, the
+  album page, Search), never the list's origin; `backNext` is gone. The list's origin is used only where there is no
+  such page (`showBrowser`'s cases: the List key on a playlist, Show in folder).
+- **Remove from list**: Up next's X (or a row held 0.5 s) opens the row's More. The Session's `Remove` (I19);
+  the handheld's own list follows by `Player::dropEntry` (the playing one as the ghost).
+- Checked: core-test (named Open-with-added and Remove cases, the fuzz with Remove, history `addedAt` round trip);
+  `--press` runs with generated silent tones: album to its end → 10 added → an added song → Stop → off → Recent →
+  "6 of 14, 10 Keep playing had added", no new ones at its end; off at recording, on when reopened → 10 added; turned
+  on during the last song → added at once; Remove of an added row, of a row before, of the playing one; Recent → Stop
+  → Home; a legacy Files-folder entry → "Folder · Anime" → Stop → Home; Music › Folders → play → Stop → Music ›
+  Folders. Not checked: the dashboard (its Recent list doesn't send `added` yet; no Remove on the page), the handheld.

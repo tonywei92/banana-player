@@ -319,10 +319,12 @@ namespace bp
 	}
 
 	void SessionHost::open(const std::vector<std::string>& paths, int index, int sourceKind, const std::string& title,
-		const std::string& origin, const Output* out, double t, bool live, const std::string& sourceId, bool rail)
+		const std::string& origin, const Output* out, double t, bool live, const std::string& sourceId, bool rail,
+		const std::vector<std::string>& added)
 	{
 		Intent i = make(IntentType::Open, origin);
 		i.rail = rail;
+		i.added = added;
 		i.queue = paths;
 		i.index = index;
 		i.source.kind = sourceKind;
@@ -439,6 +441,19 @@ namespace bp
 		Intent i = make(IntentType::PlayNext);
 		i.path = path;
 		return submit(i, true).reject.empty();
+	}
+
+	bool SessionHost::removeFromList(int index, const std::string& path)
+	{
+		Intent i = make(IntentType::Remove);
+		i.index = index;
+		i.path = path;
+		Result r = submit(i, true);
+		// (the handheld's own list follows: its count, its Next; the one that played went once the next one took over)
+		bool dropped = r.reject.empty() && player && player->dropEntry(path, index);
+		fprintf(stderr, "session: remove from list, row %d (%s%s)\n", index + 1, r.reject.empty() ? "ok" : r.reject.c_str(),
+			dropped ? ", the player's list too" : "");
+		return r.reject.empty();
 	}
 
 	void SessionHost::seek(double t, bool relative, const std::string& origin)

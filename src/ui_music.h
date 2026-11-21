@@ -106,7 +106,12 @@ namespace bp
 		Rect artistStripCell(int j) const;
 
 		// ---- playing (through the Session, as Files does: the play request, main opens it) ----
-		void play(const std::vector<std::string>& paths, int index, const std::string& title, bool shuffle, Player& p);
+		// added: of a list of Recent's, the songs Keep playing had added (marked again: Up next's section)
+		void play(const std::vector<std::string>& paths, int index, const std::string& title, bool shuffle, Player& p,
+			const std::vector<std::string>& added = {});
+		// a song of the library (its music videos left out); a folder's own songs as Folders lists and plays them
+		bool hasSong(const std::string& path) const;
+		std::vector<std::string> folderSongs(const std::string& folder) const;
 		void playAlbum(int album, int fromSong, bool shuffle, Player& p);
 		// a list of Recent's (RecentContext) found again: the album of that title (as play() titles it) holding the
 		// song, the artist of that title; -1: not in the library (or it isn't read yet: no snapshot, -2)

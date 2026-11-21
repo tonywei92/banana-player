@@ -1687,9 +1687,9 @@ int main(int argc, char** argv)
 			// selected output (pref), a browser tab that can play it, else here with "This one plays on the handheld".
 			// Held paused here for a page at once (it never sounds); the page loads it from the session
 			auto routed = [&](const std::vector<std::string>& list, int index, int kind, const std::string& title, const std::string& pick,
-				const std::string& id = "", bool rail = false) {
+				const std::string& id = "", bool rail = false, const std::vector<std::string>& added = {}) {
 				if (isPhotoFile(pick)) return;
-				shadow.open(list, index, kind, title, "hh", nullptr, 0, true, id, rail);
+				shadow.open(list, index, kind, title, "hh", nullptr, 0, true, id, rail, added);
 				if (shadow.pageIsOutput() && shadow.file() == player.currentPath()) player.holdPaused();
 			};
 			// a video picked in the browser: it and the videos beside it
@@ -1733,7 +1733,7 @@ int main(int argc, char** argv)
 				if (pr.source.kind == SourceKind::Playlist) player.openPlaylist(pr.paths, pr.index, pr.source);
 				else player.open(pr.paths, pr.index, pr.names);
 				routed(pr.paths, pr.index, pr.source.kind == SourceKind::Playlist ? 2 : pr.source.kind == SourceKind::NetFolder ? 1 : 0,
-					pr.source.title, pick, pr.source.kind == SourceKind::Playlist ? pr.source.id : std::string(), pr.rail);
+					pr.source.title, pick, pr.source.kind == SourceKind::Playlist ? pr.source.id : std::string(), pr.rail, pr.added);
 				if (pr.stay) ui.playBehind();
 				else ui.showPlayer();
 			}
@@ -2103,7 +2103,7 @@ int main(int argc, char** argv)
 					const auto& items = player.history().items();
 					if (ss.index >= 0 && ss.index < (int)ss.queue.size() && isAudioFile(ss.queue[ss.index]) && !items.empty() && items[0] == ss.queue[ss.index])
 					{
-						player.setRecentContext(items[0], recentContextOf(items[0], ss.queue, ss.index, ss.source.kind, ss.source.title, ss.source.id, ss.rail));
+						player.setRecentContext(items[0], recentContextOf(items[0], ss.queue, ss.index, ss.source.kind, ss.source.title, ss.source.id, ss.rail, ss.added));
 						ctxSer = player.recentSerial();
 					}
 				}

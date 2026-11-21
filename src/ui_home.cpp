@@ -493,6 +493,9 @@ namespace bp
 		out = ListPick();
 		if (!isAudioFile(path)) return false;
 		const RecentContext& ctx = p.history().contextOf(path);
+		// (a library song: never handed to Files, whose way back is Files: an older entry kept no list, and one
+		// played that way was kept as a Files folder)
+		if ((ctx.kind == RecentContext::NONE || ctx.kind == RecentContext::FOLDER) && musicFolderPick(path, out)) return true;
 		if (ctx.kind == RecentContext::NONE) return false;
 		out.kind = ctx.kind;
 		out.title = ctx.title();
@@ -523,7 +526,15 @@ namespace bp
 		}
 		// a list of the Music rail: as it played, less its songs gone since
 		const Music& m = *ui.music;
-		out.album = ctx.kind == RecentContext::ALBUM ? m.albumNamed(ctx.name, path) : -2;
+		// (the album found by a song of its own, any of the list's before what Keep playing added: the song opened may
+		// be one it added, of another album)
+		out.album = -2;
+		if (ctx.kind == RecentContext::ALBUM)
+		{
+			int own = ctx.addedAt >= 0 ? ctx.addedAt : (int)ctx.list.size();
+			out.album = -1;
+			for (int i = 0; i < own && out.album < 0; i++) out.album = m.albumNamed(ctx.name, ctx.list[i]);
+		}
 		out.artist = ctx.kind == RecentContext::ARTIST ? m.artistNamed(ctx.name) : -2;
 		if (out.album == -1) { out.why = "The album " + quoted(ctx.name) + " is gone"; return true; }
 		if (out.artist == -1) { out.why = "The artist " + quoted(ctx.name) + " is gone"; return true; }
@@ -539,10 +550,25 @@ namespace bp
 			if (!isNetPath(q) && !exists(q)) continue;
 			if (i == ctx.index) out.index = (int)out.paths.size();
 			out.paths.push_back(q);
+			if (ctx.addedAt >= 0 && i >= ctx.addedAt) out.added.push_back(q);
 		}
 		if (out.index < 0) out.index = playingRow(out.paths, -1, path);
 		if (out.index < 0) out.why = "Its list is gone";
 		return true;
+	}
+
+	bool Ui::Home::musicFolderPick(const std::string& path, ListPick& out) const
+	{
+		const Music& m = *ui.music;
+		if (!isAudioFile(path) || !m.hasSong(path)) return false;
+		std::string folder = parentFolder(path);
+		out = ListPick();
+		out.kind = RecentContext::MUSIC_FOLDER;
+		out.folder = folder;
+		out.title = "Folder \xC2\xB7 " + baseName(folder);
+		out.paths = m.folderSongs(folder);
+		out.index = playingRow(out.paths, -1, path);
+		return out.index >= 0;
 	}
 
 	bool Ui::Home::playInList(const std::string& path, Player& p, std::string* note)
@@ -565,9 +591,8 @@ namespace bp
 			ui.playRequest.source.title = cardTitle(path);
 			return true;
 		}
-		ui.backNext = PlayerBack();
-		ui.backNext.set = true;
-		ui.backNext.page = Page::Main;	// (backFromPlayer: the source's own page, the playlist's or the folder's in Files)
+		// (Stop and B go back to the page it was opened from, Home or All recent: showPlayer keeps it; the owner,
+		// 2026-11-21: the page the player was opened from, never the list's own)
 		if (lp.kind == RecentContext::PLAYLIST)
 		{
 			fprintf(stderr, "recent: %s plays in the playlist \"%s\" (item %d)\n", baseName(path).c_str(), lp.title.c_str(), lp.index + 1);
@@ -579,34 +604,11 @@ namespace bp
 			ui.openFile(path, p);
 			return true;
 		}
-		// the Music rail's: the page it came from under the player (B goes back to it)
-		fprintf(stderr, "recent: %s plays in \"%s\" (%d of %zu)\n", baseName(path).c_str(), lp.title.c_str(), lp.index + 1, lp.paths.size());
+		// the Music rail's: as it played, what Keep playing had added marked again (Up next's section)
+		fprintf(stderr, "recent: %s plays in \"%s\" (%d of %zu, %zu Keep playing had added)\n", baseName(path).c_str(), lp.title.c_str(),
+			lp.index + 1, lp.paths.size(), lp.added.size());
 		Music& m = *ui.music;
-		m.play(lp.paths, lp.index, lp.title, false, p);
-		if (lp.album >= 0)
-		{
-			m.view = Music::V_ALBUMS;
-			m.artistAt = -1;
-			m.folderAt.clear();
-			m.openAlbum(lp.album, p);
-		}
-		else if (lp.artist >= 0)
-		{
-			m.view = Music::V_ARTISTS;
-			m.albumAt = -1;
-			m.folderAt.clear();
-			m.openArtist(lp.artist, p);
-		}
-		else if (!lp.folder.empty())
-		{
-			m.view = Music::V_FOLDERS;
-			m.albumAt = m.artistAt = -1;
-			m.folderCursors.clear();
-			m.openFolder(lp.folder);
-		}
-		ui.backNext.page = Page::Music;
-		ui.backNext.browseDir = ui.browse->browseDir;
-		ui.backNext.browseTab = ui.browse->browseTab;
+		m.play(lp.paths, lp.index, lp.title, false, p, lp.added);
 		return true;
 	}
 

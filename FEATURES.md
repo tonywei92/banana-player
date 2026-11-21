@@ -65,10 +65,12 @@ Open Banana Player and the bottom screen shows **Home**:
   next song starting doesn't move the cards); what you played comes to the front the next time you open it.
 - **A song plays in its list again**: a song of Recent remembers the list it played from (a playlist, by its name; an
   album, an artist, a Music folder, **Play random** with what **Keep playing** added; a folder of Files). Opening it
-  plays it in that list, in the same order (Keep playing applies only if it was a Music list), and **B** from the player
-  goes back to that list (the playlist's page, the album or artist, the Music folder, the Files folder). A list gone
-  since (the playlist deleted or renamed, the album or folder gone) plays the song alone and says why. Videos and books
-  open as before.
+  plays it in that list, in the same order (Keep playing applies only if it was a Music list): the songs Keep playing
+  had added come back with it, under their heading in Up next, and Keep playing (as it is set now) goes on from its
+  last song. A song of the library with no list kept (played before this) plays in its Music folder's list.
+  **Stop** and **B** go back to the page the player was opened from (Home, All recent), never to a section you
+  didn't come from. A list gone since (the playlist deleted or renamed, the album or folder gone) plays the song
+  alone and says why. Videos and books open as before.
 - **Missing files**: a file deleted or moved away, or on a card that's out, stays in Recent dimmed, its note saying why
   (**Not on this handheld any more**, **Card 2 is out**); it's never taken out unasked. Opening it opens its sheet with
   the reason and **Remove from Recent**; the card back in, its files are listed as before. **Clear missing** (Home's
@@ -174,10 +176,15 @@ On the dashboard's Music page, **Play random** (beside the chips) does the same,
 dashboard): music started from the Music section (an album, an artist, a folder, Play random; on the dashboard its
 Music page) plays on past its end. When the list's last song starts, 10 more songs from the library that aren't in
 the list yet are added after it, in a random order, so the music goes on without a gap (and again at their last).
-Up next shows them under a heading, **Keep playing · songs picked for you**, with a **Turn off** key (a tap; **X**
-while the List sheet is open); turned off, the heading says **Songs picked for you** and offers **Turn on**, and the
-list ends at its last song as any list does. Playlists, Files, Videos and Recent never get songs added, nor a list
-with Repeat All or One. Picking a row of the list in Up next keeps the added songs marked.
+Up next shows them under a heading, **Keep playing · songs picked for you**, with a **Turn off** key (a tap; or a
+row's **More**); turned off, the heading says **Songs picked for you** and offers **Turn on**, and the list ends at
+its last song as any list does. Turning it off never takes the added songs out (they stay until you remove them);
+turned on while the last song plays, the 10 are added at once. Playlists, Files and Videos never get songs added, nor
+a list with Repeat All or One. Picking a row of the list in Up next keeps the added songs marked.
+
+**Remove from list**: in Up next, **X** (or a row held) opens the row's **More**: **Play from here**, **Remove from
+list**, and Keep playing on / off. Removing takes the song out of the list that plays (a playlist's own file is
+unchanged: the row says so); removing the one that plays goes on to the next (nothing after it: it stops).
 
 An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
 (**A**), **Shuffle** (**Y**) and **+** (Add to playlist, touch only). Under them the songs in disc, track and name
@@ -441,7 +448,7 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **L2 / R2** | Previous / next chapter (**F + L2** is still the screenshot) |
 | **UP / DOWN** | Volume, five a step, as the handheld's volume keys: the level card on the top screen, and past 100% the player's own gain up to **Max volume** (with its warning; **DOWN** takes that off first). Hold to repeat: after 0.4 s, eight steps a second; a hold going UP stops at 100%, and going past it takes a fresh press. Inside a sheet or a list, **UP / DOWN** move the cursor |
 | **X** | **More**: its first row is the player's five chips, under the cursor; then **Lock touch**, **Screen off**, **Sleep timer**, **Info** and **Stop** (in red), and **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. On a chip, **A** opens that chip's sheet and More closes; on **Repeat** or **Shuffle** it changes it and More stays open. **LEFT / RIGHT** move along the chips, **DOWN** to the tiles and rows; **A** chooses, **X** or **B** closes |
-| **Y** | **List** (also a tap on the **Next** line): one sheet with **Up next** (the folder or playlist that plays, in its own order, the one playing marked **Now**) and **Chapters** (every chapter with its start; a file without chapters has only Up next), with **Shuffle**'s switch and **Repeat** (Off / All / One) in its header. **L / R** step the tabs, **UP / DOWN** move, **LEFT / RIGHT** page, **A** plays from the row, **L2 / R2** jump a chapter with the sheet open, **Y** or **B** closes |
+| **Y** | **List** (also a tap on the **Next** line): one sheet with **Up next** (the folder or playlist that plays, in its own order, the one playing marked **Now**) and **Chapters** (every chapter with its start; a file without chapters has only Up next), with **Shuffle**'s switch and **Repeat** (Off / All / One) in its header. **L / R** step the tabs, **UP / DOWN** move, **LEFT / RIGHT** page, **A** plays from the row, **X** opens the row's More (Remove from list), **L2 / R2** jump a chapter with the sheet open, **Y** or **B** closes |
 | **SELECT** | **More**, the same sheet **X** opens (the hint bar says **X/SELECT More**). Its first row is the five chips: **A** on one opens its own sheet, and More closes. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (Fit, Fill, Stretch, then **Adjust…**) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Equalizer**, **Effects** and **Speed**. There are no tabs and **L / R** do nothing in a sheet: **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's **Display**, **SELECT** steps the Show mode). **Picture**'s last row opens **Adjust**; **‹** or **B** goes back to **Picture** |
 | **START** | **Settings**: the ten group tiles; **B** or **START** closes it back to where you were (the player, here) |
 | **L3** (press the stick, RG DS Plus) | Like / Unlike what plays |

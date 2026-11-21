@@ -192,7 +192,8 @@ namespace bp
 		// a playlist picked in the browser (an item, Play, Shuffle play), once: the caller opens it (openPlaylist)
 		// names: a network folder's listing (open's folderNames); stay: opened behind the browser, not on the player
 		// rail: from the Music rail (Keep playing may add to it)
-		struct PlayRequest { std::vector<std::string> paths; int index = 0; PlaySource source; std::vector<std::string> names; bool stay = false; bool rail = false; };
+		struct PlayRequest { std::vector<std::string> paths; int index = 0; PlaySource source; std::vector<std::string> names; bool stay = false; bool rail = false;
+			std::vector<std::string> added; };	// added: a rail list's songs Keep playing had added (Recent's)
 		bool takePlayRequest(PlayRequest& out)
 		{
 			if (playRequest.paths.empty()) return false;
@@ -1254,9 +1255,6 @@ namespace bp
 			std::string browseDir;	// the folder or playlist page it was opened from (a playlist's play moves the list's)
 			int browseTab = 0;
 		} playerBack;
-		// where the next showPlayer's B goes instead of the page shown (a song of Recent played in its list: that list,
-		// not Home); page Main: the source's own page (a playlist's, the folder's in Files). Used once
-		PlayerBack backNext;
 		// back to what plays (SELECT on a browse page, the rail's Now playing key, Now playing, B at Home): the player.
 		// False: nothing plays
 		bool goNowPlaying(Player& p);
