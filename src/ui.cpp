@@ -131,6 +131,7 @@ namespace bp
 		if (supportTex) SDL_DestroyTexture(supportTex);
 		cache.clear();
 		if (listShown) listShown->release();	// (its rows' textures, before the renderer goes)
+		undim();	// (the quit: the bottom panel's level as it was)
 		for (auto& c : manga->coverTex)
 			if (c.second.tex) SDL_DestroyTexture(c.second.tex);
 		for (auto* t : corners)
@@ -197,11 +198,13 @@ namespace bp
 		// any key restarts Screen off's count, an overlay's too (Settings, a sheet): before, the B that closed Settings
 		// after a while in it left the count where it was, and the bottom panel went dark at once
 		// the dim before Screen off: a press only cancels it (the count restarts below)
-		bool veiled = veilCancels && veilAlpha > 0;
+		bool veiled = veilCancels && (veilAlpha > 0 || dimmed());
 		webInputAt = SDL_GetTicks();
 		if (veiled)
 		{
 			veilAlpha = 0;
+			veilCancels = false;
+			undim();
 			return false;
 		}
 		if (topOverlay()) return overlayKey(b, p);
@@ -491,26 +494,35 @@ namespace bp
 		bool viewing = p.playingPhoto() || pageReader->readerStatus.open;
 		if (offSecs > 0 && panel.on() && p.playing() && !viewing && !p.paused && !p.loading() && p.error.empty() &&
 			!kbOpen && !topOverlay() && !popupShown(p) && !slide.on && SDL_GetTicks() - webInputAt >= (Uint32)offSecs * 1000)
+		{
+			undim();	// (its level back under the dark: it comes back lit at full)
 			panel.set(false);
-		// the veil: the last 5 s before that Screen off (a third of the brightness, counting down; a press only lifts
-		// it), or the reading's own dim after its idle time (a touch lifts it and still turns the page)
+		}
+		// the last 5 s before that Screen off: the panel dims as a phone's does (dimStep; a press only lifts it), or,
+		// reading, the controls' own veil after its idle time (a touch lifts it and still turns the page)
 		{
 			Uint32 idle = SDL_GetTicks() - webInputAt;
-			int a = 0, secs = -1;
+			int a = 0;
 			bool cancels = false;
 			bool offWait = offSecs > 0 && panel.on() && p.playing() && !viewing && !p.paused && !p.loading() && p.error.empty() &&
 				!kbOpen && !topOverlay() && !popupShown(p) && !slide.on;
 			if (p.settings.dimBeforeOff && offWait && offSecs > 5 && idle + 5000 >= (Uint32)offSecs * 1000)
 			{
-				a = 170;
-				secs = std::max(1, (int)((Uint32)offSecs * 1000 - std::min(idle, (Uint32)offSecs * 1000) + 999) / 1000);
+				// eased in over DIM_RAMP_MS from the moment the last 5 s began
+				Uint32 into = idle + 5000 - (Uint32)offSecs * 1000;
+				double f = std::min(1.0, into / (double)DIM_RAMP_MS);
+				f = f * f * (3 - 2 * f);
+				if (!dimStep(f)) a = (int)std::lround(170 * f);	// (no backlight: the veil stands in, without words)
 				cancels = true;
 			}
-			else if (int rs = screenOffSeconds(p.settings.readDimAfter); rs > 0 && panel.on() &&
-				(pageReader->readerStatus.open || (docs && docs->textStatus.open)) && !kbOpen && !topOverlay() && idle >= (Uint32)rs * 1000)
-				a = 200;
+			else
+			{
+				undim();
+				if (int rs = screenOffSeconds(p.settings.readDimAfter); rs > 0 && panel.on() &&
+					(pageReader->readerStatus.open || (docs && docs->textStatus.open)) && !kbOpen && !topOverlay() && idle >= (Uint32)rs * 1000)
+					a = 200;
+			}
 			veilAlpha = a;
-			veilSecs = secs;
 			veilCancels = cancels;
 		}
 		// a dragged row near the list's top or bottom: the list scrolls under it, a row each 150 ms
@@ -604,17 +616,53 @@ namespace bp
 		return false;
 	}
 
+	bool Ui::dimStep(double f)
+	{
+		if (!backlight.present(Backlight::BOTTOM)) return false;
+		OffDim& d = offDim;
+		if (d.from < 0)
+		{
+			int now = backlight.permille(Backlight::BOTTOM);
+			if (now <= 0) return false;
+			d.from = now;
+			d.wrote = -1;
+			d.since = SDL_GetTicks();
+			fprintf(stderr, "screen off: dimming the bottom panel from %d\n", now);
+		}
+		// a third of the level, at least 3% (a phone's dim: still readable, plainly about to go)
+		int target = std::min(d.from, std::max(30, d.from / 3));
+		int pm = (int)std::lround(d.from + (target - d.from) * f);
+		if (pm != d.wrote && backlight.setNow(Backlight::BOTTOM, pm)) d.wrote = pm;
+		if (f >= 1) d.since = 0;	// (down: nothing eases any more, the loop can rest)
+		return true;
+	}
+
+	void Ui::undim()
+	{
+		OffDim& d = offDim;
+		if (d.from < 0) return;
+		// put back unless the level is no longer ours (the brightness keys moved it meanwhile): one sysfs step is
+		// a few thousandths, so near what was written is still ours
+		int now = backlight.permille(Backlight::BOTTOM);
+		bool ours = d.wrote < 0 || (now >= 0 && std::abs(now - d.wrote) <= 8);
+		if (ours) backlight.setNow(Backlight::BOTTOM, d.from);
+		fprintf(stderr, "screen off: dim lifted, bottom panel %s %d\n", ours ? "back to" : "left at (changed meanwhile)", ours ? d.from : now);
+		d = OffDim{};
+	}
+
 	bool Ui::pointer(const Pointer& pt, Player& p)
 	{
 		int x = (int)(pt.x * W), y = (int)(pt.y * H);
 		// the finger's time: the event's (a smooth list's speed comes from it), the harness's steps now
 		touchMs = pointerMs ? pointerMs : SDL_GetTicks();
 		pointerMs = 0;
-		bool veiled = veilCancels && veilAlpha > 0;
+		bool veiled = veilCancels && (veilAlpha > 0 || dimmed());
 		webInputAt = SDL_GetTicks();
 		if (veiled)
 		{
 			veilAlpha = 0;
+			veilCancels = false;
+			undim();
 			if (pt.kind == Pointer::Down) swallowTouch = true;
 			return false;
 		}
@@ -965,7 +1013,7 @@ namespace bp
 		photo += fileJobSignature();
 		photo += shell->signature(p);	// the rail's section and warning, the frame's pressed piece, the shell's mini bar
 		if (Area* a = area()) photo += a->signature(p);
-		return buf + photo + overlaySignature(p) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + manga->extNoticeText() + "|veil" + std::to_string(veilAlpha) + "," + std::to_string(veilSecs) + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (page == Page::Settings && settingsOver ? "|set1" : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
+		return buf + photo + overlaySignature(p) + "|ld" + (loaderShown ? std::to_string(SDL_GetTicks() / 110) : std::string()) + "|xn" + manga->extNoticeText() + "|veil" + std::to_string(veilAlpha) + "|" + p.title + "|" + p.error + "|" + serializeSettings(p.settings) + "|bat" + std::to_string(battery.percent) + (battery.charging ? "c" : "") + (page == Page::Settings && settingsOver ? "|set1" : "") + (ctxOpen ? "|ctx" + std::to_string(ctxCursor) + std::to_string(pressedBtn) + ctxStatus + (ctxArmed ? "!" : "") : "") + upd
 			+ (kbOpen ? "|kb" + sound->eqNameNote + std::to_string(kbCursor) + "," + std::to_string(kbPressed) + "," + std::to_string(kbLayer) + "," + std::to_string(kbEdit.caret) + kbEdit.text + (kbCaretShown() ? "|" : "") : "");
 	}
 }

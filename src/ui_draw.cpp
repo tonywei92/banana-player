@@ -682,15 +682,13 @@ namespace bp
 		frameAtMs = SDL_GetTicks();
 		const uint64_t costT0 = SDL_GetPerformanceCounter();
 		renderPage(p);
-		// the dark veil (ui.cpp's step): over everything, and a count of the seconds left when it warns of Screen off
+		// the dark veil (ui.cpp's step): over everything (no words: before Screen off it stands in for the backlight's dim)
 		if (veilAlpha > 0)
 		{
 			SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_BLEND);
 			SDL_SetRenderDrawColor(ren, 0, 0, 0, (Uint8)veilAlpha);
 			SDL_RenderFillRect(ren, nullptr);
 			SDL_SetRenderDrawBlendMode(ren, SDL_BLENDMODE_NONE);
-			if (veilSecs > 0)
-				drawTextMid("Screen off in " + std::to_string(veilSecs) + " s", 0, TEXT, W / 2, H / 2, 612, 2);
 		}
 		const uint64_t costT1 = SDL_GetPerformanceCounter();
 		SDL_RenderPresent(ren);

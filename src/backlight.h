@@ -20,6 +20,9 @@ namespace bp
 		int permille(Panel p) const;
 		// 100 (10%) to 1000; the other panel's level kept beside it in the store
 		bool set(Panel p, int permille);
+		// the panel's level for now only (sysfs, never the store): the dim before Screen off, which must not be what
+		// bananad restores at boot. 1 to 1000 thousandths, never 0 (that's off)
+		bool setNow(Panel p, int permille);
 	};
 
 	// a level one step (10%) on or back from where it is (bananad's keys leave it between steps), 10% to 100%

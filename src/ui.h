@@ -373,6 +373,12 @@ namespace bp
 		std::string partsLine() const;	// "ground 3.1, body 12.0 (list 9.8, 4 rows drawn), shell 6.2, ..."
 		// a smooth list gliding: the ms to wait for its next frame (-1: none moves). main's loop comes round then
 		int glideWaitMs() const;
+		// the dim to `f` of its way (0 the level, 1 the dim); on false (no backlight) the veil stands in
+		bool dimStep(double f);
+		void undim();		// the level back, as it was (unless someone changed it meanwhile)
+		bool dimmed() const { return offDim.from >= 0; }
+		// the dim (or the veil standing in) still easing down: the loop comes round each 16 ms
+		bool dimEasing() const { return offDim.since != 0 || (veilCancels && veilAlpha > 0 && veilAlpha < 170); }
 		// a finger's event time (main sets it before pointer(); 0: the harness's, taken as now)
 		uint32_t pointerMs = 0;
 		// the bottom panel's pixels (RGBA, ABGR8888), drawn afresh: screenshots; the caller frees it
@@ -956,10 +962,20 @@ namespace bp
 		// the finger may shift this far along the track without moving the slider (landing, lifting)
 		static constexpr int SLIDE_SLACK = 6;
 		BottomPanel panel;
-		// the dark veil over the bottom panel (Settings: Dim before turning off, Dim the controls while reading): its
-		// alpha, the seconds the first still counts down (-1: none), and whether a press or touch only lifts it
-		int veilAlpha = 0, veilSecs = -1;
+		// the dark veil over the bottom panel (Dim the controls while reading; before Screen off where there's no
+		// backlight to lower: a computer), and whether a press or touch only lifts it
+		int veilAlpha = 0;
 		bool veilCancels = false;
+		// The dim before Screen off (Settings: Dim before turning off), as a phone about to turn its screen off: the
+		// bottom panel's backlight eases down to a third of its level over its last 5 s, set in sysfs only (never the
+		// stored level bananad restores at boot). Any press or touch, a wake, Screen off and the quit put the level back.
+		struct OffDim
+		{
+			int from = -1;		// the level before (thousandths; -1: not dimmed)
+			int wrote = -1;		// the last level written: another found there means someone else set it (keys)
+			uint32_t since = 0;	// when the dim began
+		} offDim;
+		static constexpr int DIM_RAMP_MS = 1200;
 		bool swallowTouch = false;	// the touch that woke the panel: it presses nothing
 		int pressedBtn = -1;		// a touch button under the finger: it acts when the finger lifts on it
 		bool listTouch = false, listScrolled = false;	// a finger on a track list: a tap chooses, a drag scrolls

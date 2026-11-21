@@ -69,6 +69,17 @@ namespace bp
 		return true;
 	}
 
+	bool Backlight::setNow(Panel p, int pm)
+	{
+		pm = std::clamp(pm, 1, 1000);
+		std::string d = sysDir + "/" + NAMES[p];
+		int max = readInt(d + "/max_brightness");
+		if (max <= 0) return false;
+		std::ofstream out(d + "/brightness");
+		out << std::max(1, (max * pm + 500) / 1000) << "\n";
+		return (bool)out.flush();
+	}
+
 	int stepBrightness(int pm, int dir)
 	{
 		// the nearest ten percent, then a step

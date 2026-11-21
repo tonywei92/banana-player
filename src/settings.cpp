@@ -672,7 +672,7 @@ namespace bp
 			D::choice("top-screen-off", &Settings::topScreenOff, SCREEN_OFF_IDS, SCREEN_OFFS)
 				.page(SG_SCREEN, 52, "Top screen off (music)", "While a song plays, the top screen goes black after that long without a press or touch. Any press or touch, or the next song, brings it back. Never keeps it lit.").shownAs(SCREEN_OFF_LABELS),
 			D::flag("dim-before-off", &Settings::dimBeforeOff)
-				.page(SG_SCREEN, 55, "Dim before turning off", "For the last 5 seconds of Screen off's timer this screen drops to a third of its brightness and counts down. A press or a touch then only cancels. Turned off by hand: no warning."),
+				.page(SG_SCREEN, 55, "Dim before turning off", "For the last 5 seconds of Screen off's timer this screen dims smoothly to a third of its brightness, as a phone does before it turns off. A press or a touch then only brings it back. Turned off by hand: no warning."),
 			D::flag("stay-awake-jobs", &Settings::stayAwakeJobs)
 				.page(SG_SCREEN, 128, "Stay awake for copies and downloads", "A copy, a move, a chapter download or an update keeps the handheld from sleeping on its own until it is done. Off: it may sleep in the middle."),
 			D::choice("read-dim-after", &Settings::readDimAfter, SCREEN_OFF_IDS, SCREEN_OFFS)

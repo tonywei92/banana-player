@@ -1027,7 +1027,7 @@ int main(int argc, char** argv)
 			};
 			auto lidShoulderUp = [&](int i) { lidShoulderAt[i] = 0; lidShoulderDone[i] = lidShoulderStuck[i] = false; };
 			SDL_Event e;
-			int waitMs = (reader.isOpen() && reader.busy()) || (textReader.isOpen() && textReader.busy()) ? 1 : reader.isOpen() && reader.seekPending() ? 16 : reader.spinning() ? MangaReader::SPIN_MS / 2 : ui.animating() || player.marqueeMoving() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250;
+			int waitMs = (reader.isOpen() && reader.busy()) || (textReader.isOpen() && textReader.busy()) ? 1 : reader.isOpen() && reader.seekPending() ? 16 : reader.spinning() ? MangaReader::SPIN_MS / 2 : ui.animating() || ui.dimEasing() || player.marqueeMoving() ? 16 : ui.typing() ? 50 : held != Button::None || player.loading() ? 20 : SDL_GetTicks() < freshUntil || levelUntil ? 50 : ui.markMoving() ? 80 : 250;
 			// the native visualizer's next frame (its own rate: the tap's levels are taken as it's drawn)
 			{
 				const int nw = ts.nativeWaitMs(shown());
@@ -1590,6 +1590,7 @@ int main(int argc, char** argv)
 			{
 				freshUntil = SDL_GetTicks() + 2000;	// the panels back from a sleep: drawn again
 				stickY = 0;	// a stick held as the handheld slept must not start a reader at the wake
+				ui.undim();	// (slept in the dim before Screen off: the bottom panel's level back)
 			}
 #ifdef BP_WEB
 			// the server was frozen with the rest: the pages watching get the state afresh
