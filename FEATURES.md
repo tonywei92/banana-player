@@ -203,7 +203,7 @@ With no Music folder on either card (or none with a song in it) the page says so
 name in the accent, **Browse Files** (A) and **Web dashboard** (Y) — and **L/R** still reaches Playlists. While a
 card is read the first time a notice row under the chips says the albums fill in as it goes, and the page shows them
 when the pass lands. A music video's tags are read as a song's are; without any it goes by its file's name, in its
-folder's album, exactly as an untagged song does.
+folder's album, exactly as an untagged song does. Tag text in an old code page (Shift-JIS, GBK or Big5 bytes in a RIFF/RMP3 or ID3v1 tag) is shown as the right characters, not boxes: valid UTF-8 stays, otherwise the first code page that reads cleanly as CJK or kana, else Latin-1.
 
 ## The Videos section
 
@@ -631,6 +631,8 @@ Nothing is lost: like, Add to playlist…, Show in folder, Play on, Info and Sto
 To quit, use **Quit Banana Player** in quick settings (**F**), or **F + START** from anywhere.
 
 ## Search
+
+Search also matches a song's file name (its extension off, `_ - .` read as spaces), so "gaia" finds Ultramangaia_ED2_Beat_on_Dream_on.mp3 though no tag holds it; those hits come after the tag matches.
 
 Find a song, a video or a book in your library by any part of its name, from the **Search** key at the top of the rail
 or **L3** on a list. The page is titled **Search library**: it searches the media library only — the songs and videos

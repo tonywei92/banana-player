@@ -19,6 +19,7 @@
 #include "epub.h"
 #include "textsource.h"
 #include "dlqueue.h"
+#include "tagtext.h"
 #include "doh.h"
 #include "cbzwrite.h"
 #include "browser.h"
@@ -818,6 +819,8 @@ static void testMediaIndex()
 		std::vector<MediaSong> songs;
 		songs.push_back(song("Café", "Béla", "Música"));
 		songs.push_back(song("Not Café", "Béla", "Música"));
+		songs.push_back(song("Other", "Someone", "Else"));
+		songs.back().path = "/m/Ultramangaia_ED2_Beat_on_Dream_on.mp3";	// untagged by name: found by its file name
 		std::vector<MediaVideo> videos;
 		MediaVideo a, b;
 		a.path = "/v/A Movie.mp4";
@@ -835,6 +838,10 @@ static void testMediaIndex()
 		CHECK_EQ(h.songs.empty(), true);		// every word must sit somewhere
 		h = mediaSearch(*snap, {}, "bela");
 		CHECK_EQ(h.songs, std::vector<uint32_t>({0, 1}));
+		h = mediaSearch(*snap, {}, "gaia");
+		CHECK_EQ(h.songs, std::vector<uint32_t>({2}));
+		h = mediaSearch(*snap, {}, "beat dream someone");	// the name's _ read as spaces, tags count too
+		CHECK_EQ(h.songs, std::vector<uint32_t>({2}));
 		h = mediaSearch(*snap, {}, "movie");
 		CHECK_EQ(h.videos.size(), (size_t)2);
 		h = mediaSearch(*snap, {}, "a movie");
@@ -16069,6 +16076,21 @@ static void testVideoCache()
 	CHECK(encodeJpeg(PageImage{}).empty());
 }
 
+static void testTagText()
+{
+	using namespace bp;
+	const std::string sjis = "\x83\x45\x83\x8B\x83\x67\x83\x89\x83\x7D\x83\x93\x83\x4B\x83\x43\x83\x41\x81\x5E" "ED2";
+	CHECK_EQ(cleanTagText(sjis), std::string("\xE3\x82\xA6\xE3\x83\xAB\xE3\x83\x88\xE3\x83\xA9\xE3\x83\x9E\xE3\x83\xB3\xE3\x82\xAC\xE3\x82\xA4\xE3\x82\xA2\xEF\xBC\x8F" "ED2"));
+	// IART: kanji, a space, kanji
+	const std::string art = cleanTagText("\x8B\x65\x93\x63\x20\x92\x6D\x95\x46");
+	CHECK_EQ(art.size(), (size_t)13);
+	CHECK_EQ(art[3] != '\xEF', true);
+	CHECK_EQ(cleanTagText("Caf\xE9 Del Mar"), std::string("Caf\xC3\xA9 Del Mar"));	// Latin-1
+	CHECK_EQ(cleanTagText("Caf\xC3\xA9 \xE3\x82\xA6"), std::string("Caf\xC3\xA9 \xE3\x82\xA6"));	// UTF-8 stays
+	CHECK_EQ(cleanTagText("plain"), std::string("plain"));
+	CHECK_EQ(cleanTagText("\xFF\xFE"), std::string("\xC3\xBF\xC3\xBE"));	// never invalid out
+}
+
 int main()
 {
 	testVideoCache();
@@ -16215,6 +16237,7 @@ int main()
 	testTrackList();
 	testSuwayomi();
 	testMangaJava();
+	testTagText();
 	if (failures) fprintf(stderr, "%d failed\n", failures);
 	else printf("core: all passed\n");
 	return failures != 0;

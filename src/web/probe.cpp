@@ -2,6 +2,7 @@
 #include "web/probe.h"
 #include "webmedia.h"
 #include "durations.h"
+#include "tagtext.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -67,14 +68,14 @@ namespace bp
 		{
 			if (!d) return "";
 			AVDictionaryEntry* e = av_dict_get(d, key, nullptr, 0);
-			return e && e->value ? e->value : "";
+			return e && e->value ? cleanTagText(e->value) : "";
 		}
 
 		std::string tagCI(AVDictionary* d, const char* key)
 		{
 			if (!d) return "";
 			AVDictionaryEntry* e = av_dict_get(d, key, nullptr, 0);
-			return e && e->value ? e->value : "";
+			return e && e->value ? cleanTagText(e->value) : "";
 		}
 
 		const char* codecName(AVCodecID id)

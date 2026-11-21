@@ -20,7 +20,7 @@ namespace bp
 	{
 	public:
 		MediaIndexWorker(MediaIndex& shared, std::function<void()> ready) : shared(shared), ready(std::move(ready)) {}
-		// the state folder (its media-index.tsv keeps the tags across runs); "": tags are read, never kept
+		// the state folder (its media-index2.tsv keeps the tags across runs); "": tags are read, never kept
 		void configure(const std::string& stateDir);
 		// the first pass (the thread starts here, as the other workers': not before there is work)
 		void start();

@@ -1,4 +1,5 @@
 #include "player.h"
+#include "tagtext.h"
 #include "durations.h"
 #include "cardcanvas.h"
 #include "filesave.h"
@@ -989,7 +990,7 @@ namespace bp
 					break;
 				}
 				case MEDIA_TITLE:
-					title = p->format == MPV_FORMAT_STRING ? *(char**)p->data : "";
+					title = p->format == MPV_FORMAT_STRING ? cleanTagText(*(char**)p->data) : "";
 					if (isAudio && loaded) updateOverlay();	// it can come after the file's start
 					break;
 				case CHAPTER_LIST:
@@ -1023,8 +1024,8 @@ namespace bp
 							std::string k = n->u.list->keys[i];
 							for (char& c : k) c = (char)tolower((unsigned char)c);
 							if (n->u.list->values[i].format != MPV_FORMAT_STRING) continue;
-							if (k == "artist") tagArtist = n->u.list->values[i].u.string;
-							else if (k == "album") tagAlbum = n->u.list->values[i].u.string;
+							if (k == "artist") tagArtist = cleanTagText(n->u.list->values[i].u.string);
+							else if (k == "album") tagAlbum = cleanTagText(n->u.list->values[i].u.string);
 							else if ((k == "date" || k == "year") && tagYear.empty()) tagYear = std::string(n->u.list->values[i].u.string).substr(0, 4);
 						}
 					if (isAudio && loaded) updateOverlay();
@@ -3374,7 +3375,7 @@ namespace bp
 			{
 				header("Tags");
 				for (int i = 0; i < tags.u.list->num; i++)
-					if (tags.u.list->values[i].format == MPV_FORMAT_STRING) row(tags.u.list->keys[i], tags.u.list->values[i].u.string);
+					if (tags.u.list->values[i].format == MPV_FORMAT_STRING) row(tags.u.list->keys[i], cleanTagText(tags.u.list->values[i].u.string));
 			}
 			mpv_free_node_contents(&tags);
 		}
