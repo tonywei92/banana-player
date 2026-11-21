@@ -21,16 +21,34 @@ namespace artbg
 {
 	using Rgb = bp::theme::Rgb;
 	constexpr int W = 160, H = 120;	// the backdrop picture's working size
-	constexpr int BLUR_RADIUS = 30;	// 61 taps each way: sigma 10 at this size (40 units on the panel)
+	constexpr int BLUR_RADIUS = 27;	// 55 taps each way
+	constexpr double BLUR_SIGMA = 12.0;	// at this size
+	constexpr double SATURATION = 1.03;	// the blurred picture's saturation, times
 	constexpr size_t PIXELS = (size_t)W * H;
 	constexpr size_t CACHE_CAP = 16u * 1024u * 1024u;	// at most this much in artbg/ (about 270 files)
-	constexpr uint8_t CACHE_VERSION = 3;	// (2: the 5th-percentile luminances joined the header; 3: the bands are the tall canvas's)
+	constexpr uint8_t CACHE_VERSION = 4;	// (2: the 5th-percentile luminances joined the header; 3: the bands are the tall canvas's; 4: the tuned percentiles, columns and bands)
 	// The two panels stacked are one tall canvas (640 x 960 units, 2:3): the picture's middle 80 columns (2:3 of its
 	// 120 rows) run down both, the top panel showing its upper half and the bottom panel its lower half, as one
 	// picture behind both. The luminance bands are the canvas's: above the bottom panel's y 168 (rows 0..80 of the
 	// picture: the whole top panel and the bottom's head) and below it
-	constexpr int CANVAS_X0 = 40, CANVAS_W = 80;
-	constexpr int BAND_ROW = (480 + 168) * H / 960;	// 81
+	constexpr int CANVAS_X0 = 33, CANVAS_W = 96;
+	constexpr int BAND_ROW = 112;	// tuned by eye (was (480 + 168) * H / 960 = 81)
+	// the hue pick: a median-cut colour is dropped outside these (near-black / near-white, neon / grey) or when rare
+	constexpr double HUE_L_MIN = 0.10, HUE_L_MAX = 0.90, HUE_S_MIN = 0.10, HUE_S_MAX = 0.85, HUE_SHARE_MIN = 0.05;
+	// the dark ground: the charcoal (percent of SURFACE in BG), the art's hue tint (S, L, percent blended in) and the
+	// fallback gradient's top (percent of SURFACE in the charcoal)
+	constexpr int CHARCOAL_MIX = 50, DARK_TINT_MIX = 54, FALLBACK_TOP_MIX = 24;
+	constexpr double DARK_TINT_S = 0.15, DARK_TINT_L = 0.0;
+	// the light ground: the paper carries the art's hue at S / L, blended in at LIGHT_TINT_MIX percent
+	constexpr double LIGHT_TINT_S = 0.41, LIGHT_TINT_L = 0.57;
+	constexpr int LIGHT_TINT_MIX = 42;
+	// the contrast protection: the veil's cap (percent), the ratios text, dim text and the accent must hold, the
+	// percentiles of the picture's luminance protected against, and the accent clash's thresholds
+	constexpr int VEIL_CAP = 91;
+	constexpr double CONTRAST_TEXT = 4.1, CONTRAST_DIM = 3.4, CONTRAST_ACCENT = 3.7;
+	constexpr double PERCENTILE_HI = 0.76, PERCENTILE_LO = 0.31;
+	constexpr double CLASH_ACCENT_S_MIN = 0.30;
+	constexpr int CLASH_HUE_GAP = 150;
 
 	// What the art gives: one hue (or none), the picture's 95th- and 5th-percentile luminances over the two bands of
 	// the panel (relative luminance x 255: the rows above y 168 and those below — the 95th says how bright a dark
@@ -73,7 +91,7 @@ namespace artbg
 	constexpr int VEIL_BASE[5] = {58, 52, 74, 86, 92};
 	// the browser's pages (Home, Files, the sections, Settings…): their rows and cards have surfaces of their own, so
 	// the veil starts lighter and even, raised only until TEXT holds 4.5:1 (DIM_ON 3:1) over the picture
-	constexpr int LIST_VEIL_BASE[5] = {44, 44, 50, 54, 58};
+	constexpr int LIST_VEIL_BASE[5] = {45, 44, 50, 54, 60};
 
 	// The art's encoded bytes, RGBA (the alpha is ignored: an art is opaque), w x h. A tiny or empty image gives no
 	// hue and an empty picture (the fallback).
@@ -93,10 +111,10 @@ namespace artbg
 	// A light theme lifts the art instead of burying it under a white veil: each pixel's lightness (HSL) mapped into
 	// LIFT_L0..LIFT_L1 and its saturation kept at LIFT_S, a pastel of the art, so a dark art needs a light veil, not a
 	// 96% one. The Art overloads above work the light theme's luminances out on the lifted picture
-	constexpr double LIFT_L0 = 0.70, LIFT_L1 = 0.92, LIFT_S = 0.85;
+	constexpr double LIFT_L0 = 0.73, LIFT_L1 = 0.90, LIFT_S = 0.96;
 	// the lifted picture's veil before the check raises it: low, as the pastel is light already (VEIL_BASE's
 	// 74..92 under the bar is what turned a light theme's page white)
-	constexpr int LIFT_VEIL_BASE[5] = {30, 30, 36, 42, 48};
+	constexpr int LIFT_VEIL_BASE[5] = {39, 44, 68, 61, 68};
 	std::vector<uint8_t> liftedArt(const Art& art);	// the picture, lifted (W * H * 3; empty with no picture)
 	// The backdrop as one page of RGBA (w x h, straight alpha — opaque), a panel drawing it stretched: the
 	// picture with the veil baked in per row, the theme's part applied to the art's own bytes never (the fallback

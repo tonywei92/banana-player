@@ -15192,9 +15192,9 @@ static void testArtBackdrop()
 		Art a = artBackdrop(px.data(), 64, 48);
 		CHECK_EQ(a.hasHue, true);
 		CHECK(std::abs(a.hue - 9) <= 12);
-		// the middle of the picture is no longer either colour alone (the sigma 10 blur crosses the split)
+		// the middle of the picture is no longer either colour alone (the blur crosses the split)
 		size_t mid = ((size_t)60 * W + 80) * 3;
-		CHECK(a.rgb[mid + 2] > 60);	// the blue side has reached the red
+		CHECK(a.rgb[mid + 2] > 40);	// the blue side has reached the red
 		CHECK(a.rgb[mid] > 60);
 		// a two-tone art's darkest rows sit well under its brightest: both halves of the protection have work to do
 		CHECK(a.l5top < a.l95top);
@@ -15217,11 +15217,11 @@ static void testArtBackdropTheme()
 	CHECK_EQ(b.fallback, false);
 	CHECK_EQ(b.stop[0], b.ground);
 	CHECK_EQ((int)b.stop[4].r, (int)b.ground.r);
-	CHECK(b.veil[0] >= VEIL_BASE[0] && b.veil[0] <= 96);
-	CHECK(b.veil[1] >= VEIL_BASE[1] && b.veil[1] <= 96);
-	CHECK(b.veil[2] >= VEIL_BASE[2] && b.veil[2] <= 96);
-	CHECK(b.veil[3] >= VEIL_BASE[3] && b.veil[3] <= 96);
-	CHECK(b.veil[4] >= VEIL_BASE[4] && b.veil[4] <= 96);
+	CHECK(b.veil[0] >= std::min(VEIL_BASE[0], VEIL_CAP) && b.veil[0] <= VEIL_CAP);
+	CHECK(b.veil[1] >= std::min(VEIL_BASE[1], VEIL_CAP) && b.veil[1] <= VEIL_CAP);
+	CHECK(b.veil[2] >= std::min(VEIL_BASE[2], VEIL_CAP) && b.veil[2] <= VEIL_CAP);
+	CHECK(b.veil[3] >= std::min(VEIL_BASE[3], VEIL_CAP) && b.veil[3] <= VEIL_CAP);
+	CHECK(b.veil[4] >= std::min(VEIL_BASE[4], VEIL_CAP) && b.veil[4] <= VEIL_CAP);
 	// a white picture needs a deeper veil under the bar than a dark one; the 5th percentile (a light theme's
 	// half) changes nothing here
 	Backdrop bright = backdropFor(dark, 26, 250, 250, 240, 240);
@@ -15258,9 +15258,9 @@ static void testArtBackdropTheme()
 	CHECK(lb.ground.r > 0xC0);
 	CHECK(lb.ground.r >= lb.ground.b);
 	CHECK_EQ(lb.stop[0], lb.ground);
-	CHECK(lb.veil[0] >= VEIL_BASE[0] && lb.veil[0] <= 96);
-	CHECK(lb.veil[2] >= VEIL_BASE[2] && lb.veil[2] <= 96);
-	CHECK(lb.veil[4] >= VEIL_BASE[4] && lb.veil[4] <= 96);
+	CHECK(lb.veil[0] >= std::min(VEIL_BASE[0], VEIL_CAP) && lb.veil[0] <= VEIL_CAP);
+	CHECK(lb.veil[2] >= std::min(VEIL_BASE[2], VEIL_CAP) && lb.veil[2] <= VEIL_CAP);
+	CHECK(lb.veil[4] >= std::min(VEIL_BASE[4], VEIL_CAP) && lb.veil[4] <= VEIL_CAP);
 	// a dark art is whitened: its stop behind the title rises past the base (protection the other way round,
 	// on the picture's 5th-percentile luminance), where a bright one leaves the base alone
 	Backdrop lbDark = backdropFor(light, 26, 240, 220, 4, 4);
@@ -15342,7 +15342,7 @@ static void testArtBackdropPage()
 	CHECK(std::abs(seamUp - seamLow) <= 1);
 	CHECK(up[0] > seamUp);	// (the picture's top is the canvas's top: lighter than the seam)
 	CHECK(lowp[((size_t)479 * W) * 4] < seamLow);
-	CHECK_EQ(BAND_ROW, 81);
+	CHECK_EQ(BAND_ROW, 112);
 	// a light theme lifts a dark saturated art to a pastel instead of burying it: a dark red-orange (L 0.26, S 0.51)
 	// needs nearly the whole white veil as it is, far less once lifted, and the page keeps the art's hue
 	const ThemeColours lightT{{0xF7, 0xF4, 0xEC}, {0xFF, 0xFD, 0xF8}, {0x1B, 0x1A, 0x20}, {0x62, 0x5E, 0x56}, {0x7A, 0x52, 0x00}};

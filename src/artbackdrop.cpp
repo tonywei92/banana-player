@@ -175,9 +175,9 @@ namespace artbg
 			double n = (double)b.px.size();
 			Hsl hsl = toHsl(sum.r / n / 255, sum.g / n / 255, sum.b / n / 255);
 			double share = n / (double)small.size();
-			if (hsl.l < 0.10 || hsl.l > 0.90) continue;	// near-black or near-white
-			if (hsl.s > 0.85 || hsl.s < 0.10) continue;	// neon, or a grey with no hue to give
-			if (share < 0.05) continue;	// rare
+			if (hsl.l < HUE_L_MIN || hsl.l > HUE_L_MAX) continue;	// near-black or near-white
+			if (hsl.s > HUE_S_MAX || hsl.s < HUE_S_MIN) continue;	// neon, or a grey with no hue to give
+			if (share < HUE_SHARE_MIN) continue;	// rare
 			if (share > bestShare) { bestShare = share; best = hsl; art.hasHue = true; }
 		}
 		if (art.hasHue) art.hue = (int)std::lround(best.h) % 360;
@@ -223,7 +223,7 @@ namespace artbg
 			}
 
 		// 5. the Gaussian blur: separable, 61 taps, edges clamped
-		const double sigma = 10.0;
+		const double sigma = BLUR_SIGMA;
 		float kernel[2 * BLUR_RADIUS + 1];
 		double total = 0;
 		for (int i = -BLUR_RADIUS; i <= BLUR_RADIUS; i++)
@@ -270,17 +270,17 @@ namespace artbg
 			{
 				size_t at = ((size_t)y * W + x) * 3;
 				Hsl hsl = toHsl(blurred[at] / 255.0, blurred[at + 1] / 255.0, blurred[at + 2] / 255.0);
-				hsl.s *= 0.55;
+				hsl.s *= SATURATION;
 				Rgb c = fromHsl(hsl);
 				art.rgb[at] = c.r;
 				art.rgb[at + 1] = c.g;
 				art.rgb[at + 2] = c.b;
 				if (x >= CANVAS_X0 && x < CANVAS_X0 + CANVAS_W) (y < BAND_ROW ? top : low).push_back(relLum(c));
 			}
-		art.l95top = percentile(top, 0.95);
-		art.l95low = percentile(low, 0.95);
-		art.l5top = percentile(top, 0.05);
-		art.l5low = percentile(low, 0.05);
+		art.l95top = percentile(top, PERCENTILE_HI);
+		art.l95low = percentile(low, PERCENTILE_HI);
+		art.l5top = percentile(top, PERCENTILE_LO);
+		art.l5low = percentile(low, PERCENTILE_LO);
 		return art;
 	}
 
@@ -293,7 +293,7 @@ namespace artbg
 		// a light-bodied theme (its BG lighter than its TEXT: Light, Sakura, Gundam, the 16-bit ones) draws the
 		// light version on its own paper, and falls back to its plain ground
 		const bool light = relLum(t.bg) > relLum(t.text);
-		Rgb charcoal = mixRgb(t.bg, t.surface, 50);	// the dark ground's charcoal, the light one's paper
+		Rgb charcoal = mixRgb(t.bg, t.surface, CHARCOAL_MIX);	// the dark ground's charcoal, the light one's paper
 		b.ground = charcoal;
 		if (light)
 		{
@@ -303,7 +303,7 @@ namespace artbg
 		}
 		else
 		{
-			b.top = mixRgb(charcoal, t.surface, 35);
+			b.top = mixRgb(charcoal, t.surface, FALLBACK_TOP_MIX);
 			b.bottom = t.bg;
 		}
 		for (int i = 0; i < 5; i++) { b.stop[i] = charcoal; b.veil[i] = 0; }
@@ -314,7 +314,7 @@ namespace artbg
 		if (hue >= 0)
 		{
 			Hsl acc = toHsl(t.accent.r / 255.0, t.accent.g / 255.0, t.accent.b / 255.0);
-			if (acc.s >= 0.30 && hueGap(acc.h, hue) >= 150) clash = true;
+			if (acc.s >= CLASH_ACCENT_S_MIN && hueGap(acc.h, hue) >= CLASH_HUE_GAP) clash = true;
 		}
 		if (hue < 0 || clash) return b;	// fallback: the gradient (a light theme's plain BG)
 
@@ -324,9 +324,9 @@ namespace artbg
 			// more than a dark one does, so the paper itself carries the art's colour or nobody sees it is there
 			Hsl tintH;
 			tintH.h = hue;
-			tintH.s = 0.34;
-			tintH.l = 0.82;
-			b.ground = mixRgb(charcoal, fromHsl(tintH), 70);
+			tintH.s = LIGHT_TINT_S;
+			tintH.l = LIGHT_TINT_L;
+			b.ground = mixRgb(charcoal, fromHsl(tintH), LIGHT_TINT_MIX);
 			b.fallback = false;
 			// the same five stops, whitened for a dark art: each stop's see-through is scaled until the picture's
 			// 5th-percentile luminance under it leaves the theme's TEXT, DIM_ON and ACCENT at 4.5:1
@@ -337,17 +337,17 @@ namespace artbg
 			bool allHard = true;
 			for (int i = 0; i < 5; i++)
 			{
-				int need = 97;	// more than the cap: this stop would hide the picture
-				for (int p = base[i]; p <= 96; p++)
+				int need = VEIL_CAP + 1;	// more than the cap: this stop would hide the picture
+				for (int p = base[i]; p <= VEIL_CAP; p++)
 				{
 					double under = yGround * (p / 100.0) + pic[i] * (1 - p / 100.0);
 					// body text 4.5:1; the dim and accent (large or non-text) 3:1, or the veil whites the art out
-					if (contrast(relLum(t.text), under) >= 4.5 && contrast(relLum(t.dimOn), under) >= 3.0 &&
-						contrast(relLum(t.accent), under) >= 3.0) { need = p; break; }
+					if (contrast(relLum(t.text), under) >= CONTRAST_TEXT && contrast(relLum(t.dimOn), under) >= CONTRAST_DIM &&
+						contrast(relLum(t.accent), under) >= CONTRAST_ACCENT) { need = p; break; }
 				}
-				if (need <= 96) allHard = false;
+				if (need <= VEIL_CAP) allHard = false;
 				b.stop[i] = b.ground;
-				b.veil[i] = std::min(need, 96);
+				b.veil[i] = std::min(need, VEIL_CAP);
 			}
 			if (allHard)
 			{
@@ -365,14 +365,14 @@ namespace artbg
 		// the art's hue at S 15% / L 13%, blended 45% into the theme's charcoal
 		Hsl tintH;
 		tintH.h = hue;
-		tintH.s = 0.15;
-		tintH.l = 0.13;
+		tintH.s = DARK_TINT_S;
+		tintH.l = DARK_TINT_L;
 		Rgb tint = fromHsl(tintH);
-		b.ground = mixRgb(charcoal, tint, 45);
+		b.ground = mixRgb(charcoal, tint, DARK_TINT_MIX);
 		b.fallback = false;
 
 		// the five stops: VEIL_BASE, raised until the picture under them leaves the
-		// theme's TEXT 4.5:1 above y 168 and its DIM_ON 4.5:1 below. More than 96 at every stop: nothing shows.
+		// theme's TEXT 4.5:1 above y 168 and its DIM_ON 4.5:1 below. More than the cap at every stop: nothing shows.
 		const int* base = list ? LIST_VEIL_BASE : VEIL_BASE;
 		const double pic[5] = {l95top / 255.0, l95top / 255.0, l95low / 255.0, l95low / 255.0, l95low / 255.0};
 		const double yGround = relLum(b.ground);
@@ -380,17 +380,17 @@ namespace artbg
 		for (int i = 0; i < 5; i++)
 		{
 			double ink = relLum(i < 2 ? t.text : t.dimOn);
-			int need = 97;	// more than the cap: this stop would hide the picture
-			for (int p = base[i]; p <= 96; p++)
+			int need = VEIL_CAP + 1;	// more than the cap: this stop would hide the picture
+			for (int p = base[i]; p <= VEIL_CAP; p++)
 			{
 				double under = yGround * (p / 100.0) + pic[i] * (1 - p / 100.0);
-				const bool holds = list ? contrast(relLum(t.text), under) >= 4.5 && contrast(relLum(t.dimOn), under) >= 3.0
-					: contrast(ink, under) >= 4.5;
+				const bool holds = list ? contrast(relLum(t.text), under) >= CONTRAST_TEXT && contrast(relLum(t.dimOn), under) >= CONTRAST_DIM
+					: contrast(ink, under) >= CONTRAST_TEXT;
 				if (holds) { need = p; break; }
 			}
-			if (need <= 96) allHard = false;
+			if (need <= VEIL_CAP) allHard = false;
 			b.stop[i] = b.ground;
-			b.veil[i] = std::min(need, 96);
+			b.veil[i] = std::min(need, VEIL_CAP);
 		}
 		if (allHard)
 		{
