@@ -11372,17 +11372,31 @@ static void testKitLayoutReaders()
 		CHECK(strip ? !overlaps(l.sliderHit, l.surface) : !overlaps(l.sliderHit, l.pan));
 	}
 
-	// Fullscreen's bar: on the panel, the leave key and the note inside it side by side, the key where the reader's
-	// Fullscreen key is (the same thumb leaves as entered)
+	// Fullscreen's navigation: a sheet on the panel's lower part, everything inside it and nothing over another; with
+	// chapters four steps, without them the two page keys across the row; the way out where the reader's row is
 	{
-		ReaderFullBar f = readerFullBar();
 		ReaderPage l = readerPage(true);
-		CHECK(insidePanel(f.bar) && f.bar.x == MARGIN && f.bar.x + f.bar.w == PANEL_W - MARGIN);
-		for (const Box* b : {&f.note, &f.leave})
-			CHECK(b->w > 0 && b->x >= f.bar.x && b->x + b->w <= f.bar.x + f.bar.w && b->y >= f.bar.y && b->y + b->h <= f.bar.y + f.bar.h);
-		CHECK(!overlaps(f.note, f.leave) && f.note.x < f.leave.x);
-		CHECK(f.leave.h >= 44 && f.leave.w >= 160);
-		CHECK(overlaps(f.leave, l.row[2]) || overlaps(f.leave, l.row[3]));
+		for (bool chapters : {false, true})
+		{
+			ReaderFullNav f = readerFullNav(chapters);
+			CHECK(insidePanel(f.sheet) && f.sheet.x == 0 && f.sheet.w == PANEL_W && f.sheet.y + f.sheet.h == PANEL_H);
+			std::vector<const Box*> all{&f.title, &f.page, &f.sliderHit, &f.row[0], &f.row[1], &f.row[2]};
+			for (int i = 0; i < FULL_NAV_STEPS; i++)
+				if (f.step[i].w > 0) all.push_back(&f.step[i]);
+			CHECK_EQ((int)all.size(), chapters ? 10 : 8);
+			for (const Box* b : all)
+				CHECK(b->w > 0 && b->x >= MARGIN && b->x + b->w <= PANEL_W - MARGIN && b->y >= f.sheet.y && b->y + b->h <= PANEL_H - SP8);
+			for (size_t i = 0; i < all.size(); i++)
+				for (size_t j = i + 1; j < all.size(); j++) CHECK(!overlaps(*all[i], *all[j]));
+			CHECK(f.sliderHit.hit(f.track.x + 5, f.track.y + 5) && f.track.x > f.sliderHit.x);
+			for (int i = 0; i < FULL_NAV_STEPS; i++) CHECK(f.step[i].w == 0 || (f.step[i].h >= 44 && f.step[i].w >= 120));
+			CHECK(f.step[1].w > 0 && f.step[2].w > 0 && f.step[1].x < f.step[2].x);
+			CHECK((f.step[0].w > 0) == chapters && (f.step[3].w > 0) == chapters);
+			for (const Box& b : f.row) CHECK(b.h >= 44 && b.w >= 160);
+			CHECK(overlaps(f.row[2], l.row[2]) || overlaps(f.row[2], l.row[3]));
+			// a tap in the panel's middle, which raised it, lands above it: the same place puts it away
+			CHECK(!f.sheet.hit(PANEL_W / 2, PANEL_H / 2));
+		}
 		// its taps: the panel's middle is the bar's, the edges turn (top / bottom down a strip, the sides of a page)
 		CHECK_EQ(readerFullTap(PANEL_W / 2, PANEL_H / 2, false), 0);
 		CHECK_EQ(readerFullTap(PANEL_W / 2, PANEL_H / 2, true), 0);
@@ -12169,7 +12183,7 @@ static void testKitLayout()
 		CHECK_EQ(cg.cell[5].y, tp.content.y + COVER_GRID_CELL_H + 12);
 		CHECK_EQ(coverGrid(tp.content, 12, 9).first, 1);	// (clamped: three rows, two shown)
 		CHECK_EQ(coverGrid(tp.content, 12, 1).cell[5].y, tp.content.y);
-		// History's rows: 60 tall, 2 apart, five in the content; the list ends at its last row; Continue at the right
+		// History's rows: 60 tall, 2 apart, five in the content; the list ends at its last row
 		RowList rl = rowList(tp.content, 14, 20);
 		CHECK_EQ(rl.shown, 5);
 		CHECK_EQ(rl.first, 9);
@@ -12177,6 +12191,11 @@ static void testKitLayout()
 		CHECK_EQ(rl.at(rl.row[2].x + 3, rl.row[2].y + 3), 11);
 		CHECK_EQ(rl.at(rl.row[0].x + 3, rl.row[0].y + 61), -1);
 		CHECK_EQ(rowList(tp.content, 2, 0).shown, 2);
+		// its progress bar: along the row's foot, inside it, from after the cover's 44 to the right pad
+		Box rb = rowProgress(rl.row[0]);
+		CHECK_EQ(rb.x, rl.row[0].x + 68);
+		CHECK_EQ(rb.x + rb.w, rl.row[0].x + rl.row[0].w - 12);
+		CHECK(rb.h == ROW_BAR_H && rb.y > rl.row[0].y + rl.row[0].h / 2 + 16 && rb.y + rb.h < rl.row[0].y + rl.row[0].h);
 		// a series page: its keys (two fixed, the rest shared) across the inner body, its rows under them
 		SeriesPage sp = seriesPage(sh.body, true);
 		std::vector<Box> keys = keyRow(sp.keys, {150, 0, 0, 64, 64});

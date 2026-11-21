@@ -805,10 +805,12 @@ it, and a **More** key (as **X**). A comic (CBZ, CBR) from Files reads the same 
 - Both end on one row: **Pages** (**Y**), **View** (**START**), **Fullscreen** (**SELECT**) and **Light** (Brightness &
   filter; what's on in its place while Extra dim or a filter is).
 - **Fullscreen** in one step: **SELECT** (as in the Manga reader) or the **Fullscreen** key puts the pages over both screens as
-  one tall strip, from either layout; **SELECT** or **B** goes back to the layout you came from. On the way in a bar says
-  so for a few seconds, with a **One screen** key for the finger. In fullscreen a tap in the middle of the bottom
-  screen shows that bar again (a second tap puts it away), a tap near the top or the bottom goes a screenful back or
-  on, and a drag scrolls.
+  one tall strip, from either layout; **SELECT** or **B** goes back to the layout you came from. On the way in a line says
+  so for a moment. In fullscreen a tap in the middle of the bottom screen shows the **navigation** over the page: the
+  file's name and *Page 4 of 30*, the page slider, **Page** back and on (**L** / **R**), **Pages** (**Y**), **View**
+  (**START**) and **One screen** (**SELECT**), all of them touchable. It goes after four seconds untouched or on
+  another tap in the middle; a tap near the top or the bottom goes a screenful back or on (with it showing too), and
+  a drag scrolls.
 - **View** (**START**) is a sheet: **Layout** (Single page, Vertical scroll, Fullscreen: the strip across both screens),
   **Hinge gap** (in Fullscreen: the part of the page skipped under the hinge, the Manga reader's setting; the pages
   above move as you change it), **Page fit**, **Zoom**, **Turn** (a quarter at a time, for a scan on its side; Single page only) and **Light & filter**.
@@ -1471,8 +1473,9 @@ with **X** on Browse (below), where sources are installed from repositories you 
 on the card (below).
 
 **Library** is a grid of covers, five across, each with its title under it and its unread count at its top right;
-**History** is one row a series, newest first: its cover, its title, then the chapter, the page and when, with a
-**Continue** key (**A**) on the row you're on; **Y** opens the series' page instead. A series that can't open now
+**History** is one row a series, newest first: its cover, its title, then its source, the chapter and the page
+(*Ch. 12 · p. 4 of 30*), when it was read at the right and a thin bar showing how far through the chapter you are.
+The row itself continues (**A** or a tap); **Y** opens the series' page instead and **X** is More. A series that can't open now
 stays, dimmed, and says why (*source removed*, *not on a card*).
 
 A series' page has one row of keys (**Resume**, and for a source's series **Get**, **Check**, **Info** and the heart)
@@ -1668,8 +1671,10 @@ to scroll* in **Vertical scroll**), a line along its foot naming double-tap and 
   flick turns the page even from a short drag), and in **Vertical scroll** it scrolls — the slider jumps to a page, and the
   buttons go to the chapter before or after, turn fullscreen on (as **SELECT** does), or open **Brightness** (above,
   under Books and documents). The row is four buttons of one size with equal margins and gaps. In
-  fullscreen the whole bottom screen is the page, and the finger drags it anywhere; the controls bar has the same keys
-  along its foot, and a tap in the middle of the page shows it; a tap near an edge turns instead (the top and bottom
+  fullscreen the whole bottom screen is the page, and the finger drags it anywhere; a tap in the middle of the page
+  shows the **navigation** over it (the series and *Page 4 of 30*, the page slider, **Chapter** and **Page** back and
+  on, **Pages**, **View** and **One screen**; it goes after four seconds untouched or on another tap in the middle);
+  a tap near an edge turns instead, with the navigation showing or not (the top and bottom
   of a strip a screenful back or on, the left and right sides of a page as **LEFT** and **RIGHT**). A double-tap on the
   page zooms to 200 % at that spot, and a double-tap again goes back to the fit.
 - Your place is kept on the card, in the player's own folder (`home/.config/banana-player`): the page of every chapter

@@ -526,14 +526,21 @@ namespace bp
 			Box row[4];	// Pages, View, Fullscreen, Light
 		};
 		ReaderPage readerPage(bool strip);
-		// Fullscreen's bar, over the pages that fill the panel there: up for a moment on the way in and after a tap,
-		// so the way out is always one tap or one press away. What leaves at the left, the key that does it at the right
-		struct ReaderFullBar
+		// Fullscreen's navigation, over the pages that fill the panel there (the Files reader's and the Manga reader's):
+		// a sheet on the panel's lower part, up after a tap in the middle. The name and "Page N of M", the page slider,
+		// the steps (chapter back, page back, page on, chapter on; a file has no chapters: the two page keys share the
+		// row), then Pages, View and One screen, the way out where the reader's row has the way in
+		constexpr int FULL_NAV_Y = 280, FULL_NAV_STEPS = 4, FULL_NAV_ROW = 3;
+		struct ReaderFullNav
 		{
-			Box bar, note, leave;
+			Box sheet;	// the ground: what takes the finger while it shows
+			Box title, page;	// the name at the left, "Page 4 of 30" at the right
+			Box track, sliderHit;	// the page slider, and where a finger takes it
+			Box step[FULL_NAV_STEPS];	// chapter back, page back, page on, chapter on (no chapters: the outer two w 0)
+			Box row[FULL_NAV_ROW];	// Pages, View, One screen
 		};
-		ReaderFullBar readerFullBar();
-		// Fullscreen's taps, the panel being all page: the middle shows the bar (the way out is on it), the edges turn
+		ReaderFullNav readerFullNav(bool chapters);
+		// Fullscreen's taps, the panel being all page: the middle shows the navigation (lay::readerFullNav), the edges turn
 		// the way the pages run: a strip's top and bottom a screenful back and on, a paged comic's left and right
 		// sides (sideways) as LEFT and RIGHT. -1 the edge before (top / left), 0 the middle, 1 the edge after
 		constexpr int FULL_TAP_EDGE_PCT = 28;
@@ -875,8 +882,12 @@ namespace bp
 			int at(int x, int y) const;	// the row (its index in the list) under (x, y), -1 none
 		};
 		RowList rowList(Box area, int n, int first, int rowH = ROW2_H, int gap = ROW2_GAP);
-		// a key at a row's right end (History's Continue on the focused row): keyW wide, 44 tall, SP8 in, centred
+		// a key at a row's right end (a download's Pause on the focused row): keyW wide, 44 tall, SP8 in, centred
 		Box rowKey(Box row, int keyW);
+		// how far a row's thing is (History: the page of the chapter's pages): a 3-unit bar along the row's foot, from
+		// under its name (after the 44 mark) to its right pad. The row itself is the action: no key takes its end
+		constexpr int ROW_BAR_H = 3;
+		Box rowProgress(Box row);
 
 		// ---- a row of keys across an area (a series page's Resume · Get · Check · Info · ♥: screens.js seriesB) ----
 		// each key as wide as `widths` says, 0: an equal share of what the fixed ones leave; GAP apart, KEY_ROW_H tall

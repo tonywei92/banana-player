@@ -84,7 +84,7 @@ namespace bp
 		mfWaiting = 0;
 	}
 
-	void Ui::PageReader::drawMangaFull()
+	void Ui::PageReader::drawMangaFull(const Player& p)
 	{
 		// the pages under the hinge: main gives each page's box (fractions of the panel) and its pixels; they become
 		// this renderer's textures, one page a frame at most so a turn never stalls the panel
@@ -185,8 +185,61 @@ namespace bp
 		}
 		if (readerStatus.failedHere) drawMangaRetry(true);
 		// the controls, while they show (over the tag), then the first open's toast over both
-		if (now < ui.manga->mangaCtrlUntil) ui.manga->drawMangaControls();
+		if (now < ui.manga->mangaCtrlUntil) ui.manga->drawMangaControls(p);
 		if (now < ui.manga->mangaToastUntil) ui.manga->drawMangaToast();
+	}
+
+	Ui::Rect Ui::PageReader::fullNavKey(int id, bool chapters)
+	{
+		lay::ReaderFullNav l = lay::readerFullNav(chapters);
+		if (id >= FN_CH_BACK && id <= FN_CH_ON) return l.step[id - FN_CH_BACK];
+		if (id >= FN_PAGES && id <= FN_LEAVE) return l.row[id - FN_PAGES];
+		return {0, 0, 0, 0};
+	}
+
+	int Ui::PageReader::fullNavKeyAt(int x, int y, bool chapters)
+	{
+		for (int id = 0; id < FN_KEYS; id++)
+			if (fullNavKey(id, chapters).hit(x, y)) return id;
+		return -1;
+	}
+
+	void Ui::PageReader::drawFullNav(const FullNav& n)
+	{
+		lay::ReaderFullNav l = lay::readerFullNav(n.chapters);
+		Kit& k = *ui.kit;
+		// the ground lets the page show through (the keys on it are solid: they are read and pressed)
+		SDL_Color ground = BG;
+		ground.a = 224;
+		ui.fillRound(l.sheet, ground, R_DIALOG, ROUND_TL | ROUND_TR);
+		bool held = ui.slideHeld(n.slider);
+		int pages = readerStatus.pages, at = held ? (int)ui.slide.value : readerStatus.page;
+		ui.drawTextMid(n.title, F_P16, TEXT, l.title.x, l.title.y + l.title.h / 2, l.title.w);
+		if (pages > 0)
+			ui.drawTextMid("Page " + std::to_string(at + 1) + " of " + std::to_string(pages), F_SMALL, DIM, l.page.x + l.page.w, l.page.y + l.page.h / 2, l.page.w, 1);
+		k.progress(l.track, ui.slideShare(n.slider, 0, pages > 1 ? at / (double)(pages - 1) : 0), {}, held, held ? "Page " + std::to_string(at + 1) : "");
+		static const Glyph* const GLYPHS[FN_KEYS] = {&G_PREV, &G_LEFT, &G_RIGHT, &G_NEXT, &G_BLOCKS, &G_EYE, &G_FULL};
+		static const char* const LABELS[FN_KEYS] = {"Chapter", "Page", "Page", "Chapter", "Pages", "View", "One screen"};
+		static const char* const CAPS[FN_KEYS] = {"L2", "L", "R", "R2", "Y", "START", "SELECT"};
+		for (int id = 0; id < FN_KEYS; id++)
+		{
+			Rect r = fullNavKey(id, n.chapters);
+			if (r.w <= 0) continue;
+			Kit::Key key;
+			key.glyph = GLYPHS[id];
+			key.label = LABELS[id];
+			key.key = n.caps ? CAPS[id] : "";
+			key.off = n.off[id];
+			key.pressed = n.pressed == id;
+			k.key(r, key);
+		}
+	}
+
+	void Ui::PageReader::drawFullToast(const std::string& text)
+	{
+		int tw = (int)std::lround(ui.textWidth(text, 0) / sx) + 32;
+		ui.fillRound({W / 2 - tw / 2, H / 2 - 22, tw, 44}, SURFACE, R_BUTTON);
+		ui.drawTextMid(text, 0, TEXT, W / 2, H / 2, 0, 2);
 	}
 
 	void Ui::PageReader::mangaPagesOpen(Player& p)

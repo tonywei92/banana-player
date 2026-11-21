@@ -91,3 +91,26 @@ Checked: build, `core-test`, `--press` on a generated 6-page CBZ (`A,Select,shot
 log's "docs: fullscreen on / off", the bar's wording and the View sheet's "START B Close" in the shots. Not driven:
 the text reader's START, the Manga reader's toast (needs a library), the handheld.
 
+
+## Fullscreen's navigation, History's row (2026-11-21, last)
+
+Owner: a middle tap in fullscreen showed "only a small bar" with a One screen key; History's row cut "Contin…".
+
+- **One sheet for both readers:** `lay::readerFullNav(chapters)` (the name, "Page N of M", the slider, the steps,
+  Pages / View / One screen) drawn by `PageReader::drawFullNav` on a see-through ground (BG at 224 of 255; the keys
+  solid). Files: `Docs::pagesKeyRect` hands the same `DP_KEY_*` ids the navigation's boxes while in Fullscreen, so
+  press, lift and act are the row's code; the slider is `grabPagesSlider` on the sheet's track. Manga:
+  `mangaCtrlPressed` is a `PageReader::FN_*` id, acted as its button (`mangaKey`). `lay::readerFullBar` is gone; the
+  way in says its line as a toast in both (`PageReader::drawFullToast`).
+- **Taps with it up:** inside the sheet, the sheet's (and 4 s more); outside, an edge still turns (Manga's used to
+  only close it) and the middle closes. A strip's bottom edge lies under the sheet while it shows: only the top
+  edge turns then. The slider held keeps it up (`pagesFullNavShown` / the slide's callback).
+- **Left off it:** Light and the Manga sheet's Close key (B closes; View has Light & filter).
+- **History's row:** no key on the row (`lay::rowProgress`: a 3-unit bar along its foot; when at the right as the
+  row's note). Downloads' Pause / Retry and Sources' Edit keep `lay::rowKey`: they are a second action, not the row's.
+
+Checked: build, `core-test`, `--press` on a generated 6-page CBZ in Files (`set:manga-reader=yes,A,Select,tap:320:240,
+drag:30:329:420:329` → "reader: jump 2 -> 4", the Page key, a second middle tap "the navigation away", gone by
+itself after 4 s) and as a Manga chapter (`BP_BROWSE` on a folder with `Manga/<series>/`: the slider, a top-edge tap
+"tap (edge: turned)" with it up, a middle tap "closed the navigation"), and History's row in a shot. Not driven: a
+paged comic's side taps with the sheet up, Button hotkeys off, the handheld's panel and touch.

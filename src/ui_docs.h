@@ -178,7 +178,7 @@ namespace bp
 		Uint32 docLastAt = 0, docTapAt = 0;
 		double docVel = 0, docPanStartX = 0, docPanStartY = 0;
 		float docTouchY = 0, docTouchX = 0;
-		Uint32 docFullTagUntil = 0;
+		Uint32 docFullTagUntil = 0, docFullToastUntil = 0;	// fullscreen's navigation, and the line on the way in
 		SDL_Texture* docPanTex = nullptr;
 		SDL_Texture* docBookTex = nullptr;	// Book: the bottom panel's page
 		SDL_Texture* docBookOldTex = nullptr;	// and the one before a turn, folding away (or opened over)
@@ -232,10 +232,12 @@ namespace bp
 		// layout it was turned on from
 		void togglePagesFull(Player& p);
 		int docFullFrom = 1;	// the layout Fullscreen was entered from (0 Single page, 1 Vertical scroll)
-		// Fullscreen's bar (lay::readerFullBar): up while docFullTagUntil runs, on the way in and after a tap
-		static constexpr Uint32 FULL_BAR_IN_MS = 3000, FULL_BAR_TAP_MS = 4000;
-		bool pagesFullBarShown() const;
-		void drawPagesFullBar(const Player& p);
+		// Fullscreen's navigation (lay::readerFullNav, PageReader::drawFullNav): up after a tap in the middle while
+		// docFullTagUntil runs or the slider is held; on the way in a line says how to leave and that the tap is there
+		static constexpr Uint32 FULL_TOAST_MS = 2500, FULL_NAV_MS = 4000;
+		bool pagesFullNavShown() const;
+		void drawPagesFullNav(const Player& p);
+		void grabPagesSlider(Rect track, int x, int y, Player& p);	// the page slider under a finger (the row's, the navigation's)
 		// X · More (pdf-more) and START · View (pdf-view, an overlay of its own)
 		void openPagesMore(Player& p);
 		struct PagesView;

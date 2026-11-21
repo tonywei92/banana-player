@@ -44,5 +44,7 @@ reader's one shortcut.** It replaces "SELECT · View" inside the readers only (l
 | B | Fullscreen: one screen; else close | Close (fullscreen is kept for the next chapter) | Book: back to scrolling; else close | The one difference left: a chapter that opens in Fullscreen must close in one press. |
 | Held sideways (Book) | n/a | START: the Book bar; SELECT: Fullscreen, upright | START: the Book bar; SELECT: back to scrolling | The bar's View / Text keys wear no cap there. |
 
-On the way into Fullscreen the bar says "SELECT or B: one screen" (Files) / "SELECT: one screen" (Manga). In the View
+On the way into Fullscreen a line says "SELECT or B: one screen" (Files) / "SELECT: one screen" (Manga) and "tap the
+middle: controls": that tap shows the navigation (`comic-full`: the slider, the steps, Pages, View, One screen), the
+same sheet in both readers. In the View
 sheet SELECT still goes Fullscreen (the sheet closes).

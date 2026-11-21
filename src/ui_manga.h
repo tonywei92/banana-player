@@ -391,7 +391,8 @@ namespace bp
 		// direction (so one push is one spread, not one a frame)
 		bool stickSent = false;
 		int stickDir = 0;
-		void drawMangaControls();
+		void drawMangaControls(const Player& p);
+		bool mangaFullNavOff(int id) const;	// a PageReader::FN_* key with nothing to do here (the first chapter, the last page)
 		void drawMangaToast();
 		// fullscreen's tap at an edge (lay::readerFullTap): the page turned, true; false in the middle (the bar's)
 		bool mangaFullTapTurn(int x, int y, Player& p);
@@ -409,15 +410,16 @@ namespace bp
 		bool mangaBookBarPointer(const Pointer& pt, int x, int y, Player& p);
 		void mangaBookBarAct(int which, Player& p);
 		void mangaCycleMode(Player& p);	// X while reading
-		// fullscreen's controls over the pages: a tap shows them 4 s (a drag or the 4 s hides them), and the finger that
-		// may still be a tap; the sheet's button under it (and its slider, which is the reading page's)
+		// fullscreen's navigation over the pages (lay::readerFullNav, PageReader::drawFullNav: the Files reader's too): a
+		// tap in the middle shows it 4 s (a drag, the 4 s or another such tap hides it), and the finger that may still
+		// be a tap; the sheet's key under it (mangaCtrlPressed: a PageReader::FN_* id) and its slider
 		Uint32 mangaCtrlUntil = 0;	// when they hide (0: hidden)
 		bool mangaTap = false;
 		int mangaTapX = 0, mangaTapY = 0;
 		int mangaTouchMoves = 0, mangaTouchFar = 0;	// this touch's move events, and the furthest (units) from its down (the log line)
 		Uint32 mangaTapAt = 0;
-		// the finger came down outside the bar while it showed: lifted as a tap, it puts the bar away and does
-		// nothing else; moved, it drags the page and hides the bar as any drag does
+		// the finger came down outside the sheet while it showed: lifted as a tap at an edge it turns the page, in the
+		// middle it puts the sheet away and does nothing else; moved, it drags the page and hides it as any drag does
 		bool mangaTapDismiss = false;
 		int mangaCtrlPressed = -1;
 		// double-tap on the page area: zoom to 200 % at the tapped point / back to the fit, as A does (but at the
@@ -460,13 +462,6 @@ namespace bp
 	// the page numbers, turned as the pages are, at the foot of the spread
 		static constexpr Uint32 MG_TAP_MS = 250, MG_CTRL_MS = 4000, MG_TOAST_MS = 2000;
 		static constexpr int MG_TAP_UNITS = 12;	// a finger that moves less (640x480 units) may still be a tap
-		Rect mangaSheetRect() const { return {0, 300, W, H - 300}; }
-		Rect mangaCtrlBtnRect(int i) const
-		{
-			// four to a row across the panel's 608: the long one ("Leave fullscreen") takes a little more
-			static const int X[4] = {16, 164, 312, 488}, WIDTH[4] = {140, 140, 168, 136};
-			return {X[i], 392, WIDTH[i], 44};
-		}
 		void mangaOpen(Player& p);		// openManga: the store loaded, the card scanned, the tabs reset
 		void mangaScan();				// each Manga folder read again (in the background) and its series put in the store
 		void mangaLocalSet(std::vector<LocalSeries> found);	// a listing in place: the cursors stay on their series

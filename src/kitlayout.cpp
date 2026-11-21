@@ -522,14 +522,25 @@ namespace bp
 			return l;
 		}
 
-		ReaderFullBar readerFullBar()
+		ReaderFullNav readerFullNav(bool chapters)
 		{
-			ReaderFullBar f;
-			// where the reader's row of keys was, so the thumb finds the way out where the way in is
-			f.bar = {MARGIN, READER_ROW_Y + SP8, PANEL_W - 2 * MARGIN, READER_ROW_H};
-			f.leave = {f.bar.x + f.bar.w - SP6 - 200, f.bar.y + SP6, 200, f.bar.h - 2 * SP6};
-			f.note = {f.bar.x + SP12, f.bar.y, f.leave.x - SP12 - (f.bar.x + SP12), f.bar.h};
-			return f;
+			ReaderFullNav n;
+			n.sheet = {0, FULL_NAV_Y, PANEL_W, PANEL_H - FULL_NAV_Y};
+			Box in{MARGIN, n.sheet.y + SP8, PANEL_W - 2 * MARGIN, 0};
+			n.page = {in.x + in.w - 150, in.y, 150, 24};
+			n.title = {in.x, in.y, n.page.x - SP12 - in.x, 24};
+			n.track = {in.x + SP8, n.title.y + n.title.h + SP12, in.w - 2 * SP8, 10};
+			n.sliderHit = {in.x, n.track.y - SP8, in.w, n.track.h + 2 * SP8};
+			Box steps{in.x, n.sliderHit.y + n.sliderHit.h + SP6, in.w, 52};
+			for (int i = 0; i < FULL_NAV_STEPS; i++) n.step[i] = chapters ? cell(steps, FULL_NAV_STEPS, GAP, i) : Box{0, 0, 0, 0};
+			if (!chapters)
+			{
+				n.step[1] = cell(steps, 2, GAP, 0);
+				n.step[2] = cell(steps, 2, GAP, 1);
+			}
+			// the last row sits where the reader's row of keys is, so the thumb finds the way out where the way in was
+			for (int i = 0; i < FULL_NAV_ROW; i++) n.row[i] = cell({in.x, steps.y + steps.h + GAP, in.w, 56}, FULL_NAV_ROW, GAP, i);
+			return n;
 		}
 
 		int readerFullTap(int x, int y, bool sideways)

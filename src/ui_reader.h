@@ -108,9 +108,27 @@ namespace bp
 		Uint32 mfTagUntil = 0;
 		int mfLastPage = -1;
 		// the pages, the page tag, Try again; then the Manga reader's controls and first-time toast while they show
-		void drawMangaFull();
+		void drawMangaFull(const Player& p);
 		void mfFree();
 		int readFilterNow = 0, readDimNow = 0;	// (Ui::draw: the reading filter and Extra dim as the pages are drawn)
+		// Fullscreen's navigation (lay::readerFullNav), the Files reader's and the Manga reader's alike: a see-through
+		// sheet over the pages with the name, "Page N of M", the page slider, the steps, Pages, View and One screen.
+		// Each reader says what its keys do and keeps its own timer; the boxes drawn are the ones its touches test
+		enum { FN_CH_BACK, FN_PG_BACK, FN_PG_ON, FN_CH_ON, FN_PAGES, FN_VIEW, FN_LEAVE, FN_KEYS };
+		struct FullNav
+		{
+			std::string title;
+			bool chapters = false;	// a chapter of a series (the outer two steps) or a file alone
+			int slider = 0;	// its slide id (SL_DOC, SL_MANGA): held, the page under the finger is the one named
+			bool off[FN_KEYS] = {};
+			int pressed = -1;
+			bool caps = true;	// Button hotkeys
+		};
+		static Rect fullNavKey(int id, bool chapters);
+		static int fullNavKeyAt(int x, int y, bool chapters);	// -1: none there
+		void drawFullNav(const FullNav& n);
+		// a line in the panel's middle for a moment (how to leave fullscreen, how Book is held)
+		void drawFullToast(const std::string& text);
 
 		// ---- the pages grid (Y in the reader): a sheet over the reader (docs/redesign: pdf-pages) ----
 		// the chapter's thumbnails six to a row (lay::pagesSheet), the D-pad moves the cursor, L2 / R2 a screenful, A

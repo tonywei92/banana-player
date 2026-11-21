@@ -526,6 +526,12 @@ namespace bp
 			return {row.x + row.w - SP8 - keyW, row.y + (row.h - h) / 2, keyW, h};
 		}
 
+		Box rowProgress(Box row)
+		{
+			int x = row.x + SP12 + 44 + SP12;
+			return {x, row.y + row.h - 4 - ROW_BAR_H, row.x + row.w - SP12 - x, ROW_BAR_H};
+		}
+
 		std::vector<Box> keyRow(Box area, const std::vector<int>& widths, int gap)
 		{
 			std::vector<Box> out;

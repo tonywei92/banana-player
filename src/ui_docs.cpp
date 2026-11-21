@@ -1134,11 +1134,15 @@ namespace bp
 			docVel = 0;
 			docTouchX = pt.x;
 			docTouchY = pt.y;
-			// Fullscreen's bar, while it is up: its key takes the finger (the rest of the panel is the page)
-			if (full && pagesFullBarShown() && Rect(lay::readerFullBar().bar).hit(x, y))
+			// Fullscreen's navigation, while it is up: the sheet takes the finger (the rest of the panel is the page),
+			// and a touch on it keeps it
+			if (full && pagesFullNavShown() && Rect(lay::readerFullNav(false).sheet).hit(x, y))
 			{
-				if (pagesKeyRect(DP_KEY_FULL).hit(x, y)) docPressed = DP_KEY_FULL;
-				docFullTagUntil = now + FULL_BAR_TAP_MS;	// (a touch on it keeps it)
+				docFullTagUntil = now + FULL_NAV_MS;
+				if (Rect(lay::readerFullNav(false).sliderHit).hit(x, y)) grabPagesSlider(lay::readerFullNav(false).track, x, y, p);
+				else
+					for (int id = 0; id < DP_KEYS; id++)
+						if (pagesKeyRect(id).hit(x, y) && !pagesKeyOff(id)) docPressed = id;
 				return false;
 			}
 			if (full || (!text && !single && pl.surface.hit(x, y)))
@@ -1165,12 +1169,7 @@ namespace bp
 			}
 			if (!text && pl.sliderHit.hit(x, y))
 			{
-				if (ui.pageReader->readerStatus.pages > 1)
-				{
-					ui.pageReader->mangaSliderPage = -1;
-					ui.slideGrab(SL_DOC, 0, {pl.track, {0, (double)(ui.pageReader->readerStatus.pages - 1), 1}, false, SCRUB_MS, (double)ui.pageReader->readerStatus.page}, x, y, p,
-						[this](double v, bool, Player&) { ui.pageReader->mangaSeek((int)v); });
-				}
+				grabPagesSlider(pl.track, x, y, p);
 				return false;
 			}
 			if (single && docPanThumb().hit(x, y) && docPan.page >= 0)
@@ -1238,14 +1237,15 @@ namespace bp
 		{
 			docTouch = false;
 			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Release, 0, (int64_t)now});
-			// Fullscreen: a tap in the panel's middle shows the bar (the way out; with it up, hides it again), one at
-			// the top or the bottom goes a screenful back or on, as LEFT / RIGHT
+			// Fullscreen: a tap in the panel's middle shows the navigation (with it up, hides it again), one at the
+			// top or the bottom goes a screenful back or on, as LEFT / RIGHT
 			if (full && !docMoved)
 			{
 				int edge = lay::readerFullTap(x, y, false);
 				if (edge) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Step, (double)edge, (int64_t)now});
-				else docFullTagUntil = pagesFullBarShown() ? 0 : now + FULL_BAR_TAP_MS;
-				fprintf(stderr, "docs: fullscreen tap at %d,%d -> %s\n", x, y, edge < 0 ? "back" : edge > 0 ? "on" : pagesFullBarShown() ? "the bar" : "the bar away");
+				else docFullTagUntil = pagesFullNavShown() ? 0 : now + FULL_NAV_MS;
+				if (!edge) docFullToastUntil = 0;
+				fprintf(stderr, "docs: fullscreen tap at %d,%d -> %s\n", x, y, edge < 0 ? "back" : edge > 0 ? "on" : pagesFullNavShown() ? "the navigation" : "the navigation away");
 			}
 			return false;
 		}
@@ -1612,8 +1612,10 @@ namespace bp
 				ui.pageReader->drawMangaPages(p);
 				return;
 			}
-			ui.pageReader->drawMangaFull();
-			if (pagesFullBarShown()) drawPagesFullBar(p);
+			ui.pageReader->drawMangaFull(p);
+			if (pagesFullNavShown()) drawPagesFullNav(p);
+			else if (SDL_GetTicks() < docFullToastUntil)
+				ui.pageReader->drawFullToast("Fullscreen \xC2\xB7 SELECT or B: one screen \xC2\xB7 tap the middle: controls");
 			return;
 		}
 		// the header: the document's name at 18 units, its line under it (the page, the zoom, the fit), More at the right
@@ -1667,6 +1669,17 @@ namespace bp
 
 	Ui::Rect Ui::Docs::pagesKeyRect(int id) const
 	{
+		// in Fullscreen the keys are the navigation's (what it has of them), the same ids doing the same things
+		if (ui.pageReader->readerStatus.fullscreen)
+			switch (id)
+			{
+			case DP_KEY_BACK: return PageReader::fullNavKey(PageReader::FN_PG_BACK, false);
+			case DP_KEY_ON: return PageReader::fullNavKey(PageReader::FN_PG_ON, false);
+			case DP_KEY_PAGES: return PageReader::fullNavKey(PageReader::FN_PAGES, false);
+			case DP_KEY_VIEW: return PageReader::fullNavKey(PageReader::FN_VIEW, false);
+			case DP_KEY_FULL: return PageReader::fullNavKey(PageReader::FN_LEAVE, false);
+			default: return {0, 0, 0, 0};
+			}
 		lay::ReaderPage l = pagesLayout();
 		switch (id)
 		{
@@ -1674,8 +1687,7 @@ namespace bp
 		case DP_KEY_FIT: return l.fit;
 		case DP_KEY_PAGES: return l.row[0];
 		case DP_KEY_VIEW: return l.row[1];
-		// (in Fullscreen the row isn't there: the key is the bar's)
-		case DP_KEY_FULL: return ui.pageReader->readerStatus.fullscreen ? Rect(lay::readerFullBar().leave) : Rect(l.row[2]);
+		case DP_KEY_FULL: return l.row[2];
 		case DP_KEY_LIGHT: return l.row[3];
 		default: return {0, 0, 0, 0};
 		}
@@ -1854,9 +1866,11 @@ namespace bp
 		{
 			docFullFrom = r.readerStatus.mode == MANGA_STRIP ? 1 : 0;
 			r.readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, 1, now, (double)p.settings.mangaHinge});
-			docFullTagUntil = SDL_GetTicks() + FULL_BAR_IN_MS;
+			// (the panel is all page now: the line says the way back and where the controls are)
+			docFullTagUntil = 0;
+			docFullToastUntil = SDL_GetTicks() + FULL_TOAST_MS;
 		}
-		else docFullTagUntil = 0;
+		else docFullTagUntil = docFullToastUntil = 0;
 	}
 
 	void Ui::Docs::togglePagesFull(Player& p)
@@ -1867,22 +1881,34 @@ namespace bp
 		setPagesLayout(st.fullscreen ? docFullFrom : 2, p);
 	}
 
-	bool Ui::Docs::pagesFullBarShown() const { return SDL_GetTicks() < docFullTagUntil; }
+	bool Ui::Docs::pagesFullNavShown() const { return SDL_GetTicks() < docFullTagUntil || ui.slideHeld(SL_DOC); }
 
-	void Ui::Docs::drawPagesFullBar(const Player& p)
+	void Ui::Docs::grabPagesSlider(Rect track, int x, int y, Player& p)
 	{
-		// how to leave, over the pages: the words for the buttons, the key for the finger
-		lay::ReaderFullBar f = lay::readerFullBar();
-		Kit& k = *ui.kit;
-		k.flat(f.bar, SURFACE, R_BUTTON, Kit::edgeOf(SURFACE));
-		ui.drawTextMid("Fullscreen", F_P16, TEXT, f.note.x, f.note.y + 21, f.note.w);
-		ui.drawTextMid("SELECT or B: one screen \xC2\xB7 tap top / bottom: scroll", F_I12, DIM, f.note.x, f.note.y + 43, f.note.w);
-		Kit::Key leave;
-		leave.glyph = &G_FULL;
-		leave.label = "One screen";
-		leave.key = p.settings.buttonHotkeys ? "SELECT" : "";
-		leave.pressed = docPressed == DP_KEY_FULL;
-		k.key(pagesKeyRect(DP_KEY_FULL), leave);
+		// the pages (decoded as they come) at the scrub's pace, the page it's let go on always; in Fullscreen the
+		// navigation stays while it is held and its time again from the last move
+		if (ui.pageReader->readerStatus.pages <= 1) return;
+		ui.pageReader->mangaSliderPage = -1;
+		ui.slideGrab(SL_DOC, 0, {track, {0, (double)(ui.pageReader->readerStatus.pages - 1), 1}, false, SCRUB_MS, (double)ui.pageReader->readerStatus.page}, x, y, p,
+			[this](double v, bool, Player&) {
+				if (ui.pageReader->readerStatus.fullscreen) docFullTagUntil = SDL_GetTicks() + FULL_NAV_MS;
+				ui.pageReader->mangaSeek((int)v);
+			});
+	}
+
+	void Ui::Docs::drawPagesFullNav(const Player& p)
+	{
+		PageReader::FullNav n;
+		n.title = ui.pageReader->mangaReadChapterTitle.empty() ? fileName(docPath) : ui.pageReader->mangaReadChapterTitle;
+		n.slider = SL_DOC;
+		n.off[PageReader::FN_PG_BACK] = pagesKeyOff(DP_KEY_BACK);
+		n.off[PageReader::FN_PG_ON] = pagesKeyOff(DP_KEY_ON);
+		n.off[PageReader::FN_PAGES] = pagesKeyOff(DP_KEY_PAGES);
+		static const int IDS[PageReader::FN_KEYS] = {-1, DP_KEY_BACK, DP_KEY_ON, -1, DP_KEY_PAGES, DP_KEY_VIEW, DP_KEY_FULL};
+		for (int id = 0; id < PageReader::FN_KEYS; id++)
+			if (IDS[id] >= 0 && IDS[id] == docPressed) n.pressed = id;
+		n.caps = p.settings.buttonHotkeys;
+		ui.pageReader->drawFullNav(n);
 	}
 
 	void Ui::Docs::openPagesMore(Player&)
@@ -2074,7 +2100,7 @@ namespace bp
 			(int)textStatus.atEnd, (int)ui.pageReader->readerStatus.open, (int)ui.pageReader->readerStatus.loading, ui.pageReader->readerStatus.page, ui.pageReader->readerStatus.pages,
 			ui.pageReader->readerStatus.mode, ui.pageReader->readerStatus.zoomPct, (int)ui.pageReader->readerStatus.fullscreen, (int)ui.pageReader->readerStatus.failedHere, (int)ui.pageReader->mangaPages,
 			docPan.page, docPan.x0, docPan.y0, docPan.x1, docPan.y1, (const void*)docPan.rgba.get(),
-			SDL_GetTicks() < docFullTagUntil ? 1u : 0u);
+			(pagesFullNavShown() ? 1u : 0u) + (SDL_GetTicks() < docFullToastUntil ? 2u : 0u));
 		std::string s = b;
 		s += findSignature();
 		s += "|bk" + std::to_string(textStatus.book) + " " + std::to_string(textStatus.bottomGen) + (SDL_GetTicks() < docBookToastUntil ? "T" : "");
