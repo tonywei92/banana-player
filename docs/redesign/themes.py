@@ -56,7 +56,7 @@ T = {
                 TR='CDD4E3', RU='C3CBDB', TX='141B33', DM='5A5B6D', DO='464755', AC='1A56C9', OA='FFFFFF', DG='B81F28', RA='DFE4EE', EM=55, PT=22, top='blue', page='light',
                 KEY='1C3C8E', OK_='FFFFFF', KF='FFF867', HB='172E6B', OH='FFFFFF', PRI='D3222B', OP='FFFFFF', noclean=1),
  'light': dict(name='Light', what='Warm paper, dark ink, dark amber: for sunlight', BG='F7F4EC', SF='FFFDF8', BT='E6E0D2', PR='D0C9B8', TR='DED8C9', RU='D5CEBE', TX='1B1A20',
-               DM='625E56', DO='55514A', AC='7A5200', OA='FFFDF8', DG='A3261D', RA='ECE7DB', EM=55, PT=22, top='yellow', page='light'),
+               DM='625E56', DO='55514A', AC='3F4652', OA='FFFDF8', DG='A3261D', RA='ECE7DB', EM=55, PT=22, top='yellow', page='light'),
  'contrast': dict(name='High contrast', what='Black, white, bright yellow; text at 7 : 1 or more', BG='000000', SF='0A0A0A', BT='1E1E1E', PR='3A3A3A', TR='2B2B2B', RU='5E5E5E', TX='FFFFFF',
                   DM='C6C6C6', DO='D8D8D8', AC='FFE14D', OA='000000', DG='FF8A80', EM=50, page='black'),
 }

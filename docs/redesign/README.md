@@ -19,6 +19,11 @@ The proposed redesign of the handheld UI, kept for when it gets built.
 - `coverage.md`: the audit of what the preview covers against the app's features.
 - `lid-and-incognito.md`: incognito and the lid, incognito and the Web dashboard, the keys with the lid shut
   (two options, one recommended).
+- `sleep-timer.md`: the sleep timer (the Sleep key on a song, the last minute's warning with 15 more min / Timer off,
+  what happens at its end, its two settings, the Web dashboard's side); drawn as `sleep-set`, `sleep-on`, `sleep-warn`,
+  `sleep-done`, `phone-sleep`, `phone-sleep-warn`.
+- `lyrics.md`: lyrics (later work): where they come from, the top screen, the sheet and its states, the timing nudge,
+  saving, the dashboard's page; drawn as `lyrics`, `lyrics-*`, `phone-lyrics`.
 - `web-books.md`: Books on the Web dashboard: the shelf, reading in the browser (text, PDF, comics), the place shared with the
   handheld and its conflict cases, keys, copy, and what the server adds vs the page. Its screens are the group
   “Web dashboard: Books” (a `desk` drawing is a page at a computer's width, 1280).
