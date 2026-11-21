@@ -142,7 +142,7 @@ namespace bp
 		// the handheld's buttons while a video plays; off: only touch acts there (no press by accident in a pocket
 		// or a hand), the menus' and the browser's buttons still work
 		bool buttonHotkeys = true;
-		int musicShow = SHOW_ART, visualizer = VIS_PEAKS_BANANA, loop = LOOP_OFF;
+		int musicShow = SHOW_BOTH, visualizer = VIS_RIBBON, loop = LOOP_OFF;	// (a new player: the art with Ribbon under it)
 		// Match album art (Settings › Music & sound, and the foot of the song's Display sheet; docs/redesign
 		// "Match album art"): a song's art, blurred and muted, is the ground behind the player and the top
 		// screen — one hue from the art tinting the theme's own charcoal, never a colour of the UI. The theme's

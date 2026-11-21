@@ -8062,8 +8062,8 @@ static void testSettings()
 	dns.mangaSecureDns = true;
 	CHECK_EQ(parseSettings(serializeSettings(dns)).mangaSecureDns, true);
 	CHECK_EQ(parseSettings("manga-secure-dns = maybe\n").mangaSecureDns, false);
-	CHECK_EQ(d.musicShow, (int)SHOW_ART);
-	CHECK_EQ(d.visualizer, (int)VIS_PEAKS_BANANA);
+	CHECK_EQ(d.musicShow, (int)SHOW_BOTH);
+	CHECK_EQ(d.visualizer, (int)VIS_RIBBON);
 	CHECK_EQ(d.loop, (int)LOOP_OFF);
 	Settings m;
 	m.musicShow = SHOW_BOTH;
@@ -8161,7 +8161,7 @@ static void testSettings()
 		CHECK_EQ(parseSettings(std::string("audio-display = ") + id + "\n").visualizer, (int)VIS_PEAKS_BANANA);
 		CHECK_EQ(serializeSettings(parseSettings(std::string("visualizer = ") + id + "\n")).find("visualizer = peaks-yellow\n") != std::string::npos, true);
 	}
-	CHECK_EQ(Settings().visualizer, (int)VIS_PEAKS_BANANA);
+	CHECK_EQ(Settings().visualizer, (int)VIS_RIBBON);
 	// the visualizers' frame rate: 45 by default, 30/45/60 kept, anything else ignored, and it round-trips
 	CHECK_EQ(Settings().vizFps, 45);
 	CHECK_EQ(parseSettings("visualizer-fps = 60\n").vizFps, 60);

@@ -879,15 +879,15 @@ On a video, the **Picture** chip (or **X** / **SELECT** › **Picture**): **A** 
 
 Songs show their title, artist and album on the top screen. While a song plays:
 
-- **Display** (**SELECT** or **X** opens More, then its **Display** chip; the player's **Display** chip opens it too). One page: under "Top screen shows", four tiles in a row, one always in use: **Album art only** (default),
-  **Art + visualizer** (the art above the visualizer along the foot), **Visualizer only**, or **None** (just the title:
+- **Display** (**SELECT** or **X** opens More, then its **Display** chip; the player's **Display** chip opens it too). One page: under "Top screen shows", four tiles in a row, one always in use: **Album art only**,
+  **Art + visualizer** (default: the art above the visualizer along the foot), **Visualizer only**, or **None** (just the title:
   the lightest on the battery). Under them the line "Visualizer · <style>" (with Album art only or None: "<style> · not
   shown now: the top screen shows <mode>"; the style can still be set, and is kept), then the fifteen styles in a 5 × 3
   grid of tiles (the same fifteen, in the same order, on Settings' Visualizer style row), and at the sheet's foot the
   **Match album art** switch (the same row as Settings › Music & sound's). The tile in use is filled in
-  the theme's accent; the cursor is an accent edge. The styles: **Peaks** (default: 64 bars in the theme's accent,
+  the theme's accent; the cursor is an accent edge. The styles: **Peaks** (64 bars in the theme's accent,
   bass on the left, each with a cap in the theme's text colour that stays at the bar's highest point and slowly falls
-  back, over a faint grid), **Ribbon** (the spectrum as one smooth glowing line, bass to treble, a soft fade beneath
+  back, over a faint grid), **Ribbon** (default: the spectrum as one smooth glowing line, bass to treble, a soft fade beneath
   it and a slower line behind showing where the song has been sitting), **Mirror bars** (the spectrum's bars growing
   up and down from a faint centre line), **Faders** (a mixing desk from above: sixteen thin rails across the screen,
   a knob riding each one at its band's level, bass at the left, with a small tick holding each band's recent peak
