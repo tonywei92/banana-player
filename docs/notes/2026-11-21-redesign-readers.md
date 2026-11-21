@@ -35,3 +35,39 @@ Build, `core-test` (`testKitLayoutReaders`: both reader layouts and the Pages sh
 9-page PDF (ImageMagick from ffmpeg `testsrc` frames) and CBZ: the single page, View, Pages, the comic in Vertical
 scroll, Fullscreen on and off from View, More opened and closed. Not driven: the waiting card (needs a source), the
 end lines, the grid inside the Manga reader, the handheld's panel.
+
+## Fullscreen in one step, the stick across, Hinge gap in View (2026-11-21, later)
+
+Owner: "switching to fullscreen should be easy".
+
+- **Files' reader:** a fourth key in the row, **Fullscreen**, and **L3** (the one button the page reader had free);
+  `Docs::togglePagesFull` goes in from either layout and back to the one it came from (`docFullFrom`), **B** the same.
+  On the way in `lay::readerFullBar()` shows 3 s (what leaves, a One screen key: `pagesKeyRect(DP_KEY_FULL)` is that
+  key in Fullscreen and the row's otherwise, so draw and touch agree).
+- **Taps in Fullscreen** (`lay::readerFullTap`): the middle raises the bar, the edges turn (a strip's top and bottom
+  28%; a paged comic's sides as LEFT / RIGHT, through `mangaKey`, so Swap Left/Right and the chapter's end hold). The
+  Manga reader's bar still goes away on a tap outside it. An edge tap is never a double-tap's first.
+- **The Manga reader** already had SELECT and its Fullscreen key; its "SELECT leaves" line now shows each time it is
+  turned on by hand (it was once ever). L3 stays Turn there, so the two readers differ on the button (SELECT / L3)
+  until the Manga reader moves to the kit and View takes SELECT: the spec's `comic-full` note says what to keep.
+- **The stick sideways:** `Ui::stickAxis` dropped LEFTX before the readers (it reached only the photo viewer), and
+  the Strip had no pan for it. Now `Strip::panBy` / `canPan` and `MangaReader::stickSpeedXNow` cover a zoomed strip
+  (one screen and Fullscreen) as well as a paged page. `--press` has `stick:X:Y`; the log line "reader: stick scroll
+  off (…), across N px" pins it on the handheld.
+- **Hinge gap** is a row of Files' View sheet (the Manga setting `manga-hinge`, live through
+  `SettingsPage::changeSetting`), active in Fullscreen. In the Manga reader it is in the Reading menu (START).
+
+Checked: build, `core-test`, `--press` on a generated 6-page CBZ: L3 in and out (strip and Single page), the stick
+across at 110% in the strip (0 → 128 px), in Fullscreen, and in Single page at 500%; taps top / bottom / middle and
+the One screen key; the Hinge row moving the view (72 → 80 → 88 px of the Mac's 960). Not driven: the Manga reader's
+edge taps and toast (needs a library), a real stick, the handheld's panel and touch.
+
+## The Pages grid's missing thumbnails (2026-11-21, later)
+
+Not the smooth list (its key holds each thumb's presence, `mpThumb` counts as a use, 60 kept for 18 in view): the
+reader only ever made a thumbnail of a page it had decoded for the view, so a 40-page comic opened at page 1 had three.
+Now the grid says which pages it shows (`ReaderCmd::Thumbs`, the rows in view and one each side, `PageReader::mpAsk`)
+and `MangaReader::want()` queues those with no thumbnail as jobs of their own (`Job::thumb`, 192 wide, after the
+view's pages; `thumbBusy` / `thumbFailed` apart from the view's sets, so they never count in the decoded budget or
+become textures). Checked on a generated 40-page CBZ: 18 of 18 in view, and after a drag the next rows filled.
+Left: a source's page not yet on the card is not fetched for its thumbnail; a turned page's grid-only thumb is unturned.

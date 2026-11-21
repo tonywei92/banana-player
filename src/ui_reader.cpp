@@ -215,6 +215,15 @@ namespace bp
 		mangaPages = false;
 		mangaPagesTouch = false;
 		mangaPagesPressed = -1;
+		mpAsk(-1, -1);
+	}
+
+	void Ui::PageReader::mpAsk(int from, int to)
+	{
+		if (from == mpAskFrom && to == mpAskTo) return;
+		mpAskFrom = from;
+		mpAskTo = to;
+		readerCmds.push_back({ReaderCmd::Thumbs, (double)from, (int64_t)SDL_GetTicks(), (double)to});
 	}
 
 	void Ui::PageReader::mpFree()
@@ -359,7 +368,7 @@ namespace bp
 		int pages = readerStatus.pages;
 		if (pages <= 0) { mangaPagesClose(const_cast<Player&>(p)); return; }
 		// the chapter changed: the old textures go
-		if (readerThumbs.gen != mpGen) { mpFree(); mpGen = readerThumbs.gen; }
+		if (readerThumbs.gen != mpGen) { mpFree(); mpGen = readerThumbs.gen; mpAskFrom = mpAskTo = -1; }
 		// the sheet over the reader: its title with the count, where the reader was at its right
 		Kit& k = *ui.kit;
 		lay::PagesSheet ps = lay::pagesSheet();
@@ -390,6 +399,14 @@ namespace bp
 			}
 		}
 		pagesMoving = moving;
+		{
+			// the reader makes thumbnails only of pages it decoded: the rows in view, and one each side, are asked
+			// for here, so a page the view was never near has its picture too
+			double off = pagesList.sc.offset();
+			int first = std::max(0, (int)std::floor(off / MPG_ROW_H) - 1);
+			int last = std::min(rows - 1, (int)std::floor((off + view.h) / MPG_ROW_H) + 1);
+			mpAsk(first * MPG_COLS, std::min(pages - 1, (last + 1) * MPG_COLS - 1));
+		}
 		SmoothList::Spec spec;
 		spec.view = view;
 		spec.rowH = MPG_ROW_H;

@@ -3947,6 +3947,21 @@ static void testPaged()
 		fit.setFit(Paged::FitWidth);
 		CHECK_EQ(fit.canPanH(), false);
 		CHECK_EQ(fit.panBy(0, 50), false);
+		// the Strip's column the same once zoomed wider than the view (its fit has nothing across)
+		Strip st;
+		st.setView(400, 600);
+		st.setPages(3, 1.5);
+		CHECK_EQ(st.canPan(), false);
+		CHECK_EQ(st.panBy(50), false);
+		st.setZoom(2.0, 0, 0);	// 800 wide: 400 over
+		CHECK_EQ(st.canPan(), true);
+		CHECK_EQ(st.panBy(80), true);
+		CHECK_EQ(near(st.pan(), 80), true);
+		CHECK_EQ(st.panBy(1000), true);
+		CHECK_EQ(near(st.pan(), 400), true);
+		CHECK_EQ(st.panBy(10), false);
+		CHECK_EQ(st.panBy(-1000), true);
+		CHECK_EQ(st.pan(), 0.0);
 	}
 	// a tall page at fit Width scrolls inside before it turns, and Right opens the next page at the top
 	Paged t;
@@ -11332,7 +11347,7 @@ static void testKitLayoutReaders()
 	for (bool strip : {false, true})
 	{
 		ReaderPage l = readerPage(strip);
-		std::vector<Box> all = {l.from, l.track, l.to, l.row[0], l.row[1], l.row[2]};
+		std::vector<Box> all = {l.from, l.track, l.to, l.row[0], l.row[1], l.row[2], l.row[3]};
 		if (strip) all.push_back(l.surface);
 		else
 		{
@@ -11350,10 +11365,35 @@ static void testKitLayoutReaders()
 			for (size_t j = i + 1; j < all.size(); j++) CHECK(!overlaps(all[i], all[j]));
 		}
 		CHECK_EQ(l.row[0].x, MARGIN);
-		CHECK_EQ(l.row[2].x + l.row[2].w, PANEL_W - MARGIN);
+		CHECK_EQ(l.row[3].x + l.row[3].w, PANEL_W - MARGIN);
+		CHECK_EQ(l.row[1].w, l.row[2].w);
 		CHECK_EQ(l.to.x + l.to.w, PANEL_W - MARGIN);
 		CHECK(l.sliderHit.hit(l.track.x + 5, l.track.y + 5) && !overlaps(l.sliderHit, l.row[0]));
 		CHECK(strip ? !overlaps(l.sliderHit, l.surface) : !overlaps(l.sliderHit, l.pan));
+	}
+
+	// Fullscreen's bar: on the panel, the leave key and the note inside it side by side, the key where the reader's
+	// Fullscreen key is (the same thumb leaves as entered)
+	{
+		ReaderFullBar f = readerFullBar();
+		ReaderPage l = readerPage(true);
+		CHECK(insidePanel(f.bar) && f.bar.x == MARGIN && f.bar.x + f.bar.w == PANEL_W - MARGIN);
+		for (const Box* b : {&f.note, &f.leave})
+			CHECK(b->w > 0 && b->x >= f.bar.x && b->x + b->w <= f.bar.x + f.bar.w && b->y >= f.bar.y && b->y + b->h <= f.bar.y + f.bar.h);
+		CHECK(!overlaps(f.note, f.leave) && f.note.x < f.leave.x);
+		CHECK(f.leave.h >= 44 && f.leave.w >= 160);
+		CHECK(overlaps(f.leave, l.row[2]) || overlaps(f.leave, l.row[3]));
+		// its taps: the panel's middle is the bar's, the edges turn (top / bottom down a strip, the sides of a page)
+		CHECK_EQ(readerFullTap(PANEL_W / 2, PANEL_H / 2, false), 0);
+		CHECK_EQ(readerFullTap(PANEL_W / 2, PANEL_H / 2, true), 0);
+		CHECK_EQ(readerFullTap(PANEL_W / 2, 20, false), -1);
+		CHECK_EQ(readerFullTap(PANEL_W / 2, PANEL_H - 20, false), 1);
+		CHECK_EQ(readerFullTap(20, PANEL_H / 2, false), 0);	// (a strip's sides are its middle too)
+		CHECK_EQ(readerFullTap(20, PANEL_H / 2, true), -1);
+		CHECK_EQ(readerFullTap(PANEL_W - 20, PANEL_H / 2, true), 1);
+		CHECK_EQ(readerFullTap(PANEL_W / 2, 20, true), 0);
+		// the middle is the larger part either way
+		CHECK(PANEL_H * FULL_TAP_EDGE_PCT / 100 * 2 < PANEL_H / 2 + PANEL_H / 8);
 	}
 
 	// the Pages sheet: three rows of six a screenful, the cells spread from the view's left to its right, none over

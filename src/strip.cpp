@@ -342,6 +342,15 @@ namespace bp
 		return y < max ? y : max;
 	}
 
+	bool Strip::panBy(double dx)
+	{
+		double to = clampPan(panX + dx);
+		if (to == panX) return false;
+		stop();
+		panX = to;
+		return true;
+	}
+
 	double Strip::maxPan() const
 	{
 		double m = pageWidth() - viewW;

@@ -89,7 +89,8 @@ namespace bp
 				if (quit) return;
 				j = jobs.front();
 				jobs.pop_front();
-				busySet.insert(bandKey(j.index, j.band));
+				if (j.thumb) thumbBusy.insert(j.index);
+				else busySet.insert(bandKey(j.index, j.band));
 				g = gen;
 			}
 			Uint32 t0 = SDL_GetTicks();
@@ -135,9 +136,10 @@ namespace bp
 			Uint32 took = SDL_GetTicks() - t0;
 			{
 				std::lock_guard<std::mutex> l(m);
-				busySet.erase(bandKey(j.index, j.band));
+				if (j.thumb) thumbBusy.erase(j.index);
+				else busySet.erase(bandKey(j.index, j.band));
 				// a page of a chapter closed meanwhile is dropped here: nothing would take it until the next open
-				if (g == gen) done.push_back({j.index, std::move(img), took, g, j.width, band});
+				if (g == gen) done.push_back({j.index, std::move(img), took, g, j.width, band, j.thumb});
 			}
 			SDL_Event e{};
 			e.type = wake;
@@ -262,6 +264,8 @@ namespace bp
 		kept.clear();
 		orig.clear();
 		thumbs.clear();
+		thumbFailed.clear();
+		thumbFrom = thumbTo = -1;
 		decodedW.clear();
 		bands.clear();
 		noBand.clear();
@@ -477,6 +481,16 @@ namespace bp
 				if (std::any_of(done.begin(), done.end(), [&](const Done& d) { return d.index == i && d.band == b; })) continue;
 				jobs.push_back({i, files[i], width, b, bl->second.top(b), bl->second.rows(b), true});
 			}
+		}
+		// the pages grid's thumbnails, after the reader's own pages: the pages it shows that have none (a page the
+		// view was never near), decoded small. A page about to be decoded for the view makes its own
+		for (int i = std::max(0, thumbFrom); thumbFrom >= 0 && i <= thumbTo && i < (int)files.size(); i++)
+		{
+			if (thumbs.count(i) || thumbFailed.count(i) || thumbBusy.count(i) || busySet.count(i)) continue;
+			if (remote() && !onCard.count(i)) continue;	// (not fetched for a thumbnail: its place stays a number)
+			if (std::any_of(jobs.begin(), jobs.end(), [&](const Job& j) { return j.index == i; })) continue;
+			if (std::any_of(done.begin(), done.end(), [&](const Done& d) { return d.index == i && d.thumb; })) continue;
+			jobs.push_back({i, files[i], THUMB_DECODE_W, -1, 0, 0, false, true});
 		}
 		cv.notify_all();
 	}
@@ -731,14 +745,29 @@ namespace bp
 
 	double MangaReader::stickSpeedXNow() const
 	{
-		// only a paged page wider than the view pans sideways (the Strip's column fits its width; Book turns spreads)
-		if (!opened || stickValueX == 0 || bookHold || readMode == MANGA_STRIP || !paged.canPanH()) return 0;
+		// what is wider than the view pans sideways: a paged page, or the Strip's column zoomed in (on one screen and
+		// in fullscreen); Book turns spreads
+		if (!opened || stickValueX == 0 || bookHold) return 0;
+		if (readMode == MANGA_STRIP ? !strip.canPan() : !paged.canPanH()) return 0;
 		return stickScrollSpeed(stickValueX, viewW);
 	}
 
 	void MangaReader::command(int kind, double v, int64_t ms, double v2, double v3)
 	{
 		if (!opened) return;
+		if (kind == Thumbs)
+		{
+			int from = v < 0 ? -1 : (int)v, to = v < 0 ? -1 : (int)v2;
+			if (from == thumbFrom && to == thumbTo) return;
+			thumbFrom = from;
+			thumbTo = to;
+			if (from >= 0)
+			{
+				fprintf(stderr, "reader: thumbnails asked for pages %d-%d (%d made so far)\n", from + 1, to + 1, (int)thumbs.size());
+				want();
+			}
+			return;
+		}
 		if (kind == Stick)
 		{
 			// the left stick is read as a value; frame() turns it into pixels, so the speed is the same at any rate
@@ -754,14 +783,16 @@ namespace bp
 			{
 				stickAt = ms;
 				// one line each way, with the value, so a handheld's log reads the stick's range and dead zone
-				fprintf(stderr, "reader: stick scroll on (value %d, %.0f px/s) in %s\n", stickValue, stickSpeedNow(),
-					modeName());
+				fprintf(stderr, "reader: stick scroll on (value %d, %.0f px/s; across %d, %.0f px/s) in %s\n", stickValue,
+					stickSpeedNow(), stickValueX, stickSpeedXNow(), modeName());
 				redrawSoon(1);
 			}
 			else if (!on && was)
 			{
 				stickAt = 0;
-				fprintf(stderr, "reader: stick scroll off (value %d)\n", stickValue);
+				// (where it was left across: a handheld's log shows whether LEFTX panned a zoomed page)
+				fprintf(stderr, "reader: stick scroll off (value %d), across %.0f px in %s at %d%%\n", stickValue,
+					readMode == MANGA_STRIP ? strip.pan() : paged.hscroll(), modeName(), zoomPct());
 			}
 			return;
 		}
@@ -1011,6 +1042,14 @@ namespace bp
 				Done d = std::move(done.front());
 				done.pop_front();
 				if (d.gen != gen) continue;
+				if (d.thumb)
+				{
+					// the grid's: a thumbnail and nothing else (one the view's decode made meanwhile is the better)
+					if (!d.img.ok()) thumbFailed.insert(d.index);
+					else if (!thumbs.count(d.index)) makeThumb(d.index, d.img.rgba, d.img.w, d.img.h);
+					any = true;
+					continue;
+				}
 				int key = bandKey(d.index, d.band);
 				bool known = bands.count(d.index) > 0;
 				// (a band that comes back after the Strip was left: the paged mode's whole-page decode is on its way)
@@ -1100,7 +1139,8 @@ namespace bp
 				{
 					double was = strip.offset();
 					strip.scrollBy(step);
-					stickMoved = strip.offset() != was;
+					bool across = stepX != 0 && strip.panBy(stepX);
+					stickMoved = strip.offset() != was || across;
 				}
 				else stickMoved = paged.panBy(step, stepX);
 				stickCanMove = stickMoved;

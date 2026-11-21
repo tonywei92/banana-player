@@ -37,6 +37,10 @@ namespace bp
 		double offset() const;
 		void scrollTo(double y);
 		void scrollBy(double dy);
+		// the stick's sideways push: the column zoomed wider than the view goes across by dx (right shows what is
+		// further right), stopped at its edges; false when it didn't move (at an edge, or nothing wider than the view)
+		bool panBy(double dx);
+		bool canPan() const { return maxPan() > 0; }
 
 		// the first and last page that intersect the view, both inclusive; {-1, -1} with no pages
 		std::pair<int, int> visible() const;

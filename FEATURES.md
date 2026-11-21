@@ -802,13 +802,19 @@ it, and a **More** key (as **X**). A comic (CBZ, CBR) from Files reads the same 
   at its left, the last at its right: drag it to go far).
 - **Vertical scroll**: the pages one under the other, scrolled with a finger on the bottom screen's big area, or a
   screenful at a time with **LEFT/RIGHT** (and **A**); the page slider is under the header.
-- Both end on one row: **Pages** (**Y**), **View** (**SELECT**) and **Light** (Brightness & filter; what's on in its
-  place while Extra dim or a filter is).
+- Both end on one row: **Pages** (**Y**), **View** (**SELECT**), **Fullscreen** (**L3**) and **Light** (Brightness &
+  filter; what's on in its place while Extra dim or a filter is).
+- **Fullscreen** in one step: **L3** (press the stick) or the **Fullscreen** key puts the pages over both screens as
+  one tall strip, from either layout; **L3** or **B** goes back to the layout you came from. On the way in a bar says
+  so for a few seconds, with a **One screen** key for the finger. In fullscreen a tap in the middle of the bottom
+  screen shows that bar again (a second tap puts it away), a tap near the top or the bottom goes a screenful back or
+  on, and a drag scrolls.
 - **View** (**SELECT**) is a sheet: **Layout** (Single page, Vertical scroll, Fullscreen: the strip across both screens),
-  **Page fit**, **Zoom**, **Turn** (a quarter at a time, for a scan on its side; Single page only) and **Light & filter**.
+  **Hinge gap** (in Fullscreen: the part of the page skipped under the hinge, the Manga reader's setting; the pages
+  above move as you change it), **Page fit**, **Zoom**, **Turn** (a quarter at a time, for a scan on its side; Single page only) and **Light & filter**.
   **UP/DOWN** choose, **LEFT/RIGHT** change it at once (the page above follows), **SELECT** or **B** close; a tap on a
   choice or a side of a value changes it. The layout and the fit are kept for the next PDF. Going Fullscreen closes the
-  sheet; there **B** goes back to one screen and **SELECT** opens View again.
+  sheet; there **L3** or **B** goes back to one screen and **SELECT** opens View again.
 - **More** (**X**): a browser's page while it differs from this one, **Info**, **Show in folder**, **Light & filter**
   and **Reading settings**.
 
@@ -817,7 +823,8 @@ it, and a **More** key (as **X**). A comic (CBZ, CBR) from Files reads the same 
 | **LEFT** / **RIGHT** | Back / on: through a zoomed page first, then to the page before or after |
 | **L** / **R** | The page before / after, straight to it |
 | **UP** / **DOWN** | Zoom in / out (both views, as in the manga reader and the photo viewer) |
-| **Left stick** (any way) | Vertical scroll: scrolls smoothly while held. Single page: pans a page that is zoomed, wide or taller than the screen, sideways too |
+| **Left stick** (any way) | Vertical scroll (and Fullscreen): scrolls smoothly while held, and pans a zoomed strip left and right. Single page: pans a page that is zoomed, wide or taller than the screen, sideways too |
+| **L3** (press the stick) | **Fullscreen** on / off |
 | **A** | Single page: 200% or back to the whole page. Vertical scroll: on |
 | **X** | **More** |
 | **SELECT** | **View**: the layout (Single page, Vertical scroll, Fullscreen), the fit, the zoom, the turn |
@@ -1636,7 +1643,7 @@ to scroll* in **Vertical scroll**), a line along its foot naming double-tap and 
 |---|---|
 | **RIGHT** / **LEFT** | Forward / back: a screenful down the page, then the next page; back goes a screenful up it, then to the page before (in **Vertical scroll**, a screenful down or up). With **Swap Left/Right** on, **LEFT** is forward |
 | **UP** / **DOWN** | Zoom in / out, in small steps: 100, 110, 125, 140, 160, 180, 200, 225, 250, 300, 350, 400, 500, 600, 700, 800 %. The new zoom shows on the page a moment, then fades. **A** zooms to 200 % or back to the fit |
-| **Left stick** (any way) | **Vertical scroll**: scrolls smoothly while held, faster the further it is pushed. Paged modes: pans a page that is zoomed, wide or taller than the screen, up, down, left and right; a page that fits does not move. **Book**: one push turns a spread, the way its D-pad points |
+| **Left stick** (any way) | **Vertical scroll**: scrolls smoothly while held, faster the further it is pushed; zoomed in, left and right pan across it (in fullscreen too). Paged modes: pans a page that is zoomed, wide or taller than the screen, up, down, left and right; a page that fits does not move. **Book**: one push turns a spread, the way its D-pad points |
 | **L / R** | Previous / next page, straight to it |
 | **X** | The reading mode: Right to left → Left to right → Vertical scroll (kept for that series) |
 | **Y** | The Pages grid (below) |
@@ -1662,7 +1669,8 @@ to scroll* in **Vertical scroll**), a line along its foot naming double-tap and 
   buttons go to the chapter before or after, turn fullscreen on (as **SELECT** does), or open **Brightness** (above,
   under Books and documents). The row is four buttons of one size with equal margins and gaps. In
   fullscreen the whole bottom screen is the page, and the finger drags it anywhere; the controls bar has the same keys
-  along its foot, and a tap anywhere on the page — including the top-left corner — shows it. A double-tap on the
+  along its foot, and a tap in the middle of the page shows it; a tap near an edge turns instead (the top and bottom
+  of a strip a screenful back or on, the left and right sides of a page as **LEFT** and **RIGHT**). A double-tap on the
   page zooms to 200 % at that spot, and a double-tap again goes back to the fit.
 - Your place is kept on the card, in the player's own folder (`home/.config/banana-player`): the page of every chapter
   you've opened, and when.
@@ -1700,15 +1708,15 @@ keep the screen's usual orientation. Book is kept for the series, as the reading
 between **Prev chapter** and **Next chapter** on the reading page. The two panels become one tall view and
 the gap under the hinge is skipped, so the art lines up across the fold; the bottom panel draws its share of the pages
 from the pages the reader has already decoded. The gap's size is a setting of its own, **Hinge gap** in **Manga
-settings**: **36** of the panel's 480 lines by default. **SELECT** leaves fullscreen; **B** goes back to the chapters
+settings**: **36** of the panel's 480 lines by default. **SELECT** leaves fullscreen (a line says so each time you turn it on); **B** goes back to the chapters
 and fullscreen stays, so the next chapter opens in it too.
 The page number shows for a moment after the page changes. A tap puts the controls bar over the lower part of the
 view; a tap anywhere outside it puts it away again and does nothing else (no page turn, no drag).
 
 **The Pages grid.** **Y** while reading (or the Reading menu's **Pages**) opens the chapter's thumbnails in a sheet
 over the reader (a PDF's **Pages** is the same sheet), six to a row with each page's number under it, on the page
-you're reading, marked **Here** ("You are on page N" at the top). Pages not decoded yet show an empty place until they
-arrive. **UP/DOWN/LEFT/RIGHT** move the cursor and the top screen follows it, **L2/R2** move a screenful, **A** jumps
+you're reading, marked **Here** ("You are on page N" at the top). The pages in view get their thumbnails as the grid shows them, wherever you were
+reading (a moment's empty place first; a page of an online chapter not downloaded yet stays empty). **UP/DOWN/LEFT/RIGHT** move the cursor and the top screen follows it, **L2/R2** move a screenful, **A** jumps
 there and closes the grid, **B** or **Y** closes it; on the touch screen, tap a thumbnail to jump, drag to scroll, or
 tap above the sheet to close it.
 

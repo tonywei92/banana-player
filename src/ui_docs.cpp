@@ -922,10 +922,10 @@ namespace bp
 		// the PDF viewer
 		if (ui.pageReader->mangaPages) return ui.pageReader->mangaPagesKey(b, p);
 		bool strip = ui.pageReader->readerStatus.mode == MANGA_STRIP;
-		// B in Fullscreen: back to one screen (SELECT opens View there too, whose Layout says so)
+		// B in Fullscreen: back to one screen, as L3 (SELECT opens View there too, whose Layout says so)
 		if (ui.pageReader->readerStatus.fullscreen && b == Button::B)
 		{
-			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, 0, now});
+			togglePagesFull(p);
 			return false;
 		}
 		switch (b)
@@ -945,6 +945,8 @@ namespace bp
 		// X: More, as everywhere; SELECT: View (the layout, the fit, the zoom); START is Settings (Ui::press)
 		case Button::X: openPagesMore(p); break;
 		case Button::Select: openPagesView(); break;
+		// L3: Fullscreen on and off in one press (the one button the page reader had free)
+		case Button::L3: togglePagesFull(p); break;
 		case Button::Y: ui.pageReader->mangaPagesOpen(p); break;
 		case Button::B: docClose(p); break;
 		default: break;
@@ -1126,6 +1128,13 @@ namespace bp
 			docVel = 0;
 			docTouchX = pt.x;
 			docTouchY = pt.y;
+			// Fullscreen's bar, while it is up: its key takes the finger (the rest of the panel is the page)
+			if (full && pagesFullBarShown() && Rect(lay::readerFullBar().bar).hit(x, y))
+			{
+				if (pagesKeyRect(DP_KEY_FULL).hit(x, y)) docPressed = DP_KEY_FULL;
+				docFullTagUntil = now + FULL_BAR_TAP_MS;	// (a touch on it keeps it)
+				return false;
+			}
 			if (full || (!text && !single && pl.surface.hit(x, y)))
 			{
 				// the strip under the finger, as the manga reader's
@@ -1223,6 +1232,15 @@ namespace bp
 		{
 			docTouch = false;
 			ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Release, 0, (int64_t)now});
+			// Fullscreen: a tap in the panel's middle shows the bar (the way out; with it up, hides it again), one at
+			// the top or the bottom goes a screenful back or on, as LEFT / RIGHT
+			if (full && !docMoved)
+			{
+				int edge = lay::readerFullTap(x, y, false);
+				if (edge) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Step, (double)edge, (int64_t)now});
+				else docFullTagUntil = pagesFullBarShown() ? 0 : now + FULL_BAR_TAP_MS;
+				fprintf(stderr, "docs: fullscreen tap at %d,%d -> %s\n", x, y, edge < 0 ? "back" : edge > 0 ? "on" : pagesFullBarShown() ? "the bar" : "the bar away");
+			}
 			return false;
 		}
 		if (docPanTouch)
@@ -1588,11 +1606,7 @@ namespace bp
 				return;
 			}
 			ui.pageReader->drawMangaFull();
-			if (SDL_GetTicks() < docFullTagUntil)
-			{
-				ui.fillRound({150, 420, 340, 40}, BG, R_CHIP);
-				ui.drawTextMid("B: one screen \xC2\xB7 SELECT: View", 0, TEXT, W / 2, 440, 0, 2);
-			}
+			if (pagesFullBarShown()) drawPagesFullBar(p);
 			return;
 		}
 		// the header: the document's name at 18 units, its line under it (the page, the zoom, the fit), More at the right
@@ -1653,7 +1667,9 @@ namespace bp
 		case DP_KEY_FIT: return l.fit;
 		case DP_KEY_PAGES: return l.row[0];
 		case DP_KEY_VIEW: return l.row[1];
-		case DP_KEY_LIGHT: return l.row[2];
+		// (in Fullscreen the row isn't there: the key is the bar's)
+		case DP_KEY_FULL: return ui.pageReader->readerStatus.fullscreen ? Rect(lay::readerFullBar().leave) : Rect(l.row[2]);
+		case DP_KEY_LIGHT: return l.row[3];
 		default: return {0, 0, 0, 0};
 		}
 	}
@@ -1682,6 +1698,7 @@ namespace bp
 		case DP_KEY_FIT: stepPagesFit(1, p); break;
 		case DP_KEY_PAGES: key(Button::Y, p); break;
 		case DP_KEY_VIEW: key(Button::Select, p); break;
+		case DP_KEY_FULL: key(Button::L3, p); break;
 		case DP_KEY_LIGHT: ui.openLight(); break;
 		default: break;
 		}
@@ -1774,6 +1791,7 @@ namespace bp
 		}
 		keyOf(DP_KEY_PAGES, &G_BLOCKS, "Pages", "Y");
 		keyOf(DP_KEY_VIEW, &G_EYE, "View", "SELECT");
+		keyOf(DP_KEY_FULL, &G_FULL, "Fullscreen", "L3");
 		// Light: its sun; while Extra dim or a filter is on, what's on in place of the name
 		std::string note = ui.lightNote(p);
 		Kit::Key light;
@@ -1827,9 +1845,37 @@ namespace bp
 		}
 		if (full && !r.readerStatus.fullscreen)
 		{
+			docFullFrom = r.readerStatus.mode == MANGA_STRIP ? 1 : 0;
 			r.readerCmds.push_back({PageReader::ReaderCmd::Fullscreen, 1, now, (double)p.settings.mangaHinge});
-			docFullTagUntil = SDL_GetTicks() + 2500;
+			docFullTagUntil = SDL_GetTicks() + FULL_BAR_IN_MS;
 		}
+		else docFullTagUntil = 0;
+	}
+
+	void Ui::Docs::togglePagesFull(Player& p)
+	{
+		const PageReader::ReaderStatus& st = ui.pageReader->readerStatus;
+		if (!st.open || !st.error.empty()) return;
+		fprintf(stderr, "docs: fullscreen %s (from layout %d)\n", st.fullscreen ? "off" : "on", st.fullscreen ? docFullFrom : pagesLayoutNow());
+		setPagesLayout(st.fullscreen ? docFullFrom : 2, p);
+	}
+
+	bool Ui::Docs::pagesFullBarShown() const { return SDL_GetTicks() < docFullTagUntil; }
+
+	void Ui::Docs::drawPagesFullBar(const Player& p)
+	{
+		// how to leave, over the pages: the words for the buttons, the key for the finger
+		lay::ReaderFullBar f = lay::readerFullBar();
+		Kit& k = *ui.kit;
+		k.flat(f.bar, SURFACE, R_BUTTON, Kit::edgeOf(SURFACE));
+		ui.drawTextMid("Fullscreen", F_P16, TEXT, f.note.x, f.note.y + 21, f.note.w);
+		ui.drawTextMid("L3 or B leaves \xC2\xB7 tap top / bottom: scroll", F_I12, DIM, f.note.x, f.note.y + 43, f.note.w);
+		Kit::Key leave;
+		leave.glyph = &G_FULL;
+		leave.label = "One screen";
+		leave.key = p.settings.buttonHotkeys ? "L3" : "";
+		leave.pressed = docPressed == DP_KEY_FULL;
+		k.key(pagesKeyRect(DP_KEY_FULL), leave);
 	}
 
 	void Ui::Docs::openPagesMore(Player&)
@@ -1868,7 +1914,7 @@ namespace bp
 	// sheet: the screen under it has become the page.
 	struct Ui::Docs::PagesView : Ui::Overlay
 	{
-		enum { ROW_LAYOUT, ROW_FIT, ROW_ZOOM, ROW_TURN, ROW_LIGHT, ROWS };
+		enum { ROW_LAYOUT, ROW_HINGE, ROW_FIT, ROW_ZOOM, ROW_TURN, ROW_LIGHT, ROWS };
 		int cursor = ROW_LAYOUT;
 		explicit PagesView(Ui& u) : Overlay(u) {}
 		const char* name() const override { return "pdfview"; }
@@ -1876,7 +1922,13 @@ namespace bp
 		Docs& docs() const { return *ui.docs; }
 		bool gone() const { return ui.page != Page::DocPages || !ui.pageReader->readerStatus.open; }
 		bool strip() const { return ui.pageReader->readerStatus.mode == MANGA_STRIP; }
-		bool rowOff(int row) const { return (row == ROW_FIT || row == ROW_TURN) && strip(); }
+		// Hinge gap is Fullscreen's (the Manga reader's own setting, the same gap): changed here it moves the pages
+		// above at once
+		bool rowOff(int row) const
+		{
+			if (row == ROW_HINGE) return !ui.pageReader->readerStatus.fullscreen;
+			return (row == ROW_FIT || row == ROW_TURN) && strip();
+		}
 		void change(int row, int dir, Player& p)
 		{
 			if (rowOff(row)) return;
@@ -1889,6 +1941,7 @@ namespace bp
 				if (to == 2) close();
 				break;
 			}
+			case ROW_HINGE: ui.settingsPage->changeSetting(settingRow("manga-hinge"), dir, p); break;
 			case ROW_FIT: docs().stepPagesFit(dir, p); break;
 			case ROW_ZOOM: ui.pageReader->mangaZoomStep(dir); break;
 			case ROW_TURN: docs().stepPagesTurn(dir); break;
@@ -1971,10 +2024,11 @@ namespace bp
 				Kit::SettingRow sr;
 				sr.label = label;
 				sr.off = rowOff(id);
-				sr.value = sr.off ? "Single page only" : value;
+				sr.value = !sr.off ? value : id == ROW_HINGE ? "Fullscreen only" : "Single page only";
 				sr.focused = cursor == id;
 				k.settingRow(s.row(id), sr);
 			};
+			stepper(ROW_HINGE, "Hinge gap", std::to_string(p.settings.mangaHinge) + " px");
 			stepper(ROW_FIT, "Page fit", p.settings.mangaFit == MANGA_FIT_WIDTH ? "Width" : "Page");
 			stepper(ROW_ZOOM, "Zoom", std::to_string(st.zoomPct) + "%");
 			stepper(ROW_TURN, "Turn", std::to_string(st.rotation) + "\xC2\xB0");
@@ -1987,11 +2041,11 @@ namespace bp
 			k.settingRow(s.row(ROW_LIGHT), light);
 			k.hints(s.hints, {{"UP/DOWN", "Choose"}, {"LEFT/RIGHT", "Change"}, {"SELECT/B", "Close"}});
 		}
-		std::string signature(const Player&) const override
+		std::string signature(const Player& p) const override
 		{
 			const PageReader::ReaderStatus& st = ui.pageReader->readerStatus;
 			char b[96];
-			snprintf(b, sizeof b, "%d|%d %d %d %d", cursor, st.mode, (int)st.fullscreen, st.zoomPct, st.rotation);
+			snprintf(b, sizeof b, "%d|%d %d %d %d %d", cursor, st.mode, (int)st.fullscreen, st.zoomPct, st.rotation, p.settings.mangaHinge);
 			return b;
 		}
 	};

@@ -94,7 +94,7 @@ const MAP=[
 ['Font, Text size, Line spacing, Margins, Colours, Hold, Page turn','Text options','SELECT · Text; defaults also in Settings › Reading','mov'],
 ['Brightness & filter (screens, Extra dim, Warm / Warmer / Dim)','Sun key; options row','“Light” key in every viewer; unchanged sheet','same'],
 ['PDF: LEFT / RIGHT, L / R, UP / DOWN zoom, A, Y Pages','Keys','Unchanged','same'],
-['PDF: X Single page / Vertical scroll; SELECT Fullscreen','Keys + “Vertical scroll” button','SELECT · View: Single page, Vertical scroll, Fullscreen','chg'],
+['PDF: X Single page / Vertical scroll; SELECT Fullscreen','Keys + “Vertical scroll” button','SELECT · View: Single page, Vertical scroll, Fullscreen; Fullscreen also one press: its key in the row, L3 (L3 or B leaves)','chg'],
 ['PDF: START Options (View, Fullscreen, Brightness & filter, Page fit, Zoom, Pages)','Full page','SELECT · View; Page fit also a key; Pages on Y','mov'],
 ['PDF: jump far','Pages grid','Pages grid, and a page slider','new'],
 ['Comic: RIGHT / LEFT, L / R, L2 / R2, UP / DOWN, A, L3 turn, Y Pages','Keys','Unchanged','same'],
