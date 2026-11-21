@@ -12099,17 +12099,34 @@ static void testQuickPanel()
 	CHECK_EQ(q.rowH, QUICK_ROW_H);
 	CHECK_EQ((int)q.level.size(), 2);
 	CHECK_EQ((int)q.tile.size(), 3);
-	// the title line, then 8 apart the Now playing block: the art 48 at its left, Previous 52 / Play 68 /
-	// Next 52 at its right, nothing over anything else
+	// the title line, then 8 apart the Now playing block, the panel's lead: the art 56 at its left, Previous
+	// 52 / Play 68 / Next 52 (56 tall) at its right, the words' column between them with the progress line
+	// along its foot, nothing over anything else
 	CHECK_EQ(q.title.y, q.box.y + QUICK_PAD);
 	CHECK_EQ(q.title.h, QUICK_TITLE_H);
 	CHECK_EQ(q.now.y, q.title.y + q.title.h + QUICK_GAP);
 	CHECK_EQ(q.now.h, QUICK_NOW_H);
 	CHECK_EQ(q.nowArt.x, q.now.x + SP8);
-	CHECK_EQ(q.nowArt.w, 48);
+	CHECK_EQ(q.nowArt.w, QUICK_NOW_ART);
+	CHECK_EQ(q.nowArt.h, QUICK_NOW_ART);
+	CHECK_EQ(q.nowArt.y + q.nowArt.h, q.now.y + q.now.h - SP8);
+	CHECK_EQ(q.nowPlay.h >= 44 && q.nowPrev.h >= 44 && q.nowNext.h >= 44, true);
+	CHECK_EQ(q.nowPlay.w > q.nowPrev.w, true);
+	CHECK_EQ(q.nowText.x, q.nowArt.x + q.nowArt.w + SP12);
+	CHECK_EQ(q.nowText.x + q.nowText.w, q.nowPrev.x - SP12);
+	CHECK_EQ(q.nowLine.x, q.nowText.x);
+	CHECK_EQ(q.nowLine.w, q.nowText.w);
+	CHECK_EQ(q.nowLine.y + q.nowLine.h, q.nowArt.y + q.nowArt.h);
+	CHECK_EQ(kitApart(q.nowArt, q.nowText), true);
+	CHECK_EQ(kitApart(q.nowText, q.nowPrev), true);
+	// the block is the tallest thing in the panel after its rows' sum: taller than a row, a tile or Quit
+	CHECK_EQ(QUICK_NOW_H > QUICK_ROW_H && QUICK_NOW_H > QUICK_TILE_H && QUICK_NOW_H > QUICK_TITLE_H, true);
 	CHECK_EQ(q.nowNext.x + q.nowNext.w, q.now.x + q.now.w - SP8);
 	CHECK_EQ(q.nowPlay.x, q.nowNext.x - SP8 - 68);
 	CHECK_EQ(q.nowPrev.x, q.nowPlay.x - SP8 - 52);
+	Box inBlock[] = {q.nowArt, q.nowPrev, q.nowPlay, q.nowNext, q.nowText, q.nowLine};
+	for (Box b : inBlock)
+		CHECK_EQ(b.x >= q.now.x && b.y >= q.now.y && b.x + b.w <= q.now.x + q.now.w && b.y + b.h <= q.now.y + q.now.h, true);
 	Box block[] = {q.title, q.now, q.nowArt, q.nowPrev, q.nowPlay, q.nowNext, q.quit};
 	for (Box b : block) CHECK_EQ(kitInside(b, q.box.x + q.box.w, q.box.y + q.box.h) && b.x >= q.box.x && b.y >= q.box.y, true);
 	CHECK_EQ(kitApart(q.title, q.now), true);
