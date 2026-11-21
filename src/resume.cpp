@@ -37,6 +37,22 @@ namespace bp
 				if (e) e->duration = atof(line.substr(10, t - 10).c_str());
 				continue;
 			}
+			if (line.rfind("#place\t", 0) == 0)
+			{
+				// "#place<TAB>rev<TAB>when<TAB>by<TAB>path": a document's place's writer, after its entry
+				size_t a = 7, b = line.find('\t', a), c = b == std::string::npos ? b : line.find('\t', b + 1),
+					   d = c == std::string::npos ? c : line.find('\t', c + 1);
+				if (d == std::string::npos) continue;
+				std::string path = line.substr(d + 1);
+				ResumeEntry* e = !entries.empty() && entries.back().path == path ? &entries.back() : nullptr;
+				for (size_t i = 0; !e && i < entries.size(); i++)
+					if (entries[i].path == path) e = &entries[i];
+				if (!e) continue;
+				e->rev = strtoull(line.substr(a, b - a).c_str(), nullptr, 10);
+				e->when = atoll(line.substr(b + 1, c - b - 1).c_str());
+				e->by = line.substr(c + 1, d - c - 1);
+				continue;
+			}
 			if (line.empty() || line[0] == '#') continue;
 			size_t t1 = line.find('\t'), t2 = t1 == std::string::npos ? t1 : line.find('\t', t1 + 1),
 				   t3 = t2 == std::string::npos ? t2 : line.find('\t', t2 + 1);
@@ -66,6 +82,14 @@ namespace bp
 			{
 				snprintf(buf, sizeof buf, "#duration\t%.3f\t", e.duration);
 				out += buf + e.path + "\n";
+			}
+			if (e.rev > 0)
+			{
+				// (a tab or a line break in the writer's name would end its field)
+				std::string by = e.by;
+				for (char& ch : by) if (ch == '\t' || ch == '\n' || ch == '\r') ch = ' ';
+				snprintf(buf, sizeof buf, "#place\t%llu\t%lld\t", (unsigned long long)e.rev, (long long)e.when);
+				out += buf + by + "\t" + e.path + "\n";
 			}
 		}
 		return out;

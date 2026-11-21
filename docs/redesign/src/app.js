@@ -214,7 +214,9 @@ const BY={};SCREENS.forEach(s=>BY[s.id]=s);
 const devSide=s=>`<div class="lbl"><span>Left page: ${s.flip?'bottom screen · touch':'top screen'}</span><span>held sideways · each page 480 × 640</span><span>Right page: ${s.flip?'top screen':'bottom screen · touch'}</span></div><div class="pair"><div class="panel pt"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="vhinge"></div><div class="panel pt"><div class="s">${s.bottom()}</div></div></div><div class="lbl b"><span>Hold: top screen ${s.flip?'right':'left'}</span><span>${s.name}</span></div>`;
 // a phone's page beside the handheld: the dashboard at a phone's width (390 CSS px), and what the handheld shows meanwhile
 const devPhone=s=>`<div class="phonepair"><div class="pcol"><div class="lbl"><span>A phone’s browser</span><span>390 wide</span></div><div class="panel ph" data-w="390"><div class="s">${s.phone()}</div></div></div><div class="hcol"><div class="lbl"><span>Meanwhile, the handheld</span></div><div class="panel"><div class="s${topCls(s.top())}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s">${s.bottom()}</div></div><div class="lbl b"><span>${s.name}</span></div></div></div>`;
-const dev=s=>s.phone?devPhone(s):s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s${topCls(s.top())} ${s.cls||''}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s ${s.cls||''}">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
+// a computer's browser: the dashboard 1280 wide, alone (the handheld shows what it showed)
+const devDesk=s=>`<div class="lbl"><span>A computer’s browser</span><span>1280 wide</span></div><div class="panel dk" data-w="1280"><div class="s">${s.desk()}</div></div><div class="lbl b"><span>${s.name}</span></div>`;
+const dev=s=>s.desk?devDesk(s):s.phone?devPhone(s):s.side?devSide(s):`<div class="lbl"><span>Top screen</span><span>640 × 480</span></div><div class="panel"><div class="s${topCls(s.top())} ${s.cls||''}">${s.top()}</div></div><div class="hinge"></div><div class="panel"><div class="s ${s.cls||''}">${s.bottom()}</div></div><div class="lbl b"><span>Bottom screen · touch</span><span>${s.name}</span></div>`;
 const kb=k=>k.split(' or ').map(p=>p.split('/').map(x=>`<kbd>${x}</kbd>`).join(' ')).join(' or ');
 const gal=document.getElementById('gallery'),nav=document.getElementById('navscreens');
 let lastG='';
@@ -222,7 +224,7 @@ SCREENS.forEach(s=>{
 	if(s.group!=lastG){lastG=s.group;nav.insertAdjacentHTML('beforeend',`<h4>${s.group}</h4>`)}
 	nav.insertAdjacentHTML('beforeend',`<a href="#s-${s.id}">${s.name}${s.isNew?'<small>NEW</small>':''}</a>`);
 	const goes=[...new Set(s.keys.map(k=>k[2]).concat(s.also.map(a=>a[1])).filter(g=>g&&g!='<'&&BY[g]))];
-	gal.insertAdjacentHTML('beforeend',`<article class="screen ${s.side?'wide':''}" id="s-${s.id}"><div class="device ${s.side?'side':''}" data-gal="${s.id}">${dev(s)}</div><div class="notes"><div class="eyebrow">${s.group}${s.isNew?' · <span class="tag new">NEW</span>':''}</div><h3>${s.name}</h3><p class="why">${s.why}</p>
+	gal.insertAdjacentHTML('beforeend',`<article class="screen ${s.side||s.desk?'wide':''}" id="s-${s.id}"><div class="device ${s.side?'side':s.desk?'desk':''}" data-gal="${s.id}">${dev(s)}</div><div class="notes"><div class="eyebrow">${s.group}${s.isNew?' · <span class="tag new">NEW</span>':''}</div><h3>${s.name}</h3><p class="why">${s.why}</p>
 	<ul>${s.notes.map(n=>`<li><span class="tag ${n[0]}">${TAGN[n[0]]}</span> ${n[1]}</li>`).join('')}</ul>${s.extra?s.extra():''}
 	<div class="keys">${s.keys.map(k=>`${`<span>${kb(k[0])}</span>`}<span>${k[1]}</span>`).join('')}${s.also.map(a=>`<span><kbd>then</kbd></span><span>${a[0]}</span>`).join('')}</div>
 	<p class="goes"><a href="#proto" data-jump="${s.id}">Open in the walk-through</a>${goes.length?' · leads to '+goes.map(g=>`<a href="#s-${g}">${BY[g].name}</a>`).join(', '):''}</p></div></article>`);
@@ -238,7 +240,7 @@ function show(id,push=true){
 	if(push&&id!=P_.cur)P_.hist.push(P_.cur);
 	if(P_.hist.length>40)P_.hist.shift();
 	P_.cur=id;const s=BY[id];
-	pd.innerHTML=dev(s);pd.classList.toggle('side',!!s.side);document.getElementById('protoBox').classList.toggle('wide',!!s.side);fit();
+	pd.innerHTML=dev(s);pd.classList.toggle('side',!!s.side);pd.classList.toggle('desk',!!s.desk);document.getElementById('protoBox').classList.toggle('wide',!!(s.side||s.desk));fit();
 	document.getElementById('protoName').textContent=s.name;
 	document.getElementById('protoGroup').textContent=s.group;
 	document.getElementById('protoWhy').textContent=s.why;

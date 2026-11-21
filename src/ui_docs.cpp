@@ -5,6 +5,8 @@
 #include "ui_internal.h"
 #include <map>
 #include "ui_docs.h"
+#include "web/server.h"
+#include "json.h"
 #include "ui_kit.h"
 #include "ui_reader.h"
 #include "filesave.h"
@@ -49,7 +51,7 @@ namespace bp
 
 		// the menus' rows
 		enum { DT_FONT, DT_SIZE, DT_SPACING, DT_MARGINS, DT_THEME, DT_FILTER, DT_ENCODING, DT_GOTO, DP_VIEW, DP_FULL, DP_FILTER,
-			DP_FIT, DP_ZOOM, DP_PAGES, DT_VIEW, DT_HOLD, DT_MARKS, DT_TURN, DT_FIND };
+			DP_FIT, DP_ZOOM, DP_PAGES, DT_VIEW, DT_HOLD, DT_MARKS, DT_TURN, DT_FIND, DP_THERE };
 		constexpr int MENU_TOP = 72, MENU_ROW_H = 50;	// (the kit's rows are 46 tall)
 		constexpr Uint32 TAP_MS = 350;
 
@@ -124,6 +126,8 @@ namespace bp
 		if (ui.page != Page::DocText && ui.page != Page::DocPages) docFrom = ui.page;
 		docPath = path;
 		docLive = false;
+		docOwnLast = {};
+		foreignPlace = {};
 		docMenu = DOC_MENU_NONE;
 		docPressed = -1;
 		docTouch = docPanTouch = false;
@@ -228,19 +232,114 @@ namespace bp
 			if (!textStatus.open) return;
 			e.position = (double)textStatus.place;
 			e.duration = textStatus.fraction;
-			e.aid = 1;	// (the kind: a text's place and share, not a page of so many)
+			e.aid = PLACE_TEXT;	// (the kind: a text's place and share, not a page of so many)
 		}
 		else
 		{
 			if (!ui.pageReader->readerStatus.open || ui.pageReader->readerStatus.pages <= 0) return;
 			e.position = ui.pageReader->readerStatus.page;
 			e.duration = ui.pageReader->readerStatus.pages;
-			e.aid = 2;	// (the kind: a page of so many)
+			e.aid = PLACE_PAGES;	// (the kind: a page of so many)
 		}
+		auto same = [](const ResumeEntry& a, const ResumeEntry& b) { return a.path == b.path && a.position == b.position && a.aid == b.aid && a.duration == b.duration; };
+		// only this reader's own moves are written: a browser's write since then stays (the stored place follows the
+		// last turn, on either device)
+		if (same(docOwnLast, e)) return;
 		const ResumeEntry* was = docPlaces->find(docPath);
-		if (was && was->position == e.position && was->aid == e.aid && was->duration == e.duration) return;
-		docPlaces->put(e);
+		bool first = docOwnLast.path != docPath;
+		docOwnLast = e;
+		if (first && was && was->position == e.position && was->aid == e.aid && was->duration == e.duration) return;
+		if (!foreignPlace.path.empty() && samePlace(foreignPlace, e)) foreignPlace = {};
+		ResumeEntry w = stampPlace(was, e, "the handheld", (int64_t)time(nullptr));
+		docPlaces->put(w);
 		docPlacesDirty = true;
+		docPlaceSent(w);
+	}
+
+	void Ui::Docs::docPlaceSent(const ResumeEntry& e)
+	{
+		if (!ui.web || !ui.web->running()) return;
+		std::string v = ui.web->servedVirtual(e.path);
+		if (v.empty()) return;
+		JsonWriter j;
+		j.obj().key("p").str(v).key("place").obj().key("t").str(e.aid == PLACE_PAGES ? "pages" : "text").key("pos").num(e.position)
+			.key("share").num(e.duration).key("rev").num((double)e.rev).key("when").num((double)e.when).key("by").str(e.by).end().end();
+		ui.web->notify("book-place", j.out());
+	}
+
+	PlaceVerdict Ui::Docs::webPlace(const PlaceWrite& w, ResumeEntry& out)
+	{
+		docPlacesLoad();
+		PlaceVerdict v = mergePlace(docPlaces->find(w.path), w, out);
+		if (v != PlaceVerdict::Written) return v;
+		docPlaces->put(out);
+		docPlacesDirty = true;
+		docPlacesSave(true);
+		docPlaceSent(out);
+		// the book is open here: its reader stays where it is, and Contents (Y) offers the browser's place
+		if (w.path == docPath && docLive) foreignPlace = out;
+		fprintf(stderr, "docs: %s wrote the place of %s (rev %llu)\n", out.by.c_str(), fileName(w.path).c_str(), (unsigned long long)out.rev);
+		return v;
+	}
+
+	void Ui::Docs::contentsOpen()
+	{
+		docMenu = DOC_MENU_CONTENTS;
+		docMenuCursor = 0;
+		// the cursor on a browser's place while it shows (row 0), else on the chapter being read (the first of entries
+		// that open the same place: a chapter before its own sections)
+		int off = foreignShown() ? 1 : 0;
+		if (!off)
+			for (int i = 0; i < (int)textStatus.contents.size(); i++)
+				if (textStatus.contents[i].second.first <= textStatus.place &&
+					(i == 0 || textStatus.contents[i].second.first > textStatus.contents[docMenuCursor].second.first))
+					docMenuCursor = i;
+		docMenuScroll = std::max(0, docMenuCursor - 3);
+	}
+
+	bool Ui::Docs::foreignShown() const
+	{
+		if (foreignPlace.path.empty() || foreignPlace.path != docPath) return false;
+		if (ui.page == Page::DocText) return foreignPlace.aid == PLACE_TEXT && (uint64_t)foreignPlace.position != textStatus.place;
+		return foreignPlace.aid == PLACE_PAGES && (int)foreignPlace.position != ui.pageReader->readerStatus.page;
+	}
+
+	std::string Ui::Docs::foreignLabel() const
+	{
+		std::string at = foreignPlace.aid == PLACE_PAGES ? "page " + std::to_string((int)foreignPlace.position + 1)
+			: std::to_string((int)std::lround(std::clamp(foreignPlace.duration, 0.0, 1.0) * 100)) + "%";
+		return "Where " + foreignPlace.by + " is \u00b7 " + at;
+	}
+
+	void Ui::Docs::foreignGo()
+	{
+		int64_t now = SDL_GetTicks();
+		if (ui.page == Page::DocText) textCmds.push_back({TextReader::JumpTo, foreignPlace.position, now});
+		else ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Seek, foreignPlace.position, now});
+		foreignPlace = {};
+		docMenu = DOC_MENU_NONE;
+	}
+
+	void Ui::Docs::webMarkAdd(const std::string& path, uint64_t id, double frac, const std::string& label)
+	{
+		docMarksLoad();
+		for (auto& m : docMarks)
+			if (m.path == path && m.id == id) { m.label = label; docMarksSave(); return; }
+		docMarks.push_back({path, id, frac, label});
+		docMarksSave();
+	}
+
+	bool Ui::Docs::webMarkRemove(const std::string& path, uint64_t id)
+	{
+		docMarksLoad();
+		for (size_t i = 0; i < docMarks.size(); i++)
+			if (docMarks[i].path == path && docMarks[i].id == id)
+			{
+				docMarks.erase(docMarks.begin() + i);
+				docMarksSave();
+				return true;
+			}
+		return false;
 	}
 
 	void Ui::Docs::docClose(Player& p)
@@ -270,6 +369,8 @@ namespace bp
 		docBookBar = false;
 		docBookBarPressed = -1;
 		docLive = false;
+		docOwnLast = {};
+		foreignPlace = {};
 		if (findJob) findJob->cancel = true;
 		findOn = false;
 		docNote.clear();
@@ -445,7 +546,9 @@ namespace bp
 			return r;
 		}
 		bool strip = ui.pageReader->readerStatus.mode == MANGA_STRIP;
-		std::vector<int> r = {DP_VIEW};
+		std::vector<int> r;
+		if (foreignShown()) r.push_back(DP_THERE);	// a browser's page first, while it differs
+		r.push_back(DP_VIEW);
 		if (strip) r.push_back(DP_FULL);
 		r.push_back(DP_FILTER);
 		if (!strip) { r.push_back(DP_FIT); r.push_back(DP_ZOOM); }
@@ -556,13 +659,21 @@ namespace bp
 		}
 		if (docMenu == DOC_MENU_CONTENTS)
 		{
-			if (docMenuCursor >= 0 && docMenuCursor < (int)textStatus.contents.size())
-				textCmds.push_back({TextReader::JumpTo, (double)textStatus.contents[docMenuCursor].second.first, (int64_t)SDL_GetTicks()});
+			// a browser's place first, while it differs
+			int k = docMenuCursor - (foreignShown() ? 1 : 0);
+			if (k < 0) { foreignGo(); return; }
+			if (k < (int)textStatus.contents.size())
+				textCmds.push_back({TextReader::JumpTo, (double)textStatus.contents[k].second.first, (int64_t)SDL_GetTicks()});
 			docMenu = DOC_MENU_NONE;
 			return;
 		}
 		auto rows = docMenuRows();
 		int id = docMenuCursor >= 0 && docMenuCursor < (int)rows.size() ? rows[docMenuCursor] : -1;
+		if (id == DP_THERE)
+		{
+			foreignGo();
+			return;
+		}
 		if (id == DP_PAGES)
 		{
 			docMenu = DOC_MENU_NONE;
@@ -606,7 +717,7 @@ namespace bp
 		ui.drawTextMid(marks ? "Bookmarks" : contents ? "Contents" : ui.page == Page::DocText ? "Text options" : "Options", F_P20, ACCENT, 24, 32, 400);
 		auto here = docMarksHere();
 		int shown = (H - MENU_TOP - 40) / MENU_ROW_H;
-		int n = marks ? (int)here.size() + 1 : contents ? (int)textStatus.contents.size() : (int)docMenuRows().size();
+		int n = marks ? (int)here.size() + 1 : contents ? contentsCount() : (int)docMenuRows().size();
 		auto rows = docMenuRows();
 		// a smooth list (ui_smoothlist.h): another menu starts it again where its cursor is, at once
 		if (menuListKind != docMenu) { menuList.synced = -1; menuListKind = docMenu; }
@@ -634,20 +745,25 @@ namespace bp
 				m.note = std::to_string((int)std::lround(dm.frac * 100)) + "%";
 				if (at && docMarkArmed) { m.note = "X again to delete it"; m.danger = true; }
 			}
+			else if (contents && foreignShown() && i == 0)
+			{
+				m.glyph = &G_BOOKMARK;
+				m.name = foreignLabel();
+			}
 			else if (contents)
 			{
-				const auto& c = textStatus.contents[i];
+				const auto& c = textStatus.contents[i - (foreignShown() ? 1 : 0)];
 				m.name = std::string(std::min(c.second.second, 4) * 2, ' ') + c.first;
 			}
 			else
 			{
 				int id = rows[i];
 				static const char* LABELS[] = {"Font", "Text size", "Line spacing", "Margins", "Colours", "Brightness & filter", "Encoding",
-					"Go to", "View", "Fullscreen", "Brightness & filter", "Page fit", "Zoom", "Pages", "View", "Hold", "Bookmarks", "Page turn", "Find\u2026"};
+					"Go to", "View", "Fullscreen", "Brightness & filter", "Page fit", "Zoom", "Pages", "View", "Hold", "Bookmarks", "Page turn", "Find\u2026", ""};
 				m.setting = true;
-				m.name = LABELS[id];
+				m.name = id == DP_THERE ? foreignLabel() : LABELS[id];
 				std::string& v = m.value;
-				if (id == DT_FIND || id == DP_PAGES || id == DT_MARKS || id == DT_FILTER || id == DP_FILTER)
+				if (id == DT_FIND || id == DP_PAGES || id == DT_MARKS || id == DT_FILTER || id == DP_FILTER || id == DP_THERE)
 				{
 					// an action: opens something (Brightness & filter its sheet: the filter on now beside it)
 					m.action = true;
@@ -752,7 +868,7 @@ namespace bp
 		if (docMenu != DOC_MENU_NONE)
 		{
 			int n = docMenu == DOC_MENU_MARKS ? (int)docMarksHere().size() + 1
-				: docMenu == DOC_MENU_CONTENTS ? (int)textStatus.contents.size() : (int)docMenuRows().size();
+				: docMenu == DOC_MENU_CONTENTS ? contentsCount() : (int)docMenuRows().size();
 			if (docMenu == DOC_MENU_MARKS && b == Button::X && docMenuCursor > 0)
 			{
 				// twice: the bookmark under the cursor goes
@@ -801,15 +917,9 @@ namespace bp
 			case Button::Select: case Button::B: { Settings s = p.settings; s.txtBook = 0; p.setSettings(s); break; }
 			default: break;
 			}
-			if (b == Button::Y && !textStatus.contents.empty())
+			if (b == Button::Y && contentsCount() > 0)
 			{
-				docMenu = DOC_MENU_CONTENTS;
-				docMenuCursor = 0;
-				for (int i = 0; i < (int)textStatus.contents.size(); i++)
-					if (textStatus.contents[i].second.first <= textStatus.place &&
-						(i == 0 || textStatus.contents[i].second.first > textStatus.contents[docMenuCursor].second.first))
-						docMenuCursor = i;
-				docMenuScroll = std::max(0, docMenuCursor - 3);
+				contentsOpen();
 			}
 			return false;
 		}
@@ -824,17 +934,10 @@ namespace bp
 			case Button::X: docMarksOpen(); break;
 			// (START is Settings, from Ui::press; the options are the on-screen Options key)
 			case Button::Y:
-				if (!textStatus.contents.empty())
+				if (contentsCount() > 0)
 				{
 					// the cursor on the chapter being read
-					docMenu = DOC_MENU_CONTENTS;
-					docMenuCursor = 0;
-					// (the first of entries that open the same place: a chapter before its own sections)
-					for (int i = 0; i < (int)textStatus.contents.size(); i++)
-						if (textStatus.contents[i].second.first <= textStatus.place &&
-							(i == 0 || textStatus.contents[i].second.first > textStatus.contents[docMenuCursor].second.first))
-							docMenuCursor = i;
-					docMenuScroll = std::max(0, docMenuCursor - 3);
+					contentsOpen();
 				}
 				break;
 			case Button::Select:
@@ -977,7 +1080,7 @@ namespace bp
 			// the list follows a finger's drag (as the manga reader's lists); a tap acts on the row as the finger lifts
 			if (pt.kind != Pointer::Down) return ui.pageReader->mangaListPointer(pt, x, y);
 			int n = docMenu == DOC_MENU_MARKS ? (int)docMarksHere().size() + 1
-				: docMenu == DOC_MENU_CONTENTS ? (int)textStatus.contents.size() : (int)docMenuRows().size();
+				: docMenu == DOC_MENU_CONTENTS ? contentsCount() : (int)docMenuRows().size();
 			if (y < 60) { docMenu = DOC_MENU_NONE; return false; }
 			// the list follows a finger by the pixel and glides on (a smooth list); a tap acts on its row
 			int r = menuList.list.rowAt(x, y);
@@ -988,7 +1091,7 @@ namespace bp
 					// a stepper row: a tap left of its value steps back, right of it on (lay::settingStepper, as the
 					// settings' rows); an action row, or anywhere else on the row, acts
 					auto ids = docMenuRows();
-					bool stepper = docMenu == DOC_MENU_OPTIONS && row >= 0 && row < (int)ids.size() && ids[row] != DT_FIND && ids[row] != DP_PAGES &&
+					bool stepper = docMenu == DOC_MENU_OPTIONS && row >= 0 && row < (int)ids.size() && ids[row] != DT_FIND && ids[row] != DP_PAGES && ids[row] != DP_THERE &&
 						ids[row] != DT_MARKS && ids[row] != DT_FILTER && ids[row] != DP_FILTER;
 					lay::SettingStepper st = lay::settingStepper(docMenuRowRect(row));
 					if (stepper && (st.back.hit(x, rowY) || st.fwd.hit(x, rowY))) docMenuStep(st.back.hit(x, rowY) ? -1 : 1, *pp);
@@ -1287,15 +1390,9 @@ namespace bp
 		switch (which)
 		{
 		case 0:	// Contents: as Y
-			if (!textStatus.contents.empty())
+			if (contentsCount() > 0)
 			{
-				docMenu = DOC_MENU_CONTENTS;
-				docMenuCursor = 0;
-				for (int i = 0; i < (int)textStatus.contents.size(); i++)
-					if (textStatus.contents[i].second.first <= textStatus.place &&
-						(i == 0 || textStatus.contents[i].second.first > textStatus.contents[docMenuCursor].second.first))
-						docMenuCursor = i;
-				docMenuScroll = std::max(0, docMenuCursor - 3);
+				contentsOpen();
 			}
 			else docMarksOpen();
 			break;
@@ -1709,6 +1806,8 @@ namespace bp
 		s += findSignature();
 		s += "|bk" + std::to_string(textStatus.book) + " " + std::to_string(textStatus.bottomGen) + (SDL_GetTicks() < docBookToastUntil ? "T" : "");
 		s += "|bb" + std::to_string(docBookBar) + "," + std::to_string(docBookBarPressed);
+		// (a browser's place: Contents' first row, the options' first)
+		if (foreignShown()) s += "|fp" + foreignLabel();
 		// (a turn: a frame each step of it)
 		if (docTurning()) s += "|turn" + std::to_string((SDL_GetTicks() - textStatus.turnAt) / 12) + " " + std::to_string((SDL_GetTicks() - textStatus.noticeAt) / 40);
 		s += textStatus.error + "|" + textStatus.encoding + "|" + textEncoding + "|" + ui.pageReader->readerStatus.error;

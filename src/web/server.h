@@ -225,6 +225,7 @@ namespace bp
 	void registerPlaylistRoutes(WebServer& ws);	// api_playlists.cpp (B3)
 	void registerLibraryRoutes(WebServer& ws);	// api_library.cpp (the dashboard's Videos, Music and Books tabs)
 	void registerMangaRoutes(WebServer& ws);	// api_manga.cpp (section 8)
+	void registerBookRoutes(WebServer& ws);		// api_books.cpp (reading books in the page: docs/redesign/web-books.md)
 
 	// any server thread (api_player.cpp): the handheld stops if it plays real, or a file inside it (a folder), as the
 	// web's Stop does (back to the browser); false if it didn't (it plays something else, or nothing). Waits for the

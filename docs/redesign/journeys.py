@@ -43,6 +43,7 @@ JOURNEYS = [
 	('Search', 'home search search-results video; search-results music; search-results music-album; search-results reader; search-results search'),
 	('Network', 'home settings net-list net-find net-form keyboard; net-form net-list net-folder net-stream net-folder net-copy pdf; net-copy net-copy-fail net-copy; net-folder readonly alerts; net-list offline; net-list net-empty net-find; net-empty net-form'),
 	('Web dashboard', 'home-first web-page web-signin phone-home phone-files phone-playing music; web-page web-page-off web-page web-page-nowifi web-page; web-signin browser-play play-on music; browser-play browser-mini browser-play browser-lost music; quick web-page; home web-page'),
+	('Web dashboard: Books', 'phone-home phone-books phone-book phone-read phone-read-bar phone-read-text phone-read-bar phone-read-contents phone-read-marks phone-read; phone-read phone-read-two phone-read; phone-book phone-read-there phone-read; phone-books phone-books-upload phone-books phone-read-comic phone-read-lost phone-read-comic phone-books phone-read-pdf; phone-books desk-books desk-read desk-books desk-read-comic desk-books'),
 	('Settings and Theme', 'home settings set-theme set-screen lid-keys settings set-playback settings-group set-music set-photos set-reading set-files set-screen web-page set-updates set-about settings home'),
 	('Quick settings', 'home quick; video quick power-wake video; quick quit home; video vol-boost vol-warn vol-boost quick'),
 	('Incognito', 'quick incog-web-ask incog-web quick; set-screen incog-lid'),
@@ -157,7 +158,7 @@ def main():
 	for s in screens:
 		have = set()
 		for k in s['keys']: have |= toks(k[0])
-		for k, label in ([] if s['id'] in HINT_OK else hint_bar(s['bottom'])):
+		for k, label in ([] if s['id'] in HINT_OK or s['id'].startswith(('phone-', 'desk-')) else hint_bar(s['bottom'])):
 			ts = [t for t in toks(k) if t in KEYS]
 			if ts and not any(t in have for t in ts):   # “L/R Tab” on a first tab lists R alone: one of a pair is enough
 				n += 1; print(f'  {s["id"]}: {k} "{label}"')

@@ -474,6 +474,7 @@ namespace bp
 								w.key("frac").num(e->duration > 0 ? std::clamp((e->position + 1) / e->duration, 0.0, 1.0) : 0.0);
 							}
 							else w.key("frac").num(std::clamp(e->duration, 0.0, 1.0));
+							if (!e->by.empty()) w.key("by").str(e->by).key("when").num(e->when);
 						}
 						w.end();
 					}

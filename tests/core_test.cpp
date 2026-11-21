@@ -71,6 +71,7 @@ extern "C"
 #include "sidecar.h"
 #include "soundfx.h"
 #include "resume.h"
+#include "bookplace.h"
 #include "session.h"
 #include "settings.h"
 #include "stickscroll.h"
@@ -8253,6 +8254,70 @@ static void testClock()
 	CHECK_EQ(formatClock(14, 32, true), std::string("2:32 PM"));
 }
 
+// a book's one place (bookplace.h, docs/redesign/web-books.md §4): last turn wins, and only a place read on unseen
+// (the base is stale, and the stored one went elsewhere) is a conflict
+static void testBookPlace()
+{
+	PlaceWrite w;
+	w.path = "/sd/Books/a.epub";
+	w.kind = PLACE_TEXT;
+	w.position = (double)((3ull << 32) | 7);
+	w.share = 0.25;
+	w.by = "Safari\ton iPhone";
+	w.when = 1000;
+	ResumeEntry out;
+	// none stored: written, rev 1, the writer's name cleaned
+	CHECK_EQ(mergePlace(nullptr, w, out) == PlaceVerdict::Written, true);
+	CHECK_EQ(out.rev, (uint64_t)1);
+	CHECK_EQ(out.by, std::string("Safari on iPhone"));
+	CHECK_EQ((uint64_t)out.position, (3ull << 32) | 7);
+	ResumeEntry stored = out;
+	// the base read: written over it
+	w.base = 1;
+	w.position = (double)((3ull << 32) | 9);
+	CHECK_EQ(mergePlace(&stored, w, out) == PlaceVerdict::Written, true);
+	CHECK_EQ(out.rev, (uint64_t)2);
+	stored = out;
+	// the handheld turned meanwhile (rev 3): a write from base 2 to the same block is nothing to do
+	ResumeEntry hh = stored;
+	hh.position = (double)((4ull << 32) | 1);
+	hh = stampPlace(&stored, hh, "the handheld", 1100);
+	CHECK_EQ(hh.rev, (uint64_t)3);
+	CHECK_EQ(hh.by, std::string("the handheld"));
+	w.base = 2;
+	w.position = (double)((4ull << 32) | 1);
+	CHECK_EQ(mergePlace(&hh, w, out) == PlaceVerdict::Same, true);
+	CHECK_EQ(out.rev, (uint64_t)3);
+	// elsewhere: a conflict, the stored one back; forced: written
+	w.position = (double)((5ull << 32) | 0);
+	CHECK_EQ(mergePlace(&hh, w, out) == PlaceVerdict::Conflict, true);
+	CHECK_EQ(out.rev, (uint64_t)3);
+	w.force = true;
+	CHECK_EQ(mergePlace(&hh, w, out) == PlaceVerdict::Written, true);
+	CHECK_EQ(out.rev, (uint64_t)4);
+	// a place kept before the web (rev 0) takes a browser's first write from base 0
+	ResumeEntry old;
+	old.path = w.path;
+	old.aid = PLACE_PAGES;
+	old.position = 4;
+	old.duration = 20;
+	PlaceWrite pw;
+	pw.path = w.path;
+	pw.kind = PLACE_PAGES;
+	pw.position = 5;
+	pw.share = 20;
+	CHECK_EQ(mergePlace(&old, pw, out) == PlaceVerdict::Written, true);
+	// rev, when and by survive the store's file (a #place line); a name too long is cut on a character
+	ResumeStore st;
+	st.put(out);
+	ResumeStore back;
+	back.parse(st.serialize());
+	const ResumeEntry* e = back.find(w.path);
+	CHECK_EQ(e && e->rev == 1 && e->by == "Browser" && e->position == 5 && e->duration == 20, true);
+	CHECK_EQ(back.serialize(), st.serialize());
+	CHECK_EQ(placeWriter(std::string(39, 'a') + "\xc3\xa9"), std::string(39, 'a'));
+}
+
 static void testResume()
 {
 	ResumeStore r;
@@ -15935,6 +16000,7 @@ int main()
 	testEq();
 	testSoundFx();
 	testResume();
+	testBookPlace();
 	testPlaylist();
 	testPlaylists();
 	testPhoto();

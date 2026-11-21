@@ -236,6 +236,7 @@ Recent; and a video inside a Music folder belongs to Music.
 
 - **Web dashboard, Videos / Music / Books pages.** Music has a **Folders** view (the music folders on each card, then the folders inside, then the songs; a song plays with its folder as the list). Videos' **Folders** opens folders in place, every video row shows the handheld's cached thumbnail (`/api/vthumb`, from `<state>/cache/videos`, cacheable) and **Not finished** shows a bar and the time left. Books lists the handheld's own shelf: the cards' Books folders plus every EPUB, PDF or comic opened from anywhere (it was empty for anyone who opens books from Files), with covers (`/api/bookcover`) and reading progress; a tap opens it on the handheld.
   Every song, video and book row there (folder views and Books included) has a **⋯** with **Show in Files**: the dashboard's Files page at its folder, the file lit and scrolled into view, ready to rename, move or delete; Back returns to the page.
+- **Web dashboard, Videos / Music / Books pages.** Music has a **Folders** view (the music folders on each card, then the folders inside, then the songs; a song plays with its folder as the list). Videos' **Folders** opens folders in place, every video row shows the handheld's cached thumbnail (`/api/vthumb`, from `<state>/cache/videos`, cacheable) and **Not finished** shows a bar and the time left. Books lists the handheld's own shelf: the cards' Books folders plus every EPUB, PDF or comic opened from anywhere (it was empty for anyone who opens books from Files), with covers (`/api/bookcover`) and reading progress; a tap reads it in the browser (Reading in the browser).
 
 ## The Books section
 
@@ -1096,7 +1097,27 @@ you play one (in the browser or on the handheld, as from Files). **Music** is th
 **Artists** list (a tap opens their songs, by album), and **Playlists** — the playlists live here now, not as a tab
 of their own (the sidebar's shortcut list still goes straight to one). With no Music folder on either card the page
 says so and offers **Upload to Music**. **Books** is the shelf: every EPUB, PDF, comic and text file from the
-Books and Documents folders; a row asks the handheld to open it (the dashboard itself doesn't read books).
+Books and Documents folders; a tap **reads the book in the browser** (below), its **⋯** offers Continue here / Open
+on handheld / Download and says who read it last.
+
+**Reading in the browser** (Books, `#/books/read?p=…`; docs/redesign/web-books.md). The reader is the whole page;
+a tap in the middle shows its bars (‹ back, the title, ⋯; a slider, where you are, and "Shared with the handheld" /
+"Saving…" / "Not sent yet"). The left and right thirds, a swipe, ← → / Space / PageUp / PageDown turn the page (a
+right-to-left comic turns the other way); Home / End, `[` `]` (a text's chapter), `C` Contents, `D` Bookmarks, `T`
+Text, `+` `−` size, `F` full screen, Esc leaves. An **EPUB or TXT** is laid out from the handheld's own text blocks
+(the publisher's styling is not kept, as on the handheld) in pages, two columns from 900 px, with its own Light /
+Sepia / Dark paper, Serif / Sans and size, kept in that browser; Contents and Bookmarks (shared with the handheld's).
+A **comic** (CBZ, CBR, a picture EPUB) shows the archive's own pictures, the next two fetched ahead. A **PDF** is
+drawn in the browser by pdf.js (bundled: no internet needed). **One place per book**, the handheld's: it opens
+where it was last read on either device ("Picked up from the handheld: … · Back to …" when that was elsewhere), a
+turn is saved 1.5 s later (at once when the page hides), and the other device's turns are a note with **Go there**,
+never a jump. Read on while the handheld couldn't be reached and on the handheld too: **Two places in this book**
+asks which to keep (the furthest first; the other becomes the bookmark "Other place", or a note back to its page).
+**Open on handheld** (⋯) opens the book there at the browser's place and the page follows it (**Read here
+instead**). On the handheld, a browser's place in the book it has open is the first row of Contents (**Y**: "Where
+Safari on iPhone is · 11%"; a PDF's or comic's options), with no note over the page. An open reader doesn't keep the
+handheld awake: only its requests count as use. Not yet: Scroll mode, zoom and two-page spreads for pages, upload
+ghosts.
 
 **Playing** controls the music or video. Where it plays is a two-part switch at the top (**Handheld** · **This
 browser**), and in the player bar a button that opens the same choice, saying what happens (for example "pauses the

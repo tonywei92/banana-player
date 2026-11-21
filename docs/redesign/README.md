@@ -24,6 +24,9 @@ The proposed redesign of the handheld UI, kept for when it gets built.
   `sleep-done`, `phone-sleep`, `phone-sleep-warn`.
 - `lyrics.md`: lyrics (later work): where they come from, the top screen, the sheet and its states, the timing nudge,
   saving, the dashboard's page; drawn as `lyrics`, `lyrics-*`, `phone-lyrics`.
+- `web-books.md`: Books on the Web dashboard: the shelf, reading in the browser (text, PDF, comics), the place shared with the
+  handheld and its conflict cases, keys, copy, and what the server adds vs the page. Its screens are the group
+  “Web dashboard: Books” (a `desk` drawing is a page at a computer's width, 1280).
 - `today/`: screenshots of the current app (top and bottom panels) for comparison.
 
 Mock content (names, addresses) is made up; pictures are *Big Buck Bunny* (CC BY 3.0) or generated.

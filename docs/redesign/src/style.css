@@ -309,6 +309,8 @@ body.phys .device::after{content:"7 mm";position:absolute;right:-64px;bottom:14p
 .device.side .vhinge{width:12px;margin:22px 5px;border-radius:6px;background:linear-gradient(90deg,#0a0a0d,#26242e 45%,#0a0a0d)}
 .phonepair{display:flex;gap:12px;align-items:flex-start}.phonepair .pcol{flex:0 0 57%;min-width:0}.phonepair .hcol{flex:1;min-width:0}.phonepair .hinge{height:8px;margin:4px 12px}
 .panel.ph{aspect-ratio:390/780;border-radius:12px}.panel.ph>.s{width:390px;height:780px}
+.device.desk{max-width:1100px}
+.panel.dk{aspect-ratio:1280/800;border-radius:10px}.panel.dk>.s{width:1280px;height:800px}
 .panel.pt{aspect-ratio:3/4}
 .panel.pt>.s{width:480px;height:640px}
 .screen.wide,.proto.wide{grid-template-columns:minmax(0,1fr)}

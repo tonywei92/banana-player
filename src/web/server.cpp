@@ -108,7 +108,7 @@ namespace bp
 		{
 			std::string ext = lower(path.substr(path.find_last_of('.') == std::string::npos ? path.size() : path.find_last_of('.')));
 			if (ext == ".html") return "text/html; charset=utf-8";
-			if (ext == ".js") return "text/javascript; charset=utf-8";
+			if (ext == ".js" || ext == ".mjs") return "text/javascript; charset=utf-8";
 			if (ext == ".css") return "text/css; charset=utf-8";
 			if (ext == ".svg") return "image/svg+xml";
 			if (ext == ".ttf") return "font/ttf";
@@ -918,6 +918,7 @@ namespace bp
 		registerPlaylistRoutes(*this);
 		registerLibraryRoutes(*this);
 		registerMangaRoutes(*this);
+		registerBookRoutes(*this);
 		s.set_error_handler([](const httplib::Request&, httplib::Response& res) {
 			// a status without a body (a route's own 404, a 405): JSON like every other answer
 			if (res.body.empty() && res.status >= 400) fail(res, res.status, httplib::status_message(res.status));
