@@ -1,9 +1,10 @@
-// Search (Page::Search): the field, the cards' index's answers grouped by kind, and Recent searches. See
+// Search (Page::Search): the field, the library's answers under their kind tabs, and Recent searches. See
 // docs/notes/2026-11-20-search-network-web.md and docs/redesign/src/screens.js (search, search-results).
 #include "ui_search.h"
 #include "ui_internal.h"
 #include "ui_kit.h"
 #include "ui_browse.h"
+#include "ui_books.h"
 #include "mediaindex.h"
 #include "format.h"
 #include "playlist.h"
@@ -16,9 +17,6 @@ namespace bp
 {
 	namespace
 	{
-		const char* const LETTERS = "qwertyuiopasdfghjklzxcvbnm";
-		const char* const DIGITS = "1234567890!@#$%^&*(-_=+[]{}";
-		const int COUNTS[3] = {10, 9, 7};
 		const int MAX_QUERY = 40;
 		const char* const RECENT_FILE = "/search-recent";
 
@@ -66,6 +64,7 @@ namespace bp
 
 	Ui::Search::Search(Ui& u) : Area(u)
 	{
+		pad.more = false;	// a name needs no brackets: Shift, 123, Space, Clear, Del, Done
 	}
 
 	lay::Box Ui::Search::body() const
@@ -144,12 +143,20 @@ namespace bp
 	{
 		(void)p;
 		typing = false;
-		pressRow = pressEmpty = -1;
+		pressRow = pressEmpty = pressTab = -1;
 		finger = false;
 		ui.page = backPage;
 		ui.settingsOver = backSettingsOver;
 		ui.setGroup = backSetGroup;
 		ui.pressedBtn = -1;
+	}
+
+	void Ui::Search::back(Player& p)
+	{
+		// the header's < and B on an empty field: the keyboard lets go of what was typed (the results as they
+		// were); with nothing searched yet, or from the results, back to the page Search was opened from
+		if (typing && !query.empty()) typed(edit.text, false);
+		else close(p);
 	}
 
 	void Ui::Search::openKeyboard()
@@ -159,7 +166,8 @@ namespace bp
 		kbSince = SDL_GetTicks();
 		kbCursor = 0;
 		kbPressed = -1;
-		kbLayer = 0;
+		pad.shift = false;
+		pad.layer = 0;
 		ui.pressedBtn = -1;
 	}
 
@@ -170,23 +178,83 @@ namespace bp
 		pressRow = pressEmpty = -1;
 		if (!keep) return;
 		query = trimmed(text);
+		tab = T_ALL;	// a new search starts on everything it found
 		cursor = 0;
 		built = false;
 		if (!query.empty()) remember(query);
 	}
 
+	int Ui::Search::foundCount(int t) const
+	{
+		if (t != T_ALL) return (int)found[t].size();
+		return (int)(found[T_MUSIC].size() + found[T_VIDEOS].size() + found[T_BOOKS].size());
+	}
+
+	void Ui::Search::searchLibrary(const Player& p) const
+	{
+		(void)p;
+		for (auto& f : found) f.clear();
+		std::shared_ptr<const MediaSnapshot> snap = ui.mediaIndex ? ui.mediaIndex->snapshot() : nullptr;
+		if (!snap) return;
+		// the library only: the index's songs and videos, and the Books shelf (the Books and Ebook folders, and the
+		// books that were opened). A file anywhere else is Files' to find
+		if (ui.books->placesNow() != ui.books->placesKey || ui.rootsSerial() != ui.books->rootsSeen || ui.books->shelf.empty())
+			ui.books->build();
+		std::vector<std::string> names;
+		for (auto& b : ui.books->shelf) names.push_back(b.name);
+		SearchHits hits = mediaSearch(*snap, names, query);
+		auto add = [&](int kind, const Glyph* g, const std::string& name, const std::string& note, const std::string& pill,
+			const std::string& path) {
+			Row r;
+			r.kind = RESULT;
+			r.glyph = g;
+			r.text = name;
+			r.note = note;
+			r.pill = pill;
+			r.path = path;
+			markMatch(name, query, r.matchAt, r.matchLen);
+			found[kind].push_back(r);
+		};
+		for (uint32_t i : hits.songs)
+		{
+			if (i >= snap->songs.size()) continue;
+			const MediaSong& s = snap->songs[i];
+			std::string name = snap->at(s.title);
+			if (name.empty()) name = baseName(s.path);
+			std::string note = snap->at(s.artist);
+			const std::string& album = snap->at(s.album);
+			if (!album.empty() && album != note) note += (note.empty() ? "" : " \xC2\xB7 ") + album;
+			add(T_MUSIC, &G_NOTE, name, note, s.video ? "VIDEO" : "", s.path);
+		}
+		for (uint32_t i : hits.videos)
+		{
+			if (i >= snap->videos.size()) continue;
+			const MediaVideo& v = snap->videos[i];
+			add(T_VIDEOS, &G_FILM, nameOf(v.path), folderOf(v.path), "", v.path);
+		}
+		for (uint32_t i : hits.files)
+		{
+			if (i >= ui.books->shelf.size()) continue;
+			const std::string& path = ui.books->shelf[i].path;
+			add(T_BOOKS, &G_BOOK, nameOf(path), folderOf(path), "", path);
+		}
+	}
+
 	void Ui::Search::rebuild(const Player& p) const
 	{
 		uint32_t gen = ui.mediaIndex ? ui.mediaIndex->generation() : 0;
-		if (built && builtGen == gen && builtQuery == query && builtRecent == (int)recent.size()) return;
+		bool sameSearch = built && builtGen == gen && builtQuery == query;
+		if (sameSearch && builtRecent == (int)recent.size() && builtTab == tab) return;
 		built = true;
 		builtGen = gen;
 		builtQuery = query;
 		builtRecent = (int)recent.size();
+		builtTab = tab;
 		rows.clear();
 		selectable.clear();
 		if (query.empty())
 		{
+			for (auto& f : found) f.clear();
 			// the field empty: Recent searches (A runs one again), then Clear
 			if (recent.empty()) return;
 			Row h;
@@ -212,66 +280,77 @@ namespace bp
 			rows.push_back(c);
 			return;
 		}
-		std::shared_ptr<const MediaSnapshot> snap = ui.mediaIndex ? ui.mediaIndex->snapshot() : nullptr;
-		// the files part of the query: documents and pictures in the history and in the folder the browser shows
-		// (the index holds songs and videos; a file elsewhere is found as any card file is)
-		std::vector<std::string> names, paths;
-		auto addFile = [&](const std::string& path) {
-			if (path.empty() || isNetPath(path) || isMediaFile(path)) return;
-			for (auto& x : paths) if (x == path) return;
-			paths.push_back(path);
-			names.push_back(baseName(path));
-		};
-		for (auto& h : p.history().items()) addFile(h);
-		for (auto& path : ui.browse->browsePaths) addFile(path);
-		if (!snap) return;
-		SearchHits hits = mediaSearch(*snap, names, query);
-		auto head = [&](const char* name, int n) {
-			if (n <= 0) return;
-			Row h;
-			h.kind = HEAD;
-			h.text = name;
-			h.count = n;
-			rows.push_back(h);
-		};
-		auto add = [&](RowKind kind, const Glyph* g, const std::string& name, const std::string& note, const std::string& pill,
-			const std::string& path) {
-			Row r;
-			r.kind = kind;
-			r.glyph = g;
-			r.text = name;
-			r.note = note;
-			r.pill = pill;
-			r.path = path;
-			markMatch(name, query, r.matchAt, r.matchLen);
-			selectable.push_back((int)rows.size());
-			rows.push_back(r);
-		};
-		head("Videos", (int)hits.videos.size());
-		for (uint32_t i : hits.videos)
+		if (!sameSearch) searchLibrary(p);
+		// the tab's rows: All is every kind under its heading (one with nothing is left out), in the tabs' order;
+		// a kind's own tab is its rows alone (the count is on the tab)
+		static const char* const KIND[TABS] = {"All", "Music", "Videos", "Books"};
+		for (int k = T_MUSIC; k < TABS; k++)
 		{
-			if (i >= snap->videos.size()) continue;
-			const MediaVideo& v = snap->videos[i];
-			add(RESULT, &G_FILM, nameOf(v.path), folderOf(v.path), "", v.path);
+			if ((tab != T_ALL && tab != k) || found[k].empty()) continue;
+			if (tab == T_ALL)
+			{
+				Row h;
+				h.kind = HEAD;
+				h.text = KIND[k];
+				h.count = (int)found[k].size();
+				rows.push_back(h);
+			}
+			for (auto& r : found[k])
+			{
+				selectable.push_back((int)rows.size());
+				rows.push_back(r);
+			}
 		}
-		head("Music", (int)hits.songs.size());
-		for (uint32_t i : hits.songs)
+		// a kind with nothing while another has: the tabs stay, and the list says so in a line
+		if (rows.empty() && foundCount(T_ALL) > 0)
 		{
-			if (i >= snap->songs.size()) continue;
-			const MediaSong& s = snap->songs[i];
-			std::string name = snap->at(s.title);
-			if (name.empty()) name = baseName(s.path);
-			std::string note = snap->at(s.artist);
-			const std::string& album = snap->at(s.album);
-			if (!album.empty() && album != note) note += (note.empty() ? "" : " \xC2\xB7 ") + album;
-			add(RESULT, &G_NOTE, name, note, s.video ? "VIDEO" : "", s.path);
+			Row n;
+			n.kind = NONE;
+			n.text = std::string("Nothing in ") + KIND[tab] + " by that name";
+			rows.push_back(n);
 		}
-		head("Files", (int)hits.files.size());
-		for (uint32_t i : hits.files)
-		{
-			if (i >= paths.size()) continue;
-			add(RESULT, &G_FILE, nameOf(paths[i]), folderOf(paths[i]), "", paths[i]);
-		}
+	}
+
+	std::vector<std::string> Ui::Search::tabLabels() const
+	{
+		static const char* const KIND[TABS] = {"All", "Music", "Videos", "Books"};
+		std::vector<std::string> out;
+		for (int t = 0; t < TABS; t++) out.push_back(std::string(KIND[t]) + " " + std::to_string(foundCount(t)));
+		return out;
+	}
+
+	bool Ui::Search::tabsShown(const Player& p) const
+	{
+		// over a query's results (not over Recent searches, the keyboard or an empty page)
+		return !typing && !query.empty() && !emptyPage(p);
+	}
+
+	lay::SearchResults Ui::Search::layout(const Player& p) const
+	{
+		rebuild(p);
+		std::vector<int> widths;
+		bool tabs = tabsShown(p);
+		if (tabs)
+			for (auto& l : tabLabels()) widths.push_back(ui.kit->tabW(l));
+		// the notice: the index is still reading the cards, over what has been found so far
+		bool reading = !query.empty() && !(ui.mediaIndex && ui.mediaIndex->generation() != 0);
+		return lay::searchResults(body(), widths, ui.kit->tabCapW("L/R"), tabs, reading);
+	}
+
+	std::string Ui::Search::stateCounts() const
+	{
+		std::string out;
+		for (int t = 0; t < TABS; t++) out += (t ? "/" : "") + std::to_string(foundCount(t));
+		return out;
+	}
+
+	void Ui::Search::setTab(int t, const Player& p)
+	{
+		t = ((t % TABS) + TABS) % TABS;
+		if (t == tab) return;
+		tab = t;
+		cursor = 0;
+		rebuild(p);
 	}
 
 	std::string Ui::Search::crumb(const Player& p) const
@@ -281,14 +360,13 @@ namespace bp
 			if (!ui.mediaIndex || ui.mediaIndex->generation() == 0) return "Reading the cards";
 			auto snap = ui.mediaIndex->snapshot();
 			size_t n = snap ? snap->songs.size() + snap->videos.size() : 0;
-			return "Both cards \xC2\xB7 " + std::to_string(n) + " names";
+			return "Music, Videos and Books \xC2\xB7 " + std::to_string(n) + " names";
 		}
-		if (query.empty()) return recent.empty() ? std::string("Both cards") : std::string("Recent searches");
+		if (query.empty()) return recent.empty() ? std::string("Music, Videos and Books") : std::string("Recent searches");
 		rebuild(p);
-		int n = 0;
-		for (auto& r : rows) if (r.kind == RESULT) n++;
-		return "\xE2\x80\x9C" + query + "\xE2\x80\x9D \xC2\xB7 " + std::to_string(n) + (n == 1 ? " found" : " found") +
-			(n ? " \xC2\xB7 both cards" : "");
+		int n = foundCount(T_ALL);
+		return "\xE2\x80\x9C" + query + "\xE2\x80\x9D \xC2\xB7 " + std::to_string(n) + " found" +
+			(n ? " \xC2\xB7 Music, Videos and Books" : "");
 	}
 
 	Ui::ShellHead Ui::Search::head(const Player& p) const
@@ -296,16 +374,18 @@ namespace bp
 		ShellHead h;
 		h.back = true;	// (the header's < is B: back to the page it was opened from)
 		h.more = false;
-		h.title = "Search";
+		h.title = "Search library";	// (the media library only: Music, Videos, Books; Files' folders are Files')
 		h.crumb = crumb(p);
 		if (typing)
-			h.hints = {{"A", "Type"}, {"X", "Delete"}, {"Y", "Space"}, {"START", "Done"}, {"B", "Close"}};
+			h.hints = {{"A", "Type"}, {"B", edit.text.empty() ? "Close" : "Delete"}, {"L/R", "Move"}, {"START", "Done"}};
 		else if (query.empty() && recent.empty())
 			h.hints = {{"A", "Type"}, {"Y", "Browse Files"}, {"B", "Back"}};
 		else if (emptyPage(p))
 			h.hints = {{"A", "Try another"}, {"Y", "Browse Files"}, {"B", "Back"}};
+		else if (query.empty())
+			h.hints = {{"A", "Run it"}, {"Y", "Edit"}, {"B", "Back"}};
 		else
-			h.hints = {{"A", query.empty() ? "Run it" : "Open"}, {"Y", "Edit"}, {"B", "Back"}};
+			h.hints = {{"A", "Open"}, {"L/R", "Kind"}, {"Y", "Edit"}, {"B", "Back"}};
 		return h;
 	}
 
@@ -314,8 +394,7 @@ namespace bp
 		if (query.empty()) return recent.empty();
 		rebuild(p);
 		if (ui.mediaIndex && ui.mediaIndex->generation() == 0) return false;	// still reading: the notice row
-		for (auto& r : rows) if (r.kind == RESULT) return false;
-		return true;
+		return foundCount(T_ALL) == 0;
 	}
 
 	std::vector<std::string> Ui::Search::emptyLines(const Player& p) const
@@ -323,12 +402,12 @@ namespace bp
 		(void)p;
 		if (query.empty())
 		{
-			std::vector<std::string> out = ui.wrapText("Find a song, a video, a book or a file on the cards by any part of "
-				"its name. The index reads the cards in the background.", F_I14, 400, 3);
+			std::vector<std::string> out = ui.wrapText("Find a song, a video or a book in your library by any part of "
+				"its name. A file outside the Music, Videos and Books folders is in Files.", F_I14, 400, 3);
 			return out;
 		}
-		std::vector<std::string> out = ui.wrapText("Names on both cards were searched: files, songs and videos. "
-			"Network folders are not searched.", F_I14, 400, 3);
+		std::vector<std::string> out = ui.wrapText("Your library was searched: songs, videos and books. "
+			"Files' other folders and network folders are not.", F_I14, 400, 3);
 		return out;
 	}
 
@@ -342,94 +421,13 @@ namespace bp
 	{
 		// the kit's keyboard laid out inside the shell's body (the keys share its width, nothing fitted or
 		// scaled): the same boxes the touches test, and the kit's drawing (Kit::keyboard) draws them
-		return lay::keyboard(b, {}, {COUNTS[0], COUNTS[1], COUNTS[2]}, 2);
-	}
-
-	std::string Ui::Search::keyboardNote(const Player& p) const
-	{
-		(void)p;
-		if (!ui.mediaIndex || ui.mediaIndex->generation() == 0) return "Reading the cards";
-		auto snap = ui.mediaIndex->snapshot();
-		size_t n = snap ? snap->songs.size() + snap->videos.size() : 0;
-		return "Both cards \xC2\xB7 " + std::to_string(n) + " names";
-	}
-
-	int Ui::Search::keyCount() const
-	{
-		return COUNTS[0] + COUNTS[1] + COUNTS[2] + 5;
-	}
-
-	int Ui::Search::kbAt(int x, int y) const
-	{
-		lay::Keyboard k = keyboard(body());
-		int i = 0;
-		for (auto& row : k.rows)
-			for (auto& r : row)
-			{
-				if (r.hit(x, y)) return i;
-				i++;
-			}
-		for (auto& r : k.bottom)
-		{
-			if (r.hit(x, y)) return i;
-			i++;
-		}
-		return -1;
-	}
-
-	void Ui::Search::kbMove(int dx, int dy)
-	{
-		int starts[4] = {0, COUNTS[0], COUNTS[0] + COUNTS[1], COUNTS[0] + COUNTS[1] + COUNTS[2]};
-		int sizes[4] = {COUNTS[0], COUNTS[1], COUNTS[2], 5};
-		lay::Keyboard k = keyboard(body());
-		auto centre = [&](int idx) {
-			int i = 0;
-			for (auto& row : k.rows)
-				for (auto& r : row) { if (i == idx) return r.x + r.w / 2; i++; }
-			for (auto& r : k.bottom) { if (i == idx) return r.x + r.w / 2; i++; }
-			return 0;
-		};
-		int g = 0;
-		while (g < 3 && kbCursor >= starts[g + 1]) g++;
-		int at = std::clamp(kbCursor - starts[g], 0, sizes[g] - 1);
-		if (dx)
-		{
-			at = ((at + dx) % sizes[g] + sizes[g]) % sizes[g];
-			kbCursor = starts[g] + at;
-			return;
-		}
-		if (!dy) return;
-		int ng = std::clamp(g + dy, 0, 3), cx = centre(kbCursor), best = 0, bestD = 1 << 30;
-		for (int i = 0; i < sizes[ng]; i++)
-		{
-			int d = std::abs(centre(starts[ng] + i) - cx);
-			if (d < bestD) { bestD = d; best = i; }
-		}
-		kbCursor = starts[ng] + best;
+		return lay::keyboard(b, {}, KeyPad::rows(), pad.toggles());
 	}
 
 	void Ui::Search::kbPressKey(int i)
 	{
-		if (i < 0 || i >= keyCount()) return;
 		kbSince = SDL_GetTicks();
-		int letters = COUNTS[0] + COUNTS[1] + COUNTS[2];
-		if (i < letters)
-		{
-			if (edit.text.size() < (size_t)MAX_QUERY)
-			{
-				char c = (kbLayer == 0 ? LETTERS : DIGITS)[i];
-				edit.insert(std::string(1, c));
-			}
-			return;
-		}
-		switch (i - letters)
-		{
-		case 0: case 1: kbLayer = i - letters; break;
-		case 2: if (edit.text.size() < (size_t)MAX_QUERY) edit.insert(" "); break;
-		case 3: edit.backspace(); break;
-		case 4: typed(edit.text, true); break;
-		default: break;
-		}
+		if (pad.press(i, edit, MAX_QUERY)) typed(edit.text, true);
 	}
 
 	void Ui::Search::moveCursor(int dir, int page)
@@ -457,6 +455,7 @@ namespace bp
 		if (r.kind == RECENT)
 		{
 			query = r.path;
+			tab = T_ALL;
 			cursor = 0;
 			built = false;
 			remember(query);
@@ -471,26 +470,15 @@ namespace bp
 		ui.shell->openSection(Ui::Shell::Section::Files, p);
 	}
 
-	lay::Box Ui::Search::noticeBox(const Player& p) const
-	{
-		if (query.empty() || (ui.mediaIndex && ui.mediaIndex->generation() != 0)) return {0, 0, 0, 0};
-		lay::Box b = body();
-		// the index is still reading the cards: the notice row over what has been found so far
-		return lay::notice({b.x, b.y + lay::SEARCH_FIELD_H + lay::SEARCH_GROUP_GAP, b.w}, true, true, 0).row;
-	}
-
-	lay::Box Ui::Search::listView(const Player& p) const
-	{
-		// from just under the field (or the notice) to the body's foot; a group's heading sits at the foot of its
-		// row's pitch, so the first one lands a gap under the field
-		lay::Box b = body(), n = noticeBox(p);
-		int top = n.w > 0 ? n.y + n.h + lay::SP4 : b.y + lay::SEARCH_FIELD_H + lay::SP4;
-		return {b.x, top, b.w, std::max(0, b.y + b.h - top)};
-	}
-
 	void Ui::Search::drawRow(const Row& row, lay::Box box, bool at, bool pressed)
 	{
 		Kit& k = *ui.kit;
+		if (row.kind == NONE)
+		{
+			// a kind's tab with nothing in it: one quiet line where its first row would be
+			ui.drawTextMid(row.text, F_I14, DIM, box.x + lay::SP12, box.y + ROW_PITCH / 2, box.w - 2 * lay::SP12);
+			return;
+		}
 		if (row.kind == HEAD)
 		{
 			lay::Box r{box.x, box.y + ROW_PITCH - lay::LINE_H - lay::SEARCH_HEAD_GAP, box.w, lay::LINE_H};
@@ -530,7 +518,7 @@ namespace bp
 		{
 			lay::Keyboard l = keyboard(b);
 			Kit::KeyboardView v;
-			v.title = "Search";
+			v.title = "Search library";
 			v.value = edit.text;
 			v.caret = edit.caret;
 			v.caretOn = (SDL_GetTicks() - kbSince) % 1060 < 530;
@@ -541,21 +529,11 @@ namespace bp
 			{
 				auto snap = ui.mediaIndex->snapshot();
 				size_t n = snap ? snap->songs.size() + snap->videos.size() : 0;
-				v.note = "Both cards \xC2\xB7 " + std::to_string(n) + " names";
+				v.note = "Music, Videos and Books \xC2\xB7 " + std::to_string(n) + " names";
 			}
-			const char* rows[3] = {LETTERS, LETTERS + 10, LETTERS + 19};
-			const char* drows[3] = {DIGITS, DIGITS + 10, DIGITS + 19};
-			for (int r = 0; r < 3; r++)
-			{
-				std::vector<std::string> line;
-				for (int i = 0; i < COUNTS[r]; i++) line.emplace_back(1, (kbLayer == 0 ? rows[r] : drows[r])[i]);
-				v.rows.push_back(line);
-			}
-			v.layers = {"abc", "123"};
-			v.bottomCaps = {"L3", "SELECT", "Y", "X", "START"};
+			v.keys(pad, edit.text.empty());
 			v.cursor = kbCursor;
 			v.pressed = kbPressed;
-			v.layerOn = kbLayer;
 			k.keyboard(l, v);
 			return;
 		}
@@ -571,7 +549,7 @@ namespace bp
 			lay::EmptyState e = emptyLayout(p);
 			Kit::Empty empty;
 			empty.glyph = &G_SEARCH;
-			empty.title = query.empty() ? "Search your cards" : "Nothing called \xE2\x80\x9C" + query + "\xE2\x80\x9D";
+			empty.title = query.empty() ? "Search your library" : "Nothing called \xE2\x80\x9C" + query + "\xE2\x80\x9D";
 			empty.lines = emptyLines(p);
 			empty.key1 = query.empty() ? "Type" : "Try another";
 			empty.key2 = "Browse Files";
@@ -582,23 +560,26 @@ namespace bp
 			k.emptyState(e, empty);
 			return;
 		}
-		rebuild(p);
-		lay::Box nb = noticeBox(p);
-		if (nb.w > 0)
+		lay::SearchResults l = layout(p);
+		// the kinds, each with what it found; L / R step them (the caps at the strip's ends)
+		if (!l.strip.tab.empty()) k.tabs(l.strip.area, tabLabels(), tab, "L/R", BG, pressTab);
+		if (l.notice.w > 0)
 		{
 			Kit::NoticeRow n;
 			n.tone = Kit::NoticeTone::Working;
 			n.glyph = &G_REFRESH;
 			n.text = "Reading the cards";
 			n.second = "Results fill in as it goes";
-			k.notice(lay::notice({b.x, nb.y, b.w}, true, true, 0), n);
+			k.notice(lay::notice({l.notice.x, l.notice.y, l.notice.w}, true, true, 0), n);
 		}
 		if (rows.empty()) return;
 		// a new query starts at its top; the list come back (the page left, the theme changed): the cursor in view
 		bool fresh = list.takeFresh();
-		if (query != listFor)
+		// (a new query, or another kind's tab: a list of its own)
+		const std::string shownFor = query + "\x02" + std::to_string(tab);
+		if (shownFor != listFor)
 		{
-			listFor = query;
+			listFor = shownFor;
 			list.top();
 			fresh = true;
 		}
@@ -608,7 +589,7 @@ namespace bp
 		auto shown = std::make_shared<const std::vector<Row>>(rows);
 		int pressed = fingerMoved ? -1 : pressRow;
 		SmoothList::Spec spec;
-		spec.view = listView(p);
+		spec.view = l.list;
 		spec.rowH = ROW_PITCH;
 		spec.count = (int)rows.size();
 		spec.key = [shown, sel, pressed](int i) {
@@ -625,9 +606,10 @@ namespace bp
 	{
 		rebuild(p);
 		char b[160];
-		snprintf(b, sizeof b, "|sr%d,%d,%d,%d,%d,%d,%d,%d|", (int)backPage, (int)typing, cursor, (int)fingerMoved, kbCursor,
-			kbPressed, kbLayer, pressRow * 10 + pressEmpty);
+		snprintf(b, sizeof b, "|sr%d,%d,%d,%d,%d,%d,%d,%d,%d,%d|", (int)backPage, (int)typing, cursor, (int)fingerMoved, kbCursor,
+			kbPressed, pad.layer * 2 + pad.shift, pressRow * 10 + pressEmpty, tab, pressTab);
 		std::string s = b;
+		for (int t = T_MUSIC; t < TABS; t++) s += std::to_string(found[t].size()) + ",";	// the tabs' counts
 		s += query + "|" + builtQuery + "|" + std::to_string(rows.size()) + "|" + std::to_string(builtGen);
 		for (auto& q : recent) s += "|r" + q;
 		if (typing) s += std::string("|k") + std::to_string((SDL_GetTicks() - kbSince) % 1060 < 530) + edit.text;
@@ -640,17 +622,22 @@ namespace bp
 		{
 			switch (b)
 			{
+			// the keys are the field's keyboard's (ui_keyboard.cpp), button for button: each bottom key's cap says its own
 			case Button::A: kbPressKey(kbCursor); break;
-			// close: the results as they were; with nothing searched yet, back to the page it was opened from
-			case Button::B: if (query.empty() && edit.text.empty()) close(p); else typed(edit.text, false); break;
-			case Button::X: edit.backspace(); kbSince = SDL_GetTicks(); break;
-			case Button::Y: if (edit.text.size() < (size_t)MAX_QUERY) edit.insert(" "); break;
+			// B deletes; with nothing left to delete it closes (the results as they were)
+			case Button::B:
+				if (edit.text.empty()) back(p);
+				else kbPressKey(pad.keyOf(KeyPad::Delete));
+				break;
+			case Button::X: kbPressKey(pad.keyOf(KeyPad::Space)); break;
+			case Button::Y: kbPressKey(pad.keyOf(KeyPad::Shift)); break;
+			case Button::L2: kbPressKey(pad.keyOf(KeyPad::Clear)); break;
+			case Button::L3: case Button::Select: pad.stepLayer(); break;
 			case Button::Start: typed(edit.text, true); break;
-			case Button::L3: case Button::Select: kbLayer = kbLayer ? 0 : 1; break;
-			case Button::Up: kbMove(0, -1); break;
-			case Button::Down: kbMove(0, 1); break;
-			case Button::Left: kbMove(-1, 0); break;
-			case Button::Right: kbMove(1, 0); break;
+			case Button::Up: kbCursor = lay::keyboardMove(keyboard(body()), kbCursor, 0, -1); break;
+			case Button::Down: kbCursor = lay::keyboardMove(keyboard(body()), kbCursor, 0, 1); break;
+			case Button::Left: kbCursor = lay::keyboardMove(keyboard(body()), kbCursor, -1, 0); break;
+			case Button::Right: kbCursor = lay::keyboardMove(keyboard(body()), kbCursor, 1, 0); break;
 			case Button::L: edit.left(); break;
 			case Button::R: edit.right(); break;
 			default: break;
@@ -658,7 +645,7 @@ namespace bp
 			return false;
 		}
 		rebuild(p);
-		if (b == Button::B) { close(p); return false; }
+		if (b == Button::B) { back(p); return false; }
 		if (b == Button::Start) { ui.openSettings(p, true); return false; }
 		bool empty = emptyPage(p);
 		if (b == Button::Y)
@@ -678,6 +665,8 @@ namespace bp
 		else if (b == Button::Down) { moveCursor(1, 0); ensureCursor(p); }
 		else if (b == Button::Left) { moveCursor(0, -1); ensureCursor(p); }
 		else if (b == Button::Right) { moveCursor(0, 1); ensureCursor(p); }
+		// L / R: the kind before or after, round (only over results: Recent searches have no tabs)
+		else if ((b == Button::L || b == Button::R) && tabsShown(p)) setTab(tab + (b == Button::R ? 1 : -1), p);
 		else if (b == Button::L3) openKeyboard();
 		return false;
 	}
@@ -687,11 +676,11 @@ namespace bp
 		lay::Box b = body();
 		if (pt.kind == Pointer::Down)
 		{
-			pressRow = pressEmpty = -1;
+			pressRow = pressEmpty = pressTab = -1;
 			if (typing)
 			{
 				kbSince = SDL_GetTicks();
-				kbPressed = kbAt(x, y);
+				kbPressed = lay::keyboardHit(keyboard(b), x, y);
 				if (kbPressed >= 0) kbCursor = kbPressed;
 				return false;
 			}
@@ -704,14 +693,18 @@ namespace bp
 					if (e.key[i].hit(x, y)) pressEmpty = i + 1;
 				return false;
 			}
+			// a kind's tab (the strip the drawing asked for)
+			lay::SearchResults l = layout(p);
+			pressTab = lay::tabAt(l.strip, x, y);
+			if (pressTab >= 0) return false;
 			// the list: a touch on a gliding one only stops it; else the row under the finger (a heading: none)
-			lay::Box v = listView(p);
+			lay::Box v = l.list;
 			if (rows.empty() || !v.hit(x, y)) return false;
 			finger = true;
 			fingerMoved = false;
 			caught = list.press(pt.y * Ui::H);
 			int r = caught ? -1 : list.rowAt(x, y);
-			if (r >= 0 && r < (int)rows.size() && rows[r].kind != HEAD)
+			if (r >= 0 && r < (int)rows.size() && rows[r].kind != HEAD && rows[r].kind != NONE)
 			{
 				pressRow = r;
 				for (size_t j = 0; j < selectable.size(); j++)
@@ -725,7 +718,18 @@ namespace bp
 			{
 				int was = kbPressed;
 				kbPressed = -1;
-				if (was >= 0 && kbAt(x, y) == was) kbPressKey(was);
+				if (was >= 0 && lay::keyboardHit(keyboard(b), x, y) == was) kbPressKey(was);
+			}
+			return false;
+		}
+		if (pressTab >= 0)
+		{
+			// the lift on the tab it went down on: that kind
+			if (pt.kind == Pointer::Up)
+			{
+				int was = pressTab;
+				pressTab = -1;
+				if (lay::tabAt(layout(p).strip, x, y) == was) setTab(was, p);
 			}
 			return false;
 		}

@@ -1,4 +1,4 @@
-// Music (ui_music.h): the three views of the cards' index, an album's page and an artist's. Everything is drawn
+// Music (ui_music.h): the views of the cards' index (Albums, Artists, Folders), an album's page and an artist's. Everything is drawn
 // inside lay::shell().body (the shell draws the rail, the header and the hints); the touches test the same Rects
 // the drawing asked for. The third view is the browser's own playlists page — show() opens it, and nothing of it is
 // here (Shell::section maps PLROOT and a playlist's page to this section, so the rail keeps Music lit under them).
@@ -56,7 +56,7 @@ namespace bp
 
 	void Ui::Music::show(Player& p)
 	{
-		if (view == 2)
+		if (view == V_PLAYLISTS)
 		{
 			// the third view: the browser's own playlists page, where it was left (or its top)
 			ui.page = Page::Browse;
@@ -70,14 +70,16 @@ namespace bp
 
 	void Ui::Music::viewStep(int dir, Player& p)
 	{
-		// L2 / R2 and the chips: the three views, wrapping (Albums · Artists · Playlists)
-		setView(((view + dir) % 3 + 3) % 3, p);
+		// L / R and the chips: the views, wrapping (Albums · Artists · Playlists · Folders)
+		setView(((view + dir) % VIEWS + VIEWS) % VIEWS, p);
 	}
 
 	void Ui::Music::setView(int v, Player& p)
 	{
 		view = v;
 		albumAt = artistAt = -1;
+		folderAt.clear();
+		folderCursors.clear();
 		cursor = 0;
 		list.top();
 		keyFocus = -1;
@@ -104,6 +106,139 @@ namespace bp
 		keyFocus = 0;
 		artistZone = 0;	// the keys, then their albums
 		artistAlbum = 0;
+	}
+
+	// ---- the Folders view ----
+
+	std::string Ui::Music::folderShown(const MediaSnapshot& snap) const
+	{
+		// one Music folder: no list of one to step through, its inside is the view's top
+		if (folderAt.empty() && snap.musicFolders.size() == 1) return snap.musicFolders.front();
+		return folderAt;
+	}
+
+	std::shared_ptr<const std::vector<Ui::Music::FolderRow>> Ui::Music::folderRows() const
+	{
+		auto snap = snapshot();
+		if (!snap) return std::make_shared<const std::vector<FolderRow>>();
+		const std::string at = folderShown(*snap);
+		if (folderList && folderListFor == at && folderListGen == generation()) return folderList;
+		// the songs under a folder: its path and a slash before the file's own
+		auto under = [](const std::string& path, const std::string& folder) {
+			return path.size() > folder.size() + 1 && path[folder.size()] == '/' && path.compare(0, folder.size(), folder) == 0;
+		};
+		std::vector<FolderRow> dirs, songs;
+		if (at.empty())
+		{
+			// the Music folders themselves, in the index's order (the main card's first), each named with its card
+			for (auto& root : snap->musicFolders)
+			{
+				FolderRow r;
+				r.dir = true;
+				r.path = root;
+				r.name = baseName(root);
+				r.second = cardWord(root);
+				for (auto& s : snap->songs)
+					if (under(s.path, root)) r.songs++;
+				dirs.push_back(r);
+			}
+		}
+		else
+		{
+			for (uint32_t i = 0; i < snap->songs.size(); i++)
+			{
+				const MediaSong& s = snap->songs[i];
+				if (!under(s.path, at)) continue;
+				size_t from = at.size() + 1, slash = s.path.find('/', from);
+				if (slash == std::string::npos)
+				{
+					FolderRow r;
+					r.path = s.path;
+					r.name = snap->at(s.title).empty() ? baseName(s.path) : snap->at(s.title);
+					r.second = snap->at(s.artist);
+					r.song = i;
+					songs.push_back(r);
+					continue;
+				}
+				// a folder below: one row for all its songs
+				std::string dir = s.path.substr(0, slash);
+				auto it = std::find_if(dirs.begin(), dirs.end(), [&](const FolderRow& d) { return d.path == dir; });
+				if (it == dirs.end())
+				{
+					FolderRow r;
+					r.dir = true;
+					r.path = dir;
+					r.name = dir.substr(from);
+					dirs.push_back(r);
+					it = dirs.end() - 1;
+				}
+				it->songs++;
+			}
+			std::sort(dirs.begin(), dirs.end(), [](const FolderRow& a, const FolderRow& b) { return naturalLess(a.name, b.name); });
+			std::sort(songs.begin(), songs.end(), [](const FolderRow& a, const FolderRow& b) {
+				return naturalLess(baseName(a.path), baseName(b.path));
+			});
+		}
+		dirs.insert(dirs.end(), songs.begin(), songs.end());
+		folderList = std::make_shared<const std::vector<FolderRow>>(std::move(dirs));
+		folderListFor = at;
+		folderListGen = generation();
+		return folderList;
+	}
+
+	void Ui::Music::openFolder(const std::string& path)
+	{
+		folderCursors.push_back(cursor);
+		folderAt = path;
+		cursor = 0;
+		list.top();
+	}
+
+	bool Ui::Music::folderUp()
+	{
+		auto snap = snapshot();
+		if (!snap || folderAt.empty()) return false;
+		// a Music folder's own top: back to the list of them (when there is more than one), else out of the view
+		bool root = std::find(snap->musicFolders.begin(), snap->musicFolders.end(), folderAt) != snap->musicFolders.end();
+		if (root && snap->musicFolders.size() == 1) return false;
+		folderAt = root ? "" : parentFolder(folderAt);
+		// (the only Music folder is the view's top, kept as "": folderShown)
+		if (snap->musicFolders.size() == 1 && folderAt == snap->musicFolders.front()) folderAt.clear();
+		cursor = folderCursors.empty() ? 0 : folderCursors.back();
+		if (!folderCursors.empty()) folderCursors.pop_back();
+		cursor = std::clamp(cursor, 0, std::max(0, (int)folderRows()->size() - 1));
+		list.top();
+		keepCursorInView(false);
+		return true;
+	}
+
+	std::vector<PlaylistEntry> Ui::Music::folderEntries(const std::string& folder) const
+	{
+		// every song under it, in the index's order (an album's songs stay together)
+		std::vector<PlaylistEntry> out;
+		auto snap = snapshot();
+		if (!snap || folder.empty()) return out;
+		for (auto& s : snap->songs)
+			if (s.path.size() > folder.size() + 1 && s.path[folder.size()] == '/' && s.path.compare(0, folder.size(), folder) == 0)
+				out.push_back({s.path, snap->at(s.title), (double)s.duration});
+		return out;
+	}
+
+	void Ui::Music::playFolder(int row, Player& p)
+	{
+		// the folder's own songs as the list (as Files plays a folder), from the one chosen
+		auto snap = snapshot();
+		auto rows = folderRows();
+		if (!snap || row < 0 || row >= (int)rows->size() || (*rows)[row].dir) return;
+		std::vector<std::string> paths;
+		int index = 0;
+		for (int i = 0; i < (int)rows->size(); i++)
+		{
+			if ((*rows)[i].dir) continue;
+			if (i == row) index = (int)paths.size();
+			paths.push_back((*rows)[i].path);
+		}
+		play(paths, index, "Folder \xC2\xB7 " + baseName(folderShown(*snap)), false, p);
 	}
 
 	// ---- the list shown ----
@@ -147,14 +282,33 @@ namespace bp
 			g.cursor = cursor / 5;
 			return g;
 		}
-		if (view == 1)
+		if (view == V_ARTISTS)
 		{
 			g.view = {inner.x, gy, inner.w, inner.y + inner.h - gy};
 			g.rowH = lay::ARTIST_ROW_H;
 			g.count = (int)snap->artists.size();
 			g.cursor = cursor;
 		}
+		if (view == V_FOLDERS)
+		{
+			g.view = {inner.x, gy, inner.w, inner.y + inner.h - gy};
+			g.rowH = lay::MEDIA_ROW_H;
+			g.count = (int)folderRows()->size();
+			g.cursor = cursor;
+		}
 		return g;
+	}
+
+	bool Ui::Music::artistStripShown(const MediaSnapshot& snap) const
+	{
+		return albumAt < 0 && artistAt >= 0 && artistAt < (int)snap.artists.size() && (keyFocus >= 0 || artistZone == 0);
+	}
+
+	Ui::Rect Ui::Music::artistStripCell(int j) const
+	{
+		lay::PageHead h = lay::pageHead(musicInner(), 1, 3);
+		return {h.content.x + j * (lay::ALBUM_ART + lay::ALBUM_COL_GAP), h.content.y + lay::LINE_H + lay::SP6,
+			lay::ALBUM_ART, lay::ALBUM_CELL_H};
 	}
 
 	lay::AlbumGrid Ui::Music::gridRow(Rect row, int r, int n)
@@ -307,7 +461,7 @@ namespace bp
 			artists = (int)snap->artists.size();
 		}
 		if (ui.browse->playlists->plStore) playlists = (int)ui.browse->playlists->plStore->list().size();
-		return {{"Albums", albums}, {"Artists", artists}, {"Playlists", playlists}};
+		return {{"Albums", albums}, {"Artists", artists}, {"Playlists", playlists}, {"Folders", -1}};
 	}
 
 	void Ui::Music::accentFirst(Kit::Empty& e, const std::vector<std::string>& lines, const char* word) const
@@ -328,6 +482,8 @@ namespace bp
 	{
 		if (albumAt >= 0) return {{"A", "Play"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Keys, songs"}, {"X", "More"}, {"B", "Albums"}};
 		if (artistAt >= 0) return {{"A", "Play / open"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Albums, songs"}, {"X", "More"}, {"B", "Artists"}};
+		if (view == V_FOLDERS)
+			return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", folderAt.empty() ? "Home" : "Up"}};
 		// the views (the mock-up's music-albums and music-artists)
 		return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", "Home"}};
 	}
@@ -392,6 +548,19 @@ namespace bp
 		else if (snap->musicFolders.empty()) h.crumb = "No Music folder on either card";
 		else if (snap->songs.empty()) h.crumb = mediaEmptyWords(snap->musicFolders);
 		else { h.crumb = fromLine(*snap); h.more = true; }
+		// inside a folder: where it is, from its Music folder down, and what it holds
+		if (h.more && view == V_FOLDERS && !folderAt.empty())
+		{
+			std::string words;
+			for (auto& root : snap->musicFolders)
+				if (folderAt == root || folderAt.compare(0, root.size() + 1, root + "/") == 0)
+				{
+					words = baseName(root);
+					for (char c : folderAt.substr(root.size())) words += c == '/' ? std::string(" \xE2\x80\xBA ") : std::string(1, c);
+				}
+			size_t n = folderEntries(folderAt).size();
+			h.crumb = words + " \xC2\xB7 " + std::to_string(n) + (n == 1 ? " song" : " songs");
+		}
 		return h;
 	}
 
@@ -404,7 +573,18 @@ namespace bp
 		// what is focused: a song (the pages' rows), else the album, else the artist
 		std::string songPath, songTitle;
 		int album = -1, artist = -1;
-		if (albumAt >= 0 && albumAt < (int)snap->albums.size())
+		std::string folder;		// the Folders view's focused folder
+		if (albumAt < 0 && artistAt < 0 && view == V_FOLDERS)
+		{
+			auto rows = folderRows();
+			if (cursor >= 0 && cursor < (int)rows->size())
+			{
+				const FolderRow& r = (*rows)[cursor];
+				if (r.dir) folder = r.path;
+				else { songPath = r.path; songTitle = r.name; }
+			}
+		}
+		else if (albumAt >= 0 && albumAt < (int)snap->albums.size())
 		{
 			album = albumAt;
 			if (keyFocus < 0 && rowCursor >= 0 && rowCursor < (int)snap->albums[album].songs.size())
@@ -430,7 +610,7 @@ namespace bp
 		else if (view == 0 && cursor >= 0 && cursor < (int)snap->albums.size()) album = cursor;
 		else if (view == 1 && cursor >= 0 && cursor < (int)snap->artists.size()) artist = cursor;
 		// asked for its list each time it draws, so a Like row says what it is now
-		ui.openMore([this, songPath, songTitle, album, artist](const Player& pl) {
+		ui.openMore([this, songPath, songTitle, album, artist, folder](const Player& pl) {
 			MoreSpec m;
 			auto snap = this->snapshot();
 			if (!snap) { m.title = "Music"; return m; }
@@ -453,8 +633,14 @@ namespace bp
 				name = wordOr(*snap, snap->artists[artist].name, "Unknown artist");
 				note = std::to_string(entries.size()) + (entries.size() == 1 ? " song" : " songs");
 			}
+			if (songPath.empty() && !folder.empty())
+			{
+				entries = folderEntries(folder);
+				name = baseName(folder);
+				note = std::to_string(entries.size()) + (entries.size() == 1 ? " song" : " songs");
+			}
 			if (name.empty()) { m.title = "Music"; return m; }
-			m.glyph = &G_NOTE;
+			m.glyph = !songPath.empty() || folder.empty() ? &G_NOTE : &G_FOLDER;
 			m.title = name;
 			m.note = note;
 			auto row = [](const Glyph* g, std::string label, std::string nt, std::function<bool(Player&)> act,
@@ -484,7 +670,7 @@ namespace bp
 					}, liked, true));
 			if (!entries.empty())
 				m.rows.push_back(row(&G_FOLDER, "Show in folder", "",
-					[this, path = entries.front().path](Player& p) {
+					[this, path = !songPath.empty() || folder.empty() ? entries.front().path : folder](Player& p) {
 						ui.page = Page::Browse;
 						ui.showInFolder(path, p);
 						return false;
@@ -552,8 +738,9 @@ namespace bp
 				break;
 			case Button::Y: playAlbum(albumAt, 0, true, p); break;
 			case Button::B:
-				// back to the grid (the cursor never left the album's cell): shown at once
-				view = 0;
+				// back to the grid (the cursor never left the album's cell): shown at once — or to the artist's page
+				// it was opened from, whose view stays
+				if (artistAt < 0) view = V_ALBUMS;
 				albumAt = -1;
 				keyFocus = -1;
 				list.top();
@@ -622,7 +809,7 @@ namespace bp
 			return false;
 		}
 		// ---- the views ----
-		if (view == 0)
+		if (view == V_ALBUMS)
 		{
 			// the Albums grid: ◀/▶ a cell, ▲/▼ a row (the mock-up's "D-pad Move")
 			int n = (int)snap->albums.size(), cols = 5;
@@ -639,10 +826,33 @@ namespace bp
 			keepCursorInView();
 			return false;
 		}
-		// the Artists list
-		int n = (int)snap->artists.size();
 		lay::MusicHeader mh = lay::musicHeader(inner, {});
 		int gy = mh.strip.y + lay::CHIP_STRIP + lay::SP8;
+		if (view == V_FOLDERS)
+		{
+			// the folder open: ▲/▼ a row (round), ◀/▶ a screenful, A into a folder or plays a song, B up a folder
+			auto frows = folderRows();
+			int n = (int)frows->size(), screen = std::max(1, (inner.y + inner.h - gy) / lay::MEDIA_ROW_H);
+			switch (b)
+			{
+			case Button::Up: if (n) cursor = (cursor + n - 1) % n; break;
+			case Button::Down: if (n) cursor = (cursor + 1) % n; break;
+			case Button::Left: cursor = std::max(0, cursor - screen); break;
+			case Button::Right: cursor = std::max(0, std::min(n - 1, cursor + screen)); break;
+			case Button::A:
+				if (cursor < n && (*frows)[cursor].dir) openFolder((*frows)[cursor].path);
+				else playFolder(cursor, p);
+				return false;
+			case Button::B:
+				if (!folderUp()) { ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); }
+				return false;
+			default: break;
+			}
+			keepCursorInView();
+			return false;
+		}
+		// the Artists list
+		int n = (int)snap->artists.size();
 		int rows = std::max(1, (inner.y + inner.h - gy) / lay::ARTIST_ROW_H);
 		switch (b)
 		{
@@ -697,7 +907,7 @@ namespace bp
 			}
 			if (!snap || empty) return false;
 			if (t == T_GROUND) return false;		// the ground: a drag was its only meaning
-			if (t >= T_CHIP && t < T_CHIP + 3)
+			if (t >= T_CHIP && t < T_CHIP + VIEWS)
 			{
 				setView(t - T_CHIP, p);
 				return false;
@@ -726,11 +936,12 @@ namespace bp
 			if (t >= T_ALBUM && t < T_ARTIST)
 			{
 				// the Albums grid's cells (by index), or the artist page's strip (the j-th cell shown)
-				if (artistAt >= 0 && artistAt < (int)snap->artists.size() && keyFocus < 0 && artistZone == 0)
+				if (artistStripShown(*snap))
 				{
+					// (still on the cell it went down on: a slide off it lets go)
 					std::vector<uint32_t> albums = artistAlbumsByYear(artistAt);
-					int i = albumScroll + (t - T_ALBUM);
-					if (i >= albumScroll && i < (int)albums.size()) openAlbum((int)albums[i], p);
+					int j = t - T_ALBUM, i = albumScroll + j;
+					if (i < (int)albums.size() && artistStripCell(j).hit(x, y)) openAlbum((int)albums[i], p);
 					return false;
 				}
 				if (albumAt < 0 && artistAt < 0 && view == 0 && t - T_ALBUM < (int)snap->albums.size())
@@ -746,6 +957,16 @@ namespace bp
 			{
 				int i = t - T_TRACK;
 				if (i < (int)snap->albums[albumAt].songs.size()) playAlbum(albumAt, i, false, p);
+				return false;
+			}
+			if (t >= T_FOLDER && t < T_FOLDER + TOUCH_RANGE)
+			{
+				// a row of the folder open: into a folder, or the song plays
+				auto frows = folderRows();
+				int i = t - T_FOLDER;
+				if (albumAt >= 0 || artistAt >= 0 || view != V_FOLDERS || i >= (int)frows->size()) return false;
+				if ((*frows)[i].dir) openFolder((*frows)[i].path);
+				else playFolder(i, p);
 				return false;
 			}
 			if (t >= T_SONG && t < T_SONG + TOUCH_RANGE && artistAt >= 0 && artistAt < (int)snap->artists.size() &&
@@ -782,20 +1003,22 @@ namespace bp
 			for (int i = 0; i < 3; i++)
 				if (h.key[i].w > 0 && h.key[i].hit(x, y)) { touch = T_KEY + i; return false; }
 		}
-		// an artist's album strip (one row of cells, no list under it while it has the focus)
-		if (artistAt >= 0 && artistAt < (int)snap->artists.size() && keyFocus < 0 && artistZone == 0)
+		// an artist's album strip (one row of cells, no list under it). It shows while the head's keys have the
+		// focus too — as the page opens — so the test is the drawing's own (artistStripShown): it used to ask
+		// for the strip's focus, and a finger could open no album until the D-pad had moved onto the strip
+		if (artistStripShown(*snap))
 		{
-			std::vector<uint32_t> albums = artistAlbumsByYear(artistAt);
-			lay::PageHead h = lay::pageHead(inner, 1, 3);
-			Rect strip{inner.x, h.content.y + lay::LINE_H + lay::SP6, inner.w, lay::ALBUM_CELL_H};
+			int per = std::min(5, (int)artistAlbumsByYear(artistAt).size());
 			touch = T_GROUND;		// the strip's own ground: one row, a drag does nothing
-			if (!strip.hit(x, y) || albums.empty()) return false;
-			int per = std::min(5, (int)albums.size());
 			for (int j = 0; j < per; j++)
-			{
-				Rect cell{inner.x + j * (lay::ALBUM_ART + lay::ALBUM_COL_GAP), strip.y, lay::ALBUM_ART, lay::ALBUM_CELL_H};
-				if (cell.hit(x, y)) { touch = T_ALBUM + j; return false; }
-			}
+				if (artistStripCell(j).hit(x, y))
+				{
+					// the finger's cell takes the focus (as a row under a finger does)
+					touch = T_ALBUM + j;
+					keyFocus = -1;
+					artistZone = 0;
+					artistAlbum = albumScroll + j;
+				}
 			return false;
 		}
 		// the list shown: anywhere else on the page drives it (a touch on a gliding list only stops it)
@@ -808,7 +1031,8 @@ namespace bp
 		if (r < 0) return false;
 		if (albumAt >= 0) { touch = T_TRACK + r; rowCursor = r; }
 		else if (artistAt >= 0) { touch = T_SONG + r; rowCursor = r; }
-		else if (view == 1) { touch = T_ARTIST + r; cursor = r; }
+		else if (view == V_ARTISTS) { touch = T_ARTIST + r; cursor = r; }
+		else if (view == V_FOLDERS) { touch = T_FOLDER + r; cursor = r; }
 		else
 		{
 			// the grid's row: the cell under the finger, if any (the gaps between are the ground)
@@ -928,7 +1152,7 @@ namespace bp
 				line.text = text;
 				k.sectionLine(lay::sectionLine(box, false), line);
 			};
-			if (keyFocus >= 0 || artistZone == 0)
+			if (artistStripShown(*snap))
 			{
 				// their albums as one strip of cover cells (the focused one kept in view), the songs' line below
 				caps("Albums \xC2\xB7 " + std::to_string(albums.size()), {inner.x, h.content.y, inner.w, lay::LINE_H});
@@ -936,7 +1160,7 @@ namespace bp
 				// the strip's first cell: the focused one kept in view, and never past the strip's end
 				albumScroll = std::clamp(albumScroll, std::max(0, artistAlbum - per + 1),
 					std::max(0, std::min(artistAlbum, (int)albums.size() - per)));
-				Rect strip{inner.x, h.content.y + lay::LINE_H + lay::SP6, inner.w, lay::ALBUM_CELL_H};
+				Rect strip = artistStripCell(0);
 				for (int j = 0; j < per; j++)
 				{
 					const MediaAlbum& al = snap->albums[albums[albumScroll + j]];
@@ -960,9 +1184,7 @@ namespace bp
 					cell.playing = here && !p.paused;
 					cell.paused = here && p.paused;
 					cell.focused = keyFocus < 0 && artistZone == 0 && albumScroll + j == artistAlbum;
-					Rect box{inner.x + j * (lay::ALBUM_ART + lay::ALBUM_COL_GAP), strip.y, lay::ALBUM_ART,
-						lay::ALBUM_CELL_H};
-					k.albumTile(lay::albumTile(box), cell);
+					k.albumTile(lay::albumTile(artistStripCell(j)), cell);
 				}
 				// the songs' line under the strip, when the room for it is there
 				int below = strip.y + strip.h + lay::SP12;
@@ -1026,7 +1248,7 @@ namespace bp
 		}
 		// the view chips (the "From …" line they sat under is the header's crumb, once drawn here as well)
 		k.filters(mh.chips, views, view, -1,
-			touch >= T_CHIP && touch < T_CHIP + 3 && !touchMoved ? touch - T_CHIP : -1);
+			touch >= T_CHIP && touch < T_CHIP + VIEWS && !touchMoved ? touch - T_CHIP : -1);
 		if (reading)
 		{
 			// the first read, as the spec draws it (music-reading): which card, how far, a bar over the folders
@@ -1046,7 +1268,41 @@ namespace bp
 			k.notice(n, row);
 			return;
 		}
-		if (view == 0)
+		if (view == V_FOLDERS)
+		{
+			// the folder open, a smooth list of media rows: its folders (how many songs under each), then its songs
+			auto frows = folderRows();
+			auto rowOf = [=, focus = cursor, pressed = touchMoved ? -1 : touch - T_FOLDER](int i) {
+				const FolderRow& r = (*frows)[i];
+				Kit::Media m;
+				m.glyph = r.dir ? &G_FOLDER : &G_NOTE;
+				m.name = r.name;
+				m.second = r.second;
+				if (r.dir) m.note = std::to_string(r.songs) + (r.songs == 1 ? " song" : " songs");
+				else
+				{
+					m.note = songLength(*snap, snap->songs[r.song]);
+					if (plays(r.path)) { m.pill = "Now"; m.tone = Kit::Pill::Live; }
+					m.heart = store && store->isLiked(r.path);
+				}
+				m.focused = i == focus;
+				m.pressed = i == pressed;
+				return m;
+			};
+			SmoothList::Spec spec;
+			spec.view = g.view;
+			spec.rowH = g.rowH;
+			spec.count = g.count;
+			spec.key = [rowOf, gen, at = folderShown(*snap)](int i) {
+				Kit::Media m = rowOf(i);
+				return "fo" + gen + at + "." + std::to_string(i) + (m.pill.empty() ? "" : "p") + (m.heart ? "h" : "") +
+					(m.focused ? "f" : "") + (m.pressed ? "d" : "") + m.note;
+			};
+			spec.draw = [this, rowOf](int i, Rect r) { ui.kit->mediaRow(lay::mediaRow(r), rowOf(i)); };
+			list.draw(std::move(spec));
+			return;
+		}
+		if (view == V_ALBUMS)
 		{
 			// the Albums grid, a smooth list of its rows of five (each row one slot: its covers drawn once)
 			int n = (int)snap->albums.size();
@@ -1130,6 +1386,7 @@ namespace bp
 		snprintf(buf, sizeof buf, "|mu%d.%d.%d.%d.%d.%d.%d.%d.%d.%d.%d", view, albumAt, artistAt, cursor, touchMoved,
 			rowCursor, keyFocus, artistZone * 8 + artistAlbum, albumScroll, touch, (int)generation());
 		std::string s = buf;
+		s += "f" + folderAt;
 		if (!snapshot() || generation() == 0)
 		{
 			s += "R";

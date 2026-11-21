@@ -679,7 +679,27 @@ namespace bp
 			return b;
 		}
 
-		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int layers)
+		SearchResults searchResults(Box body, const std::vector<int>& tabWidths, int capW, bool withTabs, bool withNotice)
+		{
+			SearchResults s;
+			s.field = {body.x, body.y, body.w, SEARCH_FIELD_H};
+			int y = body.y + SEARCH_FIELD_H;
+			if (withTabs)
+			{
+				s.strip = tabs({body.x, y + SP6, body.w, TAB_H}, tabWidths, TAB_GAP, capW);
+				y += SP6 + TAB_H;
+			}
+			if (withNotice)
+			{
+				s.notice = notice({body.x, y + SP6, body.w, 0}, true, true, 0).row;
+				y = s.notice.y + s.notice.h;
+			}
+			y += SP4;
+			s.list = {body.x, y, body.w, std::max(0, body.y + body.h - y)};
+			return s;
+		}
+
+		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int toggles)
 		{
 			Keyboard k;
 			int y = area.y;
@@ -692,7 +712,7 @@ namespace bp
 				x += w + GAP;
 			}
 			// no pieces: no special row (the mock-up's Search page goes straight from the field to the letters)
-			if (!specialW.empty()) y += KB_SPECIAL_H + 18;
+			if (!specialW.empty()) y += KB_SPECIAL_H + 10;	// (10, not the mock-up's 18: the number row needs the room)
 			// the letters: every key the width the widest row fits in the area, so no row runs past its edge
 			int widest = 1;
 			for (int n : counts) widest = std::max(widest, n);
@@ -706,20 +726,22 @@ namespace bp
 				y += KB_KEY_H + KB_GAP;
 			}
 			y += 6;
-			// layer keys 76, then Space (the rest), backspace 76, Done 120: the row ends on the area's right edge
+			// the toggles, then Space (the rest), Clear, Del and Done: the row ends on the area's right edge
 			int left = area.x, right = area.x + area.w;
-			int doneW = 120, backW = 76, layerW = 76;
-			int spaceW = right - left - layers * (layerW + KB_GAP) - (KB_GAP + backW) - (KB_GAP + doneW);
+			int spaceW = right - left - toggles * (KB_TOGGLE_W + KB_GAP) - 2 * (KB_GAP + KB_TOGGLE_W) - (KB_GAP + KB_DONE_W);
 			int bx = left;
-			for (int i = 0; i < layers; i++)
+			for (int i = 0; i < toggles; i++)
 			{
-				k.bottom.push_back({bx, y, layerW, KB_BOTTOM_H});
-				bx += layerW + KB_GAP;
+				k.bottom.push_back({bx, y, KB_TOGGLE_W, KB_BOTTOM_H});
+				bx += KB_TOGGLE_W + KB_GAP;
 			}
 			k.bottom.push_back({bx, y, spaceW, KB_BOTTOM_H});
 			bx += spaceW + KB_GAP;
-			k.bottom.push_back({bx, y, backW, KB_BOTTOM_H});
-			bx += backW + KB_GAP;
+			for (int i = 0; i < 2; i++)
+			{
+				k.bottom.push_back({bx, y, KB_TOGGLE_W, KB_BOTTOM_H});
+				bx += KB_TOGGLE_W + KB_GAP;
+			}
 			k.bottom.push_back({bx, y, right - bx, KB_BOTTOM_H});
 			k.note = {area.x, y + KB_BOTTOM_H + 8, area.w, 20};
 			return k;

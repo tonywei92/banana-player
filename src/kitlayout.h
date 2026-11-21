@@ -282,22 +282,28 @@ namespace bp
 		};
 		BusySheet busySheet(bool twoKeys = false);
 
-		// ---- the keyboard: a field, a special row, three rows of letters, the bottom row ----
+		// ---- the keyboard: a field, a special row, the number row and three rows of letters, the bottom row ----
 		// Every key of a letter row is the same width, set by the widest row so it fits the area: the keys share
 		// the width the caller gives (the mock-up's 1fr grid), so a row never runs past the area's edge — the
 		// panel-wide 58 of a fixed key width did, on Search's narrower shell body.
-		constexpr int KB_FIELD_H = 48, KB_KEY_H = 52, KB_GAP = 5, KB_BOTTOM_H = 56, KB_SPECIAL_H = 36;
+		// The keys are 44 tall (the least a finger's target may be): four rows — the number row and the three of
+		// letters — with the field and the bottom row fit above the hint bar, and inside the shell's body.
+		constexpr int KB_FIELD_H = 48, KB_KEY_H = 44, KB_GAP = 5, KB_BOTTOM_H = 56, KB_SPECIAL_H = 36;
+		// the bottom row: each toggle (Shift, 123, #+=), Clear and Del 78 wide (a word and its button's cap), Done
+		// 104, Space what is left between them
+		constexpr int KB_TOGGLE_W = 78, KB_DONE_W = 104;
 		struct Keyboard
 		{
 			Box field, note;
 			std::vector<Box> special;	// the field's own pieces (https://, .json), as wide as their labels say
-			std::vector<std::vector<Box>> rows;	// the letters, each row centred
-			std::vector<Box> bottom;	// layer keys, Space, backspace, Done
+			std::vector<std::vector<Box>> rows;	// the number row and the letters, each row centred
+			std::vector<Box> bottom;	// the toggles (Shift, 123, #+=), Space, Clear, Del, Done
 		};
 		// area: the keyboard's own box (the field and the bottom row span it, the letters centred in it);
-		// specialW: each piece's width (empty: no special row); counts: the keys in each row of letters;
-		// layers: how many layer keys open the bottom row
-		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int layers);
+		// specialW: each piece's width (empty: no special row); counts: the keys in each row (KeyPad::rows():
+		// the digits' 10, then 10, 9, 7);
+		// toggles: how many toggle keys open the bottom row (KeyPad::toggles(): Shift, 123 and, on a field's, #+=)
+		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int toggles);
 		// the keys in the order the kit draws and numbers them: the specials, the letters row by row, the bottom row
 		int keyboardKeys(const Keyboard& k);
 		// the key a finger is on, -1 none
@@ -870,6 +876,18 @@ namespace bp
 			std::vector<Box> recent;
 		};
 		SearchPage searchPage(Box body, const std::vector<int>& groupRows, int recentCount = 0, bool clear = true);
+		// Search's results under their kind tabs (All / Music / Videos / Books, each label with its count): the field
+		// at the body's top, the tabs' strip SP6 under it (44 tall, the L / R caps at its ends: lay::tabs), a notice
+		// row SP6 under the strip while the index still reads, then the list to the body's foot (a smooth list of
+		// RESULT_ROW_H rows; `tabs` false: no strip — Recent searches, the list straight under the field)
+		struct SearchResults
+		{
+			Box field;
+			Tabs strip;		// (no tab: there is no strip)
+			Box notice{};	// w 0: none
+			Box list;
+		};
+		SearchResults searchResults(Box body, const std::vector<int>& tabWidths, int capW, bool tabs, bool notice);
 
 		// ==== Quick settings (F): the panel centred on the whole screen, over the rail (docs/redesign:
 		// quick, quick-playing; components.md "Quick settings panel") ====

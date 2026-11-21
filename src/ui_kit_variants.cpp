@@ -358,6 +358,29 @@ namespace bp
 
 	// ---- the keyboard ----
 
+	void Ui::Kit::KeyboardView::keys(const KeyPad& pad, bool empty)
+	{
+		rows.clear();
+		bottom.clear();
+		int key = 0;
+		for (int n : KeyPad::ROWS)
+		{
+			std::vector<std::string> line;
+			for (int i = 0; i < n; i++) line.push_back(pad.label(key++));
+			rows.push_back(line);
+		}
+		for (; key < pad.keys(); key++)
+		{
+			BottomKey b;
+			b.label = pad.label(key);
+			b.cap = pad.button(key);
+			b.lit = pad.lit(key);
+			b.primary = pad.role(key) == KeyPad::Done;
+			b.off = pad.role(key) == KeyPad::Clear && empty;	// nothing to empty
+			bottom.push_back(b);
+		}
+	}
+
 	void Ui::Kit::keyboard(const lay::Keyboard& l, const KeyboardView& v)
 	{
 		// every key of it is a key, in Clean too (components.md "Clean style", rule 7), and its caps are outlined
@@ -393,23 +416,24 @@ namespace bp
 				ui.drawBox(r, fillFor(index, BUTTON), 6, edgeFor(index, BUTTON));
 				ui.drawTextMid(label, F_SMALL, index == v.cursor ? ACCENT : TEXT, r.x + r.w / 2, r.y + (r.h - theme::LIP) / 2 + 1, r.w - 6, 2);
 			}
-		// the bottom row: the layer keys, Space, backspace (TRACK), Done (primary), each with its button
-		size_t layers = v.layers.size();
-		for (size_t i = 0; i < l.bottom.size(); i++, index++)
+		// the bottom row: the toggles, Space, Clear, Del (TRACK) and Done (primary), each its word and its button's
+		// cap. A toggle that is on is lit: the accent's tint, its word in ACCENT and a lamp bar at its top, until
+		// it is pressed again (the focus is the ACCENT edge, so the two never read as one)
+		for (size_t i = 0; i < l.bottom.size() && i < v.bottom.size(); i++, index++)
 		{
 			Rect r = l.bottom[i];
-			bool done = i + 1 == l.bottom.size(), layer = i < layers;
-			std::string label = layer ? v.layers[i] : i == layers ? "Space" : done ? "Done" : "Del";
-			std::string cap = i < v.bottomCaps.size() ? v.bottomCaps[i] : "";
-			SDL_Color fill = done ? ACCENT : TRACK;
-			if (done) ui.drawBox(r, index == v.pressed ? sdl(theme::lipOf(theme::ACCENT)) : ACCENT, R_BUTTON, index == v.cursor ? ACCENT : edgeOf(ACCENT));
-			else ui.drawBox(r, fillFor(index, TRACK), R_BUTTON, edgeFor(index, TRACK));
-			SDL_Color ink = done ? ON_ACCENT : (int)i == v.layerOn || index == v.cursor ? ACCENT : TEXT;
-			int capW = cap.empty() ? 0 : capsW(cap), by = r.y + (r.h - theme::LIP) / 2 + 1;
-			int tw = std::min(r.w - 16 - (capW ? capW + 7 : 0), textW(label, F_P14));
-			int w = tw + (capW ? 7 + capW : 0), x0 = r.x + r.w / 2 - w / 2;
-			ui.drawTextMid(label, F_P14, ink, x0, by, tw + 1);
-			if (capW) caps(cap, x0 + tw + 7, by, done ? ON_ACCENT : ACCENT, index == v.pressed ? PRESSED : fill);
+			const KeyboardView::BottomKey& b = v.bottom[i];
+			SDL_Color ground = b.primary ? ACCENT : b.lit ? sdl(theme::tintOf(rgbOf(TRACK))) : TRACK;
+			SDL_Color fill = index != v.pressed ? ground : b.primary ? sdl(theme::lipOf(theme::ACCENT)) : PRESSED;
+			ui.drawBox(r, fill, R_BUTTON, index == v.cursor ? ACCENT : edgeOf(ground));
+			if (b.lit) ui.fillRound({r.x + r.w / 2 - 9, r.y + 6, 18, 3}, ACCENT, 1);
+			SDL_Color ink = b.primary ? ON_ACCENT : off(b.lit || index == v.cursor ? ACCENT : TEXT, b.off);
+			// the word and its cap side by side, centred; a word too long for its key is cut, never its cap
+			int capW = b.cap.empty() ? 0 : capsW(b.cap), by = r.y + (r.h - theme::LIP) / 2 + 1;
+			int tw = std::min(r.w - 8 - (capW ? capW + 6 : 0), textW(b.label, F_P14));
+			int w = tw + (capW ? 6 + capW : 0), x0 = r.x + r.w / 2 - w / 2;
+			ui.drawTextMid(b.label, F_P14, ink, x0, by, tw + 1);
+			if (capW) caps(b.cap, x0 + tw + 6, by, b.primary ? ON_ACCENT : off(ACCENT, b.off), fill);
 		}
 	}
 
@@ -1301,17 +1325,15 @@ namespace bp
 			v.caret = v.value.size();
 			v.note = "Any address, with or without http://";
 			v.special = {"https://", "http://", ".json", ".local"};
-			v.rows = {{"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"}, {"a", "s", "d", "f", "g", "h", "j", "k", "l", "-"}, {"z", "x", "c", "v", "b", "n", "m", ".", "/", ":"}};
-			v.layers = {"abc", "123"};
-			v.layerOn = 0;
-			v.bottomCaps = {"L3", "", "Y", "X", "START"};
-			v.cursor = 13;
-			lay::Keyboard l = lay::keyboard({lay::MARGIN, 66, lay::PANEL_W - 2 * lay::MARGIN, lay::PANEL_H - 66 - lay::HINTS_H},
-				{100, 90, 80, 90}, {10, 10, 10}, 2);
+			v.rows = {{"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"}, {"q", "w", "e", "r", "t", "y", "u", "i", "o", "p"}, {"a", "s", "d", "f", "g", "h", "j", "k", "l", "-"}, {"z", "x", "c", "v", "b", "n", "m", ".", "/", ":"}};
+			v.bottom = {{"Shift", "Y", true}, {"123", "L3"}, {"Space", "X"}, {"Clear", "L2"}, {"Del", "B"}, {"Done", "START", false, true}};
+			v.cursor = 23;
+			lay::Keyboard l = lay::keyboard({lay::MARGIN, 60, lay::PANEL_W - 2 * lay::MARGIN, lay::PANEL_H - 60 - lay::HINTS_H},
+				{100, 90, 80, 90}, {10, 10, 10, 10}, 2);
 			k.keyboard(l, v);
 			k.iconKey({16, 8, 56, 46}, G_BACK, false, 3, true);
 			ui.drawTextMid("Address", F_P28, TEXT, 84, 31, 400);
-			k.hints({{"A", "Type"}, {"B", "Delete"}, {"X", "Space"}, {"Y", "Shift"}, {"START", "Done"}});
+			k.hints({{"A", "Type"}, {"B", "Delete"}, {"L/R", "Move"}, {"START", "Done"}});
 		}
 
 		void page6(Kit& k)

@@ -698,7 +698,8 @@ namespace bp
 
 		// the on-screen keyboard, over the bottom panel: a form's field typed in
 		bool kbOpen = false;
-		int kbLayer = 0, kbCursor = 0, kbField = 0, kbPressed = -1;	// kbPressed: a key's number, -2 the back key
+		int kbCursor = 0, kbField = 0, kbPressed = -1;	// kbPressed: a key's number, -2 the back key
+		KeyPad kbPad;	// its keys: which layer shows, Shift on or off (keyboard.h)
 		// when the keyboard last closed: main redraws the panels for a second after it (the handheld can drop the
 		// frame that takes the keyboard away), and a touch in the next 400 ms is let go (a finger still typing on the
 		// keys it sees would land on the page under them: the rail's Music and Extensions, the owner found)

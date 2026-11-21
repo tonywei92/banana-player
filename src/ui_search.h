@@ -1,4 +1,6 @@
-// Search (Page::Search), an area of Ui: the field, the cards' index's answers grouped by kind, and Recent searches.
+// Search (Page::Search, titled "Search library"), an area of Ui: the field, the library's answers under kind tabs
+// (All / Music / Videos / Books, each with its count; L / R step them), and Recent searches. It searches the media
+// library only — the index's songs and videos and the Books shelf — never Files' folders.
 // Built on the redesign's kit (ui_kit.h: searchField, sectionLine, resultRow, emptyState, notice, keyboard) with the
 // layouts of kitlayout.h, as docs/redesign/src/screens.js draws it (search, search-results). It is a tool, not a
 // section: the rail's Search key and L3 open it, no rail cell is lit on it, and B goes back where it was opened from.
@@ -28,6 +30,7 @@ namespace bp
 		// from the rail's key, L3 or Shell::search: the page, on its last query; a second press edits it
 		void open(Player& p);
 		void close(Player& p);
+		void back(Player& p);	// B and the header's <: out of the keyboard, else out of Search
 		// the shell's header for this page (Shell::head asks it): title, the query's line, the keys
 		ShellHead head(const Player& p) const;
 		// the keyboard's Done (keep): the query shown; B: back to the results as they were
@@ -42,8 +45,15 @@ namespace bp
 		bool typing = false;
 		TextEdit edit;
 		int cursor = 0;
+		// the kind tab: All (the kinds under their headings), then one kind each
+		enum Tab { T_ALL, T_MUSIC, T_VIDEOS, T_BOOKS, TABS };
+		int tab = T_ALL;
+		void setTab(int t, const Player& p);
+		std::string stateCounts() const;	// "all/music/videos/books" found, for a scripted run's state line
+		int pressTab = -1;	// a finger on a tab
 		Uint32 kbSince = 0;
-		int kbCursor = 0, kbPressed = -1, kbLayer = 0;
+		int kbCursor = 0, kbPressed = -1;
+		KeyPad pad;	// the keyboard's keys (keyboard.h): the field's keyboard's own, less #+=
 		int pressRow = -1, pressEmpty = -1;	// a finger on a row, an empty state's key
 		bool finger = false;	// a finger down on the list: its moves scroll it, its lift may choose
 		bool fingerMoved = false, caught = false;	// (caught: it stopped a glide, and chooses nothing)
@@ -55,8 +65,8 @@ namespace bp
 		void remember(const std::string& q);
 
 	private:
-		// one line of the page: a group's heading, a result, a recent one, or Clear
-		enum RowKind { HEAD, RESULT, RECENT, CLEAR };
+		// one line of the page: a group's heading, a result, a recent one, Clear, or a tab's "nothing here" line
+		enum RowKind { HEAD, RESULT, RECENT, CLEAR, NONE };
 		struct Row
 		{
 			RowKind kind = RESULT;
@@ -70,16 +80,24 @@ namespace bp
 		mutable uint32_t builtGen = 0xFFFFFFFFu;
 		mutable std::string builtQuery;
 		mutable bool built = false;
-		mutable int builtRecent = -1;
+		mutable int builtRecent = -1, builtTab = -1;
+		// what the query found, by kind (the tabs' counts are their sizes; All's is their sum): found[T_MUSIC]...
+		mutable std::vector<Row> found[TABS];
+		int foundCount(int t) const;
 		void rebuild(const Player& p) const;
+		void searchLibrary(const Player& p) const;	// fills `found` for the query
+		// the page under the field: the tabs' strip (while a query shows results), the notice, the list — one
+		// layout for the drawing and the touches
+		std::vector<std::string> tabLabels() const;
+		bool tabsShown(const Player& p) const;
+		lay::SearchResults layout(const Player& p) const;
 		std::string crumb(const Player& p) const;
 		// the rows as a smooth list: every row (a group's heading too) one pitch tall, under the field and the notice
 		// row while the index reads. listFor: the query the list was last shown for (a new one starts at the top)
 		static constexpr int ROW_PITCH = lay::RESULT_ROW_H;
 		SmoothList list{ui};
 		std::string listFor = "\x01";
-		lay::Box listView(const Player& p) const;
-		lay::Box noticeBox(const Player& p) const;	// (w 0: none)
+		lay::Box listView(const Player& p) const { return layout(p).list; }
 		void drawRow(const Row& row, lay::Box box, bool at, bool pressed);
 		// the field empty with no recent, or a query nothing matched: the empty state's page
 		bool emptyPage(const Player& p) const;
@@ -87,12 +105,8 @@ namespace bp
 		std::vector<std::string> emptyLines(const Player& p) const;
 		lay::Box body() const;
 		lay::Keyboard keyboard(const lay::Box& body) const;
-		std::string keyboardNote(const Player& p) const;
 		void openKeyboard();
 		void kbPressKey(int i);
-		int kbAt(int x, int y) const;
-		void kbMove(int dx, int dy);
-		int keyCount() const;
 		void moveCursor(int dir, int page);
 		void ensureCursor(const Player& p, bool glide = true);
 		void chooseRow(int i, Player& p);

@@ -82,7 +82,7 @@ Every section now shares one frame: a **rail** down the left with a **Search** k
 **Settings** (no START cap: START is Settings from every screen).
 **Network** is a tab of **Files**: the places and the connections' list each have a strip, **Files** | **Network**, stepped with **L / R** or a tap (the folders under them have none).
 
-**The on-screen keyboard** (a connection's fields, a name, a repository address, Find) is the same keyboard Search uses, over the whole panel, with four layers: **abc**, **ABC**, **123** and **#+=** (**Y** swaps abc and ABC, **SELECT** goes to 123 and back). **A** types, **B** deletes (on an empty field it closes, keeping what was there), **X** is a space, **L / R** move the caret, **START** is Done; a tap does the same on the keys. A password shows stars; a port takes digits only.
+**The on-screen keyboard** (a connection's fields, a name, a repository address, Find) is the same keyboard Search uses, over the whole panel. A **number row** (1 to 0) is always the top row of keys, whatever else shows, over the three rows of letters. Its bottom row is words, each with its button's cap: **Shift** (**Y**), **123** (**L3**), **#+=**, **Space** (**X**), **Clear** (**L2**), **Del** (**B**) and **Done** (**START**). Shift is a toggle: press it and it stays lit, the letters shown and typed as capitals, until you press it again; **123** and **#+=** (the common marks; the braces and rarer marks) stay lit the same way, and pressing the lit one brings the letters back (**L3** or **SELECT** steps letters, 123, #+= round). **Clear** empties the field. **A** types, **B** deletes (on an empty field it closes, keeping what was there), **L / R** move the caret; a tap does the same on the keys. A password shows stars; a port takes digits only. Search's keyboard is this one less **#+=**.
 **L2/R2** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
 52 units tall, 45 with six sections so all show at once; when they still don't fit, a finger drag scrolls them
 (Search, the Now playing key and Settings stay put). Arriving at a section starts and stops nothing, and no cell
@@ -125,9 +125,9 @@ its folder on that file.
 
 ## The Music section
 
-Songs by what they are, not where they are. The **Music** cell opens three views of the cards' index, stepped with
-**L/R** or tapped: **Albums**, **Artists** and **Playlists** (the same playlists as ever, drawn under Music; Liked
-first). The line under the title says where the list comes from and how much (`From Music on both cards · 148 albums ·
+Songs by what they are, not where they are. The **Music** cell opens four views of the cards' index, stepped with
+**L/R** or tapped: **Albums**, **Artists**, **Playlists** (the same playlists as ever, drawn under Music; Liked
+first) and **Folders** (the same songs by where their files lie). The line under the title says where the list comes from and how much (`From Music on both cards · 148 albums ·
 1,912 songs`; `on this card` when one card has none). Albums and Artists fill by themselves from the folders named
 **Music** or **Musics** (any capitals) at the top of each card, plus BananaOS's own `/data/roms/music`; every such
 folder is read, however deep inside it everything counts. While a card is first read a notice row names the card
@@ -143,7 +143,15 @@ plays the same, and Search finds it. There is no list of all songs.
 - **Playlists**: the list of playlists is Music's third view: the same chips over it (a tap on **Albums** or
   **Artists** goes there), then a 46-tall row each (Liked first, **New playlist** last, a **Playing** mark on the
   one that plays). A playlist's own page, its select and move modes and the Add to... picker are the browser's, as
-  they were, with the Music cell kept lit (**L** steps back to Artists, **R** rounds to Albums).
+  they were, with the Music cell kept lit (**L** steps back to Artists, **R** goes on to Folders).
+- **Folders**: the Music folders as folders, for music kept in order by hand. With a Music folder on each card the
+  view opens on the two of them (each named with its card); with one it opens inside it. A folder's row says how many
+  songs are under it, however deep; under the folders come the songs lying in the folder itself, by file name, with
+  their artist, length, heart and a **Now** pill on the one that plays. **A** (or a tap) opens a folder or plays a
+  song with the folder's songs as the list; **B** goes up a folder (the cursor back on the one you left) and, at the
+  top, Home; **LEFT/RIGHT** move a screenful; the line under the title says where you are (`Music › The Plantains ·
+  4 songs`). **X** · More on a folder adds all its songs to a playlist or shows it in Files; on a song it is the
+  song's own sheet. Only the index's songs are listed: a file the index doesn't read is in Files.
 
 An album's page: the cover, the artist and year, the counts (`12 songs, 1 a video · 41 min`), and the keys **Play**
 (**A**), **Shuffle** (**Y**) and **+** (Add to playlist, touch only). Under them the songs in disc, track and name
@@ -576,17 +584,21 @@ To quit, use **Quit Banana Player** in quick settings (**F**), or **F + START** 
 
 ## Search
 
-Find a song, a video or a file by any part of its name, from the **Search** key at the top of the rail or **L3** on a
-list. The keyboard opens at once; **START** (or Done) shows the results, and the page keeps the query when you come
-back to it (**Y** edits it). With the field empty it rests on **Recent searches** (the last eight, kept in the state
-folder; **Clear recent searches** empties it, and incognito keeps none).
+Find a song, a video or a book in your library by any part of its name, from the **Search** key at the top of the rail
+or **L3** on a list. The page is titled **Search library**: it searches the media library only — the songs and videos
+of the Music and Videos folders (a song by its title, artist or album) and the books on the Books shelf — not Files'
+other folders (a file outside the library is found in Files). The keyboard opens at once (the on-screen keyboard,
+less **#+=**; **B** deletes, and closes on an empty field); **START** (or Done) shows the results, and the page keeps
+the query when you come back to it (**Y** edits it). With the field empty it rests on **Recent searches** (the last
+eight, kept in the state folder; **Clear recent searches** empties it, and incognito keeps none).
 
-Results are grouped **Videos**, **Music** and **Files**, each with its count; a group with nothing is left out. **A**
-opens one as Files would: a video or a song plays with its folder as the list, a book opens at your place, a file says
-what it is. **UP/DOWN** move, **LEFT/RIGHT** page, **B** goes back where you were. While the cards are first being read
-a notice row says so and the list fills in. Nothing found is an empty page saying what was searched (network folders
-are not searched), with **Try another** (**A**) and **Browse Files** (**Y**). The index is the cards' one: the folders
-named Music, Videos and Movies on either card, and the files you have played or the folder Files is showing.
+Results sit under four tabs, **All**, **Music**, **Videos** and **Books**, each with its count (`Music 4`); **L / R**
+step them round, or tap one. **All** lists every kind under its heading, a kind with nothing left out; a kind's own
+tab lists only its rows (one with nothing says so in a line). A new search starts on All. **A** opens a result as its
+section would: a video or a song plays with its folder as the list, a book opens at your place. **UP/DOWN** move,
+**LEFT/RIGHT** page, a finger scrolls the list (it glides), **B** goes back where you were. While the cards are first
+being read a notice row says so and the list fills in. Nothing found is an empty page saying what was searched (Files'
+other folders and network folders are not), with **Try another** (**A**) and **Browse Files** (**Y**).
 
 ## Network folders
 
