@@ -159,7 +159,6 @@ namespace bp
 		{
 			// the empty state: its one key, Manage extensions
 			if (b == Button::A) openExtensions();
-			else if (b == Button::B) ui.shell->openSection(Ui::Shell::Section::Home, p);
 			return false;
 		}
 		if (b == Button::Up) extPageCursor = (extPageCursor + rows - 1) % rows;
@@ -169,7 +168,6 @@ namespace bp
 			if (extPageCursor == 0) extMangaRow(p);
 			else openExtensions();
 		}
-		else if (b == Button::B) ui.shell->openSection(Ui::Shell::Section::Home, p);
 		return false;
 	}
 

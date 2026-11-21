@@ -45,7 +45,7 @@ namespace bp
 		std::vector<Cell> cells(const Player& p) const;	// the rail's sections (Extensions always, Manga is a row in it)
 		Section section(const Player& p) const;	// the one the page shown belongs to (Settings for Page::Settings)
 		lay::Shell layout(const Player& p) const;	// lay::shell()
-		ShellHead head(const Player& p) const;	// this step's head: title, crumb, hints; later the pages' own
+		ShellHead head(const Player& p) const;	// this step's head: title, crumb, hints; a section's home has no back
 
 		// the rail's Now playing key's hold (600 ms: the More sheet of what plays), timed while the frame shows
 		void tick(Player& p) override;
@@ -56,6 +56,12 @@ namespace bp
 		// a section's page, from any page or a page's own B (the Extensions page's B is Home): L/R's own step and a
 		// tap on the rail both come here
 		void openSection(Section s, Player& p);
+		// a section's home: its first page (Home, Files' places or Network, Videos' and Music's views, Books, the
+		// Extensions list, Settings' tiles as a section). There the header has no back key and B does nothing
+		bool atSectionHome(const Player& p) const;
+		// the rail's tap on the section shown (the tab bar's rule): inside it, back to its home at the top; on its
+		// home, its list glides to the top
+		void toSectionHome(Section s, Player& p);
 
 		// frame keys and touches (Ui calls them while page() is true): L/R step the sections (Search is passed by), L3
 		// and the rail's Search key open Search's page, the rail's cells open a section, back is B, More is X
@@ -76,6 +82,7 @@ namespace bp
 		Uint32 npHoldAt = 0;	// a finger on the rail's Now playing key: held, its More sheet
 		mutable lay::Box statusBox{0, 0, 0, 0};	// the header's status cluster, as last drawn (one touch target)
 		void search(Player& p);	// Search's one place: a note until the page is built
+		ShellHead pageHead(const Player& p) const;	// what the page says of its header (head() less a home's back)
 		int activeIndex(const std::vector<Cell>& cells, Section at) const;
 		bool frameRects(const Player& p, const ShellHead& h, lay::Box& back, lay::Box& more) const;
 		void drawHeader(const ShellHead& h, const Player& p);

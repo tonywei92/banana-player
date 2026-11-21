@@ -50,6 +50,8 @@ namespace bp
 		int albumAt = -1, artistAt = -1;
 		void openAlbum(int i, Player& p);
 		void openArtist(int i, Player& p);
+		// back from the player: an album's or an artist's page with the cursor on the song that played
+		void showPlaying(const std::string& path);
 
 		// ---- the focus, in whatever is shown ----
 		int cursor = 0;					// the views' cell or row

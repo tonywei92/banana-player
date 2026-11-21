@@ -8461,6 +8461,15 @@ static void testPlaylist()
 	CHECK_EQ(isAviFile("bpnet://3a3cff8c/Media/a.divx"), true);
 	CHECK_EQ(isAviFile("a.mkv"), false);
 	CHECK_EQ(isMediaFile("a.txt"), false);
+	// back from the player: the row that played (a file listed twice: the hint's row), else its first, else none
+	{
+		std::vector<std::string> rows = {"/a.mp3", "/b.mp3", "/a.mp3"};
+		CHECK_EQ(playingRow(rows, 2, "/a.mp3"), 2);
+		CHECK_EQ(playingRow(rows, 1, "/a.mp3"), 0);
+		CHECK_EQ(playingRow(rows, 9, "/b.mp3"), 1);
+		CHECK_EQ(playingRow(rows, -1, "/c.mp3"), -1);
+		CHECK_EQ(playingRow(rows, 0, ""), -1);
+	}
 	CHECK_EQ(naturalLess("ep2.mkv", "ep10.mkv"), true);
 	CHECK_EQ(naturalLess("ep10.mkv", "ep2.mkv"), false);
 	CHECK_EQ(naturalLess("Ep 02.mkv", "ep 3.mkv"), true);

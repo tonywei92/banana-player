@@ -278,65 +278,6 @@ namespace bp
 		std::string signature(const Player&) const override { return std::to_string(cursor) + std::to_string(pressed); }
 	};
 
-	// Home's B: Cancel is the safe key (B, or a tap outside), Quit the red action
-	struct Ui::QuitAsk : Ui::Overlay
-	{
-		int focus = 0, pressed = -1;	// 0 Cancel, 1 Quit
-
-		explicit QuitAsk(Ui& u) : Overlay(u) {}
-		const char* name() const override { return "quitask"; }
-		std::vector<std::string> lines(const Player& p) const
-		{
-			return ui.kit->sheetText(ui.nowPlayable(p) ? "What's playing stops." : "Banana Player closes.");
-		}
-		void act()
-		{
-			close();
-			ui.quitRequested = true;
-		}
-		bool key(Button b, Player&) override
-		{
-			if (b == Button::Left || b == Button::Right || b == Button::Up || b == Button::Down) focus ^= 1;
-			else if (b == Button::A) { if (focus == 1) act(); else close(); }
-			else if (b == Button::B || b == Button::Start) close();
-			return false;
-		}
-		bool pointer(const Pointer& pt, int x, int y, Player& p) override
-		{
-			lay::ConfirmSheet l = lay::confirmSheet((int)lines(p).size(), false);
-			if (pt.kind == Pointer::Down)
-			{
-				pressed = l.safe.hit(x, y) ? 0 : l.action.hit(x, y) ? 1 : -1;
-				if (!l.sheet.box.hit(x, y)) { close(); ui.swallowTouch = true; }
-				return false;
-			}
-			if (pt.kind != Pointer::Up) return false;
-			int at = pressed;
-			pressed = -1;
-			if (at == 0 && l.safe.hit(x, y)) close();
-			else if (at == 1 && l.action.hit(x, y)) act();
-			return false;
-		}
-		void draw(const Player& p) override
-		{
-			auto ls = lines(p);
-			Kit::ConfirmSpec c;
-			c.title = "Quit Banana Player?";
-			c.safe = "Cancel";
-			c.action = "Quit";
-			c.danger = true;
-			c.focus = focus;
-			c.pressed = pressed;
-			ui.kit->confirmSheet(lay::confirmSheet((int)ls.size(), false), c, ls);
-		}
-		std::string signature(const Player& p) const override
-		{
-			return std::to_string(focus) + std::to_string(pressed) + std::to_string(ui.nowPlayable(p));
-		}
-	};
-
-	void Ui::askQuit() { pushOverlay(std::make_unique<QuitAsk>(*this)); }
-
 	void Ui::askLid()
 	{
 		pushOverlay(std::make_unique<LidAskBox>(*this));

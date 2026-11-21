@@ -508,12 +508,6 @@ namespace bp
 
 	bool Ui::Home::homeKey(Button b, Player& p)
 	{
-		if (b == Button::B)
-		{
-			// it asks first, playing or not (the dialog says what quitting stops); the cursor on Cancel
-			ui.askQuit();
-			return false;
-		}
 		// (START is Settings, from Ui::press, on every screen)
 		if (b == Button::X)
 		{
@@ -830,7 +824,7 @@ namespace bp
 		}
 		if (recent.empty() && !continueOf(p).shown)
 		{
-			h = {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"B", "Quit"}, {"L2/R2", "Sections"}};
+			h = {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"L2/R2", "Sections"}};
 			return h;
 		}
 		Continue c = continueOf(p);
@@ -844,7 +838,6 @@ namespace bp
 		// SELECT's way back to what plays is named here (the rail's Now playing key says it too)
 		if (c.live) h.push_back({"SELECT", "Now playing"});
 		h.push_back({"X", "More"});
-		h.push_back({"B", "Quit"});
 		h.push_back({"L2/R2", "Sections"});
 		return h;
 	}

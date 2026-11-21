@@ -20,6 +20,8 @@
 #include "ui_player.h"
 #include "ui_playlists.h"
 #include "ui_home.h"
+#include "ui_music.h"
+#include "ui_videos.h"
 #include "ui_docs.h"
 #include "ui_manga.h"
 #include "ui_kit.h"
@@ -144,25 +146,22 @@ namespace bp
 		playerPage->unlock();	// the lock is the player's
 		if (bgPlay) landFlashUntil = SDL_GetTicks() + 900;	// the mini bar's edge lit a moment: it's still playing
 		dropTouch();
-		// played from a playlist's page: back to the list of playlists, the cursor on that one (the owner's rule: Back
-		// leaves the playlist; List on the player opens it, toSource above)
-		if (page == Page::Browse && isPlDir(browse->browseDir))
+		// back where it was started: the folder or the playlist's page (the owner, 2026-11-21: the playlist itself, no
+		// longer the list of playlists), an album or an artist, Videos' list: the cursor on what played (the photo last
+		// viewed, the song or video Next moved on to; a playlist's entry twice listed: the one that played)
+		if (page == Page::Browse)
 		{
-			std::string file = plFileOf(browse->browseDir);
-			browse->enterFolder(PLROOT, p);
-			for (size_t i = 0; i < browse->browsePaths.size(); i++)
-				if (browse->browsePaths[i] == file) { cursor = (int)i; break; }
-			browse->fitList();
+			int hint = from.kind == SourceKind::Playlist && isPlDir(browse->browseDir) && from.id == plFileOf(browse->browseDir) ? index : -1;
+			int at = playingRow(browse->browsePaths, hint, lastPlayed);
+			if (at >= 0)
+			{
+				cursor = at;
+				browse->playlists->keyFocus = -1;
+				browse->fitList();
+			}
 		}
-		// back in the folder of what played: the cursor on it (the photo last viewed, the song or video Next moved on to)
-		else if (page == Page::Browse && !lastPlayed.empty())
-			for (size_t i = 0; i < browse->browsePaths.size(); i++)
-				if (browse->browsePaths[i] == lastPlayed)
-				{
-					cursor = (int)i;
-					browse->fitList();
-					break;
-				}
+		else if (page == Page::Music) music->showPlaying(lastPlayed);
+		else if (page == Page::Videos) videos->showPlaying(lastPlayed, p);
 		fprintf(stderr, "ui: back from the player to %s\n",
 			page == Page::Browse ? (browse->atHome() ? "Home" : browse->browseDir.empty() ? "Files" : browse->browseDir.c_str()) : "a page");
 	}

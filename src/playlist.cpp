@@ -128,4 +128,13 @@ namespace bp
 		index = (int)(std::find(names.begin(), names.end(), name) - names.begin());
 		return names;
 	}
+
+	int playingRow(const std::vector<std::string>& paths, int hint, const std::string& path)
+	{
+		if (path.empty()) return -1;
+		if (hint >= 0 && hint < (int)paths.size() && paths[hint] == path) return hint;
+		for (size_t i = 0; i < paths.size(); i++)
+			if (paths[i] == path) return (int)i;
+		return -1;
+	}
 }

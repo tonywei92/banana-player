@@ -3,6 +3,7 @@
 // Rects the drawing asked for.
 #include "ui_videos.h"
 #include "ui_internal.h"
+#include "playlist.h"
 #include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
@@ -109,6 +110,16 @@ namespace bp
 	{
 		ListGeom g = listGeom();
 		if (g.count > 0 && cursor >= 0 && cursor < g.count) list.reveal(cursor, g.view, g.rowH, g.count, glide);
+	}
+
+	void Ui::Videos::showPlaying(const std::string& path, const Player& p)
+	{
+		std::vector<std::string> paths;
+		for (auto& r : rowsFor(p)) paths.push_back(r.folder ? std::string() : r.path);
+		int at = playingRow(paths, cursor, path);
+		if (at < 0) return;
+		cursor = at;
+		keepCursorInView(false);
 	}
 
 	Ui::Kit::Video Ui::Videos::videoOf(const Row& r, int i, const Player& p) const
@@ -471,14 +482,13 @@ namespace bp
 		}
 		bool reading = !snapshot() || generation() == 0;
 		bool empty = !reading && snapshot()->videos.empty() && folder.empty();
-		// an empty page (no Videos folder, or none with a video in it): its two keys, and B Home
+		// an empty page (no Videos folder, or none with a video in it): its two keys (B stops here: the section's home)
 		if (empty)
 		{
 			switch (b)
 			{
 			case Button::A: ui.page = Page::Browse; ui.browse->openSection(TAB_LOCAL, p); break;
 			case Button::Y: ui.openWeb(); break;
-			case Button::B: ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); break;
 			default: break;
 			}
 			return false;
@@ -502,8 +512,8 @@ namespace bp
 			if (cursor >= 0 && cursor < n) openMoreSheet(rows[cursor], p);
 			break;
 		case Button::B:
+			// a folder's list: back to the views (the views themselves are the section's home: the shell keeps B)
 			if (!folder.empty()) { folder.clear(); cursor = 0; list.top(); }
-			else { ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); }
 			break;
 		default: break;
 		}

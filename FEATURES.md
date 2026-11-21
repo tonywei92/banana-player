@@ -72,9 +72,8 @@ Open Banana Player and the bottom screen shows **Home**:
   and **Web dashboard** (Y); no Continue, Recent or shortcut row (each would be empty). With the play history off it
   says so instead.
 
-Move with the D-pad: **UP/DOWN** between Continue, the cards and the shortcuts, **LEFT/RIGHT** along them. **B**
-asks to quit: **Quit Banana Player?** with **Quit** and **Cancel**, **Cancel** first; **B** or a tap outside cancels.
-While something plays it asks too, and says **What's playing stops** (**SELECT** still goes to what plays).
+Move with the D-pad: **UP/DOWN** between Continue, the cards and the shortcuts, **LEFT/RIGHT** along them. Home is a
+section's home: **B** does nothing there (quit with **Quit Banana Player** in Quick settings, **F**, or **F + START**).
 **START** opens **Settings** (there is no START menu any more). Its places are the rail's cells, **F** is Quick
 settings, **L3** is Search, and About is Settings' last group.
 
@@ -94,8 +93,13 @@ Search key is in the rail. **L3** and that key open **Search** (a tool, not a se
 **B** goes back where you were), and its key is lit while the page shows.
 The hint bar along the foot says what the buttons do there.
 
-Inside a section the list opens where you left it (its top if that folder or playlist is gone); **B** goes up a
-folder, and from the section's top back to Home. **Playlists** is no cell of the rail: it is Music's third view
+Inside a section the list opens where you left it (its top if that folder or playlist is gone); **B** steps back one
+level (up a folder, out of an album or an artist) until the section's home. A **section's home** (Home, Files' places
+and Network, Videos' and Music's views, Books, the Extensions page, Settings' tiles) has no back key in its header,
+and **B** does nothing there: it never jumps to Home. The rail works as a tab bar: a tap on another section goes back
+to where you were in it; a tap on the section you are in goes to its home at the top (Music with an album open: the
+view you were on, from its first row); on its home already, the list glides to its top. **L2/R2** only step the
+sections. **Playlists** is no cell of the rail: it is Music's third view
 (see [The Music section](#the-music-section)).
 
 Folders come first, then files in natural order (episode 2 before episode 10). Each row has an icon (folder, video,
@@ -190,7 +194,7 @@ folder**, **Info**, then the file's own rows — **Copy…**, **Move…**, **Ren
 plays can't be moved, renamed or deleted until it's stopped) — and **Sort**, stepped in place: by **Name** (the
 usual), **Newest first** or **Biggest first** (Not finished always keeps its own newest-first). A delete, a rename
 or a move done, the index walks the cards again, so the list is true again a moment later. **◀/▶** page the list,
-**B** leaves a folder (or goes Home). **X** also ends in two rows on the right, the same on Videos, Music and
+**B** leaves a folder (the views are the section's home: **B** does nothing there). **X** also ends in two rows on the right, the same on Videos, Music and
 Books: **Where videos come from** opens the **Sources** sheet (each folder read now as card / folder with its count,
 **A** opens it in Files, one that holds nothing is dim; the Web dashboard's address; the naming rule) and **Web
 dashboard** opens its page. The line under the title says where the list reads from (`From Videos and Movies on both
@@ -215,7 +219,7 @@ the folders named **Books**, **Ebook** or **Ebooks** (any capitals; not Document
 EPUB's own, a PDF's first page, a comic's first page — on the cover worker (the drawn sleeve, keyed by the name,
 stands in until the answer, and for good for a TXT, which has no picture of its own). **X** is
 **More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in folder**. **◀/▶** page the
-shelf, **B** goes Home. With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
+shelf; **B** does nothing (it is the section's home). With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
 Files still lists and opens every book, and Recent keeps its Books filter; comics still need the Manga reader turned
 on, and say so when it isn't.
 
@@ -429,13 +433,13 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 - **Lock touch**, **Screen off** and **Info** are in **More** too. Locked, the controls go dark under one large lock:
   hold it for a second to unlock (the buttons still work, and **X** → **Unlock touch** unlocks as well).
 - **<** is at the top left of every page and does what **B** does: in the file list it goes up a folder, on a page it
-  goes back (in Settings, a group goes back to the tiles and the tiles close it). Home has none: **B** there asks to quit.
+  goes back (in Settings, a group goes back to the tiles and the tiles close it). A section's home has none, and **B** there does nothing.
 
 **List** (**Y**) on a playlist's song opens that playlist's own page (its order, its edits), the cursor on the song,
 what plays going on behind; the first time a playlist's song opens, the List key glows a soft yellow twice to say so.
-**B** from the player goes back to where you opened it from (a folder, Home, Settings…), and from a playlist's page to
-the list of playlists, the cursor on that playlist; back in the folder of what played (or the photo last viewed), the
-cursor is on it.
+**B** from the player goes back to where you opened it from (a folder, Home, Settings…): a playlist's page (not the
+list of playlists), an album, an artist, a folder or Videos' list, the cursor on what played (the photo last viewed,
+the song Next moved on to) where that list has it.
 
 Otherwise **List** (**Y**, or the **List** key) opens its **Up next** tab: what plays from (a folder, a playlist, Recent's
 folder, a selection from the web) in its own order, which Shuffle never reorders. The one playing is marked **Now**
@@ -473,7 +477,7 @@ See [Photos](#photos) for the touch screen.
 | Button | What it does |
 |---|---|
 | **A** (or tap it) | Open the folder, play the file (or open a document), or open the playlist. Files lists every file of the cards; one nothing here opens says so |
-| **B** or **Back** | Up one folder; at a section's top, back to Home. An empty folder's page offers **Go up** on **A** and **Send files** on **Y** |
+| **B** or **Back** | Up one folder; at a section's home (Files' places, Network, Playlists) nothing. An empty folder's page offers **Go up** on **A** and **Send files** on **Y** |
 | **UP / DOWN** | Move |
 | **LEFT / RIGHT** | Page up / down |
 | **L2 / R2** | Previous / next section: Home, Files, Videos, Music, Books, Extensions, Settings (**L / R** step Files and Network) |
@@ -512,11 +516,12 @@ tap opens one; in a group, **B** goes back to the tiles. **B** or **START** at t
 you were: the player, the page of a book, the folder. The hint bar there names **F Quick settings**, so Quit stays in
 reach; the Settings page itself teaches **B / START Back**, and the first-start pane says it too.
 
-Settings reached from the **rail** or **L2/R2** is a section instead: **B** goes Home. That is the whole difference: the
+Settings reached from the **rail** or **L2/R2** is a section instead: its tiles are the section's home (no back key,
+**B** does nothing there). That is the whole difference: the
 same page, but it remembers which way it was opened.
 
 There is no START menu: its places are the rail's cells, **F** is Quick settings, **L3** is Search, About is Settings'
-last group, Now playing is **SELECT** and the rail's Now playing key, and Quit is **B** on Home, Quick settings or **F + START**.
+last group, Now playing is **SELECT** and the rail's Now playing key, and Quit is in Quick settings or **F + START**.
 Nothing is lost: like, Add to playlist…, Show in folder, Play on, Info and Stop are on the player's **X · More** sheet
 (Stop is also a key on the player). See [Like and Add to playlist](#like-and-add-to-playlist) and
 [Play on](#play-on-from-the-handheld).
@@ -1250,7 +1255,7 @@ through.
 
 - A row for each extension that is on: the **Manga reader**'s mark, its name, a line of what is in it (the series
   read so far and downloads, once the reader has been opened) and a chevron; then a rule and **Manage extensions**.
-  **A** (or a tap) opens the row; **UP/DOWN** move; **B** goes Home; **L2/R2** step the sections; **L3** is Search, as
+  **A** (or a tap) opens the row; **UP/DOWN** move; **B** does nothing (the section's home); **L2/R2** step the sections; **L3** is Search, as
   everywhere in the shell. Arriving on the page, by a tap on the rail or **L2/R2**, starts and stops nothing: a video
   keeps playing, with the rail's Now playing key above Settings.
 - While a **video** plays (or is paused) the Manga row wears a red **Stops the video** pill, and **A** on it asks

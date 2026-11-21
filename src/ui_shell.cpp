@@ -85,7 +85,110 @@ namespace bp
 		return at == Section::Settings ? (int)cs.size() : -1;
 	}
 
+	bool Ui::Shell::atSectionHome(const Player& p) const
+	{
+		(void)p;
+		switch (ui.page)
+		{
+		// Settings is a section's home only as the rail or L2/R2 opened it: from START, B goes back to where it was
+		case Page::Settings: return !ui.settingsOver && ui.setGroup < 0;
+		case Page::Music: return ui.music->albumAt < 0 && ui.music->artistAt < 0;
+		case Page::Videos: return ui.videos->folder.empty();
+		case Page::Books: return true;
+		case Page::ExtSection: return true;
+		case Page::Browse: break;
+		default: return false;
+		}
+		const Browse& b = *ui.browse;
+		// a select mode, the picker or a move keeps its own B (and its header's cross)
+		const Playlists& pl = *b.playlists;
+		if (b.selecting() || pl.selMode != SEL_NONE || pl.moving || pl.pickerOpen || pl.addPending.serial) return false;
+		// Home; Files' two tabs (its places, Network); Music's Playlists view
+		const std::string& dir = b.browseDir;
+		return dir == HOMEDIR || dir.empty() || dir == NETROOT || dir == PLROOT;
+	}
+
+	void Ui::Shell::toSectionHome(Section s, Player& p)
+	{
+		bool home = atSectionHome(p);
+		fprintf(stderr, "ui: rail, the section shown: %s\n", home ? "its top" : "its home");
+		Browse& b = *ui.browse;
+		// the browser's page `dir` at its top: opened afresh (its place forgotten), or, shown, a glide to its first row
+		auto browseTop = [&](const std::string& dir) {
+			ui.page = Page::Browse;
+			if (b.browseDir != dir)
+			{
+				b.placeIn.erase(dir);
+				b.enterFolder(dir, p);
+				return;
+			}
+			ui.cursor = b.firstCursor();
+			ui.scroll = b.listFirst();
+			b.listReveal = std::max(0, ui.cursor);
+			b.playlists->keyFocus = -1;
+		};
+		switch (s)
+		{
+		case Section::Home:
+			// the focus as Home first opens: Continue, else the newest card
+			b.homeView->homeFresh = true;
+			ui.page = Page::Browse;
+			b.enterFolder(HOMEDIR, p);
+			break;
+		case Section::Files:
+			browseTop(sectionTop(b.browseTab == TAB_NETWORK ? TAB_NETWORK : TAB_LOCAL));
+			break;
+		case Section::Music:
+			if (ui.page == Page::Browse) { browseTop(PLROOT); break; }	// the Playlists view, or a playlist's page
+			{
+				Music& m = *ui.music;
+				bool page = m.albumAt >= 0 || m.artistAt >= 0;
+				m.albumAt = m.artistAt = -1;
+				m.keyFocus = -1;
+				m.cursor = 0;
+				if (page) m.list.top();
+				else m.keepCursorInView();
+			}
+			break;
+		case Section::Videos:
+		{
+			Videos& v = *ui.videos;
+			bool folder = !v.folder.empty();
+			v.folder.clear();
+			v.cursor = 0;
+			if (folder) v.list.top();
+			else v.keepCursorInView();
+			break;
+		}
+		case Section::Books:
+			ui.books->cursor = 0;
+			ui.books->keepCursorInView();
+			break;
+		case Section::Extensions: ui.manga->openExtList(p); break;
+		case Section::Settings:
+			// its tiles (START's way back, if START opened it, kept)
+			ui.setGroup = -1;
+			ui.cursor = ui.scroll = 0;
+			break;
+		}
+	}
+
 	Ui::ShellHead Ui::Shell::head(const Player& p) const
+	{
+		ShellHead h = pageHead(p);
+		if (atSectionHome(p))
+		{
+			// a section's home is where B stops: no back key, and no B in its hints ("B/START Back": START's alone)
+			h.back = false;
+			h.hints.erase(std::remove_if(h.hints.begin(), h.hints.end(), [](const Hint& x) { return x.key == "B"; }),
+				h.hints.end());
+			for (Hint& x : h.hints)
+				if (x.key.rfind("B/", 0) == 0) x.key.erase(0, 2);
+		}
+		return h;
+	}
+
+	Ui::ShellHead Ui::Shell::pageHead(const Player& p) const
 	{
 		ShellHead h;
 		h.back = ui.backIconShown(p);
@@ -232,6 +335,12 @@ namespace bp
 
 	void Ui::Shell::openSection(Section s, Player& p)
 	{
+		// the section shown, tapped again: its home, or its top (Search is a tool: every cell leaves it)
+		if (ui.page != Page::Search && s == section(p))
+		{
+			toSectionHome(s, p);
+			return;
+		}
 		if (s == Section::Settings)
 		{
 			// the rail and L/R open Settings as a section: B goes Home (not back to where START would)
@@ -300,6 +409,8 @@ namespace bp
 			search(p);
 			return true;
 		}
+		// a section's home: B stops there (it never goes Home; the header shows no back key)
+		if (b == Button::B && atSectionHome(p)) return true;
 		// Search keeps every other key: LEFT / RIGHT move its caret (or its page), SELECT its keyboard's layer.
 		// It is a tool: L / R do not step the sections under it.
 		if (ui.page == Page::Search) return false;

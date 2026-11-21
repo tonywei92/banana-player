@@ -4,6 +4,7 @@
 // here (Shell::section maps PLROOT and a playlist's page to this section, so the rail keeps Music lit under them).
 #include "ui_music.h"
 #include "ui_internal.h"
+#include "playlist.h"
 #include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
@@ -166,6 +167,23 @@ namespace bp
 	{
 		ListGeom g = listGeom();
 		if (g.count > 0 && g.cursor >= 0) list.reveal(g.cursor, g.view, g.rowH, g.count, glide);
+	}
+
+	void Ui::Music::showPlaying(const std::string& path)
+	{
+		auto snap = snapshot();
+		if (!snap) return;
+		std::vector<std::string> paths;
+		if (albumAt >= 0 && albumAt < (int)snap->albums.size())
+			for (uint32_t si : snap->albums[albumAt].songs) paths.push_back(snap->songs[si].path);
+		else if (artistAt >= 0 && artistAt < (int)snap->artists.size())
+			for (auto& e : artistEntries(artistAt)) paths.push_back(e.path);
+		int at = playingRow(paths, rowCursor, path);
+		if (at < 0) return;
+		rowCursor = at;
+		keyFocus = -1;
+		if (albumAt < 0) artistZone = 1;	// an artist's songs are under their albums' strip
+		keepCursorInView(false);
 	}
 
 	// ---- playing (the play request, as Files' Play all: main opens it and the Session takes it) ----
@@ -489,14 +507,13 @@ namespace bp
 			if (albumAt < 0 && artistAt < 0) viewStep(b == Button::R ? 1 : -1, p);
 			return false;
 		}
-		// an empty page (no Music folder, or none with a song in it): its two keys, and B Home
+		// an empty page (no Music folder, or none with a song in it): its two keys (B stops here: the section's home)
 		if (!snap || snap->songs.empty())
 		{
 			switch (b)
 			{
 			case Button::A: ui.page = Page::Browse; ui.browse->openSection(TAB_LOCAL, p); break;
 			case Button::Y: ui.openWeb(); break;
-			case Button::B: ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); break;
 			default: break;
 			}
 			return false;
@@ -616,7 +633,6 @@ namespace bp
 			case Button::Up: cursor = std::max(0, cursor - cols); break;
 			case Button::Down: cursor = std::min(n - 1, cursor + cols); break;
 			case Button::A: if (n) openAlbum(cursor, p); break;
-			case Button::B: ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); break;
 			default: break;
 			}
 			// the cursor's row kept in view (a short glide)
@@ -635,7 +651,6 @@ namespace bp
 		case Button::Left: cursor = std::max(0, cursor - rows); break;
 		case Button::Right: cursor = std::min(n - 1, cursor + rows); break;
 		case Button::A: if (n) openArtist(cursor, p); break;
-		case Button::B: ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); break;
 		default: break;
 		}
 		keepCursorInView();

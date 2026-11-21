@@ -118,7 +118,6 @@ namespace bp
 		bool pressedContinue = false, pressedResume = false;
 		int pressedCard = -1, pressedShortcut = -1, pressedChip = -1, pressedEmptyKey = -1;
 
-		// B on Home asks first: Ui::askQuit's confirm sheet (an overlay: it covers the rail too)
 		void drawHome(const Player& p);
 		void drawAllRecent(const Player& p);
 

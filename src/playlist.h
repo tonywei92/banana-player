@@ -26,4 +26,8 @@ namespace bp
 	// the same from a folder's names (a network folder's listing): the names that play with name, in order; empty when
 	// name isn't among them
 	std::vector<std::string> siblingNames(const std::string& name, const std::vector<std::string>& folderNames, int& index);
+
+	// the row of a list that holds `path`, the cursor coming back from the player: `hint` when that row is it (a file
+	// listed twice: the one that played), else its first row; -1 when the list hasn't it
+	int playingRow(const std::vector<std::string>& paths, int hint, const std::string& path);
 }

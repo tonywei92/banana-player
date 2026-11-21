@@ -41,6 +41,8 @@ namespace bp
 		void open(Player& p);		// the rail's way in: the view as it was left
 		void viewStep(int dir, Player& p);	// L2 / R2 and the chips: the views, wrapping
 		void openFolder(const std::string& path);
+		// back from the player: the list's cursor on the video that played (where the list has it)
+		void showPlaying(const std::string& path, const Player& p);
 		// the list's order (More › Sort, stepped in place): by name (the snapshot's own, as the spec draws All),
 		// newest first, biggest first. Not finished keeps the store's own order (the spec's rule for it)
 		enum Sort { SORT_NAME = 0, SORT_NEWEST, SORT_BIGGEST, SORTS };

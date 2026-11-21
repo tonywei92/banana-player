@@ -217,12 +217,11 @@ namespace bp
 		int n = (int)(reading.size() + shelf.size());
 		if (n == 0)
 		{
-			// an empty page: its two keys, and B Home
+			// an empty page: its two keys (B stops here: the section's home)
 			switch (b)
 			{
 			case Button::A: ui.page = Page::Browse; ui.browse->openSection(TAB_LOCAL, p); break;
 			case Button::Y: ui.openWeb(); break;
-			case Button::B: ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); break;
 			default: break;
 			}
 			return false;
@@ -245,7 +244,6 @@ namespace bp
 			else if (cursor - (int)reading.size() < (int)shelf.size())
 				openMoreSheet(shelf[cursor - reading.size()], p);
 			break;
-		case Button::B: ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); break;
 		default: break;
 		}
 		// the shelf's row in view (the strip never scrolls)
