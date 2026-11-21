@@ -249,6 +249,52 @@ namespace bp
 			return "Screen off in " + std::to_string(s) + " s";
 		}
 
+		// ---- the Sleep timer ----
+
+		SleepSheet sleepSheet()
+		{
+			SleepSheet l;
+			// the body: the label 26, two rows of tiles 56 + 8 + 56 + 8, the foot line 25 (282 in all with the head)
+			l.sheet = sheet({0, 0, 1, 26 + SLEEP_TILE_H + GAP + SLEEP_TILE_H + GAP + 25});
+			int x = SHEET_PAD, w = PANEL_W - 2 * SHEET_PAD, y = l.sheet.bodyY;
+			l.label = {x, y, w, 26};
+			Box row1{x, y + 26, w, SLEEP_TILE_H};
+			for (int i = 0; i < 5; i++) l.tile[i] = cell(row1, 5, GAP, i);
+			// End of this song takes three fifths, Off two (the row's gap between them)
+			int y2 = row1.y + SLEEP_TILE_H + GAP, w5 = w - GAP, first = w5 * 3 / 5;
+			l.tile[5] = {x, y2, first, SLEEP_TILE_H};
+			l.tile[6] = {x + first + GAP, y2, w - first - GAP, SLEEP_TILE_H};
+			l.foot = {x, y2 + SLEEP_TILE_H + GAP, w, 25};
+			return l;
+		}
+
+		int sleepMove(int cursor, Dir d)
+		{
+			cursor = std::clamp(cursor, 0, SLEEP_TILES - 1);
+			switch (d)
+			{
+			case Dir::Left: return cursor == 0 || cursor == 5 ? cursor : cursor - 1;
+			case Dir::Right: return cursor == 4 || cursor == 6 ? cursor : cursor + 1;
+			// down from a length to the one under it (the first three over End of this song); up to the length over it
+			case Dir::Down: return cursor < 5 ? (cursor < 3 ? 5 : 6) : cursor;
+			case Dir::Up: return cursor == 5 ? 1 : cursor == 6 ? 4 : cursor;
+			}
+			return cursor;
+		}
+
+		SleepWarn sleepWarn(Box panel)
+		{
+			SleepWarn l;
+			l.card = {panel.x + MARGIN, panel.y + panel.h - WARN_FOOT - SLEEP_WARN_H, panel.w - 2 * MARGIN, SLEEP_WARN_H};
+			// its line, 30 tall 12 in; the keys under it, 12 from the card's foot
+			l.icon = {l.card.x + 14, l.card.y + 12 + 5, 20, 20};
+			l.line = {l.icon.x + l.icon.w + 10, l.card.y + 12, l.card.x + l.card.w - 14 - (l.icon.x + l.icon.w + 10), 30};
+			Box keys{l.card.x + 12, l.card.y + l.card.h - 12 - SLEEP_TILE_H, l.card.w - 24, SLEEP_TILE_H};
+			l.snooze = cell(keys, 2, GAP, 0);
+			l.off = cell(keys, 2, GAP, 1);
+			return l;
+		}
+
 		// ---- a page's own line, the Search field and result row, a Music/Videos row, a Books cover tile ----
 
 		SectionLine sectionLine(Box area, bool note)

@@ -25,6 +25,7 @@
 #include "ui.h"
 #include "ui_glyphs.h"
 #include "ui_docs.h"
+#include "ui_sleep.h"
 #include "ui_manga.h"
 #include "ui_browse.h"
 #include "ui_home.h"
@@ -637,6 +638,7 @@ int main(int argc, char** argv)
 		// format a browser plays, while that tab is there (toPage's rule)
 		SessionHost& shadow = SessionHost::get();
 		shadow.attach(&player, &ui);
+		ui.sleep->player = &player;	// the sleep timer pauses what plays (never the photo viewer)
 #ifdef BP_WEB
 		shadow.browserCan = [&webServer](const std::string& path, const std::string& tab) {
 			return webServer && webServer->running() && !webServer->servedVirtual(path).empty() && playableByName(path) != Playable::No &&
@@ -665,6 +667,33 @@ int main(int argc, char** argv)
 		static std::atomic<bool> incognitoOn{false};
 		static std::atomic<int> lidIncognitoMode{0};
 		IdleSleep idleSleep;
+		// what keeps the handheld awake now (idlesleep.h): the idle sleep's holds, and the sleep timer's (only the jobs)
+		auto idleHoldsNow = [&](bool charging) {
+			IdleHolds h;
+			h.charging = charging;
+			h.playing = player.playing() && !player.paused;
+			h.fileJob = ui.fileJobActive();
+			{
+				auto& q = mangaNet->queue();
+				bool running = false;
+				for (const auto& it : q.items()) if (it.state == DlItem::Running) running = true;
+				h.mangaDownloads = running || q.next() != nullptr;
+				if (mangaNet->started())
+				{
+					auto js = mangaNet->javaExt().state();
+					h.mangaEngine = js == JavaExtHost::State::Starting || js == JavaExtHost::State::Downloading;
+				}
+			}
+			Updater::State us = updater.state();
+			h.updating = us == Updater::State::Downloading;
+			// (Settings: Stay awake for copies and downloads: off, they no longer hold the sleep)
+			if (!player.settings.stayAwakeJobs) h.fileJob = h.mangaDownloads = h.mangaEngine = h.updating = false;
+#ifdef BP_WEB
+			h.browserOut = webServer && webServer->running() && ui.pageIsOut() && ui.pagePlaying();
+			h.webActive = webServer && webServer->running() && webServer->activeWithin(120000);
+#endif
+			return h;
+		};
 		SleepWatch sleepWatch;
 		// Every incognito trigger asks again here, on the main thread, with the state of this moment: the watch's
 		// thread and the power key's hold a copy that is a loop old, and a stale on must never close everything.
@@ -813,6 +842,7 @@ int main(int argc, char** argv)
 			}
 			player.stop();
 			topDark = false;
+			if (haveUi && why != StopWhy::End) ui.sleep->stopped();	// (Stop, anywhere: the sleep timer with it)
 			fprintf(stderr, "stop: %s (%s)\n", why == StopWhy::End ? "the end of the list" : why == StopWhy::Web ? "the web" : "Stop",
 				shown ? "back to the browser" : "behind the browser");
 			if (shown && haveUi) ui.backFromPlayer(player, last, from, index);
@@ -837,6 +867,19 @@ int main(int argc, char** argv)
 			if (!screens || !haveUi) return;
 			if (photoOverPlayer && player.playing()) ui.showPlayer();
 			else ui.backFromPlayer(player, was);
+		};
+		// just before a sleep the player asks for (the idle sleep, the sleep timer's): incognito decides first, and only
+		// if it is on at this moment
+		auto incognitoBeforeSleep = [&](const char* source) {
+			if (!incognitoNow(source)) return;
+			int mode = player.settings.lidIncognito;
+			if (mode == LID_INCOGNITO_CLOSE_ALL)
+			{
+				fprintf(stderr, "incognito: %s: close all, then sleeping\n", source);
+				closePhoto(false);
+				ui.incognitoCloseAllNow(player);
+			}
+			else if (mode == LID_INCOGNITO_QUIT) { fprintf(stderr, "incognito: %s: quitting\n", source); running = false; }
 		};
 		// B, "<" or Back on the player (a press() or pointer() that says leave): the screen only, what plays goes on
 		// behind the browser, back where the player was opened from (Ui::backFromPlayer). A photo (and a file that
@@ -1033,6 +1076,8 @@ int main(int argc, char** argv)
 				const int nw = ts.nativeWaitMs(shown());
 				if (nw >= 0) waitMs = std::min(waitMs, nw);
 			}
+			// the sleep timer's End of this chapter: its last moments looked at closely
+			if (const int sw = haveUi ? ui.sleep->waitMs() : -1; sw >= 0) waitMs = std::min(waitMs, sw);
 			// a list gliding on the bottom panel: its next frame 16 ms after the last began
 			{
 				const int gw = haveUi ? ui.glideWaitMs() : -1;
@@ -1271,6 +1316,13 @@ int main(int argc, char** argv)
 							if (haveUi) ui.incognitoCloseAllNow(player);
 							askBananadSleep();
 						}
+					}
+					// the sleep timer's last minute with the lid shut (Keep playing): no card is seen, the fade is the
+					// warning, and Power is 10 more minutes (for that minute only)
+					else if (haveUi && ui.sleep->warning() && sleepWatch.lidClosed())
+					{
+						fprintf(stderr, "power: press: the sleep timer's snooze\n");
+						ui.sleep->snooze();
 					}
 					// the power key with the lid shut, let go before 2 s: play/pause, the same Session path A takes (its
 					// Play/Pause, then mpv). A page that plays it is taken over here, as A does. The conditions are
@@ -1581,8 +1633,11 @@ int main(int argc, char** argv)
 				// A photo's list, or a file the session doesn't have (it disagrees: logged), as before
 				const Session& ss = shadow.session();
 				bool mine = ss.out.kind == OutKind::Handheld && ss.index >= 0 && !player.playingPhoto() && player.currentPath() == shadow.file();
+				// (the sleep timer's End of this song or video: paused at once, as the next one opens)
+				bool sleepEnds = haveUi && ui.sleep->endsWithItem();
 				if (mine && shadow.ended().reject.empty()) { if (shadow.session().index < 0) stopPlaying(StopWhy::End); }
 				else if (!player.advance()) stopPlaying(StopWhy::End);
+				if (sleepEnds) ui.sleep->itemEnded();
 			}
 			// the place is kept now and then too: a battery that runs out, a power-off after sleeping
 			bool woke = slept.exchange(false);
@@ -1599,6 +1654,7 @@ int main(int argc, char** argv)
 			// a photo has no Play: an animated one paused by the lid goes on at the wake (a video waits for A)
 			if (woke && photos.playing()) photos.unpause();
 			if (woke) shadow.woke();
+			if (woke && haveUi) ui.sleep->woke();	// (a timer doesn't outlive a sleep; its own sleep says so on waking)
 			if (woke || (player.loaded && !player.paused && SDL_GetTicks() - savedAt > 60000))
 			{
 				player.saveResume();
@@ -2047,42 +2103,28 @@ int main(int argc, char** argv)
 						const char* base = getenv("BP_POWER_SUPPLY");
 						charging = readBattery(base ? base : "/sys/class/power_supply").charging;
 					}
-					IdleHolds h;
-					h.charging = charging;
-					h.playing = player.playing() && !player.paused;
-					h.fileJob = ui.fileJobActive();
-					{
-						auto& q = mangaNet->queue();
-						bool running = false;
-						for (const auto& it : q.items()) if (it.state == DlItem::Running) running = true;
-						h.mangaDownloads = running || q.next() != nullptr;
-						if (mangaNet->started())
-						{
-							auto js = mangaNet->javaExt().state();
-							h.mangaEngine = js == JavaExtHost::State::Starting || js == JavaExtHost::State::Downloading;
-						}
-					}
-					Updater::State us = updater.state();
-					h.updating = us == Updater::State::Downloading;
-					// (Settings: Stay awake for copies and downloads: off, they no longer hold the sleep)
-					if (!player.settings.stayAwakeJobs) h.fileJob = h.mangaDownloads = h.mangaEngine = h.updating = false;
+					IdleHolds h = idleHoldsNow(charging);
+					idleSleep.tick(now, h, [&] { incognitoBeforeSleep("idle sleep"); });
+				}
+			}
+			// the sleep timer (ui_sleep.h): its fade, its cards, its end, each pass; then, 10 s paused and dark, the sleep
+			// asked of BananaOS as its menu's Sleep does. Only a copy, a move or a download holds it (Stay awake for
+			// copies and downloads): a browser signed in, or playing, doesn't (the timer was someone's own choice)
+			if (haveUi && ui.sleep->tick())
+			{
+				IdleHolds h = idleHoldsNow(false);
+				h.playing = h.browserOut = h.webActive = false;
+				std::string held = idleHeldBy(h);
+				if (player.settings.sleepTimerPause) fprintf(stderr, "sleep timer: When the sleep timer ends is Pause: it stays awake, dark\n");
+				else if (!held.empty()) fprintf(stderr, "sleep timer: no sleep: %s keeps the handheld awake (paused, dark)\n", held.c_str());
+				else
+				{
+					incognitoBeforeSleep("sleep timer");
 #ifdef BP_WEB
-					h.browserOut = webServer && webServer->running() && ui.pageIsOut() && ui.pagePlaying();
-					h.webActive = webServer && webServer->running() && webServer->activeWithin(120000);
+					if (webServer && webServer->running()) webServer->notify("bye", "{\"reason\":\"sleeptimer\"}");
 #endif
-					idleSleep.tick(now, h, [&] {
-						// incognito decides first, just before the sleep the player asks for, and only if it is on at
-						// this moment
-						if (!incognitoNow("idle sleep")) return;
-						int mode = player.settings.lidIncognito;
-						if (mode == LID_INCOGNITO_CLOSE_ALL)
-						{
-							fprintf(stderr, "incognito: idle sleep: close all, then sleeping\n");
-							closePhoto(false);
-							ui.incognitoCloseAllNow(player);
-						}
-						else if (mode == LID_INCOGNITO_QUIT) { fprintf(stderr, "incognito: idle sleep: quitting\n"); running = false; }
-					});
+					bool asked = askBananadSleep();
+					fprintf(stderr, "sleep timer: the sleep %s\n", asked ? "asked of BananaOS" : "not asked (no /run/banana: not BananaOS)");
 				}
 			}
 			// When the lid closes: Keep playing. BananaOS's lid sleep off while something plays here, back after; and the

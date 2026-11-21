@@ -171,6 +171,11 @@ namespace bp
 		int lidShoulder = LID_SHOULDER_IGNORED;
 		// incognito while the lid closes or the handheld sleeps: nothing, close everything, or quit
 		int lidIncognito = LID_INCOGNITO_CLOSE_ALL;
+		// the sleep timer's end (ui_sleep.h): paused, both screens off, then the handheld sleeps (false); or only paused
+		// and dark (true: it stays awake)
+		bool sleepTimerPause = false;
+		// minutes the sleep timer's snooze adds (A in its last minute, X in its sheet, the page's "10 more min")
+		int sleepSnooze = 10;
 		// (not saved) the file named no lid-close: the choice is asked once at start (Ui::askLid), then kept
 		bool lidAsk = false;
 		// the app's colours, both panels and the dashboard (Settings › Power & screens › Theme): theme.h's table, by index

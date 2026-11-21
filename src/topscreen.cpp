@@ -13,6 +13,7 @@
 #include "theme.h"
 #include "ui.h"
 #include "ui_docs.h"
+#include "ui_sleep.h"
 #include "ui_glyphs.h"
 #include "ui_manga.h"
 #include "ui_reader.h"
@@ -598,6 +599,25 @@ namespace bp
 		else
 			bgFadeStep = ui.backdropFading() && ui.backdropFadeAnswered()
 				? (float)std::min(1.0, (double)(SDL_GetTicks() - ui.backdropFadeAt()) / Ui::BG_FADE_MS) : 1.0f;
+		// black, drawn once, mpv's frames taken unseen (drainUnder); the backlight is untouched
+		bool sleepBlack = false;
+		auto drawBlack = [&](const char* why) {
+			renderPending = false;
+			if (topBlackDrawn) return;
+			using Clear = void (*)(float, float, float, float);
+			using Cl = void (*)(unsigned);
+			auto color = (Clear)SDL_GL_GetProcAddress("glClearColor");
+			auto clear = (Cl)SDL_GL_GetProcAddress("glClear");
+			SDL_GL_MakeCurrent(top, gl);
+			if (color && clear)
+			{
+				color(0, 0, 0, 1);
+				clear(0x4000 /* GL_COLOR_BUFFER_BIT */);
+				SDL_GL_SwapWindow(top);
+			}
+			topBlackDrawn = true;
+			fprintf(stderr, "top: black (%s)\n", why);
+		};
 		// Top screen off (music): a song playing, no press or touch for the delay (a new song counts from its start)
 		{
 			int secs = screenOffSeconds(shown.settings.topScreenOff);
@@ -608,6 +628,9 @@ namespace bp
 			}
 			bool black = secs > 0 && !qrNow && !paneNow && !reader.isOpen() && !textReader.isOpen() && shown.playingAudio() &&
 				shown.playing() && !shown.paused && !photos.playing() && now - std::max(ui.lastInputAt(), topOffFrom) >= (Uint32)secs * 1000;
+			// the sleep timer ran out: dark whatever the panel showed, until a key or a touch (ui_sleep.h)
+			sleepBlack = ui.sleep && ui.sleep->dark();
+			black = black || sleepBlack;
 			if (black != topBlack)
 			{
 				topBlack = black;
@@ -620,7 +643,8 @@ namespace bp
 				}
 			}
 		}
-		if (qrNow)
+		if (sleepBlack) drawBlack("the sleep timer");
+		else if (qrNow)
 		{
 			// About's support QR, large: the panel's own picture, 1:1 (a still: drawn again when it changes, and
 			// with the 2 s refresh, so a failed compose gets another try)
@@ -679,26 +703,7 @@ namespace bp
 			}
 		}
 		// Top screen off (music): black, drawn once, mpv's frames taken unseen (drainUnder); the backlight is untouched
-		else if (topBlack)
-		{
-			renderPending = false;
-			if (!topBlackDrawn)
-			{
-				using Clear = void (*)(float, float, float, float);
-				using Cl = void (*)(unsigned);
-				auto color = (Clear)SDL_GL_GetProcAddress("glClearColor");
-				auto clear = (Cl)SDL_GL_GetProcAddress("glClear");
-				SDL_GL_MakeCurrent(top, gl);
-				if (color && clear)
-				{
-					color(0, 0, 0, 1);
-					clear(0x4000 /* GL_COLOR_BUFFER_BIT */);
-					SDL_GL_SwapWindow(top);
-				}
-				topBlackDrawn = true;
-				fprintf(stderr, "top: black after %d s (Top screen off)\n", screenOffSeconds(shown.settings.topScreenOff));
-			}
-		}
+		else if (topBlack) drawBlack("Top screen off");
 		// the native visualizer (Mirror bars on a local song): the player's own bars over mpv's picture, at the tap's
 		// frame rate (src/topviz.cpp)
 		else if (shown.nativeShown() && !photos.playing())

@@ -12,6 +12,7 @@
 #include "substyle.h"
 #include "tracks.h"
 #include "ui.h"
+#include "ui_sleep.h"
 #include "ui_sound.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
@@ -256,6 +257,18 @@ namespace bp
 			s.showHiddenFolders = p.settings.showHiddenFolders;
 			s.mangaOn = p.settings.mangaOn;
 			s.incognito = p.incognito;
+			// the sleep timer: the page shows it and changes it (POST /api/sleep)
+			if (u.sleep)
+			{
+				const Ui::Sleep& sl = *u.sleep;
+				s.sleepKind = !sl.running() ? "off" : sl.t.kind == SleepKind::ItemEnd ? "end" : "min";
+				s.sleepLabel = sl.label();
+				s.sleepWarn = sl.warning();
+				s.sleepAt = sl.pausesAt();
+				s.sleepMinutes = sl.running() && sl.t.kind == SleepKind::Minutes ? sl.t.minutes : 0;
+				s.sleepWord = sl.word();
+			}
+			s.sleepSnooze = p.settings.sleepSnooze;
 			{
 				const theme::Palette& t = theme::palette(p.settings.theme);
 				char bg[8];
@@ -758,6 +771,37 @@ namespace bp
 				// (past 100: the player's gain, as the volume keys go; up to Max volume)
 				u.setVolumeTotal(p, v);
 				return "{\"volume\":" + std::to_string(u.volumeTotal(p)) + "}";
+			}, 2000, status);
+			answer(res, body, status);
+		});
+
+		// the sleep timer, the handheld's one: do=set&min=15|30|45|60|90, do=end (End of this song), do=snooze, do=off.
+		// Run on the main thread (WebServer::call); both sides follow at once (the state's "sleep")
+		s.Post("/api/sleep", [w](const httplib::Request& req, httplib::Response& res) {
+			std::string what = value(req, "do");
+			int min = atoi(value(req, "min").c_str());
+			if (what != "set" && what != "end" && what != "snooze" && what != "off")
+			{
+				WebServer::fail(res, 400, "Unknown sleep timer action");
+				return;
+			}
+			if (what == "set" && min != 15 && min != 30 && min != 45 && min != 60 && min != 90)
+			{
+				WebServer::fail(res, 400, "Not a sleep timer length");
+				return;
+			}
+			int status = 200;
+			std::string body = w->call([what, min](Player&, Ui& u) {
+				Ui::Sleep& sl = *u.sleep;
+				fprintf(stderr, "sleep timer: from the web: %s%s\n", what.c_str(), what == "set" ? (" " + std::to_string(min)).c_str() : "");
+				if (what == "set") sl.set(min);
+				else if (what == "end") sl.setItemEnd();
+				else if (what == "snooze") sl.snooze();
+				else sl.off();
+				JsonWriter j;
+				j.obj().key("kind").str(!sl.running() ? "off" : sl.t.kind == SleepKind::ItemEnd ? "end" : "min").key("label").str(sl.label())
+					.key("at").str(sl.pausesAt()).end();
+				return j.out();
 			}, 2000, status);
 			answer(res, body, status);
 		});

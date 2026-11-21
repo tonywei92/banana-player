@@ -51,6 +51,8 @@ namespace bp
 		j.key("mangaOn").boolean(s.mangaOn);
 		j.key("incognito").boolean(s.incognito);
 		j.key("theme").str(s.theme).key("themeBg").str(s.themeBg);
+		j.key("sleep").obj().key("kind").str(s.sleepKind).key("label").str(s.sleepLabel).key("warn").boolean(s.sleepWarn)
+			.key("at").str(s.sleepAt).key("minutes").num(s.sleepMinutes).key("snooze").num(s.sleepSnooze).key("word").str(s.sleepWord).end();
 		j.end();
 		return j.out();
 	}
@@ -65,7 +67,8 @@ namespace bp
 			a.shuffled != b.shuffled || a.chapter != b.chapter || a.sessionV != b.sessionV || a.sessionBoot != b.sessionBoot ||
 			a.clients != b.clients || a.playlistSerial != b.playlistSerial || a.liked != b.liked || a.showHiddenFolders != b.showHiddenFolders || a.mangaOn != b.mangaOn || a.incognito != b.incognito || a.theme != b.theme || a.chapters.size() != b.chapters.size() ||
 			a.hasTracks != b.hasTracks || a.audioTracks != b.audioTracks || a.subTracks != b.subTracks || a.aid != b.aid ||
-			a.sid != b.sid)
+			a.sid != b.sid || a.sleepKind != b.sleepKind || a.sleepLabel != b.sleepLabel || a.sleepWarn != b.sleepWarn ||
+			a.sleepAt != b.sleepAt || a.sleepMinutes != b.sleepMinutes || a.sleepSnooze != b.sleepSnooze || a.sleepWord != b.sleepWord)
 			return true;
 		for (size_t i = 0; i < a.chapters.size(); i++)
 			if (a.chapters[i].title != b.chapters[i].title || a.chapters[i].start != b.chapters[i].start) return true;

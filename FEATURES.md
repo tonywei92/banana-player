@@ -379,8 +379,8 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **L / R** | Previous / next file in the folder (a song 5 s or more in restarts first; a video always goes to the one before; on the first video: nothing, unless Repeat All) |
 | **L2 / R2** | Previous / next chapter (**F + L2** is still the screenshot) |
 | **UP / DOWN** | Volume, five a step, as the handheld's volume keys: the level card on the top screen, and past 100% the player's own gain up to **Max volume** (with its warning; **DOWN** takes that off first). Hold to repeat: after 0.4 s, eight steps a second; a hold going UP stops at 100%, and going past it takes a fresh press. Inside a sheet or a list, **UP / DOWN** move the cursor |
-| **X** | **More**: its first row is the player's five chips, under the cursor; then **Lock touch**, **Screen off**, **Info** and **Stop** (in red), and **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. On a chip, **A** opens that chip's sheet and More closes; on **Repeat** or **Shuffle** it changes it and More stays open. **LEFT / RIGHT** move along the chips, **DOWN** to the tiles and rows; **A** chooses, **X** or **B** closes |
-| **Y** | **List** (the **List** key): one sheet with **Up next** (the folder or playlist that plays, in its own order, the one playing marked **Now**) and **Chapters** (every chapter with its start; a file without chapters has only Up next), with **Shuffle**'s switch and **Repeat** (Off / All / One) in its header. **L / R** step the tabs, **UP / DOWN** move, **LEFT / RIGHT** page, **A** plays from the row, **L2 / R2** jump a chapter with the sheet open, **Y** or **B** closes |
+| **X** | **More**: its first row is the player's five chips, under the cursor; then **Lock touch**, **Screen off**, **Sleep timer**, **Info** and **Stop** (in red), and **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. On a chip, **A** opens that chip's sheet and More closes; on **Repeat** or **Shuffle** it changes it and More stays open. **LEFT / RIGHT** move along the chips, **DOWN** to the tiles and rows; **A** chooses, **X** or **B** closes |
+| **Y** | **List** (also a tap on the **Next** line): one sheet with **Up next** (the folder or playlist that plays, in its own order, the one playing marked **Now**) and **Chapters** (every chapter with its start; a file without chapters has only Up next), with **Shuffle**'s switch and **Repeat** (Off / All / One) in its header. **L / R** step the tabs, **UP / DOWN** move, **LEFT / RIGHT** page, **A** plays from the row, **L2 / R2** jump a chapter with the sheet open, **Y** or **B** closes |
 | **SELECT** | **More**, the same sheet **X** opens (the hint bar says **X/SELECT More**). Its first row is the five chips: **A** on one opens its own sheet, and More closes. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (Fit, Fill, Stretch, then **Adjust…**) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Equalizer**, **Effects** and **Speed**. There are no tabs and **L / R** do nothing in a sheet: **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's **Display**, **SELECT** steps the Show mode). **Picture**'s last row opens **Adjust**; **‹** or **B** goes back to **Picture** |
 | **START** | **Settings**: the ten group tiles; **B** or **START** closes it back to where you were (the player, here) |
 | **L3** (press the stick, RG DS Plus) | Like / Unlike what plays |
@@ -401,8 +401,8 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
   doesn't hide it.
 - **Buttons:** they act when you lift your finger, so slide off one to cancel.
 - **The transport row:** **Prev**, **5 s** back, **Play / Pause** (the wide yellow key), **10 s** forward, **Next**.
-- **The second row**, the same on a video and a song: **Like**, **Playlist** (Add to playlist…), **List** (Up next,
-  **Y**) and **Stop** (at the right edge, in plain ink: it stops everywhere, the place kept; **X** › **More** has
+- **The second row**, the same on a video and a song: **Like**, **Playlist** (Add to playlist…), **Sleep** (the
+  [sleep timer](#sleep-timer); the list is **Y**, or a tap on the **Next** line) and **Stop** (at the right edge, in plain ink: it stops everywhere, the place kept; **X** › **More** has
   the same Stop in red). **SELECT** opens **More**, as **X** does, and its first row is the five chips; the hint bar
   says **X/SELECT More**.
 - **The chips** under them say how it is set, and a tap changes or opens each (they are touch only: the D-pad reaches
@@ -432,12 +432,12 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
   goes back (in Settings, a group goes back to the tiles and the tiles close it). Home has none: **B** there asks to quit.
 
 **List** (**Y**) on a playlist's song opens that playlist's own page (its order, its edits), the cursor on the song,
-what plays going on behind; the first time a playlist's song opens, the List key glows a soft yellow twice to say so.
+what plays going on behind.
 **B** from the player goes back to where you opened it from (a folder, Home, Settings…), and from a playlist's page to
 the list of playlists, the cursor on that playlist; back in the folder of what played (or the photo last viewed), the
 cursor is on it.
 
-Otherwise **List** (**Y**, or the **List** key) opens its **Up next** tab: what plays from (a folder, a playlist, Recent's
+Otherwise **List** (**Y**, or a tap on the **Next** line) opens its **Up next** tab: what plays from (a folder, a playlist, Recent's
 folder, a selection from the web) in its own order, which Shuffle never reorders. The one playing is marked **Now**
 (**Paused**, or **Browser** when a web page plays it), with each file's length where it's known; the sheet opens scrolled
 to it. **A** (or a tap) plays that row as picking it from its list would (Shuffle and Loop stay as they are; with Shuffle
@@ -453,6 +453,37 @@ name, then the server's name when the item is on one), and `3 / 12`, the file's 
 Shuffle on too: the list keeps its order). Under it the title, and on its right how it plays: **Playing**, **Paused**,
 or, while a dashboard page plays it, **In Chrome on Mac** (the Play key then says **Hold: play it here** and fills as
 you hold it). A song's fifth chip is **Shuffle**; a video's fifth is **Repeat**.
+
+### Sleep timer
+
+Fall asleep to a song or a film: it pauses at the time you choose, quietly, and the handheld sleeps.
+
+- **Open it:** the **Sleep** key on the player (where List was; the list is **Y**, or a tap on the **Next** line), or
+  **X** › **Sleep timer**, or, while one runs, a tap on the clock badge in the header of any page.
+- **The sheet:** **Pause after** **15**, **30**, **45**, **60** or **90 min**, **End of this song** (**video**, or
+  **chapter** where what plays has chapters, as an audiobook) and **Off**. The D-pad moves (it opens on 30 min, or on the
+  one in use), **A** or a tap sets it and closes (it counts from now, replacing one that runs), **X** adds the snooze to
+  a running one, **B** or a tap outside closes. The top screen notes "Sleep timer · 30 min · pauses at 22:17".
+- **While it runs:** the Sleep key reads what is left ("24 min", in yellow with a dot), every page's header has a clock
+  badge with it, and a song's top screen has it quietly at the top right. It counts by the clock, playing or paused.
+- **The last minute:** the volume fades to silence (the player's own volume: the handheld's level and its bar never
+  move), and a card says "Sleeping in 0:48" on the top screen, and on the bottom screen too if it is lit (it never
+  lights a dark screen). **A** gives **10 more min** (the snooze setting), **B** turns the timer off; the volume comes
+  back within a second. **UP / DOWN** are still the volume; no other key does anything there. End of this song has no
+  fade: the card shows for its last minute ("Sleeping after this song · 0:48") and the song ends as it was made.
+- **At its end:** it pauses (never stops: the list and the place are kept, back where the fade began, so nothing heard
+  at a whisper is missed), both screens turn off, and 10 s later the handheld sleeps (the setting **When the sleep timer
+  ends**: Sleep, or Pause to stay awake). A copy, a move or a download in progress keeps it awake, paused and dark; a
+  browser signed in to the dashboard doesn't. A key or a touch in those 10 s wakes the screens and calls the sleep off.
+  On waking: "Paused by the sleep timer" and "A plays" on the top screen until the first key.
+- **Stop** (anywhere) turns it off ("Sleep timer off"); so does any sleep (the lid, the power key, the idle sleep). If
+  the list ends first, its last minute starts then, with nothing to fade. With the lid shut and **Keep playing**, the
+  fade is the warning and a press of **Power** in that minute is 10 more minutes. It is never saved: a timer doesn't
+  outlive a quit or a sleep.
+- **On the web page:** Now playing has a **Sleep timer** row (a desktop: a clock key at the right of the player bar)
+  that shows what is left and opens the same choices, with **10 more min** and **Timer off** while one runs. Its last
+  minute puts a card at the foot of every page; whichever side answers, both cards go. When it sleeps the handheld, the
+  page says "The handheld is asleep (sleep timer)".
 
 ### Looking at a photo
 
@@ -919,6 +950,8 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | | Volume keys, lid shut | Volume and skip | With the lid shut and **Keep playing**: a press is one volume step; Volume and skip holds 0.6 s for next (+) / previous (-), Volume only holds as with the lid open (the player never takes the keys). At 45% with its reason while the lid is set to Pause |
 | | Shoulder keys, lid shut | Ignored | With the lid shut and **Keep playing**, what **L**, **R**, **L2** and **R2** do: Ignored (nothing), Hold (act when held 0.6 s), or As usual (act at once). At 45% with its reason while the lid is set to Pause |
 | | Lid or sleep in incognito | Close all | While incognito is on: what the lid closing or the handheld sleeping does. Nothing, Close all (stop, close books and photos, Home, leave incognito) or Quit. See [Incognito](#quick-settings) |
+| | When the sleep timer ends | Sleep | What the [sleep timer](#sleep-timer) does at its end. Sleep: it pauses, both screens turn off and the handheld sleeps. Pause: it pauses and the screens turn off; the handheld stays awake |
+| | Sleep timer snooze | 10 min | How much longer it plays when you press **A** in the sleep timer's last minute (or **10 more min** on the web page): 5, 10, 15 or 30 minutes |
 | | Battery percentage | Off | Shows the battery's percent beside its icon (the icon, with a bolt while charging, is always there) |
 | | Clock | 24-hour | The time in the top corner of the bottom screen, left of the battery: 24-hour (`14:32`), 12-hour (`2:32 PM`) or Off. Not over a photo |
 | **Updates** | Check automatically | On | Looks for a new version a few seconds after the start, in the background (Wi-Fi needed) |

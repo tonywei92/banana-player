@@ -1,6 +1,7 @@
 // The player screen (a video, a song), rebuilt on the redesign's component kit (ui_player.h says what it is and what
 // stayed Ui's; docs/redesign/src/screens.js "video", "music", "video-chips", "video-more", "play-on", "lock").
 #include "ui_player.h"
+#include "ui_sleep.h"
 #include "ui_browse.h"
 #include "ui_playlists.h"
 #include "ui_settings.h"
@@ -248,7 +249,7 @@ namespace bp
 		case T_ADD:
 			if (p.playing()) ui.browse->playlists->openAddOne(p.currentPath(), p.title, p.loaded ? p.duration : -1, p);
 			return false;
-		case T_LIST: return listAct(p);
+		case T_SLEEP: ui.sleep->openSheet(); return false;
 		case T_NEXTLINE: openList(0, p); return false;
 		// Stop, the same flag the More sheet's Stop tile sets: the Session stops it everywhere, the place kept
 		case T_STOP: ui.stopPressed = true; return false;
@@ -485,7 +486,6 @@ namespace bp
 		if (seekHeld >= 0 && !ui.slideHeld(SL_SEEK) &&
 			(p.duration <= 0 || std::fabs(ui.shownPosition(p) - seekHeld * p.duration) < 1.0 || SDL_GetTicks() - seekHeldAt > 6000))
 			seekHeld = -1;
-		if (listPulseAt && SDL_GetTicks() - listPulseAt >= LIST_PULSE_MS) listPulseAt = 0;
 	}
 
 	// ---- X: More, and Play on ----
@@ -517,6 +517,9 @@ namespace bp
 			return false;
 		}));
 		m.tiles.push_back(item(&G_MOON, "Screen off", [u](Player&) { u->panel.set(false); return false; }));
+		// the sleep timer: its sheet (what is left, in yellow, while one runs)
+		m.tiles.push_back(item(&G_CLOCK, ui.sleep->running() ? ui.sleep->label() : "Sleep timer", [u](Player&) { u->sleep->openSheet(); return false; }));
+		m.tiles.back().lit = ui.sleep->running();
 		m.tiles.push_back(item(&G_INFO, "Info", [u](Player&) {
 			u->page = Page::Info;
 			u->cursor = u->scroll = 0;
@@ -2186,7 +2189,7 @@ namespace bp
 		if (!p.settings.buttonHotkeys) return {{"", "Button hotkeys are off: the keys on this screen do it all"}};
 		if (ui.pageDrives(p))
 			return {{"A", ui.pagePlaying() ? "Pause there" : "Play there"}, {"Hold A", "Play here"}, {"L/R", "Step"}, {"X/SELECT", "More"}, {"B", "Back"}};
-		std::vector<Hint> out{{"LEFT/RIGHT", "Seek"}, {"UP/DOWN", "Volume"}, {"X/SELECT", "More"}};
+		std::vector<Hint> out{{"LEFT/RIGHT", "Seek"}, {"UP/DOWN", "Volume"}, {"X/SELECT", "More"}, {"Y", "List"}};
 		if (chapters) out.push_back({"L2/R2", "Chapter"});
 		out.push_back({"B", "Back"});
 		return out;
@@ -2222,18 +2225,6 @@ namespace bp
 
 	void Ui::PlayerPage::draw(const Player& p)
 	{
-		if (listPulseArm)
-		{
-			listPulseArm = false;
-			// (once per playlist: the first of its songs opened; another row of it, or the player opened again, not)
-			bool pl = p.playing() && !p.playingPhoto() && p.source().kind == SourceKind::Playlist;
-			if (pl && p.source().id != listPulsedFor)
-			{
-				listPulseAt = SDL_GetTicks();
-				fprintf(stderr, "ui: the List key glows (a playlist's first song)\n");
-			}
-			if (p.playing() && !p.playingPhoto()) listPulsedFor = pl ? p.source().id : std::string();
-		}
 		if (p.playingPhoto()) { ui.drawPhoto(p); return; }
 		// Match album art: the song's blurred art and its veil are the ground the page draws over (a video, a
 		// photo, the switch off or High contrast: the theme's own, as drawBackdrop says)
@@ -2378,7 +2369,7 @@ namespace bp
 			}
 		}
 
-		// ---- Like, Playlist, List, Stop ----
+		// ---- Like, Playlist, Sleep, Stop ----
 		{
 			Uint32 now = SDL_GetTicks();
 			bool liked = ui.likedNow(p), added = ui.addFlashUntil && now < ui.addFlashUntil;
@@ -2387,13 +2378,10 @@ namespace bp
 			keys[0].lit = liked;
 			// Add to playlist: no button of its own; a check for a moment once it's added
 			keys[1].glyph = added ? &G_CHECK : &G_PLUS; keys[1].label = "Playlist"; keys[1].lit = added;
-			keys[2].glyph = &G_PLAYLIST; keys[2].label = "List"; keys[2].key = capOf("Y");
-			if (listPulseAt)
-			{
-				// two soft yellow swells (sin²)
-				double sw = std::sin(M_PI * (now - listPulseAt) / (double)(LIST_PULSE_MS / 2));
-				keys[2].glow = sw * sw;
-			}
+			// Sleep: the sleep timer's sheet (no button of its own: X, then its tile). While one runs it reads what is
+			// left, in yellow with the dot (away from normal)
+			bool sleeping = ui.sleep->running();
+			keys[2].glyph = &G_CLOCK; keys[2].label = sleeping ? ui.sleep->label() : "Sleep"; keys[2].lit = sleeping;
 			// Stop: the row's fourth, at the right edge, in plain ink (More's red tile stays). It stops everywhere,
 			// the place kept: no cap, since no button does it on this screen
 			keys[3].glyph = &G_STOP; keys[3].label = "Stop";
@@ -2403,6 +2391,7 @@ namespace bp
 				keys[i].pressed = pressed == T_LIKE + i && !keys[i].off;
 				k.key(l.keys[i], keys[i]);
 			}
+			if (sleeping) KitNew::awayDot(k, l.keys[2], lay::AwayTone::Away);
 		}
 
 		// ---- the chips: what is set sometimes, each saying its state ----
@@ -2455,7 +2444,6 @@ namespace bp
 			std::to_string(touchLocked) + "," + std::to_string(seekHeld >= 0) + "|" + nx.path + "|" + nx.note + (nx.round ? "r" : "") + (nx.any ? "a" : "") +
 			"|" + p.artist() + "|" + p.album() + (p.songArtMissing() ? "|ph" + p.artPlaceholderKey() : "");
 		if (touchLocked && lockHoldAt) sig += "|hold" + std::to_string((SDL_GetTicks() - lockHoldAt) / 50);
-		if (listPulseAt) sig += "|pulse" + std::to_string((SDL_GetTicks() - listPulseAt) / 33);
 		// Match album art's backdrop: which answer the page draws over, and (while it runs) the cross-fade's step
 		if (ui.backdropOn(p))
 		{

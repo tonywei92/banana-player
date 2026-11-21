@@ -2,6 +2,7 @@
 // page, and the one step of it that is a key (L / R through the sections). Every body is its area's, drawn on the kit in the
 // body box.
 #include "ui_shell.h"
+#include "ui_sleep.h"
 #include "ui_internal.h"
 #include "ui_kit.h"
 #include "ui_browse.h"
@@ -499,6 +500,13 @@ namespace bp
 		int left = k.status(more.x - lay::SP8, cy, st);
 		// the cluster is one touch target (F opens Quick settings): its mark, Wi-Fi, battery and clock
 		statusBox = left < more.x - lay::SP8 ? lay::Box{left - 8, 0, more.x - lay::SP8 - (left - 8), 54} : lay::Box{0, 0, 0, 0};
+		// a running sleep timer: its badge left of the cluster (a tap: its sheet)
+		if (ui.sleep->running())
+		{
+			int w = k.badge(left - lay::SP8, cy, ui.sleep->badge());
+			ui.sleepHit = {left - lay::SP8 - w - 4, 0, w + 8, 54};
+			left -= lay::SP8 + w;
+		}
 		// the right slot (a badge, Settings' neighbours) keeps 8 before the status cluster, so the pair beside the
 		// clock never touches it
 		if (h.right) left = h.right(left - lay::SP8, cy);

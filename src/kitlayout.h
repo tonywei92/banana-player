@@ -567,6 +567,27 @@ namespace bp
 		// "Screen off in 4 s": the seconds left, rounded up (ms: what is left), at least 1
 		std::string screenOffWords(int msLeft);
 
+		// ---- the Sleep timer (docs/redesign/sleep-timer.md: sleep-set, sleep-warn) ----
+		// The sheet, 282 tall: the label "Pause after", five lengths in a row (56 tall, 8 apart), End of this song and
+		// Off under them (3 : 2), the foot line. The cursor: 0..4 the lengths, 5 End of this song, 6 Off
+		constexpr int SLEEP_TILES = 7, SLEEP_TILE_H = 56;
+		struct SleepSheet
+		{
+			Sheet sheet;
+			Box label, foot;
+			Box tile[SLEEP_TILES];
+		};
+		SleepSheet sleepSheet();
+		int sleepMove(int cursor, Dir d);	// no wrap: at an edge it stays
+		// The warning on the bottom screen: the Screen-off warning's veil, a card 118 tall 40 above the foot (16 from
+		// the sides) with its line (the clock, "Sleeping in 0:48", a note on the right) and two keys 56 tall
+		constexpr int SLEEP_WARN_H = 118;
+		struct SleepWarn
+		{
+			Box card, icon, line, snooze, off;
+		};
+		SleepWarn sleepWarn(Box panel = {0, 0, PANEL_W, PANEL_H});
+
 		// ---- Title marquee: a title that doesn't fit its box moves along, twice, then rests at its start ----
 		// (docs/redesign/components.md, Title marquee) rest 1.5 s; move left 24 steps a second (2 units a step for type of
 		// 24 and more, 1 under) till its end shows; rest 1.5 s; fade out 150 ms and in 150 ms at its start; rest 3 s;

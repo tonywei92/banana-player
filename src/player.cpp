@@ -763,7 +763,23 @@ namespace bp
 	void Player::setBoost(int v)
 	{
 		boost = std::clamp(v, 100, std::max(100, settings.volumeMax));
-		prop("volume", std::to_string(boost));
+		sendVolume();
+	}
+
+	void Player::setFade(double f)
+	{
+		f = std::clamp(f, 0.0, 1.0);
+		// (a step under half a percent of the volume isn't sent: the fade is asked for each pass of the loop)
+		if (std::fabs(f - fade) * boost < 0.5 && !(f == 1 && fade != 1)) return;
+		fade = f;
+		sendVolume();
+	}
+
+	void Player::sendVolume()
+	{
+		char v[32];
+		snprintf(v, sizeof v, "%.1f", boost * fade);
+		prop("volume", v);
 	}
 
 	void Player::reloadAudio(const char* why)
@@ -2152,7 +2168,7 @@ namespace bp
 		showLevelCard(drawLabelCard(opts.fontsDir, topH > 0 ? topH : 720, "Equalizer", value), 1500);
 	}
 
-	void Player::showNoteCard(const char* const* rows, int h, const std::string& line1, const std::string& line2, bool danger)
+	void Player::showNoteCard(const char* const* rows, int h, const std::string& line1, const std::string& line2, bool danger, int ms)
 	{
 		const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
 		LevelCardImage card = drawNoteCard(opts.fontsDir, ph, CardGlyph{rows, h}, line1, line2, danger);
@@ -2160,9 +2176,51 @@ namespace bp
 		int x, y;
 		noteCardPos(pw, ph, card, x, y, overVideo);	// a video: in the middle, off the subtitles and the level card
 		putImage(OV_NOTE, card, x, y);
-		// over a video it's in the middle of the picture: briefer
-		noteUntil = ticks() + (overVideo ? 1500 : 3000);
-		cardMs = overVideo ? 1500 : 3000;	// (the caller draws the panel while it is up)
+		// over a video it's in the middle of the picture: briefer (unless a time is asked for)
+		int shownMs = ms > 0 ? ms : overVideo ? 1500 : 3000;
+		noteUntil = ticks() + shownMs;
+		cardMs = std::min(shownMs, 3000);	// (the caller draws the panel while it is up)
+	}
+
+	void Player::hideNote()
+	{
+		if (!noteUntil) return;
+		noteUntil = 0;
+		dropImage(OV_NOTE);
+		cardMs = 1;
+	}
+
+	void Player::showSleepCard(const char* const* rows, int h, const std::string& line1, const std::string& line2)
+	{
+		const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
+		LevelCardImage card = drawNoteCard(opts.fontsDir, ph, CardGlyph{rows, h}, line1, line2, false);
+		int x, y;
+		// the note's place: bottom centre; over a video top left, 20 in (clear of the subtitles and the level card)
+		if (!isAudio && !isPhoto && !playlist.empty())
+		{
+			x = std::lround(20.0 * pw / 640);
+			y = std::lround(20.0 * ph / 480);
+		}
+		else noteCardPos(pw, ph, card, x, y, false);
+		putImage(OV_SLEEP, card, x, y);
+	}
+
+	void Player::dropSleepCard() { dropImage(OV_SLEEP); }
+
+	void Player::showSleepMark(const char* const* rows, int h, const std::string& text)
+	{
+		if (text == sleepMarkText && shownSerial[OV_SLEEP_MARK]) return;
+		sleepMarkText = text;
+		const int pw = topW > 0 ? topW : 960, ph = topH > 0 ? topH : 720;
+		LevelCardImage card = drawQuietMark(opts.fontsDir, ph, CardGlyph{rows, h}, text);
+		// top right, 22 in from the right and 16 down (the level card comes over it while it is up)
+		putImage(OV_SLEEP_MARK, card, pw - card.w - (int)std::lround(22.0 * pw / 640), (int)std::lround(16.0 * ph / 480));
+	}
+
+	void Player::dropSleepMark()
+	{
+		sleepMarkText.clear();
+		dropImage(OV_SLEEP_MARK);
 	}
 
 	void Player::hideLevel()

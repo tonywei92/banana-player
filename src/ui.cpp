@@ -28,6 +28,7 @@
 #include "ui_sound.h"
 #include "ui_web.h"
 #include "ui_player.h"
+#include "ui_sleep.h"
 #include "ui_shell.h"
 #include "ui_search.h"
 #include "ui_music.h"
@@ -116,6 +117,7 @@ namespace bp
 		areas.push_back(search.get());
 		playerPage = std::make_unique<PlayerPage>(*this);
 		areas.push_back(playerPage.get());
+		sleep = std::make_unique<Sleep>(*this);	// (not an area: the sleep timer, over every page)
 	}
 
 	Ui::Area* Ui::area() const
@@ -198,6 +200,13 @@ namespace bp
 		}
 		// leaving About closes it too (openAbout clears it as well: coming back finds it down)
 		if (page != Page::About) aboutQr = false;
+		// the sleep timer's dark (it paused, both screens off): a key wakes the screens, calls the sleep off, and does
+		// nothing else (it stays paused)
+		if (sleep->wake())
+		{
+			webInputAt = SDL_GetTicks();
+			return false;
+		}
 		// an overlay (the readers' Brightness sheet, a message's dialog, the quick settings, Files' Info card) takes the
 		// keys while it shows
 		// any key restarts Screen off's count, an overlay's too (Settings, a sheet): before, the B that closed Settings
@@ -684,6 +693,12 @@ namespace bp
 			if (pt.kind != Pointer::Down) return slideFollow(pt, x, y, p);
 			slideEnd(p);
 		}
+		// the sleep timer's dark: the first touch wakes the screens (as a key does) and presses nothing
+		if (pt.kind == Pointer::Down && sleep->wake())
+		{
+			swallowTouch = true;
+			return false;
+		}
 		if (topOverlay()) return overlayPointer(pt, x, y, p);
 		mangaOn = p.settings.mangaOn;
 		if (fileJob) return fileJobPointer(pt, x, y);
@@ -747,6 +762,14 @@ namespace bp
 				webIndDown = false;
 				if (webInd.hit(x, y) && page != Page::Web) openWeb();
 			}
+			return false;
+		}
+		// the header's sleep timer badge: its sheet (only the down, as the cluster beside it)
+		if (sleepHit.w > 0 && sleepHit.hit(x, y) && pt.kind == Pointer::Down && !ctxOpen && !browse->playlists->pickerOpen &&
+			!popupShown(p) && !kbOpen && sleep->running())
+		{
+			sleep->openSheet();
+			swallowTouch = true;
 			return false;
 		}
 		// the header's status cluster: one touch target on every header, the touch twin of F (the globe inside it
@@ -935,6 +958,7 @@ namespace bp
 			s ? (long long)s->id : 0LL, p.tracks.size(), (int)slideHeld(SL_SEEK), slideHeld(SL_SEEK) ? (int)(slide.value * 1000) : 0, p.speed,
 			p.index(), p.count(), pressedBtn, listTouch * 1000 + browse->browseVersion + (clearArmed != 0) * 100000 + (int)p.history().items().size() * 1000000);
 		std::string photo = "|th" + std::to_string(theme::currentTheme());	// (the browser's section and its listing: Browse::signature)
+		photo += sleep->signature();	// the sleep timer's shown state: the key, the badge, More's tile (by the second in its last minute)
 		// a slider under a finger: which, and where the finger has it (what draws differently while held reads these)
 		if (slide.on) photo += "|sl" + std::to_string(slide.id) + "." + std::to_string(slide.sub) + ":" + std::to_string(slide.value);
 		if (playHoldAt) photo += "|phold" + std::to_string((SDL_GetTicks() - playHoldAt) / 50);
