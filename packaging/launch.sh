@@ -104,6 +104,8 @@ RC=$?
 # (a trap ends the first wait early: the player's own end waited for)
 while kill -0 $PID 2>/dev/null; do wait $PID; RC=$?; done
 trap - TERM INT HUP
+# how it ended, for a report (a signal is 128 + its number: 137 a kill, 139 a segfault)
+echo "launcher: the player ended with $RC" >> "$LOG_DIR/log.txt"
 lid_restore "$LOG_DIR" 2>> "$LOG_DIR/log.txt"
 # 75: "Restart now" with an update ready: again from the top, which puts it in place
 [ "$RC" = 75 ] && exec "$D/launch.sh" "$@"

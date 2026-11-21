@@ -38,6 +38,15 @@ namespace bp
 
 	void Ui::dropClosedOverlays()
 	{
+		// a closing sheet's own smooth list: let go here, before the sheet (and the list in it) is freed. The draw kept
+		// a pointer to it (listShown) and released it on the next frame, after it was gone: freed memory on the handheld
+		for (auto& o : overlays)
+			if (o->done)
+				if (SmoothList* l = o->smoothList(); l && l == listShown)
+				{
+					l->release();
+					listShown = nullptr;
+				}
 		overlays.erase(std::remove_if(overlays.begin(), overlays.end(), [](const std::unique_ptr<Overlay>& o) { return o->done; }),
 			overlays.end());
 	}
