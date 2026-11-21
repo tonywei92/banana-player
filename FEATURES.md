@@ -46,6 +46,9 @@ Open Banana Player and the bottom screen shows **Home**:
   the player). Held, the key takes it over from a browser that plays it. A
   video the Manga reader stopped says **Stopped for Manga** until it plays again or something else is played. With
   everything played through there is no Continue card and **Recent** moves to the top. The pictures on the Continue and
+  The card follows Recent's rules: when its file is gone or its card is out it shows dimmed with the reason and opening it
+  opens its More (Remove from Recent first); X, a hold or a Y does the same, and once removed it is gone for good (the
+  card falls back to the next Recent item, or the empty state).
   Recent cards are square (1:1), as Music's album art, and each Recent item is laid as an album tile is (the square
   picture with its title and second line under it, the albums grid's sizes). A video's picture is its list thumbnail
   (the middle of it), a book's its cover, once read; until then, and for a photo or a network file, the kind's mark.

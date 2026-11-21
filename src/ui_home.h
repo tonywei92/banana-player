@@ -80,6 +80,7 @@ namespace bp
 		{
 			bool shown = false, live = false, stopped = false, paused = false;
 			std::string path, title, note, label, key, artKey;
+			std::string missing;	// why it can't open (the Recent item's reason): drawn dimmed, no key, opening it offers Remove
 			std::vector<std::string> pills;	// all Live (yellow), the kit's statePills: away from normal, as Quick settings' block has them
 			const Glyph* kind = nullptr;
 			double frac = 0;

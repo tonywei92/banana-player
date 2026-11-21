@@ -432,44 +432,33 @@ namespace bp
 			c.key = "Resume";
 			return c;
 		};
-		// what was played last, if it was left in the middle: this is the one to carry on, even when its card has been
-		// taken out and its file has gone from Recent (the place is kept in resume.tsv)
-		const std::vector<ResumeEntry>& all = p.resumeStore().all();
-		const RecentItem* lastIt = lastLive.empty() ? nullptr : findRecent(lastLive);
-		const std::string lastPlayed = lastIt ? lastLive : recent.empty() ? std::string() : recent.front().path;
-		if (!all.empty())
+		// what was played last: the card follows Recent's rules. Its file missing or its card out: the card says so
+		// (dimmed) and opening it offers Remove from Recent; one removed from Recent is gone for good (its place in
+		// resume.tsv does not bring the card back), and the card falls back to the next item in Recent
+		const RecentItem* subject = lastLive.empty() ? nullptr : findRecent(lastLive);
+		if (!subject && !recent.empty()) subject = &recent.front();
+		if (!subject) return c;
+		const ResumeEntry* e = p.resumeStore().find(subject->path);
+		if (e && isVideoFile(e->path) && e->position > 0 && e->duration > 0 && worthResuming(e->position, e->duration))
+			c = fromResume(*e);
+		else
 		{
-			const ResumeEntry& e = all.front();
-			// the last thing played, or one whose file has gone (a card out): not an older video after a book was read
-			bool last = recent.empty() || lastPlayed == e.path || !listedThere(e.path);
-			if (last && isVideoFile(e.path) && e.position > 0 && e.duration > 0 && worthResuming(e.position, e.duration)) return fromResume(e);
-		}
-		// else the last thing played, whatever it is (the owner, 2026-11-19: a half-read book further down must not
-		// stand in for the songs played since): Resume when it has a place to carry on from, else Play
-		for (auto& it : recent)
-		{
-			if (lastIt && &it != lastIt) continue;
-			if (!it.missing.empty()) continue;	// (its card in Recent says why; Continue is for what can go on)
 			c.shown = true;
-			c.path = it.path;
-			c.title = it.name;
-			c.kind = it.kind;
-			c.note = it.sub + (it.where.empty() ? "" : " \xC2\xB7 " + it.where);
-			c.frac = it.frac;
-			c.artKey = it.name;
-			c.stopped = !mangaStopped.empty() && mangaStopped == it.path;
-			bool part = it.frac > 0.0 && it.frac < 1.0 - 1e-6;
-			c.label = c.stopped ? "Stopped for Manga" : part ? "Continue" : "Last played";
-			c.key = part ? "Resume" : "Play";
-			if (!part) c.frac = 0;	// (a played-through one has no place to show)
-			return c;
+			c.path = subject->path;
+			c.title = subject->name;
+			c.kind = subject->kind;
+			c.note = subject->sub + (subject->where.empty() ? "" : " \xC2\xB7 " + subject->where);
+			c.frac = subject->frac;
+			c.artKey = subject->name;
+			c.stopped = !mangaStopped.empty() && mangaStopped == subject->path;
 		}
-		// a card taken out with something older still in resume.tsv: its place is kept too
-		for (auto& e : all)
+		if (!subject->missing.empty())
 		{
-			if (!isVideoFile(e.path) || e.position <= 0 || e.duration <= 0) continue;
-			if (!worthResuming(e.position, e.duration) || listedThere(e.path)) continue;
-			return fromResume(e);
+			c.missing = subject->missing;
+			c.note = subject->missing;
+			c.label = "Last played";
+			c.key.clear();
+			c.frac = 0;
 		}
 		return c;
 	}
@@ -1077,7 +1066,7 @@ namespace bp
 		// a book's cover or a video's thumbnail arrived: the cards draw it now
 		if (c.shown)
 		{
-			s += "|hc" + c.label + c.path + std::to_string((int)std::lround(c.frac * 100)) + c.key + (c.paused ? "p" : "");
+			s += "|hc" + c.label + c.missing + c.path + std::to_string((int)std::lround(c.frac * 100)) + c.key + (c.paused ? "p" : "");
 			for (auto& pill : c.pills) s += "|hp" + pill;	// a speed, Repeat or EQ changed: the note line draws anew
 		}
 		if (!morePath.empty()) s += "|mp" + morePath;
@@ -1143,6 +1132,7 @@ namespace bp
 			card.title = c.title;
 			card.note = c.note;
 			card.key = c.key;
+			card.off = !c.missing.empty();
 			card.keyGlyph = c.live && !c.paused ? &G_PAUSE : &G_PLAY;
 			card.progress = c.frac;
 			card.focused = homeZone == HOME_CONTINUE;
@@ -1180,6 +1170,7 @@ namespace bp
 					k.pill(r.x + 6 + w, r.y + 16, label, Kit::Pill::Fact);
 				}
 			};
+			if (card.off) { card.picture = nullptr; card.keyGlyph = nullptr; }
 			k.continueCard(l, card);
 			// the state pills after the time on the note line (their words are the mini bar's; nothing when normal)
 			if (c.live && !c.pills.empty())
