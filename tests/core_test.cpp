@@ -8646,6 +8646,17 @@ static void testHistory()
 // list ending first, the dark before the sleep
 // main's loop wakes for each of the timer's moments, however idle (the handheld's loop waits on events: the dark's
 // grace once went by unseen)
+// Japanese text is told by its kana (its kanji then take Fusion Pixel's Japanese forms on the panels)
+static void testHasKana()
+{
+	CHECK(hasKana("ウルトラマンガイア／ED2"));
+	CHECK(hasKana("ひらがな"));
+	CHECK(hasKana("\xef\xbd\xb1"));	// half-width katakana A
+	CHECK(!hasKana("菊田 知彦"));	// kanji alone: not told
+	CHECK(!hasKana("特撮・闇"));	// the middle dot alone: Chinese uses it too
+	CHECK(!hasKana("Plain ASCII, «Latin-1» — and “quotes”"));
+}
+
 static void testSleepNextMs()
 {
 	const uint64_t MIN = 60000;
@@ -16481,6 +16492,7 @@ int main()
 	testIdleSleep();
 	testSleepTimer();
 	testSleepNextMs();
+	testHasKana();
 	testSleepLayout();
 	testIncognitoLid();
 	testLidSleepConf();

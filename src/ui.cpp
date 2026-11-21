@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "fontruns.h"
 #include "ui_smoothlist.h"
 #include "session_host.h"
 #include "format.h"
@@ -74,7 +75,7 @@ namespace bp
 		}
 		// the web dashboard's PIN, big (a font of its own: the three sizes are the page's text)
 		pinFont = TTF_OpenFont(path.c_str(), (int)std::lround(56 * sy));
-		static const char* FALLBACKS[] = {"fusion-pixel-12px-proportional-zh_hans.ttf", "NotoSansThai.ttf",
+		static const char* FALLBACKS[] = {FONT_CJK, "NotoSansThai.ttf",
 			"NotoSansArabic.ttf", "NotoSansHebrew.ttf", "NotoSansDevanagari.ttf"};
 		for (const char* name : FALLBACKS)
 		{
@@ -153,6 +154,7 @@ namespace bp
 		if (pinFont) TTF_CloseFont(pinFont);
 		for (auto& f : fallbacks)
 			for (auto* x : f) if (x) TTF_CloseFont(x);
+		for (auto* x : jaForms) if (x) TTF_CloseFont(x);
 		if (ren) SDL_DestroyRenderer(ren);
 	}
 

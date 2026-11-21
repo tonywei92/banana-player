@@ -226,7 +226,7 @@ cp -r /src/assets/fonts "$B/share/banana-player/"
 cp -r /src/assets/icons "$B/share/banana-player/"	# (the player's own pictures: the app's on the top screen, the manga reader's)
 # About's support block: the static ko-fi QR, beside icon.png (Ui::drawAboutSupport reads it from the fonts' folder up)
 cp /src/packaging/support/kofi-qr.png "$B/share/banana-player/"
-# fontconfig's view of the fonts: the player's folder only (the launcher sets FONTCONFIG_FILE), its cache in
+# fontconfig's view of the fonts: the player's folder only (less the Japanese forms' subset) (the launcher sets FONTCONFIG_FILE), its cache in
 # $XDG_CACHE_HOME (run-port: /data/home/.cache)
 cat > "$B/share/banana-player/fonts.conf" <<'CONF'
 <?xml version="1.0"?>
@@ -234,6 +234,9 @@ cat > "$B/share/banana-player/fonts.conf" <<'CONF'
 <fontconfig>
 	<dir prefix="relative">fonts</dir>
 	<cachedir prefix="xdg">fontconfig</cachedir>
+	<!-- Fusion Pixel's Japanese forms only, for the panels' own text with kana (src/fontruns.h): never a fallback
+	     libass picks for a Chinese subtitle -->
+	<selectfont><rejectfont><glob>*-ja-forms.ttf</glob></rejectfont></selectfont>
 </fontconfig>
 CONF
 cp /src/LICENSE /src/README.md "$B/"

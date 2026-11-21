@@ -8,4 +8,6 @@ namespace bp
 	// Valid UTF-8 stays. Otherwise Shift-JIS (CP932), GBK, then Big5 (our own tables, src/cjk: no iconv), the first that decodes whole and
 	//  is mostly CJK or kana; else the bytes as Latin-1. Always valid UTF-8.
 	std::string cleanTagText(const std::string& s);
+	// hiragana or katakana (full or half width) in UTF-8 text: it is Japanese, and its kanji take the Japanese forms
+	bool hasKana(const std::string& utf8);
 }

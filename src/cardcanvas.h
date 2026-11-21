@@ -3,6 +3,7 @@
 // Preview pane): straight-alpha RGBA, sizes in the spec's 640x480 units scaled by the panel's height, round boxes with
 // smoothed edges, text in Pixelify Sans or Inter, the G_* glyphs. Moved out of levelcard.cpp so the Preview pane
 // (previewpane.cpp) draws with the same primitives as the cards. Main thread only (the fonts are opened once and kept).
+#include "fontruns.h"
 #include "levelcard.h"
 #include "theme.h"
 #include <SDL.h>
@@ -34,6 +35,18 @@ namespace bp
 			if (it != fonts.end()) return it->second;
 			TTF_Font* f = TTF_OpenFont(path.c_str(), pt);
 			if (f) fonts[key] = f;	// (a handful of sizes at most, the panel's)
+			return f;
+		}
+
+		// a fallback font's file at `pt`, opened once a size (the cards' few sizes)
+		inline TTF_Font* fileFont(const std::string& fontsDir, const char* file, int pt)
+		{
+			static std::map<std::string, TTF_Font*> fonts;
+			std::string key = std::string(file) + "@" + std::to_string(pt);
+			auto it = fonts.find(key);
+			if (it != fonts.end()) return it->second;
+			TTF_Font* f = TTF_OpenFont((fontsDir + "/" + file).c_str(), pt);
+			fonts[key] = f;	// (null kept too: a missing file isn't looked for again each card)
 			return f;
 		}
 
@@ -118,12 +131,29 @@ namespace bp
 				box(x0 + t, y0 + t, bw - 2 * t, bh - 2 * t, std::max(0.f, r - t), fill);
 			}
 			TTF_Font* font(Face f, float units) const { return faceFont(fonts, f, units * k); }
+			// the text in pieces, each in a font that has its characters (a Japanese file name in the Preview pane):
+			// Pixelify Sans, else Fusion Pixel (CJK, at a multiple of its 12 pixels as on the bottom panel), Noto Sans
+			std::vector<FontRun> runs(Face f, float units, const std::string& s) const
+			{
+				static const char* FALLBACKS[] = {FONT_CJK, "NotoSansThai.ttf", "NotoSansArabic.ttf", "NotoSansHebrew.ttf",
+					"NotoSansDevanagari.ttf"};
+				const int pt = std::max(6, (int)std::lround(units * k));
+				const int cjkPt = std::max(12, (int)std::lround(units * k / 12.0f) * 12);
+				auto fallback = [&](size_t i) { return fileFont(fonts, FALLBACKS[i], i == 0 ? cjkPt : pt); };
+				TTF_Font* ja = hasKana(s) ? fileFont(fonts, FONT_JA_FORMS, cjkPt) : nullptr;
+				return fontRuns(s, font(f, units), sizeof FALLBACKS / sizeof FALLBACKS[0], fallback, fallback(0), ja);
+			}
 			int textW(Face f, float units, const std::string& s) const
 			{
-				TTF_Font* fn = font(f, units);
-				int w = 0, h = 0;
-				if (fn && !s.empty()) TTF_SizeUTF8(fn, s.c_str(), &w, &h);
-				return w;
+				int total = 0;
+				if (!font(f, units) || s.empty()) return 0;
+				for (auto& r : runs(f, units, s))
+				{
+					int w = 0, h = 0;
+					TTF_SizeUTF8(r.first, r.second.c_str(), &w, &h);
+					total += w;
+				}
+				return total;
 			}
 			int lineH(Face f, float units) const
 			{
@@ -158,19 +188,29 @@ namespace bp
 			{
 				TTF_Font* fn = font(f, units);
 				if (!fn || s.empty()) return;
+				// each piece on the own font's baseline, side by side
+				const int base = y + TTF_FontAscent(fn);
+				for (auto& r : runs(f, units, s))
+					x += piece(r.first, r.second, x, base - TTF_FontAscent(r.first), c);
+			}
+			// one piece of text in one font, its line box's top left at (x, y); its width
+			int piece(TTF_Font* fn, const std::string& s, int x, int y, Rgb c)
+			{
 				SDL_Color ink{c.r, c.g, c.b, 255};
 				SDL_Surface* t = TTF_RenderUTF8_Blended(fn, s.c_str(), ink);
-				if (!t) return;
+				if (!t) return 0;
 				SDL_Surface* ts = SDL_ConvertSurfaceFormat(t, SDL_PIXELFORMAT_RGBA32, 0);
 				SDL_FreeSurface(t);
-				if (!ts) return;
+				if (!ts) return 0;
 				for (int yy = 0; yy < ts->h; yy++)
 					for (int xx = 0; xx < ts->w; xx++)
 					{
 						const uint8_t* q = (const uint8_t*)ts->pixels + yy * ts->pitch + xx * 4;
 						blend(x + xx, y + yy, Rgb{q[0], q[1], q[2]}, q[3] / 255.f);
 					}
+				int w = ts->w;
 				SDL_FreeSurface(ts);
+				return w;
 			}
 			// a glyph scaled so its longer side is `size` pixels, its box's top left at (x, y)
 			void glyph(CardGlyph g, float size, float x, float y, Rgb c)

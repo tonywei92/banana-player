@@ -123,4 +123,19 @@ namespace bp
 		}
 		return out;
 	}
+
+	bool hasKana(const std::string& s)
+	{
+		for (size_t i = 0; i + 2 < s.size(); i++)
+		{
+			unsigned char a = s[i], b = s[i + 1], c = s[i + 2];
+			if (a != 0xE3 && a != 0xEF) continue;
+			unsigned cp = ((a & 0x0F) << 12) | ((b & 0x3F) << 6) | (c & 0x3F);
+			// U+3041-30FF hiragana and katakana (less the middle dot U+30FB, shared with Chinese), U+31F0-31FF small
+			// katakana, U+FF66-FF9F half-width katakana
+			if ((cp >= 0x3041 && cp <= 0x30FF && cp != 0x30FB) || (cp >= 0x31F0 && cp <= 0x31FF) || (cp >= 0xFF66 && cp <= 0xFF9F))
+				return true;
+		}
+		return false;
+	}
 }

@@ -29,7 +29,7 @@ Everything Banana Player does, button by button. For installing it, see the [REA
 | **Documents** | TXT (any size), EPUB, PDF, opened from Files ([Documents](#documents)) |
 | **Comics** | CBZ, CBR and PDF in the Manga reader ([Extensions](#extensions)); EPUB comics in Files |
 | **Subtitles** | Inside the video (SRT, ASS/SSA, PGS, VobSub, VTT), or files next to it (`movie.srt`, `movie.en.ass`) |
-| **Languages** | Subtitles, titles and file names in Latin scripts (Vietnamese too), Cyrillic, Greek, Chinese, Japanese, Korean, Thai, Arabic, Hebrew and Hindi |
+| **Languages** | Subtitles, titles and file names in Latin scripts (Vietnamese too), Cyrillic, Greek, Chinese, Japanese, Korean, Thai, Arabic, Hebrew and Hindi, on both panels (the top panel's Preview pane and cards too). Text with kana takes the Japanese forms of its kanji; other Han text the Simplified Chinese ones |
 
 Videos are decoded by the handheld's CPU. The various 1080p videos tested play well; very high bitrates, and especially
 HEVC (x265), may drop frames. **Info** shows how it's keeping up.

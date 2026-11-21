@@ -27,6 +27,7 @@
 #include "ui_player.h"
 #include "ui_sleep.h"
 #include "ui_shell.h"
+#include "fontruns.h"
 
 namespace bp
 {
@@ -88,44 +89,25 @@ namespace bp
 		return unligated(shapeRuns(s, size), FONT_DEFS[size].pixel ? font(size) : nullptr);
 	}
 
+	TTF_Font* Ui::jaFormsFont(int size) const
+	{
+		if (!jaFormsTried[size])
+		{
+			jaFormsTried[size] = true;
+			// (at Fusion Pixel's own size: the forms sit in its runs)
+			int px = std::max(12, (int)std::lround(FONT_DEFS[size].units * sy / 12.0) * 12);
+			jaForms[size] = TTF_OpenFont((fontsDir + "/" + FONT_JA_FORMS).c_str(), px);
+			if (!jaForms[size]) SDL_Log("font %s: %s", FONT_JA_FORMS, TTF_GetError());
+		}
+		return jaForms[size];
+	}
+
 	std::vector<std::pair<TTF_Font*, std::string>> Ui::shapeRuns(const std::string& s, int size) const
 	{
-		// the characters, each with its bytes
-		std::vector<std::pair<Uint32, std::string>> chars;
-		for (size_t i = 0; i < s.size();)
-		{
-			unsigned char c = s[i];
-			Uint32 cp = c;
-			int n = c < 0x80 ? 1 : (c >> 5) == 6 ? 2 : (c >> 4) == 14 ? 3 : 4;
-			if (n > 1)
-			{
-				cp = c & (0x7F >> n);
-				for (int k = 1; k < n && i + k < s.size(); k++) cp = (cp << 6) | (s[i + k] & 0x3F);
-			}
-			chars.push_back({cp, s.substr(i, n)});
-			i += n;
-		}
-		auto hasAll = [&](TTF_Font* f) {
-			for (auto& c : chars)
-				if (c.first >= 0x20 && !TTF_GlyphIsProvided32(f, c.first)) return false;
-			return true;
-		};
-		TTF_Font* own = font(size);
-		if (hasAll(own)) return {{own, s}};
-		for (size_t k = 0; k < fallbacks.size(); k++)
-			if (hasAll(fallbackFont(k, size))) return {{fallbackFont(k, size), s}};
-		// no one font has them all: Pixelify Sans where it can, else the first fallback that has the character
-		std::vector<std::pair<TTF_Font*, std::string>> out;
-		for (auto& c : chars)
-		{
-			TTF_Font* f = own;
-			if (c.first >= 0x20 && !TTF_GlyphIsProvided32(f, c.first))
-				for (size_t k = 0; k < fallbacks.size(); k++)
-					if (TTF_GlyphIsProvided32(fallbackFont(k, size), c.first)) { f = fallbackFont(k, size); break; }
-			if (!out.empty() && out.back().first == f) out.back().second += c.second;
-			else out.push_back({f, c.second});
-		}
-		return out;
+		// (fallback 0 is Fusion Pixel, the CJK font: init lists it first)
+		TTF_Font* cjk = fallbacks.empty() ? nullptr : fallbackFont(0, size);
+		TTF_Font* ja = cjk && hasKana(s) ? jaFormsFont(size) : nullptr;
+		return fontRuns(s, font(size), fallbacks.size(), [&](size_t k) { return fallbackFont(k, size); }, cjk, ja);
 	}
 
 	int Ui::textWidth(const std::string& s, int size) const

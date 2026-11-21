@@ -919,6 +919,10 @@ namespace bp
 		mutable std::vector<std::array<TTF_Font*, FONT_COUNT>> fallbacks;
 		std::vector<std::string> fallbackFiles;	// each one's file, in fallbacks' order
 		TTF_Font* fallbackFont(size_t k, int size) const;
+		// Fusion Pixel's Japanese forms, for text with kana (fontruns.h); opened at its first use, null if missing
+		mutable std::array<TTF_Font*, FONT_COUNT> jaForms = {};
+		mutable bool jaFormsTried[FONT_COUNT] = {};
+		TTF_Font* jaFormsFont(int size) const;
 		// the text in pieces, each with a font that has its characters: one piece in one font when one font has
 		// them all (no mix of looks in a name), else a font a run of characters (an Arabic name's ".mkv")
 		std::vector<std::pair<TTF_Font*, std::string>> runs(const std::string& s, int size) const;
