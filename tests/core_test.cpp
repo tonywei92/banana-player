@@ -6138,6 +6138,55 @@ static void testStorage()
 	CHECK_EQ(capacityOf(99, 10).used, 0.0);	// (more free than there is: clamped)
 	CHECK(!capacityOf(5, 0).known);	// nothing read
 	CHECK_EQ(capacityOf(5, 0).free, "");
+	CHECK_EQ(c.freeBytes, 21000000000ull);
+	CHECK_EQ(capacityOf(99, 10).freeBytes, 10ull);
+
+	// what is mounted where a path is: the deepest mount that holds it, the newest of two at one place
+	const std::string mounts =
+		"/dev/root / ext4 rw,relatime 0 0\n"
+		"/dev/mmcblk1p4 /data exfat rw,noatime,errors=remount-ro 0 0\n"
+		"/dev/mmcblk2p1 /run/sd2 vfat ro,relatime 0 0\n"
+		"/dev/sda1 /run/my\\040disk ntfs3 rw 0 0\n"
+		"tmpfs /run tmpfs rw 0 0\n"
+		"/dev/mmcblk2p1 /run/sd2 exfat rw 0 0\n";
+	MountFacts data = mountFactsFrom(mounts, "/data/roms/videos");
+	CHECK(data.found && !data.readOnly);
+	CHECK_EQ(data.fs, "exfat");
+	CHECK_EQ(mountFactsFrom(mounts, "/data").fs, "exfat");
+	CHECK_EQ(mountFactsFrom(mounts, "/database").fs, "ext4");	// (a name that only starts the same)
+	CHECK_EQ(mountFactsFrom(mounts, "/run/sd2").fs, "exfat");	// the later mount there
+	CHECK(!mountFactsFrom(mounts, "/run/sd2").readOnly);
+	CHECK_EQ(mountFactsFrom(mounts, "/run/my disk/a").fs, "ntfs3");
+	CHECK(mountFactsFrom("/dev/a /c vfat ro,relatime 0 0\n", "/c/x").readOnly);
+	CHECK(!mountFactsFrom("", "/c").found);
+	CHECK(!mountFactsFrom("garbage\n", "/c").found);
+	CHECK_EQ(fsLabel("exfat"), "exFAT");
+	CHECK_EQ(fsLabel("vfat"), "FAT32");
+	CHECK_EQ(fsLabel("ext4"), "ext4");
+	CHECK_EQ(fsLabel(""), "");
+
+	// what fills a storage: the kinds with files, then Other for the used room none of them accounts for
+	std::vector<KindUse> uses = {{"Videos", "video", "videos", 31000000000ull, 42}, {"Music", "song", "songs", 4200000000ull, 1},
+		{"Books", "book", "books", 0, 0}};
+	std::vector<StorageKind> fill = storageFill(43000000000ull, 64000000000ull, uses);
+	CHECK_EQ(fill.size(), (size_t)3);
+	CHECK_EQ(fill[0].name, "Videos");
+	CHECK_EQ(fill[0].count, "42 videos");
+	CHECK_EQ(fill[0].size, "31 GB");
+	CHECK_EQ(fill[1].count, "1 song");
+	CHECK_EQ(fill[2].name, "Other");
+	CHECK(fill[2].other && fill[2].count.empty());
+	CHECK_EQ(fill[2].size, "7.8 GB");
+	double shares = 0;
+	for (auto& k : fill) shares += k.share;
+	CHECK(std::fabs(shares - 43.0 / 64.0) < 1e-9);	// together: what is used, no more
+	// the library says more than is used (files changed since it was read): never past what is used, and no Other
+	fill = storageFill(10000000000ull, 64000000000ull, uses);
+	CHECK_EQ(fill.size(), (size_t)2);
+	CHECK_EQ(fill[0].size, "10 GB");
+	CHECK_EQ(fill[1].size, "0 B");
+	CHECK(storageFill(5, 0, uses).empty());
+	CHECK_EQ(storageFill(1000000000ull, 64000000000ull, {}).size(), (size_t)1);	// nothing known: all of it Other
 }
 
 static void testPathMoved()
@@ -11118,6 +11167,42 @@ static void testKitLayoutReaders()
 		pane.coverArt = art;
 	}
 	CHECK_EQ(pane.coverArt->ok(), true);
+	// the storage pane: everything inside the panel with five kinds, the kinds two to a line, nothing over another
+	for (int n = 0; n <= 5; n++)
+	{
+		StoragePane sp = storagePane(n);
+		CHECK_EQ((int)sp.kinds.size(), n);
+		CHECK_EQ(sp.head.w == 0, n == 0);
+		CHECK(sp.where.y + sp.where.h <= sp.figure.y);
+		CHECK(sp.figure.y + sp.figure.h <= sp.bar.y);
+		CHECK_EQ(sp.bar.h, STORAGE_BAR_H);
+		CHECK_EQ(sp.words.x + sp.words.w, sp.bar.x + sp.bar.w);
+		for (int i = 0; i < n; i++)
+		{
+			CHECK(sp.kinds[i].y >= sp.head.y + sp.head.h);
+			CHECK(sp.kinds[i].x + sp.kinds[i].w <= sp.bar.x + sp.bar.w);
+			CHECK(sp.kinds[i].y + sp.kinds[i].h <= sp.note.y);
+			if (i % 2) CHECK(sp.kinds[i - 1].x + sp.kinds[i - 1].w < sp.kinds[i].x && sp.kinds[i - 1].y == sp.kinds[i].y);
+		}
+		CHECK(sp.note.y + sp.note.h <= sp.keys.y);
+		CHECK(sp.keys.y + sp.keys.h <= PANEL_H - 16);
+	}
+	// its bar's segments: in order, a gap apart, a sliver still seen, never past the bar's end
+	{
+		Box bar{44, 218, 552, STORAGE_BAR_H};
+		std::vector<Box> seg = storageSegments(bar, {0.5, 0.0001, 0, 0.2});
+		CHECK_EQ(seg.size(), (size_t)4);
+		CHECK_EQ(seg[0].x, bar.x);
+		CHECK_EQ(seg[1].w, STORAGE_SEG_MIN);
+		CHECK_EQ(seg[2].w, 0);
+		CHECK_EQ(seg[1].x, seg[0].x + seg[0].w + STORAGE_SEG_GAP);
+		CHECK_EQ(seg[3].x, seg[1].x + seg[1].w + STORAGE_SEG_GAP);
+		CHECK(seg[3].x + seg[3].w <= bar.x + bar.w);
+		seg = storageSegments(bar, {0.97, 0.0001, 0.0001, 0.03});	// a full card: the widest gives way
+		CHECK_EQ(seg[3].x + seg[3].w, bar.x + bar.w);
+		CHECK_EQ(storageSegments(bar, {1.0})[0].w, bar.w);
+		CHECK_EQ(storageSegments(bar, {0.25})[0].w, bar.w / 4);
+	}
 	CHECK_EQ(previewPane(true).cover.w, 196);
 	CHECK_EQ(previewPane(true).cover.h, 278);
 	// an album's art is square; a video's frame runs across the top, the column over its foot

@@ -130,6 +130,8 @@ namespace bp
 		int32_t duration = -1;									// seconds; -1 unknown
 		bool video = false;										// a music video: VIDEO pill, the video player
 																// plays it, Videos doesn't list it
+		uint32_t kb = 0;										// the file's size in 1000s of bytes (the storage
+																// pane's Music; fits the record's own padding)
 	};
 
 	// grouped by album artist + album: an album's songs in disc, track and name order, the untracked ones

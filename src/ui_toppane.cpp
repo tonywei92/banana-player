@@ -269,6 +269,8 @@ namespace bp
 				keys({{"L2/R2", "Sections"}, {"L3", "Search"}});
 				return true;
 			}
+			// Files' first page: the storage under the cursor (its room, what fills it)
+			if (browse->placePane(out, cursor)) return true;
 			std::string sel = browseSelection();
 			out.label = browse->filesTitle();
 			if (browse->filesPage() && !sel.empty() && sel != "..")

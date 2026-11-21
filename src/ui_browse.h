@@ -145,6 +145,16 @@ namespace bp
 		mutable std::vector<Capacity> placeRoomCache;
 		mutable std::string placeRoomFor;	// the places the cache was read for
 		mutable Uint32 placeRoomAt = 0;
+		// The top screen while the cursor is on a place (lay::storagePane; asked by Ui::idlePane): the storage it is,
+		// or is on: its room, its filesystem, and what fills it by kind, summed from what the library already holds
+		// (the index's videos and songs, Books' shelf once built: nothing is walked for it). false: not a place of a
+		// storage. The filesystems are read with the room; the sums are kept until the library or the room moves
+		bool placePane(PaneSpec& out, int row) const;
+		const std::vector<StorageKind>& placeFill(const BrowseRoot& storage, const Capacity& room) const;
+		mutable std::vector<MountFacts> placeMountCache;
+		mutable std::string placeFillFor;
+		mutable std::vector<StorageKind> placeFillCache;
+		mutable bool placeFillRead = false;	// the index had an answer when the sums were made
 		void filesRefresh(Player& p);
 		void filesPlayAll(const std::string& dir, bool shuffle, Player& p);
 		void filesToggleHidden(const std::string& path, Player& p);

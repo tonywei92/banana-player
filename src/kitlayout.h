@@ -511,6 +511,26 @@ namespace bp
 		// square: an album's art (196 x 196) in place of a book's 196 x 278; hero: a video's layout, the frame across
 		// the top 232 units and the column from 196 over its fade (the spec's Files › a video)
 		Pane previewPane(bool cover, bool welcome = false, bool square = false, bool hero = false);
+		// The storage pane (docs/redesign/src/screens.js: files-place-top): Files' first page with the cursor on a
+		// place. The pane's own label, title and one line of where it is; the free room as a large figure with "used
+		// of total" at its right; a 22-tall bar across the column, cut into what fills it; under it the kinds, two to
+		// a line (a swatch, the name, how many, the size at the cell's right); a quiet note; the keys.
+		constexpr int STORAGE_BAR_H = 22, STORAGE_KIND_H = 22, STORAGE_KIND_PITCH = 28, STORAGE_SEG_GAP = 2, STORAGE_SEG_MIN = 4;
+		struct StoragePane
+		{
+			Box brandTile, brandName;
+			Box label, title, where;
+			Box figure, words;	// "21 GB free" from the left; "43 GB used of 64 GB" ending at words' right, on the figure's foot
+			Box bar;
+			Box head;	// "What fills it"; w 0 with no kinds
+			std::vector<Box> kinds;
+			Box note, keys;
+		};
+		StoragePane storagePane(int kinds);
+		// the bar's segments, left to right, for shares of the whole bar (0..1 each): a share above nothing is at
+		// least STORAGE_SEG_MIN wide (a few songs on a big card still show), STORAGE_SEG_GAP apart, and together they
+		// never pass the bar's end (the widest gives way). A share of 0 has w 0.
+		std::vector<Box> storageSegments(Box bar, const std::vector<double>& shares);
 		// The Brand mark (components.md: one drawing on a 22 grid, scaled by size / 22): boxes as {x, y, w, h}, the four
 		// stripes as four points each, the play triangle as three, all in the same units as x, y
 		struct BrandMark

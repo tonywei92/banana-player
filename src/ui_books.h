@@ -39,6 +39,7 @@ namespace bp
 		{
 			std::string path, name;
 			double progress = -1;
+			long long size = 0;	// the file's, when the folders' walk listed it (0: opened from elsewhere)
 		};
 		// the lists are mutable: they are built at the draw (a const one), when a place moves, the cards change or
 		// the page opens

@@ -87,8 +87,14 @@ namespace bp
 		// the cards' Books and Ebook(s) folders (mediaindex's own walk), merged with the places', by name
 		for (auto& b : listBooks(bookFolders()))
 		{
-			if (!placed.insert(b.path).second) continue;
-			shelf.push_back({b.path, bookName(b.path), -1});
+			if (!placed.insert(b.path).second)
+			{
+				// (a book of the places' that is in a folder too: the walk knows its size)
+				for (auto& have : shelf)
+					if (have.path == b.path) have.size = b.size;
+				continue;
+			}
+			shelf.push_back({b.path, bookName(b.path), -1, b.size});
 		}
 		std::stable_sort(shelf.begin(), shelf.end(), [](const Shelf& a, const Shelf& b) {
 			return naturalLess(a.name, b.name);

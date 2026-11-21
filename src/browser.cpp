@@ -7,7 +7,11 @@
 #include <cstring>
 #include <dirent.h>
 #include <fstream>
+#include <sstream>
 #include <sys/stat.h>
+#ifdef __APPLE__
+#include <sys/mount.h>
+#endif
 
 namespace bp
 {
@@ -152,9 +156,97 @@ namespace bp
 		c.known = true;
 		c.used = (double)(totalBytes - freeBytes) / (double)totalBytes;
 		c.full = freeBytes < totalBytes / 10 || freeBytes < 1000000000ull;
+		c.freeBytes = freeBytes;
+		c.totalBytes = totalBytes;
 		c.free = capacityWords(freeBytes) + " free";
 		c.detail = capacityWords(totalBytes - freeBytes) + " used of " + capacityWords(totalBytes);
 		return c;
+	}
+
+	MountFacts mountFactsFrom(const std::string& mountsText, const std::string& path)
+	{
+		MountFacts out;
+		size_t best = 0;
+		std::istringstream lines(mountsText);
+		std::string line;
+		while (std::getline(lines, line))
+		{
+			std::istringstream in(line);
+			std::string dev, where, type, opts;
+			if (!(in >> dev >> where >> type >> opts)) continue;
+			for (size_t at; (at = where.find("\\040")) != std::string::npos;) where.replace(at, 4, " ");
+			bool holds = where == "/" || path == where || path.rfind(where + "/", 0) == 0;
+			if (!holds || (out.found && where.size() < best)) continue;
+			best = where.size();
+			out.found = true;
+			out.fs = type;
+			// "ro" is one whole option ("rw,errors=remount-ro" is not read-only)
+			out.readOnly = ("," + opts + ",").find(",ro,") != std::string::npos;
+		}
+		return out;
+	}
+
+	MountFacts mountFacts(const std::string& path)
+	{
+		std::ifstream m("/proc/mounts");
+		if (m)
+		{
+			std::stringstream all;
+			all << m.rdbuf();
+			return mountFactsFrom(all.str(), path);
+		}
+#ifdef __APPLE__
+		struct statfs sf;
+		if (statfs(path.c_str(), &sf) == 0)
+		{
+			MountFacts out;
+			out.found = true;
+			out.fs = sf.f_fstypename;
+			out.readOnly = (sf.f_flags & MNT_RDONLY) != 0;
+			return out;
+		}
+#endif
+		return {};
+	}
+
+	std::string fsLabel(const std::string& fs)
+	{
+		static const char* const names[][2] = {{"exfat", "exFAT"}, {"vfat", "FAT32"}, {"msdos", "FAT32"}, {"ntfs", "NTFS"},
+			{"ntfs3", "NTFS"}, {"fuseblk", "NTFS"}, {"f2fs", "F2FS"}, {"btrfs", "Btrfs"}, {"apfs", "APFS"}, {"hfs", "Mac OS Extended"}};
+		for (auto& n : names)
+			if (fs == n[0]) return n[1];
+		return fs;
+	}
+
+	std::vector<StorageKind> storageFill(uint64_t usedBytes, uint64_t totalBytes, const std::vector<KindUse>& kinds)
+	{
+		std::vector<StorageKind> out;
+		if (totalBytes == 0) return out;
+		usedBytes = std::min(usedBytes, totalBytes);
+		uint64_t left = usedBytes;	// the used room not yet given to a kind
+		for (auto& k : kinds)
+		{
+			if (k.files <= 0) continue;
+			// (a file may have grown since the library read it: a kind never takes more than is used)
+			uint64_t bytes = std::min(k.bytes, left);
+			left -= bytes;
+			StorageKind s;
+			s.name = k.name;
+			s.count = std::to_string(k.files) + " " + (k.files == 1 ? k.one : k.many);
+			s.size = capacityWords(bytes);
+			s.share = (double)bytes / (double)totalBytes;
+			out.push_back(std::move(s));
+		}
+		if (left > 0)
+		{
+			StorageKind s;
+			s.name = "Other";
+			s.size = capacityWords(left);
+			s.share = (double)left / (double)totalBytes;
+			s.other = true;
+			out.push_back(std::move(s));
+		}
+		return out;
 	}
 
 	std::string placeWhere(const std::vector<BrowseRoot>& roots, const BrowseRoot& place)
