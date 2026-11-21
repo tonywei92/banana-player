@@ -212,10 +212,7 @@ namespace bp
 		if (page == Page::Books && books)
 		{
 			books->build();
-			size_t strip = std::min<size_t>(5, books->reading.size());
-			const Ui::Books::Shelf* b = nullptr;
-			if (books->cursor >= 0 && (size_t)books->cursor < strip) b = &books->reading[books->cursor];
-			else if (books->cursor >= (int)strip && (size_t)(books->cursor - strip) < books->shelf.size()) b = &books->shelf[books->cursor - strip];
+			const Ui::Books::Shelf* b = books->focused();
 			if (b)
 			{
 				out.cover = true;

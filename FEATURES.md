@@ -173,7 +173,7 @@ follows the finger by the pixel, glides on after a flick and slows to a stop, gi
 springs back. A touch on a gliding list stops it there (and opens nothing); a finger that drifts less than 8 units is a
 tap. The **D-pad**'s cursor is kept in view by a short glide (held, it follows). A row half out of the list is cut at
 its edge. A finger anywhere on a list's rows (or the room under the last) drags it; a tap opens the row it went down
-on, as before. The Books shelf scrolls under the Reading now strip, which stays put. A connection's form, Home and the
+on, as before. Books' two tabs each scroll under their tab strip. A connection's form, Home and the
 lists not named here still scroll by whole rows.
 
 With no Music folder on either card (or none with a song in it) the page says so — **No music here yet**, the folder's
@@ -226,8 +226,9 @@ Recent; and a video inside a Music folder belongs to Music.
 ## The Books section
 
 A shelf of the book files on the cards — EPUB, PDF and comics (CBZ, CBR); not TXT, which Files opens in the text
-viewer — with the ones you are reading first. **Reading now** is the newest five with a place kept, each cover with how far in; **Shelf** under it is every
-book, five across, by name. **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
+viewer — in two tabs, each label with its count: **Reading now** is every book with a place kept, newest first, each
+cover with how far in; **Shelf** is every book, by name. Both are five across. **L** / **R** (or a tap on a tab) switch
+them; Books opens on Reading now while a book is in progress, else on the Shelf (back from a reader, on the tab you left). **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
 comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
 
 The shelf is filled from two places: the books you have opened from anywhere (their places are the readers' own), and

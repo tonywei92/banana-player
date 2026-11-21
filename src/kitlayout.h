@@ -856,6 +856,19 @@ namespace bp
 			int rows = 0, shown = 0, first = 0;
 		};
 		BooksShelf booksShelf(Box body, int readingNow, int shelfCount, int first = 0);
+		// Books as two tabs (the owner, 2026-11-21): "Reading now" and "Shelf", each label with its count, in a strip at
+		// the top of the inner body (lay::tabPage: L / R caps, SP8 under it), and the tab's grid of covers to the body's
+		// foot, five to a row, 14 apart. Reading now's cells carry the progress bar (COVER_CELL_H), the Shelf's the
+		// title only (SHELF_CELL_H). `progress`: the open tab is Reading now
+		enum BooksTab { BOOKS_READING = 0, BOOKS_SHELF = 1 };
+		struct BooksTabs
+		{
+			TabPage page;	// the strip and the grid's area (page.content)
+			int cols = 5, cellH = 0, pitch = 0;	// a cell's height, a row's (the cell and the gap)
+		};
+		BooksTabs booksTabs(Box body, const std::vector<int>& tabWidths, int capW, bool progress);
+		// the tab Books opens on: Reading now when a book is in progress, else the Shelf
+		inline BooksTab booksFirstTab(int readingNow) { return readingNow > 0 ? BOOKS_READING : BOOKS_SHELF; }
 
 		// ---- Search's page: the field, then a group's heading and its result rows, then Recent searches and
 		// their Clear row ----

@@ -11417,6 +11417,21 @@ static void testKitLayoutPages()
 	CHECK_EQ((int)real.shelf.size(), 12);
 	CHECK(real.shelf[0].y + real.shelf[0].h > real.shelfGrid.y + real.shelfGrid.h);	// it hangs over the foot
 
+	// Books as two tabs: the strip at the body's top, the grid SP8 under it to the foot; Reading now's cells carry
+	// the bar; the first tab is Reading now only with a book in progress
+	BooksTabs bt = booksTabs({90, 60, 538, 390}, {120, 80}, 19, true);
+	CHECK_EQ((int)bt.page.strip.tab.size(), 2);
+	CHECK_EQ(bt.page.strip.tab[0].y, 60);
+	CHECK_EQ(bt.page.content.y, 60 + TAB_H + SP8);
+	CHECK_EQ(bt.page.content.y + bt.page.content.h, 60 + 390);
+	CHECK(bt.page.strip.tab[1].x > bt.page.strip.tab[0].x + bt.page.strip.tab[0].w);
+	CHECK_EQ(bt.cellH, COVER_CELL_H);
+	CHECK_EQ(bt.pitch, COVER_CELL_H + COVER_GAP);
+	CHECK_EQ(booksTabs({90, 60, 538, 390}, {120, 80}, 19, false).cellH, SHELF_CELL_H);
+	CHECK(bt.page.content.h >= bt.cellH);	// a whole row fits under the tabs
+	CHECK_EQ((int)booksFirstTab(0), (int)BOOKS_SHELF);
+	CHECK_EQ((int)booksFirstTab(2), (int)BOOKS_READING);
+
 	// Search: the field 48, a heading and its rows, then Recent searches and Clear; an empty group is left out
 	SearchPage p = searchPage({16, 4, 608, 440}, {1, 1}, 2);
 	CHECK_EQ(p.field.y, 4);

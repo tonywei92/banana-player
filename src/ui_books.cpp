@@ -1,4 +1,4 @@
-// Books (ui_books.h): the Reading now strip and the shelf, built from the readers' places store and the cards'
+// Books (ui_books.h): the Reading now and Shelf tabs, built from the readers' places store and the cards'
 // Books and Ebooks folders. Everything is drawn inside lay::shell().body (the shell draws the rail, the header
 // and the hints); the touches test the same Rects the drawing asked for.
 #include "ui_books.h"
@@ -75,14 +75,14 @@ namespace bp
 		// (a TXT is not a book: a readme or a log read once stays in Files and Recent, not on the shelf; the owner)
 		for (auto& e : ui.docs->docPlaces->all())
 			if (exists(e.path) && isBookName(e.path)) places.push_back(&e);
-		// the places' books: the strip's newest five, and every one of them on the shelf too (a book opened from
-		// Files or a server joins the shelf, as the mock-up's rule has it)
+		// the places' books: Reading now, and every one of them on the shelf too (a book opened from Files or a
+		// server joins the shelf, as the mock-up's rule has it)
 		std::set<std::string> placed;
 		for (auto* e : places)
 		{
 			if (!placed.insert(e->path).second) continue;
 			shelf.push_back({e->path, bookName(e->path), -1});
-			if (reading.size() < 5) reading.push_back({e->path, bookName(e->path), bookProgress(*e)});
+			reading.push_back({e->path, bookName(e->path), bookProgress(*e)});
 		}
 		// the cards' Books and Ebook(s) folders (mediaindex's own walk), merged with the places', by name
 		for (auto& b : listBooks(bookFolders()))
@@ -101,47 +101,67 @@ namespace bp
 		if (placesNow() != placesKey || ui.rootsSerial() != rootsSeen) build();
 		(void)p;
 		ui.page = Page::Books;
+		// the rail's way in opens on Reading now while a book is in progress (back from a reader keeps the tab)
+		int first = lay::booksFirstTab((int)reading.size());
+		if (first != tab) setTab(first);
 	}
 
-	lay::BooksShelf Ui::Books::layout() const
+	// ---- the tabs ----
+
+	const Ui::Books::Shelf* Ui::Books::focused() const
 	{
-		Rect inner = booksInner();
-		// with nothing reading, the strip's space is dropped and the shelf starts at the page's own top
-		int drop = reading.empty() ? lay::LINE_H + lay::SHELF_HEAD_GAP + lay::COVER_CELL_H + lay::SHELF_GROUP_GAP : 0;
-		return lay::booksShelf({inner.x, inner.y - drop, inner.w, inner.h + drop}, (int)reading.size(), 0);
+		const auto& v = items();
+		return cursor >= 0 && cursor < (int)v.size() ? &v[cursor] : nullptr;
+	}
+
+	void Ui::Books::setTab(int t)
+	{
+		tab = std::clamp(t, 0, 1);
+		cursor = 0;
+		list.top();
+	}
+
+	std::vector<std::string> Ui::Books::tabLabels() const
+	{
+		return {"Reading now " + std::to_string(reading.size()), "Shelf " + std::to_string(shelf.size())};
+	}
+
+	lay::BooksTabs Ui::Books::layout() const
+	{
+		std::vector<int> widths;
+		for (auto& l : tabLabels()) widths.push_back(ui.kit->tabW(l));
+		return lay::booksTabs(lay::shell().body, widths, ui.kit->tabCapW("L/R"), tab == lay::BOOKS_READING);
 	}
 
 	// ---- the shelf's grid ----
 
 	Ui::Books::ListGeom Ui::Books::listGeom() const
 	{
-		// the grid from its place under the shelf's heading to the body's foot, SP6 of room around each row (a
-		// focused cover's ring reaches 5 past it)
+		// the grid from under the tabs to the body's foot, SP6 of room around each row (a focused cover's ring
+		// reaches 5 past it)
 		ListGeom g;
-		if (shelf.empty()) return g;
-		lay::BooksShelf b = layout();
-		Rect inner = booksInner();
+		if (items().empty()) return g;
+		lay::BooksTabs b = layout();
+		Rect grid = b.page.content;
 		g.cols = b.cols;
-		g.view = {b.shelfGrid.x - lay::SP6, b.shelfGrid.y - lay::SP6, b.shelfGrid.w + 2 * lay::SP6,
-			inner.y + inner.h - b.shelfGrid.y + lay::SP6};
-		g.rowH = lay::SHELF_CELL_H + lay::COVER_GAP;
-		g.count = ((int)shelf.size() + g.cols - 1) / g.cols;
+		g.view = {grid.x - lay::SP6, grid.y - lay::SP6, grid.w + 2 * lay::SP6, grid.h + lay::SP6};
+		g.rowH = b.pitch;
+		g.count = ((int)items().size() + g.cols - 1) / g.cols;
 		return g;
 	}
 
 	std::vector<lay::Box> Ui::Books::shelfRow(Rect row, int r) const
 	{
-		int cols = layout().cols;
-		int inRow = std::clamp((int)shelf.size() - r * cols, 0, cols);
-		return lay::coverCells({row.x + lay::SP6, row.y + lay::SP6, row.w - 2 * lay::SP6, lay::SHELF_CELL_H}, inRow, cols,
-			lay::SHELF_CELL_H);
+		lay::BooksTabs b = layout();
+		int inRow = std::clamp((int)items().size() - r * b.cols, 0, b.cols);
+		return lay::coverCells({row.x + lay::SP6, row.y + lay::SP6, row.w - 2 * lay::SP6, b.cellH}, inRow, b.cols, b.cellH);
 	}
 
 	void Ui::Books::keepCursorInView(bool glide)
 	{
 		ListGeom g = listGeom();
-		if (g.count <= 0 || cursor < (int)reading.size()) return;
-		list.reveal((cursor - (int)reading.size()) / g.cols, g.view, g.rowH, g.count, glide);
+		if (g.count <= 0) return;
+		list.reveal(cursor / g.cols, g.view, g.rowH, g.count, glide);
 	}
 
 	// ---- the More sheet (X): what a book has ----
@@ -173,7 +193,7 @@ namespace bp
 
 	std::vector<Ui::Hint> Ui::Books::hintList(const Player&) const
 	{
-		return {{"A", "Open"}, {"X", "More"}, {"\xE2\x97\x80/\xE2\x96\xB6", "Page"}, {"B", "Home"}};
+		return {{"A", "Open"}, {"X", "More"}, {"L/R", "Tab"}, {"B", "Home"}};
 	}
 
 	void Ui::Books::accentFirst(Kit::Empty& e, const std::vector<std::string>& lines, const char* word) const
@@ -226,27 +246,22 @@ namespace bp
 			}
 			return false;
 		}
-		lay::BooksShelf sh = layout();
-		int cols = sh.cols;
+		const int cols = layout().cols, count = (int)items().size();
 		switch (b)
 		{
+		case Button::L: case Button::R: setTab(1 - tab); break;	// (two tabs: either key is the other)
 		case Button::Up: cursor = std::max(0, cursor - cols); break;
-		case Button::Down: cursor = std::min(n - 1, cursor + cols); break;
+		case Button::Down: cursor = std::max(0, std::min(count - 1, cursor + cols)); break;
 		case Button::Left: cursor = std::max(0, cursor - 1); break;
-		case Button::Right: cursor = std::min(n - 1, cursor + 1); break;
+		case Button::Right: cursor = std::max(0, std::min(count - 1, cursor + 1)); break;
 		case Button::A:
-			if (cursor < (int)reading.size()) ui.openDocument(reading[cursor].path, p);
-			else if (cursor - (int)reading.size() < (int)shelf.size())
-				ui.openDocument(shelf[cursor - reading.size()].path, p);
+			if (const Shelf* bk = focused()) ui.openDocument(bk->path, p);
 			break;
 		case Button::X:
-			if (cursor < (int)reading.size()) openMoreSheet(reading[cursor], p);
-			else if (cursor - (int)reading.size() < (int)shelf.size())
-				openMoreSheet(shelf[cursor - reading.size()], p);
+			if (const Shelf* bk = focused()) openMoreSheet(*bk, p);
 			break;
 		default: break;
 		}
-		// the shelf's row in view (the strip never scrolls)
 		if (ui.page == Page::Books) keepCursorInView();
 		return false;
 	}
@@ -256,23 +271,24 @@ namespace bp
 	bool Ui::Books::pointer(const Pointer& pt, int x, int y, Player& p)
 	{
 		Rect inner = booksInner();
-		lay::BooksShelf sh = layout();
+		lay::BooksTabs l = layout();
 		int n = (int)(reading.size() + shelf.size());
-		const float fy = pt.y * Ui::H;	// (by the fraction: the shelf follows the panel's pixels, not whole units)
+		const float fy = pt.y * Ui::H;	// (by the fraction: the grid follows the panel's pixels, not whole units)
 		if (pt.kind != Pointer::Down)
 		{
 			if (touch == T_NONE) return false;
 			if (pt.kind == Pointer::Move)
 			{
-				// the shelf follows the finger once it is past the slop; elsewhere a drag only stops being a tap
+				// the grid follows the finger once it is past the slop; elsewhere a drag only stops being a tap
 				if (onList) { if (list.move(fy)) touchMoved = true; }
 				else if (!touchMoved && std::abs(y - touchY) > 6) touchMoved = true;
 				return false;
 			}
 			if (onList) list.lift();
-			int t = touch;
+			int t = touch, was = pressTab;
 			bool moved = touchMoved || caught;
 			touch = T_NONE;
+			pressTab = -1;
 			touchMoved = onList = caught = false;
 			if (moved || t == T_NONE) return false;
 			switch (t)
@@ -283,29 +299,27 @@ namespace bp
 			case T_EMPTY2:
 				if (emptyKey[1].hit(x, y)) ui.openWeb();
 				return false;
+			case T_TAB:
+				if (lay::tabAt(l.page.strip, x, y) == was && was != tab) setTab(was);
+				return false;
 			default: break;
 			}
 			if (t == T_GROUND) return false;		// the ground: a drag was its only meaning
-			if (t >= T_READ && t < T_GROUND && t - T_READ < (int)sh.reading.size())
-			{
-				if (sh.reading[t - T_READ].hit(x, y)) ui.openDocument(reading[t - T_READ].path, p);
-				return false;
-			}
-			if (t >= T_SHELF && t - T_SHELF < (int)shelf.size())
+			if (t >= T_CELL && t - T_CELL < (int)items().size())
 			{
 				// still on the same cover (the row under the finger, the cell in it)
-				int i = t - T_SHELF, cols = sh.cols, r = list.rowAt(x, y);
+				int i = t - T_CELL, cols = l.cols, r = list.rowAt(x, y);
 				if (r == i / cols)
 				{
 					std::vector<lay::Box> cells = shelfRow(list.rowBox(r), r);
-					if (i % cols < (int)cells.size() && cells[i % cols].hit(x, y)) ui.openDocument(shelf[i].path, p);
+					if (i % cols < (int)cells.size() && cells[i % cols].hit(x, y)) ui.openDocument(items()[i].path, p);
 				}
-				return false;
 			}
 			return false;
 		}
 		// the down: what is under the finger (the same Rects the drawing asked for)
 		touch = T_NONE;
+		pressTab = -1;
 		touchMoved = onList = caught = false;
 		touchY = y;
 		if (n == 0)
@@ -318,9 +332,9 @@ namespace bp
 			else if (e.key[1].hit(x, y)) touch = T_EMPTY2;
 			return false;
 		}
-		for (int i = 0; i < (int)sh.reading.size(); i++)
-			if (sh.reading[i].hit(x, y)) { touch = T_READ + i; cursor = i; return false; }
-		// the shelf: anywhere on its grid drives it (a touch on a gliding shelf only stops it)
+		pressTab = lay::tabAt(l.page.strip, x, y);
+		if (pressTab >= 0) { touch = T_TAB; return false; }
+		// the grid: anywhere on it drives it (a touch on a gliding grid only stops it)
 		ListGeom g = listGeom();
 		if (g.count <= 0 || !g.view.hit(x, y)) return false;
 		onList = true;
@@ -332,8 +346,8 @@ namespace bp
 		for (int c = 0; c < (int)cells.size(); c++)
 			if (cells[c].hit(x, y))
 			{
-				touch = T_SHELF + r * g.cols + c;
-				cursor = (int)reading.size() + r * g.cols + c;
+				touch = T_CELL + r * g.cols + c;
+				cursor = r * g.cols + c;
 			}
 		return false;
 	}
@@ -351,12 +365,6 @@ namespace bp
 		Rect inner = booksInner();
 		Kit& k = *ui.kit;
 		int n = (int)(reading.size() + shelf.size());
-		auto caps = [&](const std::string& text, Rect box) {
-			Kit::SectionLine line;
-			line.caps = true;
-			line.text = text;
-			k.sectionLine(lay::sectionLine(box, false), line);
-		};
 		if (n == 0)
 		{
 			// nothing opened, nothing on the cards (the mock-up's books-empty): the two keys, the folder's name
@@ -380,26 +388,16 @@ namespace bp
 			k.emptyState(e, v);
 			return;
 		}
-		lay::BooksShelf b = layout();
-		if (!reading.empty())
+		lay::BooksTabs l = layout();
+		k.tabs(l.page.strip.area, tabLabels(), tab, "L/R", BG, pressTab);
+		if (items().empty())
 		{
-			caps("Reading now \xC2\xB7 " + std::to_string(reading.size()), b.readingHead);
-			for (int i = 0; i < (int)b.reading.size(); i++)
-			{
-				Kit::Cover c;
-				c.key = reading[i].name;
-				c.title = reading[i].name;
-				// the decoded cover over the drawn sleeve (a TXT's own cover, and until the answer)
-				c.picture = [this, path = reading[i].path, key = reading[i].name](Rect r) {
-					ui.drawBookCover(path, key, r, 5);
-				};
-				c.progress = reading[i].progress;
-				c.focused = i == cursor;
-				c.pressed = touch == T_READ + i && !touchMoved;
-				k.coverTile(lay::coverTile(b.reading[i], true, reading[i].progress >= 0), c);
-			}
+			// a tab with nothing (no book opened yet, or none on the cards): a line where its covers go
+			ui.drawTextMid(tab == lay::BOOKS_READING ? "Books you open show up here with your place kept."
+				: "No book files in a Books or Ebooks folder yet.", F_I14, DIM, l.page.content.x,
+				l.page.content.y + lay::SP24, l.page.content.w);
+			return;
 		}
-		caps("Shelf \xC2\xB7 " + std::to_string(shelf.size()), b.shelfHead);
 		// the grid: a smooth list of rows of five, each row's look its key (each cover's state in it: its arrival
 		// draws the row again). The covers' boxes in the key are the slot's, as draw lays them (a cover's cached
 		// size is its device size, which at the handheld's 1.6x depends on where its box starts)
@@ -408,34 +406,39 @@ namespace bp
 		spec.view = g.view;
 		spec.rowH = g.rowH;
 		spec.count = g.count;
-		const int cols = g.cols, first = (int)reading.size();
-		auto coverOf = [this, cols, first](int i) {
+		const int cols = g.cols;
+		const bool bars = tab == lay::BOOKS_READING;	// Reading now's cells carry the progress bar
+		auto coverOf = [this, bars](int i) {
+			const Shelf& bk = items()[i];
 			Kit::Cover c;
-			c.key = shelf[i].name;
-			c.title = shelf[i].name;
-			// the shelf's cells carry no bar: the strip's do (a book in progress is in both)
-			c.picture = [this, path = shelf[i].path, key = shelf[i].name](Rect r) { ui.drawBookCover(path, key, r, 5); };
-			c.focused = first + i == cursor;
-			c.pressed = touch == T_SHELF + i && !touchMoved;
+			c.key = bk.name;
+			c.title = bk.name;
+			// the decoded cover over the drawn sleeve (a TXT's own cover, and until the answer)
+			c.picture = [this, path = bk.path, key = bk.name](Rect r) { ui.drawBookCover(path, key, r, 5); };
+			if (bars) c.progress = bk.progress;
+			c.focused = i == cursor;
+			c.pressed = touch == T_CELL + i && !touchMoved;
 			return c;
 		};
-		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + "|";
-		spec.key = [this, coverOf, gen, cols, slotBox = Rect{0, 0, g.view.w, g.rowH}](int r) {
+		auto tileOf = [this, bars](lay::Box cell, int i) { return lay::coverTile(cell, true, bars && items()[i].progress >= 0); };
+		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + std::to_string(tab) + "|";
+		spec.key = [this, coverOf, tileOf, gen, cols, slotBox = Rect{0, 0, g.view.w, g.rowH}](int r) {
 			std::string key = "bk" + gen + std::to_string(r);
 			std::vector<lay::Box> cells = shelfRow(slotBox, r);
 			for (int c = 0; c < (int)cells.size(); c++)
 			{
 				int i = r * cols + c;
 				Kit::Cover cell = coverOf(i);
-				int art = ui.bookCoverState(shelf[i].path, lay::coverTile(cells[c], true, false).cover, 5);
-				key += "." + shelf[i].path + ":" + std::to_string(art) + (cell.focused ? "f" : "") + (cell.pressed ? "d" : "");
+				int art = ui.bookCoverState(items()[i].path, tileOf(cells[c], i).cover, 5);
+				key += "." + items()[i].path + ":" + std::to_string(art) + ":" + std::to_string((int)(cell.progress * 1000)) +
+					(cell.focused ? "f" : "") + (cell.pressed ? "d" : "");
 			}
 			return key;
 		};
-		spec.draw = [this, coverOf, cols](int r, Rect box) {
+		spec.draw = [this, coverOf, tileOf, cols](int r, Rect box) {
 			std::vector<lay::Box> cells = shelfRow(box, r);
 			for (int c = 0; c < (int)cells.size(); c++)
-				ui.kit->coverTile(lay::coverTile(cells[c], true, false), coverOf(r * cols + c));
+				ui.kit->coverTile(tileOf(cells[c], r * cols + c), coverOf(r * cols + c));
 		};
 		list.draw(std::move(spec));
 	}
@@ -443,11 +446,11 @@ namespace bp
 	std::string Ui::Books::signature(const Player&) const
 	{
 		// everything the drawing shows that Ui::signature doesn't already hold (the doc places are read at the
-		// cell: the key holds their front entries, so a page turned redraws the strip's bars), and the covers'
-		// serial: one decoded, the cells draw it now
-		char buf[96];
-		snprintf(buf, sizeof buf, "|bk%d.%d.%d.%zu.%zu.%d", cursor, touchMoved, touch, reading.size(), shelf.size(),
-			ui.artSerial);
+		// cell: the key holds their front entries, so a page turned redraws the bars), and the covers' serial: one
+		// decoded, the cells draw it now
+		char buf[112];
+		snprintf(buf, sizeof buf, "|bk%d.%d.%d.%d.%d.%zu.%zu.%d", tab, pressTab, cursor, touchMoved, touch, reading.size(),
+			shelf.size(), ui.artSerial);
 		return std::string(buf) + placesKey;
 	}
 }
