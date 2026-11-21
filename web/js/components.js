@@ -1,6 +1,6 @@
 import { html, useState, useEffect, useRef } from '../vendor/htm-preact-standalone.module.js';
 import { view } from './browser-player.js';
-import { chapterTitle, fmtSize, fmtTime } from './util.js';
+import { capacity, chapterTitle, fmtSize, fmtTime, storages } from './util.js';
 import { Icon } from './icons.js';
 import { LIKED_ID } from './plshared.js';
 import { Q_WIDE, phoneNow, store } from './store.js';
@@ -159,6 +159,15 @@ export function Storage({ free, total }) {
 	const cls = free < 200e6 ? 'crit' : free < 1e9 ? 'low' : '';
 	return html`<span class=${'storage ' + cls}>${total > 0 && html`<span class="meter" aria-hidden="true"><i style=${'width:' + Math.max(0, Math.min(100, (1 - free / total) * 100)) + '%'}></i></span>`}<span class="num">${cls ? 'Low on space · ' : ''}${fmtSize(free)} free</span></span>`;
 }
+// a storage place (the handheld's own, a card in it): its name with the free room at the right, a bar of what is
+// used, "used of total" under it; nearly full: the bar and the free line in --red (the handheld's Files, the same)
+export function Place({ root }) {
+	const c = capacity(root.free, root.total);
+	return html`<div class=${'place' + (c && c.full ? ' full' : '')}>
+		<div class="ptop"><span class="pn ell">${root.name}</span>${c && html`<span class="pf num">${c.free}</span>`}</div>
+		${c && html`<div class="meter" role="meter" aria-label=${root.name + ': space used'} aria-valuemin="0" aria-valuemax="100" aria-valuenow=${Math.round(c.used * 100)}><i style=${'width:' + (c.used * 100).toFixed(1) + '%'}></i></div>`}
+		<div class="pd">${c ? c.detail + (c.full ? ' · nearly full' : '') : 'Can’t read its size'}</div></div>`;
+}
 
 // where a menu goes on a computer: beside what opened it (an element, or a point), below or above it
 function menuPos(a, w) {
@@ -185,8 +194,8 @@ export function openSheet(title, glyph, items, opts) {
 }
 // the phone's menu for the app itself (the sidebar's card on wider screens): the handheld, Sign out
 function appMenu() {
-	const sn = store.snap, r = store.roots && store.roots[0];
-	const bits = [store.reconnecting ? 'Reconnecting…' : 'Connected', sn && sn.battery >= 0 ? 'battery ' + sn.battery + '%' : '', r && r.free != null ? fmtSize(r.free) + ' free' : ''].filter(Boolean).join(' · ');
+	const sn = store.snap, places = storages(store.roots).map(r => capacity(r.free, r.total) && r.name + ': ' + capacity(r.free, r.total).free);
+	const bits = [store.reconnecting ? 'Reconnecting…' : 'Connected', sn && sn.battery >= 0 ? 'battery ' + sn.battery + '%' : '', ...places].filter(Boolean).join(' · ');
 	openSheet('Your handheld', 'card', [{ label: 'Sign out', icon: 'power', fn: signOut }], { sub: bits });
 }
 // incognito mode's mark while the handheld is in it (switched on the handheld only, in its Quick settings)

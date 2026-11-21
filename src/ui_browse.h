@@ -131,6 +131,16 @@ namespace bp
 		bool filesEmpty() const;
 		bool filesReadOnly() const;	// the folder can't be written by this account
 		std::string filesFooter() const;	// "7 items · 21 GB free"
+		// Files' first page, the places: each storage a card with its room (lay::placeRow), a folder of one a card
+		// with where it is. The room is read (statvfs) at most every 2 s and kept: placesKey is in the signature
+		bool placesPage() const { return filesPage() && browseDir.empty(); }
+		const BrowseRoot* placeOf(int row) const;	// the place a row of the first page stands for
+		Capacity placeRoom(int row) const;	// known false: a folder, or nothing read
+		std::string placesKey() const;
+		void drawPlaceRow(int i, Rect r, bool at);
+		mutable std::vector<Capacity> placeRoomCache;
+		mutable std::string placeRoomFor;	// the places the cache was read for
+		mutable Uint32 placeRoomAt = 0;
 		void filesRefresh(Player& p);
 		void filesPlayAll(const std::string& dir, bool shuffle, Player& p);
 		void filesToggleHidden(const std::string& path, Player& p);

@@ -155,7 +155,7 @@ namespace bp
 		// ---- bars ----
 		// marks: lay::barMarks; held: under a finger (Ui::slideHeld), tag: the value over the knob then
 		void progress(Rect track, double share, const std::vector<int>& marks, bool held = false, const std::string& tag = "");
-		void bar(Rect r, double share);
+		void bar(Rect r, double share, bool danger = false);	// danger: the fill in DANGER (a storage nearly full)
 
 		// ---- sheets and rows ----
 		struct SheetHead

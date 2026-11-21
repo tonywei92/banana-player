@@ -4,13 +4,13 @@ import { B, S, SUBS, browserPlay, browserStop, continueHere, ctl, el, hereNow, s
 import { applySnap, closeSSE, openSSE } from './js/events.js';
 import { fetchT, get, post } from './js/api.js';
 import { Q_DESK, Q_WIDE, notify, set, store, useStore } from './js/store.js';
-import { Art, IncognitoMark, Modal, Seek, Storage, coverUrl, useHeld, useLater, useMedia, useTick } from './js/components.js';
+import { Art, IncognitoMark, Modal, Place, Seek, coverUrl, useHeld, useLater, useMedia, useTick } from './js/components.js';
 import { depth, filesHash, go } from './js/router.js';
 import { LikeBtn, addToPlaylist, likable, loadLikes, newPlaylistDialog, plUsed } from './js/plshared.js';
 import { Icon, dimsCache } from './js/icons.js';
 import { DevButton, LoopIcon, NowPlaying, TapToPlay, closePanel, loopName, showTab, targetLabel, useVideoSlot } from './js/playing.js';
 import { SleepKey, SleepWarnCard } from './js/sleep.js';
-import { cmpName, fmtTime, isIOS, throttled } from './js/util.js';
+import { cmpName, fmtTime, isIOS, storages, throttled } from './js/util.js';
 import { Playlists } from './js/playlists.js';
 import { Home } from './js/home.js';
 import { Videos } from './js/videos.js';
@@ -124,7 +124,7 @@ function SidePls() {
 		${!few && html`<button class="plnav all" onClick=${() => go('#/playlists')}>All ${list.length} playlists<span class="grow"></span><${Icon} n="right" k=${1} /></button>`}</div>`;
 }
 function Side({ nav }) {
-	const s = store, r = s.route, sn = s.snap, root = s.roots && s.roots[0];
+	const s = store, r = s.route, sn = s.snap, places = storages(s.roots);
 	const bat = sn && sn.battery >= 0 ? sn.battery : null, conn = !s.reconnecting;
 	const navItems = navWithManga(!!(sn && sn.mangaOn));
 	return html`<aside class="side" aria-label="Sections">
@@ -133,7 +133,7 @@ function Side({ nav }) {
 		<${SidePls} />
 		<div class="box surface hhcard" role="group" aria-label="Your handheld">
 			<div class="hrow"><span class=${'cdot' + (conn ? '' : ' off')}></span><span class="hname">${conn ? 'Handheld' : 'Reconnecting…'}</span><span class="grow"></span><${IncognitoMark} />${bat != null && html`<span class="num dim" style="font-size:13px">${bat}%</span>`}</div>
-			${root && root.free != null && html`<${Storage} free=${root.free} total=${root.total} />`}
+			${places.length > 0 && html`<div class="places" role="group" aria-label="Storage">${places.map(p => html`<${Place} key=${p.path} root=${p} />`)}</div>`}
 			<button class="btn sm" onClick=${signOut}>Sign out</button>
 			<div class="lnote"><${Icon} n="lock" k=${1} />Not encrypted: home Wi-Fi only</div></div>
 		<div class="hh-mini"><span class=${'cdot' + (conn ? '' : ' off')} title=${conn ? 'Handheld connected' : 'Reconnecting…'}></span><${IncognitoMark} />${bat != null && html`<span class="num">${bat}%</span>`}
@@ -150,7 +150,7 @@ function Shell() {
 	useEffect(() => { if (desk) loadPls(); }, [desk, s.plTick, s.epoch]);
 	// Copy and Move jobs on the handheld: asked again once connected, and when one starts or ends (any page's)
 	useEffect(() => { refreshJobs(); }, [s.epoch, s.jobsTick]);
-	useEffect(() => { if (!desk || !s.fsTick) return; const t = setTimeout(() => get('/api/roots', null, { quiet: true }).then(x => set({ roots: x.roots })).catch(() => {}), 2000); return () => clearTimeout(t); }, [desk, s.fsTick]);
+	useEffect(() => { if (!s.fsTick) return; const t = setTimeout(() => get('/api/roots', null, { quiet: true }).then(x => set({ roots: x.roots })).catch(() => {}), 2000); return () => clearTimeout(t); }, [s.fsTick]);
 	// something playing: on a phone the player takes the whole screen
 	const full = r.page === 'playing' && v.has && !wide;
 	// drag and drop onto the whole page

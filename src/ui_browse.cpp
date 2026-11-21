@@ -1307,7 +1307,76 @@ namespace bp
 	{
 		int n = (int)browseRows.size();
 		bool footer = !filesEmpty();
-		return lay::filesPage(tabsBody(), n, selecting(), footer && !selecting(), barKeys());
+		return lay::filesPage(tabsBody(), n, selecting(), footer && !selecting(), barKeys(),
+			placesPage() ? lay::PLACE_ROW_H : lay::FILE_ROW_H);
+	}
+
+	// ---- Files' first page: the places ----
+
+	const BrowseRoot* Ui::Browse::placeOf(int row) const
+	{
+		if (row < 0 || row >= (int)browsePaths.size()) return nullptr;
+		for (auto& r : ui.roots)
+			if (r.path == browsePaths[row]) return &r;
+		return nullptr;
+	}
+
+	Capacity Ui::Browse::placeRoom(int row) const
+	{
+		// every place's room read together, at most every 2 s (statvfs answers from memory: cheap, but not per frame)
+		std::string places;
+		for (auto& path : browsePaths) places += path + "|";
+		Uint32 now = SDL_GetTicks();
+		if (placeRoomFor != places || !placeRoomAt || now - placeRoomAt >= 2000)
+		{
+			placeRoomCache.assign(browsePaths.size(), Capacity{});
+			for (size_t i = 0; i < browsePaths.size(); i++)
+			{
+				const BrowseRoot* r = placeOf((int)i);
+				struct statvfs vs;
+				if (r && r->card && statvfs(r->path.c_str(), &vs) == 0)
+					placeRoomCache[i] = capacityOf((uint64_t)vs.f_bavail * vs.f_frsize, (uint64_t)vs.f_blocks * vs.f_frsize);
+			}
+			placeRoomFor = places;
+			placeRoomAt = now ? now : 1;
+		}
+		return row >= 0 && row < (int)placeRoomCache.size() ? placeRoomCache[row] : Capacity{};
+	}
+
+	std::string Ui::Browse::placesKey() const
+	{
+		if (!placesPage()) return "";
+		std::string key;
+		for (int i = 0; i < (int)browsePaths.size(); i++)
+		{
+			Capacity c = placeRoom(i);
+			key += "|" + c.free + "," + c.detail + (c.full ? "!" : "");
+		}
+		return key;
+	}
+
+	void Ui::Browse::drawPlaceRow(int i, Rect r, bool at)
+	{
+		Kit& k = *ui.kit;
+		const BrowseRoot* place = placeOf(i);
+		Capacity room = placeRoom(i);
+		lay::PlaceRow l = lay::placeRow(r, room.known);
+		k.flat(l.card, at ? BUTTON : Kit::cardFill(SURFACE), R_BUTTON, at ? ACCENT : k.edgeOf(SURFACE));
+		SDL_Color ink = at ? ACCENT : TEXT, soft = at ? DIM_ON : DIM;
+		bool card = place && place->card;
+		ui.drawGlyphMid(card ? G_CARD : G_FOLDER, l.icon.x + l.icon.w / 2, l.icon.y + l.icon.h / 2, ink);
+		std::string name = i >= 0 && i < (int)browseRows.size() ? browseRows[i].label : std::string();
+		ui.drawTextMid(name, F_SMALL, ink, l.name.x, l.name.y + l.name.h / 2, l.name.w);
+		if (!room.known)
+		{
+			if (place) ui.drawTextMid(card ? "Can't read its size" : placeWhere(ui.roots, *place), F_I12, soft, l.detail.x,
+				l.detail.y + l.detail.h / 2, l.detail.w);
+			return;
+		}
+		ui.drawTextMid(room.free, F_I12, room.full ? DANGER : ink, l.free.x + l.free.w, l.free.y + l.free.h / 2, l.free.w, 1);
+		k.bar(l.bar, room.used, room.full);
+		ui.drawTextMid(room.detail + (room.full ? " \xC2\xB7 nearly full" : ""), F_I12, soft, l.detail.x,
+			l.detail.y + l.detail.h / 2, l.detail.w);
 	}
 
 	int Ui::Browse::filesShown(const Player& p) const { return filesLayout(p).shown; }
@@ -1341,6 +1410,12 @@ namespace bp
 		if (i < 0 || i >= (int)browseRows.size()) return "-";
 		bool boxes = fileSel || addMode();
 		bool at = i == ui.cursor;
+		if (placesPage())
+		{
+			Capacity c = placeRoom(i);
+			return "pl" + std::string(theme::drawingClean() ? "c" : "") + std::to_string(i) + "|" + browseRows[i].label + "|" +
+				c.free + "|" + c.detail + (c.full ? "!" : "") + (at ? "@" : "");
+		}
 		if (at && !boxes) return "";	// (the focused name's marquee: drawn again each frame)
 		const Row& row = browseRows[i];
 		const std::string& path = i < (int)browsePaths.size() ? browsePaths[i] : std::string();
@@ -1450,7 +1525,7 @@ namespace bp
 		{
 			lay::FilesPage f = filesLayout(p);
 			g.view = f.rows;
-			g.rowH = lay::FILE_ROW_H;
+			g.rowH = f.rowH;
 			g.count = filesEmpty() ? 0 : n;
 			g.id = "files|" + std::to_string(browseTab) + "|" + browseDir;
 			return g;
@@ -1626,7 +1701,11 @@ namespace bp
 		spec.count = g.count;
 		spec.key = [this](int i) { return filesRowKey(i); };
 		const Player* pp = &p;
-		spec.draw = [this, pp](int i, Rect box) { drawFilesRow(i, box, i == ui.cursor, *pp); };
+		bool places = placesPage();
+		spec.draw = [this, pp, places](int i, Rect box) {
+			if (places) drawPlaceRow(i, box, i == ui.cursor);
+			else drawFilesRow(i, box, i == ui.cursor, *pp);
+		};
 		list.draw(std::move(spec));
 		listEnd(g);
 		if (addMode() || pickMode()) drawAddBar(f.bar);
@@ -2818,7 +2897,7 @@ namespace bp
 			s += "|add" + std::to_string(playlists->selMode) + "," + std::to_string(playlists->selSerial) + "," +
 				std::to_string(playlists->dropArmed != 0) + "," + playlists->selDest;
 			s += "|files" + std::to_string(fileSel) + ":" + std::to_string(filesPressed) + ":" + std::to_string(filesTouch) +
-				(filesReadOnly() ? "ro" : "") + "|" + filesFooter() + "|" + filesTitle();
+				(filesReadOnly() ? "ro" : "") + "|" + filesFooter() + "|" + filesTitle() + placesKey();
 			for (auto& path : fileSelPaths) s += "|" + path;
 			for (auto& path : clipPaths) s += "|c" + path;
 		}

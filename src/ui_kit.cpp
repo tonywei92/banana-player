@@ -438,11 +438,11 @@ namespace bp
 		if (!tag.empty()) ui.drawSlideTag(track, share, tag);
 	}
 
-	void Ui::Kit::bar(Rect r, double share)
+	void Ui::Kit::bar(Rect r, double share, bool danger)
 	{
 		int w = (int)std::lround(r.w * std::clamp(share, 0.0, 1.0));
 		ui.fillRound(r, TRACK, r.h / 2);
-		if (w > 0) ui.fillRound({r.x, r.y, w, r.h}, ACCENT, r.h / 2, w >= r.w ? ROUND_ALL : ROUND_TL | ROUND_BL);
+		if (w > 0) ui.fillRound({r.x, r.y, w, r.h}, danger ? DANGER : ACCENT, r.h / 2, w >= r.w ? ROUND_ALL : ROUND_TL | ROUND_BL);
 	}
 
 	// ---- sheets and rows ----

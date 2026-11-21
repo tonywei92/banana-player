@@ -632,7 +632,8 @@ namespace bp
 			{
 				uint64_t fr = 0, tot = 0;
 				freeSpace(roots[i].path, fr, tot);
-				w.obj().key("i").num((int)i).key("path").str(std::to_string(i)).key("name").str(roots[i].name).key("free").num(fr).key("total").num(tot).end();
+				w.obj().key("i").num((int)i).key("path").str(std::to_string(i)).key("name").str(roots[i].name).key("free").num(fr).key("total").num(tot)
+					.key("card").boolean(roots[i].card).key("where").str(roots[i].where).end();
 			}
 			w.end().end();
 			WebServer::json(res, w.out());

@@ -78,7 +78,7 @@ cmake --build build -j
 ctest --test-dir build                        # unit tests
 ./build/banana-player some-movie.mkv          # two windows: the top panel and the bottom panel
 ./build/banana-player                         # the file browser (your home folder)
-BP_BROWSE=~/Videos:~/Music ./build/banana-player   # the browser's top list
+BP_BROWSE=~/Videos:~/Music ./build/banana-player   # the browser's top list (BP_BROWSE_CARDS=N: the first N stand in for storages: Files' capacity cards, the dashboard's)
 ./build/banana-player ~/Videos/Show           # the browser, in that folder
 ```
 

@@ -637,12 +637,23 @@ namespace bp
 			Box body, rows, footer;	// footer.w 0: none
 			Box bar[4];	// the select bar's keys (all w 0 when not selecting)
 			int shown = 0;	// the rows that fit
-			Box row(int i) const { return {rows.x, rows.y + i * FILE_ROW_H, rows.w, FILE_ROW_H}; }
+			int rowH = FILE_ROW_H;
+			Box row(int i) const { return {rows.x, rows.y + i * rowH, rows.w, rowH}; }
 		};
 		// rows: how many the list has (the ones that fit are shown); select: the bar takes the foot (barKeys keys: 4 for
 		// a selection, 3 adding to a playlist, 2 picking a folder); footer: a
 		// line under the rows (not with the bar: the caller leaves it out)
-		FilesPage filesPage(Box body, int rows, bool select, bool footer, int barKeys = 4);
+		// rowH: the rows' pitch (PLACE_ROW_H on Files' first page, the places)
+		FilesPage filesPage(Box body, int rows, bool select, bool footer, int barKeys = 4, int rowH = FILE_ROW_H);
+		// A place on Files' first page (docs/redesign/src/screens.js: files-places): a card 76 tall in an 84 pitch.
+		// A storage (capacity): the name with its free room at the right, a 6-tall bar of what is used, "used of
+		// total" under it. A folder of a storage (no capacity): the name and one line of where it is, centred.
+		constexpr int PLACE_ROW_H = 84, PLACE_CARD_H = 76, PLACE_BAR_H = 6, PLACE_FREE_W = 150;
+		struct PlaceRow
+		{
+			Box card, icon, name, free, bar, detail;	// free and bar w 0: a folder (detail is its line)
+		};
+		PlaceRow placeRow(Box row, bool capacity);
 		// the header it draws before the shell lands: the back key, the More key, the crumb and title beside them
 		// (the mock-up's .hd .tt), and the room the status and the read-only badge leave at its right
 		struct FilesHeader

@@ -1046,10 +1046,31 @@ namespace bp
 
 		// ---- Files ----
 
-		FilesPage filesPage(Box body, int rows, bool select, bool footer, int barKeys)
+		PlaceRow placeRow(Box row, bool capacity)
+		{
+			PlaceRow l{};
+			l.card = {row.x, row.y + (row.h - PLACE_CARD_H) / 2, row.w, PLACE_CARD_H};
+			int x = l.card.x + 14 + 20 + 12, right = l.card.x + l.card.w - 14;
+			if (!capacity)
+			{
+				l.icon = {l.card.x + 14, l.card.y + (PLACE_CARD_H - 20) / 2, 20, 20};
+				l.name = {x, l.card.y + 16, right - x, 22};
+				l.detail = {x, l.card.y + 42, right - x, 16};
+				return l;
+			}
+			l.icon = {l.card.x + 14, l.card.y + 11, 20, 20};
+			l.free = {right - PLACE_FREE_W, l.card.y + 10, PLACE_FREE_W, 22};
+			l.name = {x, l.card.y + 10, l.free.x - SP8 - x, 22};
+			l.bar = {x, l.card.y + 40, right - x, PLACE_BAR_H};
+			l.detail = {x, l.card.y + 51, right - x, 16};
+			return l;
+		}
+
+		FilesPage filesPage(Box body, int rows, bool select, bool footer, int barKeys, int rowH)
 		{
 			FilesPage f{};
 			f.body = body;
+			f.rowH = std::max(1, rowH);
 			// the page's own side margin inside the shell's main (the rail is already out)
 			Box inner{body.x + MARGIN, body.y, body.w - 2 * MARGIN, body.h};
 			f.rows = inner;
@@ -1064,7 +1085,7 @@ namespace bp
 				f.footer = {inner.x, body.y + body.h - FILE_FOOT_H, inner.w, FILE_FOOT_H};
 				f.rows.h = body.h - FILE_FOOT_H;
 			}
-			f.shown = std::clamp(rows, 0, std::max(0, f.rows.h / FILE_ROW_H));
+			f.shown = std::clamp(rows, 0, std::max(0, f.rows.h / f.rowH));
 			return f;
 		}
 

@@ -6,7 +6,13 @@
 
 namespace bp
 {
-	struct WebRoot { std::string name, path; };
+	// card: a storage of its own (its room is shown); where: a folder's place on one ("SD card 1 / roms / videos")
+	struct WebRoot
+	{
+		std::string name, path;
+		bool card = false;
+		std::string where;
+	};
 
 	// vpath is "<rootIndex>/<rel>" ("0", "0/" and "0/Music/a.mp3" are fine). Refused: "..", empty parts (a trailing
 	// slash is the one exception), parts starting with ".", NUL, a bad index, and anything whose real path (symlinks

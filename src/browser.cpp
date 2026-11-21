@@ -2,6 +2,7 @@
 #include "pagebook.h"
 #include "playlist.h"
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <dirent.h>
@@ -103,11 +104,81 @@ namespace bp
 		return on && !mounted(sd2);
 	}
 
+	// the kind of device mounted at `at`, from the kernel ("SD", "MMC"; "" when it isn't an mmc device or can't be read)
+	static std::string mountDeviceType(const std::string& at)
+	{
+		std::ifstream m("/proc/mounts");
+		std::string dev, where, found;
+		while (m >> dev >> where)
+		{
+			if (where == at) found = dev;	// (the last mount there is the one seen)
+			m.ignore(4096, '\n');
+		}
+		const std::string pre = "/dev/mmcblk";
+		if (found.rfind(pre, 0) != 0) return "";
+		std::string disk = found.substr(5);	// "mmcblk1p3" -> "mmcblk1"
+		size_t part = disk.find('p', 6);
+		if (part != std::string::npos) disk.resize(part);
+		std::ifstream t("/sys/block/" + disk + "/device/type");
+		std::string type;
+		t >> type;
+		return type;
+	}
+
+	std::string storageLabel(const std::string& mount, const std::string& deviceType)
+	{
+		if (mount == "/run/sd2") return "SD card 2";
+		if (mount == "/run/sd1") return "SD card 1";
+		return deviceType == "SD" ? "SD card 1" : "Internal storage";
+	}
+
+	std::string capacityWords(uint64_t bytes)
+	{
+		static const char* units[] = {"B", "KB", "MB", "GB", "TB"};
+		double v = (double)bytes;
+		int u = 0;
+		while (v >= 999.5 && u < 4) { v /= 1000.0; u++; }
+		char out[32];
+		if (u >= 3 && v < 9.95) snprintf(out, sizeof out, "%.1f %s", v, units[u]);
+		else snprintf(out, sizeof out, "%.0f %s", v, units[u]);
+		return out;
+	}
+
+	Capacity capacityOf(uint64_t freeBytes, uint64_t totalBytes)
+	{
+		Capacity c;
+		if (totalBytes == 0) return c;
+		freeBytes = std::min(freeBytes, totalBytes);
+		c.known = true;
+		c.used = (double)(totalBytes - freeBytes) / (double)totalBytes;
+		c.full = freeBytes < totalBytes / 10 || freeBytes < 1000000000ull;
+		c.free = capacityWords(freeBytes) + " free";
+		c.detail = capacityWords(totalBytes - freeBytes) + " used of " + capacityWords(totalBytes);
+		return c;
+	}
+
+	std::string placeWhere(const std::vector<BrowseRoot>& roots, const BrowseRoot& place)
+	{
+		const BrowseRoot* on = nullptr;
+		for (auto& c : roots)
+			if (c.card && place.path.rfind(c.path + "/", 0) == 0 && (!on || c.path.size() > on->path.size())) on = &c;
+		if (!on) return place.path;
+		std::string out = on->label;
+		for (char ch : place.path.substr(on->path.size()))
+		{
+			if (ch == '/') out += " / ";
+			else out += ch;
+		}
+		return out;
+	}
+
 	std::vector<BrowseRoot> browseRoots()
 	{
 		std::vector<BrowseRoot> roots;
 		if (const char* env = getenv("BP_BROWSE"))
 		{
+			const char* cards = getenv("BP_BROWSE_CARDS");
+			int asCards = cards ? atoi(cards) : 0;	// the first N stand in for storages
 			std::string list = env;
 			size_t a = 0;
 			while (a <= list.size())
@@ -115,7 +186,7 @@ namespace bp
 				size_t b = list.find(':', a);
 				if (b == std::string::npos) b = list.size();
 				std::string p = list.substr(a, b - a);
-				if (!p.empty() && isDir(p)) roots.push_back({p.substr(p.rfind('/') + 1).empty() ? p : p.substr(p.rfind('/') + 1), p});
+				if (!p.empty() && isDir(p)) roots.push_back({p.substr(p.rfind('/') + 1).empty() ? p : p.substr(p.rfind('/') + 1), p, (int)roots.size() < asCards});
 				a = b + 1;
 			}
 			return roots;
@@ -123,8 +194,15 @@ namespace bp
 		if (isDir("/data/banana"))
 		{
 			if (isDir("/data/roms/videos")) roots.push_back({"Videos", "/data/roms/videos"});
-			roots.push_back({"This card", "/data", true});
-			if (mounted("/run/sd2")) roots.push_back({"Card 2", "/run/sd2", true});
+			// (the system's device doesn't change while it runs: read once, and said once in the log)
+			static const std::string dataType = [] {
+				std::string t = mountDeviceType("/data");
+				fprintf(stderr, "storage: /data is on %s: \"%s\"\n", t.empty() ? "an unknown device" : t.c_str(),
+					storageLabel("/data", t).c_str());
+				return t;
+			}();
+			roots.push_back({storageLabel("/data", dataType), "/data", true});
+			if (mounted("/run/sd2")) roots.push_back({storageLabel("/run/sd2", "SD"), "/run/sd2", true});
 			return roots;
 		}
 		if (const char* home = getenv("HOME")) roots.push_back({"Home", home});
