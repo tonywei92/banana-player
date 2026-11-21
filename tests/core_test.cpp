@@ -8453,6 +8453,105 @@ static void testBrowser()
 	rmdir(dir);
 }
 
+// Recent's songs keep the list they played from (a playlist by name, a Files folder, a rail list as it played), the
+// history file round-trips it, an older reader keeps its path and time; a file gone or on a card taken out says why
+static void testRecentContext()
+{
+	const std::string DOT = "\xC2\xB7 ";
+	std::vector<std::string> album = {"/m/A/1.mp3", "/m/A/2.mp3", "/m/A/3.mp3"};
+	// what the Session plays, read into a context
+	RecentContext pl = recentContextOf("/m/A/2.mp3", album, 1, 2, "Road", "Road", false);
+	CHECK_EQ((int)pl.kind, (int)RecentContext::PLAYLIST);
+	CHECK_EQ(pl.name, std::string("Road"));
+	CHECK_EQ(pl.list.empty(), true);	// (a playlist is read again by its name)
+	RecentContext al = recentContextOf("/m/A/3.mp3", album, 2, 0, "Album " + DOT + "Blue", "", true);
+	CHECK_EQ((int)al.kind, (int)RecentContext::ALBUM);
+	CHECK_EQ(al.name, std::string("Blue"));
+	CHECK_EQ(al.title(), "Album " + DOT + "Blue");
+	CHECK_EQ(al.list == album, true);
+	CHECK_EQ(al.index, 2);
+	CHECK_EQ((int)recentContextOf("/m/A/1.mp3", album, 0, 0, "Artist " + DOT + "Joni", "", true).kind, (int)RecentContext::ARTIST);
+	RecentContext mf = recentContextOf("/m/A/1.mp3", album, 0, 0, "Folder " + DOT + "A", "", true);
+	CHECK_EQ((int)mf.kind, (int)RecentContext::MUSIC_FOLDER);
+	CHECK_EQ(mf.name, std::string("/m/A"));
+	CHECK_EQ((int)recentContextOf("/m/A/1.mp3", album, 0, 0, "Random", "", true).kind, (int)RecentContext::RANDOM);
+	RecentContext fo = recentContextOf("/m/A/1.mp3", album, 0, 0, "", "", false);
+	CHECK_EQ((int)fo.kind, (int)RecentContext::FOLDER);
+	CHECK_EQ(fo.name, std::string("/m/A"));
+	// a selection of several folders, a nameless page list, an index that isn't the song: none
+	CHECK_EQ((int)recentContextOf("/m/A/1.mp3", {"/m/A/1.mp3", "/m/B/1.mp3"}, 0, 0, "Selection", "", false).kind, (int)RecentContext::NONE);
+	CHECK_EQ((int)recentContextOf("/m/A/1.mp3", album, 0, 2, "Selection", "", false).kind, (int)RecentContext::NONE);
+	CHECK_EQ((int)recentContextOf("/m/A/1.mp3", album, 1, 2, "Road", "Road", false).kind, (int)RecentContext::NONE);
+	// a long Keep playing list: the songs around this one
+	std::vector<std::string> longList;
+	for (int i = 0; i < 1000; i++) longList.push_back("/m/r/" + std::to_string(i) + ".mp3");
+	RecentContext lr = recentContextOf("/m/r/900.mp3", longList, 900, 0, "Random", "", true);
+	CHECK_EQ(lr.list.size(), RecentContext::LIST_MAX);
+	CHECK_EQ(lr.list[lr.index], std::string("/m/r/900.mp3"));
+
+	// the round trip: kinds, names, lists written once, the song's place; a video has none
+	PlayHistory h;
+	h.add("/v/film.mkv", 100);
+	h.add("/m/A/1.mp3", 200);
+	h.add("/m/A/3.mp3", 300);
+	h.add("/m/A/2.mp3", 400);
+	CHECK_EQ(h.setContext("/m/A/1.mp3", recentContextOf("/m/A/1.mp3", album, 0, 0, "Album " + DOT + "Blue", "", true)), true);
+	CHECK_EQ(h.setContext("/m/A/3.mp3", al), true);
+	CHECK_EQ(h.setContext("/m/A/3.mp3", al), false);	// (unchanged: nothing to write)
+	CHECK_EQ(h.setContext("/m/A/2.mp3", pl), true);
+	CHECK_EQ(h.setContext("/m/none.mp3", pl), false);
+	std::string text = h.serialize();
+	size_t lists = 0;
+	for (size_t at = text.find("#list\t"); at != std::string::npos; at = text.find("#list\t", at + 1)) lists++;
+	CHECK_EQ(lists, (size_t)1);	// two songs of one album: its list once
+	PlayHistory back;
+	back.parse(text);
+	CHECK_EQ(back.items() == h.items(), true);
+	CHECK_EQ(back.timeOf("/m/A/2.mp3"), (time_t)400);
+	CHECK_EQ(back.contextOf("/m/A/3.mp3") == al, true);
+	CHECK_EQ(back.contextOf("/m/A/2.mp3") == pl, true);
+	CHECK_EQ(back.contextOf("/m/A/1.mp3").index, 0);
+	CHECK_EQ((int)back.contextOf("/v/film.mkv").kind, (int)RecentContext::NONE);
+	// played again: none until the session says where from
+	back.add("/m/A/3.mp3", 500);
+	CHECK_EQ((int)back.contextOf("/m/A/3.mp3").kind, (int)RecentContext::NONE);
+	// an older version's file (path, time) reads as before; an older reader of ours takes the path and the time's
+	// digits (strtoll stops at the tab) and skips the lists as comments
+	PlayHistory old;
+	old.parse("/m/A/1.mp3\t200\n/v/film.mkv\n");
+	CHECK_EQ(old.items().size(), (size_t)2);
+	CHECK_EQ((int)old.contextOf("/m/A/1.mp3").kind, (int)RecentContext::NONE);
+	CHECK_EQ((time_t)std::strtoll("300\talbum\tBlue\tx\t2", nullptr, 10), (time_t)300);
+	// a list whose line is gone (an older version wrote the file since): the song keeps no context
+	PlayHistory torn;
+	torn.parse("/m/A/3.mp3\t300\talbum\tBlue\tdeadbeef\t2\n");
+	CHECK_EQ((int)torn.contextOf("/m/A/3.mp3").kind, (int)RecentContext::NONE);
+	// Keep playing grew the list: the songs played from its start share the longer one, at their places
+	PlayHistory grow;
+	std::vector<std::string> r1 = {"/m/x.mp3", "/m/y.mp3"}, r2 = {"/m/x.mp3", "/m/y.mp3", "/m/z.mp3"};
+	grow.add("/m/x.mp3");
+	grow.add("/m/z.mp3");
+	grow.setContext("/m/x.mp3", recentContextOf("/m/x.mp3", r1, 0, 0, "Random", "", true));
+	grow.setContext("/m/z.mp3", recentContextOf("/m/z.mp3", r2, 2, 0, "Random", "", true));
+	CHECK_EQ(grow.contextOf("/m/x.mp3").list == r2, true);
+	CHECK_EQ(grow.contextOf("/m/x.mp3").index, 0);
+	// a folder moved: the songs' folders and lists follow
+	PlayHistory mv;
+	mv.add("/m/A/1.mp3");
+	mv.setContext("/m/A/1.mp3", fo);
+	mv.moved("/m/A", "/m/B");
+	CHECK_EQ(mv.contextOf("/m/B/1.mp3").name, std::string("/m/B"));
+
+	// a file gone: why, the card's name when its card is out
+	std::vector<RemovableCard> cards = {{"/run/sd2", "Card 2", false}};
+	CHECK_EQ(recentMissing("/run/sd2/m/a.mp3", true, cards), std::string(""));
+	CHECK_EQ(recentMissing("/run/sd2/m/a.mp3", false, cards), std::string("Card 2 is out"));
+	CHECK_EQ(recentMissing("/run/sd20/a.mp3", false, cards), std::string("Not on this handheld any more"));
+	CHECK_EQ(recentMissing("/data/m/a.mp3", false, cards), std::string("Not on this handheld any more"));
+	cards[0].in = true;	// back in, and the file still gone: it was deleted
+	CHECK_EQ(recentMissing("/run/sd2/m/a.mp3", false, cards), std::string("Not on this handheld any more"));
+}
+
 static void testHistory()
 {
 	PlayHistory h;
@@ -16190,6 +16289,7 @@ int main()
 	testFtpList();
 	testBrowser();
 	testHistory();
+	testRecentContext();
 	testClock();
 	testBattery();
 	testIdleSleep();

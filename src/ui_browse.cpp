@@ -74,6 +74,8 @@ namespace bp
 			browse->enterFolder("", p);
 		}
 		else if (page == Page::Browse && browse->browseDir.empty()) browse->enterFolder("", p);
+		// Recent's files on that card: dimmed ("Card 2 is out") or back as they were
+		if (browse->browseDir == HOMEDIR || browse->browseDir == RECENT) browse->homeView->recentEdited(p);
 	}
 
 	void Ui::startBrowser(Player& p, const std::string& folder)
@@ -3018,7 +3020,8 @@ namespace bp
 
 	void Ui::showPlayer()
 	{
-		if (!onPlayer) playerBack = {true, page, setGroup, cursor, scroll, browse->browseDir, browse->browseTab};
+		if (!onPlayer) playerBack = backNext.set ? backNext : PlayerBack{true, page, setGroup, cursor, scroll, browse->browseDir, browse->browseTab};
+		backNext = PlayerBack();
 		onPlayer = true;
 		page = Page::Main;
 		settingsOver = false;

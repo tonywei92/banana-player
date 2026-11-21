@@ -63,6 +63,16 @@ Open Banana Player and the bottom screen shows **Home**:
   the last 100 of each kind, so
   reading doesn't push your videos out, nor music your books. While Home or All recent shows, its order stays put (the
   next song starting doesn't move the cards); what you played comes to the front the next time you open it.
+- **A song plays in its list again**: a song of Recent remembers the list it played from (a playlist, by its name; an
+  album, an artist, a Music folder, **Play random** with what **Keep playing** added; a folder of Files). Opening it
+  plays it in that list, in the same order (Keep playing applies only if it was a Music list), and **B** from the player
+  goes back to that list (the playlist's page, the album or artist, the Music folder, the Files folder). A list gone
+  since (the playlist deleted or renamed, the album or folder gone) plays the song alone and says why. Videos and books
+  open as before.
+- **Missing files**: a file deleted or moved away, or on a card that's out, stays in Recent dimmed, its note saying why
+  (**Not on this handheld any more**, **Card 2 is out**); it's never taken out unasked. Opening it opens its sheet with
+  the reason and **Remove from Recent**; the card back in, its files are listed as before. **Clear missing** (Home's
+  More column, when any are gone) removes the deleted ones, not those of a card that's only out.
 - Three shortcuts: **Shuffle Liked** (**Browse Files** until something is liked), **Send from phone** (the Web
   dashboard's page, to scan its code) and **All recent**.
 - **A** resumes or plays (on **Now playing**: **A** goes to the player), **X** (or a hold on a card, the Now playing
@@ -1347,7 +1357,11 @@ pick up. It is the handheld's Home Recent strip, in the browser.
   Home keeps them with their page.
 - **Network files** are marked **Network** and play on the handheld only, whatever **Play on** says (with **This
   browser** chosen, a note says so). They have no Like, Add to playlist or Show in Files here.
-- A file that is gone from the card is dimmed and marked **Gone**; it can only be removed.
+- A file that is gone is dimmed, marked **Gone** (or **Card out**) and says why (**Not on this handheld any more**,
+  **Card 2 is out**); a tap opens its sheet with the reason and **Remove from Recent**. **⋯** at the top **› Clear
+  missing** removes the deleted ones, on the handheld too.
+- A song plays in the list it played from (a playlist, an album, an artist, a folder, Play random), on the handheld or
+  in this browser, as on the handheld; a list gone since plays the song alone, said in a toast.
 - **⋯** on an item (right-click on a computer): **Resume on handheld**, **Resume in this browser**, **Play from the
   start**, **Like** / **Unlike**, **Add to playlist…**, **Show in Files** and **Remove from Recent** (with **Undo**;
   the place it was left at is kept, as on the handheld).

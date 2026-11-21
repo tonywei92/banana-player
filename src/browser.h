@@ -1,4 +1,5 @@
 #pragma once
+#include "history.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -32,6 +33,9 @@ namespace bp
 	// the path is on the second card (/run/sd2) and nothing is mounted there: the card is out, and its folder is an
 	// empty one of the system's, where nothing may be written (it would be lost, and hidden under the card when it's back)
 	bool cardOut(const std::string& path);
+	// the cards that can be taken out, in or not (Recent's "Card 2 is out"): the second card on BananaOS; BP_CARD2 (a
+	// folder: in while it's there) stands in for it in a test run
+	std::vector<RemovableCard> removableCards();
 
 	// A storage place's name by where BananaOS mounts it and the kind of device under it, as the kernel names it
 	// ("SD": a card, "MMC": built in, "": not known). /data is the system's own storage: the first card when the

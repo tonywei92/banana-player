@@ -931,7 +931,8 @@ export async function playPlaylist(id, name, items, index, shuffle, target, tapp
 	}
 }
 // one file from where it was left (Recent): the handheld finds its own place (/api/play), this browser starts at pos
-export async function playAt(p, pos, target, stay) {
+// extra: more for /api/play on the handheld (recent=1: Recent's song in the list it played from; its note said)
+export async function playAt(p, pos, target, stay, extra) {
 	target = target || store.target;
 	if (target === 'browser') {
 		// (with its folder after it, as on the handheld: the next song plays when it ends)
@@ -941,7 +942,7 @@ export async function playAt(p, pos, target, stay) {
 		return true;
 	}
 	const was = B.active && !el.paused; B.leaving = true; el.pause();
-	try { await post('/api/play', Object.assign({ p }, hhChoice())); }
+	try { const r = await post('/api/play', Object.assign({ p }, extra || {}, hhChoice())); if (r && r.note) toast(r.note); }
 	catch (e) { B.leaving = false; if (was && store.conn === 'ok') el.play().catch(() => {}); toast(e.status === 0 ? "Couldn't start it on your handheld" : errMsg(e)); return false; }
 	if (B.active) dropBrowser();
 	if (!sv(stay, p)) go('#/playing');

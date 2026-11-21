@@ -483,13 +483,15 @@ namespace bp
 		// Recent, as the handheld's Home strip lists it (history.tsv, newest first, with resume.tsv's places): {on (Keep
 		// history), serial (Player::recentSerial, as the "recent" event says), items: [{p, title, kind, position (-1:
 		// none kept), duration (-1: unknown), frac, played (no place kept: "Played"), playing (the handheld's file),
-		// gone (not on the card)}]}. Network files aren't in the web's tree, and what it never serves is left out
+		// gone (not on the card), why (gone: "Card 2 is out" or "Not on this handheld any more"), out (its card is out),
+		// list (a song: the title of the list it played from, "" none)}]}. Network files aren't in the web's tree, and what it never serves is left out
 		s.Get("/api/recent", [w](const httplib::Request&, httplib::Response& res) {
 			int status = 200;
 			std::string body = w->call([w](Player& p, Ui& u) {
 				JsonWriter j;
 				j.obj().key("on").boolean(p.settings.keepHistory).key("serial").num(p.recentSerial()).key("items").arr();
 				std::string cur = p.playing() ? p.currentPath() : "";
+				std::vector<RemovableCard> cards = removableCards();
 				for (auto& path : p.history().items())
 				{
 					// a network file: by its bpnet:// path (no credentials in it), its connection still saved; it plays on
@@ -503,6 +505,9 @@ namespace bp
 					std::string v = net ? path : w->servedVirtual(path);
 					if (v.empty()) continue;
 					std::string where = WebPlaylistGlue::where(u, path);
+					// why it can't open ("Card 2 is out", "Not on this handheld any more"); out: back with its card
+					std::string why = gone ? recentMissing(path, false, cards) : "";
+					bool out = gone && why != recentMissing(path, false, {});
 					// a book, document or comic: its page or how far it's read (they open on the handheld)
 					if (isDocumentName(path) || isComicName(path))
 					{
@@ -511,7 +516,7 @@ namespace bp
 						const char* kind = isComicName(path) ? "comic" : e == "epub" ? "epub" : isPdfName(path) ? "pdf" : "text";
 						auto d = WebPlaylistGlue::docPlace(u, path);
 						j.obj().key("p").str(v).key("title").str(webTitle(path)).key("kind").str(kind).key("where").str(where)
-							.key("net").boolean(net).key("gone").boolean(gone).key("started").boolean(d.started)
+							.key("net").boolean(net).key("gone").boolean(gone).key("why").str(why).key("out").boolean(out).key("started").boolean(d.started)
 							.key("frac").num(d.frac).key("page").num(d.page).key("pages").num(d.pages).end();
 						continue;
 					}
@@ -527,7 +532,8 @@ namespace bp
 					}
 					j.obj().key("p").str(v).key("title").str(webTitle(path)).key("kind").str(audio ? "audio" : "video").key("where").str(where).key("net").boolean(net)
 						.key("position").num(rp.position).key("duration").num(rp.duration).key("frac").num(rp.frac)
-						.key("played").boolean(rp.played).key("playing").boolean(now).key("gone").boolean(gone).end();
+						.key("played").boolean(rp.played).key("playing").boolean(now).key("gone").boolean(gone).key("why").str(why).key("out").boolean(out)
+						.key("list").str(audio && !gone ? p.history().contextOf(path).title() : "").end();
 				}
 				return j.end().end().out();
 			}, 2000, status);
@@ -606,6 +612,62 @@ namespace bp
 		});
 
 		// Clear Recent, as Home's menu: the history emptied, the places kept
+		// Clear missing: the files deleted or moved away taken out of Recent (a card's that is only out stays): {ok, n}
+		s.Post("/api/recent/clear-missing", [w](const httplib::Request&, httplib::Response& res) {
+			int status = 200;
+			std::string body = w->call([](Player& p, Ui& u) {
+				std::vector<std::string> gone;
+				std::vector<RemovableCard> cards = removableCards();
+				const std::string deleted = recentMissing("", false, {});
+				for (auto& path : p.history().items())
+				{
+					struct stat st;
+					if (!isNetPath(path) && stat(path.c_str(), &st) != 0 && recentMissing(path, false, cards) == deleted) gone.push_back(path);
+				}
+				int n = p.removeFromHistory(gone);
+				fprintf(stderr, "recent: the dashboard's clear missing took out %d\n", n);
+				u.browse->homeView->recentEdited(p);
+				return JsonWriter().obj().key("ok").boolean(true).key("n").num(n).key("serial").num(p.recentSerial()).end().out();
+			}, 2000, status);
+			answer(res, body, status);
+		});
+
+		// a song of Recent: the list it played from, for Play in this browser (p: its virtual path): {list (false: none
+		// kept: the folder as any file), why (the list is gone: the song alone), q (virtual paths), index, skind
+		// ("playlist", "folder"), stitle, sid (a playlist's name), rail}
+		s.Get("/api/recent/list", [w](const httplib::Request& req, httplib::Response& res) {
+			std::string v = value(req, "p");
+			int status = 200;
+			std::string body = w->call([w, v](Player& p, Ui& u) {
+				std::string path;
+				for (auto& h : p.history().items())
+					if (!isNetPath(h) && w->servedVirtual(h) == v) path = h;
+				Ui::Home::ListPick lp;
+				JsonWriter j;
+				j.obj();
+				if (path.empty() || !u.browse->homeView->pickList(path, p, lp) || lp.kind == RecentContext::FOLDER)
+					return j.key("list").boolean(false).end().out();
+				j.key("list").boolean(true).key("why").str(lp.why);
+				if (!lp.why.empty()) return j.end().out();
+				// (what the web doesn't serve, a network song, is left out; the song's place follows)
+				int index = 0;
+				j.key("q").arr();
+				for (int i = 0, n = 0; i < (int)lp.paths.size(); i++)
+				{
+					std::string q = isNetPath(lp.paths[i]) ? "" : w->servedVirtual(lp.paths[i]);
+					if (q.empty()) continue;
+					if (i == lp.index) index = n;
+					j.str(q);
+					n++;
+				}
+				j.end();
+				bool pl = lp.kind == RecentContext::PLAYLIST;
+				return j.key("index").num(index).key("skind").str(pl ? "playlist" : "folder").key("stitle").str(lp.title)
+					.key("sid").str(pl ? lp.plName : "").key("rail").boolean(!pl).end().out();
+			}, 2000, status);
+			answer(res, body, status);
+		});
+
 		s.Post("/api/recent/clear", [w](const httplib::Request&, httplib::Response& res) {
 			int status = 200;
 			std::string body = w->call([](Player& p, Ui& u) {

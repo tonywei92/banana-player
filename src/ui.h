@@ -1254,6 +1254,9 @@ namespace bp
 			std::string browseDir;	// the folder or playlist page it was opened from (a playlist's play moves the list's)
 			int browseTab = 0;
 		} playerBack;
+		// where the next showPlayer's B goes instead of the page shown (a song of Recent played in its list: that list,
+		// not Home); page Main: the source's own page (a playlist's, the folder's in Files). Used once
+		PlayerBack backNext;
 		// back to what plays (SELECT on a browse page, the rail's Now playing key, Now playing, B at Home): the player.
 		// False: nothing plays
 		bool goNowPlaying(Player& p);
