@@ -10,13 +10,14 @@ import { Icon } from './icons.js';
 import { DevSwitch, useVideoSlot } from './playing.js';
 import { GLYPH } from './files.js';
 import { playFromPl } from './playlists.js';
+import { readHere } from './books.js';
 import { clearMissing, clearRecent, loadRecent, openDoc, playFromStart, playRecent, removeRecent, useRecent } from './recent.js';
 
 /* ================= Home: the landing page. Continue (the newest thing played or read, on the handheld or here), then
-   the rest of Recent. A book, a PDF or a comic opens on the handheld only, and a network file plays there only: the
-   page says so on the item rather than failing after the tap ================= */
+   the rest of Recent. A book, a PDF or a comic is read in this browser (Read here) or opened on the handheld; a
+   network file plays there only: the page says so on the item rather than failing after the tap ================= */
 const NET_WHY = 'Network files play on the handheld only';
-const DOC_WHY = 'Books, PDFs and comics open on the handheld’s screens';
+const DOC_WHY = 'A network book opens on the handheld only';
 const KIND = { video: 'Video', audio: 'Song', epub: 'Book', pdf: 'PDF', comic: 'Comic', text: 'Text' };
 const isDoc = it => it.kind !== 'audio' && it.kind !== 'video';
 const group = it => isDoc(it) ? 'doc' : it.kind;
@@ -38,7 +39,8 @@ const goneChip = it => it.out ? 'Card out' : 'Gone';
 function act(it) {
 	// (one that can't open: why, and Remove from Recent, in its sheet)
 	if (it.gone) return menu(it);
-	if (isDoc(it)) return openDoc(it);
+	// (a book: read here, as the Books page's tap; one on the network only the handheld can open)
+	if (isDoc(it)) return it.net ? openDoc(it) : readHere(it);
 	if (it.net) { if (store.target === 'browser') toast(NET_WHY); return playRecent(it, 'handheld'); }
 	return playHere(t => playRecent(it, t), it.p);
 }
@@ -47,7 +49,8 @@ function menu(it, anchor) {
 	const doc = isDoc(it), part = inProg(it), liked = isLiked(it.p), verb = part ? 'Resume' : 'Play';
 	const rm = { label: 'Remove from Recent', icon: 'minus', sub: it.gone ? 'It can’t open' : doc ? 'Its page is kept' : 'The place it was left at is kept', fn: () => removeRecent(it) };
 	const items = it.gone ? [rm] : doc ? [
-		{ label: 'Open on handheld', icon: 'card', sub: noteOf(it), fn: () => openDoc(it) },
+		!it.net && { label: it.started ? 'Continue here' : 'Read here', icon: 'book', sub: noteOf(it), fn: () => readHere(it) },
+		{ label: 'Open on handheld', icon: 'card', sub: it.net ? noteOf(it) : undefined, fn: () => openDoc(it) },
 		!it.net && { label: 'Show in Files', icon: 'folder', fn: () => showInFiles(it.p) }, '-', rm]
 	: [
 		{ label: verb + ' on handheld', icon: 'card', sub: part ? 'From ' + fmtTime(it.position) : undefined, fn: () => playRecent(it, 'handheld') },
@@ -70,7 +73,7 @@ function Cover({ it, k, frac, children }) {
 }
 // what a row can't do, said on it
 const Tags = ({ it, cur, short }) => html`${cur && html`<span class="chip y tiny"><${Icon} n="play" k=${1} />Playing</span>`}${it.gone && html`<span class="chip red tiny">${goneChip(it)}</span>`}
-	${isDoc(it) && !it.gone && html`<span class="chip ghost tiny" title=${DOC_WHY}><${Icon} n="card" k=${1} />${short ? 'Handheld' : 'Opens on handheld'}</span>`}
+	${isDoc(it) && it.net && !it.gone && html`<span class="chip ghost tiny" title=${DOC_WHY}><${Icon} n="card" k=${1} />${short ? 'Handheld' : 'Opens on handheld'}</span>`}
 	${it.net && html`<span class="chip ghost tiny" title=${NET_WHY}><${Icon} n="network" k=${1} />Network</span>`}`;
 const Heart = ({ it }) => likable(it) && isLiked(it.p) ? html` <span class="likemark" role="img" aria-label="Liked"><${Icon} n="heart" k=${1} /></span>` : null;
 
@@ -88,9 +91,10 @@ function Continue({ it, v, cur }) {
 	const pos = cur ? v.pos() : it.position, dur = cur ? v.duration : it.duration, frac = cur ? (dur > 0 ? Math.min(1, pos / dur) : 0) : fracOf(it);
 	const kick = cur ? html`<span class="kicker y hm-now"><span class=${'hm-eq' + (v.paused ? ' paused' : '')} aria-hidden="true"><i></i><i></i><i></i></span>${v.paused ? 'Paused' : 'Now playing'} · ${v.here ? 'in this browser' : 'on handheld'}</span>`
 		: html`<span class="kicker y">${doc ? (part ? 'Continue reading' : 'Last opened') : part && it.kind === 'video' ? 'Continue watching' : part ? 'Continue listening' : 'Last played'}</span>`;
-	const label = doc ? html`<${Icon} n="card" k=${2} />${!it.started ? 'Open on handheld' : it.pages > 0 ? 'Open at page ' + it.page : 'Open at ' + Math.round(it.frac * 100) + '%'}`
+	// (a book asks the two, as a song does with the output: read it here, or on the handheld)
+	const label = doc ? html`<${Icon} n=${it.net ? 'card' : 'book'} k=${2} />${it.net ? 'Open on handheld' : !it.started ? 'Read here' : it.pages > 0 ? 'Read here at page ' + it.page : 'Read here at ' + Math.round(it.frac * 100) + '%'}`
 		: html`<${Icon} n="play" k=${2} />${part ? 'Resume at ' + fmtTime(it.position) : 'Play'}`;
-	const where = doc ? html`<${Icon} n="card" k=${1} />${DOC_WHY}` : it.net ? html`<${Icon} n="network" k=${1} />A network file: it plays on the handheld`
+	const where = doc ? html`<${Icon} n="card" k=${1} />${it.net ? DOC_WHY : 'Your place is shared with the handheld'}` : it.net ? html`<${Icon} n="network" k=${1} />A network file: it plays on the handheld`
 		: store.target === 'browser' ? html`<${Icon} n="laptop" k=${1} />Plays in this browser` : html`<${Icon} n="card" k=${1} />Plays on the handheld`;
 	return html`<section class="hm-hero box surface" aria-label=${cur ? 'Now playing' : 'Continue'} style=${`--a:${a};--b:${b}`} onContextMenu=${onCtx(it)}>
 		<${Cover} it=${it} k=${6} frac=${frac}>${cur && v.here && v.kind === 'video' && html`<${LiveVideo} />`}<span class="tl"><${Tags} it=${it} /></span></${Cover}>
@@ -101,7 +105,8 @@ function Continue({ it, v, cur }) {
 			<div class="acts">${cur ? html`<button class="btn primary" onClick=${() => go('#/playing')}><${Icon} n="note" k=${2} />Open player</button>
 					<button class="btn start" onClick=${ctl.toggle}><${Icon} n=${v.paused ? 'play' : 'pause'} k=${2} />${v.paused ? 'Play' : 'Pause'}</button>`
 				: html`<button class="btn primary" onClick=${() => act(it)}>${label}</button>
-					${part && !doc && html`<button class="btn start" onClick=${() => fromStart(it)}>From the start</button>`}`}
+					${part && !doc && html`<button class="btn start" onClick=${() => fromStart(it)}>From the start</button>`}
+					${doc && !it.net && html`<button class="btn start" onClick=${() => openDoc(it)}><${Icon} n="card" k=${2} />Open on handheld</button>`}`}
 				${likable(it) && html`<button class=${'btn icon' + (liked ? ' liked' : '')} aria-pressed=${liked} aria-label=${liked ? 'Unlike' : 'Like'} title=${liked ? 'Liked · click to unlike' : 'Like'} onClick=${() => setLike(it.p, !liked)}><${Icon} n=${liked ? 'heart' : 'heart-o'} k=${2} /></button>`}
 				<button class="btn icon" aria-label=${'More about ' + it.title} aria-haspopup="dialog" onClick=${e => menu(it, e.currentTarget)}><${MoreDots} /></button></div>
 			${!cur && html`<div class="plays">${where}</div>`}</div></section>`;
@@ -170,7 +175,7 @@ const HistoryOff = () => html`<div class="hm-off box surface" role="status"><spa
 		<div class="hm-path"><span class="chip ghost tiny"><${Icon} n="card" k=${1} />On the handheld</span><span class="key">Settings</span><${Icon} n="right" k=${1} /><span class="key">Files</span><${Icon} n="right" k=${1} /><span class="key">Keep play history</span></div></div></div>
 	<section class="hm-sec"><div class="band"><span class="kicker">Everything else works</span><span class="rule"></span></div><${Starts} /></section>`;
 
-const FILTERS = [['all', 'All'], ['video', 'Videos'], ['audio', 'Music']];
+const FILTERS = [['all', 'All'], ['video', 'Videos'], ['audio', 'Music'], ['doc', 'Books']];
 export function Home() {
 	const s = useStore(), r = useRecent(), v = view(), wide = useMedia(Q_WIDE);
 	const [filter, setFilter] = useState('all'), [pref, setPref] = useState(lsGet('bpHomeView') || ''), [all, setAll] = useState(false);
@@ -183,8 +188,8 @@ export function Home() {
 	const order = useRef(null);
 	if (r && r.items && !r.items.length) order.current = null;	// (cleared: what plays next starts it afresh)
 	else if (r && r.items && !order.current) order.current = r.items.map(it => it.p);
-	// (what plays only: books, PDFs and comics are read on the handheld, and its own Home lists them)
-	let items = (r && r.items || []).filter(it => !s.recentHidden[it.p] && !isDoc(it));
+	// (books, PDFs and comics too: read here or opened on the handheld)
+	let items = (r && r.items || []).filter(it => !s.recentHidden[it.p]);
 	if (order.current) {
 		const at = new Map(order.current.map((p, i) => [p, i]));
 		items = items.filter(it => at.has(it.p)).sort((a, b) => at.get(a.p) - at.get(b.p));

@@ -661,6 +661,11 @@ namespace bp
 					n++;
 				}
 				j.end();
+				// (the songs Keep playing had added: the page's Open sends them back, Up next's section)
+				j.key("added").arr();
+				for (auto& a : lp.added)
+					if (std::string q = isNetPath(a) ? "" : w->servedVirtual(a); !q.empty()) j.str(q);
+				j.end();
 				bool pl = lp.kind == RecentContext::PLAYLIST;
 				return j.key("index").num(index).key("skind").str(pl ? "playlist" : "folder").key("stitle").str(lp.title)
 					.key("sid").str(pl ? lp.plName : "").key("rail").boolean(!pl).end().out();
