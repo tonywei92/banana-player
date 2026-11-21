@@ -888,7 +888,7 @@ namespace bp
 		if (v.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
 		else if (v.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
 		int cy = l.row.y + l.row.h / 2;
-		// the thumbnail: the caller's frame; else the kind's mark on TRACK (no thumbnails are made in the list)
+		// the thumbnail: the caller's frame (the videos' cache, ui_mediaart.h); else the kind's mark on TRACK
 		if (v.art) v.art(l.thumb);
 		else
 		{

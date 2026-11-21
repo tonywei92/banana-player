@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "ui_mediaart.h"
 #include "session_host.h"
 #include "format.h"
 #include "playlist.h"
@@ -306,6 +307,12 @@ namespace bp
 	{
 		for (auto& r : results)
 		{
+			// the top pane's covers (pixels, not textures: ui_mediaart.h)
+			if (MediaArt::isPaneCoverKey(r.key))
+			{
+				mediaArt->paneCoverReady(r);
+				continue;
+			}
 			artAsked.erase(r.key);
 			auto pi = artPath.find(r.key);
 			std::string path = pi == artPath.end() ? r.key : pi->second;

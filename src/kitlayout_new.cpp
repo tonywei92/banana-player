@@ -119,13 +119,21 @@ namespace bp
 			return c;
 		}
 
-		Pane previewPane(bool cover, bool welcome)
+		Pane previewPane(bool cover, bool welcome, bool square, bool hero)
 		{
 			Pane p;
 			p.brandTile = {20, 16, 22, 22};
 			p.brandName = {50, 16, 220, 22};
 			p.icon = {0, 0, 0, 0};
 			p.below = {0, 0, 0, 0};
+			p.hero = {0, 0, 0, 0};
+			if (hero && !welcome)
+			{
+				p.cover = {0, 0, 0, 0};
+				p.hero = {0, 0, PANEL_W, 232};
+				p.column = {28, 196, PANEL_W - 56, PANEL_H - 196 - 16};
+				return p;
+			}
 			if (welcome)
 			{
 				p.brandTile = p.brandName = {0, 0, 0, 0};
@@ -137,7 +145,7 @@ namespace bp
 			}
 			if (cover)
 			{
-				p.cover = {36, 66, 196, 278};
+				p.cover = {36, 66, 196, square ? 196 : 278};
 				p.column = {262, 74, PANEL_W - 44 - 262, PANEL_H - 74 - 20};
 			}
 			else

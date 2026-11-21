@@ -164,6 +164,46 @@ namespace bp
 			}
 		}
 
+		// a video's frame across the panel's whole width, from the top to the box's foot (units), cropped to fill it
+		// (the middle kept), then faded into the ground from fadeFrom down (the spec: transparent to BG over 114 units)
+		void paintHero(PaneDraw& d, const PaneImage& img, float bottom, float fadeFrom, theme::Rgb ground)
+		{
+			Canvas& c = d.c;
+			int pw = c.W, ph = std::min(c.H, (int)std::lround(d.Y(bottom)));
+			if (pw <= 0 || ph <= 0) return;
+			// the picture's part that fills pw x ph: the whole width or the whole height, the middle of the other
+			float scale = std::max((float)pw / img.w, (float)ph / img.h);
+			float sx0 = (img.w - pw / scale) / 2, sy0 = (img.h - ph / scale) / 2;
+			int fade0 = (int)std::lround(d.Y(fadeFrom));
+			for (int y = 0; y < ph; y++)
+			{
+				float fy = std::clamp(sy0 + (y + 0.5f) / scale - 0.5f, 0.f, (float)img.h - 1);
+				int y0 = (int)fy, y1 = std::min(img.h - 1, y0 + 1);
+				float ty = fy - y0;
+				// the fade: none above fade0, all ground at the foot (eased, so its end has no edge)
+				float t = y < fade0 ? 0.f : std::clamp((float)(y - fade0) / std::max(1, ph - fade0), 0.f, 1.f);
+				float g = t * t * (3 - 2 * t);
+				for (int x = 0; x < pw; x++)
+				{
+					float fx = std::clamp(sx0 + (x + 0.5f) / scale - 0.5f, 0.f, (float)img.w - 1);
+					int x0 = (int)fx, x1 = std::min(img.w - 1, x0 + 1);
+					float tx = fx - x0;
+					const uint8_t* p00 = &img.rgba[((size_t)y0 * img.w + x0) * 4];
+					const uint8_t* p10 = &img.rgba[((size_t)y0 * img.w + x1) * 4];
+					const uint8_t* p01 = &img.rgba[((size_t)y1 * img.w + x0) * 4];
+					const uint8_t* p11 = &img.rgba[((size_t)y1 * img.w + x1) * 4];
+					uint8_t* o = &c.v[((size_t)y * c.W + x) * 4];
+					const uint8_t bg[3] = {ground.r, ground.g, ground.b};
+					for (int ch = 0; ch < 3; ch++)
+					{
+						float v = (p00[ch] * (1 - tx) + p10[ch] * tx) * (1 - ty) + (p01[ch] * (1 - tx) + p11[ch] * tx) * ty;
+						o[ch] = (uint8_t)std::lround(v * (1 - g) + bg[ch] * g);
+					}
+					o[3] = 255;
+				}
+			}
+		}
+
 		// the Brand mark (lay::brandMark: the clapperboard on a 22 grid) at (x, y) in units, `size` wide
 		void brand(PaneDraw& d, float x, float y, float size)
 		{
@@ -348,7 +388,21 @@ namespace bp
 			out.rgba = std::move(c.v);
 			return out;
 		}
-		lay::Pane l = lay::previewPane(s.cover, s.welcome);
+		lay::Pane l = lay::previewPane(s.cover, s.welcome, s.coverSquare, s.hero);
+		if (s.hero)
+		{
+			// the frame, faded into the ground from 120 units down; none yet (or none at all): a band of SURFACE,
+			// faded the same way, with the film's mark
+			if (s.heroArt && s.heroArt->ok()) paintHero(d, *s.heroArt, l.hero.y + l.hero.h, 120, BG);
+			else
+			{
+				PaneImage band;
+				band.w = band.h = 1;
+				band.rgba = {SURFACE.r, SURFACE.g, SURFACE.b, 255};
+				paintHero(d, band, l.hero.y + l.hero.h, 120, BG);
+				d.glyph(G_FILM, 44, l.hero.x + (l.hero.w - 44) / 2.f, 70, DIM);
+			}
+		}
 		if (s.welcome)
 		{
 			// the app's icon (84, radius 20) beside the name, in place of the small mark
@@ -364,9 +418,11 @@ namespace bp
 		{
 			// the cover's place, then the picture fitted inside it (none: the place alone, with the picture's mark)
 			d.flat(l.cover.x, l.cover.y, l.cover.w, l.cover.h, R_TILE, SURFACE, edgeOf(SURFACE));
-			if (s.coverArt.ok())
+			if (s.coverArt && s.coverArt->ok())
 			{
-				paintImage(d, s.coverArt, l.cover.x + EDGE, l.cover.y + EDGE, l.cover.w - 2 * EDGE, l.cover.h - 2 * EDGE, 0);
+				// (its corners cut to the place's inner curve: the edge stays whole around it)
+				paintImage(d, *s.coverArt, l.cover.x + EDGE, l.cover.y + EDGE, l.cover.w - 2 * EDGE, l.cover.h - 2 * EDGE,
+					std::max(0, R_TILE - EDGE));
 			}
 			else d.glyph(G_PICTURE, 44, l.cover.x + (l.cover.w - 44) / 2.f, l.cover.y + (l.cover.h - 44) / 2.f, DIM);
 		}
@@ -404,7 +460,23 @@ namespace bp
 			y = l.below.y - 18;
 		}
 		if (s.extra == PaneSpec::THEMES) y = themesBlock(d, s, x, y + 12, cw);
-		if (!s.rows.empty())
+		if (!s.rows.empty() && s.hero)
+		{
+			// two to a line (the spec's four columns: name, value, name, value), each pair half the column
+			y += 6;
+			float half = (cw - 20) / 2, dt = 0;
+			for (auto& r : s.rows) dt = std::max(dt, d.textW(INTER, 13.5f, r.first));
+			dt = std::min(dt, half / 2);
+			for (size_t i = 0; i < s.rows.size(); i++)
+			{
+				const auto& r = s.rows[i];
+				float rx = x + (i % 2 ? half + 20 : 0);
+				d.text(INTER, 13.5f, c.fit(INTER, 13.5f, r.first, (int)d.S(dt)), rx, y, DIM);
+				d.text(INTER, 13.5f, c.fit(INTER, 13.5f, r.second, (int)d.S(half - dt - 12)), rx + dt + 12, y, TEXT);
+				if (i % 2 || i + 1 == s.rows.size()) y += 13.5f * 1.2f + 7;
+			}
+		}
+		else if (!s.rows.empty())
 		{
 			y += 18;
 			float dt = 0;

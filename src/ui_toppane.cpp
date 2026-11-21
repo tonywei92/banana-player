@@ -1,7 +1,8 @@
 // Which Preview pane the top panel shows while nothing plays (previewpane.h; docs/redesign/components.md, Preview
 // pane): it follows the bottom panel's cursor, so every shell section tells what is under the cursor on the top screen.
-// Only text, read from state the pages already hold: nothing is read from the disk but a file's size, and the pane is
-// composed again only when its key changes (topscreen.cpp).
+// Read from state the pages already hold: nothing is read from the disk but a file's size; pictures and a video's facts
+// come from caches filled off the main thread (ui_mediaart.h), asked here. The pane is composed again only when its key
+// changes (topscreen.cpp): a picture landing is in it.
 #include "ui.h"
 #include "format.h"
 #include "previewpane.h"
@@ -13,7 +14,12 @@
 #include "ui_search.h"
 #include "ui_settings.h"
 #include "ui_videos.h"
+#include "ui_mediaart.h"
+#include "durations.h"
+#include "resume.h"
+#include "videocache.h"
 #include <sys/stat.h>
+#include <ctime>
 
 namespace bp
 {
@@ -28,6 +34,17 @@ namespace bp
 			return dot == std::string::npos || dot == 0 ? name : name.substr(0, dot);
 		}
 
+		// "12 Nov 2026": when the file last changed
+		std::string rowDay(int64_t mtime)
+		{
+			time_t t = (time_t)mtime;
+			struct tm tmv;
+			if (!mtime || !localtime_r(&t, &tmv)) return "";
+			char out[32];
+			if (strftime(out, sizeof out, "%d %b %Y", &tmv) == 0) return "";
+			return out;
+		}
+
 		std::string upper(std::string s)
 		{
 			std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char)std::toupper(c); });
@@ -40,6 +57,43 @@ namespace bp
 		if (topPaneGallery(out)) return true;
 		if (page == Page::Settings && settingsPage && settingsPage->topPane(out)) return true;
 		return idle && idlePane(out, p);
+	}
+
+	void Ui::videoPane(PaneSpec& out, const std::string& path, const std::string& name, long long size, int64_t mtime,
+		const Player& p) const
+	{
+		// the spec's Files › a video: its frame across the top, what it is and where it was left, its facts two to a
+		// line. The frame and the facts come from the videos' cache (ui_mediaart.h): asked here, shown when they land
+		out.hero = true;
+		out.heroArt = mediaArt->frame(path);
+		const VideoMeta* m = mediaArt->meta(path);
+		const ResumeEntry* e = p.resumeStore().find(path);
+		double secs = m && m->duration > 0 ? m->duration : -1;
+		if (secs <= 0) cachedDuration(path, secs);
+		if (e && e->position >= 0)
+			out.label = "Video" + std::string(MID) + "left at " + formatTime(e->position) +
+				(secs > 0 ? " of " + formatTime(secs) : "");
+		else if (e && e->duration > 0) out.label = "Video" + std::string(MID) + "watched";
+		else out.label = "Video" + std::string(MID) + "not played yet";
+		out.title = name;
+		std::string length = m ? videoLengthLabel(*m) : "";
+		if (length.empty() && secs > 0) length = formatTime(secs);
+		auto row = [&](const char* k, const std::string& v) { if (!v.empty()) out.rows.push_back({k, v}); };
+		row("Length", length);
+		row("Size", size > 0 ? formatBytes(size) : "");
+		if (m)
+		{
+			row("Picture", videoPictureLabel(*m));
+			row("Changed", rowDay(mtime));
+			row("Audio", videoAudioLabel(*m));
+			row("Subtitles", videoSubsLabel(*m));
+		}
+		else row("Changed", rowDay(mtime));
+		row("In", baseName(parentFolder(path)));
+		out.keys = {{"A", e && e->position >= 0 ? "Resume" : "Play"}, {"X", "More"}};
+		// composed again when what it shows changes: the frame landing, the facts, the place
+		out.key = "vid|" + path + "|" + out.label + (out.heroArt ? "|f" : "");
+		for (auto& r : out.rows) out.key += "|" + r.second;
 	}
 
 	bool Ui::idlePane(PaneSpec& out, const Player& p) const
@@ -94,14 +148,18 @@ namespace bp
 			if (videos->cursor >= 0 && videos->cursor < (int)rows.size())
 			{
 				const auto& r = rows[videos->cursor];
+				if (!r.folder)
+				{
+					videoPane(out, r.path, r.name, r.size, r.mtime, p);
+					return true;
+				}
 				out.key = "vid|" + r.path;
-				out.label = r.folder ? "Folder" : "Video";
+				out.label = "Folder";
 				out.title = r.name;
-				if (r.folder) out.rows = {{"Holds", plural(r.videos, "video", "videos")}};
-				else out.rows = {{"Size", formatBytes(r.size)}};
+				out.rows = {{"Holds", plural(r.videos, "video", "videos")}};
 				out.rows.push_back({"In", baseName(r.path.substr(0, r.path.rfind('/')))});
 				out.text = from;
-				keys({{"A", "Play"}, {"X", "More"}});
+				keys({{"A", "Open"}, {"X", "More"}});
 				return true;
 			}
 			out.key = "vid|" + from;
@@ -124,11 +182,15 @@ namespace bp
 				{
 					const MediaAlbum& a = snap->albums[ai];
 					out.cover = true;
+					out.coverSquare = true;
+					// the album's art: its first song's (the picture in the file, else the cover beside it)
+					std::string song = a.songs.empty() ? "" : snap->songs[a.songs.front()].path;
+					out.coverArt = mediaArt->paneCover(song, false);
 					out.label = "Album";
 					out.title = snap->at(a.name);
 					out.text = a.albumArtist ? snap->at(a.albumArtist) : "";
 					out.rows = {{"Songs", std::to_string(a.songs.size())}};
-					out.key = "alb|" + std::to_string(ai) + "|" + out.title;
+					out.key = "alb|" + std::to_string(ai) + "|" + out.title + (out.coverArt ? "|art" : "");
 					keys({{"A", "Open"}, {"X", "More"}});
 					return true;
 				}
@@ -157,11 +219,12 @@ namespace bp
 			if (b)
 			{
 				out.cover = true;
+				out.coverArt = mediaArt->paneCover(b->path, true);
 				out.label = "Book";
 				out.title = b->name;
 				if (b->progress >= 0) out.rows = {{"Progress", std::to_string((int)(b->progress * 100 + 0.5)) + "%"}};
 				out.text = upper(baseName(b->path).substr(baseName(b->path).rfind('.') == std::string::npos ? 0 : baseName(b->path).rfind('.') + 1));
-				out.key = "book|" + b->path;
+				out.key = "book|" + b->path + (out.coverArt ? "|art" : "");
 				keys({{"A", "Read"}, {"X", "More"}});
 				return true;
 			}

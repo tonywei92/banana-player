@@ -109,6 +109,8 @@ extern "C"
 #include <functional>
 #include <map>
 #include <random>
+#include "videocache.h"
+#include "videoframe.h"
 #include <set>
 #include <sstream>
 #include <string>
@@ -10696,13 +10698,26 @@ static void testKitLayoutReaders()
 	// the Preview pane's cover picture: a real image (a decoded cover) or, with none, the cover's place
 	PaneSpec pane;
 	pane.cover = true;
-	CHECK_EQ(pane.coverArt.ok(), false);
-	pane.coverArt.w = 2;
-	pane.coverArt.h = 2;
-	pane.coverArt.rgba.assign(16, 255);
-	CHECK_EQ(pane.coverArt.ok(), true);
+	CHECK(!pane.coverArt);
+	{
+		auto art = std::make_shared<PaneImage>();
+		art->w = 2;
+		art->h = 2;
+		art->rgba.assign(16, 255);
+		pane.coverArt = art;
+	}
+	CHECK_EQ(pane.coverArt->ok(), true);
 	CHECK_EQ(previewPane(true).cover.w, 196);
 	CHECK_EQ(previewPane(true).cover.h, 278);
+	// an album's art is square; a video's frame runs across the top, the column over its foot
+	CHECK_EQ(previewPane(true, false, true).cover.h, 196);
+	Pane hero = previewPane(false, false, false, true);
+	CHECK_EQ(hero.hero.w, PANEL_W);
+	CHECK_EQ(hero.hero.y, 0);
+	CHECK(hero.column.y < hero.hero.y + hero.hero.h);
+	CHECK(hero.column.y + hero.column.h <= PANEL_H);
+	CHECK_EQ(hero.cover.w, 0);
+	CHECK_EQ(previewPane(true).hero.w, 0);
 	// the welcome: the app's icon 84 square at (44, 34), its text beside it, the ways to start from 142 on the margin
 	Pane wl = previewPane(false, true);
 	CHECK_EQ(wl.icon.w, 84);
@@ -15190,8 +15205,104 @@ static void testSongLayout()
 	CHECK_EQ(vizPlaceArt(g, 200, 20, 240, "0x101010").find("pad=640:480:200:20:0x101010,drawbox") != std::string::npos, true);
 }
 
+static void testVideoCache()
+{
+	// the name: 16 hex digits, the same for the same file, another for another path, size or mtime
+	std::string n = videoCacheName("/sd/Videos/a.mkv", 1000, 42);
+	CHECK_EQ(n.size(), (size_t)16);
+	CHECK(n.find_first_not_of("0123456789abcdef") == std::string::npos);
+	CHECK_EQ(n, videoCacheName("/sd/Videos/a.mkv", 1000, 42));
+	CHECK(n != videoCacheName("/sd/Videos/b.mkv", 1000, 42));
+	CHECK(n != videoCacheName("/sd/Videos/a.mkv", 1001, 42));
+	CHECK(n != videoCacheName("/sd/Videos/a.mkv", 1000, 43));
+	VideoCacheFiles f = videoCacheFiles("/st/cache/videos", n);
+	CHECK_EQ(f.meta, "/st/cache/videos/" + n + ".meta");
+	CHECK_EQ(f.small, "/st/cache/videos/" + n + ".s.jpg");
+	CHECK_EQ(f.large, "/st/cache/videos/" + n + ".l.jpg");
+
+	// the facts round-trip, a tab or newline in a title made a space
+	VideoMeta m;
+	m.duration = 888.5;
+	m.width = 1920;
+	m.height = 818;
+	m.vcodec = "h264";
+	m.chapters = 8;
+	m.audio = {{"eng", "ac3", "Main\tmix", 6}, {"ita", "aac", "", 2}};
+	m.subs = {{"eng", "subrip", "", 0}, {"spa", "ass", "Signs\n", 0}, {"eng", "subrip", "SDH", 0}, {"fre", "", "", 0}};
+	VideoMeta back;
+	CHECK(parseVideoMeta(videoMetaText(m), back));
+	CHECK(std::abs(back.duration - 888.5) < 0.001);
+	CHECK_EQ(back.width, 1920);
+	CHECK_EQ(back.height, 818);
+	CHECK_EQ(back.vcodec, "h264");
+	CHECK_EQ(back.chapters, 8);
+	CHECK_EQ(back.audio.size(), (size_t)2);
+	CHECK_EQ(back.audio[0].title, "Main mix");
+	CHECK_EQ(back.audio[0].channels, 6);
+	CHECK_EQ(back.subs.size(), (size_t)4);
+	CHECK_EQ(back.subs[1].title, "Signs ");
+	CHECK_EQ(back.fromPlayer, false);
+	CHECK(!parseVideoMeta("", back));
+	CHECK(!parseVideoMeta("duration\t3\n", back));	// no version line
+	CHECK(parseVideoMeta("bp-video-meta 1\nlater\tthing\nduration\t3\n", back));	// a later line skipped
+	CHECK(std::abs(back.duration - 3) < 0.001);
+
+	// the top screen's words
+	CHECK_EQ(videoPictureLabel(m), "H.264 \xC2\xB7 1920 \xC3\x97 818");
+	CHECK_EQ(videoAudioLabel(m), "English 5.1, Italian");
+	CHECK_EQ(videoSubsLabel(m), "English, Spanish + 1");	// (English once; French the one more)
+	CHECK_EQ(videoLengthLabel(m), "14:48 \xC2\xB7 8 chapters");
+	CHECK_EQ(videoLengthLabel(VideoMeta{}), "");
+	CHECK_EQ(videoPictureLabel(VideoMeta{}), "");
+
+	// mpv's track list as the cache keeps it
+	std::vector<Track> tracks(4);
+	tracks[0].type = TrackType::Video;
+	tracks[0].codec = "hevc";
+	tracks[0].w = 3840;
+	tracks[0].h = 1606;
+	tracks[1].type = TrackType::Audio;
+	tracks[1].lang = "jpn";
+	tracks[1].channels = 2;
+	tracks[2].type = TrackType::Sub;
+	tracks[2].lang = "eng";
+	tracks[2].external = true;
+	tracks[3].type = TrackType::Video;
+	tracks[3].albumArt = true;
+	VideoMeta fromMpv = videoMetaFromTracks(tracks, 60.2, 3);
+	CHECK(fromMpv.fromPlayer);
+	CHECK_EQ(fromMpv.vcodec, "hevc");
+	CHECK_EQ(fromMpv.width, 3840);
+	CHECK_EQ(fromMpv.audio.size(), (size_t)1);
+	CHECK_EQ(fromMpv.subs.size(), (size_t)1);
+	CHECK_EQ(fromMpv.chapters, 3);
+	CHECK(parseVideoMeta(videoMetaText(fromMpv), back));
+	CHECK(back.fromPlayer);
+
+	// a frame kept as a JPEG comes back the same size and about the same colour
+	PageImage img;
+	img.w = 32;
+	img.h = 18;
+	img.rgba.assign((size_t)32 * 18 * 4, 0);
+	for (size_t i = 0; i < (size_t)32 * 18; i++)
+	{
+		img.rgba[i * 4] = 200;
+		img.rgba[i * 4 + 1] = 120;
+		img.rgba[i * 4 + 2] = 40;
+		img.rgba[i * 4 + 3] = 255;
+	}
+	std::string jpg = encodeJpeg(img);
+	CHECK(jpg.size() > 100);
+	PageImage dec = decodePage((const uint8_t*)jpg.data(), jpg.size(), 32);
+	CHECK_EQ(dec.w, 32);
+	CHECK_EQ(dec.h, 18);
+	CHECK(std::abs((int)dec.rgba[0] - 200) < 8 && std::abs((int)dec.rgba[1] - 120) < 8);
+	CHECK(encodeJpeg(PageImage{}).empty());
+}
+
 int main()
 {
+	testVideoCache();
 	testSlider();
 	testSongLayout();
 	testXferGroup();

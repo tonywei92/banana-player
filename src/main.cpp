@@ -45,6 +45,8 @@
 #include "durations.h"
 #include "durworker.h"
 #include "coverworker.h"
+#include "videoartworker.h"
+#include "ui_mediaart.h"
 #include "mediaworker.h"
 #include "mangalibworker.h"
 #include "netstream.h"
@@ -88,7 +90,7 @@ namespace bp
 }
 #endif
 
-static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur, evCover, evAmp, evMangaLib, evUnplug, evPower, evVolKey, evLidIncognito, evViz, evIndex;
+static Uint32 evMpv, evRender, evTouch, evLevel, evNet, evFound, evWeb, evDur, evCover, evAmp, evMangaLib, evUnplug, evPower, evVolKey, evLidIncognito, evViz, evIndex, evVideoArt;
 #ifdef BP_WEB
 // the dashboard's server for the sleep watch's thread (made on the main thread, never destroyed)
 static std::atomic<bp::WebServer*> webForWatch{nullptr};
@@ -318,9 +320,9 @@ int main(int argc, char** argv)
 		fprintf(stderr, "SDL: %s\n", SDL_GetError());
 		return 1;
 	}
-	// 17: evMpv itself and the 16 event types below it. One short once handed the manga's two registrations the
+	// 18: evMpv itself and the 17 event types below it. One short once handed the manga's two registrations the
 	// numbers of evVolKey and evLidIncognito, so a manga worker's wake closed everything as if the lid had shut
-	evMpv = SDL_RegisterEvents(17);
+	evMpv = SDL_RegisterEvents(18);
 	evRender = evMpv + 1;
 	evTouch = evMpv + 2;
 	evLevel = evMpv + 3;
@@ -337,6 +339,7 @@ int main(int argc, char** argv)
 	evLidIncognito = evMpv + 14;	// the lid closed in incognito with Close all or Quit (SleepWatch): main closes or quits
 	evViz = evMpv + 15;	// the native visualizer's new bars (VizTap's worker): the top panel draws a frame
 	evIndex = evMpv + 16;	// the cards' media index: a pass finished (Music, Videos and Search read MediaIndex)
+	evVideoArt = evMpv + 17;	// the videos' thumbnails, frames and info: some are ready (VideoArtWorker::take)
 
 	// On the handheld (SDL's KMSDRM) each panel is a display and each window fills one; elsewhere, two windows
 	if (windowed < 0) windowed = strcmp(SDL_GetCurrentVideoDriver(), "KMSDRM") != 0;
@@ -556,6 +559,15 @@ int main(int argc, char** argv)
 		});
 		coverWorker->setStateDir(opts.stateDir);	// (Match album art's cache: <state dir>/artbg, the worker's own)
 		ui.manga->coverWorker = coverWorker;
+		// the videos' thumbnails, frames and info (evVideoArt when some are ready), kept in <state dir>/cache/videos;
+		// never destroyed: its thread may be inside libavcodec at exit
+		VideoArtWorker* videoArt = new VideoArtWorker([] {
+			SDL_Event ev{};
+			ev.type = evVideoArt;
+			SDL_PushEvent(&ev);
+		});
+		videoArt->setDir(opts.stateDir + "/cache/videos");
+		ui.mediaArt->worker = videoArt;
 		// the first start: an empty Videos, Music and Books on the main card where a section has no folder (once)
 		bp::makeLibraryFolders(opts.stateDir);
 		// the cards' media index (Music, Videos and Search read it; docs/redesign/components.md › "Search and
@@ -1359,6 +1371,13 @@ int main(int argc, char** argv)
 				}
 				else if (e.type == evNet) ui.netListed((NetListing*)e.user.data1, player);
 				else if (e.type == evDur) ui.durationsReady(player);
+				else if (e.type == evVideoArt)
+				{
+					// thumbnails, frames and facts landed: into textures and the top pane's cache on this thread (the
+					// serial in the pages' signatures, the pane's key, draw them)
+					if (haveUi) ui.mediaArt->videosReady(videoArt->take());
+					else videoArt->take();
+				}
 				else if (e.type == evIndex)
 				{
 					// the media index finished a pass: a new snapshot with a new generation is in indexWorker->index().
@@ -2237,7 +2256,25 @@ int main(int argc, char** argv)
 				if (busy != indexBusy)
 				{
 					indexWorker->setBusy(indexBusy = busy);
+					videoArt->setBusy(busy);	// (its frames wait too; what is cached still answers)
 					fprintf(stderr, "media index: walk %s\n", busy ? "waits (a file opening or a video)" : "goes on");
+				}
+			}
+			// a video that plays: what mpv knows of it (every track, a subtitle file beside it, the exact length) written
+			// over the cached facts, so the top screen shows what changed. Once per file and track list
+			{
+				static std::string recorded;
+				std::string path = player.currentPath();
+				if (player.playing() && !player.playingAudio() && !player.playingPhoto() && !player.loading() &&
+					player.duration > 0 && !player.tracks.empty() && !isNetPath(path) && path.find("://") == std::string::npos)
+				{
+					std::string mark = path + "|" + std::to_string(player.tracks.size()) + "|" + std::to_string(player.chapters.size());
+					if (mark != recorded)
+					{
+						recorded = mark;
+						videoArt->record(path, videoMetaFromTracks(player.tracks, player.duration, (int)player.chapters.size()));
+						fprintf(stderr, "video art: facts of %s from the player (%zu tracks)\n", path.c_str(), player.tracks.size());
+					}
 				}
 			}
 #ifdef BP_WEB
@@ -2306,6 +2343,7 @@ int main(int argc, char** argv)
 		mangaNet->setFetchOwner({});
 		mangaNet->stop();
 		coverWorker->stop();
+		videoArt->stop();
 		indexWorker->stop();
 		mangaLibWorker->stop();
 		// (before the watch stops: it knows the lid)

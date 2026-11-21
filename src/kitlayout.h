@@ -488,10 +488,13 @@ namespace bp
 			Box brandTile, brandName;	// the 22-unit tile and the name's line beside it
 			Box column;	// the text: label, title, sentence, rows, keys, top down
 			Box cover;	// w 0: the text layout
+			Box hero;	// a video's frame across the top (the column starts low over its fade); w 0 on every other pane
 			Box icon;	// the welcome's app icon (84, radius 20); w 0 on every other pane
 			Box below;	// the welcome: where the rows and keys start (under the icon and its text)
 		};
-		Pane previewPane(bool cover, bool welcome = false);
+		// square: an album's art (196 x 196) in place of a book's 196 x 278; hero: a video's layout, the frame across
+		// the top 232 units and the column from 196 over its fade (the spec's Files › a video)
+		Pane previewPane(bool cover, bool welcome = false, bool square = false, bool hero = false);
 		// The Brand mark (components.md: one drawing on a 22 grid, scaled by size / 22): boxes as {x, y, w, h}, the four
 		// stripes as four points each, the play triangle as three, all in the same units as x, y
 		struct BrandMark
