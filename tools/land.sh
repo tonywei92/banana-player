@@ -16,6 +16,8 @@ if [ -d "$W" ] && [ -n "$(git -C "$W" status --short -- . ':!opencode.json' ':!d
 	git -C "$W" commit -q -m "$B: the agent's work (committed by land.sh)"; echo "committed leftovers in $B"
 fi
 cd "$R"
+# opencode.json is each checkout's own (allow-lists, the handheld's address): a branch that commits it is stopped here
+if git diff --name-only "HEAD...$B" | grep -qx opencode.json; then echo "STOP: $B commits opencode.json: drop that change first"; exit 1; fi
 git merge -q --no-edit "$B" || { echo "CONFLICT: resolve in $R, then rerun"; git status --short | grep '^UU'; exit 1; }
 echo "merged $(git log --oneline -1)"
 nice -n 10 cmake --build build -j6 2>&1 | grep -E " error" | head -5
