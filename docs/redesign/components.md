@@ -2,7 +2,7 @@
 
 Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 123 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
-Counts: 49 components: 10 reuse, 28 variant, 11 new. (Lid-shut keys is a rule with nothing to draw, QR code is a picture of an address, and Sleep warning is drawn on its own screen, `sleep-warn`: none of the three has an example in the preview’s Components section.)
+Counts: 48 components: 10 reuse, 28 variant, 10 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
 
 In the preview every screen draws these through shared functions and style rules (src/kit.js, src/screens.js, src/style.css beside preview.html), the same ones the Components section renders its examples from.
 
@@ -259,12 +259,10 @@ One scale, in the panel's 640 × 480 units: **2, 4, 6, 8, 12, 16, 24**. Nothing 
 ### Keyboard (exists, needs a variant)
 
 - **Used:** rename, names, Search (L3: the top screen lists what is found, by kind, as each letter is typed), addresses, passwords
-- **Anatomy and states:** A page, not a sheet. Field 48 tall under the header, yellow outline, Pixelify 17. Keys 58 × 44, radius 6, ten across, 5 apart, four rows: a **number row** (1 to 0) that is always there, on every layer, then three rows of letters (10, 9, 7). Bottom row 56 tall, every key a word with its button's cap beside it: **Shift** (Y), **123** (L3), **#+=** (a field's keyboard only; Search's has none), **Space** (X, takes the width left), **Clear** (L2), **Del** (B), **Done** (START, yellow). The toggles, Clear and Del are 78 wide, Done 104. A field may add whole pieces (https://, .json).
-- **Toggles:** Shift, 123 and #+= are toggles, not layers to pick from: a press turns one on and it stays **lit** (TRACK tinted 17% with ACCENT, the word in ACCENT, an 18 × 3 ACCENT lamp bar at its top) until it is pressed again. Shift on: the letters show and type as capitals. 123 or #+= on: their marks in the letters' place (never digits: the number row has them; 123 is the common marks, #+= the braces, backslash, bar, caret and backtick); pressing the lit one brings the letters back. Shift pressed on a marks layer comes back to the letters in capitals. Lit is never the focus's look (the ACCENT edge).
-- **Clear:** empties the field; drawn at 45% while the field is empty.
+- **Anatomy and states:** A page, not a sheet. Field 48 tall under the header, yellow outline, Pixelify 17. Letter keys 58 × 52, radius 6, ten across, 5 apart, three rows. Bottom row 56 tall: layer keys, Space, ⌫, Done (yellow), each with its button; a field may add whole pieces (https://, .json).
 - **Inputs:** title, value, secret, max length, special keys
-- **Keys and touch:** D-pad moves, A types, B deletes (on an empty field it closes, keeping what was there), X space, Y Shift, L3 steps letters / 123 / #+=, L2 Clear, L / R move the caret, START done; the header's < cancels. The hint bar is the kit's: A Type · B Delete · L/R Move · START Done (the bottom row's caps say the rest).
-- **Code:** `KeyPad` (keyboard.h: the keys, their words, buttons and what a press does; tested), `lay::keyboard` (kitlayout), `Kit::keyboard` / `KeyboardView::keys` (ui_kit_variants.cpp); the two users are `Ui::drawKeyboard` (ui_keyboard.cpp) and Search's (ui_search.cpp). Needs still: a special row per field, the text echoed on the top screen.
+- **Keys and touch:** D-pad moves, A types, X deletes, Y space, L3 capitals, START done, B cancels.
+- **Code:** drawKeyboard (ui.h). Needs: a special row per field, the text echoed on the top screen.
 
 ### Quick settings panel (exists, needs a variant)
 
@@ -549,7 +547,6 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 - **Anatomy and states:** ACCENT; the value written in place of the setting’s name; a 6-unit dot in the control’s corner. Where the control isn’t on screen: the badge (header) or pill (Now playing block). DANGER only past a danger line (volume over 120%, offline, failed).
 - **Inputs:** state, its normal value, danger
 - **Keys and touch:** A tap on a badge or pill goes to where the control is.
-- **Also:** a running sleep timer: the Sleep key reads what is left, and the header’s status cluster carries a badge (clock 13, “24 min” / “0:48” / “Song”) on every page; a tap opens the Sleep timer sheet.
 - **Code:** New as a rule (0.7.18 has the yellow speed key and the lit Brightness key). One helper: given a state and its normal, return the tone and the words.
 
 ### Screen-off warning (new)
@@ -559,14 +556,6 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 - **Inputs:** seconds left, which screen
 - **Keys and touch:** Any key or touch cancels and does nothing else.
 - **Code:** New. The Screen off timers exist (Settings: Screen off (music) / (video)); the five seconds before them are not drawn today. A veil and a notice row over whatever page shows.
-
-### Sleep warning (new)
-
-- **Used:** the last 60 s of a sleep timer, over any page (sleep-timer.md; drawn: `sleep-warn`)
-- **Anatomy and states:** The Screen-off warning with two keys. Top screen: the Note’s card at the Note’s place (bottom centre; top left, 20 in, over a video), kept the whole minute: a clock icon 20 and “Sleeping in M:SS” Pixelify 19 ACCENT, under it the hint line A “10 more min”, B “Timer off”. Bottom screen, only if it is lit: the 62% veil, the backlight at a third, a card 118 tall 40 above the foot with an ACCENT edge: the same words Pixelify 15 and “the volume is fading” Pixelify 12.5, then two keys 56 tall, 10 more min (primary) and Timer off. Its own hint bar. Never red, no sound, and it never turns a dark screen on.
-- **Inputs:** seconds left, the words (in / after this song), whether the volume fades, which screens are lit
-- **Keys and touch:** A = 10 more minutes, B = timer off, with the screens lit or dark; the volume keys and UP / DOWN are volume; every other key does nothing (a dark screen wakes as always). Touch: the two keys; elsewhere nothing. Lid shut: a press of Power is 10 more minutes.
-- **Code:** New. A `Ui::Overlay` pushed by the timer (main’s loop) over whatever shows, plus one ASS card on the top panel; the fade is mpv’s `volume`, never the handheld’s.
 
 ### Lid-shut keys (new)
 
