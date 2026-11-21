@@ -357,6 +357,13 @@ namespace bp
 		flat(r, fill, R_BUTTON, focus ? ACCENT : off(edgeOf(SURFACE), c.off));
 		bool narrow = r.w < 140;
 		int pad = narrow ? 7 : 9, gap = narrow ? 6 : 8, cy = r.y + r.h / 2;
+		if (c.glyph && c.label.empty() && c.value.empty())
+		{
+			// a chip that is only its mark (a song's Repeat): the mark in its middle, dim while its value is the normal one
+			ui.drawGlyphMid(*c.glyph, r.x + r.w / 2, cy, off(c.away ? ACCENT : DIM, c.off));
+			if (c.away && !c.off) ui.fillRound({r.x + r.w - 11, r.y + 5, 6, 6}, ACCENT, 3);
+			return;
+		}
 		int x = r.x + pad;
 		if (c.glyph)
 		{

@@ -13,7 +13,7 @@
 //   transport      a transport key (74 tall): icon over label-with-cap; the play key's hold fill and third line
 //   iconKey        a key that is only a mark (the header's back and More)
 //   chip           a state chip: icon, a small label in capitals, the value under it; yellow with a dot when the
-//                  value is away from normal
+//                  value is away from normal (no label and no value: only its mark, in the chip's middle)
 //   line           a line key: a full-width key that reads as a line (the chapter line, the Next line)
 //   progress       the 14-tall bar with a knob and chapter marks (a slider: its knob grows and shows a tag when held)
 //   bar            a progress bar that isn't touched (3, 6 or 12 tall)

@@ -195,10 +195,12 @@ namespace bp
 			int chips = 0;
 			Box chip[PLAYER_CHIPS_MAX];
 			Box next;	// the Next line
+			Box repeat;	// a song's Repeat mark, at the Next line's right end (empty on a video: its fifth chip is Repeat)
 			Box hints;
 			Box lock;	// the lock's key, while touch is locked
 		};
-		PlayerLayout playerLayout(int chips);
+		constexpr int PLAYER_REPEAT_W = 56;
+		PlayerLayout playerLayout(int chips, bool repeatMark = false);
 
 		// ---- About's support QR, large, on the top panel ----
 		// The picture About's Y (or a tap on its small code) puts up, in the panel's own pixels (the top drawable's

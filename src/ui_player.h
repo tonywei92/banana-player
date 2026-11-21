@@ -33,7 +33,7 @@ namespace bp
 
 		// ---- what a finger can press: each id's Rect is rect(), which draw() and pointer() both ask ----
 		enum Touch { T_NONE = -1, T_BACK, T_MORE, T_LINE, T_PREV, T_REW, T_PLAY, T_FF, T_NEXT, T_LIKE, T_ADD, T_SLEEP, T_STOP,
-			T_CHIP0, T_CHIP_END = T_CHIP0 + lay::PLAYER_CHIPS_MAX, T_NEXTLINE = T_CHIP_END, T_COUNT };
+			T_CHIP0, T_CHIP_END = T_CHIP0 + lay::PLAYER_CHIPS_MAX, T_NEXTLINE = T_CHIP_END, T_REPEAT, T_COUNT };
 		int pressed = T_NONE;	// under the finger: it acts when the finger lifts on it
 		Rect rect(int id, const lay::PlayerLayout& l) const;	// (the touch area: wider than the key for the header's two)
 		bool usable(int id, const Player& p) const;	// not dimmed
@@ -61,6 +61,10 @@ namespace bp
 			std::string path, note;
 		};
 		NextUp nextUp(const Player& p) const;	// what Next would play (the Session's nextPlace)
+		// a song's Repeat mark (the Next row's right end; a video's is its fifth chip): shown on every song, lit when Repeat
+		// isn't Off; a tap steps it as the chip does
+		bool repeatMarkShown(const Player& p) const;
+		void stepRepeat(Player& p);
 		bool listAct(Player& p);	// List (Y, or a tap on the Next line): the playlist's page, or the List sheet
 		// the List sheet (ui_player.cpp): tab 0 Up next, 1 Chapters, opened on the one last used; the Repeat chip,
 		// the chapter line and the Next line open it on theirs

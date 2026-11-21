@@ -446,7 +446,7 @@ namespace bp
 			return r;
 		}
 
-		PlayerLayout playerLayout(int chips)
+		PlayerLayout playerLayout(int chips, bool repeatMark)
 		{
 			PlayerLayout l;
 			Box page{MARGIN, 0, PANEL_W - 2 * MARGIN, 0};
@@ -466,6 +466,12 @@ namespace bp
 			l.chips = std::clamp(chips, 0, PLAYER_CHIPS_MAX);
 			for (int i = 0; i < l.chips; i++) l.chip[i] = cell({page.x, 336, page.w, 52}, l.chips, GAP, i);
 			l.next = {page.x, 396, page.w, 50};
+			if (repeatMark)
+			{
+				// a song's five chips leave Repeat no place: its mark ends the Next line's row, a key's gap from the line
+				l.next.w -= PLAYER_REPEAT_W + GAP;
+				l.repeat = {page.x + page.w - PLAYER_REPEAT_W, l.next.y, PLAYER_REPEAT_W, l.next.h};
+			}
 			l.hints = {0, PANEL_H - HINTS_H, PANEL_W, HINTS_H};
 			l.lock = {PANEL_W / 2 - 60, 150, 120, 120};
 			return l;

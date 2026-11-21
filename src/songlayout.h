@@ -10,6 +10,9 @@ namespace bp
 {
 	// the title lines' sizes and gaps (units): title 28 semibold, artist 17, album · year 14
 	constexpr int SONG_TITLE_FS = 28, SONG_ARTIST_FS = 17, SONG_ALBUM_FS = 14;
+	// the Repeat mark (Repeat all / one; none while Off): the loop glyph in the panel's top right corner, its cells 2
+	// units, 16 in from the top and the right; over a visualizer alone the lines top left stop short of it
+	constexpr int SONG_REPEAT_CELL = 2, SONG_REPEAT_MARGIN = 16, SONG_REPEAT_ROOM = 34;
 	// Art + visualizer: the band of bars along the foot (the styles' 200-row strip); the art's group sits above it
 	constexpr int SONG_BAND_TOP = 280;
 

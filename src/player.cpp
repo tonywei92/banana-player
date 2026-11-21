@@ -1745,6 +1745,7 @@ namespace bp
 		}
 		if (soundChanged) syncEq(false);
 		if (loopChanged && isAudio) prop("loop-file", s.loop == LOOP_ONE ? "inf" : "no");
+		if (loopChanged && isAudio && loaded) updateOverlay();	// the top panel's Repeat mark
 		// switched off: nothing kept from now, and what was kept goes
 		if (!s.keepHistory) clearHistory();
 		// the network's switched off: its files kept so far go (the card's stay)
@@ -2623,6 +2624,27 @@ namespace bp
 		return s;
 	}
 
+	// an ASS drawing of a glyph (ui_glyphs.h), its top left at (x, y), each cell `cell` wide: a box per run of cells
+	static std::string glyphPath(const Ui::Glyph& g, int x, int y, int cell)
+	{
+		std::string d;
+		for (int row = 0; row < g.h; row++)
+		{
+			const char* cells = g.rows[row];
+			for (int at = 0; cells[at];)
+			{
+				if (cells[at] != '#') { at++; continue; }
+				int from = at;
+				while (cells[at] == '#') at++;
+				const int x0 = x + from * cell, x1 = x + at * cell, y0 = y + row * cell, y1 = y0 + cell;
+				char box[96];
+				snprintf(box, sizeof box, "m %d %d l %d %d l %d %d l %d %d ", x0, y0, x1, y0, x1, y1, x0, y1);
+				d += box;
+			}
+		}
+		return d;
+	}
+
 	// an ASS drawing of a rounded box at (x, y), w x h, radius r, one contour; reverse: drawn the other way round
 	// (inside another contour: a hole, by either fill rule)
 	static std::string roundPath(int x, int y, int w, int h, int r, bool reverse)
@@ -2798,6 +2820,8 @@ namespace bp
 			chapter = chapterUntitled(chapters[c].title) ? "Chapter " + std::to_string(c + 1) + " of " + std::to_string(chapters.size())
 				: chapters[c].title;
 		const int style = drawnStyle();
+		// Repeat all / one is said on the top panel too (the bottom one may be off, or on another page)
+		const bool repeatMark = settings.loop != LOOP_OFF;
 		bool ownsArt = show == SHOW_BOTH && style == VIS_VINYL;
 		bool group = (show == SHOW_ART || show == SHOW_BOTH) && !ownsArt;
 		// the theme's ground (Album art only, Art + visualizer, None: app UI, docs/redesign Themes › The top screen):
@@ -3098,7 +3122,7 @@ namespace bp
 			// outline, the visualizer passing under them)
 			std::string look = peaksAlone ? "\\q2" + OUTLINE : "\\q2\\bord2\\blur4\\3c&H000000&\\shad3\\4c&H000000&";
 			// a line each, from the top (22, 18): title 26, then 5 down the artist 17, 3 down the album 14
-			const int lx = 22, lw = 596;
+			const int lx = 22, lw = 596 - (repeatMark ? SONG_REPEAT_ROOM : 0);
 			double y = 18;
 			int linesW = 0;
 			auto line = [&](const std::string& s, int fs, bool bold, const std::string& colour, int gap) {
@@ -3133,6 +3157,16 @@ namespace bp
 			if (!album.empty()) line(album, 14, false, peaksAlone ? INK3 : GREY, 3);
 			// the lines' box (only kept clear with no layer to compose: nativeKeepClear)
 			linesBox = {lx - 8.0f, 18 - 8.0f, lx + (float)linesW + 8, (float)y + 6, 0};
+		}
+		// Repeat all / one: its mark in the top right corner, whatever the Show mode (nothing while Off). The accent on the
+		// theme's ground (outlined over a visualizer's shapes); cream with the lines' shadow over a style's own picture
+		if (repeatMark)
+		{
+			const Ui::Glyph& g = settings.loop == LOOP_ONE ? G_LOOP_ONE : G_LOOP;
+			const int cell = u(SONG_REPEAT_CELL), right = u(640 - SONG_REPEAT_MARGIN), top = u(SONG_REPEAT_MARGIN);
+			const std::string look = !themed ? "\\bord2\\blur4\\3c&H000000&\\shad3\\4c&H000000&\\1c" + CREAM
+				: (show == SHOW_ART || show == SHOW_NONE ? std::string("\\bord0\\shad0") : OUTLINE) + "\\1c" + MARK;
+			ev += "{\\an7\\pos(0,0)" + look + "\\p1}" + glyphPath(g, right - (int)strlen(g.rows[0]) * cell, top, cell) + "{\\p0}\n";
 		}
 		// the manga engine starting over Album art only (the visualizers rest as None): its note at the foot
 		if (engineLoading && show != SHOW_NONE)
