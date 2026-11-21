@@ -2761,6 +2761,35 @@ namespace bp
 			PageImage wide = decodePage((const uint8_t*)bytes.data(), bytes.size(), (px * img.srcW + img.srcH - 1) / img.srcH);
 			if (wide.ok() && wide.h >= px) img = std::move(wide);
 		}
+		// a small cover (a 128-pixel one in an old tag): scaled up, bilinear, until it covers the square (it was
+		// refused, and the song showed no art at all)
+		if ((img.w < px || img.h < px) && img.w > 0 && img.h > 0)
+		{
+			const double k = std::max((double)px / img.w, (double)px / img.h);
+			const int nw = std::max(px, (int)std::ceil(img.w * k)), nh = std::max(px, (int)std::ceil(img.h * k));
+			std::vector<uint8_t> big((size_t)nw * nh * 4);
+			for (int y = 0; y < nh; y++)
+			{
+				const double fy = std::clamp((y + 0.5) / k - 0.5, 0.0, (double)img.h - 1);
+				const int y0 = (int)fy, y1 = std::min(y0 + 1, img.h - 1);
+				const double ty = fy - y0;
+				for (int x = 0; x < nw; x++)
+				{
+					const double fx = std::clamp((x + 0.5) / k - 0.5, 0.0, (double)img.w - 1);
+					const int x0 = (int)fx, x1 = std::min(x0 + 1, img.w - 1);
+					const double tx = fx - x0;
+					for (int c = 0; c < 4; c++)
+					{
+						auto at = [&](int xx, int yy) { return (double)img.rgba[((size_t)yy * img.w + xx) * 4 + c]; };
+						double v = (at(x0, y0) * (1 - tx) + at(x1, y0) * tx) * (1 - ty) + (at(x0, y1) * (1 - tx) + at(x1, y1) * tx) * ty;
+						big[((size_t)y * nw + x) * 4 + c] = (uint8_t)std::lround(v);
+					}
+				}
+			}
+			img.rgba = std::move(big);
+			img.w = nw;
+			img.h = nh;
+		}
 		if (img.w < px || img.h < px) return false;
 		const int ox = (img.w - px) / 2, oy = (img.h - px) / 2;
 		out.assign((size_t)px * px * 4, 0);
