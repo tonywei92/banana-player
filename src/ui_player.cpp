@@ -16,6 +16,11 @@
 
 namespace bp
 {
+	// a switch's touch: well past its drawn 40 x 22 (a finger's size each way), so a press that lands or lifts a little
+	// off the switch still flips it
+	static SDL_Rect switchArea(int x, int cy) { return {x - 14, cy - 24, 40 + 28, 48}; }
+	static bool switchHit(int x, int cy, int px, int py) { SDL_Rect r = switchArea(x, cy); return px >= r.x && px < r.x + r.w && py >= r.y && py < r.y + r.h; }
+
 	namespace
 	{
 		const char* const LOCK_NOTE = "Touch locked: hold the lock 1 s to unlock";
@@ -1965,7 +1970,7 @@ namespace bp
 				{
 					EqLayout e = eqLayout(s);
 					if (e.save.hit(x, y)) press = P_SAVE;
-					else if (Rect{e.toggleX, e.cy - 11, 40, 22}.hit(x, y)) press = P_ON;
+					else if (switchHit(e.toggleX, e.cy, x, y)) press = P_ON;
 					else if (e.prevCap.hit(x, y) || e.prevArrow.hit(x, y) || Rect{e.body.x, e.cy - 20, 48, 40}.hit(x, y)) press = P_PREV;
 					else if (e.nextCap.hit(x, y) || e.nextArrow.hit(x, y)) press = P_NEXT;
 					else if (e.name.hit(x, y)) press = P_NAME;
@@ -1993,7 +1998,7 @@ namespace bp
 			if (kind == P_ROW && !tap) { settle(p); return false; }	// (a drag or a caught glide: nothing chosen)
 			if (kind == P_ROW && at < listCount(p) && rows.list.rowAt(x, y) == at) choose(at, p);
 			else if (kind == P_SAVE && eqLayout(s).save.hit(x, y)) ui.sound->eqSave(p);
-			else if (kind == P_ON && Rect{eqLayout(s).toggleX, eqLayout(s).cy - 11, 40, 22}.hit(x, y)) ui.sound->eqToggle(p);
+			else if (kind == P_ON && switchHit(eqLayout(s).toggleX, eqLayout(s).cy, x, y)) ui.sound->eqToggle(p);
 			else if (kind == P_PREV && (eqLayout(s).prevCap.hit(x, y) || eqLayout(s).prevArrow.hit(x, y))) ui.sound->eqStep(-1, p);
 			else if (kind == P_NEXT && (eqLayout(s).nextCap.hit(x, y) || eqLayout(s).nextArrow.hit(x, y))) ui.sound->eqStep(1, p);
 			else if (kind == P_NAME && eqLayout(s).name.hit(x, y))
