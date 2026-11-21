@@ -28,6 +28,8 @@ namespace bp
 		// drawn (a smooth list's row key asks every frame but draws the row once)
 		int thumbState(const std::string& path);
 		void drawThumb(const std::string& path, Rect r);
+		// the same filling `r` at its own aspect, the middle kept (Home's square Recent tiles and Continue card)
+		void drawThumbCrop(const std::string& path, Rect r);
 		// the cached info (null: not known yet; asked)
 		const VideoMeta* meta(const std::string& path);
 		// the top screen's frame (null: not yet, or none: frameNone)

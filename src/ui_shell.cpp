@@ -352,6 +352,7 @@ namespace bp
 		}
 		// where the Extensions section was left (Manga, where you were; its list): the rail's rule
 		if (ui.manga) ui.manga->sectionLeft(ui.page);
+		ui.browse->backDir.clear();	// (a Show in Files' way back ends when the rail goes elsewhere)
 		// leaving Settings: it becomes the browser, whichever way it was opened (a section page now shows)
 		ui.settingsOver = false;
 		if (ui.page == Page::Settings) ui.page = Page::Browse;

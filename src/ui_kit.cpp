@@ -33,7 +33,9 @@ namespace bp
 
 	int Ui::Kit::textW(const std::string& s, int font) const
 	{
-		return s.empty() ? 0 : (int)std::lround(ui.textWidth(s, font) / sx);
+		// rounded up: a width measured here is often handed back as a line's maxW, and one rounded down cut the line
+		// at the handheld's 1.6x ("End of this so…", "O…" in the sleep timer's tiles)
+		return s.empty() ? 0 : (int)std::ceil(ui.textWidth(s, font) / sx);
 	}
 
 	SDL_Color Ui::Kit::off(SDL_Color c, bool isOff)

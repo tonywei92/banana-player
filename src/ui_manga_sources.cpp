@@ -275,6 +275,19 @@ namespace bp
 
 	// ---- the keys ----
 
+	void Ui::Manga::mangaSourcesRefresh(Player& p)
+	{
+		// the repositories asked again (Y, or the list pulled down)
+		if (mangaNet && mangaNet->started())
+		{
+			mangaNet->repos().refresh(true);
+			mangaJavaRefresh();
+			p.osd("Checking repositories\xE2\x80\xA6", 1200);
+		}
+		else ui.alert("Can\xE2\x80\x99t check repositories", "The player has no folder to keep them in.");
+		mstLocal++;
+	}
+
 	bool Ui::Manga::mangaSourcesKey(Button b, Player& p)
 	{
 		if (mstAvMenu) return mangaAvMenuKey(b, p);
@@ -292,17 +305,7 @@ namespace bp
 		int n = mangaSourcesRows(p);
 		int& cur = mstCursor[mstTab], &sc = mstScroll[mstTab];
 		if (n > 0 && cur >= n) cur = n - 1;
-		if (b == Button::Y)
-		{
-			if (mangaNet && mangaNet->started())
-			{
-				mangaNet->repos().refresh(true);
-				mangaJavaRefresh();
-				p.osd("Checking repositories\xE2\x80\xA6", 1200);
-			}
-			else ui.alert("Can\xE2\x80\x99t check repositories", "The player has no folder to keep them in.");
-			mstLocal++;
-		}
+		if (b == Button::Y) mangaSourcesRefresh(p);
 		else switch (b)
 		{
 		case Button::Up: if (n > 0) cur = (cur + n - 1) % n; break;
@@ -635,6 +638,7 @@ namespace bp
 		}
 		if (n > 0)
 		{
+			mlSources[mstTab].refresh = [this](Player& pl) { mangaSourcesRefresh(pl); };	// pull to refresh: as Y
 			mangaRows(mlSources[mstTab], p, n, sc, cur, [this, &p](int i) { return mangaSourcesRowAt(p, i); });
 		}
 		// the note at the foot of both lists

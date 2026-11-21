@@ -3454,6 +3454,67 @@ static void testScroller()
 		s.release(32);
 		CHECK_EQ(s.moving(), false);
 	}
+	// pull to refresh: only a list with it, only past the top, only beyond PULL_REFRESH; the lift then rests the
+	// refresh's row (REFRESH_ROW) over the top until unhold(); a short pull springs back and refreshes nothing
+	{
+		Scroller s = fresh();
+		s.setPull(true);
+		s.press(100, 0);
+		s.move(110, 10);
+		s.move(160, 40);	// 50 of finger: the band shows less than that
+		CHECK_EQ(s.pulled() > 0, true);
+		CHECK_EQ(s.pulled() < Scroller::PULL_REFRESH, true);
+		CHECK_EQ(s.armed(), false);
+		CHECK_EQ(s.release(200), false);
+		for (int t = 200; t < 2000 && s.step(t); t += 16) {}
+		CHECK_EQ(s.offset(), 0.0);
+		CHECK_EQ(s.holding(), false);
+	}
+	{
+		Scroller s = fresh();
+		s.setPull(true);
+		s.press(100, 0);
+		s.move(110, 10);
+		s.move(330, 300);	// far down: past the threshold
+		CHECK_EQ(s.pulled() >= Scroller::PULL_REFRESH, true);
+		CHECK_EQ(s.armed(), true);
+		CHECK_EQ(s.release(1000), true);
+		CHECK_EQ(s.holding(), true);
+		for (int t = 1000; t < 3000 && s.step(t); t += 16) {}
+		CHECK_EQ(std::fabs(s.offset() + Scroller::REFRESH_ROW) < 0.5, true);	// resting with the row showing
+		s.setExtent(3000, 300);	// (a draw meanwhile keeps it there)
+		CHECK_EQ(std::fabs(s.offset() + Scroller::REFRESH_ROW) < 0.5, true);
+		s.unhold(3000);
+		for (int t = 3000; t < 5000 && s.step(t); t += 16) {}
+		CHECK_EQ(s.offset(), 0.0);
+		CHECK_EQ(s.holding(), false);
+	}
+	{
+		// the same pull on a list without it, or from the bottom end: no refresh
+		Scroller s = fresh();
+		s.press(100, 0);
+		s.move(110, 10);
+		s.move(330, 300);
+		CHECK_EQ(s.armed(), false);
+		CHECK_EQ(s.release(1000), false);
+		Scroller e = fresh();
+		e.setPull(true);
+		e.jump(2700);
+		e.press(330, 0);
+		e.move(320, 10);
+		e.move(100, 300);	// past the end, upward
+		CHECK_EQ(e.armed(), false);
+		CHECK_EQ(e.release(1000), false);
+		// a list in the middle pulled down only as far as its top: not past it, no refresh
+		Scroller m = fresh();
+		m.setPull(true);
+		m.jump(300);
+		m.press(100, 0);
+		m.move(110, 10);
+		m.move(400, 300);	// 290 down from 300: still 10 short of the top
+		CHECK_EQ(m.armed(), false);
+		CHECK_EQ(m.release(1000), false);
+	}
 	// a drag follows the finger unit for unit (fractions kept), from where it passed the slop: no jump
 	{
 		Scroller s = fresh();
@@ -11186,13 +11247,12 @@ static void testKitVariantTile()
 static void testKitVariantCards()
 {
 	using namespace lay;
-	RecentCard r = recentCard({16, 282, RECENT_W, RECENT_H});
-	CHECK_EQ(r.pic.w, r.pic.h);	// square, as Music's album art
-	CHECK(r.pic.x >= r.box.x && r.pic.x + r.pic.w <= r.box.x + r.box.w);
-	CHECK(r.pic.y + r.pic.h <= r.title.y);
-	CHECK(r.note.y + r.note.h <= r.line.y);
-	CHECK_EQ(r.line.h, 3);
-	CHECK(r.line.y + r.line.h <= r.box.y + r.box.h);
+	// Home's Recent tile is Music's album tile: the square picture, the title and the note under it, all inside
+	AlbumTile r = albumTile({16, 282, RECENT_W, RECENT_H});
+	CHECK_EQ(r.cover.w, r.cover.h);
+	CHECK_EQ(r.cover.w, ALBUM_ART);
+	CHECK(r.cover.y + r.cover.h <= r.title.y);
+	CHECK_EQ(r.artist.y + r.artist.h, r.box.y + r.box.h);
 	ContinueCard c = continueCard({16, 166, 608, CONTINUE_H});
 	CHECK_EQ(c.pic.w, c.pic.h);	// square
 	CHECK_EQ(c.pic.h, 84);
@@ -11455,6 +11515,21 @@ static void testKitLayoutPages()
 	CHECK_EQ(real.shown, 1);
 	CHECK_EQ((int)real.shelf.size(), 12);
 	CHECK(real.shelf[0].y + real.shelf[0].h > real.shelfGrid.y + real.shelfGrid.h);	// it hangs over the foot
+
+	// Books as two tabs: the strip at the body's top, the grid SP8 under it to the foot; Reading now's cells carry
+	// the bar; the first tab is Reading now only with a book in progress
+	BooksTabs bt = booksTabs({90, 60, 538, 390}, {120, 80}, 19, true);
+	CHECK_EQ((int)bt.page.strip.tab.size(), 2);
+	CHECK_EQ(bt.page.strip.tab[0].y, 60);
+	CHECK_EQ(bt.page.content.y, 60 + TAB_H + SP8);
+	CHECK_EQ(bt.page.content.y + bt.page.content.h, 60 + 390);
+	CHECK(bt.page.strip.tab[1].x > bt.page.strip.tab[0].x + bt.page.strip.tab[0].w);
+	CHECK_EQ(bt.cellH, COVER_CELL_H);
+	CHECK_EQ(bt.pitch, COVER_CELL_H + COVER_GAP);
+	CHECK_EQ(booksTabs({90, 60, 538, 390}, {120, 80}, 19, false).cellH, SHELF_CELL_H);
+	CHECK(bt.page.content.h >= bt.cellH);	// a whole row fits under the tabs
+	CHECK_EQ((int)booksFirstTab(0), (int)BOOKS_SHELF);
+	CHECK_EQ((int)booksFirstTab(2), (int)BOOKS_READING);
 
 	// Search: the field 48, a heading and its rows, then Recent searches and Clear; an empty group is left out
 	SearchPage p = searchPage({16, 4, 608, 440}, {1, 1}, 2);
@@ -12024,6 +12099,8 @@ static void testKitLayout()
 		CHECK_EQ(h.cards, 4);
 		CHECK(!overlaps(h.card[0], h.card[1]));
 		CHECK(h.more.x >= h.card[3].x + RECENT_W + GAP);
+		CHECK_EQ(h.card[1].x - h.card[0].x, ALBUM_ART + ALBUM_COL_GAP);	// the albums grid's pitch
+		CHECK_EQ(h.card[0].h, ALBUM_CELL_H);
 		CHECK_EQ(h.more.x + h.more.w, h.inner.x + h.inner.w);
 		CHECK_EQ(h.shortcuts, 3);
 		CHECK_EQ(h.shortcut[2].x + h.shortcut[2].w, h.inner.x + h.inner.w);

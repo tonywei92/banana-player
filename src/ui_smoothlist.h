@@ -38,7 +38,12 @@ namespace bp
 			std::function<std::string(int)> key;
 			// row i drawn into `box` (view.w x rowH, at the slot's top left)
 			std::function<void(int, Rect)> draw;
+			// pull to refresh (null: the list has none): a finger pulling the top down past lay::Scroller's
+			// PULL_REFRESH shows "Release to refresh"; its lift calls this (main's player) and the list rests a
+			// "Refreshing" row down for REFRESH_HOLD_MS
+			std::function<void(Player&)> refresh;
 		};
+		static constexpr uint32_t REFRESH_HOLD_MS = 700;
 		// the list in the page's frame: its extent set, the rows shown drawn into slots where they changed, placed
 		void draw(Spec spec);
 
@@ -46,7 +51,7 @@ namespace bp
 		// true: the touch caught a moving list (it stops it, and chooses nothing)
 		bool press(float y);
 		bool move(float y);		// true once it is a drag (past the slop): the content follows from then
-		void lift();			// a glide at the finger's speed, or the band's spring back
+		void lift();			// a glide at the finger's speed, or the band's spring back (or a pull's refresh)
 		bool dragging() const { return sc.dragging(); }
 
 		// ---- the cursor ----
@@ -64,7 +69,7 @@ namespace bp
 		// row i's box on the panel at the offset now (whole units: what a touch tests)
 		Rect rowBox(int i) const;
 		const Spec& spec() const { return last; }
-		bool moving() const { return sc.moving(); }
+		bool moving() const { return sc.moving() || holdUntil != 0; }	// (a refresh's row held: the loop comes round)
 
 		// ---- Ui's side ----
 		void step(uint32_t ms);			// the glide to now (Ui::draw, before the signature)
@@ -78,6 +83,8 @@ namespace bp
 	private:
 		Spec last;
 		bool fresh = true;
+		uint32_t holdUntil = 0;	// a refresh's row shows until then (0: none)
+		void drawPullRow();		// "Pull to refresh" / "Release to refresh" / "Refreshing" in the room over the top
 		struct Slot
 		{
 			SDL_Texture* tex = nullptr;

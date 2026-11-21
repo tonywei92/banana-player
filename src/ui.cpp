@@ -306,12 +306,12 @@ namespace bp
 		if (shell->page(page) && shell->key(b, p)) return false;
 		// L / R step a shell page's tabs (the owner, 2026-11-20: a page's tabs are L / R everywhere, the sections L2 / R2).
 		// Settings and the Web page: the group before or after; Music's views (Albums / Artists / Playlists) and
-		// Videos' (All / Folders / Not finished); the pages below them (an album's, an artist's, a folder's) keep the
+		// Videos' (All / Folders / Not finished), Books' (Reading now / Shelf); the pages below them (an album's, an artist's, a folder's) keep the
 		// keys. The rest (Manga's tabs, a source's, All recent, Files and Network) are their own areas' keys
 		if (b == Button::L || b == Button::R)
 		{
 			if (page == Page::Settings || page == Page::Web) { area()->key(b, p); return false; }
-			if (page == Page::Music || page == Page::Videos) { area()->key(b, p); return false; }
+			if (page == Page::Music || page == Page::Videos || page == Page::Books) { area()->key(b, p); return false; }
 			// Music's Playlists view (the browser's own page): back to Albums / Artists
 			if (page == Page::Browse && browse->browseDir == PLROOT && browse->playlists->selMode == SEL_NONE &&
 				!browse->playlists->moving && !browse->playlists->addPending.serial)

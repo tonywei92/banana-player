@@ -585,6 +585,15 @@ namespace bp
 			return b;
 		}
 
+		BooksTabs booksTabs(Box body, const std::vector<int>& tabWidths, int capW, bool progress)
+		{
+			BooksTabs b;
+			b.page = tabPage(body, tabWidths, capW);
+			b.cellH = progress ? COVER_CELL_H : SHELF_CELL_H;
+			b.pitch = b.cellH + COVER_GAP;
+			return b;
+		}
+
 		SearchPage searchPage(Box body, const std::vector<int>& groupRows, int recentCount, bool clear)
 		{
 			SearchPage p;

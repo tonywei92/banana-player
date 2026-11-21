@@ -426,9 +426,8 @@ namespace bp
 						if (ui.setLikedPath(p, path, label, -1, !was) != was) ui.likeCard(p, !was, label);
 						return false;
 					}, false, false, liked, true});
-			m.rows.push_back({&G_FOLDER, "Show in folder", "", "", [this, path](Player& p) {
-				ui.page = Page::Browse;
-				ui.showInFolder(path, p);
+			m.rows.push_back({&G_FOLDER, "Show in Files", "", "", [this, path](Player& p) {
+				ui.showInFiles(path, p);
 				return false;
 			}});
 			m.rows.push_back({&G_INFO, "Info", "", "", [this, path](Player& p) { ui.openFileInfo(path, ""); return false; }});
@@ -686,6 +685,7 @@ namespace bp
 		// frame: the rows and the Player are read there
 		ListGeom g = listGeom();
 		SmoothList::Spec spec;
+		spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 		spec.view = g.view;
 		spec.rowH = g.rowH;
 		spec.count = std::min(g.count, n);

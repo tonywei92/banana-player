@@ -580,6 +580,9 @@ namespace bp
 		// a recent file played (as All recent's rows play one), from its start, shown in its folder (Files or Network)
 		void openFile(const std::string& path, Player& p);
 		void showInFolder(const std::string& path, Player& p);
+		// a library page's More (Music, Videos, Books): Show in Files — its folder in Files, the cursor on it (to rename,
+		// move or delete it there); B in that folder comes back to the page (Browse::backPage)
+		void showInFiles(const std::string& path, Player& p);
 		std::string stateDirPath;	// (setStateDir's) the manga store's, the readers' places and the playlists' folders are under it
 		// ---- Files' own file operations (ui_fileops.cpp) ----
 		// Copy / Move: the item is held (clip) while you go to the folder it goes in, and pasted there (SELECT, or the
@@ -1018,6 +1021,8 @@ namespace bp
 		// a file op changed what the cards hold (a delete, a rename or a move finished): main walks the index
 		// again, as it does when a card is swapped, so Music, Videos and Search keep true
 		int filesSerial() const { return filesChanged; }
+		// a library list pulled to refresh (Music, Videos, Books): the index walked again, as after a file op
+		void rescanLibrary() { filesChanged++; }
 		const std::vector<BrowseRoot>& places() const { return roots; }
 		// main's lid-shut keys (docs/redesign/lid-and-incognito.md): the chapter before / after, on what plays
 		void chapterStepForLid(int dir, Player& p) { chapterStep(dir, p); }

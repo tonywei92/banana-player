@@ -17,7 +17,7 @@ namespace bp
 
 		double Scroller::maxOffset() const { return std::max(0.0, content - view); }
 
-		double Scroller::clampOff(double o) const { return std::clamp(o, 0.0, maxOffset()); }
+		double Scroller::clampOff(double o) const { return std::clamp(o, minOffset(), std::max(minOffset(), maxOffset())); }
 
 		// The rubber band (a phone's): past an end the content first follows at about half the finger's pace, then
 		// less and less, never further than the view's height
@@ -76,9 +76,10 @@ namespace bp
 			return true;
 		}
 
-		void Scroller::release(int64_t ms)
+		bool Scroller::release(int64_t ms)
 		{
-			if (!fingerDown) return;
+			if (!fingerDown) return false;
+			bool refresh = armed();
 			fingerDown = false;
 			double speed = 0;
 			if (past)
@@ -97,8 +98,19 @@ namespace bp
 			samples.clear();
 			past = false;
 			mode = Mode::Still;
-			if (off < 0 || off > maxOffset()) springTo(clampOff(off), speed, END_SPRING, ms);
+			// a pull to refresh: the list rests with the refresh's row showing over its top
+			if (refresh) holdTop = REFRESH_ROW;
+			if (off < minOffset() || off > std::max(minOffset(), maxOffset())) springTo(clampOff(off), refresh ? 0 : speed, END_SPRING, ms);
 			else if (std::fabs(speed) > STOP_SPEED) glide(speed, ms);
+			return refresh;
+		}
+
+		void Scroller::unhold(int64_t ms)
+		{
+			if (holdTop <= 0) return;
+			holdTop = 0;
+			// (a finger on it: the drag goes on from where it is)
+			if (!fingerDown && off < 0) springTo(0, mode == Mode::Still ? 0 : v, END_SPRING, ms);
 		}
 
 		// ---- keys ----
@@ -123,6 +135,7 @@ namespace bp
 			fingerDown = past = false;
 			samples.clear();
 			v = 0;
+			holdTop = 0;	// (a new list: no refresh's row over it)
 			off = clampOff(o);
 		}
 
@@ -157,12 +170,12 @@ namespace bp
 				double stopT = TAU_MS * std::log(std::fabs(v0) / STOP_SPEED);
 				if (t >= stopT) { t = stopT; done = true; }
 				double pos = from + v0 * TAU_MS * (1 - std::exp(-t / TAU_MS));
-				double max = maxOffset();
-				if (pos < 0 || pos > max)
+				double max = std::max(minOffset(), maxOffset());
+				if (pos < minOffset() || pos > max)
 				{
 					// past an end: from the moment it crossed, the spring brings it back (with the speed it had there,
 					// so it runs on a little before it turns: the bounce)
-					double edge = pos < 0 ? 0 : max;
+					double edge = pos < minOffset() ? minOffset() : max;
 					double share = 1 - (edge - from) / (v0 * TAU_MS);
 					double tc = share > 0 ? -TAU_MS * std::log(share) : 0;
 					off = edge;

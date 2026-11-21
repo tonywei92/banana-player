@@ -689,10 +689,9 @@ namespace bp
 						return false;
 					}, liked, true));
 			if (!entries.empty())
-				m.rows.push_back(row(&G_FOLDER, "Show in folder", "",
+				m.rows.push_back(row(&G_FOLDER, "Show in Files", "",
 					[this, path = !songPath.empty() || folder.empty() ? entries.front().path : folder](Player& p) {
-						ui.page = Page::Browse;
-						ui.showInFolder(path, p);
+						ui.showInFiles(path, p);
 						return false;
 					}));
 			ui.moreTwoColumns(m, ui.sourceMoreRows(LibKind::Music, pl));
@@ -1153,6 +1152,7 @@ namespace bp
 				return t;
 			};
 			SmoothList::Spec spec;
+			spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
@@ -1250,6 +1250,7 @@ namespace bp
 				return m;
 			};
 			SmoothList::Spec spec;
+			spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
@@ -1354,6 +1355,7 @@ namespace bp
 				return m;
 			};
 			SmoothList::Spec spec;
+			spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
@@ -1391,6 +1393,7 @@ namespace bp
 				return cell;
 			};
 			SmoothList::Spec spec;
+			spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
@@ -1429,6 +1432,7 @@ namespace bp
 			return row;
 		};
 		SmoothList::Spec spec;
+		spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 		spec.view = g.view;
 		spec.rowH = g.rowH;
 		spec.count = g.count;

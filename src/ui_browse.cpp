@@ -1102,16 +1102,7 @@ namespace bp
 		if (what == CTX_FIND) { browse->enterFolder(FINDNET, p); return; }
 		if (what == CTX_REFRESH)
 		{
-			// read again where it stands, the cursor kept (on the same file, if it's still there)
-			std::string at = cursor >= 0 && cursor < (int)browse->browsePaths.size() ? browse->browsePaths[cursor] : "";
-			int c = cursor, s = scroll;
-			if (isNetPath(browse->browseDir)) browse->netSelect = at;	// (the listing comes later: netListed puts it there)
-			browse->enterFolder(browse->browseDir, p);
-			cursor = c;
-			scroll = s;
-			for (size_t i = 0; i < browse->browsePaths.size(); i++)
-				if (!at.empty() && browse->browsePaths[i] == at) cursor = (int)i;
-			browse->fitList();
+			browse->filesRefresh(p);
 			return;
 		}
 		if (what != CTX_HIDE) return;	// Cancel
@@ -1696,6 +1687,8 @@ namespace bp
 		ListGeom g = listGeom(p);
 		listBegin(g);
 		SmoothList::Spec spec;
+		// pull to refresh: the folder read again (a connection's: listed again), as More's Refresh
+		spec.refresh = [this](Player& pl) { filesRefresh(pl); };
 		spec.view = g.view;
 		spec.rowH = g.rowH;
 		spec.count = g.count;
@@ -1957,8 +1950,10 @@ namespace bp
 
 	void Ui::Browse::filesRefresh(Player& p)
 	{
+		// read again where it stands, the cursor kept (on the same file, if it's still there)
 		std::string at = ui.cursor >= 0 && ui.cursor < (int)browsePaths.size() ? browsePaths[ui.cursor] : "";
 		int c = ui.cursor, s = ui.scroll;
+		if (isNetPath(browseDir)) netSelect = at;	// (the listing comes later: netListed puts it there)
 		enterFolder(browseDir, p);
 		ui.cursor = c;
 		ui.scroll = s;
@@ -2784,6 +2779,14 @@ namespace bp
 		// the browser's own keys below: B up a folder or Home, START the menu, the list's
 		if (b == Button::B)
 		{
+			// opened by a library page's Show in Files: back to that page (from the folder it opened only)
+			bool back = !backDir.empty() && browseDir == backDir;
+			backDir.clear();
+			if (back)
+			{
+				ui.page = backPage;
+				return false;
+			}
 			// a section's top: Home, on its tile (All recent: on its card)
 			if (atFirstPage())
 			{

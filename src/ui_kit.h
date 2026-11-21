@@ -400,7 +400,9 @@ namespace bp
 			std::function<void(Rect)> picture;	// draws the picture's own (a cover); none: a TRACK square with the kind mark
 		};
 		void pictureOf(Rect r, const Card& c, int rad);
-		void recentCard(const lay::RecentCard& l, const Card& c);
+		// Home's Recent item: Music's album tile (lay::albumTile) with the card's kind chip over its picture and its bar
+		// along the picture's foot
+		void recentTile(const lay::AlbumTile& l, const Card& c);
 		void continueCard(const lay::ContinueCard& l, const Card& c);
 
 		// ---- the empty state ----

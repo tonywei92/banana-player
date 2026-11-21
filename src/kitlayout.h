@@ -341,13 +341,10 @@ namespace bp
 		// ---- tiles with a summary: n in `cols` columns, `h` tall, 8 apart, in `area` ----
 		Box tileCell(Box area, int n, int cols, int h, int i);
 
-		// ---- the Recent card (112 x 116) and the Continue card (108 tall); their pictures are square (1:1) ----
-		constexpr int RECENT_W = 112, RECENT_PIC = 64, RECENT_H = 116, CONTINUE_H = 108, CONTINUE_PIC = 84;
-		struct RecentCard
-		{
-			Box box, pic, title, note, line;
-		};
-		RecentCard recentCard(Box box);
+		// ---- Home's Recent tile and the Continue card (108 tall); their pictures are square (1:1) ----
+		// A Recent item is Music's album tile (the owner, 2026-11-21): the 96-square picture, its name and a second line
+		// under it, 14 apart (lay::albumTile lays it; the sizes are ALBUM_ART, ALBUM_CELL_H and ALBUM_COL_GAP, below)
+		constexpr int RECENT_W = 96, RECENT_H = 96 + SP6 + 16 + SP2 + 14, RECENT_GAP = 14, CONTINUE_H = 108, CONTINUE_PIC = 84;
 		struct ContinueCard
 		{
 			Box box, pic, label, title, note, bar, key;
@@ -763,6 +760,7 @@ namespace bp
 		constexpr int ALBUM_ART = 96, ALBUM_COL_GAP = COVER_GAP, ALBUM_ROW_GAP = SP12;
 		constexpr int ALBUM_TITLE_GAP = SP6, ALBUM_TITLE_H = 16, ALBUM_ARTIST_GAP = SP2, ALBUM_ARTIST_H = 14;
 		constexpr int ALBUM_CELL_H = ALBUM_ART + ALBUM_TITLE_GAP + ALBUM_TITLE_H + ALBUM_ARTIST_GAP + ALBUM_ARTIST_H;
+		static_assert(RECENT_W == ALBUM_ART && RECENT_H == ALBUM_CELL_H && RECENT_GAP == ALBUM_COL_GAP, "Home's Recent tile is an album tile");
 		constexpr int ALBUM_MARK = 22, ALBUM_MARK_INSET = SP8;
 		struct AlbumTile
 		{
@@ -867,6 +865,19 @@ namespace bp
 			int rows = 0, shown = 0, first = 0;
 		};
 		BooksShelf booksShelf(Box body, int readingNow, int shelfCount, int first = 0);
+		// Books as two tabs (the owner, 2026-11-21): "Reading now" and "Shelf", each label with its count, in a strip at
+		// the top of the inner body (lay::tabPage: L / R caps, SP8 under it), and the tab's grid of covers to the body's
+		// foot, five to a row, 14 apart. Reading now's cells carry the progress bar (COVER_CELL_H), the Shelf's the
+		// title only (SHELF_CELL_H). `progress`: the open tab is Reading now
+		enum BooksTab { BOOKS_READING = 0, BOOKS_SHELF = 1 };
+		struct BooksTabs
+		{
+			TabPage page;	// the strip and the grid's area (page.content)
+			int cols = 5, cellH = 0, pitch = 0;	// a cell's height, a row's (the cell and the gap)
+		};
+		BooksTabs booksTabs(Box body, const std::vector<int>& tabWidths, int capW, bool progress);
+		// the tab Books opens on: Reading now when a book is in progress, else the Shelf
+		inline BooksTab booksFirstTab(int readingNow) { return readingNow > 0 ? BOOKS_READING : BOOKS_SHELF; }
 
 		// ---- Search's page: the field, then a group's heading and its result rows, then Recent searches and
 		// their Clear row ----

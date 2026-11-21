@@ -26,6 +26,10 @@ namespace bp
 			static constexpr double FOLLOW_SPRING = 0.025;
 			// how far past an end a finger can pull: the band's give tends to this share of the view
 			static constexpr double BAND_REACH = 0.55;
+			// pull to refresh (a list that has it: setPull): the band pulled this far past the top, a lift refreshes;
+			// the list then rests that far down (REFRESH_ROW: the "Refreshing" row) until unhold()
+			static constexpr double PULL_REFRESH = 64;
+			static constexpr double REFRESH_ROW = 44;
 
 			// the content's height and the view's (a shorter content can't scroll; the offset is kept inside)
 			void setExtent(double content, double view);
@@ -36,10 +40,19 @@ namespace bp
 			bool press(double y, int64_t ms);
 			// a move: true once the finger has gone past TAP_SLOP (from then on, the content follows it)
 			bool move(double y, int64_t ms);
-			// the lift: a glide at the finger's last speed, or the spring back from past an end
-			void release(int64_t ms);
+			// the lift: a glide at the finger's last speed, or the spring back from past an end. true: it was a pull
+			// to refresh (pulled past PULL_REFRESH at the top of a list with setPull on): the list holds REFRESH_ROW
+			// down until unhold()
+			bool release(int64_t ms);
 			bool dragging() const { return mode == Mode::Drag; }
 			bool held() const { return fingerDown; }
+
+			// ---- pull to refresh ----
+			void setPull(bool on) { pullOn = on; }
+			double pulled() const { return off < 0 ? -off : 0; }	// how far the top shows past its end (the band)
+			bool armed() const { return pullOn && fingerDown && past && pulled() >= PULL_REFRESH; }	// a lift refreshes
+			bool holding() const { return holdTop > 0; }
+			void unhold(int64_t ms);	// the refresh's row goes: back to the top
 
 			// ---- keys ----
 			// keep [top, top + h) in view (the cursor's row): a short glide there, nothing when it already shows
@@ -67,6 +80,8 @@ namespace bp
 			double off = 0, v = 0;
 			// a drag: where the finger and the content were when it went down, and its recent samples
 			bool fingerDown = false, past = false;
+			bool pullOn = false;
+			double holdTop = 0;	// a refresh's rest: the offset's least is -holdTop
 			double downY = 0, downOff = 0;
 			struct Sample { double y; int64_t ms; };
 			std::vector<Sample> samples;
@@ -76,6 +91,7 @@ namespace bp
 
 			double band(double past) const;		// a finger `past` beyond an end: how far the content goes
 			double unband(double shown) const;	// the inverse: what pull shows that far
+			double minOffset() const { return -holdTop; }
 			double clampOff(double o) const;
 			void glide(double speed, int64_t ms);
 			void springTo(double to, double speed, double k, int64_t ms);

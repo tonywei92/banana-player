@@ -206,7 +206,7 @@ namespace bp
 		std::string str = s;
 		if (maxW > 0)
 		{
-			int limit = (int)(maxW * sx);
+			int limit = (int)std::lround(maxW * sx);	// (not cut down: maxW·sx of a width measured in units is the line's)
 			std::string k = std::to_string(size) + " " + std::to_string(limit) + "|" + s;
 			auto hit = elideCache.find(k);
 			if (hit != elideCache.end()) str = hit->second;

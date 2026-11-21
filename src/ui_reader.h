@@ -181,6 +181,7 @@ namespace bp
 			int synced = -1, cursorWas = -2;
 			bool wasMoving = false;
 			std::function<void()> scrolled;	// a finger's: the next page asked near the end (Manga's grids, chapters)
+			std::function<void(Player&)> refresh;	// pull to refresh (SmoothList::Spec::refresh; null: none)
 			void follow(Rect view, int rowH, int n, int cols, int& scroll, int* cursor);
 			bool sync(int& scroll);	// true: the first whole row changed
 		};

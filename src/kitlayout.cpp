@@ -853,19 +853,6 @@ namespace bp
 			return c;
 		}
 
-		RecentCard recentCard(Box box)
-		{
-			RecentCard r;
-			r.box = box;
-			// square, as Music's album art, centred over the card's width
-			r.pic = {box.x + (box.w - RECENT_PIC) / 2, box.y + 4, RECENT_PIC, RECENT_PIC};
-			int under = r.pic.y + r.pic.h + 5;
-			r.title = {box.x + 8, under, box.w - 16, 18};
-			r.note = {box.x + 8, under + 18, box.w - 16, 14};
-			r.line = {box.x + 6, box.y + box.h - 8, box.w - 12, 3};
-			return r;
-		}
-
 		ContinueCard continueCard(Box box)
 		{
 			ContinueCard c;
@@ -903,11 +890,11 @@ namespace bp
 				h.chips = filterChips(h.chipStrip, chipWidths);
 				y += CHIP_STRIP + SP8;
 			}
-			for (int i = 0; i < h.cards; i++) h.card[i] = {h.inner.x + i * (RECENT_W + GAP), y, RECENT_W, HOME_CARD_ROW_H};
+			for (int i = 0; i < h.cards; i++) h.card[i] = {h.inner.x + i * (RECENT_W + RECENT_GAP), y, RECENT_W, HOME_CARD_ROW_H};
 			if (more && h.cards > 0)
 			{
-				// the last cell of the row: the way to all of them, on the column's right edge
-				h.more = {h.inner.x + h.inner.w - HOME_SHORTCUT_H, y, HOME_SHORTCUT_H, HOME_CARD_ROW_H};
+				// the last cell of the row: the way to all of them, on the column's right edge, as tall as the pictures
+				h.more = {h.inner.x + h.inner.w - HOME_SHORTCUT_H, y, HOME_SHORTCUT_H, RECENT_W};
 			}
 			if (h.cards > 0 || more) y += HOME_CARD_ROW_H + SP8;
 			// the three shortcuts, unless the mini bar has taken the room (the row then ends above it)

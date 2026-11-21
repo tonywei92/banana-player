@@ -46,7 +46,10 @@ Open Banana Player and the bottom screen shows **Home**:
   the player). Held, the key takes it over from a browser that plays it. A
   video the Manga reader stopped says **Stopped for Manga** until it plays again or something else is played. With
   everything played through there is no Continue card and **Recent** moves to the top. The pictures on the Continue and
-  Recent cards are square (1:1), as Music's album art. A song's picture is its real
+  Recent cards are square (1:1), as Music's album art, and each Recent item is laid as an album tile is (the square
+  picture with its title and second line under it, the albums grid's sizes). A video's picture is its list thumbnail
+  (the middle of it), a book's its cover, once read; until then, and for a photo or a network file, the kind's mark.
+  A song's picture is its real
   album art: the picture in the file, else `cover.*`, `folder.*` or `front.*` beside it (its title is the title tag
   when it has one, not the file's name). A song without any keeps the drawn record. The card is Home's one place for
   what plays. Home's Recent and shortcuts stay where they are either way.
@@ -159,7 +162,7 @@ order — a music video sits among them with a **VIDEO** pill and plays as one i
 to the next song); the one playing shows its mark in the number's place, a liked one its heart, each its length.
 **A** on Play plays the album from its first song; **A** on a song plays from that song; **Y** anywhere plays it
 shuffled; **DOWN** steps from the keys into the songs. **X** is **More**: **Add to playlist…** (the album's songs into
-one of yours; New playlist… starts from the album's name), **Show in folder**, and on a song **Like / Unlike** too.
+one of yours; New playlist… starts from the album's name), **Show in Files**, and on a song **Like / Unlike** too.
 **B** is back to the grid.
 
 An artist's page: the same keys (everything of theirs, by album and track), then their albums newest first as a strip
@@ -173,8 +176,15 @@ follows the finger by the pixel, glides on after a flick and slows to a stop, gi
 springs back. A touch on a gliding list stops it there (and opens nothing); a finger that drifts less than 8 units is a
 tap. The **D-pad**'s cursor is kept in view by a short glide (held, it follows). A row half out of the list is cut at
 its edge. A finger anywhere on a list's rows (or the room under the last) drags it; a tap opens the row it went down
-on, as before. The Books shelf scrolls under the Reading now strip, which stays put. A connection's form, Home and the
+on, as before. Books' two tabs each scroll under their tab strip. A connection's form, Home and the
 lists not named here still scroll by whole rows.
+
+**Pull to refresh**: on Music's lists, Videos, Books, Files and a connection's folders, Manga's Library and On this
+handheld, and the Sources lists, a finger that pulls the top of the list down shows **Pull to refresh**, then, pulled
+far enough, **Release to refresh**; let go there and the list is read again (Music, Videos and Books: the cards'
+library walked again; Files: the folder read again, as More's Refresh; Manga: its folders read again, Sources: the
+repositories asked again, as Y). A **Refreshing…** row shows over the top for a moment. A shorter pull springs back
+and does nothing.
 
 With no Music folder on either card (or none with a song in it) the page says so — **No music here yet**, the folder's
 name in the accent, **Browse Files** (A) and **Web dashboard** (Y) — and **L/R** still reaches Playlists. While a
@@ -206,7 +216,8 @@ The films on the cards in one list, without walking folders: filled by itself fr
 
 **A** plays from the place you left it, with the view's videos as the list (Next goes to the next row; a folder's
 list is the folder's). **X** is **More**: **Play from the start**, **Add to playlist…**, **Like / Unlike**, **Show in
-folder**, **Info**, then the file's own rows — **Copy…**, **Move…**, **Rename…** and **Delete** (it asks first; what
+Files** (Files at its folder with the cursor on it, to rename, move or delete it there; **B** in that folder comes
+back here; Music's and Books' More have it too), **Info**, then the file's own rows — **Copy…**, **Move…**, **Rename…** and **Delete** (it asks first; what
 plays can't be moved, renamed or deleted until it's stopped) — and **Sort**, stepped in place: by **Name** (the
 usual), **Newest first** or **Biggest first** (Not finished always keeps its own newest-first). A delete, a rename
 or a move done, the index walks the cards again, so the list is true again a moment later. **◀/▶** page the list,
@@ -228,16 +239,17 @@ Recent; and a video inside a Music folder belongs to Music.
 ## The Books section
 
 A shelf of the book files on the cards — EPUB, PDF and comics (CBZ, CBR); not TXT, which Files opens in the text
-viewer — with the ones you are reading first. **Reading now** is the newest five with a place kept, each cover with how far in; **Shelf** under it is every
-book, five across, by name. **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
+viewer — in two tabs, each label with its count: **Reading now** is every book with a place kept, newest first, each
+cover with how far in; **Shelf** is every book, by name. Both are five across. **L** / **R** (or a tap on a tab) switch
+them; Books opens on Reading now while a book is in progress, else on the Shelf (back from a reader, on the tab you left). **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
 comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
 
 The shelf is filled from two places: the books you have opened from anywhere (their places are the readers' own), and
 the folders named **Books**, **Ebook** or **Ebooks** (any capitals; not Documents, whose PDFs are opened from Files) at the top of each card. Every cover is decoded — an
 EPUB's own, a PDF's first page, a comic's first page — on the cover worker (the drawn sleeve, keyed by the name,
 stands in until the answer, and for good for a TXT, which has no picture of its own). **X** is
-**More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in folder**. **◀/▶** page the
-shelf; **B** does nothing (it is the section's home). With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
+**More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in Files**. **◀/▶** move along the
+covers; **B** does nothing (it is the section's home). With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
 Files still lists and opens every book, and Recent keeps its Books filter; comics still need the Manga reader turned
 on, and say so when it isn't.
 

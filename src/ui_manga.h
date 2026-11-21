@@ -694,6 +694,7 @@ namespace bp
 		void mangaSourcesModalAct(Player& p);
 		void mangaSourcesCloseModal();
 		void mangaSourcesAct(Player& p);				// A (or a tap) on the tab's cursor's row
+		void mangaSourcesRefresh(Player& p);			// Y (or the list pulled down): the repositories asked again
 		void mangaSourcesInstall(const std::string& fullId, const std::string& repo, const std::string& id,
 			const std::string& name, Player& p);
 		void mangaSourcesUpdate(const std::string& fullId, const std::string& repo, const std::string& id,
