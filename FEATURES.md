@@ -1169,8 +1169,21 @@ asks which to keep (the furthest first; the other becomes the bookmark "Other pl
 **Open on handheld** (⋯) opens the book there at the browser's place and the page follows it (**Read here
 instead**). On the handheld, a browser's place in the book it has open is the first row of Contents (**Y**: "Where
 Safari on iPhone is · 11%"; a PDF's or comic's options), with no note over the page. An open reader doesn't keep the
-handheld awake: only its requests count as use. Not yet: Scroll mode, zoom and two-page spreads for pages, upload
-ghosts.
+handheld awake: only its requests count as use.
+The **Text** sheet also has **Spacing** (Tight / Normal / Loose), **Margins** (Narrow / Normal / Wide) and **Layout**:
+**Pages** or **Scroll** (one long column; the next part follows as the end nears, **Previous part** over the first;
+the place is the block at the top). A comic or PDF has **View** (the top bar, or ⋯): **Pages** One / Two / Strip
+(`1` `2` `S`; Two, the default, only in a landscape window 1000 px wide or more: the cover alone unless **Cover ·
+Paired**, a wide page alone, the place kept is the first of the pair; Strip: one long scroll), **Fit** Page / Width /
+Height / 100% (`W` `H` `0`), **Reads** left to right or right to left (this browser's, per book). Zoom to 4×: pinch,
+Ctrl+wheel, `+` `−`, a double tap (to the width and back); a zoomed page drags or scrolls, and a swipe turns only at
+its edge. **Pages** (`G`, the grid key) shows every page small, the one read marked; a tap goes there. On a computer
+(1100 px and wider) the bars stay, with ‹ Books, the title (a comic's pages and direction), the keys (a text:
+Bookmark this page `D`, Text `T`, Contents `C`; pages: View, Pages) and **Open on handheld**; in full screen they hide
+until the pointer moves. A text's **Contents** and **Bookmarks** are pinned at the side from 1200 px (`C` shows or
+hides it). **Home** lists books too (a **Books** filter): its Continue card for a book asks **Read here** (at its
+place) or **Open on handheld**, and a book's card or row reads it here (a network book opens on the handheld). Not
+yet: upload ghosts and the card choice beside Upload.
 
 **Playing** controls the music or video. Where it plays is a two-part switch at the top (**Handheld** · **This
 browser**), and in the player bar a button that opens the same choice, saying what happens (for example "pauses the
