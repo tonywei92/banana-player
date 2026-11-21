@@ -1712,7 +1712,7 @@ namespace bp
 		// the Download sheet takes the keys while it shows
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetKey(b, p);
 		if (b == Button::Start) { openMangaSettings(); return false; }
-		// R gets the chapters, L checks the source again (free on this page: L / R are the shell's sections)
+		// R gets the chapters, L checks the source again as a pull on the chapters does (free on this page: L / R are the shell's sections)
 		if (b == Button::R) { mangaDlSheetOpen(p); return false; }
 		if (b == Button::L) { mangaSourceSeriesRefresh(p); return false; }
 		if (b == Button::B)
@@ -1730,7 +1730,7 @@ namespace bp
 		// the button row (cursor -1): LEFT/RIGHT go along it, A presses the one lit
 		if (mserCursor < 0 && (b == Button::Left || b == Button::Right))
 		{
-			mserBtn = std::clamp(mserBtn + (b == Button::Right ? 1 : -1), 0, 4);
+			mserBtn = std::clamp(mserBtn + (b == Button::Right ? 1 : -1), 0, MG_SRC_KEYS - 1);
 			return false;
 		}
 		if (b == Button::A)
@@ -1739,9 +1739,8 @@ namespace bp
 			else if (mserCursor < 0)
 			{
 				if (mserBtn == 1) mangaDlSheetOpen(p);
-				else if (mserBtn == 2) mangaSourceSeriesRefresh(p);
-				else if (mserBtn == 3) mangaSrcInfoOpen();
-				else if (mserBtn == 4) mangaSourceSeriesInLibrary(p);
+				else if (mserBtn == 2) mangaSrcInfoOpen();
+				else if (mserBtn == 3) mangaSourceSeriesInLibrary(p);
 				else mangaSourceSeriesResume(p);
 			}
 			else mangaSourceSeriesChoose(mserCursor, p);
@@ -1788,11 +1787,6 @@ namespace bp
 		if (mangaDlButtonRect().hit(x, y))
 		{
 			mangaDlSheetOpen(p);
-			return false;
-		}
-		if (mangaSrcRefreshRect().hit(x, y))
-		{
-			mangaSourceSeriesRefresh(p);
 			return false;
 		}
 		if (mangaSrcResumeRect().hit(x, y))
@@ -1907,17 +1901,16 @@ namespace bp
 		}
 		tabCrumb = crumb + (line.empty() ? "" : " \xC2\xB7 " + line);
 		MangaResumePoint resume = mserSumResume;
-		// one row of keys (screens.js seriesB): Resume (A), Get (R), Check (L), Info, the heart. The row is one stop
-		// for UP/DOWN; LEFT/RIGHT light each key in turn (mserBtn)
+		// one row of keys (screens.js seriesB, less its Check: that is a pull on the chapters, and L): Resume (A),
+		// Get (R), Info, the heart. The row is one stop for UP/DOWN; LEFT/RIGHT light each key in turn (mserBtn)
 		Kit& k = *ui.kit;
 		bool onRow = mserCursor < 0;
 		bool engineWait = !mangaSourceEngineReady() && !mangaJavaCheckPending;	// (Resume is what starts it)
 		bool inLib = mangaSourceSeriesInLib();
 		struct K { const Glyph* g; const char* label; const char* cap; bool off, lit; };
-		const K keys[5] = {{&G_PLAY, "Resume", "A", n == 0 || engineWait, false}, {&G_DOWNLOAD, "Get", "R", n == 0, false},
-			{&G_REFRESH, mangaSrcRefreshing ? "Checking" : "Check", "L", mangaSrcRefreshing, false}, {&G_INFO, "", "", false, false},
-			{inLib ? &G_HEART : &G_HEART_O, "", "", false, inLib}};
-		for (int i = 0; i < 5; i++)
+		const K keys[MG_SRC_KEYS] = {{&G_PLAY, "Resume", "A", n == 0 || engineWait, false}, {&G_DOWNLOAD, "Get", "R", n == 0, false},
+			{&G_INFO, "", "", false, false}, {inLib ? &G_HEART : &G_HEART_O, "", "", false, inLib}};
+		for (int i = 0; i < MG_SRC_KEYS; i++)
 		{
 			Kit::Key kk;
 			kk.glyph = keys[i].g;
@@ -1927,7 +1920,7 @@ namespace bp
 			kk.lit = keys[i].lit;
 			kk.tone = i == 0 ? Kit::Tone::Primary : Kit::Tone::Normal;
 			kk.focused = onRow && mserBtn == i;
-			kk.pressed = (i == 0 && mangaPressed == MG_RESUME) || (i == 4 && mangaPressed == MG_HEART);
+			kk.pressed = (i == 0 && mangaPressed == MG_RESUME) || (i == MG_SRC_KEYS - 1 && mangaPressed == MG_HEART);
 			k.key(mangaSrcBtn(i), kk);
 		}
 		if (n == 0)
@@ -1948,7 +1941,12 @@ namespace bp
 			return;
 		}
 		if (mserCursor >= n) mserCursor = n - 1;
-		// the chapters, each carrying its own state: read, Resume's, the page, its download (Queued, 12 / 40, On card)
+		// the chapters, each carrying its own state: read, Resume's, the page, its download (Queued, 12 / 40, On card).
+		// Pulled down past the top, the source is asked for new chapters (what L does)
+		mlChapters.refresh = [this](Player& pl) {
+			fprintf(stderr, "manga: the chapters pulled down: checking the source for new ones\n");
+			mangaSourceSeriesRefresh(pl);
+		};
 		mangaRows(mlChapters, p, n, mserScroll, mserCursor, [this, rc = resume.chapter](int i) {
 			const MangaChapter& c = mangaSrcChapters[i];
 			MangaRow m = mangaChapterRow(chapterName(c), sourceItemId(mangaSrcId, c.key), i == rc, -1);
@@ -1970,8 +1968,8 @@ namespace bp
 		});
 		if (mserCursor < 0)
 		{
-			static const char* ROW[5] = {"Resume", "Get", "Check", "Info", "Library"};
-			ui.drawHints({{"A", ROW[std::clamp(mserBtn, 0, 4)]}, {"LEFT/RIGHT", "Keys"}, {"DOWN", "Chapters"}, {"B", "Back"}});
+			static const char* ROW[MG_SRC_KEYS] = {"Resume", "Get", "Info", "Library"};
+			ui.drawHints({{"A", ROW[std::clamp(mserBtn, 0, MG_SRC_KEYS - 1)]}, {"LEFT/RIGHT", "Keys"}, {"DOWN", "Chapters"}, {"B", "Back"}});
 		}
 		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) ui.drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R", "Get"}, {"L", "Check"}, {"B", "Back"}});

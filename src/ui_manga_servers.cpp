@@ -910,6 +910,7 @@ namespace bp
 			return;
 		}
 		if (mserCursor >= n) mserCursor = n - 1;
+		mlChapters.refresh = nullptr;	// (the list is shared with the other series pages: a server's has no pull)
 		mangaRows(mlChapters, p, n, mserScroll, mserCursor, [this, rc = resume.chapter](int i) {
 			const RemoteChapter& c = mangaSrvChapters[i];
 			return mangaChapterRow(chapterLabel(c), serverItemId(mangaSrvId, c.key), i == rc, c.pages);

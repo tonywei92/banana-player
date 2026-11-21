@@ -644,7 +644,7 @@ namespace bp
 			if (i < 0 || i >= (int)mangaNetChapters.size()) return m;
 			const NetMangaChapter& c = mangaNetChapters[i];
 			const ChapterProgress* pr = mangaStore ? mangaStore->progress(c.path) : nullptr;
-			m.glyph = c.archive ? &G_COMIC : &G_PICTURE;
+			m.dot = true;	// (a chapter's row as the other series pages draw it: no icon)
 			m.name = c.title.empty() ? "Chapter" : c.title;
 			if (pr && pr->read) { m.note = "Read"; m.off = true; }
 			else if (pr && (pr->pages > 0 || pr->page > 0))

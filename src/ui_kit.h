@@ -198,6 +198,9 @@ namespace bp
 			bool tick = false, tickOn = false;	// a select box in the first slot (a playlist's select mode)
 			bool radio = false;	// a choice's mark in the icon's place (View's tracks, sizes and speeds)
 			bool radioOn = false;	// the one in use: G_RADIO_ON in yellow
+			// a chapter's row (screens.js seriesB): no icon, an 8-unit slot before the name, a yellow dot in it on
+			// the chapter Resume opens
+			bool dot = false, dotOn = false;
 			bool heart = false;	// a small heart before the note (an item of a playlist that is liked)
 			std::string name, note, key, pill;
 			Pill tone = Pill::Live;

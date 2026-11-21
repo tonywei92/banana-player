@@ -2276,7 +2276,8 @@ namespace bp
 		spec.key = [rowAt, cursor](int i) {
 			const MangaRow& m = rowAt(i);
 			char b[96];
-			snprintf(b, sizeof b, "|%p|%d%d%d%d%d|%.3f|", (const void*)m.glyph, m.off, m.pillBad, m.barBad, m.pillLive, i == cursor, m.bar);
+			snprintf(b, sizeof b, "|%p|%d%d%d%d%d%d%d|%.3f|", (const void*)m.glyph, m.off, m.pillBad, m.barBad, m.pillLive, i == cursor,
+				m.dot, m.dotOn, m.bar);
 			return m.name + "|" + m.second + "|" + m.note + "|" + m.pill + "|" + m.keyLabel + "|" + m.keyCap + b;
 		};
 		spec.draw = [this, rowAt, cursor](int i, Rect box) {
@@ -2288,6 +2289,8 @@ namespace bp
 			Kit::Row row;
 			row.under = BG;
 			row.glyph = m.glyph;
+			row.dot = m.dot;
+			row.dotOn = m.dotOn;
 			row.name = m.name;
 			row.second = m.second;
 			// (the focused row's key takes the right end: its note and pill would sit under it)
@@ -2888,7 +2891,8 @@ namespace bp
 			marks.push_back(m);
 		}
 		MangaResumePoint resume = mangaResume(marks);
-		// one row of keys (screens.js manga-series): Resume (A) and the heart (Y)
+		// one row of keys (screens.js manga-series): Resume (A) and the heart (Y, said in the hints: the key is the
+		// spec's 64, its picture alone)
 		Kit& k = *ui.kit;
 		Kit::Key rk;
 		rk.glyph = &G_PLAY;
@@ -2902,29 +2906,30 @@ namespace bp
 		bool inLib = ms && ms->inLibrary;
 		Kit::Key hk;
 		hk.glyph = inLib ? &G_HEART : &G_HEART_O;
-		hk.key = "Y";
 		hk.lit = inLib;
 		hk.pressed = mangaPressed == MG_HEART;
 		k.key(mangaHeartRect(), hk);
 		if (n == 0) { ui.drawHints({{"B", "Back"}}); return; }
 		if (mserCursor >= n) mserCursor = n - 1;
+		mlChapters.refresh = [this](Player&) { mangaScan(); };	// pull to refresh: the Manga folders read again
 		mangaRows(mlChapters, p, n, mserScroll, mserCursor, [this, s, rc = resume.chapter](int i) { return mangaChapterRow(s->chapters[i].title, s->chapters[i].path, i == rc, -1); });
 		ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"Y", "In library"}, {"B", "Back"}});
 	}
 
 	Ui::Manga::MangaRow Ui::Manga::mangaChapterRow(const std::string& title, const std::string& progressId, bool resume, int pages) const
 	{
-		// a chapter's row: read ones dimmed and ticked, the one Resume opens marked, the page you were on
+		// a chapter's row (screens.js seriesB): no icon; a dot on the one Resume opens, read ones dimmed and saying
+		// so, the page you were on
 		MangaRow m;
 		const ChapterProgress* pr = mangaStore ? mangaStore->progress(progressId) : nullptr;
 		bool read = pr && pr->read;
-		m.glyph = read ? &G_CHECK : resume ? &G_PLAY : &G_PAGE;
+		m.dot = true;
+		m.dotOn = resume && !read;
 		m.name = title;
 		m.off = read;
 		if (read) m.note = "Read";
 		else if (pr && (pr->pages > 0 || pr->page > 0)) m.note = chapterPageLine(pr->page, pr->pages);
 		else if (pages > 0) m.note = std::to_string(pages) + " pages";
-		if (resume && !read) m.pill = "Resume", m.pillLive = true;
 		return m;
 	}
 
