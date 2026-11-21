@@ -1152,6 +1152,7 @@ namespace bp
 				return t;
 			};
 			SmoothList::Spec spec;
+			spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
@@ -1249,6 +1250,7 @@ namespace bp
 				return m;
 			};
 			SmoothList::Spec spec;
+			spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
@@ -1353,6 +1355,7 @@ namespace bp
 				return m;
 			};
 			SmoothList::Spec spec;
+			spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
@@ -1390,6 +1393,7 @@ namespace bp
 				return cell;
 			};
 			SmoothList::Spec spec;
+			spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 			spec.view = g.view;
 			spec.rowH = g.rowH;
 			spec.count = g.count;
@@ -1428,6 +1432,7 @@ namespace bp
 			return row;
 		};
 		SmoothList::Spec spec;
+		spec.refresh = [this](Player&) { ui.rescanLibrary(); };	// pull to refresh: the index walked again
 		spec.view = g.view;
 		spec.rowH = g.rowH;
 		spec.count = g.count;

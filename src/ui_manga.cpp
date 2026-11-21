@@ -2270,6 +2270,7 @@ namespace bp
 			return it->second;
 		};
 		SmoothList::Spec spec;
+		spec.refresh = m.refresh;
 		spec.view = area;
 		spec.rowH = pitch;
 		spec.count = n;
@@ -2454,6 +2455,7 @@ namespace bp
 			return it->second;
 		};
 		SmoothList::Spec spec;
+		spec.refresh = m.refresh;
 		spec.view = view;
 		spec.rowH = pitch;
 		spec.count = g0.rows;
@@ -2537,6 +2539,7 @@ namespace bp
 		if (mlibGrid >= n) mlibGrid = n - 1;
 		// the cover grid (screens.js manga: mcell): five across, the unread count a pill at a cover's top right, the
 		// focused one ringed; a row of covers a row of the smooth list
+		mlLib.refresh = [this](Player&) { mangaScan(); };	// pull to refresh: the Manga folders read again
 		drawMangaGrid(mlLib, mangaTabPage(p).content, n, mlibScroll, mlibGrid, [this](int i) {
 			GridCell c;
 			const std::string id = mangaLib[i].id;
@@ -2815,6 +2818,7 @@ namespace bp
 			if (mListCursor >= n) mListCursor = n - 1;
 			// the card's series as the kit's rows: their kind, their name, how many chapters
 			tabCrumb = "On this handheld \xC2\xB7 " + mangaLocalFolder();
+			mlLocal.refresh = [this](Player&) { mangaScan(); };
 			mangaRows(mlLocal, p, n, mListScroll, mListCursor, [this](int i) { return mangaLocalRowAt(i); });
 			// while the card is read the header says so (the list may still change); its keys work meanwhile
 			if (mangaScanning) tabCrumb = mangaReadingLine();

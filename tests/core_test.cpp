@@ -3454,6 +3454,67 @@ static void testScroller()
 		s.release(32);
 		CHECK_EQ(s.moving(), false);
 	}
+	// pull to refresh: only a list with it, only past the top, only beyond PULL_REFRESH; the lift then rests the
+	// refresh's row (REFRESH_ROW) over the top until unhold(); a short pull springs back and refreshes nothing
+	{
+		Scroller s = fresh();
+		s.setPull(true);
+		s.press(100, 0);
+		s.move(110, 10);
+		s.move(160, 40);	// 50 of finger: the band shows less than that
+		CHECK_EQ(s.pulled() > 0, true);
+		CHECK_EQ(s.pulled() < Scroller::PULL_REFRESH, true);
+		CHECK_EQ(s.armed(), false);
+		CHECK_EQ(s.release(200), false);
+		for (int t = 200; t < 2000 && s.step(t); t += 16) {}
+		CHECK_EQ(s.offset(), 0.0);
+		CHECK_EQ(s.holding(), false);
+	}
+	{
+		Scroller s = fresh();
+		s.setPull(true);
+		s.press(100, 0);
+		s.move(110, 10);
+		s.move(330, 300);	// far down: past the threshold
+		CHECK_EQ(s.pulled() >= Scroller::PULL_REFRESH, true);
+		CHECK_EQ(s.armed(), true);
+		CHECK_EQ(s.release(1000), true);
+		CHECK_EQ(s.holding(), true);
+		for (int t = 1000; t < 3000 && s.step(t); t += 16) {}
+		CHECK_EQ(std::fabs(s.offset() + Scroller::REFRESH_ROW) < 0.5, true);	// resting with the row showing
+		s.setExtent(3000, 300);	// (a draw meanwhile keeps it there)
+		CHECK_EQ(std::fabs(s.offset() + Scroller::REFRESH_ROW) < 0.5, true);
+		s.unhold(3000);
+		for (int t = 3000; t < 5000 && s.step(t); t += 16) {}
+		CHECK_EQ(s.offset(), 0.0);
+		CHECK_EQ(s.holding(), false);
+	}
+	{
+		// the same pull on a list without it, or from the bottom end: no refresh
+		Scroller s = fresh();
+		s.press(100, 0);
+		s.move(110, 10);
+		s.move(330, 300);
+		CHECK_EQ(s.armed(), false);
+		CHECK_EQ(s.release(1000), false);
+		Scroller e = fresh();
+		e.setPull(true);
+		e.jump(2700);
+		e.press(330, 0);
+		e.move(320, 10);
+		e.move(100, 300);	// past the end, upward
+		CHECK_EQ(e.armed(), false);
+		CHECK_EQ(e.release(1000), false);
+		// a list in the middle pulled down only as far as its top: not past it, no refresh
+		Scroller m = fresh();
+		m.setPull(true);
+		m.jump(300);
+		m.press(100, 0);
+		m.move(110, 10);
+		m.move(400, 300);	// 290 down from 300: still 10 short of the top
+		CHECK_EQ(m.armed(), false);
+		CHECK_EQ(m.release(1000), false);
+	}
 	// a drag follows the finger unit for unit (fractions kept), from where it passed the slop: no jump
 	{
 		Scroller s = fresh();

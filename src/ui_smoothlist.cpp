@@ -24,6 +24,7 @@ namespace bp
 	{
 		const uint64_t t0 = SDL_GetPerformanceCounter();
 		last = std::move(spec);
+		sc.setPull((bool)last.refresh);
 		sc.setExtent((double)last.count * last.rowH, last.view.h);
 		frame++;
 		const int rowH = std::max(1, last.rowH);
@@ -32,6 +33,7 @@ namespace bp
 		if (!SDL_RenderTargetSupported(ui.ren) || !last.draw)
 		{
 			drawDirect(first, end);
+			drawPullRow();
 			ui.parts.list += msSince(t0);
 			return;
 		}
@@ -60,6 +62,7 @@ namespace bp
 		{
 			// (a slot couldn't be made: every row drawn where it is, as without targets)
 			drawDirect(first, end);
+			drawPullRow();
 			ui.parts.list += msSince(t0);
 			return;
 		}
@@ -73,7 +76,28 @@ namespace bp
 			SDL_RenderCopy(ui.ren, s->tex, nullptr, &d);
 		}
 		SDL_RenderSetClipRect(ui.ren, nullptr);
+		drawPullRow();
 		ui.parts.list += msSince(t0);
+	}
+
+	void Ui::SmoothList::drawPullRow()
+	{
+		// the room the band opened over the first row: the row's words sit at its foot, just over the list
+		const double pulled = sc.pulled();
+		if (!last.refresh || pulled < 1) return;
+		Rect room{last.view.x, last.view.y, last.view.w, (int)std::ceil(pulled)};
+		SDL_Rect clip = ui.devRect(room);
+		SDL_RenderSetClipRect(ui.ren, &clip);
+		const bool held = sc.holding() && !sc.held();
+		const char* words = held ? "Refreshing\xE2\x80\xA6" : sc.armed() ? "Release to refresh" : "Pull to refresh";
+		const Glyph& g = held || sc.armed() ? G_REFRESH : G_DOWN;
+		int cy = last.view.y + (int)std::lround(pulled) - (int)lay::Scroller::REFRESH_ROW / 2;
+		int tw = (int)std::lround(ui.textWidth(words, F_I14) / sx), gw = ui.glyphW(g, 1);
+		int x = last.view.x + (last.view.w - gw - 8 - tw) / 2;
+		SDL_Color ink = sc.armed() || held ? ACCENT : DIM;
+		ui.drawGlyphMid(g, x + gw / 2, cy, ink, 1);
+		ui.drawTextMid(words, F_I14, ink, x + gw + 8, cy);
+		SDL_RenderSetClipRect(ui.ren, nullptr);
 	}
 
 	Ui::SmoothList::Slot* Ui::SmoothList::slotFor(int i, int first, int end)
@@ -162,7 +186,14 @@ namespace bp
 
 	void Ui::SmoothList::lift()
 	{
-		sc.release(ui.touchMs);
+		if (sc.release(ui.touchMs))
+		{
+			// a pull to refresh: the list's own (a copy: it may draw the list anew), its row held a moment
+			holdUntil = std::max<uint32_t>(1, SDL_GetTicks() + REFRESH_HOLD_MS);
+			fprintf(stderr, "smooth list: pulled to refresh\n");
+			auto refresh = last.refresh;
+			if (refresh && ui.mainPlayer) refresh(*ui.mainPlayer);
+		}
 		if (!sc.moving()) endMotion();	// (let go still: no glide follows)
 	}
 
@@ -198,6 +229,11 @@ namespace bp
 
 	void Ui::SmoothList::step(uint32_t ms)
 	{
+		if (holdUntil && ms >= holdUntil)
+		{
+			holdUntil = 0;
+			sc.unhold(ms);
+		}
 		bool was = sc.moving();
 		sc.step(ms);
 		if (was && !sc.moving() && !sc.dragging()) endMotion();

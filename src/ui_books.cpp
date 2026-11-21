@@ -402,6 +402,11 @@ namespace bp
 		// size is its device size, which at the handheld's 1.6x depends on where its box starts)
 		ListGeom g = listGeom();
 		SmoothList::Spec spec;
+		// pull to refresh: the Books folders read again (and the index walked, as Music's and Videos')
+		spec.refresh = [this](Player&) {
+			build();
+			ui.rescanLibrary();
+		};
 		spec.view = g.view;
 		spec.rowH = g.rowH;
 		spec.count = g.count;

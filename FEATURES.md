@@ -179,6 +179,13 @@ its edge. A finger anywhere on a list's rows (or the room under the last) drags 
 on, as before. Books' two tabs each scroll under their tab strip. A connection's form, Home and the
 lists not named here still scroll by whole rows.
 
+**Pull to refresh**: on Music's lists, Videos, Books, Files and a connection's folders, Manga's Library and On this
+handheld, and the Sources lists, a finger that pulls the top of the list down shows **Pull to refresh**, then, pulled
+far enough, **Release to refresh**; let go there and the list is read again (Music, Videos and Books: the cards'
+library walked again; Files: the folder read again, as More's Refresh; Manga: its folders read again, Sources: the
+repositories asked again, as Y). A **Refreshing…** row shows over the top for a moment. A shorter pull springs back
+and does nothing.
+
 With no Music folder on either card (or none with a song in it) the page says so — **No music here yet**, the folder's
 name in the accent, **Browse Files** (A) and **Web dashboard** (Y) — and **L/R** still reaches Playlists. While a
 card is read the first time a notice row under the chips says the albums fill in as it goes, and the page shows them

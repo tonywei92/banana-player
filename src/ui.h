@@ -1021,6 +1021,8 @@ namespace bp
 		// a file op changed what the cards hold (a delete, a rename or a move finished): main walks the index
 		// again, as it does when a card is swapped, so Music, Videos and Search keep true
 		int filesSerial() const { return filesChanged; }
+		// a library list pulled to refresh (Music, Videos, Books): the index walked again, as after a file op
+		void rescanLibrary() { filesChanged++; }
 		const std::vector<BrowseRoot>& places() const { return roots; }
 		// main's lid-shut keys (docs/redesign/lid-and-incognito.md): the chapter before / after, on what plays
 		void chapterStepForLid(int dir, Player& p) { chapterStep(dir, p); }
