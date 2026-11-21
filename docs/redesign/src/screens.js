@@ -1573,11 +1573,7 @@ const NEWS9=[
 SCREENS.splice(SCREENS.findIndex(x=>x.id=='manga'),0,...NEWS9);
 const ALSO={
 'ext-section':[['While a video plays','ext-section-video'],['With no extension on','ext-section-empty']],
-<<<<<<< HEAD
-files:[['A storage on the top screen','files-place-top'],['Into a folder of songs','files-music'],['A card is taken out','card-out'],['A browser signs in to the Web dashboard','web-signin']],
-=======
-files:[['The places, with their room','files-places'],['Into a folder of songs','files-music'],['A card is taken out','card-out'],['A browser signs in to the Web dashboard','web-signin']],
->>>>>>> parent of 55eb15c (docs/redesign: the spec from redesign-preview)
+files:[['The places, with their room','files-places'],['A storage on the top screen','files-place-top'],['Into a folder of songs','files-music'],['A card is taken out','card-out'],['A browser signs in to the Web dashboard','web-signin']],
 books:[['No books on the cards','books-empty']],
 reader:[['The Light key, with Extra dim and a filter on','reader-dim']],
 music:[['A song with a long title','long-title']],
