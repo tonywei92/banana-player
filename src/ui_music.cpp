@@ -37,6 +37,18 @@ namespace bp
 		const char* EMPTY_MUSIC_LINE = "Put your music in a folder named Music on either card. "
 			"Albums and artists are made from the songs' tags.";
 
+		std::string folderName(const std::string& path)
+		{
+			size_t at = path.rfind('/');
+			return at == std::string::npos ? path : path.substr(at + 1);
+		}
+
+		// an empty folder's sentence: where songs can come from, the folder named
+		std::string emptyFolderLine(const std::string& folder)
+		{
+			return "Add songs to " + folderName(folder) + " from a phone or computer with the web dashboard.";
+		}
+
 		// a track's length: the index read it with the tags, else the durations cache, else blank
 		std::string songLength(const MediaSnapshot& snap, const MediaSong& s)
 		{
@@ -115,6 +127,12 @@ namespace bp
 		// one Music folder: no list of one to step through, its inside is the view's top
 		if (folderAt.empty() && snap.musicFolders.size() == 1) return snap.musicFolders.front();
 		return folderAt;
+	}
+
+	bool Ui::Music::folderEmpty(const MediaSnapshot& snap) const
+	{
+		// a folder (not the list of Music folders) with no folder or song in it: the page says so, as the empty library does
+		return view == V_FOLDERS && albumAt < 0 && artistAt < 0 && !folderShown(snap).empty() && folderRows()->empty();
 	}
 
 	std::shared_ptr<const std::vector<Ui::Music::FolderRow>> Ui::Music::folderRows() const
@@ -482,6 +500,8 @@ namespace bp
 	{
 		if (albumAt >= 0) return {{"A", "Play"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Keys, songs"}, {"X", "More"}, {"B", "Albums"}};
 		if (artistAt >= 0) return {{"A", "Play / open"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Albums, songs"}, {"X", "More"}, {"B", "Artists"}};
+		if (snapshot() && folderEmpty(*snapshot()))
+			return {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"L/R", "View"}, {"B", "Up"}};
 		if (view == V_FOLDERS)
 			return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", folderAt.empty() ? "Home" : "Up"}};
 		// the views (the mock-up's music-albums and music-artists)
@@ -704,6 +724,17 @@ namespace bp
 			}
 			return false;
 		}
+		if (folderEmpty(*snap))
+		{
+			switch (b)
+			{
+			case Button::A: ui.page = Page::Browse; ui.browse->enterFolder(folderShown(*snap), p); break;
+			case Button::Y: ui.openWeb(); break;
+			case Button::B: if (!folderUp()) { ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); } break;
+			default: break;
+			}
+			return false;
+		}
 		if (b == Button::X) { openMoreSheet(p); return false; }
 		// ---- an album's page ----
 		if (albumAt >= 0 && albumAt < (int)snap->albums.size())
@@ -875,6 +906,7 @@ namespace bp
 		Rect inner = musicInner();
 		bool reading = !snap || generation() == 0;
 		bool empty = !reading && snap->songs.empty();
+		bool emptyDir = !reading && !empty && folderEmpty(*snap);
 		const float fy = pt.y * Ui::H;	// (by the fraction: the list follows the panel's pixels, not whole units)
 		if (pt.kind != Pointer::Down)
 		{
@@ -899,9 +931,10 @@ namespace bp
 			{
 			case T_EMPTY1:
 				if (empty && emptyKey[0].hit(x, y)) { ui.page = Page::Browse; ui.browse->openSection(TAB_LOCAL, p); }
+				else if (emptyDir && emptyKey[0].hit(x, y)) { ui.page = Page::Browse; ui.browse->enterFolder(folderShown(*snap), p); }
 				return false;
 			case T_EMPTY2:
-				if (empty && emptyKey[1].hit(x, y)) ui.openWeb();
+				if ((empty || emptyDir) && emptyKey[1].hit(x, y)) ui.openWeb();
 				return false;
 			default: break;
 			}
@@ -981,6 +1014,16 @@ namespace bp
 		if (empty)
 		{
 			std::vector<std::string> lines = ui.wrapText(EMPTY_MUSIC_LINE, F_I14, 400, 99);
+			lay::EmptyState e = lay::emptyState(inner, (int)lines.size(), 2);
+			emptyKey[0] = e.key[0];
+			emptyKey[1] = e.key[1];
+			if (e.key[0].hit(x, y)) touch = T_EMPTY1;
+			else if (e.key[1].hit(x, y)) touch = T_EMPTY2;
+			return false;
+		}
+		if (emptyDir)
+		{
+			std::vector<std::string> lines = ui.wrapText(emptyFolderLine(folderShown(*snap)), F_I14, 400, 99);
 			lay::EmptyState e = lay::emptyState(inner, (int)lines.size(), 2);
 			emptyKey[0] = e.key[0];
 			emptyKey[1] = e.key[1];
@@ -1236,6 +1279,27 @@ namespace bp
 			v.title = "No music here yet";
 			v.lines = lines;
 			accentFirst(v, lines, "Music");
+			v.key1 = "Browse Files";
+			v.glyph1 = &G_FOLDER;
+			v.key2 = "Web dashboard";
+			v.glyph2 = &G_QR;
+			v.pressed1 = touch == T_EMPTY1 && !touchMoved;
+			v.pressed2 = touch == T_EMPTY2 && !touchMoved;
+			v.hotkeys = p.settings.buttonHotkeys;
+			k.emptyState(e, v);
+			return;
+		}
+		if (!reading && folderEmpty(*snap))
+		{
+			std::vector<std::string> lines = ui.wrapText(emptyFolderLine(folderShown(*snap)), F_I14, 400, 99);
+			lay::EmptyState e = lay::emptyState(inner, (int)lines.size(), 2);
+			emptyKey[0] = e.key[0];
+			emptyKey[1] = e.key[1];
+			Kit::Empty v;
+			v.glyph = &G_FOLDER;
+			v.title = "This folder is empty";
+			v.lines = lines;
+			accentFirst(v, lines, folderName(folderShown(*snap)).c_str());
 			v.key1 = "Browse Files";
 			v.glyph1 = &G_FOLDER;
 			v.key2 = "Web dashboard";

@@ -71,6 +71,7 @@ namespace bp
 		// the folder open, by its path ("": the list of the Music folders), and its rows: the folders by name, then
 		// the songs by their files' names. Built once per folder and index generation (the rows' lambdas share it)
 		std::string folderShown(const MediaSnapshot& snap) const;
+		bool folderEmpty(const MediaSnapshot& snap) const;	// the Folders view inside a folder with nothing in it
 		std::shared_ptr<const std::vector<FolderRow>> folderRows() const;
 		void openFolder(const std::string& path);
 		bool folderUp();		// to the folder above (false: it was the top)
