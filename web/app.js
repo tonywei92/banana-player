@@ -18,6 +18,7 @@ import { Music } from './js/music.js';
 import { Books } from './js/books.js';
 import { Reader } from './js/reader.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
+import { dropToSection, sectionOf } from './js/libupload.js';
 import { Files, Lightbox, UploadFab } from './js/files.js';
 import { JobFab, jobOver, refreshJobs } from './js/jobs.js';
 import { Manga } from './js/manga.js';
@@ -161,7 +162,7 @@ function Shell() {
 		const enter = e => { if (hasFiles(e)) { e.preventDefault(); depth++; set({ dropping: true }); } };
 		const over = e => { if (hasFiles(e)) e.preventDefault(); };
 		const leave = e => { if (hasFiles(e) && --depth <= 0) { depth = 0; set({ dropping: false }); } };
-		const drop = e => { if (!hasFiles(e)) return; e.preventDefault(); depth = 0; set({ dropping: false }); const dir = store.lastDir || (store.roots && store.roots[0] && store.roots[0].path); if (!dir) return; entriesFromDrop(e.dataTransfer).then(x => startUpload(x, dir)); };
+		const drop = e => { if (!hasFiles(e)) return; e.preventDefault(); depth = 0; set({ dropping: false }); const sec = sectionOf(store.route.page); if (sec) return dropToSection(sec, e.dataTransfer); const dir = store.lastDir || (store.roots && store.roots[0] && store.roots[0].path); if (!dir) return; entriesFromDrop(e.dataTransfer).then(x => startUpload(x, dir)); };
 		addEventListener('dragenter', enter); addEventListener('dragover', over); addEventListener('dragleave', leave); addEventListener('drop', drop);
 		return () => { removeEventListener('dragenter', enter); removeEventListener('dragover', over); removeEventListener('dragleave', leave); removeEventListener('drop', drop); };
 	}, []);
@@ -216,7 +217,7 @@ function Shell() {
 		${s.lightbox && html`<${Lightbox} />`}
 		${s.help && html`<${HelpOverlay} />`}
 		${s.modals.map(m => html`<div class=${'mwrap' + (m.out ? ' out' : '')} key=${m.id}>${m.render(m.close)}</div>`)}
-		${s.dropping && !s.overZone && html`<div class="dropover"><div>Drop to upload to ${dirLabel(store.lastDir || 'This card')}</div></div>`}
+		${s.dropping && !s.overZone && html`<div class="dropover"><div>Drop to upload to ${sectionOf(s.route.page) ? { videos: 'Videos', music: 'Music', books: 'Books' }[s.route.page] : dirLabel(store.lastDir || 'This card')}</div></div>`}
 	</div>`;
 }
 const Fragment = ({ children }) => children;
