@@ -11,7 +11,7 @@
 #   Movies/Meadow morning.mp4, Movies/Apples and acorns.mp4   two cuts of the trailer
 #   Music/Night Drive/, Music/Paper Boats/   generated tones with cover.jpg (generated) and made-up tags
 #   Photos/Big Buck Bunny/*.jpg          stills of the trailer
-#   Manga/Midnight Tea.cbz               one colour page (made for Banana Player)
+#   Manga/Temple Adventure Together.cbz  one single-page chapter (a PNG page zipped; made for Banana Player)
 # The Network scene needs a Samba share "Media" (user tony, password banana) of DEMO_DIR on 127.0.0.1:1445, and an
 # FTP server (same user/password) on 127.0.0.1:2121; the build needs libsmb2 (-DBP_NET=ON). Without them the scene is
 # skipped and the old picture stays. Samba: docker run -d -p 1445:445 -v DEMO_DIR:/mnt/media:ro dperson/samba \
@@ -41,53 +41,41 @@ scene() {
 	[ -f "$WORK/$name-top.png" ] || echo "no picture for $name (see $WORK/log-$name.txt)" >&2
 }
 
-# 1. the browser, Dark: Files in Movies, with a film left half way (history from a run first)
-HIST="$WORK/state-browser"
+# 1. Home, Dark: Recent cards from a few runs first (a film left half way, a song)
+HIST="$WORK/state-home"
 mkdir -p "$HIST"
-printf 'lid-close = pause\ntheme = dark\nmusic-show = both\nvisualizer = ribbon\n' > "$HIST/settings.conf"
+printf 'lid-close = pause\ntheme = dark\n' > "$HIST/settings.conf"
 "$BIN" --state-dir "$HIST" --press Right,Right,B,B "$DEMO/Movies/Meadow morning.mp4" > "$WORK/log.txt" 2>&1 || true
 "$BIN" --state-dir "$HIST" --press Right,B,B "$SONG" > "$WORK/log.txt" 2>&1 || true
 "$BIN" --state-dir "$HIST" --press prop:pause,prop:pause,Right,Right,Right,B,B "$DEMO/Movies/Apples and acorns.mp4" > "$WORK/log.txt" 2>&1 || true
-"$BIN" --state-dir "$HIST" --press prop:pause,shot:browser "$DEMO/Movies" > "$WORK/log-browser.txt" 2>&1 || true
+"$BIN" --state-dir "$HIST" --press prop:pause,prop:pause,shot:home > "$WORK/log-home.txt" 2>&1 || true
+# 2. a film, Light, in the Three rodents chapter with its subtitle
+AT=13.2 scene playing 'theme = light' prop:pause,shot:playing "$MOVIE"
+# 3. a song, Dark: Match album art on, Art + visualizer, Ribbon
+scene music 'theme = dark\nmusic-show = both\nvisualizer = ribbon\nmatch-album-art = yes' prop:pause,prop:pause,prop:pause,shot:music "$SONG"
+# 4. Manga, Light: Extensions, the Manga reader, the series, its page (the engine download offer is dismissed with B)
+scene manga 'theme = light\nmanga-reader = yes\nmanga-intro-shown = yes' R2,R2,R2,R2,R2,A,B,A,A,prop:pause,prop:pause,shot:manga
+# 5. Files, Dark: the storage cards (the first two folders stand in for the cards)
+BP_BROWSE_CARDS=2 BP_BROWSE="$DEMO:$DEMO/Music" scene files 'theme = dark' R2,prop:pause,shot:files
+# 6. Music, Light: the Albums grid
+scene library 'theme = light' R2,R2,R2,prop:pause,prop:pause,prop:pause,shot:library
 
-# 2. a film, Midnight blue, resumed in the Three rodents chapter with its subtitle
-AT=13.2 scene playing 'theme = midnight-blue' prop:pause,shot:playing "$MOVIE"
-# 3. a song, Sakura (light), album art + the Ribbon visualizer
-scene music 'theme = sakura\nmusic-show = both\nvisualizer = ribbon' prop:pause,prop:pause,shot:music "$SONG"
-# 4. Sound, Dark purple: the equalizer on Rock (the Equalizer button, left of the player's second button row)
-scene sound 'theme = dark-purple\nmusic-show = both\nvisualizer = peaks\neq = on\neq-preset = Rock\neq-gains = 4,3,2,0,-1,-1,1,2,3,4\nsound-effect = hall' prop:pause,tap:70:363,prop:pause,shot:sound "$SONG"
-# 5. a photo, Light, zoomed (UP twice)
-scene photo 'theme = light' Up,Up,shot:photo "$PHOTO"
-# 6. Manga, Yellow: Home's Extensions tile, Manga reader, the series (single chapter), open on both screens; the engine
-# download offer is dismissed with B
-scene manga 'theme = yellow\nmanga-reader = yes\nmanga-intro-shown = yes' Down,Right,A,A,B,A,prop:pause,prop:pause,shot:manga
-# 7. subtitles, Coffee: the Subtitles button of the player's third row opens Audio & Subtitles on Subtitles
-AT=16 scene subs 'theme = coffee' prop:pause,prop:pause,tap:73:363,prop:pause,shot:subs "$MOVIE"
-# 8. Settings, 16-bit: Power & screens, the Theme row (the top screen previews it)
-AT=9 scene settings 'theme = 16-bit' Start,Down,Down,Down,A,shot:settings "$MOVIE"
-# 9. Info, 32-bit: the More sheet's Info, scrolled to the video and audio parts
-AT=7.5 scene info 'theme = 32-bit' prop:pause,tap:601:27,tap:397:324,Down,Down,Down,Down,Down,Down,shot:info "$MOVIE"
-# 10. a visualizer on the whole top screen, Midnight blue
-scene viz 'theme = midnight-blue\nmusic-show = visualizer\nvisualizer = sleepy-moon' prop:pause,prop:pause,shot:viz "$SONG"
-
-# 11. Network, Mint: a folder of the local test servers (the first is Samba, the second FTP)
-NET="$WORK/state-network"
-if (echo > /dev/tcp/127.0.0.1/1445) 2>/dev/null && (echo > /dev/tcp/127.0.0.1/2121) 2>/dev/null; then
-	mkdir -p "$NET"
-	printf 'lid-close = pause\ntheme = mint\n' > "$NET/settings.conf"
-	"$R/build/bp-servers" "$NET" add smb "Living room PC" 127.0.0.1 1445 tony banana > /dev/null
-	"$R/build/bp-servers" "$NET" add ftp "Home server" 127.0.0.1 2121 tony banana > /dev/null
-	"$BIN" --state-dir "$NET" --press Down,A,A,A,Down,A,prop:pause,shot:network > "$WORK/log-network.txt" 2>&1 || true
-else
-	echo "Network: no test servers on 127.0.0.1:1445/2121, picture kept" >&2
-fi
+# the visualizer gallery: the top screen only, a style each (VIS_SHOWN in src/settings.h), docs/img/viz/ID.jpg
+mkdir -p "$OUT/viz"
+find "$OUT/viz" -name '*.jpg' -delete
+for tv in peaks-yellow:yellow ribbon:sakura mirror-bars:midnight-blue faders:dark horizon:sunset grid:dark-purple starfield:dark \
+	strings:light helix:mint sparks:coffee bouncy-keys:16-bit rocket:midnight-blue lanterns:32-bit sleepy-moon:dark-red dance-line:pink; do
+	v="${tv%%:*}"
+	scene "viz-$v" "theme = ${tv##*:}\nmusic-show = visualizer\nvisualizer = $v" prop:pause,prop:pause,prop:pause,shot:viz-$v "$SONG"
+	[ -f "$WORK/viz-$v-top.png" ] && ffmpeg -loglevel error -y -i "$WORK/viz-$v-top.png" -vf scale=480:360:flags=lanczos -q:v 3 "$OUT/viz/$v.jpg" || true
+done
 
 # each pair stacked: top over bottom with a hinge between, on a dark frame
-for s in browser playing music sound photo manga subs settings info viz network; do
+for s in home playing music manga files library; do
 	[ -f "$WORK/$s-top.png" ] || continue
 	ffmpeg -loglevel error -y -i "$WORK/$s-top.png" -i "$WORK/$s-bottom.png" -filter_complex \
 		"[0]scale=640:480:flags=lanczos[t];[1]scale=640:480:flags=lanczos[b];color=c=0x2A2931:s=640x20[h];[t][h][b]vstack=3,pad=iw+40:ih+40:20:20:color=0x2A2931" \
 		-frames:v 1 "$OUT/screen-$s.png"
 	echo "docs/img/screen-$s.png"
 done
-rm -rf "$WORK"
+[ -z "${KEEP_WORK:-}" ] && rm -rf "$WORK" || echo "kept $WORK"
