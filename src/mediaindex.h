@@ -66,6 +66,10 @@ namespace bp
 	// every such folder at the top of each card, as mediaFolders() walks its own names (never BananaOS's roms: it
 	// has no books folder)
 	std::vector<std::string> bookFolders();
+	// the section-membership rule: a file belongs to Books, Music or Videos only when it lies under one of that
+	// section's folders (a book opened from Files elsewhere stays in Recent and Files, not on the shelf). Whole
+	// path components: "/c/Books2/x" is not under "/c/Books"
+	bool pathUnderFolders(const std::string& path, const std::vector<std::string>& folders);
 	// a book file under them, however deep: a path, a size and a date. A folder that can't be read is skipped; a
 	// hidden one (a ".hidden" marker) or a dotted name is not walked — the index's rules, for a much smaller list
 	struct MediaBook

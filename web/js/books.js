@@ -35,6 +35,8 @@ export function Books() {
 	useEffect(() => { setData(null); setErr(''); get('/api/library', null, { quiet: true }).then(setData).catch(e => setErr(errMsg(e))); }, [s.epoch]);
 	// a place written anywhere: the progress again (quietly, the list stays)
 	useEffect(() => { if (s.bookTick) get('/api/library', null, { quiet: true }).then(setData).catch(() => {}); }, [s.bookTick]);
+	// a pass of the media index landed (an upload, a file op): the shelf again, quietly
+	useEffect(() => { if (s.libTick) get('/api/library', null, { quiet: true }).then(setData).catch(() => {}); }, [s.libTick]);
 	if (err) return html`<div class="page"><div class="phead"><div class="row"><h1>Books</h1><${AppMenu} /></div></div><div class="banner box surface">${err}</div></div>`;
 	if (!data) return html`<div class="page"><div class="phead"><div class="row"><h1>Books</h1><${AppMenu} /></div></div><${Skeleton} /></div>`;
 	const reading = data.gen === 0;
@@ -43,7 +45,7 @@ export function Books() {
 	return html`<div class="page">
 		<div class="phead"><div class="row"><h1>Books</h1><${SectionUpload} kind="books" cards=${data.cards} /><${AppMenu} /></div></div>
 		${reading ? html`<${Banner} title="Reading the cards…" />`
-			: !books.length ? html`<${Empty} icon="book" title="No books here yet" sub="Books, PDFs and comics in a folder named Books, Ebook or Ebooks at the top of either card are shelved here. Anything you open from Files joins the shelf too." button="Upload to Books" onClick=${() => uploadToSection('books', data.cards)} />`
+			: !books.length ? html`<${Empty} icon="book" title="No books here yet" sub="Books, PDFs and comics in a folder named Books, Ebook or Ebooks at the top of either card are shelved here." button="Upload to Books" onClick=${() => uploadToSection('books', data.cards)} />`
 			: html`<div class="box surface listbox"><ul class="flist">${books.map(b => html`<li class="frow" key=${b.p}>
 				<button class="main-btn" aria-label=${'Read: ' + b.n} onClick=${() => readHere(b)}>
 					<span class="tile cover"><${Art} src=${bookCoverUrl(b.p)} seed=${b.p} kind=${kindOf(b.p)} k=${2} /></span>

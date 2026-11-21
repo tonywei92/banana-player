@@ -60,7 +60,7 @@ function MusicFolders() {
 	useEffect(() => {
 		setErr('');
 		get('/api/library/music', dir ? { dir } : null, { quiet: true }).then(setPage).catch(e => { if (dir) go(''); else setErr(errMsg(e)); });
-	}, [dir, s.epoch]);
+	}, [dir, s.epoch, s.libTick]);
 	if (err) return html`<div class="banner box surface">${err}</div>`;
 	if (!page) return html`<${Skeleton} />`;
 	if (page.reading) return html`<${Banner} title="Reading the cards…" />`;
@@ -86,6 +86,7 @@ export function Music() {
 	const setView = k => { lsSet('lib.mview', k); setVk(k); };
 	const [one, setOne] = useState(null);	// { kind, index } while an album's or an artist's page is open
 	useEffect(() => { setData(null); setErr(''); get('/api/library', null, { quiet: true }).then(setData).catch(e => setErr(errMsg(e))); }, [s.epoch]);
+	useEffect(() => { if (s.libTick) get('/api/library', null, { quiet: true }).then(setData).catch(() => {}); }, [s.libTick]);
 	const v = view();
 	if (one) return html`<${OneList} data=${data} kind=${one.kind} index=${one.index} onBack=${() => setOne(null)} />`;
 	if (err) return html`<div class="page"><div class="phead"><div class="row"><h1>Music</h1><${AppMenu} /></div></div><div class="banner box surface">${err}</div></div>`;

@@ -287,13 +287,15 @@ cover with how far in; **Shelf** is every book, by name. Both are five across. *
 them; Books opens on Reading now while a book is in progress, else on the Shelf (back from a reader, on the tab you left). **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
 comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
 
-The shelf is filled from two places: the books you have opened from anywhere (their places are the readers' own), and
+The shelf (and Reading now) holds only what lies in a section folder: a book opened from Files anywhere else stays in Home's Recent
+and in Files, never here (the same rule keeps songs outside the Music folders out of Music and videos outside the Videos folders out of
+Videos; the web dashboard's pages follow it). The shelf is filled from
 the folders named **Books**, **Ebook** or **Ebooks** (any capitals; not Documents, whose PDFs are opened from Files) at the top of each card. Every cover is decoded — an
 EPUB's own, a PDF's first page, a comic's first page — on the cover worker (the drawn sleeve, keyed by the name,
 stands in until the answer, and for good for a TXT, which has no picture of its own). **X** is
 **More**: **Read from the start** (its place forgotten, then opened), **Info** and **Show in Files**. **◀/▶** move along the
 covers; **B** does nothing (it is the section's home). With no books anywhere the page says so, with **Browse Files** (A) and **Web dashboard** (Y).
-Files still lists and opens every book, and Recent keeps its Books filter; comics still need the Manga reader turned
+On the web dashboard an upload to Music, Videos or Books shows in its list as soon as the handheld has indexed it (the page lists again when the index pass lands, no reload). Files still lists and opens every book, and Recent keeps its Books filter; comics still need the Manga reader turned
 on, and say so when it isn't.
 
 ## Playing while you browse

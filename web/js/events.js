@@ -56,6 +56,8 @@ export function openSSE() {
 	on('state', d => applySnap(d));
 	on('ping', () => {});
 	on('fs', d => set({ fsTick: store.fsTick + 1, fsDir: d.dir }));
+	// the handheld's media index finished a pass (an upload landed, a card moved): Music, Videos and Books list again
+	on('library', () => set({ libTick: (store.libTick || 0) + 1 }));
 	on('playlists', () => set({ plTick: store.plTick + 1, plExternal: true }));
 	// the manga reader's state changed (library, repos, queue): the Manga pages reload
 	on('manga', () => set({ mangaTick: (store.mangaTick || 0) + 1 }));

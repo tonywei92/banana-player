@@ -361,6 +361,18 @@ namespace bp
 		return n == "books" || n == "ebook" || n == "ebooks";
 	}
 
+	bool pathUnderFolders(const std::string& path, const std::vector<std::string>& folders)
+	{
+		for (auto& f : folders)
+		{
+			std::string prefix = f;
+			while (prefix.size() > 1 && prefix.back() == '/') prefix.pop_back();
+			if (prefix != "/") prefix += "/";
+			if (path.size() > prefix.size() && path.compare(0, prefix.size(), prefix) == 0) return true;
+		}
+		return false;
+	}
+
 	std::vector<std::string> bookFolders()
 	{
 		std::vector<std::string> out;

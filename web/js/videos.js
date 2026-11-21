@@ -27,6 +27,7 @@ export function Videos() {
 	const setView = k => { lsSet('lib.vview', k); setVk(k); setDir(''); };
 	const [dir, setDir] = useState('');	// the folder open in Folders ('' the top)
 	useEffect(() => { setData(null); setErr(''); get('/api/library', null, { quiet: true }).then(setData).catch(e => setErr(errMsg(e))); }, [s.epoch]);
+	useEffect(() => { if (s.libTick) get('/api/library', null, { quiet: true }).then(setData).catch(() => {}); }, [s.libTick]);
 	const v = view();
 	const rows = useMemo(() => {
 		if (!data || !data.videos) return [];
