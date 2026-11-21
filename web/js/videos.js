@@ -52,7 +52,7 @@ export function Videos() {
 		return data.videos;
 	}, [data, vk, dir]);
 	const roots = (data && data.videoDirs) || [];
-	const upDir = !dir || roots.includes(dir) ? (roots.length > 1 ? '' : null) : dir.slice(0, dir.lastIndexOf('/'));	// null: already at the top
+	const upDir = !dir ? null : roots.includes(dir) ? (roots.length > 1 ? '' : null) : dir.slice(0, dir.lastIndexOf('/'));	// null: already at the top
 	const openFolder = f => setDir(f.p);
 	const playRow = x => {
 		// the view is the list: the All view every video, Folders the loose files shown, Not finished those
