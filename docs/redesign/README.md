@@ -39,7 +39,7 @@ reader's one shortcut.** It replaces "SELECT · View" inside the readers only (l
 | Key | Files' comic / PDF | Manga reader | Text (EPUB / TXT) | Why |
 |---|---|---|---|---|
 | SELECT | Fullscreen on / off | Fullscreen on / off | Book mode on / off | The view over both screens is the one thing changed many times a sitting: one press, the same button, both ways. Book mode is the text's full view (both screens, a page each), so it keeps SELECT rather than the Text sheet. |
-| START | View (the sheet) | Reading menu (View, once on the kit) | Text (the options) | The sheet is opened rarely; START was already the Manga reader's. START or B closes it. Settings moves to X · More › Reading settings. |
+| START | View (the sheet) | View (the sheet) | Text (the options) | The sheet is opened rarely; START was already the Manga reader's. START or B closes it. Settings moves to X · More › Reading settings. |
 | L3 | Turn a quarter (Single page) | Turn a quarter (paged) | Find | Fullscreen left L3 for SELECT, so Files' reader takes the Manga reader's Turn; a text has nothing to turn, and Find is its shortcut. |
 | B | Fullscreen: one screen; else close | Close (fullscreen is kept for the next chapter) | Book: back to scrolling; else close | The one difference left: a chapter that opens in Fullscreen must close in one press. |
 | Held sideways (Book) | n/a | START: the Book bar; SELECT: Fullscreen, upright | START: the Book bar; SELECT: back to scrolling | The bar's View / Text keys wear no cap there. |

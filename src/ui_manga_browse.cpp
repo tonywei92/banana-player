@@ -1106,7 +1106,7 @@ namespace bp
 			mangaReadWaiting = true;
 			ui.pageReader->mangaReadSeriesId = seriesId;
 			ui.pageReader->mangaReadChapterTitle = chapterName(chapters[i]);
-			mangaMenu = ui.pageReader->mangaPages = false;
+			ui.pageReader->mangaPages = false;
 			mangaReadLive = false;
 			ui.page = Page::MangaRead;
 		}
@@ -1342,7 +1342,6 @@ namespace bp
 		mangaReadLive = false;
 		ui.pageReader->mangaSliderPage = -1;
 		mangaCtrlUntil = 0;
-		mangaMenu = false;
 		ui.pageReader->mangaZoomAsked = 100;
 		ui.page = Page::MangaRead;
 		if (mangaSrcPendFull)

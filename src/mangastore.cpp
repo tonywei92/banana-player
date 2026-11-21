@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <set>
 #include <sstream>
 #include <sys/stat.h>
 #include <unordered_map>
@@ -186,6 +187,23 @@ namespace bp
 		trimSeries();
 	}
 
+	namespace
+	{
+		// "3,11,40": the pages, ascending, each once
+		std::vector<int> parseMarks(const std::string& field)
+		{
+			std::set<int> pages;
+			std::istringstream in(field);
+			std::string one;
+			while (std::getline(in, one, ','))
+			{
+				int64_t page = 0;
+				if (toInt(one, page) && page >= 0 && pages.size() < MangaStore::MAX_MARKS) pages.insert(int(page));
+			}
+			return {pages.begin(), pages.end()};
+		}
+	}
+
 	void MangaStore::parseProgress(const std::string& text)
 	{
 		std::istringstream in(text);
@@ -212,6 +230,7 @@ namespace bp
 			p.hidden = false;
 			if (f.size() > 7) toBool(f[7], p.hidden);
 			if (f.size() > 8) p.within = std::clamp((float)atof(f[8].c_str()), 0.0f, 1.0f);	// (a later column still)
+			if (f.size() > 9) p.marks = parseMarks(f[9]);	// (and the bookmarked pages, "3,11")
 			if (p.chapterId.empty()) continue;
 			bool known = false;
 			for (auto& o : progress_)
@@ -286,8 +305,11 @@ namespace bp
 			out += buf;
 			// the hidden flag, then the place inside the page: a file without them is an older one
 			out += p.hidden ? "1" : "0";
-			snprintf(buf, sizeof buf, "\t%.3f\n", p.within);
+			snprintf(buf, sizeof buf, "\t%.3f", p.within);
 			out += buf;
+			// the bookmarked pages last, only when there are any (an older build reads the line as it always did)
+			for (size_t i = 0; i < p.marks.size(); i++) out += (i ? "," : "\t") + std::to_string(p.marks[i]);
+			out += "\n";
 		}
 		return out;
 	}
@@ -519,6 +541,10 @@ namespace bp
 		}
 		a.read = a.read || b.read;
 		a.hidden = a.hidden && b.hidden;
+		// (a bookmark from either stays)
+		std::set<int> marks(a.marks.begin(), a.marks.end());
+		marks.insert(b.marks.begin(), b.marks.end());
+		a.marks.assign(marks.begin(), marks.end());
 		a.seriesId = seriesId;
 		progress_.erase(pi);
 		return Link::Merged;
@@ -618,6 +644,38 @@ namespace bp
 		}
 		trimProgress();
 		serial_++;
+	}
+
+	bool MangaStore::toggleBookmark(const std::string& seriesId, const std::string& chapterId, int page)
+	{
+		if (chapterId.empty() || page < 0) return false;
+		const LinkTo* l = linkOf(chapterId);
+		const std::string& id = l ? l->chapterId : chapterId;
+		auto e = std::find_if(progress_.begin(), progress_.end(), [&](const ChapterProgress& o) { return o.chapterId == id; });
+		if (e == progress_.end())
+		{
+			// a chapter with no place yet (its first page marked before the reader saved one): a record for the mark
+			ChapterProgress p;
+			p.seriesId = l ? l->seriesId : seriesId;
+			p.chapterId = id;
+			p.hidden = true;	// (not a chapter read: the History has it once the reader saves its place)
+			progress_.push_back(p);
+			progIdxDirty_ = true;
+			e = progress_.end() - 1;
+		}
+		auto at = std::lower_bound(e->marks.begin(), e->marks.end(), page);
+		bool on = at == e->marks.end() || *at != page;
+		if (!on) e->marks.erase(at);
+		else if (e->marks.size() < MAX_MARKS) e->marks.insert(at, page);
+		else on = false;
+		serial_++;
+		return on;
+	}
+
+	std::vector<int> MangaStore::bookmarks(const std::string& chapterId) const
+	{
+		const ChapterProgress* p = progress(chapterId);
+		return p ? p->marks : std::vector<int>();
 	}
 
 	void MangaStore::clearHistory()

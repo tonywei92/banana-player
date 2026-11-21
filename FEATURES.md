@@ -1464,7 +1464,7 @@ source's **Popular / Latest / Search** and the Sources page's **Available / Repo
 sheet or menu over a Manga page comes over the whole panel, rail included, and takes the keys until it closes.
 **B** goes back — out of Browse's list of series first, then to the **Extensions** page (it was Home before). Reading a
 chapter keeps the whole panel (no rail).
-**START** opens Banana Player's **Settings**, as on every page of the rail (the reading page keeps its Reading menu).
+**START** opens Banana Player's **Settings**, as on every page of the rail (the reading page keeps START for View).
 **Manga settings**, the reader's own settings page, is the last row of **X** on Library and on History (and **X** on
 Manage extensions); **B** there comes back where you were. Music keeps playing while you read: the pages take the top screen, and F's Now playing
 block is on every page, the reading page included (its **SELECT** opens what plays: a video shows on the top screen again, and
@@ -1638,9 +1638,11 @@ the network and resume where they stopped after a pause, a lost connection or a 
 online chapter share one place, read mark and History row, whichever way it is opened (Browse, Downloads or *On this
 handheld*).
 
-**Reading.** A chapter opens on the top screen; the bottom screen holds the controls: the chapter and the series, the
-page number, the slider, the two chapter buttons and the mode. The big area is a bordered pad: *Swipe here to turn the page* between two turn marks (or *Drag
-to scroll* in **Vertical scroll**), a line along its foot naming double-tap and the mode, and *Loading…* shows beside the page number while a page is decoded.
+**Reading.** A chapter opens on the top screen; the bottom screen holds the controls: the series' name with the chapter,
+*Page 4 of 12* and the reading mode under it, the page slider, the big pad and a row of six keys (the chapter before,
+**Pages**, **View**, **Fullscreen**, **Light**, the chapter after). The pad is where the finger works: *Swipe here to turn
+the page* between two turn marks (or *Drag to scroll* in **Vertical scroll**), a line along its foot naming double-tap, and
+*Loading…* at its top while a page is decoded.
 
 | Button | What it does |
 |---|---|
@@ -1648,10 +1650,10 @@ to scroll* in **Vertical scroll**), a line along its foot naming double-tap and 
 | **UP** / **DOWN** | Zoom in / out, in small steps: 100, 110, 125, 140, 160, 180, 200, 225, 250, 300, 350, 400, 500, 600, 700, 800 %. The new zoom shows on the page a moment, then fades. **A** zooms to 200 % or back to the fit |
 | **Left stick** (any way) | **Vertical scroll**: scrolls smoothly while held, faster the further it is pushed; zoomed in, left and right pan across it (in fullscreen too). Paged modes: pans a page that is zoomed, wide or taller than the screen, up, down, left and right; a page that fits does not move. **Book**: one push turns a spread, the way its D-pad points |
 | **L / R** | Previous / next page, straight to it |
-| **X** | The reading mode: Right to left → Left to right → Vertical scroll (kept for that series) |
+| **X** | **More** (below): Mark read, Get this chapter, Bookmark this page; Info, Chapters, Manga settings. The reading mode it used to step is a row of **View** |
 | **Y** | The Pages grid (below) |
 | **L2 / R2** | Previous / next chapter |
-| **START** | The Reading menu (below) |
+| **START** | **View** (below): how the chapter is held and read |
 | **SELECT** | Fullscreen on both screens (below); in **Book**, Fullscreen instead of Book |
 | **L3** (press the stick) | Turn the page a quarter turn: 90° clockwise each press, in the paged modes (kept for the chapter; **Vertical scroll** ignores it) |
 | **B** | Back to the chapters (from Fullscreen and Book too: the view stays as it was); your place is kept |
@@ -1661,7 +1663,9 @@ to scroll* in **Vertical scroll**), a line along its foot naming double-tap and 
   order). It applies at once to the chapter you're reading.
 - At the end of a chapter the screen says **End of chapter · R2 or RIGHT for** the next chapter by its name (**LEFT**
   with **Swap Left/Right** on), and the forward key (or **R2**) opens it; the header's line says *the end*. The last
-  chapter says **You're caught up · that was the last chapter**. In Book the page numbers say *turn once more for* the
+  chapter says **You're caught up · that was the last chapter**. The top screen says it too, on a card at the foot of
+  the page for four seconds each time the end is reached (the chapter and *8 of 8*, **End of chapter**, the keys and the
+  next chapter's name), so the last page stays readable under it. In Book the page numbers say *turn once more for* the
   next chapter by name.
 - A source's chapter that is still being asked for shows *Getting the chapter…* on both screens (the top one large,
   with the spinner, the series and the chapter); **B** goes back. One that didn't open says why, and **A** tries again.
@@ -1669,8 +1673,8 @@ to scroll* in **Vertical scroll**), a line along its foot naming double-tap and 
   scrolls while held, up or down, with a dead zone at rest and a speed that follows the push. **By touch**: drag in the big
   area on the bottom screen to turn the page — it follows your finger and snaps to a page when you let go (a quick
   flick turns the page even from a short drag), and in **Vertical scroll** it scrolls — the slider jumps to a page, and the
-  buttons go to the chapter before or after, turn fullscreen on (as **SELECT** does), or open **Brightness** (above,
-  under Books and documents). The row is four buttons of one size with equal margins and gaps. In
+  row's keys go to the chapter before or after (the narrow keys at its ends), open **Pages** or **View**, turn fullscreen
+  on (as **SELECT** does), or open **Light** (Brightness, above, under Books and documents). The header's **⋯** is **More**. In
   fullscreen the whole bottom screen is the page, and the finger drags it anywhere; a tap in the middle of the page
   shows the **navigation** over it (the series and *Page 4 of 30*, the page slider, **Chapter** and **Page** back and
   on, **Pages**, **View** and **One screen**; it goes after four seconds untouched or on another tap in the middle);
@@ -1687,16 +1691,30 @@ treat it as they do a chapter on your card. A browser check stops either of them
 asks for a browser check (Cloudflare). Banana Player can't pass it yet.** (**DDoS-Guard** where that's the one) —
 under a source's grid with **A: Try again** while browsing, or in red where the page number sits while reading.
 
-**The Reading menu.** **START** while reading opens it over the page (in fullscreen and Book too), in the screen's
-usual orientation. It shows only the rows that mean something for how you're reading: **View** (**One screen**,
-**Fullscreen** or **Book**), **Hold** (Book only: **Top screen left** or **Top screen right**), **Reading mode** (Right
-to left, Left to right or Vertical scroll; Book offers the first two), **Page fit** (not in Vertical scroll or Book), **Zoom** (not in
-Book), **Hinge gap** (Fullscreen in Vertical scroll only), **Swap Left/Right**, **Pages** and **All Manga settings…**. **UP/DOWN** choose
-a row, **LEFT/RIGHT** change it where you stand, **A** acts on it, and **B** or **START** closes the menu: reading goes
-on exactly where it was. Choosing One screen or Fullscreen there also sets **Open fullscreen**, so the next chapter
-opens the same way. The last row opens **Manga settings**, and **Pages** opens the grid below.
+**View (START).** **START** while reading (or the **View** key) opens a sheet over the page (in fullscreen and Book
+too), in the screen's usual orientation. **Layout** is its first row, three chips: **One screen**, **Fullscreen**,
+**Book**; choosing another closes the sheet, the screen under it having changed. Under it: **Reading mode** (Right to
+left, Left to right or Vertical scroll; Book offers the first two), **Page fit** (dimmed in Vertical scroll: it fits the
+width), **Zoom**, **Hinge gap** (a fullscreen Vertical scroll's: dimmed with its reason otherwise), **Swap Left / Right**
+and **Light & filter**; in Book, **Hold** (**Top screen left** or **Top screen right**) in place of the fit, the zoom and
+the gap. **UP/DOWN** choose a row, **LEFT/RIGHT** change it where you stand (the pages follow at once), **A** steps it on,
+**B** or **START** closes the sheet, and **SELECT** closes it and goes Fullscreen; a tap on a chip or on a stepper's side
+changes it, a tap above the sheet closes it. Choosing One screen or Fullscreen there also sets **Open fullscreen**, so
+the next chapter opens the same way.
 
-**Book (held sideways).** View › **Book** in the Reading menu: hold the handheld sideways like a book, the hinge down
+**More (X).** **X** while reading (or the header's **⋯**) opens the More sheet. At the left, this chapter: **Mark read**
+(or **Mark unread**), **Get this chapter** (a source's chapter is queued for the card; dimmed with *on the card*,
+*queued* or *a server's* when there is nothing to get) and **Bookmark this page** (**Remove this bookmark** on a page
+that has one). At the right: **Info** (the series, the chapter, the page, its bookmarks, the source or the file),
+**Chapters** (back to the series, as **B**) and **Manga settings**.
+
+**Page bookmarks.** A bookmark marks one page of a chapter: the top screen says *Page 4 bookmarked* for a moment, the
+Pages grid shows the mark on that page's corner, and the grid's second tab lists the bookmarked pages alone. They are
+kept with the chapter's place (the Manga store's `progress.tsv`), up to 200 a chapter, and a downloaded copy shares its
+source chapter's. A PDF or comic opened from Files has the same row in its **More** (**X**), kept with the documents'
+bookmarks.
+
+**Book (held sideways).** **View** › Layout › **Book**: hold the handheld sideways like a book, the hinge down
 the middle, and each screen shows one whole page, turned upright as you hold it. **Hold** says which side the top
 screen is on (**Top screen left**, the buttons under your right hand, or **Top screen right**). The spread follows the
 reading mode: in Right to left the earlier page is on the right. The D-pad's **UP** and **DOWN** point left and right
@@ -1709,8 +1727,8 @@ after a turn, at the foot of the spread and upright as held; at the chapter's en
 (turn once more for the next chapter). No zoom or page fit in Book: each page is shown whole. The menu and notices
 keep the screen's usual orientation. Book is kept for the series, as the reading mode is.
 
-**Fullscreen (both screens).** **SELECT** while reading turns it on and off, and so does the **Fullscreen** button
-between **Prev chapter** and **Next chapter** on the reading page. The two panels become one tall view and
+**Fullscreen (both screens).** **SELECT** while reading turns it on and off, and so does the **Fullscreen** key
+in the reading page's row. The two panels become one tall view and
 the gap under the hinge is skipped, so the art lines up across the fold; the bottom panel draws its share of the pages
 from the pages the reader has already decoded. The gap's size is a setting of its own, **Hinge gap** in **Manga
 settings**: **36** of the panel's 480 lines by default. **SELECT** leaves fullscreen (a line says so each time you turn it on: “SELECT: one screen”); **B** goes back to the chapters
@@ -1718,18 +1736,19 @@ and fullscreen stays, so the next chapter opens in it too.
 The page number shows for a moment after the page changes. A tap puts the controls bar over the lower part of the
 view; a tap anywhere outside it puts it away again and does nothing else (no page turn, no drag).
 
-**The Pages grid.** **Y** while reading (or the Reading menu's **Pages**) opens the chapter's thumbnails in a sheet
+**The Pages grid.** **Y** while reading (or the **Pages** key) opens the chapter's thumbnails in a sheet
 over the reader (a PDF's **Pages** is the same sheet), six to a row with each page's number under it, on the page
 you're reading, marked **Here** ("You are on page N" at the top). The pages in view get their thumbnails as the grid shows them, wherever you were
 reading (a moment's empty place first; a page of an online chapter not downloaded yet stays empty). **UP/DOWN/LEFT/RIGHT** move the cursor and the top screen follows it, **L2/R2** move a screenful, **A** jumps
-there and closes the grid, **B** or **Y** closes it; on the touch screen, tap a thumbnail to jump, drag to scroll, or
+there and closes the grid, **L / R** (or a tap on a tab) switch between **Pages** and **Bookmarks** (the bookmarked pages
+alone, each count on its tab; with none, a line says where one is made), **B** or **Y** closes it; on the touch screen, tap a thumbnail to jump, drag to scroll, or
 tap above the sheet to close it.
 
 ### Manga settings
 
 The reader's own settings are a page of their own, **Manga settings**, inside the Manga app: they are not in Banana
 Player's Settings (whose **Extensions** group opens Manage extensions). **START** opens them on any Manga page (the four tabs, the Sources
-page and a series page), the gear (**X**) in **Manage extensions** opens them too, and the Reading menu's last row opens
+page and a series page), the gear (**X**) in **Manage extensions** opens them too, and the reader's **More** (**X**) opens
 them while you read. **B** goes back where you came from.
 
 | Setting | Values | Default | |
@@ -1738,7 +1757,7 @@ them while you read. **B** goes back where you came from.
 | **Page fit** | Page / Width / Fill | Page | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. Fill: the page covers the screen, cropped either way, panned in reading order. |
 | **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
 | **Hinge gap** | 0 to 200 px | 36 px | The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Vertical scroll only: Right to left, Left to right and Book put the screens edge to edge (0 px). |
-| **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT leaves. The Reading menu's View sets it too. |
+| **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT leaves. View's Layout sets it too. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 1 GB | Pages kept on the card to read again without downloading; past the cap the least recently read go first. Covers: 50 MB more. |
 | **Clear cache** | (a button: *Empty*, or *Clear · 214 MB*) | | Empties the pages kept on the card. Press A twice. |

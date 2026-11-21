@@ -41,6 +41,10 @@ namespace bp
 	// The note: one line in yellow (red for a failure) with an optional icon, and an optional second line
 	LevelCardImage drawNoteCard(const std::string& fontsDir, int panelH, CardGlyph icon, const std::string& line1,
 		const std::string& line2, bool danger);
+	// A chapter's end over the reader's pages (docs/redesign: manga-end): the chapter's line small and dim, "End of
+	// chapter" large, what comes next under it; each centred, an empty one left out
+	LevelCardImage drawEndCard(const std::string& fontsDir, int panelH, const std::string& label, const std::string& title,
+		const std::string& line);
 	// The sleep timer's quiet mark (a clock and "24 min", dim) on a song's top screen, top right
 	LevelCardImage drawQuietMark(const std::string& fontsDir, int panelH, CardGlyph icon, const std::string& text);
 	// where a card goes on a panel pw x ph: the level, label and chapter cards top right (20 units from the edges), the

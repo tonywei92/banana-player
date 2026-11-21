@@ -526,6 +526,19 @@ namespace bp
 			Box row[4];	// Pages, View, Fullscreen, Light
 		};
 		ReaderPage readerPage(bool strip);
+		// ---- the Manga reader's own page (docs/redesign: manga-read): readerPage's strip skeleton in every reading mode
+		// (the page slider under the header, the finger's surface under it: a paged chapter is swiped there), ending on
+		// a row of six: the chapter before (narrow), Pages, View, Fullscreen, Light, the chapter after (narrow)
+		constexpr int MANGA_READ_KEYS = 6, MANGA_READ_END_W = 64;
+		enum { MRK_PREV, MRK_PAGES, MRK_VIEW, MRK_FULL, MRK_LIGHT, MRK_NEXT };
+		struct MangaReadPage
+		{
+			Box from, track, to, sliderHit;	// as ReaderPage's (which end the first page is at is the drawing's: right to left)
+			Box surface;
+			Box end;	// the chapter's end line, along the surface's foot
+			Box row[MANGA_READ_KEYS];
+		};
+		MangaReadPage mangaReadPage();
 		// Fullscreen's navigation, over the pages that fill the panel there (the Files reader's and the Manga reader's):
 		// a sheet on the panel's lower part, up after a tap in the middle. The name and "Page N of M", the page slider,
 		// the steps (chapter back, page back, page on, chapter on; a file has no chapters: the two page keys share the
@@ -554,6 +567,8 @@ namespace bp
 			Box view;
 		};
 		PagesSheet pagesSheet();
+		// its two tabs (Pages N, Bookmarks N) take the header's left; the note ("You are on page 3") its right
+		Box pagesTabs(const PagesSheet& p);
 		// column `col`'s cell in a row whose box is `row` (the smooth list's), its picture and its number line
 		struct PagesCell
 		{

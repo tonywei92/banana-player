@@ -100,6 +100,9 @@ namespace bp
 	{
 		static constexpr int KEY = 0x7ffffff0;	// its texture among the pages' (no page, band or row has it)
 		static constexpr int FADE_MS = 400;
+		// a second card beside the level card (a reader's note, a chapter's end): its own texture, at the foot
+		int key = KEY;
+		bool foot = false;	// bottom centre, 26 units up (the note's place) in place of top right
 		int w = 0, h = 0;
 		int64_t until = 0;
 		bool drawn = false;	// the last draw showed it
@@ -109,7 +112,7 @@ namespace bp
 			w = cw;
 			h = ch;
 			until = untilMs;
-			pr.addPage(KEY, cw, ch, std::move(rgba));
+			pr.addPage(key, cw, ch, std::move(rgba));
 		}
 		bool up() const { return until != 0; }
 		// a pass of the loop: true when the panel needs a frame (it went up, it fades, or it's just down: then
@@ -128,11 +131,16 @@ namespace bp
 		// placed over the rest, at whole pixels (the picture is drawn at the panel's size: 1:1, sharp)
 		void place(const PageRenderer& pr, std::vector<PageRenderer::Placed>& placed, int vw, int vh, int64_t now)
 		{
-			drawn = until && now < until && pr.has(KEY);
+			drawn = until && now < until && pr.has(key);
 			if (!drawn) return;
 			float a = std::min(1.f, std::max(0.f, (float)(until - now) / FADE_MS));
 			float m = (float)(int)(20 * vh / 480.f + 0.5f), x = (float)vw - m - w, y = m;	// top right, 20 units in
-			placed.push_back({KEY, x, y, (float)w, (float)h, false, true, a, true});
+			if (foot)
+			{
+				x = (float)((vw - w) / 2);
+				y = (float)vh - (float)(int)(26 * vh / 480.f + 0.5f) - h;
+			}
+			placed.push_back({key, x, y, (float)w, (float)h, false, true, a, true});
 		}
 	};
 }

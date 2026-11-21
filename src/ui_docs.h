@@ -240,6 +240,10 @@ namespace bp
 		void grabPagesSlider(Rect track, int x, int y, Player& p);	// the page slider under a finger (the row's, the navigation's)
 		// X · More (pdf-more) and START · View (pdf-view, an overlay of its own)
 		void openPagesMore(Player& p);
+		// a PDF's or comic's page bookmarks: doc-bookmarks.conf's, the page as the place (More's "Bookmark this page",
+		// the Pages grid's Bookmarks tab)
+		std::vector<int> pagesMarksHere();	// ascending
+		void pagesBookmarkToggle();
 		struct PagesView;
 		void openPagesView();
 	};

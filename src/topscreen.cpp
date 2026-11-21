@@ -294,6 +294,42 @@ namespace bp
 		else if (c.ok()) textReader.showOverlay(c.rgba, c.w, c.h, until);
 	}
 
+	void TopScreen::notesOnReader(Ui& ui, const Player& player, Uint32 now)
+	{
+		int tw = 0, th = 0;
+		SDL_GL_GetDrawableSize(top, &tw, &th);
+		auto show = [&](const LevelCardImage& c, int ms) {
+			if (!c.ok()) return;
+			SDL_GL_MakeCurrent(top, gl);
+			reader.showNote(c.rgba, c.w, c.h, (int64_t)now + ms);
+		};
+		Ui::PageReader::TopNote& note = ui.pageReader->topNote;
+		if (note.ms > 0)
+		{
+			show(drawNoteCard(fontsDir, th, {G_BOOKMARK_ROWS, G_BOOKMARK.h}, note.line1, note.line2, false), note.ms);
+			fprintf(stderr, "reader: note (%s)\n", note.line1.c_str());
+			note = {};
+		}
+		// the chapter's end: once each time the view comes to it (a new chapter starts over), its pages in
+		if (reader.chapterGen() != endCardGen)
+		{
+			endCardGen = reader.chapterGen();
+			endCardShown = false;
+		}
+		bool atEnd = reader.atEnd() && !reader.loading();
+		if (!reader.atEnd()) endCardShown = false;
+		else if (atEnd && !endCardShown)
+		{
+			endCardShown = true;
+			Ui::Manga::EndCard e;
+			if (ui.manga->mangaEndCard(e, player))
+			{
+				show(drawEndCard(fontsDir, th, e.label, e.title, e.line), 4000);
+				fprintf(stderr, "reader: end card (%s / %s)\n", e.title.c_str(), e.line.c_str());
+			}
+		}
+	}
+
 	TextReader::Style TopScreen::textStyle(const Settings& s) const
 	{
 		TextReader::Style st;
@@ -498,6 +534,7 @@ namespace bp
 				showLevelCard("Zoom", reader.zoomPct(), 1200);
 			}
 			zoomShownGen = reader.chapterGen();
+			if (haveUi) notesOnReader(ui, player, now);
 			ui.pageReader->readerStatus.zoomPct = reader.zoomPct();
 			ui.pageReader->readerStatus.fullscreen = reader.fullscreen();
 			ui.pageReader->readerStatus.rotation = reader.rotation();

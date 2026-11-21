@@ -1911,6 +1911,39 @@ namespace bp
 		ui.pageReader->drawFullNav(n);
 	}
 
+	std::vector<int> Ui::Docs::pagesMarksHere()
+	{
+		docMarksLoad();
+		std::vector<int> pages;
+		for (int i : docMarksHere()) pages.push_back((int)docMarks[i].id);	// (docMarksHere: in the places' order)
+		return pages;
+	}
+
+	void Ui::Docs::pagesBookmarkToggle()
+	{
+		const PageReader::ReaderStatus& st = ui.pageReader->readerStatus;
+		if (!st.open || st.pages <= 0) return;
+		docMarksLoad();
+		std::string page = "Page " + std::to_string(st.page + 1);
+		for (int i : docMarksHere())
+			if ((int)docMarks[i].id == st.page)
+			{
+				docMarks.erase(docMarks.begin() + i);
+				docMarksSave();
+				ui.pageReader->topNote = {"Bookmark removed", page, 1500};
+				return;
+			}
+		DocMark m;
+		m.path = docPath;
+		m.id = (uint64_t)st.page;
+		m.frac = st.pages > 1 ? st.page / (double)(st.pages - 1) : 0;
+		m.label = page;
+		docMarks.push_back(m);
+		docMarksSave();
+		// said over the page on the top panel (the reader's own note: mpv's is under the pages)
+		ui.pageReader->topNote = {page + " bookmarked", "Y \xC2\xB7 Pages lists the bookmarks", 2400};
+	}
+
 	void Ui::Docs::openPagesMore(Player&)
 	{
 		std::string path = docPath;
@@ -1923,6 +1956,17 @@ namespace bp
 			if (ui.pageReader->readerStatus.pages > 0) m.note = std::to_string(ui.pageReader->readerStatus.pages) + " pages";
 			// a browser's page first, while it differs from this one
 			if (foreignShown()) m.rows.push_back({&G_BOOKMARK, foreignLabel(), "", "", [this](Player&) { foreignGo(); return false; }});
+			{
+				// this page's bookmark, put or taken away (the Pages grid marks it and lists it on its second tab)
+				std::vector<int> marks = pagesMarksHere();
+				MoreItem mark;
+				mark.glyph = &G_BOOKMARK;
+				mark.lit = std::binary_search(marks.begin(), marks.end(), ui.pageReader->readerStatus.page);
+				mark.label = mark.lit ? "Remove this bookmark" : "Bookmark this page";
+				mark.note = "page " + std::to_string(ui.pageReader->readerStatus.page + 1);
+				mark.act = [this](Player&) { pagesBookmarkToggle(); return false; };
+				m.rows.push_back(mark);
+			}
 			m.rows.push_back({&G_INFO, "Info", "", "", [this, path](Player&) { ui.openFileInfo(path, ""); return false; }});
 			m.rows.push_back({&G_FOLDER, "Show in folder", "", "", [this, path](Player& p) {
 				docClose(p);

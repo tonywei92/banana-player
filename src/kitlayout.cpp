@@ -522,6 +522,25 @@ namespace bp
 			return l;
 		}
 
+		MangaReadPage mangaReadPage()
+		{
+			ReaderPage r = readerPage(true);
+			MangaReadPage l;
+			l.from = r.from;
+			l.track = r.track;
+			l.to = r.to;
+			l.sliderHit = r.sliderHit;
+			l.surface = r.surface;
+			l.end = {l.surface.x + SP12, l.surface.y + l.surface.h - 64, l.surface.w - 2 * SP12, 24};
+			// the chapter keys at the ends, 64 wide (a mark and its cap); the four between share the rest
+			Box row{MARGIN, READER_ROW_Y, PANEL_W - 2 * MARGIN, READER_ROW_H};
+			l.row[MRK_PREV] = {row.x, row.y, MANGA_READ_END_W, row.h};
+			l.row[MRK_NEXT] = {row.x + row.w - MANGA_READ_END_W, row.y, MANGA_READ_END_W, row.h};
+			Box mid{row.x + MANGA_READ_END_W + GAP, row.y, row.w - 2 * (MANGA_READ_END_W + GAP), row.h};
+			for (int i = MRK_PAGES; i <= MRK_LIGHT; i++) l.row[i] = cell(mid, 4, GAP, i - MRK_PAGES);
+			return l;
+		}
+
 		ReaderFullNav readerFullNav(bool chapters)
 		{
 			ReaderFullNav n;
@@ -558,6 +577,11 @@ namespace bp
 			int top = p.sheet.rowsY + SP4, bottom = p.sheet.hints.y - SP8;
 			p.view = {SHEET_PAD, top, PANEL_W - 2 * SHEET_PAD, bottom - top};
 			return p;
+		}
+
+		Box pagesTabs(const PagesSheet& p)
+		{
+			return {p.sheet.head.x, p.sheet.head.y, 330, p.sheet.head.h};
 		}
 
 		PagesCell pagesCell(Box row, int col)

@@ -5,6 +5,7 @@
 #include "ui_smoothlist.h"
 #include "ui_internal.h"
 #include "ui_manga.h"
+#include "ui_docs.h"
 #include "textreader.h"
 #include "manga_ui_logic.h"
 #include "pagebook.h"
@@ -16,7 +17,7 @@ namespace bp
 	namespace
 	{
 		// the photo viewer's steps (FEATURES.md, "Looking at a photo"): 1.0 is the fit, and the reader draws its pages
-		// from the same geometry, so Up/Down and the Reading menu's Zoom row walk the same ladder
+		// from the same geometry, so Up/Down and the View sheet's Zoom row walk the same ladder
 		// small steps where reading zooms most (just past the fit), wider ones further in
 		constexpr int MANGA_ZOOMS[] = {100, 110, 125, 140, 160, 180, 200, 225, 250, 300, 350, 400, 500, 600, 700, 800};
 		constexpr int MANGA_ZOOM_STEPS = (int)(sizeof MANGA_ZOOMS / sizeof MANGA_ZOOMS[0]);
@@ -242,15 +243,20 @@ namespace bp
 		ui.drawTextMid(text, 0, TEXT, W / 2, H / 2, 0, 2);
 	}
 
-	void Ui::PageReader::mangaPagesOpen(Player& p)
+	std::vector<int> Ui::PageReader::marksNow() const
 	{
-		(void)p;
-		if (!readerStatus.open || readerStatus.pages <= 0) return;
-		mangaPages = true;
-		mangaPagesCursor = mangaPagesHere = std::clamp(readerStatus.page, 0, readerStatus.pages - 1);
-		// the cursor's row centred in the grid, there at once
+		return ui.page == Page::MangaRead ? ui.manga->mangaMarksHere() : ui.docs->pagesMarksHere();
+	}
+
+	std::vector<std::string> Ui::PageReader::mangaPagesTabLabels() const
+	{
+		return {"Pages " + std::to_string(readerStatus.pages), "Bookmarks " + std::to_string(pageMarks.size())};
+	}
+
+	void Ui::PageReader::mpCentre()
+	{
 		int row = mangaPagesCursor / MPG_COLS;
-		int rows = (readerStatus.pages + MPG_COLS - 1) / MPG_COLS;
+		int rows = (mpCount() + MPG_COLS - 1) / MPG_COLS;
 		Rect view = mangaPagesView();
 		int shown = view.h / MPG_ROW_H;
 		mangaPagesScroll = std::clamp(row - shown / 2, 0, std::max(0, rows - shown));
@@ -259,7 +265,35 @@ namespace bp
 		pagesMoving = false;
 		mangaPagesTouch = false;
 		mangaPagesPressed = -1;
+	}
+
+	void Ui::PageReader::mangaPagesOpen(Player& p)
+	{
+		(void)p;
+		if (!readerStatus.open || readerStatus.pages <= 0) return;
+		mangaPages = true;
+		mangaPagesTab = 0;
+		pageMarks = marksNow();
+		mangaPagesCursor = mangaPagesHere = std::clamp(readerStatus.page, 0, readerStatus.pages - 1);
+		mpCentre();
 		mpMade = 0;
+	}
+
+	void Ui::PageReader::mangaPagesTabSet(int tab)
+	{
+		tab = tab ? 1 : 0;
+		if (tab == mangaPagesTab) return;
+		// the cursor stays on its page: on Bookmarks, the first one at or after it (the last, past them all)
+		int page = mpPage(mangaPagesCursor);
+		mangaPagesTab = tab;
+		if (!tab) mangaPagesCursor = std::clamp(page, 0, std::max(0, readerStatus.pages - 1));
+		else
+		{
+			int at = (int)(std::lower_bound(pageMarks.begin(), pageMarks.end(), page) - pageMarks.begin());
+			mangaPagesCursor = std::clamp(at, 0, std::max(0, (int)pageMarks.size() - 1));
+		}
+		mpCentre();
+		if (mpCount() > 0 && mpPage(mangaPagesCursor) != page) mangaSeek(mpPage(mangaPagesCursor));
 	}
 
 	void Ui::PageReader::mangaPagesClose(Player& p)
@@ -289,8 +323,16 @@ namespace bp
 
 	bool Ui::PageReader::mangaPagesKey(Button b, Player& p)
 	{
-		int pages = readerStatus.pages;
-		if (pages <= 0) { mangaPagesClose(p); return false; }
+		if (readerStatus.pages <= 0) { mangaPagesClose(p); return false; }
+		// L / R: the other tab
+		if (b == Button::L || b == Button::R) { mangaPagesTabSet(!mangaPagesTab); return false; }
+		// (slots from here: every page, or the bookmarks alone; none bookmarked leaves only the way out)
+		int pages = mpCount();
+		if (pages <= 0)
+		{
+			if (b == Button::B || b == Button::Y) mangaPagesClose(p);
+			return false;
+		}
 		int cur = mangaPagesCursor;
 		int row = cur / MPG_COLS, col = cur % MPG_COLS;
 		int rows = (pages + MPG_COLS - 1) / MPG_COLS;
@@ -306,7 +348,7 @@ namespace bp
 		case Button::R2: if (row + 1 < rows) cur = std::min(cur + SCREEN_ROWS * MPG_COLS, pages - 1); break;
 		case Button::A:
 			// jump to the page under the cursor and close the grid
-			mangaSeek(cur);
+			mangaSeek(mpPage(cur));
 			mangaPagesClose(p);
 			return false;
 		case Button::B:
@@ -319,7 +361,7 @@ namespace bp
 		{
 			mangaPagesCursor = cur;
 			// the top panel follows the cursor: a Seek, as the slider sends
-			mangaSeek(cur);
+			mangaSeek(mpPage(cur));
 			// keep the cursor's row in view (a short glide)
 			pagesList.reveal(cur / MPG_COLS, mangaPagesView(), MPG_ROW_H, rows);
 		}
@@ -328,8 +370,8 @@ namespace bp
 
 	bool Ui::PageReader::mangaPagesPointer(const Pointer& pt, int x, int y, Player& p)
 	{
-		int pages = readerStatus.pages;
-		if (pages <= 0) { mangaPagesClose(p); return false; }
+		if (readerStatus.pages <= 0) { mangaPagesClose(p); return false; }
+		int pages = mpCount();
 		// the thumbnail under a point, -1 for none (in the grid's view, at its offset now)
 		auto thumbAt = [&](int px, int py) {
 			int r = pagesList.rowAt(px, py);
@@ -350,6 +392,12 @@ namespace bp
 				mangaPagesClose(p);
 				ui.swallowTouch = true;
 				return false;
+			}
+			// a tab: the other list
+			{
+				auto tabs = ui.kit->tabRects(lay::pagesTabs(lay::pagesSheet()), mangaPagesTabLabels());
+				for (int i = 0; i < (int)tabs.size(); i++)
+					if (tabs[i].hit(x, y)) { mangaPagesTabSet(i); return false; }
 			}
 			// anywhere on the grid, a thumbnail too: a drag or a tap, told apart when the finger lifts (a thumbnail
 			// opening on the touch left nothing to start a drag from: the grid is all thumbnails)
@@ -381,7 +429,7 @@ namespace bp
 			mangaPagesPressed = -1;
 			if (!mangaPagesMoved && !mangaPagesCaught && i >= 0 && thumbAt(x, y) == i)
 			{
-				mangaSeek(i);
+				mangaSeek(mpPage(i));
 				mangaPagesClose(p);
 			}
 			return false;
@@ -418,18 +466,29 @@ namespace bp
 
 	void Ui::PageReader::drawMangaPages(const Player& p)
 	{
-		int pages = readerStatus.pages;
-		if (pages <= 0) { mangaPagesClose(const_cast<Player&>(p)); return; }
+		if (readerStatus.pages <= 0) { mangaPagesClose(const_cast<Player&>(p)); return; }
+		int pages = mpCount();	// (slots: every page, or the bookmarks alone)
 		// the chapter changed: the old textures go
 		if (readerThumbs.gen != mpGen) { mpFree(); mpGen = readerThumbs.gen; mpAskFrom = mpAskTo = -1; }
-		// the sheet over the reader: its title with the count, where the reader was at its right
+		// the sheet over the reader: its two tabs with their counts, where the reader was at its right
 		Kit& k = *ui.kit;
 		lay::PagesSheet ps = lay::pagesSheet();
-		Kit::SheetHead head;
-		head.glyph = &G_BLOCKS;
-		head.title = "Pages " + std::to_string(pages);
-		head.note = "You are on page " + std::to_string(mangaPagesHere + 1);
-		k.sheet(ps.sheet, head);
+		k.sheetBack(ps.sheet.box, ps.sheet.grab);
+		k.tabs(lay::pagesTabs(ps), mangaPagesTabLabels(), mangaPagesTab);
+		{
+			Rect hd = ps.sheet.head;
+			ui.drawTextMid("You are on page " + std::to_string(mangaPagesHere + 1), F_I12, DIM, hd.x + hd.w, hd.y + hd.h / 2, 200, 1);
+		}
+		if (pages <= 0)
+		{
+			// Bookmarks with none: where one is made
+			Rect v = ps.view;
+			ui.drawGlyphMid(G_BOOKMARK, v.x + v.w / 2, v.y + v.h / 2 - 34, DIM, 2);
+			ui.drawTextMid("No bookmarks in this one yet", F_P16, TEXT, v.x + v.w / 2, v.y + v.h / 2 + 4, v.w, 2);
+			ui.drawTextMid("While reading: X \xC2\xB7 More, then Bookmark this page", F_I12, DIM, v.x + v.w / 2, v.y + v.h / 2 + 30, v.w, 2);
+			k.hints({{"L/R", "Tab"}, {"Y/B", "Close"}});
+			return;
+		}
 		// the grid: thumbnails with numbered places for pages not decoded yet, a row of them a row of a smooth
 		// list. At most one texture made a frame (mpThumb), so a turn never stalls the panel
 		mpMade = 0;
@@ -448,7 +507,7 @@ namespace bp
 			if (row != mangaPagesCursor / MPG_COLS)
 			{
 				mangaPagesCursor = std::clamp(row * MPG_COLS + mangaPagesCursor % MPG_COLS, 0, pages - 1);
-				mangaSeek(mangaPagesCursor);
+				mangaSeek(mpPage(mangaPagesCursor));
 			}
 		}
 		pagesMoving = moving;
@@ -458,17 +517,21 @@ namespace bp
 			double off = pagesList.sc.offset();
 			int first = std::max(0, (int)std::floor(off / MPG_ROW_H) - 1);
 			int last = std::min(rows - 1, (int)std::floor((off + view.h) / MPG_ROW_H) + 1);
-			mpAsk(first * MPG_COLS, std::min(pages - 1, (last + 1) * MPG_COLS - 1));
+			mpAsk(mpPage(first * MPG_COLS), mpPage(std::min(pages - 1, (last + 1) * MPG_COLS - 1)));
 		}
 		SmoothList::Spec spec;
 		spec.view = view;
 		spec.rowH = MPG_ROW_H;
 		spec.count = rows;
 		spec.key = [this, pages, cursor = mangaPagesCursor, here = mangaPagesHere](int r) {
-			std::string key;
+			std::string key = mangaPagesTab ? "b" : "p";
 			for (int i = r * MPG_COLS; i < pages && i < (r + 1) * MPG_COLS; i++)
-				key += mpThumb(i) ? (i == cursor ? "T" : "t") : (i == cursor ? "N" : "n");
-			return key + (here / MPG_COLS == r ? std::to_string(here) : "");
+			{
+				int page = mpPage(i);
+				key += mpThumb(page) ? (i == cursor ? "T" : "t") : (i == cursor ? "N" : "n");
+				key += std::to_string(page) + (page == here ? "h" : "") + (std::binary_search(pageMarks.begin(), pageMarks.end(), page) ? "m" : "");
+			}
+			return key;
 		};
 		spec.draw = [this, pages, cursor = mangaPagesCursor, here = mangaPagesHere](int r, Rect box) {
 			Kit& k = *ui.kit;
@@ -477,10 +540,11 @@ namespace bp
 			{
 				lay::PagesCell c = lay::pagesCell(box, i % MPG_COLS);
 				bool at = i == cursor;
+				int page = mpPage(i);
 				// the page's place: the thumbnail fitted inside it (aspect kept), or its number while it isn't decoded
 				Rect t = c.thumb;
 				ui.fillRound(t, BUTTON, theme::R_GRIP);
-				auto it = mpTex.find(i);
+				auto it = mpTex.find(page);
 				if (it != mpTex.end() && it->second.tex && it->second.w > 0 && it->second.h > 0)
 				{
 					double aspect = (double)it->second.w / it->second.h;
@@ -493,8 +557,10 @@ namespace bp
 				}
 				// the cursor: the accent outline 2 clear of the picture
 				if (at) k.ring({t.x - 4, t.y - 4, t.w + 8, t.h + 8}, theme::R_GRIP + 2, ACCENT);
-				if (i == here) k.pill(t.x + 3 + k.pillW("Here"), t.y + 13, "Here", Kit::Pill::Fact);
-				ui.drawTextMid(std::to_string(i + 1), F_I12, at ? ACCENT : DIM, c.number.x + c.number.w / 2, c.number.y + c.number.h / 2, 0, 2);
+				if (page == here) k.pill(t.x + 3 + k.pillW("Here"), t.y + 13, "Here", Kit::Pill::Fact);
+				// a bookmarked page: the mark at its top right corner
+				if (std::binary_search(pageMarks.begin(), pageMarks.end(), page)) ui.drawGlyphMid(G_BOOKMARK, t.x + t.w - 11, t.y + 9, ACCENT);
+				ui.drawTextMid(std::to_string(page + 1), F_I12, at ? ACCENT : DIM, c.number.x + c.number.w / 2, c.number.y + c.number.h / 2, 0, 2);
 			}
 		};
 		pagesList.draw(std::move(spec));
@@ -508,7 +574,7 @@ namespace bp
 			if (old->second.tex) SDL_DestroyTexture(old->second.tex);
 			mpTex.erase(old);
 		}
-		k.hints({{"D-PAD", "Move"}, {"A", "Go"}, {"L2/R2", "A screenful"}, {"Y/B", "Close"}});
+		k.hints({{"D-PAD", "Move"}, {"A", "Go"}, {"L2/R2", "A screenful"}, {"L/R", "Tab"}, {"Y/B", "Close"}});
 	}
 
 	void Ui::PageReader::FollowList::follow(Rect view, int rowH, int n, int cols, int& scroll, int* cursor)
