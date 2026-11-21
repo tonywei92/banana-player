@@ -217,7 +217,14 @@ namespace bp
 		void showEqCard();
 		// the note (levelcard.h), bottom centre: an optional glyph (rows of '#' cells), a line in yellow (red: danger), and
 		// under it a dim one (the title it was for). 3 s
-		void showNoteCard(const char* const* rows, int h, const std::string& line1, const std::string& line2, bool danger = false);
+		void showNoteCard(const char* const* rows, int h, const std::string& line1, const std::string& line2, bool danger = false, int ms = 0);
+		void hideNote();	// the note down now (one kept until the first key: the sleep timer's on waking)
+		// the sleep timer's last minute (ui_sleep.h): its card where the note goes, kept until dropped (shown again each
+		// second with the time left), over every other card; and, while one runs over a song, its quiet mark top right
+		void showSleepCard(const char* const* rows, int h, const std::string& line1, const std::string& line2);
+		void dropSleepCard();
+		void showSleepMark(const char* const* rows, int h, const std::string& text);
+		void dropSleepMark();
 		// a short note, one line (a failure's, "Couldn't ...", in red); ms at least 3 s
 		void osd(const std::string& text, int ms = 3000);
 		// the level card over the top panel ("Volume", 85; levelcard.h's picture as an mpv image overlay), till
@@ -305,6 +312,9 @@ namespace bp
 		// (Ui::setVolumeTotal). Back to 100 at each start: a loud evening isn't the next one's
 		int boost = 100;
 		void setBoost(int v);
+		// the sleep timer's fade (ui_sleep.h): a factor on mpv's own volume, 1 none (the handheld's volume never moves)
+		void setFade(double f);
+		double fade = 1;
 		// the audio diagnostics (Player::logAudio): mpv's audio-params, audio-out-params, current-ao, af, lavfi-complex
 		std::string audioIn, audioOut, audioAo, audioAf, audioLavfi;
 		void logAudio(const char* what) const;	// the error is the network's (Play tries the file again), not the file's
@@ -399,7 +409,11 @@ namespace bp
 		// the level card's pixels by the serial of the command that took them: mpv reads them when the command runs
 		// (and again while shown), so they live till its answer, the shown one till it's replaced or removed
 		// overlay-add's ids (the idle icon has 0): later ones are drawn over earlier ones
-		static constexpr int OV_LEVEL = 4, OV_NOTE = 5, OV_COUNT = 6;	// 1: the song art (ART_OVERLAY), under every card
+		// 1: the song art (ART_OVERLAY), under every card; 3: the sleep timer's mark (under the level card); 6: its
+		// last minute's card, over all
+		static constexpr int OV_SLEEP_MARK = 3, OV_LEVEL = 4, OV_NOTE = 5, OV_SLEEP = 6, OV_COUNT = 7;
+		std::string sleepMarkText;	// the mark shown ("" none): put again only when it changes
+		void sendVolume();
 		bool topStateElsewhere = false, topStateLoad = false;
 		PaneSpec topStateElsewhereSpec, topStateLoadSpec;
 		std::map<uint64_t, std::shared_ptr<std::vector<uint8_t>>> levelPixels;

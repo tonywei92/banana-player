@@ -11,6 +11,7 @@ import { signOut } from './session.js';
 import { videoHere } from './events.js';
 import { errMsg, errToast, get, post } from './api.js';
 import { durable, durationOf, useDurations } from './durations.js';
+import { SleepRow } from './sleep.js';
 import { Files, downloadPaths, rootName } from './files.js';
 
 /* ================= now playing =================
@@ -457,7 +458,7 @@ export function NowPlaying() {
 	if (wide) return html`<div class=${'np wide' + (vid ? ' vid' : '')}><${Glow} v=${v} />${top}
 		<${Strips} v=${v} other=${other} sn=${sn} />
 		<div class="np-hero"><${Media} v=${v} off=${off} />
-			<div class="np-side"><${NpMeta} v=${v} /><div class="np-seek"><${Seek} view=${v} onSeek=${ctl.seek} disabled=${off || v.finished} /><${Times} v=${v} skip=${true} off=${off || v.finished} /></div><${Transport} v=${v} off=${off} /></div></div>
+			<div class="np-side"><${NpMeta} v=${v} /><div class="np-seek"><${Seek} view=${v} onSeek=${ctl.seek} disabled=${off || v.finished} /><${Times} v=${v} skip=${true} off=${off || v.finished} /></div><${Transport} v=${v} off=${off} /><${SleepRow} /></div></div>
 		<section class="np-card box surface" aria-label="Queue and more">${panel}</section></div>`;
 	return html`<${FullPlayer} v=${v} off=${off} other=${other} sn=${sn} tabs=${tabs} tab=${tab} />`;
 }
@@ -519,7 +520,8 @@ function FullPlayer({ v, off, other, sn, tabs, tab }) {
 				<${NpMeta} v=${v} acts=${true} />
 				<div class="np-seek"><${Seek} view=${v} onSeek=${ctl.seek} disabled=${off || v.finished} /><${Times} v=${v} skip=${true} off=${off || v.finished} /></div>
 				<${Transport} v=${v} off=${off} />
-				<div class="np-tabs">${threeKeys(v, tabs).map(([k, l]) => html`<button class="btn" aria-haspopup="dialog" onClick=${() => showTab(k)}><${Icon} n=${NP_GLYPH[k]} k=${2} />${l}</button>`)}</div></div></section>
+				<div class="np-tabs">${threeKeys(v, tabs).map(([k, l]) => html`<button class="btn" aria-haspopup="dialog" onClick=${() => showTab(k)}><${Icon} n=${NP_GLYPH[k]} k=${2} />${l}</button>`)}</div>
+				<${SleepRow} /></div></section>
 		<${Sheet} v=${v} tabs=${tabs} tab=${tab} />
 	</div>`;
 }

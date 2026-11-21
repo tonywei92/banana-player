@@ -156,6 +156,20 @@ namespace bp
 		return finish(c);
 	}
 
+	LevelCardImage drawQuietMark(const std::string& fontsDir, int panelH, CardGlyph icon, const std::string& text)
+	{
+		// no card of its own: a faint ground just big enough to keep the words readable over a visualizer
+		Canvas c(fontsDir, panelH);
+		const int pad = c.px(6), ico = icon.rows ? c.px(14) + c.px(6) : 0;
+		const int h = std::max(c.lineH(INTER, 12.5f), c.px(14)) + 2 * pad;
+		int w = ico + c.textW(INTER, 12.5f, text) + 2 * pad;
+		c.size(w, h);
+		c.box(0, 0, (float)w, (float)h, (float)c.px(6), TOP_CARD, 90);
+		if (icon.rows) c.glyph(icon, (float)c.px(14), (float)pad, (h - c.px(14)) / 2.f, TOP_SUB);
+		c.text(INTER, 12.5f, text, pad + ico, (h - c.lineH(INTER, 12.5f)) / 2, TOP_SUB);
+		return finish(c);
+	}
+
 	std::vector<uint8_t> premultipliedBgra(const LevelCardImage& card)
 	{
 		std::vector<uint8_t> bgra((size_t)card.w * card.h * 4);

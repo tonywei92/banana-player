@@ -2843,7 +2843,6 @@ namespace bp
 	void Ui::showPlayer()
 	{
 		if (!onPlayer) playerBack = {true, page, setGroup, cursor, scroll, browse->browseDir, browse->browseTab};
-		if (!onPlayer) playerPage->listPulseArm = true;	// (a playlist's song: the List key glows twice, PlayerPage::draw)
 		onPlayer = true;
 		page = Page::Main;
 		settingsOver = false;

@@ -13,6 +13,7 @@ const DOWN = {
 	quit: ['Banana Player was closed on your handheld', 'Open Banana Player on your handheld. This page reconnects by itself.'],
 	off: ['The dashboard is off', 'It was turned off on the handheld. This page comes back by itself when it is on again.'],
 	sleep: ['Your handheld is asleep', 'Open its lid to carry on. This page reconnects by itself.'],
+	sleeptimer: ['The handheld is asleep (sleep timer)', 'Its sleep timer ran out: what played is paused where it was. Wake the handheld to carry on.'],
 	none: ["Can't reach your handheld", 'It may be asleep, or off this Wi-Fi. This page reconnects by itself.'],
 };
 // (all drawn here: when the handheld is gone, nothing more can be fetched from it)
@@ -23,7 +24,7 @@ export function DownScreen() {
 	const trying = s.probing || !left;
 	const ref = useRef();
 	useEffect(() => { ref.current && ref.current.focus(); }, [s.downReason]);
-	const sleep = s.downReason === 'sleep';
+	const sleep = s.downReason === 'sleep' || s.downReason === 'sleeptimer';
 	return html`<main class="down" aria-labelledby="down-t"><div class="downbox">
 		<div class="zz"><${HandheldArt} mode="off" />${sleep && html`<span style="right:-6px;top:-4px" aria-hidden="true">z</span><span style="right:-18px;top:-14px;animation-delay:.8s" aria-hidden="true">Z</span>`}</div>
 		<div class="kicker">Disconnected</div>

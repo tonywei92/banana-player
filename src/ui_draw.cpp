@@ -25,6 +25,7 @@
 #include "ui_reader.h"
 #include "ui_manga.h"
 #include "ui_player.h"
+#include "ui_sleep.h"
 #include "ui_shell.h"
 
 namespace bp
@@ -773,6 +774,7 @@ namespace bp
 		if (galleryNew) { statusHit = {0, 0, 0, 0}; drawGalleryNew(); return; }	// (test only: --press gallery:new)
 		webInd = {0, 0, 0, 0};	// (drawBattery puts it back where it draws it)
 		statusHit = {0, 0, 0, 0};
+		sleepHit = {0, 0, 0, 0};	// (the header that draws the badge puts it back)
 		// what plays behind the browser: its row's chip, the header's mark (drawBattery says whether it moved)
 		setChip(p);
 		markAnim = false;
@@ -865,7 +867,15 @@ namespace bp
 		if (!c.empty()) left -= (left == 616 ? 0 : 10) + (int)std::lround(textWidth(c, 0) / sx);
 		left -= markW(p);
 		left -= incognitoW();
+		if (int bw = sleepBadgeW(p)) left -= bw + 8;
 		return left;
+	}
+
+	int Ui::sleepBadgeW(const Player& p) const
+	{
+		// a running sleep timer's badge, left of the status marks on every page (not over a photo, as the clock)
+		if (!sleep->running() || (page == Page::Main && p.playingPhoto())) return 0;
+		return lay::badgeW(kit->textW(lay::caps(sleep->label()), F_I11B), true);
 	}
 
 	int Ui::markW(const Player& p) const
@@ -898,7 +908,15 @@ namespace bp
 		// the clock, left of the rest (as statusLeft has it); dim while touch is locked
 		// (then the playing mark, left of it)
 		// the whole cluster is one touch target (F opens Quick settings); the globe inside keeps its own tap
-		int loud = statusLeft(p);
+		// (statusLeft lays the cluster out from 616; a header whose cluster ends elsewhere, the player's, shifts it)
+		int loud = statusLeft(p) - (616 - right);
+		// the sleep timer's badge first (its own tap: the sheet), the cluster's touch target after it
+		if (int bw = sleepBadgeW(p))
+		{
+			if (loud >= minX) kit->badge(loud + bw, y + 8, sleep->badge());
+			sleepHit = {loud - 4, 0, bw + 8, 54};
+			loud += bw + 8;
+		}
 		statusHit = loud < right ? Rect{loud - 8, 0, right - (loud - 8), 54} : Rect{0, 0, 0, 0};
 		auto clock = [&](int edge) {
 			std::string c = clockText(p);

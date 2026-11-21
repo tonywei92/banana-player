@@ -69,7 +69,7 @@ export function openSSE() {
 		const r = d.reason || 'quit';
 		if (r === 'pin') return signOutHere('pin');
 		// the lid closed: the handheld freezes moments later. A lid closed with sleep off says "awake" soon after
-		if (r === 'sleep') { clearTimeout(C.graceTimer); C.graceTimer = setTimeout(() => goDown('sleep'), 2500); return; }
+		if (r === 'sleep' || r === 'sleeptimer') { clearTimeout(C.graceTimer); C.graceTimer = setTimeout(() => goDown(r), 2500); return; }
 		goDown(r);
 	});
 	on('awake', () => clearTimeout(C.graceTimer));

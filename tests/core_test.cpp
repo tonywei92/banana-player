@@ -38,6 +38,7 @@ extern "C"
 #include "format.h"
 #include "ftplist.h"
 #include "history.h"
+#include "sleeptimer.h"
 #include "htmldoc.h"
 #include "photo.h"
 #include "picsubs.h"
@@ -7676,6 +7677,9 @@ static void testSettingsTable()
 	CHECK_EQ(std::string(defs[*(lid + 2)].key), "lid-volume");
 	CHECK_EQ(std::string(defs[*(lid + 3)].key), "lid-shoulder");
 	CHECK_EQ(std::string(defs[*(lid + 4)].key), "lid-incognito");
+	// the sleep timer's two after the lid's
+	CHECK_EQ(std::string(defs[*(lid + 5)].key), "sleep-timer-end");
+	CHECK_EQ(std::string(defs[*(lid + 6)].key), "sleep-snooze");
 	// the readers' choices moved to Reading from no page at all
 	auto reading = settingsOfGroup(SG_READING);
 	CHECK_EQ(reading.size(), (size_t)8);
@@ -8289,6 +8293,160 @@ static void testHistory()
 	CHECK_EQ(back.items()[1], std::string("/v/107"));
 	back.clear();
 	CHECK_EQ(back.items().empty(), true);
+}
+
+// the sleep timer's pure rule (sleeptimer.h): the count, its last minute and fade, the snooze, the end of a song, the
+// list ending first, the dark before the sleep
+static void testSleepTimer()
+{
+	const uint64_t MIN = 60000;
+	auto at = [](uint64_t now, bool loaded = true, double left = -1, bool ended = false) {
+		SleepIn in;
+		in.now = now;
+		in.loaded = loaded;
+		in.itemLeft = left;
+		in.itemEnded = ended;
+		return in;
+	};
+	SleepTimer t;
+	// off: inert, says nothing
+	CHECK_EQ(sleepTick(t, at(0)).pause, false);
+	CHECK_EQ(sleepLabel(t, at(0), "Song"), std::string(""));
+	// 30 min from 1000: minutes rounded up, the phase Running, no fade
+	sleepSet(t, 30, 30 * MIN, 1000);
+	CHECK_EQ(sleepLabel(t, at(1000), "Song"), std::string("30 min"));
+	CHECK_EQ(sleepLabel(t, at(1000 + 6 * MIN + 1), "Song"), std::string("24 min"));
+	SleepOut o = sleepTick(t, at(1000 + 10 * MIN));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Running);
+	CHECK_EQ(o.fade, 1.0);
+	// its last minute: Warning, the label in seconds, the fade linear to 0
+	o = sleepTick(t, at(1000 + 29 * MIN));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Warning);
+	CHECK_EQ(o.fade, 1.0);
+	CHECK_EQ(sleepLabel(t, at(1000 + 29 * MIN), "Song"), std::string("1:00"));
+	o = sleepTick(t, at(1000 + 29 * MIN + 30000));
+	CHECK_EQ(o.fade, 0.5);
+	CHECK_EQ(sleepLabel(t, at(1000 + 29 * MIN + 12000), "Song"), std::string("0:48"));
+	CHECK_EQ(sleepLabel(t, at(1000 + 30 * MIN - 1), "Song"), std::string("0:01"));
+	// 0:00: pause, dark, fade at 0; then 10 s later the sleep, and the timer is off
+	o = sleepTick(t, at(1000 + 30 * MIN));
+	CHECK_EQ(o.pause, true);
+	CHECK_EQ(o.fade, 0.0);
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Dark);
+	CHECK_EQ(sleepRunning(t), false);
+	CHECK_EQ(sleepTick(t, at(1000 + 30 * MIN + SLEEP_DARK_MS - 1)).sleep, false);
+	o = sleepTick(t, at(1000 + 30 * MIN + SLEEP_DARK_MS));
+	CHECK_EQ(o.sleep, true);
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Off);
+	CHECK_EQ(sleepTick(t, at(1000 + 40 * MIN)).sleep, false);	// once
+	// snooze in the last minute: 10 more on what was left, back to Running, the fade over
+	sleepSet(t, 15, 15 * MIN, 0);
+	sleepTick(t, at(15 * MIN - 48000));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Warning);
+	sleepSnooze(t, 10 * MIN, at(15 * MIN - 48000));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Running);
+	CHECK_EQ(t.deadline, 25 * MIN);
+	CHECK_EQ(sleepTick(t, at(15 * MIN)).fade, 1.0);
+	// a snooze while it is off or dark does nothing
+	SleepTimer off;
+	sleepSnooze(off, 10 * MIN, at(0));
+	CHECK_EQ((int)off.phase, (int)SleepPhase::Off);
+	// a new choice replaces a running one, from now; minutes 0 is off
+	sleepSet(t, 45, 45 * MIN, 5 * MIN);
+	CHECK_EQ(t.deadline, 50 * MIN);
+	CHECK_EQ(t.minutes, 45);
+	sleepSet(t, 0, 0, 5 * MIN);
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Off);
+	// End of this song: the item's word, its last 60 s the card (no fade), its end the pause
+	sleepSetItemEnd(t);
+	CHECK_EQ(sleepLabel(t, at(0, true, 200), "Song"), std::string("Song"));
+	CHECK_EQ(sleepLabel(t, at(0, true, -1), "Song"), std::string("Song"));
+	o = sleepTick(t, at(0, true, 200));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Running);
+	o = sleepTick(t, at(1000, true, 48));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Warning);
+	CHECK_EQ(o.fade, 1.0);
+	CHECK_EQ(sleepLabel(t, at(1000, true, 48), "Song"), std::string("0:48"));
+	// a skip to a longer song: back to Running; its end is what counts
+	sleepTick(t, at(2000, true, 180));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Running);
+	o = sleepTick(t, at(3000, true, 0, true));
+	CHECK_EQ(o.pause, true);
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Dark);
+	// End of this song snoozed: a length from the song's end
+	sleepSetItemEnd(t);
+	sleepTick(t, at(0, true, 30));
+	sleepSnooze(t, 10 * MIN, at(0, true, 30));
+	CHECK_EQ((int)t.kind, (int)SleepKind::Minutes);
+	CHECK_EQ(t.deadline, 30000 + 10 * MIN);
+	// End of this song and the list's end: it ends then
+	sleepSetItemEnd(t);
+	sleepTick(t, at(0, true, 100));
+	CHECK_EQ(sleepTick(t, at(500, false)).pause, true);
+	// the list ends first (24 min left): its last minute starts now, nothing to fade; a snooze runs 10 more and
+	// doesn't jump back; then pause (nothing to fade) and dark
+	sleepSet(t, 30, 30 * MIN, 0);
+	sleepTick(t, at(6 * MIN));
+	o = sleepTick(t, at(6 * MIN + 1000, false));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Warning);
+	CHECK_EQ(t.listEnded, true);
+	CHECK_EQ(o.fade, 1.0);
+	CHECK_EQ(sleepLabel(t, at(6 * MIN + 1000, false), "Song"), std::string("1:00"));
+	sleepSnooze(t, 10 * MIN, at(6 * MIN + 2000, false));
+	sleepTick(t, at(6 * MIN + 3000, false));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Running);
+	CHECK_EQ(t.deadline, 6 * MIN + 1000 + SLEEP_WARN_MS + 10 * MIN);
+	o = sleepTick(t, at(t.deadline, false));
+	CHECK_EQ(o.pause, true);
+	CHECK_EQ(o.fade, 1.0);
+	// set with nothing loaded: no list to end, it counts on
+	sleepSet(t, 15, 15 * MIN, 0);
+	sleepTick(t, at(1000, false));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Running);
+	CHECK_EQ(t.listEnded, false);
+	// a length shorter than its last minute (a test's few seconds): the warning at once
+	sleepSet(t, 30, 3000, 0);
+	sleepTick(t, at(0));
+	CHECK_EQ((int)t.phase, (int)SleepPhase::Warning);
+	CHECK_EQ(sleepLeftMs(t, at(1000)), 2000);
+}
+
+// the sleep timer's sheet and warning (kitlayout.h): 282 tall, the seven tiles inside and apart, the cursor's moves;
+// the warning's card 40 above the foot with its keys inside
+static void testSleepLayout()
+{
+	lay::SleepSheet s = lay::sleepSheet();
+	CHECK_EQ(s.sheet.box.h, 282);
+	auto inside = [](lay::Box in, lay::Box b) { return b.x >= in.x && b.y >= in.y && b.x + b.w <= in.x + in.w && b.y + b.h <= in.y + in.h; };
+	auto apart = [](lay::Box a, lay::Box b) { return a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y; };
+	for (int i = 0; i < lay::SLEEP_TILES; i++)
+	{
+		CHECK(inside(s.sheet.box, s.tile[i]));
+		CHECK(s.tile[i].h >= 44);
+		CHECK(s.tile[i].y > s.label.y);
+		CHECK(s.tile[i].y + s.tile[i].h <= s.foot.y);
+		for (int j = i + 1; j < lay::SLEEP_TILES; j++) CHECK(apart(s.tile[i], s.tile[j]));
+	}
+	// both rows end on the margin
+	CHECK_EQ(s.tile[4].x + s.tile[4].w, lay::PANEL_W - lay::SHEET_PAD);
+	CHECK_EQ(s.tile[6].x + s.tile[6].w, lay::PANEL_W - lay::SHEET_PAD);
+	CHECK(s.foot.y + s.foot.h <= s.sheet.hints.y);
+	CHECK_EQ(lay::sleepMove(0, lay::Dir::Down), 5);
+	CHECK_EQ(lay::sleepMove(3, lay::Dir::Down), 6);
+	CHECK_EQ(lay::sleepMove(5, lay::Dir::Up), 1);
+	CHECK_EQ(lay::sleepMove(6, lay::Dir::Up), 4);
+	CHECK_EQ(lay::sleepMove(5, lay::Dir::Right), 6);
+	CHECK_EQ(lay::sleepMove(6, lay::Dir::Right), 6);
+	CHECK_EQ(lay::sleepMove(0, lay::Dir::Left), 0);
+	CHECK_EQ(lay::sleepMove(4, lay::Dir::Right), 4);
+	lay::SleepWarn w = lay::sleepWarn();
+	CHECK_EQ(w.card.y + w.card.h, lay::PANEL_H - lay::WARN_FOOT);
+	CHECK_EQ(w.card.h, lay::SLEEP_WARN_H);
+	CHECK(inside(w.card, w.snooze));
+	CHECK(inside(w.card, w.off));
+	CHECK(inside(w.card, w.line));
+	CHECK(apart(w.snooze, w.off));
+	CHECK(apart(w.line, w.snooze));
 }
 
 static void testIdleSleep()
@@ -10329,7 +10487,7 @@ static void testWeb()
 			"\"eq\":{\"on\":false,\"preset\":\"\",\"gains\":[-3,0,0,0,0,0,0,0,0,0]},\"fx\":\"\",\"loop\":\"one\","
 			"\"shuffled\":false,\"shuffleMode\":false,\"chapters\":[{\"title\":\"A\",\"start\":0}],\"chapter\":0,\"tracks\":null,"
 			"\"clients\":1,\"session\":{\"boot\":0,\"v\":0},\"playlistSerial\":0,\"liked\":false,\"showHiddenFolders\":false,\"mangaOn\":false,\"incognito\":false,"
-		"\"theme\":\"yellow\",\"themeBg\":\"#000000\"}"));
+		"\"theme\":\"yellow\",\"themeBg\":\"#000000\",\"sleep\":{\"kind\":\"off\",\"label\":\"\",\"warn\":false,\"at\":\"\",\"minutes\":0,\"snooze\":10,\"word\":\"song\"}}"));
 
 		// the handheld's screen (its player left, or back to it) is news: the dashboard says "in the background"
 		{
@@ -15389,6 +15547,8 @@ int main()
 	testClock();
 	testBattery();
 	testIdleSleep();
+	testSleepTimer();
+	testSleepLayout();
 	testIncognitoLid();
 	testLidSleepConf();
 	testAspect();

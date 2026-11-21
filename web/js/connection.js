@@ -26,7 +26,7 @@ export function connFail() {
 export function connAnswered() { if (store.conn === 'blip' && !C.busy) schedule(0); }
 function nextDelay() {
 	const t = Date.now() - C.since;
-	if (C.reason === 'sleep' ? t < 30e3 : C.tries < 3) return 3000;
+	if (C.reason === 'sleep' || C.reason === 'sleeptimer' ? t < 30e3 : C.tries < 3) return 3000;
 	return t < 300e3 ? 10000 : 30000;
 }
 function schedule(ms) {

@@ -2,7 +2,7 @@
 
 Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 123 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
-Counts: 48 components: 10 reuse, 28 variant, 10 new. (Lid-shut keys is a rule with nothing to draw, and QR code is a picture of an address: neither has an example in the preview’s Components section.)
+Counts: 49 components: 10 reuse, 28 variant, 11 new. (Lid-shut keys is a rule with nothing to draw, QR code is a picture of an address, and Sleep warning is drawn on its own screen, `sleep-warn`: none of the three has an example in the preview’s Components section.)
 
 In the preview every screen draws these through shared functions and style rules (src/kit.js, src/screens.js, src/style.css beside preview.html), the same ones the Components section renders its examples from.
 
@@ -547,6 +547,7 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 - **Anatomy and states:** ACCENT; the value written in place of the setting’s name; a 6-unit dot in the control’s corner. Where the control isn’t on screen: the badge (header) or pill (Now playing block). DANGER only past a danger line (volume over 120%, offline, failed).
 - **Inputs:** state, its normal value, danger
 - **Keys and touch:** A tap on a badge or pill goes to where the control is.
+- **Also:** a running sleep timer: the Sleep key reads what is left, and the header’s status cluster carries a badge (clock 13, “24 min” / “0:48” / “Song”) on every page; a tap opens the Sleep timer sheet.
 - **Code:** New as a rule (0.7.18 has the yellow speed key and the lit Brightness key). One helper: given a state and its normal, return the tone and the words.
 
 ### Screen-off warning (new)
@@ -556,6 +557,14 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 - **Inputs:** seconds left, which screen
 - **Keys and touch:** Any key or touch cancels and does nothing else.
 - **Code:** New. The Screen off timers exist (Settings: Screen off (music) / (video)); the five seconds before them are not drawn today. A veil and a notice row over whatever page shows.
+
+### Sleep warning (new)
+
+- **Used:** the last 60 s of a sleep timer, over any page (sleep-timer.md; drawn: `sleep-warn`)
+- **Anatomy and states:** The Screen-off warning with two keys. Top screen: the Note’s card at the Note’s place (bottom centre; top left, 20 in, over a video), kept the whole minute: a clock icon 20 and “Sleeping in M:SS” Pixelify 19 ACCENT, under it the hint line A “10 more min”, B “Timer off”. Bottom screen, only if it is lit: the 62% veil, the backlight at a third, a card 118 tall 40 above the foot with an ACCENT edge: the same words Pixelify 15 and “the volume is fading” Pixelify 12.5, then two keys 56 tall, 10 more min (primary) and Timer off. Its own hint bar. Never red, no sound, and it never turns a dark screen on.
+- **Inputs:** seconds left, the words (in / after this song), whether the volume fades, which screens are lit
+- **Keys and touch:** A = 10 more minutes, B = timer off, with the screens lit or dark; the volume keys and UP / DOWN are volume; every other key does nothing (a dark screen wakes as always). Touch: the two keys; elsewhere nothing. Lid shut: a press of Power is 10 more minutes.
+- **Code:** New. A `Ui::Overlay` pushed by the timer (main’s loop) over whatever shows, plus one ASS card on the top panel; the fade is mpv’s `volume`, never the handheld’s.
 
 ### Lid-shut keys (new)
 

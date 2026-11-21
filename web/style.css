@@ -1204,3 +1204,27 @@ input[type=range] { touch-action: pan-y; }
 /* the handheld's volume past 100%: the slider's own fill says it, orange, red past 120 (no number: nothing moves) */
 .bar-vol.boost input, .vol.boost input { --fill: #FF9A3C; }
 .bar-vol.loud input, .vol.loud input { --fill: var(--red); }
+
+/* ================= the sleep timer (js/sleep.js; docs/redesign phone-sleep, phone-sleep-warn) ================= */
+.sleep-row { display: flex; align-items: center; gap: var(--s2); width: 100%; margin-top: var(--s3); padding: 10px var(--s3); color: var(--cream); font: 400 14px/1 var(--pixel); text-align: left; cursor: pointer; }
+.sleep-row .sleep-left { color: var(--dim); }
+.sleep-row.on { box-shadow: inset 0 0 0 2px var(--yellow); }
+.sleep-row.on .ic, .sleep-row.on .sleep-left { color: var(--yellow); }
+.sleep-body { padding: 0 var(--s4) var(--s4); }
+.sleep-chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); margin-top: var(--s2); }
+.sleep-chip { height: 48px; border: 0; border-radius: 10px; background: var(--track); color: var(--cream); font: 400 14.5px/1 var(--pixel); cursor: pointer; }
+.sleep-chip.on { background: var(--yellow); color: var(--on-accent); }
+.sleep-keys { display: flex; gap: var(--s2); margin-top: var(--s3); }
+.sleep-keys .btn { flex: 1; justify-content: center; }
+.sleep-at { margin: var(--s2) 0 0; font-size: 13px; }
+.sleep-key { gap: 4px; width: auto; padding: 0 6px; }
+.sleep-key span { font: 400 13px/1 var(--pixel); }
+.sleep-key.on { color: var(--yellow); }
+/* the last minute: pinned over the foot of every page (above the tabs and the mini bar; over the player bar on wider
+   screens). An accent edge, never red */
+.sleep-warn { position: fixed; left: 12px; right: 12px; bottom: calc(var(--safe-b) + 132px); z-index: 59; display: flex; align-items: center; gap: var(--s2); padding: var(--s3); box-shadow: inset 0 0 0 2px var(--yellow), 0 10px 30px rgba(0, 0, 0, .5); color: var(--yellow); font: 400 15px/1.2 var(--pixel); }
+.sleep-warn .grow { min-width: 0; }
+.fullplayer .sleep-warn { bottom: calc(var(--safe-b) + 16px); }
+@media (min-width: 700px) and (min-height: 521px), (min-width: 700px) and (hover: hover) {
+	.sleep-warn { left: auto; right: 16px; bottom: 96px; width: 440px; }
+}

@@ -213,6 +213,8 @@ namespace bp
 		// (public: main talks to it for the top panel's text viewer and the PDF viewer's pan area)
 		struct Docs;
 		std::unique_ptr<Docs> docs;
+		struct Sleep;
+		std::unique_ptr<Sleep> sleep;	// the sleep timer (ui_sleep.h; public: main ticks it, the top panel reads its dark)
 		// ---- the browser (Home, Files, Playlists, Network, All recent): an area (Area), ui_browse.h; its code in
 		// ui_browse.cpp, ui_fileops.cpp, ui_forms.cpp ----
 		// (public: the dashboard's routes reach its folder, rows and form)
@@ -545,6 +547,12 @@ namespace bp
 		// ---- the player screen (Page::Main: a video, a song; a photo's viewer is still here in Ui): an area,
 		// ui_player.h / ui_player.cpp ----
 		struct PlayerPage;
+		// the sleep timer's sheet and last minute's warning (ui_sleep.cpp); the header's badge is sleepHit (a tap opens
+		// the sheet)
+		struct SleepSheet;
+		struct SleepWarning;
+		Rect sleepHit{0, 0, 0, 0};
+		int sleepBadgeW(const Player& p) const;	// its width in the header (0: none shown)
 		struct SongViewSheet;	// (ui_player.cpp: a song's chip's sheet, a table of it too)
 		std::unique_ptr<PlayerPage> playerPage;
 		struct PlayOnSheet;

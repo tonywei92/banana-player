@@ -3,7 +3,8 @@
 // lay::playerLayout (kitlayout.h), which its touches test too. Three tiers: the transport row (what is pressed all the
 // time), the state chips (what is set sometimes: each says its state, yellow when away from normal), and X's More
 // sheet for the rest (its first row is those same chips, then Lock, Screen off, Info, Stop, Like, Add to playlist,
-// Show in folder, Play on). The row under the transport is Like · Playlist · List · Stop; SELECT and X both open More,
+// Show in folder, Play on). The row under the transport is Like · Playlist · Sleep · Stop (Sleep: the sleep timer's sheet,
+// ui_sleep.h; the list is Y and the Next line); SELECT and X both open More,
 // and each chip opens its own titled sheet (Subtitles, Audio, Picture, Speed; a song's Equalizer, Effects, Display,
 // Speed); Repeat steps Off / All / One in place and Shuffle turns on and off. UP / DOWN are the volume, as the
 // handheld's own volume keys are (five a step, past 100% the player's gain; a hold repeats eight a second and stops at
@@ -28,10 +29,10 @@ namespace bp
 		void tick(Player& p) override;
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
-		bool animating() const override { return lockHoldAt != 0 || listPulseAt != 0; }
+		bool animating() const override { return lockHoldAt != 0; }
 
 		// ---- what a finger can press: each id's Rect is rect(), which draw() and pointer() both ask ----
-		enum Touch { T_NONE = -1, T_BACK, T_MORE, T_LINE, T_PREV, T_REW, T_PLAY, T_FF, T_NEXT, T_LIKE, T_ADD, T_LIST, T_STOP,
+		enum Touch { T_NONE = -1, T_BACK, T_MORE, T_LINE, T_PREV, T_REW, T_PLAY, T_FF, T_NEXT, T_LIKE, T_ADD, T_SLEEP, T_STOP,
 			T_CHIP0, T_CHIP_END = T_CHIP0 + lay::PLAYER_CHIPS_MAX, T_NEXTLINE = T_CHIP_END, T_COUNT };
 		int pressed = T_NONE;	// under the finger: it acts when the finger lifts on it
 		Rect rect(int id, const lay::PlayerLayout& l) const;	// (the touch area: wider than the key for the header's two)
@@ -60,7 +61,7 @@ namespace bp
 			std::string path, note;
 		};
 		NextUp nextUp(const Player& p) const;	// what Next would play (the Session's nextPlace)
-		bool listAct(Player& p);	// List (Y, its key): the playlist's page, or the List sheet
+		bool listAct(Player& p);	// List (Y, or a tap on the Next line): the playlist's page, or the List sheet
 		// the List sheet (ui_player.cpp): tab 0 Up next, 1 Chapters, opened on the one last used; the Repeat chip,
 		// the chapter line and the Next line open it on theirs
 		int listTab = 0;
@@ -91,12 +92,6 @@ namespace bp
 		// buffering one longer; until then the position is still the old one: the bar flicked back and forth); -1 none
 		double seekHeld = -1;
 		Uint32 seekHeldAt = 0;
-
-		// the player opened on a playlist's first song: its List key (the way to the playlist) glows a soft yellow twice
-		bool listPulseArm = false;
-		std::string listPulsedFor;	// the playlist it glowed for (cleared when something else plays)
-		Uint32 listPulseAt = 0;
-		static constexpr Uint32 LIST_PULSE_MS = 1400;
 
 	private:
 		std::string crumb(const Player& p, const Glyph*& mark) const;	// the header's line: what it plays from

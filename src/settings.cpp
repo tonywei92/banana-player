@@ -561,6 +561,8 @@ namespace bp
 		static const char* SHOWN_PAN[2] = {"Left", "Right"};
 		static const char* SHOWN_DRAG[2] = {"The photo", "The box"};
 		static const char* SHOWN_LID[2] = {"Pause", "Keep playing"};
+		static const char* SHOWN_SLEEP_END[2] = {"Sleep", "Pause"};
+		static const int SLEEP_SNOOZES[] = {5, 10, 15, 30};
 		static const char* TXT_FONT_LABELS[5] = {"Serif", "Sans", "Mono", "Pixel", "CJK pixel"};
 		static const char* TXT_SIZE_LABELS[5] = {"Small", "Medium", "Large", "Larger", "Largest"};
 		static const char* TXT_SPACING_LABELS[3] = {"Tight", "Normal", "Loose"};
@@ -685,6 +687,12 @@ namespace bp
 			D::flag("lid-close", &Settings::lidKeepPlaying, "pause", "keep-playing")
 				.page(SG_SCREEN, 70, "When the lid closes", "Pause: closing the lid pauses and the handheld sleeps. Keep playing: a song or a video goes on with both screens off, and the handheld does not sleep while the lid is shut and something is loaded. Volume and Power still work.")
 				.shownAs(SHOWN_LID),
+			D::flag("sleep-timer-end", &Settings::sleepTimerPause, "sleep", "pause")
+				.page(SG_SCREEN, 92, "When the sleep timer ends", "What the sleep timer does at its end. Sleep: it pauses, both screens turn off and the handheld sleeps. Pause: it pauses and the screens turn off; the handheld stays awake.")
+				.shownAs(SHOWN_SLEEP_END),
+			D::ints("sleep-snooze", &Settings::sleepSnooze, SLEEP_SNOOZES, 4)
+				.page(SG_SCREEN, 93, "Sleep timer snooze", "How much longer it plays when you press A in the sleep timer's last minute.")
+				.shownAs(nullptr, " min"),
 			D::choice("lid-power", &Settings::lidPower, LID_POWER_IDS, LID_POWERS)
 				.page(SG_SCREEN, 75, "Power key, lid shut", "With the lid shut. Play / pause: a press of the power key plays or pauses; hold it 2 s to sleep. Sleep: a press sleeps the handheld, as with the lid open.")
 				.shownAs(LID_POWER_LABELS).stepped(true),

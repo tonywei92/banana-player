@@ -9,6 +9,7 @@ import { depth, filesHash, go } from './js/router.js';
 import { LikeBtn, addToPlaylist, likable, loadLikes, newPlaylistDialog, plUsed } from './js/plshared.js';
 import { Icon, dimsCache } from './js/icons.js';
 import { DevButton, LoopIcon, NowPlaying, TapToPlay, closePanel, loopName, showTab, targetLabel, useVideoSlot } from './js/playing.js';
+import { SleepKey, SleepWarnCard } from './js/sleep.js';
 import { cmpName, fmtTime, isIOS, throttled } from './js/util.js';
 import { Playlists } from './js/playlists.js';
 import { Home } from './js/home.js';
@@ -80,7 +81,8 @@ function PlayerBar() {
 			<button class=${'ib opt' + (v.shuffled ? ' on' : '')} aria-label="Shuffle" title=${v.shuffled ? 'Shuffle: On' : 'Shuffle: Off'} aria-pressed=${!!v.shuffled} onClick=${ctl.shuffle} disabled=${off}><${Icon} n="shuffle" k=${2} /></button>
 			<button class=${'ib opt' + (v.loop !== 'no' ? ' on' : '')} aria-label=${loopName(v.loop)} title=${loopName(v.loop)} aria-pressed=${v.loop !== 'no'} onClick=${ctl.loop} disabled=${off}><${LoopIcon} loop=${v.loop} k=${2} /></button>
 			<${DevButton} />
-			<${BarVolume} /></div></div>`;
+			<${BarVolume} />
+			<${SleepKey} /></div></div>`;
 }
 function BarVolume() {
 	const here = store.target === 'browser', sn = store.snap;
@@ -201,6 +203,7 @@ function Shell() {
 			<main class="main" id="main">${s.updated && !s.reconnecting && html`<div class="reconnecting updated" role="status"><span>Banana Player was updated</span><button class="btn sm primary" onClick=${() => location.reload()}>Reload</button></div>`}${s.reconnecting && html`<div class="reconnecting" role="status"><span class="cdot off"></span>Reconnecting to your handheld…</div>`}${page}</main>
 			<${UploadFab} />
 			<${JobFab} />
+			<${SleepWarnCard} />
 			<${Toasts} />
 		</div>
 		${!wide && html`<${MiniPlayer} />`}
