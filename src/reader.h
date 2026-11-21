@@ -61,7 +61,7 @@ namespace bp
 		void close();
 		bool isOpen() const { return opened; }
 		// the bottom panel's wishes (Ui::ReaderCmd's kinds, as ints so this stays apart from Ui)
-		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan, Stick };
+		enum Cmd { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan, Stick, Thumbs };
 		// Drag: v the finger's dy as a fraction of the height, v2 its dx as a fraction of the width
 		// Zoom: v the new factor (1 = the fit); the pages are decoded again at that width once it rests
 		// Rotate: paged modes only; each press turns 90° clockwise
@@ -72,6 +72,8 @@ namespace bp
 		// Pan: the paged modes' page shown centred on (v, v2), shares of the page (the PDF viewer's pan area)
 		// Stick: v the left stick's LEFTY (-32768 up … 32767 down), v2 its LEFTX (-32768 left … 32767 right): the Strip
 		// scrolls (up/down), a paged page with room pans both ways, every frame while held (issue 16)
+		// Thumbs: the pages grid shows pages v … v2 (v < 0: it closed): their thumbnails are decoded small, after
+		// the reader's own pages, whether or not the view has been near them
 		void command(int kind, double v, int64_t ms, double v2 = 0, double v3 = 0);
 		// a paged mode's page in view and the part of it shown, as shares of the page; false in the Strip
 		bool panBox(int& page, float& x0, float& y0, float& x1, float& y1) const;
@@ -148,8 +150,8 @@ namespace bp
 	private:
 		// band >= 0: that band of a long page (the image's rows y0 .. y0 + rows). band -1: the whole page, or, with
 		// mayBand (the Strip), band 0 when the thread finds the page long (its size isn't known before its bytes are read)
-		struct Job { int index; std::string path; int width; int band = -1; int y0 = 0, rows = 0; bool mayBand = false; };
-		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; int width; int band; };
+		struct Job { int index; std::string path; int width; int band = -1; int y0 = 0, rows = 0; bool mayBand = false; bool thumb = false; };
+		struct Done { int index; PageImage img; Uint32 ms; uint64_t gen; int width; int band; bool thumb = false; };
 		void decodeLoop();
 		// the stick's speed now (0 at rest, inside its dead zone, in Book, or on a paged page that fits the view)
 		double stickSpeedNow() const;
@@ -240,6 +242,11 @@ namespace bp
 		// thumbnails for the pages grid: ~96 px wide, one per decoded page, kept for the whole chapter
 		struct Thumb { int w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		std::map<int, Thumb> thumbs;
+		// the grid's own asks (Thumbs): the pages it shows, the ones a thread is on, the ones that couldn't be decoded.
+		// A page decoded only for its thumbnail is never pixels or textures of the view (THUMB_DECODE_W wide)
+		static constexpr int THUMB_DECODE_W = 192;
+		int thumbFrom = -1, thumbTo = -1;
+		std::set<int> thumbBusy, thumbFailed;
 		std::map<int, int> decodedW;	// each page's decoded width: a zoom in decodes it again, wider
 		// The Strip's long pages (bands.h): found when a page's first band comes back. Their pixels, textures and
 		// decoded widths are per band, under bandKey(page, band) in kept, decodedW, wantKeep, busySet and the renderer.

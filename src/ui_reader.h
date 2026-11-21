@@ -49,7 +49,7 @@ namespace bp
 		// / back to the fit, as a double-tap on the page area does)
 		// Book (v: MANGA_BOOK_*: held sideways, a page upright on each panel; Step turns a spread, Page moves one)
 		// Stick (v: the left stick's LEFTY, -32768 up … 32767 down): the Strip scrolls, a paged page with room pans
-		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan, Stick } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
+		struct ReaderCmd { enum Kind { Close, Step, Page, Seek, TouchDown, Drag, Release, Mode, Fit, Fullscreen, Zoom, Rotate, ZoomPoint, Retry, Book, Pan, Stick, Thumbs } kind = Close; double v = 0; int64_t ms = 0; double v2 = 0; double v3 = 0; };
 		std::vector<ReaderCmd> readerCmds;
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus
@@ -135,6 +135,9 @@ namespace bp
 		std::map<int, ThumbTex> mpTex;
 		uint64_t mpGen = 0;
 		int mpMade = 0;	// how many were made this frame (at most a few)
+		// the pages the grid last asked thumbnails for (ReaderCmd::Thumbs: the rows in view and one each side)
+		int mpAskFrom = -1, mpAskTo = -1;
+		void mpAsk(int from, int to);
 		void drawMangaPages(const Player& p);
 		void mangaPagesOpen(Player& p);
 		void mangaPagesClose(Player& p);

@@ -61,3 +61,13 @@ Checked: build, `core-test`, `--press` on a generated 6-page CBZ: L3 in and out 
 across at 110% in the strip (0 → 128 px), in Fullscreen, and in Single page at 500%; taps top / bottom / middle and
 the One screen key; the Hinge row moving the view (72 → 80 → 88 px of the Mac's 960). Not driven: the Manga reader's
 edge taps and toast (needs a library), a real stick, the handheld's panel and touch.
+
+## The Pages grid's missing thumbnails (2026-11-21, later)
+
+Not the smooth list (its key holds each thumb's presence, `mpThumb` counts as a use, 60 kept for 18 in view): the
+reader only ever made a thumbnail of a page it had decoded for the view, so a 40-page comic opened at page 1 had three.
+Now the grid says which pages it shows (`ReaderCmd::Thumbs`, the rows in view and one each side, `PageReader::mpAsk`)
+and `MangaReader::want()` queues those with no thumbnail as jobs of their own (`Job::thumb`, 192 wide, after the
+view's pages; `thumbBusy` / `thumbFailed` apart from the view's sets, so they never count in the decoded budget or
+become textures). Checked on a generated 40-page CBZ: 18 of 18 in view, and after a drag the next rows filled.
+Left: a source's page not yet on the card is not fetched for its thumbnail; a turned page's grid-only thumb is unturned.

@@ -1715,8 +1715,8 @@ view; a tap anywhere outside it puts it away again and does nothing else (no pag
 
 **The Pages grid.** **Y** while reading (or the Reading menu's **Pages**) opens the chapter's thumbnails in a sheet
 over the reader (a PDF's **Pages** is the same sheet), six to a row with each page's number under it, on the page
-you're reading, marked **Here** ("You are on page N" at the top). Pages not decoded yet show an empty place until they
-arrive. **UP/DOWN/LEFT/RIGHT** move the cursor and the top screen follows it, **L2/R2** move a screenful, **A** jumps
+you're reading, marked **Here** ("You are on page N" at the top). The pages in view get their thumbnails as the grid shows them, wherever you were
+reading (a moment's empty place first; a page of an online chapter not downloaded yet stays empty). **UP/DOWN/LEFT/RIGHT** move the cursor and the top screen follows it, **L2/R2** move a screenful, **A** jumps
 there and closes the grid, **B** or **Y** closes it; on the touch screen, tap a thumbnail to jump, drag to scroll, or
 tap above the sheet to close it.
 
