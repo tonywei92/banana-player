@@ -29,7 +29,7 @@ Everything Banana Player does, button by button. For installing it, see the [REA
 | **Documents** | TXT (any size), EPUB, PDF, opened from Files ([Documents](#documents)) |
 | **Comics** | CBZ, CBR and PDF in the Manga reader ([Extensions](#extensions)); EPUB comics in Files |
 | **Subtitles** | Inside the video (SRT, ASS/SSA, PGS, VobSub, VTT), or files next to it (`movie.srt`, `movie.en.ass`) |
-| **Languages** | Subtitles, titles and file names in Latin scripts (Vietnamese too), Cyrillic, Greek, Chinese, Japanese, Korean, Thai, Arabic, Hebrew and Hindi |
+| **Languages** | Subtitles, titles and file names in Latin scripts (Vietnamese too), Cyrillic, Greek, Chinese, Japanese, Korean, Thai, Arabic, Hebrew and Hindi, on both panels (the top panel's Preview pane and cards too). Text with kana takes the Japanese forms of its kanji; other Han text the Simplified Chinese ones |
 
 Videos are decoded by the handheld's CPU. The various 1080p videos tested play well; very high bitrates, and especially
 HEVC (x265), may drop frames. **Info** shows how it's keeping up.
@@ -549,9 +549,9 @@ Fall asleep to a song or a film: it pauses at the time you choose, quietly, and 
   back within a second. **UP / DOWN** are still the volume; no other key does anything there. End of this song has no
   fade: the card shows for its last minute ("Sleeping after this song · 0:48") and the song ends as it was made.
 - **At its end:** it pauses (never stops: the list and the place are kept, back where the fade began, so nothing heard
-  at a whisper is missed), both screens turn off, and 10 s later the handheld sleeps (the setting **When the sleep timer
+  at a whisper is missed), both screens turn off (the top panel's backlight too), and 3 s later the handheld sleeps (the setting **When the sleep timer
   ends**: Sleep, or Pause to stay awake). A copy, a move or a download in progress keeps it awake, paused and dark; a
-  browser signed in to the dashboard doesn't. A key or a touch in those 10 s wakes the screens and calls the sleep off.
+  browser signed in to the dashboard doesn't. A key or a touch in those 3 s wakes the screens and calls the sleep off.
   On waking: "Paused by the sleep timer" and "A plays" on the top screen until the first key.
 - **Stop** (anywhere) turns it off ("Sleep timer off"); so does any sleep (the lid, the power key, the idle sleep). If
   the list ends first, its last minute starts then, with nothing to fade. With the lid shut and **Keep playing**, the

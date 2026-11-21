@@ -20,7 +20,7 @@ Away-from-normal mark, header badge, Note, and one new one, **Sleep warning** (c
    badge (clock, "24 min"); a song's top screen has the same words, dim, top right. Nothing else changes.
 4. **The last minute** (`sleep-warn`). The volume fades to silence over 60 s. A card on the top screen: "Sleeping in
    0:48", **A** 10 more min, **B** Timer off. The same card with two touch keys on the bottom screen, if it is lit.
-5. **It ran out** (`sleep-done`). Pause; both screens off; 10 s later the handheld sleeps (the setting: Sleep, the
+5. **It ran out** (`sleep-done`). Pause; both screens off; 3 s later the handheld sleeps (the setting: Sleep, the
    default, or Pause). On waking: "Paused by the
    sleep timer" over "A plays", kept until the first key.
 
@@ -54,7 +54,7 @@ audiobook, a film with chapters).
 | Warning | UP / DOWN, volume keys | volume, as always |
 | Warning | any other key; a touch off the card | nothing (a dark screen wakes, as always; that press does nothing else) |
 | Warning, lid shut (Keep playing) | Power press | 10 more minutes (for that minute only; otherwise play / pause) |
-| The 10 s after it paused | any key or touch | the screens wake; the sleep is called off; it stays paused |
+| The 3 s after it paused | any key or touch | the screens wake; the sleep is called off; it stays paused |
 
 A and B are the warning's with both screens dark: the usual case in bed is the bottom screen off (Screen off (music),
 30 s), the top one on.
@@ -89,7 +89,7 @@ A and B are the warning's with both screens dark: the usual case in bed is the b
 - **End of this song has no fade.** The song ends as it was made; the card still shows for its last 60 s.
 - **It pauses, never stops.** The list, the place and Resume are kept; Stop would lose the place in the list.
 - **After pausing it seeks back to where the fade began.** Nothing heard half-asleep at a whisper is missed.
-- **Then the handheld sleeps** (10 s later, `/run/banana/sleep-now` + SIGHUP). Darkness and the battery are what a
+- **Then the handheld sleeps** (3 s later (was 10 s: on the handheld that read as "it only turned the screen off"), `/run/banana/sleep-now` + SIGHUP). Darkness and the battery are what a
   sleep timer is for; a paused player with lit screens all night is the failure. "Pause" is the setting for
   those who disagree (the owner's choice: a setting, default Sleep).
 - **Not slept while a copy, move or download runs, or a browser is signed in.** The existing stay-awake rule wins;

@@ -37,7 +37,7 @@ namespace bp
 		void openSheet();
 
 		// ---- main's ----
-		// once per pass of the loop: true when the sleep is due (the dark's 10 s are over; main asks BananaOS unless the
+		// once per pass of the loop: true when the sleep is due (the dark's grace is over; main asks BananaOS unless the
 		// setting is Pause or something holds it awake)
 		bool tick();
 		bool endsWithItem() const;	// End of this song or video (its file's end: main's player.finished)
@@ -77,6 +77,7 @@ namespace bp
 		double rampFrom = 1;
 		uint32_t rampAt = 0;
 		bool restoreOnPause = false;	// the volume back once the pause has landed
+		uint32_t lastTickAt = 0;	// (a late pass in the dark is logged)
 		bool darkWait = false;	// paused by it and dark: a key or a touch wakes the screens and calls the sleep off
 		bool noteKept = false;	// "Paused by the sleep timer" kept up until the first key
 		SleepPhase shown = SleepPhase::Off;
