@@ -133,8 +133,6 @@ journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19
 - **No mini bar; Quick settings' Now playing block replaces it everywhere** (owner). No shell page has a bar at its
   foot; the body has the room. The block heads Quick settings on every screen, the player included, and is always
   there: idle (“Nothing playing”, keys dimmed, not pressed) when nothing is loaded. Home's Now playing card stays.
-  **It is the panel's lead** (owner, 2026-11-21): 72 tall (8 from the title line), the accent's tint while something
-  plays, the art 56, the state over a 16 title, the progress line in the words' column, Play / Pause the one accent key.
   `quick`, `quick-playing`.
 
 - **Dark's accent is neutral** (the owner: it looked bluish, purplish). ACCENT #A9C4E6 → #E8E4DA, a warm off-white;

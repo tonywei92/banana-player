@@ -360,11 +360,9 @@ body.phys .device::after{content:"7 mm";position:absolute;right:-64px;bottom:14p
 .s .qsw{position:absolute;left:0;right:0;top:0;bottom:30px;display:grid;place-items:center}
 .s .qs{width:592px;box-sizing:border-box;background:var(--sf);border:2px solid var(--eds);border-radius:18px;padding:0 16px 16px;overflow:hidden}
 .s .qs h2{font:500 20px/1 var(--fd);margin:0;color:var(--ac)}
-.s .qs .sh{display:flex;align-items:center;gap:8px;height:40px}
+.s .qs .sh{display:flex;align-items:center;gap:8px;height:48px}
 .s .qs .row{height:46px}
 :is(:root[data-clean]:not([data-bp=contrast]) .s:not(.ed),.s.cl) .qs{border-color:transparent;box-shadow:0 0 0 1px var(--ru)}
-/* the Now playing block while something plays: the panel's lead, the one surface with the accent's tint (17%, as what is selected) */
-:is(:root[data-clean]:not([data-bp=contrast]) .s:not(.ed),.s.cl) .qs .qnp.live{background:color-mix(in srgb,var(--ac) 17%,var(--sf))}
 :is(:root[data-clean]:not([data-bp=contrast]) .s:not(.ed),.s.cl) .row>.btn{background:transparent}
 /* ---- strong keys (a theme's optional roles: components.md › Themes): a named key, a primary key, the hint bar, the rail. Unset, the variables are the ordinary roles ---- */
 .s .btn.k{background:var(--key);color:var(--onk);border-color:var(--ke);box-shadow:inset 0 -3px 0 var(--kl)}
