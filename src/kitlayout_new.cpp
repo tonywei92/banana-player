@@ -512,11 +512,12 @@ namespace bp
 			return a;
 		}
 
-		MusicHeader musicHeader(Box body, const std::vector<int>& chipWidths)
+		MusicHeader musicHeader(Box body, const std::vector<int>& chipWidths, bool random)
 		{
 			MusicHeader h;
 			h.strip = {body.x, body.y, body.w, CHIP_STRIP};
 			h.chips = filterChips(h.strip, chipWidths);
+			if (random) h.random = {body.x + body.w - MUSIC_RANDOM_W, body.y + (CHIP_STRIP - CHIP_H) / 2, MUSIC_RANDOM_W, CHIP_H};
 			return h;
 		}
 

@@ -108,6 +108,10 @@ namespace bp
 		// ---- playing (through the Session, as Files does: the play request, main opens it) ----
 		void play(const std::vector<std::string>& paths, int index, const std::string& title, bool shuffle, Player& p);
 		void playAlbum(int album, int fromSong, bool shuffle, Player& p);
+		// Play random: RANDOM_SONGS songs of the whole library in a random order, none twice, as a new list
+		static constexpr int RANDOM_SONGS = 50;
+		void playRandom(Player& p);
+		std::vector<std::string> songPaths() const;	// every song of the index (its music videos left out)
 		void playArtist(int artist, int fromSong, bool shuffle, Player& p);
 		// the album's (or the artist's) songs as playlist entries, in their order
 		std::vector<PlaylistEntry> albumEntries(int album) const;
@@ -120,12 +124,12 @@ namespace bp
 
 		// ---- a finger ----
 		// what it went down on: T_CHIP + i the views' chips, T_KEY + i a head key, T_EMPTY1 / T_EMPTY2 the empty
-		// page's keys, T_GROUND the page's own ground (a drag scrolls, a tap does nothing); then, each a range of
+		// page's keys, T_RANDOM Play random's key, T_GROUND the page's own ground (a drag scrolls, a tap does nothing); then, each a range of
 		// TOUCH_RANGE: T_ALBUM + i an album in the grid (or + j the artist strip's j-th cell shown), T_ARTIST + i,
 		// T_TRACK + i an album's track, T_SONG + i an artist's song, T_FOLDER + i a row of the folder open (their
 		// index in the whole list)
 		static constexpr int TOUCH_RANGE = 1 << 20;
-		enum { T_NONE = -1, T_CHIP = 0, T_KEY = 10, T_EMPTY1 = 20, T_EMPTY2 = 21, T_GROUND = 30, T_ALBUM = TOUCH_RANGE,
+		enum { T_NONE = -1, T_CHIP = 0, T_KEY = 10, T_EMPTY1 = 20, T_EMPTY2 = 21, T_GROUND = 30, T_RANDOM = 40, T_ALBUM = TOUCH_RANGE,
 			T_ARTIST = 2 * TOUCH_RANGE, T_TRACK = 3 * TOUCH_RANGE, T_SONG = 4 * TOUCH_RANGE, T_FOLDER = 5 * TOUCH_RANGE };
 		int touch = T_NONE;
 		int touchY = 0;

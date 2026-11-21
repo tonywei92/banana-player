@@ -17,6 +17,7 @@
 #include "ui_browse.h"
 #include "ui_playlists.h"
 #include "ui_home.h"
+#include "ui_music.h"
 #include "session_host.h"
 #include "netpath.h"
 #include "webstate.h"
@@ -255,6 +256,7 @@ namespace bp
 			s.clients = ws.clients();
 			s.playlistSerial = u.playlistSerial();
 			s.showHiddenFolders = p.settings.showHiddenFolders;
+			s.keepPlaying = p.settings.keepPlaying;
 			s.mangaOn = p.settings.mangaOn;
 			s.incognito = p.incognito;
 			// the sleep timer: the page shows it and changes it (POST /api/sleep)
@@ -365,7 +367,7 @@ namespace bp
 			if (t > 0) seekWhenOpen(p, u, path, t);
 		}
 
-		static void openSelection(Player& p, Ui& u, std::vector<std::string> paths, const std::string& title, bool shuffle)
+		static void openSelection(Player& p, Ui& u, std::vector<std::string> paths, const std::string& title, bool shuffle, bool rail = false)
 		{
 			u.flushPlaylist(p);
 			PlaySource src;
@@ -375,6 +377,7 @@ namespace bp
 			u.playRequest = {};
 			u.playRequest.paths = paths;
 			u.playRequest.source = src;
+			u.playRequest.rail = rail;	// (the dashboard's Music page: Keep playing may add to it)
 			if (shuffle && !paths.empty())
 			{
 				// Shuffle play: Shuffle on (it lasts), from a random one; the list keeps its order
@@ -511,6 +514,7 @@ namespace bp
 			bool toHandheld = value(req, "to") == "handheld";
 			std::string tab = value(req, "tab");
 			bool shuffle = value(req, "shuffle") == "1" || value(req, "shuffle") == "true";
+			bool rail = value(req, "rail") == "1";	// (from the Music page)
 			if (req.has_param("playlist"))
 			{
 				std::string id = value(req, "playlist");
@@ -569,7 +573,7 @@ namespace bp
 			std::string body = w->call([=](Player& p, Ui& u) {
 				if (toHandheld) WebPlayerGlue::handheldChosen(p, u, tab);
 				if (oneFolder) WebPlayerGlue::openFile(p, u, list[0], 0, false);
-				else WebPlayerGlue::openSelection(p, u, list, title, shuffle);
+				else WebPlayerGlue::openSelection(p, u, list, title, shuffle, rail);
 				return std::string("{\"ok\":true}");
 			}, 2000, status);
 			answer(res, body, status);
@@ -718,6 +722,24 @@ namespace bp
 						p.setSettings(st);
 					}
 					return std::string("{\"theme\":\"") + theme::themeId(pick) + "\"}";
+				}, 2000, status);
+				answer(res, body, status);
+				return;
+			}
+			if (key == "keepPlaying")
+			{
+				// Music's Keep playing (Up next's heading, the Music page): the handheld's setting
+				bool on = v == "1";
+				int status = 200;
+				std::string body = w->call([on](Player& p, Ui&) {
+					if (p.settings.keepPlaying != on)
+					{
+						Settings st = p.settings;
+						st.keepPlaying = on;
+						p.setSettings(st);
+						fprintf(stderr, "web: keep playing %s\n", on ? "on" : "off");
+					}
+					return std::string("{\"keepPlaying\":") + (on ? "true" : "false") + "}";
 				}, 2000, status);
 				answer(res, body, status);
 				return;
@@ -978,9 +1000,12 @@ namespace bp
 				i.hasT = true;
 				i.t = std::max(0.0, atof(value(req, "t").c_str()));
 			}
+			// Open with random=1 (the Music page's Play random): the queue is drawn here from the library (q unused)
+			bool random = i.type == IntentType::Open && value(req, "random") == "1";
 			if (i.type == IntentType::Open)
 			{
-				if (!resolveAll(*w, values(req, "q"), i.queue, res, true)) return;
+				i.rail = value(req, "rail") == "1" || random;
+				if (!random && !resolveAll(*w, values(req, "q"), i.queue, res, true)) return;
 				i.index = atoi(value(req, "index").c_str());
 				i.t = std::max(0.0, atof(value(req, "t").c_str()));
 				std::string kind = value(req, "skind");
@@ -1024,9 +1049,18 @@ namespace bp
 				(i.type == IntentType::SetAudio ? i.audio : i.sub) = k;
 			}
 			int status = 200;
-			std::string body = w->call([w, i](Player&, Ui&) {
+			std::string body = w->call([w, i, random](Player&, Ui& u) {
 				SessionHost& sh = SessionHost::get();
-				Result r = sh.fromPage(i);
+				Intent in = i;
+				if (random)
+				{
+					std::random_device rd;
+					in.queue = drawSongs(u.music->songPaths(), {}, Ui::Music::RANDOM_SONGS, ((uint64_t)rd() << 32) ^ rd());
+					in.index = 0;
+					in.source = {0, "Random", ""};
+					fprintf(stderr, "web: play random, %zu songs\n", in.queue.size());
+				}
+				Result r = sh.fromPage(in);
 				JsonWriter j;
 				j.obj();
 				if (r.dup) j.key("dup").boolean(true);

@@ -56,6 +56,7 @@ namespace bp
 		int playlistSerial = 0;
 		bool liked = false;	// what plays is in the Liked playlist
 		bool showHiddenFolders = false;	// the setting: folders with a ".hidden" file are listed
+		bool keepPlaying = true;	// the setting: Music rail lists play on past their last song (Up next's heading)
 		bool mangaOn = false;	// the setting: the manga reader is on (the dashboard's Manage extensions card)
 		bool incognito = false;	// incognito mode (the handheld's Quick settings): the page shows its mark, can't switch it
 		// the sleep timer (ui_sleep.h): kind "off", "min" (a length) or "end" (End of this song / video / chapter); what

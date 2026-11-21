@@ -377,6 +377,26 @@ namespace bp
 		// a list like a folder (the Session's kind for a list of any order); its name is the player's crumb
 		ui.playRequest.source.kind = SourceKind::Folder;
 		ui.playRequest.source.title = title;
+		ui.playRequest.rail = true;	// (the Music rail's: Keep playing may add to it)
+	}
+
+	std::vector<std::string> Ui::Music::songPaths() const
+	{
+		std::vector<std::string> out;
+		auto snap = snapshot();
+		if (!snap) return out;
+		for (auto& s : snap->songs)
+			if (!s.video) out.push_back(s.path);
+		return out;
+	}
+
+	void Ui::Music::playRandom(Player& p)
+	{
+		std::random_device rd;
+		auto list = drawSongs(songPaths(), {}, RANDOM_SONGS, ((uint64_t)rd() << 32) ^ rd());
+		fprintf(stderr, "music: play random, %zu songs\n", list.size());
+		if (list.empty()) { p.osd("No songs in the library yet", 2000); return; }
+		play(list, 0, "Random", false, p);
 	}
 
 	std::vector<PlaylistEntry> Ui::Music::albumEntries(int album) const
@@ -503,9 +523,10 @@ namespace bp
 		if (snapshot() && folderEmpty(*snapshot()))
 			return {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"L/R", "View"}, {"B", "Up"}};
 		if (view == V_FOLDERS)
-			return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", folderAt.empty() ? "Home" : "Up"}};
+			return {{"A", "Open"}, {"Y", "Random"}, {"X", "More"}, {"L/R", "View"}, {"B", folderAt.empty() ? "Home" : "Up"}};
 		// the views (the mock-up's music-albums and music-artists)
-		return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", "Home"}};
+		// (L3 Search left out for Y Random: six didn't fit, and the rail shows Search's own key)
+		return {{"A", "Open"}, {"Y", "Random"}, {"X", "More"}, {"L/R", "View"}, {"B", "Home"}};
 	}
 
 	Ui::ShellHead Ui::Music::head(const Player& p) const
@@ -735,6 +756,7 @@ namespace bp
 			return false;
 		}
 		if (b == Button::X) { openMoreSheet(p); return false; }
+		if (b == Button::Y && albumAt < 0 && artistAt < 0) { playRandom(p); return false; }
 		// ---- an album's page ----
 		if (albumAt >= 0 && albumAt < (int)snap->albums.size())
 		{
@@ -944,6 +966,11 @@ namespace bp
 				setView(t - T_CHIP, p);
 				return false;
 			}
+			if (t == T_RANDOM)
+			{
+				if (lay::musicHeader(inner, {}, true).random.hit(x, y)) playRandom(p);
+				return false;
+			}
 			if (t >= T_KEY && t < T_KEY + 3)
 			{
 				// the head's keys: Play, Shuffle, and Add (touch only; its rows are in X · More by the buttons)
@@ -1032,9 +1059,10 @@ namespace bp
 		}
 		if (reading) return false;
 		Kit& k = *ui.kit;
-		lay::MusicHeader mh = lay::musicHeader(inner, k.filterWidths(viewItems()));
+		lay::MusicHeader mh = lay::musicHeader(inner, k.filterWidths(viewItems()), true);
 		if (albumAt < 0 && artistAt < 0)
 		{
+			if (mh.random.hit(x, y)) { touch = T_RANDOM; return false; }
 			int chip = lay::filterAt(mh.chips, x, y);
 			if (chip >= 0) { touch = T_CHIP + chip; return false; }
 		}
@@ -1266,7 +1294,7 @@ namespace bp
 
 		// ---- the views ----
 		std::vector<Kit::FilterItem> views = viewItems();
-		lay::MusicHeader mh = lay::musicHeader(inner, k.filterWidths(views));
+		lay::MusicHeader mh = lay::musicHeader(inner, k.filterWidths(views), true);
 		if (!reading && snap->songs.empty())
 		{
 			// no Music folder, or none with a song in it (the mock-up's music-empty): the two keys, and the
@@ -1314,6 +1342,16 @@ namespace bp
 		// the view chips (the "From …" line they sat under is the header's crumb, once drawn here as well)
 		k.filters(mh.chips, views, view, -1,
 			touch >= T_CHIP && touch < T_CHIP + VIEWS && !touchMoved ? touch - T_CHIP : -1);
+		if (!reading)
+		{
+			// Play random: 50 songs of the whole library, a new list (Y)
+			Kit::Key rk;
+			rk.glyph = &G_SHUFFLE;
+			rk.label = "Random";
+			rk.key = p.settings.buttonHotkeys ? "Y" : "";
+			rk.pressed = touch == T_RANDOM && !touchMoved;
+			k.key(mh.random, rk);
+		}
 		if (reading)
 		{
 			// the first read, as the spec draws it (music-reading): which card, how far, a bar over the folders

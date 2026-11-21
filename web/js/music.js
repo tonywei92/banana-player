@@ -6,7 +6,7 @@ import { AppMenu, Art, Banner, Empty, Skeleton, coverUrl } from './components.js
 import { Icon } from './icons.js';
 import { SectionUpload, uploadToSection } from './libupload.js';
 import { Playlists } from './playlists.js';
-import { playHere, playPaths, view } from './browser-player.js';
+import { playHere, playPaths, playRandom, view } from './browser-player.js';
 
 /* ================= music ================= */
 // The Music tab (docs/redesign "music-albums" and its web minis): the same three views the handheld has — the
@@ -24,7 +24,7 @@ const VIEWS = [
 // session's own Shuffle on (playPaths turns the list into a play, as a playlist's)
 async function playList(paths, at, shuffle) {
 	const list = shuffle ? [] : paths;
-	await playHere(t => playPaths(list.length ? list : paths, new Set(), t, true, shuffle), paths[Math.min(at || 0, paths.length - 1)]);
+	await playHere(t => playPaths(list.length ? list : paths, new Set(), t, true, shuffle, true), paths[Math.min(at || 0, paths.length - 1)]);
 }
 
 // the one under the tap: an album's or an artist's songs, with Play and Shuffle (docs/redesign "music-album")
@@ -97,7 +97,8 @@ export function Music() {
 	const upMusic = () => uploadToSection('music', data.cards);
 	return html`<div class="page">
 		<div class="phead"><div class="row"><h1>Music</h1><${SectionUpload} kind="music" cards=${data.cards} /><${AppMenu} /></div>
-			<div class="chips" role="tablist" aria-label="Views">${VIEWS.map(w => html`<button class="chipbtn" role="tab" aria-pressed=${vk === w.k} onClick=${() => setView(w.k)}>${w.label} ${w.k === 'albums' ? albums.length : w.k === 'artists' ? artists.length : w.k === 'folders' ? '' : (s.pls || []).length}</button>`)}</div></div>
+			<div class="chips" role="tablist" aria-label="Views">${VIEWS.map(w => html`<button class="chipbtn" role="tab" aria-pressed=${vk === w.k} onClick=${() => setView(w.k)}>${w.label} ${w.k === 'albums' ? albums.length : w.k === 'artists' ? artists.length : w.k === 'folders' ? '' : (s.pls || []).length}</button>`)}
+				${!noFolder && !reading && vk !== 'playlists' && html`<span class="grow"></span><button class="btn sm" id="play-random" onClick=${playRandom} title="50 songs from your whole library, in a random order"><${Icon} n="shuffle" k=${2} />Play random</button>`}</div></div>
 		${noFolder ? html`<${Empty} icon="note" title="No music here yet" sub="Albums and artists come from a folder named Music at the top of either card. Upload into it and they appear here." button="Upload to Music" onClick=${upMusic} />`
 			: reading ? html`<${Banner} title="Reading the cards…" />`
 			: vk === 'albums' ? html`<div class="lib-grid">${albums.map((a, i) => html`<button class="lib-tile" key=${a.i} onClick=${() => setOne({ kind: 'album', index: a.i })} aria-label=${'Open ' + a.name}>

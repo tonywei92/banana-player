@@ -10703,7 +10703,7 @@ static void testWeb()
 			"\"paused\":false,\"position\":1.5,\"positionAt\":42,\"duration\":0,\"speed\":1,\"volume\":0,\"volumeMax\":100,"
 			"\"eq\":{\"on\":false,\"preset\":\"\",\"gains\":[-3,0,0,0,0,0,0,0,0,0]},\"fx\":\"\",\"loop\":\"one\","
 			"\"shuffled\":false,\"shuffleMode\":false,\"chapters\":[{\"title\":\"A\",\"start\":0}],\"chapter\":0,\"tracks\":null,"
-			"\"clients\":1,\"session\":{\"boot\":0,\"v\":0},\"playlistSerial\":0,\"liked\":false,\"showHiddenFolders\":false,\"mangaOn\":false,\"incognito\":false,"
+			"\"clients\":1,\"session\":{\"boot\":0,\"v\":0},\"playlistSerial\":0,\"liked\":false,\"showHiddenFolders\":false,\"keepPlaying\":true,\"mangaOn\":false,\"incognito\":false,"
 		"\"theme\":\"yellow\",\"themeBg\":\"#000000\",\"sleep\":{\"kind\":\"off\",\"label\":\"\",\"warn\":false,\"at\":\"\",\"minutes\":0,\"snooze\":10,\"word\":\"song\"}}"));
 
 		// the handheld's screen (its player left, or back to it) is news: the dashboard says "in the background"
@@ -11349,6 +11349,32 @@ static void testControlSheet()
 
 static void testKitLayoutLists()
 {
+	{
+		// section headings: rows <-> items, keys and taps never on a heading
+		lay::Sections sc;
+		sc.items = 4;
+		sc.before = {2};	// a heading between item 1 and item 2
+		CHECK_EQ(sc.rows(), 5);
+		CHECK_EQ(sc.headRow(0), 2);
+		CHECK_EQ(sc.isHead(2), true);
+		CHECK_EQ(sc.item(2), -1);
+		CHECK_EQ(sc.item(3), 2);
+		CHECK_EQ(sc.item(5), -1);
+		CHECK_EQ(sc.row(1), 1);
+		CHECK_EQ(sc.row(2), 3);
+		CHECK_EQ(sc.step(1, 1, false), 3);
+		CHECK_EQ(sc.step(3, -1, false), 1);
+		CHECK_EQ(sc.step(4, 1, true), 0);
+		CHECK_EQ(sc.step(4, 1, false), 4);
+		lay::Sections first;
+		first.items = 2;
+		first.before = {0, 2};	// a heading first, and one after the last
+		CHECK_EQ(first.row(0), 1);
+		CHECK_EQ(first.step(1, -1, true), 2);
+		CHECK_EQ(first.step(1, -1, false), 1);
+		CHECK_EQ(first.isHead(3), true);
+		CHECK_EQ(first.item(3), -1);
+	}
 	using namespace lay;
 	// the page's line: 22 tall, the note at the right margin, the line 8 before it
 	SectionLine sl = sectionLine({16, 100, 608, LINE_H}, true);
@@ -13532,6 +13558,81 @@ static void testSessionNamed()
 		CHECK_EQ(e.go(pe).reject, std::string("nothing"));
 	}
 	{
+		// Keep playing (Extend): a Music rail list at its last song gets the host's drawn songs after it; nothing
+		// reloads, those already in the list are left out, they're marked added; refused off the rail, mid-list, with
+		// a Loop, from a page. Picking a row of the same list keeps the marks; another list drops them
+		Sim m;
+		Intent op = m.mk(IntentType::Open);
+		op.queue = {"/m/a.mp3", "/m/b.mp3"};
+		op.index = 0;
+		op.rail = true;
+		m.go(op);
+		m.loaded();
+		CHECK_EQ(m.s.rail, true);
+		CHECK_EQ(extendable(m.s), false);
+		Intent mid = m.mk(IntentType::Extend);
+		mid.queue = {"/m/x.mp3"};
+		CHECK_EQ(m.go(mid).reject, std::string("not-last"));
+		m.step(1);
+		CHECK_EQ(extendable(m.s), true);
+		uint64_t load = m.s.load;
+		Intent pg = m.mk(IntentType::Extend, "tabA");
+		pg.queue = {"/m/x.mp3"};
+		CHECK_EQ(m.go(pg).reject, std::string("origin"));
+		Intent ex = m.mk(IntentType::Extend);
+		ex.queue = {"/m/a.mp3", "/m/x.mp3", "/m/y.mp3", "/m/x.mp3", "/m/p.jpg"};
+		CHECK_EQ(m.go(ex).reject, std::string(""));
+		CHECK_EQ(m.s.queue.size(), (size_t)4);
+		CHECK_EQ(m.s.queue[2], std::string("/m/x.mp3"));
+		CHECK_EQ(m.s.queue[3], std::string("/m/y.mp3"));
+		CHECK_EQ(m.s.added.size(), (size_t)2);
+		CHECK_EQ(m.s.index, 1);
+		CHECK_EQ(m.s.load, load);
+		CHECK_EQ(nextPlace(m.s), 2);
+		CHECK_EQ(extendable(m.s), false);
+		m.step(2);
+		Intent none = m.mk(IntentType::Extend);
+		none.queue = {"/m/a.mp3"};
+		CHECK_EQ(m.go(none).reject, std::string("none"));
+		// a row of the same list picked in Up next: the marks stay; Loop on: no more added
+		Intent re = m.mk(IntentType::Open);
+		re.queue = m.s.queue;
+		re.index = 0;
+		re.rail = true;
+		m.go(re);
+		CHECK_EQ(m.s.added.size(), (size_t)2);
+		Intent lp = m.mk(IntentType::SetLoop);
+		lp.loop = SESSION_LOOP_ALL;
+		m.go(lp);
+		m.step(3);
+		Intent ex2 = m.mk(IntentType::Extend);
+		ex2.queue = {"/m/z.mp3"};
+		CHECK_EQ(m.go(ex2).reject, std::string("loop"));
+		// a playlist (not the rail): never
+		Intent pl = m.mk(IntentType::Open);
+		pl.queue = {"/m/a.mp3"};
+		pl.source = {2, "Mix", "Mix"};
+		m.go(pl);
+		CHECK_EQ(m.s.added.empty(), true);
+		Intent lo = m.mk(IntentType::SetLoop);
+		lo.loop = SESSION_LOOP_OFF;
+		m.go(lo);
+		Intent ex3 = m.mk(IntentType::Extend);
+		ex3.queue = {"/m/z.mp3"};
+		CHECK_EQ(m.go(ex3).reject, std::string("not-rail"));
+		// Stop: the rail and its marks go with the list (I18)
+		m.go(m.mk(IntentType::Stop));
+		CHECK_EQ(m.s.rail, false);
+		CHECK_EQ(checkInvariants(m.s), std::string(""));
+		// drawSongs: n of the pool, none excluded, none twice, the same for the same number
+		std::vector<std::string> pool{"a", "b", "c", "d", "e", "b"};
+		auto d1 = drawSongs(pool, {"a"}, 10, 42), d2 = drawSongs(pool, {"a"}, 10, 42);
+		CHECK_EQ(d1.size(), (size_t)4);
+		CHECK_EQ(d1 == d2, true);
+		CHECK_EQ(std::find(d1.begin(), d1.end(), "a") == d1.end(), true);
+		CHECK_EQ(drawSongs(pool, {}, 2, 7).size(), (size_t)2);
+	}
+	{
 		// Requeue: a song added to the playlist that plays, its last song playing: Next reaches it, nothing reloads
 		Sim m;
 		Intent op = m.mk(IntentType::Open);
@@ -13903,6 +14004,7 @@ static int fuzzEnded = 0;	// sessions the fuzz left with a finished list (it mus
 static int fuzzShuffled = 0, fuzzUnshuffled = 0, fuzzRounds = 0;	// Shuffle turned on / off while playing; new rounds
 static int fuzzPlayNext = 0;	// Play next taken while an item played
 static int fuzzRequeued = 0;	// playlist edits taken while an item played (shuffled or not)
+static int fuzzExtended = 0;	// Keep playing's songs added at a Music rail list's end
 static bool fuzzSession(uint32_t seed, int steps)
 {
 	std::mt19937 rng(seed);
@@ -13932,6 +14034,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 		if (s.ended.index < 0 && r.s.ended.index >= 0) fuzzEnded++;
 		if (i.type == IntentType::Requeue && r.reject.empty() && !r.dup) fuzzRequeued++;
 		if (i.type == IntentType::PlayNext && r.reject.empty() && !r.dup) fuzzPlayNext++;
+		if (i.type == IntentType::Extend && r.reject.empty() && !r.dup) fuzzExtended++;
 		if (i.type == IntentType::SetShuffle && r.reject.empty() && !r.dup && s.index >= 0)
 			(r.s.shuffle ? fuzzShuffled : fuzzUnshuffled) += s.shuffle != r.s.shuffle;
 		// a shuffled round that went on past its end (Loop all: a new round)
@@ -13948,7 +14051,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 		static const IntentType KINDS[] = {IntentType::Open, IntentType::Play, IntentType::Pause, IntentType::Seek,
 			IntentType::SeekBy, IntentType::Step, IntentType::Step, IntentType::Step, IntentType::SetAudio, IntentType::SetSub,
 			IntentType::SetSpeed, IntentType::SetLoop, IntentType::SetOutput, IntentType::SetOutput, IntentType::Stop,
-			IntentType::PhotoPark, IntentType::PhotoResume, IntentType::FileGone, IntentType::SetShuffle, IntentType::Requeue, IntentType::PlayNext};
+			IntentType::PhotoPark, IntentType::PhotoResume, IntentType::FileGone, IntentType::SetShuffle, IntentType::Requeue, IntentType::PlayNext, IntentType::Extend};
 		i.type = KINDS[pick((int)(sizeof KINDS / sizeof KINDS[0]))];
 		switch (i.type)
 		{
@@ -13960,6 +14063,7 @@ static bool fuzzSession(uint32_t seed, int steps)
 			i.t = pick(4) ? 0 : pick(200);
 			i.browserCan = pick(5) != 0;
 			i.rnd = rr();
+			i.rail = pick(2) == 0;
 			if (pick(2))
 			{
 				i.hasOut = true;
@@ -13991,6 +14095,10 @@ static bool fuzzSession(uint32_t seed, int steps)
 			// (a growing list makes a round's end rarer, so most of these turn into a Step)
 			if (pick(4)) { i.type = IntentType::Step; i.n = 1; i.browserCan = true; i.rnd = rr(); break; }
 			i.path = pick(8) ? FILES[pick(7)] : "/m/x.jpg";
+			break;
+		case IntentType::Extend:
+			// (the host's: Keep playing at a Music rail list's end)
+			for (int k = 1 + pick(3); k > 0; k--) i.queue.push_back(pick(8) ? "/m/r" + std::to_string(pick(20)) + ".mp3" : FILES[pick(7)]);
 			break;
 		case IntentType::Requeue:
 		{
@@ -14166,6 +14274,7 @@ static void testSessionFuzz()
 	CHECK_EQ(fuzzRounds > 0, true);
 	CHECK_EQ(fuzzRequeued > 0, true);
 	CHECK_EQ(fuzzPlayNext > 0, true);
+	CHECK_EQ(fuzzExtended > 0, true);
 }
 
 // picture subtitles for the browser: the cue timing rules, the window a request may ask for, the paletted PNG

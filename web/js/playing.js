@@ -1,6 +1,6 @@
 import { html, render, useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from '../vendor/htm-preact-standalone.module.js';
 import { intent, B, S, clearFinished, finSource, finishedList, playFinished, playListOnHandheld, whereToPlay, playBlocked, CUE_SIZES, SPEEDS, SUBS, assBox, setSpeed, toggleCaptions, browserPlay, chooseAudio, chooseSub, directAudio, nativeAudio, playingAudio, streamWhy, continueHere, ctl, cueStyle, el, handoffToHandheld, playParked, probe1, probeOK, setBrowserVol, setCueStyle, setTarget, sizeCues, view } from './browser-player.js';
-import { AppMenu, Art, Empty, MoreDots, Seek, coverUrl, openSheet, palOf, useHeld, useMedia, useTick } from './components.js';
+import { AppMenu, Art, Empty, ListHead, MoreDots, Seek, coverUrl, openSheet, palOf, useHeld, useMedia, useTick } from './components.js';
 import { NO_HERE, NO_HERE_WHY, Q_DESK, Q_WIDE, lsGet, lsSet, notify, phoneNow, set, store, useStore } from './store.js';
 import { isNetPath, baseName, chapterTitle, dirName, fmtDate, fmtSize, fmtTime, isIOS, kindOfName, throttled, titleFor, touchOnly, userTap } from './util.js';
 import { Icon } from './icons.js';
@@ -642,7 +642,9 @@ function UpNext({ v }) {
 	const [items, setItems] = useState(null), [idx, setIdx] = useState(0);
 	const box = useRef();
 	const fin = v.finished && finishedList();
-	const key = fin ? 'fin|' + fin.index + '|' + fin.queue.join('|') : v.here ? B.queue.length + ':' + B.index + ':' + (B.queue[0] && B.queue[0].p) : (sn && sn.path) + '|' + s.epoch + '|' + s.plTick;
+	// (the session's list grows by itself: Keep playing's songs, Play next)
+	const qn = S.s && S.s.queue ? S.s.queue.length : 0;
+	const key = fin ? 'fin|' + fin.index + '|' + fin.queue.join('|') : v.here ? B.queue.length + ':' + B.index + ':' + (B.queue[0] && B.queue[0].p) + ':' + qn : (sn && sn.path) + '|' + s.epoch + '|' + s.plTick + '|' + qn;
 	useEffect(() => {
 		if (fin) { setItems(fin.queue.map(p => ({ p, title: titleFor(p) }))); setIdx(fin.index); return; }
 		if (v.here) { setItems(B.queue.map(q => ({ p: q.p, title: titleFor(q.p, q.title), duration: q.duration }))); setIdx(B.index); return; }
@@ -677,16 +679,25 @@ function UpNext({ v }) {
 		// (a finished list: from that row, where picks go)
 		if (fin) return playFinished(i);
 		// (with Shuffle on, what follows the row is random again: the session's new order from it)
-		if (v.here) return browserPlay(B.queue, i, B.source, 0);
+		if (v.here) return browserPlay(B.queue, i, B.source, 0, S.s && S.s.rail);
 		const src = sn.source;
+		// (a Music rail list: still one from that row, what Keep playing added still marked; the output stays where it is)
+		if (S.s && S.s.rail) {
+			try { const r = await intent('Open', { q: items.map(x => x.p), index: i, t: '0', skind: 'folder', stitle: S.s.source && S.s.source.title || '', sid: '', rail: 1 }); if (r && r.rejected) toast("Couldn't play it: try again"); } catch (e) { toast(errMsg(e)); }
+			return;
+		}
 		// (a network queue: the handheld steps to that row; its files have no address here to name)
 		if (isNetPath(items[i].p)) return playListOnHandheld(items.map(x => x.p), i, { kind: 'folder', title: src && src.title || '', id: '' });
 		try { if (src && src.kind === 'playlist' && src.id) await post('/api/play', { playlist: src.id, index: i }); else await post('/api/play', { p: items[i].p }); } catch (e) { toast(errMsg(e)); }
 	};
 	const src = v.source && v.source.title, pad = n => String(n).padStart(2, '0');
+	// Keep playing's songs: under their own heading, from the first of them (its button turns the setting off or on)
+	const added = !fin && S.s && S.s.added && S.s.added.length ? new Set(S.s.added) : null;
+	const headAt = added ? items.findIndex(it => added.has(it.p)) : -1, keepOn = !sn || sn.keepPlaying !== false;
+	const toggleKeep = () => post('/api/setting', { key: 'keepPlaying', value: keepOn ? 0 : 1 }).then(() => { if (store.snap) store.snap.keepPlaying = !keepOn; notify(); }).catch(errToast);
 	return html`<section aria-label="Queue"><div class="band queue-band"><span class="kicker ell" style="max-width:70%">${src ? 'From ' + src : 'Up next'}</span><span class="rule"></span><span class="num">${pad(idx + 1)} / ${pad(items.length)}</span></div>
 		<div class="upnext list-lines" ref=${box}>
-		${items.map((it, i) => { const d = it.duration > 0 ? it.duration : durationOf(it.p); return html`<button class="line ${i === idx ? 'cur' : ''} ${i < idx ? 'past' : ''}" data-dur=${!d && durable(it.p) ? it.p : undefined} onClick=${() => play(i)} aria-current=${i === idx ? 'true' : undefined}>
+		${items.map((it, i) => { const d = it.duration > 0 ? it.duration : durationOf(it.p); return html`${i === headAt && html`<${ListHead} label=${keepOn ? 'Keep playing \u00B7 songs picked for you' : 'Songs picked for you'} action=${keepOn ? 'Turn off' : 'Turn on'} onAction=${toggleKeep} />`}<button class="line ${i === idx ? 'cur' : ''} ${i < idx ? 'past' : ''}" data-dur=${!d && durable(it.p) ? it.p : undefined} onClick=${() => play(i)} aria-current=${i === idx ? 'true' : undefined}>
 			<span class="tile sm"><${Art} src=${kindOfName(it.p) === 'audio' ? coverUrl(it.p) : ''} seed=${it.p} kind=${kindOfName(it.p)} k=${1} /></span>
 			<span class="tt"><span class="ell" style="display:block">${it.title}</span>${i === idx && html`<span class="m">${fin ? html`<span class="chip tiny">Finished</span>` : html`<span class="chip y tiny"><${Icon} n="play" k=${1} />Now</span>`}</span>`}</span>
 			${d > 0 && html`<span class="tm">${fmtTime(d)}</span>`}</button>`; })}</div></section>`;

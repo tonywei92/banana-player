@@ -148,6 +148,9 @@ namespace bp
 		// screen — one hue from the art tinting the theme's own charcoal, never a colour of the UI. The theme's
 		// keys, chips, accent and text stay the theme's; High contrast keeps its plain ground whatever this says
 		bool matchAlbumArt = true;
+		// Keep playing: a list started from the Music rail that reaches its last song gets 10 more songs from the
+		// library (Session's Extend, docs/design/session.md §19); Up next shows them under their own heading
+		bool keepPlaying = true;
 		// the visualizers' frame rate: 30, 45 (default: smooth, lighter than 60 on the battery) or 60; Peaks and Circle
 		// draw at 30 whatever it says
 		int vizFps = 45;

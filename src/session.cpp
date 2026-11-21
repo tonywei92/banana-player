@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <unordered_set>
 
 namespace bp
 {
@@ -12,7 +13,7 @@ namespace bp
 	{
 		static const char* NAMES[] = {"Open", "Play", "Pause", "Seek", "SeekBy", "Step", "SetAudio", "SetSub", "SetSpeed",
 			"SetLoop", "SetOutput", "Stop", "PhotoPark", "PhotoResume", "FileGone", "Loaded", "Pos", "Ended", "CantPlay",
-			"Tick", "TabGone", "TabBack", "Slept", "Woke", "Blocked", "SetShuffle", "Requeue", "PlayNext"};
+			"Tick", "TabGone", "TabBack", "Slept", "Woke", "Blocked", "SetShuffle", "Requeue", "PlayNext", "Extend"};
 		return NAMES[(int)t];
 	}
 
@@ -91,6 +92,32 @@ namespace bp
 
 	std::string outOrigin(const Session& s) { return s.out.kind == OutKind::Handheld ? "hh" : s.out.tab; }
 
+	std::vector<std::string> drawSongs(const std::vector<std::string>& pool, const std::vector<std::string>& exclude, int n, uint64_t rnd)
+	{
+		std::vector<std::string> out;
+		if (n <= 0) return out;
+		std::unordered_set<std::string> skip(exclude.begin(), exclude.end());
+		std::vector<int> left;
+		for (int k = 0; k < (int)pool.size(); k++)
+			if (!skip.count(pool[k]) && skip.insert(pool[k]).second) left.push_back(k);
+		// a partial Fisher-Yates on a splitmix64 stream: the first n of a random order
+		uint64_t x = rnd;
+		auto next = [&x]() {
+			uint64_t z = (x += 0x9E3779B97F4A7C15ull);
+			z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
+			z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
+			return z ^ (z >> 31);
+		};
+		int take = std::min(n, (int)left.size());
+		for (int k = 0; k < take; k++)
+		{
+			int j = k + (int)(next() % (uint64_t)(left.size() - k));
+			std::swap(left[k], left[j]);
+			out.push_back(pool[left[k]]);
+		}
+		return out;
+	}
+
 	namespace
 	{
 		// the last item of its list in the order it plays (Shuffle's hidden one when there is one): Ended on it has
@@ -102,6 +129,8 @@ namespace bp
 				return shufflePlace(s) + 1 >= (int)s.queue.size();
 			return s.index + 1 >= (int)s.queue.size();
 		}
+		// (Keep playing's rule, the reducer's and the host's: extendable)
+		bool extendableAt(const Session& s) { return s.index >= 0 && s.rail && s.loop == SESSION_LOOP_OFF && atListEnd(s); }
 		// what a client sees change: everything but the clock (pos, posAt), the host's timers, the seen store and v
 		bool samePublished(const Session& a, const Session& b)
 		{
@@ -110,7 +139,7 @@ namespace bp
 				a.out == b.out && a.pref == b.pref && a.outV == b.outV && a.itemV == b.itemV && a.playV == b.playV &&
 				a.seekN == b.seekN && a.parked == b.parked && a.error == b.error && a.dur == b.dur &&
 				a.audioOnly == b.audioOnly && a.loaded == b.loaded && a.blocked == b.blocked && a.ended == b.ended && a.boot == b.boot &&
-				a.cantRun == b.cantRun && a.skipBack == b.skipBack && a.picked == b.picked;
+				a.cantRun == b.cantRun && a.skipBack == b.skipBack && a.picked == b.picked && a.rail == b.rail && a.added == b.added;
 		}
 
 		bool sameAll(const Session& a, const Session& b)
@@ -232,12 +261,23 @@ namespace bp
 				if (size > 1 && n.order[0] == s.index) std::swap(n.order[0], n.order[1]);
 				return n.order[0];
 			}
+			// what Keep playing added, less what left the list
+			void keepAdded()
+			{
+				std::unordered_set<std::string> in(n.queue.begin(), n.queue.end());
+				std::vector<std::string> kept;
+				for (auto& a : n.added)
+					if (in.count(a)) kept.push_back(a);
+				n.added = kept;
+			}
 			void stopItem()
 			{
 				n.order.clear();
 				n.queue.clear();
 				n.index = -1;
 				n.picked = false;
+				n.rail = false;
+				n.added.clear();
 				setPlaying(false);
 				n.parked = false;
 				n.error.clear();
@@ -356,8 +396,12 @@ namespace bp
 					if (q.empty()) return "empty";
 					if (index < 0) return "photo";
 					if (i.hasOut && i.out.kind == OutKind::Browser && i.out.tab.empty()) return "bad-output";
+					// (a row picked in Up next of the same rail list: what Keep playing added stays marked)
+					bool same = i.rail && s.rail && q == s.queue;
 					n.queue = q;
 					n.source = i.source;
+					n.rail = i.rail;
+					if (!same) n.added.clear();
 					newItem(index);
 					n.picked = true;
 					newOrder();	// (Shuffle: a new hidden order, from the item picked)
@@ -600,6 +644,7 @@ namespace bp
 					}
 					n.queue = q;
 					n.index = index;
+					keepAdded();
 					// the hidden order without them, its places renumbered
 					std::vector<int> to(s.queue.size(), -1);
 					for (int k = 0, m = 0; k < (int)s.queue.size(); k++)
@@ -627,6 +672,26 @@ namespace bp
 					}
 					return "";
 				}
+				case IntentType::Extend:
+				{
+					// Keep playing: songs the host drew from the library go on after the last of a Music rail list, so
+					// it plays on (nothing reloads; with Shuffle they play after the round's rest, in the order drawn)
+					if (i.origin != "hh") return "origin";	// (the host's word: it holds the library)
+					if (s.index < 0) return "nothing";
+					if (!s.rail) return "not-rail";
+					if (s.loop != SESSION_LOOP_OFF) return "loop";
+					if (!extendableAt(s)) return "not-last";
+					std::unordered_set<std::string> have(s.queue.begin(), s.queue.end());
+					for (auto& q : i.queue)
+					{
+						if (q.empty() || isPhotoFile(q) || !have.insert(q).second) continue;
+						if (!s.order.empty()) n.order.push_back((int)n.queue.size());
+						n.queue.push_back(q);
+						n.added.push_back(q);
+					}
+					if (n.queue.size() == s.queue.size()) return "none";
+					return "";
+				}
 				case IntentType::Requeue:
 				{
 					// the playlist that plays, edited: Next goes on to what was added after its last song
@@ -651,6 +716,7 @@ namespace bp
 						if (isPhotoFile(q)) return "photo";
 					n.queue = i.queue;
 					n.index = i.index;
+					keepAdded();
 					// the hidden order: the same, less what went, what came after (played last, in the list's order)
 					if (!s.order.empty())
 					{
@@ -861,6 +927,8 @@ namespace bp
 		}
 	}
 
+	bool extendable(const Session& s) { return extendableAt(s); }
+
 	Result apply(const Session& s, const Intent& i, int64_t now)
 	{
 		Result r;
@@ -959,6 +1027,11 @@ namespace bp
 		if (s.goneBye && (!s.goneAt || s.goneTab.empty())) return "I14: a goodbye kept with no tab gone";
 		// I15: picked only says how the item playing came
 		if (s.picked && s.index < 0) return "I15: picked with nothing playing";
+		// I18: Keep playing's songs are in the list, and only a Music rail list that plays has any
+		if (s.rail && s.index < 0) return "I18: a Music rail list with nothing playing";
+		if (!s.added.empty() && !s.rail) return "I18: songs added to a list not from the Music rail";
+		for (auto& a : s.added)
+			if (std::find(s.queue.begin(), s.queue.end(), a) == s.queue.end()) return "I18: an added song not in the list";
 		return "";
 	}
 
@@ -1014,6 +1087,17 @@ namespace bp
 		if (i.type == IntentType::Step && i.n < 0 && r.reject.empty() && !r.dup && old.index >= 0 && !old.audioOnly &&
 			r.s.index == old.index)
 			return "I17: a video restarted by Previous";
+		// I18: an applied Extend only appends new songs to a list at its end: the item, its load and the list before stay
+		if (i.type == IntentType::Extend && r.reject.empty() && !r.dup)
+		{
+			if (!extendableAt(old)) return "I18: Extend applied off a Music rail list's end";
+			if (r.s.index != old.index || r.s.load != old.load) return "I18: Extend moved or reloaded the item";
+			if (r.s.queue.size() <= old.queue.size() || !std::equal(old.queue.begin(), old.queue.end(), r.s.queue.begin()))
+				return "I18: Extend changed the list before its end";
+			for (size_t k = old.queue.size(); k < r.s.queue.size(); k++)
+				if (std::find(old.queue.begin(), old.queue.end(), r.s.queue[k]) != old.queue.end()) return "I18: Extend added a song already in the list";
+			if (r.s.added.size() != old.added.size() + (r.s.queue.size() - old.queue.size())) return "I18: Extend's songs not marked added";
+		}
 		bool report = i.type == IntentType::Loaded || i.type == IntentType::Pos || i.type == IntentType::Ended ||
 			i.type == IntentType::CantPlay || i.type == IntentType::Blocked;
 		if (report && r.reject.empty() && (i.origin != outOrigin(old) || i.load != old.load)) return "I8: a report from elsewhere taken";
@@ -1070,6 +1154,11 @@ namespace bp
 		j.key("source").obj().key("kind").str(s.source.kind == 2 ? "playlist" : s.source.kind == 1 ? "net" : "folder")
 			.key("title").str(s.source.title).key("id").str(s.source.id).end();
 		j.key("shuffle").boolean(s.shuffle);
+		// the Music rail's list, and what Keep playing added to it (as the queue is published)
+		j.key("rail").boolean(s.rail).key("added").arr();
+		for (auto& a : s.added)
+			if (std::string v = virt(a); !v.empty()) j.str(v);
+		j.end();
 		j.key("playing").boolean(s.playing).key("pos").num(posNow(s, now)).key("dur").num(s.dur).key("speed").num(s.speed);
 		pick("audio", s.audio);
 		pick("sub", s.sub);

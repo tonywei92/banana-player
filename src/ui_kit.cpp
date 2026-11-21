@@ -634,8 +634,33 @@ namespace bp
 		ui.fillRound({on ? x + 22 : x + 4, cy - 7, 14, 14}, on ? ON_ACCENT : DIM, 7);
 	}
 
+	Ui::Rect Ui::Kit::headingAction(Rect r, const std::string& action) const
+	{
+		if (action.empty()) return {};
+		int w = pillW(action) + 8, h = 30;
+		return {r.x + r.w - 6 - w, r.y + r.h - 4 - h, w, h};
+	}
+
+	void Ui::Kit::heading(Rect r, const Row& row)
+	{
+		// the label low in the row (it belongs to what is under it), a rule after it to the action or the edge
+		Rect act = headingAction(r, row.key);
+		int cy = r.y + r.h - 4 - 15, x = r.x + 12, right = row.key.empty() ? r.x + r.w - 12 : act.x - 10;
+		int labelMax = std::max(0, right - x - 24);
+		int w = std::min(textW(row.name, F_I12), labelMax);
+		ui.drawTextMid(row.name, F_I12, DIM, x, cy, labelMax);
+		if (right - (x + w + 10) > 8) ui.fill({x + w + 10, cy, right - (x + w + 10), 1}, RULE);
+		if (!row.key.empty())
+		{
+			if (row.pressed) ui.fillRound(act, PRESSED, R_BUTTON);
+			else flat(act, BUTTON, R_BUTTON, BUTTON);
+			ui.drawTextMid(row.key, F_I12, row.pressed ? TEXT : DIM_ON, act.x + act.w / 2, act.y + act.h / 2, act.w, 2);
+		}
+	}
+
 	void Ui::Kit::row(Rect r, const Row& row)
 	{
+		if (row.heading) { heading(r, row); return; }
 		// focused: lit as a button, its edge and its name yellow; held: the pressed fill
 		if (row.pressed) ui.fillRound(r, PRESSED, R_BUTTON);
 		else if (row.focused) flat(r, BUTTON, R_BUTTON, ACCENT);

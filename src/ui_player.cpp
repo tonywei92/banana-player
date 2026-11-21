@@ -542,6 +542,20 @@ namespace bp
 		}));
 		// its folder: the player left first (it plays on behind the browser), then the folder (showBrowser)
 		m.rows.push_back(item(&G_FOLDER, "Show in folder", [u](Player& p) { u->showAfterLeave = p.currentPath(); return true; }));
+		// a song: Keep playing (Music rail lists play on past their last song), switched here in place
+		if (audio)
+		{
+			m.rows.push_back(item(&G_SHUFFLE, "Keep playing", [](Player& p) {
+				Settings st = p.settings;
+				st.keepPlaying = !st.keepPlaying;
+				p.setSettings(st);
+				fprintf(stderr, "ui: keep playing %s (More)\n", st.keepPlaying ? "on" : "off");
+				return false;
+			}));
+			m.rows.back().note = p.settings.keepPlaying ? "On" : "Off";
+			m.rows.back().lit = p.settings.keepPlaying;
+			m.rows.back().stay = true;
+		}
 		// while a dashboard page that can play is open, or one plays it
 		if (ui.playOnShown())
 		{
@@ -690,18 +704,20 @@ namespace bp
 		static std::string key(const Kit::Row& r)
 		{
 			if (r.focused && !r.off) return "";
+			if (r.heading) return "head|" + std::to_string(r.pressed) + "|" + r.name + "|" + r.key;
 			char b[96];
 			snprintf(b, sizeof b, "%p,%d,%d,%d,%d,%d,%d,%d,%d|", (const void*)r.glyph, (int)r.tone, (int)r.trail, r.pressed, r.off,
 				r.radio, r.radioOn, r.font, (int)r.under.r);
 			return b + r.lead + "|" + r.name + "|" + r.note + "|" + r.pill;
 		}
 		// the rows drawn: row(i) gives each one's look (it may outlive this draw: what it needs, by value)
-		void draw(Ui& ui, Rect v, int n, std::function<Kit::Row(int)> row)
+		void draw(Ui& ui, Rect v, int n, std::function<Kit::Row(int)> row, std::function<bool(int)> heading = nullptr)
 		{
 			SmoothList::Spec spec;
 			spec.view = v;
 			spec.rowH = lay::LIST_ROW;
 			spec.count = n;
+			spec.heading = std::move(heading);
 			spec.key = [row](int i) { return key(row(i)); };
 			spec.draw = [&ui, row](int i, Rect box) { ui.kit->row(box, row(i)); };
 			list.draw(std::move(spec));
@@ -714,7 +730,7 @@ namespace bp
 	// L / R step the tabs, LEFT / RIGHT page the rows, L2 / R2 jump a chapter with the sheet open, Y / B close.
 	struct Ui::ListSheet : Ui::Overlay
 	{
-		enum Press { P_NONE, P_ROW, P_TAB, P_SHUFFLE, P_REPEAT };
+		enum Press { P_NONE, P_ROW, P_TAB, P_SHUFFLE, P_REPEAT, P_HEADING };
 		int tab = 0, cursor = 0, press = P_NONE, pressAt = -1;
 		// the rows: a finger's drag scrolls them, a tap (no drag) still chooses
 		SheetRows rows{ui};
@@ -744,7 +760,28 @@ namespace bp
 			int cur = -1;
 			return (int)ui.upNextList(p, cur).size();
 		}
-		int shown(const Player& p) const { return std::min(std::max(1, count(p)), lay::LIST_ROWS); }
+		// the rows: the items (the cursor's), with Up next's heading before what Keep playing added
+		lay::Sections sections(const Player& p) const
+		{
+			lay::Sections sc;
+			sc.items = count(p);
+			if (tab == 0)
+				if (int from = ui.upNextAddedFrom(p); from >= 0) sc.before = {from};
+			return sc;
+		}
+		int rowCount(const Player& p) const { return sections(p).rows(); }
+		int shown(const Player& p) const { return std::min(std::max(1, rowCount(p)), lay::LIST_ROWS); }
+		static constexpr const char* HEADING_ON = "Keep playing \xC2\xB7 songs picked for you", *HEADING_OFF = "Songs picked for you";
+		static std::string headingAction(const Player& p) { return p.settings.keepPlaying ? "Turn off" : "Turn on"; }
+		// Keep playing on or off (the heading's chip, X): the setting; what it added stays in the list
+		void toggleKeepPlaying(Player& p)
+		{
+			Settings st = p.settings;
+			st.keepPlaying = !st.keepPlaying;
+			p.setSettings(st);
+			p.osd(st.keepPlaying ? "Keep playing on" : "Keep playing off");
+			fprintf(stderr, "ui: keep playing %s (Up next)\n", st.keepPlaying ? "on" : "off");
+		}
 		lay::ListSheet layout(const Player& p) const { return lay::listSheet(shown(p)); }
 		Rect rowsView(const Player& p) const { return SheetRows::view(layout(p), shown(p)); }
 
@@ -817,6 +854,7 @@ namespace bp
 
 		void choose(int i, Player& p)
 		{
+			if (i < 0) return;	// (a heading)
 			if (tab == 0)
 			{
 				int cur = -1;
@@ -852,6 +890,7 @@ namespace bp
 			case Button::L: if (tab > 0) openTab(tab - 1, p); break;
 			case Button::R: if (tab + 1 < tabCount(p)) openTab(tab + 1, p); break;
 			case Button::A: choose(cursor, p); break;
+			case Button::X: if (tab == 0 && !sections(p).before.empty()) toggleKeepPlaying(p); break;
 			// the chapter step over the sheet (Button hotkeys says whether they work at all)
 			case Button::L2:
 			case Button::R2:
@@ -866,7 +905,7 @@ namespace bp
 			default: break;
 			}
 			settle(p);
-			if (cursor != was && !done) rows.reveal(cursor, rowsView(p), count(p));
+			if (cursor != was && !done) rows.reveal(sections(p).row(cursor), rowsView(p), rowCount(p));
 			return false;
 		}
 
@@ -893,7 +932,14 @@ namespace bp
 				auto rep = repeatRects(h);
 				for (int i = 0; i < 3; i++)
 					if (rep[i].hit(x, y)) { press = P_REPEAT; pressAt = i; return false; }
-				int r = rows.down(pt, x, y, rowsView(p));
+				lay::Sections sc = sections(p);
+				if (!sc.before.empty() && rowsView(p).hit(x, y))
+				{
+					// the heading's chip (Keep playing on / off); the rest of a heading is no row
+					Rect hb = rows.list.rowBox(sc.headRow(0));
+					if (ui.kit->headingAction(hb, headingAction(p)).hit(x, y)) { rows.down(pt, x, y, rowsView(p)); press = P_HEADING; pressAt = 0; return false; }
+				}
+				int r = sc.item(rows.down(pt, x, y, rowsView(p)));
 				if (r >= 0 && r < n) { press = P_ROW; pressAt = r; cursor = r; }
 				return false;
 			}
@@ -908,7 +954,13 @@ namespace bp
 			pressAt = -1;
 			bool tap = rows.up();
 			// a drag or a caught glide chooses nothing; let go off its row: nothing (the finger changed its mind)
-			if (kind == P_ROW) { if (tap && rows.list.rowAt(x, y) == at) choose(at, p); }
+			if (kind == P_ROW) { if (tap && sections(p).item(rows.list.rowAt(x, y)) == at) choose(at, p); }
+			else if (kind == P_HEADING)
+			{
+				lay::Sections sc = sections(p);
+				if (tap && !sc.before.empty() && ui.kit->headingAction(rows.list.rowBox(sc.headRow(0)), headingAction(p)).hit(x, y))
+					toggleKeepPlaying(p);
+			}
 			else if (kind == P_TAB)
 			{
 				auto tabs = tabRects(p, h);
@@ -954,8 +1006,21 @@ namespace bp
 			const bool drives = ui.pageDrives(p), paused = p.paused;
 			const double nowDur = p.duration;
 			const int focus = cursor, pressed = press == P_ROW && !rows.moved ? pressAt : -1, t = tab;
-			auto rowOf = [paths, chapters, cur, drives, paused, nowDur, focus, pressed, t](int i) {
+			const lay::Sections sc = sections(p);
+			const bool headPressed = press == P_HEADING && !rows.moved, keepOn = p.settings.keepPlaying;
+			const std::string action = headingAction(p);
+			auto rowOf = [paths, chapters, cur, drives, paused, nowDur, focus, pressed, t, sc, headPressed, keepOn, action](int r) {
 				Kit::Row row;
+				int i = sc.item(r);
+				if (i < 0)
+				{
+					// Keep playing's heading: what follows was picked for you; its chip turns it off (or on)
+					row.heading = true;
+					row.name = keepOn ? HEADING_ON : HEADING_OFF;
+					row.key = action;
+					row.pressed = headPressed;
+					return row;
+				}
 				row.font = F_P16;
 				row.focused = i == focus;
 				row.pressed = i == pressed;
@@ -985,11 +1050,13 @@ namespace bp
 				return row;
 			};
 			Rect v = SheetRows::view(s, shown(p));
-			rows.settleOn(std::to_string(tab), cursor, v, n, 3);
-			rows.draw(ui, v, n, rowOf);
-			ui.drawScrollBar(s.rowsY, shown(p) * lay::LIST_ROW, rows.first(), shown(p), n);
+			int nr = sc.rows();
+			rows.settleOn(std::to_string(tab), sc.row(cursor), v, nr, 3);
+			rows.draw(ui, v, nr, rowOf, [sc](int r) { return sc.isHead(r); });
+			ui.drawScrollBar(s.rowsY, shown(p) * lay::LIST_ROW, rows.first(), shown(p), nr);
 
 			std::vector<Hint> hints{{"UP/DOWN", "Move"}, {"LEFT/RIGHT", "Page"}, {"A", "Play from here"}};
+			if (!sc.before.empty()) hints.push_back({"X", keepOn ? "Keep playing off" : "Keep playing on"});
 			if (hasChapters(p)) hints.push_back({"L/R", "Tab"});
 			if (tab == 1) hints.push_back({"L2/R2", "Chapter"});
 			hints.push_back({"Y/B", "Close"});
@@ -1003,7 +1070,8 @@ namespace bp
 			int n = count(p), cur = current(p);
 			std::string sig = std::to_string(tab) + "," + std::to_string(cursor) + "," + std::to_string(rows.moved) + "," +
 				std::to_string(press) + "," + std::to_string(pressAt) + "," + std::to_string(n) + "," + std::to_string(cur) + "," +
-				std::to_string(SessionHost::get().version()) + "," + std::to_string(p.paused) + std::to_string(ui.pageDrives(p));
+				std::to_string(SessionHost::get().version()) + "," + std::to_string(p.paused) + std::to_string(ui.pageDrives(p)) +
+				std::to_string(p.settings.keepPlaying);
 			if (tab == 0)
 			{
 				int c = -1;

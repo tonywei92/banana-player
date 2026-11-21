@@ -69,10 +69,14 @@ namespace bp
 		// can that browser tab play this file (the web serves it, a format a browser plays, the tab is there; tab "":
 		// the tab's own word, there by definition): the context Open and Step need (main sets it; none: no)
 		std::function<bool(const std::string& path, const std::string& tab)> browserCan;
+		// the library's songs (the Music index's; main sets it): what Keep playing draws from
+		std::function<std::vector<std::string>()> songPool;
+		static constexpr int KEEP_PLAYING_ADD = 10;	// the songs Keep playing adds each time
 		// a pick (handheld or web) as Open; sourceKind 0 folder, 1 network, 2 playlist. out: given when the picker says
 		// where (the page's Play here / Play in this browser); else the session's pref decides
 		void open(const std::vector<std::string>& paths, int index, int sourceKind, const std::string& title,
-			const std::string& origin, const Output* out, double t, bool live = false, const std::string& sourceId = "");
+			const std::string& origin, const Output* out, double t, bool live = false, const std::string& sourceId = "",
+			bool rail = false);
 		// Shuffle on or off (the handheld's mode key, a page's Shuffle, a Shuffle play): the setting (it lasts, as
 		// Loop: every list from now) and the session's (what plays plays on; Next follows a hidden random order)
 		void setShuffle(bool on, const std::string& origin = "hh");
@@ -124,6 +128,8 @@ namespace bp
 		bool endedFx = false;	// the effects waiting came from the handheld's Ended (its unload is the end of the list)
 		std::vector<Effect> pendingFx;	// live effects, run once per pass of main's loop (coalesce: a burst loads one file)
 		void run(const std::vector<Effect>& fx);
+		uint64_t extendedLoad = 0;	// the load Keep playing last added songs at (once per song)
+		void keepPlaying(const Player& p);	// Keep playing's songs, at a Music rail list's last song (pass)
 		bool holdsItem() const;	// the handheld's mpv has the session's item
 		void bringHere(bool show = true);	// opens the session's item on the handheld (it holds another, or none)
 		void seekHere(double t);
