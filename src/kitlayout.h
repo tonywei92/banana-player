@@ -14,7 +14,7 @@ namespace bp
 		// a box on the panel, in its 640x480 units (Ui::Rect is this)
 		struct Box
 		{
-			int x, y, w, h;
+			int x = 0, y = 0, w = 0, h = 0;	// (zero when a layout leaves it unset: an empty box, never stack garbage)
 			constexpr bool hit(int px, int py) const { return px >= x && py >= y && px < x + w && py < y + h; }
 		};
 
@@ -212,7 +212,7 @@ namespace bp
 			int chips = 0;
 			Box chip[PLAYER_CHIPS_MAX];
 			Box next;	// the Next line
-			Box repeat;	// a song's Repeat mark, at the Next line's right end (empty on a video: its fifth chip is Repeat)
+			Box repeat{0, 0, 0, 0};	// a song's Repeat mark, at the Next line's right end (empty on a video: its fifth chip is Repeat)
 			Box hints;
 			Box lock;	// the lock's key, while touch is locked
 		};
