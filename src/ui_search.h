@@ -1,6 +1,9 @@
 // Search (Page::Search, titled "Search library"), an area of Ui: the field, the library's answers under kind tabs
 // (All / Music / Videos / Books, each with its count; L / R step them), and Recent searches. It searches the media
-// library only — the index's songs and videos and the Books shelf — never Files' folders.
+// library only — the index's artists, albums, songs and videos, the folders inside the Music and the Videos
+// folders, and the Books shelf — never Files' folders. A result that is a container opens its own page of Music's
+// or Videos' (the album, the artist, Music › Folders or Videos at that folder), and B there comes back to the
+// results (comeBack).
 // Built on the redesign's kit (ui_kit.h: searchField, sectionLine, resultRow, emptyState, notice, keyboard) with the
 // layouts of kitlayout.h, as docs/redesign/src/screens.js draws it (search, search-results). It is a tool, not a
 // section: the rail's Search key and L3 open it, no rail cell is lit on it, and B goes back where it was opened from.
@@ -51,6 +54,15 @@ namespace bp
 		void setTab(int t, const Player& p);
 		std::string stateCounts() const;	// "all/music/videos/books" found, for a scripted run's state line
 		int pressTab = -1;	// a finger on a tab
+		// a container result opened (an album's page, an artist's, a folder of Music's or of Videos'): Music's and
+		// Videos' B ask comeBack first — true: that page is left as its view's top and the results show again, the
+		// cursor on the row that was opened. The rail (Shell::openSection) and a new Search forget the visit
+		enum Visit { VISIT_NONE, VISIT_ALBUM, VISIT_ARTIST, VISIT_MUSIC_FOLDER, VISIT_VIDEO_FOLDER };
+		int visit = VISIT_NONE;
+		int visitIndex = -1, visitView = 0;	// the album or artist; the view Music (Videos) was on before
+		std::string visitPath;				// the folder
+		bool comeBack(Player& p);
+		bool visiting() const;	// the page shown is the one a result opened: its B says "Results"
 		Uint32 kbSince = 0;
 		int kbCursor = 0, kbPressed = -1;
 		KeyPad pad;	// the keyboard's keys (keyboard.h): the field's keyboard's own, less #+=
@@ -65,13 +77,18 @@ namespace bp
 		void remember(const std::string& q);
 
 	private:
-		// one line of the page: a group's heading, a result, a recent one, Clear, or a tab's "nothing here" line
-		enum RowKind { HEAD, RESULT, RECENT, CLEAR, NONE };
+		// one line of the page: a section's heading, a result, a section's "See all" (under All), a recent one,
+		// Clear, or a tab's "nothing here" line
+		enum RowKind { HEAD, RESULT, MORE, RECENT, CLEAR, NONE };
 		struct Row
 		{
 			RowKind kind = RESULT;
+			int sec = 0;			// a result's, a heading's, a See all's section (lay::SearchSec)
 			const Glyph* glyph = nullptr;
+			// a file's path (a song, a video, a book: A opens it), a folder's; an album's first song (its art)
 			std::string text, note, pill, path;
+			int index = -1;			// an album's or an artist's place in the snapshot
+			bool art = false;		// an album or an artist: a small art square where the others have their glyph
 			int matchAt = -1, matchLen = 0;
 			int count = 0;
 		};
@@ -81,8 +98,10 @@ namespace bp
 		mutable std::string builtQuery;
 		mutable bool built = false;
 		mutable int builtRecent = -1, builtTab = -1;
-		// what the query found, by kind (the tabs' counts are their sizes; All's is their sum): found[T_MUSIC]...
-		mutable std::vector<Row> found[TABS];
+		// what the query found, by section (lay::SearchSec; a tab's count is its sections' sum, All's all of them)
+		mutable std::vector<Row> found[lay::SEARCH_SECS];
+		void openResult(const Row& r, Player& p);	// A on a result: the file, or the container's page
+		void seeAll(int sec, const Player& p);		// a See all row: the section's kind tab, the cursor on its first
 		int foundCount(int t) const;
 		void rebuild(const Player& p) const;
 		void searchLibrary(const Player& p) const;	// fills `found` for the query

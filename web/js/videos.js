@@ -1,11 +1,12 @@
 import { html, useState, useEffect, useMemo } from '../vendor/htm-preact-standalone.module.js';
 import { errMsg, get } from './api.js';
-import { lsGet, lsSet, useStore } from './store.js';
+import { lsGet, lsSet, set, useStore } from './store.js';
 import { cmpName, dirName, fmtDate, fmtSize, fmtTime, plural } from './util.js';
 import { AppMenu, Art, Banner, Empty, Skeleton, FileMore, vthumbUrl } from './components.js';
 import { Icon } from './icons.js';
 import { SectionUpload, uploadToSection } from './libupload.js';
 import { playHere, playPaths, view } from './browser-player.js';
+import { backToResults } from './search.js';
 
 /* ================= videos ================= */
 // The Videos tab (docs/redesign "videos"): the cards' films in one list, the same three views the handheld has,
@@ -24,8 +25,17 @@ export function Videos() {
 	const s = useStore();
 	const [data, setData] = useState(null), [err, setErr] = useState('');
 	const [vk, setVk] = useState(lsGet('lib.vview') || 'all');
-	const setView = k => { lsSet('lib.vview', k); setVk(k); setDir(''); };
+	const setView = k => { lsSet('lib.vview', k); setVk(k); setDir(''); setFrom(''); };
 	const [dir, setDir] = useState('');	// the folder open in Folders ('' the top)
+	// a folder Search's results opened (search.js's openLib): Folders at it; `from` is the results' address (the
+	// header's way back) until another view is picked
+	const [from, setFrom] = useState('');
+	useEffect(() => {
+		const g = s.libGoto;
+		if (!g || g.page !== 'videos') return;
+		set({ libGoto: null });
+		lsSet('lib.vview', 'folders'); setVk('folders'); setDir(g.p); setFrom(g.back);
+	}, [s.libGoto]);
 	useEffect(() => { setData(null); setErr(''); get('/api/library', null, { quiet: true }).then(setData).catch(e => setErr(errMsg(e))); }, [s.epoch]);
 	useEffect(() => { if (s.libTick) get('/api/library', null, { quiet: true }).then(setData).catch(() => {}); }, [s.libTick]);
 	const v = view();
@@ -69,7 +79,7 @@ export function Videos() {
 	const counts = { all: data.videos ? data.videos.length : 0, folders: nFolders, unfinished: vk === 'unfinished' ? rows.length : data.videos ? data.videos.filter(x => x.pos != null).length : 0 };
 	const now = s.snap && s.snap.path;
 	return html`<div class="page">
-		<div class="phead"><div class="row"><h1>Videos</h1><${SectionUpload} kind="videos" cards=${data.cards} /><${AppMenu} /></div>
+		<div class="phead"><div class="row">${from && vk === 'folders' && html`<button class="ib" aria-label="Back to the results" title="Back to the results" onClick=${() => backToResults(from)}><${Icon} n="left" k=${2} /></button>`}<h1>Videos</h1><${SectionUpload} kind="videos" cards=${data.cards} /><${AppMenu} /></div>
 			<div class="chips" role="tablist" aria-label="Views">${VIEWS.map(w => html`<button class="chipbtn" role="tab" aria-pressed=${vk === w.k} onClick=${() => setView(w.k)}>${w.label}${counts[w.k] ? ' ' + counts[w.k] : ''}</button>`)}</div></div>
 		${empty ? html`<${Empty} icon="film" title="No videos here yet" sub="Videos and Movies folders at the top of either card are listed here. Upload into Videos and they appear here." button="Upload to Videos" onClick=${() => uploadToSection('videos', data.cards)} />`
 			: reading ? html`<${Banner} title="Reading the cards…" />`

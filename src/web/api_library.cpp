@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstring>
+#include <functional>
 #include <map>
 #include <set>
 #include <sys/stat.h>
@@ -278,6 +279,113 @@ namespace bp
 				w.end().key("songs").arr();
 				std::sort(here.begin(), here.end(), [&](const MediaSong* a, const MediaSong* b) { return naturalLess(a->path, b->path); });
 				for (const MediaSong* s : here) songJson(w, *snap, *s, ws, true);
+				w.end().end();
+				return w.out();
+			}, 4000, status);
+			WebServer::json(res, body, status);
+		});
+
+		// Search library, for the dashboard's Search page: what the handheld's own Search finds for ?q= (the same
+		// mediaSearch, the same sections and order), read only. Every path goes out as a virtual one — what the
+		// dashboard never serves is left out — and an album or artist by its place in the index (?album= / ?artist=
+		// of /api/library open it). A section holds at most SEARCH_MAX rows; `totals` says how many there were
+		svr.Get("/api/search", [&ws](const httplib::Request& req, httplib::Response& res) {
+			std::string q = req.get_param_value("q");
+			if (q.size() > 120) q.resize(120);
+			int status = 200;
+			std::string body = ws.call([&](Player&, Ui& u) {
+				const size_t SEARCH_MAX = 200;
+				JsonWriter w;
+				w.obj();
+				auto snap = u.mediaIndex ? u.mediaIndex->snapshot() : nullptr;
+				w.key("q").str(q).key("gen").num(snap ? (int)u.mediaIndex->generation() : 0);
+				if (!snap) { w.end(); return w.out(); }
+				std::vector<MediaBook> shelf = listBooks(bookFolders());
+				std::vector<std::string> names;
+				for (auto& b : shelf) names.push_back(b.path.substr(b.path.rfind('/') + 1));
+				SearchHits hits = mediaSearch(*snap, names, q);
+				std::vector<std::pair<const char*, size_t>> totals;
+				// one section: its rows (each written by `row`, false: not served, not counted), cut at SEARCH_MAX
+				auto section = [&](const char* key, size_t n, const std::function<bool(size_t)>& row) {
+					size_t total = 0;
+					w.key(key).arr();
+					for (size_t i = 0; i < n; i++)
+					{
+						if (total >= SEARCH_MAX) { total += n - i; break; }
+						if (row(i)) total++;
+					}
+					w.end();
+					totals.push_back({key, total});
+				};
+				auto firstSong = [&](const MediaAlbum& a) {
+					std::string song;
+					for (uint32_t si : a.songs)
+						if (!(song = ws.servedVirtual(snap->songs[si].path)).empty()) break;
+					return song;
+				};
+				section("artists", hits.artists.size(), [&](size_t k) {
+					const MediaArtist& a = snap->artists[hits.artists[k]];
+					bool served = false;
+					for (uint32_t ai : a.albums)
+						if (!firstSong(snap->albums[ai]).empty()) { served = true; break; }
+					if (!served) return false;
+					w.obj().key("i").num((int)hits.artists[k]).key("name").str(snap->at(a.name))
+						.key("albums").num((int)a.albums.size()).key("songs").num((int)a.songs).end();
+					return true;
+				});
+				section("albums", hits.albums.size(), [&](size_t k) {
+					const MediaAlbum& a = snap->albums[hits.albums[k]];
+					std::string song = firstSong(a);
+					if (song.empty()) return false;
+					w.obj().key("i").num((int)hits.albums[k]).key("name").str(snap->at(a.name))
+						.key("artist").str(a.albumArtist ? snap->at(a.albumArtist) : "Unknown artist")
+						.key("n").num((int)a.songs.size()).key("song").str(song).end();
+					return true;
+				});
+				// a folder: its path, its name, the folder it is in (none: a Music or Videos folder), what is under it
+				auto folder = [&](const SearchFolder& f, const std::vector<std::string>& roots) {
+					std::string v = ws.servedVirtual(f.path);
+					if (v.empty()) return false;
+					std::string parent = f.path.substr(0, f.path.rfind('/'));
+					bool top = std::find(roots.begin(), roots.end(), parent) != roots.end();
+					w.obj().key("p").str(v).key("n").str(f.path.substr(f.path.rfind('/') + 1))
+						.key("in").str(top ? "" : parent.substr(parent.rfind('/') + 1)).key("count").num((int)f.count).end();
+					return true;
+				};
+				section("musicFolders", hits.musicFolders.size(), [&](size_t k) { return folder(hits.musicFolders[k], snap->musicFolders); });
+				section("songs", hits.songs.size(), [&](size_t k) {
+					const MediaSong& s = snap->songs[hits.songs[k]];
+					std::string v = ws.servedVirtual(s.path);
+					if (v.empty()) return false;
+					std::string title = snap->at(s.title);
+					w.obj().key("p").str(v).key("title").str(title.empty() ? nameOf(s.path) : title)
+						.key("artist").str(snap->at(s.artist)).key("album").str(snap->at(s.album));
+					if (s.duration > 0) w.key("dur").num(s.duration);
+					if (s.video) w.key("video").boolean(true);
+					w.end();
+					return true;
+				});
+				section("videoFolders", hits.videoFolders.size(), [&](size_t k) { return folder(hits.videoFolders[k], snap->videoFolders); });
+				section("videos", hits.videos.size(), [&](size_t k) {
+					const MediaVideo& vd = snap->videos[hits.videos[k]];
+					std::string v = ws.servedVirtual(vd.path);
+					if (v.empty()) return false;
+					w.obj().key("p").str(v).key("n").str(nameOf(vd.path));
+					if (vd.size > 0) w.key("size").num(vd.size);
+					w.end();
+					return true;
+				});
+				section("books", hits.files.size(), [&](size_t k) {
+					const MediaBook& b = shelf[hits.files[k]];
+					std::string v = ws.servedVirtual(b.path);
+					if (v.empty()) return false;
+					w.obj().key("p").str(v).key("n").str(nameOf(b.path));
+					if (b.size > 0) w.key("size").num(b.size);
+					w.end();
+					return true;
+				});
+				w.key("totals").obj();
+				for (auto& t : totals) w.key(t.first).num((int)t.second);
 				w.end().end();
 				return w.out();
 			}, 4000, status);

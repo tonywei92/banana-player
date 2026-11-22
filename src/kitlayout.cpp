@@ -904,6 +904,34 @@ namespace bp
 			return s;
 		}
 
+		int searchSecTab(int sec)
+		{
+			return sec <= SS_SONGS ? 1 : sec <= SS_VIDEOS ? 2 : 3;
+		}
+
+		std::vector<SearchSecRows> searchSections(const int counts[SEARCH_SECS], int tab)
+		{
+			int found = 0;
+			for (int s = 0; s < SEARCH_SECS; s++)
+				if (counts[s] > 0) found++;
+			std::vector<SearchSecRows> out;
+			for (int s = 0; s < SEARCH_SECS; s++)
+			{
+				if (counts[s] <= 0 || (tab != 0 && searchSecTab(s) != tab)) continue;
+				SearchSecRows r;
+				r.sec = s;
+				r.shown = counts[s];
+				r.head = tab != 3;
+				if (tab == 0 && found > 1 && counts[s] > SEARCH_ALL_CAP + 1)
+				{
+					r.shown = SEARCH_ALL_CAP;
+					r.more = true;
+				}
+				out.push_back(r);
+			}
+			return out;
+		}
+
 		Keyboard keyboard(Box area, const std::vector<int>& specialW, const std::vector<int>& counts, int toggles)
 		{
 			Keyboard k;

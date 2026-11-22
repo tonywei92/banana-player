@@ -752,7 +752,8 @@ namespace bp
 		if (r.pressed) ui.fillRound(l.row, PRESSED, R_BUTTON);
 		else if (r.focused) flat(l.row, BUTTON, R_BUTTON, ACCENT);
 		int cy = l.row.y + l.row.h / 2;
-		if (r.glyph) ui.drawGlyphMid(*r.glyph, l.icon.x + l.icon.w / 2, cy, off(r.focused ? ACCENT : DIM_ON, r.off));
+		if (r.art) r.art(lay::resultArt(l));
+		else if (r.glyph) ui.drawGlyphMid(*r.glyph, l.icon.x + l.icon.w / 2, cy, off(r.focused ? ACCENT : DIM_ON, r.off));
 		// the right end, leftwards: the note, then a kind pill; the name gets what is left
 		int right = l.note.x + l.note.w;
 		if (!r.note.empty())

@@ -664,21 +664,48 @@ To quit, use **Quit Banana Player** in quick settings (**F**), or **F + START** 
 
 Search also matches a song's file name (its extension off, `_ - .` read as spaces), so "gaia" finds Ultramangaia_ED2_Beat_on_Dream_on.mp3 though no tag holds it; those hits come after the tag matches.
 
-Find a song, a video or a book in your library by any part of its name, from the **Search** key at the top of the rail
-or **L3** on a list. The page is titled **Search library**: it searches the media library only — the songs and videos
-of the Music and Videos folders (a song by its title, artist or album) and the books on the Books shelf — not Files'
-other folders (a file outside the library is found in Files). The keyboard opens at once (the on-screen keyboard,
-less **#+=**; **B** deletes, and closes on an empty field); **START** (or Done) shows the results, and the page keeps
-the query when you come back to it (**Y** edits it). With the field empty it rests on **Recent searches** (the last
-eight, kept in the state folder; **Clear recent searches** empties it, and incognito keeps none).
+Find an artist, an album, a song, a video, a book, or a folder inside your Music or Videos folders by any part of
+its name, from the **Search** key at the top of the rail or **L3** on a list. The page is titled **Search library**:
+it searches the media library only — the artists, albums and songs of the Music folders (a song by its title, artist
+or album), the videos of the Videos folders, the folders inside either (at any depth, by the folder's own name), and
+the books on the Books shelf — not Files' other folders (a file outside the library is found in Files). The keyboard
+opens at once (the on-screen keyboard, less **#+=**; **B** deletes, and closes on an empty field); **START** (or Done)
+shows the results, and the page keeps the query when you come back to it (**Y** edits it). With the field empty it
+rests on **Recent searches** (the last eight, kept in the state folder; **Clear recent searches** empties it, and
+incognito keeps none).
 
-Results sit under four tabs, **All**, **Music**, **Videos** and **Books**, each with its count (`Music 4`); **L / R**
-step them round, or tap one. **All** lists every kind under its heading, a kind with nothing left out; a kind's own
-tab lists only its rows (one with nothing says so in a line). A new search starts on All. **A** opens a result as its
-section would: a video or a song plays with its folder as the list, a book opens at your place. **UP/DOWN** move,
-**LEFT/RIGHT** page, a finger scrolls the list (it glides), **B** goes back where you were. While the cards are first
-being read a notice row says so and the list fills in. Nothing found is an empty page saying what was searched (Files'
-other folders and network folders are not), with **Try another** (**A**) and **Browse Files** (**Y**).
+Results sit under four tabs, **All**, **Music**, **Videos** and **Books**, each with its count (`Music 14`); **L / R**
+step them round, or tap one. They come in sections, each under its heading with its count, in this order: **Artists**,
+**Albums**, **Music folders**, **Songs**, then **Video folders**, **Videos**, then **Books** (one with nothing is left
+out). Under **All**, when more than one section found something, each shows its first three and a **See all 10
+songs** row (**A** on it: that kind's tab, on that section); the **Music** and **Videos** tabs list their sections
+whole, **Books** its books. A new search starts on All.
+
+- **What matches:** an artist by their name; an album by its name, and after those the albums of an artist the text
+  names ("lanterns" lists The Lanterns, then their albums); a folder by its own name (the Music and Videos folders
+  themselves are not results); a song by its title first, then the ones found only by their artist's or album's
+  words. Names that start with the text come first. Case and accents never matter.
+- **The rows:** an artist has a round record and `2 albums · 21 songs`; an album its cover (or the record in its
+  sleeve) and `artist · 12 songs`; a folder the folder icon and how much is under it, however deep, with `in Rock ·`
+  before it when it is not directly in the Music or Videos folder.
+- **A opens a result as its section would:** a video or a song plays with its folder as the list, a book opens at
+  your place; an **album** or an **artist** opens its page of Music's, a **folder inside Music** opens Music › Folders
+  inside it, a **folder inside Videos** opens Videos' list of it. **B** on that page (the hint bar says **Results**)
+  comes back to the results, the cursor on the row you opened; from deeper inside a Music folder B climbs back to it
+  first. Picking a section on the rail ends that: the section is then its own.
+
+**UP/DOWN** move, **LEFT/RIGHT** page, a finger scrolls the list (it glides), **B** goes back where you were. While
+the cards are first being read a notice row says so and the list fills in. Nothing found is an empty page saying what
+was searched (Files' other folders and network folders are not), with **Try another** (**A**) and **Browse Files**
+(**Y**).
+
+**On the Web dashboard:** Search library is there too, with the same sections, order and tabs. On a computer the
+field is at the top of the sidebar (**/** focuses it on a page with no find field of its own); on a phone a magnifier
+in every page's header, and on a tablet a Search key in the sidebar, open the Search page with its own field. Results
+come as you type, and the query is in the address (`#/search?q=`), so the browser's Back returns to them. A song or a
+video plays where picks go (this browser or the handheld), a book opens in the reader, an album or an artist opens its
+Music page, a folder opens Music's or Videos' Folders view inside it; the page's back arrow returns to the results. A
+section lists at most 200 (a line says so: type more of the name).
 
 ## Network folders
 

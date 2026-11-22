@@ -384,6 +384,11 @@ namespace bp
 			return f;
 		}
 
+		Box resultArt(const ResultRow& l)
+		{
+			return {l.icon.x + (l.icon.w - RESULT_ART) / 2, l.row.y + (l.row.h - RESULT_ART) / 2, RESULT_ART, RESULT_ART};
+		}
+
 		ResultRow resultRow(Box row)
 		{
 			ResultRow r;

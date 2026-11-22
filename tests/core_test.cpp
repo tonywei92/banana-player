@@ -864,6 +864,81 @@ static void testMediaIndex()
 		CHECK_EQ(h.songs.empty() && h.videos.empty() && h.files.empty(), true);
 	}
 
+	// ---- the query's containers: artists, albums, the folders inside the Music and the Videos folders
+	{
+		MediaWords w;
+		std::vector<MediaSong> songs;
+		auto song = [&](const char* path, const char* title, const char* artist, const char* album) {
+			MediaTags t;
+			t.title = title;
+			t.artist = artist;
+			t.album = album;
+			MediaSong s;
+			internSong(w, s, path, t);
+			s.path = path;
+			songs.push_back(s);
+		};
+		song("/card/Music/Rock/Abbey Road/Come Together.mp3", "Come Together", "The Beatles", "Abbey Road");
+		song("/card/Music/Rock/Abbey Road/Something.mp3", "Something", "The Beatles", "Abbey Road");
+		song("/card/Music/Rock/Beatles Live/Help.mp3", "Help", "The Beatles", "Beatles Live");
+		song("/card/Music/Jazz/Road Songs/Blue.mp3", "Blue", "Roadhouse Trio", "Blue Roads");
+		std::vector<MediaVideo> videos;
+		for (const char* p : {"/card/Videos/Shows/Road Trip/e1.mp4", "/card/Videos/Shows/Road Trip/e2.mp4",
+			"/card/Videos/Roadrunner/a.mp4", "/card/Videos/x.mp4"})
+		{
+			MediaVideo v;
+			v.path = p;
+			videos.push_back(v);
+		}
+		std::shared_ptr<const MediaSnapshot> snap = groupMediaSnapshot(std::move(w), std::move(songs),
+			std::move(videos), {"/card/Music"}, {"/card/Videos"});
+		auto albumNames = [&](const SearchHits& h) {
+			std::vector<std::string> out;
+			for (uint32_t i : h.albums) out.push_back(snap->at(snap->albums[i].name));
+			return out;
+		};
+		auto folderList = [](const std::vector<SearchFolder>& f) {
+			std::string out;
+			for (auto& x : f) out += x.path + "=" + std::to_string(x.count) + ";";
+			return out;
+		};
+		SearchHits h = mediaSearch(*snap, {}, "road");
+		CHECK_EQ(h.artists.size(), (size_t)1);
+		CHECK_EQ(snap->at(snap->artists[h.artists[0]].name), "Roadhouse Trio");
+		// (neither album's name starts with it: the albums' own order, by artist)
+		CHECK_EQ(albumNames(h), std::vector<std::string>({"Blue Roads", "Abbey Road"}));
+		// a folder by its own name, at any depth, with what is under it; one that starts with the query first
+		CHECK_EQ(folderList(h.musicFolders), "/card/Music/Jazz/Road Songs=1;/card/Music/Rock/Abbey Road=2;");
+		CHECK_EQ(folderList(h.videoFolders), "/card/Videos/Shows/Road Trip=2;/card/Videos/Roadrunner=1;");
+		// a song by its title before the ones found only by their album's or artist's words
+		{
+			std::vector<std::string> titles;
+			for (uint32_t i : h.songs) titles.push_back(snap->at(snap->songs[i].title));
+			CHECK_EQ(titles, std::vector<std::string>({"Blue", "Come Together", "Something"}));
+			SearchHits t = mediaSearch(*snap, {}, "some");
+			CHECK_EQ(t.songs.size(), (size_t)1);
+		}
+		// an album by its name first, then the ones found by their artist's
+		h = mediaSearch(*snap, {}, "BEATLES");
+		CHECK_EQ(h.artists.size(), (size_t)1);
+		CHECK_EQ(albumNames(h), std::vector<std::string>({"Beatles Live", "Abbey Road"}));
+		CHECK_EQ(folderList(h.musicFolders), "/card/Music/Rock/Beatles Live=1;");
+		h = mediaSearch(*snap, {}, "beatles abbey");	// the words across the album's name and its artist's
+		CHECK_EQ(albumNames(h), std::vector<std::string>({"Abbey Road"}));
+		CHECK_EQ(h.artists.empty(), true);
+		// a folder with folders in it counts everything below; the Music and Videos folders themselves are no result
+		h = mediaSearch(*snap, {}, "rock");
+		CHECK_EQ(folderList(h.musicFolders), "/card/Music/Rock=3;");
+		h = mediaSearch(*snap, {}, "shows");
+		CHECK_EQ(folderList(h.videoFolders), "/card/Videos/Shows=2;");
+		h = mediaSearch(*snap, {}, "music");
+		CHECK_EQ(h.musicFolders.empty(), true);
+		h = mediaSearch(*snap, {}, "videos");
+		CHECK_EQ(h.videoFolders.empty(), true);
+		h = mediaSearch(*snap, {}, "");
+		CHECK_EQ(h.albums.empty() && h.artists.empty() && h.musicFolders.empty() && h.videoFolders.empty(), true);
+	}
+
 	// (the card's tree, gone)
 	rmrf(C);
 }
@@ -12196,6 +12271,48 @@ static void testKitLayoutPages()
 		SearchResults recent = searchResults(body, {}, TAB_CAP, false, false);
 		CHECK_EQ((int)recent.strip.tab.size(), 0);
 		CHECK_EQ(recent.list.y, body.y + SEARCH_FIELD_H + SP4);
+	}
+
+	// Search's sections (the rows a tab lists): under All every section that found something, three of each and a
+	// "See all" row when others found too (a lone one is listed whole, and four are not cut for one row saved); a
+	// kind's own tab lists its sections whole, the containers first
+	{
+		int counts[SEARCH_SECS] = {};
+		counts[SS_ARTISTS] = 1;
+		counts[SS_ALBUMS] = 9;
+		counts[SS_SONGS] = 4;
+		counts[SS_VIDEO_FOLDERS] = 2;
+		counts[SS_BOOKS] = 5;
+		std::vector<SearchSecRows> all = searchSections(counts, 0);
+		CHECK_EQ((int)all.size(), 5);
+		CHECK_EQ(all[0].sec, (int)SS_ARTISTS);
+		CHECK_EQ(all[1].sec, (int)SS_ALBUMS);
+		CHECK_EQ(all[1].shown, SEARCH_ALL_CAP);
+		CHECK_EQ(all[1].more, true);
+		CHECK_EQ(all[2].sec, (int)SS_SONGS);
+		CHECK_EQ(all[2].shown, 4);		// four: all of them, not three and a row
+		CHECK_EQ(all[2].more, false);
+		CHECK_EQ(all[4].shown, SEARCH_ALL_CAP);
+		for (auto& s : all) CHECK_EQ(s.head, true);
+		std::vector<SearchSecRows> music = searchSections(counts, 1);
+		CHECK_EQ((int)music.size(), 3);
+		CHECK_EQ(music[1].shown, 9);
+		CHECK_EQ(music[1].more, false);
+		CHECK_EQ(music[1].head, true);
+		std::vector<SearchSecRows> books = searchSections(counts, 3);
+		CHECK_EQ((int)books.size(), 1);
+		CHECK_EQ(books[0].head, false);	// one kind of thing: the tab says it
+		CHECK_EQ(books[0].shown, 5);
+		// one section alone under All: whole
+		int lone[SEARCH_SECS] = {};
+		lone[SS_SONGS] = 40;
+		std::vector<SearchSecRows> one = searchSections(lone, 0);
+		CHECK_EQ((int)one.size(), 1);
+		CHECK_EQ(one[0].shown, 40);
+		CHECK_EQ(one[0].more, false);
+		CHECK_EQ(searchSecTab(SS_MUSIC_FOLDERS), 1);
+		CHECK_EQ(searchSecTab(SS_VIDEO_FOLDERS), 2);
+		CHECK_EQ(searchSecTab(SS_BOOKS), 3);
 	}
 }
 

@@ -861,6 +861,9 @@ namespace bp
 			Box row, icon, name, note;
 		};
 		ResultRow resultRow(Box row);
+		// a result with art (an album, an artist): a RESULT_ART square centred where the icon is, clear of the name
+		constexpr int RESULT_ART = 28;
+		Box resultArt(const ResultRow& l);
 
 		// ---- a Music/Videos row: 60 tall, its art 30 square at the left, the title and a second line, a kind
 		// pill and the note (the length, the counts) at the right ----
@@ -1058,6 +1061,21 @@ namespace bp
 			Box list;
 		};
 		SearchResults searchResults(Box body, const std::vector<int>& tabWidths, int capW, bool tabs, bool notice);
+		// What a tab's list holds, section by section. The sections in their order: Music's (the containers first:
+		// artists, albums, the folders inside the Music folders, then songs), Videos' (its folders, the videos),
+		// Books. Under All (tab 0) every section that found something has its heading and, when another found
+		// too, its first SEARCH_ALL_CAP and a "See all" row to its kind's tab (one more than the cap is simply
+		// shown; a lone section is listed whole). A kind's tab (1 Music, 2 Videos, 3 Books) lists its sections
+		// whole, headed where the kind has more than one (Books has none: the tab says it).
+		enum SearchSec { SS_ARTISTS, SS_ALBUMS, SS_MUSIC_FOLDERS, SS_SONGS, SS_VIDEO_FOLDERS, SS_VIDEOS, SS_BOOKS, SEARCH_SECS };
+		constexpr int SEARCH_ALL_CAP = 3;
+		struct SearchSecRows
+		{
+			int sec = 0, shown = 0;
+			bool head = false, more = false;
+		};
+		int searchSecTab(int sec);
+		std::vector<SearchSecRows> searchSections(const int counts[SEARCH_SECS], int tab);
 
 		// ==== Quick settings (F): the panel centred on the whole screen, over the rail (docs/redesign:
 		// quick, quick-playing; components.md "Quick settings panel") ====

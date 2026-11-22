@@ -241,17 +241,29 @@ namespace bp
 
 	// ---- the query
 
-	// what Search answers, grouped by kind: indices into the snapshot's songs and videos, and into the caller's
-	// own list (Books' and files' names — the parts that are not the index's to hold)
+	// what Search answers, grouped by kind: indices into the snapshot's songs, videos, albums and artists, and into
+	// the caller's own list (Books' and files' names — the parts that are not the index's to hold); the folders
+	// inside the Music and the Videos folders by their paths, each with how much is under it, however deep
+	struct SearchFolder
+	{
+		std::string path;
+		uint32_t count = 0;		// the songs (the videos) under it
+	};
 	struct SearchHits
 	{
 		std::vector<uint32_t> songs, videos, files;
+		std::vector<uint32_t> albums, artists;
+		std::vector<SearchFolder> musicFolders, videoFolders;
 	};
 
 	// one pass over the folded words: every word of the query must sit somewhere in the item (a song's own words:
 	// title, artist, album; a video's or file's name, less its extension), and a hit that starts with the query
-	// comes before one that only holds it, each group as the lists are sorted. Case and accents never matter.
+	// comes before one that only holds it, each group as the lists are sorted (a song: its title's hits before the
+	// ones found only by its artist's or album's words). Case and accents never matter.
 	// fileNames: shown names, folded here (a page's list lives a moment; the index's own records are pre-folded).
+	// The containers: an artist by their name; an album by its name and its artist's (the name's own hits first,
+	// "beatles" then lists their albums after an album called Beatles); a folder below a Music or Videos folder
+	// (never that folder itself) by its own name, starts first, then by name.
 	// The empty query matches nothing.
 	SearchHits mediaSearch(const MediaSnapshot& snap, const std::vector<std::string>& fileNames,
 		const std::string& query);
