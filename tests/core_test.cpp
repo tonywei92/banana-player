@@ -12344,6 +12344,17 @@ static void testKitLayout()
 	{
 		Shell sh = shell();
 		TabPage tp = tabPage(sh.body, {84, 80, 80, 104}, 27);
+		// the settings key beside the tabs (Manga): it ends at the inner body's edge, the strip's right cap ends before
+		// it, and no tab count the page has (up to 4) overlaps it
+		for (int n = 1; n <= 4; n++)
+		{
+			TabPage kp = tabPage(sh.body, std::vector<int>(n, 84), 27, 110);
+			CHECK_EQ(kp.key.x + kp.key.w, kp.inner.x + kp.inner.w);
+			CHECK_EQ(kp.key.h, 44);
+			CHECK(kp.strip.right.x + kp.strip.right.w <= kp.key.x);
+			CHECK(kp.strip.area.x + kp.strip.area.w <= kp.key.x);
+			CHECK_EQ(kp.content.y, tp.content.y);
+		}
 		CHECK_EQ(tp.inner.x, sh.body.x + 12);
 		CHECK_EQ(tp.inner.w, sh.body.w - 24);
 		CHECK_EQ(tp.strip.tab[0].y, sh.body.y);

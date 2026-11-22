@@ -1774,7 +1774,7 @@ tap above the sheet to close it.
 ### Manga settings
 
 The reader's own settings are a page of their own, **Manga settings**, inside the Manga app: they are not in Banana
-Player's Settings (whose **Extensions** group opens Manage extensions). **START** opens them on any Manga page (the four tabs, the Sources
+Player's Settings (whose **Extensions** group opens Manage extensions). **START** opens them on any Manga page, and on the four tabs a gear key right of the tab strip (with START beside it) does too, by touch (the Sources
 page and a series page), the gear (**X**) in **Manage extensions** opens them too, and the reader's **More** (**X**) opens
 them while you read. **B** goes back where you came from.
 

@@ -99,11 +99,13 @@ namespace bp
 			return out;
 		}
 
-		TabPage tabPage(Box body, const std::vector<int>& widths, int capW)
+		TabPage tabPage(Box body, const std::vector<int>& widths, int capW, int keyW)
 		{
 			TabPage t;
 			t.inner = {body.x + SP12, body.y, std::max(1, body.w - 2 * SP12), body.h};
-			t.strip = tabs({t.inner.x, t.inner.y, t.inner.w, TAB_H}, widths, TAB_GAP, capW);
+			int sw = keyW > 0 ? std::max(1, t.inner.w - keyW - SP8) : t.inner.w;
+			t.strip = tabs({t.inner.x, t.inner.y, sw, TAB_H}, widths, TAB_GAP, capW);
+			if (keyW > 0) t.key = {t.inner.x + t.inner.w - keyW, t.inner.y, keyW, TAB_H};
 			int top = t.inner.y + TAB_H + SP8;
 			t.content = {t.inner.x, top, t.inner.w, std::max(0, body.y + body.h - top)};
 			return t;
