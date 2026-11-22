@@ -29,4 +29,4 @@ if [ -d "$W" ] && [ "$B" != rd-base ] && git merge-base --is-ancestor "$B" HEAD;
 fi
 [ "$2" = "--no-push" ] && exit 0
 packaging/build-bundle.sh --quick 2>&1 | tail -1
-ssh -o ConnectTimeout=8 root@192.168.1.6 'killall -TERM banana-player 2>/dev/null; sleep 6; true' && tools/push-handheld.sh root@192.168.1.6 2>&1 | tail -1 || echo "handheld offline: bundle ready, push later"
+ssh -o ConnectTimeout=8 root@192.168.1.19 'killall -TERM banana-player 2>/dev/null; sleep 6; true' && tools/push-handheld.sh root@192.168.1.19 2>&1 | tail -1 || echo "handheld offline: bundle ready, push later"
