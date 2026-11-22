@@ -1798,6 +1798,10 @@ left changes only the page order, never the halves. A wide page is one turn on i
 would have no partner, sits alone with the other screen blank, and pairing starts again after it. The place kept is
 still a page number, and reopening lands on the screen holding it. **Wide pages span both screens** (Manga settings,
 on by default) turns this off: a wide page then sits whole on one screen like any other.
+**Page turn animation:** in Book a turn slides the screen pair out and the next one in along both screens (about 200
+ms, easing to a stop), the way the book reads (Right to left reverses it); a wide page is one screen. Turns pressed in
+quick succession (a held key, quick taps) change at once, so the pages never lag behind the buttons. **Page turn
+animation** (Manga settings, on by default) turns it off. (A text's Book has its own fold.)
 
 **Fullscreen (both screens).** **SELECT** while reading turns it on and off, and so does the **Fullscreen** key
 in the reading page's row. The two panels become one tall view and
@@ -1830,6 +1834,7 @@ them while you read. **B** goes back where you came from.
 | **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
 | **Hinge gap** | 0 to 200 px | 36 px | The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Vertical scroll, and Book's wide pages; Right to left and Left to right put the screens edge to edge (0 px). |
 | **Wide pages span both screens** | On / Off | On | In Book, a double page is cut down the middle, half on each screen. Off: it shows whole on one. |
+| **Page turn animation** | On / Off | On | In Book, a turn slides the pages across both screens. Quick turns in a row are never slowed by it. Off: the pages change at once. |
 | **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT leaves. View's Layout sets it too. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 1 GB | Pages kept on the card to read again without downloading; past the cap the least recently read go first. Covers: 50 MB more. |

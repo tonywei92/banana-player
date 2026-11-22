@@ -164,7 +164,8 @@ namespace bp
 		}
 		mfWaiting = waiting;
 		// at most 8 pages kept here: the ones not drawn longest go
-		while (mfTex.size() > 2)	// (each a page's textures on the GPU, a long page's tens of MB: the memory is the system's)
+		// (Book keeps 4: a turn's slide shows the screen left and the new one together, two whole pages each)
+		while (mfTex.size() > (readerStatus.book ? 4u : 2u))	// (each a page's textures on the GPU, a long page's tens of MB: the memory is the system's)
 		{
 			auto old = mfTex.begin();
 			for (auto i = mfTex.begin(); i != mfTex.end(); ++i)

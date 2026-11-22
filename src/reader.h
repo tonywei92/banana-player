@@ -99,7 +99,7 @@ namespace bp
 		// still moving or uploading: main keeps its loop at the display's rate
 		bool busy() const
 		{
-			return strip.moving() || paged.moving() || uploads || forceFrames > 0 || (stickActive() && stickCanMove);
+			return strip.moving() || paged.moving() || uploads || forceFrames > 0 || (stickActive() && stickCanMove) || turnAt != 0;
 		}
 		int mode() const { return readMode; }
 		// the Strip's place inside page() (Strip::within); 0 in the paged modes
@@ -126,6 +126,8 @@ namespace bp
 		// Book: a wide page (a double-page spread) spans both panels, cut down the middle across the hinge (the
 		// setting "Wide pages span both screens"; hinge480: the Hinge gap row, the strip the hinge hides)
 		void setBookSpread(bool on, int hinge480);
+		// Book's turn: a slide of the screen pair to the next across both panels (on: the setting "Page turn animation")
+		void setTurnAnimation(bool on) { turnAnimOn = on; if (!on) turnAt = 0; }
 		// page: a page's index, or a band's key (bands.h) for a long strip page drawn as its bands
 		struct Box { int page; float x, y, w, h; };
 		std::vector<Box> bottomBoxes() const;
@@ -197,6 +199,8 @@ namespace bp
 		void setBook(int b);
 		void bookGo(int first);
 		std::vector<Box> bookBoxes() const;
+		std::vector<Box> bookBoxesAt(int first) const;	// the screen starting at that page, at rest
+		void bookTurn(int first, int64_t ms);	// bookGo, slid when the setting is on and the turns aren't coming fast
 		bool inBook() const { return bookHold && readMode != MANGA_STRIP; }
 		// the pages' wide flags as pairing reads them (all clear with the setting off)
 		const std::vector<char>& bookWide() const { return spreadOn ? wide : notWide; }
@@ -252,6 +256,12 @@ namespace bp
 		std::vector<char> wide, notWide;	// per page: a double-page spread (mangaBookWide); notWide all clear
 		bool spreadOn = true;	// Wide pages span both screens
 		int bookGapPx = 0;	// the hinge's hidden strip between the panels, in view pixels (a spread is cut across it)
+		// the turn's slide (bookTurn): the screen left (its first page), which way the new one comes in along the
+		// column (+1: up from below, -1: down from above), when it began (0: none) and the frame's clock
+		static constexpr int TURN_MS = 200, TURN_FAST_MS = 280;	// a turn sooner than FAST after the last is instant
+		bool turnAnimOn = true;
+		int turnFrom = 0, turnDir = 0;
+		int64_t turnAt = 0, turnLast = 0, turnNow = 0;
 		int bookPrevAngle = 0;	// the turn (L3) Book took over, given back when it ends
 		CardOverlay card;	// the level card over the pages
 		CardOverlay note;	// the note at their foot (showNote gives it its own texture key and place)

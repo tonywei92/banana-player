@@ -507,6 +507,7 @@ namespace bp
 			// the row set while a chapter is open reaches the reader too (the fit comes as its own command)
 			reader.setPreload(player.settings.mangaPreload);
 			reader.setBookSpread(player.settings.mangaSpread, player.settings.mangaHinge);
+			reader.setTurnAnimation(player.settings.mangaTurnAnim);
 			// a document of Files: its reading filter, and its pan area's page and box
 			{
 				int f = ui.docs->docPagesFilter(player);

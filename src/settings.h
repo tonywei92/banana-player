@@ -249,6 +249,7 @@ namespace bp
 		int mangaHinge = 36;
 		// Book: a wide page (a double-page spread) cut down the middle across both panels; off: whole on one
 		bool mangaSpread = true;
+		bool mangaTurnAnim = true;	// Book: a turn slides the pages across both panels (~200 ms); off: an instant turn
 		// fullscreen's first open has shown its toast (a hint to leave it): shown once, ever
 		bool mangaFullSeen = false;
 		// a chapter opens on both panels (fullscreen) rather than on this one's page alone

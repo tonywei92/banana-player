@@ -623,6 +623,8 @@ namespace bp
 				.shownAs(nullptr, " px").stepped(false, nullptr, 4).ignoreBlank(),
 			D::flag("manga-spread", &Settings::mangaSpread)
 				.page(SG_MANGA, 45, "Wide pages span both screens", "In Book, a double page is cut down the middle, half on each screen. Off: it shows whole on one."),
+			D::flag("manga-turn-anim", &Settings::mangaTurnAnim)
+				.page(SG_MANGA, 47, "Page turn animation", "In Book, a turn slides the pages across both screens. Quick turns in a row are never slowed by it. Off: the pages change at once."),
 			D::choice("manga-cache", &Settings::mangaCacheSize, MANGA_CACHE_IDS, MANGA_CACHES)
 				.page(SG_MANGA, 70, "Page cache", "Pages kept on the card to read again without downloading. Covers: 50 MB more.").shownAs(CACHE_NAMES).stepped(true),
 			D::flag("remember-position", &Settings::rememberPosition)

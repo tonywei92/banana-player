@@ -242,6 +242,7 @@ namespace bp
 		// Book held from the last chapter: its turn and its first spread (main sends the series' own Book next)
 		if (bookHold && readMode != MANGA_STRIP) angle = mangaBookAngle(bookHold);
 		bookS = mangaBookScreenOf(bookWide(), page).first;	// (the screen holding the saved page)
+		turnAt = 0;	// (a turn sliding ends: the screen is set afresh)
 		planPage = page;
 		planTarget = -1;
 		planAt = 0;
@@ -277,6 +278,7 @@ namespace bp
 		zoomAt = 0;
 		angle = 0;
 		bookS = 0;
+		turnAt = 0;	// (a turn sliding ends: the screen is set afresh)
 		if (archive)
 		{
 			std::lock_guard<std::mutex> l(cbzLock);
@@ -619,22 +621,63 @@ namespace bp
 
 	std::vector<MangaReader::Box> MangaReader::bookBoxes() const
 	{
+		if (!turnAt) return bookBoxesAt(bookS);
+		// a turn sliding: the screen left goes out one way along the column (both panels and the hinge), the new one
+		// comes in behind it, eased out (fast, then settling); pages of the old not on hand are left out, never spun
+		double t = std::clamp((turnNow - turnAt) / (double)TURN_MS, 0.0, 1.0);
+		double e = 1 - (1 - t) * (1 - t) * (1 - t);
+		float L = (float)(2.0 * viewH + bookGapNow());
+		std::vector<Box> out;
+		for (Box b : bookBoxesAt(turnFrom))
+		{
+			if (!pr.has(b.page)) continue;
+			b.y -= (float)(turnDir * L * e);
+			out.push_back(b);
+		}
+		for (Box b : bookBoxesAt(bookS))
+		{
+			b.y += (float)(turnDir * L * (1 - e));
+			out.push_back(b);
+		}
+		return out;
+	}
+
+	void MangaReader::bookTurn(int first, int64_t ms)
+	{
+		int from = bookS;
+		bool fast = turnLast && ms - turnLast < TURN_FAST_MS;
+		turnLast = ms;
+		bookGo(first);
+		if (first == from) return;
+		// a held key or quick taps: no slide (and one running ends), so the pages never lag behind the presses
+		if (!turnAnimOn || fast || viewH <= 0) { turnAt = 0; return; }
+		// forward goes the way the later pages lie: below when the earlier page is on the top panel
+		bool earlierTop = mangaBookEarlierOnTop(bookHold, readMode == MANGA_RTL);
+		turnDir = (first > from) == earlierTop ? 1 : -1;
+		turnFrom = from;
+		turnAt = std::max<int64_t>(1, ms);
+		turnNow = turnAt;
+		fprintf(stderr, "reader: book turn slides %d -> %d\n", from + 1, first + 1);
+	}
+
+	std::vector<MangaReader::Box> MangaReader::bookBoxesAt(int first) const
+	{
 		// a page on each panel, turned upright as held and fitted whole in it: the top panel's at the view's top,
 		// the bottom one's a panel and the hinge below (where bottomBoxes takes it from)
 		std::vector<Box> out;
 		int n = (int)files.size();
-		MangaBookScreen scr = bookScreen();
-		if (scr.spread && bookS < n)
+		MangaBookScreen scr = mangaBookScreenFrom(bookWide(), first);
+		if (scr.spread && first < n)
 		{
 			// a double-page spread: one box over both panels and the hinge between them, fitted whole and centred, so
 			// its middle (the fold) is under the hinge and each panel shows its half; the turn that stands it upright
 			// as held keeps its drawn left half on the reader's left whichever way the book reads
 			double pw = 2, ph = 3;	// (turned: a landscape page)
-			auto it = kept.find(bookS);
+			auto it = kept.find(first);
 			if (it != kept.end() && it->second.w > 0 && it->second.h > 0) { pw = it->second.w; ph = it->second.h; }
 			double H = 2.0 * viewH + bookGapNow();
 			double sc = std::min(viewW / pw, H / ph), w = pw * sc, h = ph * sc;
-			out.push_back({bookS, (float)((viewW - w) / 2), (float)((H - h) / 2), (float)w, (float)h});
+			out.push_back({first, (float)((viewW - w) / 2), (float)((H - h) / 2), (float)w, (float)h});
 			return out;
 		}
 		bool top = mangaBookEarlierOnTop(bookHold, readMode == MANGA_RTL);
@@ -646,8 +689,8 @@ namespace bp
 			double sc = std::min(viewW / pw, viewH / ph), w = pw * sc, h = ph * sc;
 			out.push_back({page, (float)((viewW - w) / 2), (float)(y0 + (viewH - h) / 2), (float)w, (float)h});
 		};
-		place(top ? bookS : bookS + 1, 0);
-		place(top ? bookS + 1 : bookS, viewH + bookGapNow());
+		place(top ? first : first + 1, 0);
+		place(top ? first + 1 : first, viewH + bookGapNow());
 		return out;
 	}
 
@@ -861,6 +904,7 @@ namespace bp
 			if (readMode == MANGA_STRIP) strip.scrollTo(strip.pageTop(to));
 			else paged.goTo(to, ms, false);
 			bookS = mangaBookScreenOf(bookWide(), to).first;	// (Book: the page asked for opens its screen)
+			turnAt = 0;	// (a turn sliding ends: the screen is set afresh)
 			if (seeks.seek(to, ms) == SeekRun::Now::Commit)
 				commitJump(planPage < 0 ? to : planPage, to, 1, ms);
 			redrawSoon(1);
@@ -955,8 +999,8 @@ namespace bp
 			// a screen forward or back (nothing past the last; a spread is one turn), or one page to realign the pair
 			int n = (int)files.size();
 			int next = bookS + bookScreen().count;
-			if (kind == Step && v > 0 && next < n) bookGo(next);
-			else if (kind == Step && v < 0 && bookS > 0) bookGo(mangaBookScreenBefore(bookWide(), bookS).first);
+			if (kind == Step && v > 0 && next < n) bookTurn(next, ms);
+			else if (kind == Step && v < 0 && bookS > 0) bookTurn(mangaBookScreenBefore(bookWide(), bookS).first, ms);
 			else if (kind == Page) bookGo(std::clamp(bookS + (v > 0 ? 1 : -1), 0, n - 1));
 			return;
 		}
@@ -1018,6 +1062,7 @@ namespace bp
 		paged.setRtl(m == MANGA_RTL);
 		paged.goTo(cur, ms, false);
 		bookS = mangaBookScreenOf(bookWide(), cur).first;
+		turnAt = 0;	// (a turn sliding ends: the screen is set afresh)
 		planPage = cur;
 		want();
 		redrawSoon(2);
@@ -1036,6 +1081,7 @@ namespace bp
 		applyZoom();
 		angle = b ? mangaBookAngle(b) : bookPrevAngle;
 		bookS = mangaBookScreenOf(bookWide(), cur).first;
+		turnAt = 0;	// (a turn sliding ends: the screen is set afresh)
 		paged.goTo(cur, 0, false);
 		planPage = cur;
 		fprintf(stderr, "reader: book %s (page %d)\n", b == MANGA_BOOK_LEFT ? "top screen left" : b ? "top screen right" : "off",
@@ -1224,7 +1270,10 @@ namespace bp
 			FrameWatchScope fw("want");
 			want();
 		}
-		bool need = any || moving || uploads || forceFrames > 0;
+		// Book's turn sliding: a frame each pass till it rests (then the pages around the new screen are wanted)
+		turnNow = now;
+		if (turnAt && now - turnAt >= TURN_MS) { turnAt = 0; want(); any = true; }
+		bool need = any || moving || uploads || forceFrames > 0 || turnAt != 0;
 		// the level card: up (its texture going up), fading (a frame each pass) or just down (one frame more,
 		// without it, and its texture let go)
 		bool ended = false;
