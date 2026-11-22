@@ -3152,8 +3152,8 @@ namespace bp
 		Uint32 now = SDL_GetTicks();
 		ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Book, (double)book, (int64_t)now});
 		if (book) mangaHoldLast = book;	// (the View row turns Book on held the same way next time)
-		// a Strip opens Book right to left (the reader does the same): the series keeps both
-		int mode = ui.pageReader->readerStatus.mode == MANGA_STRIP && book ? MANGA_RTL : ui.pageReader->readerStatus.mode;
+		// the series keeps both, each as chosen: Book never rewrites the Reading mode (a Vertical scroll comes back)
+		int mode = ui.pageReader->readerStatus.modeSet;
 		if (mangaStore)
 			if (const MangaSeries* ms = mangaStore->series(ui.pageReader->mangaReadSeriesId))
 			{
@@ -3240,7 +3240,6 @@ namespace bp
 		case Button::L: ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Page, -1, (int64_t)now}); ui.pageReader->mfTagUntil = now + 1500; break;
 		case Button::R: ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Page, 1, (int64_t)now}); ui.pageReader->mfTagUntil = now + 1500; break;
 		case Button::A: if (ui.pageReader->readerStatus.failedHere) ui.pageReader->mangaRetry(); break;
-		// the two directions only: Book reads a page at a time
 		case Button::X: mangaOpenReadMore(); break;
 		case Button::L2: mangaChapterStep(-1, p); break;
 		case Button::R2: mangaChapterStep(1, p); break;
@@ -3336,13 +3335,13 @@ namespace bp
 	{
 		// kept for this series (the setting stays for the others)
 		(void)p;
-		if (m < 0 || m >= MANGA_MODES || m == ui.pageReader->readerStatus.mode) return;
+		if (m < 0 || m >= MANGA_MODES || m == ui.pageReader->readerStatus.modeSet) return;
 		ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Mode, (double)m, (int64_t)SDL_GetTicks()});
 		if (mangaStore)
 			if (const MangaSeries* ms = mangaStore->series(ui.pageReader->mangaReadSeriesId))
 			{
 				MangaSeries s = *ms;
-				s.readingMode = mangaReadingModeId(m, ui.pageReader->readerStatus.book);	// (Book kept: View's Reading mode switches the direction in it)
+				s.readingMode = mangaReadingModeId(m, ui.pageReader->readerStatus.book);	// (the layout kept: Book stays Book)
 				mangaStore->putSeries(s);
 				mangaSave();
 			}

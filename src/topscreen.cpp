@@ -507,6 +507,7 @@ namespace bp
 			// the row set while a chapter is open reaches the reader too (the fit comes as its own command)
 			reader.setPreload(player.settings.mangaPreload);
 			reader.setBookSpread(player.settings.mangaSpread, player.settings.mangaHinge);
+			reader.setBookDirection(mangaBookDirection(player.settings.mangaMode));
 			reader.setTurnAnimation(player.settings.mangaTurnAnim);
 			// a document of Files: its reading filter, and its pan area's page and box
 			{
@@ -534,6 +535,7 @@ namespace bp
 			ui.pageReader->readerStatus.within = (float)reader.within();
 			ui.pageReader->readerStatus.pages = reader.pages();
 			ui.pageReader->readerStatus.mode = reader.mode();
+			ui.pageReader->readerStatus.modeSet = reader.modeSet();
 			// a zoom changed (keys, the menu, a double-tap): its percent on the pages a moment, fading out
 			if (reader.zoomPct() != ui.pageReader->readerStatus.zoomPct && reader.chapterGen() == zoomShownGen && haveUi)
 			{

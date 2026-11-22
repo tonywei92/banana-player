@@ -3313,6 +3313,56 @@ static void testMangaBookSpreadKnownLate()
 	CHECK_EQ(mangaBookScreenFrom(w, 5) == bookScr(5, 1, true), true);
 }
 
+// Layout and Reading mode are independent: Book reads a Vertical scroll in pages without rewriting what was chosen
+static void testMangaModeInLayout()
+{
+	// every mode reads as set outside Book
+	for (int m = 0; m < MANGA_MODES; m++)
+		for (int dir : {MANGA_RTL, MANGA_LTR}) CHECK_EQ(mangaModeIn(m, MANGA_BOOK_OFF, dir), m);
+	// Book: the directions as set; a Vertical scroll in pages, in the direction given
+	for (int book : {MANGA_BOOK_LEFT, MANGA_BOOK_RIGHT})
+	{
+		CHECK_EQ(mangaModeIn(MANGA_RTL, book, MANGA_LTR), MANGA_RTL);
+		CHECK_EQ(mangaModeIn(MANGA_LTR, book, MANGA_RTL), MANGA_LTR);
+		CHECK_EQ(mangaModeIn(MANGA_STRIP, book, MANGA_RTL), MANGA_RTL);
+		CHECK_EQ(mangaModeIn(MANGA_STRIP, book, MANGA_LTR), MANGA_LTR);
+		CHECK_EQ(mangaModeIn(MANGA_STRIP, book, MANGA_STRIP), MANGA_RTL);	// (never a strip in Book)
+	}
+	CHECK_EQ(mangaModeIn(7, MANGA_BOOK_OFF, MANGA_RTL), MANGA_STRIP);	// (out of range: the default)
+	// the direction Book takes for a Vertical scroll: the setting's when it is one
+	CHECK_EQ(mangaBookDirection(MANGA_LTR), MANGA_LTR);
+	CHECK_EQ(mangaBookDirection(MANGA_RTL), MANGA_RTL);
+	CHECK_EQ(mangaBookDirection(MANGA_STRIP), MANGA_RTL);
+}
+
+// the owner's bug: Vertical scroll, Book, then One screen or Fullscreen must be Vertical scroll again
+static void testMangaModeKeptThroughBook()
+{
+	for (int set = 0; set < MANGA_MODES; set++)
+		for (int book : {MANGA_BOOK_LEFT, MANGA_BOOK_RIGHT})
+		{
+			// into Book: the series keeps the mode chosen beside the hold
+			std::string kept = mangaReadingModeId(set, book);
+			int m = -1, b = -1;
+			CHECK_EQ(parseMangaReadingMode(kept, m, b), true);
+			CHECK_EQ(m, set);
+			CHECK_EQ(b, book);
+			CHECK_EQ(mangaModeIn(m, b, MANGA_RTL) != MANGA_STRIP, true);	// (Book reads in pages)
+			// out of Book (to One screen or Fullscreen: the same call): exactly what was chosen
+			kept = mangaReadingModeId(m, MANGA_BOOK_OFF);
+			CHECK_EQ(parseMangaReadingMode(kept, m, b), true);
+			CHECK_EQ(mangaModeIn(m, b, MANGA_RTL), set);
+		}
+	// View's value names the mode chosen in every layout, and what Book does with a Vertical scroll
+	CHECK_EQ(mangaModeLabel(MANGA_STRIP, MANGA_BOOK_OFF), std::string("Vertical scroll"));
+	CHECK_EQ(mangaModeLabel(MANGA_STRIP, MANGA_BOOK_LEFT), std::string("Vertical scroll (paged)"));
+	CHECK_EQ(mangaModeNote(MANGA_STRIP, MANGA_BOOK_LEFT), std::string("Scrolls again outside Book"));
+	CHECK_EQ(mangaModeNote(MANGA_STRIP, MANGA_BOOK_OFF), std::string(""));
+	CHECK_EQ(mangaModeNote(MANGA_RTL, MANGA_BOOK_LEFT), std::string(""));
+	CHECK_EQ(mangaModeLabel(MANGA_RTL, MANGA_BOOK_RIGHT), std::string("Right to left"));
+	CHECK_EQ(mangaModeLabel(MANGA_LTR, MANGA_BOOK_OFF), std::string("Left to right"));
+}
+
 static void testMangaUiLogic()
 {
 	// Book (issue #7): the store's string, which panel gets the spread's first page, the turn, the keys, a swipe
@@ -3323,19 +3373,21 @@ static void testMangaUiLogic()
 		CHECK_EQ(b, MANGA_BOOK_LEFT);
 		CHECK_EQ(parseMangaReadingMode("ltr/book-right", m, b) && m == MANGA_LTR && b == MANGA_BOOK_RIGHT, true);
 		CHECK_EQ(parseMangaReadingMode("ltr", m, b) && m == MANGA_LTR && b == MANGA_BOOK_OFF, true);
-		CHECK_EQ(parseMangaReadingMode("strip/book-left", m, b) && m == MANGA_STRIP && b == MANGA_BOOK_OFF, true);	// no strip book
+		// (a Vertical scroll series in Book keeps both: the layout doesn't rewrite the mode)
+		CHECK_EQ(parseMangaReadingMode("strip/book-left", m, b) && m == MANGA_STRIP && b == MANGA_BOOK_LEFT, true);
 		CHECK_EQ(!parseMangaReadingMode("", m, b), true);
 		CHECK_EQ(!parseMangaReadingMode("sideways", m, b), true);
 		CHECK_EQ(mangaReadingModeId(MANGA_RTL, MANGA_BOOK_LEFT), std::string("rtl/book-left"));
 		CHECK_EQ(mangaReadingModeId(MANGA_LTR, MANGA_BOOK_OFF), std::string("ltr"));
-		CHECK_EQ(mangaReadingModeId(MANGA_STRIP, MANGA_BOOK_RIGHT), std::string("strip"));
+		CHECK_EQ(mangaReadingModeId(MANGA_STRIP, MANGA_BOOK_RIGHT), std::string("strip/book-right"));
+		CHECK_EQ(mangaReadingModeId(MANGA_STRIP, MANGA_BOOK_OFF), std::string("strip"));
 		for (int mode = 0; mode < MANGA_MODES; mode++)
 			for (int book = 0; book < MANGA_BOOKS; book++)
 			{
 				int m2 = -1, b2 = -1;
 				CHECK_EQ(parseMangaReadingMode(mangaReadingModeId(mode, book), m2, b2), true);
 				CHECK_EQ(m2, mode);
-				CHECK_EQ(b2, mode == MANGA_STRIP ? MANGA_BOOK_OFF : book);
+				CHECK_EQ(b2, book);	// (a Vertical scroll too: Book keeps the mode chosen)
 			}
 		// held top-left: the top panel is the reader's left. right to left puts the first page on the right
 		CHECK_EQ(!mangaBookEarlierOnTop(MANGA_BOOK_LEFT, true), true);
@@ -17120,6 +17172,8 @@ int main()
 	testMangaWithin();
 	testTrimCacheFolder();
 	testMangaUiLogic();
+	testMangaModeInLayout();
+	testMangaModeKeptThroughBook();
 	testMangaSeriesCache();
 	testMangaFilters();
 	testStickScroll();

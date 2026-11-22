@@ -43,9 +43,22 @@ namespace bp
 
 	// A series' own reading mode as the store keeps it (MangaSeries::readingMode): "rtl", "ltr" or "strip", and Book
 	// after a slash ("rtl/book-left", "ltr/book-right"), so the places that copy the string carry Book along.
-	// Parsing: false for "" or anything unknown (the setting's mode then; book off); Book only with a paged mode.
+	// Parsing: false for "" or anything unknown (the setting's mode then; book off). The mode is the one set, whatever
+	// the layout: "strip/book-left" is a Vertical scroll series held as a book for now (mangaModeIn says how it reads).
 	bool parseMangaReadingMode(const std::string& s, int& mode, int& book);
 	std::string mangaReadingModeId(int mode, int book);
+
+	// Layout and Reading mode are two choices, neither changing the other. Book needs pages, so a Vertical scroll
+	// reads a page at a time while Book is on, in bookDir (mangaBookDirection); every other pair reads as set. The
+	// mode set is never rewritten by a layout, so leaving Book reads as it did before.
+	int mangaModeIn(int set, int book, int bookDir);
+	// the direction Book turns a Vertical scroll's pages in: the Reading mode setting's when that is a direction,
+	// else right to left (no source says which way its pages run)
+	int mangaBookDirection(int settingMode);
+	// View's Reading mode value: the mode set, and what Book does with a Vertical scroll ("Vertical scroll (paged)":
+	// as long as the row's value has room for); mangaModeNote is the sheet's line then ("" otherwise)
+	std::string mangaModeLabel(int set, int book);
+	std::string mangaModeNote(int set, int book);
 
 	// Book's geometry, held as `book` says (MANGA_BOOK_LEFT or _RIGHT), reading right to left or not:
 	// the spread's earlier page (its first) goes on the top panel, or on the bottom one

@@ -58,6 +58,7 @@ namespace bp
 			int page = 0, pages = 0;	// the page under the view's middle (0-based), the chapter's page count
 			float within = 0;	// Vertical scroll: how far through that page the view's middle is
 			int mode = 0;	// the mode it reads in (MANGA_*)
+			int modeSet = 0;	// the Reading mode chosen (differs from mode only in Book: a Vertical scroll read in pages)
 			int zoomPct = 100;	// the zoom (1 = the fit, 100 % … 800 %)
 			bool fullscreen = false;	// both panels show the pages
 			int rotation = 0;	// the page turn in degrees (0, 90, 180, 270; paged modes only, 0 in Strip)

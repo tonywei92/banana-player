@@ -109,12 +109,8 @@ namespace bp
 		else if (m == "ltr") mode = MANGA_LTR;
 		else if (m == "strip") mode = MANGA_STRIP;
 		else return false;
-		// a strip can't be a book (its pages run down, one long column)
-		if (mode != MANGA_STRIP)
-		{
-			if (b == "book-left") book = MANGA_BOOK_LEFT;
-			else if (b == "book-right") book = MANGA_BOOK_RIGHT;
-		}
+		if (b == "book-left") book = MANGA_BOOK_LEFT;
+		else if (b == "book-right") book = MANGA_BOOK_RIGHT;
 		return true;
 	}
 
@@ -122,10 +118,34 @@ namespace bp
 	{
 		static const char* IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
 		std::string s = IDS[mode >= 0 && mode < MANGA_MODES ? mode : MANGA_RTL];
-		if (mode == MANGA_STRIP) return s;
 		if (book == MANGA_BOOK_LEFT) return s + "/book-left";
 		if (book == MANGA_BOOK_RIGHT) return s + "/book-right";
 		return s;
+	}
+
+	int mangaModeIn(int set, int book, int bookDir)
+	{
+		if (set < 0 || set >= MANGA_MODES) set = MANGA_STRIP;
+		if (book == MANGA_BOOK_OFF || set != MANGA_STRIP) return set;
+		return bookDir == MANGA_LTR ? MANGA_LTR : MANGA_RTL;
+	}
+
+	int mangaBookDirection(int settingMode)
+	{
+		return settingMode == MANGA_LTR ? MANGA_LTR : MANGA_RTL;
+	}
+
+	std::string mangaModeLabel(int set, int book)
+	{
+		static const char* NAMES[MANGA_MODES] = {"Right to left", "Left to right", "Vertical scroll"};
+		if (set < 0 || set >= MANGA_MODES) set = MANGA_STRIP;
+		if (set == MANGA_STRIP && book != MANGA_BOOK_OFF) return "Vertical scroll (paged)";
+		return NAMES[set];
+	}
+
+	std::string mangaModeNote(int set, int book)
+	{
+		return set == MANGA_STRIP && book != MANGA_BOOK_OFF ? "Scrolls again outside Book" : "";
 	}
 
 	bool mangaBookEarlierOnTop(int book, bool rtl)

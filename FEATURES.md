@@ -1758,7 +1758,9 @@ under a source's grid with **A: Try again** while browsing, or in red where the 
 too), in the screen's usual orientation. **Layout** is its first row, three chips: **One screen**, **Fullscreen**,
 **Book**; choosing another changes the screen under it and the sheet stays open, its rows following the new layout
 (**START** or **B** closes it). Under it: **Reading mode** (Right to
-left, Left to right or Vertical scroll; Book offers the first two), **Page fit** (dimmed in Vertical scroll: it fits the
+left, Left to right or Vertical scroll, in every layout: Layout never changes it. Book needs pages, so there a Vertical
+scroll reads a page a screen, the row says **Vertical scroll (paged)** and the sheet's line *Scrolls again outside
+Book*; back in One screen or Fullscreen it is Vertical scroll again, as it was set), **Page fit** (dimmed in Vertical scroll: it fits the
 width), **Zoom**, **Hinge gap** (a fullscreen Vertical scroll's: dimmed with its reason otherwise), **Swap Left / Right**
 and **Light & filter**; in Book, **Hold** (**Top screen left** or **Top screen right**) in place of the fit, the zoom and
 the gap. **UP/DOWN** choose a row, **LEFT/RIGHT** change it where you stand (the pages follow at once), **A** steps it on,
@@ -1784,7 +1786,8 @@ screen is on (**Top screen left**, the buttons under your right hand, or **Top s
 reading mode: in Right to left the earlier page is on the right. The D-pad's **UP** and **DOWN** point left and right
 as held and turn the spread (two pages; Swap Left/Right turns that round); **L / R** move one page, to realign a
 spread; **START** opens **View** and **X** **More**, as in the other layouts, upright sheets over the pages (Reading mode in
-View switches the direction);
+View switches the direction; a Vertical scroll series turns its pages the way the **Reading mode** setting reads, right
+to left when that is Vertical scroll too);
 a swipe along the bottom screen turns the spread and a tap in the middle shows the **Book bar**: the spread's page
 numbers on its slider, **Pages**, **View**, **Light**, **Next chapter**, and **One screen** to leave Book, upright as the
 pages are. The page numbers show for a moment

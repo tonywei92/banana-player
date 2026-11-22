@@ -101,7 +101,10 @@ namespace bp
 		{
 			return strip.moving() || paged.moving() || uploads || forceFrames > 0 || (stickActive() && stickCanMove) || turnAt != 0;
 		}
-		int mode() const { return readMode; }
+		int mode() const { return readMode; }	// the mode it reads in now (Book reads a Vertical scroll in pages)
+		int modeSet() const { return setModeV; }	// the Reading mode chosen: what a layout change comes back to
+		// the direction Book reads a Vertical scroll's pages in (MANGA_RTL / MANGA_LTR), fed each pass from main
+		void setBookDirection(int dir);
 		// the Strip's place inside page() (Strip::within); 0 in the paged modes
 		double within() const { return !opened || bookHold || readMode != MANGA_STRIP ? 0 : strip.within(); }
 		void scrollWithin(int page, double share) { if (opened && readMode == MANGA_STRIP && !bookHold) strip.scrollToWithin(page, share); }
@@ -193,8 +196,10 @@ namespace bp
 		void makeThumb(int page, const std::vector<uint8_t>& rgba, int pw, int ph);
 		// the page turn (L3): each press 90° clockwise; paged modes only; the fit and zoom work on the turned page
 		void applyRotation();
-		// a reading mode change, the page under the view kept (the Mode command, and Book leaving the Strip)
+		// the Reading mode chosen (the Mode command): kept as set, read as the layout allows (mangaModeIn)
 		void setMode(int m, int64_t ms);
+		// the mode read in changes, the page under the view kept (setMode, and Book taking or giving back a Strip)
+		void applyMode(int m, int64_t ms);
 		// Book: on (held as b) or off; and the spread to show (its first page; the last page may be alone)
 		void setBook(int b);
 		void bookGo(int first);
@@ -218,6 +223,8 @@ namespace bp
 		Strip strip;
 		Paged paged;	// the two paged modes (right to left, left to right); both models follow every page's size
 		int readMode = MANGA_STRIP;
+		int setModeV = MANGA_STRIP;	// the mode chosen; readMode differs only while Book holds a Vertical scroll
+		int bookDir = MANGA_RTL;
 		int fit = MANGA_FIT_PAGE, preload = MANGA_PRELOAD_DEFAULT;
 		double zscale = 1;	// the zoom of both models; 1 is the fit
 		int64_t zoomAt = 0;	// when the last Zoom came; the re-decode waits for it to rest (0: none waiting)

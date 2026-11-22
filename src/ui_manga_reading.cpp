@@ -60,6 +60,7 @@ namespace bp
 		bool gone() const { return ui.page != Page::MangaRead || !st().open; }
 		bool book() const { return st().book != MANGA_BOOK_OFF; }
 		bool strip() const { return st().mode == MANGA_STRIP; }
+		int modeSet() const { return st().modeSet >= 0 && st().modeSet < MANGA_MODES ? st().modeSet : MANGA_STRIP; }
 		std::vector<int> rows() const
 		{
 			// (Book's Hinge gap: a wide page cut across both panels skips the strip the hinge hides)
@@ -95,9 +96,8 @@ namespace bp
 				manga().mangaSetBook(holdAsked, p);
 				break;
 			case ROW_MODE:
-				// (Book reads a page at a time: its two directions only)
-				if (book()) manga().mangaSetMode(st().mode == MANGA_LTR ? MANGA_RTL : MANGA_LTR, p);
-				else manga().mangaSetMode((st().mode + dir + MANGA_MODES) % MANGA_MODES, p);
+				// the three in every layout: Book reads a Vertical scroll in pages and the row says so
+				manga().mangaSetMode((modeSet() + dir + MANGA_MODES) % MANGA_MODES, p);
 				break;
 			// the settings themselves, so the next chapter opens the same way
 			case ROW_FIT: ui.settingsPage->changeSetting(settingRow("manga-fit"), dir, p); break;
@@ -172,11 +172,11 @@ namespace bp
 			Kit::SheetHead head;
 			head.glyph = &G_EYE;
 			head.title = "View";
-			head.note = "Kept for this series";
+			// (a Vertical scroll in Book: the row says "(paged)", this line that nothing was lost)
+			std::string modeNote = mangaModeNote(modeSet(), st().book);
+			head.note = modeNote.empty() ? "Kept for this series" : modeNote;
 			k.sheet(s, head);
-			static const char* MODES[MANGA_MODES] = {"Right to left", "Left to right", "Vertical scroll"};
 			static const char* FITS[MANGA_FITS] = {"Page", "Width", "Fill"};
-			int mode = st().mode >= 0 && st().mode < MANGA_MODES ? st().mode : 0;
 			int fit = p.settings.mangaFit >= 0 && p.settings.mangaFit < MANGA_FITS ? p.settings.mangaFit : 0;
 			std::vector<int> r = rows();
 			if (std::find(r.begin(), r.end(), cursor) == r.end()) cursor = ROW_LAYOUT;
@@ -202,7 +202,7 @@ namespace bp
 				switch (id)
 				{
 				case ROW_HOLD: sr.label = "Hold"; sr.value = hold() == MANGA_BOOK_RIGHT ? "Top screen right" : "Top screen left"; break;
-				case ROW_MODE: sr.label = "Reading mode"; sr.value = MODES[mode]; break;
+				case ROW_MODE: sr.label = "Reading mode"; sr.value = mangaModeLabel(modeSet(), st().book); break;
 				case ROW_FIT: sr.label = "Page fit"; sr.value = FITS[fit]; break;
 				case ROW_ZOOM: sr.label = "Zoom"; sr.value = std::to_string(st().zoomPct > 0 ? st().zoomPct : 100) + "%"; break;
 				case ROW_HINGE: sr.label = "Hinge gap"; sr.value = std::to_string(p.settings.mangaHinge) + " px"; break;
@@ -225,7 +225,7 @@ namespace bp
 		std::string signature(const Player& p) const override
 		{
 			char b[96];
-			snprintf(b, sizeof b, "%d|%d %d %d %d %d|%d %d %d", cursor, st().mode, (int)st().fullscreen, st().book, st().zoomPct, holdAsked,
+			snprintf(b, sizeof b, "%d|%d %d %d %d %d %d|%d %d %d", cursor, st().mode, st().modeSet, (int)st().fullscreen, st().book, st().zoomPct, holdAsked,
 				p.settings.mangaHinge, p.settings.mangaFit, (int)p.settings.mangaSwapLR);
 			return b;
 		}

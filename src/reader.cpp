@@ -236,7 +236,8 @@ namespace bp
 			if (shapes[i].first > 0) paged.setPageSize(i, shapes[i].first, shapes[i].second);
 		fit = f >= 0 && f < MANGA_FITS ? f : MANGA_FIT_PAGE;
 		applyFit();
-		readMode = m >= 0 && m < MANGA_MODES ? m : MANGA_STRIP;
+		setModeV = m >= 0 && m < MANGA_MODES ? m : MANGA_STRIP;
+		readMode = mangaModeIn(setModeV, bookHold, bookDir);	// (Book held from the last chapter reads in pages)
 		paged.setRtl(readMode == MANGA_RTL);
 		paged.goTo(page, 0, false);
 		// Book held from the last chapter: its turn and its first spread (main sends the series' own Book next)
@@ -987,8 +988,6 @@ namespace bp
 		}
 		if (kind == Mode)
 		{
-			// (Book reads a page at a time: it never goes to the Strip; the Ui offers the two directions only)
-			if (inBook && (int)v == MANGA_STRIP) return;
 			setMode((int)v, ms);
 			return;
 		}
@@ -1047,10 +1046,27 @@ namespace bp
 
 	void MangaReader::setMode(int m, int64_t ms)
 	{
+		if (m < 0 || m >= MANGA_MODES) return;
+		// (in Book a Vertical scroll is kept as chosen and read in pages: leaving Book scrolls again)
+		setModeV = m;
+		applyMode(mangaModeIn(setModeV, bookHold, bookDir), ms);
+	}
+
+	void MangaReader::setBookDirection(int dir)
+	{
+		if (dir == bookDir) return;
+		bookDir = dir;
+		if (opened) applyMode(mangaModeIn(setModeV, bookHold, bookDir), 0);
+	}
+
+	void MangaReader::applyMode(int m, int64_t ms)
+	{
 		// the same page in the other mode, at rest
 		int cur = page();
 		if (m < 0 || m >= MANGA_MODES || m == readMode) return;
 		readMode = m;
+		static const char* NAMES[MANGA_MODES] = {"rtl", "ltr", "strip"};
+		fprintf(stderr, "reader: reads %s (reading mode set: %s)\n", NAMES[readMode], NAMES[setModeV]);
 		// the paged modes show a page whole: the Strip's bands go (want() frees them), and are found again on the way back
 		bands.clear();
 		noBand.clear();
@@ -1072,8 +1088,8 @@ namespace bp
 	{
 		if (b < 0 || b >= MANGA_BOOKS || b == bookHold) return;
 		int cur = page();
-		// a Strip reads one long column: Book opens it right to left, a page at a time
-		if (b && readMode == MANGA_STRIP) setMode(MANGA_RTL, 0);
+		// a Strip reads one long column: Book reads it a page at a time (the mode chosen stays as it is)
+		if (b) applyMode(mangaModeIn(setModeV, b, bookDir), 0);
 		if (!bookHold) bookPrevAngle = angle;
 		bookHold = b;
 		// whole pages: the zoom goes back to the fit (the paged row keeps its place under Book)
@@ -1087,6 +1103,8 @@ namespace bp
 		fprintf(stderr, "reader: book %s (page %d)\n", b == MANGA_BOOK_LEFT ? "top screen left" : b ? "top screen right" : "off",
 			cur + 1);
 		applyRotation();	// every decoded page turned again (and want(): the spread's pages first)
+		// out of Book: the Reading mode chosen reads again (a Vertical scroll scrolls from this page)
+		if (!b) applyMode(setModeV, 0);
 		redrawSoon(3);
 	}
 
