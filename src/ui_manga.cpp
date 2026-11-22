@@ -1732,7 +1732,7 @@ namespace bp
 		Kit& k = *ui.kit;
 		std::vector<int> widths;
 		for (int i = 0; i < MANGA_TABS; i++) widths.push_back(k.tabW(mangaTabLabel(i)));
-		return lay::tabPage(lay::shell().body, widths, k.tabCapW("L/R"));
+		return lay::tabPage(lay::shell().body, widths, k.tabCapW("L/R"), lay::TAB_H + 6 + k.capsW("START"));
 	}
 
 	std::string Ui::Manga::mangaTabLabel(int i) const
@@ -1753,6 +1753,9 @@ namespace bp
 		std::vector<std::string> labels;
 		for (int i = 0; i < MANGA_TABS; i++) labels.push_back(mangaTabLabel(i));
 		ui.kit->tabs(tp.strip.area, labels, mangaTab, "L/R", BG, mangaTabPressed);
+		// the Manga settings key, right of the tabs (the same Rect its touch tests); START is the button
+		ui.kit->iconKey({tp.key.x, tp.key.y, tp.key.h, tp.key.h}, G_GEAR, mangaSetPressed);
+		ui.kit->caps("START", tp.key.x + tp.key.h + 6, tp.key.y + tp.key.h / 2, ACCENT, BG);
 	}
 
 	bool Ui::Manga::shellModal() const
@@ -1779,12 +1782,27 @@ namespace bp
 		if (pt.kind == Pointer::Down)
 		{
 			mangaTabPressed = -1;
+			mangaSetPressed = false;
+			if (tp.key.w > 0 && x >= tp.key.x && x < tp.key.x + tp.key.w && y >= tp.key.y && y < tp.key.y + tp.key.h)
+			{
+				mangaSetPressed = true;
+				return true;
+			}
 			// the bridged body is the old page's (mapped); under the body is the hint bar: nothing there is pressed
 			if (y >= body.y + body.h) return true;
 			if (y >= tp.content.y) return false;
 			// the strip's row: a tab (the same Rects drawShellBody drew), or nothing
 			mangaTabPressed = lay::tabAt(tp.strip, x, y);
 			if (mangaTabPressed >= 0) fprintf(stderr, "touch: manga tab %d\n", mangaTabPressed);
+			return true;
+		}
+		if (mangaSetPressed)
+		{
+			if (pt.kind == Pointer::Up)
+			{
+				mangaSetPressed = false;
+				if (x >= tp.key.x && x < tp.key.x + tp.key.w && y >= tp.key.y && y < tp.key.y + tp.key.h) openMangaSettings();
+			}
 			return true;
 		}
 		if (mangaTabPressed < 0) return false;

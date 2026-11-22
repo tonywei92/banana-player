@@ -63,9 +63,11 @@ namespace bp
 		{
 			Box inner;	// the body less its side padding
 			Tabs strip;
+			Box key;	// the settings key at the strip's right end (empty when keyW is 0); the strip ends before it
 			Box content;
 		};
-		TabPage tabPage(Box body, const std::vector<int>& widths, int capW);
+		// `keyW`: the width of a key kept at the strip's right (Manga settings); the tabs' strip is that much narrower
+		TabPage tabPage(Box body, const std::vector<int>& widths, int capW, int keyW = 0);
 		// the tab under (x, y) in a strip (the gap between two goes to neither): -1 none
 		int tabAt(const Tabs& t, int x, int y);
 		// the List sheet: the grab mark, a header (the tabs and the two controls), `rows` rows 46 tall, the hint bar

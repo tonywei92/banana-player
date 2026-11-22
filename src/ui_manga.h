@@ -163,7 +163,8 @@ namespace bp
 			sheetsLater = false;
 			for (auto& f : q) f();
 		}
-		int mangaTabPressed = -1;	// a finger on one of the kit's tabs
+		bool mangaSetPressed = false;	// a finger on the settings key beside the tabs
+	int mangaTabPressed = -1;	// a finger on one of the kit's tabs
 		void mangaTabSet(int tab, Player& p);	// L2 / R2 or a tap: the tab shown
 
 		// ---- for main, the dashboard and the page reader ----
