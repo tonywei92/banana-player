@@ -247,6 +247,8 @@ namespace bp
 		int mangaPreload = MANGA_PRELOAD_DEFAULT;
 		// fullscreen: the strip skipped under the hinge between the panels, in 480-line units (measured on the handheld)
 		int mangaHinge = 36;
+		// Book: a wide page (a double-page spread) cut down the middle across both panels; off: whole on one
+		bool mangaSpread = true;
 		// fullscreen's first open has shown its toast (a hint to leave it): shown once, ever
 		bool mangaFullSeen = false;
 		// a chapter opens on both panels (fullscreen) rather than on this one's page alone

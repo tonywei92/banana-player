@@ -1780,13 +1780,20 @@ the middle, and each screen shows one whole page, turned upright as you hold it.
 screen is on (**Top screen left**, the buttons under your right hand, or **Top screen right**). The spread follows the
 reading mode: in Right to left the earlier page is on the right. The D-pad's **UP** and **DOWN** point left and right
 as held and turn the spread (two pages; Swap Left/Right turns that round); **L / R** move one page, to realign a
-spread (a cover on its own, a two-page picture split over the hinge); **X** switches Right to left and Left to right;
+spread; **X** switches Right to left and Left to right;
 a swipe along the bottom screen turns the spread and a tap (or **START**) shows the **Book bar**: the spread's page
 numbers on its slider, **Pages**, **View**, **Light**, **Next chapter**, and **One screen** to leave Book, upright as the
 pages are. The page numbers show for a moment
 after a turn, at the foot of the spread and upright as held; at the chapter's end they stay and say what comes next
 (turn once more for the next chapter). No zoom or page fit in Book: each page is shown whole. The menu and notices
 keep the screen's usual orientation. Book is kept for the series, as the reading mode is.
+**Wide pages** (a double page drawn as one picture: at least 1.2 times as wide as tall, never the first page) span
+both screens: cut down the middle, its left half on the left screen and its right half on the right, at one size and
+lined up across the hinge (the **Hinge gap** skips the strip the hinge hides; View lists it in Book too). Right to
+left changes only the page order, never the halves. A wide page is one turn on its own; the page before it, if it
+would have no partner, sits alone with the other screen blank, and pairing starts again after it. The place kept is
+still a page number, and reopening lands on the screen holding it. **Wide pages span both screens** (Manga settings,
+on by default) turns this off: a wide page then sits whole on one screen like any other.
 
 **Fullscreen (both screens).** **SELECT** while reading turns it on and off, and so does the **Fullscreen** key
 in the reading page's row. The two panels become one tall view and
@@ -1817,7 +1824,8 @@ them while you read. **B** goes back where you came from.
 | **Reading mode** | Right to left / Left to right / Vertical scroll | Vertical scroll | How a series opens until you pick one for it (X while reading). |
 | **Page fit** | Page / Width / Fill | Page | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. Fill: the page covers the screen, cropped either way, panned in reading order. |
 | **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
-| **Hinge gap** | 0 to 200 px | 36 px | The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Vertical scroll only: Right to left, Left to right and Book put the screens edge to edge (0 px). |
+| **Hinge gap** | 0 to 200 px | 36 px | The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Vertical scroll, and Book's wide pages; Right to left and Left to right put the screens edge to edge (0 px). |
+| **Wide pages span both screens** | On / Off | On | In Book, a double page is cut down the middle, half on each screen. Off: it shows whole on one. |
 | **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT leaves. View's Layout sets it too. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |
 | **Page cache** | 100 MB / 300 MB / 1 GB | 1 GB | Pages kept on the card to read again without downloading; past the cap the least recently read go first. Covers: 50 MB more. |

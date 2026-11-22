@@ -59,6 +59,29 @@ namespace bp
 	// pulls the next page the way the finger went (a finger moving to the reader's left is the right key's turn)
 	int mangaBookSwipe(int book, bool rtl, bool swap, double dy);
 
+	// Book's screens (both panels as one view, held sideways): two pages side by side, or a wide page (a double-page
+	// spread) alone, cut down the middle across both. Pairing walks the pages in order: normal pages two to a screen; a
+	// spread starts a fresh screen (a lone page before it sits alone) and takes one alone; pairing restarts after it.
+	// Right to left changes only which panel the earlier page is on (mangaBookEarlierOnTop), never the pairing.
+	struct MangaBookScreen
+	{
+		int first = 0, count = 1;	// its pages: first .. first + count - 1
+		bool spread = false;		// one wide page across both panels
+		bool operator==(const MangaBookScreen& o) const { return first == o.first && count == o.count && spread == o.spread; }
+	};
+	// a page drawn as a double-page spread: w/h at least 1.2, never the first page (a cover); size unknown (0): not
+	bool mangaBookWide(int page, int w, int h);
+	// the screen starting at `first` (wide: one flag per page): what the current screen shows, so a size learnt late
+	// changes only what it holds, never where it starts
+	MangaBookScreen mangaBookScreenFrom(const std::vector<char>& wide, int first);
+	// every screen from page 0, in order
+	std::vector<MangaBookScreen> mangaBookScreens(const std::vector<char>& wide);
+	// the walk's screen holding `page` (reopening at a saved page, a Seek)
+	MangaBookScreen mangaBookScreenOf(const std::vector<char>& wide, int page);
+	// the screen before the one starting at `first`: the walk's screen holding first - 1, cut to end there (a screen a
+	// one-page move realigned keeps its own start)
+	MangaBookScreen mangaBookScreenBefore(const std::vector<char>& wide, int first);
+
 	// ---- Sources › Available: the languages kept (Filter) and the words searched for (Search); both apply ----
 	// "English · en" for "en"; a code it doesn't know as it is
 	std::string mangaLangName(const std::string& code);

@@ -62,7 +62,8 @@ namespace bp
 		bool strip() const { return st().mode == MANGA_STRIP; }
 		std::vector<int> rows() const
 		{
-			if (book()) return {ROW_LAYOUT, ROW_HOLD, ROW_MODE, ROW_SWAP, ROW_LIGHT};
+			// (Book's Hinge gap: a wide page cut across both panels skips the strip the hinge hides)
+			if (book()) return {ROW_LAYOUT, ROW_HOLD, ROW_MODE, ROW_HINGE, ROW_SWAP, ROW_LIGHT};
 			return {ROW_LAYOUT, ROW_MODE, ROW_FIT, ROW_ZOOM, ROW_HINGE, ROW_SWAP, ROW_LIGHT};
 		}
 		lay::ListSheet layout() const { return lay::listSheet((int)rows().size()); }
@@ -71,6 +72,7 @@ namespace bp
 		std::string offNote(int row) const
 		{
 			if (row == ROW_FIT && strip()) return "Fits the width";
+			if (row == ROW_HINGE && book()) return "";
 			if (row == ROW_HINGE && !st().fullscreen) return "Fullscreen only";
 			if (row == ROW_HINGE && !strip()) return "Vertical scroll only";
 			return "";

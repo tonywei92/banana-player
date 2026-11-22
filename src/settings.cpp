@@ -619,8 +619,10 @@ namespace bp
 				.page(SG_MANGA, 60, "Preload", "More: smoother on a slow server, more data.").shownAs(nullptr, " pages").stepped(true).digitsOnly(),
 			// 0 to 200 in steps of 4 (a value a file kept from before may sit off the step: it snaps onto one on the page)
 			D::range("manga-hinge", &Settings::mangaHinge, 0, 200)
-				.page(SG_MANGA, 40, "Hinge gap", "The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Measure on your handheld.")
+				.page(SG_MANGA, 40, "Hinge gap", "The part of the page hidden under the hinge in fullscreen and on Book's wide pages, so pictures line up across the gap. Measure on your handheld.")
 				.shownAs(nullptr, " px").stepped(false, nullptr, 4).ignoreBlank(),
+			D::flag("manga-spread", &Settings::mangaSpread)
+				.page(SG_MANGA, 45, "Wide pages span both screens", "In Book, a double page is cut down the middle, half on each screen. Off: it shows whole on one."),
 			D::choice("manga-cache", &Settings::mangaCacheSize, MANGA_CACHE_IDS, MANGA_CACHES)
 				.page(SG_MANGA, 70, "Page cache", "Pages kept on the card to read again without downloading. Covers: 50 MB more.").shownAs(CACHE_NAMES).stepped(true),
 			D::flag("remember-position", &Settings::rememberPosition)

@@ -506,6 +506,7 @@ namespace bp
 		{
 			// the row set while a chapter is open reaches the reader too (the fit comes as its own command)
 			reader.setPreload(player.settings.mangaPreload);
+			reader.setBookSpread(player.settings.mangaSpread, player.settings.mangaHinge);
 			// a document of Files: its reading filter, and its pan area's page and box
 			{
 				int f = ui.docs->docPagesFilter(player);
@@ -543,6 +544,7 @@ namespace bp
 			ui.pageReader->readerStatus.fullscreen = reader.fullscreen();
 			ui.pageReader->readerStatus.rotation = reader.rotation();
 			ui.pageReader->readerStatus.book = reader.book();
+			ui.pageReader->readerStatus.bookCount = reader.bookCount();
 			// fullscreen: the bottom panel's share of the view, as fractions of the panel, and the pixels it needs
 			Ui::PageReader::ReaderBottom rb;
 			rb.on = reader.bothPanels();	// fullscreen, or Book (a page on each panel)

@@ -4,6 +4,7 @@
 // drawn by a PageRenderer in the top window's GL context. Main thread only, but for the decoder's threads, which never
 // touch it: they hand pages back and push `wakeEvent`.
 #include "bands.h"
+#include "manga_ui_logic.h"
 #include "pagebook.h"
 #include "pagecache.h"
 #include "pagedecode.h"
@@ -120,6 +121,11 @@ namespace bp
 		// Book (MANGA_BOOK_*): both panels show pages too (bottomBoxes), one each; fullscreen() is left as it was
 		int book() const { return bookHold; }
 		bool bothPanels() const { return full || bookHold != MANGA_BOOK_OFF; }
+		// Book: how many pages the screen shows (2, or 1: a lone page before a spread, the last, a spread itself)
+		int bookCount() const { return inBook() ? bookScreen().count : 0; }
+		// Book: a wide page (a double-page spread) spans both panels, cut down the middle across the hinge (the
+		// setting "Wide pages span both screens"; hinge480: the Hinge gap row, the strip the hinge hides)
+		void setBookSpread(bool on, int hinge480);
 		// page: a page's index, or a band's key (bands.h) for a long strip page drawn as its bands
 		struct Box { int page; float x, y, w, h; };
 		std::vector<Box> bottomBoxes() const;
@@ -171,8 +177,8 @@ namespace bp
 		void applyFit();
 		void applyZoom();
 		void setFullscreen(bool on, int hinge480);
-		// the hinge's gap as it applies: only the Strip skips it (a picture runs on across the fold); the paged modes
-		// and Book put the panels edge to edge (View's Hinge gap row is a fullscreen Strip's only)
+		// the hinge's gap as it applies: the Strip skips it (a picture runs on across the fold); the paged modes put
+		// the panels edge to edge. (Book's wide pages skip it too, by bookGapNow)
 		int hingeGap() const { return readMode == MANGA_STRIP ? gapPx : 0; }
 		int layoutH() const { return full ? viewH * 2 + hingeGap() : viewH; }
 		int decodeW() const;	// the width wanted now: z times the view's, up to 2048 (decodePage's 2x cap still applies)
@@ -191,6 +197,14 @@ namespace bp
 		void setBook(int b);
 		void bookGo(int first);
 		std::vector<Box> bookBoxes() const;
+		bool inBook() const { return bookHold && readMode != MANGA_STRIP; }
+		// the pages' wide flags as pairing reads them (all clear with the setting off)
+		const std::vector<char>& bookWide() const { return spreadOn ? wide : notWide; }
+		MangaBookScreen bookScreen() const { return mangaBookScreenFrom(bookWide(), bookS); }
+		// a page's size learnt (its file's header or its decode): its wide flag; true when it changed
+		bool noteShape(int page, int w, int h);
+		int decodeWFor(int page) const;	// decodeW(), but a spread in Book wants both panels' length
+		int bookGapNow() const { return spreadOn ? bookGapPx : 0; }
 		// rotate an RGBA buffer (w x h) by angle degrees clockwise; the returned buffer is (rw x rh), swapped if 90/270
 		static std::shared_ptr<const std::vector<uint8_t>> rotatePixels(
 			const std::shared_ptr<const std::vector<uint8_t>>& src, int w, int h, int angle);
@@ -234,7 +248,10 @@ namespace bp
 		int64_t spinNow = 0;
 		bool full = false;	// (kept across chapters while the reader is open)
 		int bookHold = 0;	// MANGA_BOOK_*: main sets it again for each chapter (the series' own)
-		int bookS = 0;		// Book: the spread's first page
+		int bookS = 0;		// Book: the screen's first page (its count follows the pages' shapes: bookScreen)
+		std::vector<char> wide, notWide;	// per page: a double-page spread (mangaBookWide); notWide all clear
+		bool spreadOn = true;	// Wide pages span both screens
+		int bookGapPx = 0;	// the hinge's hidden strip between the panels, in view pixels (a spread is cut across it)
 		int bookPrevAngle = 0;	// the turn (L3) Book took over, given back when it ends
 		CardOverlay card;	// the level card over the pages
 		CardOverlay note;	// the note at their foot (showNote gives it its own texture key and place)

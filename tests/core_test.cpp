@@ -3216,6 +3216,90 @@ static void testCbzWrite()
 }
 
 // the manga pages' pure decisions: a generated cover's colours, what Resume opens, how old a History row reads
+// Book's pairing: two pages to a screen, a wide page (a double-page spread) alone across both panels
+static std::string bookScreensText(const std::vector<char>& wide)
+{
+	std::string out;
+	for (const auto& s : mangaBookScreens(wide))
+		out += (out.empty() ? "" : " ") + (s.spread ? "[" + std::to_string(s.first) + "]"
+			: s.count == 2 ? std::to_string(s.first) + "-" + std::to_string(s.first + 1) : std::to_string(s.first));
+	return out;
+}
+
+static MangaBookScreen bookScr(int first, int count, bool spread)
+{
+	MangaBookScreen s;
+	s.first = first;
+	s.count = count;
+	s.spread = spread;
+	return s;
+}
+
+static void testMangaBookSpreadFirstMiddleLast()
+{
+	// the first page is never wide (a cover): a wide size there pairs as normal
+	CHECK_EQ(mangaBookWide(0, 2000, 1000), false);
+	CHECK_EQ(mangaBookWide(2, 1200, 1000), true);
+	CHECK_EQ(mangaBookWide(2, 1100, 1000), false);
+	CHECK_EQ(mangaBookWide(2, 0, 0), false);
+	// a spread second: the cover sits alone before it
+	CHECK_EQ(bookScreensText({0, 1, 0, 0}), std::string("0 [1] 2-3"));
+	// in the middle at an even place: the page before it is alone; pairing restarts after it
+	CHECK_EQ(bookScreensText({0, 0, 1, 0, 0, 0}), std::string("0-1 [2] 3-4 5"));
+	CHECK_EQ(bookScreensText({0, 0, 0, 1, 0}), std::string("0-1 2 [3] 4"));
+	// last
+	CHECK_EQ(bookScreensText({0, 0, 0, 1}), std::string("0-1 2 [3]"));
+	CHECK_EQ(bookScreensText({0, 0, 1}), std::string("0-1 [2]"));
+}
+
+static void testMangaBookSpreadsInARowAndOddCounts()
+{
+	CHECK_EQ(bookScreensText({0, 0, 1, 1, 0}), std::string("0-1 [2] [3] 4"));
+	// the brief's chapter: tall, tall, WIDE, tall, WIDE, WIDE, tall
+	CHECK_EQ(bookScreensText({0, 0, 1, 0, 1, 1, 0}), std::string("0-1 [2] 3 [4] [5] 6"));
+	CHECK_EQ(bookScreensText({0, 0, 0}), std::string("0-1 2"));
+	CHECK_EQ(bookScreensText({0}), std::string("0"));
+	CHECK_EQ(bookScreensText({}), std::string(""));
+	// stepping: the screen before, and the one holding a page
+	std::vector<char> w{0, 0, 1, 0, 1, 1, 0};
+	CHECK_EQ(mangaBookScreenOf(w, 1) == bookScr(0, 2, false), true);
+	CHECK_EQ(mangaBookScreenOf(w, 5) == bookScr(5, 1, true), true);
+	CHECK_EQ(mangaBookScreenBefore(w, 3) == bookScr(2, 1, true), true);
+	CHECK_EQ(mangaBookScreenBefore(w, 2) == bookScr(0, 2, false), true);
+	CHECK_EQ(mangaBookScreenBefore(w, 0) == bookScr(0, 2, false), true);
+	// a screen a one-page move realigned (starting at 1) goes back to page 0 alone, not to 0-1 over itself
+	std::vector<char> t(6, 0);
+	CHECK_EQ(mangaBookScreenBefore(t, 1) == bookScr(0, 1, false), true);
+	CHECK_EQ(mangaBookScreenFrom(t, 5) == bookScr(5, 1, false), true);
+}
+
+static void testMangaBookSpreadRtl()
+{
+	// right to left flips only the panels the pages go on: the pairing has no direction, and a spread is one box
+	// across both panels whose left half stays on the left (the turn that stands the page upright keeps it so)
+	std::vector<char> w{0, 0, 1, 0, 1, 1, 0};
+	CHECK_EQ(bookScreensText(w), std::string("0-1 [2] 3 [4] [5] 6"));
+	CHECK_EQ(mangaBookEarlierOnTop(MANGA_BOOK_LEFT, false) != mangaBookEarlierOnTop(MANGA_BOOK_LEFT, true), true);
+}
+
+static void testMangaBookSpreadKnownLate()
+{
+	// sizes unknown at the open: all normal, reopening at page 5 shows 4-5
+	std::vector<char> w(8, 0);
+	MangaBookScreen cur = mangaBookScreenOf(w, 5);
+	CHECK_EQ(cur == bookScr(4, 2, false), true);
+	// page 2 turns out wide: the walk ahead of the reader changes, the current screen (held by its first) doesn't
+	w[2] = 1;
+	CHECK_EQ(bookScreensText(w), std::string("0-1 [2] 3-4 5-6 7"));
+	CHECK_EQ(mangaBookScreenFrom(w, cur.first) == cur, true);
+	// back from it: the walk's screen before page 4, cut to end at 3
+	CHECK_EQ(mangaBookScreenBefore(w, 4) == bookScr(3, 1, false), true);
+	// the current screen's second page turns out wide: the screen keeps its start and holds page 4 alone
+	w[5] = 1;
+	CHECK_EQ(mangaBookScreenFrom(w, 4) == bookScr(4, 1, false), true);
+	CHECK_EQ(mangaBookScreenFrom(w, 5) == bookScr(5, 1, true), true);
+}
+
 static void testMangaUiLogic()
 {
 	// Book (issue #7): the store's string, which panel gets the spread's first page, the turn, the keys, a swipe
@@ -16917,6 +17001,10 @@ static void testUpdaterDownload()
 
 int main()
 {
+	testMangaBookSpreadFirstMiddleLast();
+	testMangaBookSpreadsInARowAndOddCounts();
+	testMangaBookSpreadRtl();
+	testMangaBookSpreadKnownLate();
 	testUpdaterDownload();
 	testVideoCache();
 	testSlider();

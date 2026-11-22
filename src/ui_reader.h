@@ -62,6 +62,7 @@ namespace bp
 			bool fullscreen = false;	// both panels show the pages
 			int rotation = 0;	// the page turn in degrees (0, 90, 180, 270; paged modes only, 0 in Strip)
 			int book = 0;	// MANGA_BOOK_*: held sideways, a page on each panel (page: the spread's first)
+			int bookCount = 0;	// Book: the pages the screen shows (1: a lone page, or a wide page across both)
 			std::string error;	// the chapter couldn't be opened ("" while fine)
 			bool failedHere = false;	// a page in view failed (fetch, decode or no GPU memory): Try again shows
 		};

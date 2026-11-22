@@ -1,4 +1,5 @@
 #include "manga_ui_logic.h"
+#include <algorithm>
 #include "settings.h"
 #include <cstdio>
 
@@ -136,6 +137,52 @@ namespace bp
 	{
 		// held with the top panel on the left, the panel's right edge is up: the page turned a quarter clockwise
 		return book == MANGA_BOOK_RIGHT ? 270 : 90;
+	}
+
+	bool mangaBookWide(int page, int w, int h)
+	{
+		return page > 0 && w > 0 && h > 0 && w * 5 >= h * 6;	// (w / h >= 1.2, in integers)
+	}
+
+	MangaBookScreen mangaBookScreenFrom(const std::vector<char>& wide, int first)
+	{
+		int n = (int)wide.size();
+		MangaBookScreen s;
+		s.first = std::clamp(first, 0, std::max(0, n - 1));
+		if (s.first < n && wide[s.first]) { s.spread = true; return s; }
+		// a page pairs with the next unless the next is a spread (which starts its own screen) or past the end
+		if (s.first + 1 < n && !wide[s.first + 1]) s.count = 2;
+		return s;
+	}
+
+	std::vector<MangaBookScreen> mangaBookScreens(const std::vector<char>& wide)
+	{
+		std::vector<MangaBookScreen> out;
+		for (int i = 0; i < (int)wide.size();)
+		{
+			out.push_back(mangaBookScreenFrom(wide, i));
+			i += out.back().count;
+		}
+		return out;
+	}
+
+	MangaBookScreen mangaBookScreenOf(const std::vector<char>& wide, int page)
+	{
+		MangaBookScreen last;
+		for (const auto& s : mangaBookScreens(wide))
+		{
+			last = s;
+			if (page < s.first + s.count) break;
+		}
+		return last;
+	}
+
+	MangaBookScreen mangaBookScreenBefore(const std::vector<char>& wide, int first)
+	{
+		if (first <= 0) return mangaBookScreenFrom(wide, 0);
+		MangaBookScreen s = mangaBookScreenOf(wide, first - 1);
+		s.count = std::min(s.count, first - s.first);
+		return s;
 	}
 
 	int mangaBookStep(int book, bool rtl, bool swap, int dpadDy)

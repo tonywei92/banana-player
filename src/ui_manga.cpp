@@ -3366,7 +3366,8 @@ namespace bp
 
 	void Ui::Manga::drawMangaBookTag()
 	{
-		int a = ui.pageReader->readerStatus.page + 1, n = ui.pageReader->readerStatus.pages, b = std::min(a + 1, n);
+		int a = ui.pageReader->readerStatus.page + 1, n = ui.pageReader->readerStatus.pages;
+		int b = std::min(a + std::max(1, ui.pageReader->readerStatus.bookCount) - 1, n);
 		std::string tag = (a == b ? std::to_string(a) : std::to_string(a) + "\xE2\x80\x93" + std::to_string(b)) + " / " + std::to_string(n);
 		if (ui.pageReader->readerStatus.atEnd)
 		{
