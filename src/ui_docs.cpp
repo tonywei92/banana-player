@@ -1431,7 +1431,8 @@ namespace bp
 			int64_t noteSince = (int64_t)SDL_GetTicks() - docNoteAt;
 			bool note = !docNote.empty() && noteSince >= 0 && noteSince < DOC_NOTICE_MS && (since < 0 || noteSince <= since || !textStatus.noticeDir);
 			if (note) since = noteSince;
-			if ((note || textStatus.noticeDir) && since >= 0 && since < DOC_NOTICE_MS)
+			// a page turned says nothing (the page itself shows it turned, and its % is at its foot): only a note does
+			if (note && since >= 0 && since < DOC_NOTICE_MS)
 			{
 				int alpha = since < DOC_NOTICE_MS - 600 ? 255 : (int)(255 * (DOC_NOTICE_MS - since) / 600);
 				std::string text = note ? docNote + (findOn ? "  \xC2\xB7  R next, L back" : "")
