@@ -3,6 +3,7 @@
 // the drawing asked for. The third view is the browser's own playlists page — show() opens it, and nothing of it is
 // here (Shell::section maps PLROOT and a playlist's page to this section, so the rail keeps Music lit under them).
 #include "ui_music.h"
+#include "ui_search.h"
 #include "ui_internal.h"
 #include "playlist.h"
 #include "ui_kit.h"
@@ -562,12 +563,12 @@ namespace bp
 
 	std::vector<Ui::Hint> Ui::Music::hintList(const Player&) const
 	{
-		if (albumAt >= 0) return {{"A", "Play"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Keys, songs"}, {"X", "More"}, {"B", "Albums"}};
-		if (artistAt >= 0) return {{"A", "Play / open"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Albums, songs"}, {"X", "More"}, {"B", "Artists"}};
+		if (albumAt >= 0) return {{"A", "Play"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Keys, songs"}, {"X", "More"}, {"B", ui.search->visiting() ? "Results" : "Albums"}};
+		if (artistAt >= 0) return {{"A", "Play / open"}, {"Y", "Shuffle"}, {"\xE2\x96\xB2/\xE2\x96\xBC", "Albums, songs"}, {"X", "More"}, {"B", ui.search->visiting() ? "Results" : "Artists"}};
 		if (snapshot() && folderEmpty(*snapshot()))
-			return {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"L/R", "View"}, {"B", "Up"}};
+			return {{"A", "Browse Files"}, {"Y", "Web dashboard"}, {"L/R", "View"}, {"B", ui.search->visiting() ? "Results" : "Up"}};
 		if (view == V_FOLDERS)
-			return {{"A", "Open"}, {"Y", "Random"}, {"X", "More"}, {"L/R", "View"}, {"B", folderAt.empty() ? "Home" : "Up"}};
+			return {{"A", "Open"}, {"Y", "Random"}, {"X", "More"}, {"L/R", "View"}, {"B", ui.search->visiting() ? "Results" : folderAt.empty() ? "Home" : "Up"}};
 		// the views (the mock-up's music-albums and music-artists)
 		// (L3 Search left out for Y Random: six didn't fit, and the rail shows Search's own key)
 		return {{"A", "Open"}, {"Y", "Random"}, {"X", "More"}, {"L/R", "View"}, {"B", "Home"}};
@@ -794,7 +795,10 @@ namespace bp
 			{
 			case Button::A: ui.page = Page::Browse; ui.browse->enterFolder(folderShown(*snap), p); break;
 			case Button::Y: ui.openWeb(); break;
-			case Button::B: if (!folderUp()) { ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); } break;
+			case Button::B:
+				if (ui.search->comeBack(p)) break;	// (a folder Search opened: back to its results)
+				if (!folderUp()) { ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); }
+				break;
 			default: break;
 			}
 			return false;
@@ -834,6 +838,7 @@ namespace bp
 				break;
 			case Button::Y: playAlbum(albumAt, 0, true, p); break;
 			case Button::B:
+				if (ui.search->comeBack(p)) break;	// (an album Search opened: back to its results)
 				// back to the grid (the cursor never left the album's cell): shown at once — or to the artist's page
 				// it was opened from, whose view stays
 				if (artistAt < 0) view = V_ALBUMS;
@@ -892,6 +897,7 @@ namespace bp
 				break;
 			case Button::Y: playArtist(artistAt, 0, true, p); break;
 			case Button::B:
+				if (ui.search->comeBack(p)) break;	// (an artist Search opened: back to its results)
 				// back to the list (the cursor never left the artist's row): shown at once
 				view = 1;
 				artistAt = -1;
@@ -940,6 +946,7 @@ namespace bp
 				else playFolder(cursor, p);
 				return false;
 			case Button::B:
+				if (ui.search->comeBack(p)) return false;
 				if (!folderUp()) { ui.page = Page::Browse; ui.browse->enterFolder(HOMEDIR, p); }
 				return false;
 			default: break;

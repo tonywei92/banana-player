@@ -724,6 +724,80 @@ namespace bp
 
 	// ---- the query
 
+	namespace
+	{
+		// the folders below `roots` (never a root itself) that hold one of the n files and whose own name holds
+		// every word; each with the files under it, however deep. The records come album by album (a video list
+		// by name), so a file in the folder the last one was in only counts again
+		std::vector<SearchFolder> searchFolders(const std::vector<std::string>& roots, size_t n,
+			const std::function<const std::string&(size_t)>& pathAt, const std::vector<std::string>& words)
+		{
+			std::vector<SearchFolder> out;
+			std::vector<bool> starts;	// out[i]'s name starts with the query
+			std::unordered_map<std::string, int> known;	// a folder seen -> its place in out (-1: no match)
+			std::string lastDir;
+			std::vector<int> lastHits;
+			for (size_t i = 0; i < n; i++)
+			{
+				const std::string& path = pathAt(i);
+				size_t cut = path.rfind('/');
+				if (cut == std::string::npos) continue;
+				if (cut == lastDir.size() && path.compare(0, cut, lastDir) == 0)
+				{
+					for (int h : lastHits) out[h].count++;
+					continue;
+				}
+				lastDir = path.substr(0, cut);
+				lastHits.clear();
+				const std::string* root = nullptr;
+				for (auto& r : roots)
+					if (path.size() > r.size() + 1 && path[r.size()] == '/' && path.compare(0, r.size(), r) == 0 &&
+						(!root || r.size() > root->size()))
+						root = &r;
+				if (!root) continue;
+				for (size_t from = root->size() + 1;;)
+				{
+					size_t slash = path.find('/', from);
+					if (slash == std::string::npos) break;
+					std::string folder = path.substr(0, slash);
+					auto it = known.find(folder);
+					if (it == known.end())
+					{
+						std::string name = foldText(path.substr(from, slash - from));
+						bool all = true;
+						for (auto& w : words)
+							if (name.find(w) == std::string::npos) all = false;
+						int at = -1;
+						if (all)
+						{
+							at = (int)out.size();
+							out.push_back({folder, 0});
+							starts.push_back(name.rfind(words[0], 0) == 0);
+						}
+						it = known.emplace(folder, at).first;
+					}
+					if (it->second >= 0)
+					{
+						out[it->second].count++;
+						lastHits.push_back(it->second);
+					}
+					from = slash + 1;
+				}
+			}
+			std::vector<size_t> order(out.size());
+			for (size_t i = 0; i < order.size(); i++) order[i] = i;
+			std::sort(order.begin(), order.end(), [&](size_t a, size_t b) {
+				if (starts[a] != starts[b]) return (bool)starts[a];
+				std::string an = baseName(out[a].path), bn = baseName(out[b].path);
+				if (an != bn) return naturalLess(an, bn);
+				return out[a].path < out[b].path;
+			});
+			std::vector<SearchFolder> sorted;
+			for (size_t i : order) sorted.push_back(std::move(out[i]));
+			return sorted;
+		}
+	}
+
 	SearchHits mediaSearch(const MediaSnapshot& snap, const std::vector<std::string>& fileNames,
 		const std::string& query)
 	{
@@ -745,16 +819,22 @@ namespace bp
 			return true;
 		};
 		auto starts = [&](const std::string& s) { return s.rfind(words[0], 0) == 0; };
-		// two passes a kind: what starts with the query first, then what only holds it, each as its list is sorted
-		for (int pass = 0; pass < 2; pass++)
+		// a song by its title first: 0 the title starts with the query, 1 the title holds it, 2 found only with its
+		// artist's and album's words ("road": Night Road before the other songs of an album called Open Road)
 		{
+			std::vector<uint32_t> rank[3];
 			for (uint32_t i = 0; i < snap.songs.size(); i++)
 			{
 				const MediaSong& s = snap.songs[i];
 				const std::string& title = snap.at(s.foldTitle);
-				if ((starts(title) ? 0 : 1) != pass) continue;
-				if (allIn(title, snap.at(s.foldArtist), snap.at(s.foldAlbum))) hits.songs.push_back(i);
+				if (!allIn(title, snap.at(s.foldArtist), snap.at(s.foldAlbum))) continue;
+				rank[!allIn(title, "", "") ? 2 : starts(title) ? 0 : 1].push_back(i);
 			}
+			for (auto& r : rank) hits.songs.insert(hits.songs.end(), r.begin(), r.end());
+		}
+		// two passes a kind: what starts with the query first, then what only holds it, each as its list is sorted
+		for (int pass = 0; pass < 2; pass++)
+		{
 			for (uint32_t i = 0; i < snap.videos.size(); i++)
 			{
 				const std::string& name = snap.at(snap.videos[i].foldName);
@@ -769,6 +849,32 @@ namespace bp
 				if (allIn(name, "", "")) hits.files.push_back(i);
 			}
 		}
+		// the containers. An artist by their name (the unknown artist is nobody's query); an album by its name, then
+		// by its artist's: 0 the name starts with the query, 1 the name holds it, 2 only with the artist's words
+		for (int pass = 0; pass < 2; pass++)
+			for (uint32_t i = 0; i < snap.artists.size(); i++)
+			{
+				if (!snap.artists[i].name) continue;
+				std::string name = foldText(snap.at(snap.artists[i].name));
+				if ((starts(name) ? 0 : 1) != pass) continue;
+				if (allIn(name, "", "")) hits.artists.push_back(i);
+			}
+		{
+			std::vector<uint32_t> rank[3];
+			for (uint32_t i = 0; i < snap.albums.size(); i++)
+			{
+				const MediaAlbum& a = snap.albums[i];
+				std::string name = foldText(snap.at(a.name));
+				if (name.empty()) continue;
+				if (allIn(name, "", "")) rank[starts(name) ? 0 : 1].push_back(i);
+				else if (allIn(name, foldText(snap.at(a.albumArtist)), "")) rank[2].push_back(i);
+			}
+			for (auto& r : rank) hits.albums.insert(hits.albums.end(), r.begin(), r.end());
+		}
+		hits.musicFolders = searchFolders(snap.musicFolders, snap.songs.size(),
+			[&](size_t i) -> const std::string& { return snap.songs[i].path; }, words);
+		hits.videoFolders = searchFolders(snap.videoFolders, snap.videos.size(),
+			[&](size_t i) -> const std::string& { return snap.videos[i].path; }, words);
 		// a song whose tags don't hold the words but whose file name does ("gaia" in Ultramangaia_ED2_Beat_on_Dream.mp3):
 		// after the tag matches. The name's _ - . read as spaces
 		for (uint32_t i = 0; i < snap.songs.size(); i++)

@@ -16,6 +16,7 @@ import { Home } from './js/home.js';
 import { Videos } from './js/videos.js';
 import { Music } from './js/music.js';
 import { Books } from './js/books.js';
+import { Search, SearchField } from './js/search.js';
 import { Reader } from './js/reader.js';
 import { dirLabel, entriesFromDrop, entriesFromInput, startUpload } from './js/uploads.js';
 import { dropToSection, sectionOf } from './js/libupload.js';
@@ -104,7 +105,7 @@ function Toasts() {
 		${t.action && html`<svg class="tring" viewBox="0 0 22 22" aria-hidden="true"><circle cx="11" cy="11" r="9" fill="none" style="stroke:var(--line)" stroke-width="3" /><circle cx="11" cy="11" r="9" fill="none" stroke="var(--yellow)" stroke-width="3" stroke-dasharray="56.55" stroke-dashoffset="0" /></svg>`}</div>`)}</div>`;
 }
 function HelpOverlay() {
-	const keys = [['Space', 'Play / pause'], ['← →', 'Back 5 s / forward 10 s'], ['Shift + ← →', 'Previous / next'], ['[ ]', 'Previous / next chapter'], ['L', 'Loop'], ['C', 'Subtitles on / off (a video in this browser)'], ['↑ ↓', 'Volume'], ['/', 'Find (Files, Playlists)'], ['?', 'This help'], ['Esc', 'Close']];
+	const keys = [['Space', 'Play / pause'], ['← →', 'Back 5 s / forward 10 s'], ['Shift + ← →', 'Previous / next'], ['[ ]', 'Previous / next chapter'], ['L', 'Loop'], ['C', 'Subtitles on / off (a video in this browser)'], ['↑ ↓', 'Volume'], ['/', 'Find on this page, or Search library'], ['?', 'This help'], ['Esc', 'Close']];
 	const close = () => set({ help: false });
 	return html`<${Modal} title="Keyboard shortcuts" onClose=${close} actions=${html`<button class="btn primary" onClick=${close}>Close</button>`}><div class="helpkeys">${keys.map(([k, d]) => html`<kbd>${k}</kbd><span>${d}</span>`)}</div></${Modal}>`;
 }
@@ -131,6 +132,8 @@ function Side({ nav }) {
 	const navItems = navWithManga(!!(sn && sn.mangaOn));
 	return html`<aside class="side" aria-label="Sections">
 		<div class="logo"><img class="logo32" src="/logo.png" width="32" height="32" alt="" /><b>Banana Player</b></div>
+		<${SearchField} cls="inside" />
+		<button class="nav search-nav" aria-label="Search library" aria-current=${r.page === 'search' ? 'page' : undefined} onClick=${() => go('#/search')}><${Icon} n="search" k=${2} />Search</button>
 		<nav aria-label="Main" style="display:contents">${navItems.map(([k, l, ic, h]) => html`<button class="nav" aria-current=${r.page === k ? 'page' : undefined} onClick=${() => nav(k, h)}><${Icon} n=${ic} k=${2} />${l}</button>`)}</nav>
 		<${SidePls} />
 		<div class="box surface hhcard" role="group" aria-label="Your handheld">
@@ -178,7 +181,8 @@ function Shell() {
 			if (e.key === 'Escape' && store.help) return set({ help: false });
 			if (e.key === 'Escape' && store.sheetOpen && store.route.page === 'playing') return closePanel();
 			if (e.key === '?') return set({ help: !store.help });
-			if (e.key === '/') { const f = document.querySelector('[data-slash]'); if (f && f.offsetParent) { e.preventDefault(); f.focus(); } return; }
+			// (the page's own find field; a page without one: Search library's)
+			if (e.key === '/') { const vis = sel => [...document.querySelectorAll(sel)].find(x => x.offsetParent); const f = vis('[data-slash]') || vis('[data-search]'); if (f) { e.preventDefault(); f.focus(); } return; }
 			if (e.key === ' ' && !button) { e.preventDefault(); ctl.toggle(); }
 			else if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !slider) { e.preventDefault(); const fwd = e.key === 'ArrowRight'; if (e.shiftKey) fwd ? ctl.next() : ctl.prev(); else ctl.seekRel(fwd ? 10 : -5); }
 			else if (e.key === '[' || e.key === ']') ctl.chapterStep(e.key === ']' ? 1 : -1);
@@ -194,7 +198,7 @@ function Shell() {
 	}, []);
 	const page = r.page === 'home' ? html`<${Home} />` : r.page === 'files' ? html`<${Files} />` : r.page === 'videos' ? html`<${Videos} />`
 		: r.page === 'music' ? html`<${Music} />` : r.page === 'books' ? (r.read ? html`<${Reader} p=${r.read} key=${r.read} />` : html`<${Books} />`) : r.page === 'playlists' ? html`<${Playlists} />`
-		: r.page === 'manga' ? html`<${Manga} />` : html`<${NowPlaying} />`;
+		: r.page === 'manga' ? html`<${Manga} />` : r.page === 'search' ? html`<${Search} />` : html`<${NowPlaying} />`;
 	const miniShown = !wide && v.has && r.page !== 'playing' && !s.selecting;
 	const fabShown = r.page !== 'playing' && !s.selecting && !s.pick && (s.upload.items.length > 0 || (r.page === 'files' && !!r.path) || s.jobs.some(j => !jobOver(j)));
 	const nav = (k, h) => go(k === 'files' ? filesHash(store.lastDir || '') : h);

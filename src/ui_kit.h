@@ -482,6 +482,8 @@ namespace bp
 		struct Result
 		{
 			const Glyph* glyph = nullptr;
+			// an album's or an artist's small art (RESULT_ART square) in the glyph's place, drawn by the caller
+			std::function<void(Rect)> art;
 			std::string name, note, pill;
 			int matchAt = -1, matchLen = 0;	// the matched part, in `name`'s own bytes (-1: nothing to mark)
 			bool focused = false, pressed = false, off = false;

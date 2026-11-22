@@ -2,6 +2,7 @@
 // drawn inside lay::shell().body (the shell draws the rail, the header and the hints); the touches test the same
 // Rects the drawing asked for.
 #include "ui_videos.h"
+#include "ui_search.h"
 #include "ui_mediaart.h"
 #include "ui_internal.h"
 #include "playlist.h"
@@ -328,7 +329,7 @@ namespace bp
 
 	std::vector<Ui::Hint> Ui::Videos::hintList(const Player&) const
 	{
-		if (!folder.empty()) return {{"A", "Play"}, {"X", "More"}, {"\xE2\x97\x80/\xE2\x96\xB6", "Page"}, {"B", "Videos"}};
+		if (!folder.empty()) return {{"A", "Play"}, {"X", "More"}, {"\xE2\x97\x80/\xE2\x96\xB6", "Page"}, {"B", ui.search->visiting() ? "Results" : "Videos"}};
 		return {{"A", "Play / open"}, {"X", "More"}, {"L/R", "View"}, {"\xE2\x97\x80/\xE2\x96\xB6", "Page"}, {"B", "Home"}};
 	}
 
@@ -515,7 +516,9 @@ namespace bp
 			if (cursor >= 0 && cursor < n) openMoreSheet(rows[cursor], p);
 			break;
 		case Button::B:
-			// a folder's list: back to the views (the views themselves are the section's home: the shell keeps B)
+			// a folder's list: back to the views (the views themselves are the section's home: the shell keeps B) —
+			// or to Search's results, when it was one of them
+			if (ui.search->comeBack(p)) return false;
 			if (!folder.empty()) { folder.clear(); cursor = 0; list.top(); }
 			break;
 		default: break;

@@ -5,6 +5,8 @@
 #include "ui_kit.h"
 #include "ui_browse.h"
 #include "ui_books.h"
+#include "ui_music.h"
+#include "ui_videos.h"
 #include "mediaindex.h"
 #include "format.h"
 #include "playlist.h"
@@ -83,6 +85,7 @@ namespace bp
 		char line[512];
 		while (recent.size() < 8 && fgets(line, sizeof line, f))
 		{
+			line[strcspn(line, "\r\n")] = 0;	// (the line's end is not the query's: a kept search found nothing run again)
 			std::string q = trimmed(line);
 			if (!q.empty() && std::find(recent.begin(), recent.end(), q) == recent.end()) recent.push_back(q);
 		}
@@ -128,6 +131,7 @@ namespace bp
 			openKeyboard();
 			return;
 		}
+		visit = VISIT_NONE;
 		backPage = ui.page;
 		backSettingsOver = ui.settingsOver;
 		backSetGroup = ui.setGroup;
@@ -186,8 +190,10 @@ namespace bp
 
 	int Ui::Search::foundCount(int t) const
 	{
-		if (t != T_ALL) return (int)found[t].size();
-		return (int)(found[T_MUSIC].size() + found[T_VIDEOS].size() + found[T_BOOKS].size());
+		int n = 0;
+		for (int s = 0; s < lay::SEARCH_SECS; s++)
+			if (t == T_ALL || lay::searchSecTab(s) == t) n += (int)found[s].size();
+		return n;
 	}
 
 	void Ui::Search::searchLibrary(const Player& p) const
@@ -203,18 +209,55 @@ namespace bp
 		std::vector<std::string> names;
 		for (auto& b : ui.books->shelf) names.push_back(b.name);
 		SearchHits hits = mediaSearch(*snap, names, query);
-		auto add = [&](int kind, const Glyph* g, const std::string& name, const std::string& note, const std::string& pill,
-			const std::string& path) {
+		auto add = [&](int sec, const Glyph* g, const std::string& name, const std::string& note, const std::string& pill,
+			const std::string& path) -> Row& {
 			Row r;
 			r.kind = RESULT;
+			r.sec = sec;
 			r.glyph = g;
 			r.text = name;
 			r.note = note;
 			r.pill = pill;
 			r.path = path;
 			markMatch(name, query, r.matchAt, r.matchLen);
-			found[kind].push_back(r);
+			found[sec].push_back(r);
+			return found[sec].back();
 		};
+		auto counted = [](size_t n, const char* one, const char* many) { return std::to_string(n) + " " + (n == 1 ? one : many); };
+		// the containers: an artist and an album with a small art square, a folder with what is under it (and the
+		// folder it is in, when that is not the Music or Videos folder itself: two "Live" folders tell apart)
+		for (uint32_t i : hits.artists)
+		{
+			if (i >= snap->artists.size()) continue;
+			const MediaArtist& a = snap->artists[i];
+			Row& r = add(lay::SS_ARTISTS, nullptr, snap->at(a.name),
+				counted(a.albums.size(), "album", "albums") + " \xC2\xB7 " + counted(a.songs, "song", "songs"), "", "");
+			r.index = (int)i;
+			r.art = true;
+		}
+		for (uint32_t i : hits.albums)
+		{
+			if (i >= snap->albums.size()) continue;
+			const MediaAlbum& a = snap->albums[i];
+			std::string who = a.albumArtist ? snap->at(a.albumArtist) : std::string();
+			Row& r = add(lay::SS_ALBUMS, nullptr, snap->at(a.name),
+				who + (who.empty() ? "" : " \xC2\xB7 ") + counted(a.songs.size(), "song", "songs"), "",
+				a.songs.empty() ? std::string() : snap->songs[a.songs.front()].path);
+			r.index = (int)i;
+			r.art = true;
+		}
+		auto folders = [&](int sec, const std::vector<SearchFolder>& list, const std::vector<std::string>& roots,
+			const char* one, const char* many) {
+			for (auto& f : list)
+			{
+				std::string parent = parentFolder(f.path);
+				bool top = std::find(roots.begin(), roots.end(), parent) != roots.end();
+				add(sec, &G_FOLDER, baseName(f.path),
+					(top ? std::string() : "in " + baseName(parent) + " \xC2\xB7 ") + counted(f.count, one, many), "", f.path);
+			}
+		};
+		folders(lay::SS_MUSIC_FOLDERS, hits.musicFolders, snap->musicFolders, "song", "songs");
+		folders(lay::SS_VIDEO_FOLDERS, hits.videoFolders, snap->videoFolders, "video", "videos");
 		for (uint32_t i : hits.songs)
 		{
 			if (i >= snap->songs.size()) continue;
@@ -224,19 +267,19 @@ namespace bp
 			std::string note = snap->at(s.artist);
 			const std::string& album = snap->at(s.album);
 			if (!album.empty() && album != note) note += (note.empty() ? "" : " \xC2\xB7 ") + album;
-			add(T_MUSIC, &G_NOTE, name, note, s.video ? "VIDEO" : "", s.path);
+			add(lay::SS_SONGS, &G_NOTE, name, note, s.video ? "VIDEO" : "", s.path);
 		}
 		for (uint32_t i : hits.videos)
 		{
 			if (i >= snap->videos.size()) continue;
 			const MediaVideo& v = snap->videos[i];
-			add(T_VIDEOS, &G_FILM, nameOf(v.path), folderOf(v.path), "", v.path);
+			add(lay::SS_VIDEOS, &G_FILM, nameOf(v.path), folderOf(v.path), "", v.path);
 		}
 		for (uint32_t i : hits.files)
 		{
 			if (i >= ui.books->shelf.size()) continue;
 			const std::string& path = ui.books->shelf[i].path;
-			add(T_BOOKS, &G_BOOK, nameOf(path), folderOf(path), "", path);
+			add(lay::SS_BOOKS, &G_BOOK, nameOf(path), folderOf(path), "", path);
 		}
 	}
 
@@ -281,24 +324,41 @@ namespace bp
 			return;
 		}
 		if (!sameSearch) searchLibrary(p);
-		// the tab's rows: All is every kind under its heading (one with nothing is left out), in the tabs' order;
-		// a kind's own tab is its rows alone (the count is on the tab)
+		// the tab's rows, section by section (lay::searchSections: which are headed, how many show, where a
+		// "See all" row follows). Under All the two kinds of folder say whose they are
 		static const char* const KIND[TABS] = {"All", "Music", "Videos", "Books"};
-		for (int k = T_MUSIC; k < TABS; k++)
+		static const char* const HEAD_ALL[lay::SEARCH_SECS] = {"Artists", "Albums", "Music folders", "Songs", "Video folders",
+			"Videos", "Books"};
+		static const char* const HEAD_OWN[lay::SEARCH_SECS] = {"Artists", "Albums", "Folders", "Songs", "Folders", "Videos", "Books"};
+		static const char* const MANY[lay::SEARCH_SECS] = {"artists", "albums", "music folders", "songs", "video folders",
+			"videos", "books"};
+		int counts[lay::SEARCH_SECS];
+		for (int s = 0; s < lay::SEARCH_SECS; s++) counts[s] = (int)found[s].size();
+		for (auto& sec : lay::searchSections(counts, tab))
 		{
-			if ((tab != T_ALL && tab != k) || found[k].empty()) continue;
-			if (tab == T_ALL)
+			if (sec.head)
 			{
 				Row h;
 				h.kind = HEAD;
-				h.text = KIND[k];
-				h.count = (int)found[k].size();
+				h.sec = sec.sec;
+				h.text = (tab == T_ALL ? HEAD_ALL : HEAD_OWN)[sec.sec];
+				h.count = counts[sec.sec];
 				rows.push_back(h);
 			}
-			for (auto& r : found[k])
+			for (int i = 0; i < sec.shown; i++)
 			{
 				selectable.push_back((int)rows.size());
-				rows.push_back(r);
+				rows.push_back(found[sec.sec][i]);
+			}
+			if (sec.more)
+			{
+				Row m;
+				m.kind = MORE;
+				m.sec = sec.sec;
+				m.glyph = &G_RIGHT;
+				m.text = "See all " + std::to_string(counts[sec.sec]) + " " + MANY[sec.sec];
+				selectable.push_back((int)rows.size());
+				rows.push_back(m);
 			}
 		}
 		// a kind with nothing while another has: the tabs stay, and the list says so in a line
@@ -461,7 +521,105 @@ namespace bp
 			remember(query);
 			return;
 		}
-		if (r.kind == RESULT) ui.openFile(r.path, p);
+		if (r.kind == MORE) { seeAll(r.sec, p); return; }
+		if (r.kind == RESULT) openResult(Row(r), p);	// (a copy: the page it opens may rebuild the rows)
+	}
+
+	void Ui::Search::seeAll(int sec, const Player& p)
+	{
+		setTab(lay::searchSecTab(sec), p);
+		for (size_t j = 0; j < selectable.size(); j++)
+			if (rows[selectable[j]].sec == sec) { cursor = (int)j; break; }
+	}
+
+	void Ui::Search::openResult(const Row& r, Player& p)
+	{
+		Music& m = *ui.music;
+		Videos& v = *ui.videos;
+		auto leave = [&](int what, int wasView) {
+			visit = what;
+			visitIndex = r.index;
+			visitPath = r.path;
+			visitView = wasView;
+			pressRow = -1;
+		};
+		switch (r.sec)
+		{
+		case lay::SS_ALBUMS:
+		case lay::SS_ARTISTS:
+			// Music's own page for it, under the view it belongs to (B there: comeBack)
+			leave(r.sec == lay::SS_ALBUMS ? VISIT_ALBUM : VISIT_ARTIST, m.view);
+			m.view = r.sec == lay::SS_ALBUMS ? Music::V_ALBUMS : Music::V_ARTISTS;
+			m.albumAt = m.artistAt = -1;
+			ui.page = Page::Music;
+			if (r.sec == lay::SS_ALBUMS) m.openAlbum(r.index, p);
+			else m.openArtist(r.index, p);
+			break;
+		case lay::SS_MUSIC_FOLDERS:
+			// Music › Folders, inside that folder (B at it comes back; from deeper it climbs to it first)
+			leave(VISIT_MUSIC_FOLDER, m.view);
+			m.view = Music::V_FOLDERS;
+			m.albumAt = m.artistAt = -1;
+			m.keyFocus = -1;
+			m.folderCursors.clear();
+			m.folderAt = r.path;
+			m.cursor = 0;
+			m.list.top();
+			ui.page = Page::Music;
+			break;
+		case lay::SS_VIDEO_FOLDERS:
+			leave(VISIT_VIDEO_FOLDER, v.view);
+			v.openFolder(r.path);
+			ui.page = Page::Videos;
+			break;
+		default:
+			ui.openFile(r.path, p);
+		}
+	}
+
+	bool Ui::Search::visiting() const
+	{
+		const Music& m = *ui.music;
+		const Videos& v = *ui.videos;
+		switch (visit)
+		{
+		case VISIT_ALBUM: return ui.page == Page::Music && m.albumAt == visitIndex && m.artistAt < 0;
+		case VISIT_ARTIST: return ui.page == Page::Music && m.artistAt == visitIndex && m.albumAt < 0;
+		case VISIT_MUSIC_FOLDER:
+			return ui.page == Page::Music && m.view == Music::V_FOLDERS && m.albumAt < 0 && m.artistAt < 0 && m.folderAt == visitPath;
+		case VISIT_VIDEO_FOLDER: return ui.page == Page::Videos && v.folder == visitPath;
+		default: return false;
+		}
+	}
+
+	bool Ui::Search::comeBack(Player& p)
+	{
+		(void)p;
+		if (!visiting()) return false;
+		Music& m = *ui.music;
+		Videos& v = *ui.videos;
+		// the page it borrowed goes back to the view it was on, at its top
+		if (visit == VISIT_VIDEO_FOLDER)
+		{
+			v.folder.clear();
+			v.view = visitView;
+			v.cursor = 0;
+			v.list.top();
+		}
+		else
+		{
+			m.albumAt = m.artistAt = -1;
+			m.keyFocus = -1;
+			m.folderAt.clear();
+			m.folderCursors.clear();
+			m.view = visitView;
+			m.cursor = 0;
+			m.list.top();
+		}
+		visit = VISIT_NONE;
+		ui.page = Page::Search;
+		ui.pressedBtn = -1;
+		return true;
 	}
 
 	void Ui::Search::browseFiles(Player& p)
@@ -499,6 +657,11 @@ namespace bp
 			return;
 		}
 		Kit::Result rr;
+		// an album's cover (the record in its sleeve until it is read, or when it has none); an artist's own record
+		if (row.art && row.sec == lay::SS_ALBUMS)
+			rr.art = [this, path = row.path, key = row.text](Rect r) { ui.drawSongArt(path, key, r, 5); };
+		else if (row.art)
+			rr.art = [this, key = row.text](Rect r) { ui.kit->artPlaceholder(r, key, r.w / 2, true); };
 		rr.glyph = row.glyph;
 		rr.name = row.text;
 		rr.note = row.note;
@@ -592,9 +755,9 @@ namespace bp
 		spec.view = l.list;
 		spec.rowH = ROW_PITCH;
 		spec.count = (int)rows.size();
-		spec.key = [shown, sel, pressed](int i) {
+		spec.key = [shown, sel, pressed, art = ui.artSerial](int i) {
 			const Row& r = (*shown)[i];
-			return std::to_string((int)r.kind) + "|" + r.text + "|" + r.note + "|" + r.pill + "|" +
+			return std::to_string((int)r.kind) + (r.art ? "a" + std::to_string(art) + r.path : std::string()) + "|" + r.text + "|" + r.note + "|" + r.pill + "|" +
 				std::to_string(r.matchAt) + "," + std::to_string(r.matchLen) + "," + std::to_string(r.count) + "," +
 				std::to_string(i == sel) + std::to_string(i == pressed);
 		};
@@ -609,7 +772,8 @@ namespace bp
 		snprintf(b, sizeof b, "|sr%d,%d,%d,%d,%d,%d,%d,%d,%d,%d|", (int)backPage, (int)typing, cursor, (int)fingerMoved, kbCursor,
 			kbPressed, pad.layer * 2 + pad.shift, pressRow * 10 + pressEmpty, tab, pressTab);
 		std::string s = b;
-		for (int t = T_MUSIC; t < TABS; t++) s += std::to_string(found[t].size()) + ",";	// the tabs' counts
+		for (int t = T_MUSIC; t < TABS; t++) s += std::to_string(foundCount(t)) + ",";	// the tabs' counts
+		s += std::to_string(ui.artSerial) + ",";	// (an album's cover arrived)
 		s += query + "|" + builtQuery + "|" + std::to_string(rows.size()) + "|" + std::to_string(builtGen);
 		for (auto& q : recent) s += "|r" + q;
 		if (typing) s += std::string("|k") + std::to_string((SDL_GetTicks() - kbSince) % 1060 < 530) + edit.text;

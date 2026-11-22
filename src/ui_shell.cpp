@@ -340,6 +340,7 @@ namespace bp
 
 	void Ui::Shell::openSection(Section s, Player& p)
 	{
+		ui.search->visit = Ui::Search::VISIT_NONE;	// (the rail: a page Search opened is no longer its visit)
 		// the section shown, tapped again: its home, or its top (Search is a tool: every cell leaves it)
 		if (ui.page != Page::Search && s == section(p))
 		{

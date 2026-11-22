@@ -55,7 +55,7 @@ export const store = {
 	// where picks go: 'browser' when the Session's pref is this tab (browser-player.js onSession), else 'handheld'
 	target: 'handheld',
 	toasts: [], modals: [], lightbox: null, pick: null, sel: new Set(), upload: { items: [], paused: false }, pls: null, upDone: 0,
-	help: false, dropping: false, fsTick: 0, plTick: 0, route: parseRoute(), fresh: {}, media: null,
+	help: false, dropping: false, searchText: null, searchTab: 'all', libGoto: null, fsTick: 0, plTick: 0, route: parseRoute(), fresh: {}, media: null,
 };
 const listeners = new Set();
 let version = 0;
@@ -81,6 +81,8 @@ export function parseRoute() {
 	if (a === 'playlists') return { page: 'playlists', id: tail };
 	if (a === 'manga') return { page: 'manga', sub: tail || 'library' };
 	if (a === 'playing') return { page: 'playing' };
+	// Search library: #/search?q=<the query> (Back from a page a result opened lands on the results)
+	if (/^search(\?|$)/.test(a)) return { page: 'search', q: h.indexOf('?') >= 0 ? (new URLSearchParams(h.slice(h.indexOf('?') + 1)).get('q') || '').trim() : '' };
 	// a book read here: #/books/read?p=<vpath> (the browser's Back leaves the reader; a reload opens it again)
 	if (a === 'books' && rest[0] && rest[0].startsWith('read') && h.indexOf('?') >= 0) return { page: 'books', read: new URLSearchParams(h.slice(h.indexOf('?') + 1)).get('p') || '' };
 	if (a === 'videos' || a === 'music' || a === 'books') return { page: a };

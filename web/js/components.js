@@ -224,7 +224,8 @@ export function AppMenu() {
 	const wide = useMedia(Q_WIDE);
 	if (wide) return null;
 	// (the mark and the button together at the header's end: the header spreads its children apart)
-	return html`<span class="hdr-end"><${IncognitoMark} /><button class="ib" aria-label="Your handheld" aria-haspopup="dialog" onClick=${appMenu}><${Icon} n="card" k=${2} /></button></span>`;
+	// (a phone has no sidebar: Search library's way in is here, on every page's header)
+	return html`<span class="hdr-end"><${IncognitoMark} />${store.route.page !== 'search' && html`<button class="ib" aria-label="Search library" title="Search library" onClick=${() => { location.hash = '#/search'; }}><${Icon} n="search" k=${2} /></button>`}<button class="ib" aria-label="Your handheld" aria-haspopup="dialog" onClick=${appMenu}><${Icon} n="card" k=${2} /></button></span>`;
 }
 
 /* the handheld, drawn small: two panels, the bottom one showing the QR (sign-in) or dark (the down screen) */

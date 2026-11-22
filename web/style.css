@@ -1344,3 +1344,21 @@ input[type=range] { touch-action: pan-y; }
 .rd-ch.cur { background: var(--btn); border-color: var(--yellow); color: var(--yellow); }
 @media (hover: hover) { .rd-ch:hover:not(.cur) { background: var(--raised); } }
 .rd-pagesview .rd-box { color: var(--cream); }
+
+/* ================= Search library (js/search.js) ================= */
+/* the field: the sidebar's on a computer; the page's own on a phone and a tablet (whose sidebar has the magnifier) */
+.side .sfind { display: none; }
+.search .sfind.inpage { flex: none; }
+.sr-head { display: flex; align-items: baseline; gap: 8px; margin: var(--s5) 0 var(--s2); scroll-margin-top: var(--s4); }
+.sr-head .num { font: 400 13px var(--pixel); }
+.search section:first-of-type .sr-head { margin-top: var(--s2); }
+.search section + section > .listbox:first-child { margin-top: var(--s4); }
+.sr-more { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 44px; padding: 0 var(--s4); font: 400 14px/1 var(--pixel); color: var(--yellow); text-align: left; border-top: var(--bw) solid var(--e-surface); }
+.sr-more.dim { color: var(--dim); }
+@media (hover: hover) { button.sr-more:hover { background: var(--raised); } }
+.tile.round, .tile.round > * { border-radius: 50%; }
+@media (min-width: 1100px) and (min-height: 521px), (min-width: 1100px) and (hover: hover) {
+	.side .sfind { display: flex; flex: none; margin: 0 0 10px; }
+	.side .sfind .field { background: var(--bg); height: 40px; font-size: 15px; }
+	.side .nav.search-nav, .search .sfind.inpage { display: none; }
+}
