@@ -3232,6 +3232,26 @@ static void testMangaUiLogic()
 	CHECK_EQ(mangaResume(m).chapter, 1);
 	CHECK_EQ(mangaResume(m).page, 4);
 
+	// Sources › Available's search: every word, in the name, the language (its code or its name) or the repository's
+	// name; capitals apart; no words is no search
+	CHECK_EQ(sourceSearchMatch("", {"MangaDex"}), true);
+	CHECK_EQ(sourceSearchMatch("   ", {"MangaDex"}), true);
+	CHECK_EQ(sourceSearchMatch("dex", {"MangaDex"}), true);
+	CHECK_EQ(sourceSearchMatch("MANGAD", {"MangaDex"}), true);
+	CHECK_EQ(sourceSearchMatch("plus", {"MangaDex"}), false);
+	CHECK_EQ(sourceSearchMatch("manga  japanese", {"MangaDex", mangaLangName("ja")}), true);
+	CHECK_EQ(sourceSearchMatch("manga korean", {"MangaDex", mangaLangName("ja")}), false);
+	CHECK_EQ(sourceListed("comics", "", "Public domain comics", "en"), true);
+	CHECK_EQ(sourceListed("english", "", "Public domain comics", "en"), true);
+	CHECK_EQ(sourceListed("test repo", "", "Public domain comics", "en", "Banana Test Repository"), true);
+	// Filter's languages and Search both apply: the words found, yet the language not kept, is not listed
+	CHECK_EQ(sourceListed("comics", "en,ja", "Public domain comics", "en"), true);
+	CHECK_EQ(sourceListed("comics", "ja", "Public domain comics", "en"), false);
+	CHECK_EQ(sourceListed("strips", "en", "Public domain comics", "en"), false);
+	CHECK_EQ(sourceListed("comics", "all", "Public domain comics", "multi"), true);	// (a multi-language source is the choice "all")
+	CHECK_EQ(mangaLangKept("", "ko"), true);
+	CHECK_EQ(mangaLangKept("en", "ko"), false);
+
 	// how old a History row reads
 	const int64_t t = 2000000000;	// (big enough that a year before it is still a time)
 	CHECK_EQ(mangaAgo(0, t), std::string(""));
@@ -12355,6 +12375,38 @@ static void testKitLayout()
 		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[2].x + 1, tp.strip.tab[2].y + 1), 2);
 		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[1].x + tp.strip.tab[1].w + 2, tp.strip.tab[1].y + 10), -1);
 		CHECK_EQ(tabAt(tp.strip, tp.strip.tab[0].x + 5, tp.content.y + 5), -1);
+		// Sources › Available: Search and Filter at the strip's right end, clear of the two tabs and their caps
+		// (the widths the handheld's font gives and wider), each a finger tall, apart, inside the strip
+		for (int grow = 0; grow <= 160; grow += 8)
+		{
+			TabPage sp = tabPage(sh.body, {96 + grow, 124 + grow}, 27);
+			auto keys = tabKeys(sp, 2);
+			int tabsEnd = sp.strip.right.x + sp.strip.right.w;
+			if (keys.empty()) { CHECK(tabsEnd + TAB_GAP + 2 * TAB_KEY_W + TAB_GAP > sp.inner.x + sp.inner.w); continue; }
+			CHECK_EQ((int)keys.size(), 2);
+			CHECK(keys[0].x >= tabsEnd + TAB_GAP);
+			CHECK(keys[0].x + keys[0].w + TAB_GAP <= keys[1].x);
+			CHECK_EQ(keys[1].x + keys[1].w, sp.inner.x + sp.inner.w);
+			for (const Box& kb : keys)
+			{
+				CHECK_EQ(kb.h, 44);
+				CHECK(kb.y >= sp.strip.area.y && kb.y + kb.h <= sp.strip.area.y + sp.strip.area.h);
+				CHECK_EQ(tabAt(sp.strip, kb.x + 1, kb.y + 1), -1);
+				CHECK_EQ(tabAt(sp.strip, kb.x + kb.w - 1, kb.y + kb.h - 1), -1);
+			}
+		}
+		CHECK_EQ((int)tabKeys(tabPage(sh.body, {96, 124}, 27), 2).size(), 2);	// Available · Repositories: they show
+		// the search line: over the rows, Clear a finger's size at its right and off the words, the rows under it
+		{
+			TabPage sp = tabPage(sh.body, {96, 124}, 27);
+			SearchLine sl = searchLine(sp);
+			CHECK_EQ(sl.line.y, sp.content.y);
+			CHECK(sl.clear.h >= 44 && sl.clear.w >= 44);
+			CHECK(sl.text.x + sl.text.w <= sl.clear.x);
+			CHECK_EQ(sl.clear.x + sl.clear.w, sp.content.x + sp.content.w);
+			CHECK(sl.rows.y >= sl.line.y + sl.line.h);
+			CHECK_EQ(sl.rows.y + sl.rows.h, sp.content.y + sp.content.h);
+		}
 		// Manga's Library under the tabs: five covers across fit the inner width, two rows the content's height
 		AlbumGrid cg = coverGrid(tp.content, 12, 0);
 		CHECK(cg.cell[4].x + cg.cell[4].w <= tp.content.x + tp.content.w);

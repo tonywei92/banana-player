@@ -109,6 +109,28 @@ namespace bp
 			return t;
 		}
 
+		std::vector<Box> tabKeys(const TabPage& t, int n)
+		{
+			std::vector<Box> keys;
+			const Box& area = t.strip.area;
+			int x = area.x + area.w - n * TAB_KEY_W - (n - 1) * TAB_GAP;
+			if (n <= 0 || x < t.strip.right.x + t.strip.right.w + TAB_GAP) return keys;
+			for (int i = 0; i < n; i++) keys.push_back({x + i * (TAB_KEY_W + TAB_GAP), area.y, TAB_KEY_W, TAB_H});
+			return keys;
+		}
+
+		SearchLine searchLine(const TabPage& t)
+		{
+			SearchLine s;
+			const Box& c = t.content;
+			s.line = {c.x, c.y, c.w, SEARCH_LINE_H};
+			s.clear = {c.x + c.w - SEARCH_CLEAR_W, c.y, SEARCH_CLEAR_W, SEARCH_LINE_H};
+			s.text = {c.x, c.y, std::max(0, c.w - SEARCH_CLEAR_W - TAB_GAP), SEARCH_LINE_H};
+			int top = c.y + SEARCH_LINE_H + SP6;
+			s.rows = {c.x, top, c.w, std::max(0, c.y + c.h - top)};
+			return s;
+		}
+
 		int Sections::headRow(int k) const { return k < 0 || k >= (int)before.size() ? -1 : before[k] + k; }
 
 		bool Sections::isHead(int r) const

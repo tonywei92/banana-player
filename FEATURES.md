@@ -1624,6 +1624,13 @@ hosted pages are read from `127.0.0.1` through the same page cache as any other 
   leaves them installed, **Cancel** goes back). The last row, **Add repository…**, types the address on the keyboard
   (it starts with `https://`); the repository's index is fetched and checked, and its sources show under
   **Available**.
+- **Search** on Available (**L3**, or the magnifier key beside **Filter** at the right of the tabs): type a few
+  letters on the keyboard, which says how many sources match as you go (*12 of 340 sources*); **Done** narrows the
+  list. Every word has to be in a source's name, its language (`ja` or *Japanese*) or its repository's name; capitals
+  don't matter. A line over the list shows the words and how many were found, with **Clear** (or **B**; the next
+  **B** leaves the page); a touch on the words types them again. **Search and Filter both apply**: the languages
+  kept and **Installed only** narrow what is searched, and each key is lit while it narrows the list. Nothing found
+  reads *No sources found*. The search lasts for the visit.
 - **Available**: what your repositories offer that you haven't installed; **A** installs one (**Installing…**, then a
   note), checked against the repository's index as it goes. Sources a repository marks as adult are left out while
   **Adult sources** is **Hidden** (Manga settings), here and in Browse.

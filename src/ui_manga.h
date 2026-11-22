@@ -677,6 +677,27 @@ namespace bp
 		std::vector<std::string> mstAvLangs;	// the languages the repositories offer, when the list was opened
 		static constexpr int MST_AV_SHOWN = lay::LIST_ROWS;
 		bool mangaLangShown(const Player& p, const std::string& lang) const;
+		// Search (L3 on Available, the key beside Filter's): the words typed narrow the list by a source's name,
+		// its language and where it comes from; Filter's choices apply as well. "" none.
+		std::string mstAvQuery;
+		// what narrows Available: Filter's languages and Installed only, the adult setting, Search's words
+		struct AvFilter
+		{
+			std::string langs, query;
+			bool adult = false, installedOnly = false;
+		};
+		AvFilter mangaAvFilter(const Player& p) const;
+		AvFilter mstAvTyping;	// the list the keyboard counts against while Search is typed (it has no Player)
+		std::vector<MangaRepos::InstalledSource> mangaAvInstalled(const AvFilter& f) const;	// the installed Lua rows
+		std::vector<MangaRepos::AvailableSource> mangaAvLua(const AvFilter& f) const;			// the Lua rows to install
+		int mangaJavaAvCount(const AvFilter& f) const;	// the extensions' rows
+		int mangaAvCount(const AvFilter& f) const;		// all three
+		void mangaAvSearchOpen(const Player& p);			// the keyboard, the words there ready
+		void mangaAvSearchTyped(const std::string& text);	// its Done
+		std::string mangaAvSearchNote(const std::string& typed) const;	// "12 of 340 sources", under its keys
+		void mangaAvSearchClear();
+		void drawMangaAvSearch(const Player& p, const lay::TabPage& tp, int found);	// the two keys, the search line
+		bool mangaAvSearchPointer(int x, int y, Player& p);	// a touch on them (true: taken)
 		std::string mangaLangsSummary(const Player& p) const;
 		void mangaAvMenuOpen(Player& p);
 		bool mangaAvMenuKey(Button b, Player& p);

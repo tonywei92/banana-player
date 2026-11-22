@@ -2406,7 +2406,9 @@ namespace bp
 		if (ui.page == Page::MangaSources)
 		{
 			// (the note that repositories are yours keeps two lines at the foot)
-			lay::Box c = mangaSourcesTabPage(p).content;
+			// (and Available's search line, while there is a search, sits over its rows)
+			lay::TabPage tp = mangaSourcesTabPage(p);
+			lay::Box c = mstTab == MST_AVAILABLE && !mstAvQuery.empty() ? lay::searchLine(tp).rows : tp.content;
 			c.h = std::max(0, c.h - 44);
 			return c;
 		}
