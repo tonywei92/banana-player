@@ -49,12 +49,18 @@ async function chooseCard(kind, cards) {
 export async function uploadToSection(kind, cards) {
 	const card = await chooseCard(kind, cards);
 	if (!card) return;
+	const mode = await ask('Upload ' + NAMES[kind], 'Pick files, or a whole folder (it keeps its folders, so an album stays an album).',
+		{ buttons: [{ label: 'Cancel', value: null }, { label: 'Folder', value: 'dir' }, { label: 'Files', value: 'files', cls: 'primary', focus: true }] });
+	if (!mode) return;
 	const inp = document.createElement('input');
 	inp.type = 'file';
-	inp.multiple = true;
+	if (mode === 'dir') inp.webkitdirectory = true; else inp.multiple = true;
 	inp.onchange = async e => {
-		const ents = entriesFromInput(e.target.files);
-		if (!ents.length) return;
+		const all = entriesFromInput(e.target.files);
+		// a folder: only the section's kinds go, the rest is counted
+		const ents = mode === 'dir' ? all.filter(x => KINDS[kind].test(x.file.name)) : all;
+		if (mode === 'dir' && ents.length < all.length) toast('Skipped ' + (all.length - ents.length) + ' file(s) that are not ' + KIND_HELP[kind]);
+		if (!ents.length) return mode === 'dir' ? toast('No ' + KIND_HELP[kind] + ' in that folder') : undefined;
 		try {
 			const r = await post('/api/library/folder', { kind, card: card.card });
 			startUpload(ents, r.p);
