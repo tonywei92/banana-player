@@ -3282,6 +3282,19 @@ static void testMangaBookSpreadRtl()
 	CHECK_EQ(mangaBookEarlierOnTop(MANGA_BOOK_LEFT, false) != mangaBookEarlierOnTop(MANGA_BOOK_LEFT, true), true);
 }
 
+static void testMangaChapterTag()
+{
+	// the page tag's chapter: its number, one read from the title, else the title cut short; none without chapters
+	CHECK_EQ(mangaChapterTag(12, "Whatever", 30), std::string("Ch. 12"));
+	CHECK_EQ(mangaChapterTag(12.5, "", 30), std::string("Ch. 12.5"));
+	CHECK_EQ(mangaChapterTag(-1, "Chapter 7", 9), std::string("Ch. 7"));
+	CHECK_EQ(mangaChapterTag(0, "Vol.2 Ch.15.5 - The road", 9), std::string("Ch. 15.5"));
+	CHECK_EQ(mangaChapterTag(-1, "Prologue", 9), std::string("Prologue"));
+	CHECK_EQ(mangaChapterTag(-1, "A very long chapter name indeed", 9), std::string("A very long ch\xE2\x80\xA6"));
+	CHECK_EQ(mangaChapterTag(-1, "Chapter 7", 0), std::string(""));
+	CHECK_EQ(mangaChapterTag(-1, "Bunny", 1), std::string("Bunny"));
+}
+
 static void testMangaBookSpreadKnownLate()
 {
 	// sizes unknown at the open: all normal, reopening at page 5 shows 4-5
@@ -17004,6 +17017,7 @@ int main()
 	testMangaBookSpreadFirstMiddleLast();
 	testMangaBookSpreadsInARowAndOddCounts();
 	testMangaBookSpreadRtl();
+	testMangaChapterTag();
 	testMangaBookSpreadKnownLate();
 	testUpdaterDownload();
 	testVideoCache();

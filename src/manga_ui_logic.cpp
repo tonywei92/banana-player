@@ -2,6 +2,8 @@
 #include <algorithm>
 #include "settings.h"
 #include <cstdio>
+#include <cstring>
+#include <cctype>
 
 namespace bp
 {
@@ -278,5 +280,43 @@ namespace bp
 		const std::string& from)
 	{
 		return mangaLangKept(chosenLangs, lang) && sourceSearchMatch(query, {name, mangaLangName(lang), from});
+	}
+
+	std::string mangaChapterTag(double number, const std::string& title, int total)
+	{
+		if (total <= 0) return "";
+		auto numberText = [](double n) {
+			char b[32];
+			if (n == (double)(long long)n) snprintf(b, sizeof b, "%lld", (long long)n);
+			else snprintf(b, sizeof b, "%g", n);
+			return std::string(b);
+		};
+		if (number > 0) return "Ch. " + numberText(number);
+		// "Chapter 12", "Ch. 12", "ch12.5", "Chap 3": the word, then the number
+		std::string low;
+		for (char c : title) low += (char)std::tolower((unsigned char)c);
+		for (const char* word : {"chapter", "chap", "ch"})
+		{
+			size_t at = low.find(word);
+			if (at == std::string::npos || (at > 0 && std::isalpha((unsigned char)low[at - 1]))) continue;
+			size_t i = at + strlen(word);
+			while (i < low.size() && (low[i] == '.' || low[i] == ' ')) i++;
+			size_t j = i;
+			while (j < low.size() && (std::isdigit((unsigned char)low[j]) || (low[j] == '.' && j > i))) j++;
+			while (j > i && low[j - 1] == '.') j--;
+			if (j > i) return "Ch. " + numberText(atof(low.substr(i, j - i).c_str()));
+		}
+		if (title.empty()) return "";
+		// about 14 characters: cut at a character's start (UTF-8), never inside one
+		const size_t keep = 14;
+		size_t chars = 0, i = 0;
+		while (i < title.size() && chars < keep)
+		{
+			i++;
+			while (i < title.size() && ((unsigned char)title[i] & 0xC0) == 0x80) i++;
+			chars++;
+		}
+		if (i >= title.size()) return title;
+		return title.substr(0, i) + "\xE2\x80\xA6";
 	}
 }

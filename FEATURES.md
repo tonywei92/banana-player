@@ -855,8 +855,8 @@ it, and a **More** key (as **X**). A comic (CBZ, CBR) from Files reads the same 
   **Hinge gap** (in Fullscreen: the part of the page skipped under the hinge, the Manga reader's setting; the pages
   above move as you change it), **Page fit**, **Zoom**, **Turn** (a quarter at a time, for a scan on its side; Single page only) and **Light & filter**.
   **UP/DOWN** choose, **LEFT/RIGHT** change it at once (the page above follows), **START** or **B** close (**SELECT** there goes Fullscreen); a tap on a
-  choice or a side of a value changes it. The layout and the fit are kept for the next PDF. Going Fullscreen closes the
-  sheet; there **SELECT** or **B** goes back to one screen and **START** opens View again.
+  choice or a side of a value changes it. The layout and the fit are kept for the next PDF. Going Fullscreen keeps the
+  sheet open over the page; there **SELECT** or **B** goes back to one screen and **START** opens View again.
 - **More** (**X**): a browser's page while it differs from this one, **Info**, **Show in folder**, **Light & filter**
   and **Reading settings**.
 
@@ -1703,7 +1703,9 @@ handheld*).
 *Page 4 of 12* and the reading mode under it, the page slider, the big pad and a row of six keys (the chapter before,
 **Pages**, **View**, **Fullscreen**, **Light**, the chapter after). The pad is where the finger works: *Swipe here to turn
 the page* between two turn marks (or *Drag to scroll* in **Vertical scroll**), a line along its foot naming double-tap, and
-*Loading…* at its top while a page is decoded.
+*Loading…* at its top while a page is decoded. In fullscreen and Book the page tag after a turn, and the navigation's page
+line, name the chapter first, as quietly: *Ch. 1 · 12 / 30* (the chapter's number, else its title cut short; a comic
+opened from Files has none).
 
 | Button | What it does |
 |---|---|

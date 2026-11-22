@@ -557,6 +557,21 @@ namespace bp
 		return s ? s->chapters[index].title : "";
 	}
 
+	std::string Ui::Manga::mangaReadChapterTag() const
+	{
+		int ci = mangaReadChapterIndex(), total = mangaReadChapterTotal();
+		double number = -1;
+		const std::string& id = ui.pageReader->mangaReadSeriesId;
+		if (ci >= 0 && ci < total)
+		{
+			if (isServerId(id)) number = mangaSrvChapters[ci].number;
+			else if (isSourceId(id)) number = mangaReadSrcChapters[ci].number;
+			else if (const LocalSeries* s = mangaLocalSeries(id)) number = s->chapters[ci].number;
+		}
+		std::string title = ci >= 0 ? mangaReadChapterName(ci) : ui.pageReader->mangaReadChapterTitle;
+		return mangaChapterTag(number, title, ci >= 0 ? total : 0);
+	}
+
 	float Ui::Manga::mangaWithinFor(const std::string& chapterId, int page) const
 	{
 		// the place inside the page, only when it opens at the page that place was kept for
@@ -3367,7 +3382,8 @@ namespace bp
 	{
 		int a = ui.pageReader->readerStatus.page + 1, n = ui.pageReader->readerStatus.pages;
 		int b = std::min(a + std::max(1, ui.pageReader->readerStatus.bookCount) - 1, n);
-		std::string tag = (a == b ? std::to_string(a) : std::to_string(a) + "\xE2\x80\x93" + std::to_string(b)) + " / " + std::to_string(n);
+		std::string ch = mangaReadChapterTag();
+		std::string tag = (ch.empty() ? "" : ch + " \xC2\xB7 ") + (a == b ? std::to_string(a) : std::to_string(a) + "\xE2\x80\x93" + std::to_string(b)) + " / " + std::to_string(n);
 		if (ui.pageReader->readerStatus.atEnd)
 		{
 			int ci = mangaReadChapterIndex();
@@ -3413,6 +3429,7 @@ namespace bp
 		n.title = mangaTitle(ui.pageReader->mangaReadSeriesId);
 		n.chapters = true;
 		n.slider = SL_MANGA;
+		n.chapter = mangaReadChapterTag();
 		for (int id = 0; id < PageReader::FN_KEYS; id++) n.off[id] = mangaFullNavOff(id);
 		n.pressed = mangaCtrlPressed;
 		n.caps = p.settings.buttonHotkeys;

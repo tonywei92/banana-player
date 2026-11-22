@@ -95,4 +95,10 @@ namespace bp
 	// "Japanese") or where it comes from (a repository's name)
 	bool sourceListed(const std::string& query, const std::string& chosenLangs, const std::string& name, const std::string& lang,
 		const std::string& from = "");
+
+	// ---- the reader's page tag ----
+	// the chapter as the page tag names it, before the page numbers: "Ch. 12" (its number, else one read from a title
+	// such as "Chapter 12" / "Ch.12.5"), else the title cut to about 14 characters with an ellipsis; "" with no chapters
+	// (total 0: a comic opened from Files)
+	std::string mangaChapterTag(double number, const std::string& title, int total);
 }

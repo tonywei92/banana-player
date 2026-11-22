@@ -129,6 +129,7 @@ namespace bp
 			bool off[FN_KEYS] = {};
 			int pressed = -1;
 			bool caps = true;	// Button hotkeys
+			std::string chapter;	// before the page line, "Ch. 12" ("": a file alone)
 		};
 		static Rect fullNavKey(int id, bool chapters);
 		static int fullNavKeyAt(int x, int y, bool chapters);	// -1: none there

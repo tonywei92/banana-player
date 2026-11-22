@@ -181,7 +181,9 @@ namespace bp
 		// a thin page tag for a moment after a change
 		else if (now < mfTagUntil && readerStatus.pages > 0)
 		{
-			std::string tag = std::to_string(readerStatus.page + 1) + " / " + std::to_string(readerStatus.pages);
+			// (the chapter first, quiet as the numbers: "Ch. 1 · 12 / 30"; a comic from Files has none)
+			std::string ch = ui.page == Page::MangaRead ? ui.manga->mangaReadChapterTag() : "";
+			std::string tag = (ch.empty() ? "" : ch + " \xC2\xB7 ") + std::to_string(readerStatus.page + 1) + " / " + std::to_string(readerStatus.pages);
 			ui.kit->pill(W - 12, H - 23, tag, Kit::Pill::Fact);
 		}
 		if (readerStatus.failedHere) drawMangaRetry(true);
@@ -217,7 +219,7 @@ namespace bp
 		int pages = readerStatus.pages, at = held ? (int)ui.slide.value : readerStatus.page;
 		ui.drawTextMid(n.title, F_P16, TEXT, l.title.x, l.title.y + l.title.h / 2, l.title.w);
 		if (pages > 0)
-			ui.drawTextMid("Page " + std::to_string(at + 1) + " of " + std::to_string(pages), F_SMALL, DIM, l.page.x + l.page.w, l.page.y + l.page.h / 2, l.page.w, 1);
+			ui.drawTextMid((n.chapter.empty() ? "" : n.chapter + " \xC2\xB7 ") + "Page " + std::to_string(at + 1) + " of " + std::to_string(pages), F_SMALL, DIM, l.page.x + l.page.w, l.page.y + l.page.h / 2, l.page.w, 1);
 		k.progress(l.track, ui.slideShare(n.slider, 0, pages > 1 ? at / (double)(pages - 1) : 0), {}, held, held ? "Page " + std::to_string(at + 1) : "");
 		static const Glyph* const GLYPHS[FN_KEYS] = {&G_PREV, &G_LEFT, &G_RIGHT, &G_NEXT, &G_BLOCKS, &G_EYE, &G_FULL};
 		static const char* const LABELS[FN_KEYS] = {"Chapter", "Page", "Page", "Chapter", "Pages", "View", "One screen"};

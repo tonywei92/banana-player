@@ -897,6 +897,7 @@ namespace bp
 		void mangaSourceChapterStep(int dir, Player& p);
 		int mangaReadChapterTotal() const;
 		std::string mangaReadChapterName(int index) const;	// that chapter's title ("": not known)
+		std::string mangaReadChapterTag() const;	// the page tag's chapter, "Ch. 12" ("": no chapters; mangaChapterTag)
 		std::string mangaNetSignature() const;			// this part of the page for signature()
 		// ---- the network folders (ui_manga_netfolders.cpp) ----
 		// Browse lists the saved connections; A on one lists its folders through the worker. A folder laid out as a
