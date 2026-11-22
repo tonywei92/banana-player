@@ -42,8 +42,8 @@ namespace bp
 		}
 	}
 
-	// How the chapter is held and read, one sheet. Layout first (One screen, Fullscreen, Book: the sheet closes when it
-	// changes, the screen under it having become something else), then what means something in that layout: Book has
+	// How the chapter is held and read, one sheet. Layout first (One screen, Fullscreen, Book: the sheet stays open when
+	// it changes, upright over the pages in every layout), then what means something in that layout: Book has
 	// Hold and no fit or zoom (a whole page a screen); the others Page fit, Zoom and the Hinge gap (a fullscreen strip's:
 	// dimmed with its reason otherwise). UP / DOWN choose a row, LEFT / RIGHT change it at once (the pages follow), A
 	// steps it on, START or B close, SELECT is still Fullscreen; a tap on a chip or a stepper's side changes it, outside
@@ -80,8 +80,8 @@ namespace bp
 		void setLayout(int to, Player& p)
 		{
 			if (to == manga().mangaViewNow()) return;
+			// the sheet stays: its rows follow the new layout (START or B closes it)
 			manga().mangaSetView(to, p);
-			close();
 		}
 		void change(int row, int dir, Player& p)
 		{

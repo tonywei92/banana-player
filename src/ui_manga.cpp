@@ -3210,9 +3210,9 @@ namespace bp
 	{
 		Uint32 now = SDL_GetTicks();
 		bool rtl = ui.pageReader->readerStatus.mode == MANGA_RTL;
-		// START shows and hides the sideways bar; any other key acts on the spread and puts the bar away
-		if (b == Button::Start) mangaBookBar = !mangaBookBar;
-		else mangaBookBar = false;
+		// every key puts the sideways bar away (a tap in the middle shows it); START is View and X More, as in the other
+		// layouts, both upright sheets over the pages
+		mangaBookBar = false;
 		// UP and DOWN point along the spread as it is held; LEFT and RIGHT across it, where there is nothing to do
 		if (b == Button::Up || b == Button::Down)
 		{
@@ -3226,7 +3226,7 @@ namespace bp
 		case Button::R: ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Page, 1, (int64_t)now}); ui.pageReader->mfTagUntil = now + 1500; break;
 		case Button::A: if (ui.pageReader->readerStatus.failedHere) ui.pageReader->mangaRetry(); break;
 		// the two directions only: Book reads a page at a time
-		case Button::X: mangaSetMode(rtl ? MANGA_LTR : MANGA_RTL, p); ui.pageReader->mfTagUntil = now + 1500; break;
+		case Button::X: mangaOpenReadMore(); break;
 		case Button::L2: mangaChapterStep(-1, p); break;
 		case Button::R2: mangaChapterStep(1, p); break;
 		// SELECT: fullscreen, the usual way up (Book goes)
@@ -3234,7 +3234,7 @@ namespace bp
 			mangaSetBook(MANGA_BOOK_OFF, p);
 			if (!ui.pageReader->readerStatus.fullscreen) mangaFullscreen(true, p);
 			break;
-		case Button::Start: break;	// (the sideways bar, above)
+		case Button::Start: mangaOpenView(); break;
 		case Button::Y: ui.pageReader->mangaPagesOpen(p); break;
 		// B goes back to the chapters; Book stays the series' way to read (the menu's View leaves it)
 		case Button::B: mangaCloseReader(); break;
@@ -3258,13 +3258,12 @@ namespace bp
 		}
 		s.note = pages > 0 ? "of " + std::to_string(pages) : "";
 		s.keys[0] = {&G_PAGE, "Pages", "Y", ""};
-		// (View has no button here: START is this bar, and SELECT is Fullscreen)
-		s.keys[1] = {&G_EYE, "View", "", ""};
+		s.keys[1] = {&G_EYE, "View", "START", ""};
 		s.keys[2] = {&G_SUN, "Light", "", ui.lightNote(p)};
 		s.keys[3] = {&G_NEXT, "Next chapter", "R2", ""};
 		s.leave = "One screen";
 		s.leaveKey = "B";
-		s.hints = {{"UP/DOWN", "Turn"}, {"A", "Next"}, {"START", "Close"}};
+		s.hints = {{"UP/DOWN", "Turn"}, {"L/R", "One page"}, {"X", "More"}};
 		s.topLeft = ui.pageReader->readerStatus.book == MANGA_BOOK_LEFT;
 		s.pressed = mangaBookBarPressed;
 		KitNew::bookBar(*ui.kit, b, s);

@@ -868,8 +868,7 @@ namespace bp
 		if (ui.page == Page::DocText && textStatus.book)
 		{
 			// held sideways: UP and DOWN point along the spread (as the manga reader's Book); the shoulders turn too
-			if (b == Button::Start) docBookBar = !docBookBar;
-			else docBookBar = false;	// any other key acts on the page, and the bar goes
+			docBookBar = false;	// every key acts on the page, and the bar goes (a tap in the middle shows it)
 			switch (b)
 			{
 			case Button::Up: docBookTurn(-1, p); break;
@@ -877,8 +876,11 @@ namespace bp
 			case Button::L: textCmds.push_back({TextReader::BookTurn, -1, now}); break;
 			case Button::R: case Button::A: textCmds.push_back({TextReader::BookTurn, 1, now}); break;
 			case Button::X: docMarksOpen(); break;
-			// START: the Book bar, upright as the panel is held (its Text key opens the options)
-			case Button::Start: break;
+			// START: the options, an upright sheet over the pages, as in the scroll
+			case Button::Start:
+				docMenu = DOC_MENU_OPTIONS;
+				docMenuCursor = docMenuScroll = 0;
+				break;
 			// SELECT or B: back to the scroll (B there closes the document)
 			case Button::Select: case Button::B: { Settings s = p.settings; s.txtBook = 0; p.setSettings(s); break; }
 			default: break;
@@ -1304,13 +1306,12 @@ namespace bp
 		if (ci >= 0) s.note = "Chapter " + std::to_string(ci + 1) + " of " + std::to_string((int)textStatus.contents.size());
 		s.share = textStatus.fraction;
 		s.keys[0] = {&G_CHAPTERS, "Contents", "Y", ""};
-		// (Text has no button here: START is this bar, and SELECT goes back to scrolling)
-		s.keys[1] = {&G_PAGE, "Text", "", ""};
+		s.keys[1] = {&G_PAGE, "Text", "START", ""};
 		s.keys[2] = {&G_SUN, "Light", "", ui.lightNote(p)};
 		s.keys[3] = {&G_SEARCH, "Find", "L3", ""};
 		s.leave = "Back to scrolling";
 		s.leaveKey = "B";
-		s.hints = {{"UP/DOWN", "Turn"}, {"A", "On"}, {"START", "Close"}};
+		s.hints = {{"UP/DOWN", "Turn"}, {"A", "On"}, {"X", "Bookmarks"}};
 		s.topLeft = textStatus.book == MANGA_BOOK_LEFT;
 		s.pressed = docBookBarPressed;
 		KitNew::bookBar(*ui.kit, b, s);
@@ -2008,7 +2009,6 @@ namespace bp
 			{
 				int to = std::clamp(docs().pagesLayoutNow() + dir, 0, 2);
 				docs().setPagesLayout(to, p);
-				if (to == 2) close();
 				break;
 			}
 			case ROW_HINGE: ui.settingsPage->changeSetting(settingRow("manga-hinge"), dir, p); break;
@@ -2030,7 +2030,7 @@ namespace bp
 			case Button::Right: change(cursor, 1, p); break;
 			case Button::A:
 				// Layout steps round; the zoom goes to 200% or back, as A on the page
-				if (cursor == ROW_LAYOUT) { int to = (docs().pagesLayoutNow() + 1) % 3; docs().setPagesLayout(to, p); if (to == 2) close(); }
+				if (cursor == ROW_LAYOUT) { int to = (docs().pagesLayoutNow() + 1) % 3; docs().setPagesLayout(to, p); }
 				else if (cursor == ROW_ZOOM) ui.pageReader->mangaZoomToggle();
 				else change(cursor, 1, p);
 				break;
@@ -2059,7 +2059,6 @@ namespace bp
 						if (lay::cell(seg, 3, 6, i).hit(x, y))
 						{
 							docs().setPagesLayout(i, p);
-							if (i == 2) close();
 						}
 				}
 				else if (row == ROW_LIGHT) change(row, 1, p);

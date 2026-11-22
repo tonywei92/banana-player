@@ -793,14 +793,14 @@ a bookmark key: one tap keeps the place (as Bookmarks › Add a bookmark here).
 | **SELECT** | **Book mode** (below) |
 | **X** | **Bookmarks**: add one here, go to one, delete one |
 | **Y** | **Contents** (an EPUB's chapters): **A** goes to one |
-| **START** | **Text options** (the Options button): how the text looks; **START** or **B** closes them. Held sideways, START shows the **Book bar**. (In every reader **SELECT** is the full view and **START** is how it is shown) |
+| **START** | **Text options** (the Options button): how the text looks; **START** or **B** closes them. Held sideways too, upright over the pages (a tap in the middle shows the **Book bar**). (In every reader **SELECT** is the full view and **START** is how it is shown) |
 | **L3** (press the stick) | **Find** (below) |
 | **B** | Back to Files |
 
 **Book mode:** hold the handheld sideways like an open book, and each screen shows a page of text, upright, the text going
 on from the left page to the right one. **UP** and **DOWN** turn the pages the way they point as you hold it (as do **L**
 / **R** and **A**, and one push of the left stick up or down), or swipe along the bottom screen; a tap near either end of the bottom screen turns that way, a tap in
-its middle (or **START**) shows the **Book bar**, upright as the pages are: the title, how far, then **Contents**,
+its middle shows the **Book bar**, upright as the pages are: the title, how far, then **Contents**,
 **Text**, **Light** and **Find**, and **Back to scrolling**. Each page shows how far through you are at its foot. **B** (or **SELECT**) goes back
 to the scroll; **B** there closes the document. Turn it on with **SELECT**, the **Book mode** button, or Text options › **View**; **Hold** says which side the top screen is on (left or
 right), and the D-pad follows it. Going back a page may split the text a little differently than going on did, as the
@@ -1754,7 +1754,8 @@ under a source's grid with **A: Try again** while browsing, or in red where the 
 
 **View (START).** **START** while reading (or the **View** key) opens a sheet over the page (in fullscreen and Book
 too), in the screen's usual orientation. **Layout** is its first row, three chips: **One screen**, **Fullscreen**,
-**Book**; choosing another closes the sheet, the screen under it having changed. Under it: **Reading mode** (Right to
+**Book**; choosing another changes the screen under it and the sheet stays open, its rows following the new layout
+(**START** or **B** closes it). Under it: **Reading mode** (Right to
 left, Left to right or Vertical scroll; Book offers the first two), **Page fit** (dimmed in Vertical scroll: it fits the
 width), **Zoom**, **Hinge gap** (a fullscreen Vertical scroll's: dimmed with its reason otherwise), **Swap Left / Right**
 and **Light & filter**; in Book, **Hold** (**Top screen left** or **Top screen right**) in place of the fit, the zoom and
@@ -1780,8 +1781,9 @@ the middle, and each screen shows one whole page, turned upright as you hold it.
 screen is on (**Top screen left**, the buttons under your right hand, or **Top screen right**). The spread follows the
 reading mode: in Right to left the earlier page is on the right. The D-pad's **UP** and **DOWN** point left and right
 as held and turn the spread (two pages; Swap Left/Right turns that round); **L / R** move one page, to realign a
-spread; **X** switches Right to left and Left to right;
-a swipe along the bottom screen turns the spread and a tap (or **START**) shows the **Book bar**: the spread's page
+spread; **START** opens **View** and **X** **More**, as in the other layouts, upright sheets over the pages (Reading mode in
+View switches the direction);
+a swipe along the bottom screen turns the spread and a tap in the middle shows the **Book bar**: the spread's page
 numbers on its slider, **Pages**, **View**, **Light**, **Next chapter**, and **One screen** to leave Book, upright as the
 pages are. The page numbers show for a moment
 after a turn, at the foot of the spread and upright as held; at the chapter's end they stay and say what comes next

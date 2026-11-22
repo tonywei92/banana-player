@@ -42,9 +42,9 @@ reader's one shortcut.** It replaces "SELECT · View" inside the readers only (l
 | START | View (the sheet) | View (the sheet) | Text (the options) | The sheet is opened rarely; START was already the Manga reader's. START or B closes it. Settings moves to X · More › Reading settings. |
 | L3 | Turn a quarter (Single page) | Turn a quarter (paged) | Find | Fullscreen left L3 for SELECT, so Files' reader takes the Manga reader's Turn; a text has nothing to turn, and Find is its shortcut. |
 | B | Fullscreen: one screen; else close | Close (fullscreen is kept for the next chapter) | Book: back to scrolling; else close | The one difference left: a chapter that opens in Fullscreen must close in one press. |
-| Held sideways (Book) | n/a | START: the Book bar; SELECT: Fullscreen, upright | START: the Book bar; SELECT: back to scrolling | The bar's View / Text keys wear no cap there. |
+| Held sideways (Book) | n/a | START: View, X: More (upright sheets over the pages); a tap in the middle: the Book bar; SELECT: Fullscreen, upright | START: Text options (upright); a tap in the middle: the Book bar; SELECT: back to scrolling | Owner, 2026-11-22: menus stay upright in Book, only the pages turn; START is the same sheet in every layout. The bar's View / Text keys wear START. |
 
 On the way into Fullscreen a line says "SELECT or B: one screen" (Files) / "SELECT: one screen" (Manga) and "tap the
 middle: controls": that tap shows the navigation (`comic-full`: the slider, the steps, Pages, View, One screen), the
 same sheet in both readers. In the View
-sheet SELECT still goes Fullscreen (the sheet closes).
+sheet SELECT still goes Fullscreen (the sheet closes); a Layout change keeps the sheet open.
