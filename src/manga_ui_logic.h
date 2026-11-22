@@ -58,4 +58,18 @@ namespace bp
 	// a finger's swipe on the bottom panel (dy: its movement down the panel, in panel units): as the press that
 	// pulls the next page the way the finger went (a finger moving to the reader's left is the right key's turn)
 	int mangaBookSwipe(int book, bool rtl, bool swap, double dy);
+
+	// ---- Sources › Available: the languages kept (Filter) and the words searched for (Search); both apply ----
+	// "English · en" for "en"; a code it doesn't know as it is
+	std::string mangaLangName(const std::string& code);
+	// "en,ja" as its codes
+	std::vector<std::string> splitLangs(const std::string& s);
+	// a source's language against the ones chosen ("" chosen: every one; "multi" is the choice "all")
+	bool mangaLangKept(const std::string& chosen, const std::string& lang);
+	// every word of `query` (split at spaces) is in one of `fields`, ASCII capitals apart; no words: everything
+	bool sourceSearchMatch(const std::string& query, const std::vector<std::string>& fields);
+	// one row of Available against both: its language kept, and the words in its name, its language ("ja" or
+	// "Japanese") or where it comes from (a repository's name)
+	bool sourceListed(const std::string& query, const std::string& chosenLangs, const std::string& name, const std::string& lang,
+		const std::string& from = "");
 }

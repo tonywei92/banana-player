@@ -68,6 +68,19 @@ namespace bp
 		};
 		// `keyW`: the width of a key kept at the strip's right (Manga settings); the tabs' strip is that much narrower
 		TabPage tabPage(Box body, const std::vector<int>& widths, int capW, int keyW = 0);
+		// `n` compact keys (a glyph and its cap, as Music's Play random) at a tab strip's right end, the last one
+		// flush with the strip's (Sources › Available: Search, Filter). They never touch the tabs: where the right
+		// cap leaves less than TAB_GAP before the first, none is given (the buttons still do their work)
+		constexpr int TAB_KEY_W = 64;
+		std::vector<Box> tabKeys(const TabPage& t, int n);
+		// the line a search in a tab's list shows while it has words: at the content's top, the words and how many
+		// rows match at the left (touched: typed again), Clear at the right; the rows start under it (`rows`)
+		constexpr int SEARCH_LINE_H = 44, SEARCH_CLEAR_W = 96;
+		struct SearchLine
+		{
+			Box line, text, clear, rows;
+		};
+		SearchLine searchLine(const TabPage& t);
 		// the tab under (x, y) in a strip (the gap between two goes to neither): -1 none
 		int tabAt(const Tabs& t, int x, int y);
 		// the List sheet: the grab mark, a header (the tabs and the two controls), `rows` rows 46 tall, the hint bar

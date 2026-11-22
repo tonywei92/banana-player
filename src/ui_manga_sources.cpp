@@ -37,16 +37,122 @@ namespace bp
 	std::vector<MangaRepos::AvailableSource> Ui::Manga::mangaSourcesAvailable(const Player& p) const
 	{
 		if (!mangaNet || !mangaNet->started()) return {};
+		return mangaAvLua(mangaAvFilter(p));
+	}
+
+	// ---- Available narrowed: Filter (X) and Search (L3), both at once ----
+
+	Ui::Manga::AvFilter Ui::Manga::mangaAvFilter(const Player& p) const
+	{
+		AvFilter f;
+		f.langs = p.settings.mangaLangs;
+		f.query = mstAvQuery;
+		f.adult = p.settings.mangaAdult;
+		f.installedOnly = mstInstalledOnly;
+		return f;
+	}
+
+	std::vector<MangaRepos::AvailableSource> Ui::Manga::mangaAvLua(const AvFilter& f) const
+	{
+		if (!mangaNet || !mangaNet->started() || f.installedOnly) return {};
 		std::vector<MangaRepos::AvailableSource> all = mangaNet->repos().available();
-		// Adult sources are the setting's to show: hidden here above all, as the design has it
-		if (!p.settings.mangaAdult)
-			all.erase(std::remove_if(all.begin(), all.end(), [](const MangaRepos::AvailableSource& a) { return a.adult; }),
-				all.end());
-		if (mstInstalledOnly) return {};
-		// and the languages Available keeps (X › Languages)
-		all.erase(std::remove_if(all.begin(), all.end(), [&](const MangaRepos::AvailableSource& a) { return !mangaLangShown(p, a.lang); }),
-			all.end());
+		// Adult sources are the setting's to show: hidden here above all, as the design has it. Then the languages
+		// Available keeps (X › Languages) and Search's words (a name, a language, the repository's name)
+		all.erase(std::remove_if(all.begin(), all.end(), [&](const MangaRepos::AvailableSource& a) {
+			return (a.adult && !f.adult) || !sourceListed(f.query, f.langs, a.name.empty() ? a.id : a.name, a.lang, a.repoName);
+		}), all.end());
 		return all;
+	}
+
+	std::vector<MangaRepos::InstalledSource> Ui::Manga::mangaAvInstalled(const AvFilter& f) const
+	{
+		// (what is installed shows whatever Filter says; Search's words narrow it as the rest)
+		std::vector<MangaRepos::InstalledSource> all = mangaSourcesInstalled();
+		all.erase(std::remove_if(all.begin(), all.end(), [&](const MangaRepos::InstalledSource& s) {
+			return !sourceSearchMatch(f.query, {sourceName(s), mangaLangName(s.lang)});
+		}), all.end());
+		return all;
+	}
+
+	int Ui::Manga::mangaAvCount(const AvFilter& f) const
+	{
+		return (int)mangaAvInstalled(f).size() + mangaJavaAvCount(f) + (int)mangaAvLua(f).size();
+	}
+
+	void Ui::Manga::mangaAvSearchOpen(const Player& p)
+	{
+		mstAvTyping = mangaAvFilter(p);
+		ui.openKeyboard(SRC_SEARCH_FIELD, mstAvQuery);
+	}
+
+	void Ui::Manga::mangaAvSearchTyped(const std::string& text)
+	{
+		// the list changed under its cursor: back to its top
+		mstAvQuery = text;
+		mstCursor[MST_AVAILABLE] = mstScroll[MST_AVAILABLE] = 0;
+		mstLocal++;
+	}
+
+	void Ui::Manga::mangaAvSearchClear()
+	{
+		mangaAvSearchTyped("");
+	}
+
+	std::string Ui::Manga::mangaAvSearchNote(const std::string& typed) const
+	{
+		AvFilter all = mstAvTyping, f = mstAvTyping;
+		all.query.clear();
+		f.query = typed;
+		int total = mangaAvCount(all), found = mangaAvCount(f);
+		if (total == 0) return "";
+		if (found == 0) return "No source has that in its name or language";
+		bool filtered = !f.langs.empty() || f.installedOnly;
+		return std::to_string(found) + " of " + std::to_string(total) + (total == 1 ? " source" : " sources") +
+			(filtered ? " (Filter is on too)" : "");
+	}
+
+	void Ui::Manga::drawMangaAvSearch(const Player& p, const lay::TabPage& tp, int found)
+	{
+		Kit& k = *ui.kit;
+		// Search and Filter at the strip's right end: compact keys (the glyph and its cap), lit while they narrow
+		auto keys = lay::tabKeys(tp, 2);
+		if (keys.size() == 2)
+		{
+			Kit::Key search, filter;
+			search.glyph = &G_SEARCH;
+			search.key = p.settings.buttonHotkeys ? "L3" : "";
+			search.lit = !mstAvQuery.empty();
+			filter.glyph = &G_EQ;
+			filter.key = p.settings.buttonHotkeys ? "X" : "";
+			filter.lit = !p.settings.mangaLangs.empty() || mstInstalledOnly;
+			k.key(keys[0], search);
+			k.key(keys[1], filter);
+		}
+		if (mstAvQuery.empty()) return;
+		// the search line: the words and what they found (a touch types them again), Clear at its right
+		lay::SearchLine sl = lay::searchLine(tp);
+		int midY = sl.text.y + sl.text.h / 2;
+		ui.drawGlyphMid(G_SEARCH, sl.text.x + 10, midY, ACCENT);
+		std::string said = "\xE2\x80\x9C" + mstAvQuery + "\xE2\x80\x9D \xC2\xB7 " +
+			(found == 0 ? "nothing found" : std::to_string(found) + " found");
+		ui.drawTextMid(said, F_I14, TEXT, sl.text.x + 28, midY, sl.text.w - 28);
+		Kit::Key clear;
+		clear.label = "Clear";
+		clear.key = p.settings.buttonHotkeys ? "B" : "";
+		k.key(sl.clear, clear);
+	}
+
+	bool Ui::Manga::mangaAvSearchPointer(int x, int y, Player& p)
+	{
+		lay::TabPage tp = mangaSourcesTabPage(p);
+		auto keys = lay::tabKeys(tp, 2);
+		if (keys.size() == 2 && keys[0].hit(x, y)) { mangaAvSearchOpen(p); return true; }
+		if (keys.size() == 2 && keys[1].hit(x, y)) { mangaAvMenuOpen(p); return true; }
+		if (mstAvQuery.empty()) return false;
+		lay::SearchLine sl = lay::searchLine(tp);
+		if (sl.clear.hit(x, y)) { mangaAvSearchClear(); return true; }
+		if (sl.text.hit(x, y)) { mangaAvSearchOpen(p); return true; }
+		return false;
 	}
 
 	std::vector<MangaRepos::RepoInfo> Ui::Manga::mangaSourcesRepos() const
@@ -80,6 +186,7 @@ namespace bp
 		ui.page = Page::MangaSources;
 		mangaTab = MT_BROWSE;
 		mangaSourcesOpen(p);
+		mstAvQuery.clear();	// (a search is for this visit: the page opens on its whole list)
 		mangaAvFreeze(p);
 	}
 
@@ -87,6 +194,8 @@ namespace bp
 	{
 		// a sheet takes the keys first (B closes it, as it always has)
 		if (mangaSourcesModal()) return mangaSourcesKey(b, p);
+		// a search on Available: B takes it off first (the line's Clear), the next B leaves
+		if (b == Button::B && mstTab == MST_AVAILABLE && !mstAvQuery.empty()) { mangaAvSearchClear(); return false; }
 		if (b == Button::B)
 		{
 			// back to Browse, as a series page returns to the tab it came from
@@ -106,7 +215,7 @@ namespace bp
 		switch (mstTab)
 		{
 		case MST_INSTALLED: return (int)mangaSourcesInstalled().size() + mangaJavaInstalledRows(p);
-		case MST_AVAILABLE: return (int)mangaSourcesInstalled().size() + mangaJavaAvailableRows(p) + (int)mangaSourcesAvailable(p).size();
+		case MST_AVAILABLE: return (int)mangaAvInstalled(mangaAvFilter(p)).size() + mangaJavaAvailableRows(p) + (int)mangaSourcesAvailable(p).size();
 		// (+ Add repository…, the dashboard, and Download manga engine while it isn't there)
 		default: return (int)mangaSourcesRepos().size() + mangaJavaRepoRows() + 2 + (mangaEngineMissing() ? 1 : 0);
 		}
@@ -313,6 +422,8 @@ namespace bp
 		case Button::Left: if (n > 0) cur = std::max(0, cur - MS_ROWS); break;
 		case Button::Right: if (n > 0) cur = std::min(n - 1, cur + MS_ROWS); break;
 		case Button::A: mangaSourcesAct(p); break;
+		// Search, as it is on the other lists: Available's sources by name
+		case Button::L3: if (mstTab == MST_AVAILABLE) mangaAvSearchOpen(p); break;
 		case Button::X:
 			// Available: its menu (Refresh, Languages)
 			if (mstTab == MST_AVAILABLE) { mangaAvMenuOpen(p); break; }
@@ -386,7 +497,7 @@ namespace bp
 		{
 			// the rows: the installed Lua sources (their details: Update, Uninstall), the extensions (installed on
 			// top), then the Lua sources to install
-			auto inst = mangaSourcesInstalled();
+			auto inst = mangaAvInstalled(mangaAvFilter(p));
 			auto list = mangaSourcesAvailable(p);
 			int li = (int)inst.size(), jv = mangaJavaAvailableRows(p);
 			if (cur >= 0 && cur < li)
@@ -513,6 +624,8 @@ namespace bp
 			mstLocal++;
 			return false;
 		}
+		// Available's Search and Filter keys, and the search line while there is one
+		if (mstTab == MST_AVAILABLE && mangaAvSearchPointer(x, y, p)) return false;
 		// the rows (the kit's): a drag scrolls them, a tap acts as A on its row
 		int tab = mstTab;
 		mangaRowsPointer(mlSources[tab], p, x, y, [this, &p] { return mangaSourcesRows(p); }, &mstScroll[tab], &mstCursor[tab],
@@ -543,7 +656,7 @@ namespace bp
 		auto upper = [](std::string s) { for (char& c : s) c = (char)std::toupper((unsigned char)c); return s; };
 		if (mstTab != MST_REPOSITORIES)
 		{
-			auto inst = mangaSourcesInstalled();
+			auto inst = mangaAvInstalled(mangaAvFilter(p));
 			int li = (int)inst.size(), jv = mangaJavaAvailableRows(p);
 			if (k < li)
 			{
@@ -632,7 +745,13 @@ namespace bp
 				listLoading = mangaNet->javaSources().refreshPending() || st == JavaExtHost::State::Starting ||
 					(!mangaNet->javaSources().extensionsKnown() && st != JavaExtHost::State::Failed);
 			}
+			drawMangaAvSearch(p, tp, n);
+			bool filtered = !p.settings.mangaLangs.empty() || mstInstalledOnly;
 			if (n == 0 && listLoading) ui.drawLoader(area.x + area.w / 2, area.y + area.h / 2, "Loading sources\xE2\x80\xA6");
+			// a search that found nothing says which way out there is: other words, or Filter's choices as well
+			else if (n == 0 && !mstAvQuery.empty())
+				drawMangaTabEmpty(p, G_SEARCH, "No sources found", filtered ? "Try other words, or change Filter (X): it narrows the list too."
+					: "Try other words: a source's name or its language.");
 			else if (n == 0 && javaStatus.empty()) drawMangaTabEmpty(p, G_DOWNLOAD, "Nothing to install", "Add a repository first (Repositories, R2).");
 			if (n > 0 && listLoading && javaStatus.empty()) tabCrumb = "Checking for updates\xE2\x80\xA6";
 		}
@@ -648,7 +767,11 @@ namespace bp
 		for (size_t i = 0; i < lines.size(); i++) ui.drawTextMid(lines[i], F_I12, DIM, area.x + 22, y + (int)i * 16, area.w - 28);
 
 		if (mstTab == MST_AVAILABLE)
-			ui.drawHints({{"A", "Install"}, {"X", "Filter"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
+		{
+			// (Y Refresh is left to Filter's sheet and a pull on the list: six hints don't fit the bar)
+			if (mstAvQuery.empty()) ui.drawHints({{"A", "Install"}, {"L3", "Search"}, {"X", "Filter"}, {"L/R", "List"}, {"B", "Back"}});
+			else ui.drawHints({{"A", "Install"}, {"L3", "Search"}, {"X", "Filter"}, {"B", "Clear search"}});
+		}
 		else if (mstCursor[MST_REPOSITORIES] < (int)mangaSourcesRepos().size() + mangaJavaRepoRows())
 			ui.drawHints({{"A", "Options"}, {"X", "Remove"}, {"L/R", "List"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Open"}, {"L/R", "List"}, {"Y", "Refresh"}, {"B", "Back"}});
@@ -724,48 +847,9 @@ namespace bp
 
 	// ---- Available's menu: Refresh, Languages ----
 
-	namespace
-	{
-		std::string langName(const std::string& code)
-		{
-			static const std::pair<const char*, const char*> NAMES[] = {{"all", "Multi-language"}, {"en", "English"},
-				{"id", "Indonesian"}, {"ja", "Japanese"}, {"ko", "Korean"}, {"zh", "Chinese"}, {"zh-Hans", "Chinese (simplified)"},
-				{"zh-Hant", "Chinese (traditional)"}, {"es", "Spanish"}, {"es-419", "Spanish (Latin America)"}, {"pt", "Portuguese"},
-				{"pt-BR", "Portuguese (Brazil)"}, {"fr", "French"}, {"de", "German"}, {"it", "Italian"}, {"ru", "Russian"},
-				{"ar", "Arabic"}, {"tr", "Turkish"}, {"vi", "Vietnamese"}, {"th", "Thai"}, {"pl", "Polish"}, {"uk", "Ukrainian"},
-				{"fil", "Filipino"}, {"ms", "Malay"}, {"hi", "Hindi"}, {"bn", "Bengali"}, {"fa", "Persian"}, {"he", "Hebrew"},
-				{"cs", "Czech"}, {"bg", "Bulgarian"}, {"ca", "Catalan"}, {"da", "Danish"}, {"fi", "Finnish"}, {"no", "Norwegian"},
-				{"my", "Burmese"}, {"km", "Khmer"}, {"lo", "Lao"}, {"mn", "Mongolian"}, {"ta", "Tamil"}, {"te", "Telugu"}, {"ur", "Urdu"},
-				{"sr", "Serbian"}, {"hr", "Croatian"}, {"sk", "Slovak"}, {"lt", "Lithuanian"}, {"et", "Estonian"}, {"ka", "Georgian"}, {"hu", "Hungarian"}, {"ro", "Romanian"}, {"nl", "Dutch"}, {"sv", "Swedish"}, {"el", "Greek"}};
-			for (auto& n : NAMES)
-				if (code == n.first) return std::string(n.second) + " \xC2\xB7 " + code;
-			return code;
-		}
-
-		std::vector<std::string> splitLangs(const std::string& s)
-		{
-			std::vector<std::string> out;
-			size_t a = 0;
-			while (a <= s.size())
-			{
-				size_t b = s.find(',', a);
-				if (b == std::string::npos) b = s.size();
-				std::string one = s.substr(a, b - a);
-				if (!one.empty()) out.push_back(one);
-				a = b + 1;
-			}
-			return out;
-		}
-	}
-
 	bool Ui::Manga::mangaLangShown(const Player& p, const std::string& lang) const
 	{
-		// (with a choice made it is the whole rule: a multi-language source is "all", a choice of its own)
-		if (p.settings.mangaLangs.empty() || lang.empty()) return true;
-		std::string l0 = lang == "multi" ? "all" : lang;
-		for (const auto& l : splitLangs(p.settings.mangaLangs))
-			if (l == l0) return true;
-		return false;
+		return mangaLangKept(p.settings.mangaLangs, lang);
 	}
 
 	std::string Ui::Manga::mangaLangsSummary(const Player& p) const
@@ -940,7 +1024,7 @@ namespace bp
 			bool on = at == 0 ? chosen.empty() : std::find(chosen.begin(), chosen.end(), mstAvLangs[at - 1]) != chosen.end();
 			SheetRow r;
 			r.glyph = on ? &G_CHECK : &G_BOX;
-			r.name = at == 0 ? "All languages" : langName(mstAvLangs[at - 1]);
+			r.name = at == 0 ? "All languages" : mangaLangName(mstAvLangs[at - 1]);
 			r.note = on ? "On" : "";
 			return r;
 		});

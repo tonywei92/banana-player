@@ -154,4 +154,82 @@ namespace bp
 		// DOWN's side: the turn DOWN makes
 		return mangaBookStep(book, rtl, swap, dy < 0 ? 1 : -1);
 	}
+
+	std::string mangaLangName(const std::string& code)
+	{
+		static const std::pair<const char*, const char*> NAMES[] = {{"all", "Multi-language"}, {"en", "English"},
+			{"id", "Indonesian"}, {"ja", "Japanese"}, {"ko", "Korean"}, {"zh", "Chinese"}, {"zh-Hans", "Chinese (simplified)"},
+			{"zh-Hant", "Chinese (traditional)"}, {"es", "Spanish"}, {"es-419", "Spanish (Latin America)"}, {"pt", "Portuguese"},
+			{"pt-BR", "Portuguese (Brazil)"}, {"fr", "French"}, {"de", "German"}, {"it", "Italian"}, {"ru", "Russian"},
+			{"ar", "Arabic"}, {"tr", "Turkish"}, {"vi", "Vietnamese"}, {"th", "Thai"}, {"pl", "Polish"}, {"uk", "Ukrainian"},
+			{"fil", "Filipino"}, {"ms", "Malay"}, {"hi", "Hindi"}, {"bn", "Bengali"}, {"fa", "Persian"}, {"he", "Hebrew"},
+			{"cs", "Czech"}, {"bg", "Bulgarian"}, {"ca", "Catalan"}, {"da", "Danish"}, {"fi", "Finnish"}, {"no", "Norwegian"},
+			{"my", "Burmese"}, {"km", "Khmer"}, {"lo", "Lao"}, {"mn", "Mongolian"}, {"ta", "Tamil"}, {"te", "Telugu"}, {"ur", "Urdu"},
+			{"sr", "Serbian"}, {"hr", "Croatian"}, {"sk", "Slovak"}, {"lt", "Lithuanian"}, {"et", "Estonian"}, {"ka", "Georgian"}, {"hu", "Hungarian"}, {"ro", "Romanian"}, {"nl", "Dutch"}, {"sv", "Swedish"}, {"el", "Greek"}};
+		for (auto& n : NAMES)
+			if (code == n.first) return std::string(n.second) + " \xC2\xB7 " + code;
+		return code;
+	}
+
+	std::vector<std::string> splitLangs(const std::string& s)
+	{
+		std::vector<std::string> out;
+		size_t a = 0;
+		while (a <= s.size())
+		{
+			size_t b = s.find(',', a);
+			if (b == std::string::npos) b = s.size();
+			std::string one = s.substr(a, b - a);
+			if (!one.empty()) out.push_back(one);
+			a = b + 1;
+		}
+		return out;
+	}
+
+	bool mangaLangKept(const std::string& chosen, const std::string& lang)
+	{
+		// (with a choice made it is the whole rule: a multi-language source is "all", a choice of its own)
+		if (chosen.empty() || lang.empty()) return true;
+		std::string l0 = lang == "multi" ? "all" : lang;
+		for (const auto& l : splitLangs(chosen))
+			if (l == l0) return true;
+		return false;
+	}
+
+	namespace
+	{
+		std::string asciiLower(std::string s)
+		{
+			for (char& c : s)
+				if (c >= 'A' && c <= 'Z') c = (char)(c - 'A' + 'a');
+			return s;
+		}
+	}
+
+	bool sourceSearchMatch(const std::string& query, const std::vector<std::string>& fields)
+	{
+		std::vector<std::string> low;
+		for (const auto& f : fields) low.push_back(asciiLower(f));
+		std::string q = asciiLower(query);
+		size_t a = 0;
+		while (a < q.size())
+		{
+			size_t b = q.find(' ', a);
+			if (b == std::string::npos) b = q.size();
+			std::string word = q.substr(a, b - a);
+			a = b + 1;
+			if (word.empty()) continue;
+			bool found = false;
+			for (const auto& f : low)
+				if (f.find(word) != std::string::npos) { found = true; break; }
+			if (!found) return false;
+		}
+		return true;
+	}
+
+	bool sourceListed(const std::string& query, const std::string& chosenLangs, const std::string& name, const std::string& lang,
+		const std::string& from)
+	{
+		return mangaLangKept(chosenLangs, lang) && sourceSearchMatch(query, {name, mangaLangName(lang), from});
+	}
 }

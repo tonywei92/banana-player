@@ -3,6 +3,7 @@
 // body from suwayomi.* handed to JavaExtHost's channel; the host's answers come back by serial and are matched
 // here. Nothing in this file starts a thread or opens a socket: the host and MangaNet own those.
 #include "ui.h"
+#include "manga_ui_logic.h"
 #include "manganet.h"
 #include <unordered_set>
 #include <functional>
@@ -40,12 +41,15 @@ namespace bp
 		}
 
 		std::vector<const SuwayomiExt*> javaAvailableExtensions(const MangaJava& mgr, bool adult, const std::function<bool(const std::string&)>& langOk = nullptr,
-			const std::unordered_map<std::string, int>* frozen = nullptr)
+			const std::unordered_map<std::string, int>* frozen = nullptr, const std::string& query = "")
 		{
 			std::vector<const SuwayomiExt*> out;
 			// the installed ones too, on top: those with an update first, then the rest installed, then what isn't
+			// (Search's words narrow both: an installed one is found by its name too)
 			for (const SuwayomiExt& e : mgr.extensions())
-				if (e.isInstalled || (!e.isObsolete && (adult || !e.isNsfw) && (!langOk || langOk(e.lang)))) out.push_back(&e);
+				if ((e.isInstalled || (!e.isObsolete && (adult || !e.isNsfw) && (!langOk || langOk(e.lang)))) &&
+					sourceSearchMatch(query, {e.name.empty() ? e.pkgName : e.name, mangaLangName(e.lang)}))
+					out.push_back(&e);
 			auto rank = [](const SuwayomiExt* e) { return e->isInstalled ? (e->hasUpdate ? 0 : 1) : 2; };
 			std::sort(out.begin(), out.end(), [&](const SuwayomiExt* a, const SuwayomiExt* b) {
 				// the order Available was opened with: an install there doesn't move its row until it's opened again
@@ -171,7 +175,14 @@ namespace bp
 	int Ui::Manga::mangaJavaAvailableRows(const Player& p) const
 	{
 		if (!mangaNet || !mangaNet->started()) return 0;
-		return (int)javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); }, &mstAvOrder).size();
+		return (int)javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); }, &mstAvOrder, mstAvQuery).size();
+	}
+
+	int Ui::Manga::mangaJavaAvCount(const AvFilter& f) const
+	{
+		if (!mangaNet || !mangaNet->started()) return 0;
+		return (int)javaAvailableExtensions(mangaNet->javaSources(), f.adult,
+			[&](const std::string& l) { return !f.installedOnly && mangaLangKept(f.langs, l); }, nullptr, f.query).size();
 	}
 
 	int Ui::Manga::mangaJavaRepoRows() const
@@ -196,7 +207,7 @@ namespace bp
 	void Ui::Manga::mangaJavaAvailableAct(int local, Player& p)
 	{
 		if (!mangaNet || !mangaNet->started()) return;
-		auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); }, &mstAvOrder);
+		auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); }, &mstAvOrder, mstAvQuery);
 		if (local < 0 || local >= (int)list.size()) return;
 		const std::string pkg = list[local]->pkgName;
 		std::string error;
@@ -543,7 +554,7 @@ namespace bp
 		}
 		else
 		{
-			auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); }, &mstAvOrder);
+			auto list = javaAvailableExtensions(mangaNet->javaSources(), p.settings.mangaAdult, [&](const std::string& l) { return !mstInstalledOnly && mangaLangShown(p, l); }, &mstAvOrder, mstAvQuery);
 			if (local < 0 || local >= (int)list.size()) return m;
 			e = list[local];
 		}

@@ -47,6 +47,8 @@ namespace bp
 		MGSRV_PASS_FIELD = 67;
 	// a source filter's text value (ui_manga_filters.cpp); 60-67 are the other fields
 	inline constexpr int MANGA_FILTER_FIELD = 68;
+	// Sources › Available's search (ui_manga_sources.cpp); 69 and 70 are a file's name and Find
+	inline constexpr int SRC_SEARCH_FIELD = 71;
 
 	// The bottom panel: what is playing and where, the transport (previous, -5 s, play, +10 s, next), the choices
 	// (audio, subtitles, aspect, speed, settings) and their pages. Laid out on 640x480 (the RG DS's panel) and scaled

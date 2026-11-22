@@ -36,6 +36,7 @@ namespace bp
 			case FILE_NAME: return "New name";
 			case FIND_FIELD: return "Find";
 			case SRC_URL_FIELD: return "Repository URL";
+			case SRC_SEARCH_FIELD: return "Search sources";
 			case MANGA_SEARCH_FIELD: return "Search";
 			case MANGA_FILTER_FIELD: return "Filter";
 			case MGSRV_NAME_FIELD: return "Server name";
@@ -104,6 +105,16 @@ namespace bp
 		kbClosedAt = SDL_GetTicks();
 			kbPressed = -1;
 			if (keep) manga->mangaSourceSearch(kbEdit.text);
+			else browse->browseVersion++;
+			return;
+		}
+		if (kbField == SRC_SEARCH_FIELD)
+		{
+			// Done narrows Available to the words (none: the whole list again); B keeps the search that was there
+			kbOpen = false;
+			kbClosedAt = SDL_GetTicks();
+			kbPressed = -1;
+			if (keep) manga->mangaAvSearchTyped(trimmed(kbEdit.text));
 			else browse->browseVersion++;
 			return;
 		}
@@ -232,6 +243,8 @@ namespace bp
 		else if (kbField == FILE_NAME) v.note = browse->fileNameNote;
 		// both kinds of repository take a plain address: a Lua one's, or an extensions' index (index.pb, index.min.json)
 		else if (kbField == SRC_URL_FIELD) v.note = "Any repository URL, including ones ending in index.pb or index.min.json";
+		// a search of the sources says how many it has found so far, as it is typed
+		else if (kbField == SRC_SEARCH_FIELD) v.note = manga->mangaAvSearchNote(kbEdit.text);
 		v.keys(kbPad, kbEdit.text.empty());
 		v.cursor = kbCursor;
 		v.pressed = kbPressed;
