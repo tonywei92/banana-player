@@ -200,6 +200,7 @@ namespace bp
 		p.kind = kind;
 		p.url = url;
 		p.pkg = pkg;
+		p.at = now();
 		pending_[serial] = p;
 		serial_++;
 		return true;
@@ -232,6 +233,7 @@ namespace bp
 
 	bool MangaJava::hasQueued() const
 	{
+		if (!queuedActions_.empty()) return true;
 		for (const Repo& r : repos_)
 			if (r.queued) return true;
 		return false;
@@ -241,6 +243,58 @@ namespace bp
 	{
 		for (Repo& r : repos_)
 			if (r.queued && submitRequest(Kind::AddStore, suwayomiAddExtensionStore(r.url), r.url, "")) r.queued = false;
+		std::vector<Pending> actions;
+		actions.swap(queuedActions_);
+		for (const Pending& a : actions)
+			if (!sendAction(a.kind, a.pkg)) failAction(a.kind, a.pkg, "couldn't reach the extensions");
+		if (!actions.empty()) serial_++;
+	}
+
+	bool MangaJava::queued(const std::string& pkgName) const
+	{
+		for (const Pending& a : queuedActions_)
+			if (a.pkg == pkgName) return true;
+		return false;
+	}
+
+	void MangaJava::failQueued(const std::string& why)
+	{
+		std::vector<Pending> actions;
+		actions.swap(queuedActions_);
+		for (const Pending& a : actions) failAction(a.kind, a.pkg, why);
+		if (!actions.empty()) serial_++;
+	}
+
+	bool MangaJava::expire()
+	{
+		if (!clock_) return false;
+		int64_t t = now();
+		bool changed = false;
+		for (auto it = queuedActions_.begin(); it != queuedActions_.end();)
+		{
+			if (t - it->at >= QUEUED_MS)
+			{
+				failAction(it->kind, it->pkg, "the manga engine didn't start in time");
+				it = queuedActions_.erase(it);
+				changed = true;
+			}
+			else ++it;
+		}
+		for (auto it = pending_.begin(); it != pending_.end();)
+		{
+			const Pending& p = it->second;
+			bool act = p.kind == Kind::Install || p.kind == Kind::Update || p.kind == Kind::Uninstall;
+			if (act && t - p.at >= SENT_MS)
+			{
+				// (a late answer is then nobody's: the next sync of the installed sources brings what it did)
+				failAction(p.kind, p.pkg, "the manga engine didn't answer");
+				it = pending_.erase(it);
+				changed = true;
+			}
+			else ++it;
+		}
+		if (changed) serial_++;
+		return changed;
 	}
 
 	bool MangaJava::removeRepo(const std::string& url, std::string& error)
@@ -283,47 +337,61 @@ namespace bp
 		return false;
 	}
 
-	bool MangaJava::install(const std::string& pkgName, std::string& error)
+	namespace
+	{
+		const char* actionVerb(bool install, bool update) { return install ? "install" : update ? "update" : "uninstall"; }
+	}
+
+	bool MangaJava::install(const std::string& pkgName, std::string& error) { return action(Kind::Install, pkgName, error); }
+	bool MangaJava::update(const std::string& pkgName, std::string& error) { return action(Kind::Update, pkgName, error); }
+	bool MangaJava::uninstall(const std::string& pkgName, std::string& error) { return action(Kind::Uninstall, pkgName, error); }
+
+	bool MangaJava::action(Kind kind, const std::string& pkgName, std::string& error)
 	{
 		error.clear();
+		const char* verb = actionVerb(kind == Kind::Install, kind == Kind::Update);
 		if (pkgName.empty()) { error = "no extension"; return false; }
 		if (busy(pkgName)) { error = "already being changed"; return false; }
-		if (!submitRequest(Kind::Install, suwayomiInstallExtension(pkgName), "", pkgName))
+		if (ready_ && !ready_())
+		{
+			Pending a;
+			a.kind = kind;
+			a.pkg = pkgName;
+			a.at = now();
+			queuedActions_.push_back(a);
+			serial_++;
+			fprintf(stderr, "sources: %s %s queued until the engine is ready\n", verb, pkgName.c_str());
+			return true;
+		}
+		if (!sendAction(kind, pkgName))
 		{
 			error = "couldn't reach the extensions";
+			fprintf(stderr, "sources: %s %s failed: %s\n", verb, pkgName.c_str(), error.c_str());
 			return false;
 		}
 		return true;
 	}
 
-	bool MangaJava::update(const std::string& pkgName, std::string& error)
+	bool MangaJava::sendAction(Kind kind, const std::string& pkgName)
 	{
-		error.clear();
-		if (pkgName.empty()) { error = "no extension"; return false; }
-		if (busy(pkgName)) { error = "already being changed"; return false; }
-		if (!submitRequest(Kind::Update, suwayomiUpdateExtension(pkgName), "", pkgName))
-		{
-			error = "couldn't reach the extensions";
-			return false;
-		}
+		std::string body = kind == Kind::Install ? suwayomiInstallExtension(pkgName)
+			: kind == Kind::Update ? suwayomiUpdateExtension(pkgName) : suwayomiUninstallExtension(pkgName);
+		if (!submitRequest(kind, body, "", pkgName)) return false;
+		fprintf(stderr, "sources: %s %s sent\n", actionVerb(kind == Kind::Install, kind == Kind::Update), pkgName.c_str());
 		return true;
 	}
 
-	bool MangaJava::uninstall(const std::string& pkgName, std::string& error)
+	void MangaJava::failAction(Kind kind, const std::string& pkgName, const std::string& why)
 	{
-		error.clear();
-		if (pkgName.empty()) { error = "no extension"; return false; }
-		if (busy(pkgName)) { error = "already being changed"; return false; }
-		if (!submitRequest(Kind::Uninstall, suwayomiUninstallExtension(pkgName), "", pkgName))
-		{
-			error = "couldn't reach the extensions";
-			return false;
-		}
-		return true;
+		bool inst = kind == Kind::Install, upd = kind == Kind::Update;
+		fprintf(stderr, "sources: %s %s failed: %s\n", actionVerb(inst, upd), pkgName.c_str(), why.c_str());
+		addEvent(Event::ActionFailed, "", pkgName, extensionName(pkgName) + (inst ? " wasn't installed: " :
+			upd ? " wasn't updated: " : " wasn't removed: ") + why);
 	}
 
 	bool MangaJava::busy(const std::string& pkgName) const
 	{
+		if (queued(pkgName)) return true;
 		for (const auto& kv : pending_)
 		{
 			const Pending& p = kv.second;
@@ -494,6 +562,8 @@ namespace bp
 			if (!error.empty() || !suwayomiParseInstallResult(body, list, parseError))
 			{
 				if (parseError.empty() && !error.empty()) parseError = error;
+				fprintf(stderr, "sources: %s %s failed: %s\n", p.kind == Kind::Install ? "install" : "update",
+					p.pkg.c_str(), parseError.c_str());
 				addEvent(Event::ActionFailed, "", p.pkg,
 					parseError.empty() ? "the extension couldn't be installed" : parseError);
 				break;
@@ -513,6 +583,8 @@ namespace bp
 			e->sources = list;
 			e->sourcesKnown = true;
 			addSources(list, p.pkg);
+			fprintf(stderr, "sources: %s %s done (%zu sources)\n", p.kind == Kind::Install ? "install" : "update",
+				p.pkg.c_str(), list.size());
 			addEvent(p.kind == Kind::Install ? Event::Installed : Event::Updated, "", p.pkg, extensionName(p.pkg));
 			break;
 		}
@@ -520,6 +592,7 @@ namespace bp
 			if (!error.empty() || suwayomiCheckErrors(body, parseError))
 			{
 				if (parseError.empty() && !error.empty()) parseError = error;
+				fprintf(stderr, "sources: uninstall %s failed: %s\n", p.pkg.c_str(), parseError.c_str());
 				addEvent(Event::ActionFailed, "", p.pkg,
 					parseError.empty() ? "the extension couldn't be removed" : parseError);
 				break;
@@ -530,6 +603,7 @@ namespace bp
 				e->hasUpdate = false;
 			}
 			dropSources(p.pkg);
+			fprintf(stderr, "sources: uninstall %s done\n", p.pkg.c_str());
 			addEvent(Event::Uninstalled, "", p.pkg, extensionName(p.pkg));
 			break;
 		}
@@ -543,9 +617,15 @@ namespace bp
 		return out;
 	}
 
-	void MangaJava::cancelAll()
+	void MangaJava::cancelAll(const std::string& why)
 	{
+		failQueued(why);
 		if (pending_.empty()) return;
+		for (const auto& kv : pending_)
+		{
+			const Pending& p = kv.second;
+			if (p.kind == Kind::Install || p.kind == Kind::Update || p.kind == Kind::Uninstall) failAction(p.kind, p.pkg, why);
+		}
 		pending_.clear();
 		serial_++;
 	}

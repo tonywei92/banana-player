@@ -15457,6 +15457,70 @@ static void testMangaJava()
 	CHECK_EQ(m2.removeRepo(url, error), true);
 	CHECK_EQ(m2.repos().empty(), true);
 	CHECK_EQ(bodies.size(), (size_t)2);	// the add store and the install; m2's submit is its own
+
+	{
+		// an install / update / uninstall asked while the engine starts waits here, and is sent once it answers, in
+		// order (the handheld: one asked while it loaded stayed Installing… for good)
+		MangaJava q;
+		bool ready = false;
+		int64_t clock = 1000;
+		std::vector<std::string> sent;
+		uint64_t ql = 0;
+		q.setSubmit([&](const std::string& body) { sent.push_back(body); return ++ql; });
+		q.setReady([&] { return ready; });
+		q.setClock([&] { return clock; });
+		CHECK_EQ(q.load(std::string(dir) + "/q"), true);
+		const std::string a = "pkg.a", b = "pkg.b", c = "pkg.c";
+		CHECK_EQ(q.install(a, error), true);
+		CHECK_EQ(q.uninstall(b, error), true);
+		CHECK_EQ(sent.empty(), true);
+		CHECK_EQ(q.queued(a) && q.busy(a) && q.queued(b), true);
+		CHECK_EQ(q.install(a, error), false);	// one at a time
+		CHECK_EQ(q.hasQueued(), true);
+		ready = true;
+		q.sendQueued();
+		CHECK_EQ(sent.size(), (size_t)2);
+		CHECK_EQ(sent[0].find(a) != std::string::npos && sent[1].find(b) != std::string::npos, true);
+		CHECK_EQ(q.queued(a) || q.hasQueued(), false);
+		CHECK_EQ(q.busy(a), true);	// sent: busy until its answer
+		// a failed answer clears it and says why
+		CHECK_EQ(q.onAnswer(1, "", "the server said no"), true);
+		CHECK_EQ(q.busy(a), false);
+		{
+			auto ev = q.takeEvents();
+			CHECK_EQ(ev.size() == 1 && ev[0].kind == MangaJava::Event::ActionFailed && ev[0].pkg == a, true);
+		}
+		// an answer that never comes: ended after SENT_MS
+		clock += MangaJava::SENT_MS;
+		CHECK_EQ(q.expire(), true);
+		CHECK_EQ(q.busy(b), false);
+		{
+			auto ev = q.takeEvents();
+			CHECK_EQ(ev.size() == 1 && ev[0].kind == MangaJava::Event::ActionFailed && ev[0].pkg == b, true);
+		}
+		// an engine that never comes: a waiting action ends after QUEUED_MS; one waiting when it fails ends at once
+		ready = false;
+		CHECK_EQ(q.update(c, error), true);
+		CHECK_EQ(q.expire(), false);
+		clock += MangaJava::QUEUED_MS;
+		CHECK_EQ(q.expire(), true);
+		CHECK_EQ(q.busy(c), false);
+		CHECK_EQ(q.takeEvents().size(), (size_t)1);
+		CHECK_EQ(q.install(c, error), true);
+		q.failQueued("the manga engine didn't start");
+		{
+			auto ev = q.takeEvents();
+			CHECK_EQ(ev.size() == 1 && ev[0].message.find("didn't start") != std::string::npos, true);
+		}
+		// a stop drops what was out and what waited, each with an event
+		CHECK_EQ(q.install(a, error), true);
+		ready = true;
+		CHECK_EQ(q.install(c, error), true);
+		q.cancelAll();
+		CHECK_EQ(q.busy(a) || q.busy(c), false);
+		CHECK_EQ(q.takeEvents().size(), (size_t)2);
+		CHECK_EQ(sent.size(), (size_t)3);	// a, b, then c (the stopped one); nothing sent twice
+	}
 }
 
 // the Java runtime's archive: a .tar.gz unpacked with only the rules the pinned one needs (docs/design/manga.md 6)

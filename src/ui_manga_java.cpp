@@ -211,6 +211,7 @@ namespace bp
 		if (local < 0 || local >= (int)list.size()) return;
 		const std::string pkg = list[local]->pkgName;
 		std::string error;
+		mangaJavaNeedHost();	// (an action asked while it starts waits for it: MangaJava::sendQueued)
 		// installed already: A updates it when there's a newer one (the row's Update chip), else says so
 		if (list[local]->isInstalled)
 		{
@@ -342,7 +343,7 @@ namespace bp
 		// the answer that never came must not leave a row saying Installing… for good
 		for (auto it = mstJavaBusyAt.begin(); it != mstJavaBusyAt.end();)
 		{
-			if (SDL_GetTicks() - it->second > 180000)
+			if (SDL_GetTicks() - it->second > (Uint32)(MangaJava::QUEUED_MS + MangaJava::SENT_MS + 30000))
 			{
 				mstJavaBusy.erase(it->first);
 				it = mstJavaBusyAt.erase(it);
@@ -361,12 +362,26 @@ namespace bp
 			mgr.syncInstalled();
 			mstJavaLocal++;
 		}
-		// repositories added while the engine wasn't there: sent as soon as it answers
-		if (mgr.hasQueued() && mangaNet->javaExt().state() == JavaExtHost::State::Running)
+		// repositories added and installs / updates / removals asked while the engine wasn't there: sent as soon as it
+		// answers; the engine failing ends the waiting actions with its reason, and none waits (or goes unanswered)
+		// past MangaJava's limits
 		{
-			mgr.sendQueued();
-			mgr.save();
-			mstJavaLocal++;
+			JavaExtHost& h = mangaNet->javaExt();
+			JavaExtHost::State st = h.state();
+			if (mgr.hasQueued() && st == JavaExtHost::State::Running && !h.stopping())
+			{
+				mgr.sendQueued();
+				mgr.save();
+				mstJavaLocal++;
+			}
+			else if (mgr.hasQueuedActions() && (st == JavaExtHost::State::Failed || st == JavaExtHost::State::NotInstalled))
+			{
+				mgr.failQueued(st == JavaExtHost::State::Failed ? (h.error().empty() ? std::string("the manga engine didn't start") :
+					"the manga engine: " + h.error()) : std::string("extension support isn't installed"));
+				mstJavaLocal++;
+			}
+			else if (mgr.hasQueuedActions() && st == JavaExtHost::State::Installed) mangaJavaNeedHost();	// (waits on it)
+			if (mgr.expire()) mstJavaLocal++;
 		}
 		// A Java repository's extensions are asked once the host is answering (and again after Y), not every tick, and
 		// only while Sources is open: the list (450 KB, 15-20 s) went first at every start and the engine answers one
@@ -467,6 +482,8 @@ namespace bp
 				{
 					engineStopAt = SDL_GetTicks();
 					mangaNet->javaExt().stop();
+					// the host drops what it had queued: the manager's own requests end too, so no row waits on them
+					mangaNet->javaSources().cancelAll("the manga engine stopped for the video");
 					fprintf(stderr, "manga: the engine stopped (a video plays)\n");
 				}
 			}
@@ -564,7 +581,11 @@ namespace bp
 		for (char& c : lang) c = (char)std::toupper((unsigned char)c);
 		m.second = (lang.empty() ? "" : lang + " \xC2\xB7 ") + javaExtVersion(*e) + (e->isNsfw ? " \xC2\xB7 18+" : "");
 		auto busy = mstJavaBusy.find(e->pkgName);
-		if (busy != mstJavaBusy.end()) { m.pill = busy->second; m.pillLive = true; }
+		if (busy != mstJavaBusy.end())
+		{
+			m.pill = mangaNet->javaSources().queued(e->pkgName) ? "Waiting for the engine\xE2\x80\xA6" : busy->second;
+			m.pillLive = true;
+		}
 		// installed, but the engine couldn't load it (an extension built for a newer engine): it gives no sources
 		else if (e->isInstalled && e->sourcesKnown && e->sources.empty()) { m.pill = "Can't load"; m.pillBad = true; }
 		else if (e->isInstalled && e->hasUpdate) { m.pill = "Update"; m.pillLive = true; }

@@ -20,6 +20,12 @@ namespace bp
 	public:
 		// the host's channel: the request body in, its serial out (0: nothing was sent)
 		using Submit = std::function<uint64_t(const std::string& body)>;
+		// whether the engine answers now (unset: always). An install / update / uninstall asked while it doesn't is
+		// kept here, in order, and sent by sendQueued() once it does: the host's own wait for a starting engine has a
+		// deadline and is dropped by a stop, and a request lost there left its row saying Installing… (the handheld)
+		using Ready = std::function<bool()>;
+		// milliseconds, any origin (unset: no expiry), for expire()
+		using Clock = std::function<int64_t()>;
 
 		struct Repo
 		{
@@ -53,6 +59,8 @@ namespace bp
 		}
 
 		void setSubmit(Submit submit) { submit_ = std::move(submit); }
+		void setReady(Ready ready) { ready_ = std::move(ready); }
+		void setClock(Clock clock) { clock_ = std::move(clock); }
 		// <stateDir>/manga/java/repos.tsv and sources.tsv. A missing or damaged file is an empty list, never a
 		// failure to start (as the Lua repositories' store).
 		bool load(const std::string& stateDir);
@@ -64,8 +72,19 @@ namespace bp
 		bool extensionsKnown() const { return extensionsKnown_; }
 		bool hasRepos() const { return !repos_.empty(); }
 		bool hasQueued() const;
-		// the repositories added while the engine wasn't there, sent now (the engine is answering)
+		// the repositories added and the actions asked while the engine wasn't there, sent now in the order asked
+		// (the engine is answering)
 		void sendQueued();
+		// an action waiting for the engine (the row says Waiting for the engine…)
+		bool queued(const std::string& pkgName) const;
+		bool hasQueuedActions() const { return !queuedActions_.empty(); }
+		// the engine won't come (it failed, or was stopped): the waiting actions end, each with an ActionFailed saying why
+		void failQueued(const std::string& why);
+		// an action that waited too long for the engine, or whose answer never came, ends with an ActionFailed (true:
+		// something ended). Called every pass; needs the Clock.
+		bool expire();
+		static constexpr int64_t QUEUED_MS = 180000;	// the engine's start is about 25 s, its own deadline 150 s
+		static constexpr int64_t SENT_MS = 270000;		// the host waits up to 120 s for the engine, then 120 s of curl
 		// the source a Browse row is for (nullptr: it isn't installed any more)
 		const Source* source(const std::string& fullId) const;
 		const SuwayomiExt* extension(const std::string& pkgName) const;
@@ -91,8 +110,9 @@ namespace bp
 		std::vector<Event> takeEvents();
 
 		uint64_t serial() const { return serial_; }	// grows with every change the pages draw
-		// the extension turned off: requests still queued are forgotten (their answers would never come)
-		void cancelAll();
+		// the engine stopped (the extension turned off, a video, quitting): requests out are forgotten (their answers
+		// would never come); an install / update / uninstall among them, or waiting, ends with an ActionFailed saying why
+		void cancelAll(const std::string& why = "the manga engine stopped");
 
 	private:
 		enum class Kind { AddStore, RemoveStore, FetchExtensions, Install, Update, Uninstall, SyncInstalled };
@@ -100,7 +120,13 @@ namespace bp
 		{
 			Kind kind = Kind::AddStore;
 			std::string url, pkg;
+			int64_t at = 0;	// when it was sent (the Clock)
 		};
+		// an install / update / uninstall: asked of the engine now, or kept until it answers
+		bool action(Kind kind, const std::string& pkgName, std::string& error);
+		bool sendAction(Kind kind, const std::string& pkgName);
+		void failAction(Kind kind, const std::string& pkgName, const std::string& why);
+		int64_t now() const { return clock_ ? clock_() : 0; }
 
 		bool submitRequest(Kind kind, const std::string& body, const std::string& url, const std::string& pkg);
 		std::string dir() const { return stateDir_.empty() ? std::string() : stateDir_ + "/manga/java"; }
@@ -114,6 +140,9 @@ namespace bp
 
 		std::string stateDir_;
 		Submit submit_;
+		Ready ready_;
+		Clock clock_;
+		std::vector<Pending> queuedActions_;	// waiting for the engine, in the order asked (at: when asked)
 		std::vector<Repo> repos_;
 		std::vector<Source> sources_;
 		std::vector<SuwayomiExt> extensions_;

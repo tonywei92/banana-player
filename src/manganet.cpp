@@ -1,5 +1,6 @@
 #include "manganet.h"
 #include "mangajava.h"
+#include <chrono>
 #include <cstdio>
 #include <sys/stat.h>
 
@@ -48,6 +49,13 @@ namespace bp
 		repoMgr = std::make_unique<MangaRepos>(*api, &MangaWorker::validateScript);
 		repoMgr->load(state);
 		javaState.setSubmit([this](const std::string& body) { return javaHost.graphql(body); });
+		// an install asked while the engine starts waits in javaState, not in the host's channel (whose wait has a
+		// deadline and is dropped by a stop): sent by the Sources poll once the engine answers
+		javaState.setReady([this] { return javaHost.state() == JavaExtHost::State::Running && !javaHost.stopping(); });
+		javaState.setClock([] {
+			return (int64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+				std::chrono::steady_clock::now().time_since_epoch()).count();
+		});
 		javaState.load(state);
 		dlq.load(state);
 		dl = std::make_unique<MangaDownloader>(*api, dlq);
