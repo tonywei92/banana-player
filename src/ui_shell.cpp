@@ -181,12 +181,14 @@ namespace bp
 		ShellHead h = pageHead(p);
 		if (atSectionHome(p))
 		{
-			// a section's home is where B stops: no back key, and no B in its hints ("B/START Back": START's alone)
+			// a section's home is where B stops (it asks to quit): no back key, B's hint says Quit ("B/START Back": START's alone)
 			h.back = false;
 			h.hints.erase(std::remove_if(h.hints.begin(), h.hints.end(), [](const Hint& x) { return x.key == "B"; }),
 				h.hints.end());
 			for (Hint& x : h.hints)
 				if (x.key.rfind("B/", 0) == 0) x.key.erase(0, 2);
+			auto at = std::find_if(h.hints.begin(), h.hints.end(), [](const Hint& x) { return x.key == "L2/R2"; });
+			h.hints.insert(at, Hint{"B", "Quit"});
 		}
 		return h;
 	}
@@ -414,7 +416,12 @@ namespace bp
 			return true;
 		}
 		// a section's home: B stops there (it never goes Home; the header shows no back key)
-		if (b == Button::B && atSectionHome(p)) return true;
+		// (a section's home B asks to quit; with the keyboard open B is the keyboard's)
+		if (b == Button::B && atSectionHome(p))
+		{
+			if (!ui.kbOpen) ui.askQuit();
+			return true;
+		}
 		// Search keeps every other key: LEFT / RIGHT move its caret (or its page), SELECT its keyboard's layer.
 		// It is a tool: L / R do not step the sections under it.
 		if (ui.page == Page::Search) return false;

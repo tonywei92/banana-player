@@ -1298,6 +1298,8 @@ namespace bp
 		// browser is signed in), turning it off starts it again when its switch says on. note: the "Incognito on/off"
 		// note (false: none, as closing everything and a sleep say nothing)
 		void setIncognito(bool on, Player& p, bool note = true);
+		void askQuit();	// a section home's B: Quit Banana Player? (the kit's confirm sheet, an overlay over the rail)
+		struct QuitAsk;
 		void askIncognito();	// the confirm sheet (a browser is signed in) then applyIncognito on A
 		// the change itself, after the ask (public for the ask sheet, which is nested)
 		void applyIncognito(bool on, Player& p, bool note);

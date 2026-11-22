@@ -5,8 +5,10 @@ The owner's three rules (2026-11-21) and where each lives.
 - **A section's home** is `Ui::Shell::atSectionHome` (ui_shell.cpp): Home, Files' places and Network, Music's views
   (Albums, Artists, and the browser's Playlists page), Videos' views, Books, the Extensions page, Settings' tiles when
   the rail or L2/R2 opened it (from START it still goes back where START was pressed). A select mode, the picker or a
-  move is never a home (its B and its header's cross stay). There `Shell::key` swallows B, and `Shell::head` (over
-  the page's own `pageHead`) drops the back key and the B hint ("B/START" keeps START). The areas' old "B goes Home"
+  move is never a home (its B and its header's cross stay). There `Shell::key` takes B and asks to quit (`Ui::askQuit`, the `QuitAsk` overlay in ui_overlay.cpp: the kit confirm
+  sheet, Cancel focused, B or a tap outside cancels, Quit sets `quitRequested`, the path of Quick settings' Quit; not
+  while the keyboard is open), and `Shell::head` (over the page's own `pageHead`) drops the back key and says "B Quit"
+  in the hints ("B/START" keeps START). The areas' old "B goes Home"
   branches went, and so did Home's Quit dialog (`QuitAsk`): Quit is Quick settings or F + START.
 - **The rail's tap on the section shown** (`Shell::openSection` → `toSectionHome`): inside it, its home opened at the
   top (a browser page's place forgotten: `placeIn.erase`); on its home, a glide to its first row (`listReveal` for
