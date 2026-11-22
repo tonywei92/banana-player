@@ -19,6 +19,7 @@
 #include "epub.h"
 #include "videocache.h"
 #include "ui_docs.h"
+#include "ui_mediaart.h"
 #include "httplib.h"
 #include <algorithm>
 #include <cctype>
@@ -208,7 +209,19 @@ namespace bp
 				while ((n = fread(buf, 1, sizeof buf, fp)) > 0 && bytes.size() < ((size_t)1 << 20)) bytes.append(buf, n);
 				fclose(fp);
 			}
-			if (bytes.empty()) return WebServer::fail(res, 404, "no thumbnail");
+			if (bytes.empty())
+			{
+				// a miss asks the art worker (its want() is thread-safe, and the call runs on the main loop: the
+				// server thread never touches Ui). The worker makes it later (not while a video plays or opens);
+				// the page asks again after Retry-After
+				int st2 = 200;
+				ws.call([&](Player&, Ui& u) {
+					if (u.mediaArt && u.mediaArt->worker) u.mediaArt->worker->want(real, false);
+					return std::string("{}");
+				}, 1000, st2);
+				res.set_header("Retry-After", "2");
+				return WebServer::fail(res, 404, "no thumbnail");
+			}
 			res.set_header("Cache-Control", "private, max-age=86400");
 			res.set_header("ETag", etag);
 			res.set_header("X-Content-Type-Options", "nosniff");

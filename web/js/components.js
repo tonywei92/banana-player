@@ -134,10 +134,16 @@ export const coverUrl = p => p && !p.startsWith('bpnet://') ? '/api/cover?p=' + 
 export const vthumbUrl = p => p && !p.startsWith('bpnet://') ? '/api/vthumb?p=' + encodeURIComponent(p) : '';	// the handheld's cached list thumbnail
 export const bookCoverUrl = p => p ? '/api/bookcover?p=' + encodeURIComponent(p) : '';
 export function Art({ src, seed, kind, k }) {
-	const [st, setSt] = useState(''), [near, setNear] = useState(false), gc = useRef(null);
-	useEffect(() => setSt(''), [src]);
+	const [st, setSt] = useState(''), [near, setNear] = useState(false), [try_, setTry] = useState(0), gc = useRef(null);
+	useEffect(() => { setSt(''); setTry(0); }, [src]);
+	// a video's thumbnail the handheld hasn't made yet: the 404 asked it to; ask again in a moment (a few times)
+	useEffect(() => {
+		if (st !== 'bad' || !src || !src.startsWith('/api/vthumb') || try_ >= 6) return;
+		const t = setTimeout(() => { setTry(try_ + 1); setSt(''); }, 2500);
+		return () => clearTimeout(t);
+	}, [st, try_, src]);
 	useEffect(() => { if (!src || near || !gc.current) return; return observeNear(gc.current, () => setNear(true)); }, [src, near]);
-	return html`<${GenCover} seed=${seed} kind=${kind} k=${k} r=${gc} />${src && near && st !== 'bad' && html`<img class=${'cvimg' + (st === 'ok' ? ' on' : '')} src=${src} alt="" decoding="async" onLoad=${() => setSt('ok')} onError=${() => setSt('bad')} />`}`;
+	return html`<${GenCover} seed=${seed} kind=${kind} k=${k} r=${gc} />${src && near && st !== 'bad' && html`<img class=${'cvimg' + (st === 'ok' ? ' on' : '')} src=${try_ ? src + '&r=' + try_ : src} alt="" decoding="async" onLoad=${() => setSt('ok')} onError=${() => setSt('bad')} />`}`;
 }
 // a playlist's cover: Liked's heart on dark gold; else a 2×2 mosaic
 export function PlArt({ p, k }) {
@@ -237,3 +243,22 @@ export function HandheldArt({ mode }) {
 	return html`<span style="display:block;line-height:0" dangerouslySetInnerHTML=${{ __html: svg }}></span>`;
 }
 
+
+// the mouse wheel / trackpad over a volume slider (player bar, Now playing's pop-up and card): one notch is one
+// volume step, 5 as the arrow keys' (app.js), for the handheld's volume and this browser's alike. Non-passive so the
+// page doesn't scroll under it. The slider's own onInput does the rest (a held value, the throttled post)
+let wheelAcc = 0;
+document.addEventListener('wheel', e => {
+	const r = e.target && e.target.closest && e.target.closest('.bar-vol input[type=range], .vol input[type=range]');
+	if (!r || r.disabled || e.ctrlKey) return;
+	e.preventDefault();
+	// a wheel's click (a delta of 50+, or in lines) is one step; a trackpad's many small deltas add up to one each 30 px
+	let n;
+	if (e.deltaMode || Math.abs(e.deltaY) >= 50) { n = Math.sign(e.deltaY); wheelAcc = 0; }
+	else { wheelAcc += e.deltaY; n = Math.trunc(wheelAcc / 30); wheelAcc -= n * 30; }
+	if (!n) return;
+	const v = Math.max(+r.min, Math.min(+r.max, +r.value - n * 5));
+	if (v === +r.value) return;
+	r.value = v;
+	r.dispatchEvent(new Event('input', { bubbles: true }));
+}, { passive: false });

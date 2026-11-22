@@ -24,7 +24,7 @@ const VIEWS = [
 // session's own Shuffle on (playPaths turns the list into a play, as a playlist's)
 async function playList(paths, at, shuffle) {
 	const list = shuffle ? [] : paths;
-	await playHere(t => playPaths(list.length ? list : paths, new Set(), t, true, shuffle, true), paths[Math.min(at || 0, paths.length - 1)]);
+	await playHere(t => playPaths(list.length ? list : paths, new Set(), t, true, shuffle, true, at), paths[Math.min(at || 0, paths.length - 1)]);
 }
 
 // the one under the tap: an album's or an artist's songs, with Play and Shuffle (docs/redesign "music-album")

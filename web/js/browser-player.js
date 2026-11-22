@@ -882,7 +882,8 @@ async function withFolder(p) {
 const sv = (stay, p) => stay === 'always' || (stay && kindOfName(p || '') !== 'video');
 // stay: a row's tap plays and the page stays (the small player shows it); true when it plays
 // rail: from the Music page (Keep playing may add to the list)
-export async function playPaths(paths, folderSet, target, stay, shuffle, rail) {
+// at: the tapped song of a list (Music's album, artist, folder): the play starts there, the list whole
+export async function playPaths(paths, folderSet, target, stay, shuffle, rail, at) {
 	if (!userTap()) return;
 	store.folderSet = folderSet;
 	target = target || store.target;
@@ -899,12 +900,21 @@ export async function playPaths(paths, folderSet, target, stay, shuffle, rail) {
 		if (shuffle && items.length > 1) {
 			if (!shuffleOn()) { if (store.snap) store.snap.shuffleMode = true; try { await intent('SetShuffle', { on: 1 }); } catch (e) {} }
 			idx = Math.floor(Math.random() * items.length);
-		}
+		} else if (at > 0) idx = Math.max(0, items.findIndex(x => x.p === paths[at]));
 		if (!await browserPlay(items, idx, src, 0, rail)) return false;
 		if (!sv(stay, items[idx] && items[idx].p)) go('#/playing');
 		return true;
 	} else {
 		const was = B.active && !el.paused; B.leaving = true; el.pause();
+		// (/api/play has no start item: a tapped song of a list opens through the session's Open, as a playlist's)
+		if (at > 0 && !shuffle && paths.length > 1) {
+			const ok = await playListOnHandheld(paths, Math.min(at, paths.length - 1), { kind: 'folder', title: 'Selection' });
+			B.leaving = false;
+			if (!ok) { if (was && store.conn === 'ok') el.play().catch(() => {}); return false; }
+			if (B.active) dropBrowser();
+			if (!sv(stay, paths[at])) go('#/playing');
+			return true;
+		}
 		try { await post('/api/play', Object.assign(paths.length === 1 && !shuffle ? { p: paths[0] } : { p: paths }, shuffle ? { shuffle: 1 } : {}, rail ? { rail: 1 } : {}, hhChoice())); }
 		catch (e) { B.leaving = false; if (was && store.conn === 'ok') el.play().catch(() => {}); toast(e.status === 0 ? "Couldn't start it on your handheld" : errMsg(e)); return false; }
 		if (B.active) dropBrowser();
