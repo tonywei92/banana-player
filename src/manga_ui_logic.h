@@ -34,10 +34,21 @@ namespace bp
 	// the first started-but-unread chapter, at its page; else the first unread, at its start; else the first
 	MangaResumePoint mangaResume(const std::vector<MangaChapterMark>& chapters);
 
-	// what a pressed Resume does with the series page as it is: open now, keep waiting (the engine, the chapter list),
-	// say why it can't, or nothing to open (no chapters)
-	enum class MangaResumeStep { Go, Wait, Fail, Nothing };
-	MangaResumeStep mangaResumeStep(bool engineReady, bool engineFailed, bool listLoading, bool listFailed, bool haveChapters);
+	// What a Resume or a picked chapter that waits does on this pass (looked at every pass while it waits): the series
+	// check sent when it is wanted and not on its way (the press, a Retry; it also starts the engine), keep waiting
+	// (the engine, the check, the chapter list), open now, say why it can't, give up on a check or list that hasn't
+	// answered MANGA_ENGINE_USUAL_MS after the engine is up (busyMs: since the engine was seen up or the check last
+	// sent, the later), or nothing to open (no chapters)
+	static constexpr int64_t MANGA_ENGINE_USUAL_MS = 30000;	// (also the waiting state's usual engine start)
+	struct MangaWaitIn
+	{
+		bool engineRunning = false, engineFailed = false;
+		bool checkWanted = false, checkInFlight = false;
+		bool listLoading = false, listFailed = false, haveChapters = false;
+		int64_t busyMs = 0;
+	};
+	enum class MangaWaitAct { Wait, SendCheck, Go, Fail, TimedOut, Nothing };
+	MangaWaitAct mangaWaitAct(const MangaWaitIn& in);
 
 	// ---- waiting for the manga engine (its start takes about 30 s on the handheld) ----
 	// How a chapter picked on an extension's series page opens: from its file on the card at once (no engine, no
@@ -51,7 +62,6 @@ namespace bp
 	// The waiting state's words and bar. Engine: "Starting the manga engine…", "12 s · usually about 30 s" (past the
 	// usual time: "41 s · taking longer than usual") and a bar that fills over the usual time and holds short of
 	// its end (it is an estimate, never "done" before the engine answers). The others: no bar (share -1), no line
-	static constexpr int64_t MANGA_ENGINE_USUAL_MS = 30000;
 	struct MangaWaitView
 	{
 		std::string title, line;

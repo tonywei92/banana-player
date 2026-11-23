@@ -657,8 +657,15 @@ namespace bp
 		// The series page's waiting state (docs/redesign manga-series, "Waiting for the engine"): while a Resume or a
 		// chapter waits for the engine, the page and the top panel say what for, with the seconds; B drops it
 		Uint32 mangaOpenWaitAt = 0;
+		// since the engine was seen up, or the check last sent (the later): a check or list that hasn't answered
+		// 30 s after it ends the wait (mangaWaitAct's TimedOut)
+		Uint32 mangaOpenWaitBusyAt = 0;
+		// the wait ended without opening: why, on the page with A Retry / B Back (empty: still waiting)
+		std::string mangaOpenWaitFail;
 		bool mangaOpenWaiting() const;
 		void mangaOpenWaitDrop();
+		void mangaOpenWaitEnd(const std::string& why);
+		void mangaOpenWaitRetry(Player& p);
 		MangaWaitView mangaOpenWaitView() const;
 		void drawMangaOpenWait(const Player& p);
 		MangaResumePoint mangaSourceResumePoint() const;	// the chapter Resume opens, from the store's marks

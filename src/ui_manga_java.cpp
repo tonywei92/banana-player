@@ -590,7 +590,8 @@ namespace bp
 	void Ui::Manga::mangaNotesTick(Player& p)
 	{
 		// answers come back where only a const Player is at hand (a draw), so the note waits here for a frame
-		if (mangaResumePending) mangaSourceResumeStep(p);
+		// (both ways a wait begins, a Resume and a picked chapter: the picked one was never looked at again, #19)
+		if (mangaResumePending || !mangaChoosePendKey.empty()) mangaSourceResumeStep(p);
 		if (mangaNotes.empty()) return;
 		p.osd(mangaNotes.front(), 2600);
 		mangaNotes.erase(mangaNotes.begin());
@@ -1107,6 +1108,8 @@ namespace bp
 		mangaJavaNeedHost();
 		mangaJavaCheckSerial = mangaNet->javaExt().graphql(suwayomiCheckManga(id));
 		mangaJavaChecking = mangaJavaCheckSerial != 0;
+		fprintf(stderr, "manga: series check sent (%s, engine state %d)%s\n", mangaSeriesId.c_str(),
+			(int)mangaNet->javaExt().state(), mangaJavaChecking ? "" : ": not queued");
 		mstJavaLocal++;
 	}
 
@@ -1117,6 +1120,9 @@ namespace bp
 		SuwayomiMangaCheck chk;
 		std::string error;
 		bool known = r.error.empty() && suwayomiParseCheckManga(r.body, chk, error);
+		if (known) fprintf(stderr, "manga: series check answered (%s)\n", mangaSeriesId.c_str());
+		else fprintf(stderr, "manga: series check failed (%s: %s)\n", mangaSeriesId.c_str(),
+			!r.error.empty() ? r.error.c_str() : error.c_str());
 		const MangaSeries* saved = mangaStore ? mangaStore->series(mangaSeriesId) : nullptr;
 		auto norm = [](std::string t) {
 			std::string o;

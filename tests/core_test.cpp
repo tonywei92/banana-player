@@ -3493,12 +3493,71 @@ static void testMangaUiLogic()
 
 	// Resume: the first started-but-unread chapter at its page, else the first unread, else the first
 	std::vector<MangaChapterMark> m(3);
-	CHECK_EQ((mangaResumeStep(true, false, false, false, true) == MangaResumeStep::Go), true);
-	CHECK_EQ((mangaResumeStep(false, false, false, false, true) == MangaResumeStep::Wait), true);	// the engine still checking
-	CHECK_EQ((mangaResumeStep(true, false, true, false, false) == MangaResumeStep::Wait), true);	// the list still coming
-	CHECK_EQ((mangaResumeStep(true, false, false, true, false) == MangaResumeStep::Fail), true);
-	CHECK_EQ((mangaResumeStep(false, true, false, false, true) == MangaResumeStep::Fail), true);
-	CHECK_EQ((mangaResumeStep(true, false, false, false, false) == MangaResumeStep::Nothing), true);
+	// manga_wait_act: what a waiting Resume / chapter does each pass
+	{
+		auto act = [](MangaWaitIn in) { return mangaWaitAct(in); };
+		MangaWaitIn in;
+		in.engineRunning = true; in.haveChapters = true;
+		CHECK_EQ((act(in) == MangaWaitAct::Go), true);
+		in.checkInFlight = true;
+		CHECK_EQ((act(in) == MangaWaitAct::Wait), true);
+		in.busyMs = MANGA_ENGINE_USUAL_MS + 1;
+		CHECK_EQ((act(in) == MangaWaitAct::TimedOut), true);	// the check hasn't answered 30 s after the engine is up
+		in = MangaWaitIn{}; in.engineRunning = true; in.listLoading = true; in.busyMs = MANGA_ENGINE_USUAL_MS + 1;
+		CHECK_EQ((act(in) == MangaWaitAct::TimedOut), true);
+		in = MangaWaitIn{}; in.busyMs = 120000;	// the engine's own start is never timed out here (it fails by itself)
+		CHECK_EQ((act(in) == MangaWaitAct::Wait), true);
+		in.checkWanted = true;
+		CHECK_EQ((act(in) == MangaWaitAct::SendCheck), true);
+		in = MangaWaitIn{}; in.engineRunning = true; in.listFailed = true;
+		CHECK_EQ((act(in) == MangaWaitAct::Fail), true);
+		in = MangaWaitIn{}; in.engineFailed = true; in.haveChapters = true;
+		CHECK_EQ((act(in) == MangaWaitAct::Fail), true);
+		in = MangaWaitIn{}; in.engineRunning = true;
+		CHECK_EQ((act(in) == MangaWaitAct::Nothing), true);
+	}
+	// the handheld's sequence (#19): engine starting -> press -> cancel -> press -> engine running -> list -> opens.
+	// The page as the Ui keeps it, stepped every pass whichever way the wait began (a picked chapter as a Resume)
+	{
+		struct Page
+		{
+			bool waiting = false, engineRunning = false, checkWanted = true, checkInFlight = false, listLoading = false;
+			bool haveChapters = true, opened = false;
+			int sent = 0;
+			int64_t now = 0, busySince = 0;
+			void tick()
+			{
+				if (!waiting) return;
+				MangaWaitIn in;
+				in.engineRunning = engineRunning;
+				in.checkWanted = checkWanted;
+				in.checkInFlight = checkInFlight;
+				in.listLoading = listLoading;
+				in.haveChapters = haveChapters;
+				in.busyMs = engineRunning ? now - busySince : 0;
+				switch (mangaWaitAct(in))
+				{
+				case MangaWaitAct::SendCheck: checkWanted = false; checkInFlight = true; sent++; busySince = now; break;
+				case MangaWaitAct::Go: waiting = false; opened = true; break;
+				case MangaWaitAct::Wait: break;
+				default: waiting = false; break;
+				}
+			}
+		} pg;
+		pg.waiting = true; pg.tick();	// press: the check goes (queued; it starts the engine)
+		CHECK_EQ(pg.sent, 1);
+		CHECK_EQ(pg.waiting, true);
+		pg.waiting = false; pg.tick();	// cancel: the check stays on its way
+		pg.waiting = true; pg.tick();	// press again: not sent twice
+		CHECK_EQ(pg.sent, 1);
+		pg.now = 28000; pg.engineRunning = true; pg.busySince = pg.now; pg.tick();
+		CHECK_EQ(pg.waiting, true);	// the check is still on its way
+		pg.now = 29000; pg.checkInFlight = false; pg.listLoading = true; pg.tick();	// answered: the list is asked again
+		CHECK_EQ(pg.waiting, true);
+		pg.now = 31000; pg.listLoading = false; pg.tick();	// the list arrives
+		CHECK_EQ(pg.opened, true);
+		CHECK_EQ(pg.waiting, false);
+	}
 	// manga_open_way: a downloaded chapter never waits for the engine; another waits until it is ready
 	CHECK_EQ((mangaOpenWay(false, true) == MangaOpenWay::FromCard), true);
 	CHECK_EQ((mangaOpenWay(true, true) == MangaOpenWay::FromCard), true);

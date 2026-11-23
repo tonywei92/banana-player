@@ -1180,6 +1180,18 @@ namespace bp
 			out.timeLine = v.line;
 			out.keys = {{"B", "Cancel"}};
 			out.foot = "Opens by itself when it\xE2\x80\x99s ready";
+			if (!mangaOpenWaitFail.empty())
+			{
+				// ended: the reason, A to try again (the same look as a chapter that didn't open)
+				out.spinner = -1;
+				out.danger = true;
+				out.iconRows = G_NETWORK_ROWS;
+				out.iconH = G_NETWORK.h;
+				out.text = v.line + " \xC2\xB7 " + out.text;
+				out.timeLine.clear();
+				out.keys = {{"A", "Try again"}, {"B", "Back"}};
+				out.foot.clear();
+			}
 			out.key = "mangaenginewait|" + out.title + "|" + out.text + "|" + out.timeLine + "|" + std::to_string(out.spinner);
 			return true;
 		}
@@ -1669,6 +1681,36 @@ namespace bp
 		mangaResumePending = mangaResumeLogged = false;
 		mangaChoosePendKey.clear();
 		mangaChoosePendName.clear();
+		mangaOpenWaitBusyAt = 0;
+		mangaOpenWaitFail.clear();
+	}
+
+	void Ui::Manga::mangaOpenWaitEnd(const std::string& why)
+	{
+		// the page keeps the waiting state, now saying why it stopped, with A Retry and B Back
+		fprintf(stderr, "manga: wait ends: %s\n", why.c_str());
+		mangaOpenWaitFail = why;
+	}
+
+	void Ui::Manga::mangaOpenWaitRetry(Player& p)
+	{
+		// a series without a list asks for it again; one with a list is checked again (a check stuck on its way dropped)
+		fprintf(stderr, "manga: the wait is tried again\n");
+		mangaOpenWaitFail.clear();
+		mangaOpenWaitBusyAt = 0;
+		mangaOpenWaitAt = SDL_GetTicks();
+		mangaResumeLogged = false;
+		bool java = MangaJava::isSourceId(mangaSrcId);
+		if (java && mangaNet && mangaNet->started())
+		{
+			if (mangaJavaCheckSerial) mangaNet->javaExt().cancelGraphQl(mangaJavaCheckSerial);
+			mangaJavaNeedHost();	// (a failed engine starts again)
+		}
+		mangaJavaCheckSerial = 0;
+		mangaJavaChecking = false;
+		if (mangaSrcChapters.empty()) mangaSourceSeriesLoad(p, mangaSrcChaptersOn);
+		else if (java) mangaJavaCheckPending = true;
+		mangaSourceResumeStep(p);
 	}
 
 	MangaWaitView Ui::Manga::mangaOpenWaitView() const
@@ -1678,6 +1720,13 @@ namespace bp
 		Uint32 now = SDL_GetTicks();
 		// the seconds since the engine began to start, as the Ui saw it (extNoticeText); else since the press
 		Uint32 since = extNoticeState == (int)JavaExtHost::State::Starting && extNoticeAt ? extNoticeAt : mangaOpenWaitAt;
+		if (!mangaOpenWaitFail.empty())
+		{
+			MangaWaitView f;
+			f.title = mangaResumePending ? "Couldn\xE2\x80\x99t resume" : "Couldn\xE2\x80\x99t open the chapter";
+			f.line = mangaOpenWaitFail;
+			return f;
+		}
 		return mangaWaitView(mangaWaitStage(!java || st == JavaExtHost::State::Running, mangaSrcLoading || mangaSrcRefreshing),
 			(int64_t)(now - since));
 	}
@@ -1713,38 +1762,52 @@ namespace bp
 		if (!mangaResumePending && mangaChoosePendKey.empty()) return;
 		// (the page left some other way, a page's intent say: nothing opens by itself later)
 		if (ui.page != Page::MangaSeries) { mangaOpenWaitDrop(); return; }
-		bool engineFailed = mangaNet && mangaNet->started() && MangaJava::isSourceId(mangaSrcId) &&
-			mangaNet->javaExt().state() == JavaExtHost::State::Failed;
-		bool listFailed = !mangaSrcError.empty() && !mangaSrcChaptersOn;
+		if (!mangaOpenWaitFail.empty()) return;	// (ended: A tries again, B goes back)
+		bool java = MangaJava::isSourceId(mangaSrcId);
+		auto st = mangaNet && mangaNet->started() ? mangaNet->javaExt().state() : JavaExtHost::State::NotInstalled;
 		const char* what = mangaResumePending ? "resume" : "open the chapter";
 		// (an engine that was removed, or never installed here, would be waited for for ever)
-		if (MangaJava::isSourceId(mangaSrcId) && !mangaJavaInstalled())
+		if (java && !mangaJavaInstalled())
 		{
 			mangaOpenWaitDrop();
 			mangaNotice(std::string("Couldn\xE2\x80\x99t ") + what + ": the manga engine isn\xE2\x80\x99t installed", 3000);
 			fprintf(stderr, "manga: %s failed (the engine isn't installed)\n", what);
 			return;
 		}
-		switch (mangaResumeStep(mangaSourceEngineReady(), engineFailed, mangaSrcLoading || mangaSrcRefreshing,
-			listFailed, !mangaSrcChapters.empty()))
+		Uint32 now = SDL_GetTicks();
+		MangaWaitIn in;
+		in.engineRunning = !java || st == JavaExtHost::State::Running;
+		in.engineFailed = java && st == JavaExtHost::State::Failed;
+		in.checkWanted = java && mangaJavaCheckPending;
+		in.checkInFlight = java && (mangaJavaChecking || mangaJavaRelinkSerial);
+		in.listLoading = mangaSrcLoading || mangaSrcRefreshing;
+		in.listFailed = !mangaSrcError.empty() && !mangaSrcChaptersOn;
+		in.haveChapters = !mangaSrcChapters.empty();
+		if (in.engineRunning && !mangaOpenWaitBusyAt) mangaOpenWaitBusyAt = now;
+		in.busyMs = mangaOpenWaitBusyAt ? (int64_t)(now - mangaOpenWaitBusyAt) : 0;
+		switch (mangaWaitAct(in))
 		{
-		case MangaResumeStep::Wait:
-			if (!mangaResumeLogged)
-				fprintf(stderr, "manga: %s waits for the series (engine state %d)\n", what,
-					mangaNet && mangaNet->started() ? (int)mangaNet->javaExt().state() : -1);
-			mangaResumeLogged = true;
+		case MangaWaitAct::SendCheck:
 			mangaSourceEngineWant();
+			if (in.engineRunning) mangaOpenWaitBusyAt = now;
+			[[fallthrough]];
+		case MangaWaitAct::Wait:
+			if (!mangaResumeLogged)
+				fprintf(stderr, "manga: %s waits for the series (engine state %d)\n", what, java ? (int)st : -1);
+			mangaResumeLogged = true;
 			return;	// (the waiting state says why: drawMangaOpenWait, waitingPane)
-		case MangaResumeStep::Fail:
-			mangaOpenWaitDrop();
-			mangaNotice(std::string("Couldn\xE2\x80\x99t ") + what + ": " +
-				(engineFailed ? "the manga engine didn\xE2\x80\x99t start" : mangaSrcError), 3000);
-			fprintf(stderr, "manga: %s failed (%s)\n", what, engineFailed ? "engine" : mangaSrcError.c_str());
+		case MangaWaitAct::Fail:
+			mangaOpenWaitEnd(in.engineFailed ? "The manga engine didn\xE2\x80\x99t start" : mangaSrcError);
 			return;
-		case MangaResumeStep::Nothing:
+		case MangaWaitAct::TimedOut:
+			mangaOpenWaitEnd(in.checkInFlight ? "The manga engine didn\xE2\x80\x99t answer about this series"
+				: "The chapter list didn\xE2\x80\x99t come");
+			return;
+		case MangaWaitAct::Nothing:
+			fprintf(stderr, "manga: wait ends: no chapters\n");
 			mangaOpenWaitDrop();
 			return;
-		case MangaResumeStep::Go: break;
+		case MangaWaitAct::Go: break;
 		}
 		bool resume = mangaResumePending;
 		std::string key = mangaChoosePendKey;
@@ -1780,6 +1843,13 @@ namespace bp
 		MangaWaitView v = mangaOpenWaitView();
 		Rect area = mangaAreaRect();
 		int mid = area.y + area.h / 2;
+		if (!mangaOpenWaitFail.empty())
+		{
+			ui.drawTextMid(v.title, F_P20, TEXT, W / 2, mid - 20, 560, 2);
+			ui.drawTextMid(v.line, F_I14, DIM, W / 2, mid + 14, 560, 2);
+			ui.drawHints({{"A", "Retry"}, {"B", "Back"}});
+			return;
+		}
 		ui.drawLoader(W / 2, mid - 48, "");
 		ui.drawTextMid(v.title, F_P20, TEXT, W / 2, mid - 6, 560, 2);
 		if (v.share >= 0)
@@ -1868,6 +1938,7 @@ namespace bp
 				mangaOpenWaitDrop();
 				fprintf(stderr, "manga: the wait was cancelled\n");
 			}
+			else if (b == Button::A && !mangaOpenWaitFail.empty()) mangaOpenWaitRetry(p);
 			return false;
 		}
 		if (b == Button::Start) { openMangaSettings(); return false; }

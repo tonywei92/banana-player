@@ -47,12 +47,14 @@ namespace bp
 		return {p.topR, p.topG, p.topB, p.bottomR, p.bottomG, p.bottomB};
 	}
 
-	MangaResumeStep mangaResumeStep(bool engineReady, bool engineFailed, bool listLoading, bool listFailed, bool haveChapters)
+	MangaWaitAct mangaWaitAct(const MangaWaitIn& in)
 	{
-		if (engineFailed || (listFailed && !haveChapters)) return MangaResumeStep::Fail;
-		if (!engineReady) return MangaResumeStep::Wait;
-		if (!haveChapters) return listLoading ? MangaResumeStep::Wait : MangaResumeStep::Nothing;
-		return MangaResumeStep::Go;
+		if (in.engineFailed || (in.listFailed && !in.haveChapters)) return MangaWaitAct::Fail;
+		if (in.checkWanted) return MangaWaitAct::SendCheck;
+		if (!in.engineRunning) return MangaWaitAct::Wait;
+		if (in.checkInFlight || in.listLoading)
+			return in.busyMs > MANGA_ENGINE_USUAL_MS ? MangaWaitAct::TimedOut : MangaWaitAct::Wait;
+		return in.haveChapters ? MangaWaitAct::Go : MangaWaitAct::Nothing;
 	}
 
 	MangaOpenWay mangaOpenWay(bool engineReady, bool chapterOnCard)

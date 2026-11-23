@@ -28,3 +28,12 @@ both panels, the seconds (they count from when the Ui first saw `Starting`, `ext
 its memory (about 400 MB until the idle stop, 5 minutes). Log lines to read on the handheld: "manga: the engine
 warmed from Home", "manga: resume waits for the series (engine state N)", "manga: resumes chapter … from the card",
 "manga: the wait was cancelled".
+
+**Follow-up: stuck on "Checking this series…" (handheld log, 2026-11-23).** A picked chapter that waited was never
+looked at again: the per-pass step (`mangaNotesTick`) ran only for a waiting Resume, so after the engine came up the
+check answered and nothing opened; the view said "Checking" for ever. Now both kinds of wait are stepped every pass
+through one pure `mangaWaitAct` (`manga_ui_logic.*`): the check is sent when wanted and not on its way, a check or
+list not answered 30 s after the engine is up (or after the last send) ends the wait with its reason on the page and
+the top panel (A Retry: the list asked again, or the check sent again; B Back), as does an engine that fails. The
+core test plays the handheld's sequence (starting → press → cancel → press → running → list → opens). Log lines:
+"manga: series check sent / answered / failed", "manga: wait ends: …", "manga: the wait is tried again".
