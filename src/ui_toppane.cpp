@@ -58,7 +58,7 @@ namespace bp
 	{
 		if (topPaneGallery(out)) return true;
 		if (page == Page::Settings && settingsPage && settingsPage->topPane(out)) return true;
-		if (page == Page::MangaRead && manga && manga->waitingPane(out)) return true;
+		if ((page == Page::MangaRead || page == Page::MangaSeries) && manga && manga->waitingPane(out)) return true;
 		return idle && idlePane(out, p);
 	}
 

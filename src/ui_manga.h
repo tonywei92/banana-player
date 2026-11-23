@@ -360,6 +360,10 @@ namespace bp
 		// the engine is asked for once per entry into the Manga pages (mangaVideoGuard): in them now, and the wish
 		// still to be made (it waits while a stop is ending or the engine is still downloading)
 		bool engineInManga = false, engineEntryWant = false;
+		// the engine started from Home ahead of its use (mangaEngineWarmTick), once a run; started that way it says
+		// nothing outside Manga (nobody asked for it there)
+		bool engineWarmed = false, engineWarmQuiet = false;
+		void mangaEngineWarmTick(const Player& p);
 		Uint32 engineUseAt = 0;	// the last time a Manga page counted as the engine's use (every 30 s while one shows)
 		// the manga extension's picture (assets/icons/manga.png), decoded at the size drawn
 		SDL_Texture* mangaIconTex = nullptr;
@@ -648,12 +652,22 @@ namespace bp
 		bool mangaJavaChecking = false;
 		bool mangaResumeLogged = false;
 		bool mangaResumePending = false;	// Resume pressed before the series was ready: it goes on when it is (mangaSourceResumeStep)
+		// a chapter picked (its key: the check may redo the list) before the series was ready: opened when it is
+		std::string mangaChoosePendKey, mangaChoosePendName;
+		// The series page's waiting state (docs/redesign manga-series, "Waiting for the engine"): while a Resume or a
+		// chapter waits for the engine, the page and the top panel say what for, with the seconds; B drops it
+		Uint32 mangaOpenWaitAt = 0;
+		bool mangaOpenWaiting() const;
+		void mangaOpenWaitDrop();
+		MangaWaitView mangaOpenWaitView() const;
+		void drawMangaOpenWait(const Player& p);
+		MangaResumePoint mangaSourceResumePoint() const;	// the chapter Resume opens, from the store's marks
+		bool mangaSourceChapterOnCard(int i) const;
 		bool mangaJavaCheckPending = false;	// the open's check put off until a chapter is wanted (mangaSourceEngineWant)
 		void mangaSourceEngineWant();
 		uint64_t mangaJavaCheckSerial = 0;
 		void mangaJavaCheckStart();
 		bool mangaJavaCheckAnswer(const JavaExtHost::GraphQlResult& r);
-		std::string mangaSourceWaitText() const;	// why an extension's chapter waits: the engine, or the check
 		bool mangaJavaPagesAnswer(const JavaExtHost::GraphQlResult& r, const Player& p);
 		uint64_t mangaJavaDlSubmit(const MangaDlAsk& a);	// a chapter's page list for the Download sheet
 		bool mangaJavaDlAnswer(const JavaExtHost::GraphQlResult& r);

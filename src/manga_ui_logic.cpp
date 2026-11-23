@@ -55,6 +55,38 @@ namespace bp
 		return MangaResumeStep::Go;
 	}
 
+	MangaOpenWay mangaOpenWay(bool engineReady, bool chapterOnCard)
+	{
+		if (chapterOnCard) return MangaOpenWay::FromCard;
+		return engineReady ? MangaOpenWay::FromSource : MangaOpenWay::Wait;
+	}
+
+	MangaWaitStage mangaWaitStage(bool engineRunning, bool listLoading)
+	{
+		if (!engineRunning) return MangaWaitStage::Engine;
+		return listLoading ? MangaWaitStage::Chapters : MangaWaitStage::Series;
+	}
+
+	MangaWaitView mangaWaitView(MangaWaitStage stage, int64_t elapsedMs)
+	{
+		MangaWaitView v;
+		if (stage == MangaWaitStage::Series) { v.title = "Checking this series\xE2\x80\xA6"; return v; }
+		if (stage == MangaWaitStage::Chapters) { v.title = "Getting the chapters\xE2\x80\xA6"; return v; }
+		if (elapsedMs < 0) elapsedMs = 0;
+		v.title = "Starting the manga engine\xE2\x80\xA6";
+		v.line = std::to_string(elapsedMs / 1000) + " s \xC2\xB7 " +
+			(elapsedMs <= MANGA_ENGINE_USUAL_MS + 5000 ? "usually about 30 s" : "taking longer than usual");
+		v.share = std::min(0.95, (double)elapsedMs / MANGA_ENGINE_USUAL_MS);
+		return v;
+	}
+
+	bool mangaEngineWarm(const MangaWarmIn& in)
+	{
+		if (!in.onHome || !in.mangaOn || !in.engineInstalled) return false;
+		if (in.upgrading || in.playing || in.warmedThisRun) return false;
+		return in.lastReadOnline && in.lastReadAgoS >= 0 && in.lastReadAgoS <= MANGA_WARM_RECENT_S;
+	}
+
 	MangaResumePoint mangaResume(const std::vector<MangaChapterMark>& chapters)
 	{
 		MangaResumePoint out;

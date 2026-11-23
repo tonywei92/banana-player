@@ -39,6 +39,42 @@ namespace bp
 	enum class MangaResumeStep { Go, Wait, Fail, Nothing };
 	MangaResumeStep mangaResumeStep(bool engineReady, bool engineFailed, bool listLoading, bool listFailed, bool haveChapters);
 
+	// ---- waiting for the manga engine (its start takes about 30 s on the handheld) ----
+	// How a chapter picked on an extension's series page opens: from its file on the card at once (no engine, no
+	// network: a downloaded chapter never waits), from the source now, or after the wait (the waiting state)
+	enum class MangaOpenWay { FromCard, FromSource, Wait };
+	MangaOpenWay mangaOpenWay(bool engineReady, bool chapterOnCard);
+
+	// What the wait is for, in the order it goes: the engine starting, the series checked against it, its chapter list
+	enum class MangaWaitStage { Engine, Series, Chapters };
+	MangaWaitStage mangaWaitStage(bool engineRunning, bool listLoading);
+	// The waiting state's words and bar. Engine: "Starting the manga engine…", "12 s · usually about 30 s" (past the
+	// usual time: "41 s · taking longer than usual") and a bar that fills over the usual time and holds short of
+	// its end (it is an estimate, never "done" before the engine answers). The others: no bar (share -1), no line
+	static constexpr int64_t MANGA_ENGINE_USUAL_MS = 30000;
+	struct MangaWaitView
+	{
+		std::string title, line;
+		double share = -1;
+	};
+	MangaWaitView mangaWaitView(MangaWaitStage stage, int64_t elapsedMs);
+
+	// Starting the engine before Manga is opened, on Home, so the wait is over (or shorter) by the time a series is
+	// resumed. Only when it is likely to be used and costs nothing heard or seen: the last thing read in Manga was an
+	// extension's series, within MANGA_WARM_RECENT_S; nothing plays (a video can't share the memory, and a song's
+	// visualizer would stutter under the start's 25 s of the cores); installed, not running, no runtime upgrade on;
+	// once a run (a warm engine nobody used stops by itself after its idle time, and isn't started again)
+	static constexpr int64_t MANGA_WARM_RECENT_S = 3 * 86400;
+	struct MangaWarmIn
+	{
+		bool onHome = false, mangaOn = false;
+		bool engineInstalled = false;	// installed and not started (JavaExtHost::State::Installed)
+		bool upgrading = false, playing = false, warmedThisRun = false;
+		bool lastReadOnline = false;	// the newest History row is an extension's series
+		int64_t lastReadAgoS = -1;		// how long ago it was read; -1: nothing read
+	};
+	bool mangaEngineWarm(const MangaWarmIn& in);
+
 	// "now", "12 min ago", "3 h ago", "2 days ago", "5 weeks ago", "10 months ago", "2 years ago"; "" for no time
 	std::string mangaAgo(int64_t at, int64_t now);
 

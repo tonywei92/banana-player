@@ -1626,6 +1626,17 @@ old or more, the details line under the title ends **· Checked 7h ago · L** (a
 ever asked by itself). An extension's series doesn't start the manga engine when it opens either: that
 waits for **Resume** or a chapter; while a check runs it ends **Checking for new chapters…**.
 
+**Waiting for the manga engine.** The engine takes about 30 seconds to start. **Resume** or a chapter pressed before
+it answers puts the series page in a waiting state: a spinner, **Starting the manga engine…**, a bar over
+**12 s · usually about 30 s** (past that: **taking longer than usual**), and **Resume opens by itself when it's
+ready**; the top screen says the same, large. Then **Checking this series…**, **Getting the chapters…**, and the
+chapter opens without another press. **B** (or the header's back) cancels and the page is as it was; no other key acts
+meanwhile. If the engine doesn't start, or isn't installed, a note says so. A **downloaded** chapter never waits: when
+the chapter Resume opens (or the one picked) is on the card, it opens at once, engine or not. To shorten the wait, the
+engine is started ahead on **Home**, saying nothing, when the last thing read in Manga was an extension's series within
+the last three days and nothing is playing (a video can't share its memory; a song's visualizer would stutter under the
+start); once a run, and an engine nobody then uses stops by itself after five minutes.
+
 **Sources.** **X** on Browse opens its own page (its header says **Sources**; **B** goes back to Browse). Its lists step
 with **L/R** (**L2/R2** are the sections): **Installed**, **Available** and **Repositories**. **Y**
 checks the repositories again, and the top screen says how it went: **Installed …**, **Updated …**, **Removed …**, or why

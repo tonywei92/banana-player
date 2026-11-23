@@ -12,6 +12,7 @@
 #include "ui_internal.h"
 #include "ui_reader.h"
 #include "ui_manga.h"
+#include "ui_browse.h"
 #include "ui_kit.h"
 #include <algorithm>
 #include <cmath>
@@ -419,8 +420,54 @@ namespace bp
 		for (size_t i = 0; i < list.size(); i++) mstAvOrder[list[i]->pkgName] = (int)i;
 	}
 
+	void Ui::Manga::mangaEngineWarmTick(const Player& p)
+	{
+		// Home, before Manga is opened: the engine started ahead of its use when the last thing read was an online
+		// series (mangaEngineWarm says when), so its ~30 s are over, or nearly, by the time Resume is pressed. A video
+		// started meanwhile stops it as ever (mangaVideoGuard); unused, it stops after its idle time
+		if (engineWarmed || !mangaNet) return;
+		MangaWarmIn in;
+		in.onHome = ui.page == Page::Browse && ui.browse && ui.browse->atHome();
+		in.mangaOn = p.settings.mangaOn;
+		JavaExtHost& h = mangaNet->javaExt();
+		in.engineInstalled = h.state() == JavaExtHost::State::Installed && !h.stopping();
+		in.upgrading = h.runtimeOld() || h.upgrade() == JavaExtHost::Upgrade::Downloading;
+		in.playing = p.playing() || p.loading();
+		// (the cheap half first, as if something was read: the store is only read when the rest allows a start)
+		in.lastReadOnline = true;
+		in.lastReadAgoS = 0;
+		if (!mangaEngineWarm(in)) return;
+		engineWarmed = true;	// asked once a run, whatever the store says
+		if (!mangaStore)
+		{
+			mangaStore = std::make_unique<MangaStore>();
+			mangaStore->load(ui.stateDirPath);
+		}
+		std::vector<ChapterProgress> last = mangaStore->historyBySeries(1);
+		in.lastReadOnline = false;
+		in.lastReadAgoS = -1;
+		if (!last.empty())
+		{
+			std::string full, key;
+			if (isSourceId(last[0].seriesId)) splitSourceId(last[0].seriesId, full, key);
+			in.lastReadOnline = MangaJava::isSourceId(full);
+			in.lastReadAgoS = std::max<int64_t>(0, (int64_t)time(nullptr) - last[0].at);
+		}
+		if (!mangaEngineWarm(in))
+		{
+			fprintf(stderr, "manga: the engine isn\xE2\x80\x99t warmed from Home (last read: %s, %lld s ago)\n",
+				in.lastReadOnline ? "online" : "not online", (long long)in.lastReadAgoS);
+			return;
+		}
+		mangaNet->start();
+		engineWarmQuiet = true;
+		h.want();
+		fprintf(stderr, "manga: the engine warmed from Home (an online series read %lld s ago)\n", (long long)in.lastReadAgoS);
+	}
+
 	void Ui::Manga::mangaVideoGuard(Player& p)
 	{
+		mangaEngineWarmTick(p);
 		// The handheld's 1 GB can't hold a video and the manga engine (its server takes about 400 MB). In the manga
 		// reader a video is stopped (as Stop, everywhere, with the notice); outside it a video wins and the engine
 		// is stopped. Music and photos go on either way.
@@ -432,6 +479,7 @@ namespace bp
 			bool in = ui.page == Page::Manga || ui.page == Page::MangaSeries || ui.page == Page::MangaRead ||
 				ui.page == Page::MangaSettings || ui.page == Page::MangaSources;
 			if (in && !engineInManga) engineEntryWant = true;
+			if (in) engineWarmQuiet = false;	// (in Manga its start is said as ever)
 			if (!in) engineEntryWant = false;
 			engineInManga = in;
 			// (held while the lighter runtime is offered or downloading: the old one would start for nothing, 25 s and
@@ -510,6 +558,7 @@ namespace bp
 			extNoticeAt = now;
 		}
 		Uint32 secs = (now - extNoticeAt) / 1000;
+		if (engineWarmQuiet && !engineInManga) return "";	// warmed from Home: nobody asked, nothing is said there
 		switch ((JavaExtHost::State)st)
 		{
 		case JavaExtHost::State::Starting: return "Loading manga engine\xE2\x80\xA6 " + std::to_string(secs) + " s";
@@ -526,6 +575,8 @@ namespace bp
 		if (guardStoppedVideo && videoBlockedAt && SDL_GetTicks() - videoBlockedAt >= 5000) guardStoppedVideo = false;
 		std::string t = extNoticeText();
 		if (t.empty()) return;
+		// the series page's waiting state says the same, larger; an engine warmed from Home says nothing there
+		if (mangaOpenWaiting()) return;
 		bool failed = extNoticeState == (int)JavaExtHost::State::Failed ||
 			(videoBlockedAt && SDL_GetTicks() - videoBlockedAt < 5000 && !guardStoppedVideo);
 		bool ready = extNoticeState == (int)JavaExtHost::State::Running;

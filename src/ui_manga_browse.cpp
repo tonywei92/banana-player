@@ -72,7 +72,7 @@ namespace bp
 	{
 		(void)p;
 		mangaSourceCancel();
-		mangaResumePending = mangaResumeLogged = false;
+		mangaOpenWaitDrop();
 		mangaView = 0;
 		mangaSrcId.clear();
 		mangaSrcName.clear();
@@ -1164,6 +1164,25 @@ namespace bp
 	{
 		// the top panel while a source's chapter is asked for (docs/redesign: manga-end, "Waiting for a chapter"): the
 		// State card with the spinner, or the failure with its reason and A; not while a chapter still reads up there
+		if (mangaOpenWaiting())
+		{
+			// the series page's waiting state (docs/redesign manga-series, "Waiting for the engine"): the same State
+			// card, with the engine's seconds over a bar
+			MangaWaitView v = mangaOpenWaitView();
+			out = PaneSpec{};
+			out.state = true;
+			out.spinner = (int)(SDL_GetTicks() / 100 % 8);
+			out.title = v.title;
+			out.text = mangaTitle(mangaSeriesId);
+			if (!mangaResumePending && !mangaChoosePendName.empty())
+				out.text += (out.text.empty() ? "" : " \xC2\xB7 ") + mangaChoosePendName;
+			out.share = (float)v.share;
+			out.timeLine = v.line;
+			out.keys = {{"B", "Cancel"}};
+			out.foot = "Opens by itself when it\xE2\x80\x99s ready";
+			out.key = "mangaenginewait|" + out.title + "|" + out.text + "|" + out.timeLine + "|" + std::to_string(out.spinner);
+			return true;
+		}
 		if (!mangaReadWaiting || ui.page != Page::MangaRead) return false;
 		bool failed = !mangaSrcLoading && !mangaSrcError.empty();
 		out = PaneSpec{};
@@ -1575,15 +1594,18 @@ namespace bp
 
 	void Ui::Manga::mangaSourceSeriesChoose(int i, Player& p)
 	{
-		// (an extension's chapter, as its Resume, waits for the manga engine; a downloaded one reads from the card)
-		if (!mangaSourceEngineReady() && i >= 0 && i < (int)mangaSrcChapters.size() &&
-			mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]).kind != MangaDlMark::OnCard)
+		if (i < 0 || i >= (int)mangaSrcChapters.size()) return;
+		// (an extension's chapter, as its Resume, waits for the manga engine in the page's waiting state and opens
+		// when it is ready; a downloaded one reads from the card at once)
+		if (mangaOpenWay(mangaSourceEngineReady(), mangaSourceChapterOnCard(i)) == MangaOpenWay::Wait)
 		{
-			mangaSourceEngineWant();
-			mangaNotice(mangaSourceWaitText(), 2000);
+			mangaResumePending = false;
+			mangaChoosePendKey = mangaSrcChapters[i].key;
+			mangaChoosePendName = chapterName(mangaSrcChapters[i]);
+			mangaOpenWaitAt = SDL_GetTicks();
+			mangaSourceResumeStep(p);
 			return;
 		}
-		if (i < 0 || i >= (int)mangaSrcChapters.size()) return;
 		std::string chapterId = sourceItemId(mangaSrcId, mangaSrcChapters[i].key);
 		// its saved page, unless it was read to its end (then the start again), as the card's chapters do
 		int page0 = 0;
@@ -1612,46 +1634,14 @@ namespace bp
 		mangaJavaCheckStart();
 	}
 
-	std::string Ui::Manga::mangaSourceWaitText() const
+	bool Ui::Manga::mangaSourceChapterOnCard(int i) const
 	{
-		return mangaNet && mangaNet->started() && mangaNet->javaExt().state() == JavaExtHost::State::Running
-			? "Checking this series\xE2\x80\xA6" : "The manga engine is still loading\xE2\x80\xA6";
+		return i >= 0 && i < (int)mangaSrcChapters.size() &&
+			mangaDlMarkFor(mangaSrcId, mangaSeriesId, mangaSrcChapters[i]).kind == MangaDlMark::OnCard;
 	}
 
-	void Ui::Manga::mangaSourceSeriesResume(Player& p)
+	MangaResumePoint Ui::Manga::mangaSourceResumePoint() const
 	{
-		// one press resumes: not ready yet, it is remembered and goes on when the series is (mangaNotesTick), B drops it
-		mangaResumePending = true;
-		mangaSourceResumeStep(p);
-	}
-
-	void Ui::Manga::mangaSourceResumeStep(Player& p)
-	{
-		if (!mangaResumePending) return;
-		bool engineFailed = mangaNet && mangaNet->started() && MangaJava::isSourceId(mangaSrcId) &&
-			mangaNet->javaExt().state() == JavaExtHost::State::Failed;
-		bool listFailed = !mangaSrcError.empty() && !mangaSrcChaptersOn;
-		switch (mangaResumeStep(mangaSourceEngineReady(), engineFailed, mangaSrcLoading || mangaSrcRefreshing,
-			listFailed, !mangaSrcChapters.empty()))
-		{
-		case MangaResumeStep::Wait:
-			if (!mangaJavaCheckPending && !mangaResumeLogged) fprintf(stderr, "manga: resume waits for the series\n");
-			mangaResumeLogged = true;
-			mangaSourceEngineWant();
-			mangaNotice(mangaSourceWaitText(), 400);	// (kept up each frame while it waits)
-			return;
-		case MangaResumeStep::Fail:
-			mangaResumePending = mangaResumeLogged = false;
-			mangaNotice(engineFailed ? "Couldn\xE2\x80\x99t resume: the manga engine didn\xE2\x80\x99t start"
-				: "Couldn\xE2\x80\x99t resume: " + mangaSrcError, 3000);
-			fprintf(stderr, "manga: resume failed (%s)\n", engineFailed ? "engine" : mangaSrcError.c_str());
-			return;
-		case MangaResumeStep::Nothing:
-			mangaResumePending = mangaResumeLogged = false;
-			return;
-		case MangaResumeStep::Go: break;
-		}
-		mangaResumePending = mangaResumeLogged = false;
 		std::vector<MangaChapterMark> marks;
 		marks.reserve(mangaSrcChapters.size());
 		for (const auto& c : mangaSrcChapters)
@@ -1666,12 +1656,143 @@ namespace bp
 				}
 			marks.push_back(m);
 		}
-		MangaResumePoint r = mangaResume(marks);
+		return mangaResume(marks);
+	}
+
+	bool Ui::Manga::mangaOpenWaiting() const
+	{
+		return ui.page == Page::MangaSeries && (mangaResumePending || !mangaChoosePendKey.empty());
+	}
+
+	void Ui::Manga::mangaOpenWaitDrop()
+	{
+		mangaResumePending = mangaResumeLogged = false;
+		mangaChoosePendKey.clear();
+		mangaChoosePendName.clear();
+	}
+
+	MangaWaitView Ui::Manga::mangaOpenWaitView() const
+	{
+		bool java = MangaJava::isSourceId(mangaSrcId);
+		auto st = mangaNet && mangaNet->started() ? mangaNet->javaExt().state() : JavaExtHost::State::NotInstalled;
+		Uint32 now = SDL_GetTicks();
+		// the seconds since the engine began to start, as the Ui saw it (extNoticeText); else since the press
+		Uint32 since = extNoticeState == (int)JavaExtHost::State::Starting && extNoticeAt ? extNoticeAt : mangaOpenWaitAt;
+		return mangaWaitView(mangaWaitStage(!java || st == JavaExtHost::State::Running, mangaSrcLoading || mangaSrcRefreshing),
+			(int64_t)(now - since));
+	}
+
+	void Ui::Manga::mangaSourceSeriesResume(Player& p)
+	{
+		// a downloaded chapter never waits for the engine: the card's copy of the list says which chapter, its file
+		// opens now (the series' check stays put off, as when a downloaded chapter is picked)
+		if (!mangaSourceEngineReady())
+		{
+			MangaResumePoint r = mangaSourceResumePoint();
+			if (r.chapter >= 0 && mangaOpenWay(false, mangaSourceChapterOnCard(r.chapter)) == MangaOpenWay::FromCard)
+			{
+				fprintf(stderr, "manga: resumes chapter %s page %d from the card (the engine not waited for)\n",
+					mangaSrcChapters[r.chapter].key.c_str(), r.page);
+				mangaSourceChapterOpen(mangaSrcChapters, r.chapter, r.page, mangaSeriesId,
+					mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title, p);
+				return;
+			}
+		}
+		// one press resumes: not ready yet, it is remembered and goes on when the series is (mangaNotesTick), the page
+		// in its waiting state meanwhile; B drops it
+		mangaChoosePendKey.clear();
+		mangaChoosePendName.clear();
+		mangaResumePending = true;
+		mangaOpenWaitAt = SDL_GetTicks();
+		mangaSourceResumeStep(p);
+	}
+
+	void Ui::Manga::mangaSourceResumeStep(Player& p)
+	{
+		// a Resume or a picked chapter that waits: looked at every pass until the series is ready
+		if (!mangaResumePending && mangaChoosePendKey.empty()) return;
+		// (the page left some other way, a page's intent say: nothing opens by itself later)
+		if (ui.page != Page::MangaSeries) { mangaOpenWaitDrop(); return; }
+		bool engineFailed = mangaNet && mangaNet->started() && MangaJava::isSourceId(mangaSrcId) &&
+			mangaNet->javaExt().state() == JavaExtHost::State::Failed;
+		bool listFailed = !mangaSrcError.empty() && !mangaSrcChaptersOn;
+		const char* what = mangaResumePending ? "resume" : "open the chapter";
+		// (an engine that was removed, or never installed here, would be waited for for ever)
+		if (MangaJava::isSourceId(mangaSrcId) && !mangaJavaInstalled())
+		{
+			mangaOpenWaitDrop();
+			mangaNotice(std::string("Couldn\xE2\x80\x99t ") + what + ": the manga engine isn\xE2\x80\x99t installed", 3000);
+			fprintf(stderr, "manga: %s failed (the engine isn't installed)\n", what);
+			return;
+		}
+		switch (mangaResumeStep(mangaSourceEngineReady(), engineFailed, mangaSrcLoading || mangaSrcRefreshing,
+			listFailed, !mangaSrcChapters.empty()))
+		{
+		case MangaResumeStep::Wait:
+			if (!mangaResumeLogged)
+				fprintf(stderr, "manga: %s waits for the series (engine state %d)\n", what,
+					mangaNet && mangaNet->started() ? (int)mangaNet->javaExt().state() : -1);
+			mangaResumeLogged = true;
+			mangaSourceEngineWant();
+			return;	// (the waiting state says why: drawMangaOpenWait, waitingPane)
+		case MangaResumeStep::Fail:
+			mangaOpenWaitDrop();
+			mangaNotice(std::string("Couldn\xE2\x80\x99t ") + what + ": " +
+				(engineFailed ? "the manga engine didn\xE2\x80\x99t start" : mangaSrcError), 3000);
+			fprintf(stderr, "manga: %s failed (%s)\n", what, engineFailed ? "engine" : mangaSrcError.c_str());
+			return;
+		case MangaResumeStep::Nothing:
+			mangaOpenWaitDrop();
+			return;
+		case MangaResumeStep::Go: break;
+		}
+		bool resume = mangaResumePending;
+		std::string key = mangaChoosePendKey;
+		mangaOpenWaitDrop();
+		if (!resume)
+		{
+			// the chapter picked, by its key: the check may have put the list in another order, or dropped it
+			for (int i = 0; i < (int)mangaSrcChapters.size(); i++)
+				if (mangaSrcChapters[i].key == key)
+				{
+					fprintf(stderr, "manga: opens chapter %s after the wait\n", key.c_str());
+					mangaSourceSeriesChoose(i, p);
+					return;
+				}
+			mangaNotice("That chapter isn\xE2\x80\x99t in the list any more", 3000);
+			fprintf(stderr, "manga: the chapter waited for (%s) left the list\n", key.c_str());
+			return;
+		}
+		MangaResumePoint r = mangaSourceResumePoint();
 		if (r.chapter >= 0)
 			fprintf(stderr, "manga: resumes chapter %s page %d\n", mangaSrcChapters[r.chapter].key.c_str(), r.page);
 		if (r.chapter >= 0)
 			mangaSourceChapterOpen(mangaSrcChapters, r.chapter, r.page, mangaSeriesId,
 				mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title, p);
+	}
+
+	void Ui::Manga::drawMangaOpenWait(const Player& p)
+	{
+		// the series page while a Resume or a chapter waits for the engine: what it waits for, the seconds against the
+		// usual time, and that it goes on by itself; the top panel says it large (waitingPane)
+		std::string title = mangaSrcInfoOn && !mangaSrcInfo.title.empty() ? mangaSrcInfo.title : mangaSrcTitle;
+		ui.drawHeader(title.empty() ? "Series" : title, p);
+		MangaWaitView v = mangaOpenWaitView();
+		Rect area = mangaAreaRect();
+		int mid = area.y + area.h / 2;
+		ui.drawLoader(W / 2, mid - 48, "");
+		ui.drawTextMid(v.title, F_P20, TEXT, W / 2, mid - 6, 560, 2);
+		if (v.share >= 0)
+		{
+			Rect bar{W / 2 - 150, mid + 18, 300, 6};
+			ui.fillRound(bar, SURFACE, 3);
+			ui.fillRound({bar.x, bar.y, std::max(6, (int)std::lround(bar.w * v.share)), bar.h}, ACCENT, 3);
+			ui.drawTextMid(v.line, F_I14, TEXT, W / 2, mid + 44, 560, 2);
+		}
+		std::string next = mangaResumePending ? std::string("Resume") : mangaChoosePendName;
+		ui.drawTextMid((next.empty() ? std::string("It") : next) + " opens by itself when it\xE2\x80\x99s ready", F_I12, DIM, W / 2,
+			mid + (v.share >= 0 ? 72 : 28), 560, 2);
+		ui.drawHints({{"B", "Cancel"}});
 	}
 
 	std::string Ui::Manga::mangaSourceLabel(const std::string& seriesId) const
@@ -1739,16 +1860,20 @@ namespace bp
 	{
 		// the Download sheet takes the keys while it shows
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetKey(b, p);
+		// the waiting state: B drops the Resume or the chapter that waits and the page is back; no other key acts
+		if (mangaOpenWaiting())
+		{
+			if (b == Button::B)
+			{
+				mangaOpenWaitDrop();
+				fprintf(stderr, "manga: the wait was cancelled\n");
+			}
+			return false;
+		}
 		if (b == Button::Start) { openMangaSettings(); return false; }
 		// R gets the chapters, L checks the source again as a pull on the chapters does (free on this page: L / R are the shell's sections)
 		if (b == Button::R) { mangaDlSheetOpen(p); return false; }
 		if (b == Button::L) { mangaSourceSeriesRefresh(p); return false; }
-		if (b == Button::B && mangaResumePending)
-		{
-			mangaResumePending = mangaResumeLogged = false;	// B drops a Resume still waiting; the page stays
-			noticeUntil = 0;
-			return false;
-		}
 		if (b == Button::B)
 		{
 			// back to where it was opened: the source's grid, the Library or History (a chapter still coming goes)
@@ -1813,6 +1938,12 @@ namespace bp
 	{
 		if (pt.kind != Pointer::Down) return false;
 		if (mdlSheet != MDLS_NONE) return mangaDlSheetPointer(pt, x, y, p);
+		if (mangaOpenWaiting())
+		{
+			// (the header's back cancels the wait, as B; nothing under the waiting state takes a tap)
+			if (ui.buttonRect(BACK_ICON).hit(x, y)) mangaOpenWaitDrop();
+			return false;
+		}
 		if (mangaSrcInfoRect().hit(x, y))
 		{
 			mangaSrcInfoOpen();
@@ -1850,6 +1981,7 @@ namespace bp
 		// page list left waiting (the app reopened) goes on
 		mangaDlEnsureCard();
 		mangaDlAskPump();
+		if (mangaOpenWaiting()) { drawMangaOpenWait(p); return; }
 		std::string title = mangaSrcInfoOn && !mangaSrcInfo.title.empty() ? mangaSrcInfo.title : mangaSrcTitle;
 		ui.drawHeader(title.empty() ? "Series" : title, p);
 		const MangaSeries* ms = mangaStore ? mangaStore->series(mangaSeriesId) : nullptr;
@@ -1939,10 +2071,9 @@ namespace bp
 		// Get (R), Info, the heart. The row is one stop for UP/DOWN; LEFT/RIGHT light each key in turn (mserBtn)
 		Kit& k = *ui.kit;
 		bool onRow = mserCursor < 0;
-		bool engineWait = !mangaSourceEngineReady() && !mangaJavaCheckPending;	// (Resume is what starts it)
 		bool inLib = mangaSourceSeriesInLib();
 		struct K { const Glyph* g; const char* label; const char* cap; bool off, lit; };
-		const K keys[MG_SRC_KEYS] = {{&G_PLAY, "Resume", "A", n == 0 || engineWait, false}, {&G_DOWNLOAD, "Get", "R", n == 0, false},
+		const K keys[MG_SRC_KEYS] = {{&G_PLAY, "Resume", "A", n == 0, false}, {&G_DOWNLOAD, "Get", "R", n == 0, false},
 			{&G_INFO, "", "", false, false}, {inLib ? &G_HEART : &G_HEART_O, "", "", false, inLib}};
 		for (int i = 0; i < MG_SRC_KEYS; i++)
 		{
@@ -2020,6 +2151,12 @@ namespace bp
 			mangaSrcPage, mangaSrcItems.size(), mangaSrcChapters.size(), mangaSrcRows.size(), (int)mangaSrcMore,
 			(int)mangaSrcLoading, (int)mangaSrcInfoOn, (int)mangaSrcChaptersOn, (int)mangaSrcPendFull);
 		std::string s = buf;
+		// the series page's waiting state: on or off, its words and seconds (the spinner's steps: drawLoader's)
+		if (mangaOpenWaiting())
+		{
+			MangaWaitView v = mangaOpenWaitView();
+			s += "|wait" + v.title + v.line + mangaChoosePendName;
+		}
 		s += "|" + mangaSrcId + "|" + mangaSrcQuery + "|" + mangaSrcError + "|" + mangaSrcKey + "|" + mangaSrcTitle;
 		// the cached list's age line (the day count moves at each 24 h) and a running Refresh's "Checking…"
 		s += "|cs" + std::to_string((int)mangaSrcRefreshing) + std::to_string((int)mangaSrcChaptersOn) +

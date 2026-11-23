@@ -3499,6 +3499,45 @@ static void testMangaUiLogic()
 	CHECK_EQ((mangaResumeStep(true, false, false, true, false) == MangaResumeStep::Fail), true);
 	CHECK_EQ((mangaResumeStep(false, true, false, false, true) == MangaResumeStep::Fail), true);
 	CHECK_EQ((mangaResumeStep(true, false, false, false, false) == MangaResumeStep::Nothing), true);
+	// manga_open_way: a downloaded chapter never waits for the engine; another waits until it is ready
+	CHECK_EQ((mangaOpenWay(false, true) == MangaOpenWay::FromCard), true);
+	CHECK_EQ((mangaOpenWay(true, true) == MangaOpenWay::FromCard), true);
+	CHECK_EQ((mangaOpenWay(true, false) == MangaOpenWay::FromSource), true);
+	CHECK_EQ((mangaOpenWay(false, false) == MangaOpenWay::Wait), true);
+	// manga_wait_view: the engine's stage counts the seconds against the usual time, its bar never full
+	CHECK_EQ((mangaWaitStage(false, true) == MangaWaitStage::Engine), true);
+	CHECK_EQ((mangaWaitStage(true, false) == MangaWaitStage::Series), true);
+	CHECK_EQ((mangaWaitStage(true, true) == MangaWaitStage::Chapters), true);
+	{
+		MangaWaitView v = mangaWaitView(MangaWaitStage::Engine, 12400);
+		CHECK_EQ(v.title, std::string("Starting the manga engine\xE2\x80\xA6"));
+		CHECK_EQ(v.line, std::string("12 s \xC2\xB7 usually about 30 s"));
+		CHECK_EQ(v.share > 0.40 && v.share < 0.42, true);
+		v = mangaWaitView(MangaWaitStage::Engine, 41000);
+		CHECK_EQ(v.line, std::string("41 s \xC2\xB7 taking longer than usual"));
+		CHECK_EQ(v.share, 0.95);
+		CHECK_EQ(mangaWaitView(MangaWaitStage::Engine, -5).line, std::string("0 s \xC2\xB7 usually about 30 s"));
+		v = mangaWaitView(MangaWaitStage::Series, 9000);
+		CHECK_EQ(v.title, std::string("Checking this series\xE2\x80\xA6"));
+		CHECK_EQ(v.line.empty() && v.share < 0, true);
+		CHECK_EQ(mangaWaitView(MangaWaitStage::Chapters, 0).title, std::string("Getting the chapters\xE2\x80\xA6"));
+	}
+	// manga_engine_warm: on Home, when the last thing read was an online series lately and nothing plays; once a run
+	{
+		MangaWarmIn w;
+		w.onHome = w.mangaOn = w.engineInstalled = w.lastReadOnline = true;
+		w.lastReadAgoS = 3600;
+		CHECK_EQ(mangaEngineWarm(w), true);
+		MangaWarmIn x = w; x.playing = true; CHECK_EQ(mangaEngineWarm(x), false);	// a video, or a song's visualizer
+		x = w; x.onHome = false; CHECK_EQ(mangaEngineWarm(x), false);
+		x = w; x.mangaOn = false; CHECK_EQ(mangaEngineWarm(x), false);
+		x = w; x.engineInstalled = false; CHECK_EQ(mangaEngineWarm(x), false);	// not installed, or up already
+		x = w; x.upgrading = true; CHECK_EQ(mangaEngineWarm(x), false);
+		x = w; x.warmedThisRun = true; CHECK_EQ(mangaEngineWarm(x), false);
+		x = w; x.lastReadOnline = false; CHECK_EQ(mangaEngineWarm(x), false);	// the card's manga needs no engine
+		x = w; x.lastReadAgoS = MANGA_WARM_RECENT_S + 1; CHECK_EQ(mangaEngineWarm(x), false);
+		x = w; x.lastReadAgoS = -1; CHECK_EQ(mangaEngineWarm(x), false);
+	}
 	CHECK_EQ(mangaResume({}).chapter, -1);
 
 	m[0].read = true;
