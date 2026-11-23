@@ -72,6 +72,7 @@ namespace bp
 	{
 		(void)p;
 		mangaSourceCancel();
+		mangaResumePending = mangaResumeLogged = false;
 		mangaView = 0;
 		mangaSrcId.clear();
 		mangaSrcName.clear();
@@ -1619,13 +1620,38 @@ namespace bp
 
 	void Ui::Manga::mangaSourceSeriesResume(Player& p)
 	{
-		if (!mangaSourceEngineReady())
+		// one press resumes: not ready yet, it is remembered and goes on when the series is (mangaNotesTick), B drops it
+		mangaResumePending = true;
+		mangaSourceResumeStep(p);
+	}
+
+	void Ui::Manga::mangaSourceResumeStep(Player& p)
+	{
+		if (!mangaResumePending) return;
+		bool engineFailed = mangaNet && mangaNet->started() && MangaJava::isSourceId(mangaSrcId) &&
+			mangaNet->javaExt().state() == JavaExtHost::State::Failed;
+		bool listFailed = !mangaSrcError.empty() && !mangaSrcChaptersOn;
+		switch (mangaResumeStep(mangaSourceEngineReady(), engineFailed, mangaSrcLoading || mangaSrcRefreshing,
+			listFailed, !mangaSrcChapters.empty()))
 		{
+		case MangaResumeStep::Wait:
+			if (!mangaJavaCheckPending && !mangaResumeLogged) fprintf(stderr, "manga: resume waits for the series\n");
+			mangaResumeLogged = true;
 			mangaSourceEngineWant();
-			mangaNotice(mangaSourceWaitText(), 2000);
+			mangaNotice(mangaSourceWaitText(), 400);	// (kept up each frame while it waits)
 			return;
+		case MangaResumeStep::Fail:
+			mangaResumePending = mangaResumeLogged = false;
+			mangaNotice(engineFailed ? "Couldn\xE2\x80\x99t resume: the manga engine didn\xE2\x80\x99t start"
+				: "Couldn\xE2\x80\x99t resume: " + mangaSrcError, 3000);
+			fprintf(stderr, "manga: resume failed (%s)\n", engineFailed ? "engine" : mangaSrcError.c_str());
+			return;
+		case MangaResumeStep::Nothing:
+			mangaResumePending = mangaResumeLogged = false;
+			return;
+		case MangaResumeStep::Go: break;
 		}
-		if (mangaSrcChapters.empty()) return;
+		mangaResumePending = mangaResumeLogged = false;
 		std::vector<MangaChapterMark> marks;
 		marks.reserve(mangaSrcChapters.size());
 		for (const auto& c : mangaSrcChapters)
@@ -1641,6 +1667,8 @@ namespace bp
 			marks.push_back(m);
 		}
 		MangaResumePoint r = mangaResume(marks);
+		if (r.chapter >= 0)
+			fprintf(stderr, "manga: resumes chapter %s page %d\n", mangaSrcChapters[r.chapter].key.c_str(), r.page);
 		if (r.chapter >= 0)
 			mangaSourceChapterOpen(mangaSrcChapters, r.chapter, r.page, mangaSeriesId,
 				mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title, p);
@@ -1715,6 +1743,12 @@ namespace bp
 		// R gets the chapters, L checks the source again as a pull on the chapters does (free on this page: L / R are the shell's sections)
 		if (b == Button::R) { mangaDlSheetOpen(p); return false; }
 		if (b == Button::L) { mangaSourceSeriesRefresh(p); return false; }
+		if (b == Button::B && mangaResumePending)
+		{
+			mangaResumePending = mangaResumeLogged = false;	// B drops a Resume still waiting; the page stays
+			noticeUntil = 0;
+			return false;
+		}
 		if (b == Button::B)
 		{
 			// back to where it was opened: the source's grid, the Library or History (a chapter still coming goes)

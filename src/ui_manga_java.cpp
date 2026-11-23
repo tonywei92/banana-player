@@ -539,6 +539,7 @@ namespace bp
 	void Ui::Manga::mangaNotesTick(Player& p)
 	{
 		// answers come back where only a const Player is at hand (a draw), so the note waits here for a frame
+		if (mangaResumePending) mangaSourceResumeStep(p);
 		if (mangaNotes.empty()) return;
 		p.osd(mangaNotes.front(), 2600);
 		mangaNotes.erase(mangaNotes.begin());

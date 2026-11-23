@@ -645,6 +645,8 @@ namespace bp
 		void mangaJavaRelinkChapters();
 		// the check of a series opened from the card's copy (title, source, chapter ids, from the engine's database)
 		bool mangaJavaChecking = false;
+		bool mangaResumeLogged = false;
+		bool mangaResumePending = false;	// Resume pressed before the series was ready: it goes on when it is (mangaSourceResumeStep)
 		bool mangaJavaCheckPending = false;	// the open's check put off until a chapter is wanted (mangaSourceEngineWant)
 		void mangaSourceEngineWant();
 		uint64_t mangaJavaCheckSerial = 0;
@@ -887,6 +889,7 @@ namespace bp
 		void mangaSourceSeriesCacheSave();
 		void mangaSourceSeriesChoose(int i, Player& p);
 		void mangaSourceSeriesResume(Player& p);
+		void mangaSourceResumeStep(Player& p);
 		void mangaSourceSeriesInLibrary(Player& p);
 		void mangaSourceChapterOpen(const std::vector<MangaChapter>& chapters, int i, int page,
 			const std::string& seriesId, const std::string& seriesTitle, Player& p);

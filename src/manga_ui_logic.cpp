@@ -46,6 +46,14 @@ namespace bp
 		return {p.topR, p.topG, p.topB, p.bottomR, p.bottomG, p.bottomB};
 	}
 
+	MangaResumeStep mangaResumeStep(bool engineReady, bool engineFailed, bool listLoading, bool listFailed, bool haveChapters)
+	{
+		if (engineFailed || (listFailed && !haveChapters)) return MangaResumeStep::Fail;
+		if (!engineReady) return MangaResumeStep::Wait;
+		if (!haveChapters) return listLoading ? MangaResumeStep::Wait : MangaResumeStep::Nothing;
+		return MangaResumeStep::Go;
+	}
+
 	MangaResumePoint mangaResume(const std::vector<MangaChapterMark>& chapters)
 	{
 		MangaResumePoint out;

@@ -34,6 +34,11 @@ namespace bp
 	// the first started-but-unread chapter, at its page; else the first unread, at its start; else the first
 	MangaResumePoint mangaResume(const std::vector<MangaChapterMark>& chapters);
 
+	// what a pressed Resume does with the series page as it is: open now, keep waiting (the engine, the chapter list),
+	// say why it can't, or nothing to open (no chapters)
+	enum class MangaResumeStep { Go, Wait, Fail, Nothing };
+	MangaResumeStep mangaResumeStep(bool engineReady, bool engineFailed, bool listLoading, bool listFailed, bool haveChapters);
+
 	// "now", "12 min ago", "3 h ago", "2 days ago", "5 weeks ago", "10 months ago", "2 years ago"; "" for no time
 	std::string mangaAgo(int64_t at, int64_t now);
 

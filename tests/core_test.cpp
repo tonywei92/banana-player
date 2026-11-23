@@ -3432,6 +3432,12 @@ static void testMangaUiLogic()
 
 	// Resume: the first started-but-unread chapter at its page, else the first unread, else the first
 	std::vector<MangaChapterMark> m(3);
+	CHECK_EQ((mangaResumeStep(true, false, false, false, true) == MangaResumeStep::Go), true);
+	CHECK_EQ((mangaResumeStep(false, false, false, false, true) == MangaResumeStep::Wait), true);	// the engine still checking
+	CHECK_EQ((mangaResumeStep(true, false, true, false, false) == MangaResumeStep::Wait), true);	// the list still coming
+	CHECK_EQ((mangaResumeStep(true, false, false, true, false) == MangaResumeStep::Fail), true);
+	CHECK_EQ((mangaResumeStep(false, true, false, false, true) == MangaResumeStep::Fail), true);
+	CHECK_EQ((mangaResumeStep(true, false, false, false, false) == MangaResumeStep::Nothing), true);
 	CHECK_EQ(mangaResume({}).chapter, -1);
 
 	m[0].read = true;
