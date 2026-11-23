@@ -467,7 +467,8 @@ namespace bp
 
 	void Ui::Manga::mangaVideoGuard(Player& p)
 	{
-		mangaEngineWarmTick(p);
+		// (no warm-up from Home: the engine starts only when Manga is opened; started ahead, it was still loading
+		// when music began, resting the visualizer, for a reader nobody had opened)
 		// The handheld's 1 GB can't hold a video and the manga engine (its server takes about 400 MB). In the manga
 		// reader a video is stopped (as Stop, everywhere, with the notice); outside it a video wins and the engine
 		// is stopped. Music and photos go on either way.
