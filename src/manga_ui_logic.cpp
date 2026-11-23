@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cctype>
+#include <cmath>
 
 namespace bp
 {
@@ -205,6 +206,62 @@ namespace bp
 		MangaBookScreen s = mangaBookScreenOf(wide, first - 1);
 		s.count = std::min(s.count, first - s.first);
 		return s;
+	}
+
+	double mangaBookZoomStep(double z, int dir)
+	{
+		static const double STEPS[] = {1.0, 1.5, 2.0, 3.0};
+		const int n = 4;
+		int at = 0;
+		for (int i = 0; i < n; i++)
+			if (z >= STEPS[i] - 0.01) at = i;
+		return STEPS[std::clamp(at + (dir > 0 ? 1 : dir < 0 ? -1 : 0), 0, n - 1)];
+	}
+
+	// one axis: the pages from a to a + len (column pixels) in a window of size `view`
+	static double bookZoomAxis(double o, double z, double a, double len, double view)
+	{
+		double drawn = len * z;
+		if (drawn <= view) return (view - drawn) / 2 - a * z;
+		return std::clamp(o, view - (a + len) * z, -a * z);
+	}
+
+	MangaBookZoom mangaBookZoomClamp(MangaBookZoom v, const MangaBookArea& pages, double viewW, double colH)
+	{
+		v.z = std::clamp(v.z, 1.0, 8.0);
+		v.ox = bookZoomAxis(v.ox, v.z, pages.x, pages.w, viewW);
+		v.oy = bookZoomAxis(v.oy, v.z, pages.y, pages.h, colH);
+		return v;
+	}
+
+	MangaBookZoom mangaBookZoomTo(MangaBookZoom v, double z, double ax, double ay, const MangaBookArea& pages, double viewW, double colH)
+	{
+		z = std::clamp(z, 1.0, 8.0);
+		double k = z / std::max(0.01, v.z);
+		v.ox = ax - (ax - v.ox) * k;
+		v.oy = ay - (ay - v.oy) * k;
+		v.z = z;
+		return mangaBookZoomClamp(v, pages, viewW, colH);
+	}
+
+	MangaBookZoom mangaBookPan(MangaBookZoom v, double dx, double dy, const MangaBookArea& pages, double viewW, double colH)
+	{
+		v.ox += dx;
+		v.oy += dy;
+		return mangaBookZoomClamp(v, pages, viewW, colH);
+	}
+
+	bool mangaBookZoomAtEnd(const MangaBookZoom& v, int dirY, const MangaBookArea& pages, double viewW, double colH)
+	{
+		MangaBookZoom to = mangaBookPan(v, 0, dirY > 0 ? -1e9 : 1e9, pages, viewW, colH);
+		return std::abs(to.oy - mangaBookZoomClamp(v, pages, viewW, colH).oy) < 0.5;
+	}
+
+	int mangaBookZoomKey(int book, int dpadDx)
+	{
+		// held with the top panel on the left, the panel's right edge is up; held the other way, its left edge
+		bool rightUp = book != MANGA_BOOK_RIGHT;
+		return (dpadDx > 0) == rightUp ? 1 : -1;
 	}
 
 	int mangaBookStep(int book, bool rtl, bool swap, int dpadDy)

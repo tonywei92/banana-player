@@ -388,6 +388,7 @@ namespace bp
 		float mangaProgWithin = 0;	// the place inside that page last kept (Vertical scroll)
 		Uint32 mangaProgAt = 0;
 		bool mangaTouch = false;
+		bool mangaBookDouble = false;	// Book: this touch is a double-tap's second (zoom at its lift)
 		double mangaTouchY = 0, mangaTouchX = 0;
 		// the left stick (issue 16): whether it last commanded the reader (the Stop was sent), and Book's last push
 		// direction (so one push is one spread, not one a frame)
@@ -457,7 +458,7 @@ namespace bp
 		Uint32 mangaToastUntil = 0;
 		int mangaBookToast = 0;	// MANGA_BOOK_*: the toast says how to hold the handheld for Book (0: how to leave fullscreen)
 		void mangaBookTurn(int step, Player& p);	// a spread on (+1, the next chapter at the end) or back (-1)
-		void drawMangaBookTag();
+		void drawMangaBookTag(int alpha);	// alpha: PageReader::mangaBookTagAlpha
 		// the left stick (issue 16): the pages scroll or pan while it is held; Book turns a spread the way its D-pad
 		// points (one push, one turn)
 		void stickAxis(int value, Player& p, int valueX = 0);

@@ -3313,6 +3313,67 @@ static void testMangaBookSpreadKnownLate()
 	CHECK_EQ(mangaBookScreenFrom(w, 5) == bookScr(5, 1, true), true);
 }
 
+// Book's zoom: both panels one picture; a pair's column has the hinge's gap in it, a spread's none
+static void testMangaBookZoomSteps()
+{
+	CHECK_EQ(mangaBookZoomStep(1, 1), 1.5);
+	CHECK_EQ(mangaBookZoomStep(1.5, 1), 2.0);
+	CHECK_EQ(mangaBookZoomStep(2, 1), 3.0);
+	CHECK_EQ(mangaBookZoomStep(3, 1), 3.0);
+	CHECK_EQ(mangaBookZoomStep(3, -1), 2.0);
+	CHECK_EQ(mangaBookZoomStep(1, -1), 1.0);
+	// the key that is up as held zooms in, either hold
+	CHECK_EQ(mangaBookZoomKey(MANGA_BOOK_LEFT, 1), 1);
+	CHECK_EQ(mangaBookZoomKey(MANGA_BOOK_LEFT, -1), -1);
+	CHECK_EQ(mangaBookZoomKey(MANGA_BOOK_RIGHT, -1), 1);
+	CHECK_EQ(mangaBookZoomKey(MANGA_BOOK_RIGHT, 1), -1);
+}
+
+static void testMangaBookZoomClampPairWithHinge()
+{
+	// panels 640x480, a 36 px gap: the column is 996 high; two pages fill it from 0 to 996 and 40 px in at the sides
+	double W = 640, H = 2 * 480 + 36;
+	MangaBookArea a{40, 0, 560, H};
+	MangaBookZoom fit = mangaBookZoomClamp({}, a, W, H);
+	CHECK_EQ(fit.ox, 0.0);
+	CHECK_EQ(fit.oy, 0.0);
+	// 200% about the hinge's middle: the hinge stays put
+	MangaBookZoom z = mangaBookZoomTo(fit, 2, W / 2, H / 2, a, W, H);
+	CHECK_EQ(z.z, 2.0);
+	CHECK_EQ(z.oy, -H / 2);
+	CHECK_EQ(z.ox, -W / 2);
+	// panned far: no empty edge, across the whole column including the gap (one picture, both panels in step)
+	MangaBookZoom far = mangaBookPan(z, 5000, -5000, a, W, H);
+	CHECK_EQ(far.ox, -40.0 * 2);
+	CHECK_EQ(far.oy, H - H * 2);
+	CHECK_EQ(mangaBookZoomAtEnd(far, 1, a, W, H), true);
+	CHECK_EQ(mangaBookZoomAtEnd(far, -1, a, W, H), false);
+	CHECK_EQ(mangaBookZoomAtEnd(z, 1, a, W, H), false);
+	// back to the fit: centred again
+	MangaBookZoom back = mangaBookZoomTo(far, 1, 100, 100, a, W, H);
+	CHECK_EQ(back.ox, 0.0);
+	CHECK_EQ(back.oy, 0.0);
+}
+
+static void testMangaBookZoomClampSpreadNoHinge()
+{
+	// a spread over 2 panels and no gap (960 high): a 1600x1200 page turned is
+	// 1200x1600, fitted in 640x960 as 640x853, centred (53 px above and below)
+	double W = 640, H = 960, h = 640.0 * 1600 / 1200;
+	MangaBookArea a{0, (H - h) / 2, 640, h};
+	MangaBookZoom z = mangaBookZoomTo({}, 1.5, W / 2, H / 2, a, W, H);
+	// 1.5x: 1280 tall, more than the column, so it pans from its top to its foot only
+	MangaBookZoom top = mangaBookPan(z, 0, 1e6, a, W, H);
+	MangaBookZoom foot = mangaBookPan(z, 0, -1e6, a, W, H);
+	CHECK_EQ(top.oy, -a.y * 1.5);
+	CHECK_EQ(foot.oy, H - (a.y + h) * 1.5);
+	CHECK_EQ(top.oy + a.y * 1.5, 0.0);	// the picture's top at the top panel's top
+	// at 1.0 the area is smaller than the column: centred, panning does nothing
+	MangaBookZoom one = mangaBookPan({}, 30, 30, a, W, H);
+	CHECK_EQ(one.ox, 0.0);
+	CHECK_EQ(one.oy, 0.0);
+}
+
 // Layout and Reading mode are independent: Book reads a Vertical scroll in pages without rewriting what was chosen
 static void testMangaModeInLayout()
 {
@@ -17071,6 +17132,9 @@ int main()
 	testMangaBookSpreadRtl();
 	testMangaChapterTag();
 	testMangaBookSpreadKnownLate();
+	testMangaBookZoomSteps();
+	testMangaBookZoomClampPairWithHinge();
+	testMangaBookZoomClampSpreadNoHinge();
 	testUpdaterDownload();
 	testVideoCache();
 	testSlider();
