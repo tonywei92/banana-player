@@ -50,7 +50,7 @@ namespace bp
 	// the sheet closes.
 	struct Ui::Manga::ComicView : Ui::Overlay
 	{
-		enum { ROW_LAYOUT, ROW_HOLD, ROW_MODE, ROW_FIT, ROW_ZOOM, ROW_HINGE, ROW_SWAP, ROW_LIGHT };
+		enum { ROW_LAYOUT, ROW_HOLD, ROW_MODE, ROW_FIT, ROW_ZOOM, ROW_HINGE, ROW_SWAP, ROW_LIGHT, ROW_TAG };
 		int cursor = ROW_LAYOUT;	// a row's id: it stays on its row as others come and go
 		int holdAsked = 0;	// the hold just asked, till the reader's status says it (a pass behind)
 		explicit ComicView(Ui& u) : Overlay(u) {}
@@ -63,8 +63,8 @@ namespace bp
 		int modeSet() const { return st().modeSet >= 0 && st().modeSet < MANGA_MODES ? st().modeSet : MANGA_STRIP; }
 		std::vector<int> rows() const
 		{
-			// (Book's Hinge gap: a wide page cut across both panels skips the strip the hinge hides)
-			if (book()) return {ROW_LAYOUT, ROW_HOLD, ROW_MODE, ROW_HINGE, ROW_SWAP, ROW_LIGHT};
+			// (Book's Hinge gap: the space between a pair's pages; a wide page runs on across the panels)
+			if (book()) return {ROW_LAYOUT, ROW_HOLD, ROW_MODE, ROW_HINGE, ROW_TAG, ROW_SWAP, ROW_LIGHT};
 			return {ROW_LAYOUT, ROW_MODE, ROW_FIT, ROW_ZOOM, ROW_HINGE, ROW_SWAP, ROW_LIGHT};
 		}
 		lay::ListSheet layout() const { return lay::listSheet((int)rows().size()); }
@@ -103,6 +103,7 @@ namespace bp
 			case ROW_FIT: ui.settingsPage->changeSetting(settingRow("manga-fit"), dir, p); break;
 			case ROW_ZOOM: ui.pageReader->mangaZoomStep(dir); break;
 			case ROW_HINGE: ui.settingsPage->changeSetting(settingRow("manga-hinge"), dir, p); break;
+			case ROW_TAG: ui.settingsPage->changeSetting(settingRow("manga-book-tag"), dir, p); break;
 			case ROW_SWAP: ui.settingsPage->changeSetting(settingRow("manga-swap-lr"), dir, p); break;
 			case ROW_LIGHT: close(); ui.openLight(); break;
 			default: break;
@@ -206,6 +207,13 @@ namespace bp
 				case ROW_FIT: sr.label = "Page fit"; sr.value = FITS[fit]; break;
 				case ROW_ZOOM: sr.label = "Zoom"; sr.value = std::to_string(st().zoomPct > 0 ? st().zoomPct : 100) + "%"; break;
 				case ROW_HINGE: sr.label = "Hinge gap"; sr.value = std::to_string(p.settings.mangaHinge) + " px"; break;
+				case ROW_TAG:
+				{
+					static const char* TAGS[MANGA_TAGS] = {"Hide", "Show at load", "Always"};
+					sr.label = "Chapter and page";
+					sr.value = TAGS[std::clamp(p.settings.mangaBookTag, 0, MANGA_TAGS - 1)];
+					break;
+				}
 				case ROW_SWAP: sr.label = "Swap Left / Right"; sr.value = p.settings.mangaSwapLR ? "On" : "Off"; break;
 				case ROW_LIGHT:
 				{
@@ -224,9 +232,9 @@ namespace bp
 		}
 		std::string signature(const Player& p) const override
 		{
-			char b[96];
-			snprintf(b, sizeof b, "%d|%d %d %d %d %d %d|%d %d %d", cursor, st().mode, st().modeSet, (int)st().fullscreen, st().book, st().zoomPct, holdAsked,
-				p.settings.mangaHinge, p.settings.mangaFit, (int)p.settings.mangaSwapLR);
+			char b[112];
+			snprintf(b, sizeof b, "%d|%d %d %d %d %d %d|%d %d %d %d", cursor, st().mode, st().modeSet, (int)st().fullscreen, st().book, st().zoomPct, holdAsked,
+				p.settings.mangaHinge, p.settings.mangaFit, (int)p.settings.mangaSwapLR, p.settings.mangaBookTag);
 			return b;
 		}
 	};

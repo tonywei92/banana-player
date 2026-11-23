@@ -85,6 +85,18 @@ namespace bp
 		mfWaiting = 0;
 	}
 
+	int Ui::PageReader::mangaBookTagAlpha(const Player& p, Uint32 now) const
+	{
+		// Book's chapter and page tag: never (Hide), always, or a few seconds after its pages load or turn (and at the
+		// chapter's end, where it says what the next turn opens), fading out over its last moment
+		int mode = p.settings.mangaBookTag;
+		if (mode == MANGA_TAG_HIDE) return 0;
+		if (mode == MANGA_TAG_ALWAYS || readerStatus.atEnd) return 255;
+		if (now >= mfTagUntil) return 0;
+		Uint32 left = mfTagUntil - now;
+		return left >= BOOK_TAG_FADE_MS ? 255 : (int)(255 * left / BOOK_TAG_FADE_MS);
+	}
+
 	void Ui::PageReader::drawMangaFull(const Player& p)
 	{
 		// the pages under the hinge: main gives each page's box (fractions of the panel) and its pixels; they become
@@ -94,7 +106,8 @@ namespace bp
 		if (ui.manga->mangaToastUntil && now >= ui.manga->mangaToastUntil) ui.manga->mangaToastUntil = ui.manga->mangaBookToast = 0;
 		if (readerBottom.gen != mfGen) { mfFree(); mfGen = readerBottom.gen; }
 		// a new page: its number shows a moment
-		if (readerStatus.page != mfLastPage) { mfLastPage = readerStatus.page; mfTagUntil = now + 1500; }
+		// (Book's screen of pages: a few seconds, as the setting "Chapter and page in Book" has it)
+		if (readerStatus.page != mfLastPage) { mfLastPage = readerStatus.page; mfTagUntil = now + (readerStatus.book ? BOOK_TAG_MS : 1500); }
 		SDL_SetRenderDrawColor(ui.ren, 0, 0, 0, 255);
 		SDL_RenderClear(ui.ren);
 		int pw = (int)std::lround(W * sx), ph = (int)std::lround(H * sy);
@@ -177,7 +190,13 @@ namespace bp
 		// held top-left, its right edge held top-right); at the chapter's end they stay, with what comes next
 		if (readerStatus.book && readerStatus.pages > 0)
 		{
-			if (now < mfTagUntil || readerStatus.atEnd) ui.manga->drawMangaBookTag();
+			int a = mangaBookTagAlpha(p, now);
+			ui.manga->drawMangaBookTag(a);
+			if ((a > 0) != mfTagShown)
+			{
+				mfTagShown = a > 0;
+				fprintf(stderr, "manga: book tag %s (setting %d)\n", mfTagShown ? "shown" : "gone", p.settings.mangaBookTag);
+			}
 		}
 		// a thin page tag for a moment after a change
 		else if (now < mfTagUntil && readerStatus.pages > 0)

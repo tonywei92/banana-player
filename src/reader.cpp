@@ -199,6 +199,7 @@ namespace bp
 		viewW = w;
 		viewH = h;
 		zscale = 1;	// a chapter opens at the fit (the photo viewer keeps its zoom; a page of a new chapter is a new view)
+		bz = {};
 		zoomAt = 0;
 		angle = 0;	// a chapter opens unturned; the turn is per chapter (docs/design/manga.md section 4)
 		bookPrevAngle = 0;
@@ -279,6 +280,7 @@ namespace bp
 		zoomAt = 0;
 		angle = 0;
 		bookS = 0;
+		bz = {};
 		turnAt = 0;	// (a turn sliding ends: the screen is set afresh)
 		if (archive)
 		{
@@ -311,7 +313,8 @@ namespace bp
 		// a zoomed page is drawn wider than the view, so it is decoded at that width (a 2048 px cap keeps the
 		// textures within the panels' limit; decodePage adds its own 2x of the image's own width)
 		// Book: a page stands on the panel's height (turned, its width runs along the panel's 480 lines)
-		if (bookHold && readMode != MANGA_STRIP) return viewH;
+		// (zoomed in Book: that much longer, within the same 2048 px cap)
+		if (bookHold && readMode != MANGA_STRIP) return std::max(viewH, std::min(2048, (int)(viewH * bz.z + 0.5)));
 		if (!(zscale > 1.0001)) return viewW;
 		double w = zscale * viewW;
 		if (w > 2048) w = 2048;
@@ -321,7 +324,9 @@ namespace bp
 	int MangaReader::decodeWFor(int page) const
 	{
 		// a spread runs along both panels' 480 lines and the hinge between them
-		if (inBook() && page >= 0 && page < (int)bookWide().size() && bookWide()[page]) return 2 * viewH + bookGapNow();
+		// (no hinge gap: the picture runs on across the panels)
+		if (inBook() && page >= 0 && page < (int)bookWide().size() && bookWide()[page])
+			return std::min(2048, (int)(2 * viewH * bz.z + 0.5));
 		return decodeW();
 	}
 
@@ -622,7 +627,20 @@ namespace bp
 
 	std::vector<MangaReader::Box> MangaReader::bookBoxes() const
 	{
-		if (!turnAt) return bookBoxesAt(bookS);
+		if (!turnAt)
+		{
+			std::vector<Box> out = bookBoxesAt(bookS);
+			// zoomed: the whole column (both panels and the hinge) scaled and shifted as one, so both panels pan together
+			if (bz.z > 1.0001 || bz.ox != 0 || bz.oy != 0)
+				for (Box& b : out)
+				{
+					b.x = (float)(b.x * bz.z + bz.ox);
+					b.y = (float)(b.y * bz.z + bz.oy);
+					b.w = (float)(b.w * bz.z);
+					b.h = (float)(b.h * bz.z);
+				}
+			return out;
+		}
 		// a turn sliding: the screen left goes out one way along the column (both panels and the hinge), the new one
 		// comes in behind it, eased out (fast, then settling); pages of the old not on hand are left out, never spun
 		double t = std::clamp((turnNow - turnAt) / (double)TURN_MS, 0.0, 1.0);
@@ -661,6 +679,39 @@ namespace bp
 		fprintf(stderr, "reader: book turn slides %d -> %d\n", from + 1, first + 1);
 	}
 
+	MangaBookArea MangaReader::bookArea() const
+	{
+		// the screen's pages at the fit, in the column's pixels (the pan is kept on them, never on empty column)
+		MangaBookArea a;
+		double x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+		for (const Box& b : bookBoxesAt(bookS))
+		{
+			x0 = std::min(x0, (double)b.x); y0 = std::min(y0, (double)b.y);
+			x1 = std::max(x1, (double)(b.x + b.w)); y1 = std::max(y1, (double)(b.y + b.h));
+		}
+		if (x1 <= x0) return {0, 0, (double)viewW, (double)bookColH()};
+		return {x0, y0, x1 - x0, y1 - y0};
+	}
+
+	void MangaReader::bookZoomTo(double z, double ax, double ay, int64_t ms)
+	{
+		MangaBookZoom was = bz;
+		bz = mangaBookZoomTo(bz, z, ax, ay, bookArea(), viewW, bookColH());
+		if (bz.z == was.z) return;
+		turnAt = 0;
+		zoomAt = ms;	// (rested, the screen's pages are decoded again at the new length)
+		fprintf(stderr, "reader: book zoom %d%% (offset %.0f,%.0f)\n", zoomPct(), bz.ox, bz.oy);
+		redrawSoon(2);
+	}
+
+	void MangaReader::bookZoomReset()
+	{
+		if (bz.z == 1 && bz.ox == 0 && bz.oy == 0) return;
+		bz = {};
+		zoomAt = 1;	// (the next frame: decoded back at the fit's length)
+		fprintf(stderr, "reader: book zoom back to the fit\n");
+	}
+
 	std::vector<MangaReader::Box> MangaReader::bookBoxesAt(int first) const
 	{
 		// a page on each panel, turned upright as held and fitted whole in it: the top panel's at the view's top,
@@ -676,7 +727,7 @@ namespace bp
 			double pw = 2, ph = 3;	// (turned: a landscape page)
 			auto it = kept.find(first);
 			if (it != kept.end() && it->second.w > 0 && it->second.h > 0) { pw = it->second.w; ph = it->second.h; }
-			double H = 2.0 * viewH + bookGapNow();
+			double H = 2.0 * viewH;	// (no hinge gap: bookGapNow is 0 on a spread, bottomBoxes shifts by viewH)
 			double sc = std::min(viewW / pw, H / ph), w = pw * sc, h = ph * sc;
 			out.push_back({first, (float)((viewW - w) / 2), (float)((H - h) / 2), (float)w, (float)h});
 			return out;
@@ -836,8 +887,8 @@ namespace bp
 	double MangaReader::stickSpeedNow() const
 	{
 		if (!opened || stickValue == 0) return 0;
-		// Book shows whole pages: nothing there scrolls or pans (its spread turns come from the Ui)
-		if (bookHold) return 0;
+		// Book: whole pages turn (from the Ui); zoomed in, the stick pans both panels' picture
+		if (bookHold) return inBook() && bz.z > 1.0001 ? stickScrollSpeed(stickValue, viewH) : 0;
 		// a paged page that fits the view has nowhere to go; the Strip always has the chapter's column
 		if (readMode != MANGA_STRIP && !paged.canPanV()) return 0;
 		// one panel's height a second at a full push, the reader's panel pixels (issue 16)
@@ -848,7 +899,8 @@ namespace bp
 	{
 		// what is wider than the view pans sideways: a paged page, or the Strip's column zoomed in (on one screen and
 		// in fullscreen); Book turns spreads
-		if (!opened || stickValueX == 0 || bookHold) return 0;
+		if (!opened || stickValueX == 0) return 0;
+		if (bookHold) return inBook() && bz.z > 1.0001 ? stickScrollSpeed(stickValueX, viewW) : 0;
 		if (readMode == MANGA_STRIP ? !strip.canPan() : !paged.canPanH()) return 0;
 		return stickScrollSpeed(stickValueX, viewW);
 	}
@@ -904,7 +956,9 @@ namespace bp
 			int to = std::clamp((int)v, 0, (int)files.size() - 1);
 			if (readMode == MANGA_STRIP) strip.scrollTo(strip.pageTop(to));
 			else paged.goTo(to, ms, false);
-			bookS = mangaBookScreenOf(bookWide(), to).first;	// (Book: the page asked for opens its screen)
+			int toS = mangaBookScreenOf(bookWide(), to).first;	// (Book: the page asked for opens its screen, at the fit)
+			if (toS != bookS) bookZoomReset();
+			bookS = toS;
 			turnAt = 0;	// (a turn sliding ends: the screen is set afresh)
 			if (seeks.seek(to, ms) == SeekRun::Now::Commit)
 				commitJump(planPage < 0 ? to : planPage, to, 1, ms);
@@ -913,11 +967,40 @@ namespace bp
 		}
 		if (kind == Fullscreen) { setFullscreen(v > 0, (int)v2); return; }
 		if (kind == Book) { setBook((int)v); return; }
-		// Book shows each page whole, turned as held: no zoom, fit, turn or drag of its own (the Ui's swipe is a Step)
+		// Book: pages turned as held, no fit or turn of their own; its zoom is both panels' picture as one (bz), a
+		// finger's drag pans it (the Ui sends one only while zoomed: else a swipe is a Step)
 		bool inBook = bookHold && readMode != MANGA_STRIP;
-		if (inBook && (kind == Zoom || kind == ZoomPoint || kind == Rotate || kind == Fit || kind == TouchDown ||
-						  kind == Drag || kind == Release))
+		if (inBook && (kind == Zoom || kind == ZoomPoint))
+		{
+			// Zoom: about the column's middle (the hinge); ZoomPoint: about the bottom panel's point (v2, v3), or back
+			// to the fit when it is there already
+			double z = std::clamp(v, 1.0, 8.0), ax = viewW * 0.5, ay = bookColH() * 0.5;
+			if (kind == ZoomPoint)
+			{
+				if (std::abs(z - bz.z) < 0.01 && z > 1) z = 1;
+				ax = std::clamp(v2, 0.0, 1.0) * viewW;
+				ay = viewH + bookGapNow() + std::clamp(v3, 0.0, 1.0) * viewH;
+			}
+			bookZoomTo(z, ax, ay, ms);
 			return;
+		}
+		if (inBook && kind == Drag)
+		{
+			if (bz.z <= 1.0001) return;
+			bz = mangaBookPan(bz, v2 * viewW, v * viewH, bookArea(), viewW, bookColH());
+			redrawSoon(1);
+			return;
+		}
+		if (inBook && kind == Release && bz.z > 1.0001)
+		{
+			// where a drag left the picture: the one offset, and the first page's box on each panel from it (in step)
+			std::vector<Box> t = boxes(), b = bottomBoxes();
+			fprintf(stderr, "reader: book pan offset %.0f,%.0f at %d%%: top panel page %d at %.0f,%.0f; bottom panel page %d at %.0f,%.0f\n",
+				bz.ox, bz.oy, zoomPct(), t.empty() ? 0 : t[0].page + 1, t.empty() ? 0.0 : t[0].x, t.empty() ? 0.0 : t[0].y,
+				b.empty() ? 0 : b[0].page + 1, b.empty() ? 0.0 : b[0].x, b.empty() ? 0.0 : b[0].y);
+			return;
+		}
+		if (inBook && (kind == Rotate || kind == Fit || kind == TouchDown || kind == Release)) return;
 		if (kind == Retry)
 		{
 			// Try again: the pages in view that failed are asked for again, and pages the GPU had no room for go up again
@@ -998,6 +1081,28 @@ namespace bp
 			// a screen forward or back (nothing past the last; a spread is one turn), or one page to realign the pair
 			int n = (int)files.size();
 			int next = bookS + bookScreen().count;
+			// zoomed: a turn key first takes the view to the pages' end that way (both panels together); from there
+			// it turns, and the new screen opens at the fit
+			if (kind == Step && bz.z > 1.0001)
+			{
+				bool earlierTop = mangaBookEarlierOnTop(bookHold, readMode == MANGA_RTL);
+				int dirY = (v > 0) == earlierTop ? 1 : -1;
+				if (!mangaBookZoomAtEnd(bz, dirY, bookArea(), viewW, bookColH()))
+				{
+					bz = mangaBookPan(bz, 0, dirY > 0 ? -1e9 : 1e9, bookArea(), viewW, bookColH());
+					fprintf(stderr, "reader: book zoom pans to the %s end (offset %.0f,%.0f)\n", dirY > 0 ? "bottom" : "top", bz.ox, bz.oy);
+					redrawSoon(2);
+					return;
+				}
+				// at the end and no screen further that way (the chapter's first or last): the fit again, so the
+				// next press goes on as at the fit (the Ui's next chapter)
+				if ((v > 0 && next >= n) || (v < 0 && bookS <= 0))
+				{
+					bookZoomReset();
+					redrawSoon(2);
+					return;
+				}
+			}
 			if (kind == Step && v > 0 && next < n) bookTurn(next, ms);
 			else if (kind == Step && v < 0 && bookS > 0) bookTurn(mangaBookScreenBefore(bookWide(), bookS).first, ms);
 			else if (kind == Page) bookGo(std::clamp(bookS + (v > 0 ? 1 : -1), 0, n - 1));
@@ -1095,6 +1200,7 @@ namespace bp
 		// whole pages: the zoom goes back to the fit (the paged row keeps its place under Book)
 		zscale = 1;
 		applyZoom();
+		bz = {};
 		angle = b ? mangaBookAngle(b) : bookPrevAngle;
 		bookS = mangaBookScreenOf(bookWide(), cur).first;
 		turnAt = 0;	// (a turn sliding ends: the screen is set afresh)
@@ -1111,6 +1217,7 @@ namespace bp
 	void MangaReader::bookGo(int first)
 	{
 		if (first == bookS) return;
+		bookZoomReset();	// a new screen opens at the fit
 		bookS = first;
 		paged.goTo(first, 0, false);	// (the paged row follows, so leaving Book reads on from this page)
 		planPage = first;
@@ -1258,7 +1365,14 @@ namespace bp
 			double step = sv * dt / 1000.0, stepX = sx * dt / 1000.0;
 			if (step != 0 || stepX != 0)
 			{
-				if (readMode == MANGA_STRIP)
+				if (inBook())
+				{
+					// Book zoomed: the stick moves the view that way, so the picture goes the other
+					MangaBookZoom was = bz;
+					bz = mangaBookPan(bz, -stepX, -step, bookArea(), viewW, bookColH());
+					stickMoved = bz.ox != was.ox || bz.oy != was.oy;
+				}
+				else if (readMode == MANGA_STRIP)
 				{
 					double was = strip.offset();
 					strip.scrollBy(step);

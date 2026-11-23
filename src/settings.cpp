@@ -42,6 +42,7 @@ namespace bp
 	static const char* LOOP_IDS[LOOPS] = {"off", "all", "one"};
 	static const char* MANGA_MODE_IDS[MANGA_MODES] = {"rtl", "ltr", "strip"};
 	static const char* MANGA_FIT_IDS[MANGA_FITS] = {"page", "width", "fill"};
+	static const char* MANGA_TAG_IDS[MANGA_TAGS] = {"hide", "load", "always"};
 	static const char* MANGA_CACHE_IDS[MANGA_CACHES] = {"100m", "300m", "1g"};
 	static const long long MANGA_CACHE_MB[MANGA_CACHES] = {100, 300, 1024};
 	static const char* CLOCK_IDS[CLOCKS] = {"24h", "12h", "off"};
@@ -553,6 +554,7 @@ namespace bp
 		using D = SettingDef;
 		static const char* MODE_NAMES[MANGA_MODES] = {"Right to left", "Left to right", "Vertical scroll"};
 		static const char* FIT_NAMES[MANGA_FITS] = {"Page", "Width", "Fill"};
+		static const char* TAG_NAMES[MANGA_TAGS] = {"Hide", "Show at load", "Always"};
 		static const char* CACHE_NAMES[MANGA_CACHES] = {"100 MB", "300 MB", "1 GB"};
 		static const char* CLOCK_NAMES[CLOCKS] = {"24-hour", "12-hour", "Off"};
 		static const char* SHOWN_ADULT[2] = {"Hidden", "Shown"};
@@ -619,10 +621,12 @@ namespace bp
 				.page(SG_MANGA, 60, "Preload", "More: smoother on a slow server, more data.").shownAs(nullptr, " pages").stepped(true).digitsOnly(),
 			// 0 to 200 in steps of 4 (a value a file kept from before may sit off the step: it snaps onto one on the page)
 			D::range("manga-hinge", &Settings::mangaHinge, 0, 200)
-				.page(SG_MANGA, 40, "Hinge gap", "The part of the page hidden under the hinge in fullscreen and on Book's wide pages, so pictures line up across the gap. Measure on your handheld.")
+				.page(SG_MANGA, 40, "Hinge gap", "The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap (Book's wide pages run on across it). Measure on your handheld.")
 				.shownAs(nullptr, " px").stepped(false, nullptr, 4).ignoreBlank(),
 			D::flag("manga-spread", &Settings::mangaSpread)
 				.page(SG_MANGA, 45, "Wide pages span both screens", "In Book, a double page is cut down the middle, half on each screen. Off: it shows whole on one."),
+			D::choice("manga-book-tag", &Settings::mangaBookTag, MANGA_TAG_IDS, MANGA_TAGS)
+				.page(SG_MANGA, 46, "Chapter and page in Book", "The \u201cCh. 1 \u00b7 3\u20134 / 6\u201d tag beside the pages. Show at load: a few seconds as pages load or turn, then it fades. Always: it stays.").shownAs(TAG_NAMES).stepped(true),
 			D::flag("manga-turn-anim", &Settings::mangaTurnAnim)
 				.page(SG_MANGA, 47, "Page turn animation", "In Book, a turn slides the pages across both screens. Quick turns in a row are never slowed by it. Off: the pages change at once."),
 			D::choice("manga-cache", &Settings::mangaCacheSize, MANGA_CACHE_IDS, MANGA_CACHES)

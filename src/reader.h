@@ -144,7 +144,8 @@ namespace bp
 		uint64_t chapterGen() const { return gen; }
 		// 1 while the fit is shown, as the Zoom steps leave it (100 % … 800 %)
 		double zoom() const { return zscale; }
-		int zoomPct() const { return (int)(zscale * 100 + 0.5); }	// (z is always one of the steps, 100 … 800)
+		// (z is always one of the steps, 100 … 800; in Book, Book's own zoom: 100, 150, 200, 300)
+		int zoomPct() const { return (int)((inBook() ? bz.z : zscale) * 100 + 0.5); }
 		// a card over the pages (the level card, levelcard.h: the volume, brightness or zoom while reading), RGBA,
 		// until untilMs
 		void showOverlay(std::shared_ptr<const std::vector<uint8_t>> rgba, int w, int h, int64_t untilMs);
@@ -183,7 +184,7 @@ namespace bp
 		void applyZoom();
 		void setFullscreen(bool on, int hinge480);
 		// the hinge's gap as it applies: the Strip skips it (a picture runs on across the fold); the paged modes put
-		// the panels edge to edge. (Book's wide pages skip it too, by bookGapNow)
+		// the panels edge to edge. (Book: bookGapNow, the Hinge gap between a pair, none on a spread)
 		int hingeGap() const { return readMode == MANGA_STRIP ? gapPx : 0; }
 		int layoutH() const { return full ? viewH * 2 + hingeGap() : viewH; }
 		int decodeW() const;	// the width wanted now: z times the view's, up to 2048 (decodePage's 2x cap still applies)
@@ -213,7 +214,14 @@ namespace bp
 		// a page's size learnt (its file's header or its decode): its wide flag; true when it changed
 		bool noteShape(int page, int w, int h);
 		int decodeWFor(int page) const;	// decodeW(), but a spread in Book wants both panels' length
-		int bookGapNow() const { return spreadOn ? bookGapPx : 0; }
+		// the hinge's gap in Book's column now: a page pair keeps the Hinge gap (each page whole on its panel); a spread
+		// has none, so its picture runs on across the panels with no strip skipped
+		int bookGapNow() const { return bookScreen().spread ? 0 : bookGapPx; }
+		int bookColH() const { return 2 * viewH + bookGapNow(); }
+		// Book's zoom (mangaBookZoom*): the screen's pages, both panels one picture panned in lockstep
+		MangaBookArea bookArea() const;
+		void bookZoomTo(double z, double ax, double ay, int64_t ms);
+		void bookZoomReset();
 		// rotate an RGBA buffer (w x h) by angle degrees clockwise; the returned buffer is (rw x rh), swapped if 90/270
 		static std::shared_ptr<const std::vector<uint8_t>> rotatePixels(
 			const std::shared_ptr<const std::vector<uint8_t>>& src, int w, int h, int angle);
@@ -268,6 +276,7 @@ namespace bp
 		static constexpr int TURN_MS = 200, TURN_FAST_MS = 280;	// a turn sooner than FAST after the last is instant
 		bool turnAnimOn = true;
 		int turnFrom = 0, turnDir = 0;
+		MangaBookZoom bz;	// Book's zoom and pan (z 1: the fit); back to the fit at every new screen
 		int64_t turnAt = 0, turnLast = 0, turnNow = 0;
 		int bookPrevAngle = 0;	// the turn (L3) Book took over, given back when it ends
 		CardOverlay card;	// the level card over the pages

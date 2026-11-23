@@ -16,6 +16,8 @@ namespace bp
 	// how the paged modes fit a page to the screen: Page keeps it whole, Width makes it as wide as the screen (read
 	// down a screenful at a time), Fill covers the screen and crops what overflows; the Strip always fits width
 	constexpr int MANGA_FIT_PAGE = 0, MANGA_FIT_WIDTH = 1, MANGA_FIT_FILL = 2, MANGA_FITS = 3;
+	// Book's chapter and page tag ("Ch. 1 · 3–4 / 6"): never, a few seconds as a screen's pages load or turn, or always
+	constexpr int MANGA_TAG_HIDE = 0, MANGA_TAG_LOAD = 1, MANGA_TAG_ALWAYS = 2, MANGA_TAGS = 3;
 	// the pages decoded ahead of the one read (Preload), smallest first, and the one a new setting starts on
 	constexpr int MANGA_PRELOADS[] = {2, 3, 6};
 	constexpr int MANGA_PRELOAD_COUNT = 3, MANGA_PRELOAD_DEFAULT = 3;
@@ -249,6 +251,7 @@ namespace bp
 		int mangaHinge = 36;
 		// Book: a wide page (a double-page spread) cut down the middle across both panels; off: whole on one
 		bool mangaSpread = true;
+		int mangaBookTag = MANGA_TAG_LOAD;	// Book's chapter and page tag (MANGA_TAG_*)
 		bool mangaTurnAnim = true;	// Book: a turn slides the pages across both panels (~200 ms); off: an instant turn
 		// fullscreen's first open has shown its toast (a hint to leave it): shown once, ever
 		bool mangaFullSeen = false;

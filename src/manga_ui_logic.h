@@ -100,6 +100,26 @@ namespace bp
 	// one-page move realigned keeps its own start)
 	MangaBookScreen mangaBookScreenBefore(const std::vector<char>& wide, int first);
 
+	// ---- Book's zoom (both panels as one picture: the column of the top panel, the hinge, the bottom panel) ----
+	// the column (viewW wide, colH = 2 panels + the hinge's gap for a page pair, 2 panels for a spread) drawn at z and
+	// shifted: a column point p shows at p * z + o. Both panels draw from the one view, so they pan in lockstep
+	struct MangaBookZoom { double z = 1, ox = 0, oy = 0; };
+	struct MangaBookArea { double x = 0, y = 0, w = 0, h = 0; };	// the pages' bounds at the fit, column pixels
+	// the steps LEFT/RIGHT go through: the fit (1), 1.5, 2, 3; dir +1 in, -1 out (stops at either end)
+	double mangaBookZoomStep(double z, int dir);
+	// the view kept on the pages: on an axis where they are bigger than the column, no empty edge shows; where they
+	// are smaller, they are centred (so the fit is z 1, o 0)
+	MangaBookZoom mangaBookZoomClamp(MangaBookZoom v, const MangaBookArea& pages, double viewW, double colH);
+	// to zoom z, the column point under (ax, ay) (view pixels of the column) staying where it is
+	MangaBookZoom mangaBookZoomTo(MangaBookZoom v, double z, double ax, double ay, const MangaBookArea& pages, double viewW, double colH);
+	// a drag or the stick: the picture moved by (dx, dy) view pixels, clamped
+	MangaBookZoom mangaBookPan(MangaBookZoom v, double dx, double dy, const MangaBookArea& pages, double viewW, double colH);
+	// the view is at the column's end that way (dirY +1: the bottom panel's foot; -1: the top panel's top), where a
+	// turn key turns the page instead of panning
+	bool mangaBookZoomAtEnd(const MangaBookZoom& v, int dirY, const MangaBookArea& pages, double viewW, double colH);
+	// LEFT (-1) / RIGHT (+1) as held sideways: +1 zooms in (the key that is up as held), -1 out
+	int mangaBookZoomKey(int book, int dpadDx);
+
 	// ---- Sources › Available: the languages kept (Filter) and the words searched for (Search); both apply ----
 	// "English · en" for "en"; a code it doesn't know as it is
 	std::string mangaLangName(const std::string& code);

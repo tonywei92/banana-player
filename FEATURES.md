@@ -1711,7 +1711,7 @@ opened from Files has none).
 |---|---|
 | **RIGHT** / **LEFT** | Forward / back: a screenful down the page, then the next page; back goes a screenful up it, then to the page before (in **Vertical scroll**, a screenful down or up). With **Swap Left/Right** on, **LEFT** is forward |
 | **UP** / **DOWN** | Zoom in / out, in small steps: 100, 110, 125, 140, 160, 180, 200, 225, 250, 300, 350, 400, 500, 600, 700, 800 %. The new zoom shows on the page a moment, then fades. **A** zooms to 200 % or back to the fit |
-| **Left stick** (any way) | **Vertical scroll**: scrolls smoothly while held, faster the further it is pushed; zoomed in, left and right pan across it (in fullscreen too). Paged modes: pans a page that is zoomed, wide or taller than the screen, up, down, left and right; a page that fits does not move. **Book**: one push turns a spread, the way its D-pad points |
+| **Left stick** (any way) | **Vertical scroll**: scrolls smoothly while held, faster the further it is pushed; zoomed in, left and right pan across it (in fullscreen too). Paged modes: pans a page that is zoomed, wide or taller than the screen, up, down, left and right; a page that fits does not move. **Book**: one push turns a spread, the way its D-pad points; zoomed in, it pans both screens' picture |
 | **L / R** | Previous / next page, straight to it |
 | **X** | **More** (below): Mark read, Get this chapter, Bookmark this page; Info, Chapters, Manga settings. The reading mode it used to step is a row of **View** |
 | **Y** | The Pages grid (below) |
@@ -1790,13 +1790,19 @@ View switches the direction; a Vertical scroll series turns its pages the way th
 to left when that is Vertical scroll too);
 a swipe along the bottom screen turns the spread and a tap in the middle shows the **Book bar**: the spread's page
 numbers on its slider, **Pages**, **View**, **Light**, **Next chapter**, and **One screen** to leave Book, upright as the
-pages are. The page numbers show for a moment
-after a turn, at the foot of the spread and upright as held; at the chapter's end they stay and say what comes next
-(turn once more for the next chapter). No zoom or page fit in Book: each page is shown whole. The menu and notices
+pages are. The chapter and page numbers ("Ch. 1 · 3–4 / 6") show for a few seconds
+as a screen's pages load or turn, then fade, at the foot of the spread and upright as held; at the chapter's end they
+stay and say what comes next (turn once more for the next chapter). **Chapter and page in Book** (Manga settings, and
+a View row in Book): **Hide**, **Show at load** (the default) or **Always**.
+**Zoom in Book:** the D-pad's **LEFT** and **RIGHT** (up and down as held: the one up zooms in) step through the fit,
+150, 200 and 300 %; a double-tap on the bottom screen zooms to 200 % there, or back to the fit. Zoomed, both screens
+show one picture of the pair (or the wide page) and move together: a finger dragged on the bottom screen or the left
+stick pans it. The turn keys first take the view to the pages' end that way, then turn; a new screen opens at the fit.
+No page fit in Book. The menu and notices
 keep the screen's usual orientation. Book is kept for the series, as the reading mode is.
 **Wide pages** (a double page drawn as one picture: at least 1.2 times as wide as tall, never the first page) span
 both screens: cut down the middle, its left half on the left screen and its right half on the right, at one size and
-lined up across the hinge (the **Hinge gap** skips the strip the hinge hides; View lists it in Book too). Right to
+continuous across the hinge (no strip skipped, unlike fullscreen; a pair of normal pages keeps the **Hinge gap**). Right to
 left changes only the page order, never the halves. A wide page is one turn on its own; the page before it, if it
 would have no partner, sits alone with the other screen blank, and pairing starts again after it. The place kept is
 still a page number, and reopening lands on the screen holding it. **Wide pages span both screens** (Manga settings,
@@ -1835,8 +1841,9 @@ them while you read. **B** goes back where you came from.
 | **Reading mode** | Right to left / Left to right / Vertical scroll | Vertical scroll | How a series opens until you pick one for it (X while reading). |
 | **Page fit** | Page / Width / Fill | Page | Width: a page as wide as the screen, read down with RIGHT a screenful at a time. Fill: the page covers the screen, cropped either way, panned in reading order. |
 | **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
-| **Hinge gap** | 0 to 200 px | 36 px | The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Vertical scroll, and Book's wide pages; Right to left and Left to right put the screens edge to edge (0 px). |
+| **Hinge gap** | 0 to 200 px | 36 px | The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Vertical scroll, and the space between a Book pair's pages (a wide page runs on across it); Right to left and Left to right put the screens edge to edge (0 px). |
 | **Wide pages span both screens** | On / Off | On | In Book, a double page is cut down the middle, half on each screen. Off: it shows whole on one. |
+| **Chapter and page in Book** | Hide / Show at load / Always | Show at load | The "Ch. 1 · 3–4 / 6" tag beside the pages in Book. Show at load: a few seconds as pages load or turn, then it fades. Always: it stays. |
 | **Page turn animation** | On / Off | On | In Book, a turn slides the pages across both screens. Quick turns in a row are never slowed by it. Off: the pages change at once. |
 | **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT leaves. View's Layout sets it too. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |

@@ -113,6 +113,11 @@ namespace bp
 		uint64_t mfGen = 0;
 		int mfWaiting = 0;
 		Uint32 mfTagUntil = 0;
+		// Book's tag (the setting "Chapter and page in Book"): how long it shows after a screen's pages load or turn,
+		// the fade at its end, and its alpha now (0: not drawn)
+		bool mfTagShown = false;	// (its last pass: a log line as it comes and goes)
+		static constexpr Uint32 BOOK_TAG_MS = 2500, BOOK_TAG_FADE_MS = 400;
+		int mangaBookTagAlpha(const Player& p, Uint32 now) const;
 		int mfLastPage = -1;
 		// the pages, the page tag, Try again; then the Manga reader's controls and first-time toast while they show
 		void drawMangaFull(const Player& p);

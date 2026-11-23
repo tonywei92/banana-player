@@ -1134,30 +1134,76 @@ namespace bp
 			// the drag area and the slider follow the finger; the buttons act as it lifts
 			Uint32 now = SDL_GetTicks();
 			// Book: the panel is a page; a swipe along the spread (up or down the panel) turns it, a tap shows the
-			// page numbers. No drag of the page itself and no zoom: it is shown whole
+			// page numbers and the Book bar, a double-tap zooms to 200 % at the finger or back to the fit. Zoomed, a
+			// drag pans the picture of both panels together (no turn: the turn keys pan to the end first)
 			if (ui.pageReader->readerStatus.book)
 			{
+				bool zoomed = ui.pageReader->readerStatus.zoomPct > 100;
+				// a second tap soon after the first, near it: the double-tap, even with the bar its first tap raised
+				if (pt.kind == Pointer::Down && now - mangaLastTapAt <= 300 && std::abs(x - mangaLastTapX) <= 20 &&
+					std::abs(y - mangaLastTapY) <= 20)
+				{
+					mangaBookBar = false;
+					mangaBookBarPressed = -1;
+					mangaBookDouble = true;
+				}
 				// the sideways bar, when it shows, takes the touches first
-				if (mangaBookBar) return mangaBookBarPointer(pt, x, y, p);
+				else if (mangaBookBar && !mangaTouch) return mangaBookBarPointer(pt, x, y, p);
 				if (pt.kind == Pointer::Down)
 				{
-					if (ui.pageReader->readerStatus.failedHere && ui.pageReader->mangaRetryRect(true).hit(x, y)) { ui.pageReader->mangaRetry(); return false; }
+					if (!mangaBookDouble && ui.pageReader->readerStatus.failedHere && ui.pageReader->mangaRetryRect(true).hit(x, y)) { ui.pageReader->mangaRetry(); return false; }
 					mangaTouch = true;
+					mangaTap = true;
 					mangaTapX = x;
 					mangaTapY = y;
 					mangaTapAt = now;
+					mangaTouchX = pt.x;
+					mangaTouchY = pt.y;
+				}
+				else if (pt.kind == Pointer::Move && mangaTouch)
+				{
+					if (std::abs(x - mangaTapX) > MG_TAP_UNITS || std::abs(y - mangaTapY) > MG_TAP_UNITS) mangaTap = false;
+					double dy = pt.y - mangaTouchY, dx = pt.x - mangaTouchX;
+					mangaTouchX = pt.x;
+					mangaTouchY = pt.y;
+					if (zoomed && !mangaTap && (dx != 0 || dy != 0))
+						ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Drag, dy, (int64_t)now, dx});
 				}
 				else if (pt.kind != Pointer::Move && mangaTouch)
 				{
 					mangaTouch = false;
 					int dy = y - mangaTapY, dx = x - mangaTapX;
-					if (std::abs(dy) > 40 && std::abs(dy) > std::abs(dx))
-						mangaBookTurn(mangaBookSwipe(ui.pageReader->readerStatus.book, ui.pageReader->readerStatus.mode == MANGA_RTL, p.settings.mangaSwapLR, dy), p);
-					else
+					bool tap = std::abs(dy) <= MG_TAP_UNITS && std::abs(dx) <= MG_TAP_UNITS;
+					if (mangaBookDouble)
 					{
-						// a tap: the page numbers a moment, and the Book bar
-						ui.pageReader->mfTagUntil = now + 1500;
+						mangaBookDouble = false;
+						mangaLastTapAt = 0;
+						if (tap)
+						{
+							double z = zoomed ? 1.0 : 2.0;
+							ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::ZoomPoint, z, (int64_t)now,
+								x / (double)Ui::W, y / (double)Ui::H});
+							fprintf(stderr, "manga: book double-tap, zoom %s\n", zoomed ? "back to the fit" : "200%");
+						}
+					}
+					else if (zoomed)
+					{
+						// the drag's last bit to the lift; a tap raises the bar as at the fit
+						double fy = pt.y - mangaTouchY, fx = pt.x - mangaTouchX;
+						if (!tap && (fx != 0 || fy != 0)) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Drag, fy, (int64_t)now, fx});
+						if (!tap) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Release, 0, (int64_t)now});
+						if (tap) { mangaBookBar = true; mangaLastTapAt = now; mangaLastTapX = x; mangaLastTapY = y; }
+					}
+					else if (std::abs(dy) > 40 && std::abs(dy) > std::abs(dx))
+						mangaBookTurn(mangaBookSwipe(ui.pageReader->readerStatus.book, ui.pageReader->readerStatus.mode == MANGA_RTL, p.settings.mangaSwapLR, dy), p);
+					else if (tap)
+					{
+						// a tap: the page numbers a moment, and the Book bar (a second one soon is the double-tap)
+						ui.pageReader->mfTagUntil = now + PageReader::BOOK_TAG_MS;
 						mangaBookBar = true;
+						mangaLastTapAt = now;
+						mangaLastTapX = x;
+						mangaLastTapY = y;
 					}
 				}
 				return false;
@@ -2032,7 +2078,11 @@ namespace bp
 						std::to_string(mangaToastUntil && now < mangaToastUntil ? (int)((mangaToastUntil - now + 99) / 100) : 0) + " " +
 						std::to_string(mangaCtrlPressed);
 					for (auto& b : ui.pageReader->readerBottom.boxes)
-						sig += " " + std::to_string(b.page) + ":" + std::to_string((int)std::lround(b.x * 4096)) + "," + std::to_string((int)std::lround(b.y * 4096));
+						sig += " " + std::to_string(b.page) + ":" + std::to_string((int)std::lround(b.x * 4096)) + "," + std::to_string((int)std::lround(b.y * 4096)) +
+							"," + std::to_string((int)std::lround(b.w * 4096));
+					// Book's tag: its setting and its fade's step (a frame each step as it goes)
+					if (ui.pageReader->readerStatus.book)
+						sig += "|tg" + std::to_string(p.settings.mangaBookTag) + "," + std::to_string(ui.pageReader->mangaBookTagAlpha(p, now) / 16);
 				}
 			}
 		}
@@ -3175,7 +3225,8 @@ namespace bp
 	void Ui::Manga::mangaBookTurn(int step, Player& p)
 	{
 		Uint32 now = SDL_GetTicks();
-		if (step > 0 && ui.pageReader->readerStatus.atEnd) { mangaChapterStep(1, p); return; }	// the last spread: the next chapter
+		// the last spread: the next chapter (zoomed, the reader pans to the end, then gives the fit back first)
+		if (step > 0 && ui.pageReader->readerStatus.atEnd && ui.pageReader->readerStatus.zoomPct <= 100) { mangaChapterStep(1, p); return; }
 		if (step != 0) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Step, (double)step, (int64_t)now});
 		ui.pageReader->mfTagUntil = now + 1500;
 	}
@@ -3185,6 +3236,15 @@ namespace bp
 		bool reading = ui.page == Page::MangaRead && ui.pageReader->readerStatus.open && !ui.topOverlay() &&
 			!ui.pageReader->mangaPages && !mangaReadWaiting && ui.pageReader->readerStatus.error.empty();
 		// Book is held sideways, whole pages: one push is one spread, turned the way its D-pad points
+		if (reading && ui.pageReader->readerStatus.book && ui.pageReader->readerStatus.zoomPct > 100)
+		{
+			// zoomed in: the stick pans the picture of both panels together (the reader moves it each frame)
+			stickDir = 0;
+			if (value != 0 || valueX != 0 || stickSent)
+				ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, (double)value, (int64_t)SDL_GetTicks(), (double)valueX});
+			stickSent = value != 0 || valueX != 0;
+			return;
+		}
 		if (reading && ui.pageReader->readerStatus.book)
 		{
 			if (stickSent) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Stick, 0, (int64_t)SDL_GetTicks()});
@@ -3228,10 +3288,18 @@ namespace bp
 		// every key puts the sideways bar away (a tap in the middle shows it); START is View and X More, as in the other
 		// layouts, both upright sheets over the pages
 		mangaBookBar = false;
-		// UP and DOWN point along the spread as it is held; LEFT and RIGHT across it, where there is nothing to do
+		// UP and DOWN point along the spread as it is held (a turn; zoomed, to the pages' end first, then a turn);
+		// LEFT and RIGHT across it, up and down as held: the zoom, the one up as held in (fit, 150, 200, 300 %)
 		if (b == Button::Up || b == Button::Down)
 		{
 			mangaBookTurn(mangaBookStep(ui.pageReader->readerStatus.book, rtl, p.settings.mangaSwapLR, b == Button::Up ? -1 : 1), p);
+			return false;
+		}
+		if (b == Button::Left || b == Button::Right)
+		{
+			int dir = mangaBookZoomKey(ui.pageReader->readerStatus.book, b == Button::Right ? 1 : -1);
+			int pct = ui.pageReader->readerStatus.zoomPct > 0 ? ui.pageReader->readerStatus.zoomPct : 100;
+			ui.pageReader->mangaZoomTo(mangaBookZoomStep(pct / 100.0, dir));
 			return false;
 		}
 		switch (b)
@@ -3277,7 +3345,7 @@ namespace bp
 		s.keys[3] = {&G_NEXT, "Next chapter", "R2", ""};
 		s.leave = "One screen";
 		s.leaveKey = "B";
-		s.hints = {{"UP/DOWN", "Turn"}, {"L/R", "One page"}, {"X", "More"}};
+		s.hints = {{"UP/DOWN", "Turn"}, {"LEFT/RIGHT", "Zoom"}, {"L/R", "One page"}, {"X", "More"}};
 		s.topLeft = ui.pageReader->readerStatus.book == MANGA_BOOK_LEFT;
 		s.pressed = mangaBookBarPressed;
 		KitNew::bookBar(*ui.kit, b, s);
@@ -3377,8 +3445,9 @@ namespace bp
 		}
 	}
 
-	void Ui::Manga::drawMangaBookTag()
+	void Ui::Manga::drawMangaBookTag(int alpha)
 	{
+		if (alpha <= 0) return;
 		int a = ui.pageReader->readerStatus.page + 1, n = ui.pageReader->readerStatus.pages;
 		int b = std::min(a + std::max(1, ui.pageReader->readerStatus.bookCount) - 1, n);
 		std::string ch = mangaReadChapterTag();
@@ -3399,10 +3468,14 @@ namespace bp
 		int len = (int)std::lround(tw / sy) + 16, thick = (int)std::lround(th / sx) + 8;
 		bool left = ui.pageReader->readerStatus.book != MANGA_BOOK_RIGHT;
 		int cx = left ? 12 + thick / 2 : W - 12 - thick / 2, cy = H / 2;
-		ui.fillRound({cx - thick / 2, cy - len / 2, thick, len}, SURFACE, R_CHIP);
+		SDL_Color chip = SURFACE;
+		chip.a = (Uint8)(chip.a * alpha / 255);
+		ui.fillRound({cx - thick / 2, cy - len / 2, thick, len}, chip, R_CHIP);
 		// the text upright as held: a quarter turn clockwise held top-left (the panel's right edge is up), back held top-right
 		SDL_Rect dst{(int)std::lround(cx * sx) - tw / 2, (int)std::lround(cy * sy) - th / 2, tw, th};
+		SDL_SetTextureAlphaMod(t, (Uint8)alpha);
 		SDL_RenderCopyEx(ui.ren, t, nullptr, &dst, left ? 90.0 : 270.0, nullptr, SDL_FLIP_NONE);
+		SDL_SetTextureAlphaMod(t, 255);	// (the texture is the text cache's: others draw it whole)
 	}
 
 	bool Ui::Manga::mangaFullNavOff(int id) const

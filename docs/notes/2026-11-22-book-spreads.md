@@ -21,3 +21,4 @@
   Library (`set:manga-reader=yes,set:manga-mode=ltr|rtl,R2*5,A,B,A,A,Start,Right` then UP/DOWN): progress went
   1→3→4→5→6→7 and back 6→5; both shots show the spread split across the panels. Not checked: the handheld's real
   hinge alignment, Book's tag with a lone page, Seek from the grid onto a spread.
+- **2026-11-23:** a spread no longer skips the hinge strip (owner): it runs on across the panels; pairs keep the Hinge gap. Zoom and pan came to Book too: docs/notes/2026-11-23-book-tag-zoom.md.
