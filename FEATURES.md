@@ -1793,7 +1793,7 @@ numbers on its slider, **Pages**, **View**, **Light**, **Next chapter**, and **O
 pages are. The chapter and page numbers ("Ch. 1 · 3–4 / 6") show for a few seconds
 as a screen's pages load or turn, then fade, at the foot of the spread and upright as held; at the chapter's end they
 stay and say what comes next (turn once more for the next chapter). **Chapter and page in Book** (Manga settings, and
-a View row in Book): **Hide**, **Show at load** (the default) or **Always**.
+a View row in Book): **Hide**, **On turn** (the default) or **Always**.
 **Zoom in Book:** the D-pad's **LEFT** and **RIGHT** (up and down as held: the one up zooms in) step through the fit,
 150, 200 and 300 %; a double-tap on the bottom screen zooms to 200 % there, or back to the fit. Zoomed, both screens
 show one picture of the pair (or the wide page) and move together: a finger dragged on the bottom screen or the left
@@ -1843,7 +1843,7 @@ them while you read. **B** goes back where you came from.
 | **Swap Left/Right** | Off / On | Off | Off: RIGHT is always forward. On: LEFT is forward (to match a right-to-left book). |
 | **Hinge gap** | 0 to 200 px | 36 px | The part of the page hidden under the hinge in fullscreen, so pictures line up across the gap. Vertical scroll, and the space between a Book pair's pages (a wide page runs on across it); Right to left and Left to right put the screens edge to edge (0 px). |
 | **Wide pages span both screens** | On / Off | On | In Book, a double page is cut down the middle, half on each screen. Off: it shows whole on one. |
-| **Chapter and page in Book** | Hide / Show at load / Always | Show at load | The "Ch. 1 · 3–4 / 6" tag beside the pages in Book. Show at load: a few seconds as pages load or turn, then it fades. Always: it stays. |
+| **Chapter and page in Book** | Hide / On turn / Always | On turn | The "Ch. 1 · 3–4 / 6" tag beside the pages in Book. On turn: a few seconds as pages load or turn, then it fades. Always: it stays. |
 | **Page turn animation** | On / Off | On | In Book, a turn slides the pages across both screens. Quick turns in a row are never slowed by it. Off: the pages change at once. |
 | **Open fullscreen** | On / Off | On | A chapter opens on both screens. SELECT leaves. View's Layout sets it too. |
 | **Preload** | 2 / 3 / 6 pages | 3 pages | More: smoother on a slow server, more data. |

@@ -20,4 +20,4 @@
   changed twice with the sheet open, More upright, the middle tap's bar, the slide mid-way (with TURN_MS raised for the
   shot only), four Downs 80 ms apart (one slide, then instant). Desktop frames during a slide: 2-21 ms. Not checked: the
   handheld's GL/KMSDRM rate during a slide, Mali texture upload of the second new page.
-- **2026-11-23:** the tag has a setting (Hide / Show at load / Always) and fades: docs/notes/2026-11-23-book-tag-zoom.md.
+- **2026-11-23:** the tag has a setting (Hide / On turn / Always) and fades: docs/notes/2026-11-23-book-tag-zoom.md.

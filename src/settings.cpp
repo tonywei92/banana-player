@@ -554,7 +554,7 @@ namespace bp
 		using D = SettingDef;
 		static const char* MODE_NAMES[MANGA_MODES] = {"Right to left", "Left to right", "Vertical scroll"};
 		static const char* FIT_NAMES[MANGA_FITS] = {"Page", "Width", "Fill"};
-		static const char* TAG_NAMES[MANGA_TAGS] = {"Hide", "Show at load", "Always"};
+		static const char* TAG_NAMES[MANGA_TAGS] = {"Hide", "On turn", "Always"};
 		static const char* CACHE_NAMES[MANGA_CACHES] = {"100 MB", "300 MB", "1 GB"};
 		static const char* CLOCK_NAMES[CLOCKS] = {"24-hour", "12-hour", "Off"};
 		static const char* SHOWN_ADULT[2] = {"Hidden", "Shown"};
@@ -626,7 +626,7 @@ namespace bp
 			D::flag("manga-spread", &Settings::mangaSpread)
 				.page(SG_MANGA, 45, "Wide pages span both screens", "In Book, a double page is cut down the middle, half on each screen. Off: it shows whole on one."),
 			D::choice("manga-book-tag", &Settings::mangaBookTag, MANGA_TAG_IDS, MANGA_TAGS)
-				.page(SG_MANGA, 46, "Chapter and page in Book", "The \u201cCh. 1 \u00b7 3\u20134 / 6\u201d tag beside the pages. Show at load: a few seconds as pages load or turn, then it fades. Always: it stays.").shownAs(TAG_NAMES).stepped(true),
+				.page(SG_MANGA, 46, "Chapter and page in Book", "The \u201cCh. 1 \u00b7 3\u20134 / 6\u201d tag beside the pages. On turn: a few seconds as pages load or turn, then it fades. Always: it stays.").shownAs(TAG_NAMES).stepped(true),
 			D::flag("manga-turn-anim", &Settings::mangaTurnAnim)
 				.page(SG_MANGA, 47, "Page turn animation", "In Book, a turn slides the pages across both screens. Quick turns in a row are never slowed by it. Off: the pages change at once."),
 			D::choice("manga-cache", &Settings::mangaCacheSize, MANGA_CACHE_IDS, MANGA_CACHES)

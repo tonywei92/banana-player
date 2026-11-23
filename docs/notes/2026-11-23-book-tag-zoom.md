@@ -1,7 +1,7 @@
 # Book: the tag setting, spreads without the gap, zoom and pan (2026-11-23, c-booktag)
 
-- **Tag** (`manga-book-tag`, `Settings::mangaBookTag`, `MANGA_TAG_*`): Hide / Show at load (default) / Always; also a
-  View row in Book (`ROW_TAG`). `PageReader::mangaBookTagAlpha` is the one place that decides it: Show at load is
+- **Tag** (`manga-book-tag`, `Settings::mangaBookTag`, `MANGA_TAG_*`): Hide / On turn (default) / Always; also a
+  View row in Book (`ROW_TAG`). `PageReader::mangaBookTagAlpha` is the one place that decides it: On turn is
   `BOOK_TAG_MS` (2.5 s) from a screen change, a tap or the chapter's open, fading over the last `BOOK_TAG_FADE_MS`
   (400; the Ui signature carries the fade in 16-alpha steps); the chapter's end keeps it up except under Hide (owner:
   Hide is never). Log: `manga: book tag shown|gone (setting N)`.

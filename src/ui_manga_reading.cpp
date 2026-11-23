@@ -209,7 +209,7 @@ namespace bp
 				case ROW_HINGE: sr.label = "Hinge gap"; sr.value = std::to_string(p.settings.mangaHinge) + " px"; break;
 				case ROW_TAG:
 				{
-					static const char* TAGS[MANGA_TAGS] = {"Hide", "Show at load", "Always"};
+					static const char* TAGS[MANGA_TAGS] = {"Hide", "On turn", "Always"};
 					sr.label = "Chapter and page";
 					sr.value = TAGS[std::clamp(p.settings.mangaBookTag, 0, MANGA_TAGS - 1)];
 					break;
