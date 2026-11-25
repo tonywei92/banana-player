@@ -690,7 +690,16 @@ namespace bp
 			x1 = std::max(x1, (double)(b.x + b.w)); y1 = std::max(y1, (double)(b.y + b.h));
 		}
 		if (x1 <= x0) return {0, 0, (double)viewW, (double)bookColH()};
-		return {x0, y0, x1 - x0, y1 - y0};
+		MangaBookArea pg{x0, y0, x1 - x0, y1 - y0};
+		MangaBookScreen scr = mangaBookScreenFrom(bookWide(), bookS);
+		// a lone page (the other panel blank) is one of two slots: it keeps its own screen when zoomed
+		if (!scr.spread && scr.count == 1 && bookBoxesAt(bookS).size() == 1)
+		{
+			// the page's panel: the top one when its box starts above the hinge
+			bool onTop = (y0 + y1) / 2 < viewH + bookGapNow() / 2.0;
+			return mangaBookLoneArea(pg, onTop, viewH, bookGapNow());
+		}
+		return pg;
 	}
 
 	void MangaReader::bookZoomTo(double z, double ax, double ay, int64_t ms)

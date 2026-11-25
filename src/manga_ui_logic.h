@@ -151,6 +151,10 @@ namespace bp
 	// shifted: a column point p shows at p * z + o. Both panels draw from the one view, so they pan in lockstep
 	struct MangaBookZoom { double z = 1, ox = 0, oy = 0; };
 	struct MangaBookArea { double x = 0, y = 0, w = 0, h = 0; };	// the pages' bounds at the fit, column pixels
+	// a lone page's area: the page and, as if it held a real page of the same size, the blank slot on the other panel
+	// (shifted one panel and the gap), so zoom and pan treat the screen as two slots and the page keeps its own screen.
+	// pageOnTop: the lone page is on the top panel
+	MangaBookArea mangaBookLoneArea(const MangaBookArea& page, bool pageOnTop, double viewH, double gap);
 	// the steps LEFT/RIGHT go through: the fit (1), 1.5, 2, 3; dir +1 in, -1 out (stops at either end)
 	double mangaBookZoomStep(double z, int dir);
 	// the view kept on the pages: on an axis where they are bigger than the column, no empty edge shows; where they

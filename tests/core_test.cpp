@@ -3355,6 +3355,42 @@ static void testMangaBookZoomClampPairWithHinge()
 	CHECK_EQ(back.oy, 0.0);
 }
 
+// GitHub #23: a lone page before a spread is one of two slots: zoomed, it stays on its own screen
+static void testMangaBookZoomLonePage()
+{
+	double W = 640, H = 480, gap = 36, C = 2 * H + gap;
+	MangaBookArea page{40, 0, 560, H};	// a tall page fitted in its panel (top slot)
+	for (bool onTop : {true, false})
+	{
+		MangaBookArea pg = onTop ? page : MangaBookArea{40, H + gap, 560, H};
+		MangaBookArea a = mangaBookLoneArea(pg, onTop, H, gap);
+		// same as a pair: the whole column, whichever side the page is on
+		CHECK_EQ(a.y, 0.0);
+		CHECK_EQ(a.h, C);
+		CHECK_EQ(a.x, 40.0);
+		for (double z : {1.5, 2.0, 3.0})
+		{
+			// pinch about the page's own screen: it must not recentre across the hinge
+			double ay = onTop ? H / 2 : H + gap + H / 2;
+			MangaBookZoom v = mangaBookZoomTo({}, z, W / 2, ay, a, W, C);
+			// the view equals the one a pair gives (the zoom about the page's own screen, not a recentre)
+			CHECK_EQ(v.oy <= 0.0, true);
+			// panning clamps exactly as a pair's would
+			MangaBookZoom pairV = mangaBookZoomTo({}, z, W / 2, ay, MangaBookArea{40, 0, 560, C}, W, C);
+			MangaBookZoom far = mangaBookPan(v, 1e6, 1e6, a, W, C), pfar = mangaBookPan(pairV, 1e6, 1e6, MangaBookArea{40, 0, 560, C}, W, C);
+			CHECK_EQ(far.oy, pfar.oy);
+			CHECK_EQ(far.ox, pfar.ox);
+			CHECK_EQ(far.oy, 0.0);
+		}
+		// at the fit it is centred as a pair's: z 1, no offset
+		MangaBookZoom fit = mangaBookZoomClamp({}, a, W, C);
+		CHECK_EQ(fit.oy, 0.0);
+	}
+	// without the blank slot (the old area) the 1.5x view recentred: the page straddled the hinge
+	MangaBookZoom old = mangaBookZoomClamp({1.5, 0, 0}, page, W, C);
+	CHECK_EQ(old.oy > 0, true);
+}
+
 static void testMangaBookZoomClampSpreadNoHinge()
 {
 	// a spread over 2 panels and no gap (960 high): a 1600x1200 page turned is
@@ -17239,6 +17275,7 @@ int main()
 	testMangaBookZoomSteps();
 	testMangaBookZoomClampPairWithHinge();
 	testMangaBookZoomClampSpreadNoHinge();
+	testMangaBookZoomLonePage();
 	testUpdaterDownload();
 	testVideoCache();
 	testSlider();

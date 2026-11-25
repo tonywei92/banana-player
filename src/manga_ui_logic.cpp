@@ -250,6 +250,15 @@ namespace bp
 		return s;
 	}
 
+	MangaBookArea mangaBookLoneArea(const MangaBookArea& page, bool pageOnTop, double viewH, double gap)
+	{
+		double d = viewH + gap;
+		MangaBookArea a = page;
+		if (pageOnTop) a.h = page.h + d;
+		else { a.y = page.y - d; a.h = page.h + d; }
+		return a;
+	}
+
 	double mangaBookZoomStep(double z, int dir)
 	{
 		static const double STEPS[] = {1.0, 1.5, 2.0, 3.0};
