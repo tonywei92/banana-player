@@ -71,10 +71,17 @@ namespace bp
 		// fullscreen: what the bottom panel shows of the view (main sets it each pass): each page's box as fractions
 		// of the panel (x, y, w, h; y may run past 0..1), and the pages' pixels (RGBA, straight alpha) for those boxes;
 		// gen changes with the chapter (the bottom panel's textures of the last one go)
-		struct ReaderBox { int page; float x, y, w, h; };
+		struct ReaderBox { int page; float x, y, w, h; bool wait = false; };
 		struct ReaderPix { int page = -1, w = 0, h = 0; std::shared_ptr<const std::vector<uint8_t>> rgba; };
 		struct ReaderBottom { bool on = false; uint64_t gen = 0; std::vector<ReaderBox> boxes; std::vector<ReaderPix> pages; };
 		ReaderBottom readerBottom;
+		// a page loading on this panel: the ring's step, so the signature changes as it turns (and only then)
+		std::string spinKey() const
+		{
+			for (auto& b : readerBottom.boxes)
+				if (b.wait) return "s" + std::to_string((int)(SDL_GetTicks() / 110 % 8));
+			return "-";
+		}
 		// the pages grid's thumbnails (docs/design/manga.md section 3): one per decoded page, ~96 px wide RGBA,
 		// made by the reader as each page decodes; pages not decoded yet are absent (the Ui draws a numbered
 		// placeholder). gen changes with the chapter: the Ui's textures of the last one go

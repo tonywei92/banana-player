@@ -2156,7 +2156,7 @@ namespace bp
 		if (ui.page == Page::DocPages && ui.pageReader->readerStatus.fullscreen)
 		{
 			s += "|full" + std::to_string(ui.pageReader->readerBottom.gen) + " " + std::to_string(ui.pageReader->mfTex.size()) + " " +
-				std::to_string(ui.pageReader->mfWaiting) + " " + std::to_string(ui.pageReader->readerBottom.pages.size()) + (SDL_GetTicks() < ui.pageReader->mfTagUntil ? "T" : "");
+				std::to_string(ui.pageReader->mfWaiting) + " " + ui.pageReader->spinKey() + " " + std::to_string(ui.pageReader->readerBottom.pages.size()) + (SDL_GetTicks() < ui.pageReader->mfTagUntil ? "T" : "");
 			for (auto& b : ui.pageReader->readerBottom.boxes)
 				s += " " + std::to_string(b.page) + ":" + std::to_string((int)std::lround(b.x * 4096)) + "," + std::to_string((int)std::lround(b.y * 4096));
 		}

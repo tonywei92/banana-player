@@ -160,9 +160,13 @@ namespace bp
 		static constexpr size_t DECODED_BUDGET = 32u << 20;
 		// one page decoded at most this many pixels (32 MB of RGBA), never enlarged past its own width
 		static constexpr long long PAGE_MAX_PIXELS = 8LL * 1000 * 1000;
-		bool spinning() const { return opened && pr.spun(); }
+		// (the bottom panel's loading ring counts too: its page may be the only one still coming)
+		bool spinning() const { return opened && (pr.spun() || waitingAny); }
+		// a page still to be decoded or fetched (not a failed one: it shows its error)
+		bool pageWaiting(int page) const { return !pr.has(page) && !failed.count(keyPage(page)); }
 
 	private:
+		bool waitingAny = false;	// the last draw had a page loading in view (either panel)
 		// band >= 0: that band of a long page (the image's rows y0 .. y0 + rows). band -1: the whole page, or, with
 		// mayBand (the Strip), band 0 when the thread finds the page long (its size isn't known before its bytes are read)
 		struct Job { int index; std::string path; int width; int band = -1; int y0 = 0, rows = 0; bool mayBand = false; bool thumb = false; };

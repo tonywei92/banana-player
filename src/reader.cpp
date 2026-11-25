@@ -1424,7 +1424,7 @@ namespace bp
 		if (ended) want();
 		spinNow = now;
 		// a loading ring on screen turns: a frame each step
-		if (pr.spun() && (int)(now / SPIN_MS) != lastSpin)
+		if ((pr.spun() || waitingAny) && (int)(now / SPIN_MS) != lastSpin)
 		{
 			lastSpin = (int)(now / SPIN_MS);
 			need = true;
@@ -1452,8 +1452,13 @@ namespace bp
 	{
 		if (!opened) return;
 		std::vector<PageRenderer::Placed> placed;
+		waitingAny = false;
 		for (auto& b : boxes())
-			placed.push_back({b.page, b.x, b.y, b.w, b.h, !pr.has(b.page) && !failed.count(keyPage(b.page))});
+		{
+			bool wait = !pr.has(b.page) && !failed.count(keyPage(b.page));
+			waitingAny = waitingAny || wait;
+			placed.push_back({b.page, b.x, b.y, b.w, b.h, wait});
+		}
 		// the level card over them while it's up (its texture goes with the next want() once it's down)
 		card.place(pr, placed, w, h, spinNow);
 		note.place(pr, placed, w, h, spinNow);

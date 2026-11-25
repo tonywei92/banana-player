@@ -558,7 +558,7 @@ namespace bp
 				SDL_GL_GetDrawableSize(top, &w, &h);
 				for (auto& b : reader.bottomBoxes())
 				{
-					rb.boxes.push_back({b.page, b.x / w, b.y / h, b.w / w, b.h / h});
+					rb.boxes.push_back({b.page, b.x / w, b.y / h, b.w / w, b.h / h, reader.pageWaiting(b.page)});
 					int pw = 0, ph = 0;
 					if (auto px = reader.pixels(b.page, pw, ph)) rb.pages.push_back({b.page, pw, ph, px});
 				}

@@ -2069,7 +2069,7 @@ namespace bp
 					sig += "|bk" + std::to_string(ui.pageReader->readerStatus.book) + (mangaBookToast ? "t" : "");
 					sig += "|bb" + std::to_string(mangaBookBar) + "," + std::to_string(mangaBookBarPressed);
 					sig += "|full" + std::to_string(ui.pageReader->readerBottom.gen) + " " + std::to_string(ui.pageReader->mfTex.size()) + " " +
-						std::to_string(ui.pageReader->mfWaiting) + " " + std::to_string(ui.pageReader->readerBottom.pages.size()) + (SDL_GetTicks() < ui.pageReader->mfTagUntil ? "T" : "");
+						std::to_string(ui.pageReader->mfWaiting) + " " + ui.pageReader->spinKey() + " " + std::to_string(ui.pageReader->readerBottom.pages.size()) + (SDL_GetTicks() < ui.pageReader->mfTagUntil ? "T" : "");
 					// the controls over the pages and the first open's toast: how long they still show, in 100 ms
 					// steps, so each hides by itself (no finger, no other change to draw for)
 					Uint32 now = SDL_GetTicks();

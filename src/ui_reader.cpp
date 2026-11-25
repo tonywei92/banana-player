@@ -159,6 +159,27 @@ namespace bp
 				SDL_SetRenderDrawColor(ui.ren, theme::TOP_TRACK.r, theme::TOP_TRACK.g, theme::TOP_TRACK.b, 255);
 				SDL_RenderFillRect(ui.ren, &r);
 				waiting++;
+				if (b.wait)
+				{
+					// the same ring as the top panel's (8 dots, the brightest going round), in the slot's middle
+					int s = std::min(pw, ph);
+					float ring = s * 0.045f, dot = std::max(3.f, s * 0.011f);
+					if (r.w > 2 * (ring + dot) && r.h > 2 * (ring + dot))
+					{
+						float cx = r.x + r.w / 2.f, cy = r.y + r.h / 2.f;
+						int step = (int)(now / 110);
+						for (int k = 0; k < 8; k++)
+						{
+							int age = ((step - k) % 8 + 8) % 8;
+							Uint8 lum = (Uint8)(255 * (0.85f - age * 0.08f));
+							float a = (float)(k * 3.14159265 / 4);
+							SDL_FRect d{cx + ring * std::sin(a) - dot, cy - ring * std::cos(a) - dot, 2 * dot, 2 * dot};
+							SDL_SetRenderDrawColor(ui.ren, lum, lum, (Uint8)(lum * 0.95f), 255);
+							SDL_Rect di{(int)std::lround(d.x), (int)std::lround(d.y), (int)std::lround(d.w), (int)std::lround(d.h)};
+							SDL_RenderFillRect(ui.ren, &di);
+						}
+					}
+				}
 				continue;
 			}
 			FullTex& ft = it->second;
