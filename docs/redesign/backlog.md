@@ -273,7 +273,14 @@ From the gaps:
 - **The brand mark's stripes:** ACCENT on BG (drawn: the strongest pair in every theme, crisp at 22), or ACCENT and
   TEXT as in the icon (purple and white there; in most themes two colours of the same lightness, so the bar goes flat).
 
-## Catalogs (OPDS) in Books (designed 2026-11-26 for GitHub #22; not built, waiting for the owner)
+## Catalogs (OPDS) in Books (designed 2026-11-26 for GitHub #22; built 2026-11-26, `src/ui_catalogs.*`)
+
+The owner's answers (2026-11-26): a third tab; Try Gutenberg on the Empty state's Y; a list of its own beside
+Manga's, with Copy from Manga's servers; one sub-folder per catalog on the card with more room; OPDS 1.2 only; no
+dashboard form yet; **one download at a time** in the background (B leaves it running, Y cancels). Not built yet: the
+catalog's own cover pictures (the drawn cover stands in), the book's whole summary on the top screen, More's
+"Download every format" and "Delete from the card…", a "No Wi-Fi" first line (the reason curl gives is shown).
+
 
 Screens (all marked NOT BUILT in the preview): `books-catalogs`, `books-catalogs-empty`, `cat-form`, `cat-more`,
 `cat-remove`, `cat-nav`, `cat-books`, `cat-results`, `cat-book`, `cat-book-get`, `cat-book-have`, `cat-book-nofmt`,
@@ -299,8 +306,8 @@ Screens (all marked NOT BUILT in the preview): `books-catalogs`, `books-catalogs
   the best one chosen first (EPUB, PDF, CBZ, CBR, TXT). One 56-unit accent key: “Download the EPUB”; under it where it
   saves and the room left.
 - **Downloading.** The key becomes a 12-unit Progress bar (“0.2 of 0.6 MB · 37%”) with Cancel on Y, not A (a second
-  A must not undo the first). B leaves and it carries on; the book's cell wears a 5-unit bar. Not a sheet. Up to
-  three wait in a queue. When whole: a Note “Saved to Books”, the key turns to **Read**.
+  A must not undo the first). B leaves and it carries on; the book's cell wears a 5-unit bar. Not a sheet. One at
+  a time (the owner): a second Download while one runs says so in a Note. When whole: a Note “Saved to Books”, the key turns to **Read**.
 - **Where it saves.** `<card>/Books/<catalog's name>/<Title> - <Author>.<ext>`, on the card Books already reads from
   (the one with more room when both have a Books folder; `Books` is made on the internal card when there is none).
   `listBooks` walks sub-folders, so it is on the Shelf at once, with the file's own cover, and in Reading now once

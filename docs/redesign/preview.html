@@ -2749,7 +2749,7 @@ const NEWS11=[
  notes:[['new','Autoplay (2026-11-21, first named Keep playing): music started from the Music section (an album, an artist, a folder, Play random) plays on past its last song. Ten songs from the library are added under the heading “Autoplay · songs picked for you”; more come as they run out. On by default. Not for playlists, or with Repeat on.'],['new','The heading is one row’s pitch, a label in capitals and a small Turn off key at its right (a tap; by the keys it is in a row’s More).'],['new','Remove from list: a row’s More takes that song out of the list that plays. A playlist’s own file is not changed by it.'],['same','Played again from Recent, the list comes back as it played, the picked songs under their heading.']]}],
 ];
 NEWS11.forEach(([after,x])=>SCREENS.splice(SCREENS.findIndex(y=>y.id==after)+1,0,x));
-// ---------- Catalogs (OPDS) in Books: designed 2026-11-26 for issue #22, not built (backlog.md › Catalogs (OPDS)) ----------
+// ---------- Catalogs (OPDS) in Books: designed 2026-11-26 for issue #22, built the same day (backlog.md › Catalogs (OPDS); src/ui_catalogs.*) ----------
 // The third tab of Books. A catalog is browsed over the network; a book is downloaded into the card's Books folder before it opens.
 const CAT='Home Calibre',CAT_AT='http://pc-study.local:8080/opds',CAT_DIR='This card / Books / Home Calibre';
 const catTabs=()=>tabs(['Reading now 3','Shelf 18','Catalogs'],2,{0:'books',1:'books-shelf'});
@@ -2824,7 +2824,7 @@ const NEWS12=[
 {id:'cat-book-get',group:'Books',name:'A book’s page: downloading',isNew:1,why:'The key becomes the bar. Leaving the page stops nothing; Cancel has its own key so a second A can’t undo the first.',
  top:()=>catBookT('get'),bottom:()=>catBookB('get'),
  keys:[['Y','Cancel the download: nothing half-saved is left','cat-book'],['B','Back: it carries on; its cell shows the bar','cat-books'],['(wait)','It is saved: the key turns to Read, a Note says “Saved to Books”','cat-book-have'],['(the network drops)','It says so','cat-get-fail']],
- notes:[['new','Progress bar 12 tall where the key was, “x of y · %” at its right; without a length from the server, the amount alone and a moving bar.'],['new','Not a sheet: a book is small, and the page behind would be the same page. Up to three downloads run one after the other; each one’s cell shows its bar.'],['same','Room on the card is checked before it starts; it is written to a hidden part file and renamed when whole.'],['same','Music or a video playing goes on.']]},
+ notes:[['new','Progress bar 12 tall where the key was, “x of y · %” at its right; without a length from the server, the amount alone and a moving bar.'],['new','Not a sheet: a book is small, and the page behind would be the same page. One at a time (the owner, 2026-11-26): a second Download while one runs is a Note; its cell shows its bar.'],['same','Room on the card is checked before it starts; it is written to a hidden part file and renamed when whole.'],['same','Music or a video playing goes on.']]},
 {id:'cat-book-have',group:'Books',name:'A book’s page: on the card',isNew:1,why:'Once it is on the card the page’s key is Read, and it says where the file is.',
  top:()=>catBookT('have'),bottom:()=>catBookB('have'),
  keys:[['A','Read: opens where you left it','reader'],['X','More: Download again, Delete from the card…, Show in Files, Info',null],['B','Back','cat-books']],
@@ -2850,8 +2850,8 @@ const NEWS12=[
  notes:[['same','Also when a catalog saved with Sign in: None answers that it needs one (“This catalog asks for a sign-in”).'],['new','A password is never sent to another host than the catalog’s own: a book’s link that leaves it is fetched without the login.']]},
 ];
 NEWS12.forEach((s,i)=>SCREENS.splice(SCREENS.findIndex(y=>y.id=='books-shelf')+1+i,0,s));
-SCREENS.forEach(x=>{if(/^(books-catalogs|cat-)/.test(x.id))x.later=1});
-{const sh=SCREENS.find(x=>x.id=='books-shelf');sh.keys.splice(3,0,['R','Catalogs (designed, not built)','books-catalogs'])}
+// (built 2026-11-26, src/ui_catalogs.*: no longer marked NOT BUILT)
+{const sh=SCREENS.find(x=>x.id=='books-shelf');sh.keys.splice(3,0,['R','Catalogs','books-catalogs'])}
 ALSO['books-catalogs']=(ALSO['books-catalogs']||[]).concat([['With no catalog saved','books-catalogs-empty']]);
 // Designed, not built: Lyrics (lyrics.md). The screens stay; the gallery and the walk-through mark them.
 SCREENS.forEach(x=>{if(/^(lyrics|phone-lyrics)/.test(x.id))x.later=1});

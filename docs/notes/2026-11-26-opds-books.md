@@ -1,7 +1,7 @@
 # OPDS catalogs in Books: the design (GitHub #22, 2026-11-26)
 
-Design only: nothing is built. The screens are in the redesign preview (`docs/redesign/src/screens.js`, the block
-“Catalogs (OPDS) in Books”, fifteen screens marked NOT BUILT); the spec is `docs/redesign/backlog.md` › Catalogs
+Designed, then built the same day (`src/ui_catalogs.*`, `src/catalogs.*`, `src/opds.*`). The screens are in the redesign preview (`docs/redesign/src/screens.js`, the block
+“Catalogs (OPDS) in Books”, fifteen screens); the spec is `docs/redesign/backlog.md` › Catalogs
 (OPDS) in Books; the walk is the journey “Books: catalogs (OPDS)” in `docs/redesign/journeys.py`.
 
 **What was decided, and why.**
@@ -31,11 +31,42 @@ Design only: nothing is built. The screens are in the redesign preview (`docs/re
 - A new area (`Ui::Catalogs`, its own header), its sheets as `Ui::Overlay`s, fetches on a worker that pushes SDL
   user events; the web deny list is untouched (downloads land in Books, not the state dir).
 
-**Open questions for the owner.**
-1. A third tab, or a row in Books' X · More? (Drawn: the tab.)
-2. “Try Gutenberg” on the Empty state: is offering a named public catalog by default wanted? (Drawn: yes, there only.)
-3. One list shared with Manga's servers instead of Copy from Manga? (Drawn: two lists and the copy row.)
-4. The sub-folder per catalog, or straight into Books? And which card when both have a Books folder (drawn: more room)?
-5. OPDS 2.0 (JSON) as well as 1.2? Kavita, Komga, Calibre and Gutenberg all give 1.2; proposed: 1.2 only at first.
-6. Adding a catalog from the Web dashboard's Books page (an address is easier typed on a phone): now or later?
-7. Background downloads with a queue of three, or one at a time behind a sheet (simpler to build)?
+**The owner's answers (2026-11-26).** 1. A third tab. 2. Try Gutenberg on the Empty state's Y. 3. Two lists, with
+the Copy from Manga's servers row. 4. One sub-folder per catalog, `<card>/Books/<catalog>/<Title> - <Author>.<ext>`,
+on the card with more room when both have a Books folder. 5. OPDS 1.2 only. 6. No dashboard form yet. 7. One
+download at a time, in the background (B leaves it running, Y cancels).
+
+**What building it taught (2026-11-26).**
+- **The store is Manga's.** `MangaServerStore::load(stateDir, "catalogs")`: the same TSV, the same sealing, its own
+  key file; a Kavita address's key is sealed by the same code. Copy from Manga's servers opens Manga's sealed
+  password and seals it again with the catalogs' key on Save. (The file's first line still says "manga servers".)
+- **The fetcher is Manga's class, a second instance** (main, its own SDL event, started at the first request,
+  `stop()` at quit). It follows redirects; curl (7.58+) drops a custom `Authorization` header when a redirect leaves
+  the host, and the login is only ever attached when the URL's origin is the catalog's (`sameOrigin`). It gives no
+  progress, so the book's page reads the part file's size four times a second (`tick`) against the link's
+  `length` (Calibre's is the size before its metadata update: 55,844 said, 55,919 came, so the share is capped at 99%).
+- **Sign-in is asked for, not sent ahead.** The first request goes bare; a 401 names Basic or Digest
+  (`parseAuthChallenge` prefers Digest), the request goes again with it, and every later one to that catalog carries it
+  (Digest's nc counts up; a `stale=true` gets one more try). So a Basic password never crosses plain HTTP to a server
+  that wanted Digest. Digest is computed here (MD5 by OpenSSL's EVP), RFC 2617's own example is the unit test.
+- **Calibre's content server (9.19)**: its search link is a feed template (`/opds/search/{searchTerms}`, type
+  atom+xml), not an OpenSearch description, so both are read (`fillSearchTerms`, or `remoteOpdsSearch` for a
+  description). Its entries have no `dc:issued`; Atom's `published` is the day the book was added, so no year is
+  shown rather than a wrong one. Its navigation links carry no rel; the summary is xhtml content. Its fixtures are in
+  `tests/fixtures/opds/`.
+- **The download** goes to `<dir>/.<name>.part` (MangaFetch's part), renamed by it to `<dir>/.<name>` when whole,
+  checked (a `text/html` type or an HTML start is "the catalog sent a web page"), then renamed to `<name>`. Dotted
+  names are not on the Shelf (`listBooks` skips them), so nothing half-made is ever listed; part files left by a
+  quit are removed when the catalogs load. "On card" is `<state>/catalogs/<id>.got` (entry id, path), checked against
+  the file each time.
+- **The form is a page, not an overlay**: `Ui::press` gives the overlays the keys before the keyboard, so a form
+  that opens the keyboard must be a page view (as Network's and Manga's server forms are). The sheets are overlays.
+- **Wiring in Books**: L / R step three tabs; the shell's B stops at a section home only on the tab itself
+  (`atSectionHome`); `startOpensSettings` gives START to the form's Save.
+- **Tested** on a Mac against a live Calibre 9.19 (no login): add by the form (`--press type:` sets the keyboard's
+  text), Test, Save, open, a folder, a book, download, On card, Read, the Shelf; search. **Not tested**: Digest and
+  Basic against a real server (only the unit vectors), Kavita, COPS, Gutenberg (it was down for maintenance),
+  the handheld's exFAT card (names are made safe by rule; rename and `statvfs` on exFAT may differ), a card
+  pulled during a download, the KMSDRM panels.
+- **Not built**: the catalog's cover pictures (the drawn cover stands in), the summary on the top screen, More's
+  Download every format and Delete from the card, a "No Wi-Fi" first line.
