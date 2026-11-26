@@ -754,9 +754,9 @@ namespace bp
 						else if (f.local == "title" && cur->title.empty()) cur->title = withoutStateMark(v);
 						else if (f.local == "updated" && cur->updated.empty()) cur->updated = v;
 						else if (f.local == "language" && cur->language.empty()) cur->language = v;
-						// dc:issued is the book's own date; Atom's published is when the catalog got it (a fallback)
+						// dc:issued is the book's own date (Atom's published is only when the catalog got it: Calibre
+						// writes the day it was added, which is no book's year)
 						else if (f.local == "issued") cur->issued = v;
-						else if (f.local == "published" && cur->issued.empty()) cur->issued = v;
 					}
 					break;
 				case R_NAME:
@@ -860,7 +860,7 @@ namespace bp
 					}
 					else if (parRole == R_ENTRY && atom)
 					{
-						if (local == "id" || local == "title" || local == "updated" || local == "published") role = R_TEXT;
+						if (local == "id" || local == "title" || local == "updated") role = R_TEXT;
 						else if (local == "summary") role = R_SUMMARY;
 						else if (local == "content") role = R_CONTENT;
 						else if (local == "author") role = R_AUTHOR;

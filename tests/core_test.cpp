@@ -2844,7 +2844,7 @@ static void testCatalogs()
 	CHECK_EQ(b.author, std::string("John Schember"));
 	CHECK_EQ(b.id, std::string("urn:uuid:02d1d229-edae-4993-9929-fc29b3ed79dc"));
 	CHECK_EQ(b.summary, std::string("calibre Quick Start Guide"));	// its xhtml content, as text
-	CHECK_EQ(b.issued.substr(0, 4), std::string("2026"));	// Atom's published, with no dc:issued
+	CHECK_EQ(b.issued, std::string(""));	// Calibre's published is the day it was added, not the book's year
 	CHECK_EQ(b.isBook(), true);
 	std::vector<OpdsLink> offers = b.bookOffers();
 	CHECK_EQ(offers.size(), (size_t)1);

@@ -26,7 +26,7 @@ namespace bp
 	struct OpdsEntry
 	{
 		std::string id, title, author, summary, updated;
-		std::string language, issued;	// dc:language, dc:issued (else Atom's published): a book's facts
+		std::string language, issued;	// dc:language, dc:issued: a book's facts ("" when the feed gives none)
 		std::vector<std::string> tags;	// its categories' labels (else terms), in order, each once
 		std::vector<OpdsLink> links;
 
