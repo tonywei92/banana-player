@@ -11925,6 +11925,10 @@ static void testKitVariantStatus()
 	CHECK_EQ(statusRow(624, {}).left, 624);
 	CHECK_EQ(badgeW(30, false), 40);
 	CHECK_EQ(badgeW(30, true), 60);
+	CHECK(!boostBadgeShown(100));
+	CHECK(boostBadgeShown(105));
+	CHECK(!boostBadgeDanger(120));
+	CHECK(boostBadgeDanger(125));
 }
 
 static void testKitVariantMiniBar()

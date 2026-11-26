@@ -726,6 +726,8 @@ namespace bp
 			return r;
 		}
 
+		bool boostBadgeShown(int boostPct) { return boostPct > 100; }
+		bool boostBadgeDanger(int boostPct) { return boostPct > 120; }
 		int badgeW(int textW, bool glyph) { return 2 * BADGE_PAD + (glyph ? 16 + 4 : 0) + textW; }
 
 		Shell shell()

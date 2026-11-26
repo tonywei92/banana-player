@@ -8,6 +8,7 @@
 #include <map>
 #include "ui_kit.h"
 #include "artph.h"
+#include "session_host.h"
 #include <algorithm>
 #include <cmath>
 
@@ -63,6 +64,16 @@ namespace bp
 		}
 		if (tw) ui.drawTextMid(t, F_I11B, ink, x, cy, tw + 1);
 		return w;
+	}
+
+	void Ui::Kit::stateBadges(Status& s, const Player& p)
+	{
+		if (lay::boostBadgeShown(p.boost))
+			s.badges.push_back({nullptr, std::to_string(p.boost) + "%", lay::boostBadgeDanger(p.boost)});
+		// something plays in a dashboard page's browser: its name (the page's own, "Browser" unknown)
+		if (SessionHost::get().pageIsOutput()) s.badges.push_back({&G_WEB, ui.pageName()});
+		if (ui.wifiOff()) s.badges.push_back({&G_WIFI, "Off", true});
+		if (ui.incognito) s.badges.push_back({&G_INCOGNITO, ""});
 	}
 
 	int Ui::Kit::status(int right, int cy, const Status& s)

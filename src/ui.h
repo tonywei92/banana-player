@@ -1213,6 +1213,10 @@ namespace bp
 		std::string webIp;				// the device's address, read when the page opens and every 10 s while it shows
 		Uint32 webIpAt = 0, webInputAt = 0, pinArmed = 0;
 		void readWebIp();
+		// no network address: the header's Wi-Fi off badge, the catalogs' "No Wi-Fi" line. Cached (read every 10 s from
+		// tick(); getifaddrs, no traffic), so it is safe to ask while drawing; false until the first read
+		bool wifiOff() const;
+		void wifiTick();
 		TTF_Font* pinFont = nullptr;	// Pixelify Sans at 56: the PIN's characters
 		// the header's indicator (left of the battery), as last drawn: a tap opens the page
 		Rect webInd{0, 0, 0, 0};

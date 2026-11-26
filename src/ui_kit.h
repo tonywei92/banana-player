@@ -279,6 +279,8 @@ namespace bp
 		};
 		// drawn from `right` leftwards; returns the left edge it used (so the crumb can end before it)
 		int status(int right, int cy, const Status& s);
+		// the state badges every header carries, left to right: boost, browser, Wi-Fi off, incognito (the QR is the caller's)
+		void stateBadges(Status& s, const Player& p);
 
 		// ---- the mini bar (the variant: a wider play mark, state pills, a progress line) ----
 		struct Mini
