@@ -50,6 +50,12 @@ namespace bp
 	// path, or "path (2)", "path (3)"… before the extension, the first that `taken` says is free
 	std::string freeFileName(const std::string& path, bool (*taken)(const std::string&));
 
+	// ---- a catalog's cover pictures ----
+
+	// The file name a cover's URL is cached under (<state>/cache/catalog-covers/<name>): 16 hex digits of a hash of
+	// the whole URL, so one picture is one file whatever page asked for it
+	std::string coverCacheName(const std::string& url);
+
 	// ---- where it goes ----
 
 	struct BooksPlace

@@ -2985,6 +2985,10 @@ static void testCatalogs()
 	std::remove((T + "/b.epub").c_str());
 	std::remove((T + "/b.pdf").c_str());
 	std::remove((T + "/y.got").c_str());
+	// a cover's cache name: the URL's hash, stable and apart for another URL
+	CHECK_EQ(coverCacheName("http://h/c/1").size(), (size_t)16);
+	CHECK_EQ(coverCacheName("http://h/c/1"), coverCacheName("http://h/c/1"));
+	CHECK_EQ(coverCacheName("http://h/c/1") != coverCacheName("http://h/c/2"), true);
 	std::remove((T + "/a.epub").c_str());
 	std::remove((T + "/x.got").c_str());
 	rmdir(T.c_str());

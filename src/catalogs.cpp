@@ -4,6 +4,7 @@
 #include "secret.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -311,6 +312,19 @@ namespace bp
 		if (best) return best->folder;
 		if (firstCard.empty()) return "";
 		return (firstCard == "/" ? "" : firstCard) + "/Books";
+	}
+
+	std::string coverCacheName(const std::string& url)
+	{
+		uint64_t h = 1469598103934665603ull;	// FNV-1a, 64 bit
+		for (unsigned char c : url)
+		{
+			h ^= c;
+			h *= 1099511628211ull;
+		}
+		char out[17];
+		snprintf(out, sizeof out, "%016llx", (unsigned long long)h);
+		return out;
 	}
 
 	// ---- what a catalog already gave the card ----

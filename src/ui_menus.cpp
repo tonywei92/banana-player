@@ -261,6 +261,41 @@ namespace bp
 		return 1;
 	}
 
+	int Ui::catalogCoverState(const std::string& file, Rect r, int rad)
+	{
+		if (file.empty() || artFailed.count(file)) return 2;
+		SDL_Rect d = devRect({r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE});
+		auto it = artTex.find(std::string(HOME_COVER_KEY) + "cat|" + file + "|" + std::to_string(d.w) + "x" +
+			std::to_string(d.h) + "r" + std::to_string(rad));
+		if (it == artTex.end()) return 0;
+		it->second.drawnAt = ++artDrawn;
+		return 1;
+	}
+
+	void Ui::drawCatalogCover(const std::string& file, const std::string& title, const std::string& author,
+		const std::string& fmt, Rect r, int rad)
+	{
+		kit->bookPlaceholder(r, title, rad, author, fmt);
+		if (file.empty() || artFailed.count(file)) return;
+		SDL_Rect d = devRect({r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE});
+		std::string artKey = std::string(HOME_COVER_KEY) + "cat|" + file + "|" + std::to_string(d.w) + "x" +
+			std::to_string(d.h) + "r" + std::to_string(rad);
+		auto it = artTex.find(artKey);
+		if (it != artTex.end())
+		{
+			it->second.drawnAt = ++artDrawn;
+			SDL_RenderCopy(ren, it->second.tex, nullptr, &d);
+			return;
+		}
+		if (artAsked.count(artKey)) return;
+		CoverWorker* worker = manga ? manga->coverWorker : nullptr;
+		if (!worker) return;
+		artPath[artKey] = file;
+		artRad[artKey] = rad;
+		worker->want(artKey, file, d.w, d.h);	// (a plain image file: the worker decodes it, cropped to the tile)
+		artAsked.insert(artKey);
+	}
+
 	void Ui::drawNowArt(const Player& bp, Rect r, int rad)
 	{
 		// a song asks for its art (the placeholder stands in until the answer, and for good when there is

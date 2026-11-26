@@ -29,6 +29,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <set>
 
 namespace bp
 {
@@ -71,7 +72,7 @@ namespace bp
 			unsigned nc = 0;
 		};
 		std::map<std::string, Login> logins;
-		enum Purpose { P_FEED, P_MORE, P_SEARCHDESC, P_TEST, P_GET };
+		enum Purpose { P_FEED, P_MORE, P_SEARCHDESC, P_TEST, P_GET, P_COVER };
 		struct Pending
 		{
 			Purpose what = P_FEED;
@@ -213,6 +214,20 @@ namespace bp
 		std::string savesTo(const MangaServer& s, long long* freeBytes = nullptr) const;	// the folder a book goes in
 		std::string lastFailure;	// the failed download's words, for its sheet
 		void downloadFailed(const std::string& title, const std::string& why, Player& p);
+
+		// ---- the covers: the entry's thumbnail or cover link, fetched on the fetch worker for what is on screen ----
+		// Only from the catalog's own origin (so its sign-in is the only one ever sent); the bytes are kept as
+		// <state>/cache/catalog-covers/<hash of the URL> and decoded by main's cover worker (Ui::drawCatalogCover).
+		// The drawn title cover stands in until the file is there, and for good where none comes.
+		std::map<std::string, uint64_t> coverReq;	// URL → fetch id, while it comes
+		std::set<std::string> coverFailed, coverOnScreen;	// (a failed one is left alone until the tab is reopened)
+		unsigned coverSerial = 0;	// each arrival: the signature's
+		// the cached file for an entry's picture ("" until it is there, when its fetch is started once); page: the
+		// book page wants the larger cover, a grid the thumbnail
+		std::string coverFile(const OpdsEntry& e, const std::string& base, bool page);
+		void coverAnswered(MangaFetch::Result& r, const Pending& pd);
+		void coverCancelOffScreen();	// what scrolled away is not fetched
+		std::string coverDir() const;
 
 		// ---- the drawing ----
 		SmoothList list{ui};

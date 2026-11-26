@@ -1146,6 +1146,12 @@ namespace bp
 		void drawBookCover(const std::string& path, const std::string& key, Rect r, int rad);
 		// what drawBookCover would show in `r` now (songArtState's for a book: a smooth list's row key holds it)
 		int bookCoverState(const std::string& path, Rect r, int rad);
+		// a catalog book's picture, an image file from the catalog's cover cache (ui_catalogs.cpp fetches it): drawn
+		// over the title cover, which stays where the file isn't one a decoder reads; catalogCoverState is its
+		// state as bookCoverState's
+		void drawCatalogCover(const std::string& file, const std::string& title, const std::string& author,
+			const std::string& fmt, Rect r, int rad);
+		int catalogCoverState(const std::string& file, Rect r, int rad);
 		// ---- Quick settings (F): a panel centred on the whole bottom screen, over the rail ----
 		int quickCursor = 0;	// a row's index; -1: the Now playing block above Volume (the cursor opens on Volume)
 		enum QuickRow { Q_VOLUME, Q_BRIGHT, Q_BOTTOM, Q_SAME, Q_WEB, Q_INCOGNITO, Q_QUIT };

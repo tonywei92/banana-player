@@ -25,6 +25,7 @@ namespace bp
 		const char* GUTENBERG_URL = "https://www.gutenberg.org/ebooks.opds/";
 		const int NAV_ROW_H = 52, BOOK_ROW_H = 60;
 		const int64_t FEED_MAX = 8 << 20;	// a feed's answer (opds.cpp refuses more anyway)
+		const int64_t COVER_MAX = 4 << 20;	// a cover picture
 		const int64_t BOOK_MAX = 2000LL << 20;	// a book (a big comic is a few hundred MB)
 
 		bool fileThere(const std::string& p)
@@ -274,7 +275,7 @@ namespace bp
 		if (s.id.empty()) pw = fTestPassword;	// Test on a form not saved yet
 		std::string url = remoteWithKey(s, pw, pd.url);
 		MangaFetch::Headers h;
-		h.emplace_back("Accept", pd.what == P_GET ? "*/*" : "application/atom+xml, application/xml;q=0.9, */*;q=0.5");
+		h.emplace_back("Accept", pd.what == P_GET ? "*/*" : pd.what == P_COVER ? "image/*" : "application/atom+xml, application/xml;q=0.9, */*;q=0.5");
 		// the login goes to the catalog's own origin only, and only once the catalog asked for it (a 401 told
 		// which kind): a request that needs none never carries it
 		auto login = logins.find(s.id);
@@ -286,7 +287,8 @@ namespace bp
 			else h.emplace_back("Authorization", basicAuthorization(s.user, pw));
 		}
 		pd.sentAt = SDL_GetTicks();
-		uint64_t id = pd.what == P_GET ? fetch->get(url, h, BOOK_MAX, dl.hidden) : fetch->get(url, h, FEED_MAX);
+		uint64_t id = pd.what == P_GET ? fetch->get(url, h, BOOK_MAX, dl.hidden)
+			: fetch->get(url, h, pd.what == P_COVER ? COVER_MAX : FEED_MAX);
 		if (id) pending[id] = pd;
 		return id;
 	}
@@ -309,7 +311,7 @@ namespace bp
 		const MangaServer* saved = store.find(pd.catalogId);
 		MangaServer s = saved ? *saved : pd.what == P_TEST ? fTestServer : MangaServer();
 		if (s.url.empty()) return;	// removed while it came
-		static const char* WHAT[] = {"feed", "next page", "search", "test", "download"};
+		static const char* WHAT[] = {"feed", "next page", "search", "test", "download", "cover"};
 		// the line that pins a handheld's failure: what, the status and the time (never the login)
 		fprintf(stderr, "catalogs: %s %s -> %d in %u ms%s%s\n", WHAT[pd.what], pd.url.c_str(), r.status,
 			(unsigned)(SDL_GetTicks() - pd.sentAt), r.error.empty() ? "" : ": ", r.error.c_str());
@@ -327,6 +329,7 @@ namespace bp
 				if ((pd.what == P_FEED || pd.what == P_SEARCHDESC) && pd.depth < (int)feeds.size()) feeds[pd.depth].req = id;
 				else if (pd.what == P_MORE && pd.depth < (int)feeds.size()) feeds[pd.depth].moreReq = id;
 				else if (pd.what == P_GET) dl.req = id;
+				else if (pd.what == P_COVER) coverReq[pd.url] = id;
 				else if (pd.what == P_TEST) fTestReq = id;
 				return;
 			}
@@ -336,6 +339,7 @@ namespace bp
 		case P_FEED: case P_MORE: case P_SEARCHDESC: feedAnswered(r, pd, s); break;
 		case P_TEST: testAnswered(r, pd, s, p); break;
 		case P_GET: if (r.id == dl.req) getAnswered(r, s, p); break;
+		case P_COVER: coverAnswered(r, pd); break;
 		}
 	}
 
@@ -811,6 +815,75 @@ namespace bp
 		}
 		p.osd(queued.total > 1 ? "Saved " + std::to_string(queued.total) + " formats to Books" : "Saved to Books", 2000);
 		queued = Queue();
+	}
+
+	// ---- the covers ----
+
+	std::string Ui::Books::Catalogs::coverDir() const
+	{
+		return ui.stateDirPath.empty() ? "" : ui.stateDirPath + "/cache/catalog-covers";
+	}
+
+	std::string Ui::Books::Catalogs::coverFile(const OpdsEntry& e, const std::string& base, bool page)
+	{
+		const MangaServer* s = openCatalog();
+		std::string href = page ? (e.cover().empty() ? e.thumbnail() : e.cover()) : (e.thumbnail().empty() ? e.cover() : e.thumbnail());
+		if (!s || href.empty() || coverDir().empty()) return "";
+		std::string url = opdsResolve(base, href);
+		std::string file = coverDir() + "/" + coverCacheName(url);
+		if (fileThere(file)) return file;
+		if (!page) coverOnScreen.insert(url);
+		if (coverFailed.count(url) || coverReq.count(url)) return "";
+		// the catalog's own host only: a picture elsewhere is never fetched (no sign-in could go there anyway)
+		if (!sameOrigin(url, s->url) || !fetch)
+		{
+			coverFailed.insert(url);
+			return "";
+		}
+		Pending pd;
+		pd.what = P_COVER;
+		pd.catalogId = s->id;
+		pd.url = url;
+		uint64_t id = send(*s, pd);
+		if (id) coverReq[url] = id;
+		else coverFailed.insert(url);
+		return "";
+	}
+
+	void Ui::Books::Catalogs::coverAnswered(MangaFetch::Result& r, const Pending& pd)
+	{
+		coverReq.erase(pd.url);
+		// an image, not a sign-in page served as 200
+		bool image = r.error.empty() && r.status >= 200 && r.status < 300 && !r.body.empty() &&
+			lowerAscii(r.contentType).find("text/") == std::string::npos && r.body[0] != '<';
+		std::string dir = coverDir(), file = dir + "/" + coverCacheName(pd.url);
+		if (image)
+		{
+			mkdir((ui.stateDirPath + "/cache").c_str(), 0755);
+			mkdir(dir.c_str(), 0755);
+			std::string part = file + ".part";
+			if (FILE* f = fopen(part.c_str(), "wb"))
+			{
+				bool ok = fwrite(r.body.data(), 1, r.body.size(), f) == r.body.size();
+				ok = fclose(f) == 0 && ok;
+				image = ok && rename(part.c_str(), file.c_str()) == 0;
+				if (!image) std::remove(part.c_str());
+			}
+			else image = false;
+		}
+		if (!image) coverFailed.insert(pd.url);
+		coverSerial++;
+	}
+
+	void Ui::Books::Catalogs::coverCancelOffScreen()
+	{
+		for (auto it = coverReq.begin(); it != coverReq.end();)
+		{
+			if (coverOnScreen.count(it->first)) { ++it; continue; }
+			if (fetch) fetch->cancel(it->second);
+			pending.erase(it->second);
+			it = coverReq.erase(it);
+		}
 	}
 
 	// ---- the form ----
@@ -1880,7 +1953,16 @@ namespace bp
 		};
 		const std::string gen = std::string(theme::drawingClean() ? "c" : "") + std::to_string(cols) + "|" +
 			std::to_string(dl.active ? dl.bytes * 100 / std::max(1LL, dl.length) : -1) + "|";
-		spec.key = [this, rows, cols, items, cur, entryAt, markOf, gen, searchRow](int r) {
+		// a book's picture file and its state at the cover's size (the key asks too: it runs for each row on screen
+		// each frame, so only those are fetched)
+		const std::string feedUrl = f.url;
+		const bool onGrid = books && cols > 1;
+		auto coverRect = [this](int inRow, int c, bool share) {
+			std::vector<lay::Box> cells = lay::coverCells({lay::SP6, lay::SP6, listArea().w - 2 * lay::SP6, lay::SHELF_CELL_H},
+				inRow, feedCols(), lay::SHELF_CELL_H);
+			return lay::coverTile(cells[c], true, share).cover;
+		};
+		spec.key = [this, rows, cols, items, cur, entryAt, markOf, gen, searchRow, feedUrl, onGrid, coverRect](int r) {
 			if (r >= rows) return std::string("foot") + (feeds.back().loadingMore ? "1" : "0");
 			std::string key = "cat" + gen + std::to_string(r);
 			for (int c = 0; c < cols; c++)
@@ -1890,13 +1972,19 @@ namespace bp
 				const OpdsEntry* e = entryAt(i);
 				double share;
 				std::string mark = e ? markOf(*e, share) : "";
-				key += "." + (e ? e->id + e->title : std::string("search")) + mark + std::to_string((int)(share * 100)) +
+				std::string pic;
+				if (e && onGrid)
+				{
+					std::string file = coverFile(*e, feedUrl, false);
+					pic = file.empty() ? "-" : std::to_string(ui.catalogCoverState(file, coverRect(std::clamp(items - r * cols, 0, cols), c, share >= 0), 5));
+				}
+				key += "." + (e ? e->id + e->title : std::string("search")) + mark + pic + std::to_string((int)(share * 100)) +
 					(i == cur ? "f" : "") + (pressed == i && !touchMoved ? "d" : "");
 			}
 			(void)searchRow;
 			return key;
 		};
-		spec.draw = [this, rows, cols, items, cur, entryAt, markOf, books, searchRow](int r, Rect box) {
+		spec.draw = [this, rows, cols, items, cur, entryAt, markOf, books, searchRow, feedUrl](int r, Rect box) {
 			Kit& kk = *ui.kit;
 			if (r >= rows)
 			{
@@ -1925,6 +2013,9 @@ namespace bp
 					cv.author = e->author;
 					cv.fmt = fmtName;
 					cv.badge = !mark.empty() ? mark : fmtName != "EPUB" ? fmtName : "";
+					std::string file = coverFile(*e, feedUrl, false);
+					if (!file.empty())
+						cv.picture = [this, file, t = e->title, a = e->author, fmtName](Rect cr) { ui.drawCatalogCover(file, t, a, fmtName, cr, 5); };
 					cv.progress = share;
 					cv.focused = i == cur;
 					cv.pressed = pressed == i && !touchMoved;
@@ -1982,7 +2073,9 @@ namespace bp
 			kk.mediaRow(lay::mediaRow({box.x, box.y, box.w, BOOK_ROW_H - lay::SP2}), m);
 		};
 		if (list.takeFresh()) list.reveal(std::max(0, cur) / cols, a, spec.rowH, spec.count, false);
+		coverOnScreen.clear();
 		list.draw(std::move(spec));
+		coverCancelOffScreen();
 	}
 
 	void Ui::Books::Catalogs::drawBook(const Player&)
@@ -1995,7 +2088,9 @@ namespace bp
 		bool none = offers.empty();
 		{
 			std::vector<std::string> fns = book.formatNames();
-			k.bookPlaceholder(l.cover, book.title, 5, book.author, fns.empty() ? "" : fns[0]);
+			std::string file = coverFile(book, bookBase, true);
+			if (file.empty()) k.bookPlaceholder(l.cover, book.title, 5, book.author, fns.empty() ? "" : fns[0]);
+			else ui.drawCatalogCover(file, book.title, book.author, fns.empty() ? "" : fns[0], l.cover, 5);
 		}
 		if (!have.empty()) k.pill(l.cover.x + 6 + k.pillW("On card"), l.cover.y + l.cover.h - 14, "On card", Kit::Pill::Live);
 		ui.drawTextMid(book.author.empty() ? "Unknown author" : book.author, F_P16, TEXT, l.author.x, l.author.y + l.author.h / 2, l.author.w);
@@ -2079,6 +2174,7 @@ namespace bp
 			s += "|" + std::to_string(f.loading) + std::to_string(f.loadingMore) + std::to_string((int)f.error) + "." +
 				std::to_string(f.feed.entries.size()) + "." + std::to_string(f.cursor);
 		if (bookOpen) s += "|b" + book.id + "." + std::to_string(fmt) + onCard(book.id);
+		s += "|cv" + std::to_string(coverSerial) + "." + std::to_string(ui.artSerial);
 		return s;
 	}
 }
