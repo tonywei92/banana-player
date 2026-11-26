@@ -174,6 +174,7 @@ namespace bp
 		r.push_back(Q_WEB);
 #endif
 		r.push_back(Q_INCOGNITO);
+		r.push_back(Q_SCREENOFF);
 		r.push_back(Q_QUIT);
 		return r;
 	}
@@ -663,6 +664,12 @@ namespace bp
 			// the Ui's and the player's, never a setting saved: off at every start; with a browser signed in, it asks
 			setIncognito(!incognito, p);
 		}
+		else if (row == Q_SCREENOFF)
+		{
+			// the player's More action (ui_player.cpp): the panel dark, the keys and a touch bring it back
+			closeQuick();
+			panel.set(false);
+		}
 		else if (row == Q_QUIT) quitRequested = true;
 	}
 
@@ -1011,6 +1018,11 @@ namespace bp
 				on = p.settings.webDashboard && !off;
 				if (off) note = "Off in incognito";
 			}
+			else if (row == Q_SCREENOFF)
+			{
+				glyph = &G_MOON;
+				name = "Screen off now";
+			}
 			else
 			{
 				name = "Incognito mode";
@@ -1028,7 +1040,8 @@ namespace bp
 			if (glyph) { drawGlyphMid(*glyph, x + 11, mid, ink); x += 22 + 10; }
 			drawTextMid(name, F_P16, ink, x, note.empty() ? mid : mid - 9, std::max(1, right - x));
 			if (!note.empty()) drawTextMid(note, F_I12, Kit::off(DIM, off), x, mid + 11, std::max(1, right - x));
-			k.toggle(r.x + r.w - 12 - 40, mid, on && !off);
+			if (row == Q_SCREENOFF) drawGlyphMid(G_RIGHT, r.x + r.w - 12 - 7, mid, DIM);	// an action, not a switch: a chevron
+			else k.toggle(r.x + r.w - 12 - 40, mid, on && !off);
 			if (row == Q_WEB && q.webKey.w > 0)
 			{
 				// its own key, while the dashboard is on: a chevron alone, the row's "this leads to a page" —

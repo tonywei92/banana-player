@@ -1148,7 +1148,7 @@ namespace bp
 		int bookCoverState(const std::string& path, Rect r, int rad);
 		// ---- Quick settings (F): a panel centred on the whole bottom screen, over the rail ----
 		int quickCursor = 0;	// a row's index; -1: the Now playing block above Volume (the cursor opens on Volume)
-		enum QuickRow { Q_VOLUME, Q_BRIGHT, Q_BOTTOM, Q_SAME, Q_WEB, Q_INCOGNITO, Q_QUIT };
+		enum QuickRow { Q_VOLUME, Q_BRIGHT, Q_BOTTOM, Q_SAME, Q_WEB, Q_INCOGNITO, Q_SCREENOFF, Q_QUIT };
 		int quickSub = 0;	// Web dashboard's tile: 0 its switch, 1 its own key to the page (LEFT/RIGHT)
 		// the Now playing block's pieces under a finger (pressedBtn): the card (opens the player), its three keys
 		static constexpr int QUICK_NOW_CARD = 290, QUICK_NOW_PREV = 291, QUICK_NOW_PLAY = 292, QUICK_NOW_NEXT = 293;
