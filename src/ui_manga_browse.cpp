@@ -148,7 +148,9 @@ namespace bp
 			mangaSrcRows.push_back({s.fullId, s.name.empty() ? s.id : s.name, s.lang, s.file, s.adult, false});
 		// the Java sources an install returned: one row per source and language, as the Lua sources are
 		for (const auto& s : mangaNet->javaSources().sources())
-			mangaSrcRows.push_back({MangaJava::sourceId(s.id), s.title(), s.lang, "", s.nsfw, true});
+			mangaSrcRows.push_back({MangaJava::sourceId(s.id), s.title(), s.lang, "", s.nsfw, true, mangaJavaSourceObsolete(MangaJava::sourceId(s.id))});
+		// the ones whose extension left its repository go to the bottom (the order inside each part stays)
+		std::stable_partition(mangaSrcRows.begin(), mangaSrcRows.end(), [](const MangaSrcRow& r) { return !r.obsolete; });
 	}
 
 	int Ui::Manga::mangaBrowseServerCount() const
@@ -406,6 +408,7 @@ namespace bp
 			m.name = r->name;
 			m.note = r->lang;
 			for (char& c : m.note) c = (char)std::toupper((unsigned char)c);
+			if (r->obsolete) { m.pill = "Obsolete"; m.pillBad = true; m.obsolete = true; }
 		}
 		return m;
 	}
@@ -2137,6 +2140,10 @@ namespace bp
 				(a < 86400 ? std::to_string(a / 3600) + " h" : std::to_string(a / 86400) + " d") + " ago \xC2\xB7 L checks again";
 		}
 		tabCrumb = crumb + (line.empty() ? "" : " \xC2\xB7 " + line);
+		// its extension left its repository: the series and its downloads stay, new chapters may not come. Said in the
+		// header's line unless something else is happening there (a failure, a check)
+		if (!bad && !mangaSrcRefreshing && mangaJavaSourceObsolete(mangaSrcId))
+			tabCrumb = "Its source was removed from the repository; new chapters may not come.";
 		MangaResumePoint resume = mserSumResume;
 		// one row of keys (screens.js seriesB, less its Check: that is a pull on the chapters, and L): Resume (A),
 		// Get (R), Info, the heart. The row is one stop for UP/DOWN; LEFT/RIGHT light each key in turn (mserBtn)

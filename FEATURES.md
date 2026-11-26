@@ -1742,7 +1742,13 @@ hosted pages are read from `127.0.0.1` through the same page cache as any other 
 - **Installed**: each source with its language and version, an **Update** chip on the row where the repository has a
   newer one; **A** opens its details (its repository, version and language) with **Uninstall**, and **Update** when
   there's one, while **X** opens the same as **Options** (**Update** greyed with *Up to date* when there's none).
-  **Uninstall** is asked twice. Every list carries the note *Repositories are added by you. Banana Player doesn't
+  **Uninstall** is asked twice.
+- **Obsolete**: an installed extension that no repository lists any more (the engine says so each time the extension
+  list is fetched; no extra request) carries a red **Obsolete** pill in Sources and in Browse's source list and sinks to
+  the bottom of its list. With its row focused the top screen reads *Removed from its repository. It may stop working,
+  and it won't get updates.* Its sheet offers **Uninstall** first (no Update). A series from such a source keeps its
+  chapters and downloads, and its page says *Its source was removed from the repository; new chapters may not come.*
+  Obsolete extensions you haven't installed are never offered. Every list carries the note *Repositories are added by you. Banana Player doesn't
   provide or check their content.*
 
 To try all that without finding a repository of your own: Banana Player's own files hold a test repository,

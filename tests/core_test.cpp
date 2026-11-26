@@ -15897,6 +15897,24 @@ static void testSuwayomi()
 			CHECK_EQ(e.iconUrl, std::string("/api/v1/extension/icon/eu.kanade.tachiyomi.extension.all.mangaplus"));
 		}
 	CHECK_EQ(foundMp, true);
+	{
+		// an installed extension that no repository lists any more: parsed, marked, listed last, never offered if not installed
+		std::vector<SuwayomiExt> ob;
+		CHECK_EQ(suwayomiParseExtensions(read(F + "extensions-obsolete.json"), ob, error), true);
+		CHECK_EQ(ob.size(), (size_t)4);
+		CHECK_EQ(ob[0].isObsolete && suwayomiInstalledObsolete(ob[0]), true);
+		CHECK_EQ(suwayomiInstalledObsolete(ob[1]) || suwayomiInstalledObsolete(ob[3]), false);
+		CHECK_EQ(ob[2].isObsolete && !suwayomiInstalledObsolete(ob[2]), true);	// obsolete, not installed
+		CHECK_EQ(suwayomiExtListed(ob[0], false, true), true);	// the installed one stays listed
+		CHECK_EQ(suwayomiExtListed(ob[2], true, true), false);	// the uninstalled obsolete one is hidden
+		CHECK_EQ(suwayomiExtListed(ob[3], true, true), true);
+		CHECK_EQ(suwayomiAvailableRank(ob[0]), 3);
+		CHECK_EQ(suwayomiAvailableRank(ob[1]), 1);
+		CHECK_EQ(suwayomiAvailableRank(ob[3]), 2);
+		// Installed's order: Alpha (obsolete) sorts after Beta though its name is first
+		CHECK_EQ(suwayomiInstalledBefore(ob[1], ob[0]), true);
+		CHECK_EQ(suwayomiInstalledBefore(ob[0], ob[1]), false);
+	}
 	// a malformed answer isn't usable
 	CHECK_EQ(suwayomiParseExtensions("not json", exts, error), false);
 	// the list carries each extension's sources: an installed one's are taken from it (a lost sources.tsv heals),

@@ -973,4 +973,22 @@ namespace bp
 		w.end();
 		return w.out();
 	}
+
+	bool suwayomiExtListed(const SuwayomiExt& e, bool adult, bool langOk)
+	{
+		return e.isInstalled || (!e.isObsolete && (adult || !e.isNsfw) && langOk);
+	}
+
+	int suwayomiAvailableRank(const SuwayomiExt& e)
+	{
+		if (suwayomiInstalledObsolete(e)) return 3;
+		return e.isInstalled ? (e.hasUpdate ? 0 : 1) : 2;
+	}
+
+	bool suwayomiInstalledBefore(const SuwayomiExt& a, const SuwayomiExt& b)
+	{
+		if (a.isObsolete != b.isObsolete) return !a.isObsolete;
+		if (a.name != b.name) return a.name < b.name;
+		return a.lang < b.lang;
+	}
 }

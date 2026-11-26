@@ -29,15 +29,15 @@ namespace bp
 		const char* const JAVA_MISSING =
 			"Extension support isn\xE2\x80\x99t installed: Manga settings \xE2\x80\xBA Extension support";
 
+		// an obsolete extension has nothing to update to (it left its repository): its sheet offers Uninstall alone
+		bool javaCanUpdate(const SuwayomiExt& e) { return e.hasUpdate && !e.isObsolete; }
+
 		std::vector<const SuwayomiExt*> javaInstalledExtensions(const MangaJava& mgr)
 		{
 			std::vector<const SuwayomiExt*> out;
 			for (const SuwayomiExt& e : mgr.extensions())
 				if (e.isInstalled) out.push_back(&e);
-			std::sort(out.begin(), out.end(), [](const SuwayomiExt* a, const SuwayomiExt* b) {
-				if (a->name != b->name) return a->name < b->name;
-				return a->lang < b->lang;
-			});
+			std::sort(out.begin(), out.end(), [](const SuwayomiExt* a, const SuwayomiExt* b) { return suwayomiInstalledBefore(*a, *b); });
 			return out;
 		}
 
@@ -48,10 +48,10 @@ namespace bp
 			// the installed ones too, on top: those with an update first, then the rest installed, then what isn't
 			// (Search's words narrow both: an installed one is found by its name too)
 			for (const SuwayomiExt& e : mgr.extensions())
-				if ((e.isInstalled || (!e.isObsolete && (adult || !e.isNsfw) && (!langOk || langOk(e.lang)))) &&
+				if (suwayomiExtListed(e, adult, !langOk || langOk(e.lang)) &&
 					sourceSearchMatch(query, {e.name.empty() ? e.pkgName : e.name, mangaLangName(e.lang)}))
 					out.push_back(&e);
-			auto rank = [](const SuwayomiExt* e) { return e->isInstalled ? (e->hasUpdate ? 0 : 1) : 2; };
+			auto rank = [](const SuwayomiExt* e) { return suwayomiAvailableRank(*e); };
 			std::sort(out.begin(), out.end(), [&](const SuwayomiExt* a, const SuwayomiExt* b) {
 				// the order Available was opened with: an install there doesn't move its row until it's opened again
 				if (frozen && !frozen->empty())
@@ -138,6 +138,38 @@ namespace bp
 		return mangaNet->javaSources().source(fullId);
 	}
 
+	bool Ui::Manga::mangaJavaSourceObsolete(const std::string& fullId) const
+	{
+		const MangaJava::Source* s = mangaJavaSourceFor(fullId);
+		if (!s) return false;
+		const SuwayomiExt* e = mangaNet->javaSources().extension(s->pkgName);
+		return e && suwayomiInstalledObsolete(*e);
+	}
+
+	std::string Ui::Manga::mangaObsoleteFocused(const Player& p) const
+	{
+		if (!mangaNet || !mangaNet->started()) return "";
+		MangaRow row;
+		if (ui.page == Ui::Page::MangaSources && mstTab != MST_REPOSITORIES && mstJavaModal == MJM_NONE)
+			row = mangaSourcesRowAt(p, mstCursor[mstTab]);
+		else if (ui.page == Ui::Page::Manga && mangaTab == MT_BROWSE && mangaView == 0 && mangaNetView == MNF_OFF && !mBrowseList)
+			row = mangaBrowseRowAt(p, mbrowseCursor);
+		return row.obsolete ? row.name : "";
+	}
+
+	bool Ui::Manga::obsoletePane(PaneSpec& out, const Player& p) const
+	{
+		std::string name = mangaObsoleteFocused(p);
+		if (name.empty()) return false;
+		out = PaneSpec{};
+		out.label = "Obsolete";
+		out.labelDanger = true;
+		out.title = name;
+		out.text = "Removed from its repository. It may stop working, and it won\xE2\x80\x99t get updates.";
+		out.key = "obsolete|" + name;
+		return true;
+	}
+
 	// ---- Sources: adding a store, its extensions, and their sheets ----
 
 	void Ui::Manga::mangaJavaAddRepo(const std::string& url, Player& p)
@@ -218,7 +250,7 @@ namespace bp
 		{
 			if (mstJavaBusy.count(pkg)) return;
 			// up to date: its details (Uninstall there), as the Installed list used to open
-			if (!list[local]->hasUpdate)
+			if (!javaCanUpdate(*list[local]))
 			{
 				mstJavaModal = MJM_DETAILS;
 				mstJavaModalCursor = 0;
@@ -630,6 +662,7 @@ namespace bp
 			e = list[local];
 		}
 		m.glyph = &G_WEB;
+		m.obsolete = suwayomiInstalledObsolete(*e);
 		m.name = e->name.empty() ? e->pkgName : e->name;
 		std::string lang = e->lang;
 		for (char& c : lang) c = (char)std::toupper((unsigned char)c);
@@ -640,6 +673,8 @@ namespace bp
 			m.pill = mangaNet->javaSources().queued(e->pkgName) ? "Waiting for the engine\xE2\x80\xA6" : busy->second;
 			m.pillLive = true;
 		}
+		// installed, but no repository lists it any more: it may stop working, and gets no updates
+		else if (suwayomiInstalledObsolete(*e)) { m.pill = "Obsolete"; m.pillBad = true; }
 		// installed, but the engine couldn't load it (an extension built for a newer engine): it gives no sources
 		else if (e->isInstalled && e->sourcesKnown && e->sources.empty()) { m.pill = "Can't load"; m.pillBad = true; }
 		else if (e->isInstalled && e->hasUpdate) { m.pill = "Update"; m.pillLive = true; }
@@ -654,7 +689,7 @@ namespace bp
 		if (mstJavaModal != MJM_DETAILS || !mangaNet || !mangaNet->started()) return 0;
 		const SuwayomiExt* e = mangaNet->javaSources().extension(mstJavaModalId);
 		if (!e) return 0;
-		return e->hasUpdate ? 2 : 1;	// Update (if any), then Uninstall
+		return javaCanUpdate(*e) ? 2 : 1;	// Update (if any), then Uninstall (alone when obsolete)
 	}
 
 	// the kit's sheet: the lines under its title, then a row each (the rows are the touches too)
@@ -724,7 +759,7 @@ namespace bp
 		}
 		const SuwayomiExt* e = mgr.extension(mstJavaModalId);
 		if (!e) { mangaJavaModalClose(); return; }
-		bool updateRow = e->hasUpdate;
+		bool updateRow = javaCanUpdate(*e);
 		int uninstallRow = updateRow ? 1 : 0;
 		std::string error;
 		if (mstJavaModalCursor == uninstallRow)
@@ -746,7 +781,7 @@ namespace bp
 			mstJavaLocal++;
 			return;
 		}
-		if (!e->hasUpdate) { p.osd("Already up to date", 1500); return; }
+		if (!javaCanUpdate(*e)) { p.osd("Already up to date", 1500); return; }
 		if (!mgr.update(e->pkgName, error))
 		{
 			ui.alert("The extension couldn\xE2\x80\x99t be updated", error);
@@ -816,7 +851,7 @@ namespace bp
 		int n = mangaJavaModalRows();
 		bool updateRow = false;
 		if (mstJavaModal == MJM_DETAILS)
-			if (const SuwayomiExt* e = mgr.extension(mstJavaModalId)) updateRow = e->hasUpdate;
+			if (const SuwayomiExt* e = mgr.extension(mstJavaModalId)) updateRow = javaCanUpdate(*e);
 		int uninstallRow = updateRow ? 1 : 0;
 		for (int i = 0; i < n; i++)
 		{
