@@ -43,10 +43,10 @@ No other screen has zero support.
 | `vol-boost` (and the header-badge component) | The header badge that stays after the volume card goes (110% yellow, red past 120%) is not drawn. The same component lists badges for browser, Wi-Fi off, read only: only incognito, web (QR), sleep and read only are drawn. | `src/ui_shell.cpp:622-623` pushes incognito and QR only; `ui_kit.h:272` comment lists boost, browser, Wi-Fi off; no `badges.push_back` for them | S |
 | `quick` | The "Screen off now" tile (and battery percent in the title line) is not in Quick settings; tiles are Same on both screens, Web dashboard, Incognito. Screen off is a row of the player's More instead. | `src/ui_menus.cpp:~1000-1016`; `FEATURES.md:511` | S |
 | `power-dim` / Screen-off warning | Notice row, veil and "Screen off in N s": not built, by decision (the backlight eases down). Already marked. | `backlight` comment `src/ui.h:1008`; `components.md:559` | none unless the owner wants it |
-| `cat-book` | More's "Download every format" is not built. | no match; `backlog.md:281` | S |
-| `cat-book-have` | More's "Delete from the card…" is not built for a catalog book (it exists for manga downloads only). | `backlog.md:281`; `src/ui_manga_downloads.cpp:592` is manga | S |
+| `cat-book` | ~~More's "Download every format"~~ built (`catalog-more`: one after another, same folder). | `ui_catalogs.cpp` `downloadAll` | done |
+| `cat-book-have` | ~~More's "Delete from the card…"~~ built (Confirm sheet; deletes only the files the catalog's `.got` lists). | `ui_catalogs.cpp` `deleteFromCard` | done |
 | `cat-offline` | The first line "No Wi-Fi" (the header's Wi-Fi-off badge says so too); the curl reason is shown instead. | `backlog.md:281` | S |
-| `cat-books` / `cat-book` | The catalog's own cover pictures (a drawn cover stands in), and the book's whole summary on the top screen. | `backlog.md:281` | M |
+| `cat-books` / `cat-book` | ~~The catalog's own cover pictures and the whole summary on the top screen~~ built (covers: grid thumbnail, page cover; the top pane still draws the title cover, not the picture). | `Catalogs::coverFile`, `Catalogs::topPane` | done |
 
 Components in `components.md` with no screen of their own and no code: header badges for boost, browser and Wi-Fi off
 (above). Components checked and found: Switch, Sources sheet, Book bar, Quick settings panel, Title marquee, Ambient mode,
