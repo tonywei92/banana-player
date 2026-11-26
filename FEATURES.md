@@ -111,6 +111,7 @@ Every section now shares one frame: a **rail** down the left with a **Search** k
 carries a warning: **Extensions** is one section for every extension that is on, and the Manga reader is a row of its
 page. The header carries the back key, the section's title and where you are, the status marks and **X** (More); its
 status cluster is one touch target for Quick settings. The
+The header also carries state badges left of the marks: the boosted volume ("110%", yellow, red past 120%), the browser a dashboard page plays in, Wi-Fi **Off** (red) and incognito. A catalog that can't be reached says **No Wi-Fi** first when there is no network.
 Search key is in the rail. **L3** and that key open **Search** (a tool, not a section: no rail cell lights on it and
 **B** goes back where you were), and its key is lit while the page shows.
 The hint bar along the foot says what the buttons do there.
@@ -516,7 +517,7 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **B** (or **Back**) | Back to the list: it keeps playing (see [Playing while you browse](#playing-while-you-browse)) |
 | **F + L2** | Screenshot of both screens (saved in the card's `screenshots` folder) |
 | **F + START** | Quit Banana Player at once (anywhere; your place is kept) |
-| **Menu/Function** (F) | Quick settings: volume, brightness, Same brightness for both screens, Web dashboard, incognito mode, Quit |
+| **Menu/Function** (F) | Quick settings: volume, brightness, Same brightness for both screens, Web dashboard, incognito mode, Screen off now, Quit |
 
 **By touch:**
 - **Progress bar:** scrub it as on a trackpad: slide a finger along it (or just above or below it), from anywhere,
