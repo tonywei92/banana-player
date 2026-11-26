@@ -25,12 +25,12 @@ namespace bp
 
 	// ---- Scanlines: Timothy Lottes' public-domain CRT shader (crt-lottes), ported to one mpv OUTPUT hook
 
-	// Lottes' parameters for a Strength share k (0.1..1): how hard a line's edge is (hardScan: -6 soft .. -16 hard, his
-	// default -8), how soft a line is across (hardPix, his -3), the aperture grille's dark and light (his 0.5 and 1.5)
-	struct Lottes { double hardScan, hardPix, maskDark, maskLight, boost; int pitch; double centre; };
+	// Lottes' parameters: how hard a line's edge is (hardScan, his default -8) and the aperture grille's dark and light
+	// (his 0.5 and 1.5). His horizontal kernel (hardPix) is left out: on these dense panels it only blurred film detail
+	struct Lottes { double hardScan, maskDark, maskLight, boost; int pitch; double centre; };
 
 	// a scan profile's pitch, centre and gain from its hardness and mask (Scanlines' and, lighter, S-Video's)
-	static Lottes lottesWith(int unit, double hardScan, double hardPix, double maskDark, double maskLight)
+	static Lottes lottesWith(int unit, double hardScan, double maskDark, double maskLight)
 	{
 		Lottes l;
 		l.pitch = std::max(2, unit);	// about 240 emulated lines: the panel's height / 240, whole pixels
@@ -39,7 +39,6 @@ namespace bp
 		// gap: on the Plus's 1024x768 the lines faded to a 25% ripple)
 		l.centre = l.pitch / 2.0 - 0.5;
 		l.hardScan = hardScan;
-		l.hardPix = hardPix;
 		l.maskDark = maskDark;
 		l.maskLight = maskLight;
 		// the gain: what a flat mid field keeps through the three lines' weights on each of the pitch's rows, and
@@ -57,7 +56,8 @@ namespace bp
 
 	static Lottes lottesFor(double k, int unit)
 	{
-		return lottesWith(unit, -(6 + 10 * k), -3, 1 - 0.5 * k, 1 + 0.5 * k);
+		// hard lines (-10.6 .. -16: a dark gap row, no smear) and a light grille (at most 0.8 / 1.2)
+		return lottesWith(unit, -(10 + 6 * k), 1 - 0.2 * k, 1 + 0.2 * k);
 	}
 
 	// GLSL: `float beam`, the Lottes scan profile at this panel row (the three nearest lines' Gaussians summed), times
@@ -74,45 +74,34 @@ namespace bp
 		return b;
 	}
 
-	// Functions before hook(): the emulated pixel `cell`'s colour (its centre on the panel, sampled from the picture as
-	// drawn, in linear light), and one line's colour three emulated pixels across, Gaussian-weighted
-	static std::string lottesPrelude(const Lottes& l)
+	// The credit before hook()
+	static std::string lottesPrelude()
 	{
-		char b[1600];
-		snprintf(b, sizeof b,
-			"// Scanlines after \"PUBLIC DOMAIN CRT STYLED SCAN-LINE SHADER\" by Timothy Lottes (crt-lottes):\n"
-			"// his scan-line and pixel Gaussians and aperture-grille mask, warp off, three taps a line.\n\n"
-			"vec3 bpFetch(vec2 cell)\n"
-			"{\n"
-			"\tvec2 px = vec2((cell.x + 0.5) * %d.0, cell.y * %d.0 + %.1f);\n"
-			"\treturn pow(max(HOOKED_tex(px / HOOKED_size).rgb, 0.0), vec3(2.2));\n"
-			"}\n\n"
-			"vec3 bpLine(vec2 base, float off, vec3 w)\n"
-			"{\n"
-			"\treturn (bpFetch(base + vec2(-1.0, off)) * w.x + bpFetch(base + vec2(0.0, off)) * w.y\n"
-			"\t\t+ bpFetch(base + vec2(1.0, off)) * w.z) / (w.x + w.y + w.z);\n"
-			"}\n\n",
-			l.pitch, l.pitch, l.centre);
-		return b;
+		return "// Scanlines after \"PUBLIC DOMAIN CRT STYLED SCAN-LINE SHADER\" by Timothy Lottes (crt-lottes):\n"
+			"// his scan-line Gaussian over the three nearest lines and his aperture-grille mask; warp, bloom and the\n"
+			"// horizontal kernel off (each panel pixel keeps its own column: film detail stays sharp).\n\n";
 	}
 
+	// Each of the three nearest lines sampled at its centre row in this pixel's own column (no resampling across), in
+	// linear light, weighted by the scan Gaussian; the grille on output columns; the gain; gamma again
 	static std::string lottesBody(const Lottes& l)
 	{
 		char b[2000];
 		snprintf(b, sizeof b,
-			"\tvec2 px = HOOKED_pos * HOOKED_size;\n"
-			"\tvec2 v = vec2(px.x / %d.0, (px.y - %.1f) / %d.0 + 0.5);\n"
-			"\tvec2 base = floor(v);\n"
-			"\tvec2 dst = -(v - base - 0.5);\n"
-			"\tvec3 wx = exp2(%.3f * vec3((dst.x - 1.0) * (dst.x - 1.0), dst.x * dst.x, (dst.x + 1.0) * (dst.x + 1.0)));\n"
-			"\tvec3 wy = exp2(%.3f * vec3((dst.y - 1.0) * (dst.y - 1.0), dst.y * dst.y, (dst.y + 1.0) * (dst.y + 1.0)));\n"
-			"\tvec3 c = bpLine(base, -1.0, wx) * wy.x + bpLine(base, 0.0, wx) * wy.y + bpLine(base, 1.0, wx) * wy.z;\n"
+			"\tfloat v = (HOOKED_pos.y * HOOKED_size.y - %.1f) / %d.0 + 0.5;\n"
+			"\tfloat base = floor(v);\n"
+			"\tfloat dy = -(v - base - 0.5);\n"
+			"\tvec3 wy = exp2(%.3f * vec3((dy - 1.0) * (dy - 1.0), dy * dy, (dy + 1.0) * (dy + 1.0)));\n"
+			"\tvec3 rows = (vec3(base - 1.0, base, base + 1.0) * %d.0 + %.1f) * HOOKED_pt.y;\n"
+			"\tvec3 c = pow(max(HOOKED_tex(vec2(HOOKED_pos.x, rows.x)).rgb, 0.0), vec3(2.2)) * wy.x\n"
+			"\t\t+ pow(max(HOOKED_tex(vec2(HOOKED_pos.x, rows.y)).rgb, 0.0), vec3(2.2)) * wy.y\n"
+			"\t\t+ pow(max(HOOKED_tex(vec2(HOOKED_pos.x, rows.z)).rgb, 0.0), vec3(2.2)) * wy.z;\n"
 			"\tfloat col = fract(floor(gl_FragCoord.x) / 3.0);\n"
 			"\tvec3 mask = vec3(%.3f);\n"
 			"\tif (col < 0.3) mask.r = %.3f; else if (col < 0.6) mask.g = %.3f; else mask.b = %.3f;\n"
 			"\tc *= mask * %.3f;\n"
 			"\treturn vec4(pow(min(c, 1.0), vec3(1.0 / 2.2)), 1.0);\n",
-			l.pitch, l.centre, l.pitch, l.hardPix, l.hardScan, l.maskDark, l.maskLight, l.maskLight, l.maskLight, l.boost);
+			l.centre, l.pitch, l.hardScan, l.pitch, l.centre, l.maskDark, l.maskLight, l.maskLight, l.maskLight, l.boost);
 		return b;
 	}
 
@@ -128,7 +117,7 @@ namespace bp
 	{
 		const double across = 640 - 320 * (k - 0.1) / 0.9;	// the chroma's virtual pixels across
 		const double soften = 0.25 + 0.5 * k;	// how much of the luma's 3-tap blur
-		const Lottes l = lottesWith(unit, -(2 + 4 * k), 0, 1, 1);
+		const Lottes l = lottesWith(unit, -(2 + 4 * k), 1, 1);
 		char b[2400];
 		snprintf(b, sizeof b,
 			"\tvec2 dc = vec2(1.0 / %.1f, 0.0), dl = vec2(0.6 * HOOKED_pt.x, 0.0);\n"
@@ -207,7 +196,7 @@ namespace bp
 		char head[160];
 		snprintf(head, sizeof head, "//!HOOK OUTPUT\n//!BIND HOOKED\n//!DESC Banana Player %s %d%%\n\n", pictureLookId(look), strength);
 		// (Scanlines' helper functions go before hook())
-		std::string prelude = look == LOOK_SCANLINES ? lottesPrelude(lottesFor(strength / 100.0, std::max(1, unit)))
+		std::string prelude = look == LOOK_SCANLINES ? lottesPrelude()
 			: look == LOOK_SVIDEO ? "// Its scan lines after \"PUBLIC DOMAIN CRT STYLED SCAN-LINE SHADER\" by Timothy Lottes (crt-lottes).\n\n"
 			: "";
 		return head + prelude + "vec4 hook()\n{\n" + body + "}\n";

@@ -9066,14 +9066,17 @@ static void testPictureLook()
 		CHECK(sh.find("Gather") == std::string::npos && sh.find("COMPUTE") == std::string::npos);
 		CHECK(sh.find("vec4 hook()") != std::string::npos);
 	}
-	// Scanlines: crt-lottes (public domain, its notice kept), lines `unit` pixels apart (about 240), harder with Strength
+	// Scanlines: crt-lottes (public domain, credited), lines `unit` pixels apart (2 on 480, 3 on 768), hard, and no
+	// resampling across (each pixel keeps its own column: film stays sharp)
 	std::string scan = lookShader(LOOK_SCANLINES, 60, 2);
-	CHECK(scan.find("Timothy Lottes") != std::string::npos);
-	CHECK(scan.find("vec3 bpFetch(vec2 cell)") < scan.find("vec4 hook()"));
-	CHECK(scan.find("(px.y - 0.5) / 2.0 + 0.5") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("(px.y - 1.0) / 3.0 + 0.5") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("exp2(-7.000 * vec3((dst.y") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("exp2(-16.000 * vec3((dst.y") != std::string::npos);
+	CHECK(scan.find("Timothy Lottes") < scan.find("vec4 hook()"));
+	CHECK(scan.find("HOOKED_pos.y * HOOKED_size.y - 0.5) / 2.0 + 0.5") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("HOOKED_size.y - 1.0) / 3.0 + 0.5") != std::string::npos);
+	CHECK(scan.find("vec2(HOOKED_pos.x, rows.y)") != std::string::npos);
+	CHECK(scan.find("HOOKED_pt.x") == std::string::npos);	// (no horizontal taps)
+	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("exp2(-10.600 * vec3((dy") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("exp2(-16.000 * vec3((dy") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("vec3 mask = vec3(0.800)") != std::string::npos);
 	// S-Video: chroma blurred over 5 taps a virtual pixel apart (640 across at 10%, 320 at 100%), luma kept crisper,
 	// a light Lottes scan profile over it (credited)
 	std::string sv = lookShader(LOOK_SVIDEO, 100, 3);

@@ -954,8 +954,8 @@ it, **A** chooses, and the film on the top screen changes at once (the file isn'
 
 - **Size**: Fit, Fill, Stretch (below).
 - **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines** (a CRT, after Timothy Lottes' public-domain
-  shader: about 240 lines with a dark gap between them, deeper with Strength, softened across, and a red-green-blue
-  aperture grille; the same look on the RG DS and the Plus), **S-Video** (a CRT TV fed by S-Video: colour runs
+  shader: about 240 lines, each 2 pixels on the RG DS and 3 on the Plus with a dark gap row, deeper with Strength, and
+  a light red-green-blue aperture grille; the film stays sharp across), **S-Video** (a CRT TV fed by S-Video: colour runs
   sideways past edges the brightness keeps fairly crisp, a slightly warm tint and light scan lines; Strength widens the
   colour bleed, softens a little more and deepens the lines; no dot crawl or rainbow) and **Retro** (warm, faded
   colour). Each tile has a small sample of itself. Lines are in the top panel's own pixels, so they don't shimmer, and

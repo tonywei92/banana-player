@@ -80,3 +80,13 @@ richer (a set's warm tint); back to RGB; then in linear light a light crt-lottes
 the shader). No carrier and no frame counter: no dot crawl, no rainbow (composite's, not S-Video's).
 Measured at 1024x768 on testsrc's cyan|magenta edge, red channel 10–90% width: Off 1 px, 40% 4 px, 100% 7 px.
 A saved `lcd-grid` (settings.conf or resume.tsv) reads as S-Video (`pictureLookFromId`, `parseSettings`).
+
+## Scanlines made crisp (2026-11-26)
+
+The owner found crt-lottes too soft on the Plus. Lottes' horizontal kernel (`hardPix` −3 over three emulated pixels
+of `pitch` px) is gone: each panel pixel keeps its own column and only the vertical profile and the mask apply
+(3 taps: the three nearest lines' centre rows in this column). Pitch stays `max(2, round(panelH / 240))` (2 on 480,
+240 lines; 3 on 768, 256 lines), centre `pitch/2 − 0.5` (bright-dark, bright-bright-dark). hardScan −(10 + 6k)
+(−10.6 .. −16); grille 1 ∓ 0.2k (at most 0.8 / 1.2; was 0.5 / 1.5). Credit kept in the shader.
+Measured on testsrc at 1024x768, colour-bar edges 10–90% width: Off 0–1 px, the soft port 1–6 px (mean ~3), now
+0–2 px (mean ~0.6). Ramp row dips at 60%: 640x480 46–53% (was 41–47%), 1024x768 45–47% (was 37–41%).
