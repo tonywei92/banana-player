@@ -4,3 +4,6 @@ build/
 dist/
 .cache/
 tools/viz-bench/gbench-arm
+
+# OpenCode settings are per machine (they hold personal allows): never committed
+opencode.json
