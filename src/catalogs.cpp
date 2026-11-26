@@ -339,13 +339,22 @@ namespace bp
 		return "";
 	}
 
+	std::vector<std::string> CatalogGot::paths(const std::string& entryId) const
+	{
+		std::vector<std::string> out;
+		for (auto& it : items_)
+			if (it.first == entryId && fileThere(it.second)) out.push_back(it.second);
+		return out;
+	}
+
 	void CatalogGot::set(const std::string& entryId, const std::string& path)
 	{
 		// an id or a path with a tab or a line break in it would break the file: such a book is just not marked
 		if (entryId.empty() || entryId.find_first_of("\t\r\n") != std::string::npos ||
 		    path.find_first_of("\t\r\n") != std::string::npos)
 			return;
-		drop(entryId);
+		for (auto& it : items_)
+			if (it.first == entryId && it.second == path) return;
 		items_.emplace_back(entryId, path);
 		save();
 	}

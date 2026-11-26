@@ -195,7 +195,20 @@ namespace bp
 			uint32_t startedAt = 0, statAt = 0;
 		};
 		Download dl;
-		void startDownload(const OpdsEntry& e, const OpdsLink& offer, Player& p);
+		// base: the feed the offer's link resolves against (the book page's when none is given)
+		void startDownload(const OpdsEntry& e, const OpdsLink& offer, Player& p, const std::string* base = nullptr);
+		// More › Download every format: the offers after the one coming, one at a time through startDownload, all
+		// into the same folder. A failure or a cancel drops the rest
+		struct Queue
+		{
+			OpdsEntry entry;
+			std::string base;
+			std::vector<OpdsLink> rest;
+			int total = 0;
+		};
+		Queue queued;
+		void downloadAll(Player& p);
+		void deleteFromCard(Player& p);	// More › Delete from the card…: its Confirm sheet's action
 		void cancelDownload(const char* why);
 		std::string savesTo(const MangaServer& s, long long* freeBytes = nullptr) const;	// the folder a book goes in
 		std::string lastFailure;	// the failed download's words, for its sheet
