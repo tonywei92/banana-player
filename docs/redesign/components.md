@@ -556,7 +556,9 @@ Transport keys, tiles, cards, rows, tabs, chips and pills keep the ordinary role
 - **Also:** a running sleep timer: the Sleep key reads what is left, and the header’s status cluster carries a badge (clock 13, “24 min” / “0:48” / “Song”) on every page; a tap opens the Sleep timer sheet.
 - **Code:** New as a rule (0.7.18 has the yellow speed key and the lit Brightness key). One helper: given a state and its normal, return the tone and the words.
 
-### Screen-off warning (new)
+### Screen-off warning (dropped: the owner's decision, 2026-11-26)
+
+- **Decision:** no notice, veil or countdown will be built; the backlight easing down is the whole warning. The drawing below is kept for the record only.
 
 - **Used:** before any automatic screen off (bottom or top)
 - **As built (2026-11-21):** no veil, no notice and no countdown: with Dim before turning off on, the bottom backlight eases down over the last seconds, as a phone’s does, and any touch or key brings it back. The drawing below is the earlier design, kept (`power-dim`).

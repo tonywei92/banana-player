@@ -61,7 +61,7 @@ Smooth list / Pull to refresh, Clean style, Lid-shut keys, Sleep warning, Arrivi
 2. **Screen off now in Quick settings.** Spec adds it "so it works over a list or a book". Code keeps it in the player's More
    only. Add the tile, or edit the spec?
 3. **Screen-off warning.** `components.md` still has the veil + countdown drawing (`power-dim`), kept on purpose; the owner chose
-   the dim without a notice. Remove `power-dim` from the gallery, or keep as history?
+   the dim without a notice. **Owner (2026-11-26): dropped, never to be built; kept in the gallery marked "(dropped)" as history.**
 4. **Header badges** for boost, browser and Wi-Fi off: spec says every screen shows them; code shows none. The level card and
    Wi-Fi icon may have been judged enough.
 5. **Stale docs, not code:** `coverage.md` still says 210 screens and 14 unbuilt; `backlog.md:285` says the catalog screens are
