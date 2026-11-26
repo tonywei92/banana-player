@@ -542,8 +542,12 @@ namespace bp
 		// the grids' columns (Library's is lay::coverGrid on the kit; a source's and a server's keep the old covers)
 		static constexpr int MG_COLS = 5, MG_COVER_W = 112, MG_COVER_H = 150;	// the old grids' covers, 124 apart
 		// a card series' keys (lay::keyRow on lay::seriesPage): Resume at the left, the heart at the right
-		Rect mangaResumeRect() const { return mangaSeriesKeys({150, 0, 64})[0]; }
-		Rect mangaHeartRect() const { return mangaSeriesKeys({150, 0, 64})[2]; }
+		// Resume is wide enough to name its target ("Resume \xC2\xB7 Ch. 02 \xC2\xB7 p. 5/8"); the heart keeps its 64
+		static constexpr int MANGA_RESUME_W = 300;
+		Rect mangaResumeRect() const { return mangaSeriesKeys({MANGA_RESUME_W, 0, 64})[0]; }
+		Rect mangaHeartRect() const { return mangaSeriesKeys({MANGA_RESUME_W, 0, 64})[2]; }
+		// the main key's words for the chapter Resume opens (its title, its progress), fitted to `keyW`
+		std::string mangaResumeKeyLabel(const std::string& chapterTitle, const ChapterProgress* pr, int keyW) const;
 		// the reading page's own pieces
 		// (lay::mangaReadPage: the slider under the header, the finger's surface, the row of six)
 		Rect mangaAreaRect() const { return lay::mangaReadPage().surface; }
@@ -1121,7 +1125,7 @@ namespace bp
 		std::string mangaServersSignature() const;
 		// a server's series page keeps its own Resume button: the cards' pages and a source's row differ (the source's
 		// shares its row with Download, Refresh and the heart)
-		Rect mangaServerResumeRect() const { return mangaSeriesKeys({150, 0})[0]; }
+		Rect mangaServerResumeRect() const { return mangaSeriesKeys({MANGA_RESUME_W, 0})[0]; }
 		static constexpr int MGSRV_FORM_ROWS = 7;	// Kind, Name, Address, User, Password, Test, Save
 		static constexpr int MGSRV_GRID_ROWS_SHOWN = 2;	// (lay::coverGrid's whole rows in the body)
 		// the server form on the kit, in the shell's body: Kind…Password as form rows (lay::formRow), Test and Save the

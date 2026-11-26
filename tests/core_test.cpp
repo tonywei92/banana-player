@@ -3819,6 +3819,21 @@ static void testMangaUiLogic()
 		x = w; x.lastReadAgoS = -1; CHECK_EQ(mangaEngineWarm(x), false);
 	}
 	CHECK_EQ(mangaResume({}).chapter, -1);
+	{
+		// the series key's words: 8 units a character, "..." cut
+		auto w = [](const std::string& t) { return (int)t.size() * 8; };
+		auto el = [](const std::string& t, int room) { return t.substr(0, std::max(0, room / 8 - 3)) + "..."; };
+		CHECK_EQ(mangaResumeLabel(false, "Ch. 01", 0, 0, 400, w, el), std::string("Start \xC2\xB7 Ch. 01"));
+		CHECK_EQ(mangaResumeLabel(true, "Ch. 02", 4, 8, 400, w, el), std::string("Resume \xC2\xB7 Ch. 02 \xC2\xB7 p. 5/8"));
+		CHECK_EQ(mangaResumeLabel(true, "Ch. 02", 4, 0, 400, w, el), std::string("Resume \xC2\xB7 Ch. 02 \xC2\xB7 p. 5"));
+		std::string cut = mangaResumeLabel(true, "Ch. 2 The very long name of a chapter", 4, 8, 260, w, el);
+		CHECK_EQ(cut.find("p. 5/8") != std::string::npos, true);	// the page part always shows
+		CHECK_EQ(cut.find("...") != std::string::npos, true);
+		CHECK_EQ((int)cut.size() <= 260 / 8, true);
+		CHECK_EQ(mangaResumeLabel(true, "Ch. 2 Long", 4, 8, 120, w, el), std::string("Resume \xC2\xB7 p. 5/8"));
+		CHECK_EQ(mangaChapterShort("Chapter 12"), std::string("Ch. 12"));
+		CHECK_EQ(mangaChapterShort("Prologue"), std::string("Ch. Prologue"));
+	}
 
 	m[0].read = true;
 	m[1].read = true;

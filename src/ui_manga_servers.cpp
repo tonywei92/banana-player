@@ -888,7 +888,9 @@ namespace bp
 		MangaResumePoint resume = mangaResume(marks);
 		Kit::Key rk;
 		rk.glyph = &G_PLAY;
-		rk.label = n ? "Resume" : "No chapters";
+		rk.label = !n ? "No chapters"
+			: mangaResumeKeyLabel(mangaSrvChapters[resume.chapter].name,
+				mangaStore ? mangaStore->progress(serverItemId(mangaSrvId, mangaSrvChapters[resume.chapter].key)) : nullptr, mangaServerResumeRect().w);
 		rk.key = "A";
 		rk.tone = Kit::Tone::Primary;
 		rk.focused = mserCursor < 0;

@@ -1591,7 +1591,7 @@ on the card (below).
 The row itself continues (**A** or a tap); **Y** opens the series' page instead and **X** is More. A series that can't open now
 stays, dimmed, and says why (*source removed*, *not on a card*).
 
-A series' page has one row of keys (**Resume**, and for a source's series **Get**, **Info** and the heart)
+A series' page has one row of keys (**Resume**, which names its target: **Start · Ch. 01**, or **Resume · Ch. 02 · p. 5/8** with the chapter's name cut first to fit; and for a source's series **Get**, **Info** and the heart)
 over its chapters, each saying its own state (a dot on the one Resume opens, read ones dimmed, the page, its
 download); the series' source and counts are the header's line. Pulling the chapters down past the top checks a
 source for new chapters (**L** does the same), and reads the Manga folders again for a series on the handheld. A source's catalogue steps **Popular / Latest / Search** with **L/R**; Sources'

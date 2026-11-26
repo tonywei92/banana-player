@@ -89,6 +89,29 @@ namespace bp
 		return in.lastReadOnline && in.lastReadAgoS >= 0 && in.lastReadAgoS <= MANGA_WARM_RECENT_S;
 	}
 
+	std::string mangaChapterShort(const std::string& title)
+	{
+		std::string ch = title;
+		if (ch.rfind("Chapter ", 0) == 0) ch = "Ch. " + ch.substr(8);
+		bool says = ch.rfind("Ch", 0) == 0 || ch.rfind("ch", 0) == 0;
+		return (says ? "" : "Ch. ") + ch;
+	}
+
+	std::string mangaResumeLabel(bool started, const std::string& chapterShort, int page, int pages, int room,
+		const std::function<int(const std::string&)>& width,
+		const std::function<std::string(const std::string&, int)>& elide)
+	{
+		static const std::string DOT = " \xC2\xB7 ";
+		std::string verb = started ? "Resume" : "Start";
+		std::string pg;
+		if (started) pg = pages > 0 ? "p. " + std::to_string(page + 1) + "/" + std::to_string(pages) : "p. " + std::to_string(page + 1);
+		std::string tail = pg.empty() ? "" : DOT + pg;
+		int left = room - width(verb + tail);
+		if (chapterShort.empty() || left < width(DOT) + width("Ch\xE2\x80\xA6")) return verb + tail;
+		std::string ch = width(chapterShort) + width(DOT) <= left ? chapterShort : elide(chapterShort, left - width(DOT));
+		return verb + DOT + ch + tail;
+	}
+
 	MangaResumePoint mangaResume(const std::vector<MangaChapterMark>& chapters)
 	{
 		MangaResumePoint out;

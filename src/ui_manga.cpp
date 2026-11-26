@@ -46,10 +46,7 @@ namespace bp
 		// ("Ch." only before a bare title: "Chapter 1" says it already)
 		std::string chapterShort(const std::string& title)
 		{
-			std::string ch = title;
-			if (ch.rfind("Chapter ", 0) == 0) ch = "Ch. " + ch.substr(8);
-			bool says = ch.rfind("Ch", 0) == 0 || ch.rfind("ch", 0) == 0;
-			return (says ? "" : "Ch. ") + ch;
+			return mangaChapterShort(title);
 		}
 
 		// The tile's rounded corners in the cover's own alpha, at upload (the panel's pixels): the generated cover is
@@ -2596,6 +2593,16 @@ namespace bp
 		ui.pageReader->mangaListSmooth(m.list, x, y, hit, [open](int i) { open(i); });
 	}
 
+	std::string Ui::Manga::mangaResumeKeyLabel(const std::string& chapterTitle, const ChapterProgress* pr, int keyW) const
+	{
+		bool started = pr && !pr->read && (pr->pages > 0 || pr->page > 0);
+		int room = keyW - 70;	// the key's padding, its play glyph and the A cap
+		return mangaResumeLabel(
+			started, chapterShort(chapterTitle), pr ? pr->page : 0, pr ? pr->pages : 0, room,
+			[this](const std::string& t) { return ui.kit->textW(t, F_P16); },
+			[this](const std::string& t, int w) { return ui.kit->elided(t, F_P16, w); });
+	}
+
 	std::vector<lay::Box> Ui::Manga::mangaSeriesKeys(const std::vector<int>& widths) const
 	{
 		return lay::keyRow(lay::seriesPage(lay::shell().body, true).keys, widths);
@@ -2981,7 +2988,8 @@ namespace bp
 		Kit& k = *ui.kit;
 		Kit::Key rk;
 		rk.glyph = &G_PLAY;
-		rk.label = n ? "Resume" : "No chapters";
+		rk.label = !n ? "No chapters"
+			: mangaResumeKeyLabel(s->chapters[resume.chapter].title, mangaStore ? mangaStore->progress(s->chapters[resume.chapter].path) : nullptr, mangaResumeRect().w);
 		rk.key = "A";
 		rk.tone = Kit::Tone::Primary;
 		rk.focused = mserCursor < 0;

@@ -3,6 +3,7 @@
 // which chapter Resume opens, and how old a History row reads. The pages give it titles and the store's marks; it
 // answers, so both can be tested on their own (tests/core_test.cpp).
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,16 @@ namespace bp
 
 	// the first started-but-unread chapter, at its page; else the first unread, at its start; else the first
 	MangaResumePoint mangaResume(const std::vector<MangaChapterMark>& chapters);
+
+	// "Chapter 12" as "Ch. 12", and a bare title gets its "Ch. " (the History row and the Resume key keep it short)
+	std::string mangaChapterShort(const std::string& title);
+
+	// The series page's main key: "Start \xC2\xB7 Ch. 01" (nothing read there yet) or "Resume \xC2\xB7 Ch. 02 \xC2\xB7 p. 5/8".
+	// Fitted to `room` (units) by `width`/`elide` (the kit's): the chapter's name gives way first, the page part always
+	// shows, and the verb alone is the last resort. pages <= 0: "p. 5" only.
+	std::string mangaResumeLabel(bool started, const std::string& chapterShort, int page, int pages, int room,
+		const std::function<int(const std::string&)>& width,
+		const std::function<std::string(const std::string&, int)>& elide);
 
 	// What a Resume or a picked chapter that waits does on this pass (looked at every pass while it waits): the series
 	// check sent when it is wanted and not on its way (the press, a Retry; it also starts the engine), keep waiting
