@@ -147,6 +147,8 @@ namespace bp
 		Settings s = p.settings;
 		s.webDashboard = on;
 		p.setSettings(s);
+		// in the log: what the top panel had when the dashboard went on or off, to find a black one after it
+		fprintf(stderr, "web: turned %s from page %d (playing %d, top card %d)\n", on ? "on" : "off", (int)page, p.playing() ? 1 : 0, p.topCardUp() ? 1 : 0);
 		if (webPower) webPower(on);
 		pinArmed = 0;
 		readWebIp();

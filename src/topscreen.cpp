@@ -629,6 +629,7 @@ namespace bp
 			paneRender.flushDead();
 			topDark = false;
 			renderPending = true;	// (what plays: its picture at once, not at its next frame)
+			logNextTop = true;	// the idle draw that follows is logged too: a black top panel after a pane went is found by it
 			fprintf(stderr, "top: preview pane dropped%s\n", player.playing() || photos.playing() ? ": the picture of what plays is back" : "");
 		}
 		// Match album art's backdrop, the song's while it plays: composed again only when the answer, the theme
@@ -785,7 +786,7 @@ namespace bp
 				// to find where a black top panel comes from
 				if (topDraws++ == 0 || logNextTop)
 					fprintf(stderr, "top: drawn idle %dx%d at %u ms (draw %d)%s\n", w, h, SDL_GetTicks(), topDraws,
-						logNextTop ? " with the level card" : "");
+						logNextTop ? " (after a pane or a level card)" : "");
 				logNextTop = false;
 			}
 			// a new frame, or the same one again (paused, or a refresh); a photo's over what plays. The backdrop's
