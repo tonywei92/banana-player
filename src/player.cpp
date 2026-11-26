@@ -1255,8 +1255,6 @@ namespace bp
 		updateOverlay();
 		if (!skipNote.empty()) osd(skipNote, 2000);
 		skipNote.clear();
-		// a photo's name and its place in the folder, for a moment
-		if (isPhoto) osd(baseName(playlist[current]) + (count() > 1 ? "   " + std::to_string(current + 1) + " / " + std::to_string(count()) : ""), 2000);
 	}
 
 	void Player::refreshTracks(mpv_node* node)
