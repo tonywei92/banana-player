@@ -980,7 +980,7 @@ namespace bp
 				if (s && n > 0 && mangaStore)
 				{
 					std::string sid = mangaSeriesId;
-					mangaOpenMarkMore(sid, [this, sid] {
+					mangaXDown(sid, [this, sid] {
 						std::vector<std::string> ids;
 						if (const LocalSeries* ls = mangaLocalSeries(sid))
 							for (auto& c : ls->chapters) ids.push_back(c.path);
@@ -1977,8 +1977,36 @@ namespace bp
 		return false;
 	}
 
+	void Ui::Manga::mangaXDown(const std::string& seriesId, std::function<std::vector<std::string>()> ids, std::function<int()> focus)
+	{
+		mangaXAt = SDL_GetTicks();
+		if (!mangaXAt) mangaXAt = 1;
+		mangaXSeries = seriesId;
+		mangaXIds = std::move(ids);
+		mangaXFocus = std::move(focus);
+	}
+
+	void Ui::Manga::release(Button b, Player&)
+	{
+		// X let go before the hold: the tap, the focused chapter's read mark
+		if (b != Button::X || !mangaXAt) return;
+		mangaXAt = 0;
+		std::vector<std::string> all = mangaXIds();
+		int at = mangaXFocus();
+		if (!mangaStore || at < 0 || at >= (int)all.size()) return;
+		const ChapterProgress* pr = mangaStore->progress(all[at]);
+		mangaStore->markRead(mangaXSeries, {all[at]}, !(pr && pr->read));
+		mangaSave();
+	}
+
 	void Ui::Manga::tick(Player& p)
 	{
+		// X held: the Read marks sheet (its release then has nothing pending)
+		if (mangaXAt && SDL_GetTicks() - mangaXAt >= MANGA_X_HOLD_MS)
+		{
+			mangaXAt = 0;
+			mangaOpenMarkMore(mangaXSeries, mangaXIds, mangaXFocus);
+		}
 		// the manga reader's page: the place recorded, the store written once a second while reading
 		if (ui.page == Page::MangaRead) mangaTick();
 		// the Sources page: the repositories' events become toasts, and what was typed in is added
@@ -3061,7 +3089,7 @@ namespace bp
 		if (mserCursor >= n) mserCursor = n - 1;
 		mlChapters.refresh = [this](Player&) { mangaScan(); };	// pull to refresh: the Manga folders read again
 		mangaRows(mlChapters, p, n, mserScroll, mserCursor, [this, s, rc = resume.chapter](int i) { return mangaChapterRow(s->chapters[i].title, s->chapters[i].path, i == rc, -1); });
-		ui.drawHints({{"A", "Read"}, {"X", "Read marks"}, {"Y", "In library"}, {"B", "Back"}});
+		ui.drawHints({{"A", "Read"}, {"X", "Read \xC2\xB7 hold: more"}, {"Y", "In library"}, {"B", "Back"}});
 	}
 
 	Ui::Manga::MangaRow Ui::Manga::mangaChapterRow(const std::string& title, const std::string& progressId, bool resume, int pages) const

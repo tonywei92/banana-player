@@ -17,7 +17,7 @@ The reading itself is already close to Mihon and in places better: exact-page re
 | Q2 | End-of-chapter cue and chapter-title chip in Fullscreen (the default view has neither) | `src/ui_reader.cpp:173-176`, `src/ui_manga.cpp:2497` |
 | Q3 (done) | **LEFT** at a chapter's first page opens the previous chapter at its last page | `src/ui_manga.cpp:715-735`, `:893` |
 | Q4 (done) | Resume button names its target: **Start · Chapter 01** / **Resume · Ch. 02 · p. 5/8** | `src/ui_manga.cpp:2387` |
-| Q5 (done) | **Mark previous as read** and **Mark all read / unread** (a small sheet on a held **X**, or a second **X** row) | `src/ui_manga.cpp:959-968`, `src/ui_manga_browse.cpp:1819` |
+| Q5 (done) | **Mark previous as read** and **Mark all read / unread** (a small sheet on a held **X**, 0.6 s; a tap of **X** still toggles the chapter) | `src/ui_manga.cpp:959-968`, `src/ui_manga_browse.cpp:1819` |
 | Q6 (done, see note) | Dashboard: a read / unread toggle per chapter (the endpoint exists, the page never calls it) | `web/js/manga.js:110-128`, `src/web/api_manga.cpp:353` |
 | Q7 | Hints: add **LEFT/RIGHT Page** on the series page; Options on one key (X in Library, Y in *On this handheld* today); **Prev** / **Next** instead of the cut *Prev chap…* / *Next chap…* | `src/ui_manga.cpp:2411`, `:2099`, `:2319`, `:2880` |
 

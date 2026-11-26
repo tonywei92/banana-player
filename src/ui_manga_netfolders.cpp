@@ -519,8 +519,8 @@ namespace bp
 			}
 			if (b == Button::X && n > 0 && mangaStore)
 			{
-				// the read marks' sheet, as X does on the card's series page
-				mangaOpenMarkMore(mangaNetSeriesPath, [this] {
+				// X: tap toggles, hold opens the read marks' sheet, as X does on the card's series page
+				mangaXDown(mangaNetSeriesPath, [this] {
 					std::vector<std::string> ids;
 					for (const auto& c : mangaNetChapters) ids.push_back(c.path);
 					return ids;
@@ -687,7 +687,7 @@ namespace bp
 			if (!mangaNetError.empty()) tabCrumb = mangaNetError;
 			else if (mangaNetLoading) tabCrumb = series ? "Fetching the chapter\xE2\x80\xA6" : "Loading\xE2\x80\xA6";
 		}
-		if (series) ui.drawHints({{"A", "Read"}, {"X", "Read marks"}, {"B", "Back"}});
+		if (series) ui.drawHints({{"A", "Read"}, {"X", "Read \xC2\xB7 hold: more"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Open"}, {"B", "Back"}});
 	}
 }

@@ -1805,8 +1805,8 @@ opened from Files has none).
   offer for an older install is a separate question and still comes at each entry until taken.
 - A chapter whose **ComicInfo.xml** says right-to-left (*Manga: YesAndRightToLeft*) opens right-to-left when the series has no
   reading mode of your own (**View** on the series: any choice there is kept, and wins). Otherwise the Manga setting applies.
-- **X** on a series page (a card's, a network folder's, a source's) opens **Read marks**: **Mark this chapter read / unread**
-  (the focused one), **Mark previous as read** (every chapter before it) and **Mark all as read** (**unread** once all are
+- **X** on a series page (a card's, a network folder's, a source's): a tap toggles the focused chapter read / unread (hint
+  "X Read · hold: more"); held 0.6 s it opens **Read marks**: **Mark this chapter read / unread**, **Mark previous as read** (every chapter before it) and **Mark all as read** (**unread** once all are
   read). Each is one change and one save, and a chapter shared with its online twin (downloads) follows it.
 - At the end of a chapter the screen says **End of chapter · R2 or RIGHT for** the next chapter by its name (**LEFT**
   with **Swap Left/Right** on), and the forward key (or **R2**) opens it; the header's line says *the end*. The last

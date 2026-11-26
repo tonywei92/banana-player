@@ -1982,8 +1982,8 @@ namespace bp
 		int n = (int)mangaSrcChapters.size();
 		if (b == Button::X && n > 0 && mangaStore)
 		{
-			// the read marks' sheet, as X does on the card's series page
-			mangaOpenMarkMore(mangaSeriesId, [this] {
+			// X: tap toggles, hold opens the read marks' sheet, as X does on the card's series page
+			mangaXDown(mangaSeriesId, [this] {
 				std::vector<std::string> ids;
 				for (const auto& c : mangaSrcChapters) ids.push_back(sourceItemId(mangaSrcId, c.key));
 				return ids;
@@ -2215,7 +2215,7 @@ namespace bp
 			static const char* ROW[MG_SRC_KEYS] = {"Resume", "Get", "Info", "Library"};
 			ui.drawHints({{"A", ROW[std::clamp(mserBtn, 0, MG_SRC_KEYS - 1)]}, {"LEFT/RIGHT", "Keys"}, {"DOWN", "Chapters"}, {"B", "Back"}});
 		}
-		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) ui.drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read marks"}, {"B", "Back"}});
+		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) ui.drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read \xC2\xB7 hold: more"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R", "Get"}, {"L", "Check"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) later([this, &p] { drawMangaDlSheet(p); });
 	}

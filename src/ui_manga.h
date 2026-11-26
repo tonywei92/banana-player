@@ -50,6 +50,7 @@ namespace bp
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override;
 		bool pointerDownLate() const override { return ui.page != Page::MangaRead && ui.page != Page::ExtSection; }
 		void tick(Player& p) override;
+		void release(Button b, Player& p) override;
 		void draw(const Player& p) override;
 		std::string signature(const Player& p) const override;
 		// the shown page's smooth list (Manga settings': SettingsPage's mangaList)
@@ -552,6 +553,14 @@ namespace bp
 		// the main key's words for the chapter Resume opens (its title, its progress), fitted to `keyW`
 		// X on a series page: its More sheet (this chapter, previous, all as read / unread), over `ids()` (the chapters
 		// in order) and `focus()` (the focused one, -1 none); one markRead and one save a choice
+		// X on a series page: tapped it toggles the focused chapter, held MANGA_X_HOLD_MS it opens that sheet.
+		// mangaXDown arms it (the same three arguments), release / tick finish it
+		void mangaXDown(const std::string& seriesId, std::function<std::vector<std::string>()> ids, std::function<int()> focus);
+		static constexpr Uint32 MANGA_X_HOLD_MS = 600;
+		Uint32 mangaXAt = 0;	// X went down on a series page at this tick (0: none pending)
+		std::string mangaXSeries;
+		std::function<std::vector<std::string>()> mangaXIds;
+		std::function<int()> mangaXFocus;
 		void mangaOpenMarkMore(const std::string& seriesId, std::function<std::vector<std::string>()> ids, std::function<int()> focus);
 		std::string mangaResumeKeyLabel(const std::string& chapterTitle, const ChapterProgress* pr, int keyW) const;
 		// the reading page's own pieces
