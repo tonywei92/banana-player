@@ -64,6 +64,7 @@ extern "C"
 #include "mangaseriescache.h"
 #include "netpath.h"
 #include "opds.h"
+#include "catalogs.h"
 #include "paged.h"
 #include "pagedecode.h"
 #include "pagecache.h"
@@ -2818,6 +2819,153 @@ static void testMangaRepo()
 }
 
 // the pure server readers: OPDS 1.2 Atom feeds and Komga's REST list answers (docs/design/manga.md 5.1)
+// Books › Catalogs: a real Calibre content server's answers (9.19, its default library), the book formats in order,
+// the file a book is saved as, Digest (RFC 2617's own example) and the host a login may go to
+static void testCatalogs()
+{
+	auto slurp = [](const std::string& p) { std::ifstream f(p, std::ios::binary); return std::string(std::istreambuf_iterator<char>(f), {}); };
+	const std::string F = std::string(BP_TESTS_DIR) + "/fixtures/opds/";
+	OpdsFeed root;
+	CHECK_EQ(parseOpds(slurp(F + "calibre-root.xml"), root), true);
+	CHECK_EQ(root.title, std::string("calibre Library"));
+	CHECK_EQ(root.search, std::string("/opds/search/{searchTerms}?library_id=Calibre_Library"));
+	CHECK_EQ(root.searchType, std::string("application/atom+xml"));	// a template, not an OpenSearch description
+	CHECK_EQ(root.entries.size(), (size_t)5);
+	CHECK_EQ(root.entries[0].title, std::string("By Newest"));
+	CHECK_EQ(root.entries[0].isBook(), false);
+	CHECK_EQ(root.entries[0].nav(), std::string("/opds/navcatalog/4f6e6577657374?library_id=Calibre_Library"));
+	CHECK_EQ(root.entries[0].summary, std::string("Books sorted by Date"));
+
+	OpdsFeed newest;
+	CHECK_EQ(parseOpds(slurp(F + "calibre-newest.xml"), newest), true);
+	CHECK_EQ(newest.entries.size(), (size_t)1);
+	const OpdsEntry& b = newest.entries[0];
+	CHECK_EQ(b.title, std::string("Quick Start Guide"));
+	CHECK_EQ(b.author, std::string("John Schember"));
+	CHECK_EQ(b.id, std::string("urn:uuid:02d1d229-edae-4993-9929-fc29b3ed79dc"));
+	CHECK_EQ(b.summary, std::string("calibre Quick Start Guide"));	// its xhtml content, as text
+	CHECK_EQ(b.issued.substr(0, 4), std::string("2026"));	// Atom's published, with no dc:issued
+	CHECK_EQ(b.isBook(), true);
+	std::vector<OpdsLink> offers = b.bookOffers();
+	CHECK_EQ(offers.size(), (size_t)1);
+	CHECK_EQ(offers[0].href, std::string("/get/epub/1/Calibre_Library"));
+	CHECK_EQ(offers[0].length, 55844LL);
+	CHECK_EQ(newest.next, std::string(""));
+
+	// the order a page offers: EPUB, PDF, CBZ, CBR, TXT; a shop's links and the formats no reader opens are not offered
+	const std::string many = R"X(<feed xmlns="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/terms/"
+	  xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/"><id>f</id><title>F</title>
+	  <opensearch:totalResults>1204</opensearch:totalResults>
+	  <link rel="search" type="application/opensearchdescription+xml" href="/os.xml"/>
+	  <link rel="next" type="application/atom+xml;profile=opds-catalog;kind=acquisition" href="?page=2"/>
+	  <entry><id>e1</id><title>Frankenstein</title><author><name>Mary Shelley</name></author>
+	    <dc:language>en</dc:language><dc:issued>1818</dc:issued>
+	    <category term="gothic" label="Gothic"/><category term="sf"/>
+	    <link rel="http://opds-spec.org/acquisition/buy" type="application/epub+zip" href="/buy"/>
+	    <link rel="http://opds-spec.org/acquisition" type="text/plain; charset=utf-8" href="/a.txt"/>
+	    <link rel="http://opds-spec.org/acquisition" type="application/x-mobipocket-ebook" href="/a.mobi"/>
+	    <link rel="http://opds-spec.org/acquisition" type="application/pdf" href="/a.pdf" length="2100000"/>
+	    <link rel="http://opds-spec.org/acquisition/open-access" type="application/octet-stream" href="/a.cbz"/>
+	    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/a.epub"/>
+	    <link rel="http://opds-spec.org/acquisition" type="application/epub+zip" href="/a3.epub"/>
+	  </entry>
+	  <entry><id>e2</id><title>The Last Man</title>
+	    <link rel="http://opds-spec.org/acquisition" type="application/x-mobipocket-ebook" href="/b.mobi"/>
+	    <link rel="http://opds-spec.org/acquisition" type="application/vnd.amazon.ebook" href="/b.azw3"/>
+	  </entry></feed>)X";
+	OpdsFeed f;
+	CHECK_EQ(parseOpds(many, f), true);
+	CHECK_EQ(f.total, 1204);
+	CHECK_EQ(f.searchType, std::string("application/opensearchdescription+xml"));
+	CHECK_EQ(f.next, std::string("?page=2"));
+	CHECK_EQ(f.entries[0].language, std::string("en"));
+	CHECK_EQ(f.entries[0].issued, std::string("1818"));
+	CHECK_EQ(f.entries[0].tags, (std::vector<std::string>{"Gothic", "sf"}));
+	std::vector<OpdsLink> o = f.entries[0].bookOffers();
+	CHECK_EQ(o.size(), (size_t)4);
+	if (o.size() == 4)
+	{
+		CHECK_EQ(o[0].href, std::string("/a.epub"));	// the first EPUB, not the shop's, not the second
+		CHECK_EQ(o[1].href, std::string("/a.pdf"));
+		CHECK_EQ(o[1].length, 2100000LL);
+		CHECK_EQ(o[2].href, std::string("/a.cbz"));	// an octet-stream known by its extension
+		CHECK_EQ(o[3].href, std::string("/a.txt"));
+	}
+	CHECK_EQ(f.entries[1].bookOffers().empty(), true);
+	CHECK_EQ(f.entries[1].formatNames(), (std::vector<std::string>{"MOBI", "AZW3"}));
+	CHECK_EQ(opdsBookFormat("application/vnd.comicbook-rar", "") == OpdsFormat::Cbr, true);
+	CHECK_EQ(std::string(opdsFormatExt(OpdsFormat::Epub)), std::string("epub"));
+
+	// the file's name, as an exFAT card takes it
+	CHECK_EQ(catalogBookName("Frankenstein", "Mary Shelley", "epub"), std::string("Frankenstein - Mary Shelley.epub"));
+	CHECK_EQ(catalogBookName("What? A \"Title\": Part 1/2", "A <B>", "pdf"), std::string("What A Title - Part 1-2 - A B.pdf"));
+	CHECK_EQ(catalogBookName("  ...Dots... ", "", "txt"), std::string("Dots.txt"));
+	CHECK_EQ(catalogBookName("", "", "cbz"), std::string("Book.cbz"));
+	CHECK_EQ(catalogBookName("Tab\tand\nline", "", "epub"), std::string("Tab and line.epub"));
+	std::string longName = exfatName(std::string(200, 'a') + "\xC3\xA9", 201);	// cut inside the é: it goes whole
+	CHECK_EQ(longName.size(), (size_t)200);
+	CHECK_EQ(catalogFolderName("Home: Calibre"), std::string("Home- Calibre"));
+	CHECK_EQ(catalogFolderName("???"), std::string("Catalog"));
+	CHECK_EQ(freeFileName("/c/Books/A.epub", [](const std::string& p) { return p == "/c/Books/A.epub" || p == "/c/Books/A (2).epub"; }),
+		std::string("/c/Books/A (3).epub"));
+
+	// the folder: the Books folder with the most room, else one made on the first card
+	CHECK_EQ(chooseBooksFolder({{"/data/Books", 100}, {"/run/sd2/books", 900}}, "/data"), std::string("/run/sd2/books"));
+	CHECK_EQ(chooseBooksFolder({}, "/data"), std::string("/data/Books"));
+	CHECK_EQ(chooseBooksFolder({}, ""), std::string(""));
+
+	// Digest: RFC 2617's example, word for word
+	HttpChallenge c;
+	CHECK_EQ(parseAuthChallenge({"Basic realm=\"x\"", "Digest realm=\"testrealm@host.com\", qop=\"auth,auth-int\", "
+		"nonce=\"dcd98b7102dd2f0e8b11d0f600bfb0c093\", opaque=\"5ccc069c403ebaf9f0171e9517f40e41\""}, c), true);
+	CHECK_EQ(c.scheme, std::string("digest"));
+	std::string h = digestAuthorization(c, "Mufasa", "Circle Of Life", "GET", "/dir/index.html", "0a4f113b", 1);
+	CHECK_EQ(h.find("response=\"6629fae49393a05397450978507c4ef1\"") != std::string::npos, true);
+	CHECK_EQ(h.find("nc=00000001") != std::string::npos, true);
+	CHECK_EQ(h.find("opaque=\"5ccc069c403ebaf9f0171e9517f40e41\"") != std::string::npos, true);
+	CHECK_EQ(h.find("Circle") == std::string::npos, true);	// the password itself is never in it
+	HttpChallenge bc;
+	CHECK_EQ(parseAuthChallenge({"Basic realm=\"COPS\""}, bc), true);
+	CHECK_EQ(bc.scheme, std::string("basic"));
+	CHECK_EQ(basicAuthorization("Aladdin", "open sesame"), std::string("Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="));
+	HttpChallenge none;
+	CHECK_EQ(parseAuthChallenge({"Bearer realm=\"x\"", "Digest realm=\"r\", nonce=\"n\", algorithm=SHA-256"}, none), false);
+	HttpChallenge stale;
+	CHECK_EQ(parseAuthChallenge({"Digest realm=\"r\", nonce=\"n2\", stale=TRUE"}, stale), true);
+	CHECK_EQ(stale.stale, true);
+
+	// whose host a login may go to
+	CHECK_EQ(sameOrigin("http://192.168.1.28:8080/opds", "http://192.168.1.28:8080/get/epub/1"), true);
+	CHECK_EQ(sameOrigin("http://Calibre.local/opds", "http://calibre.local:80/x"), true);
+	CHECK_EQ(sameOrigin("http://calibre.local/opds", "https://calibre.local/x"), false);
+	CHECK_EQ(sameOrigin("http://calibre.local/opds", "http://cdn.example/x"), false);
+	CHECK_EQ(sameOrigin("http://calibre.local/opds", "http://calibre.local@evil.example/x"), false);
+	CHECK_EQ(urlRequestTarget("http://h:8080/get/epub/1?x=1#f"), std::string("/get/epub/1?x=1"));
+	CHECK_EQ(urlRequestTarget("http://h"), std::string("/"));
+	CHECK_EQ(fillSearchTerms("/opds/search/{searchTerms}?l=1", "mary shelley"), std::string("/opds/search/mary%20shelley?l=1"));
+
+	// the kept list: a book whose file is gone loses its mark
+	const std::string T = "/tmp/bp-catalogs-test";
+	mkdir(T.c_str(), 0755);
+	{
+		std::ofstream(T + "/a.epub") << "PK";
+		CatalogGot got;
+		got.load(T + "/x.got");
+		got.set("urn:1", T + "/a.epub");
+		got.set("urn:2", T + "/gone.epub");
+		got.set("bad\tid", T + "/a.epub");
+		CatalogGot again;
+		again.load(T + "/x.got");
+		CHECK_EQ(again.path("urn:1"), T + "/a.epub");
+		CHECK_EQ(again.path("urn:2"), std::string(""));
+		CHECK_EQ(again.count(), 1);
+		CHECK_EQ(again.all().size(), (size_t)2);
+	}
+	std::remove((T + "/a.epub").c_str());
+	std::remove((T + "/x.got").c_str());
+	rmdir(T.c_str());
+}
+
 static void testOpds()
 {
 	// a Kavita-style navigation feed: prefixed Atom (the prefixes must not matter), a comment, entities, CDATA, an
@@ -17365,6 +17513,7 @@ int main()
 	testMangaDlRemove();
 	testMangaRepo();
 	testOpds();
+	testCatalogs();
 	testCbzWrite();
 	testPageBook();
 	testTextDoc();

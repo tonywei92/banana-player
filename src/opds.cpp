@@ -41,6 +41,10 @@ namespace bp
 		const char* const kAtomNs = "http://www.w3.org/2005/Atom";
 		const char* const kThrNs = "http://purl.org/syndicate/threading";
 		const char* const kPseNs = "http://vaemendis.net/opds-pse/ns";
+		// a book's facts (Calibre, Gutenberg, COPS write dc:language and dc:issued) and a feed's result count
+		const char* const kDcTermsNs = "http://purl.org/dc/terms/";
+		const char* const kDcElementsNs = "http://purl.org/dc/elements/1.1/";
+		const char* const kOpenSearchNs = "http://a9.com/-/spec/opensearch/1.1/";
 
 		bool isSpace(char c)
 		{
@@ -212,6 +216,19 @@ namespace bp
 			{
 				if (s[i] < '0' || s[i] > '9') return -1;
 				v = v * 10 + (s[i] - '0');
+			}
+			return v;
+		}
+
+		// a byte count (a link's length): up to 15 digits, anything else is -1
+		long long wholeLength(const std::string& s)
+		{
+			if (s.empty() || s.size() > 15) return -1;
+			long long v = 0;
+			for (char c : s)
+			{
+				if (c < '0' || c > '9') return -1;
+				v = v * 10 + (c - '0');
 			}
 			return v;
 		}
@@ -542,6 +559,128 @@ namespace bp
 		return "";
 	}
 
+	// ---- a book's formats (Books › Catalogs) ----
+
+	namespace
+	{
+		// the lower-cased extension of a URL's path ("" none), for a link whose type says only octet-stream
+		std::string hrefExt(const std::string& href)
+		{
+			std::string path = href.substr(0, href.find_first_of("?#"));
+			size_t slash = path.rfind('/'), dot = path.rfind('.');
+			if (dot == std::string::npos || (slash != std::string::npos && dot < slash)) return "";
+			std::string e = path.substr(dot + 1);
+			for (char& c : e) c = (char)std::tolower((unsigned char)c);
+			return e;
+		}
+
+		// an acquisition a reader may simply take: the plain one and open-access. Buy, borrow, sample and
+		// subscribe are a shop's, and lead to a page, not a file
+		bool freeAcquisition(const std::string& rel)
+		{
+			return iequals(rel, "http://opds-spec.org/acquisition") ||
+				iequals(rel, "http://opds-spec.org/acquisition/open-access");
+		}
+	}
+
+	OpdsFormat opdsBookFormat(const std::string& type, const std::string& href)
+	{
+		std::string t = type.substr(0, type.find(';'));
+		for (char& c : t) c = (char)std::tolower((unsigned char)c);
+		while (!t.empty() && t.back() == ' ') t.pop_back();
+		if (t == "application/epub+zip") return OpdsFormat::Epub;
+		if (t == "application/pdf") return OpdsFormat::Pdf;
+		if (t == "application/vnd.comicbook+zip" || t == "application/x-cbz") return OpdsFormat::Cbz;
+		if (t == "application/vnd.comicbook-rar" || t == "application/x-cbr") return OpdsFormat::Cbr;
+		if (t == "text/plain") return OpdsFormat::Txt;
+		// a server that names no real type (octet-stream, zip, none): the file's own extension says
+		if (t.empty() || t == "application/octet-stream" || t == "application/zip" || t == "application/x-rar-compressed")
+		{
+			std::string e = hrefExt(href);
+			if (e == "epub") return OpdsFormat::Epub;
+			if (e == "pdf") return OpdsFormat::Pdf;
+			if (e == "cbz") return OpdsFormat::Cbz;
+			if (e == "cbr") return OpdsFormat::Cbr;
+			if (e == "txt") return OpdsFormat::Txt;
+		}
+		return OpdsFormat::None;
+	}
+
+	const char* opdsFormatExt(OpdsFormat f)
+	{
+		switch (f)
+		{
+		case OpdsFormat::Epub: return "epub";
+		case OpdsFormat::Pdf: return "pdf";
+		case OpdsFormat::Cbz: return "cbz";
+		case OpdsFormat::Cbr: return "cbr";
+		case OpdsFormat::Txt: return "txt";
+		default: return "";
+		}
+	}
+
+	std::string opdsFormatName(const std::string& type, const std::string& href)
+	{
+		OpdsFormat f = opdsBookFormat(type, href);
+		std::string n;
+		if (f != OpdsFormat::None) n = opdsFormatExt(f);
+		else
+		{
+			// the ones a catalog lists that the readers don't open, by the names people know them by
+			std::string t = type.substr(0, type.find(';'));
+			for (char& c : t) c = (char)std::tolower((unsigned char)c);
+			if (t == "application/x-mobipocket-ebook") n = "mobi";
+			else if (t == "application/vnd.amazon.ebook" || t == "application/x-mobi8-ebook") n = "azw3";
+			else if (t == "application/x-fictionbook+xml") n = "fb2";
+			else if (t == "image/vnd.djvu") n = "djvu";
+			else if (t == "text/html" || t == "application/xhtml+xml") n = "html";
+			else if (t == "application/rtf") n = "rtf";
+			else n = hrefExt(href);
+		}
+		for (char& c : n) c = (char)std::toupper((unsigned char)c);
+		return n;
+	}
+
+	std::vector<OpdsLink> OpdsEntry::bookOffers() const
+	{
+		// one link per format the readers open, the best first (the order of OpdsFormat): EPUB keeps a book's
+		// text reflowed, a PDF is the printed page, a comic its pictures, a TXT the plain words
+		std::vector<std::pair<int, OpdsLink>> found;
+		for (const OpdsLink& l : links)
+		{
+			if (!freeAcquisition(l.rel)) continue;
+			OpdsFormat f = opdsBookFormat(l.type, l.href);
+			if (f == OpdsFormat::None) continue;
+			bool seen = false;
+			for (auto& o : found)
+				if (o.first == (int)f) seen = true;	// (Gutenberg lists two EPUBs: the first is its own pick)
+			if (!seen) found.emplace_back((int)f, l);
+		}
+		std::stable_sort(found.begin(), found.end(), [](const auto& a, const auto& b) { return a.first < b.first; });
+		std::vector<OpdsLink> out;
+		for (auto& o : found) out.push_back(o.second);
+		return out;
+	}
+
+	std::vector<std::string> OpdsEntry::formatNames() const
+	{
+		std::vector<std::string> out;
+		for (const OpdsLink& l : links)
+		{
+			if (!istarts(l.rel, "http://opds-spec.org/acquisition")) continue;
+			std::string n = opdsFormatName(l.type, l.href);
+			if (!n.empty() && std::find(out.begin(), out.end(), n) == out.end()) out.push_back(n);
+		}
+		return out;
+	}
+
+	bool OpdsEntry::isBook() const
+	{
+		for (const OpdsLink& l : links)
+			if (istarts(l.rel, "http://opds-spec.org/acquisition")) return true;
+		return false;
+	}
+
 	bool parseOpds(const std::string& xml, OpdsFeed& out)
 	{
 		if (xml.size() > kMaxInput) return false;
@@ -607,12 +746,17 @@ namespace bp
 					{
 						if (f.local == "id") feed.id = v;
 						else if (f.local == "title") feed.title = v;
+						else if (f.local == "totalResults") feed.total = wholeCount(v);
 					}
 					else if (prole == R_ENTRY && cur)
 					{
 						if (f.local == "id" && cur->id.empty()) cur->id = v;
 						else if (f.local == "title" && cur->title.empty()) cur->title = withoutStateMark(v);
 						else if (f.local == "updated" && cur->updated.empty()) cur->updated = v;
+						else if (f.local == "language" && cur->language.empty()) cur->language = v;
+						// dc:issued is the book's own date; Atom's published is when the catalog got it (a fallback)
+						else if (f.local == "issued") cur->issued = v;
+						else if (f.local == "published" && cur->issued.empty()) cur->issued = v;
 					}
 					break;
 				case R_NAME:
@@ -692,14 +836,31 @@ namespace bp
 				else
 				{
 					int parRole = st.back().role;
+					const bool dc = nsUri == kDcTermsNs || nsUri == kDcElementsNs;
 					if (parRole == R_FEED && atom)
 					{
 						if (local == "id" || local == "title") role = R_TEXT;
 						else if (local == "entry") role = R_ENTRY;
 					}
+					else if (parRole == R_FEED && nsUri == kOpenSearchNs && local == "totalResults") role = R_TEXT;
+					else if (parRole == R_ENTRY && dc && (local == "language" || local == "issued")) role = R_TEXT;
+					else if (parRole == R_ENTRY && atom && local == "category")
+					{
+						// a tag: complete on opening, its words in attributes (label when it has one, else term)
+						std::string label, term;
+						for (const Attr& a : attrs)
+						{
+							if (a.name == "label") label = trim(a.value);
+							else if (a.name == "term") term = trim(a.value);
+						}
+						std::string tag = !label.empty() ? label : term;
+						if (cur && !tag.empty() && cur->tags.size() < 32 &&
+						    std::find(cur->tags.begin(), cur->tags.end(), tag) == cur->tags.end())
+							cur->tags.push_back(tag);
+					}
 					else if (parRole == R_ENTRY && atom)
 					{
-						if (local == "id" || local == "title" || local == "updated") role = R_TEXT;
+						if (local == "id" || local == "title" || local == "updated" || local == "published") role = R_TEXT;
 						else if (local == "summary") role = R_SUMMARY;
 						else if (local == "content") role = R_CONTENT;
 						else if (local == "author") role = R_AUTHOR;
@@ -724,6 +885,7 @@ namespace bp
 						l.type = attrValue("type");
 						l.href = attrValue("href");
 						l.title = attrValue("title");
+						l.length = wholeLength(attrValue("length"));
 						for (const Attr& a : attrs)
 						{
 							std::string ap;
@@ -780,7 +942,11 @@ namespace bp
 		for (const OpdsLink& l : feedLinks)
 		{
 			if (feed.next.empty() && iequals(l.rel, "next")) feed.next = l.href;
-			if (feed.search.empty() && iequals(l.rel, "search")) feed.search = l.href;
+			if (feed.search.empty() && iequals(l.rel, "search"))
+			{
+				feed.search = l.href;
+				feed.searchType = l.type;
+			}
 			if (feed.start.empty() && iequals(l.rel, "start")) feed.start = l.href;
 			if (feed.up.empty() && iequals(l.rel, "up")) feed.up = l.href;
 		}

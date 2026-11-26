@@ -39,8 +39,9 @@ namespace bp
 	class MangaServerStore
 	{
 	public:
-		// <stateDir>/manga/servers.tsv and the key file beside it. stateDir "": nothing is kept (a test run).
-		bool load(const std::string& stateDir);
+		// <stateDir>/<folder>/servers.tsv and the key file beside it. stateDir "": nothing is kept (a test run).
+		// Books' catalogs keep the same shape in their own folder ("catalogs"), sealed with their own key.
+		bool load(const std::string& stateDir, const std::string& folder = "manga");
 		// Written beside and renamed over, readable by its owner only: the file holds sealed passwords.
 		bool save() const;
 
@@ -66,7 +67,8 @@ namespace bp
 		void parse(const std::string& text);
 		std::string serialize() const;
 
-		std::string dir_;	// the state folder; the file is in <dir>/manga
+		std::string dir_;	// the state folder; the file is in <dir>/<folder_>
+		std::string folder_ = "manga";
 		std::string key_;	// the sealing key (32 bytes), empty when there is none
 		int changes_ = 0;
 		std::vector<MangaServer> servers_;
