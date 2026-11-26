@@ -74,6 +74,8 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Search (new): L3 on every shell screen, the keyboard with live counts on the top screen, results grouped by kind, recent searches, nothing found, a card still being read; the dashboard's search box. Drawn: `search`, `search-results`.
 - Music by albums and artists (new): a rail section with Albums (a cover grid) and Artists (rows), an album's and an artist's page with Play and Shuffle, from the songs' tags; the dashboard's Music tab. Drawn: `music-albums`, `music-album`, `music-artists`. The index both read: components.md, Search and Music: the index.
 
+- Catalogs (OPDS) in Books (GitHub #22; designed 2026-11-26, not built): a third tab of Books, a catalog's form, its folders, books, search, a book's page, the download and its failures. Drawn: `books-catalogs`, `books-catalogs-empty` and thirteen `cat-*` screens. Spec: backlog.md › Catalogs (OPDS) in Books.
+
 ## Brought in line with the app, 0.7.34 to 0.9.6 (2026-11-26)
 
 The redesign shipped in 0.9.0 and the app moved on past the drawings. This pass read every commit from v0.7.34 to 0.9.6 and
@@ -139,6 +141,7 @@ connections list, not a folder. One screen was added: `files-playing`, Files aft
 | Extensions | wired | Rail › Extensions → Manage extensions → Manga settings; → Manga reader → B back to the list → Home; with none on (Empty state) → Manage extensions; from the rail while a video plays: the page with “Stops the video” on Manga’s row |
 | Search | wired | L3 on Home, Files, Music and Playlists → typing → results → a video, a song, an album, a book, a folder. A playlist result opens the playlist’s page |
 | Network | wired | Files → its places → the Network tab → Connections → Find → the form → keyboard → Save → a folder → a video buffering; a book copied first, the copy failing; a read-only folder and its alert; no Wi-Fi; no connection yet (Empty state). A connection’s More (Edit, Test, Delete) is a list in `keys` |
+| Books: catalogs (OPDS) | wired (not built) | Shelf → Catalogs → a catalog → its folders → its books → a book → Download → Read; Search → a book in no readable format; More → Edit, Remove; none saved → Add; no answer; sign-in refused; a download that fails |
 | Web dashboard | wired, both sides | Fresh Home (Y), Home › Send from phone, Quick settings or Settings → the page (QR, address, PIN) → a browser signs in → the phone’s Home → Files → a song → Now playing → Plays on: Handheld; or it plays there → Hold A / Play on… / the browser gone. The page off and with No Wi-Fi. The phone’s Music, Playlists and Books tabs are not drawn (Music’s two pages are minis under Music: Albums) |
 | Settings | wired | START → Settings → each of the ten groups (L2 / R2 go round) → Theme, which steps the page’s theme |
 | Quick settings | wired | F → Web dashboard, Incognito, Screen off now, Quit; Volume past 100% and the first time past 120% |

@@ -1,6 +1,6 @@
 # Components of the handheld redesign
 
-Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 210 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
+Every piece that appears on more than one screen of the redesign preview (redesign/preview.html, 225 screens), so each is coded once. Sizes are in the bottom panel's 640 x 480 units (top-panel components: the same units on the top panel). "Code" names the existing building block it maps to; status is one of: exists, reuse / exists, needs a variant / new.
 
 As built: the text below was brought in line with the app at 0.9.6 (2026-11-26); where a size or a key differs from an older drawing, the code (`src/kitlayout.h`, `src/ui_kit.*`) is what it says now. Lyrics (lyrics.md) is the one designed part not built.
 
