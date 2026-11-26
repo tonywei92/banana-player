@@ -170,7 +170,38 @@ namespace bp
 	{
 		std::string pkg;
 		if (!readText(opf, pkg)) return "";
-		return epubCoverFromPackage(pkg, opf);
+		std::string r = epubCoverFromPackage(pkg, opf);
+		if (!r.empty()) return r;
+		return guideCover(pkg);
+	}
+
+	// <guide><reference type="cover" href="..."/>: a picture, or the cover page whose first picture is the cover
+	std::string Epub::guideCover(const std::string& pkg)
+	{
+		HtmlDoc d;
+		d.parse(pkg);
+		for (const HtmlNode& ref : d.select("reference"))
+		{
+			if (lower(ref.attr("type")) != "cover") continue;
+			std::string href = ref.attr("href");
+			size_t hash = href.find('#');
+			if (hash != std::string::npos) href.resize(hash);
+			std::string r = epubResolve(opf, href);
+			if (r.empty()) continue;
+			if (isPageImage(r)) return r;
+			std::string x;
+			if (!readText(r, x)) continue;
+			HtmlDoc page;
+			page.parse(x);
+			for (const HtmlNode& n : page.select("img, image"))
+			{
+				std::string src = n.tag() == "img" ? n.attr("src") : n.attr("xlink:href");
+				if (src.empty()) src = n.attr("href");
+				std::string pic = epubResolve(r, src);
+				if (!pic.empty() && isPageImage(pic)) return pic;
+			}
+		}
+		return "";
 	}
 
 	std::string epubCoverFromPackage(const std::string& pkg, const std::string& opfName)

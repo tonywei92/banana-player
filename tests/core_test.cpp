@@ -18,6 +18,7 @@
 #include "comicinfo.h"
 #include "cbz.h"
 #include "pagebook.h"
+#include "bookcoverfile.h"
 #include "textdoc.h"
 #include "epub.h"
 #include "textsource.h"
@@ -6768,6 +6769,32 @@ static void testEpub()
 	// a package with none of it: nothing to find (the caller's fallback takes over)
 	CHECK_EQ(epubCoverFromPackage("<package><manifest><item id=\"x\" href=\"a.xhtml\"/></manifest></package>", "p.opf"),
 		std::string(""));
+
+	// the one cover extractor (the dashboard's and the handheld's): each convention finds its picture, and a novel
+	// the page-book route refuses still has its cover. Pixels decoded from the bytes tell which picture it was
+	{
+		struct Want { const char* file; uint8_t r, g, b; };
+		const Want wants[] = {{"cover-meta.epub", 255, 0, 0}, {"cover-prop.epub", 0, 128, 0}, {"cover-guide.epub", 255, 255, 0},
+			{"cover-first.epub", 128, 0, 128}};
+		for (const Want& w : wants)
+		{
+			BookCover bc;
+			CHECK_EQ(findBookCover(B + w.file, 240, bc), true);
+			PageImage px = decodePage(bc.bytes.data(), bc.bytes.size(), 60);
+			CHECK_EQ(px.ok(), true);
+			if (px.ok()) CHECK_EQ(px.rgba[0] == w.r && px.rgba[1] == w.g && px.rgba[2] == w.b, true);
+		}
+		BookCover none;
+		CHECK_EQ(findBookCover(B + "cover-none.epub", 240, none), false);
+		CHECK_EQ(findBookCover(B + "comic.epub", 240, none), true);
+		CHECK_EQ(findBookCover(B + "novel.epub", 240, none), true);
+		if (isPageBookName("a.pdf"))
+		{
+			BookCover pdf;
+			CHECK_EQ(findBookCover(B + "two.pdf", 120, pdf), true);
+			CHECK_EQ(pdf.drawn.ok() && pdf.drawn.w == 120, true);
+		}
+	}
 
 	Epub n;
 	CHECK_EQ(n.open(B + "novel.epub"), true);

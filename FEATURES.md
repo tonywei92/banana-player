@@ -288,6 +288,7 @@ cover with how far in; **Shelf** is every book, by name. Both are five across. *
 them; Books opens on Reading now while a book is in progress, else on the Shelf (back from a reader, on the tab you left). **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
 comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
 
+Covers come from one extractor (`src/bookcoverfile.cpp`), the dashboard's and the handheld's alike: an EPUB's cover image (EPUB 3 cover-image, EPUB 2 cover meta, the guide's cover page), else its first picture, novels included; a comic's first page; a PDF's first page.
 A book with no cover of its own (a TXT, an EPUB or PDF without one, a catalog entry) gets one drawn from its title
 (`src/bookcover.h`): one of eight muted colours picked by a hash of the title (case and edge spaces ignored), the title in
 large type, the author under it where known (catalogs), the format's mark in the corner. The same title looks the same on

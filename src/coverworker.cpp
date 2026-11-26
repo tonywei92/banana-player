@@ -1,5 +1,5 @@
 #include "coverworker.h"
-#include "epub.h"
+#include "bookcoverfile.h"
 #include "pagebook.h"
 #include "pagedecode.h"
 #include "web/probe.h"
@@ -55,29 +55,10 @@ namespace bp
 		// an EPUB's own cover image (else its first picture). A TXT has none — the drawn sleeve is its answer
 		PageImage bookCover(const std::string& path, int w)
 		{
-			std::string err;
-			if (isPageBookName(path))
-			{
-				auto book = openPageBook(path, err);
-				return book ? bookPage(*book, 0, w) : PageImage{};
-			}
-			std::string tail = path.size() > 5 ? path.substr(path.size() - 5) : "";
-			for (char& c : tail) c = (char)std::tolower((unsigned char)c);
-			if (tail == ".epub")
-			{
-				Epub e;
-				if (!e.open(path)) return {};
-				std::string name = e.coverImage();
-				if (name.empty())
-				{
-					auto pics = e.pictures();
-					if (!pics.empty()) name = pics.front();
-				}
-				std::vector<uint8_t> bytes;
-				if (name.empty() || !e.read(name, bytes)) return {};
-				return decodePage(bytes.data(), bytes.size(), w);
-			}
-			return {};
+			BookCover c;
+			if (!findBookCover(path, w, c)) return {};
+			if (c.drawn.ok()) return c.drawn;
+			return decodePage(c.bytes.data(), c.bytes.size(), w);
 		}
 
 		// ---- Match album art's cache (artbackdrop.h: <dir>/artbg/<fnv64>.bg) ----

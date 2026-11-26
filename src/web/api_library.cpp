@@ -17,6 +17,7 @@
 #include "pagebook.h"
 #include "pagedecode.h"
 #include "epub.h"
+#include "bookcoverfile.h"
 #include "videocache.h"
 #include "ui_docs.h"
 #include "ui_mediaart.h"
@@ -91,35 +92,15 @@ namespace bp
 		// PDF's first page drawn. false: the book has none (the page keeps its drawn sleeve)
 		bool bookCoverBytes(const std::string& path, std::string& bytes, std::string& mime)
 		{
-			std::string low = path.substr(path.rfind('.') == std::string::npos ? path.size() : path.rfind('.'));
-			for (char& c : low) c = (char)tolower((unsigned char)c);
-			std::vector<uint8_t> b;
-			if (low == ".epub")
+			BookCover c;
+			if (!findBookCover(path, 240, c)) return false;
+			if (c.drawn.ok())
 			{
-				Epub e;
-				if (!e.open(path)) return false;
-				std::string name = e.coverImage();
-				if (name.empty()) { auto pics = e.pictures(); if (!pics.empty()) name = pics.front(); }
-				if (name.empty() || !e.read(name, b)) return false;
+				bytes = bmpOf(c.drawn);
+				mime = "image/bmp";
+				return true;
 			}
-			else if (isPageBookName(path))
-			{
-				std::string err;
-				auto book = openPageBook(path, err);
-				if (!book || book->pages().empty()) return false;
-				if (book->rendered())
-				{
-					PageImage img = book->render(0, 240, 2000000);
-					if (!img.ok()) return false;
-					bytes = bmpOf(img);
-					mime = "image/bmp";
-					return true;
-				}
-				if (!book->read(book->pages()[0], b)) return false;
-			}
-			else return false;
-			if (b.empty() || b.size() > (size_t)16 << 20) return false;
-			bytes.assign((const char*)b.data(), b.size());
+			bytes.assign((const char*)c.bytes.data(), c.bytes.size());
 			mime = sniffMime(bytes);
 			return true;
 		}

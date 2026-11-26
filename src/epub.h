@@ -44,6 +44,7 @@ namespace bp
 		std::string coverImage();
 
 	private:
+		std::string guideCover(const std::string& pkg);	// (coverImage's last resort: the guide's cover reference)
 		Cbz zip;
 		std::string err, opf, opfDir, bookTitle, navDoc, ncxDoc;
 		bool fixedLayout = false;
