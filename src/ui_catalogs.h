@@ -48,9 +48,10 @@ namespace bp
 		void head(ShellHead& h) const;	// the title, crumb and hints of the view shown
 		bool atTop() const { return view() == V_LIST; }	// the tab itself (Books' tabs are drawn over it)
 		SmoothList* smoothList();
-		// the top panel while a book's page is open: its cover drawn from the title, the author, the title and the
-		// whole summary (false: the tab shows nothing of its own up there)
-		bool topPane(PaneSpec& out) const;
+		// the top panel follows the tab in every view (the list, a folder, a book grid, a book's page), so the Shelf's
+		// highlighted book never shows there; not const: a picture not yet fetched is asked for
+		bool topPane(PaneSpec& out);
+		void bookPane(PaneSpec& out, const OpdsEntry& e, const std::string& base);
 
 		// ---- the saved catalogs ----
 		MangaServerStore store;

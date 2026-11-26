@@ -333,7 +333,7 @@ catalog… — Remove asks, and says the books stay; the right column Add a cata
 - **Covers**: a book's own picture from the catalog (its thumbnail in the grid, the larger cover on the book page),
   fetched only for what is on screen, only from the catalog's own host (with its sign-in), kept under
   `<state>/cache/catalog-covers/` by a hash of its address; the drawn title cover stands in until it arrives and where
-  none comes. The top screen, while a book's page is open: its cover, author, title and the whole summary (wrapped
+  none comes. The top screen follows the tab in every view, never the Shelf's book: on the list the catalog's name, address, sign-in and books on the card (an explanation on Add a catalog and on a found server); in a folder feed its title and book count; on a grid or results the highlighted book as below; while loading or failed the catalog's name and what happened. On a book's page: its cover, author, title and the whole summary (wrapped
   down to the foot), with A and X.
 - **A book's page**: its cover, author, year · language · tags, four lines of the summary; the formats as chips (only
   when there are several: EPUB, then PDF, CBZ, CBR, TXT; ◀/▶ choose, each with its size); **A** "Download the EPUB",
@@ -349,7 +349,7 @@ catalog… — Remove asks, and says the books stay; the right column Add a cata
   safe for exFAT.
 - **Sign-in**: Basic and Digest (Calibre's default); the login is sent only once the catalog asks, and only to the
   catalog's own host: a book's link on another host is fetched without it. Passwords never reach the log.
-- Not yet: adding a catalog from the web dashboard, OPDS 2.0; the top screen shows the drawn cover, not the picture.
+- Not yet: adding a catalog from the web dashboard, OPDS 2.0.
 
 ## Playing while you browse
 

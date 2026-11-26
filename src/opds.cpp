@@ -39,6 +39,8 @@ namespace bp
 		const size_t kMaxJsonDepth = 64;
 
 		const char* const kAtomNs = "http://www.w3.org/2005/Atom";
+		// the Atom Threading Extensions' real URI (what Calibre, Gutenberg and Kavita write); kThrNs below is the older guess
+		const char* const kThrRealNs = "http://purl.org/syndication/thread/1.0";
 		const char* const kThrNs = "http://purl.org/syndicate/threading";
 		const char* const kPseNs = "http://vaemendis.net/opds-pse/ns";
 		// a book's facts (Calibre, Gutenberg, COPS write dc:language and dc:issued) and a feed's result count
@@ -898,7 +900,7 @@ namespace bp
 									break;
 								}
 							// thr:count and pse:count say the same thing; a bare count from a sloppy server too
-							if (ap.empty() || ac == kThrNs || ac == kPseNs) l.count = wholeCount(a.value);
+							if (ap.empty() || ac == kThrNs || ac == kThrRealNs || ac == kPseNs) l.count = wholeCount(a.value);
 						}
 						if (parRole == R_FEED) feedLinks.push_back(std::move(l));
 						else if (cur && cur->links.size() < kMaxEntries) cur->links.push_back(std::move(l));

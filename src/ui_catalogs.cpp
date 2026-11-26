@@ -6,6 +6,7 @@
 #include "mediaindex.h"
 #include "ui_internal.h"
 #include "ui_kit.h"
+#include "ui_mediaart.h"
 #include "ui_smoothlist.h"
 #include "theme.h"
 #include <algorithm>
@@ -2128,20 +2129,121 @@ namespace bp
 			ui.drawTextMid(ul[i], F_I12, DIM, l.under.x, l.under.y + 10 + (int)i * 18, l.under.w);
 	}
 
-	bool Ui::Books::Catalogs::topPane(PaneSpec& out) const
+	// a book's pane (the book page's and a grid's highlighted book): its picture when fetched, else the cover drawn from
+	// the title, the author, the title and the whole summary
+	void Ui::Books::Catalogs::bookPane(PaneSpec& out, const OpdsEntry& e, const std::string& base)
 	{
-		if (view() != V_BOOK) return false;
-		std::vector<std::string> names = book.formatNames();
+		std::vector<std::string> names = e.formatNames();
+		std::string have = onCard(e.id);
 		out.cover = true;
-		out.genTitle = book.title;
-		out.genAuthor = book.author;
-		out.genFmt = names.empty() ? "" : names[0];
-		out.label = book.author.empty() ? "Book" : book.author;
-		out.title = book.title;
-		out.text = book.summary.empty() ? "No summary." : book.summary;
+		std::string file = coverFile(e, base, true);
+		if (!file.empty() && ui.mediaArt) out.coverArt = ui.mediaArt->paneCover(file, true);
+		if (!out.coverArt)
+		{
+			out.genTitle = e.title;
+			out.genAuthor = e.author;
+			out.genFmt = names.empty() ? "" : names[0];
+		}
+		out.label = e.author.empty() ? "Book" : e.author;
+		out.title = e.title;
+		out.text = e.summary.empty() ? "No summary." : e.summary;
 		out.wholeText = true;
-		out.keys = {{"A", onCard(book.id).empty() ? "Download" : "Read"}, {"X", "More"}};
-		out.key = "catbook|" + book.id + "|" + book.title + "|" + std::to_string(book.summary.size()) + "|" + (onCard(book.id).empty() ? "" : "got");
+		out.keys = {{"A", have.empty() ? "Download" : "Read"}, {"X", "More"}};
+		out.key = "catbook|" + e.id + "|" + e.title + "|" + std::to_string(e.summary.size()) + "|" + (have.empty() ? "" : "got") +
+			(out.coverArt ? "|art" : "");
+	}
+
+	// the other views: a label, a title, a sentence (the catalog list's and a folder's; the spec's `top:` of each screen)
+	static void catInfoPane(PaneSpec& out, const std::string& key, const std::string& label, const std::string& title,
+		const std::string& text, std::vector<std::pair<std::string, std::string>> rows = {},
+		std::vector<std::pair<std::string, std::string>> keys = {})
+	{
+		out.label = label;
+		out.title = title;
+		out.text = text;
+		out.rows = std::move(rows);
+		out.keys = std::move(keys);
+		out.key = key + "|" + label + "|" + title + "|" + text;
+		for (const auto& r : out.rows) out.key += "|" + r.first + r.second;
+	}
+
+	bool Ui::Books::Catalogs::topPane(PaneSpec& out)
+	{
+		if (!loaded) load();	// the pane can be asked before the tab's first draw
+		const MangaServer* s = openCatalog();
+		const std::string name = s ? s->name : "Catalog";
+		if (view() == V_BOOK)
+		{
+			bookPane(out, book, bookBase);
+			return true;
+		}
+		if (view() == V_FORM)
+		{
+			catInfoPane(out, "catform", "Books \xC2\xB7 Catalogs", formId.empty() ? "Add a catalog" : "Edit catalog",
+				"Where the catalog answers, as its app shows it. Test says at once whether it is one.");
+			return true;
+		}
+		if (view() == V_FEED)
+		{
+			const Feed& f = feeds.back();
+			if (f.loading)
+			{
+				catInfoPane(out, "catload", name, f.search ? "Searching\xE2\x80\xA6" : "Opening\xE2\x80\xA6", f.title);
+				return true;
+			}
+			if (f.error != E_NONE || f.feed.entries.empty())
+			{
+				std::string line = f.error == E_REACH ? "Can\xE2\x80\x99t reach it" : f.error == E_NOT_CATALOG ? "Not a catalog"
+					: f.error == E_SIGN_IN ? "Not signed in" : f.search ? "Nothing found" : "Nothing here";
+				catInfoPane(out, "caterr", name, line, f.error == E_NONE ? f.title : f.why);
+				out.labelDanger = f.error != E_NONE;
+				return true;
+			}
+			const bool searchRow = !f.books() && canSearch() && !f.search && feeds.size() == 1;
+			if (f.cursor < 0 || f.cursor >= (int)f.feed.entries.size())
+			{
+				catInfoPane(out, "catsearch", name, searchRow ? "Search" : f.title,
+					searchRow ? "Find a book by its title or author, with the catalog's own search." : "");
+				return true;
+			}
+			const OpdsEntry& e = f.feed.entries[f.cursor];
+			if (e.isBook())
+			{
+				bookPane(out, e, f.url);
+				return true;
+			}
+			int n = -1;
+			for (const OpdsLink& l : e.links)
+				if (l.count >= 0) n = l.count;
+			std::vector<std::pair<std::string, std::string>> rows;
+			if (n >= 0) rows.push_back({"Books", std::to_string(n)});
+			catInfoPane(out, "catfolder", name, e.title, e.summary.empty() ? "A folder of the catalog." : e.summary, rows);
+			return true;
+		}
+		// the catalog list
+		std::vector<MangaServer> v = saved();
+		if (v.empty() || listCursor >= (int)v.size())
+		{
+			std::vector<FoundCatalog> offer = offered();
+			if (foundCursor < 0 || foundCursor >= (int)offer.size() || !v.empty())
+			{
+				catInfoPane(out, "catadd", "Catalogs", v.empty() ? "Books from a catalog" : "Add a catalog",
+					"A catalog is a library on your network or the web (Calibre, Calibre-Web, COPS, Kavita, Project Gutenberg). "
+					"Its books are listed here and saved to Books on the card.");
+				return true;
+			}
+			const FoundCatalog& c = offer[foundCursor];
+			catInfoPane(out, "catfound", "Found on this network", c.name,
+				"A catalog announcing itself on this network. A opens the Add form with its address filled in.",
+				{{"Address", hostOf(c.url)}});
+			return true;
+		}
+		const MangaServer& c = v[listCursor];
+		catInfoPane(out, "catsaved" + c.id, "Catalog", c.name, "",
+			{{"Address", hostOf(c.url)},
+			 {"Sign-in", c.user.empty() ? (c.kind == "kavita" ? "Key saved" : "None") : c.user},
+			 {"On the card", std::to_string(got(c.id).count()) + " books"}},
+			{{"A", "Open"}, {"X", "More"}});
 		return true;
 	}
 

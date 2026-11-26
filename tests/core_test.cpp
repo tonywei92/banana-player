@@ -2989,6 +2989,14 @@ static void testCatalogs()
 	// a cover's cache name: the URL's hash, stable and apart for another URL
 	CHECK_EQ(coverCacheName("http://h/c/1").size(), (size_t)16);
 	CHECK_EQ(coverCacheName("http://h/c/1"), coverCacheName("http://h/c/1"));
+	{
+		// a folder's count, written with the Threading Extensions' real URI
+		OpdsFeed f;
+		CHECK_EQ(parseOpds("<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:thr=\"http://purl.org/syndication/thread/1.0\"><id>x</id><title>t</title>"
+			"<entry><id>n</id><title>New</title><link rel=\"subsection\" href=\"/n\" thr:count=\"1204\"/></entry></feed>", f), true);
+		CHECK_EQ(f.entries.size(), (size_t)1);
+		CHECK_EQ(f.entries[0].links[0].count, 1204);
+	}
 	CHECK_EQ(coverCacheName("http://h/c/1") != coverCacheName("http://h/c/2"), true);
 	std::remove((T + "/a.epub").c_str());
 	std::remove((T + "/x.got").c_str());
