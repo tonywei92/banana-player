@@ -182,7 +182,7 @@ namespace bp
 
 	std::vector<Ui::Hint> Ui::Books::hintList(const Player&) const
 	{
-		return {{"A", "Open"}, {"X", "More"}, {"L/R", "Tab"}, {"B", "Home"}};
+		return {{"A", "Open"}, {"X", "More"}, {"L/R", "Tab"}, {"B", "Quit"}};
 	}
 
 	void Ui::Books::accentFirst(Kit::Empty& e, const std::vector<std::string>& lines, const char* word) const

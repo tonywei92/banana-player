@@ -571,7 +571,7 @@ namespace bp
 			return {{"A", "Open"}, {"Y", "Random"}, {"X", "More"}, {"L/R", "View"}, {"B", ui.search->visiting() ? "Results" : folderAt.empty() ? "Home" : "Up"}};
 		// the views (the mock-up's music-albums and music-artists)
 		// (L3 Search left out for Y Random: six didn't fit, and the rail shows Search's own key)
-		return {{"A", "Open"}, {"Y", "Random"}, {"X", "More"}, {"L/R", "View"}, {"B", "Home"}};
+		return {{"A", "Open"}, {"Y", "Random"}, {"X", "More"}, {"L/R", "View"}, {"B", "Quit"}};
 	}
 
 	Ui::ShellHead Ui::Music::head(const Player& p) const

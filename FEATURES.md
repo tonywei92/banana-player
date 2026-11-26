@@ -106,7 +106,7 @@ Every section now shares one frame: a **rail** down the left with a **Search** k
 
 **The on-screen keyboard** (a connection's fields, a name, a repository address, Find) is the same keyboard Search uses, over the whole panel. A **number row** (1 to 0) is always the top row of keys, whatever else shows, over the three rows of letters. Its bottom row is words, each with its button's cap: **Shift** (**Y**), **123** (**L3**), **#+=**, **Space** (**X**), **Clear** (**L2**), **Del** (**B**) and **Done** (**START**). Shift is a toggle: press it and it stays lit, the letters shown and typed as capitals, until you press it again; **123** and **#+=** (the common marks; the braces and rarer marks) stay lit the same way, and pressing the lit one brings the letters back (**L3** or **SELECT** steps letters, 123, #+= round). **Clear** empties the field. **A** types, **B** deletes (on an empty field it closes, keeping what was there), **L / R** move the caret; a tap does the same on the keys. A password shows stars; a port takes digits only. Search's keyboard is this one less **#+=**.
 **L2/R2** step the sections and wrap (they pass Search and the Now playing key by), or tap one; the D-pad stays in the page. The cells are
-52 units tall, 45 with six sections so all show at once; when they still don't fit, a finger drag scrolls them
+52 units tall, 45 with seven or more so all show at once; when they still don't fit, a finger drag scrolls them
 (Search, the Now playing key and Settings stay put). Arriving at a section starts and stops nothing, and no cell
 carries a warning: **Extensions** is one section for every extension that is on, and the Manga reader is a row of its
 page. The header carries the back key, the section's title and where you are, the status marks and **X** (More); its
@@ -1612,15 +1612,15 @@ own headers while the tile is on screen, kept in a cache on the card; a plain co
 lists (**A** cycles off → include → exclude), text fields and groups as rows, each showing its current value, with
 **Reset** back to the defaults and **Apply** to run the search again from page 1 — the values stay with that source
 while the app runs. **A** opens a series, **B** goes back to Browse's rows, and an error under the grid
-offers **A: Try again**. A source's series page is laid out like a card series': **Resume** (**A**), **Download**
-(**R**), **Refresh** (**L**), **Info** and the heart (**Y**) in one row of buttons, then the chapters with their read marks,
+offers **A: Try again**. A source's series page is laid out like a card series': **Resume** (**A**), **Get**
+(**R**), **Info** and the heart (**Y**) in one row of buttons (**L** checks for new chapters), then the chapters with their read marks,
 **X** to mark one read or unread, **A** to read it. **Info** shows the series' description, author and status in a
 dialog (**A**, **B** or a touch closes it); the page itself keeps only the source, the counts and the author line. **Resume** keeps the series' own place, and the heart keeps it in
 your library — a source's series starts outside it.
 
 **A source series on the card.** The details and the chapter list are kept when they're fetched, under
 `manga/series/` in the state folder, named by the series' hashed id (never its address). Opening the series shows them
-at once and asks the source nothing; **L Refresh** is the only thing that asks again, and it replaces the kept list
+at once and asks the source nothing; **L Check** is the only thing that asks again, and it replaces the kept list
 when the answer comes. A check that fails keeps the list on screen and says so in a short note. Once the list is 6 hours
 old or more, the details line under the title ends **· Checked 7h ago · L** (a fresh one adds nothing, and nothing is
 ever asked by itself). An extension's series doesn't start the manga engine when it opens either: that
@@ -1632,10 +1632,7 @@ it answers puts the series page in a waiting state: a spinner, **Starting the ma
 ready**; the top screen says the same, large. Then **Checking this series…**, **Getting the chapters…**, and the
 chapter opens without another press. **B** (or the header's back) cancels and the page is as it was; no other key acts
 meanwhile. If the engine doesn't start, or isn't installed, a note says so. A **downloaded** chapter never waits: when
-the chapter Resume opens (or the one picked) is on the card, it opens at once, engine or not. To shorten the wait, the
-engine is started ahead on **Home**, saying nothing, when the last thing read in Manga was an extension's series within
-the last three days and nothing is playing (a video can't share its memory; a song's visualizer would stutter under the
-start); once a run, and an engine nobody then uses stops by itself after five minutes.
+the chapter Resume opens (or the one picked) is on the card, it opens at once, engine or not.
 
 **Sources.** **X** on Browse opens its own page (its header says **Sources**; **B** goes back to Browse). Its lists step
 with **L/R** (**L2/R2** are the sections): **Installed**, **Available** and **Repositories**. **Y**

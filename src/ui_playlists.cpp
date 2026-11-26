@@ -322,7 +322,7 @@ namespace bp
 			if (moving) return {{"UP/DOWN", "Move"}, {"LEFT/RIGHT", "Page"}, {"L2/R2", "Top/bottom"}, {"A", "Put here"}, {"B", "Cancel"}};
 			return {{"A", "Tick"}, {"SELECT", "All"}, {"Y", "Move"}, {"X", "More"}, {"B", "Done"}};
 		}
-		if (ui.browse->browseDir == PLROOT) return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", "Home"}};
+		if (ui.browse->browseDir == PLROOT) return {{"A", "Open"}, {"X", "More"}, {"L/R", "View"}, {"L3", "Search"}, {"B", "Quit"}};
 		if (!plLoaded || plCur.entries.empty())
 			return ui.plIsLiked(plCur.file) ? std::vector<Hint>{{"A", "Browse Files"}, {"B", "Playlists"}, {"L2/R2", "Sections"}}
 				: std::vector<Hint>{{"A", "Add files"}, {"Y", "Add folder"}, {"B", "Playlists"}, {"L2/R2", "Sections"}};
