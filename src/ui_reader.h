@@ -32,6 +32,7 @@ namespace bp
 			// Referer...); path is then the chapter's id (the cache's key, never opened). Empty: path is a folder or a CBZ
 			std::vector<std::string> pageUrls;
 			std::vector<std::pair<std::string, std::string>> pageHeaders;
+			bool comicDirection = false;	// the series has no direction of the user's: a CBZ's ComicInfo may set right-to-left
 		};
 		MangaReadRequest mangaRead;	// (takeMangaRead)
 		bool takeMangaRead(MangaReadRequest& out);

@@ -81,7 +81,7 @@ Presses are counted from Home with the cursor on Files, the reader already on. "
 
 ### P3: polish
 
-**F13. Vertical scroll is the default for everything.** Paged, right-to-left manga is the common case, and `ComicInfo.xml`'s `Manga=YesAndRightToLeft` is parsed but never sets the mode. *Fix:* honour ComicInfo; otherwise pick by shape on first open (pages taller than about 2.5 × their width: Vertical scroll; else Right to left) until the reader chooses. Judge on the handheld. *Effort S-M.* `src/comicinfo.cpp:272`, `src/reader.cpp:233`, `src/settings.cpp:659`.
+**F13 (ComicInfo half done 2026-11-26; shape-guess not). Vertical scroll is the default for everything.** Paged, right-to-left manga is the common case, and `ComicInfo.xml`'s `Manga=YesAndRightToLeft` is parsed but never sets the mode. *Fix:* honour ComicInfo; otherwise pick by shape on first open (pages taller than about 2.5 × their width: Vertical scroll; else Right to left) until the reader chooses. Judge on the handheld. *Effort S-M.* `src/comicinfo.cpp:272`, `src/reader.cpp:233`, `src/settings.cpp:659`.
 
 **F14. A mode change in Fullscreen has no label.** After **X** the page re-lays and nothing names the new mode (only Book sets the tag). *Fix:* a 1.5 s chip: **Right to left**. *Effort S.* `src/ui_manga.cpp:904`, `:2604-2625`.
 

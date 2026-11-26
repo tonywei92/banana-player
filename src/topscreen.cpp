@@ -385,7 +385,7 @@ namespace bp
 						readerFetch.begin(mangaNet, &cache, &reader, rq.pageUrls, rq.pageHeaders, limit);
 				}
 			}
-			else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode, rq.fit))
+			else if (!reader.open(rq.path, rq.archive, rq.page, w, h, rq.mode, rq.fit, rq.comicDirection))
 				ui.pageReader->readerStatus.error = reader.error();
 			// the series' own Book (or off), each chapter: it turns the pages as they are decoded
 			if (reader.isOpen()) reader.command(MangaReader::Book, rq.book, (int64_t)now);

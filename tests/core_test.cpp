@@ -3820,6 +3820,17 @@ static void testMangaUiLogic()
 	}
 	CHECK_EQ(mangaResume({}).chapter, -1);
 	{
+		// ComicInfo's right-to-left: used only while the user has chosen no direction for the series
+		CHECK_EQ(mangaOpenMode(MANGA_STRIP, false, true), MANGA_RTL);
+		CHECK_EQ(mangaOpenMode(MANGA_LTR, false, true), MANGA_RTL);
+		CHECK_EQ(mangaOpenMode(MANGA_LTR, true, true), MANGA_LTR);	// the user's choice wins
+		CHECK_EQ(mangaOpenMode(MANGA_STRIP, true, true), MANGA_STRIP);
+		CHECK_EQ(mangaOpenMode(MANGA_STRIP, false, false), MANGA_STRIP);	// no word from ComicInfo: the setting
+		ComicInfo ci;
+		CHECK_EQ(parseComicInfo("<ComicInfo><Manga>YesAndRightToLeft</Manga></ComicInfo>", ci) && ci.rightToLeft, true);
+		CHECK_EQ(parseComicInfo("<ComicInfo><Manga>Yes</Manga></ComicInfo>", ci) && !ci.rightToLeft, true);
+	}
+	{
 		// the bulk read marks: the sets and the label's state
 		CHECK_EQ(mangaMarkIndices(MangaMarkSet::Previous, 3, 6), (std::vector<int>{0, 1, 2}));
 		CHECK_EQ(mangaMarkIndices(MangaMarkSet::Previous, 0, 6).empty(), true);

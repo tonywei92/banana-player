@@ -388,6 +388,7 @@ namespace bp
 		// paths, so progress and the store never see a machine's cache folder
 		ui.pageReader->mangaRead = {mangaNetSeriesPath, mangaNetSeriesTitle, c.path, c.title, localPath, c.archive, mangaNetPendPage,
 			mangaNetPendMode, mangaNetPendFit};
+		ui.pageReader->mangaRead.comicDirection = !mangaModeChosen(mangaNetSeriesPath);
 		// its folder marked as just used (the cache's oldest go first), then the cache held under the cap
 		{
 			std::string item = c.archive ? localPath.substr(0, localPath.rfind('/')) : localPath;

@@ -716,6 +716,7 @@ namespace bp
 		ui.pageReader->mangaReadChapterTitle = c.title;
 		ui.pageReader->mangaRead = {mangaSeriesId, s.title, c.path, c.title, c.path, c.archive, std::max(0, page0), mangaModeFor(mangaSeriesId, p),
 			p.settings.mangaFit};
+		ui.pageReader->mangaRead.comicDirection = !mangaModeChosen(mangaSeriesId);
 		// the status still holds the chapter before: its numbers aren't this chapter's, so only a change records
 		mangaProgPage = ui.pageReader->readerStatus.page;
 		mangaProgPages = ui.pageReader->readerStatus.pages;
@@ -3238,6 +3239,13 @@ namespace bp
 		std::string note = ui.lightNote(p);
 		keyOf(lay::MRK_LIGHT, &G_SUN, note.empty() ? "Light" : note, "", !note.empty());
 		keyOf(lay::MRK_NEXT, &G_NEXT, "", "R2");
+	}
+
+	bool Ui::Manga::mangaModeChosen(const std::string& seriesId) const
+	{
+		const MangaSeries* ms = mangaStore ? mangaStore->series(seriesId) : nullptr;
+		int mode = 0, book = 0;
+		return ms && parseMangaReadingMode(ms->readingMode, mode, book);
 	}
 
 	int Ui::Manga::mangaModeFor(const std::string& seriesId, const Player& p) const

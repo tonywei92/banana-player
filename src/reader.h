@@ -34,8 +34,9 @@ namespace bp
 		bool init(bool gles, Uint32 wakeEvent);
 		// a chapter at a page (0-based); fit: MANGA_FIT_* (the Strip always fits width); false (error() says why)
 		// when it can't be listed
+		// comicDirection: the user chose no direction for this series, so an archive's ComicInfo may open it right-to-left
 		bool open(const std::string& path, bool archive, int page, int viewW, int viewH, int mode = MANGA_STRIP,
-			int fit = MANGA_FIT_PAGE);
+			int fit = MANGA_FIT_PAGE, bool comicDirection = false);
 		// A chapter from a source or a server: its pages' URLs, in order, and the headers they need. files[i] is the
 		// page's cache path (the cache's key is the URL), so a page not fetched yet is "waiting": no decode job is
 		// queued for it until its file is there. chapterId is only the chapter's name in the log.

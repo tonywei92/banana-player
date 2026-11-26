@@ -42,6 +42,11 @@ namespace bp
 	std::vector<int> mangaMarkIndices(MangaMarkSet set, int focus, int n);
 	bool mangaAllRead(const std::vector<MangaChapterMark>& chapters);
 
+	// The reading mode a chapter opens in: `mode` (the series' own choice, else the setting's), except that when the
+	// series has no direction chosen by the user (userChose false) a chapter whose ComicInfo says right-to-left
+	// opens right-to-left. The user's own choice always wins.
+	int mangaOpenMode(int mode, bool userChose, bool comicRtl);
+
 	// "Chapter 12" as "Ch. 12", and a bare title gets its "Ch. " (the History row and the Resume key keep it short)
 	std::string mangaChapterShort(const std::string& title);
 

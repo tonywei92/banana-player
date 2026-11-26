@@ -105,6 +105,11 @@ namespace bp
 		return true;
 	}
 
+	int mangaOpenMode(int mode, bool userChose, bool comicRtl)
+	{
+		return !userChose && comicRtl ? MANGA_RTL : mode;
+	}
+
 	std::string mangaChapterShort(const std::string& title)
 	{
 		std::string ch = title;

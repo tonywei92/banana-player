@@ -357,6 +357,7 @@ namespace bp
 		// archive: the reader opens it through cbz.h, no page URLs and so no network
 		ui.pageReader->mangaRead = {seriesId, seriesTitle, chapterId, chapterTitle, path, true, std::max(0, page0),
 			mangaModeFor(seriesId, p), p.settings.mangaFit};
+		ui.pageReader->mangaRead.comicDirection = !mangaModeChosen(seriesId);
 		mangaProgPage = ui.pageReader->readerStatus.page;
 		mangaProgPages = ui.pageReader->readerStatus.pages;
 		mangaReadLive = false;

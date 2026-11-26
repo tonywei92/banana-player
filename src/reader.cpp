@@ -4,6 +4,7 @@
 #include "readerfetchplan.h"
 #include "imagesize.h"
 #include "manga_ui_logic.h"
+#include "comicinfo.h"
 #include "stickscroll.h"
 #include <algorithm>
 #include <cmath>
@@ -147,7 +148,7 @@ namespace bp
 		}
 	}
 
-	bool MangaReader::open(const std::string& path, bool isArchive, int page, int w, int h, int m, int f)
+	bool MangaReader::open(const std::string& path, bool isArchive, int page, int w, int h, int m, int f, bool comicDirection)
 	{
 		close();
 		err.clear();
@@ -160,6 +161,13 @@ namespace bp
 			pbook = openPageBook(path, err);
 			if (!pbook) return false;
 			names = pbook->pages();
+			std::string xml;
+			ComicInfo ci;
+			if (comicDirection && pbook->comicInfo(xml) && parseComicInfo(xml, ci) && ci.rightToLeft)
+			{
+				m = mangaOpenMode(m, false, true);
+				fprintf(stderr, "reader: %s's ComicInfo says right-to-left\n", path.c_str());
+			}
 		}
 		else
 		{
