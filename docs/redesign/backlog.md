@@ -3,6 +3,26 @@
 What the redesign spec doesn't draw yet, and the decisions waiting on the owner. The gaps below were found by the
 journeys audit (`journeys.py`, coverage.md › Journeys) and drawn on 2026-11-19; what is still only listed is at the end.
 
+## Where the build went past these decisions (0.7.34 to 0.9.6; written 2026-11-26)
+
+The entries below are the record of what was decided and when. The app has since changed some of them; components.md and
+the preview say what is built. In short:
+
+- **Shoulder keys swapped.** L2 / R2 step the sections, L / R step a page's tabs, views and filters (2026-11-20). Below, “L / R
+  pass it by” and “L2 / R2, or its chip” read the other way round now.
+- **Six rail cells, not seven.** Network became a tab of Files (2026-11-20); the cells are 52 tall. The 45-tall cell is for a
+  seventh section, should one come.
+- **B at a section's home asks to quit** (2026-11-22). It no longer goes to Home.
+- **Books reads Books, Ebook and Ebooks**, not Documents, and lists EPUB, PDF and comics, not TXT (2026-11-20); it is two tabs,
+  Reading now and Shelf (2026-11-21). The crumb's example is “From Books and Ebooks on this card · 21 books”.
+- **Music has a fourth view, Folders**, and Play random and Autoplay (2026-11-21). “Keep playing” was Autoplay's first name;
+  the lid's setting keeps that wording.
+- **Home's Recent items are album tiles**, and the card can read Last played (2026-11-21).
+- **Dark's accent is Bone, Light's a neutral slate (#3F4652)**; Gundam is the eighteenth theme.
+- **Dim before turning off** has no notice or countdown: the backlight eases down (2026-11-21).
+- **The manga engine** is not started from Home (0.9.5); a series has no Check key (L, or a pull).
+- **Still not built:** Lyrics (lyrics.md).
+
 ## Gaps (all drawn, 2026-11-19)
 
 1. **Done. A playlist's inside, select mode and reorder:** `playlist` (rows with their place, the Now mark, Play /

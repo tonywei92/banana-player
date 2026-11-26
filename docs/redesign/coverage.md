@@ -1,5 +1,8 @@
 # Coverage audit: today's UI vs preview.html
 
+The audit below is of the app before the redesign (0.7.x) and is kept as the record. For the state of the spec against the app as
+shipped, see “Brought in line with the app” further down.
+
 Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() strings, main.cpp top-panel cards, FEATURES.md headings, each grepped against the preview with data: URIs stripped. The preview's own "Screens not drawn" card (limits section) lists: Network with connections, select mode, copy/move bar, on-screen keyboard, Sources, a series page, Web dashboard page, Info, dialogs. Those are "Mentioned, not drawn" below. The six items already being added are skipped.
 
 ## Missing (not in the preview at all), most often met first
@@ -71,6 +74,41 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 - Search (new): L3 on every shell screen, the keyboard with live counts on the top screen, results grouped by kind, recent searches, nothing found, a card still being read; the dashboard's search box. Drawn: `search`, `search-results`.
 - Music by albums and artists (new): a rail section with Albums (a cover grid) and Artists (rows), an album's and an artist's page with Play and Shuffle, from the songs' tags; the dashboard's Music tab. Drawn: `music-albums`, `music-album`, `music-artists`. The index both read: components.md, Search and Music: the index.
 
+## Brought in line with the app, 0.7.34 to 0.9.6 (2026-11-26)
+
+The redesign shipped in 0.9.0 and the app moved on past the drawings. This pass read every commit from v0.7.34 to 0.9.6 and
+changed the spec wherever the app differs; the code won each time. The preview now has **210 screens** (1,726 links, 26
+journeys walked; none unreachable, none without a way back). Of them 196 are built as drawn or near enough, 13 are designed
+and not built (Lyrics: `lyrics`, `lyrics-*`, with the phone's `phone-lyrics`; marked “Designed · not built” in the gallery), and one, `power-dim`,
+is kept as the earlier design with a note (built without its notice).
+
+Changed in place:
+
+- **Navigation.** L2 / R2 step the rail's sections (Settings included), L / R step a page's tabs, views and kinds: the reverse of
+  the drawings. B at a section's home asks “Quit Banana Player?” and never jumps to Home; the hint bars say B Quit. The rail is a
+  tab bar (a tap on the lit section goes to its home, then to its top). Every shell screen's keys and hint bar were changed.
+- **The rail has six sections.** Network is a tab of Files (“Files | Network” on the places and the connections' list), not a
+  cell. Cells are 52 tall. `files-places`, `files-place-top`, `net-list`, `net-empty`, `offline` redrawn with the strip.
+- **Books.** Two tabs, Reading now and Shelf, with counts (no kind chips); EPUB, PDF and comics from Books / Ebook / Ebooks only,
+  not TXT, not Documents; a book opened elsewhere does not join the shelf. `books` redrawn, `books-shelf` added.
+- **Home.** Recent's items are album tiles (square pictures); the card reads Last played when played through, is a song or a
+  video only, and follows Recent's rules when its file is gone.
+- **Music.** Four views (Albums, Artists, Playlists, Folders); Play random; Autoplay with its heading in Up next and Remove from
+  list. `music-folders` and `music-autoplay` added. A new install shows Art + visualizer with Ribbon.
+- **Lists.** Smooth scrolling everywhere a list is long, and Pull to refresh. `pull-refresh` added.
+- **Manga.** A series has four keys (no Check key: L, or a pull on the chapters); START on Manga's pages is Manga settings; the
+  engine starts only when Manga is opened (not from Home); a stuck check ends with Retry. Book: wide pages across both screens,
+  zoom and pan, the chapter-and-page tag's setting, the turn animation, the loading ring on both screens. Manga settings' rows
+  as shipped.
+- **Settings.** Autoplay; Comics open as (Strip by default); Wide pages span both screens, Chapter and page in Book, Page turn
+  animation; eighteen themes (Gundam), Light's slate accent, Dark's Bone accent in the tables.
+- **Small ones.** The volume card says only “Boosted” past 100%; the seek bar seeks on the lift; Show in Files (was Show in
+  folder) in Music's, Videos' and Books' More; the bottom screen dims without a countdown.
+
+Not drawn, only written (components.md or a screen's notes): the wide page in Book and its zoom; Search's kind tabs finding
+albums, artists and folders (`search-results` has the groups); the dashboard's Upload › Files or Folder, drop onto a section,
+Up next's Remove from list and its reader's View (web-books.md has the reader).
+
 ## Journeys (is every one clickable in the walk-through?)
 
 Checked from the code, not from pictures: `python3 journeys.py --journeys` runs `src/kit.js` + `src/screens.js`, takes every
@@ -85,9 +123,9 @@ type); the ones that should open something not drawn are the gaps under the tabl
 
 What changed to get there, none of it a redesign: targets on keys that had a screen to go to; touch targets on the rows,
 tiles and keys of sheets and pages (`TAPS`); states that follow by themselves, a card pulled or the engine coming up
-(`ALSO`, shown as “then” under the keys); `B` → Home on the section roots and L2 / R2 round the ten settings groups;
+(`ALSO`, shown as “then” under the keys); `B` → Home on the section roots and L2 / R2 round the ten settings groups (as built: B at a section's home asks to quit, and L / R go round the groups);
 shared sheets (keyboard, Info, Add to playlist) go back to where they were opened from. The rail has Music on every shell
-screen, as the Music section's note already said (since 2026-11-19 the rail shows all seven sections at once: Home, Files, Videos, Music, Books, Extensions, Network; Playlists is a view of Music), and Network opens the
+screen, as the Music section's note already said (as built the rail shows six sections at once: Home, Files, Videos, Music, Books, Extensions; Network is a tab of Files and Playlists a view of Music), and Network opens the
 connections list, not a folder. One screen was added: `files-playing`, Files after B on a video (the header’s bars; no Now playing block since 2026-11-19).
 
 | Journey | State | The walk; what is not drawn |
@@ -100,7 +138,7 @@ connections list, not a folder. One screen was added: `files-playing`, Files aft
 | Manga | wired | Rail › Extensions → Manga reader → shelf → History → continue; series → reader → View → Fullscreen → View → Book → end of chapter → Get → Downloads; the reader’s More; Browse → a source → a series; Sources → Repositories → add one; a server; the engine loading / ready / failed; the question while a video plays (from Manga’s row on the Extensions page, never from the rail). A comic’s Pages is the PDF’s sheet. Not drawn: selecting chapters, a source’s filters |
 | Extensions | wired | Rail › Extensions → Manage extensions → Manga settings; → Manga reader → B back to the list → Home; with none on (Empty state) → Manage extensions; from the rail while a video plays: the page with “Stops the video” on Manga’s row |
 | Search | wired | L3 on Home, Files, Music and Playlists → typing → results → a video, a song, an album, a book, a folder. A playlist result opens the playlist’s page |
-| Network | wired | Connections → Find → the form → keyboard → Save → a folder → a video buffering; a book copied first, the copy failing; a read-only folder and its alert; no Wi-Fi; no connection yet (Empty state). A connection’s More (Edit, Test, Delete) is a list in `keys` |
+| Network | wired | Files → its places → the Network tab → Connections → Find → the form → keyboard → Save → a folder → a video buffering; a book copied first, the copy failing; a read-only folder and its alert; no Wi-Fi; no connection yet (Empty state). A connection’s More (Edit, Test, Delete) is a list in `keys` |
 | Web dashboard | wired, both sides | Fresh Home (Y), Home › Send from phone, Quick settings or Settings → the page (QR, address, PIN) → a browser signs in → the phone’s Home → Files → a song → Now playing → Plays on: Handheld; or it plays there → Hold A / Play on… / the browser gone. The page off and with No Wi-Fi. The phone’s Music, Playlists and Books tabs are not drawn (Music’s two pages are minis under Music: Albums) |
 | Settings | wired | START → Settings → each of the ten groups (L2 / R2 go round) → Theme, which steps the page’s theme |
 | Quick settings | wired | F → Web dashboard, Incognito, Screen off now, Quit; Volume past 100% and the first time past 120% |
@@ -111,7 +149,7 @@ connections list, not a folder. One screen was added: `files-playing`, Files aft
 | Updates | wired | Settings › Updates → “0.7.19 is out” → Update now → Downloading (Hide) → ready, Restart now → Home; the check failing → Try again |
 | Photos | wired | Files → a photo → View (Fit / Fill) → back → More → Info |
 | Home: a card’s More, All recent | wired | Home → X · More → Resume; All recent → an item |
-| Quit | wired | B on Home, Quick settings → Quit? → Cancel |
+| Quit | wired | B on Home or at any section's home (Files' places, Music, Books), Quick settings → Quit? → Cancel |
 
 The second pass (2026-11-19, backlog.md) drew the gaps the first one listed: 154 screens and 1,039 links, none unreachable, none without a way back,
 no hint-bar key unlisted, 23 journeys walked. A phone’s page is a screen with a third drawing (`phone`), shown beside the handheld’s two panels

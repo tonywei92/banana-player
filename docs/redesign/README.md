@@ -1,6 +1,8 @@
-# Handheld redesign (preview)
+# Handheld redesign (spec and preview)
 
-The proposed redesign of the handheld UI, kept for when it gets built.
+The redesign of the handheld UI. It shipped in 0.9.0; the spec and the preview were brought in line with the app at 0.9.6
+(2026-11-26), so they describe what is built. Where they and the code differ, the code is right and this is to be fixed.
+The one designed part not built is Lyrics (`lyrics.md`): its screens are kept and marked “Designed · not built”.
 
 - `preview.html`: every screen as a clickable mockup (open it in a browser). It is built from `src/`
   (`style.css`, `kit.js`, `screens.js`, `comps.js`, `app.js`, `body.html`) and `img/` by
