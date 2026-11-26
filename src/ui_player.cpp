@@ -2122,7 +2122,7 @@ namespace bp
 			{
 				Kit::Row row;
 				row.font = F_P16;
-				row.name = "Match album art";
+				row.name = "Ambient mode";
 				row.note = p.settings.matchAlbumArt ? "On" : "Off";
 				row.focused = cursor == DISPLAY_FOOT;
 				row.pressed = press == P_TILE && pressAt == DISPLAY_FOOT;

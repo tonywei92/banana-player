@@ -578,7 +578,7 @@ namespace bp
 			D::choice("music-show", &Settings::musicShow, SHOW_IDS, SHOWS)
 				.page(SG_MUSIC, 10, "Music display", "What the top screen shows while a song plays (the Display chip, on the player or in More, while playing).").shownAs(SHOW_LABELS).stepped(true),
 			D::flag("match-album-art", &Settings::matchAlbumArt)
-				.page(SG_MUSIC, 15, "Match album art", "A song's art, blurred and tinted by the theme's own ground, lies behind the player and the top screen. Every key, chip and word keeps the theme's colours; a grey or clashing art falls back to the plain ground."),
+				.page(SG_MUSIC, 15, "Ambient mode", "A song's art, blurred and tinted by the theme's own ground, lies behind the player and the top screen. Every key, chip and word keeps the theme's colours; a grey or clashing art falls back to the plain ground."),
 			D::flag("keep-playing", &Settings::keepPlaying)
 				.page(SG_MUSIC, 17, "Autoplay", "Music you start from the Music pages (an album, an artist, a folder, Play random) plays on past its last song: 10 more songs from your library are added to Up next, under \"Picked for you\". Not for playlists, or with Repeat on."),
 			D::choice("visualizer", &Settings::visualizer, VIS_IDS, VISUALIZERS)

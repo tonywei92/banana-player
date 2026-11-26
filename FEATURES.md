@@ -950,7 +950,7 @@ Songs show their title, artist and album on the top screen. While a song plays:
   the lightest on the battery). Under them the line "Visualizer · <style>" (with Album art only or None: "<style> · not
   shown now: the top screen shows <mode>"; the style can still be set, and is kept), then the fifteen styles in a 5 × 3
   grid of tiles (the same fifteen, in the same order, on Settings' Visualizer style row), and at the sheet's foot the
-  **Match album art** switch (the same row as Settings › Music & sound's). The tile in use is filled in
+  **Ambient mode** switch (the same row as Settings › Music & sound's). The tile in use is filled in
   the theme's accent; the cursor is an accent edge. The styles: **Peaks** (64 bars in the theme's accent,
   bass on the left, each with a cap in the theme's text colour that stays at the bar's highest point and slowly falls
   back, over a faint grid), **Ribbon** (default: the spectrum as one smooth glowing line, bass to treble, a soft fade beneath
@@ -994,7 +994,7 @@ Songs show their title, artist and album on the top screen. While a song plays:
   visualizer on Art + visualizer. A song without art shows a placeholder in the art's place (a colour wheel with a note on it), in
   the same layout: the mode you chose is the mode you see. Album art can be inside the song file or a `cover.jpg` in
   the same folder. A song with no cover shows a flat **record in its sleeve** in the theme's colours (on the top screen, by the artist line on the player page and on the dashboard's covers), placed one of four ways by the album's name so a grid of them is not one drawing repeated.
-- **Match album art** (on by default; the row in Settings › Music & sound, and the foot of the **Display** sheet
+- **Ambient mode** (on by default; the row in Settings › Music & sound, and the foot of the **Display** sheet
   above). A song's art becomes the atmosphere behind the player page and the top screen: the art, blurred and muted,
   under a dark veil in the theme's own charcoal tinted by one hue from the art — deepened where the text sits, so
   every key, chip, bar and word keeps the theme's colours and its contrast. A new song's art cross-fades in over
@@ -1121,7 +1121,7 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | | Max volume | 120% | How far the volume keys (and the player's **UP / DOWN**) go on the handheld: 100%, 120% or 150%. Past 100% (the handheld's own top) the player turns the sound up itself, 5% a press, for films mixed quiet; the volume card marks 100% and shows the rest in yellow, red past 120%, and the first time past 120% a warning says it can damage your hearing and the speakers. Down takes that off first. It starts again at 100% each time the player opens. The web dashboard's handheld volume goes as far; a browser playing the sound itself keeps its own 0–100%. Two volumes, each its own: while a browser plays the sound, the handheld's volume keys turn that browser's volume (the card says **Browser volume**) and leave the handheld's as it was; the dashboard's volume shows both then (**Browser volume**, **Handheld volume**), and moving one never moves the other |
 | | Button hotkeys | On | Off: buttons can't pause, skip or close while something plays (touch still can) |
 | **Subtitles** | Font, size, colour, border, border colour, text encoding | Inter, Medium, White, Normal, Black, Auto | How plain subtitles (SRT, VTT…) look, with a live preview. Styled subtitles (ASS/SSA) keep their own look. **Text encoding** is how a subtitle file's letters are read, on the handheld and in the browser: Auto reads UTF-8, and guesses an older code page (a file named for its language, like `movie.sl.srt`, tries that language's first); if letters like š, č or ж still come out wrong, pick the file's: Central European (Windows-1250, ISO-8859-2, DOS 852), Cyrillic (Windows-1251, KOI8-R), Greek, Turkish, Baltic, Hebrew, Arabic or Western. A subtitle showing changes at once. |
-| **Music & sound** | Music display, Match album art, Visualizer style, Visualizer frame rate | Album art only, On, Peaks, 45 fps | What the top screen shows for music, and which visualizer (both also on the **Display** sheet while a song plays). **Match album art**: a song's art, blurred and tinted by the theme's own ground, behind the player and the top screen (a switch, the same one at the foot of the **Display** sheet). **Sound** opens the [Sound page](#sound-equalizer-and-effects): the equalizer and the effects |
+| **Music & sound** | Music display, Ambient mode, Visualizer style, Visualizer frame rate | Album art only, On, Peaks, 45 fps | What the top screen shows for music, and which visualizer (both also on the **Display** sheet while a song plays). **Ambient mode**: a song's art, blurred and tinted by the theme's own ground, behind the player and the top screen (a switch, the same one at the foot of the **Display** sheet). **Sound** opens the [Sound page](#sound-equalizer-and-effects): the equalizer and the effects |
 | **Photos** | Keep zoom between photos | On | The next photo opens at the same zoom and place. Off: each opens whole |
 | | Pan area | Left | Which side of the bottom screen the photo's pan area is on |
 | | Drag moves | The box | A drag in the pan area moves the box over the small photo, or the photo itself (like a phone) |
