@@ -9066,14 +9066,14 @@ static void testPictureLook()
 		CHECK(sh.find("Gather") == std::string::npos && sh.find("COMPUTE") == std::string::npos);
 		CHECK(sh.find("vec4 hook()") != std::string::npos);
 	}
-	// Scanlines: a line `unit` pixels tall (about 240 on either panel), the beam wider when bright; stronger is deeper
+	// Scanlines: crt-lottes (public domain, its notice kept), lines `unit` pixels apart (about 240), harder with Strength
 	std::string scan = lookShader(LOOK_SCANLINES, 60, 2);
-	CHECK(scan.find("floor(fc.y / 2.0)") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("floor(fc.y / 3.0)") != std::string::npos);
-	CHECK(scan.find("mix(0.170, 0.300, sqrt(bright))") != std::string::npos);
-	CHECK(scan.find("pow(") != std::string::npos);	// (in linear light)
-	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("beam = 0.495 +") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("beam = 0.000 +") != std::string::npos);
+	CHECK(scan.find("Timothy Lottes") != std::string::npos);
+	CHECK(scan.find("vec3 bpFetch(vec2 cell)") < scan.find("vec4 hook()"));
+	CHECK(scan.find("(px.y - 0.5) / 2.0 + 0.5") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("(px.y - 1.0) / 3.0 + 0.5") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("exp2(-7.000 * vec3((dst.y") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("exp2(-16.000 * vec3((dst.y") != std::string::npos);
 	// LCD grid: cells 3..6 pixels on the RG DS by Strength (1.5x on the Plus), R/G/B stripes, a gain
 	CHECK(lookShader(LOOK_LCD, 10, 2).find("floor(fc / 3.0)") != std::string::npos);
 	CHECK(lookShader(LOOK_LCD, 100, 2).find("floor(fc / 6.0)") != std::string::npos);

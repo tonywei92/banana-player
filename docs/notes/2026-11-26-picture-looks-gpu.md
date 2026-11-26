@@ -34,15 +34,33 @@ compile on Mesa may be tens of ms in `mpv_render_context_render`, on the main th
 Written for this app (no community shader copied; most are GPL, this project is MIT). Both: one pass, in linear light
 (`pow(c, 2.2)` in, `1/2.2` out), the cell or line's colour sampled at its centre (an offset from `gl_FragCoord` to the
 centre, times `HOOKED_pt`), a gain worked out on the CPU so a mid grey keeps its brightness (written into the text).
-- **Scanlines (CRT beam).** Lines `unit` = panel height / 240 pixels tall (about 240 lines on either panel; 4 px on a
-  Retina Mac). Each pixel takes its line's colour, softened across by two side taps at ±0.7 px (3 taps). Its weight is a
-  Gaussian of its distance from the line's centre row, `sigma` from 0.17 line (dark) to 0.30 (bright, by the square root
-  of the brightest channel): highlights bloom into the gap, dark parts show deep lines. Strength sets the depth (45–100%
-  of the way from flat to the Gaussian) and an aperture grille on output columns (R, G, B; the other two channels at
-  1 − 0.3·k). Gain ≤ 1.8. Cost: 3 taps, 2 `pow`, 1 `exp` a pixel.
+- **Scanlines**: replaced the same week by crt-lottes (below).
 - **LCD grid.** Cells of `max(3, round(unit·(1.5 + 1.5·k)))` px (3–6 on the RG DS, 5–9 on the Plus). One tap at the
   cell's centre (the picture snapped to the grid); three vertical stripes over the lit width, each passing its own
   channel whole and the others at 0.30 − 0.15·k; a 1-px gap row under each cell, and a 1-px gap column from 4 px up, at
   0.25 − 0.15·k. Gain ≤ 2.6. Cost: 1 tap, 2 `pow` a pixel.
 - If a row lands one off on Panfrost (an FBO flipped against `HOOKED_pos`), the centre sample comes from a row within
   the same few pixels: a blur of a pixel, not a misplaced pattern. Worth a look on the handheld.
+
+## Scanlines invisible on the Plus (1024x768), and crt-lottes (2026-11-26)
+
+**Root cause, by numbers** (`BP_TOP_SIZE=1024x768`, a black-to-white ramp, pixel rows of the top shot): the pitch is
+3 (`lookLineUnit(768)` = round(3.2)) and the beam's centre sat on a row's middle, so the other two rows were a third
+of a line off on either side and **no row fell in the gap**: two dim rows, one bright, a ripple of 13% (highlights,
+after the gain clipped them) to 36% (shadows), which at 366 ppi reads as no lines. On 640x480 (pitch 2) the same code
+gave 28–47%. Not the cause: `target_size`/the video rect (the pattern counts panel rows), a flip (rows were regular).
+
+**Fix:** the line's centre at `pitch/2 − 0.5` px, so each line's last row is half a line away and is the gap (pitch 3:
+bright, bright, dark). Same pass now ported from **crt-lottes** ("PUBLIC DOMAIN CRT STYLED SCAN-LINE SHADER by
+Timothy Lottes", libretro glsl-shaders `crt/shaders/crt-lottes.glsl`; the header says public domain, checked before
+use; the notice is kept in the shader text and the README credits it). What was kept: emulated pixels `pitch` px
+square (~240 lines, integer pitch), sampled at their centres in linear light; the three nearest lines, each a
+horizontal Gaussian (`hardPix` −3) of three emulated pixels, weighted by the scan Gaussian `exp2(hardScan·d²)`; the
+aperture-grille mask (his type 2) on output columns. Changes: warp/curvature off, no bloom, `Horz3` for the centre
+line too (9 taps, not 11), `pow 2.2` gamma, our gain. Strength k: `hardScan` −(6 + 10k) (his −8 at k≈0.2), mask
+dark/light 1 ∓ 0.5k (his 0.5/1.5 at k = 1), gain ≤ 2 for a mid grey.
+
+**Dips measured** (ramp, sRGB row min vs max): 640x480 at 10/60/100% ≈ 22/46/–%; 1024x768 ≈ 18/41/55%
+(was 13–36% at 60%). LCD grid at 1024x768: gap rows 24–34% every 7 px: visible, left as it was.
+Cost: 9 taps, 2 `pow`, 6 `exp2` a pixel, ~zfast's order; Panfrost compile time unmeasured. `log.txt` now has
+`top: WxH pixels`, so the panel's size behind a look is pinned.

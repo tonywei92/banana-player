@@ -953,8 +953,9 @@ On a video, the **Picture** chip (or **X** / **SELECT** › **Picture**): one sh
 it, **A** chooses, and the film on the top screen changes at once (the file isn't reopened):
 
 - **Size**: Fit, Fill, Stretch (below).
-- **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines** (a CRT: about 240 lines, each a beam
-  that's thin on dark parts and spreads into the gap on bright ones, a faint red-green-blue grille), **LCD grid** (an
+- **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines** (a CRT, after Timothy Lottes' public-domain
+  shader: about 240 lines with a dark gap between them, deeper with Strength, softened across, and a red-green-blue
+  aperture grille; the same look on the RG DS and the Plus), **LCD grid** (an
   old LCD's cells: the picture in squares of 3 to 6 pixels, wider with Strength, each with red, green and blue stripes
   and a thin dark gap) and **Retro** (warm, faded colour). Each tile has a small sample of itself. Lines and cells are
   in the top panel's own pixels, so they don't shimmer; both are brightened to make up for the dark they add.

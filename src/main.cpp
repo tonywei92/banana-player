@@ -380,7 +380,11 @@ int main(int argc, char** argv)
 	SDL_Window *top, *bottom;
 	if (windowed)
 	{
-		top = SDL_CreateWindow("banana-player: top", 80, 60, Ui::W, Ui::H, SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
+		// tests: BP_TOP_SIZE=1024x768 the same for the top panel (the film, its looks' lines in real pixels)
+		int tw = 0, th = 0;
+		if (const char* sz = getenv("BP_TOP_SIZE")) sscanf(sz, "%dx%d", &tw, &th);
+		top = tw > 0 && th > 0 ? SDL_CreateWindow("banana-player: top", 80, 60, tw, th, SDL_WINDOW_OPENGL)
+			: SDL_CreateWindow("banana-player: top", 80, 60, Ui::W, Ui::H, SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
 		// tests: BP_BOTTOM_SIZE=1024x768 draws the bottom panel at that many pixels (the RG DS Plus's panel), not the
 		// computer's own scale
 		int bw = 0, bh = 0;
@@ -825,6 +829,7 @@ int main(int argc, char** argv)
 			SDL_GL_GetDrawableSize(top, &tw, &th);
 			player.setTopSize(tw, th);
 			photos.setTopSize(tw, th);
+			fprintf(stderr, "top: %dx%d pixels (a look's lines are panel pixels: lookLineUnit)\n", tw, th);
 		}
 		if (browserMode)
 		{

@@ -128,6 +128,7 @@ Banana Player is free and always will be. If it makes your handheld better and y
   [QR-Code-generator](https://github.com/nayuki/QR-Code-generator) by Project Nayuki (MIT),
   [htm](https://github.com/developit/htm) with [Preact](https://preactjs.com) (Apache 2.0 and MIT) and
   [SortableJS](https://sortablejs.github.io/Sortable/) (MIT).
+- Scanlines look: based on Timothy Lottes' public-domain CRT shader (crt-lottes).
 - Fonts: [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans), [Inter](https://github.com/rsms/inter),
   [Fusion Pixel](https://github.com/TakWolf/fusion-pixel-font) and [Noto Sans](https://notofonts.github.io) Thai,
   Arabic, Hebrew and Devanagari (SIL Open Font License 1.1).
