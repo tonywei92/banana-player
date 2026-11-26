@@ -287,6 +287,13 @@ cover with how far in; **Shelf** is every book, by name. Both are five across. *
 them; Books opens on Reading now while a book is in progress, else on the Shelf (back from a reader, on the tab you left). **A** (or a tap) opens the book in its own reader — a text in the text viewer, a PDF, a
 comic or a pictures EPUB in the page reader — at the place you left it; **B** from the reader comes back to the shelf.
 
+A book with no cover of its own (a TXT, an EPUB or PDF without one, a catalog entry) gets one drawn from its title
+(`src/bookcover.h`): one of eight muted colours picked by a hash of the title (case and edge spaces ignored), the title in
+large type, the author under it where known (catalogs), the format's mark in the corner. The same title looks the same on
+the Shelf, Reading now, the top screen's preview and the catalogs' grid and book page; a real cover wins. Long names with no
+spaces (`edgar-rice-burroughs_a-fighting-man-of-mars.epub`) wrap after `-`, `_`, `.` or `/` before breaking mid-word, here
+and wherever text wraps (`src/textwrap.h`). The web dashboard keeps its own mark for a book with no cover.
+
 The shelf (and Reading now) holds only what lies in a section folder: a book opened from Files anywhere else stays in Home's Recent
 and in Files, never here (the same rule keeps songs outside the Music folders out of Music and videos outside the Videos folders out of
 Videos; the web dashboard's pages follow it). The shelf is filled from

@@ -3,6 +3,7 @@
 #include "updater.h"
 #include "songlayout.h"
 #include "artph.h"
+#include "textwrap.h"
 #include "artbackdrop.h"
 #include "viznative.h"
 #include "slider.h"
@@ -16746,6 +16747,28 @@ static void testKitDisplayPage()
 	CHECK_EQ(displayAt(f, f.style[14].x + 5, f.style[14].y + 5), 4 + 14);
 }
 
+// a long name with no spaces breaks after - _ . / before it breaks mid-word; text with spaces breaks as it did
+static void testTextWrapBreaks()
+{
+	std::string n = "edgar-rice-burroughs_a-fighting-man-of-mars.epub";
+	auto width = [](size_t chars) { return [chars](const std::string& s) { return s.size() <= chars; }; };
+	auto L = textwrap::lines(n, 4, width(20));
+	CHECK_EQ(L.size(), (size_t)4);
+	CHECK_EQ(L[0], std::string("edgar-rice-"));
+	CHECK_EQ(L[1], std::string("burroughs_a-"));
+	CHECK_EQ(L[2], std::string("fighting-man-of-"));
+	CHECK_EQ(L[3], std::string("mars.epub"));
+	// a word with no break mark is cut at the width; the last line holds the rest (the caller's "...")
+	auto M = textwrap::lines("abcdefghijklmnopqrstuvwxyz", 2, width(10));
+	CHECK_EQ(M[0], std::string("abcdefghij"));
+	CHECK_EQ(M.size(), (size_t)2);
+	// spaces first, as before
+	auto S = textwrap::lines("the quick brown fox jumps over", 9, width(12));
+	CHECK_EQ(S[0], std::string("the quick"));
+	CHECK_EQ(S[1], std::string("brown fox"));
+	CHECK_EQ(textwrap::breakAt("short", 9), (size_t)5);
+}
+
 // the top panel's song layout (docs/redesign/components.md, Song layout): the drawings' numbers
 static void testArtPlaceholder()
 {
@@ -17514,6 +17537,7 @@ int main()
 	testSongLayout();
 	testXferGroup();
 	testArtPlaceholder();
+	testTextWrapBreaks();
 	testArtBackdrop();
 	testArtBackdropTheme();
 	testArtBackdropPage();

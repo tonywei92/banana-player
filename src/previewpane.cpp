@@ -5,6 +5,7 @@
 #include "previewpane.h"
 #include "cardcanvas.h"
 #include "kitlayout.h"
+#include "textwrap.h"
 #include "theme.h"
 #include "ui.h"
 #include "ui_glyphs.h"
@@ -54,30 +55,10 @@ namespace bp
 			// the words in lines no wider than w units (at most `most`, the last cut with "…")
 			std::vector<std::string> wrap(Face f, float size, const std::string& s, float w, int most)
 			{
-				std::vector<std::string> lines;
-				std::string line;
-				size_t i = 0;
-				while (i < s.size())
-				{
-					size_t sp = s.find(' ', i);
-					std::string word = s.substr(i, sp == std::string::npos ? std::string::npos : sp - i);
-					i = sp == std::string::npos ? s.size() : sp + 1;
-					std::string next = line.empty() ? word : line + " " + word;
-					if (!line.empty() && textW(f, size, next) > w)
-					{
-						lines.push_back(line);
-						line = word;
-					}
-					else line = next;
-				}
-				if (!line.empty()) lines.push_back(line);
-				if ((int)lines.size() > most)
-				{
-					std::string last = lines[most - 1];
-					for (int k = most; k < (int)lines.size(); k++) last += " " + lines[k];
-					lines.resize(most);
-					lines.back() = c.fit(f, size, last, (int)S(w));
-				}
+				// at spaces, then after - _ . /, then mid-word (textwrap.h); more than `most`: the last cut with "…"
+				std::vector<std::string> lines =
+					textwrap::lines(s, most, [&](const std::string& t) { return textW(f, size, t) <= w; });
+				if (!lines.empty()) lines.back() = c.fit(f, size, lines.back(), (int)S(w));
 				return lines;
 			}
 			void box(float x, float y, float w, float h, float r, Rgb fill, int alpha = 255)

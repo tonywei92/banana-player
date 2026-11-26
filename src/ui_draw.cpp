@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "textwrap.h"
 #include "format.h"
 #include "playlist.h"
 #include "netpath.h"
@@ -1176,41 +1177,9 @@ namespace bp
 
 	std::vector<std::string> Ui::wrapText(const std::string& text, int size, int maxW, int maxLines) const
 	{
-		// at spaces where it can, the last line cut with "..." when there's more
-		std::vector<std::string> lines;
-		std::string rest = text;
+		// at spaces where it can, then after - _ . /, then mid-word (textwrap.h); the last line cut with "..." when there's more
 		int limit = (int)(maxW * sx);
-		while (!rest.empty() && (int)lines.size() < maxLines)
-		{
-			// the last line: what fits of it is all that's drawn ("..." after), so a long rest is cut first
-			if ((int)lines.size() == maxLines - 1)
-			{
-				lines.push_back(rest.size() > 400 ? rest.substr(0, 400) : rest);
-				break;
-			}
-			if (textWidth(rest, size) <= limit) { lines.push_back(rest); break; }
-			// the longest prefix that fits, by a binary search over character starts (measuring every prefix of a
-			// long description, on every redraw, took a quarter of a second on the handheld)
-			std::vector<size_t> ends;	// byte length of each prefix of 1, 2, ... characters
-			for (size_t i = 1; i <= rest.size(); i++)
-				if (i == rest.size() || ((unsigned char)rest[i] & 0xC0) != 0x80) ends.push_back(i);
-			size_t lo = 0, hi = ends.size();	// prefixes of lo characters fit (0 trivially), of hi don't
-			while (hi - lo > 1)
-			{
-				size_t mid = (lo + hi) / 2;
-				if (textWidth(rest.substr(0, ends[mid - 1]), size) <= limit) lo = mid;
-				else hi = mid;
-			}
-			size_t fit = lo ? ends[lo - 1] : 0;
-			if (fit == 0) fit = ends.empty() ? rest.size() : ends[0];
-			size_t brk = rest.find_last_of(' ', fit);
-			if (brk != std::string::npos && brk > fit / 2) fit = brk + 1;
-			std::string line = rest.substr(0, fit);
-			while (!line.empty() && line.back() == ' ') line.pop_back();
-			lines.push_back(line);
-			rest = rest.substr(fit);
-		}
-		return lines;
+		return textwrap::lines(text, maxLines, [&](const std::string& s) { return textWidth(s, size) <= limit; });
 	}
 
 	void Ui::drawButton(Rect b, const Glyph* g, const std::string& label, const char* key, bool off, int size, bool lit)
