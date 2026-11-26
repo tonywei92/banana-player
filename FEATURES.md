@@ -956,7 +956,9 @@ it, **A** chooses, and the film on the top screen changes at once (the file isn'
 - **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines**, **LCD grid** (the handheld's
   own pixels, larger) and **Retro** (warm, faded colour). Each tile has a small sample of itself. The lines and the grid
   are in the top panel's own pixels (2 on, 2 off on the RG DS; 3 on the Plus), so they don't shimmer.
-- **Strength**: 10 to 100%, **LEFT / RIGHT** in steps of 10 (or slide a finger along it); kept per look. None for Off.
+- **Strength**: 10 to 100%, **LEFT / RIGHT** in steps of 10; kept per look. None for Off. By touch it is the app's
+  one slider, as Volume and Brightness: a tap puts it there, a drag from anywhere on its row moves it by the finger's
+  travel, held till the finger lifts.
 - **Use for**: **All videos** (the default: the look stays on for every video, as Settings' **Picture look**) or
   **Only this video** (kept with the file, in `resume.tsv`; choosing it gives every other video back the look it had
   when the sheet opened). **All videos** again makes this film's look every video's.

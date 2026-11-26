@@ -27,7 +27,6 @@ namespace bp
 	{
 		int cursor = 0;
 		int press = -1;			// the item a finger is down on (-1 none)
-		bool sliding = false;	// a finger on Strength: it follows the finger
 		bool comparing = false;	// Y held: the film without its look
 		int globalAtOpen = LOOK_OFF;	// every video's look as the sheet opened ("Only this video" gives it back)
 
@@ -133,12 +132,7 @@ namespace bp
 				ui.openAdjust([this] { close(); });
 			}
 		}
-		void strengthFromX(int x, Player& p)
-		{
-			Rect t = layout().track;
-			double f = std::clamp((x - t.x) / (double)std::max(1, t.w), 0.0, 1.0);
-			setStrength((int)std::lround(f * LOOK_STRENGTH_MAX), p);
-		}
+		static SliderRange strengthRange() { return {LOOK_STRENGTH_MIN, LOOK_STRENGTH_MAX, LOOK_STRENGTH_STEP}; }
 
 		// ---- keys and touches ----
 		bool key(Button b, Player& p) override
@@ -194,22 +188,18 @@ namespace bp
 				{
 					if (!strengthOn(p)) return false;
 					cursor = at;
-					sliding = true;
-					strengthFromX(x, p);
+					// the app's one slider (docs/notes/sliders.md): a tap puts it there, a drag moves it on by the
+					// finger's travel, kept till the lift
+					ui.slideGrab(SL_PICTURE, 0, {d.track, strengthRange(), false, 0, (double)p.lookInUse().strength}, x, y, p,
+						[this](double v, bool, Player& p) { setStrength((int)std::lround(v), p); }, this);
 					return false;
 				}
 				press = at;
 				return false;
 			}
-			if (pt.kind == Pointer::Move)
-			{
-				if (sliding) strengthFromX(x, p);
-				return false;
-			}
 			if (pt.kind != Pointer::Up) return false;
 			int at = press;
 			press = -1;
-			sliding = false;
 			// let go off what it was pressed on: nothing (the finger changed its mind)
 			if (at < 0 || lay::pictureAt(d, x, y) != at) return false;
 			if (at == d.useForAt())
@@ -281,9 +271,9 @@ namespace bp
 			Kit::SliderRow s;
 			s.label = "Strength";
 			s.value = l.look == LOOK_OFF ? "None for Off" : std::to_string(l.strength) + "%";
-			s.share = l.look == LOOK_OFF ? 0 : l.strength / 100.0;
+			s.share = l.look == LOOK_OFF ? 0 : sliderShare(l.strength, strengthRange());
 			s.focused = cursor == d.strengthAt();
-			s.held = sliding;
+			s.held = ui.slideHeld(SL_PICTURE, 0);
 			k.sliderRow(d.strength, d.track, s);
 
 			const bool useFocused = cursor == d.useForAt();
@@ -313,7 +303,7 @@ namespace bp
 		std::string signature(const Player& p) const override
 		{
 			Player::LookInUse l = p.lookInUse();
-			std::string sig = std::to_string(cursor) + "," + std::to_string(press) + "," + std::to_string(sliding) + "," +
+			std::string sig = std::to_string(cursor) + "," + std::to_string(press) + "," +
 				std::to_string(comparing) + "," + std::to_string(ui.touchIsLocked()) + "|" + std::to_string((int)p.aspect) +
 				"|" + std::to_string(l.look) + "," + std::to_string(l.strength) + "," + std::to_string(l.onlyThis);
 			for (int i = 0; i < 4; i++) sig += "|" + std::to_string((int)std::lround(p.videoAdjust(i)));

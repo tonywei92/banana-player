@@ -958,7 +958,7 @@ namespace bp
 		// to the finger; pointer() then gives every move and the lift to it, wherever the finger goes, until it
 		// lifts. `set` hears the value while held (each change; one per everyMs at most when that's given: a seek, a
 		// page) and once more with last = true as the finger lifts. A key pressed meanwhile ends it as a lift does.
-		enum { SL_SEEK = 1, SL_QUICK, SL_DOC, SL_MANGA, SL_EQ, SL_LIGHT };
+		enum { SL_SEEK = 1, SL_QUICK, SL_DOC, SL_MANGA, SL_EQ, SL_LIGHT, SL_PICTURE };
 		struct SlideSpec
 		{
 			Rect track;	// the finger's place is read along this (its width; its height when upright)
