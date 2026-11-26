@@ -3,6 +3,7 @@
 #pragma once
 #include "levelcard.h"
 #include "ui.h"
+#include "bookcover.h"
 
 namespace bp
 {
@@ -245,5 +246,11 @@ GLYPH(G_CHAPTERS, "###.#######", "###.#######", "...........", "###.#####..", "#
 		if (label == "Brightness") return {G_SUN_ROWS, G_SUN.h};
 		if (label == "Zoom") return {G_SEARCH_ROWS, G_SEARCH.h};
 		return {G_SPEAKER_ROWS, G_SPEAKER.h};
+	}
+	// the small mark in a generated book cover's corner, by bookcover::Kind
+	inline const Ui::Glyph& bookKindGlyph(bookcover::Kind k)
+	{
+		return k == bookcover::EPUB ? G_EPUB : k == bookcover::PDF ? G_PDF : k == bookcover::COMIC ? G_COMIC
+			: k == bookcover::TXT ? G_PAGE : G_BOOK;
 	}
 }

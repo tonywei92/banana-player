@@ -46,6 +46,9 @@ namespace bp
 		// the cover's picture (a decoded cover, held by the caller's cache: shared, never copied per pass), fitted
 		// inside the cover's box; none: the cover's place (SURFACE and the picture's mark)
 		std::shared_ptr<const PaneImage> coverArt;
+		// a book with no picture: the cover drawn from its title (bookcover.h) in the cover's place; genAuthor and genFmt
+		// (a path or an extension) are its author line and the format's mark
+		std::string genTitle, genAuthor, genFmt;
 		// a video's layout (lay::previewPane's hero): its frame across the top, cropped to fill and fading into the
 		// ground, the column over the fade and the rows two to a line; no frame: the band in SURFACE with the film mark
 		bool hero = false;

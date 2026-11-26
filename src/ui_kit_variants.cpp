@@ -4,6 +4,8 @@
 // The list and page pieces of 2026-11-19 are here too: the state pills Home and the mini bar share, the Search
 // field and result row, a Music/Videos row, a Books cover tile and a page's line (docs/notes/2026-11-19-kit-inventory.md).
 // As the rest of the kit: a Rect from kitlayout and a small struct in, pixels out, nothing kept; tokens only.
+#include "ui_glyphs.h"
+#include <map>
 #include "ui_kit.h"
 #include "artph.h"
 #include <algorithm>
@@ -827,7 +829,7 @@ namespace bp
 			ui.fillRound({l.cover.x - 2, l.cover.y - 2, l.cover.w + 4, l.cover.h + 4}, BG, 7);
 		}
 		if (c.picture) c.picture(l.cover);
-		else bookPlaceholder(l.cover, c.key, 5);
+		else bookPlaceholder(l.cover, c.key, 5, c.author, c.fmt);
 		if (!c.badge.empty()) pill(l.cover.x + l.cover.w + 4, l.cover.y + 4, c.badge, Pill::Live);
 		if (l.title.h > 0) ui.drawTextMid(c.title, F_P13, off(c.focused ? ACCENT : TEXT, c.off), l.title.x, l.title.y + l.title.h / 2, l.title.w);
 		if (l.bar.h > 0 && c.progress >= 0)
@@ -849,30 +851,57 @@ namespace bp
 
 	// ---- a book's drawn cover, an album cell, an artist's row, a video's and a folder's row ----
 
-	void Ui::Kit::bookPlaceholder(Rect r, const std::string& key, int rad)
+	void Ui::Kit::bookPlaceholder(Rect r, const std::string& key, int rad, const std::string& author, const std::string& fmt)
 	{
-		// A book, not a record: the sleeve's ground, a spine down the left, and the title's blocks on the front.
-		// The widths come from the name's hash, so five books without covers are five different spines.
-		const uint32_t h = artph::hash(key);
-		ui.fillRound(r, BUTTON, rad);
+		// A cover drawn from the title (bookcover.h): a ground picked by the title's hash, a darker spine down the
+		// left, the title in large type, the author under it, the format's mark in the corner. Too small for type
+		// (a list row's 32 x 46): the title's first letter.
+		const bookcover::Rgb g = bookcover::ground(key), ik = bookcover::ink(), dm = bookcover::inkDim();
+		const SDL_Color ground{g.r, g.g, g.b, 255}, ink{ik.r, ik.g, ik.b, 255}, dim{dm.r, dm.g, dm.b, 255};
+		const SDL_Color spineC{(Uint8)(g.r * 3 / 4), (Uint8)(g.g * 3 / 4), (Uint8)(g.b * 3 / 4), 255};
+		ui.fillRound(r, ground, rad);
 		int in = std::max(1, theme::EDGE);
-		int spine = std::max(8, r.w / 10);
-		// the spine stops short of the rounded corners so the fill keeps the box's shape
-		ui.fillRound({r.x + in, r.y + in + 3, spine, r.h - 2 * in - 6}, PRESSED, std::max(2, rad - in));
-		int sx = r.x + in;
-		// the ACCENT mark on the spine near its foot (the theme's one solid colour, as a label is on a record)
-		ui.fillRound({sx + spine / 2 - 1, r.y + r.h - 24, 3, 14}, ACCENT, 1);
-		// the front: two or three lines of type, their lengths keyed by the name
-		int left = r.x + in + spine + lay::SP12, right = r.x + r.w - lay::SP8;
-		int w = std::max(10, right - left);
-		int barH = std::max(3, r.h / 30), gap = std::max(3, barH + 2);
-		int y = r.y + r.h / 4;
-		int b1 = w * (52 + (int)(h % 28)) / 100;
-		int b2 = w * (34 + (int)((h >> 8) % 30)) / 100;
-		int b3 = w * (44 + (int)((h >> 16) % 24)) / 100;
-		ui.fillRound({left, y, b1, barH}, TEXT, 1);
-		ui.fillRound({left, y + barH + gap, b2, barH}, DIM, 1);
-		ui.fillRound({left, y + 2 * (barH + gap), b3, barH}, DIM, 1);
+		int spine = std::max(5, r.w / 14);
+		ui.fillRound({r.x + in, r.y + in + 3, spine, r.h - 2 * in - 6}, spineC, std::max(2, rad - in));
+		const int left = r.x + in + spine + lay::SP8, right = r.x + r.w - lay::SP8, w = std::max(10, right - left);
+		if (r.w < 64)
+		{
+			std::string t = key.substr(0, key.empty() ? 0 : (((unsigned char)key[0] >= 0xC0) ? 2 : 1));
+			for (char& c : t) if (c >= 'a' && c <= 'z') c = (char)(c - 32);
+			ui.drawTextMid(t, F_P13, ink, left + w / 2, r.y + r.h / 2, w, 2);
+			return;
+		}
+		const bool big = r.w >= 150;
+		const int tf = big ? F_P20 : F_P13, tlh = big ? 24 : 16, af = F_I12, alh = 15;
+		const int top = r.y + lay::SP12, foot = r.y + r.h - lay::SP8 - 22;
+		int maxLines = std::max(1, std::min(big ? 6 : 5, (foot - top - (author.empty() ? 0 : 2 * alh + 6)) / tlh));
+		// the wrap is measured text: kept per title and size (a shelf draws the same covers as it scrolls)
+		static std::map<std::string, std::vector<std::string>> kept;
+		if (kept.size() > 300) kept.clear();
+		auto wrapped = [&](const std::string& text, int font, int w2, int most) -> const std::vector<std::string>& {
+			std::string k = text + "|" + std::to_string(font) + "|" + std::to_string(w2) + "|" + std::to_string(most) + "|" +
+				std::to_string(ui.textWidth("W", font));
+			auto it = kept.find(k);
+			if (it == kept.end()) it = kept.emplace(k, ui.wrapText(text, font, w2, most)).first;
+			return it->second;
+		};
+		int y = top;
+		for (const std::string& line : wrapped(key, tf, w, maxLines))
+		{
+			ui.drawTextMid(line, tf, ink, left, y + tlh / 2, w);
+			y += tlh;
+		}
+		if (!author.empty())
+		{
+			y += 6;
+			for (const std::string& line : wrapped(author, af, w, 2))
+			{
+				ui.drawTextMid(line, af, dim, left, y + alh / 2, w);
+				y += alh;
+			}
+		}
+		const Glyph& mark = bookKindGlyph(bookcover::kindOf(fmt));
+		ui.drawGlyphMid(mark, right - 6, r.y + r.h - lay::SP8 - 8, dim, 1);
 	}
 
 	void Ui::Kit::albumTile(const lay::AlbumTile& l, const Album& a)

@@ -3,6 +3,7 @@
 #include "updater.h"
 #include "songlayout.h"
 #include "artph.h"
+#include "bookcover.h"
 #include "textwrap.h"
 #include "artbackdrop.h"
 #include "viznative.h"
@@ -16767,6 +16768,16 @@ static void testTextWrapBreaks()
 	CHECK_EQ(S[0], std::string("the quick"));
 	CHECK_EQ(S[1], std::string("brown fox"));
 	CHECK_EQ(textwrap::breakAt("short", 9), (size_t)5);
+	// the same title always gives the same cover; case and edge spaces make no other book; all eight grounds are reachable
+	CHECK_EQ(bookcover::index("Dune"), bookcover::index("  dune "));
+	bool seen[8] = {};
+	for (int i = 0; i < 200; i++) seen[bookcover::index("Book " + std::to_string(i))] = true;
+	for (bool b : seen) CHECK(b);
+	CHECK(bookcover::ground("Dune").r == bookcover::ground("DUNE").r);
+	CHECK_EQ((int)bookcover::kindOf("/a/b/Some.EPUB"), (int)bookcover::EPUB);
+	CHECK_EQ((int)bookcover::kindOf("x.txt"), (int)bookcover::TXT);
+	CHECK_EQ((int)bookcover::kindOf("cbz"), (int)bookcover::COMIC);
+	CHECK_EQ((int)bookcover::kindOf("noext"), (int)bookcover::OTHER);
 }
 
 // the top panel's song layout (docs/redesign/components.md, Song layout): the drawings' numbers

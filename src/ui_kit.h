@@ -507,6 +507,7 @@ namespace bp
 		{
 			std::function<void(Rect)> picture;
 			std::string key, title, badge;
+			std::string author, fmt;	// the drawn cover's (no picture): the author under the title, the format's mark
 			double progress = -1;	// -1: no bar
 			bool focused = false, pressed = false, off = false;
 		};
@@ -567,10 +568,12 @@ namespace bp
 		};
 		void folderRow(const lay::FolderRow& l, const Folder& f);
 
-		// A book's drawn cover (a Cover cell with no picture): a sleeve in BUTTON, the spine in PRESSED with the
-		// ACCENT mark, and the title's bars in TEXT and DIM, their widths keyed by the book's name so a shelf is not
-		// one drawing repeated. The song's record-in-its-sleeve would read as an album on the Books page.
-		void bookPlaceholder(Rect r, const std::string& key, int rad = 5);
+		// A book's drawn cover (a Cover cell with no picture), from its title (bookcover.h): a ground picked by the
+		// title's hash, the title in large type, `author` under it, the format's mark (`fmt`: a path or an extension)
+		// in the corner. The same title, the same cover, everywhere. The song's record-in-its-sleeve would read as an
+		// album on the Books page.
+		void bookPlaceholder(Rect r, const std::string& key, int rad = 5, const std::string& author = "",
+			const std::string& fmt = "");
 
 		// ==== the library's pages (ui_kit_variants.cpp; docs/notes/2026-11-19-kit-more.md): an album's and an
 		// artist's page head, the album's track row, the Playlists page's row, and Match album art's backdrop.

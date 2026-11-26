@@ -221,6 +221,7 @@ namespace bp
 				out.cover = true;
 				out.coverArt = mediaArt->paneCover(b->path, true);
 				out.label = "Book";
+				if (!out.coverArt) { out.genTitle = b->name; out.genFmt = b->path; }
 				out.title = b->name;
 				if (b->progress >= 0) out.rows = {{"Progress", std::to_string((int)(b->progress * 100 + 0.5)) + "%"}};
 				out.text = upper(baseName(b->path).substr(baseName(b->path).rfind('.') == std::string::npos ? 0 : baseName(b->path).rfind('.') + 1));

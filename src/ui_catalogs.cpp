@@ -1864,6 +1864,8 @@ namespace bp
 					std::vector<OpdsLink> o = e->bookOffers();
 					std::string fmtName = o.empty() ? (e->formatNames().empty() ? "" : e->formatNames().front())
 						: opdsFormatName(o.front().type, o.front().href);
+					cv.author = e->author;
+					cv.fmt = fmtName;
 					cv.badge = !mark.empty() ? mark : fmtName != "EPUB" ? fmtName : "";
 					cv.progress = share;
 					cv.focused = i == cur;
@@ -1933,7 +1935,10 @@ namespace bp
 		std::string have = onCard(book.id);
 		bool getting = dl.active && dl.entryId == book.id && dl.catalogId == openId;
 		bool none = offers.empty();
-		k.bookPlaceholder(l.cover, book.title, 5);
+		{
+			std::vector<std::string> fns = book.formatNames();
+			k.bookPlaceholder(l.cover, book.title, 5, book.author, fns.empty() ? "" : fns[0]);
+		}
 		if (!have.empty()) k.pill(l.cover.x + 6 + k.pillW("On card"), l.cover.y + l.cover.h - 14, "On card", Kit::Pill::Live);
 		ui.drawTextMid(book.author.empty() ? "Unknown author" : book.author, F_P16, TEXT, l.author.x, l.author.y + l.author.h / 2, l.author.w);
 		std::string facts;

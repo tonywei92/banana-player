@@ -6,6 +6,7 @@
 #include "cardcanvas.h"
 #include "kitlayout.h"
 #include "textwrap.h"
+#include "bookcover.h"
 #include "theme.h"
 #include "ui.h"
 #include "ui_glyphs.h"
@@ -96,6 +97,37 @@ namespace bp
 			}
 			void glyph(const Ui::Glyph& g, float size, float x, float y, Rgb ink) { c.glyph(cg(g), S(size), X(x), Y(y), ink); }
 		};
+
+		// a book's cover drawn from its title, in the box (units): the bottom panel's (Ui::Kit::bookPlaceholder) in the
+		// pane's own type: ground by the title's hash, a spine, the title large, the author under it, the format's mark
+		void generatedCover(PaneDraw& d, const PaneSpec& s, float x, float y, float w, float h)
+		{
+			const bookcover::Rgb g = bookcover::ground(s.genTitle), ik = bookcover::ink(), dm = bookcover::inkDim();
+			const Rgb ground{g.r, g.g, g.b}, ink{ik.r, ik.g, ik.b}, dim{dm.r, dm.g, dm.b};
+			const Rgb spine{(uint8_t)(g.r * 3 / 4), (uint8_t)(g.g * 3 / 4), (uint8_t)(g.b * 3 / 4)};
+			const float r = std::max(0, theme::R_TILE - theme::EDGE);
+			d.box(x, y, w, h, r, ground);
+			d.box(x + 2, y + 4, w / 14, h - 8, 2, spine);
+			float left = x + 2 + w / 14 + 14, tw = x + w - 14 - left;
+			float top = y + 18;
+			auto lines = d.wrap(PIXEL, 22, s.genTitle, tw, 6);
+			float ty = top;
+			for (auto& t : lines)
+			{
+				d.text(PIXEL, 22, t, left, ty, ink);
+				ty += 22 * 1.2f;
+			}
+			if (!s.genAuthor.empty())
+			{
+				ty += 8;
+				for (auto& t : d.wrap(INTER, 13, s.genAuthor, tw, 2))
+				{
+					d.text(INTER, 13, t, left, ty, dim);
+					ty += 13 * 1.4f;
+				}
+			}
+			d.glyph(bookKindGlyph(bookcover::kindOf(s.genFmt)), 22, x + w - 14 - 22, y + h - 14 - 20, dim);
+		}
 
 		// a picture fitted inside the box (units), the aspect kept, centred; a box filter at the picture's own rate (few
 		// taps: a cover is 196 x 278 units on the panel); radius > 0 rounds its corners (the welcome's icon)
@@ -490,6 +522,7 @@ namespace bp
 				paintImage(d, *s.coverArt, l.cover.x + EDGE, l.cover.y + EDGE, l.cover.w - 2 * EDGE, l.cover.h - 2 * EDGE,
 					std::max(0, R_TILE - EDGE));
 			}
+			else if (!s.genTitle.empty()) generatedCover(d, s, l.cover.x + EDGE, l.cover.y + EDGE, l.cover.w - 2 * EDGE, l.cover.h - 2 * EDGE);
 			else d.glyph(G_PICTURE, 44, l.cover.x + (l.cover.w - 44) / 2.f, l.cover.y + (l.cover.h - 44) / 2.f, DIM);
 		}
 		// the column: label, title, sentence, then the block, the rows, the keys

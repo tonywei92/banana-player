@@ -280,7 +280,7 @@ namespace bp
 		// a book's cover, as a song's art above (docs/redesign "books": until one is decoded, the drawn sleeve
 		// stands in — and for good where there is none to decode, a TXT's own cover)
 		Kit& k = *kit;
-		k.bookPlaceholder(r, key, rad);
+		k.bookPlaceholder(r, key, rad, "", path);
 		if (path.empty() || artFailed.count(path)) return;
 		Rect in{r.x + theme::EDGE, r.y + theme::EDGE, r.w - 2 * theme::EDGE, r.h - 2 * theme::EDGE};
 		SDL_Rect d = devRect(in);
