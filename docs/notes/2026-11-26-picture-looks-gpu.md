@@ -28,3 +28,21 @@ a photo's own `vf` scale stays).
 it (GLES 3 does), so no `mediump` rounding of `gl_FragCoord` rows or texel offsets; were it mediump, a row near 768
 could floor to its neighbour. `textureGather`/`textureGatherOffset` (GLES 3.1) and compute are not used. A first
 compile on Mesa may be tens of ms in `mpv_render_context_render`, on the main thread: one hitch per new (look, strength).
+
+## Scanlines and LCD grid made realistic (same day)
+
+Written for this app (no community shader copied; most are GPL, this project is MIT). Both: one pass, in linear light
+(`pow(c, 2.2)` in, `1/2.2` out), the cell or line's colour sampled at its centre (an offset from `gl_FragCoord` to the
+centre, times `HOOKED_pt`), a gain worked out on the CPU so a mid grey keeps its brightness (written into the text).
+- **Scanlines (CRT beam).** Lines `unit` = panel height / 240 pixels tall (about 240 lines on either panel; 4 px on a
+  Retina Mac). Each pixel takes its line's colour, softened across by two side taps at ±0.7 px (3 taps). Its weight is a
+  Gaussian of its distance from the line's centre row, `sigma` from 0.17 line (dark) to 0.30 (bright, by the square root
+  of the brightest channel): highlights bloom into the gap, dark parts show deep lines. Strength sets the depth (45–100%
+  of the way from flat to the Gaussian) and an aperture grille on output columns (R, G, B; the other two channels at
+  1 − 0.3·k). Gain ≤ 1.8. Cost: 3 taps, 2 `pow`, 1 `exp` a pixel.
+- **LCD grid.** Cells of `max(3, round(unit·(1.5 + 1.5·k)))` px (3–6 on the RG DS, 5–9 on the Plus). One tap at the
+  cell's centre (the picture snapped to the grid); three vertical stripes over the lit width, each passing its own
+  channel whole and the others at 0.30 − 0.15·k; a 1-px gap row under each cell, and a 1-px gap column from 4 px up, at
+  0.25 − 0.15·k. Gain ≤ 2.6. Cost: 1 tap, 2 `pow` a pixel.
+- If a row lands one off on Panfrost (an FBO flipped against `HOOKED_pos`), the centre sample comes from a row within
+  the same few pixels: a blur of a pixel, not a misplaced pattern. Worth a look on the handheld.

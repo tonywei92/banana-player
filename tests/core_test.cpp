@@ -9066,14 +9066,19 @@ static void testPictureLook()
 		CHECK(sh.find("Gather") == std::string::npos && sh.find("COMPUTE") == std::string::npos);
 		CHECK(sh.find("vec4 hook()") != std::string::npos);
 	}
-	// lines in the panel's pixels: `unit` tall, as far apart; stronger is darker
+	// Scanlines: a line `unit` pixels tall (about 240 on either panel), the beam wider when bright; stronger is deeper
 	std::string scan = lookShader(LOOK_SCANLINES, 60, 2);
-	CHECK(scan.find("mod(floor(gl_FragCoord.y), 4.0) < 2.0) c.rgb *= 0.640") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("6.0) < 3.0") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("*= 0.940") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("*= 0.400") != std::string::npos);
-	CHECK(lookShader(LOOK_LCD, 100, 3).find("mod(floor(gl_FragCoord.xy), 6.0)") != std::string::npos);
-	CHECK(lookShader(LOOK_LCD, 100, 3).find("*= 0.500") != std::string::npos);
+	CHECK(scan.find("floor(fc.y / 2.0)") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("floor(fc.y / 3.0)") != std::string::npos);
+	CHECK(scan.find("mix(0.170, 0.300, sqrt(bright))") != std::string::npos);
+	CHECK(scan.find("pow(") != std::string::npos);	// (in linear light)
+	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("beam = 0.495 +") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("beam = 0.000 +") != std::string::npos);
+	// LCD grid: cells 3..6 pixels on the RG DS by Strength (1.5x on the Plus), R/G/B stripes, a gain
+	CHECK(lookShader(LOOK_LCD, 10, 2).find("floor(fc / 3.0)") != std::string::npos);
+	CHECK(lookShader(LOOK_LCD, 100, 2).find("floor(fc / 6.0)") != std::string::npos);
+	CHECK(lookShader(LOOK_LCD, 100, 3).find("floor(fc / 9.0)") != std::string::npos);
+	CHECK(lookShader(LOOK_LCD, 60, 2).find("mask.g = 1.0") != std::string::npos);
 	CHECK(lookShader(LOOK_SHARPEN, 60, 2).find("0.900 * d") != std::string::npos);
 	CHECK(lookShader(LOOK_SOFTEN, 10, 2).find("mix(c.rgb, blur, 0.090)") != std::string::npos);
 	CHECK(lookShader(LOOK_RETRO, 50, 2).find("y * 0.900 + 0.035") != std::string::npos);

@@ -953,9 +953,11 @@ On a video, the **Picture** chip (or **X** / **SELECT** › **Picture**): one sh
 it, **A** chooses, and the film on the top screen changes at once (the file isn't reopened):
 
 - **Size**: Fit, Fill, Stretch (below).
-- **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines**, **LCD grid** (the handheld's
-  own pixels, larger) and **Retro** (warm, faded colour). Each tile has a small sample of itself. The lines and the grid
-  are in the top panel's own pixels (2 on, 2 off on the RG DS; 3 on the Plus), so they don't shimmer.
+- **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines** (a CRT: about 240 lines, each a beam
+  that's thin on dark parts and spreads into the gap on bright ones, a faint red-green-blue grille), **LCD grid** (an
+  old LCD's cells: the picture in squares of 3 to 6 pixels, wider with Strength, each with red, green and blue stripes
+  and a thin dark gap) and **Retro** (warm, faded colour). Each tile has a small sample of itself. Lines and cells are
+  in the top panel's own pixels, so they don't shimmer; both are brightened to make up for the dark they add.
 - **Strength**: 10 to 100%, **LEFT / RIGHT** in steps of 10; kept per look. None for Off. By touch it is the app's
   one slider, as Volume and Brightness: a tap puts it there, a drag from anywhere on its row moves it by the finger's
   travel, held till the finger lifts.
