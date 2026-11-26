@@ -14,7 +14,7 @@ import { openDoc } from './recent.js';
 // The Books tab (docs/redesign "books"): the cards' book shelf — EPUB, PDF and comics — as the index's own
 // walk lists it. The dashboard can't read one, so a row asks the handheld to open it at its page, the same the
 // Recent cards do (api_playlists.cpp's open); the reading places stay the handheld's own.
-const kindOf = p => ({ '.epub': 'epub', '.pdf': 'pdf', '.cbz': 'comic', '.cbr': 'comic' })[(p.match(/\.[^.]+$/) || [''])[0].toLowerCase()] || 'book';
+const kindOf = p => 'book:' + (({ '.epub': 'epub', '.pdf': 'pdf', '.cbz': 'comic', '.cbr': 'comic' })[(p.match(/\.[^.]+$/) || [''])[0].toLowerCase()] || 'epub');
 const progress = b => !b.started ? '' : b.pages > 0 ? 'Page ' + b.page + ' of ' + b.pages : Math.round(b.frac * 100) + '% read';
 
 export const readHere = b => go('#/books/read?p=' + encodeURIComponent(b.p));

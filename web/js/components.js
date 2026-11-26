@@ -113,7 +113,17 @@ function Placeholder({ seed, r }) {
 	return html`<span class="gc ph" ref=${el => { box.current = el; if (r) r.current = el; }}><svg viewBox=${'0 0 ' + s + ' ' + s} width="100%" height="100%" aria-hidden="true">
 		${d(a.D, 'bg')}${a.band > 0 && d(a.band, 'surface')}${d(a.label, 'yellow')}${d(a.hole, 'bg')}</svg></span>`;
 }
+// A book with no cover of its own, drawn from its title as the handheld does (src/bookcover.h): FNV-1a of the title
+// (ends' spaces off, ASCII lowercased) picks one of eight muted grounds (--bk0..7 in style.css, the same colours), then the
+// title and the format's mark. kind is "book:epub" (Books' rows and sheet); the title is the file's name less its extension
+const bookTitleOf = p => nameOf(p).replace(/\.[^.]+$/, '');
+export const bookGroundIndex = t => phHash(t.trim().replace(/[A-Z]/g, c => c.toLowerCase())) % 8;
+function BookCover({ seed, kind, r }) {
+	const t = bookTitleOf(seed), fmt = kind.slice(5);
+	return html`<span class="gc bkc" ref=${r} style=${'background:var(--bk' + bookGroundIndex(t) + ')'} aria-hidden="true"><span class="bkt">${t}</span><${Icon} n=${DOC_MOTIF[fmt] || 'epub'} k=${1} /></span>`;
+}
 function GenCover({ seed, kind, k, r }) {
+	if (typeof kind === 'string' && kind.startsWith('book:')) return html`<${BookCover} seed=${seed} kind=${kind} r=${r} />`;
 	if (kind === 'audio') return html`<${Placeholder} seed=${seed} r=${r} />`;
 	const h = hashOf(seed), [a, b] = PAL[h % PAL.length];
 	const n = kind === 'video' ? 'film' : kind === 'photo' ? 'picture' : DOC_MOTIF[kind] || MOTIFS[(h >>> 5) % MOTIFS.length];

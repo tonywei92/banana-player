@@ -72,7 +72,7 @@ download at a time, in the background (B leaves it running, Y cancels).
   cached in `<state>/cache/catalog-covers/<fnv64 of the URL>`, decoded by main's cover worker through the song-art
   texture cache, key `home:cat|<file>|…`), the summary on the top screen (`Catalogs::topPane`, `PaneSpec::wholeText`),
   More's Download every format was built, then removed at the owner's word (2026-11-26: a niche; one Download is enough). Delete from the card (`CatalogGot` keeps a line per
-  file; a delete removes those and no other). The cover cache has no size cap yet. Live check: a Mac with the owner's
+  file; a delete removes those and no other). The cover cache is capped at 40 MB (least recently used goes, on a worker, at most once a minute, never mid-fetch). Live check: a Mac with the owner's
   Calibre GUI open cannot start `calibre-server`/`calibredb` (they refuse), so a two-format book came from a 40-line
   Python OPDS server on 127.0.0.1; the real Calibre (one single-format book) gave the real covers.
 - **Not built**: a "No Wi-Fi" first line.
