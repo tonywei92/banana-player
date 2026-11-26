@@ -134,6 +134,16 @@ namespace bp
 	bool suwayomiParseRemoveExtensionStore(const std::string& json, std::string& error);
 
 	bool suwayomiParseExtensions(const std::string& json, std::vector<SuwayomiExt>& out, std::string& error);
+
+	// An installed extension that no repository lists any more (the engine's isObsolete): it may stop working and
+	// gets no updates. An obsolete one that isn't installed is never offered.
+	inline bool suwayomiInstalledObsolete(const SuwayomiExt& e) { return e.isInstalled && e.isObsolete; }
+	// Whether the Available list shows it (the installed always; the rest only if current, adult-allowed and in a shown language)
+	bool suwayomiExtListed(const SuwayomiExt& e, bool adult, bool langOk);
+	// its place in the Available list: an update first, the installed, what isn't, the obsolete installed last
+	int suwayomiAvailableRank(const SuwayomiExt& e);
+	// the Installed list's order: by name then language, obsolete ones after the rest
+	bool suwayomiInstalledBefore(const SuwayomiExt& a, const SuwayomiExt& b);
 	// suwayomiFetchInstalledSources's answer: each installed extension's pkgName and sources (sourcesKnown set)
 	bool suwayomiParseInstalledSources(const std::string& json, std::vector<SuwayomiExt>& out, std::string& error);
 

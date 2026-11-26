@@ -77,6 +77,7 @@ namespace bp
 			const Glyph* glyph = nullptr;
 			std::string name, second, note, pill;
 			bool off = false, pillBad = false;
+			bool obsolete = false;	// an installed extension no repository lists: the top panel says what that means (obsoletePane)
 			double bar = -1;	// a progress line along the row's foot (a chapter downloading); -1 none
 			bool barBad = false;
 			std::string keyLabel, keyCap;	// the focused row's key ("" none)
@@ -616,6 +617,9 @@ namespace bp
 		int mangaJavaAvailableRows(const Player& p) const;
 		int mangaJavaRepoRows() const;
 		const MangaJava::Source* mangaJavaSourceFor(const std::string& fullId) const;
+		bool mangaJavaSourceObsolete(const std::string& fullId) const;	// its extension is installed and no repository lists it
+		std::string mangaObsoleteFocused(const Player& p) const;	// the name of the obsolete row under the cursor in Browse's or Sources' list; "" none
+		bool obsoletePane(PaneSpec& out, const Player& p) const;	// the top panel's line for it
 		void mangaJavaInstalledAct(int local, Player& p);	// A/X on an installed extension
 		void mangaJavaAvailableAct(int local, Player& p);	// A: install
 		void mangaJavaRepoAct(int local, Player& p);		// A: the repository's sheet
@@ -759,7 +763,7 @@ namespace bp
 		// Popular · Latest · Search (L/R) and a cover grid. A source's page is a view of Page::Manga and its series
 		// page is Page::MangaSeries (the id says whose: "src:<full source id>:<key>"), because a Page of their own
 		// would need its keys, taps and drawing dispatched in ui.cpp, ui_draw.cpp and ui_ext.cpp.
-		struct MangaSrcRow { std::string id, name, lang, file; bool adult = false, java = false; };
+		struct MangaSrcRow { std::string id, name, lang, file; bool adult = false, java = false, obsolete = false; };
 		std::vector<MangaSrcRow> mangaSrcRows;	// every installed source, as repos() last listed them
 		uint64_t mangaSrcRowsSerial = 0;		// repos()'s serial when they were read
 		uint64_t mangaJavaRowsSerial = 0;		// javaSources()'s serial when the Java rows were read
