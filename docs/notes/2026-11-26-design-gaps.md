@@ -43,7 +43,7 @@ No other screen has zero support.
 | `vol-boost` (and the header-badge component) | Built (badges-quick). |
 | `quick` | Built (badges-quick). |
 | `power-dim` / Screen-off warning | Notice row, veil and "Screen off in N s": not built, by decision (the backlight eases down). Already marked. | `backlight` comment `src/ui.h:1008`; `components.md:559` | none unless the owner wants it |
-| `cat-book` | ~~More's "Download every format"~~ built (`catalog-more`: one after another, same folder). | `ui_catalogs.cpp` `downloadAll` | done |
+| `cat-book` | More's "Download every format": dropped by the owner (2026-11-26). | none | none |
 | `cat-book-have` | ~~More's "Delete from the card…"~~ built (Confirm sheet; deletes only the files the catalog's `.got` lists). | `ui_catalogs.cpp` `deleteFromCard` | done |
 | `cat-offline` | Built (badges-quick). |
 | `cat-books` / `cat-book` | ~~The catalog's own cover pictures and the whole summary on the top screen~~ built (covers: grid thumbnail, page cover; the top pane still draws the title cover, not the picture). | `Catalogs::coverFile`, `Catalogs::topPane` | done |

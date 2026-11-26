@@ -279,7 +279,7 @@ The owner's answers (2026-11-26): a third tab; Try Gutenberg on the Empty state'
 Manga's, with Copy from Manga's servers; one sub-folder per catalog on the card with more room; OPDS 1.2 only; no
 dashboard form yet; **one download at a time** in the background (B leaves it running, Y cancels). Not built yet: the
 catalog's own cover pictures (the drawn cover stands in), the book's whole summary on the top screen, More's
-"Download every format" and "Delete from the card…", a "No Wi-Fi" first line (the reason curl gives is shown).
+"Delete from the card…" ("Download every format" was dropped by the owner, 2026-11-26), a "No Wi-Fi" first line (the reason curl gives is shown).
 
 
 Screens (all marked NOT BUILT in the preview): `books-catalogs`, `books-catalogs-empty`, `cat-form`, `cat-more`,

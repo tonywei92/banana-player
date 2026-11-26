@@ -608,11 +608,6 @@ namespace bp
 					if (fmt < (int)offers.size()) startDownload(book, offers[fmt], pl);
 					return false;
 				}});
-			if (offers.size() > 1 && !dl.active)
-				m.rows.push_back({&G_DOWNLOAD, "Download every format", std::to_string(offers.size()) + " files", "", [this](Player& pl) {
-					downloadAll(pl);
-					return false;
-				}});
 			if (!have.empty())
 			{
 				m.rows.push_back({&G_FOLDER, "Show in Files", "", "", [this, have](Player& pl) {
@@ -662,17 +657,6 @@ namespace bp
 		return folder + "/" + catalogFolderName(s.name);
 	}
 
-	void Ui::Books::Catalogs::downloadAll(Player& p)
-	{
-		if (offers.empty() || dl.active) return;
-		queued = Queue();
-		queued.entry = book;
-		queued.base = bookBase;
-		queued.rest.assign(offers.begin() + 1, offers.end());
-		queued.total = (int)offers.size();
-		startDownload(book, offers.front(), p);
-	}
-
 	void Ui::Books::Catalogs::deleteFromCard(Player& p)
 	{
 		// only the files this catalog gave the card (its list), never anything else in the folder
@@ -687,7 +671,7 @@ namespace bp
 		ui.rescanLibrary();
 	}
 
-	void Ui::Books::Catalogs::startDownload(const OpdsEntry& e, const OpdsLink& offer, Player& p, const std::string* base)
+	void Ui::Books::Catalogs::startDownload(const OpdsEntry& e, const OpdsLink& offer, Player& p)
 	{
 		const MangaServer* s = openCatalog();
 		if (!s) return;
@@ -720,7 +704,7 @@ namespace bp
 		dl.entryId = e.id;
 		dl.title = e.title;
 		dl.fmtName = opdsFormatName(offer.type, offer.href);
-		dl.url = opdsResolve(base ? *base : bookBase, offer.href);
+		dl.url = opdsResolve(bookBase, offer.href);
 		dl.final = final;
 		dl.hidden = dir + "/." + nameOfPath(final);	// (MangaFetch writes "<hidden>.part" and renames it to <hidden>)
 		dl.length = offer.length;
@@ -744,7 +728,6 @@ namespace bp
 	void Ui::Books::Catalogs::cancelDownload(const char* why)
 	{
 		if (!dl.active) return;
-		queued = Queue();
 		if (fetch && dl.req) fetch->cancel(dl.req);
 		pending.erase(dl.req);
 		std::remove((dl.hidden + ".part").c_str());
@@ -756,7 +739,6 @@ namespace bp
 	void Ui::Books::Catalogs::downloadFailed(const std::string& title, const std::string& why, Player& p)
 	{
 		lastFailure = why;
-		queued = Queue();
 		// over Books a sheet with Try again; anywhere else a Note (the cell loses its bar either way)
 		if (ui.page != Page::Books)
 		{
@@ -792,8 +774,7 @@ namespace bp
 		if (why.empty() && rename(d.hidden.c_str(), d.final.c_str()) != 0) why = "It couldn't be written on the card.";
 		if (!why.empty())
 		{
-			queued = Queue();
-			std::remove(d.hidden.c_str());
+				std::remove(d.hidden.c_str());
 			std::remove((d.hidden + ".part").c_str());
 			if (r.status == 401) signInRefused(s, s.user.empty());
 			else downloadFailed(d.title, why, p);
@@ -803,18 +784,7 @@ namespace bp
 		// on the Shelf at once (the folders read again), and in the index
 		ui.books->build();
 		ui.rescanLibrary();
-		if (!queued.rest.empty())
-		{
-			// Download every format: the next one, into the same folder
-			OpdsLink next = queued.rest.front();
-			queued.rest.erase(queued.rest.begin());
-			Queue keep = queued;
-			startDownload(keep.entry, next, p, &keep.base);
-			if (dl.active) queued = keep;	// (a start that failed has dropped the rest)
-			return;
-		}
-		p.osd(queued.total > 1 ? "Saved " + std::to_string(queued.total) + " formats to Books" : "Saved to Books", 2000);
-		queued = Queue();
+		p.osd("Saved to Books", 2000);
 	}
 
 	// ---- the covers ----
