@@ -89,6 +89,22 @@ namespace bp
 		return in.lastReadOnline && in.lastReadAgoS >= 0 && in.lastReadAgoS <= MANGA_WARM_RECENT_S;
 	}
 
+	std::vector<int> mangaMarkIndices(MangaMarkSet set, int focus, int n)
+	{
+		std::vector<int> out;
+		int to = set == MangaMarkSet::All ? n : std::min(focus, n);
+		for (int i = 0; i < to; i++) out.push_back(i);
+		return out;
+	}
+
+	bool mangaAllRead(const std::vector<MangaChapterMark>& chapters)
+	{
+		if (chapters.empty()) return false;
+		for (const auto& c : chapters)
+			if (!c.read) return false;
+		return true;
+	}
+
 	std::string mangaChapterShort(const std::string& title)
 	{
 		std::string ch = title;

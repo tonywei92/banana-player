@@ -35,6 +35,13 @@ namespace bp
 	// the first started-but-unread chapter, at its page; else the first unread, at its start; else the first
 	MangaResumePoint mangaResume(const std::vector<MangaChapterMark>& chapters);
 
+	// The series page's bulk read marks: which chapters (by index) "Mark previous as read" (every one before the
+	// focused) and "Mark all" reach, and whether "all" reads as Mark read or Mark unread (everything already read:
+	// unread; an empty series: read, which marks nothing)
+	enum class MangaMarkSet { Previous, All };
+	std::vector<int> mangaMarkIndices(MangaMarkSet set, int focus, int n);
+	bool mangaAllRead(const std::vector<MangaChapterMark>& chapters);
+
 	// "Chapter 12" as "Ch. 12", and a bare title gets its "Ch. " (the History row and the Resume key keep it short)
 	std::string mangaChapterShort(const std::string& title);
 

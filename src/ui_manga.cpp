@@ -976,12 +976,15 @@ namespace bp
 			}
 			if (b == Button::X)
 			{
-				if (s && mserCursor >= 0 && mserCursor < n && mangaStore)
+				if (s && n > 0 && mangaStore)
 				{
-					const std::string& cid = s->chapters[mserCursor].path;
-					const ChapterProgress* pr = mangaStore->progress(cid);
-					mangaStore->markRead(mangaSeriesId, {cid}, !(pr && pr->read));
-					mangaSave();
+					std::string sid = mangaSeriesId;
+					mangaOpenMarkMore(sid, [this, sid] {
+						std::vector<std::string> ids;
+						if (const LocalSeries* ls = mangaLocalSeries(sid))
+							for (auto& c : ls->chapters) ids.push_back(c.path);
+						return ids;
+					}, [this] { return mserCursor; });
 				}
 				return false;
 			}
@@ -2596,6 +2599,54 @@ namespace bp
 		ui.pageReader->mangaListSmooth(m.list, x, y, hit, [open](int i) { open(i); });
 	}
 
+	void Ui::Manga::mangaOpenMarkMore(const std::string& seriesId, std::function<std::vector<std::string>()> ids, std::function<int()> focus)
+	{
+		ui.openMore([this, seriesId, ids, focus](const Player&) {
+			MoreSpec m;
+			if (!mangaStore) return m;
+			std::vector<std::string> all = ids();
+			int at = focus();
+			std::vector<MangaChapterMark> marks;
+			for (const auto& cid : all)
+			{
+				MangaChapterMark mk;
+				if (const ChapterProgress* pr = mangaStore->progress(cid)) mk.read = pr->read;
+				marks.push_back(mk);
+			}
+			bool here = at >= 0 && at < (int)all.size();
+			auto mark = [this, seriesId, all](std::vector<int> idx, bool read) {
+				std::vector<std::string> sel;
+				for (int i : idx) sel.push_back(all[i]);
+				mangaStore->markRead(seriesId, sel, read);
+				mangaSave();
+				return false;
+			};
+			m.glyph = &G_COMIC;
+			m.title = mangaTitle(seriesId);
+			m.note = std::to_string(all.size()) + (all.size() == 1 ? " chapter" : " chapters");
+			MoreItem one;
+			one.glyph = &G_CHECK;
+			one.label = here && marks[at].read ? "Mark this chapter unread" : "Mark this chapter read";
+			one.off = !here;
+			one.act = [mark, at, here, marks](Player&) { return mark({at}, !(here && marks[at].read)); };
+			m.rows.push_back(one);
+			MoreItem prev;
+			prev.glyph = &G_CHECK;
+			prev.label = "Mark previous as read";
+			prev.off = !here || at == 0;
+			prev.act = [mark, at, n = (int)all.size()](Player&) { return mark(mangaMarkIndices(MangaMarkSet::Previous, at, n), true); };
+			m.rows.push_back(prev);
+			bool allRead = mangaAllRead(marks);
+			MoreItem every;
+			every.glyph = &G_CHECK;
+			every.label = allRead ? "Mark all as unread" : "Mark all as read";
+			every.off = all.empty();
+			every.act = [mark, allRead, n = (int)all.size()](Player&) { return mark(mangaMarkIndices(MangaMarkSet::All, 0, n), !allRead); };
+			m.rows.push_back(every);
+			return m;
+		}, "mangamark");
+	}
+
 	std::string Ui::Manga::mangaResumeKeyLabel(const std::string& chapterTitle, const ChapterProgress* pr, int keyW) const
 	{
 		bool started = pr && !pr->read && (pr->pages > 0 || pr->page > 0);
@@ -3009,7 +3060,7 @@ namespace bp
 		if (mserCursor >= n) mserCursor = n - 1;
 		mlChapters.refresh = [this](Player&) { mangaScan(); };	// pull to refresh: the Manga folders read again
 		mangaRows(mlChapters, p, n, mserScroll, mserCursor, [this, s, rc = resume.chapter](int i) { return mangaChapterRow(s->chapters[i].title, s->chapters[i].path, i == rc, -1); });
-		ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"Y", "In library"}, {"B", "Back"}});
+		ui.drawHints({{"A", "Read"}, {"X", "Read marks"}, {"Y", "In library"}, {"B", "Back"}});
 	}
 
 	Ui::Manga::MangaRow Ui::Manga::mangaChapterRow(const std::string& title, const std::string& progressId, bool resume, int pages) const

@@ -1980,13 +1980,14 @@ namespace bp
 			return false;
 		}
 		int n = (int)mangaSrcChapters.size();
-		if (b == Button::X && mserCursor >= 0 && mserCursor < n && mangaStore)
+		if (b == Button::X && n > 0 && mangaStore)
 		{
-			// the chapter's read mark, as X does on the card's series page
-			std::string cid = sourceItemId(mangaSrcId, mangaSrcChapters[mserCursor].key);
-			const ChapterProgress* pr = mangaStore->progress(cid);
-			mangaStore->markRead(mangaSeriesId, {cid}, !(pr && pr->read));
-			mangaSave();
+			// the read marks' sheet, as X does on the card's series page
+			mangaOpenMarkMore(mangaSeriesId, [this] {
+				std::vector<std::string> ids;
+				for (const auto& c : mangaSrcChapters) ids.push_back(sourceItemId(mangaSrcId, c.key));
+				return ids;
+			}, [this] { return mserCursor; });
 			return false;
 		}
 		// Resume is the row before the chapters
@@ -2214,7 +2215,7 @@ namespace bp
 			static const char* ROW[MG_SRC_KEYS] = {"Resume", "Get", "Info", "Library"};
 			ui.drawHints({{"A", ROW[std::clamp(mserBtn, 0, MG_SRC_KEYS - 1)]}, {"LEFT/RIGHT", "Keys"}, {"DOWN", "Chapters"}, {"B", "Back"}});
 		}
-		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) ui.drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read / unread"}, {"B", "Back"}});
+		else if (!mangaSourceEngineReady() && !mangaJavaCheckPending) ui.drawHints({{"", "Loading manga engine\xE2\x80\xA6"}, {"X", "Read marks"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"R", "Get"}, {"L", "Check"}, {"B", "Back"}});
 		if (mdlSheet != MDLS_NONE) later([this, &p] { drawMangaDlSheet(p); });
 	}

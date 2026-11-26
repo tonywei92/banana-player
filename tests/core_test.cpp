@@ -3820,6 +3820,20 @@ static void testMangaUiLogic()
 	}
 	CHECK_EQ(mangaResume({}).chapter, -1);
 	{
+		// the bulk read marks: the sets and the label's state
+		CHECK_EQ(mangaMarkIndices(MangaMarkSet::Previous, 3, 6), (std::vector<int>{0, 1, 2}));
+		CHECK_EQ(mangaMarkIndices(MangaMarkSet::Previous, 0, 6).empty(), true);
+		CHECK_EQ(mangaMarkIndices(MangaMarkSet::Previous, 9, 4), (std::vector<int>{0, 1, 2, 3}));
+		CHECK_EQ(mangaMarkIndices(MangaMarkSet::All, 2, 4), (std::vector<int>{0, 1, 2, 3}));
+		std::vector<MangaChapterMark> mk(3);
+		CHECK_EQ(mangaAllRead(mk), false);
+		for (auto& c : mk) c.read = true;
+		CHECK_EQ(mangaAllRead(mk), true);
+		mk[1].read = false;
+		CHECK_EQ(mangaAllRead(mk), false);
+		CHECK_EQ(mangaAllRead({}), false);
+	}
+	{
 		// the series key's words: 8 units a character, "..." cut
 		auto w = [](const std::string& t) { return (int)t.size() * 8; };
 		auto el = [](const std::string& t, int room) { return t.substr(0, std::max(0, room / 8 - 3)) + "..."; };

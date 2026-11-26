@@ -1800,6 +1800,9 @@ opened from Files has none).
   order). It applies at once to the chapter you're reading.
 - The back key (**LEFT**, or **RIGHT** with **Swap Left/Right** on; in Book too) on a chapter's first page, its start shown, opens the
   chapter before at its **last** page, the way the forward key at the end opens the next one.
+- **X** on a series page (a card's, a network folder's, a source's) opens **Read marks**: **Mark this chapter read / unread**
+  (the focused one), **Mark previous as read** (every chapter before it) and **Mark all as read** (**unread** once all are
+  read). Each is one change and one save, and a chapter shared with its online twin (downloads) follows it.
 - At the end of a chapter the screen says **End of chapter · R2 or RIGHT for** the next chapter by its name (**LEFT**
   with **Swap Left/Right** on), and the forward key (or **R2**) opens it; the header's line says *the end*. The last
   chapter says **You're caught up · that was the last chapter**. The top screen says it too, on a card at the foot of

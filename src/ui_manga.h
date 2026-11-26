@@ -549,6 +549,9 @@ namespace bp
 		Rect mangaResumeRect() const { return mangaSeriesKeys({MANGA_RESUME_W, 0, 64})[0]; }
 		Rect mangaHeartRect() const { return mangaSeriesKeys({MANGA_RESUME_W, 0, 64})[2]; }
 		// the main key's words for the chapter Resume opens (its title, its progress), fitted to `keyW`
+		// X on a series page: its More sheet (this chapter, previous, all as read / unread), over `ids()` (the chapters
+		// in order) and `focus()` (the focused one, -1 none); one markRead and one save a choice
+		void mangaOpenMarkMore(const std::string& seriesId, std::function<std::vector<std::string>()> ids, std::function<int()> focus);
 		std::string mangaResumeKeyLabel(const std::string& chapterTitle, const ChapterProgress* pr, int keyW) const;
 		// the reading page's own pieces
 		// (lay::mangaReadPage: the slider under the header, the finger's surface, the row of six)

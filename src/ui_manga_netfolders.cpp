@@ -516,13 +516,14 @@ namespace bp
 				}
 				return false;
 			}
-			if (b == Button::X && mangaNetCursor >= 0 && mangaNetCursor < n && mangaStore)
+			if (b == Button::X && n > 0 && mangaStore)
 			{
-				// the chapter's read mark, as X does on the card's series page
-				const std::string& cid = mangaNetChapters[mangaNetCursor].path;
-				const ChapterProgress* pr = mangaStore->progress(cid);
-				mangaStore->markRead(mangaNetSeriesPath, {cid}, !(pr && pr->read));
-				mangaSave();
+				// the read marks' sheet, as X does on the card's series page
+				mangaOpenMarkMore(mangaNetSeriesPath, [this] {
+					std::vector<std::string> ids;
+					for (const auto& c : mangaNetChapters) ids.push_back(c.path);
+					return ids;
+				}, [this] { return mangaNetCursor; });
 				return false;
 			}
 			if (!n) return false;
@@ -685,7 +686,7 @@ namespace bp
 			if (!mangaNetError.empty()) tabCrumb = mangaNetError;
 			else if (mangaNetLoading) tabCrumb = series ? "Fetching the chapter\xE2\x80\xA6" : "Loading\xE2\x80\xA6";
 		}
-		if (series) ui.drawHints({{"A", "Read"}, {"X", "Read / unread"}, {"B", "Back"}});
+		if (series) ui.drawHints({{"A", "Read"}, {"X", "Read marks"}, {"B", "Back"}});
 		else ui.drawHints({{"A", "Open"}, {"B", "Back"}});
 	}
 }
