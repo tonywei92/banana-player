@@ -78,7 +78,7 @@ Method: Page enum, Overlay structs, Ui::draw* and drawDialog titles, alert() str
 
 The redesign shipped in 0.9.0 and the app moved on past the drawings. This pass read every commit from v0.7.34 to 0.9.6 and
 changed the spec wherever the app differs; the code won each time. The preview now has **210 screens** (1,726 links, 26
-journeys walked; none unreachable, none without a way back). Of them 196 are built as drawn or near enough, 13 are designed
+journeys walked; none unreachable, none without a way back). Of them 195 are built as drawn or near enough, 14 are designed
 and not built (Lyrics: `lyrics`, `lyrics-*`, with the phone's `phone-lyrics`; marked “Designed · not built” in the gallery), and one, `power-dim`,
 is kept as the earlier design with a note (built without its notice).
 
