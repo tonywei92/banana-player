@@ -570,6 +570,92 @@ namespace bp
 			}
 		}
 
+		std::string calibreName(const std::string& instance)
+		{
+			static const std::string SUFFIX = "._calibre._tcp.local";
+			std::string n = endsWithI(instance, SUFFIX) ? instance.substr(0, instance.size() - SUFFIX.size()) : instance;
+			// "Books in calibre (on host port 8080)": the trailing "(on … port …)" is the host's, which the row shows as the address
+			size_t at = n.rfind(" (on ");
+			if (at != std::string::npos && n.find(" port ", at) != std::string::npos && n.back() == ')') n.resize(at);
+			return trim(n);
+		}
+		std::string calibreUrl(const std::string& ip, int port, const std::string& path)
+		{
+			std::string p = path.empty() ? "/opds" : path;
+			if (p[0] != '/') p = "/" + p;
+			return "http://" + ip + ":" + std::to_string(port) + p;
+		}
+		void CalibreFinder::add(const std::string& pkt, const std::string& srcIp)
+		{
+			static const std::string SUFFIX = "._calibre._tcp.local";
+			std::vector<Rec> recs;
+			bool response = false;
+			if (!parseDns(pkt, recs, &response) || !response) return;
+			std::string s;
+			size_t next;
+			for (const Rec& r : recs)
+			{
+				if (r.type == 12 && iequals(r.name, "_calibre._tcp.local") && readName(pkt, r.rd, s, next) && endsWithI(s, SUFFIX))
+				{
+					insts[lower(s)];
+					display[lower(s)] = s;
+					from[lower(s)] = srcIp;
+				}
+				else if (r.type == 33 && r.len >= 7 && endsWithI(r.name, SUFFIX) && readName(pkt, r.rd + 6, s, next))
+				{
+					Inst& i = insts[lower(r.name)];
+					display.emplace(lower(r.name), r.name);
+					i.port = rd16(pkt, r.rd + 4);
+					i.host = lower(s);
+					from.emplace(lower(r.name), srcIp);
+				}
+				else if (r.type == 16 && endsWithI(r.name, SUFFIX))
+				{
+					// length-prefixed "key=value" strings
+					size_t o = r.rd, end = r.rd + r.len;
+					while (o < end)
+					{
+						size_t l = (uint8_t)pkt[o++];
+						if (o + l > end) break;
+						std::string kv(pkt, o, l);
+						o += l;
+						if (kv.compare(0, 5, "path=") == 0)
+						{
+							insts[lower(r.name)].path = kv.substr(5);
+							display.emplace(lower(r.name), r.name);
+						}
+					}
+				}
+				else if (r.type == 1 && r.len == 4) addrs[lower(r.name)] = ipStr(rd32(pkt, r.rd));
+			}
+		}
+		std::vector<std::string> CalibreFinder::needSrv() const
+		{
+			std::vector<std::string> v;
+			for (const auto& kv : insts)
+				if (kv.second.port == 0) v.push_back(display.at(kv.first));
+			return v;
+		}
+		std::vector<FoundCatalog> CalibreFinder::result() const
+		{
+			std::vector<FoundCatalog> out;
+			std::set<std::string> seen;
+			for (const auto& kv : insts)
+			{
+				const Inst& i = kv.second;
+				if (i.port <= 0) continue;
+				auto a = addrs.find(i.host);
+				auto f = from.find(kv.first);
+				std::string ip = a != addrs.end() ? a->second : f != from.end() ? f->second : "";
+				if (ip.empty()) continue;
+				std::string url = calibreUrl(ip, i.port, i.path);
+				if (!seen.insert(url).second) continue;
+				std::string name = calibreName(display.at(kv.first));
+				out.push_back({name.empty() ? "Calibre" : name, url});
+			}
+			return out;
+		}
+
 		static const char* WSD_NS =
 		    "xmlns:soap=\"http://www.w3.org/2003/05/soap-envelope\" xmlns:wsa=\"http://schemas.xmlsoap.org/ws/2004/08/addressing\" "
 		    "xmlns:wsd=\"http://schemas.xmlsoap.org/ws/2005/04/discovery\" xmlns:wsdp=\"http://schemas.xmlsoap.org/ws/2006/02/devprof\" "
@@ -744,6 +830,51 @@ namespace bp
 		for (int fd : {nb, md, ws})
 			if (fd >= 0) close(fd);
 		busy = false;
+	}
+
+	std::vector<FoundCatalog> findCalibreCatalogs(int ms)
+	{
+		disc::CalibreFinder finder;
+		int md = -1;
+		try
+		{
+			std::vector<Iface> ifs = listIfaces();
+			md = udpSocket(false);
+			const int at[] = {0, 500, 1200};
+			size_t sent = 0;
+			auto t0 = Clock::now();
+			std::string q = disc::dnsQuery("_calibre._tcp.local", 12, 0x8001);
+			std::set<std::string> asked;
+			while (true)
+			{
+				int el = msSince(t0);
+				if (el >= ms) break;
+				if (sent < 3 && el >= at[sent])
+				{
+					sendMulticast(md, ifs, MDNS_GROUP, 5353, q);
+					sent++;
+				}
+				pollfd fd = {md, POLLIN, 0};
+				int r = poll(&fd, 1, 20);
+				if (r < 0 && errno != EINTR) break;
+				if (r <= 0) continue;
+				drain(md, [&](const std::string& p, uint32_t from) {
+					finder.add(p, ipStr(from));
+					// a PTR that came without its SRV and TXT: ask for them by name
+					for (const std::string& inst : finder.needSrv())
+						if (asked.insert(inst).second)
+						{
+							sendMulticast(md, ifs, MDNS_GROUP, 5353, disc::dnsQuery(inst, 33, 0x8001));
+							sendMulticast(md, ifs, MDNS_GROUP, 5353, disc::dnsQuery(inst, 16, 0x8001));
+						}
+				});
+			}
+		}
+		catch (...)
+		{
+		}
+		if (md >= 0) close(md);
+		return finder.result();
 	}
 
 	std::string resolveHost(const std::string& rawName, int timeoutMs)

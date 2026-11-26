@@ -544,6 +544,8 @@ int main(int argc, char** argv)
 		static MangaFetch* catalogFetch = new MangaFetch();
 		const Uint32 evCatalogFetch = SDL_RegisterEvents(1);
 		ui.books->catalogs->attach(catalogFetch, evCatalogFetch);
+		const Uint32 evCatalogFind = SDL_RegisterEvents(1);
+		ui.books->catalogs->attachFind(evCatalogFind);
 		// the thread that lists the network folders (its answers come as evNet)
 		NetWorker netWorker([](NetListing* l) {
 			SDL_Event ev{};
@@ -1480,6 +1482,7 @@ int main(int argc, char** argv)
 				}
 				else if (e.type == evMangaFetch) mangaNet->onFetchEvent();
 				else if (e.type == evCatalogFetch) ui.books->catalogs->onFetched(player);
+				else if (e.type == evCatalogFind) ui.books->catalogs->onFound(e);
 				else if (e.type == evMangaWorker) mangaNet->onWorkerEvent();
 				else if (e.type == evCover)
 				{

@@ -70,3 +70,12 @@ download at a time, in the background (B leaves it running, Y cancels).
   pulled during a download, the KMSDRM panels.
 - **Not built**: the catalog's cover pictures (the drawn cover stands in), the summary on the top screen, More's
   Download every format and Delete from the card, a "No Wi-Fi" first line.
+- **Found on this network (built)**: Calibre announces `_calibre._tcp` over mDNS (dns-sd on the owner's Mac: instance
+  "Books in calibre (on 192 port 8080)", SRV `192.local.`:8080, TXT `path=/opds`). `disc::CalibreFinder` (discovery.cpp, now in
+  bpcore, unit-tested) reads PTR, SRV, TXT and A across packets (asks for a SRV/TXT a bare PTR lacked); the URL is
+  `http://<A or sender>:<port><path|/opds>`, the name the instance less "(on … port …)". `findCalibreCatalogs` runs on a
+  detached worker (about 3 s) and pushes one SDL event with the list; a generation number drops a stale answer.
+  Empty tab: the description line is dropped to fit up to two rows; form: as many rows as fit, adding only.
+  Not done: a pull-to-refresh (re-entry refreshes); non-Calibre servers (Calibre-Web, COPS, Kavita announce nothing
+  we know of).
+- Live check: a shell without macOS Local Network access cannot browse (sendto: No route to host), so the Mac run used BP_CATALOG_FOUND="name|url" in place of the LAN; the owner's real Calibre (192.168.1.28:8080) needs a check from Terminal.

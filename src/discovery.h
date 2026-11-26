@@ -2,6 +2,7 @@
 #include <atomic>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <string>
 #include <thread>
 #include <vector>
@@ -16,6 +17,12 @@ namespace bp
 	{
 		std::string name, ip;
 		std::string source; // "NetBIOS", "mDNS", "WSD"; several joined by "+"
+	};
+
+	// An OPDS catalog found on the LAN (Calibre's content server announces itself over mDNS)
+	struct FoundCatalog
+	{
+		std::string name, url;
 	};
 
 	class Discovery
@@ -39,6 +46,10 @@ namespace bp
 		std::atomic<bool> quit{false}, busy{false};
 	};
 
+	// Asks the LAN for Calibre's catalogs on this thread, for about `ms` (3 s by default); the caller's thread should be
+	// a worker. Never throws; returns what answered, once each.
+	std::vector<FoundCatalog> findCalibreCatalogs(int ms = 3000);
+
 	// An IPv4 address for a literal, "x.local" or a bare name like "MY-PC" (NetBIOS, LLMNR and mDNS at once, then the
 	// system resolver); "" when nothing answers within timeoutMs.
 	std::string resolveHost(const std::string& name, int timeoutMs = 1500);
@@ -58,6 +69,30 @@ namespace bp
 		bool parseDnsAddr(const std::string& pkt, const std::string& want, std::string& ip);
 		// the SMB servers a response lists; srcIp stands in for an address the response doesn't carry
 		void parseMdnsSmb(const std::string& pkt, const std::string& srcIp, std::vector<FoundHost>& out);
+
+		// Calibre's content server (_calibre._tcp): the OPDS catalogs a response lists. Answers can arrive split (the PTR
+		// first, its SRV/TXT/A after), so add() each packet and ask result() at the end.
+		class CalibreFinder
+		{
+		public:
+			void add(const std::string& pkt, const std::string& srcIp);
+			std::vector<FoundCatalog> result() const;
+			std::vector<std::string> needSrv() const; // instances a PTR named whose SRV hasn't come (to ask for)
+		private:
+			struct Inst
+			{
+				std::string host, path;
+				int port = 0;
+			};
+			std::map<std::string, Inst> insts;	// lowercase instance -> what is known
+			std::map<std::string, std::string> display;	// lowercase instance -> its own spelling
+			std::map<std::string, std::string> addrs;	// lowercase host -> IPv4
+			std::map<std::string, std::string> from;	// lowercase instance -> the address that answered
+		};
+		// "Books in calibre (on 192 port 8080)" -> "Books in calibre"; the instance's label less ._calibre._tcp.local
+		std::string calibreName(const std::string& instance);
+		// http://ip:port/path ("/opds" when the TXT gave none)
+		std::string calibreUrl(const std::string& ip, int port, const std::string& path);
 
 		std::string wsdProbe(const std::string& msgId);
 		bool parseProbeMatch(const std::string& xml, std::string& xaddrs, std::string& endpoint);

@@ -397,6 +397,8 @@ folders. Playlists have a section of their own, between Files and Network.
 - **Its menu:** **X** (or **Y**, or a hold on a playlist) gives **Play**, **Shuffle play**, **Rename…** and **Delete
   playlist** (press it twice). Deleting a playlist leaves its files where they are.
 
+**Found on this network.** A Calibre content server announces itself over mDNS (`_calibre._tcp`: its SRV port, TXT `path`, A address), so the empty Catalogs tab and the Add form list it under "Found on this network" ("Books in calibre · 192.168.1.28"; Down moves onto the row on the empty tab). A or a tap fills the form's Address and Name; Test and Save stay yours. The browse runs on a worker when those screens open (about 3 s, "Looking on this network…" meanwhile, nothing shown when none answer); a catalog whose address is already saved is hidden. The log has one line per browse (`catalogs: found N on the network in M ms`).
+
 ### Playing
 
 - **A** on an item plays the playlist from there. **Play all** (the playlist's **X** menu) starts at the top, and

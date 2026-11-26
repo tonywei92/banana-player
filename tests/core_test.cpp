@@ -21,6 +21,7 @@
 #include "textsource.h"
 #include "dlqueue.h"
 #include "tagtext.h"
+#include "discovery.h"
 #include "doh.h"
 #include "cbzwrite.h"
 #include "browser.h"
@@ -17304,6 +17305,89 @@ static void testVideoCache()
 	CHECK(encodeJpeg(PageImage{}).empty());
 }
 
+// Calibre's content server over mDNS (captured with dns-sd: "Books in calibre (on 192 port 8080)", 192.local, path=/opds)
+static void testCalibreDiscovery()
+{
+	using namespace bp;
+	auto p16 = [](std::string& s, unsigned v) { s += (char)(v >> 8); s += (char)(v & 255); };
+	auto name = [](std::string& s, const std::string& n) {
+		size_t a = 0;
+		while (a < n.size())
+		{
+			size_t b = n.find('.', a);
+			if (b == std::string::npos) b = n.size();
+			s += (char)(b - a);
+			s.append(n, a, b - a);
+			a = b + 1;
+		}
+		s += '\0';
+	};
+	auto rec = [&](std::string& s, const std::string& n, unsigned type, const std::string& data) {
+		name(s, n);
+		p16(s, type);
+		p16(s, 0x8001);
+		p16(s, 0); p16(s, 120);
+		p16(s, (unsigned)data.size());
+		s += data;
+	};
+	const std::string inst = "Books in calibre (on 192 port 8080)._calibre._tcp.local";
+	std::string ptr, srv, txt, a;
+	name(ptr, inst);
+	p16(srv, 0); p16(srv, 0); p16(srv, 8080);
+	name(srv, "192.local");
+	txt += (char)10; txt += "path=/opds";
+	a += "\xC0\xA8"; a += "\x01\x1C";	// 192.168.1.28
+	auto header = [&](std::string& s, unsigned an, unsigned ar) {
+		p16(s, 0); p16(s, 0x8400); p16(s, 0); p16(s, an); p16(s, 0); p16(s, ar);
+	};
+
+	std::string pkt;
+	header(pkt, 1, 3);
+	rec(pkt, "_calibre._tcp.local", 12, ptr);
+	rec(pkt, inst, 33, srv);
+	rec(pkt, inst, 16, txt);
+	rec(pkt, "192.local", 1, a);
+	disc::CalibreFinder f;
+	f.add(pkt, "192.168.1.28");
+	auto found = f.result();
+	CHECK_EQ(found.size(), (size_t)1);
+	if (found.size() == 1)
+	{
+		CHECK_EQ(found[0].url, std::string("http://192.168.1.28:8080/opds"));
+		CHECK_EQ(found[0].name, std::string("Books in calibre"));
+	}
+	CHECK_EQ(f.needSrv().size(), (size_t)0);
+
+	// split answers: the PTR alone, then the SRV, with no A and no TXT (the sender's address and /opds stand in)
+	std::string p1, p2;
+	header(p1, 1, 0);
+	rec(p1, "_calibre._tcp.local", 12, ptr);
+	header(p2, 1, 0);
+	rec(p2, inst, 33, srv);
+	disc::CalibreFinder g;
+	g.add(p1, "10.0.0.5");
+	CHECK_EQ(g.needSrv().size(), (size_t)1);
+	CHECK_EQ(g.result().size(), (size_t)0);
+	g.add(p2, "10.0.0.5");
+	CHECK_EQ(g.needSrv().size(), (size_t)0);
+	auto gf = g.result();
+	CHECK_EQ(gf.size(), (size_t)1);
+	if (gf.size() == 1) CHECK_EQ(gf[0].url, std::string("http://10.0.0.5:8080/opds"));
+
+	// a query, not a response, and garbage, find nothing
+	std::string q = disc::dnsQuery("_calibre._tcp.local", 12, 0x8001);
+	disc::CalibreFinder h;
+	h.add(q, "1.2.3.4");
+	h.add("xx", "1.2.3.4");
+	CHECK_EQ(h.result().size(), (size_t)0);
+
+	CHECK_EQ(disc::calibreName("Books in calibre (on 192 port 8080)._calibre._tcp.local"), std::string("Books in calibre"));
+	CHECK_EQ(disc::calibreName("Books in calibre._calibre._tcp.local"), std::string("Books in calibre"));
+	CHECK_EQ(disc::calibreName("Tony's library (on Mac port 8081)"), std::string("Tony's library"));
+	CHECK_EQ(disc::calibreUrl("1.2.3.4", 8080, ""), std::string("http://1.2.3.4:8080/opds"));
+	CHECK_EQ(disc::calibreUrl("1.2.3.4", 80, "opds/x"), std::string("http://1.2.3.4:80/opds/x"));
+}
+
 static void testTagText()
 {
 	using namespace bp;
@@ -17578,6 +17662,7 @@ int main()
 	testSuwayomi();
 	testMangaJava();
 	testTagText();
+	testCalibreDiscovery();
 	if (failures) fprintf(stderr, "%d failed\n", failures);
 	else printf("core: all passed\n");
 	return failures != 0;
