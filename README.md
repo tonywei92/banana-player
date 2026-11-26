@@ -15,14 +15,14 @@
 
 <table>
   <tr>
-    <td align="center" width="33%"><img src="docs/img/screen-home.png?v=0.9.6" alt="Home in the Dark theme: Recent cards and the sections"></td>
-    <td align="center" width="33%"><img src="docs/img/screen-playing.png?v=0.9.6" alt="Big Buck Bunny playing in the Light theme, with its chapters and a subtitle on the top screen"></td>
-    <td align="center" width="33%"><img src="docs/img/screen-music.png?v=0.9.6" alt="A song in the Dark theme: matched album art with the Ribbon visualizer"></td>
+    <td align="center" width="33%"><img src="docs/img/screen-home.png?v=0.9.7" alt="Home in the Dark theme: Recent cards and the sections"></td>
+    <td align="center" width="33%"><img src="docs/img/screen-playing.png?v=0.9.7" alt="Big Buck Bunny playing in the Light theme, with its chapters and a subtitle on the top screen"></td>
+    <td align="center" width="33%"><img src="docs/img/screen-music.png?v=0.9.7" alt="A song in the Dark theme: matched album art with the Ribbon visualizer"></td>
   </tr>
   <tr>
-    <td align="center" width="33%"><img src="docs/img/screen-manga.png?v=0.9.6" alt="A manga page across both screens in the Light theme"></td>
-    <td align="center" width="33%"><img src="docs/img/screen-files.png?v=0.9.6" alt="Files in the Dark theme, with the storage cards"></td>
-    <td align="center" width="33%"><img src="docs/img/screen-library.png?v=0.9.6" alt="The Music library's Albums grid in the Light theme"></td>
+    <td align="center" width="33%"><img src="docs/img/screen-manga.png?v=0.9.7" alt="A manga page across both screens in the Light theme"></td>
+    <td align="center" width="33%"><img src="docs/img/screen-files.png?v=0.9.7" alt="Files in the Dark theme, with the storage cards"></td>
+    <td align="center" width="33%"><img src="docs/img/screen-library.png?v=0.9.7" alt="The Music library's Albums grid in the Light theme"></td>
   </tr>
 </table>
 
@@ -45,25 +45,25 @@ Fifteen looks for your music, drawn in your theme's colours, picked on **View â€
 
 <table>
   <tr>
-    <td align="center" width="20%"><img src="docs/img/viz/peaks-yellow.jpg?v=0.9.6" alt="The Peaks visualizer in the Yellow theme"><br><sub>Peaks</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/ribbon.jpg?v=0.9.6" alt="The Ribbon visualizer in the Sakura theme"><br><sub>Ribbon</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/mirror-bars.jpg?v=0.9.6" alt="The Mirror bars visualizer in the Midnight blue theme"><br><sub>Mirror bars</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/faders.jpg?v=0.9.6" alt="The Faders visualizer in the Dark theme"><br><sub>Faders</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/horizon.jpg?v=0.9.6" alt="The Horizon visualizer in the Sunset theme"><br><sub>Horizon</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/peaks-yellow.jpg?v=0.9.7" alt="The Peaks visualizer in the Yellow theme"><br><sub>Peaks</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/ribbon.jpg?v=0.9.7" alt="The Ribbon visualizer in the Sakura theme"><br><sub>Ribbon</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/mirror-bars.jpg?v=0.9.7" alt="The Mirror bars visualizer in the Midnight blue theme"><br><sub>Mirror bars</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/faders.jpg?v=0.9.7" alt="The Faders visualizer in the Dark theme"><br><sub>Faders</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/horizon.jpg?v=0.9.7" alt="The Horizon visualizer in the Sunset theme"><br><sub>Horizon</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><img src="docs/img/viz/grid.jpg?v=0.9.6" alt="The Grid visualizer in the Dark purple theme"><br><sub>Grid</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/starfield.jpg?v=0.9.6" alt="The Starfield visualizer in the Dark theme"><br><sub>Starfield</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/strings.jpg?v=0.9.6" alt="The Strings visualizer in the Light theme"><br><sub>Strings</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/helix.jpg?v=0.9.6" alt="The Helix visualizer in the Mint theme"><br><sub>Helix</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/sparks.jpg?v=0.9.6" alt="The Sparks visualizer in the Coffee theme"><br><sub>Sparks</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/grid.jpg?v=0.9.7" alt="The Grid visualizer in the Dark purple theme"><br><sub>Grid</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/starfield.jpg?v=0.9.7" alt="The Starfield visualizer in the Dark theme"><br><sub>Starfield</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/strings.jpg?v=0.9.7" alt="The Strings visualizer in the Light theme"><br><sub>Strings</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/helix.jpg?v=0.9.7" alt="The Helix visualizer in the Mint theme"><br><sub>Helix</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/sparks.jpg?v=0.9.7" alt="The Sparks visualizer in the Coffee theme"><br><sub>Sparks</sub></td>
   </tr>
   <tr>
-    <td align="center" width="20%"><img src="docs/img/viz/bouncy-keys.jpg?v=0.9.6" alt="The Bouncy keys visualizer in the 16-bit theme"><br><sub>Bouncy keys</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/rocket.jpg?v=0.9.6" alt="The Rocket visualizer in the Midnight blue theme"><br><sub>Rocket</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/lanterns.jpg?v=0.9.6" alt="The Lanterns visualizer in the 32-bit theme"><br><sub>Lanterns</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/sleepy-moon.jpg?v=0.9.6" alt="The Sleepy moon visualizer in the Dark red theme"><br><sub>Sleepy moon</sub></td>
-    <td align="center" width="20%"><img src="docs/img/viz/dance-line.jpg?v=0.9.6" alt="The Dance line visualizer in the Pink theme"><br><sub>Dance line</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/bouncy-keys.jpg?v=0.9.7" alt="The Bouncy keys visualizer in the 16-bit theme"><br><sub>Bouncy keys</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/rocket.jpg?v=0.9.7" alt="The Rocket visualizer in the Midnight blue theme"><br><sub>Rocket</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/lanterns.jpg?v=0.9.7" alt="The Lanterns visualizer in the 32-bit theme"><br><sub>Lanterns</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/sleepy-moon.jpg?v=0.9.7" alt="The Sleepy moon visualizer in the Dark red theme"><br><sub>Sleepy moon</sub></td>
+    <td align="center" width="20%"><img src="docs/img/viz/dance-line.jpg?v=0.9.7" alt="The Dance line visualizer in the Pink theme"><br><sub>Dance line</sub></td>
   </tr>
 </table>
 
@@ -74,7 +74,7 @@ Store keeps it up to date with each release.
 
 **Or by hand, on the Ports shelf:**
 
-1. **Download** `BananaPlayer-0.9.6-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.9.6).
+1. **Download** `BananaPlayer-0.9.7-aarch64.zip` from the [latest release](https://github.com/tonywei92/banana-player/releases/tag/v0.9.7).
 2. **Unzip it into `roms/ports`** on your SD card. You should see `Banana Player.sh`, a `BananaPlayer` folder and a
    `media` folder there.
 3. **Open the Ports shelf** on the handheld and choose **Banana Player**.
