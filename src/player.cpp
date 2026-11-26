@@ -2315,9 +2315,9 @@ namespace bp
 		const bool overVideo = !isAudio && !isPhoto && !playlist.empty();
 		int x, y;
 		noteCardPos(pw, ph, card, x, y, overVideo);	// a video: in the middle, off the subtitles and the level card
-		putImage(OV_NOTE, card, x, y);
 		// over a video it's in the middle of the picture: briefer (unless a time is asked for)
 		int shownMs = ms > 0 ? ms : overVideo ? 1500 : 3000;
+		if (!(noteOnTop && noteOnTop(&card, std::min(shownMs, 3000)))) putImage(OV_NOTE, card, x, y);
 		noteUntil = ticks() + shownMs;
 		cardMs = std::min(shownMs, 3000);	// (the caller draws the panel while it is up)
 	}
@@ -2327,6 +2327,7 @@ namespace bp
 		if (!noteUntil) return;
 		noteUntil = 0;
 		dropImage(OV_NOTE);
+		if (noteOnTop) noteOnTop(nullptr, 0);
 		cardMs = 1;
 	}
 
@@ -2382,9 +2383,9 @@ namespace bp
 		const bool overVideo = !isAudio && !isPhoto && !playlist.empty();
 		int x, y;
 		noteCardPos(pw, ph, card, x, y, overVideo);	// a video: in the middle, off the subtitles and the level card
-		putImage(OV_NOTE, card, x, y);
 		// over a video it's in the middle of the picture: briefer, except a note asked for longer (a browser signing in: 6 s)
 		ms = overVideo && ms <= 3000 ? 1500 : std::max(ms, 3000);
+		if (!(noteOnTop && noteOnTop(&card, ms))) putImage(OV_NOTE, card, x, y);
 		noteUntil = ticks() + ms;
 		cardMs = ms;
 	}

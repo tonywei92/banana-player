@@ -963,6 +963,7 @@ int main(int argc, char** argv)
 			if (c) ts.cardImageOnReader(*c, 1600);
 			else ts.cardImageOnReader(LevelCardImage{std::make_shared<std::vector<uint8_t>>(4, 0), 1, 1}, 1);
 		};
+		player.noteOnTop = [&](const LevelCardImage* c, int ms) { return haveUi && !readerOnTop() && ts.noteOnPane(c, ms); };
 		auto showLevelCard = [&](const std::string& label, int percent, int ms) {
 			bool bar = label != "Zoom";
 			if (bar) shown().showLevel(label, percent);

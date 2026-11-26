@@ -240,6 +240,9 @@ namespace bp
 		void dropSleepCard();
 		// main's: the sleep card over a reader's pages or the Preview pane (mpv's own is under them); null: it goes
 		std::function<void(const LevelCardImage*)> sleepCardOnTop;
+		// main's: a note over the Preview pane (mpv's overlay would be under it, and the pane would have to go).
+		// True: drawn there, no mpv overlay. Null card: the note goes
+		std::function<bool(const LevelCardImage*, int)> noteOnTop;
 		void showSleepMark(const char* const* rows, int h, const std::string& text);
 		void dropSleepMark();
 		// a short note, one line (a failure's, "Couldn't ...", in red); ms at least 3 s

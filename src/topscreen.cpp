@@ -194,6 +194,7 @@ namespace bp
 		// the pane, and the level card over it while one is up (mpv's own would be under it)
 		std::vector<PageRenderer::Placed> placed{{0, 0, 0, (float)w, (float)h}};
 		paneCard.place(paneRender, placed, w, h, SDL_GetTicks());
+		paneNote.place(paneRender, placed, w, h, SDL_GetTicks());
 		paneRender.draw(placed, w, h);
 	}
 
@@ -296,6 +297,24 @@ namespace bp
 		}
 		else if (c.ok() && reader.isOpen()) reader.showOverlay(c.rgba, c.w, c.h, until);
 		else if (c.ok()) textReader.showOverlay(c.rgba, c.w, c.h, until);
+	}
+
+	// A note (Player::osd) over the Preview pane: the pane stays and the note is drawn on it at the foot, as the level
+	// card is (mpv's overlay would be under the pane). False: no pane up, mpv's overlay does it. null: the note goes
+	bool TopScreen::noteOnPane(const LevelCardImage* c, int ms)
+	{
+		if (!c)
+		{
+			paneNote = CardOverlay{};
+			return false;
+		}
+		if (!paneUp || !c->ok()) return false;
+		SDL_GL_MakeCurrent(top, gl);
+		paneNote.key = CardOverlay::KEY + 1;
+		paneNote.foot = true;
+		paneNote.show(paneRender, c->rgba, c->w, c->h, (int64_t)SDL_GetTicks() + ms);
+		paneCardNew = true;
+		return true;
 	}
 
 	void TopScreen::notesOnReader(Ui& ui, const Player& player, Uint32 now)
@@ -614,7 +633,7 @@ namespace bp
 		// docs/redesign Themes › Where it is changed): a video or a song goes on under it, its frames taken unseen
 		// (drainUnder), its sound on. Not while a reader has the panel. Down again, mpv's picture is drawn once more
 		PaneSpec pane;
-		bool idle = !shown.playing() && !photos.playing() && !player.topCardUp();
+		bool idle = !shown.playing() && !photos.playing();
 		// the State card (Playing in your browser, Loading, Buffering) is the pane too, over what the cursor would show
 		const PaneSpec* stateCard = player.topState() ? player.topState() : photos.topState();
 		bool free = !qrNow && !reader.isOpen() && !textReader.isOpen();
@@ -624,6 +643,7 @@ namespace bp
 			paneUp = false;
 			paneKey.clear();
 			paneCard = CardOverlay{};
+			paneNote = CardOverlay{};
 			SDL_GL_MakeCurrent(top, gl);
 			paneRender.keepOnly({});
 			paneRender.flushDead();
@@ -711,9 +731,16 @@ namespace bp
 			if (!paneUp && (player.playing() || photos.playing()))
 				fprintf(stderr, "top: preview pane over what plays (%s): it goes on under it\n", player.playing() ? player.currentPath().c_str() : "a photo");
 			// the level card over it: up, fading, or just down (its texture let go)
-			bool ended = false, cardNeed = paneCard.frame(SDL_GetTicks(), ended) || paneCardNew;
+			bool ended = false, noteEnded = false;
+			bool cardNeed = paneCard.frame(SDL_GetTicks(), ended) | paneNote.frame(SDL_GetTicks(), noteEnded) | paneCardNew;
 			paneCardNew = false;
-			if (ended && paneUp) paneRender.keepOnly({0});
+			if ((ended || noteEnded) && paneUp)
+			{
+				std::set<int> keep{0};
+				if (paneCard.up()) keep.insert(paneCard.key);
+				if (paneNote.up()) keep.insert(paneNote.key);
+				paneRender.keepOnly(keep);
+			}
 			if ((key != paneKey || paneW != w || paneH != h || refresh || cardNeed) && drawPane(pane, key, w, h)) SDL_GL_SwapWindow(top);
 		}
 		else if (reader.isOpen() && onTop(ui))
