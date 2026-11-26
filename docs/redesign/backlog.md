@@ -273,6 +273,61 @@ From the gaps:
 - **The brand mark's stripes:** ACCENT on BG (drawn: the strongest pair in every theme, crisp at 22), or ACCENT and
   TEXT as in the icon (purple and white there; in most themes two colours of the same lightness, so the bar goes flat).
 
+## Catalogs (OPDS) in Books (designed 2026-11-26 for GitHub #22; built 2026-11-26, `src/ui_catalogs.*`)
+
+The owner's answers (2026-11-26): a third tab; Try Gutenberg on the Empty state's Y; a list of its own beside
+Manga's, with Copy from Manga's servers; one sub-folder per catalog on the card with more room; OPDS 1.2 only; no
+dashboard form yet; **one download at a time** in the background (B leaves it running, Y cancels). Not built yet: the
+catalog's own cover pictures (the drawn cover stands in), the book's whole summary on the top screen, More's
+"Download every format" and "Delete from the card…", a "No Wi-Fi" first line (the reason curl gives is shown).
+
+
+Screens (all marked NOT BUILT in the preview): `books-catalogs`, `books-catalogs-empty`, `cat-form`, `cat-more`,
+`cat-remove`, `cat-nav`, `cat-books`, `cat-results`, `cat-book`, `cat-book-get`, `cat-book-have`, `cat-book-nofmt`,
+`cat-get-fail`, `cat-offline`, `cat-login`. Changed: `books`, `books-shelf` (a third tab). Journey: “Books: catalogs
+(OPDS)” in journeys.py. The reasons and the open questions: docs/notes/2026-11-26-opds-books.md.
+
+- **Where.** Books gets a third tab, **Catalogs**, after Reading now and Shelf (L / R, or a tap; no count: it lists
+  places). Not Files › Network (a catalog has no folders to manage and nothing plays from it) and not X · More (a
+  place visited every time a book is wanted is not a menu item). The tab is its own Empty state with none saved: Add
+  a catalog on A, Try Gutenberg on Y.
+- **A catalog** is a name, an address, and a login only when it asks. One kind (OPDS 1.2), so no Kind row. The form
+  is Network's (Form row 46, stepper, Test on Y and Save on START, 56 tall): Address first, Name filled from the
+  catalog's own title, Sign in None / An account, User, Password (sealed by `secret.*`). Edit, Test and Remove are in
+  X · More on its row; Remove is one Confirm sheet that says the downloaded books stay.
+- **Browsing.** A navigation feed is 52-unit List rows with the feed's own words (and the count when it gives one);
+  an acquisition feed is the Shelf's grid (Cover cell 96 × 136, five a row, 14 apart) or, without pictures or by
+  More › View, the 60-unit two-line row with a 32 × 46 cover. The “next” link is followed by itself a row before the
+  end (“Loading the next page…”, the crumb counting “20 of 1,204”). B goes up one feed; a feed is kept for the visit.
+- **Search** only when the feed names an OpenSearch description: a first row “Search this catalog” and Y on every
+  page of that catalog; the one keyboard, START searches, results as the two-line list. L3 stays the card's Search.
+- **A book's page.** Cover 116 × 164, author, year · language · tags, four lines of summary (the whole of it, with
+  the cover large, on the top screen). Format is Filter chips 44 tall with sizes, drawn only when there are several,
+  the best one chosen first (EPUB, PDF, CBZ, CBR, TXT). One 56-unit accent key: “Download the EPUB”; under it where it
+  saves and the room left.
+- **Downloading.** The key becomes a 12-unit Progress bar (“0.2 of 0.6 MB · 37%”) with Cancel on Y, not A (a second
+  A must not undo the first). B leaves and it carries on; the book's cell wears a 5-unit bar. Not a sheet. One at
+  a time (the owner): a second Download while one runs says so in a Note. When whole: a Note “Saved to Books”, the key turns to **Read**.
+- **Where it saves.** `<card>/Books/<catalog's name>/<Title> - <Author>.<ext>`, on the card Books already reads from
+  (the one with more room when both have a Books folder; `Books` is made on the internal card when there is none).
+  `listBooks` walks sub-folders, so it is on the Shelf at once, with the file's own cover, and in Reading now once
+  opened. Written to a hidden part file, renamed when whole.
+- **Marks.** “On card”: the accent Pill on a cover's foot or a row's right, from a small list kept per catalog (the
+  entry's id → the file), dropped when the file is gone. “Can't open”: the quiet Pill, when no format is one the
+  readers open; the page then draws formats and key at 45% and says what is read and that Calibre converts.
+- **Errors.** A feed that can't be had is the Empty state on the catalog's page (“Can't reach Home Calibre”, Try
+  again on A, Open the Shelf on Y; “No Wi-Fi” and “Not a catalog” are other first lines). A refused sign-in is an
+  Alert sheet whose A opens the form on Password. A failed download is the copy's failure sheet (which kind, nothing
+  half-saved left, Try again on A).
+- **Comics.** A CBZ or CBR in a catalog downloads here and opens in the comic reader, exactly as a comic on the
+  Shelf does (“one file, two doors”); nothing is handed to Manga.
+- **Manga's servers.** Two lists, one parser: Manga's OPDS kind streams chapters into its reader, a catalog downloads
+  whole books to the Shelf, and Books must work with the Manga extension off. Nothing is typed twice: the form's
+  “Copy from Manga's servers…” row fills the address and the sealed login from an OPDS or Kavita server saved there.
+- **Touch.** Rows 52 and 60, cells 96 × 136, chips 44, keys 56 (Cancel 48), form rows 46 as Network's: none under 44.
+- **Components:** no new one. Tabs, List row, Form row, Settings row (stepper), Cover cell, Pill, Filter chips,
+  Progress bar, Empty state, More sheet, Confirm sheet, Alert sheet, Note, Keyboard.
+
 ## Spacing audit (2026-11-19)
 
 The scale and the rules are in components.md › Spacing. Found, worst first, and what was done in the spec:

@@ -1,5 +1,5 @@
 // Books, the rail's section (Page::Books; docs/redesign/src/screens.js: books, books-empty). An area of Ui
-// (Ui::Area, docs/notes/ui-areas.md): two tabs, "Reading now" (the books in progress) and "Shelf" (every book
+// (Ui::Area, docs/notes/ui-areas.md): three tabs, "Reading now" (the books in progress), "Catalogs" (OPDS: ui_catalogs.h) and "Shelf" (every book
 // file on the cards — EPUB, PDF, TXT, CBZ and CBR: pagebook.h's documents and comics). L / R step the tabs; Books opens on
 // Reading now while a book is in progress, else on the Shelf.
 //
@@ -22,7 +22,8 @@ namespace bp
 {
 	struct Ui::Books : Ui::Area
 	{
-		explicit Books(Ui& u) : Area(u) {}
+		explicit Books(Ui& u);
+		~Books() override;
 
 		// ---- the area ----
 		bool has(Page pg) const override { return pg == Page::Books; }
@@ -30,7 +31,13 @@ namespace bp
 		bool pointer(const Pointer& pt, int x, int y, Player& p) override;
 		bool pointerDownLate() const override { return true; }
 		void draw(const Player& p) override;
+		void tick(Player& p) override;
 		std::string signature(const Player& p) const override;
+
+		// ---- the third tab, Catalogs (OPDS; ui_catalogs.h): its own state and handlers, handed everything while open ----
+		struct Catalogs;
+		std::unique_ptr<Catalogs> catalogs;
+		bool onCatalogs() const { return tab == lay::BOOKS_CATALOGS; }
 
 		// ---- the shelf ----
 		// a book on it: its file, and the name shown (less the extension). progress: how far in (the doc places'
@@ -66,7 +73,7 @@ namespace bp
 
 		// ---- the open tab's grid: a smooth list of rows of five (ui_smoothlist.h), as Music's Albums grid ----
 		SmoothList list{ui};
-		SmoothList* smoothList() override { return listGeom().count > 0 ? &list : nullptr; }
+		SmoothList* smoothList() override;
 		struct ListGeom
 		{
 			Rect view{};

@@ -15,6 +15,7 @@
 #include "ui_sound.h"
 #include "ui_docs.h"
 #include "ui_manga.h"
+#include "ui_catalogs.h"
 
 namespace bp
 {
@@ -43,11 +44,16 @@ namespace bp
 			case MGSRV_URL_FIELD: return "Server address";
 			case MGSRV_USER_FIELD: return "User";
 			case MGSRV_PASS_FIELD: return "Password";
+			case CAT_ADDR_FIELD: return "Catalog address";
+			case CAT_NAME_FIELD: return "Catalog name";
+			case CAT_USER_FIELD: return "User";
+			case CAT_PASS_FIELD: return "Password";
+			case CAT_SEARCH_FIELD: return "Search this catalog";
 			default: return "";
 			}
 		}
 
-		bool isSecret(int f) { return f == FORM_PASS || f == MGSRV_PASS_FIELD; }
+		bool isSecret(int f) { return f == FORM_PASS || f == MGSRV_PASS_FIELD || f == CAT_PASS_FIELD; }
 	}
 
 	lay::Keyboard Ui::kbLayout() const
@@ -65,6 +71,11 @@ namespace bp
 		kbCursor = 0;
 		kbPressed = -1;
 		pressedBtn = -1;
+	}
+
+	void Ui::typeForTest(const std::string& text)
+	{
+		if (kbOpen) kbEdit.set(text);
 	}
 
 	void Ui::kbClose(bool keep)
@@ -126,6 +137,15 @@ namespace bp
 			kbPressed = -1;
 			if (keep) manga->mangaFilterTextTyped(kbEdit.text);
 			else browse->browseVersion++;
+			return;
+		}
+		if (kbField >= CAT_ADDR_FIELD && kbField <= CAT_SEARCH_FIELD)
+		{
+			// Books › Catalogs: the form's fields and a catalog's search (Done searches; B keeps what was there)
+			kbOpen = false;
+			kbClosedAt = SDL_GetTicks();
+			kbPressed = -1;
+			if (keep) books->catalogs->fieldTyped(kbField, kbEdit.text);
 			return;
 		}
 		kbOpen = false;

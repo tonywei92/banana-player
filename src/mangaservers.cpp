@@ -295,13 +295,14 @@ namespace bp
 		return true;
 	}
 
-	bool MangaServerStore::load(const std::string& stateDir)
+	bool MangaServerStore::load(const std::string& stateDir, const std::string& folder)
 	{
 		dir_ = stateDir;
+		folder_ = folder;
 		servers_.clear();
 		key_.clear();
 		if (dir_.empty()) return false;
-		std::string manga = dir_ + "/manga";
+		std::string manga = dir_ + "/" + folder_;
 		mkdir(dir_.c_str(), 0755);
 		mkdir(manga.c_str(), 0755);
 		// the key file beside the servers, salted with the handheld's serial: a copy of the card alone opens nothing
@@ -336,7 +337,7 @@ namespace bp
 	bool MangaServerStore::save() const
 	{
 		if (dir_.empty()) return false;
-		std::string manga = dir_ + "/manga";
+		std::string manga = dir_ + "/" + folder_;
 		mkdir(dir_.c_str(), 0755);
 		mkdir(manga.c_str(), 0755);
 		return writePrivate(manga + "/servers.tsv", serialize());

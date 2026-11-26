@@ -298,6 +298,45 @@ covers; **B** asks to quit (it is the section's home). With no books anywhere th
 On the web dashboard an upload to Music, Videos or Books shows in its list as soon as the handheld has indexed it (the page lists again when the index pass lands, no reload). Files still lists and opens every book, and Recent keeps its Books filter; comics still need the Manga reader turned
 on, and say so when it isn't.
 
+### Catalogs (OPDS)
+
+Books' third tab, **Catalogs** (after Reading now and Shelf; **L** / **R** step all three, no count on it): books
+downloaded from an OPDS 1.2 catalog (Calibre's content server, Calibre-Web, COPS, Kavita, Komga, Project Gutenberg)
+straight into a Books folder, so they are on the Shelf at once. With none saved the tab says what a catalog is, with
+**Add a catalog** (A) and **Try Gutenberg** (Y: Project Gutenberg saved, no sign-in). With some, each is a row (its
+host, who is signed in, how many of its books are on the card, "Downloading 1" while one comes) and **Add a
+catalog…** last; **A** opens one, **Y** adds one, **X** is More (Open, Edit catalog…, Test connection, Remove
+catalog… — Remove asks, and says the books stay; the right column Add a catalog… and Where books come from).
+
+- **The form** (Network's): **Address** first (a bare host gets `http://`; a `user:password@` part moves into the
+  rows; a Kavita address keeps its key sealed and shows it as dots), **Name** (filled from the catalog's own title by
+  Test or Save; typed, it wins), **Sign in** None / An account (◀/▶), **User**, **Password** (sealed on Save, like
+  Network's; reads "Saved" when editing), and **Copy from Manga's servers…** when Manga has an OPDS or Kavita server
+  this list hasn't (it fills the address, the user and the password). **Y** Test ("It works · 1,204 books" or why
+  not), **START** Save (it tests first; a failed test asks Save anyway / Edit), **B** back.
+- **A catalog**: its folders as rows (the catalog's own words, a count when it gives one), **Search this catalog**
+  on top when it names a search (OpenSearch or a `{searchTerms}` feed; **Y** from any of its pages; Done searches,
+  the words kept for the next); a folder of books as the Shelf's covers, five across, with a format badge when not
+  EPUB, **On card** on what this catalog already gave the card, a bar on the one downloading, **Can't open** on one
+  in no format the readers open. More › **View** switches covers / a two-line list; More › Refresh, or pull down,
+  reads it again. The next page comes by itself near the end ("Loading the next page…"); the crumb counts "20 of
+  1,204" when the catalog says. **B** goes up one level; from the top, back to the tab. A catalog that doesn't answer
+  says why on its page ("Can't reach …", "Not a catalog"), **A** tries again, **Y** opens the Shelf, **X** edits it.
+- **A book's page**: its cover, author, year · language · tags, four lines of the summary; the formats as chips (only
+  when there are several: EPUB, then PDF, CBZ, CBR, TXT; ◀/▶ choose, each with its size); **A** "Download the EPUB",
+  and under it where it saves and the room left. Downloading, the key becomes the bar ("0.2 of 0.6 MB · 37%"):
+  **Y** cancels (nothing half-saved is left), **B** leaves it running, one at a time. When whole: "Saved to Books"
+  and the key turns to **Read** (A opens it in its reader, as from the Shelf); More: Download again, Show in Files,
+  Info. A book in no readable format says which it has and that Calibre converts it.
+- **Where it saves**: `<card>/Books/<catalog's name>/<Title> - <Author>.<ext>`, on the card with more room when both
+  have a Books folder (a Books folder is made on the first card when there is none). Written to a hidden part file,
+  renamed when whole; a download cut off leaves nothing (its part file is removed at the next start). Names are made
+  safe for exFAT.
+- **Sign-in**: Basic and Digest (Calibre's default); the login is sent only once the catalog asks, and only to the
+  catalog's own host: a book's link on another host is fetched without it. Passwords never reach the log.
+- Not yet: the books' own covers from the catalog (the drawn cover stands in), the summary on the top screen, adding
+  a catalog from the web dashboard, OPDS 2.0.
+
 ## Playing while you browse
 
 A file picked in Files plays with the rest of its folder after it (**Up next**): its videos and songs only, never its
