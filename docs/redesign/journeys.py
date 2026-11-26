@@ -41,7 +41,7 @@ JOURNEYS = [
 	('Manga while a video plays', 'files-playing ext-section-video manga-guard manga-loading manga-ready manga-read; manga-loading manga-failed manga-loading home-stopped video'),
 	('Extensions', 'home ext-section extensions manga-settings; ext-section manga ext-section home; ext-section ext-section-empty extensions; files-playing ext-section-video extensions'),
 	('Search', 'home search search-results video; search-results music; search-results music-album; search-results reader; search-results search'),
-	('Network', 'home settings net-list net-find net-form keyboard; net-form net-list net-folder net-stream net-folder net-copy pdf; net-copy net-copy-fail net-copy; net-folder readonly alerts; net-list offline; net-list net-empty net-find; net-empty net-form'),
+	('Network', 'home files files-places net-list net-find net-form keyboard; net-form net-list net-folder net-stream net-folder net-copy pdf; net-copy net-copy-fail net-copy; net-folder readonly alerts; net-list offline; net-list net-empty net-find; net-empty net-form'),
 	('Web dashboard', 'home-first web-page web-signin phone-home phone-files phone-playing music; web-page web-page-off web-page web-page-nowifi web-page; web-signin browser-play play-on music; browser-play browser-mini browser-play browser-lost music; quick web-page; home web-page'),
 	('Web dashboard: Books', 'phone-home phone-books phone-book phone-read phone-read-bar phone-read-text phone-read-bar phone-read-contents phone-read-marks phone-read; phone-read phone-read-two phone-read; phone-book phone-read-there phone-read; phone-books phone-books-upload phone-books phone-read-comic phone-read-lost phone-read-comic phone-books phone-read-pdf; phone-books desk-books desk-read desk-books desk-read-comic desk-books'),
 	('Settings and Theme', 'home settings set-theme set-screen lid-keys settings set-playback settings-group set-music set-photos set-reading set-files set-screen web-page set-updates set-about settings home'),
@@ -53,7 +53,7 @@ JOURNEYS = [
 	('Updates', 'settings set-updates update update-downloading update-ready home; update-downloading update-failed update-downloading files'),
 	('Photos', 'files photo photo-more info; photo-more photo files'),
 	('Home: a card’s More, All recent', 'home home-more video; home-more recent-all home-more; home recent-all video'),
-	('Quit', 'home quit home; quick quit'),
+	('Quit', 'home quit home; quick quit; files-places quit; music-albums quit; books quit'),
 ]
 
 def load(root):

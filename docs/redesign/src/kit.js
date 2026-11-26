@@ -34,9 +34,10 @@ const status=(o={})=>`<div class="status" data-go="quick">${o.incog?`<span class
 // seven sections and six cells: the rail keeps the open one in view (Network is scrolled off unless it is the open one)
 // Extensions is one section for every extension that is on (Manga is a row of its page, not a cell): arriving there starts and stops nothing.
 // vid: a video plays, so the walk-through's Extensions page is the one drawn with it playing
-const SEC=[['home','Home','home','home'],['files','Files','folder','files'],['videos','Videos','video','videos'],['music','Music','music','music-albums'],['books','Books','book','books'],['ext','Extensions','ext','ext-section'],['network','Network','network','net-list']];
-// Search is a key pinned at the rail's top (a tool, not a section: L / R pass it by, L3 opens it), as Settings is pinned at its foot.
-// from: the section Search was opened from keeps no light while Search shows; the L and R caps left the rail to make its room (the hint bar says L/R)
+const SEC=[['home','Home','home','home'],['files','Files','folder','files'],['videos','Videos','video','videos'],['music','Music','music','music-albums'],['books','Books','book','books'],['ext','Extensions','ext','ext-section']];
+// Six sections (Network is a tab of Files since 2026-11-20: tabs(['Files','Network']) on Files' places and on the connections' list).
+// Search is a key pinned at the rail's top (a tool, not a section: L2 / R2 pass it by, L3 opens it), as Settings is pinned at its foot.
+// from: the section Search was opened from keeps no light while Search shows; the L and R caps left the rail to make its room (the hint bar says L2/R2 Sections; L / R step a page's tabs)
 // play: something is loaded ('v' a video, 'm' a song, 'p' paused): the Now playing key above Settings. Its place is kept when nothing
 // plays (an empty slot), so the cells never change height when playback starts.
 const rail=(a,vid,play)=>`<div class="rail"><div class="ri rs ${a=='search'?'on':''}" ${a!='search'?'data-go="search"':''}>${ico('search',22)}</div>${SEC.map(([id,n,ic,go])=>`<div class="ri ${a==id?'on':''}" ${go&&a!=id?`data-go="${id=='ext'&&vid?'ext-section-video':go}"`:''}>${ico(ic,22)}<span>${n}</span></div>`).join('')}<div class="sp"></div>${play?`<div class="ri np" data-go="${play=='v'?'video':'music'}"><div class="${play=='v'?'sc-dusk':'sc-art'}" style="width:30px;height:30px;border-radius:5px;flex:none"></div><span class="eqb"><i></i><i></i><i></i></span></div>`:'<div class="ri np idle"></div>'}<div class="ri set ${a=='settings'?'on':''}" ${a!='settings'?'data-go="settings"':''}>${ico('sliders',22)}<span>Settings</span></div></div>`;

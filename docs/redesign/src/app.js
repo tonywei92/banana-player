@@ -2,11 +2,11 @@
 const MAP=[
 ['Getting around'],
 ['Home’s four tiles: Files, Playlists, Network, Extensions','Home, 2 × 2','The rail, on every shell screen','mov'],
-['Section markers by the clock, L / R','Header of each section','The rail (named); L / R unchanged','chg'],
+['Section markers by the clock, L / R','Header of each section','The rail (named); L2 / R2 step it, L / R step a page’s tabs','chg'],
 ['Books section','(none: books open from Files)','Rail › Books: EPUB, PDF, TXT and comics','new'],
 ['Comics (CBZ, CBR)','Files (with the Manga reader on), the Manga library','Those, and Books › Comics; one reader, one place kept','chg'],
 ['Recent strip: 5 cards + All recent','Home, top','Home: Continue card + Recent row','chg'],
-['All recent, tabs All / Videos / Music / Books (L / R)','Home › All recent','Same page; the filter is also on Home; steps with L2 / R2','chg'],
+['All recent, tabs All / Videos / Music / Books (L / R)','Home › All recent','Same page; the filter is also on Home; steps with L / R','chg'],
 ['A card’s menu (Y, hold): Resume, From the start, Show in folder, Add to playlist, Like, Remove','Home','X (or hold) on the card','mov'],
 ['X on Home: Clear Recent, Show hidden folders, Settings','Home','X › Clear recent · Files’ X › Show hidden folders · rail › Settings','mov'],
 ['B on Home asks to quit','Home','Unchanged','same'],
@@ -110,20 +110,20 @@ const MAP=[
 ['Music and photos in Manga','Go on','Unchanged','same'],
 ['The engine is up','A chip “Manga engine ready” for two seconds','The loading row turns to “Online sources ready” and folds away; dimmed covers light up; you stay where you are; a series you were waiting on opens','chg'],
 ['The engine failed to start','A chip “Manga engine didn’t start” for four seconds','A row that stays, with the reason (memory / error) and Try again (Y); X › Go back to the stopped video; card series still work','chg'],
-['Sources: Installed, Available, Repositories','X on Browse; LEFT / RIGHT step the lists','Same page; L2 / R2 step the lists','chg'],
+['Sources: Installed, Available, Repositories','X on Browse; LEFT / RIGHT step the lists','Same page; L / R step the lists','chg'],
 ['Repositories: last checked, A for Refresh / Remove (remove its sources too?), Add repository…, Y checks all','Sources › Repositories','Same; rows are two lines with address and state; a failed one says so and has Retry; the top screen shows the whole address','chg'],
 ['First-time notice: repositories are added by you','When the reader is first turned on','There, and once before the first repository is added','chg'],
 ['Typing a repository’s address','On-screen keyboard','Same keyboard with https://, .json, .pb keys; SELECT hands over to the phone','chg'],
 ['Manage extensions (On / Off, first-time sheet)','Extensions drawer, START','Rail › Extensions › Manage extensions (its only door)','mov'],
-['Tabs Library, History, Browse, Downloads','L / R','L2 / R2, or tap','chg'],
+['Tabs Library, History, Browse, Downloads','L / R','L / R, or tap (L2 / R2 are the rail’s)','same'],
 ['Manga settings','START on Manga pages; gear in Manage extensions','X · More › Manga settings; X on its row in Manage extensions','mov'],
 ['Library X: Remove missing · History X: Clear · Downloads X: Pause / Delete','X acts at once','X · More lists them (one press more)','chg'],
 ['Browse: X Sources, Y Add server; a server’s Edit / Delete','Keys','X · More: Sources, Add server, Edit, Delete; “Manage sources” and “Add” rows stay','chg'],
-['A source: Popular / Latest / Search tabs, X Filters, Y Search','L / R, X, Y','L2 / R2 tabs; Filters and Search in X · More and as keys in the header','chg'],
+['A source: Popular / Latest / Search tabs, X Filters, Y Search','L / R, X, Y','L / R tabs; Filters and Search in X · More and as keys in the header','chg'],
 ['A series: Resume, Download (R2), Refresh (L2), Info, heart (Y), X read / unread','Buttons + keys','Buttons stay; Y selects chapters (to download or mark); the rest in X · More','chg'],
 ['Settings and system'],
 ['Settings','START › Settings tab, 8 tiles','Rail › Settings (or START › Settings), 12 tiles','mov'],
-['Group to group: Y / X','Inside a group','L2 / R2','chg'],
+['Group to group: Y / X','Inside a group','L / R','chg'],
 ['Subtitles; Music; Photos; Remember; Files; Controls & screen; Updates; Web dashboard','Groups','Same rows. Remember → Playback, Music → Music & sound, Files → Files & history, Controls & screen → Power & screens, with Max volume and Button hotkeys moved to Playback','same'],
 ['A setting’s explanation; the subtitle preview','Bottom screen','Top screen','mov'],
 ['Text and PDF viewer defaults','(only inside a book)','Settings › Reading','new'],
@@ -222,9 +222,9 @@ const gal=document.getElementById('gallery'),nav=document.getElementById('navscr
 let lastG='';
 SCREENS.forEach(s=>{
 	if(s.group!=lastG){lastG=s.group;nav.insertAdjacentHTML('beforeend',`<h4>${s.group}</h4>`)}
-	nav.insertAdjacentHTML('beforeend',`<a href="#s-${s.id}">${s.name}${s.isNew?'<small>NEW</small>':''}</a>`);
+	nav.insertAdjacentHTML('beforeend',`<a href="#s-${s.id}">${s.name}${s.later?'<small class="lt">NOT BUILT</small>':s.isNew?'<small>NEW</small>':''}</a>`);
 	const goes=[...new Set(s.keys.map(k=>k[2]).concat(s.also.map(a=>a[1])).filter(g=>g&&g!='<'&&BY[g]))];
-	gal.insertAdjacentHTML('beforeend',`<article class="screen ${s.side||s.desk?'wide':''}" id="s-${s.id}"><div class="device ${s.side?'side':s.desk?'desk':''}" data-gal="${s.id}">${dev(s)}</div><div class="notes"><div class="eyebrow">${s.group}${s.isNew?' · <span class="tag new">NEW</span>':''}</div><h3>${s.name}</h3><p class="why">${s.why}</p>
+	gal.insertAdjacentHTML('beforeend',`<article class="screen ${s.side||s.desk?'wide':''}" id="s-${s.id}"><div class="device ${s.side?'side':s.desk?'desk':''}" data-gal="${s.id}">${dev(s)}</div><div class="notes"><div class="eyebrow">${s.group}${s.later?' · <span class="tag later">DESIGNED · NOT BUILT</span>':s.isNew?' · <span class="tag new">NEW</span>':''}</div><h3>${s.name}</h3><p class="why">${s.why}</p>
 	<ul>${s.notes.map(n=>`<li><span class="tag ${n[0]}">${TAGN[n[0]]}</span> ${n[1]}</li>`).join('')}</ul>${s.extra?s.extra():''}
 	<div class="keys">${s.keys.map(k=>`${`<span>${kb(k[0])}</span>`}<span>${k[1]}</span>`).join('')}${s.also.map(a=>`<span><kbd>then</kbd></span><span>${a[0]}</span>`).join('')}</div>
 	<p class="goes"><a href="#proto" data-jump="${s.id}">Open in the walk-through</a>${goes.length?' · leads to '+goes.map(g=>`<a href="#s-${g}">${BY[g].name}</a>`).join(', '):''}</p></div></article>`);

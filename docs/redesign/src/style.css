@@ -54,6 +54,7 @@ td.k,th.k{font-family:'Pixelify Sans';font-size:15px;white-space:nowrap}
 tr.grp td{background:var(--pg2);font:600 12px/1 Inter;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
 .tag{display:inline-block;font:700 10.5px/1 Inter;letter-spacing:.05em;padding:3px 6px;border-radius:5px;white-space:nowrap;vertical-align:1px}
 .tag.new{color:var(--new);background:var(--newbg)} .tag.mov{color:var(--mov);background:var(--movbg)}
+.tag.later{color:var(--chg);background:transparent;box-shadow:inset 0 0 0 1px currentColor} nav small.lt{opacity:.75}
 .tag.chg{color:var(--chg);background:var(--chgbg)} .tag.same{color:var(--same);background:var(--samebg)}
 .bad{color:var(--bad)}
 kbd{font:600 12px/1 'Pixelify Sans';border:1.5px solid currentColor;border-radius:5px;padding:1px 5px;white-space:nowrap}
