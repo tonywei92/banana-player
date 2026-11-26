@@ -97,6 +97,10 @@ function SeriesView({ id, data, onBack }) {
 			load();
 		} catch (e) { toast(e.message); }
 	};
+	// a chapter's read mark flipped (POST /api/manga/read); the page reloads from the handheld's answer
+	const setRead = async (cid, read) => {
+		try { await post('/api/manga/read', { seriesId: id, chapters: [cid], read: read ? '1' : '0' }); load(); } catch (e) { errToast(e); }
+	};
 	const downloadSelected = () => queue(items.filter(c => picked.has(c.id)).map(c => c.id));
 	const downloadUnread = () => queue(unread.map(c => c.id));
 	return html`<div>
@@ -124,6 +128,7 @@ function SeriesView({ id, data, onBack }) {
 						</span>
 						${d.state === 'running' && total > 0 && html`<span class="mdl-prog" style="display:block;height:3px;background:var(--track);border-radius:2px;margin-top:4px"><i style=${'width:' + Math.min(100, done * 100 / total) + '%;display:block;height:100%;background:var(--yellow);border-radius:2px'}></i></span>`}
 					</span>
+					<button class="btn sm" type="button" data-read=${c.id} onClick=${e => { e.preventDefault(); e.stopPropagation(); setRead(c.id, !c.read); }}>${c.read ? 'Mark unread' : 'Mark read'}</button>
 					${label ? html`<span class=${'chip' + (onCard ? ' y' : d.state === 'failed' ? ' red' : '')}>${label}</span>` : null}
 				</label>`;
 			})}

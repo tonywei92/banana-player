@@ -18,7 +18,7 @@ The reading itself is already close to Mihon and in places better: exact-page re
 | Q3 (done) | **LEFT** at a chapter's first page opens the previous chapter at its last page | `src/ui_manga.cpp:715-735`, `:893` |
 | Q4 (done) | Resume button names its target: **Start · Chapter 01** / **Resume · Ch. 02 · p. 5/8** | `src/ui_manga.cpp:2387` |
 | Q5 (done) | **Mark previous as read** and **Mark all read / unread** (a small sheet on a held **X**, or a second **X** row) | `src/ui_manga.cpp:959-968`, `src/ui_manga_browse.cpp:1819` |
-| Q6 | Dashboard: a read / unread toggle per chapter (the endpoint exists, the page never calls it) | `web/js/manga.js:110-128`, `src/web/api_manga.cpp:353` |
+| Q6 (done, see note) | Dashboard: a read / unread toggle per chapter (the endpoint exists, the page never calls it) | `web/js/manga.js:110-128`, `src/web/api_manga.cpp:353` |
 | Q7 | Hints: add **LEFT/RIGHT Page** on the series page; Options on one key (X in Library, Y in *On this handheld* today); **Prev** / **Next** instead of the cut *Prev chap…* / *Next chap…* | `src/ui_manga.cpp:2411`, `:2099`, `:2319`, `:2880` |
 
 ## 3. Journeys
@@ -108,3 +108,6 @@ Presses are counted from Home with the cursor on Files, the reader already on. "
 ## 5. Screens checked
 
 `shots/v1.png` first-time sheets · `v2.png` library, series, reading, resume · `v3.png` History, controls, Reading menu, Pages, read marks, Clear history · `v4.png` mode change, series after a chapter step, top panel on Manga pages · `v5.png` Library options, Browse, *On this handheld*, Downloads, Manga settings. The test library and its generator are in `lib/` and `gen/make.py` beside this file.
+
+
+**Q6 note (2026-11-26):** the chapter rows now have a Mark read / Mark unread button (POST /api/manga/read, the page's `post`: X-BP; 403 without it, checked from headless Chrome). The dashboard's series page is still unmounted code (`Manga()` shows Repositories only), so the button appears when that page comes back.
