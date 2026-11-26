@@ -252,6 +252,8 @@ namespace bp
 		MediaIndexWorker* indexWorker = nullptr;
 		// a document from Files: opened in its viewer; false when the path isn't one
 		bool openDocument(const std::string& path, Player& p);
+		// test only (--press type:TEXT): the open keyboard's text set to TEXT, as if typed (Done is a step of its own)
+		void typeForTest(const std::string& text);
 		// started with no file: the video's Quit closes it (back to the browser)
 		bool browserMode = false;
 		// Settings' Quit Banana Player: out of the player, from the browser or a video

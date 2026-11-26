@@ -14,6 +14,7 @@
 #include "ui_music.h"
 #include "ui_videos.h"
 #include "ui_books.h"
+#include "ui_catalogs.h"
 #include "format.h"
 #include "netpath.h"
 #include <algorithm>
@@ -95,7 +96,8 @@ namespace bp
 		case Page::Settings: return !ui.settingsOver && ui.setGroup < 0;
 		case Page::Music: return ui.music->albumAt < 0 && ui.music->artistAt < 0 && ui.music->folderAt.empty();
 		case Page::Videos: return ui.videos->folder.empty();
-		case Page::Books: return true;
+		// (Books › Catalogs: inside a catalog, the form or a book's page, B goes back up first)
+		case Page::Books: return !ui.books->onCatalogs() || ui.books->catalogs->atTop();
 		case Page::ExtSection: return true;
 		case Page::Browse: break;
 		default: return false;

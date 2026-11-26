@@ -37,6 +37,7 @@
 #include "ui_videos.h"
 #include "ui_mediaart.h"
 #include "ui_books.h"
+#include "ui_catalogs.h"
 #include "durworker.h"
 
 namespace bp
@@ -195,6 +196,8 @@ namespace bp
 	// "The readers' keys").
 	bool Ui::startOpensSettings(const Player& p) const
 	{
+		// (Books › Catalogs' form: START is its Save, as Network's form's)
+		if (page == Page::Books && books->onCatalogs() && books->catalogs->view() == Books::Catalogs::V_FORM) return false;
 		if (page == Page::Settings || page == Page::About || page == Page::Main || page == Page::ExtSection ||
 			page == Page::Extensions || page == Page::Music || page == Page::Videos || page == Page::Books)
 			return true;

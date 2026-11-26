@@ -1018,7 +1018,7 @@ namespace bp
 		// the top of the inner body (lay::tabPage: L / R caps, SP8 under it), and the tab's grid of covers to the body's
 		// foot, five to a row, 14 apart. Reading now's cells carry the progress bar (COVER_CELL_H), the Shelf's the
 		// title only (SHELF_CELL_H). `progress`: the open tab is Reading now
-		enum BooksTab { BOOKS_READING = 0, BOOKS_SHELF = 1 };
+		enum BooksTab { BOOKS_READING = 0, BOOKS_SHELF = 1, BOOKS_CATALOGS = 2 };	// (Catalogs: ui_catalogs.h)
 		struct BooksTabs
 		{
 			TabPage page;	// the strip and the grid's area (page.content)

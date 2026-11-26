@@ -2,6 +2,7 @@
 // Books and Ebooks folders. Everything is drawn inside lay::shell().body (the shell draws the rail, the header
 // and the hints); the touches test the same Rects the drawing asked for.
 #include "ui_books.h"
+#include "ui_catalogs.h"
 #include "pagebook.h"
 #include "ui_internal.h"
 #include "ui_kit.h"
@@ -44,6 +45,17 @@ namespace bp
 		const char* EMPTY_BOOKS_LINE = "Books, PDFs and text files you put in a Books folder, or open from Files, "
 			"show up here with your place kept.";
 	}
+
+	Ui::Books::Books(Ui& u) : Area(u), catalogs(std::make_unique<Catalogs>(u)) {}
+	Ui::Books::~Books() = default;
+
+	Ui::SmoothList* Ui::Books::smoothList()
+	{
+		if (onCatalogs()) return catalogs->smoothList();
+		return listGeom().count > 0 ? &list : nullptr;
+	}
+
+	void Ui::Books::tick(Player& p) { catalogs->tick(p); }
 
 	// ---- the shelf ----
 
@@ -91,9 +103,10 @@ namespace bp
 		if (placesNow() != placesKey || ui.rootsSerial() != rootsSeen) build();
 		(void)p;
 		ui.page = Page::Books;
-		// the rail's way in opens on Reading now while a book is in progress (back from a reader keeps the tab)
+		// the rail's way in opens on Reading now while a book is in progress (back from a reader keeps the tab);
+		// Catalogs stays open where it was (a book downloaded, read, and back for the next)
 		int first = lay::booksFirstTab((int)reading.size());
-		if (first != tab) setTab(first);
+		if (first != tab && !onCatalogs()) setTab(first);
 	}
 
 	// ---- the tabs ----
@@ -106,14 +119,15 @@ namespace bp
 
 	void Ui::Books::setTab(int t)
 	{
-		tab = std::clamp(t, 0, 1);
+		tab = std::clamp(t, 0, 2);
 		cursor = 0;
 		list.top();
 	}
 
 	std::vector<std::string> Ui::Books::tabLabels() const
 	{
-		return {"Reading now " + std::to_string(reading.size()), "Shelf " + std::to_string(shelf.size())};
+		// Catalogs carries no count: it lists places, not books
+		return {"Reading now " + std::to_string(reading.size()), "Shelf " + std::to_string(shelf.size()), "Catalogs"};
 	}
 
 	lay::BooksTabs Ui::Books::layout() const
@@ -204,6 +218,12 @@ namespace bp
 		ShellHead h;
 		h.back = ui.backIconShown(p);
 		h.hints = hintList(p);
+		if (onCatalogs())
+		{
+			h.title = "Books";
+			catalogs->head(h);
+			return h;
+		}
 		if (reading.empty() && shelf.empty())
 		{
 			h.title = "Books";
@@ -223,6 +243,19 @@ namespace bp
 
 	bool Ui::Books::key(Button b, Player& p)
 	{
+		// the tabs step over all three (L / R); inside a catalog L / R are its own
+		if (onCatalogs())
+		{
+			if ((b == Button::L || b == Button::R) && catalogs->atTop()) setTab(b == Button::L ? lay::BOOKS_SHELF : lay::BOOKS_READING);
+			else catalogs->key(b, p);
+			return false;
+		}
+		if (b == Button::L || b == Button::R)
+		{
+			setTab(b == Button::R ? (tab + 1) % 3 : (tab + 2) % 3);
+			if (ui.page == Page::Books) keepCursorInView();
+			return false;
+		}
 		int n = (int)(reading.size() + shelf.size());
 		if (n == 0)
 		{
@@ -238,7 +271,6 @@ namespace bp
 		const int cols = layout().cols, count = (int)items().size();
 		switch (b)
 		{
-		case Button::L: case Button::R: setTab(1 - tab); break;	// (two tabs: either key is the other)
 		case Button::Up: cursor = std::max(0, cursor - cols); break;
 		case Button::Down: cursor = std::max(0, std::min(count - 1, cursor + cols)); break;
 		case Button::Left: cursor = std::max(0, cursor - 1); break;
@@ -263,6 +295,24 @@ namespace bp
 		lay::BooksTabs l = layout();
 		int n = (int)(reading.size() + shelf.size());
 		const float fy = pt.y * Ui::H;	// (by the fraction: the grid follows the panel's pixels, not whole units)
+		// Catalogs: its tab strip is Books' (on the tab itself); everything under it is the catalogs'
+		if (onCatalogs())
+		{
+			if (pt.kind == Pointer::Down && catalogs->atTop() && (pressTab = lay::tabAt(l.page.strip, x, y)) >= 0)
+			{
+				touch = T_TAB;
+				return false;
+			}
+			if (pt.kind == Pointer::Up && touch == T_TAB)
+			{
+				int was = pressTab;
+				touch = T_NONE;
+				pressTab = -1;
+				if (lay::tabAt(l.page.strip, x, y) == was && was != tab) setTab(was);
+				return false;
+			}
+			return catalogs->pointer(pt, x, y, p);
+		}
 		if (pt.kind != Pointer::Down)
 		{
 			if (touch == T_NONE) return false;
@@ -311,18 +361,19 @@ namespace bp
 		pressTab = -1;
 		touchMoved = onList = caught = false;
 		touchY = y;
+		pressTab = lay::tabAt(l.page.strip, x, y);
+		if (pressTab >= 0) { touch = T_TAB; return false; }
 		if (n == 0)
 		{
+			// (under the tabs: Catalogs is reached from an empty Books too)
 			std::vector<std::string> lines = ui.wrapText(EMPTY_BOOKS_LINE, F_I14, 400, 99);
-			lay::EmptyState e = lay::emptyState(inner, (int)lines.size(), 2);
+			lay::EmptyState e = lay::emptyState(l.page.content, (int)lines.size(), 2);
 			emptyKey[0] = e.key[0];
 			emptyKey[1] = e.key[1];
 			if (e.key[0].hit(x, y)) touch = T_EMPTY1;
 			else if (e.key[1].hit(x, y)) touch = T_EMPTY2;
 			return false;
 		}
-		pressTab = lay::tabAt(l.page.strip, x, y);
-		if (pressTab >= 0) { touch = T_TAB; return false; }
 		// the grid: anywhere on it drives it (a touch on a gliding grid only stops it)
 		ListGeom g = listGeom();
 		if (g.count <= 0 || !g.view.hit(x, y)) return false;
@@ -354,12 +405,21 @@ namespace bp
 		Rect inner = booksInner();
 		Kit& k = *ui.kit;
 		int n = (int)(reading.size() + shelf.size());
+		if (onCatalogs())
+		{
+			// the tabs over the catalogs' list; a catalog's pages, a book's and the form fill the body
+			if (catalogs->atTop()) k.tabs(layout().page.strip.area, tabLabels(), tab, "L/R", BG, pressTab);
+			catalogs->draw(p);
+			return;
+		}
 		if (n == 0)
 		{
 			// nothing opened, nothing on the cards (the mock-up's books-empty): the two keys, the folder's name
 			// in the kit's accent
 			std::vector<std::string> lines = ui.wrapText(EMPTY_BOOKS_LINE, F_I14, 400, 99);
-			lay::EmptyState e = lay::emptyState(inner, (int)lines.size(), 2);
+			lay::BooksTabs bt = layout();
+			k.tabs(bt.page.strip.area, tabLabels(), tab, "L/R", BG, pressTab);
+			lay::EmptyState e = lay::emptyState(bt.page.content, (int)lines.size(), 2);
 			emptyKey[0] = e.key[0];
 			emptyKey[1] = e.key[1];
 			Kit::Empty v;
@@ -445,6 +505,6 @@ namespace bp
 		char buf[112];
 		snprintf(buf, sizeof buf, "|bk%d.%d.%d.%d.%d.%zu.%zu.%d", tab, pressTab, cursor, touchMoved, touch, reading.size(),
 			shelf.size(), ui.artSerial);
-		return std::string(buf) + placesKey;
+		return std::string(buf) + placesKey + (onCatalogs() ? catalogs->signature() : "");
 	}
 }

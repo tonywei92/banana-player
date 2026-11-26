@@ -171,6 +171,7 @@ target_sources(banana-player PRIVATE src/ui_kit_new.cpp src/ui_shell.cpp src/pre
 target_sources(banana-player PRIVATE src/mediaworker.cpp)
 # the rail's library sections (Music, Videos, Books), filled by themselves from the index (their own line too)
 target_sources(banana-player PRIVATE src/ui_music.cpp src/ui_videos.cpp src/ui_books.cpp src/ui_smoothlist.cpp)
+target_sources(banana-player PRIVATE src/ui_catalogs.cpp)	# Books › Catalogs (OPDS; ui_catalogs.h)
 target_sources(banana-player PRIVATE src/videoartworker.cpp src/ui_mediaart.cpp)	# the videos' thumbnails, frames and facts; the pane's covers
 # the native visualizers' second decode of a song (src/viztap.h): libswresample (FFmpeg's, libmpv's own) for mono 32 kHz
 pkg_check_modules(SWR REQUIRED IMPORTED_TARGET libswresample)

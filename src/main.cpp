@@ -32,6 +32,7 @@
 #include "ui_music.h"
 #include "ui_videos.h"
 #include "ui_books.h"
+#include "ui_catalogs.h"
 #include "ui_search.h"
 #include "session_host.h"
 #include "updater.h"
@@ -264,7 +265,7 @@ int main(int argc, char** argv)
 				// BUTTON~MS: held MS ms, then let go
 				std::string::size_type tilde = step.find('~');
 				bool held = tilde != std::string::npos && buttonFromName(step.substr(0, tilde)) != Button::None && atoi(step.c_str() + tilde + 1) > 0;
-				bool ok = burst || held || buttonFromName(step) != Button::None || step == "info" || step == "page" || step == "update" || step == "web" || step == "F" || step == "rows" || step == "screenshot" || step == "volup" || step == "voldown" || step.rfind("prop:", 0) == 0 || step.rfind("shot:", 0) == 0 || step.rfind("level:", 0) == 0 || step.rfind("set:", 0) == 0 || step.rfind("flip:", 0) == 0 || step.rfind("card:", 0) == 0 || step.rfind("gallery:", 0) == 0 ||
+				bool ok = burst || held || buttonFromName(step) != Button::None || step == "info" || step == "page" || step == "update" || step == "web" || step == "F" || step == "rows" || step == "screenshot" || step == "volup" || step == "voldown" || step.rfind("prop:", 0) == 0 || step.rfind("shot:", 0) == 0 || step.rfind("level:", 0) == 0 || step.rfind("set:", 0) == 0 || step.rfind("type:", 0) == 0 || step.rfind("flip:", 0) == 0 || step.rfind("card:", 0) == 0 || step.rfind("gallery:", 0) == 0 ||
 					(sscanf(step.c_str(), "tap:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "stick:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
 					(sscanf(step.c_str(), "dtap:%f:%f%n", &v[0], &v[1], &n) == 2 && n == (int)step.size()) ||
@@ -538,6 +539,11 @@ int main(int argc, char** argv)
 		// the reader's Secure DNS setting reaches the threads as a flag, never by their reading the Ui's state
 		mangaNet->setSecureDns(player.settings.mangaSecureDns);
 		ui.manga->mangaNet = mangaNet;
+		// Books › Catalogs' requests (ui_catalogs.h): a fetcher of its own, started at its first request; never
+		// destroyed (stop() at quit lets its thread leave without waiting for a server)
+		static MangaFetch* catalogFetch = new MangaFetch();
+		const Uint32 evCatalogFetch = SDL_RegisterEvents(1);
+		ui.books->catalogs->attach(catalogFetch, evCatalogFetch);
 		// the thread that lists the network folders (its answers come as evNet)
 		NetWorker netWorker([](NetListing* l) {
 			SDL_Event ev{};
@@ -1473,6 +1479,7 @@ int main(int argc, char** argv)
 #endif
 				}
 				else if (e.type == evMangaFetch) mangaNet->onFetchEvent();
+				else if (e.type == evCatalogFetch) ui.books->catalogs->onFetched(player);
 				else if (e.type == evMangaWorker) mangaNet->onWorkerEvent();
 				else if (e.type == evCover)
 				{
@@ -1922,6 +1929,13 @@ int main(int argc, char** argv)
 								flipMs = (Uint32)atoi(r.c_str() + c2 + 1);
 								flipAt = SDL_GetTicks();
 							}
+						}
+						else if (step.rfind("type:", 0) == 0)
+						{
+							// type:TEXT: the open keyboard's text, as if typed (then Start or a tap on Done)
+							ui.typeForTest(step.substr(5));
+							fprintf(stderr, "press: typed %zu characters\n", step.size() - 5);
+							renderPending = true;
 						}
 						else if (step.rfind("set:", 0) == 0)
 						{
@@ -2482,6 +2496,7 @@ int main(int argc, char** argv)
 		readerFetch.end();
 		mangaNet->setFetchOwner({});
 		mangaNet->stop();
+		catalogFetch->stop();
 		coverWorker->stop();
 		videoArt->stop();
 		indexWorker->stop();

@@ -178,6 +178,8 @@ namespace bp
 	inline const char* CUSTOM_NAME = "Custom";	// an edited curve, not saved (eqPreset "")
 	// the keyboard's field for a preset's name (apart from the form's and the found servers' ids)
 	inline const int EQ_NAME = 60, PL_NAME = 61, FILE_NAME = 69, FIND_FIELD = 70;	// (62-68: the manga reader's)
+	// Books › Catalogs' form and search (ui_catalogs.cpp: Catalogs::fieldTyped)
+	inline const int CAT_ADDR_FIELD = 81, CAT_NAME_FIELD = 82, CAT_USER_FIELD = 83, CAT_PASS_FIELD = 84, CAT_SEARCH_FIELD = 85;	// (71: Sources' search)
 	inline const char* const LQ = "\xE2\x80\x9C", *const RQ = "\xE2\x80\x9D";	// “ ”
 	inline std::string quoted(const std::string& s) { return LQ + s + RQ; }
 	// "Rock", "Custom", "Rock · Hall", "EQ off · Hall", "Off": the sound as one line (Settings' value)
