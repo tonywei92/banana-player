@@ -2156,6 +2156,23 @@ namespace bp
 			ui.drawTextMid(ul[i], F_I12, DIM, l.under.x, l.under.y + 10 + (int)i * 18, l.under.w);
 	}
 
+	bool Ui::Books::Catalogs::topPane(PaneSpec& out) const
+	{
+		if (view() != V_BOOK) return false;
+		std::vector<std::string> names = book.formatNames();
+		out.cover = true;
+		out.genTitle = book.title;
+		out.genAuthor = book.author;
+		out.genFmt = names.empty() ? "" : names[0];
+		out.label = book.author.empty() ? "Book" : book.author;
+		out.title = book.title;
+		out.text = book.summary.empty() ? "No summary." : book.summary;
+		out.wholeText = true;
+		out.keys = {{"A", onCard(book.id).empty() ? "Download" : "Read"}, {"X", "More"}};
+		out.key = "catbook|" + book.id + "|" + book.title + "|" + std::to_string(book.summary.size()) + "|" + (onCard(book.id).empty() ? "" : "got");
+		return true;
+	}
+
 	std::string Ui::Books::Catalogs::signature() const
 	{
 		std::string s = "|cat" + std::to_string((int)view()) + "." + std::to_string(listCursor) + "." + std::to_string(pressed) +

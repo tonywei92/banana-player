@@ -25,6 +25,7 @@
 #include "mangafetch.h"
 #include "mangaservers.h"
 #include "opds.h"
+#include "previewpane.h"
 #include "discovery.h"
 #include <cstdint>
 #include <functional>
@@ -47,6 +48,9 @@ namespace bp
 		void head(ShellHead& h) const;	// the title, crumb and hints of the view shown
 		bool atTop() const { return view() == V_LIST; }	// the tab itself (Books' tabs are drawn over it)
 		SmoothList* smoothList();
+		// the top panel while a book's page is open: its cover drawn from the title, the author, the title and the
+		// whole summary (false: the tab shows nothing of its own up there)
+		bool topPane(PaneSpec& out) const;
 
 		// ---- the saved catalogs ----
 		MangaServerStore store;

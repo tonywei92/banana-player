@@ -7,6 +7,7 @@
 #include "format.h"
 #include "previewpane.h"
 #include "ui_books.h"
+#include "ui_catalogs.h"
 #include "ui_browse.h"
 #include "ui_home.h"
 #include "ui_internal.h"
@@ -214,6 +215,7 @@ namespace bp
 		}
 		if (page == Page::Books && books)
 		{
+			if (books->onCatalogs() && books->catalogs->topPane(out)) return true;
 			books->build();
 			const Ui::Books::Shelf* b = books->focused();
 			if (b)
