@@ -89,6 +89,22 @@ namespace bp
 		return "";
 	}
 
+	bool Ui::wifiOff() const
+	{
+#ifdef BP_WEB
+		return webIpAt != 0 && webIp.empty();
+#else
+		return false;
+#endif
+	}
+
+	void Ui::wifiTick()
+	{
+#ifdef BP_WEB
+		if (webIpAt == 0 || SDL_GetTicks() - webIpAt >= 10000) readWebIp();
+#endif
+	}
+
 	void Ui::readWebIp()
 	{
 #ifdef BP_WEB
@@ -310,6 +326,7 @@ namespace bp
 			st.clock = ui.clockText(p);
 			st.battery = ui.battery.percent;
 			st.charging = ui.battery.charging;
+			ui.kit->stateBadges(st, p);
 			if (ui.webIndicatorShown(p)) st.badges.push_back({&G_QR, ""});
 			return ui.kit->status(right, cy, st);
 		};

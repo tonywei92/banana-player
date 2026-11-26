@@ -40,12 +40,12 @@ No other screen has zero support.
 | Screen / component | What is missing | Evidence | Size |
 |---|---|---|---|
 | `video-picture`, `video-look` | The Picture sheet has no look tiles: looks (Sharpen, Soften, Scanlines, LCD grid, Retro) are only a Settings row ("Picture look"). Also missing: per-look Strength (10 to 100%), "Use for" (Only this video), tile samples, hold Y to compare with Off. Adjust is built. The look reads once when a film opens. | `picture-look` only in `src/settings.cpp:694`; `vf` set at `src/player.cpp:686`; no match for "Strength" / "Only this video" / "compare" in the UI; `FEATURES.md:1129` | M |
-| `vol-boost` (and the header-badge component) | The header badge that stays after the volume card goes (110% yellow, red past 120%) is not drawn. The same component lists badges for browser, Wi-Fi off, read only: only incognito, web (QR), sleep and read only are drawn. | `src/ui_shell.cpp:622-623` pushes incognito and QR only; `ui_kit.h:272` comment lists boost, browser, Wi-Fi off; no `badges.push_back` for them | S |
-| `quick` | The "Screen off now" tile (and battery percent in the title line) is not in Quick settings; tiles are Same on both screens, Web dashboard, Incognito. Screen off is a row of the player's More instead. | `src/ui_menus.cpp:~1000-1016`; `FEATURES.md:511` | S |
+| `vol-boost` (and the header-badge component) | Built (badges-quick). |
+| `quick` | Built (badges-quick). |
 | `power-dim` / Screen-off warning | Notice row, veil and "Screen off in N s": not built, by decision (the backlight eases down). Already marked. | `backlight` comment `src/ui.h:1008`; `components.md:559` | none unless the owner wants it |
 | `cat-book` | More's "Download every format" is not built. | no match; `backlog.md:281` | S |
 | `cat-book-have` | More's "Delete from the card…" is not built for a catalog book (it exists for manga downloads only). | `backlog.md:281`; `src/ui_manga_downloads.cpp:592` is manga | S |
-| `cat-offline` | The first line "No Wi-Fi" (the header's Wi-Fi-off badge says so too); the curl reason is shown instead. | `backlog.md:281` | S |
+| `cat-offline` | Built (badges-quick). |
 | `cat-books` / `cat-book` | The catalog's own cover pictures (a drawn cover stands in), and the book's whole summary on the top screen. | `backlog.md:281` | M |
 
 Components in `components.md` with no screen of their own and no code: header badges for boost, browser and Wi-Fi off

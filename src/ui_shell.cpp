@@ -619,7 +619,7 @@ namespace bp
 		st.charging = ui.battery.charging;
 		st.playing = false;	// (the rail's Now playing key shows the bars on a shell page: none in the header, the owner)
 		st.tick = (int)(SDL_GetTicks() / 166);
-		if (ui.incognito) st.badges.push_back({&G_INCOGNITO, ""});
+		k.stateBadges(st, p);
 		if (ui.webIndicatorShown(p)) st.badges.push_back({&G_QR, ""});
 		int left = k.status(more.x - lay::SP8, cy, st);
 		// the cluster is one touch target (F opens Quick settings): its mark, Wi-Fi, battery and clock

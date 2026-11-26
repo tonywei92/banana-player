@@ -1776,6 +1776,8 @@ namespace bp
 			// cat-offline: the page says what failed, A tries again, Y opens the Shelf
 			std::string title = f.error == E_REACH ? "Can\xE2\x80\x99t reach " + name : f.error == E_NOT_CATALOG ? "Not a catalog"
 				: f.error == E_SIGN_IN ? "Not signed in" : f.search ? "Nothing found for " + f.title : "Nothing here";
+			// no network at all: that is the first line, curl's reason stays beneath it
+			if (f.error == E_REACH && ui.wifiOff()) title = "No Wi-Fi";
 			std::string why = f.error == E_NONE ? (f.search ? "The catalog's own search: what it matches is its choice."
 				: "This folder of the catalog is empty.") : f.why + ".";
 			std::vector<std::string> lines = ui.wrapText(why, F_I14, 400, 3);

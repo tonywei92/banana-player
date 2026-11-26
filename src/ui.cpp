@@ -449,6 +449,7 @@ namespace bp
 	{
 		// a held slider whose target is told at a pace: a finger resting on a new value, sent when it's due
 		slideLive(p);
+		wifiTick();
 		manga->mangaVideoGuard(p);
 		slideshowTick(p);
 		backdropTick(p);	// Match album art: the playing song's backdrop asked for once, or dropped
@@ -1063,6 +1064,7 @@ namespace bp
 		}
 		// the clock: its minute
 		if (!clockText(p).empty()) photo += "|clk" + std::to_string((long long)time(nullptr) / 60);
+		photo += "|hb" + std::to_string(p.boost) + (wifiOff() ? "w" : "") + (SessionHost::get().pageIsOutput() ? "b" : "");	// the header's state badges
 		if (incognito) photo += "|incognito";	// its mark beside the clock, its row in Manga settings
 		// behind the browser: the rows' chip, the header's mark (its frame while it moves), what was stopped for a
 		// photo

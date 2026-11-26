@@ -262,6 +262,9 @@ namespace bp
 			int left = 0;	// the cluster's left edge
 		};
 		StatusRow statusRow(int right, const std::vector<int>& widths, int gap = 8);
+		// the header's boost badge: shown once the volume is boosted past 100, red past 120 (the level card's lines)
+		bool boostBadgeShown(int boostPct);
+		bool boostBadgeDanger(int boostPct);
 		int badgeW(int textW, bool glyph);	// a badge: padding both sides, its mark (16) and a gap before the text
 
 		// ---- the mini bar's measures: no page draws it any more (the owner, 2026-11-19; Quick settings' Now
