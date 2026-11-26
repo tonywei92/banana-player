@@ -1798,6 +1798,8 @@ opened from Files has none).
 - The **page fit** is a setting (below): **Page** (the whole page on the screen), **Width** (as wide as the screen, read
   down a screenful at a time) or **Fill** (the page covers the screen: it's cropped, and the overshoot pans in reading
   order). It applies at once to the chapter you're reading.
+- The back key (**LEFT**, or **RIGHT** with **Swap Left/Right** on; in Book too) on a chapter's first page, its start shown, opens the
+  chapter before at its **last** page, the way the forward key at the end opens the next one.
 - At the end of a chapter the screen says **End of chapter · R2 or RIGHT for** the next chapter by its name (**LEFT**
   with **Swap Left/Right** on), and the forward key (or **R2**) opens it; the header's line says *the end*. The last
   chapter says **You're caught up · that was the last chapter**. The top screen says it too, on a card at the foot of

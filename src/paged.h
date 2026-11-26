@@ -76,6 +76,8 @@ namespace bp
 		bool moving() const;
 		// at rest on the chapter's last page, all of it shown: forward has nothing left to do
 		bool atEnd() const;
+		// at rest on the first page, its start edge shown: back has nothing left to do
+		bool atStart() const;
 		// the offsets inside the page being shown: down, and across along the reading order — 0 is the page's
 		// start edge (the left for ltr, the right for rtl), hscroll's most the end edge
 		double vscroll() const;

@@ -531,6 +531,7 @@ namespace bp
 			ui.pageReader->readerStatus.error = reader.error();
 			ui.pageReader->readerStatus.failedHere = reader.failedInView();
 			ui.pageReader->readerStatus.atEnd = reader.atEnd();
+			ui.pageReader->readerStatus.atStart = reader.atStart() && !reader.loading();
 			ui.pageReader->readerStatus.page = reader.page();
 			ui.pageReader->readerStatus.within = (float)reader.within();
 			ui.pageReader->readerStatus.pages = reader.pages();

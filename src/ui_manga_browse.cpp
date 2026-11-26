@@ -1392,13 +1392,13 @@ namespace bp
 		}
 	}
 
-	void Ui::Manga::mangaSourceChapterStep(int dir, Player& p)
+	void Ui::Manga::mangaSourceChapterStep(int dir, Player& p, int page0)
 	{
 		int i = mangaReadChapterIndex();
 		if (i < 0) return;
 		int j = i + dir;
 		if (j < 0 || j >= (int)mangaReadSrcChapters.size()) return;
-		mangaSourceChapterOpen(mangaReadSrcChapters, j, 0, ui.pageReader->mangaReadSeriesId, mangaTitle(ui.pageReader->mangaReadSeriesId), p);
+		mangaSourceChapterOpen(mangaReadSrcChapters, j, page0, ui.pageReader->mangaReadSeriesId, mangaTitle(ui.pageReader->mangaReadSeriesId), p);
 	}
 
 	// ---- a source series: its details, its chapters, In library ----

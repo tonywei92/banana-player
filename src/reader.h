@@ -112,6 +112,7 @@ namespace bp
 		int pages() const { return (int)files.size(); }
 		bool loading() const;
 		bool atEnd() const;
+		bool atStart() const;	// the chapter's first page, its start shown: back has nothing left to do
 		const std::string& error() const { return err; }
 		// a page in view couldn't be fetched, decoded or put on the GPU: the Ui offers Try again (the Retry command)
 		bool failedInView() const;

@@ -490,7 +490,9 @@ namespace bp
 		void mangaCloseReader();		// B: Close pushed, progress saved, the series page
 		void openMangaSeries(const std::string& id, int from, Player& p);
 		void mangaOpenChapter(const LocalSeries& s, int i, int page, Player& p);
-		void mangaChapterStep(int dir, Player& p);	// the chapter before (-1) or after (+1), at page 0
+		// the chapter before (-1) or after (+1), at page 0 (MANGA_LAST_PAGE: its last, the reader clamps it)
+		static constexpr int MANGA_LAST_PAGE = 1 << 20;
+		void mangaChapterStep(int dir, Player& p, int page0 = 0);
 		const LocalSeries* mangaLocalSeries(const std::string& id) const;
 		std::string mangaTitle(const std::string& id) const;
 		int mangaReadChapterIndex() const;
@@ -927,7 +929,7 @@ namespace bp
 		void mangaSourceImageAsk();					// the next page's Image job, while one has no url
 		void mangaSourceCancel();						// the source's jobs dropped (its page or series left)
 		void mangaSourceChapterReady(const Player& p);	// its pages are known: the read request, the reader page
-		void mangaSourceChapterStep(int dir, Player& p);
+		void mangaSourceChapterStep(int dir, Player& p, int page0 = 0);
 		int mangaReadChapterTotal() const;
 		std::string mangaReadChapterName(int index) const;	// that chapter's title ("": not known)
 		std::string mangaReadChapterTag() const;	// the page tag's chapter, "Ch. 12" ("": no chapters; mangaChapterTag)
@@ -1107,8 +1109,8 @@ namespace bp
 		void drawMangaServerSeries(const Player& p);
 		void mangaServerSeriesChoose(int i, Player& p);
 		void mangaServerSeriesResume(Player& p);
-		void mangaServerChapterOpen(int i, Player& p);
-		void mangaServerChapterStep(int dir, Player& p);
+		void mangaServerChapterOpen(int i, Player& p, int page0 = -1);	// page0 -1: where it was left
+		void mangaServerChapterStep(int dir, Player& p, int page0 = 0);
 		int mangaServerChapterIndex() const;
 		void mangaServerAddOpen(Player& p);
 		void mangaServerEditOpen(const std::string& id, Player& p);

@@ -1503,6 +1503,14 @@ namespace bp
 		return strip.offset() >= strip.totalHeight() - strip.screenful() / 0.9 - 1;
 	}
 
+	bool MangaReader::atStart() const
+	{
+		if (!opened) return false;
+		if (readMode != MANGA_STRIP && bookHold) return bookS <= 0;
+		if (readMode != MANGA_STRIP) return paged.atStart();
+		return strip.offset() <= 1;
+	}
+
 	bool MangaReader::panBox(int& pg, float& x0, float& y0, float& x1, float& y1) const
 	{
 		if (!opened || readMode == MANGA_STRIP || bookHold) return false;

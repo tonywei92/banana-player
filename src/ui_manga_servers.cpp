@@ -957,7 +957,7 @@ namespace bp
 		if (r.chapter >= 0) mangaServerChapterOpen(r.chapter, p);
 	}
 
-	void Ui::Manga::mangaServerChapterOpen(int i, Player& p)
+	void Ui::Manga::mangaServerChapterOpen(int i, Player& p, int at)
 	{
 		if (i < 0 || i >= (int)mangaSrvChapters.size()) return;
 		if (!mangaNet || !mangaNet->started()) { mangaSrvSerError = "The reader\xE2\x80\x99s network side is off"; return; }
@@ -995,8 +995,8 @@ namespace bp
 		}
 		if (urls.empty()) { mangaSrvSerError = "This chapter has no pages to read"; return; }
 		std::string chapterId = serverItemId(mangaSrvId, c.key);
-		int page0 = 0;
-		if (mangaStore)
+		int page0 = at >= 0 ? at : 0;
+		if (at < 0 && mangaStore)
 			if (const ChapterProgress* pr = mangaStore->progress(chapterId))
 				if (!pr->read) page0 = pr->page;
 		// the chapter open so far is saved before the next one replaces it in readerStatus
@@ -1034,13 +1034,13 @@ namespace bp
 		}
 	}
 
-	void Ui::Manga::mangaServerChapterStep(int dir, Player& p)
+	void Ui::Manga::mangaServerChapterStep(int dir, Player& p, int page0)
 	{
 		int i = mangaServerChapterIndex();
 		if (i < 0) return;
 		int j = i + dir;
 		if (j < 0 || j >= (int)mangaSrvChapters.size()) return;
-		mangaServerChapterOpen(j, p);
+		mangaServerChapterOpen(j, p, page0);
 	}
 
 	// ---- the form: Add server / Edit ----

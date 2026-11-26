@@ -596,6 +596,12 @@ namespace bp
 		return c == n - 1 && v >= vMax(c) && h >= hMax(c);
 	}
 
+	bool Paged::atStart() const
+	{
+		if (pageCount() <= 0 || anim) return false;
+		return nearest(off) == 0 && v <= 0 && h <= 0;
+	}
+
 	double Paged::vscroll() const
 	{
 		return v;

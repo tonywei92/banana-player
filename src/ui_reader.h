@@ -54,7 +54,7 @@ namespace bp
 		// what the reader shows, as main last set it (the bottom panel draws from it; it goes into signature())
 		struct ReaderStatus
 		{
-			bool open = false, loading = false, atEnd = false;	// atEnd: the strip's bottom reached (the next chapter's card)
+			bool open = false, loading = false, atEnd = false, atStart = false;	// atEnd: the strip's bottom reached (the next chapter's card)
 			int page = 0, pages = 0;	// the page under the view's middle (0-based), the chapter's page count
 			float within = 0;	// Vertical scroll: how far through that page the view's middle is
 			int mode = 0;	// the mode it reads in (MANGA_*)

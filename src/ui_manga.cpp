@@ -728,18 +728,18 @@ namespace bp
 		if (p.settings.mangaOpenFull) mangaFullscreen(true, p);
 	}
 
-	void Ui::Manga::mangaChapterStep(int dir, Player& p)
+	void Ui::Manga::mangaChapterStep(int dir, Player& p, int page0)
 	{
 		// a saved server's chapter steps through its series page's list
 		if (isServerId(ui.pageReader->mangaReadSeriesId))
 		{
-			mangaServerChapterStep(dir, p);
+			mangaServerChapterStep(dir, p, page0);
 			return;
 		}
 		// a source's chapter steps through the list it was opened with (its series page holds the same ones)
 		if (isSourceId(ui.pageReader->mangaReadSeriesId))
 		{
-			mangaSourceChapterStep(dir, p);
+			mangaSourceChapterStep(dir, p, page0);
 			return;
 		}
 		const LocalSeries* s = mangaLocalSeries(ui.pageReader->mangaReadSeriesId);
@@ -747,7 +747,7 @@ namespace bp
 		if (!s || i < 0) return;
 		int j = i + dir;
 		if (j < 0 || j >= (int)s->chapters.size()) return;
-		mangaOpenChapter(*s, j, 0, p);
+		mangaOpenChapter(*s, j, page0, p);
 	}
 
 	void Ui::Manga::mangaSlide(int x, int y, Player& p)
@@ -903,6 +903,9 @@ namespace bp
 			bool fwd = b == (flip ? Button::Left : Button::Right), back = b == (flip ? Button::Right : Button::Left);
 			if (b == Button::Up) ui.pageReader->mangaZoomStep(1);
 			else if (b == Button::Down) ui.pageReader->mangaZoomStep(-1);
+			// back at the first page's start leaves for the chapter before, at its last page (what forward at the end
+			// does the other way); in page order, so Swap Left/Right is already in `back`
+			else if (back && ui.pageReader->readerStatus.atStart) mangaChapterStep(-1, p, MANGA_LAST_PAGE);
 			else if (back) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Step, -1, (int64_t)now});
 			else if (fwd)
 			{
@@ -3235,6 +3238,7 @@ namespace bp
 		Uint32 now = SDL_GetTicks();
 		// the last spread: the next chapter (zoomed, the reader pans to the end, then gives the fit back first)
 		if (step > 0 && ui.pageReader->readerStatus.atEnd && ui.pageReader->readerStatus.zoomPct <= 100) { mangaChapterStep(1, p); return; }
+		if (step < 0 && ui.pageReader->readerStatus.atStart && ui.pageReader->readerStatus.zoomPct <= 100) { mangaChapterStep(-1, p, MANGA_LAST_PAGE); return; }
 		if (step != 0) ui.pageReader->readerCmds.push_back({PageReader::ReaderCmd::Step, (double)step, (int64_t)now});
 		ui.pageReader->mfTagUntil = now + 1500;
 	}
