@@ -25,6 +25,7 @@
 #include "mangafetch.h"
 #include "mangaservers.h"
 #include "opds.h"
+#include "discovery.h"
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -92,6 +93,26 @@ namespace bp
 		struct Ask;
 		void ask(const std::string& title, const std::string& text, const std::string& safe, const std::string& action,
 			int focus, std::function<void(Player&)> act, bool danger = false, bool failure = false);
+
+		// ---- found on this network (Calibre announces itself over mDNS: discovery.h) ----
+		// Browsed on a worker when the empty tab or the Add form opens; its list comes back as one SDL event. Rows
+		// whose address is already saved are not offered.
+		std::vector<FoundCatalog> found;	// the last browse's
+		bool finding = false, findWasOn = false;
+		Uint32 findEvent = 0;
+		uint64_t findGen = 0;	// the browse that counts (an older one's answer is dropped)
+		int foundCursor = -1;	// the empty tab: the found row focused (-1: its two keys)
+		void attachFind(Uint32 ev) { findEvent = ev; }
+		void startFind();
+		void onFound(const SDL_Event& e);
+		std::vector<FoundCatalog> offered() const;	// found, less what is saved
+		int emptyFoundCount() const;	// rows under the empty tab's keys (at most 2)
+		lay::EmptyState emptyLay() const;	// the empty tab's layout (shorter when found rows share it)
+		Rect emptyFoundRect(int i) const;
+		int formFoundCount() const;	// rows after the form's own (only when adding, and as many as fit)
+		int formBase() const;	// the form's own rows
+		void pickFound(const FoundCatalog& c);
+		void drawFoundRow(Rect r, const FoundCatalog& c, bool focused, bool pressed);
 
 		// ---- the views ----
 		enum View { V_LIST, V_FORM, V_FEED, V_BOOK };

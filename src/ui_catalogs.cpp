@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdio>
 #include <dirent.h>
+#include <memory>
 #include <random>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -778,12 +779,18 @@ namespace bp
 
 	int Ui::Books::Catalogs::formRows() const
 	{
+		return formBase() + formFoundCount();
+	}
+
+	int Ui::Books::Catalogs::formBase() const
+	{
 		return 3 + (fAccount ? 2 : 0) + (fCopies.empty() ? 0 : 1);
 	}
 
 	int Ui::Books::Catalogs::formRowId(int i) const
 	{
-		// 0 Address, 1 Name, 2 Sign in, 3 User, 4 Password, 5 Copy from Manga's servers…
+		// 0 Address, 1 Name, 2 Sign in, 3 User, 4 Password, 5 Copy from Manga's servers…, 6+ a found catalog
+		if (i >= formBase()) return 6 + (i - formBase());
 		if (i < 3) return i;
 		if (fAccount && i < 5) return i;
 		return 5;
@@ -957,7 +964,12 @@ namespace bp
 		case 3: ui.openKeyboard(CAT_USER_FIELD, fUser); break;
 		case 4: ui.openKeyboard(CAT_PASS_FIELD, fPasswordTyped ? fPassword : ""); break;
 		case 5: copyFromManga(); break;
-		default: break;
+		default:
+		{
+			std::vector<FoundCatalog> o = offered();
+			if (id - 6 < (int)o.size()) pickFound(o[id - 6]);
+			break;
+		}
 		}
 		(void)p;
 	}
@@ -1006,6 +1018,110 @@ namespace bp
 		formRowsChanged();
 	}
 
+	// ---- found on this network ----
+
+	namespace
+	{
+		constexpr int FOUND_LABEL_H = 18;
+		constexpr int FOUND_ROW_H = lay::FORM_ROW;
+	}
+
+	std::vector<FoundCatalog> Ui::Books::Catalogs::offered() const
+	{
+		// the same address however it was typed: no scheme, no trailing slash, any case
+		auto plain = [](std::string u) {
+			u = lowerAscii(u);
+			if (u.compare(0, 7, "http://") == 0) u.erase(0, 7);
+			while (!u.empty() && u.back() == '/') u.pop_back();
+			return u;
+		};
+		std::vector<std::string> have;
+		for (const MangaServer& s : store.list()) have.push_back(plain(s.url));
+		std::vector<FoundCatalog> out;
+		for (const FoundCatalog& c : found)
+			if (std::find(have.begin(), have.end(), plain(c.url)) == have.end()) out.push_back(c);
+		return out;
+	}
+
+	void Ui::Books::Catalogs::startFind()
+	{
+		if (finding || !findEvent) return;
+		finding = true;
+		uint64_t gen = ++findGen;
+		Uint32 ev = findEvent;
+		std::thread([gen, ev] {
+			uint32_t t0 = SDL_GetTicks();
+			std::vector<FoundCatalog> v;
+			// BP_CATALOG_FOUND="name|url": a test stands in for the LAN (a shell without Local Network access can't browse)
+			if (const char* fake = getenv("BP_CATALOG_FOUND"); fake && strchr(fake, '|'))
+				v.push_back({std::string(fake, strchr(fake, '|')), strchr(fake, '|') + 1});
+			else v = findCalibreCatalogs(3000);
+			fprintf(stderr, "catalogs: found %zu on the network in %u ms\n", v.size(), (unsigned)(SDL_GetTicks() - t0));
+			SDL_Event e;
+			SDL_zero(e);
+			e.type = ev;
+			e.user.code = (Sint32)gen;
+			e.user.data1 = new std::vector<FoundCatalog>(std::move(v));
+			if (SDL_PushEvent(&e) <= 0) delete (std::vector<FoundCatalog>*)e.user.data1;
+		}).detach();
+	}
+
+	void Ui::Books::Catalogs::onFound(const SDL_Event& e)
+	{
+		std::unique_ptr<std::vector<FoundCatalog>> v((std::vector<FoundCatalog>*)e.user.data1);
+		if ((uint64_t)e.user.code != findGen || !v) return;
+		finding = false;
+		found = std::move(*v);
+		foundCursor = std::min(foundCursor, emptyFoundCount() - 1);
+	}
+
+	int Ui::Books::Catalogs::emptyFoundCount() const
+	{
+		return std::min<int>(2, (int)offered().size());
+	}
+
+	lay::EmptyState Ui::Books::Catalogs::emptyLay() const
+	{
+		// found rows take the room under the keys, so the description line goes
+		Rect a = listArea();
+		int n = emptyFoundCount();
+		if (n == 0) return lay::emptyState(a, 2, 2);
+		a.h -= FOUND_LABEL_H + n * (FOUND_ROW_H + lay::SP2);
+		return lay::emptyState(a, 0, 2);
+	}
+
+	Ui::Rect Ui::Books::Catalogs::emptyFoundRect(int i) const
+	{
+		Rect a = listArea();
+		int n = emptyFoundCount();
+		int top = a.y + a.h - n * (FOUND_ROW_H + lay::SP2);
+		return {a.x, top + i * (FOUND_ROW_H + lay::SP2), a.w, FOUND_ROW_H};
+	}
+
+	int Ui::Books::Catalogs::formFoundCount() const
+	{
+		if (!formId.empty()) return 0;
+		lay::Box in = body();
+		int keysY = in.y + in.h - lay::KEY_ROW_H - lay::SP8;
+		int free = keysY - 18 - (in.y + formBase() * (lay::FORM_ROW + lay::SP2) + FOUND_LABEL_H);	// 18: the note line
+		int fit = std::max(0, free / (FOUND_ROW_H + lay::SP2));
+		return std::min<int>({3, fit, (int)offered().size()});
+	}
+
+	void Ui::Books::Catalogs::pickFound(const FoundCatalog& c)
+	{
+		if (!formOpen) openForm(nullptr);
+		fKind = "opds";
+		fAddress = c.url;
+		fName = c.name;
+		fUser.clear();
+		fPassword.clear();
+		fPasswordTyped = false;
+		fAccount = false;
+		formRowsChanged();
+		fCursor = formRows();	// on Test: the user still tests and saves
+	}
+
 	// ---- the layout ----
 
 	lay::Box Ui::Books::Catalogs::body() const
@@ -1024,7 +1140,7 @@ namespace bp
 	{
 		lay::Box in = body();
 		int n = formRows();
-		if (i < n) return {in.x, in.y + i * (lay::FORM_ROW + lay::SP2), in.w, lay::FORM_ROW};
+		if (i < n) return {in.x, in.y + i * (lay::FORM_ROW + lay::SP2) + (i >= formBase() ? FOUND_LABEL_H : 0), in.w, lay::FORM_ROW};
 		auto keys = lay::keyRow({in.x, in.y + in.h - lay::KEY_ROW_H - lay::SP8, in.w, lay::KEY_ROW_H}, {0, 0});
 		return keys[std::min(i - n, 1)];
 	}
@@ -1150,7 +1266,12 @@ namespace bp
 			int n = (int)v.size();
 			if (n == 0)
 			{
-				if (b == Button::A) openForm(nullptr);
+				int shown = emptyFoundCount();
+				foundCursor = std::min(foundCursor, shown - 1);
+				if (b == Button::Down) foundCursor = std::min(shown - 1, foundCursor + 1);
+				else if (b == Button::Up) foundCursor = std::max(-1, foundCursor - 1);
+				else if (b == Button::A && foundCursor >= 0) pickFound(offered()[foundCursor]);
+				else if (b == Button::A) openForm(nullptr);
 				else if (b == Button::Y) addGutenberg(p);
 				return false;
 			}
@@ -1326,8 +1447,9 @@ namespace bp
 				int n = (int)store.list().size();
 				if (n == 0)
 				{
-					lay::EmptyState e = lay::emptyState(listArea(), 2, 2);
-					if (was == 100 && e.key[0].hit(x, y)) key(Button::A, p);
+					lay::EmptyState e = emptyLay();
+					if (was >= 200 && was - 200 < emptyFoundCount() && emptyFoundRect(was - 200).hit(x, y)) pickFound(offered()[was - 200]);
+					else if (was == 100 && e.key[0].hit(x, y)) { foundCursor = -1; key(Button::A, p); }
 					else if (was == 101 && e.key[1].hit(x, y)) key(Button::Y, p);
 					return false;
 				}
@@ -1383,7 +1505,9 @@ namespace bp
 			int n = (int)store.list().size();
 			if (n == 0)
 			{
-				lay::EmptyState e = lay::emptyState(listArea(), 2, 2);
+				lay::EmptyState e = emptyLay();
+				for (int i = 0; i < emptyFoundCount(); i++)
+					if (emptyFoundRect(i).hit(x, y)) pressed = 200 + i;
 				if (e.key[0].hit(x, y)) pressed = 100;
 				else if (e.key[1].hit(x, y)) pressed = 101;
 				return false;
@@ -1441,6 +1565,15 @@ namespace bp
 
 	void Ui::Books::Catalogs::tick(Player&)
 	{
+		// the browse for Calibre starts when the empty tab or the Add form comes up (again, on each re-entry)
+		if (ui.books->onCatalogs())
+		{
+			load();
+			bool on = formOpen ? formId.empty() : view() == V_LIST && store.list().empty();
+			if (on && !findWasOn) startFind();
+			findWasOn = on;
+		}
+		else findWasOn = false;
 		// the download's progress: the part file's size, read a few times a second while a page that shows it is open
 		if (!dl.active) return;
 		uint32_t now = SDL_GetTicks();
@@ -1474,7 +1607,9 @@ namespace bp
 			// books-catalogs-empty: what a catalog is, the form on A, a public one on Y
 			std::vector<std::string> lines = ui.wrapText("Download books from your Calibre library, or from any OPDS "
 				"catalog, straight onto the card.", F_I14, 400, 3);
-			lay::EmptyState e = lay::emptyState(a, (int)lines.size(), 2);
+			std::vector<FoundCatalog> o = offered();
+			if (!o.empty()) lines.clear();	// the found rows take its room
+			lay::EmptyState e = emptyLay();
 			Kit::Empty em;
 			em.glyph = &G_WEB;
 			em.title = "No catalogs yet";
@@ -1487,6 +1622,17 @@ namespace bp
 			em.pressed2 = pressed == 101 && !touchMoved;
 			em.hotkeys = p.settings.buttonHotkeys;
 			k.emptyState(e, em);
+			int shown = emptyFoundCount();
+			if (shown > 0)
+			{
+				Rect first = emptyFoundRect(0);
+				ui.drawText("Found on this network", F_I12, DIM, first.x + lay::SP4, first.y - FOUND_LABEL_H + 2);
+				foundCursor = std::min(foundCursor, shown - 1);
+				for (int i = 0; i < shown; i++)
+					drawFoundRow(emptyFoundRect(i), o[i], foundCursor == i, pressed == 200 + i && !touchMoved);
+			}
+			else if (finding)
+				ui.drawTextMid("Looking on this network\xE2\x80\xA6", F_I12, DIM, a.x, a.y + a.h - 20, a.w);
 			return;
 		}
 		int n = (int)v.size();
@@ -1525,6 +1671,18 @@ namespace bp
 		}
 	}
 
+	void Ui::Books::Catalogs::drawFoundRow(Rect r, const FoundCatalog& c, bool focused, bool pressed)
+	{
+		Kit::Row row;
+		row.glyph = &G_WEB;
+		row.name = c.name;
+		row.note = hostOf(c.url);
+		row.under = BG;
+		row.focused = focused;
+		row.pressed = pressed;
+		ui.kit->row(r, row);
+	}
+
 	void Ui::Books::Catalogs::drawForm(const Player&)
 	{
 		Kit& k = *ui.kit;
@@ -1560,7 +1718,26 @@ namespace bp
 				break;
 			default: f.label = "Copy from Manga\xE2\x80\x99s servers\xE2\x80\xA6"; f.value = "\xE2\x96\xB6"; break;
 			}
+			if (id >= 6)
+			{
+				std::vector<FoundCatalog> o = offered();
+				if (id - 6 < (int)o.size())
+				{
+					if (id == 6)
+					{
+						Rect r = formRowRect(i);
+						ui.drawText("Found on this network", F_I12, DIM, r.x + lay::SP4, r.y - FOUND_LABEL_H + 2);
+					}
+					drawFoundRow(formRowRect(i), o[id - 6], f.focused, f.pressed);
+				}
+				continue;
+			}
 			k.formRow(lay::formRow(formRowRect(i)), f);
+		}
+		if (formId.empty() && finding && offered().empty())
+		{
+			Rect r = formRowRect(formBase() - 1);
+			ui.drawText("Looking on this network\xE2\x80\xA6", F_I12, DIM, r.x + lay::SP4, r.y + r.h + 6);
 		}
 		Kit::Key test;
 		test.glyph = &G_REFRESH;
@@ -1825,6 +2002,12 @@ namespace bp
 	{
 		std::string s = "|cat" + std::to_string((int)view()) + "." + std::to_string(listCursor) + "." + std::to_string(pressed) +
 			std::to_string(touchMoved) + "." + std::to_string(store.version()) + "." + std::to_string(listView);
+		if (finding) s += "|find";
+		if (formOpen ? formId.empty() : view() == V_LIST)
+		{
+			s += "|fd" + std::to_string(foundCursor);
+			for (const FoundCatalog& c : offered()) s += c.url + "\x1F";
+		}
 		if (dl.active) s += "|dl" + dl.entryId + std::to_string(dl.bytes / 16384);
 		if (formOpen)
 			s += "|f" + std::to_string(fCursor) + fAddress + "\x1F" + fName + "\x1F" + fUser + "\x1F" + std::to_string(fPassword.size()) +
