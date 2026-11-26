@@ -90,3 +90,57 @@ of `pitch` px) is gone: each panel pixel keeps its own column and only the verti
 (−10.6 .. −16); grille 1 ∓ 0.2k (at most 0.8 / 1.2; was 0.5 / 1.5). Credit kept in the shader.
 Measured on testsrc at 1024x768, colour-bar edges 10–90% width: Off 0–1 px, the soft port 1–6 px (mean ~3), now
 0–2 px (mean ~0.6). Ramp row dips at 60%: 640x480 46–53% (was 41–47%), 1024x768 45–47% (was 37–41%).
+
+## Scanlines and S-Video matched to Batocera's sets (2026-11-26)
+
+The owner on the handheld: "S-Video looks no effect at all, scanlines still too soft" (both shaders applied, no errors).
+**Causes.** S-Video's lines summed the three nearest lines' Gaussians with one colour (`beam = Σwy · gain`): that sum is
+nearly flat down a line, so there were no lines; and its chroma blur (±2 taps of 1/320) was ±6 px at 1024: invisible
+on film. Scanlines boosted ×1.8 then `min(c, 1)`: bright film clipped both bright rows flat and the gap row was only
+~39% darker; the 0.88/1.12 grille added a soft cast.
+
+**What Batocera does** (batocera.linux, `package/batocera/emulators/retroarch/shaders/batocera-shaders/configs/`; sets
+installed on ARM: sharp-bilinear-simple, retro, scanlines, enhanced, curvature, zfast, flatten-glow):
+- **scanlines**: `crt/crt-easymode` (CRT systems; `rendering-defaults-low-gpu.yml`: `crt/crt-pi`); handhelds get
+  `handheld/lcd-grid-v2`.
+- **retro**: `interpolation/sharp-bilinear-simple` (handhelds `handheld/bevel`): no CRT, no NTSC.
+- curvature: `crt/crt-lottes-fast`; zfast: `crt/zfast-crt`; enhanced: advanced-aa / 2xScaleHQ / psp-color.
+- **No set uses an NTSC or S-Video shader**, so S-Video has no Batocera counterpart; its scan lines follow the
+  scanlines set.
+- crt-easymode (default parameters): Lanczos across (sharpness 0.5), nearest down; beam `1 − sin(πd)^(2·1.5)` per row;
+  brightness-dependent: 35–65% of the pixel kept unscanned (bright pixels bloom); aperture grille 1 px, mask 0.3; gamma
+  2.0 in, 1.8 out, ×1.2 brightness.  crt-pi: `max(1 − 6d², 0.12)`, three samples, ×1.5 bloom, mask 0.7, gamma 2.4/2.2.
+
+**Licences.** crt-easymode: "License: GPL" (header). crt-pi: GPL v2 or later (© davej). So **no code of either was
+copied or translated**; only the technique (a per-row beam shaped like easymode's, an aperture grille) is written
+fresh for this app. NTSC 3-phase shaders: no licence (above). The crt-lottes port is gone, and its README credit with it.
+
+**What we do now** (`ScanRows`, `scanRowsFor`, `scanApplyGlsl` in `picturelook.cpp`, shared by both looks):
+- Rows: every `pitch` = max(2, round(H/240)) panel rows a line, its last row the gap; each row's weight is worked out on
+  the CPU, `1 − depth·sin(πd)³` (easymode's beam shape, d the row's distance from the line's centre in lines), and the
+  shader picks it by `mod(floor(gl_FragCoord.y), pitch)`. Gap weight `0.02 + 0.98(1−k)^2.5` (linear): 0.77 / 0.12 / 0.02
+  at 10 / 60 / 100%. Pitch 3 at 60%: 0.89, 0.89, 0.12; pitch 2: 1, 0.12.
+- Brightness given back without clipping: `c *= min(gain, 1/max(c.rgb)) * scan`, gain = 1/(mean row weight × mean
+  grille); a highlight is lifted only up to its brightest channel, so its gap stays dark and its hue holds. No `min(c,1)`.
+- No bloom (easymode's brightness mix would make bright film's gap 35–65% only: not visible at 366 ppi).
+- Scanlines: one tap at the pixel itself (nothing across or down: film detail kept), linear light (2.2), grille
+  darkening only, 1 − 0.25k (easymode's 0.3 at about 100%).
+- S-Video: chroma a 7-tap binomial (1-6-15-20-15-6-1) with σ = (0.25 + 0.95k)% of the width; luma 3 taps 0.5–1 px,
+  mixed 0.25 + 0.5k; YIQ turned 3k° and 1 + 0.05k richer; then the same rows at 0.8k, no grille. Each row keeps its own
+  colour, so the gap row is dark (the old bug was one colour weighted by a flat sum). 10 taps a pixel.
+
+**Measured** on a Big Buck Bunny frame (t = 4 s, 720p, still-encoded) and a flat mid-grey (sRGB 128), top panel at
+1024×768 (`BP_TOP_SIZE`), shots' rows: dip = 1 − darkest/brightest row of each 3-row period, per pixel, median;
+bleed = the horizontal Gaussian that best maps Off's chromaticity to the look's, as an edge's 10–90% width.
+
+| | grey dip | film dip | film bleed | film clipped |
+|---|---|---|---|---|
+| Off | 0% | 8% (content) | 0 px | 0.29% |
+| Scanlines 60% | 60% | 60% | 0 px | 0% |
+| Scanlines 100% | 82% | 82% | 0 px | 0% |
+| S-Video 60% | 48% | 49% | 20 px (2.0%) | 0% |
+| S-Video 100% | 76% | 76% | 31 px (3.0%) | 0% |
+
+640×480 (pitch 2) at 60%, from the weights: gap 0.12 against 1, 62% darker. The mean brightness on grey drops 6–13%
+(sRGB) though linear light is kept: the gamma curve. Cost: Scanlines 1 tap, 2 `pow`; S-Video 10 taps, 2 `pow`.
+May differ on the handheld: Panfrost's compile time (unmeasured), and how the 3-px rows read at 366 ppi by eye.

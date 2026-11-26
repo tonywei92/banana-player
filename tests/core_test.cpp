@@ -9066,24 +9066,27 @@ static void testPictureLook()
 		CHECK(sh.find("Gather") == std::string::npos && sh.find("COMPUTE") == std::string::npos);
 		CHECK(sh.find("vec4 hook()") != std::string::npos);
 	}
-	// Scanlines: crt-lottes (public domain, credited), lines `unit` pixels apart (2 on 480, 3 on 768), hard, and no
-	// resampling across (each pixel keeps its own column: film stays sharp)
+	// Scanlines: one tap in the pixel's own place (film stays sharp), the rows' weights chosen by panel row, `unit`
+	// rows a line (2 on 480, 3 on 768) with the last the gap; the gain capped by the brightest channel, never min(c, 1)
 	std::string scan = lookShader(LOOK_SCANLINES, 60, 2);
-	CHECK(scan.find("Timothy Lottes") < scan.find("vec4 hook()"));
-	CHECK(scan.find("HOOKED_pos.y * HOOKED_size.y - 0.5) / 2.0 + 0.5") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("HOOKED_size.y - 1.0) / 3.0 + 0.5") != std::string::npos);
-	CHECK(scan.find("vec2(HOOKED_pos.x, rows.y)") != std::string::npos);
-	CHECK(scan.find("HOOKED_pt.x") == std::string::npos);	// (no horizontal taps)
-	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("exp2(-10.600 * vec3((dy") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("exp2(-16.000 * vec3((dy") != std::string::npos);
-	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("vec3 mask = vec3(0.800)") != std::string::npos);
-	// S-Video: chroma blurred over 5 taps a virtual pixel apart (640 across at 10%, 320 at 100%), luma kept crisper,
-	// a light Lottes scan profile over it (credited)
+	CHECK(scan.find("HOOKED_pt") == std::string::npos);	// (no taps across or down)
+	CHECK(scan.find("mod(floor(gl_FragCoord.y), 2.0)") != std::string::npos);
+	CHECK(scan.find("min(c, 1.0)") == std::string::npos && scan.find("1.0 / max(max(c.r") != std::string::npos);
+	CHECK(scan.find("Lottes") == std::string::npos);
+	std::string scan3 = lookShader(LOOK_SCANLINES, 60, 3);
+	CHECK(scan3.find("mod(floor(gl_FragCoord.y), 3.0)") != std::string::npos);
+	CHECK(scan3.find("row < 0.5 ? 0.8") != std::string::npos && scan3.find("row < 1.5 ? 0.8") != std::string::npos);
+	CHECK(scan3.find(": 0.1192;") != std::string::npos);	// (the gap row at 60%: 60% darker in the picture's gamma)
+	CHECK(lookShader(LOOK_SCANLINES, 100, 3).find(": 0.0200;") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("vec3(1.0, 0.750, 0.750)") != std::string::npos);	// (a light grille)
+	// S-Video: chroma blurred over 7 binomial taps (an edge's colour runs about 3% of the width at 100%), the luma a
+	// little soft, the same kind of scan lines (each row its own colour, so they show) lighter and with no grille
 	std::string sv = lookShader(LOOK_SVIDEO, 100, 3);
-	CHECK(lookShader(LOOK_SVIDEO, 10, 2).find("dc = vec2(1.0 / 640.0, 0.0)") != std::string::npos);
-	CHECK(sv.find("dc = vec2(1.0 / 320.0, 0.0)") != std::string::npos);
+	CHECK(sv.find("dc = vec2(0.00980, 0.0)") != std::string::npos);
+	CHECK(lookShader(LOOK_SVIDEO, 10, 2).find("dc = vec2(0.00282, 0.0)") != std::string::npos);
+	CHECK(sv.find("3.0 * dc") != std::string::npos && sv.find("/ 64.0") != std::string::npos);
 	CHECK(sv.find("vec3(0.596, -0.274, -0.322)") != std::string::npos);	// (YIQ)
-	CHECK(sv.find("/ 3.0 + 0.5") != std::string::npos && sv.find("Timothy Lottes") != std::string::npos);
+	CHECK(sv.find("mod(floor(gl_FragCoord.y), 3.0)") != std::string::npos && sv.find("gl_FragCoord.x") == std::string::npos);
 	CHECK(sv.find("cos") == std::string::npos && sv.find("FrameCount") == std::string::npos);	// (no carrier: no dot crawl)
 	// a saved LCD grid (the look S-Video replaced) comes back as S-Video
 	CHECK_EQ(pictureLookFromId("lcd-grid"), (int)LOOK_SVIDEO);

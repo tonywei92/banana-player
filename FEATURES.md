@@ -953,11 +953,13 @@ On a video, the **Picture** chip (or **X** / **SELECT** › **Picture**): one sh
 it, **A** chooses, and the film on the top screen changes at once (the file isn't reopened):
 
 - **Size**: Fit, Fill, Stretch (below).
-- **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines** (a CRT, after Timothy Lottes' public-domain
-  shader: about 240 lines, each 2 pixels on the RG DS and 3 on the Plus with a dark gap row, deeper with Strength, and
-  a light red-green-blue aperture grille; the film stays sharp across), **S-Video** (a CRT TV fed by S-Video: colour runs
-  sideways past edges the brightness keeps fairly crisp, a slightly warm tint and light scan lines; Strength widens the
-  colour bleed, softens a little more and deepens the lines; no dot crawl or rainbow) and **Retro** (warm, faded
+- **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines** (a CRT: about 240
+  lines, each 2 pixels on the RG DS and 3 on the Plus, the last a dark gap row, darker with Strength (60%: the gap about
+  60% darker than the line; 100%: about 80%), and a light red-green-blue aperture grille; the film stays sharp across
+  and bright scenes keep their lines instead of washing out), **S-Video** (a CRT TV fed by S-Video: colour runs
+  sideways past edges the brightness keeps fairly crisp, about 2% of the width at 60% and 3% at 100%, a slightly
+  warm tint and scan lines a little lighter than Scanlines'; Strength widens the colour bleed, softens a little more
+  and deepens the lines; no dot crawl or rainbow) and **Retro** (warm, faded
   colour). Each tile has a small sample of itself. Lines are in the top panel's own pixels, so they don't shimmer, and
   brightened to make up for the dark they add. A video set to the old **LCD grid** look gets S-Video.
 - **Strength**: 10 to 100%, **LEFT / RIGHT** in steps of 10; kept per look. None for Off. By touch it is the app's
