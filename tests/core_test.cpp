@@ -77,6 +77,7 @@ extern "C"
 #include "sidecar.h"
 #include "soundfx.h"
 #include "resume.h"
+#include "picturelook.h"
 #include "bookplace.h"
 #include "session.h"
 #include "settings.h"
@@ -8566,8 +8567,9 @@ static void testSettingsTable()
 		CHECK_EQ(b.videoAdjust[1], -15);
 		CHECK_EQ(b.videoAdjust[3], 20);
 		CHECK_EQ(b.pictureLook, (int)LOOK_SCANLINES);
-		CHECK_EQ(std::string(pictureLookFilter(LOOK_OFF)), "");
-		CHECK_EQ(std::string(pictureLookFilter(LOOK_SHARPEN)).empty(), false);
+		a.lookStrength[LOOK_LCD] = 30;
+		CHECK_EQ(parseSettings(serializeSettings(a)).lookStrength[LOOK_LCD], 30);
+		CHECK_EQ(serializeSettings(Settings()).find("look-strength"), std::string::npos);	// (all 60: not written)
 		CHECK_EQ(serializeSettings(Settings()).find("video-adjust"), std::string::npos);	// (all 0: not written)
 	}
 	auto files = settingsOfGroup(SG_FILES);
@@ -9037,6 +9039,77 @@ static void testBookPlace()
 	CHECK_EQ(e && e->rev == 1 && e->by == "Browser" && e->position == 5 && e->duration == 20, true);
 	CHECK_EQ(back.serialize(), st.serialize());
 	CHECK_EQ(placeWriter(std::string(39, 'a') + "\xc3\xa9"), std::string(39, 'a'));
+}
+
+// the Picture sheet's looks (picturelook.h): strength to the filter's numbers, panel pixels, the compare flag
+static void testPictureLook()
+{
+	CHECK_EQ(clampLookStrength(0), 10);
+	CHECK_EQ(clampLookStrength(64), 60);
+	CHECK_EQ(clampLookStrength(250), 100);
+	CHECK_EQ(stepLookStrength(100, 1), 100);
+	CHECK_EQ(stepLookStrength(10, -1), 10);
+	CHECK_EQ(stepLookStrength(60, -1), 50);
+	// lines in the panel's pixels: 2 on the RG DS, 3 on the Plus
+	CHECK_EQ(lookLineUnit(480), 2);
+	CHECK_EQ(lookLineUnit(768), 3);
+	CHECK_EQ(lookVf(LOOK_OFF, 60, 640, 480), "");
+	std::string scan = lookGraph(LOOK_SCANLINES, 60, 640, 480);
+	CHECK(scan.find("drawgrid=w=0:h=4:t=2:c=black@0.36") != std::string::npos);
+	CHECK(scan.rfind("scale=", 0) == 0);	// (scaled to Fit's size first)
+	CHECK(lookGraph(LOOK_SCANLINES, 60, 1024, 768).find("h=6:t=3") != std::string::npos);
+	CHECK(lookGraph(LOOK_LCD, 100, 1024, 768).find("drawgrid=w=6:h=6:t=1:c=black@0.50") != std::string::npos);
+	CHECK(lookGraph(LOOK_SHARPEN, 60, 640, 480).find("unsharp=3:3:0.90:3:3:0") != std::string::npos);
+	CHECK(lookGraph(LOOK_SOFTEN, 10, 640, 480).find("unsharp=5:5:-0.12") != std::string::npos);
+	CHECK(lookGraph(LOOK_RETRO, 50, 640, 480).find("lutyuv=") != std::string::npos);
+	// stronger is more: Scanlines' black at 10% and 100%
+	CHECK(lookGraph(LOOK_SCANLINES, 10, 640, 480).find("black@0.06") != std::string::npos);
+	CHECK(lookGraph(LOOK_SCANLINES, 100, 640, 480).find("black@0.60") != std::string::npos);
+	// held Y: the same entry, disabled (mpv flips its flag)
+	std::string on = lookVf(LOOK_RETRO, 60, 640, 480), off = lookVf(LOOK_RETRO, 60, 640, 480, true);
+	CHECK(on.rfind("@look:lavfi=[", 0) == 0);
+	CHECK_EQ(off, "@look:!" + on.substr(6));
+	CHECK_EQ(pictureLookFromId(pictureLookId(LOOK_LCD)), (int)LOOK_LCD);
+	CHECK_EQ(pictureLookFromId("crt"), -1);
+	// a file's own look: kept with its entry, made for a file without one, taken away again, and kept through a move
+	ResumeStore r;
+	ResumeEntry a;
+	a.path = "/data/roms/videos/old game.mkv";
+	a.position = 100;
+	r.put(a);
+	r.setLook(a.path, LOOK_LCD, 40);
+	r.setLook("/data/roms/videos/new.mp4", LOOK_RETRO, 80);
+	ResumeStore b;
+	b.parse(r.serialize());
+	CHECK_EQ(b.find(a.path)->look, (int)LOOK_LCD);
+	CHECK_EQ(b.find(a.path)->lookStrength, 40);
+	CHECK_EQ(b.find(a.path)->position, 100.0);
+	CHECK_EQ(b.find("/data/roms/videos/new.mp4")->look, (int)LOOK_RETRO);
+	b.setLook(a.path, -1, 0);
+	ResumeStore c;
+	c.parse(b.serialize());
+	CHECK_EQ(c.find(a.path)->look, -1);
+	CHECK(c.serialize().find("#look\tlcd-grid") == std::string::npos);
+	c.setLook("/nowhere.mkv", -1, 0);	// (none of its own and no entry: nothing made)
+	CHECK(c.find("/nowhere.mkv") == nullptr);
+	CHECK(c.moved("/data/roms/videos", "/data/roms/films"));
+	CHECK_EQ(c.find("/data/roms/films/new.mp4")->look, (int)LOOK_RETRO);
+	// the sheet's cursor: sizes, the looks four to a row, Strength (passed over for Off), Use for, Adjust
+	lay::PicturePage d = lay::picturePage(PICTURE_LOOKS);
+	CHECK_EQ(d.count(), 12);
+	CHECK(d.sheet.box.h <= lay::SHEET_MAX);
+	CHECK(d.adjust.y + d.adjust.h <= d.sheet.hints.y);
+	CHECK_EQ(lay::pictureMove(d, 0, lay::Dir::Left, true), 0);
+	CHECK_EQ(lay::pictureMove(d, 0, lay::Dir::Down, true), d.lookAt(LOOK_OFF));
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_SCANLINES), lay::Dir::Right, true), d.lookAt(LOOK_LCD));	// (runs on)
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_RETRO), lay::Dir::Right, true), d.lookAt(LOOK_RETRO));
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_LCD), lay::Dir::Up, true), d.lookAt(LOOK_OFF));
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_LCD), lay::Dir::Down, true), d.strengthAt());
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_LCD), lay::Dir::Down, false), d.useForAt());
+	CHECK_EQ(lay::pictureMove(d, d.strengthAt(), lay::Dir::Right, true), d.strengthAt());	// (sets, doesn't move)
+	CHECK_EQ(lay::pictureMove(d, d.adjustAt(), lay::Dir::Down, true), d.adjustAt());
+	CHECK_EQ(lay::pictureAt(d, d.useOne.x + 2, d.useOne.y + 2), d.useForAt());
+	CHECK_EQ(lay::pictureAt(d, 2, d.sheet.box.y + 2), -1);
 }
 
 static void testResume()
@@ -17611,6 +17684,7 @@ int main()
 	testEq();
 	testSoundFx();
 	testResume();
+	testPictureLook();
 	testBookPlace();
 	testPlaylist();
 	testPlaylists();

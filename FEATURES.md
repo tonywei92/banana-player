@@ -517,7 +517,7 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
 | **UP / DOWN** | Volume, five a step, as the handheld's volume keys: the level card on the top screen, and past 100% the player's own gain up to **Max volume** (with its warning; **DOWN** takes that off first). Hold to repeat: after 0.4 s, eight steps a second; a hold going UP stops at 100%, and going past it takes a fresh press. Inside a sheet or a list, **UP / DOWN** move the cursor |
 | **X** | **More**: its first row is the player's five chips, under the cursor; then **Lock touch**, **Screen off**, **Sleep timer**, **Info** and **Stop** (in red), and **Like**, **Add to playlist…**, **Show in folder** and, while a dashboard page that can play is open, **Play on…**. On a chip, **A** opens that chip's sheet and More closes; on **Repeat** or **Shuffle** it changes it and More stays open. **LEFT / RIGHT** move along the chips, **DOWN** to the tiles and rows; **A** chooses, **X** or **B** closes |
 | **Y** | **List** (also a tap on the **Next** line): one sheet with **Up next** (the folder or playlist that plays, in its own order, the one playing marked **Now**) and **Chapters** (every chapter with its start; a file without chapters has only Up next), with **Shuffle**'s switch and **Repeat** (Off / All / One) in its header. **L / R** step the tabs, **UP / DOWN** move, **LEFT / RIGHT** page, **A** plays from the row, **X** opens the row's More (Remove from list), **L2 / R2** jump a chapter with the sheet open, **Y** or **B** closes |
-| **SELECT** | **More**, the same sheet **X** opens (the hint bar says **X/SELECT More**). Its first row is the five chips: **A** on one opens its own sheet, and More closes. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (Fit, Fill, Stretch, then **Adjust…**) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Equalizer**, **Effects** and **Speed**. There are no tabs and **L / R** do nothing in a sheet: **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's **Display**, **SELECT** steps the Show mode). **Picture**'s last row opens **Adjust**; **‹** or **B** goes back to **Picture** |
+| **SELECT** | **More**, the same sheet **X** opens (the hint bar says **X/SELECT More**). Its first row is the five chips: **A** on one opens its own sheet, and More closes. A video: **Subtitles** (Off, the file's tracks, and **Subtitle style…**), **Audio**, **Picture** (its sizes, its looks with Strength and Use for, then **Adjust…**) and **Speed** (0.5x to 2.5x). A song: **Display** (the four Show modes and a **Visualizer style** row), **Equalizer**, **Effects** and **Speed**. There are no tabs and **L / R** do nothing in a sheet: **UP / DOWN** move, **LEFT / RIGHT** page a long list, **A** chooses, **SELECT** or **B** closes (on a song's **Display**, **SELECT** steps the Show mode). **Picture**'s last row opens **Adjust**; **‹** or **B** goes back to **Picture** |
 | **START** | **Settings**: the ten group tiles; **B** or **START** closes it back to where you were (the player, here) |
 | **L3** (press the stick, RG DS Plus) | Like / Unlike what plays |
 | **B** (or **Back**) | Back to the list: it keeps playing (see [Playing while you browse](#playing-while-you-browse)) |
@@ -549,7 +549,8 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
   **Repeat** steps **Off → All → One → Off** in place (and wears the repeat-one mark on One), **Shuffle** turns on and
   off. No note is put up: the chip's word and its colour say it.
   A chip whose value isn't the normal one is yellow with a dot (a speed that isn't 1x, Repeat all or one, Shuffle, Fill
-  or Stretch, an equalizer or effect left on), so it can't go unnoticed.
+  or Stretch, an equalizer or effect left on), so it can't go unnoticed. A video with a look on has the look's name
+  on its **Picture** chip ("Scanlines"), in yellow.
 - **Adjust** (a video's **Picture** sheet, last row): **Brightness**, **Contrast**, **Saturation** and **Gamma** for a
   film that is too dark, flat or loud in colour; **LEFT / RIGHT** change the focused one, **A** puts it back to 0,
   **X** resets all four, **B** or **‹** goes back to **Picture**. The film on the top screen changes as they move.
@@ -948,8 +949,22 @@ text viewer's sun gets a dot).
 
 ## Picture size
 
-On a video, the **Picture** chip (or **X** / **SELECT** › **Picture**): **A** chooses, the one in use has its radio filled.
-**Adjust…** is its last row, for Brightness, Contrast, Saturation and Gamma.
+On a video, the **Picture** chip (or **X** / **SELECT** › **Picture**): one sheet, nothing scrolls. The D-pad moves over
+it, **A** chooses, and the film on the top screen changes at once (the file isn't reopened):
+
+- **Size**: Fit, Fill, Stretch (below).
+- **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines**, **LCD grid** (the handheld's
+  own pixels, larger) and **Retro** (warm, faded colour). Each tile has a small sample of itself. The lines and the grid
+  are in the top panel's own pixels (2 on, 2 off on the RG DS; 3 on the Plus), so they don't shimmer.
+- **Strength**: 10 to 100%, **LEFT / RIGHT** in steps of 10 (or slide a finger along it); kept per look. None for Off.
+- **Use for**: **All videos** (the default: the look stays on for every video, as Settings' **Picture look**) or
+  **Only this video** (kept with the file, in `resume.tsv`; choosing it gives every other video back the look it had
+  when the sheet opened). **All videos** again makes this film's look every video's.
+- **Hold Y**: the film without its look while held; let go and it's back.
+- **Adjust…**, the last row, for Brightness, Contrast, Saturation and Gamma (its note says what is changed).
+
+Looks are software filters (decoding is software only): each is one cheap pass on the film scaled first to the size Fit
+shows it at, so a 720p film is filtered at the panel's size. Never on a song, a photo, a book or the visualizer.
 
 | | |
 |---|---|
@@ -1133,7 +1148,7 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | **Playback** | Remember position | On | Reopening a video continues where you stopped (songs always start from the beginning) |
 | | Remember audio track | On | Keeps each file's audio track; a new file starts in the language you chose last |
 | | Remember subtitles | On | The same, for subtitles |
-| | Picture look | Off | A look on every video: Sharpen, Soften, Scanlines, LCD grid or Retro (a software filter, read when a film opens; songs and photos are left as they are) |
+| | Picture look | Off | A look on every video: Sharpen, Soften, Scanlines, LCD grid or Retro (a software filter, applied at once; the Picture chip chooses it too, with its strength or for one video only; songs and photos are left as they are) |
 | | Max volume | 120% | How far the volume keys (and the player's **UP / DOWN**) go on the handheld: 100%, 120% or 150%. Past 100% (the handheld's own top) the player turns the sound up itself, 5% a press, for films mixed quiet; the volume card marks 100% and shows the rest in yellow, red past 120%, and the first time past 120% a warning says it can damage your hearing and the speakers. Down takes that off first. It starts again at 100% each time the player opens. The web dashboard's handheld volume goes as far; a browser playing the sound itself keeps its own 0–100%. Two volumes, each its own: while a browser plays the sound, the handheld's volume keys turn that browser's volume (the card says **Browser volume**) and leave the handheld's as it was; the dashboard's volume shows both then (**Browser volume**, **Handheld volume**), and moving one never moves the other |
 | | Button hotkeys | On | Off: buttons can't pause, skip or close while something plays (touch still can) |
 | **Subtitles** | Font, size, colour, border, border colour, text encoding | Inter, Medium, White, Normal, Black, Auto | How plain subtitles (SRT, VTT…) look, with a live preview. Styled subtitles (ASS/SSA) keep their own look. **Text encoding** is how a subtitle file's letters are read, on the handheld and in the browser: Auto reads UTF-8, and guesses an older code page (a file named for its language, like `movie.sl.srt`, tries that language's first); if letters like š, č or ж still come out wrong, pick the file's: Central European (Windows-1250, ISO-8859-2, DOS 852), Cyrillic (Windows-1251, KOI8-R), Greek, Turkish, Baltic, Hebrew, Arabic or Western. A subtitle showing changes at once. |

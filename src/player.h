@@ -1,4 +1,5 @@
 #pragma once
+#include <chrono>
 #include "aspect.h"
 #include "eq.h"
 #include "history.h"
@@ -185,6 +186,16 @@ namespace bp
 		// -100..100; 0 is the film as it is). They apply to every video while the app runs, never to a photo.
 		double videoAdjust(int i) const { return videoAdj[std::clamp(i, 0, 3)]; }
 		void setVideoAdjust(int i, double v);
+		// the Picture sheet's looks (picturelook.h): the one on the video playing, its own ("Only this video", kept in
+		// resume.tsv) or every video's (Settings' Picture look), at its strength
+		struct LookInUse { int look = LOOK_OFF, strength = 60; bool onlyThis = false; };
+		LookInUse lookInUse() const;
+		// a look chosen: applied at once (mpv's vf, async; the time it took is in the log), kept for every video or
+		// for this one (every video's is then left as it is)
+		void setLook(int look, int strength, bool onlyThis);
+		// Y held on the Picture sheet: the look's vf entry turned off, on again when let go (its flag, not a new list)
+		void compareLook(bool off);
+		bool lookCompared() const { return lookBypass; }
 		// a choice of the player's: also the language a file opened for the first time starts with
 		void selectTrack(TrackType type, int64_t id);
 		void setAspect(AspectMode m);
@@ -450,7 +461,14 @@ namespace bp
 		void applyAudioDisplay();
 		std::string graphSet;	// lavfi-complex as last set (prop)
 		// the freeze's log (watchLog: the play state for 10 s after a graph change; last values seen, never read)
-		std::string setValues[11], graphLabel, graphHash, seenPause = "?", seenCoreIdle = "?", seenIdleActive = "?", seenEof = "?";
+		// the look's vf as last sent ("?": a photo's own), Y's compare, and when a change was sent (its answer logs the time)
+		std::string lookVfSent;
+		bool lookBypass = false;
+		std::chrono::steady_clock::time_point lookSentAt{};
+		int lookInFlight = 0;
+		std::string lookVfNow() const;
+		void applyLook();
+		std::string setValues[12], graphLabel, graphHash, seenPause = "?", seenCoreIdle = "?", seenIdleActive = "?", seenEof = "?";
 		uint64_t graphChangeAt = 0;
 		void watchLog(const char* name, const char* value) const;
 	public:

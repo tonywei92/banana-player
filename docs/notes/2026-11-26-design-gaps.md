@@ -39,7 +39,7 @@ No other screen has zero support.
 
 | Screen / component | What is missing | Evidence | Size |
 |---|---|---|---|
-| `video-picture`, `video-look` | The Picture sheet has no look tiles: looks (Sharpen, Soften, Scanlines, LCD grid, Retro) are only a Settings row ("Picture look"). Also missing: per-look Strength (10 to 100%), "Use for" (Only this video), tile samples, hold Y to compare with Off. Adjust is built. The look reads once when a film opens. | `picture-look` only in `src/settings.cpp:694`; `vf` set at `src/player.cpp:686`; no match for "Strength" / "Only this video" / "compare" in the UI; `FEATURES.md:1129` | M |
+| `video-picture`, `video-look` | **Built (branch picture-looks):** the Picture sheet (`src/ui_picture.cpp`, `lay::picturePage`): sizes, the six look tiles with samples, Strength per look (10 to 100%), Use for (All videos / Only this video, kept in `resume.tsv` as `#look`), hold Y to compare (`@look:!` flag), Adjust as its last row; a look applies live (`picturelook.h`, `Player::setLook`, ~25 to 35 ms per change on a Mac); the chip names the look in yellow. Still missing: the top screen's Look card and the 4 s "Look: … · SELECT changes it" note when a video starts, the drop-frames note, the Quick settings / Home marks; "Use for" covers the look only, not Adjust. | `src/ui_picture.cpp`; `src/picturelook.cpp`; `FEATURES.md` "Picture size" | done (part) |
 | `vol-boost` (and the header-badge component) | Built (badges-quick). |
 | `quick` | Built (badges-quick). |
 | `power-dim` / Screen-off warning | Notice row, veil and "Screen off in N s": not built, by decision (the backlight eases down). Already marked. | `backlight` comment `src/ui.h:1008`; `components.md:559` | none unless the owner wants it |

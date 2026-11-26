@@ -427,6 +427,8 @@ namespace bp
 			// as Ui::press and Ui::pointer (x, y in the panel's 640x480 units): true leaves the player
 			virtual bool key(Button b, Player& p) = 0;
 			virtual bool pointer(const Pointer& pt, int x, int y, Player& p) = 0;
+			// a button let go (the top one only): a hold of its own ends (Picture's Y, compare); most have none
+			virtual void release(Button, Player&) {}
 			virtual void draw(const Player& p) = 0;
 			// everything draw() shows that Settings doesn't hold (the cursor, a level read from elsewhere): the
 			// panel is drawn again only when this changes
@@ -568,6 +570,9 @@ namespace bp
 		struct ListSheet;
 		struct ViewSheet;
 		struct AdjustSheet;	// (ui_player.cpp: Picture's Adjust page)
+		struct PictureSheet;	// (ui_picture.cpp: a video's Picture chip's sheet: sizes, looks, Adjust)
+		void openAdjust(std::function<void()> closeParent);	// (ui_player.cpp: the Adjust page over Picture)
+		void openPicture(const Player& p);	// (ui_picture.cpp: the Picture sheet)
 
 		// the readers' Brightness sheet (ui_light.cpp): the screens' backlight, Extra dim, the reader's filter
 		// (an overlay: LightSheet, pushed by openLight)

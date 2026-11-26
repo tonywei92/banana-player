@@ -1,5 +1,6 @@
 #include <cstdio>
 #include "settings.h"
+#include "picturelook.h"
 #include "theme.h"
 #include "viz_more.h"
 #include "vizcache.h"
@@ -75,19 +76,33 @@ namespace bp
 	static const char* LOOK_IDS[PICTURE_LOOKS] = {"off", "sharpen", "soften", "scanlines", "lcd-grid", "retro"};
 	static const char* LOOK_LABELS[PICTURE_LOOKS] = {"Off", "Sharpen", "Soften", "Scanlines", "LCD grid", "Retro"};
 
-	// One software filter each (decoding is software only, so no shader: a GLES 2 chip's GPU stays with the picture).
-	// The lines and cells are in the film's own pixels, so they are an approximation of the spec's panel pixels.
-	const char* pictureLookFilter(int look)
+	const char* pictureLookId(int look) { return LOOK_IDS[std::clamp(look, 0, PICTURE_LOOKS - 1)]; }
+	const char* pictureLookLabel(int look) { return LOOK_LABELS[std::clamp(look, 0, PICTURE_LOOKS - 1)]; }
+	int pictureLookFromId(const std::string& id)
 	{
-		switch (look)
+		for (int i = 0; i < PICTURE_LOOKS; i++)
+			if (id == LOOK_IDS[i]) return i;
+		return -1;
+	}
+
+	// "look-strength": Sharpen, Soften, Scanlines, LCD grid, Retro (Off has none), each 10..100; written only when one
+	// is not the default 60
+	static void readLookStrength(Settings& s, const std::string& v)
+	{
+		int a[PICTURE_LOOKS - 1];
+		if (sscanf(v.c_str(), "%d,%d,%d,%d,%d", &a[0], &a[1], &a[2], &a[3], &a[4]) == PICTURE_LOOKS - 1)
+			for (int i = 1; i < PICTURE_LOOKS; i++) s.lookStrength[i] = clampLookStrength(a[i - 1]);
+	}
+	static bool writeLookStrength(const Settings& s, std::string& v)
+	{
+		bool any = false;
+		v.clear();
+		for (int i = 1; i < PICTURE_LOOKS; i++)
 		{
-		case LOOK_SHARPEN: return "lavfi=[unsharp=5:5:0.9:5:5:0.0]";
-		case LOOK_SOFTEN: return "lavfi=[unsharp=5:5:-0.7:5:5:0.0]";
-		case LOOK_SCANLINES: return "lavfi=[drawgrid=w=0:h=4:t=2:c=black@0.35]";
-		case LOOK_LCD: return "lavfi=[drawgrid=w=4:h=4:t=1:c=black@0.3]";
-		case LOOK_RETRO: return "lavfi=[drawgrid=w=0:h=4:t=2:c=black@0.3,eq=saturation=1.2:contrast=1.05]";
+			any = any || s.lookStrength[i] != LOOK_STRENGTH_DEFAULT;
+			v += (i > 1 ? "," : "") + std::to_string(s.lookStrength[i]);
 		}
-		return "";
+		return any;
 	}
 
 	static void readVideoAdjust(Settings& s, const std::string& v)
@@ -692,7 +707,8 @@ namespace bp
 			D::choice("read-dim-after", &Settings::readDimAfter, SCREEN_OFF_IDS, SCREEN_OFFS)
 				.page(SG_READING, 90, "Dim the controls while reading", "While a book, a comic or a document is open, this screen dims after that long untouched. A touch brings it back, and is still a page turn.").shownAs(SCREEN_OFF_LABELS),
 			D::choice("picture-look", &Settings::pictureLook, LOOK_IDS, PICTURE_LOOKS)
-				.page(SG_PLAYBACK, 35, "Picture look", "A look on every video: Sharpen, Soften, Scanlines, LCD grid or Retro. Songs and photos are left as they are. Software filters: a heavy film may stutter.").shownAs(LOOK_LABELS).stepped(true),
+				.page(SG_PLAYBACK, 35, "Picture look", "A look on every video: Sharpen, Soften, Scanlines, LCD grid or Retro. The Picture chip on a video chooses it too, with its strength, or for that video only. Songs and photos are left as they are. Software filters: a heavy film may stutter.").shownAs(LOOK_LABELS).stepped(true),
+			D::custom("look-strength", readLookStrength, writeLookStrength),
 			D::custom("video-adjust", readVideoAdjust, writeVideoAdjust),
 			D::choice("screen-off-video", &Settings::screenOffVideo, SCREEN_OFF_IDS, SCREEN_OFFS)
 				.page(SG_SCREEN, 50, "Screen off (video)", "While a video plays, this screen goes dark after that long untouched. A touch brings it back.").shownAs(SCREEN_OFF_LABELS),

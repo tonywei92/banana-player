@@ -180,6 +180,33 @@ namespace bp
 		// the tile under a finger, -1 none
 		int displayAt(const DisplayPage& d, int x, int y);
 
+		// ---- a video's Picture sheet (docs/redesign "video-picture"): Size, Look, Strength, Use for, Adjust ----
+		// The label "Size" over three tiles 44 tall; "Look" over the looks, four to a row, 50 tall, 6 apart; then
+		// three rows 46 tall: Strength (its track under the label), Use for (its two choices at the right), Adjust.
+		// The cursor is one index: the sizes, the looks, then Strength, Use for and Adjust
+		constexpr int PICTURE_SIZES = 3, PICTURE_LOOK_COLS = 4, PICTURE_SIZE_H = 44, PICTURE_TILE_H = 50, PICTURE_GAP = 6;
+		struct PicturePage
+		{
+			Sheet sheet;	// the box, grab, header and hint bar
+			Box sizeLabel, lookLabel;
+			Box size[PICTURE_SIZES];
+			std::vector<Box> look;
+			Box strength, track, useFor, useAll, useOne, adjust;
+			int lookAt(int i) const { return PICTURE_SIZES + i; }	// a look's cursor index
+			int strengthAt() const { return PICTURE_SIZES + (int)look.size(); }
+			int useForAt() const { return strengthAt() + 1; }
+			int adjustAt() const { return strengthAt() + 2; }
+			int count() const { return strengthAt() + 3; }
+			Box item(int i) const;
+		};
+		PicturePage picturePage(int looks);
+		// the cursor moved: LEFT / RIGHT along the sizes or the looks (running on across their rows; on Strength and
+		// Use for they change the value, so the cursor stays); UP / DOWN to the line above or under, the item nearest
+		// in x. Strength is passed over when it has nothing to set (Off). No wrap: at an edge it stays
+		int pictureMove(const PicturePage& d, int cursor, Dir dir, bool strengthOn);
+		// the item under a finger (-1 none); Use for is one item (useAll / useOne say which half)
+		int pictureAt(const PicturePage& d, int x, int y);
+
 		// ---- the Settings page (docs/redesign: settings, settings-group) ----
 		// its groups' tiles, two to a row (58 tall, 8 apart), and a group's rows (46 tall, the focused row's help at the
 		// foot): the kit's header draws the title and the crumb beside its back key, so the area starts under that strip

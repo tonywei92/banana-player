@@ -86,6 +86,7 @@ namespace bp
 
 	void Ui::release(Button b, Player& p)
 	{
+		if (Overlay* o = topOverlay()) o->release(b, p);
 		if (Area* a = area()) a->release(b, p);
 		if (b != Button::A || !playHoldAt || playHoldTouch) return;
 		playHoldAt = 0;	// let go before PLAY_HOLD_MS (tick() takes over at it, and clears this)

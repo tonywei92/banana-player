@@ -80,8 +80,11 @@ namespace bp
 	// the default picture look of every video (Settings > Playback > Picture look): a mpv filter on the film, none on a
 	// song or a photo
 	enum PictureLook { LOOK_OFF, LOOK_SHARPEN, LOOK_SOFTEN, LOOK_SCANLINES, LOOK_LCD, LOOK_RETRO, PICTURE_LOOKS };
-	// the mpv `vf` text of a look ("" for Off)
-	const char* pictureLookFilter(int look);
+	// a look's id in settings.conf and resume.tsv ("lcd-grid"), its name ("LCD grid"); from an id, -1 if none
+	// (its `vf`: picturelook.h)
+	const char* pictureLookId(int look);
+	const char* pictureLookLabel(int look);
+	int pictureLookFromId(const std::string& id);
 	enum ScreenOffAfter { SOFF_NEVER, SOFF_15, SOFF_30, SOFF_60, SOFF_120, SOFF_300, SCREEN_OFFS };
 	int screenOffSeconds(int v);	// 0: never
 	const char* screenOffLabel(int v);	// "Never", "15 seconds", "1 minute"...
@@ -199,6 +202,7 @@ namespace bp
 		bool stayAwakeJobs = true;
 		// the film's look, kept (Settings > Playback > Picture look)
 		int pictureLook = LOOK_OFF;
+		int lookStrength[PICTURE_LOOKS] = {60, 60, 60, 60, 60, 60};	// each look's 10..100% (picturelook.h; Off's unused)
 		// the Picture sheet's Adjust: brightness, contrast, saturation, gamma (-100..100), kept between runs
 		int videoAdjust[4] = {0, 0, 0, 0};
 		// photos: the next one opens at the zoom (and the place in it) the last was left at; off: each at its size

@@ -16,6 +16,7 @@
 #include "kitlayout.h"
 #include "soundfx.h"
 #include "playlist.h"
+#include "picturelook.h"
 #include "theme.h"
 #include "ui_glyphs.h"
 #include "vizcache.h"
@@ -79,7 +80,7 @@ namespace bp
 	// the answers of prop() for the properties in SET_WATCHED (a failed set is in the log), plus the name's index
 	static const uint64_t SETP_REPLY = 1ull << 43;
 	static const char* const SET_WATCHED[] = {"lavfi-complex", "aid", "vid", "af", "pause", "background-color",
-		"video-margin-ratio-top", "video-margin-ratio-bottom", "video-margin-ratio-left", "video-margin-ratio-right", "panscan"};
+		"video-margin-ratio-top", "video-margin-ratio-bottom", "video-margin-ratio-left", "video-margin-ratio-right", "panscan", "vf"};
 	static const int SET_WATCHED_N = (int)(sizeof(SET_WATCHED) / sizeof(SET_WATCHED[0]));
 	// (log.txt, for the freeze after a visualizer switch: grep "mpv: (set|graph|core-idle|..)|end-file|play pressed|music: graph")
 	static const uint64_t WATCH_MS = 10000;
@@ -677,13 +678,17 @@ namespace bp
 			prop("image-display-duration", "inf");
 			// at most 4096 pixels across: the RG DS's GPU may take no picture over 8192 (a 50 MP photo would stay
 			// black), and it's a quarter of a 50 MP photo's memory; still more than the panel at 8x zoom
+			lookVfSent = "?";	// (not a look: a film after it sends its own)
 			prop("vf", "lavfi=[scale=w='min(iw,4096)':h='min(ih,4096)':force_original_aspect_ratio=decrease]");
 		}
 		else
 		{
 			exif = ExifInfo();
-			// the Settings' Picture look (a film only: a song's picture is its art or its visualizer)
-			prop("vf", isAudio ? "" : pictureLookFilter(settings.pictureLook));
+			// the Picture look, this file's own or every video's (a film only: a song's picture is its art or its
+			// visualizer); Y's compare ends with the file
+			lookBypass = false;
+			lookVfSent = isAudio ? "" : lookVfNow();
+			prop("vf", lookVfSent);
 			for (auto& a : aspectProperties(aspect)) prop(a.first, a.second);
 			// the Picture sheet's Adjust, kept for every video while the app runs (0: the film as it is); never a
 			// song's album art or visualizer
@@ -1078,6 +1083,11 @@ namespace bp
 				{
 					fprintf(stderr, "mpv: set %s failed: %s (%s)\n", SET_WATCHED[k], mpv_error_string(ev->error), setValues[k].substr(0, 200).c_str());
 					if (graph) fprintf(stderr, "mpv: the graph that failed (#%s, %s):\n%s\n", graphHash.c_str(), graphLabel.c_str(), setValues[k].c_str());
+				}
+				else if (!strcmp(SET_WATCHED[k], "vf") && lookInFlight > 0 && --lookInFlight == 0)
+				{
+					double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - lookSentAt).count();
+					fprintf(stderr, "look: vf applied in %.1f ms (%s)\n", ms, setValues[k].empty() ? "none" : setValues[k].substr(0, 60).c_str());
 				}
 				else if (graph)
 					fprintf(stderr, "mpv: graph set ok (%s, %zu chars, #%s)\n", graphLabel.c_str(), setValues[k].size(), shortHash(setValues[k]).c_str());
@@ -1677,6 +1687,74 @@ namespace bp
 		fprintf(stderr, "video: adjust %s %.0f\n", NAMES[i], v);
 	}
 
+	Player::LookInUse Player::lookInUse() const
+	{
+		LookInUse l;
+		const ResumeEntry* e = playlist.empty() || isPhoto ? nullptr : resume.find(playlist[current]);
+		if (e && e->look >= 0)
+		{
+			l.look = e->look;
+			l.strength = e->lookStrength;
+			l.onlyThis = true;
+			return l;
+		}
+		l.look = std::clamp(settings.pictureLook, 0, PICTURE_LOOKS - 1);
+		l.strength = clampLookStrength(settings.lookStrength[l.look]);
+		return l;
+	}
+
+	std::string Player::lookVfNow() const
+	{
+		LookInUse l = lookInUse();
+		return lookVf(l.look, l.strength, topW, topH, lookBypass);
+	}
+
+	// sent only when it differs from what mpv has: a key held or a slider dragged sends no list twice
+	void Player::applyLook()
+	{
+		if (playlist.empty() || isAudio || isPhoto) return;
+		std::string vf = lookVfNow();
+		if (vf == lookVfSent) return;
+		lookVfSent = vf;
+		lookSentAt = std::chrono::steady_clock::now();
+		lookInFlight++;
+		prop("vf", vf);
+	}
+
+	void Player::setLook(int look, int strength, bool onlyThis)
+	{
+		look = std::clamp(look, 0, PICTURE_LOOKS - 1);
+		strength = clampLookStrength(strength);
+		std::string path = playlist.empty() || isPhoto ? "" : playlist[current];
+		const ResumeEntry* e = path.empty() ? nullptr : resume.find(path);
+		bool hadOwn = e && e->look >= 0;
+		if (onlyThis && !path.empty())
+			resume.setLook(path, look, strength);
+		else
+		{
+			if (hadOwn) resume.setLook(path, -1, 0);
+			Settings s = settings;
+			s.pictureLook = look;
+			if (look != LOOK_OFF) s.lookStrength[look] = strength;
+			setSettings(s);
+		}
+		if ((onlyThis || hadOwn) && !opts.stateDir.empty())
+		{
+			recentSer++;
+			writeFile(opts.stateDir + "/resume.tsv", resume.serialize());
+		}
+		fprintf(stderr, "look: %s %d%% for %s\n", pictureLookLabel(look), strength, onlyThis ? "this video" : "every video");
+		applyLook();
+	}
+
+	void Player::compareLook(bool off)
+	{
+		if (lookBypass == off) return;
+		lookBypass = off;
+		fprintf(stderr, "look: compare %s\n", off ? "held (off)" : "let go (on)");
+		applyLook();
+	}
+
 	void Player::writeFile(const std::string& path, const std::string& text)
 	{
 		// Durable (synced to the card: a power cut leaves the old file or the new one whole). A sync can take tens
@@ -1754,8 +1832,11 @@ namespace bp
 		}
 		bool displayChanged = s.musicShow != settings.musicShow || s.visualizer != settings.visualizer || s.vizFps != settings.vizFps;
 		bool loopChanged = s.loop != settings.loop;
+		bool pictureChanged = s.pictureLook != settings.pictureLook ||
+			!std::equal(s.lookStrength, s.lookStrength + PICTURE_LOOKS, settings.lookStrength);
 		bool soundChanged = s.eqOn != settings.eqOn || s.eqGains != settings.eqGains || s.soundFx != settings.soundFx;
 		settings = s;
+		if (pictureChanged) applyLook();	// (Settings' Picture look, or the sheet's for every video: live)
 		if (displayChanged && isAudio && loaded)
 		{
 			// at once: no graph to wait for (the song's sound chosen again, its picture off; the native style follows in
@@ -2282,6 +2363,12 @@ namespace bp
 		if (settings.rememberAudio && seenAid > 0) e.aid = seenAid;
 		if (settings.rememberSubs && seenSid >= 0) e.sid = seenSid;
 		e.duration = duration;	// (Home's Recent cards: how far into it)
+		// its own look ("Only this video") stays with it
+		if (const ResumeEntry* old = resume.find(e.path))
+		{
+			e.look = old->look;
+			e.lookStrength = old->lookStrength;
+		}
 		resume.put(e);
 		recentSer++;
 		writeFile(opts.stateDir + "/resume.tsv", resume.serialize());
