@@ -1640,8 +1640,8 @@ checks the repositories again, and the top screen says how it went: **Installed 
 it couldn't. With nothing yet they say where to start: *No sources yet* (add a repository, then install from
 **Available**) and *Nothing to install* (add a repository first).
 
-**Tachiyomi / Mihon repositories.** An address ending in `index.pb` or `index.min.json` is a Java repository (like
-Keiyoushi's `https://github.com/keiyoushi/extensions/raw/repo/index.pb`), not a Lua one. It needs the optional
+**Tachiyomi / Mihon repositories.** An address ending in `index.pb` or `index.min.json` is a Java repository (a
+Tachiyomi/Mihon-format one you trust; Banana Player names and includes none), not a Lua one. It needs the optional
 **Extension support** download (Manga settings; inside, a Java runtime and Suwayomi, never named on screen): without
 it the repository is kept as waiting (*Waits for the engine*) and sent to it once it runs. With it, adding one starts it (*Loading manga engine… about 25 s*)
 and registers the store with Suwayomi; it is listed with the Lua repositories under the store's own name, with no

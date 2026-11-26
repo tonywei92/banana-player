@@ -31,7 +31,7 @@
 - 🎬 **Movies:** MP4, MKV and more. Switch subtitles and audio tracks mid-film, jump between chapters, pick up where you stopped.
 - 🎵 **Music:** a folder plays as an album, with its cover, a visualizer and a 10-band equalizer.
 - 🖼️ **Photos:** zoom in and look around with a finger.
-- 📖 **Manga:** CBZ, CBR and PDF chapters across both screens, or hold the handheld sideways like a book. An optional extension.
+- 📖 **Manga:** CBZ, CBR and PDF chapters across both screens, or hold the handheld sideways like a book. An optional extension. Banana Player includes no manga sources: you're responsible for what you add.
 - 📚 **Books and documents:** TXT and EPUB in a reader of their own (fonts, sizes, warm filter, bookmarks, find, a book mode across both screens); PDFs page by page or as one long scroll. Even very large text files open at once.
 - 🗂️ **Files:** copy, move, rename and delete on the handheld, between both cards, with a progress bar.
 - 📡 **Your network:** play straight from your computer or NAS over Wi-Fi, nothing copied.
