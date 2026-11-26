@@ -7,6 +7,10 @@
 #include "ui_internal.h"
 #include "ui_kit.h"
 #include "ui_mediaart.h"
+#include "artbackdrop.h"
+#include <atomic>
+#include <thread>
+#include <sys/time.h>
 #include "ui_smoothlist.h"
 #include "theme.h"
 #include <algorithm>
@@ -795,6 +799,55 @@ namespace bp
 		return ui.stateDirPath.empty() ? "" : ui.stateDirPath + "/cache/catalog-covers";
 	}
 
+	// a hit bumps the file's date: the eviction's oldest-first is then least recently shown. At most once a minute per
+	// file (this runs for each row on screen each frame)
+	static void touchCover(const std::string& path)
+	{
+		static std::map<std::string, long long> last;
+		long long now = (long long)time(nullptr);
+		long long& at = last[path];
+		if (now - at < 60) return;
+		at = now;
+		struct timeval t[2];
+		gettimeofday(&t[0], nullptr);
+		t[1] = t[0];
+		utimes(path.c_str(), t);
+	}
+
+	void Ui::Books::Catalogs::pruneCovers()
+	{
+		static std::atomic<bool> running{false};
+		long long now = (long long)SDL_GetTicks();
+		if (coverDir().empty() || !coverReq.empty() || now - lastPruneMs < 60000 || running.exchange(true)) return;
+		for (const Feed& f : feeds)
+			if (f.loading || f.loadingMore)
+			{
+				running = false;
+				return;
+			}
+		lastPruneMs = now;
+		std::string dir = coverDir();
+		std::thread([dir] {
+			std::vector<artbg::CacheFile> files;
+			std::vector<std::string> names;
+			if (DIR* d = opendir(dir.c_str()))
+			{
+				while (dirent* e = readdir(d))
+				{
+					std::string name = e->d_name;
+					if (name.size() != 16) continue;	// only our own 16-hex names (never a .part)
+					struct stat st;
+					if (stat((dir + "/" + name).c_str(), &st) != 0) continue;
+					files.push_back({name, (size_t)st.st_size, (uint64_t)st.st_mtime});
+					names.push_back(name);
+				}
+				closedir(d);
+			}
+			for (size_t i : artbg::evict(files, COVER_CACHE_CAP)) unlink((dir + "/" + names[i]).c_str());
+			running = false;
+		}).detach();
+	}
+
 	std::string Ui::Books::Catalogs::coverFile(const OpdsEntry& e, const std::string& base, bool page)
 	{
 		const MangaServer* s = openCatalog();
@@ -802,7 +855,11 @@ namespace bp
 		if (!s || href.empty() || coverDir().empty()) return "";
 		std::string url = opdsResolve(base, href);
 		std::string file = coverDir() + "/" + coverCacheName(url);
-		if (fileThere(file)) return file;
+		if (fileThere(file))
+		{
+			touchCover(file);
+			return file;
+		}
 		if (!page) coverOnScreen.insert(url);
 		if (coverFailed.count(url) || coverReq.count(url)) return "";
 		// the catalog's own host only: a picture elsewhere is never fetched (no sign-in could go there anyway)
@@ -844,6 +901,7 @@ namespace bp
 		}
 		if (!image) coverFailed.insert(pd.url);
 		coverSerial++;
+		pruneCovers();
 	}
 
 	void Ui::Books::Catalogs::coverCancelOffScreen()

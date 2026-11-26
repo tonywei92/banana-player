@@ -17294,6 +17294,15 @@ static void testArtBackdropCache()
 	// one file over the cap goes alone
 	std::vector<CacheFile> one = {{"big", 20 * mb, 1}};
 	CHECK_EQ((int)evict(one).size(), 1);
+	// the catalog covers' cap: 41 files of 1 MB drop the one least recently used
+	{
+		std::vector<CacheFile> covers;
+		for (int i = 0; i < 41; i++) covers.push_back({"c" + std::to_string(i), mb, (uint64_t)(100 - i)});
+		covers[7].used = 1;
+		std::vector<size_t> d = evict(covers, COVER_CACHE_CAP);
+		CHECK_EQ((int)d.size(), 1);
+		CHECK_EQ((int)d[0], 7);
+	}
 	// nothing to do under the cap; everything goes with a tiny cap
 	CHECK_EQ((int)evict(files, 100 * mb).size(), 0);
 	CHECK_EQ((int)evict(files, 0).size(), 4);

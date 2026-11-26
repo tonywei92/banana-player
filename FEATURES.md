@@ -314,7 +314,7 @@ straight into a Books folder, so they are on the Shelf at once. With none saved 
 **Add a catalog** (A) and **Try Gutenberg** (Y: Project Gutenberg saved, no sign-in). With some, each is a row (its
 host, who is signed in, how many of its books are on the card, "Downloading 1" while one comes) and **Add a
 catalog…** last; **A** opens one, **Y** adds one, **X** is More (Open, Edit catalog…, Test connection, Remove
-catalog… — Remove asks, and says the books stay; the right column Add a catalog… and Where books come from).
+catalog… — Remove asks, and says the books stay; the right column Add a catalog… and Where books come from). The cover pictures a catalog fetched are kept in a cache capped at 40 MB (the least recently shown go first).
 
 - **The form** (Network's): **Address** first (a bare host gets `http://`; a `user:password@` part moves into the
   rows; a Kavita address keeps its key sealed and shows it as dots), **Name** (filled from the catalog's own title by

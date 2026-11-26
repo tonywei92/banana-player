@@ -215,6 +215,8 @@ namespace bp
 		// The drawn title cover stands in until the file is there, and for good where none comes.
 		std::map<std::string, uint64_t> coverReq;	// URL → fetch id, while it comes
 		std::set<std::string> coverFailed, coverOnScreen;	// (a failed one is left alone until the tab is reopened)
+		long long lastPruneMs = 0;	// the cover cache is pruned at most once a minute, on a worker, and never mid-fetch
+		void pruneCovers();
 		unsigned coverSerial = 0;	// each arrival: the signature's
 		// the cached file for an entry's picture ("" until it is there, when its fetch is started once); page: the
 		// book page wants the larger cover, a grid the thumbnail

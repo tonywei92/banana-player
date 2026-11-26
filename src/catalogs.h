@@ -56,6 +56,10 @@ namespace bp
 	// the whole URL, so one picture is one file whatever page asked for it
 	std::string coverCacheName(const std::string& url);
 
+	// The cover cache's size cap (about 40 MB: roughly 400 thumbnails). What to delete is artbg::evict's pure choice,
+	// least recently used first (a file's date is touched on each hit)
+	constexpr size_t COVER_CACHE_CAP = 40u * 1024u * 1024u;
+
 	// ---- where it goes ----
 
 	struct BooksPlace
