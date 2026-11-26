@@ -394,6 +394,8 @@ namespace bp
 			bool on = false, focused = false, pressed = false;
 			bool over = false;	// the icon over the name (else beside it)
 			int font = F_P13;
+			// a small sample at the left in the icon's place, the name after it (Picture's looks: each its own look)
+			std::function<void(Rect)> sample;
 		};
 		void choiceTile(Rect r, const Choice& c);
 

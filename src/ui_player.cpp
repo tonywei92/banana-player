@@ -149,7 +149,10 @@ namespace bp
 		{
 			add(C_SUBS, &G_CC, "Subtitles", track(TrackType::Sub), false);
 			add(C_AUDIO, &G_SPEAKER, "Audio", track(TrackType::Audio), false);
-			add(C_PICTURE, &G_PICTURE, "Picture", aspectName(p.aspect), p.aspect != AspectMode::Fit);
+			// a look on is named in yellow (docs/redesign "video-look"): a film with lines on it is never a mystery
+			int look = p.lookInUse().look;
+			add(C_PICTURE, &G_PICTURE, "Picture", look != LOOK_OFF ? pictureLookLabel(look) : aspectName(p.aspect),
+				look != LOOK_OFF || p.aspect != AspectMode::Fit);
 		}
 		else
 		{
@@ -1264,18 +1267,21 @@ namespace bp
 		}
 	};
 
-	// One of the video's own sheets (docs/redesign, "video-view", "video-picture", "video-speed"): Subtitles, Audio,
-	// Picture or Speed, opened straight from its chip, titled with the chip's name and with no tab strip. The rows are
-	// Ui::rows' rows, the ones the old Tracks page listed, and Ui::choose does each one's action (a track by its id, a
-	// picture size); Speed is format.h's five speeds, and A sets it at once. Picture's last row opens Adjust (a page of
-	// this sheet). It stays open on a choice (several are made here), unless the row leaves for Settings (the subtitle
-	// style) or for Adjust. UP / DOWN move, LEFT / RIGHT page, A chooses, SELECT / B close; a tap on a row acts on the
+	void Ui::openAdjust(std::function<void()> closeParent)
+	{
+		pushOverlay(std::make_unique<AdjustSheet>(*this, std::move(closeParent)));
+	}
+
+	// One of the video's own sheets (docs/redesign, "video-view", "video-speed"): Subtitles, Audio or Speed, opened
+	// straight from its chip, titled with the chip's name and with no tab strip (Picture has its own: ui_picture.cpp).
+	// The rows are Ui::rows' rows, the ones the old Tracks page listed, and Ui::choose does each one's action (a track
+	// by its id); Speed is format.h's five speeds, and A sets it at once. It stays open on a choice (several are made
+	// here), unless the row leaves for Settings (the subtitle style). UP / DOWN move, LEFT / RIGHT page, A chooses, SELECT / B close; a tap on a row acts on the
 	// lift, outside closes. L and R do nothing: there are no tabs.
 	struct Ui::ViewSheet : Ui::Overlay
 	{
 		enum Tab { TAB_SUBS, TAB_AUDIO, TAB_PICTURE, TAB_SPEED, TABS };
 		enum Press { P_NONE, P_ROW };
-		static constexpr int64_t ADJUST_ROW = -3;	// Picture's last row: the Adjust page
 		int tab = 0, cursor = 0, press = P_NONE, pressAt = -1;
 		// the rows: a finger's drag scrolls them, a tap (no drag) still chooses
 		SheetRows rows{ui};
@@ -1312,8 +1318,6 @@ namespace bp
 			ui.tracksTab = tracksTabFor(t);
 			auto out = ui.rows(p);
 			ui.tracksTab = keep;
-			// the picture's last row: the Adjust page (Brightness, Contrast, Saturation, Gamma)
-			if (t == TAB_PICTURE) out.push_back({ADJUST_ROW, "Adjust\xE2\x80\xA6", false, "Brightness, Contrast, Saturation, Gamma"});
 			return out;
 		}
 		int count(const Player& p) const { return (int)rowsFor(tab, p).size(); }
@@ -1336,7 +1340,6 @@ namespace bp
 		std::string headNote(const Player& p) const
 		{
 			if (tab == TAB_SPEED) return "";
-			if (tab == TAB_PICTURE) return "3 sizes";
 			int n = (int)p.tracksOf(tab == TAB_AUDIO ? TrackType::Audio : TrackType::Sub).size();
 			return n == 0 ? "None in this file" : n == 1 ? "1 track" : std::to_string(n) + " tracks";
 		}
@@ -1352,12 +1355,6 @@ namespace bp
 				double s = speedChoices()[i];
 				p.setSpeed(s);
 				p.osd("Speed " + speedLabel(s));
-				return;
-			}
-			if (tab == TAB_PICTURE && r[i].id == ADJUST_ROW)
-			{
-				// a page of this sheet: it stays under Adjust, and B (or its <) comes back here
-				ui.pushOverlay(std::make_unique<AdjustSheet>(ui, [this] { close(); }));
 				return;
 			}
 			// the style row leaves for Settings (its page draws there): the sheet closes first. A track or a size
@@ -1456,8 +1453,8 @@ namespace bp
 				// (a message row — "No audio in this file" — is no choice: no radio, and dim)
 				row.radio = r.id >= 0;
 				row.radioOn = row.radio && r.selected;
-				row.trail = r.id == STYLE_ROW || r.id == ADJUST_ROW ? Kit::Trail::Chevron : Kit::Trail::None;
-				row.off = r.id < 0 && r.id != STYLE_ROW && r.id != ADJUST_ROW;
+				row.trail = r.id == STYLE_ROW ? Kit::Trail::Chevron : Kit::Trail::None;
+				row.off = r.id < 0 && r.id != STYLE_ROW;
 				return row;
 			};
 			Rect v = SheetRows::view(s, shown(p));
@@ -2211,6 +2208,7 @@ namespace bp
 	{
 		pressed = T_NONE;
 		if (p.playingAudio()) ui.pushOverlay(std::make_unique<SongViewSheet>(ui, tab, p));
+		else if (tab == ViewSheet::TAB_PICTURE) ui.openPicture(p);	// (its sizes, looks and Adjust: ui_picture.cpp)
 		else ui.pushOverlay(std::make_unique<ViewSheet>(ui, tab, p));
 	}
 	// Play on: where it plays (the Session's output), the handheld or a dashboard page that can play. A sheet of rows;
@@ -2606,7 +2604,8 @@ namespace bp
 		std::string sig = "|pp" + std::to_string(pressed) + "," +
 			std::to_string(touchLocked) + "," + std::to_string(seekHeld >= 0) + "|" + nx.path + "|" + nx.note + (nx.round ? "r" : "") + (nx.any ? "a" : "") +
 			"|rp" + std::to_string(p.settings.loop) + (repeatMarkShown(p) ? "m" : "") +
-			"|" + p.artist() + "|" + p.album() + (p.songArtMissing() ? "|ph" + p.artPlaceholderKey() : "");
+			"|" + p.artist() + "|" + p.album() + (p.songArtMissing() ? "|ph" + p.artPlaceholderKey() : "") +
+			"|lk" + std::to_string(p.lookInUse().look);	// (the Picture chip names it; a file's own isn't a setting)
 		if (touchLocked && lockHoldAt) sig += "|hold" + std::to_string((SDL_GetTicks() - lockHoldAt) / 50);
 		// Match album art's backdrop: which answer the page draws over, and (while it runs) the cross-fade's step
 		if (ui.backdropOn(p))

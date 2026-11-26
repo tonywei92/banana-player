@@ -19,6 +19,9 @@ namespace bp
 		uint64_t rev = 0;
 		int64_t when = 0;
 		std::string by;
+		// "Only this video" (the Picture sheet): this file's own look and strength, over the one every video has;
+		// look -1: none of its own
+		int look = -1, lookStrength = 0;
 	};
 
 	class ResumeStore
@@ -34,6 +37,8 @@ namespace bp
 		void put(const ResumeEntry& e);
 		// a file or folder moved (browser.h's movedPath): its entries, and those inside it, follow; true if any did
 		bool moved(const std::string& from, const std::string& to);
+		// a file's own look (look -1: its own taken away, every video's again): kept on its entry, made if it has none
+		void setLook(const std::string& path, int look, int strength);
 
 		// most recent first
 		const std::vector<ResumeEntry>& all() const { return entries; }

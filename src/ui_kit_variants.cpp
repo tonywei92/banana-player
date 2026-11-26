@@ -531,6 +531,14 @@ namespace bp
 			flat(r, fill, theme::R_BUTTON, c.focused && !c.on ? ACCENT : edgeOf(fill));
 		}
 		int cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+		if (c.sample)
+		{
+			// the sample 38 x 28 at the left, the name after it
+			Rect sw{r.x + 8, cy - 14, 38, 28};
+			c.sample(sw);
+			ui.drawTextMid(c.name, c.font, ink, sw.x + sw.w + 8, cy, r.x + r.w - (sw.x + sw.w + 8) - 6);
+			return;
+		}
 		if (c.over)
 		{
 			// the icon 22 over the name

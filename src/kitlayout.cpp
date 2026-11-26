@@ -396,6 +396,104 @@ namespace bp
 			return -1;
 		}
 
+		PicturePage picturePage(int looks)
+		{
+			PicturePage d;
+			looks = std::max(0, looks);
+			const int lines = (looks + PICTURE_LOOK_COLS - 1) / PICTURE_LOOK_COLS;
+			const int grid = lines * PICTURE_TILE_H + std::max(0, lines - 1) * PICTURE_GAP;
+			// the labels 16 and 4 over their tiles, 8 between the two groups, 6 under the looks, then the three rows
+			const int body = 16 + 4 + PICTURE_SIZE_H + 8 + 16 + 4 + grid + PICTURE_GAP + 3 * SHEET_ROW;
+			d.sheet = sheet({0, 0, 1, body});
+			const int x = SHEET_PAD, w = PANEL_W - 2 * SHEET_PAD;
+			int y = d.sheet.bodyY;
+			d.sizeLabel = {x, y, w, 16};
+			y += 16 + 4;
+			for (int i = 0; i < PICTURE_SIZES; i++) d.size[i] = cell({x, y, w, PICTURE_SIZE_H}, PICTURE_SIZES, PICTURE_GAP, i);
+			y += PICTURE_SIZE_H + 8;
+			d.lookLabel = {x, y, w, 16};
+			y += 16 + 4;
+			for (int i = 0; i < looks; i++)
+			{
+				Box c = cell({x, y, w, PICTURE_TILE_H}, PICTURE_LOOK_COLS, PICTURE_GAP, i % PICTURE_LOOK_COLS);
+				c.y += i / PICTURE_LOOK_COLS * (PICTURE_TILE_H + PICTURE_GAP);
+				d.look.push_back(c);
+			}
+			y += grid + PICTURE_GAP;
+			d.strength = {x, y, w, SHEET_ROW};
+			d.track = {x + 12, y + SHEET_ROW - 12, w - 24, 6};
+			y += SHEET_ROW;
+			d.useFor = {x, y, w, SHEET_ROW};
+			// the two choices at the right, the label's room at the left
+			const int segW = 2 * 150 + PICTURE_GAP, segX = x + w - 6 - segW;
+			d.useAll = {segX, y + 5, 150, SHEET_ROW - 10};
+			d.useOne = {segX + 150 + PICTURE_GAP, y + 5, 150, SHEET_ROW - 10};
+			y += SHEET_ROW;
+			d.adjust = {x, y, w, SHEET_ROW};
+			return d;
+		}
+
+		Box PicturePage::item(int i) const
+		{
+			if (i < PICTURE_SIZES) return size[std::max(0, i)];
+			if (i < strengthAt()) return look[i - PICTURE_SIZES];
+			if (i == strengthAt()) return strength;
+			if (i == useForAt()) return useFor;
+			return adjust;
+		}
+
+		// the cursor's lines, top to bottom: the sizes, each row of looks, then the three rows
+		static std::vector<std::vector<int>> pictureLines(const PicturePage& d, bool strengthOn)
+		{
+			std::vector<std::vector<int>> out(1);
+			for (int i = 0; i < PICTURE_SIZES; i++) out[0].push_back(i);
+			for (int i = 0; i < (int)d.look.size(); i++)
+			{
+				if (i % PICTURE_LOOK_COLS == 0) out.emplace_back();
+				out.back().push_back(d.lookAt(i));
+			}
+			if (strengthOn) out.push_back({d.strengthAt()});
+			out.push_back({d.useForAt()});
+			out.push_back({d.adjustAt()});
+			return out;
+		}
+
+		int pictureMove(const PicturePage& d, int cursor, Dir dir, bool strengthOn)
+		{
+			cursor = std::clamp(cursor, 0, d.count() - 1);
+			if (!strengthOn && cursor == d.strengthAt()) cursor = d.useForAt();
+			const int looks = (int)d.look.size();
+			if (dir == Dir::Left || dir == Dir::Right)
+			{
+				int step = dir == Dir::Right ? 1 : -1;
+				if (cursor < PICTURE_SIZES) return std::clamp(cursor + step, 0, PICTURE_SIZES - 1);
+				if (cursor < d.strengthAt()) return std::clamp(cursor + step, PICTURE_SIZES, PICTURE_SIZES + looks - 1);
+				return cursor;
+			}
+			auto lines = pictureLines(d, strengthOn);
+			int at = 0;
+			for (int l = 0; l < (int)lines.size(); l++)
+				for (int i : lines[l])
+					if (i == cursor) at = l;
+			int to = at + (dir == Dir::Down ? 1 : -1);
+			if (to < 0 || to >= (int)lines.size()) return cursor;
+			Box from = d.item(cursor);
+			int mid = from.x + from.w / 2, best = lines[to][0];
+			for (int i : lines[to])
+			{
+				Box b = d.item(i), c = d.item(best);
+				if (std::abs(b.x + b.w / 2 - mid) < std::abs(c.x + c.w / 2 - mid)) best = i;
+			}
+			return best;
+		}
+
+		int pictureAt(const PicturePage& d, int x, int y)
+		{
+			for (int i = 0; i < d.count(); i++)
+				if (d.item(i).hit(x, y)) return i;
+			return -1;
+		}
+
 		// ---- the Settings page ----
 
 		Box settingsTile(Box area, int n, int cols, int i)

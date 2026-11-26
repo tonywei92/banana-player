@@ -1,5 +1,7 @@
 #include "resume.h"
 #include "browser.h"
+#include "picturelook.h"
+#include "settings.h"
 #include <algorithm>
 #include <cstdlib>
 #include <sstream>
@@ -8,7 +10,8 @@ namespace bp
 {
 	// resume.tsv: "position<TAB>aid<TAB>sid<TAB>path" a line (the path last: it may hold a tab), and "#last-audio",
 	// "#last-sub" lines for the languages. A file's length is a "#duration<TAB>seconds<TAB>path" line after its own:
-	// a comment to a version from before it, which reads the file as it always did
+	// a comment to a version from before it, which reads the file as it always did. A file's own look the same way:
+	// "#look<TAB>id<TAB>strength<TAB>path"
 	void ResumeStore::parse(const std::string& text)
 	{
 		entries.clear();
@@ -35,6 +38,20 @@ namespace bp
 				for (size_t i = 0; !e && i < entries.size(); i++)
 					if (entries[i].path == path) e = &entries[i];
 				if (e) e->duration = atof(line.substr(10, t - 10).c_str());
+				continue;
+			}
+			if (line.rfind("#look\t", 0) == 0)
+			{
+				size_t a = 6, b = line.find('\t', a), c = b == std::string::npos ? b : line.find('\t', b + 1);
+				if (c == std::string::npos) continue;
+				std::string path = line.substr(c + 1);
+				ResumeEntry* e = !entries.empty() && entries.back().path == path ? &entries.back() : nullptr;
+				for (size_t i = 0; !e && i < entries.size(); i++)
+					if (entries[i].path == path) e = &entries[i];
+				int look = pictureLookFromId(line.substr(a, b - a));
+				if (!e || look < 0) continue;
+				e->look = look;
+				e->lookStrength = clampLookStrength(atoi(line.substr(b + 1, c - b - 1).c_str()));
 				continue;
 			}
 			if (line.rfind("#place\t", 0) == 0)
@@ -83,6 +100,8 @@ namespace bp
 				snprintf(buf, sizeof buf, "#duration\t%.3f\t", e.duration);
 				out += buf + e.path + "\n";
 			}
+			if (e.look >= 0)
+				out += std::string("#look\t") + pictureLookId(e.look) + "\t" + std::to_string(e.lookStrength) + "\t" + e.path + "\n";
 			if (e.rev > 0)
 			{
 				// (a tab or a line break in the writer's name would end its field)
@@ -112,6 +131,23 @@ namespace bp
 			}
 		entries.insert(entries.begin(), e);
 		if (entries.size() > MAX_ENTRIES) entries.resize(MAX_ENTRIES);
+	}
+
+	void ResumeStore::setLook(const std::string& path, int look, int strength)
+	{
+		for (auto& e : entries)
+			if (e.path == path)
+			{
+				e.look = look;
+				e.lookStrength = look >= 0 ? clampLookStrength(strength) : 0;
+				return;
+			}
+		if (look < 0) return;
+		ResumeEntry e;
+		e.path = path;
+		e.look = look;
+		e.lookStrength = clampLookStrength(strength);
+		put(e);
 	}
 
 	bool ResumeStore::moved(const std::string& from, const std::string& to)
