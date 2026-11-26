@@ -396,9 +396,23 @@ namespace bp
 			return -1;
 		}
 
-		PicturePage picturePage(int looks)
+		PicturePage picturePage(int looks, bool lookRows)
 		{
 			PicturePage d;
+			d.lookRows = lookRows;
+			if (!lookRows)
+			{
+				// the label over the sizes, then Adjust
+				d.sheet = sheet({0, 0, 1, 16 + 4 + PICTURE_SIZE_H + 8 + SHEET_ROW});
+				const int x = SHEET_PAD, w = PANEL_W - 2 * SHEET_PAD;
+				int y = d.sheet.bodyY;
+				d.sizeLabel = {x, y, w, 16};
+				y += 16 + 4;
+				for (int i = 0; i < PICTURE_SIZES; i++) d.size[i] = cell({x, y, w, PICTURE_SIZE_H}, PICTURE_SIZES, PICTURE_GAP, i);
+				y += PICTURE_SIZE_H + 8;
+				d.adjust = {x, y, w, SHEET_ROW};
+				return d;
+			}
 			looks = std::max(0, looks);
 			const int lines = (looks + PICTURE_LOOK_COLS - 1) / PICTURE_LOOK_COLS;
 			const int grid = lines * PICTURE_TILE_H + std::max(0, lines - 1) * PICTURE_GAP;
@@ -436,7 +450,7 @@ namespace bp
 		Box PicturePage::item(int i) const
 		{
 			if (i < PICTURE_SIZES) return size[std::max(0, i)];
-			if (i < strengthAt()) return look[i - PICTURE_SIZES];
+			if (i < lookEnd()) return look[i - PICTURE_SIZES];
 			if (i == strengthAt()) return strength;
 			if (i == useForAt()) return useFor;
 			return adjust;
@@ -452,8 +466,8 @@ namespace bp
 				if (i % PICTURE_LOOK_COLS == 0) out.emplace_back();
 				out.back().push_back(d.lookAt(i));
 			}
-			if (strengthOn) out.push_back({d.strengthAt()});
-			out.push_back({d.useForAt()});
+			if (d.lookRows && strengthOn) out.push_back({d.strengthAt()});
+			if (d.lookRows) out.push_back({d.useForAt()});
 			out.push_back({d.adjustAt()});
 			return out;
 		}
@@ -461,13 +475,13 @@ namespace bp
 		int pictureMove(const PicturePage& d, int cursor, Dir dir, bool strengthOn)
 		{
 			cursor = std::clamp(cursor, 0, d.count() - 1);
-			if (!strengthOn && cursor == d.strengthAt()) cursor = d.useForAt();
+			if (d.lookRows && !strengthOn && cursor == d.strengthAt()) cursor = d.useForAt();
 			const int looks = (int)d.look.size();
 			if (dir == Dir::Left || dir == Dir::Right)
 			{
 				int step = dir == Dir::Right ? 1 : -1;
 				if (cursor < PICTURE_SIZES) return std::clamp(cursor + step, 0, PICTURE_SIZES - 1);
-				if (cursor < d.strengthAt()) return std::clamp(cursor + step, PICTURE_SIZES, PICTURE_SIZES + looks - 1);
+				if (cursor < d.lookEnd()) return std::clamp(cursor + step, PICTURE_SIZES, PICTURE_SIZES + looks - 1);
 				return cursor;
 			}
 			auto lines = pictureLines(d, strengthOn);

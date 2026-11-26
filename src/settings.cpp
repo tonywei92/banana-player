@@ -708,8 +708,9 @@ namespace bp
 				.page(SG_SCREEN, 128, "Stay awake for copies and downloads", "A copy, a move, a chapter download or an update keeps the handheld from sleeping on its own until it is done. Off: it may sleep in the middle."),
 			D::choice("read-dim-after", &Settings::readDimAfter, SCREEN_OFF_IDS, SCREEN_OFFS)
 				.page(SG_READING, 90, "Dim the controls while reading", "While a book, a comic or a document is open, this screen dims after that long untouched. A touch brings it back, and is still a page turn.").shownAs(SCREEN_OFF_LABELS),
-			D::choice("picture-look", &Settings::pictureLook, LOOK_IDS, PICTURE_LOOKS)
-				.page(SG_PLAYBACK, 35, "Picture look", "A look on every video: Sharpen, Soften, Scanlines, S-Video or Retro. The Picture chip on a video chooses it too, with its strength, or for that video only. Songs and photos are left as they are. Drawn by the GPU.").shownAs(LOOK_LABELS).stepped(true),
+			PICTURE_LOOKS_ENABLED ? D::choice("picture-look", &Settings::pictureLook, LOOK_IDS, PICTURE_LOOKS)
+				.page(SG_PLAYBACK, 35, "Picture look", "A look on every video: Sharpen, Soften, Scanlines, S-Video or Retro. The Picture chip on a video chooses it too, with its strength, or for that video only. Songs and photos are left as they are. Drawn by the GPU.").shownAs(LOOK_LABELS).stepped(true)
+				: D::choice("picture-look", &Settings::pictureLook, LOOK_IDS, PICTURE_LOOKS),	// (no .page: no row while the looks are off, the saved value kept)
 			D::custom("look-strength", readLookStrength, writeLookStrength),
 			D::custom("video-adjust", readVideoAdjust, writeVideoAdjust),
 			D::choice("screen-off-video", &Settings::screenOffVideo, SCREEN_OFF_IDS, SCREEN_OFFS)

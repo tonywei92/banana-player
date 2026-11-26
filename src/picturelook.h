@@ -3,6 +3,13 @@
 
 namespace bp
 {
+	// The one switch for the whole feature. Off since 2026-11-26 (the owner's call, until the looks are good on the
+	// RG DS Plus): no shader is sent to mpv whatever is saved in settings.conf or resume.tsv, the Picture sheet has
+	// only Size and Adjust, the Picture chip never names a look, and Settings has no Picture look row. The saved
+	// values (picture-look, look-strength, a video's #look) are kept, and all the look code still compiles and is
+	// tested. To bring the looks back: set this to true.
+	constexpr bool PICTURE_LOOKS_ENABLED = false;
+
 	// A video's picture look (Settings' PictureLook: Off, Sharpen, Soften, Scanlines, S-Video, Retro) made into an
 	// mpv user shader (`glsl-shaders`, docs/notes/2026-11-26-picture-looks-gpu.md). Each is one pass on the GPU at
 	// the panel's pixels (mpv's OUTPUT hook): the CPU, which decodes, does nothing per frame. Strength runs 10..100%

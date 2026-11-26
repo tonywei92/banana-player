@@ -549,8 +549,7 @@ Like a song or a video to keep it in **Liked**, a playlist of its own. Photos an
   **Repeat** steps **Off → All → One → Off** in place (and wears the repeat-one mark on One), **Shuffle** turns on and
   off. No note is put up: the chip's word and its colour say it.
   A chip whose value isn't the normal one is yellow with a dot (a speed that isn't 1x, Repeat all or one, Shuffle, Fill
-  or Stretch, an equalizer or effect left on), so it can't go unnoticed. A video with a look on has the look's name
-  on its **Picture** chip ("Scanlines"), in yellow.
+  or Stretch, an equalizer or effect left on), so it can't go unnoticed.
 - **Adjust** (a video's **Picture** sheet, last row): **Brightness**, **Contrast**, **Saturation** and **Gamma** for a
   film that is too dark, flat or loud in colour; **LEFT / RIGHT** change the focused one, **A** puts it back to 0,
   **X** resets all four, **B** or **‹** goes back to **Picture**. The film on the top screen changes as they move.
@@ -953,27 +952,10 @@ On a video, the **Picture** chip (or **X** / **SELECT** › **Picture**): one sh
 it, **A** chooses, and the film on the top screen changes at once (the file isn't reopened):
 
 - **Size**: Fit, Fill, Stretch (below).
-- **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines** (a CRT: about 240
-  lines, each 2 pixels on the RG DS and 3 on the Plus, the last a dark gap row, darker with Strength (60%: the gap about
-  60% darker than the line; 100%: about 80%), and a light red-green-blue aperture grille; the film stays sharp across
-  and bright scenes keep their lines instead of washing out), **S-Video** (a CRT TV fed by S-Video: colour runs
-  sideways past edges the brightness keeps fairly crisp, about 2% of the width at 60% and 3% at 100%, a slightly
-  warm tint and scan lines a little lighter than Scanlines'; Strength widens the colour bleed, softens a little more
-  and deepens the lines; no dot crawl or rainbow) and **Retro** (warm, faded
-  colour). Each tile has a small sample of itself. Lines are in the top panel's own pixels, so they don't shimmer, and
-  brightened to make up for the dark they add. A video set to the old **LCD grid** look gets S-Video.
-- **Strength**: 10 to 100%, **LEFT / RIGHT** in steps of 10; kept per look. None for Off. By touch it is the app's
-  one slider, as Volume and Brightness: a tap puts it there, a drag from anywhere on its row moves it by the finger's
-  travel, held till the finger lifts.
-- **Use for**: **All videos** (the default: the look stays on for every video, as Settings' **Picture look**) or
-  **Only this video** (kept with the file, in `resume.tsv`; choosing it gives every other video back the look it had
-  when the sheet opened). **All videos** again makes this film's look every video's.
-- **Hold Y**: the film without its look while held; let go and it's back.
+- **Picture looks** (Sharpen, Soften, Scanlines, S-Video, Retro, with a Strength) are not available yet: switched off
+  for now (`PICTURE_LOOKS_ENABLED` in `src/picturelook.h`). The sheet has only Size and Adjust.
 - **Adjust…**, the last row, for Brightness, Contrast, Saturation and Gamma (its note says what is changed).
 
-Looks are drawn by the GPU (an mpv shader, one pass at the panel's own pixels), so they cost the decoder nothing and a
-720p film plays as smoothly with one as without. If the GPU can't take a look's shader, the film plays without it
-and a short note says so. Never on a song, a photo, a book or the visualizer.
 
 | | |
 |---|---|
@@ -1157,7 +1139,6 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | **Playback** | Remember position | On | Reopening a video continues where you stopped (songs always start from the beginning) |
 | | Remember audio track | On | Keeps each file's audio track; a new file starts in the language you chose last |
 | | Remember subtitles | On | The same, for subtitles |
-| | Picture look | Off | A look on every video: Sharpen, Soften, Scanlines, S-Video or Retro (drawn by the GPU, applied at once; the Picture chip chooses it too, with its strength or for one video only; songs and photos are left as they are) |
 | | Max volume | 120% | How far the volume keys (and the player's **UP / DOWN**) go on the handheld: 100%, 120% or 150%. Past 100% (the handheld's own top) the player turns the sound up itself, 5% a press, for films mixed quiet; the volume card marks 100% and shows the rest in yellow, red past 120%, and the first time past 120% a warning says it can damage your hearing and the speakers. Down takes that off first. It starts again at 100% each time the player opens. The web dashboard's handheld volume goes as far; a browser playing the sound itself keeps its own 0–100%. Two volumes, each its own: while a browser plays the sound, the handheld's volume keys turn that browser's volume (the card says **Browser volume**) and leave the handheld's as it was; the dashboard's volume shows both then (**Browser volume**, **Handheld volume**), and moving one never moves the other |
 | | Button hotkeys | On | Off: buttons can't pause, skip or close while something plays (touch still can) |
 | **Subtitles** | Font, size, colour, border, border colour, text encoding | Inter, Medium, White, Normal, Black, Auto | How plain subtitles (SRT, VTT…) look, with a live preview. Styled subtitles (ASS/SSA) keep their own look. **Text encoding** is how a subtitle file's letters are read, on the handheld and in the browser: Auto reads UTF-8, and guesses an older code page (a file named for its language, like `movie.sl.srt`, tries that language's first); if letters like š, č or ж still come out wrong, pick the file's: Central European (Windows-1250, ISO-8859-2, DOS 852), Cyrillic (Windows-1251, KOI8-R), Greek, Turkish, Baltic, Hebrew, Arabic or Western. A subtitle showing changes at once. |
@@ -1986,7 +1967,7 @@ switches as tiles two to a row, **Quit** as the one red key, and the hint bar al
 - **Now playing** (its first block, always there): the art (48; a song's album cover — the Art placeholder until
   the background decode answers, and for good when the file has none — a video's film mark, or a music mark when
   nothing plays), the title, the artist and the time, then **Previous 52**, **Play / Pause 68** and **Next 52**, and a
-  line along its foot showing how far it has got. It has the state marks too (1.5×, Repeat one, a look, the EQ,
+  line along its foot showing how far it has got. It has the state marks too (1.5×, Repeat one, the EQ,
   "Playing in Chrome"), in yellow after the time. With nothing loaded it is the same block, idle: a music mark,
   **Nothing playing** / **What you play shows here**, the three keys dimmed, no line; the cursor passes it and it
   isn't pressed. The **D-pad** opens on **Volume**; **UP** reaches the block. **A** on it plays or pauses,

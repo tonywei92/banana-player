@@ -9156,6 +9156,14 @@ static void testPictureLook()
 	CHECK_EQ(lay::pictureMove(d, d.adjustAt(), lay::Dir::Down, true), d.adjustAt());
 	CHECK_EQ(lay::pictureAt(d, d.useOne.x + 2, d.useOne.y + 2), d.useForAt());
 	CHECK_EQ(lay::pictureAt(d, 2, d.sheet.box.y + 2), -1);
+	// the looks switched off (picturelook.h): the sizes and Adjust only, the sheet closed up
+	lay::PicturePage off = lay::picturePage(0, false);
+	CHECK_EQ(off.count(), 4);
+	CHECK(off.sheet.box.h < d.sheet.box.h && off.adjust.y + off.adjust.h <= off.sheet.hints.y);
+	CHECK_EQ(lay::pictureMove(off, 1, lay::Dir::Down, false), off.adjustAt());
+	CHECK_EQ(lay::pictureMove(off, off.adjustAt(), lay::Dir::Up, false), 1);
+	CHECK_EQ(lay::pictureAt(off, off.adjust.x + 2, off.adjust.y + 2), off.adjustAt());
+	if (!PICTURE_LOOKS_ENABLED) CHECK(lay::picturePage(PICTURE_LOOKS, PICTURE_LOOKS_ENABLED).count() == 4);
 }
 
 static void testResume()

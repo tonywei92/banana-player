@@ -192,14 +192,16 @@ namespace bp
 			Box size[PICTURE_SIZES];
 			std::vector<Box> look;
 			Box strength, track, useFor, useAll, useOne, adjust;
+			bool lookRows = true;	// false (picturelook.h's switch off): only the sizes and Adjust, the rest closed up
 			int lookAt(int i) const { return PICTURE_SIZES + i; }	// a look's cursor index
-			int strengthAt() const { return PICTURE_SIZES + (int)look.size(); }
-			int useForAt() const { return strengthAt() + 1; }
-			int adjustAt() const { return strengthAt() + 2; }
-			int count() const { return strengthAt() + 3; }
+			int lookEnd() const { return PICTURE_SIZES + (int)look.size(); }
+			int strengthAt() const { return lookRows ? lookEnd() : -1; }
+			int useForAt() const { return lookRows ? lookEnd() + 1 : -1; }
+			int adjustAt() const { return lookRows ? lookEnd() + 2 : PICTURE_SIZES; }
+			int count() const { return adjustAt() + 1; }
 			Box item(int i) const;
 		};
-		PicturePage picturePage(int looks);
+		PicturePage picturePage(int looks, bool lookRows = true);
 		// the cursor moved: LEFT / RIGHT along the sizes or the looks (running on across their rows; on Strength and
 		// Use for they change the value, so the cursor stays); UP / DOWN to the line above or under, the item nearest
 		// in x. Strength is passed over when it has nothing to set (Off). No wrap: at an edge it stays

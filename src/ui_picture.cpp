@@ -34,7 +34,7 @@ namespace bp
 		{
 			globalAtOpen = p.settings.pictureLook;
 			// opened on the look in use (Off too): what the sheet is mostly for
-			cursor = layout().lookAt(p.lookInUse().look);
+			cursor = layout().lookRows ? layout().lookAt(p.lookInUse().look) : (int)p.aspect;
 		}
 		const char* name() const override { return "picture"; }
 
@@ -73,7 +73,7 @@ namespace bp
 					for (int y = r.y + 1; y < r.y + r.h - 1; y += 3) ui.fill({r.x + 1, y, r.w - 2, 1}, blend(BG, sky, 50));
 			}
 
-		static lay::PicturePage layout() { return lay::picturePage(PICTURE_LOOKS); }
+		static lay::PicturePage layout() { return lay::picturePage(PICTURE_LOOKS, PICTURE_LOOKS_ENABLED); }
 		static bool gone(const Player& p, const Ui& ui)
 		{
 			return !p.playing() || p.playingPhoto() || p.playingAudio() || ui.page != Page::Main;
@@ -184,7 +184,7 @@ namespace bp
 				press = -1;
 				if (!d.sheet.box.hit(x, y)) { leave(p); ui.swallowTouch = true; return false; }
 				int at = lay::pictureAt(d, x, y);
-				if (at == d.strengthAt())
+				if (d.lookRows && at == d.strengthAt())
 				{
 					if (!strengthOn(p)) return false;
 					cursor = at;
@@ -254,33 +254,36 @@ namespace bp
 				k.choiceTile(d.size[i], c);
 			}
 
-			ui.drawTextMid("Look \xC2\xB7 off unless you turn one on", F_I12, DIM, d.lookLabel.x + 2, d.lookLabel.y + d.lookLabel.h / 2);
-			for (int i = 0; i < (int)d.look.size(); i++)
+			if (d.lookRows)
 			{
-				Kit::Choice c;
-				c.name = pictureLookLabel(i);
-				c.on = l.look == i;
-				c.focused = cursor == d.lookAt(i);
-				c.pressed = press == d.lookAt(i);
-				c.font = F_P13;
-				Ui& u = ui;
-				c.sample = [&u, i](Rect r) { lookSample(u, r, i); };
-				k.choiceTile(d.look[i], c);
+				ui.drawTextMid("Look \xC2\xB7 off unless you turn one on", F_I12, DIM, d.lookLabel.x + 2, d.lookLabel.y + d.lookLabel.h / 2);
+				for (int i = 0; i < (int)d.look.size(); i++)
+				{
+					Kit::Choice c;
+					c.name = pictureLookLabel(i);
+					c.on = l.look == i;
+					c.focused = cursor == d.lookAt(i);
+					c.pressed = press == d.lookAt(i);
+					c.font = F_P13;
+					Ui& u = ui;
+					c.sample = [&u, i](Rect r) { lookSample(u, r, i); };
+					k.choiceTile(d.look[i], c);
+				}
+
+				Kit::SliderRow s;
+				s.label = "Strength";
+				s.value = l.look == LOOK_OFF ? "None for Off" : std::to_string(l.strength) + "%";
+				s.share = l.look == LOOK_OFF ? 0 : sliderShare(l.strength, strengthRange());
+				s.focused = cursor == d.strengthAt();
+				s.held = ui.slideHeld(SL_PICTURE, 0);
+				k.sliderRow(d.strength, d.track, s);
+
+				const bool useFocused = cursor == d.useForAt();
+				if (useFocused) k.flat(d.useFor, BUTTON, R_BUTTON, ACCENT);
+				ui.drawTextMid("Use for", F_P16, useFocused ? ACCENT : TEXT, d.useFor.x + 12, d.useFor.y + d.useFor.h / 2);
+				Rect seg{d.useAll.x, d.useAll.y, d.useOne.x + d.useOne.w - d.useAll.x, d.useAll.h};
+				k.segment(seg, {"All videos", "Only this video"}, l.onlyThis ? 1 : 0);
 			}
-
-			Kit::SliderRow s;
-			s.label = "Strength";
-			s.value = l.look == LOOK_OFF ? "None for Off" : std::to_string(l.strength) + "%";
-			s.share = l.look == LOOK_OFF ? 0 : sliderShare(l.strength, strengthRange());
-			s.focused = cursor == d.strengthAt();
-			s.held = ui.slideHeld(SL_PICTURE, 0);
-			k.sliderRow(d.strength, d.track, s);
-
-			const bool useFocused = cursor == d.useForAt();
-			if (useFocused) k.flat(d.useFor, BUTTON, R_BUTTON, ACCENT);
-			ui.drawTextMid("Use for", F_P16, useFocused ? ACCENT : TEXT, d.useFor.x + 12, d.useFor.y + d.useFor.h / 2);
-			Rect seg{d.useAll.x, d.useAll.y, d.useOne.x + d.useOne.w - d.useAll.x, d.useAll.h};
-			k.segment(seg, {"All videos", "Only this video"}, l.onlyThis ? 1 : 0);
 
 			Kit::Row adj;
 			adj.glyph = &G_EQ;

@@ -144,3 +144,9 @@ bleed = the horizontal Gaussian that best maps Off's chromaticity to the look's,
 640×480 (pitch 2) at 60%, from the weights: gap 0.12 against 1, 62% darker. The mean brightness on grey drops 6–13%
 (sRGB) though linear light is kept: the gamma curve. Cost: Scanlines 1 tap, 2 `pow`; S-Video 10 taps, 2 `pow`.
 May differ on the handheld: Panfrost's compile time (unmeasured), and how the 3-px rows read at 366 ppi by eye.
+
+**Switched off (2026-11-26).** The owner turned the looks off until they are good on the RG DS Plus:
+`PICTURE_LOOKS_ENABLED = false` in `src/picturelook.h`. No shader is sent to mpv (`glsl-shaders` stays empty even with a
+look saved in settings or a video's `#look`), the Picture sheet has only Size and Adjust (`lay::picturePage(0, false)`),
+the Picture chip never names a look, and Settings has no Picture look row (its `.page(...)` is dropped; the keys and
+saved values stay). The code all still compiles and its pure tests run; set the constant to `true` to bring it back.

@@ -1691,6 +1691,7 @@ namespace bp
 	Player::LookInUse Player::lookInUse() const
 	{
 		LookInUse l;
+		if (!PICTURE_LOOKS_ENABLED) return l;	// (Off whatever is saved: picturelook.h)
 		const ResumeEntry* e = playlist.empty() || isPhoto ? nullptr : resume.find(playlist[current]);
 		if (e && e->look >= 0)
 		{
@@ -1708,6 +1709,7 @@ namespace bp
 	// time this run asks for it (a few hundred bytes; so a new version's text always replaces an old file)
 	std::string Player::lookShaderNow()
 	{
+		if (!PICTURE_LOOKS_ENABLED) return "";
 		LookInUse l = lookInUse();
 		if (lookBypass) return "";
 		const int unit = lookLineUnit(topH > 0 ? topH : 480);
