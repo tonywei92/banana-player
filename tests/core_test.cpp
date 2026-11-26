@@ -9041,7 +9041,7 @@ static void testBookPlace()
 	CHECK_EQ(placeWriter(std::string(39, 'a') + "\xc3\xa9"), std::string(39, 'a'));
 }
 
-// the Picture sheet's looks (picturelook.h): strength to the filter's numbers, panel pixels, the compare flag
+// the Picture sheet's looks (picturelook.h): strength to the shader's numbers, panel pixels, a refused shader
 static void testPictureLook()
 {
 	CHECK_EQ(clampLookStrength(0), 10);
@@ -9053,22 +9053,35 @@ static void testPictureLook()
 	// lines in the panel's pixels: 2 on the RG DS, 3 on the Plus
 	CHECK_EQ(lookLineUnit(480), 2);
 	CHECK_EQ(lookLineUnit(768), 3);
-	CHECK_EQ(lookVf(LOOK_OFF, 60, 640, 480), "");
-	std::string scan = lookGraph(LOOK_SCANLINES, 60, 640, 480);
-	CHECK(scan.find("drawgrid=w=0:h=4:t=2:c=black@0.36") != std::string::npos);
-	CHECK(scan.rfind("scale=", 0) == 0);	// (scaled to Fit's size first)
-	CHECK(lookGraph(LOOK_SCANLINES, 60, 1024, 768).find("h=6:t=3") != std::string::npos);
-	CHECK(lookGraph(LOOK_LCD, 100, 1024, 768).find("drawgrid=w=6:h=6:t=1:c=black@0.50") != std::string::npos);
-	CHECK(lookGraph(LOOK_SHARPEN, 60, 640, 480).find("unsharp=3:3:0.90:3:3:0") != std::string::npos);
-	CHECK(lookGraph(LOOK_SOFTEN, 10, 640, 480).find("unsharp=5:5:-0.12") != std::string::npos);
-	CHECK(lookGraph(LOOK_RETRO, 50, 640, 480).find("lutyuv=") != std::string::npos);
-	// stronger is more: Scanlines' black at 10% and 100%
-	CHECK(lookGraph(LOOK_SCANLINES, 10, 640, 480).find("black@0.06") != std::string::npos);
-	CHECK(lookGraph(LOOK_SCANLINES, 100, 640, 480).find("black@0.60") != std::string::npos);
-	// held Y: the same entry, disabled (mpv flips its flag)
-	std::string on = lookVf(LOOK_RETRO, 60, 640, 480), off = lookVf(LOOK_RETRO, 60, 640, 480, true);
-	CHECK(on.rfind("@look:lavfi=[", 0) == 0);
-	CHECK_EQ(off, "@look:!" + on.substr(6));
+	// one shader file per (look, strength, unit): the bundled mpv's renderer has no //!PARAM
+	CHECK_EQ(lookShader(LOOK_OFF, 60, 2), "");
+	CHECK_EQ(lookShaderName(LOOK_OFF, 60, 2), "");
+	CHECK_EQ(lookShaderName(LOOK_SCANLINES, 64, 2), "scanlines-60-u2.glsl");
+	CHECK(lookShaderName(LOOK_LCD, 60, 3) != lookShaderName(LOOK_LCD, 60, 2));
+	for (int look = LOOK_SHARPEN; look < PICTURE_LOOKS; look++)
+	{
+		std::string sh = lookShader(look, 60, 2);
+		CHECK(sh.rfind("//!HOOK OUTPUT\n//!BIND HOOKED\n", 0) == 0);	// (at the panel's pixels)
+		CHECK(sh.find("PARAM") == std::string::npos);
+		CHECK(sh.find("Gather") == std::string::npos && sh.find("COMPUTE") == std::string::npos);
+		CHECK(sh.find("vec4 hook()") != std::string::npos);
+	}
+	// lines in the panel's pixels: `unit` tall, as far apart; stronger is darker
+	std::string scan = lookShader(LOOK_SCANLINES, 60, 2);
+	CHECK(scan.find("mod(floor(gl_FragCoord.y), 4.0) < 2.0) c.rgb *= 0.640") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("6.0) < 3.0") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("*= 0.940") != std::string::npos);
+	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("*= 0.400") != std::string::npos);
+	CHECK(lookShader(LOOK_LCD, 100, 3).find("mod(floor(gl_FragCoord.xy), 6.0)") != std::string::npos);
+	CHECK(lookShader(LOOK_LCD, 100, 3).find("*= 0.500") != std::string::npos);
+	CHECK(lookShader(LOOK_SHARPEN, 60, 2).find("0.900 * d") != std::string::npos);
+	CHECK(lookShader(LOOK_SOFTEN, 10, 2).find("mix(c.rgb, blur, 0.090)") != std::string::npos);
+	CHECK(lookShader(LOOK_RETRO, 50, 2).find("y * 0.900 + 0.035") != std::string::npos);
+	// a shader mpv refused: a parse error or a compile log at error level; a warning is not
+	CHECK(isShaderRejection("error", "fragment shader compile log (status=0):\n"));
+	CHECK(isShaderRejection("error", "Unrecognized command 'PARAM'!\n"));
+	CHECK(!isShaderRejection("warn", "fragment shader compile log (status=1):\n"));
+	CHECK(!isShaderRejection("error", "Failed to open file\n"));
 	CHECK_EQ(pictureLookFromId(pictureLookId(LOOK_LCD)), (int)LOOK_LCD);
 	CHECK_EQ(pictureLookFromId("crt"), -1);
 	// a file's own look: kept with its entry, made for a file without one, taken away again, and kept through a move

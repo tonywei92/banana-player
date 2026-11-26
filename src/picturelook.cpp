@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 
 namespace bp
 {
@@ -22,58 +23,96 @@ namespace bp
 		return std::max(1, (int)std::lround(panelH / 240.0));
 	}
 
-	// the film scaled to the box Fit draws it in on the panel (its display aspect kept: sar), so a line drawn after
-	// is one panel pixel tall. Bilinear: the cheapest of swscale's that doesn't alias; a 720p film is made smaller,
-	// which also leaves less to upload. (Fill and Stretch draw it larger: there the lines are close, not exact.)
-	static std::string fitScale(int panelW, int panelH)
+	// The body of each look's hook(). GLES 3.0-safe: float maths only (mod, floor, mix), no textureGather nor compute,
+	// no precision of its own (mpv's header asks highp, which GLES 3 fragment shaders have). HOOKED is the picture at
+	// the size it's drawn on the panel, filtered linearly, so a tap between texels averages them. gl_FragCoord counts
+	// the panel's own pixels: lines and cells land on them whatever the film's size.
+	static std::string lookBody(int look, double k, int unit)
 	{
-		char f[64], b[320];
-		snprintf(f, sizeof f, "min(%d/(iw*sar),%d/ih)", panelW, panelH);
-		snprintf(b, sizeof b, "scale=w='2*trunc(iw*%s/2)':h='2*trunc(ih*%s/2)':flags=bilinear", f, f);
-		return b;
-	}
-
-	// the look's own pass, on the film as Fit shows it (fitScale)
-	static std::string lookPass(int look, double k, int unit)
-	{
-		char b[512];
+		char b[1200];
 		switch (look)
 		{
-		// unsharp on the luma only (chroma amount 0: its planes are copied, not filtered). Sharpen's 3x3 at the
-		// panel's size is a pixel's edge; Soften's 5x5 a blur a little wider. 60% is about the old fixed look
-		case LOOK_SHARPEN: snprintf(b, sizeof b, "unsharp=3:3:%.2f:3:3:0", 1.5 * k); return b;
-		case LOOK_SOFTEN: snprintf(b, sizeof b, "unsharp=5:5:%.2f:5:5:0", -1.2 * k); return b;
-		// lines `unit` tall, as far apart (w=0: across the whole width)
-		case LOOK_SCANLINES: snprintf(b, sizeof b, "drawgrid=w=0:h=%d:t=%d:c=black@%.2f", 2 * unit, unit, 0.6 * k); return b;
+		// unsharp on the luma: the 3x3 binomial blur from four taps between texels; what the centre has over it, added
+		// back (60% about the old fixed look). On the luma only: no coloured fringes
+		case LOOK_SHARPEN:
+			snprintf(b, sizeof b,
+				"\tvec4 c = HOOKED_tex(HOOKED_pos);\n"
+				"\tvec3 blur = 0.25 * (HOOKED_texOff(vec2(-0.5, -0.5)).rgb + HOOKED_texOff(vec2(0.5, -0.5)).rgb\n"
+				"\t\t+ HOOKED_texOff(vec2(-0.5, 0.5)).rgb + HOOKED_texOff(vec2(0.5, 0.5)).rgb);\n"
+				"\tfloat d = dot(c.rgb - blur, vec3(0.299, 0.587, 0.114));\n"
+				"\tc.rgb = clamp(c.rgb + %.3f * d, 0.0, 1.0);\n"
+				"\treturn c;\n",
+				1.5 * k);
+			return b;
+		// a blur about 5x5 wide: four taps, each the mean of a 2x2 block, in a pinwheel round the centre (16 texels),
+		// with the centre itself; the picture moved toward it
+		case LOOK_SOFTEN:
+			snprintf(b, sizeof b,
+				"\tvec4 c = HOOKED_tex(HOOKED_pos);\n"
+				"\tvec3 blur = 0.2 * (c.rgb + HOOKED_texOff(vec2(1.5, 0.5)).rgb + HOOKED_texOff(vec2(-0.5, 1.5)).rgb\n"
+				"\t\t+ HOOKED_texOff(vec2(-1.5, -0.5)).rgb + HOOKED_texOff(vec2(0.5, -1.5)).rgb);\n"
+				"\tc.rgb = mix(c.rgb, blur, %.3f);\n"
+				"\treturn c;\n",
+				0.9 * k);
+			return b;
+		// lines `unit` tall, as far apart
+		case LOOK_SCANLINES:
+			snprintf(b, sizeof b,
+				"\tvec4 c = HOOKED_tex(HOOKED_pos);\n"
+				"\tif (mod(floor(gl_FragCoord.y), %d.0) < %d.0) c.rgb *= %.3f;\n"
+				"\treturn c;\n",
+				2 * unit, unit, 1 - 0.6 * k);
+			return b;
 		// a cell two units square, its edge one panel pixel: the handheld's own pixels, larger
-		case LOOK_LCD: snprintf(b, sizeof b, "drawgrid=w=%d:h=%d:t=1:c=black@%.2f", 2 * unit, 2 * unit, 0.5 * k); return b;
-		// warm and faded: blacks lifted, contrast and colour lowered, the colour pushed to red and away from blue. A
-		// lookup table (built once, per value), in the file's own range (minval..maxval: 8 or 10 bits alike)
+		case LOOK_LCD:
+			snprintf(b, sizeof b,
+				"\tvec4 c = HOOKED_tex(HOOKED_pos);\n"
+				"\tvec2 p = mod(floor(gl_FragCoord.xy), %d.0);\n"
+				"\tif (p.x < 1.0 || p.y < 1.0) c.rgb *= %.3f;\n"
+				"\treturn c;\n",
+				2 * unit, 1 - 0.5 * k);
+			return b;
+		// warm and faded, in YCbCr (BT.601): blacks lifted, contrast and colour lowered, the colour pushed to red and
+		// away from blue (the old lutyuv's numbers)
 		case LOOK_RETRO:
 			snprintf(b, sizeof b,
-				"lutyuv=y='clip(minval+(val-minval)*%.3f+(maxval-minval)*%.3f,minval,maxval)'"
-				":u='clip((maxval+minval)/2+(val-(maxval+minval)/2)*%.3f-(maxval-minval)*%.3f,minval,maxval)'"
-				":v='clip((maxval+minval)/2+(val-(maxval+minval)/2)*%.3f+(maxval-minval)*%.3f,minval,maxval)'",
+				"\tvec4 c = HOOKED_tex(HOOKED_pos);\n"
+				"\tfloat y = dot(c.rgb, vec3(0.299, 0.587, 0.114));\n"
+				"\tfloat cb = (c.b - y) * 0.564, cr = (c.r - y) * 0.713;\n"
+				"\ty = y * %.3f + %.3f;\n"
+				"\tcb = cb * %.3f - %.3f;\n"
+				"\tcr = cr * %.3f + %.3f;\n"
+				"\tc.rgb = clamp(vec3(y + 1.403 * cr, y - 0.344 * cb - 0.714 * cr, y + 1.773 * cb), 0.0, 1.0);\n"
+				"\treturn c;\n",
 				1 - 0.2 * k, 0.07 * k, 1 - 0.4 * k, 0.03 * k, 1 - 0.4 * k, 0.04 * k);
 			return b;
 		}
 		return "";
 	}
 
-	// Every look scales first: the lines then land on the panel's pixels, and a 720p film is filtered at a quarter of
-	// its pixels (on a Mac, 720p: the scale 0.3 ms a frame, with a look 0.45..1.3 ms; Sharpen at 720p itself took 3.2)
-	std::string lookGraph(int look, int strength, int panelW, int panelH)
+	std::string lookShader(int look, int strength, int unit)
 	{
-		if (panelW <= 0 || panelH <= 0) panelW = 640, panelH = 480;
-		std::string pass = lookPass(look, clampLookStrength(strength) / 100.0, lookLineUnit(panelH));
-		if (pass.empty()) return "";
-		return fitScale(panelW, panelH) + "," + pass;
+		strength = clampLookStrength(strength);
+		std::string body = lookBody(look, strength / 100.0, std::max(1, unit));
+		if (body.empty()) return "";
+		char head[160];
+		snprintf(head, sizeof head, "//!HOOK OUTPUT\n//!BIND HOOKED\n//!DESC Banana Player %s %d%%\n\nvec4 hook()\n{\n",
+			pictureLookId(look), strength);
+		return head + body + "}\n";
 	}
 
-	std::string lookVf(int look, int strength, int panelW, int panelH, bool bypass)
+	std::string lookShaderName(int look, int strength, int unit)
 	{
-		std::string g = lookGraph(look, strength, panelW, panelH);
-		if (g.empty()) return "";
-		return std::string(bypass ? "@look:!" : "@look:") + "lavfi=[" + g + "]";
+		if (look <= LOOK_OFF || look >= PICTURE_LOOKS) return "";
+		return std::string(pictureLookId(look)) + "-" + std::to_string(clampLookStrength(strength)) + "-u" +
+			std::to_string(std::max(1, unit)) + ".glsl";
+	}
+
+	// a parse error (user_shaders.c: "Unrecognized command", "Error while parsing ...") or a compile log at error
+	// level (ra_gl.c: "fragment shader compile log (status=0)"); warnings are other things
+	bool isShaderRejection(const char* level, const char* text)
+	{
+		if (!level || !text || (strcmp(level, "error") && strcmp(level, "fatal"))) return false;
+		return strstr(text, "shader") || strstr(text, "Unrecognized command") || strstr(text, "Error while parsing");
 	}
 }

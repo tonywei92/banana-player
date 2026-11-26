@@ -17,6 +17,7 @@
 #include <map>
 #include <mutex>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -461,13 +462,16 @@ namespace bp
 		void applyAudioDisplay();
 		std::string graphSet;	// lavfi-complex as last set (prop)
 		// the freeze's log (watchLog: the play state for 10 s after a graph change; last values seen, never read)
-		// the look's vf as last sent ("?": a photo's own), Y's compare, and when a change was sent (its answer logs the time)
-		std::string lookVfSent;
+		// the look's shader file as last sent to glsl-shaders ("": none), Y's compare, and when a change was sent (its
+		// answer logs the time); the files written this run, and those mpv refused (Off from then on)
+		std::string lookShaderSent;
 		bool lookBypass = false;
 		std::chrono::steady_clock::time_point lookSentAt{};
 		int lookInFlight = 0;
-		std::string lookVfNow() const;
+		std::set<std::string> lookWritten, lookRefused;
+		std::string lookShaderNow();
 		void applyLook();
+		void lookRejected();
 		std::string setValues[12], graphLabel, graphHash, seenPause = "?", seenCoreIdle = "?", seenIdleActive = "?", seenEof = "?";
 		uint64_t graphChangeAt = 0;
 		void watchLog(const char* name, const char* value) const;

@@ -963,8 +963,9 @@ it, **A** chooses, and the film on the top screen changes at once (the file isn'
 - **Hold Y**: the film without its look while held; let go and it's back.
 - **Adjust…**, the last row, for Brightness, Contrast, Saturation and Gamma (its note says what is changed).
 
-Looks are software filters (decoding is software only): each is one cheap pass on the film scaled first to the size Fit
-shows it at, so a 720p film is filtered at the panel's size. Never on a song, a photo, a book or the visualizer.
+Looks are drawn by the GPU (an mpv shader, one pass at the panel's own pixels), so they cost the decoder nothing and a
+720p film plays as smoothly with one as without. If the GPU can't take a look's shader, the film plays without it
+and a short note says so. Never on a song, a photo, a book or the visualizer.
 
 | | |
 |---|---|

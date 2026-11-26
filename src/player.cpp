@@ -80,7 +80,7 @@ namespace bp
 	// the answers of prop() for the properties in SET_WATCHED (a failed set is in the log), plus the name's index
 	static const uint64_t SETP_REPLY = 1ull << 43;
 	static const char* const SET_WATCHED[] = {"lavfi-complex", "aid", "vid", "af", "pause", "background-color",
-		"video-margin-ratio-top", "video-margin-ratio-bottom", "video-margin-ratio-left", "video-margin-ratio-right", "panscan", "vf"};
+		"video-margin-ratio-top", "video-margin-ratio-bottom", "video-margin-ratio-left", "video-margin-ratio-right", "panscan", "glsl-shaders"};
 	static const int SET_WATCHED_N = (int)(sizeof(SET_WATCHED) / sizeof(SET_WATCHED[0]));
 	// (log.txt, for the freeze after a visualizer switch: grep "mpv: (set|graph|core-idle|..)|end-file|play pressed|music: graph")
 	static const uint64_t WATCH_MS = 10000;
@@ -678,7 +678,8 @@ namespace bp
 			prop("image-display-duration", "inf");
 			// at most 4096 pixels across: the RG DS's GPU may take no picture over 8192 (a 50 MP photo would stay
 			// black), and it's a quarter of a 50 MP photo's memory; still more than the panel at 8x zoom
-			lookVfSent = "?";	// (not a look: a film after it sends its own)
+			lookShaderSent.clear();	// (a photo has no look)
+			prop("glsl-shaders", "");
 			prop("vf", "lavfi=[scale=w='min(iw,4096)':h='min(ih,4096)':force_original_aspect_ratio=decrease]");
 		}
 		else
@@ -687,8 +688,9 @@ namespace bp
 			// the Picture look, this file's own or every video's (a film only: a song's picture is its art or its
 			// visualizer); Y's compare ends with the file
 			lookBypass = false;
-			lookVfSent = isAudio ? "" : lookVfNow();
-			prop("vf", lookVfSent);
+			lookShaderSent = isAudio ? "" : lookShaderNow();
+			prop("vf", "");	// (a photo's own scale, gone)
+			prop("glsl-shaders", lookShaderSent);
 			for (auto& a : aspectProperties(aspect)) prop(a.first, a.second);
 			// the Picture sheet's Adjust, kept for every video while the app runs (0: the film as it is); never a
 			// song's album art or visualizer
@@ -1084,10 +1086,10 @@ namespace bp
 					fprintf(stderr, "mpv: set %s failed: %s (%s)\n", SET_WATCHED[k], mpv_error_string(ev->error), setValues[k].substr(0, 200).c_str());
 					if (graph) fprintf(stderr, "mpv: the graph that failed (#%s, %s):\n%s\n", graphHash.c_str(), graphLabel.c_str(), setValues[k].c_str());
 				}
-				else if (!strcmp(SET_WATCHED[k], "vf") && lookInFlight > 0 && --lookInFlight == 0)
+				else if (!strcmp(SET_WATCHED[k], "glsl-shaders") && lookInFlight > 0 && --lookInFlight == 0)
 				{
 					double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - lookSentAt).count();
-					fprintf(stderr, "look: vf applied in %.1f ms (%s)\n", ms, setValues[k].empty() ? "none" : setValues[k].substr(0, 60).c_str());
+					fprintf(stderr, "look: shader applied in %.1f ms (%s)\n", ms, setValues[k].empty() ? "none" : setValues[k].c_str());
 				}
 				else if (graph)
 					fprintf(stderr, "mpv: graph set ok (%s, %zu chars, #%s)\n", graphLabel.c_str(), setValues[k].size(), shortHash(setValues[k]).c_str());
@@ -1229,6 +1231,7 @@ namespace bp
 				auto* m = (mpv_event_log_message*)ev->data;
 				if (opts.verbose) fprintf(stderr, "%6llu ", (unsigned long long)(ticks() % 1000000));
 				fprintf(stderr, "[%s] %s: %s", m->level, m->prefix, m->text);
+				if (!lookShaderSent.empty() && isShaderRejection(m->level, m->text)) lookRejected();
 				break;
 			}
 			default: break;
@@ -1701,22 +1704,58 @@ namespace bp
 		return l;
 	}
 
-	std::string Player::lookVfNow() const
+	// the shader file of the look in use ("" for Off, while Y is held, or for a look mpv refused). Written the first
+	// time this run asks for it (a few hundred bytes; so a new version's text always replaces an old file)
+	std::string Player::lookShaderNow()
 	{
 		LookInUse l = lookInUse();
-		return lookVf(l.look, l.strength, topW, topH, lookBypass);
+		if (lookBypass) return "";
+		const int unit = lookLineUnit(topH > 0 ? topH : 480);
+		std::string name = lookShaderName(l.look, l.strength, unit);
+		if (name.empty()) return "";
+		const std::string cache = opts.stateDir.empty() ? std::string("/tmp") : opts.stateDir + "/cache";
+		const std::string dir = cache + "/looks", path = dir + "/" + name;
+		if (lookRefused.count(path)) return "";
+		if (!lookWritten.count(path))
+		{
+			mkdir(cache.c_str(), 0755);
+			mkdir(dir.c_str(), 0755);
+			std::string text = lookShader(l.look, l.strength, unit);
+			FILE* f = fopen(path.c_str(), "wb");
+			if (!f || fwrite(text.data(), 1, text.size(), f) != text.size())
+			{
+				fprintf(stderr, "look: can't write %s\n", path.c_str());
+				if (f) fclose(f);
+				return "";
+			}
+			fclose(f);
+			lookWritten.insert(path);
+		}
+		return path;
 	}
 
-	// sent only when it differs from what mpv has: a key held or a slider dragged sends no list twice
+	// sent only when it differs from what mpv has: a key held or a slider dragged sends no list twice. The list is
+	// set whole (our one shader or none): the same as change-list's remove/append, and never two after a quick toggle
 	void Player::applyLook()
 	{
 		if (playlist.empty() || isAudio || isPhoto) return;
-		std::string vf = lookVfNow();
-		if (vf == lookVfSent) return;
-		lookVfSent = vf;
+		std::string path = lookShaderNow();
+		if (path == lookShaderSent) return;
+		lookShaderSent = path;
 		lookSentAt = std::chrono::steady_clock::now();
 		lookInFlight++;
-		prop("vf", vf);
+		prop("glsl-shaders", path);
+	}
+
+	// mpv couldn't parse or compile the look's shader (a GLES driver may refuse what desktop GL takes): said once in
+	// the log with the file, the look Off for the rest of the run, a short note on the panel
+	void Player::lookRejected()
+	{
+		if (!lookRefused.insert(lookShaderSent).second) return;
+		fprintf(stderr, "look: mpv refused the shader %s (its log above): Off instead\n", lookShaderSent.c_str());
+		lookShaderSent.clear();
+		prop("glsl-shaders", "");
+		osd("Picture look not supported here", 2000);
 	}
 
 	void Player::setLook(int look, int strength, bool onlyThis)

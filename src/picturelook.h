@@ -3,9 +3,10 @@
 
 namespace bp
 {
-	// A video's picture look (Settings' PictureLook: Off, Sharpen, Soften, Scanlines, LCD grid, Retro) made into mpv's
-	// `vf` (docs/redesign "video-picture"). Each is one cheap software pass (decoding is software only on the
-	// handheld). Strength runs 10..100% in steps of 10, kept per look.
+	// A video's picture look (Settings' PictureLook: Off, Sharpen, Soften, Scanlines, LCD grid, Retro) made into an
+	// mpv user shader (`glsl-shaders`, docs/notes/2026-11-26-picture-looks-gpu.md). Each is one pass on the GPU at
+	// the panel's pixels (mpv's OUTPUT hook): the CPU, which decodes, does nothing per frame. Strength runs 10..100%
+	// in steps of 10, kept per look.
 	constexpr int LOOK_STRENGTH_MIN = 10, LOOK_STRENGTH_MAX = 100, LOOK_STRENGTH_STEP = 10, LOOK_STRENGTH_DEFAULT = 60;
 	int clampLookStrength(int v);	// into 10..100, on a step of 10
 	int stepLookStrength(int v, int dir);	// one step up (dir > 0) or down, kept inside 10..100
@@ -14,11 +15,12 @@ namespace bp
 	// the Plus (768), so the lines land on pixels and don't shimmer
 	int lookLineUnit(int panelH);
 
-	// the lavfi graph of a look at a strength for a top panel of panelW x panelH pixels ("" for Off). Scanlines and
-	// the LCD grid first scale the film to the size Fit shows it at, so their lines are in the panel's pixels
-	std::string lookGraph(int look, int strength, int panelW, int panelH);
+	// the shader's text for a look at a strength with lines `unit` pixels tall ("" for Off). The strength and the
+	// unit are written into the text: the libmpv renderer (vo_gpu's) has no //!PARAM, so one file per
+	// (look, strength, unit), named by lookShaderName
+	std::string lookShader(int look, int strength, int unit);
+	std::string lookShaderName(int look, int strength, int unit);	// "scanlines-60-u2.glsl" ("" for Off)
 
-	// the whole `vf` value: the graph under the label @look ("" for Off); bypass: the same entry disabled
-	// ("@look:!lavfi=..."), what holding Y shows (mpv keeps the entry, only its flag changes)
-	std::string lookVf(int look, int strength, int panelW, int panelH, bool bypass = false);
+	// an mpv log line that says it couldn't take a user shader (a parse error, or the GPU's compiler refused it)
+	bool isShaderRejection(const char* level, const char* text);
 }
