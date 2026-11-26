@@ -8567,8 +8567,8 @@ static void testSettingsTable()
 		CHECK_EQ(b.videoAdjust[1], -15);
 		CHECK_EQ(b.videoAdjust[3], 20);
 		CHECK_EQ(b.pictureLook, (int)LOOK_SCANLINES);
-		a.lookStrength[LOOK_LCD] = 30;
-		CHECK_EQ(parseSettings(serializeSettings(a)).lookStrength[LOOK_LCD], 30);
+		a.lookStrength[LOOK_SVIDEO] = 30;
+		CHECK_EQ(parseSettings(serializeSettings(a)).lookStrength[LOOK_SVIDEO], 30);
 		CHECK_EQ(serializeSettings(Settings()).find("look-strength"), std::string::npos);	// (all 60: not written)
 		CHECK_EQ(serializeSettings(Settings()).find("video-adjust"), std::string::npos);	// (all 0: not written)
 	}
@@ -9057,7 +9057,7 @@ static void testPictureLook()
 	CHECK_EQ(lookShader(LOOK_OFF, 60, 2), "");
 	CHECK_EQ(lookShaderName(LOOK_OFF, 60, 2), "");
 	CHECK_EQ(lookShaderName(LOOK_SCANLINES, 64, 2), "scanlines-60-u2.glsl");
-	CHECK(lookShaderName(LOOK_LCD, 60, 3) != lookShaderName(LOOK_LCD, 60, 2));
+	CHECK(lookShaderName(LOOK_SVIDEO, 60, 3) != lookShaderName(LOOK_SVIDEO, 60, 2));
 	for (int look = LOOK_SHARPEN; look < PICTURE_LOOKS; look++)
 	{
 		std::string sh = lookShader(look, 60, 2);
@@ -9074,11 +9074,33 @@ static void testPictureLook()
 	CHECK(lookShader(LOOK_SCANLINES, 60, 3).find("(px.y - 1.0) / 3.0 + 0.5") != std::string::npos);
 	CHECK(lookShader(LOOK_SCANLINES, 10, 2).find("exp2(-7.000 * vec3((dst.y") != std::string::npos);
 	CHECK(lookShader(LOOK_SCANLINES, 100, 2).find("exp2(-16.000 * vec3((dst.y") != std::string::npos);
-	// LCD grid: cells 3..6 pixels on the RG DS by Strength (1.5x on the Plus), R/G/B stripes, a gain
-	CHECK(lookShader(LOOK_LCD, 10, 2).find("floor(fc / 3.0)") != std::string::npos);
-	CHECK(lookShader(LOOK_LCD, 100, 2).find("floor(fc / 6.0)") != std::string::npos);
-	CHECK(lookShader(LOOK_LCD, 100, 3).find("floor(fc / 9.0)") != std::string::npos);
-	CHECK(lookShader(LOOK_LCD, 60, 2).find("mask.g = 1.0") != std::string::npos);
+	// S-Video: chroma blurred over 5 taps a virtual pixel apart (640 across at 10%, 320 at 100%), luma kept crisper,
+	// a light Lottes scan profile over it (credited)
+	std::string sv = lookShader(LOOK_SVIDEO, 100, 3);
+	CHECK(lookShader(LOOK_SVIDEO, 10, 2).find("dc = vec2(1.0 / 640.0, 0.0)") != std::string::npos);
+	CHECK(sv.find("dc = vec2(1.0 / 320.0, 0.0)") != std::string::npos);
+	CHECK(sv.find("vec3(0.596, -0.274, -0.322)") != std::string::npos);	// (YIQ)
+	CHECK(sv.find("/ 3.0 + 0.5") != std::string::npos && sv.find("Timothy Lottes") != std::string::npos);
+	CHECK(sv.find("cos") == std::string::npos && sv.find("FrameCount") == std::string::npos);	// (no carrier: no dot crawl)
+	// a saved LCD grid (the look S-Video replaced) comes back as S-Video
+	CHECK_EQ(pictureLookFromId("lcd-grid"), (int)LOOK_SVIDEO);
+	CHECK_EQ(std::string(pictureLookId(LOOK_SVIDEO)), "svideo");
+	{
+		ResumeStore now, old;
+		ResumeEntry v;
+		v.path = "/v/a.mkv";
+		now.put(v);
+		now.setLook(v.path, LOOK_SVIDEO, 40);
+		std::string text = now.serialize();
+		text.replace(text.find("#look\tsvideo"), 12, "#look\tlcd-grid");
+		old.parse(text);
+		CHECK(old.find(v.path) && old.find(v.path)->look == (int)LOOK_SVIDEO);
+		Settings st;
+		st.pictureLook = LOOK_SVIDEO;
+		std::string conf = serializeSettings(st);
+		conf.replace(conf.find("= svideo"), 8, "= lcd-grid");
+		CHECK_EQ(parseSettings(conf).pictureLook, (int)LOOK_SVIDEO);
+	}
 	CHECK(lookShader(LOOK_SHARPEN, 60, 2).find("0.900 * d") != std::string::npos);
 	CHECK(lookShader(LOOK_SOFTEN, 10, 2).find("mix(c.rgb, blur, 0.090)") != std::string::npos);
 	CHECK(lookShader(LOOK_RETRO, 50, 2).find("y * 0.900 + 0.035") != std::string::npos);
@@ -9087,7 +9109,7 @@ static void testPictureLook()
 	CHECK(isShaderRejection("error", "Unrecognized command 'PARAM'!\n"));
 	CHECK(!isShaderRejection("warn", "fragment shader compile log (status=1):\n"));
 	CHECK(!isShaderRejection("error", "Failed to open file\n"));
-	CHECK_EQ(pictureLookFromId(pictureLookId(LOOK_LCD)), (int)LOOK_LCD);
+	CHECK_EQ(pictureLookFromId(pictureLookId(LOOK_SVIDEO)), (int)LOOK_SVIDEO);
 	CHECK_EQ(pictureLookFromId("crt"), -1);
 	// a file's own look: kept with its entry, made for a file without one, taken away again, and kept through a move
 	ResumeStore r;
@@ -9095,11 +9117,11 @@ static void testPictureLook()
 	a.path = "/data/roms/videos/old game.mkv";
 	a.position = 100;
 	r.put(a);
-	r.setLook(a.path, LOOK_LCD, 40);
+	r.setLook(a.path, LOOK_SVIDEO, 40);
 	r.setLook("/data/roms/videos/new.mp4", LOOK_RETRO, 80);
 	ResumeStore b;
 	b.parse(r.serialize());
-	CHECK_EQ(b.find(a.path)->look, (int)LOOK_LCD);
+	CHECK_EQ(b.find(a.path)->look, (int)LOOK_SVIDEO);
 	CHECK_EQ(b.find(a.path)->lookStrength, 40);
 	CHECK_EQ(b.find(a.path)->position, 100.0);
 	CHECK_EQ(b.find("/data/roms/videos/new.mp4")->look, (int)LOOK_RETRO);
@@ -9107,7 +9129,7 @@ static void testPictureLook()
 	ResumeStore c;
 	c.parse(b.serialize());
 	CHECK_EQ(c.find(a.path)->look, -1);
-	CHECK(c.serialize().find("#look\tlcd-grid") == std::string::npos);
+	CHECK(c.serialize().find("#look\tsvideo") == std::string::npos);
 	c.setLook("/nowhere.mkv", -1, 0);	// (none of its own and no entry: nothing made)
 	CHECK(c.find("/nowhere.mkv") == nullptr);
 	CHECK(c.moved("/data/roms/videos", "/data/roms/films"));
@@ -9119,11 +9141,11 @@ static void testPictureLook()
 	CHECK(d.adjust.y + d.adjust.h <= d.sheet.hints.y);
 	CHECK_EQ(lay::pictureMove(d, 0, lay::Dir::Left, true), 0);
 	CHECK_EQ(lay::pictureMove(d, 0, lay::Dir::Down, true), d.lookAt(LOOK_OFF));
-	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_SCANLINES), lay::Dir::Right, true), d.lookAt(LOOK_LCD));	// (runs on)
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_SCANLINES), lay::Dir::Right, true), d.lookAt(LOOK_SVIDEO));	// (runs on)
 	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_RETRO), lay::Dir::Right, true), d.lookAt(LOOK_RETRO));
-	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_LCD), lay::Dir::Up, true), d.lookAt(LOOK_OFF));
-	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_LCD), lay::Dir::Down, true), d.strengthAt());
-	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_LCD), lay::Dir::Down, false), d.useForAt());
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_SVIDEO), lay::Dir::Up, true), d.lookAt(LOOK_OFF));
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_SVIDEO), lay::Dir::Down, true), d.strengthAt());
+	CHECK_EQ(lay::pictureMove(d, d.lookAt(LOOK_SVIDEO), lay::Dir::Down, false), d.useForAt());
 	CHECK_EQ(lay::pictureMove(d, d.strengthAt(), lay::Dir::Right, true), d.strengthAt());	// (sets, doesn't move)
 	CHECK_EQ(lay::pictureMove(d, d.adjustAt(), lay::Dir::Down, true), d.adjustAt());
 	CHECK_EQ(lay::pictureAt(d, d.useOne.x + 2, d.useOne.y + 2), d.useForAt());

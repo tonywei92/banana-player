@@ -79,8 +79,8 @@ namespace bp
 	// the bottom panel dark by itself after that long without a touch or a button, while a song or video plays (never)
 	// the default picture look of every video (Settings > Playback > Picture look): a mpv filter on the film, none on a
 	// song or a photo
-	enum PictureLook { LOOK_OFF, LOOK_SHARPEN, LOOK_SOFTEN, LOOK_SCANLINES, LOOK_LCD, LOOK_RETRO, PICTURE_LOOKS };
-	// a look's id in settings.conf and resume.tsv ("lcd-grid"), its name ("LCD grid"); from an id, -1 if none
+	enum PictureLook { LOOK_OFF, LOOK_SHARPEN, LOOK_SOFTEN, LOOK_SCANLINES, LOOK_SVIDEO, LOOK_RETRO, PICTURE_LOOKS };
+	// a look's id in settings.conf and resume.tsv ("svideo"), its name ("S-Video"); from an id, -1 if none
 	// (its `vf`: picturelook.h)
 	const char* pictureLookId(int look);
 	const char* pictureLookLabel(int look);

@@ -64,3 +64,19 @@ dark/light 1 ∓ 0.5k (his 0.5/1.5 at k = 1), gain ≤ 2 for a mid grey.
 (was 13–36% at 60%). LCD grid at 1024x768: gap rows 24–34% every 7 px: visible, left as it was.
 Cost: 9 taps, 2 `pow`, 6 `exp2` a pixel, ~zfast's order; Panfrost compile time unmeasured. `log.txt` now has
 `top: WxH pixels`, so the panel's size behind a look is pinned.
+
+## LCD grid replaced by S-Video (2026-11-26)
+
+The owner found the LCD grid ugly on the handheld and asked for RetroArch's "crt ntsc svideo". Licence first: libretro's
+`ntsc/shaders/ntsc-pass1-svideo-3phase.glsl` / `ntsc-pass2-3phase.glsl` (Themaister, from RetroArch; also the slang
+`maister/` set) carry **no licence header at all**: no public-domain or permissive grant, and they come from GPLv3
+RetroArch. So nothing of them was copied or translated; only the well-known technique is used, written for this app.
+
+**S-Video** (`svideoBody`), one OUTPUT pass, 7 taps, in the picture's gamma (as the signal is): YIQ (FCC matrices);
+luma a 3-tap soften 0.6 px apart, mixed in by 0.25 + 0.5k; I/Q from a 1-4-6-4-1 blur over 5 taps one virtual pixel
+apart, the virtual width 640 (10%) to 320 (100%) across the picture: the colour bleed; I/Q turned 3 degrees and 5%
+richer (a set's warm tint); back to RGB; then in linear light a light crt-lottes scan profile laid over the pixel
+(`scanProfile`: the three nearest lines' Gaussians at this row, hardScan −(2 + 4k), no line resampling, credited in
+the shader). No carrier and no frame counter: no dot crawl, no rainbow (composite's, not S-Video's).
+Measured at 1024x768 on testsrc's cyan|magenta edge, red channel 10–90% width: Off 1 px, 40% 4 px, 100% 7 px.
+A saved `lcd-grid` (settings.conf or resume.tsv) reads as S-Video (`pictureLookFromId`, `parseSettings`).

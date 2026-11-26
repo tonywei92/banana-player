@@ -1,5 +1,5 @@
 // A video's Picture sheet (docs/redesign/src/screens.js "video-picture", "video-look"): the size (Fit, Fill,
-// Stretch), the look (Off, Sharpen, Soften, Scanlines, LCD grid, Retro) with its Strength, whether the look is for
+// Stretch), the look (Off, Sharpen, Soften, Scanlines, S-Video, Retro) with its Strength, whether the look is for
 // every video or only this one, and Adjust (a page of it). The film on the top screen is the preview: a choice
 // applies at once (Player::setLook, mpv's vf sent async), and holding Y shows it without the look.
 #include "ui_kit.h"
@@ -53,6 +53,8 @@ namespace bp
 				ui.fillRound(r, sky, 5);
 				Rect disc{r.x + r.w - 17, r.y + 5, 10, 10};
 				if (look == LOOK_SOFTEN) ui.fillRound({disc.x - 3, disc.y - 3, disc.w + 6, disc.h + 6}, blend(sky, sun, 45), 8);
+				// S-Video: the colour runs sideways past the sun's crisp edge (chroma bleed)
+				if (look == LOOK_SVIDEO) ui.fillRound({disc.x - 6, disc.y + 1, disc.w + 12, disc.h - 2}, blend(sky, sun, 40), 4);
 				ui.fillRound(disc, sun, 5);
 				Rect ground{r.x, r.y + r.h - 10, r.w, 10};
 				ui.fillRound(ground, hill, 5, ROUND_BL | ROUND_BR);
@@ -66,11 +68,9 @@ namespace bp
 				}
 				if (look == LOOK_SCANLINES)
 					for (int y = r.y + 1; y < r.y + r.h - 1; y += 3) ui.fill({r.x + 1, y, r.w - 2, 1}, BG);
-				if (look == LOOK_LCD)
-				{
-					for (int y = r.y + 3; y < r.y + r.h - 1; y += 4) ui.fill({r.x + 1, y, r.w - 2, 1}, BG);
-					for (int x = r.x + 3; x < r.x + r.w - 1; x += 4) ui.fill({x, r.y + 1, 1, r.h - 2}, BG);
-				}
+				// and a CRT's lines over it, lighter than Scanlines'
+				if (look == LOOK_SVIDEO)
+					for (int y = r.y + 1; y < r.y + r.h - 1; y += 3) ui.fill({r.x + 1, y, r.w - 2, 1}, blend(BG, sky, 50));
 			}
 
 		static lay::PicturePage layout() { return lay::picturePage(PICTURE_LOOKS); }

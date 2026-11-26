@@ -955,10 +955,11 @@ it, **A** chooses, and the film on the top screen changes at once (the file isn'
 - **Size**: Fit, Fill, Stretch (below).
 - **Look** (off unless you turn one on): **Off**, **Sharpen**, **Soften**, **Scanlines** (a CRT, after Timothy Lottes' public-domain
   shader: about 240 lines with a dark gap between them, deeper with Strength, softened across, and a red-green-blue
-  aperture grille; the same look on the RG DS and the Plus), **LCD grid** (an
-  old LCD's cells: the picture in squares of 3 to 6 pixels, wider with Strength, each with red, green and blue stripes
-  and a thin dark gap) and **Retro** (warm, faded colour). Each tile has a small sample of itself. Lines and cells are
-  in the top panel's own pixels, so they don't shimmer; both are brightened to make up for the dark they add.
+  aperture grille; the same look on the RG DS and the Plus), **S-Video** (a CRT TV fed by S-Video: colour runs
+  sideways past edges the brightness keeps fairly crisp, a slightly warm tint and light scan lines; Strength widens the
+  colour bleed, softens a little more and deepens the lines; no dot crawl or rainbow) and **Retro** (warm, faded
+  colour). Each tile has a small sample of itself. Lines are in the top panel's own pixels, so they don't shimmer, and
+  brightened to make up for the dark they add. A video set to the old **LCD grid** look gets S-Video.
 - **Strength**: 10 to 100%, **LEFT / RIGHT** in steps of 10; kept per look. None for Off. By touch it is the app's
   one slider, as Volume and Brightness: a tap puts it there, a drag from anywhere on its row moves it by the finger's
   travel, held till the finger lifts.
@@ -1154,7 +1155,7 @@ opens the Subtitles group; **B** there goes back to that sheet, on Subtitles.
 | **Playback** | Remember position | On | Reopening a video continues where you stopped (songs always start from the beginning) |
 | | Remember audio track | On | Keeps each file's audio track; a new file starts in the language you chose last |
 | | Remember subtitles | On | The same, for subtitles |
-| | Picture look | Off | A look on every video: Sharpen, Soften, Scanlines, LCD grid or Retro (a software filter, applied at once; the Picture chip chooses it too, with its strength or for one video only; songs and photos are left as they are) |
+| | Picture look | Off | A look on every video: Sharpen, Soften, Scanlines, S-Video or Retro (drawn by the GPU, applied at once; the Picture chip chooses it too, with its strength or for one video only; songs and photos are left as they are) |
 | | Max volume | 120% | How far the volume keys (and the player's **UP / DOWN**) go on the handheld: 100%, 120% or 150%. Past 100% (the handheld's own top) the player turns the sound up itself, 5% a press, for films mixed quiet; the volume card marks 100% and shows the rest in yellow, red past 120%, and the first time past 120% a warning says it can damage your hearing and the speakers. Down takes that off first. It starts again at 100% each time the player opens. The web dashboard's handheld volume goes as far; a browser playing the sound itself keeps its own 0–100%. Two volumes, each its own: while a browser plays the sound, the handheld's volume keys turn that browser's volume (the card says **Browser volume**) and leave the handheld's as it was; the dashboard's volume shows both then (**Browser volume**, **Handheld volume**), and moving one never moves the other |
 | | Button hotkeys | On | Off: buttons can't pause, skip or close while something plays (touch still can) |
 | **Subtitles** | Font, size, colour, border, border colour, text encoding | Inter, Medium, White, Normal, Black, Auto | How plain subtitles (SRT, VTT…) look, with a live preview. Styled subtitles (ASS/SSA) keep their own look. **Text encoding** is how a subtitle file's letters are read, on the handheld and in the browser: Auto reads UTF-8, and guesses an older code page (a file named for its language, like `movie.sl.srt`, tries that language's first); if letters like š, č or ж still come out wrong, pick the file's: Central European (Windows-1250, ISO-8859-2, DOS 852), Cyrillic (Windows-1251, KOI8-R), Greek, Turkish, Baltic, Hebrew, Arabic or Western. A subtitle showing changes at once. |

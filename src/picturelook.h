@@ -3,7 +3,7 @@
 
 namespace bp
 {
-	// A video's picture look (Settings' PictureLook: Off, Sharpen, Soften, Scanlines, LCD grid, Retro) made into an
+	// A video's picture look (Settings' PictureLook: Off, Sharpen, Soften, Scanlines, S-Video, Retro) made into an
 	// mpv user shader (`glsl-shaders`, docs/notes/2026-11-26-picture-looks-gpu.md). Each is one pass on the GPU at
 	// the panel's pixels (mpv's OUTPUT hook): the CPU, which decodes, does nothing per frame. Strength runs 10..100%
 	// in steps of 10, kept per look.

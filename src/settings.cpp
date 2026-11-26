@@ -73,8 +73,8 @@ namespace bp
 		return (uint64_t)MANGA_CACHE_MB[k] * 1024 * 1024;
 	}
 
-	static const char* LOOK_IDS[PICTURE_LOOKS] = {"off", "sharpen", "soften", "scanlines", "lcd-grid", "retro"};
-	static const char* LOOK_LABELS[PICTURE_LOOKS] = {"Off", "Sharpen", "Soften", "Scanlines", "LCD grid", "Retro"};
+	static const char* LOOK_IDS[PICTURE_LOOKS] = {"off", "sharpen", "soften", "scanlines", "svideo", "retro"};
+	static const char* LOOK_LABELS[PICTURE_LOOKS] = {"Off", "Sharpen", "Soften", "Scanlines", "S-Video", "Retro"};
 
 	const char* pictureLookId(int look) { return LOOK_IDS[std::clamp(look, 0, PICTURE_LOOKS - 1)]; }
 	const char* pictureLookLabel(int look) { return LOOK_LABELS[std::clamp(look, 0, PICTURE_LOOKS - 1)]; }
@@ -82,10 +82,12 @@ namespace bp
 	{
 		for (int i = 0; i < PICTURE_LOOKS; i++)
 			if (id == LOOK_IDS[i]) return i;
+		// S-Video took the LCD grid's place (2026-11-26): a saved LCD grid comes back as S-Video
+		if (id == "lcd-grid") return LOOK_SVIDEO;
 		return -1;
 	}
 
-	// "look-strength": Sharpen, Soften, Scanlines, LCD grid, Retro (Off has none), each 10..100; written only when one
+	// "look-strength": Sharpen, Soften, Scanlines, S-Video, Retro (Off has none), each 10..100; written only when one
 	// is not the default 60
 	static void readLookStrength(Settings& s, const std::string& v)
 	{
@@ -707,7 +709,7 @@ namespace bp
 			D::choice("read-dim-after", &Settings::readDimAfter, SCREEN_OFF_IDS, SCREEN_OFFS)
 				.page(SG_READING, 90, "Dim the controls while reading", "While a book, a comic or a document is open, this screen dims after that long untouched. A touch brings it back, and is still a page turn.").shownAs(SCREEN_OFF_LABELS),
 			D::choice("picture-look", &Settings::pictureLook, LOOK_IDS, PICTURE_LOOKS)
-				.page(SG_PLAYBACK, 35, "Picture look", "A look on every video: Sharpen, Soften, Scanlines, LCD grid or Retro. The Picture chip on a video chooses it too, with its strength, or for that video only. Songs and photos are left as they are. Software filters: a heavy film may stutter.").shownAs(LOOK_LABELS).stepped(true),
+				.page(SG_PLAYBACK, 35, "Picture look", "A look on every video: Sharpen, Soften, Scanlines, S-Video or Retro. The Picture chip on a video chooses it too, with its strength, or for that video only. Songs and photos are left as they are. Drawn by the GPU.").shownAs(LOOK_LABELS).stepped(true),
 			D::custom("look-strength", readLookStrength, writeLookStrength),
 			D::custom("video-adjust", readVideoAdjust, writeVideoAdjust),
 			D::choice("screen-off-video", &Settings::screenOffVideo, SCREEN_OFF_IDS, SCREEN_OFFS)
@@ -889,6 +891,8 @@ namespace bp
 			for (const auto& d : defs)
 				if (key == d.key) { readSetting(d, s, value); break; }
 			if (key == "lid-close") s.lidAsk = false;
+			// the LCD grid look, retired (2026-11-26): S-Video took its place
+			if (key == "picture-look" && value == "lcd-grid") s.pictureLook = LOOK_SVIDEO;
 			// the one setting before 0.1.1, kept: auto, cover-bars, bars, waves, spectrum, cover
 			if (key == "audio-display")
 			{

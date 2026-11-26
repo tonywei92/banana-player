@@ -29,7 +29,8 @@ namespace bp
 	// default -8), how soft a line is across (hardPix, his -3), the aperture grille's dark and light (his 0.5 and 1.5)
 	struct Lottes { double hardScan, hardPix, maskDark, maskLight, boost; int pitch; double centre; };
 
-	static Lottes lottesFor(double k, int unit)
+	// a scan profile's pitch, centre and gain from its hardness and mask (Scanlines' and, lighter, S-Video's)
+	static Lottes lottesWith(int unit, double hardScan, double hardPix, double maskDark, double maskLight)
 	{
 		Lottes l;
 		l.pitch = std::max(2, unit);	// about 240 emulated lines: the panel's height / 240, whole pixels
@@ -37,10 +38,10 @@ namespace bp
 		// row is the gap. (A centre on a row's middle left a 3-pixel line two rows a third of a line off and none in the
 		// gap: on the Plus's 1024x768 the lines faded to a 25% ripple)
 		l.centre = l.pitch / 2.0 - 0.5;
-		l.hardScan = -(6 + 10 * k);
-		l.hardPix = -3;
-		l.maskDark = 1 - 0.5 * k;
-		l.maskLight = 1 + 0.5 * k;
+		l.hardScan = hardScan;
+		l.hardPix = hardPix;
+		l.maskDark = maskDark;
+		l.maskLight = maskLight;
 		// the gain: what a flat mid field keeps through the three lines' weights on each of the pitch's rows, and
 		// through the grille (one channel light, two dark), given back (at most 2x; a highlight clips, as a CRT blooms)
 		double rows = 0;
@@ -52,6 +53,25 @@ namespace bp
 		rows /= l.pitch;
 		l.boost = std::min(2.0, 1 / (rows * (l.maskLight + 2 * l.maskDark) / 3));
 		return l;
+	}
+
+	static Lottes lottesFor(double k, int unit)
+	{
+		return lottesWith(unit, -(6 + 10 * k), -3, 1 - 0.5 * k, 1 + 0.5 * k);
+	}
+
+	// GLSL: `float beam`, the Lottes scan profile at this panel row (the three nearest lines' Gaussians summed), times
+	// the gain: laid over a picture that isn't resampled by line (S-Video's)
+	static std::string scanProfile(const Lottes& l)
+	{
+		char b[600];
+		snprintf(b, sizeof b,
+			"\tfloat v = (floor(gl_FragCoord.y) + 0.5 - %.1f) / %d.0 + 0.5;\n"
+			"\tfloat dy = -(v - floor(v) - 0.5);\n"
+			"\tvec3 wy = exp2(%.3f * vec3((dy - 1.0) * (dy - 1.0), dy * dy, (dy + 1.0) * (dy + 1.0)));\n"
+			"\tfloat beam = (wy.x + wy.y + wy.z) * %.3f;\n",
+			l.centre, l.pitch, l.hardScan, l.boost);
+		return b;
 	}
 
 	// Functions before hook(): the emulated pixel `cell`'s colour (its centre on the panel, sampled from the picture as
@@ -96,35 +116,34 @@ namespace bp
 		return b;
 	}
 
-	// ---- LCD grid: a real LCD's cells (written for this app; the technique is in the note)
+	// ---- S-Video: a TV fed by S-Video (written for this app; the technique is in docs/notes/2026-11-26-picture-looks-gpu.md)
 
-	// The panel is cut into square cells (3..6 pixels on the RG DS, wider with Strength; 1.5x on the Plus). Each cell
-	// shows one colour, sampled at its centre (the picture snapped to the grid); across it three vertical stripes,
-	// R, G and B, each passing mostly its own channel; a thin dark gap under each row of cells and, from 4 pixels up,
-	// at each cell's right edge. In linear light, with a gain that gives back what the mask took from a mid grey.
-	static std::string lcdBody(double k, int unit)
+	// Luma and chroma come down separate wires, so there's no dot crawl nor rainbow (that's composite), but the colour
+	// has a narrow band: it runs sideways past edges the brightness keeps fairly crisp. One pass on the picture as
+	// drawn, in its gamma (as the signal is): YIQ; the luma a little softened across (3 taps 0.6 px apart, mixed by
+	// Strength); I and Q a 1-4-6-4-1 blur over 5 taps a virtual pixel apart, the virtual width 640 (10%) .. 320 (100%)
+	// across the picture; I and Q turned 3 degrees and 5% richer (a set's warm tint); back to RGB; then, in linear
+	// light, a light crt-lottes scan profile (scanProfile) so it reads as a CRT TV. Strength drives all three.
+	static std::string svideoBody(double k, int unit)
 	{
-		const int cell = std::max(3, (int)std::lround(std::max(1, unit) * (1.5 + 1.5 * k)));
-		const int gapX = cell >= 4 ? 1 : 0;
-		const double leak = 0.30 - 0.15 * k, gap = 0.25 - 0.15 * k;
-		// a mid grey's share kept: the stripes (one channel whole, two leaking) over the lit part, the gaps the rest
-		const double lit = (double)(cell - gapX) * (cell - 1) / (cell * cell);
-		const double kept = lit * (1 + 2 * leak) / 3 + (1 - lit) * gap;
-		const double gain = std::min(2.6, 1 / kept);
-		char b[2000];
+		const double across = 640 - 320 * (k - 0.1) / 0.9;	// the chroma's virtual pixels across
+		const double soften = 0.25 + 0.5 * k;	// how much of the luma's 3-tap blur
+		const Lottes l = lottesWith(unit, -(2 + 4 * k), 0, 1, 1);
+		char b[2400];
 		snprintf(b, sizeof b,
-			"\tvec2 fc = floor(gl_FragCoord.xy);\n"
-			"\tvec2 cell = floor(fc / %d.0);\n"
-			"\tvec2 at = fc - cell * %d.0;\n"
-			"\tvec2 pos = HOOKED_pos + ((cell + 0.5) * %d.0 - fc - 0.5) * HOOKED_pt;\n"
-			"\tvec3 c = pow(max(HOOKED_tex(pos).rgb, 0.0), vec3(2.2));\n"
-			"\tfloat stripe = floor(at.x * 3.0 / %d.0);\n"
-			"\tvec3 mask = vec3(%.3f);\n"
-			"\tif (stripe < 1.0) mask.r = 1.0; else if (stripe < 2.0) mask.g = 1.0; else mask.b = 1.0;\n"
-			"\tif (at.y >= %d.0 || at.x >= %d.0) mask = vec3(%.3f);\n"
-			"\tc = c * mask * %.3f;\n"
-			"\treturn vec4(pow(min(c, 1.0), vec3(1.0 / 2.2)), 1.0);\n",
-			cell, cell, cell, cell - gapX, leak, cell - 1, cell - gapX, gap, gain);
+			"\tvec2 dc = vec2(1.0 / %.1f, 0.0), dl = vec2(0.6 * HOOKED_pt.x, 0.0);\n"
+			"\tvec3 c0 = HOOKED_tex(HOOKED_pos).rgb;\n"
+			"\tvec3 chroma = (6.0 * c0 + 4.0 * (HOOKED_tex(HOOKED_pos - dc).rgb + HOOKED_tex(HOOKED_pos + dc).rgb)\n"
+			"\t\t+ HOOKED_tex(HOOKED_pos - 2.0 * dc).rgb + HOOKED_tex(HOOKED_pos + 2.0 * dc).rgb) / 16.0;\n"
+			"\tvec3 luma = 0.5 * c0 + 0.25 * (HOOKED_tex(HOOKED_pos - dl).rgb + HOOKED_tex(HOOKED_pos + dl).rgb);\n"
+			"\tfloat y = dot(mix(c0, luma, %.3f), vec3(0.299, 0.587, 0.114));\n"
+			"\tvec2 iq = vec2(dot(chroma, vec3(0.596, -0.274, -0.322)), dot(chroma, vec3(0.211, -0.523, 0.312)));\n"
+			"\tiq = 1.05 * vec2(0.9986 * iq.x - 0.0523 * iq.y, 0.0523 * iq.x + 0.9986 * iq.y);\n"
+			"\tvec3 c = vec3(y + 0.956 * iq.x + 0.621 * iq.y, y - 0.272 * iq.x - 0.647 * iq.y, y - 1.106 * iq.x + 1.703 * iq.y);\n"
+			"\tc = pow(clamp(c, 0.0, 1.0), vec3(2.2));\n"
+			"%s"
+			"\treturn vec4(pow(min(c * beam, 1.0), vec3(1.0 / 2.2)), 1.0);\n",
+			across, soften, scanProfile(l).c_str());
 		return b;
 	}
 
@@ -161,7 +180,7 @@ namespace bp
 				0.9 * k);
 			return b;
 		case LOOK_SCANLINES: return lottesBody(lottesFor(k, unit));
-		case LOOK_LCD: return lcdBody(k, unit);
+		case LOOK_SVIDEO: return svideoBody(k, unit);
 		// warm and faded, in YCbCr (BT.601): blacks lifted, contrast and colour lowered, the colour pushed to red and
 		// away from blue (the old lutyuv's numbers)
 		case LOOK_RETRO:
@@ -188,7 +207,9 @@ namespace bp
 		char head[160];
 		snprintf(head, sizeof head, "//!HOOK OUTPUT\n//!BIND HOOKED\n//!DESC Banana Player %s %d%%\n\n", pictureLookId(look), strength);
 		// (Scanlines' helper functions go before hook())
-		std::string prelude = look == LOOK_SCANLINES ? lottesPrelude(lottesFor(strength / 100.0, std::max(1, unit))) : "";
+		std::string prelude = look == LOOK_SCANLINES ? lottesPrelude(lottesFor(strength / 100.0, std::max(1, unit)))
+			: look == LOOK_SVIDEO ? "// Its scan lines after \"PUBLIC DOMAIN CRT STYLED SCAN-LINE SHADER\" by Timothy Lottes (crt-lottes).\n\n"
+			: "";
 		return head + prelude + "vec4 hook()\n{\n" + body + "}\n";
 	}
 
