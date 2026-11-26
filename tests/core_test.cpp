@@ -2964,6 +2964,31 @@ static void testCatalogs()
 		CHECK_EQ(again.count(), 1);
 		CHECK_EQ(again.all().size(), (size_t)2);
 	}
+	// a book downloaded in two formats: both are its files (once each); a delete takes those and no other
+	{
+		std::ofstream(T + "/b.epub") << "PK";
+		std::ofstream(T + "/b.pdf") << "%PDF";
+		CatalogGot got;
+		got.load(T + "/y.got");
+		got.set("urn:3", T + "/b.epub");
+		got.set("urn:3", T + "/b.pdf");
+		got.set("urn:3", T + "/b.pdf");
+		got.set("urn:3", T + "/b (2).epub");	// listed, but gone
+		got.set("urn:4", T + "/mine2.epub");
+		CHECK_EQ(got.paths("urn:3").size(), (size_t)2);
+		CHECK_EQ(got.paths("urn:3")[1], T + "/b.pdf");
+		CHECK_EQ(got.paths("urn:5").size(), (size_t)0);
+		got.drop("urn:3");
+		CHECK_EQ(got.path("urn:3"), std::string(""));
+		CHECK_EQ(got.all().size(), (size_t)1);
+	}
+	std::remove((T + "/b.epub").c_str());
+	std::remove((T + "/b.pdf").c_str());
+	std::remove((T + "/y.got").c_str());
+	// a cover's cache name: the URL's hash, stable and apart for another URL
+	CHECK_EQ(coverCacheName("http://h/c/1").size(), (size_t)16);
+	CHECK_EQ(coverCacheName("http://h/c/1"), coverCacheName("http://h/c/1"));
+	CHECK_EQ(coverCacheName("http://h/c/1") != coverCacheName("http://h/c/2"), true);
 	std::remove((T + "/a.epub").c_str());
 	std::remove((T + "/x.got").c_str());
 	rmdir(T.c_str());

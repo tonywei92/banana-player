@@ -27,6 +27,7 @@ namespace bp
 		std::string key;	// what this pane is: composed again only when it changes (with the theme in it)
 		std::string label, title, text;	// label: small capitals in ACCENT (DANGER with labelDanger)
 		bool labelDanger = false;
+		bool wholeText = false;	// `text` runs as far down as the column has room (a book's summary), not five lines
 		std::vector<std::pair<std::string, std::string>> rows;	// the two-column list: dim name, value
 		std::vector<std::pair<std::string, std::string>> keys;	// the key line: caps, then what they do
 		// the State card (lay::stateCard): the whole screen is a centred column: the tile with an icon (iconRows) or the

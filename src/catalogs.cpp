@@ -4,6 +4,7 @@
 #include "secret.h"
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -313,6 +314,19 @@ namespace bp
 		return (firstCard == "/" ? "" : firstCard) + "/Books";
 	}
 
+	std::string coverCacheName(const std::string& url)
+	{
+		uint64_t h = 1469598103934665603ull;	// FNV-1a, 64 bit
+		for (unsigned char c : url)
+		{
+			h ^= c;
+			h *= 1099511628211ull;
+		}
+		char out[17];
+		snprintf(out, sizeof out, "%016llx", (unsigned long long)h);
+		return out;
+	}
+
 	// ---- what a catalog already gave the card ----
 
 	bool CatalogGot::load(const std::string& file)
@@ -339,13 +353,22 @@ namespace bp
 		return "";
 	}
 
+	std::vector<std::string> CatalogGot::paths(const std::string& entryId) const
+	{
+		std::vector<std::string> out;
+		for (auto& it : items_)
+			if (it.first == entryId && fileThere(it.second)) out.push_back(it.second);
+		return out;
+	}
+
 	void CatalogGot::set(const std::string& entryId, const std::string& path)
 	{
 		// an id or a path with a tab or a line break in it would break the file: such a book is just not marked
 		if (entryId.empty() || entryId.find_first_of("\t\r\n") != std::string::npos ||
 		    path.find_first_of("\t\r\n") != std::string::npos)
 			return;
-		drop(entryId);
+		for (auto& it : items_)
+			if (it.first == entryId && it.second == path) return;
 		items_.emplace_back(entryId, path);
 		save();
 	}

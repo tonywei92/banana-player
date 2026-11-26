@@ -50,6 +50,12 @@ namespace bp
 	// path, or "path (2)", "path (3)"… before the extension, the first that `taken` says is free
 	std::string freeFileName(const std::string& path, bool (*taken)(const std::string&));
 
+	// ---- a catalog's cover pictures ----
+
+	// The file name a cover's URL is cached under (<state>/cache/catalog-covers/<name>): 16 hex digits of a hash of
+	// the whole URL, so one picture is one file whatever page asked for it
+	std::string coverCacheName(const std::string& url);
+
 	// ---- where it goes ----
 
 	struct BooksPlace
@@ -63,14 +69,16 @@ namespace bp
 
 	// ---- what a catalog already gave the card ----
 
-	// <state>/catalogs/<catalog id>.got: one line per book, "entry id <TAB> path". A book whose file is gone loses
-	// its mark (`path` answers "" for it); nothing on the card is ever removed through this list.
+	// <state>/catalogs/<catalog id>.got: one line per file, "entry id <TAB> path"; a book has one line for each format
+	// it was downloaded in. A book whose files are all gone loses its mark (`path` answers "" for it). "Delete from the
+	// card" removes the files listed here (`paths`) and no other.
 	class CatalogGot
 	{
 	public:
 		bool load(const std::string& file);	// "" : kept in memory only (a test)
-		std::string path(const std::string& entryId) const;	// "" when not on the card (or the file is gone)
-		void set(const std::string& entryId, const std::string& path);
+		std::string path(const std::string& entryId) const;	// the first file still there; "" when none is
+		std::vector<std::string> paths(const std::string& entryId) const;	// every file of it still there
+		void set(const std::string& entryId, const std::string& path);	// one more file of the book (once each)
 		void drop(const std::string& entryId);
 		int count() const;	// the books still on the card
 		const std::vector<std::pair<std::string, std::string>>& all() const { return items_; }

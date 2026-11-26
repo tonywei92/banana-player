@@ -68,8 +68,14 @@ download at a time, in the background (B leaves it running, Y cancels).
   Basic against a real server (only the unit vectors), Kavita, COPS, Gutenberg (it was down for maintenance),
   the handheld's exFAT card (names are made safe by rule; rename and `statvfs` on exFAT may differ), a card
   pulled during a download, the KMSDRM panels.
-- **Not built**: the catalog's cover pictures (the drawn cover stands in), the summary on the top screen, More's
-  Download every format and Delete from the card, a "No Wi-Fi" first line.
+- **Built later (catalog-more)**: the cover pictures (thumbnail in the grid, cover on the page; same origin only,
+  cached in `<state>/cache/catalog-covers/<fnv64 of the URL>`, decoded by main's cover worker through the song-art
+  texture cache, key `home:cat|<file>|…`), the summary on the top screen (`Catalogs::topPane`, `PaneSpec::wholeText`),
+  More's Download every format (a queue behind the one download) and Delete from the card (`CatalogGot` keeps a line per
+  file; a delete removes those and no other). The cover cache has no size cap yet. Live check: a Mac with the owner's
+  Calibre GUI open cannot start `calibre-server`/`calibredb` (they refuse), so a two-format book came from a 40-line
+  Python OPDS server on 127.0.0.1; the real Calibre (one single-format book) gave the real covers.
+- **Not built**: a "No Wi-Fi" first line.
 - **Found on this network (built)**: Calibre announces `_calibre._tcp` over mDNS (dns-sd on the owner's Mac: instance
   "Books in calibre (on 192 port 8080)", SRV `192.local.`:8080, TXT `path=/opds`). `disc::CalibreFinder` (discovery.cpp, now in
   bpcore, unit-tested) reads PTR, SRV, TXT and A across packets (asks for a SRV/TXT a bare PTR lacked); the URL is

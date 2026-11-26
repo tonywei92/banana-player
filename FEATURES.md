@@ -330,20 +330,26 @@ catalog… — Remove asks, and says the books stay; the right column Add a cata
   reads it again. The next page comes by itself near the end ("Loading the next page…"); the crumb counts "20 of
   1,204" when the catalog says. **B** goes up one level; from the top, back to the tab. A catalog that doesn't answer
   says why on its page ("Can't reach …", "Not a catalog"), **A** tries again, **Y** opens the Shelf, **X** edits it.
+- **Covers**: a book's own picture from the catalog (its thumbnail in the grid, the larger cover on the book page),
+  fetched only for what is on screen, only from the catalog's own host (with its sign-in), kept under
+  `<state>/cache/catalog-covers/` by a hash of its address; the drawn title cover stands in until it arrives and where
+  none comes. The top screen, while a book's page is open: its cover, author, title and the whole summary (wrapped
+  down to the foot), with A and X.
 - **A book's page**: its cover, author, year · language · tags, four lines of the summary; the formats as chips (only
   when there are several: EPUB, then PDF, CBZ, CBR, TXT; ◀/▶ choose, each with its size); **A** "Download the EPUB",
   and under it where it saves and the room left. Downloading, the key becomes the bar ("0.2 of 0.6 MB · 37%"):
   **Y** cancels (nothing half-saved is left), **B** leaves it running, one at a time. When whole: "Saved to Books"
-  and the key turns to **Read** (A opens it in its reader, as from the Shelf); More: Download again, Show in Files,
-  Info. A book in no readable format says which it has and that Calibre converts it.
+  and the key turns to **Read** (A opens it in its reader, as from the Shelf); More: Download again, **Download every
+  format** (when there are several: each one after another into the same folder, a failure or Y stops the rest), Show
+  in Files, Info, **Delete from the card…** (asks first; removes only the files this catalog downloaded, then the
+  Shelf and the On card mark follow). A book in no readable format says which it has and that Calibre converts it.
 - **Where it saves**: `<card>/Books/<catalog's name>/<Title> - <Author>.<ext>`, on the card with more room when both
   have a Books folder (a Books folder is made on the first card when there is none). Written to a hidden part file,
   renamed when whole; a download cut off leaves nothing (its part file is removed at the next start). Names are made
   safe for exFAT.
 - **Sign-in**: Basic and Digest (Calibre's default); the login is sent only once the catalog asks, and only to the
   catalog's own host: a book's link on another host is fetched without it. Passwords never reach the log.
-- Not yet: the books' own covers from the catalog (the drawn cover stands in), the summary on the top screen, adding
-  a catalog from the web dashboard, OPDS 2.0.
+- Not yet: adding a catalog from the web dashboard, OPDS 2.0; the top screen shows the drawn cover, not the picture.
 
 ## Playing while you browse
 

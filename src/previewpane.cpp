@@ -544,7 +544,14 @@ namespace bp
 		}
 		if (!s.text.empty())
 		{
-			auto lines = d.wrap(INTER, 14.5f, s.text, cw, s.extra == PaneSpec::THEMES ? 3 : 5);
+			int most = s.extra == PaneSpec::THEMES ? 3 : 5;
+			if (s.wholeText)
+			{
+				// down to the foot's margin, less what follows it (the rows, the key line)
+				float after = (s.rows.empty() ? 0 : 18 + (13.5f * 1.2f + 7) * s.rows.size()) + (s.keys.empty() ? 0 : 18 + 20);
+				most = std::max(5, (int)((460 - y - after) / (14.5f * 1.5f)));
+			}
+			auto lines = d.wrap(INTER, 14.5f, s.text, cw, most);
 			for (auto& t : lines)
 			{
 				d.text(INTER, 14.5f, t, x, y, DIM_ON);
