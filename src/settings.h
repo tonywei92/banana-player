@@ -276,6 +276,9 @@ namespace bp
 		bool mangaSecureDns = false;
 		// its first-time note about repositories has been shown: it isn't again when the reader is turned on
 		bool mangaIntroShown = false;
+		// "Get the manga engine?" has been offered on entering Manga once; after that it lives only in Sources >
+		// Repositories (and the upgrade offer, which is its own question, keeps its every-entry way)
+		bool mangaEngineOffered = false;
 		// Opening Manga while a video plays asks first: the manga-guard sheet (Stop video & open Manga / Stay). Off
 		// ("Don't ask again" in that sheet, or Settings › Manga) stops the video and opens Manga on the press
 		bool mangaAskVideo = true;

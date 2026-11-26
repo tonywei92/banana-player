@@ -13,7 +13,7 @@ The reading itself is already close to Mihon and in places better: exact-page re
 
 | # | Change | Where |
 |---|---|---|
-| Q1 | Offer the engine download once, not on every entry; afterwards it lives only in Sources › Repositories (the row is already there) | `src/ui_ext.cpp:14-34` |
+| Q1 (done) | Offer the engine download once, not on every entry; afterwards it lives only in Sources › Repositories (the row is already there) | `src/ui_ext.cpp:14-34` |
 | Q2 | End-of-chapter cue and chapter-title chip in Fullscreen (the default view has neither) | `src/ui_reader.cpp:173-176`, `src/ui_manga.cpp:2497` |
 | Q3 (done) | **LEFT** at a chapter's first page opens the previous chapter at its last page | `src/ui_manga.cpp:715-735`, `:893` |
 | Q4 (done) | Resume button names its target: **Start · Chapter 01** / **Resume · Ch. 02 · p. 5/8** | `src/ui_manga.cpp:2387` |

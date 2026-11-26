@@ -1800,6 +1800,9 @@ opened from Files has none).
   order). It applies at once to the chapter you're reading.
 - The back key (**LEFT**, or **RIGHT** with **Swap Left/Right** on; in Book too) on a chapter's first page, its start shown, opens the
   chapter before at its **last** page, the way the forward key at the end opens the next one.
+- **Get the manga engine?** is asked once, the first time Manga is entered without the engine on the card (**Not now** or
+  a failed download included). After that it is only in **Sources › Repositories**, on its own row. The lighter-runtime
+  offer for an older install is a separate question and still comes at each entry until taken.
 - A chapter whose **ComicInfo.xml** says right-to-left (*Manga: YesAndRightToLeft*) opens right-to-left when the series has no
   reading mode of your own (**View** on the series: any choice there is kept, and wins). Otherwise the Manga setting applies.
 - **X** on a series page (a card's, a network folder's, a source's) opens **Read marks**: **Mark this chapter read / unread**

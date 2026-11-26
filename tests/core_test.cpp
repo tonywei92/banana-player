@@ -3819,6 +3819,9 @@ static void testMangaUiLogic()
 		x = w; x.lastReadAgoS = -1; CHECK_EQ(mangaEngineWarm(x), false);
 	}
 	CHECK_EQ(mangaResume({}).chapter, -1);
+	CHECK_EQ(mangaEngineOfferOnEntry(true, false), true);	// the first entry without the engine
+	CHECK_EQ(mangaEngineOfferOnEntry(true, true), false);	// said once: after that, Sources > Repositories
+	CHECK_EQ(mangaEngineOfferOnEntry(false, false), false);	// installed: nothing to offer
 	{
 		// ComicInfo's right-to-left: used only while the user has chosen no direction for the series
 		CHECK_EQ(mangaOpenMode(MANGA_STRIP, false, true), MANGA_RTL);

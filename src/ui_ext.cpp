@@ -31,14 +31,21 @@ namespace bp
 		ui.cursor = ui.scroll = 0;
 		extPressed = ui.pressedBtn = -1;
 		mangaOpen(p);	// the store loaded, the card scanned, on Library
-		// most sources need the manga engine: offered at each entry while it isn't on the card (Not now is for this
-		// time only). A failed download with nothing kept counts as not there
+		// most sources need the manga engine: offered once, on the first entry while it isn't on the card; after that
+		// it lives in Sources > Repositories (its row). A failed download with nothing kept counts as not there
 		mengSheet = false;
 		if (mangaNet && mangaNet->started())
 		{
 			JavaExtHost& h = mangaNet->javaExt();
 			auto st = h.state();
-			mengSheet = st == JavaExtHost::State::NotInstalled || (st == JavaExtHost::State::Failed && h.installedBytes() == 0);
+			bool missing = st == JavaExtHost::State::NotInstalled || (st == JavaExtHost::State::Failed && h.installedBytes() == 0);
+			mengSheet = mangaEngineOfferOnEntry(missing, p.settings.mangaEngineOffered);
+			if (mengSheet)
+			{
+				Settings s = p.settings;
+				s.mangaEngineOffered = true;
+				p.setSettings(s);
+			}
 			// an install on the old runtime (HotSpot): the lighter one offered the same way, each entry till it's taken
 			auto up = h.upgrade();
 			mengUpgrade = !mengSheet && h.runtimeOld() && (up == JavaExtHost::Upgrade::None || up == JavaExtHost::Upgrade::Failed);

@@ -110,6 +110,11 @@ namespace bp
 		return !userChose && comicRtl ? MANGA_RTL : mode;
 	}
 
+	bool mangaEngineOfferOnEntry(bool engineMissing, bool offeredBefore)
+	{
+		return engineMissing && !offeredBefore;
+	}
+
 	std::string mangaChapterShort(const std::string& title)
 	{
 		std::string ch = title;

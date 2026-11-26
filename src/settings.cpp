@@ -677,6 +677,7 @@ namespace bp
 			D::flag("shuffle", &Settings::shuffle),	// (no row: the play mode, as loop)
 			D::flag("manga-reader", &Settings::mangaOn),
 			D::flag("manga-intro-shown", &Settings::mangaIntroShown),
+			D::flag("manga-engine-offered", &Settings::mangaEngineOffered),	// (no row: said once, on entering Manga)
 			D::flag("manga-ask-video", &Settings::mangaAskVideo, "stop", "ask")
 				.page(SG_MANGA, 20, "Manga and a video", "Ask: opening Manga while a video plays asks first, and the video stops only when you say so (the same question as the Extensions page's Manga row). Stop: the video stops at once and Manga opens. A song or a photo never asks.").shownAs(SHOWN_ASK_VIDEO, ""),
 			D::flag("manga-swap-lr", &Settings::mangaSwapLR)

@@ -47,6 +47,9 @@ namespace bp
 	// opens right-to-left. The user's own choice always wins.
 	int mangaOpenMode(int mode, bool userChose, bool comicRtl);
 
+	// Entering Manga offers "Get the manga engine?" once: when it isn't on the card and was never offered before
+	bool mangaEngineOfferOnEntry(bool engineMissing, bool offeredBefore);
+
 	// "Chapter 12" as "Ch. 12", and a bare title gets its "Ch. " (the History row and the Resume key keep it short)
 	std::string mangaChapterShort(const std::string& title);
 
