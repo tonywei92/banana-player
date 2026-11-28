@@ -5,8 +5,10 @@
 
 namespace bp
 {
-	// the share of a full push where the stick is still at rest; a resting stick's drift stays under it
-	constexpr double STICK_DEAD_ZONE = 0.15;
+	// the share of a full push where the stick is still at rest; a resting stick's drift stays under it. 0.25: an
+	// RG DS Plus's left stick was measured resting at 15.4% up (ABS_Y -277 of ±1800), past the old 0.15, and that
+	// crawl took every smooth list from its glides (docs/notes/2026-11-28-stick-rest-kills-glides.md)
+	constexpr double STICK_DEAD_ZONE = 0.25;
 
 	// px/s, signed as the axis is (up negative); 0 inside the dead zone. maxSpeed: the full push's speed (a reader
 	// passes its panel's height), deadZone: STICK_DEAD_ZONE, here so the curve can be read in one place and tested
