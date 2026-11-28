@@ -52,8 +52,11 @@ namespace bp
 		// chapters its own way
 		// a failed download's reason as its row says it: a dropped connection in plain words (curl's own are long and
 		// name hosts), an HTTP status or a card's trouble as they are
-		std::string dlFailedText(const std::string& error)
+		std::string dlFailedText(const std::string& error, bool engine)
 		{
+			// the manga engine serves an engine source's pages from the handheld itself and answers 500 for any trouble
+			// it has reaching the site, a dropped connection included: what is known is only that the source didn't
+			if (engine && error.rfind("HTTP 5", 0) == 0) return "Failed: the source didn\xE2\x80\x99t answer";
 			std::string e;
 			for (char ch : error) e += (char)tolower((unsigned char)ch);
 			static const char* const OFFLINE[] = {"no answer", "resolve", "connect", "timed out", "timeout",
@@ -719,7 +722,10 @@ namespace bp
 					mdlRemoveId.clear();
 					mdlRemoveAt = 0;
 					if (it.state == DlItem::Paused) mangaNet->queue().resume(it.id);
-					else if (it.state == DlItem::Failed) mangaNet->queue().retry(it.id);
+					else if (it.state == DlItem::Failed)
+					{
+						if (!mangaDlRetryItem(it)) p.osd("Download it again from its series page", 2200);
+					}
 					else if (mangaNet->downloader().status().runningId == it.id) mangaNet->downloader().cancel(it.id);
 					else mangaNet->queue().pause(it.id);
 					mangaNet->queue().save();
@@ -772,7 +778,10 @@ namespace bp
 					mdlRemoveId.clear();
 					mdlRemoveAt = 0;
 					if (it.state == DlItem::Paused) mangaNet->queue().resume(it.id);
-					else if (it.state == DlItem::Failed) mangaNet->queue().retry(it.id);
+					else if (it.state == DlItem::Failed)
+					{
+						if (!mangaDlRetryItem(it)) p.osd("Download it again from its series page", 2200);
+					}
 					else if (mangaNet->downloader().status().runningId == it.id) mangaNet->downloader().cancel(it.id);
 					else mangaNet->queue().pause(it.id);
 					mangaNet->queue().save();
@@ -1022,22 +1031,41 @@ namespace bp
 		std::set<std::string> mine;
 		if (openSeriesOnly)
 			for (const auto& c : mangaSrcChapters) mine.insert(sourceItemId(mangaSrcId, c.key));
-		std::vector<std::string> ids;
+		std::vector<DlItem> failed;
 		for (const auto& it : mangaNet->queue().items())
 		{
 			if (it.state != DlItem::Failed) continue;
 			if (openSeriesOnly && !mine.count(it.chapterId)) continue;
-			ids.push_back(it.id);
+			failed.push_back(it);
 		}
-		for (const auto& id : ids) mangaNet->queue().retry(id);
-		if (!ids.empty())
+		int n = 0;
+		for (const auto& it : failed)
+			if (mangaDlRetryItem(it)) n++;
+		return n;
+	}
+
+	bool Ui::Manga::mangaDlRetryItem(const DlItem& it)
+	{
+		// one failed item goes again: from the page it stopped on, or, when its page list never came, by asking the
+		// source for it again; that needs the chapter as the open series lists it (a queue item keeps no source script)
+		if (!mangaNet || !mangaNet->started() || it.state != DlItem::Failed) return false;
+		if (!it.pageUrls.empty()) mangaNet->queue().retry(it.id);
+		else
 		{
-			mangaNet->queue().save();
-			mdlRemoveId.clear();
-			mdlRemoveAt = 0;
-			mdlLocal++;
+			const MangaChapter* ch = nullptr;
+			for (const auto& c : mangaSrcChapters)
+				if (sourceItemId(mangaSrcId, c.key) == it.chapterId) { ch = &c; break; }
+			if (!ch) return false;
+			MangaChapter c = *ch;
+			mangaNet->queue().remove(it.id);
+			std::string title = it.seriesTitle.empty() ? (mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title) : it.seriesTitle;
+			if (mangaDlEnqueueChapter(mangaSrcId, mangaSrcFile, it.seriesId, title, c, true) != DlEnqueued::Yes) return false;
 		}
-		return (int)ids.size();
+		mangaNet->queue().save();
+		mdlRemoveId.clear();
+		mdlRemoveAt = 0;
+		mdlLocal++;
+		return true;
 	}
 
 	Ui::Manga::DlEnqueued Ui::Manga::mangaDlEnqueueChapter(const std::string& sourceId, const std::string& scriptPath,
@@ -1048,10 +1076,12 @@ namespace bp
 		if (mangaDlBlocked(sourceId, seriesId, c)) return DlEnqueued::No;
 		// still in the queue, failed or paused: that item goes on from its page, not a second one (#24). A pause is
 		// lifted only for a chapter asked for by name; Next 5 / All unread leave it as the user set it
+		std::string noPages;	// a failed item whose page list never came: it goes, and the list is asked again
 		if (mangaNet && mangaNet->started())
 			for (const auto& it : mangaNet->queue().items())
 			{
 				if (it.chapterId != cid) continue;
+				if (it.state == DlItem::Failed && it.pageUrls.empty()) { noPages = it.id; break; }
 				if (it.state == DlItem::Failed) mangaNet->queue().retry(it.id);
 				else if (it.state == DlItem::Paused)
 				{
@@ -1063,6 +1093,11 @@ namespace bp
 				mdlLocal++;
 				return DlEnqueued::Yes;
 			}
+		if (!noPages.empty())
+		{
+			mangaNet->queue().remove(noPages);
+			mangaNet->queue().save();
+		}
 		MangaDlAsk a;
 		a.sourceId = sourceId;
 		a.scriptPath = scriptPath;
@@ -1208,6 +1243,23 @@ namespace bp
 				mangaNet->queue().add(it);
 				mangaNet->queue().save();
 			}
+		}
+		else if (!mdlAsk.chapterId.empty() && mangaNet && mangaNet->started())
+		{
+			// its page list didn't come (the source down, the connection gone): it stays in the queue as Failed,
+			// with no pages, so it is seen and Retry asks for the list again, rather than vanishing (#24)
+			DlItem it;
+			it.id = mdlAsk.seriesId + "\n" + mdlAsk.chapterId;
+			it.seriesId = mdlAsk.seriesId;
+			it.seriesTitle = mdlAsk.seriesTitle;
+			it.chapterId = mdlAsk.chapterId;
+			it.chapterTitle = mdlAsk.chapterTitle;
+			it.source = mdlAsk.sourceId;
+			it.added = (int64_t)time(nullptr);
+			it.state = DlItem::Waiting;
+			mangaNet->queue().add(it);
+			mangaNet->queue().failed(it.id, note.empty() ? "no answer" : note);
+			mangaNet->queue().save();
 		}
 		if (!note.empty())
 		{
@@ -1526,9 +1578,10 @@ namespace bp
 			m.glyph = &G_DOWNLOAD;
 			m.name = (it.seriesTitle.empty() ? it.seriesId : it.seriesTitle) + " \xC2\xB7 " + it.chapterTitle;
 			std::string state = it.state == DlItem::Paused ? "Paused"
-				: it.state == DlItem::Failed ? dlFailedText(it.error)
+				: it.state == DlItem::Failed ? dlFailedText(it.error, MangaJava::isSourceId(it.source))
 				: it.state == DlItem::Running ? "Downloading" : "Queued";
-			m.second = std::to_string(it.done) + " / " + std::to_string(total) + " pages \xC2\xB7 " + state;
+			// (no pages yet: its page list never came, and Retry asks for it again)
+			m.second = total == 0 ? state : std::to_string(it.done) + " / " + std::to_string(total) + " pages \xC2\xB7 " + state;
 			m.bar = total > 0 ? it.done / (double)total : 0;
 			m.barBad = it.state == DlItem::Failed;
 			// the row's key: Y pauses or resumes it (a failed one tries again); Remove is in X · More

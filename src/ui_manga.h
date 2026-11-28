@@ -1267,6 +1267,7 @@ namespace bp
 		int mangaDlFailedInSeries() const;	// the open series' chapters whose download failed
 		// failed downloads wait again from the page they stopped on: the open series' only, or all
 		int mangaDlRetryFailed(bool openSeriesOnly);
+		bool mangaDlRetryItem(const DlItem& it);	// false: it couldn't go again from here (no page list, series not open)
 		void mangaDlQueuedOsd(Player& p, int added, int staysPaused);
 		void mangaDlAskPump();		// the next chapter's Pages job
 		bool mangaDlImageAsk();		// the next page's Image job, while one has only a key
