@@ -502,6 +502,7 @@ namespace bp
 		}
 		// The CBZ is the copy that stays: the pages would take the card twice, and the next run starts at page 1
 		removeTree(dir_);
+		fprintf(stderr, "manga: download done: %s (%d pages)\n", item_.chapterTitle.c_str(), total_);
 		queue_.finished(item_.id);
 		queue_.save();
 		resetRun();
@@ -513,6 +514,7 @@ namespace bp
 		dropFlights(false);
 		retries_.clear();
 		// The work folder stays: the retry resumes there instead of pulling the whole chapter again
+		fprintf(stderr, "manga: download failed: %s at page %d of %d: %s\n", item_.chapterTitle.c_str(), done_, total_, error.c_str());
 		queue_.failed(item_.id, error);
 		queue_.save();
 		resetRun();

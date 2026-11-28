@@ -1046,6 +1046,7 @@ namespace bp
 
 	bool Ui::Manga::mangaDlRetryItem(const DlItem& it)
 	{
+		fprintf(stderr, "manga: download retry: %s (%d pages known)\n", it.chapterTitle.c_str(), (int)it.pageUrls.size());
 		// one failed item goes again: from the page it stopped on, or, when its page list never came, by asking the
 		// source for it again; that needs the chapter as the open series lists it (a queue item keeps no source script)
 		if (!mangaNet || !mangaNet->started() || it.state != DlItem::Failed) return false;
@@ -1073,7 +1074,11 @@ namespace bp
 	{
 		if (c.key.empty()) return DlEnqueued::No;
 		std::string cid = sourceItemId(sourceId, c.key);
-		if (mangaDlBlocked(sourceId, seriesId, c)) return DlEnqueued::No;
+		if (mangaDlBlocked(sourceId, seriesId, c))
+		{
+			fprintf(stderr, "manga: download skipped: %s (mark %d)\n", dlChapterName(c).c_str(), (int)mangaDlMarkFor(sourceId, seriesId, c).kind);
+			return DlEnqueued::No;
+		}
 		// still in the queue, failed or paused: that item goes on from its page, not a second one (#24). A pause is
 		// lifted only for a chapter asked for by name; Next 5 / All unread leave it as the user set it
 		std::string noPages;	// a failed item whose page list never came: it goes, and the list is asked again
@@ -1098,6 +1103,7 @@ namespace bp
 			mangaNet->queue().remove(noPages);
 			mangaNet->queue().save();
 		}
+		fprintf(stderr, "manga: download asked: %s\n", dlChapterName(c).c_str());
 		MangaDlAsk a;
 		a.sourceId = sourceId;
 		a.scriptPath = scriptPath;
@@ -1226,6 +1232,8 @@ namespace bp
 
 	void Ui::Manga::mangaDlAskFinish(bool queued, const std::string& note)
 	{
+		fprintf(stderr, "manga: download ask %s: %s%s%s (%d pages)\n", queued ? "queued" : "failed", mdlAsk.chapterTitle.c_str(),
+			note.empty() ? "" : ": ", note.c_str(), (int)mdlAskUrls.size());
 		if (queued)
 		{
 			DlItem it;
