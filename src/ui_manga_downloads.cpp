@@ -1230,8 +1230,10 @@ namespace bp
 		mdlLocal++;
 	}
 
-	void Ui::Manga::mangaDlAskFinish(bool queued, const std::string& note)
+	void Ui::Manga::mangaDlAskFinish(bool queued, const std::string& noteIn)
 	{
+		// the engine's errors carry a Java stack trace after the first line: only that line is the reason
+		std::string note = noteIn.substr(0, noteIn.find_first_of("\r\n"));
 		fprintf(stderr, "manga: download ask %s: %s%s%s (%d pages)\n", queued ? "queued" : "failed", mdlAsk.chapterTitle.c_str(),
 			note.empty() ? "" : ": ", note.c_str(), (int)mdlAskUrls.size());
 		if (queued)
