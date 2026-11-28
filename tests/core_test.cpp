@@ -4414,9 +4414,10 @@ static void testStickScroll()
 	CHECK_EQ(stickScrollSpeed(0, panel), 0.0);
 	CHECK_EQ(stickScrollSpeed((int)(0.10 * 32767), panel), 0.0);
 	CHECK_EQ(stickScrollSpeed(-(int)(0.14 * 32767), panel), 0.0);
+	CHECK_EQ(stickScrollSpeed(-5043, panel), 0.0);	// an RG DS Plus's left stick at rest (15.4% up)
 	CHECK_EQ(stickScrollSpeed((int)(STICK_DEAD_ZONE * 32767), panel), 0.0);
 	// just past it, a crawl (the curve is gentle at first); half a push, still well under half speed
-	double edge = stickScrollSpeed((int)(0.16 * 32767), panel);
+	double edge = stickScrollSpeed((int)((STICK_DEAD_ZONE + 0.01) * 32767), panel);
 	CHECK_EQ(edge > 0 && edge < 4, true);
 	double half = stickScrollSpeed((int)(0.50 * 32767), panel);
 	CHECK_EQ(half > 0 && half < panel * 0.25, true);

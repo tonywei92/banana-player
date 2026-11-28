@@ -662,7 +662,10 @@ namespace bp
 			{
 				Uint32 dt = stickListAt ? std::min<Uint32>(now - stickListAt, 50) : 16;
 				stickListAt = now;
-				list->sc.jump(list->sc.offset() + sv * dt / 1000.0);
+				// a push that moves the list under half a unit a frame leaves a glide or a key's glide alone: a jump each
+				// frame stopped them all (a stick resting just past its dead zone: no flick, Down sprang back)
+				double by = sv * dt / 1000.0;
+				if (std::fabs(by) >= 0.5 || !list->sc.moving()) list->sc.jump(list->sc.offset() + by);
 			}
 			else stickListAt = 0;
 			stickListOn = sv != 0;

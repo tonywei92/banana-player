@@ -163,6 +163,13 @@ namespace bp
 	{
 		stickLY = value;
 		stickLX = valueX;
+		// a stick that comes to rest past its dead zone scrolls every list a crawl, which stopped their glides: the
+		// log says so (docs/notes/2026-11-28-stick-rest-kills-glides.md)
+		if ((stickScrollSpeed(value, 1.0) != 0) != stickPast)
+		{
+			stickPast = !stickPast;
+			fprintf(stderr, "input: left stick %s (LEFTY %d)\n", stickPast ? "past its dead zone" : "back at rest", value);
+		}
 		// a zoomed photo pans under the stick (a full push is a panel's width or height a second); lists scroll in draw()
 		Uint32 now = SDL_GetTicks();
 		double sx = stickScrollSpeed(valueX, 1.0), sy = stickScrollSpeed(value, 1.0);
@@ -721,6 +728,13 @@ namespace bp
 			fprintf(stderr, "touch: down %d,%d on page %d, section %d\n", x, y, (int)page, (int)shell->section(p));
 		// a list's finger whose lift never came (a dialog took it): a new touch starts afresh
 		if (pt.kind == Pointer::Down) pageReader->mlist = PageReader::MangaListDrag();
+		// and the smooth list shown still holding a finger (its lift lost): let go where it is, so its glides and its
+		// cursor's glides come back (a held list ignores both)
+		if (pt.kind == Pointer::Down && listShown && listShown->sc.held())
+		{
+			fprintf(stderr, "touch: a list's finger had no lift; let go\n");
+			listShown->sc.jump(listShown->sc.offset());
+		}
 		// a slider under the finger: it keeps the finger until it lifts, whatever it passes over (a new touch with
 		// one still held: its lift was lost, it's let go where it was)
 		if (slide.on)

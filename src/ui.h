@@ -786,6 +786,7 @@ namespace bp
 		// the left stick as last read (LEFTY, LEFTX), when a photo or a list last moved by it, and whether a list is
 		// moving by it now (animating() keeps the loop turning)
 		int stickLY = 0, stickLX = 0;
+		bool stickPast = false;	// LEFTY past its dead zone (logged as it changes: a stick resting off centre shows)
 		Uint32 stickPhotoAt = 0, stickListAt = 0;
 		bool stickListOn = false;
 		SDL_Texture* photoTex = nullptr;
