@@ -198,7 +198,7 @@ namespace bp
 		// before it becomes a queue item. added: how many new asks (already queued or on the card: none).
 		int mangaDlQueueChapters(const std::string& sourceId, const std::string& scriptPath,
 			const std::string& seriesId, const std::string& seriesTitle,
-			const std::vector<MangaChapter>& chapters);
+			const std::vector<MangaChapter>& chapters, bool byName = true, int* staysPaused = nullptr);
 		// the manga reader's network side (main's; started when the reader is first used with it on)
 		class MangaNet* mangaNet = nullptr;
 		// the manga reader's library and progress store (public for the web dashboard's manga routes)
@@ -1260,8 +1260,14 @@ namespace bp
 			const std::string& seriesId, const std::string& seriesTitle, Player& p);	// true: it was on the card
 		void mangaDlOpenCardAt(int seriesIndex, int chapterIndex, Player& p);
 		bool mangaDlBlocked(const std::string& sourceId, const std::string& seriesId, const MangaChapter& c) const;
-		void mangaDlEnqueueChapter(const std::string& sourceId, const std::string& scriptPath, const std::string& seriesId,
-			const std::string& seriesTitle, const MangaChapter& c);
+		enum class DlEnqueued { No, Yes, StaysPaused };
+		// byName: the user named this chapter (This chapter, Choose, the dashboard), so a paused one resumes
+		DlEnqueued mangaDlEnqueueChapter(const std::string& sourceId, const std::string& scriptPath, const std::string& seriesId,
+			const std::string& seriesTitle, const MangaChapter& c, bool byName);
+		int mangaDlFailedInSeries() const;	// the open series' chapters whose download failed
+		// failed downloads wait again from the page they stopped on: the open series' only, or all
+		int mangaDlRetryFailed(bool openSeriesOnly);
+		void mangaDlQueuedOsd(Player& p, int added, int staysPaused);
 		void mangaDlAskPump();		// the next chapter's Pages job
 		bool mangaDlImageAsk();		// the next page's Image job, while one has only a key
 		void mangaDlYieldToSource();	// a chapter being read needs the worker first: the ask waits its turn

@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <set>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -49,6 +50,20 @@ namespace bp
 		// a chapter the card holds is this one of the source's list: the number is the download's own (ComicInfo's),
 		// the title is what writeChapter put there; either can be the one that matches when a source numbers its
 		// chapters its own way
+		// a failed download's reason as its row says it: a dropped connection in plain words (curl's own are long and
+		// name hosts), an HTTP status or a card's trouble as they are
+		std::string dlFailedText(const std::string& error)
+		{
+			std::string e;
+			for (char ch : error) e += (char)tolower((unsigned char)ch);
+			static const char* const OFFLINE[] = {"no answer", "resolve", "connect", "timed out", "timeout",
+				"reset by peer", "network", "unreachable", "recv failure", "send failure"};
+			bool offline = error.empty();
+			for (const char* w : OFFLINE)
+				if (e.find(w) != std::string::npos) offline = true;
+			return offline ? "Failed: no connection" : "Failed: " + error;
+		}
+
 		bool dlNumberMatches(double cardNumber, const MangaChapter& c) { return cardNumber >= 0 && c.number > 0 && cardNumber == c.number; }
 
 		std::string baseNoExt(const std::string& path)
@@ -610,12 +625,19 @@ namespace bp
 				}});
 			}
 			if (int failed = mangaDlFailedCount())
+			{
+				// trying again comes first: clearing loses the pages already fetched (#24)
+				m.rows.push_back({&G_DOWNLOAD, "Retry failed", std::to_string(failed), "", [this](Player& p) {
+					mangaDlQueuedOsd(p, mangaDlRetryFailed(false), 0);
+					return false;
+				}});
 				m.rows.push_back({&G_TRASH, "Clear failed", std::to_string(failed), "", [this, off](Player& p) {
 					// (the base's Y off the queue's rows: the failed ones go)
 					mdlCursor = off;
 					mangaDlKeyBase(Button::Y, p);
 					return false;
 				}});
+			}
 			(void)pl;
 			(void)at;
 			return m;
@@ -969,6 +991,7 @@ namespace bp
 			std::string id = sourceItemId(mangaSrcId, c.key);
 			const ChapterProgress* pr = mangaStore->progress(id);
 			if (pr && pr->read) continue;
+			// a failed or paused one is picked: the queue tries it again or says it stays paused (#24)
 			if (mangaDlBlocked(mangaSrcId, mangaSeriesId, c)) continue;
 			out.push_back(i);
 			if (limit > 0 && (int)out.size() >= limit) break;
@@ -978,15 +1001,68 @@ namespace bp
 
 	bool Ui::Manga::mangaDlBlocked(const std::string& sourceId, const std::string& seriesId, const MangaChapter& c) const
 	{
-		return mangaDlMarkFor(sourceId, seriesId, c).kind != MangaDlMark::None;
+		// already on its way or here; a failed or paused one is not: asking again tries it again (#24)
+		MangaDlMark::Kind k = mangaDlMarkFor(sourceId, seriesId, c).kind;
+		return k != MangaDlMark::None && k != MangaDlMark::Failed && k != MangaDlMark::Paused;
 	}
 
-	void Ui::Manga::mangaDlEnqueueChapter(const std::string& sourceId, const std::string& scriptPath, const std::string& seriesId,
-		const std::string& seriesTitle, const MangaChapter& c)
+	int Ui::Manga::mangaDlFailedInSeries() const
 	{
-		if (c.key.empty()) return;
+		int n = 0;
+		for (const auto& c : mangaSrcChapters)
+			if (mangaDlMarkFor(mangaSrcId, mangaSeriesId, c).kind == MangaDlMark::Failed) n++;
+		return n;
+	}
+
+	int Ui::Manga::mangaDlRetryFailed(bool openSeriesOnly)
+	{
+		// the failed ones (the open series', by its chapters' ids as the marks match them, or all) wait again,
+		// each at the page it stopped on
+		if (!mangaNet || !mangaNet->started()) return 0;
+		std::set<std::string> mine;
+		if (openSeriesOnly)
+			for (const auto& c : mangaSrcChapters) mine.insert(sourceItemId(mangaSrcId, c.key));
+		std::vector<std::string> ids;
+		for (const auto& it : mangaNet->queue().items())
+		{
+			if (it.state != DlItem::Failed) continue;
+			if (openSeriesOnly && !mine.count(it.chapterId)) continue;
+			ids.push_back(it.id);
+		}
+		for (const auto& id : ids) mangaNet->queue().retry(id);
+		if (!ids.empty())
+		{
+			mangaNet->queue().save();
+			mdlRemoveId.clear();
+			mdlRemoveAt = 0;
+			mdlLocal++;
+		}
+		return (int)ids.size();
+	}
+
+	Ui::Manga::DlEnqueued Ui::Manga::mangaDlEnqueueChapter(const std::string& sourceId, const std::string& scriptPath,
+		const std::string& seriesId, const std::string& seriesTitle, const MangaChapter& c, bool byName)
+	{
+		if (c.key.empty()) return DlEnqueued::No;
 		std::string cid = sourceItemId(sourceId, c.key);
-		if (mangaDlBlocked(sourceId, seriesId, c)) return;
+		if (mangaDlBlocked(sourceId, seriesId, c)) return DlEnqueued::No;
+		// still in the queue, failed or paused: that item goes on from its page, not a second one (#24). A pause is
+		// lifted only for a chapter asked for by name; Next 5 / All unread leave it as the user set it
+		if (mangaNet && mangaNet->started())
+			for (const auto& it : mangaNet->queue().items())
+			{
+				if (it.chapterId != cid) continue;
+				if (it.state == DlItem::Failed) mangaNet->queue().retry(it.id);
+				else if (it.state == DlItem::Paused)
+				{
+					if (!byName) return DlEnqueued::StaysPaused;
+					mangaNet->queue().resume(it.id);
+				}
+				else return DlEnqueued::No;
+				mangaNet->queue().save();
+				mdlLocal++;
+				return DlEnqueued::Yes;
+			}
 		MangaDlAsk a;
 		a.sourceId = sourceId;
 		a.scriptPath = scriptPath;
@@ -998,20 +1074,37 @@ namespace bp
 		mdlAsks.push_back(a);
 		mdlLocal++;
 		mangaDlAskPump();
+		return DlEnqueued::Yes;
 	}
 
 	int Ui::Manga::mangaDlQueueChapters(const std::string& sourceId, const std::string& scriptPath, const std::string& seriesId,
-		const std::string& seriesTitle, const std::vector<MangaChapter>& chapters)
+		const std::string& seriesTitle, const std::vector<MangaChapter>& chapters, bool byName, int* staysPaused)
 	{
-		// both the Download sheet and the dashboard queue here: one ask per chapter, its page list first
-		int added = 0;
+		// both the Download sheet and the dashboard queue here: one ask per chapter, its page list first; a failed
+		// one tried again counts as queued
+		int added = 0, paused = 0;
 		for (const auto& c : chapters)
-		{
-			int before = (int)mdlAsks.size() + (mdlAskOn ? 1 : 0);
-			mangaDlEnqueueChapter(sourceId, scriptPath, seriesId, seriesTitle, c);
-			if ((int)mdlAsks.size() + (mdlAskOn ? 1 : 0) > before) added++;
-		}
+			switch (mangaDlEnqueueChapter(sourceId, scriptPath, seriesId, seriesTitle, c, byName))
+			{
+			case DlEnqueued::Yes: added++; break;
+			case DlEnqueued::StaysPaused: paused++; break;
+			default: break;
+			}
+		if (staysPaused) *staysPaused = paused;
 		return added;
+	}
+
+	void Ui::Manga::mangaDlQueuedOsd(Player& p, int added, int paused)
+	{
+		std::string pausedPart = std::to_string(paused) + (paused == 1 ? " is" : " are");
+		if (added)
+		{
+			std::string t = added == 1 ? "Download queued" : std::to_string(added) + " chapters queued";
+			if (paused) t += " \xC2\xB7 " + std::to_string(paused) + " stay" + (paused == 1 ? "s" : "") + " paused";
+			p.osd(t, paused ? 2600 : 1800);
+		}
+		else if (paused) p.osd("Nothing new: " + pausedPart + " paused in Downloads", 2600);
+		else p.osd("Nothing to download: already on the card or queued", 2200);
 	}
 
 	void Ui::Manga::mangaDlAskPump()
@@ -1193,18 +1286,18 @@ namespace bp
 			mdlLocal++;
 			return;
 		}
-		int added = 0;
+		int added = 0, paused = 0;
 		std::string title = mangaSrcInfo.title.empty() ? mangaSrcTitle : mangaSrcInfo.title;
 		if (!picks.empty())
 		{
 			std::vector<MangaChapter> chosen;
 			for (int i : picks)
 				if (i >= 0 && i < (int)mangaSrcChapters.size()) chosen.push_back(mangaSrcChapters[i]);
-			added = mangaDlQueueChapters(mangaSrcId, mangaSrcFile, mangaSeriesId, title, chosen);
+			// This chapter names one; Next 5 and All unread are bulk and leave a paused one paused
+			added = mangaDlQueueChapters(mangaSrcId, mangaSrcFile, mangaSeriesId, title, chosen, mdlSheetCursor == 0, &paused);
 		}
 		mangaDlSheetClose();
-		if (added) p.osd(added == 1 ? "Download queued" : std::to_string(added) + " chapters queued", 1800);
-		else p.osd("Nothing to download: already here or queued", 2200);
+		mangaDlQueuedOsd(p, added, paused);
 	}
 
 	bool Ui::Manga::mangaDlSheetKey(Button b, Player& p)
@@ -1214,7 +1307,7 @@ namespace bp
 			int n = (int)mangaSrcChapters.size();
 			if (n == 0) { mdlSheet = MDLS_MENU; mangaDlMenuOpen(); return false; }
 			if (mdlChooseCursor >= n) mdlChooseCursor = n - 1;
-			if (b == Button::B) { mdlSheet = MDLS_MENU; mdlSheetCursor = 3; mdlChosen.clear(); mdlLocal++; mangaDlMenuOpen(); return false; }
+			if (b == Button::B) { mdlSheet = MDLS_MENU; mdlSheetCursor = 3 + (mangaDlFailedInSeries() ? 1 : 0); mdlChosen.clear(); mdlLocal++; mangaDlMenuOpen(); return false; }
 			if (b == Button::A)
 			{
 				if (mdlChosen.count(mdlChooseCursor)) mdlChosen.erase(mdlChooseCursor);
@@ -1230,8 +1323,7 @@ namespace bp
 					if (i >= 0 && i < n) chosen.push_back(mangaSrcChapters[i]);
 				int added = mangaDlQueueChapters(mangaSrcId, mangaSrcFile, mangaSeriesId, title, chosen);
 				mangaDlSheetClose();
-				if (added) p.osd(added == 1 ? "Download queued" : std::to_string(added) + " chapters queued", 1800);
-				else p.osd("Nothing to download: already here or queued", 2200);
+				mangaDlQueuedOsd(p, added, 0);
 				return false;
 			}
 			switch (b)
@@ -1361,6 +1453,21 @@ namespace bp
 				const ChapterProgress* pr = mangaStore->progress(sourceItemId(mangaSrcId, c.key));
 				if (!pr || !pr->read) unread++;
 			}
+		// a failed chapter of this series: trying them again is the first row, where the sheet opens (#24)
+		if (int failed = mangaDlFailedInSeries())
+		{
+			MoreItem it;
+			it.glyph = &G_DOWNLOAD;
+			it.label = "Retry failed";
+			it.note = std::to_string(failed);
+			it.act = [this](Player& p) {
+				int n = mangaDlRetryFailed(true);
+				mangaDlSheetClose();
+				mangaDlQueuedOsd(p, n, 0);
+				return false;
+			};
+			m.rows.push_back(it);
+		}
 		for (int i = 0; i < 4; i++)
 		{
 			MoreItem it;
@@ -1419,7 +1526,7 @@ namespace bp
 			m.glyph = &G_DOWNLOAD;
 			m.name = (it.seriesTitle.empty() ? it.seriesId : it.seriesTitle) + " \xC2\xB7 " + it.chapterTitle;
 			std::string state = it.state == DlItem::Paused ? "Paused"
-				: it.state == DlItem::Failed ? (it.error.empty() ? "Failed" : it.error)
+				: it.state == DlItem::Failed ? dlFailedText(it.error)
 				: it.state == DlItem::Running ? "Downloading" : "Queued";
 			m.second = std::to_string(it.done) + " / " + std::to_string(total) + " pages \xC2\xB7 " + state;
 			m.bar = total > 0 ? it.done / (double)total : 0;
@@ -1435,7 +1542,7 @@ namespace bp
 			bool paused = mangaNet && mangaNet->started() && mangaNet->queue().allPaused();
 			m.glyph = paused ? &G_PLAY : &G_PAUSE;
 			m.name = paused ? "Resume all" : "Pause all";
-			m.note = mangaDlFailedCount() ? "Clear failed is in X \xC2\xB7 More" : paused ? "all paused" : "one at a time";
+			m.note = mangaDlFailedCount() ? "Retry failed is in X \xC2\xB7 More" : paused ? "all paused" : "one at a time";
 			return m;
 		}
 		int c = i - off;

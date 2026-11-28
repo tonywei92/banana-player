@@ -1517,8 +1517,9 @@ pick up. It is the handheld's Home Recent strip, in the browser.
   installed sources stay), and the handheld's note under the card — then **Installed** (**Update** when there's one,
   the bin to uninstall, which asks first) and **Available** (**Install**). Adult sources are left out unless **Adult
   sources** is **Shown**.
-- **Downloads**: the queue — each chapter with its pages done, pause or resume one, **Y** removes a failed or queued
-  one (again to confirm), **Clear failed** removes every failed chapter and its partial pages, **Pause all** /
+- **Downloads**: the queue — each chapter with its pages done, pause or resume one (**Y**; a failed one **Retry**, from
+  the page it stopped on), **Retry failed** tries every failed one again, **Clear failed** removes every failed chapter
+  and its partial pages, **Pause all** /
   **Resume all**, and a **Low on card space** note when the card is nearly full. Downloads are started here too, from
   a series' chapter list in **Library**; with none queued the page reads **Queue chapters from a series page**.
 
@@ -1601,7 +1602,7 @@ lists, a server's catalogue and form, and Manga settings are drawn the same way,
 **Browse** and **Downloads** are lists of rows: the row you're on carries its key (a server's **Edit**, a chapter's
 **Pause** / **Resume** or **Remove**), which a tap presses too; Downloads' storage line and Browse's place in a network
 folder are the header's line. In Downloads **Y** pauses or resumes the chapter (or all, on **Pause all**), and **X** is
-**More**: Pause / Resume, Remove from the queue, Delete from the card (choose it twice), Pause all, Clear failed. Browse ends its fixed rows with **Sources…** and **Add a server…** (the
+**More**: Pause / Resume, Remove from the queue, Delete from the card (choose it twice), Pause all, Retry failed, Clear failed. Browse ends its fixed rows with **Sources…** and **Add a server…** (the
 same form **Y** opens).
 
 **On the touch screen** every list and grid in the app scrolls with a finger: drag it up or down (Library's covers,
@@ -1759,16 +1760,18 @@ Vertical scroll a chapter also comes back to the place inside its page (a PDF's 
 unread**, **All unread** or **Choose chapters…** (the whole list, ticked with **A** and downloaded with **Y**). The sheet
 says how much the pick will take where the page counts are known, and the room the card has left. Each picked chapter's
 page list is asked of the source first; it then waits in the queue, one chapter at a time and two pages at once. A
-chapter already here or queued is not picked twice, and a chapter on the card opens straight from its `.cbz`, with no
-network. The chapter list marks each one: **Queued**, its pages done (**12/40**), **Paused**, **Failed**, or **On
+chapter already here or queued is not picked twice; a **Failed** one is tried again from the page it stopped on, and a
+**Paused** one resumes when you pick it by name (This chapter, Choose chapters; Next 5 and All unread leave it paused and
+say so). While a series has failed chapters the sheet opens on **Retry failed** (with their count). A chapter on the card
+opens straight from its `.cbz`, with no network. The chapter list marks each one: **Queued**, its pages done (**12/40**), **Paused**, **Failed**, or **On
 card**.
 
 **Downloads.** The header's line says what the downloads take and the card's free space. The queue comes first: each
 chapter's series and chapter, pages done of total over a progress line, and on the row you're on its **Pause** /
-**Resume** key (**Y**, or a tap; a failed one **Retry**). A **Pause all / Resume all** row follows while anything is
+**Resume** key (**Y**, or a tap; a failed one **Retry**; its line says why it failed, e.g. **Failed: no connection**). A **Pause all / Resume all** row follows while anything is
 queued. Then what is on the card, by series, with its chapters and size; **A** lists a series' chapters (**A** on one
 reads it, **X** deletes it after a second press). **X** elsewhere is **More**: Pause / Resume, **Remove from the
-queue** (a failed or waiting chapter), **Delete from the card** (a series), **Pause all**, **Clear failed** (every
+queue** (a failed or waiting chapter), **Delete from the card** (a series), **Pause all**, **Retry failed**, **Clear failed** (every
 failed chapter and the pages it left); Remove and Delete are chosen twice. Downloads need
 the network and resume where they stopped after a pause, a lost connection or a quit. A downloaded chapter and its
 online chapter share one place, read mark and History row, whichever way it is opened (Browse, Downloads or *On this
